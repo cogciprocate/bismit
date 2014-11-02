@@ -1,0 +1,1 @@
+paths = ["/home/nick/dev/src/github.com/csherratt/rust-opencl", $OPENCL_LIB]
