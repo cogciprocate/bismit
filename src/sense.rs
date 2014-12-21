@@ -1,17 +1,20 @@
 use std::io;
 use std;
+use std::num::FloatMath;
+use std::num::Float;
 
-pub static INPUT_READ_OFFSET: u16= 0u16;
-pub static INPUT_CHARS_TO_READ: u16 = 100u16;
+pub const INPUT_READ_OFFSET: u16= 0u16;
+pub const INPUT_CHARS_TO_READ: u16 = 100u16;
+
+pub const INPUT_FILE_NAME: &'static str = "/home/nick/dev/src/github.com/cogciprocate/bismit/data/tale_pg98.txt";
 
 pub fn ascii_sense() -> Box<Vec<Box<Vec<u16>>>> {
 	let mut song: Vec<Box<Vec<u16>>> = Vec::new();
 	println!("** Starting song.len(): {}",song.len());
-	let input_file_name = "tale_pg98.txt";
 
-	let input_file = match io::File::open(&Path::new(input_file_name)) {
+	let input_file = match io::File::open(&Path::new(INPUT_FILE_NAME)) {
 		Ok(file) => file,
-		Err(e) => fail!("error opening file: {}; {}", input_file_name, e),
+		Err(e) => panic!("error opening file: {}; {}", INPUT_FILE_NAME, e),
 	};
 
 	let mut reader = std::io::BufferedReader::new(input_file);
@@ -42,6 +45,11 @@ pub fn chord_encode_byte(byte: u8) -> Box<Vec<u16>> {
 	box chord
 }
 
+/*
+pub fn chord_encode_f32(f: f32) -> Box<Vec<u16>> {
+
+}
+*/
 
 /*
 pub fn test_sense() -> Box<Vec<u16>> {

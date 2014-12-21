@@ -1,4 +1,12 @@
 [root]
 name = "bismit"
 version = "0.0.1"
+dependencies = [
+ "microcosm 0.0.1 (git+https://github.com/cogciprocate/microcosm.git)",
+]
+
+[[package]]
+name = "microcosm"
+version = "0.0.1"
+source = "git+https://github.com/cogciprocate/microcosm.git#04f4596d33f2ff30f1711c2b85b6f2b4a792ceed"
 

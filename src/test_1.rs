@@ -1,4 +1,3 @@
-#![allow(non_camel_case_types, dead_code, unstable, experimental, deprecated)]
 
 extern crate libc;
 
@@ -6,7 +5,8 @@ use ocl;
 use std;
 use std::io;
 
-pub static KERNELS_FILE_NAME: &'static str = "kernels.cl";
+pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
+
 pub static VEC_SIZE: uint = 100u;
 
 pub fn run_kernel() {
@@ -14,7 +14,7 @@ pub fn run_kernel() {
 //Read Kernel File
 	let file_path: std::path::Path = std::path::Path::new(format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME));
 	let kern_str = io::File::open(&file_path).read_to_end().unwrap();
-	let kern_str = std::str::from_utf8(kern_str.as_slice()).unwrap();
+	let kern_c_str = std::str::from_utf8(kern_str.as_slice()).unwrap().to_c_str();
 
 // Create Parts and Pieces
 	let platform: ocl::cl_platform_id = ocl::new_platform();
@@ -23,7 +23,7 @@ pub fn run_kernel() {
 
 	let context: ocl::cl_context = ocl::new_context(device);
 
-	let program: ocl::cl_program = ocl::new_program(kern_str, context, device);
+	let program: ocl::cl_program = ocl::new_program(kern_c_str.as_ptr(), context, device);
 
 	let kernel: ocl::cl_kernel = ocl::new_kernel(program, "my_kernel_func");
 

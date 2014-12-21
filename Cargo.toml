@@ -4,6 +4,8 @@ name = "bismit"
 version = "0.0.1"
 authors = ["Nick Sanders <github.com/nsan1129>"]
 
+[dependencies.microcosm]
+git = "https://github.com/cogciprocate/microcosm.git"
 
 # [dependencies.opencl]
 # git = "https://github.com/csherratt/rust-opencl"

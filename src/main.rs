@@ -1,17 +1,22 @@
-#![allow(non_camel_case_types, dead_code, unstable, experimental, deprecated, unused_variable)]
+#![allow(non_camel_case_types, dead_code, unstable, experimental, deprecated, unused_variables)]
+
+extern crate microcosm;
 
 mod test_1;
 mod test_2;
+mod test_3;
+mod hello_world;
 mod ocl;
 mod cl_h;
 mod sense;
-//mod space_req;
+mod cortex;
 
 fn main() {
-	//space_req::space_req()
 	//test_1::run_kernel();
-	sense::ascii_sense();
-	test_2::run();
+	//sense::ascii_sense();
+	//test_3::run();
+	//hello_world::run();
+	microcosm::run_test();
 }
 
 

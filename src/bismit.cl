@@ -11,12 +11,19 @@ __kernel void hello_kernel(__global char16 *msg) {
 
 __kernel void test_synapse(__global char *synapse, __global char *syn_out) {
 	int i = get_global_id(0);
+	synapse[i] += 2;
 	syn_out[i] = synapse[i];
 }
 
 __kernel void test_axon(__global short *axon, __global short *ax_out) {
 	int i = get_global_id(0);
+	axon[i] += 2;
 	ax_out[i] = axon[i];
 }
 
-//__kernel void hypercolumn input(__global column_states) {}
+
+
+__kernel void hello(__global float *input, __global float *output) {
+	size_t id = get_global_id(0);
+	output[id] = input[id] * input[id];
+}

@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types, dead_code, unused_variable, ctypes, non_uppercase_statics)]
+#![allow(non_camel_case_types, dead_code, unused_variables, improper_ctypes, non_upper_case_globals)]
 
 extern crate libc;
 
@@ -126,6 +126,8 @@ pub enum CLStatus {
 // Version
 pub static CL_VERSION_1_0:                               cl_bool = 1;
 pub static CL_VERSION_1_1:                               cl_bool = 1;
+pub static CL_VERSION_1_2:                               cl_bool = 1;
+//pub static CL_VERSION_2_0:                               cl_bool = 1;
 
 // cl_bool
 pub static CL_FALSE:                                     cl_bool = 0;
@@ -418,6 +420,7 @@ pub static CL_PROFILING_COMMAND_END:                     cl_uint = 0x1283;
 
 
 #[link(name = "OpenCL")]
+//#[link_args = "-L$OPENCL_LIB -lOpenCL"]
 #[cfg(target_os = "linux")]
 extern {
     pub fn clGetPlatformIDs(num_entries:   cl_uint,

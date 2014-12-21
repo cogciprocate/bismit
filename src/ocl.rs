@@ -1,10 +1,89 @@
+#![allow(non_camel_case_types, dead_code, unstable, experimental, deprecated)]
+
 extern crate libc;
 
 use std;
 use std::ptr;
 use std::mem;
+use std::io;
 use cl_h;
-pub use cl_h::{cl_int, cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_char, cl_ushort, cl_uint, cl_uchar};
+pub use cl_h::{cl_int, cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_char, cl_ushort, cl_uint, cl_uchar, CLStatus};
+
+pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
+
+
+pub struct Ocl {
+	pub platform: cl_platform_id,
+	pub device: cl_device_id,
+	pub context: cl_context,
+	pub program: cl_program,
+	pub command_queue: cl_command_queue,
+}
+impl Ocl {
+	pub fn new() -> Ocl {
+		let kern_file_path: std::path::Path = std::path::Path::new(format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME));
+		let kern_str: Vec<u8> = io::File::open(&kern_file_path).read_to_end().unwrap();
+		let kern_c_str = std::str::from_utf8(kern_str.as_slice()).unwrap().to_c_str();
+
+		let platform = new_platform() as cl_platform_id;
+		let device: cl_device_id = new_device(platform);
+		let context: cl_context = new_context(device);
+		let program: cl_program = new_program(kern_c_str.as_ptr(), context, device);
+		let command_queue: cl_command_queue = new_command_queue(context, device); 
+
+		Ocl {
+			platform: platform as cl_platform_id,
+			device:  device,
+			context:  context,
+			program:  program,
+			command_queue: command_queue,
+
+		}
+	}
+
+	pub fn new_write_buffer<T>(&self, data: &Vec<T>) -> cl_h::cl_mem {
+		new_write_buffer(data, self.context)
+	}
+
+	pub fn new_read_buffer<T>(&self, data: &Vec<T>) -> cl_h::cl_mem {
+		new_read_buffer(data, self.context)
+	}
+
+	pub fn enqueue_write_buffer<T>(
+					&self,
+					data: &Vec<T>, 
+					buffer: cl_h::cl_mem, 
+	) {
+		enqueue_write_buffer(data, buffer, self.command_queue);
+	}
+
+	pub fn enqueue_read_buffer<T>(
+					&self,
+					data: &Vec<T>,
+					buffer: cl_h::cl_mem, 
+	) {
+		enqueue_read_buffer(data, buffer, self.command_queue);
+	}
+
+	pub fn enqueue_kernel(
+				&self,
+				kernel: cl_h::cl_kernel, 
+				gws: uint,
+	) { 
+		enqueue_kernel(kernel, self.command_queue, gws);
+	}
+
+	pub fn release_components(&self) {
+
+		unsafe {
+			//cl_h::clReleaseKernel(self.kernel);
+			cl_h::clReleaseCommandQueue(self.command_queue);
+			cl_h::clReleaseProgram(self.program);
+			cl_h::clReleaseContext(self.context);
+		}
+
+	}
+}
 
 
 fn to_error_str(err_code: cl_h::cl_int) -> String {
@@ -16,8 +95,8 @@ fn to_error_str(err_code: cl_h::cl_int) -> String {
 }
 
 pub fn must_succ(message: &str, err: cl_h::cl_int) {
-	if err != cl_h::CL_SUCCESS as cl_h::cl_int {
-		fail!(format!("{} failed with code: {}", message, to_error_str(err)))
+	if err != cl_h::CLStatus::CL_SUCCESS as cl_h::cl_int {
+		panic!(format!("{} failed with code: {}", message, to_error_str(err)))
 	}
 }
 
@@ -26,13 +105,13 @@ pub fn must_succ(message: &str, err: cl_h::cl_int) {
 pub fn new_platform() -> cl_h::cl_platform_id {
 	let mut num_platforms = 0 as cl_h::cl_uint;
 	
-	let mut err: cl_h::cl_int = unsafe { cl_h::clGetPlatformIDs(0, ptr::mut_null(), &mut num_platforms) };
+	let mut err: cl_h::cl_int = unsafe { cl_h::clGetPlatformIDs(0, ptr::null_mut(), &mut num_platforms) };
 	must_succ("clGetPlatformIDs()", err);
 
 	unsafe {
 		let mut platform: cl_h::cl_platform_id = 0 as cl_h::cl_platform_id;
 
-		err = cl_h::clGetPlatformIDs(1, &mut platform, ptr::mut_null()); 
+		err = cl_h::clGetPlatformIDs(1, &mut platform, ptr::null_mut()); 
 		must_succ("clGetPlatformIDs()", err);
 
 		platform
@@ -44,7 +123,7 @@ pub fn new_device(platform: cl_h::cl_platform_id) -> cl_h::cl_device_id {
 	let mut device: cl_h::cl_device_id = 0 as cl_h::cl_device_id;
 
 	unsafe {
-		let err = cl_h::clGetDeviceIDs(platform, cl_h::CL_DEVICE_TYPE_GPU, 1, &mut device, ptr::mut_null());
+		let err = cl_h::clGetDeviceIDs(platform, cl_h::CL_DEVICE_TYPE_GPU, 1, &mut device, ptr::null_mut());
 		must_succ("clGetDeviceIDs()", err);
 	}
 	device
@@ -54,7 +133,7 @@ pub fn new_context(device: cl_h::cl_device_id) -> cl_h::cl_context {
 	let mut err: cl_h::cl_int = 0;
 
 	unsafe {
-		let context: cl_h::cl_context = cl_h::clCreateContext(ptr::null(), 1, &device, mem::transmute(ptr::null::<||>()), ptr::mut_null(), &mut err);
+		let context: cl_h::cl_context = cl_h::clCreateContext(ptr::null(), 1, &device, mem::transmute(ptr::null::<||>()), ptr::null_mut(), &mut err);
 		must_succ("clCreateContext()", err);
 		context
 	}
@@ -62,13 +141,23 @@ pub fn new_context(device: cl_h::cl_device_id) -> cl_h::cl_context {
 }
 
 pub fn new_program(
-				src_str: &str, 
+				src_str: *const i8, 
 				context: cl_h::cl_context, 
 				device: cl_h::cl_device_id,
-			) -> cl_h::cl_program {
+) -> cl_h::cl_program {
 	let mut err: cl_h::cl_int = 0;
 
 	unsafe {
+		let program: cl_h::cl_program = cl_h::clCreateProgramWithSource(
+					context, 
+					1,
+					&src_str,
+					ptr::null(), 
+					&mut err,
+		);
+		must_succ("clCreateProgramWithSource()", err);
+
+/*
 		let program: cl_h::cl_program = src_str.to_c_str().with_ref(|src_str| {
 			let prog = cl_h::clCreateProgramWithSource(
 						context, 
@@ -80,6 +169,7 @@ pub fn new_program(
 			must_succ("clCreateProgramWithSource()", err);
 			prog
 		});
+*/
 
 		err = cl_h::clBuildProgram(
 					program,
@@ -87,7 +177,7 @@ pub fn new_program(
 					ptr::null(), 
 					"-cl-denorms-are-zero -cl-fast-relaxed-math".to_c_str().as_ptr(), 
 					mem::transmute(ptr::null::<||>()), 
-					ptr::mut_null(),
+					ptr::null_mut(),
 		);
 		if err != 0i32 {
 			program_build_info(program, device);
@@ -110,7 +200,7 @@ pub fn new_kernel(program: cl_h::cl_program, kernel_name: &str) -> cl_h::cl_kern
 pub fn new_command_queue(
 				context: cl_h::cl_context, 
 				device: cl_h::cl_device_id,
-			) -> cl_h::cl_command_queue {
+) -> cl_h::cl_command_queue {
 	let mut err: cl_h::cl_int = 0;
 
 	unsafe {
@@ -127,13 +217,17 @@ pub fn new_command_queue(
 
 pub fn new_write_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
 	let mut err: cl_h::cl_int = 0;
+	//println!("New Write Buffer:");
+	//println!("	Len: {}", data.len());
+	//println!("	Size_Per: {}", mem::size_of::<T>())
+	//println!("	Size: {}", (data.len() * mem::size_of::<T>()) as u64);
 	unsafe {
 		let buf = cl_h::clCreateBuffer(
 					context, 
 					cl_h::CL_MEM_READ_ONLY | cl_h::CL_MEM_COPY_HOST_PTR, 
 					(data.len() * mem::size_of::<T>()) as u64,
 					data.as_ptr() as *mut libc::c_void, 
-					//ptr::mut_null(),
+					//ptr::null_mut(),
 					&mut err,
 		);
 		must_succ("new_write_buffer", err);
@@ -148,7 +242,7 @@ pub fn new_read_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_
 					context, 
 					cl_h::CL_MEM_WRITE_ONLY, 
 					(data.len() * mem::size_of::<T>()) as u64, 
-					ptr::mut_null(), 
+					ptr::null_mut(), 
 					&mut err,
 		);
 		must_succ("new_read_buffer", err);
@@ -160,7 +254,7 @@ pub fn enqueue_write_buffer<T>(
 				data: &Vec<T>, 
 				buffer: cl_h::cl_mem, 
 				command_queue: cl_h::cl_command_queue,
-			) {
+) {
 	unsafe {
 		let err = cl_h::clEnqueueWriteBuffer(
 					command_queue,
@@ -171,7 +265,7 @@ pub fn enqueue_write_buffer<T>(
 					data.as_ptr() as *const libc::c_void,
 					0 as cl_h::cl_uint,
 					ptr::null(),
-					ptr::mut_null(),
+					ptr::null_mut(),
 		);
 		must_succ("clEnqueueWriteBuffer()", err);
 	}
@@ -181,7 +275,7 @@ pub fn enqueue_read_buffer<T>(
 				data: &Vec<T>,
 				buffer: cl_h::cl_mem, 
 				command_queue: cl_h::cl_command_queue,
-			) {
+) {
 	unsafe {
 		let err = cl_h::clEnqueueReadBuffer(
 					command_queue, 
@@ -192,7 +286,7 @@ pub fn enqueue_read_buffer<T>(
 					data.as_ptr() as *mut libc::c_void, 
 					0, 
 					ptr::null(), 
-					ptr::mut_null(),
+					ptr::null_mut(),
 		);
 		must_succ("clEnqueueReadBuffer()", err);
 	}
@@ -214,7 +308,7 @@ pub fn enqueue_kernel(
 				kernel: cl_h::cl_kernel, 
 				command_queue: cl_h::cl_command_queue, 
 				gws: uint,
-			) {
+) {
 	unsafe {
 		let err = cl_h::clEnqueueNDRangeKernel(
 					command_queue,
@@ -225,10 +319,14 @@ pub fn enqueue_kernel(
 					ptr::null(),
 					0,
 					ptr::null(),
-					ptr::mut_null(),
+					ptr::null_mut(),
 		);
 		must_succ("clEnqueueNDRangeKernel()", err);
 	}
+}
+
+pub fn cl_finish(command_queue: cl_h::cl_command_queue) -> cl_h::cl_int {
+	unsafe{	cl_h::clFinish(command_queue) }
 }
 
 
@@ -240,7 +338,7 @@ pub fn mem_object_info_size(object: cl_h::cl_mem) -> libc::size_t {
 					cl_h::CL_MEM_SIZE,
 					mem::size_of::<libc::size_t>() as libc::size_t,
 					(&mut size as *mut u64) as *mut libc::c_void,
-					ptr::mut_null()
+					ptr::null_mut()
 		);
 		must_succ("clGetMemObjectInfo", err);
 		size
@@ -257,12 +355,20 @@ pub fn release_mem_object(obj: cl_h::cl_mem) {
 	}
 }
 
-pub fn release_components(
+pub fn release_kernel(
 	kernel: cl_h::cl_kernel, 
-	command_queue: cl_h::cl_command_queue, 
-	program: cl_h::cl_program, 
-	context: cl_h::cl_context,
 			) {
+	unsafe {
+		cl_h::clReleaseKernel(kernel);
+	}
+}
+
+pub fn release_components(
+				kernel: cl_h::cl_kernel, 
+				command_queue: cl_h::cl_command_queue, 
+				program: cl_h::cl_program, 
+				context: cl_h::cl_context,
+) {
 	unsafe {
 		cl_h::clReleaseKernel(kernel);
 		cl_h::clReleaseCommandQueue(command_queue);
@@ -281,7 +387,7 @@ pub fn platform_info(platform: cl_h::cl_platform_id) {
 					platform,
 					name,
 					0,
-					ptr::mut_null(),
+					ptr::null_mut(),
 					&mut size,
 		);
 		must_succ("clGetPlatformInfo(size)", err);
@@ -291,7 +397,7 @@ pub fn platform_info(platform: cl_h::cl_platform_id) {
 					name,
 					size,
 					plat_info.as_mut_ptr() as *mut libc::c_void,
-					ptr::mut_null(),
+					ptr::null_mut(),
 		);
         must_succ("clGetPlatformInfo()", err);
         println!("*** Platform Name ({}): {}", name, plat_info);
@@ -308,7 +414,7 @@ pub fn program_build_info(program: cl_h::cl_program, device_id: cl_h::cl_device_
 					device_id,
 					name,
 					0,
-					ptr::mut_null(),
+					ptr::null_mut(),
 					&mut size,
 		);
 		must_succ("clGetProgramBuildInfo(size)", err);
@@ -321,7 +427,7 @@ pub fn program_build_info(program: cl_h::cl_program, device_id: cl_h::cl_device_
 					name,
 					size,
 					program_build_info.as_mut_ptr() as *mut libc::c_void,
-					ptr::mut_null(),
+					ptr::null_mut(),
 		);
         must_succ("clGetProgramBuildInfo()", err);
         println!("*** Program Info ({}): \n {}", name, program_build_info);
@@ -336,7 +442,7 @@ pub fn print_junk(
 				device: cl_h::cl_device_id, 
 				program: cl_h::cl_program, 
 				kernel: cl_h::cl_kernel,
-			) {
+) {
 	println!("");
 	let mut size = 0 as libc::size_t;
 
@@ -349,7 +455,7 @@ pub fn print_junk(
 					device,
 					name,
 					0,
-					ptr::mut_null(),
+					ptr::null_mut(),
 					&mut size,
 	) };
 	must_succ("clGetPlatformInfo(size)", err);
@@ -360,7 +466,7 @@ pub fn print_junk(
 					name,
 					size,
 					device_info.as_mut_ptr() as *mut libc::c_void,
-					ptr::mut_null(),
+					ptr::null_mut(),
 		);
         must_succ("clGetDeviceInfo()", err);
         println!("*** Device Name ({}): {}", name, device_info);
@@ -373,7 +479,7 @@ pub fn print_junk(
 					program,
 					name,
 					0,
-					ptr::mut_null(),
+					ptr::null_mut(),
 					&mut size,
 		);
 		must_succ("clGetProgramInfo(size)", err);
@@ -388,7 +494,7 @@ pub fn print_junk(
 					size,
 					program_info.as_mut_ptr() as *mut libc::c_void,
 					//program_info as *mut libc::c_void,
-					ptr::mut_null(),
+					ptr::null_mut(),
 		);
         must_succ("clGetProgramInfo()", err);
         println!("*** Program Info ({}): \n {}", name, program_info);
@@ -402,7 +508,7 @@ pub fn print_junk(
 					kernel,
 					name,
 					0,
-					ptr::mut_null(),
+					ptr::null_mut(),
 					&mut size,
 		);
 		must_succ("clGetKernelInfo(size)", err);
@@ -420,7 +526,7 @@ pub fn print_junk(
 					size,
 					//kernel_info.as_mut_ptr() as *mut libc::c_void,
 					mem::transmute(&kernel_info),
-					ptr::mut_null(),
+					ptr::null_mut(),
 		);
 		
         must_succ("clGetKernelInfo()", err);
