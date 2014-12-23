@@ -22,7 +22,7 @@ pub fn run() {
 	let worm_uid = worm.uid;
 	let snake_uid = snake.uid;
 
- 
+
 	world.entities().add(worm);
 	world.entities().add(food);
 	world.entities().add(snake);

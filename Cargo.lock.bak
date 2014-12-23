@@ -8,5 +8,5 @@ dependencies = [
 [[package]]
 name = "microcosm"
 version = "0.0.1"
-source = "git+https://github.com/cogciprocate/microcosm.git#8a07615284c707a27082325735cce20427d123a1"
+source = "git+https://github.com/cogciprocate/microcosm.git#04f4596d33f2ff30f1711c2b85b6f2b4a792ceed"
 

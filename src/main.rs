@@ -10,13 +10,16 @@ mod ocl;
 mod cl_h;
 mod sense;
 mod cortex;
+mod sub_cortex;
+mod chord;
+mod test_miccos;
 
 fn main() {
 	//test_1::run_kernel();
 	//sense::ascii_sense();
 	//test_3::run();
 	//hello_world::run();
-	microcosm::run_test();
+	test_miccos::run();
 }
 
 
@@ -32,4 +35,4 @@ Note: One address in the SDR
 Chord: All of the Notes
 
 
-*/
+*/ 
