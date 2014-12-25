@@ -27,3 +27,9 @@ __kernel void hello(__global float *input, __global float *output) {
 	size_t id = get_global_id(0);
 	output[id] = input[id] * input[id];
 }
+
+__kernel void sense(__global char *peek_chord) {
+	int gid = get_global_id(0);
+	peek_chord[gid] += 2;
+	//syn_out[gid] = synapse[gid];
+}

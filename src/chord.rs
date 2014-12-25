@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 //use std::option::Option; 
 use std::fmt::{ Show, Formatter, Error };
+use common;
 
 pub struct Chord {
 	pub chord: BTreeMap<u16, u8>,
@@ -43,15 +44,16 @@ impl Chord {
 	pub fn unfold(&self) -> ChordUnfolded {
 		let mut cuf = ChordUnfolded::new();
 		for (k, v) in self.chord.iter() {
-			cuf.vals[*k as uint] = *v;
+			cuf.notes[*k as uint] = *v;
 		}
 		cuf
 	}
 
 	pub fn print(&self) {
 		println!("");
+		let color = common::C_DEFAULT;
 		for (k, v) in self.chord.iter() {
-			print!("(addr:{}, val:{})", k, v);
+			print!("({}addr:{}, val:{}{})", color, k, v, common::C_DEFAULT);
 		}
 		println!("");
     }
@@ -59,19 +61,25 @@ impl Chord {
 
 
 pub struct ChordUnfolded {
-	vals: [u8, ..1024],
+	pub notes: [u8, ..1024],
 }
 impl ChordUnfolded {
 	pub fn new() -> ChordUnfolded {
 		ChordUnfolded { 
-			vals: [0u8, ..1024],
+			notes: [0u8, ..1024],
 		}
 	}
 
 	pub fn print(&self) {
 		println!("");
-		for i in range(0, self.vals.len()) {
-			print!("([{}]:{})", i, self.vals[i]);
+		let mut color: &'static str;
+		for i in range(0, self.notes.len()) {
+			if self.notes[i] != 0u8 {
+				color = common::C_ORA;
+			} else {
+				color = common::C_DEFAULT;
+			}
+			print!("({}[{}]:{}{})", color, i, self.notes[i], common::C_DEFAULT);
 		}
 		println!("");
     }

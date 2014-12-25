@@ -2,9 +2,9 @@
 
 extern crate microcosm;
 
-mod test_1;
-mod test_2;
-mod test_3;
+//mod test_1;
+//mod test_2;
+//mod test_3;
 mod hello_world;
 mod ocl;
 mod cl_h;
@@ -12,6 +12,7 @@ mod sense;
 mod cortex;
 mod sub_cortex;
 mod chord;
+mod common;
 mod test_miccos;
 
 fn main() {

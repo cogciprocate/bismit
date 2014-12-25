@@ -1,0 +1,9 @@
+pub static C_DEFAULT: &'static str = "\x1b[0m";
+pub static C_RED: &'static str = "\x1b[91m";
+pub static C_CYA: &'static str = "\x1b[36m";
+pub static C_GRE: &'static str = "\x1b[32m";
+pub static C_BLU: &'static str = "\x1b[94m";
+pub static C_MAG: &'static str = "\x1b[95m";
+pub static C_PUR: &'static str = "\x1b[35m";
+pub static C_ORA: &'static str = "\x1b[33m";
+pub static C_YEL: &'static str = "\x1b[93m";

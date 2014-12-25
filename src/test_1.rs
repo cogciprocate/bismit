@@ -18,15 +18,10 @@ pub fn run_kernel() {
 
 // Create Parts and Pieces
 	let platform: ocl::cl_platform_id = ocl::new_platform();
-
 	let device: ocl::cl_device_id = ocl::new_device(platform);
-
 	let context: ocl::cl_context = ocl::new_context(device);
-
 	let program: ocl::cl_program = ocl::new_program(kern_c_str.as_ptr(), context, device);
-
 	let kernel: ocl::cl_kernel = ocl::new_kernel(program, "my_kernel_func");
-
 	let command_queue: ocl::cl_command_queue = ocl::new_command_queue(context, device);
 
 // Initialize Data

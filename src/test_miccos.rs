@@ -5,6 +5,9 @@ use microcosm::world::{ World };
 use sub_cortex::{ SubCortex };
 use cortex::{ Cortex };
 use chord::{ Chord };
+use ocl;
+use std::clone::Clone;
+//use std::ptr;
 
 use std::option::{ Option };
 
@@ -27,10 +30,10 @@ pub fn run() {
 	world.entities().add(food);
 	world.entities().add(snake);
 	world.entities().add(poison);
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(150f32, -200f32)));
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(-150f32, -250f32)));
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(550f32, -200f32)));
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(-1150f32, -250f32)));
+	//world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(150f32, -200f32)));
+	//world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(-150f32, -250f32)));
+	//world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(550f32, -200f32)));
+	//world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(-1150f32, -250f32)));
 	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(0f32, 110f32)));
 	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(-50f32, 0f32)));
 	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(0f32, -50f32)));
@@ -85,8 +88,50 @@ impl SnakeBrain {
 	}
 
 	pub fn act(&mut self, world: &mut World) {
-		let scent_new: Scent = world.sniff_from(self.body_uid);
-		render_peek(world.peek_from(self.body_uid));
+		let scent: Scent = world.sniff_from(self.body_uid);
+		let peek_chord = render_peek(world.peek_from(self.body_uid));
+		self.cort.sense_peek(&peek_chord);
+		
+	}
+}
+
+trait SnakeCortex {
+	fn sense_peek(&mut self, peek_chord: &Chord);
+	fn release(&mut self);
+}
+impl SnakeCortex for Cortex {
+	fn sense_peek(&mut self, pc: &Chord) {
+
+		/*
+		let mut output: Vec<u8> = Vec::with_capacity(peek_chord.len());
+		for i in range(0u, output.capacity()) {
+			output.push(Default::default());
+		}
+		*/
+		let mut peek_chord = pc.unfold().notes.to_vec();
+
+		let mut peek_chord_buff: ocl::cl_mem = ocl::new_write_buffer(&peek_chord, self.ocl.context);
+		ocl::enqueue_write_buffer(&peek_chord, peek_chord_buff, self.ocl.command_queue);
+
+		//let output_buff: ocl::cl_mem = ocl::new_read_buffer(&output, self.ocl.context);
+
+		let sense_kernel_name = "sense";
+		let sense_kernel: ocl::cl_kernel = ocl::new_kernel(self.ocl.program, sense_kernel_name);
+
+		ocl::set_kernel_arg(0, peek_chord_buff, sense_kernel);
+		//ocl::set_kernel_arg(1, output_buff, sense_kernel);
+
+		ocl::enqueue_kernel(sense_kernel, self.ocl.command_queue, peek_chord.len());
+		//ocl::enqueue_read_buffer(&test_out, test_out_buff, self.ocl.command_queue);
+
+		ocl::release_mem_object(peek_chord_buff);
+		ocl::release_kernel(sense_kernel);
+
+	}
+
+	fn release(&mut self) {
+
+		self.release_components();
 	}
 }
 
