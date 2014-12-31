@@ -17,7 +17,8 @@ __kernel void test_synapse(__global uchar *synapse, __global uchar *syn_out) {
 
 __kernel void test_cell_axon(__global uchar *axon, __global uchar *ax_out) {
 	int i = get_global_id(0);
-	axon[i] = mul_hi(axon[i], (uchar)16);
+	//uchar ax = axon[i] + 2;
+	//axon[i] = mul_hi(ax, (uchar)128) * 2;
 	ax_out[i] = axon[i];
 }
 
@@ -32,4 +33,27 @@ __kernel void sense(__global char *peek_chord) {
 	int gid = get_global_id(0);
 	peek_chord[gid] += 2;
 	//syn_out[gid] = synapse[gid];
+}
+
+
+
+
+
+
+
+
+
+/* MUL_HI TEST STABLE
+*
+*
+*
+*
+*
+*/
+
+__kernel void test_cell_axon_stable(__global uchar *axon, __global uchar *ax_out) {
+	int i = get_global_id(0);
+	uchar ax = axon[i] + 2;
+	axon[i] = mul_hi(ax, (uchar)128) * 2;
+	ax_out[i] = axon[i];
 }

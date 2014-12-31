@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types, dead_code, unstable, experimental, deprecated, unused_variables, unused_imports)]
 
 extern crate microcosm;
+extern crate time;
 
 //mod test_1;
 //mod test_2;
@@ -18,13 +19,21 @@ mod cortex;
 mod sub_cortex;
 mod test_miccos;
 mod readback_test;
+mod test_casting;
 
 fn main() {
+	println!("====== Bismit: main() running... ======");
+	let time_start = time::get_time().sec;
 	//test_1::run_kernel();
 	//sense::ascii_sense();
 	test_3::run();
+
+	test_casting::run();
+	
 	//hello_world::run();
-	test_miccos::run();
+	//test_miccos::run();
+
+	println!("====== Bismit: main() complete in: {} sec. ======", time::get_time().sec - time_start);
 }
 
 

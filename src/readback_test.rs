@@ -1,6 +1,11 @@
 use cortex::{ Cortex };
 use ocl;
+use common;
+
+
 use std::default::Default;
+
+use time;
 
 pub fn readback_test<T: ToPrimitive + Clone + Default>(
 			cortex: &Cortex,
@@ -9,13 +14,18 @@ pub fn readback_test<T: ToPrimitive + Clone + Default>(
 			test_kernel_name: &str, 
 
 ) {
-	println!("Performing Readback Test ({})...", test_kernel_name);
+	//print_vec_info(test_source, test_kernel_name);
+	println!("Performing readback test with {} hypercolumns and {} iterations.", common::HYPERCOLUMNS_PER_SEGMENT, common::READBACK_TEST_ITERATIONS);
+
+	let time_start = time::get_time().sec;
+	//println!("Timer Started at: {}...", time_start);
 
 	// Create Vec for output
 	let mut test_out: Vec<T> = Vec::with_capacity(test_source.len());
 	for i in range(0u, test_out.capacity()) {
 		test_out.push(Default::default());
 	}
+
 
 	// Create output buffer to read into output Vec
 	let test_out_buff: ocl::cl_mem = ocl::new_read_buffer(&test_out, cortex.ocl.context);
@@ -30,21 +40,37 @@ pub fn readback_test<T: ToPrimitive + Clone + Default>(
 	ocl::enqueue_read_buffer(&test_out, test_out_buff, cortex.ocl.command_queue);
 
 	// Calculate sum total for output vector
-	print_vec_info(test_source, test_kernel_name);
-	print_vec_info(&test_out, test_kernel_name);
+
+	//println!("");
+	//print_vec_info(&test_out, test_kernel_name);
 	
 	// Run again 5 times using output as source
 	ocl::set_kernel_arg(0, test_out_buff, test_out_kernel);
 
-	for i in range(0u, 5) {
+	
+
+	for i in range(0u, common::READBACK_TEST_ITERATIONS) {
 		//println!("... {}", i + 1);
 		ocl::enqueue_kernel(test_out_kernel, cortex.ocl.command_queue, test_source.len());
-		ocl::enqueue_read_buffer(&test_out, test_out_buff, cortex.ocl.command_queue);
-		print_vec_info(&test_out, test_kernel_name);
+		//ocl::enqueue_read_buffer(&test_out, test_out_buff, cortex.ocl.command_queue);
+		//print_vec_info(&test_out, test_kernel_name);
+
 	}
 
-	//print_vec_info(test_source, test_kernel_name);
+	//println!("Readback loops complete, reading buffer...");
+
+	ocl::enqueue_read_buffer(&test_out, test_out_buff, cortex.ocl.command_queue);
+
+	let time_stop = time::get_time().sec;
+	let time_complete = time_stop - time_start;
+
 	//print_vec_info(&test_out, test_kernel_name);
+
+	println!("	{} Iterations complete in: {} sec.",common::READBACK_TEST_ITERATIONS , time_complete);
+
+	//print_vec_info(test_source, test_kernel_name);
+	print!("	");
+	print_vec_info(&test_out, test_kernel_name);
 	
 	ocl::release_kernel(test_out_kernel);
 }
@@ -55,6 +81,6 @@ pub fn print_vec_info<T: ToPrimitive + Clone + Default>(my_vec: &Vec<T>, info: &
 	for x in range(0u, my_vec.len()) {
 		total += my_vec[x].to_uint().unwrap();
 	}
-	println!("*** {} *** Total: {}; Len: {}; Avg: {}", info, total, my_vec.len(), total/my_vec.len());
+	println!("[{}: total:{}; len:{}; avg:{}]", info, total, my_vec.len(), total/my_vec.len());
 
 }

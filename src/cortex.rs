@@ -9,6 +9,8 @@ use std::rand;
 use std::rand::distributions::{IndependentSample, Range};
 use std::ptr;
 
+use time;
+
 pub struct Columns {
 	pub states: CorticalComponent<ocl::cl_uint>,
 	pub axons: neurons_column::Axons,
@@ -85,6 +87,9 @@ pub struct Cortex {
 impl Cortex {
 	pub fn new() -> Cortex {
 		println!("Initializing Cortex...");
+		let time_start = time::get_time().sec;
+
+		//println!("Timer started...");
 
 		let ocl = ocl::Ocl::new();
 
@@ -99,6 +104,10 @@ impl Cortex {
 			let syn = CorticalComponent::<ocl::cl_uchar>::new(common::SENSORY_CHORD_WIDTH, 0u8, &ocl);
 			ss.push((col, syn));
 		}
+ 
+		let time_finish = time::get_time().sec;
+
+		println!("Cortex initialized in: {} sec.", time_finish - time_start);
 
 		Cortex {
 			sensory_segments: ss,
@@ -108,7 +117,7 @@ impl Cortex {
 	}
 
 	pub fn release_components(&mut self) {
-		println!("Releasing OCL Components...")
+		println!("Releasing OCL Components...");
 		self.ocl.release_components();
 	}
 }

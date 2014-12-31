@@ -16,26 +16,7 @@ impl Axons {
 		let mut target_cells = CorticalComponent::<ocl::cl_uchar>::new(size, 0u8, ocl);
 		let mut target_cell_synapses = CorticalComponent::<ocl::cl_uchar>::new(size, 0u8, ocl);
 
-		let mut rng = rand::task_rng();
-
-		let normal = Normal::new(128f64, 128f64);
-		
-		for i in range(0u, target_cells.vec.len()) {
-			let val = normal.ind_sample(&mut rng) as u8;
-			let cell = num::cast(val).unwrap();
-			target_cells.vec[i] = cell;
-			
-		}
-
-		let rng_range = Range::new(0u8, 255u8);
-
-		for i in range(0u, target_cell_synapses.vec.len()) {
-			//target_cell_synapses.vec[i] = rng_range.ind_sample(&mut rng);
-			target_cell_synapses.vec[i] = 255u8;
-		}
-		
-		target_cells.write();
-		target_cell_synapses.write();
+		init_axon(&mut target_cells, &mut target_cell_synapses);
 
 		Axons {
 			target_cells: target_cells,
@@ -44,6 +25,28 @@ impl Axons {
 	}
 }
 
+pub fn init_axon<T: num::NumCast, U: num::NumCast>(target_cells: &mut CorticalComponent<T>, target_cell_synapses: &mut CorticalComponent<U>) {
+	let mut rng = rand::task_rng();
+
+	let normal = Normal::new(128f64, 128f64);
+	
+	for i in range(0u, target_cells.vec.len()) {
+		let val = normal.ind_sample(&mut rng);
+		let cell = num::cast(val).unwrap();
+		target_cells.vec[i] = cell;
+		
+	}
+
+	let rng_range = Range::new(0u8, 255u8);
+
+	for i in range(0u, target_cell_synapses.vec.len()) {
+		target_cell_synapses.vec[i] = num::cast(rng_range.ind_sample(&mut rng)).unwrap();
+	}
+	
+	target_cells.write();
+	target_cell_synapses.write();
+
+}
 
 pub struct Dendrites {
 	pub thresholds: CorticalComponent<ocl::cl_uchar>,

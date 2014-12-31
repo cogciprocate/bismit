@@ -14,17 +14,25 @@ pub fn run() {
 	);
 	*/
 	
-	//my_cortex.readback_test(&my_cortex.axons, my_cortex.axons_buff, "test_axon");
 	
+	/*
 	readback_test::readback_test(
 				&my_cortex, 
 				&my_cortex.cortex_segments[0].cells.axons.target_cell_synapses.vec, 
 				my_cortex.cortex_segments[0].cells.axons.target_cell_synapses.buff, 
 				"test_cell_axon"
 	);
+	*/
 	
-	//my_cortex.readback_test(&my_cortex.dendrite_states, my_cortex.dendrite_states_buff, "test_axon");
 
+	
+	readback_test::readback_test(
+				&my_cortex, 
+				&my_cortex.cortex_segments[0].cells.axons.target_cells.vec, 
+				my_cortex.cortex_segments[0].cells.axons.target_cells.buff, 
+				"test_cell_axon"
+	);
+	
 
 	my_cortex.release_components();
 
