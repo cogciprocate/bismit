@@ -9,15 +9,15 @@ __kernel void hello_kernel(__global char16 *msg) {
 	*msg = (char16)('H', 'e', 'l', 'l', 'o', ' ', 'k', 'e', 'r', 'n', 'e', 'l', '!', '!', '!', '\0');
 }
 
-__kernel void test_synapse(__global char *synapse, __global char *syn_out) {
+__kernel void test_synapse(__global uchar *synapse, __global uchar *syn_out) {
 	int i = get_global_id(0);
-	synapse[i] += 2;
+	synapse[i] += 1;
 	syn_out[i] = synapse[i];
 }
 
-__kernel void test_axon(__global short *axon, __global short *ax_out) {
+__kernel void test_cell_axon(__global uchar *axon, __global uchar *ax_out) {
 	int i = get_global_id(0);
-	axon[i] += 2;
+	axon[i] = mul_hi(axon[i], (uchar)16);
 	ax_out[i] = axon[i];
 }
 

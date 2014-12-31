@@ -11,16 +11,19 @@ pub struct CorticalComponent<T> {
 }
 impl <T> CorticalComponent<T> {
 	pub fn new<T: Clone>(size: uint, init_val: T, ocl: &ocl::Ocl) -> CorticalComponent<T> {
+		let vec: Vec<T> = Vec::from_elem(size, init_val);
+		let buff: ocl::cl_mem = ocl::new_write_buffer(&vec, ocl.context);
+		ocl::enqueue_write_buffer(&vec, buff, ocl.command_queue);
+
 		CorticalComponent {
-			vec: Vec::from_elem(common::HYPERCOLUMNS_PER_SEGMENT, init_val),
-			buff: ptr::null_mut(),
+			vec: vec,
+			buff: buff,
 			context: ocl.context,
 			command_queue: ocl.command_queue,
 		}
 	}
 
-	pub fn init(&mut self) {
-		self.buff = ocl::new_write_buffer(&self.vec, self.context);
+	pub fn write(&self) {
 		ocl::enqueue_write_buffer(&self.vec, self.buff, self.command_queue);
 	}
 

@@ -55,8 +55,8 @@ pub fn run() {
 
 
 	let chord = render_peek(world.peek_from(worm_uid));
-	chord.print();
-	chord.unfold().print();
+	//chord.print();
+	//chord.unfold().print();
 
 	for i in range(0u, 100000) {
 		if worm_brain.act(&mut world) == Option::None {
@@ -90,7 +90,7 @@ impl SnakeBrain {
 	pub fn act(&mut self, world: &mut World) {
 		let scent: Scent = world.sniff_from(self.body_uid);
 		let peek_chord = render_peek(world.peek_from(self.body_uid));
-		self.cort.sense_peek(&peek_chord);
+		//self.cort.sense_peek(&peek_chord);
 		
 	}
 }
