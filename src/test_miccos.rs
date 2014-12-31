@@ -108,9 +108,9 @@ impl SnakeCortex for Cortex {
 			output.push(Default::default());
 		}
 		*/
-		let mut peek_chord = pc.unfold().notes.to_vec();
+		let peek_chord = pc.unfold().notes.to_vec();
 
-		let mut peek_chord_buff: ocl::cl_mem = ocl::new_write_buffer(&peek_chord, self.ocl.context);
+		let peek_chord_buff: ocl::cl_mem = ocl::new_write_buffer(&peek_chord, self.ocl.context);
 		ocl::enqueue_write_buffer(&peek_chord, peek_chord_buff, self.ocl.command_queue);
 
 		//let output_buff: ocl::cl_mem = ocl::new_read_buffer(&output, self.ocl.context);

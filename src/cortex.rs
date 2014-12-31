@@ -1,4 +1,8 @@
 use ocl;
+use common;
+use cortical_component::{ CorticalComponent };
+use neurons_scalar;
+use neurons_binary;
 //use std;
 //use std::io;
 use std::rand;
@@ -6,94 +10,112 @@ use std::rand::distributions::{IndependentSample, Range};
 use std::ptr;
 use std::default::Default;
 
-pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
-
-pub const CORTICAL_SEGMENTS_TOTAL: uint = 1;
-pub const HYPERCOLUMNS_PER_SEGMENT: uint = 16;
-pub const SENSORY_CHORD_WIDTH: uint = 2048;
-pub const SENSORY_SEGMENTS_TOTAL: uint = 2;
-
-pub const SYNAPSE_WEIGHT_ZERO: u8 = 16;
-pub const SYNAPSE_WEIGHT_INITIAL_DEVIATION: u8 = 3;
-pub const DENDRITE_INITIAL_THRESHOLD: u16 = 128;
-
-pub const COLUMNS_PER_HYPERCOLUMN: uint = 64u;
-pub const COLUMNS_PER_ADDRESS_BLOCK: uint = 16u;
-pub const CELLS_PER_COLUMN: uint = 16u;
-pub const DENDRITES_PER_CELL: uint = 16u;
-pub const SYNAPSES_PER_DENDRITE: uint = 16u;
-pub const AXONS_PER_CELL: uint = (DENDRITES_PER_CELL * SYNAPSES_PER_DENDRITE);
-
-pub const COLUMNS_TOTAL: uint = COLUMNS_PER_HYPERCOLUMN * HYPERCOLUMNS_PER_SEGMENT;
-pub const CELLS_TOTAL: uint = CELLS_PER_COLUMN * COLUMNS_TOTAL;
-pub const AXONS_TOTAL: uint = AXONS_PER_CELL * CELLS_TOTAL;
-pub const DENDRITES_TOTAL: uint = DENDRITES_PER_CELL * CELLS_TOTAL;
-pub const SYNAPSES_TOTAL: uint = SYNAPSES_PER_DENDRITE * DENDRITES_TOTAL; 
-
-pub struct CorticalComponent<T> {
-	pub vec: Vec<T>,
-	pub buff: ocl::cl_mem,
-	pub context: ocl::cl_context,
-	pub command_queue: ocl::cl_command_queue,
+pub struct Columns {
+	pub states: CorticalComponent<ocl::cl_uint>,
+	pub axons: neurons_scalar::Axons,
+	pub dendrites: neurons_scalar::Dendrites,
+	pub synapses: neurons_scalar::Synapses,
 }
-impl <T> CorticalComponent<T> {
-	pub fn new<T>(v: Vec<T>, ocl: &ocl::Ocl) -> CorticalComponent<T> {
-		CorticalComponent {
-			vec: v,
-			buff: ptr::null_mut(),
-			context: ocl.context,
-			command_queue: ocl.command_queue,
+impl Columns {
+	pub fn new(hcols: uint, ocl: &ocl::Ocl) -> Columns {
+		Columns {
+			states: CorticalComponent::<ocl::cl_uint>::new(common::COLUMNS_PER_SEGMENT, 0u32, ocl),
+			axons:	neurons_scalar::Axons::new(common::COLUMN_AXONS_PER_SEGMENT, ocl),
+			dendrites: neurons_scalar::Dendrites::new(common::COLUMN_DENDRITES_PER_SEGMENT, ocl),
+			synapses: neurons_scalar::Synapses::new(common::COLUMN_SYNAPSES_PER_SEGMENT, ocl),
 		}
 	}
+}
 
-	pub fn init(&mut self) {
-		self.buff = ocl::new_write_buffer(&self.vec, self.context);
-		ocl::enqueue_write_buffer(&self.vec, self.buff, self.command_queue);
-	}
 
-	pub fn release(&mut self) {
-		ocl::release_mem_object(self.buff);
+pub struct Cells {
+	pub states: CorticalComponent<ocl::cl_uint>,
+	pub axons: neurons_binary::Axons,
+	pub dendrites: neurons_binary::Dendrites,
+	pub synapses: neurons_binary::Synapses,
+}
+impl Cells {
+	pub fn new(hcols: uint, ocl: &ocl::Ocl) -> Cells {
+		Cells {
+			states: CorticalComponent::<ocl::cl_uint>::new(common::CELLS_PER_SEGMENT, 0u32, ocl),
+			axons:	neurons_binary::Axons::new(common::CELL_AXONS_PER_SEGMENT, ocl),
+			dendrites: neurons_binary::Dendrites::new(common::CELL_DENDRITES_PER_SEGMENT, ocl),
+			synapses: neurons_binary::Synapses::new(common::CELL_SYNAPSES_PER_SEGMENT, ocl),
+		}
 	}
 }
+
+pub struct HyperColumns {
+	pub qty: uint,
+	pub states: CorticalComponent<ocl::cl_uint>,
+}
+impl HyperColumns {
+	pub fn new(qty: uint, ocl: &ocl::Ocl) -> HyperColumns {
+		HyperColumns {
+			qty: common::HYPERCOLUMNS_PER_SEGMENT,
+			states: CorticalComponent::<ocl::cl_uint>::new(common::HYPERCOLUMNS_PER_SEGMENT, 0u32, ocl),
+		}
+	}
+}
+
 
 pub struct CortexSegment {
-	size_hcols: uint,
-
-	pub synapse_values: CorticalComponent<ocl::cl_uchar>,
-	pub synapse_weights: CorticalComponent<ocl::cl_uchar>,
-	pub dendrite_thresholds: CorticalComponent<ocl::cl_ushort>,
-	pub dendrite_values: CorticalComponent<ocl::cl_ushort>,
-	pub axon_targets: CorticalComponent<ocl::cl_ushort>,
-	pub column_states: CorticalComponent<ocl::cl_uint>,
-	pub column_axon_col_targets: CorticalComponent<ocl::cl_ushort>,
-	pub column_axon_syn_targets: CorticalComponent<ocl::cl_uchar>,
-	pub hypercolumn_states: CorticalComponent<ocl::cl_uint>,
+	pub hypercolumns: HyperColumns,
+	pub columns: Columns,
+	pub cells: Cells,
 }
 impl CortexSegment {
-	pub fn new(size: uint, ocl: &ocl::Ocl) -> CortexSegment {
+	pub fn new(hcols: uint, ocl: &ocl::Ocl) -> CortexSegment {
 
 		CortexSegment {
-			size_hcols: size,
 
-			synapse_values: CorticalComponent::<ocl::cl_uchar>::new(Vec::with_capacity(self::SYNAPSES_TOTAL), ocl),
-			synapse_weights : CorticalComponent::<ocl::cl_uchar>::new(Vec::with_capacity(self::SYNAPSES_TOTAL), ocl),
-			dendrite_thresholds : CorticalComponent::<ocl::cl_ushort>::new(Vec::with_capacity(self::DENDRITES_TOTAL), ocl),
-			axon_targets : CorticalComponent::<ocl::cl_ushort>::new(Vec::with_capacity(self::AXONS_TOTAL), ocl),
+			hypercolumns: HyperColumns::new(hcols, ocl),
+			columns: Columns::new(hcols, ocl),
+			cells: Cells::new(hcols, ocl),
 
-			column_states : CorticalComponent::<ocl::cl_uint>::new(Vec::from_elem(self::COLUMNS_TOTAL, 0u32), ocl),
-			hypercolumn_states : CorticalComponent::<ocl::cl_uint>::new(Vec::from_elem(self::HYPERCOLUMNS_PER_SEGMENT, 0u32), ocl),
-			dendrite_values : CorticalComponent::<ocl::cl_ushort>::new(Vec::from_elem(self::DENDRITES_TOTAL, 0u16), ocl),
+			
+			/*
+			hypcol_states: CorticalComponent::<ocl::cl_uint>::new(Vec::from_elem(common::HYPERCOLUMNS_PER_SEGMENT, 0u32), ocl),
 
-			column_axon_col_targets: CorticalComponent::<ocl::cl_ushort>::new(Vec::with_capacity(self::COLUMNS_TOTAL), ocl),
-			column_axon_syn_targets: CorticalComponent::<ocl::cl_uchar>::new(Vec::with_capacity(self::COLUMNS_TOTAL), ocl),
+			col_states: CorticalComponent::<ocl::cl_uint>::new(Vec::from_elem(common::COLUMNS_PER_SEGMENT, 0u32)), ocl),
+			col_tar_cols: CorticalComponent::<ocl::cl_ushort>::new(Vec::with_capacity(common::COLUMN_TARGETS_PER_SEGMENT), ocl),
+			col_tar_syns: CorticalComponent::<ocl::cl_uchar>::new(Vec::with_capacity(common::COLUMN_TARGETS_PER_SEGMENT), ocl),
+			col_den_values: CorticalComponent::<ocl::cl_uchar>::new(Vec::from_elem(common::COLUMN_DENDRITES_PER_SEGMENT, 0u8)), ocl),
+			col_den_thresholds: CorticalComponent::<ocl::cl_uchar>::new(Vec::from_elem(common::COLUMN_DENDRITES_PER_SEGMENT, 256u16)), ocl),
+			col_syn_values: CorticalComponent::<ocl::cl_uchar>::new(Vec::from_elem(common::COLUMN_SYNAPSES_PER_SEGMENT, 0u8)), ocl),
+			col_syn_strengths: CorticalComponent::<ocl::cl_uchar>::new(Vec::from_elem(common::COLUMN_SYNAPSES_PER_SEGMENT, 16u8)), ocl),
+
+			cel_states: CorticalComponent::<ocl::cl_uint>::new(Vec::from_elem(common::CELLS_PER_SEGMENT, 0u32)), ocl),
+			cel_tar_cels: CorticalComponent::<ocl::cl_ushort>::new(Vec::with_capacity(common::CELL_TARGETS_PER_SEGMENT), ocl),
+			cel_tar_syns: CorticalComponent::<ocl::cl_uchar>::new(Vec::with_capacity(common::CELL_TARGETS_PER_SEGMENT), ocl),
+			cel_denstates: CorticalComponent::<ocl::cl_ushort>::new(Vec::from_elem(common::CELL_DENDRITES_PER_SEGMENT, 0u16)), ocl),
+			cel_den_thresholds: CorticalComponent::<ocl::cl_uchar>::new(Vec::from_elem(common::CELL_DENDRITES_PER_SEGMENT, 16u8)), ocl),
+			cel_den_synstates: CorticalComponent::<ocl::cl_ushort>::new(Vec::from_elem(common::CELL_DENDRITES_PER_SEGMENT, 0u16)), ocl),
+			cel_syn_strengths: CorticalComponent::<ocl::cl_uchar>::new(Vec::from_elem(common::CELL_SYNAPSES_PER_SEGMENT, 16u8)), ocl),
+			*/
+
+			/*
+			synapse_values: CorticalComponent::<ocl::cl_uchar>::new(Vec::with_capacity(common::SYNAPSES_PER_SEGMENT), ocl),
+			synapse_weights : CorticalComponent::<ocl::cl_uchar>::new(Vec::with_capacity(common::SYNAPSES_PER_SEGMENT), ocl),
+			dendrite_thresholds : CorticalComponent::<ocl::cl_ushort>::new(Vec::with_capacity(common::DENDRITES_PER_SEGMENT), ocl),
+			axon_targets : CorticalComponent::<ocl::cl_ushort>::new(Vec::with_capacity(common::TARGETS_PER_SEGMENT), ocl),
+
+			column_states : CorticalComponent::<ocl::cl_uint>::new(Vec::from_elem(common::COLUMNS_PER_SEGMENT, 0u32), ocl),
+			hypercolumn_states : CorticalComponent::<ocl::cl_uint>::new(Vec::from_elem(common::HYPERCOLUMNS_PER_SEGMENTMENT, 0u32), ocl),
+			dendrite_values : CorticalComponent::<ocl::cl_ushort>::new(Vec::from_elem(common::DENDRITES_PER_SEGMENT, 0u16), ocl),
+
+			column_axon_col_targets: CorticalComponent::<ocl::cl_ushort>::new(Vec::with_capacity(common::COLUMNS_PER_SEGMENT), ocl),
+			column_axon_syn_targets: CorticalComponent::<ocl::cl_uchar>::new(Vec::with_capacity(common::COLUMNS_PER_SEGMENT), ocl),
+			*/
 
 		}
 	}
 
 	pub fn init(&mut self, ocl: &ocl::Ocl) {
 
-		//SYNAPSES
-		let rng_range = Range::new(SYNAPSE_WEIGHT_ZERO - (SYNAPSE_WEIGHT_INITIAL_DEVIATION), SYNAPSE_WEIGHT_ZERO + (SYNAPSE_WEIGHT_INITIAL_DEVIATION) + 1);
+		/*
+
+		let rng_range = Range::new(common::SYNAPSE_WEIGHT_ZERO - (common::SYNAPSE_WEIGHT_INITIAL_DEVIATION), common::SYNAPSE_WEIGHT_ZERO + (common::SYNAPSE_WEIGHT_INITIAL_DEVIATION) + 1);
 		let mut rng = rand::task_rng();
 		for i in range(0u, self.synapse_values.vec.capacity()) {
 			self.synapse_values.vec.push(rng_range.ind_sample(&mut rng));
@@ -106,19 +128,15 @@ impl CortexSegment {
 		}
 		self.synapse_weights.init();
 
-		//DENDRITES
 		
 		for i in range(0u, self.dendrite_thresholds.vec.capacity()) {
-			self.dendrite_thresholds.vec.push(DENDRITE_INITIAL_THRESHOLD);
+			self.dendrite_thresholds.vec.push(common::DENDRITE_INITIAL_THRESHOLD);
 		}
 		self.dendrite_thresholds.init();
 
-		/*
-		for i in range(0u, self.dendrite_values.vec.capacity()) {
-			self.dendrite_values.vec.push(0u16);
-		}
-		*/
+
 		self.dendrite_values.init();
+
 
 		let rng_range = Range::new(0u16, 0xFFFEu16);
 		let mut rng = rand::task_rng();
@@ -127,19 +145,12 @@ impl CortexSegment {
 		}
 		self.axon_targets.init();
 
-		/*
-		for i in range(0u, self.column_states.vec.capacity()) {
-			self.column_states.vec.push(0u32);
-		}
-		*/
+
 		self.column_states.init();
 
-		/*
-		for i in range(0u, self.hypercolumn_states.vec.capacity()) {
-			self.hypercolumn_states.vec.push(0u32);
-		}
-		*/
+
 		self.hypercolumn_states.init();
+		*/
 
 	}
 }
@@ -159,17 +170,17 @@ impl Cortex {
 
 		let ocl = ocl::Ocl::new();
 
-		let mut cs = Vec::with_capacity(CORTICAL_SEGMENTS_TOTAL);
-		for i in range(0u, CORTICAL_SEGMENTS_TOTAL) {
-			let mut seg = CortexSegment::new(HYPERCOLUMNS_PER_SEGMENT, &ocl);
+		let mut cs = Vec::with_capacity(common::CORTICAL_SEGMENTS_TOTAL);
+		for i in range(0u, common::CORTICAL_SEGMENTS_TOTAL) {
+			let mut seg = CortexSegment::new(common::HYPERCOLUMNS_PER_SEGMENT, &ocl);
 			seg.init(&ocl);
 			cs.push(seg);
 		}
 
-		let mut ss = Vec::with_capacity(SENSORY_SEGMENTS_TOTAL);
-		for i in range(0u, SENSORY_SEGMENTS_TOTAL) {
-			let mut col = CorticalComponent::<ocl::cl_ushort>::new(Vec::from_elem(SENSORY_CHORD_WIDTH, 0u16), &ocl);
-			let mut syn = CorticalComponent::<ocl::cl_uchar>::new(Vec::from_elem(SENSORY_CHORD_WIDTH, 0u8), &ocl);
+		let mut ss = Vec::with_capacity(common::SENSORY_SEGMENTS_TOTAL);
+		for i in range(0u, common::SENSORY_SEGMENTS_TOTAL) {
+			let mut col = CorticalComponent::<ocl::cl_ushort>::new(common::SENSORY_CHORD_WIDTH, 0u16, &ocl);
+			let mut syn = CorticalComponent::<ocl::cl_uchar>::new(common::SENSORY_CHORD_WIDTH, 0u8, &ocl);
 			col.init();
 			syn.init();
 			ss.push((col, syn));

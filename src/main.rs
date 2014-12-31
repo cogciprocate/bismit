@@ -1,18 +1,21 @@
-#![allow(non_camel_case_types, dead_code, unstable, experimental, deprecated, unused_variables)]
+#![allow(non_camel_case_types, dead_code, unstable, experimental, deprecated, unused_variables, unused_imports)]
 
 extern crate microcosm;
 
 //mod test_1;
 //mod test_2;
 //mod test_3;
-mod hello_world;
-mod ocl;
+//mod hello_world;
+mod common;
 mod cl_h;
+mod ocl;
+mod chord;
 mod sense;
+mod cortical_component;
+mod neurons_scalar;
+mod neurons_binary;
 mod cortex;
 mod sub_cortex;
-mod chord;
-mod common;
 mod test_miccos;
 
 fn main() {
