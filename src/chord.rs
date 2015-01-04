@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 //use std::option::Option; 
 use std::fmt::{ Show, Formatter, Error };
+use std::iter;
 use common;
 
 pub struct Chord {
@@ -49,6 +50,11 @@ impl Chord {
 		cuf
 	}
 
+	pub fn unfold_into(&self, dest_vec: &mut Vec<u8>) {
+		dest_vec.clear();
+		dest_vec.push_all(self.unfold().notes.as_slice());		
+	}
+
 	pub fn print(&self) {
 		println!("");
 		let color = common::C_DEFAULT;
@@ -61,12 +67,12 @@ impl Chord {
 
 
 pub struct ChordUnfolded {
-	pub notes: [u8, ..1024],
+	pub notes: [u8, ..common::SENSORY_CHORD_WIDTH],
 }
 impl ChordUnfolded {
 	pub fn new() -> ChordUnfolded {
 		ChordUnfolded { 
-			notes: [0u8, ..1024],
+			notes: [0u8, ..common::SENSORY_CHORD_WIDTH],
 		}
 	}
 

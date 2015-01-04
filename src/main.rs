@@ -26,12 +26,12 @@ fn main() {
 	let time_start = time::get_time().sec;
 	//test_1::run_kernel();
 	//sense::ascii_sense();
-	test_3::run();
+	//test_3::run();
 
-	test_casting::run();
+	//test_casting::run();
 	
 	//hello_world::run();
-	//test_miccos::run();
+	test_miccos::run();
 
 	println!("====== Bismit: main() complete in: {} sec. ======", time::get_time().sec - time_start);
 }

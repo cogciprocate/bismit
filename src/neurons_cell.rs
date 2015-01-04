@@ -25,6 +25,7 @@ impl Axons {
 	}
 }
 
+
 pub fn init_axon<T: num::NumCast, U: num::NumCast>(target_cells: &mut CorticalComponent<T>, target_cell_synapses: &mut CorticalComponent<U>) {
 	let mut rng = rand::task_rng();
 
@@ -47,6 +48,7 @@ pub fn init_axon<T: num::NumCast, U: num::NumCast>(target_cells: &mut CorticalCo
 	target_cell_synapses.write();
 
 }
+
 
 pub struct Dendrites {
 	pub thresholds: CorticalComponent<ocl::cl_uchar>,

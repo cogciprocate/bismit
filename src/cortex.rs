@@ -1,6 +1,7 @@
 use ocl;
 use common;
 use cortical_component::{ CorticalComponent };
+use chord::{ Chord };
 use neurons_column;
 use neurons_cell;
 //use std;
@@ -75,12 +76,62 @@ impl CortexSegment {
 	}
 }
 
+pub struct SensorySegment {
+	pub targets: CorticalComponent<ocl::cl_ushort>,
+	pub values: CorticalComponent<ocl::cl_uchar>,
+	pub context: ocl::cl_context,
+	pub command_queue: ocl::cl_command_queue,
+	pub kernel: ocl::cl_kernel,
+}
+impl SensorySegment {
+	pub fn new(width: uint, ocl: &ocl::Ocl) -> SensorySegment {
+
+		let sense_kernel_name = "sense";
+
+		let targets = CorticalComponent::<ocl::cl_ushort>::new(width, 0u16, ocl);
+		let values = CorticalComponent::<ocl::cl_uchar>::new(width, 0u8, ocl);
+		let kernel = ocl::new_kernel(ocl.program, sense_kernel_name);
+
+		ocl::set_kernel_arg(0, values.buff, kernel);
+
+		SensorySegment { 
+			targets : targets,
+			values : values,
+			context: ocl.context,
+			command_queue: ocl.command_queue,
+			kernel: kernel,
+		}
+	}
+
+	pub fn sense(&mut self, chord: &Chord) {
+
+		chord.unfold_into(&mut self.values.vec);
+		self.values.write();
+
+
+		ocl::enqueue_kernel(self.kernel, self.command_queue, self.values.vec.len());
+	}
+}
+
+pub struct MotorSegment {
+	pub targets: CorticalComponent<ocl::cl_ushort>,
+	pub values: CorticalComponent<ocl::cl_uchar>,
+}
+impl MotorSegment {
+	pub fn new(width: uint, ocl: &ocl::Ocl) -> MotorSegment {
+		MotorSegment { 
+			targets : CorticalComponent::<ocl::cl_ushort>::new(width, 0u16, ocl),
+			values : CorticalComponent::<ocl::cl_uchar>::new(width, 0u8, ocl),
+		}
+	}
+}
+
+
 pub struct Cortex {
 	pub ocl: ocl::Ocl,
 	pub cortex_segments: Vec<CortexSegment>,
-	pub sensory_segments: Vec<(CorticalComponent<ocl::cl_ushort>, CorticalComponent<ocl::cl_uchar>)>,
-	// ADD ME:  pub motor_segments: Vec<MotorSegment>,
-
+	pub sensory_segments: Vec<SensorySegment>,
+	pub motor_segments: Vec<MotorSegment>,
 	
 }
 
@@ -100,9 +151,12 @@ impl Cortex {
 
 		let mut ss = Vec::with_capacity(common::SENSORY_SEGMENTS_TOTAL);
 		for i in range(0u, common::SENSORY_SEGMENTS_TOTAL) {
-			let col = CorticalComponent::<ocl::cl_ushort>::new(common::SENSORY_CHORD_WIDTH, 0u16, &ocl);
-			let syn = CorticalComponent::<ocl::cl_uchar>::new(common::SENSORY_CHORD_WIDTH, 0u8, &ocl);
-			ss.push((col, syn));
+			ss.push(SensorySegment::new(common::SENSORY_CHORD_WIDTH, &ocl));
+		}
+
+		let mut ms = Vec::with_capacity(common::MOTOR_SEGMENTS_TOTAL);
+		for i in range(0u, common::MOTOR_SEGMENTS_TOTAL) {
+			ms.push(MotorSegment::new(common::MOTOR_CHORD_WIDTH, &ocl));
 		}
  
 		let time_finish = time::get_time().sec;
@@ -112,8 +166,15 @@ impl Cortex {
 		Cortex {
 			sensory_segments: ss,
 			cortex_segments: cs,
+			motor_segments: ms,
 			ocl: ocl,
 		}
+	}
+
+	pub fn sense(&mut self, sgmt_idx: uint, chord: &Chord) {
+
+		self.sensory_segments[sgmt_idx].sense(chord);
+
 	}
 
 	pub fn release_components(&mut self) {

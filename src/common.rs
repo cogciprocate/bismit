@@ -12,6 +12,7 @@ pub static KERNELS_FILE_NAME: &'static str = "bismit.cl";
 
 pub const CORTICAL_SEGMENTS_TOTAL: uint = 1;
 pub const SENSORY_SEGMENTS_TOTAL: uint = 2;
+pub const MOTOR_SEGMENTS_TOTAL: uint = 1;
 
 pub const HYPERCOLUMNS_PER_SEGMENT: uint = 16;		// appears to cause lots of delay... 256 is slow
 
@@ -36,6 +37,7 @@ pub const CELL_AXONS_PER_SEGMENT: uint = AXONS_PER_NEURON * CELLS_PER_SEGMENT;
 pub const CELL_DENDRITES_PER_SEGMENT: uint = DENDRITES_PER_NEURON * CELLS_PER_SEGMENT;
 pub const CELL_SYNAPSES_PER_SEGMENT: uint = SYNAPSES_PER_DENDRITE * CELL_DENDRITES_PER_SEGMENT;
 
-pub const SENSORY_CHORD_WIDTH: uint = 2048;
+pub const SENSORY_CHORD_WIDTH: uint = 1024;
+pub const MOTOR_CHORD_WIDTH: uint = 2;
 
 pub const READBACK_TEST_ITERATIONS: uint = 20000;  // 10,000,000 takes >>> 15 min
