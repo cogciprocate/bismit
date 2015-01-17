@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types, dead_code, unstable, experimental, deprecated)]
+#![allow(non_camel_case_types, dead_code, unstable, deprecated)]
 
 extern crate libc;
 
@@ -6,8 +6,10 @@ use std;
 use std::ptr;
 use std::mem;
 use std::io;
+use std::ffi;
+use std::iter;
 use cl_h;
-pub use cl_h::{cl_int, cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_char, cl_ushort, cl_uint, cl_uchar, CLStatus};
+pub use cl_h::{cl_int, cl_long, cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_char, cl_ushort, cl_uint, cl_uchar, CLStatus};
 
 pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
 
@@ -23,7 +25,8 @@ impl Ocl {
 	pub fn new() -> Ocl {
 		let kern_file_path: std::path::Path = std::path::Path::new(format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME));
 		let kern_str: Vec<u8> = io::File::open(&kern_file_path).read_to_end().unwrap();
-		let kern_c_str = std::str::from_utf8(kern_str.as_slice()).unwrap().to_c_str();
+		//let kern_c_str = std::str::from_utf8(kern_str.as_slice()).unwrap().to_c_str();
+		let kern_c_str = ffi::CString::from_vec(kern_str);
 
 		let platform = new_platform() as cl_platform_id;
 		let device: cl_device_id = new_device(platform);
@@ -68,7 +71,7 @@ impl Ocl {
 	pub fn enqueue_kernel(
 				&self,
 				kernel: cl_h::cl_kernel, 
-				gws: uint,
+				gws: usize,
 	) { 
 		enqueue_kernel(kernel, self.command_queue, gws);
 	}
@@ -86,17 +89,19 @@ impl Ocl {
 }
 
 
-fn to_error_str(err_code: cl_h::cl_int) -> String {
-	let err_opt: Option<cl_h::CLStatus> = FromPrimitive::from_int(err_code as int);
-	match err_opt {
-		Some(status) => status.to_string(),
-		None => format!("Unknown Error Code: {}", err_code as int)
+/*
+	fn to_error_str(err_code: cl_h::CLStatus) -> String {
+		let err_opt: Option<cl_h::CLStatus> = Some(err_code);
+		match err_opt {
+			Some(status) => status.to_string(),
+			None => format!("Unknown Error Code: {}", err_code as isize)
+		}
 	}
-}
+*/
 
 pub fn must_succ(message: &str, err: cl_h::cl_int) {
 	if err != cl_h::CLStatus::CL_SUCCESS as cl_h::cl_int {
-		panic!(format!("{} failed with code: {}", message, to_error_str(err)))
+		panic!(format!("{} failed with code: {}", message, err))
 	}
 }
 
@@ -129,11 +134,21 @@ pub fn new_device(platform: cl_h::cl_platform_id) -> cl_h::cl_device_id {
 	device
 }
 
+// mem::transmute(ptr::null::<Fn() -> ()>()
+
+// extern "C" fn(*const i8, *const libc::types::common::c95::c_void, u64, *mut libc::types::common::c95::c_void)
+
 pub fn new_context(device: cl_h::cl_device_id) -> cl_h::cl_context {
 	let mut err: cl_h::cl_int = 0;
 
 	unsafe {
-		let context: cl_h::cl_context = cl_h::clCreateContext(ptr::null(), 1, &device, mem::transmute(ptr::null::<||>()), ptr::null_mut(), &mut err);
+		let context: cl_h::cl_context = cl_h::clCreateContext(
+						ptr::null(), 
+						1, 
+						&device, 
+						mem::transmute(ptr::null::<fn()>()), 
+						ptr::null_mut(), 
+						&mut err);
 		must_succ("clCreateContext()", err);
 		context
 	}
@@ -175,8 +190,8 @@ pub fn new_program(
 					program,
 					0, 
 					ptr::null(), 
-					"-cl-denorms-are-zero -cl-fast-relaxed-math".to_c_str().as_ptr(), 
-					mem::transmute(ptr::null::<||>()), 
+					ffi::CString::from_slice("-cl-denorms-are-zero -cl-fast-relaxed-math".as_bytes()).as_ptr(), 
+					mem::transmute(ptr::null::<fn()>()), 
 					ptr::null_mut(),
 		);
 		if err != 0i32 {
@@ -191,7 +206,7 @@ pub fn new_program(
 pub fn new_kernel(program: cl_h::cl_program, kernel_name: &str) -> cl_h::cl_kernel {
 	let mut err: cl_h::cl_int = 0;
 	unsafe {
-		let kernel = cl_h::clCreateKernel(program, kernel_name.to_c_str().as_ptr(), &mut err);
+		let kernel = cl_h::clCreateKernel(program, ffi::CString::from_slice(kernel_name.as_bytes()).as_ptr(), &mut err);
 		must_succ("clCreateKernel()", err);
 		kernel
 	}
@@ -307,7 +322,7 @@ pub fn set_kernel_arg(arg_index: cl_h::cl_uint, buffer: cl_h::cl_mem, kernel: cl
 pub fn enqueue_kernel(
 				kernel: cl_h::cl_kernel, 
 				command_queue: cl_h::cl_command_queue, 
-				gws: uint,
+				gws: usize,
 ) {
 	unsafe {
 		let err = cl_h::clEnqueueNDRangeKernel(
@@ -345,8 +360,8 @@ pub fn mem_object_info_size(object: cl_h::cl_mem) -> libc::size_t {
 	}
 }
 
-pub fn len(object: cl_h::cl_mem) -> uint {
-	mem_object_info_size(object) as uint / mem::size_of::<f32>()
+pub fn len(object: cl_h::cl_mem) -> usize {
+	mem_object_info_size(object) as usize / mem::size_of::<f32>()
 }
 
 pub fn release_mem_object(obj: cl_h::cl_mem) {
@@ -391,16 +406,19 @@ pub fn platform_info(platform: cl_h::cl_platform_id) {
 					&mut size,
 		);
 		must_succ("clGetPlatformInfo(size)", err);
-		let mut plat_info: std::c_str::CString = std::string::String::from_char(size as uint, 'a').to_c_str();
+		//let mut param_value: std::ffi::CString = std::ffi::CString::from_slice(['a'; s]);
+		
+		let mut param_value: Vec<u8> = iter::repeat(32u8).take(size as usize).collect();
+		//let mut vec: Vec<T> = iter::repeat(init_val).take(size).collect();
         err = cl_h::clGetPlatformInfo(
 					platform,
 					name,
 					size,
-					plat_info.as_mut_ptr() as *mut libc::c_void,
+					param_value.as_mut_ptr() as *mut libc::c_void,
 					ptr::null_mut(),
 		);
         must_succ("clGetPlatformInfo()", err);
-        println!("*** Platform Name ({}): {}", name, plat_info);
+        println!("*** Platform Name ({}): {}", name, cstring_to_string(param_value));
     }
 }
 
@@ -419,7 +437,7 @@ pub fn program_build_info(program: cl_h::cl_program, device_id: cl_h::cl_device_
 		);
 		must_succ("clGetProgramBuildInfo(size)", err);
 			
-        let mut program_build_info: std::c_str::CString = std::string::String::from_char(size as uint, 'a').to_c_str();
+        let mut program_build_info: Vec<u8> = iter::repeat(32u8).take(size as usize).collect();
 
         err = cl_h::clGetProgramBuildInfo(
 					program,
@@ -430,9 +448,12 @@ pub fn program_build_info(program: cl_h::cl_program, device_id: cl_h::cl_device_
 					ptr::null_mut(),
 		);
         must_succ("clGetProgramBuildInfo()", err);
-        println!("*** Program Info ({}): \n {}", name, program_build_info);
 
-        let rs: Box<String> = box program_build_info.as_str().to_string();
+        let pbi = cstring_to_string(program_build_info);
+
+        println!("*** Program Info ({}): \n {}", name, pbi);
+
+        let rs: Box<String> = Box::new(pbi);
         rs
 	}
 }
@@ -457,10 +478,10 @@ pub fn print_junk(
 					0,
 					ptr::null_mut(),
 					&mut size,
-	) };
+	) }; 
 	must_succ("clGetPlatformInfo(size)", err);
 	unsafe {
-        let mut device_info: std::c_str::CString = std::string::String::from_char(size as uint, ' ').to_c_str();
+        let mut device_info: Vec<u8> = iter::repeat(32u8).take(size as usize).collect();
         err = cl_h::clGetDeviceInfo(
 					device,
 					name,
@@ -469,7 +490,7 @@ pub fn print_junk(
 					ptr::null_mut(),
 		);
         must_succ("clGetDeviceInfo()", err);
-        println!("*** Device Name ({}): {}", name, device_info);
+        println!("*** Device Name ({}): {}", name, cstring_to_string(device_info));
 	}
 
 	//Get Program Info
@@ -484,7 +505,7 @@ pub fn print_junk(
 		);
 		must_succ("clGetProgramInfo(size)", err);
 			
-        let mut program_info: std::c_str::CString = std::string::String::from_char(size as uint, 'a').to_c_str();
+        let mut program_info: Vec<u8> = iter::repeat(32u8).take(size as usize).collect();
         //let mut program_info: cl_program_info = 0 as cl_program_info;
         
         //println!("program_info string length: {}", program_info.len())
@@ -497,7 +518,7 @@ pub fn print_junk(
 					ptr::null_mut(),
 		);
         must_succ("clGetProgramInfo()", err);
-        println!("*** Program Info ({}): \n {}", name, program_info);
+        println!("*** Program Info ({}): \n {}", name, cstring_to_string(program_info));
 	}
 	println!("");
 	//Get Kernel Name
@@ -513,7 +534,7 @@ pub fn print_junk(
 		);
 		must_succ("clGetKernelInfo(size)", err);
 
-        //let mut kernel_info: std::c_str::CString = std::string::String::from_char(size as uint, ' ').to_c_str();
+        //let mut kernel_info: std::c_str::CString = std::string::String::from_char(size as usize, ' ').to_c_str();
         let kernel_info = 5 as cl_h::cl_uint;
         //let kiptr = &kernel_info;
 
@@ -533,4 +554,14 @@ pub fn print_junk(
         println!("*** Kernel Info: ({})\n{}", name, kernel_info);
 	}
 	println!("");
+}
+
+
+
+fn empty_cstring(s: usize) -> ffi::CString {
+	std::ffi::CString::from_vec(iter::repeat(32u8).take(s).collect())
+}
+
+fn cstring_to_string(cs: Vec<u8>) -> String {
+	String::from_utf8(cs).unwrap()
 }

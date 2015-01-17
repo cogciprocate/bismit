@@ -45,7 +45,7 @@ impl Chord {
 	pub fn unfold(&self) -> ChordUnfolded {
 		let mut cuf = ChordUnfolded::new();
 		for (k, v) in self.chord.iter() {
-			cuf.notes[*k as uint] = *v;
+			cuf.notes[*k as usize] = *v;
 		}
 		cuf
 	}
@@ -67,12 +67,12 @@ impl Chord {
 
 
 pub struct ChordUnfolded {
-	pub notes: [u8, ..common::SENSORY_CHORD_WIDTH],
+	pub notes: [u8; common::SENSORY_CHORD_WIDTH],
 }
 impl ChordUnfolded {
 	pub fn new() -> ChordUnfolded {
 		ChordUnfolded { 
-			notes: [0u8, ..common::SENSORY_CHORD_WIDTH],
+			notes: [0u8; common::SENSORY_CHORD_WIDTH],
 		}
 	}
 

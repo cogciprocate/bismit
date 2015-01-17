@@ -1,6 +1,5 @@
 use std::io;
 use std;
-use std::num::FloatMath;
 use std::num::Float;
 
 pub const INPUT_READ_OFFSET: u16= 0u16;
@@ -28,21 +27,21 @@ pub fn ascii_sense() -> Box<Vec<Box<Vec<u16>>>> {
 		}
 
 		//song.push(x as u16);
-		//println!("** Note {} = {}", x, chord[x as uint]);
+		//println!("** Note {} = {}", x, chord[x as usize]);
 	}
 	//println!("** Characters Read: {}", song);
 	println!("** Final song.len(): {}",song.len());
-	box song
+	Box::new(song)
 }
 
 pub fn chord_encode_byte(byte: u8) -> Box<Vec<u16>> {
 	let mut chord: Vec<u16> = Vec::with_capacity(256);
 
-	for x in range(0u, 1023u) {
+	for x in range(0, 1023) {
 		chord.push((252u16 * byte as u16) + x as u16);
 	}
 	
-	box chord
+	Box::new(chord)
 }
 
 /*
@@ -58,7 +57,7 @@ pub fn test_sense() -> Box<Vec<u16>> {
 
 	for x in range(0u16, 8u16) {
 		vec.push(x as u16);
-		println!("** Note {} = {}", x, vec[x as uint]);
+		println!("** Note {} = {}", x, vec[x as usize]);
 	}
 	println!("** Final vec.len(): {}",vec.len());
 	box vec

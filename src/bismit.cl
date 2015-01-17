@@ -1,3 +1,8 @@
+#define DENDRITES_PER_NEURON			16
+#define SYNAPSES_PER_DENDRITE			16
+
+#define SYNAPSES_PER_NEURON				256 	// DENDRITES_PER_NEURON * SYNAPSES_PER_DENDRITE
+
 __kernel void my_kernel_func(__global float *a, __global float *b, __global float *c) {
 
 	
@@ -29,15 +34,37 @@ __kernel void hello(__global float *input, __global float *output) {
 	output[id] = input[id] * input[id];
 }
 
-__kernel void sense(__global char *peek_chord) {
+
+
+__kernel void sense(
+				__global uchar *values, 
+				__global uchar *tar_syn_vals, 
+				__global ushort *tar_cols, 
+				__global uchar *tar_col_syns,
+				__global uint *out
+) {
 	int gid = get_global_id(0);
-	peek_chord[gid] += 2;
-	//syn_out[gid] = synapse[gid];
+	//uint tar_syn = mad24(tar_cols[gid], SYNAPSES_PER_NEURON, tar_col_syns[gid]);
+	//tar_syn_vals[tar_syn] = values[gid];
+
+	out[gid] = (uint)tar_col_syns[gid];
 }
 
 
 
 
+__kernel void get_synapse_values(__global uchar *values, __global uchar *output) {
+	int gid = get_global_id(0);
+	output[gid] = values[gid];
+}
+
+
+/*
+	__kernel void get_target_cols(__global ushort *target_cols) {
+		int gid = get_global_id(0);
+		output[gid] = values[gid];
+	}
+*/
 
 
 

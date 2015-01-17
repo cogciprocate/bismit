@@ -15,12 +15,12 @@ use std::option::{ Option };
 pub fn run() {
 	let mut world: World = World::new();
 
-	let worm =  EntityBody::new("worm".to_string(), EntityKind::Creature, Location::origin());
-	let snake = EntityBody::new("snake".to_string(), EntityKind::Creature, Location::new(60f32, 60f32));
+	let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
+	let snake = EntityBody::new("snake", EntityKind::Creature, Location::new(60f32, 60f32));
 
-	let food = EntityBody::new("food".to_string(), EntityKind::Food, Location::new(50f32, 50f32));
+	let food = EntityBody::new("food", EntityKind::Food, Location::new(50f32, 50f32));
 	
-	let poison = EntityBody::new("poison".to_string(), EntityKind::Poison, Location::new(-100f32, -50f32));
+	let poison = EntityBody::new("poison", EntityKind::Poison, Location::new(-100f32, -50f32));
 
 	let worm_uid = worm.uid;
 	let snake_uid = snake.uid;
@@ -30,14 +30,14 @@ pub fn run() {
 	world.entities().add(food);
 	world.entities().add(snake);
 	world.entities().add(poison);
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(150f32, -200f32)));
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(-150f32, -250f32)));
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(550f32, -200f32)));
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(-1150f32, -250f32)));
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(0f32, 110f32)));
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(-50f32, 0f32)));
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(0f32, -50f32)));
-	world.entities().add(EntityBody::new("food".to_string(), EntityKind::Food, Location::new(130f32, 0f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(150f32, -200f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-150f32, -250f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(550f32, -200f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-1150f32, -250f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(0f32, 110f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-50f32, 0f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(0f32, -50f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(130f32, 0f32)));
 
 	world.entities().print();
 
@@ -58,13 +58,14 @@ pub fn run() {
 	//chord.print();
 	//chord.unfold().print();
 
-	for i in range(0u, 100000) {
+	for i in range(0, 100000) {
 		if worm_brain.act(&mut world) == Option::None {
 			println!("Everything eaten after {} iterations.", i);
 			break
 		}
 		
 		snake_brain.act(&mut world);
+		//break
 	}
 
 	//render_peek(world.peek_from(worm_uid)).print();
@@ -72,16 +73,18 @@ pub fn run() {
 	//worm_brain.print();
 	//world.entities().print();
 
+	snake_brain.cort.cortex_segments[0].columns.synapses.print_values(&snake_brain.cort.ocl);
+
 	snake_brain.cort.release_components();
 }
 
 pub struct SnakeBrain {
 	pub cort: Cortex,
 	pub subc: SubCortex,
-	pub body_uid: uint,
+	pub body_uid: usize,
 }
 impl SnakeBrain {
-	pub fn new(body_uid: uint) -> SnakeBrain {
+	pub fn new(body_uid: usize) -> SnakeBrain {
 		SnakeBrain { 
 			cort: Cortex::new(),
 			subc: SubCortex::new(),
@@ -92,7 +95,7 @@ impl SnakeBrain {
 	pub fn act(&mut self, world: &mut World) {
 		let scent: Scent = world.sniff_from(self.body_uid);
 		let peek_chord = render_peek(world.peek_from(self.body_uid));
-		self.cort.sense(0u, &peek_chord);
+		self.cort.sense(0, &peek_chord);
 
 		self.propel(world, 0.2f32, 0.1f32);
 
@@ -167,7 +170,7 @@ impl SnakeCortex for Cortex {
 	}
 }
 
-fn render_peek(box peek: Box<Peek>) -> Chord {
+fn render_peek(peek: Box<Peek>) -> Chord {
 	let mut chord = Chord::new();
 
 	for p in peek.peek.iter() {

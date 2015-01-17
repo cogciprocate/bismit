@@ -12,7 +12,7 @@ pub struct Axons {
 	pub target_cell_synapses: CorticalComponent<ocl::cl_uchar>,
 }
 impl Axons {
-	pub fn new(size: uint, ocl: &ocl::Ocl) -> Axons {
+	pub fn new(size: usize, ocl: &ocl::Ocl) -> Axons {
 		let mut target_cells = CorticalComponent::<ocl::cl_uchar>::new(size, 0u8, ocl);
 		let mut target_cell_synapses = CorticalComponent::<ocl::cl_uchar>::new(size, 0u8, ocl);
 
@@ -26,12 +26,12 @@ impl Axons {
 }
 
 
-pub fn init_axon<T: num::NumCast, U: num::NumCast>(target_cells: &mut CorticalComponent<T>, target_cell_synapses: &mut CorticalComponent<U>) {
-	let mut rng = rand::task_rng();
+pub fn init_axon<T: Clone + NumCast>(target_cells: &mut CorticalComponent<T>, target_cell_synapses: &mut CorticalComponent<T>) {
+	let mut rng = rand::thread_rng();
 
 	let normal = Normal::new(128f64, 128f64);
 	
-	for i in range(0u, target_cells.vec.len()) {
+	for i in range(0, target_cells.vec.len()) {
 		let val = normal.ind_sample(&mut rng);
 		let cell = num::cast(val).unwrap();
 		target_cells.vec[i] = cell;
@@ -40,7 +40,7 @@ pub fn init_axon<T: num::NumCast, U: num::NumCast>(target_cells: &mut CorticalCo
 
 	let rng_range = Range::new(0u8, 255u8);
 
-	for i in range(0u, target_cell_synapses.vec.len()) {
+	for i in range(0, target_cell_synapses.vec.len()) {
 		target_cell_synapses.vec[i] = num::cast(rng_range.ind_sample(&mut rng)).unwrap();
 	}
 	
@@ -55,7 +55,7 @@ pub struct Dendrites {
 	pub synapse_states: CorticalComponent<ocl::cl_ushort>,
 }
 impl Dendrites {
-	pub fn new(size: uint, ocl: &ocl::Ocl) -> Dendrites {
+	pub fn new(size: usize, ocl: &ocl::Ocl) -> Dendrites {
 		Dendrites {
 			thresholds: CorticalComponent::<ocl::cl_uchar>::new(size, 16u8, ocl),
 			synapse_states: CorticalComponent::<ocl::cl_ushort>::new(size, 0u16, ocl),
@@ -68,7 +68,7 @@ pub struct Synapses {
 	pub strengths: CorticalComponent<ocl::cl_uchar>,
 }
 impl Synapses {
-	pub fn new(size: uint, ocl: &ocl::Ocl) -> Synapses {
+	pub fn new(size: usize, ocl: &ocl::Ocl) -> Synapses {
 
 		Synapses {
 			strengths: CorticalComponent::<ocl::cl_uchar>::new(size, 16u8, ocl),

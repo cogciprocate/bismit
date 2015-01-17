@@ -2,6 +2,7 @@
 
 extern crate libc;
 
+use std::fmt::{ String, Formatter, Result };
 
 pub type cl_platform_id     = *mut libc::c_void;
 pub type cl_device_id       = *mut libc::c_void;
@@ -67,7 +68,7 @@ pub struct cl_buffer_region {
     size:       libc::size_t,
 }
 
-#[deriving(PartialEq, Show, FromPrimitive)]
+#[derive(PartialEq, Show, FromPrimitive)]
 #[repr()]
 pub enum CLStatus {
     CL_SUCCESS                                      = 0,
@@ -121,6 +122,11 @@ pub enum CLStatus {
     CL_INVALID_GLOBAL_WORK_SIZE                     = -63,
     CL_INVALID_PROPERTY                             = -64,
     CL_PLATFORM_NOT_FOUND_KHR                       = -1001,
+}
+impl String for CLStatus {
+    fn fmt(&self, fmtr: &mut Formatter) -> Result {
+        write!(fmtr, "{}", self)
+    }
 }
 
 // Version
