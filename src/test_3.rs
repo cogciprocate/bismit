@@ -1,5 +1,5 @@
 use cortex;
-//use readback_test;
+use readback_test;
 
 pub fn run() {
 	println!("=== test_3::run() ===");
@@ -13,21 +13,21 @@ pub fn run() {
 
 	
 
-	/*
+	
 		readback_test::readback_test(
 					&my_cortex, 
-					&my_cortex.cortex_segments[0].columns.synapses.values.vec, 
-					my_cortex.cortex_segments[0].columns.synapses.values.buff, 
+					&my_cortex.cortical_segments[0].columns.synapses.values.vec, 
+					my_cortex.cortical_segments[0].columns.synapses.values.buf, 
 					"test_synapse"
 		);
-	*/
+	
 	
 	
 	/*
 		readback_test::readback_test(
 					&my_cortex, 
-					&my_cortex.cortex_segments[0].cells.axons.target_cell_synapses.vec, 
-					my_cortex.cortex_segments[0].cells.axons.target_cell_synapses.buff, 
+					&my_cortex.cortical_segments[0].cells.axons.target_cell_synapses.vec, 
+					my_cortex.cortical_segments[0].cells.axons.target_cell_synapses.buf, 
 					"test_cell_axon"
 		);
 	*/
@@ -35,8 +35,8 @@ pub fn run() {
 	/*
 		readback_test::readback_test(
 					&my_cortex, 
-					&my_cortex.cortex_segments[0].cells.axons.target_cells.vec, 
-					my_cortex.cortex_segments[0].cells.axons.target_cells.buf, 
+					&my_cortex.cortical_segments[0].cells.axons.target_cells.vec, 
+					my_cortex.cortical_segments[0].cells.axons.target_cells.buf, 
 					"test_cell_axon"
 		);
 	*/

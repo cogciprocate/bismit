@@ -1,27 +1,28 @@
 #![allow(non_camel_case_types, dead_code, unstable, deprecated, unused_variables, unused_imports)]
 
 extern crate microcosm;
-//extern crate time;
+extern crate time;
 
-//mod test_3;
-//mod test4;
 mod common;
 mod cl_h;
 mod ocl;
 mod chord;
 mod sense;
 mod cortical_component;
-mod column_neurons;
-mod cell_neurons;
+mod column;
+mod cell;
+mod cortical_segment;
 mod sensory_segment;
 mod cortex;
 mod sub_cortex;
 mod test_miccos;
 mod readback_test;
+mod test_3;
+mod test_4;
 
 fn main() {
 	println!("====== Bismit: main() running... ======");
-	let time_start = 0u32;		// time::get_time().sec;
+	let time_start = time::get_time().sec;
 	//test_1::run_kernel();
 	//sense::ascii_sense();
 	//test_3::run();
@@ -30,13 +31,12 @@ fn main() {
 	
 	//hello_world::run();
 	
-	//test4::readback_test();
+	test_4::test_cycle_dens();
 
 
-	test_miccos::run();
+	//test_miccos::run();
 
-	println!("====== Bismit: main() complete in: {} sec. ======", 0u32 - time_start);
-	// println!("====== Bismit: main() complete in: {} sec. ======", time::get_time().sec - time_start);
+	println!("\n====== Bismit: main() complete in: {} sec. ======", time::get_time().sec - time_start);
 }
 
 

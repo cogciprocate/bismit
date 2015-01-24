@@ -7,6 +7,7 @@ use cortex::{ Cortex };
 use chord::{ Chord };
 use ocl;
 use std::clone::Clone;
+use common;
 //use std::ptr;
 
 use std::option::{ Option };
@@ -58,22 +59,69 @@ pub fn run() {
 	//chord.print();
 	//chord.unfold().print();
 
-	for i in range(0, 100000) {
+	// for i in range(0, 100000) {
+	for i in range(0, 10000) {
 		if worm_brain.act(&mut world) == Option::None {
+			println!("");
 			println!("Everything eaten after {} iterations.", i);
 			break
 		}
 		
 		snake_brain.act(&mut world);
-		//break
+
+			//	if i % 1000 == 0 {
+			if i % 1500 == 0 {
+				/*
+					print!{" ||| "};
+					let peek_chord = render_peek(world.peek_from(snake_uid));
+					peek_chord.print();
+					print!{" => "};
+					snake_brain.cort.sensory_segments[0].values.print(&snake_brain.cort.ocl);
+				*/
+
+				if true {
+					print!("\n[ i:{} ] [ \n", i);
+					//	print!(" VALS: (((");
+					snake_brain.cort.sensory_segments[0].values.print(1);
+					
+					if false {
+						print!(" ))) \nSYN_ADDRS_REMOTE:	((( ");
+						snake_brain.cort.sensory_segments[0].target_addresses.target_column_synapses.print(1024);
+						//	print!(" ))) \nSYN_ADDRS_LOCAL:	((( p_vec[{}]:", snake_brain.cort.sensory_segments[0].target_addresses.target_column_synapses.vec.len());
+						//	common::print_vec(&snake_brain.cort.sensory_segments[0].target_addresses.target_column_synapses.vec, 10000);
+						print!(" ))) \nBOD_ADDRS_REMOTE:	((( ");
+						snake_brain.cort.sensory_segments[0].target_addresses.target_column_bodies.print(1024);
+						//	print!(" ))) \nBOD_ADDRS_LOCAL:	((( p_vec[{}]:", snake_brain.cort.sensory_segments[0].target_addresses.target_column_bodies.vec.len());
+						//	common::print_vec(&snake_brain.cort.sensory_segments[0].target_addresses.target_column_bodies.vec, 10000);
+						if false {
+							print!(" ))) \nTMP_OUT_REMOTE:		((( ");
+							snake_brain.cort.sensory_segments[0].tmp_out.print(1024);
+							//	print!(" ))) \nTMP_OUT_LOCAL:		((( p_vec[{}]:", snake_brain.cort.sensory_segments[0].tmp_out.vec.len());
+							//	common::print_vec(&snake_brain.cort.sensory_segments[0].tmp_out.vec, 10000);
+						}
+					}
+
+					//	print!(" ))) ");
+					print!("\n] [==[ \n");
+					snake_brain.cort.cortical_segments[0].columns.synapses.values.print(256);
+					print!("\n]==] \n");
+				}
+
+			}
+		
 	}
 
 	//render_peek(world.peek_from(worm_uid)).print();
 
+	// let peek_chord = render_peek(world.peek_from(worm_uid));
+	// peek_chord.print();
+	// snake_brain.cort.sense(0, &peek_chord);
+	// snake_brain.cort.sensory_segments[0].values.print(&snake_brain.cort.ocl);
+	
+
 	//worm_brain.print();
 	//world.entities().print();
 
-	snake_brain.cort.cortex_segments[0].columns.synapses.print_values(&snake_brain.cort.ocl);
 
 	snake_brain.cort.release_components();
 }
@@ -83,7 +131,7 @@ pub struct SnakeBrain {
 	pub subc: SubCortex,
 	pub body_uid: usize,
 }
-impl SnakeBrain {
+impl  SnakeBrain {
 	pub fn new(body_uid: usize) -> SnakeBrain {
 		SnakeBrain { 
 			cort: Cortex::new(),
@@ -126,7 +174,7 @@ trait SnakeCortex {
 	fn sense_peek(&mut self, peek_chord: &Chord);
 	fn release(&mut self);
 }
-impl SnakeCortex for Cortex {
+impl  SnakeCortex for Cortex {
 	fn sense_peek(&mut self, pc: &Chord) {
 
 		/*

@@ -1,30 +1,39 @@
-use std::num::{ Int };
+
+use std::num::{ Int, FromPrimitive, ToPrimitive };
+use std::ops::{ BitOr };
 use std::default::{ Default }; 
-use std::fmt::String;
+use std::fmt::{ Display };
+use std::num;
+use std::iter;
+use std::rand;
+use std::rand::distributions::{ Normal, IndependentSample, Range };
 
 use ocl;
 
 pub static C_DEFAULT: &'static str = "\x1b[0m";
 pub static C_RED: &'static str = "\x1b[91m";
 pub static C_CYA: &'static str = "\x1b[36m";
-pub static C_GRE: &'static str = "\x1b[32m";
+pub static C_GRN: &'static str = "\x1b[32m";
 pub static C_BLU: &'static str = "\x1b[94m";
 pub static C_MAG: &'static str = "\x1b[95m";
 pub static C_PUR: &'static str = "\x1b[35m";
 pub static C_ORA: &'static str = "\x1b[33m";
 pub static C_YEL: &'static str = "\x1b[93m";
+pub static C_LBL: &'static str = "\x1b[94m";
+pub static C_LGR: &'static str = "\x1b[37m";
+pub static C_DGR: &'static str = "\x1b[90m";
 
 pub static KERNELS_FILE_NAME: &'static str = "bismit.cl";
 
-pub const CORTICAL_SEGMENTS_TOTAL: usize = 2;
-pub const SENSORY_SEGMENTS_TOTAL: usize = 2;
+pub const CORTICAL_SEGMENTS_TOTAL: usize = 1;
+pub const SENSORY_SEGMENTS_TOTAL: usize = 1;
 pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
 
 pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;		// appears to cause lots of delay... 256 is slow
 
 pub const SYNAPSE_WEIGHT_ZERO: u8 = 16;
 pub const SYNAPSE_WEIGHT_INITIAL_DEVIATION: u8 = 3;
-pub const DENDRITE_INITIAL_THRESHOLD: u8 = 16;
+pub const DENDRITE_INITIAL_THRESHOLD: u8 = 1;
 
 pub const COLUMNS_PER_HYPERCOLUMN: usize = 64;
 //pub const COLUMNS_PER_ADDRESS_BLOCK: usize = 16u;
@@ -79,22 +88,126 @@ pub fn print_synapse_values(synapse: &mut Synapse, ocl: &ocl::Ocl) {
 
 //pub fn print_component_vec_values<T: Primitive + Int + Zero + Show>(vec: Vec<T>) {
 
-pub fn print_vec<T: Int + String + Default>(vec: &Vec<T>) {
+pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool) {
 
-	let every = 1000;
+	//println!("Printing Vector (len:{}, every:{}) Values...", vec.len(), every);
+	let mut ttl_nz = 0us;
+	let mut hi = Default::default();
+	let mut lo: T = Default::default();
+	let mut sum: usize = 0;
 
-	println!("Printing Component Vector (len:{}, every:{}) Values...", vec.len(), every);
-	let mut color: &'static str;
-	for i in range(0, vec.len() / every) {
-		let ie = i * every;
-		if vec[ie] != Default::default() {
+	let mut color: &'static str = C_DEFAULT;
+
+	print!("{cdgr}[{cg}{}{cdgr}/{}]:{cd} ", vec.len(), every, cd = C_DEFAULT, cg = C_GRN, cdgr = C_DGR);
+
+	for i in range(0, vec.len()) {
+
+		let mut prnt: bool;
+
+		if i % every == 0 {
+			prnt = true;
+		} else {
+			prnt = false;
+		}
+
+		sum += num::cast(vec[i]).unwrap();
+
+		if vec[i] != Default::default() {
+			ttl_nz += 1us;
+			if vec[i] > hi { hi = vec[i] };
+			if lo == Default::default() && hi != Default::default() {
+				lo = hi 
+			} else {
+				if vec[i] < lo { lo = vec[i] };
+			}
 			color = C_ORA;
 		} else {
-			// color = C_DEFAULT;
-			break	// temporary bullshit so we don't print 0's
+			if show_zeros {
+				color = C_DEFAULT;
+			} else {
+				prnt = false;	// bullshit so we don't print 0's
+			}
 		}
-		print!("({}[{}]:{}{})", color, ie, vec[ie], C_DEFAULT);
+
+		if prnt {
+			print!("{cg}[{cd}{}{cg}:{cc}{}{cg}]{cd}", i, vec[i], cc = color, cd = C_DEFAULT, cg = C_DGR);
+		}
 	}
-	println!("");
+	let mut anz: usize = 0;
+	if ttl_nz > 0 {
+		anz = sum / ttl_nz;
+	}
+	print!("{cdgr}:(nz:{clbl}{}{cdgr},hi:{},lo:{},anz:{}){cd} ", ttl_nz, hi, lo, anz, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 }
 
+pub fn int_log2<T: Int + BitOr + Eq >(mut n: T) -> u8 {
+	let tmp = n;
+	n = n | n >> 1;
+	n = n | n >> 2;
+	n = n | n >> 4;
+	n = n | n >> 8;
+	n = n | n >> 16;
+		// n must be a power of 2;
+	assert!((n - (n >> 1)).trailing_zeros() == tmp.trailing_zeros());
+	FromPrimitive::from_uint((n - (n >> 1)).trailing_zeros()).unwrap()
+}
+
+pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default>(size: usize, init_val: T) -> Vec<T> {
+
+	assert!(size > 0us, "Vector size must be greater than zero.");
+
+	let mut vec: Vec<T> = iter::repeat(init_val).take(size).collect();
+
+	for i in range(0us, vec.len()) {
+		vec[i] = FromPrimitive::from_uint(i).unwrap();
+	}
+
+	let mut rng = rand::thread_rng();
+	let rng_range = Range::new(0, size);
+
+	for i in range(0, 3) {
+		for j in range(0us, vec.len()) {
+			let ridx = rng_range.ind_sample(&mut rng);
+			let tmp = vec[j];
+			vec[j] = vec[ridx];
+			vec[ridx] = tmp;
+		}
+	}
+
+	
+
+/*
+	for i in range(0, target_column_bodies.vec.len()) {
+		target_column_bodies.vec[i] = rng_range.ind_sample(&mut rng);
+	}
+	*/
+
+	vec
+}
+
+pub fn dup_check<T: Int>(in_vec: &Vec<T>) -> (usize, usize) {
+	
+
+	let mut vec = in_vec.clone();
+
+	vec.sort();
+
+	//common::print_vec(&vec, 1024, true);
+
+	let mut dups = 0us;
+	let mut unis = 0us;
+	let mut prev_val = vec[vec.len() - 1];
+
+	for x in vec.iter() {
+		if prev_val == *x {
+			dups += 1;
+			//print!{"[{}]", *x};
+		} else {
+			unis += 1;
+		}
+		prev_val = *x;
+	}
+
+	println!("len: {}, dups: {}, unis: {}", vec.len(), dups, unis);
+	(dups, unis)
+}

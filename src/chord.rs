@@ -12,6 +12,21 @@ impl Chord {
 		Chord { chord: BTreeMap::new(), }
 	}
 
+	pub fn from_vec(vec: &Vec<u8>) -> Chord {
+		let mut chord = BTreeMap::new();
+
+		let mut i: u16 = 0;
+		for x in vec.iter() {
+
+			if *x > 0 {
+				chord.insert(i, *x);
+			}
+			
+			i += 1;
+		}
+		Chord { chord: chord, }
+	}
+
 	pub fn note_sum(&mut self, addr: u16, val: u8) {
 		match self.chord.insert(addr, val) {
 			Some(x) => {
@@ -56,12 +71,12 @@ impl Chord {
 	}
 
 	pub fn print(&self) {
-		println!("");
+		//println!("");
 		let color = common::C_DEFAULT;
 		for (k, v) in self.chord.iter() {
 			print!("({}addr:{}, val:{}{})", color, k, v, common::C_DEFAULT);
 		}
-		println!("");
+		//println!("");
     }
 }
 

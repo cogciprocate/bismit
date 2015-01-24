@@ -125,7 +125,7 @@ pub enum CLStatus {
 }
 impl String for CLStatus {
     fn fmt(&self, fmtr: &mut Formatter) -> Result {
-        write!(fmtr, "{}", self)
+        write!(fmtr, "{:?}", self)
     }
 }
 

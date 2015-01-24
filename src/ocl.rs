@@ -28,18 +28,29 @@ impl Ocl {
 		//let kern_c_str = std::str::from_utf8(kern_str.as_slice()).unwrap().to_c_str();
 		let kern_c_str = ffi::CString::from_vec(kern_str);
 
-		let platform = new_platform() as cl_platform_id;
+		let platform = new_platform();
 		let device: cl_device_id = new_device(platform);
 		let context: cl_context = new_context(device);
 		let program: cl_program = new_program(kern_c_str.as_ptr(), context, device);
 		let command_queue: cl_command_queue = new_command_queue(context, device); 
 
 		Ocl {
-			platform: platform as cl_platform_id,
+			platform: platform,
 			device:  device,
 			context:  context,
 			program:  program,
 			command_queue: command_queue,
+
+		}
+	}
+
+	pub fn clone(&self) -> Ocl {
+		Ocl {
+			platform: self.platform,
+			device:  self.device,
+			context:  self.context,
+			program:  self.program,
+			command_queue: self.command_queue,
 
 		}
 	}
@@ -89,19 +100,20 @@ impl Ocl {
 }
 
 
-/*
-	fn to_error_str(err_code: cl_h::CLStatus) -> String {
-		let err_opt: Option<cl_h::CLStatus> = Some(err_code);
-		match err_opt {
-			Some(status) => status.to_string(),
-			None => format!("Unknown Error Code: {}", err_code as isize)
-		}
+
+fn to_error_str(err_code: cl_h::cl_int) -> String {
+	let err_opt: Option<cl_h::CLStatus> = std::num::FromPrimitive::from_int(err_code as isize);
+	//println!("err_opt: {:?}", err_opt);
+	match err_opt {
+		Some(e) => e.to_string(),
+		None => format!("Unknown Error Code: {}", err_code as isize)
 	}
-*/
+}
+
 
 pub fn must_succ(message: &str, err: cl_h::cl_int) {
 	if err != cl_h::CLStatus::CL_SUCCESS as cl_h::cl_int {
-		panic!(format!("{} failed with code: {}", message, err))
+		panic!(format!("{} failed with code: {}", message, to_error_str(err)));
 	}
 }
 
@@ -230,6 +242,28 @@ pub fn new_command_queue(
 	}
 }
 
+
+
+pub fn new_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
+	let mut err: cl_h::cl_int = 0;
+	//println!("New Write Buffer:");
+	//println!("	Len: {}", data.len());
+	//println!("	Size_Per: {}", mem::size_of::<T>())
+	//println!("	Size: {}", (data.len() * mem::size_of::<T>()) as u64);
+	unsafe {
+		let buf = cl_h::clCreateBuffer(
+					context, 
+					cl_h::CL_MEM_READ_WRITE | cl_h::CL_MEM_COPY_HOST_PTR, 
+					(data.len() * mem::size_of::<T>()) as u64,
+					data.as_ptr() as *mut libc::c_void, 
+					//ptr::null_mut(),
+					&mut err,
+		);
+		must_succ("new_buffer", err);
+		buf
+	}
+}
+
 pub fn new_write_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
 	let mut err: cl_h::cl_int = 0;
 	//println!("New Write Buffer:");
@@ -306,18 +340,44 @@ pub fn enqueue_read_buffer<T>(
 		must_succ("clEnqueueReadBuffer()", err);
 	}
 }
-
-pub fn set_kernel_arg(arg_index: cl_h::cl_uint, buffer: cl_h::cl_mem, kernel: cl_h::cl_kernel) {
+/*
+	pub fn set_kernel_arg<T>(arg_index: cl_h::cl_uint, buffer: T, kernel: cl_h::cl_kernel) {
+		unsafe {
+			let err = cl_h::clSetKernelArg(
+						kernel, 
+						arg_index, 
+						mem::size_of::<T>() as u64, 
+						mem::transmute(&buffer),
+			);
+			must_succ("clSetKernelArg()", err);
+		}
+	}
+*/
+pub fn set_kernel_arg<T>(arg_index: cl_h::cl_uint, buffer: T, kernel: cl_h::cl_kernel) {
 	unsafe {
 		let err = cl_h::clSetKernelArg(
 					kernel, 
 					arg_index, 
-					mem::size_of::<cl_mem>() as u64, 
+					mem::size_of::<T>() as u64, 
 					mem::transmute(&buffer),
 		);
 		must_succ("clSetKernelArg()", err);
 	}
 }
+
+/*
+pub fn set_kernel_arg(arg_index: cl_h::cl_uint, buffer: cl_h::cl_mem, kernel: cl_h::cl_kernel) {
+	unsafe {
+		let err = cl_h::clSetKernelArg(
+					kernel, 
+					arg_index, 
+					mem::size_of::<cl_h::cl_mem>() as u64, 
+					mem::transmute(&buffer),
+		);
+		must_succ("clSetKernelArg()", err);
+	}
+}
+*/
 
 pub fn enqueue_kernel(
 				kernel: cl_h::cl_kernel, 

@@ -5,7 +5,7 @@ use std::default::Default;
 use std::time;
 use std::num::{ Int };
 
-pub const READBACK_TEST_ITERATIONS: usize = 20000;  // 10,000,000 takes >>> 15 min
+pub const READBACK_TEST_ITERATIONS: usize = 50;  // 10,000,000 takes >>> 15 min
 
 pub fn readback_test<T: Clone + Default + Int>(
 			cortex: &Cortex,

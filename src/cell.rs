@@ -5,7 +5,9 @@ use cortical_component::{ CorticalComponent };
 use std::num;
 use std::rand;
 use std::rand::distributions::{ Normal, IndependentSample, Range };
-use std::num::NumCast;
+use std::num::{ NumCast, Int, FromPrimitive };
+use std::default::{ Default };
+use std::fmt::{ Display };
 
 pub struct Axons {
 	pub target_cells: CorticalComponent<ocl::cl_uchar>,
@@ -26,7 +28,7 @@ impl Axons {
 }
 
 
-pub fn init_axon<T: Clone + NumCast>(target_cells: &mut CorticalComponent<T>, target_cell_synapses: &mut CorticalComponent<T>) {
+pub fn init_axon<T: Clone + NumCast + Int + Default + Display + FromPrimitive>(target_cells: &mut CorticalComponent<T>, target_cell_synapses: &mut CorticalComponent<T>) {
 	let mut rng = rand::thread_rng();
 
 	let normal = Normal::new(128f64, 128f64);
@@ -65,13 +67,15 @@ impl Dendrites {
 
 
 pub struct Synapses {
+	pub values: CorticalComponent<ocl::cl_uchar>,
 	pub strengths: CorticalComponent<ocl::cl_uchar>,
 }
 impl Synapses {
 	pub fn new(size: usize, ocl: &ocl::Ocl) -> Synapses {
 
 		Synapses {
-			strengths: CorticalComponent::<ocl::cl_uchar>::new(size, 16u8, ocl),
+			values: CorticalComponent::<ocl::cl_uchar>::new(size, 0u8, ocl),
+			strengths: CorticalComponent::<ocl::cl_uchar>::new(size, common::DENDRITE_INITIAL_THRESHOLD, ocl),
 		}
 	}
 }

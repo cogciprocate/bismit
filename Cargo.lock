@@ -3,10 +3,30 @@ name = "bismit"
 version = "0.0.1"
 dependencies = [
  "microcosm 0.0.1 (git+https://github.com/cogciprocate/microcosm.git)",
+ "time 0.1.14 (git+https://github.com/rust-lang/time.git)",
 ]
+
+[[package]]
+name = "gcc"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "libc"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "microcosm"
 version = "0.0.1"
-source = "git+https://github.com/cogciprocate/microcosm.git#8a07615284c707a27082325735cce20427d123a1"
+source = "git+https://github.com/cogciprocate/microcosm.git#3b4751bc707a1431b303f099d6b8ea865c2d4791"
+
+[[package]]
+name = "time"
+version = "0.1.14"
+source = "git+https://github.com/rust-lang/time.git#9012258dcbf6416909b57205b928c4a5f048881e"
+dependencies = [
+ "gcc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 

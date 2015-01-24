@@ -7,6 +7,9 @@ authors = ["Nick Sanders <github.com/nsan1129>"]
 [dependencies.microcosm]
 git = "https://github.com/cogciprocate/microcosm.git"
 
+[dependencies.time]
+git = "https://github.com/rust-lang/time.git"
+
 # [dependencies.opencl]
 # git = "https://github.com/csherratt/rust-opencl"
 
