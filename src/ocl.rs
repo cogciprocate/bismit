@@ -143,10 +143,6 @@ pub fn new_device(platform: cl_h::cl_platform_id) -> cl_h::cl_device_id {
 	device
 }
 
-// mem::transmute(ptr::null::<Fn() -> ()>()
-
-// extern "C" fn(*const i8, *const libc::types::common::c95::c_void, u64, *mut libc::types::common::c95::c_void)
-
 pub fn new_context(device: cl_h::cl_device_id) -> cl_h::cl_context {
 	let mut err: cl_h::cl_int = 0;
 
@@ -315,19 +311,7 @@ pub fn enqueue_read_buffer<T>(
 		must_succ("clEnqueueReadBuffer()", err);
 	}
 }
-/*
-	pub fn set_kernel_arg<T>(arg_index: cl_h::cl_uint, buffer: T, kernel: cl_h::cl_kernel) {
-		unsafe {
-			let err = cl_h::clSetKernelArg(
-						kernel, 
-						arg_index, 
-						mem::size_of::<T>() as u64, 
-						mem::transmute(&buffer),
-			);
-			must_succ("clSetKernelArg()", err);
-		}
-	}
-*/
+
 pub fn set_kernel_arg<T>(arg_index: cl_h::cl_uint, buffer: T, kernel: cl_h::cl_kernel) {
 	unsafe {
 		let err = cl_h::clSetKernelArg(
@@ -525,9 +509,7 @@ pub fn print_junk(
 		must_succ("clGetProgramInfo(size)", err);
 			
         let mut program_info: Vec<u8> = iter::repeat(32u8).take(size as usize).collect();
-        //let mut program_info: cl_program_info = 0 as cl_program_info;
-        
-        //println!("program_info string length: {}", program_info.len())
+
         err = cl_h::clGetProgramInfo(
 					program,
 					name,
@@ -553,18 +535,12 @@ pub fn print_junk(
 		);
 		must_succ("clGetKernelInfo(size)", err);
 
-        //let mut kernel_info: std::c_str::CString = std::string::String::from_char(size as usize, ' ').to_c_str();
         let kernel_info = 5 as cl_h::cl_uint;
-        //let kiptr = &kernel_info;
 
-        //let mut test: *mut libc::c_void = (kernel_info.as_mut_ptr()) as *mut libc::c_void;
-
-        //println!("kernel_info string length: {}", kernel_info.len())
         err = cl_h::clGetKernelInfo(
 					kernel,
 					name,
 					size,
-					//kernel_info.as_mut_ptr() as *mut libc::c_void,
 					mem::transmute(&kernel_info),
 					ptr::null_mut(),
 		);
