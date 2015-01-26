@@ -71,12 +71,10 @@ impl Chord {
 	}
 
 	pub fn print(&self) {
-		//println!("");
 		let color = common::C_DEFAULT;
 		for (k, v) in self.chord.iter() {
 			print!("({}addr:{}, val:{}{})", color, k, v, common::C_DEFAULT);
 		}
-		//println!("");
     }
 }
 

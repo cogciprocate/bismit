@@ -1,6 +1,6 @@
 use common;
 use ocl;
-use cortical_component::{ CorticalComponent };
+use envoy::{ Envoy };
 
 use std::num;
 use std::rand;
@@ -10,13 +10,13 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 pub struct Axons {
-	pub target_cells: CorticalComponent<ocl::cl_uchar>,
-	pub target_cell_synapses: CorticalComponent<ocl::cl_uchar>,
+	pub target_cells: Envoy<ocl::cl_uchar>,
+	pub target_cell_synapses: Envoy<ocl::cl_uchar>,
 }
 impl Axons {
 	pub fn new(size: usize, ocl: &ocl::Ocl) -> Axons {
-		let mut target_cells = CorticalComponent::<ocl::cl_uchar>::new(size, 0u8, ocl);
-		let mut target_cell_synapses = CorticalComponent::<ocl::cl_uchar>::new(size, 0u8, ocl);
+		let mut target_cells = Envoy::<ocl::cl_uchar>::new(size, 0u8, ocl);
+		let mut target_cell_synapses = Envoy::<ocl::cl_uchar>::new(size, 0u8, ocl);
 
 		init_axon(&mut target_cells, &mut target_cell_synapses);
 
@@ -28,7 +28,7 @@ impl Axons {
 }
 
 
-pub fn init_axon<T: Clone + NumCast + Int + Default + Display + FromPrimitive>(target_cells: &mut CorticalComponent<T>, target_cell_synapses: &mut CorticalComponent<T>) {
+pub fn init_axon<T: Clone + NumCast + Int + Default + Display + FromPrimitive>(target_cells: &mut Envoy<T>, target_cell_synapses: &mut Envoy<T>) {
 	let mut rng = rand::thread_rng();
 
 	let normal = Normal::new(128f64, 128f64);
@@ -53,29 +53,29 @@ pub fn init_axon<T: Clone + NumCast + Int + Default + Display + FromPrimitive>(t
 
 
 pub struct Dendrites {
-	pub thresholds: CorticalComponent<ocl::cl_uchar>,
-	pub synapse_states: CorticalComponent<ocl::cl_ushort>,
+	pub thresholds: Envoy<ocl::cl_uchar>,
+	pub synapse_states: Envoy<ocl::cl_ushort>,
 }
 impl Dendrites {
 	pub fn new(size: usize, ocl: &ocl::Ocl) -> Dendrites {
 		Dendrites {
-			thresholds: CorticalComponent::<ocl::cl_uchar>::new(size, 16u8, ocl),
-			synapse_states: CorticalComponent::<ocl::cl_ushort>::new(size, 0u16, ocl),
+			thresholds: Envoy::<ocl::cl_uchar>::new(size, 16u8, ocl),
+			synapse_states: Envoy::<ocl::cl_ushort>::new(size, 0u16, ocl),
 		}
 	}
 }
 
 
 pub struct Synapses {
-	pub values: CorticalComponent<ocl::cl_uchar>,
-	pub strengths: CorticalComponent<ocl::cl_uchar>,
+	pub values: Envoy<ocl::cl_uchar>,
+	pub strengths: Envoy<ocl::cl_uchar>,
 }
 impl Synapses {
 	pub fn new(size: usize, ocl: &ocl::Ocl) -> Synapses {
 
 		Synapses {
-			values: CorticalComponent::<ocl::cl_uchar>::new(size, 0u8, ocl),
-			strengths: CorticalComponent::<ocl::cl_uchar>::new(size, common::DENDRITE_INITIAL_THRESHOLD, ocl),
+			values: Envoy::<ocl::cl_uchar>::new(size, 0u8, ocl),
+			strengths: Envoy::<ocl::cl_uchar>::new(size, common::DENDRITE_INITIAL_THRESHOLD, ocl),
 		}
 	}
 }

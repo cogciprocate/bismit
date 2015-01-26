@@ -1,13 +1,12 @@
 use ocl;
 use common;
-use cortical_component::{ CorticalComponent };
+use envoy::{ Envoy };
 use sensory_segment::{ SensorySegment };
 use cortical_segment::{ CorticalSegment };
 use chord::{ Chord };
 use column;
 use cell;
-//use std;
-//use std::io;
+
 use std::rand;
 use std::rand::distributions::{IndependentSample, Range};
 use std::ptr;
@@ -15,7 +14,7 @@ use std::ptr;
 use time;
 
 pub struct Columns {
-	pub states: CorticalComponent<ocl::cl_uint>,
+	pub states: Envoy<ocl::cl_uint>,
 	pub axons: column::Axons,
 	pub dendrites: column::Dendrites,
 	pub synapses: column::Synapses,
@@ -23,7 +22,7 @@ pub struct Columns {
 impl Columns {
 	pub fn new(hcols: usize, ocl: &ocl::Ocl) -> Columns {
 		Columns {
-			states: CorticalComponent::<ocl::cl_uint>::new(common::COLUMNS_PER_SEGMENT, 0u32, ocl),
+			states: Envoy::<ocl::cl_uint>::new(common::COLUMNS_PER_SEGMENT, 0u32, ocl),
 			axons:	column::Axons::new(common::COLUMN_AXONS_PER_SEGMENT, ocl),
 			dendrites: column::Dendrites::new(common::COLUMN_DENDRITES_PER_SEGMENT, ocl),
 			synapses: column::Synapses::new(common::COLUMN_SYNAPSES_PER_SEGMENT, ocl),
@@ -33,7 +32,7 @@ impl Columns {
 
 
 pub struct Cells {
-	pub states: CorticalComponent<ocl::cl_uint>,
+	pub states: Envoy<ocl::cl_uint>,
 	pub axons: cell::Axons,
 	pub dendrites: cell::Dendrites,
 	pub synapses: cell::Synapses,
@@ -41,7 +40,7 @@ pub struct Cells {
 impl Cells {
 	pub fn new(hcols: usize, ocl: &ocl::Ocl) -> Cells {
 		Cells {
-			states: CorticalComponent::<ocl::cl_uint>::new(common::CELLS_PER_SEGMENT, 0u32, ocl),
+			states: Envoy::<ocl::cl_uint>::new(common::CELLS_PER_SEGMENT, 0u32, ocl),
 			axons:	cell::Axons::new(common::CELL_AXONS_PER_SEGMENT, ocl),
 			dendrites: cell::Dendrites::new(common::CELL_DENDRITES_PER_SEGMENT, ocl),
 			synapses: cell::Synapses::new(common::CELL_SYNAPSES_PER_SEGMENT, ocl),
@@ -51,27 +50,27 @@ impl Cells {
 
 pub struct HyperColumns {
 	pub qty: usize,
-	pub states: CorticalComponent<ocl::cl_uint>,
+	pub states: Envoy<ocl::cl_uint>,
 }
 impl HyperColumns {
 	pub fn new(qty: usize, ocl: &ocl::Ocl) -> HyperColumns {
 		HyperColumns {
 			qty: common::HYPERCOLUMNS_PER_SEGMENT,
-			states: CorticalComponent::<ocl::cl_uint>::new(common::HYPERCOLUMNS_PER_SEGMENT, 0u32, ocl),
+			states: Envoy::<ocl::cl_uint>::new(common::HYPERCOLUMNS_PER_SEGMENT, 0u32, ocl),
 		}
 	}
 }
 
 
 pub struct MotorSegment {
-	pub targets: CorticalComponent<ocl::cl_ushort>,
-	pub values: CorticalComponent<ocl::cl_uchar>,
+	pub targets: Envoy<ocl::cl_ushort>,
+	pub values: Envoy<ocl::cl_uchar>,
 }
 impl MotorSegment {
 	pub fn new(width: usize, ocl: &ocl::Ocl) -> MotorSegment {
 		MotorSegment { 
-			targets : CorticalComponent::<ocl::cl_ushort>::new(width, 0u16, ocl),
-			values : CorticalComponent::<ocl::cl_uchar>::new(width, 0u8, ocl),
+			targets : Envoy::<ocl::cl_ushort>::new(width, 0u16, ocl),
+			values : Envoy::<ocl::cl_uchar>::new(width, 0u8, ocl),
 		}
 	}
 }
@@ -89,8 +88,6 @@ impl Cortex {
 	pub fn new() -> Cortex {
 		println!("Initializing Cortex...");
 		let time_start = time::get_time().sec;
-
-		//println!("Timer started...");
 
 		let ocl: ocl::Ocl = ocl::Ocl::new();
 

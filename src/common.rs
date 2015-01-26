@@ -56,41 +56,8 @@ pub const CELL_SYNAPSES_PER_SEGMENT: usize = SYNAPSES_PER_DENDRITE * CELL_DENDRI
 pub const SENSORY_CHORD_WIDTH: usize = 1024; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
-
-/*
-pub fn print_synapse_values(synapse: &mut Synapse, ocl: &ocl::Ocl) {
-
-	let read_buf = ocl::new_read_buffer(&mut synapse.values.vec, ocl.context);
-	let kern = ocl::new_kernel(ocl.program, "get_synapse_values");
-
-	ocl::set_kernel_arg(0, synapse.values.buf, kern);
-	ocl::set_kernel_arg(1, read_buf, kern);
-
-	ocl::enqueue_kernel(kern, ocl.command_queue, synapse.values.vec.len());
-
-	ocl::enqueue_read_buffer(&mut synapse.values.vec, read_buf, ocl.command_queue);
-
-	ocl::release_mem_object(read_buf);
-
-	println!("Printing Synapse Values...");
-	let mut color: &'static str;
-	for i in range(0, synapse.values.vec.len()) {
-		if synapse.values.vec[i] != 0u8 {
-			color = common::C_ORA;
-			print!("({}[{}]:{}{})", color, i, synapse.values.vec[i], common::C_DEFAULT);
-		} else {
-			//color = common::C_DEFAULT;
-		}
-	}
-	println!("");
-}
-*/
-
-//pub fn print_component_vec_values<T: Primitive + Int + Zero + Show>(vec: Vec<T>) {
-
 pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool) {
 
-	//println!("Printing Vector (len:{}, every:{}) Values...", vec.len(), every);
 	let mut ttl_nz = 0us;
 	let mut hi = Default::default();
 	let mut lo: T = Default::default();
@@ -147,7 +114,6 @@ pub fn int_log2<T: Int + BitOr + Eq >(mut n: T) -> u8 {
 	n = n | n >> 4;
 	n = n | n >> 8;
 	n = n | n >> 16;
-		// n must be a power of 2;
 	assert!((n - (n >> 1)).trailing_zeros() == tmp.trailing_zeros());
 	FromPrimitive::from_uint((n - (n >> 1)).trailing_zeros()).unwrap()
 }
@@ -174,14 +140,6 @@ pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default>(size: usize,
 		}
 	}
 
-	
-
-/*
-	for i in range(0, target_column_bodies.vec.len()) {
-		target_column_bodies.vec[i] = rng_range.ind_sample(&mut rng);
-	}
-	*/
-
 	vec
 }
 
@@ -192,7 +150,6 @@ pub fn dup_check<T: Int>(in_vec: &Vec<T>) -> (usize, usize) {
 
 	vec.sort();
 
-	//common::print_vec(&vec, 1024, true);
 
 	let mut dups = 0us;
 	let mut unis = 0us;

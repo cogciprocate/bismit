@@ -25,7 +25,6 @@ impl Ocl {
 	pub fn new() -> Ocl {
 		let kern_file_path: std::path::Path = std::path::Path::new(format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME));
 		let kern_str: Vec<u8> = io::File::open(&kern_file_path).read_to_end().unwrap();
-		//let kern_c_str = std::str::from_utf8(kern_str.as_slice()).unwrap().to_c_str();
 		let kern_c_str = ffi::CString::from_vec(kern_str);
 
 		let platform = new_platform();
@@ -90,7 +89,6 @@ impl Ocl {
 	pub fn release_components(&self) {
 
 		unsafe {
-			//cl_h::clReleaseKernel(self.kernel);
 			cl_h::clReleaseCommandQueue(self.command_queue);
 			cl_h::clReleaseProgram(self.program);
 			cl_h::clReleaseContext(self.context);
@@ -103,7 +101,6 @@ impl Ocl {
 
 fn to_error_str(err_code: cl_h::cl_int) -> String {
 	let err_opt: Option<cl_h::CLStatus> = std::num::FromPrimitive::from_int(err_code as isize);
-	//println!("err_opt: {:?}", err_opt);
 	match err_opt {
 		Some(e) => e.to_string(),
 		None => format!("Unknown Error Code: {}", err_code as isize)
@@ -184,20 +181,6 @@ pub fn new_program(
 		);
 		must_succ("clCreateProgramWithSource()", err);
 
-/*
-		let program: cl_h::cl_program = src_str.to_c_str().with_ref(|src_str| {
-			let prog = cl_h::clCreateProgramWithSource(
-						context, 
-						1,
-						&src_str,
-						ptr::null(), 
-						&mut err,
-			);
-			must_succ("clCreateProgramWithSource()", err);
-			prog
-		});
-*/
-
 		err = cl_h::clBuildProgram(
 					program,
 					0, 
@@ -246,10 +229,6 @@ pub fn new_command_queue(
 
 pub fn new_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
 	let mut err: cl_h::cl_int = 0;
-	//println!("New Write Buffer:");
-	//println!("	Len: {}", data.len());
-	//println!("	Size_Per: {}", mem::size_of::<T>())
-	//println!("	Size: {}", (data.len() * mem::size_of::<T>()) as u64);
 	unsafe {
 		let buf = cl_h::clCreateBuffer(
 					context, 
@@ -266,10 +245,6 @@ pub fn new_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
 
 pub fn new_write_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
 	let mut err: cl_h::cl_int = 0;
-	//println!("New Write Buffer:");
-	//println!("	Len: {}", data.len());
-	//println!("	Size_Per: {}", mem::size_of::<T>())
-	//println!("	Size: {}", (data.len() * mem::size_of::<T>()) as u64);
 	unsafe {
 		let buf = cl_h::clCreateBuffer(
 					context, 
@@ -365,20 +340,6 @@ pub fn set_kernel_arg<T>(arg_index: cl_h::cl_uint, buffer: T, kernel: cl_h::cl_k
 	}
 }
 
-/*
-pub fn set_kernel_arg(arg_index: cl_h::cl_uint, buffer: cl_h::cl_mem, kernel: cl_h::cl_kernel) {
-	unsafe {
-		let err = cl_h::clSetKernelArg(
-					kernel, 
-					arg_index, 
-					mem::size_of::<cl_h::cl_mem>() as u64, 
-					mem::transmute(&buffer),
-		);
-		must_succ("clSetKernelArg()", err);
-	}
-}
-*/
-
 pub fn enqueue_kernel(
 				kernel: cl_h::cl_kernel, 
 				command_queue: cl_h::cl_command_queue, 
@@ -466,10 +427,8 @@ pub fn platform_info(platform: cl_h::cl_platform_id) {
 					&mut size,
 		);
 		must_succ("clGetPlatformInfo(size)", err);
-		//let mut param_value: std::ffi::CString = std::ffi::CString::from_slice(['a'; s]);
 		
 		let mut param_value: Vec<u8> = iter::repeat(32u8).take(size as usize).collect();
-		//let mut vec: Vec<T> = iter::repeat(init_val).take(size).collect();
         err = cl_h::clGetPlatformInfo(
 					platform,
 					name,

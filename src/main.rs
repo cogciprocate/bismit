@@ -8,7 +8,7 @@ mod cl_h;
 mod ocl;
 mod chord;
 mod sense;
-mod cortical_component;
+mod envoy;
 mod column;
 mod cell;
 mod cortical_segment;

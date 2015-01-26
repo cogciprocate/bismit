@@ -26,8 +26,6 @@ pub fn ascii_sense() -> Box<Vec<Box<Vec<u16>>>> {
 			Err(e) => println!("Err: {}", e),
 		}
 
-		//song.push(x as u16);
-		//println!("** Note {} = {}", x, chord[x as usize]);
 	}
 	//println!("** Characters Read: {}", song);
 	println!("** Final song.len(): {}",song.len());
@@ -43,23 +41,3 @@ pub fn chord_encode_byte(byte: u8) -> Box<Vec<u16>> {
 	
 	Box::new(chord)
 }
-
-/*
-pub fn chord_encode_f32(f: f32) -> Box<Vec<u16>> {
-
-}
-*/
-
-/*
-pub fn test_sense() -> Box<Vec<u16>> {
-	let mut vec: Vec<u16> = Vec::new();
-	println!("** Starting vec.len(): {}",vec.len());
-
-	for x in range(0u16, 8u16) {
-		vec.push(x as u16);
-		println!("** Note {} = {}", x, vec[x as usize]);
-	}
-	println!("** Final vec.len(): {}",vec.len());
-	box vec
-}
-*/
