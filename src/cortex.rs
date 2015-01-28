@@ -10,43 +10,7 @@ use cell;
 use std::rand;
 use std::rand::distributions::{IndependentSample, Range};
 use std::ptr;
-
 use time;
-
-pub struct Columns {
-	pub states: Envoy<ocl::cl_uint>,
-	pub axons: column::Axons,
-	pub dendrites: column::Dendrites,
-	pub synapses: column::Synapses,
-}
-impl Columns {
-	pub fn new(hcols: usize, ocl: &ocl::Ocl) -> Columns {
-		Columns {
-			states: Envoy::<ocl::cl_uint>::new(common::COLUMNS_PER_SEGMENT, 0u32, ocl),
-			axons:	column::Axons::new(common::COLUMN_AXONS_PER_SEGMENT, ocl),
-			dendrites: column::Dendrites::new(common::COLUMN_DENDRITES_PER_SEGMENT, ocl),
-			synapses: column::Synapses::new(common::COLUMN_SYNAPSES_PER_SEGMENT, ocl),
-		}
-	}
-}
-
-
-pub struct Cells {
-	pub states: Envoy<ocl::cl_uint>,
-	pub axons: cell::Axons,
-	pub dendrites: cell::Dendrites,
-	pub synapses: cell::Synapses,
-}
-impl Cells {
-	pub fn new(hcols: usize, ocl: &ocl::Ocl) -> Cells {
-		Cells {
-			states: Envoy::<ocl::cl_uint>::new(common::CELLS_PER_SEGMENT, 0u32, ocl),
-			axons:	cell::Axons::new(common::CELL_AXONS_PER_SEGMENT, ocl),
-			dendrites: cell::Dendrites::new(common::CELL_DENDRITES_PER_SEGMENT, ocl),
-			synapses: cell::Synapses::new(common::CELL_SYNAPSES_PER_SEGMENT, ocl),
-		}
-	}
-}
 
 pub struct HyperColumns {
 	pub qty: usize,

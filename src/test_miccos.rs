@@ -90,15 +90,9 @@ pub fn run() {
 						//	print!(" ))) \nSYN_ADDRS_LOCAL:	((( p_vec[{}]:", snake_brain.cort.sensory_segments[0].target_addresses.target_column_synapses.vec.len());
 						//	common::print_vec(&snake_brain.cort.sensory_segments[0].target_addresses.target_column_synapses.vec, 10000);
 						print!(" ))) \nBOD_ADDRS_REMOTE:	((( ");
-						snake_brain.cort.sensory_segments[0].target_addresses.target_column_bodies.print(1024);
+						snake_brain.cort.sensory_segments[0].target_addresses.target_column_somata.print(1024);
 						//	print!(" ))) \nBOD_ADDRS_LOCAL:	((( p_vec[{}]:", snake_brain.cort.sensory_segments[0].target_addresses.target_column_bodies.vec.len());
 						//	common::print_vec(&snake_brain.cort.sensory_segments[0].target_addresses.target_column_bodies.vec, 10000);
-						if false {
-							print!(" ))) \nTMP_OUT_REMOTE:		((( ");
-							snake_brain.cort.sensory_segments[0].tmp_out.print(1024);
-							//	print!(" ))) \nTMP_OUT_LOCAL:		((( p_vec[{}]:", snake_brain.cort.sensory_segments[0].tmp_out.vec.len());
-							//	common::print_vec(&snake_brain.cort.sensory_segments[0].tmp_out.vec, 10000);
-						}
 					}
 
 					//	print!(" ))) ");

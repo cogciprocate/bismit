@@ -16,7 +16,7 @@ mod sensory_segment;
 mod cortex;
 mod sub_cortex;
 mod test_miccos;
-mod readback_test;
+mod test_readback;
 mod test_3;
 mod test_4;
 

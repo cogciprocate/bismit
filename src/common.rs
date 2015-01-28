@@ -62,6 +62,7 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 	let mut hi = Default::default();
 	let mut lo: T = Default::default();
 	let mut sum: usize = 0;
+	let len = vec.len();
 
 	let mut color: &'static str = C_DEFAULT;
 
@@ -100,14 +101,21 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 			print!("{cg}[{cd}{}{cg}:{cc}{}{cg}]{cd}", i, vec[i], cc = color, cd = C_DEFAULT, cg = C_DGR);
 		}
 	}
+
 	let mut anz: usize = 0;
+	let mut nz_pct: f32 = 0f32;
+
 	if ttl_nz > 0 {
 		anz = sum / ttl_nz;
+		nz_pct = (ttl_nz as f32 / len as f32) * 100f32;
+		//print!("[ttl_nz: {}, nz_pct: {:.0}%, len: {}]", ttl_nz, nz_pct, len);
 	}
-	print!("{cdgr}:(nz:{clbl}{}{cdgr},hi:{},lo:{},anz:{}){cd} ", ttl_nz, hi, lo, anz, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
+
+
+	print!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.1}%{cdgr}),hi:{},lo:{},anz:{}){cd} ", ttl_nz, nz_pct, hi, lo, anz, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 }
 
-pub fn int_log2<T: Int + BitOr + Eq >(mut n: T) -> u8 {
+pub fn int_hb_log2<T: Int + BitOr + Eq >(mut n: T) -> u8 {
 	let tmp = n;
 	n = n | n >> 1;
 	n = n | n >> 2;

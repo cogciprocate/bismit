@@ -23,7 +23,7 @@ pub fn test_cycle_dens() {
 	}
 
 
-	vec1[500] = 240;
+	vec1[500] = 50;
 	//vec1[19] = 18;
 	//vec1[500] = vec1[500] >> 1 ;
 
@@ -47,17 +47,42 @@ pub fn test_cycle_dens() {
 	//	println!("\n tmp_out: ");
 	//	cortex.sensory_segments[0].tmp_out.print(1000);
 	if true {
-		println!("\n synapse.values: ");
-		cortex.cortical_segments[0].columns.synapses.values.print(1);
+		println!("\n columns.synapses.values: ");
+		cortex.cortical_segments[0].columns.synapses.values.print(16);
 	}
 	if false {
-		println!("\n synapse.strengths: ");
+		println!("\n columns.synapses.strengths: ");
 		cortex.cortical_segments[0].columns.synapses.strengths.print(1024);
 	}
-	println!("\n dendrite.values: ");
-	cortex.cortical_segments[0].columns.dendrites.values.print(1);
-	
-	
+	println!("\n columns.dendrites.values: ");
+	cortex.cortical_segments[0].columns.dendrites.values.print(16);
+
+	println!("\n columns.somata.states: ");
+	cortex.cortical_segments[0].columns.somata.states.print(16);
+
+	println!("\n cells.somata.states: ");
+	cortex.cortical_segments[0].cells.somata.states.print(256);
+
+	println!("\n cells.synapses.values: ");
+	cortex.cortical_segments[0].cells.synapses.values.print(16384);
+
+	if false {
+		println!("\n cells.synapses.strengths: ");
+		cortex.cortical_segments[0].cells.synapses.strengths.print(65536);
+	}
+
+	if false {
+		println!("\n cells.axons.target_cell_somata: ");
+		cortex.cortical_segments[0].cells.axons.target_cell_somata.print(65536);
+
+		println!("\n cells.axons.target_cell_synapses: ");
+		cortex.cortical_segments[0].cells.axons.target_cell_synapses.print(65536);
+	}
+
+	println!("\n cells.dendrites.values: ");
+	cortex.cortical_segments[0].cells.dendrites.values.print(4096);
+
+
 	/***** Testing Axon Stuff *****
 		let mut vec2: Vec<u8> = iter::repeat(0).take(1024 * 256).collect();
 
@@ -81,7 +106,7 @@ pub fn test_cycle_dens() {
 
 		//println!("First 3: {}, {}, {}", tar_addrs[0], tar_addrs[1], tar_addrs[2]);
 		//println!("Last 3: {}, {}, {}", tar_addrs[tar_addrs.len() - 1], tar_addrs[tar_addrs.len() - 2], tar_addrs[tar_addrs.len() - 3]);
-		
+
 	*******************/
 	
 

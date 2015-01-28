@@ -1,24 +1,27 @@
 #define DENDRITES_PER_NEURON			16
+#define DENDRITES_PER_NEURON_LOG2		4
+
 #define SYNAPSES_PER_DENDRITE			16
+#define SYNAPSES_PER_DENDRITE_LOG2		4
 
-#define SYNAPSES_PER_NEURON				256 // SYNAPSES_PER_DENDRITE * DENDRITES_PER_NEURON	// DENDRITES_PER_NEURON * SYNAPSES_PER_DENDRITE
+#define SYNAPSES_PER_NEURON				256 // SYNAPSES_PER_DENDRITE * DENDRITES_PER_NEURON
+#define SYNAPSES_PER_NEURON_LOG2		8
 
-__kernel void my_kernel_func(__global float *a, __global float *b, __global float *c) {
+#define CELLS_PER_COLUMN				16
+#define CELLS_PER_COLUMN_LOG2			4
 
-	
-	int i = get_global_id(0);
-	c[i] = a[i] - b[i];
-}
-
-__kernel void hello_kernel(__global char16 *msg) {
-	*msg = (char16)('H', 'e', 'l', 'l', 'o', ' ', 'k', 'e', 'r', 'n', 'e', 'l', '!', '!', '!', '\0');
-}
+#define DENDRITE_ACTIVE					0xFF
+#define COLUMN_ACTIVE_INPUT				0x10
+#define SOMA_ACTIVE_OUTPUT				0x01
+#define CELL_PREDICTIVE					0x01
+#define CELL_ACTIVE						0x10
 
 __kernel void test_synapse(__global uchar *synapse, __global uchar *syn_out) {
 	int i = get_global_id(0);
 	synapse[i] += 1;
 	syn_out[i] = synapse[i];
 }
+
 
 __kernel void test_cell_axon(__global uchar *axon, __global uchar *ax_out) {
 	int i = get_global_id(0);
@@ -34,69 +37,127 @@ __kernel void hello(__global float *input, __global float *output) {
 	output[id] = input[id] * input[id];
 }
 
+	// #WG: common::COLUMN_SYNAPSES_PER_SEGMENT
 __kernel void sense(
-				__global uchar *source_vals, 
+				__global uchar *source_vals,  // CHANGE TO _states
 				__global uchar *tar_vals,
-				__global ushort *tar_bod_addrs,
+				__global ushort *tar_som_addrs,
 				__global uchar *tar_syn_addrs,
-				__private uchar dup_factor_shift,
-				__global uint *tmp_out
+				__private uchar dup_factor_shift
 ) {
 	uint gid = get_global_id(0);
-	uint tar_addr = mad24(tar_bod_addrs[gid], SYNAPSES_PER_NEURON, tar_syn_addrs[gid]);
+	uint tar_addr = mad24(tar_som_addrs[gid], SYNAPSES_PER_NEURON, tar_syn_addrs[gid]);
 
 	tar_vals[tar_addr] = source_vals[gid >> dup_factor_shift];
 	
-	tmp_out[gid] = tar_addr;
 }
 
-__kernel void cycle_col_dens(
+	// #WG: common::COLUMN_DENDRITES_PER_SEGMENT
+__kernel void cycle_dens(
 				__global uchar *syn_vals,
 				__global uchar *syn_strs,
 				__global uchar *den_thrs,
 				__global uchar *den_vals
 ) {
 	int gid = get_global_id(0);
-	int syn_grp = gid << 4;
+	int syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
 
 	uchar den_val = 0;
 
-	for (uint i = 0; i < 16; i++) {
+	for (uint i = 0; i < SYNAPSES_PER_DENDRITE; i++) {
 		den_val += mul_hi(syn_vals[syn_grp + i], syn_strs[syn_grp + i]);
 	}
 
 	if (den_val > den_thrs[gid]) {
-		den_vals[gid] = 0xFF;
+		den_vals[gid] = DENDRITE_ACTIVE;	
 	}
 }
 
-__kernel void cycle_cols(
-				__global uchar *den_vals
-				//__global uchar *syn_strs,
-				//__global uchar *den_thrs,
-				//__global uchar *den_vals
+
+	// #WG: common::COLUMNS_PER_SEGMENT
+__kernel void cycle_col_soms(
+				__global uchar *den_vals,
+				__global uchar *som_vals,
+				__global uchar *cel_states
 ) {
 	int gid = get_global_id(0);
+	int den_grp = gid << DENDRITES_PER_NEURON_LOG2;
+	int cel_grp = gid << CELLS_PER_COLUMN_LOG2;
+
+	uchar den_mix = 0;
+
+	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
+		den_mix |= den_vals[den_grp + i];
+	}
+
+	if (den_mix) {
+		som_vals[gid] = COLUMN_ACTIVE_INPUT;
+
+		for (uint i = 0; i < CELLS_PER_COLUMN; i++) {
+			cel_states[cel_grp + i] |= CELL_ACTIVE;
+		}
+	}
 }
 
 
+	// #WG common::CELL_SYNAPSES_PER_SEGMENT
+__kernel void cycle_cel_syns(
+				__global uchar *source_states,  	// 1/256
+				__global uchar *tar_states,  		// 1
+				__global ushort *tar_som_addrs,		// 1
+				__global uchar *tar_syn_addrs,		// 1
+				__private uchar dup_factor_shift	// (8)
 
-__kernel void get_synapse_values(__global uchar *values, __global uchar *output) {
+) {
 	int gid = get_global_id(0);
-	output[gid] = values[gid];
+
+	uint tar_addr = mad24(tar_som_addrs[gid], SYNAPSES_PER_NEURON, tar_syn_addrs[gid]);
+
+	tar_states[tar_addr] =  source_states[gid >> dup_factor_shift];	
+}
+
+__kernel void cycle_cel_soms(
+				__global uchar *den_vals,
+				__global uchar *som_states
+) {
+	int gid = get_global_id(0);
+	int den_grp = gid << DENDRITES_PER_NEURON_LOG2;
+	//int cel_grp = gid << CELLS_PER_COLUMN_LOG2;
+
+	uchar den_mix = 0;
+
+	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
+		den_mix |= den_vals[den_grp + i];
+	}
+
+	if (den_mix) {
+		som_states[gid] |= CELL_PREDICTIVE;
+	} else {
+		som_states[gid] = 0;
+	}
+
 }
 
 
 
 
-__kernel void buffer_test(__global uint *synapse, __global uint *syn_out) {
-	int i = get_global_id(0);
-	synapse[i] += 1;
-	syn_out[i] = synapse[i];
-}
 
 
-/*
+
+
+
+
+
+
+
+/* Bullshit Below
+
+
+
+
+
+
+
 	__kernel void read_char_array(__global uchar *values, __global uchar *output) {
 		int gid = get_global_id(0);
 		output[gid] = values[gid];
@@ -132,3 +193,22 @@ __kernel void test_cell_axon_stable(__global uchar *axon, __global uchar *ax_out
 	ax_out[i] = axon[i];
 }
 
+
+
+
+
+
+
+__kernel void get_synapse_values(__global uchar *values, __global uchar *output) {
+	int gid = get_global_id(0);
+	output[gid] = values[gid];
+}
+
+
+
+
+__kernel void buffer_test(__global uint *synapse, __global uint *syn_out) {
+	int i = get_global_id(0);
+	synapse[i] += 1;
+	syn_out[i] = synapse[i];
+}
