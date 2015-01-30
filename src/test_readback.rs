@@ -76,11 +76,13 @@ pub fn test_readback<T: Clone + Default + Int>(
 }
  
 
+
 pub fn print_vec_info<T: Clone + Default + Int>(my_vec: &Vec<T>, info: &str) {
 	let mut total = 0;
 	for x in range(0, my_vec.len()) {
-		total += my_vec[x].to_uint().unwrap();
+		total += my_vec[x].to_uint().expect("test_readback::print_vec_info()");
 	}
 	println!("[{}: total:{}; len:{}; avg:{}]", info, total, my_vec.len(), total/my_vec.len());
 
 }
+

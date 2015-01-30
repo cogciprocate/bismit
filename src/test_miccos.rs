@@ -81,23 +81,10 @@ pub fn run() {
 
 				if true {
 					print!("\n[ i:{} ] [ \n", i);
-					//	print!(" VALS: (((");
 					snake_brain.cort.sensory_segments[0].values.print(1);
-					
-					if false {
-						print!(" ))) \nSYN_ADDRS_REMOTE:	((( ");
-						snake_brain.cort.sensory_segments[0].target_addresses.target_column_synapses.print(1024);
-						//	print!(" ))) \nSYN_ADDRS_LOCAL:	((( p_vec[{}]:", snake_brain.cort.sensory_segments[0].target_addresses.target_column_synapses.vec.len());
-						//	common::print_vec(&snake_brain.cort.sensory_segments[0].target_addresses.target_column_synapses.vec, 10000);
-						print!(" ))) \nBOD_ADDRS_REMOTE:	((( ");
-						snake_brain.cort.sensory_segments[0].target_addresses.target_column_somata.print(1024);
-						//	print!(" ))) \nBOD_ADDRS_LOCAL:	((( p_vec[{}]:", snake_brain.cort.sensory_segments[0].target_addresses.target_column_bodies.vec.len());
-						//	common::print_vec(&snake_brain.cort.sensory_segments[0].target_addresses.target_column_bodies.vec, 10000);
-					}
 
-					//	print!(" ))) ");
 					print!("\n] [==[ \n");
-					snake_brain.cort.cortical_segments[0].columns.synapses.values.print(256);
+					//snake_brain.cort.cortical_segments[0].columns.synapses.values.print(256);
 					print!("\n]==] \n");
 				}
 

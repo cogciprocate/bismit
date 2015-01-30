@@ -16,8 +16,8 @@ pub fn run() {
 	
 		test_readback::test_readback(
 					&my_cortex, 
-					&my_cortex.cortical_segments[0].columns.synapses.values.vec, 
-					my_cortex.cortical_segments[0].columns.synapses.values.buf, 
+					&my_cortex.cells.synapses.values.vec, 
+					my_cortex.cells.synapses.values.buf, 
 					"test_synapse"
 		);
 	
@@ -26,8 +26,8 @@ pub fn run() {
 	/*
 		test_readback::test_readback(
 					&my_cortex, 
-					&my_cortex.cortical_segments[0].cells.axons.target_cell_synapses.vec, 
-					my_cortex.cortical_segments[0].cells.axons.target_cell_synapses.buf, 
+					&my_cortex.cells.axons.target_cell_synapses.vec, 
+					my_cortex.cells.axons.target_cell_synapses.buf, 
 					"test_cell_axon"
 		);
 	*/
@@ -35,8 +35,8 @@ pub fn run() {
 	/*
 		test_readback::test_readback(
 					&my_cortex, 
-					&my_cortex.cortical_segments[0].cells.axons.target_cells.vec, 
-					my_cortex.cortical_segments[0].cells.axons.target_cells.buf, 
+					&my_cortex.cells.axons.target_cells.vec, 
+					my_cortex.cells.axons.target_cells.buf, 
 					"test_cell_axon"
 		);
 	*/

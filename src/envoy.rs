@@ -39,14 +39,16 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 		ocl::enqueue_write_buffer(&self.vec, self.buf, self.ocl.command_queue);
 	}
 
+	pub fn read(&mut self) {
+		ocl::enqueue_read_buffer(&mut self.vec, self.buf, self.ocl.command_queue);
+	}
+
 	pub fn len(&self) -> usize {
 		self.vec.len()
 	}
 
 	pub fn print(&mut self, every: usize) {
-
-		ocl::enqueue_read_buffer(&mut self.vec, self.buf, self.ocl.command_queue);
-
+		self.read();
 		common::print_vec(&self.vec, every, false);
     }
 

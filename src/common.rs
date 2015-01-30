@@ -31,13 +31,12 @@ pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
 
 pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;		// appears to cause lots of delay... 256 is slow
 
-pub const SYNAPSE_WEIGHT_ZERO: u8 = 16;
-pub const SYNAPSE_WEIGHT_INITIAL_DEVIATION: u8 = 3;
-pub const DENDRITE_INITIAL_THRESHOLD: u8 = 1;
+pub const SYNAPSE_STRENGTH_ZERO: i8 = 64;
+pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 3;
+pub const DENDRITE_INITIAL_THRESHOLD: i8 = 1;
 
 pub const COLUMNS_PER_HYPERCOLUMN: usize = 64;
-//pub const COLUMNS_PER_ADDRESS_BLOCK: usize = 16u;
-pub const CELLS_PER_COLUMN: usize = 16;
+
 pub const DENDRITES_PER_NEURON: usize = 16;
 pub const SYNAPSES_PER_DENDRITE: usize = 16;
 pub const AXONS_PER_NEURON: usize = DENDRITES_PER_NEURON * SYNAPSES_PER_DENDRITE;
@@ -48,10 +47,14 @@ pub const COLUMN_AXONS_PER_SEGMENT: usize = AXONS_PER_NEURON * COLUMNS_PER_SEGME
 pub const COLUMN_DENDRITES_PER_SEGMENT: usize = DENDRITES_PER_NEURON * COLUMNS_PER_SEGMENT;
 pub const COLUMN_SYNAPSES_PER_SEGMENT: usize = SYNAPSES_PER_DENDRITE * COLUMN_DENDRITES_PER_SEGMENT;
 
-pub const CELLS_PER_SEGMENT: usize = CELLS_PER_COLUMN * COLUMNS_PER_SEGMENT;
+pub const CELLS_PER_SEGMENT: usize = LAYERS_PER_SEGMENT * COLUMNS_PER_SEGMENT;
 pub const CELL_AXONS_PER_SEGMENT: usize = AXONS_PER_NEURON * CELLS_PER_SEGMENT;
 pub const CELL_DENDRITES_PER_SEGMENT: usize = DENDRITES_PER_NEURON * CELLS_PER_SEGMENT;
 pub const CELL_SYNAPSES_PER_SEGMENT: usize = SYNAPSES_PER_DENDRITE * CELL_DENDRITES_PER_SEGMENT;
+
+pub const LAYERS_PER_SEGMENT: usize = 16;
+pub const DENDRITES_PER_LAYER: usize = COLUMNS_PER_SEGMENT * DENDRITES_PER_NEURON;
+pub const SYNAPSES_PER_LAYER: usize = COLUMNS_PER_SEGMENT * SYNAPSES_PER_NEURON;
 
 pub const SENSORY_CHORD_WIDTH: usize = 1024; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
@@ -61,24 +64,25 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 	let mut ttl_nz = 0us;
 	let mut hi = Default::default();
 	let mut lo: T = Default::default();
-	let mut sum: usize = 0;
+	let mut sum: i64 = 0;
 	let len = vec.len();
 
 	let mut color: &'static str = C_DEFAULT;
+	let mut prnt: bool = false;
 
 	print!("{cdgr}[{cg}{}{cdgr}/{}]:{cd} ", vec.len(), every, cd = C_DEFAULT, cg = C_GRN, cdgr = C_DGR);
 
 	for i in range(0, vec.len()) {
 
-		let mut prnt: bool;
+		prnt = false;
 
-		if i % every == 0 {
-			prnt = true;
-		} else {
-			prnt = false;
+		if every != 0 {
+			if i % every == 0 {
+				prnt = true;
+			} 
 		}
 
-		sum += num::cast(vec[i]).unwrap();
+		sum += num::cast(vec[i]).expect("common::print_vec, sum");
 
 		if vec[i] != Default::default() {
 			ttl_nz += 1us;
@@ -102,17 +106,17 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 		}
 	}
 
-	let mut anz: usize = 0;
+	let mut anz: f32 = 0f32;
 	let mut nz_pct: f32 = 0f32;
 
 	if ttl_nz > 0 {
-		anz = sum / ttl_nz;
+		anz = sum as f32 / ttl_nz as f32;
 		nz_pct = (ttl_nz as f32 / len as f32) * 100f32;
 		//print!("[ttl_nz: {}, nz_pct: {:.0}%, len: {}]", ttl_nz, nz_pct, len);
 	}
 
 
-	print!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.1}%{cdgr}),hi:{},lo:{},anz:{}){cd} ", ttl_nz, nz_pct, hi, lo, anz, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
+	print!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2}){cd} ", ttl_nz, nz_pct, hi, lo, anz, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 }
 
 pub fn int_hb_log2<T: Int + BitOr + Eq >(mut n: T) -> u8 {
@@ -123,7 +127,7 @@ pub fn int_hb_log2<T: Int + BitOr + Eq >(mut n: T) -> u8 {
 	n = n | n >> 8;
 	n = n | n >> 16;
 	assert!((n - (n >> 1)).trailing_zeros() == tmp.trailing_zeros());
-	FromPrimitive::from_uint((n - (n >> 1)).trailing_zeros()).unwrap()
+	FromPrimitive::from_uint((n - (n >> 1)).trailing_zeros()).expect("common::int_hb_log2")
 }
 
 pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default>(size: usize, init_val: T) -> Vec<T> {
@@ -133,7 +137,7 @@ pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default>(size: usize,
 	let mut vec: Vec<T> = iter::repeat(init_val).take(size).collect();
 
 	for i in range(0us, vec.len()) {
-		vec[i] = FromPrimitive::from_uint(i).unwrap();
+		vec[i] = FromPrimitive::from_uint(i).expect("common::shuffled_vec(), vec[i]");
 	}
 
 	let mut rng = rand::thread_rng();

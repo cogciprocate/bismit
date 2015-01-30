@@ -9,7 +9,7 @@ use std::io;
 use std::ffi;
 use std::iter;
 use cl_h;
-pub use cl_h::{cl_int, cl_long, cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_char, cl_ushort, cl_uint, cl_uchar, CLStatus};
+pub use cl_h::{cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_char, cl_uchar, cl_short, cl_ushort, cl_int, cl_uint,   cl_long, CLStatus};
 
 pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
 
