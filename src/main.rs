@@ -9,7 +9,7 @@ mod ocl;
 mod chord;
 mod sense;
 mod envoy;
-mod column;
+//mod column;
 mod cell;
 //mod cortical_segment;
 mod sensory_segment;

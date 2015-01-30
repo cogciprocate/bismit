@@ -3,8 +3,6 @@ extern crate libc;
 use ocl;
 use common;
 use envoy::{ Envoy };
-use column;
-use column::{ Columns };
 use chord::{ Chord };
 
 use std::rand;

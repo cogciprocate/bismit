@@ -2,9 +2,7 @@ use ocl;
 use common;
 use envoy::{ Envoy };
 use sensory_segment::{ SensorySegment };
-//use cortical_segment::{ CorticalSegment };
 use chord::{ Chord };
-use column;
 use cell:: { self, Cells };
 
 use std::rand;
@@ -44,10 +42,7 @@ impl MotorSegment {
 pub struct Cortex {
 	pub cells: Cells,
 	pub ocl: ocl::Ocl,
-	//pub cortical_segments: Vec<CorticalSegment>,
 	pub sensory_segments: Vec<SensorySegment>,
-	//pub motor_segments: Vec<MotorSegment>,
-	
 }
 
 impl Cortex {
@@ -63,11 +58,6 @@ impl Cortex {
 			ss.push(SensorySegment::new(common::SENSORY_CHORD_WIDTH, &ocl));
 		}
 
-		/*let mut ms = Vec::with_capacity(common::MOTOR_SEGMENTS_TOTAL);
-		for i in range(0, common::MOTOR_SEGMENTS_TOTAL) {
-			ms.push(MotorSegment::new(common::MOTOR_CHORD_WIDTH, &ocl));
-		}*/
- 
 		let time_finish = time::get_time().sec;
 
 		println!(" ...initialized in: {} sec.", time_finish - time_start);
@@ -75,8 +65,6 @@ impl Cortex {
 		Cortex {
 			cells: Cells::new(&ocl),
 			sensory_segments: ss,
-			//cortical_segments: cs,
-			//motor_segments: ms,
 			ocl: ocl,
 		}
 	}
@@ -84,8 +72,6 @@ impl Cortex {
 	pub fn sense(&mut self, sgmt_idx: usize, chord: &Chord) {
 
 		self.sensory_segments[sgmt_idx].sense(chord);
-		//self.cortical_segments[self.sensory_segments[sgmt_idx].target_segment_idx].cycle(&self.sensory_segments[sgmt_idx].values);
-		//self.cortical_segments[sgmt_idx].cycle(&self.sensory_segments[sgmt_idx].values);
 
 		self.cycle_cel_syns(&self.sensory_segments[sgmt_idx].values);
 		self.cycle_cel_dens();
@@ -96,7 +82,7 @@ impl Cortex {
 	fn cycle_cel_syns(&self, input_source: &Envoy<ocl::cl_char>,) {
 		
 		let layers_total: u32 = num::cast(common::LAYERS_PER_SEGMENT).expect("cycle_cel_syns, layers_total");
-		let syn_per_layer: u32 = num::cast(common::SYNAPSES_PER_LAYER).expect("cycle_cel_syns, syn_per_layer"); 	// * layers_per_layer_group as usize;
+		let syn_per_layer: u32 = num::cast(common::SYNAPSES_PER_LAYER).expect("cycle_cel_syns, syn_per_layer");
 		let axons_per_layer: u32 = num::cast(common::COLUMNS_PER_SEGMENT).expect("cycle_cel_syns, axons_per_layer");
 
 
