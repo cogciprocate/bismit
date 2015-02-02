@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types, dead_code, unstable, deprecated, unused_variables, unused_assignments, unused_imports)]
+#![allow(non_camel_case_types, dead_code, unstable, deprecated, unused_variables, unused_assignments, unused_imports, unused_mut)]
 
 extern crate microcosm;
 extern crate time;
@@ -9,15 +9,19 @@ mod ocl;
 mod chord;
 mod sense;
 mod envoy;
+//mod axon_space;
+//mod syn_segs;
 //mod column;
-mod cell;
-//mod cortical_segment;
-mod sensory_segment;
+mod cells;
+//mod cort_seg;
+mod sensory_seg;
 mod cortex;
+mod cortical_regions;
+mod cortical_areas;
 mod sub_cortex;
-mod test_miccos;
+//mod test_miccos;
 mod test_readback;
-mod test_3;
+//mod test_3;
 mod test_4;
 
 fn main() {

@@ -12,68 +12,35 @@ use std::fmt::{ Display };
 
 
 pub struct Cells {
-	pub axons: Axons,
+	//pub axons: Axons,
 	pub somata: Somata,
 	pub dendrites: Dendrites,
 	pub synapses: Synapses,
 }
 impl Cells {
-	pub fn new(ocl: &ocl::Ocl) -> Cells {
+	pub fn new(len: usize, ocl: &ocl::Ocl) -> Cells {
 
 		Cells {
-			axons:	Axons::new(common::CELL_AXONS_PER_SEGMENT, ocl),
-			somata: Somata::new(common::CELLS_PER_SEGMENT, ocl),
-			dendrites: Dendrites::new(common::CELL_DENDRITES_PER_SEGMENT, ocl),
-			synapses: Synapses::new(common::CELL_SYNAPSES_PER_SEGMENT, ocl),
+			//axons:	Axons::new(common::CELL_AXONS_PER_SEGMENT, ocl),
+			somata: Somata::new(len, ocl),
+			dendrites: Dendrites::new(len * common::DENDRITES_PER_NEURON, ocl),
+			synapses: Synapses::new(len * common::SYNAPSES_PER_NEURON, ocl),
 		}
 	}
 }
 
 
-pub struct Axons {
+/*pub struct Axons {
 	pub states: Envoy<ocl::cl_char>,
 }
 impl Axons {
 	pub fn new(size: usize, ocl: &ocl::Ocl) -> Axons {
 
-		let actual_axons = size / common::AXONS_PER_NEURON;		// one per cell;
-
-		assert!(actual_axons == common::CELLS_PER_SEGMENT, "Each cell in segment must have 1 axon.");
-
-		//init_axon(&mut target_cell_somata, &mut target_cell_synapses);
-
-		//Axons::init(&mut target_cell_somata, &mut target_cell_synapses, ocl);
-
 		Axons {
 			states: Envoy::<ocl::cl_char>::new(actual_axons, 0i8, ocl),
 		}
 	}
-
-		// ************ REWRITE SHUFFLING FUNCTION TO DISTRIBUTE USING A NORMAL DISTRIBUTION
-
-	pub fn init(
-				target_cell_somata: &mut Envoy<ocl::cl_short>, 
-				target_cell_synapses: &mut Envoy<ocl::cl_char>,
-				ocl: &ocl::Ocl,
-	) {
-
-		//println!("cell::Axons init with {} len.", common::CELL_AXONS_PER_SEGMENT);
-		assert!(target_cell_somata.len() == target_cell_synapses.len(), "Arrays must be of equal length.");
-
-		let len = target_cell_somata.len();
-
-				// ************ REWRITE SHUFFLING FUNCTION TO DISTRIBUTE USING A NORMAL DISTRIBUTION
-		let source_vec = common::shuffled_vec(len, 0i32);
-
-		for i in range(0, len) {
-			let som_addr = source_vec[i] >> 8;
-			let syn_addr = source_vec[i] - (som_addr << 8);
-		}
-
-		target_cell_somata.write();
-		target_cell_synapses.write();
-	}
-}
+}*/
 
 
 pub struct Somata {	
@@ -89,41 +56,48 @@ impl Somata {
 
 pub struct Dendrites {
 	pub thresholds: Envoy<ocl::cl_char>,
-	pub values: Envoy<ocl::cl_char>,
+	pub states: Envoy<ocl::cl_char>,
 }
 impl Dendrites {
 	pub fn new(size: usize, ocl: &ocl::Ocl) -> Dendrites {
 		Dendrites {
 			thresholds: Envoy::<ocl::cl_char>::new(size, common::DENDRITE_INITIAL_THRESHOLD, ocl),
-			values: Envoy::<ocl::cl_char>::new(size, 0i8, ocl),
+			states: Envoy::<ocl::cl_char>::new(size, 0i8, ocl),
 		}
 	}
 }
 
 
 pub struct Synapses {
-	pub values: Envoy<ocl::cl_char>,
+	pub states: Envoy<ocl::cl_char>,
 	pub strengths: Envoy<ocl::cl_char>,
-	pub source_addrs: Envoy<ocl::cl_short>,
+	//pub src_idxs: Envoy<ocl::cl_short>,
+	pub axon_levs: Envoy<ocl::cl_uchar>,
+	pub axon_idxs: Envoy<ocl::cl_char>,
 }
 impl Synapses {
 	pub fn new(size: usize, ocl: &ocl::Ocl) -> Synapses {
 		let input_size = 1024i16;
 
-		let mut source_addrs = Envoy::<ocl::cl_short>::new(size, 0i16, ocl);
+		//let mut src_idxs = Envoy::<ocl::cl_short>::new(size, 0i16, ocl);
+		let mut axon_levs = Envoy::<ocl::cl_uchar>::new(size, 0, ocl);
+		let mut axon_idxs = Envoy::<ocl::cl_char>::new(size, 0, ocl);
 
 
-		Synapses::init(&mut source_addrs, input_size);
+		//Synapses::init(&mut axon_idxs, input_size);
 
 		Synapses {
-			values: Envoy::<ocl::cl_char>::new(size, 0i8, ocl),
+			states: Envoy::<ocl::cl_char>::new(size, 0i8, ocl),
 			strengths: Envoy::<ocl::cl_char>::new(size, common::SYNAPSE_STRENGTH_ZERO, ocl),
-			source_addrs: source_addrs,
+			axon_levs: axon_levs,
+			axon_idxs: axon_idxs,
+			//axon_idxs: axon_idxs,
+
 		}
 	}
 
-	fn init(mut source_addrs: &mut Envoy<ocl::cl_short>, input_size: i16) {
-		let len = source_addrs.vec.len();
+	fn init(mut axon_idxs: &mut Envoy<ocl::cl_short>, input_size: i16) {
+		let len = axon_idxs.vec.len();
 		let syn_per_layer = common::SYNAPSES_PER_LAYER;
 		let mut offset: usize = 0;
 		let mut current_layer: usize = 0;
@@ -140,14 +114,14 @@ impl Synapses {
 		 		let input_range = Range::new(0, input_size);
 
 				for i in range(0, syn_per_layer) {
-					source_addrs.vec[offset + i] = input_range.ind_sample(&mut rng);
+					axon_idxs.vec[offset + i] = input_range.ind_sample(&mut rng);
 				}
 		 	} else {
 		 		let source_size = 256u16;		// NUMBER OF SOURCE CELLS READABLE FROM WITHIN LAYER (should be 256 later on)
 				let source_range = Range::new(0, source_size);
 
 				for i in range(0, syn_per_layer) {
-					//source_addrs.vec[offset + i] = source_range.ind_sample(&mut rng);
+					//axon_idxs.vec[offset + i] = source_range.ind_sample(&mut rng);
 				}
 		 	}
 
@@ -156,11 +130,11 @@ impl Synapses {
 
 
 		
-		source_addrs.write();
+		axon_idxs.write();
 
 		/*
 		println!("Printing Sources: (input_size: {})", input_size);
-		source_addrs.print(1);
+		axon_idxs.print(1);
 		*/
 	}
 }

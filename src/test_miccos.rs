@@ -4,6 +4,7 @@ use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
 use microcosm::world::{ World };
 use sub_cortex::{ SubCortex };
 use cortex::{ Cortex };
+use cortical_regions::{ CorticalRegion };
 use chord::{ Chord };
 use ocl;
 use std::clone::Clone;
@@ -76,12 +77,12 @@ pub fn run() {
 					let peek_chord = render_peek(world.peek_from(snake_uid));
 					peek_chord.print();
 					print!{" => "};
-					snake_brain.cort.sensory_segments[0].values.print(&snake_brain.cort.ocl);
+					snake_brain.cort.sensory_segs[0].values.print(&snake_brain.cort.ocl);
 				*/
 
 				if true {
 					print!("\n[ i:{} ] [ \n", i);
-					snake_brain.cort.sensory_segments[0].values.print(1);
+					snake_brain.cort.sensory_segs[0].values.print(1);
 
 					print!("\n] [==[ \n");
 					//snake_brain.cort.cortical_segments[0].columns.synapses.values.print(256);
@@ -97,7 +98,7 @@ pub fn run() {
 	// let peek_chord = render_peek(world.peek_from(worm_uid));
 	// peek_chord.print();
 	// snake_brain.cort.sense(0, &peek_chord);
-	// snake_brain.cort.sensory_segments[0].values.print(&snake_brain.cort.ocl);
+	// snake_brain.cort.sensory_segs[0].values.print(&snake_brain.cort.ocl);
 	
 
 	//worm_brain.print();
@@ -112,7 +113,7 @@ pub struct SnakeBrain {
 	pub subc: SubCortex,
 	pub body_uid: usize,
 }
-impl  SnakeBrain {
+impl SnakeBrain {
 	pub fn new(body_uid: usize) -> SnakeBrain {
 		SnakeBrain { 
 			cort: Cortex::new(),
@@ -155,7 +156,7 @@ trait SnakeCortex {
 	fn sense_peek(&mut self, peek_chord: &Chord);
 	fn release(&mut self);
 }
-impl  SnakeCortex for Cortex {
+impl SnakeCortex for Cortex {
 	fn sense_peek(&mut self, pc: &Chord) {
 
 		/*

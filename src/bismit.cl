@@ -25,14 +25,14 @@
 __kernel void sense(
 				__global char *src_vals,  // CHANGE TO _states
 				__global char *tar_vals,
-				__global short *tar_som_addrs,
-				__global char *tar_syn_addrs,
+				__global short *tar_som_idxs,
+				__global char *tar_syn_idxs,
 				__private char dup_factor_shift
 ) {
 	size_t gid = get_global_id(0);
-	size_t tar_addr = mad24(tar_som_addrs[gid], SYNAPSES_PER_NEURON, tar_syn_addrs[gid]);
+	size_t tar_idx = mad24(tar_som_idxs[gid], SYNAPSES_PER_NEURON, tar_syn_idxs[gid]);
 
-	tar_vals[tar_addr] = src_vals[gid >> dup_factor_shift];
+	tar_vals[tar_idx] = src_vals[gid >> dup_factor_shift];
 	
 }
 
@@ -86,7 +86,7 @@ __kernel void cycle_col_soms(
 	// #WORKGROUP SIZE: common::SYNAPSES_PER_LAYER
 __kernel void cycle_cel_syns(
 				__global char *src_vals,
-				__global short *syn_src_addrs,
+				__global short *syn_src_idxs,
 				__global char *syn_strs,
 				__global char *syn_vals,
 				__private uint src_offset,
@@ -98,10 +98,10 @@ __kernel void cycle_cel_syns(
 	size_t gid = get_global_id(0);
 	size_t ogid = syn_offset + gid;
 
-	int src_addr = syn_src_addrs[ogid] + src_offset + (gid_offset_factor * gid);
-	char src_val = mad_sat(src_vals[src_addr], boost_factor, (char)0);
-	//int src_addr = syn_src_addrs[gid];
-	//char src_val = src_vals[src_addr];
+	int src_idx = syn_src_idxs[ogid] + src_offset + (gid_offset_factor * gid);
+	char src_val = mad_sat(src_vals[src_idx], boost_factor, (char)0);
+	//int src_idx = syn_src_idxs[gid];
+	//char src_val = src_vals[src_idx];
 
 	syn_vals[ogid] = mul_hi(src_val, syn_strs[ogid]);
 	//syn_vals[gid] = src_val;
@@ -258,7 +258,7 @@ __kernel void test_int_shift(__global char *test_out, __private char input) {
 	// #WG common::CELL_SYNAPSES_PER_SEGMENT
 __kernel void cycle_cel_syns_1(
 				__global uchar *src_states,
-				__global ushort *syn_src_addrs,
+				__global ushort *syn_src_idxs,
 				__global uchar *syn_strs,
 				__global uchar *syn_states,
 				__private uint layer_group_offset,
@@ -267,12 +267,12 @@ __kernel void cycle_cel_syns_1(
 	int gid = get_global_id(0);
 	//int layer_id = gid << 
 
-	syn_states[gid] = mul_hi(src_states[syn_src_addrs[gid]], syn_strs[gid]);
+	syn_states[gid] = mul_hi(src_states[syn_src_idxs[gid]], syn_strs[gid]);
 }
 
 __kernel void cycle_cel_syns_2(
 				__global uchar *src_states,
-				__global ushort *syn_src_addrs,
+				__global ushort *syn_src_idxs,
 				__global uchar *syn_strs,
 				__global uchar *syn_states,
 				__private uint layer_group_offset,
@@ -283,15 +283,15 @@ __kernel void cycle_cel_syns_2(
 
 	// uchar myself = src_states[lgid];
 
-	ushort src_addr = syn_src_addrs[lgid];
-	uchar src_state = src_states[src_addr];
+	ushort src_idx = syn_src_idxs[lgid];
+	uchar src_state = src_states[src_idx];
 
 	syn_states[lgid] = mul_hi(src_state, syn_strs[lgid]);
 }
 
 __kernel void cycle_cel_syns_2_left(
 				__global uchar *src_states,
-				__global ushort *syn_src_addrs,
+				__global ushort *syn_src_idxs,
 				__global uchar *syn_strs,
 				__global uchar *syn_states,
 				__private uint layer_group_offset,
@@ -302,15 +302,15 @@ __kernel void cycle_cel_syns_2_left(
 
 	uchar myself = src_states[lgid];
 
-	ushort src_addr = syn_src_addrs[lgid]
-	uchar src_state = src_states[src_addr];
+	ushort src_idx = syn_src_idxs[lgid]
+	uchar src_state = src_states[src_idx];
 
 	syn_states[lgid] = mul_hi(src_state, syn_strs[lgid]);
 }
 
 __kernel void cycle_cel_syns_2_right(
 				__global uchar *src_states,
-				__global ushort *syn_src_addrs,
+				__global ushort *syn_src_idxs,
 				__global uchar *syn_strs,
 				__global uchar *syn_states,
 				__private uint layer_group_offset,
@@ -321,8 +321,8 @@ __kernel void cycle_cel_syns_2_right(
 
 	uchar myself = src_states[lgid];
 
-	ushort src_addr = syn_src_addrs[lgid]
-	uchar src_state = src_states[src_addr];
+	ushort src_idx = syn_src_idxs[lgid]
+	uchar src_state = src_states[src_idx];
 
 	syn_states[lgid] = mul_hi(src_state, syn_strs[lgid]);
 }

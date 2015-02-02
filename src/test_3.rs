@@ -16,8 +16,8 @@ pub fn run() {
 	
 		test_readback::test_readback(
 					&my_cortex, 
-					&my_cortex.cells.synapses.values.vec, 
-					my_cortex.cells.synapses.values.buf, 
+					&my_cortex.cells.synapses.states.vec, 
+					my_cortex.cells.synapses.states.buf, 
 					"test_synapse"
 		);
 	

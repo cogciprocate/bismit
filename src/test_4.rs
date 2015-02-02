@@ -5,6 +5,7 @@ use ocl;
 use common;
 use chord::{ Chord };
 use envoy::{ Envoy };
+//use axon_space::{ AxonSpace };
 
 use time;
 
@@ -26,6 +27,7 @@ pub fn test_cycle_dens() {
 			vec1.push(-64i8);
 		}
 	}
+
 
 	//vec1[0] = 0;
 	//vec1[500] = 50;
@@ -52,9 +54,9 @@ pub fn test_cycle_dens() {
 		// 512:1 (25% ACTIVITY, 262144 len)
 		//
 
-		println!("\n sensory_segment.values");
-		cortex.sensory_segments[0].values.print(1 << 4);	
-		//common::print_vec(&cortex.sensory_segments[0].values.vec, 1 << 4, true);
+		println!("\n sensory_segment.states");
+		cortex.sensory_segs[0].values.print(1 << 4);	
+		//common::print_vec(&cortex.sensory_segments[0].states.vec, 1 << 4, true);
 
 		
 		//	println!("\n tmp_out: ");
@@ -66,13 +68,13 @@ pub fn test_cycle_dens() {
 		}
 
 		if true {
-			println!("\n cells.synapses.source_addrs.values:");
-			cortex.cells.synapses.source_addrs.print(16384);		// 16384
+			println!("\n cells.synapses.axon_idxs.states:");
+			cortex.cells.synapses.axon_idxs.print(16384);		// 16384
 		}
 
 		if true {
-			println!("\n cells.synapses.values: ");
-			cortex.cells.synapses.values.print(1 << 13);
+			println!("\n cells.synapses.states: ");
+			cortex.cells.synapses.states.print(1 << 13);
 		}
 
 		if false {
@@ -81,13 +83,13 @@ pub fn test_cycle_dens() {
 		}
 
 		if true {
-			println!("\n cells.dendrites.values: ");
-			cortex.cells.dendrites.values.print(1 << 10);
+			println!("\n cells.dendrites.states: ");
+			cortex.cells.dendrites.states.print(1 << 10);
 		}
 
 		if false {
 			println!("\n cells.axons.states: ");
-			cortex.cells.axons.states.print(1 << 5);
+			//cortex.cells.axons.values.print(1 << 5);
 		}
 
 		i += 1;
@@ -119,26 +121,26 @@ pub fn test_cycle_dens() {
 	/***** Testing Axon Stuff *****
 		let mut vec2: Vec<u8> = iter::repeat(0).take(1024 * 256).collect();
 
-		let mut tar_addrs: Vec<usize> = iter::repeat(0).take(1024 * 256).collect();
+		let mut tar_idxs: Vec<usize> = iter::repeat(0).take(1024 * 256).collect();
 
 
 		for i in range(0, vec2.len()) {
 
-			tar_addrs[i] = ((cortex.sensory_segments[0].target_addresses.target_column_bodies.vec[i] as usize) << 8 ) + cortex.sensory_segments[0].target_addresses.target_column_synapses.vec[i] as usize;
+			tar_idxs[i] = ((cortex.sensory_segments[0].target_idxesses.target_column_bodies.vec[i] as usize) << 8 ) + cortex.sensory_segments[0].target_idxesses.target_column_synapses.vec[i] as usize;
 
-			//	print!("[{}: {}]", i, tar_addr);
+			//	print!("[{}: {}]", i, tar_idx);
 
-			vec2[tar_addrs[i]] = vec1[i as usize >> 8us];
+			vec2[tar_idxs[i]] = vec1[i as usize >> 8us];
 			
 
 			//	*x = (tcb_vec[i] << 8) as u32 + tcs_vec[i] as u32;
 
 		}
 
-		//common::dup_check(&tar_addrs);
+		//common::dup_check(&tar_idxs);
 
-		//println!("First 3: {}, {}, {}", tar_addrs[0], tar_addrs[1], tar_addrs[2]);
-		//println!("Last 3: {}, {}, {}", tar_addrs[tar_addrs.len() - 1], tar_addrs[tar_addrs.len() - 2], tar_addrs[tar_addrs.len() - 3]);
+		//println!("First 3: {}, {}, {}", tar_idxs[0], tar_idxs[1], tar_idxs[2]);
+		//println!("Last 3: {}, {}, {}", tar_idxs[tar_idxs.len() - 1], tar_idxs[tar_idxs.len() - 2], tar_idxs[tar_idxs.len() - 3]);
 
 	*******************/
 

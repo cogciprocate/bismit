@@ -64,9 +64,11 @@ impl SensorySegment {
 		chord.unfold_into(&mut self.values.vec);
 		self.values.write();
 
-
 		//ocl::enqueue_kernel(self.sense_kernel, self.command_queue, common::COLUMN_SYNAPSES_PER_SEGMENT);
+	}
 
+	pub fn len(&self) -> usize {
+		self.values.vec.len()
 	}
 
 }
