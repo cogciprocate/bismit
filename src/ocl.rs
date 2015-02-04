@@ -1,13 +1,13 @@
-#![allow(non_camel_case_types, dead_code, unstable, deprecated)]
 
 extern crate libc;
 
 use std;
 use std::ptr;
 use std::mem;
-use std::io;
+use std::old_io::{ File };
 use std::ffi;
 use std::iter;
+use envoy::{ Envoy };
 use cl_h;
 pub use cl_h::{cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_char, cl_uchar, cl_short, cl_ushort, cl_int, cl_uint,   cl_long, CLStatus};
 
@@ -24,7 +24,7 @@ pub struct Ocl {
 impl Ocl {
 	pub fn new() -> Ocl {
 		let kern_file_path: std::path::Path = std::path::Path::new(format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME));
-		let kern_str: Vec<u8> = io::File::open(&kern_file_path).read_to_end().unwrap();
+		let kern_str: Vec<u8> = File::open(&kern_file_path).read_to_end().unwrap();
 		let kern_c_str = ffi::CString::from_vec(kern_str);
 
 		let platform = new_platform();
@@ -62,13 +62,28 @@ impl Ocl {
 		new_read_buffer(data, self.context)
 	}
 
+
 	pub fn enqueue_write_buffer<T>(
 					&self,
-					data: &Vec<T>, 
-					buffer: cl_h::cl_mem, 
+					src: &Envoy<T>,
 	) {
-		enqueue_write_buffer(data, buffer, self.command_queue);
+
+		unsafe {
+			let err = cl_h::clEnqueueWriteBuffer(
+						self.command_queue,
+						src.buf,
+						cl_h::CL_TRUE,
+						0,
+						(src.vec.len() * mem::size_of::<T>()) as libc::size_t,
+						src.vec.as_ptr() as *const libc::c_void,
+						0 as cl_h::cl_uint,
+						ptr::null(),
+						ptr::null_mut(),
+			);
+			must_succ("clEnqueueWriteBuffer()", err);
+		}
 	}
+
 
 	pub fn enqueue_read_buffer<T>(
 					&self,
@@ -76,6 +91,30 @@ impl Ocl {
 					buffer: cl_h::cl_mem, 
 	) {
 		enqueue_read_buffer(data, buffer, self.command_queue);
+	}
+
+	pub fn enqueue_copy_buffer<T>(
+					&self,
+					src: &Envoy<T>,		//	src_buffer: cl_mem,
+					dst: &Envoy<T>,		//	dst_buffer: cl_mem,
+					src_offset: usize,
+					dst_offset: usize,
+					len_copy_bytes: usize,
+	) {
+		unsafe {
+			let err = cl_h::clEnqueueCopyBuffer(
+				self.command_queue,
+				src.buf,				//	src_buffer,
+				dst.buf,				//	dst_buffer,
+				mem::transmute(src_offset),
+				mem::transmute(dst_offset),
+				mem::transmute(len_copy_bytes),
+				0,
+				ptr::null(),
+				ptr::null_mut(),
+			);
+			must_succ("clEnqueueCopyBuffer()", err);
+		}
 	}
 
 	pub fn enqueue_kernel(
@@ -270,26 +309,30 @@ pub fn new_read_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_
 	}
 }
 
+
 pub fn enqueue_write_buffer<T>(
-				data: &Vec<T>, 
-				buffer: cl_h::cl_mem, 
-				command_queue: cl_h::cl_command_queue,
-) {
-	unsafe {
-		let err = cl_h::clEnqueueWriteBuffer(
-					command_queue,
-					buffer,
-					cl_h::CL_TRUE,
-					0,
-					(data.len() * mem::size_of::<T>()) as libc::size_t,
-					data.as_ptr() as *const libc::c_void,
-					0 as cl_h::cl_uint,
-					ptr::null(),
-					ptr::null_mut(),
-		);
-		must_succ("clEnqueueWriteBuffer()", err);
+					data: &Vec<T>,
+					buffer: cl_h::cl_mem, 
+					command_queue: cl_h::cl_command_queue,
+					offset: usize,
+	) {
+
+		unsafe {
+			let err = cl_h::clEnqueueWriteBuffer(
+						command_queue,
+						buffer,
+						cl_h::CL_TRUE,
+						mem::transmute(offset),
+						(data.len() * mem::size_of::<T>()) as libc::size_t,
+						data.as_ptr() as *const libc::c_void,
+						0 as cl_h::cl_uint,
+						ptr::null(),
+						ptr::null_mut(),
+			);
+			must_succ("clEnqueueWriteBuffer()", err);
+		}
 	}
-}
+
 
 pub fn enqueue_read_buffer<T>(
 				data: &Vec<T>,
@@ -311,6 +354,7 @@ pub fn enqueue_read_buffer<T>(
 		must_succ("clEnqueueReadBuffer()", err);
 	}
 }
+
 
 pub fn set_kernel_arg<T>(arg_index: cl_h::cl_uint, buffer: T, kernel: cl_h::cl_kernel) {
 	unsafe {

@@ -65,7 +65,7 @@ impl Chord {
 		cuf
 	}
 
-	pub fn unfold_into(&self, dest_vec: &mut Vec<i8>) {
+	pub fn unfold_into(&self, dest_vec: &mut Vec<i8>, offset: usize) {
 		dest_vec.clear();
 		dest_vec.push_all(self.unfold().notes.as_slice());		
 	}

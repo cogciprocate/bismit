@@ -12,6 +12,9 @@ use std::mem;
 use std::num::{ Int };
 
 
+pub type Thalamus = Vec<SensorySegment>;
+
+
 pub struct SensorySegment {
 	pub values: Envoy<ocl::cl_char>,
 	//pub target_addresses: column::Axons,
@@ -23,9 +26,9 @@ pub struct SensorySegment {
 
 }
 impl SensorySegment {
-	pub fn new(width: usize, ocl: &ocl::Ocl) -> SensorySegment {
+	pub fn new(width: u32, ocl: &ocl::Ocl) -> SensorySegment {
 
-		let values = Envoy::<ocl::cl_char>::new(width, 0i8, ocl);
+		let values = Envoy::<ocl::cl_char>::new(width, 1, 0i8, ocl);
 		//let target_addresses = column::Axons::new(common::COLUMN_SYNAPSES_PER_SEGMENT, ocl);
 
 
@@ -61,7 +64,7 @@ impl SensorySegment {
 	}
 
 	pub fn sense(&mut self, chord: &Chord) {
-		chord.unfold_into(&mut self.values.vec);
+		chord.unfold_into(&mut self.values.vec, 0);
 		self.values.write();
 
 		//ocl::enqueue_kernel(self.sense_kernel, self.command_queue, common::COLUMN_SYNAPSES_PER_SEGMENT);

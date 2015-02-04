@@ -1,5 +1,4 @@
 use ocl;
-use sensory_seg::{ SensorySegment };
 use envoy::{ Envoy };
 use common;
 
@@ -7,6 +6,22 @@ use common;
 use std::ops::{ Range };
 use std::collections::{ HashMap, HashSet };
 use std::num;
+
+
+
+
+pub struct AxonSpace {
+	pub states: Envoy<ocl::cl_char>,
+}
+
+impl AxonSpace {
+	pub fn new(len: usize, ocl: ocl::Ocl) -> AxonSpace {
+		AxonSpace { 
+			states: Envoy::<ocl::cl_char>::new(len, 0i8, ocl),
+		}
+	}
+}
+
 
 /*
 
@@ -79,7 +94,7 @@ impl Axons {
 
 
 
-
+/*
 pub struct AxonSpace {
 	//pub regions: HashMap<&'static str, AxonRegion>,
 	pub rows: HashMap<&'static str, AxonRegion>,
@@ -171,3 +186,4 @@ impl AxonLayer {
 		self.range
 	}
 }
+*/

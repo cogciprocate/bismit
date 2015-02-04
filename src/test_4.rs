@@ -62,13 +62,18 @@ pub fn test_cycle_dens() {
 		//	println!("\n tmp_out: ");
 		//	cortex.sensory_segments[0].tmp_out.print(1000);
 
+		if true {
+			println!("\n cells.axons.states: ");
+			cortex.cells.axons.states.print(1 << 4);
+		}
+
 		if false {
 			println!("\n cells.somata.states: ");
 			cortex.cells.somata.states.print(256);
 		}
 
 		if true {
-			println!("\n cells.synapses.axon_idxs.states:");
+			println!("\n cells.synapses.axon_idxs:");
 			cortex.cells.synapses.axon_idxs.print(16384);		// 16384
 		}
 
@@ -85,11 +90,6 @@ pub fn test_cycle_dens() {
 		if true {
 			println!("\n cells.dendrites.states: ");
 			cortex.cells.dendrites.states.print(1 << 10);
-		}
-
-		if false {
-			println!("\n cells.axons.states: ");
-			//cortex.cells.axons.values.print(1 << 5);
 		}
 
 		i += 1;
@@ -148,7 +148,7 @@ pub fn test_cycle_dens() {
 
 }
 
-pub fn buffer_test() {
+/*pub fn buffer_test() {
 	println!("--- test4::buffer_test() ---");
 	let mut cortex = cortex::Cortex::new();
 
@@ -171,7 +171,7 @@ pub fn buffer_test() {
 		}
 		//common::print_vec(&vec2, 10);
 
-		ocl::enqueue_write_buffer(&mut vec2, buf2, cortex.ocl.command_queue);
+		cortex.ocl.enqueue_write_buffer(&mut vec2, buf2, cortex.ocl.command_queue);
 	}
 
 	
@@ -274,3 +274,4 @@ pub fn print_vec_info<T: Clone + Default + Int>(my_vec: &Vec<T>, info: &str) {
 	println!("[{}: total:{}; len:{}; avg:{}]", info, total, my_vec.len(), total/my_vec.len());
 
 }
+*/

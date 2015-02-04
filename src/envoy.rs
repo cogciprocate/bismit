@@ -10,33 +10,43 @@ use std::default::{ Default };
 pub struct Envoy<T> {
 	pub vec: Vec<T>,
 	pub buf: ocl::cl_mem,
+	pub width: u32,
+	pub height: u8,
 	pub ocl: Box<ocl::Ocl>,
 }
 impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
-	pub fn new(size: usize, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
-		let vec: Vec<T> = iter::repeat(init_val).take(size).collect();
-		Envoy::_new(vec, ocl)
+	pub fn new(width: u32, height: u8, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
+		let len = len(width, height);
+		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
+
+		Envoy::_new(width, height, vec, ocl)
 	}
 
-	pub fn shuffled(size: usize, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
-		let vec: Vec<T> = common::shuffled_vec(size, init_val);
-		Envoy::_new(vec, ocl)
+	pub fn shuffled(width: u32, height: u8, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
+		let len = len(width, height);
+		let vec: Vec<T> = common::shuffled_vec(len, init_val);
+
+		Envoy::_new(width, height, vec, ocl)
 	}
 
-	fn _new(mut vec:Vec<T>, ocl: &ocl::Ocl) -> Envoy<T> {
+	pub fn _new(width: u32, height: u8, mut vec: Vec<T>, ocl: &ocl::Ocl) -> Envoy<T> {
 		let buf: ocl::cl_mem = ocl::new_buffer(&mut vec, ocl.context);
 
-		ocl::enqueue_write_buffer(&mut vec, buf, ocl.command_queue);
-
-		Envoy {
+		let envoy = Envoy {
 			vec: vec,
 			buf: buf,
+			width: width,
+			height: height,
 			ocl: Box::new(ocl.clone()),
-		}
+		};
+
+		ocl.enqueue_write_buffer(&envoy);
+
+		envoy
 	}
 
 	pub fn write(&mut self) {
-		ocl::enqueue_write_buffer(&self.vec, self.buf, self.ocl.command_queue);
+		self.ocl.enqueue_write_buffer(self);
 	}
 
 	pub fn read(&mut self) {
@@ -44,7 +54,8 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 	}
 
 	pub fn len(&self) -> usize {
-		self.vec.len()
+		assert!((self.width as usize * self.height as usize) == self.vec.len(), "Envoy len mismatch");
+		len(self.width, self.height)
 	}
 
 	pub fn print(&mut self, every: usize) {
@@ -59,3 +70,6 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 }
 
 
+fn len(width: u32, height: u8) -> usize {
+	width as usize * height as usize
+}

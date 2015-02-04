@@ -1,4 +1,4 @@
-use std::io;
+use std::old_io::{ File, BufferedReader };
 use std;
 use std::num::Float;
 
@@ -11,12 +11,12 @@ pub fn ascii_sense() -> Box<Vec<Box<Vec<u16>>>> {
 	let mut song: Vec<Box<Vec<u16>>> = Vec::new();
 	println!("** Starting song.len(): {}",song.len());
 
-	let input_file = match io::File::open(&Path::new(INPUT_FILE_NAME)) {
+	let input_file = match File::open(&Path::new(INPUT_FILE_NAME)) {
 		Ok(file) => file,
 		Err(e) => panic!("error opening file: {}; {}", INPUT_FILE_NAME, e),
 	};
 
-	let mut reader = std::io::BufferedReader::new(input_file);
+	let mut reader = BufferedReader::new(input_file);
 
 	for x in range(INPUT_READ_OFFSET, INPUT_READ_OFFSET + INPUT_CHARS_TO_READ) {
 		match reader.read_byte() {

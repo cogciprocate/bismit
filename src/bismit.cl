@@ -23,11 +23,11 @@
 
 	// #WG: common::COLUMN_SYNAPSES_PER_SEGMENT
 __kernel void sense(
-				__global char *src_vals,  // CHANGE TO _states
-				__global char *tar_vals,
-				__global short *tar_som_idxs,
-				__global char *tar_syn_idxs,
-				__private char dup_factor_shift
+				__global const char *src_vals,  // CHANGE TO _states
+				__global char * const tar_vals,
+				__global const short *tar_som_idxs,
+				__global const char *tar_syn_idxs,
+				__private const char dup_factor_shift
 ) {
 	size_t gid = get_global_id(0);
 	size_t tar_idx = mad24(tar_som_idxs[gid], SYNAPSES_PER_NEURON, tar_syn_idxs[gid]);
@@ -38,10 +38,10 @@ __kernel void sense(
 
 	// #WG: common::COLUMN_DENDRITES_PER_SEGMENT
 __kernel void cycle_col_dens(
-				__global uchar *syn_vals,
-				__global uchar *syn_strs,
-				__global uchar *den_thrs,
-				__global uchar *den_vals
+				__global const uchar *syn_vals,
+				__global const uchar *syn_strs,
+				__global const uchar *den_thrs,
+				__global uchar * const den_vals
 ) {
 	size_t gid = get_global_id(0);
 	size_t syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
@@ -60,8 +60,8 @@ __kernel void cycle_col_dens(
 
 	// #WG: common::COLUMNS_PER_SEGMENT
 __kernel void cycle_col_soms(
-				__global uchar *den_vals,
-				__global uchar *som_vals,
+				__global const uchar *den_vals,
+				__global uchar * const som_vals,
 				__global uchar *cel_states
 ) {
 	size_t gid = get_global_id(0);
@@ -85,14 +85,14 @@ __kernel void cycle_col_soms(
 
 	// #WORKGROUP SIZE: common::SYNAPSES_PER_LAYER
 __kernel void cycle_cel_syns(
-				__global char *src_vals,
-				__global short *syn_src_idxs,
-				__global char *syn_strs,
-				__global char *syn_vals,
-				__private uint src_offset,
-				__private uint syn_offset,
-				__private uint gid_offset_factor,
-				__private char boost_factor
+				__global const char *src_vals,
+				__global const short *syn_src_idxs,
+				__global const char *syn_strs,
+				__global char * const syn_vals,
+				__private const uint src_offset,
+				__private const uint syn_offset,
+				__private const uint gid_offset_factor,
+				__private const char boost_factor
 				//__private uint layer_current
 ) {
 	size_t gid = get_global_id(0);
@@ -108,9 +108,9 @@ __kernel void cycle_cel_syns(
 }
 
 __kernel void cycle_cel_dens(
-				__global char *syn_vals,
-				__global char *den_thrs,
-				__global char *den_vals
+				__global const char *syn_vals,
+				__global const char *den_thrs,
+				__global char * const den_vals
 ) {
 	size_t gid = get_global_id(0);
 	size_t syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
@@ -129,8 +129,8 @@ __kernel void cycle_cel_dens(
 }
 
 __kernel void cycle_cel_axons(
-				__global uchar *den_vals,
-				__global uchar *som_states
+				__global const uchar *den_vals,
+				__global uchar * const som_states
 ) {
 	size_t gid = get_global_id(0);
 	size_t den_grp = gid << DENDRITES_PER_NEURON_LOG2;

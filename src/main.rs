@@ -1,4 +1,5 @@
-#![allow(non_camel_case_types, dead_code, unstable, deprecated, unused_variables, unused_assignments, unused_imports, unused_mut)]
+#![allow(non_camel_case_types, dead_code, deprecated, unused_variables, unused_assignments, unused_imports, unused_mut)]
+#![feature(core, rand, io, collections, path, hash, libc, std_misc)]
 
 extern crate microcosm;
 extern crate time;
@@ -14,7 +15,7 @@ mod envoy;
 //mod column;
 mod cells;
 //mod cort_seg;
-mod sensory_seg;
+mod thalamus;
 mod cortex;
 mod cortical_regions;
 mod cortical_areas;

@@ -60,6 +60,9 @@ pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_NEURON;
 pub const SENSORY_CHORD_WIDTH: usize = 1024; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
+pub const SYNAPSE_REACH: usize = 128;
+pub const MAX_SYNAPSE_RANGE: usize = SYNAPSE_REACH * 2;
+
 pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool) {
 
 	let mut ttl_nz = 0us;

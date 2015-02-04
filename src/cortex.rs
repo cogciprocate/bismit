@@ -1,11 +1,11 @@
 use ocl;
 use common;
 use envoy::{ Envoy };
-use sensory_seg::{ SensorySegment };
+use thalamus::{ Thalamus, SensorySegment };
 use chord::{ Chord };
 use cells:: { self, Cells };
 use cortical_regions::{ self, CorticalRegion, CorticalRegions, CorticalRegionType };
-use cortical_areas;
+use cortical_areas::{ self, CorticalAreas };
 //use axon_space::{ AxonSpace };
 //use syn_segs::{ SynSegs, SegType };
 //use cort_seg::{ CortSeg };
@@ -20,10 +20,11 @@ use time;
 
 pub struct Cortex {
 	pub cells: Cells,
-	pub sensory_segs: Vec<SensorySegment>,
+	pub sensory_segs: Thalamus,
 	//pub axon_space: AxonSpace,
 	//pub layers: Vec<CorticalLayer>,
 	pub regions: CorticalRegions,
+	pub areas: CorticalAreas,
 	//pub syn_segs: SynSegs,
 	//pub segs: HashMap<&'static str, CortSeg>,
 	pub ocl: ocl::Ocl,
@@ -35,32 +36,17 @@ impl Cortex {
 		let time_start = time::get_time().sec;
 		let ocl: ocl::Ocl = ocl::Ocl::new();
 		let regions = cortical_regions::define();
-		let area_width = cortical_areas::define();
-		//let mut axon_space = AxonSpace::new();
+		let areas = cortical_areas::define();
+		//let axon_space = AxonSpace::new();
+		let cells = Cells::new(&regions, &areas, &ocl);
 		//let mut syn_segs = SynSegs::new(&cells.synapses);
-		let mut cell_layers = 0us;
-
-		for (region_type, region) in regions.iter() {
-			if *region_type == CorticalRegionType::Sensory {
-				let (antecell, cell) = region.row_count();
-				cell_layers += cell;
-				//println!("*** antecell: {}, cell: {} ***", antecell, cell);
-			}
-		}
-
-		let total_cells = cell_layers * area_width;
-
-		let cells = Cells::new(total_cells, &ocl);
 
 
-			/***	Sensory Segments 	***/
+		/***	Sensory Segments 	***/
 		let mut ss = Vec::with_capacity(common::SENSORY_SEGMENTS_TOTAL);
-		ss.push(SensorySegment::new(common::SENSORY_CHORD_WIDTH, &ocl));
+		ss.push(SensorySegment::new(num::cast(common::SENSORY_CHORD_WIDTH).unwrap(), &ocl));
 
 		
-
-
-
 		let time_finish = time::get_time().sec;
 		println!(" ...initialized in: {} sec.", time_finish - time_start);
 
@@ -69,6 +55,7 @@ impl Cortex {
 			sensory_segs: ss,
 			//axon_space: axon_space,
 			regions: regions,
+			areas: areas,
 			//syn_segs: syn_segs,
 			//segs: HashMap::new(),
 			ocl: ocl,
@@ -77,12 +64,62 @@ impl Cortex {
 
 
 	pub fn sense(&mut self, sgmt_idx: usize, chord: &Chord) {
+		let sensory_area = "v1";
+
+		let mut glimpse: Vec<i8> = Vec::with_capacity(common::SENSORY_CHORD_WIDTH);
+		chord.unfold_into(&mut glimpse, 0);
+
+		ocl::enqueue_write_buffer(&glimpse, self.cells.axons.states.buf, self.ocl.command_queue, common::SYNAPSE_REACH);
+		//self.ocl.enqueue_write_buffer(&glimpse_e, 128);
+
+
 		self.sensory_segs[sgmt_idx].sense(chord);
+
+		//self.values.write();		*******
+
+
+
+
 		//self.cycle_cel_syns(&self.sensory_segs[sgmt_idx].states);
 		//self.cycle_cel_dens();
 		//self.cycle_cel_axons();
 
 	}
+
+	fn cycle_syns(&self) {
+
+	}
+
+	/*fn cycle_cel_syns(&self, input_source: &Envoy<ocl::cl_char>,) {
+		
+		let layers_total: u32 = num::cast(common::LAYERS_PER_SEGMENT).expect("cycle_cel_syns, layers_total");
+		let syn_per_layer: u32 = num::cast(common::SYNAPSES_PER_LAYER).expect("cycle_cel_syns, syn_per_layer");
+		let axons_per_layer: u32 = num::cast(common::COLUMNS_PER_SEGMENT).expect("cycle_cel_syns, axons_per_layer");
+
+
+		let il: i16 = num::cast(input_source.vec.len()).expect("cycle_cel_syns, il");
+		//assert!(il == self.input_source_len, "Input vector size must equal self.input_source_len");
+
+		let kern = ocl::new_kernel(self.ocl.program, "cycle_cel_syns");
+		ocl::set_kernel_arg(1, self.cells.synapses.axon_idxs.buf, kern);
+		ocl::set_kernel_arg(2, self.cells.synapses.strengths.buf, kern);
+		ocl::set_kernel_arg(3, self.cells.synapses.states.buf, kern);
+
+
+		let cp = CcssParams { 
+			input_source: input_source, 
+			seq_iters: 4,
+			syn_offset_factor: syn_per_layer, 
+			syn_offset_start: 0,
+			src_offset_factor: 0,
+			src_offset_start: 0,
+			gid_offset_factor: 0, 
+			boost_factor: 1,
+		 };
+		self.cycle_cel_syn_seq(cp, kern);
+
+
+	}*/
 
 	/*pub fn regions_len(&self, region_type: CorticalRegionType) -> usize {
 		let mut len = 0us;
@@ -190,7 +227,7 @@ impl CorticalRegion {
 
 
 
-/*fn cycle_cel_syns(&self, input_source: &Envoy<ocl::cl_char>,) {
+/*	fn cycle_cel_syns(&self, input_source: &Envoy<ocl::cl_char>,) {
 		
 		let layers_total: u32 = num::cast(common::LAYERS_PER_SEGMENT).expect("cycle_cel_syns, layers_total");
 		let syn_per_layer: u32 = num::cast(common::SYNAPSES_PER_LAYER).expect("cycle_cel_syns, syn_per_layer");
