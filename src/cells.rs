@@ -14,7 +14,7 @@ use std::fmt::{ Display };
 
 
 pub struct Cells {
-	pub axons: Axons,
+	pub axns: Axons,
 	pub somata: Somata,
 	pub dendrites: Dendrites,
 	pub synapses: Synapses,
@@ -33,7 +33,7 @@ impl Cells {
 		
 
 		Cells {
-			axons:	Axons::new(width, height_total, ocl),
+			axns:	Axons::new(width, height_total, ocl),
 			somata: Somata::new(width, height_cellular_rows, ocl),
 			dendrites: Dendrites::new(width, height_cellular_rows, ocl),
 			synapses: Synapses::new(width, height_cellular_rows, regions, ocl),
@@ -52,9 +52,11 @@ impl Axons {
 	pub fn new(width: u32, height: u8, ocl: &ocl::Ocl) -> Axons {
 		//let len = (width as usize * height as usize)+ common::MAX_SYNAPSE_RANGE;
 
+		let padding = common::AXONS_MARGIN * 2;
+
 		Axons {
-			states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl),
-			width: width,
+			states: Envoy::<ocl::cl_char>::with_padding(padding, width, height, 0i8, ocl),
+			width: width + num::cast(padding).expect("Axons::new()"),
 			height: height,
 		}
 	}
@@ -79,7 +81,7 @@ pub struct Dendrites {
 
 impl Dendrites {
 	pub fn new(width_cel: u32, height: u8, ocl: &ocl::Ocl) -> Dendrites {
-		let width = width_cel * num::cast(common::DENDRITES_PER_NEURON).unwrap();
+		let width = width_cel * num::cast(common::DENDRITES_PER_NEURON).expect("cells::Dendrites::new()");
 		Dendrites {
 			thresholds: Envoy::<ocl::cl_char>::new(width, height, common::DENDRITE_INITIAL_THRESHOLD, ocl),
 			states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl),
@@ -92,26 +94,26 @@ pub struct Synapses {
 	pub states: Envoy<ocl::cl_char>,
 	pub strengths: Envoy<ocl::cl_char>,
 	//pub src_idxs: Envoy<ocl::cl_short>,
-	pub axon_levs: Envoy<ocl::cl_uchar>,
-	pub axon_idxs: Envoy<ocl::cl_char>,
+	pub axn_row_ids: Envoy<ocl::cl_uchar>,
+	pub axn_col_offs: Envoy<ocl::cl_char>,
 }
 
 impl Synapses {
 	pub fn new(width_cel: u32, height: u8, regions: &CorticalRegions, ocl: &ocl::Ocl) -> Synapses {
-		let width = width_cel * num::cast(common::SYNAPSES_PER_NEURON).unwrap();
+		let width = width_cel * num::cast(common::SYNAPSES_PER_NEURON).expect("cells::Synapses::new()");
 
 		let input_size = 1024i16;	//	TEMPORARY
 
 		//let mut src_idxs = Envoy::<ocl::cl_short>::new(width, height, 0i16, ocl);
-		let mut axon_levs = Envoy::<ocl::cl_uchar>::new(width, height, 0, ocl);
-		let mut axon_idxs = Envoy::<ocl::cl_char>::new(width, height, 0, ocl);
+		let mut axn_row_ids = Envoy::<ocl::cl_uchar>::new(width, height, 0, ocl);
+		let mut axn_col_offs = Envoy::<ocl::cl_char>::new(width, height, 0, ocl);
 
 		let mut synapses = Synapses {
 			states: Envoy::<ocl::cl_char>::new(width, height, 0, ocl),
 			strengths: Envoy::<ocl::cl_char>::new(width, height, common::SYNAPSE_STRENGTH_ZERO, ocl),
-			axon_levs: axon_levs,
-			axon_idxs: axon_idxs,
-			//axon_idxs: axon_idxs,
+			axn_row_ids: axn_row_ids,
+			axn_col_offs: axn_col_offs,
+			//axn_col_offs: axn_col_offs,
 
 		};
 
@@ -121,34 +123,62 @@ impl Synapses {
 	}
 
 	fn init(&mut self, input_size: i16, regions: &CorticalRegions) {
-		let len = self.axon_idxs.len();
+		//let len = self.axn_col_offs.len();
+		assert!(self.axn_col_offs.width() == self.axn_row_ids.width(), "[cells::Synapse::init(): width mismatch]");
+		let width = self.axn_col_offs.width();
 		//let syn_per_layer = common::SYNAPSES_PER_LAYER;
 		//let mut offset: usize = 0;
 		//let mut current_layer: usize = 0;
 
 		let mut rng = rand::thread_rng();
 
-		let idx_range = Range::new(-126, 127);
+		let col_off_range: Range<i8> = Range::new(-126, 127);
 
-		for axon_idx in self.axon_idxs.vec.iter_mut() {
-			*axon_idx = idx_range.ind_sample(&mut rng);
-		}
+		
+		/*for axn_idx in self.axn_col_offs.vec.iter_mut() {
+			*axn_idx = row_idx_range.ind_sample(&mut rng);
+		}*/
+		
 
-		let ref r = regions.hash_map[CorticalRegionType::Sensory];
+		let ref r = regions[CorticalRegionType::Sensory];
 
-		for (region_type, region) in regions.hash_map.iter() {
-			println!("Synapses::init(): Region: {:?}:", region_type);
-			for (&ln, l) in region.layers.iter() {
-				let lri = region.layer_row_idxs(ln);
-				let mut lsri: Vec<u8> =	match l.class {
-					CorticalLayerClass::Interlaminar(_, _) => {
-						region.layer_src_row_idxs(ln)
-					},
-					_ => Vec::with_capacity(0),		//	continue,
-				};
+		for (&ln, l) in r.layers.iter() {
+			let row_ids = r.layer_row_ids_ct(ln);
+			let src_row_ids: Vec<u8> =	match l.class {
+				CorticalLayerClass::Interlaminar(_, _) => {
+					r.layer_src_row_ids(ln)
+				},
+				_ => continue,
+			};
 
-				println!("Synapses::init(): 	layer name: {}, row_idxs: {:?}, src_idxs: {:?}", ln, lri, lsri);
+			for &ri in row_ids.iter() {
+
+				let src_row_idx_count: u8 = num::cast(src_row_ids.len()).expect("cells::Synapses::init()");
+				//println!("Adding Indexes for row_idx: {}: src_row_idx_count: {}, src_row_ids.len(): {}", ri, src_row_idx_count, src_row_ids.len());
+				let src_row_idx_range: Range<u8> = Range::new(0, src_row_idx_count);
+
+
+					//	Envoy Indexes
+				let ei_start = width as usize * ri as usize;
+				let ei_end = ei_start + width as usize;
+
+				//println!("	ei_start: {}, ei_end: {}", ei_start, ei_end);
+
+				//src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
+
+				for i in range(ei_start, ei_end) {
+					self.axn_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng) as usize];
+					self.axn_col_offs[i] = col_off_range.ind_sample(&mut rng);
+				}
+
+
+				/*for axn_row_idx in self.axn_row_ids.vec.iter_mut() {
+					*axn_row_idx = idx_range.ind_sample(&mut rng);
+				}*/
 			}
+
+
+			//println!("Synapses::init(): 	layer name: {}, row_ids: {:?}, src_row_ids: {:?}", ln, row_ids, src_row_ids);
 		}
 
 
@@ -162,14 +192,14 @@ impl Synapses {
 		 		let input_range = Range::new(0, input_size);
 
 				for i in range(0, syn_per_layer) {
-					axon_idxs.vec[offset + i] = input_range.ind_sample(&mut rng);
+					axn_col_offs.vec[offset + i] = input_range.ind_sample(&mut rng);
 				}
 		 	} else {
 		 		let source_size = 256u16;		// NUMBER OF SOURCE CELLS READABLE FROM WITHIN LAYER (should be 256 later on)
 				let source_range = Range::new(0, source_size);
 
 				for i in range(0, syn_per_layer) {
-					//axon_idxs.vec[offset + i] = source_range.ind_sample(&mut rng);
+					//axn_col_offs.vec[offset + i] = source_range.ind_sample(&mut rng);
 				}
 		 	}
 
@@ -178,11 +208,12 @@ impl Synapses {
 
 
 		
-		self.axon_idxs.write();
+		self.axn_col_offs.write();
+		self.axn_row_ids.write();
 
 		/*
 		println!("Printing Sources: (input_size: {})", input_size);
-		axon_idxs.print(1);
+		axn_col_offs.print(1);
 		*/
 	}
 }

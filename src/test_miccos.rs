@@ -82,9 +82,9 @@ pub fn run() {
 
 				if true {
 					print!("\n[ i:{} ] [ \n", i);
-					snake_brain.cort.sensory_segs[0].values.print(1);
+					snake_brain.cort.cells.axns.states.print(16);
 
-					print!("\n] [==[ \n");
+					//print!("\n] [==[ \n");
 					//snake_brain.cort.cortical_segments[0].columns.synapses.values.print(256);
 					print!("\n]==] \n");
 				}

@@ -5,7 +5,7 @@ use ocl;
 use common;
 use chord::{ Chord };
 use envoy::{ Envoy };
-//use axon_space::{ AxonSpace };
+//use axn_space::{ AxonSpace };
 
 use time;
 
@@ -22,9 +22,9 @@ pub fn test_cycle_dens() {
 	let mut vec1: Vec<i8> = Vec::with_capacity(1024);
 	for i in range(0, 1024) {
 		if i < 512 {
-			vec1.push(64i8);
+			vec1.push(20i8);
 		} else {
-			vec1.push(-64i8);
+			vec1.push(20i8);
 		}
 	}
 
@@ -41,10 +41,23 @@ pub fn test_cycle_dens() {
 		println!("{:?}",x);
 	}
 	*/
-	
+
+
+		/* SENSE ONLY LOOP */
 	let mut i = 0u32;
 	loop {
-		if i > 0 { break; }
+		if i >= 3 { break; }
+
+		cortex.sense(0, &chord1);
+
+		i += 1;
+	}
+
+	
+		/* SENSE AND PRINT LOOP */
+	let mut i = 0u32;
+	loop {
+		if i >= 1 { break; }
 
 		cortex.sense(0, &chord1); 
 
@@ -54,37 +67,38 @@ pub fn test_cycle_dens() {
 		// 512:1 (25% ACTIVITY, 262144 len)
 		//
 
-		println!("\n sensory_segment.states");
-		cortex.sensory_segs[0].values.print(1 << 4);	
-		//common::print_vec(&cortex.sensory_segments[0].states.vec, 1 << 4, true);
 
 		
 		//	println!("\n tmp_out: ");
 		//	cortex.sensory_segments[0].tmp_out.print(1000);
 
 		if true {
-			println!("\n cells.axons.states: ");
-			cortex.cells.axons.states.print(1 << 4);
+			println!("\n cells.axns.states: ");
+			cortex.cells.axns.states.print(1 << 5);
 		}
 
 		if false {
 			println!("\n cells.somata.states: ");
-			cortex.cells.somata.states.print(256);
+			cortex.cells.somata.states.print(1 << 8);
 		}
 
-		if true {
-			println!("\n cells.synapses.axon_idxs:");
-			cortex.cells.synapses.axon_idxs.print(16384);		// 16384
+		if false {
+			println!("\n cells.synapses.axn_col_offs:");
+			cortex.cells.synapses.axn_col_offs.print(1 << 14);		// 16384
 		}
-
 		if true {
-			println!("\n cells.synapses.states: ");
-			cortex.cells.synapses.states.print(1 << 13);
+			println!("\n cells.synapses.axn_row_ids:");
+			cortex.cells.synapses.axn_row_ids.print(1 << 14);		// 16384
 		}
 
 		if false {
 			println!("\n cells.synapses.strengths: ");
-			cortex.cells.synapses.strengths.print(65536);
+			cortex.cells.synapses.strengths.print(1 << 16);
+		}
+
+		if true {
+			println!("\n cells.synapses.states: ");
+			cortex.cells.synapses.states.print(1 << 14);
 		}
 
 		if true {

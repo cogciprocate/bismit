@@ -9,9 +9,10 @@ use std::ffi;
 use std::iter;
 use envoy::{ Envoy };
 use cl_h;
-pub use cl_h::{cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_char, cl_uchar, cl_short, cl_ushort, cl_int, cl_uint,   cl_long, CLStatus};
+pub use cl_h::{cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_char, cl_uchar, cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus};
 
 pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
+pub const BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";		//	-cl-std=CL2.0
 
 
 pub struct Ocl {
@@ -220,7 +221,7 @@ pub fn new_program(
 					program,
 					0, 
 					ptr::null(), 
-					ffi::CString::from_slice("-cl-denorms-are-zero -cl-fast-relaxed-math".as_bytes()).as_ptr(), 
+					ffi::CString::from_slice(BUILD_OPTIONS.as_bytes()).as_ptr(), 
 					mem::transmute(ptr::null::<fn()>()), 
 					ptr::null_mut(),
 		);
@@ -377,9 +378,53 @@ pub fn enqueue_kernel(
 		let err = cl_h::clEnqueueNDRangeKernel(
 					command_queue,
 					kernel,
-					1,
+					1 as cl_uint,
 					ptr::null(),
 					mem::transmute(&gws),
+					ptr::null(),
+					0,
+					ptr::null(),
+					ptr::null_mut(),
+		);
+		must_succ("clEnqueueNDRangeKernel()", err);
+	}
+}
+
+pub fn enqueue_2d_kernel(
+				kernel: cl_kernel, 
+				command_queue: cl_h::cl_command_queue,
+				//dims: cl_uint,
+				gws: &(usize, usize),
+) {
+	unsafe {
+		let err = cl_h::clEnqueueNDRangeKernel(
+					command_queue,
+					kernel,
+					2,				//	dims,
+					ptr::null(),
+					(gws as *const (usize, usize)) as *const libc::size_t,
+					ptr::null(),
+					0,
+					ptr::null(),
+					ptr::null_mut(),
+		);
+		must_succ("clEnqueueNDRangeKernel()", err);
+	}
+}
+
+pub fn enqueue_3d_kernel(
+				kernel: cl_kernel, 
+				command_queue: cl_h::cl_command_queue,
+				//dims: cl_uint,
+				gws: &(usize, usize, usize),
+) {
+	unsafe {
+		let err = cl_h::clEnqueueNDRangeKernel(
+					command_queue,
+					kernel,
+					3,
+					ptr::null(),
+					(gws as *const (usize, usize, usize)) as *const libc::size_t,
 					ptr::null(),
 					0,
 					ptr::null(),

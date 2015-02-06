@@ -31,7 +31,7 @@ pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
 
 pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;		// appears to cause lots of delay... 256 is slow
 
-pub const SYNAPSE_STRENGTH_ZERO: i8 = 64;
+pub const SYNAPSE_STRENGTH_ZERO: i8 = 32;
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 3;
 pub const DENDRITE_INITIAL_THRESHOLD: i8 = 1;
 
@@ -60,8 +60,10 @@ pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_NEURON;
 pub const SENSORY_CHORD_WIDTH: usize = 1024; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
-pub const SYNAPSE_REACH: usize = 128;
-pub const MAX_SYNAPSE_RANGE: usize = SYNAPSE_REACH * 2;
+pub const SYNAPSE_REACH: u32 = 128;
+pub const MAX_SYNAPSE_RANGE: u32 = SYNAPSE_REACH * 2;
+pub const AXONS_MARGIN: usize = 128;
+
 
 pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool) {
 

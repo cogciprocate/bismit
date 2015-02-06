@@ -14,140 +14,113 @@
 #define CELLS_PER_COLUMN				16
 #define CELLS_PER_COLUMN_LOG2			4
 
+#define SYNAPSE_REACH					128
+#define MAX_SYNAPSE_RANGE				SYNAPSE_REACH * 2
+
 #define DENDRITE_ACTIVE					0x01
 #define COLUMN_ACTIVE_INPUT				0x10
 #define SOMA_ACTIVE_OUTPUT				0x01
 #define CELL_PREDICTIVE					0x01
 #define CELL_ACTIVE						0x10
 
+/*
+** Kernel Preferred work group size multiple:	 	64
+** Max compute units:				 				32
+** Max work items dimensions:						3
+** Max work group size:				 				256
+**
+** Remember to inline functions
+*/
 
-	// #WG: common::COLUMN_SYNAPSES_PER_SEGMENT
-__kernel void sense(
-				__global const char *src_vals,  // CHANGE TO _states
-				__global char * const tar_vals,
-				__global const short *tar_som_idxs,
-				__global const char *tar_syn_idxs,
-				__private const char dup_factor_shift
+//__global char axn_states;
+
+
+	//	#WORK SIZE: Synapses per Region
+__kernel void cycle_syns(
+				__global const char* axn_states,
+				__global const uchar* syn_axn_row_ids,
+				__global const char* syn_axn_col_offs,
+				__global const char* syn_strs,
+				__global char* const syn_states
+				//__private const uint axn_row_width
 ) {
-	size_t gid = get_global_id(0);
-	size_t tar_idx = mad24(tar_som_idxs[gid], SYNAPSES_PER_NEURON, tar_syn_idxs[gid]);
+	size_t row_id = get_global_id(0);		//	y (height)
+	size_t col_id = get_global_id(1);		//	x (width)
+	size_t syn_id = get_global_id(2);		//	z (depth)
+	//size_t syn_row_width = get_global_size(2) * get_global_size(0);
+	size_t width = get_global_size(1);
+	size_t depth = get_global_size(2);
+	//size_t col_pos = syn_pos >> SYNAPSES_PER_NEURON_LOG2;
 
-	tar_vals[tar_idx] = src_vals[gid >> dup_factor_shift];
-	
+
+
+	// [(row_id * depth)] * [width] + [(col_id * depth) + syn_id];
+	size_t syns_idx =mad24(mul24(row_id, depth), width, mad24(col_id, depth, syn_id));
+	size_t axns_idx = mad24(
+		syn_axn_row_ids[syns_idx], 
+		width, 
+		syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH
+	);
+
+	syn_states[syns_idx] =	mul_hi(axn_states[axns_idx], syn_strs[syns_idx]) ;
 }
 
-	// #WG: common::COLUMN_DENDRITES_PER_SEGMENT
-__kernel void cycle_col_dens(
-				__global const uchar *syn_vals,
-				__global const uchar *syn_strs,
-				__global const uchar *den_thrs,
-				__global uchar * const den_vals
+
+__kernel void cycle_dens(
+				__global const char* syn_states,
+				__global const char* den_thrs,
+				__global char* const den_states
 ) {
 	size_t gid = get_global_id(0);
 	size_t syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
 
-	uchar den_val = 0;
+	short syn_sum = 0;
 
+#pragma unroll 
 	for (uint i = 0; i < SYNAPSES_PER_DENDRITE; i++) {
-		den_val += mul_hi(syn_vals[syn_grp + i], syn_strs[syn_grp + i]);
+		syn_sum += syn_states[syn_grp + i];
 	}
 
-	if (den_val > den_thrs[gid]) {
-		den_vals[gid] = DENDRITE_ACTIVE;	
-	}
-}
+	char den_val = (char)(syn_sum >> 4);
 
+	//den_states[gid] = den_val;
 
-	// #WG: common::COLUMNS_PER_SEGMENT
-__kernel void cycle_col_soms(
-				__global const uchar *den_vals,
-				__global uchar * const som_vals,
-				__global uchar *cel_states
-) {
-	size_t gid = get_global_id(0);
-	size_t den_grp = gid << DENDRITES_PER_NEURON_LOG2;
-	size_t cel_grp = gid << CELLS_PER_COLUMN_LOG2;
-
-	uchar den_mix = 0;
-
-	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
-		den_mix |= den_vals[den_grp + i];
-	}
-
-	if (den_mix) {
-		som_vals[gid] = COLUMN_ACTIVE_INPUT;
-
-		for (uint i = 0; i < CELLS_PER_COLUMN; i++) {
-			cel_states[cel_grp + i] |= CELL_ACTIVE;
-		}
+	if (syn_sum > (short)den_thrs[gid]) {
+		den_states[gid] = den_val;			// DENDRITE_ACTIVE;
 	}
 }
 
-	// #WORKGROUP SIZE: common::SYNAPSES_PER_LAYER
-__kernel void cycle_cel_syns(
-				__global const char *src_vals,
-				__global const short *syn_src_idxs,
-				__global const char *syn_strs,
-				__global char * const syn_vals,
-				__private const uint src_offset,
-				__private const uint syn_offset,
-				__private const uint gid_offset_factor,
-				__private const char boost_factor
-				//__private uint layer_current
+__kernel void cycle_axns(
+				__global const char* den_states,
+				__global char* const axn_states,
+				__private const uint cell_row_offset		// Change this to __attribute__ or something
 ) {
-	size_t gid = get_global_id(0);
-	size_t ogid = syn_offset + gid;
-
-	int src_idx = syn_src_idxs[ogid] + src_offset + (gid_offset_factor * gid);
-	char src_val = mad_sat(src_vals[src_idx], boost_factor, (char)0);
-	//int src_idx = syn_src_idxs[gid];
-	//char src_val = src_vals[src_idx];
-
-	syn_vals[ogid] = mul_hi(src_val, syn_strs[ogid]);
-	//syn_vals[gid] = src_val;
-}
-
-__kernel void cycle_cel_dens(
-				__global const char *syn_vals,
-				__global const char *den_thrs,
-				__global char * const den_vals
-) {
-	size_t gid = get_global_id(0);
-	size_t syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
-
-	short den_sum = 0;
-
-	for (uint i = 0; i < SYNAPSES_PER_DENDRITE; i++) {
-		den_sum += syn_vals[syn_grp + i];
-	}
-
-	uchar den_val = (uchar)(den_sum >> 4);
-
-	if (den_sum > (short)den_thrs[gid]) {
-		den_vals[gid] = den_val;			// DENDRITE_ACTIVE;
-	}
-}
-
-__kernel void cycle_cel_axons(
-				__global const uchar *den_vals,
-				__global uchar * const som_states
-) {
-	size_t gid = get_global_id(0);
-	size_t den_grp = gid << DENDRITES_PER_NEURON_LOG2;
+	size_t row = get_global_id(0);
+	size_t col = get_global_id(1);
+	size_t row_width = get_global_size(1);
+	size_t cel_idx = mad24(row, row_width, col);
+	size_t axn_idx = mad24((row + cell_row_offset), row_width, col) + SYNAPSE_REACH;
+	size_t den_grp = cel_idx << DENDRITES_PER_NEURON_LOG2;
 	//int cel_grp = gid << CELLS_PER_COLUMN_LOG2;
 
-	uchar den_mix = 0;
+	short den_sum = 0;
+	//short den_mix = 0;
 
+#pragma unroll 
 	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
-		den_mix |= den_vals[den_grp + i];
+		den_sum += den_states[den_grp + i];
+		//den_mix = (char)add_sat((char)den_mix, (char)den_states[den_grp + i]);
 	}
 
-	if (den_mix) {
-		som_states[gid] |= CELL_PREDICTIVE;
+	//axn_states[axn_idx] = den_mix;
+	axn_states[axn_idx] = (char)clamp(den_sum, (short)0, (short)127);
+
+	/*if (den_mix) {
+		axn_states[axn_idx] |= CELL_PREDICTIVE;
 	} else {
-		som_states[gid] = 0;
+		axn_states[axn_idx] = 0;
 	}
-
+*/
 }
 
 
@@ -198,11 +171,11 @@ __kernel void cycle_cel_axons(
 *
 */
 
-__kernel void test_cell_axon_stable(__global uchar *axon, __global uchar *ax_out) {
+__kernel void test_cell_axn_stable(__global uchar *axn, __global uchar *ax_out) {
 	int i = get_global_id(0);
-	uchar ax = axon[i] + 2;
-	axon[i] = mul_hi(ax, (uchar)128) * 2;
-	ax_out[i] = axon[i];
+	uchar ax = axn[i] + 2;
+	axn[i] = mul_hi(ax, (uchar)128) * 2;
+	ax_out[i] = axn[i];
 }
 
 
@@ -232,11 +205,11 @@ __kernel void test_synapse(__global uchar *synapse, __global uchar *syn_out) {
 }
 
 
-__kernel void test_cell_axon(__global uchar *axon, __global uchar *ax_out) {
+__kernel void test_cell_axn(__global uchar *axn, __global uchar *ax_out) {
 	int i = get_global_id(0);
-	//uchar ax = axon[i] + 2;
-	//axon[i] = mul_hi(ax, (uchar)128) * 2;
-	ax_out[i] = axon[i];
+	//uchar ax = axn[i] + 2;
+	//axn[i] = mul_hi(ax, (uchar)128) * 2;
+	ax_out[i] = axn[i];
 }
 
 
@@ -251,6 +224,68 @@ __kernel void test_int_shift(__global char *test_out, __private char input) {
 	test_out[gid] = input >> 4;
 }
 
+
+	// #WG: common::COLUMN_SYNAPSES_PER_SEGMENT
+__kernel void sense(
+				__global const char *src_vals,  // CHANGE TO _states
+				__global char * const tar_vals,
+				__global const short *tar_som_idxs,
+				__global const char *tar_syn_idxs,
+				__private const char dup_factor_shift
+) {
+	size_t gid = get_global_id(0);
+	size_t tar_idx = mad24(tar_som_idxs[gid], SYNAPSES_PER_NEURON, tar_syn_idxs[gid]);
+
+	tar_vals[tar_idx] = src_vals[gid >> dup_factor_shift];
+	
+}
+
+	// #WG: common::COLUMN_DENDRITES_PER_SEGMENT
+__kernel void cycle_col_dens(
+				__global const uchar *syn_states,
+				__global const uchar *syn_strs,
+				__global const uchar *den_thrs,
+				__global uchar * const den_states
+) {
+	size_t gid = get_global_id(0);
+	size_t syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
+
+	uchar den_val = 0;
+
+	for (uint i = 0; i < SYNAPSES_PER_DENDRITE; i++) {
+		den_val += mul_hi(syn_states[syn_grp + i], syn_strs[syn_grp + i]);
+	}
+
+	if (den_val > den_thrs[gid]) {
+		den_states[gid] = DENDRITE_ACTIVE;	
+	}
+}
+
+
+	// #WG: common::COLUMNS_PER_SEGMENT
+__kernel void cycle_col_soms(
+				__global const uchar *den_states,
+				__global uchar * const som_vals,
+				__global uchar *cel_states
+) {
+	size_t gid = get_global_id(0);
+	size_t den_grp = gid << DENDRITES_PER_NEURON_LOG2;
+	size_t cel_grp = gid << CELLS_PER_COLUMN_LOG2;
+
+	uchar den_mix = 0;
+
+	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
+		den_mix |= den_states[den_grp + i];
+	}
+
+	if (den_mix) {
+		som_vals[gid] = COLUMN_ACTIVE_INPUT;
+
+		for (uint i = 0; i < CELLS_PER_COLUMN; i++) {
+			cel_states[cel_grp + i] |= CELL_ACTIVE;
+		}
+	}
+}
 
 
 

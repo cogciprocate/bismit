@@ -5,8 +5,8 @@ use thalamus::{ Thalamus, SensorySegment };
 use chord::{ Chord };
 use cells:: { self, Cells };
 use cortical_regions::{ self, CorticalRegion, CorticalRegions, CorticalRegionType };
-use cortical_areas::{ self, CorticalAreas };
-//use axon_space::{ AxonSpace };
+use cortical_areas::{ self, CorticalAreas, Width };
+//use axn_space::{ AxonSpace };
 //use syn_segs::{ SynSegs, SegType };
 //use cort_seg::{ CortSeg };
 
@@ -21,7 +21,7 @@ use time;
 pub struct Cortex {
 	pub cells: Cells,
 	pub sensory_segs: Thalamus,
-	//pub axon_space: AxonSpace,
+	//pub axn_space: AxonSpace,
 	//pub layers: Vec<CorticalLayer>,
 	pub regions: CorticalRegions,
 	pub areas: CorticalAreas,
@@ -33,11 +33,11 @@ pub struct Cortex {
 impl Cortex {
 	pub fn new() -> Cortex {
 		println!("Initializing Cortex... ");
-		let time_start = time::get_time().sec;
+		let time_start = time::get_time();
 		let ocl: ocl::Ocl = ocl::Ocl::new();
 		let regions = cortical_regions::define();
 		let areas = cortical_areas::define();
-		//let axon_space = AxonSpace::new();
+		//let axn_space = AxonSpace::new();
 		let cells = Cells::new(&regions, &areas, &ocl);
 		//let mut syn_segs = SynSegs::new(&cells.synapses);
 
@@ -47,13 +47,13 @@ impl Cortex {
 		ss.push(SensorySegment::new(num::cast(common::SENSORY_CHORD_WIDTH).unwrap(), &ocl));
 
 		
-		let time_finish = time::get_time().sec;
-		println!(" ...initialized in: {} sec.", time_finish - time_start);
+		let time_complete = time::get_time() - time_start;
+		println!("\n ...initialized in: {}.{} sec. ======", time_complete.num_seconds(), time_complete.num_milliseconds());
 
 		Cortex {
 			cells: cells,
 			sensory_segs: ss,
-			//axon_space: axon_space,
+			//axn_space: axn_space,
 			regions: regions,
 			areas: areas,
 			//syn_segs: syn_segs,
@@ -68,68 +68,100 @@ impl Cortex {
 
 		let mut glimpse: Vec<i8> = Vec::with_capacity(common::SENSORY_CHORD_WIDTH);
 		chord.unfold_into(&mut glimpse, 0);
-
-		ocl::enqueue_write_buffer(&glimpse, self.cells.axons.states.buf, self.ocl.command_queue, common::SYNAPSE_REACH);
-		//self.ocl.enqueue_write_buffer(&glimpse_e, 128);
+		ocl::enqueue_write_buffer(&glimpse, self.cells.axns.states.buf, self.ocl.command_queue, common::AXONS_MARGIN);
 
 
-		self.sensory_segs[sgmt_idx].sense(chord);
+		//self.sensory_segs[sgmt_idx].sense(chord);
 
 		//self.values.write();		*******
 
 
-
-
-		//self.cycle_cel_syns(&self.sensory_segs[sgmt_idx].states);
-		//self.cycle_cel_dens();
-		//self.cycle_cel_axons();
+		self.cycle_syns();
+		self.cycle_dens();
+		self.cycle_axns();
 
 	}
 
 	fn cycle_syns(&self) {
 
+		let width: u32 = self.areas.width(CorticalRegionType::Sensory);
+		let height_total: u8 = self.regions.height_total(CorticalRegionType::Sensory);
+		let (_, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
+		let len: u32 = width * height_total as u32;
+
+		//let width_syn_row: u32 = width as u32 * num::cast(common::SYNAPSES_PER_NEURON).expect("cortex::Cortex::cycle_syns()");
+		//let width_axn_row: u32 = width;
+
+		let test_envoy = Envoy::<ocl::cl_int>::new(width, height_total, 0, &self.ocl);
+
+		//println!("cycle_cel_syns running with width = {}, height = {}", width, height_total);
+
+		let kern = ocl::new_kernel(self.ocl.program, "cycle_syns");
+		ocl::set_kernel_arg(0, self.cells.axns.states.buf, kern);
+		ocl::set_kernel_arg(1, self.cells.synapses.axn_row_ids.buf, kern);
+		ocl::set_kernel_arg(2, self.cells.synapses.axn_col_offs.buf, kern);
+		ocl::set_kernel_arg(3, self.cells.synapses.strengths.buf, kern);
+		ocl::set_kernel_arg(4, self.cells.synapses.states.buf, kern);
+		//ocl::set_kernel_arg(5, width, kern);
+
+		//println!("height_total: {}, height_cellular: {}, width_syn_row: {}", height_total, height_cellular, width_syn_row);
+
+
+		//let gws = height_cellular as u32 * width_syn_row as u32;
+		//let dim_info = vec![height_total as u32, width_syn_row as u32];
+		let gws = (height_cellular as usize, width as usize, common::SYNAPSES_PER_NEURON);
+
+		println!("gws: {:?}", gws);
+
+		//ocl::enqueue_kernel(kern, self.ocl.command_queue, gws);
+
+			// ADD 3RD DIMENSION (SYNAPSE)
+
+		ocl::enqueue_3d_kernel(kern, self.ocl.command_queue, &gws);
+
 	}
 
-	/*fn cycle_cel_syns(&self, input_source: &Envoy<ocl::cl_char>,) {
-		
-		let layers_total: u32 = num::cast(common::LAYERS_PER_SEGMENT).expect("cycle_cel_syns, layers_total");
-		let syn_per_layer: u32 = num::cast(common::SYNAPSES_PER_LAYER).expect("cycle_cel_syns, syn_per_layer");
-		let axons_per_layer: u32 = num::cast(common::COLUMNS_PER_SEGMENT).expect("cycle_cel_syns, axons_per_layer");
+	fn cycle_dens(&self) {
+
+		let width: u32 = self.areas.width(CorticalRegionType::Sensory);
+		let (_, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
+
+		let width_dens: usize = width as usize * common::DENDRITES_PER_NEURON * height_cellular as usize;
 
 
-		let il: i16 = num::cast(input_source.vec.len()).expect("cycle_cel_syns, il");
-		//assert!(il == self.input_source_len, "Input vector size must equal self.input_source_len");
+		let kern = ocl::new_kernel(self.ocl.program, "cycle_dens");
 
-		let kern = ocl::new_kernel(self.ocl.program, "cycle_cel_syns");
-		ocl::set_kernel_arg(1, self.cells.synapses.axon_idxs.buf, kern);
-		ocl::set_kernel_arg(2, self.cells.synapses.strengths.buf, kern);
-		ocl::set_kernel_arg(3, self.cells.synapses.states.buf, kern);
+		ocl::set_kernel_arg(0, self.cells.synapses.states.buf, kern);
+		ocl::set_kernel_arg(1, self.cells.dendrites.thresholds.buf, kern);
+		ocl::set_kernel_arg(2, self.cells.dendrites.states.buf, kern);
+
+		ocl::enqueue_kernel(kern, self.ocl.command_queue, width_dens);
+
+	}
+
+	fn cycle_axns(&self) {
+		let width: u32 = self.areas.width(CorticalRegionType::Sensory);
+		let (height_antecellular, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
+		//let width = self.cells.axns.width;
+		//println!("width: {}", width);
+
+		let kern = ocl::new_kernel(self.ocl.program, "cycle_axns");
+		ocl::set_kernel_arg(0, self.cells.dendrites.states.buf, kern);
+		ocl::set_kernel_arg(1, self.cells.axns.states.buf, kern);
+		ocl::set_kernel_arg(2, height_antecellular as u32, kern);
+
+		//ocl::enqueue_kernel(kern, self.ocl.command_queue, width as usize);
+
+		let gws = (height_cellular as usize, width as usize);
+
+		//println!("dim_info: {:?}", dim_info);
 
 
-		let cp = CcssParams { 
-			input_source: input_source, 
-			seq_iters: 4,
-			syn_offset_factor: syn_per_layer, 
-			syn_offset_start: 0,
-			src_offset_factor: 0,
-			src_offset_start: 0,
-			gid_offset_factor: 0, 
-			boost_factor: 1,
-		 };
-		self.cycle_cel_syn_seq(cp, kern);
+			// ADD 3RD DIMENSION (DENDRITE)
 
+		ocl::enqueue_2d_kernel(kern, self.ocl.command_queue, &gws);
 
-	}*/
-
-	/*pub fn regions_len(&self, region_type: CorticalRegionType) -> usize {
-		let mut len = 0us;
-		for (name, cr) in self.regions.iter() {
-			if cr.region_type == region_type {
-				len += (cr.height as usize) * cr.width;
-			}
-		}
-		len
-	}*/
+	}
 
 
 	pub fn release_components(&mut self) {
@@ -139,23 +171,22 @@ impl Cortex {
 }
 
 
+
+pub struct CorticalDimensions {
+	height_axn_rows: u8,
+	height_cell_rows: u8,
+	width_cols: u32,
+	width_dens: u32,
+	width_syns: u32,
+	width_offset_margin_axns: u32,
+	initial_cellular_axn: u32,
+}
+
+
+
 //type CorticalSegment = Vec<&'static str>;
 
 
-
-
-
-
-struct CcssParams<'a> {
-	input_source: &'a Envoy<ocl::cl_char>, 
-	seq_iters: u32,
-	syn_offset_factor: u32, 
-	syn_offset_start: u32,
-	src_offset_factor: u32,
-	src_offset_start: u32,
-	gid_offset_factor: u32, 
-	boost_factor: u8
-}
 
 
 
@@ -231,14 +262,14 @@ impl CorticalRegion {
 		
 		let layers_total: u32 = num::cast(common::LAYERS_PER_SEGMENT).expect("cycle_cel_syns, layers_total");
 		let syn_per_layer: u32 = num::cast(common::SYNAPSES_PER_LAYER).expect("cycle_cel_syns, syn_per_layer");
-		let axons_per_layer: u32 = num::cast(common::COLUMNS_PER_SEGMENT).expect("cycle_cel_syns, axons_per_layer");
+		let axns_per_layer: u32 = num::cast(common::COLUMNS_PER_SEGMENT).expect("cycle_cel_syns, axns_per_layer");
 
 
 		let il: i16 = num::cast(input_source.vec.len()).expect("cycle_cel_syns, il");
 		//assert!(il == self.input_source_len, "Input vector size must equal self.input_source_len");
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_cel_syns");
-		ocl::set_kernel_arg(1, self.cells.synapses.axon_idxs.buf, kern);
+		ocl::set_kernel_arg(1, self.cells.synapses.axn_idxs.buf, kern);
 		ocl::set_kernel_arg(2, self.cells.synapses.strengths.buf, kern);
 		ocl::set_kernel_arg(3, self.cells.synapses.states.buf, kern);
 
@@ -300,11 +331,11 @@ impl CorticalRegion {
 
 	}
 
-	fn cycle_cel_axons(&self) {
-		let kern = ocl::new_kernel(self.ocl.program, "cycle_cel_axons");
+	fn cycle_cel_axns(&self) {
+		let kern = ocl::new_kernel(self.ocl.program, "cycle_cel_axns");
 
 		ocl::set_kernel_arg(0, self.cells.dendrites.states.buf, kern);
-		//ocl::set_kernel_arg(1, self.cells.axons.states.buf, kern);
+		//ocl::set_kernel_arg(1, self.cells.axns.states.buf, kern);
 
 		//ocl::enqueue_kernel(kern, self.ocl.command_queue, common::CELLS_PER_SEGMENT);
 
@@ -316,16 +347,28 @@ impl CorticalRegion {
 
 		/*
 		let cp = CcssParams { 
-			input_source: &self.cells.axons.states, 
+			input_source: &self.cells.axns.states, 
 			seq_iters: 0,
 			syn_offset_factor: syn_per_layer, 
 			syn_offset_start: syn_per_layer * 4,
-			src_offset_factor: axons_per_layer,
-			src_offset_start: (axons_per_layer * 4) - 128,
+			src_offset_factor: axns_per_layer,
+			src_offset_start: (axns_per_layer * 4) - 128,
 			gid_offset_factor: 1, 
 			boost_factor: 16,
 		 };
 		self.cycle_cel_syn_seq(cp, kern);
+
+
+	struct CcssParams<'a> {
+	input_source: &'a Envoy<ocl::cl_char>, 
+	seq_iters: u32,
+	syn_offset_factor: u32, 
+	syn_offset_start: u32,
+	src_offset_factor: u32,
+	src_offset_start: u32,
+	gid_offset_factor: u32, 
+	boost_factor: u8
+}
 		*/
 
 
@@ -391,7 +434,7 @@ impl MotorSegment {
 
 		
 			/***	Axon Spaces 	***/
-		//cortex.axon_space.new_region("visual", 0, 1024, &cortex.sensory_segs[0].states);
+		//cortex.axn_space.new_region("visual", 0, 1024, &cortex.segs[0].states);
 
 			/***	Synaptic Segments 	***/
 		//cortex.syn_segs.new_segment("visual", 0, common::SYNAPSES_PER_LAYER, SegType::Distal);
@@ -399,4 +442,16 @@ impl MotorSegment {
 		/***	Cortical Segments 	***/
 		//let mut seg1 = CortSeg::new("visual", common::COLUMNS_PER_SEGMENT);
 
-		//seg1.gen_rows("visual", &mut cortex.axon_space, &mut cortex.syn_segs);
+		//seg1.gen_rows("visual", &mut cortex.axn_space, &mut cortex.syn_segs);
+
+
+
+	/*pub fn regions_len(&self, region_type: CorticalRegionType) -> usize {
+		let mut len = 0us;
+		for (name, cr) in self.regions.iter() {
+			if cr.region_type == region_type {
+				len += (cr.height as usize) * cr.width;
+			}
+		}
+		len
+	}*/
