@@ -15,7 +15,7 @@ mod envoy;
 //mod column;
 mod cells;
 //mod cort_seg;
-mod thalamus;
+//mod thalamus;
 mod cortex;
 mod cortical_regions;
 mod cortical_areas;
