@@ -11,34 +11,34 @@ use std::ops::{ Index, IndexMut };
 pub struct Envoy<T> {
 	pub vec: Vec<T>,
 	pub buf: ocl::cl_mem,
-	pub padding: usize,
+	pub padding: u32,
 	pub width: u32,
 	pub height: u8,
 	pub ocl: Box<ocl::Ocl>,
 }
 impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 	pub fn new(width: u32, height: u8, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
-		let len = len(width, height);
+		let len = len(width, height, 0);
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
 		Envoy::_new(0, width, height, vec, ocl)
 	}
 
-	pub fn with_padding(padding: usize, width: u32, height: u8, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
-		let len = len(width, height) + padding;
+	pub fn with_padding(padding: u32, width: u32, height: u8, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
+		let len = len(width, height, padding);
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
 		Envoy::_new(padding, width, height, vec, ocl)
 	}
 
 	pub fn shuffled(width: u32, height: u8, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
-		let len = len(width, height);
+		let len = len(width, height, 0);
 		let vec: Vec<T> = common::shuffled_vec(len, init_val);
 
 		Envoy::_new(0, width, height, vec, ocl)
 	}
 
-	pub fn _new(padding: usize, width: u32, height: u8, mut vec: Vec<T>, ocl: &ocl::Ocl) -> Envoy<T> {
+	pub fn _new(padding: u32, width: u32, height: u8, mut vec: Vec<T>, ocl: &ocl::Ocl) -> Envoy<T> {
 		let buf: ocl::cl_mem = ocl::new_buffer(&mut vec, ocl.context);
 
 		let envoy = Envoy {
@@ -74,8 +74,8 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 	}
 
 	pub fn len(&self) -> usize {
-		assert!(((self.width as usize * self.height as usize) + self.padding ) == self.vec.len(), "Envoy len mismatch" );
-		len(self.width, self.height)
+		assert!(((self.width as usize * self.height as usize) + self.padding as usize ) == self.vec.len(), "Envoy len mismatch" );
+		len(self.width, self.height, 0)
 	}
 
 	pub fn print(&mut self, every: usize) {
@@ -108,6 +108,6 @@ impl <T> IndexMut<usize> for Envoy<T>
 }
 
 
-fn len(width: u32, height: u8) -> usize {
-	width as usize * height as usize
+fn len(width: u32, height: u8, padding: u32) -> usize {
+	(width as usize * height as usize) + padding as usize
 }

@@ -16,7 +16,7 @@ use std::iter;
 
 pub const READBACK_TEST_ITERATIONS: usize = 50;  // 10,000,000 takes >>> 15 min
 
-pub fn test_cycle_dens() {
+pub fn test_cycle() {
 	let mut cortex = cortex::Cortex::new();
 
 	let mut vec1: Vec<i8> = Vec::with_capacity(1024);
@@ -77,33 +77,28 @@ pub fn test_cycle_dens() {
 			cortex.cells.axns.states.print(1 << 5);
 		}
 
-		if false {
-			println!("\n cells.somata.states: ");
-			cortex.cells.somata.states.print(1 << 8);
-		}
-
-		if false {
-			println!("\n cells.synapses.axn_col_offs:");
-			cortex.cells.synapses.axn_col_offs.print(1 << 14);		// 16384
+		if true {
+			println!("\n cells.dst_dens.syns.axn_col_offs:");
+			cortex.cells.dst_dens.syns.axn_col_offs.print(1 << 16);		// 16384
 		}
 		if true {
-			println!("\n cells.synapses.axn_row_ids:");
-			cortex.cells.synapses.axn_row_ids.print(1 << 14);		// 16384
+			println!("\n cells.dst_dens.syns.axn_row_ids:");
+			cortex.cells.dst_dens.syns.axn_row_ids.print(1 << 16);		// 16384
 		}
 
 		if false {
-			println!("\n cells.synapses.strengths: ");
-			cortex.cells.synapses.strengths.print(1 << 16);
+			println!("\n cells.dst_dens.syns.strengths: ");
+			cortex.cells.dst_dens.syns.strengths.print(1 << 16);
 		}
 
 		if true {
-			println!("\n cells.synapses.states: ");
-			cortex.cells.synapses.states.print(1 << 14);
+			println!("\n cells.dst_dens.syns.states: ");
+			cortex.cells.dst_dens.syns.states.print(1 << 14);
 		}
 
 		if true {
-			println!("\n cells.dendrites.states: ");
-			cortex.cells.dendrites.states.print(1 << 10);
+			println!("\n cells.dst_dens.states: ");
+			cortex.cells.dst_dens.states.print(1 << 10);
 		}
 
 		i += 1;
@@ -113,6 +108,13 @@ pub fn test_cycle_dens() {
 
 
 	cortex.release_components();
+
+}
+
+	/*if false {
+		println!("\n cells.somata.states: ");
+		cortex.cells.somata.states.print(1 << 8);
+	}*/
 
 
 	/*let mut t3: Envoy<i8> = Envoy::new(64, 0i8, &cortex.ocl);
@@ -140,7 +142,7 @@ pub fn test_cycle_dens() {
 
 		for i in range(0, vec2.len()) {
 
-			tar_idxs[i] = ((cortex.sensory_segments[0].target_idxesses.target_column_bodies.vec[i] as usize) << 8 ) + cortex.sensory_segments[0].target_idxesses.target_column_synapses.vec[i] as usize;
+			tar_idxs[i] = ((cortex.sensory_segments[0].target_idxesses.target_column_bodies.vec[i] as usize) << 8 ) + cortex.sensory_segments[0].target_idxesses.target_column_dst_dens.syns.vec[i] as usize;
 
 			//	print!("[{}: {}]", i, tar_idx);
 
@@ -160,7 +162,7 @@ pub fn test_cycle_dens() {
 
 	
 
-}
+
 
 /*pub fn buffer_test() {
 	println!("--- test4::buffer_test() ---");

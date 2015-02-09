@@ -55,13 +55,16 @@ __kernel void cycle_syns(
 
 
 	// [(row_id * depth)] * [width] + [(col_id * depth) + syn_id];
-	size_t syns_idx =mad24(mul24(row_id, depth), width, mad24(col_id, depth, syn_id));
+	/*size_t syns_idx =mad24(mul24(row_id, depth), width, mad24(col_id, depth, syn_id));
 	size_t axns_idx = mad24(
 		syn_axn_row_ids[syns_idx], 
 		width, 
 		syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH
-	);
+	);*/
 
+	size_t syns_idx = (row_id * depth * width) + (col_id * depth) + syn_id;
+	size_t axns_idx = (syn_axn_row_ids[syns_idx] * width) + syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH;
+	
 	syn_states[syns_idx] =	mul_hi(axn_states[axns_idx], syn_strs[syns_idx]) ;
 }
 
@@ -76,7 +79,7 @@ __kernel void cycle_dens(
 
 	short syn_sum = 0;
 
-#pragma unroll 
+	#pragma unroll 
 	for (uint i = 0; i < SYNAPSES_PER_DENDRITE; i++) {
 		syn_sum += syn_states[syn_grp + i];
 	}
@@ -106,7 +109,7 @@ __kernel void cycle_axns(
 	short den_sum = 0;
 	//short den_mix = 0;
 
-#pragma unroll 
+	#pragma unroll 
 	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
 		den_sum += den_states[den_grp + i];
 		//den_mix = (char)add_sat((char)den_mix, (char)den_states[den_grp + i]);

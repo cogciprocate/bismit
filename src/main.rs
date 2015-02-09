@@ -36,7 +36,7 @@ fn main() {
 	// hello_world::run();
 
 	
-	test_4::test_cycle_dens();
+	test_4::test_cycle();
 	//test_miccos::run();
 	
 
