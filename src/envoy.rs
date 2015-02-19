@@ -41,6 +41,9 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 	pub fn _new(padding: u32, width: u32, height: u8, mut vec: Vec<T>, ocl: &ocl::Ocl) -> Envoy<T> {
 		let buf: ocl::cl_mem = ocl::new_buffer(&mut vec, ocl.context);
 
+		//println!("New Envoy with height: {}, width: {}, padding: {}", height, width, padding);
+
+
 		let envoy = Envoy {
 			vec: vec,
 			buf: buf,
@@ -49,6 +52,7 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 			height: height,
 			ocl: Box::new(ocl.clone()),
 		};
+
 
 		envoy.len();
 

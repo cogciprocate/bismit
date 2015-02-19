@@ -22,9 +22,9 @@ pub fn test_cycle() {
 	let mut vec1: Vec<i8> = Vec::with_capacity(1024);
 	for i in range(0, 1024) {
 		if i < 512 {
-			vec1.push(20i8);
+			vec1.push(24i8);
 		} else {
-			vec1.push(20i8);
+			vec1.push(12i8);
 		}
 	}
 
@@ -43,8 +43,10 @@ pub fn test_cycle() {
 	*/
 
 
+
 		/* SENSE ONLY LOOP */
-	let mut i = 0u32;
+	print!("\nRunning sense only loops ... ");
+	let mut i = 0i32;
 	loop {
 		if i >= 3 { break; }
 
@@ -53,11 +55,29 @@ pub fn test_cycle() {
 		i += 1;
 	}
 
+	print!("{} sense only iterations complete: ", i);
+	if true {
+		println!("\ncells.axns.states: ");
+		cortex.cells.axns.states.print(1 << 5);
+	}
+
 	
+
+
+
+
 		/* SENSE AND PRINT LOOP */
+	print!("\nRunning sense and print loops...");
 	let mut i = 0u32;
 	loop {
 		if i >= 1 { break; }
+
+		print!("\n=== Iteration {} ===", i + 1);
+
+		/*if true {
+			println!("\ncells.axns.states: ");
+			cortex.cells.axns.states.print(1 << 5);
+		}*/
 
 		cortex.sense(0, &chord1); 
 
@@ -67,42 +87,57 @@ pub fn test_cycle() {
 		// 512:1 (25% ACTIVITY, 262144 len)
 		//
 
-
-		
 		//	println!("\n tmp_out: ");
 		//	cortex.sensory_segments[0].tmp_out.print(1000);
 
 		if true {
-			println!("\n cells.axns.states: ");
-			cortex.cells.axns.states.print(1 << 5);
-		}
-
-		if true {
-			println!("\n cells.dst_dens.syns.axn_col_offs:");
+			println!("\ncells.dst_dens.syns.axn_col_offs:");
 			cortex.cells.dst_dens.syns.axn_col_offs.print(1 << 16);		// 16384
+
+			/*println!("\ncells.prx_dens.syns.axn_col_offs:");
+			cortex.cells.prx_dens.syns.axn_col_offs.print(1 << 16);	*/
 		}
 		if true {
-			println!("\n cells.dst_dens.syns.axn_row_ids:");
+			println!("\ncells.dst_dens.syns.axn_row_ids:");
 			cortex.cells.dst_dens.syns.axn_row_ids.print(1 << 16);		// 16384
+
+			println!("\ncells.prx_dens.syns.axn_row_ids:");
+			cortex.cells.prx_dens.syns.axn_row_ids.print(1 << 12);
 		}
 
 		if false {
-			println!("\n cells.dst_dens.syns.strengths: ");
+			println!("\ncells.dst_dens.syns.strengths: ");
 			cortex.cells.dst_dens.syns.strengths.print(1 << 16);
 		}
 
 		if true {
-			println!("\n cells.dst_dens.syns.states: ");
+			println!("\ncells.dst_dens.syns.states: ");
 			cortex.cells.dst_dens.syns.states.print(1 << 14);
+
+			println!("\ncells.prx_dens.syns.states: ");
+			cortex.cells.prx_dens.syns.states.print(1 << 10);
 		}
 
 		if true {
-			println!("\n cells.dst_dens.states: ");
+			println!("\ncells.dst_dens.states: ");
 			cortex.cells.dst_dens.states.print(1 << 10);
 		}
 
+		if true {
+			println!("\ncells.axns.states: ");
+			cortex.cells.axns.states.print(1 << 5);
+		}
+
 		i += 1;
+		println!("");
 	}
+
+/*	print!("\n\n=== Final Axon States: ===");
+
+	if true {
+		println!("\ncells.axns.states: ");
+		cortex.cells.axns.states.print(1 << 4);
+	}*/
 
 
 

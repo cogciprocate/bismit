@@ -50,10 +50,6 @@ impl Cortex {
 		ocl::enqueue_write_buffer(&glimpse, self.cells.axns.states.buf, self.ocl.command_queue, common::AXONS_MARGIN);
 
 		self.cells.cycle();
-		//self.cycle_syns();
-		//self.cycle_dens();
-		//self.cycle_axns();
-
 	}
 
 
@@ -123,12 +119,12 @@ pub struct CorticalDimensions {
 
 /*	fn cycle_axns(&self) {
 		let width: u32 = self.areas.width(CorticalRegionType::Sensory);
-		let (height_antecellular, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
+		let (height_noncellular, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_axns");
 		ocl::set_kernel_arg(0, self.cells.dst_dens.states.buf, kern);
 		ocl::set_kernel_arg(1, self.cells.axns.states.buf, kern);
-		ocl::set_kernel_arg(2, height_antecellular as u32, kern);
+		ocl::set_kernel_arg(2, height_noncellular as u32, kern);
 
 		let gws = (height_cellular as usize, width as usize);
 
