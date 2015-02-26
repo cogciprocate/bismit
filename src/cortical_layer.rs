@@ -16,12 +16,17 @@ impl CorticalLayer {
 	}
 
 	pub fn src_layer_names(&self, den_type: DendriteType) -> Vec<&'static str> {
-		match self.cell {
+		let layer_names = match self.cell {
 			Some(ref protocell) => match den_type {
 				DendriteType::Distal =>	protocell.den_dist_srcs.clone(),
 				DendriteType::Proximal => protocell.den_prox_srcs.clone(),
-			}.expect("CorticalLayer::src_layer_names(): cell has no source rows."),
+			},
 			_ => panic!("Layer must have a cell defined to determine source layers"),
+		};
+
+		match layer_names {
+			Some(v) => v,
+			None => Vec::with_capacity(0),
 		}
 	}
 }

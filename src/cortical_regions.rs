@@ -22,12 +22,14 @@ pub fn define() -> CorticalRegions {		// Eventually move this to a config file o
 
 	let mut sen = CorticalRegion::new();
 
+	sen.add_new_layer("test", 1, None);
 	sen.add_new_layer("thal", 1, None);
-	sen.add_new_layer("iv", 2, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["thal"]), Some(vec!["iii"]))));
-	sen.add_new_layer("iii", 2, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iv"]), Some(vec!["iii"]))));
+	sen.add_new_layer("test2", 1, None);
+	sen.add_new_layer("iv", 1, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["thal"]), Some(vec!["test"]))));
+	//sen.add_new_layer("iii", 2, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iv"]), Some(vec!["iv", "iv", "iv"]))));
 	//sen.add_new_layer("ii", 2, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iii"]), Some(vec!["iii"]))));
 	
-	//sen.add_new_layer("col_out", 1, Some(Protocell::new(CellKind::SpinyStellate, None, Some(vec!["iv", "iii"]))));
+	//sen.add_new_layer("col_out", 1, Some(Protocell::new(CellKind::SpinyStellate, None, Some(vec!["iv"]))));
 	
 	//sen.add_new_layer("test", Interlaminar(vec!["iii"], vec!["thal"], Pyramidal), 4);
 
@@ -131,7 +133,7 @@ impl CorticalRegion {
 			None => noncell_rows,
 		};
 
-		//println!("Adding Layer: {}, layer_height: {}, base_row_id: {}, kind_base_row_pos: {}", layer_name, layer_height, next_base_row_id, next_kind_base_row_pos);
+		println!("Layer: {}, layer_height: {}, base_row_id: {}, kind_base_row_pos: {}", layer_name, layer_height, next_base_row_id, next_kind_base_row_pos);
 		
 		let cl = CorticalLayer { 
 			cell: cell,

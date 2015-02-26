@@ -49,8 +49,8 @@ impl Cells {
 
 	pub fn cycle(&self) {
 		self.dst_dens.cycle(&self.axns, &self.ocl);
-		self.prx_dens.syns.cycle(&self.axns, &self.ocl);
-		self.axns.cycle(&self.dst_dens, &self.ocl);
+		self.prx_dens.cycle(&self.axns, &self.ocl);
+		self.axns.cycle(&self.dst_dens, &self.prx_dens, &self.ocl);
 	}
 }
 
@@ -68,7 +68,7 @@ impl Somata {
 pub struct Axons {
 	height_noncellular: u8,
 	height_cellular: u8,
-	width: u32,
+	pub width: u32,
 	padding: u32,
 	pub states: Envoy<ocl::cl_char>,
 }
@@ -89,19 +89,19 @@ impl Axons {
 		}
 	}
 
-	fn cycle(&self, dst_dens: &Dendrites, ocl: &ocl::Ocl) {
+	fn cycle(&self, dst_dens: &Dendrites, prx_dens: &Dendrites, ocl: &ocl::Ocl) {
 		//let width: u32 = self.areas.width(CorticalRegionType::Sensory);
 		//let (height_noncellular, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
 
 		let kern = ocl::new_kernel(ocl.program, "cycle_axns");
 		ocl::set_kernel_arg(0, dst_dens.states.buf, kern);
-		ocl::set_kernel_arg(1, self.states.buf, kern);
-		ocl::set_kernel_arg(2, self.height_noncellular as u32, kern);
+		ocl::set_kernel_arg(1, prx_dens.states.buf, kern);
+		ocl::set_kernel_arg(2, self.states.buf, kern);
+		ocl::set_kernel_arg(3, self.height_noncellular as u32, kern);
 
 		let gws = (self.height_cellular as usize, self.width as usize);
 
 		ocl::enqueue_2d_kernel(kern, ocl.command_queue, &gws);
-
 	}
 }
 
@@ -143,15 +143,22 @@ impl Dendrites {
 		//let width: u32 = self.areas.width(CorticalRegionType::Sensory);
 		//let (_, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
 
-		let width_dens: usize = self.height as usize * self.width as usize * self.per_cell as usize;
+		let len_dens: usize = self.height as usize * self.width as usize * self.per_cell as usize;
+
+		let boost_log2: u8 = if self.den_type == DendriteType::Distal {
+			common::DST_DEN_BOOST_LOG2
+		} else {
+			common::PRX_DEN_BOOST_LOG2
+		};
 
 		let kern = ocl::new_kernel(ocl.program, "cycle_dens");
 
 		ocl::set_kernel_arg(0, self.syns.states.buf, kern);
 		ocl::set_kernel_arg(1, self.thresholds.buf, kern);
 		ocl::set_kernel_arg(2, self.states.buf, kern);
+		ocl::set_kernel_arg(3, boost_log2, kern);
 
-		ocl::enqueue_kernel(kern, ocl.command_queue, width_dens);
+		ocl::enqueue_kernel(kern, ocl.command_queue, len_dens);
 
 	}
 }
@@ -172,7 +179,7 @@ impl Synapses {
 	pub fn new(width: u32, height: u8, per_cell: u32, den_type: DendriteType, regions: &CorticalRegions, ocl: &ocl::Ocl) -> Synapses {
 		let width_syns = width * per_cell;
 
-		println!("New Synapses with: height: {}, width: {}, per_cell(row depth): {}, width_syns(row area): {}", height, width, per_cell, width_syns);
+		println!("New {:?} Synapses with: height: {}, width: {}, per_cell(row depth): {}, width_syns(row area): {}", den_type, height, width, per_cell, width_syns);
 
 		let mut axn_row_ids = Envoy::<ocl::cl_uchar>::new(width_syns, height, 0, ocl);
 		let mut axn_col_offs = Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl);
@@ -184,7 +191,7 @@ impl Synapses {
 			per_cell: per_cell,
 			den_type: den_type,
 			states: Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl),
-			strengths: Envoy::<ocl::cl_char>::new(width_syns, height, common::SYNAPSE_STRENGTH_ZERO, ocl),
+			strengths: Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl),
 			axn_row_ids: axn_row_ids,
 			axn_col_offs: axn_col_offs,
 		};
@@ -196,7 +203,7 @@ impl Synapses {
 	}
 
 	fn init(&mut self, regions: &CorticalRegions) {
-		assert!((self.axn_col_offs.width() == self.axn_row_ids.width()) && ((self.axn_row_ids.width() == (self.width * self.per_cell))), "[cells::Synapse::init(): width mismatch]");
+		assert!((self.axn_col_offs.width() == self.axn_row_ids.width()) && ((self.axn_row_ids.width() == (self.width * self.per_cell))), "[cells::Synapses::init(): width mismatch]");
 
 		let ref region = regions[CorticalRegionType::Sensory];
 		assert!(region.layers.len() > 0, "cells::Synapses::init(): Region has no layers.");
@@ -205,7 +212,7 @@ impl Synapses {
 		let mut rng = rand::thread_rng();
 
 
-			/* LOOP THROUGH LAYERS */
+		/* LOOP THROUGH LAYERS */
 		for (&ln, l) in region.layers.iter() {
 			let src_row_ids: Vec<u8> =	match l.cell {
 				Some(_) => {
@@ -213,37 +220,68 @@ impl Synapses {
 				},
 				_ => continue,
 			};
+
+			let src_row_ids_len: usize = src_row_ids.len();
+
+			if src_row_ids_len == 0 {
+				continue
+			}
+
 			let kind_base_row_pos = l.kind_base_row_pos;
-			let src_row_idx_len: usize = src_row_ids.len();
-			let src_row_idx_range: Range<usize> = Range::new(0, src_row_idx_len);
-			//let row_ids = region.row_ids(vec!(ln));
-			//println!("Layer: \"{}\": row_ids: {:?}, src_row_ids: {:?}", ln, row_ids, src_row_ids);
 			
-				/* LOOP THROUGH ROWS OF LIKE KIND (WITHIN LAYER)*/
+			let src_row_idx_range: Range<usize> = Range::new(0, src_row_ids_len);
+			assert!(src_row_ids_len <= self.per_cell as usize, "cells::Synapses::init(): Number of source rows must not exceed number of synapses per cell.");
+			let row_ids = region.row_ids(vec!(ln));
+
+			println!("Layer: \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", ln, self.den_type, row_ids, src_row_ids);
+			
+			/* LOOP THROUGH ROWS OF LIKE KIND (WITHIN LAYER) */
 			for row_pos in range(kind_base_row_pos, kind_base_row_pos + l.height) {
 				let ei_start = row_len as usize * row_pos as usize;
 				let ei_end = ei_start + row_len as usize;
-				//println!("	ei_start: {}, ei_end: {}, idx_len: {}", ei_start, ei_end, src_row_idx_len);
-
+				//println!("	ei_start: {}, ei_end: {}, idx_len: {}", ei_start, ei_end, src_row_ids_len);
 				let col_off_range: Range<i8> = Range::new(-126, 127);
 
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
+				println!("{:?}: {}, {} - {}", self.den_type, row_pos, ei_start, ei_end);
 				match self.den_type {
 					DendriteType::Distal => {
 						for i in range(ei_start, ei_end) {
+							self.strengths[i] = common::SYNAPSE_STRENGTH_ZERO;
 							self.axn_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
 							self.axn_col_offs[i] = col_off_range.ind_sample(&mut rng);
 						}
 					},
 					DendriteType::Proximal => {
+						let mut syn_pos: usize = 0;
+						//println!{"\nei_start: {}", ei_start};
 						for i in range(ei_start, ei_end) {
-							self.axn_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
+							//print!("{}:",syn_pos);
+							if syn_pos == self.per_cell as usize {
+								syn_pos = 0;
+							}
+
+							if syn_pos < src_row_ids_len {
+								self.strengths[i] = common::PRX_SYNAPSE_STRENGTH_ZERO;
+								self.axn_row_ids[i] = src_row_ids[syn_pos];
+								//print!("S");
+							} else {
+								self.strengths[i] = 0i8;
+								self.axn_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
+								//print!("R");
+							}
 							self.axn_col_offs[i] = 0;
+
+							/*print!("{}", self.axn_row_ids[i]);
+							print!("({}) ", self.strengths[i]);*/
+
+							syn_pos += 1;
 						}
 					},
 				}
 			}
 		}
+		self.strengths.write();
 		self.axn_col_offs.write();
 		self.axn_row_ids.write();		
 	}

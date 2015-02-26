@@ -72,7 +72,8 @@ __kernel void cycle_syns(
 __kernel void cycle_dens(
 				__global const char* syn_states,
 				__global const char* den_thrs,
-				__global char* const den_states
+				__global char* const den_states,
+				__private const uchar boost_log2
 ) {
 	size_t gid = get_global_id(0);
 	size_t syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
@@ -84,17 +85,20 @@ __kernel void cycle_dens(
 		syn_sum += syn_states[syn_grp + i];
 	}
 
-	char den_val = (char)(syn_sum >> 4);
+	syn_sum = syn_sum << boost_log2;
 
-	//den_states[gid] = den_val;
+	char den_val = (char)clamp((short)(syn_sum >> 4), (short)-128, (short)127);
 
-	if (syn_sum > (short)den_thrs[gid]) {
+	den_states[gid] = den_val;
+
+	/*if (den_val > den_thrs[gid]) {
 		den_states[gid] = den_val;			// DENDRITE_ACTIVE;
-	}
+	}*/
 }
 
 __kernel void cycle_axns(
-				__global const char* den_states,
+				__global const char* dst_den_states,
+				__global const char* prx_den_states,
 				__global char* const axn_states,
 				__private const uint cell_row_offset		// Change this to __attribute__ or something
 ) {
@@ -111,12 +115,15 @@ __kernel void cycle_axns(
 
 	#pragma unroll 
 	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
-		den_sum += den_states[den_grp + i];
-		//den_mix = (char)add_sat((char)den_mix, (char)den_states[den_grp + i]);
+		den_sum += dst_den_states[den_grp + i];
+		//den_mix = (char)add_sat((char)den_mix, (char)dst_den_states[den_grp + i]);
 	}
 
-	//axn_states[axn_idx] = den_mix;
-	axn_states[axn_idx] = (char)clamp(den_sum, (short)0, (short)127);
+	den_sum = clamp(den_sum, (short)0, (short)127);
+
+	//short prx_den_state = clamp((short)((short)prx_den_states[cel_idx] << SYNAPSES_PER_NEURON_LOG2), (short)-128, (short)127);
+	//axn_states[axn_idx] = (char)clamp((short)(den_sum + prx_den_state), (short)0, (short)127);
+	axn_states[axn_idx] = (char)clamp((short)(den_sum + prx_den_states[cel_idx]), (short)0, (short)127);
 
 	/*if (den_mix) {
 		axn_states[axn_idx] |= CELL_PREDICTIVE;

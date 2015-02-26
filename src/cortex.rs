@@ -42,12 +42,13 @@ impl Cortex {
 	}
 
 
-	pub fn sense(&mut self, sgmt_idx: usize, chord: &Chord) {
-		let sensory_area = "v1";
+	pub fn sense(&mut self, sgmt_idx: usize, axn_row: u8, chord: &Chord) {
+		//let sensory_area = "v1";
+		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
+		let mut glimpse: Vec<i8> = Vec::with_capacity(chord.width as usize);
 
-		let mut glimpse: Vec<i8> = Vec::with_capacity(common::SENSORY_CHORD_WIDTH);
 		chord.unfold_into(&mut glimpse, 0);
-		ocl::enqueue_write_buffer(&glimpse, self.cells.axns.states.buf, self.ocl.command_queue, common::AXONS_MARGIN);
+		ocl::enqueue_write_buffer(&glimpse, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
 
 		self.cells.cycle();
 	}

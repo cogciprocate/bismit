@@ -6,10 +6,14 @@ use common;
 
 pub struct Chord {
 	pub chord: BTreeMap<u16, i8>,
+	pub width: u32,
 }
 impl Chord {
 	pub fn new() -> Chord {
-		Chord { chord: BTreeMap::new(), }
+		Chord { 
+			chord: BTreeMap::new(), 
+			width: common::SENSORY_CHORD_WIDTH, 
+		}
 	}
 
 	pub fn from_vec(vec: &Vec<i8>) -> Chord {
@@ -24,7 +28,10 @@ impl Chord {
 			
 			i += 1;
 		}
-		Chord { chord: chord, }
+		Chord { 
+			chord: chord,
+			width: common::SENSORY_CHORD_WIDTH,
+		}
 	}
 
 	pub fn note_sum(&mut self, addr: u16, val: i8) {
@@ -80,12 +87,12 @@ impl Chord {
 
 
 pub struct ChordUnfolded {
-	pub notes: [i8; common::SENSORY_CHORD_WIDTH],
+	pub notes: [i8; common::SENSORY_CHORD_WIDTH as usize],
 }
 impl ChordUnfolded {
 	pub fn new() -> ChordUnfolded {
 		ChordUnfolded { 
-			notes: [0i8; common::SENSORY_CHORD_WIDTH],
+			notes: [0i8; common::SENSORY_CHORD_WIDTH as usize],
 		}
 	}
 

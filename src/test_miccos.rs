@@ -125,7 +125,7 @@ impl SnakeBrain {
 	pub fn act(&mut self, world: &mut World) {
 		let scent: Scent = world.sniff_from(self.body_uid);
 		let peek_chord = render_peek(world.peek_from(self.body_uid));
-		self.cort.sense(0, &peek_chord);
+		self.cort.sense(0, 0, &peek_chord);
 
 		self.propel(world, 0.2f32, 0.1f32);
 
