@@ -23,8 +23,10 @@ pub struct Cells {
 	pub height_noncellular: u8,
 	pub height_cellular: u8,
 	pub axns: Axons,
+	pub soma: Somata,
 	pub dst_dens: Dendrites,
 	pub prx_dens: Dendrites,
+	pub aux: Aux,
 	ocl: ocl::Ocl,
 }
 impl Cells {
@@ -40,9 +42,11 @@ impl Cells {
 			width: width,
 			height_noncellular: height_noncellular,
 			height_cellular: height_cellular,
-			axns:	Axons::new(width, height_noncellular, height_cellular, ocl),
+			axns: Axons::new(width, height_noncellular, height_cellular, regions, ocl),
+			soma: Somata::new(width, height_cellular, regions, ocl),
 			dst_dens: Dendrites::new(width, height_cellular, DendriteType::Distal, regions, ocl),
 			prx_dens: Dendrites::new(width, height_cellular, DendriteType::Proximal, regions, ocl),
+			aux: Aux::new(width, height_cellular, ocl),
 			ocl: ocl.clone(),
 		}
 	}
@@ -50,17 +54,66 @@ impl Cells {
 	pub fn cycle(&self) {
 		self.dst_dens.cycle(&self.axns, &self.ocl);
 		self.prx_dens.cycle(&self.axns, &self.ocl);
-		self.axns.cycle(&self.dst_dens, &self.prx_dens, &self.ocl);
+		self.soma.cycle(&self.dst_dens, &self.prx_dens, &self.ocl);
+		self.axns.cycle(&self.soma, &self.ocl);
 	}
+
+	
 }
 
-pub struct Somata {	
+pub struct Somata {
+	height: u8,
+	width: u32,
 	pub states: Envoy<ocl::cl_char>,
+	pub hcol_max_vals: Envoy<ocl::cl_char>,
+	pub hcol_max_idxs: Envoy<ocl::cl_uchar>,
 }
 
 impl Somata {
-	pub fn new(width: u32, height: u8, ocl: &ocl::Ocl) -> Somata {
-		Somata { states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl), }
+	pub fn new(width: u32, height: u8, regions: &CorticalRegions, ocl: &ocl::Ocl) -> Somata {
+		Somata { 
+			height: height,
+			width: width,
+			states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl),
+			hcol_max_vals: Envoy::<ocl::cl_char>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0i8, ocl),
+			hcol_max_idxs: Envoy::<ocl::cl_uchar>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0u8, ocl),
+		}
+	}
+
+	fn cycle(&self, dst_dens: &Dendrites, prx_dens: &Dendrites, ocl: &ocl::Ocl) {
+
+	
+		let kern = ocl::new_kernel(ocl.program, "soma_cycle");
+		ocl::set_kernel_arg(0, dst_dens.states.buf, kern);
+		ocl::set_kernel_arg(1, prx_dens.states.buf, kern);
+		ocl::set_kernel_arg(2, self.states.buf, kern);
+		ocl::set_kernel_arg(3, self.height as u32, kern);
+
+		let gws = (self.height as usize, self.width as usize);
+
+		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
+
+		self.cycle_inhib(ocl);
+	}
+
+	pub fn cycle_inhib(&self, ocl: &ocl::Ocl) {
+
+		
+
+		let kern = ocl::new_kernel(ocl.program, "soma_inhib");
+		ocl::set_kernel_arg(0, self.states.buf, kern);
+		ocl::set_kernel_arg(1, self.hcol_max_vals.buf, kern);
+		ocl::set_kernel_arg(2, self.hcol_max_idxs.buf, kern);
+		let mut kern_width = self.width as usize / common::COLUMNS_PER_HYPERCOLUMN as usize;
+		let gws = (self.height as usize, kern_width);
+		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
+
+
+		/*ocl::set_kernel_arg(0, self.aux.chars_0.buf, kern);
+		ocl::set_kernel_arg(1, self.aux.chars_1.buf, kern);
+		kern_width = kern_width / (1 << grp_size_log2);
+		let gws = (self.height_cellular as usize, self.width as usize / 64);
+		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);*/
 	}
 }
 
@@ -71,12 +124,20 @@ pub struct Axons {
 	pub width: u32,
 	padding: u32,
 	pub states: Envoy<ocl::cl_char>,
+	//inhib_tmp_row: u8,
+	//inhib_tmp_2_row: u8,
 }
 
 impl Axons {
-	pub fn new(width: u32, height_noncellular: u8, height_cellular: u8, ocl: &ocl::Ocl) -> Axons {
+	pub fn new(width: u32, height_noncellular: u8, height_cellular: u8, regions: &CorticalRegions, ocl: &ocl::Ocl) -> Axons {
 		let padding: u32 = num::cast(common::AXONS_MARGIN * 2).expect("Axons::new()");
 		let height = height_cellular + height_noncellular;
+
+		/* BULLSHIT BELOW */
+		let ref region = regions[CorticalRegionType::Sensory];
+		//let inhib_tmp_row = region.row_ids(vec!["inhib_tmp"])[0];
+		//let inhib_tmp_2_row = region.row_ids(vec!["inhib_tmp_2"])[0];
+		/* END BULLSHIT (remember to remove inhib_tmp_row) */
 
 		//println!("New Axons with: height_ac: {}, height_c: {}, width: {}", height_noncellular, height_cellular, width);
 
@@ -86,22 +147,29 @@ impl Axons {
 			width: width,
 			padding: padding,
 			states: Envoy::<ocl::cl_char>::with_padding(padding, width, height, 0i8, ocl),
+			//inhib_tmp_row: inhib_tmp_row,
+			//inhib_tmp_2_row: inhib_tmp_2_row,
 		}
 	}
 
-	fn cycle(&self, dst_dens: &Dendrites, prx_dens: &Dendrites, ocl: &ocl::Ocl) {
-		//let width: u32 = self.areas.width(CorticalRegionType::Sensory);
-		//let (height_noncellular, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
+	fn cycle(&self, soma: &Somata, ocl: &ocl::Ocl) {
 
-		let kern = ocl::new_kernel(ocl.program, "cycle_axns");
-		ocl::set_kernel_arg(0, dst_dens.states.buf, kern);
-		ocl::set_kernel_arg(1, prx_dens.states.buf, kern);
-		ocl::set_kernel_arg(2, self.states.buf, kern);
-		ocl::set_kernel_arg(3, self.height_noncellular as u32, kern);
+			let kern = ocl::new_kernel(ocl.program, "cycle_axns");
 
-		let gws = (self.height_cellular as usize, self.width as usize);
+			ocl::set_kernel_arg(0, soma.states.buf, kern);
+			ocl::set_kernel_arg(1, soma.hcol_max_vals.buf, kern);
+			ocl::set_kernel_arg(2, soma.hcol_max_idxs.buf, kern);
+			ocl::set_kernel_arg(3, self.states.buf, kern);
+			ocl::set_kernel_arg(4, self.height_noncellular as u32, kern);
 
-		ocl::enqueue_2d_kernel(kern, ocl.command_queue, &gws);
+			let gws = (self.height_cellular as usize, self.width as usize);
+
+			ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
+
+	} 
+
+	pub fn layer_ofs(&self) {
+
 	}
 }
 
@@ -151,14 +219,14 @@ impl Dendrites {
 			common::PRX_DEN_BOOST_LOG2
 		};
 
-		let kern = ocl::new_kernel(ocl.program, "cycle_dens");
+		let kern = ocl::new_kernel(ocl.program, "dens_cycle");
 
 		ocl::set_kernel_arg(0, self.syns.states.buf, kern);
 		ocl::set_kernel_arg(1, self.thresholds.buf, kern);
 		ocl::set_kernel_arg(2, self.states.buf, kern);
 		ocl::set_kernel_arg(3, boost_log2, kern);
 
-		ocl::enqueue_kernel(kern, ocl.command_queue, len_dens);
+		ocl::enqueue_kernel(ocl.command_queue, kern, len_dens);
 
 	}
 }
@@ -308,7 +376,7 @@ impl Synapses {
 
 		//println!("cycle_cel_syns running with width = {}, height = {}", width, height_total);
 
-		let kern = ocl::new_kernel(ocl.program, "cycle_syns");
+		let kern = ocl::new_kernel(ocl.program, "syns_cycle");
 		ocl::set_kernel_arg(0, axns.states.buf, kern);
 		ocl::set_kernel_arg(1, self.axn_row_ids.buf, kern);
 		ocl::set_kernel_arg(2, self.axn_col_offs.buf, kern);
@@ -321,9 +389,30 @@ impl Synapses {
 
 		//println!("gws: {:?}", gws);
 
-		ocl::enqueue_3d_kernel(kern, ocl.command_queue, &gws);
+		ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
 
 	}
 }
 
 
+pub struct Aux {
+	height: u8,
+	width: u32,
+	pub ints_0: Envoy<ocl::cl_int>,
+	pub ints_1: Envoy<ocl::cl_int>,
+	pub chars_0: Envoy<ocl::cl_char>,
+	pub chars_1: Envoy<ocl::cl_char>,
+}
+
+impl Aux {
+	pub fn new(width: u32, height: u8, ocl: &ocl::Ocl) -> Aux {
+		Aux { 
+			ints_0: Envoy::<ocl::cl_int>::new(width, height, 0, ocl),
+			ints_1: Envoy::<ocl::cl_int>::new(width, height, 0, ocl),
+			chars_0: Envoy::<ocl::cl_char>::new(width, height, 0, ocl),
+			chars_1: Envoy::<ocl::cl_char>::new(width, height, 0, ocl),
+			height: height,
+			width: width,
+		}
+	}
+}

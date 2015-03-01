@@ -13,6 +13,7 @@ pub use cl_h::{cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, 
 
 pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
 pub const BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";		//	-cl-std=CL2.0
+pub const GPU_DEVICE: usize = 1;
 
 
 pub struct Ocl {
@@ -29,7 +30,8 @@ impl Ocl {
 		let kern_c_str = ffi::CString::from_vec(kern_str);
 
 		let platform = new_platform();
-		let device: cl_device_id = new_device(platform);
+		let devices: [cl_device_id; 2] = new_device(platform);
+		let device: cl_device_id = devices[GPU_DEVICE];
 		let context: cl_context = new_context(device);
 		let program: cl_program = new_program(kern_c_str.as_ptr(), context, device);
 		let command_queue: cl_command_queue = new_command_queue(context, device); 
@@ -173,11 +175,11 @@ pub fn new_platform() -> cl_h::cl_platform_id {
 	
 }
 
-pub fn new_device(platform: cl_h::cl_platform_id) -> cl_h::cl_device_id {
-	let mut device: cl_h::cl_device_id = 0 as cl_h::cl_device_id;
+pub fn new_device(platform: cl_h::cl_platform_id) -> [cl_h::cl_device_id; 2] {
+	let mut device: [cl_h::cl_device_id; 2] = [0 as cl_h::cl_device_id; 2];
 
 	unsafe {
-		let err = cl_h::clGetDeviceIDs(platform, cl_h::CL_DEVICE_TYPE_GPU, 1, &mut device, ptr::null_mut());
+		let err = cl_h::clGetDeviceIDs(platform, cl_h::CL_DEVICE_TYPE_GPU, 2, device.as_mut_ptr(), ptr::null_mut());
 		must_succ("clGetDeviceIDs()", err);
 	}
 	device
@@ -370,8 +372,8 @@ pub fn set_kernel_arg<T>(arg_index: cl_h::cl_uint, buffer: T, kernel: cl_h::cl_k
 }
 
 pub fn enqueue_kernel(
-				kernel: cl_h::cl_kernel, 
 				command_queue: cl_h::cl_command_queue, 
+				kernel: cl_h::cl_kernel, 
 				gws: usize,
 ) {
 	unsafe {
@@ -391,19 +393,31 @@ pub fn enqueue_kernel(
 }
 
 pub fn enqueue_2d_kernel(
-				kernel: cl_kernel, 
 				command_queue: cl_h::cl_command_queue,
+				kernel: cl_kernel, 
 				//dims: cl_uint,
+				gwo_o: Option<&(usize, usize)>,
 				gws: &(usize, usize),
+				lws_o: Option<&(usize, usize)>,
 ) {
+	let gwo = match gwo_o {
+		Some(x) =>	(x as *const (usize, usize)) as *const libc::size_t,
+		None 	=>	ptr::null(),
+	};
+
+	let lws = match lws_o {
+		Some(x) =>	(x as *const (usize, usize)) as *const libc::size_t,
+		None 	=>	ptr::null(),
+	};
+
 	unsafe {
 		let err = cl_h::clEnqueueNDRangeKernel(
 					command_queue,
 					kernel,
 					2,				//	dims,
-					ptr::null(),
+					gwo,
 					(gws as *const (usize, usize)) as *const libc::size_t,
-					ptr::null(),
+					lws,
 					0,
 					ptr::null(),
 					ptr::null_mut(),
@@ -413,19 +427,30 @@ pub fn enqueue_2d_kernel(
 }
 
 pub fn enqueue_3d_kernel(
-				kernel: cl_kernel, 
 				command_queue: cl_h::cl_command_queue,
-				//dims: cl_uint,
+				kernel: cl_kernel, 
+				gwo_o: Option<&(usize, usize, usize)>,
 				gws: &(usize, usize, usize),
+				lws_o: Option<&(usize, usize, usize)>,
 ) {
+	let gwo = match gwo_o {
+		Some(x) =>	(x as *const (usize, usize, usize)) as *const libc::size_t,
+		None 	=>	ptr::null(),
+	};
+
+	let lws = match lws_o {
+		Some(x) =>	(x as *const (usize, usize, usize)) as *const libc::size_t,
+		None 	=>	ptr::null(),
+	};
+
 	unsafe {
 		let err = cl_h::clEnqueueNDRangeKernel(
 					command_queue,
 					kernel,
 					3,
-					ptr::null(),
+					gwo,
 					(gws as *const (usize, usize, usize)) as *const libc::size_t,
-					ptr::null(),
+					lws,
 					0,
 					ptr::null(),
 					ptr::null_mut(),

@@ -22,16 +22,16 @@ pub fn test_cycle() {
 	let mut vec1: Vec<i8> = Vec::with_capacity(1024);
 	for i in range(0, 1024) {
 		if i < 512 {
-			vec1.push(32i8);
+			vec1.push(20i8);
 		} else {
-			vec1.push(32i8);
+			vec1.push(60i8);
 		}
 	}
 
 	let mut vec2: Vec<i8> = Vec::with_capacity(1024);
 	for i in range(0, 1024) {
 		if i < 512 {
-			vec2.push(20i8);
+			vec2.push(0i8);
 		} else {
 			vec2.push(0i8);
 		}
@@ -67,7 +67,7 @@ pub fn test_cycle() {
 	print!("{} sense only iterations complete: ", i);
 	if true {
 		print!("\ncells.axns.states: ");
-		cortex.cells.axns.states.print(1 << 5);
+		cortex.cells.axns.states.print(1 << 6);
 	}
 
 	
@@ -134,31 +134,62 @@ pub fn test_cycle() {
 		/* DISTAL & PROXIMAL SYNAPSE STATES */
 		if true {	
 			print!("\ncells.dst_dens.syns.states: ");
-			cortex.cells.dst_dens.syns.states.print(1 << 12);
+			cortex.cells.dst_dens.syns.states.print(1 << 14);
 		}
 
 		if true {
 			print!("\ncells.prx_dens.syns.states: ");
-			cortex.cells.prx_dens.syns.states.print(1 << 7);
+			cortex.cells.prx_dens.syns.states.print(1 << 10);
 		}
 
 
 		/* DISTAL & PROXIMAL DENDRITE STATES */
 		if true {
 			print!("\ncells.dst_dens.states: ");
-			cortex.cells.dst_dens.states.print(1 << 8);
+			cortex.cells.dst_dens.states.print(1 << 10);
 		}
 
 		if true {
 			print!("\ncells.prx_dens.states: ");
-			cortex.cells.prx_dens.states.print(1 << 3);
+			cortex.cells.prx_dens.states.print(1 << 6);
+		}
+
+
+		/* AUX VALS */
+		/*if true {
+			print!("\ncells.aux.chars_0: ");
+			cortex.cells.aux.chars_0.print(1 << 0);
+		}
+
+		if true {
+			print!("\ncells.aux.chars_1: ");
+			cortex.cells.aux.chars_1.print(1 << 0);
+		}*/
+
+
+		/* SOMA STATES */
+		if true {
+			print!("\ncells.soma.hcol_max_vals: ");
+			cortex.cells.soma.hcol_max_vals.print(1 << 0);
+		}
+
+		if true {
+			print!("\ncells.soma.hcol_max_idxs: ");
+			cortex.cells.soma.hcol_max_idxs.print(1 << 0);
+		}
+
+
+		/* SOMA STATES */
+		if true {
+			print!("\ncells.soma.states: ");
+			cortex.cells.soma.states.print(1 << 4);
 		}
 
 
 		/* AXON STATES */
 		if true {
 			print!("\ncells.axns.states: ");
-			cortex.cells.axns.states.print(1 << 5);
+			cortex.cells.axns.states.print(1 << 0);
 		}
 
 		i += 1;

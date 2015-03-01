@@ -1,3 +1,4 @@
+
 === Fundamental Building Blocks ===
 	Two things must be communicated for now, the state of the cells on the same level of a (mini)column, and states of columns themselves.
 

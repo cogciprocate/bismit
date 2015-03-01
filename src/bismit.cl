@@ -23,6 +23,10 @@
 #define CELL_PREDICTIVE					0x01
 #define CELL_ACTIVE						0x10
 
+#define WORKGROUP_SIZE					64
+
+#define COLUMNS_PER_HYPERCOLUMN_LOG2	6
+
 /*
 ** Kernel Preferred work group size multiple:	 	64
 ** Max compute units:				 				32
@@ -36,7 +40,7 @@
 
 
 	//	#WORK SIZE: Synapses per Region
-__kernel void cycle_syns(
+__kernel void syns_cycle(
 				__global const char* axn_states,
 				__global const uchar* syn_axn_row_ids,
 				__global const char* syn_axn_col_offs,
@@ -69,7 +73,7 @@ __kernel void cycle_syns(
 }
 
 
-__kernel void cycle_dens(
+__kernel void dens_cycle(
 				__global const char* syn_states,
 				__global const char* den_thrs,
 				__global char* const den_states,
@@ -96,17 +100,17 @@ __kernel void cycle_dens(
 	}*/
 }
 
-__kernel void cycle_axns(
+__kernel void soma_cycle(
 				__global const char* dst_den_states,
 				__global const char* prx_den_states,
-				__global char* const axn_states,
+				__global char* const som_states,
 				__private const uint cell_row_offset		// Change this to __attribute__ or something
 ) {
 	size_t row = get_global_id(0);
 	size_t col = get_global_id(1);
 	size_t row_width = get_global_size(1);
 	size_t cel_idx = mad24(row, row_width, col);
-	size_t axn_idx = mad24((row + cell_row_offset), row_width, col) + SYNAPSE_REACH;
+	//size_t som_idx = mad24((row + cell_row_offset), row_width, col) + SYNAPSE_REACH;
 	size_t den_grp = cel_idx << DENDRITES_PER_NEURON_LOG2;
 	//int cel_grp = gid << CELLS_PER_COLUMN_LOG2;
 
@@ -122,15 +126,98 @@ __kernel void cycle_axns(
 	den_sum = clamp(den_sum, (short)0, (short)127);
 
 	//short prx_den_state = clamp((short)((short)prx_den_states[cel_idx] << SYNAPSES_PER_NEURON_LOG2), (short)-128, (short)127);
-	//axn_states[axn_idx] = (char)clamp((short)(den_sum + prx_den_state), (short)0, (short)127);
-	axn_states[axn_idx] = (char)clamp((short)(den_sum + prx_den_states[cel_idx]), (short)0, (short)127);
+	//som_states[som_idx] = (char)clamp((short)(den_sum + prx_den_state), (short)0, (short)127);
+	som_states[cel_idx] = (char)clamp((short)(den_sum + prx_den_states[cel_idx]), (short)0, (short)127);
+
+	//barrier(CLK_LOCAL_MEM_FENCE);
+
+
+
 
 	/*if (den_mix) {
-		axn_states[axn_idx] |= CELL_PREDICTIVE;
+		som_states[som_idx] |= CELL_PREDICTIVE;
 	} else {
-		axn_states[axn_idx] = 0;
+		som_states[som_idx] = 0;
 	}
 */
+}
+
+
+__kernel void soma_inhib(
+	__global char* const src_vals,
+	__global char* const dst_vals,
+	__global uchar* const dst_poss
+) {
+	size_t row = get_global_id(0);
+	size_t col = get_global_id(1);
+	size_t row_width = get_global_size(1);
+	size_t hcol_idx = mad24(row, row_width, col);
+	size_t wg_width = get_local_size(1);
+
+	const uchar hcol_size_log2 = COLUMNS_PER_HYPERCOLUMN_LOG2;
+	const uchar sub_grp_size_log2 = hcol_size_log2 >> 1;
+
+	const size_t src_vals_ofs = hcol_idx << hcol_size_log2;
+	
+	char hcol_max_val = 0;
+	char hcol_max_pos = 0;
+	char sub_grp_max_val = 0;
+	char sub_grp_max_pos = 0;
+	
+	short pos = 0;
+	char val = 0;
+
+	#pragma unroll 
+	for (uint i = 0; i < 1 << sub_grp_size_log2; i++) {
+
+		#pragma unroll 
+		for (uint j = 0; j < 1 << sub_grp_size_log2; j++) {
+			val = src_vals[src_vals_ofs + pos];
+
+			if (val > sub_grp_max_val) {
+				sub_grp_max_val = val;
+				sub_grp_max_pos = pos;
+			}
+			pos += 1;
+		}
+
+		if (sub_grp_max_val > hcol_max_val) {
+			hcol_max_val = sub_grp_max_val;
+			hcol_max_pos = sub_grp_max_pos;
+		}
+		sub_grp_max_val = 0;
+		sub_grp_max_pos = 0;
+	}
+	dst_vals[hcol_idx] = hcol_max_val;
+	dst_poss[hcol_idx] = hcol_max_pos;
+}
+
+
+__kernel void cycle_axns(
+				__global char* const som_states,
+				__global char* const hcol_max_vals,
+				__global uchar* const hcol_max_poss,
+				__global char* const axn_states,
+				__private const uint cell_row_offset		// Change this to __attribute__ or something
+) {
+	size_t row = get_global_id(0);
+	size_t col = get_global_id(1);
+	size_t row_width = get_global_size(1);
+	size_t cel_idx = mad24(row, row_width, col);
+	size_t axn_idx = mad24((row + cell_row_offset), row_width, col) + SYNAPSE_REACH;
+	size_t hcol_idx = cel_idx >> COLUMNS_PER_HYPERCOLUMN_LOG2;
+	size_t hcol_max_idx = (hcol_idx << COLUMNS_PER_HYPERCOLUMN_LOG2) + hcol_max_poss[hcol_idx];
+
+	//char axn_state = 0;
+
+	if (cel_idx != hcol_max_idx) {
+		axn_states[axn_idx] = 0;
+	} else {
+		axn_states[axn_idx] = som_states[cel_idx];
+	}
+
+	//axn_states[axn_idx] = axn_state;
+
 }
 
 
@@ -145,10 +232,16 @@ __kernel void cycle_axns(
 
 
 
+
+
+
+
+
+
+
+
+
 /* Bullshit Below
-
-
-
 
 
 
@@ -172,23 +265,96 @@ __kernel void cycle_axns(
 
 
 
+__kernel void inhib_3_0(
+	__global char* const src_vals,
+	__global char* const dst_vals
+) {
+	size_t row = get_global_id(0);
+	size_t col = get_global_id(1);
+	size_t row_width = get_global_size(1);
+	size_t grp_idx = mad24(row, row_width, col);
+	size_t wg_width = get_local_size(1);
 
-/* MUL_HI TEST STABLE
-*
-*
-*
-*
-*
-*/
+	//__local char best_of_8[32]; // wg_size = 256; 256 / 8 = 32
 
-__kernel void test_cell_axn_stable(__global uchar *axn, __global uchar *ax_out) {
-	int i = get_global_id(0);
-	uchar ax = axn[i] + 2;
-	axn[i] = mul_hi(ax, (uchar)128) * 2;
-	ax_out[i] = axn[i];
+	const uchar grp_size_log2 = 3;
+
+	size_t src_grp = grp_idx << grp_size_log2;
+	char grp_max = 0;
+
+	#pragma unroll 
+	for (uint i = 0; i < 1 << grp_size_log2; i++) {
+		grp_max = max(src_vals[src_grp + i], grp_max);
+		//dst_vals[src_grp + i] = 5;
+	}
+
+	dst_vals[grp_idx] = grp_max; //		grp_max;
+
+}
+
+__kernel void inhib_2_0(
+	__global char* const som_states,
+	__global char* const axn_states,
+	__private const uint axn_out_ofs,
+	__global int* const aux_vals
+) {
+	size_t row = get_global_id(0);
+	size_t col = get_global_id(1);
+	size_t row_width = get_global_size(1);
+	size_t grp_idx = mad24(row, row_width, col);
+	size_t wg_width = get_local_size(1);
+
+	//__local char best_of_8[32]; // wg_size = 256; 256 / 8 = 32
+
+	const uchar grp_size_log2 = 4;
+
+	size_t som_grp = grp_idx << grp_size_log2;
+	char grp_max = 0;
+
+	#pragma unroll 
+	for (uint i = 0; i < 1 << grp_size_log2; i++) {
+		grp_max = max(som_states[som_grp + i], grp_max);
+	}
+
+	aux_vals[grp_idx] = grp_max;
+	//aux_vals[(grp_idx << 2) + col] = 69;
+
 }
 
 
+
+__kernel void inhib_1_0(		// FUCK IT. LET'S DUPLICATE WORK FOR NOW. I'M DRUNK.
+				__global char* const axn_states,
+				__private const uint cell_row_offset,		// Change this to __attribute__ (or macro) or something
+				__private const uint axn_inhib_tmp_ofs,
+				__private const uint axn_inhib_tmp_2_ofs
+) {
+	size_t row = get_global_id(0);
+	size_t col = get_global_id(1);
+	size_t row_width = get_global_size(1);
+	size_t cel_idx = mad24(row, row_width, col);
+	size_t axn_idx = mad24((row + cell_row_offset), row_width, col) + SYNAPSE_REACH;
+	//size_t den_grp = cel_idx << DENDRITES_PER_NEURON_LOG2;
+
+	size_t group_size = 16;
+	size_t axn_grp = (size_t)axn_idx & (size_t)(0xFFFFFFFF - group_size); // groups of 16;
+
+	char axn_state_max = 1;
+	size_t axn_idx_max = 2;
+
+	#pragma unroll 
+	for (uint i = 0; i < group_size; i++) {
+		size_t idx = axn_grp + i;
+		if (axn_states[idx] > axn_state_max) {
+			axn_state_max = axn_states[idx];
+			axn_idx_max = idx;
+		}
+	}
+
+	/* NO CLUE WHAT I'M DOING -- START THIS OVER */
+	axn_states[axn_inhib_tmp_ofs + cel_idx + SYNAPSE_REACH] = axn_state_max;
+	axn_states[axn_inhib_tmp_2_ofs + cel_idx + SYNAPSE_REACH] = axn_idx_max;
+}
 
 
 
@@ -198,8 +364,6 @@ __kernel void get_synapse_values(__global uchar *values, __global uchar *output)
 	int gid = get_global_id(0);
 	output[gid] = values[gid];
 }
-
-
 
 
 __kernel void buffer_test(__global uint *synapse, __global uint *syn_out) {
@@ -373,3 +537,19 @@ __kernel void cycle_cel_syns_2_right(
 }
 
 */
+
+
+/* MUL_HI TEST STABLE
+*
+*
+*
+*
+*
+*/
+
+__kernel void test_cell_axn_stable(__global uchar *axn, __global uchar *ax_out) {
+	int i = get_global_id(0);
+	uchar ax = axn[i] + 2;
+	axn[i] = mul_hi(ax, (uchar)128) * 2;
+	ax_out[i] = axn[i];
+}
