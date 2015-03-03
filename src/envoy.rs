@@ -6,7 +6,7 @@ use std::iter;
 use std::num::{ Int, NumCast, FromPrimitive };
 use std::fmt::{ Display };
 use std::default::{ Default };
-use std::ops::{ Index, IndexMut };
+use std::ops::{ self, Index, IndexMut };
 
 pub struct Envoy<T> {
 	pub vec: Vec<T>,
@@ -84,7 +84,13 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 
 	pub fn print(&mut self, every: usize) {
 		self.read();
-		common::print_vec(&self.vec, every, true);
+		common::print_vec(&self.vec, every, true, None);
+    }
+
+    pub fn print_val_range(&mut self, every: usize, low: T, high: T) {
+    	let range: ops::Range<T> = ops::Range { start: low, end: high };
+    	self.read();
+		common::print_vec(&self.vec, every, true, Some(range));
     }
 
     pub fn release(&mut self) {

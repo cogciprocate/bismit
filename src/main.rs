@@ -37,8 +37,8 @@ fn main() {
 	// hello_world::run();
 
 	
-	test_4::test_cycle();
-	//test_miccos::run();
+	//test_4::test_cycle();
+	test_miccos::run();
 	
 
 	let time_complete = time::get_time() - time_start;

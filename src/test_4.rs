@@ -53,13 +53,15 @@ pub fn test_cycle() {
 
 		/* SENSE ONLY LOOP */
 	print!("\nRunning sense only loops ... ");
-	let sense_only_loops: i32 = 3;
+
+	let sense_only_loops: i32 = 19;
+
 	let mut i = 0i32;
 	loop {
 		if i >= sense_only_loops { break; }
 
 		cortex.sense(0, 1, &chord1);
-		cortex.sense(0, 0, &chord2);
+		//cortex.sense(0, 0, &chord2);
 
 		i += 1;
 	}
@@ -120,9 +122,9 @@ pub fn test_cycle() {
 
 
 		/* DISTAL & PROXIMAL SYNAPSE STRENGTHS */
-		if false {		
+		if true {		
 			println!("\ncells.dst_dens.syns.strengths: ");
-			cortex.cells.dst_dens.syns.strengths.print(1 << 14);
+			cortex.cells.dst_dens.syns.strengths.print(1 << 9);
 		}
 
 		if false {
@@ -167,15 +169,10 @@ pub fn test_cycle() {
 		}*/
 
 
-		/* SOMA STATES */
+		/* HCOL MAX IDXS */
 		if true {
-			print!("\ncells.soma.hcol_max_vals: ");
-			cortex.cells.soma.hcol_max_vals.print(1 << 0);
-		}
-
-		if true {
-			print!("\ncells.soma.hcol_max_idxs: ");
-			cortex.cells.soma.hcol_max_idxs.print(1 << 0);
+			print!("\ncells.soma.hcol_max_ids: ");
+			cortex.cells.soma.hcol_max_ids.print(1 << 0);
 		}
 
 
@@ -189,7 +186,7 @@ pub fn test_cycle() {
 		/* AXON STATES */
 		if true {
 			print!("\ncells.axns.states: ");
-			cortex.cells.axns.states.print(1 << 0);
+			cortex.cells.axns.states.print(1 << 4);
 		}
 
 		i += 1;

@@ -1,6 +1,7 @@
 
+use std;
 use std::num::{ Int, FromPrimitive, ToPrimitive };
-use std::ops::{ BitOr };
+use std::ops::{ self, BitOr };
 use std::default::{ Default }; 
 use std::fmt::{ Display };
 use std::num;
@@ -70,14 +71,21 @@ pub const PRX_SYNAPSE_STRENGTH_ZERO: i8 = 64;
 pub const DST_DEN_BOOST_LOG2: u8 = 0;
 pub const PRX_DEN_BOOST_LOG2: u8 = 8;
 
+pub const SYNAPSE_DECAY_INTERVAL: usize = 256;
 
 
-pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool) {
+pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool, val_range: Option<std::ops::Range<T>>) {
+
+	/*let val_range = match val_range {
+		Some(x) => x,
+		_ => 0,
+	}*/
 
 	let mut ttl_nz = 0us;
 	let mut hi = Default::default();
 	let mut lo: T = Default::default();
 	let mut sum: i64 = 0;
+	let mut ttl_prntd: usize = 0;
 	let len = vec.len();
 
 	let mut color: &'static str = C_DEFAULT;
@@ -92,7 +100,16 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 		if every != 0 {
 			if i % every == 0 {
 				prnt = true;
-			} 
+			} else {
+				prnt = false;
+			}
+		}
+
+		if prnt && val_range.is_some() {
+			let vr = val_range.as_ref().unwrap();
+			if vec[i] < vr.start || vec[i] > vr.end {
+				prnt = false;
+			}
 		}
 
 		sum += num::cast(vec[i]).expect("common::print_vec, sum");
@@ -110,12 +127,13 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 			if show_zeros {
 				color = C_DEFAULT;
 			} else {
-				prnt = false;	// bullshit so we don't print 0's
+				prnt = false;
 			}
 		}
 
 		if prnt {
 			print!("{cg}[{cd}{}{cg}:{cc}{}{cg}]{cd}", i, vec[i], cc = color, cd = C_DEFAULT, cg = C_DGR);
+			ttl_prntd += 1;
 		}
 	}
 
@@ -129,7 +147,7 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 	}
 
 
-	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2}){cd} ", ttl_nz, nz_pct, hi, lo, anz, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
+	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prtd:{}){cd} ", ttl_nz, nz_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 }
 
 pub fn int_hb_log2<T: Int + BitOr + Eq >(mut n: T) -> u8 {

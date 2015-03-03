@@ -51,22 +51,22 @@ impl Cells {
 		}
 	}
 
-	pub fn cycle(&self) {
+	pub fn cycle(&mut self) {
 		self.dst_dens.cycle(&self.axns, &self.ocl);
 		self.prx_dens.cycle(&self.axns, &self.ocl);
 		self.soma.cycle(&self.dst_dens, &self.prx_dens, &self.ocl);
 		self.axns.cycle(&self.soma, &self.ocl);
-	}
-
-	
+		self.soma.learn(&self.dst_dens, &self.ocl);
+		self.dst_dens.syns.decay(&self.ocl);
+	}	
 }
 
 pub struct Somata {
 	height: u8,
 	width: u32,
 	pub states: Envoy<ocl::cl_char>,
-	pub hcol_max_vals: Envoy<ocl::cl_char>,
-	pub hcol_max_idxs: Envoy<ocl::cl_uchar>,
+	//pub hcol_max_vals: Envoy<ocl::cl_char>,
+	pub hcol_max_ids: Envoy<ocl::cl_uchar>,
 }
 
 impl Somata {
@@ -75,8 +75,8 @@ impl Somata {
 			height: height,
 			width: width,
 			states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl),
-			hcol_max_vals: Envoy::<ocl::cl_char>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0i8, ocl),
-			hcol_max_idxs: Envoy::<ocl::cl_uchar>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0u8, ocl),
+			//hcol_max_vals: Envoy::<ocl::cl_char>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0i8, ocl),
+			hcol_max_ids: Envoy::<ocl::cl_uchar>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0u8, ocl),
 		}
 	}
 
@@ -93,17 +93,16 @@ impl Somata {
 
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 
-		self.cycle_inhib(ocl);
 	}
 
-	pub fn cycle_inhib(&self, ocl: &ocl::Ocl) {
+	pub fn inhib(&self, ocl: &ocl::Ocl) {
 
 		
 
 		let kern = ocl::new_kernel(ocl.program, "soma_inhib");
 		ocl::set_kernel_arg(0, self.states.buf, kern);
-		ocl::set_kernel_arg(1, self.hcol_max_vals.buf, kern);
-		ocl::set_kernel_arg(2, self.hcol_max_idxs.buf, kern);
+		//ocl::set_kernel_arg(1, self.hcol_max_vals.buf, kern);
+		ocl::set_kernel_arg(1, self.hcol_max_ids.buf, kern);
 		let mut kern_width = self.width as usize / common::COLUMNS_PER_HYPERCOLUMN as usize;
 		let gws = (self.height as usize, kern_width);
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
@@ -114,6 +113,20 @@ impl Somata {
 		kern_width = kern_width / (1 << grp_size_log2);
 		let gws = (self.height_cellular as usize, self.width as usize / 64);
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);*/
+	}
+
+	pub fn learn(&self, dst_dens: &Dendrites, ocl: &ocl::Ocl) {
+		let kern = ocl::new_kernel(ocl.program, "syns_learn");
+		ocl::set_kernel_arg(0, self.hcol_max_ids.buf, kern);
+		ocl::set_kernel_arg(1, dst_dens.syns.states.buf, kern);
+		ocl::set_kernel_arg(2, dst_dens.thresholds.buf, kern);
+		ocl::set_kernel_arg(3, dst_dens.states.buf, kern);
+		ocl::set_kernel_arg(4, dst_dens.syns.strengths.buf, kern);
+
+
+		let mut kern_width = self.width as usize / common::COLUMNS_PER_HYPERCOLUMN as usize;
+		let gws = (self.height as usize, kern_width);
+		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}
 }
 
@@ -154,23 +167,19 @@ impl Axons {
 
 	fn cycle(&self, soma: &Somata, ocl: &ocl::Ocl) {
 
-			let kern = ocl::new_kernel(ocl.program, "cycle_axns");
+			let kern = ocl::new_kernel(ocl.program, "axns_cycle");
 
 			ocl::set_kernel_arg(0, soma.states.buf, kern);
-			ocl::set_kernel_arg(1, soma.hcol_max_vals.buf, kern);
-			ocl::set_kernel_arg(2, soma.hcol_max_idxs.buf, kern);
-			ocl::set_kernel_arg(3, self.states.buf, kern);
-			ocl::set_kernel_arg(4, self.height_noncellular as u32, kern);
+			//ocl::set_kernel_arg(1, soma.hcol_max_vals.buf, kern);
+			ocl::set_kernel_arg(1, soma.hcol_max_ids.buf, kern);
+			ocl::set_kernel_arg(2, self.states.buf, kern);
+			ocl::set_kernel_arg(3, self.height_noncellular as u32, kern);
 
 			let gws = (self.height_cellular as usize, self.width as usize);
 
 			ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 
 	} 
-
-	pub fn layer_ofs(&self) {
-
-	}
 }
 
 
@@ -237,6 +246,7 @@ pub struct Synapses {
 	width: u32,
 	per_cell: u32,
 	den_type: DendriteType,
+	since_decay: usize,
 	pub states: Envoy<ocl::cl_char>,
 	pub strengths: Envoy<ocl::cl_char>,
 	pub axn_row_ids: Envoy<ocl::cl_uchar>,
@@ -258,6 +268,7 @@ impl Synapses {
 			height: height,
 			per_cell: per_cell,
 			den_type: den_type,
+			since_decay: 0,
 			states: Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl),
 			strengths: Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl),
 			axn_row_ids: axn_row_ids,
@@ -390,7 +401,17 @@ impl Synapses {
 		//println!("gws: {:?}", gws);
 
 		ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
+	}
 
+	fn decay(&mut self, ocl: &ocl::Ocl) {
+		self.since_decay += 1;
+		if self.since_decay >= common::SYNAPSE_DECAY_INTERVAL {
+			let kern = ocl::new_kernel(ocl.program, "syns_decay");
+			ocl::set_kernel_arg(0, self.strengths.buf, kern);
+
+			let gws = (self.height as usize, self.width as usize, self.per_cell as usize);
+			ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
+		}
 	}
 }
 

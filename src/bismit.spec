@@ -1,5 +1,40 @@
+=== LEARNING 1.0 ===
+
+	- Dendrites might be skipped at first -- thresholds will need to be dealt with later.
+	- Synapses will evaluate whether or not the cell has fired by evaluating the axon state then increase the weight by one (clamped) if their states were positive.
+	- 
+
+
+
+
+=== BISMIT TYPES ===
+
+
+Neuron: (672b)
+	-Axon (32b) x 256 =
+		-Synapse Address<u8> (1b Synapse + 1b Neuron = 2b) x 
+
+	-Dendrite (40b) x 16 =
+		-Synapses x 16
+			-Weight<i4> 16 x (2b) =
+
+	-Area of influence = 4 hypercolumns
+
+Column: 11,488
+	-Axon (32b) x 1 = 32b
+	-Dendrite (40b) x 16 = 640b
+	-Neuron (672b) x 1-256 (16 default) = 10,752b
+	-Neuron State + History (16b) x 4 = 64b
+	Input from previous level
+	Outputs to next level
+
+Hypercolumn: 735,232
+	-Column (11,488) x 64
+	-ActiveOutput (1b) x 1
+
 
 === Fundamental Building Blocks ===
+
 	Two things must be communicated for now, the state of the cells on the same level of a (mini)column, and states of columns themselves.
 
 	
@@ -19,6 +54,8 @@
 		Obviously columnar outputs will 
 
 
+
+=== MISC NOTES AND DATA ===
 
 CELLS:
 
@@ -110,31 +147,6 @@ The structure of the neocortex is relatively uniform...
 
 
 
-
-BISMIT TYPES:
-
-
-Neuron: (672b)
-	-Axon (32b) x 256 =
-		-Synapse Address<u8> (1b Synapse + 1b Neuron = 2b) x 
-
-	-Dendrite (40b) x 16 =
-		-Synapses x 16
-			-Weight<i4> 16 x (2b) =
-
-	-Area of influence = 4 hypercolumns
-
-Column: 11,488
-	-Axon (32b) x 1 = 32b
-	-Dendrite (40b) x 16 = 640b
-	-Neuron (672b) x 1-256 (16 default) = 10,752b
-	-Neuron State + History (16b) x 4 = 64b
-	Input from previous level
-	Outputs to next level
-
-Hypercolumn: 735,232
-	-Column (11,488) x 64
-	-ActiveOutput (1b) x 1
 
 
 

@@ -32,10 +32,10 @@ pub fn run() {
 	world.entities().add(food);
 	world.entities().add(snake);
 	world.entities().add(poison);
-	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(150f32, -200f32)));
-	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-150f32, -250f32)));
-	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(550f32, -200f32)));
-	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-1150f32, -250f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(150f32, -200f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-150f32, -250f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(550f32, -200f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-1150f32, -250f32)));
 	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(0f32, 110f32)));
 	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-50f32, 0f32)));
 	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(0f32, -50f32)));
@@ -61,7 +61,7 @@ pub fn run() {
 	//chord.unfold().print();
 
 	// for i in range(0, 100000) {
-	for i in range(0, 10000) {
+	for i in range(0, 100000) {
 		if worm_brain.act(&mut world) == Option::None {
 			println!("");
 			println!("Everything eaten after {} iterations.", i);
@@ -82,7 +82,7 @@ pub fn run() {
 
 				if true {
 					print!("\n[ i:{} ] [ \n", i);
-					snake_brain.cort.cells.axns.states.print(16);
+					snake_brain.cort.cells.axns.states.print_val_range(1, 1, 127);
 
 					//print!("\n] [==[ \n");
 					//snake_brain.cort.cortical_segments[0].columns.synapses.values.print(256);
@@ -92,6 +92,13 @@ pub fn run() {
 			}
 		
 	}
+
+	/* PROXIMAL SYNAPSE STRENGTHS */
+	if true {		
+		println!("\ncells.dst_dens.syns.strengths: ");
+		snake_brain.cort.cells.dst_dens.syns.strengths.print_val_range(1 << 0, 17, 127);
+	}
+
 
 	//render_peek(world.peek_from(worm_uid)).print();
 
