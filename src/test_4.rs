@@ -14,19 +14,27 @@ use std::num::{ Int };
 use std::iter;
 
 
-pub const READBACK_TEST_ITERATIONS: usize = 50;  // 10,000,000 takes >>> 15 min
+pub const TEST_ITERATIONS: i32 = 10000;  // 10,000,000 takes >>> 15 min
+pub const SHUFFLE_CHORDS: bool = true;
+pub const PRINT_EVERY: i32 = 2000;
 
 pub fn test_cycle() {
 	let mut cortex = cortex::Cortex::new();
 
-	let mut vec1: Vec<i8> = Vec::with_capacity(1024);
+
+	let mut vec1: Vec<i8> = common::shuffled_vec(1024, 0, 80);
+	let mut chord1 = Chord::from_vec(&vec1);
+
+	/*let mut vec1: Vec<i8> = Vec::with_capacity(1024);
 	for i in range(0, 1024) {
 		if i < 512 {
 			vec1.push(20i8);
 		} else {
-			vec1.push(60i8);
+			vec1.push(20i8);
 		}
-	}
+	}*/
+
+
 
 	let mut vec2: Vec<i8> = Vec::with_capacity(1024);
 	for i in range(0, 1024) {
@@ -36,29 +44,59 @@ pub fn test_cycle() {
 			vec2.push(0i8);
 		}
 	}
+	let mut chord2 = Chord::from_vec(&vec2);
+
+	let shuffle_chords = SHUFFLE_CHORDS;
 
 	//vec1[0] = 0;
 	//vec1[500] = 50;
 	//vec1[19] = 18;
 	//vec1[500] = vec1[500] >> 1 ;
 
-	let chord1 = Chord::from_vec(&vec1);
-	let chord2 = Chord::from_vec(&vec2);
 	
-	/*
-	for x in chord1.chord.iter() {
-		println!("{:?}",x);
+
+	if shuffle_chords {
+		common::shuffle_vec(&mut vec1);
+		chord1 = Chord::from_vec(&vec1);
 	}
-	*/
+	
+	
+	/*for x in chord1.chord.iter() {
+		print!("{:?}",x);
+	}*/
+	
 
 		/* SENSE ONLY LOOP */
 	print!("\nRunning sense only loops ... ");
 
-	let sense_only_loops: i32 = 19;
+	let sense_only_loops: i32 = TEST_ITERATIONS;
 
 	let mut i = 0i32;
 	loop {
 		if i >= sense_only_loops { break; }
+
+		if i % PRINT_EVERY == 0 || i < 5 {
+			println!("\n[i:{}]", i);
+			if true {
+				print!("\ncells.soma.hcol_max_ids: ");
+				cortex.cells.soma.hcol_max_ids.print(1 << 0);
+			}
+
+			if true {
+				print!("\ncells.soma.hcol_max_vals: ");
+				cortex.cells.soma.hcol_max_vals.print(1 << 0);
+			}
+
+			if true {		
+				println!("\ncells.dst_dens.syns.strengths: ");
+				cortex.cells.dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
+			}
+		}
+
+		if shuffle_chords {
+			common::shuffle_vec(&mut vec1);
+			chord1 = Chord::from_vec(&vec1);
+		}
 
 		cortex.sense(0, 1, &chord1);
 		//cortex.sense(0, 0, &chord2);
@@ -66,11 +104,11 @@ pub fn test_cycle() {
 		i += 1;
 	}
 
-	print!("{} sense only iterations complete: ", i);
+	/*print!("{} sense only iterations complete: ", i);
 	if true {
 		print!("\ncells.axns.states: ");
-		cortex.cells.axns.states.print(1 << 6);
-	}
+		cortex.cells.axns.states.print(1 << 4);
+	}*/
 
 	
 
@@ -124,12 +162,12 @@ pub fn test_cycle() {
 		/* DISTAL & PROXIMAL SYNAPSE STRENGTHS */
 		if true {		
 			println!("\ncells.dst_dens.syns.strengths: ");
-			cortex.cells.dst_dens.syns.strengths.print(1 << 9);
+			cortex.cells.dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
 		}
 
 		if false {
 			print!("\ncells.prx_dens.syns.strengths: ");
-			cortex.cells.prx_dens.syns.strengths.print(1 << 10);
+			cortex.cells.prx_dens.syns.strengths.print_val_range(1 << 4, 17, 127);
 		}
 
 
@@ -175,18 +213,23 @@ pub fn test_cycle() {
 			cortex.cells.soma.hcol_max_ids.print(1 << 0);
 		}
 
+		if true {
+			print!("\ncells.soma.hcol_max_vals: ");
+			cortex.cells.soma.hcol_max_vals.print(1 << 0);
+		}
+
 
 		/* SOMA STATES */
 		if true {
 			print!("\ncells.soma.states: ");
-			cortex.cells.soma.states.print(1 << 4);
+			cortex.cells.soma.states.print_val_range(1 << 4, 1, 127);
 		}
 
 
 		/* AXON STATES */
 		if true {
 			print!("\ncells.axns.states: ");
-			cortex.cells.axns.states.print(1 << 4);
+			cortex.cells.axns.states.print_val_range(1 << 4, 1, 127);
 		}
 
 		i += 1;

@@ -3,7 +3,7 @@ use std;
 use std::num::{ Int, FromPrimitive, ToPrimitive };
 use std::ops::{ self, BitOr };
 use std::default::{ Default }; 
-use std::fmt::{ Display };
+use std::fmt::{ Display, Debug };
 use std::num;
 use std::iter;
 use std::rand;
@@ -35,6 +35,9 @@ pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;		// appears to cause lots of del
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 3;
 pub const DENDRITE_INITIAL_THRESHOLD: i8 = 1;
 
+pub const SYNAPSE_STRENGTH_DEFAULT: i8 = 16;
+pub const PRX_SYNAPSE_STRENGTH_ZERO: i8 = 64;
+
 pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 
 pub const DENDRITES_PER_NEURON_DISTAL: u32 = 16;
@@ -65,13 +68,10 @@ pub const SYNAPSE_REACH: u32 = 128;
 pub const MAX_SYNAPSE_RANGE: u32 = SYNAPSE_REACH * 2;
 pub const AXONS_MARGIN: usize = 128;
 
-pub const SYNAPSE_STRENGTH_ZERO: i8 = 16;
-pub const PRX_SYNAPSE_STRENGTH_ZERO: i8 = 64;
-
 pub const DST_DEN_BOOST_LOG2: u8 = 0;
 pub const PRX_DEN_BOOST_LOG2: u8 = 8;
 
-pub const SYNAPSE_DECAY_INTERVAL: usize = 256;
+pub const SYNAPSE_DECAY_INTERVAL: usize = 64 * 256;
 
 
 pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool, val_range: Option<std::ops::Range<T>>) {
@@ -82,16 +82,23 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 	}*/
 
 	let mut ttl_nz = 0us;
+	let mut ttl_ir = 0us;
 	let mut hi = Default::default();
 	let mut lo: T = Default::default();
 	let mut sum: i64 = 0;
 	let mut ttl_prntd: usize = 0;
 	let len = vec.len();
 
+
 	let mut color: &'static str = C_DEFAULT;
 	let mut prnt: bool = false;
 
-	print!("{cdgr}[{cg}{}{cdgr}/{}]:{cd} ", vec.len(), every, cd = C_DEFAULT, cg = C_GRN, cdgr = C_DGR);
+	print!("{cdgr}[{cg}{}{cdgr}/{}", vec.len(), every, cg = C_GRN, cdgr = C_DGR);
+	if val_range.is_some() {
+		let vr = val_range.as_ref().unwrap(); 		// DUPLICATE
+		print!("({}-{})", vr.start, vr.end);
+	}
+	print!("]:{cd} ", cd = C_DEFAULT,);
 
 	for i in range(0, vec.len()) {
 
@@ -105,11 +112,15 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 			}
 		}
 
-		if prnt && val_range.is_some() {
-			let vr = val_range.as_ref().unwrap();
+		if val_range.is_some() {
+			let vr = val_range.as_ref().unwrap();	// DUPLICATE
 			if vec[i] < vr.start || vec[i] > vr.end {
 				prnt = false;
+			} else {
+				ttl_ir += 1;
 			}
+		} else {
+			ttl_ir += 1;
 		}
 
 		sum += num::cast(vec[i]).expect("common::print_vec, sum");
@@ -140,14 +151,23 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 	let mut anz: f32 = 0f32;
 	let mut nz_pct: f32 = 0f32;
 
+	let mut ir_pct: f32 = 0f32;
+	let mut avg_ir: f32 = 0f32;
+
 	if ttl_nz > 0 {
 		anz = sum as f32 / ttl_nz as f32;
 		nz_pct = (ttl_nz as f32 / len as f32) * 100f32;
 		//print!("[ttl_nz: {}, nz_pct: {:.0}%, len: {}]", ttl_nz, nz_pct, len);
 	}
 
+	if ttl_ir > 0 {
+		avg_ir = sum as f32 / ttl_ir as f32;
+		ir_pct = (ttl_ir as f32 / len as f32) * 100f32;
+		//print!("[ttl_nz: {}, nz_pct: {:.0}%, len: {}]", ttl_nz, nz_pct, len);
+	}
 
-	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prtd:{}){cd} ", ttl_nz, nz_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
+
+	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prtd:{}){cd} ", ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 }
 
 pub fn int_hb_log2<T: Int + BitOr + Eq >(mut n: T) -> u8 {
@@ -161,21 +181,44 @@ pub fn int_hb_log2<T: Int + BitOr + Eq >(mut n: T) -> u8 {
 	FromPrimitive::from_uint((n - (n >> 1)).trailing_zeros()).expect("common::int_hb_log2")
 }
 
-pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default>(size: usize, init_val: T) -> Vec<T> {
+pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default + Display>(size: usize, min_val: T, max_val: T) -> Vec<T> {
 
-	assert!(size > 0us, "Vector size must be greater than zero.");
+	//println!("min_val: {}, max_val: {}", min_val, max_val);
 
-	let mut vec: Vec<T> = iter::repeat(init_val).take(size).collect();
+	//let min: isize = num::cast(min_val).expect("common::shuffled_vec(), min");
+	//let max: isize = num::cast::<T, isize>(max_val).expect("common::shuffled_vec(), max") + 1is;
+	//let size: usize = num::cast(max_val - min_val).expect("common::shuffled_vec(), size");
+	//let size: usize = num::from_int(max - min).expect("common::shuffled_vec(), size");
 
-	for i in range(0us, vec.len()) {
-		vec[i] = FromPrimitive::from_uint(i).expect("common::shuffled_vec(), vec[i]");
-	}
+	//assert!(max - min > 0, "Vector size must be greater than zero.");
+
+	assert!(size > 0, "Vector size must be greater than zero.");
+
+
+	let mut vec: Vec<T> = iter::range_inclusive(min_val, max_val).cycle().take(size).collect();
+
+	//println!("shuffled_vec(): vec.len(): {}", vec.len());
+	/*let mut i: usize = 0;
+	for val in iter::range_inclusive(min_val, max_val) {
+		vec[i] = val;
+		//vec[i] = FromPrimitive::from_int(val).expect("common::shuffled_vec(), vec[i]");
+		i += 1;
+	}*/
+
+	shuffle_vec(&mut vec);
+
+	vec
+
+}
+
+pub fn shuffle_vec<T: Int + FromPrimitive + ToPrimitive + Default>(vec: &mut Vec<T>)  {
+	let size = vec.len();
 
 	let mut rng = rand::thread_rng();
 	let rng_range = Range::new(0, size);
 
-	for i in range(0, 3) {
-		for j in range(0us, vec.len()) {
+	for i in range(0, 6) {
+		for j in range(0, size) {
 			let ridx = rng_range.ind_sample(&mut rng);
 			let tmp = vec[j];
 			vec[j] = vec[ridx];
@@ -183,7 +226,6 @@ pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default>(size: usize,
 		}
 	}
 
-	vec
 }
 
 pub fn dup_check<T: Int>(in_vec: &Vec<T>) -> (usize, usize) {

@@ -55,9 +55,11 @@ impl Cells {
 		self.dst_dens.cycle(&self.axns, &self.ocl);
 		self.prx_dens.cycle(&self.axns, &self.ocl);
 		self.soma.cycle(&self.dst_dens, &self.prx_dens, &self.ocl);
+		self.soma.inhib(&self.ocl);
 		self.axns.cycle(&self.soma, &self.ocl);
 		self.soma.learn(&self.dst_dens, &self.ocl);
 		self.dst_dens.syns.decay(&self.ocl);
+		self.dst_dens.syns.regrow(&self.ocl);
 	}	
 }
 
@@ -65,7 +67,7 @@ pub struct Somata {
 	height: u8,
 	width: u32,
 	pub states: Envoy<ocl::cl_char>,
-	//pub hcol_max_vals: Envoy<ocl::cl_char>,
+	pub hcol_max_vals: Envoy<ocl::cl_char>,
 	pub hcol_max_ids: Envoy<ocl::cl_uchar>,
 }
 
@@ -75,7 +77,7 @@ impl Somata {
 			height: height,
 			width: width,
 			states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl),
-			//hcol_max_vals: Envoy::<ocl::cl_char>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0i8, ocl),
+			hcol_max_vals: Envoy::<ocl::cl_char>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0i8, ocl),
 			hcol_max_ids: Envoy::<ocl::cl_uchar>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0u8, ocl),
 		}
 	}
@@ -101,8 +103,8 @@ impl Somata {
 
 		let kern = ocl::new_kernel(ocl.program, "soma_inhib");
 		ocl::set_kernel_arg(0, self.states.buf, kern);
-		//ocl::set_kernel_arg(1, self.hcol_max_vals.buf, kern);
 		ocl::set_kernel_arg(1, self.hcol_max_ids.buf, kern);
+		ocl::set_kernel_arg(2, self.hcol_max_vals.buf, kern);
 		let mut kern_width = self.width as usize / common::COLUMNS_PER_HYPERCOLUMN as usize;
 		let gws = (self.height as usize, kern_width);
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
@@ -146,8 +148,10 @@ impl Axons {
 		let padding: u32 = num::cast(common::AXONS_MARGIN * 2).expect("Axons::new()");
 		let height = height_cellular + height_noncellular;
 
+
+
 		/* BULLSHIT BELOW */
-		let ref region = regions[CorticalRegionType::Sensory];
+		//let ref region = regions[CorticalRegionType::Sensory];
 		//let inhib_tmp_row = region.row_ids(vec!["inhib_tmp"])[0];
 		//let inhib_tmp_2_row = region.row_ids(vec!["inhib_tmp_2"])[0];
 		/* END BULLSHIT (remember to remove inhib_tmp_row) */
@@ -262,7 +266,6 @@ impl Synapses {
 		let mut axn_row_ids = Envoy::<ocl::cl_uchar>::new(width_syns, height, 0, ocl);
 		let mut axn_col_offs = Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl);
 
-
 		let mut syns = Synapses {
 			width: width,
 			height: height,
@@ -326,7 +329,7 @@ impl Synapses {
 				match self.den_type {
 					DendriteType::Distal => {
 						for i in range(ei_start, ei_end) {
-							self.strengths[i] = common::SYNAPSE_STRENGTH_ZERO;
+							self.strengths[i] = common::SYNAPSE_STRENGTH_DEFAULT;
 							self.axn_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
 							self.axn_col_offs[i] = col_off_range.ind_sample(&mut rng);
 						}
@@ -411,7 +414,22 @@ impl Synapses {
 
 			let gws = (self.height as usize, self.width as usize, self.per_cell as usize);
 			ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
+
+			self.regrow(ocl);
+			self.since_decay = 0;
 		}
+	}
+
+	fn regrow(&self, ocl: &ocl::Ocl) {
+		let rand_offs = Envoy::<ocl::cl_char>::shuffled(256, 1, -128, 127, ocl);
+
+		let kern = ocl::new_kernel(ocl.program, "syns_regrow");
+		ocl::set_kernel_arg(0, self.strengths.buf, kern);
+		ocl::set_kernel_arg(1, rand_offs.buf, kern);
+		ocl::set_kernel_arg(2, self.axn_col_offs.buf, kern);
+
+		let gws = (self.height as usize, self.width as usize, self.per_cell as usize);
+		ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}
 }
 

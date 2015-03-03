@@ -31,9 +31,11 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 		Envoy::_new(padding, width, height, vec, ocl)
 	}
 
-	pub fn shuffled(width: u32, height: u8, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
+	pub fn shuffled(width: u32, height: u8, min_val: T, max_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
 		let len = len(width, height, 0);
-		let vec: Vec<T> = common::shuffled_vec(len, init_val);
+		//println!("shuffled(): len: {}", len);
+		let vec: Vec<T> = common::shuffled_vec(len, min_val, max_val);
+		//println!("shuffled(): vec.len(): {}", vec.len());
 
 		Envoy::_new(0, width, height, vec, ocl)
 	}
@@ -78,7 +80,7 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 	}
 
 	pub fn len(&self) -> usize {
-		assert!(((self.width as usize * self.height as usize) + self.padding as usize ) == self.vec.len(), "Envoy len mismatch" );
+		assert!(((self.width as usize * self.height as usize) + self.padding as usize ) == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
 		len(self.width, self.height, 0)
 	}
 

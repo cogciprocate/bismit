@@ -28,7 +28,7 @@ pub fn define() -> CorticalRegions {		// Eventually move this to a config file o
 	//sen.add_new_layer("inhib_tmp", 1, None);
 	//sen.add_new_layer("inhib_tmp_2", 1, None);
 	//sen.add_new_layer("test_3", 1, None);
-	sen.add_new_layer("iv", 4, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["thal"]), Some(vec!["test"]))));
+	sen.add_new_layer("iv", 1, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["thal"]), Some(vec!["test"]))));
 	//sen.add_new_layer("test_4", 1, None);
 	//sen.add_new_layer("iii", 1, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iv"]), Some(vec!["test_2"]))));
 	//sen.add_new_layer("ii", 2, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iii"]), Some(vec!["iii"]))));

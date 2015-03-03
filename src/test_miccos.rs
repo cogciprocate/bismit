@@ -61,7 +61,7 @@ pub fn run() {
 	//chord.unfold().print();
 
 	// for i in range(0, 100000) {
-	for i in range(0, 100000) {
+	for i in range(0, 50000) {
 		if worm_brain.act(&mut world) == Option::None {
 			println!("");
 			println!("Everything eaten after {} iterations.", i);
@@ -71,7 +71,7 @@ pub fn run() {
 		snake_brain.act(&mut world);
 
 			//	if i % 1000 == 0 {
-			if i % 1500 == 0 {
+			if i % 5000 == 0 {
 				/*
 					print!{" ||| "};
 					let peek_chord = render_peek(world.peek_from(snake_uid));
