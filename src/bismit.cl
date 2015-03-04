@@ -8,7 +8,9 @@
 #define SYNAPSES_PER_NEURON				1 << SYNAPSES_PER_NEURON_LOG2 // SYNAPSES_PER_DENDRITE * DENDRITES_PER_NEURON
 
 #define SYNAPSE_STRENGTH_DEFAULT		16
-#define SYNAPSE_STRENGTH_MAX			64	
+#define SYNAPSE_STRENGTH_DEFAULT_LOG2	4
+
+#define SYNAPSE_STRENGTH_MAX			32
 
 #define COLUMNS_PER_HYPERCOLUMN_LOG2	6
 
@@ -84,7 +86,8 @@ __kernel void syns_cycle(
 	size_t const syns_idx = (lyr_id * depth * width) + (col_id * depth) + syn_id;
 	size_t const axns_idx = (syn_axn_lyr_ids[syns_idx] * width) + syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH;
 	*/
-	syn_states[syns_idx] = mul_hi(axn_states[axns_idx], (char)mul24(syn_strs[syns_idx], (syn_strs[syns_idx] > 0))) ;
+	int syn_state = (int)syn_strs[syns_idx] * (int)axn_states[axns_idx];
+	syn_states[syns_idx] = (char)clamp((int)(syn_state >> SYNAPSE_STRENGTH_DEFAULT_LOG2), (int)0, (int)127);
 	//syn_states[syns_idx] =	(syn_strs[syns_idx] > 0);
 }
 
@@ -107,9 +110,9 @@ __kernel void dens_cycle(
 
 	syn_sum = syn_sum << boost_log2;
 
-	char den_val = (char)clamp((short)(syn_sum >> 4), (short)-128, (short)127);
+	char den_val = (char)clamp((short)(syn_sum >> SYNAPSES_PER_DENDRITE_LOG2), (short)-128, (short)127);
 
-	den_states[gid] = den_val * (den_val > den_thrs[gid] || den_val < 0);
+	den_states[gid] = den_val; // * (den_val > den_thrs[gid] || den_val < 0);
 
 	/*if (den_val > den_thrs[gid]) {
 		den_states[gid] = den_val;			// DENDRITE_ACTIVE;
@@ -138,13 +141,13 @@ __kernel void soma_cycle(
 		//den_sum = (char)add_sat((char)den_sum, (char)dst_den_states[den_grp + i]);
 	}
 
-	den_sum = clamp(den_sum, (short)0, (short)127);
+	den_sum = den_sum >> DENDRITES_PER_NEURON_LOG2;
 
 	//short prx_den_state = clamp((short)((short)prx_den_states[cel_idx] << SYNAPSES_PER_NEURON_LOG2), (short)-128, (short)127);
 	//som_states[som_idx] = (char)clamp((short)(den_sum + prx_den_state), (short)0, (short)127);
 
 	som_states[cel_idx] = (char)clamp((short)(den_sum + prx_den_states[cel_idx]), (short)0, (short)127);
-	som_states[cel_idx] = (char)clamp((short)(den_sum + prx_den_states[cel_idx]), (short)0, (short)127);
+	//som_states[cel_idx] = (char)clamp((short)(den_sum + prx_den_states[cel_idx]), (short)0, (short)127);
 
 	//barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -238,13 +241,11 @@ __kernel void axns_cycle(
 	size_t const hcol_idx = cel_idx >> COLUMNS_PER_HYPERCOLUMN_LOG2;
 	size_t const hcol_max_idx = (hcol_idx << COLUMNS_PER_HYPERCOLUMN_LOG2) + hcol_max_ids[hcol_idx];
 
-	char axn_state;
+	char axn_state = 0;
 
-	if (cel_idx != hcol_max_idx) {
-		axn_state = 0;
-	} else {
+	if (cel_idx == hcol_max_idx) {
 		axn_state = som_states[cel_idx];
-	}
+	} 
 
 	axn_states[axn_idx] = axn_state;
 
@@ -253,10 +254,11 @@ __kernel void axns_cycle(
 
 __kernel void syns_learn(
 				__global uchar* const hcol_max_ids,
+				__global char* const hcol_max_vals,
 				__global char* const syn_states,
-				__global char* const den_thrs,
 				__global char* const den_states,
-				__global char* const syn_strengths
+				__global char* const syn_strengths,
+				__global char* const rand_ofs
 
 ) {
 	size_t const lyr = get_global_id(0);
@@ -270,12 +272,22 @@ __kernel void syns_learn(
 	size_t const cel_idx = cel_ofs + hcol_max_id;
 
 	size_t const den_ofs = cel_idx << DENDRITES_PER_NEURON_LOG2;
-	//size_t const syn_ofs = den_ofs << SYNAPSES_PER_DENDRITE_LOG2;
+	size_t const syn_ofs = den_ofs << SYNAPSES_PER_DENDRITE_LOG2;
 
-	size_t pseudo_rand = (col + lyr + (size_t)hcol_max_ids) & 0x000F;
+	size_t pseudo_rand = (col + lyr + (size_t)hcol_max_ids) & 0x00FF;
 
-	size_t rand_den_idx = den_ofs + pseudo_rand;
-	size_t rand_syn_idx = rand_den_idx << SYNAPSES_PER_DENDRITE_LOG2;
+	size_t rand1 = (size_t)rand_ofs[pseudo_rand];
+	size_t rand2 = (size_t)rand_ofs[rand1];
+
+	size_t rand_den_idx = den_ofs + (rand1 & 0x000F);
+	size_t rand_syn_idx = (rand_den_idx << SYNAPSES_PER_DENDRITE_LOG2) + (rand2 & 0x000F);
+
+
+	syn_strengths[rand_syn_idx] += 
+		(syn_states[rand_syn_idx] > den_states[rand_den_idx]) * 
+		(den_states[rand_den_idx] > hcol_max_vals[hcol_idx]) *
+		(syn_strengths[rand_syn_idx] < SYNAPSE_STRENGTH_MAX)
+	;
 
 	//char syn_strength;
 	//char syn_state;
@@ -287,9 +299,19 @@ __kernel void syns_learn(
 		DON'T BOOST MORE THAN PROBABLY 3 - 6 SYNAPSES
 	*/
 
+	/*
+	short den_states_sum = 5;
+	char den_states_avg = 0;
 
+	for (uchar d = 0; d < DENDRITES_PER_NEURON; d++) {
+		den_states_sum += den_states[den_ofs + d];
+	}
 
-	syn_strengths[rand_syn_idx] += (syn_states[rand_syn_idx] > den_states[rand_den_idx]) * (syn_strengths[rand_syn_idx] < SYNAPSE_STRENGTH_MAX);
+	den_states_avg = (char)(den_states_sum >> DENDRITES_PER_NEURON_LOG2);
+	*/
+
+	//syn_strengths[syn_ofs + 0] = den_states_avg + 100; 
+
 
 	/*for (uchar s = 0; s < SYNAPSES_PER_DENDRITE; s++) {
 		//syn_strengths[syn_idx] += (syn_states[syn_idx] > den_states[den_idx]) * (syn_strengths[syn_idx] < 63);
@@ -354,7 +376,7 @@ __kernel void syns_regrow(
 	/* [(lyr_id * depth)] * [width] + [(col_id * depth) + syn_id]; */
 	size_t const syn_idx = mad24(mul24(lyr_id, depth), width, mad24(col_id, depth, syn_id));
 
-	if (syn_strs[syn_id] <= -128) {
+	if (syn_strs[syn_id] <= -127) {
 		syn_ofs[syn_idx] = rand_ofs[syn_id]; 
 		syn_strs[syn_idx] = SYNAPSE_STRENGTH_DEFAULT; 
 	}

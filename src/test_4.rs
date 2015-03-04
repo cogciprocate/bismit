@@ -14,7 +14,7 @@ use std::num::{ Int };
 use std::iter;
 
 
-pub const TEST_ITERATIONS: i32 = 10000;  // 10,000,000 takes >>> 15 min
+pub const TEST_ITERATIONS: i32 = 10000; 
 pub const SHUFFLE_CHORDS: bool = true;
 pub const PRINT_EVERY: i32 = 2000;
 
@@ -22,7 +22,7 @@ pub fn test_cycle() {
 	let mut cortex = cortex::Cortex::new();
 
 
-	let mut vec1: Vec<i8> = common::shuffled_vec(1024, 0, 80);
+	let mut vec1: Vec<i8> = common::shuffled_vec(1024, 0, 63);
 	let mut chord1 = Chord::from_vec(&vec1);
 
 	/*let mut vec1: Vec<i8> = Vec::with_capacity(1024);
@@ -87,9 +87,15 @@ pub fn test_cycle() {
 				cortex.cells.soma.hcol_max_vals.print(1 << 0);
 			}
 
-			if true {		
+			if false {		
 				println!("\ncells.dst_dens.syns.strengths: ");
 				cortex.cells.dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
+			}
+
+			/* AXON STATES */
+			if false {
+				print!("\ncells.axns.states: ");
+				cortex.cells.axns.states.print_val_range(1 << 0, 1, 127);
 			}
 		}
 

@@ -71,7 +71,7 @@ pub const AXONS_MARGIN: usize = 128;
 pub const DST_DEN_BOOST_LOG2: u8 = 0;
 pub const PRX_DEN_BOOST_LOG2: u8 = 8;
 
-pub const SYNAPSE_DECAY_INTERVAL: usize = 64 * 256;
+pub const SYNAPSE_DECAY_INTERVAL: usize = 256 * 64;
 
 
 pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool, val_range: Option<std::ops::Range<T>>) {

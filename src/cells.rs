@@ -58,8 +58,7 @@ impl Cells {
 		self.soma.inhib(&self.ocl);
 		self.axns.cycle(&self.soma, &self.ocl);
 		self.soma.learn(&self.dst_dens, &self.ocl);
-		self.dst_dens.syns.decay(&self.ocl);
-		self.dst_dens.syns.regrow(&self.ocl);
+		self.dst_dens.syns.decay(&self.soma.rand_ofs, &self.ocl);
 	}	
 }
 
@@ -69,6 +68,7 @@ pub struct Somata {
 	pub states: Envoy<ocl::cl_char>,
 	pub hcol_max_vals: Envoy<ocl::cl_char>,
 	pub hcol_max_ids: Envoy<ocl::cl_uchar>,
+	pub rand_ofs: Envoy<ocl::cl_char>,
 }
 
 impl Somata {
@@ -79,12 +79,12 @@ impl Somata {
 			states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl),
 			hcol_max_vals: Envoy::<ocl::cl_char>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0i8, ocl),
 			hcol_max_ids: Envoy::<ocl::cl_uchar>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0u8, ocl),
+			rand_ofs: Envoy::<ocl::cl_char>::shuffled(256, 1, -128, 127, ocl),
 		}
 	}
 
 	fn cycle(&self, dst_dens: &Dendrites, prx_dens: &Dendrites, ocl: &ocl::Ocl) {
 
-	
 		let kern = ocl::new_kernel(ocl.program, "soma_cycle");
 		ocl::set_kernel_arg(0, dst_dens.states.buf, kern);
 		ocl::set_kernel_arg(1, prx_dens.states.buf, kern);
@@ -98,8 +98,6 @@ impl Somata {
 	}
 
 	pub fn inhib(&self, ocl: &ocl::Ocl) {
-
-		
 
 		let kern = ocl::new_kernel(ocl.program, "soma_inhib");
 		ocl::set_kernel_arg(0, self.states.buf, kern);
@@ -117,13 +115,18 @@ impl Somata {
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);*/
 	}
 
-	pub fn learn(&self, dst_dens: &Dendrites, ocl: &ocl::Ocl) {
+	pub fn learn(&mut self, dst_dens: &Dendrites, ocl: &ocl::Ocl) {
+
+		common::shuffle_vec(&mut self.rand_ofs.vec);
+		self.rand_ofs.write();
+
 		let kern = ocl::new_kernel(ocl.program, "syns_learn");
 		ocl::set_kernel_arg(0, self.hcol_max_ids.buf, kern);
 		ocl::set_kernel_arg(1, dst_dens.syns.states.buf, kern);
 		ocl::set_kernel_arg(2, dst_dens.thresholds.buf, kern);
 		ocl::set_kernel_arg(3, dst_dens.states.buf, kern);
 		ocl::set_kernel_arg(4, dst_dens.syns.strengths.buf, kern);
+		ocl::set_kernel_arg(5, self.rand_ofs.buf, kern);
 
 
 		let mut kern_width = self.width as usize / common::COLUMNS_PER_HYPERCOLUMN as usize;
@@ -194,6 +197,7 @@ pub struct Dendrites {
 	den_type: DendriteType,
 	pub thresholds: Envoy<ocl::cl_char>,
 	pub states: Envoy<ocl::cl_char>,
+	//pub health: 
 	pub syns: Synapses,
 }
 
@@ -406,7 +410,7 @@ impl Synapses {
 		ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}
 
-	fn decay(&mut self, ocl: &ocl::Ocl) {
+	fn decay(&mut self, rand_ofs: &Envoy<ocl::cl_char>, ocl: &ocl::Ocl) {
 		self.since_decay += 1;
 		if self.since_decay >= common::SYNAPSE_DECAY_INTERVAL {
 			let kern = ocl::new_kernel(ocl.program, "syns_decay");
@@ -415,17 +419,16 @@ impl Synapses {
 			let gws = (self.height as usize, self.width as usize, self.per_cell as usize);
 			ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
 
-			self.regrow(ocl);
+			self.regrow(rand_ofs, ocl);
 			self.since_decay = 0;
 		}
 	}
 
-	fn regrow(&self, ocl: &ocl::Ocl) {
-		let rand_offs = Envoy::<ocl::cl_char>::shuffled(256, 1, -128, 127, ocl);
-
+	fn regrow(&self, rand_ofs: &Envoy<ocl::cl_char>, ocl: &ocl::Ocl) {
+		
 		let kern = ocl::new_kernel(ocl.program, "syns_regrow");
 		ocl::set_kernel_arg(0, self.strengths.buf, kern);
-		ocl::set_kernel_arg(1, rand_offs.buf, kern);
+		ocl::set_kernel_arg(1, rand_ofs.buf, kern);
 		ocl::set_kernel_arg(2, self.axn_col_offs.buf, kern);
 
 		let gws = (self.height as usize, self.width as usize, self.per_cell as usize);
