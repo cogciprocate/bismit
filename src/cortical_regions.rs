@@ -3,7 +3,8 @@
 
 use ocl;
 //use protocell::{  };
-use cortical_layer::{ CorticalLayer, CellKind, Protocell, DendriteType };
+use cortical_region_layer::{ CorticalRegionLayer, LayerFlags };
+use protocell::{ CellKind, Protocell, DendriteKind };
 
 use std::collections::{ self, HashMap };
 use std::collections::hash_state::{ HashState };
@@ -14,42 +15,13 @@ use std::hash::{ self, Hash, SipHasher, Hasher };
 
 
 
-pub fn define() -> CorticalRegions {		// Eventually move this to a config file or some such
-
-	let mut cort_regs: CorticalRegions = CorticalRegions::new();
-
-	//let mut cri: = 0u8;
-
-	let mut sen = CorticalRegion::new();
-
-	sen.add_new_layer("test", 1, None);
-	sen.add_new_layer("thal", 1, None);
-	//sen.add_new_layer("test_2", 1, None);
-	//sen.add_new_layer("inhib_tmp", 1, None);
-	//sen.add_new_layer("inhib_tmp_2", 1, None);
-	//sen.add_new_layer("test_3", 1, None);
-	sen.add_new_layer("iv", 1, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["thal"]), Some(vec!["test"]))));
-	//sen.add_new_layer("test_4", 1, None);
-	//sen.add_new_layer("iii", 1, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iv"]), Some(vec!["test_2"]))));
-	//sen.add_new_layer("ii", 2, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iii"]), Some(vec!["iii"]))));
-	
-	//sen.add_new_layer("col_out", 1, Some(Protocell::new(CellKind::SpinyStellate, None, Some(vec!["iv"]))));
-	//sen.add_new_layer("inhib_a", 1, Some(Protocell::new(CellKind::AspinyStellate, None, None)));
-	
-	//sen.add_new_layer("test", Interlaminar(vec!["iii"], vec!["thal"], Pyramidal), 4);
-
-	cort_regs.add(CorticalRegionType::Sensory, sen);
-
-	cort_regs
-}
-
 //#[derive(Copy)]
 pub struct CorticalRegions {
 	pub hash_map: HashMap<CorticalRegionType, CorticalRegion>,
 }
 
 impl CorticalRegions {
-	fn new() -> CorticalRegions {
+	pub fn new() -> CorticalRegions {
 		CorticalRegions {
 			hash_map: HashMap::new(),
 		}
@@ -74,8 +46,8 @@ impl CorticalRegions {
 		hacr + hcr
 	}
 
-	fn add(&mut self, crt: CorticalRegionType, cr: CorticalRegion) {
-		self.hash_map.insert(crt, cr);
+	pub fn add(&mut self, cr: CorticalRegion) {
+		self.hash_map.insert(cr.kind.clone(), cr);
 	}
 }
 
@@ -84,7 +56,7 @@ impl Index<CorticalRegionType> for CorticalRegions
     type Output = CorticalRegion;
 
     fn index<'a>(&'a self, index: &CorticalRegionType) -> &'a CorticalRegion {
-        self.hash_map.get(index).expect("no entry found for key")
+        self.hash_map.get(index).expect("Invalid region name.")
     }
 }
 
@@ -93,41 +65,36 @@ impl IndexMut<CorticalRegionType> for CorticalRegions
     type Output = CorticalRegion;
 
     fn index_mut<'a>(&'a mut self, index: &CorticalRegionType) -> &'a mut CorticalRegion {
-        self.hash_map.get_mut(index).expect("no entry found for key")
+        self.hash_map.get_mut(index).expect("Invalid region name.")
     }
 }
 
 
 
-pub struct CorticalRegion {
-	pub layers: HashMap<&'static str, CorticalLayer>,
-	//height: u8,
-	//next_row_id: HashMap<CellKind, u8>,
+pub struct CorticalRegion_new {
+	pub layers: HashMap<&'static str, CorticalRegionLayer>,
+	pub kind: CorticalRegionType,
 }
 
-impl CorticalRegion {
-	pub fn new ()  -> CorticalRegion {
+impl CorticalRegion_new {
+	pub fn new (kind: CorticalRegionType)  -> CorticalRegion_new {
 		let mut next_row_id = HashMap::new();
 		next_row_id.insert(CellKind::Pyramidal, 0);
 		next_row_id.insert(CellKind::AspinyStellate, 0);
 		next_row_id.insert(CellKind::SpinyStellate, 0);
 	
-		CorticalRegion { 
+		CorticalRegion_new { 
 			layers: HashMap::new(),
-			//height: 0,
-			//next_row_id: next_row_id,
+			kind: kind,
 		}
 	}
 
-	pub fn add_new_layer(
+	pub fn new_layer(
 					&mut self, 
 					layer_name: &'static str,
 					layer_height: u8,
+					flags: LayerFlags,
 					cell: Option<Protocell>,
-					//axon_scope: AxonScope, 
-					//cell_kind: CellKind,
-					//den_prox_srcs: Option<Vec<&'static str>>, 
-					//den_dist_srcs: Option<Vec<&'static str>>, 
 	) {
 		let (noncell_rows, cell_rows) = self.height();
 
@@ -140,21 +107,20 @@ impl CorticalRegion {
 
 		println!("Layer: {}, layer_height: {}, base_row_id: {}, kind_base_row_pos: {}", layer_name, layer_height, next_base_row_id, next_kind_base_row_pos);
 		
-		let cl = CorticalLayer { 
+		let cl = CorticalRegionLayer {
+			name : layer_name,
 			cell: cell,
 			base_row_id: next_base_row_id, 
 			kind_base_row_pos: next_kind_base_row_pos,
 			height: layer_height,
-			//cell_kind: cell_kind,
-			//den_prox_srcs: den_prox_srcs,
-			//den_dist_srcs: den_dist_srcs,
-			//axon_scope: axon_scope, 
+			flags: flags,
 		};
 
-		//self.height += layer_height;
-		//self.next_row_id[cell_kind] += height;
+		self.add(cl);
+	}
 
-		self.layers.insert(layer_name, cl);
+	pub fn add(&mut self, layer: CorticalRegionLayer) {
+		self.layers.insert(layer.name, layer);
 	}
 
 	pub fn width() -> u8 {
@@ -192,7 +158,6 @@ impl CorticalRegion {
 				Some(_) => cell_rows += layer.height,
 			}
 		}
-		//assert!(noncell_rows + cell_rows == self.height);
 		(noncell_rows, cell_rows)
 	}
 
@@ -207,12 +172,152 @@ impl CorticalRegion {
 		row_ids
 	}
 
-	pub fn src_row_ids(&self, layer_name: &'static str, den_type: DendriteType) -> Vec<u8> {
+	pub fn src_row_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
 		let src_layer_names = self[layer_name].src_layer_names(den_type);
 		
 		self.row_ids(src_layer_names)
+ 	}
 
-		//println!("CorticalRegion::layer_srcs_row_ids(): (name:sources:idxs) [{}]:{:?}:{:?}", layer_name, src_layer_names, src_row_ids);
+ 	pub fn col_input_row(&self) -> u8 {
+ 		for (layer_name, layer) in self.layers.iter() {
+
+ 		}
+ 		5
+ 	}
+}
+
+impl Index<&'static str> for CorticalRegion_new
+{
+    type Output = CorticalRegionLayer;
+
+    fn index<'a>(&'a self, index: &&'static str) -> &'a CorticalRegionLayer {
+        self.layers.get(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
+    }
+}
+
+impl IndexMut<&'static str> for CorticalRegion_new
+{
+    type Output = CorticalRegionLayer;
+
+    fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut CorticalRegionLayer {
+        self.layers.get_mut(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
+    }
+}
+
+
+
+pub struct CorticalRegion {
+	pub layers: HashMap<&'static str, CorticalRegionLayer>,
+	pub kind: CorticalRegionType,
+}
+
+impl CorticalRegion {
+	pub fn new (kind: CorticalRegionType)  -> CorticalRegion {
+		let mut next_row_id = HashMap::new();
+		next_row_id.insert(CellKind::Pyramidal, 0);
+		next_row_id.insert(CellKind::AspinyStellate, 0);
+		next_row_id.insert(CellKind::SpinyStellate, 0);
+	
+		CorticalRegion { 
+			layers: HashMap::new(),
+			kind: kind,
+		}
+	}
+
+	pub fn new_layer(
+					&mut self, 
+					layer_name: &'static str,
+					layer_height: u8,
+					flags: LayerFlags,
+					cell: Option<Protocell>,
+	) {
+		let (noncell_rows, cell_rows) = self.height();
+
+		let next_base_row_id = self.total_height();
+
+		let next_kind_base_row_pos = match cell {
+			Some(ref protocell) => self.cell_kind_row_count(&protocell.cell_kind),
+			None => noncell_rows,
+		};
+
+		println!("Layer: {}, layer_height: {}, base_row_id: {}, kind_base_row_pos: {}", layer_name, layer_height, next_base_row_id, next_kind_base_row_pos);
+		
+		let cl = CorticalRegionLayer {
+			name : layer_name,
+			cell: cell,
+			base_row_id: next_base_row_id, 
+			kind_base_row_pos: next_kind_base_row_pos,
+			height: layer_height,
+			flags: flags,
+		};
+
+		self.add(cl);
+	}
+
+	pub fn add(&mut self, layer: CorticalRegionLayer) {
+		self.layers.insert(layer.name, layer);
+	}
+
+	pub fn width() -> u8 {
+		panic!("not implemented");
+	}
+
+	pub fn cell_kind_row_count(&self, cell_kind: &CellKind) -> u8 {
+		let mut count = 0u8;
+		for (_, layer) in self.layers.iter() {
+			match layer.cell {
+				Some(ref protocell) => match &protocell.cell_kind {
+					ref cell_kind => count += layer.height,
+				},
+				None => (),
+			}
+		}
+		count
+	}
+
+	pub fn total_height(&self) -> u8 {
+		let mut total_height = 0u8;
+		for (_, layer) in self.layers.iter() {
+			total_height += layer.height;
+		}
+		total_height
+	}
+ 
+	pub fn height(&self) -> (u8, u8) {
+		let mut noncell_rows = 0u8;
+		let mut cell_rows = 0u8;
+		
+		for (layer_name, layer) in self.layers.iter() {
+			match layer.cell {
+				None => noncell_rows += layer.height,
+				Some(_) => cell_rows += layer.height,
+			}
+		}
+		(noncell_rows, cell_rows)
+	}
+
+	pub fn row_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
+		let mut row_ids = Vec::new();
+		for &layer_name in layer_names.iter() {
+			let l = &self[layer_name];
+				for i in range(l.base_row_id, l.base_row_id + l.height) {
+					row_ids.push(i);
+				}
+		}
+		row_ids
+	}
+
+	pub fn src_row_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
+		let src_layer_names = self[layer_name].src_layer_names(den_type);
+		
+		self.row_ids(src_layer_names)
+ 	}
+
+ 	pub fn col_input_row(&self) -> u8 {
+ 		for (layer_name, layer) in self.layers.iter() {
+
+ 		}
+ 		5
  	}
 
  	/*pub fn kind_row_ids(&self, layer_name: &'static str) -> Vec<u8> {
@@ -243,18 +348,18 @@ impl CorticalRegion {
 
 impl Index<&'static str> for CorticalRegion
 {
-    type Output = CorticalLayer;
+    type Output = CorticalRegionLayer;
 
-    fn index<'a>(&'a self, index: &&'static str) -> &'a CorticalLayer {
+    fn index<'a>(&'a self, index: &&'static str) -> &'a CorticalRegionLayer {
         self.layers.get(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
     }
 }
 
 impl IndexMut<&'static str> for CorticalRegion
 {
-    type Output = CorticalLayer;
+    type Output = CorticalRegionLayer;
 
-    fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut CorticalLayer {
+    fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut CorticalRegionLayer {
         self.layers.get_mut(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
     }
 }

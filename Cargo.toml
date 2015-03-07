@@ -1,8 +1,10 @@
 [package]
-
 name = "bismit"
 version = "0.0.1"
 authors = ["Nick Sanders <github.com/nsan1129>"]
+
+[dependencies]
+bitflags = "0.1.1"
 
 [dependencies.microcosm]
 git = "https://github.com/cogciprocate/microcosm.git"
@@ -10,7 +12,12 @@ git = "https://github.com/cogciprocate/microcosm.git"
 [dependencies.time]
 git = "https://github.com/rust-lang/time.git"
 
-# [dependencies.opencl]
-# git = "https://github.com/csherratt/rust-opencl"
+#[dependencies.bitflags]
+#git = "https://github.com/rust-lang/bitflags.git"
+
+
+
+# Comment
+# 
 
 

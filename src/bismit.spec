@@ -1,3 +1,38 @@
+=== Learning and Inference 2.0 ===
+
+	We have arrived at a stable way to represent input data. Let's implement a more structured and consistent inference mechanism.
+		- Dendrites continue to represent the sum of it's dendritic activity.
+			- Less linearity needed for distal and apical.
+		- Dendrites lean more towards ORing rather than SUMing.
+		- Distal dendrites can not cause a cell to fire, only to bring it to the point of being able to fire.
+		- Proximal dendrites can only cause a cell to fire if it is fully predictive.
+		- Columnar mechanisms (yet undefined) determine when a column should output even though it has no feed-forward (proximal) input. This would represent a predictive output. The details are still unclear.
+
+	Refining distal dendrites:
+		- scale up to 100+ distal dendrites per cell (3 - 10k per cell)
+		- simple threshold computation
+		- Less linear, more logarithmic or maybe polylogarithmic (possibly (log s) or (log s)^c)
+		- Most distal synapses do nothing and are only plausably "connected".
+		- Can uniquely identify > 2^8 patterns
+		- Predictions do not inhibit
+
+	Bringing in apical dendrites:
+		- Concerned with feedback.
+		- Non-linear just like distal.
+
+	Proximal:
+		- Needs to happen first
+			- considers activation from proximal synapses from the previous cycle
+		- Increase synapse count by a factor of about 2^4.
+		- Increase identification capacity to > 2^5 patterns.
+		- feed-forward sensory and "precipitous" layers (ex. 2-3 prox connects to 4, 4 prox conn's to thal-cort)
+
+	Supplimental:
+		- Find a fast, random way to vary the rate of synapse strength gain/loss based on it's distance to max
+			- something like:  str += ((127 - str) > (rand >> inv_learning_rate))
+			- cheap random: tmp=(xˆ(x<<15)); x=y; y=z; z=w; return w=(wˆ(w>>21))ˆ(tmpˆ(tmp>>4));
+
+
 === LEARNING 1.0 ===
 
 	- Dendrites might be skipped at first -- thresholds will need to be dealt with later.
@@ -5,10 +40,7 @@
 	- 
 
 
-
-
 === BISMIT TYPES ===
-
 
 Neuron: (672b)
 	-Axon (32b) x 256 =
@@ -144,14 +176,3 @@ The structure of the neocortex is relatively uniform...
   The infragranular layers, layers V and VI, primarily connect the cerebral cortex with subcortical regions. These layers are most developed in motor cortical areas. The motor areas have extremely small or non-existent granular layers and are often called "agranular cortex". Layer V gives rise to all of the principal cortical efferent projections to basal ganglia, brain stem and spinal cord. Layer VI, the multiform or fusiform layer, projects primarily to the thalamus.
 
 
-
-
-
-
-
-
-
-
-
-
-(Intel  Core(TM) i5-2500K: Local Memory Size = 32768)

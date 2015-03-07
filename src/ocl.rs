@@ -398,14 +398,14 @@ pub fn enqueue_2d_kernel(
 				//dims: cl_uint,
 				gwo_o: Option<&(usize, usize)>,
 				gws: &(usize, usize),
-				lws_o: Option<&(usize, usize)>,
+				lws: Option<&(usize, usize)>,
 ) {
 	let gwo = match gwo_o {
 		Some(x) =>	(x as *const (usize, usize)) as *const libc::size_t,
 		None 	=>	ptr::null(),
 	};
 
-	let lws = match lws_o {
+	let lws = match lws {
 		Some(x) =>	(x as *const (usize, usize)) as *const libc::size_t,
 		None 	=>	ptr::null(),
 	};
@@ -431,14 +431,14 @@ pub fn enqueue_3d_kernel(
 				kernel: cl_kernel, 
 				gwo_o: Option<&(usize, usize, usize)>,
 				gws: &(usize, usize, usize),
-				lws_o: Option<&(usize, usize, usize)>,
+				lws: Option<&(usize, usize, usize)>,
 ) {
 	let gwo = match gwo_o {
 		Some(x) =>	(x as *const (usize, usize, usize)) as *const libc::size_t,
 		None 	=>	ptr::null(),
 	};
 
-	let lws = match lws_o {
+	let lws = match lws {
 		Some(x) =>	(x as *const (usize, usize, usize)) as *const libc::size_t,
 		None 	=>	ptr::null(),
 	};

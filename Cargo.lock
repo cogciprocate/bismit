@@ -2,9 +2,15 @@
 name = "bismit"
 version = "0.0.1"
 dependencies = [
+ "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "microcosm 0.0.1 (git+https://github.com/cogciprocate/microcosm.git)",
  "time 0.1.15 (git+https://github.com/rust-lang/time.git)",
 ]
+
+[[package]]
+name = "bitflags"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "gcc"

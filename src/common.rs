@@ -1,13 +1,13 @@
 
 use std;
-use std::num::{ Int, FromPrimitive, ToPrimitive };
+use std::num::{ Int, FromPrimitive, ToPrimitive, SignedInt };
 use std::ops::{ self, BitOr };
 use std::default::{ Default }; 
 use std::fmt::{ Display, Debug };
 use std::num;
 use std::iter;
 use std::rand;
-use std::rand::distributions::{ Normal, IndependentSample, Range };
+use std::rand::distributions::{ self, Normal, IndependentSample, Range };
 
 use ocl;
 
@@ -35,31 +35,37 @@ pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;		// appears to cause lots of del
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 3;
 pub const DENDRITE_INITIAL_THRESHOLD: i8 = 1;
 
-pub const SYNAPSE_STRENGTH_DEFAULT: i8 = 16;
-pub const PRX_SYNAPSE_STRENGTH_ZERO: i8 = 64;
+pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 16;
+pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 64;
 
 pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 
-pub const DENDRITES_PER_NEURON_DISTAL: u32 = 16;
-pub const DENDRITES_PER_NEURON_PROXIMAL: u32 = 1;
+pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 4;
+pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
+//pub const DENDRITES_PER_CELL_APICAL_LOG2: u32 = 3;
+
+pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2;
+pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
+//pub const DENDRITES_PER_CELL_APICAL: u32 = 8;
+
 pub const SYNAPSES_PER_DENDRITE: u32 = 16;
-//pub const AXONS_PER_NEURON: usize = DENDRITES_PER_NEURON * SYNAPSES_PER_DENDRITE;
-//pub const SYNAPSES_PER_NEURON: usize = SYNAPSES_PER_DENDRITE * DENDRITES_PER_NEURON;
+//pub const AXONS_PER_CELL: usize = DENDRITES_PER_CELL * SYNAPSES_PER_DENDRITE;
+//pub const SYNAPSES_PER_CELL: usize = SYNAPSES_PER_DENDRITE * DENDRITES_PER_CELL;
 
 pub const COLUMNS_PER_SEGMENT: usize = COLUMNS_PER_HYPERCOLUMN as usize * HYPERCOLUMNS_PER_SEGMENT;
-//pub const COLUMN_AXONS_PER_SEGMENT: usize = AXONS_PER_NEURON * COLUMNS_PER_SEGMENT;
-//pub const COLUMN_DENDRITES_PER_SEGMENT: usize = DENDRITES_PER_NEURON * COLUMNS_PER_SEGMENT;
+//pub const COLUMN_AXONS_PER_SEGMENT: usize = AXONS_PER_CELL * COLUMNS_PER_SEGMENT;
+//pub const COLUMN_DENDRITES_PER_SEGMENT: usize = DENDRITES_PER_CELL * COLUMNS_PER_SEGMENT;
 //pub const COLUMN_SYNAPSES_PER_SEGMENT: usize = SYNAPSES_PER_DENDRITE * COLUMN_DENDRITES_PER_SEGMENT;
 
 pub const CELLS_PER_SEGMENT: usize = LAYERS_PER_SEGMENT * COLUMNS_PER_SEGMENT;
-//pub const CELL_AXONS_PER_SEGMENT: usize = AXONS_PER_NEURON * CELLS_PER_SEGMENT;
-//pub const CELL_DENDRITES_PER_SEGMENT: usize = DENDRITES_PER_NEURON * CELLS_PER_SEGMENT;
+//pub const CELL_AXONS_PER_SEGMENT: usize = AXONS_PER_CELL * CELLS_PER_SEGMENT;
+//pub const CELL_DENDRITES_PER_SEGMENT: usize = DENDRITES_PER_CELL * CELLS_PER_SEGMENT;
 //pub const CELL_SYNAPSES_PER_SEGMENT: usize = SYNAPSES_PER_DENDRITE * CELL_DENDRITES_PER_SEGMENT;
 
 pub const LAYERS_PER_SEGMENT: usize = 16;
 pub const CELLS_PER_LAYER: usize = COLUMNS_PER_SEGMENT;
-//pub const DENDRITES_PER_LAYER: usize = CELLS_PER_LAYER * DENDRITES_PER_NEURON;
-//pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_NEURON;
+//pub const DENDRITES_PER_LAYER: usize = CELLS_PER_LAYER * DENDRITES_PER_CELL;
+//pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_CELL;
 
 pub const SENSORY_CHORD_WIDTH: u32 = 1024; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
@@ -69,12 +75,15 @@ pub const MAX_SYNAPSE_RANGE: u32 = SYNAPSE_REACH * 2;
 pub const AXONS_MARGIN: usize = 128;
 
 pub const DST_DEN_BOOST_LOG2: u8 = 0;
-pub const PRX_DEN_BOOST_LOG2: u8 = 8;
+pub const PRX_DEN_BOOST_LOG2: u8 = 0;
 
 pub const SYNAPSE_DECAY_INTERVAL: usize = 256 * 64;
+ 
+pub const SYNAPSE_WORKGROUP_SIZE: usize = 256;
 
 
 pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool, val_range: Option<std::ops::Range<T>>) {
+
 
 	/*let val_range = match val_range {
 		Some(x) => x,
@@ -211,11 +220,11 @@ pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default + Display>(si
 
 }
 
-pub fn shuffle_vec<T: Int + FromPrimitive + ToPrimitive + Default>(vec: &mut Vec<T>)  {
+pub fn shuffle_vec<T: Int + FromPrimitive + ToPrimitive + Default>(vec: &mut Vec<T>) {
 	let size = vec.len();
 
-	let mut rng = rand::thread_rng();
-	let rng_range = Range::new(0, size);
+	let mut rng = rand::weak_rng();
+	let rng_range = distributions::Range::new(0, size);
 
 	for i in range(0, 6) {
 		for j in range(0, size) {
@@ -226,6 +235,31 @@ pub fn shuffle_vec<T: Int + FromPrimitive + ToPrimitive + Default>(vec: &mut Vec
 		}
 	}
 
+}
+
+/* SPARSE_VEC():
+
+	sp_fctr_log2: sparsity factor (log2)
+*/
+pub fn sparse_vec<T: SignedInt + FromPrimitive + ToPrimitive + Default>(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
+	let mut vec: Vec<T> = iter::repeat(min_val).cycle().take(size).collect();
+
+	let len = vec.len();
+
+	let notes = len >> sp_fctr_log2;
+
+	let range_max = max_val.to_i64().expect("common::sparse_vec(): max_val.to_i64()") as isize + 1;
+	let range_min = min_val.to_i64().expect("common::sparse_vec(): min_val.to_i64()") as isize;
+
+	let mut rng = rand::weak_rng();
+	let val_range = Range::new(range_min, range_max);
+	let idx_range = Range::new(0, 1 << sp_fctr_log2);
+
+	for i in range(0, notes) {
+		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = num::cast(val_range.ind_sample(&mut rng)).unwrap();
+	}
+
+	vec
 }
 
 pub fn dup_check<T: Int>(in_vec: &Vec<T>) -> (usize, usize) {

@@ -3,6 +3,8 @@
 
 extern crate microcosm;
 extern crate time;
+#[macro_use]
+extern crate bitflags;
 
 mod common;
 mod cl_h;
@@ -14,12 +16,16 @@ mod envoy;
 //mod syn_segs;
 //mod column;
 mod cells;
+mod axons;
+mod dendrites;
+mod synapses;
 //mod cort_seg;
 //mod thalamus;
 mod cortex;
 mod cortical_regions;
 mod cortical_areas;
-mod cortical_layer;
+mod cortical_region_layer;
+mod protocell;
 //mod protocell;
 mod sub_cortex;
 mod test_miccos;

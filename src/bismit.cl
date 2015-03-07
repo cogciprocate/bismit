@@ -7,8 +7,8 @@
 #define SYNAPSES_PER_NEURON_LOG2		8
 #define SYNAPSES_PER_NEURON				1 << SYNAPSES_PER_NEURON_LOG2 // SYNAPSES_PER_DENDRITE * DENDRITES_PER_NEURON
 
-#define SYNAPSE_STRENGTH_DEFAULT		16
 #define SYNAPSE_STRENGTH_DEFAULT_LOG2	4
+#define SYNAPSE_STRENGTH_DEFAULT		1 << SYNAPSE_STRENGTH_DEFAULT_LOG2
 
 #define SYNAPSE_STRENGTH_MAX			32
 
@@ -24,6 +24,8 @@
 #define SYNAPSE_REACH					128
 #define MAX_SYNAPSE_RANGE				SYNAPSE_REACH * 2
 
+#define SYNAPSE_WORKGROUP_SIZE			256
+
 /*
 #define DENDRITE_ACTIVE					0x01
 #define COLUMN_ACTIVE_INPUT				0x10
@@ -32,7 +34,6 @@
 #define CELL_ACTIVE						0x10
 */
 
-//#define WORKGROUP_SIZE					64
 
 /*
 ** Kernel Preferred work group size multiple:	 	64
@@ -43,8 +44,6 @@
 ** Remember to inline functions
 */
 
-//__global char axn_states;
-
 /* 
 	SYNS_CYCLE(): INTEGRATION WITH OTHER 'CYCLE' FUNCTIONS - FUTURE OPTIMIZATION NOTES
 
@@ -53,9 +52,44 @@
 	- load data from all 512 necessary axons into local (workgroup) memory
 	- perform summation and weighing for cell dendrites and cell somata in a serially iterative manner
 	- pre-calculate workgroup-sharable constants such as axon lyr offset using compiler flags
+	- load random numbers from host
 	
 
 */
+
+__kernel void col_dens_cycle(
+	__global char* const axn_states,
+	__global uchar* const syn_axn_lyr_ids,
+	__global char* const syn_axn_col_offs
+) {
+	size_t const lyr_id = get_global_id(0);
+	size_t const col_id = get_global_id(1);
+}
+
+
+__kernel void soma_cycle_pre(
+				__global char* const prx_den_states,
+				__global char* const som_states
+) {
+	size_t const lyr_id = get_global_id(0);
+	size_t const col_id = get_global_id(1);
+	size_t const lyr_width = get_global_size(1);
+	size_t const cel_idx = mad24(lyr_id, lyr_width, col_id);
+	size_t const den_grp = cel_idx << DENDRITES_PER_NEURON_LOG2;
+
+	short den_sum = 0;
+
+	#pragma unroll 
+	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
+		den_sum += prx_den_states[den_grp + i];
+	}
+
+	den_sum >>= DENDRITES_PER_NEURON_LOG2;
+
+	som_states[cel_idx] = (char)den_sum;
+}
+
+
 	//	#WORK SIZE: Synapses per Region
 __kernel void syns_cycle(
 				__global char* const axn_states,
@@ -92,6 +126,33 @@ __kernel void syns_cycle(
 }
 
 
+__kernel void dens_cycle_new(
+				__global char* const syn_states,
+				__global char* const den_thrs,
+				__global char* const den_states,
+				__private uchar const boost_log2
+) {
+	size_t const gid = get_global_id(0);
+	size_t const syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
+
+	short syn_sum = 0;
+
+	#pragma unroll 
+	for (uint i = 0; i < SYNAPSES_PER_DENDRITE; i++) {
+		syn_sum += syn_states[syn_grp + i];
+	}
+
+	syn_sum = syn_sum << boost_log2;
+
+	char den_val = (char)clamp((short)(syn_sum >> SYNAPSES_PER_DENDRITE_LOG2), (short)-128, (short)127);
+
+	den_states[gid] = den_val; // * (den_val > den_thrs[gid] || den_val < 0);
+
+	/*if (den_val > den_thrs[gid]) {
+		den_states[gid] = den_val;			// DENDRITE_ACTIVE;
+	}*/
+}
+
 __kernel void dens_cycle(
 				__global char* const syn_states,
 				__global char* const den_thrs,
@@ -119,9 +180,10 @@ __kernel void dens_cycle(
 	}*/
 }
 
-__kernel void soma_cycle(
+
+__kernel void soma_cycle_post(
 				__global char* const dst_den_states,
-				__global char* const prx_den_states,
+				//__global char* const prx_den_states,
 				__global char* const som_states,
 				__private uint const cell_lyr_offset		// Change this to __attribute__ or something
 ) {
@@ -146,7 +208,7 @@ __kernel void soma_cycle(
 	//short prx_den_state = clamp((short)((short)prx_den_states[cel_idx] << SYNAPSES_PER_NEURON_LOG2), (short)-128, (short)127);
 	//som_states[som_idx] = (char)clamp((short)(den_sum + prx_den_state), (short)0, (short)127);
 
-	som_states[cel_idx] = (char)clamp((short)(den_sum + prx_den_states[cel_idx]), (short)0, (short)127);
+	som_states[cel_idx] = (char)clamp((short)(den_sum), (short)0, (short)127);
 	//som_states[cel_idx] = (char)clamp((short)(den_sum + prx_den_states[cel_idx]), (short)0, (short)127);
 
 	//barrier(CLK_LOCAL_MEM_FENCE);
@@ -424,6 +486,43 @@ __kernel void syns_regrow(
 		output[gid] = values[gid];
 	}
 */
+
+
+
+/*__kernel void syns_cycle_opt(
+				__global char* const axn_states,
+				__global uchar* const syn_axn_lyr_ids,
+				__global char* const syn_axn_col_offs,
+				__global char* const syn_strs,
+				__global char* const syn_states
+				//__private const uint axn_lyr_width
+) {
+	size_t const lyr_id = get_global_id(0);		//	y (height)
+	size_t const col_id = get_global_id(1);		//	x (width)
+	size_t const syn_id = get_global_id(2);		//	z (depth)
+	//size_t const syn_lyr_width = get_global_size(2) * get_global_size(0);
+	size_t const width = get_global_size(1);
+	size_t const depth = get_global_size(2);
+	//size_t const col_pos = syn_pos >> SYNAPSES_PER_NEURON_LOG2;
+
+
+
+		// [(lyr_id * depth)] * [width] + [(col_id * depth) + syn_id];
+	size_t const syns_idx = mad24(mul24(lyr_id, depth), width, mad24(col_id, depth, syn_id));
+	size_t const axns_idx = mad24(
+		syn_axn_lyr_ids[syns_idx], 
+		width, 
+		syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH
+	);
+	
+	//size_t const syns_idx = (lyr_id * depth * width) + (col_id * depth) + syn_id;
+	//size_t const axns_idx = (syn_axn_lyr_ids[syns_idx] * width) + syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH;
+	
+	int syn_state = (int)syn_strs[syns_idx] * (int)axn_states[axns_idx];
+	syn_states[syns_idx] = (char)clamp((int)(syn_state >> SYNAPSE_STRENGTH_DEFAULT_LOG2), (int)0, (int)127);
+	//syn_states[syns_idx] =	(syn_strs[syns_idx] > 0);
+}*/
+
 
 
 

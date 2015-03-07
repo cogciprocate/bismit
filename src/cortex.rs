@@ -4,7 +4,11 @@ use envoy::{ Envoy };
 use chord::{ Chord };
 use cells:: { self, Cells };
 use cortical_regions::{ self, CorticalRegion, CorticalRegions, CorticalRegionType };
-use cortical_areas::{ self, CorticalAreas, Width };
+use cortical_areas::{ self, CorticalAreas, CorticalArea, Width, AddNew };
+use cortical_region_layer as layer;
+use cortical_region_layer::{ CorticalRegionLayer };
+use protocell::{ CellKind, Protocell, DendriteKind, CellFlags };
+
 
 use std::rand;
 use std::rand::distributions::{IndependentSample, Range};
@@ -12,6 +16,46 @@ use std::ptr;
 use std::num;
 use std::collections::{ HashMap };
 use time;
+
+
+/* Eventually move define_regions() to a config file or some such */
+pub fn define_regions() -> CorticalRegions {
+	let mut cort_regs: CorticalRegions = CorticalRegions::new();
+	let mut sen = CorticalRegion::new(CorticalRegionType::Sensory);
+
+	sen.new_layer("test", 1, layer::DEFAULT, None);
+	sen.new_layer("thal", 1, layer::DEFAULT, None);
+	sen.new_layer("test_4", 1, layer::DEFAULT, None);
+	//sen.new_layer("test_2", 1, None);
+	//sen.new_layer("inhib_tmp", 1, None);
+	//sen.new_layer("inhib_tmp_2", 1, None);
+	//sen.new_layer("test_3", 1, None);
+
+	/*let cell_iv = CellPrototype::Pyramidal { dst_srcs: vec!["thal"], prx_src: "iv" };
+
+	let layer_iv = */
+
+	sen.new_layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]));
+	sen.new_layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
+	sen.new_layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "ii"], "iv"));
+	sen.new_layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "ii"], "iv"));
+
+	//sen.new_layer("ii", 2, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iii"]), Some(vec!["iii"]))));	
+	//sen.new_layer("inhib_a", 1, Some(Protocell::new(CellKind::AspinyStellate, None, None)));
+
+	cort_regs.add(sen);
+
+	cort_regs
+}
+
+pub fn define_areas() -> CorticalAreas {
+	let mut cortical_areas  = HashMap::new();
+	let mut curr_offset: u32 = 128;
+
+	curr_offset += cortical_areas.add_new("v1", CorticalArea { width: 1024, offset: curr_offset, cort_reg_type: CorticalRegionType::Sensory });
+
+	cortical_areas
+}
 
 
 pub struct Cortex {
@@ -26,10 +70,15 @@ impl Cortex {
 		println!("Initializing Cortex... ");
 		let time_start = time::get_time();
 		let ocl: ocl::Ocl = ocl::Ocl::new();
-		let regions = cortical_regions::define();
-		let areas = cortical_areas::define();
-		let cells = Cells::new(&regions, &areas, &ocl);
-		
+		let regions = define_regions();
+		let areas = define_areas();
+
+		// FOR EACH REGION...
+		let mut cells: cells::Cells = {
+			let ref region = &regions[CorticalRegionType::Sensory];
+			Cells::new(region, &areas, &ocl)
+		};
+
 		let time_complete = time::get_time() - time_start;
 		println!("\n ...initialized in: {}.{} sec. ======", time_complete.num_seconds(), time_complete.num_milliseconds());
 
@@ -42,13 +91,27 @@ impl Cortex {
 	}
 
 
-	pub fn sense(&mut self, sgmt_idx: usize, axn_row: u8, chord: &Chord) {
+	pub fn sense(&mut self, sgmt_idx: usize, layer_target: &'static str, chord: &Chord) {
 		//let sensory_area = "v1";
-		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
-		let mut glimpse: Vec<i8> = Vec::with_capacity(chord.width as usize);
 
-		chord.unfold_into(&mut glimpse, 0);
-		ocl::enqueue_write_buffer(&glimpse, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
+
+		//let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
+		let mut vec: Vec<i8> = Vec::with_capacity(chord.width as usize);
+		chord.unfold_into(&mut vec, 0);
+		self.sense_vec(sgmt_idx, layer_target, &vec);
+		//ocl::enqueue_write_buffer(&glimpse, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
+
+		//self.cells.cycle();
+	}
+
+
+	pub fn sense_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<i8>) {
+
+		let axn_row = self.regions[CorticalRegionType::Sensory].row_ids(vec!(layer_target))[0];
+
+		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
+
+		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
 
 		self.cells.cycle();
 	}
@@ -93,7 +156,7 @@ pub struct CorticalDimensions {
 
 		//println!("height_total: {}, height_cellular: {}, width_syn_row: {}", height_total, height_cellular, width_syn_row);
 
-		let gws = (height_cellular as usize, width as usize, common::SYNAPSES_PER_NEURON);
+		let gws = (height_cellular as usize, width as usize, common::SYNAPSES_PER_CELL);
 
 		//println!("gws: {:?}", gws);
 
@@ -106,7 +169,7 @@ pub struct CorticalDimensions {
 		let width: u32 = self.areas.width(CorticalRegionType::Sensory);
 		let (_, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
 
-		let width_dens: usize = width as usize * common::DENDRITES_PER_NEURON * height_cellular as usize;
+		let width_dens: usize = width as usize * common::DENDRITES_PER_CELL * height_cellular as usize;
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_dens");
 

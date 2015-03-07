@@ -12,18 +12,21 @@ use time;
 use std::default::Default;
 use std::num::{ Int };
 use std::iter;
+use std::ops;
 
 
-pub const TEST_ITERATIONS: i32 = 10000; 
+pub const TEST_ITERATIONS: i32 = 100; 
 pub const SHUFFLE_CHORDS: bool = true;
 pub const PRINT_EVERY: i32 = 2000;
 
 pub fn test_cycle() {
 	let mut cortex = cortex::Cortex::new();
 
+	//let vv1 = common::sparse_vec(2048, -128i8, 127i8, 6);
+	//common::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
 
-	let mut vec1: Vec<i8> = common::shuffled_vec(1024, 0, 63);
-	let mut chord1 = Chord::from_vec(&vec1);
+	let mut vec1: Vec<i8> = common::shuffled_vec(1024, 0, 64);
+	//let mut vec1: Vec<i8> = common::sparse_vec(2048, -128i8, 127i8, 8);
 
 	/*let mut vec1: Vec<i8> = Vec::with_capacity(1024);
 	for i in range(0, 1024) {
@@ -35,29 +38,12 @@ pub fn test_cycle() {
 	}*/
 
 
-
-	let mut vec2: Vec<i8> = Vec::with_capacity(1024);
-	for i in range(0, 1024) {
-		if i < 512 {
-			vec2.push(0i8);
-		} else {
-			vec2.push(0i8);
-		}
-	}
-	let mut chord2 = Chord::from_vec(&vec2);
-
 	let shuffle_chords = SHUFFLE_CHORDS;
 
-	//vec1[0] = 0;
-	//vec1[500] = 50;
-	//vec1[19] = 18;
-	//vec1[500] = vec1[500] >> 1 ;
-
-	
 
 	if shuffle_chords {
 		common::shuffle_vec(&mut vec1);
-		chord1 = Chord::from_vec(&vec1);
+		//chord1 = Chord::from_vec(&vec1);
 	}
 	
 	
@@ -75,9 +61,9 @@ pub fn test_cycle() {
 	loop {
 		if i >= sense_only_loops { break; }
 
-		if i % PRINT_EVERY == 0 || i < 5 {
+		if i % PRINT_EVERY == 0 || i < 0 {
 			println!("\n[i:{}]", i);
-			if true {
+			/*if true {
 				print!("\ncells.soma.hcol_max_ids: ");
 				cortex.cells.soma.hcol_max_ids.print(1 << 0);
 			}
@@ -88,9 +74,9 @@ pub fn test_cycle() {
 			}
 
 			if false {		
-				println!("\ncells.dst_dens.syns.strengths: ");
-				cortex.cells.dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
-			}
+				println!("\ncells.soma.bsl_dst_dens.syns.strengths: ");
+				cortex.cells.soma.bsl_dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
+			}*/
 
 			/* AXON STATES */
 			if false {
@@ -101,10 +87,10 @@ pub fn test_cycle() {
 
 		if shuffle_chords {
 			common::shuffle_vec(&mut vec1);
-			chord1 = Chord::from_vec(&vec1);
+			//chord1 = Chord::from_vec(&vec1);
 		}
 
-		cortex.sense(0, 1, &chord1);
+		cortex.sense_vec(0, "thal", &mut vec1);
 		//cortex.sense(0, 0, &chord2);
 
 		i += 1;
@@ -134,7 +120,7 @@ pub fn test_cycle() {
 			cortex.cells.axns.states.print(1 << 5);
 		}*/
 
-		cortex.sense(0, 1, &chord1); 
+		cortex.sense_vec(0, "thal", &vec1); 
 
 
 		//
@@ -145,60 +131,59 @@ pub fn test_cycle() {
 		//	println!("\n tmp_out: ");
 		//	cortex.sensory_segments[0].tmp_out.print(1000);
 
-		if false {
-			print!("\ncells.dst_dens.syns.axn_col_offs:");
-			cortex.cells.dst_dens.syns.axn_col_offs.print(1 << 14);		// 16384
+		/*if false {
+			print!("\ncells.soma.bsl_dst_dens.syns.axn_col_offs:");
+			cortex.cells.soma.bsl_dst_dens.syns.axn_col_offs.print(1 << 14);		// 16384
 
-			/*print!("\ncells.prx_dens.syns.axn_col_offs:");
-			cortex.cells.prx_dens.syns.axn_col_offs.print(1 << 16);	*/
-		}
+			print!("\ncells.cols.bsl_prx_dens.syns.axn_col_offs:");
+			cortex.cells.cols.bsl_prx_dens.syns.axn_col_offs.print(1 << 16);
+		}*/
 
-		/* DISTAL & PROXIMAL SYNAPSE AXN_ROW_IDS */
-		if false {
-			print!("\ncells.dst_dens.syns.axn_row_ids:");
-			cortex.cells.dst_dens.syns.axn_row_ids.print(1 << 14);		// 16384
-		}
-
-		if false {
-			print!("\ncells.prx_dens.syns.axn_row_ids:");
-			cortex.cells.prx_dens.syns.axn_row_ids.print(1 << 10);
-		}
-
-
-		/* DISTAL & PROXIMAL SYNAPSE STRENGTHS */
-		if true {		
-			println!("\ncells.dst_dens.syns.strengths: ");
-			cortex.cells.dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
+		/* SYNAPSE AXN_ROW_IDS */
+		/*if false {
+			print!("\ncells.soma.bsl_dst_dens.syns.axn_row_ids:");
+			cortex.cells.soma.bsl_dst_dens.syns.axn_row_ids.print(1 << 14);		// 16384
 		}
 
 		if false {
-			print!("\ncells.prx_dens.syns.strengths: ");
-			cortex.cells.prx_dens.syns.strengths.print_val_range(1 << 4, 17, 127);
+			print!("\ncells.cols.bsl_prx_dens.syns.axn_row_ids:");
+			cortex.cells.cols.bsl_prx_dens.syns.axn_row_ids.print(1 << 10);
+		}*/
+
+
+		/* SYNAPSE STRENGTHS */
+		/*if false {		
+			println!("\ncells.soma.bsl_dst_dens.syns.strengths: ");
+			cortex.cells.soma.bsl_dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
 		}
 
+		if false {
+			print!("\ncells.cols.bsl_prx_dens.syns.strengths: ");
+			cortex.cells.cols.bsl_prx_dens.syns.strengths.print_val_range(1 << 4, 17, 127);
+		}*/
 
-		/* DISTAL & PROXIMAL SYNAPSE STATES */
-		if true {	
-			print!("\ncells.dst_dens.syns.states: ");
-			cortex.cells.dst_dens.syns.states.print(1 << 14);
+
+		/* SYNAPSE STATES */
+		/*if true {	
+			print!("\ncells.soma.bsl_dst_dens.syns.states: ");
+			cortex.cells.soma.bsl_dst_dens.syns.states.print(1 << 14);
 		}
 
 		if true {
-			print!("\ncells.prx_dens.syns.states: ");
-			cortex.cells.prx_dens.syns.states.print(1 << 10);
+			print!("\ncells.cols.bsl_prx_dens.syns.states: ");
+			cortex.cells.cols.bsl_prx_dens.syns.states.print(1 << 10);
+		}*/
+
+		/* DENDRITE STATES */
+		/*if true {
+			print!("\ncells.soma.bsl_dst_dens.states: ");
+			cortex.cells.soma.bsl_dst_dens.states.print(1 << 10);
 		}
 
-
-		/* DISTAL & PROXIMAL DENDRITE STATES */
 		if true {
-			print!("\ncells.dst_dens.states: ");
-			cortex.cells.dst_dens.states.print(1 << 10);
-		}
-
-		if true {
-			print!("\ncells.prx_dens.states: ");
-			cortex.cells.prx_dens.states.print(1 << 6);
-		}
+			print!("\ncells.cols.bsl_prx_dens.states: ");
+			cortex.cells.cols.bsl_prx_dens.states.print(1 << 6);
+		}*/
 
 
 		/* AUX VALS */
@@ -214,7 +199,7 @@ pub fn test_cycle() {
 
 
 		/* HCOL MAX IDXS */
-		if true {
+		/*if true {
 			print!("\ncells.soma.hcol_max_ids: ");
 			cortex.cells.soma.hcol_max_ids.print(1 << 0);
 		}
@@ -222,7 +207,7 @@ pub fn test_cycle() {
 		if true {
 			print!("\ncells.soma.hcol_max_vals: ");
 			cortex.cells.soma.hcol_max_vals.print(1 << 0);
-		}
+		}*/
 
 
 		/* SOMA STATES */
@@ -241,15 +226,6 @@ pub fn test_cycle() {
 		i += 1;
 		println!("");
 	}
-
-/*	print!("\n\n=== Final Axon States: ===");
-
-	if true {
-		println!("\ncells.axns.states: ");
-		cortex.cells.axns.states.print(1 << 4);
-	}*/
-
-
 
 
 	cortex.release_components();

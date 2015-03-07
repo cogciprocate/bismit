@@ -93,12 +93,6 @@ pub fn run() {
 		
 	}
 
-	/* PROXIMAL SYNAPSE STRENGTHS */
-	if true {		
-		println!("\ncells.dst_dens.syns.strengths: ");
-		snake_brain.cort.cells.dst_dens.syns.strengths.print_val_range(1 << 0, 17, 127);
-	}
-
 
 	//render_peek(world.peek_from(worm_uid)).print();
 
@@ -132,7 +126,7 @@ impl SnakeBrain {
 	pub fn act(&mut self, world: &mut World) {
 		let scent: Scent = world.sniff_from(self.body_uid);
 		let peek_chord = render_peek(world.peek_from(self.body_uid));
-		self.cort.sense(0, 0, &peek_chord);
+		self.cort.sense(0, "thal", &peek_chord);
 
 		self.propel(world, 0.2f32, 0.1f32);
 
