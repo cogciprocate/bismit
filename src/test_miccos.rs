@@ -2,7 +2,6 @@ use microcosm::entity::{ EntityBody, EntityKind, EntityBrain, Mobile };
 use microcosm::worm::{ WormBrain };
 use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
 use microcosm::world::{ World };
-use sub_cortex::{ SubCortex };
 use cortex::{ Cortex };
 use cortical_regions::{ CorticalRegion };
 use chord::{ Chord };
@@ -111,14 +110,12 @@ pub fn run() {
 
 pub struct SnakeBrain {
 	pub cort: Cortex,
-	pub subc: SubCortex,
 	pub body_uid: usize,
 }
 impl SnakeBrain {
 	pub fn new(body_uid: usize) -> SnakeBrain {
 		SnakeBrain { 
 			cort: Cortex::new(),
-			subc: SubCortex::new(),
 			body_uid: body_uid,
 		}
 	}

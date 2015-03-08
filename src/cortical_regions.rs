@@ -10,7 +10,6 @@ use std::collections::{ self, HashMap };
 use std::collections::hash_state::{ HashState };
 use std::num;
 use std::ops::{ Index, IndexMut, Range };
-use std::borrow::BorrowFrom;
 use std::hash::{ self, Hash, SipHasher, Hasher };
 
 
@@ -62,8 +61,6 @@ impl Index<CorticalRegionType> for CorticalRegions
 
 impl IndexMut<CorticalRegionType> for CorticalRegions
 {
-    type Output = CorticalRegion;
-
     fn index_mut<'a>(&'a mut self, index: &CorticalRegionType) -> &'a mut CorticalRegion {
         self.hash_map.get_mut(index).expect("Invalid region name.")
     }
@@ -205,8 +202,6 @@ impl Index<&'static str> for CorticalRegion
 
 impl IndexMut<&'static str> for CorticalRegion
 {
-    type Output = CorticalRegionLayer;
-
     fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut CorticalRegionLayer {
         self.layers.get_mut(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
     }

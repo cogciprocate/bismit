@@ -1,4 +1,4 @@
-use chord::{ Chord };
+/*use chord::{ Chord };
 use std::collections::RingBuf;
 
 pub struct SubCortex {
@@ -17,3 +17,4 @@ impl SubCortex {
 		}
 	}
 }
+*/

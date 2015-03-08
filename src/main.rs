@@ -1,5 +1,7 @@
-#![allow(non_camel_case_types, dead_code, deprecated, unused_variables, unused_assignments, unused_imports, unused_mut)]
-#![feature(core, rand, io, collections, path, hash, libc, std_misc)]
+#![allow(non_camel_case_types, dead_code, deprecated, unused_variables, 
+	unused_assignments, unused_imports, unused_mut, unused_features)]
+
+#![feature(core, rand, io, collections, path, libc, std_misc, old_path)]
 
 extern crate microcosm;
 extern crate time;
@@ -28,14 +30,16 @@ mod cortical_areas;
 mod cortical_region_layer;
 mod protocell;
 //mod protocell;
-mod sub_cortex;
+//mod sub_cortex;
 mod test_miccos;
 //mod test_readback;
 //mod test_3;
 mod test_4;
 
+use std::num::Int;
+
 fn main() {
-	println!("====== Bismit: main() running... ======");
+	print!("================= Bismit: main() running... =================");
 	let time_start = time::get_time();
 	// test_1::run_kernel();
 	// sense::ascii_sense();

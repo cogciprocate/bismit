@@ -35,7 +35,7 @@ pub struct Cells {
 impl Cells {
 	pub fn new(region: &CorticalRegion, areas: &CorticalAreas, ocl: &Ocl) -> Cells {
 		let (height_noncellular, height_cellular) = region.height();
-		println!("Cells::new(): height_noncellular: {}, height_cellular: {}", height_noncellular, height_cellular);
+		print!("\nCells::new(): height_noncellular: {}, height_cellular: {}", height_noncellular, height_cellular);
 		assert!(height_cellular > 0, "cells::Cells::new(): Region has no cellular layers.");
 		let height_total = height_noncellular + height_cellular;
 		let width = areas.width(&region.kind);

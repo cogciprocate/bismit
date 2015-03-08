@@ -1,3 +1,7 @@
+=== Debug Ideas ===
+
+	Look at the center of activity when given a sensory vector with only the very center portion active.
+
 === Learning and Inference 2.0 ===
 
 	We have arrived at a stable way to represent input data. Let's implement a more structured and consistent inference mechanism.

@@ -75,7 +75,7 @@ pub const CELLS_PER_LAYER: usize = COLUMNS_PER_SEGMENT;
 //pub const DENDRITES_PER_LAYER: usize = CELLS_PER_LAYER * DENDRITES_PER_CELL;
 //pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_CELL;
 
-pub const SENSORY_CHORD_WIDTH: u32 = 1024 << 4; // COLUMNS_PER_SEGMENT;
+pub const SENSORY_CHORD_WIDTH: u32 = 1024 << 2; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
 pub const SYNAPSE_REACH: u32 = 128;
@@ -98,8 +98,8 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 		_ => 0,
 	}*/
 
-	let mut ttl_nz = 0us;
-	let mut ttl_ir = 0us;
+	let mut ttl_nz = 0usize;
+	let mut ttl_ir = 0usize;
 	let mut hi = Default::default();
 	let mut lo: T = Default::default();
 	let mut sum: i64 = 0;
@@ -151,7 +151,7 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 		}
 
 		if vec[i] != Default::default() {
-			ttl_nz += 1us;
+			ttl_nz += 1usize;
 			color = C_ORA;
 		} else {
 			if show_zeros {
@@ -186,18 +186,7 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 	}
 
 
-	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prtd:{}){cd} ", ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
-}
-
-pub fn int_hb_log2<T: Int + BitOr + Eq >(mut n: T) -> u8 {
-	let tmp = n;
-	n = n | n >> 1;
-	n = n | n >> 2;
-	n = n | n >> 4;
-	n = n | n >> 8;
-	n = n | n >> 16;
-	assert!((n - (n >> 1)).trailing_zeros() == tmp.trailing_zeros());
-	FromPrimitive::from_uint((n - (n >> 1)).trailing_zeros()).expect("common::int_hb_log2")
+	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prntd:{}){cd} ", ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 }
 
 pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default + Display>(size: usize, min_val: T, max_val: T) -> Vec<T> {
@@ -280,8 +269,8 @@ pub fn dup_check<T: Int>(in_vec: &Vec<T>) -> (usize, usize) {
 	vec.sort();
 
 
-	let mut dups = 0us;
-	let mut unis = 0us;
+	let mut dups = 0usize;
+	let mut unis = 0usize;
 	let mut prev_val = vec[vec.len() - 1];
 
 	for x in vec.iter() {
@@ -296,4 +285,21 @@ pub fn dup_check<T: Int>(in_vec: &Vec<T>) -> (usize, usize) {
 
 	println!("len: {}, dups: {}, unis: {}", vec.len(), dups, unis);
 	(dups, unis)
+}
+
+
+/*pub fn log2(n: usize) -> u32 {
+	let mut t = n;
+	t = t | t >> 1;
+	t = t | t >> 2;
+	t = t | t >> 4;
+	t = t | t >> 8;
+	t = t | t >> 16;
+	assert!((t - (t >> 1)).trailing_zeros() == t.trailing_zeros());
+
+	(t - (t >> 1)).trailing_zeros()
+}*/
+
+pub fn log2(n: u32) -> u32 {
+	n.trailing_zeros()
 }

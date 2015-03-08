@@ -4,7 +4,8 @@ extern crate libc;
 use std;
 use std::ptr;
 use std::mem;
-use std::old_io::{ File };
+use std::io::{ Read };
+use std::fs::{ File };
 use std::ffi;
 use std::iter;
 use envoy::{ Envoy };
@@ -26,8 +27,15 @@ pub struct Ocl {
 
 impl Ocl {
 	pub fn new() -> Ocl {
-		let kern_file_path: std::path::Path = std::path::Path::new(format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME));
-		let kern_str: Vec<u8> = File::open(&kern_file_path).read_to_end().unwrap();
+		let path_string = format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME);
+		let path_string_slice = path_string.as_slice();
+		let kern_file_path = std::path::Path::new(path_string_slice);
+
+		let mut kern_str: Vec<u8> = Vec::new();
+		let kern_file = File::open(kern_file_path).unwrap().read_to_end(&mut kern_str);
+
+		
+
 		let kern_c_str = ffi::CString::from_vec(kern_str);
 
 		let platform = new_platform();

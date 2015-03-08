@@ -22,6 +22,7 @@ use std::fmt::{ Display };
 
 pub struct Columns {
 	width: u32,
+	kern_cycle: ocl::Kernel,
 	pub states: Envoy<ocl::cl_char>,
 	pub syns: ColumnSynapses,
 }
@@ -30,19 +31,25 @@ impl Columns {
 	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, ocl: &Ocl) -> Columns {
 		let height: u8 = 1;
 		let syns_per_cell = common::DENDRITES_PER_CELL_PROXIMAL * common::SYNAPSES_PER_DENDRITE_PROXIMAL;
+
+		let states = Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl);
+		let syns = ColumnSynapses::new(width, syns_per_cell, region, axons, ocl);
+
+		let kern_cycle = ocl.new_kernel("col_cycle", WorkSize::TwoDim(height as usize, width as usize))
+			.arg(&syns.states)
+			.arg(&states)
+		;
+
 		Columns {
 			width: width,
-			states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl),
-			syns: ColumnSynapses::new(width, syns_per_cell, region, axons, ocl),
+			kern_cycle: kern_cycle,
+			states: states,
+			syns: syns,
 		}
 	}
 
 	pub fn cycle(&self, axons: &Axons, ocl: &Ocl) {
-		/*ocl.new_kernel("col_cycle", WorkSize::OneDim(self.width as usize))
-		.arg(&self.states)
-		.arg(&self.states)
-		.arg(&self.states)
-		.enqueue();*/
+		self.kern_cycle.enqueue();
 		self.syns.cycle(axons, ocl);
 	}
 }
@@ -53,11 +60,11 @@ pub struct ColumnSynapses {
 	height: u8,
 	per_cell: u32,
 	src_row_ids_list: Vec<u8>,
+	kern_cycle: ocl::Kernel,
 	pub states: Envoy<ocl::cl_char>,
 	pub strengths: Envoy<ocl::cl_char>,
 	pub src_ofs: Envoy<ocl::cl_char>,
 	pub src_row_ids: Envoy<ocl::cl_uchar>,
-	cycle_kern: ocl::Kernel,
 }
 
 impl ColumnSynapses {
@@ -75,16 +82,14 @@ impl ColumnSynapses {
 		let src_ofs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, height, -128, 127, ocl);
 		let src_row_ids= Envoy::<ocl::cl_uchar>::new(syns_per_row, height, 0u8, ocl);
 
-		let cycle_kern = ocl.new_kernel(
-				"col_syns_cycle", 
-				WorkSize::TwoDim(height as usize, width as usize)
-			)
+		let kern_cycle = ocl.new_kernel("col_syns_cycle", 
+			WorkSize::TwoDim(height as usize, width as usize))
 			.arg(&axons.states)
 			.arg(&src_ofs)
 			.arg(&src_row_ids)
 			.arg(&states)
 			//.arg_scalar(src_row_ids_list[0])	// FIX THIS TO BE AN ENVOY
-		//.arg_local(0u8, common::SYNAPSE_WORKGROUP_SIZE + per_cell as usize)
+			//.arg_local(0u8, common::SYNAPSE_WORKGROUP_SIZE + per_cell as usize)
 		;
 		//println!("src_row_ids_list[0]: {}", src_row_ids_list[0]);
 		
@@ -97,7 +102,7 @@ impl ColumnSynapses {
 			strengths: strengths,
 			src_ofs: src_ofs,
 			src_row_ids: src_row_ids,
-			cycle_kern: cycle_kern,
+			kern_cycle: kern_cycle,
 		};
 
 		//common::print_vec(&syns.src_ofs.vec, 1 << 12, true, Some(ops::Range{ start: -128, end: 127 }));
@@ -111,7 +116,7 @@ impl ColumnSynapses {
 		let row_len = self.width * self.per_cell;
 		let mut rng = rand::weak_rng();
 
-		let ei_start = 0us;
+		let ei_start = 0usize;
 		let ei_end = ei_start + row_len as usize;
 		let src_row_idx_range: Range<usize> = Range::new(0, self.src_row_ids_list.len());
 		//println!("\nInitializing Column Synapses: ei_start: {}, ei_end: {}, self.src_row_ids: {:?}, self.src_row_ids.len(): {}", ei_start, ei_end, self.src_row_ids_list, self.src_row_ids_list.len());
@@ -128,7 +133,7 @@ impl ColumnSynapses {
 		//self.src_row_ids.print(8);
 	}
 
-	/*fn init_cycle_kern(&mut self, 
+	/*fn init_kern_cycle(&mut self, 
 				axons: &Axons, 
 				states: &Envoy<ocl::cl_char>, 
 				strengths: &Envoy<ocl::cl_char>,
@@ -161,7 +166,7 @@ impl ColumnSynapses {
 		.arg(&self.states)
 		.arg_scalar(self.src_row_ids_list[0])	// FIX THIS TO BE AN ENVOY
 		.arg_local(0u8, common::SYNAPSE_WORKGROUP_SIZE + self.per_cell as usize)*/
-		self.cycle_kern.enqueue();
+		self.kern_cycle.enqueue();
 
 
 		/*let kern = ocl::new_kernel(ocl.program, "col_syns_cycle");

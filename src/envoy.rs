@@ -101,7 +101,7 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 
 }
 
-impl <T> Index<usize> for Envoy<T>
+impl<T> Index<usize> for Envoy<T>
 {
     type Output = T;
 
@@ -110,9 +110,8 @@ impl <T> Index<usize> for Envoy<T>
     }
 }
 
-impl <T> IndexMut<usize> for Envoy<T>
+impl<T> IndexMut<usize> for Envoy<T>
 {
-    type Output = T;
 
     fn index_mut<'a>(&'a mut self, index: &usize) -> &'a mut T {
         &mut self.vec.as_mut_slice()[*index]

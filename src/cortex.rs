@@ -67,7 +67,7 @@ pub struct Cortex {
 
 impl Cortex {
 	pub fn new() -> Cortex {
-		println!("Initializing Cortex... ");
+		print!("\nInitializing Cortex... ");
 		let time_start = time::get_time();
 		let ocl: ocl::Ocl = ocl::Ocl::new();
 		let regions = define_regions();
@@ -80,7 +80,7 @@ impl Cortex {
 		};
 
 		let time_complete = time::get_time() - time_start;
-		println!("\n ...initialized in: {}.{} sec. ======", time_complete.num_seconds(), time_complete.num_milliseconds());
+		print!("\n... Cortex initialized in: {}.{} sec.", time_complete.num_seconds(), time_complete.num_milliseconds());
 
 		Cortex {
 			cells: cells,
@@ -92,16 +92,11 @@ impl Cortex {
 
 
 	pub fn sense(&mut self, sgmt_idx: usize, layer_target: &'static str, chord: &Chord) {
-		//let sensory_area = "v1";
 
-
-		//let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axons.width as usize);
 		let mut vec: Vec<i8> = Vec::with_capacity(chord.width as usize);
 		chord.unfold_into(&mut vec, 0);
 		self.sense_vec(sgmt_idx, layer_target, &vec);
-		//ocl::enqueue_write_buffer(&glimpse, self.cells.axons.states.buf, self.ocl.command_queue, buffer_offset);
 
-		self.cells.cycle();
 	}
 
 
@@ -118,7 +113,7 @@ impl Cortex {
 
 
 	pub fn release_components(&mut self) {
-		println!("\nReleasing OCL Components...");
+		print!("Releasing OCL Components...");
 		self.ocl.release_components();
 	}
 }

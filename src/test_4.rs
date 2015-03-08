@@ -15,7 +15,7 @@ use std::ops;
 use time;
 
 
-pub const TEST_ITERATIONS: i32 = 100000; 
+pub const TEST_ITERATIONS: i32 = 1000; 
 pub const SHUFFLE_CHORDS: bool = false;
 pub const PRINT_EVERY: i32 = 5000;
 
@@ -31,13 +31,37 @@ pub fn test_cycle() {
 	//common::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
 	let time_start = time::get_time();
 	let scw = common::SENSORY_CHORD_WIDTH;
+	let scl_fct = scw / 1024;
+
+	print!("\n*********** scl_fct: {}", scl_fct);
+	print!("\n*********** common::log2(sct_fct): {}", common::log2(scl_fct));
 
 	let mut vec1: Vec<i8> = Vec::with_capacity(scw as usize);
-	for i in range(0, scw) {
+	/*for i in range(0, scw) {
 		if i < scw >> 1 {
-			vec1.push(0i8);
-		} else {
 			vec1.push(64i8);
+		} else {
+			vec1.push(0i8);
+		}
+	}*/
+
+	let scw_1_2 = scw >> 1;
+
+	let scw_1_4 = scw >> 2;
+	let scw_3_4 = scw - scw_1_4;
+
+	let scw_1_8 = scw >> 3;
+	let scw_3_8 = scw_1_2 - scw_1_8;
+	let scw_5_8 = scw_1_2 + scw_1_8;
+
+	let scw_1_16 = scw >> 4;
+
+	//println!("***** scw_1_4: {}, scw_3_4: {}", scw_1_4, scw_3_4);
+	for i in range(0, scw) {
+		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
+			vec1.push(64i8);
+		} else {
+			vec1.push(0i8);
 		}
 	}
 
@@ -60,7 +84,7 @@ pub fn test_cycle() {
 	
 
 		/* SENSE ONLY LOOP */
-	print!("\nRunning sense only loops ... ");
+	print!("\n\nRunning sense only loops ... ");
 
 	let sense_only_loops: i32 = TEST_ITERATIONS;
 
@@ -70,7 +94,7 @@ pub fn test_cycle() {
 
 		if i % PRINT_EVERY == 0 || i < 0 {
 			let t = time::get_time() - time_start;
-			print!("\n[i:{};{}.{}s]", i, t.num_seconds(), t.num_milliseconds());
+			print!("\n[i:{}; {}.{}s] ", i, t.num_seconds(), t.num_milliseconds());
 			/*if true {
 				print!("\ncells.soma.hcol_max_ids: ");
 				cortex.cells.soma.hcol_max_ids.print(1 << 0);
@@ -117,19 +141,71 @@ pub fn test_cycle() {
 
 
 		/* SENSE AND PRINT LOOP */
-	print!("\nRunning sense and print loops...");
+	print!("\n\nRunning sense and print loops...");
 	//let mut i = 0u32;
 	loop {
 		if i >= 1 + sense_only_loops { break; }
 
-		print!("\n=== Iteration {} ===", i + 1);
+		print!("\n\n=== Iteration {} ===", i + 1);
 
-		/*if true {
+		if false {
 			println!("\ncells.axons.states: ");
 			cortex.cells.axons.states.print(1 << 5);
-		}*/
+		}
 
 		cortex.sense_vec(0, "thal", &vec1); 
+
+		/* COLUMN STATES */
+		if true {	
+			print!("\ncells.cols.states: ");
+			cortex.cells.cols.states.print_val_range(1 << 7, -128, 127);
+		}
+
+
+		/* SYNAPSE STATES */
+
+		if true {	
+			print!("\ncells.cols.syns.states: ");
+			cortex.cells.cols.syns.states.print_val_range(1 << 15, -128, 127);
+		}
+
+
+		/* HCOL MAX IDXS */
+
+		/*if false {
+			print!("\ncells.soma.hcol_max_ids: ");
+			cortex.cells.soma.hcol_max_ids.print(1 << 0);
+		}
+
+		if false {
+			print!("\ncells.soma.hcol_max_vals: ");
+			cortex.cells.soma.hcol_max_vals.print(1 << 0);
+		}*/
+
+
+		/* SOMA STATES */
+
+		/*if false {
+			print!("\ncells.soma.states: ");
+			cortex.cells.soma.states.print_val_range(1 << 12, 1, 127);
+		}*/
+
+
+		/* AXON STATES */
+
+		if true {
+			print!("\ncells.axons.states: ");
+			cortex.cells.axons.states.print_val_range(1 << 10 as usize , 1, 127);
+		}
+
+		i += 1;
+		println!("");
+	}
+
+
+	cortex.release_components();
+
+}
 
 
 		//
@@ -179,14 +255,6 @@ pub fn test_cycle() {
 			cortex.cells.cols.bsl_prx_dens.syns.strengths.print_val_range(1 << 4, 17, 127);
 		}*/
 
-
-		/* SYNAPSE STATES */
-
-		if true {	
-			print!("\ncells.cols.syns.states: ");
-			cortex.cells.cols.syns.states.print_val_range(1 << 14, -128, 127);
-		}
-
 		/*if true {	
 			print!("\ncells.soma.dst_dens.syns.states: ");
 			cortex.cells.soma.dst_dens.syns.states.print(1 << 14);
@@ -223,42 +291,6 @@ pub fn test_cycle() {
 		}*/
 
 
-		/* HCOL MAX IDXS */
-
-		if false {
-			print!("\ncells.soma.hcol_max_ids: ");
-			cortex.cells.soma.hcol_max_ids.print(1 << 0);
-		}
-
-		if false {
-			print!("\ncells.soma.hcol_max_vals: ");
-			cortex.cells.soma.hcol_max_vals.print(1 << 0);
-		}
-
-
-		/* SOMA STATES */
-
-		if false {
-			print!("\ncells.soma.states: ");
-			cortex.cells.soma.states.print_val_range(1 << 12, 1, 127);
-		}
-
-
-		/* AXON STATES */
-
-		if true {
-			print!("\ncells.axons.states: ");
-			cortex.cells.axons.states.print_val_range(1 << 10 as usize , 1, 127);
-		}
-
-		i += 1;
-		println!("");
-	}
-
-
-	cortex.release_components();
-
-}
 
 	/*if false {
 		println!("\n cells.somata.states: ");
