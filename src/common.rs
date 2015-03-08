@@ -40,15 +40,23 @@ pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 64;
 
 pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 
+
+
 pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 4;
-pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
-//pub const DENDRITES_PER_CELL_APICAL_LOG2: u32 = 3;
-
 pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2;
-pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
-//pub const DENDRITES_PER_CELL_APICAL: u32 = 8;
 
-pub const SYNAPSES_PER_DENDRITE: u32 = 16;
+pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 4;
+pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
+
+
+pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
+pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
+
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 8;
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 <<SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+
+
+
 //pub const AXONS_PER_CELL: usize = DENDRITES_PER_CELL * SYNAPSES_PER_DENDRITE;
 //pub const SYNAPSES_PER_CELL: usize = SYNAPSES_PER_DENDRITE * DENDRITES_PER_CELL;
 
@@ -67,7 +75,7 @@ pub const CELLS_PER_LAYER: usize = COLUMNS_PER_SEGMENT;
 //pub const DENDRITES_PER_LAYER: usize = CELLS_PER_LAYER * DENDRITES_PER_CELL;
 //pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_CELL;
 
-pub const SENSORY_CHORD_WIDTH: u32 = 1024; // COLUMNS_PER_SEGMENT;
+pub const SENSORY_CHORD_WIDTH: u32 = 1024 << 4; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
 pub const SYNAPSE_REACH: u32 = 128;
@@ -134,14 +142,16 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 
 		sum += num::cast(vec[i]).expect("common::print_vec, sum");
 
+
+		if vec[i] > hi { hi = vec[i] };
+		if lo == Default::default() && hi != Default::default() {
+			lo = hi 
+		} else {
+			if vec[i] < lo { lo = vec[i] };
+		}
+
 		if vec[i] != Default::default() {
 			ttl_nz += 1us;
-			if vec[i] > hi { hi = vec[i] };
-			if lo == Default::default() && hi != Default::default() {
-				lo = hi 
-			} else {
-				if vec[i] < lo { lo = vec[i] };
-			}
 			color = C_ORA;
 		} else {
 			if show_zeros {
@@ -220,19 +230,19 @@ pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default + Display>(si
 
 }
 
-pub fn shuffle_vec<T: Int + FromPrimitive + ToPrimitive + Default>(vec: &mut Vec<T>) {
-	let size = vec.len();
-
+// Fisher-Yates
+pub fn shuffle_vec<T: Int>(vec: &mut Vec<T>) {
+	let len = vec.len();
 	let mut rng = rand::weak_rng();
-	let rng_range = distributions::Range::new(0, size);
 
-	for i in range(0, 6) {
-		for j in range(0, size) {
-			let ridx = rng_range.ind_sample(&mut rng);
-			let tmp = vec[j];
-			vec[j] = vec[ridx];
-			vec[ridx] = tmp;
-		}
+	let mut ridx: usize;
+	let mut tmp: T;
+
+	for i in range(0, len) {
+		ridx = distributions::Range::new(i, len).ind_sample(&mut rng);
+		tmp = vec[i];
+		vec[i] = vec[ridx];
+		vec[ridx] = tmp;
 	}
 
 }

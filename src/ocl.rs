@@ -23,6 +23,7 @@ pub struct Ocl {
 	pub program: cl_program,
 	pub command_queue: cl_command_queue,
 }
+
 impl Ocl {
 	pub fn new() -> Ocl {
 		let kern_file_path: std::path::Path = std::path::Path::new(format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME));
@@ -42,6 +43,28 @@ impl Ocl {
 			context:  context,
 			program:  program,
 			command_queue: command_queue,
+
+		}
+	}
+
+	pub fn new_kernel(&self, name: &'static str, gws: WorkSize) -> Kernel {
+		let mut err: cl_h::cl_int = 0;
+
+		let kernel = unsafe {
+			cl_h::clCreateKernel(self.program, ffi::CString::from_slice(name.as_bytes()).as_ptr(), &mut err)
+		};
+
+		must_succ("Ocl::new_kernel()", err);
+
+		Kernel {
+			kernel: kernel,
+			name: name,
+			arg_index: 0,
+			command_queue: self.command_queue,
+			context: self.context,
+			gwo: WorkSize::Unspecified,
+			gws: gws,
+			lws: WorkSize::Unspecified,
 
 		}
 	}
@@ -136,6 +159,163 @@ impl Ocl {
 			cl_h::clReleaseContext(self.context);
 		}
 
+	}
+}
+
+
+
+pub struct Kernel {
+	kernel: cl_h::cl_kernel, //make this private!!!!!
+	name: &'static str,
+	arg_index: u32,
+	command_queue: cl_h::cl_command_queue,
+	context: cl_h::cl_context,
+	gwo: WorkSize,
+	gws: WorkSize,
+	lws: WorkSize,
+}
+
+impl Kernel {
+	pub fn gwo(mut self, gwo: WorkSize) -> Kernel {
+		if gwo.dims() == self.gws.dims() {
+			self.gwo = gwo
+		} else {
+			panic!("ocl::Kernel::gwo(): Work size mismatch.");
+		}
+		self
+	}
+
+	pub fn lws(mut self, lws: WorkSize) -> Kernel {
+		if lws.dims() == self.gws.dims() {
+			self.lws = lws;
+		} else {
+			panic!("ocl::Kernel::gwo(): Work size mismatch.");
+		}
+		self
+	}
+
+	pub fn arg<T>(mut self, envoy: &Envoy<T>) -> Kernel {
+		let buf = &envoy.buf;
+
+		self.set_kernel_arg(
+			mem::size_of::<cl_h::cl_mem>() as libc::size_t, 
+			(buf as *const cl_h::cl_mem) as *const libc::c_void,
+		)
+	}
+
+	pub fn arg_scalar<T>(mut self, scalar: T) -> Kernel {
+		unsafe {
+			self.set_kernel_arg(
+				mem::size_of::<T>() as libc::size_t, 
+				mem::transmute(&scalar),
+			)
+		}
+	}
+
+	pub fn arg_local<T>(mut self, type_sample: T, length: usize) -> Kernel {
+
+		self.set_kernel_arg(
+			(mem::size_of::<T>() * length) as libc::size_t,
+			ptr::null(),
+		)
+	}
+
+	fn set_kernel_arg(mut self, arg_size: libc::size_t, arg_value: *const libc::c_void) -> Kernel {
+		let err = unsafe {
+			cl_h::clSetKernelArg(
+						self.kernel, 
+						self.arg_index, 
+						arg_size, 
+						arg_value,
+			)
+		};
+		must_succ("clSetKernelArg()", err);
+		//println!("Adding Kernel Argument: {}", self.arg_index);
+		self.arg_index += 1;
+		self
+	}
+
+	pub fn enqueue(&self) {
+
+			// CHECK THE DIMENSIONS OF ALL THE WORKSIZES
+
+		let c_gws = self.gws.complete_worksize();
+		let gws = (&c_gws as *const (usize, usize, usize)) as *const libc::size_t;
+
+
+		unsafe {
+			let err = cl_h::clEnqueueNDRangeKernel(
+						self.command_queue,
+						self.kernel,
+						self.gws.dims(),				//	dims,
+						self.gwo.as_ptr(),
+						gws,
+						self.lws.as_ptr(),
+						0,
+						ptr::null(),
+						ptr::null_mut(),
+			);
+			must_succ("clEnqueueNDRangeKernel()", err);
+		}
+	}
+}
+
+
+#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+pub enum WorkSize {
+	Unspecified,
+	OneDim		(usize),
+	TwoDim		(usize, usize),
+	ThreeDim 	(usize, usize, usize),
+}
+
+impl WorkSize {
+	pub fn dims(&self) -> cl_h::cl_uint {
+		use self::WorkSize::*;
+		match self {
+			&ThreeDim(_, _, _) 	=> 3,
+			&TwoDim(_, _) 		=> 2,
+			&OneDim(_) 			=> 1,
+			&Unspecified 		=> 0,
+		}
+
+	}
+
+	pub fn complete_worksize(&self) -> (usize, usize, usize) {
+		match self {
+			&WorkSize::OneDim(x) => {
+				(x, 1, 1)
+			},
+			&WorkSize::TwoDim(x, y) => {
+				(x, y, 1)
+			},
+			&WorkSize::ThreeDim(x, y, z) => {
+				(x, y, z)
+			},
+			_ => (1, 1, 1)
+		}
+	}
+
+	/* THIS IS POTENTIALLY VERY BUGGY SINCE THE POINTER TO 's' IS LEFT DANGLING 
+		FIX IT ASAP
+	*/
+	fn as_ptr(&self) -> *const libc::size_t {
+
+		match self {
+			&WorkSize::OneDim(x) => {
+				let s = (x, 1, 1);
+				(&s as *const (usize, usize, usize)) as *const libc::size_t
+			},
+			&WorkSize::TwoDim(x, y) => {
+				let s = (x, y, 1);
+				(&s as *const (usize, usize, usize)) as *const libc::size_t
+			},
+			&WorkSize::ThreeDim(x, y, z) => {
+				let s = (x, y, z);
+				(&s as *const (usize, usize, usize)) as *const libc::size_t
+			},
+			_ => ptr::null(),
+		}
 	}
 }
 
@@ -262,7 +442,6 @@ pub fn new_command_queue(
 		cq
 	}
 }
-
 
 
 pub fn new_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {

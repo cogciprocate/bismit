@@ -1,28 +1,42 @@
-#define DENDRITES_PER_NEURON_LOG2		4
-#define DENDRITES_PER_NEURON			1 << DENDRITES_PER_NEURON_LOG2
+#define DENDRITES_PER_CELL_DISTAL_LOG2			4
+#define DENDRITES_PER_CELL_DISTAL				1 << DENDRITES_PER_CELL_DISTAL_LOG2
 
-#define SYNAPSES_PER_DENDRITE_LOG2		4
-#define SYNAPSES_PER_DENDRITE			1 << SYNAPSES_PER_DENDRITE_LOG2
+#define SYNAPSES_PER_DENDRITE_DISTAL_LOG2		4
+#define SYNAPSES_PER_DENDRITE_DISTAL			1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2
 
-#define SYNAPSES_PER_NEURON_LOG2		8
-#define SYNAPSES_PER_NEURON				1 << SYNAPSES_PER_NEURON_LOG2 // SYNAPSES_PER_DENDRITE * DENDRITES_PER_NEURON
+#define SYNAPSES_PER_CELL_DISTAL_LOG2			DENDRITES_PER_CELL_DISTAL_LOG2 + SYNAPSES_PER_DENDRITE_DISTAL_LOG2
+#define SYNAPSES_PER_CELL_DISTAL				1 << SYNAPSES_PER_CELL_DISTAL_LOG2
 
-#define SYNAPSE_STRENGTH_DEFAULT_LOG2	4
-#define SYNAPSE_STRENGTH_DEFAULT		1 << SYNAPSE_STRENGTH_DEFAULT_LOG2
+#define SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2	4
+#define SYNAPSE_STRENGTH_DEFAULT_DISTAL			1 << SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2
 
-#define SYNAPSE_STRENGTH_MAX			32
+
+#define DENDRITES_PER_CELL_PROXIMAL_LOG2		0
+#define DENDRITES_PER_CELL_PROXIMAL				1 << DENDRITES_PER_CELL_PROXIMAL_LOG2
+
+#define SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2		8
+#define SYNAPSES_PER_DENDRITE_PROXIMAL			1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2
+
+#define SYNAPSES_PER_CELL_PROXIMAL_LOG2			DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2
+#define SYNAPSES_PER_CELL_PROXIMAL				DENDRITES_PER_CELL_PROXIMAL * SYNAPSES_PER_DENDRITE_PROXIMAL
+
+#define SYNAPSE_STRENGTH_DEFAULT_LOG2_PROXIMAL	4
+#define SYNAPSE_STRENGTH_DEFAULT_PROXIMAL		1 << SYNAPSE_STRENGTH_DEFAULT_PROXIMAL_LOG2
+
+
+#define SYNAPSE_STRENGTH_MAX			127
 
 #define COLUMNS_PER_HYPERCOLUMN_LOG2	6
 
-#define COLUMNS_PER_SEGMENT 			64 * 16
+//#define COLUMNS_PER_SEGMENT 			64 * 16
 
-#define SYNAPSES_PER_LAYER				SYNAPSES_PER_NEURON * COLUMNS_PER_SEGMENT
+//#define SYNAPSES_PER_LAYER				SYNAPSES_PER_CELL * COLUMNS_PER_SEGMENT
 
-#define CELLS_PER_COLUMN				16
-#define CELLS_PER_COLUMN_LOG2			4
+//#define CELLS_PER_COLUMN				16
+//#define CELLS_PER_COLUMN_LOG2			4
 
 #define SYNAPSE_REACH					128
-#define MAX_SYNAPSE_RANGE				SYNAPSE_REACH * 2
+#define SYNAPSE_SPAN					SYNAPSE_REACH * 2
 
 #define SYNAPSE_WORKGROUP_SIZE			256
 
@@ -51,40 +65,68 @@
 	- load 256 cells (2^16 synapses) into each workgroup (256 synapses per work item)
 	- load data from all 512 necessary axons into local (workgroup) memory
 	- perform summation and weighing for cell dendrites and cell somata in a serially iterative manner
-	- pre-calculate workgroup-sharable constants such as axon lyr offset using compiler flags
+	- pre-calculate workgroup-sharable constants such as axon row offset using compiler flags
 	- load random numbers from host
 	
 
 */
 
-__kernel void col_dens_cycle(
+
+/*
+	COL_SYNS_CYCLE():
+		number of source rows can not exceed: 
+			ROWS * (SYNAPSES_PER_CELL_PROXIMAL + SYNAPSE_WORKGROUP_SIZE)
+
+	TODO:
+		- Vectorize!
+*/
+__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
+__kernel void col_syns_cycle(
 	__global char* const axn_states,
-	__global uchar* const syn_axn_lyr_ids,
-	__global char* const syn_axn_col_offs
+	__global char* const syn_src_ofs,
+	__global uchar* const syn_src_row_ids,
+	__global char* const syn_states
 ) {
-	size_t const lyr_id = get_global_id(0);
+	size_t const row_id = get_global_id(0);
 	size_t const col_id = get_global_id(1);
+	size_t const lid = get_local_id(1);
+	size_t const row_width = get_global_size(1);
+	size_t const cel_idx = mad24(row_id, row_width, col_id);
+	size_t const depth_log2 = SYNAPSES_PER_CELL_PROXIMAL_LOG2;
+	
+	size_t axn_ofs = col_id + (size_t)SYNAPSE_REACH;
+	size_t syn_idx = ((cel_idx - lid) << depth_log2) + lid;
+
+	int n = SYNAPSE_WORKGROUP_SIZE + axn_ofs;
+	size_t axn_idx;
+
+	for (int i = axn_ofs; i < n; i += 1) {
+		axn_idx = mad24((size_t)syn_src_row_ids[syn_idx], row_width, (size_t)(i + syn_src_ofs[syn_idx]));
+		syn_states[syn_idx] = axn_states[axn_idx];
+		syn_idx += SYNAPSE_WORKGROUP_SIZE;
+	}
 }
+
 
 
 __kernel void soma_cycle_pre(
 				__global char* const prx_den_states,
 				__global char* const som_states
 ) {
-	size_t const lyr_id = get_global_id(0);
+	size_t const row_id = get_global_id(0);
 	size_t const col_id = get_global_id(1);
-	size_t const lyr_width = get_global_size(1);
-	size_t const cel_idx = mad24(lyr_id, lyr_width, col_id);
-	size_t const den_grp = cel_idx << DENDRITES_PER_NEURON_LOG2;
+	size_t const row_width = get_global_size(1);
+	size_t const cel_idx = mad24(row_id, row_width, col_id);
+	size_t const den_grp = cel_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
 
 	short den_sum = 0;
 
 	#pragma unroll 
-	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
+	for (uint i = 0; i < DENDRITES_PER_CELL_DISTAL; i++) {
 		den_sum += prx_den_states[den_grp + i];
 	}
 
-	den_sum >>= DENDRITES_PER_NEURON_LOG2;
+	den_sum >>= DENDRITES_PER_CELL_DISTAL_LOG2;
 
 	som_states[cel_idx] = (char)den_sum;
 }
@@ -93,35 +135,35 @@ __kernel void soma_cycle_pre(
 	//	#WORK SIZE: Synapses per Region
 __kernel void syns_cycle(
 				__global char* const axn_states,
-				__global uchar* const syn_axn_lyr_ids,
+				__global uchar* const syn_axn_row_ids,
 				__global char* const syn_axn_col_offs,
 				__global char* const syn_strs,
 				__global char* const syn_states
-				//__private const uint axn_lyr_width
+				//__private const uint axn_row_width
 ) {
-	size_t const lyr_id = get_global_id(0);		//	y (height)
+	size_t const row_id = get_global_id(0);		//	y (height)
 	size_t const col_id = get_global_id(1);		//	x (width)
 	size_t const syn_id = get_global_id(2);		//	z (depth)
-	//size_t const syn_lyr_width = get_global_size(2) * get_global_size(0);
+	//size_t const syn_row_width = get_global_size(2) * get_global_size(0);
 	size_t const width = get_global_size(1);
 	size_t const depth = get_global_size(2);
-	//size_t const col_pos = syn_pos >> SYNAPSES_PER_NEURON_LOG2;
+	//size_t const col_pos = syn_pos >> SYNAPSES_PER_CELL_LOG2;
 
 
 
-	/* [(lyr_id * depth)] * [width] + [(col_id * depth) + syn_id]; */
-	size_t const syns_idx = mad24(mul24(lyr_id, depth), width, mad24(col_id, depth, syn_id));
+	/* [(row_id * depth)] * [width] + [(col_id * depth) + syn_id]; */
+	size_t const syns_idx = mad24(mul24(row_id, depth), width, mad24(col_id, depth, syn_id));
 	size_t const axns_idx = mad24(
-		syn_axn_lyr_ids[syns_idx], 
+		syn_axn_row_ids[syns_idx], 
 		width, 
 		syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH
 	);
 	/*
-	size_t const syns_idx = (lyr_id * depth * width) + (col_id * depth) + syn_id;
-	size_t const axns_idx = (syn_axn_lyr_ids[syns_idx] * width) + syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH;
+	size_t const syns_idx = (row_id * depth * width) + (col_id * depth) + syn_id;
+	size_t const axns_idx = (syn_axn_row_ids[syns_idx] * width) + syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH;
 	*/
 	int syn_state = (int)syn_strs[syns_idx] * (int)axn_states[axns_idx];
-	syn_states[syns_idx] = (char)clamp((int)(syn_state >> SYNAPSE_STRENGTH_DEFAULT_LOG2), (int)0, (int)127);
+	syn_states[syns_idx] = (char)clamp((int)(syn_state >> SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2), (int)0, (int)127);
 	//syn_states[syns_idx] =	(syn_strs[syns_idx] > 0);
 }
 
@@ -133,18 +175,18 @@ __kernel void dens_cycle_new(
 				__private uchar const boost_log2
 ) {
 	size_t const gid = get_global_id(0);
-	size_t const syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
+	size_t const syn_grp = gid << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 	short syn_sum = 0;
 
 	#pragma unroll 
-	for (uint i = 0; i < SYNAPSES_PER_DENDRITE; i++) {
+	for (uint i = 0; i < SYNAPSES_PER_DENDRITE_DISTAL; i++) {
 		syn_sum += syn_states[syn_grp + i];
 	}
 
 	syn_sum = syn_sum << boost_log2;
 
-	char den_val = (char)clamp((short)(syn_sum >> SYNAPSES_PER_DENDRITE_LOG2), (short)-128, (short)127);
+	char den_val = (char)clamp((short)(syn_sum >> SYNAPSES_PER_DENDRITE_DISTAL_LOG2), (short)-128, (short)127);
 
 	den_states[gid] = den_val; // * (den_val > den_thrs[gid] || den_val < 0);
 
@@ -160,18 +202,18 @@ __kernel void dens_cycle(
 				__private uchar const boost_log2
 ) {
 	size_t const gid = get_global_id(0);
-	size_t const syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
+	size_t const syn_grp = gid << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 	short syn_sum = 0;
 
 	#pragma unroll 
-	for (uint i = 0; i < SYNAPSES_PER_DENDRITE; i++) {
+	for (uint i = 0; i < SYNAPSES_PER_DENDRITE_DISTAL; i++) {
 		syn_sum += syn_states[syn_grp + i];
 	}
 
 	syn_sum = syn_sum << boost_log2;
 
-	char den_val = (char)clamp((short)(syn_sum >> SYNAPSES_PER_DENDRITE_LOG2), (short)-128, (short)127);
+	char den_val = (char)clamp((short)(syn_sum >> SYNAPSES_PER_DENDRITE_DISTAL_LOG2), (short)-128, (short)127);
 
 	den_states[gid] = den_val; // * (den_val > den_thrs[gid] || den_val < 0);
 
@@ -185,27 +227,27 @@ __kernel void soma_cycle_post(
 				__global char* const dst_den_states,
 				//__global char* const prx_den_states,
 				__global char* const som_states,
-				__private uint const cell_lyr_offset		// Change this to __attribute__ or something
+				__private uint const cell_row_offset		// Change this to __attribute__ or something
 ) {
-	size_t const lyr = get_global_id(0);
+	size_t const row = get_global_id(0);
 	size_t const col = get_global_id(1);
-	size_t const lyr_width = get_global_size(1);
-	size_t const cel_idx = mad24(lyr, lyr_width, col);
-	//size_t const som_idx = mad24((lyr + cell_lyr_offset), lyr_width, col) + SYNAPSE_REACH;
-	size_t const den_grp = cel_idx << DENDRITES_PER_NEURON_LOG2;
+	size_t const row_width = get_global_size(1);
+	size_t const cel_idx = mad24(row, row_width, col);
+	//size_t const som_idx = mad24((row + cell_row_offset), row_width, col) + SYNAPSE_REACH;
+	size_t const den_grp = cel_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
 	//int cel_grp = gid << CELLS_PER_COLUMN_LOG2;
 
 	short den_sum = 0;
 
 	#pragma unroll 
-	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
+	for (uint i = 0; i < DENDRITES_PER_CELL_DISTAL; i++) {
 		den_sum += dst_den_states[den_grp + i];
 		//den_sum = (char)add_sat((char)den_sum, (char)dst_den_states[den_grp + i]);
 	}
 
-	den_sum = den_sum >> DENDRITES_PER_NEURON_LOG2;
+	den_sum = den_sum >> DENDRITES_PER_CELL_DISTAL_LOG2;
 
-	//short prx_den_state = clamp((short)((short)prx_den_states[cel_idx] << SYNAPSES_PER_NEURON_LOG2), (short)-128, (short)127);
+	//short prx_den_state = clamp((short)((short)prx_den_states[cel_idx] << SYNAPSES_PER_CELL_LOG2), (short)-128, (short)127);
 	//som_states[som_idx] = (char)clamp((short)(den_sum + prx_den_state), (short)0, (short)127);
 
 	som_states[cel_idx] = (char)clamp((short)(den_sum), (short)0, (short)127);
@@ -228,10 +270,10 @@ __kernel void soma_inhib(
 	__global uchar* const dst_ids,
 	__global char* const dst_vals
 ) {
-	size_t const lyr = get_global_id(0);
+	size_t const row = get_global_id(0);
 	size_t const col = get_global_id(1);
-	size_t const lyr_width = get_global_size(1);
-	size_t const hcol_idx = mad24(lyr, lyr_width, col);
+	size_t const row_width = get_global_size(1);
+	size_t const hcol_idx = mad24(row, row_width, col);
 	//size_t const wg_width = get_local_size(1);
 
 	uchar const hcol_size_log2 = COLUMNS_PER_HYPERCOLUMN_LOG2;
@@ -293,13 +335,13 @@ __kernel void axns_cycle(
 				//__global char* const hcol_max_vals,
 				__global uchar* const hcol_max_ids,
 				__global char* const axn_states,
-				__private uint const cell_lyr_offset		// Change this to __attribute__ or something
+				__private uint const cell_row_offset		// Change this to __attribute__ or something
 ) {
-	size_t const lyr = get_global_id(0);
+	size_t const row = get_global_id(0);
 	size_t const col = get_global_id(1);
-	size_t const lyr_width = get_global_size(1);
-	size_t const cel_idx = mad24(lyr, lyr_width, col);
-	size_t const axn_idx = mad24((lyr + cell_lyr_offset), lyr_width, col) + SYNAPSE_REACH;
+	size_t const row_width = get_global_size(1);
+	size_t const cel_idx = mad24(row, row_width, col);
+	size_t const axn_idx = mad24((row + cell_row_offset), row_width, col) + SYNAPSE_REACH;
 	size_t const hcol_idx = cel_idx >> COLUMNS_PER_HYPERCOLUMN_LOG2;
 	size_t const hcol_max_idx = (hcol_idx << COLUMNS_PER_HYPERCOLUMN_LOG2) + hcol_max_ids[hcol_idx];
 
@@ -323,26 +365,26 @@ __kernel void syns_learn(
 				__global char* const rand_ofs
 
 ) {
-	size_t const lyr = get_global_id(0);
+	size_t const row = get_global_id(0);
 	size_t const col = get_global_id(1);
-	size_t const lyr_width = get_global_size(1);
-	size_t const hcol_idx = mad24(lyr, lyr_width, col);
+	size_t const row_width = get_global_size(1);
+	size_t const hcol_idx = mad24(row, row_width, col);
 
 	uchar const hcol_size_log2 = COLUMNS_PER_HYPERCOLUMN_LOG2;
 	size_t const cel_ofs = hcol_idx << hcol_size_log2;
 	uchar const hcol_max_id = hcol_max_ids[hcol_idx];
 	size_t const cel_idx = cel_ofs + hcol_max_id;
 
-	size_t const den_ofs = cel_idx << DENDRITES_PER_NEURON_LOG2;
-	size_t const syn_ofs = den_ofs << SYNAPSES_PER_DENDRITE_LOG2;
+	size_t const den_ofs = cel_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
+	size_t const syn_ofs = den_ofs << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
-	size_t pseudo_rand = (col + lyr + (size_t)hcol_max_ids) & 0x00FF;
+	size_t pseudo_rand = (col + row + (size_t)hcol_max_ids) & 0x00FF;
 
 	size_t rand1 = (size_t)rand_ofs[pseudo_rand];
 	size_t rand2 = (size_t)rand_ofs[rand1];
 
 	size_t rand_den_idx = den_ofs + (rand1 & 0x000F);
-	size_t rand_syn_idx = (rand_den_idx << SYNAPSES_PER_DENDRITE_LOG2) + (rand2 & 0x000F);
+	size_t rand_syn_idx = (rand_den_idx << SYNAPSES_PER_DENDRITE_DISTAL_LOG2) + (rand2 & 0x000F);
 
 
 	syn_strengths[rand_syn_idx] += 
@@ -365,11 +407,11 @@ __kernel void syns_learn(
 	short den_states_sum = 5;
 	char den_states_avg = 0;
 
-	for (uchar d = 0; d < DENDRITES_PER_NEURON; d++) {
+	for (uchar d = 0; d < DENDRITES_PER_CELL; d++) {
 		den_states_sum += den_states[den_ofs + d];
 	}
 
-	den_states_avg = (char)(den_states_sum >> DENDRITES_PER_NEURON_LOG2);
+	den_states_avg = (char)(den_states_sum >> DENDRITES_PER_CELL_LOG2);
 	*/
 
 	//syn_strengths[syn_ofs + 0] = den_states_avg + 100; 
@@ -392,7 +434,7 @@ __kernel void syns_learn(
 	}*/
 
 
-	/*for (uchar d = 0; d < DENDRITES_PER_NEURON; d++) {
+	/*for (uchar d = 0; d < DENDRITES_PER_CELL; d++) {
 		for (uchar s = 0; s < SYNAPSES_PER_DENDRITE; s++) {
 			syn_strengths[syn_idx] += (syn_states[syn_idx] > den_states[den_idx]) * (syn_strengths[syn_idx] < 64);
 			//syn_strengths[syn_idx] += 1;
@@ -406,16 +448,16 @@ __kernel void syns_decay(
 	__global char* const syn_strs
 ) {
 
-	size_t const lyr_id = get_global_id(0);
+	size_t const row_id = get_global_id(0);
 	size_t const col_id = get_global_id(1);
 	size_t const syn_id = get_global_id(2);
-	//size_t const syn_lyr_width = get_global_size(2) * get_global_size(0);
+	//size_t const syn_row_width = get_global_size(2) * get_global_size(0);
 	size_t const width = get_global_size(1);
 	size_t const depth = get_global_size(2);
-	//size_t const col_pos = syn_pos >> SYNAPSES_PER_NEURON_LOG2;
+	//size_t const col_pos = syn_pos >> SYNAPSES_PER_CELL_LOG2;
 
-	/* [(lyr_id * depth)] * [width] + [(col_id * depth) + syn_id]; */
-	size_t const syn_idx = mad24(mul24(lyr_id, depth), width, mad24(col_id, depth, syn_id));
+	/* [(row_id * depth)] * [width] + [(col_id * depth) + syn_id]; */
+	size_t const syn_idx = mad24(mul24(row_id, depth), width, mad24(col_id, depth, syn_id));
 
 	syn_strs[syn_idx] -= (1 * (syn_strs[syn_idx] > -128)); 
 }
@@ -427,20 +469,20 @@ __kernel void syns_regrow(
 	__global char* const syn_ofs
 ) {
 
-	size_t const lyr_id = get_global_id(0);
+	size_t const row_id = get_global_id(0);
 	size_t const col_id = get_global_id(1);
 	size_t const syn_id = get_global_id(2);
-	//size_t const syn_lyr_width = get_global_size(2) * get_global_size(0);
+	//size_t const syn_row_width = get_global_size(2) * get_global_size(0);
 	size_t const width = get_global_size(1);
 	size_t const depth = get_global_size(2);
-	//size_t const col_pos = syn_pos >> SYNAPSES_PER_NEURON_LOG2;
+	//size_t const col_pos = syn_pos >> SYNAPSES_PER_CELL_LOG2;
 
-	/* [(lyr_id * depth)] * [width] + [(col_id * depth) + syn_id]; */
-	size_t const syn_idx = mad24(mul24(lyr_id, depth), width, mad24(col_id, depth, syn_id));
+	/* [(row_id * depth)] * [width] + [(col_id * depth) + syn_id]; */
+	size_t const syn_idx = mad24(mul24(row_id, depth), width, mad24(col_id, depth, syn_id));
 
 	if (syn_strs[syn_id] <= -127) {
 		syn_ofs[syn_idx] = rand_ofs[syn_id]; 
-		syn_strs[syn_idx] = SYNAPSE_STRENGTH_DEFAULT; 
+		syn_strs[syn_idx] = SYNAPSE_STRENGTH_DEFAULT_DISTAL; 
 	}
 }
 
@@ -488,35 +530,153 @@ __kernel void syns_regrow(
 */
 
 
+/*__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
+__kernel void col_syns_cycle_2_0(
+	__global char* const axn_states,
+	__global char* const syn_src_ofs,
+	__global uchar* const syn_src_row_ids,
+	__global char* const syn_states,
+	__private uchar const src_axn_row
+	//__local char* const axn_cache
+) {
+
+	size_t const row_id = get_global_id(0);
+	size_t const col_id = get_global_id(1);
+	size_t const lid = get_local_id(1);
+	size_t const row_width = get_global_size(1);
+	size_t const cel_idx = mad24(row_id, row_width, col_id);
+	//size_t const axn_zero = lid + SYNAPSE_REACH;
+	size_t const depth_log2 = SYNAPSES_PER_CELL_PROXIMAL_LOG2;
+	
+	//__local char axn_cache[SYNAPSE_WORKGROUP_SIZE + SYNAPSE_SPAN]; // ADD HEIGHT AS A CONSTANT AT SOME POINT
+	//__local size_t axn_cache_width;
+	//__local size_t axn_cache_height;
+
+	//size_t axn_ofs = lid << 1;
+	size_t axn_idx = mad24(src_axn_row, row_width, add_sat(col_id, (size_t)SYNAPSE_REACH));
+	//axn_cache[axn_ofs - 1] = axn_states[axn_idx + axn_ofs - 1];
+	//axn_cache[axn_ofs] = axn_states[axn_idx + axn_ofs];
+
+
+	if (lid == 0) {
+		size_t const wg_size = get_local_size(1);
+		axn_cache_width = add_sat((size_t)SYNAPSE_SPAN, wg_size);
+		axn_cache_height = 1; // *** FIX (should be based on size of src_axn_rows or whatever it becomes) ***
+		size_t const axn_ofs = mad24(src_axn_row, row_width, col_id + SYNAPSE_REACH);
+		size_t axn_idx = axn_ofs;
+
+		#pragma unroll
+		for (size_t i = 0; i < axn_cache_width; i++) {
+			axn_cache[i] = axn_states[axn_idx];
+			axn_idx += 1;
+		}
+	}
+
+	//barrier(CLK_LOCAL_MEM_FENCE);
+
+	//size_t syn_idx = cel_idx << SYNAPSES_PER_CELL_PROXIMAL_LOG2;
+	//size_t axn_cache_idx;
+
+	//size_t spc =  << SYNAPSE_WORKGROUP_SIZE;
+
+		// START AT THE FIRST CELL OF THE WORKGROUP
+		// INCREMENT SYN_IDX BY ONE WHOLE WORKGROUP (1 workgroup = 1 cell) AT A TIME
+	size_t syn_idx = ((cel_idx - lid) << depth_log2) + lid;
+	int end = SYNAPSE_WORKGROUP_SIZE + lid;
+
+	//#pragma unroll
+	for (int i = 0; i < SYNAPSE_WORKGROUP_SIZE; i += 1) {
+		//axn_cache_idx = axn_zero + syn_src_ofs[syn_idx];
+
+		//syn_states[syn_idx] = axn_cache[axn_cache_idx];
+		syn_states[syn_idx] = axn_states[axn_idx + syn_src_ofs[syn_idx]];
+		syn_idx += SYNAPSE_WORKGROUP_SIZE;
+		axn_idx += 1;
+	}
+}*/
+
+
+
+/*__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
+__kernel void col_syns_cycle_1_0(
+	__global char* const axn_states,
+	__global char* const syn_src_ofs,
+	__global uchar* const syn_src_row_ids,
+	__global char* const syn_states,
+	__private uchar const src_axn_row
+	//__local char* const axn_cache
+) {
+
+	size_t const row_id = get_global_id(0);
+	size_t const col_id = get_global_id(1);
+	size_t const lid = get_local_id(1);
+	size_t const wg_size = get_local_size(1);
+	size_t const row_width = get_global_size(1);
+	size_t const cel_idx = mad24(row_id, row_width, col_id);
+	size_t const axn_zero = lid + SYNAPSE_REACH;
+	size_t const depth_log2 = SYNAPSES_PER_CELL_PROXIMAL_LOG2;
+	
+	__local char axn_cache[SYNAPSE_WORKGROUP_SIZE + SYNAPSE_SPAN]; // ADD HEIGHT AS A CONSTANT AT SOME POINT
+	__local size_t axn_cache_width;
+	__local size_t axn_cache_height;
+
+	if (lid == 0) {
+		axn_cache_width = add_sat((size_t)SYNAPSE_SPAN, wg_size);
+		axn_cache_height = 1; // *** FIX (should be based on size of src_axn_rows or whatever it becomes) ***
+		size_t const axn_ofs = mad24(src_axn_row, row_width, col_id + SYNAPSE_REACH);
+		size_t axn_idx = axn_ofs;
+
+		#pragma unroll
+		for (size_t i = 0; i < axn_cache_width; i++) {
+			axn_cache[i] = axn_states[axn_idx];
+			axn_idx += 1;
+		}
+	}
+
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	size_t syn_idx = cel_idx << depth_log2;
+	size_t axn_idx;
+
+	#pragma unroll
+	for (int i = 0; i < SYNAPSES_PER_CELL_PROXIMAL; i++) {
+		axn_idx = axn_zero + syn_src_ofs[syn_idx];
+
+		syn_states[syn_idx] = axn_cache[axn_idx];
+		syn_idx += 1;
+	}
+}*/
+
+
 
 /*__kernel void syns_cycle_opt(
 				__global char* const axn_states,
-				__global uchar* const syn_axn_lyr_ids,
+				__global uchar* const syn_axn_row_ids,
 				__global char* const syn_axn_col_offs,
 				__global char* const syn_strs,
 				__global char* const syn_states
-				//__private const uint axn_lyr_width
+				//__private const uint axn_row_width
 ) {
-	size_t const lyr_id = get_global_id(0);		//	y (height)
+	size_t const row_id = get_global_id(0);		//	y (height)
 	size_t const col_id = get_global_id(1);		//	x (width)
 	size_t const syn_id = get_global_id(2);		//	z (depth)
-	//size_t const syn_lyr_width = get_global_size(2) * get_global_size(0);
+	//size_t const syn_row_width = get_global_size(2) * get_global_size(0);
 	size_t const width = get_global_size(1);
 	size_t const depth = get_global_size(2);
-	//size_t const col_pos = syn_pos >> SYNAPSES_PER_NEURON_LOG2;
+	//size_t const col_pos = syn_pos >> SYNAPSES_PER_CELL_LOG2;
 
 
 
-		// [(lyr_id * depth)] * [width] + [(col_id * depth) + syn_id];
-	size_t const syns_idx = mad24(mul24(lyr_id, depth), width, mad24(col_id, depth, syn_id));
+		// [(row_id * depth)] * [width] + [(col_id * depth) + syn_id];
+	size_t const syns_idx = mad24(mul24(row_id, depth), width, mad24(col_id, depth, syn_id));
 	size_t const axns_idx = mad24(
-		syn_axn_lyr_ids[syns_idx], 
+		syn_axn_row_ids[syns_idx], 
 		width, 
 		syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH
 	);
 	
-	//size_t const syns_idx = (lyr_id * depth * width) + (col_id * depth) + syn_id;
-	//size_t const axns_idx = (syn_axn_lyr_ids[syns_idx] * width) + syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH;
+	//size_t const syns_idx = (row_id * depth * width) + (col_id * depth) + syn_id;
+	//size_t const axns_idx = (syn_axn_row_ids[syns_idx] * width) + syn_axn_col_offs[syns_idx] + col_id + SYNAPSE_REACH;
 	
 	int syn_state = (int)syn_strs[syns_idx] * (int)axn_states[axns_idx];
 	syn_states[syns_idx] = (char)clamp((int)(syn_state >> SYNAPSE_STRENGTH_DEFAULT_LOG2), (int)0, (int)127);
@@ -531,10 +691,10 @@ __kernel void inhib_3_0(
 	__global char* const src_vals,
 	__global char* const dst_vals
 ) {
-	size_t lyr = get_global_id(0);
+	size_t row = get_global_id(0);
 	size_t col = get_global_id(1);
-	size_t lyr_width = get_global_size(1);
-	size_t grp_idx = mad24(lyr, lyr_width, col);
+	size_t row_width = get_global_size(1);
+	size_t grp_idx = mad24(row, row_width, col);
 	size_t wg_width = get_local_size(1);
 
 	//__local char best_of_8[32]; // wg_size = 256; 256 / 8 = 32
@@ -560,10 +720,10 @@ __kernel void inhib_2_0(
 	__private const uint axn_out_ofs,
 	__global int* const aux_vals
 ) {
-	size_t lyr = get_global_id(0);
+	size_t row = get_global_id(0);
 	size_t col = get_global_id(1);
-	size_t lyr_width = get_global_size(1);
-	size_t grp_idx = mad24(lyr, lyr_width, col);
+	size_t row_width = get_global_size(1);
+	size_t grp_idx = mad24(row, row_width, col);
 	size_t wg_width = get_local_size(1);
 
 	//__local char best_of_8[32]; // wg_size = 256; 256 / 8 = 32
@@ -587,16 +747,16 @@ __kernel void inhib_2_0(
 
 __kernel void inhib_1_0(		// FUCK IT. LET'S DUPLICATE WORK FOR NOW. I'M DRUNK.
 				__global char* const axn_states,
-				__private const uint cell_lyr_offset,		// Change this to __attribute__ (or macro) or something
+				__private const uint cell_row_offset,		// Change this to __attribute__ (or macro) or something
 				__private const uint axn_inhib_tmp_ofs,
 				__private const uint axn_inhib_tmp_2_ofs
 ) {
-	size_t lyr = get_global_id(0);
+	size_t row = get_global_id(0);
 	size_t col = get_global_id(1);
-	size_t lyr_width = get_global_size(1);
-	size_t cel_idx = mad24(lyr, lyr_width, col);
-	size_t axn_idx = mad24((lyr + cell_lyr_offset), lyr_width, col) + SYNAPSE_REACH;
-	//size_t den_grp = cel_idx << DENDRITES_PER_NEURON_LOG2;
+	size_t row_width = get_global_size(1);
+	size_t cel_idx = mad24(row, row_width, col);
+	size_t axn_idx = mad24((row + cell_row_offset), row_width, col) + SYNAPSE_REACH;
+	//size_t den_grp = cel_idx << DENDRITES_PER_CELL_LOG2;
 
 	size_t group_size = 16;
 	size_t axn_grp = (size_t)axn_idx & (size_t)(0xFFFFFFFF - group_size); // groups of 16;
@@ -662,7 +822,7 @@ __kernel void test_int_shift(__global char *test_out, __private char input) {
 
 
 	// #WG: common::COLUMN_SYNAPSES_PER_SEGMENT
-__kernel void sense(
+/*__kernel void sense(
 				__global const char *src_vals,  // CHANGE TO _states
 				__global char * const tar_vals,
 				__global const short *tar_som_idxs,
@@ -670,32 +830,32 @@ __kernel void sense(
 				__private const char dup_factor_shift
 ) {
 	size_t gid = get_global_id(0);
-	size_t tar_idx = mad24(tar_som_idxs[gid], SYNAPSES_PER_NEURON, tar_syn_idxs[gid]);
+	size_t tar_idx = mad24(tar_som_idxs[gid], SYNAPSES_PER_CELL_DISTAL, tar_syn_idxs[gid]);
 
 	tar_vals[tar_idx] = src_vals[gid >> dup_factor_shift];
 	
-}
+}*/
 
 	// #WG: common::COLUMN_DENDRITES_PER_SEGMENT
-__kernel void cycle_col_dens(
+/*__kernel void cycle_col_dens(
 				__global const uchar *syn_states,
 				__global const uchar *syn_strs,
 				__global const uchar *den_thrs,
 				__global uchar * const den_states
 ) {
 	size_t gid = get_global_id(0);
-	size_t syn_grp = gid << SYNAPSES_PER_DENDRITE_LOG2;
+	size_t syn_grp = gid << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 	uchar den_val = 0;
 
-	for (uint i = 0; i < SYNAPSES_PER_DENDRITE; i++) {
+	for (uint i = 0; i < SYNAPSES_PER_DENDRITE_DISTAL; i++) {
 		den_val += mul_hi(syn_states[syn_grp + i], syn_strs[syn_grp + i]);
 	}
 
 	if (den_val > den_thrs[gid]) {
 		den_states[gid] = den_val;	
 	}
-}
+}*/
 
 
 	// #WG: common::COLUMNS_PER_SEGMENT
@@ -705,12 +865,12 @@ __kernel void cycle_col_dens(
 				__global uchar *cel_states
 ) {
 	size_t gid = get_global_id(0);
-	size_t den_grp = gid << DENDRITES_PER_NEURON_LOG2;
+	size_t den_grp = gid << DENDRITES_PER_CELL_LOG2;
 	size_t cel_grp = gid << CELLS_PER_COLUMN_LOG2;
 
 	uchar den_mix = 0;
 
-	for (uint i = 0; i < DENDRITES_PER_NEURON; i++) {
+	for (uint i = 0; i < DENDRITES_PER_CELL; i++) {
 		den_mix |= den_states[den_grp + i];
 	}
 

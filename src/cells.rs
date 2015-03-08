@@ -1,5 +1,5 @@
 use common;
-use ocl;
+use ocl::{ self, Ocl, WorkSize };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
 use cortical_regions::{ CorticalRegion, CorticalRegionType };
@@ -7,6 +7,7 @@ use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
+use columns::{ Columns };
 
 
 use std::num;
@@ -26,60 +27,54 @@ pub struct Cells {
 	pub height_cellular: u8,
 	ocl: ocl::Ocl,
 	pub cols: Columns,
-	pub axns: Axons,
+	pub axons: Axons,
 	pub soma: Somata,
 	pub aux: Aux,
 }
 
 impl Cells {
-	pub fn new(region: &CorticalRegion, areas: &CorticalAreas, ocl: &ocl::Ocl) -> Cells {
+	pub fn new(region: &CorticalRegion, areas: &CorticalAreas, ocl: &Ocl) -> Cells {
 		let (height_noncellular, height_cellular) = region.height();
 		println!("Cells::new(): height_noncellular: {}, height_cellular: {}", height_noncellular, height_cellular);
 		assert!(height_cellular > 0, "cells::Cells::new(): Region has no cellular layers.");
 		let height_total = height_noncellular + height_cellular;
 		let width = areas.width(&region.kind);
 
-		Cells {
+		let axons = Axons::new(width, height_noncellular, height_cellular, region, ocl);
+		let cols = Columns::new(width, region, &axons, ocl);
+
+		let mut cells = Cells {
 			width: width,
 			height_noncellular: height_noncellular,
 			height_cellular: height_cellular,
-			cols: Columns::new(width, region, ocl),
-			axns: Axons::new(width, height_noncellular, height_cellular, region, ocl),
+			cols: cols,
+			axons: axons,
 			soma: Somata::new(width, height_cellular, region, ocl),
 			aux: Aux::new(width, height_cellular, ocl),
 			ocl: ocl.clone(),
-		}
+		};
+
+		//cells.init_kernels(ocl);
+		cells
+	}
+
+	pub fn init_kernels(&mut self, ocl: &Ocl) {
+		//self.cols.syns.init_kernels(&self.axons, ocl);
 	}
 
 	pub fn cycle(&mut self) {
-		self.soma.dst_dens.cycle(&self.axns, &self.ocl);
-		self.cols.bsl_prx_dens.cycle(&self.axns, &self.ocl);
-		//self.apc_dens.cycle(&self.axns, &self.ocl);
-		self.soma.cycle(&self.ocl);
-		self.soma.inhib(&self.ocl);
-		self.axns.cycle(&self.soma, &self.ocl);
-		self.soma.learn(&self.ocl);
-		self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
-	}	
-}
+		
+		//self.soma.dst_dens.cycle(&self.axons, &self.ocl);
+		//self.soma.cycle(&self.ocl);
+		//self.soma.inhib(&self.ocl);
+		//self.axons.cycle(&self.soma, &self.ocl);
+		//self.soma.learn(&self.ocl);
+		//self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
 
-
-pub struct Columns {
-	width: u32,
-	pub states: Envoy<ocl::cl_char>,
-	pub bsl_prx_dens: Dendrites,
-}
-
-impl Columns {
-	pub fn new(width: u32, region: &CorticalRegion, ocl: &ocl::Ocl) -> Columns {
-		let height: u8 = 1;
-		Columns {
-			width: width,
-			states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl),
-			bsl_prx_dens: Dendrites::new(width, height, DendriteKind::Proximal, common::DENDRITES_PER_CELL_PROXIMAL, region, ocl),
-		}
+		self.cols.cycle(&self.axons, &self.ocl);
 	}
 }
+
 
 
 pub struct Somata {
@@ -93,7 +88,7 @@ pub struct Somata {
 }
 
 impl Somata {
-	pub fn new(width: u32, height: u8, region: &CorticalRegion, ocl: &ocl::Ocl) -> Somata {
+	pub fn new(width: u32, height: u8, region: &CorticalRegion, ocl: &Ocl) -> Somata {
 		Somata { 
 			height: height,
 			width: width,
@@ -106,7 +101,7 @@ impl Somata {
 		}
 	}
 
-	fn cycle_pre(&self, dst_dens: &Dendrites, prx_dens: &Dendrites, ocl: &ocl::Ocl) {
+	fn cycle_pre(&self, dst_dens: &Dendrites, prx_dens: &Dendrites, ocl: &Ocl) {
 
 		let kern = ocl::new_kernel(ocl.program, "soma_cycle_pre");
 		ocl::set_kernel_arg(1, prx_dens.states.buf, kern);
@@ -118,7 +113,7 @@ impl Somata {
 
 	}
 
-	fn cycle(&self, ocl: &ocl::Ocl) {
+	fn cycle(&self, ocl: &Ocl) {
 
 		let kern = ocl::new_kernel(ocl.program, "soma_cycle_post");
 		ocl::set_kernel_arg(0, self.dst_dens.states.buf, kern);
@@ -132,7 +127,7 @@ impl Somata {
 
 	}
 
-	pub fn inhib(&self, ocl: &ocl::Ocl) {
+	pub fn inhib(&self, ocl: &Ocl) {
 
 		let kern = ocl::new_kernel(ocl.program, "soma_inhib");
 		ocl::set_kernel_arg(0, self.states.buf, kern);
@@ -149,7 +144,7 @@ impl Somata {
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);*/
 	}
 
-	pub fn learn(&mut self, ocl: &ocl::Ocl) {
+	pub fn learn(&mut self, ocl: &Ocl) {
 
 		let kern = ocl::new_kernel(ocl.program, "syns_learn");
 		ocl::set_kernel_arg(0, self.hcol_max_ids.buf, kern);
@@ -177,7 +172,7 @@ pub struct Aux {
 }
 
 impl Aux {
-	pub fn new(width: u32, height: u8, ocl: &ocl::Ocl) -> Aux {
+	pub fn new(width: u32, height: u8, ocl: &Ocl) -> Aux {
 		Aux { 
 			ints_0: Envoy::<ocl::cl_int>::new(width, height, 0, ocl),
 			ints_1: Envoy::<ocl::cl_int>::new(width, height, 0, ocl),

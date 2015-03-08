@@ -7,17 +7,17 @@ use chord::{ Chord };
 use envoy::{ Envoy };
 //use axn_space::{ AxonSpace };
 
-use time;
 
 use std::default::Default;
 use std::num::{ Int };
 use std::iter;
 use std::ops;
+use time;
 
 
-pub const TEST_ITERATIONS: i32 = 100; 
-pub const SHUFFLE_CHORDS: bool = true;
-pub const PRINT_EVERY: i32 = 2000;
+pub const TEST_ITERATIONS: i32 = 100000; 
+pub const SHUFFLE_CHORDS: bool = false;
+pub const PRINT_EVERY: i32 = 5000;
 
 pub fn test_cycle() {
 	let mut cortex = cortex::Cortex::new();
@@ -25,17 +25,21 @@ pub fn test_cycle() {
 	//let vv1 = common::sparse_vec(2048, -128i8, 127i8, 6);
 	//common::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
 
-	let mut vec1: Vec<i8> = common::shuffled_vec(1024, 0, 64);
+	//let mut vec1: Vec<i8> = common::shuffled_vec(1024, 0, 127);
 	//let mut vec1: Vec<i8> = common::sparse_vec(2048, -128i8, 127i8, 8);
 
-	/*let mut vec1: Vec<i8> = Vec::with_capacity(1024);
-	for i in range(0, 1024) {
-		if i < 512 {
-			vec1.push(20i8);
+	//common::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
+	let time_start = time::get_time();
+	let scw = common::SENSORY_CHORD_WIDTH;
+
+	let mut vec1: Vec<i8> = Vec::with_capacity(scw as usize);
+	for i in range(0, scw) {
+		if i < scw >> 1 {
+			vec1.push(0i8);
 		} else {
-			vec1.push(20i8);
+			vec1.push(64i8);
 		}
-	}*/
+	}
 
 
 	let shuffle_chords = SHUFFLE_CHORDS;
@@ -45,6 +49,9 @@ pub fn test_cycle() {
 		common::shuffle_vec(&mut vec1);
 		//chord1 = Chord::from_vec(&vec1);
 	}
+
+	cortex.sense_vec(0, "pre-thal", &mut vec1);
+	cortex.sense_vec(0, "post-thal", &mut vec1);
 	
 	
 	/*for x in chord1.chord.iter() {
@@ -62,7 +69,8 @@ pub fn test_cycle() {
 		if i >= sense_only_loops { break; }
 
 		if i % PRINT_EVERY == 0 || i < 0 {
-			println!("\n[i:{}]", i);
+			let t = time::get_time() - time_start;
+			print!("\n[i:{};{}.{}s]", i, t.num_seconds(), t.num_milliseconds());
 			/*if true {
 				print!("\ncells.soma.hcol_max_ids: ");
 				cortex.cells.soma.hcol_max_ids.print(1 << 0);
@@ -80,8 +88,8 @@ pub fn test_cycle() {
 
 			/* AXON STATES */
 			if false {
-				print!("\ncells.axns.states: ");
-				cortex.cells.axns.states.print_val_range(1 << 0, 1, 127);
+				print!("\ncells.axons.states: ");
+				cortex.cells.axons.states.print_val_range(1 << 8, 1, 127);
 			}
 		}
 
@@ -89,6 +97,7 @@ pub fn test_cycle() {
 			common::shuffle_vec(&mut vec1);
 			//chord1 = Chord::from_vec(&vec1);
 		}
+
 
 		cortex.sense_vec(0, "thal", &mut vec1);
 		//cortex.sense(0, 0, &chord2);
@@ -98,8 +107,8 @@ pub fn test_cycle() {
 
 	/*print!("{} sense only iterations complete: ", i);
 	if true {
-		print!("\ncells.axns.states: ");
-		cortex.cells.axns.states.print(1 << 4);
+		print!("\ncells.axons.states: ");
+		cortex.cells.axons.states.print(1 << 4);
 	}*/
 
 	
@@ -116,8 +125,8 @@ pub fn test_cycle() {
 		print!("\n=== Iteration {} ===", i + 1);
 
 		/*if true {
-			println!("\ncells.axns.states: ");
-			cortex.cells.axns.states.print(1 << 5);
+			println!("\ncells.axons.states: ");
+			cortex.cells.axons.states.print(1 << 5);
 		}*/
 
 		cortex.sense_vec(0, "thal", &vec1); 
@@ -131,6 +140,12 @@ pub fn test_cycle() {
 		//	println!("\n tmp_out: ");
 		//	cortex.sensory_segments[0].tmp_out.print(1000);
 
+
+		/* SYNAPSE COL_OFS (SRC_OFS) */
+
+		/*print!("\ncells.cols.syns.src_ofs:");
+		cortex.cells.cols.syns.src_ofs.print_val_range(1 << 12, -128, 127);*/
+
 		/*if false {
 			print!("\ncells.soma.bsl_dst_dens.syns.axn_col_offs:");
 			cortex.cells.soma.bsl_dst_dens.syns.axn_col_offs.print(1 << 14);		// 16384
@@ -140,6 +155,7 @@ pub fn test_cycle() {
 		}*/
 
 		/* SYNAPSE AXN_ROW_IDS */
+
 		/*if false {
 			print!("\ncells.soma.bsl_dst_dens.syns.axn_row_ids:");
 			cortex.cells.soma.bsl_dst_dens.syns.axn_row_ids.print(1 << 14);		// 16384
@@ -152,6 +168,7 @@ pub fn test_cycle() {
 
 
 		/* SYNAPSE STRENGTHS */
+
 		/*if false {		
 			println!("\ncells.soma.bsl_dst_dens.syns.strengths: ");
 			cortex.cells.soma.bsl_dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
@@ -164,17 +181,24 @@ pub fn test_cycle() {
 
 
 		/* SYNAPSE STATES */
-		/*if true {	
-			print!("\ncells.soma.bsl_dst_dens.syns.states: ");
-			cortex.cells.soma.bsl_dst_dens.syns.states.print(1 << 14);
+
+		if true {	
+			print!("\ncells.cols.syns.states: ");
+			cortex.cells.cols.syns.states.print_val_range(1 << 14, -128, 127);
 		}
 
-		if true {
+		/*if true {	
+			print!("\ncells.soma.dst_dens.syns.states: ");
+			cortex.cells.soma.dst_dens.syns.states.print(1 << 14);
+		}*/
+
+		/*if true {
 			print!("\ncells.cols.bsl_prx_dens.syns.states: ");
 			cortex.cells.cols.bsl_prx_dens.syns.states.print(1 << 10);
 		}*/
 
 		/* DENDRITE STATES */
+
 		/*if true {
 			print!("\ncells.soma.bsl_dst_dens.states: ");
 			cortex.cells.soma.bsl_dst_dens.states.print(1 << 10);
@@ -187,6 +211,7 @@ pub fn test_cycle() {
 
 
 		/* AUX VALS */
+
 		/*if true {
 			print!("\ncells.aux.chars_0: ");
 			cortex.cells.aux.chars_0.print(1 << 0);
@@ -199,28 +224,31 @@ pub fn test_cycle() {
 
 
 		/* HCOL MAX IDXS */
-		/*if true {
+
+		if false {
 			print!("\ncells.soma.hcol_max_ids: ");
 			cortex.cells.soma.hcol_max_ids.print(1 << 0);
 		}
 
-		if true {
+		if false {
 			print!("\ncells.soma.hcol_max_vals: ");
 			cortex.cells.soma.hcol_max_vals.print(1 << 0);
-		}*/
+		}
 
 
 		/* SOMA STATES */
-		if true {
+
+		if false {
 			print!("\ncells.soma.states: ");
-			cortex.cells.soma.states.print_val_range(1 << 4, 1, 127);
+			cortex.cells.soma.states.print_val_range(1 << 12, 1, 127);
 		}
 
 
 		/* AXON STATES */
+
 		if true {
-			print!("\ncells.axns.states: ");
-			cortex.cells.axns.states.print_val_range(1 << 4, 1, 127);
+			print!("\ncells.axons.states: ");
+			cortex.cells.axons.states.print_val_range(1 << 10 as usize , 1, 127);
 		}
 
 		i += 1;

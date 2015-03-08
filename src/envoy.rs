@@ -1,4 +1,4 @@
-use ocl;
+use ocl::{ self, Ocl };
 use common;
 
 use std::ptr;
@@ -14,24 +14,24 @@ pub struct Envoy<T> {
 	pub padding: u32,
 	pub width: u32,
 	pub height: u8,
-	pub ocl: Box<ocl::Ocl>,
+	pub ocl: Ocl,
 }
 impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
-	pub fn new(width: u32, height: u8, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
+	pub fn new(width: u32, height: u8, init_val: T, ocl: &Ocl) -> Envoy<T> {
 		let len = len(width, height, 0);
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
 		Envoy::_new(0, width, height, vec, ocl)
 	}
 
-	pub fn with_padding(padding: u32, width: u32, height: u8, init_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
+	pub fn with_padding(padding: u32, width: u32, height: u8, init_val: T, ocl: &Ocl) -> Envoy<T> {
 		let len = len(width, height, padding);
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
 		Envoy::_new(padding, width, height, vec, ocl)
 	}
 
-	pub fn shuffled(width: u32, height: u8, min_val: T, max_val: T, ocl: &ocl::Ocl) -> Envoy<T> {
+	pub fn shuffled(width: u32, height: u8, min_val: T, max_val: T, ocl: &Ocl) -> Envoy<T> {
 		let len = len(width, height, 0);
 		//println!("shuffled(): len: {}", len);
 		let vec: Vec<T> = common::shuffled_vec(len, min_val, max_val);
@@ -40,25 +40,25 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 		Envoy::_new(0, width, height, vec, ocl)
 	}
 
-	pub fn _new(padding: u32, width: u32, height: u8, mut vec: Vec<T>, ocl: &ocl::Ocl) -> Envoy<T> {
+	pub fn _new(padding: u32, width: u32, height: u8, mut vec: Vec<T>, ocl: &Ocl) -> Envoy<T> {
 		let buf: ocl::cl_mem = ocl::new_buffer(&mut vec, ocl.context);
 
 		//println!("New Envoy with height: {}, width: {}, padding: {}", height, width, padding);
 
 
-		let envoy = Envoy {
+		let mut envoy = Envoy {
 			vec: vec,
 			buf: buf,
 			padding: padding,
 			width: width,
 			height: height,
-			ocl: Box::new(ocl.clone()),
+			ocl: ocl.clone(),
 		};
 
 
 		envoy.len();
 
-		ocl.enqueue_write_buffer(&envoy);
+		envoy.write();
 
 		envoy
 	}

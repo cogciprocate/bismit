@@ -1,5 +1,5 @@
 use common;
-use ocl;
+use ocl::{ self, Ocl };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
 use cortical_regions::{ CorticalRegion, CorticalRegionType };
@@ -29,10 +29,10 @@ pub struct Synapses {
 }
 
 impl Synapses {
-	pub fn new(width: u32, height: u8, per_cell: u32, den_type: DendriteKind, region: &CorticalRegion, ocl: &ocl::Ocl) -> Synapses {
+	pub fn new(width: u32, height: u8, per_cell: u32, den_type: DendriteKind, region: &CorticalRegion, ocl: &Ocl) -> Synapses {
 		let width_syns = width * per_cell;
 
-		println!("New {:?} Synapses with: height: {}, width: {}, per_cell(row depth): {}, width_syns(row area): {}", den_type, height, width, per_cell, width_syns);
+		//println!("New {:?} Synapses with: height: {}, width: {}, per_cell(row depth): {}, width_syns(row area): {}", den_type, height, width, per_cell, width_syns);
 
 		let mut axn_row_ids = Envoy::<ocl::cl_uchar>::new(width_syns, height, 0, ocl);
 		let mut axn_col_offs = Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl);
@@ -86,13 +86,13 @@ impl Synapses {
 
 			let row_ids = region.row_ids(vec!(ln));
 
-			println!("Layer: \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", ln, self.den_type, row_ids, src_row_ids);
+			//println!("Layer: \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", ln, self.den_type, row_ids, src_row_ids);
 			
 			/* LOOP THROUGH ROWS OF LIKE KIND (WITHIN LAYER) */
 			for row_pos in range(kind_base_row_pos, kind_base_row_pos + l.height) {
 				let ei_start = row_len as usize * row_pos as usize;
 				let ei_end = ei_start + row_len as usize;
-				println!("	Row {}: ei_start: {}, ei_end: {}, idx_len: {}", row_pos, ei_start, ei_end, src_row_ids_len);
+				//println!("	Row {}: ei_start: {}, ei_end: {}, idx_len: {}", row_pos, ei_start, ei_end, src_row_ids_len);
 				let col_off_range: Range<i8> = Range::new(-126, 127);
 
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
@@ -145,7 +145,7 @@ impl Synapses {
 		self.axn_row_ids.write();		
 	}
 
-	pub fn cycle(&self, axns: &Axons, ocl: &ocl::Ocl) {
+	pub fn cycle(&self, axns: &Axons, ocl: &Ocl) {
 		//println!("cycle_cel_syns running with width = {}, height = {}", width, height_total);
 
 		let kern = ocl::new_kernel(ocl.program, "syns_cycle");
@@ -165,7 +165,7 @@ impl Synapses {
 		ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}
 
-	pub fn decay(&mut self, rand_ofs: &mut Envoy<ocl::cl_char>, ocl: &ocl::Ocl) {
+	pub fn decay(&mut self, rand_ofs: &mut Envoy<ocl::cl_char>, ocl: &Ocl) {
 		self.since_decay += 1;
 
 		if self.since_decay >= common::SYNAPSE_DECAY_INTERVAL {
@@ -181,7 +181,7 @@ impl Synapses {
 
 	}
 
-	pub fn regrow(&self, rand_ofs: &mut Envoy<ocl::cl_char>, ocl: &ocl::Ocl) {
+	pub fn regrow(&self, rand_ofs: &mut Envoy<ocl::cl_char>, ocl: &Ocl) {
 
 		common::shuffle_vec(&mut rand_ofs.vec);
 		rand_ofs.write();

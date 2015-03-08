@@ -1,5 +1,5 @@
 use common;
-use ocl;
+use ocl::{ self, Ocl };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
 use cortical_regions::{ CorticalRegion, CorticalRegionType };
@@ -34,7 +34,7 @@ impl Dendrites {
 					den_type: DendriteKind, 
 					per_cell: u32, 
 					region: &CorticalRegion, 
-					ocl: &ocl::Ocl
+					ocl: &Ocl
 	) -> Dendrites {
 		let width_dens = width * per_cell;
 
@@ -45,11 +45,11 @@ impl Dendrites {
 			den_type: den_type,
 			thresholds: Envoy::<ocl::cl_char>::new(width_dens, height, common::DENDRITE_INITIAL_THRESHOLD, ocl),
 			states: Envoy::<ocl::cl_char>::new(width_dens, height, 0i8, ocl),
-			syns: Synapses::new(width, height, per_cell * common::SYNAPSES_PER_DENDRITE, den_type, region, ocl),
+			syns: Synapses::new(width, height, per_cell * common::SYNAPSES_PER_DENDRITE_DISTAL, den_type, region, ocl),
 		}
 	}
 
-	pub fn cycle(&self, axns: &Axons, ocl: &ocl::Ocl) {
+	pub fn cycle(&self, axns: &Axons, ocl: &Ocl) {
 		self.syns.cycle(axns, ocl);
 
 		let len_dens: usize = self.height as usize * self.width as usize * self.per_cell as usize;

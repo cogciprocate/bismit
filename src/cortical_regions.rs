@@ -1,8 +1,8 @@
 // CorticalArea for the specifics
 // CorticalRegion to define shit
 
-use ocl;
 //use protocell::{  };
+use cortical_region_layer as layer;
 use cortical_region_layer::{ CorticalRegionLayer, LayerFlags };
 use protocell::{ CellKind, Protocell, DendriteKind };
 
@@ -71,19 +71,19 @@ impl IndexMut<CorticalRegionType> for CorticalRegions
 
 
 
-pub struct CorticalRegion_new {
+pub struct CorticalRegion {
 	pub layers: HashMap<&'static str, CorticalRegionLayer>,
 	pub kind: CorticalRegionType,
 }
 
-impl CorticalRegion_new {
-	pub fn new (kind: CorticalRegionType)  -> CorticalRegion_new {
+impl CorticalRegion {
+	pub fn new (kind: CorticalRegionType)  -> CorticalRegion {
 		let mut next_row_id = HashMap::new();
 		next_row_id.insert(CellKind::Pyramidal, 0);
 		next_row_id.insert(CellKind::AspinyStellate, 0);
 		next_row_id.insert(CellKind::SpinyStellate, 0);
 	
-		CorticalRegion_new { 
+		CorticalRegion { 
 			layers: HashMap::new(),
 			kind: kind,
 		}
@@ -105,7 +105,7 @@ impl CorticalRegion_new {
 			None => noncell_rows,
 		};
 
-		println!("Layer: {}, layer_height: {}, base_row_id: {}, kind_base_row_pos: {}", layer_name, layer_height, next_base_row_id, next_kind_base_row_pos);
+		//println!("Layer: {}, layer_height: {}, base_row_id: {}, kind_base_row_pos: {}", layer_name, layer_height, next_base_row_id, next_kind_base_row_pos);
 		
 		let cl = CorticalRegionLayer {
 			name : layer_name,
@@ -178,15 +178,23 @@ impl CorticalRegion_new {
 		self.row_ids(src_layer_names)
  	}
 
- 	pub fn col_input_row(&self) -> u8 {
+ 	pub fn col_input_row(&self) -> &'static str {
+ 		let mut input_layer: Option<&'static str> = None;
+ 		
  		for (layer_name, layer) in self.layers.iter() {
-
+ 			if (layer.flags & layer::COLUMN_INPUT) == layer::COLUMN_INPUT {
+ 				input_layer = Some(layer_name);
+ 			}
  		}
- 		5
+
+ 		match input_layer {
+ 			Some(ir)	=> ir,
+ 			None 		=> panic!("cortical_regions::CorticalRegion::col_input_row(): no column input rows found"),
+ 		} 		
  	}
 }
 
-impl Index<&'static str> for CorticalRegion_new
+impl Index<&'static str> for CorticalRegion
 {
     type Output = CorticalRegionLayer;
 
@@ -195,7 +203,7 @@ impl Index<&'static str> for CorticalRegion_new
     }
 }
 
-impl IndexMut<&'static str> for CorticalRegion_new
+impl IndexMut<&'static str> for CorticalRegion
 {
     type Output = CorticalRegionLayer;
 
@@ -205,8 +213,15 @@ impl IndexMut<&'static str> for CorticalRegion_new
 }
 
 
+#[derive(PartialEq, Eq, Debug, Clone, Hash)]
+pub enum CorticalRegionType {
+	Associational,
+	Sensory,
+	Motor,
+}
 
-pub struct CorticalRegion {
+
+/*pub struct CorticalRegion {
 	pub layers: HashMap<&'static str, CorticalRegionLayer>,
 	pub kind: CorticalRegionType,
 }
@@ -320,6 +335,28 @@ impl CorticalRegion {
  		5
  	}
 
+}
+
+impl Index<&'static str> for CorticalRegion
+{
+    type Output = CorticalRegionLayer;
+
+    fn index<'a>(&'a self, index: &&'static str) -> &'a CorticalRegionLayer {
+        self.layers.get(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
+    }
+}
+
+impl IndexMut<&'static str> for CorticalRegion
+{
+    type Output = CorticalRegionLayer;
+
+    fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut CorticalRegionLayer {
+        self.layers.get_mut(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
+    }
+}*/
+
+
+
  	/*pub fn kind_row_ids(&self, layer_name: &'static str) -> Vec<u8> {
 
 		let l = &self[layer_name];
@@ -343,38 +380,6 @@ impl CorticalRegion {
 		
 		src_row_ids
  	}*/
-
-}
-
-impl Index<&'static str> for CorticalRegion
-{
-    type Output = CorticalRegionLayer;
-
-    fn index<'a>(&'a self, index: &&'static str) -> &'a CorticalRegionLayer {
-        self.layers.get(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
-    }
-}
-
-impl IndexMut<&'static str> for CorticalRegion
-{
-    type Output = CorticalRegionLayer;
-
-    fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut CorticalRegionLayer {
-        self.layers.get_mut(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
-    }
-}
-
-
-
-
-
-#[derive(PartialEq, Eq, Debug, Clone, Hash)]
-pub enum CorticalRegionType {
-	Associational,
-	Sensory,
-	Motor,
-}
-
 
 
 /* AxonScope 
