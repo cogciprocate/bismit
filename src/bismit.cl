@@ -50,13 +50,11 @@ __kernel void col_syns_cycle(
 ) {
 	size_t const row_id = get_global_id(0);
 	size_t const col_id = get_global_id(1);
-	size_t const lid = get_local_id(1);
+	size_t const l_id = get_local_id(1);
 	size_t const row_width = get_global_size(1);
 	size_t const cel_idx = mad24(row_id, row_width, col_id);
-	size_t const syns_per_cell_log2 = SYNAPSES_PER_CELL_PROXIMAL_LOG2;	// Have to do this because of glitches with #define
 	
-	//size_t axn_ofs = col_id;
-	size_t syn_idx = ((cel_idx - lid) << syns_per_cell_log2) + lid;
+	size_t syn_idx = ((cel_idx - l_id) << SYNAPSES_PER_CELL_PROXIMAL_LOG2) + l_id;
 
 	size_t end = SYNAPSE_WORKGROUP_SIZE + col_id;
 	size_t axn_idx;
@@ -77,7 +75,6 @@ __kernel void col_cycle(
 	size_t const l_id = get_local_id(1);
 	size_t const row_width = get_global_size(1);
 	size_t const cel_idx = mad24(row_id, row_width, col_id);
-	size_t const syns_per_cell_log2 = SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 	size_t const syn_ofs = cel_idx << SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 
 	int syn_sum = 0;

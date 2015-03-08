@@ -17,7 +17,7 @@ use time;
 
 pub const TEST_ITERATIONS: i32 = 1000; 
 pub const SHUFFLE_CHORDS: bool = false;
-pub const PRINT_EVERY: i32 = 5000;
+pub const PRINT_EVERY: i32 = 10000;
 
 pub fn test_cycle() {
 	let mut cortex = cortex::Cortex::new();
@@ -158,7 +158,7 @@ pub fn test_cycle() {
 		/* COLUMN STATES */
 		if true {	
 			print!("\ncells.cols.states: ");
-			cortex.cells.cols.states.print_val_range(1 << 7, -128, 127);
+			cortex.cells.cols.states.print_val_range(1 << 6, -128, 127);
 		}
 
 
@@ -166,7 +166,7 @@ pub fn test_cycle() {
 
 		if true {	
 			print!("\ncells.cols.syns.states: ");
-			cortex.cells.cols.syns.states.print_val_range(1 << 15, -128, 127);
+			cortex.cells.cols.syns.states.print_val_range(1 << 14, -128, 127);
 		}
 
 
