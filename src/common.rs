@@ -89,6 +89,10 @@ pub const SYNAPSE_DECAY_INTERVAL: usize = 256 * 64;
  
 pub const SYNAPSE_WORKGROUP_SIZE: usize = 256;
 
+pub const ASPINY_SPAN_LOG2: usize = 3;
+pub const ASPINY_HEIGHT: u8 = 1;
+pub const ASPINY_SPAN: u32 = 1 << ASPINY_SPAN_LOG2;
+
 
 pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool, val_range: Option<std::ops::Range<T>>) {
 

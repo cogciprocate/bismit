@@ -95,22 +95,9 @@ pub fn test_cycle() {
 		if i % PRINT_EVERY == 0 || i < 0 {
 			let t = time::get_time() - time_start;
 			print!("\n[i:{}; {}.{}s] ", i, t.num_seconds(), t.num_milliseconds());
-			/*if true {
-				print!("\ncells.soma.hcol_max_ids: ");
-				cortex.cells.soma.hcol_max_ids.print(1 << 0);
-			}
+ 
 
-			if true {
-				print!("\ncells.soma.hcol_max_vals: ");
-				cortex.cells.soma.hcol_max_vals.print(1 << 0);
-			}
-
-			if false {		
-				println!("\ncells.soma.bsl_dst_dens.syns.strengths: ");
-				cortex.cells.soma.bsl_dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
-			}*/
-
-			/* AXON STATES */
+				/* AXON STATES */
 			if false {
 				print!("\ncells.axons.states: ");
 				cortex.cells.axons.states.print_val_range(1 << 8, 1, 127);
@@ -119,30 +106,19 @@ pub fn test_cycle() {
 
 		if shuffle_chords {
 			common::shuffle_vec(&mut vec1);
-			//chord1 = Chord::from_vec(&vec1);
 		}
 
 
 		cortex.sense_vec(0, "thal", &mut vec1);
-		//cortex.sense(0, 0, &chord2);
 
 		i += 1;
 	}
-
-	/*print!("{} sense only iterations complete: ", i);
-	if true {
-		print!("\ncells.axons.states: ");
-		cortex.cells.axons.states.print(1 << 4);
-	}*/
-
-	
-
 
 
 
 		/* SENSE AND PRINT LOOP */
 	print!("\n\nRunning sense and print loops...");
-	//let mut i = 0u32;
+
 	loop {
 		if i >= 1 + sense_only_loops { break; }
 
@@ -170,17 +146,17 @@ pub fn test_cycle() {
 		}
 
 
-		/* HCOL MAX IDXS */
+		/* ASPINY WINNERS */
 
-		/*if false {
-			print!("\ncells.soma.hcol_max_ids: ");
-			cortex.cells.soma.hcol_max_ids.print(1 << 0);
+		if true {
+			print!("\ncells.aspiny.winner_ids: ");
+			cortex.cells.aspiny.winner_ids.print(1 << 0);
 		}
 
-		if false {
-			print!("\ncells.soma.hcol_max_vals: ");
-			cortex.cells.soma.hcol_max_vals.print(1 << 0);
-		}*/
+		if true {
+			print!("\ncells.aspiny.winner_vals: ");
+			cortex.cells.aspiny.winner_vals.print(1 << 0);
+		}
 
 
 		/* SOMA STATES */

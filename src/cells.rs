@@ -8,6 +8,7 @@ use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use columns::{ Columns };
+use aspiny::{ AspinyStellate };
 
 
 use std::num;
@@ -27,9 +28,11 @@ pub struct Cells {
 	pub height_cellular: u8,
 	ocl: ocl::Ocl,
 	pub cols: Columns,
+	pub aspiny: AspinyStellate,
 	pub axons: Axons,
 	pub soma: Somata,
 	pub aux: Aux,
+
 }
 
 impl Cells {
@@ -43,15 +46,19 @@ impl Cells {
 		let axons = Axons::new(width, height_noncellular, height_cellular, region, ocl);
 		let cols = Columns::new(width, region, &axons, ocl);
 
+		let aspiny = AspinyStellate::new(width, common::ASPINY_HEIGHT, region, &cols, ocl);
+
 		let mut cells = Cells {
 			width: width,
 			height_noncellular: height_noncellular,
 			height_cellular: height_cellular,
 			cols: cols,
+			aspiny: aspiny,
 			axons: axons,
 			soma: Somata::new(width, height_cellular, region, ocl),
 			aux: Aux::new(width, height_cellular, ocl),
 			ocl: ocl.clone(),
+			
 		};
 
 		//cells.init_kernels(ocl);
@@ -72,6 +79,7 @@ impl Cells {
 		//self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
 
 		self.cols.cycle(&self.axons, &self.ocl);
+		self.aspiny.cycle();
 	}
 }
 

@@ -23,6 +23,7 @@
 #define SYNAPSE_STRENGTH_DEFAULT_LOG2_PROXIMAL	4
 #define SYNAPSE_STRENGTH_DEFAULT_PROXIMAL		1 << SYNAPSE_STRENGTH_DEFAULT_PROXIMAL_LOG2
 
+
 #define SYNAPSE_STRENGTH_MAX			127
 
 #define COLUMNS_PER_HYPERCOLUMN_LOG2	6
@@ -32,6 +33,8 @@
 
 #define SYNAPSE_WORKGROUP_SIZE			256
 
+#define ASPINY_SPAN_LOG2				3
+#define ASPINY_SPAN						1 << ASPINY_SPAN_LOG2
 
 /*
 	COL_SYNS_CYCLE():
@@ -87,8 +90,35 @@ __kernel void col_cycle(
 }
 
 
+__kernel void aspiny_cycle(
+	__global char* const col_states,
+	__global uchar* const winner_ids,
+	__global char* const winner_vals
+) {
+	size_t const row_id = get_global_id(0);
+	size_t const col_id = get_global_id(1);
+	size_t const row_width = get_global_size(1);
+	size_t const aspiny_idx = mad24(row_id, row_width, col_id);
 
+	size_t const col_ofs = aspiny_idx << ASPINY_SPAN_LOG2;
+	
+	char winner_val = 0;
+	char winner_id = 0;
+	
+	char val = 0;
 
+	//#pragma unroll 
+	for (uint i = 0; i < ASPINY_SPAN; i++) {
+		val = col_states[col_ofs + i];
+
+		if (val > winner_val) {
+			winner_val = val;
+			winner_id = i;
+		}
+	}
+	winner_vals[aspiny_idx] = winner_val;
+	winner_ids[aspiny_idx] = winner_id;
+}
 
 
 

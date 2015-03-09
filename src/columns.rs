@@ -9,6 +9,7 @@ use dendrites::{ Dendrites };
 use axons::{ Axons };
 
 
+
 use std::num;
 use std::ops;
 use std::rand;
@@ -25,6 +26,7 @@ pub struct Columns {
 	kern_cycle: ocl::Kernel,
 	pub states: Envoy<ocl::cl_char>,
 	pub syns: ColumnSynapses,
+	
 }
 
 impl Columns {
