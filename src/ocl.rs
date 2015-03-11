@@ -202,7 +202,7 @@ impl Kernel {
 		self
 	}
 
-	pub fn arg<T>(mut self, envoy: &Envoy<T>) -> Kernel {
+	pub fn arg<T>(&mut self, envoy: &Envoy<T>) {
 		let buf = &envoy.buf;
 
 		self.set_kernel_arg(
@@ -211,7 +211,7 @@ impl Kernel {
 		)
 	}
 
-	pub fn arg_scalar<T>(mut self, scalar: T) -> Kernel {
+	pub fn arg_scalar<T>(&mut self, scalar: T) {
 		unsafe {
 			self.set_kernel_arg(
 				mem::size_of::<T>() as libc::size_t, 
@@ -220,7 +220,7 @@ impl Kernel {
 		}
 	}
 
-	pub fn arg_local<T>(mut self, type_sample: T, length: usize) -> Kernel {
+	pub fn arg_local<T>(&mut self, type_sample: T, length: usize) {
 
 		self.set_kernel_arg(
 			(mem::size_of::<T>() * length) as libc::size_t,
@@ -228,7 +228,7 @@ impl Kernel {
 		)
 	}
 
-	fn set_kernel_arg(mut self, arg_size: libc::size_t, arg_value: *const libc::c_void) -> Kernel {
+	fn set_kernel_arg(&mut self, arg_size: libc::size_t, arg_value: *const libc::c_void) {
 		let err = unsafe {
 			cl_h::clSetKernelArg(
 						self.kernel, 
@@ -240,15 +240,18 @@ impl Kernel {
 		must_succ("clSetKernelArg()", err);
 		//println!("Adding Kernel Argument: {}", self.arg_index);
 		self.arg_index += 1;
-		self
+		//self
 	}
 
 	pub fn enqueue(&self) {
 
-			// CHECK THE DIMENSIONS OF ALL THE WORKSIZES
+			// TODO: VERIFY THE DIMENSIONS OF ALL THE WORKSIZES
 
 		let c_gws = self.gws.complete_worksize();
 		let gws = (&c_gws as *const (usize, usize, usize)) as *const libc::size_t;
+
+		let c_lws = self.lws.complete_worksize();
+		let lws = (&c_lws as *const (usize, usize, usize)) as *const libc::size_t;
 
 
 		unsafe {
@@ -258,7 +261,7 @@ impl Kernel {
 						self.gws.dims(),				//	dims,
 						self.gwo.as_ptr(),
 						gws,
-						self.lws.as_ptr(),
+						lws,
 						0,
 						ptr::null(),
 						ptr::null_mut(),

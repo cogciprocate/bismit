@@ -75,7 +75,7 @@ pub const CELLS_PER_LAYER: usize = COLUMNS_PER_SEGMENT;
 //pub const DENDRITES_PER_LAYER: usize = CELLS_PER_LAYER * DENDRITES_PER_CELL;
 //pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_CELL;
 
-pub const SENSORY_CHORD_WIDTH: u32 = 1024 << 1; // COLUMNS_PER_SEGMENT;
+pub const SENSORY_CHORD_WIDTH: u32 = 256 << 2; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
 pub const SYNAPSE_REACH: u32 = 128;
@@ -88,13 +88,34 @@ pub const PRX_DEN_BOOST_LOG2: u8 = 0;
 pub const SYNAPSE_DECAY_INTERVAL: usize = 256 * 64;
  
 pub const SYNAPSE_WORKGROUP_SIZE: usize = 256;
+pub const AXONS_WORKGROUP_SIZE: usize = 256;
 
 pub const ASPINY_SPAN_LOG2: usize = 3;
 pub const ASPINY_HEIGHT: u8 = 1;
 pub const ASPINY_SPAN: u32 = 1 << ASPINY_SPAN_LOG2;
 
 
-pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool, val_range: Option<std::ops::Range<T>>) {
+
+
+
+/*=============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+=============================================================================*/
+
+
+pub fn print_vec_simple<T: Int + Display + Default>(vec: &Vec<T>) {
+	print_vec(vec, 1, true, None, None);
+}
+
+
+pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool, val_range: Option<std::ops::Range<T>>, idx_range: Option<std::ops::Range<usize>>) {
 
 
 	/*let val_range = match val_range {
@@ -117,7 +138,11 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 	print!("{cdgr}[{cg}{}{cdgr}/{}", vec.len(), every, cg = C_GRN, cdgr = C_DGR);
 	if val_range.is_some() {
 		let vr = val_range.as_ref().unwrap(); 		// DUPLICATE
-		print!("({}-{})", vr.start, vr.end);
+		print!(";[{},{}]", vr.start, vr.end);
+	}
+	if idx_range.is_some() {
+		let ir = idx_range.as_ref().unwrap(); 		// DUPLICATE
+		print!(";[{},{}]", ir.start, ir.end);
 	}
 	print!("]:{cd} ", cd = C_DEFAULT,);
 
@@ -129,6 +154,13 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 			if i % every == 0 {
 				prnt = true;
 			} else {
+				prnt = false;
+			}
+		}
+
+		if idx_range.is_some() {
+			let ir = idx_range.as_ref().unwrap();
+			if i < ir.start || i > ir.end {
 				prnt = false;
 			}
 		}

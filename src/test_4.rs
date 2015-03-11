@@ -31,10 +31,10 @@ pub fn test_cycle() {
 	//common::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
 	let time_start = time::get_time();
 	let scw = common::SENSORY_CHORD_WIDTH;
-	let scl_fct = scw / 1024;
+	let scl_fct_log2 = common::log2(scw / 256);
 
-	print!("\n*********** scl_fct: {}", scl_fct);
-	print!("\n*********** common::log2(sct_fct): {}", common::log2(scl_fct));
+	//print!("\n*********** scl_fct: {}", scl_fct);
+	//print!("\n*********** common::log2(sct_fct): {}", common::log2(scl_fct));
 
 	let mut vec1: Vec<i8> = Vec::with_capacity(scw as usize);
 	/*for i in range(0, scw) {
@@ -59,11 +59,20 @@ pub fn test_cycle() {
 	//println!("***** scw_1_4: {}, scw_3_4: {}", scw_1_4, scw_3_4);
 	for i in range(0, scw) {
 		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
+		//if i >= scw_3_8 && i < scw_5_8 {
 			vec1.push(64i8);
 		} else {
 			vec1.push(0i8);
 		}
 	}
+
+	/*for i in range(0, scw) {
+		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
+			vec1.push(64i8);
+		} else {
+			vec1.push(0i8);
+		}
+	}*/
 
 
 	let shuffle_chords = SHUFFLE_CHORDS;
@@ -99,8 +108,8 @@ pub fn test_cycle() {
 
 				/* AXON STATES */
 			if false {
-				print!("\ncells.axons.states: ");
-				cortex.cells.axons.states.print_val_range(1 << 8, 1, 127);
+				print!("\ncells.axns.states: ");
+				cortex.cells.axns.states.print_val_range(1 << 8, 1, 127);
 			}
 		}
 
@@ -125,8 +134,8 @@ pub fn test_cycle() {
 		print!("\n\n=== Iteration {} ===", i + 1);
 
 		if false {
-			println!("\ncells.axons.states: ");
-			cortex.cells.axons.states.print(1 << 5);
+			println!("\ncells.axns.states: ");
+			cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), -128, 127);
 		}
 
 		cortex.sense_vec(0, "thal", &vec1); 
@@ -134,7 +143,7 @@ pub fn test_cycle() {
 		/* COLUMN STATES */
 		if true {	
 			print!("\ncells.cols.states: ");
-			cortex.cells.cols.states.print_val_range(1 << 6, -128, 127);
+			cortex.cells.cols.states.print_val_range(1 << (3 + scl_fct_log2), -128, 127);
 		}
 
 
@@ -142,21 +151,21 @@ pub fn test_cycle() {
 
 		if true {	
 			print!("\ncells.cols.syns.states: ");
-			cortex.cells.cols.syns.states.print_val_range(1 << 14, -128, 127);
+			cortex.cells.cols.syns.states.print_val_range(1 << (11 + scl_fct_log2), -128, 127);
 		}
 
 
 		/* ASPINY WINNERS */
 
 		if true {
-			print!("\ncells.aspiny.winner_ids: ");
-			cortex.cells.aspiny.winner_ids.print(1 << 0);
+			print!("\ncells.asps.id_vals: ");
+			cortex.cells.asps.id_vals.print_val_range((1 << 0) as usize , 0, 255);
 		}
 
-		if true {
-			print!("\ncells.aspiny.winner_vals: ");
-			cortex.cells.aspiny.winner_vals.print(1 << 0);
-		}
+		/*if true {
+			print!("\ncells.asps.winner_vals: ");
+			cortex.cells.asps.winner_vals.print(1 << 0);
+		}*/
 
 
 		/* SOMA STATES */
@@ -170,8 +179,10 @@ pub fn test_cycle() {
 		/* AXON STATES */
 
 		if true {
-			print!("\ncells.axons.states: ");
-			cortex.cells.axons.states.print_val_range(1 << 10 as usize , 1, 127);
+			print!("\ncells.axns.states: ");
+			//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
+			cortex.cells.axns.states.print((1 << 0) as usize, 1, 127, 3200, 4224);
+
 		}
 
 		i += 1;
@@ -182,8 +193,6 @@ pub fn test_cycle() {
 	cortex.release_components();
 
 }
-
-
 		//
 		// 128:1 RATIO FOR PRINTING IS COOL (100% ACTIVITY)
 		// 512:1 (25% ACTIVITY, 262144 len)

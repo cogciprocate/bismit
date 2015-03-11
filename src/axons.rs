@@ -7,6 +7,8 @@ use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use cells::{ Somata };
+use aspiny::{ AspinyStellate };
+use columns::{ Columns };
 
 
 use std::num;
@@ -23,6 +25,7 @@ pub struct Axons {
 	height_cellular: u8,
 	pub width: u32,
 	padding: u32,
+	kern_cycle: ocl::Kernel,
 	pub states: Envoy<ocl::cl_char>,
 }
 
@@ -32,23 +35,34 @@ impl Axons {
 		let height = height_cellular + height_noncellular;
 
 		//println!("New Axons with: height_ac: {}, height_c: {}, width: {}", height_noncellular, height_cellular, width);
+		let states = Envoy::<ocl::cl_char>::with_padding(padding, width, height, 0i8, ocl);
+
+		let mut kern_cycle = ocl.new_kernel("axns_cycle_unoptd", WorkSize::TwoDim(height_cellular as usize, width as usize))
+			.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize));
 
 		Axons {
 			height_noncellular: height_noncellular,
 			height_cellular: height_cellular,
 			width: width,
 			padding: padding,
-			states: Envoy::<ocl::cl_char>::with_padding(padding, width, height, 0i8, ocl),
+			kern_cycle: kern_cycle,
+			states: states,
 		}
 	}
 
-	pub fn cycle(&self, soma: &Somata, ocl: &Ocl) {
-		ocl.new_kernel("axns_cycle", WorkSize::TwoDim(self.height_cellular as usize, self.width as usize))
-		.arg(&soma.states)
-		.arg(&soma.hcol_max_ids)
-		.arg(&self.states)
-		.arg_scalar(self.height_noncellular as u32)
-		.enqueue();
+	pub fn init_kernels(&mut self, asps: &AspinyStellate, cols: &Columns) {
+		
+			self.kern_cycle.arg(&asps.id_vals);
+			self.kern_cycle.arg(&cols.states);
+			self.kern_cycle.arg(&self.states);
+			self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
+			self.kern_cycle.arg_scalar(self.height_noncellular as u32);
+	}
+
+	pub fn cycle(&self) {
+
+		
+		self.kern_cycle.enqueue();
 	} 
 
 }

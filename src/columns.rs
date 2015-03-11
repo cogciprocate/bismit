@@ -24,6 +24,7 @@ use std::fmt::{ Display };
 pub struct Columns {
 	width: u32,
 	kern_cycle: ocl::Kernel,
+	//kern_cycle4: ocl::Kernel,
 	pub states: Envoy<ocl::cl_char>,
 	pub syns: ColumnSynapses,
 	
@@ -37,22 +38,27 @@ impl Columns {
 		let states = Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl);
 		let syns = ColumnSynapses::new(width, syns_per_cell, region, axons, ocl);
 
-		let kern_cycle = ocl.new_kernel("col_cycle", WorkSize::TwoDim(height as usize, width as usize))
+		let mut kern_cycle = ocl.new_kernel("col_cycle", WorkSize::TwoDim(height as usize, width as usize));
+		kern_cycle.arg(&syns.states);
+		kern_cycle.arg(&states);
+		
+		/*let kern_cycle4 = ocl.new_kernel("col_cycle4", WorkSize::TwoDim(height as usize, width as usize))
 			.arg(&syns.states)
 			.arg(&states)
-		;
+		;*/
 
 		Columns {
 			width: width,
 			kern_cycle: kern_cycle,
+			//kern_cycle4: kern_cycle4,
 			states: states,
 			syns: syns,
 		}
 	}
 
-	pub fn cycle(&self, axons: &Axons, ocl: &Ocl) {
+	pub fn cycle(&self) {
 		self.kern_cycle.enqueue();
-		self.syns.cycle(axons, ocl);
+		self.syns.cycle();
 	}
 }
 
@@ -84,15 +90,16 @@ impl ColumnSynapses {
 		let src_ofs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, height, -128, 127, ocl);
 		let src_row_ids= Envoy::<ocl::cl_uchar>::new(syns_per_row, height, 0u8, ocl);
 
-		let kern_cycle = ocl.new_kernel("col_syns_cycle", 
+		let mut kern_cycle = ocl.new_kernel("col_syns_cycle", 
 			WorkSize::TwoDim(height as usize, width as usize))
-			.arg(&axons.states)
-			.arg(&src_ofs)
-			.arg(&src_row_ids)
-			.arg(&states)
-			//.arg_scalar(src_row_ids_list[0])	// FIX THIS TO BE AN ENVOY
-			//.arg_local(0u8, common::SYNAPSE_WORKGROUP_SIZE + per_cell as usize)
-		;
+			.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize));
+		kern_cycle.arg(&axons.states);
+		kern_cycle.arg(&src_ofs);
+		kern_cycle.arg(&src_row_ids);
+		kern_cycle.arg(&states);
+		//.arg_scalar(src_row_ids_list[0])	// FIX THIS TO BE AN ENVOY
+		//.arg_local(0u8, common::SYNAPSE_WORKGROUP_SIZE + per_cell as usize)
+		
 		//println!("src_row_ids_list[0]: {}", src_row_ids_list[0]);
 		
 		let mut syns = ColumnSynapses {
@@ -156,7 +163,7 @@ impl ColumnSynapses {
 		.arg_local(0u8, common::SYNAPSE_WORKGROUP_SIZE + self.per_cell as usize)
 	}*/
 
-	pub fn cycle(&self, axons: &Axons, ocl: &Ocl) {
+	pub fn cycle(&self) {
 		/*ocl.new_kernel(
 			"col_syns_cycle", 
 			WorkSize::TwoDim(self.height as usize, self.width as usize)

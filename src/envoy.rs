@@ -84,16 +84,23 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 		len(self.width, self.height, 0)
 	}
 
-	pub fn print(&mut self, every: usize) {
+	pub fn print_simple(&mut self) {
 		self.read();
-		common::print_vec(&self.vec, every, true, None);
+		common::print_vec_simple(&self.vec);
     }
 
-    pub fn print_val_range(&mut self, every: usize, low: T, high: T) {
-    	let range: ops::Range<T> = ops::Range { start: low, end: high };
+    pub fn print_val_range(&mut self, every: usize, val_low: T, val_high: T) {
+    	let val_range: ops::Range<T> = ops::Range { start: val_low, end: val_high };
     	self.read();
-		common::print_vec(&self.vec, every, true, Some(range));
+		common::print_vec(&self.vec, every, true, Some(val_range), None);
     }
+
+    pub fn print(&mut self, every: usize, val_low: T, val_high: T, idx_low: usize, idx_high: usize) {
+    	let val_range: ops::Range<T> = ops::Range { start: val_low, end: val_high };
+    	let idx_range: ops::Range<usize> = ops::Range { start: idx_low, end: idx_high };
+    	self.read();
+		common::print_vec(&self.vec, every, true, Some(val_range), Some(idx_range));
+	}
 
     pub fn release(&mut self) {
 		ocl::release_mem_object(self.buf);

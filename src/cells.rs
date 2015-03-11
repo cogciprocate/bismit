@@ -28,8 +28,8 @@ pub struct Cells {
 	pub height_cellular: u8,
 	ocl: ocl::Ocl,
 	pub cols: Columns,
-	pub aspiny: AspinyStellate,
-	pub axons: Axons,
+	pub asps: AspinyStellate,
+	pub axns: Axons,
 	pub soma: Somata,
 	pub aux: Aux,
 
@@ -43,43 +43,52 @@ impl Cells {
 		let height_total = height_noncellular + height_cellular;
 		let width = areas.width(&region.kind);
 
-		let axons = Axons::new(width, height_noncellular, height_cellular, region, ocl);
-		let cols = Columns::new(width, region, &axons, ocl);
+		//;
 
-		let aspiny = AspinyStellate::new(width, common::ASPINY_HEIGHT, region, &cols, ocl);
+		let axns = Axons::new(width, height_noncellular, height_cellular, region, ocl);
+
+		let cols = Columns::new(width, region, &axns, ocl);
+
+		let asps = AspinyStellate::new(width, common::ASPINY_HEIGHT, region, &cols, ocl);
+
+
 
 		let mut cells = Cells {
 			width: width,
 			height_noncellular: height_noncellular,
 			height_cellular: height_cellular,
 			cols: cols,
-			aspiny: aspiny,
-			axons: axons,
+			asps: asps,
+			axns: axns,
 			soma: Somata::new(width, height_cellular, region, ocl),
 			aux: Aux::new(width, height_cellular, ocl),
 			ocl: ocl.clone(),
 			
 		};
 
-		//cells.init_kernels(ocl);
+
+		cells.init_kernels(ocl);
+
 		cells
 	}
 
 	pub fn init_kernels(&mut self, ocl: &Ocl) {
-		//self.cols.syns.init_kernels(&self.axons, ocl);
+		self.axns.init_kernels(&self.asps, &self.cols)
+		//self.cols.syns.init_kernels(&self.axns, ocl);
 	}
 
 	pub fn cycle(&mut self) {
 		
-		//self.soma.dst_dens.cycle(&self.axons, &self.ocl);
+		//self.soma.dst_dens.cycle(&self.axns, &self.ocl);
 		//self.soma.cycle(&self.ocl);
 		//self.soma.inhib(&self.ocl);
-		//self.axons.cycle(&self.soma, &self.ocl);
+		//self.axns.cycle(&self.soma, &self.ocl);
 		//self.soma.learn(&self.ocl);
 		//self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
 
-		self.cols.cycle(&self.axons, &self.ocl);
-		self.aspiny.cycle();
+		self.cols.cycle();
+		self.asps.cycle();
+		self.axns.cycle();
 	}
 }
 

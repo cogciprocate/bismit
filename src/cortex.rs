@@ -36,9 +36,9 @@ pub fn define_regions() -> CorticalRegions {
 	let layer_iv = */
 
 	sen.new_layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]));
-	sen.new_layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
-	sen.new_layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "ii"], "iv"));
-	sen.new_layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["thal"], "iv"));
+	//sen.new_layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
+	//sen.new_layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "ii"], "iv"));
+	//sen.new_layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["thal"], "iv"));
 
 	//sen.new_layer("ii", 2, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iii"]), Some(vec!["iii"]))));	
 	//sen.new_layer("inhib_a", 1, Some(Protocell::new(CellKind::AspinyStellate, None, None)));
@@ -104,9 +104,9 @@ impl Cortex {
 
 		let axn_row = self.regions[CorticalRegionType::Sensory].row_ids(vec!(layer_target))[0];
 
-		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axons.width as usize);
+		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
 
-		ocl::enqueue_write_buffer(&vec, self.cells.axons.states.buf, self.ocl.command_queue, buffer_offset);
+		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
 
 		self.cells.cycle();
 	}
@@ -126,7 +126,7 @@ pub struct CorticalDimensions {
 	width_cols: u32,
 	width_dens: u32,
 	width_syns: u32,
-	width_offset_margin_axons: u32,
+	width_offset_margin_axns: u32,
 	initial_cellular_axn: u32,
 }
 
@@ -143,7 +143,7 @@ pub struct CorticalDimensions {
 		//println!("cycle_cel_syns running with width = {}, height = {}", width, height_total);
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_syns");
-		ocl::set_kernel_arg(0, self.cells.axons.states.buf, kern);
+		ocl::set_kernel_arg(0, self.cells.axns.states.buf, kern);
 		ocl::set_kernel_arg(1, self.cells.dst_dens.syns.axn_row_ids.buf, kern);
 		ocl::set_kernel_arg(2, self.cells.dst_dens.syns.axn_col_offs.buf, kern);
 		ocl::set_kernel_arg(3, self.cells.dst_dens.syns.strengths.buf, kern);
@@ -176,13 +176,13 @@ pub struct CorticalDimensions {
 
 	}*/
 
-/*	fn cycle_axons(&self) {
+/*	fn cycle_axns(&self) {
 		let width: u32 = self.areas.width(CorticalRegionType::Sensory);
 		let (height_noncellular, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
 
-		let kern = ocl::new_kernel(self.ocl.program, "cycle_axons");
+		let kern = ocl::new_kernel(self.ocl.program, "cycle_axns");
 		ocl::set_kernel_arg(0, self.cells.dst_dens.states.buf, kern);
-		ocl::set_kernel_arg(1, self.cells.axons.states.buf, kern);
+		ocl::set_kernel_arg(1, self.cells.axns.states.buf, kern);
 		ocl::set_kernel_arg(2, height_noncellular as u32, kern);
 
 		let gws = (height_cellular as usize, width as usize);
