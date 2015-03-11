@@ -60,19 +60,25 @@ pub fn test_cycle() {
 	for i in range(0, scw) {
 		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
 		//if i >= scw_3_8 && i < scw_5_8 {
-			vec1.push(64i8);
+			vec1.push(0i8);
 		} else {
 			vec1.push(0i8);
 		}
 	}
 
-	/*for i in range(0, scw) {
+	cortex.sense_vec(0, "pre-thal", &mut vec1);
+	cortex.sense_vec(0, "post-thal", &mut vec1);
+
+
+	vec1.clear();
+	for i in range(0, scw) {
 		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
-			vec1.push(64i8);
+		//if i >= scw_3_8 && i < scw_5_8 {
+			vec1.push(127i8);
 		} else {
-			vec1.push(0i8);
+			vec1.push(127i8);
 		}
-	}*/
+	}
 
 
 	let shuffle_chords = SHUFFLE_CHORDS;
@@ -158,14 +164,14 @@ pub fn test_cycle() {
 		/* ASPINY WINNERS */
 
 		if true {
-			print!("\ncells.asps.id_vals: ");
-			cortex.cells.asps.id_vals.print_val_range((1 << 0) as usize , 0, 255);
+			print!("\ncells.asps.ids: ");
+			cortex.cells.asps.ids.print_val_range((1 << 0) as usize , 0, 255);
 		}
 
-		/*if true {
+		if true {
 			print!("\ncells.asps.winner_vals: ");
-			cortex.cells.asps.winner_vals.print(1 << 0);
-		}*/
+			cortex.cells.asps.winner_vals.print_val_range((1 << 0) as usize , 0, 127);
+		}
 
 
 		/* SOMA STATES */
@@ -181,8 +187,31 @@ pub fn test_cycle() {
 		if true {
 			print!("\ncells.axns.states: ");
 			//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
-			cortex.cells.axns.states.print((1 << 0) as usize, 1, 127, 3200, 4224);
+			cortex.cells.axns.states.print((1 << 0) as usize, 1, 127, 3200, 4223);
 
+		}
+
+
+		/* AUX VALS */
+
+		if true {
+			print!("\ncells.aux.ints_0: ");
+			cortex.cells.aux.ints_0.print((1 << 0) as usize, 1, 127333, 0, 100000);
+		}
+
+		if true {
+			print!("\ncells.aux.ints_1: ");
+			cortex.cells.aux.ints_1.print((1 << 0) as usize, 1, 127333, 0, 100000);
+		}
+
+		if false {
+			print!("\ncells.aux.chars_0: ");
+			cortex.cells.aux.chars_0.print((1 << 0) as usize, -128, 127, 1, 4223);
+		}
+
+		if false {
+			print!("\ncells.aux.chars_1: ");
+			cortex.cells.aux.chars_1.print((1 << 0) as usize, -128, 127, 1, 4223);
 		}
 
 		i += 1;

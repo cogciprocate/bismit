@@ -6,7 +6,7 @@ use cortical_regions::{ CorticalRegion, CorticalRegionType };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
-use cells::{ Somata };
+use cells::{ Somata, Aux };
 use aspiny::{ AspinyStellate };
 use columns::{ Columns };
 
@@ -50,12 +50,15 @@ impl Axons {
 		}
 	}
 
-	pub fn init_kernels(&mut self, asps: &AspinyStellate, cols: &Columns) {
+	pub fn init_kernels(&mut self, asps: &AspinyStellate, cols: &Columns, aux: &Aux) {
 		
-			self.kern_cycle.arg(&asps.id_vals);
+			self.kern_cycle.arg(&asps.ids);
+			self.kern_cycle.arg(&asps.winner_vals);
 			self.kern_cycle.arg(&cols.states);
 			self.kern_cycle.arg(&self.states);
-			self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
+			self.kern_cycle.arg(&aux.ints_0);
+			self.kern_cycle.arg(&aux.ints_1);
+			//self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
 			self.kern_cycle.arg_scalar(self.height_noncellular as u32);
 	}
 

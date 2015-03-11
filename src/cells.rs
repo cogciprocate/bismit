@@ -43,8 +43,6 @@ impl Cells {
 		let height_total = height_noncellular + height_cellular;
 		let width = areas.width(&region.kind);
 
-		//;
-
 		let axns = Axons::new(width, height_noncellular, height_cellular, region, ocl);
 
 		let cols = Columns::new(width, region, &axns, ocl);
@@ -73,7 +71,7 @@ impl Cells {
 	}
 
 	pub fn init_kernels(&mut self, ocl: &Ocl) {
-		self.axns.init_kernels(&self.asps, &self.cols)
+		self.axns.init_kernels(&self.asps, &self.cols, &self.aux)
 		//self.cols.syns.init_kernels(&self.axns, ocl);
 	}
 
@@ -190,9 +188,12 @@ pub struct Aux {
 
 impl Aux {
 	pub fn new(width: u32, height: u8, ocl: &Ocl) -> Aux {
+
+		let width_multiplier: u32 = 100;
+
 		Aux { 
-			ints_0: Envoy::<ocl::cl_int>::new(width, height, 0, ocl),
-			ints_1: Envoy::<ocl::cl_int>::new(width, height, 0, ocl),
+			ints_0: Envoy::<ocl::cl_int>::new(width * width_multiplier, height, 0, ocl),
+			ints_1: Envoy::<ocl::cl_int>::new(width * width_multiplier, height, 0, ocl),
 			chars_0: Envoy::<ocl::cl_char>::new(width, height, 0, ocl),
 			chars_1: Envoy::<ocl::cl_char>::new(width, height, 0, ocl),
 			height: height,
