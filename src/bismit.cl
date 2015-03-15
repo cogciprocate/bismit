@@ -42,7 +42,34 @@ static uint const SYNAPSES_PER_CELL_PROXIMAL =				1 << (DENDRITES_PER_CELL_PROXI
 //static uint const ASPINY_SPAN_LOG2 =		ASPINY_REACH_LOG2 + 1;
 //static uint const ASPINY_SPAN =			1 << (ASPINY_REACH_LOG2 + 1);
 
-#define COLUMN_INHIB_FACTOR					5
+#define COLUMN_INHIB_FACTOR					7
+
+
+uint xos_rng(uint seed) {
+	uint rnd = seed + 1181783497;
+	rnd ^= (rnd << 23);
+	rnd ^= (rnd >> 17);
+	rnd ^= seed ^ (rnd >> 26);
+
+	return rnd + seed;
+}
+
+uint asp_to_col_ofs(uint asp_idx) {
+	return (asp_idx - ASPINY_REACH) << ASPINY_SPAN_LOG2;
+	//current_col_idx_ghetto = ((i - ASPINY_REACH) << ASPINY_SPAN_LOG2) + asp_ids[i];
+}
+
+uint asp_to_col_idx(uint asp_idx, uint col_id) {
+	return (asp_to_col_ofs(asp_idx) + (col_id & (ASPINY_SPAN - 1)));
+}
+
+uint low_6(uint x) {
+	return (x & 0x003F);
+}
+
+uint low_3(uint x) {
+	return (x & 0x0007);
+}
 
 
 
@@ -164,7 +191,7 @@ __kernel void aspiny_cycle(
 				continue;
 			} else {
 				winner_val = val;
-				winner_id = id;
+				winner_id = ((col_ofs + id) & 0xFF);
 			}
 		}
 	}
@@ -174,26 +201,6 @@ __kernel void aspiny_cycle(
 }
 
 
-
-
-//	 HAVE TO WIN WITHIN YOUR GROUP OF 8 --- *THEN* WIN AMONG THE GROUP OF ~64
-
-uint asp_to_col_ofs(uint asp_idx) {
-	return (asp_idx - ASPINY_REACH) << ASPINY_SPAN_LOG2;
-	//current_col_idx_ghetto = ((i - ASPINY_REACH) << ASPINY_SPAN_LOG2) + asp_ids[i];
-}
-
-uint asp_to_col_idx(uint asp_idx, uint col_id) {
-	return (asp_to_col_ofs(asp_idx) + col_id);
-}
-
-uint low_6(uint x) {
-	return (x & 0x003F);
-}
-
-uint low_3(uint x) {
-	return (x & 0x0007);
-}
 
 
 	//__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
@@ -216,99 +223,67 @@ __kernel void axns_cycle_unoptd (
 	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
 
 	char col_state = col_states[col_idx];
-	uint const col_idx_low = low_6(col_idx);
 
-	int const winner_close = (asp_to_col_idx(asp_idx, asp_ids[asp_idx]) == col_idx);
+	uchar competetor_ids[ASPINY_SPAN] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	char competetor_states[ASPINY_SPAN] = { 0, 0, 0, 0, 0, 0, 0, 0 }; // { 0, 1, 2, 3, 4, 5, 6, 7 };
 
-	int competetor_states[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	int competetor_ids[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	//int const winner_close = ;
+	int win_count = (asp_to_col_idx(asp_idx, (asp_ids[asp_idx])) == col_idx);
+	int cci = 0;
+	int cur_asp_idx = 0;
 
+	if (win_count) {
 
-	for (int i = 0; i <= 8; i++) {
+		vstore4(vload4(0, &asp_states[asp_idx - ASPINY_REACH]), 0, &competetor_states[0]);
+		vstore4(vload4(0, &asp_states[asp_idx + 1]), 0, &competetor_states[ASPINY_REACH]);
 
-		if (i == 4) {
-			continue;
-		}
+		/*for (int i = 0; i < 9; i++) {		// CONVERT THIS TO TWO VECTORIZED LOADS
 
-		int curr_asp_idx = (asp_idx - 4) + i;
-		int curr_competetor_idx = 100;
+			if (i < 4) {
+				cci = i;
 
-		if (i < 4) {
-			curr_competetor_idx = i;
+			} else if (i > 4) {
+				cci = i - 1;
 
-		} else if (i > 4) {
-			curr_competetor_idx = i - 1;
-		}
-
-		competetor_states[curr_competetor_idx] = asp_states[curr_asp_idx];
-		competetor_ids[curr_competetor_idx] = asp_ids[curr_asp_idx];
-	}
-
-
-	int win_count = 0;
-
-	uint competetor_id_low;
-
-	if (winner_close) {
-
-		for (uint i = 0; i < 8; i++) {
-
-
-			if (col_state > competetor_states[i]) {
-				win_count += 1;
-
-			} else if (col_state == competetor_states[i]) {
-				competetor_id_low = low_6(competetor_ids[i]);
-
-				if (col_idx_low == 0) {
-					win_count += 1;
-				}
-			}
-		}
-	}
-
-	col_state = (col_state >> 1) + 64;
-
-	axn_states[axn_idx] = mul24(col_state, (win_count >= COLUMN_INHIB_FACTOR));
-
-	//aux_ints_0[col_idx] = col_states[col_idx];
-	//aux_ints_0[2006] = col_states[6];
-
-	
-
-	
-}
-
-
-
-
-/*	if (winner_close) {
-
-		for (int i = -4; i <= 4; i++) {
-			if (i == 0) {
+			} else {
 				continue;
 			}
 
-			if (col_state < asp_states[asp_idx + i]) {
-				win_count = 0;
-				break;
-			} else if (col_state == asp_states[asp_idx + i]) {
-				curr_asp_id_low_6 = low_6(asp_to_col_ofs(asp_idx + i) + asp_ids[asp_idx + i]);
-				if (col_idx_low > curr_asp_id_low_6) {
-					win_count += 1;
-					best_idx = col_idx_low;
-					best_idx_diff = col_idx_low - curr_asp_id_low_6;
-				} else {
-					best_idx = 100;
-					win_count = 0;
-					break;
-				}
-			} else {
+			cur_asp_idx = (asp_idx - 4) + i;
+			competetor_ids[cci] = asp_ids[cur_asp_idx];
+			competetor_states[cci] = asp_states[cur_asp_idx];
+			
+		}*/
+
+		for (uint i = 0; i < ASPINY_SPAN; i++) {
+
+
+			win_count += (col_state > competetor_states[i]) | 
+				((col_idx & 0x1F) < (competetor_ids[i] & 0x1F)) |
+				(low_6(col_idx) == 32);
+
+			/*if (col_state > competetor_states[i]) {
 				win_count += 1;
-			}
-			runs++;
+
+			} else if (col_state == competetor_states[i]) {
+
+				win_count += ((col_idx & 0x1F) < (competetor_ids[i] & 0x1F));
+
+				win_count += (low_6(col_idx) == 32);
+
+			}*/
+
+			//win_count += (col_state > competetor_states[i]) | ((col_state == competetor_states[i]) & (low_6(col_idx) == 32));
+
 		}
-	}*/
+	}
+
+	//col_state = mad24(64, (col_state > 0), (col_state >> 1));
+	axn_states[axn_idx] = mul24(col_state, (win_count >= COLUMN_INHIB_FACTOR));
+	aux_ints_0[col_idx] = mul24(col_state, (win_count >= COLUMN_INHIB_FACTOR));
+	aux_ints_1[col_idx] = mul24(win_count, (win_count >= COLUMN_INHIB_FACTOR));
+
+}
 
 
 
@@ -331,7 +306,14 @@ __kernel void axns_cycle_unoptd (
 
 
 
-	__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
+
+
+
+
+
+
+
+/*	__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
 __kernel void axns_cycle_unoptd_buggy_phantom_value_version (
 	__global uchar* const asp_ids,
 	__global char* const asp_states,
@@ -350,33 +332,31 @@ __kernel void axns_cycle_unoptd_buggy_phantom_value_version (
 	uint const axn_idx = col_idx + mad24(axn_row_offset, row_width, (uint)SYNAPSE_REACH);
 	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
 
-	/*uint rnd = col_id + 1181783497276652981;
+	uint rnd = col_id + 1181783497276652981;
 	rnd ^= (rnd << 23);
 	rnd ^= (rnd >> 17);
 	rnd ^= asp_idx & (asp_idx >> 26);
 
-	rnd = rnd & 0x00FF;*/
+	rnd = rnd & 0x00FF;
 
 
 	//uint practical_aspiny_reach = (ASPINY_REACH - 1);
-	/*uint low_compare_asp_idx = asp_idx - 4;
-	uint high_compare_asp_idx = asp_idx + 4;*/
+	//uint low_compare_asp_idx = asp_idx - 4;
+	//uint high_compare_asp_idx = asp_idx + 4;
 
 
 	char const col_state = col_states[col_idx];
 
 	bool winner_close = false;
 	//bool winner_far = false;
-	/*uint max_asp_idx = 0;
-	int max_col_state = 0;*/
+	//uint max_asp_idx = 0;
+	//int max_col_state = 0;
 	uint current_col_idx = 0;
 	int const asp_offs = asp_idx - 4;
 
 	if (col_states[col_idx] >= asp_states[asp_idx]) {
 		winner_close = true;
 
-		/*max_col_state = col_states[col_idx];
-		max_asp_idx = asp_idx;*/
 	}
 
 	uint best_idx = 101;
@@ -459,183 +439,7 @@ __kernel void axns_cycle_unoptd_buggy_phantom_value_version (
 		//aux_ints_1[col_idx] = win_count;
 		//aux_ints_1[col_idx] = competetor_ids[6];
 	}
-}
-
-
-
-	__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
-__kernel void axns_cycle_unoptd_4_0 (
-	__global uchar* const asp_ids,
-	__global char* const asp_states,
-	__global char* const col_states,
-	__global char* const axn_states,
-	__global int* const aux_ints_0,
-	__global int* const aux_ints_1,
-	//__local uchar* wiv_local,
-	__private uint const axn_row_offset
-) {
-	uint const row_id = get_global_id(0);
-	uint const col_id = get_global_id(1);
-	uint const l_id = get_local_id(1);
-	uint const row_width = get_global_size(1);
-	uint const col_idx = mad24(row_id, row_width, col_id);
-	uint const axn_idx = col_idx + mad24(axn_row_offset, row_width, (uint)SYNAPSE_REACH);
-	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
-
-
-	//uint practical_aspiny_reach = (ASPINY_REACH - 1);
-	/*uint low_compare_asp_idx = asp_idx - 4;
-	uint high_compare_asp_idx = asp_idx + 4;*/
-
-
-	int const this_fucking_col_state = col_states[col_idx];
-	uint const this_fucking_col_idx = col_idx;
-	int winner_close = false;
-	bool winner_far = false;
-	uint max_asp_idx = 0;
-	int max_col_state = 0;
-	uint current_col_idx = 0;
-	int const asp_offs = asp_idx - 4;
-
-	if (col_states[col_idx] == asp_states[asp_idx]) {
-		winner_close = true;
-
-		max_col_state = col_states[col_idx];
-		max_asp_idx = asp_idx;
-	}
-
-	uint win_count = 0;
-
-	if (winner_close > 0) {
-
-		for (int i = -3; i <= 3; i++) {
-			if (max_col_state < asp_states[asp_idx + i]) {
-				max_col_state = asp_states[asp_idx + i];
-				max_asp_idx = asp_idx + i;
-			}
-		}
-
-		//aux_ints_0[col_idx + (i + 10) * 10] = max_col_state;
-
-		/*if (win_count >= 5) {
-			aux_ints_0[col_idx] = this_fucking_col_state;	//	max_col_state;
-			aux_ints_1[col_idx] = win_count;
-		}*/
-
-	}
-
-	if (this_fucking_col_state == max_col_state) {
-		aux_ints_0[col_idx] = max_col_state;
-	}
-
-	/*if (win_count >= 8) {
-		aux_ints_0[col_idx] = max_col_state;
-		aux_ints_1[col_idx] = win_count;
-	}*/
-
-
-	/*if (winner_close) {
-
-		for (int i = 0; i < 8; i++) {
-			current_col_idx = asp_to_col_ofs(i) + asp_ids[i];
-
-			if (col_states[col_idx] > col_states[current_col_idx]) {
-				local_max_col_idx = col_idx;
-				winner_far += 1;
-
-			} else if (col_states[col_idx] == col_states[current_col_idx]) {
-
-				if ((col_states[current_col_idx] & 0x01) ^ (col_states[col_idx] & 0x01)) {
-					winner_far += 1;
-					
-				} else {
-					winner_far -= 1;
-				}
-
-			} else {
-				winner_far -= 1;
-			}
-		}
-	}*/
-
-	
-
-	/*if (i == 4) {
-				aux_ints_0[(col_idx - 4) + i] = asp_states[() + i] + 100;
-			} else {
-				//aux_ints_0[(col_idx - 4) + i] = asp_states[(asp_idx - 4) + i];
-			}*/
-	
-}
-
-
-
-	__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
-__kernel void axns_cycle_unoptd_3_0_working (
-	__global uchar* const asp_ids,
-	__global char* const asp_states,
-	__global char* const col_states,
-	__global char* const axn_states,
-	//__local uchar* wiv_local,
-	__private uint const axn_row_offset
-) {
-	uint const row_id = get_global_id(0);
-	uint const col_id = get_global_id(1);
-	uint const l_id = get_local_id(1);
-	uint const row_width = get_global_size(1);
-	uint const col_idx = mad24(row_id, row_width, col_id);
-	uint const axn_idx = col_idx + mad24(axn_row_offset, row_width, (uint)SYNAPSE_REACH);
-	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
-
-
-	uint practical_aspiny_reach = (ASPINY_REACH - 1);
-	uint low_compare_asp_idx = asp_idx - (practical_aspiny_reach);
-	uint high_compare_asp_idx = asp_idx + (practical_aspiny_reach);
-
-	int winner_close = 0;
-	int winner_far = 2;
-
-	uint local_max_col_idx = 0;
-	uint current_col_idx = 0;
-
-	if ((asp_to_col_ofs(asp_idx)) == col_idx) {
-		winner_close += 1;
-	}
-
-	if (winner_close) {
-
-		for (uint i = low_compare_asp_idx; i <= high_compare_asp_idx; i++) {
-			current_col_idx = asp_to_col_ofs(i) + asp_ids[i];
-
-			if (col_states[col_idx] > col_states[current_col_idx]) {
-				local_max_col_idx = current_col_idx;
-				winner_far += 1;
-			} else if (col_states[col_idx] == col_states[current_col_idx]) {
-
-				if ((col_states[local_max_col_idx] & 0x01) ^ (col_states[col_idx] & 0x01)) {
-					winner_far += 1;
-					local_max_col_idx = current_col_idx;
-				} else {
-					winner_far -= 1;
-				}
-			} else {
-				winner_far -= 1;
-			}
-		}
-	}
-
-
-
-	if ((winner_close > 0) && (winner_far > 0)) {
-		//axn_states[axn_idx] = col_states[local_max_col_idx];			// * asp_states[asp_idx];
-		//axn_states[axn_idx] = winner_far;
-		axn_states[axn_idx] = winner_far + winner_close + 10;
-	}
-
-	//axn_states[axn_idx] = winner_close;
-
-}
-
+}*/
 
 
 
@@ -1265,27 +1069,6 @@ __kernel void syns_regrow(
 		syn_strs[syn_idx] = SYNAPSE_STRENGTH_DEFAULT_DISTAL; 
 	}
 }
-
-
-
-
-/*uint rnd = col_id + 1181783497276652981;
-	rnd ^= (rnd << 23);
-	rnd ^= (rnd >> 17);
-	rnd ^= asp_idx & (asp_idx >> 26);
-
-	rnd = rnd & 0x00FF;*/
-
-
-
-
-
-
-
-
-
-
-
 
 
 

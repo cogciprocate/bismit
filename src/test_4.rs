@@ -72,13 +72,24 @@ pub fn test_cycle() {
 
 	vec1.clear();
 	for i in range(0, scw) {
-		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
+		if ((i >= scw_1_4) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
 			vec1.push(127i8);
 		} else {
-			vec1.push(127i8);
+			vec1.push(0i8);
 		}
 	}
+
+
+	/*vec1.clear();
+	for i in range(0, scw) {
+		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
+		//if i >= scw_3_8 && i < scw_5_8 {
+			vec1.push(63i8);
+		} else {
+			vec1.push(0i8);
+		}
+	}*/
 
 
 	let shuffle_chords = SHUFFLE_CHORDS;
@@ -194,12 +205,12 @@ pub fn test_cycle() {
 
 		/* AUX VALS */
 
-		if false {
+		if true {
 			print!("\ncells.aux.ints_0: ");
 			cortex.cells.aux.ints_0.print((1 << 0) as usize, 1, 127333, 0, 100000);
 		}
 
-		if false {
+		if true {
 			print!("\ncells.aux.ints_1: ");
 			cortex.cells.aux.ints_1.print((1 << 0) as usize, 1, 127333, 0, 100000);
 		}
