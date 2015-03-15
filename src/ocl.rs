@@ -34,8 +34,6 @@ impl Ocl {
 		let mut kern_str: Vec<u8> = Vec::new();
 		let kern_file = File::open(kern_file_path).unwrap().read_to_end(&mut kern_str);
 
-		
-
 		let kern_c_str = ffi::CString::from_vec(kern_str);
 
 		let platform = new_platform();

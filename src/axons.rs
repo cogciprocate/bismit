@@ -53,7 +53,7 @@ impl Axons {
 	pub fn init_kernels(&mut self, asps: &AspinyStellate, cols: &Columns, aux: &Aux) {
 		
 			self.kern_cycle.arg(&asps.ids);
-			self.kern_cycle.arg(&asps.winner_vals);
+			self.kern_cycle.arg(&asps.states);
 			self.kern_cycle.arg(&cols.states);
 			self.kern_cycle.arg(&self.states);
 			self.kern_cycle.arg(&aux.ints_0);

@@ -15,7 +15,7 @@ use std::ops;
 use time;
 
 
-pub const TEST_ITERATIONS: i32 = 1000; 
+pub const TEST_ITERATIONS: i32 = 1; 
 pub const SHUFFLE_CHORDS: bool = false;
 pub const PRINT_EVERY: i32 = 10000;
 
@@ -149,7 +149,7 @@ pub fn test_cycle() {
 		/* COLUMN STATES */
 		if true {	
 			print!("\ncells.cols.states: ");
-			cortex.cells.cols.states.print_val_range(1 << (3 + scl_fct_log2), -128, 127);
+			cortex.cells.cols.states.print_val_range(1 << 0, -128, 127);
 		}
 
 
@@ -169,8 +169,8 @@ pub fn test_cycle() {
 		}
 
 		if true {
-			print!("\ncells.asps.winner_vals: ");
-			cortex.cells.asps.winner_vals.print_val_range((1 << 0) as usize , 0, 127);
+			print!("\ncells.asps.states: ");
+			cortex.cells.asps.states.print_val_range((1 << 0) as usize , 0, 127);
 		}
 
 
@@ -194,12 +194,12 @@ pub fn test_cycle() {
 
 		/* AUX VALS */
 
-		if true {
+		if false {
 			print!("\ncells.aux.ints_0: ");
 			cortex.cells.aux.ints_0.print((1 << 0) as usize, 1, 127333, 0, 100000);
 		}
 
-		if true {
+		if false {
 			print!("\ncells.aux.ints_1: ");
 			cortex.cells.aux.ints_1.print((1 << 0) as usize, 1, 127333, 0, 100000);
 		}

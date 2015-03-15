@@ -57,8 +57,9 @@ impl Columns {
 	}
 
 	pub fn cycle(&self) {
-		self.kern_cycle.enqueue();
 		self.syns.cycle();
+		self.kern_cycle.enqueue();
+		
 	}
 }
 

@@ -23,38 +23,39 @@ use std::fmt::{ Display };
 pub struct AspinyStellate {
 	width: u32,
 	height: u8,
-	kern_cycle: ocl::Kernel,
+	kern_cycle_1: ocl::Kernel,
 	pub ids: Envoy<ocl::cl_uchar>,
-	pub winner_vals: Envoy<ocl::cl_char>,
+	pub states: Envoy<ocl::cl_char>,
 }
 
 impl AspinyStellate {
 	pub fn new(col_width: u32, height: u8, region: &CorticalRegion, cols: &Columns, ocl: &Ocl) -> AspinyStellate {
 
-		let width = (col_width >> common::ASPINY_SPAN_LOG2) + (1 << common::ASPINY_REACH_LOG2);
+		let width = (col_width >> common::ASPINY_SPAN_LOG2) + common::ASPINY_SPAN;
+
+		let width_no_ofs = width - common::ASPINY_SPAN;
 
 		let ids = Envoy::<ocl::cl_uchar>::new(width, height, 0u8, ocl);
-		let winner_vals = Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl);
+		let states = Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl);
 
-		let mut kern_cycle = ocl.new_kernel("aspiny_cycle", 
+		let mut kern_cycle_1 = ocl.new_kernel("aspiny_cycle", 
 			WorkSize::TwoDim(height as usize, col_width as usize));
-		kern_cycle.arg(&cols.states);
-		kern_cycle.arg(&ids);
-		kern_cycle.arg(&winner_vals);
+		kern_cycle_1.arg(&cols.states);
+		kern_cycle_1.arg(&ids);
+		kern_cycle_1.arg(&states);
 
 
 		AspinyStellate {
 			width: width,
 			height: height,
-			kern_cycle: kern_cycle,
+			kern_cycle_1: kern_cycle_1,
 			ids: ids,
-			winner_vals: winner_vals,
-
+			states: states,
 		}
 	}
 
 	pub fn cycle(&self) {
-		self.kern_cycle.enqueue();
+		self.kern_cycle_1.enqueue();
 	}
 
 	 

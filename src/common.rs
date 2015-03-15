@@ -92,9 +92,9 @@ pub const AXONS_WORKGROUP_SIZE: usize = 256;
 
 
 pub const ASPINY_REACH_LOG2: usize 			= 2;
-pub const ASPINY_REACH:	usize				= 1 << ASPINY_REACH_LOG2;
+pub const ASPINY_REACH:	u32					= 1 << ASPINY_REACH_LOG2;
 pub const ASPINY_SPAN_LOG2: usize 			= ASPINY_REACH_LOG2 + 1;
-pub const ASPINY_SPAN: usize 				= 1 << ASPINY_SPAN_LOG2;
+pub const ASPINY_SPAN: u32	 				= 1 << ASPINY_SPAN_LOG2;
 
 pub const ASPINY_HEIGHT: u8 = 1;
 
