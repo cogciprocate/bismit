@@ -1,14 +1,14 @@
 #define DENDRITES_PER_CELL_DISTAL_LOG2						4
-static uint const DENDRITES_PER_CELL_DISTAL =				1 << DENDRITES_PER_CELL_DISTAL_LOG2;
+static int const DENDRITES_PER_CELL_DISTAL =				1 << DENDRITES_PER_CELL_DISTAL_LOG2;
 
 #define SYNAPSES_PER_DENDRITE_DISTAL_LOG2					4
-static uint const SYNAPSES_PER_DENDRITE_DISTAL =			1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
+static int const SYNAPSES_PER_DENDRITE_DISTAL =			1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 //static uint const SYNAPSES_PER_CELL_DISTAL_LOG2 =			DENDRITES_PER_CELL_DISTAL_LOG2 + SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 //static uint const SYNAPSES_PER_CELL_DISTAL =				1 << (DENDRITES_PER_CELL_DISTAL_LOG2 + SYNAPSES_PER_DENDRITE_DISTAL_LOG2);
 
 #define SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2				4
-static uint const SYNAPSE_STRENGTH_DEFAULT_DISTAL =			1 << SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2;
+static int const SYNAPSE_STRENGTH_DEFAULT_DISTAL =			1 << SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2;
 
 
 #define DENDRITES_PER_CELL_PROXIMAL_LOG2					0
@@ -17,8 +17,8 @@ static uint const SYNAPSE_STRENGTH_DEFAULT_DISTAL =			1 << SYNAPSE_STRENGTH_DEFA
 #define SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2					8
 //static uint const SYNAPSES_PER_DENDRITE_PROXIMAL =		1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
-static uint const SYNAPSES_PER_CELL_PROXIMAL_LOG2 =			DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
-static uint const SYNAPSES_PER_CELL_PROXIMAL =				1 << (DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2);
+static int const SYNAPSES_PER_CELL_PROXIMAL_LOG2 =			DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+static int const SYNAPSES_PER_CELL_PROXIMAL =				1 << (DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2);
 
 #define SYNAPSE_STRENGTH_DEFAULT_PROXIMAL_LOG2				4
 //static uint const SYNAPSE_STRENGTH_DEFAULT_PROXIMAL =		1 << SYNAPSE_STRENGTH_DEFAULT_PROXIMAL_LOG2;
@@ -35,14 +35,14 @@ static uint const SYNAPSES_PER_CELL_PROXIMAL =				1 << (DENDRITES_PER_CELL_PROXI
 #define AXONS_WORKGROUP_SIZE 				256
 
 #define ASPINY_REACH_LOG2					2
-#define ASPINY_REACH 						4
+/*#define ASPINY_REACH 						4
 #define ASPINY_SPAN_LOG2 					3
-#define ASPINY_SPAN 						8
-//static uint const ASPINY_REACH =			1 << ASPINY_REACH_LOG2;
-//static uint const ASPINY_SPAN_LOG2 =		ASPINY_REACH_LOG2 + 1;
-//static uint const ASPINY_SPAN =			1 << (ASPINY_REACH_LOG2 + 1);
+#define ASPINY_SPAN 						8*/
+static int const ASPINY_REACH =			1 << ASPINY_REACH_LOG2;
+static int const ASPINY_SPAN_LOG2 =		ASPINY_REACH_LOG2 + 1;
+static int const ASPINY_SPAN =				1 << (ASPINY_REACH_LOG2 + 1);
 
-#define COLUMN_DOMINANCE_FLOOR					7
+#define COLUMN_DOMINANCE_FLOOR				35
 
 /*
 static inline uint xos_rng(uint seed) {
@@ -273,39 +273,42 @@ __kernel void axns_cycle_unoptd (
 
 		for (uint i = 0; i < ASPINY_SPAN; i++) {
 
-			uint cur_asp_idx = (asp_idx - ASPINY_REACH) + i + (i > 3);
-			//int cur_asp_idx = asp_idx + i + (i > 3);
-
-
-			//uint cur_comp_id = asp_col_ids[cur_asp_idx];
+			uint cur_asp_idx = (asp_idx - ASPINY_REACH) + i + (i > (ASPINY_REACH - 1));
 			uchar cur_comp_state = asp_states[cur_asp_idx];
 
-			
+			uint cur_comp_dist = abs((int)asp_idx - (int)cur_asp_idx);
+			int inhib_power = ASPINY_SPAN - cur_comp_dist;
+			//aux_ints_1[aux_int_1_ofs + i] = cur_comp_dist;
+
 			if (col_state < cur_comp_state) {
 				continue;
 
 			} else if (col_state == cur_comp_state) {
 
-				/*if ((asp_idx == cur_asp_idx)) {
+				// FOR DEBUG PURPOSES
+				if ((asp_idx == cur_asp_idx)) {
 						// SHOULD BE UNREACHABLE
 					win_count += 100;
-				}*/
+				}
 
-				if (((asp_idx & 0x01) ^ (cur_asp_idx & 0x01))) {
+				if ((asp_idx & 0x07) == 4) {
+				//if (((asp_idx & 0x01) ^ (cur_asp_idx & 0x01))) {
 				//if ((asp_idx < cur_asp_idx)) {
-					win_count += ((asp_idx) < (cur_asp_idx));
+					win_count += inhib_power;
+					//win_count += mul24((inhib_power << 1), ((asp_idx) < (cur_asp_idx)));
 					//win_count += 1;
 					//aux_ints_1[(asp_idx << 3) + i] = (cur_asp_idx & 0xFF);
 
 				} else {
-					//win_count += ((asp_idx) > (cur_asp_idx));
+					
+					//win_count += mul24((inhib_power << 1), ((asp_idx) > (cur_asp_idx)));
 					//win_count += 1;
 					//aux_ints_1[(asp_idx << 3) + i] = (cur_asp_idx & 0x3F) + 2000;
 				}
-				//win_count += ((asp_idx & 0x1F) < (cur_asp_idx & 0x1F)) | (low_6(asp_idx) == 32);
+				//win_count += ((asp_idx & 0x1F) < (cur_asp_idx & 0x1F)) | ((asp_idx & 0x07)  == 4);
 
 			} else {
-				win_count += 1;
+				win_count += inhib_power;
 			}
 
 			/*win_count += (

@@ -22,6 +22,8 @@ pub const PRINT_EVERY: i32 = 10000;
 pub fn test_cycle() {
 	let mut cortex = cortex::Cortex::new();
 
+	let shuffle_chords = SHUFFLE_CHORDS;
+
 	//let vv1 = common::sparse_vec(2048, -128i8, 127i8, 6);
 	//common::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
 
@@ -70,7 +72,7 @@ pub fn test_cycle() {
 	cortex.sense_vec(0, "post-thal", &mut vec1);
 
 
-	vec1.clear();
+	/*vec1.clear();
 	for i in range(0, scw) {
 		if ((i >= scw_1_4 - scw_1_16) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4 + scw_1_16)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
@@ -78,21 +80,19 @@ pub fn test_cycle() {
 		} else {
 			vec1.push(5);
 		}
-	}
-
-
-	/*vec1.clear();
-	for i in range(0, scw) {
-		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
-		//if i >= scw_3_8 && i < scw_5_8 {
-			vec1.push(250);
-		} else {
-			vec1.push(0);
-		}
 	}*/
 
 
-	let shuffle_chords = SHUFFLE_CHORDS;
+	vec1.clear();
+	for i in range(0, scw) {
+		if i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16 {
+		//if i >= scw_3_8 && i < scw_5_8 {
+			vec1.push(250);
+		} else {
+			vec1.push(10);
+		}
+	}
+
 
 
 	if shuffle_chords {
