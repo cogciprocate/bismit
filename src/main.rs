@@ -23,6 +23,7 @@ mod dendrites;
 mod synapses;
 mod columns;
 mod aspiny;
+mod pyramidal;
 //mod cort_seg;
 //mod thalamus;
 mod cortex;

@@ -37,7 +37,7 @@ pub fn define_regions() -> CorticalRegions {
 
 	sen.new_layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]));
 	//sen.new_layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
-	//sen.new_layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "ii"], "iv"));
+	//sen.new_layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii"], "iv"));
 	//sen.new_layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["thal"], "iv"));
 
 	//sen.new_layer("ii", 2, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iii"]), Some(vec!["iii"]))));	

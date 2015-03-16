@@ -52,14 +52,14 @@ impl Axons {
 
 	pub fn init_kernels(&mut self, asps: &AspinyStellate, cols: &Columns, aux: &Aux) {
 		
-			self.kern_cycle.arg(&asps.ids);
-			self.kern_cycle.arg(&asps.states);
-			self.kern_cycle.arg(&cols.states);
-			self.kern_cycle.arg(&self.states);
-			self.kern_cycle.arg(&aux.ints_0);
-			self.kern_cycle.arg(&aux.ints_1);
+			self.kern_cycle.new_arg_envoy(&asps.ids);
+			self.kern_cycle.new_arg_envoy(&asps.states);
+			self.kern_cycle.new_arg_envoy(&cols.states);
+			self.kern_cycle.new_arg_envoy(&self.states);
+			self.kern_cycle.new_arg_envoy(&aux.ints_0);
+			self.kern_cycle.new_arg_envoy(&aux.ints_1);
 			//self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
-			self.kern_cycle.arg_scalar(self.height_noncellular as u32);
+			self.kern_cycle.new_arg_scalar(self.height_noncellular as u32);
 	}
 
 	pub fn cycle(&self) {

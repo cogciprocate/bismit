@@ -40,9 +40,9 @@ impl AspinyStellate {
 
 		let mut kern_cycle_1 = ocl.new_kernel("aspiny_cycle", 
 			WorkSize::TwoDim(height as usize, col_width as usize));
-		kern_cycle_1.arg(&cols.states);
-		kern_cycle_1.arg(&ids);
-		kern_cycle_1.arg(&states);
+		kern_cycle_1.new_arg_envoy(&cols.states);
+		kern_cycle_1.new_arg_envoy(&ids);
+		kern_cycle_1.new_arg_envoy(&states);
 
 
 		AspinyStellate {

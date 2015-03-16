@@ -39,12 +39,12 @@ impl Columns {
 		let syns = ColumnSynapses::new(width, syns_per_cell, region, axons, ocl);
 
 		let mut kern_cycle = ocl.new_kernel("col_cycle", WorkSize::TwoDim(height as usize, width as usize));
-		kern_cycle.arg(&syns.states);
-		kern_cycle.arg(&states);
+		kern_cycle.new_arg_envoy(&syns.states);
+		kern_cycle.new_arg_envoy(&states);
 		
 		/*let kern_cycle4 = ocl.new_kernel("col_cycle4", WorkSize::TwoDim(height as usize, width as usize))
-			.arg(&syns.states)
-			.arg(&states)
+			.new_arg_envoy(&syns.states)
+			.new_arg_envoy(&states)
 		;*/
 
 		Columns {
@@ -94,10 +94,10 @@ impl ColumnSynapses {
 		let mut kern_cycle = ocl.new_kernel("col_syns_cycle", 
 			WorkSize::TwoDim(height as usize, width as usize))
 			.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize));
-		kern_cycle.arg(&axons.states);
-		kern_cycle.arg(&src_ofs);
-		kern_cycle.arg(&src_row_ids);
-		kern_cycle.arg(&states);
+		kern_cycle.new_arg_envoy(&axons.states);
+		kern_cycle.new_arg_envoy(&src_ofs);
+		kern_cycle.new_arg_envoy(&src_row_ids);
+		kern_cycle.new_arg_envoy(&states);
 		//.arg_scalar(src_row_ids_list[0])	// FIX THIS TO BE AN ENVOY
 		//.arg_local(0u8, common::SYNAPSE_WORKGROUP_SIZE + per_cell as usize)
 		

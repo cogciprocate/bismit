@@ -200,7 +200,22 @@ impl Kernel {
 		self
 	}
 
-	pub fn arg<T>(&mut self, envoy: &Envoy<T>) {
+	pub fn arg_env<T>(mut self, envoy: &Envoy<T>) -> Kernel {
+		self.new_arg_envoy(envoy);
+		self
+	}
+
+	pub fn arg_scl<T>(mut self, scalar: T) -> Kernel {
+		self.new_arg_scalar(scalar);
+		self
+	}
+
+	pub fn arg_loc<T>(mut self, type_sample: T, length: usize) -> Kernel {
+		self.new_arg_local(type_sample, length);
+		self
+	}
+
+	pub fn new_arg_envoy<T>(&mut self, envoy: &Envoy<T>) {
 		let buf = &envoy.buf;
 
 		self.set_kernel_arg(
@@ -209,7 +224,7 @@ impl Kernel {
 		)
 	}
 
-	pub fn arg_scalar<T>(&mut self, scalar: T) {
+	pub fn new_arg_scalar<T>(&mut self, scalar: T) {
 		unsafe {
 			self.set_kernel_arg(
 				mem::size_of::<T>() as libc::size_t, 
@@ -218,7 +233,7 @@ impl Kernel {
 		}
 	}
 
-	pub fn arg_local<T>(&mut self, type_sample: T, length: usize) {
+	pub fn new_arg_local<T>(&mut self, type_sample: T, length: usize) {
 
 		self.set_kernel_arg(
 			(mem::size_of::<T>() * length) as libc::size_t,

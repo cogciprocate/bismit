@@ -74,9 +74,9 @@ pub fn test_cycle() {
 	for i in range(0, scw) {
 		if ((i >= scw_1_4) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
-			vec1.push(127i8);
+			vec1.push(120i8);
 		} else {
-			vec1.push(0i8);
+			vec1.push(60i8);
 		}
 	}
 
@@ -85,9 +85,9 @@ pub fn test_cycle() {
 	for i in range(0, scw) {
 		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
 		//if i >= scw_3_8 && i < scw_5_8 {
-			vec1.push(63i8);
+			vec1.push(120i8);
 		} else {
-			vec1.push(0i8);
+			vec1.push(110i8);
 		}
 	}*/
 
@@ -126,7 +126,7 @@ pub fn test_cycle() {
 				/* AXON STATES */
 			if false {
 				print!("\ncells.axns.states: ");
-				cortex.cells.axns.states.print_val_range(1 << 8, 1, 127);
+				cortex.cells.axns.states.print_val_range(1 << 8, Some((1, 127)));
 			}
 		}
 
@@ -152,36 +152,37 @@ pub fn test_cycle() {
 
 		if false {
 			println!("\ncells.axns.states: ");
-			cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), -128, 127);
+			cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), Some((-128, 127)));
 		}
 
 		cortex.sense_vec(0, "thal", &vec1); 
-
-		/* COLUMN STATES */
-		if true {	
-			print!("\ncells.cols.states: ");
-			cortex.cells.cols.states.print_val_range(1 << 0, -128, 127);
-		}
 
 
 		/* SYNAPSE STATES */
 
 		if true {	
 			print!("\ncells.cols.syns.states: ");
-			cortex.cells.cols.syns.states.print_val_range(1 << (11 + scl_fct_log2), -128, 127);
+			cortex.cells.cols.syns.states.print_val_range(1 << (9 + scl_fct_log2), Some((-128, 127)));
+		}
+
+
+		/* COLUMN STATES */
+		if true {	
+			print!("\ncells.cols.states: ");
+			cortex.cells.cols.states.print_val_range(1 << 0, Some((-128, 127)));
 		}
 
 
 		/* ASPINY WINNERS */
 
-		if true {
+		if false {
 			print!("\ncells.asps.ids: ");
-			cortex.cells.asps.ids.print_val_range((1 << 0) as usize , 0, 255);
+			cortex.cells.asps.ids.print_val_range((1 << 0) as usize , Some((0, 255)));
 		}
 
 		if true {
 			print!("\ncells.asps.states: ");
-			cortex.cells.asps.states.print_val_range((1 << 0) as usize , 0, 127);
+			cortex.cells.asps.states.print_val_range((1 << 0) as usize , Some((0, 127)));
 		}
 
 
@@ -198,7 +199,7 @@ pub fn test_cycle() {
 		if true {
 			print!("\ncells.axns.states: ");
 			//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
-			cortex.cells.axns.states.print((1 << 0) as usize, 1, 127, 3200, 4223);
+			cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 127)), Some((3200, 4223)));
 
 		}
 
@@ -207,22 +208,22 @@ pub fn test_cycle() {
 
 		if true {
 			print!("\ncells.aux.ints_0: ");
-			cortex.cells.aux.ints_0.print((1 << 0) as usize, 1, 127333, 0, 100000);
+			cortex.cells.aux.ints_0.print((1 << 0) as usize, Some((1, 1100000000)), None);
 		}
 
 		if true {
 			print!("\ncells.aux.ints_1: ");
-			cortex.cells.aux.ints_1.print((1 << 0) as usize, 1, 127333, 0, 100000);
+			cortex.cells.aux.ints_1.print((1 << 0) as usize, Some((1, 1100000000)), None);
 		}
 
 		if false {
 			print!("\ncells.aux.chars_0: ");
-			cortex.cells.aux.chars_0.print((1 << 0) as usize, -128, 127, 1, 4223);
+			cortex.cells.aux.chars_0.print((1 << 0) as usize, Some((-128, 127)), None);
 		}
 
 		if false {
 			print!("\ncells.aux.chars_1: ");
-			cortex.cells.aux.chars_1.print((1 << 0) as usize, -128, 127, 1, 4223);
+			cortex.cells.aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None);
 		}
 
 		i += 1;

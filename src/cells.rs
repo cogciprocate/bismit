@@ -9,6 +9,7 @@ use dendrites::{ Dendrites };
 use axons::{ Axons };
 use columns::{ Columns };
 use aspiny::{ AspinyStellate };
+use pyramidal:: { Pyramidal };
 
 
 use std::num;
@@ -48,6 +49,8 @@ impl Cells {
 		let cols = Columns::new(width, region, &axns, ocl);
 
 		let asps = AspinyStellate::new(width, common::ASPINY_HEIGHT, region, &cols, ocl);
+
+		let pyrs = Pyramidal::new(width, height_cellular, region, ocl);
 
 
 

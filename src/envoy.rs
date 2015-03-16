@@ -89,17 +89,14 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 		common::print_vec_simple(&self.vec);
     }
 
-    pub fn print_val_range(&mut self, every: usize, val_low: T, val_high: T) {
-    	let val_range: ops::Range<T> = ops::Range { start: val_low, end: val_high };
+    pub fn print_val_range(&mut self, every: usize, val_range: Option<(T, T)>,) {
     	self.read();
-		common::print_vec(&self.vec, every, true, Some(val_range), None);
+		common::print_vec(&self.vec, every, true, val_range, None);
     }
 
-    pub fn print(&mut self, every: usize, val_low: T, val_high: T, idx_low: usize, idx_high: usize) {
-    	let val_range: ops::Range<T> = ops::Range { start: val_low, end: val_high };
-    	let idx_range: ops::Range<usize> = ops::Range { start: idx_low, end: idx_high };
+    pub fn print(&mut self, every: usize, val_range: Option<(T, T)>, idx_range: Option<(usize, usize)>) {
     	self.read();
-		common::print_vec(&self.vec, every, true, Some(val_range), Some(idx_range));
+		common::print_vec(&self.vec, every, true, val_range, idx_range);
 	}
 
     pub fn release(&mut self) {

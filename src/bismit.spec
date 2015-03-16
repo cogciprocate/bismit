@@ -1,3 +1,51 @@
+=== Cortex Reorganization ===
+	- Move cells down to cortical regions
+	- Move columns up to cortical regions
+	- Move aspinys down to columns
+	- Rename columns to spiny stellate
+	- Hierarchy of physical data structures (envoys):
+		- Cortex
+			- Regions
+				- Cells
+					- Stellate
+						- Aspiny
+							- states
+							- ids
+						- Spiny
+							- states
+							- Synapses
+					- Pyramidal
+						- states
+						- Dendrites
+							- states
+							- Synapses
+
+
+
+=== Distal Dendrites 2.0 ===
+
+	- Ideally uses same algorithm as proximal for initalizing and cycling synapses.
+	- Shoot for 32 synapses per (15 - 25 of which are strong enough to signal at any given time).
+	- Kernel should be changed to:
+		- process multiple dendrites at a time 
+		- and/or scale workgroup size from 256 to 128 or 64
+		- probably both
+
+
+=== Proximal Dendrites 2.0 ===
+
+	Option 1: Represent Column as a Dendrite
+		- Refactor/rename "column" to "column dendrite" or some such.
+		- Allow each cell to specify the layer in which their dendrite resides.
+		- Potentially simpler but less flexible
+
+	Option 2: Represent Column as a Cell
+		- Continue treating column as a cell with only one proximal synapse
+		- Other cells treat input as a normal proximal synaptic input
+		- More biologically accurate (not that it particularly matters)
+		- Might be easier to add other proximal sources.
+
+
 === Debug Ideas ===
 
 	Look at the center of activity when given a sensory vector with only the very center portion active.
@@ -44,7 +92,7 @@
 	- 
 
 
-=== BISMIT TYPES ===
+=== BISMIT TYPES 1.0 ===
 
 Neuron: (672b)
 	-Axon (32b) x 256 =
@@ -69,7 +117,7 @@ Hypercolumn: 735,232
 	-ActiveOutput (1b) x 1
 
 
-=== Fundamental Building Blocks ===
+=== Fundamental Building Blocks 1.0 ===
 
 	Two things must be communicated for now, the state of the cells on the same level of a (mini)column, and states of columns themselves.
 

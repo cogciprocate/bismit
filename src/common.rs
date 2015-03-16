@@ -117,9 +117,12 @@ pub fn print_vec_simple<T: Int + Display + Default>(vec: &Vec<T>) {
 }
 
 
-pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_zeros: bool, 
-			val_range: Option<std::ops::Range<T>>, 
-			idx_range: Option<std::ops::Range<usize>>,
+pub fn print_vec<T: Int + Display + Default>(
+			vec: &Vec<T>, 
+			every: usize, 
+			show_zeros: bool, 
+			val_range: Option<(T, T)>, 
+			idx_range: Option<(usize, usize)>,
 ) {
 
 
@@ -137,18 +140,26 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 	let mut ttl_prntd: usize = 0;
 	let len = vec.len();
 
+	let (vr_start, vr_end) = match val_range {
+		Some(vr)	=> vr,
+		None		=> (Default::default(), Default::default()),
+	};
+
+	let (ir_start, ir_end) = match idx_range {
+		Some(ir)	=> ir,
+		None		=> (0usize, 0usize),
+	};
 
 	let mut color: &'static str = C_DEFAULT;
 	let mut prnt: bool = false;
 
 	print!("{cdgr}[{cg}{}{cdgr}/{}", vec.len(), every, cg = C_GRN, cdgr = C_DGR);
 	if val_range.is_some() {
-		let vr = val_range.as_ref().unwrap(); 		// DUPLICATE
-		print!(";[{},{}]", vr.start, vr.end);
+		print!(";[{},{}]", vr_start, vr_end);
 	}
 	if idx_range.is_some() {
-		let ir = idx_range.as_ref().unwrap(); 		// DUPLICATE
-		print!(";[{},{}]", ir.start, ir.end);
+		 		// DUPLICATE
+		print!(";[{},{}]", ir_start, ir_end);
 	}
 	print!("]:{cd} ", cd = C_DEFAULT,);
 
@@ -166,7 +177,7 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 
 		if idx_range.is_some() {
 			let ir = idx_range.as_ref().unwrap();
-			if i < ir.start || i > ir.end {
+			if i < ir_start || i > ir_end {
 				prnt = false;
 				within_idx_range = false;
 			} else {
@@ -177,8 +188,7 @@ pub fn print_vec<T: Int + Display + Default>(vec: &Vec<T>, every: usize, show_ze
 		}
 
 		if val_range.is_some() {
-			let vr = val_range.as_ref().unwrap();	// DUPLICATE
-			if vec[i] < vr.start || vec[i] > vr.end {
+			if vec[i] < vr_start || vec[i] > vr_end {
 				prnt = false;
 			} else {
 				if within_idx_range {
