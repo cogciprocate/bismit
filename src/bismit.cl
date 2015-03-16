@@ -96,6 +96,7 @@ static inline uint low_3(uint x) {
 
 
 
+
 /*
 	COL_SYNS_CYCLE():
 		number of source rows can not exceed: 
