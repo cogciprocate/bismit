@@ -93,14 +93,14 @@ impl Cortex {
 
 	pub fn sense(&mut self, sgmt_idx: usize, layer_target: &'static str, chord: &Chord) {
 
-		let mut vec: Vec<i8> = Vec::with_capacity(chord.width as usize);
+		let mut vec: Vec<ocl::cl_uchar> = Vec::with_capacity(chord.width as usize);
 		chord.unfold_into(&mut vec, 0);
 		self.sense_vec(sgmt_idx, layer_target, &vec);
 
 	}
 
 
-	pub fn sense_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<i8>) {
+	pub fn sense_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
 
 		let axn_row = self.regions[CorticalRegionType::Sensory].row_ids(vec!(layer_target))[0];
 

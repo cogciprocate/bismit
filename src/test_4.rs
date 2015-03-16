@@ -36,7 +36,7 @@ pub fn test_cycle() {
 	//print!("\n*********** scl_fct: {}", scl_fct);
 	//print!("\n*********** common::log2(sct_fct): {}", common::log2(scl_fct));
 
-	let mut vec1: Vec<i8> = Vec::with_capacity(scw as usize);
+	let mut vec1: Vec<ocl::cl_uchar> = Vec::with_capacity(scw as usize);
 	/*for i in range(0, scw) {
 		if i < scw >> 1 {
 			vec1.push(64i8);
@@ -60,9 +60,9 @@ pub fn test_cycle() {
 	for i in range(0, scw) {
 		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
 		//if i >= scw_3_8 && i < scw_5_8 {
-			vec1.push(0i8);
+			vec1.push(0);
 		} else {
-			vec1.push(0i8);
+			vec1.push(0);
 		}
 	}
 
@@ -74,9 +74,9 @@ pub fn test_cycle() {
 	for i in range(0, scw) {
 		if ((i >= scw_1_4) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
-			vec1.push(120i8);
+			vec1.push(150);
 		} else {
-			vec1.push(60i8);
+			vec1.push(20);
 		}
 	}
 
@@ -152,7 +152,7 @@ pub fn test_cycle() {
 
 		if false {
 			println!("\ncells.axns.states: ");
-			cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), Some((-128, 127)));
+			cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), None);
 		}
 
 		cortex.sense_vec(0, "thal", &vec1); 
@@ -162,14 +162,14 @@ pub fn test_cycle() {
 
 		if true {	
 			print!("\ncells.cols.syns.states: ");
-			cortex.cells.cols.syns.states.print_val_range(1 << (9 + scl_fct_log2), Some((-128, 127)));
+			cortex.cells.cols.syns.states.print_val_range(1 << (9 + scl_fct_log2), None);
 		}
 
 
 		/* COLUMN STATES */
 		if true {	
 			print!("\ncells.cols.states: ");
-			cortex.cells.cols.states.print_val_range(1 << 0, Some((-128, 127)));
+			cortex.cells.cols.states.print_val_range(1 << 0, None);
 		}
 
 

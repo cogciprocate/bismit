@@ -99,8 +99,8 @@ pub struct Somata {
 	height: u8,
 	width: u32,
 	pub dst_dens: Dendrites,
-	pub states: Envoy<ocl::cl_char>,
-	pub hcol_max_vals: Envoy<ocl::cl_char>,
+	pub states: Envoy<ocl::cl_uchar>,
+	pub hcol_max_vals: Envoy<ocl::cl_uchar>,
 	pub hcol_max_ids: Envoy<ocl::cl_uchar>,
 	pub rand_ofs: Envoy<ocl::cl_char>,
 }
@@ -110,8 +110,8 @@ impl Somata {
 		Somata { 
 			height: height,
 			width: width,
-			states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl),
-			hcol_max_vals: Envoy::<ocl::cl_char>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0i8, ocl),
+			states: Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl),
+			hcol_max_vals: Envoy::<ocl::cl_uchar>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, common::STATE_ZERO, ocl),
 			hcol_max_ids: Envoy::<ocl::cl_uchar>::new(width / common::COLUMNS_PER_HYPERCOLUMN, height, 0u8, ocl),
 			rand_ofs: Envoy::<ocl::cl_char>::shuffled(256, 1, -128, 127, ocl),
 			dst_dens: Dendrites::new(width, height, DendriteKind::Distal, common::DENDRITES_PER_CELL_DISTAL, region, ocl),
@@ -185,8 +185,8 @@ pub struct Aux {
 	width: u32,
 	pub ints_0: Envoy<ocl::cl_int>,
 	pub ints_1: Envoy<ocl::cl_int>,
-	pub chars_0: Envoy<ocl::cl_char>,
-	pub chars_1: Envoy<ocl::cl_char>,
+	pub chars_0: Envoy<ocl::cl_uchar>,
+	pub chars_1: Envoy<ocl::cl_uchar>,
 }
 
 impl Aux {
@@ -197,8 +197,8 @@ impl Aux {
 		Aux { 
 			ints_0: Envoy::<ocl::cl_int>::new(width * width_multiplier, height, 0, ocl),
 			ints_1: Envoy::<ocl::cl_int>::new(width * width_multiplier, height, 0, ocl),
-			chars_0: Envoy::<ocl::cl_char>::new(width, height, 0, ocl),
-			chars_1: Envoy::<ocl::cl_char>::new(width, height, 0, ocl),
+			chars_0: Envoy::<ocl::cl_uchar>::new(width, height, 0, ocl),
+			chars_1: Envoy::<ocl::cl_uchar>::new(width, height, 0, ocl),
 			height: height,
 			width: width,
 		}

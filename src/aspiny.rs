@@ -25,7 +25,7 @@ pub struct AspinyStellate {
 	height: u8,
 	kern_cycle_1: ocl::Kernel,
 	pub ids: Envoy<ocl::cl_uchar>,
-	pub states: Envoy<ocl::cl_char>,
+	pub states: Envoy<ocl::cl_uchar>,
 }
 
 impl AspinyStellate {
@@ -36,7 +36,7 @@ impl AspinyStellate {
 		let width_no_ofs = width - common::ASPINY_SPAN;
 
 		let ids = Envoy::<ocl::cl_uchar>::new(width, height, 0u8, ocl);
-		let states = Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl);
 
 		let mut kern_cycle_1 = ocl.new_kernel("aspiny_cycle", 
 			WorkSize::TwoDim(height as usize, col_width as usize));

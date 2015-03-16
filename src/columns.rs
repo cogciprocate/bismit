@@ -25,7 +25,7 @@ pub struct Columns {
 	width: u32,
 	kern_cycle: ocl::Kernel,
 	//kern_cycle4: ocl::Kernel,
-	pub states: Envoy<ocl::cl_char>,
+	pub states: Envoy<ocl::cl_uchar>,
 	pub syns: ColumnSynapses,
 	
 }
@@ -35,7 +35,7 @@ impl Columns {
 		let height: u8 = 1;
 		let syns_per_cell = common::DENDRITES_PER_CELL_PROXIMAL * common::SYNAPSES_PER_DENDRITE_PROXIMAL;
 
-		let states = Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl);
 		let syns = ColumnSynapses::new(width, syns_per_cell, region, axons, ocl);
 
 		let mut kern_cycle = ocl.new_kernel("col_cycle", WorkSize::TwoDim(height as usize, width as usize));
@@ -70,7 +70,7 @@ pub struct ColumnSynapses {
 	per_cell: u32,
 	src_row_ids_list: Vec<u8>,
 	kern_cycle: ocl::Kernel,
-	pub states: Envoy<ocl::cl_char>,
+	pub states: Envoy<ocl::cl_uchar>,
 	pub strengths: Envoy<ocl::cl_char>,
 	pub src_ofs: Envoy<ocl::cl_char>,
 	pub src_row_ids: Envoy<ocl::cl_uchar>,
@@ -86,7 +86,7 @@ impl ColumnSynapses {
 
 		//println!("New Column Synapses with: height: {}, syns_per_row: {},", height, syns_per_row);
 
-		let states = Envoy::<ocl::cl_char>::new(syns_per_row, height, 0i8, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, height, common::STATE_ZERO, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, height, 1i8, ocl);
 		let src_ofs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, height, -128, 127, ocl);
 		let src_row_ids= Envoy::<ocl::cl_uchar>::new(syns_per_row, height, 0u8, ocl);
@@ -145,9 +145,9 @@ impl ColumnSynapses {
 
 	/*fn init_kern_cycle(&mut self, 
 				axons: &Axons, 
-				states: &Envoy<ocl::cl_char>, 
-				strengths: &Envoy<ocl::cl_char>,
-				src_ofs: &Envoy<ocl::cl_char>,
+				states: &Envoy<ocl::cl_uchar>, 
+				strengths: &Envoy<ocl::cl_uchar>,
+				src_ofs: &Envoy<ocl::cl_uchar>,
 				src_row_ids: &Envoy<ocl::cl_uchar>, 
 				src_row_ids_list: Vec<u8>,
 				ocl: &Ocl) -> ocl::Kernel {

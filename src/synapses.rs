@@ -22,7 +22,7 @@ pub struct Synapses {
 	per_cell: u32,
 	den_type: DendriteKind,
 	since_decay: usize,
-	pub states: Envoy<ocl::cl_char>,
+	pub states: Envoy<ocl::cl_uchar>,
 	pub strengths: Envoy<ocl::cl_char>,
 	pub axn_row_ids: Envoy<ocl::cl_uchar>,
 	pub axn_col_offs: Envoy<ocl::cl_char>,
@@ -43,7 +43,7 @@ impl Synapses {
 			per_cell: per_cell,
 			den_type: den_type,
 			since_decay: 0,
-			states: Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl),
+			states: Envoy::<ocl::cl_uchar>::new(width_syns, height, 0, ocl),
 			strengths: Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl),
 			axn_row_ids: axn_row_ids,
 			axn_col_offs: axn_col_offs,
@@ -126,7 +126,7 @@ impl Synapses {
 								self.strengths[i] = common::DST_SYNAPSE_STRENGTH_DEFAULT;
 								self.axn_row_ids[i] = src_row_ids[syn_pos];
 							} else {
-								self.strengths[i] = 0i8;
+								self.strengths[i] = common::DST_SYNAPSE_STRENGTH_DEFAULT;
 								self.axn_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
 							}
 
@@ -165,7 +165,7 @@ impl Synapses {
 		ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}
 
-	pub fn decay(&mut self, rand_ofs: &mut Envoy<ocl::cl_char>, ocl: &Ocl) {
+	pub fn decay(&mut self, rand_ofs: &mut Envoy<ocl::cl_uchar>, ocl: &Ocl) {
 		self.since_decay += 1;
 
 		if self.since_decay >= common::SYNAPSE_DECAY_INTERVAL {
@@ -181,7 +181,7 @@ impl Synapses {
 
 	}
 
-	pub fn regrow(&self, rand_ofs: &mut Envoy<ocl::cl_char>, ocl: &Ocl) {
+	pub fn regrow(&self, rand_ofs: &mut Envoy<ocl::cl_uchar>, ocl: &Ocl) {
 
 		common::shuffle_vec(&mut rand_ofs.vec);
 		rand_ofs.write();

@@ -25,7 +25,7 @@ use std::fmt::{ Display };
 pub struct Pyramidal {
 	height: u8,
 	width: u32,
-	pub states: Envoy<ocl::cl_char>,
+	pub states: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
 }
 
@@ -35,7 +35,7 @@ impl Pyramidal {
 		Pyramidal {
 			height: height,
 			width: width,
-			states: Envoy::<ocl::cl_char>::new(width, height, 0i8, ocl),
+			states: Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl),
 			dens: Dendrites::new(width, height, DendriteKind::Distal, common::DENDRITES_PER_CELL_DISTAL, region, ocl),
 		}
 	}

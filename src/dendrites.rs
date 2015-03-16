@@ -21,8 +21,8 @@ pub struct Dendrites {
 	width: u32,
 	per_cell: u32,
 	den_type: DendriteKind,
-	pub thresholds: Envoy<ocl::cl_char>,
-	pub states: Envoy<ocl::cl_char>,
+	pub thresholds: Envoy<ocl::cl_uchar>,
+	pub states: Envoy<ocl::cl_uchar>,
 	//pub health: 
 	pub syns: Synapses,
 }
@@ -43,8 +43,8 @@ impl Dendrites {
 			width: width,
 			per_cell: per_cell,
 			den_type: den_type,
-			thresholds: Envoy::<ocl::cl_char>::new(width_dens, height, common::DENDRITE_INITIAL_THRESHOLD, ocl),
-			states: Envoy::<ocl::cl_char>::new(width_dens, height, 0i8, ocl),
+			thresholds: Envoy::<ocl::cl_uchar>::new(width_dens, height, common::DENDRITE_INITIAL_THRESHOLD, ocl),
+			states: Envoy::<ocl::cl_uchar>::new(width_dens, height, common::STATE_ZERO, ocl),
 			syns: Synapses::new(width, height, per_cell * common::SYNAPSES_PER_DENDRITE_DISTAL, den_type, region, ocl),
 		}
 	}

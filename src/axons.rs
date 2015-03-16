@@ -26,7 +26,7 @@ pub struct Axons {
 	pub width: u32,
 	padding: u32,
 	kern_cycle: ocl::Kernel,
-	pub states: Envoy<ocl::cl_char>,
+	pub states: Envoy<ocl::cl_uchar>,
 }
 
 impl Axons {
@@ -35,7 +35,7 @@ impl Axons {
 		let height = height_cellular + height_noncellular;
 
 		//println!("New Axons with: height_ac: {}, height_c: {}, width: {}", height_noncellular, height_cellular, width);
-		let states = Envoy::<ocl::cl_char>::with_padding(padding, width, height, 0i8, ocl);
+		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, common::STATE_ZERO, ocl);
 
 		let mut kern_cycle = ocl.new_kernel("axns_cycle_unoptd", WorkSize::TwoDim(height_cellular as usize, width as usize))
 			.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize));

@@ -110,10 +110,10 @@ static inline uint low_3(uint x) {
 */
 	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
 __kernel void col_syns_cycle(
-	__global char* const axn_states,
+	__global uchar* const axn_states,
 	__global char* const syn_src_ofs,
 	__global uchar* const syn_src_row_ids,
-	__global char* const syn_states
+	__global uchar* const syn_states
 ) {
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
@@ -135,8 +135,8 @@ __kernel void col_syns_cycle(
 
 
 __kernel void col_cycle(
-	__global char* const syn_states,
-	__global char* const col_states
+	__global uchar* const syn_states,
+	__global uchar* const col_states
 ) {
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
@@ -146,7 +146,7 @@ __kernel void col_cycle(
 	uint const syn4_per_cel_l2 = SYNAPSES_PER_CELL_PROXIMAL_LOG2 - 2;
 	uint const syn_ofs = col_idx << syn4_per_cel_l2;
 
-	char4 syn_state = (char4)(0, 0, 0, 0);
+	uchar4 syn_state = (uchar4)(0, 0, 0, 0);
 	int4 syn_sum = (int4)(0, 0, 0, 0);
 	uint n = 1 << syn4_per_cel_l2;
 
@@ -158,15 +158,15 @@ __kernel void col_cycle(
 
 	int col_total = syn_sum.s0 + syn_sum.s1 + syn_sum.s2 + syn_sum.s3;
 
-	col_states[col_idx] = (char)(col_total >> SYNAPSES_PER_CELL_PROXIMAL_LOG2);
+	col_states[col_idx] = (uchar)(col_total >> SYNAPSES_PER_CELL_PROXIMAL_LOG2);
 	//col_states[col_idx] = cel_idx >> 2; //(0, 1, 2, 3); 
 }
 
 
 __kernel void aspiny_cycle(
-	__global char* const col_states,
+	__global uchar* const col_states,
 	__global uchar* const asp_col_ids,
-	__global char* const asp_states
+	__global uchar* const asp_states
 ) {
 	uint const row_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
@@ -176,13 +176,13 @@ __kernel void aspiny_cycle(
 	uint const asp_idx = (asp_pos + ASPINY_REACH);
 	uint const col_ofs = asp_pos << ASPINY_SPAN_LOG2;
 
-	char col_states_vec[1 << (ASPINY_REACH_LOG2)]; // = {0, 0, 0, 0};
+	uchar col_states_vec[1 << (ASPINY_REACH_LOG2)]; // = {0, 0, 0, 0};
 
-	char winner_val = 0;
-	char winner_id = 0;
+	uchar winner_val = 0;
+	uchar winner_id = 0;
 	
-	char val = 0;
-	char id = 0;
+	uchar val = 0;
+	uchar id = 0;
 
 	//uint n = ASPINY_REACH >> 2;
 
@@ -214,9 +214,9 @@ __kernel void aspiny_cycle(
 	//__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
 __kernel void axns_cycle_unoptd (										
 	__global uchar* const asp_col_ids,
-	__global char* const asp_states,
-	__global char* const col_states,
-	__global char* const axn_states,
+	__global uchar* const asp_states,
+	__global uchar* const col_states,
+	__global uchar* const axn_states,
 	__global int* const aux_ints_0,
 	__global int* const aux_ints_1,
 	//__local uchar* wiv_local,
@@ -230,10 +230,10 @@ __kernel void axns_cycle_unoptd (
 	uint const axn_idx = col_idx + mad24(axn_row_offset, row_width, (uint)SYNAPSE_REACH);
 	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
 
-	char col_state = col_states[col_idx];
+	uchar col_state = col_states[col_idx];
 
 	//uint competetor_ids[ASPINY_SPAN] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	//char competetor_states[ASPINY_SPAN] = { 0, 0, 0, 0, 0, 0, 0, 0 }; // { 0, 1, 2, 3, 4, 5, 6, 7 };
+	//uchar competetor_states[ASPINY_SPAN] = { 0, 0, 0, 0, 0, 0, 0, 0 }; // { 0, 1, 2, 3, 4, 5, 6, 7 };
 
 	int win_count = (asp_col_id_to_col_idx(asp_idx, (asp_col_ids[asp_idx])) == col_idx);
 
@@ -278,7 +278,7 @@ __kernel void axns_cycle_unoptd (
 
 
 			//uint cur_comp_id = asp_col_ids[cur_asp_idx];
-			char cur_comp_state = asp_states[cur_asp_idx];
+			uchar cur_comp_state = asp_states[cur_asp_idx];
 
 			
 			if (col_state < cur_comp_state) {

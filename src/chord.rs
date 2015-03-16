@@ -3,9 +3,10 @@ use std::collections::BTreeMap;
 use std::fmt::{ Formatter, Error };
 use std::iter;
 use common;
+use ocl;
 
 pub struct Chord {
-	pub chord: BTreeMap<u16, i8>,
+	pub chord: BTreeMap<u16, ocl::cl_uchar>,
 	pub width: u32,
 }
 impl Chord {
@@ -16,7 +17,7 @@ impl Chord {
 		}
 	}
 
-	pub fn from_vec(vec: &Vec<i8>) -> Chord {
+	pub fn from_vec(vec: &Vec<ocl::cl_uchar>) -> Chord {
 		let mut chord = BTreeMap::new();
 
 		let mut i: u16 = 0;
@@ -34,7 +35,7 @@ impl Chord {
 		}
 	}
 
-	pub fn note_sum(&mut self, addr: u16, val: i8) {
+	pub fn note_sum(&mut self, addr: u16, val: ocl::cl_uchar) {
 		match self.chord.insert(addr, val) {
 			Some(x) => {
 				let sum_val = if (x / 2) + (val / 2) > 63 {
@@ -49,7 +50,7 @@ impl Chord {
 		};
 	}
 
-	pub fn note_gt(&mut self, addr: u16, val: i8) {
+	pub fn note_gt(&mut self, addr: u16, val: ocl::cl_uchar) {
 		match self.chord.insert(addr, val) {
 			Some(x) => {
 				let sum_val = if x > val {
@@ -72,7 +73,7 @@ impl Chord {
 		cuf
 	}
 
-	pub fn unfold_into(&self, dest_vec: &mut Vec<i8>, offset: usize) {
+	pub fn unfold_into(&self, dest_vec: &mut Vec<ocl::cl_uchar>, offset: usize) {
 		dest_vec.clear();
 		dest_vec.push_all(self.unfold().notes.as_slice());		
 	}
@@ -87,12 +88,12 @@ impl Chord {
 
 
 pub struct ChordUnfolded {
-	pub notes: [i8; common::SENSORY_CHORD_WIDTH as usize],
+	pub notes: [ocl::cl_uchar; common::SENSORY_CHORD_WIDTH as usize],
 }
 impl ChordUnfolded {
 	pub fn new() -> ChordUnfolded {
 		ChordUnfolded { 
-			notes: [0i8; common::SENSORY_CHORD_WIDTH as usize],
+			notes: [0; common::SENSORY_CHORD_WIDTH as usize],
 		}
 	}
 
@@ -100,7 +101,7 @@ impl ChordUnfolded {
 		println!("");
 		let mut color: &'static str;
 		for i in range(0, self.notes.len()) {
-			if self.notes[i] != 0i8 {
+			if self.notes[i] != 0 {
 				color = common::C_ORA;
 			} else {
 				color = common::C_DEFAULT;

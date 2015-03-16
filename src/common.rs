@@ -33,7 +33,7 @@ pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
 pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;		// appears to cause lots of delay... 256 is slow
 
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 3;
-pub const DENDRITE_INITIAL_THRESHOLD: i8 = 1;
+pub const DENDRITE_INITIAL_THRESHOLD: u8 = 1;
 
 pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 16;
 pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 64;
@@ -97,6 +97,8 @@ pub const ASPINY_SPAN_LOG2: usize 			= ASPINY_REACH_LOG2 + 1;
 pub const ASPINY_SPAN: u32	 				= 1 << ASPINY_SPAN_LOG2;
 
 pub const ASPINY_HEIGHT: u8 = 1;
+
+pub const STATE_ZERO: u8 = 0;
 
 
 
@@ -259,7 +261,8 @@ pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default + Display>(si
 
 	//assert!(max - min > 0, "Vector size must be greater than zero.");
 
-	assert!(size > 0, "Vector size must be greater than zero.");
+	assert!(size > 0, "common::shuffled_vec(): Vector size must be greater than zero.");
+	assert!(min_val < max_val, "common::shuffled_vec(): Minimum value must be less than maximum.");
 
 
 	let mut vec: Vec<T> = iter::range_inclusive(min_val, max_val).cycle().take(size).collect();
