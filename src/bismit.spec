@@ -1,3 +1,23 @@
+=== Inhibition Notes ===
+	Currently working fine with:
+		- span=8
+		- floor=47ish
+		- int inhib_power = (ASPINY_SPAN + 1) - (cur_comp_dist);
+		- } else if (col_state == cur_comp_state) {
+				if ((asp_idx & 0x07 == 4)) {
+					win_count += inhib_power;
+
+	Biggest weaknesses:
+		- highly homogeneous input
+		- evenly scaling input, where peaks occur in the signal in very few places (mountains)
+
+
+	Few possible improvements:
+		- Run several iterations cascading from most active to least
+		- Do a meta-comparison by calculating number of wins, then calculating number of wins of wins
+		- Just say fuck it and do it per section (hypercolumn style)
+
+
 === Cortex Reorganization ===
 	- Move cells down to cortical regions
 	- Move columns up to cortical regions

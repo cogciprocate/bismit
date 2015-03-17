@@ -42,7 +42,7 @@ static int const ASPINY_REACH =			1 << ASPINY_REACH_LOG2;
 static int const ASPINY_SPAN_LOG2 =		ASPINY_REACH_LOG2 + 1;
 static int const ASPINY_SPAN =				1 << (ASPINY_REACH_LOG2 + 1);
 
-#define COLUMN_DOMINANCE_FLOOR				35
+#define COLUMN_DOMINANCE_FLOOR				8	//47
 
 /*
 static inline uint xos_rng(uint seed) {
@@ -219,6 +219,109 @@ __kernel void axns_cycle_unoptd (
 	__global uchar* const axn_states,
 	__global int* const aux_ints_0,
 	__global int* const aux_ints_1,
+	__private uint const axn_row_offset
+) {
+	uint const row_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const row_width = get_global_size(1);
+	uint const col_idx = mad24(row_id, row_width, col_id);
+	uint const axn_idx = col_idx + mad24(axn_row_offset, row_width, (uint)SYNAPSE_REACH);
+	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
+
+	uchar col_state = col_states[col_idx];
+
+	int win_count = (asp_col_id_to_col_idx(asp_idx, (asp_col_ids[asp_idx])) == col_idx);
+	//int tie_count = 0;
+
+	int aux_int_1_ofs = (col_idx * 100);
+
+	if (win_count) {		
+
+		for (uint i = 0; i < ASPINY_SPAN; i++) {
+
+			uint cur_asp_idx = (asp_idx - ASPINY_REACH) + i + (i > (ASPINY_REACH - 1));
+			uchar cur_comp_state = asp_states[cur_asp_idx];
+
+			uint cur_comp_dist = abs((int)asp_idx - (int)cur_asp_idx);
+			int inhib_power = (ASPINY_SPAN + 1) - (cur_comp_dist);
+
+			if (col_state < cur_comp_state) {
+				continue;
+
+			} else if (col_state == cur_comp_state) {
+				//win_count += inhib_power;
+				//tie_count += inhib_power;
+
+				//if (((asp_idx & 0x07) == 4)) {
+				//if (((asp_idx & 0x01) ^ (cur_asp_idx & 0x01))) {
+				if (((asp_idx & 0x07) == (col_state & 0x07))) {
+					//win_count += (inhib_power << 0) + 100;
+					//win_count += mul24((inhib_power << 1), ((asp_idx) < (cur_asp_idx)));
+					win_count += 1;
+
+				} else {
+					//win_count += inhib_power;
+					//win_count += mul24((inhib_power << 1), ((asp_idx) > (cur_asp_idx)));
+					//win_count += 1;
+				}
+
+			} else {
+				//win_count += inhib_power;
+				win_count += 1;
+			}
+		}
+	}
+
+	col_states[col_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
+	axn_states[axn_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
+	aux_ints_0[col_idx] = mul24(win_count, (win_count >= COLUMN_DOMINANCE_FLOOR));
+	//aux_ints_1[col_idx] = mul24((int)(asp_idx & 0x0F), (win_count >= COLUMN_DOMINANCE_FLOOR));
+}
+
+
+
+
+
+
+
+
+/*=============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+=============================================================================*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+__kernel void axns_cycle_unoptd_unclean (										
+	__global uchar* const asp_col_ids,
+	__global uchar* const asp_states,
+	__global uchar* const col_states,
+	__global uchar* const axn_states,
+	__global int* const aux_ints_0,
+	__global int* const aux_ints_1,
 	//__local uchar* wiv_local,
 	__private uint const axn_row_offset
 ) {
@@ -291,20 +394,25 @@ __kernel void axns_cycle_unoptd (
 					win_count += 100;
 				}
 
-				if ((asp_idx & 0x07) == 4) {
+
+				
+				win_count += inhib_power;
+
+				// (ASPINY_SPAN - 1)
+				//if ((asp_idx & 0x07 == 4)) {
 				//if (((asp_idx & 0x01) ^ (cur_asp_idx & 0x01))) {
-				//if ((asp_idx < cur_asp_idx)) {
+				/*if ((asp_idx < cur_asp_idx)) {
 					win_count += inhib_power;
 					//win_count += mul24((inhib_power << 1), ((asp_idx) < (cur_asp_idx)));
 					//win_count += 1;
 					//aux_ints_1[(asp_idx << 3) + i] = (cur_asp_idx & 0xFF);
 
 				} else {
-					
+					//win_count += inhib_power;
 					//win_count += mul24((inhib_power << 1), ((asp_idx) > (cur_asp_idx)));
 					//win_count += 1;
 					//aux_ints_1[(asp_idx << 3) + i] = (cur_asp_idx & 0x3F) + 2000;
-				}
+				}*/
 				//win_count += ((asp_idx & 0x1F) < (cur_asp_idx & 0x1F)) | ((asp_idx & 0x07)  == 4);
 
 			} else {
@@ -324,7 +432,7 @@ __kernel void axns_cycle_unoptd (
 	//col_state = mad24(64, (col_state > 0), (col_state >> 1));
 
 	//axn_states[axn_idx] = mul24(col_state, (win_count > 0));
-	//axn_states[axn_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
+	axn_states[axn_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
 
 	//aux_ints_0[col_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
 	//aux_ints_0[col_idx] = mul24((int)asp_idx, (win_count > 0));
@@ -335,25 +443,3 @@ __kernel void axns_cycle_unoptd (
 
 
 }
-
-
-
-
-
-
-
-
-/*=============================================================================
-===============================================================================
-===============================================================================
-===============================================================================
-===============================================================================
-===============================================================================
-===============================================================================
-===============================================================================
-===============================================================================
-=============================================================================*/
-
-
-
-
