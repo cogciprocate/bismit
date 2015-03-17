@@ -42,7 +42,7 @@ static int const ASPINY_REACH =			1 << ASPINY_REACH_LOG2;
 static int const ASPINY_SPAN_LOG2 =		ASPINY_REACH_LOG2 + 1;
 static int const ASPINY_SPAN =				1 << (ASPINY_REACH_LOG2 + 1);
 
-#define COLUMN_DOMINANCE_FLOOR				8	//47
+#define COLUMN_DOMINANCE_FLOOR				47	//47
 
 /*
 static inline uint xos_rng(uint seed) {
@@ -255,9 +255,9 @@ __kernel void axns_cycle_unoptd (
 				//if (((asp_idx & 0x07) == 4)) {
 				//if (((asp_idx & 0x01) ^ (cur_asp_idx & 0x01))) {
 				if (((asp_idx & 0x07) == (col_state & 0x07))) {
-					//win_count += (inhib_power << 0) + 100;
+					win_count += inhib_power;
 					//win_count += mul24((inhib_power << 1), ((asp_idx) < (cur_asp_idx)));
-					win_count += 1;
+					//win_count += 1;
 
 				} else {
 					//win_count += inhib_power;
@@ -266,8 +266,8 @@ __kernel void axns_cycle_unoptd (
 				}
 
 			} else {
-				//win_count += inhib_power;
-				win_count += 1;
+				win_count += inhib_power;
+				//win_count += 1;
 			}
 		}
 	}

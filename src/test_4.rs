@@ -16,7 +16,7 @@ use time;
 
 
 pub const TEST_ITERATIONS: i32 = 1; 
-pub const SHUFFLE_CHORDS: bool = false;
+pub const SHUFFLE_CHORDS: bool = true;
 pub const PRINT_EVERY: i32 = 10000;
 
 pub fn test_cycle() {
@@ -72,7 +72,7 @@ pub fn test_cycle() {
 	cortex.sense_vec(0, "post-thal", &mut vec1);
 
 
-	vec1.clear();
+	/*vec1.clear();
 	for i in range(0, scw) {
 		if ((i >= scw_1_4 - scw_1_16) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4 + scw_1_16)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
@@ -80,18 +80,19 @@ pub fn test_cycle() {
 		} else {
 			vec1.push(5);
 		}
-	}
+	}*/
 
 
-	/*vec1.clear();
+	vec1.clear();
 	for i in range(0, scw) {
-		if i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16 {
+		//if (i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16) || (i < scw_1_16) || (i >= (scw - scw_1_16)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
+		if i < scw_1_16 {
 			vec1.push(240);
 		} else {
-			vec1.push(40);
+			vec1.push(35);
 		}
-	}*/
+	}
 
 
 
