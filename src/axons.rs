@@ -25,7 +25,7 @@ pub struct Axons {
 	height_cellular: u8,
 	pub width: u32,
 	padding: u32,
-	kern_cycle: ocl::Kernel,
+	//kern_cycle: ocl::Kernel,
 	pub states: Envoy<ocl::cl_uchar>,
 }
 
@@ -37,36 +37,16 @@ impl Axons {
 		//println!("New Axons with: height_ac: {}, height_c: {}, width: {}", height_noncellular, height_cellular, width);
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, common::STATE_ZERO, ocl);
 
-		let mut kern_cycle = ocl.new_kernel("axns_cycle_unoptd", WorkSize::TwoDim(height_cellular as usize, width as usize))
-			.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize));
-
 		Axons {
 			height_noncellular: height_noncellular,
 			height_cellular: height_cellular,
 			width: width,
 			padding: padding,
-			kern_cycle: kern_cycle,
+			//kern_cycle: kern_cycle,
 			states: states,
 		}
 	}
 
-	pub fn init_kernels(&mut self, asps: &AspinyStellate, cols: &Columns, aux: &Aux) {
-		
-			self.kern_cycle.new_arg_envoy(&asps.ids);
-			self.kern_cycle.new_arg_envoy(&asps.states);
-			self.kern_cycle.new_arg_envoy(&cols.states);
-			self.kern_cycle.new_arg_envoy(&self.states);
-			self.kern_cycle.new_arg_envoy(&aux.ints_0);
-			self.kern_cycle.new_arg_envoy(&aux.ints_1);
-			//self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
-			self.kern_cycle.new_arg_scalar(self.height_noncellular as u32);
-	}
-
-	pub fn cycle(&self) {
-
-		
-		self.kern_cycle.enqueue();
-	} 
 
 }
 

@@ -29,18 +29,18 @@ pub struct AspinyStellate {
 }
 
 impl AspinyStellate {
-	pub fn new(col_width: u32, height: u8, region: &CorticalRegion, cols: &Columns, ocl: &Ocl) -> AspinyStellate {
+	pub fn new(col_width: u32, height: u8, region: &CorticalRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> AspinyStellate {
 
-		let width = (col_width >> common::ASPINY_SPAN_LOG2) + common::ASPINY_SPAN;
+		let width = col_width >> common::ASPINY_SPAN_LOG2;
 
-		let width_no_ofs = width - common::ASPINY_SPAN;
+		let padding = common::ASPINY_SPAN;
 
-		let ids = Envoy::<ocl::cl_uchar>::new(width, height, 0u8, ocl);
-		let states = Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl);
+		let ids = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, 0u8, ocl);
+		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, common::STATE_ZERO, ocl);
 
 		let mut kern_cycle_1 = ocl.new_kernel("aspiny_cycle", 
-			WorkSize::TwoDim(height as usize, col_width as usize));
-		kern_cycle_1.new_arg_envoy(&cols.states);
+			WorkSize::TwoDim(height as usize, width as usize));
+		kern_cycle_1.new_arg_envoy(&src_states);
 		kern_cycle_1.new_arg_envoy(&ids);
 		kern_cycle_1.new_arg_envoy(&states);
 

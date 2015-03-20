@@ -154,7 +154,7 @@ pub fn test_cycle() {
 		/* SYNAPSE STATES */
 		let sr_start = (512 << common::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
 
-		if true {	
+		if false {	
 			print!("\ncells.cols.syns.states: ");
 			cortex.cells.cols.syns.states.print((1 << 0) as usize, None, Some((sr_start - 256, sr_start + 256)));
 			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
@@ -172,12 +172,12 @@ pub fn test_cycle() {
 
 		if false {
 			print!("\ncells.asps.ids: ");
-			cortex.cells.asps.ids.print_val_range((1 << 0) as usize , Some((0, 255)));
+			cortex.cells.cols.asps.ids.print_val_range((1 << 0) as usize , Some((0, 255)));
 		}
 
 		if true {
 			print!("\ncells.asps.states: ");
-			cortex.cells.asps.states.print_val_range((1 << 0) as usize , Some((0, 255)));
+			cortex.cells.cols.asps.states.print_val_range((1 << 0) as usize , Some((0, 255)));
 		}
 
 

@@ -175,8 +175,24 @@ impl CorticalRegion {
 		self.row_ids(src_layer_names)
  	}
 
- 	pub fn col_input_row(&self) -> &'static str {
- 		let mut input_layer: Option<&'static str> = None;
+ 	pub fn col_input_layer(&self) -> CorticalRegionLayer {
+ 		let mut input_layer: Option<CorticalRegionLayer> = None;
+ 		
+ 		for (layer_name, layer) in self.layers.iter() {
+ 			if (layer.flags & layer::COLUMN_INPUT) == layer::COLUMN_INPUT {
+ 				input_layer = Some(layer.clone());
+ 			}
+ 		}
+
+ 		match input_layer {
+ 			Some(l)	=> l,
+ 			None 		=> panic!("cortical_regions::CorticalRegion::col_input_row(): no column input rows found"),
+ 		} 		
+ 	}
+
+ 	pub fn col_input_layer_name(&self) -> &'static str {
+ 		self.col_input_layer().name()
+ 		/*let mut input_layer: Option<&'static str> = None;
  		
  		for (layer_name, layer) in self.layers.iter() {
  			if (layer.flags & layer::COLUMN_INPUT) == layer::COLUMN_INPUT {
@@ -185,9 +201,9 @@ impl CorticalRegion {
  		}
 
  		match input_layer {
- 			Some(ir)	=> ir,
+ 			Some(ln)	=> ln,
  			None 		=> panic!("cortical_regions::CorticalRegion::col_input_row(): no column input rows found"),
- 		} 		
+ 		} 	*/	
  	}
 }
 

@@ -29,7 +29,7 @@ pub struct Cells {
 	pub height_cellular: u8,
 	ocl: ocl::Ocl,
 	pub cols: Columns,
-	pub asps: AspinyStellate,
+	
 	pub axns: Axons,
 	pub soma: Somata,
 	pub aux: Aux,
@@ -48,7 +48,7 @@ impl Cells {
 
 		let axns = Axons::new(width, height_noncellular, height_cellular, region, ocl);
 		let cols = Columns::new(width, region, &axns, &aux, ocl);
-		let asps = AspinyStellate::new(width, common::ASPINY_HEIGHT, region, &cols, ocl);
+		
 		let pyrs = Pyramidal::new(width, height_cellular, region, ocl);
 
 		let mut cells = Cells {
@@ -56,7 +56,6 @@ impl Cells {
 			height_noncellular: height_noncellular,
 			height_cellular: height_cellular,
 			cols: cols,
-			asps: asps,
 			axns: axns,
 			soma: Somata::new(width, height_cellular, region, ocl),
 			aux: aux,
@@ -64,13 +63,13 @@ impl Cells {
 			
 		};
 
-		cells.init_kernels(ocl);
+		cells.init_kernels();
 
 		cells
 	}
 
-	pub fn init_kernels(&mut self, ocl: &Ocl) {
-		self.axns.init_kernels(&self.asps, &self.cols, &self.aux)
+	pub fn init_kernels(&mut self) {
+		//self.axns.init_kernels(&self.cols.asps, &self.cols, &self.aux)
 		//self.cols.syns.init_kernels(&self.axns, ocl);
 	}
 
@@ -84,8 +83,8 @@ impl Cells {
 		//self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
 
 		self.cols.cycle();
-		self.asps.cycle();
-		self.axns.cycle();
+		
+		//self.axns.cycle();
 	}
 }
 

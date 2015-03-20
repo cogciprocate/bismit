@@ -1,7 +1,6 @@
 //#define DENDRITES_PER_CELL_DISTAL_LOG2						4
 //static int const DENDRITES_PER_CELL_DISTAL =				1 << DENDRITES_PER_CELL_DISTAL_LOG2;
 
-
 // SYNAPSES_PER_DENDRITE_DISTAL_LOG2: [MAX: 8]
 //#define SYNAPSES_PER_DENDRITE_DISTAL_LOG2					4
 //static int const SYNAPSES_PER_DENDRITE_DISTAL =			1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
@@ -12,25 +11,11 @@
 //#define SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2				4
 //static int const SYNAPSE_STRENGTH_DEFAULT_DISTAL =			1 << SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2;
 
-
 //#define DENDRITES_PER_CELL_PROXIMAL_LOG2					0
 //static uint const DENDRITES_PER_CELL_PROXIMAL =			1 << DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
-
-
-
-
-
-
-
 // SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: [MAX 8]
 //#define SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2					7
-
-
-
-
-
-
 
 //static uint const SYNAPSES_PER_DENDRITE_PROXIMAL =			1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
@@ -40,24 +25,23 @@
 //#define SYNAPSE_STRENGTH_DEFAULT_PROXIMAL_LOG2				4
 //static uint const SYNAPSE_STRENGTH_DEFAULT_PROXIMAL =		1 << SYNAPSE_STRENGTH_DEFAULT_PROXIMAL_LOG2;
 
-
 //#define SYNAPSE_STRENGTH_MAX				127
 
 //#define COLUMNS_PER_HYPERCOLUMN_LOG2		6
 
-#define SYNAPSE_REACH						128
+//#define SYNAPSE_REACH						128
 //static uint const SYNAPSE_SPAN = 			SYNAPSE_REACH * 2;
 
-#define SYNAPSE_WORKGROUP_SIZE				256
-#define AXONS_WORKGROUP_SIZE 				256
+//#define SYNAPSE_WORKGROUP_SIZE				256
+//#define AXONS_WORKGROUP_SIZE 				256
 
 //#define ASPINY_REACH_LOG2					2
 /*#define ASPINY_REACH 						4
 #define ASPINY_SPAN_LOG2 					3
 #define ASPINY_SPAN 						8*/
-static int const ASPINY_REACH =				1 << ASPINY_REACH_LOG2;
-static int const ASPINY_SPAN_LOG2 =			ASPINY_REACH_LOG2 + 1;
-static int const ASPINY_SPAN =				1 << (ASPINY_REACH_LOG2 + 1);
+//static int const ASPINY_REACH =				1 << ASPINY_REACH_LOG2;
+//static int const ASPINY_SPAN_LOG2 =			ASPINY_REACH_LOG2 + 1;
+//static int const ASPINY_SPAN =				1 << (ASPINY_REACH_LOG2 + 1);
 
 //#define COLUMN_DOMINANCE_FLOOR				47	//47
 
@@ -147,7 +131,7 @@ __kernel void syns_cycle(
 	//aux_ints_0[col_id] = base_cel_idx;
 	//uint syn_idx = init_syn_idx;
 
-	uint q = 0;
+	//uint q = 0;
 
 	for (uint syn_idx = init_syn_idx; syn_idx < syn_n; syn_idx += wg_size) {
 		uint cel_idx = syn_idx >> syns_per_cell_l2;
@@ -159,45 +143,44 @@ __kernel void syns_cycle(
 		//syn_states[syn_idx] = (axn_idx - 3200) >> 2;
 
 		//syn_idx += wg_size;
-		q++;
+		/*q++;
 		if (q < 65536) {
 			continue;
 		} else {
 			aux_ints_0[cel_idx] = 9999;
 			syn_states[syn_idx] = 99;
 			break;
-		}
+		}*/
 	}
 }
 
 
 
-__kernel void col_cycle(
+__kernel void dens_cycle(
 	__global uchar* const syn_states,
-	__global uchar* const col_states
+	__private uint const syns_per_den_l2,
+	__global uchar* const den_states
 ) {
 	uint const row_id = get_global_id(0);
-	uint const col_id = get_global_id(1);
+	uint const den_id = get_global_id(1);
 	//uint const l_id = get_local_id(1);
 	uint const row_width = get_global_size(1);
-	uint const col_idx = mad24(row_id, row_width, col_id);
-	uint const syn4_per_cel_l2 = SYNAPSES_PER_CELL_PROXIMAL_LOG2 - 2;
-	uint const syn_ofs = col_idx << syn4_per_cel_l2;
+	uint const den_idx = mad24(row_id, row_width, den_id);
+	uint const syn4_per_den_l2 = syns_per_den_l2 - 2;
+	uint const syn_ofs = den_idx << syn4_per_den_l2;
 
-	uchar4 syn_state = (uchar4)(0, 0, 0, 0);
 	int4 syn_sum = (int4)(0, 0, 0, 0);
-	uint n = 1 << syn4_per_cel_l2;
+	uint n = 1 << syn4_per_den_l2;
 
 	for (uint i = 0; i < n; i += 1) {
-		syn_state = vload4((syn_ofs + i), syn_states);
-		syn_sum += convert_int4(syn_state);
+		syn_sum += convert_int4(vload4((syn_ofs + i), syn_states));
 		//syn_sum += syn_state.s0;
 	}
 
-	int col_total = syn_sum.s0 + syn_sum.s1 + syn_sum.s2 + syn_sum.s3;
+	int den_total = syn_sum.s0 + syn_sum.s1 + syn_sum.s2 + syn_sum.s3;
 
-	col_states[col_idx] = (uchar)(col_total >> SYNAPSES_PER_CELL_PROXIMAL_LOG2);
-	//col_states[col_idx] = col_total; //(0, 1, 2, 3); 
+	den_states[den_idx] = (uchar)(den_total >> syns_per_den_l2);
+	//den_states[den_idx] = den_total; //(0, 1, 2, 3); 
 }
 
 
@@ -250,20 +233,20 @@ __kernel void aspiny_cycle(
 
 // RENAME ME
 	//__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
-__kernel void axns_cycle_unoptd (										
+__kernel void col_axns_cycle_unoptd (										
 	__global uchar* const asp_col_ids,
 	__global uchar* const asp_states,
 	__global uchar* const col_states,
 	__global uchar* const axn_states,
 	__global int* const aux_ints_0,
 	__global int* const aux_ints_1,
-	__private uint const axn_row_offset
+	__private uint const col_axn_row_offset
 ) {
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
 	uint const col_idx = mad24(row_id, row_width, col_id);
-	uint const axn_idx = col_idx + mad24(axn_row_offset, row_width, (uint)SYNAPSE_REACH);
+	uint const axn_idx = col_idx + mad24(col_axn_row_offset, row_width, (uint)SYNAPSE_REACH);
 	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
 
 	uchar col_state = col_states[col_idx];
@@ -412,7 +395,7 @@ __kernel void axns_cycle_unoptd (
 
 
 
-
+/*
 	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
 __kernel void syns_cycle_old(
 	__global uchar* const axn_states,
@@ -437,7 +420,7 @@ __kernel void syns_cycle_old(
 		syn_idx += SYNAPSE_WORKGROUP_SIZE;
 	}
 }
-
+*/
 
 
 

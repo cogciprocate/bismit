@@ -2,13 +2,13 @@ use protocell::{ CellKind, Protocell, DendriteKind };
 use ocl;
 
 
-
+#[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct CorticalRegionLayer {
 	pub name: &'static str,
 	pub cell: Option<Protocell>,
-	pub base_row_id: u8,
-	pub kind_base_row_pos: u8,
-	pub height: u8,
+	pub base_row_id: ocl::cl_uchar,
+	pub kind_base_row_pos: ocl::cl_uchar,
+	pub height: ocl::cl_uchar,
 	pub flags: LayerFlags,
 }
 
@@ -30,8 +30,17 @@ impl CorticalRegionLayer {
 			flags: flags,
 		}
 	}*/
+
+	pub fn base_row_id(&self) -> ocl::cl_uchar {
+		self.base_row_id
+	}
+
 	pub fn height(&self) -> ocl::cl_uchar {
 		self.height
+	}
+
+	pub fn name(&self) -> &'static str {
+		self.name
 	}
 
 	pub fn src_layer_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
@@ -53,6 +62,7 @@ impl CorticalRegionLayer {
 
 
 bitflags! {
+	#[derive(Debug)]
 	flags LayerFlags: u32 {
 		const COLUMN_INPUT 	= 0b00000001,
 		const COLUMN_OUTPUT	= 0b10000000,

@@ -56,7 +56,7 @@ pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG
 
 
 
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 6;
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 8;
 
 
 
@@ -114,9 +114,7 @@ pub const COLUMN_DOMINANCE_FLOOR: usize = 47;
 
 
 
-pub const CL_BUILD_OPTIONS: &'static str = "\
-	-cl-denorms-are-zero -cl-fast-relaxed-math\
-";
+pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
 
 
 pub fn build_options() -> String {
@@ -129,6 +127,10 @@ pub fn build_options() -> String {
 		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2)
 		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as usize)
 		.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as usize)
+		.opt("SYNAPSE_REACH", SYNAPSE_REACH as usize)
+		.opt("ASPINY_REACH", ASPINY_REACH as usize)
+		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as usize)
+		.opt("ASPINY_SPAN", ASPINY_SPAN as usize)
 		.to_string()
 }
 
@@ -145,12 +147,12 @@ impl BuildOptions {
 			string: String::with_capacity(1 << 12),
 		};
 
-		bo.str(cl_options);
-		bo
+		bo.str(cl_options)
 	}
 
-	pub fn str(&mut self, st: &'static str) {
+	pub fn str(mut self, st: &'static str) -> BuildOptions {
 		self.string.push_str(st);
+		self
 	}
 
 	pub fn opt(mut self, name: &'static str, val: usize) -> BuildOptions {
