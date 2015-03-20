@@ -15,9 +15,9 @@ use std::ops;
 use time;
 
 
-pub const TEST_ITERATIONS: i32 = 1; 
-pub const SHUFFLE_CHORDS: bool = true;
-pub const PRINT_EVERY: i32 = 10000;
+pub const TEST_ITERATIONS: i32 = 1000; 
+pub const SHUFFLE_CHORDS: bool = false;
+pub const PRINT_EVERY: i32 = 200;
 
 pub fn test_cycle() {
 	let mut cortex = cortex::Cortex::new();
@@ -72,25 +72,17 @@ pub fn test_cycle() {
 	cortex.sense_vec(0, "post-thal", &mut vec1);
 
 
-	/*vec1.clear();
-	for i in range(0, scw) {
-		if ((i >= scw_1_4 - scw_1_16) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4 + scw_1_16)) {
-		//if i >= scw_3_8 && i < scw_5_8 {
-			vec1.push(250);
-		} else {
-			vec1.push(5);
-		}
-	}*/
-
-
 	vec1.clear();
 	for i in range(0, scw) {
+		if i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16 {
+		//if ((i >= scw_1_4 - scw_1_16) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4 + scw_1_16)) {
+		//if i >= scw_3_8 && i < scw_5_8 {
 		//if (i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16) || (i < scw_1_16) || (i >= (scw - scw_1_16)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
-		if i < scw_1_16 {
+		//if i < scw_1_16 {
 			vec1.push(240);
 		} else {
-			vec1.push(35);
+			vec1.push(5);
 		}
 	}
 
@@ -101,8 +93,8 @@ pub fn test_cycle() {
 		//chord1 = Chord::from_vec(&vec1);
 	}
 
-	cortex.sense_vec(0, "pre-thal", &mut vec1);
-	cortex.sense_vec(0, "post-thal", &mut vec1);
+	/*cortex.sense_vec(0, "pre-thal", &mut vec1);
+	cortex.sense_vec(0, "post-thal", &mut vec1);*/
 	
 	
 	/*for x in chord1.chord.iter() {
@@ -160,10 +152,12 @@ pub fn test_cycle() {
 
 
 		/* SYNAPSE STATES */
+		let sr_start = (512 << common::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
 
 		if true {	
 			print!("\ncells.cols.syns.states: ");
-			cortex.cells.cols.syns.states.print_val_range(1 << (9 + scl_fct_log2), None);
+			cortex.cells.cols.syns.states.print((1 << 0) as usize, None, Some((sr_start - 256, sr_start + 256)));
+			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 		}
 
 

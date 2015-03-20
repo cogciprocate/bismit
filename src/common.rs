@@ -52,10 +52,20 @@ pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_
 pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
 pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 8;
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 <<SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
 
+
+
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 6;
+
+
+
+
+
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+
+pub const SYNAPSES_PER_CELL_PROXIMAL_LOG2: u32 = DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+pub const SYNAPSES_PER_CELL_PROXIMAL: u32 = 1 << SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 
 //pub const AXONS_PER_CELL: usize = DENDRITES_PER_CELL * SYNAPSES_PER_DENDRITE;
 //pub const SYNAPSES_PER_CELL: usize = SYNAPSES_PER_DENDRITE * DENDRITES_PER_CELL;
@@ -87,8 +97,8 @@ pub const PRX_DEN_BOOST_LOG2: u8 = 0;
 
 pub const SYNAPSE_DECAY_INTERVAL: usize = 256 * 64;
  
-pub const SYNAPSE_WORKGROUP_SIZE: usize = 256;
-pub const AXONS_WORKGROUP_SIZE: usize = 256;
+pub const SYNAPSES_WORKGROUP_SIZE: u32 = 256;
+pub const AXONS_WORKGROUP_SIZE: u32 = 256;
 
 
 pub const ASPINY_REACH_LOG2: usize 			= 2;
@@ -99,6 +109,94 @@ pub const ASPINY_SPAN: u32	 				= 1 << ASPINY_SPAN_LOG2;
 pub const ASPINY_HEIGHT: u8 = 1;
 
 pub const STATE_ZERO: u8 = 0;
+
+pub const COLUMN_DOMINANCE_FLOOR: usize = 47;
+
+
+
+pub const CL_BUILD_OPTIONS: &'static str = "\
+	-cl-denorms-are-zero -cl-fast-relaxed-math\
+";
+
+
+pub fn build_options() -> String {
+
+	assert!(SYNAPSES_PER_CELL_PROXIMAL_LOG2 >= 2);
+
+	BuildOptions::new(CL_BUILD_OPTIONS)
+		.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as usize)
+		.opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR)
+		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2)
+		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as usize)
+		.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as usize)
+		.to_string()
+}
+
+
+pub struct BuildOptions {
+	options: Vec<BuildOption>,
+	string: String,
+}
+
+impl BuildOptions {
+	pub fn new(cl_options: &'static str) -> BuildOptions {
+		let mut bo = BuildOptions {
+			options: Vec::with_capacity(50),
+			string: String::with_capacity(1 << 12),
+		};
+
+		bo.str(cl_options);
+		bo
+	}
+
+	pub fn str(&mut self, st: &'static str) {
+		self.string.push_str(st);
+	}
+
+	pub fn opt(mut self, name: &'static str, val: usize) -> BuildOptions {
+		self.options.push(BuildOption::new(name, val));
+		self
+	}
+
+	pub fn as_slice(&mut self) -> &str {
+		self.string.as_slice()
+	}
+
+	pub fn to_string(mut self) -> String {
+		for option in self.options.iter_mut() {
+			self.string.push_str(option.as_slice());
+		}
+		//println!("\n\tBuildOptions::as_slice(): length: {}, \n \tstring: {}", self.string.len(), self.string);
+		self.string
+	}
+
+}
+
+
+
+pub struct BuildOption {
+	name: &'static str,
+	val: usize,
+	string: String,
+}
+
+impl BuildOption {
+	pub fn new(name: &'static str, val: usize) -> BuildOption {
+		BuildOption {
+			name: name,
+			val: val,
+			string: String::with_capacity(1 << 6),
+		}
+	}
+
+	pub fn as_slice(&mut self) -> &str {
+		self.string = format!(" -D{}={}", self.name, self.val);
+
+		self.string.as_slice()
+	}
+}
+
+
 
 
 

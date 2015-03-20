@@ -44,15 +44,12 @@ impl Cells {
 		let height_total = height_noncellular + height_cellular;
 		let width = areas.width(&region.kind);
 
+		let aux = Aux::new(width, height_cellular, ocl);
+
 		let axns = Axons::new(width, height_noncellular, height_cellular, region, ocl);
-
-		let cols = Columns::new(width, region, &axns, ocl);
-
+		let cols = Columns::new(width, region, &axns, &aux, ocl);
 		let asps = AspinyStellate::new(width, common::ASPINY_HEIGHT, region, &cols, ocl);
-
 		let pyrs = Pyramidal::new(width, height_cellular, region, ocl);
-
-
 
 		let mut cells = Cells {
 			width: width,
@@ -62,11 +59,10 @@ impl Cells {
 			asps: asps,
 			axns: axns,
 			soma: Somata::new(width, height_cellular, region, ocl),
-			aux: Aux::new(width, height_cellular, ocl),
+			aux: aux,
 			ocl: ocl.clone(),
 			
 		};
-
 
 		cells.init_kernels(ocl);
 

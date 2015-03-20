@@ -1,32 +1,49 @@
-#define DENDRITES_PER_CELL_DISTAL_LOG2						4
-static int const DENDRITES_PER_CELL_DISTAL =				1 << DENDRITES_PER_CELL_DISTAL_LOG2;
+//#define DENDRITES_PER_CELL_DISTAL_LOG2						4
+//static int const DENDRITES_PER_CELL_DISTAL =				1 << DENDRITES_PER_CELL_DISTAL_LOG2;
 
-#define SYNAPSES_PER_DENDRITE_DISTAL_LOG2					4
-static int const SYNAPSES_PER_DENDRITE_DISTAL =			1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
+
+// SYNAPSES_PER_DENDRITE_DISTAL_LOG2: [MAX: 8]
+//#define SYNAPSES_PER_DENDRITE_DISTAL_LOG2					4
+//static int const SYNAPSES_PER_DENDRITE_DISTAL =			1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 //static uint const SYNAPSES_PER_CELL_DISTAL_LOG2 =			DENDRITES_PER_CELL_DISTAL_LOG2 + SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 //static uint const SYNAPSES_PER_CELL_DISTAL =				1 << (DENDRITES_PER_CELL_DISTAL_LOG2 + SYNAPSES_PER_DENDRITE_DISTAL_LOG2);
 
-#define SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2				4
-static int const SYNAPSE_STRENGTH_DEFAULT_DISTAL =			1 << SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2;
+//#define SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2				4
+//static int const SYNAPSE_STRENGTH_DEFAULT_DISTAL =			1 << SYNAPSE_STRENGTH_DEFAULT_DISTAL_LOG2;
 
 
-#define DENDRITES_PER_CELL_PROXIMAL_LOG2					0
+//#define DENDRITES_PER_CELL_PROXIMAL_LOG2					0
 //static uint const DENDRITES_PER_CELL_PROXIMAL =			1 << DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
-#define SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2					8
-//static uint const SYNAPSES_PER_DENDRITE_PROXIMAL =		1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
-static int const SYNAPSES_PER_CELL_PROXIMAL_LOG2 =			DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
-static int const SYNAPSES_PER_CELL_PROXIMAL =				1 << (DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2);
 
-#define SYNAPSE_STRENGTH_DEFAULT_PROXIMAL_LOG2				4
+
+
+
+
+
+// SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: [MAX 8]
+//#define SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2					7
+
+
+
+
+
+
+
+//static uint const SYNAPSES_PER_DENDRITE_PROXIMAL =			1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+
+//static int const SYNAPSES_PER_CELL_PROXIMAL_LOG2 =			DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+//static int const SYNAPSES_PER_CELL_PROXIMAL =				1 << (DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2);
+
+//#define SYNAPSE_STRENGTH_DEFAULT_PROXIMAL_LOG2				4
 //static uint const SYNAPSE_STRENGTH_DEFAULT_PROXIMAL =		1 << SYNAPSE_STRENGTH_DEFAULT_PROXIMAL_LOG2;
 
 
-#define SYNAPSE_STRENGTH_MAX				127
+//#define SYNAPSE_STRENGTH_MAX				127
 
-#define COLUMNS_PER_HYPERCOLUMN_LOG2		6
+//#define COLUMNS_PER_HYPERCOLUMN_LOG2		6
 
 #define SYNAPSE_REACH						128
 //static uint const SYNAPSE_SPAN = 			SYNAPSE_REACH * 2;
@@ -34,15 +51,15 @@ static int const SYNAPSES_PER_CELL_PROXIMAL =				1 << (DENDRITES_PER_CELL_PROXIM
 #define SYNAPSE_WORKGROUP_SIZE				256
 #define AXONS_WORKGROUP_SIZE 				256
 
-#define ASPINY_REACH_LOG2					2
+//#define ASPINY_REACH_LOG2					2
 /*#define ASPINY_REACH 						4
 #define ASPINY_SPAN_LOG2 					3
 #define ASPINY_SPAN 						8*/
-static int const ASPINY_REACH =			1 << ASPINY_REACH_LOG2;
-static int const ASPINY_SPAN_LOG2 =		ASPINY_REACH_LOG2 + 1;
+static int const ASPINY_REACH =				1 << ASPINY_REACH_LOG2;
+static int const ASPINY_SPAN_LOG2 =			ASPINY_REACH_LOG2 + 1;
 static int const ASPINY_SPAN =				1 << (ASPINY_REACH_LOG2 + 1);
 
-#define COLUMN_DOMINANCE_FLOOR				47	//47
+//#define COLUMN_DOMINANCE_FLOOR				47	//47
 
 /*
 static inline uint xos_rng(uint seed) {
@@ -65,20 +82,6 @@ static inline uint asp_col_id_to_col_idx(uint asp_idx, uint asp_col_id) {
 	return (asp_to_col_ofs(asp_idx) + (asp_col_id & (ASPINY_SPAN - 1)));
 }
 
-/*
-static inline uint low_8(uint x) {
-	return (x & 0x00FF);
-}
-
-static inline uint low_6(uint x) {
-	return (x & 0x003F);
-}
-
-static inline uint low_3(uint x) {
-	return (x & 0x0007);
-}
-
-*/
 
 
 
@@ -108,30 +111,65 @@ static inline uint low_3(uint x) {
 	WATCH OUT FOR:
 		- Bank conflicts once src_ofs start to change
 */
-	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
-__kernel void col_syns_cycle(
+//	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
+__kernel void syns_cycle(
 	__global uchar* const axn_states,
 	__global char* const syn_src_ofs,
 	__global uchar* const syn_src_row_ids,
+	__private uint const syns_per_cell_l2,
+	__global int* const aux_ints_0,
+	__global int* const aux_ints_1,
 	__global uchar* const syn_states
 ) {
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
-	uint const l_id = get_local_id(1);
 	uint const row_width = get_global_size(1);
-	uint const cel_idx = mad24(row_id, row_width, col_id);
+	uint const l_id = get_local_id(1); 
+	uint const wg_id = get_group_id(1);
+	uint const wg_size = get_local_size(1);
 	
-	uint syn_idx = ((cel_idx - l_id) << SYNAPSES_PER_CELL_PROXIMAL_LOG2) + l_id;
+	uint const base_col_id = mul24(wg_id, wg_size);
+	uint const base_cel_idx = mad24(row_id, row_width, base_col_id);
 
-	uint n = SYNAPSE_WORKGROUP_SIZE + col_id;
-	uint axn_idx;
+	//uint const cels_per_iter = wg_size >> syns_per_cell_l2;
+	//uint const iters_per_cel = 0;		// syns_per_cell / wg_size
 
-	for (uint i = col_id; i < n; i++) {
-		axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(i + syn_src_ofs[syn_idx]));
+	//uint const init_cel_idx = base_cel_idx + (l_id >> syns_per_cell_l2);
+	uint const init_syn_idx = (base_cel_idx << syns_per_cell_l2) + l_id;
+	//uint const init_axn_idx = mad24((uint)syn_src_row_ids[init_syn_idx], row_width, (uint)(0 + syn_src_ofs[init_syn_idx]));
+	
+	/*uint cel_idx = init_cel_idx;
+	uint axn_idx = init_axn_idx;*/
+
+	uint syn_n = init_syn_idx + (wg_size << syns_per_cell_l2);
+	//uint n = syns_per_cell_l2;
+
+	//aux_ints_0[col_id] = base_cel_idx;
+	//uint syn_idx = init_syn_idx;
+
+	uint q = 0;
+
+	for (uint syn_idx = init_syn_idx; syn_idx < syn_n; syn_idx += wg_size) {
+		uint cel_idx = syn_idx >> syns_per_cell_l2;
+		//uint cel_idx_dup = init_cel_idx + i;
+		uint axn_idx = (mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(cel_idx + syn_src_ofs[syn_idx]))) + SYNAPSE_REACH;
+
 		syn_states[syn_idx] = axn_states[axn_idx];
-		syn_idx += SYNAPSE_WORKGROUP_SIZE;
+		//syn_states[syn_idx] = base_cel_idx >> 2;
+		//syn_states[syn_idx] = (axn_idx - 3200) >> 2;
+
+		//syn_idx += wg_size;
+		q++;
+		if (q < 65536) {
+			continue;
+		} else {
+			aux_ints_0[cel_idx] = 9999;
+			syn_states[syn_idx] = 99;
+			break;
+		}
 	}
 }
+
 
 
 __kernel void col_cycle(
@@ -159,7 +197,7 @@ __kernel void col_cycle(
 	int col_total = syn_sum.s0 + syn_sum.s1 + syn_sum.s2 + syn_sum.s3;
 
 	col_states[col_idx] = (uchar)(col_total >> SYNAPSES_PER_CELL_PROXIMAL_LOG2);
-	//col_states[col_idx] = cel_idx >> 2; //(0, 1, 2, 3); 
+	//col_states[col_idx] = col_total; //(0, 1, 2, 3); 
 }
 
 
@@ -233,7 +271,7 @@ __kernel void axns_cycle_unoptd (
 	int win_count = (asp_col_id_to_col_idx(asp_idx, (asp_col_ids[asp_idx])) == col_idx);
 	//int tie_count = 0;
 
-	int aux_int_1_ofs = (col_idx * 100);
+	//int aux_int_1_ofs = (col_idx * 100);
 
 	if (win_count) {		
 
@@ -272,9 +310,9 @@ __kernel void axns_cycle_unoptd (
 		}
 	}
 
-	col_states[col_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
+	//col_states[col_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
 	axn_states[axn_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
-	aux_ints_0[col_idx] = mul24(win_count, (win_count >= COLUMN_DOMINANCE_FLOOR));
+	//aux_ints_0[col_idx] = mul24(win_count, (win_count >= COLUMN_DOMINANCE_FLOOR));
 	//aux_ints_1[col_idx] = mul24((int)(asp_idx & 0x0F), (win_count >= COLUMN_DOMINANCE_FLOOR));
 }
 
@@ -306,140 +344,100 @@ __kernel void axns_cycle_unoptd (
 
 
 
-
-
-
-
-
-
-
-
-
-__kernel void axns_cycle_unoptd_unclean (										
-	__global uchar* const asp_col_ids,
-	__global uchar* const asp_states,
-	__global uchar* const col_states,
+/*__kernel void syns_cycle_1_1(
 	__global uchar* const axn_states,
+	__global char* const syn_src_ofs,
+	__global uchar* const syn_src_row_ids,
+	__private uint const dens_per_wg,
 	__global int* const aux_ints_0,
 	__global int* const aux_ints_1,
-	//__local uchar* wiv_local,
-	__private uint const axn_row_offset
+	__global uchar* const syn_states
+) {
+	uint const row_id = get_global_id(0);
+	uint const den_grp_id = get_global_id(1);
+	uint const l_id = get_local_id(1); 
+	uint const wg_id = get_group_id(1);
+	uint const wg_size = get_local_size(1);
+	uint const row_width = mul24(get_global_size(1), dens_per_wg);
+
+	uint const base_col_id = mul24(wg_id, mul24(wg_size, dens_per_wg));
+	
+	//uint 
+	//uint const syns_per_wg = SYNAPSES_PER_DENDRITE_PROXIMAL * dens_per_wg;
+
+	uint dens_per_cell = (1 << DENDRITES_PER_CELL_PROXIMAL_LOG2);
+
+
+
+
+	uint const base_syn_idx = mul24(base_col_id, (uint)(1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2)) + l_id; 
+
+	uint const base_cel_idx = mad24(row_id, row_width, base_col_id);
+
+	uint const base_axn_idx = mad24((uint)syn_src_row_ids[base_syn_idx], row_width, (uint)(0 + syn_src_ofs[base_syn_idx]));
+
+
+
+
+	uint syn_idx = base_syn_idx;
+	uint den_idx = 0;
+	uint cel_idx = 0;
+	uint axn_idx = 0;
+
+	uint syn_i = 0;
+	uint den_i = 0;
+	uint cel_i = 0;
+	uint axn_i = 0;
+
+	uint n = den_grp_id + (SYNAPSE_REACH << 1);
+
+	for (uint i = den_grp_id; i < n; i += dens_per_wg) {
+
+		syn_idx = base_syn_idx + syn_i;
+
+		//cel_idx = 
+		axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(i + syn_src_ofs[syn_idx]));
+
+
+
+		syn_states[syn_idx] = axn_states[axn_idx];
+
+
+		den_i += dens_per_wg;
+		syn_i += SYNAPSE_WORKGROUP_SIZE;
+		//syn_idx += SYNAPSE_WORKGROUP_SIZE;
+	}
+}*/
+
+
+
+
+
+	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
+__kernel void syns_cycle_old(
+	__global uchar* const axn_states,
+	__global char* const syn_src_ofs,
+	__global uchar* const syn_src_row_ids,
+	__global uchar* const syn_states
 ) {
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
-	//uint const l_id = get_local_id(1);
+	uint const l_id = get_local_id(1);
 	uint const row_width = get_global_size(1);
-	uint const col_idx = mad24(row_id, row_width, col_id);
-	uint const axn_idx = col_idx + mad24(axn_row_offset, row_width, (uint)SYNAPSE_REACH);
-	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
+	uint const cel_idx = mad24(row_id, row_width, col_id);
+	
+	uint syn_idx = ((cel_idx - l_id) << SYNAPSES_PER_CELL_PROXIMAL_LOG2) + l_id;
 
-	uchar col_state = col_states[col_idx];
+	uint n = SYNAPSE_WORKGROUP_SIZE + col_id;
+	uint axn_idx;
 
-	//uint competetor_ids[ASPINY_SPAN] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	//uchar competetor_states[ASPINY_SPAN] = { 0, 0, 0, 0, 0, 0, 0, 0 }; // { 0, 1, 2, 3, 4, 5, 6, 7 };
-
-	int win_count = (asp_col_id_to_col_idx(asp_idx, (asp_col_ids[asp_idx])) == col_idx);
-
-
-	int aux_int_1_ofs = (col_idx * 100);
-
-
-	for (int i = 0; i < ASPINY_SPAN; i++) {
-		aux_ints_1[aux_int_1_ofs + i] = 0;
+	for (uint i = col_id; i < n; i++) {
+		axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(i + syn_src_ofs[syn_idx]));
+		syn_states[syn_idx] = axn_states[axn_idx];
+		syn_idx += SYNAPSE_WORKGROUP_SIZE;
 	}
-
-	if (win_count) {
-
-		//vstore4(vload4(0, &asp_states[asp_idx - ASPINY_REACH]), 0, &competetor_states[0]);
-		//vstore4(vload4(0, &asp_states[asp_idx + 1]), 0, &competetor_states[ASPINY_REACH]);
-
-		//vstore4(convert_uint4(vload4(0, &asp_col_ids[asp_idx - ASPINY_REACH])), 0, &competetor_ids[0]);
-		//vstore4(convert_uint4(vload4(0, &asp_col_ids[asp_idx + 1])), 0, &competetor_ids[ASPINY_REACH]);
-
-		/*for (int i = 0; i < ASPINY_SPAN; i++) {
-
-			int cur_asp_idx = (asp_idx - ASPINY_REACH) + i + (i > 3);
-			//int cur_asp_idx = (asp_idx - 4) + i + (i > 3);
-
-			//competetor_ids[i] = asp_col_id_to_col_idx(cur_asp_idx, competetor_ids[i]);
-
-			//aux_ints_1[(col_idx << 3) + i] = competetor_ids[i] + 1;
-			aux_ints_1[aux_int_1_ofs + i] = cur_asp_idx; //asp_col_id_to_col_idx(cur_asp_idx, asp_col_ids[cur_asp_idx]);
-			//aux_ints_1[aux_int_1_ofs + i] = cur_asp_idx;
-			//aux_ints_1[(col_idx << 3) + i] = cur_asp_idx;			
-			//aux_ints_1[(col_idx << 3) + i] = asp_idx;
-			//aux_ints_1[col_idx] = cur_asp_idx;
-		}*/
-
-
-			
-
-		for (uint i = 0; i < ASPINY_SPAN; i++) {
-
-			uint cur_asp_idx = (asp_idx - ASPINY_REACH) + i + (i > (ASPINY_REACH - 1));
-			uchar cur_comp_state = asp_states[cur_asp_idx];
-
-			uint cur_comp_dist = abs((int)asp_idx - (int)cur_asp_idx);
-			int inhib_power = ASPINY_SPAN - cur_comp_dist;
-			//aux_ints_1[aux_int_1_ofs + i] = cur_comp_dist;
-
-			if (col_state < cur_comp_state) {
-				continue;
-
-			} else if (col_state == cur_comp_state) {
-
-				// FOR DEBUG PURPOSES
-				if ((asp_idx == cur_asp_idx)) {
-						// SHOULD BE UNREACHABLE
-					win_count += 100;
-				}
-
-
-				
-				win_count += inhib_power;
-
-				// (ASPINY_SPAN - 1)
-				//if ((asp_idx & 0x07 == 4)) {
-				//if (((asp_idx & 0x01) ^ (cur_asp_idx & 0x01))) {
-				/*if ((asp_idx < cur_asp_idx)) {
-					win_count += inhib_power;
-					//win_count += mul24((inhib_power << 1), ((asp_idx) < (cur_asp_idx)));
-					//win_count += 1;
-					//aux_ints_1[(asp_idx << 3) + i] = (cur_asp_idx & 0xFF);
-
-				} else {
-					//win_count += inhib_power;
-					//win_count += mul24((inhib_power << 1), ((asp_idx) > (cur_asp_idx)));
-					//win_count += 1;
-					//aux_ints_1[(asp_idx << 3) + i] = (cur_asp_idx & 0x3F) + 2000;
-				}*/
-				//win_count += ((asp_idx & 0x1F) < (cur_asp_idx & 0x1F)) | ((asp_idx & 0x07)  == 4);
-
-			} else {
-				win_count += inhib_power;
-			}
-
-			/*win_count += (
-				(col_state > competetor_states[i]) | (
-				(asp_idx & 0x1F) < (cur_asp_idx & 0x1F)) |
-				(low_6(asp_idx) == 32)
-			);*/
-
-		}
-	}
-
-	col_states[col_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
-	//col_state = mad24(64, (col_state > 0), (col_state >> 1));
-
-	//axn_states[axn_idx] = mul24(col_state, (win_count > 0));
-	axn_states[axn_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
-
-	//aux_ints_0[col_idx] = mul24(col_state, (win_count >= COLUMN_DOMINANCE_FLOOR));
-	//aux_ints_0[col_idx] = mul24((int)asp_idx, (win_count > 0));
-	aux_ints_0[col_idx] = mul24(win_count, (win_count >= COLUMN_DOMINANCE_FLOOR));
-
-	//aux_ints_1[col_idx] = asp_col_id_to_col_idx(asp_idx, (asp_col_ids[asp_idx]));
-
-
-
 }
+
+
+
+

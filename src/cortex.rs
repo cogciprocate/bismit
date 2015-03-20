@@ -68,8 +68,10 @@ pub struct Cortex {
 impl Cortex {
 	pub fn new() -> Cortex {
 		print!("\nInitializing Cortex... ");
+		let build_options: String = common::build_options();
+		//let build_options: String = common::CL_BUILD_OPTIONS.to_string();
 		let time_start = time::get_time();
-		let ocl: ocl::Ocl = ocl::Ocl::new();
+		let ocl: ocl::Ocl = ocl::Ocl::new(build_options);
 		let regions = define_regions();
 		let areas = define_areas();
 
