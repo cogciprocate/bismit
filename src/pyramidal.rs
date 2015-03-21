@@ -2,11 +2,11 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionType };
+use cortical_regions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
-use cells::{ Somata, Aux };
+use cells::{ Aux };
 use aspiny::{ AspinyStellate };
 use columns::{ Columns };
 use axons::{ Axons };
@@ -25,18 +25,33 @@ use std::fmt::{ Display };
 pub struct Pyramidal {
 	height: u8,
 	width: u32,
+	kern_cycle: ocl::Kernel,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
 }
 
 impl Pyramidal {
-	pub fn new(width: u32, height: u8, region: &CorticalRegion, ocl: &Ocl) -> Pyramidal {
+	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, ocl: &Ocl) -> Pyramidal {
+
+		let height: u8 = region.cell_kind_row_count(&CellKind::Pyramidal);
+
+		let states = Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl);
+
+		let kern_cycle = ocl.new_kernel("pyramidal_cycle", 
+			WorkSize::TwoDim(height as usize, width as usize))
+			.arg_env(&states);
+
 
 		Pyramidal {
 			height: height,
 			width: width,
-			states: Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl),
-			dens: Dendrites::new(width, height, DendriteKind::Distal, common::DENDRITES_PER_CELL_DISTAL, region, ocl),
+			kern_cycle: kern_cycle,
+			states: states,
+			dens: Dendrites::new(width, height, DendriteKind::Distal, common::DENDRITES_PER_CELL_DISTAL, region, axons, ocl),
 		}
+	}
+
+	pub fn cycle(&self) {
+		self.kern_cycle.enqueue();
 	}
 }

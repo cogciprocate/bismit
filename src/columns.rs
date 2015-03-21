@@ -2,7 +2,7 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionType };
+use cortical_regions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -44,23 +44,24 @@ impl Columns {
 		let asps = AspinyStellate::new(width, height, region, &states, ocl);
 		let syns = ColumnSynapses::new(width, height, syns_per_cell, region, axons, aux, ocl);
 
-		let mut kern_cycle = ocl.new_kernel("dens_cycle", WorkSize::TwoDim(height as usize, width as usize));
-		kern_cycle.new_arg_envoy(&syns.states);
-		kern_cycle.new_arg_scalar(syns_per_cell_l2);
-		kern_cycle.new_arg_envoy(&states);
+		let mut kern_cycle = ocl.new_kernel("dens_cycle", WorkSize::TwoDim(height as usize, width as usize))
+			.arg_env(&syns.states)
+			.arg_scl(syns_per_cell_l2)
+			.arg_env(&states);
 
-		//println!("\ncol base_row_id: {}", il.base_row_id());
+		println!("\ncol base_row_pos: {}", il.base_row_pos());
 
 		let mut kern_axns_cycle = ocl.new_kernel("col_axns_cycle_unoptd", WorkSize::TwoDim(height as usize, width as usize))
 			.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&asps.ids)
 			.arg_env(&asps.states)
+			.arg_env(&asps.wins)
 			.arg_env(&states)
 			.arg_env(&axons.states)
 			.arg_env(&aux.ints_0)
 			.arg_env(&aux.ints_1)
 			//self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
-			.arg_scl(il.base_row_id() as u32);
+			.arg_scl(il.base_row_pos() as u32);
 		
 		Columns {
 			width: width,
@@ -72,7 +73,7 @@ impl Columns {
 		}
 	}
 
-	pub fn cycle(&self) {
+	pub fn cycle(&mut self) {
 		self.syns.cycle();
 		self.kern_cycle.enqueue();
 		self.asps.cycle();
@@ -98,14 +99,14 @@ impl ColumnSynapses {
 
 		let syns_per_row = width * per_cell;
 		let src_row_ids_list: Vec<u8> = region.src_row_ids(region.col_input_layer_name(), DendriteKind::Proximal);
-		//let src_rows_len = src_row_ids_list.len() as u8;
+		let src_rows_len = src_row_ids_list.len() as u8;
 		//let height = src_rows_len;
 		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
 		//let dens_per_wg: u32 = wg_size / (common::SYNAPSES_PER_DENDRITE_PROXIMAL);
 		let syns_per_cell_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 		//let dens_per_wg: u32 = 1;
 
-		//print!("\nNew Column Synapses with: height: {}, syns_per_row: {},", height, syns_per_row);
+		print!("\nNew Column Synapses with: height: {}, syns_per_row: {}, src_rows_len: {}", height, syns_per_row, src_rows_len);
 
 		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, height, common::STATE_ZERO, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, height, 1i8, ocl);
@@ -119,8 +120,8 @@ impl ColumnSynapses {
 		kern_cycle.new_arg_envoy(&src_ofs);
 		kern_cycle.new_arg_envoy(&src_row_ids);
 		kern_cycle.new_arg_scalar(syns_per_cell_l2);
-		kern_cycle.new_arg_envoy(&aux.ints_0);
-		kern_cycle.new_arg_envoy(&aux.ints_1);
+		//kern_cycle.new_arg_envoy(&aux.ints_0);
+		//kern_cycle.new_arg_envoy(&aux.ints_1);
 		kern_cycle.new_arg_envoy(&states);
 		
 		//println!("src_row_ids_list[0]: {}", src_row_ids_list[0]);
@@ -143,10 +144,10 @@ impl ColumnSynapses {
 	}
 
 	fn init(&mut self, region: &CorticalRegion) {
-		let row_len = self.width * self.per_cell;
+		let len = self.width * self.per_cell * self.height as u32;
 		let mut rng = rand::weak_rng();
 		let ei_start = 0usize;
-		let ei_end = ei_start + row_len as usize;
+		let ei_end = ei_start + len as usize;
 		let src_row_idx_range: Range<usize> = Range::new(0, self.src_row_ids_list.len());
 		//println!("\nInitializing Column Synapses: ei_start: {}, ei_end: {}, self.src_row_ids: {:?}, self.src_row_ids.len(): {}", ei_start, ei_end, self.src_row_ids_list, self.src_row_ids_list.len());
 

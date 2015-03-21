@@ -1,13 +1,14 @@
 
 extern crate libc;
 
-pub use cl_h::{cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_char, cl_uchar, cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus};
+pub use cl_h::{cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_event, cl_char, cl_uchar, cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus};
 
 use envoy::{ Envoy };
 use cl_h;
 use common;
 
 use std;
+use std::num;
 use std::ptr;
 use std::mem;
 use std::io::{ Read };
@@ -216,20 +217,20 @@ impl Kernel {
 		self
 	}
 
-	pub fn new_arg_envoy<T>(&mut self, envoy: &Envoy<T>) {
+	pub fn new_arg_envoy<T>(&mut self, envoy: &Envoy<T>) -> u32 {
 		let buf = &envoy.buf;
 
-		self.set_kernel_arg(
+		self.new_kernel_arg(
 			mem::size_of::<cl_h::cl_mem>() as libc::size_t, 
 			(buf as *const cl_h::cl_mem) as *const libc::c_void,
 		)
 	}
 
-	pub fn new_arg_scalar<T>(&mut self, scalar: T) {
+	pub fn new_arg_scalar<T>(&mut self, scalar: T) -> u32 {
 		unsafe {
 			//let scal = &scalar;
 
-			self.set_kernel_arg(
+			self.new_kernel_arg(
 				mem::size_of::<T>() as libc::size_t,
 				//(scal as *const cl_h::cl_mem) as *const libc::c_void,
 				mem::transmute(&scalar),
@@ -238,15 +239,16 @@ impl Kernel {
 		}
 	}
 
-	pub fn new_arg_local<T>(&mut self, type_sample: T, length: usize) {
+	pub fn new_arg_local<T>(&mut self, type_sample: T, length: usize) -> u32 {
 
-		self.set_kernel_arg(
+		self.new_kernel_arg(
 			(mem::size_of::<T>() * length) as libc::size_t,
 			ptr::null(),
 		)
 	}
 
-	fn set_kernel_arg(&mut self, arg_size: libc::size_t, arg_value: *const libc::c_void) {
+	fn new_kernel_arg(&mut self, arg_size: libc::size_t, arg_value: *const libc::c_void) -> u32 {
+		let a_i = self.arg_index;
 		let err = unsafe {
 			cl_h::clSetKernelArg(
 						self.kernel, 
@@ -258,10 +260,22 @@ impl Kernel {
 		must_succ("clSetKernelArg()", err);
 		//println!("Adding Kernel Argument: {}", self.arg_index);
 		self.arg_index += 1;
-		//self
+		a_i
 	}
 
-	pub fn enqueue(&self) {
+	pub fn set_kernel_arg<T>(&mut self, arg_index: cl_h::cl_uint, val: T) {
+		unsafe {
+			let err = cl_h::clSetKernelArg(
+						self.kernel, 
+						arg_index, 
+						mem::size_of::<T>() as u64, 
+						mem::transmute(&val),
+			);
+			must_succ("clSetKernelArg()", err);
+		}
+	}
+
+	pub fn enqueue(&self) -> cl_event {
 
 			// TODO: VERIFY THE DIMENSIONS OF ALL THE WORKSIZES
 
@@ -271,6 +285,7 @@ impl Kernel {
 		let c_lws = self.lws.complete_worksize();
 		let lws = (&c_lws as *const (usize, usize, usize)) as *const libc::size_t;
 
+		let mut event: cl_event = ptr::null_mut();
 
 		unsafe {
 			let err = cl_h::clEnqueueNDRangeKernel(
@@ -282,10 +297,40 @@ impl Kernel {
 						lws,
 						0,
 						ptr::null(),
-						ptr::null_mut(),
+						&mut event as *mut cl_event,
 			);
 			must_succ("clEnqueueNDRangeKernel()", err);
 		}
+		event
+	}
+
+	pub fn enqueue_wait(&self, event_wait_list: Vec<cl_event>) -> cl_event {
+
+			// TODO: VERIFY THE DIMENSIONS OF ALL THE WORKSIZES
+
+		let c_gws = self.gws.complete_worksize();
+		let gws = (&c_gws as *const (usize, usize, usize)) as *const libc::size_t;
+
+		let c_lws = self.lws.complete_worksize();
+		let lws = (&c_lws as *const (usize, usize, usize)) as *const libc::size_t;
+
+		let mut event: cl_event = ptr::null_mut();
+
+		unsafe {
+			let err = cl_h::clEnqueueNDRangeKernel(
+						self.command_queue,
+						self.kernel,
+						self.gws.dims(),				//	dims,
+						self.gwo.as_ptr(),
+						gws,
+						lws,
+						num::cast(event_wait_list.len()).expect("ocl::Kernel::enqueue_wait()"),
+						event_wait_list.as_ptr(),
+						&mut event as *mut cl_event,
+			);
+			must_succ("clEnqueueNDRangeKernel()", err);
+		}
+		event
 	}
 }
 
@@ -302,9 +347,9 @@ impl WorkSize {
 	pub fn dims(&self) -> cl_h::cl_uint {
 		use self::WorkSize::*;
 		match self {
-			&ThreeDim(_, _, _) 	=> 3,
-			&TwoDim(_, _) 		=> 2,
-			&OneDim(_) 			=> 1,
+			&ThreeDim(..) 		=> 3,
+			&TwoDim(..) 		=> 2,
+			&OneDim(..) 		=> 1,
 			&Unspecified 		=> 0,
 		}
 

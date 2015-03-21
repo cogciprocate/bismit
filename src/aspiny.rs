@@ -2,7 +2,7 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionType };
+use cortical_regions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -23,9 +23,13 @@ use std::fmt::{ Display };
 pub struct AspinyStellate {
 	width: u32,
 	height: u8,
-	kern_cycle_1: ocl::Kernel,
+	kern_cycle_pre: ocl::Kernel,
+	kern_cycle_wins: ocl::Kernel,
+	kern_cycle_post: ocl::Kernel,
 	pub ids: Envoy<ocl::cl_uchar>,
+	pub wins: Envoy<ocl::cl_uchar>,
 	pub states: Envoy<ocl::cl_uchar>,
+	
 }
 
 impl AspinyStellate {
@@ -36,27 +40,58 @@ impl AspinyStellate {
 		let padding = common::ASPINY_SPAN;
 
 		let ids = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, 0u8, ocl);
+		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, 0u8, ocl);
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, common::STATE_ZERO, ocl);
 
-		let mut kern_cycle_1 = ocl.new_kernel("aspiny_cycle", 
-			WorkSize::TwoDim(height as usize, width as usize));
-		kern_cycle_1.new_arg_envoy(&src_states);
-		kern_cycle_1.new_arg_envoy(&ids);
-		kern_cycle_1.new_arg_envoy(&states);
+		print!("\nAspstellate setting kernel args");
+
+		let mut kern_cycle_pre = ocl.new_kernel("aspiny_cycle_pre", 
+			WorkSize::TwoDim(height as usize, width as usize))
+			.arg_env(&src_states)
+			.arg_env(&states)
+			.arg_env(&ids)
+		;
+
+		let mut kern_cycle_wins = ocl.new_kernel("aspiny_cycle_wins", 
+			WorkSize::TwoDim(height as usize, width as usize))
+			.arg_env(&states)
+			.arg_env(&ids)
+			.arg_env(&wins)
+		;
+
+		let mut kern_cycle_post = ocl.new_kernel("aspiny_cycle_post", 
+			WorkSize::TwoDim(height as usize, width as usize))
+			.arg_env(&wins)
+			.arg_env(&ids)
+			.arg_env(&states)
+		;
 
 
 		AspinyStellate {
 			width: width,
 			height: height,
-			kern_cycle_1: kern_cycle_1,
+			kern_cycle_pre: kern_cycle_pre,
+			kern_cycle_wins: kern_cycle_wins,
+			kern_cycle_post: kern_cycle_post,
 			ids: ids,
+			wins: wins,
 			states: states,
 		}
 	}
 
-	pub fn cycle(&self) {
-		self.kern_cycle_1.enqueue();
+	pub fn cycle(&mut self) {
+		let mut event = self.kern_cycle_pre.enqueue();
+
+		//println!("\n### New aspiny.cycle() iteration: ###");
+
+		for i in range(0, 8) {
+			//event = self.cycle_wins(event);
+			self.kern_cycle_wins.enqueue();
+			//print!("\nasps.wins:");
+			//self.wins.print_simple();
+		}
+
+		self.kern_cycle_post.enqueue();
 	}
 
-	 
 }

@@ -15,14 +15,15 @@ use std::ops;
 use time;
 
 
-pub const TEST_ITERATIONS: i32 = 1000; 
-pub const SHUFFLE_CHORDS: bool = false;
-pub const PRINT_EVERY: i32 = 200;
+pub const TEST_ITERATIONS: i32 			= 5; 
+pub const PRINT_EVERY: i32 				= 1000;
+
+pub const SHUFFLE_ONCE: bool 			= false;
+pub const SHUFFLE_EVERY: bool 			= false;
+
 
 pub fn test_cycle() {
 	let mut cortex = cortex::Cortex::new();
-
-	let shuffle_chords = SHUFFLE_CHORDS;
 
 	//let vv1 = common::sparse_vec(2048, -128i8, 127i8, 6);
 	//common::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
@@ -68,27 +69,27 @@ pub fn test_cycle() {
 		}
 	}
 
-	cortex.sense_vec(0, "pre-thal", &mut vec1);
-	cortex.sense_vec(0, "post-thal", &mut vec1);
+	cortex.sense_vec_no_cycle(0, "pre-thal", &mut vec1);
+	cortex.sense_vec_no_cycle(0, "post-thal", &mut vec1);
 
 
 	vec1.clear();
 	for i in range(0, scw) {
-		if i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16 {
+		//if i >= scw_1_2 - (scw_1_16 / 2) && i < scw_1_2 + (scw_1_16 / 2) {
 		//if ((i >= scw_1_4 - scw_1_16) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4 + scw_1_16)) {
-		//if i >= scw_3_8 && i < scw_5_8 {
+		if i >= scw_3_8 && i < scw_5_8 {
 		//if (i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16) || (i < scw_1_16) || (i >= (scw - scw_1_16)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
 		//if i < scw_1_16 {
-			vec1.push(240);
+			vec1.push(170);
 		} else {
-			vec1.push(5);
+			vec1.push(45);
 		}
 	}
 
 
 
-	if shuffle_chords {
+	if SHUFFLE_ONCE {
 		common::shuffle_vec(&mut vec1);
 		//chord1 = Chord::from_vec(&vec1);
 	}
@@ -123,7 +124,7 @@ pub fn test_cycle() {
 			}
 		}
 
-		if shuffle_chords {
+		if SHUFFLE_EVERY {
 			common::shuffle_vec(&mut vec1);
 		}
 
@@ -143,6 +144,8 @@ pub fn test_cycle() {
 
 		print!("\n\n=== Iteration {} ===", i + 1);
 
+
+		/* INITIAL AXON STATES */
 		if false {
 			println!("\ncells.axns.states: ");
 			cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), None);
@@ -151,12 +154,21 @@ pub fn test_cycle() {
 		cortex.sense_vec(0, "thal", &vec1); 
 
 
-		/* SYNAPSE STATES */
+		
 		let sr_start = (512 << common::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
 
-		if false {	
+
+		/* SYNAPSE IDS */
+		if false {
+			print!("\ncells.cols.syns.src_row_ids:");
+			cortex.cells.cols.syns.src_row_ids.print((1 << 14) as usize, None, None);
+		}
+
+
+		/* SYNAPSE STATES */
+		if true {	
 			print!("\ncells.cols.syns.states: ");
-			cortex.cells.cols.syns.states.print((1 << 0) as usize, None, Some((sr_start - 256, sr_start + 256)));
+			cortex.cells.cols.syns.states.print((1 << 16) as usize, None, None);
 			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 		}
 
@@ -164,25 +176,25 @@ pub fn test_cycle() {
 		/* COLUMN STATES */
 		if true {	
 			print!("\ncells.cols.states: ");
-			cortex.cells.cols.states.print_val_range(1 << 0, None);
+			cortex.cells.cols.states.print_val_range(1 << 0, Some((1, 255)));
 		}
 
 
-		/* ASPINY WINNERS */
-
+		/* ASPINY IDS */
 		if false {
 			print!("\ncells.asps.ids: ");
 			cortex.cells.cols.asps.ids.print_val_range((1 << 0) as usize , Some((0, 255)));
 		}
 
+
+		/* ASPINY STATES */
 		if true {
 			print!("\ncells.asps.states: ");
-			cortex.cells.cols.asps.states.print_val_range((1 << 0) as usize , Some((0, 255)));
+			cortex.cells.cols.asps.states.print_val_range((1 << 0) as usize , Some((1, 255)));
 		}
 
 
 		/* SOMA STATES */
-
 		/*if false {
 			print!("\ncells.soma.states: ");
 			cortex.cells.soma.states.print_val_range(1 << 12, 1, 255);
@@ -190,17 +202,15 @@ pub fn test_cycle() {
 
 
 		/* AXON STATES */
-
 		if true {
 			print!("\ncells.axns.states: ");
 			//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
-			cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some((3200, 4223)));
+			cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some((6272, 8447)));
 
 		}
 
 
 		/* AUX VALS */
-
 		if true {
 			print!("\ncells.aux.ints_0: ");
 			cortex.cells.aux.ints_0.print((1 << 0) as usize, Some((1, 1100000000)), None);

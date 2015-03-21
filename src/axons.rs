@@ -2,11 +2,11 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionType };
+use cortical_regions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
-use cells::{ Somata, Aux };
+use cells::{ Aux };
 use aspiny::{ AspinyStellate };
 use columns::{ Columns };
 

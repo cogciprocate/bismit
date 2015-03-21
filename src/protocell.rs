@@ -52,6 +52,7 @@ pub enum CellKind {
 	Pyramidal,
 	SpinyStellate,
 	AspinyStellate,
+	Nada,
 }
 
 

@@ -2,7 +2,7 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionType };
+use cortical_regions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -31,7 +31,7 @@ pub struct Cells {
 	pub cols: Columns,
 	
 	pub axns: Axons,
-	pub soma: Somata,
+	//pub soma: Somata,
 	pub aux: Aux,
 
 }
@@ -46,10 +46,20 @@ impl Cells {
 
 		let aux = Aux::new(width, height_cellular, ocl);
 
+
+
+		/*
+			(THURS) GOING TO NEED A WAY TO GROUP CELL_KINDS WITHIN REGION AND GET AXON
+			ROWS BASED ON SOME KIND OF ABSOLUTE MEASUREMENT
+
+		*/
+
+
+
 		let axns = Axons::new(width, height_noncellular, height_cellular, region, ocl);
 		let cols = Columns::new(width, region, &axns, &aux, ocl);
 		
-		let pyrs = Pyramidal::new(width, height_cellular, region, ocl);
+		//let pyrs = Pyramidal::new(width, region, &axns, ocl);
 
 		let mut cells = Cells {
 			width: width,
@@ -57,7 +67,7 @@ impl Cells {
 			height_cellular: height_cellular,
 			cols: cols,
 			axns: axns,
-			soma: Somata::new(width, height_cellular, region, ocl),
+			//soma: Somata::new(width, height_cellular, region, ocl),
 			aux: aux,
 			ocl: ocl.clone(),
 			
@@ -90,7 +100,7 @@ impl Cells {
 
 
 
-pub struct Somata {
+/*pub struct Somata {
 	height: u8,
 	width: u32,
 	pub dst_dens: Dendrites,
@@ -171,7 +181,7 @@ impl Somata {
 		let gws = (self.height as usize, kern_width);
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}
-}
+}*/
 
 
 

@@ -56,7 +56,7 @@ pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG
 
 
 
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 8;
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 5;
 
 
 
@@ -85,7 +85,7 @@ pub const CELLS_PER_LAYER: usize = COLUMNS_PER_SEGMENT;
 //pub const DENDRITES_PER_LAYER: usize = CELLS_PER_LAYER * DENDRITES_PER_CELL;
 //pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_CELL;
 
-pub const SENSORY_CHORD_WIDTH: u32 = 1024; // COLUMNS_PER_SEGMENT;
+pub const SENSORY_CHORD_WIDTH: u32 = 2048; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
 pub const SYNAPSE_REACH: u32 = 128;
@@ -110,7 +110,7 @@ pub const ASPINY_HEIGHT: u8 = 1;
 
 pub const STATE_ZERO: u8 = 0;
 
-pub const COLUMN_DOMINANCE_FLOOR: usize = 47;
+pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 
 
 
@@ -120,6 +120,7 @@ pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxe
 pub fn build_options() -> String {
 
 	assert!(SYNAPSES_PER_CELL_PROXIMAL_LOG2 >= 2);
+	assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
 
 	BuildOptions::new(CL_BUILD_OPTIONS)
 		.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as usize)

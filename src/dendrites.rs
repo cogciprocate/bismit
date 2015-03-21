@@ -1,8 +1,8 @@
 use common;
-use ocl::{ self, Ocl };
+use ocl::{ self, Ocl, WorkSize, };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionType };
+use cortical_regions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axons::{ Axons };
@@ -21,9 +21,9 @@ pub struct Dendrites {
 	width: u32,
 	per_cell: u32,
 	den_type: DendriteKind,
+	kern_cycle: ocl::Kernel,
 	pub thresholds: Envoy<ocl::cl_uchar>,
 	pub states: Envoy<ocl::cl_uchar>,
-	//pub health: 
 	pub syns: Synapses,
 }
 
@@ -33,42 +33,43 @@ impl Dendrites {
 					height: u8, 
 					den_type: DendriteKind, 
 					per_cell: u32, 
-					region: &CorticalRegion, 
+					region: &CorticalRegion,
+					axons: &Axons,
 					ocl: &Ocl
 	) -> Dendrites {
 		let width_dens = width * per_cell;
+
+
+		let per_den = match den_type {
+			DendriteKind::Distal => common::SYNAPSES_PER_DENDRITE_DISTAL,
+			DendriteKind::Proximal => common::SYNAPSES_PER_DENDRITE_PROXIMAL,
+		};
+
+		let states = Envoy::<ocl::cl_uchar>::new(width_dens, height, common::STATE_ZERO, ocl);
+
+		let syns = Synapses::new(width, height, per_cell * per_den, den_type, region, axons, ocl);
+
+		let kern_cycle = ocl.new_kernel("dens_cycle", WorkSize::TwoDim(height as usize, width as usize))
+			.arg_env(&syns.states)
+			.arg_scl(common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2)
+			.arg_env(&states);
 
 		Dendrites {
 			height: height,
 			width: width,
 			per_cell: per_cell,
 			den_type: den_type,
+			kern_cycle: kern_cycle,
 			thresholds: Envoy::<ocl::cl_uchar>::new(width_dens, height, common::DENDRITE_INITIAL_THRESHOLD, ocl),
-			states: Envoy::<ocl::cl_uchar>::new(width_dens, height, common::STATE_ZERO, ocl),
-			syns: Synapses::new(width, height, per_cell * common::SYNAPSES_PER_DENDRITE_DISTAL, den_type, region, ocl),
+			states: states,
+			syns: syns,
 		}
 	}
 
 
-	pub fn cycle(&self, axns: &Axons, ocl: &Ocl) {
-		self.syns.cycle(axns, ocl);
+	pub fn cycle(&self) {
+		self.syns.cycle();
 
-		let len_dens: usize = self.height as usize * self.width as usize * self.per_cell as usize;
-
-		let boost_log2: u8 = if self.den_type == DendriteKind::Distal {
-			common::DST_DEN_BOOST_LOG2
-		} else {
-			common::PRX_DEN_BOOST_LOG2
-		};
-
-		let kern = ocl::new_kernel(ocl.program, "dens_cycle");
-
-		ocl::set_kernel_arg(0, self.syns.states.buf, kern);
-		ocl::set_kernel_arg(1, self.thresholds.buf, kern);
-		ocl::set_kernel_arg(2, self.states.buf, kern);
-		ocl::set_kernel_arg(3, boost_log2, kern);
-
-		ocl::enqueue_kernel(ocl.command_queue, kern, len_dens);
-
+		self.kern_cycle.enqueue();
 	}
 }

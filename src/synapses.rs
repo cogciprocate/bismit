@@ -1,8 +1,8 @@
 use common;
-use ocl::{ self, Ocl };
+use ocl::{ self, Ocl, WorkSize };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionType };
+use cortical_regions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -22,6 +22,7 @@ pub struct Synapses {
 	per_cell: u32,
 	den_type: DendriteKind,
 	since_decay: usize,
+	kern_cycle: ocl::Kernel,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub strengths: Envoy<ocl::cl_char>,
 	pub axn_row_ids: Envoy<ocl::cl_uchar>,
@@ -29,13 +30,28 @@ pub struct Synapses {
 }
 
 impl Synapses {
-	pub fn new(width: u32, height: u8, per_cell: u32, den_type: DendriteKind, region: &CorticalRegion, ocl: &Ocl) -> Synapses {
+	pub fn new(width: u32, height: u8, per_cell: u32, den_type: DendriteKind, region: &CorticalRegion, axons: &Axons, ocl: &Ocl) -> Synapses {
 		let width_syns = width * per_cell;
 
+		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
 		//println!("New {:?} Synapses with: height: {}, width: {}, per_cell(row depth): {}, width_syns(row area): {}", den_type, height, width, per_cell, width_syns);
 
+		let states = Envoy::<ocl::cl_uchar>::new(width_syns, height, 0, ocl);
+		let strengths = Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl);
 		let mut axn_row_ids = Envoy::<ocl::cl_uchar>::new(width_syns, height, 0, ocl);
 		let mut axn_col_offs = Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl);
+
+		let mut kern_cycle = ocl.new_kernel("syns_cycle", 
+			WorkSize::TwoDim(height as usize, width as usize))
+			.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
+			.arg_env(&axons.states)
+			.arg_env(&axn_col_offs)
+			.arg_env(&axn_row_ids)
+			.arg_scl(per_cell)
+			//.arg_env(&aux.ints_0)
+			//.arg_env(&aux.ints_1)
+			.arg_env(&states)
+		;
 
 		let mut syns = Synapses {
 			width: width,
@@ -43,8 +59,9 @@ impl Synapses {
 			per_cell: per_cell,
 			den_type: den_type,
 			since_decay: 0,
-			states: Envoy::<ocl::cl_uchar>::new(width_syns, height, 0, ocl),
-			strengths: Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl),
+			kern_cycle: kern_cycle,
+			states: states,
+			strengths: strengths,
 			axn_row_ids: axn_row_ids,
 			axn_col_offs: axn_col_offs,
 		};
@@ -57,14 +74,14 @@ impl Synapses {
 	fn init(&mut self, region: &CorticalRegion) {
 		assert!((self.axn_col_offs.width() == self.axn_row_ids.width()) && ((self.axn_row_ids.width() == (self.width * self.per_cell))), "[cells::Synapses::init(): width mismatch]");
 
-		//let ref region = region[CorticalRegionType::Sensory];
-		assert!(region.layers.len() > 0, "cells::Synapses::init(): Region has no layers.");
+		//let ref region = region[CorticalRegionKind::Sensory];
+		assert!(region.height_total() > 0, "cells::Synapses::init(): Region has no layers.");
 
 		let row_len = self.width * self.per_cell;
 		let mut rng = rand::weak_rng();
 
 		/* LOOP THROUGH LAYERS */
-		for (&ln, l) in region.layers.iter() {
+		for (&ln, l) in region.layers().iter() {
 			let src_row_ids: Vec<u8> =	match l.cell {
 				Some(_) => {
 					region.src_row_ids(ln, self.den_type)
@@ -145,10 +162,14 @@ impl Synapses {
 		self.axn_row_ids.write();		
 	}
 
-	pub fn cycle(&self, axns: &Axons, ocl: &Ocl) {
+	pub fn cycle(&self) {
+
+		self.kern_cycle.enqueue();
+
+
 		//println!("cycle_cel_syns running with width = {}, height = {}", width, height_total);
 
-		let kern = ocl::new_kernel(ocl.program, "syns_cycle");
+		/*let kern = ocl::new_kernel(ocl.program, "syns_cycle");
 
 		ocl::set_kernel_arg(0, axns.states.buf, kern);
 		ocl::set_kernel_arg(1, self.axn_row_ids.buf, kern);
@@ -162,7 +183,7 @@ impl Synapses {
 
 		//println!("gws: {:?}", gws);
 
-		ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
+		ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);*/
 	}
 
 	pub fn decay(&mut self, rand_ofs: &mut Envoy<ocl::cl_uchar>, ocl: &Ocl) {

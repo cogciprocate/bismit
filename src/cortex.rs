@@ -3,7 +3,7 @@ use common;
 use envoy::{ Envoy };
 use chord::{ Chord };
 use cells:: { self, Cells };
-use cortical_regions::{ self, CorticalRegion, CorticalRegions, CorticalRegionType };
+use cortical_regions::{ self, CorticalRegion, CorticalRegions, CorticalRegionKind };
 use cortical_areas::{ self, CorticalAreas, CorticalArea, Width, AddNew };
 use cortical_region_layer as layer;
 use cortical_region_layer::{ CorticalRegionLayer };
@@ -18,30 +18,25 @@ use std::collections::{ HashMap };
 use time;
 
 
-/* Eventually move define_regions() to a config file or some such */
+/* Eventually move define_*() to a config file or some such */
 pub fn define_regions() -> CorticalRegions {
 	let mut cort_regs: CorticalRegions = CorticalRegions::new();
-	let mut sen = CorticalRegion::new(CorticalRegionType::Sensory);
+	let mut sen = CorticalRegion::new(CorticalRegionKind::Sensory)
+		.layer("pre-thal", 1, layer::DEFAULT, None)
+		.layer("thal", 1, layer::DEFAULT, None)
+		.layer("post-thal", 1, layer::DEFAULT, None)
+		//.layer("test_2", 1, None);
+		//.layer("inhib_tmp", 1, None);
+		//.layer("inhib_tmp_2", 1, None);
+		//.layer("test_3", 1, None);
 
-	sen.new_layer("pre-thal", 1, layer::DEFAULT, None);
-	sen.new_layer("thal", 1, layer::DEFAULT, None);
-	sen.new_layer("post-thal", 1, layer::DEFAULT, None);
-	//sen.new_layer("test_2", 1, None);
-	//sen.new_layer("inhib_tmp", 1, None);
-	//sen.new_layer("inhib_tmp_2", 1, None);
-	//sen.new_layer("test_3", 1, None);
+		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]))
+		//.layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
+		//.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii"], "iv"))
+		//.layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["ii"], "iv"))
+	;
 
-	/*let cell_iv = CellPrototype::Pyramidal { dst_srcs: vec!["thal"], prx_src: "iv" };
-
-	let layer_iv = */
-
-	sen.new_layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]));
-	//sen.new_layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
-	sen.new_layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii"], "iv"));
-	//sen.new_layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["thal"], "iv"));
-
-	//sen.new_layer("ii", 2, Some(Protocell::new(CellKind::Pyramidal, Some(vec!["iii"]), Some(vec!["iii"]))));	
-	//sen.new_layer("inhib_a", 1, Some(Protocell::new(CellKind::AspinyStellate, None, None)));
+	sen.finalize();
 
 	cort_regs.add(sen);
 
@@ -52,7 +47,7 @@ pub fn define_areas() -> CorticalAreas {
 	let mut cortical_areas  = HashMap::new();
 	let mut curr_offset: u32 = 128;
 
-	curr_offset += cortical_areas.add_new("v1", CorticalArea { width: common::SENSORY_CHORD_WIDTH, offset: curr_offset, cort_reg_type: CorticalRegionType::Sensory });
+	curr_offset += cortical_areas.add_new("v1", CorticalArea { width: common::SENSORY_CHORD_WIDTH, offset: curr_offset, cort_reg_type: CorticalRegionKind::Sensory });
 
 	cortical_areas
 }
@@ -77,7 +72,7 @@ impl Cortex {
 
 		// FOR EACH REGION...
 		let mut cells: cells::Cells = {
-			let ref region = &regions[CorticalRegionType::Sensory];
+			let ref region = &regions[CorticalRegionKind::Sensory];
 			Cells::new(region, &areas, &ocl)
 		};
 
@@ -101,10 +96,20 @@ impl Cortex {
 
 	}
 
+	pub fn sense_vec_no_cycle(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
+
+		let axn_row = self.regions[CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
+
+		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
+
+		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
+
+	}
+
 
 	pub fn sense_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
 
-		let axn_row = self.regions[CorticalRegionType::Sensory].row_ids(vec!(layer_target))[0];
+		let axn_row = self.regions[CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
 
 		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
 
@@ -135,9 +140,9 @@ pub struct CorticalDimensions {
 
 /*	fn cycle_syns(&self) {
 
-		let width: u32 = self.areas.width(CorticalRegionType::Sensory);
-		let height_total: u8 = self.regions.height_total(CorticalRegionType::Sensory);
-		let (_, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
+		let width: u32 = self.areas.width(CorticalRegionKind::Sensory);
+		let height_total: u8 = self.regions.height_total(CorticalRegionKind::Sensory);
+		let (_, height_cellular) = self.regions.height(CorticalRegionKind::Sensory);
 		let len: u32 = width * height_total as u32;
 
 		let test_envoy = Envoy::<ocl::cl_int>::new(width, height_total, 0, &self.ocl);
@@ -163,8 +168,8 @@ pub struct CorticalDimensions {
 
 /*	fn cycle_dens(&self) {
 
-		let width: u32 = self.areas.width(CorticalRegionType::Sensory);
-		let (_, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
+		let width: u32 = self.areas.width(CorticalRegionKind::Sensory);
+		let (_, height_cellular) = self.regions.height(CorticalRegionKind::Sensory);
 
 		let width_dens: usize = width as usize * common::DENDRITES_PER_CELL * height_cellular as usize;
 
@@ -179,8 +184,8 @@ pub struct CorticalDimensions {
 	}*/
 
 /*	fn cycle_axns(&self) {
-		let width: u32 = self.areas.width(CorticalRegionType::Sensory);
-		let (height_noncellular, height_cellular) = self.regions.height(CorticalRegionType::Sensory);
+		let width: u32 = self.areas.width(CorticalRegionKind::Sensory);
+		let (height_noncellular, height_cellular) = self.regions.height(CorticalRegionKind::Sensory);
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_axns");
 		ocl::set_kernel_arg(0, self.cells.dst_dens.states.buf, kern);

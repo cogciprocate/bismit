@@ -6,7 +6,7 @@ use ocl;
 pub struct CorticalRegionLayer {
 	pub name: &'static str,
 	pub cell: Option<Protocell>,
-	pub base_row_id: ocl::cl_uchar,
+	pub base_row_pos: ocl::cl_uchar,
 	pub kind_base_row_pos: ocl::cl_uchar,
 	pub height: ocl::cl_uchar,
 	pub flags: LayerFlags,
@@ -16,7 +16,7 @@ impl CorticalRegionLayer {
 	/*pub fn new(
 				name: &'static str,
 				cell: Option<Protocell>,
-				base_row_id: u8,
+				base_row_pos: u8,
 				kind_base_row_pos: u8,
 				height: u8,
 				flags: LayerFlags,
@@ -24,15 +24,15 @@ impl CorticalRegionLayer {
 		CorticalRegionLayer {
 			name: name,
 			cell: cell,
-			base_row_id: base_row_id,
+			base_row_pos: base_row_pos,
 			kind_base_row_pos: kind_base_row_pos,
 			height: height,
 			flags: flags,
 		}
 	}*/
 
-	pub fn base_row_id(&self) -> ocl::cl_uchar {
-		self.base_row_id
+	pub fn base_row_pos(&self) -> ocl::cl_uchar {
+		self.base_row_pos
 	}
 
 	pub fn height(&self) -> ocl::cl_uchar {
