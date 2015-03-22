@@ -22,9 +22,9 @@ use time;
 pub fn define_regions() -> CorticalRegions {
 	let mut cort_regs: CorticalRegions = CorticalRegions::new();
 	let mut sen = CorticalRegion::new(CorticalRegionKind::Sensory)
-		.layer("pre-thal", 1, layer::DEFAULT, None)
+		.layer("pre_thal", 1, layer::DEFAULT, None)
 		.layer("thal", 1, layer::DEFAULT, None)
-		.layer("post-thal", 1, layer::DEFAULT, None)
+		.layer("post_thal", 1, layer::DEFAULT, None)
 		//.layer("test_2", 1, None);
 		//.layer("inhib_tmp", 1, None);
 		//.layer("inhib_tmp_2", 1, None);
@@ -32,7 +32,7 @@ pub fn define_regions() -> CorticalRegions {
 
 		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]))
 		//.layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
-		//.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii"], "iv"))
+		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"))
 		//.layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["ii"], "iv"))
 	;
 

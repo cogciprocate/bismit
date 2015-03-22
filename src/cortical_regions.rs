@@ -29,8 +29,8 @@ impl CorticalRegions {
 	pub fn height(&self, cr_type: CorticalRegionKind) -> (u8, u8) {
 		let mut height_noncellular_rows = 0u8;		//	Interregional
 		let mut height_cellular_rows = 0u8;			//	Interlaminar
-		for (region_type, region) in self.hash_map.iter() {					// CHANGE TO FILTER
 
+		for (region_type, region) in self.hash_map.iter() {					// CHANGE TO FILTER
 			if *region_type == cr_type {							//
 				let (noncell, cell) = region.height();
 				height_noncellular_rows += noncell;
@@ -106,7 +106,7 @@ impl CorticalRegion {
 		//let next_base_row_pos = self.height_total();
 
 		let next_kind_base_row_pos = match cell {
-			Some(ref protocell) => self.cell_kind_row_count(&protocell.cell_kind),
+			Some(ref protocell) => self.height_cell_kind(&protocell.cell_kind),
 			None => noncell_rows,
 		};
 
@@ -136,6 +136,7 @@ impl CorticalRegion {
 		}
 		
 		match layer.cell {
+
 			Some(ref cell) => {
 				let cell_kind = cell.cell_kind.clone();
 
@@ -147,6 +148,7 @@ impl CorticalRegion {
 				};
 
 				match ck_vec_opt {
+
 					Some(vec) => {
 						
 						layer.kind_base_row_pos = num::cast(vec.len()).expect("cortical_regions::CorticalRegion::add()");
@@ -175,12 +177,16 @@ impl CorticalRegion {
 		};*/
 	}
 
-	pub fn width() -> u8 {
-		panic!("not implemented");
+	pub fn base_row_cell_kind(&self, cell_kind: &CellKind) -> u8 {
+		match self.cellular_layer_kind_base_rows.get(cell_kind) {
+			Some(base_row) 	=> base_row.clone(),
+			None 			=> panic!("CorticalRegion::base_row_cell_king(): Base row for type not found"),
+		}
 	}
 
-	pub fn cell_kind_row_count(&self, cell_kind: &CellKind) -> u8 {
+	pub fn height_cell_kind(&self, cell_kind: &CellKind) -> u8 {
 		let mut count = 0u8;
+
 		for (_, layer) in self.layers.iter() {
 			match layer.cell {
 				Some(ref protocell) => {
@@ -201,7 +207,7 @@ impl CorticalRegion {
 
 		//print!("\nCKRC: kind: {:?} -> count = {}, count2 = {}", &cell_kind, count, count2);
 
-		assert!(count as usize == count2, "cortical_regions::CorticalRegion::cell_kind_row_count(): mismatch");
+		assert!(count as usize == count2, "cortical_regions::CorticalRegion::height_cell_kind(): mismatch");
 
 		count
 	}
@@ -217,8 +223,8 @@ impl CorticalRegion {
 
 		for (cell_kind, list) in &self.cellular_layer_kind_lists {
 			self.cellular_layer_kind_base_rows.insert(cell_kind.clone(), base_cel_row);
-			print!("\nFinalize: added: '{:?}', len: {}, base_cel_row: {}", cell_kind, list.len(), base_cel_row);
-			assert!(list.len() == self.cell_kind_row_count(&cell_kind) as usize);
+			print!("\n 	Finalize: adding cell type: '{:?}', len: {}, base_cel_row: {}", cell_kind, list.len(), base_cel_row);
+			assert!(list.len() == self.height_cell_kind(&cell_kind) as usize);
 			base_cel_row += num::cast(list.len()).expect("cortical_region::CorticalRegion::finalize()");
 		}
 
@@ -226,27 +232,24 @@ impl CorticalRegion {
 			match &layer.cell {
 				&Some(ref protocell) => {
 					layer.base_row_pos = self.cellular_layer_kind_base_rows[protocell.cell_kind] + layer.kind_base_row_pos;
-					print!("\nFinalize: layer: {}, kind: {:?}, base_row_id: {}", layer_name, &protocell.cell_kind, layer.base_row_pos);
+					print!("\n 	Finalize: adding layer: {}, kind: {:?}, base_row_id: {}", layer_name, &protocell.cell_kind, layer.base_row_pos);
 				},
 				&None => {
 					layer.base_row_pos = layer.kind_base_row_pos;
-					print!("\nFinalize: layer: {}, kind: {}, base_row_id: {}", layer_name, "Axon", layer.base_row_pos);
+					print!("\n 	Finalize: adding layer: {}, kind: {}, base_row_id: {}", layer_name, "Axon", layer.base_row_pos);
 				},
 			}
 		}
-
-
 	}
 
-	pub fn layers(&self) -> &HashMap<&'static str, CorticalRegionLayer> {
-		&self.layers
-	}
 
 	pub fn height_total(&self) -> u8 {
 		let mut total_height = 0u8;
+
 		for (_, layer) in self.layers.iter() {
 			total_height += layer.height;
 		}
+
 		total_height
 	}
  
@@ -260,7 +263,16 @@ impl CorticalRegion {
 				Some(_) => cell_rows += layer.height,
 			}
 		}
+
 		(noncell_rows, cell_rows)
+	}
+
+	pub fn layers(&self) -> &HashMap<&'static str, CorticalRegionLayer> {
+		&self.layers
+	}
+
+	pub fn rows_by_layer_name(&self, cell_kind: &CellKind) -> Option<&Vec<&'static str>> {
+		self.cellular_layer_kind_lists.get(cell_kind)
 	}
 
 	pub fn row_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
@@ -268,12 +280,14 @@ impl CorticalRegion {
 			panic!("CorticalRegion must be finalized with finalize() before row_ids can be called.");
 		}
 		let mut row_ids = Vec::new();
+
 		for &layer_name in layer_names.iter() {
 			let l = &self[layer_name];
 				for i in range(l.base_row_pos, l.base_row_pos + l.height) {
 					row_ids.push(i);
 				}
 		}
+
 		row_ids
 	}
 
@@ -283,7 +297,7 @@ impl CorticalRegion {
 		self.row_ids(src_layer_names)
  	}
 
- 	pub fn col_input_layer(&self) -> CorticalRegionLayer {
+ 	pub fn col_input_layer(&self) -> Option<CorticalRegionLayer> {
  		let mut input_layer: Option<CorticalRegionLayer> = None;
  		
  		for (layer_name, layer) in self.layers.iter() {
@@ -292,26 +306,7 @@ impl CorticalRegion {
  			}
  		}
 
- 		match input_layer {
- 			Some(l)	=> l,
- 			None 		=> panic!("cortical_regions::CorticalRegion::col_input_row(): no column input rows found"),
- 		} 		
- 	}
-
- 	pub fn col_input_layer_name(&self) -> &'static str {
- 		self.col_input_layer().name()
- 		/*let mut input_layer: Option<&'static str> = None;
- 		
- 		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.flags & layer::COLUMN_INPUT) == layer::COLUMN_INPUT {
- 				input_layer = Some(layer_name);
- 			}
- 		}
-
- 		match input_layer {
- 			Some(ln)	=> ln,
- 			None 		=> panic!("cortical_regions::CorticalRegion::col_input_row(): no column input rows found"),
- 		} 	*/	
+		input_layer		
  	}
 }
 
@@ -370,7 +365,7 @@ impl CorticalRegion {
 		let next_base_row_pos = self.total_height();
 
 		let next_kind_base_row_pos = match cell {
-			Some(ref protocell) => self.cell_kind_row_count(&protocell.cell_kind),
+			Some(ref protocell) => self.height_cell_kind(&protocell.cell_kind),
 			None => noncell_rows,
 		};
 
@@ -396,7 +391,7 @@ impl CorticalRegion {
 		panic!("not implemented");
 	}
 
-	pub fn cell_kind_row_count(&self, cell_kind: &CellKind) -> u8 {
+	pub fn height_cell_kind(&self, cell_kind: &CellKind) -> u8 {
 		let mut count = 0u8;
 		for (_, layer) in self.layers.iter() {
 			match layer.cell {

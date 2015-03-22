@@ -26,6 +26,7 @@ pub struct Pyramidal {
 	height: u8,
 	width: u32,
 	kern_cycle: ocl::Kernel,
+	den_prox_row: u8, 
 	pub states: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
 }
@@ -33,25 +34,36 @@ pub struct Pyramidal {
 impl Pyramidal {
 	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, ocl: &Ocl) -> Pyramidal {
 
-		let height: u8 = region.cell_kind_row_count(&CellKind::Pyramidal);
+		let height: u8 = region.height_cell_kind(&CellKind::Pyramidal);
+		let col_input_layer = region.col_input_layer().expect("Pyramidal::new()");
+		let den_prox_row = region.row_ids(vec![col_input_layer.name])[0];
+		
+		print!("\n### Pyramidal: Proximal Dendrite Row: {}", den_prox_row);
 
 		let states = Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl);
 
+		let dens = Dendrites::new(width, height, DendriteKind::Distal, CellKind::Pyramidal, common::DENDRITES_PER_CELL_DISTAL_LOG2, region, axons, ocl);
+
 		let kern_cycle = ocl.new_kernel("pyramidal_cycle", 
 			WorkSize::TwoDim(height as usize, width as usize))
-			.arg_env(&states);
+			.arg_env(&dens.states)
+			.arg_env(&states)
+		;
 
 
 		Pyramidal {
 			height: height,
 			width: width,
 			kern_cycle: kern_cycle,
+			den_prox_row: den_prox_row,
 			states: states,
-			dens: Dendrites::new(width, height, DendriteKind::Distal, common::DENDRITES_PER_CELL_DISTAL, region, axons, ocl),
+			dens: dens,
 		}
 	}
 
 	pub fn cycle(&self) {
+		self.dens.cycle();
 		self.kern_cycle.enqueue();
+
 	}
 }

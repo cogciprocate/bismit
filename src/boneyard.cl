@@ -125,7 +125,7 @@ __kernel void axns_cycle_unoptd_5_0 (
 
 
 
-/*	__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
+	__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
 __kernel void axns_cycle_unoptd_buggy_phantom_value_version (
 	__global uchar* const asp_col_ids,
 	__global char* const asp_states,
@@ -251,7 +251,7 @@ __kernel void axns_cycle_unoptd_buggy_phantom_value_version (
 		//aux_ints_1[col_idx] = win_count;
 		//aux_ints_1[col_idx] = competetor_ids[6];
 	}
-}*/
+}
 
 
 

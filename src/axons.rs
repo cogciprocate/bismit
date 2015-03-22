@@ -51,9 +51,6 @@ impl Axons {
 }
 
 
-
-
-
 	/*pub fn cycle(&self, soma: &Somata, ocl: &Ocl) {
 		let mut kern = ocl.new_kernel("axns_cycle", WorkSize::TwoDim(self.height_cellular as usize, self.width as usize));
 

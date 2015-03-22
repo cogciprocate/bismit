@@ -43,8 +43,6 @@ impl AspinyStellate {
 		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, 0u8, ocl);
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, common::STATE_ZERO, ocl);
 
-		print!("\nAspstellate setting kernel args");
-
 		let mut kern_cycle_pre = ocl.new_kernel("aspiny_cycle_pre", 
 			WorkSize::TwoDim(height as usize, width as usize))
 			.arg_env(&src_states)
@@ -55,14 +53,14 @@ impl AspinyStellate {
 		let mut kern_cycle_wins = ocl.new_kernel("aspiny_cycle_wins", 
 			WorkSize::TwoDim(height as usize, width as usize))
 			.arg_env(&states)
-			.arg_env(&ids)
+			//.arg_env(&ids)
 			.arg_env(&wins)
 		;
 
 		let mut kern_cycle_post = ocl.new_kernel("aspiny_cycle_post", 
 			WorkSize::TwoDim(height as usize, width as usize))
 			.arg_env(&wins)
-			.arg_env(&ids)
+			//.arg_env(&ids)
 			.arg_env(&states)
 		;
 

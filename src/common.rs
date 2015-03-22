@@ -45,24 +45,19 @@ pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 4;
 pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2;
 
-pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 4;
+pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 5;
 pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
+
 
 
 pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
 pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
 
-
-
-
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 5;
-
-
-
-
-
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 6;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+
+
 
 pub const SYNAPSES_PER_CELL_PROXIMAL_LOG2: u32 = DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 pub const SYNAPSES_PER_CELL_PROXIMAL: u32 = 1 << SYNAPSES_PER_CELL_PROXIMAL_LOG2;
@@ -85,7 +80,7 @@ pub const CELLS_PER_LAYER: usize = COLUMNS_PER_SEGMENT;
 //pub const DENDRITES_PER_LAYER: usize = CELLS_PER_LAYER * DENDRITES_PER_CELL;
 //pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_CELL;
 
-pub const SENSORY_CHORD_WIDTH: u32 = 2048; // COLUMNS_PER_SEGMENT;
+pub const SENSORY_CHORD_WIDTH: u32 = 1024; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
 pub const SYNAPSE_REACH: u32 = 128;
@@ -126,6 +121,8 @@ pub fn build_options() -> String {
 		.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as usize)
 		.opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR)
 		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2)
+		.opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as usize)
+		.opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as usize)
 		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as usize)
 		.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as usize)
 		.opt("SYNAPSE_REACH", SYNAPSE_REACH as usize)
@@ -144,8 +141,8 @@ pub struct BuildOptions {
 impl BuildOptions {
 	pub fn new(cl_options: &'static str) -> BuildOptions {
 		let mut bo = BuildOptions {
-			options: Vec::with_capacity(50),
-			string: String::with_capacity(1 << 12),
+			options: Vec::with_capacity(1 << 5),
+			string: String::with_capacity(1 << 11),
 		};
 
 		bo.str(cl_options)
@@ -188,7 +185,7 @@ impl BuildOption {
 		BuildOption {
 			name: name,
 			val: val,
-			string: String::with_capacity(1 << 6),
+			string: String::with_capacity(name.len()),
 		}
 	}
 

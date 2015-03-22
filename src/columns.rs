@@ -3,12 +3,14 @@ use ocl::{ self, Ocl, WorkSize };
 use envoy::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
 use cortical_regions::{ CorticalRegion, CorticalRegionKind };
+use cortical_region_layer:: { CorticalRegionLayer };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cells:: { Aux };
 use aspiny:: { AspinyStellate };
+use pyramidal::{ Pyramidal };
 
 use std::num;
 use std::ops;
@@ -32,9 +34,9 @@ pub struct Columns {
 }
 
 impl Columns {
-	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Columns {
-		let il = region.col_input_layer();
-		let height: u8 = il.height();
+	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, pyrs: &Pyramidal, aux: &Aux, ocl: &Ocl) -> Columns {
+		let layer = region.col_input_layer().expect("columns::Columns::new()");
+		let height: u8 = layer.height();
 
 		let syns_per_cell_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 		let syns_per_cell: u32 = 1 << syns_per_cell_l2;
@@ -42,16 +44,19 @@ impl Columns {
 		let states = Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl);
 
 		let asps = AspinyStellate::new(width, height, region, &states, ocl);
-		let syns = ColumnSynapses::new(width, height, syns_per_cell, region, axons, aux, ocl);
+		let syns = ColumnSynapses::new(width, height, syns_per_cell, &layer, region, axons, aux, ocl);
 
 		let mut kern_cycle = ocl.new_kernel("dens_cycle", WorkSize::TwoDim(height as usize, width as usize))
 			.arg_env(&syns.states)
 			.arg_scl(syns_per_cell_l2)
 			.arg_env(&states);
 
-		println!("\ncol base_row_pos: {}", il.base_row_pos());
 
-		let mut kern_axns_cycle = ocl.new_kernel("col_axns_cycle_unoptd", WorkSize::TwoDim(height as usize, width as usize))
+		let pyr_height = region.height_cell_kind(&CellKind::Pyramidal);
+		print!("\n###pyr_height: {}", pyr_height);
+		let pyr_base_row = region.base_row_cell_kind(&CellKind::Pyramidal);
+
+		let mut kern_axns_cycle = ocl.new_kernel("col_post_inhib_unoptd", WorkSize::TwoDim(height as usize, width as usize))
 			.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&asps.ids)
 			.arg_env(&asps.states)
@@ -60,8 +65,12 @@ impl Columns {
 			.arg_env(&axons.states)
 			.arg_env(&aux.ints_0)
 			.arg_env(&aux.ints_1)
+			.arg_env(&pyrs.states)
+			.arg_scl(pyr_height)
+			.arg_scl(pyr_base_row)
 			//self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
-			.arg_scl(il.base_row_pos() as u32);
+			.arg_scl(layer.base_row_pos() as u32)
+		;
 		
 		Columns {
 			width: width,
@@ -95,10 +104,11 @@ pub struct ColumnSynapses {
 }
 
 impl ColumnSynapses {
-	pub fn new(width: u32, height: u8, per_cell: u32, region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> ColumnSynapses {
+	pub fn new(width: u32, height: u8, per_cell: u32, layer: &CorticalRegionLayer, 
+					region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> ColumnSynapses {
 
 		let syns_per_row = width * per_cell;
-		let src_row_ids_list: Vec<u8> = region.src_row_ids(region.col_input_layer_name(), DendriteKind::Proximal);
+		let src_row_ids_list: Vec<u8> = region.src_row_ids(layer.name, DendriteKind::Proximal);
 		let src_rows_len = src_row_ids_list.len() as u8;
 		//let height = src_rows_len;
 		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
@@ -106,7 +116,7 @@ impl ColumnSynapses {
 		let syns_per_cell_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 		//let dens_per_wg: u32 = 1;
 
-		print!("\nNew Column Synapses with: height: {}, syns_per_row: {}, src_rows_len: {}", height, syns_per_row, src_rows_len);
+		print!("\nNew Proximal Synapses with: height: {}, syns_per_row: {}, src_rows_len: {}", height, syns_per_row, src_rows_len);
 
 		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, height, common::STATE_ZERO, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, height, 1i8, ocl);

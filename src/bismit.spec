@@ -1,3 +1,6 @@
+
+
+
 === Inhibition Notes ===
 	Currently working fine with:
 		- span=8
@@ -248,3 +251,26 @@ The structure of the neocortex is relatively uniform...
   The infragranular layers, layers V and VI, primarily connect the cerebral cortex with subcortical regions. These layers are most developed in motor cortical areas. The motor areas have extremely small or non-existent granular layers and are often called "agranular cortex". Layer V gives rise to all of the principal cortical efferent projections to basal ganglia, brain stem and spinal cord. Layer VI, the multiform or fusiform layer, projects primarily to the thalamus.
 
 
+=== Random Theories ===
+	- Sparsity in cortical networks could be a spatial equivalent to sequences (frames?) in time.
+	- 
+
+
+	- The cortex is in the business of writing prescriptions:
+		- diagnosis information comes in
+		- compared against desired outcome
+		- prescriptions go out
+		- if the correct prescription is made, it will be more likely to be made again
+
+		- the only peice missing is the desired outcome generation
+			- once we know that, it should be easy to put the pieces together
+			- desired outcome must be an SDR which is etched into memory (hippocampus?) whenever emotional
+			  positive feedback is given...
+				- that SDR must be then able to trigger subsequent SDRs to reconstruct sequence leading
+				  to positive feedback
+			- undesired outcomes must be similarly saved
+			- all along the sequence of any event, emotional responses must be steering the prescription in order
+			  to acheive/avoid outcome (by excitation/inhibition?)
+
+			- memory must be storing information in a two-way traversable structure ... either that or
+			  the 'motor' layers of the cortex are in charge of that role

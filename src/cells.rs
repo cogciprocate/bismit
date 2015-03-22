@@ -9,7 +9,7 @@ use dendrites::{ Dendrites };
 use axons::{ Axons };
 use columns::{ Columns };
 use aspiny::{ AspinyStellate };
-use pyramidal:: { Pyramidal };
+use pyramidal::{ Pyramidal };
 
 
 use std::num;
@@ -28,9 +28,9 @@ pub struct Cells {
 	pub height_noncellular: u8,
 	pub height_cellular: u8,
 	ocl: ocl::Ocl,
-	pub cols: Columns,
-	
 	pub axns: Axons,
+	pub cols: Columns,
+	pub pyrs: Pyramidal,
 	//pub soma: Somata,
 	pub aux: Aux,
 
@@ -39,34 +39,26 @@ pub struct Cells {
 impl Cells {
 	pub fn new(region: &CorticalRegion, areas: &CorticalAreas, ocl: &Ocl) -> Cells {
 		let (height_noncellular, height_cellular) = region.height();
-		print!("\nCells::new(): height_noncellular: {}, height_cellular: {}", height_noncellular, height_cellular);
-		assert!(height_cellular > 0, "cells::Cells::new(): Region has no cellular layers.");
 		let height_total = height_noncellular + height_cellular;
 		let width = areas.width(&region.kind);
 
+		print!("\nCells::new(): height_noncellular: {}, height_cellular: {}, width: {}", height_noncellular, height_cellular, width);
+
+		assert!(height_cellular > 0, "cells::Cells::new(): Region has no cellular layers.");
+
 		let aux = Aux::new(width, height_cellular, ocl);
-
-
-
-		/*
-			(THURS) GOING TO NEED A WAY TO GROUP CELL_KINDS WITHIN REGION AND GET AXON
-			ROWS BASED ON SOME KIND OF ABSOLUTE MEASUREMENT
-
-		*/
-
-
-
 		let axns = Axons::new(width, height_noncellular, height_cellular, region, ocl);
-		let cols = Columns::new(width, region, &axns, &aux, ocl);
+		let pyrs = Pyramidal::new(width, region, &axns, ocl);
+		let cols = Columns::new(width, region, &axns, &pyrs, &aux, ocl);
 		
-		//let pyrs = Pyramidal::new(width, region, &axns, ocl);
 
 		let mut cells = Cells {
 			width: width,
 			height_noncellular: height_noncellular,
 			height_cellular: height_cellular,
-			cols: cols,
 			axns: axns,
+			cols: cols,
+			pyrs: pyrs,
 			//soma: Somata::new(width, height_cellular, region, ocl),
 			aux: aux,
 			ocl: ocl.clone(),
@@ -92,7 +84,11 @@ impl Cells {
 		//self.soma.learn(&self.ocl);
 		//self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
 
+		self.pyrs.cycle();
+
+		
 		self.cols.cycle();
+		
 		
 		//self.axns.cycle();
 	}

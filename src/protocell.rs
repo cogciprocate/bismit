@@ -47,7 +47,7 @@ impl Protocell {
 }
 
 
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
 pub enum CellKind {
 	Pyramidal,
 	SpinyStellate,
