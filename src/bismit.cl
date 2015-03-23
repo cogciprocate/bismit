@@ -167,7 +167,7 @@ __kernel void syns_cycle(
 
 
 
-__kernel void dens_cycle(
+__kernel void dens_cycle_origish(
 	__global uchar* const syn_states,
 	__private uint const syns_per_den_l2,
 	__global uchar* const den_states
@@ -199,19 +199,12 @@ __kernel void dens_cycle(
 
 
 
-
-
-
-
-
-
-
 /*
 	NEEDS REWRITE
 	OPTIMIZE FOR WORKGROUP
 */
 
-__kernel void dens_cycle_newish(
+__kernel void dens_cycle(
 	__global uchar* const syn_states,
 	__private uint const syns_per_den_l2,
 	__global uchar* const den_states
@@ -232,7 +225,10 @@ __kernel void dens_cycle_newish(
 		syn_sum += syn_states[syn_ofs + i];
 	}
 
-	den_states[den_idx] = (syn_sum >> syns_per_den_l2);
+	int den_total = syn_sum;
+
+	//den_states[den_idx] = (syn_sum >> syns_per_den_l2);
+	den_states[den_idx] = mad24((den_total > 0), 128, clamp(den_total >> (syns_per_den_l2 + 1), 0, 127));
 	//den_states[den_idx] = mad24((den_total > 0), 128, clamp(den_total >> (syns_per_den_l2 + 1), 0, 127));
 	//den_states[den_idx] = den_total; //(0, 1, 2, 3); 
 }

@@ -81,7 +81,7 @@ pub fn test_cycle() {
 		//if (i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16) || (i < scw_1_16) || (i >= (scw - scw_1_16)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
 		//if i < scw_1_16 {
-			vec1.push(32);
+			vec1.push(128);
 		} else {
 			vec1.push(0);
 		}
