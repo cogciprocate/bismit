@@ -25,9 +25,12 @@ use std::fmt::{ Display };
 
 pub struct Columns {
 	width: u32,
+	axn_output_row: u8,
 	kern_cycle: ocl::Kernel,
-	kern_axns_cycle: ocl::Kernel,
+	kern_post_inhib: ocl::Kernel,
+	kern_output: ocl::Kernel,
 	pub states: Envoy<ocl::cl_uchar>,
+	pub cel_status: Envoy<ocl::cl_uchar>,
 	pub asps: AspinyStellate,
 	pub syns: ColumnSynapses,
 	
@@ -42,41 +45,64 @@ impl Columns {
 		let syns_per_cell: u32 = 1 << syns_per_cell_l2;
 
 		let states = Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl);
+		let cel_status = Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl);
 
 		let asps = AspinyStellate::new(width, height, region, &states, ocl);
 		let syns = ColumnSynapses::new(width, height, syns_per_cell, &layer, region, axons, aux, ocl);
 
-		let mut kern_cycle = ocl.new_kernel("dens_cycle", WorkSize::TwoDim(height as usize, width as usize))
+		let kern_cycle = ocl.new_kernel("den_prox_cycle", WorkSize::TwoDim(height as usize, width as usize))
 			.arg_env(&syns.states)
 			.arg_scl(syns_per_cell_l2)
 			.arg_env(&states);
 
 
 		let pyr_height = region.height_cell_kind(&CellKind::Pyramidal);
-		print!("\n###pyr_height: {}", pyr_height);
-		let pyr_base_row = region.base_row_cell_kind(&CellKind::Pyramidal);
+		//print!("\n###pyr_height: {}", pyr_height);
+		let pyr_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC PYRS 
 
-		let mut kern_axns_cycle = ocl.new_kernel("col_post_inhib_unoptd", WorkSize::TwoDim(height as usize, width as usize))
-			.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
+		let kern_post_inhib = ocl.new_kernel("col_post_inhib_unoptd", WorkSize::TwoDim(height as usize, width as usize))
+			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&asps.ids)
 			.arg_env(&asps.states)
 			.arg_env(&asps.wins)
 			.arg_env(&states)
-			.arg_env(&axons.states)
+			//.arg_env(&cel_status)
 			.arg_env(&aux.ints_0)
 			.arg_env(&aux.ints_1)
-			.arg_env(&pyrs.states)
-			.arg_scl(pyr_height)
-			.arg_scl(pyr_base_row)
+			//.arg_env(&pyrs.states)
+			//.arg_scl(pyr_height)
+			//.arg_scl(pyr_base_row)
 			//self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
 			.arg_scl(layer.base_row_pos() as u32)
+			.arg_env(&axons.states)
+		;
+
+		let output_rows = region.col_output_rows();
+		assert!(output_rows.len() == 1);
+		let axn_output_row = output_rows[0];
+
+		print!("\n### OUTPUT ROW: {}", axn_output_row);
+		
+
+		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(1 as usize, width as usize))
+			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
+			.arg_env(&states)
+			.arg_env(&pyrs.states)
+			.arg_scl(height)
+			.arg_scl(pyr_height)
+			.arg_scl(axn_output_row)
+			.arg_env(&cel_status)
+			.arg_env(&axons.states)
 		;
 		
 		Columns {
 			width: width,
+			axn_output_row: axn_output_row,
 			kern_cycle: kern_cycle,
-			kern_axns_cycle: kern_axns_cycle,
+			kern_post_inhib: kern_post_inhib,
+			kern_output: kern_output,
 			states: states,
+			cel_status: cel_status,
 			asps: asps,
 			syns: syns,
 		}
@@ -86,7 +112,16 @@ impl Columns {
 		self.syns.cycle();
 		self.kern_cycle.enqueue();
 		self.asps.cycle();
-		self.kern_axns_cycle.enqueue();
+		self.kern_post_inhib.enqueue();
+	}
+
+	pub fn output(&self) {
+		self.kern_output.enqueue();
+	}
+
+	pub fn axn_output_range(&self) -> (usize, usize) {
+		let start = (self.axn_output_row as usize * self.width as usize) + common::SYNAPSE_REACH as usize;
+		(start, start + self.width as usize)
 	}
 }
 

@@ -83,7 +83,7 @@ pub fn test_cycle() {
 		//if i < scw_1_16 {
 			vec1.push(128);
 		} else {
-			vec1.push(0);
+			vec1.push(8);
 		}
 	}
 
@@ -119,7 +119,7 @@ pub fn test_cycle() {
 
 				/* AXON STATES */
 			if false {
-				print!("\ncells.axns.states: ");
+				print!("\naxns.states: ");
 				cortex.cells.axns.states.print_val_range(1 << 8, Some((1, 255)));
 			}
 		}
@@ -147,7 +147,7 @@ pub fn test_cycle() {
 
 		/* INITIAL AXON STATES */
 		if false {
-			println!("\ncells.axns.states: ");
+			println!("\naxns.states: ");
 			cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), None);
 		}
 
@@ -160,89 +160,97 @@ pub fn test_cycle() {
 
 		/* SYNAPSE IDS */
 		if false {
-			print!("\ncells.cols.syns.src_row_ids:");
+			print!("\ncols.syns.src_row_ids:");
 			cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None);
 		}
 		if false {	
-			print!("\ncells.pyrs.dens.syns.axn_row_ids: ");
+			print!("\npyrs.dens.syns.axn_row_ids: ");
 			cortex.cells.pyrs.dens.syns.axn_row_ids.print(1 << 14, None, None);
 			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 		}
 		if false {	
-			print!("\ncells.pyrs.dens.syns.axn_col_offs: ");
+			print!("\npyrs.dens.syns.axn_col_offs: ");
 			cortex.cells.pyrs.dens.syns.axn_col_offs.print(1 << 14, None, None);
 			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 		}
 
 
-		/* SYNAPSE STATES */
+		/* PROXIMAL (COLUMN) SYNAPSE STATES */
 		if false {	
-			print!("\ncells.cols.syns.states: ");
+			print!("\ncols.syns.states: ");
 			cortex.cells.cols.syns.states.print(1 << 12, Some((1, 255)), None);
 			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 		}
+
+		/* COLUMN STATES */
 		if true {	
-			print!("\ncells.pyrs.dens.syns.states: ");
+			print!("\ncols.states: ");
+			cortex.cells.cols.states.print_val_range(1 << 0, Some((1, 255)));
+		}
+
+
+		/* PYRAMIDAL SYNAPSE STATES */
+		if true {	
+			print!("\npyrs.dens.syns.states: ");
 			cortex.cells.pyrs.dens.syns.states.print(1 << 10, Some((1, 255)), None);
 			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 		}
 
-
-		/* COLUMN STATES */
+		/* PYRAMIDAL DENDRITE STATES */
 		if true {	
-			print!("\ncells.cols.states: ");
-			cortex.cells.cols.states.print_val_range(1 << 0, Some((1, 255)));
-		}
-
-		/* DENDRITE STATES */
-		if true {	
-			print!("\ncells.pyrs.dens.states: ");
+			print!("\npyrs.dens.states: ");
 			cortex.cells.pyrs.dens.states.print_val_range(1 << 8, Some((1, 255)));
 		}
 
 
 		/* ASPINY IDS */
 		if false {
-			print!("\ncells.asps.ids: ");
+			print!("\nasps.ids: ");
 			cortex.cells.cols.asps.ids.print_val_range(1 << 0, Some((0, 255)));
 		}
 
 
 		/* ASPINY STATES */
 		if false {
-			print!("\ncells.asps.states: ");
+			print!("\nasps.states: ");
 			cortex.cells.cols.asps.states.print_val_range(1 << 0, Some((1, 255)));
 		}
 
 
 		/* PYRAMIDAL CELL STATES */
 		if true {
-			print!("\ncells.pyrs.states: ");
+			print!("\npyrs.states: ");
 			cortex.cells.pyrs.states.print_val_range(1 << 6, Some((1, 255)));
 		}
 
 
 		/* AXON STATES */
 		if false {
-			print!("\ncells.axns.states: ");
+			print!("\naxns.states: ");
 			//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
 			cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), None);
+
+		}
+		if true {
+			print!("\nREGION OUTPUT: cells.axns.states: ");
+			//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
+			cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
 
 		}
 
 
 		/* AUX VALS */
 		if true {
-			print!("\ncells.aux.ints_0: ");
+			print!("\naux.ints_0: ");
 			cortex.cells.aux.ints_0.print((1 << 0) as usize, Some((1, 1100000000)), None);
-			print!("\ncells.aux.ints_1: ");
+			print!("\naux.ints_1: ");
 			cortex.cells.aux.ints_1.print((1 << 0) as usize, Some((1, 1100000000)), None);
 		}
 
 		if false {
-			print!("\ncells.aux.chars_0: ");
+			print!("\naux.chars_0: ");
 			cortex.cells.aux.chars_0.print((1 << 0) as usize, Some((-128, 127)), None);
-			print!("\ncells.aux.chars_1: ");
+			print!("\naux.chars_1: ");
 			cortex.cells.aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None);
 		}
 
@@ -265,26 +273,26 @@ pub fn test_cycle() {
 
 		/* SYNAPSE COL_OFS (SRC_OFS) */
 
-		/*print!("\ncells.cols.syns.src_ofs:");
+		/*print!("\ncols.syns.src_ofs:");
 		cortex.cells.cols.syns.src_ofs.print_val_range(1 << 12, -128, 127);*/
 
 		/*if false {
-			print!("\ncells.soma.bsl_dst_dens.syns.axn_col_offs:");
+			print!("\nsoma.bsl_dst_dens.syns.axn_col_offs:");
 			cortex.cells.soma.bsl_dst_dens.syns.axn_col_offs.print(1 << 14);		// 16384
 
-			print!("\ncells.cols.bsl_prx_dens.syns.axn_col_offs:");
+			print!("\ncols.bsl_prx_dens.syns.axn_col_offs:");
 			cortex.cells.cols.bsl_prx_dens.syns.axn_col_offs.print(1 << 16);
 		}*/
 
 		/* SYNAPSE AXN_ROW_IDS */
 
 		/*if false {
-			print!("\ncells.soma.bsl_dst_dens.syns.axn_row_ids:");
+			print!("\nsoma.bsl_dst_dens.syns.axn_row_ids:");
 			cortex.cells.soma.bsl_dst_dens.syns.axn_row_ids.print(1 << 14);		// 16384
 		}
 
 		if false {
-			print!("\ncells.cols.bsl_prx_dens.syns.axn_row_ids:");
+			print!("\ncols.bsl_prx_dens.syns.axn_row_ids:");
 			cortex.cells.cols.bsl_prx_dens.syns.axn_row_ids.print(1 << 10);
 		}*/
 
@@ -292,34 +300,34 @@ pub fn test_cycle() {
 		/* SYNAPSE STRENGTHS */
 
 		/*if false {		
-			println!("\ncells.soma.bsl_dst_dens.syns.strengths: ");
+			println!("\nsoma.bsl_dst_dens.syns.strengths: ");
 			cortex.cells.soma.bsl_dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
 		}
 
 		if false {
-			print!("\ncells.cols.bsl_prx_dens.syns.strengths: ");
+			print!("\ncols.bsl_prx_dens.syns.strengths: ");
 			cortex.cells.cols.bsl_prx_dens.syns.strengths.print_val_range(1 << 4, 17, 127);
 		}*/
 
 		/*if true {	
-			print!("\ncells.soma.dst_dens.syns.states: ");
+			print!("\nsoma.dst_dens.syns.states: ");
 			cortex.cells.soma.dst_dens.syns.states.print(1 << 14);
 		}*/
 
 		/*if true {
-			print!("\ncells.cols.bsl_prx_dens.syns.states: ");
+			print!("\ncols.bsl_prx_dens.syns.states: ");
 			cortex.cells.cols.bsl_prx_dens.syns.states.print(1 << 10);
 		}*/
 
 		/* DENDRITE STATES */
 
 		/*if true {
-			print!("\ncells.soma.bsl_dst_dens.states: ");
+			print!("\nsoma.bsl_dst_dens.states: ");
 			cortex.cells.soma.bsl_dst_dens.states.print(1 << 10);
 		}
 
 		if true {
-			print!("\ncells.cols.bsl_prx_dens.states: ");
+			print!("\ncols.bsl_prx_dens.states: ");
 			cortex.cells.cols.bsl_prx_dens.states.print(1 << 6);
 		}*/
 
@@ -327,12 +335,12 @@ pub fn test_cycle() {
 		/* AUX VALS */
 
 		/*if true {
-			print!("\ncells.aux.chars_0: ");
+			print!("\naux.chars_0: ");
 			cortex.cells.aux.chars_0.print(1 << 0);
 		}
 
 		if true {
-			print!("\ncells.aux.chars_1: ");
+			print!("\naux.chars_1: ");
 			cortex.cells.aux.chars_1.print(1 << 0);
 		}*/
 

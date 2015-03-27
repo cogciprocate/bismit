@@ -62,7 +62,8 @@ impl Ocl {
 			cl_h::clCreateKernel(self.program, ffi::CString::from_slice(name.as_bytes()).as_ptr(), &mut err)
 		};
 
-		must_succ("Ocl::new_kernel()", err);
+		let err_pre = format!("Ocl::new_kernel({}):", name);
+		must_succ(err_pre.as_slice(), err);
 
 		Kernel {
 			kernel: kernel,
@@ -249,6 +250,7 @@ impl Kernel {
 
 	fn new_kernel_arg(&mut self, arg_size: libc::size_t, arg_value: *const libc::c_void) -> u32 {
 		let a_i = self.arg_index;
+
 		let err = unsafe {
 			cl_h::clSetKernelArg(
 						self.kernel, 
@@ -257,7 +259,9 @@ impl Kernel {
 						arg_value,
 			)
 		};
-		must_succ("clSetKernelArg()", err);
+
+		let err_pre = format!("ocl::Kernel::new_kernel_arg(): {}:", self.name);
+		must_succ(err_pre.as_slice(), err);
 		//println!("Adding Kernel Argument: {}", self.arg_index);
 		self.arg_index += 1;
 		a_i
@@ -271,7 +275,9 @@ impl Kernel {
 						mem::size_of::<T>() as u64, 
 						mem::transmute(&val),
 			);
-			must_succ("clSetKernelArg()", err);
+
+			let err_pre = format!("ocl::Kernel::set_kernel_arg(): {}:", self.name);
+			must_succ(err_pre.as_slice(), err);
 		}
 	}
 
@@ -299,7 +305,9 @@ impl Kernel {
 						ptr::null(),
 						&mut event as *mut cl_event,
 			);
-			must_succ("clEnqueueNDRangeKernel()", err);
+
+			let err_pre = format!("ocl::Kernel::enqueue(): {}:", self.name);
+			must_succ(err_pre.as_slice(), err);
 		}
 		event
 	}
@@ -328,7 +336,9 @@ impl Kernel {
 						event_wait_list.as_ptr(),
 						&mut event as *mut cl_event,
 			);
-			must_succ("clEnqueueNDRangeKernel()", err);
+
+			let err_pre = format!("ocl::Kernel::enqueue_wait(): {}:", self.name);
+			must_succ(err_pre.as_slice(), err);
 		}
 		event
 	}
@@ -511,7 +521,8 @@ pub fn new_kernel(program: cl_h::cl_program, kernel_name: &str) -> cl_h::cl_kern
 	let mut err: cl_h::cl_int = 0;
 	unsafe {
 		let kernel = cl_h::clCreateKernel(program, ffi::CString::from_slice(kernel_name.as_bytes()).as_ptr(), &mut err);
-		must_succ("clCreateKernel()", err);
+		let err_pre = format!("clCreateKernel({}):", kernel_name);
+		must_succ(err_pre.as_slice(), err);
 		kernel
 	}
 }

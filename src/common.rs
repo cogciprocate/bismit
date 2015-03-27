@@ -33,7 +33,7 @@ pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
 pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;		// appears to cause lots of delay... 256 is slow
 
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 3;
-pub const DENDRITE_INITIAL_THRESHOLD: u8 = 1;
+pub const DENDRITE_INITIAL_THRESHOLD: u8 = 2;		// number of active synapses (actually, number of 128+s)
 
 pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 16;
 pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 64;
@@ -129,6 +129,7 @@ pub fn build_options() -> String {
 		.opt("ASPINY_REACH", ASPINY_REACH as usize)
 		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as usize)
 		.opt("ASPINY_SPAN", ASPINY_SPAN as usize)
+		.opt("DENDRITE_INITIAL_THRESHOLD", DENDRITE_INITIAL_THRESHOLD as usize)
 		.to_string()
 }
 

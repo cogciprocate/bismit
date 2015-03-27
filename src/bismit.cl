@@ -90,6 +90,7 @@ static inline uint asp_col_id_to_col_idx(uint asp_idx, uint asp_col_id) {
 
 	TODO:
 		- Vectorize!
+		- Col Inputs/Outputs probably need to be limited to one row.
 
 	WATCH OUT FOR:
 		- Bank conflicts once src_ofs start to change
@@ -145,7 +146,9 @@ __kernel void syns_cycle(
 		//uint cel_idx_dup = init_cel_idx + i;
 		uint axn_idx = (mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(col_pos + syn_src_ofs[syn_idx]))) + SYNAPSE_REACH;
 
-		syn_states[syn_idx] = axn_states[axn_idx];
+		uchar axn_state = axn_states[axn_idx];
+
+		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
 		//syn_states[syn_idx] = 5;
 		//syn_states[syn_idx] = (axn_idx - 3200) >> 2;
 
@@ -165,46 +168,12 @@ __kernel void syns_cycle(
 
 
 
-
-
-__kernel void dens_cycle_origish(
-	__global uchar* const syn_states,
-	__private uint const syns_per_den_l2,
-	__global uchar* const den_states
-) {
-	uint const row_id = get_global_id(0);
-	uint const den_id = get_global_id(1);
-	//uint const l_id = get_local_id(1);
-	uint const row_width = get_global_size(1);
-	uint const den_idx = mad24(row_id, row_width, den_id);
-	uint const syn4_per_den_l2 = syns_per_den_l2 - 2;
-	uint const syn_ofs = den_idx << syn4_per_den_l2;
-
-	int4 syn_sum = (int4)(0, 0, 0, 0);
-	uint n = 1 << syn4_per_den_l2;
-
-	for (uint i = 0; i < n; i += 1) {
-		syn_sum += convert_int4(vload4((syn_ofs + i), syn_states));
-		//syn_sum += syn_state.s0;
-	}
-
-	int den_total = syn_sum.s0 + syn_sum.s1 + syn_sum.s2 + syn_sum.s3;
-
-	den_states[den_idx] = mad24((den_total > 0), 128, clamp(den_total >> (syns_per_den_l2 + 1), 0, 127));
-	//den_states[den_idx] = den_total; //(0, 1, 2, 3); 
-}
-
-
-
-
-
-
 /*
 	NEEDS REWRITE
 	OPTIMIZE FOR WORKGROUP
+	VECTORIZE
 */
-
-__kernel void dens_cycle(
+__kernel void den_prox_cycle(
 	__global uchar* const syn_states,
 	__private uint const syns_per_den_l2,
 	__global uchar* const den_states
@@ -222,16 +191,17 @@ __kernel void dens_cycle(
 	uint n = (1 << syns_per_den_l2);
 
 	for (uint i = 0; i < n; i += 1) {
-		syn_sum += syn_states[syn_ofs + i];
+		uchar syn_state = syn_states[syn_ofs + i];
+		syn_sum += mul24((syn_state > 128), (syn_state) & (0x7F));
 	}
 
-	int den_total = syn_sum;
-
 	//den_states[den_idx] = (syn_sum >> syns_per_den_l2);
-	den_states[den_idx] = mad24((den_total > 0), 128, clamp(den_total >> (syns_per_den_l2 + 1), 0, 127));
+	den_states[den_idx] = syn_sum >> (syns_per_den_l2 - 1);
 	//den_states[den_idx] = mad24((den_total > 0), 128, clamp(den_total >> (syns_per_den_l2 + 1), 0, 127));
 	//den_states[den_idx] = den_total; //(0, 1, 2, 3); 
 }
+
+
 
 
 __kernel void aspiny_cycle_pre(
@@ -279,6 +249,8 @@ __kernel void aspiny_cycle_pre(
 	asp_states[asp_idx] = winner_val;
 	asp_col_ids[asp_idx] = winner_id;		// | (winner_val & 0xF8);
 }
+
+
 
 /* 
 TODO:
@@ -376,13 +348,14 @@ __kernel void col_post_inhib_unoptd (
 	__global uchar* const asp_states,
 	__global uchar* const asp_wins,
 	__global uchar* const col_states,
-	__global uchar* const axn_states,
+	//__global uchar* const col_cel_status,
 	__global int* const aux_ints_0,
 	__global int* const aux_ints_1,
-	__global uchar* const pyr_states,
-	__private uchar const pyr_height,
-	__private uchar const pyr_base_row,
-	__private uint const col_axn_row_offset
+	//__global uchar* const pyr_states,
+	//__private uchar const pyr_height,
+	//__private uchar const pyr_base_row,
+	__private uint const col_axn_row_offset,
+	__global uchar* const axn_states
 ) {
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
@@ -399,21 +372,27 @@ __kernel void col_post_inhib_unoptd (
 	win = (win && asp_state);
 
 	//if (win > 0) {
-	int column_predictions = 0;
+	/*int column_predictions = 0;
 
 	for (uint i = 0; i < pyr_height; i++) {
 		uint pyr_idx = mad24((uint)i, row_width, col_id);
 		column_predictions += (pyr_states[pyr_idx] > 0);
-	}
+	}*/
 
-	for (uint i = 0; i < pyr_height; i++) {
+	/*for (uint i = 0; i < pyr_height; i++) {
 		uint pyr_idx = mad24((uint)i, row_width, col_id);
 		int pyr_state = pyr_states[pyr_idx];
-		pyr_state += (((pyr_state > 0) || (column_predictions == 0)) && win) << 7;
+		uint cc_status = col_cel_status[col_idx];
+		//pyr_state += (((pyr_state > 0) || (column_predictions == 0)) && win) << 7;
+
+		if (cc_status) {
+
+		}
+
 		pyr_states[pyr_idx] = clamp(pyr_state, 0, 254); // CLAMP SHOULDN'T BE NEEDED
 
 		//aux_ints_0[pyr_idx] = column_predictions;
-	}
+	}*/
 	//}
 
 	col_states[col_idx] = mul24(col_state, (win > 0));
@@ -423,36 +402,170 @@ __kernel void col_post_inhib_unoptd (
 }
 
 
-__kernel void pyramidal_cycle(
-				__global uchar* const den_states,
+
+
+__kernel void pyr_activate(
+				__global uchar* const col_states,
+				__global uchar* const col_cel_status,
+				
+				//__private uchar const col_row_count,
+				__private uchar const pyr_row_count,
+				//__private uchar const axn_output_row,
+				//__private uchar const pyr_base_row,
+				//__global uchar* const axn_states
 				__global uchar* const pyr_states
+				
+) {
+	uint const row_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const row_width = get_global_size(1);
+	//uint const axn_idx = mad24(axn_output_row, row_width, col_id + (uint)SYNAPSE_REACH);
+	//uint const col_idx = mad24(row_id, row_width, col_id);
+	uint pyr_idx = mad24(row_id, row_width, col_id);
+
+	uchar col_state = col_states[col_id];
+	uchar cc_status = col_cel_status[col_id];
+
+	
+}
+
+
+
+
+/*__kernel void col_pyr_activate(
+				__global uchar* const col_states,
+				__global uchar* const col_cel_status,
+				__global uchar* const pyr_states,
+				//__private uchar const col_row_count,
+				__private uchar const pyr_row_count,
+				//__private uchar const axn_output_row,
+				//__private uchar const pyr_base_row,
+				//__global uchar* const axn_states
+				
+) {
+	uint const row_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const row_width = get_global_size(1);
+	//uint const axn_idx = mad24(axn_output_row, row_width, col_id + (uint)SYNAPSE_REACH);
+	uint const col_idx = mad24(row_id, row_width, col_id);
+
+	uchar col_state = col_states[col_idx];
+
+	int output_total = 0;
+
+	for (uint i = 0; i < pyr_row_count; i++) {
+		uint pyr_idx = mad24(i, row_width, col_id);
+		output_total += pyr_states[pyr_idx];
+		//output_total += 1;
+	}
+
+	//axn_states[axn_idx] = clamp(output_total, 0, 255);
+	//axn_states[axn_idx] = test;
+}*/
+
+
+
+/*
+	OPTIMIZE FOR WORKGROUP
+	VECTORIZE
+*/
+__kernel void den_dist_cycle(
+	__global uchar* const syn_states,
+	__private uint const syns_per_den_l2,
+	__global uchar* const den_states
+) {
+	uint const row_id = get_global_id(0);
+	uint const den_id = get_global_id(1);
+	//uint const l_id = get_local_id(1);
+	uint const row_width = get_global_size(1);
+	uint const den_idx = mad24(row_id, row_width, den_id);
+	//uint const syn4_per_den_l2 = syns_per_den_l2 - 2;
+	//uint const syn_ofs = den_idx << syn4_per_den_l2;
+	uint const syn_ofs = den_idx << syns_per_den_l2;
+
+	int syn_sum = 0;
+	uint n = (1 << syns_per_den_l2);
+
+	for (uint i = 0; i < n; i += 1) {
+		uchar syn_state = syn_states[syn_ofs + i];
+		syn_sum += syn_state;
+	}
+
+	uchar den_state = clamp((syn_sum >> 7), 0, 255);
+
+	den_states[den_idx] = mul24((den_state > DENDRITE_INITIAL_THRESHOLD), den_state);
+	//den_states[den_idx] = mad24((den_total > 0), 128, clamp(den_total >> (syns_per_den_l2 + 1), 0, 127));
+	//den_states[den_idx] = den_total; //(0, 1, 2, 3); 
+	//den_states[den_idx] = (syn_sum >> syns_per_den_l2);
+
+}
+
+
+__kernel void pyr_cycle_dens(
+				__global uchar* const den_states,
+				__private uchar const pyr_axn_row_offs,
+				__global uchar* const pyr_states
+				//__global uchar* const axn_states
 ) {
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
 	uint const cel_idx = mad24(row_id, row_width, col_id);
 	uint const den_grp = cel_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
+	//uint const axn_idx = mad24(pyr_base_axn_row + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
 
 	int den_sum = 0;
 
-	int active_dendrites = 0;
+	//int active_dendrites = 0;
 
-	uint pyr_state = pyr_states[cel_idx];
+	//uint pyr_state = pyr_states[cel_idx];
 
 		#pragma unroll 
 	for (uint i = 0; i < DENDRITES_PER_CELL_DISTAL; i++) {
 		uchar den_state = den_states[den_grp + i];
-		//den_sum += den_state;
-		active_dendrites += (den_state > 15);
+		den_sum += den_state;
+		//active_dendrites += (den_state > 0);
 	}
-
+	
 	//den_sum >>= DENDRITES_PER_CELL_DISTAL_LOG2;
 
 	//pyr_states[cel_idx] = (den_sum >> 1);
-	pyr_states[cel_idx] = mul24((active_dendrites > 0), 64);
+	pyr_states[cel_idx] = clamp(den_sum, 0, 255);
 	//pyr_states[cel_idx] = active_dendrites;
 }
 
+
+__kernel void col_output(
+				__global uchar* const col_states,
+				__global uchar* const pyr_states,
+				__private uchar const col_row_count,
+				__private uchar const pyr_row_count,
+				__private uchar const axn_output_row,
+				//__private uchar const pyr_base_row,
+				__global uchar* const col_cel_status,
+				__global uchar* const axn_states
+				
+) {
+	uint const row_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const row_width = get_global_size(1);
+	uint const axn_idx = mad24(axn_output_row, row_width, col_id + (uint)SYNAPSE_REACH);
+	uint const col_idx = mad24(row_id, row_width, col_id);
+
+	int col_state = col_states[col_idx];
+
+	int output_total = 0;
+
+	for (uint i = 0; i < pyr_row_count; i++) {
+		uint pyr_idx = mad24(i, row_width, col_id);
+		output_total += pyr_states[pyr_idx];
+		//output_total += 1;
+	}
+
+	col_cel_status[col_idx] = clamp(output_total, 0, 255);
+	axn_states[axn_idx] = clamp(max(output_total, col_state), 0, 255);
+	//axn_states[axn_idx] = test;
+}
 
 
 
@@ -471,6 +584,33 @@ __kernel void pyramidal_cycle(
 
 
 
+
+/*__kernel void dens_cycle_origish_with_vectors(
+	__global uchar* const syn_states,
+	__private uint const syns_per_den_l2,
+	__global uchar* const den_states
+) {
+	uint const row_id = get_global_id(0);
+	uint const den_id = get_global_id(1);
+	//uint const l_id = get_local_id(1);
+	uint const row_width = get_global_size(1);
+	uint const den_idx = mad24(row_id, row_width, den_id);
+	uint const syn4_per_den_l2 = syns_per_den_l2 - 2;
+	uint const syn_ofs = den_idx << syn4_per_den_l2;
+
+	int4 syn_sum = (int4)(0, 0, 0, 0);
+	uint n = 1 << syn4_per_den_l2;
+
+	for (uint i = 0; i < n; i += 1) {
+		syn_sum += convert_int4(vload4((syn_ofs + i), syn_states));
+		//syn_sum += syn_state.s0;
+	}
+
+	int den_total = syn_sum.s0 + syn_sum.s1 + syn_sum.s2 + syn_sum.s3;
+
+	den_states[den_idx] = mad24((den_total > 0), 128, clamp(den_total >> (syns_per_den_l2 + 1), 0, 127));
+	//den_states[den_idx] = den_total; //(0, 1, 2, 3); 
+}*/
 
 
 

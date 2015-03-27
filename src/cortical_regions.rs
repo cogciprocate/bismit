@@ -308,6 +308,19 @@ impl CorticalRegion {
 
 		input_layer		
  	}
+
+ 	pub fn col_output_rows(&self) -> Vec<u8> {
+ 		let mut output_rows: Vec<u8> = Vec::with_capacity(4);
+ 		
+ 		for (layer_name, layer) in self.layers.iter() {
+ 			if (layer.flags & layer::COLUMN_OUTPUT) == layer::COLUMN_OUTPUT {
+ 				let v = self.row_ids(vec![layer.name]);
+ 				output_rows.push_all(v.as_slice());
+ 			}
+ 		}
+
+		output_rows		
+ 	}
 }
 
 impl Index<&'static str> for CorticalRegion

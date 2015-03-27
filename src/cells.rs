@@ -84,11 +84,14 @@ impl Cells {
 		//self.soma.learn(&self.ocl);
 		//self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
 
-		self.pyrs.cycle();
+		
 
 		
 		self.cols.cycle();
 		
+		self.pyrs.cycle();
+
+		self.cols.output();
 		
 		//self.axns.cycle();
 	}
