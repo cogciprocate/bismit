@@ -18,7 +18,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 pub struct Synapses {
-	height: u8,
+	depth: u8,
 	width: u32,
 	per_cell_l2: u32,
 	den_kind: DendriteKind,
@@ -32,22 +32,22 @@ pub struct Synapses {
 }
 
 impl Synapses {
-	pub fn new(width: u32, height: u8, per_cell_l2: u32, den_kind: DendriteKind, cell_kind: CellKind, 
+	pub fn new(width: u32, depth: u8, per_cell_l2: u32, den_kind: DendriteKind, cell_kind: CellKind, 
 					region: &CorticalRegion, axons: &Axons, ocl: &Ocl) -> Synapses {
 
 		let syns_per_row = width << per_cell_l2;
 
 		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
-		print!("\nNew {:?} Synapses with: height: {}, width: {}, per_cell_l2: {}, syns_per_row(row area): {}", den_kind, height, width, per_cell_l2, syns_per_row);
+		print!("\nNew {:?} Synapses with: depth: {}, width: {}, per_cell_l2: {}, syns_per_row(row area): {}", den_kind, depth, width, per_cell_l2, syns_per_row);
 
-		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, height, 0, ocl);
-		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, height, 0, ocl);
-		let mut axn_row_ids = Envoy::<ocl::cl_uchar>::new(syns_per_row, height, 0, ocl);
-		//let mut axn_col_offs = Envoy::<ocl::cl_char>::new(syns_per_row, height, 0, ocl);
-		let mut axn_col_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, height, -128, 127, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
+		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
+		let mut axn_row_ids = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
+		//let mut axn_col_offs = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
+		let mut axn_col_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -128, 127, ocl);
 
 		let mut kern_cycle = ocl.new_kernel("syns_cycle", 
-			WorkSize::TwoDim(height as usize, width as usize))
+			WorkSize::TwoDim(depth as usize, width as usize))
 			.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 			.arg_env(&axons.states)
 			.arg_env(&axn_col_offs)
@@ -60,7 +60,7 @@ impl Synapses {
 
 		let mut syns = Synapses {
 			width: width,
-			height: height,
+			depth: depth,
 			per_cell_l2: per_cell_l2,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
@@ -113,7 +113,7 @@ impl Synapses {
 			print!("\nLayer: \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", layer_name, self.den_kind, row_ids, src_row_ids);
 			
 			/* LOOP THROUGH ROWS (WITHIN LAYER) */
-			for row_pos in range(kind_base_row_pos, kind_base_row_pos + layer.height) {
+			for row_pos in range(kind_base_row_pos, kind_base_row_pos + layer.depth) {
 				let ei_start = syns_per_row as usize * row_pos as usize;
 				let ei_end = ei_start + syns_per_row as usize;
 				print!("\n	Row {}: ei_start: {}, ei_end: {}, src_ids: {:?}", row_pos, ei_start, ei_end, src_row_ids);

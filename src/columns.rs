@@ -39,28 +39,28 @@ pub struct Columns {
 impl Columns {
 	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, pyrs: &Pyramidal, aux: &Aux, ocl: &Ocl) -> Columns {
 		let layer = region.col_input_layer().expect("columns::Columns::new()");
-		let height: u8 = layer.height();
+		let depth: u8 = layer.depth();
 
 		let syns_per_cell_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 		let syns_per_cell: u32 = 1 << syns_per_cell_l2;
 
-		let states = Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl);
-		let cel_status = Envoy::<ocl::cl_uchar>::new(width, height, common::STATE_ZERO, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
+		let cel_status = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 
-		let asps = AspinyStellate::new(width, height, region, &states, ocl);
-		let syns = ColumnSynapses::new(width, height, syns_per_cell, &layer, region, axons, aux, ocl);
+		let asps = AspinyStellate::new(width, depth, region, &states, ocl);
+		let syns = ColumnSynapses::new(width, depth, syns_per_cell, &layer, region, axons, aux, ocl);
 
-		let kern_cycle = ocl.new_kernel("den_prox_cycle", WorkSize::TwoDim(height as usize, width as usize))
+		let kern_cycle = ocl.new_kernel("den_prox_cycle", WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&syns.states)
 			.arg_scl(syns_per_cell_l2)
 			.arg_env(&states);
 
 
-		let pyr_height = region.height_cell_kind(&CellKind::Pyramidal);
-		//print!("\n###pyr_height: {}", pyr_height);
-		let pyr_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC PYRS 
+		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidal);
+		//print!("\n###pyr_depth: {}", pyr_depth);
+		let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC PYRS 
 
-		let kern_post_inhib = ocl.new_kernel("col_post_inhib_unoptd", WorkSize::TwoDim(height as usize, width as usize))
+		let kern_post_inhib = ocl.new_kernel("col_post_inhib_unoptd", WorkSize::TwoDim(depth as usize, width as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&asps.ids)
 			.arg_env(&asps.states)
@@ -70,8 +70,8 @@ impl Columns {
 			.arg_env(&aux.ints_0)
 			.arg_env(&aux.ints_1)
 			//.arg_env(&pyrs.states)
-			//.arg_scl(pyr_height)
-			//.arg_scl(pyr_base_row)
+			//.arg_scl(pyr_depth)
+			//.arg_scl(pyr_axn_base_row)
 			//self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
 			.arg_scl(layer.base_row_pos() as u32)
 			.arg_env(&axons.states)
@@ -87,11 +87,12 @@ impl Columns {
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(1 as usize, width as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&states)
-			.arg_env(&pyrs.states)
-			.arg_scl(height)
-			.arg_scl(pyr_height)
-			.arg_scl(axn_output_row)
+			//.arg_env(&pyrs.states)
+			//.arg_scl(depth)
+			.arg_scl(pyr_depth)
+			.arg_scl(pyr_axn_base_row)
 			.arg_env(&cel_status)
+			.arg_scl(axn_output_row)
 			.arg_env(&axons.states)
 		;
 		
@@ -121,14 +122,14 @@ impl Columns {
 
 	pub fn axn_output_range(&self) -> (usize, usize) {
 		let start = (self.axn_output_row as usize * self.width as usize) + common::SYNAPSE_REACH as usize;
-		(start, start + self.width as usize)
+		(start, start + (self.width - 1) as usize)
 	}
 }
 
 
 pub struct ColumnSynapses {
 	width: u32,
-	height: u8,
+	depth: u8,
 	per_cell: u32,
 	src_row_ids_list: Vec<u8>,
 	kern_cycle: ocl::Kernel,
@@ -139,27 +140,27 @@ pub struct ColumnSynapses {
 }
 
 impl ColumnSynapses {
-	pub fn new(width: u32, height: u8, per_cell: u32, layer: &CorticalRegionLayer, 
+	pub fn new(width: u32, depth: u8, per_cell: u32, layer: &CorticalRegionLayer, 
 					region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> ColumnSynapses {
 
 		let syns_per_row = width * per_cell;
 		let src_row_ids_list: Vec<u8> = region.src_row_ids(layer.name, DendriteKind::Proximal);
 		let src_rows_len = src_row_ids_list.len() as u8;
-		//let height = src_rows_len;
+		//let depth = src_rows_len;
 		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
 		//let dens_per_wg: u32 = wg_size / (common::SYNAPSES_PER_DENDRITE_PROXIMAL);
 		let syns_per_cell_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 		//let dens_per_wg: u32 = 1;
 
-		print!("\nNew Proximal Synapses with: height: {}, syns_per_row: {}, src_rows_len: {}", height, syns_per_row, src_rows_len);
+		print!("\nNew Proximal Synapses with: depth: {}, syns_per_row: {}, src_rows_len: {}", depth, syns_per_row, src_rows_len);
 
-		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, height, common::STATE_ZERO, ocl);
-		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, height, 1i8, ocl);
-		let src_ofs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, height, -128, 127, ocl);
-		let src_row_ids= Envoy::<ocl::cl_uchar>::new(syns_per_row, height, 0u8, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, common::STATE_ZERO, ocl);
+		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 1i8, ocl);
+		let src_ofs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -128, 127, ocl);
+		let src_row_ids= Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0u8, ocl);
 
 		let mut kern_cycle = ocl.new_kernel("syns_cycle", 
-			WorkSize::TwoDim(height as usize, width as usize))
+			WorkSize::TwoDim(depth as usize, width as usize))
 			.lws(WorkSize::TwoDim(1 as usize, wg_size as usize));
 		kern_cycle.new_arg_envoy(&axons.states);
 		kern_cycle.new_arg_envoy(&src_ofs);
@@ -173,7 +174,7 @@ impl ColumnSynapses {
 		
 		let mut syns = ColumnSynapses {
 			width: width,
-			height: height,
+			depth: depth,
 			per_cell: per_cell,
 			src_row_ids_list: src_row_ids_list,
 			states: states,
@@ -189,7 +190,7 @@ impl ColumnSynapses {
 	}
 
 	fn init(&mut self, region: &CorticalRegion) {
-		let len = self.width * self.per_cell * self.height as u32;
+		let len = self.width * self.per_cell * self.depth as u32;
 		let mut rng = rand::weak_rng();
 		let ei_start = 0usize;
 		let ei_end = ei_start + len as usize;

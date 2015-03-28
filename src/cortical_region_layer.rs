@@ -8,7 +8,7 @@ pub struct CorticalRegionLayer {
 	pub cell: Option<Protocell>,
 	pub base_row_pos: ocl::cl_uchar,
 	pub kind_base_row_pos: ocl::cl_uchar,
-	pub height: ocl::cl_uchar,
+	pub depth: ocl::cl_uchar,
 	pub flags: LayerFlags,
 }
 
@@ -18,7 +18,7 @@ impl CorticalRegionLayer {
 				cell: Option<Protocell>,
 				base_row_pos: u8,
 				kind_base_row_pos: u8,
-				height: u8,
+				depth: u8,
 				flags: LayerFlags,
 	) -> CorticalRegionLayer {
 		CorticalRegionLayer {
@@ -26,7 +26,7 @@ impl CorticalRegionLayer {
 			cell: cell,
 			base_row_pos: base_row_pos,
 			kind_base_row_pos: kind_base_row_pos,
-			height: height,
+			depth: depth,
 			flags: flags,
 		}
 	}*/
@@ -35,8 +35,8 @@ impl CorticalRegionLayer {
 		self.base_row_pos
 	}
 
-	pub fn height(&self) -> ocl::cl_uchar {
-		self.height
+	pub fn depth(&self) -> ocl::cl_uchar {
+		self.depth
 	}
 
 	pub fn name(&self) -> &'static str {

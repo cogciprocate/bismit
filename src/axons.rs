@@ -21,8 +21,8 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 pub struct Axons {
-	height_noncellular: u8,
-	height_cellular: u8,
+	depth_noncellular: u8,
+	depth_cellular: u8,
 	pub width: u32,
 	padding: u32,
 	//kern_cycle: ocl::Kernel,
@@ -30,16 +30,16 @@ pub struct Axons {
 }
 
 impl Axons {
-	pub fn new(width: u32, height_noncellular: u8, height_cellular: u8, region: &CorticalRegion, ocl: &Ocl) -> Axons {
+	pub fn new(width: u32, depth_noncellular: u8, depth_cellular: u8, region: &CorticalRegion, ocl: &Ocl) -> Axons {
 		let padding: u32 = num::cast(common::AXONS_MARGIN * 2).expect("Axons::new()");
-		let height = height_cellular + height_noncellular;
+		let depth = depth_cellular + depth_noncellular;
 
-		//println!("New Axons with: height_ac: {}, height_c: {}, width: {}", height_noncellular, height_cellular, width);
-		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, common::STATE_ZERO, ocl);
+		//println!("New Axons with: depth_ac: {}, depth_c: {}, width: {}", depth_noncellular, depth_cellular, width);
+		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, common::STATE_ZERO, ocl);
 
 		Axons {
-			height_noncellular: height_noncellular,
-			height_cellular: height_cellular,
+			depth_noncellular: depth_noncellular,
+			depth_cellular: depth_cellular,
 			width: width,
 			padding: padding,
 			//kern_cycle: kern_cycle,
@@ -52,12 +52,12 @@ impl Axons {
 
 
 	/*pub fn cycle(&self, soma: &Somata, ocl: &Ocl) {
-		let mut kern = ocl.new_kernel("axns_cycle", WorkSize::TwoDim(self.height_cellular as usize, self.width as usize));
+		let mut kern = ocl.new_kernel("axns_cycle", WorkSize::TwoDim(self.depth_cellular as usize, self.width as usize));
 
 		kern.arg(&soma.states);
 		kern.arg(&soma.hcol_max_ids);
 		kern.arg(&self.states);
-		kern.arg_scalar(self.height_noncellular as u32);
+		kern.arg_scalar(self.depth_noncellular as u32);
 
 		kern.enqueue();
 	} */
@@ -71,9 +71,9 @@ impl Axons {
 		//ocl::set_kernel_arg(1, soma.hcol_max_vals.buf, kern);
 		ocl::set_kernel_arg(1, soma.hcol_max_ids.buf, kern);
 		ocl::set_kernel_arg(2, self.states.buf, kern);
-		ocl::set_kernel_arg(3, self.height_noncellular as u32, kern);
+		ocl::set_kernel_arg(3, self.depth_noncellular as u32, kern);
 
-		let gws = (self.height_cellular as usize, self.width as usize);
+		let gws = (self.depth_cellular as usize, self.width as usize);
 
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 

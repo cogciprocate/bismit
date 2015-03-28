@@ -33,7 +33,6 @@ pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
 pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;		// appears to cause lots of delay... 256 is slow
 
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 3;
-pub const DENDRITE_INITIAL_THRESHOLD: u8 = 2;		// number of active synapses (actually, number of 128+s)
 
 pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 16;
 pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 64;
@@ -45,7 +44,7 @@ pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 4;
 pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2;
 
-pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 5;
+pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 4;
 pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 
@@ -107,6 +106,7 @@ pub const STATE_ZERO: u8 = 0;
 
 pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 
+pub const DENDRITE_INITIAL_THRESHOLD: u32 = 396;		// number of active synapses (actually, number of 128+s)
 
 
 pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";

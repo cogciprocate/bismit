@@ -35,7 +35,7 @@ pub fn define_regions() -> CorticalRegions {
 
 		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]))
 		//.layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
-		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"))
+		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii"], "iv"))
 		//.layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["ii"], "iv"))
 	;
 
@@ -131,8 +131,8 @@ impl Cortex {
 
 
 pub struct CorticalDimensions {
-	height_axn_rows: u8,
-	height_cell_rows: u8,
+	depth_axn_rows: u8,
+	depth_cell_rows: u8,
 	width_cols: u32,
 	width_dens: u32,
 	width_syns: u32,
@@ -144,13 +144,13 @@ pub struct CorticalDimensions {
 /*	fn cycle_syns(&self) {
 
 		let width: u32 = self.areas.width(CorticalRegionKind::Sensory);
-		let height_total: u8 = self.regions.height_total(CorticalRegionKind::Sensory);
-		let (_, height_cellular) = self.regions.height(CorticalRegionKind::Sensory);
-		let len: u32 = width * height_total as u32;
+		let depth_total: u8 = self.regions.depth_total(CorticalRegionKind::Sensory);
+		let (_, depth_cellular) = self.regions.depth(CorticalRegionKind::Sensory);
+		let len: u32 = width * depth_total as u32;
 
-		let test_envoy = Envoy::<ocl::cl_int>::new(width, height_total, 0, &self.ocl);
+		let test_envoy = Envoy::<ocl::cl_int>::new(width, depth_total, 0, &self.ocl);
 
-		//println!("cycle_cel_syns running with width = {}, height = {}", width, height_total);
+		//println!("cycle_cel_syns running with width = {}, depth = {}", width, depth_total);
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_syns");
 		ocl::set_kernel_arg(0, self.cells.axns.states.buf, kern);
@@ -159,9 +159,9 @@ pub struct CorticalDimensions {
 		ocl::set_kernel_arg(3, self.cells.dst_dens.syns.strengths.buf, kern);
 		ocl::set_kernel_arg(4, self.cells.dst_dens.syns.states.buf, kern);
 
-		//println!("height_total: {}, height_cellular: {}, width_syn_row: {}", height_total, height_cellular, width_syn_row);
+		//println!("depth_total: {}, depth_cellular: {}, width_syn_row: {}", depth_total, depth_cellular, width_syn_row);
 
-		let gws = (height_cellular as usize, width as usize, common::SYNAPSES_PER_CELL);
+		let gws = (depth_cellular as usize, width as usize, common::SYNAPSES_PER_CELL);
 
 		//println!("gws: {:?}", gws);
 
@@ -172,9 +172,9 @@ pub struct CorticalDimensions {
 /*	fn cycle_dens(&self) {
 
 		let width: u32 = self.areas.width(CorticalRegionKind::Sensory);
-		let (_, height_cellular) = self.regions.height(CorticalRegionKind::Sensory);
+		let (_, depth_cellular) = self.regions.depth(CorticalRegionKind::Sensory);
 
-		let width_dens: usize = width as usize * common::DENDRITES_PER_CELL * height_cellular as usize;
+		let width_dens: usize = width as usize * common::DENDRITES_PER_CELL * depth_cellular as usize;
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_dens");
 
@@ -188,14 +188,14 @@ pub struct CorticalDimensions {
 
 /*	fn cycle_axns(&self) {
 		let width: u32 = self.areas.width(CorticalRegionKind::Sensory);
-		let (height_noncellular, height_cellular) = self.regions.height(CorticalRegionKind::Sensory);
+		let (depth_noncellular, depth_cellular) = self.regions.depth(CorticalRegionKind::Sensory);
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_axns");
 		ocl::set_kernel_arg(0, self.cells.dst_dens.states.buf, kern);
 		ocl::set_kernel_arg(1, self.cells.axns.states.buf, kern);
-		ocl::set_kernel_arg(2, height_noncellular as u32, kern);
+		ocl::set_kernel_arg(2, depth_noncellular as u32, kern);
 
-		let gws = (height_cellular as usize, width as usize);
+		let gws = (depth_cellular as usize, width as usize);
 
 		ocl::enqueue_2d_kernel(kern, self.ocl.command_queue, &gws);
 

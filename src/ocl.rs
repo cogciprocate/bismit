@@ -260,7 +260,7 @@ impl Kernel {
 			)
 		};
 
-		let err_pre = format!("ocl::Kernel::new_kernel_arg(): {}:", self.name);
+		let err_pre = format!("ocl::Kernel::new_kernel_arg()[{}]: ", self.name);
 		must_succ(err_pre.as_slice(), err);
 		//println!("Adding Kernel Argument: {}", self.arg_index);
 		self.arg_index += 1;
@@ -276,7 +276,7 @@ impl Kernel {
 						mem::transmute(&val),
 			);
 
-			let err_pre = format!("ocl::Kernel::set_kernel_arg(): {}:", self.name);
+			let err_pre = format!("ocl::Kernel::set_kernel_arg()[{}]: ", self.name);
 			must_succ(err_pre.as_slice(), err);
 		}
 	}
@@ -306,7 +306,7 @@ impl Kernel {
 						&mut event as *mut cl_event,
 			);
 
-			let err_pre = format!("ocl::Kernel::enqueue(): {}:", self.name);
+			let err_pre = format!("ocl::Kernel::enqueue()[{}]: ", self.name);
 			must_succ(err_pre.as_slice(), err);
 		}
 		event
@@ -337,7 +337,7 @@ impl Kernel {
 						&mut event as *mut cl_event,
 			);
 
-			let err_pre = format!("ocl::Kernel::enqueue_wait(): {}:", self.name);
+			let err_pre = format!("ocl::Kernel::enqueue_wait()[{}]: ", self.name);
 			must_succ(err_pre.as_slice(), err);
 		}
 		event

@@ -362,7 +362,7 @@ __kernel void syns_cycle(
 				__global char* const syn_states
 				//__private const uint axn_row_width
 ) {
-	uint const row_id = get_global_id(0);		//	y (height)
+	uint const row_id = get_global_id(0);		//	y (depth)
 	uint const col_id = get_global_id(1);		//	x (width)
 	uint const syn_id = get_global_id(2);		//	z (depth)
 	//uint const syn_row_width = get_global_size(2) * get_global_size(0);
@@ -808,7 +808,7 @@ __kernel void col_syns_cycle_2_0(
 	
 	//__local char axn_cache[SYNAPSE_WORKGROUP_SIZE + SYNAPSE_SPAN]; // ADD HEIGHT AS A CONSTANT AT SOME POINT
 	//__local size_t axn_cache_width;
-	//__local size_t axn_cache_height;
+	//__local size_t axn_cache_depth;
 
 	//size_t axn_ofs = lid << 1;
 	size_t axn_idx = mad24(src_axn_row, row_width, add_sat(col_id, (size_t)SYNAPSE_REACH));
@@ -819,7 +819,7 @@ __kernel void col_syns_cycle_2_0(
 	if (lid == 0) {
 		size_t const wg_size = get_local_size(1);
 		axn_cache_width = add_sat((size_t)SYNAPSE_SPAN, wg_size);
-		axn_cache_height = 1; // *** FIX (should be based on size of src_axn_rows or whatever it becomes) ***
+		axn_cache_depth = 1; // *** FIX (should be based on size of src_axn_rows or whatever it becomes) ***
 		size_t const axn_ofs = mad24(src_axn_row, row_width, col_id + SYNAPSE_REACH);
 		size_t axn_idx = axn_ofs;
 
@@ -876,11 +876,11 @@ __kernel void col_syns_cycle_1_0(
 	
 	__local char axn_cache[SYNAPSE_WORKGROUP_SIZE + SYNAPSE_SPAN]; // ADD HEIGHT AS A CONSTANT AT SOME POINT
 	__local size_t axn_cache_width;
-	__local size_t axn_cache_height;
+	__local size_t axn_cache_depth;
 
 	if (lid == 0) {
 		axn_cache_width = add_sat((size_t)SYNAPSE_SPAN, wg_size);
-		axn_cache_height = 1; // *** FIX (should be based on size of src_axn_rows or whatever it becomes) ***
+		axn_cache_depth = 1; // *** FIX (should be based on size of src_axn_rows or whatever it becomes) ***
 		size_t const axn_ofs = mad24(src_axn_row, row_width, col_id + SYNAPSE_REACH);
 		size_t axn_idx = axn_ofs;
 
@@ -941,7 +941,7 @@ __kernel void syns_cycle_opt(
 				__global char* const syn_states
 				//__private const uint axn_row_width
 ) {
-	size_t const row_id = get_global_id(0);		//	y (height)
+	size_t const row_id = get_global_id(0);		//	y (depth)
 	size_t const col_id = get_global_id(1);		//	x (width)
 	size_t const syn_id = get_global_id(2);		//	z (depth)
 	//size_t const syn_row_width = get_global_size(2) * get_global_size(0);

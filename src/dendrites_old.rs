@@ -17,7 +17,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 pub struct Dendrites {
-	height: u8,
+	depth: u8,
 	width: u32,
 	per_cell: u32,
 	den_type: DendriteKind,
@@ -30,7 +30,7 @@ pub struct Dendrites {
 impl Dendrites {
 	pub fn new(
 					width: u32, 
-					height: u8, 
+					depth: u8, 
 					den_type: DendriteKind, 
 					per_cell: u32, 
 					region: &CorticalRegion, 
@@ -39,13 +39,13 @@ impl Dendrites {
 		let width_dens = width * per_cell;
 
 		Dendrites {
-			height: height,
+			depth: depth,
 			width: width,
 			per_cell: per_cell,
 			den_type: den_type,
-			thresholds: Envoy::<ocl::cl_uchar>::new(width_dens, height, common::DENDRITE_INITIAL_THRESHOLD, ocl),
-			states: Envoy::<ocl::cl_uchar>::new(width_dens, height, common::STATE_ZERO, ocl),
-			syns: Synapses::new(width, height, per_cell * common::SYNAPSES_PER_DENDRITE_DISTAL, den_type, region, ocl),
+			thresholds: Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::DENDRITE_INITIAL_THRESHOLD, ocl),
+			states: Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::STATE_ZERO, ocl),
+			syns: Synapses::new(width, depth, per_cell * common::SYNAPSES_PER_DENDRITE_DISTAL, den_type, region, ocl),
 		}
 	}
 
@@ -53,7 +53,7 @@ impl Dendrites {
 	pub fn cycle(&self, axns: &Axons, ocl: &Ocl) {
 		self.syns.cycle(axns, ocl);
 
-		let len_dens: usize = self.height as usize * self.width as usize * self.per_cell as usize;
+		let len_dens: usize = self.depth as usize * self.width as usize * self.per_cell as usize;
 
 		let boost_log2: u8 = if self.den_type == DendriteKind::Distal {
 			common::DST_DEN_BOOST_LOG2

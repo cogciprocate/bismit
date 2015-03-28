@@ -17,7 +17,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 pub struct Synapses {
-	height: u8,
+	depth: u8,
 	width: u32,
 	per_cell: u32,
 	den_type: DendriteKind,
@@ -29,22 +29,22 @@ pub struct Synapses {
 }
 
 impl Synapses {
-	pub fn new(width: u32, height: u8, per_cell: u32, den_type: DendriteKind, region: &CorticalRegion, ocl: &Ocl) -> Synapses {
+	pub fn new(width: u32, depth: u8, per_cell: u32, den_type: DendriteKind, region: &CorticalRegion, ocl: &Ocl) -> Synapses {
 		let width_syns = width * per_cell;
 
-		//println!("New {:?} Synapses with: height: {}, width: {}, per_cell(row depth): {}, width_syns(row area): {}", den_type, height, width, per_cell, width_syns);
+		//println!("New {:?} Synapses with: depth: {}, width: {}, per_cell(row depth): {}, width_syns(row area): {}", den_type, depth, width, per_cell, width_syns);
 
-		let mut axn_row_ids = Envoy::<ocl::cl_uchar>::new(width_syns, height, 0, ocl);
-		let mut axn_col_offs = Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl);
+		let mut axn_row_ids = Envoy::<ocl::cl_uchar>::new(width_syns, depth, 0, ocl);
+		let mut axn_col_offs = Envoy::<ocl::cl_char>::new(width_syns, depth, 0, ocl);
 
 		let mut syns = Synapses {
 			width: width,
-			height: height,
+			depth: depth,
 			per_cell: per_cell,
 			den_type: den_type,
 			since_decay: 0,
-			states: Envoy::<ocl::cl_uchar>::new(width_syns, height, 0, ocl),
-			strengths: Envoy::<ocl::cl_char>::new(width_syns, height, 0, ocl),
+			states: Envoy::<ocl::cl_uchar>::new(width_syns, depth, 0, ocl),
+			strengths: Envoy::<ocl::cl_char>::new(width_syns, depth, 0, ocl),
 			axn_row_ids: axn_row_ids,
 			axn_col_offs: axn_col_offs,
 		};
@@ -89,7 +89,7 @@ impl Synapses {
 			//println!("Layer: \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", ln, self.den_type, row_ids, src_row_ids);
 			
 			/* LOOP THROUGH ROWS OF LIKE KIND (WITHIN LAYER) */
-			for row_pos in range(kind_base_row_pos, kind_base_row_pos + l.height) {
+			for row_pos in range(kind_base_row_pos, kind_base_row_pos + l.depth) {
 				let ei_start = row_len as usize * row_pos as usize;
 				let ei_end = ei_start + row_len as usize;
 				//println!("	Row {}: ei_start: {}, ei_end: {}, idx_len: {}", row_pos, ei_start, ei_end, src_row_ids_len);
@@ -146,7 +146,7 @@ impl Synapses {
 	}
 
 	pub fn cycle(&self, axns: &Axons, ocl: &Ocl) {
-		//println!("cycle_cel_syns running with width = {}, height = {}", width, height_total);
+		//println!("cycle_cel_syns running with width = {}, depth = {}", width, depth_total);
 
 		let kern = ocl::new_kernel(ocl.program, "syns_cycle");
 
@@ -156,9 +156,9 @@ impl Synapses {
 		ocl::set_kernel_arg(3, self.strengths.buf, kern);
 		ocl::set_kernel_arg(4, self.states.buf, kern);
 
-		//println!("height_total: {}, height_cellular: {}, width_syn_row: {}", height_total, height_cellular, width_syn_row);
+		//println!("depth_total: {}, depth_cellular: {}, width_syn_row: {}", depth_total, depth_cellular, width_syn_row);
 
-		let gws = (self.height as usize, self.width as usize, self.per_cell as usize);
+		let gws = (self.depth as usize, self.width as usize, self.per_cell as usize);
 
 		//println!("gws: {:?}", gws);
 
@@ -172,7 +172,7 @@ impl Synapses {
 			let kern = ocl::new_kernel(ocl.program, "syns_decay");
 			ocl::set_kernel_arg(0, self.strengths.buf, kern);
 
-			let gws = (self.height as usize, self.width as usize, self.per_cell as usize);
+			let gws = (self.depth as usize, self.width as usize, self.per_cell as usize);
 			ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
 
 			self.regrow(rand_ofs, ocl);
@@ -191,7 +191,7 @@ impl Synapses {
 		ocl::set_kernel_arg(1, rand_ofs.buf, kern);
 		ocl::set_kernel_arg(2, self.axn_col_offs.buf, kern);
 
-		let gws = (self.height as usize, self.width as usize, self.per_cell as usize);
+		let gws = (self.depth as usize, self.width as usize, self.per_cell as usize);
 		ocl::enqueue_3d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}
 }

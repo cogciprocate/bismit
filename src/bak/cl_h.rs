@@ -492,7 +492,7 @@ extern {
                        flags: cl_mem_flags,
                        image_format: *mut cl_image_format,
                        image_width: libc::size_t,
-                       image_height: libc::size_t,
+                       image_depth: libc::size_t,
                        image_row_pitch: libc::size_t,
                        host_ptr: *mut libc::c_void,
                        errcode_ret: *mut cl_int) -> cl_mem;
@@ -500,7 +500,7 @@ extern {
                        flags: cl_mem_flags,
                        image_format: *mut cl_image_format,
                        image_width: libc::size_t,
-                       image_height: libc::size_t,
+                       image_depth: libc::size_t,
                        image_depth: libc::size_t,
                        image_row_pitch: libc::size_t,
                        image_depth: libc::size_t,

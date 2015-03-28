@@ -15,11 +15,11 @@ use std::ops;
 use time;
 
 
-pub const TEST_ITERATIONS: i32 			= 4; 
-pub const PRINT_EVERY: i32 				= 1000;
+pub const TEST_ITERATIONS: i32 			= 199; 
+pub const PRINT_EVERY: i32 				= 10;
 
 pub const SHUFFLE_ONCE: bool 			= true;
-pub const SHUFFLE_EVERY: bool 			= false;
+pub const SHUFFLE_EVERY: bool 			= true;
 
 
 pub fn test_cycle() {
@@ -81,9 +81,9 @@ pub fn test_cycle() {
 		//if (i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16) || (i < scw_1_16) || (i >= (scw - scw_1_16)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
 		//if i < scw_1_16 {
-			vec1.push(128);
+			vec1.push(254);
 		} else {
-			vec1.push(8);
+			vec1.push(0);
 		}
 	}
 
@@ -121,6 +121,12 @@ pub fn test_cycle() {
 			if false {
 				print!("\naxns.states: ");
 				cortex.cells.axns.states.print_val_range(1 << 8, Some((1, 255)));
+			}
+
+			if true {
+				print!("\nREGION OUTPUT: cells.axns.states: ");
+				//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
+				cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
 			}
 		}
 
@@ -192,14 +198,14 @@ pub fn test_cycle() {
 		/* PYRAMIDAL SYNAPSE STATES */
 		if true {	
 			print!("\npyrs.dens.syns.states: ");
-			cortex.cells.pyrs.dens.syns.states.print(1 << 10, Some((1, 255)), None);
+			cortex.cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None);
 			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 		}
 
 		/* PYRAMIDAL DENDRITE STATES */
 		if true {	
 			print!("\npyrs.dens.states: ");
-			cortex.cells.pyrs.dens.states.print_val_range(1 << 8, Some((1, 255)));
+			cortex.cells.pyrs.dens.states.print_val_range(1 << 11, Some((1, 255)));
 		}
 
 
@@ -220,7 +226,7 @@ pub fn test_cycle() {
 		/* PYRAMIDAL CELL STATES */
 		if true {
 			print!("\npyrs.states: ");
-			cortex.cells.pyrs.states.print_val_range(1 << 6, Some((1, 255)));
+			cortex.cells.pyrs.states.print_val_range(1 << 7, Some((1, 255)));
 		}
 
 
@@ -234,7 +240,7 @@ pub fn test_cycle() {
 		if true {
 			print!("\nREGION OUTPUT: cells.axns.states: ");
 			//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
-			cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
+			cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
 
 		}
 

@@ -17,7 +17,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 pub struct Dendrites {
-	height: u8,
+	depth: u8,
 	width: u32,
 	per_cell_l2: u32,
 	den_kind: DendriteKind,
@@ -31,7 +31,7 @@ pub struct Dendrites {
 impl Dendrites {
 	pub fn new(
 					width: u32, 
-					height: u8, 
+					depth: u8, 
 					den_kind: DendriteKind, 
 					cell_kind: CellKind,
 					per_cell_l2: u32, 
@@ -47,23 +47,23 @@ impl Dendrites {
 			DendriteKind::Proximal => (common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, "den_prox_cycle"),
 		};
 
-		let states = Envoy::<ocl::cl_uchar>::new(width_dens, height, common::STATE_ZERO, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::STATE_ZERO, ocl);
 
-		let syns = Synapses::new(width, height, per_cell_l2 + per_den_l2, den_kind, cell_kind, region, axons, ocl);
+		let syns = Synapses::new(width, depth, per_cell_l2 + per_den_l2, den_kind, cell_kind, region, axons, ocl);
 
-		let kern_cycle = ocl.new_kernel(den_kernel, WorkSize::TwoDim(height as usize, width_dens as usize))
+		let kern_cycle = ocl.new_kernel(den_kernel, WorkSize::TwoDim(depth as usize, width_dens as usize))
 			.arg_env(&syns.states)
 			.arg_scl(per_cell_l2)
 			.arg_env(&states);
 
 		Dendrites {
-			height: height,
+			depth: depth,
 			width: width,
 			per_cell_l2: per_cell_l2,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			kern_cycle: kern_cycle,
-			thresholds: Envoy::<ocl::cl_uchar>::new(width_dens, height, common::DENDRITE_INITIAL_THRESHOLD, ocl),
+			thresholds: Envoy::<ocl::cl_uchar>::new(width_dens, depth, 1, ocl),
 			states: states,
 			syns: syns,
 		}

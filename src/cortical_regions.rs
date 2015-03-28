@@ -26,24 +26,24 @@ impl CorticalRegions {
 		}
 	}
 
-	pub fn height(&self, cr_type: CorticalRegionKind) -> (u8, u8) {
-		let mut height_noncellular_rows = 0u8;		//	Interregional
-		let mut height_cellular_rows = 0u8;			//	Interlaminar
+	pub fn depth(&self, cr_type: CorticalRegionKind) -> (u8, u8) {
+		let mut depth_noncellular_rows = 0u8;		//	Interregional
+		let mut depth_cellular_rows = 0u8;			//	Interlaminar
 
 		for (region_type, region) in self.hash_map.iter() {					// CHANGE TO FILTER
 			if *region_type == cr_type {							//
-				let (noncell, cell) = region.height();
-				height_noncellular_rows += noncell;
-				height_cellular_rows += cell;
+				let (noncell, cell) = region.depth();
+				depth_noncellular_rows += noncell;
+				depth_cellular_rows += cell;
 				//println!("*** noncell: {}, cell: {} ***", noncell, cell);
 			}
 		}
 
-		(height_noncellular_rows, height_cellular_rows)
+		(depth_noncellular_rows, depth_cellular_rows)
 	}
 
-	pub fn height_total(&self, cr_type: CorticalRegionKind) -> u8 {
-		let (hacr, hcr) = self.height(cr_type);
+	pub fn depth_total(&self, cr_type: CorticalRegionKind) -> u8 {
+		let (hacr, hcr) = self.depth(cr_type);
 		hacr + hcr
 	}
 
@@ -97,27 +97,27 @@ impl CorticalRegion {
 	pub fn layer(
 					mut self, 
 					layer_name: &'static str,
-					layer_height: u8,
+					layer_depth: u8,
 					flags: LayerFlags,
 					cell: Option<Protocell>,
 	) -> CorticalRegion {
-		let (noncell_rows, cell_rows) = self.height();
+		let (noncell_rows, cell_rows) = self.depth();
 
-		//let next_base_row_pos = self.height_total();
+		//let next_base_row_pos = self.depth_total();
 
 		let next_kind_base_row_pos = match cell {
-			Some(ref protocell) => self.height_cell_kind(&protocell.cell_kind),
+			Some(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
 			None => noncell_rows,
 		};
 
-		//println!("Layer: {}, layer_height: {}, base_row_pos: {}, kind_base_row_pos: {}", layer_name, layer_height, next_base_row_pos, next_kind_base_row_pos);
+		//println!("Layer: {}, layer_depth: {}, base_row_pos: {}, kind_base_row_pos: {}", layer_name, layer_depth, next_base_row_pos, next_kind_base_row_pos);
 		
 		let cl = CorticalRegionLayer {
 			name : layer_name,
 			cell: cell,
 			base_row_pos: 0, 
 			kind_base_row_pos: next_kind_base_row_pos,
-			height: layer_height,
+			depth: layer_depth,
 			flags: flags,
 		};
 
@@ -154,7 +154,7 @@ impl CorticalRegion {
 						layer.kind_base_row_pos = num::cast(vec.len()).expect("cortical_regions::CorticalRegion::add()");
 						//print!("\n{:?} base_row_pos: {}", cell_kind, layer.kind_base_row_pos);
 
-						for i in range(0, layer.height) {							 
+						for i in range(0, layer.depth) {							 
 							vec.push(layer.name);
 							//print!("\nAdding {} to list of {:?}", layer.name, cell_kind);
 						}
@@ -184,14 +184,14 @@ impl CorticalRegion {
 		}
 	}
 
-	pub fn height_cell_kind(&self, cell_kind: &CellKind) -> u8 {
+	pub fn depth_cell_kind(&self, cell_kind: &CellKind) -> u8 {
 		let mut count = 0u8;
 
 		for (_, layer) in self.layers.iter() {
 			match layer.cell {
 				Some(ref protocell) => {
 					if &protocell.cell_kind == cell_kind {
-						count += layer.height;
+						count += layer.depth;
 					} else {
 						//print!("\n{:?} didn't match {:?}", protocell.cell_kind, cell_kind);
 					}
@@ -207,7 +207,7 @@ impl CorticalRegion {
 
 		//print!("\nCKRC: kind: {:?} -> count = {}, count2 = {}", &cell_kind, count, count2);
 
-		assert!(count as usize == count2, "cortical_regions::CorticalRegion::height_cell_kind(): mismatch");
+		assert!(count as usize == count2, "cortical_regions::CorticalRegion::depth_cell_kind(): mismatch");
 
 		count
 	}
@@ -219,12 +219,12 @@ impl CorticalRegion {
 			self.finalized = true;
 		}
 
-		let (mut base_cel_row, _) = self.height();
+		let (mut base_cel_row, _) = self.depth();
 
 		for (cell_kind, list) in &self.cellular_layer_kind_lists {
 			self.cellular_layer_kind_base_rows.insert(cell_kind.clone(), base_cel_row);
 			print!("\n 	Finalize: adding cell type: '{:?}', len: {}, base_cel_row: {}", cell_kind, list.len(), base_cel_row);
-			assert!(list.len() == self.height_cell_kind(&cell_kind) as usize);
+			assert!(list.len() == self.depth_cell_kind(&cell_kind) as usize);
 			base_cel_row += num::cast(list.len()).expect("cortical_region::CorticalRegion::finalize()");
 		}
 
@@ -243,24 +243,24 @@ impl CorticalRegion {
 	}
 
 
-	pub fn height_total(&self) -> u8 {
-		let mut total_height = 0u8;
+	pub fn depth_total(&self) -> u8 {
+		let mut total_depth = 0u8;
 
 		for (_, layer) in self.layers.iter() {
-			total_height += layer.height;
+			total_depth += layer.depth;
 		}
 
-		total_height
+		total_depth
 	}
  
-	pub fn height(&self) -> (u8, u8) {
+	pub fn depth(&self) -> (u8, u8) {
 		let mut noncell_rows = 0u8;
 		let mut cell_rows = 0u8;
 		
 		for (layer_name, layer) in self.layers.iter() {
 			match layer.cell {
-				None => noncell_rows += layer.height,
-				Some(_) => cell_rows += layer.height,
+				None => noncell_rows += layer.depth,
+				Some(_) => cell_rows += layer.depth,
 			}
 		}
 
@@ -283,7 +283,7 @@ impl CorticalRegion {
 
 		for &layer_name in layer_names.iter() {
 			let l = &self[layer_name];
-				for i in range(l.base_row_pos, l.base_row_pos + l.height) {
+				for i in range(l.base_row_pos, l.base_row_pos + l.depth) {
 					row_ids.push(i);
 				}
 		}
@@ -369,27 +369,27 @@ impl CorticalRegion {
 	pub fn new_layer(
 					&mut self, 
 					layer_name: &'static str,
-					layer_height: u8,
+					layer_depth: u8,
 					flags: LayerFlags,
 					cell: Option<Protocell>,
 	) {
-		let (noncell_rows, cell_rows) = self.height();
+		let (noncell_rows, cell_rows) = self.depth();
 
-		let next_base_row_pos = self.total_height();
+		let next_base_row_pos = self.total_depth();
 
 		let next_kind_base_row_pos = match cell {
-			Some(ref protocell) => self.height_cell_kind(&protocell.cell_kind),
+			Some(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
 			None => noncell_rows,
 		};
 
-		println!("Layer: {}, layer_height: {}, base_row_pos: {}, kind_base_row_pos: {}", layer_name, layer_height, next_base_row_pos, next_kind_base_row_pos);
+		println!("Layer: {}, layer_depth: {}, base_row_pos: {}, kind_base_row_pos: {}", layer_name, layer_depth, next_base_row_pos, next_kind_base_row_pos);
 		
 		let cl = CorticalRegionLayer {
 			name : layer_name,
 			cell: cell,
 			base_row_pos: next_base_row_pos, 
 			kind_base_row_pos: next_kind_base_row_pos,
-			height: layer_height,
+			depth: layer_depth,
 			flags: flags,
 		};
 
@@ -404,12 +404,12 @@ impl CorticalRegion {
 		panic!("not implemented");
 	}
 
-	pub fn height_cell_kind(&self, cell_kind: &CellKind) -> u8 {
+	pub fn depth_cell_kind(&self, cell_kind: &CellKind) -> u8 {
 		let mut count = 0u8;
 		for (_, layer) in self.layers.iter() {
 			match layer.cell {
 				Some(ref protocell) => match &protocell.cell_kind {
-					ref cell_kind => count += layer.height,
+					ref cell_kind => count += layer.depth,
 				},
 				None => (),
 			}
@@ -417,22 +417,22 @@ impl CorticalRegion {
 		count
 	}
 
-	pub fn total_height(&self) -> u8 {
-		let mut total_height = 0u8;
+	pub fn total_depth(&self) -> u8 {
+		let mut total_depth = 0u8;
 		for (_, layer) in self.layers.iter() {
-			total_height += layer.height;
+			total_depth += layer.depth;
 		}
-		total_height
+		total_depth
 	}
  
-	pub fn height(&self) -> (u8, u8) {
+	pub fn depth(&self) -> (u8, u8) {
 		let mut noncell_rows = 0u8;
 		let mut cell_rows = 0u8;
 		
 		for (layer_name, layer) in self.layers.iter() {
 			match layer.cell {
-				None => noncell_rows += layer.height,
-				Some(_) => cell_rows += layer.height,
+				None => noncell_rows += layer.depth,
+				Some(_) => cell_rows += layer.depth,
 			}
 		}
 		(noncell_rows, cell_rows)
@@ -442,7 +442,7 @@ impl CorticalRegion {
 		let mut row_ids = Vec::new();
 		for &layer_name in layer_names.iter() {
 			let l = &self[layer_name];
-				for i in range(l.base_row_pos, l.base_row_pos + l.height) {
+				for i in range(l.base_row_pos, l.base_row_pos + l.depth) {
 					row_ids.push(i);
 				}
 		}
@@ -488,7 +488,7 @@ impl IndexMut<&'static str> for CorticalRegion
 
 		let l = &self[layer_name];
 		let mut row_ids = Vec::new();
-			for i in range(l.base_row_pos, l.base_row_pos + l.height) {
+			for i in range(l.base_row_pos, l.base_row_pos + l.depth) {
 				row_ids.push(i);
 			}
 		return row_ids;

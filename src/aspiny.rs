@@ -22,7 +22,7 @@ use std::fmt::{ Display };
 
 pub struct AspinyStellate {
 	width: u32,
-	height: u8,
+	depth: u8,
 	kern_cycle_pre: ocl::Kernel,
 	kern_cycle_wins: ocl::Kernel,
 	kern_cycle_post: ocl::Kernel,
@@ -33,32 +33,32 @@ pub struct AspinyStellate {
 }
 
 impl AspinyStellate {
-	pub fn new(col_width: u32, height: u8, region: &CorticalRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> AspinyStellate {
+	pub fn new(col_width: u32, depth: u8, region: &CorticalRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> AspinyStellate {
 
 		let width = col_width >> common::ASPINY_SPAN_LOG2;
 
 		let padding = common::ASPINY_SPAN;
 
-		let ids = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, 0u8, ocl);
-		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, 0u8, ocl);
-		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, height, common::STATE_ZERO, ocl);
+		let ids = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, 0u8, ocl);
+		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, 0u8, ocl);
+		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, common::STATE_ZERO, ocl);
 
 		let mut kern_cycle_pre = ocl.new_kernel("aspiny_cycle_pre", 
-			WorkSize::TwoDim(height as usize, width as usize))
+			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&src_states)
 			.arg_env(&states)
 			.arg_env(&ids)
 		;
 
 		let mut kern_cycle_wins = ocl.new_kernel("aspiny_cycle_wins", 
-			WorkSize::TwoDim(height as usize, width as usize))
+			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&states)
 			//.arg_env(&ids)
 			.arg_env(&wins)
 		;
 
 		let mut kern_cycle_post = ocl.new_kernel("aspiny_cycle_post", 
-			WorkSize::TwoDim(height as usize, width as usize))
+			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&wins)
 			//.arg_env(&ids)
 			.arg_env(&states)
@@ -67,7 +67,7 @@ impl AspinyStellate {
 
 		AspinyStellate {
 			width: width,
-			height: height,
+			depth: depth,
 			kern_cycle_pre: kern_cycle_pre,
 			kern_cycle_wins: kern_cycle_wins,
 			kern_cycle_post: kern_cycle_post,

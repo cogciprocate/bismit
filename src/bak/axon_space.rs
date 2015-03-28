@@ -99,21 +99,21 @@ pub struct AxonSpace {
 	//pub regions: HashMap<&'static str, AxonRegion>,
 	pub rows: HashMap<&'static str, AxonRegion>,
 	pub states: Envoy<ocl::cl_char>,
-	pub height: ocl::cl_char,
+	pub depth: ocl::cl_char,
 	pub width: usize,
 }
 
 impl AxonSpace {
 	pub fn new(anterows: ocl::cl_char, ocl: ocl::Ocl) -> AxonSpace {
-		let height = anterows + num::cast(common::LAYERS_PER_SEGMENT);
+		let depth = anterows + num::cast(common::LAYERS_PER_SEGMENT);
 		let width = common::CELLS_PER_LAYER;
-		let rows = HashMap::with_capacity(height);
+		let rows = HashMap::with_capacity(depth);
 		//let regions = HashMap::
 
 		Range { start: anterows, end: (16 + common::LAYERS_PER_SEGMENT) };
 
 
-		let mut states = Envoy::<ocl::cl_char>::new(height * width, 0i8, ocl);
+		let mut states = Envoy::<ocl::cl_char>::new(depth * width, 0i8, ocl);
 
 
 		AxonSpace { 

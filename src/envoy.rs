@@ -13,35 +13,35 @@ pub struct Envoy<T> {
 	pub buf: ocl::cl_mem,
 	pub padding: u32,
 	pub width: u32,
-	pub height: u8,
+	pub depth: u8,
 	pub ocl: Ocl,
 }
 impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
-	pub fn new(width: u32, height: u8, init_val: T, ocl: &Ocl) -> Envoy<T> {
-		let len = len(width, height, 0);
+	pub fn new(width: u32, depth: u8, init_val: T, ocl: &Ocl) -> Envoy<T> {
+		let len = len(width, depth, 0);
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
-		Envoy::_new(0, width, height, vec, ocl)
+		Envoy::_new(0, width, depth, vec, ocl)
 	}
 
-	pub fn with_padding(padding: u32, width: u32, height: u8, init_val: T, ocl: &Ocl) -> Envoy<T> {
-		let len = len(width, height, padding);
+	pub fn with_padding(padding: u32, width: u32, depth: u8, init_val: T, ocl: &Ocl) -> Envoy<T> {
+		let len = len(width, depth, padding);
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
-		Envoy::_new(padding, width, height, vec, ocl)
+		Envoy::_new(padding, width, depth, vec, ocl)
 	}
 
-	pub fn shuffled(width: u32, height: u8, min_val: T, max_val: T, ocl: &Ocl) -> Envoy<T> {
-		let len = len(width, height, 0);
+	pub fn shuffled(width: u32, depth: u8, min_val: T, max_val: T, ocl: &Ocl) -> Envoy<T> {
+		let len = len(width, depth, 0);
 		//println!("shuffled(): len: {}", len);
 		let vec: Vec<T> = common::shuffled_vec(len, min_val, max_val);
 		//println!("shuffled(): vec.len(): {}", vec.len());
 
-		Envoy::_new(0, width, height, vec, ocl)
+		Envoy::_new(0, width, depth, vec, ocl)
 	}
 
-	pub fn _new(padding: u32, width: u32, height: u8, mut vec: Vec<T>, ocl: &Ocl) -> Envoy<T> {
-		//println!("New Envoy with height: {}, width: {}, padding: {}", height, width, padding);
+	pub fn _new(padding: u32, width: u32, depth: u8, mut vec: Vec<T>, ocl: &Ocl) -> Envoy<T> {
+		//println!("New Envoy with depth: {}, width: {}, padding: {}", depth, width, padding);
 
 		let buf: ocl::cl_mem = ocl::new_buffer(&mut vec, ocl.context);
 
@@ -50,7 +50,7 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 			buf: buf,
 			padding: padding,
 			width: width,
-			height: height,
+			depth: depth,
 			ocl: ocl.clone(),
 		};
 
@@ -74,13 +74,13 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 		self.width
 	}
 
-	pub fn height(&self) -> u8 {
-		self.height
+	pub fn depth(&self) -> u8 {
+		self.depth
 	}
 
 	pub fn len(&self) -> usize {
-		assert!(((self.width as usize * self.height as usize) + self.padding as usize ) == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
-		len(self.width, self.height, 0)
+		assert!(((self.width as usize * self.depth as usize) + self.padding as usize ) == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
+		len(self.width, self.depth, 0)
 	}
 
 	pub fn print_simple(&mut self) {
@@ -122,6 +122,6 @@ impl<T> IndexMut<usize> for Envoy<T>
 }
 
 
-fn len(width: u32, height: u8, padding: u32) -> usize {
-	(width as usize * height as usize) + padding as usize
+fn len(width: u32, depth: u8, padding: u32) -> usize {
+	(width as usize * depth as usize) + padding as usize
 }
