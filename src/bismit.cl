@@ -121,8 +121,6 @@ __kernel void syns_cycle(
 	__global const char* const syn_src_ofs,
 	__global const uchar* const syn_src_row_ids,
 	__private uint const syns_per_cell_l2,
-	/*__global int* const aux_ints_0,
-	__global int* const aux_ints_1,*/
 	__global uchar* const syn_states
 ) {
 	uint const row_id = get_global_id(0);
@@ -134,53 +132,20 @@ __kernel void syns_cycle(
 	
 	uint const base_col_id = mul24(wg_id, wg_size);
 	uint const base_cel_idx = mad24(row_id, row_width, base_col_id);
-
 	uint const syn_row_width = row_width << syns_per_cell_l2;
-
-	//uint const cels_per_iter = wg_size >> syns_per_cell_l2;
-	//uint const iters_per_cel = 0;		// syns_per_cell / wg_size
-
-	//uint const init_cel_idx = base_cel_idx + (l_id >> syns_per_cell_l2);
 	uint const init_syn_idx = (base_cel_idx << syns_per_cell_l2) + l_id;
-	//uint const init_axn_idx = mad24((uint)syn_src_row_ids[init_syn_idx], row_width, (uint)(0 + syn_src_ofs[init_syn_idx]));
-	
-	/*uint cel_idx = init_cel_idx;
-	uint axn_idx = init_axn_idx;*/
 
-	uint syn_n = init_syn_idx + (wg_size << syns_per_cell_l2);
-	//uint n = syns_per_cell_l2;
-
-	//aux_ints_0[col_id] = base_cel_idx;
-	//uint syn_idx = init_syn_idx;
-
-	//uint q = 0;
-
-	//uint row_i = 0;
+	uint const syn_n = init_syn_idx + (wg_size << syns_per_cell_l2);
 	uint syn_col_i = init_syn_idx;
 
 	for (uint syn_idx = init_syn_idx; syn_idx < syn_n; syn_idx += wg_size) {
-		//row_i += (syn_i >= syn_row_width);
 		syn_col_i -= mul24(syn_row_width, (uint)(syn_col_i >= syn_row_width));
-
 		uint col_pos = syn_col_i >> syns_per_cell_l2;
-		//uint cel_idx_dup = init_cel_idx + i;
 		uint axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(col_pos + syn_src_ofs[syn_idx] + SYNAPSE_REACH));
-
 		uchar axn_state = axn_states[axn_idx];
 
 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
-		//syn_states[syn_idx] = 5;
-		//syn_states[syn_idx] = (axn_idx - 3200) >> 2;
 
-		//syn_idx += wg_size;
-		/*q++;
-		if (q < 65536) {
-			continue;
-		} else {
-			aux_ints_0[cel_idx] = 9999;
-			syn_states[syn_idx] = 99;
-			break;
-		}*/
 		syn_col_i += wg_size;
 	}
 }
@@ -200,11 +165,8 @@ __kernel void den_prox_cycle(
 ) {
 	uint const row_id = get_global_id(0);
 	uint const den_id = get_global_id(1);
-	//uint const l_id = get_local_id(1);
 	uint const row_width = get_global_size(1);
 	uint const den_idx = mad24(row_id, row_width, den_id);
-	//uint const syn4_per_den_l2 = syns_per_den_l2 - 2;
-	//uint const syn_ofs = den_idx << syn4_per_den_l2;
 	uint const syn_ofs = den_idx << syns_per_den_l2;
 
 	int syn_sum = 0;
@@ -212,16 +174,10 @@ __kernel void den_prox_cycle(
 
 	for (uint i = 0; i < n; i += 1) {
 		uchar syn_state = syn_states[syn_ofs + i];
-		//syn_sum += mul24((syn_state > 128), (syn_state) & (0x7F));	// STRIP HI-BIT VERSION
 		syn_sum += syn_state;
 	}
 
-	
-	//den_states[den_idx] = syn_sum >> (syns_per_den_l2 - 1);	// STRIP HI-BIT VERSION
 	den_states[den_idx] = (syn_sum >> syns_per_den_l2);
-	
-	//den_states[den_idx] = mad24((den_total > 0), 128, clamp(den_total >> (syns_per_den_l2 + 1), 0, 127));
-	//den_states[den_idx] = den_total; //(0, 1, 2, 3); 
 }
 
 
@@ -237,19 +193,16 @@ __kernel void aspiny_cycle_pre(
 	uint const asp_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
 	uint const asp_pos = mad24(row_id, row_width, asp_id);
-	//uint const asp_idx = asp_pos + (1 << ASPINY_REACH_LOG2);
 	uint const asp_idx = (asp_pos + ASPINY_REACH);
 	uint const col_ofs = asp_pos << ASPINY_SPAN_LOG2;
 
-	uchar col_states_vec[1 << (ASPINY_REACH_LOG2)]; // = {0, 0, 0, 0};
+	uchar col_states_vec[1 << (ASPINY_REACH_LOG2)];
 
 	uchar winner_val = 0;
 	uchar winner_id = 0;
 	
 	uchar val = 0;
 	uchar id = 0;
-
-	//uint n = ASPINY_REACH >> 2;
 
 		#pragma unroll
 	for (uint i = 0; i < ASPINY_SPAN; i += 4) {
@@ -289,7 +242,6 @@ FUTURE IMPROVEMENTS:
 */
 __kernel void aspiny_cycle_wins(
 	__global uchar* const asp_states,
-	//__global uchar* const asp_col_ids,
 	__global uchar* const asp_wins
 ) {
 	uint const row_id = get_global_id(0);
@@ -297,7 +249,6 @@ __kernel void aspiny_cycle_wins(
 	uint const row_width = get_global_size(1);
 	uint const asp_pos = mad24(row_id, row_width, asp_id);
 	uint const asp_idx = (asp_pos + ASPINY_REACH);
-	//uint const col_ofs = asp_pos << ASPINY_SPAN_LOG2;
 
 	uint const as_bitmask = (ASPINY_SPAN - 1);
 
@@ -333,9 +284,6 @@ __kernel void aspiny_cycle_wins(
 
 	asp_wins[asp_idx] = win_count;
 	asp_states[asp_idx] = asp_state;
-
-	//asp_wins[asp_idx] = win_count;
-	//asp_wins[asp_idx] = asp_state >> ASPINY_SPAN_LOG2;
 }
 
 
@@ -370,12 +318,6 @@ __kernel void col_post_inhib_unoptd (
 	__global const uchar* const asp_col_ids,
 	__global const uchar* const asp_states,
 	__global const uchar* const asp_wins,
-	//__global uchar* const col_cel_status,
-	//__global int* const aux_ints_0,
-	//__global int* const aux_ints_1,
-	//__global uchar* const pyr_states,
-	//__private uchar const pyr_depth,
-	//__private uchar const pyr_base_row,
 	__private uint const col_axn_row_offset,
 	__global uchar* const col_states,
 	__global uchar* const axn_states
@@ -388,40 +330,13 @@ __kernel void col_post_inhib_unoptd (
 	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
 
 	uchar asp_state = asp_states[asp_idx];
-	//uchar asp_win = asp_wins[asp_idx];
 	uchar col_state = col_states[col_idx];
 
 	int win = (asp_col_id_to_col_idx(asp_idx, (asp_col_ids[asp_idx])) == col_idx);
 	win = (win && asp_state);
 
-	//if (win > 0) {
-	/*int column_predictions = 0;
-
-	for (uint i = 0; i < pyr_depth; i++) {
-		uint pyr_idx = mad24((uint)i, row_width, col_id);
-		column_predictions += (pyr_states[pyr_idx] > 0);
-	}*/
-
-	/*for (uint i = 0; i < pyr_depth; i++) {
-		uint pyr_idx = mad24((uint)i, row_width, col_id);
-		int pyr_state = pyr_states[pyr_idx];
-		uint cc_status = col_cel_status[col_idx];
-		//pyr_state += (((pyr_state > 0) || (column_predictions == 0)) && win) << 7;
-
-		if (cc_status) {
-
-		}
-
-		pyr_states[pyr_idx] = clamp(pyr_state, 0, 254); // CLAMP SHOULDN'T BE NEEDED
-
-		//aux_ints_0[pyr_idx] = column_predictions;
-	}*/
-	//}
-
 	col_states[col_idx] = mul24(col_state, (win > 0));
 	axn_states[axn_idx] = mul24(col_state, (win > 0));
-	//aux_ints_0[col_idx] = mul24(activity, (win > 0));
-	//aux_ints_1[col_idx] = mul24((int)(asp_idx & 0x0F), (win >= COLUMN_DOMINANCE_FLOOR));
 }
 
 
@@ -441,20 +356,18 @@ __kernel void col_learn(
 	//uchar asp_state = asp_states[asp_idx];
 	uchar asp_win = asp_wins[asp_idx];
 
-	asp_states[asp_idx] = asp_win;
-
 	asp_wins[asp_idx] = 0;
+	asp_states[asp_idx] = asp_win;
 }
 
 
 
 
 __kernel void pyr_activate(
-				__global uchar* const col_states,
-				__global uchar* const col_cel_status,
-				//__private uchar const pyr_depth,
+				__global const uchar* const col_states,
+				__global const uchar* const col_cel_status,
 				__private uchar const axn_row_base,
-				__global uchar* const pyr_states,
+				__global const uchar* const pyr_states,
 				__global uchar* const axn_states
 ) {
 	uint const row_id = get_global_id(0);
@@ -470,10 +383,8 @@ __kernel void pyr_activate(
 	int corr_pred = (pyr_state && col_state);
 	int anomaly = ((col_state != 0) && (cc_status == 0));
 
-	//pyr_state &= 127;
 	pyr_state = mul24((corr_pred | anomaly), col_state);
 	
-	//pyr_states[pyr_idx] = pyr_state;
 	axn_states[axn_idx] = pyr_state;
 }
 
