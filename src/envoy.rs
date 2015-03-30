@@ -16,7 +16,7 @@ pub struct Envoy<T> {
 	pub depth: u8,
 	pub ocl: Ocl,
 }
-impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
+impl<T: Int + Default + Display + FromPrimitive> Envoy<T> {
 	pub fn new(width: u32, depth: u8, init_val: T, ocl: &Ocl) -> Envoy<T> {
 		let len = len(width, depth, 0);
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
@@ -104,19 +104,19 @@ impl<T: Clone + NumCast + Int + Default + Display + FromPrimitive> Envoy<T> {
 
 }
 
-impl<T> Index<usize> for Envoy<T>
+impl<'b, T> Index<&'b usize> for Envoy<T>
 {
     type Output = T;
 
-    fn index<'a>(&'a self, index: &usize) -> &'a T {
+    fn index<'a>(&'a self, index: &'b usize) -> &'a T {
         &self.vec.as_slice()[*index]
     }
 }
 
-impl<T> IndexMut<usize> for Envoy<T>
+impl<'b, T> IndexMut<&'b usize> for Envoy<T>
 {
 
-    fn index_mut<'a>(&'a mut self, index: &usize) -> &'a mut T {
+    fn index_mut<'a>(&'a mut self, index: &'b usize) -> &'a mut T {
         &mut self.vec.as_mut_slice()[*index]
     }
 }

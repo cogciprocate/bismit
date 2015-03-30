@@ -9,20 +9,23 @@ use envoy::{ Envoy };
 
 
 use std::default::Default;
-use std::num::{ Int };
+use std::num::{ self, Int, NumCast, FromPrimitive };
+use std::fmt::{ Display };
 use std::iter;
 use std::ops;
+use std::io::{ self, Write };
+use std::borrow::{ Borrow };
 use time;
 
 
-pub const TEST_ITERATIONS: i32 			= 199; 
-pub const PRINT_EVERY: i32 				= 10;
+pub const TEST_ITERATIONS: i32 			= 200; 
+pub const PRINT_EVERY: i32 				= 400;
 
 pub const SHUFFLE_ONCE: bool 			= true;
 pub const SHUFFLE_EVERY: bool 			= true;
 
 
-pub fn test_cycle() {
+pub fn test_cycle() -> bool {
 	let mut cortex = cortex::Cortex::new();
 
 	//let vv1 = common::sparse_vec(2048, -128i8, 127i8, 6);
@@ -60,7 +63,7 @@ pub fn test_cycle() {
 	let scw_1_16 = scw >> 4;
 
 	//println!("***** scw_1_4: {}, scw_3_4: {}", scw_1_4, scw_3_4);
-	for i in range(0, scw) {
+	for i in 0..scw {
 		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
 		//if i >= scw_3_8 && i < scw_5_8 {
 			vec1.push(0);
@@ -74,7 +77,7 @@ pub fn test_cycle() {
 
 
 	vec1.clear();
-	for i in range(0, scw) {
+	for i in 0..scw {
 		if i >= scw_1_2 - (scw_1_16 / 2) && i < scw_1_2 + (scw_1_16 / 2) {
 		//if ((i >= scw_1_4 - scw_1_16) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4 + scw_1_16)) {
 		//if i >= scw_3_8 && i < scw_5_8 {
@@ -101,173 +104,233 @@ pub fn test_cycle() {
 	/*for x in chord1.chord.iter() {
 		print!("{:?}",x);
 	}*/
-	
 
-		/* SENSE ONLY LOOP */
-	print!("\n\nRunning sense only loops ... ");
+	let mut test_iters: i32 = TEST_ITERATIONS;
 
-	let sense_only_loops: i32 = TEST_ITERATIONS;
-
-	let mut i = 0i32;
+			
 	loop {
-		if i >= sense_only_loops { break; }
 
-		if i % PRINT_EVERY == 0 || i < 0 {
-			let t = time::get_time() - time_start;
-			print!("\n[i:{}; {}.{}s] ", i, t.num_seconds(), t.num_milliseconds());
- 
+		let mut in_string: String = rin("Enter Command (q: quit, l: loop, Enter: loop)");
+		//print!("You Entered: {}", &in_string);
 
-				/* AXON STATES */
+
+		if "q\n" == in_string {
+			println!("Quitting...");
+			break;
+		} else if "l\n" == in_string {
+			let in_s = rin("Enter number of iterations[Enter=default]");
+			if "\n" == in_s {
+				test_iters = TEST_ITERATIONS;
+			} else {
+				let in_int: Option<i32> = in_s.trim().parse().ok();
+				match in_int {
+					Some(x)	=> {
+						//print!("\nLooping {} Times... ", x);
+						 //test_iters = num::cast(x).expect("test_4::test_cycle(): Error casting.");
+						 test_iters = x;
+					},
+					None    => {
+						print!("\nError parsing number.");
+						continue;
+					},
+				}
+			}
+		} else if "\n" == in_string {
+			// Go
+		} else {
+			continue;
+		}
+
+
+		let time_start = time::get_time();
+
+			/* SENSE ONLY LOOP */
+		print!("\nRunning {} sense only loop(s) ... ", test_iters - 1);
+
+		let mut i = 0i32;
+		loop {
+			if i >= (test_iters) { break; }
+
+			if i % PRINT_EVERY == 0 || i < 0 {
+				let t = time::get_time() - time_start;
+				print!("\n[i:{}; {}.{}s] ", i, t.num_seconds(), t.num_milliseconds());
+	 
+
+					/* AXON STATES */
+				if false {
+					print!("\naxns.states: ");
+					cortex.cells.axns.states.print_val_range(1 << 8, Some((1, 255)));
+				}
+
+				if false {
+					print!("\nREGION OUTPUT: cells.axns.states: ");
+					//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
+					cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
+				}
+			}
+
+			if SHUFFLE_EVERY {
+				common::shuffle_vec(&mut vec1);
+			}
+
+			cortex.sense_vec(0, "thal", &mut vec1);
+
+			//print!("[i:{}]",i);
+			i += 1;
+		}
+
+
+
+			/* SENSE AND PRINT LOOP */
+		print!("\n\nRunning {} sense and print loop(s)...", 1usize);
+
+		loop {
+			if i >= (test_iters + 1) { break; }
+
+			print!("\n\n=== Iteration {} ===", i);
+
+			/* INITIAL AXON STATES */
+			if false {
+				println!("\naxns.states: ");
+				cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), None);
+			}
+
+			if SHUFFLE_EVERY {
+				common::shuffle_vec(&mut vec1);
+			}
+
+			cortex.sense_vec(0, "thal", &vec1); 
+			
+			let sr_start = (512 << common::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
+
+			/* SYNAPSE IDS */
+			if false {
+				print!("\ncols.syns.src_row_ids:");
+				cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None);
+			}
+			if false {	
+				print!("\npyrs.dens.syns.axn_row_ids: ");
+				cortex.cells.pyrs.dens.syns.axn_row_ids.print(1 << 14, None, None);
+				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
+			}
+			if false {	
+				print!("\npyrs.dens.syns.axn_col_offs: ");
+				cortex.cells.pyrs.dens.syns.axn_col_offs.print(1 << 14, None, None);
+				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
+			}
+
+
+			/* PROXIMAL (COLUMN) SYNAPSE STATES */
+			if false {	
+				print!("\ncols.syns.states: ");
+				cortex.cells.cols.syns.states.print(1 << 12, Some((1, 255)), None);
+				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
+			}
+
+			/* COLUMN STATES */
+			if true {	
+				print!("\ncols.states: ");
+				cortex.cells.cols.states.print_val_range(1 << 0, Some((1, 255)));
+			}
+
+
+			/* PYRAMIDAL SYNAPSE STATES */
+			if true {	
+				print!("\npyrs.dens.syns.states: ");
+				cortex.cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None);
+				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
+			}
+
+			/* PYRAMIDAL DENDRITE STATES */
+			if true {	
+				print!("\npyrs.dens.states: ");
+				cortex.cells.pyrs.dens.states.print_val_range(1 << 0, Some((1, 255)));
+			}
+
+
+			/* ASPINY IDS */
+			if false {
+				print!("\nasps.ids: ");
+				cortex.cells.cols.asps.ids.print_val_range(1 << 0, Some((0, 255)));
+			}
+
+
+			/* ASPINY STATES */
+			if false {
+				print!("\nasps.states: ");
+				cortex.cells.cols.asps.states.print_val_range(1 << 0, Some((1, 255)));
+			}
+
+
+			/* PYRAMIDAL CELL STATES */
+			if true {
+				print!("\npyrs.states: ");
+				cortex.cells.pyrs.states.print_val_range(1 << 0, Some((1, 255)));
+			}
+
+
+			/* AXON STATES */
 			if false {
 				print!("\naxns.states: ");
-				cortex.cells.axns.states.print_val_range(1 << 8, Some((1, 255)));
-			}
+				//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
+				cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), None);
 
+			}
 			if true {
 				print!("\nREGION OUTPUT: cells.axns.states: ");
-				//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
-				cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
+				//cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some((3000, 4423)));
+				cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
+
 			}
+
+
+			/* AUX VALS */
+			if true {
+				print!("\naux.ints_0: ");
+				cortex.cells.aux.ints_0.print((1 << 0) as usize, Some((1, 1100000000)), None);
+				print!("\naux.ints_1: ");
+				cortex.cells.aux.ints_1.print((1 << 0) as usize, Some((1, 1100000000)), None);
+			}
+
+			if false {
+				print!("\naux.chars_0: ");
+				cortex.cells.aux.chars_0.print((1 << 0) as usize, Some((-128, 127)), None);
+				pe("aux.chars_1", &cortex.cells.aux.chars_1, (1 << 0) as usize, Some((-128, 127)), None);
+				/*print!("\naux.chars_1: ");
+				cortex.cells.aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None);*/
+			}
+
+			i += 1;
+			
 		}
-
-		if SHUFFLE_EVERY {
-			common::shuffle_vec(&mut vec1);
-		}
-
-
-		cortex.sense_vec(0, "thal", &mut vec1);
-
-		i += 1;
 	}
 
-
-
-		/* SENSE AND PRINT LOOP */
-	print!("\n\nRunning sense and print loops...");
-
-	loop {
-		if i >= 1 + sense_only_loops { break; }
-
-		print!("\n\n=== Iteration {} ===", i + 1);
-
-
-		/* INITIAL AXON STATES */
-		if false {
-			println!("\naxns.states: ");
-			cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), None);
-		}
-
-		cortex.sense_vec(0, "thal", &vec1); 
-
-
-		
-		let sr_start = (512 << common::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
-
-
-		/* SYNAPSE IDS */
-		if false {
-			print!("\ncols.syns.src_row_ids:");
-			cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None);
-		}
-		if false {	
-			print!("\npyrs.dens.syns.axn_row_ids: ");
-			cortex.cells.pyrs.dens.syns.axn_row_ids.print(1 << 14, None, None);
-			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
-		}
-		if false {	
-			print!("\npyrs.dens.syns.axn_col_offs: ");
-			cortex.cells.pyrs.dens.syns.axn_col_offs.print(1 << 14, None, None);
-			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
-		}
-
-
-		/* PROXIMAL (COLUMN) SYNAPSE STATES */
-		if false {	
-			print!("\ncols.syns.states: ");
-			cortex.cells.cols.syns.states.print(1 << 12, Some((1, 255)), None);
-			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
-		}
-
-		/* COLUMN STATES */
-		if true {	
-			print!("\ncols.states: ");
-			cortex.cells.cols.states.print_val_range(1 << 0, Some((1, 255)));
-		}
-
-
-		/* PYRAMIDAL SYNAPSE STATES */
-		if true {	
-			print!("\npyrs.dens.syns.states: ");
-			cortex.cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None);
-			//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
-		}
-
-		/* PYRAMIDAL DENDRITE STATES */
-		if true {	
-			print!("\npyrs.dens.states: ");
-			cortex.cells.pyrs.dens.states.print_val_range(1 << 11, Some((1, 255)));
-		}
-
-
-		/* ASPINY IDS */
-		if false {
-			print!("\nasps.ids: ");
-			cortex.cells.cols.asps.ids.print_val_range(1 << 0, Some((0, 255)));
-		}
-
-
-		/* ASPINY STATES */
-		if false {
-			print!("\nasps.states: ");
-			cortex.cells.cols.asps.states.print_val_range(1 << 0, Some((1, 255)));
-		}
-
-
-		/* PYRAMIDAL CELL STATES */
-		if true {
-			print!("\npyrs.states: ");
-			cortex.cells.pyrs.states.print_val_range(1 << 7, Some((1, 255)));
-		}
-
-
-		/* AXON STATES */
-		if false {
-			print!("\naxns.states: ");
-			//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
-			cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), None);
-
-		}
-		if true {
-			print!("\nREGION OUTPUT: cells.axns.states: ");
-			//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
-			cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
-
-		}
-
-
-		/* AUX VALS */
-		if true {
-			print!("\naux.ints_0: ");
-			cortex.cells.aux.ints_0.print((1 << 0) as usize, Some((1, 1100000000)), None);
-			print!("\naux.ints_1: ");
-			cortex.cells.aux.ints_1.print((1 << 0) as usize, Some((1, 1100000000)), None);
-		}
-
-		if false {
-			print!("\naux.chars_0: ");
-			cortex.cells.aux.chars_0.print((1 << 0) as usize, Some((-128, 127)), None);
-			print!("\naux.chars_1: ");
-			cortex.cells.aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None);
-		}
-
-		i += 1;
-		println!("");
-	}
-
+	println!("");
 
 	cortex.release_components();
+	true
 
 }
+
+
+pub fn pe<T: Int + Default + Display + FromPrimitive, V>(label: &'static str, env: &Envoy<T>, scale: usize, 
+				val_range: Option<(V, V)>, 
+				idx_range: Option<(usize, usize)>
+) {
+	print!("\n{}: ", label);
+	env.len();
+	//env.print(scale, val_range, idx_range);
+}
+
+fn rin(prompt: &'static str) -> String {
+	let mut in_string: String = String::new();
+	print!("\n{}: ", prompt);
+	io::stdout().flush().unwrap();
+	io::stdin().read_line(&mut in_string).ok().expect("Failed to read line");
+	in_string
+}
+
+
 		//
 		// 128:1 RATIO FOR PRINTING IS COOL (100% ACTIVITY)
 		// 512:1 (25% ACTIVITY, 262144 len)

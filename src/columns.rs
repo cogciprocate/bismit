@@ -65,15 +65,16 @@ impl Columns {
 			.arg_env(&asps.ids)
 			.arg_env(&asps.states)
 			.arg_env(&asps.wins)
-			.arg_env(&states)
+			
 			//.arg_env(&cel_status)
-			.arg_env(&aux.ints_0)
-			.arg_env(&aux.ints_1)
+			//.arg_env(&aux.ints_0)
+			//.arg_env(&aux.ints_1)
 			//.arg_env(&pyrs.states)
 			//.arg_scl(pyr_depth)
 			//.arg_scl(pyr_axn_base_row)
 			//self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
 			.arg_scl(layer.base_row_pos() as u32)
+			.arg_env(&states)
 			.arg_env(&axons.states)
 		;
 
@@ -81,7 +82,7 @@ impl Columns {
 		assert!(output_rows.len() == 1);
 		let axn_output_row = output_rows[0];
 
-		print!("\n### OUTPUT ROW: {}", axn_output_row);
+		//print!("\n### OUTPUT ROW: {}", axn_output_row);
 		
 
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(1 as usize, width as usize))
@@ -197,7 +198,7 @@ impl ColumnSynapses {
 		let src_row_idx_range: Range<usize> = Range::new(0, self.src_row_ids_list.len());
 		//println!("\nInitializing Column Synapses: ei_start: {}, ei_end: {}, self.src_row_ids: {:?}, self.src_row_ids.len(): {}", ei_start, ei_end, self.src_row_ids_list, self.src_row_ids_list.len());
 
-		for i in range(ei_start, ei_end) {
+		for ref i in ei_start..ei_end {
 			self.src_row_ids[i] = self.src_row_ids_list[src_row_idx_range.ind_sample(&mut rng)];
 		}
 		self.src_row_ids.write();

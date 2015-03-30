@@ -82,7 +82,7 @@ impl AspinyStellate {
 
 		//println!("\n### New aspiny.cycle() iteration: ###");
 
-		for i in range(0, 8) {
+		for i in 0..8 {
 			//event = self.cycle_wins(event);
 			self.kern_cycle_wins.enqueue();
 			//print!("\nasps.wins:");

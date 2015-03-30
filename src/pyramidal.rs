@@ -85,8 +85,8 @@ impl Pyramidal {
 		self.kern_activate.new_arg_envoy(&cols.states);
 		self.kern_activate.new_arg_envoy(&cols.cel_status);
 		//self.kern_activate.new_arg_scalar(self.depth);
-		self.kern_activate.new_arg_envoy(&self.states);
 		self.kern_activate.new_arg_scalar(self.axn_row_base);
+		self.kern_activate.new_arg_envoy(&self.states);
 		self.kern_activate.new_arg_envoy(&axns.states);
 	}
 

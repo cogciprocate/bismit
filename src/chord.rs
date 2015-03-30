@@ -100,7 +100,7 @@ impl ChordUnfolded {
 	pub fn print(&self) {
 		println!("");
 		let mut color: &'static str;
-		for i in range(0, self.notes.len()) {
+		for i in 0..self.notes.len() {
 			if self.notes[i] != 0 {
 				color = common::C_ORA;
 			} else {

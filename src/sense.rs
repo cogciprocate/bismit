@@ -12,7 +12,7 @@ pub fn ascii_sense() -> Box<Vec<Box<Vec<u16>>>> {
 	let mut song: Vec<Box<Vec<u16>>> = Vec::new();
 	println!("** Starting song.len(): {}",song.len());
 
-	let input_file = match File::open(&Path::new(INPUT_FILE_NAME)) {
+	let input_file = match File::open(&std::path::Path::new(INPUT_FILE_NAME)) {
 		Ok(file) => file,
 		Err(e) => panic!("error opening file: {}; {}", INPUT_FILE_NAME, e),
 	};
@@ -36,7 +36,7 @@ pub fn ascii_sense() -> Box<Vec<Box<Vec<u16>>>> {
 pub fn chord_encode_byte(byte: u8) -> Box<Vec<u16>> {
 	let mut chord: Vec<u16> = Vec::with_capacity(256);
 
-	for x in range(0, 1023) {
+	for x in 0..1023 {
 		chord.push((252u16 * byte as u16) + x as u16);
 	}
 	

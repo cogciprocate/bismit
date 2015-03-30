@@ -52,18 +52,18 @@ impl CorticalRegions {
 	}
 }
 
-impl Index<CorticalRegionKind> for CorticalRegions
+impl<'b> Index<&'b CorticalRegionKind> for CorticalRegions
 {
     type Output = CorticalRegion;
 
-    fn index<'a>(&'a self, index: &CorticalRegionKind) -> &'a CorticalRegion {
+    fn index<'a>(&'a self, index: &'b CorticalRegionKind) -> &'a CorticalRegion {
         self.hash_map.get(index).expect("Invalid region name.")
     }
 }
 
-impl IndexMut<CorticalRegionKind> for CorticalRegions
+impl<'b> IndexMut<&'b CorticalRegionKind> for CorticalRegions
 {
-    fn index_mut<'a>(&'a mut self, index: &CorticalRegionKind) -> &'a mut CorticalRegion {
+    fn index_mut<'a>(&'a mut self, index: &'b CorticalRegionKind) -> &'a mut CorticalRegion {
         self.hash_map.get_mut(index).expect("Invalid region name.")
     }
 }
@@ -154,7 +154,7 @@ impl CorticalRegion {
 						layer.kind_base_row_pos = num::cast(vec.len()).expect("cortical_regions::CorticalRegion::add()");
 						//print!("\n{:?} base_row_pos: {}", cell_kind, layer.kind_base_row_pos);
 
-						for i in range(0, layer.depth) {							 
+						for i in 0..layer.depth {							 
 							vec.push(layer.name);
 							//print!("\nAdding {} to list of {:?}", layer.name, cell_kind);
 						}
@@ -231,7 +231,7 @@ impl CorticalRegion {
 		for (layer_name, layer) in self.layers.iter_mut() {
 			match &layer.cell {
 				&Some(ref protocell) => {
-					layer.base_row_pos = self.cellular_layer_kind_base_rows[protocell.cell_kind] + layer.kind_base_row_pos;
+					layer.base_row_pos = self.cellular_layer_kind_base_rows[&protocell.cell_kind] + layer.kind_base_row_pos;
 					print!("\n 	Finalize: adding layer: {}, kind: {:?}, base_row_id: {}", layer_name, &protocell.cell_kind, layer.base_row_pos);
 				},
 				&None => {
@@ -281,9 +281,9 @@ impl CorticalRegion {
 		}
 		let mut row_ids = Vec::new();
 
-		for &layer_name in layer_names.iter() {
+		for layer_name in layer_names.iter() {
 			let l = &self[layer_name];
-				for i in range(l.base_row_pos, l.base_row_pos + l.depth) {
+				for i in l.base_row_pos..(l.base_row_pos + l.depth) {
 					row_ids.push(i);
 				}
 		}
@@ -292,7 +292,7 @@ impl CorticalRegion {
 	}
 
 	pub fn src_row_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
-		let src_layer_names = self[layer_name].src_layer_names(den_type);
+		let src_layer_names = self[&layer_name].src_layer_names(den_type);
 		
 		self.row_ids(src_layer_names)
  	}
@@ -323,18 +323,18 @@ impl CorticalRegion {
  	}
 }
 
-impl Index<&'static str> for CorticalRegion
+impl<'b> Index<&'b&'static str> for CorticalRegion
 {
     type Output = CorticalRegionLayer;
 
-    fn index<'a>(&'a self, index: &&'static str) -> &'a CorticalRegionLayer {
+    fn index<'a>(&'a self, index: &'b&'static str) -> &'a CorticalRegionLayer {
         self.layers.get(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
     }
 }
 
-impl IndexMut<&'static str> for CorticalRegion
+impl<'b> IndexMut<&'b&'static str> for CorticalRegion
 {
-    fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut CorticalRegionLayer {
+    fn index_mut<'a>(&'a mut self, index: &'b&'static str) -> &'a mut CorticalRegionLayer {
         self.layers.get_mut(index).unwrap_or_else(|| panic!("[cortical_regions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
     }
 }

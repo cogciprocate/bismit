@@ -60,10 +60,30 @@ static inline uint asp_to_col_ofs(uint asp_idx) {
 	return (asp_idx - ASPINY_REACH) << ASPINY_SPAN_LOG2;
 }
 
-static inline uint asp_col_id_to_col_idx(uint asp_idx, uint asp_col_id) {
+static inline uint asp_col_id_to_col_idx(uint const asp_idx, uint const asp_col_id) {
 	return (asp_to_col_ofs(asp_idx) + (asp_col_id & (ASPINY_SPAN - 1)));
 }
 
+static inline uint axn_idx_wrap_2d(uchar row_z, int col_x) {
+	int const row_width = get_global_size(1);
+	int const row_count = get_global_size(0);
+	int const axn_len = mul24(row_width, row_count);	// COMPUTE THIS AHEAD OF TIME
+
+	int axn_idx = mad24((int)row_z, row_width, col_x + SYNAPSE_REACH);
+	
+	return axn_idx;
+	//return axn_idx + mul24((axn_idx < SYNAPSE_REACH), axn_len);
+}
+
+static inline void syns_learn(
+				uint const syns_per_den_l2,
+				__global uchar* const syn_states,
+				__global uchar* const syn_strengths
+) {
+	for (int i = 0; i < (1 << syns_per_den_l2); i++) {
+
+	}
+}
 
 
 
@@ -97,9 +117,9 @@ static inline uint asp_col_id_to_col_idx(uint asp_idx, uint asp_col_id) {
 */
 //	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
 __kernel void syns_cycle(
-	__global uchar* const axn_states,
-	__global char* const syn_src_ofs,
-	__global uchar* const syn_src_row_ids,
+	__global const uchar* const axn_states,
+	__global const char* const syn_src_ofs,
+	__global const uchar* const syn_src_row_ids,
 	__private uint const syns_per_cell_l2,
 	/*__global int* const aux_ints_0,
 	__global int* const aux_ints_1,*/
@@ -144,7 +164,7 @@ __kernel void syns_cycle(
 
 		uint col_pos = syn_col_i >> syns_per_cell_l2;
 		//uint cel_idx_dup = init_cel_idx + i;
-		uint axn_idx = (mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(col_pos + syn_src_ofs[syn_idx]))) + SYNAPSE_REACH;
+		uint axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(col_pos + syn_src_ofs[syn_idx] + SYNAPSE_REACH));
 
 		uchar axn_state = axn_states[axn_idx];
 
@@ -174,7 +194,7 @@ __kernel void syns_cycle(
 	VECTORIZE
 */
 __kernel void den_prox_cycle(
-	__global uchar* const syn_states,
+	__global const uchar* const syn_states,
 	__private uint const syns_per_den_l2,
 	__global uchar* const den_states
 ) {
@@ -208,7 +228,7 @@ __kernel void den_prox_cycle(
 
 
 __kernel void aspiny_cycle_pre(
-	__global uchar* const col_states,
+	__global const uchar* const col_states,
 	__global uchar* const asp_states,
 	__global uchar* const asp_col_ids
 	
@@ -347,17 +367,17 @@ __kernel void aspiny_cycle_post(
 // CLEAN ME UP
 	//__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
 __kernel void col_post_inhib_unoptd (										
-	__global uchar* const asp_col_ids,
-	__global uchar* const asp_states,
-	__global uchar* const asp_wins,
-	__global uchar* const col_states,
+	__global const uchar* const asp_col_ids,
+	__global const uchar* const asp_states,
+	__global const uchar* const asp_wins,
 	//__global uchar* const col_cel_status,
-	__global int* const aux_ints_0,
-	__global int* const aux_ints_1,
+	//__global int* const aux_ints_0,
+	//__global int* const aux_ints_1,
 	//__global uchar* const pyr_states,
 	//__private uchar const pyr_depth,
 	//__private uchar const pyr_base_row,
 	__private uint const col_axn_row_offset,
+	__global uchar* const col_states,
 	__global uchar* const axn_states
 ) {
 	uint const row_id = get_global_id(0);
@@ -405,14 +425,36 @@ __kernel void col_post_inhib_unoptd (
 }
 
 
+__kernel void col_learn(
+	__global uchar* const asp_wins,
+	//__global uchar* const asp_col_ids,
+	__global uchar* const asp_states
+	//__global uchar* const col_states
+) {
+	uint const row_id = get_global_id(0);
+	uint const asp_id = get_global_id(1);
+	uint const row_width = get_global_size(1);
+	uint const asp_pos = mad24(row_id, row_width, asp_id);
+	uint const asp_idx = (asp_pos + ASPINY_REACH);
+	//uint const col_ofs = asp_pos << ASPINY_SPAN_LOG2;
+
+	//uchar asp_state = asp_states[asp_idx];
+	uchar asp_win = asp_wins[asp_idx];
+
+	asp_states[asp_idx] = asp_win;
+
+	asp_wins[asp_idx] = 0;
+}
+
+
 
 
 __kernel void pyr_activate(
 				__global uchar* const col_states,
 				__global uchar* const col_cel_status,
 				//__private uchar const pyr_depth,
-				__global uchar* const pyr_states,
 				__private uchar const axn_row_base,
+				__global uchar* const pyr_states,
 				__global uchar* const axn_states
 ) {
 	uint const row_id = get_global_id(0);
@@ -431,7 +473,7 @@ __kernel void pyr_activate(
 	//pyr_state &= 127;
 	pyr_state = mul24((corr_pred | anomaly), col_state);
 	
-	pyr_states[pyr_idx] = pyr_state;
+	//pyr_states[pyr_idx] = pyr_state;
 	axn_states[axn_idx] = pyr_state;
 }
 
@@ -439,7 +481,7 @@ __kernel void pyr_activate(
 
 
 /*
-	PYRAMIDAL LEARNING
+	LEARNING
 	
 
 
@@ -503,12 +545,13 @@ __kernel void pyr_cycle(
 
 	//int active_dendrites = 0;
 
-	uint pyr_state = pyr_states[cel_idx];
+	//uint pyr_state = pyr_states[cel_idx];
 
 		//#pragma unroll 
 	for (uint i = 0; i < DENDRITES_PER_CELL_DISTAL; i++) {
 		uchar den_state = den_states[den_grp + i];
 		den_sum += den_state;
+		//den_sum += (den_state > 0);
 		//active_dendrites += (den_state > 0);
 	}
 	
@@ -541,7 +584,8 @@ __kernel void col_output(
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
-	uint const axn_idx_output = mad24(axn_row_output, row_width, col_id + (uint)SYNAPSE_REACH);
+	//uint const axn_idx_output = mad24(axn_row_output, row_width, col_id + (uint)SYNAPSE_REACH);
+	uint const axn_idx_output = axn_idx_wrap_2d(axn_row_output, col_id);
 	uint const col_idx = mad24(row_id, row_width, col_id);
 
 	int col_state = col_states[col_idx];
@@ -550,7 +594,7 @@ __kernel void col_output(
 	for (uint i = 0; i < pyr_depth; i++) {
 		uint axn_idx_pyr = mad24(pyr_axn_base_row + i, row_width, col_id + (uint)SYNAPSE_REACH);
 		output_total = max(output_total, (int)axn_states[axn_idx_pyr]);
-		//output_total += 1;
+		//output_total += (axn_states[axn_idx_pyr] > 0);
 	}
 
 	col_cel_status[col_idx] = clamp(output_total, 0, 255);

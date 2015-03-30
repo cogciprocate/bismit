@@ -60,7 +60,7 @@ pub fn run() {
 	//chord.unfold().print();
 
 	// for i in range(0, 100000) {
-	for i in range(0, 50000) {
+	for i in 0..50000 {
 		if worm_brain.act(&mut world) == Option::None {
 			println!("");
 			println!("Everything eaten after {} iterations.", i);

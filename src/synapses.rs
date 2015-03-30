@@ -113,13 +113,13 @@ impl Synapses {
 			print!("\nLayer: \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", layer_name, self.den_kind, row_ids, src_row_ids);
 			
 			/* LOOP THROUGH ROWS (WITHIN LAYER) */
-			for row_pos in range(kind_base_row_pos, kind_base_row_pos + layer.depth) {
+			for row_pos in kind_base_row_pos..(kind_base_row_pos + layer.depth) {
 				let ei_start = syns_per_row as usize * row_pos as usize;
 				let ei_end = ei_start + syns_per_row as usize;
 				print!("\n	Row {}: ei_start: {}, ei_end: {}, src_ids: {:?}", row_pos, ei_start, ei_end, src_row_ids);
 
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
-				for i in range(ei_start, ei_end) {
+				for ref i in ei_start..ei_end {
 					self.axn_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
 				}
 			}

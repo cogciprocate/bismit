@@ -18,11 +18,10 @@ use std::collections::{ HashMap };
 use time;
 
 
-/* Eventually move define_*() to a config file or some such */
+	/* Eventually move define_*() to a config file or some such */
 pub fn define_regions() -> CorticalRegions {
-	//let column_rows: u8 = 1;
-
 	let mut cort_regs: CorticalRegions = CorticalRegions::new();
+
 	let mut sen = CorticalRegion::new(CorticalRegionKind::Sensory)
 		.layer("pre_thal", 1, layer::DEFAULT, None)
 		.layer("thal", 1, layer::DEFAULT, None)
@@ -32,7 +31,6 @@ pub fn define_regions() -> CorticalRegions {
 		//.layer("inhib_tmp", 1, None);
 		//.layer("inhib_tmp_2", 1, None);
 		//.layer("test_3", 1, None);
-
 		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]))
 		//.layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
 		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii"], "iv"))
@@ -40,9 +38,7 @@ pub fn define_regions() -> CorticalRegions {
 	;
 
 	sen.finalize();
-
 	cort_regs.add(sen);
-
 	cort_regs
 }
 
@@ -75,12 +71,12 @@ impl Cortex {
 
 		// FOR EACH REGION...
 		let mut cells: cells::Cells = {
-			let ref region = &regions[CorticalRegionKind::Sensory];
+			let ref region = &regions[&CorticalRegionKind::Sensory];
 			Cells::new(region, &areas, &ocl)
 		};
 
 		let time_complete = time::get_time() - time_start;
-		print!("\n... Cortex initialized in: {}.{} sec.", time_complete.num_seconds(), time_complete.num_milliseconds());
+		println!("\n... Cortex initialized in: {}.{} sec.", time_complete.num_seconds(), time_complete.num_milliseconds());
 
 		Cortex {
 			cells: cells,
@@ -92,32 +88,22 @@ impl Cortex {
 
 
 	pub fn sense(&mut self, sgmt_idx: usize, layer_target: &'static str, chord: &Chord) {
-
 		let mut vec: Vec<ocl::cl_uchar> = Vec::with_capacity(chord.width as usize);
 		chord.unfold_into(&mut vec, 0);
 		self.sense_vec(sgmt_idx, layer_target, &vec);
-
 	}
 
 	pub fn sense_vec_no_cycle(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
-
-		let axn_row = self.regions[CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
-
+		let axn_row = self.regions[&CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
 		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
-
 		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
-
 	}
 
 
 	pub fn sense_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
-
-		let axn_row = self.regions[CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
-
+		let axn_row = self.regions[&CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
 		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
-
 		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
-
 		self.cells.cycle();
 	}
 

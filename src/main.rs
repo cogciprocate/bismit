@@ -37,6 +37,7 @@ mod test_miccos;
 //mod test_readback;
 //mod test_3;
 mod test_4;
+mod tests;
 
 use std::num::Int;
 

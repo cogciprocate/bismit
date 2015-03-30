@@ -264,7 +264,7 @@ pub fn print_vec<T: Int + Display + Default>(
 	}
 	print!("]:{cd} ", cd = C_DEFAULT,);
 
-	for i in range(0, vec.len()) {
+	for i in 0..vec.len() {
 
 		prnt = false;
 
@@ -388,7 +388,7 @@ pub fn shuffle_vec<T: Int>(vec: &mut Vec<T>) {
 	let mut ridx: usize;
 	let mut tmp: T;
 
-	for i in range(0, len) {
+	for i in 0..len {
 		ridx = distributions::Range::new(i, len).ind_sample(&mut rng);
 		tmp = vec[i];
 		vec[i] = vec[ridx];
@@ -415,7 +415,7 @@ pub fn sparse_vec<T: SignedInt + FromPrimitive + ToPrimitive + Default>(size: us
 	let val_range = Range::new(range_min, range_max);
 	let idx_range = Range::new(0, 1 << sp_fctr_log2);
 
-	for i in range(0, notes) {
+	for i in 0..notes {
 		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = num::cast(val_range.ind_sample(&mut rng)).unwrap();
 	}
 

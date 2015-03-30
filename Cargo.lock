@@ -4,7 +4,7 @@ version = "0.0.1"
 dependencies = [
  "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "microcosm 0.0.1 (git+https://github.com/cogciprocate/microcosm.git)",
- "time 0.1.19 (git+https://github.com/rust-lang/time.git)",
+ "time 0.1.22 (git+https://github.com/rust-lang/time.git)",
 ]
 
 [[package]]
@@ -14,12 +14,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "gcc"
-version = "0.3.1"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "libc"
-version = "0.1.2"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -29,10 +29,10 @@ source = "git+https://github.com/cogciprocate/microcosm.git#0f1e1f79a472174e3af4
 
 [[package]]
 name = "time"
-version = "0.1.19"
-source = "git+https://github.com/rust-lang/time.git#36f32680ecba4ac75360de7f228349db1d0c384a"
+version = "0.1.22"
+source = "git+https://github.com/rust-lang/time.git#b8f1b771556a4ecb072849c7938a1376233e1a07"
 dependencies = [
- "gcc 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

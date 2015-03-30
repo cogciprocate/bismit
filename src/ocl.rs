@@ -387,15 +387,15 @@ impl WorkSize {
 
 		match self {
 			&WorkSize::OneDim(x) => {
-				let s = (x, 1, 1);
+				let s: (usize, usize, usize) = (x, 1, 1);
 				(&s as *const (usize, usize, usize)) as *const libc::size_t
 			},
 			&WorkSize::TwoDim(x, y) => {
-				let s = (x, y, 1);
+				let s: (usize, usize, usize) = (x, y, 1);
 				(&s as *const (usize, usize, usize)) as *const libc::size_t
 			},
 			&WorkSize::ThreeDim(x, y, z) => {
-				let s = (x, y, z);
+				let s: (usize, usize, usize) = (x, y, z);
 				(&s as *const (usize, usize, usize)) as *const libc::size_t
 			},
 			_ => ptr::null(),
