@@ -27,8 +27,8 @@ pub struct Synapses {
 	kern_cycle: ocl::Kernel,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub strengths: Envoy<ocl::cl_char>,
-	pub axn_row_ids: Envoy<ocl::cl_uchar>,
-	pub axn_col_offs: Envoy<ocl::cl_char>,
+	pub src_row_ids: Envoy<ocl::cl_uchar>,
+	pub src_col_offs: Envoy<ocl::cl_char>,
 }
 
 impl Synapses {
@@ -38,20 +38,20 @@ impl Synapses {
 		let syns_per_row = width << per_cell_l2;
 
 		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
-		print!("\nNew {:?} Synapses with: depth: {}, width: {}, per_cell_l2: {}, syns_per_row(row area): {}", den_kind, depth, width, per_cell_l2, syns_per_row);
+		//print!("\nNew {:?} Synapses with: depth: {}, width: {}, per_cell_l2: {}, syns_per_row(row area): {}", den_kind, depth, width, per_cell_l2, syns_per_row);
 
 		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
-		let mut axn_row_ids = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
-		//let mut axn_col_offs = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
-		let mut axn_col_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -128, 127, ocl);
+		let mut src_row_ids = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
+		//let mut src_col_offs = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
+		let mut src_col_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -128, 127, ocl);
 
 		let mut kern_cycle = ocl.new_kernel("syns_cycle", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 			.arg_env(&axons.states)
-			.arg_env(&axn_col_offs)
-			.arg_env(&axn_row_ids)
+			.arg_env(&src_col_offs)
+			.arg_env(&src_row_ids)
 			.arg_scl(per_cell_l2)
 			//.arg_env(&aux.ints_0)
 			//.arg_env(&aux.ints_1)
@@ -68,8 +68,8 @@ impl Synapses {
 			kern_cycle: kern_cycle,
 			states: states,
 			strengths: strengths,
-			axn_row_ids: axn_row_ids,
-			axn_col_offs: axn_col_offs,
+			src_row_ids: src_row_ids,
+			src_col_offs: src_col_offs,
 		};
 
 		syns.init(region);
@@ -79,8 +79,8 @@ impl Synapses {
 
 	fn init(&mut self, region: &CorticalRegion) {
 		assert!(
-			(self.axn_col_offs.width() == self.axn_row_ids.width()) 
-			&& ((self.axn_row_ids.width() == (self.width << self.per_cell_l2))), 
+			(self.src_col_offs.width() == self.src_row_ids.width()) 
+			&& ((self.src_row_ids.width() == (self.width << self.per_cell_l2))), 
 			"[cells::Synapses::init(): width mismatch]"
 		);
 
@@ -120,14 +120,14 @@ impl Synapses {
 
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
 				for ref i in ei_start..ei_end {
-					self.axn_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
+					self.src_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
 				}
 			}
 		}
 
 		self.strengths.write();
-		self.axn_col_offs.write();
-		self.axn_row_ids.write();		
+		self.src_col_offs.write();
+		self.src_row_ids.write();		
 	}
 
 	pub fn cycle(&self) {

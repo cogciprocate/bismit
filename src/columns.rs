@@ -32,7 +32,8 @@ pub struct Columns {
 	pub states: Envoy<ocl::cl_uchar>,
 	pub cel_status: Envoy<ocl::cl_uchar>,
 	pub asps: AspinyStellate,
-	pub syns: ColumnSynapses,
+	//pub syns: ColumnSynapses,
+	pub syns: Synapses,
 	
 }
 
@@ -44,21 +45,32 @@ impl Columns {
 		let syns_per_cell_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 		let syns_per_cell: u32 = 1 << syns_per_cell_l2;
 
+		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidal);
+		let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC PYR LAYERS 
+
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let cel_status = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 
 		let asps = AspinyStellate::new(width, depth, region, &states, ocl);
-		let syns = ColumnSynapses::new(width, depth, syns_per_cell, &layer, region, axons, aux, ocl);
+
+
+		/*######################*/
+
+		//let syns = Synapses::new(width, depth, syns_per_cell, &layer, region, axons, aux, ocl);		
+
+		let syns = Synapses::new(width, depth, syns_per_cell_l2, DendriteKind::Proximal, CellKind::SpinyStellate, region, axons, ocl);
+
+
+		//let syns = ColumnSynapses::new(width, depth, syns_per_cell, &layer, region, axons, aux, ocl);
+
+		/*######################*/
+
 
 		let kern_cycle = ocl.new_kernel("den_prox_cycle", WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&syns.states)
 			.arg_scl(syns_per_cell_l2)
-			.arg_env(&states);
-
-
-		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidal);
-		//print!("\n###pyr_depth: {}", pyr_depth);
-		let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC PYRS 
+			.arg_env(&states)
+		;
 
 		let kern_post_inhib = ocl.new_kernel("col_post_inhib_unoptd", WorkSize::TwoDim(depth as usize, width as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))

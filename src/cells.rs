@@ -42,7 +42,7 @@ impl Cells {
 		let depth_total = depth_noncellular + depth_cellular;
 		let width = areas.width(&region.kind);
 
-		print!("\nCells::new(): depth_noncellular: {}, depth_cellular: {}, width: {}", depth_noncellular, depth_cellular, width);
+		//print!("\nCells::new(): depth_noncellular: {}, depth_cellular: {}, width: {}", depth_noncellular, depth_cellular, width);
 
 		assert!(depth_cellular > 0, "cells::Cells::new(): Region has no cellular layers.");
 

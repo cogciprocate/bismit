@@ -107,17 +107,16 @@ pub fn test_cycle() -> bool {
 
 	let mut test_iters: i32 = TEST_ITERATIONS;
 
-			
 	loop {
 
-		let mut in_string: String = rin("Enter Command (q: quit, l: loop, Enter: loop)");
+		let mut in_string: String = rin("test_4:> [q: quit][i: iters][Enter: prev]");
 		//print!("You Entered: {}", &in_string);
 
 
 		if "q\n" == in_string {
 			println!("Quitting...");
 			break;
-		} else if "l\n" == in_string {
+		} else if "i\n" == in_string {
 			let in_s = rin("Enter number of iterations[Enter=default]");
 			if "\n" == in_s {
 				test_iters = TEST_ITERATIONS;
@@ -209,13 +208,13 @@ pub fn test_cycle() -> bool {
 				cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None);
 			}
 			if false {	
-				print!("\npyrs.dens.syns.axn_row_ids: ");
-				cortex.cells.pyrs.dens.syns.axn_row_ids.print(1 << 14, None, None);
+				print!("\npyrs.dens.syns.src_row_ids: ");
+				cortex.cells.pyrs.dens.syns.src_row_ids.print(1 << 14, None, None);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
 			if false {	
-				print!("\npyrs.dens.syns.axn_col_offs: ");
-				cortex.cells.pyrs.dens.syns.axn_col_offs.print(1 << 14, None, None);
+				print!("\npyrs.dens.syns.src_col_offs: ");
+				cortex.cells.pyrs.dens.syns.src_col_offs.print(1 << 14, None, None);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
 
@@ -346,23 +345,23 @@ fn rin(prompt: &'static str) -> String {
 		cortex.cells.cols.syns.src_ofs.print_val_range(1 << 12, -128, 127);*/
 
 		/*if false {
-			print!("\nsoma.bsl_dst_dens.syns.axn_col_offs:");
-			cortex.cells.soma.bsl_dst_dens.syns.axn_col_offs.print(1 << 14);		// 16384
+			print!("\nsoma.bsl_dst_dens.syns.src_col_offs:");
+			cortex.cells.soma.bsl_dst_dens.syns.src_col_offs.print(1 << 14);		// 16384
 
-			print!("\ncols.bsl_prx_dens.syns.axn_col_offs:");
-			cortex.cells.cols.bsl_prx_dens.syns.axn_col_offs.print(1 << 16);
+			print!("\ncols.bsl_prx_dens.syns.src_col_offs:");
+			cortex.cells.cols.bsl_prx_dens.syns.src_col_offs.print(1 << 16);
 		}*/
 
 		/* SYNAPSE AXN_ROW_IDS */
 
 		/*if false {
-			print!("\nsoma.bsl_dst_dens.syns.axn_row_ids:");
-			cortex.cells.soma.bsl_dst_dens.syns.axn_row_ids.print(1 << 14);		// 16384
+			print!("\nsoma.bsl_dst_dens.syns.src_row_ids:");
+			cortex.cells.soma.bsl_dst_dens.syns.src_row_ids.print(1 << 14);		// 16384
 		}
 
 		if false {
-			print!("\ncols.bsl_prx_dens.syns.axn_row_ids:");
-			cortex.cells.cols.bsl_prx_dens.syns.axn_row_ids.print(1 << 10);
+			print!("\ncols.bsl_prx_dens.syns.src_row_ids:");
+			cortex.cells.cols.bsl_prx_dens.syns.src_row_ids.print(1 << 10);
 		}*/
 
 

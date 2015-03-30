@@ -340,27 +340,6 @@ __kernel void col_post_inhib_unoptd (
 }
 
 
-__kernel void col_learn(
-	__global uchar* const asp_wins,
-	//__global uchar* const asp_col_ids,
-	__global uchar* const asp_states
-	//__global uchar* const col_states
-) {
-	uint const row_id = get_global_id(0);
-	uint const asp_id = get_global_id(1);
-	uint const row_width = get_global_size(1);
-	uint const asp_pos = mad24(row_id, row_width, asp_id);
-	uint const asp_idx = (asp_pos + ASPINY_REACH);
-	//uint const col_ofs = asp_pos << ASPINY_SPAN_LOG2;
-
-	//uchar asp_state = asp_states[asp_idx];
-	uchar asp_win = asp_wins[asp_idx];
-
-	asp_wins[asp_idx] = 0;
-	asp_states[asp_idx] = asp_win;
-}
-
-
 
 
 __kernel void pyr_activate(
@@ -389,6 +368,24 @@ __kernel void pyr_activate(
 }
 
 
+__kernel void col_learn(
+	__global uchar* const asp_wins,
+	__global uchar* const asp_states
+	//__global uchar* const col_states
+) {
+	uint const row_id = get_global_id(0);
+	uint const asp_id = get_global_id(1);
+	uint const row_width = get_global_size(1);
+	uint const asp_pos = mad24(row_id, row_width, asp_id);
+	uint const asp_idx = (asp_pos + ASPINY_REACH);
+	//uint const col_ofs = asp_pos << ASPINY_SPAN_LOG2;
+
+	//uchar asp_state = asp_states[asp_idx];
+	uchar asp_win = asp_wins[asp_idx];
+
+	asp_wins[asp_idx] = 0;
+	asp_states[asp_idx] = asp_win;
+}
 
 
 /*
