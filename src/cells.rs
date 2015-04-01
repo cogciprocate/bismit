@@ -8,7 +8,7 @@ use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use columns::{ Columns };
-use aspiny::{ AspinyStellate };
+use peak_column::{ PeakColumn };
 use pyramidal::{ Pyramidal };
 
 

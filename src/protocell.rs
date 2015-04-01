@@ -97,7 +97,7 @@ pub enum CellPrototype {
 		prx_srcs: Vec<&'static str>,
 	},
 
-	AspinyStellate {
+	PeakColumn {
 		prx_srcs: Vec<&'static str>,
 	},
 
@@ -119,7 +119,7 @@ pub enum CellBlueprint {
 		flags: CellFlags,
 	},
 
-	AspinyStellate {
+	PeakColumn {
 		dens: u8,
 		syns_per_den: u8,
 		flags: CellFlags,

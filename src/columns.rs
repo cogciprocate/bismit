@@ -9,7 +9,7 @@ use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cells:: { Aux };
-use aspiny:: { AspinyStellate };
+use peak_column:: { PeakColumn };
 use pyramidal::{ Pyramidal };
 
 use std::num;
@@ -31,7 +31,7 @@ pub struct Columns {
 	kern_output: ocl::Kernel,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub cel_status: Envoy<ocl::cl_uchar>,
-	pub asps: AspinyStellate,
+	pub asps: PeakColumn,
 	//pub syns: ColumnSynapses,
 	pub syns: Synapses,
 	
@@ -50,21 +50,9 @@ impl Columns {
 
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let cel_status = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
-
-		let asps = AspinyStellate::new(width, depth, region, &states, ocl);
-
-
-		/*######################*/
-
-		//let syns = Synapses::new(width, depth, syns_per_cell, &layer, region, axons, aux, ocl);		
-
-		let syns = Synapses::new(width, depth, syns_per_cell_l2, DendriteKind::Proximal, CellKind::SpinyStellate, region, axons, ocl);
-
-
-		//let syns = ColumnSynapses::new(width, depth, syns_per_cell, &layer, region, axons, aux, ocl);
-
-		/*######################*/
-
+		let asps = PeakColumn::new(width, depth, region, &states, ocl);
+		let syns = Synapses::new(width, depth, syns_per_cell_l2, DendriteKind::Proximal, 
+			CellKind::SpinyStellate, region, axons, ocl);
 
 		let kern_cycle = ocl.new_kernel("den_prox_cycle", WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&syns.states)
@@ -73,18 +61,9 @@ impl Columns {
 		;
 
 		let kern_post_inhib = ocl.new_kernel("col_post_inhib_unoptd", WorkSize::TwoDim(depth as usize, width as usize))
-			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&asps.ids)
 			.arg_env(&asps.states)
 			.arg_env(&asps.wins)
-			
-			//.arg_env(&cel_status)
-			//.arg_env(&aux.ints_0)
-			//.arg_env(&aux.ints_1)
-			//.arg_env(&pyrs.states)
-			//.arg_scl(pyr_depth)
-			//.arg_scl(pyr_axn_base_row)
-			//self.kern_cycle.arg_local(0u8, common::AXONS_WORKGROUP_SIZE / common::ASPINY_SPAN as usize);
 			.arg_scl(layer.base_row_pos() as u32)
 			.arg_env(&states)
 			.arg_env(&axons.states)
@@ -97,7 +76,7 @@ impl Columns {
 		//print!("\n### OUTPUT ROW: {}", axn_output_row);
 		
 
-		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(1 as usize, width as usize))
+		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(depth as usize, width as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&states)
 			//.arg_env(&pyrs.states)
@@ -108,6 +87,16 @@ impl Columns {
 			.arg_scl(axn_output_row)
 			.arg_env(&axons.states)
 		;
+
+
+		let kern_learn = ocl.new_kernel("col_learn", WorkSize::TwoDim(depth as usize, width as usize))
+			.arg_env(&asps.ids)
+			.arg_env(&asps.states)
+			//.arg_scl(layer.base_row_pos() as u32)
+			.arg_env(&states)
+			//.arg_env(&axons.states)
+		;
+
 		
 		Columns {
 			width: width,
@@ -140,7 +129,7 @@ impl Columns {
 }
 
 
-pub struct ColumnSynapses {
+/*pub struct ColumnSynapses {
 	width: u32,
 	depth: u8,
 	per_cell: u32,
@@ -219,4 +208,4 @@ impl ColumnSynapses {
 	pub fn cycle(&self) {
 		self.kern_cycle.enqueue();
 	}
-}
+}*/

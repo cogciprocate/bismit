@@ -7,7 +7,7 @@ use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use cells::{ Aux };
-use aspiny::{ AspinyStellate };
+use peak_column::{ PeakColumn };
 use columns::{ Columns };
 
 

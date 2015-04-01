@@ -46,7 +46,7 @@ impl Synapses {
 		//let mut src_col_offs = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
 		let mut src_col_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -128, 127, ocl);
 
-		let mut kern_cycle = ocl.new_kernel("syns_cycle", 
+		let mut kern_cycle = ocl.new_kernel("syn_cycle", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 			.arg_env(&axons.states)

@@ -82,7 +82,7 @@ impl CorticalRegion {
 	pub fn new (kind: CorticalRegionKind)  -> CorticalRegion {
 		/*let mut next_row_id = HashMap::new();
 		next_row_id.insert(CellKind::Pyramidal, 0);
-		next_row_id.insert(CellKind::AspinyStellate, 0);
+		next_row_id.insert(CellKind::PeakColumn, 0);
 		next_row_id.insert(CellKind::SpinyStellate, 0);*/
 	
 		CorticalRegion { 
@@ -357,7 +357,7 @@ impl CorticalRegion {
 	pub fn new (kind: CorticalRegionKind)  -> CorticalRegion {
 		let mut next_row_id = HashMap::new();
 		next_row_id.insert(CellKind::Pyramidal, 0);
-		next_row_id.insert(CellKind::AspinyStellate, 0);
+		next_row_id.insert(CellKind::PeakColumn, 0);
 		next_row_id.insert(CellKind::SpinyStellate, 0);
 	
 		CorticalRegion { 

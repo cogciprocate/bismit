@@ -22,7 +22,7 @@ mod axons;
 mod dendrites;
 mod synapses;
 mod columns;
-mod aspiny;
+mod peak_column;
 mod pyramidal;
 //mod cort_seg;
 //mod thalamus;

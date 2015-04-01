@@ -1,3 +1,266 @@
+/*__kernel void col_pyr_activate(
+				__global uchar* const col_states,
+				__global uchar* const col_cel_status,
+				__global uchar* const pyr_states,
+				//__private uchar const col_row_count,
+				__private uchar const pyr_depth,
+				//__private uchar const axn_row_output,
+				//__private uchar const pyr_base_row,
+				//__global uchar* const axn_states
+				
+) {
+	uint const row_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const row_width = get_global_size(1);
+	//uint const axn_idx = mad24(axn_row_output, row_width, col_id + (uint)SYNAPSE_REACH);
+	uint const col_idx = mad24(row_id, row_width, col_id);
+
+	uchar col_state = col_states[col_idx];
+
+	int output_total = 0;
+
+	for (uint i = 0; i < pyr_depth; i++) {
+		uint pyr_idx = mad24(i, row_width, col_id);
+		output_total += pyr_states[pyr_idx];
+		//output_total += 1;
+	}
+
+	//axn_states[axn_idx] = clamp(output_total, 0, 255);
+	//axn_states[axn_idx] = test;
+}*/
+
+
+
+
+
+
+/*__kernel void dens_cycle_origish_with_vectors(
+	__global uchar* const syn_states,
+	__private uint const syns_per_den_l2,
+	__global uchar* const den_states
+) {
+	uint const row_id = get_global_id(0);
+	uint const den_id = get_global_id(1);
+	//uint const l_id = get_local_id(1);
+	uint const row_width = get_global_size(1);
+	uint const den_idx = mad24(row_id, row_width, den_id);
+	uint const syn4_per_den_l2 = syns_per_den_l2 - 2;
+	uint const syn_ofs = den_idx << syn4_per_den_l2;
+
+	int4 syn_sum = (int4)(0, 0, 0, 0);
+	uint n = 1 << syn4_per_den_l2;
+
+	for (uint i = 0; i < n; i += 1) {
+		syn_sum += convert_int4(vload4((syn_ofs + i), syn_states));
+		//syn_sum += syn_state.s0;
+	}
+
+	int den_total = syn_sum.s0 + syn_sum.s1 + syn_sum.s2 + syn_sum.s3;
+
+	den_states[den_idx] = mad24((den_total > 0), 128, clamp(den_total >> (syns_per_den_l2 + 1), 0, 127));
+	//den_states[den_idx] = den_total; //(0, 1, 2, 3); 
+}*/
+
+
+
+/*__kernel void dens_cycle_WITH_VECTOR(
+	__global uchar* const syn_states,
+	__private uint const syns_per_den_l2,
+	__global uchar* const den_states
+) {
+	uint const row_id = get_global_id(0);
+	uint const den_id = get_global_id(1);
+	//uint const l_id = get_local_id(1);
+	uint const row_width = get_global_size(1);
+	uint const den_idx = mad24(row_id, row_width, den_id);
+	uint const syn4_per_den_l2 = syns_per_den_l2 - 2;
+	uint const syn_ofs = den_idx << syn4_per_den_l2;
+
+	int4 syn_sum = (int4)(0, 0, 0, 0);
+	uint n = 1 << syn4_per_den_l2;
+
+	for (uint i = 0; i < n; i += 1) {
+		syn_sum += convert_int4(vload4((syn_ofs + i), syn_states));
+		//syn_sum += syn_state.s0;
+	}
+
+	int den_total = syn_sum.s0 + syn_sum.s1 + syn_sum.s2 + syn_sum.s3;
+
+	den_states[den_idx] = mad24((den_total > 0), 128, clamp(den_total >> (syns_per_den_l2 + 1), 0, 127));
+	//den_states[den_idx] = den_total; //(0, 1, 2, 3); 
+}*/
+
+
+/*__kernel void aspiny_cycle_wins_old(
+	__global uchar* const asp_states,
+	__global uchar* const asp_col_ids,
+	__global uchar* const asp_wins,
+	__private uint const win_floor,
+	__private uint const mode
+) {
+	uint const row_id = get_global_id(0);
+	uint const asp_id = get_global_id(1);
+	uint const row_width = get_global_size(1);
+	uint const asp_pos = mad24(row_id, row_width, asp_id);
+	uint const asp_idx = (asp_pos + ASPINY_REACH);
+	//uint const col_ofs = asp_pos << ASPINY_SPAN_LOG2;
+
+	uchar asp_state = asp_states[asp_idx];
+	uchar asp_win = asp_wins[asp_idx];
+
+	int win_count = asp_win; // asp_wins[asp_idx];
+
+	for (uint i = 0; i < ASPINY_SPAN; i++) {
+
+		uint cur_asp_idx = (asp_idx - ASPINY_REACH) + i + (i > (ASPINY_REACH - 1));
+		uchar cur_comp_state = asp_states[cur_asp_idx];
+		uchar cur_comp_wins = asp_wins[cur_asp_idx];
+
+		//if (((asp_idx & 0x07) == (asp_state & 0x07)))
+
+		if (mode == 0) {
+			if (asp_state < cur_comp_state) {
+				continue;
+			} else if (asp_state == cur_comp_state) {
+				if ((asp_idx & 0x01) ^ (cur_asp_idx & 0x01)) {
+					win_count += ((asp_idx) < (cur_asp_idx));
+				}
+			} else {
+				win_count += 1;
+			}
+		} else if (mode == 1) {
+			if (asp_win < cur_comp_wins) {
+				continue;
+			} else if (asp_win == cur_comp_wins) {
+				if ((asp_idx & 0x01) ^ (cur_asp_idx & 0x01)) {
+					win_count += ((asp_idx) < (cur_asp_idx));
+				}
+			} else {
+				win_count += 1;
+			}
+		} else if (mode == 2) {
+			if (cur_comp_wins > 0) {
+				//asp_states[asp_idx] = 0;
+				//asp_states[asp_idx] = 0;
+				win_count = 0;
+				break;
+			} else {
+				win_count += 1;
+			}
+		}
+	}
+	if (mode == 0) {
+		asp_wins[asp_idx] = mul24(win_count, (asp_state >> ASPINY_SPAN_LOG2));
+	} else if (mode == 1) {
+		asp_wins[asp_idx] = mul24(win_count, (win_count >= win_floor));
+	} else if (mode == 2) {
+		asp_wins[asp_idx] = mul24(win_count, (win_count >= win_floor));
+	}
+
+
+	//asp_wins[asp_idx] = mul24(win_count, (win_count >= win_floor));
+	//asp_wins[asp_idx] = win_count;
+	//asp_wins[asp_idx] = asp_state >> ASPINY_SPAN_LOG2;
+}*/
+
+
+
+
+/*__kernel void syn_cycle_1_1(
+	__global uchar* const axn_states,
+	__global char* const syn_src_ofs,
+	__global uchar* const syn_src_row_ids,
+	__private uint const dens_per_wg,
+	__global int* const aux_ints_0,
+	__global int* const aux_ints_1,
+	__global uchar* const syn_states
+) {
+	uint const row_id = get_global_id(0);
+	uint const den_grp_id = get_global_id(1);
+	uint const l_id = get_local_id(1); 
+	uint const wg_id = get_group_id(1);
+	uint const wg_size = get_local_size(1);
+	uint const row_width = mul24(get_global_size(1), dens_per_wg);
+
+	uint const base_col_id = mul24(wg_id, mul24(wg_size, dens_per_wg));
+	
+	//uint 
+	//uint const syns_per_wg = SYNAPSES_PER_DENDRITE_PROXIMAL * dens_per_wg;
+
+	uint dens_per_cell = (1 << DENDRITES_PER_CELL_PROXIMAL_LOG2);
+
+
+
+
+	uint const base_syn_idx = mul24(base_col_id, (uint)(1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2)) + l_id; 
+
+	uint const base_cel_idx = mad24(row_id, row_width, base_col_id);
+
+	uint const base_axn_idx = mad24((uint)syn_src_row_ids[base_syn_idx], row_width, (uint)(0 + syn_src_ofs[base_syn_idx]));
+
+
+
+
+	uint syn_idx = base_syn_idx;
+	uint den_idx = 0;
+	uint cel_idx = 0;
+	uint axn_idx = 0;
+
+	uint syn_i = 0;
+	uint den_i = 0;
+	uint cel_i = 0;
+	uint axn_i = 0;
+
+	uint n = den_grp_id + (SYNAPSE_REACH << 1);
+
+	for (uint i = den_grp_id; i < n; i += dens_per_wg) {
+
+		syn_idx = base_syn_idx + syn_i;
+
+		//cel_idx = 
+		axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(i + syn_src_ofs[syn_idx]));
+
+
+
+		syn_states[syn_idx] = axn_states[axn_idx];
+
+
+		den_i += dens_per_wg;
+		syn_i += SYNAPSE_WORKGROUP_SIZE;
+		//syn_idx += SYNAPSE_WORKGROUP_SIZE;
+	}
+}*/
+
+
+
+
+/*
+	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
+__kernel void syn_cycle_old(
+	__global uchar* const axn_states,
+	__global char* const syn_src_ofs,
+	__global uchar* const syn_src_row_ids,
+	__global uchar* const syn_states
+) {
+	uint const row_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const l_id = get_local_id(1);
+	uint const row_width = get_global_size(1);
+	uint const cel_idx = mad24(row_id, row_width, col_id);
+	
+	uint syn_idx = ((cel_idx - l_id) << SYNAPSES_PER_CELL_PROXIMAL_LOG2) + l_id;
+
+	uint n = SYNAPSE_WORKGROUP_SIZE + col_id;
+	uint axn_idx;
+
+	for (uint i = col_id; i < n; i++) {
+		axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(i + syn_src_ofs[syn_idx]));
+		syn_states[syn_idx] = axn_states[axn_idx];
+		syn_idx += SYNAPSE_WORKGROUP_SIZE;
+	}
+}
+*/
+
 
 
 

@@ -20,7 +20,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 
-pub struct AspinyStellate {
+pub struct PeakColumn {
 	width: u32,
 	depth: u8,
 	kern_cycle_pre: ocl::Kernel,
@@ -32,8 +32,8 @@ pub struct AspinyStellate {
 	
 }
 
-impl AspinyStellate {
-	pub fn new(col_width: u32, depth: u8, region: &CorticalRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> AspinyStellate {
+impl PeakColumn {
+	pub fn new(col_width: u32, depth: u8, region: &CorticalRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> PeakColumn {
 
 		let width = col_width >> common::ASPINY_SPAN_LOG2;
 
@@ -65,7 +65,7 @@ impl AspinyStellate {
 		;
 
 
-		AspinyStellate {
+		PeakColumn {
 			width: width,
 			depth: depth,
 			kern_cycle_pre: kern_cycle_pre,

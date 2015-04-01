@@ -109,7 +109,7 @@ pub fn test_cycle() -> bool {
 
 	loop {
 
-		let mut in_string: String = rin("test_4:> [q: quit][i: iters][Enter: prev]");
+		let mut in_string: String = rin("test_4:[q: quit][i: iters][Enter: prev]");
 		//print!("You Entered: {}", &in_string);
 
 
@@ -323,7 +323,7 @@ pub fn pe<T: Int + Default + Display + FromPrimitive, V>(label: &'static str, en
 
 fn rin(prompt: &'static str) -> String {
 	let mut in_string: String = String::new();
-	print!("\n{}: ", prompt);
+	print!("\n{}:> ", prompt);
 	io::stdout().flush().unwrap();
 	io::stdin().read_line(&mut in_string).ok().expect("Failed to read line");
 	in_string
