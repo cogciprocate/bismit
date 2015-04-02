@@ -1,5 +1,6 @@
 use protocell::{ CellKind, Protocell, DendriteKind };
 use ocl;
+use bitflags;
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]

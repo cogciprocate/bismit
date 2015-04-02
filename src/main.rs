@@ -1,12 +1,16 @@
-#![allow(non_camel_case_types, dead_code, deprecated, unused_variables, 
+#![allow(non_camel_case_types, dead_code, unused_variables, 
 	unused_assignments, unused_imports, unused_mut, unused_features)]
 
 #![feature(core, rand, io, collections, path, libc, std_misc, old_path)]
 
+extern crate num;
 extern crate microcosm;
 extern crate time;
 #[macro_use]
+extern crate rand;
+#[macro_use] 
 extern crate bitflags;
+
 
 mod common;
 mod cl_h;
@@ -39,7 +43,7 @@ mod test_miccos;
 mod test_4;
 mod tests;
 
-use std::num::Int;
+use num::Integer;
 
 fn main() {
 	print!("================= Bismit: main() running... =================");

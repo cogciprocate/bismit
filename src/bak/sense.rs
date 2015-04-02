@@ -1,7 +1,7 @@
 use std::io;
 use std;
-use std::num::FloatMath;
-use std::num::Float;
+use num::FloatMath;
+use num::Float;
 
 pub const INPUT_READ_OFFSET: u16= 0u16;
 pub const INPUT_CHARS_TO_READ: u16 = 100u16;

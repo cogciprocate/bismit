@@ -2,7 +2,7 @@
 	Two things must be communicated for now, the state of the cells on the same level of a (mini)column, and states of columns themselves.
 
 	
-	Intra-columnar cells will be represented with vectors of 16 bit unsigned integers (u16). Initially, at least, these will be (16 x 16bit) 256bit.
+	Integerra-columnar cells will be represented with vectors of 16 bit unsigned integers (u16). Initially, at least, these will be (16 x 16bit) 256bit.
 		[ 0 1 0 1 0 0 1 0 1 0 1 0 1 0 0 1 | 1 0 0 1 0 1 0 1 1 0 1 0 1 0 0 1 | ... | 1 0 0 1 0 1 0 1 0 1 0 0 1 0 1 1 ]
 
 	For inter-columnar cells, intensity/size/confidence (representing firing rate and/or any other information sometimes encoded as firing timing offsets {it's all mashed together for now}) must be represented as well:
@@ -61,11 +61,11 @@ Layer II -- External granular layer - Small granule cells (local interneurons th
 Layer III -- External pyramidal layer - Primarily small to medium sized pyramidal neurons projecting from the cortex.
 - Communications with homotopic contralateral cortices (via commissural fibers)
 
-Layer IV -- Internal granular layer - No pyramidal neurons
-- Interneurons receiving ascending sensory (thalamocortical) input and projecting to layers II/III.
+Layer IV -- Integerernal granular layer - No pyramidal neurons
+- Integererneurons receiving ascending sensory (thalamocortical) input and projecting to layers II/III.
 - Contains dense band of tangential axons that form the outer band of Baillarger, which is hypertrophic and visible to the naked eye in a discrete occipital region (forming the stria Gennari of the striate cortex)
 
-Layer V -- Internal pyramidal (ganglionic) layer - Medium to very large pyramidal neurons
+Layer V -- Integerernal pyramidal (ganglionic) layer - Medium to very large pyramidal neurons
 - Major source of cortical output to the brainstem and spinal cord (pyramidal cells from V can make connections with caudal spinal motor neurons).
 - Contains a dense band of tangential axons (i.e. the inner band of Baillarger).
 
@@ -80,9 +80,9 @@ Layer VI -- Multiform layer - An assortment of cell types, including a few pyram
 
 (3.) (Sequential) External pyramidal -- small to medium pyramidal -- inter-column output.
 	
-(4.) (Temporal)  Internal Granular -- No Pyramidal -- Spiny Stellate Cells -- Interneurons -- Communicate with nearby columns horizontally --  dense band of tangential axons
+(4.) (Temporal)  Integerernal Granular -- No Pyramidal -- Spiny Stellate Cells -- Integererneurons -- Communicate with nearby columns horizontally --  dense band of tangential axons
 
-(5.) (Motor Output) Internal Pyramidal (ganglionic) -- Medium to Large Pyramidal -- Output to Brainstem and Spinal Cord -- dense band of tangential
+(5.) (Motor Output) Integerernal Pyramidal (ganglionic) -- Medium to Large Pyramidal -- Output to Brainstem and Spinal Cord -- dense band of tangential
 
 (6.) (Attention) Multiform -- Assorted cell types -- Small cells receive input from thalamus and 2, 3, + 5 -- Outputs to superficial cortical layers and subcortically (thalamus, etc.)
 
@@ -141,4 +141,4 @@ Hypercolumn: 735,232
 
 
 
-(Intel  Core(TM) i5-2500K: Local Memory Size = 32768)
+(Integerel  Core(TM) i5-2500K: Local Memory Size = 32768)

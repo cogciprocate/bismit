@@ -10,10 +10,10 @@ use cortical_region_layer::{ CorticalRegionLayer };
 use protocell::{ CellKind, Protocell, DendriteKind, CellFlags };
 
 
-use std::rand;
-use std::rand::distributions::{IndependentSample, Range};
+use rand;
+use rand::distributions::{IndependentSample, Range};
 use std::ptr;
-use std::num;
+use num;
 use std::collections::{ HashMap };
 use time;
 
@@ -88,12 +88,11 @@ impl Cortex {
 
 
 	pub fn sense(&mut self, sgmt_idx: usize, layer_target: &'static str, chord: &Chord) {
-		let mut vec: Vec<ocl::cl_uchar> = Vec::with_capacity(chord.width as usize);
-		chord.unfold_into(&mut vec, 0);
+		let mut vec: Vec<ocl::cl_uchar> = chord.unfold();
 		self.sense_vec(sgmt_idx, layer_target, &vec);
 	}
 
-	pub fn sense_vec_no_cycle(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
+	pub fn write_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
 		let axn_row = self.regions[&CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
 		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
 		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
@@ -101,12 +100,16 @@ impl Cortex {
 
 
 	pub fn sense_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
-		let axn_row = self.regions[&CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
+/*		let axn_row = self.regions[&CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
 		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
-		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
-		self.cells.cycle();
+		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);*/
+		self.write_vec(sgmt_idx, layer_target, vec);
+		self.cycle();
 	}
 
+	pub fn cycle(&mut self) {
+		self.cells.cycle();
+	}
 
 	pub fn release_components(&mut self) {
 		print!("Releasing OCL Components...");

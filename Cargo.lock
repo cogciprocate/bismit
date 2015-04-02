@@ -4,7 +4,9 @@ version = "0.0.1"
 dependencies = [
  "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "microcosm 0.0.1 (git+https://github.com/cogciprocate/microcosm.git)",
- "time 0.1.22 (git+https://github.com/rust-lang/time.git)",
+ "num 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.23 (git+https://github.com/rust-lang/time.git)",
 ]
 
 [[package]]
@@ -23,14 +25,45 @@ version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "log"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "microcosm"
 version = "0.0.1"
 source = "git+https://github.com/cogciprocate/microcosm.git#0f1e1f79a472174e3af4916eafd363ac65ad8bc4"
 
 [[package]]
+name = "num"
+version = "0.1.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rand 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rand"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rustc-serialize"
+version = "0.3.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "time"
-version = "0.1.22"
-source = "git+https://github.com/rust-lang/time.git#b8f1b771556a4ecb072849c7938a1376233e1a07"
+version = "0.1.23"
+source = "git+https://github.com/rust-lang/time.git#fd75d8ce306e3a2dbc5a42cf1a76452e50ec9219"
 dependencies = [
  "gcc 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",

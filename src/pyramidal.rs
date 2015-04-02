@@ -12,12 +12,12 @@ use columns::{ Columns };
 use axons::{ Axons };
 
 
-use std::num;
-use std::rand;
+use num;
+use rand;
 use std::mem;
-use std::rand::distributions::{ Normal, IndependentSample, Range };
-use std::rand::{ ThreadRng };
-use std::num::{ NumCast, Int, FromPrimitive };
+use rand::distributions::{ Normal, IndependentSample, Range };
+use rand::{ ThreadRng };
+use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 

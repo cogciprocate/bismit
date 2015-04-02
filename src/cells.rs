@@ -12,12 +12,12 @@ use peak_column::{ PeakColumn };
 use pyramidal::{ Pyramidal };
 
 
-use std::num;
-use std::rand;
+use num;
+use rand;
 use std::mem;
-use std::rand::distributions::{ Normal, IndependentSample, Range };
-use std::rand::{ ThreadRng };
-use std::num::{ NumCast, Int, FromPrimitive };
+use rand::distributions::{ Normal, IndependentSample, Range };
+use rand::{ ThreadRng };
+use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
@@ -101,6 +101,32 @@ impl Cells {
 }
 
 
+pub struct Aux {
+	depth: u8,
+	width: u32,
+	pub ints_0: Envoy<ocl::cl_int>,
+	pub ints_1: Envoy<ocl::cl_int>,
+	pub chars_0: Envoy<ocl::cl_uchar>,
+	pub chars_1: Envoy<ocl::cl_uchar>,
+}
+
+impl Aux {
+	pub fn new(width: u32, depth: u8, ocl: &Ocl) -> Aux {
+
+		let width_multiplier: u32 = 100;
+
+		Aux { 
+			ints_0: Envoy::<ocl::cl_int>::new(width * width_multiplier, depth, 0, ocl),
+			ints_1: Envoy::<ocl::cl_int>::new(width * width_multiplier, depth, 0, ocl),
+			chars_0: Envoy::<ocl::cl_uchar>::new(width, depth, 0, ocl),
+			chars_1: Envoy::<ocl::cl_uchar>::new(width, depth, 0, ocl),
+			depth: depth,
+			width: width,
+		}
+	}
+}
+
+
 
 /*pub struct Somata {
 	depth: u8,
@@ -162,11 +188,11 @@ impl Somata {
 		let gws = (self.depth as usize, kern_width);
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 
-		/*ocl::set_kernel_arg(0, self.aux.chars_0.buf, kern);
+		ocl::set_kernel_arg(0, self.aux.chars_0.buf, kern);
 		ocl::set_kernel_arg(1, self.aux.chars_1.buf, kern);
 		kern_width = kern_width / (1 << grp_size_log2);
 		let gws = (self.depth_cellular as usize, self.width as usize / 64);
-		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);*/
+		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}
 
 	pub fn learn(&mut self, ocl: &Ocl) {
@@ -187,27 +213,4 @@ impl Somata {
 
 
 
-pub struct Aux {
-	depth: u8,
-	width: u32,
-	pub ints_0: Envoy<ocl::cl_int>,
-	pub ints_1: Envoy<ocl::cl_int>,
-	pub chars_0: Envoy<ocl::cl_uchar>,
-	pub chars_1: Envoy<ocl::cl_uchar>,
-}
 
-impl Aux {
-	pub fn new(width: u32, depth: u8, ocl: &Ocl) -> Aux {
-
-		let width_multiplier: u32 = 100;
-
-		Aux { 
-			ints_0: Envoy::<ocl::cl_int>::new(width * width_multiplier, depth, 0, ocl),
-			ints_1: Envoy::<ocl::cl_int>::new(width * width_multiplier, depth, 0, ocl),
-			chars_0: Envoy::<ocl::cl_uchar>::new(width, depth, 0, ocl),
-			chars_1: Envoy::<ocl::cl_uchar>::new(width, depth, 0, ocl),
-			depth: depth,
-			width: width,
-		}
-	}
-}

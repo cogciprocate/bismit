@@ -1,13 +1,14 @@
 
 use std;
-use std::num::{ Int, FromPrimitive, ToPrimitive, SignedInt };
+use num::{ self, Integer, Signed };
+use std::num::{ NumCast };
 use std::ops::{ self, BitOr };
 use std::default::{ Default }; 
 use std::fmt::{ Display, Debug };
-use std::num;
-use std::iter;
-use std::rand;
-use std::rand::distributions::{ self, Normal, IndependentSample, Range };
+use std::iter::{ self };
+use std::cmp::{ Ord };
+use rand;
+use rand::distributions::{ self, Normal, IndependentSample, Range };
 
 use ocl;
 
@@ -32,10 +33,10 @@ pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
 
 pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;		// appears to cause lots of delay... 256 is slow
 
-pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 3;
+pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;
 
-pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 16;
-pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 64;
+pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
+pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
 
 pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 
@@ -79,7 +80,7 @@ pub const CELLS_PER_LAYER: usize = COLUMNS_PER_SEGMENT;
 //pub const DENDRITES_PER_LAYER: usize = CELLS_PER_LAYER * DENDRITES_PER_CELL;
 //pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_CELL;
 
-pub const SENSORY_CHORD_WIDTH: u32 = 1024; // COLUMNS_PER_SEGMENT;
+pub const SENSORY_CHORD_WIDTH: u32 = 2048; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
 pub const SYNAPSE_REACH: u32 = 128;
@@ -160,7 +161,7 @@ impl BuildOptions {
 	}
 
 	pub fn as_slice(&mut self) -> &str {
-		self.string.as_slice()
+		&self.string
 	}
 
 	pub fn to_string(mut self) -> String {
@@ -193,7 +194,7 @@ impl BuildOption {
 	pub fn as_slice(&mut self) -> &str {
 		self.string = format!(" -D{}={}", self.name, self.val);
 
-		self.string.as_slice()
+		&self.string
 	}
 }
 
@@ -213,12 +214,12 @@ impl BuildOption {
 =============================================================================*/
 
 
-pub fn print_vec_simple<T: Int + Display + Default>(vec: &Vec<T>) {
+pub fn print_vec_simple<T: Integer + Display + Default + NumCast + Copy >(vec: &Vec<T>) {
 	print_vec(vec, 1, true, None, None);
 }
 
 
-pub fn print_vec<T: Int + Display + Default>(
+pub fn print_vec<T: Integer + Display + Default + NumCast + Copy >(
 			vec: &Vec<T>, 
 			every: usize, 
 			show_zeros: bool, 
@@ -300,7 +301,7 @@ pub fn print_vec<T: Int + Display + Default>(
 			ttl_ir += 1;
 		}
 
-		sum += num::cast(vec[i]).expect("common::print_vec, sum");
+		sum += std::num::cast::<T, i64>(vec[i]).expect("common::print_vec, sum");
 
 
 		if vec[i] > hi { hi = vec[i] };
@@ -349,7 +350,7 @@ pub fn print_vec<T: Int + Display + Default>(
 	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prntd:{}){cd} ", ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 }
 
-pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default + Display>(size: usize, min_val: T, max_val: T) -> Vec<T> {
+pub fn shuffled_vec<T: Integer + Default + Display + NumCast + Copy + Clone >(size: usize, min_val: T, max_val: T) -> Vec<T> {
 
 	//println!("min_val: {}, max_val: {}", min_val, max_val);
 
@@ -364,7 +365,7 @@ pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default + Display>(si
 	assert!(min_val < max_val, "common::shuffled_vec(): Minimum value must be less than maximum.");
 
 
-	let mut vec: Vec<T> = iter::range_inclusive(min_val, max_val).cycle().take(size).collect();
+	let mut vec: Vec<T> = num::iter::range_inclusive(min_val, max_val).cycle().take(size).collect();
 
 	//println!("shuffled_vec(): vec.len(): {}", vec.len());
 	/*let mut i: usize = 0;
@@ -381,7 +382,7 @@ pub fn shuffled_vec<T: Int + FromPrimitive + ToPrimitive + Default + Display>(si
 }
 
 // Fisher-Yates
-pub fn shuffle_vec<T: Int>(vec: &mut Vec<T>) {
+pub fn shuffle_vec<T: Integer + Copy >(vec: &mut Vec<T>) {
 	let len = vec.len();
 	let mut rng = rand::weak_rng();
 
@@ -401,28 +402,28 @@ pub fn shuffle_vec<T: Int>(vec: &mut Vec<T>) {
 
 	sp_fctr_log2: sparsity factor (log2)
 */
-pub fn sparse_vec<T: SignedInt + FromPrimitive + ToPrimitive + Default>(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
+pub fn sparse_vec<T: Integer + Signed + Default + Copy + Clone + NumCast >(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
 	let mut vec: Vec<T> = iter::repeat(min_val).cycle().take(size).collect();
 
 	let len = vec.len();
 
 	let notes = len >> sp_fctr_log2;
 
-	let range_max = max_val.to_i64().expect("common::sparse_vec(): max_val.to_i64()") as isize + 1;
-	let range_min = min_val.to_i64().expect("common::sparse_vec(): min_val.to_i64()") as isize;
+	let range_max: isize = max_val.to_i64().expect("common::sparse_vec(): max_val.to_i64()") as isize + 1;
+	let range_min: isize = min_val.to_i64().expect("common::sparse_vec(): min_val.to_i64()") as isize;
 
 	let mut rng = rand::weak_rng();
 	let val_range = Range::new(range_min, range_max);
 	let idx_range = Range::new(0, 1 << sp_fctr_log2);
 
 	for i in 0..notes {
-		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = num::cast(val_range.ind_sample(&mut rng)).unwrap();
+		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = std::num::cast(val_range.ind_sample(&mut rng)).unwrap();
 	}
 
 	vec
 }
 
-pub fn dup_check<T: Int>(in_vec: &Vec<T>) -> (usize, usize) {
+pub fn dup_check<T: Integer + Copy + Clone + Ord >(in_vec: &mut Vec<T>) -> (usize, usize) {
 	
 
 	let mut vec = in_vec.clone();

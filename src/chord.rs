@@ -65,18 +65,35 @@ impl Chord {
 		};
 	}
 
-	pub fn unfold(&self) -> ChordUnfolded {
+	pub fn unfold(&self) -> Vec<ocl::cl_uchar> {
+		//let mut vec = Vec::with_capacity(self.width);
+		//let vec: Vec<ocl::cl_uchar> = Vec::with_capacity(self.width as usize);
+		let mut vec: Vec<ocl::cl_uchar> = iter::repeat(common::STATE_ZERO).take(self.width as usize).collect();
+		self.unfold_into(&mut vec, 0);
+		vec
+	}
+
+	/*pub fn unfold(&self) -> ChordUnfolded {
 		let mut cuf = ChordUnfolded::new();
 		for (k, v) in self.chord.iter() {
 			cuf.notes[*k as usize] = *v;
 		}
 		cuf
+	}*/
+
+	pub fn unfold_into(&self, vec: &mut Vec<ocl::cl_uchar>, offset: usize) {
+		//vec.clear();
+		assert!(vec.len() >= (self.width as usize + offset));
+
+		for (k, v) in self.chord.iter() {
+			vec[*k as usize + offset] = *v;
+		}
 	}
 
-	pub fn unfold_into(&self, dest_vec: &mut Vec<ocl::cl_uchar>, offset: usize) {
+	/*pub fn unfold_into(&self, dest_vec: &mut Vec<ocl::cl_uchar>, offset: usize) {
 		dest_vec.clear();
-		dest_vec.push_all(self.unfold().notes.as_slice());		
-	}
+		dest_vec.push_all(&self.unfold().notes);		
+	}*/
 
 	pub fn print(&self) {
 		let color = common::C_DEFAULT;
@@ -86,7 +103,7 @@ impl Chord {
     }
 }
 
-
+/*
 pub struct ChordUnfolded {
 	pub notes: [ocl::cl_uchar; common::SENSORY_CHORD_WIDTH as usize],
 }
@@ -110,4 +127,4 @@ impl ChordUnfolded {
 		}
 		println!("");
     }
-}
+}*/

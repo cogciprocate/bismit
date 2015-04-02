@@ -5,11 +5,11 @@ use common;
 use envoy::{ Envoy };
 use chord::{ Chord };
 
-use std::rand;
-use std::rand::distributions::{IndependentSample, Range};
-use std::num;
+use rand;
+use rand::distributions::{IndependentSample, Range};
+use num;
 use std::mem;
-use std::num::{ Int };
+use num::{ Integer };
 
 
 pub type Thalamus = Vec<SensorySegment>;

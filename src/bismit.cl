@@ -20,12 +20,19 @@ static inline uint axn_idx_wrap_2d(uchar row_z, int col_x) {
 }
 
 static inline void syns_learn(
-				uint const syns_per_den_l2,
-				__global uchar* const syn_states,
-				__global uchar* const syn_strengths
+				__global const uchar* const syn_states,
+				uint const syn_idx_start,
+				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
+				__global char* const syn_strengths
 ) {
-	for (int i = 0; i < (1 << syns_per_den_l2); i++) {
-
+	uint const n = syn_idx_start + (1 << syns_per_den_l2);
+	for (uint i = syn_idx_start; i < n; i++) {
+		char syn_strength = syn_strengths[i];
+		if (syn_states[i]) {
+			syn_strengths[i] = clamp(syn_strength + 1, -100, 100);
+		} else {
+			syn_strengths[i] = clamp(syn_strength - 1, -100, 100);
+		}
 	}
 }
 
@@ -284,28 +291,42 @@ __kernel void col_post_inhib_unoptd (
 }
 
 
+
+
+
 __kernel void col_learn(
-	__global uchar* const asp_col_ids,
-	__global uchar* const asp_states,
+	__global const uchar* const asp_col_ids,
+	__global const uchar* const asp_states,
 	__global const uchar* const syn_states,
-	//__global uchar* const col_states,
-	__global uchar* const syn_strengths
+	//__global const uchar* const col_states,
+	__private uint const syns_per_den_l2,
+	__global int* const aux_ints_0,
+	__global char* const syn_strengths
 ) {
 	uint const row_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
 	uint const asp_pos = mad24(row_id, row_width, asp_id);
 	uint const asp_idx = (asp_pos + ASPINY_REACH);
-	//uint const col_ofs = asp_pos << ASPINY_SPAN_LOG2;
 
-	//uchar asp_state = asp_states[asp_idx];
-	//uchar const asp_win = asp_wins[asp_idx];
+	uint const col_idx = asp_col_id_to_col_idx(asp_idx, (asp_col_ids[asp_idx]));
+	uint const syn_idx = col_idx << syns_per_den_l2;
 
-	//asp_states[asp_idx] = asp_win;
+	syns_learn(syn_states, syn_idx, syns_per_den_l2, syn_strengths);
 
-	//asp_wins[asp_idx] = 0;
+
+	/*uint const n = 10;	//syn_idx + (1 << syns_per_den_l2);
+	for (uint i = syn_idx; i < n; i++) {
+		char syn_strength = syn_strengths[i];
+		if (syn_states[i]) {
+			syn_strengths[i] = clamp(syn_strength + 1, -100, 100);
+		} else {
+			syn_strengths[i] = clamp(syn_strength - 1, -100, 100);
+		}
+	}*/
+
+	//aux_ints_0[asp_id] = syn_idx;
 }
-
 
 
 __kernel void pyr_activate(
@@ -318,11 +339,11 @@ __kernel void pyr_activate(
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
-	uint pyr_idx = mad24(row_id, row_width, col_id);
+	uint const pyr_idx = mad24(row_id, row_width, col_id);
 	uint const axn_idx = mad24(axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
 
-	uchar col_state = col_states[col_id];
-	uchar cc_status = col_cel_status[col_id];
+	uchar const col_state = col_states[col_id];
+	uchar const cc_status = col_cel_status[col_id];
 	uchar pyr_state = pyr_states[pyr_idx];
 
 	int corr_pred = (pyr_state && col_state);
@@ -430,9 +451,9 @@ __kernel void col_output(
 				//__private uchar const col_row_count,
 				__private uchar const pyr_depth,
 				__private uchar const pyr_axn_base_row,
+				__private uchar const axn_row_output,
 				//__private uchar const pyr_base_row,
 				__global uchar* const col_cel_status,
-				__private uchar const axn_row_output,
 				__global uchar* const axn_states
 				
 ) {

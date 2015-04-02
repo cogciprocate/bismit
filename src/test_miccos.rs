@@ -14,40 +14,35 @@ use std::option::{ Option };
 
 
 pub fn run() {
-	let mut world: World = World::new();
+	let mut world: World = World::new(common::SENSORY_CHORD_WIDTH);
 
 	let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
 	let snake = EntityBody::new("snake", EntityKind::Creature, Location::new(60f32, 60f32));
-
-	let food = EntityBody::new("food", EntityKind::Food, Location::new(50f32, 50f32));
-	
-	let poison = EntityBody::new("poison", EntityKind::Poison, Location::new(-100f32, -50f32));
+	//let food = EntityBody::new("food", EntityKind::Food, Location::new(50f32, 50f32));
+	//let poison = EntityBody::new("poison", EntityKind::Poison, Location::new(-100f32, -50f32));
 
 	let worm_uid = worm.uid;
 	let snake_uid = snake.uid;
 
 
 	world.entities().add(worm);
-	world.entities().add(food);
 	world.entities().add(snake);
-	world.entities().add(poison);
+	//world.entities().add(food);
+	//world.entities().add(poison);
 	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(150f32, -200f32)));
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-150f32, -250f32)));
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(550f32, -200f32)));
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-1150f32, -250f32)));
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(0f32, 110f32)));
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-50f32, 0f32)));
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(0f32, -50f32)));
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(130f32, 0f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-150f32, -250f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(550f32, -200f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-1150f32, -250f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(0f32, 110f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-50f32, 0f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(0f32, -50f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(130f32, 0f32)));
 
 	world.entities().print();
 
 	world.peek_from(worm_uid);
 
 	world.entities().get_mut(worm_uid).turn(0.25f32);
-
-	//world.peek_from(worm_uid);
-
 
 
 	let mut worm_brain = EntityBrain::new(worm_uid, &world);

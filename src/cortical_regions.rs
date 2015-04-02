@@ -6,9 +6,10 @@ use cortical_region_layer as layer;
 use cortical_region_layer::{ CorticalRegionLayer, LayerFlags };
 use protocell::{ CellKind, Protocell, DendriteKind };
 
+use std;
 use std::collections::{ self, HashMap };
 use std::collections::hash_state::{ HashState };
-use std::num;
+use num;
 use std::ops::{ Index, IndexMut, Range };
 use std::hash::{ self, Hash, SipHasher, Hasher };
 
@@ -27,8 +28,8 @@ impl CorticalRegions {
 	}
 
 	pub fn depth(&self, cr_type: CorticalRegionKind) -> (u8, u8) {
-		let mut depth_noncellular_rows = 0u8;		//	Interregional
-		let mut depth_cellular_rows = 0u8;			//	Interlaminar
+		let mut depth_noncellular_rows = 0u8;		//	Integererregional
+		let mut depth_cellular_rows = 0u8;			//	Integererlaminar
 
 		for (region_type, region) in self.hash_map.iter() {					// CHANGE TO FILTER
 			if *region_type == cr_type {							//
@@ -151,7 +152,7 @@ impl CorticalRegion {
 
 					Some(vec) => {
 						
-						layer.kind_base_row_pos = num::cast(vec.len()).expect("cortical_regions::CorticalRegion::add()");
+						layer.kind_base_row_pos = std::num::cast(vec.len()).expect("cortical_regions::CorticalRegion::add()");
 						//print!("\n{:?} base_row_pos: {}", cell_kind, layer.kind_base_row_pos);
 
 						for i in 0..layer.depth {							 
@@ -175,6 +176,11 @@ impl CorticalRegion {
 			Some(vec) 	=> print!("\nFound Vector with len: {}",vec.len()),
 			None 		=> print!("\nVector NOT FOUND"),
 		};*/
+	}
+
+	pub fn base_row(&self, layer_name: &'static str) -> u8 {
+		let ref layer = self.layers[layer_name];
+		layer.base_row_pos
 	}
 
 	pub fn base_row_cell_kind(&self, cell_kind: &CellKind) -> u8 {
@@ -225,7 +231,7 @@ impl CorticalRegion {
 			self.cellular_layer_kind_base_rows.insert(cell_kind.clone(), base_cel_row);
 			print!("\n 	Finalize: adding cell type: '{:?}', len: {}, base_cel_row: {}", cell_kind, list.len(), base_cel_row);
 			assert!(list.len() == self.depth_cell_kind(&cell_kind) as usize);
-			base_cel_row += num::cast(list.len()).expect("cortical_region::CorticalRegion::finalize()");
+			base_cel_row += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::CorticalRegion::finalize()");
 		}
 
 		for (layer_name, layer) in self.layers.iter_mut() {
@@ -315,7 +321,7 @@ impl CorticalRegion {
  		for (layer_name, layer) in self.layers.iter() {
  			if (layer.flags & layer::COLUMN_OUTPUT) == layer::COLUMN_OUTPUT {
  				let v = self.row_ids(vec![layer.name]);
- 				output_rows.push_all(v.as_slice());
+ 				output_rows.push_all(&v);
  			}
  		}
 
@@ -511,7 +517,7 @@ impl IndexMut<&'static str> for CorticalRegion
 
 /* AxonScope 
 	
-	Interlaminar(
+	Integererlaminar(
 		Distal Dendrite Input Layers,
 		Proximal Dendrite Input Layers,
 		Cell Type

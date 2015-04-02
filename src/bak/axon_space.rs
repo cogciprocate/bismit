@@ -5,7 +5,7 @@ use common;
 
 use std::ops::{ Range };
 use std::collections::{ HashMap, HashSet };
-use std::num;
+use num;
 
 
 

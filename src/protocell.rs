@@ -129,6 +129,6 @@ pub enum CellBlueprint {
 
 /*#[derive(PartialEq, Debug, Clone)]
 pub enum AxonScope {
-	Interregional,
-	Interlaminar,
+	Integererregional,
+	Integererlaminar,
 }*/

@@ -3,11 +3,11 @@ use ocl;
 use common;
 use std::default::Default;
 use std::time;
-use std::num::{ Int };
+use num::{ Integer };
 
 pub const READBACK_TEST_ITERATIONS: usize = 50;  // 10,000,000 takes >>> 15 min
 
-pub fn test_readback<T: Clone + Default + Int>(
+pub fn test_readback<T: Clone + Default + Integer>(
 			cortex: &Cortex,
 			test_source: &Vec<T>,
 			test_source_buff: ocl::cl_mem, 
@@ -77,7 +77,7 @@ pub fn test_readback<T: Clone + Default + Int>(
  
 
 
-pub fn print_vec_info<T: Clone + Default + Int>(my_vec: &Vec<T>, info: &str) {
+pub fn print_vec_info<T: Clone + Default + Integer>(my_vec: &Vec<T>, info: &str) {
 	let mut total = 0;
 	for x in range(0, my_vec.len()) {
 		total += my_vec[x].to_uint().expect("test_readback::print_vec_info()");

@@ -8,12 +8,12 @@ use protocell::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 
-use std::num;
-use std::rand;
+use num;
+use rand;
 use std::mem;
-use std::rand::distributions::{ Normal, IndependentSample, Range };
-use std::rand::{ ThreadRng };
-use std::num::{ NumCast, Int, FromPrimitive };
+use rand::distributions::{ Normal, IndependentSample, Range };
+use rand::{ ThreadRng };
+use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
@@ -121,6 +121,7 @@ impl Synapses {
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
 				for ref i in ei_start..ei_end {
 					self.src_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
+					self.strengths[i] = 0; 	// RANDOMIZE ME ETC.
 				}
 			}
 		}

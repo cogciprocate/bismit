@@ -1,8 +1,8 @@
 use ocl;
 //use std;
 //use std::io;
-use std::rand;
-use std::rand::distributions::{IndependentSample, Range};
+use rand;
+use rand::distributions::{IndependentSample, Range};
 use std::ptr;
 use std::default::Default;
 

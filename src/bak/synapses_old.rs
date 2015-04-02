@@ -7,12 +7,12 @@ use protocell::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 
-use std::num;
-use std::rand;
+use num;
+use rand;
 use std::mem;
-use std::rand::distributions::{ Normal, IndependentSample, Range };
-use std::rand::{ ThreadRng };
-use std::num::{ NumCast, Int, FromPrimitive };
+use rand::distributions::{ Normal, IndependentSample, Range };
+use rand::{ ThreadRng };
+use num::{ NumCast, Integer, FromPrimitive };
 use std::default::{ Default };
 use std::fmt::{ Display };
 

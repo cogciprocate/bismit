@@ -9,13 +9,13 @@ use dendrites::{ Dendrites };
 use axons::{ Axons };
 use columns::{ Columns }; 
 
-use std::num;
+use num;
 use std::ops;
-use std::rand;
+use rand;
 use std::mem;
-use std::rand::distributions::{ Normal, IndependentSample, Range };
-use std::rand::{ ThreadRng };
-use std::num::{ NumCast, Int, FromPrimitive };
+use rand::distributions::{ Normal, IndependentSample, Range };
+use rand::{ ThreadRng };
+use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
@@ -26,7 +26,7 @@ pub struct PeakColumn {
 	kern_cycle_pre: ocl::Kernel,
 	kern_cycle_wins: ocl::Kernel,
 	kern_cycle_post: ocl::Kernel,
-	pub ids: Envoy<ocl::cl_uchar>,
+	pub col_ids: Envoy<ocl::cl_uchar>,
 	pub wins: Envoy<ocl::cl_uchar>,
 	pub states: Envoy<ocl::cl_uchar>,
 	
@@ -39,7 +39,7 @@ impl PeakColumn {
 
 		let padding = common::ASPINY_SPAN;
 
-		let ids = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, 0u8, ocl);
+		let col_ids = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, 0u8, ocl);
 		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, 0u8, ocl);
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, common::STATE_ZERO, ocl);
 
@@ -47,20 +47,20 @@ impl PeakColumn {
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&src_states)
 			.arg_env(&states)
-			.arg_env(&ids)
+			.arg_env(&col_ids)
 		;
 
 		let mut kern_cycle_wins = ocl.new_kernel("aspiny_cycle_wins", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&states)
-			//.arg_env(&ids)
+			//.arg_env(&col_ids)
 			.arg_env(&wins)
 		;
 
 		let mut kern_cycle_post = ocl.new_kernel("aspiny_cycle_post", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&wins)
-			//.arg_env(&ids)
+			//.arg_env(&col_ids)
 			.arg_env(&states)
 		;
 
@@ -71,7 +71,7 @@ impl PeakColumn {
 			kern_cycle_pre: kern_cycle_pre,
 			kern_cycle_wins: kern_cycle_wins,
 			kern_cycle_post: kern_cycle_post,
-			ids: ids,
+			col_ids: col_ids,
 			wins: wins,
 			states: states,
 		}
@@ -90,6 +90,10 @@ impl PeakColumn {
 		}
 
 		self.kern_cycle_post.enqueue();
+	}
+
+	pub fn width(&self) -> u32 {
+		self.width
 	}
 
 }

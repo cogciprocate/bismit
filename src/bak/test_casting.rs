@@ -1,5 +1,5 @@
-use std::num;
-use std::num:: { SignedInt };
+use num;
+use num:: { Integer, Signed };
 
 pub fn run() {
 	let x = -50i;

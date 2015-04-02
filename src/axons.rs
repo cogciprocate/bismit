@@ -11,12 +11,13 @@ use peak_column::{ PeakColumn };
 use columns::{ Columns };
 
 
-use std::num;
-use std::rand;
+use std;
+use num;
+use rand;
 use std::mem;
-use std::rand::distributions::{ Normal, IndependentSample, Range };
-use std::rand::{ ThreadRng };
-use std::num::{ NumCast, Int, FromPrimitive };
+use rand::distributions::{ Normal, IndependentSample, Range };
+use rand::{ ThreadRng };
+use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
@@ -31,7 +32,7 @@ pub struct Axons {
 
 impl Axons {
 	pub fn new(width: u32, depth_noncellular: u8, depth_cellular: u8, region: &CorticalRegion, ocl: &Ocl) -> Axons {
-		let padding: u32 = num::cast(common::AXONS_MARGIN * 2).expect("Axons::new()");
+		let padding: u32 = std::num::cast(common::AXONS_MARGIN * 2).expect("Axons::new()");
 		let depth = depth_cellular + depth_noncellular;
 
 		//println!("New Axons with: depth_ac: {}, depth_c: {}, width: {}", depth_noncellular, depth_cellular, width);

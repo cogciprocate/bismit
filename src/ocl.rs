@@ -8,7 +8,7 @@ use cl_h;
 use common;
 
 use std;
-use std::num;
+use num::{ self, Integer };
 use std::ptr;
 use std::mem;
 use std::io::{ Read };
@@ -30,13 +30,13 @@ pub struct Ocl {
 impl Ocl {
 	pub fn new(build_options: String) -> Ocl {
 		let path_string = format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME);
-		let path_string_slice = path_string.as_slice();
+		let path_string_slice = &path_string;
 		let kern_file_path = std::path::Path::new(path_string_slice);
 
 		let mut kern_str: Vec<u8> = Vec::new();
 		let kern_file = File::open(kern_file_path).unwrap().read_to_end(&mut kern_str);
 
-		let kern_c_str = ffi::CString::from_vec(kern_str);
+		let kern_c_str = ffi::CString::new(kern_str).ok().expect("Ocl::new(): kern_c_str");
 
 		let platform = new_platform();
 		let devices: [cl_device_id; 2] = new_device(platform);
@@ -58,12 +58,18 @@ impl Ocl {
 	pub fn new_kernel(&self, name: &'static str, gws: WorkSize) -> Kernel {
 		let mut err: cl_h::cl_int = 0;
 
+
+
 		let kernel = unsafe {
-			cl_h::clCreateKernel(self.program, ffi::CString::from_slice(name.as_bytes()).as_ptr(), &mut err)
+			cl_h::clCreateKernel(
+				self.program, 
+				ffi::CString::new(name.as_bytes()).ok().expect("Ocl::new_kernel(): kernel").as_ptr(), 
+				&mut err
+			)
 		};
 
 		let err_pre = format!("Ocl::new_kernel({}):", name);
-		must_succ(err_pre.as_slice(), err);
+		must_succ(&err_pre, err);
 
 		Kernel {
 			kernel: kernel,
@@ -208,7 +214,7 @@ impl Kernel {
 		self
 	}
 
-	pub fn arg_scl<T>(mut self, scalar: T) -> Kernel {
+	pub fn arg_scl<T: Integer>(mut self, scalar: T) -> Kernel {
 		self.new_arg_scalar(scalar);
 		self
 	}
@@ -261,7 +267,7 @@ impl Kernel {
 		};
 
 		let err_pre = format!("ocl::Kernel::new_kernel_arg()[{}]: ", self.name);
-		must_succ(err_pre.as_slice(), err);
+		must_succ(&err_pre, err);
 		//println!("Adding Kernel Argument: {}", self.arg_index);
 		self.arg_index += 1;
 		a_i
@@ -277,7 +283,7 @@ impl Kernel {
 			);
 
 			let err_pre = format!("ocl::Kernel::set_kernel_arg()[{}]: ", self.name);
-			must_succ(err_pre.as_slice(), err);
+			must_succ(&err_pre, err);
 		}
 	}
 
@@ -307,7 +313,7 @@ impl Kernel {
 			);
 
 			let err_pre = format!("ocl::Kernel::enqueue()[{}]: ", self.name);
-			must_succ(err_pre.as_slice(), err);
+			must_succ(&err_pre, err);
 		}
 		event
 	}
@@ -332,13 +338,13 @@ impl Kernel {
 						self.gwo.as_ptr(),
 						gws,
 						lws,
-						num::cast(event_wait_list.len()).expect("ocl::Kernel::enqueue_wait()"),
+						std::num::cast(event_wait_list.len()).expect("ocl::Kernel::enqueue_wait()"),
 						event_wait_list.as_ptr(),
 						&mut event as *mut cl_event,
 			);
 
 			let err_pre = format!("ocl::Kernel::enqueue_wait()[{}]: ", self.name);
-			must_succ(err_pre.as_slice(), err);
+			must_succ(&err_pre, err);
 		}
 		event
 	}
@@ -419,7 +425,7 @@ impl WorkSize {
 
 
 fn to_error_str(err_code: cl_h::cl_int) -> String {
-	let err_opt: Option<cl_h::CLStatus> = std::num::FromPrimitive::from_int(err_code as isize);
+	let err_opt: Option<cl_h::CLStatus> = std::num::FromPrimitive::from_isize(err_code as isize);
 	match err_opt {
 		Some(e) => e.to_string(),
 		None => format!("Unknown Error Code: {}", err_code as isize)
@@ -486,7 +492,7 @@ pub fn new_program(
 				device: cl_h::cl_device_id,
 ) -> cl_h::cl_program {
 
-	let ocl_build_options_slice: &str = build_opt.as_slice();
+	let ocl_build_options_slice: &str = &build_opt;
 
 	let mut err: cl_h::cl_int = 0;
 
@@ -504,7 +510,7 @@ pub fn new_program(
 					program,
 					0, 
 					ptr::null(), 
-					ffi::CString::from_slice(ocl_build_options_slice.as_bytes()).as_ptr(), 
+					ffi::CString::new(ocl_build_options_slice.as_bytes()).ok().expect("ocl::new_program(): clBuildProgram").as_ptr(), 
 					mem::transmute(ptr::null::<fn()>()), 
 					ptr::null_mut(),
 		);
@@ -520,9 +526,9 @@ pub fn new_program(
 pub fn new_kernel(program: cl_h::cl_program, kernel_name: &str) -> cl_h::cl_kernel {
 	let mut err: cl_h::cl_int = 0;
 	unsafe {
-		let kernel = cl_h::clCreateKernel(program, ffi::CString::from_slice(kernel_name.as_bytes()).as_ptr(), &mut err);
+		let kernel = cl_h::clCreateKernel(program, ffi::CString::new(kernel_name.as_bytes()).ok().expect("ocl::new_kernel(): clCreateKernel").as_ptr(), &mut err);
 		let err_pre = format!("clCreateKernel({}):", kernel_name);
-		must_succ(err_pre.as_slice(), err);
+		must_succ(&err_pre, err);
 		kernel
 	}
 }
@@ -948,9 +954,9 @@ pub fn print_junk(
 
 
 
-fn empty_cstring(s: usize) -> ffi::CString {
-	std::ffi::CString::from_vec(iter::repeat(32u8).take(s).collect())
-}
+/*fn empty_cstring(s: usize) -> ffi::CString {
+	ffi::CString::new(iter::repeat(32u8).take(s).collect()).ok().expect("ocl::empty_cstring()")
+}*/
 
 fn cstring_to_string(cs: Vec<u8>) -> String {
 	String::from_utf8(cs).unwrap()

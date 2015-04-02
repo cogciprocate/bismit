@@ -7,11 +7,16 @@ use chord::{ Chord };
 use envoy::{ Envoy };
 //use axn_space::{ AxonSpace };
 
+use microcosm::entity::{ EntityBody, EntityKind, EntityBrain, Mobile };
+use microcosm::worm::{ WormBrain };
+use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
+use microcosm::world::{ World };
+
 
 use std::default::Default;
-use std::num::{ self, Int, NumCast, FromPrimitive };
+use std::num::{ NumCast };
+use num::{ self, Integer };
 use std::fmt::{ Display };
-use std::iter;
 use std::ops;
 use std::io::{ self, Write };
 use std::borrow::{ Borrow };
@@ -22,7 +27,7 @@ pub const TEST_ITERATIONS: i32 			= 200;
 pub const PRINT_EVERY: i32 				= 400;
 
 pub const SHUFFLE_ONCE: bool 			= true;
-pub const SHUFFLE_EVERY: bool 			= true;
+pub const SHUFFLE_EVERY: bool 			= false;
 
 
 pub fn test_cycle() -> bool {
@@ -72,8 +77,8 @@ pub fn test_cycle() -> bool {
 		}
 	}
 
-	cortex.sense_vec_no_cycle(0, "pre_thal", &mut vec1);
-	cortex.sense_vec_no_cycle(0, "post_thal", &mut vec1);
+	cortex.write_vec(0, "pre_thal", &mut vec1);
+	cortex.write_vec(0, "post_thal", &mut vec1);
 
 
 	vec1.clear();
@@ -92,10 +97,50 @@ pub fn test_cycle() -> bool {
 
 
 
-	if SHUFFLE_ONCE {
+	/*if SHUFFLE_ONCE {
 		common::shuffle_vec(&mut vec1);
 		//chord1 = Chord::from_vec(&vec1);
-	}
+	}*/
+
+
+
+	let mut world: World = World::new(common::SENSORY_CHORD_WIDTH);
+
+	let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
+
+	world.entities().add(worm);
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(120f32, -120f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(120f32, 120f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-120f32, -120f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-120f32, 120f32)));
+	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-0.0001f32, 0.0001f32)));
+
+	world.entities().print();
+
+	/*let peek_vec = world.peek_from(worm.uid).unfold();
+
+	common::print_vec_simple(&peek_vec);
+
+	world.entities().get_mut(worm.uid).turn(0.0004f32);*/
+
+
+	//let mut worm_brain = EntityBrain::new(worm.uid, &world);
+	//let mut snake_brain = SnakeBrain::new(snake.uid);
+
+	//let chord = render_peek(world.peek_from(worm.uid));
+	//chord.print();
+	//chord.unfold().print();
+
+	// for i in range(0, 100000) {
+	/*for i in 0..5 {
+		if worm_brain.act(&mut world) == Option::None {
+			println!("");
+			println!("Everything eaten after {} iterations.", i);
+			break
+		}
+	}*/
+
+
 
 	/*cortex.sense_vec(0, "pre-thal", &mut vec1);
 	cortex.sense_vec(0, "post-thal", &mut vec1);*/
@@ -167,13 +212,16 @@ pub fn test_cycle() -> bool {
 					cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
 				}
 			}
-
-			if SHUFFLE_EVERY {
+						
+			act(&mut world, worm.uid, &mut vec1);
+			cortex.sense_vec(0, "thal", &mut vec1);
+			
+			/*if SHUFFLE_EVERY {
 				common::shuffle_vec(&mut vec1);
 			}
+			cortex.sense_vec(0, "thal", &mut vec1);*/
 
-			cortex.sense_vec(0, "thal", &mut vec1);
-
+			//common::print_vec_simple(&peek_vec);
 			//print!("[i:{}]",i);
 			i += 1;
 		}
@@ -194,18 +242,32 @@ pub fn test_cycle() -> bool {
 				cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), None);
 			}
 
-			if SHUFFLE_EVERY {
+			
+			act(&mut world, worm.uid, &mut vec1);
+			cortex.sense_vec(0, "thal", &mut vec1);
+
+			/*if SHUFFLE_EVERY {
 				common::shuffle_vec(&mut vec1);
 			}
-
 			cortex.sense_vec(0, "thal", &vec1); 
+			*/
 			
 			let sr_start = (512 << common::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
 
-			/* SYNAPSE IDS */
+			if true {
+				print!("\nInput Vec:");
+				common::print_vec(&vec1, 1 << 6, true, None, None);
+			}
+
+
+			/* SYNAPSE IDS & STRENGTHS */
 			if false {
 				print!("\ncols.syns.src_row_ids:");
 				cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None);
+			}
+			if true {
+				print!("\ncols.syns.strengths:");
+				cortex.cells.cols.syns.strengths.print(1 << 14, None, None);
 			}
 			if false {	
 				print!("\npyrs.dens.syns.src_row_ids: ");
@@ -217,6 +279,7 @@ pub fn test_cycle() -> bool {
 				cortex.cells.pyrs.dens.syns.src_col_offs.print(1 << 14, None, None);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
+
 
 
 			/* PROXIMAL (COLUMN) SYNAPSE STATES */
@@ -241,7 +304,7 @@ pub fn test_cycle() -> bool {
 			}
 
 			/* PYRAMIDAL DENDRITE STATES */
-			if true {	
+			if false {	
 				print!("\npyrs.dens.states: ");
 				cortex.cells.pyrs.dens.states.print_val_range(1 << 0, Some((1, 255)));
 			}
@@ -249,20 +312,20 @@ pub fn test_cycle() -> bool {
 
 			/* ASPINY IDS */
 			if false {
-				print!("\nasps.ids: ");
-				cortex.cells.cols.asps.ids.print_val_range(1 << 0, Some((0, 255)));
+				print!("\npeak_cols.col_ids: ");
+				cortex.cells.cols.peak_cols.col_ids.print_val_range(1 << 0, Some((0, 255)));
 			}
 
 
 			/* ASPINY STATES */
 			if false {
-				print!("\nasps.states: ");
-				cortex.cells.cols.asps.states.print_val_range(1 << 0, Some((1, 255)));
+				print!("\npeak_cols.states: ");
+				cortex.cells.cols.peak_cols.states.print_val_range(1 << 0, Some((1, 255)));
 			}
 
 
 			/* PYRAMIDAL CELL STATES */
-			if true {
+			if false {
 				print!("\npyrs.states: ");
 				cortex.cells.pyrs.states.print_val_range(1 << 0, Some((1, 255)));
 			}
@@ -311,8 +374,13 @@ pub fn test_cycle() -> bool {
 
 }
 
+fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>) {
+	world.entities().get_mut(ent_uid).turn(0.0005f32);
+	world.peek_from(ent_uid).unfold_into(vec, 0);
+}
 
-pub fn pe<T: Int + Default + Display + FromPrimitive, V>(label: &'static str, env: &Envoy<T>, scale: usize, 
+
+pub fn pe<T: Integer + Copy + Clone + NumCast + Default + Display, V>(label: &'static str, env: &Envoy<T>, scale: usize, 
 				val_range: Option<(V, V)>, 
 				idx_range: Option<(usize, usize)>
 ) {
@@ -516,7 +584,7 @@ fn rin(prompt: &'static str) -> String {
 
 }
 
-fn _buffer_test<T: Clone + Default + Int>(
+fn _buffer_test<T: Clone + Default + Integer>(
 			cortex: &Cortex,
 			test_source: &Vec<T>,
 			test_source_buff: ocl::cl_mem, 
@@ -585,7 +653,7 @@ fn _buffer_test<T: Clone + Default + Int>(
 }
  
 
-pub fn print_vec_info<T: Clone + Default + Int>(my_vec: &Vec<T>, info: &str) {
+pub fn print_vec_info<T: Clone + Default + Integer>(my_vec: &Vec<T>, info: &str) {
 	let mut total = 0us;
 	for x in range(0, my_vec.len()) {
 		total += my_vec[x].to_uint().expect("test_4.print_vec_info()");

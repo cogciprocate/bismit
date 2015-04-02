@@ -12,13 +12,11 @@ use cells:: { Aux };
 use peak_column:: { PeakColumn };
 use pyramidal::{ Pyramidal };
 
-use std::num;
 use std::ops;
-use std::rand;
 use std::mem;
-use std::rand::distributions::{ Normal, IndependentSample, Range };
-use std::rand::{ ThreadRng };
-use std::num::{ NumCast, Int, FromPrimitive };
+use rand::distributions::{ Normal, IndependentSample, Range };
+use rand::{ self, ThreadRng };
+use num::{ self, Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
@@ -29,9 +27,10 @@ pub struct Columns {
 	kern_cycle: ocl::Kernel,
 	kern_post_inhib: ocl::Kernel,
 	kern_output: ocl::Kernel,
+	kern_learn: ocl::Kernel,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub cel_status: Envoy<ocl::cl_uchar>,
-	pub asps: PeakColumn,
+	pub peak_cols: PeakColumn,
 	//pub syns: ColumnSynapses,
 	pub syns: Synapses,
 	
@@ -50,9 +49,14 @@ impl Columns {
 
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let cel_status = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
-		let asps = PeakColumn::new(width, depth, region, &states, ocl);
+		let peak_cols = PeakColumn::new(width, depth, region, &states, ocl);
 		let syns = Synapses::new(width, depth, syns_per_cell_l2, DendriteKind::Proximal, 
 			CellKind::SpinyStellate, region, axons, ocl);
+
+		let output_rows = region.col_output_rows();
+		assert!(output_rows.len() == 1);
+		let axn_output_row = output_rows[0];
+
 
 		let kern_cycle = ocl.new_kernel("den_prox_cycle", WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&syns.states)
@@ -61,20 +65,13 @@ impl Columns {
 		;
 
 		let kern_post_inhib = ocl.new_kernel("col_post_inhib_unoptd", WorkSize::TwoDim(depth as usize, width as usize))
-			.arg_env(&asps.ids)
-			.arg_env(&asps.states)
-			.arg_env(&asps.wins)
+			.arg_env(&peak_cols.col_ids)
+			.arg_env(&peak_cols.states)
+			.arg_env(&peak_cols.wins)
 			.arg_scl(layer.base_row_pos() as u32)
 			.arg_env(&states)
 			.arg_env(&axons.states)
 		;
-
-		let output_rows = region.col_output_rows();
-		assert!(output_rows.len() == 1);
-		let axn_output_row = output_rows[0];
-
-		//print!("\n### OUTPUT ROW: {}", axn_output_row);
-		
 
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(depth as usize, width as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
@@ -83,30 +80,38 @@ impl Columns {
 			//.arg_scl(depth)
 			.arg_scl(pyr_depth)
 			.arg_scl(pyr_axn_base_row)
-			.arg_env(&cel_status)
 			.arg_scl(axn_output_row)
+			.arg_env(&cel_status)
 			.arg_env(&axons.states)
 		;
 
 
-		let kern_learn = ocl.new_kernel("col_learn", WorkSize::TwoDim(depth as usize, width as usize))
-			.arg_env(&asps.ids)
-			.arg_env(&asps.states)
-			//.arg_scl(layer.base_row_pos() as u32)
-			.arg_env(&states)
+		//println!("\n*** W: {}", peak_cols.width());
+
+
+		let kern_learn = ocl.new_kernel("col_learn", WorkSize::TwoDim(depth as usize, peak_cols.width() as usize))
+			.arg_env(&peak_cols.col_ids)
+			.arg_env(&peak_cols.states)
+			.arg_env(&syns.states)
+			.arg_scl(syns_per_cell_l2)
+			//.arg_scl(0u8)
+			.arg_env(&aux.ints_0)
+			.arg_env(&syns.strengths)
 			//.arg_env(&axons.states)
 		;
 
-		
+		//println!("\n***Test");
+
 		Columns {
 			width: width,
 			axn_output_row: axn_output_row,
 			kern_cycle: kern_cycle,
 			kern_post_inhib: kern_post_inhib,
 			kern_output: kern_output,
+			kern_learn: kern_learn,
 			states: states,
 			cel_status: cel_status,
-			asps: asps,
+			peak_cols: peak_cols,
 			syns: syns,
 		}
 	}
@@ -114,12 +119,18 @@ impl Columns {
 	pub fn cycle(&mut self) {
 		self.syns.cycle();
 		self.kern_cycle.enqueue();
-		self.asps.cycle();
+		self.peak_cols.cycle();
 		self.kern_post_inhib.enqueue();
+		self.learn();
 	}
 
 	pub fn output(&self) {
 		self.kern_output.enqueue();
+	}
+
+	pub fn learn(&mut self) {
+		//let rand:  = 
+		self.kern_learn.enqueue();
 	}
 
 	pub fn axn_output_range(&self) -> (usize, usize) {
