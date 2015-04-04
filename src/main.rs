@@ -1,7 +1,8 @@
-#![allow(non_camel_case_types, dead_code, unused_variables, 
-	unused_assignments, unused_imports, unused_mut, unused_features)]
+#![allow(non_camel_case_types, dead_code, unused_variables, unused_mut,
+	unused_assignments, unused_imports,)]
 
-#![feature(core, rand, io, collections, path, libc, std_misc, old_path)]
+//#![feature(rand, io, collections, path, libc, std_misc, old_path)]
+#![feature(collections)]
 
 extern crate num;
 extern crate microcosm;
@@ -10,6 +11,7 @@ extern crate time;
 extern crate rand;
 #[macro_use] 
 extern crate bitflags;
+extern crate libc;
 
 
 mod common;

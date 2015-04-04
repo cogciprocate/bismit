@@ -32,7 +32,8 @@ pub struct Axons {
 
 impl Axons {
 	pub fn new(width: u32, depth_noncellular: u8, depth_cellular: u8, region: &CorticalRegion, ocl: &Ocl) -> Axons {
-		let padding: u32 = std::num::cast(common::AXONS_MARGIN * 2).expect("Axons::new()");
+		let padding: u32 = (common::AXONS_MARGIN * 2) as u32;
+		//let padding: u32 = std::num::cast(common::AXONS_MARGIN * 2).expect("Axons::new()");
 		let depth = depth_cellular + depth_noncellular;
 
 		//println!("New Axons with: depth_ac: {}, depth_c: {}, width: {}", depth_noncellular, depth_cellular, width);

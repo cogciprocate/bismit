@@ -152,7 +152,8 @@ impl CorticalRegion {
 
 					Some(vec) => {
 						
-						layer.kind_base_row_pos = std::num::cast(vec.len()).expect("cortical_regions::CorticalRegion::add()");
+						layer.kind_base_row_pos = vec.len() as u8;
+						//layer.kind_base_row_pos = std::num::cast(vec.len()).expect("cortical_regions::CorticalRegion::add()");
 						//print!("\n{:?} base_row_pos: {}", cell_kind, layer.kind_base_row_pos);
 
 						for i in 0..layer.depth {							 
@@ -231,7 +232,8 @@ impl CorticalRegion {
 			self.cellular_layer_kind_base_rows.insert(cell_kind.clone(), base_cel_row);
 			print!("\n 	Finalize: adding cell type: '{:?}', len: {}, base_cel_row: {}", cell_kind, list.len(), base_cel_row);
 			assert!(list.len() == self.depth_cell_kind(&cell_kind) as usize);
-			base_cel_row += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::CorticalRegion::finalize()");
+			base_cel_row += list.len() as u8;
+			//base_cel_row += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::CorticalRegion::finalize()");
 		}
 
 		for (layer_name, layer) in self.layers.iter_mut() {

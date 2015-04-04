@@ -15,7 +15,7 @@ use pyramidal::{ Pyramidal };
 use std::ops;
 use std::mem;
 use rand::distributions::{ Normal, IndependentSample, Range };
-use rand::{ self, ThreadRng };
+use rand::{ self, ThreadRng, Rng };
 use num::{ self, Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
@@ -28,8 +28,9 @@ pub struct Columns {
 	kern_post_inhib: ocl::Kernel,
 	kern_output: ocl::Kernel,
 	kern_learn: ocl::Kernel,
+	rng: rand::XorShiftRng,
 	pub states: Envoy<ocl::cl_uchar>,
-	pub cel_status: Envoy<ocl::cl_uchar>,
+	pub cels_status: Envoy<ocl::cl_uchar>,
 	pub peak_cols: PeakColumn,
 	//pub syns: ColumnSynapses,
 	pub syns: Synapses,
@@ -41,16 +42,16 @@ impl Columns {
 		let layer = region.col_input_layer().expect("columns::Columns::new()");
 		let depth: u8 = layer.depth();
 
-		let syns_per_cell_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
-		let syns_per_cell: u32 = 1 << syns_per_cell_l2;
+		let syns_per_cel_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
+		let syns_per_cel: u32 = 1 << syns_per_cel_l2;
 
 		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidal);
 		let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC PYR LAYERS 
 
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
-		let cel_status = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
+		let cels_status = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let peak_cols = PeakColumn::new(width, depth, region, &states, ocl);
-		let syns = Synapses::new(width, depth, syns_per_cell_l2, DendriteKind::Proximal, 
+		let syns = Synapses::new(width, depth, syns_per_cel_l2, DendriteKind::Proximal, 
 			CellKind::SpinyStellate, region, axons, ocl);
 
 		let output_rows = region.col_output_rows();
@@ -58,9 +59,9 @@ impl Columns {
 		let axn_output_row = output_rows[0];
 
 
-		let kern_cycle = ocl.new_kernel("den_prox_cycle", WorkSize::TwoDim(depth as usize, width as usize))
+		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&syns.states)
-			.arg_scl(syns_per_cell_l2)
+			.arg_scl(syns_per_cel_l2)
 			.arg_env(&states)
 		;
 
@@ -81,7 +82,7 @@ impl Columns {
 			.arg_scl(pyr_depth)
 			.arg_scl(pyr_axn_base_row)
 			.arg_scl(axn_output_row)
-			.arg_env(&cel_status)
+			.arg_env(&cels_status)
 			.arg_env(&axons.states)
 		;
 
@@ -93,8 +94,8 @@ impl Columns {
 			.arg_env(&peak_cols.col_ids)
 			.arg_env(&peak_cols.states)
 			.arg_env(&syns.states)
-			.arg_scl(syns_per_cell_l2)
-			//.arg_scl(0u8)
+			.arg_scl(syns_per_cel_l2)
+			.arg_scl(0u32)
 			.arg_env(&aux.ints_0)
 			.arg_env(&syns.strengths)
 			//.arg_env(&axons.states)
@@ -109,8 +110,9 @@ impl Columns {
 			kern_post_inhib: kern_post_inhib,
 			kern_output: kern_output,
 			kern_learn: kern_learn,
+			rng: rand::weak_rng(),
 			states: states,
-			cel_status: cel_status,
+			cels_status: cels_status,
 			peak_cols: peak_cols,
 			syns: syns,
 		}
@@ -129,7 +131,8 @@ impl Columns {
 	}
 
 	pub fn learn(&mut self) {
-		//let rand:  = 
+		//print!("[R:{}]", self.rng.gen::<i32>());
+		self.kern_learn.set_kernel_arg(4, self.rng.gen::<u32>());
 		self.kern_learn.enqueue();
 	}
 
@@ -162,7 +165,7 @@ impl ColumnSynapses {
 		//let depth = src_rows_len;
 		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
 		//let dens_per_wg: u32 = wg_size / (common::SYNAPSES_PER_DENDRITE_PROXIMAL);
-		let syns_per_cell_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
+		let syns_per_cel_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 		//let dens_per_wg: u32 = 1;
 
 		print!("\nNew Proximal Synapses with: depth: {}, syns_per_row: {}, src_rows_len: {}", depth, syns_per_row, src_rows_len);
@@ -178,7 +181,7 @@ impl ColumnSynapses {
 		kern_cycle.new_arg_envoy(&axons.states);
 		kern_cycle.new_arg_envoy(&src_ofs);
 		kern_cycle.new_arg_envoy(&src_row_ids);
-		kern_cycle.new_arg_scalar(syns_per_cell_l2);
+		kern_cycle.new_arg_scalar(syns_per_cel_l2);
 		//kern_cycle.new_arg_envoy(&aux.ints_0);
 		//kern_cycle.new_arg_envoy(&aux.ints_1);
 		kern_cycle.new_arg_envoy(&states);

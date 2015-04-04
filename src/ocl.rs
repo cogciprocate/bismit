@@ -1,6 +1,4 @@
 
-extern crate libc;
-
 pub use cl_h::{cl_platform_id, cl_device_id, cl_context, cl_program, cl_kernel, cl_command_queue, cl_float, cl_mem, cl_event, cl_char, cl_uchar, cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus};
 
 use envoy::{ Envoy };
@@ -8,13 +6,14 @@ use cl_h;
 use common;
 
 use std;
-use num::{ self, Integer };
 use std::ptr;
 use std::mem;
 use std::io::{ Read };
 use std::fs::{ File };
 use std::ffi;
 use std::iter;
+use num::{ self, Integer, FromPrimitive };
+use libc;
 
 pub const GPU_DEVICE: usize = 1;
 pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
@@ -278,7 +277,7 @@ impl Kernel {
 			let err = cl_h::clSetKernelArg(
 						self.kernel, 
 						arg_index, 
-						mem::size_of::<T>() as u64, 
+						mem::size_of::<T>() as libc::size_t, 
 						mem::transmute(&val),
 			);
 
@@ -338,7 +337,8 @@ impl Kernel {
 						self.gwo.as_ptr(),
 						gws,
 						lws,
-						std::num::cast(event_wait_list.len()).expect("ocl::Kernel::enqueue_wait()"),
+						event_wait_list.len() as cl_uint,
+						//std::num::cast(event_wait_list.len()).expect("ocl::Kernel::enqueue_wait()"),
 						event_wait_list.as_ptr(),
 						&mut event as *mut cl_event,
 			);
@@ -425,11 +425,13 @@ impl WorkSize {
 
 
 fn to_error_str(err_code: cl_h::cl_int) -> String {
-	let err_opt: Option<cl_h::CLStatus> = std::num::FromPrimitive::from_isize(err_code as isize);
+	/*let err_opt: Option<cl_h::CLStatus> = FromPrimitive::from_isize(err_code as isize);
 	match err_opt {
 		Some(e) => e.to_string(),
 		None => format!("Unknown Error Code: {}", err_code as isize)
-	}
+	}*/
+
+	format!("Error codes temporarily unavailable. err_code: {}", err_code as isize)
 }
 
 

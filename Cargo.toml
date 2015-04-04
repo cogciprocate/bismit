@@ -7,6 +7,7 @@ authors = ["Nick Sanders <github.com/nsan1129>"]
 bitflags = "0.1.1"
 rand = "0.3.5"
 num = "0.1.19"
+libc = "0.1.5"
 
 [dependencies.microcosm]
 git = "https://github.com/cogciprocate/microcosm.git"

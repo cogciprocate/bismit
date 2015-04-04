@@ -44,20 +44,22 @@ impl Synapses {
 		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
 		let mut src_row_ids = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
 		//let mut src_col_offs = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
-		let mut src_col_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -128, 127, ocl);
+		let mut src_col_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -127, 127, ocl);
 
-		let mut kern_cycle = ocl.new_kernel("syn_cycle", 
+		let mut kern_cycle = ocl.new_kernel("syns_cycle", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 			.arg_env(&axons.states)
 			.arg_env(&src_col_offs)
 			.arg_env(&src_row_ids)
+			.arg_env(&strengths)
 			.arg_scl(per_cell_l2)
 			//.arg_env(&aux.ints_0)
 			//.arg_env(&aux.ints_1)
 			.arg_env(&states)
 		;
 
+		println!("\n### Test 1 ###");
 		let mut syns = Synapses {
 			width: width,
 			depth: depth,
@@ -107,6 +109,7 @@ impl Synapses {
 
 			let kind_base_row_pos = layer.kind_base_row_pos;
 			let src_row_idx_range: Range<usize> = Range::new(0, src_row_ids_len);
+			let strength_init_range: Range<i8> = Range::new(-3, 4);
 			
 			assert!(src_row_ids_len <= (1 << self.per_cell_l2) as usize, "cells::Synapses::init(): Number of source rows must not exceed number of synapses per cell.");
 
@@ -121,7 +124,7 @@ impl Synapses {
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
 				for ref i in ei_start..ei_end {
 					self.src_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
-					self.strengths[i] = 0; 	// RANDOMIZE ME ETC.
+					self.strengths[i] = (self.src_col_offs[i] >> 6) * strength_init_range.ind_sample(&mut rng); 	
 				}
 			}
 		}

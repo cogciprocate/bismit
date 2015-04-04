@@ -14,8 +14,8 @@ use microcosm::world::{ World };
 
 
 use std::default::Default;
-use std::num::{ NumCast };
-use num::{ self, Integer };
+//use std::num::{ NumCast, FromPrimitive, ToPrimitive };
+use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use std::fmt::{ Display };
 use std::ops;
 use std::io::{ self, Write };
@@ -23,7 +23,7 @@ use std::borrow::{ Borrow };
 use time;
 
 
-pub const TEST_ITERATIONS: i32 			= 200; 
+pub const TEST_ITERATIONS: i32 			= 10; 
 pub const PRINT_EVERY: i32 				= 400;
 
 pub const SHUFFLE_ONCE: bool 			= true;
@@ -193,7 +193,7 @@ pub fn test_cycle() -> bool {
 
 		let mut i = 0i32;
 		loop {
-			if i >= (test_iters) { break; }
+			if i >= (test_iters - 1) { break; }
 
 			if i % PRINT_EVERY == 0 || i < 0 {
 				let t = time::get_time() - time_start;
@@ -232,9 +232,9 @@ pub fn test_cycle() -> bool {
 		print!("\n\nRunning {} sense and print loop(s)...", 1usize);
 
 		loop {
-			if i >= (test_iters + 1) { break; }
+			if i >= (test_iters) { break; }
 
-			print!("\n\n=== Iteration {} ===", i);
+			print!("\n\n=== Iteration {}/{} ===", i + 1, test_iters);
 
 			/* INITIAL AXON STATES */
 			if false {
@@ -265,7 +265,7 @@ pub fn test_cycle() -> bool {
 				print!("\ncols.syns.src_row_ids:");
 				cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None);
 			}
-			if true {
+			if false {
 				print!("\ncols.syns.strengths:");
 				cortex.cells.cols.syns.strengths.print(1 << 14, None, None);
 			}
@@ -278,6 +278,10 @@ pub fn test_cycle() -> bool {
 				print!("\npyrs.dens.syns.src_col_offs: ");
 				cortex.cells.pyrs.dens.syns.src_col_offs.print(1 << 14, None, None);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
+			}
+			if true {
+				print!("\npyrs.dens.syns.strengths:");
+				cortex.cells.pyrs.dens.syns.strengths.print(1 << 16, None, None);
 			}
 
 
@@ -297,7 +301,7 @@ pub fn test_cycle() -> bool {
 
 
 			/* PYRAMIDAL SYNAPSE STATES */
-			if true {	
+			if false {	
 				print!("\npyrs.dens.syns.states: ");
 				cortex.cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
@@ -380,7 +384,7 @@ fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>) {
 }
 
 
-pub fn pe<T: Integer + Copy + Clone + NumCast + Default + Display, V>(label: &'static str, env: &Envoy<T>, scale: usize, 
+pub fn pe<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive, V>(label: &'static str, env: &Envoy<T>, scale: usize, 
 				val_range: Option<(V, V)>, 
 				idx_range: Option<(usize, usize)>
 ) {

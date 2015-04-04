@@ -39,23 +39,25 @@ impl Dendrites {
 					axons: &Axons,
 					ocl: &Ocl
 	) -> Dendrites {
+		println!("\n### Test D1 ###");
 		let width_dens = width << per_cell_l2;
 
 
 		let (per_den_l2, den_kernel) = match den_kind {
-			DendriteKind::Distal => (common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, "den_dist_cycle"),
-			DendriteKind::Proximal => (common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, "den_prox_cycle"),
+			DendriteKind::Distal => (common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, "den_cycle"),
+			DendriteKind::Proximal => (common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, "den_cycle"),
 		};
 
 		let states = Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::STATE_ZERO, ocl);
 
 		let syns = Synapses::new(width, depth, per_cell_l2 + per_den_l2, den_kind, cell_kind, region, axons, ocl);
 
-		let kern_cycle = ocl.new_kernel(den_kernel, WorkSize::TwoDim(depth as usize, width_dens as usize))
+		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(depth as usize, width_dens as usize))
 			.arg_env(&syns.states)
 			.arg_scl(per_cell_l2)
 			.arg_env(&states);
 
+		println!("\n### Test D2 ###");
 		Dendrites {
 			depth: depth,
 			width: width,

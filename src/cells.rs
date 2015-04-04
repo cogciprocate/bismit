@@ -48,7 +48,7 @@ impl Cells {
 
 		let aux = Aux::new(width, depth_cellular, ocl);
 		let axns = Axons::new(width, depth_noncellular, depth_cellular, region, ocl);
-		let pyrs = Pyramidal::new(width, region, &axns, ocl);
+		let pyrs = Pyramidal::new(width, region, &axns, &aux, ocl);
 		let cols = Columns::new(width, region, &axns, &pyrs, &aux, ocl);
 		
 
@@ -106,8 +106,8 @@ pub struct Aux {
 	width: u32,
 	pub ints_0: Envoy<ocl::cl_int>,
 	pub ints_1: Envoy<ocl::cl_int>,
-	pub chars_0: Envoy<ocl::cl_uchar>,
-	pub chars_1: Envoy<ocl::cl_uchar>,
+	pub chars_0: Envoy<ocl::cl_char>,
+	pub chars_1: Envoy<ocl::cl_char>,
 }
 
 impl Aux {
@@ -118,8 +118,8 @@ impl Aux {
 		Aux { 
 			ints_0: Envoy::<ocl::cl_int>::new(width * width_multiplier, depth, 0, ocl),
 			ints_1: Envoy::<ocl::cl_int>::new(width * width_multiplier, depth, 0, ocl),
-			chars_0: Envoy::<ocl::cl_uchar>::new(width, depth, 0, ocl),
-			chars_1: Envoy::<ocl::cl_uchar>::new(width, depth, 0, ocl),
+			chars_0: Envoy::<ocl::cl_char>::new(width, depth, 0, ocl),
+			chars_1: Envoy::<ocl::cl_char>::new(width, depth, 0, ocl),
 			depth: depth,
 			width: width,
 		}

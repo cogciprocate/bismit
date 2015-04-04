@@ -1,7 +1,7 @@
 
 use std;
-use num::{ self, Integer, Signed };
-use std::num::{ NumCast };
+use num::{ self, Integer, Signed, NumCast, ToPrimitive, FromPrimitive };
+//use std::num::{ NumCast, ToPrimitive, FromPrimitive };
 use std::ops::{ self, BitOr };
 use std::default::{ Default }; 
 use std::fmt::{ Display, Debug };
@@ -45,7 +45,7 @@ pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 4;
 pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2;
 
-pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 4;
+pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 6;
 pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 
@@ -54,7 +54,7 @@ pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
 pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
 
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 6;
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 8;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
 
@@ -214,12 +214,12 @@ impl BuildOption {
 =============================================================================*/
 
 
-pub fn print_vec_simple<T: Integer + Display + Default + NumCast + Copy >(vec: &Vec<T>) {
+pub fn print_vec_simple<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive >(vec: &Vec<T>) {
 	print_vec(vec, 1, true, None, None);
 }
 
 
-pub fn print_vec<T: Integer + Display + Default + NumCast + Copy >(
+pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive >(
 			vec: &Vec<T>, 
 			every: usize, 
 			show_zeros: bool, 
@@ -238,7 +238,7 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy >(
 	let mut within_idx_range = false;
 	let mut hi = Default::default();
 	let mut lo: T = Default::default();
-	let mut sum: i64 = 0;
+	let mut sum: isize = 0;
 	let mut ttl_prntd: usize = 0;
 	let len = vec.len();
 
@@ -301,7 +301,8 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy >(
 			ttl_ir += 1;
 		}
 
-		sum += std::num::cast::<T, i64>(vec[i]).expect("common::print_vec, sum");
+		sum += vec[i].to_isize().expect("common::print_vec(): vec[i]");
+		//sum += std::num::cast::<T, isize>(vec[i]).expect("common::print_vec, sum");
 
 
 		if vec[i] > hi { hi = vec[i] };
@@ -350,7 +351,7 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy >(
 	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prntd:{}){cd} ", ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 }
 
-pub fn shuffled_vec<T: Integer + Default + Display + NumCast + Copy + Clone >(size: usize, min_val: T, max_val: T) -> Vec<T> {
+pub fn shuffled_vec<T: Integer + Default + Display + NumCast + Copy + Clone + ToPrimitive + FromPrimitive >(size: usize, min_val: T, max_val: T) -> Vec<T> {
 
 	//println!("min_val: {}, max_val: {}", min_val, max_val);
 
@@ -360,21 +361,26 @@ pub fn shuffled_vec<T: Integer + Default + Display + NumCast + Copy + Clone >(si
 	//let size: usize = num::from_int(max - min).expect("common::shuffled_vec(), size");
 
 	//assert!(max - min > 0, "Vector size must be greater than zero.");
+	let mut vec: Vec<T> = Vec::with_capacity(size);
 
-	assert!(size > 0, "common::shuffled_vec(): Vector size must be greater than zero.");
-	assert!(min_val < max_val, "common::shuffled_vec(): Minimum value must be less than maximum.");
+	assert!(size > 0, "\ncommon::shuffled_vec(): Vector size must be greater than zero.");
+	assert!(min_val < max_val, "\ncommon::shuffled_vec(): Minimum value must be less than maximum.");
+
+	let min = min_val.to_isize().expect("\ncommon::shuffled_vec(), min");
+	let max = max_val.to_isize().expect("\ncommon::shuffled_vec(), max") + 1;
+
+	let mut range = (min..max).cycle();
+
+	for i in (0..size) {
+		vec.push(FromPrimitive::from_isize(range.next().expect("\ncommon::shuffled_vec(), range")).expect("\ncommon::shuffled_vec(), from_usize"));
+	}
+
+	//let mut vec: Vec<T> = (min..max).cycle().take(size).collect();
 
 
-	let mut vec: Vec<T> = num::iter::range_inclusive(min_val, max_val).cycle().take(size).collect();
+	/*let mut vec: Vec<T> = iter::range_inclusive::<T>(min_val, max_val).cycle().take(size).collect();*/
 
-	//println!("shuffled_vec(): vec.len(): {}", vec.len());
-	/*let mut i: usize = 0;
-	for val in iter::range_inclusive(min_val, max_val) {
-		vec[i] = val;
-		//vec[i] = FromPrimitive::from_int(val).expect("common::shuffled_vec(), vec[i]");
-		i += 1;
-	}*/
-
+	
 	shuffle_vec(&mut vec);
 
 	vec
@@ -402,22 +408,23 @@ pub fn shuffle_vec<T: Integer + Copy >(vec: &mut Vec<T>) {
 
 	sp_fctr_log2: sparsity factor (log2)
 */
-pub fn sparse_vec<T: Integer + Signed + Default + Copy + Clone + NumCast >(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
+pub fn sparse_vec<T: Integer + Signed + Default + Copy + Clone + NumCast + FromPrimitive + ToPrimitive >(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
 	let mut vec: Vec<T> = iter::repeat(min_val).cycle().take(size).collect();
 
 	let len = vec.len();
 
 	let notes = len >> sp_fctr_log2;
 
-	let range_max: isize = max_val.to_i64().expect("common::sparse_vec(): max_val.to_i64()") as isize + 1;
-	let range_min: isize = min_val.to_i64().expect("common::sparse_vec(): min_val.to_i64()") as isize;
+	let range_max: isize = max_val.to_isize().expect("common::sparse_vec(): max_val.to_isize()") as isize + 1;
+	let range_min: isize = min_val.to_isize().expect("common::sparse_vec(): min_val.to_isize()") as isize;
 
 	let mut rng = rand::weak_rng();
 	let val_range = Range::new(range_min, range_max);
 	let idx_range = Range::new(0, 1 << sp_fctr_log2);
 
 	for i in 0..notes {
-		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = std::num::cast(val_range.ind_sample(&mut rng)).unwrap();
+		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = FromPrimitive::from_isize(val_range.ind_sample(&mut rng)).expect("common::sparse_vec()");
+		//vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = std::num::cast(val_range.ind_sample(&mut rng)).unwrap();
 	}
 
 	vec
