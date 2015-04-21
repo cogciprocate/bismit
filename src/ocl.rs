@@ -12,6 +12,7 @@ use std::io::{ Read };
 use std::fs::{ File };
 use std::ffi;
 use std::iter;
+use std::collections::{ HashMap };
 use num::{ self, Integer, FromPrimitive };
 use libc;
 
@@ -57,8 +58,6 @@ impl Ocl {
 	pub fn new_kernel(&self, name: &'static str, gws: WorkSize) -> Kernel {
 		let mut err: cl_h::cl_int = 0;
 
-
-
 		let kernel = unsafe {
 			cl_h::clCreateKernel(
 				self.program, 
@@ -66,7 +65,7 @@ impl Ocl {
 				&mut err
 			)
 		};
-
+		
 		let err_pre = format!("Ocl::new_kernel({}):", name);
 		must_succ(&err_pre, err);
 
@@ -74,6 +73,8 @@ impl Ocl {
 			kernel: kernel,
 			name: name,
 			arg_index: 0,
+			named_args: HashMap::with_capacity(5),
+			arg_count: 0u32,
 			command_queue: self.command_queue,
 			context: self.context,
 			gwo: WorkSize::Unspecified,
@@ -182,6 +183,8 @@ pub struct Kernel {
 	kernel: cl_h::cl_kernel, //make this private!!!!!
 	name: &'static str,
 	arg_index: u32,
+	named_args: HashMap<&'static str, u32>,
+	arg_count: u32,
 	command_queue: cl_h::cl_command_queue,
 	context: cl_h::cl_context,
 	gwo: WorkSize,
@@ -217,6 +220,13 @@ impl Kernel {
 		self.new_arg_scalar(scalar);
 		self
 	}
+
+	pub fn arg_scl_named<T: Integer>(mut self, scalar: T, name: &'static str) -> Kernel {
+		let arg_idx = self.new_arg_scalar(scalar);
+		self.named_args.insert(name, arg_idx);
+		self
+	}
+
 
 	pub fn arg_loc<T>(mut self, type_sample: T, length: usize) -> Kernel {
 		self.new_arg_local(type_sample, length);
@@ -270,6 +280,11 @@ impl Kernel {
 		//println!("Adding Kernel Argument: {}", self.arg_index);
 		self.arg_index += 1;
 		a_i
+	}
+
+	pub fn set_named_arg<T>(&mut self, name: &'static str, scalar: T) {
+		let arg_idx = self.named_args[name];
+		self.set_kernel_arg(arg_idx, scalar);
 	}
 
 	pub fn set_kernel_arg<T>(&mut self, arg_index: cl_h::cl_uint, val: T) {
@@ -437,7 +452,8 @@ fn to_error_str(err_code: cl_h::cl_int) -> String {
 
 pub fn must_succ(message: &str, err: cl_h::cl_int) {
 	if err != cl_h::CLStatus::CL_SUCCESS as cl_h::cl_int {
-		panic!(format!("{} failed with code: {}", message, to_error_str(err)));
+		format!("\n{} failed with code: {}", message, to_error_str(err));
+		panic!(format!("\n{} failed with code: {}", message, to_error_str(err)));
 	}
 }
 

@@ -73,7 +73,7 @@ impl Cells {
 	pub fn init_kernels(&mut self) {
 		//self.axns.init_kernels(&self.cols.asps, &self.cols, &self.aux)
 		//self.cols.syns.init_kernels(&self.axns, ocl);
-		self.pyrs.init_kernels(&self.cols, &self.axns);
+		self.pyrs.init_kernels(&self.cols, &self.axns, &self.aux);
 	}
 
 	pub fn cycle(&mut self) {
@@ -96,7 +96,6 @@ impl Cells {
 
 		self.cols.output();
 		
-		//self.axns.cycle();
 	}
 }
 

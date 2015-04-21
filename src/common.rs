@@ -53,11 +53,8 @@ pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_
 pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
 pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
-
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 8;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
-
-
 
 pub const SYNAPSES_PER_CELL_PROXIMAL_LOG2: u32 = DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 pub const SYNAPSES_PER_CELL_PROXIMAL: u32 = 1 << SYNAPSES_PER_CELL_PROXIMAL_LOG2;
@@ -107,8 +104,11 @@ pub const STATE_ZERO: u8 = 0;
 
 pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 
-pub const DENDRITE_INITIAL_THRESHOLD: u32 = 396;		// number of active synapses (actually, number of 128+s)
+pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 288;
+pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 288;
 
+pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
+pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;
 
 pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
 
@@ -130,7 +130,7 @@ pub fn build_options() -> String {
 		.opt("ASPINY_REACH", ASPINY_REACH as usize)
 		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as usize)
 		.opt("ASPINY_SPAN", ASPINY_SPAN as usize)
-		.opt("DENDRITE_INITIAL_THRESHOLD", DENDRITE_INITIAL_THRESHOLD as usize)
+		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as usize)
 		.to_string()
 }
 
@@ -215,16 +215,16 @@ impl BuildOption {
 
 
 pub fn print_vec_simple<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive >(vec: &Vec<T>) {
-	print_vec(vec, 1, true, None, None);
+	print_vec(vec, 1, None, None, true);
 }
 
 
 pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive >(
 			vec: &Vec<T>, 
 			every: usize, 
-			show_zeros: bool, 
 			val_range: Option<(T, T)>, 
 			idx_range: Option<(usize, usize)>,
+			show_zeros: bool, 
 ) {
 
 
@@ -256,15 +256,19 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 	let mut prnt: bool = false;
 
 	print!("{cdgr}[{cg}{}{cdgr}/{}", vec.len(), every, cg = C_GRN, cdgr = C_DGR);
+
 	if val_range.is_some() {
 		print!(";[{},{}]", vr_start, vr_end);
 	}
+
 	if idx_range.is_some() {
 		 		// DUPLICATE
 		print!(";[{},{}]", ir_start, ir_end);
 	}
 	print!("]:{cd} ", cd = C_DEFAULT,);
 
+
+		/* Yes, this clusterfuck needs rewriting someday */
 	for i in 0..vec.len() {
 
 		prnt = false;
@@ -279,6 +283,7 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 
 		if idx_range.is_some() {
 			let ir = idx_range.as_ref().unwrap();
+
 			if i < ir_start || i > ir_end {
 				prnt = false;
 				within_idx_range = false;
@@ -292,13 +297,15 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 		if val_range.is_some() {
 			if vec[i] < vr_start || vec[i] > vr_end {
 				prnt = false;
-			} else {
-				if within_idx_range {
+			} else if within_idx_range {
+				if show_zeros && vec[i] == Default::default() {
+					ttl_ir += 1;
+				} else if vec[i] != Default::default() {
 					ttl_ir += 1;
 				}
 			}
 		} else {
-			ttl_ir += 1;
+			//ttl_ir += 1;
 		}
 
 		sum += vec[i].to_isize().expect("common::print_vec(): vec[i]");
@@ -306,6 +313,7 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 
 
 		if vec[i] > hi { hi = vec[i] };
+
 		if lo == Default::default() && hi != Default::default() {
 			lo = hi 
 		} else {

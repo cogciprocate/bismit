@@ -61,6 +61,7 @@ impl Columns {
 
 		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&syns.states)
+			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_cel_l2)
 			.arg_env(&states)
 		;
@@ -77,7 +78,7 @@ impl Columns {
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(depth as usize, width as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&states)
-			//.arg_env(&pyrs.states)
+			.arg_env(&pyrs.states)
 			//.arg_scl(depth)
 			.arg_scl(pyr_depth)
 			.arg_scl(pyr_axn_base_row)

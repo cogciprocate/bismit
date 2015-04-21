@@ -95,12 +95,12 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 
     pub fn print_val_range(&mut self, every: usize, val_range: Option<(T, T)>,) {
     	self.read();
-		common::print_vec(&self.vec, every, true, val_range, None);
+		common::print_vec(&self.vec, every, val_range, None, true);
     }
 
-    pub fn print(&mut self, every: usize, val_range: Option<(T, T)>, idx_range: Option<(usize, usize)>) {
+    pub fn print(&mut self, every: usize, val_range: Option<(T, T)>, idx_range: Option<(usize, usize)>, zeros: bool) {
     	self.read();
-		common::print_vec(&self.vec, every, true, val_range, idx_range);
+		common::print_vec(&self.vec, every, val_range, idx_range, zeros);
 	}
 
     pub fn release(&mut self) {

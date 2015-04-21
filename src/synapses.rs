@@ -52,14 +52,15 @@ impl Synapses {
 			.arg_env(&axons.states)
 			.arg_env(&src_col_offs)
 			.arg_env(&src_row_ids)
-			.arg_env(&strengths)
+			//.arg_env(&strengths)
 			.arg_scl(per_cell_l2)
 			//.arg_env(&aux.ints_0)
 			//.arg_env(&aux.ints_1)
 			.arg_env(&states)
 		;
 
-		println!("\n### Test 1 ###");
+		//println!("\n### Test S1 ###");
+
 		let mut syns = Synapses {
 			width: width,
 			depth: depth,
@@ -117,9 +118,17 @@ impl Synapses {
 			
 			/* LOOP THROUGH ROWS (WITHIN LAYER) */
 			for row_pos in kind_base_row_pos..(kind_base_row_pos + layer.depth) {
+				//print!("\nDEBUG: row_pos: {}", row_pos);
+				//print!("\nDEBUG: syns_per_row: {}", syns_per_row);
+
 				let ei_start = syns_per_row as usize * row_pos as usize;
+				//print!("\nDEBUG: ei_start: {}", ei_start);
+
 				let ei_end = ei_start + syns_per_row as usize;
-				print!("\n	Row {}: ei_start: {}, ei_end: {}, src_ids: {:?}", row_pos, ei_start, ei_end, src_row_ids);
+				//print!("\nDEBUG: ei_end: {}", ei_end);
+				//print!("\nDEBUG: src_row_ids: {:?}", src_row_ids);
+
+				print!("\n   Row {}: ei_start: {}, ei_end: {}, src_row_ids: {:?}", row_pos, ei_start, ei_end, src_row_ids);
 
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
 				for ref i in ei_start..ei_end {

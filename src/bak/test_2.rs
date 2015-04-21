@@ -36,7 +36,7 @@ pub const SYNAPSES_TOTAL: uint = SYNAPSES_PER_DENDRITE * DENDRITES_TOTAL;
 
 pub const SYNAPSE_WEIGHT_ZERO: u8 = 16;
 pub const SYNAPSE_WEIGHT_INITIAL_DEVIATION: u8 = 3;
-pub const DENDRITE_INITIAL_THRESHOLD: u16 = 128;
+pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u16 = 128;
 
 */
 
@@ -190,7 +190,7 @@ fn initialize_data_vectors(
 
 	//DENDRITES
 	for i in range(0u, my_cortex.dendrite_thresholds.capacity()) {
-		my_cortex.dendrite_thresholds.push(DENDRITE_INITIAL_THRESHOLD);
+		my_cortex.dendrite_thresholds.push(DENDRITE_INITIAL_THRESHOLD_PROXIMAL);
 	}
 
 	for i in range(0u, dendrite_states.capacity()) {

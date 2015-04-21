@@ -19,7 +19,7 @@ pub const HYPERCOLUMNS_TOTAL: uint = 16u;
 
 pub const SYNAPSE_WEIGHT_ZERO: u8 = 16;
 pub const SYNAPSE_WEIGHT_INITIAL_DEVIATION: u8 = 3;
-pub const DENDRITE_INITIAL_THRESHOLD: u16 = 128;
+pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u16 = 128;
 
 pub const COLUMNS_TOTAL: uint = COLUMNS_PER_HYPERCOLUMN * HYPERCOLUMNS_TOTAL;
 pub const CELLS_TOTAL: uint = CELLS_PER_COLUMN * COLUMNS_TOTAL;
@@ -94,7 +94,7 @@ impl Cortex {
 
 		//DENDRITES
 		for i in range(0u, self.dendrite_thresholds.capacity()) {
-			self.dendrite_thresholds.push(DENDRITE_INITIAL_THRESHOLD);
+			self.dendrite_thresholds.push(DENDRITE_INITIAL_THRESHOLD_PROXIMAL);
 		}
 
 		for i in range(0u, self.dendrite_states.capacity()) {

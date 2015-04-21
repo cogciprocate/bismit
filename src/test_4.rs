@@ -154,7 +154,7 @@ pub fn test_cycle() -> bool {
 
 	loop {
 
-		let mut in_string: String = rin("test_4:[q: quit][i: iters][Enter: prev]");
+		let mut in_string: String = rin(format!("test_4:([q]uit [i]ters)[i={}]", test_iters));
 		//print!("You Entered: {}", &in_string);
 
 
@@ -162,7 +162,7 @@ pub fn test_cycle() -> bool {
 			println!("Quitting...");
 			break;
 		} else if "i\n" == in_string {
-			let in_s = rin("Enter number of iterations[Enter=default]");
+			let in_s = rin(format!("Enter number of iterations[Enter=default]"));
 			if "\n" == in_s {
 				test_iters = TEST_ITERATIONS;
 			} else {
@@ -209,7 +209,7 @@ pub fn test_cycle() -> bool {
 				if false {
 					print!("\nREGION OUTPUT: cells.axns.states: ");
 					//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
-					cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
+					cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()), true);
 				}
 			}
 						
@@ -256,32 +256,38 @@ pub fn test_cycle() -> bool {
 
 			if true {
 				print!("\nInput Vec:");
-				common::print_vec(&vec1, 1 << 6, true, None, None);
+				common::print_vec(&vec1, 1 , None, None, false);
 			}
 
 
 			/* SYNAPSE IDS & STRENGTHS */
 			if false {
 				print!("\ncols.syns.src_row_ids:");
-				cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None);
+				cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None, true);
+			}
+			if false{	
+				print!("\ncols..syns.src_col_offs: ");
+				cortex.cells.cols.syns.src_col_offs.print(1 << 14, None, None, true);
+				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
 			if false {
 				print!("\ncols.syns.strengths:");
-				cortex.cells.cols.syns.strengths.print(1 << 14, None, None);
+				cortex.cells.cols.syns.strengths.print(1 << 14, None, None, true);
 			}
+
 			if false {	
 				print!("\npyrs.dens.syns.src_row_ids: ");
-				cortex.cells.pyrs.dens.syns.src_row_ids.print(1 << 14, None, None);
+				cortex.cells.pyrs.dens.syns.src_row_ids.print(1 << 14, None, None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
 			if false {	
 				print!("\npyrs.dens.syns.src_col_offs: ");
-				cortex.cells.pyrs.dens.syns.src_col_offs.print(1 << 14, None, None);
+				cortex.cells.pyrs.dens.syns.src_col_offs.print(1 << 14, None, None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
-			if true {
+			if false {
 				print!("\npyrs.dens.syns.strengths:");
-				cortex.cells.pyrs.dens.syns.strengths.print(1 << 16, None, None);
+				cortex.cells.pyrs.dens.syns.strengths.print(1 << 16, None, None, true);
 			}
 
 
@@ -289,7 +295,7 @@ pub fn test_cycle() -> bool {
 			/* PROXIMAL (COLUMN) SYNAPSE STATES */
 			if false {	
 				print!("\ncols.syns.states: ");
-				cortex.cells.cols.syns.states.print(1 << 12, Some((1, 255)), None);
+				cortex.cells.cols.syns.states.print(1 << 12, Some((1, 255)), None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
 
@@ -303,12 +309,12 @@ pub fn test_cycle() -> bool {
 			/* PYRAMIDAL SYNAPSE STATES */
 			if false {	
 				print!("\npyrs.dens.syns.states: ");
-				cortex.cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None);
+				cortex.cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
 
 			/* PYRAMIDAL DENDRITE STATES */
-			if false {	
+			if true {	
 				print!("\npyrs.dens.states: ");
 				cortex.cells.pyrs.dens.states.print_val_range(1 << 0, Some((1, 255)));
 			}
@@ -329,7 +335,7 @@ pub fn test_cycle() -> bool {
 
 
 			/* PYRAMIDAL CELL STATES */
-			if false {
+			if true {
 				print!("\npyrs.states: ");
 				cortex.cells.pyrs.states.print_val_range(1 << 0, Some((1, 255)));
 			}
@@ -339,13 +345,13 @@ pub fn test_cycle() -> bool {
 			if false {
 				print!("\naxns.states: ");
 				//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
-				cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), None);
+				cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), None, true);
 
 			}
 			if true {
 				print!("\nREGION OUTPUT: cells.axns.states: ");
 				//cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some((3000, 4423)));
-				cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()));
+				cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()), true);
 
 			}
 
@@ -353,17 +359,17 @@ pub fn test_cycle() -> bool {
 			/* AUX VALS */
 			if true {
 				print!("\naux.ints_0: ");
-				cortex.cells.aux.ints_0.print((1 << 0) as usize, Some((1, 1100000000)), None);
+				cortex.cells.aux.ints_0.print((1 << 0) as usize, None, None, false);
 				print!("\naux.ints_1: ");
-				cortex.cells.aux.ints_1.print((1 << 0) as usize, Some((1, 1100000000)), None);
+				cortex.cells.aux.ints_1.print((1 << 0) as usize, None, None, false);
 			}
 
 			if false {
 				print!("\naux.chars_0: ");
-				cortex.cells.aux.chars_0.print((1 << 0) as usize, Some((-128, 127)), None);
-				pe("aux.chars_1", &cortex.cells.aux.chars_1, (1 << 0) as usize, Some((-128, 127)), None);
-				/*print!("\naux.chars_1: ");
-				cortex.cells.aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None);*/
+				cortex.cells.aux.chars_0.print((1 << 0) as usize, Some((-128, 127)), None, true);
+				//pe("aux.chars_1", &cortex.cells.aux.chars_1, (1 << 0) as usize, Some((-128, 127)), None, true);
+				print!("\naux.chars_1: ");
+				cortex.cells.aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None, true);
 			}
 
 			i += 1;
@@ -384,16 +390,16 @@ fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>) {
 }
 
 
-pub fn pe<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive, V>(label: &'static str, env: &Envoy<T>, scale: usize, 
+/*pub fn pe<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive, V>(label: &'static str, env: &Envoy<T>, scale: usize, 
 				val_range: Option<(V, V)>, 
 				idx_range: Option<(usize, usize)>
 ) {
 	print!("\n{}: ", label);
 	env.len();
 	//env.print(scale, val_range, idx_range);
-}
+}*/
 
-fn rin(prompt: &'static str) -> String {
+fn rin(prompt: String) -> String {
 	let mut in_string: String = String::new();
 	print!("\n{}:> ", prompt);
 	io::stdout().flush().unwrap();

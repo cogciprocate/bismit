@@ -39,7 +39,7 @@ impl Dendrites {
 					axons: &Axons,
 					ocl: &Ocl
 	) -> Dendrites {
-		println!("\n### Test D1 ###");
+		//println!("\n### Test D1 ###");
 		let width_dens = width << per_cell_l2;
 
 
@@ -54,10 +54,11 @@ impl Dendrites {
 
 		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(depth as usize, width_dens as usize))
 			.arg_env(&syns.states)
+			.arg_env(&syns.strengths)
 			.arg_scl(per_cell_l2)
-			.arg_env(&states);
-
-		println!("\n### Test D2 ###");
+			.arg_env(&states)
+		;
+		
 		Dendrites {
 			depth: depth,
 			width: width,

@@ -43,7 +43,7 @@ impl Dendrites {
 			width: width,
 			per_cell: per_cell,
 			den_type: den_type,
-			thresholds: Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::DENDRITE_INITIAL_THRESHOLD, ocl),
+			thresholds: Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::DENDRITE_INITIAL_THRESHOLD_PROXIMAL, ocl),
 			states: Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::STATE_ZERO, ocl),
 			syns: Synapses::new(width, depth, per_cell * common::SYNAPSES_PER_DENDRITE_DISTAL, den_type, region, ocl),
 		}

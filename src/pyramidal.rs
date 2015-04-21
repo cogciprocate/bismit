@@ -52,24 +52,17 @@ impl Pyramidal {
 
 		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidal, dens_per_cel_l2, region, axons, ocl);
 
+		assert!(width % common::MINIMUM_WORKGROUP_SIZE == 0);
+		let cels_per_grp: u32 = width / common::MINIMUM_WORKGROUP_SIZE;
+		println!("\n*** cels_per_grp: {}", cels_per_grp);
+		println!("\n*** pyr_depth: {}", depth);
 
-		let kern_learn = ocl.new_kernel("cels_learn", WorkSize::TwoDim(depth as usize, width as usize))
-			.arg_env(&states)
-			.arg_env(&dens.states)
-			.arg_env(&dens.syns.states)
-			.arg_scl(syns_per_cel_l2)
-			.arg_scl(dens_per_cel_l2)
-			.arg_scl(0u32)
-			.arg_env(&aux.ints_0)
-			.arg_env(&dens.syns.strengths)
-			//.arg_env(&axons.states)
-		;
-
+		
 		let kern_cycle = ocl.new_kernel("pyr_cycle", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&dens.states)
 			.arg_scl(axn_row_base)
-			.arg_env(&states)
+			.arg_env(&states) 		// v.N1
 			.arg_env(&axons.states)
 		;
 
@@ -82,6 +75,20 @@ impl Pyramidal {
 
 		let kern_activate = ocl.new_kernel("pyr_activate", 
 			WorkSize::TwoDim(depth as usize, width as usize))
+		;
+
+		let kern_learn = ocl.new_kernel("cels_learn_unoptd", 
+			WorkSize::TwoDim(depth as usize, common::MINIMUM_WORKGROUP_SIZE as usize))
+			.arg_env(&states)
+			.arg_env(&dens.states)
+			.arg_env(&dens.syns.states)
+			.arg_scl(syns_per_cel_l2)
+			.arg_scl(dens_per_cel_l2)
+			.arg_scl(cels_per_grp)
+			.arg_scl_named(0u32, "rnd")
+			.arg_env(&aux.ints_1)
+			.arg_env(&dens.syns.strengths)
+			//.arg_env(&axons.states)
 		;
 
 
@@ -100,17 +107,17 @@ impl Pyramidal {
 		}
 	}
 
-	pub fn init_kernels(&mut self, cols: &Columns, axns: &Axons) {
+	pub fn init_kernels(&mut self, cols: &Columns, axns: &Axons, aux: &Aux) {
 		self.kern_activate.new_arg_envoy(&cols.states);
 		self.kern_activate.new_arg_envoy(&cols.cels_status);
-		//self.kern_activate.new_arg_scalar(self.depth);
 		self.kern_activate.new_arg_scalar(self.axn_row_base);
-		self.kern_activate.new_arg_envoy(&self.states);
+		self.kern_activate.new_arg_envoy(&aux.ints_0);
+		self.kern_activate.new_arg_envoy(&self.states);	
 		self.kern_activate.new_arg_envoy(&axns.states);
 	}
 
-	pub fn learn(&mut self) {
-		self.kern_learn.set_kernel_arg(5, self.rng.gen::<u32>());
+	pub fn activate(&mut self) {
+		self.kern_activate.enqueue();
 		self.kern_learn.enqueue();
 	}
 
@@ -120,9 +127,7 @@ impl Pyramidal {
 		//self.kern_axn_cycle.enqueue();
 	}
 
-	pub fn activate(&self) {
-		self.kern_activate.enqueue();
-	}
+	
 
 
 }
