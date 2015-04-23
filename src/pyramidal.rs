@@ -33,7 +33,7 @@ pub struct Pyramidal {
 	//den_prox_row: u8, 
 	rng: rand::XorShiftRng,
 	pub states: Envoy<ocl::cl_uchar>,
-	pub best_dens: Envoy<ocl::cl_uchar>,
+	pub best_den_ids: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
 }
 
@@ -51,7 +51,7 @@ impl Pyramidal {
 
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 
-		let best_dens = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
+		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 
 		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidal, dens_per_cel_l2, region, axons, ocl);
 
@@ -65,7 +65,7 @@ impl Pyramidal {
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&dens.states)
 			.arg_scl(axn_row_base)
-			.arg_env(&best_dens)
+			.arg_env(&best_den_ids)
 			.arg_env(&states) 		// v.N1
 			.arg_env(&axons.states)
 		;
@@ -84,6 +84,7 @@ impl Pyramidal {
 		let kern_learn = ocl.new_kernel("cels_learn_unoptd", 
 			WorkSize::TwoDim(depth as usize, common::MINIMUM_WORKGROUP_SIZE as usize))
 			.arg_env(&states)
+			.arg_env(&best_den_ids)
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns.states)
 			.arg_scl(syns_per_cel_l2)
@@ -107,7 +108,7 @@ impl Pyramidal {
 			//den_prox_row: den_prox_row,
 			rng: rand::weak_rng(),
 			states: states,
-			best_dens: best_dens,
+			best_den_ids: best_den_ids,
 			dens: dens,
 		}
 	}

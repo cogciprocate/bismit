@@ -293,7 +293,7 @@ pub fn test_cycle() -> bool {
 				cortex.cells.pyrs.dens.syns.src_col_offs.print(1 << 14, None, None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
-			if false {
+			if true {
 				print!("\npyrs.dens.syns.strengths:");
 				cortex.cells.pyrs.dens.syns.strengths.print(1 << 16, None, None, true);
 			}
@@ -320,18 +320,18 @@ pub fn test_cycle() -> bool {
 
 
 			/* PYRAMIDAL SYNAPSE STATES */
-			if true {	
+			if false {	
 				print!("\npyrs.dens.syns.states: ");
 				cortex.cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
 
 			/* PYRAMIDAL DENDRITE STATES */
-			if true {	
+			if false {	
 				print!("\npyrs.dens.states: ");
 				cortex.cells.pyrs.dens.states.print_val_range(1 << 12, Some((1, 255)));
 			}
-			if true {	
+			if false {	
 				print!("\npyrs.dens.states_raw: ");
 				cortex.cells.pyrs.dens.states_raw.print_val_range(1 << 12, Some((1, 255)));
 			}
@@ -368,7 +368,7 @@ pub fn test_cycle() -> bool {
 			if true {
 				print!("\nREGION OUTPUT: cells.axns.states: ");
 				//cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some((3000, 4423)));
-				cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()), true);
+				cortex.cells.axns.states.print((1 << 0) as usize, Some((0, 255)), Some(cortex.cells.cols.axn_output_range()), false);
 
 			}
 

@@ -263,7 +263,11 @@ __kernel void aspiny_cycle_wins(
 		uchar cur_comp_win = asp_wins[cur_comp_idx];
 
 		if (asp_win == cur_comp_win) {
-			if ((asp_state == cur_comp_state) && (asp_state > 0)) {
+			if (asp_state > cur_comp_state) {
+				win_count += 1;
+			}
+
+			/*if ((asp_state == cur_comp_state) && (asp_state > 0)) {		// OLD (TIEBREAK) VERSION
 				if ((asp_idx & as_bitmask) == (asp_state & as_bitmask)) {
 					win_count += 1;
 				} else if ((cur_comp_idx & as_bitmask) != (asp_state & as_bitmask)) {
@@ -271,7 +275,7 @@ __kernel void aspiny_cycle_wins(
 				}
 			} else if (asp_state > cur_comp_state) {
 				win_count += 1;
-			}
+			}*/
 		} else if (asp_win > cur_comp_win) {
 			win_count += 1;
 		} else {
@@ -340,35 +344,6 @@ __kernel void col_post_inhib_unoptd (
 }
 
 
-__kernel void col_learn(
-	__global const uchar* const asp_col_ids,
-	__global const uchar* const asp_states,
-	__global const uchar* const syn_states,
-	//__global const uchar* const col_states,
-	__private uint const syns_per_den_l2,
-	__private uint const rnd,
-	__global int* const aux_ints_0,
-	__global char* const syn_strengths
-) {
-	uint const row_id = get_global_id(0);
-	uint const asp_id = get_global_id(1);
-	uint const row_width = get_global_size(1);
-	uint const asp_pos = mad24(row_id, row_width, asp_id);
-	uint const asp_idx = (asp_pos + ASPINY_REACH);
-
-	uint const col_idx = asp_col_id_to_col_idx(asp_idx, (asp_col_ids[asp_idx]));
-	uint const syn_idx = col_idx << syns_per_den_l2;
-
-	uchar asp_state = asp_states[asp_idx];
-
-	if (asp_state) {
-		syns_learn(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
-	}
-
-	//aux_ints_0[asp_id] = (rn ^ syn_idx) >> 2;
-}
-
-
 
 __kernel void pyr_activate(
 				__global const uchar* const col_states,
@@ -403,7 +378,33 @@ __kernel void pyr_activate(
 
 
 
+__kernel void col_learn(
+	__global const uchar* const asp_col_ids,
+	__global const uchar* const asp_states,
+	__global const uchar* const syn_states,
+	//__global const uchar* const col_states,
+	__private uint const syns_per_den_l2,
+	__private uint const rnd,
+	__global int* const aux_ints_0,
+	__global char* const syn_strengths
+) {
+	uint const row_id = get_global_id(0);
+	uint const asp_id = get_global_id(1);
+	uint const row_width = get_global_size(1);
+	uint const asp_pos = mad24(row_id, row_width, asp_id);
+	uint const asp_idx = (asp_pos + ASPINY_REACH);
 
+	uint const col_idx = asp_col_id_to_col_idx(asp_idx, (asp_col_ids[asp_idx]));
+	uint const syn_idx = col_idx << syns_per_den_l2;
+
+	uchar asp_state = asp_states[asp_idx];
+
+	if (asp_state) {
+		syns_learn(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
+	}
+
+	//aux_ints_0[asp_id] = (rn ^ syn_idx) >> 2;
+}
 
 
 
@@ -411,6 +412,7 @@ __kernel void pyr_activate(
 /* NEEDS RESTRUCTURING AND OPTIMIZATION */
 __kernel void cels_learn_unoptd(
 	__global const uchar* const cel_states,
+	__global const uchar* const cel_best_den_ids,
 	__global const uchar* const den_states,
 	__global const uchar* const syn_states,
 	__private uint const syns_per_den_l2,
@@ -434,31 +436,16 @@ __kernel void cels_learn_unoptd(
 	//aux_ints_0[cel_grp_id] = cel_idx_init;
 
 	for (int c = cel_idx_init; c < cel_idx_n; c++) {
-		//aux_ints_1[c] = cel_states[c];
-		//aux_ints_1[c] = cel_states[c];
-
 		if (cel_states[c] == 0) {
 			continue;
 		} else {
 			uint den_idx_init = (c << dens_per_cel_l2);
-			uint den_idx_n = ((c + 1) << dens_per_cel_l2);
 
-			for (int d = den_idx_init; d < den_idx_n; d++) {
+			uint syn_idx = ((den_idx_init + cel_best_den_ids[c]) << syns_per_den_l2);
 
-				uint syn_idx = d << syns_per_den_l2;
-
-				syns_learn(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
-
-				/*if (den_states[d] == 0) {
-					aux_ints_1[d] = 0;
-					continue;
-				} else {
-					aux_ints_1[d] = row_id + 10;
-				}*/
-			}
+			syns_learn(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
 		}
 	}
-
 }
 
 
@@ -467,7 +454,7 @@ __kernel void cels_learn_unoptd(
 __kernel void pyr_cycle(
 				__global const uchar* const den_states,
 				__private uchar const axn_row_base,
-				__global uchar* const best_dens,
+				__global uchar* const pyr_best_dens,
 				__global uchar* const pyr_states,
 				__global uchar* const axn_states
 ) {
@@ -492,6 +479,8 @@ __kernel void pyr_cycle(
 
 		/*if (den_state > best_den_state) {
 			best_den_id = i;
+			best_den_state = den_state;
+
 		}*/
 		int den_state_biggest = (den_state > best_den_state);
 		best_den_id = mul24(den_state_biggest, i);
@@ -503,9 +492,9 @@ __kernel void pyr_cycle(
 		//active_dendrites += (den_state > 0);
 	}
 	
-	//den_sum >>= DENDRITES_PER_CELL_DISTAL_LOG2;
+	den_sum >>= DENDRITES_PER_CELL_DISTAL_LOG2;
 
-	best_dens[cel_idx] = best_den_id;
+	pyr_best_dens[cel_idx] = best_den_id;
 	pyr_states[cel_idx] = clamp(den_sum, 0, 255); 	// v.N1
 	axn_states[axn_idx] = clamp(den_sum, 0, 255);
 
