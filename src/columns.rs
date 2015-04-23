@@ -30,6 +30,7 @@ pub struct Columns {
 	kern_learn: ocl::Kernel,
 	rng: rand::XorShiftRng,
 	pub states: Envoy<ocl::cl_uchar>,
+	pub states_raw: Envoy<ocl::cl_uchar>,
 	pub cels_status: Envoy<ocl::cl_uchar>,
 	pub peak_cols: PeakColumn,
 	//pub syns: ColumnSynapses,
@@ -49,6 +50,7 @@ impl Columns {
 		let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC PYR LAYERS 
 
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
+		let states_raw = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let cels_status = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let peak_cols = PeakColumn::new(width, depth, region, &states, ocl);
 		let syns = Synapses::new(width, depth, syns_per_cel_l2, DendriteKind::Proximal, 
@@ -63,6 +65,7 @@ impl Columns {
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_cel_l2)
+			.arg_env(&states_raw)
 			.arg_env(&states)
 		;
 
@@ -112,6 +115,7 @@ impl Columns {
 			kern_output: kern_output,
 			kern_learn: kern_learn,
 			rng: rand::weak_rng(),
+			states_raw: states_raw,
 			states: states,
 			cels_status: cels_status,
 			peak_cols: peak_cols,

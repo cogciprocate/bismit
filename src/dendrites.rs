@@ -24,6 +24,7 @@ pub struct Dendrites {
 	cell_kind: CellKind,
 	kern_cycle: ocl::Kernel,
 	pub thresholds: Envoy<ocl::cl_uchar>,
+	pub states_raw: Envoy<ocl::cl_uchar>,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub syns: Synapses,
 }
@@ -43,19 +44,24 @@ impl Dendrites {
 		let width_dens = width << per_cell_l2;
 
 
-		let (per_den_l2, den_kernel) = match den_kind {
+		let (syns_per_den_l2, den_kernel) = match den_kind {
 			DendriteKind::Distal => (common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, "den_cycle"),
 			DendriteKind::Proximal => (common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, "den_cycle"),
 		};
 
 		let states = Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::STATE_ZERO, ocl);
 
-		let syns = Synapses::new(width, depth, per_cell_l2 + per_den_l2, den_kind, cell_kind, region, axons, ocl);
+		let states_raw = Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::STATE_ZERO, ocl);
 
-		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(depth as usize, width_dens as usize))
+		let syns = Synapses::new(width, depth, per_cell_l2 + syns_per_den_l2, den_kind, cell_kind, region, axons, ocl);
+
+
+		println!("\nsyns_per_den_l2 = {}", syns_per_den_l2);
+		let kern_cycle = ocl.new_kernel(den_kernel, WorkSize::TwoDim(depth as usize, width_dens as usize))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
-			.arg_scl(per_cell_l2)
+			.arg_scl(syns_per_den_l2)
+			.arg_env(&states_raw)
 			.arg_env(&states)
 		;
 		
@@ -67,6 +73,7 @@ impl Dendrites {
 			cell_kind: cell_kind,
 			kern_cycle: kern_cycle,
 			thresholds: Envoy::<ocl::cl_uchar>::new(width_dens, depth, 1, ocl),
+			states_raw: states_raw,
 			states: states,
 			syns: syns,
 		}

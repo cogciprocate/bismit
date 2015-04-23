@@ -151,11 +151,19 @@ pub fn test_cycle() -> bool {
 	}*/
 
 	let mut test_iters: i32 = TEST_ITERATIONS;
+	let mut first_run: bool = true;
 
 	loop {
 
-		let mut in_string: String = rin(format!("test_4:([q]uit [i]ters)[i={}]", test_iters));
-		//print!("You Entered: {}", &in_string);
+
+
+		let mut in_string: String = if first_run {
+			first_run = false;
+			"\n".to_string()
+		} else {
+			rin(format!("test_4:([q]uit [i]ters)[i={}]", test_iters))
+			//print!("You Entered: {}", &in_string);
+		};
 
 
 		if "q\n" == in_string {
@@ -305,9 +313,14 @@ pub fn test_cycle() -> bool {
 				cortex.cells.cols.states.print_val_range(1 << 0, Some((1, 255)));
 			}
 
+			if false {	
+				print!("\ncols.states_raw: ");
+				cortex.cells.cols.states_raw.print_val_range(1 << 0, Some((1, 255)));
+			}
+
 
 			/* PYRAMIDAL SYNAPSE STATES */
-			if false {	
+			if true {	
 				print!("\npyrs.dens.syns.states: ");
 				cortex.cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
@@ -316,7 +329,11 @@ pub fn test_cycle() -> bool {
 			/* PYRAMIDAL DENDRITE STATES */
 			if true {	
 				print!("\npyrs.dens.states: ");
-				cortex.cells.pyrs.dens.states.print_val_range(1 << 0, Some((1, 255)));
+				cortex.cells.pyrs.dens.states.print_val_range(1 << 12, Some((1, 255)));
+			}
+			if true {	
+				print!("\npyrs.dens.states_raw: ");
+				cortex.cells.pyrs.dens.states_raw.print_val_range(1 << 12, Some((1, 255)));
 			}
 
 
@@ -337,7 +354,7 @@ pub fn test_cycle() -> bool {
 			/* PYRAMIDAL CELL STATES */
 			if true {
 				print!("\npyrs.states: ");
-				cortex.cells.pyrs.states.print_val_range(1 << 0, Some((1, 255)));
+				cortex.cells.pyrs.states.print_val_range(1 << 8, Some((1, 255)));
 			}
 
 
