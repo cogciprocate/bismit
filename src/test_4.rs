@@ -109,10 +109,10 @@ pub fn test_cycle() -> bool {
 	let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
 
 	world.entities().add(worm);
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(120f32, -120f32)));
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(120f32, 120f32)));
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-120f32, -120f32)));
-	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-120f32, 120f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(220f32, -220f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(220f32, 220f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-220f32, -220f32)));
+	world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-220f32, 220f32)));
 	//world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-0.0001f32, 0.0001f32)));
 
 	world.entities().print();
@@ -200,6 +200,9 @@ pub fn test_cycle() -> bool {
 		print!("\nRunning {} sense only loop(s) ... ", test_iters - 1);
 
 		let mut i = 0i32;
+
+		//println!("");
+
 		loop {
 			if i >= (test_iters - 1) { break; }
 
@@ -218,6 +221,19 @@ pub fn test_cycle() -> bool {
 					print!("\nREGION OUTPUT: cells.axns.states: ");
 					//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
 					cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()), true);
+				}
+				if false {
+					print!("\ncols.syns.strengths:");
+					cortex.cells.cols.syns.strengths.print(1 << 0, None, Some((256, 288)), true);
+				}
+				if false{	
+					print!("\ncols..syns.src_col_offs: ");
+					cortex.cells.cols.syns.src_col_offs.print(1 << 0, None, Some((256, 288)), true);
+				}
+
+				if false {
+					print!("\npyrs.dens.syns.strengths:");
+					cortex.cells.pyrs.dens.syns.strengths.print(1 << 0, None, Some((256, 319)), true);
 				}
 			}
 						
@@ -278,7 +294,7 @@ pub fn test_cycle() -> bool {
 				cortex.cells.cols.syns.src_col_offs.print(1 << 14, None, None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
-			if false {
+			if true {
 				print!("\ncols.syns.strengths:");
 				cortex.cells.cols.syns.strengths.print(1 << 14, None, None, true);
 			}
@@ -295,13 +311,13 @@ pub fn test_cycle() -> bool {
 			}
 			if true {
 				print!("\npyrs.dens.syns.strengths:");
-				cortex.cells.pyrs.dens.syns.strengths.print(1 << 16, None, None, true);
+				cortex.cells.pyrs.dens.syns.strengths.print(1 << 19, None, None, true);
 			}
 
 
 
 			/* PROXIMAL (COLUMN) SYNAPSE STATES */
-			if false {	
+			if true {	
 				print!("\ncols.syns.states: ");
 				cortex.cells.cols.syns.states.print(1 << 12, Some((1, 255)), None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
@@ -327,7 +343,7 @@ pub fn test_cycle() -> bool {
 			}
 
 			/* PYRAMIDAL DENDRITE STATES */
-			if false {	
+			if true {	
 				print!("\npyrs.dens.states: ");
 				cortex.cells.pyrs.dens.states.print_val_range(1 << 12, Some((1, 255)));
 			}
@@ -378,7 +394,7 @@ pub fn test_cycle() -> bool {
 				print!("\naux.ints_0: ");
 				cortex.cells.aux.ints_0.print((1 << 0) as usize, None, None, false);
 				print!("\naux.ints_1: ");
-				cortex.cells.aux.ints_1.print((1 << 0) as usize, None, None, false);
+				cortex.cells.aux.ints_1.print((1 << 16) as usize, None, None, false);
 			}
 
 			if false {

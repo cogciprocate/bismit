@@ -53,7 +53,7 @@ pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_
 pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
 pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 8;
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 7;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
 pub const SYNAPSES_PER_CELL_PROXIMAL_LOG2: u32 = DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
@@ -105,7 +105,7 @@ pub const STATE_ZERO: u8 = 0;
 pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 
 pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 550;
-//pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 288;
+pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 1280;
 
 pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
 pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;
@@ -487,3 +487,13 @@ pub fn log2(n: u32) -> u32 {
 	n.trailing_zeros()
 }
 
+
+pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive >(
+			vec: &Vec<T>, 
+			condense_factor: usize, 
+			val_range: Option<(T, T)>, 
+			idx_range: Option<(usize, usize)>,
+) {
+
+
+}

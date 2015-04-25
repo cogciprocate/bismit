@@ -112,7 +112,7 @@ pub struct Aux {
 impl Aux {
 	pub fn new(width: u32, depth: u8, ocl: &Ocl) -> Aux {
 
-		let width_multiplier: u32 = 100;
+		let width_multiplier: u32 = 1000;
 
 		Aux { 
 			ints_0: Envoy::<ocl::cl_int>::new(width * width_multiplier, depth, 0, ocl),

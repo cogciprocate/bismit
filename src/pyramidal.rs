@@ -32,6 +32,7 @@ pub struct Pyramidal {
 	axn_row_base: u8,
 	//den_prox_row: u8, 
 	rng: rand::XorShiftRng,
+	regrow_counter: usize,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub best_den_ids: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
@@ -53,7 +54,7 @@ impl Pyramidal {
 
 		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 
-		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidal, dens_per_cel_l2, region, axons, ocl);
+		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidal, dens_per_cel_l2, region, axons, aux, ocl);
 
 		assert!(width % common::MINIMUM_WORKGROUP_SIZE == 0);
 		let cels_per_grp: u32 = width / common::MINIMUM_WORKGROUP_SIZE;
@@ -91,7 +92,7 @@ impl Pyramidal {
 			.arg_scl(dens_per_cel_l2)
 			.arg_scl(cels_per_grp)
 			.arg_scl_named(0u32, "rnd")
-			.arg_env(&aux.ints_1)
+			//.arg_env(&aux.ints_1)
 			.arg_env(&dens.syns.strengths)
 			//.arg_env(&axons.states)
 		;
@@ -107,6 +108,7 @@ impl Pyramidal {
 			axn_row_base: axn_row_base,
 			//den_prox_row: den_prox_row,
 			rng: rand::weak_rng(),
+			regrow_counter: 0usize,
 			states: states,
 			best_den_ids: best_den_ids,
 			dens: dens,
@@ -124,7 +126,16 @@ impl Pyramidal {
 
 	pub fn activate(&mut self) {
 		self.kern_activate.enqueue();
+
+		self.kern_learn.set_named_arg("rnd", self.rng.gen::<u32>());
 		self.kern_learn.enqueue();
+
+		self.regrow_counter += 1;
+
+		if self.regrow_counter >= 1000 {
+			self.dens.regrow();
+			self.regrow_counter = 0;
+		}
 	}
 
 	pub fn cycle(&self) {

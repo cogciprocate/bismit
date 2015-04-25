@@ -29,6 +29,7 @@ pub struct Columns {
 	kern_output: ocl::Kernel,
 	kern_learn: ocl::Kernel,
 	rng: rand::XorShiftRng,
+	regrow_counter: usize,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub states_raw: Envoy<ocl::cl_uchar>,
 	pub cels_status: Envoy<ocl::cl_uchar>,
@@ -44,7 +45,7 @@ impl Columns {
 		let depth: u8 = layer.depth();
 
 		let syns_per_cel_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
-		let syns_per_cel: u32 = 1 << syns_per_cel_l2;
+		//let syns_per_cel: u32 = 1 << syns_per_cel_l2;
 
 		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidal);
 		let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC PYR LAYERS 
@@ -53,8 +54,8 @@ impl Columns {
 		let states_raw = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let cels_status = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let peak_cols = PeakColumn::new(width, depth, region, &states, ocl);
-		let syns = Synapses::new(width, depth, syns_per_cel_l2, DendriteKind::Proximal, 
-			CellKind::SpinyStellate, region, axons, ocl);
+		let syns = Synapses::new(width, depth, syns_per_cel_l2, syns_per_cel_l2, DendriteKind::Proximal, 
+			CellKind::SpinyStellate, region, axons, aux, ocl);
 
 		let output_rows = region.col_output_rows();
 		assert!(output_rows.len() == 1);
@@ -65,6 +66,7 @@ impl Columns {
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_cel_l2)
+			.arg_scl(common::DENDRITE_INITIAL_THRESHOLD_PROXIMAL)
 			.arg_env(&states_raw)
 			.arg_env(&states)
 		;
@@ -115,6 +117,7 @@ impl Columns {
 			kern_output: kern_output,
 			kern_learn: kern_learn,
 			rng: rand::weak_rng(),
+			regrow_counter: 0usize,
 			states_raw: states_raw,
 			states: states,
 			cels_status: cels_status,
@@ -139,6 +142,14 @@ impl Columns {
 		//print!("[R:{}]", self.rng.gen::<i32>());
 		self.kern_learn.set_kernel_arg(4, self.rng.gen::<u32>());
 		self.kern_learn.enqueue();
+
+		self.regrow_counter += 1;
+
+		if self.regrow_counter >= 1000 {
+				self.syns.regrow();
+			self.regrow_counter = 0;
+		}
+
 	}
 
 	pub fn axn_output_range(&self) -> (usize, usize) {

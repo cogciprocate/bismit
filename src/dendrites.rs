@@ -6,6 +6,7 @@ use cortical_regions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axons::{ Axons };
+use cells::{ Aux };
 
 use num;
 use rand;
@@ -38,22 +39,31 @@ impl Dendrites {
 					per_cell_l2: u32, 
 					region: &CorticalRegion,
 					axons: &Axons,
+					aux: &Aux,
 					ocl: &Ocl
 	) -> Dendrites {
 		//println!("\n### Test D1 ###");
 		let width_dens = width << per_cell_l2;
 
 
-		let (syns_per_den_l2, den_kernel) = match den_kind {
-			DendriteKind::Distal => (common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, "den_cycle"),
-			DendriteKind::Proximal => (common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, "den_cycle"),
+		let (den_threshold, syns_per_den_l2, den_kernel) = match den_kind {
+			DendriteKind::Distal => (
+				common::DENDRITE_INITIAL_THRESHOLD_DISTAL,
+				common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, 
+				"den_cycle"
+			),
+			DendriteKind::Proximal => (
+				common::DENDRITE_INITIAL_THRESHOLD_PROXIMAL,
+				common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, 
+				"den_cycle"
+			),
 		};
 
 		let states = Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::STATE_ZERO, ocl);
 
 		let states_raw = Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::STATE_ZERO, ocl);
 
-		let syns = Synapses::new(width, depth, per_cell_l2 + syns_per_den_l2, den_kind, cell_kind, region, axons, ocl);
+		let syns = Synapses::new(width, depth, per_cell_l2 + syns_per_den_l2, syns_per_den_l2, den_kind, cell_kind, region, axons, aux, ocl);
 
 
 		println!("\nsyns_per_den_l2 = {}", syns_per_den_l2);
@@ -61,6 +71,7 @@ impl Dendrites {
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)
+			.arg_scl(den_threshold)
 			.arg_env(&states_raw)
 			.arg_env(&states)
 		;
@@ -84,5 +95,9 @@ impl Dendrites {
 		self.syns.cycle();
 
 		self.kern_cycle.enqueue();
+	}
+
+	pub fn regrow(&mut self) {
+		self.syns.regrow();
 	}
 }

@@ -283,6 +283,7 @@ impl Kernel {
 	}
 
 	pub fn set_named_arg<T>(&mut self, name: &'static str, scalar: T) {
+			//	TODO: ADD A CHECK FOR A VALID NAME (KEY)
 		let arg_idx = self.named_args[name];
 		self.set_kernel_arg(arg_idx, scalar);
 	}

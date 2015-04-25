@@ -7,12 +7,13 @@ use cortical_region_layer::{ CorticalRegionLayer };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
+use cells::{ Aux };
 
 use num;
 use rand;
 use std::mem;
 use rand::distributions::{ Normal, IndependentSample, Range };
-use rand::{ ThreadRng };
+use rand::{ ThreadRng, Rng };
 use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
@@ -25,6 +26,8 @@ pub struct Synapses {
 	cell_kind: CellKind,
 	since_decay: usize,
 	kern_cycle: ocl::Kernel,
+	kern_regrow: ocl::Kernel,
+	rng: rand::XorShiftRng,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub strengths: Envoy<ocl::cl_char>,
 	pub src_row_ids: Envoy<ocl::cl_uchar>,
@@ -32,8 +35,8 @@ pub struct Synapses {
 }
 
 impl Synapses {
-	pub fn new(width: u32, depth: u8, per_cell_l2: u32, den_kind: DendriteKind, cell_kind: CellKind, 
-					region: &CorticalRegion, axons: &Axons, ocl: &Ocl) -> Synapses {
+	pub fn new(width: u32, depth: u8, per_cell_l2: u32, per_den_l2: u32, den_kind: DendriteKind, cell_kind: CellKind, 
+					region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
 
 		let syns_per_row = width << per_cell_l2;
 
@@ -59,6 +62,20 @@ impl Synapses {
 			.arg_env(&states)
 		;
 
+		//println!("\n### Defining kern_regrow with len: {} ###", depth as usize * syns_per_row as usize);
+
+		let mut kern_regrow = ocl.new_kernel("syns_regrow", 
+			WorkSize::TwoDim(depth as usize, syns_per_row as usize))
+			//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
+			.arg_env(&strengths)
+			.arg_scl(per_den_l2)
+			.arg_scl_named(0u32, "rnd")
+			//.arg_env(&aux.ints_0)
+			.arg_env(&aux.ints_1)
+			.arg_env(&src_col_offs)
+			.arg_env(&src_row_ids)
+		;
+
 		//println!("\n### Test S1 ###");
 
 		let mut syns = Synapses {
@@ -69,6 +86,8 @@ impl Synapses {
 			cell_kind: cell_kind,
 			since_decay: 0,
 			kern_cycle: kern_cycle,
+			kern_regrow: kern_regrow,
+			rng: rand::weak_rng(),
 			states: states,
 			strengths: strengths,
 			src_row_ids: src_row_ids,
@@ -146,5 +165,12 @@ impl Synapses {
 	pub fn cycle(&self) {
 		self.kern_cycle.enqueue();
 	}
+
+	pub fn regrow(&mut self) {
+		let rnd = self.rng.gen::<u32>();
+		print!("\nRegrowing with rnd: {}", rnd);
+		self.kern_regrow.set_named_arg("rnd", rnd);
+		self.kern_regrow.enqueue();
+	} 
 
 }
