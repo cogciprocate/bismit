@@ -132,7 +132,7 @@ impl Pyramidal {
 
 		self.regrow_counter += 1;
 
-		if self.regrow_counter >= 1000 {
+		if self.regrow_counter >= 500 {
 			self.dens.regrow();
 			self.regrow_counter = 0;
 		}

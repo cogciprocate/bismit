@@ -31,19 +31,21 @@ static inline void syns_learn( // VECTORIZE
 	for (uint i = syn_idx_start; i < n; i++) {
 		char syn_strength = syn_strengths[i];
 		uchar syn_state = syn_states[i];
+		int is_neg = (syn_strength < 0);
 
 		uchar rnd_char = (rnd ^ i) & 0x7F;		
-		char inc = (rnd_char > abs(syn_strength)); 
-		//char dec = 0 - inc;
-		syn_strengths[i] = (syn_strength - inc) + mul24((syn_state != 0), (inc << 1));
+		int inc = (rnd_char > abs(syn_strength));
 
-		/*if (syn_states[i]) {
-			syn_strengths[i] += inc;
-			//syn_strengths[i] = clamp(syn_strength + 1, -100, 100);
+		if (syn_state == 0) {
+			syn_strength -= inc;
 		} else {
-			syn_strengths[i] -=	inc;
-			//syn_strengths[i] = clamp(syn_strength - 1, -100, 100);
-		}*/
+			syn_strength += (inc + is_neg);
+		}
+
+		syn_strengths[i] = syn_strength;
+		
+		//syn_strengths[i] = (syn_strength - inc) + mul24((syn_state != 0), (inc << 1));
+
 	}
 }
 
@@ -486,7 +488,7 @@ __kernel void syns_regrow(
 
 	//uchar rnd_row_id = 0;
 
-	if (syn_strength > -100) {
+	if (syn_strength > -50) {
 		return;
 	} else {
 		char rnd_col_ofs = ((rnd ^ ((syn_idx << 5) ^ (syn_idx >> 3))) & 0xFF);
@@ -570,7 +572,7 @@ __kernel void pyr_cycle(
 		//active_dendrites += (den_state > 0);
 	}
 	
-	//den_sum = den_sum >> 4;
+	//den_sum = den_sum >> 2;
 
 	pyr_best_dens[cel_idx] = best_den_id;
 	pyr_states[cel_idx] = clamp(den_sum, 0u, 255u); 	// v.N1

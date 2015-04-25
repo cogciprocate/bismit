@@ -4,7 +4,7 @@ use num::{ self, Integer, Signed, NumCast, ToPrimitive, FromPrimitive };
 //use std::num::{ NumCast, ToPrimitive, FromPrimitive };
 use std::ops::{ self, BitOr };
 use std::default::{ Default }; 
-use std::fmt::{ Display, Debug };
+use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 use std::iter::{ self };
 use std::cmp::{ Ord };
 use rand;
@@ -13,9 +13,11 @@ use rand::distributions::{ self, Normal, IndependentSample, Range };
 use ocl;
 
 pub static C_DEFAULT: &'static str = "\x1b[0m";
-pub static C_RED: &'static str = "\x1b[91m";
+pub static C_DRD: &'static str = "\x1b[31m";
+pub static C_LRD: &'static str = "\x1b[91m";
 pub static C_CYA: &'static str = "\x1b[36m";
 pub static C_GRN: &'static str = "\x1b[32m";
+pub static C_DBL: &'static str = "\x1b[34m";
 pub static C_BLU: &'static str = "\x1b[94m";
 pub static C_MAG: &'static str = "\x1b[95m";
 pub static C_PUR: &'static str = "\x1b[35m";
@@ -24,6 +26,10 @@ pub static C_YEL: &'static str = "\x1b[93m";
 pub static C_LBL: &'static str = "\x1b[94m";
 pub static C_LGR: &'static str = "\x1b[37m";
 pub static C_DGR: &'static str = "\x1b[90m";
+pub static BGC_DEFAULT: &'static str = "\x1b[49m";
+pub static BGC_GRN: &'static str = "\x1b[42m";
+pub static BGC_MAG: &'static str = "\x1b[45m";
+pub static BGC_DGR: &'static str = "\x1b[100m";
 
 pub static KERNELS_FILE_NAME: &'static str = "bismit.cl";
 
@@ -53,7 +59,7 @@ pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_
 pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
 pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 7;
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 8;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
 pub const SYNAPSES_PER_CELL_PROXIMAL_LOG2: u32 = DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
@@ -77,8 +83,12 @@ pub const CELLS_PER_LAYER: usize = COLUMNS_PER_SEGMENT;
 //pub const DENDRITES_PER_LAYER: usize = CELLS_PER_LAYER * DENDRITES_PER_CELL;
 //pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_CELL;
 
-pub const SENSORY_CHORD_WIDTH: u32 = 2048; // COLUMNS_PER_SEGMENT;
+
+
+pub const SENSORY_CHORD_WIDTH: u32 = 1024; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
+
+
 
 pub const SYNAPSE_REACH: u32 = 128;
 pub const MAX_SYNAPSE_RANGE: u32 = SYNAPSE_REACH * 2;
@@ -105,7 +115,7 @@ pub const STATE_ZERO: u8 = 0;
 pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 
 pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 550;
-pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 1280;
+pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 1080;
 
 pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
 pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;
@@ -488,12 +498,79 @@ pub fn log2(n: u32) -> u32 {
 }
 
 
-pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive >(
-			vec: &Vec<T>, 
-			condense_factor: usize, 
-			val_range: Option<(T, T)>, 
-			idx_range: Option<(usize, usize)>,
+pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(
+			ff_vec: &Vec<T>,
+			col_output_vec: &[T],
+			//condense_factor: usize, 
+			//val_range: Option<(T, T)>, 
+			//idx_range: Option<(usize, usize)>,
 ) {
 
+	assert!(ff_vec.len() == col_output_vec.len(), "common::render_sdr(): Input vectors must be of equal length.");
+	let cells_per_line = 64;
+	let line_character_width = (cells_per_line * (4 + 4 + 2 + 4 + 4 + 1)) + 8;	// 8 extra for funsies
+
+	println!("\nRendering SDR[{}{}{}]:", C_GRN, ff_vec.len(), C_DEFAULT);
+
+	let mut line_out: String = String::with_capacity(line_character_width);
+	let mut l_i = 0usize;
+
+	loop {
+		if l_i >= ff_vec.len() { break }
+
+		line_out.clear();
+
+		for i in l_i..(l_i + cells_per_line) {
+
+			let output_active = col_output_vec[i] != Default::default();
+
+			let col_active = ff_vec[i] != Default::default();
+			let prediction = col_output_vec[i] != ff_vec[i];
+			let new_prediction = prediction && (!col_active);
+
+			if prediction {
+				line_out.push_str(BGC_DGR);
+			} else {
+				line_out.push_str(BGC_DEFAULT);
+			}
+
+			if output_active {
+				if new_prediction {
+					line_out.push_str(C_MAG);
+				} else {
+					line_out.push_str(C_BLU);
+				}
+			} else {
+				line_out.push_str(C_DEFAULT);
+			}
+
+			//if  && !output_active 
+
+			if output_active {
+				line_out.push_str(&format!("{:02X}", col_output_vec[i]));
+			} else {
+				if (i & 0x07) == 0 {
+					line_out.push_str("  ");
+				} else {
+					line_out.push_str("--");
+				}
+			} 
+
+			line_out.push_str(C_DEFAULT);
+			line_out.push_str(BGC_DEFAULT);
+			line_out.push_str(" ");
+		}
+
+		println!("{}",line_out);
+
+		l_i += cells_per_line;
+	}
 
 }
+
+
+
+
+/*let mut test_test: String = String::new();
+	test_test.push_str(C_DEFAULT);
+	println!("### color code length: {} ###", test_test.len());*/

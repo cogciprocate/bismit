@@ -5,7 +5,9 @@ use std::ptr;
 use std::iter::{ self };
 //use std::num::{ NumCast, FromPrimitive, ToPrimitive };
 use num::{ Integer, NumCast, FromPrimitive, ToPrimitive };
-use std::fmt::{ Display };
+//use std::fmt::{ Display };
+use std::fmt::{ Display, Debug, LowerHex, UpperHex };
+
 use std::default::{ Default };
 use std::ops::{ self, Index, IndexMut };
 
@@ -21,7 +23,7 @@ pub struct Envoy<T> {
 	pub depth: u8,
 	pub ocl: Ocl,
 }
-impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive> Envoy<T> {
+impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive + UpperHex> Envoy<T> {
 	pub fn new(width: u32, depth: u8, init_val: T, ocl: &Ocl) -> Envoy<T> {
 		let len = len(width, depth, 0);
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();

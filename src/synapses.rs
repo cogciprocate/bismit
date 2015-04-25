@@ -168,7 +168,7 @@ impl Synapses {
 
 	pub fn regrow(&mut self) {
 		let rnd = self.rng.gen::<u32>();
-		print!("\nRegrowing with rnd: {}", rnd);
+		//print!("\nRegrowing with rnd: {}", rnd);
 		self.kern_regrow.set_named_arg("rnd", rnd);
 		self.kern_regrow.enqueue();
 	} 

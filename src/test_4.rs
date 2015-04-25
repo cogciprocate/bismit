@@ -294,7 +294,7 @@ pub fn test_cycle() -> bool {
 				cortex.cells.cols.syns.src_col_offs.print(1 << 14, None, None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
-			if true {
+			if false {
 				print!("\ncols.syns.strengths:");
 				cortex.cells.cols.syns.strengths.print(1 << 14, None, None, true);
 			}
@@ -309,7 +309,7 @@ pub fn test_cycle() -> bool {
 				cortex.cells.pyrs.dens.syns.src_col_offs.print(1 << 14, None, None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
-			if true {
+			if false {
 				print!("\npyrs.dens.syns.strengths:");
 				cortex.cells.pyrs.dens.syns.strengths.print(1 << 19, None, None, true);
 			}
@@ -317,7 +317,7 @@ pub fn test_cycle() -> bool {
 
 
 			/* PROXIMAL (COLUMN) SYNAPSE STATES */
-			if true {	
+			if false {	
 				print!("\ncols.syns.states: ");
 				cortex.cells.cols.syns.states.print(1 << 12, Some((1, 255)), None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
@@ -343,7 +343,7 @@ pub fn test_cycle() -> bool {
 			}
 
 			/* PYRAMIDAL DENDRITE STATES */
-			if true {	
+			if false {	
 				print!("\npyrs.dens.states: ");
 				cortex.cells.pyrs.dens.states.print_val_range(1 << 12, Some((1, 255)));
 			}
@@ -390,7 +390,7 @@ pub fn test_cycle() -> bool {
 
 
 			/* AUX VALS */
-			if true {
+			if false {
 				print!("\naux.ints_0: ");
 				cortex.cells.aux.ints_0.print((1 << 0) as usize, None, None, false);
 				print!("\naux.ints_1: ");
@@ -405,6 +405,11 @@ pub fn test_cycle() -> bool {
 				cortex.cells.aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None, true);
 			}
 
+			let (out_start, out_end) = cortex.cells.cols.axn_output_range();
+			//println!("### axn_output_range().len(): {}", out_end - out_start);
+			//println!("### cortex.cells.cols.states.vec.len(): {}", cortex.cells.cols.states.vec.len());
+			common::render_sdr(&cortex.cells.cols.states.vec, &cortex.cells.axns.states.vec[out_start..(out_end + 1)]);
+
 			i += 1;
 			
 		}
@@ -418,9 +423,33 @@ pub fn test_cycle() -> bool {
 }
 
 fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>) {
-	world.entities().get_mut(ent_uid).turn(0.0005f32);
+	world.entities().get_mut(ent_uid).turn(0.0009765f32);
 	world.peek_from(ent_uid).unfold_into(vec, 0);
 }
+
+
+fn rin(prompt: String) -> String {
+	let mut in_string: String = String::new();
+	print!("\n{}:> ", prompt);
+	io::stdout().flush().unwrap();
+	io::stdin().read_line(&mut in_string).ok().expect("Failed to read line");
+	in_string
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /*pub fn pe<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive, V>(label: &'static str, env: &Envoy<T>, scale: usize, 
@@ -431,14 +460,6 @@ fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>) {
 	env.len();
 	//env.print(scale, val_range, idx_range);
 }*/
-
-fn rin(prompt: String) -> String {
-	let mut in_string: String = String::new();
-	print!("\n{}:> ", prompt);
-	io::stdout().flush().unwrap();
-	io::stdin().read_line(&mut in_string).ok().expect("Failed to read line");
-	in_string
-}
 
 
 		//
