@@ -27,13 +27,9 @@ pub const SHUFFLE_EVERY: bool 			= false;
 
 pub fn test_cycle() -> bool {
 	let sc_width = common::SENSORY_CHORD_WIDTH;
-
 	let mut vec1: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_width as usize).collect();
-	
 	let mut cortex = cortex::Cortex::new();
-
 	let mut world: World = World::new(sc_width);
-
 	let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
 
 	world.entities().add(worm);
@@ -44,8 +40,6 @@ pub fn test_cycle() -> bool {
 
 	world.entities().print();
 	
-	println!("\n### vec1.len(): {}", vec1.len());
-
 	let mut test_iters: i32 = TEST_ITERATIONS;
 	let mut first_run: bool = true;
 
@@ -114,7 +108,7 @@ pub fn test_cycle() -> bool {
 
 			/* INITIAL AXON STATES */
 			if false {
-				println!("\naxns.states: ");
+				println!("\nAXON STATES: ");
 				cortex.cells.axns.states.print_val_range(1, None);
 			}
 			
@@ -124,7 +118,7 @@ pub fn test_cycle() -> bool {
 			let sr_start = (512 << common::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
 
 			if true {
-				print!("\nInput Vec:");
+				print!("\nSENSORY INPUT VECTOR:");
 				common::print_vec(&vec1, 1 , None, None, false);
 			}
 
@@ -143,8 +137,142 @@ pub fn test_cycle() -> bool {
 	true
 }
 
+fn print_sense_only(cortex: &mut Cortex) {
+	if false {
+		print!("\nAXON STATES: ");
+		cortex.cells.axns.states.print_val_range(1 << 8, Some((1, 255)));
+	}
+
+	if false {
+		print!("\nAXON REGION OUTPUT:");
+		cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()), true);
+	}
+	if false {
+		print!("\nCOLUMN SYNAPSE STRENGTHS:");
+		cortex.cells.cols.syns.strengths.print(1 << 0, None, Some((256, 288)), true);
+	}
+	if false{	
+		print!("\nCOLUMN SYNAPSE SOURCE COLUMN OFFSETS:");
+		cortex.cells.cols.syns.src_col_offs.print(1 << 0, None, Some((256, 288)), true);
+	}
+
+	if false {
+		print!("\nPYRAMIDAL DENDRITE SYNAPSE STRENGTHS:");
+		cortex.cells.pyrs.dens.syns.strengths.print(1 << 0, None, Some((256, 319)), true);
+	}
+}
+
+
+fn print_sense_and_print(cortex: &mut Cortex) {
+	if false {
+		print!("\nCOLUMN SYNAPSE SOURCE ROW IDS:");
+		cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None, true);
+	}
+	if false{	
+		print!("\nCOLUMN SYNAPSE SOURCE COLUMN OFFSETS: ");
+		cortex.cells.cols.syns.src_col_offs.print(1 << 14, None, None, true);
+		//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
+	}
+	if false {
+		print!("\nCOLUMN SYNAPSE STRENGTHS:");
+		cortex.cells.cols.syns.strengths.print(1 << 14, None, None, true);
+	}
+
+	if false {	
+		print!("\nPYRAMIDAL DENDRITE SYNAPSE SOURCE ROW IDS: ");
+		cortex.cells.pyrs.dens.syns.src_row_ids.print(1 << 14, None, None, true);
+		//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
+	}
+	if false {	
+		print!("\nPYRAMIDAL DENDRITE SYNAPSE SOURCE COLUMN OFFSETS: ");
+		cortex.cells.pyrs.dens.syns.src_col_offs.print(1 << 14, None, None, true);
+		//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
+	}
+	if false {
+		print!("\nPYRAMIDAL DENDRITE SYNAPSE STRENGTHS:");
+		cortex.cells.pyrs.dens.syns.strengths.print(1 << 19, None, None, true);
+	}
+
+
+	if false {	
+		print!("\nCOLUMN SYNAPSE STRENGTHS: ");
+		cortex.cells.cols.syns.states.print(1 << 12, Some((1, 255)), None, true);
+		//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
+	}
+	if true {	
+		print!("\nCOLUMN STATES: ");
+		cortex.cells.cols.states.print_val_range(1 << 0, Some((1, 255)));
+	}
+
+	if false {	
+		print!("\nCOLUMN STATES RAW: ");
+		cortex.cells.cols.states_raw.print_val_range(1 << 0, Some((1, 255)));
+	}
+
+
+	if false {	
+		print!("\nPYRAMIDAL DENDRITE SYNAPSE STATES: ");
+		cortex.cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None, true);
+		//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
+	}
+	if false {	
+		print!("\nPYRAMIDAL DENDRITE STATES: ");
+		cortex.cells.pyrs.dens.states.print_val_range(1 << 12, Some((1, 255)));
+	}
+	if false {	
+		print!("\nPYRAMIDAL DENDRITE STATES RAW: ");
+		cortex.cells.pyrs.dens.states_raw.print_val_range(1 << 12, Some((1, 255)));
+	}
+
+
+	if false {
+		print!("\nCOLUMN PEAK COLUMN COLUMN IDS: ");
+		cortex.cells.cols.peak_cols.col_ids.print_val_range(1 << 0, Some((0, 255)));
+	}
+
+
+	if false {
+		print!("\nCOLUMN PEAK COLUMN STATES: ");
+		cortex.cells.cols.peak_cols.states.print_val_range(1 << 0, Some((1, 255)));
+	}
+
+
+	if true {
+		print!("\nPYRAMIDAL STATES:");
+		cortex.cells.pyrs.states.print_val_range(1 << 8, Some((1, 255)));
+	}
+
+
+	if false {
+		print!("\nAXON STATES: ");
+		cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), None, true);
+
+	}
+	if false {
+		print!("\nAXON REGION OUTPUT:");
+		//cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some((3000, 4423)));
+		cortex.cells.axns.states.print((1 << 0) as usize, Some((0, 255)), Some(cortex.cells.cols.axn_output_range()), false);
+
+	}
+
+
+	if false {
+		print!("\naux.ints_0: ");
+		cortex.cells.aux.ints_0.print((1 << 0) as usize, None, None, false);
+		print!("\naux.ints_1: ");
+		cortex.cells.aux.ints_1.print((1 << 16) as usize, None, None, false);
+	}
+	if false {
+		print!("\naux.chars_0: ");
+		cortex.cells.aux.chars_0.print((1 << 0) as usize, Some((-128, 127)), None, true);
+		print!("\naux.chars_1: ");
+		cortex.cells.aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None, true);
+	}
+
+}
+
+
 fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>) {
-	//assert!(
 	world.entities().get_mut(ent_uid).turn((3f32/common::SENSORY_CHORD_WIDTH as f32));
 	world.peek_from(ent_uid).unfold_into(vec, 0);
 }
@@ -159,154 +287,11 @@ fn rin(prompt: String) -> String {
 }
 
 
-fn print_sense_only(cortex: &mut Cortex) {
-	if false {
-		print!("\naxns.states: ");
-		cortex.cells.axns.states.print_val_range(1 << 8, Some((1, 255)));
-	}
-
-	if false {
-		print!("\nREGION OUTPUT: cells.axns.states: ");
-		cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()), true);
-	}
-	if false {
-		print!("\ncols.syns.strengths:");
-		cortex.cells.cols.syns.strengths.print(1 << 0, None, Some((256, 288)), true);
-	}
-	if false{	
-		print!("\ncols..syns.src_col_offs: ");
-		cortex.cells.cols.syns.src_col_offs.print(1 << 0, None, Some((256, 288)), true);
-	}
-
-	if false {
-		print!("\npyrs.dens.syns.strengths:");
-		cortex.cells.pyrs.dens.syns.strengths.print(1 << 0, None, Some((256, 319)), true);
-	}
-}
-
-
-fn print_sense_and_print(cortex: &mut Cortex) {
-	/* SYNAPSE IDS & STRENGTHS */
-	if false {
-		print!("\ncols.syns.src_row_ids:");
-		cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None, true);
-	}
-	if false{	
-		print!("\ncols..syns.src_col_offs: ");
-		cortex.cells.cols.syns.src_col_offs.print(1 << 14, None, None, true);
-		//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
-	}
-	if true {
-		print!("\ncols.syns.strengths:");
-		cortex.cells.cols.syns.strengths.print(1 << 14, None, None, true);
-	}
-
-	if false {	
-		print!("\npyrs.dens.syns.src_row_ids: ");
-		cortex.cells.pyrs.dens.syns.src_row_ids.print(1 << 14, None, None, true);
-		//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
-	}
-	if false {	
-		print!("\npyrs.dens.syns.src_col_offs: ");
-		cortex.cells.pyrs.dens.syns.src_col_offs.print(1 << 14, None, None, true);
-		//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
-	}
-	if true {
-		print!("\npyrs.dens.syns.strengths:");
-		cortex.cells.pyrs.dens.syns.strengths.print(1 << 19, None, None, true);
-	}
 
 
 
-	/* PROXIMAL (COLUMN) SYNAPSE STATES */
-	if false {	
-		print!("\ncols.syns.states: ");
-		cortex.cells.cols.syns.states.print(1 << 12, Some((1, 255)), None, true);
-		//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
-	}
-
-	/* COLUMN STATES */
-	if true {	
-		print!("\ncols.states: ");
-		cortex.cells.cols.states.print_val_range(1 << 0, Some((1, 255)));
-	}
-
-	if false {	
-		print!("\ncols.states_raw: ");
-		cortex.cells.cols.states_raw.print_val_range(1 << 0, Some((1, 255)));
-	}
 
 
-	/* PYRAMIDAL SYNAPSE STATES */
-	if false {	
-		print!("\npyrs.dens.syns.states: ");
-		cortex.cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None, true);
-		//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
-	}
-
-	/* PYRAMIDAL DENDRITE STATES */
-	if false {	
-		print!("\npyrs.dens.states: ");
-		cortex.cells.pyrs.dens.states.print_val_range(1 << 12, Some((1, 255)));
-	}
-	if false {	
-		print!("\npyrs.dens.states_raw: ");
-		cortex.cells.pyrs.dens.states_raw.print_val_range(1 << 12, Some((1, 255)));
-	}
-
-
-	/* ASPINY IDS */
-	if false {
-		print!("\npeak_cols.col_ids: ");
-		cortex.cells.cols.peak_cols.col_ids.print_val_range(1 << 0, Some((0, 255)));
-	}
-
-
-	/* ASPINY STATES */
-	if false {
-		print!("\npeak_cols.states: ");
-		cortex.cells.cols.peak_cols.states.print_val_range(1 << 0, Some((1, 255)));
-	}
-
-
-	/* PYRAMIDAL CELL STATES */
-	if true {
-		print!("\npyrs.states: ");
-		cortex.cells.pyrs.states.print_val_range(1 << 8, Some((1, 255)));
-	}
-
-
-	/* AXON STATES */
-	if false {
-		print!("\naxns.states: ");
-		cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), None, true);
-
-	}
-	if true {
-		print!("\nREGION OUTPUT: cells.axns.states: ");
-		//cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some((3000, 4423)));
-		cortex.cells.axns.states.print((1 << 0) as usize, Some((0, 255)), Some(cortex.cells.cols.axn_output_range()), false);
-
-	}
-
-
-	/* AUX VALS */
-	if false {
-		print!("\naux.ints_0: ");
-		cortex.cells.aux.ints_0.print((1 << 0) as usize, None, None, false);
-		print!("\naux.ints_1: ");
-		cortex.cells.aux.ints_1.print((1 << 16) as usize, None, None, false);
-	}
-
-	if false {
-		print!("\naux.chars_0: ");
-		cortex.cells.aux.chars_0.print((1 << 0) as usize, Some((-128, 127)), None, true);
-		//pe("aux.chars_1", &cortex.cells.aux.chars_1, (1 << 0) as usize, Some((-128, 127)), None, true);
-		print!("\naux.chars_1: ");
-		cortex.cells.aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None, true);
-	}
-
-}
 
 
 
