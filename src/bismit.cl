@@ -31,7 +31,7 @@ static inline void syns_learn( // VECTORIZE
 	for (uint i = syn_idx_start; i < n; i++) {
 		char syn_strength = syn_strengths[i];
 		uchar syn_state = syn_states[i];
-		int is_neg = (syn_strength < 0);
+		int is_neg = (syn_strength < 0); // NEGATIVE STRENGTH SYNAPSES GET A BONUS
 
 		uchar rnd_char = (rnd ^ i) & 0x7F;		
 		int inc = (rnd_char > abs(syn_strength));
@@ -77,9 +77,10 @@ static inline void syns_learn( // VECTORIZE
 			event_t async_work_group_copy(__global T *dst, const __local T *src, size_t num_elements, event_t event)
 			void wait_group_events (int num_events, event_t *event_list)
 
+*/
 
-
-	COL_SYNS_CYCLE():
+/* 
+COL_SYNS_CYCLE():
 		number of source rows can not exceed: 
 			ROWS * (SYNAPSES_PER_CELL_PROXIMAL + SYNAPSE_WORKGROUP_SIZE)
 
@@ -488,7 +489,7 @@ __kernel void syns_regrow(
 
 	//uchar rnd_row_id = 0;
 
-	if (syn_strength > -50) {
+	if (syn_strength > SYNAPSE_STRENGTH_FLOOR) {
 		return;
 	} else {
 		char rnd_col_ofs = ((rnd ^ ((syn_idx << 5) ^ (syn_idx >> 3))) & 0xFF);

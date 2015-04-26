@@ -1,0 +1,22 @@
+weird bug hunt: Every-256 bug
+
+
+Initializing Cortex... 
+ 	Finalize: adding cell type: 'Pyramidal', len: 4, base_cel_row: 4
+ 	Finalize: adding cell type: 'SpinyStellate', len: 1, base_cel_row: 8
+ 	Finalize: adding layer: post_thal, kind: Axon, base_row_id: 2
+ 	Finalize: adding layer: out, kind: Axon, base_row_id: 3
+ 	Finalize: adding layer: iii, kind: Pyramidal, base_row_id: 4
+ 	Finalize: adding layer: pre_thal, kind: Axon, base_row_id: 0
+ 	Finalize: adding layer: thal, kind: Axon, base_row_id: 1
+ 	Finalize: adding layer: iv, kind: SpinyStellate, base_row_id: 8
+Layer: "iii" (Distal): row_ids: [4, 5, 6, 7], src_row_ids: [8]
+   Row 0: ei_start: 0, ei_end: 1048576, src_row_ids: [8]
+   Row 1: ei_start: 1048576, ei_end: 2097152, src_row_ids: [8]
+   Row 2: ei_start: 2097152, ei_end: 3145728, src_row_ids: [8]
+   Row 3: ei_start: 3145728, ei_end: 4194304, src_row_ids: [8]
+syns_per_den_l2 = 6
+
+
+pyrs.states: [4096/256;[1,255]]: [2304:246][2560:255][2816:243][3072:226][3328:255][3584:255][3840:255]
+

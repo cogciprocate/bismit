@@ -97,8 +97,7 @@ pub const AXONS_MARGIN: usize = 128;
 pub const DST_DEN_BOOST_LOG2: u8 = 0;
 pub const PRX_DEN_BOOST_LOG2: u8 = 0;
 
-pub const SYNAPSE_DECAY_INTERVAL: usize = 256 * 64;
- 
+
 pub const SYNAPSES_WORKGROUP_SIZE: u32 = 256;
 pub const AXONS_WORKGROUP_SIZE: u32 = 256;
 
@@ -117,6 +116,9 @@ pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 550;
 pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 1080;
 
+pub const SYNAPSE_STRENGTH_FLOOR: i8 = -40;
+pub const SYNAPSE_DECAY_INTERVAL: usize = 256 * 2;
+
 pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
 pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;
 
@@ -133,18 +135,19 @@ pub fn build_options() -> String {
 	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);
 
 	BuildOptions::new(CL_BUILD_OPTIONS)
-		.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as usize)
-		.opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR)
-		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2)
-		.opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as usize)
-		.opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as usize)
-		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as usize)
-		.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as usize)
-		.opt("SYNAPSE_REACH", SYNAPSE_REACH as usize)
-		.opt("ASPINY_REACH", ASPINY_REACH as usize)
-		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as usize)
-		.opt("ASPINY_SPAN", ASPINY_SPAN as usize)
-		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as usize)
+		.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
+		.opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32)
+		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
+		.opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
+		.opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
+		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)
+		.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
+		.opt("SYNAPSE_REACH", SYNAPSE_REACH as i32)
+		.opt("ASPINY_REACH", ASPINY_REACH as i32)
+		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
+		.opt("ASPINY_SPAN", ASPINY_SPAN as i32)
+		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
+		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
 		.to_string()
 }
 
@@ -169,7 +172,7 @@ impl BuildOptions {
 		self
 	}
 
-	pub fn opt(mut self, name: &'static str, val: usize) -> BuildOptions {
+	pub fn opt(mut self, name: &'static str, val: i32) -> BuildOptions {
 		self.options.push(BuildOption::new(name, val));
 		self
 	}
@@ -192,12 +195,12 @@ impl BuildOptions {
 
 pub struct BuildOption {
 	name: &'static str,
-	val: usize,
+	val: i32,
 	string: String,
 }
 
 impl BuildOption {
-	pub fn new(name: &'static str, val: usize) -> BuildOption {
+	pub fn new(name: &'static str, val: i32) -> BuildOption {
 		BuildOption {
 			name: name,
 			val: val,

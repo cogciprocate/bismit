@@ -6,7 +6,6 @@ use common;
 use chord::{ Chord };
 use envoy::{ Envoy };
 //use axn_space::{ AxonSpace };
-
 use microcosm::entity::{ EntityBody, EntityKind, EntityBrain, Mobile };
 use microcosm::worm::{ WormBrain };
 use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
@@ -14,6 +13,7 @@ use microcosm::world::{ World };
 
 
 use std::default::Default;
+use std::iter;
 //use std::num::{ NumCast, FromPrimitive, ToPrimitive };
 use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use std::fmt::{ Display };
@@ -22,89 +22,21 @@ use std::io::{ self, Write };
 use std::borrow::{ Borrow };
 use time;
 
-
 pub const TEST_ITERATIONS: i32 			= 10; 
 pub const PRINT_EVERY: i32 				= 400;
-
 pub const SHUFFLE_ONCE: bool 			= true;
 pub const SHUFFLE_EVERY: bool 			= false;
 
 
 pub fn test_cycle() -> bool {
+	//let mut vec1: Vec<ocl::cl_uchar> = Vec::with_capacity(common::SENSORY_CHORD_WIDTH as usize);
+	let sc_width = common::SENSORY_CHORD_WIDTH;
+
+	let mut vec1: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_width as usize).collect();
+	
 	let mut cortex = cortex::Cortex::new();
 
-	//let vv1 = common::sparse_vec(2048, -128i8, 127i8, 6);
-	//common::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
-
-	//let mut vec1: Vec<i8> = common::shuffled_vec(1024, 0, 127);
-	//let mut vec1: Vec<i8> = common::sparse_vec(2048, -128i8, 127i8, 8);
-
-	//common::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
-	let time_start = time::get_time();
-	let scw = common::SENSORY_CHORD_WIDTH;
-	let scl_fct_log2 = common::log2(scw / 1024);
-
-	//print!("\n*********** scl_fct: {}", scl_fct);
-	//print!("\n*********** common::log2(sct_fct): {}", common::log2(scl_fct));
-
-	let mut vec1: Vec<ocl::cl_uchar> = Vec::with_capacity(scw as usize);
-	/*for i in range(0, scw) {
-		if i < scw >> 1 {
-			vec1.push(64i8);
-		} else {
-			vec1.push(0i8);
-		}
-	}*/
-
-	let scw_1_2 = scw >> 1;
-
-	let scw_1_4 = scw >> 2;
-	let scw_3_4 = scw - scw_1_4;
-
-	let scw_1_8 = scw >> 3;
-	let scw_3_8 = scw_1_2 - scw_1_8;
-	let scw_5_8 = scw_1_2 + scw_1_8;
-
-	let scw_1_16 = scw >> 4;
-
-	//println!("***** scw_1_4: {}, scw_3_4: {}", scw_1_4, scw_3_4);
-	for i in 0..scw {
-		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
-		//if i >= scw_3_8 && i < scw_5_8 {
-			vec1.push(0);
-		} else {
-			vec1.push(0);
-		}
-	}
-
-	cortex.write_vec(0, "pre_thal", &mut vec1);
-	cortex.write_vec(0, "post_thal", &mut vec1);
-
-
-	vec1.clear();
-	for i in 0..scw {
-		if i >= scw_1_2 - (scw_1_16 / 2) && i < scw_1_2 + (scw_1_16 / 2) {
-		//if ((i >= scw_1_4 - scw_1_16) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4 + scw_1_16)) {
-		//if i >= scw_3_8 && i < scw_5_8 {
-		//if (i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16) || (i < scw_1_16) || (i >= (scw - scw_1_16)) {
-		//if i >= scw_3_8 && i < scw_5_8 {
-		//if i < scw_1_16 {
-			vec1.push(254);
-		} else {
-			vec1.push(0);
-		}
-	}
-
-
-
-	/*if SHUFFLE_ONCE {
-		common::shuffle_vec(&mut vec1);
-		//chord1 = Chord::from_vec(&vec1);
-	}*/
-
-
-
-	let mut world: World = World::new(common::SENSORY_CHORD_WIDTH);
+	let mut world: World = World::new(sc_width);
 
 	let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
 
@@ -145,6 +77,7 @@ pub fn test_cycle() -> bool {
 	/*cortex.sense_vec(0, "pre-thal", &mut vec1);
 	cortex.sense_vec(0, "post-thal", &mut vec1);*/
 	
+	println!("\n### vec1.len(): {}", vec1.len());
 	
 	/*for x in chord1.chord.iter() {
 		print!("{:?}",x);
@@ -219,7 +152,6 @@ pub fn test_cycle() -> bool {
 
 				if false {
 					print!("\nREGION OUTPUT: cells.axns.states: ");
-					//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
 					cortex.cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cells.cols.axn_output_range()), true);
 				}
 				if false {
@@ -263,7 +195,7 @@ pub fn test_cycle() -> bool {
 			/* INITIAL AXON STATES */
 			if false {
 				println!("\naxns.states: ");
-				cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2), None);
+				cortex.cells.axns.states.print_val_range(1, None);
 			}
 
 			
@@ -294,7 +226,7 @@ pub fn test_cycle() -> bool {
 				cortex.cells.cols.syns.src_col_offs.print(1 << 14, None, None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
-			if false {
+			if true {
 				print!("\ncols.syns.strengths:");
 				cortex.cells.cols.syns.strengths.print(1 << 14, None, None, true);
 			}
@@ -309,7 +241,7 @@ pub fn test_cycle() -> bool {
 				cortex.cells.pyrs.dens.syns.src_col_offs.print(1 << 14, None, None, true);
 				//cortex.cells.cols.syns.states.print((1 << 8) as usize, None, None);
 			}
-			if false {
+			if true {
 				print!("\npyrs.dens.syns.strengths:");
 				cortex.cells.pyrs.dens.syns.strengths.print(1 << 19, None, None, true);
 			}
@@ -377,7 +309,6 @@ pub fn test_cycle() -> bool {
 			/* AXON STATES */
 			if false {
 				print!("\naxns.states: ");
-				//cortex.cells.axns.states.print_val_range(1 << (0 + scl_fct_log2) as usize , 1, 63);
 				cortex.cells.axns.states.print((1 << 4) as usize, Some((1, 255)), None, true);
 
 			}
@@ -423,7 +354,8 @@ pub fn test_cycle() -> bool {
 }
 
 fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>) {
-	world.entities().get_mut(ent_uid).turn(0.0009765f32);
+	//assert!(
+	world.entities().get_mut(ent_uid).turn((3f32/common::SENSORY_CHORD_WIDTH as f32));
 	world.peek_from(ent_uid).unfold_into(vec, 0);
 }
 
@@ -441,6 +373,89 @@ fn rin(prompt: String) -> String {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+fn old_vec_init_stuff() {
+
+	//let vv1 = common::sparse_vec(2048, -128i8, 127i8, 6);
+	//common::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
+
+	//let mut vec1: Vec<i8> = common::shuffled_vec(1024, 0, 127);
+	//let mut vec1: Vec<i8> = common::sparse_vec(2048, -128i8, 127i8, 8);
+
+	//common::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
+	let time_start = time::get_time();
+	let scw = common::SENSORY_CHORD_WIDTH;
+	let scl_fct_log2 = common::log2(scw / 1024);
+
+	//print!("\n*********** scl_fct: {}", scl_fct);
+	//print!("\n*********** common::log2(sct_fct): {}", common::log2(scl_fct));
+
+	let mut vec1: Vec<ocl::cl_uchar> = Vec::with_capacity(scw as usize);
+	/*for i in range(0, scw) {
+		if i < scw >> 1 {
+			vec1.push(64i8);
+		} else {
+			vec1.push(0i8);
+		}
+	}*/
+
+	let scw_1_2 = scw >> 1;
+
+	let scw_1_4 = scw >> 2;
+	let scw_3_4 = scw - scw_1_4;
+
+	let scw_1_8 = scw >> 3;
+	let scw_3_8 = scw_1_2 - scw_1_8;
+	let scw_5_8 = scw_1_2 + scw_1_8;
+
+	let scw_1_16 = scw >> 4;
+
+	//println!("***** scw_1_4: {}, scw_3_4: {}", scw_1_4, scw_3_4);
+	for i in 0..scw {
+		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
+		//if i >= scw_3_8 && i < scw_5_8 {
+			vec1.push(0);
+		} else {
+			vec1.push(0);
+		}
+	}
+
+	//cortex.write_vec(0, "pre_thal", &mut vec1);
+	//cortex.write_vec(0, "post_thal", &mut vec1);
+
+
+	vec1.clear();
+	for i in 0..scw {
+		if i >= scw_1_2 - (scw_1_16 / 2) && i < scw_1_2 + (scw_1_16 / 2) {
+		//if ((i >= scw_1_4 - scw_1_16) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4 + scw_1_16)) {
+		//if i >= scw_3_8 && i < scw_5_8 {
+		//if (i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16) || (i < scw_1_16) || (i >= (scw - scw_1_16)) {
+		//if i >= scw_3_8 && i < scw_5_8 {
+		//if i < scw_1_16 {
+			vec1.push(254);
+		} else {
+			vec1.push(0);
+		}
+	}
+
+
+
+	/*if SHUFFLE_ONCE {
+		common::shuffle_vec(&mut vec1);
+		//chord1 = Chord::from_vec(&vec1);
+	}*/
+
+}
 
 
 

@@ -23,9 +23,9 @@ pub fn define_regions() -> CorticalRegions {
 	let mut cort_regs: CorticalRegions = CorticalRegions::new();
 
 	let mut sen = CorticalRegion::new(CorticalRegionKind::Sensory)
-		.layer("pre_thal", 1, layer::DEFAULT, None)
+		//.layer("pre_thal", 1, layer::DEFAULT, None)
 		.layer("thal", 1, layer::DEFAULT, None)
-		.layer("post_thal", 1, layer::DEFAULT, None)
+		//.layer("post_thal", 1, layer::DEFAULT, None)
 		.layer("out", 1, layer::COLUMN_OUTPUT, None)
 		//.layer("test_2", 1, None);
 		//.layer("inhib_tmp", 1, None);
@@ -93,6 +93,13 @@ impl Cortex {
 	}
 
 	pub fn write_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
+
+		/* 
+			TODO: VALIDATE "layer_target, OTHERWISE: 
+				thread '<main>' panicked at '[cortical_regions::CorticalRegion::index(): 
+				invalid layer name: "pre_thal"]', src/cortical_regions.rs:339
+		*/
+
 		let axn_row = self.regions[&CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
 		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
 		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
