@@ -26,12 +26,18 @@ impl Protocell {
 		}
 	}
 
-	pub fn new_pyramidal(dst_srcs: Vec<&'static str>, prx_src: &'static str) -> Option<Protocell> {
-
+	/* NEW_PYRAMIDAL(): 
+		- get rid of proximal source (maybe)
+	*/
+	pub fn new_pyramidal(
+					dst_srcs: Vec<&'static str>,
+					//prx_src: &'static str,
+	) -> Option<Protocell> {
 		Some(Protocell {
 			cell_kind: CellKind::Pyramidal,
 			den_dst_srcs: Some(dst_srcs),
-			den_prx_srcs: Some(vec![prx_src]),
+			den_prx_srcs: None,
+			//den_prx_srcs: Some(vec![prx_src]),
 			//flags: flags,
 		})
 	}

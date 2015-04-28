@@ -31,7 +31,7 @@ static inline void syns_learn( // VECTORIZE
 	for (uint i = syn_idx_start; i < n; i++) {
 		char syn_strength = syn_strengths[i];
 		uchar syn_state = syn_states[i];
-		int is_neg = (syn_strength < 0); // NEGATIVE STRENGTH SYNAPSES GET A BONUS
+		//int is_neg = (syn_strength < 0);	// NEGATIVE STRENGTH SYNAPSES GET A BONUS (LOOKS LIKE THIS MAY BE NO BUENO)
 
 		uchar rnd_char = (rnd ^ i) & 0x7F;		
 		int inc = (rnd_char > abs(syn_strength));
@@ -39,7 +39,8 @@ static inline void syns_learn( // VECTORIZE
 		if (syn_state == 0) {
 			syn_strength -= inc;
 		} else {
-			syn_strength += (inc + is_neg);
+			//syn_strength += (inc + is_neg);	// NEGATIVE STRENGTH SYNAPSES GET A BONUS (COMMENT OUT BELOW IF USING)
+			syn_strength += inc;
 		}
 
 		syn_strengths[i] = syn_strength;
@@ -48,8 +49,6 @@ static inline void syns_learn( // VECTORIZE
 
 	}
 }
-
-
 
 
 /*=============================================================================
@@ -64,9 +63,6 @@ static inline void syns_learn( // VECTORIZE
 =============================================================================*/
 
 
-
-
-
 /*
 	GENERAL OPTIMIZATION TODO:
 		- Vectorize (pretty much everywhere)
@@ -77,7 +73,12 @@ static inline void syns_learn( // VECTORIZE
 			event_t async_work_group_copy(__global T *dst, const __local T *src, size_t num_elements, event_t event)
 			void wait_group_events (int num_events, event_t *event_list)
 
+	CLEAN UP:
+		- One day soon this beast of a .cl file will be split up.
+
 */
+
+
 
 /* 
 COL_SYNS_CYCLE():
@@ -89,12 +90,12 @@ COL_SYNS_CYCLE():
 		- Col Inputs/Outputs probably need to be limited to one row.
 
 	WATCH OUT FOR:
-		- Bank conflicts once src_col_offs start to change
+		- Bank conflicts once src_col_x_offs start to change
 */
 //	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
 __kernel void syns_cycle(
 	__global const uchar* const axn_states,
-	__global const char* const syn_src_col_offs,
+	__global const char* const syn_src_col_x_offs,
 	__global const uchar* const syn_src_row_ids,
 	//__global const char* const syn_strengths,
 	__private uint const syns_per_cell_l2,
@@ -118,7 +119,7 @@ __kernel void syns_cycle(
 	for (uint syn_idx = init_syn_idx; syn_idx < syn_n; syn_idx += wg_size) {
 		syn_col_i -= mul24(syn_row_width, (uint)(syn_col_i >= syn_row_width));
 		uint col_pos = syn_col_i >> syns_per_cell_l2;
-		uint axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(col_pos + syn_src_col_offs[syn_idx] + SYNAPSE_REACH));
+		uint axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(col_pos + syn_src_col_x_offs[syn_idx] + SYNAPSE_REACH));
 		uchar axn_state = axn_states[axn_idx];
 
 		
@@ -187,7 +188,7 @@ __kernel void den_cycle(
 }
 
 
-__kernel void aspiny_cycle_pre(
+__kernel void peak_col_cycle_pre(
 	__global const uchar* const col_states,
 	__global uchar* const asp_states,
 	__global uchar* const asp_col_ids
@@ -240,11 +241,11 @@ TODO:
 FUTURE IMPROVEMENTS:
 	- MOVE TO 3D (2D INPUT SPACE)
 		- USE 4X4 PRIMARY GRID AND 4X4 (16X16) PERIPH
-			- MUST WIN 13/16 OR SOMETHING TO SURVIVE
+			- MUST WIN 13/16 (?) TO SURVIVE
 		- OR USE 4X4 PRIMARY AND 3X3 (12X12) PERIPH
 			- MUST WIN 10/12
 */
-__kernel void aspiny_cycle_wins(
+__kernel void peak_col_cycle_wins(
 	__global uchar* const asp_states,
 	__global uchar* const asp_wins
 ) {
@@ -295,7 +296,7 @@ __kernel void aspiny_cycle_wins(
 }
 
 
-__kernel void aspiny_cycle_post(
+__kernel void peak_col_cycle_post(
 	__global uchar* const asp_wins,
 	//__global uchar* const asp_col_ids,
 	__global uchar* const asp_states
@@ -352,32 +353,32 @@ __kernel void col_post_inhib_unoptd (
 __kernel void pyr_activate(
 				__global const uchar* const col_states,
 				__global const uchar* const col_cels_status,
-				__private uchar const axn_row_base,
+				__private uchar const pyr_axn_row_base,
 				__global int* const aux_ints_0,
-				__global uchar* const pyr_states,	
+				__global uchar* const pyr_depols,	
 				__global uchar* const axn_states
 ) {
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
 	uint const pyr_idx = mad24(row_id, row_width, col_id);
-	uint const axn_idx = mad24(axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
+	uint const axn_idx = mad24(pyr_axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
 
 	uchar const col_state = col_states[col_id];
 	uchar const cc_status = col_cels_status[col_id];
-	uchar pyr_state = pyr_states[pyr_idx];
+	uchar pyr_depol = pyr_depols[pyr_idx];
 
-	int corr_pred = (pyr_state && col_state);
+	int corr_pred = (pyr_depol && col_state);
 	int anomaly = ((col_state != 0) && (cc_status == 0));
 
-	pyr_state = ((corr_pred != 0) || (anomaly != 0)) && (col_state != 0);
-	//pyr_state = (corr_pred | anomaly) && (col_state);
-	//pyr_state = mul24(((corr_pred != 0) || (anomaly != 0)), col_state);
+	pyr_depol = ((corr_pred != 0) || (anomaly != 0)) && (col_state != 0);
+	//pyr_depol = (corr_pred | anomaly) && (col_state);
+	//pyr_depol = mul24(((corr_pred != 0) || (anomaly != 0)), col_state);
 	
-	//axn_states[axn_idx] = pyr_state;
-	pyr_states[pyr_idx] = pyr_state;
+	axn_states[axn_idx] = pyr_depol;
+	//pyr_depols[pyr_idx] = pyr_depol;
 	//aux_ints_0[pyr_idx] = 5;
-	//aux_ints_0[pyr_idx] = pyr_state;
+	//aux_ints_0[pyr_idx] = pyr_depol;
 }
 
 
@@ -414,14 +415,16 @@ __kernel void col_learn(
 
 
 /* NEEDS RESTRUCTURING AND OPTIMIZATION */
-__kernel void cels_learn_unoptd(
-	__global const uchar* const cel_states,
-	__global const uchar* const cel_best_den_ids,
+__kernel void pyrs_learn_unoptd(
+	__global const uchar* const axn_states,
+	//__global const uchar* const pyr_depols,
+	__global const uchar* const pyr_best_den_ids,
 	__global const uchar* const den_states,
 	__global const uchar* const syn_states,
+	__private uint const pyr_axn_idx_base, 
 	__private uint const syns_per_den_l2,
-	__private uint const dens_per_cel_l2,
-	__private uint const cels_per_grp,
+	__private uint const dens_per_pyr_l2,
+	__private uint const pyrs_per_grp,
 	__private uint const rnd,
 	//__global int* const aux_ints_1,
 	__global char* const syn_strengths
@@ -429,29 +432,35 @@ __kernel void cels_learn_unoptd(
 	uint const row_id = get_global_id(0);
 	uint const col_grp_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
-	uint const cel_grp_id = mad24(row_id, row_width, col_grp_id);
-	//uint const den_ofs = cel_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
+	uint const pyr_grp_id = mad24(row_id, row_width, col_grp_id);
+	//uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
 
-	uint const cel_idx_init = mul24(cel_grp_id, cels_per_grp);
-	uint const cel_idx_n = cel_idx_init + cels_per_grp;
+	//uint const axn_idx_base = mad24(pyr_axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
+
+	uint const pyr_axn_idx_init = mul24(pyr_grp_id, pyrs_per_grp);
+	uint const pyr_axn_idx_n = pyr_axn_idx_init + pyrs_per_grp;	
+
+	//uint const pyr_idx_init = mul24(pyr_grp_id, pyrs_per_grp);
+	//uint const pyr_idx_n = pyr_idx_init + pyrs_per_grp;
 
 	//uint debug_output = 0;
  
-	for (int c = cel_idx_init; c < cel_idx_n; c++) {
-		if (cel_states[c] == 0) {
+	for (int c = pyr_axn_idx_init; c < pyr_axn_idx_n; c++) {
+		if (axn_states[c + pyr_axn_idx_base] == 0) {
 			continue;
 		} else {
-			uint den_idx_init = (c << dens_per_cel_l2);
-			uint syn_idx = ((den_idx_init + cel_best_den_ids[c]) << syns_per_den_l2);
+			uint den_idx_init = (c << dens_per_pyr_l2);
+			uint syn_idx = ((den_idx_init + pyr_best_den_ids[c]) << syns_per_den_l2);
 			syns_learn(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
 		}
 	}
 }
 
+
 /* SYNS_REGROW()
 
 	- [done] check for dead synapses (syn_strength < 127)
-	- [partial] replace with new random src_col_offs and src_row_id
+	- [partial] replace with new random src_col_x_offs and src_row_id
 	- [partial] scan through synapses on that dendrite to check for duplicates
 	- [changed] repeat if duplicate found
 	- [done] abort if duplicate found
@@ -470,14 +479,13 @@ __kernel void cels_learn_unoptd(
 		- move this to a dendrite controlled kernel (den_regrow()?) and process
 			a whole dendrite for each work item (possibly even a whole cell 
 			later)
-
 */
 __kernel void syns_regrow(
 	__global char* const syn_strengths,
 	__private uint const syns_per_den_l2,
 	__private uint const rnd,
 	__global int* const aux_ints_1,
-	__global char* const syn_src_col_offs,
+	__global char* const syn_src_col_x_offs,
 	__global uchar* const syn_src_row_ids
 ) {
 	uint const row_id = get_global_id(0);
@@ -501,7 +509,7 @@ __kernel void syns_regrow(
 		uint n = base_syn_idx + (1 << syns_per_den_l2);
 
 		for (uint i = base_syn_idx; i < n; i++) {
-			int dup = (rnd_col_ofs == syn_src_col_offs[syn_idx]);		// ADD && ROW CHECK
+			int dup = (rnd_col_ofs == syn_src_col_x_offs[syn_idx]);		// ADD && ROW CHECK
 			//int dup_row = ^^^^^^
 
 			if (!dup) {
@@ -515,7 +523,7 @@ __kernel void syns_regrow(
 		}
 
 		syn_strengths[syn_idx] = 0;	
-		syn_src_col_offs[syn_idx] = rnd_col_ofs;
+		syn_src_col_x_offs[syn_idx] = rnd_col_ofs;
 		//syn_src_row_ids[syn_idx] =
 
 			//aux_ints_1[syn_idx] = syn_strength;
@@ -523,7 +531,7 @@ __kernel void syns_regrow(
 
 	
 	/*int dead_syn = (syn_strength <= -100);
-	syn_src_col_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
+	syn_src_col_x_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
 	syn_strengths[syn_idx] = mul24(!(dead_syn), (int)syn_strength);*/
 
 	//syn_src_row_ids[syn_idx] =
@@ -531,20 +539,23 @@ __kernel void syns_regrow(
 }
 
 
+/*	PYR_CYCLE():
 
+		- Vectorize
+*/
 __kernel void pyr_cycle(
 				__global const uchar* const den_states,
-				__private uchar const axn_row_base,
+				//__private uchar const pyr_axn_row_base,
 				__global uchar* const pyr_best_dens,
-				__global uchar* const pyr_states,
-				__global uchar* const axn_states
+				__global uchar* const pyr_depols
+				//__global uchar* const axn_states
 ) {
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
 	uint const cel_idx = mad24(row_id, row_width, col_id);
 	uint const den_ofs = cel_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
-	uint const axn_idx = mad24(axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
+	//uint const axn_idx = mad24(pyr_axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
 
 	uint den_sum = 0;
 
@@ -552,20 +563,16 @@ __kernel void pyr_cycle(
 	uchar best_den_id = 0;
 	//int active_dendrites = 0;
 
-	//uint pyr_state = pyr_states[cel_idx];
+	//uint pyr_depol = pyr_depols[cel_idx];
 
 		//#pragma unroll 
 	for (uchar i = 0; i < DENDRITES_PER_CELL_DISTAL; i++) {
 		uchar den_state = den_states[den_ofs + i];
-
-		/*if (den_state > best_den_state) {
-			best_den_id = i;
-			best_den_state = den_state;
-
-		}*/
 		int den_state_biggest = (den_state > best_den_state);
-		best_den_id = mul24(den_state_biggest, i);
-		best_den_state = mul24(den_state_biggest, den_state);
+
+		best_den_id = mad24(den_state_biggest, i, mul24(!den_state_biggest, best_den_id));
+		best_den_state = mad24(den_state_biggest, den_state, mul24(!den_state_biggest, best_den_state));
+		//best_den_state = mul24(den_state_biggest, den_state);
 
 		den_sum += den_state;
 		//den_sum += (den_state != 0);
@@ -576,25 +583,26 @@ __kernel void pyr_cycle(
 	//den_sum = den_sum >> 2;
 
 	pyr_best_dens[cel_idx] = best_den_id;
-	pyr_states[cel_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
-	axn_states[axn_idx] = clamp(den_sum, 0u, 255u);
+	pyr_depols[cel_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
+	//axn_states[axn_idx] = clamp(den_sum, 0u, 255u);
 
-	//pyr_states[cel_idx] = clamp(den_sum, 0, 127);
+	//pyr_depols[cel_idx] = clamp(den_sum, 0, 127);
 
-	//pyr_states[cel_idx] = (den_sum >> 1);
-	//pyr_states[cel_idx] = active_dendrites;
+	//pyr_depols[cel_idx] = (den_sum >> 1);
+	//pyr_depols[cel_idx] = active_dendrites;
 }
 
 
-
-
+/*	COL_OUTPUT()
+		- rename coming
+*/
 __kernel void col_output(
 				__global const uchar* const col_states,	// CONVERT TO READING FROM AXON
-				__global const uchar* const pyr_states,	// CONVERT TO READING FROM AXON
+				__global const uchar* const pyr_depols,	// CONVERT TO READING FROM AXON
 				//__private uchar const col_row_count,
 				__private uchar const pyr_depth,
-				__private uchar const pyr_axn_base_row,
-				__private uchar const axn_row_output,
+				//__private uchar const pyr_axn_base_row,
+				__private uchar const output_axn_row,
 				//__private uchar const pyr_base_row,
 				__global uchar* const col_cels_status,
 				__global uchar* const axn_states
@@ -603,8 +611,8 @@ __kernel void col_output(
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
-	//uint const axn_idx_output = mad24(axn_row_output, row_width, col_id + (uint)SYNAPSE_REACH);
-	uint const axn_idx_output = axn_idx_wrap_2d(axn_row_output, col_id);
+	uint const output_axn_idx = mad24(output_axn_row + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
+	//uint const axn_idx_output = axn_idx_wrap_2d(axn_row_output, col_id);
 	uint const col_idx = mad24(row_id, row_width, col_id);
 
 	int col_state = col_states[col_idx];
@@ -614,7 +622,7 @@ __kernel void col_output(
 		uint pyr_idx = mad24(i, row_width, col_id);			// v.N3
 		//uint axn_idx_pyr = mad24(pyr_axn_base_row + i, row_width, col_id + (uint)SYNAPSE_REACH); 	// v.N1
 		
-		output_total = max(output_total, (int)pyr_states[pyr_idx]);		// v.N3
+		output_total = max(output_total, (int)pyr_depols[pyr_idx]);		// v.N3
 		//output_total += axn_states[axn_idx_pyr];							// v.N2
 		//output_total = max(output_total, (int)axn_states[axn_idx_pyr]); 	// v.N1
 		
@@ -623,9 +631,9 @@ __kernel void col_output(
 
 	output_total = clamp(output_total, 0, 255);
 
-	col_cels_status[col_idx] = output_total;
 
-	axn_states[axn_idx_output] = clamp(output_total + col_state, 0, 255); 			// v.N2
+	col_cels_status[col_idx] = clamp(output_total, 0, 255);
+	axn_states[output_axn_idx] = clamp(output_total + col_state, 0, 255); 			// v.N2
 	//axn_states[axn_idx_output] = clamp(max(output_total, col_state), 0, 255); 	// v.N1
 	//axn_states[axn_idx_output] = clamp((output_total), 0, 255);
 	//axn_states[axn_idx] = test;
@@ -642,7 +650,7 @@ __kernel void col_output(
 ===============================================================================
 ===============================================================================
 ===============================================================================
-===============================================================================
+=============================== SCRAPS BELOW ==================================
 ===============================================================================
 ===============================================================================
 ===============================================================================
@@ -659,7 +667,7 @@ __kernel void col_output(
 	OPTIMIZE FOR WORKGROUP
 	VECTORIZE
 */
-__kernel void den_dist_cycle_unused(
+__kernel void den_dist_cycle_unused_old(
 	__global const uchar* const syn_states,
 	__private uint const syns_per_den_l2,
 	__global uchar* const den_states

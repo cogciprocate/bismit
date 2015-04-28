@@ -48,7 +48,7 @@ impl Columns {
 		//let syns_per_cel: u32 = 1 << syns_per_cel_l2;
 
 		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidal);
-		let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC PYR LAYERS 
+		//let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let states_raw = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
@@ -83,10 +83,10 @@ impl Columns {
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(depth as usize, width as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&states)
-			.arg_env(&pyrs.states)
+			.arg_env(&pyrs.depols)
 			//.arg_scl(depth)
 			.arg_scl(pyr_depth)
-			.arg_scl(pyr_axn_base_row)
+			//.arg_scl(pyr_axn_base_row)
 			.arg_scl(axn_output_row)
 			.arg_env(&cels_status)
 			.arg_env(&axons.states)

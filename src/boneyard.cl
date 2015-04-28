@@ -918,7 +918,7 @@ __kernel void test_cell_axn_stable(__global uchar *axn, __global uchar *ax_out) 
 
 
 
-Bullshit Below
+// Bullshit Below
 
 	__kernel void read_char_array(__global uchar *values, __global uchar *output) {
 		int gid = get_global_id(0);
@@ -1004,7 +1004,7 @@ Bullshit Below
 	/*
 		LET'S AVERAGE THE SYNAPSES FOR ALL THE DENDRITES AND BOOST THE TOP 10 - 40%
 		BETTER YET: FIND THE BEST DENDRITES AND BOOST THE TOP SYNAPSES JUST FOR THEM
-		BETTER YET: COME UP WITH MULTIPLE STRATEGIES FOR BOOSTING STRENGTHS AND TRY THEM ALL OUT
+		EVEN BETTER YET: COME UP WITH MULTIPLE STRATEGIES FOR BOOSTING STRENGTHS AND TRY THEM ALL OUT
 		DON'T BOOST MORE THAN PROBABLY 3 - 6 SYNAPSES
 	*/
 
@@ -1504,4 +1504,4 @@ __kernel void hello(__global float *input, __global float *output) {
 __kernel void test_int_shift(__global char *test_out, __private char input) {
 	uint gid = get_global_id(0);
 	test_out[gid] = input >> 4;
-}*/
+}

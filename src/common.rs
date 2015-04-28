@@ -1,4 +1,3 @@
-
 use std;
 use num::{ self, Integer, Signed, NumCast, ToPrimitive, FromPrimitive };
 //use std::num::{ NumCast, ToPrimitive, FromPrimitive };
@@ -7,10 +6,27 @@ use std::default::{ Default };
 use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 use std::iter::{ self };
 use std::cmp::{ Ord };
+use std::io::{ self, Write, Stdout };
 use rand;
 use rand::distributions::{ self, Normal, IndependentSample, Range };
 
 use ocl;
+
+
+
+
+/*=============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+========================= YES, IT'S A MESS IN HERE ============================
+===============================================================================
+===============================================================================
+===============================================================================
+=============================================================================*/
+
+
+
 
 pub static C_DEFAULT: &'static str = "\x1b[0m";
 pub static C_DRD: &'static str = "\x1b[31m";
@@ -62,8 +78,12 @@ pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 8;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
+
+/* GET RID OF THIS UNLESS CL NEEDS IT */
 pub const SYNAPSES_PER_CELL_PROXIMAL_LOG2: u32 = DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 pub const SYNAPSES_PER_CELL_PROXIMAL: u32 = 1 << SYNAPSES_PER_CELL_PROXIMAL_LOG2;
+
+
 
 //pub const AXONS_PER_CELL: usize = DENDRITES_PER_CELL * SYNAPSES_PER_DENDRITE;
 //pub const SYNAPSES_PER_CELL: usize = SYNAPSES_PER_DENDRITE * DENDRITES_PER_CELL;
@@ -91,7 +111,7 @@ pub const MOTOR_CHORD_WIDTH: usize = 2;
 
 
 pub const SYNAPSE_REACH: u32 = 128;
-pub const MAX_SYNAPSE_RANGE: u32 = SYNAPSE_REACH * 2;
+pub const SYNAPSE_SPAN: u32 = SYNAPSE_REACH << 1;
 pub const AXONS_MARGIN: usize = 128;
 
 pub const DST_DEN_BOOST_LOG2: u8 = 0;
@@ -123,6 +143,33 @@ pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
 pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;
 
 pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
+
+
+
+pub const SYNAPSE_FLAG_ADD_PENDING_ACTIVATION: u8 = 0b00000001;
+
+
+
+
+
+
+
+/*=============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+=============================================================================*/
+
+
+
+
+
+
 
 
 pub fn build_options() -> String {
@@ -502,6 +549,7 @@ pub fn log2(n: u32) -> u32 {
 
 
 pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(
+			//title: &'static str,
 			ff_vec: &Vec<T>,
 			col_output_vec: &[T],
 			//condense_factor: usize, 
@@ -513,17 +561,21 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 	let cells_per_line = 64;
 	let line_character_width = (cells_per_line * (4 + 4 + 2 + 4 + 4 + 1)) + 8;	// 8 extra for funsies
 
-	println!("\nRendering SDR[{}{}{}]:", C_GRN, ff_vec.len(), C_DEFAULT);
+	//println!("\n[{}{}{}]:", C_GRN, ff_vec.len(), C_DEFAULT);
 
 	let mut line_out: String = String::with_capacity(line_character_width);
-	let mut l_i = 0usize;
+	let mut line_i = 0usize;
+	let mut aux_i = 0usize;
+
+	print!("\n");
+	io::stdout().flush().ok();
 
 	loop {
-		if l_i >= ff_vec.len() { break }
+		if line_i >= ff_vec.len() { break }
 
 		line_out.clear();
 
-		for i in l_i..(l_i + cells_per_line) {
+		for i in line_i..(line_i + cells_per_line) {
 
 			let output_active = col_output_vec[i] != Default::default();
 
@@ -531,7 +583,7 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 			let prediction = col_output_vec[i] != ff_vec[i];
 			let new_prediction = prediction && (!col_active);
 
-			if prediction {
+			if prediction && (!new_prediction) {
 				line_out.push_str(BGC_DGR);
 			} else {
 				line_out.push_str(BGC_DEFAULT);
@@ -552,7 +604,7 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 			if output_active {
 				line_out.push_str(&format!("{:02X}", col_output_vec[i]));
 			} else {
-				if (i & 0x07) == 0 {
+				if (i & 0x07) == 0 || (aux_i & 0x07) == 0 {				// || ((aux_i & 0x0F) == 7) || ((aux_i & 0x0F) == 8)
 					line_out.push_str("  ");
 				} else {
 					line_out.push_str("--");
@@ -566,7 +618,8 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 
 		println!("{}",line_out);
 
-		l_i += cells_per_line;
+		line_i += cells_per_line;
+		aux_i += 1;
 	}
 
 }

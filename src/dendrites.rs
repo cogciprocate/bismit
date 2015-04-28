@@ -66,7 +66,7 @@ impl Dendrites {
 		let syns = Synapses::new(width, depth, per_cell_l2 + syns_per_den_l2, syns_per_den_l2, den_kind, cell_kind, region, axons, aux, ocl);
 
 
-		println!("\nsyns_per_den_l2 = {}", syns_per_den_l2);
+		//println!("\nsyns_per_den_l2 = {}", syns_per_den_l2);
 		let kern_cycle = ocl.new_kernel(den_kernel, WorkSize::TwoDim(depth as usize, width_dens as usize))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)

@@ -43,21 +43,21 @@ impl PeakColumn {
 		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, 0u8, ocl);
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, common::STATE_ZERO, ocl);
 
-		let mut kern_cycle_pre = ocl.new_kernel("aspiny_cycle_pre", 
+		let mut kern_cycle_pre = ocl.new_kernel("peak_col_cycle_pre", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&src_states)
 			.arg_env(&states)
 			.arg_env(&col_ids)
 		;
 
-		let mut kern_cycle_wins = ocl.new_kernel("aspiny_cycle_wins", 
+		let mut kern_cycle_wins = ocl.new_kernel("peak_col_cycle_wins", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&states)
 			//.arg_env(&col_ids)
 			.arg_env(&wins)
 		;
 
-		let mut kern_cycle_post = ocl.new_kernel("aspiny_cycle_post", 
+		let mut kern_cycle_post = ocl.new_kernel("peak_col_cycle_post", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&wins)
 			//.arg_env(&col_ids)
@@ -83,10 +83,7 @@ impl PeakColumn {
 		//println!("\n### New aspiny.cycle() iteration: ###");
 
 		for i in 0..8 {
-			//event = self.cycle_wins(event);
 			self.kern_cycle_wins.enqueue();
-			//print!("\nasps.wins:");
-			//self.wins.print_simple();
 		}
 
 		self.kern_cycle_post.enqueue();

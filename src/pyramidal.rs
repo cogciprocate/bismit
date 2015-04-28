@@ -33,7 +33,7 @@ pub struct Pyramidal {
 	//den_prox_row: u8, 
 	rng: rand::XorShiftRng,
 	regrow_counter: usize,
-	pub states: Envoy<ocl::cl_uchar>,
+	pub depols: Envoy<ocl::cl_uchar>,
 	pub best_den_ids: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
 }
@@ -50,31 +50,26 @@ impl Pyramidal {
 		
 		//print!("\n### Pyramidal: Proximal Dendrite Row: {}", den_prox_row);
 
-		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
+		let depols = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 
 		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 
 		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidal, dens_per_cel_l2, region, axons, aux, ocl);
 
-		assert!(width % common::MINIMUM_WORKGROUP_SIZE == 0);
-		let cels_per_grp: u32 = width / common::MINIMUM_WORKGROUP_SIZE;
-		println!("\n*** cels_per_grp: {}", cels_per_grp);
-		println!("\n*** pyr_depth: {}", depth);
-
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&dens.states)
-			.arg_scl(axn_row_base)
+			//.arg_scl(axn_row_base)
 			.arg_env(&best_den_ids)
-			.arg_env(&states) 		// v.N1
-			.arg_env(&axons.states)
+			.arg_env(&depols) 		// v.N1
+			//.arg_env(&axons.states)
 		;
 
 		/*let kern_axn_cycle = ocl.new_kernel("pyr_axn_cycle", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_scl(axn_row_base)
-			.arg_env(&states)
+			.arg_env(&depols)
 			.arg_env(&axons.states)
 		;*/
 
@@ -82,12 +77,20 @@ impl Pyramidal {
 			WorkSize::TwoDim(depth as usize, width as usize))
 		;
 
-		let kern_learn = ocl.new_kernel("cels_learn_unoptd", 
+
+		assert!(width % common::MINIMUM_WORKGROUP_SIZE == 0);
+		let cels_per_grp: u32 = width / common::MINIMUM_WORKGROUP_SIZE;
+		let axn_idx_base: u32 = (axn_row_base as u32 * width) + common::SYNAPSE_REACH;
+		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", axn_idx_base);
+
+		let kern_learn = ocl.new_kernel("pyrs_learn_unoptd", 
 			WorkSize::TwoDim(depth as usize, common::MINIMUM_WORKGROUP_SIZE as usize))
-			.arg_env(&states)
+			.arg_env(&axons.states)
+			//.arg_env(&depols)
 			.arg_env(&best_den_ids)
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns.states)
+			.arg_scl(axn_idx_base)
 			.arg_scl(syns_per_cel_l2)
 			.arg_scl(dens_per_cel_l2)
 			.arg_scl(cels_per_grp)
@@ -109,7 +112,7 @@ impl Pyramidal {
 			//den_prox_row: den_prox_row,
 			rng: rand::weak_rng(),
 			regrow_counter: 0usize,
-			states: states,
+			depols: depols,
 			best_den_ids: best_den_ids,
 			dens: dens,
 		}
@@ -120,7 +123,7 @@ impl Pyramidal {
 		self.kern_activate.new_arg_envoy(&cols.cels_status);
 		self.kern_activate.new_arg_scalar(self.axn_row_base);
 		self.kern_activate.new_arg_envoy(&aux.ints_0);
-		self.kern_activate.new_arg_envoy(&self.states);	
+		self.kern_activate.new_arg_envoy(&self.depols);	
 		self.kern_activate.new_arg_envoy(&axns.states);
 	}
 
@@ -144,7 +147,9 @@ impl Pyramidal {
 		//self.kern_axn_cycle.enqueue();
 	}
 
+	pub fn axn_output_range(&self) -> (usize, usize) {
+		let start = (self.axn_row_base as usize * self.width as usize) + common::SYNAPSE_REACH as usize;
+		(start, start + ((self.width * self.depth as u32) - 1) as usize)
+	}
 	
-
-
 }

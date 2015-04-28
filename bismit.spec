@@ -1,4 +1,19 @@
+=== Synapse Pruning and Regrowth ===
+	The "edge" overactivity issue (see written notes 04-26):
+		Synapses near the edge are sometimes being provided excessive stimulus from nearby axonal areas. This stimulus can lead to synapses being trained disproportionately strengthen in response to this. Possibilities to address this include:
+			- Rethinking axon space layout
+			- Cleaning up input to axon space (make sure it is as sparse as it should be)
+			- Providing mechanisms on the distal synaptic side to ensure sporatic intense stimulation isn't given as much weight.
+				- desensitivation / exhaustion
+				- other less "organic" methods (last resort)
+					- dendritic global statistical inhibition
 
+		Rethinking axon space with a bit of cleaning up input seems to be the best approach at this point. Implementing a separate "shared" or "horizontal" space, the width of a synaptic span, would allow inputs to be shared among all cells without regard to spatial concerns. It's not entirely clear how this would or could affect edge problems.
+
+		Somewhat related is the recent consideration of a "flags" vector to store extra information about synapses. Hopefully this will end up being unnecessary for tackling learning but may rear its head again. 
+
+		Mostly unrelated: 
+			- the 2nd (or 3rd depending on how you look at it) spatial vector has been added to the "Synapses" struct and will be integrated soon enough. Inhibition is probably the only major aspect affected by the change from a one dimensional to a two dimensional perspective.
 
 
 === Inhibition Notes ===
