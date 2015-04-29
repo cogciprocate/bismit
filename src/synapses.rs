@@ -1,6 +1,6 @@
 use common;
 use ocl::{ self, Ocl, WorkSize };
-use envoy::{ Envoy };
+use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
 use cortical_regions::{ CorticalRegion, CorticalRegionKind };
 use cortical_region_layer::{ CorticalRegionLayer };
@@ -32,8 +32,8 @@ pub struct Synapses {
 	pub strengths: Envoy<ocl::cl_char>,
 	pub src_row_ids: Envoy<ocl::cl_uchar>,
 	pub src_col_x_offs: Envoy<ocl::cl_char>,
-	pub src_col_y_offs: Envoy<ocl::cl_char>,
-	pub flags: Envoy<ocl::cl_uchar>,
+	//pub src_col_y_offs: Envoy<ocl::cl_char>,
+	//pub flags: Envoy<ocl::cl_uchar>,
 }
 
 impl Synapses {
@@ -99,8 +99,8 @@ impl Synapses {
 			strengths: strengths,
 			src_row_ids: src_row_ids,
 			src_col_x_offs: src_col_x_offs,
-			src_col_y_offs: src_col_y_offs,
-			flags: flags,
+			//src_col_y_offs: src_col_y_offs,
+			//flags: flags,
 		};
 
 		syns.init(region);

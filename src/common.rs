@@ -67,7 +67,7 @@ pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 4;
 pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2;
 
-pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 6;
+pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 5;
 pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 
@@ -75,7 +75,7 @@ pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_
 pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
 pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 8;
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 6;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
 
@@ -550,7 +550,7 @@ pub fn log2(n: u32) -> u32 {
 
 pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(
 			//title: &'static str,
-			ff_vec: &Vec<T>,
+			ff_vec: &[T],
 			col_output_vec: &[T],
 			//condense_factor: usize, 
 			//val_range: Option<(T, T)>, 

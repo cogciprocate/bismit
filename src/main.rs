@@ -15,11 +15,11 @@ extern crate libc;
 
 
 mod common;
-mod cl_h;
+//mod cl_h;
 mod ocl;
 mod chord;
 mod sense;
-mod envoy;
+//mod envoy;
 //mod axon_space;
 //mod syn_segs;
 //mod column;
@@ -39,11 +39,11 @@ mod cortical_region_layer;
 mod protocell;
 //mod protocell;
 //mod sub_cortex;
-mod test_miccos;
+//mod test_miccos;
 //mod test_readback;
 //mod test_3;
-mod test_4;
-mod tests;
+mod interactive_tests;
+//mod tests;
 
 use num::Integer;
 
@@ -57,7 +57,7 @@ fn main() {
 	// hello_world::run();
 
 	
-	test_4::test_cycle();
+	interactive_tests::run();
 	//test_miccos::run();
 	
 
@@ -66,16 +66,12 @@ fn main() {
 }
 
 
+
+
+
+
+
 // #[link(name = "OpenCL")]
 // #[cfg(target_os = "linux")]
 // #[link_args = "-L$OPENCL_LIB -lOpenCL"]
 
-
-/*
-
--===- MUSICAL NOTATION FOR SDRs (> SDR = Chord <) -===-
-Note: One address in the SDR
-Chord: All of the Notes
-
-
-*/ 

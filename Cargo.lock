@@ -3,11 +3,11 @@ name = "bismit"
 version = "0.0.1"
 dependencies = [
  "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "microcosm 0.0.1 (git+https://github.com/cogciprocate/microcosm.git)",
- "num 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "time 0.1.24 (git+https://github.com/rust-lang/time.git)",
+ "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.25 (git+https://github.com/rust-lang/time.git)",
 ]
 
 [[package]]
@@ -22,16 +22,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "libc"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "log"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "libc 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "microcosm"
@@ -40,33 +32,32 @@ source = "git+https://github.com/cogciprocate/microcosm.git#2f29b36c90db813a5e4d
 
 [[package]]
 name = "num"
-version = "0.1.21"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "rand 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "rand"
-version = "0.3.7"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "libc 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "rustc-serialize"
-version = "0.3.12"
+version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "time"
-version = "0.1.24"
-source = "git+https://github.com/rust-lang/time.git#0ed5596e0c3dde2ed324c3f66eb5c1d6e341267a"
+version = "0.1.25"
+source = "git+https://github.com/rust-lang/time.git#3c3e56da027d1dfbd27e32beaf80c6f9a111ad56"
 dependencies = [
  "gcc 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

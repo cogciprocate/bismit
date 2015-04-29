@@ -71,7 +71,8 @@ pub struct cl_buffer_region {
 }
 
 #[repr()]
-#[derive(PartialEq, Debug, FromPrimitive)]
+#[derive(PartialEq, Debug)]
+// #[derive(PartialEq, Debug, FromPrimitive)]
 pub enum CLStatus {
     CL_SUCCESS                                      = 0,
     CL_DEVICE_NOT_FOUND                             = -1,

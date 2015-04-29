@@ -1,6 +1,8 @@
 #[cfg(test)]
 
-use super::*;
+//use super::*;
+//use cortex::Cortex;
+use cortex::{ Cortex };
 
 #[test]
 fn test_cortex() {

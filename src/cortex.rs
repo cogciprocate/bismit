@@ -1,6 +1,6 @@
 use ocl::{ self, Ocl };
 use common;
-use envoy::{ Envoy };
+use ocl::{ Envoy };
 use chord::{ Chord };
 use cells:: { self, Cells };
 use cortical_regions::{ self, CorticalRegion, CorticalRegions, CorticalRegionKind };
