@@ -29,7 +29,7 @@ mod dendrites;
 mod synapses;
 mod columns;
 mod peak_column;
-mod pyramidal;
+mod pyramidals;
 //mod cort_seg;
 //mod thalamus;
 mod cortex;
@@ -42,7 +42,9 @@ mod protocell;
 //mod test_miccos;
 //mod test_readback;
 //mod test_3;
-mod interactive_tests;
+mod test_interactive;
+
+
 //mod tests;
 
 use num::Integer;
@@ -57,7 +59,7 @@ fn main() {
 	// hello_world::run();
 
 	
-	interactive_tests::run();
+	test_interactive::test_interactive::run();
 	//test_miccos::run();
 	
 

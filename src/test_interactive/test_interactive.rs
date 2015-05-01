@@ -1,4 +1,6 @@
 
+use super::synapse_drill_down;
+
 use cortex::{ Cortex };
 use cortex;
 use ocl;
@@ -18,8 +20,6 @@ use std::ops;
 use std::io::{ self, Write, Stdout };
 use std::borrow::{ Borrow };
 use time;
-
-mod synapse_sources;
 
 pub const TEST_ITERATIONS: i32 			= 10; 
 pub const STATUS_EVERY: i32 			= 400;
@@ -96,7 +96,8 @@ pub fn run() -> bool {
 		} else if "t\n" == in_string {
 			let in_s = rin(format!("tests: [s]ynapse source"));
 			if "s\n" == in_s {
-				synapse_sources::run();
+				synapse_drill_down::run(&mut cortex);
+				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
 				continue;
 				//test_iters = TEST_ITERATIONS;
 			} else {

@@ -278,6 +278,10 @@ impl BuildOption {
 =============================================================================*/
 
 
+
+
+
+
 pub fn print_vec_simple<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive >(vec: &Vec<T>) {
 	print_vec(vec, 1, None, None, true);
 }
@@ -542,7 +546,6 @@ pub fn dup_check<T: Integer + Copy + Clone + Ord >(in_vec: &mut Vec<T>) -> (usiz
 }*/
 
 
-
 pub fn log2(n: u32) -> u32 {
 	n.trailing_zeros()
 }
@@ -564,8 +567,8 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 	//println!("\n[{}{}{}]:", C_GRN, ff_vec.len(), C_DEFAULT);
 
 	let mut line_out: String = String::with_capacity(line_character_width);
-	let mut line_i = 0usize;
-	let mut aux_i = 0usize;
+	let mut line_i = 0usize;	// RENAME ME FOR FUCKS SAKE
+	let mut aux_i = 0usize;		// AND ME TOO IF YOU GIVE EVEN ONE SINGLE SHIT FOR HUMANITY!!!!
 
 	print!("\n");
 	io::stdout().flush().ok();
@@ -576,9 +579,7 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 		line_out.clear();
 
 		for i in line_i..(line_i + cells_per_line) {
-
 			let output_active = col_output_vec[i] != Default::default();
-
 			let col_active = ff_vec[i] != Default::default();
 			let prediction = col_output_vec[i] != ff_vec[i];
 			let new_prediction = prediction && (!col_active);
@@ -616,6 +617,10 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 			line_out.push_str(" ");
 		}
 
+		if (aux_i & 0xF) == 00 {
+			println!("\n[{}]", aux_i + 1);
+		}
+		
 		println!("{}",line_out);
 
 		line_i += cells_per_line;

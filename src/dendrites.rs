@@ -100,4 +100,10 @@ impl Dendrites {
 	pub fn regrow(&mut self) {
 		self.syns.regrow();
 	}
+
+	pub fn confab(&mut self) {
+		self.thresholds.read();
+		self.states_raw.read();
+		self.states.read();
+	} 
 }

@@ -34,7 +34,7 @@ impl Protocell {
 					//prx_src: &'static str,
 	) -> Option<Protocell> {
 		Some(Protocell {
-			cell_kind: CellKind::Pyramidal,
+			cell_kind: CellKind::Pyramidals,
 			den_dst_srcs: Some(dst_srcs),
 			den_prx_srcs: None,
 			//den_prx_srcs: Some(vec![prx_src]),
@@ -55,7 +55,7 @@ impl Protocell {
 
 #[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
 pub enum CellKind {
-	Pyramidal,
+	Pyramidals,
 	SpinyStellate,
 	AspinyStellate,
 	Nada,
@@ -89,12 +89,12 @@ bitflags! {
 
 
 
-//pub struct ProtocellPyramidal
+//pub struct ProtocellPyramidals
 
 
 /*#[derive(PartialEq, Debug, Clone, Hash)]
 pub enum CellPrototype {
-	Pyramidal { 
+	Pyramidals { 
 		prx_src: &'static str,
 		dst_srcs: Vec<&'static str>,
 	},
@@ -113,7 +113,7 @@ pub enum CellPrototype {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum CellBlueprint {
-	Pyramidal {
+	Pyramidals {
 		dens: u8,
 		syns_per_den: u8,
 		flags: CellFlags,

@@ -180,6 +180,13 @@ impl Synapses {
 		//print!("\nRegrowing with rnd: {}", rnd);
 		self.kern_regrow.set_named_arg("rnd", rnd);
 		self.kern_regrow.enqueue();
+	}
+
+	pub fn confab(&mut self) {
+		self.states.read();
+		self.strengths.read();
+		self.src_row_ids.read();
+		self.src_col_x_offs.read();
 	} 
 
 }

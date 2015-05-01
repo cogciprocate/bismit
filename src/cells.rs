@@ -9,7 +9,7 @@ use dendrites::{ Dendrites };
 use axons::{ Axons };
 use columns::{ Columns };
 use peak_column::{ PeakColumn };
-use pyramidal::{ Pyramidal };
+use pyramidals::{ Pyramidals };
 
 
 use num;
@@ -30,7 +30,7 @@ pub struct Cells {
 	ocl: ocl::Ocl,
 	pub axns: Axons,
 	pub cols: Columns,
-	pub pyrs: Pyramidal,
+	pub pyrs: Pyramidals,
 	//pub soma: Somata,
 	pub aux: Aux,
 
@@ -48,7 +48,7 @@ impl Cells {
 
 		let aux = Aux::new(width, depth_cellular, ocl);
 		let axns = Axons::new(width, depth_noncellular, depth_cellular, region, ocl);
-		let pyrs = Pyramidal::new(width, region, &axns, &aux, ocl);
+		let pyrs = Pyramidals::new(width, region, &axns, &aux, ocl);
 		let cols = Columns::new(width, region, &axns, &pyrs, &aux, ocl);
 		
 
