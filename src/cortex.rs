@@ -23,13 +23,13 @@ pub fn define_regions() -> CorticalRegions {
 	let mut cort_regs: CorticalRegions = CorticalRegions::new();
 
 	let mut sen = CorticalRegion::new(CorticalRegionKind::Sensory)
-		.layer("pre_thal", 1, layer::DEFAULT, None)
+		//.layer("pre_thal", 1, layer::DEFAULT, None)
 		.layer("thal", 1, layer::DEFAULT, None)
-		.layer("post_thal", 1, layer::DEFAULT, None)
-		.layer("post_thal2", 1, layer::DEFAULT, None)
-		.layer("post_thal3", 1, layer::DEFAULT, None)
-		.layer("post_thal4", 1, layer::DEFAULT, None)
-		.layer("post_thal5", 1, layer::DEFAULT, None)
+		//.layer("post_thal", 1, layer::DEFAULT, None)
+		//.layer("post_thal2", 1, layer::DEFAULT, None)
+		//.layer("post_thal3", 1, layer::DEFAULT, None)
+		//.layer("post_thal4", 1, layer::DEFAULT, None)
+		//.layer("post_thal5", 1, layer::DEFAULT, None)
 		.layer("out", 1, layer::COLUMN_OUTPUT, None)
 		//.layer("test_2", 1, None);
 		//.layer("inhib_tmp", 1, None);

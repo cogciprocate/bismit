@@ -34,16 +34,17 @@ pub fn run() -> bool {
 	let mut cortex = cortex::Cortex::new();
 	let mut world: World = World::new(sc_width);
 	
-	//let mut vec1: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_width as usize).collect(); // *****
-	let mut vec1: Vec<ocl::cl_uchar> = test_vec_init(&mut cortex);
+	let mut vec1: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_width as usize).collect();
+	//let mut vec1: Vec<ocl::cl_uchar> = test_vec_init(&mut cortex);
 
-	let mut vec2: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_width as usize).collect();
-	cortex.write_vec(0, "pre_thal", &mut vec2);
-	cortex.write_vec(0, "post_thal", &mut vec2);
-	cortex.write_vec(0, "post_thal2", &mut vec2);
-	cortex.write_vec(0, "post_thal3", &mut vec2);
-	cortex.write_vec(0, "post_thal4", &mut vec2);
-	cortex.write_vec(0, "post_thal5", &mut vec2);
+
+	//let mut vec2: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_width as usize).collect();
+	//cortex.write_vec(0, "pre_thal", &mut vec2);
+	//cortex.write_vec(0, "post_thal", &mut vec2);
+	//cortex.write_vec(0, "post_thal2", &mut vec2);
+	//cortex.write_vec(0, "post_thal3", &mut vec2);
+	//cortex.write_vec(0, "post_thal4", &mut vec2);
+	//cortex.write_vec(0, "post_thal5", &mut vec2);
 
 	
 	let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
@@ -63,15 +64,14 @@ pub fn run() -> bool {
 	let mut bypass_sense = false;
 
 	let mut view_all_axons: bool = false;
-	let mut view_sdr_only: bool = false; // *****
+	let mut view_sdr_only: bool = true;
 	let mut cur_ttl_iters: i32 = 0;
 
 	loop {
 		/*######### COMMAND LINE #########*/
 		let vso = if view_sdr_only { "sdr" } else { "all" };
 
-		bypass_act = true;
-		// ***** bypass_act = false;	// RESTORE ME
+		bypass_act = false;
 		bypass_sense = false;
 
 		if test_iters == 0 {
