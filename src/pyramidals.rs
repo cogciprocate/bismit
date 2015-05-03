@@ -122,14 +122,19 @@ impl Pyramidals {
 		self.kern_activate.new_arg_envoy(&cols.states);
 		self.kern_activate.new_arg_envoy(&cols.cels_status);
 		self.kern_activate.new_arg_scalar(self.axn_row_base);
-		self.kern_activate.new_arg_envoy(&aux.ints_0);
+		//self.kern_activate.new_arg_envoy(&aux.ints_0);
 		self.kern_activate.new_arg_envoy(&self.depols);	
 		self.kern_activate.new_arg_envoy(&axns.states);
 	}
 
-	pub fn activate(&mut self) {
+	pub fn activate(&mut self, learn: bool) {
 		self.kern_activate.enqueue();
 
+		if learn { self.learn(); }
+
+	}
+
+	pub fn learn(&mut self) {
 		self.kern_learn.set_named_arg("rnd", self.rng.gen::<u32>());
 		self.kern_learn.enqueue();
 
@@ -139,12 +144,15 @@ impl Pyramidals {
 			self.dens.regrow();
 			self.regrow_counter = 0;
 		}
+
 	}
 
 	pub fn cycle(&self) {
 		self.dens.cycle();
 		self.kern_cycle.enqueue();
-		//self.kern_axn_cycle.enqueue();
+
+
+			//self.kern_axn_cycle.enqueue();
 	}
 
 	pub fn axn_output_range(&self) -> (usize, usize) {
@@ -155,6 +163,7 @@ impl Pyramidals {
 	pub fn confab(&mut self) {
 		self.depols.read();
 		self.best_den_ids.read();
+		self.dens.confab();
 	} 
 
 	pub fn width(&self) -> u32 {

@@ -7,7 +7,7 @@ use cortical_region_layer::{ CorticalRegionLayer, LayerFlags };
 use protocell::{ CellKind, Protocell, DendriteKind };
 
 use std;
-use std::collections::{ self, HashMap };
+use std::collections::{ self, HashMap, BTreeMap };
 use std::collections::hash_state::{ HashState };
 use num;
 use std::ops::{ Index, IndexMut, Range };
@@ -75,6 +75,7 @@ pub struct CorticalRegion {
 	layers: HashMap<&'static str, CorticalRegionLayer>,
 	cellular_layer_kind_lists: HashMap<CellKind, Vec<&'static str>>,
 	cellular_layer_kind_base_rows: HashMap<CellKind, u8>,
+	row_map: BTreeMap<u8, &'static str>,
 	pub kind: CorticalRegionKind,
 	finalized: bool,
 }
@@ -92,6 +93,7 @@ impl CorticalRegion {
 			cellular_layer_kind_base_rows: HashMap::new(),
 			kind: kind,
 			finalized: false,
+			row_map: BTreeMap::new(),
 		}
 	}
 
@@ -230,7 +232,7 @@ impl CorticalRegion {
 
 		for (cell_kind, list) in &self.cellular_layer_kind_lists {
 			self.cellular_layer_kind_base_rows.insert(cell_kind.clone(), base_cel_row);
-			print!("\n 	Finalize: adding cell type: '{:?}', len: {}, base_cel_row: {}", cell_kind, list.len(), base_cel_row);
+			print!("\n   Finalize: adding cell type: '{:?}', len: {}, base_cel_row: {}", cell_kind, list.len(), base_cel_row);
 			assert!(list.len() == self.depth_cell_kind(&cell_kind) as usize);
 			base_cel_row += list.len() as u8;
 			//base_cel_row += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::CorticalRegion::finalize()");
@@ -240,12 +242,15 @@ impl CorticalRegion {
 			match &layer.cell {
 				&Some(ref protocell) => {
 					layer.base_row_pos = self.cellular_layer_kind_base_rows[&protocell.cell_kind] + layer.kind_base_row_pos;
-					print!("\n 	Finalize: adding layer: {}, kind: {:?}, base_row_id: {}", layer_name, &protocell.cell_kind, layer.base_row_pos);
+					print!("\n\tFinalize: adding layer: {}, kind: {:?}, base_row_id: {}", layer_name, &protocell.cell_kind, layer.base_row_pos);
 				},
 				&None => {
 					layer.base_row_pos = layer.kind_base_row_pos;
-					print!("\n 	Finalize: adding layer: {}, kind: {}, base_row_id: {}", layer_name, "Axon", layer.base_row_pos);
+					print!("\n\tFinalize: adding layer: {}, kind: {}, base_row_id: {}", layer_name, "Axon", layer.base_row_pos);
 				},
+			}
+			for i in layer.base_row_pos..(layer.base_row_pos + layer.depth()) {
+				self.row_map.insert(i, layer_name);
 			}
 		}
 	}
@@ -287,6 +292,7 @@ impl CorticalRegion {
 		if !self.finalized {
 			panic!("CorticalRegion must be finalized with finalize() before row_ids can be called.");
 		}
+
 		let mut row_ids = Vec::new();
 
 		for layer_name in layer_names.iter() {
@@ -329,6 +335,18 @@ impl CorticalRegion {
 
 		output_rows		
  	}
+
+ 	pub fn row_map(&self) -> BTreeMap<u8, &'static str> {
+ 		self.row_map.clone()
+	}
+
+ 	pub fn layer_name(&self, row_id: u8) -> &'static str {
+ 		match self.row_map.get(&row_id) {
+ 			Some(ln) 	=> ln,
+ 			None 		=> "[INVALID LAYER]",
+		}
+
+	}
 }
 
 impl<'b> Index<&'b&'static str> for CorticalRegion

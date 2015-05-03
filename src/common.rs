@@ -7,6 +7,7 @@ use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 use std::iter::{ self };
 use std::cmp::{ Ord };
 use std::io::{ self, Write, Stdout };
+use std::collections::{ BTreeMap };
 use rand;
 use rand::distributions::{ self, Normal, IndependentSample, Range };
 
@@ -57,31 +58,34 @@ pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;		// appears to cause lots of del
 
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;
 
-pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
-pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
+
+pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 10;
+pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 10;
+// ***** pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
+// ***** pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
 
 pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 
 
 
-pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 4;
+pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 3;
 pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2;
 
-pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 5;
+pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 3;
 pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 
 
 pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
-pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 <<DENDRITES_PER_CELL_PROXIMAL_LOG2;
+pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 << DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 6;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
 
 /* GET RID OF THIS UNLESS CL NEEDS IT */
-pub const SYNAPSES_PER_CELL_PROXIMAL_LOG2: u32 = DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
-pub const SYNAPSES_PER_CELL_PROXIMAL: u32 = 1 << SYNAPSES_PER_CELL_PROXIMAL_LOG2;
+//pub const SYNAPSES_PER_CELL_PROXIMAL_LOG2: u32 = DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+//pub const SYNAPSES_PER_CELL_PROXIMAL: u32 = 1 << SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 
 
 
@@ -104,8 +108,8 @@ pub const CELLS_PER_LAYER: usize = COLUMNS_PER_SEGMENT;
 //pub const SYNAPSES_PER_LAYER: usize = CELLS_PER_LAYER * SYNAPSES_PER_CELL;
 
 
-
-pub const SENSORY_CHORD_WIDTH: u32 = 1024; // COLUMNS_PER_SEGMENT;
+pub const SENSORY_CHORD_WIDTH_LOG2: usize = 10;
+pub const SENSORY_CHORD_WIDTH: u32 = 1 << SENSORY_CHORD_WIDTH_LOG2; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
 
@@ -133,8 +137,10 @@ pub const STATE_ZERO: u8 = 0;
 
 pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 
-pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 550;
-pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 1080;
+pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 129;
+pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 513;
+// ***** pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 550;
+// ***** pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 1080;
 
 pub const SYNAPSE_STRENGTH_FLOOR: i8 = -40;
 pub const SYNAPSE_DECAY_INTERVAL: usize = 256 * 2;
@@ -142,11 +148,13 @@ pub const SYNAPSE_DECAY_INTERVAL: usize = 256 * 2;
 pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
 pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;
 
+pub const LEARNING_ACTIVE: bool = true;	// *****
+
 pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
 
 
 
-pub const SYNAPSE_FLAG_ADD_PENDING_ACTIVATION: u8 = 0b00000001;
+//pub const SYNAPSE_FLAG_ADD_PENDING_ACTIVATION: u8 = 0b00000001;
 
 
 
@@ -174,7 +182,7 @@ pub const SYNAPSE_FLAG_ADD_PENDING_ACTIVATION: u8 = 0b00000001;
 
 pub fn build_options() -> String {
 
-	assert!(SYNAPSES_PER_CELL_PROXIMAL_LOG2 >= 2);
+	assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
 	assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
 
 	assert!(DENDRITES_PER_CELL_DISTAL_LOG2 <= 8);
@@ -188,7 +196,7 @@ pub fn build_options() -> String {
 		.opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
 		.opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
 		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)
-		.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
+		//.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
 		.opt("SYNAPSE_REACH", SYNAPSE_REACH as i32)
 		.opt("ASPINY_REACH", ASPINY_REACH as i32)
 		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
@@ -282,12 +290,12 @@ impl BuildOption {
 
 
 
-pub fn print_vec_simple<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive >(vec: &Vec<T>) {
+pub fn print_vec_simple<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(vec: &Vec<T>) {
 	print_vec(vec, 1, None, None, true);
 }
 
 
-pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive >(
+pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(
 			vec: &Vec<T>, 
 			every: usize, 
 			val_range: Option<(T, T)>, 
@@ -300,25 +308,25 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 		Some(x) => x,
 		_ => 0,
 	}*/
-
-	let mut ttl_nz = 0usize;
-	let mut ttl_ir = 0usize;
-	let mut within_idx_range = false;
-	let mut hi = Default::default();
-	let mut lo: T = Default::default();
-	let mut sum: isize = 0;
-	let mut ttl_prntd: usize = 0;
-	let len = vec.len();
+	let (ir_start, ir_end) = match idx_range {
+		Some(ir)	=> ir,
+		None		=> (0usize, 0usize),
+	};
 
 	let (vr_start, vr_end) = match val_range {
 		Some(vr)	=> vr,
 		None		=> (Default::default(), Default::default()),
 	};
 
-	let (ir_start, ir_end) = match idx_range {
-		Some(ir)	=> ir,
-		None		=> (0usize, 0usize),
-	};
+	let mut ttl_nz = 0usize;
+	let mut ttl_ir = 0usize;
+	let mut within_idx_range = false;
+	let mut hi: T = vr_start;
+	let mut lo: T = vr_end;
+	let mut sum: isize = 0;
+	let mut ttl_prntd: usize = 0;
+	let len = vec.len();
+
 
 	let mut color: &'static str = C_DEFAULT;
 	let mut prnt: bool = false;
@@ -382,11 +390,7 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 
 		if vec[i] > hi { hi = vec[i] };
 
-		if lo == Default::default() && hi != Default::default() {
-			lo = hi 
-		} else {
-			if vec[i] < lo { lo = vec[i] };
-		}
+		if (vec[i] < lo) && (vec[i] != Default::default()) { lo = vec[i] };
 
 		if vec[i] != Default::default() {
 			ttl_nz += 1usize;
@@ -555,6 +559,7 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 			//title: &'static str,
 			ff_vec: &[T],
 			col_output_vec: &[T],
+			row_map: &BTreeMap<u8, &'static str>,
 			//condense_factor: usize, 
 			//val_range: Option<(T, T)>, 
 			//idx_range: Option<(usize, usize)>,
@@ -568,7 +573,7 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 
 	let mut line_out: String = String::with_capacity(line_character_width);
 	let mut line_i = 0usize;	// RENAME ME FOR FUCKS SAKE
-	let mut aux_i = 0usize;		// AND ME TOO IF YOU GIVE EVEN ONE SINGLE SHIT FOR HUMANITY!!!!
+	let mut global_i = 0usize;		// AND ME TOO IF YOU GIVE EVEN ONE SINGLE SHIT FOR HUMANITY!!!!
 
 	print!("\n");
 	io::stdout().flush().ok();
@@ -605,7 +610,7 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 			if output_active {
 				line_out.push_str(&format!("{:02X}", col_output_vec[i]));
 			} else {
-				if (i & 0x07) == 0 || (aux_i & 0x07) == 0 {				// || ((aux_i & 0x0F) == 7) || ((aux_i & 0x0F) == 8)
+				if (i & 0x07) == 0 || (global_i & 0x07) == 0 {				// || ((global_i & 0x0F) == 7) || ((global_i & 0x0F) == 8)
 					line_out.push_str("  ");
 				} else {
 					line_out.push_str("--");
@@ -617,14 +622,15 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 			line_out.push_str(" ");
 		}
 
-		if (aux_i & 0xF) == 00 {
-			println!("\n[{}]", aux_i + 1);
+		if ((global_i & 0xF) == 00) && (ff_vec.len() > SENSORY_CHORD_WIDTH as usize) {
+			let row_id = (global_i >> 4) as u8;
+			println!("\n[{}: {}]", row_id, row_map[&row_id]);
 		}
 		
 		println!("{}",line_out);
 
 		line_i += cells_per_line;
-		aux_i += 1;
+		global_i += 1;
 	}
 
 }

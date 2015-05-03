@@ -45,14 +45,16 @@ impl Synapses {
 		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
 		//print!("\nNew {:?} Synapses with: depth: {}, width: {}, per_cell_l2: {}, syns_per_row(row area): {}", den_kind, depth, width, per_cell_l2, syns_per_row);
 
+		
 		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
 		let mut src_row_ids = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
-		//let mut src_col_x_offs = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
 
 		// SRC COL REACHES MUST BECOME CONSTANTS
 		let mut src_col_x_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -127, 127, ocl); 
-		let mut src_col_y_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -31, 31, ocl);
+		
+		
+		//let mut src_col_y_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -31, 31, ocl);
 
 		let flags = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
 
@@ -64,7 +66,7 @@ impl Synapses {
 			.arg_env(&src_row_ids)
 			//.arg_env(&strengths)
 			.arg_scl(per_cell_l2)
-			//.arg_env(&aux.ints_0)
+			.arg_env(&aux.ints_0)
 			//.arg_env(&aux.ints_1)
 			.arg_env(&states)
 		;
@@ -78,7 +80,7 @@ impl Synapses {
 			.arg_scl(per_den_l2)
 			.arg_scl_named(0u32, "rnd")
 			//.arg_env(&aux.ints_0)
-			.arg_env(&aux.ints_1)
+			//.arg_env(&aux.ints_1)
 			.arg_env(&src_col_x_offs)
 			.arg_env(&src_row_ids)
 		;
@@ -189,4 +191,7 @@ impl Synapses {
 		self.src_col_x_offs.read();
 	} 
 
+	pub fn width(&self) -> u32 {
+		self.width
+	}
 }

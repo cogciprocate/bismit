@@ -99,6 +99,7 @@ __kernel void syns_cycle(
 	__global const uchar* const syn_src_row_ids,
 	//__global const char* const syn_strengths,
 	__private uint const syns_per_cell_l2,
+	__global int* const aux_ints_0,
 	__global uchar* const syn_states
 ) {
 	uint const row_id = get_global_id(0);
@@ -110,27 +111,44 @@ __kernel void syns_cycle(
 	
 	uint const base_col_id = mul24(wg_id, wg_size);
 	uint const base_cel_idx = mad24(row_id, row_width, base_col_id);
+
+	uint const base_syn_idx = (base_cel_idx << syns_per_cell_l2);
+	uint const init_syn_idx = base_syn_idx + l_id;
+
 	uint const syn_row_width = row_width << syns_per_cell_l2;
-	uint const init_syn_idx = (base_cel_idx << syns_per_cell_l2) + l_id;
+	uint const syns_per_wg = wg_size << syns_per_cell_l2;
 
-	uint const syn_n = init_syn_idx + (wg_size << syns_per_cell_l2);
-	uint syn_col_i = init_syn_idx;
+	uint const syn_n = base_syn_idx + syns_per_wg;
 
-	for (uint syn_idx = init_syn_idx; syn_idx < syn_n; syn_idx += wg_size) {
-		syn_col_i -= mul24(syn_row_width, (uint)(syn_col_i >= syn_row_width));
-		uint col_pos = syn_col_i >> syns_per_cell_l2;
+	int syn_col_i = (base_col_id << syns_per_cell_l2) + l_id;
+	uint syn_idx = init_syn_idx;
+
+	uint aux_idx = mad24(row_id, row_width, col_id); // DEBUG
+
+	for (; syn_idx < syn_n; syn_idx += wg_size) {
+		syn_col_i -= mul24((int)syn_row_width, (syn_col_i >= syn_row_width));
+		uint col_pos = (uint)syn_col_i >> syns_per_cell_l2;
 		uint axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(col_pos + syn_src_col_x_offs[syn_idx] + SYNAPSE_REACH));
 		uchar axn_state = axn_states[axn_idx];
 
 		
-
+		//syn_states[syn_idx] = axn_state;
 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
+		
 
 		//char syn_strength = syn_strengths[syn_idx];
 		//syn_states[syn_idx] = mul24((syn_strength >= 0), ((axn_state != 0) << 7) + (axn_state >> 1));
 
+
+		//aux_ints_0[syn_idx] = col_pos;
+
 		syn_col_i += wg_size;
 	}
+
+	//uint aux_idx = mad24(row_id, row_width, col_id);
+	//aux_ints_0[aux_idx] = l_id;
+	//aux_ints_0[aux_idx] = syn_idx;
+	//aux_ints_0[base_cel_idx] = 12321;
 }
 
 
@@ -172,19 +190,23 @@ __kernel void den_cycle(
 
 	for (int i = 0; i < n; i += 1) {
 		char syn_strength = syn_strengths[syn_ofs + i];
-		uchar syn_state = syn_states[syn_ofs + i];
 
-		//syn_sum += 128;
-		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum);
+		//uchar syn_state = mul24((syn_states[syn_ofs + i] > 0), 1); // *****
+		uchar syn_state = syn_states[syn_ofs + i]; // *****
+
+		//syn_sum += syn_state; // *****
+		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); // *****
 		
-		//syn_sum_raw += 128;
 		syn_sum_raw += syn_state;
 	}
 	
 	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
 
-	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255);
-	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255);
+
+	//den_states_raw[den_idx] = clamp(syn_sum_raw, 0, 255); // *****
+	//den_states[den_idx] = clamp(syn_sum, 0, 255); // *****
+	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255); // *****
+	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); // *****
 }
 
 
@@ -327,7 +349,7 @@ __kernel void col_post_inhib_unoptd (
 	__global const uchar* const asp_col_ids,
 	__global const uchar* const asp_states,
 	__global const uchar* const asp_wins,
-	__private uint const col_axn_row_offset,
+	__private uint const col_axn_row,
 	__global uchar* const col_states,
 	__global uchar* const axn_states
 ) {
@@ -335,7 +357,7 @@ __kernel void col_post_inhib_unoptd (
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
 	uint const col_idx = mad24(row_id, row_width, col_id);
-	uint const axn_idx = col_idx + mad24(col_axn_row_offset, row_width, (uint)SYNAPSE_REACH);
+	uint const axn_idx = col_idx + mad24(col_axn_row, row_width, (uint)SYNAPSE_REACH);
 	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
 
 	uchar const asp_state = asp_states[asp_idx];
@@ -343,6 +365,9 @@ __kernel void col_post_inhib_unoptd (
 
 	int win = (asp_col_id_to_col_idx(asp_idx, (asp_col_ids[asp_idx])) == col_idx);
 	win = (win && asp_state);
+
+	//col_states[col_idx] = mul24(col_state, (win > 0));
+	//axn_states[axn_idx] = mul24(col_state, (win > 0));
 
 	col_states[col_idx] = mul24(col_state, (win > 0));
 	axn_states[axn_idx] = mul24(col_state, (win > 0));
@@ -354,7 +379,7 @@ __kernel void pyr_activate(
 				__global const uchar* const col_states,
 				__global const uchar* const col_cels_status,
 				__private uchar const pyr_axn_row_base,
-				__global int* const aux_ints_0,
+				//__global int* const aux_ints_0,
 				__global uchar* const pyr_depols,	
 				__global uchar* const axn_states
 ) {
@@ -374,8 +399,10 @@ __kernel void pyr_activate(
 	pyr_depol = ((corr_pred != 0) || (anomaly != 0)) && (col_state != 0);
 	//pyr_depol = (corr_pred | anomaly) && (col_state);
 	//pyr_depol = mul24(((corr_pred != 0) || (anomaly != 0)), col_state);
+
 	
 	axn_states[axn_idx] = pyr_depol;
+
 	//pyr_depols[pyr_idx] = pyr_depol;
 	//aux_ints_0[pyr_idx] = 5;
 	//aux_ints_0[pyr_idx] = pyr_depol;
@@ -390,7 +417,7 @@ __kernel void col_learn(
 	//__global const uchar* const col_states,
 	__private uint const syns_per_den_l2,
 	__private uint const rnd,
-	__global int* const aux_ints_0,
+	//__global int* const aux_ints_0,
 	__global char* const syn_strengths
 ) {
 	uint const row_id = get_global_id(0);
@@ -484,7 +511,7 @@ __kernel void syns_regrow(
 	__global char* const syn_strengths,
 	__private uint const syns_per_den_l2,
 	__private uint const rnd,
-	__global int* const aux_ints_1,
+	//__global int* const aux_ints_1,
 	__global char* const syn_src_col_x_offs,
 	__global uchar* const syn_src_row_ids
 ) {
@@ -517,7 +544,7 @@ __kernel void syns_regrow(
 			} else {
 				//	JUST EXIT IF OUR NEW RANDOM ADDR IS A DUPLICATE
 				//	AND LET IT BE REASSIGNED NEXT REGROW CYCLE
-				aux_ints_1[syn_idx] = syn_strength;
+				//aux_ints_1[syn_idx] = syn_strength;
 				return;	
 			}
 		}
@@ -598,7 +625,7 @@ __kernel void pyr_cycle(
 */
 __kernel void col_output(
 				__global const uchar* const col_states,	// CONVERT TO READING FROM AXON
-				__global const uchar* const pyr_depols,	// CONVERT TO READING FROM AXON
+				__global const uchar* const pyr_depols,
 				//__private uchar const col_row_count,
 				__private uchar const pyr_depth,
 				//__private uchar const pyr_axn_base_row,
@@ -629,13 +656,13 @@ __kernel void col_output(
 		//output_total += (axn_states[axn_idx_pyr] > 0);
 	}
 
-	output_total = clamp(output_total, 0, 255);
+	//output_total = clamp(output_total, 0, 255);
 
 
 	col_cels_status[col_idx] = clamp(output_total, 0, 255);
-	axn_states[output_axn_idx] = clamp(output_total + col_state, 0, 255); 			// v.N2
+	axn_states[output_axn_idx] = clamp(output_total + col_state, 0, 255); 			// v.N2 
 	//axn_states[axn_idx_output] = clamp(max(output_total, col_state), 0, 255); 	// v.N1
-	//axn_states[axn_idx_output] = clamp((output_total), 0, 255);
+	//axn_states[output_axn_idx] = clamp(output_total, 0, 255);
 	//axn_states[axn_idx] = test;
 }
 

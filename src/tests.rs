@@ -9,6 +9,7 @@ fn test_cortex() {
 
 	let mut cortex = cortex::Cortex::new();
 
+	/* MAKE THIS A STRUCT OR SOMETHING */
 	let scw = common::SENSORY_CHORD_WIDTH;
 	let scl_fct_log2 = common::log2(scw / 1024);
 	let scw_1_2 = scw >> 1;
@@ -52,5 +53,15 @@ fn test_cortex() {
 
 
     assert!(super::test_4::test_cycle());
+
+    assert!(synapse_test());
 }
 
+
+fn synapse_test(cortex: &Cortex, vec1: &Vec<ocl::cl_uchar>) -> bool {
+	vec1.clear();
+
+	// Write blank input and check synapses for columns and stuff
+
+	// Then do some other simple tests
+}

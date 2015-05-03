@@ -20,6 +20,7 @@ use rand::{ ThreadRng };
 use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
+use std::collections::{ BTreeMap };
 
 
 
@@ -27,6 +28,7 @@ pub struct Cells {
 	pub width: u32,
 	pub depth_noncellular: u8,
 	pub depth_cellular: u8,
+	pub row_map: BTreeMap<u8, &'static str>,
 	ocl: ocl::Ocl,
 	pub axns: Axons,
 	pub cols: Columns,
@@ -56,6 +58,7 @@ impl Cells {
 			width: width,
 			depth_noncellular: depth_noncellular,
 			depth_cellular: depth_cellular,
+			row_map: region.row_map(),
 			axns: axns,
 			cols: cols,
 			pyrs: pyrs,
@@ -77,7 +80,6 @@ impl Cells {
 	}
 
 	pub fn cycle(&mut self) {
-		
 		//self.soma.dst_dens.cycle(&self.axns, &self.ocl);
 		//self.soma.cycle(&self.ocl);
 		//self.soma.inhib(&self.ocl);
@@ -85,17 +87,15 @@ impl Cells {
 		//self.soma.learn(&self.ocl);
 		//self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
 
+		let learn: bool = common::LEARNING_ACTIVE;
 		
-
+		self.cols.cycle(learn);
 		
-		self.cols.cycle();
-
-		self.pyrs.activate();
+		self.pyrs.activate(learn);	// ***** 
 		
-		self.pyrs.cycle();
+		self.pyrs.cycle();	// ***** 
 
 		self.cols.output();
-		
 	}
 }
 

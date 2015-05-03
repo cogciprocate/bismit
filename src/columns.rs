@@ -44,8 +44,8 @@ impl Columns {
 		let layer = region.col_input_layer().expect("columns::Columns::new()");
 		let depth: u8 = layer.depth();
 
-		let syns_per_cel_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
-		//let syns_per_cel: u32 = 1 << syns_per_cel_l2;
+		let syns_per_den_l2: u32 = common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
 
 		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidals);
 		//let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidals); // SHOULD BE SPECIFIC LAYER(S)  
@@ -54,7 +54,7 @@ impl Columns {
 		let states_raw = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let cels_status = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let peak_cols = PeakColumn::new(width, depth, region, &states, ocl);
-		let syns = Synapses::new(width, depth, syns_per_cel_l2, syns_per_cel_l2, DendriteKind::Proximal, 
+		let syns = Synapses::new(width, depth, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
 			CellKind::SpinyStellate, region, axons, aux, ocl);
 
 		let output_rows = region.col_output_rows();
@@ -65,7 +65,7 @@ impl Columns {
 		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
-			.arg_scl(syns_per_cel_l2)
+			.arg_scl(syns_per_den_l2)
 			.arg_scl(common::DENDRITE_INITIAL_THRESHOLD_PROXIMAL)
 			.arg_env(&states_raw)
 			.arg_env(&states)
@@ -100,9 +100,9 @@ impl Columns {
 			.arg_env(&peak_cols.col_ids)
 			.arg_env(&peak_cols.states)
 			.arg_env(&syns.states)
-			.arg_scl(syns_per_cel_l2)
+			.arg_scl(syns_per_den_l2)
 			.arg_scl(0u32)
-			.arg_env(&aux.ints_0)
+			//.arg_env(&aux.ints_0)
 			.arg_env(&syns.strengths)
 			//.arg_env(&axons.states)
 		;
@@ -126,12 +126,12 @@ impl Columns {
 		}
 	}
 
-	pub fn cycle(&mut self) {
+	pub fn cycle(&mut self, learn: bool) {
 		self.syns.cycle();
 		self.kern_cycle.enqueue();
-		self.peak_cols.cycle();
-		self.kern_post_inhib.enqueue();
-		self.learn();
+		self.peak_cols.cycle(); // *****
+		self.kern_post_inhib.enqueue(); // *****
+		if learn { self.learn(); }
 	}
 
 	pub fn output(&self) {
@@ -151,6 +151,14 @@ impl Columns {
 		}
 
 	}
+
+	pub fn confab(&mut self) {
+		self.states.read();
+		self.states_raw.read();
+		self.cels_status.read();
+		//self.peak_cols.confab();
+		self.syns.confab();
+	} 
 
 	pub fn axn_output_range(&self) -> (usize, usize) {
 		let start = (self.axn_output_row as usize * self.width as usize) + common::SYNAPSE_REACH as usize;
@@ -181,7 +189,7 @@ impl ColumnSynapses {
 		//let depth = src_rows_len;
 		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
 		//let dens_per_wg: u32 = wg_size / (common::SYNAPSES_PER_DENDRITE_PROXIMAL);
-		let syns_per_cel_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
+		let syns_per_den_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 		//let dens_per_wg: u32 = 1;
 
 		print!("\nNew Proximal Synapses with: depth: {}, syns_per_row: {}, src_rows_len: {}", depth, syns_per_row, src_rows_len);
@@ -197,7 +205,7 @@ impl ColumnSynapses {
 		kern_cycle.new_arg_envoy(&axons.states);
 		kern_cycle.new_arg_envoy(&src_ofs);
 		kern_cycle.new_arg_envoy(&src_row_ids);
-		kern_cycle.new_arg_scalar(syns_per_cel_l2);
+		kern_cycle.new_arg_scalar(syns_per_den_l2);
 		//kern_cycle.new_arg_envoy(&aux.ints_0);
 		//kern_cycle.new_arg_envoy(&aux.ints_1);
 		kern_cycle.new_arg_envoy(&states);
