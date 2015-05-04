@@ -8,8 +8,21 @@ static inline uint asp_col_id_to_col_idx(uint const asp_idx, uint const asp_col_
 	return (asp_to_col_ofs(asp_idx) + (asp_col_id & (ASPINY_SPAN - 1)));
 }
 
+
+/* AXN_IDX_2D(): Axon Address Resolution
+	- [in progress] Accommodate horizontal axon rows, rows which are nonspatial and look the same from any column in a region.
+		- Rows above HORIZONTAL_AXON_ROW_FLOOR are considered horizontal and will be mapped to the rear of axn_states.
+
+*/
 static inline uint axn_idx_2d(uchar row_id, uint row_width, int col_id) {
-	return mad24((uint)row_id, row_width, (uint)(col_id + SYNAPSE_REACH));
+	/*if (row_id >= HORIZONTAL_AXON_ROW_FLOOR) {
+
+
+	}*/
+	uint axn_idx = mad24((uint)row_id, row_width, (uint)(col_id + SYNAPSE_REACH));
+
+
+	return axn_idx;
 }
 
 

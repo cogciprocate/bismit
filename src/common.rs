@@ -150,7 +150,7 @@ pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;
 
 pub const LEARNING_ACTIVE: bool = true;	// *****
 
-pub const HORIZONTAL_AXON_ROW_FLOOR: u8 = 200;
+//pub const HORIZONTAL_AXON_ROW_FLOOR: u8 = 200;
 
 
 
@@ -208,6 +208,7 @@ pub fn build_options() -> String {
 		.opt("ASPINY_SPAN", ASPINY_SPAN as i32)
 		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
 		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
+		//.opt("HORIZONTAL_AXON_ROW_FLOOR", HORIZONTAL_AXON_ROW_FLOOR as i32)
 		.to_string()
 }
 

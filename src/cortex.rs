@@ -6,7 +6,9 @@ use cells:: { self, Cells };
 use cortical_regions::{ self, CorticalRegion, CorticalRegions, CorticalRegionKind };
 use cortical_areas::{ self, CorticalAreas, CorticalArea, Width, AddNew };
 use cortical_region_layer as layer;
-use cortical_region_layer::{ CorticalRegionLayer };
+use cortical_region_layer::{ Layer };
+	use cortical_region_layer::LayerKind::{ Cellular, Axonal };
+	use cortical_region_layer::AxonKind::{ Spatial, Horizontal };
 use protocell::{ CellKind, Protocell, DendriteKind, CellFlags };
 
 
@@ -24,13 +26,13 @@ pub fn define_regions() -> CorticalRegions {
 
 	let mut sen = CorticalRegion::new(CorticalRegionKind::Sensory)
 		//.layer("pre_thal", 1, layer::DEFAULT, None)
-		.layer("thal", 1, layer::DEFAULT, None)
+		.layer("thal", 1, layer::DEFAULT, Axonal(Spatial))
 		//.layer("post_thal", 1, layer::DEFAULT, None)
 		//.layer("post_thal2", 1, layer::DEFAULT, None)
 		//.layer("post_thal3", 1, layer::DEFAULT, None)
 		//.layer("post_thal4", 1, layer::DEFAULT, None)
 		//.layer("post_thal5", 1, layer::DEFAULT, None)
-		.layer("out", 1, layer::COLUMN_OUTPUT, None)
+		.layer("out", 1, layer::COLUMN_OUTPUT, Axonal(Spatial))
 		//.layer("test_2", 1, None);
 		//.layer("inhib_tmp", 1, None);
 		//.layer("inhib_tmp_2", 1, None);
@@ -66,12 +68,18 @@ pub struct Cortex {
 impl Cortex {
 	pub fn new() -> Cortex {
 		print!("\nInitializing Cortex... ");
-		let build_options: String = common::build_options();
-		//let build_options: String = common::CL_BUILD_OPTIONS.to_string();
-		let time_start = time::get_time();
-		let ocl: ocl::Ocl = ocl::Ocl::new(build_options);
+		let time_start = time::get_time();		
+
 		let regions = define_regions();
 		let areas = define_areas();
+
+		//let ref region = &regions[&CorticalRegionKind::Sensory];
+
+		let build_options: String = common::build_options();
+		//let horizontal_axon_row_floor = region.depth_vert_rows();		// ***** NEED TO MODIFY REGION TO CONTAIN 2 TYPES OF AXON ROWS
+
+
+		let ocl: ocl::Ocl = ocl::Ocl::new(build_options);
 
 		// FOR EACH REGION...
 		let mut cells: cells::Cells = {

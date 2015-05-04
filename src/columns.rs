@@ -3,7 +3,7 @@ use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
 use cortical_regions::{ CorticalRegion, CorticalRegionKind };
-use cortical_region_layer:: { CorticalRegionLayer };
+use cortical_region_layer:: { Layer };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -180,7 +180,7 @@ impl Columns {
 }
 
 impl ColumnSynapses {
-	pub fn new(width: u32, depth: u8, per_cell: u32, layer: &CorticalRegionLayer, 
+	pub fn new(width: u32, depth: u8, per_cell: u32, layer: &Layer, 
 					region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> ColumnSynapses {
 
 		let syns_per_row = width * per_cell;

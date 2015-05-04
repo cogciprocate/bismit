@@ -3,7 +3,7 @@ use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
 use cortical_regions::{ CorticalRegion, CorticalRegionKind };
-use cortical_region_layer::{ CorticalRegionLayer };
+use cortical_region_layer::{ Layer, LayerKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -122,8 +122,8 @@ impl Synapses {
 
 		/* LOOP THROUGH ALL LAYERS */
 		for (&layer_name, layer) in region.layers().iter() {
-			let src_row_ids: Vec<u8> = match layer.cell {
-				Some(ref cell) => {
+			let src_row_ids: Vec<u8> = match layer.kind {
+				LayerKind::Cellular(ref cell) => {
 					if cell.cell_kind == self.cell_kind {
 						region.src_row_ids(layer_name, self.den_kind)
 					} else {
