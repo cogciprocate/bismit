@@ -33,7 +33,7 @@ mod pyramidals;
 //mod cort_seg;
 //mod thalamus;
 mod cortex;
-mod cortical_regions;
+mod protoregions;
 mod cortical_areas;
 mod cortical_region_layer;
 mod protocell;

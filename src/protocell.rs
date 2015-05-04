@@ -32,7 +32,7 @@ impl Protocell {
 	*/
 	pub fn new_pyramidal(dst_srcs: Vec<&'static str>) -> LayerKind {
 		Cellular(Protocell {
-			cell_kind: CellKind::Pyramidals,
+			cell_kind: CellKind::Pyramidal,
 			den_dst_srcs: Some(dst_srcs),
 			den_prx_srcs: None,
 			//den_prx_srcs: Some(vec![prx_src]),
@@ -53,7 +53,7 @@ impl Protocell {
 
 #[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
 pub enum CellKind {
-	Pyramidals,
+	Pyramidal,
 	SpinyStellate,
 	AspinyStellate,
 	Nada,
@@ -87,12 +87,12 @@ bitflags! {
 
 
 
-//pub struct ProtocellPyramidals
+//pub struct ProtocellPyramidal
 
 
 /*#[derive(PartialEq, Debug, Clone, Hash)]
 pub enum CellPrototype {
-	Pyramidals { 
+	Pyramidal { 
 		prx_src: &'static str,
 		dst_srcs: Vec<&'static str>,
 	},
@@ -111,7 +111,7 @@ pub enum CellPrototype {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum CellBlueprint {
-	Pyramidals {
+	Pyramidal {
 		dens: u8,
 		syns_per_den: u8,
 		flags: CellFlags,

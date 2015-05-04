@@ -2,7 +2,7 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -22,8 +22,9 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 pub struct Axons {
-	depth_noncellular: u8,
+	depth_axonal_spatial: u8,
 	depth_cellular: u8,
+	depth_axonal_horizontal: u8,
 	pub width: u32,
 	padding: u32,
 	//kern_cycle: ocl::Kernel,
@@ -31,17 +32,27 @@ pub struct Axons {
 }
 
 impl Axons {
-	pub fn new(width: u32, depth_noncellular: u8, depth_cellular: u8, region: &CorticalRegion, ocl: &Ocl) -> Axons {
-		let padding: u32 = (common::AXONS_MARGIN * 2) as u32;
-		//let padding: u32 = std::num::cast(common::AXONS_MARGIN * 2).expect("Axons::new()");
-		let depth = depth_cellular + depth_noncellular;
+	pub fn new(width: u32, region: &CorticalRegion, ocl: &Ocl) -> Axons {
+		let depth_axonal_spatial = region.depth_axonal_spatial();
+		let depth_cellular = region.depth_cellular();
+		let depth_axonal_horizontal = region.depth_axonal_horizontal();
 
-		//println!("New Axons with: depth_ac: {}, depth_c: {}, width: {}", depth_noncellular, depth_cellular, width);
+
+		let horizontal_frames_per_row = width >> (common::ASPINY_SPAN_LOG2 + 1); // width / (aspiny_span * 2)
+
+
+
+
+		let padding: u32 = (common::AXONS_MARGIN * 2) as u32;
+		let depth = depth_cellular + depth_axonal_spatial;
+
+		//println!("New Axons with: depth_ac: {}, depth_c: {}, width: {}", depth_axonal_spatial, depth_cellular, width);
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, common::STATE_ZERO, ocl);
 
 		Axons {
-			depth_noncellular: depth_noncellular,
+			depth_axonal_spatial: depth_axonal_spatial,
 			depth_cellular: depth_cellular,
+			depth_axonal_horizontal: depth_axonal_horizontal,
 			width: width,
 			padding: padding,
 			//kern_cycle: kern_cycle,
@@ -59,7 +70,7 @@ impl Axons {
 		kern.arg(&soma.states);
 		kern.arg(&soma.hcol_max_ids);
 		kern.arg(&self.states);
-		kern.arg_scalar(self.depth_noncellular as u32);
+		kern.arg_scalar(self.depth_axonal_spatial as u32);
 
 		kern.enqueue();
 	} */
@@ -73,7 +84,7 @@ impl Axons {
 		//ocl::set_kernel_arg(1, soma.hcol_max_vals.buf, kern);
 		ocl::set_kernel_arg(1, soma.hcol_max_ids.buf, kern);
 		ocl::set_kernel_arg(2, self.states.buf, kern);
-		ocl::set_kernel_arg(3, self.depth_noncellular as u32, kern);
+		ocl::set_kernel_arg(3, self.depth_axonal_spatial as u32, kern);
 
 		let gws = (self.depth_cellular as usize, self.width as usize);
 

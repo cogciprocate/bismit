@@ -2,7 +2,7 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -22,7 +22,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 
-pub struct Pyramidals {
+pub struct Pyramidal {
 	depth: u8,
 	width: u32,
 	kern_learn: ocl::Kernel,
@@ -38,23 +38,23 @@ pub struct Pyramidals {
 	pub dens: Dendrites,
 }
 
-impl Pyramidals {
-	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Pyramidals {
+impl Pyramidal {
+	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Pyramidal {
 
-		let axn_row_base = region.base_row_cell_kind(&CellKind::Pyramidals);
-		let depth: u8 = region.depth_cell_kind(&CellKind::Pyramidals);
+		let axn_row_base = region.base_row_cell_kind(&CellKind::Pyramidal);
+		let depth: u8 = region.depth_cell_kind(&CellKind::Pyramidal);
 		let dens_per_cel_l2 = common::DENDRITES_PER_CELL_DISTAL_LOG2;
 		let syns_per_cel_l2 = common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
-		//let col_input_layer = region.col_input_layer().expect("Pyramidals::new()");
+		//let col_input_layer = region.col_input_layer().expect("Pyramidal::new()");
 		//let den_prox_row = region.row_ids(vec![col_input_layer.name])[0];
 		
-		//print!("\n### Pyramidals: Proximal Dendrite Row: {}", den_prox_row);
+		//print!("\n### Pyramidal: Proximal Dendrite Row: {}", den_prox_row);
 
 		let depols = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 
 		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 
-		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidals, dens_per_cel_l2, region, axons, aux, ocl);
+		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidal, dens_per_cel_l2, region, axons, aux, ocl);
 
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle", 
@@ -101,7 +101,7 @@ impl Pyramidals {
 		;
 
 
-		Pyramidals {
+		Pyramidal {
 			depth: depth,
 			width: width,
 			kern_learn: kern_learn,

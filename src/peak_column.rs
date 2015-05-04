@@ -2,7 +2,7 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };

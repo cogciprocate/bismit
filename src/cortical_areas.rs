@@ -1,4 +1,4 @@
-use cortical_regions::{ CorticalRegionKind };
+use protoregions::{ CorticalRegionKind };
 
 use std::collections::{ HashMap };
 

@@ -3,7 +3,7 @@ use common;
 use ocl::{ Envoy };
 use chord::{ Chord };
 use cells:: { self, Cells };
-use cortical_regions::{ self, CorticalRegion, CorticalRegions, CorticalRegionKind };
+use protoregions::{ self, CorticalRegion, CorticalRegions, CorticalRegionKind };
 use cortical_areas::{ self, CorticalAreas, CorticalArea, Width, AddNew };
 use cortical_region_layer as layer;
 use cortical_region_layer::{ Layer };
@@ -25,6 +25,7 @@ pub fn define_regions() -> CorticalRegions {
 	let mut cort_regs: CorticalRegions = CorticalRegions::new();
 
 	let mut sen = CorticalRegion::new(CorticalRegionKind::Sensory)
+		.layer("smellovision", 1, layer::DEFAULT, Axonal(Horizontal))
 		//.layer("pre_thal", 1, layer::DEFAULT, None)
 		.layer("thal", 1, layer::DEFAULT, Axonal(Spatial))
 		//.layer("post_thal", 1, layer::DEFAULT, None)
@@ -41,9 +42,12 @@ pub fn define_regions() -> CorticalRegions {
 		//.layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
 		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii"])) // GET RID OF PROX PARAM? [DONE]
 		//.layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["ii"], "iv"))
+		.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
+		.layer("post_thal3", 1, layer::DEFAULT, Axonal(Spatial))
+		.layer("boat", 1, layer::DEFAULT, Axonal(Horizontal))
 	;
 
-	sen.finalize();
+	sen.freeze();
 	cort_regs.add(sen);
 	cort_regs
 }
@@ -88,7 +92,7 @@ impl Cortex {
 		};
 
 		let time_complete = time::get_time() - time_start;
-		println!("\n... Cortex initialized in: {}.{} sec.", time_complete.num_seconds(), time_complete.num_milliseconds());
+		println!("\n\n... Cortex initialized in: {}.{} sec.", time_complete.num_seconds(), time_complete.num_milliseconds());
 
 		Cortex {
 			cells: cells,
@@ -108,8 +112,8 @@ impl Cortex {
 
 		/* 
 			TODO: VALIDATE "layer_target, OTHERWISE: 
-				thread '<main>' panicked at '[cortical_regions::CorticalRegion::index(): 
-				invalid layer name: "pre_thal"]', src/cortical_regions.rs:339
+				thread '<main>' panicked at '[protoregions::CorticalRegion::index(): 
+				invalid layer name: "pre_thal"]', src/protoregions.rs:339
 		*/
 
 		let axn_row = self.regions[&CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];

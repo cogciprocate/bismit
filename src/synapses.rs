@@ -2,7 +2,7 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ CorticalRegion, CorticalRegionKind };
 use cortical_region_layer::{ Layer, LayerKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
@@ -144,7 +144,7 @@ impl Synapses {
 			
 			assert!(src_row_ids_len <= (1 << self.per_cell_l2) as usize, "cells::Synapses::init(): Number of source rows must not exceed number of synapses per cell.");
 
-			print!("\nLayer: \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", layer_name, self.den_kind, row_ids, src_row_ids);
+			print!("\n    syns.init(): \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", layer_name, self.den_kind, row_ids, src_row_ids);
 			
 			/* LOOP THROUGH ROWS (WITHIN LAYER) */
 			for row_pos in kind_base_row_pos..(kind_base_row_pos + layer.depth) {

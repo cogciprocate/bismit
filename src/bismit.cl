@@ -14,12 +14,12 @@ static inline uint asp_col_id_to_col_idx(uint const asp_idx, uint const asp_col_
 		- Rows above HORIZONTAL_AXON_ROW_FLOOR are considered horizontal and will be mapped to the rear of axn_states.
 
 */
-static inline uint axn_idx_2d(uchar row_id, uint row_width, int col_id) {
+static inline uint axn_idx_2d(uchar row_id, uint row_width, uint col_id, char col_ofs) {
 	/*if (row_id >= HORIZONTAL_AXON_ROW_FLOOR) {
 
 
 	}*/
-	uint axn_idx = mad24((uint)row_id, row_width, (uint)(col_id + SYNAPSE_REACH));
+	uint axn_idx = mad24((uint)row_id, row_width, (uint)(col_id + col_ofs + SYNAPSE_REACH));
 
 
 	return axn_idx;
@@ -147,7 +147,7 @@ __kernel void syns_cycle(
 	for (; syn_idx < syn_n; syn_idx += wg_size) {
 		syn_col_i -= mul24((int)syn_row_width, (syn_col_i >= syn_row_width));
 		int col_pos = syn_col_i >> syns_per_cell_l2;
-		uint axn_idx = axn_idx_2d(syn_src_row_ids[syn_idx], row_width, col_pos + syn_src_col_x_offs[syn_idx]);
+		uint axn_idx = axn_idx_2d(syn_src_row_ids[syn_idx], row_width, col_pos, syn_src_col_x_offs[syn_idx]);
 		//uint axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(col_pos + syn_src_col_x_offs[syn_idx] + SYNAPSE_REACH));
 		uchar axn_state = axn_states[axn_idx];
 
@@ -377,7 +377,7 @@ __kernel void col_post_inhib_unoptd (
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
 	uint const col_idx = mad24(row_id, row_width, col_id);
-	uint const axn_idx = axn_idx_2d(col_axn_row, row_width, col_id);
+	uint const axn_idx = axn_idx_2d(col_axn_row, row_width, col_id, 0);
 	//uint const axn_idx = mad24(col_axn_row, row_width, col_idx + (uint)SYNAPSE_REACH);
 	uint const asp_idx = (col_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
 
@@ -408,7 +408,7 @@ __kernel void pyr_activate(
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
 	uint const pyr_idx = mad24(row_id, row_width, col_id);
-	uint const axn_idx = axn_idx_2d(pyr_axn_row_base + row_id, row_width, col_id);
+	uint const axn_idx = axn_idx_2d(pyr_axn_row_base + row_id, row_width, col_id, 0);
 	//uint const axn_idx = mad24(pyr_axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
 
 	uchar const den_prx_state = den_prx_states[col_id];
@@ -661,7 +661,7 @@ __kernel void col_output(
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
-	uint const output_axn_idx = axn_idx_2d(output_axn_row + row_id, row_width, col_id);
+	uint const output_axn_idx = axn_idx_2d(output_axn_row + row_id, row_width, col_id, 0);
 	//uint const output_axn_idx = mad24(output_axn_row + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
 	//uint const axn_idx_output = axn_idx_wrap_2d(axn_row_output, col_id);
 	uint const col_idx = mad24(row_id, row_width, col_id);

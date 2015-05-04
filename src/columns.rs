@@ -2,7 +2,7 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ CorticalRegion, CorticalRegionKind };
 use cortical_region_layer:: { Layer };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
@@ -10,7 +10,7 @@ use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cells:: { Aux };
 use peak_column:: { PeakColumn };
-use pyramidals::{ Pyramidals };
+use pyramidals::{ Pyramidal };
 
 use std::ops;
 use std::mem;
@@ -40,15 +40,15 @@ pub struct Columns {
 }
 
 impl Columns {
-	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, pyrs: &Pyramidals, aux: &Aux, ocl: &Ocl) -> Columns {
+	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, pyrs: &Pyramidal, aux: &Aux, ocl: &Ocl) -> Columns {
 		let layer = region.col_input_layer().expect("columns::Columns::new()");
 		let depth: u8 = layer.depth();
 
 		let syns_per_den_l2: u32 = common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
 
-		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidals);
-		//let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidals); // SHOULD BE SPECIFIC LAYER(S)  
+		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidal);
+		//let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
 		let states_raw = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);

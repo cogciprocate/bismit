@@ -2,14 +2,14 @@ use common;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use cortical_regions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ CorticalRegion, CorticalRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use columns::{ Columns };
 use peak_column::{ PeakColumn };
-use pyramidals::{ Pyramidals };
+use pyramidals::{ Pyramidal };
 
 
 use num;
@@ -26,13 +26,13 @@ use std::collections::{ BTreeMap };
 
 pub struct Cells {
 	pub width: u32,
-	pub depth_noncellular: u8,
-	pub depth_cellular: u8,
+	//pub depth_axonal: u8,
+	//pub depth_cellular: u8,
 	pub row_map: BTreeMap<u8, &'static str>,
 	ocl: ocl::Ocl,
 	pub axns: Axons,
 	pub cols: Columns,
-	pub pyrs: Pyramidals,
+	pub pyrs: Pyramidal,
 	//pub soma: Somata,
 	pub aux: Aux,
 
@@ -40,24 +40,23 @@ pub struct Cells {
 
 impl Cells {
 	pub fn new(region: &CorticalRegion, areas: &CorticalAreas, ocl: &Ocl) -> Cells {
-		let (depth_noncellular, depth_cellular) = region.depth();
-		let depth_total = depth_noncellular + depth_cellular;
+		//let (depth_axonal, depth_cellular) = region.depth();
 		let width = areas.width(&region.kind);
 
-		//print!("\nCells::new(): depth_noncellular: {}, depth_cellular: {}, width: {}", depth_noncellular, depth_cellular, width);
+		//print!("\nCells::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
 
-		assert!(depth_cellular > 0, "cells::Cells::new(): Region has no cellular layers.");
+		//assert!(depth_cellular > 0, "cells::Cells::new(): Region has no cellular layers.");
 
-		let aux = Aux::new(width, depth_cellular, ocl);
-		let axns = Axons::new(width, depth_noncellular, depth_cellular, region, ocl);
-		let pyrs = Pyramidals::new(width, region, &axns, &aux, ocl);
+		let aux = Aux::new(width, 1, ocl);
+		let axns = Axons::new(width, region, ocl);
+		let pyrs = Pyramidal::new(width, region, &axns, &aux, ocl);
 		let cols = Columns::new(width, region, &axns, &pyrs, &aux, ocl);
 		
 
 		let mut cells = Cells {
 			width: width,
-			depth_noncellular: depth_noncellular,
-			depth_cellular: depth_cellular,
+			//depth_axonal: depth_axonal,
+			//depth_cellular: depth_cellular,
 			row_map: region.row_map(),
 			axns: axns,
 			cols: cols,
@@ -112,7 +111,7 @@ pub struct Aux {
 impl Aux {
 	pub fn new(width: u32, depth: u8, ocl: &Ocl) -> Aux {
 
-		let width_multiplier: u32 = 1000;
+		let width_multiplier: u32 = 512;
 
 		Aux { 
 			ints_0: Envoy::<ocl::cl_int>::new(width * width_multiplier, depth, 0, ocl),

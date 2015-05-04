@@ -113,10 +113,10 @@ pub const SENSORY_CHORD_WIDTH: u32 = 1 << SENSORY_CHORD_WIDTH_LOG2; // COLUMNS_P
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
 
-
-pub const SYNAPSE_REACH: u32 = 128;
+pub const SYNAPSE_REACH_LOG2: u32 = 7;
+pub const SYNAPSE_REACH: u32 = 1 << SYNAPSE_REACH_LOG2;
 pub const SYNAPSE_SPAN: u32 = SYNAPSE_REACH << 1;
-pub const AXONS_MARGIN: usize = 128;
+pub const AXONS_MARGIN: usize = SYNAPSE_REACH as usize;
 
 pub const DST_DEN_BOOST_LOG2: u8 = 0;
 pub const PRX_DEN_BOOST_LOG2: u8 = 0;
@@ -186,6 +186,8 @@ pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxe
 
 
 pub fn build_options() -> String {
+
+	assert!(SENSORY_CHORD_WIDTH % SYNAPSE_SPAN == 0);
 
 	assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
 	assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
@@ -630,7 +632,11 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 
 		if ((global_i & 0xF) == 00) && (ff_vec.len() > SENSORY_CHORD_WIDTH as usize) {
 			let row_id = (global_i >> 4) as u8;
-			println!("\n[{}: {}]", row_id, row_map[&row_id]);
+			let row_name = match row_map.get(&row_id) {
+				Some(&name) => name,
+				None => "<render_sdr(): row name not found in map>",
+			};
+			println!("\n[{}: {}]", row_id, row_name);
 		}
 		
 		println!("{}",line_out);

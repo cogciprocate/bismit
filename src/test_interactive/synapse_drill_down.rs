@@ -1,6 +1,6 @@
 use cortex::{ Cortex };
 use dendrites::{ Dendrites };
-use pyramidals::{ Pyramidals };
+use pyramidals::{ Pyramidal };
 use columns::{ Columns };
 use synapses::{ Synapses };
 use common;
