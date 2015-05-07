@@ -2,39 +2,27 @@ use protocell::{ CellKind, Protocell, DendriteKind };
 //use ocl;
 use bitflags;
 
-
-/*=============================================================================
-===============================================================================
-===============================================================================
-===============================================================================
-=========================== BEST MODULE NAME EVER =============================
-===============================================================================
-===============================================================================
-===============================================================================
-=============================================================================*/
-
-
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
-pub struct Layer {
+pub struct ProtoLayer {
 	pub name: &'static str,
 	//pub kind: Option<Protocell>,
-	pub kind: LayerKind,
+	pub kind: ProtoLayerKind,
 	pub base_row_pos: u8,
 	pub kind_base_row_pos: u8,
 	pub depth: u8,
-	pub flags: LayerFlags,
+	pub flags: ProtoLayerFlags,
 }
 
-impl Layer {
+impl ProtoLayer {
 	/*pub fn new(
 				name: &'static str,
 				cell: Option<Protocell>,
 				base_row_pos: u8,
 				kind_base_row_pos: u8,
 				depth: u8,
-				flags: LayerFlags,
-	) -> Layer {
-		Layer {
+				flags: ProtoLayerFlags,
+	) -> ProtoLayer {
+		ProtoLayer {
 			name: name,
 			cell: cell,
 			base_row_pos: base_row_pos,
@@ -58,12 +46,12 @@ impl Layer {
 
 	pub fn src_layer_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
 		let layer_names = match self.kind {
-			LayerKind::Cellular(ref protocell) => match den_type {
+			ProtoLayerKind::Cellular(ref protocell) => match den_type {
 				DendriteKind::Distal =>	protocell.den_dst_srcs.clone(),
 				DendriteKind::Proximal => protocell.den_prx_srcs.clone(),
 				//DendriteKind::Apical => protocell.den_apc_srcs.clone(),
 			},
-			_ => panic!("Layer must have a kind defined to determine source layers"),
+			_ => panic!("ProtoLayer must have a kind defined to determine source layers"),
 		};
 
 		match layer_names {
@@ -74,7 +62,7 @@ impl Layer {
 }
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
-pub enum LayerKind {
+pub enum ProtoLayerKind {
 	Cellular(Protocell),
 	Axonal(AxonKind),
 }
@@ -88,7 +76,7 @@ pub enum AxonKind {
 
 bitflags! {
 	#[derive(Debug)]
-	flags LayerFlags: u32 {
+	flags ProtoLayerFlags: u32 {
 		const DEFAULT		= 0b0000000000000000,
 		const COLUMN_INPUT 	= 0b0000000000000001,
 		const COLUMN_OUTPUT	= 0b0000000000000010,
@@ -96,7 +84,7 @@ bitflags! {
 	}
 }
 
-/*pub enum LayerFlags {
+/*pub enum ProtoLayerFlags {
 	ColumnInput 	= 0x0001,
 	ColumnOuput 	= 0x0002,
 	None			= 0x0000,

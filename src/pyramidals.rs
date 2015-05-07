@@ -2,7 +2,7 @@ use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use protoregions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ ProtoRegion, ProtoRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -39,7 +39,7 @@ pub struct Pyramidal {
 }
 
 impl Pyramidal {
-	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Pyramidal {
+	pub fn new(width: u32, region: &ProtoRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Pyramidal {
 
 		let axn_row_base = region.base_row_cell_kind(&CellKind::Pyramidal);
 		let depth: u8 = region.depth_cell_kind(&CellKind::Pyramidal);

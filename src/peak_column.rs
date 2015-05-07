@@ -2,7 +2,7 @@ use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use protoregions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ ProtoRegion, ProtoRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -33,7 +33,7 @@ pub struct PeakColumn {
 }
 
 impl PeakColumn {
-	pub fn new(col_width: u32, depth: u8, region: &CorticalRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> PeakColumn {
+	pub fn new(col_width: u32, depth: u8, region: &ProtoRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> PeakColumn {
 
 		let width = col_width >> cmn::ASPINY_SPAN_LOG2;
 

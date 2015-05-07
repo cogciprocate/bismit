@@ -1,4 +1,4 @@
-use protoregions::{ CorticalRegionKind };
+use protoregions::{ ProtoRegionKind };
 
 use std::collections::{ HashMap };
 
@@ -6,7 +6,7 @@ use std::collections::{ HashMap };
 
 
 pub trait Width {
-	fn width(&self, cr_type: &CorticalRegionKind) -> u32;
+	fn width(&self, cr_type: &ProtoRegionKind) -> u32;
 }
 
 pub trait AddNew {
@@ -17,7 +17,7 @@ pub trait AddNew {
 pub type CorticalAreas = HashMap<&'static str, CorticalArea>;
 
 impl Width for CorticalAreas {
-	fn width(&self, cr_type: &CorticalRegionKind) -> u32 {
+	fn width(&self, cr_type: &ProtoRegionKind) -> u32 {
 		let mut width = 0u32;
 		for (area_name, area) in self.iter() {
 			if area.cort_reg_type == *cr_type {
@@ -40,7 +40,7 @@ impl AddNew for CorticalAreas {
 pub struct CorticalArea {
 	pub width: u32,
 	pub offset: u32,
-	pub cort_reg_type: CorticalRegionKind,
+	pub cort_reg_type: ProtoRegionKind,
 }
 
 impl CorticalArea {

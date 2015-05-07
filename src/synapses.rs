@@ -2,8 +2,8 @@ use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use protoregions::{ CorticalRegion, CorticalRegionKind };
-use cortical_region_layer::{ Layer, LayerKind };
+use protoregions::{ ProtoRegion, ProtoRegionKind };
+use protolayer::{ ProtoLayer, ProtoLayerKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -38,7 +38,7 @@ pub struct Synapses {
 
 impl Synapses {
 	pub fn new(width: u32, depth: u8, per_cell_l2: u32, per_den_l2: u32, den_kind: DendriteKind, cell_kind: CellKind, 
-					region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
+					region: &ProtoRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
 
 		let syns_per_row = width << per_cell_l2;
 
@@ -110,7 +110,7 @@ impl Synapses {
 		syns
 	}
 
-	fn init(&mut self, region: &CorticalRegion) {
+	fn init(&mut self, region: &ProtoRegion) {
 		assert!(
 			(self.src_col_x_offs.width() == self.src_row_ids.width()) 
 			&& ((self.src_row_ids.width() == (self.width << self.per_cell_l2))), 
@@ -123,7 +123,7 @@ impl Synapses {
 		/* LOOP THROUGH ALL LAYERS */
 		for (&layer_name, layer) in region.layers().iter() {
 			let src_row_ids: Vec<u8> = match layer.kind {
-				LayerKind::Cellular(ref cell) => {
+				ProtoLayerKind::Cellular(ref cell) => {
 					if cell.cell_kind == self.cell_kind {
 						region.src_row_ids(layer_name, self.den_kind)
 					} else {

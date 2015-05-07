@@ -2,7 +2,7 @@ use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use protoregions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ ProtoRegion, ProtoRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -39,7 +39,7 @@ pub struct Cells {
 }
 
 impl Cells {
-	pub fn new(region: &CorticalRegion, areas: &CorticalAreas, ocl: &Ocl) -> Cells {
+	pub fn new(region: &ProtoRegion, areas: &CorticalAreas, ocl: &Ocl) -> Cells {
 		//let (depth_axonal, depth_cellular) = region.depth();
 		let width = areas.width(&region.kind);
 
@@ -137,7 +137,7 @@ impl Aux {
 }
 
 impl Somata {
-	pub fn new(width: u32, depth: u8, region: &CorticalRegion, ocl: &Ocl) -> Somata {
+	pub fn new(width: u32, depth: u8, region: &ProtoRegion, ocl: &Ocl) -> Somata {
 		Somata { 
 			depth: depth,
 			width: width,

@@ -1,10 +1,10 @@
 // CorticalArea for the specifics
-// CorticalRegion to define prototypical shit
+// ProtoRegion to define prototypical shit
 
 //use protocell::{  };
-use cortical_region_layer as layer;
-use cortical_region_layer::{ Layer, LayerFlags, AxonKind };
-use cortical_region_layer::LayerKind::{ self, Cellular, Axonal };
+use protolayer as layer;
+use protolayer::{ ProtoLayer, ProtoLayerFlags, AxonKind };
+use protolayer::ProtoLayerKind::{ self, Cellular, Axonal };
 use protocell::{ CellKind, Protocell, DendriteKind };
 
 use std;
@@ -17,18 +17,18 @@ use std::hash::{ self, Hash, SipHasher, Hasher };
 
 
 //#[derive(Copy)]
-pub struct CorticalRegions {
-	pub hash_map: HashMap<CorticalRegionKind, CorticalRegion>,
+pub struct ProtoRegions {
+	pub hash_map: HashMap<ProtoRegionKind, ProtoRegion>,
 }
 
-impl CorticalRegions {
-	pub fn new() -> CorticalRegions {
-		CorticalRegions {
+impl ProtoRegions {
+	pub fn new() -> ProtoRegions {
+		ProtoRegions {
 			hash_map: HashMap::new(),
 		}
 	}
 
-	/*pub fn depth(&self, cr_type: CorticalRegionKind) -> (u8, u8) {
+	/*pub fn depth(&self, cr_type: ProtoRegionKind) -> (u8, u8) {
 		let mut depth_axonal_rows = 0u8;		//	Integererregional
 		let mut depth_cellular_rows = 0u8;			//	Integererlaminar
 
@@ -44,28 +44,28 @@ impl CorticalRegions {
 		(depth_axonal_rows, depth_cellular_rows)
 	}*/
 
-	/*pub fn depth_total(&self, cr_type: CorticalRegionKind) -> u8 {
+	/*pub fn depth_total(&self, cr_type: ProtoRegionKind) -> u8 {
 		let (hacr, hcr) = self.depth(cr_type);
 		hacr + hcr
 	}*/
 
-	pub fn add(&mut self, cr: CorticalRegion) {
+	pub fn add(&mut self, cr: ProtoRegion) {
 		self.hash_map.insert(cr.kind.clone(), cr);
 	}
 }
 
-impl<'b> Index<&'b CorticalRegionKind> for CorticalRegions
+impl<'b> Index<&'b ProtoRegionKind> for ProtoRegions
 {
-    type Output = CorticalRegion;
+    type Output = ProtoRegion;
 
-    fn index<'a>(&'a self, index: &'b CorticalRegionKind) -> &'a CorticalRegion {
+    fn index<'a>(&'a self, index: &'b ProtoRegionKind) -> &'a ProtoRegion {
         self.hash_map.get(index).expect("Invalid region name.")
     }
 }
 
-impl<'b> IndexMut<&'b CorticalRegionKind> for CorticalRegions
+impl<'b> IndexMut<&'b ProtoRegionKind> for ProtoRegions
 {
-    fn index_mut<'a>(&'a mut self, index: &'b CorticalRegionKind) -> &'a mut CorticalRegion {
+    fn index_mut<'a>(&'a mut self, index: &'b ProtoRegionKind) -> &'a mut ProtoRegion {
         self.hash_map.get_mut(index).expect("Invalid region name.")
     }
 }
@@ -78,26 +78,26 @@ impl<'b> IndexMut<&'b CorticalRegionKind> for CorticalRegions
 			- Also could merge the two and have one or the other dominant
 	- [incomplete] (cel, axn)_layer_kind_row_lists needs to be redone asap
 */
-pub struct CorticalRegion {
-	layers: HashMap<&'static str, Layer>,
+pub struct ProtoRegion {
+	layers: HashMap<&'static str, ProtoLayer>,
 	cel_layer_kind_row_lists: HashMap<CellKind, Vec<&'static str>>,
 	cel_layer_kind_base_row_ids: HashMap<CellKind, u8>,
 	axn_layer_kind_row_lists: HashMap<AxonKind, Vec<&'static str>>,
 	axn_layer_kind_base_row_ids: HashMap<AxonKind, u8>,
 	row_map: BTreeMap<u8, &'static str>,
-	pub kind: CorticalRegionKind,
+	pub kind: ProtoRegionKind,
 	frozen: bool,
 	hrz_demarc: u8,
 }
 
-impl CorticalRegion {
-	pub fn new (kind: CorticalRegionKind)  -> CorticalRegion {
+impl ProtoRegion {
+	pub fn new (kind: ProtoRegionKind)  -> ProtoRegion {
 		/*let mut next_row_id = HashMap::new();
 		next_row_id.insert(CellKind::Pyramidal, 0);
 		next_row_id.insert(CellKind::PeakColumn, 0);
 		next_row_id.insert(CellKind::SpinyStellate, 0);*/
 	
-		CorticalRegion { 
+		ProtoRegion { 
 			layers: HashMap::new(),
 			cel_layer_kind_row_lists: HashMap::new(),
 			cel_layer_kind_base_row_ids: HashMap::new(),
@@ -114,16 +114,16 @@ impl CorticalRegion {
 					mut self, 
 					layer_name: &'static str,
 					layer_depth: u8,
-					flags: LayerFlags,
-					kind: LayerKind,
-	) -> CorticalRegion {
+					flags: ProtoLayerFlags,
+					kind: ProtoLayerKind,
+	) -> ProtoRegion {
 
 		let next_kind_base_row_pos = match kind {
 			Cellular(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
 			Axonal(ref axon_kind) => self.depth_axon_kind(&axon_kind),
 		};
 		
-		let cl = Layer {
+		let cl = ProtoLayer {
 			name : layer_name,
 			kind: kind,
 			base_row_pos: 0, 
@@ -139,14 +139,14 @@ impl CorticalRegion {
 	/* PROTOREGION::ADD()
 		- [incomplete] NEED TO CHECK FOR DUPLICATE LAYERS!
 	*/
-	pub fn add(&mut self, mut layer: Layer) {
+	pub fn add(&mut self, mut layer: ProtoLayer) {
 
 		/*let ck_tmp = match layer.kind {
 			Some(ref kind) 	=> kind.cell_kind.clone(),
 			None 			=> CellKind::Nada,
 		};*/
 		if self.frozen {
-			panic!("protoregions::CorticalRegion::add(): Cannot add new layers after region is frozen.");
+			panic!("protoregions::ProtoRegion::add(): Cannot add new layers after region is frozen.");
 		}
 		
 		match layer.kind {
@@ -166,7 +166,7 @@ impl CorticalRegion {
 					Some(vec) => {
 						
 						layer.kind_base_row_pos = vec.len() as u8;
-						//layer.kind_base_row_pos = std::num::cast(vec.len()).expect("protoregions::CorticalRegion::add()");
+						//layer.kind_base_row_pos = std::num::cast(vec.len()).expect("protoregions::ProtoRegion::add()");
 						//print!("\n{:?} base_row_pos: {}", cell_kind, layer.kind_base_row_pos);
 
 						for i in 0..layer.depth {							 
@@ -222,7 +222,7 @@ impl CorticalRegion {
 	pub fn base_row_cell_kind(&self, cell_kind: &CellKind) -> u8 {
 		match self.cel_layer_kind_base_row_ids.get(cell_kind) {
 			Some(base_row) 	=> base_row.clone(),
-			None 			=> panic!("CorticalRegion::base_row_cell_king(): Base row for type not found"),
+			None 			=> panic!("ProtoRegion::base_row_cell_king(): Base row for type not found"),
 		}
 	}
 
@@ -312,7 +312,7 @@ impl CorticalRegion {
 
 		//print!("\nCKRC: kind: {:?} -> count = {}, count2 = {}", &cell_kind, count, count2);
 
-		assert!(count as usize == count2, "protoregions::CorticalRegion::depth_cell_kind(): mismatch");
+		assert!(count as usize == count2, "protoregions::ProtoRegion::depth_cell_kind(): mismatch");
 
 		count
 	}
@@ -338,7 +338,7 @@ impl CorticalRegion {
 			None 		=> 0,
 		};
 
-		assert!(count as usize == count2, "protoregions::CorticalRegion::depth_axon_kind(): mismatch");
+		assert!(count as usize == count2, "protoregions::ProtoRegion::depth_axon_kind(): mismatch");
 
 		count
 	}
@@ -389,7 +389,7 @@ impl CorticalRegion {
 			print!("\n    Adding Cell Kind: '{:?}', len: {}, kind_base_row: {}", cell_kind, list.len(), next_base_row);
 			assert!(list.len() == self.depth_cell_kind(&cell_kind) as usize);
 			next_base_row += list.len() as u8;
-			//next_base_row += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::CorticalRegion::freeze()");
+			//next_base_row += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::ProtoRegion::freeze()");
 		}
 
 		/* (2b) SAVE DEMARCATION BETWEEN VERTICAL (SPATIAL) AND HORIZONTAL ROWS */
@@ -465,7 +465,7 @@ impl CorticalRegion {
 	}
 
 
-	pub fn layers(&self) -> &HashMap<&'static str, Layer> {
+	pub fn layers(&self) -> &HashMap<&'static str, ProtoLayer> {
 		&self.layers
 	}
 
@@ -475,7 +475,7 @@ impl CorticalRegion {
 
 	pub fn row_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
 		if !self.frozen {
-			panic!("CorticalRegion must be frozen with freeze() before row_ids can be called.");
+			panic!("ProtoRegion must be frozen with freeze() before row_ids can be called.");
 		}
 
 		let mut row_ids = Vec::new();
@@ -496,8 +496,8 @@ impl CorticalRegion {
 		self.row_ids(src_layer_names)
  	}
 
- 	pub fn col_input_layer(&self) -> Option<Layer> {
- 		let mut input_layer: Option<Layer> = None;
+ 	pub fn col_input_layer(&self) -> Option<ProtoLayer> {
+ 		let mut input_layer: Option<ProtoLayer> = None;
  		
  		for (layer_name, layer) in self.layers.iter() {
  			if (layer.flags & layer::COLUMN_INPUT) == layer::COLUMN_INPUT {
@@ -538,44 +538,44 @@ impl CorticalRegion {
 	}
 }
 
-impl<'b> Index<&'b&'static str> for CorticalRegion
+impl<'b> Index<&'b&'static str> for ProtoRegion
 {
-    type Output = Layer;
+    type Output = ProtoLayer;
 
-    fn index<'a>(&'a self, index: &'b&'static str) -> &'a Layer {
-        self.layers.get(index).unwrap_or_else(|| panic!("[protoregions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
+    fn index<'a>(&'a self, index: &'b&'static str) -> &'a ProtoLayer {
+        self.layers.get(index).unwrap_or_else(|| panic!("[protoregions::ProtoRegion::index(): invalid layer name: \"{}\"]", index))
     }
 }
 
-impl<'b> IndexMut<&'b&'static str> for CorticalRegion
+impl<'b> IndexMut<&'b&'static str> for ProtoRegion
 {
-    fn index_mut<'a>(&'a mut self, index: &'b&'static str) -> &'a mut Layer {
-        self.layers.get_mut(index).unwrap_or_else(|| panic!("[protoregions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
+    fn index_mut<'a>(&'a mut self, index: &'b&'static str) -> &'a mut ProtoLayer {
+        self.layers.get_mut(index).unwrap_or_else(|| panic!("[protoregions::ProtoRegion::index(): invalid layer name: \"{}\"]", index))
     }
 }
 
 
 #[derive(PartialEq, Eq, Debug, Clone, Hash)]
-pub enum CorticalRegionKind {
+pub enum ProtoRegionKind {
 	Associational,
 	Sensory,
 	Motor,
 }
 
 
-/*pub struct CorticalRegion {
-	pub layers: HashMap<&'static str, Layer>,
-	pub kind: CorticalRegionKind,
+/*pub struct ProtoRegion {
+	pub layers: HashMap<&'static str, ProtoLayer>,
+	pub kind: ProtoRegionKind,
 }
 
-impl CorticalRegion {
-	pub fn new (kind: CorticalRegionKind)  -> CorticalRegion {
+impl ProtoRegion {
+	pub fn new (kind: ProtoRegionKind)  -> ProtoRegion {
 		let mut next_row_id = HashMap::new();
 		next_row_id.insert(CellKind::Pyramidal, 0);
 		next_row_id.insert(CellKind::PeakColumn, 0);
 		next_row_id.insert(CellKind::SpinyStellate, 0);
 	
-		CorticalRegion { 
+		ProtoRegion { 
 			layers: HashMap::new(),
 			kind: kind,
 		}
@@ -585,7 +585,7 @@ impl CorticalRegion {
 					&mut self, 
 					layer_name: &'static str,
 					layer_depth: u8,
-					flags: LayerFlags,
+					flags: ProtoLayerFlags,
 					cell: Option<Protocell>,
 	) {
 		let (noncell_rows, cell_rows) = self.depth();
@@ -597,9 +597,9 @@ impl CorticalRegion {
 			None => noncell_rows,
 		};
 
-		println!("Layer: {}, layer_depth: {}, base_row_pos: {}, kind_base_row_pos: {}", layer_name, layer_depth, next_base_row_pos, next_kind_base_row_pos);
+		println!("ProtoLayer: {}, layer_depth: {}, base_row_pos: {}, kind_base_row_pos: {}", layer_name, layer_depth, next_base_row_pos, next_kind_base_row_pos);
 		
-		let cl = Layer {
+		let cl = ProtoLayer {
 			name : layer_name,
 			cell: cell,
 			base_row_pos: next_base_row_pos, 
@@ -611,7 +611,7 @@ impl CorticalRegion {
 		self.add(cl);
 	}
 
-	pub fn add(&mut self, layer: Layer) {
+	pub fn add(&mut self, layer: ProtoLayer) {
 		self.layers.insert(layer.name, layer);
 	}
 
@@ -679,21 +679,21 @@ impl CorticalRegion {
 
 }
 
-impl Index<&'static str> for CorticalRegion
+impl Index<&'static str> for ProtoRegion
 {
-    type Output = Layer;
+    type Output = ProtoLayer;
 
-    fn index<'a>(&'a self, index: &&'static str) -> &'a Layer {
-        self.layers.get(index).unwrap_or_else(|| panic!("[protoregions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
+    fn index<'a>(&'a self, index: &&'static str) -> &'a ProtoLayer {
+        self.layers.get(index).unwrap_or_else(|| panic!("[protoregions::ProtoRegion::index(): invalid layer name: \"{}\"]", index))
     }
 }
 
-impl IndexMut<&'static str> for CorticalRegion
+impl IndexMut<&'static str> for ProtoRegion
 {
-    type Output = Layer;
+    type Output = ProtoLayer;
 
-    fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut Layer {
-        self.layers.get_mut(index).unwrap_or_else(|| panic!("[protoregions::CorticalRegion::index(): invalid layer name: \"{}\"]", index))
+    fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut ProtoLayer {
+        self.layers.get_mut(index).unwrap_or_else(|| panic!("[protoregions::ProtoRegion::index(): invalid layer name: \"{}\"]", index))
     }
 }*/
 
@@ -718,7 +718,7 @@ impl IndexMut<&'static str> for CorticalRegion
 			src_row_ids.push_all(self.kind_row_ids(src_row_name).as_slice());
 		}
 
-		//println!("CorticalRegion::layer_srcs_row_ids(): (name:sources:idxs) [{}]:{:?}:{:?}", layer_name, src_layer_names, src_row_ids);
+		//println!("ProtoRegion::layer_srcs_row_ids(): (name:sources:idxs) [{}]:{:?}:{:?}", layer_name, src_layer_names, src_row_ids);
 		
 		src_row_ids
  	}*/
@@ -727,8 +727,8 @@ impl IndexMut<&'static str> for CorticalRegion
 /* AxonScope 
 	
 	Integererlaminar(
-		Distal Dendrite Input Layers,
-		Proximal Dendrite Input Layers,
+		Distal Dendrite Input ProtoLayers,
+		Proximal Dendrite Input ProtoLayers,
 		Cell Type
 	)
 

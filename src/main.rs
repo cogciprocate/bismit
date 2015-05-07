@@ -35,7 +35,7 @@ mod pyramidals;
 mod cortex;
 mod protoregions;
 mod cortical_areas;
-mod cortical_region_layer;
+mod protolayer;
 mod protocell;
 //mod protocell;
 //mod sub_cortex;

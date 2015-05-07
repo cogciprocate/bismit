@@ -2,7 +2,7 @@ use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use protoregions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ ProtoRegion, ProtoRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -32,7 +32,7 @@ pub struct Axons {
 }
 
 impl Axons {
-	pub fn new(width: u32, region: &CorticalRegion, ocl: &Ocl) -> Axons {
+	pub fn new(width: u32, region: &ProtoRegion, ocl: &Ocl) -> Axons {
 		let depth_axn_sptl = region.depth_axonal_spatial();
 		let depth_cellular = region.depth_cellular();
 		let depth_axn_hrz = region.depth_axonal_horizontal();

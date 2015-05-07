@@ -2,8 +2,8 @@ use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
-use protoregions::{ CorticalRegion, CorticalRegionKind };
-use cortical_region_layer:: { Layer };
+use protoregions::{ ProtoRegion, ProtoRegionKind };
+use protolayer:: { ProtoLayer };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -40,7 +40,7 @@ pub struct Columns {
 }
 
 impl Columns {
-	pub fn new(width: u32, region: &CorticalRegion, axons: &Axons, pyrs: &Pyramidal, aux: &Aux, ocl: &Ocl) -> Columns {
+	pub fn new(width: u32, region: &ProtoRegion, axons: &Axons, pyrs: &Pyramidal, aux: &Aux, ocl: &Ocl) -> Columns {
 		let layer = region.col_input_layer().expect("columns::Columns::new()");
 		let depth: u8 = layer.depth();
 
@@ -180,8 +180,8 @@ impl Columns {
 }
 
 impl ColumnSynapses {
-	pub fn new(width: u32, depth: u8, per_cell: u32, layer: &Layer, 
-					region: &CorticalRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> ColumnSynapses {
+	pub fn new(width: u32, depth: u8, per_cell: u32, layer: &ProtoLayer, 
+					region: &ProtoRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> ColumnSynapses {
 
 		let syns_per_row = width * per_cell;
 		let src_row_ids_list: Vec<u8> = region.src_row_ids(layer.name, DendriteKind::Proximal);
@@ -229,7 +229,7 @@ impl ColumnSynapses {
 		syns
 	}
 
-	fn init(&mut self, region: &CorticalRegion) {
+	fn init(&mut self, region: &ProtoRegion) {
 		let len = self.width * self.per_cell * self.depth as u32;
 		let mut rng = rand::weak_rng();
 		let ei_start = 0usize;

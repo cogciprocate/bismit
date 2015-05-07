@@ -3,7 +3,7 @@ use ocl::{ self, Ocl, WorkSize, };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
 use protocell::{ CellKind, Protocell, DendriteKind };
-use protoregions::{ CorticalRegion, CorticalRegionKind };
+use protoregions::{ ProtoRegion, ProtoRegionKind };
 use synapses::{ Synapses };
 use axons::{ Axons };
 use cells::{ Aux };
@@ -37,7 +37,7 @@ impl Dendrites {
 					den_kind: DendriteKind, 
 					cell_kind: CellKind,
 					per_cell_l2: u32, 
-					region: &CorticalRegion,
+					region: &ProtoRegion,
 					axons: &Axons,
 					aux: &Aux,
 					ocl: &Ocl

@@ -1,5 +1,5 @@
 //use bitflags;
-use cortical_region_layer::LayerKind::{ self, Cellular };
+use protolayer::ProtoLayerKind::{ self, Cellular };
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
@@ -30,7 +30,7 @@ impl Protocell {
 	/* NEW_PYRAMIDAL(): 
 		- get rid of proximal source (maybe)
 	*/
-	pub fn new_pyramidal(dst_srcs: Vec<&'static str>) -> LayerKind {
+	pub fn new_pyramidal(dst_srcs: Vec<&'static str>) -> ProtoLayerKind {
 		Cellular(Protocell {
 			cell_kind: CellKind::Pyramidal,
 			den_dst_srcs: Some(dst_srcs),
@@ -40,7 +40,7 @@ impl Protocell {
 		})
 	}
 
-	pub fn new_spiny_stellate(prx_srcs: Vec<&'static str>) -> LayerKind {
+	pub fn new_spiny_stellate(prx_srcs: Vec<&'static str>) -> ProtoLayerKind {
 		Cellular(Protocell {
 			cell_kind: CellKind::SpinyStellate,
 			den_dst_srcs: None,

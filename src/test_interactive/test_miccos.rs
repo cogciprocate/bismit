@@ -3,7 +3,7 @@ use microcosm::worm::{ WormBrain };
 use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
 use microcosm::world::{ World };
 use cortex::{ Cortex };
-use protoregions::{ CorticalRegion };
+use protoregions::{ ProtoRegion };
 use chord::{ Chord };
 use ocl;
 use std::clone::Clone;
