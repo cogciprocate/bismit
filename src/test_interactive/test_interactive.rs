@@ -11,14 +11,17 @@ use microcosm::entity::{ EntityBody, EntityKind, EntityBrain, Mobile };
 use microcosm::worm::{ WormBrain };
 use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
 use microcosm::world::{ World };
+use motor_state;
+
 
 use std::default::Default;
 use std::iter;
-use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use std::fmt::{ Display };
 use std::ops;
 use std::io::{ self, Write, Stdout };
 use std::borrow::{ Borrow };
+use rand::{ self, ThreadRng, Rng };
+use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use time;
 
 pub const INITIAL_TEST_ITERATIONS: i32 	= 1; 
@@ -33,10 +36,12 @@ pub fn run() -> bool {
 	let sc_width = cmn::SENSORY_CHORD_WIDTH;
 	let mut cortex = cortex::Cortex::new();
 	let mut world: World = World::new(sc_width);
-	
-	let mut vec1: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_width as usize).collect();
+
+	let mut vec1: Vec<u8> = iter::repeat(0).take(sc_width as usize).collect();
 	//let mut vec1: Vec<ocl::cl_uchar> = test_vec_init(&mut cortex);
 
+	let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(sc_width as usize).collect();
+	let mut vec_ff_prev: Vec<u8> = iter::repeat(0).take(sc_width as usize).collect();
 
 	//let mut vec2: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_width as usize).collect();
 	//cortex.write_vec(0, "pre_thal", &mut vec2);
@@ -57,6 +62,11 @@ pub fn run() -> bool {
 
 	//world.entities().print();
 
+	let mut motor_state = motor_state::MotorState::new();
+
+	let mut rng: rand::XorShiftRng = rand::weak_rng();
+	let mut turn_bomb_i = 0usize;
+	let mut turn_bomb_n = rng.gen::<u8>() as usize;
 	
 	let mut test_iters: i32 = INITIAL_TEST_ITERATIONS;
 	let mut first_run: bool = true;
@@ -84,7 +94,8 @@ pub fn run() -> bool {
 			first_run = false;
 			"\n".to_string()
 		} else {
-			rin(format!("<{}>bismit: [q]uit [i]ters [v]iew [a]xons [t]ests [i={} v={}]", cur_ttl_iters, test_iters, vso))
+			rin(format!("<{}>bismit: [q]uit [i]ters [v]iew [a]xons [t]ests [m]otor [i={} v={} mc={}]", 
+				cur_ttl_iters, test_iters, vso, motor_state.cur_str()))
 		};
 
 		if "q\n" == in_string {
@@ -150,6 +161,45 @@ pub fn run() -> bool {
 			} else {
 				continue;
 			}
+		} else if "m\n" == in_string {
+			bypass_act = true;
+			bypass_sense = true;
+			let in_s = rin(format!("motor: [s]witch"));
+			if "s\n" == in_s {
+				motor_state.switch();
+				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
+				continue;
+				//test_iters = TEST_ITERATIONS;
+
+			/*
+			} else if "c\n" == in_s {
+				synapse_drill_down::print_cols(&mut cortex);
+				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
+				continue;
+				//test_iters = TEST_ITERATIONS;
+
+			
+			} else if "f\n" == in_s {
+				let in_s = rin(format!("fractal seed"));
+				let in_int: Option<u8> = in_s.trim().parse().ok();
+				let seed = match in_int {
+					Some(x)	=> x,
+					None => {
+						print!("\nError parsing number.");
+						continue;
+					},
+				};
+				let tvec = cmn::gen_fract_sdr(seed, 256 * 1);
+				cmn::print_vec_simple(&tvec);
+				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
+				continue;
+				//test_iters = TEST_ITERATIONS;
+			*/
+
+
+			} else {
+				continue;
+			}
 		} else {
 			continue;
 		}
@@ -169,7 +219,7 @@ pub fn run() -> bool {
 			if i % STATUS_EVERY == 0 || i < 0 {
 				let t = time::get_time() - time_start;
 				if i >= 1 {
-					print!("[{}: {:02.4}ms] ", i, t.num_milliseconds());
+					print!("[{}: {:02.4}ms]", i, t.num_milliseconds());
 				}
 				io::stdout().flush().ok();
 			}
@@ -183,12 +233,20 @@ pub fn run() -> bool {
 			}
 						
 			if !bypass_act {
-				act(&mut world, worm.uid, &mut vec1);
+				act(&mut world, worm.uid, &mut vec1, motor_state.cur_turn());
 			}
 			if !bypass_sense {
 				cortex.sense_vec(0, "thal", &mut vec1);
 			}
 			i += 1;
+			turn_bomb_i += 1;
+
+			if turn_bomb_i >= turn_bomb_n {
+				//print!(" >- pow!:{} -< ", turn_bomb_i);
+				motor_state.switch();
+				turn_bomb_i = 0;
+				turn_bomb_n = (rng.gen::<u8>() as usize) << 4;
+			}
 		}
 
 
@@ -199,15 +257,25 @@ pub fn run() -> bool {
 		loop {
 			if i >= (test_iters) { break; }
 
+			let (out_start, out_end) = cortex.cells.cols.axn_output_range();
+			let axn_space_len = cortex.cells.axns.states.vec.len();
+
+			{
+				let out_slice_prev = &cortex.cells.axns.states.vec[out_start..(out_end + 1)];
+				let ff_slice_prev = &cortex.cells.cols.states.vec[..];
+
+				vec_out_prev.clone_from_slice(out_slice_prev);
+				vec_ff_prev.clone_from_slice(ff_slice_prev);
+			}
+
 			if !bypass_act {
-				act(&mut world, worm.uid, &mut vec1);
+				act(&mut world, worm.uid, &mut vec1, motor_state.cur_turn());
 			}
 			if !bypass_sense {
 				cortex.sense_vec(0, "thal", &mut vec1);
 			}
 			//let sr_start = (512 << cmn::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
 
-			
 			if !view_sdr_only {
 				print!("\n\n=== Iteration {}/{} ===", i + 1, test_iters);
 
@@ -217,25 +285,32 @@ pub fn run() -> bool {
 				}
 
 				print_sense_and_print(&mut cortex);
-
 			}
 
-			
-			let (out_start, out_end) = cortex.cells.cols.axn_output_range();
-			let axn_space_len = cortex.cells.axns.states.vec.len();
 			// REQUIRES cortex.cells.axns.states TO BE FILLED BY .print() unless:
 
 			if view_sdr_only { cortex.cells.cols.states.read(); }
 
 			cortex.cells.axns.states.read();
-			cmn::render_sdr(&cortex.cells.cols.states.vec[..], &cortex.cells.axns.states.vec[out_start..(out_end + 1)], &cortex.cells.row_map);
+
+			let out_slice = &cortex.cells.axns.states.vec[out_start..(out_end + 1)];
+			let ff_slice = &cortex.cells.cols.states.vec[..];
+
+			//print!("\n****** out_slice.len(): {} ***********", out_slice.len());
+			//print!("\n****** vec_out_prev.len(): {} ***********", vec_out_prev.len());
+			//println!("\n****** vec_out_prev.clone_from_slice(out_slice): {} ***********", vec_out_prev.clone_from_slice(out_slice));
+
+			//cmn::render_sdr(&vec_out_prev[..], Some(&vec_ff_prev[..]), None, None, &cortex.cells.row_map);
+
+			cmn::render_sdr(out_slice, Some(ff_slice), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.cells.row_map, true);
 
 			if view_all_axons {
 				print!("\n\nAXON SPACE:\n");
-				cmn::render_sdr(&cortex.cells.axns.states.vec[128..axn_space_len - 128], &cortex.cells.axns.states.vec[128..axn_space_len - 128], &cortex.cells.row_map);
+				cmn::render_sdr(&cortex.cells.axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.cells.row_map, true);
 			}
 
 			i += 1;
+			turn_bomb_i += 1;
 		}
 
 		if !bypass_act {
@@ -417,8 +492,8 @@ fn print_sense_and_print(cortex: &mut Cortex) {
 }
 
 
-fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>) {
-	world.entities().get_mut(ent_uid).turn((WORLD_TURN_FACTOR/cmn::SENSORY_CHORD_WIDTH as f32));
+fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>, turn_left: bool) {
+	world.entities().get_mut(ent_uid).turn((WORLD_TURN_FACTOR/cmn::SENSORY_CHORD_WIDTH as f32), turn_left);
 	world.peek_from(ent_uid).unfold_into(vec, 0);
 }
 
@@ -430,15 +505,6 @@ fn rin(prompt: String) -> String {
 	io::stdin().read_line(&mut in_string).ok().expect("Failed to read line");
 	in_string
 }
-
-
-
-
-
-
-
-
-
 
 
 fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
