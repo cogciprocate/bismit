@@ -1,4 +1,4 @@
-use common;
+use cmn;
 use super::{ WorkSize, Envoy };
 
 use std;

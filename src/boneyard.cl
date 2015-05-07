@@ -1328,7 +1328,7 @@ __kernel void inhib_1_0(		// FUCK IT. LET'S DUPLICATE WORK FOR NOW. I'M DRUNK.
 
 
 
-	// #WG: common::COLUMN_SYNAPSES_PER_SEGMENT
+	// #WG: cmn::COLUMN_SYNAPSES_PER_SEGMENT
 __kernel void sense(
 				__global const char *src_vals,  // CHANGE TO _states
 				__global char * const tar_vals,
@@ -1343,7 +1343,7 @@ __kernel void sense(
 	
 }
 
-	// #WG: common::COLUMN_DENDRITES_PER_SEGMENT
+	// #WG: cmn::COLUMN_DENDRITES_PER_SEGMENT
 __kernel void cycle_col_dens(
 				__global const uchar *syn_states,
 				__global const uchar *syn_strs,
@@ -1365,7 +1365,7 @@ __kernel void cycle_col_dens(
 }
 
 
-	// #WG: common::COLUMNS_PER_SEGMENT
+	// #WG: cmn::COLUMNS_PER_SEGMENT
 __kernel void cycle_col_soms(
 				__global const uchar *den_states,
 				__global uchar * const som_vals,
@@ -1393,7 +1393,7 @@ __kernel void cycle_col_soms(
 
 
 
-	// #WG common::CELL_SYNAPSES_PER_SEGMENT
+	// #WG cmn::CELL_SYNAPSES_PER_SEGMENT
 __kernel void cycle_cel_syns_1(
 				__global uchar *src_states,
 				__global ushort *syn_src_idxs,

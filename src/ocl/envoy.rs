@@ -1,5 +1,5 @@
 use ocl::{ self, Ocl };
-use common;
+use cmn;
 
 use std::ptr;
 use std::iter::{ self };
@@ -41,7 +41,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 	pub fn shuffled(width: u32, depth: u8, min_val: T, max_val: T, ocl: &Ocl) -> Envoy<T> {
 		let len = len(width, depth, 0);
 		//println!("shuffled(): len: {}", len);
-		let vec: Vec<T> = common::shuffled_vec(len, min_val, max_val);
+		let vec: Vec<T> = cmn::shuffled_vec(len, min_val, max_val);
 		//println!("shuffled(): vec.len(): {}", vec.len());
 
 		Envoy::_new(0, width, depth, vec, ocl)
@@ -92,17 +92,17 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 
 	pub fn print_simple(&mut self) {
 		self.read();
-		common::print_vec_simple(&self.vec);
+		cmn::print_vec_simple(&self.vec);
     }
 
     pub fn print_val_range(&mut self, every: usize, val_range: Option<(T, T)>,) {
     	self.read();
-		common::print_vec(&self.vec, every, val_range, None, true);
+		cmn::print_vec(&self.vec, every, val_range, None, true);
     }
 
     pub fn print(&mut self, every: usize, val_range: Option<(T, T)>, idx_range: Option<(usize, usize)>, zeros: bool) {
     	self.read();
-		common::print_vec(&self.vec, every, val_range, idx_range, zeros);
+		cmn::print_vec(&self.vec, every, val_range, idx_range, zeros);
 	}
 
     pub fn release(&mut self) {

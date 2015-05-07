@@ -1,4 +1,4 @@
-use common;
+use cmn;
 use ocl::{ self, Ocl, WorkSize, };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
@@ -48,20 +48,20 @@ impl Dendrites {
 
 		let (den_threshold, syns_per_den_l2, den_kernel) = match den_kind {
 			DendriteKind::Distal => (
-				common::DENDRITE_INITIAL_THRESHOLD_DISTAL,
-				common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, 
+				cmn::DENDRITE_INITIAL_THRESHOLD_DISTAL,
+				cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, 
 				"den_cycle"
 			),
 			DendriteKind::Proximal => (
-				common::DENDRITE_INITIAL_THRESHOLD_PROXIMAL,
-				common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, 
+				cmn::DENDRITE_INITIAL_THRESHOLD_PROXIMAL,
+				cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, 
 				"den_cycle"
 			),
 		};
 
-		let states = Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::STATE_ZERO, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(width_dens, depth, cmn::STATE_ZERO, ocl);
 
-		let states_raw = Envoy::<ocl::cl_uchar>::new(width_dens, depth, common::STATE_ZERO, ocl);
+		let states_raw = Envoy::<ocl::cl_uchar>::new(width_dens, depth, cmn::STATE_ZERO, ocl);
 
 		let syns = Synapses::new(width, depth, per_cell_l2 + syns_per_den_l2, syns_per_den_l2, den_kind, cell_kind, region, axons, aux, ocl);
 

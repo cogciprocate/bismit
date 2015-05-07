@@ -1,4 +1,4 @@
-use common;
+use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
@@ -43,16 +43,16 @@ impl Pyramidal {
 
 		let axn_row_base = region.base_row_cell_kind(&CellKind::Pyramidal);
 		let depth: u8 = region.depth_cell_kind(&CellKind::Pyramidal);
-		let dens_per_cel_l2 = common::DENDRITES_PER_CELL_DISTAL_LOG2;
-		let syns_per_cel_l2 = common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
+		let dens_per_cel_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2;
+		let syns_per_cel_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 		//let col_input_layer = region.col_input_layer().expect("Pyramidal::new()");
 		//let den_prox_row = region.row_ids(vec![col_input_layer.name])[0];
 		
 		//print!("\n### Pyramidal: Proximal Dendrite Row: {}", den_prox_row);
 
-		let depols = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
+		let depols = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 
-		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
+		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 
 		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidal, dens_per_cel_l2, region, axons, aux, ocl);
 
@@ -78,13 +78,13 @@ impl Pyramidal {
 		;
 
 
-		assert!(width % common::MINIMUM_WORKGROUP_SIZE == 0);
-		let cels_per_grp: u32 = width / common::MINIMUM_WORKGROUP_SIZE;
-		let axn_idx_base: u32 = (axn_row_base as u32 * width) + common::SYNAPSE_REACH;
+		assert!(width % cmn::MINIMUM_WORKGROUP_SIZE == 0);
+		let cels_per_grp: u32 = width / cmn::MINIMUM_WORKGROUP_SIZE;
+		let axn_idx_base: u32 = (axn_row_base as u32 * width) + cmn::SYNAPSE_REACH;
 		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", axn_idx_base);
 
 		let kern_learn = ocl.new_kernel("pyrs_learn_unoptd", 
-			WorkSize::TwoDim(depth as usize, common::MINIMUM_WORKGROUP_SIZE as usize))
+			WorkSize::TwoDim(depth as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 			.arg_env(&axons.states)
 			//.arg_env(&depols)
 			.arg_env(&best_den_ids)
@@ -140,7 +140,7 @@ impl Pyramidal {
 
 		self.regrow_counter += 1;
 
-		if self.regrow_counter >= common::SYNAPSE_DECAY_INTERVAL {
+		if self.regrow_counter >= cmn::SYNAPSE_DECAY_INTERVAL {
 			self.dens.regrow();
 			self.regrow_counter = 0;
 		}
@@ -156,7 +156,7 @@ impl Pyramidal {
 	}
 
 	pub fn axn_output_range(&self) -> (usize, usize) {
-		let start = (self.axn_row_base as usize * self.width as usize) + common::SYNAPSE_REACH as usize;
+		let start = (self.axn_row_base as usize * self.width as usize) + cmn::SYNAPSE_REACH as usize;
 		(start, start + ((self.width * self.depth as u32) - 1) as usize)
 	}
 

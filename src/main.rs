@@ -14,7 +14,7 @@ extern crate bitflags;
 extern crate libc;
 
 
-mod common;
+mod cmn;
 //mod cl_h;
 mod ocl;
 mod chord;

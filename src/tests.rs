@@ -10,8 +10,8 @@ fn test_cortex() {
 	let mut cortex = cortex::Cortex::new();
 
 	/* MAKE THIS A STRUCT OR SOMETHING */
-	let scw = common::SENSORY_CHORD_WIDTH;
-	let scl_fct_log2 = common::log2(scw / 1024);
+	let scw = cmn::SENSORY_CHORD_WIDTH;
+	let scl_fct_log2 = cmn::log2(scw / 1024);
 	let scw_1_2 = scw >> 1;
 	let scw_1_4 = scw >> 2;
 	let scw_3_4 = scw - scw_1_4;
@@ -47,7 +47,7 @@ fn test_cortex() {
 
 
 	if SHUFFLE_ONCE {
-		common::shuffle_vec(&mut vec1);
+		cmn::shuffle_vec(&mut vec1);
 	}
 
 

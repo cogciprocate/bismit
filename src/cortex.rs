@@ -1,5 +1,5 @@
 use ocl::{ self, Ocl };
-use common;
+use cmn;
 use ocl::{ Envoy };
 use chord::{ Chord };
 use cells:: { self, Cells };
@@ -44,7 +44,8 @@ pub fn define_regions() -> CorticalRegions {
 		//.layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["ii"], "iv"))
 		.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
 		.layer("post_thal3", 1, layer::DEFAULT, Axonal(Spatial))
-		.layer("boat", 1, layer::DEFAULT, Axonal(Horizontal))
+		.layer("boat", 5, layer::DEFAULT, Axonal(Horizontal))
+		.layer("motor2", 2, layer::DEFAULT, Axonal(Horizontal))
 	;
 
 	sen.freeze();
@@ -56,7 +57,7 @@ pub fn define_areas() -> CorticalAreas {
 	let mut cortical_areas  = HashMap::new();
 	let mut curr_offset: u32 = 128;
 
-	curr_offset += cortical_areas.add_new("v1", CorticalArea { width: common::SENSORY_CHORD_WIDTH, offset: curr_offset, cort_reg_type: CorticalRegionKind::Sensory });
+	curr_offset += cortical_areas.add_new("v1", CorticalArea { width: cmn::SENSORY_CHORD_WIDTH, offset: curr_offset, cort_reg_type: CorticalRegionKind::Sensory });
 
 	cortical_areas
 }
@@ -77,9 +78,13 @@ impl Cortex {
 		let regions = define_regions();
 		let areas = define_areas();
 
-		//let ref region = &regions[&CorticalRegionKind::Sensory];
+		let horizontal_floor = regions[&CorticalRegionKind::Sensory].hrz_demarc();
 
-		let build_options: String = common::build_options();
+		let b_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", horizontal_floor as i32);
+
+		let build_options = cmn::build_options().add(b_opt);
+
+		//
 		//let horizontal_axon_row_floor = region.depth_vert_rows();		// ***** NEED TO MODIFY REGION TO CONTAIN 2 TYPES OF AXON ROWS
 
 
@@ -108,24 +113,25 @@ impl Cortex {
 		self.sense_vec(sgmt_idx, layer_target, &vec);
 	}
 
-	pub fn write_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
-
-		/* 
+	/* WRITE_VEC(): 
 			TODO: VALIDATE "layer_target, OTHERWISE: 
-				thread '<main>' panicked at '[protoregions::CorticalRegion::index(): 
+				- thread '<main>' panicked at '[protoregions::CorticalRegion::index(): 
 				invalid layer name: "pre_thal"]', src/protoregions.rs:339
-		*/
+					- Just have row_ids return an option<u8>
+	*/
+	pub fn write_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
+		let ref region = self.regions[&CorticalRegionKind::Sensory];
 
-		let axn_row = self.regions[&CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
-		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
+		let axn_row = region.row_ids(vec!(layer_target))[0];
+
+		let buffer_offset = cmn::axn_idx_2d(axn_row, self.cells.axns.width, region.hrz_demarc()) as usize;
+		//let buffer_offset = cmn::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
+
 		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);
 	}
 
 
 	pub fn sense_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
-/*		let axn_row = self.regions[&CorticalRegionKind::Sensory].row_ids(vec!(layer_target))[0];
-		let buffer_offset = common::AXONS_MARGIN + (axn_row as usize * self.cells.axns.width as usize);
-		ocl::enqueue_write_buffer(&vec, self.cells.axns.states.buf, self.ocl.command_queue, buffer_offset);*/
 		self.write_vec(sgmt_idx, layer_target, vec);
 		self.cycle();
 	}
@@ -173,7 +179,7 @@ pub struct CorticalDimensions {
 
 		//println!("depth_total: {}, depth_cellular: {}, width_syn_row: {}", depth_total, depth_cellular, width_syn_row);
 
-		let gws = (depth_cellular as usize, width as usize, common::SYNAPSES_PER_CELL);
+		let gws = (depth_cellular as usize, width as usize, cmn::SYNAPSES_PER_CELL);
 
 		//println!("gws: {:?}", gws);
 
@@ -186,7 +192,7 @@ pub struct CorticalDimensions {
 		let width: u32 = self.areas.width(CorticalRegionKind::Sensory);
 		let (_, depth_cellular) = self.regions.depth(CorticalRegionKind::Sensory);
 
-		let width_dens: usize = width as usize * common::DENDRITES_PER_CELL * depth_cellular as usize;
+		let width_dens: usize = width as usize * cmn::DENDRITES_PER_CELL * depth_cellular as usize;
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_dens");
 

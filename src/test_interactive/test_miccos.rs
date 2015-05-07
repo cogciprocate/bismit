@@ -7,14 +7,14 @@ use protoregions::{ CorticalRegion };
 use chord::{ Chord };
 use ocl;
 use std::clone::Clone;
-use common;
+use cmn;
 //use std::ptr;
 
 use std::option::{ Option };
 
 
 pub fn run() {
-	let mut world: World = World::new(common::SENSORY_CHORD_WIDTH);
+	let mut world: World = World::new(cmn::SENSORY_CHORD_WIDTH);
 
 	let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
 	let snake = EntityBody::new("snake", EntityKind::Creature, Location::new(60f32, 60f32));

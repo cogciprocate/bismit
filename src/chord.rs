@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 //use std::option::Option; 
 use std::fmt::{ Formatter, Error };
 use std::iter;
-use common;
+use cmn;
 use ocl;
 
 pub struct Chord {
@@ -13,7 +13,7 @@ impl Chord {
 	pub fn new() -> Chord {
 		Chord { 
 			chord: BTreeMap::new(), 
-			width: common::SENSORY_CHORD_WIDTH, 
+			width: cmn::SENSORY_CHORD_WIDTH, 
 		}
 	}
 
@@ -31,7 +31,7 @@ impl Chord {
 		}
 		Chord { 
 			chord: chord,
-			width: common::SENSORY_CHORD_WIDTH,
+			width: cmn::SENSORY_CHORD_WIDTH,
 		}
 	}
 
@@ -68,7 +68,7 @@ impl Chord {
 	pub fn unfold(&self) -> Vec<ocl::cl_uchar> {
 		//let mut vec = Vec::with_capacity(self.width);
 		//let vec: Vec<ocl::cl_uchar> = Vec::with_capacity(self.width as usize);
-		let mut vec: Vec<ocl::cl_uchar> = iter::repeat(common::STATE_ZERO).take(self.width as usize).collect();
+		let mut vec: Vec<ocl::cl_uchar> = iter::repeat(cmn::STATE_ZERO).take(self.width as usize).collect();
 		self.unfold_into(&mut vec, 0);
 		vec
 	}
@@ -96,21 +96,21 @@ impl Chord {
 	}*/
 
 	pub fn print(&self) {
-		let color = common::C_DEFAULT;
+		let color = cmn::C_DEFAULT;
 		for (k, v) in self.chord.iter() {
-			print!("({}addr:{}, val:{}{})", color, k, v, common::C_DEFAULT);
+			print!("({}addr:{}, val:{}{})", color, k, v, cmn::C_DEFAULT);
 		}
     }
 }
 
 /*
 pub struct ChordUnfolded {
-	pub notes: [ocl::cl_uchar; common::SENSORY_CHORD_WIDTH as usize],
+	pub notes: [ocl::cl_uchar; cmn::SENSORY_CHORD_WIDTH as usize],
 }
 impl ChordUnfolded {
 	pub fn new() -> ChordUnfolded {
 		ChordUnfolded { 
-			notes: [0; common::SENSORY_CHORD_WIDTH as usize],
+			notes: [0; cmn::SENSORY_CHORD_WIDTH as usize],
 		}
 	}
 
@@ -119,11 +119,11 @@ impl ChordUnfolded {
 		let mut color: &'static str;
 		for i in 0..self.notes.len() {
 			if self.notes[i] != 0 {
-				color = common::C_ORA;
+				color = cmn::C_ORA;
 			} else {
-				color = common::C_DEFAULT;
+				color = cmn::C_DEFAULT;
 			}
-			print!("({}[{}]:{}{})", color, i, self.notes[i], common::C_DEFAULT);
+			print!("({}[{}]:{}{})", color, i, self.notes[i], cmn::C_DEFAULT);
 		}
 		println!("");
     }

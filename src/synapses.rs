@@ -1,4 +1,4 @@
-use common;
+use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
@@ -42,7 +42,7 @@ impl Synapses {
 
 		let syns_per_row = width << per_cell_l2;
 
-		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
+		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
 		//print!("\nNew {:?} Synapses with: depth: {}, width: {}, per_cell_l2: {}, syns_per_row(row area): {}", den_kind, depth, width, per_cell_l2, syns_per_row);
 
 		

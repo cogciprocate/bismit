@@ -10,19 +10,34 @@ static inline uint asp_col_id_to_col_idx(uint const asp_idx, uint const asp_col_
 
 
 /* AXN_IDX_2D(): Axon Address Resolution
-	- [in progress] Accommodate horizontal axon rows, rows which are nonspatial and look the same from any column in a region.
-		- Rows above HORIZONTAL_AXON_ROW_FLOOR are considered horizontal and will be mapped to the rear of axn_states.
+	- We must calculate the address for both the horizontal row and spatial (vertical) row case.
+		- When calculating vertical rows: 
+			- Simply multiply row_id * row width and add offset, cell column id, and global padding (SYNAPSE_REACH).
+		- When calculating horizontal rows:
+			- Horizontal rows are always physically after spatial rows within axn_states so we must add that space first (HARF * row_width). That gets us to the beginning of horizontal row space after padding is added (SYNAPSE_REACH).
+			- We then multiply SYNAPSE_SPAN (which is SYNAPSE_REACH * 2) by the horizontal row_id to get to the correct horizontal row.
+			- We must add padding + an extra SYNAPSE_REACH to get us to the middle of the row.
+			- We then apply the offset (col_ofs) to get to the exact axon_idx.
+			- col_id is irrelevant and unused for horiz. rows.
+		
+	- As always, for performance reasons we calculate both cases and multiply by a bool rather than branch
 
+
+	- [in progress] Accommodate horizontal axon rows, rows which are nonspatial and look the same from any column in a region.
+		- Rows above HORIZONTAL_AXON_ROW_DEMARCATION are considered horizontal and will be mapped to the rear of axn_states.
+	- [incomplete] Specific unit tests
+	- [incomplete] #define row_width 
 */
 static inline uint axn_idx_2d(uchar row_id, uint row_width, uint col_id, char col_ofs) {
-	/*if (row_id >= HORIZONTAL_AXON_ROW_FLOOR) {
 
+	uint axn_idx_spt = mad24((uint)row_id, row_width, (uint)(col_id + col_ofs + SYNAPSE_REACH));
 
-	}*/
-	uint axn_idx = mad24((uint)row_id, row_width, (uint)(col_id + col_ofs + SYNAPSE_REACH));
+	int hrow_id = row_id - HORIZONTAL_AXON_ROW_DEMARCATION;
+	int hcol_id = mad24(hrow_id, SYNAPSE_SPAN, col_ofs + SYNAPSE_REACH);
+	uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, row_width, (uint)(hcol_id + SYNAPSE_REACH));
 
-
-	return axn_idx;
+	
+	return mul24((uint)(hrow_id < 0), axn_idx_spt) + mul24((uint)(hrow_id >= 0), axn_idx_hrz);
 }
 
 
@@ -85,12 +100,15 @@ static inline void syns_learn( // VECTORIZE
 /*
 	GENERAL OPTIMIZATION TODO:
 		- Vectorize (pretty much everywhere)
-		- Fit data into workgroups better for a few kernels
+		- Fit data into workgroups better for several kernels
 			- Keep data loading contiguous for the workgroup
 		- Use Async copy
 			event_t async_work_group_copy(__local T *dst, const __global T *src, size_t num_elements, event_t event)
 			event_t async_work_group_copy(__global T *dst, const __local T *src, size_t num_elements, event_t event)
 			void wait_group_events (int num_events, event_t *event_list)
+		- Globalize wherever possible:
+			- row_width
+			- 
 
 	CLEAN UP:
 		- One day soon this beast of a .cl file will be split up.
@@ -164,6 +182,8 @@ __kernel void syns_cycle(
 
 		syn_col_i += wg_size;
 	}
+
+	//aux_ints_0[0] = HORIZONTAL_AXON_ROW_DEMARCATION;
 
 	//uint aux_idx = mad24(row_id, row_width, col_id);
 	//aux_ints_0[aux_idx] = l_id;

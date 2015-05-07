@@ -1,4 +1,4 @@
-use common;
+use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
@@ -44,15 +44,15 @@ impl Columns {
 		let layer = region.col_input_layer().expect("columns::Columns::new()");
 		let depth: u8 = layer.depth();
 
-		let syns_per_den_l2: u32 = common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+		let syns_per_den_l2: u32 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
 
 		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidal);
 		//let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
-		let states = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
-		let states_raw = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
-		let cels_status = Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let states_raw = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let cels_status = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let peak_cols = PeakColumn::new(width, depth, region, &states, ocl);
 		let syns = Synapses::new(width, depth, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
 			CellKind::SpinyStellate, region, axons, aux, ocl);
@@ -66,7 +66,7 @@ impl Columns {
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)
-			.arg_scl(common::DENDRITE_INITIAL_THRESHOLD_PROXIMAL)
+			.arg_scl(cmn::DENDRITE_INITIAL_THRESHOLD_PROXIMAL)
 			.arg_env(&states_raw)
 			.arg_env(&states)
 		;
@@ -81,7 +81,7 @@ impl Columns {
 		;
 
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(depth as usize, width as usize))
-			//.lws(WorkSize::TwoDim(1 as usize, common::AXONS_WORKGROUP_SIZE as usize))
+			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&states)
 			.arg_env(&pyrs.depols)
 			//.arg_scl(depth)
@@ -161,7 +161,7 @@ impl Columns {
 	} 
 
 	pub fn axn_output_range(&self) -> (usize, usize) {
-		let start = (self.axn_output_row as usize * self.width as usize) + common::SYNAPSE_REACH as usize;
+		let start = (self.axn_output_row as usize * self.width as usize) + cmn::SYNAPSE_REACH as usize;
 		(start, start + (self.width - 1) as usize)
 	}
 }
@@ -187,14 +187,14 @@ impl ColumnSynapses {
 		let src_row_ids_list: Vec<u8> = region.src_row_ids(layer.name, DendriteKind::Proximal);
 		let src_rows_len = src_row_ids_list.len() as u8;
 		//let depth = src_rows_len;
-		let wg_size = common::SYNAPSES_WORKGROUP_SIZE;
-		//let dens_per_wg: u32 = wg_size / (common::SYNAPSES_PER_DENDRITE_PROXIMAL);
-		let syns_per_den_l2: u32 = common::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
+		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
+		//let dens_per_wg: u32 = wg_size / (cmn::SYNAPSES_PER_DENDRITE_PROXIMAL);
+		let syns_per_den_l2: u32 = cmn::SYNAPSES_PER_CELL_PROXIMAL_LOG2;
 		//let dens_per_wg: u32 = 1;
 
 		print!("\nNew Proximal Synapses with: depth: {}, syns_per_row: {}, src_rows_len: {}", depth, syns_per_row, src_rows_len);
 
-		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, common::STATE_ZERO, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, cmn::STATE_ZERO, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 1i8, ocl);
 		let src_ofs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -128, 127, ocl);
 		let src_row_ids= Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0u8, ocl);

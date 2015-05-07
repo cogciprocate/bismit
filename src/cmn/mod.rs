@@ -150,7 +150,7 @@ pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;
 
 pub const LEARNING_ACTIVE: bool = true;	// *****
 
-//pub const HORIZONTAL_AXON_ROW_FLOOR: u8 = 200;
+//pub const HORIZONTAL_AXON_ROW_DEMARCATION: u8 = 200;
 
 
 
@@ -185,7 +185,7 @@ pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxe
 
 
 
-pub fn build_options() -> String {
+pub fn build_options() -> ocl::BuildOptions {
 
 	assert!(SENSORY_CHORD_WIDTH % SYNAPSE_SPAN == 0);
 
@@ -196,7 +196,7 @@ pub fn build_options() -> String {
 	assert!(DENDRITES_PER_CELL_DISTAL <= 256);
 	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);
 
-	BuildOptions::new(CL_BUILD_OPTIONS)
+	ocl::BuildOptions::new(CL_BUILD_OPTIONS)
 		.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
 		.opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32)
 		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
@@ -205,77 +205,12 @@ pub fn build_options() -> String {
 		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)
 		//.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
 		.opt("SYNAPSE_REACH", SYNAPSE_REACH as i32)
+		.opt("SYNAPSE_SPAN", SYNAPSE_SPAN as i32)
 		.opt("ASPINY_REACH", ASPINY_REACH as i32)
 		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
 		.opt("ASPINY_SPAN", ASPINY_SPAN as i32)
 		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
 		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
-		//.opt("HORIZONTAL_AXON_ROW_FLOOR", HORIZONTAL_AXON_ROW_FLOOR as i32)
-		.to_string()
-}
-
-
-pub struct BuildOptions {
-	options: Vec<BuildOption>,
-	string: String,
-}
-
-impl BuildOptions {
-	pub fn new(cl_options: &'static str) -> BuildOptions {
-		let mut bo = BuildOptions {
-			options: Vec::with_capacity(1 << 5),
-			string: String::with_capacity(1 << 11),
-		};
-
-		bo.str(cl_options)
-	}
-
-	pub fn str(mut self, st: &'static str) -> BuildOptions {
-		self.string.push_str(st);
-		self
-	}
-
-	pub fn opt(mut self, name: &'static str, val: i32) -> BuildOptions {
-		self.options.push(BuildOption::new(name, val));
-		self
-	}
-
-	pub fn as_slice(&mut self) -> &str {
-		&self.string
-	}
-
-	pub fn to_string(mut self) -> String {
-		for option in self.options.iter_mut() {
-			self.string.push_str(option.as_slice());
-		}
-		//println!("\n\tBuildOptions::as_slice(): length: {}, \n \tstring: {}", self.string.len(), self.string);
-		self.string
-	}
-
-}
-
-
-
-pub struct BuildOption {
-	name: &'static str,
-	val: i32,
-	string: String,
-}
-
-impl BuildOption {
-	pub fn new(name: &'static str, val: i32) -> BuildOption {
-		BuildOption {
-			name: name,
-			val: val,
-			string: String::with_capacity(name.len()),
-		}
-	}
-
-	pub fn as_slice(&mut self) -> &str {
-		self.string = format!(" -D{}={}", self.name, self.val);
-
-		&self.string
-	}
 }
 
 
@@ -392,8 +327,8 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 			//ttl_ir += 1;
 		}
 
-		sum += vec[i].to_isize().expect("common::print_vec(): vec[i]");
-		//sum += std::num::cast::<T, isize>(vec[i]).expect("common::print_vec, sum");
+		sum += vec[i].to_isize().expect("cmn::print_vec(): vec[i]");
+		//sum += std::num::cast::<T, isize>(vec[i]).expect("cmn::print_vec, sum");
 
 
 		if vec[i] > hi { hi = vec[i] };
@@ -443,24 +378,24 @@ pub fn shuffled_vec<T: Integer + Default + Display + NumCast + Copy + Clone + To
 
 	//println!("min_val: {}, max_val: {}", min_val, max_val);
 
-	//let min: isize = num::cast(min_val).expect("common::shuffled_vec(), min");
-	//let max: isize = num::cast::<T, isize>(max_val).expect("common::shuffled_vec(), max") + 1is;
-	//let size: usize = num::cast(max_val - min_val).expect("common::shuffled_vec(), size");
-	//let size: usize = num::from_int(max - min).expect("common::shuffled_vec(), size");
+	//let min: isize = num::cast(min_val).expect("cmn::shuffled_vec(), min");
+	//let max: isize = num::cast::<T, isize>(max_val).expect("cmn::shuffled_vec(), max") + 1is;
+	//let size: usize = num::cast(max_val - min_val).expect("cmn::shuffled_vec(), size");
+	//let size: usize = num::from_int(max - min).expect("cmn::shuffled_vec(), size");
 
 	//assert!(max - min > 0, "Vector size must be greater than zero.");
 	let mut vec: Vec<T> = Vec::with_capacity(size);
 
-	assert!(size > 0, "\ncommon::shuffled_vec(): Vector size must be greater than zero.");
-	assert!(min_val < max_val, "\ncommon::shuffled_vec(): Minimum value must be less than maximum.");
+	assert!(size > 0, "\ncmn::shuffled_vec(): Vector size must be greater than zero.");
+	assert!(min_val < max_val, "\ncmn::shuffled_vec(): Minimum value must be less than maximum.");
 
-	let min = min_val.to_isize().expect("\ncommon::shuffled_vec(), min");
-	let max = max_val.to_isize().expect("\ncommon::shuffled_vec(), max") + 1;
+	let min = min_val.to_isize().expect("\ncmn::shuffled_vec(), min");
+	let max = max_val.to_isize().expect("\ncmn::shuffled_vec(), max") + 1;
 
 	let mut range = (min..max).cycle();
 
 	for i in (0..size) {
-		vec.push(FromPrimitive::from_isize(range.next().expect("\ncommon::shuffled_vec(), range")).expect("\ncommon::shuffled_vec(), from_usize"));
+		vec.push(FromPrimitive::from_isize(range.next().expect("\ncmn::shuffled_vec(), range")).expect("\ncmn::shuffled_vec(), from_usize"));
 	}
 
 	//let mut vec: Vec<T> = (min..max).cycle().take(size).collect();
@@ -503,15 +438,15 @@ pub fn sparse_vec<T: Integer + Signed + Default + Copy + Clone + NumCast + FromP
 
 	let notes = len >> sp_fctr_log2;
 
-	let range_max: isize = max_val.to_isize().expect("common::sparse_vec(): max_val.to_isize()") as isize + 1;
-	let range_min: isize = min_val.to_isize().expect("common::sparse_vec(): min_val.to_isize()") as isize;
+	let range_max: isize = max_val.to_isize().expect("cmn::sparse_vec(): max_val.to_isize()") as isize + 1;
+	let range_min: isize = min_val.to_isize().expect("cmn::sparse_vec(): min_val.to_isize()") as isize;
 
 	let mut rng = rand::weak_rng();
 	let val_range = Range::new(range_min, range_max);
 	let idx_range = Range::new(0, 1 << sp_fctr_log2);
 
 	for i in 0..notes {
-		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = FromPrimitive::from_isize(val_range.ind_sample(&mut rng)).expect("common::sparse_vec()");
+		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = FromPrimitive::from_isize(val_range.ind_sample(&mut rng)).expect("cmn::sparse_vec()");
 		//vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = std::num::cast(val_range.ind_sample(&mut rng)).unwrap();
 	}
 
@@ -559,7 +494,11 @@ pub fn dup_check<T: Integer + Copy + Clone + Ord >(in_vec: &mut Vec<T>) -> (usiz
 
 
 pub fn log2(n: u32) -> u32 {
-	n.trailing_zeros()
+	if n > 0 {
+		31 - n.leading_zeros()
+	} else {
+		0
+	}
 }
 
 
@@ -573,7 +512,7 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 			//idx_range: Option<(usize, usize)>,
 ) {
 
-	assert!(ff_vec.len() == col_output_vec.len(), "common::render_sdr(): Input vectors must be of equal length.");
+	assert!(ff_vec.len() == col_output_vec.len(), "cmn::render_sdr(): Input vectors must be of equal length.");
 	let cells_per_line = 64;
 	let line_character_width = (cells_per_line * (4 + 4 + 2 + 4 + 4 + 1)) + 8;	// 8 extra for funsies
 
@@ -647,9 +586,105 @@ pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitiv
 
 }
 
+/* AXN_IDX_2D(): Host side address resolution - concerned with start idx of a row
+	- OpenCL device side version below (for reference) - concerned with invidiual indexes: 
+		static inline uint axn_idx_2d(uchar row_id, uint row_width, uint col_id, char col_ofs) {
+			uint axn_idx_spt = mad24((uint)row_id, row_width, (uint)(col_id + col_ofs + SYNAPSE_REACH));
+			int hrow_id = row_id - HORIZONTAL_AXON_ROW_DEMARCATION;
+			int hcol_id = mad24(hrow_id, SYNAPSE_SPAN, col_ofs + SYNAPSE_REACH);
+			uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, row_width, (uint)(hcol_id + SYNAPSE_REACH));
+			return mul24((uint)(hrow_id < 0), axn_idx_spt) + mul24((uint)(hrow_id >= 0), axn_idx_hrz);
+		}
+	- 
+}*/
+pub fn axn_idx_2d(axn_row: u8, width: u32, hrz_demarc: u8) -> u32 {
+	let mut axn_idx: u32 = if axn_row < hrz_demarc {
+		(axn_row as u32 * width)
+	} else {
+		(hrz_demarc as u32 * width) + SYNAPSE_SPAN * (axn_row as u32 - hrz_demarc as u32)
+	};
+
+	axn_idx + AXONS_MARGIN as u32
+}
+
+pub fn gen_fract_sdr(seed: u8, len: usize) -> Vec<u8> {
+	let mut vec: Vec<u8> = iter::repeat(0u8).take(len).collect();
+	let ttl_notes = len / 32;
+	
+
+	assert!(ttl_notes > 0, "cmn::gen_fract_sdr(): Length too low to generate sdr");
+
+	let mut idx = wrap_idx(seed as usize, len);
+
+	//let mut i = 0usize;
+	//let mut n = ((ttl_notes + 1) >> 1) + ((ttl_notes + 3) >> 2) + ((ttl_notes + 7) >> 3) - log2(ttl_notes as u32) as usize;
+	//let mut n = log2(ttl_notes as u32) as usize + (ttl_notes >> 1) + 3;
+
+	let n = 1 + (ttl_notes as f64).sqrt() as usize;
+
+	for i in 0..n {
+		for j in 0..(n - i) {
+			vec[idx] = seed;
+			idx = wrap_idx(idx + 1, len)
+		}
+		idx = wrap_idx(idx + (i << 1) + 1, len);
+	}
+
+	vec
+}
+
+pub fn wrap_idx(idx: usize, len: usize) -> usize {
+	let mut w_idx = idx;
+	loop {
+		if w_idx < len {
+			break;
+		} else {
+			w_idx -= len;
+		}
+	}
+	w_idx
+}
 
 
 
-/*let mut test_test: String = String::new();
-	test_test.push_str(C_DEFAULT);
-	println!("### color code length: {} ###", test_test.len());*/
+
+/*=============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+================================ UNIT TESTS ===================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+=============================================================================*/
+
+
+
+
+
+
+#[test]
+fn test_axn_idx_2d() {
+	assert!(axn_idx_2d(1, 1024, 4) == 1024u32 + AXONS_MARGIN as u32);
+	assert!(axn_idx_2d(5, 1024, 4) == 4096u32 + SYNAPSE_SPAN + AXONS_MARGIN as u32);
+	assert!(axn_idx_2d(15, 1024, 4) == 4096u32 + (11 * SYNAPSE_SPAN) + AXONS_MARGIN as u32);
+
+}
+
+#[test]
+fn test_wrap_idx() {
+	assert!(wrap_idx(50, 40) == 10);
+	assert!(wrap_idx(30, 40) == 30);
+}
+
+#[test]
+fn test_log2() {
+	assert!(log2(126) == 6);
+	assert!(log2(128) == 7);
+	assert!(log2(129) == 7);
+	assert!(log2(7) == 2);
+	assert!(log2(8) == 3);
+	assert!(log2(9) == 3);
+}

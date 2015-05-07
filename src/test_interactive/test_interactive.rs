@@ -4,7 +4,7 @@ use super::synapse_drill_down;
 use cortex::{ Cortex };
 use cortex;
 use ocl;
-use common;
+use cmn;
 use chord::{ Chord };
 use ocl::{ Envoy };
 use microcosm::entity::{ EntityBody, EntityKind, EntityBrain, Mobile };
@@ -30,7 +30,7 @@ pub const WORLD_TURN_FACTOR: f32 		= 3f32;
 
 
 pub fn run() -> bool {
-	let sc_width = common::SENSORY_CHORD_WIDTH;
+	let sc_width = cmn::SENSORY_CHORD_WIDTH;
 	let mut cortex = cortex::Cortex::new();
 	let mut world: World = World::new(sc_width);
 	
@@ -121,7 +121,7 @@ pub fn run() -> bool {
 		} else if "t\n" == in_string {
 			bypass_act = true;
 			bypass_sense = true;
-			let in_s = rin(format!("tests: [p]yrs [c]ols"));
+			let in_s = rin(format!("tests: [p]yrs [c]ols [f]ract"));
 			if "p\n" == in_s {
 				synapse_drill_down::print_pyrs(&mut cortex);
 				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
@@ -129,6 +129,21 @@ pub fn run() -> bool {
 				//test_iters = TEST_ITERATIONS;
 			} else if "c\n" == in_s {
 				synapse_drill_down::print_cols(&mut cortex);
+				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
+				continue;
+				//test_iters = TEST_ITERATIONS;
+			} else if "f\n" == in_s {
+				let in_s = rin(format!("fractal seed"));
+				let in_int: Option<u8> = in_s.trim().parse().ok();
+				let seed = match in_int {
+					Some(x)	=> x,
+					None => {
+						print!("\nError parsing number.");
+						continue;
+					},
+				};
+				let tvec = cmn::gen_fract_sdr(seed, 256 * 1);
+				cmn::print_vec_simple(&tvec);
 				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
 				continue;
 				//test_iters = TEST_ITERATIONS;
@@ -154,7 +169,7 @@ pub fn run() -> bool {
 			if i % STATUS_EVERY == 0 || i < 0 {
 				let t = time::get_time() - time_start;
 				if i >= 1 {
-					print!("[i:{}; {}.{:.2}s] ", i, t.num_seconds(), t.num_milliseconds());
+					print!("[{}: {:02.4}ms] ", i, t.num_milliseconds());
 				}
 				io::stdout().flush().ok();
 			}
@@ -190,7 +205,7 @@ pub fn run() -> bool {
 			if !bypass_sense {
 				cortex.sense_vec(0, "thal", &mut vec1);
 			}
-			//let sr_start = (512 << common::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
+			//let sr_start = (512 << cmn::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
 
 			
 			if !view_sdr_only {
@@ -198,7 +213,7 @@ pub fn run() -> bool {
 
 				if true {
 					print!("\nSENSORY INPUT VECTOR:");
-					common::print_vec(&vec1, 1 , None, None, false);
+					cmn::print_vec(&vec1, 1 , None, None, false);
 				}
 
 				print_sense_and_print(&mut cortex);
@@ -213,11 +228,11 @@ pub fn run() -> bool {
 			if view_sdr_only { cortex.cells.cols.states.read(); }
 
 			cortex.cells.axns.states.read();
-			common::render_sdr(&cortex.cells.cols.states.vec[..], &cortex.cells.axns.states.vec[out_start..(out_end + 1)], &cortex.cells.row_map);
+			cmn::render_sdr(&cortex.cells.cols.states.vec[..], &cortex.cells.axns.states.vec[out_start..(out_end + 1)], &cortex.cells.row_map);
 
 			if view_all_axons {
 				print!("\n\nAXON SPACE:\n");
-				common::render_sdr(&cortex.cells.axns.states.vec[128..axn_space_len - 128], &cortex.cells.axns.states.vec[128..axn_space_len - 128], &cortex.cells.row_map);
+				cmn::render_sdr(&cortex.cells.axns.states.vec[128..axn_space_len - 128], &cortex.cells.axns.states.vec[128..axn_space_len - 128], &cortex.cells.row_map);
 			}
 
 			i += 1;
@@ -283,21 +298,21 @@ fn print_sense_and_print(cortex: &mut Cortex) {
 			cortex.cells.cols.syns.states.print(1 << 3, Some((1, 255)), None, true);
 		}*/
 
-	if false {
+	if true {
 		print!("\nCOLUMN SYNAPSE SOURCE ROW IDS:");
-		cortex.cells.cols.syns.src_row_ids.print(1 << 14, None, None, true);
+		cortex.cells.cols.syns.src_row_ids.print(1 << 11, None, None, true);
 	}
 		if false {
 			print!("\nCOLUMN SYNAPSE SOURCE ROW IDS(0 - 1300):");
 			cortex.cells.cols.syns.src_row_ids.print(1 << 0, None, Some((0, 1300)), true);
 		}
-	if false{	
+	if true {	
 		print!("\nCOLUMN SYNAPSE SOURCE COLUMN OFFSETS: ");
-		cortex.cells.cols.syns.src_col_x_offs.print(1 << 14, None, None, true);
+		cortex.cells.cols.syns.src_col_x_offs.print(1 << 11, None, None, true);
 	}
-	if false {
+	if true {
 		print!("\nCOLUMN SYNAPSE STRENGTHS:");
-		cortex.cells.cols.syns.strengths.print(1 << 14, None, None, true);
+		cortex.cells.cols.syns.strengths.print(1 << 11, None, None, true);
 	}
 	if false {
 		print!("\nCOLUMN PEAK COL IDS: ");
@@ -339,7 +354,7 @@ fn print_sense_and_print(cortex: &mut Cortex) {
 			//cortex.cells.pyrs.dens.syns.states.print(1 << 1, Some((0, 255)), Some((524288, 524588)), true);
 		}
 
-	if false {	
+	if true {	
 		print!("\nPYRAMIDAL SYNAPSE SOURCE ROW IDS: ");
 		cortex.cells.pyrs.dens.syns.src_row_ids.print(1 << 14, None, None, true);
 	}
@@ -349,22 +364,22 @@ fn print_sense_and_print(cortex: &mut Cortex) {
 			cortex.cells.pyrs.dens.syns.src_row_ids.print(1 << 1, None, Some((0, 1300)), true);
 		}
 
-	if false {	
+	if true {	
 		print!("\nPYRAMIDAL SYNAPSE SOURCE COLUMN OFFSETS: ");
 		cortex.cells.pyrs.dens.syns.src_col_x_offs.print(1 << 14, None, None, true);
 	}
-	if false {
+	if true {
 		print!("\nPYRAMIDAL SYNAPSE STRENGTHS:");
-		cortex.cells.pyrs.dens.syns.strengths.print(1 << 17, None, None, true);
+		cortex.cells.pyrs.dens.syns.strengths.print(1 << 14, None, None, true);
 	}
 
 
 
 	/* AUX (DEBUG) */
-	if false {
+	if true {
 		print!("\naux.ints_0: ");
 		//cortex.cells.aux.ints_0.print((1 << 12) as usize, Some((0, 17000)), None, false);
-		cortex.cells.aux.ints_0.print((1 << 0) as usize, Some((0, 1023)), Some((1585152, 1589248)), false);
+		cortex.cells.aux.ints_0.print((1 << 0) as usize, Some((0, 1023)), Some((1, 19783029)), false);
 		print!("\naux.ints_1: ");
 		cortex.cells.aux.ints_1.print((1 << 0) as usize, None, None, false);
 	}
@@ -398,11 +413,12 @@ fn print_sense_and_print(cortex: &mut Cortex) {
 	}
 
 	print!("\n");
+
 }
 
 
 fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>) {
-	world.entities().get_mut(ent_uid).turn((WORLD_TURN_FACTOR/common::SENSORY_CHORD_WIDTH as f32));
+	world.entities().get_mut(ent_uid).turn((WORLD_TURN_FACTOR/cmn::SENSORY_CHORD_WIDTH as f32));
 	world.peek_from(ent_uid).unfold_into(vec, 0);
 }
 
@@ -427,17 +443,17 @@ fn rin(prompt: String) -> String {
 
 fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 
-	//let vv1 = common::sparse_vec(2048, -128i8, 127i8, 6);
-	//common::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
+	//let vv1 = cmn::sparse_vec(2048, -128i8, 127i8, 6);
+	//cmn::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
 
-	//let mut vec1: Vec<i8> = common::shuffled_vec(1024, 0, 127);
-	//let mut vec1: Vec<i8> = common::sparse_vec(2048, -128i8, 127i8, 8);
+	//let mut vec1: Vec<i8> = cmn::shuffled_vec(1024, 0, 127);
+	//let mut vec1: Vec<i8> = cmn::sparse_vec(2048, -128i8, 127i8, 8);
 
-	//common::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
-	let scw = common::SENSORY_CHORD_WIDTH;
+	//cmn::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
+	let scw = cmn::SENSORY_CHORD_WIDTH;
 
 	//print!("\n*********** scl_fct: {}", scl_fct);
-	//print!("\n*********** common::log2(sct_fct): {}", common::log2(scl_fct));
+	//print!("\n*********** cmn::log2(sct_fct): {}", cmn::log2(scl_fct));
 
 	let mut vec1: Vec<ocl::cl_uchar> = Vec::with_capacity(scw as usize);
 
@@ -492,7 +508,7 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 	vec1
 
 	/*if SHUFFLE_ONCE {
-		common::shuffle_vec(&mut vec1);
+		cmn::shuffle_vec(&mut vec1);
 		//chord1 = Chord::from_vec(&vec1);
 	}*/
 
@@ -505,7 +521,7 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 
 /*let peek_vec = world.peek_from(worm.uid).unfold();
 
-	common::print_vec_simple(&peek_vec);
+	cmn::print_vec_simple(&peek_vec);
 
 	world.entities().get_mut(worm.uid).turn(0.0004f32);*/
 
@@ -651,7 +667,7 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 
 	t3.read();
 
-	common::print_vec(&t3.vec, 1, true);*/
+	cmn::print_vec(&t3.vec, 1, true);*/
 
 
 	/***** Testing Axon Stuff *****
@@ -673,7 +689,7 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 
 		}
 
-		//common::dup_check(&tar_idxs);
+		//cmn::dup_check(&tar_idxs);
 
 		//println!("First 3: {}, {}, {}", tar_idxs[0], tar_idxs[1], tar_idxs[2]);
 		//println!("Last 3: {}, {}, {}", tar_idxs[tar_idxs.len() - 1], tar_idxs[tar_idxs.len() - 2], tar_idxs[tar_idxs.len() - 3]);
@@ -699,13 +715,13 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 	let mut vec2: Vec<u32> = iter::repeat(init_val).take(size).collect();
 	let buf2: ocl::cl_mem = ocl::new_write_buffer(&mut vec2, cortex.ocl.context);
 
-	//common::print_vec(&vec2, 10);
+	//cmn::print_vec(&vec2, 10);
 
 	for i in range(0, 5) {
 		for x in vec2.iter_mut() {
 			*x += 1000;
 		}
-		//common::print_vec(&vec2, 10);
+		//cmn::print_vec(&vec2, 10);
 
 		cortex.ocl.enqueue_write_buffer(&mut vec2, buf2, cortex.ocl.command_queue);
 	}
@@ -718,12 +734,12 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 		for x in vec2.iter_mut() {
 			*x += 1000;
 		}
-		//common::print_vec(&vec2, 10);
+		//cmn::print_vec(&vec2, 10);
 
 		ocl::enqueue_write_buffer(&mut vec2, buf2, cortex.ocl.command_queue);
 	}
 
-	//common::print_vec(&vec2, 10);
+	//cmn::print_vec(&vec2, 10);
 	_buffer_test(&cortex, &vec2, buf2, "buffer_test");
 	
 

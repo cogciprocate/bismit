@@ -1,4 +1,4 @@
-use common;
+use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
@@ -35,13 +35,13 @@ pub struct PeakColumn {
 impl PeakColumn {
 	pub fn new(col_width: u32, depth: u8, region: &CorticalRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> PeakColumn {
 
-		let width = col_width >> common::ASPINY_SPAN_LOG2;
+		let width = col_width >> cmn::ASPINY_SPAN_LOG2;
 
-		let padding = common::ASPINY_SPAN;
+		let padding = cmn::ASPINY_SPAN;
 
 		let col_ids = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, 0u8, ocl);
 		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, 0u8, ocl);
-		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, common::STATE_ZERO, ocl);
+		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, cmn::STATE_ZERO, ocl);
 
 		let mut kern_cycle_pre = ocl.new_kernel("peak_col_cycle_pre", 
 			WorkSize::TwoDim(depth as usize, width as usize))

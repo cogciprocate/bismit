@@ -1,4 +1,4 @@
-use common;
+use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
 use cortical_areas::{ CorticalAreas, Width };
@@ -86,7 +86,7 @@ impl Cells {
 		//self.soma.learn(&self.ocl);
 		//self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
 
-		let learn: bool = common::LEARNING_ACTIVE;
+		let learn: bool = cmn::LEARNING_ACTIVE;
 		
 		self.cols.cycle(learn);
 		
@@ -141,11 +141,11 @@ impl Somata {
 		Somata { 
 			depth: depth,
 			width: width,
-			states: Envoy::<ocl::cl_uchar>::new(width, depth, common::STATE_ZERO, ocl),
-			hcol_max_vals: Envoy::<ocl::cl_uchar>::new(width / common::COLUMNS_PER_HYPERCOLUMN, depth, common::STATE_ZERO, ocl),
-			hcol_max_ids: Envoy::<ocl::cl_uchar>::new(width / common::COLUMNS_PER_HYPERCOLUMN, depth, 0u8, ocl),
+			states: Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl),
+			hcol_max_vals: Envoy::<ocl::cl_uchar>::new(width / cmn::COLUMNS_PER_HYPERCOLUMN, depth, cmn::STATE_ZERO, ocl),
+			hcol_max_ids: Envoy::<ocl::cl_uchar>::new(width / cmn::COLUMNS_PER_HYPERCOLUMN, depth, 0u8, ocl),
 			rand_ofs: Envoy::<ocl::cl_char>::shuffled(256, 1, -128, 127, ocl),
-			dst_dens: Dendrites::new(width, depth, DendriteKind::Distal, common::DENDRITES_PER_CELL_DISTAL, region, ocl),
+			dst_dens: Dendrites::new(width, depth, DendriteKind::Distal, cmn::DENDRITES_PER_CELL_DISTAL, region, ocl),
 
 		}
 	}
@@ -182,7 +182,7 @@ impl Somata {
 		ocl::set_kernel_arg(0, self.states.buf, kern);
 		ocl::set_kernel_arg(1, self.hcol_max_ids.buf, kern);
 		ocl::set_kernel_arg(2, self.hcol_max_vals.buf, kern);
-		let mut kern_width = self.width as usize / common::COLUMNS_PER_HYPERCOLUMN as usize;
+		let mut kern_width = self.width as usize / cmn::COLUMNS_PER_HYPERCOLUMN as usize;
 		let gws = (self.depth as usize, kern_width);
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 
@@ -203,7 +203,7 @@ impl Somata {
 		ocl::set_kernel_arg(4, self.dst_dens.syns.strengths.buf, kern);
 		ocl::set_kernel_arg(5, self.rand_ofs.buf, kern);
 
-		let mut kern_width = self.width as usize / common::COLUMNS_PER_HYPERCOLUMN as usize;
+		let mut kern_width = self.width as usize / cmn::COLUMNS_PER_HYPERCOLUMN as usize;
 		let gws = (self.depth as usize, kern_width);
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}

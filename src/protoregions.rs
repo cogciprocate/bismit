@@ -73,10 +73,10 @@ impl<'b> IndexMut<&'b CorticalRegionKind> for CorticalRegions
 
 
 /* CORTICALREGION {}
-	- THIS NEEDS TO BE STORED IN A DATABASE OR SOMETHING - GETTING TOO UNRULY
+	- [incomplete] THIS NEEDS TO BE STORED IN A DATABASE OR SOMETHING - GETTING TOO UNRULY
 		- Or... redesign using a trait that can handle CellKind and AxonKind both
-			- Could merge the two and have one or the other dominant
-	- (cel, axn)_layer_kind_row_lists needs to be redone asap
+			- Also could merge the two and have one or the other dominant
+	- [incomplete] (cel, axn)_layer_kind_row_lists needs to be redone asap
 */
 pub struct CorticalRegion {
 	layers: HashMap<&'static str, Layer>,
@@ -87,6 +87,7 @@ pub struct CorticalRegion {
 	row_map: BTreeMap<u8, &'static str>,
 	pub kind: CorticalRegionKind,
 	frozen: bool,
+	hrz_demarc: u8,
 }
 
 impl CorticalRegion {
@@ -105,6 +106,7 @@ impl CorticalRegion {
 			kind: kind,
 			frozen: false,
 			row_map: BTreeMap::new(),
+			hrz_demarc: 0,
 		}
 	}
 
@@ -134,6 +136,9 @@ impl CorticalRegion {
 		self
 	}
 
+	/* PROTOREGION::ADD()
+		- [incomplete] NEED TO CHECK FOR DUPLICATE LAYERS!
+	*/
 	pub fn add(&mut self, mut layer: Layer) {
 
 		/*let ck_tmp = match layer.kind {
@@ -387,6 +392,9 @@ impl CorticalRegion {
 			//next_base_row += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::CorticalRegion::freeze()");
 		}
 
+		/* (2b) SAVE DEMARCATION BETWEEN VERTICAL (SPATIAL) AND HORIZONTAL ROWS */
+		self.hrz_demarc = next_base_row;
+
 		/* (3) ADD ABSOLUTE BASE_ROW_IDS FOR AXONAL HORIZONTAL LAYER KINDS */	
 		for (axon_kind, list) in &self.axn_layer_kind_row_lists {
 			match axon_kind {
@@ -523,6 +531,10 @@ impl CorticalRegion {
  			None 		=> "[INVALID LAYER]",
 		}
 
+	}
+
+	pub fn hrz_demarc(&self) -> u8 {
+		self.hrz_demarc
 	}
 }
 

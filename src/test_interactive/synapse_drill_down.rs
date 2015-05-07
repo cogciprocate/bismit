@@ -3,7 +3,7 @@ use dendrites::{ Dendrites };
 use pyramidals::{ Pyramidal };
 use columns::{ Columns };
 use synapses::{ Synapses };
-use common;
+use cmn;
 
 use std::io::{ self, Write, Stdout };
 use std::fmt::{ Display, Debug, LowerHex, UpperHex };
@@ -20,8 +20,8 @@ pub fn print_pyrs(cortex: &mut Cortex) {
 	for pyr_depol in &pyrs.depols.vec {
 		if *pyr_depol != 0 {
 			//let pyr_out_col_id = pyr_idx % pyrs.width() as usize;
-			let col_id = pyr_idx as isize & (common::SENSORY_CHORD_WIDTH - 1) as isize;
-			print!("\n########## [P:[{}({})]:{cp}{:02X}{cd}] ##########", pyr_idx, col_id, pyr_depol, cp = common::C_PUR, cd = common::C_DEFAULT);
+			let col_id = pyr_idx as isize & (cmn::SENSORY_CHORD_WIDTH - 1) as isize;
+			print!("\n########## [P:[{}({})]:{cp}{:02X}{cd}] ##########", pyr_idx, col_id, pyr_depol, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
 			shitty_print_dens(pyr_idx, dens);
 		}
 		pyr_idx += 1;
@@ -34,15 +34,15 @@ pub fn print_pyrs(cortex: &mut Cortex) {
 fn shitty_print_dens(cel_idx: usize, dens: &Dendrites) {
 	
 
-	let den_idx_base = cel_idx << common::DENDRITES_PER_CELL_DISTAL_LOG2;
-	let dens_per_cel = 1 << common::DENDRITES_PER_CELL_DISTAL_LOG2;
+	let den_idx_base = cel_idx << cmn::DENDRITES_PER_CELL_DISTAL_LOG2;
+	let dens_per_cel = 1 << cmn::DENDRITES_PER_CELL_DISTAL_LOG2;
 
 	let syns = &dens.syns;
 
 	for den_i in den_idx_base..(den_idx_base + dens_per_cel) {
 		if dens.states.vec[den_i] != 0 {
 			//print!("[DEN:]", , );
-			print!("\n%%%%% [{cd}D:[{}]{cg}:{cp}{:02X}]{cd} %%%%%", den_i, dens.states.vec[den_i], cp = common::C_PUR, cd = common::C_DEFAULT, cg = common::C_DGR);
+			print!("\n%%%%% [{cd}D:[{}]{cg}:{cp}{:02X}]{cd} %%%%%", den_i, dens.states.vec[den_i], cp = cmn::C_PUR, cd = cmn::C_DEFAULT, cg = cmn::C_DGR);
 			shitty_print_syns(cel_idx, den_i, &syns);
 		}
 
@@ -53,8 +53,8 @@ fn shitty_print_dens(cel_idx: usize, dens: &Dendrites) {
 }
 
 fn shitty_print_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
-	let syn_idx_base = den_idx << common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
-	let syns_per_den = 1 << common::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
+	let syn_idx_base = den_idx << cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
+	let syns_per_den = 1 << cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 	print!("\n");
 
@@ -62,16 +62,16 @@ fn shitty_print_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 		if syns.states.vec[syn_i] != 0 {
 
 				let width = syns.width() as isize;
-				let col_id = cel_idx as isize & (common::SENSORY_CHORD_WIDTH - 1) as isize;
+				let col_id = cel_idx as isize & (cmn::SENSORY_CHORD_WIDTH - 1) as isize;
 				let row_id = syns.src_row_ids.vec[syn_i] as isize;
 				let col_ofs = syns.src_col_x_offs.vec[syn_i] as isize;
 
-				let src_axn_addr = (width * row_id) + col_id + common::SYNAPSE_REACH as isize;
+				let src_axn_addr = (width * row_id) + col_id + cmn::SYNAPSE_REACH as isize;
 
 				let (src_axn_row, src_axn_col) = axn_coords(src_axn_addr, width);
 				//print!("[width:{},col_id:{}]", width, col_id);
 
-				print!("{cd}[[{cg}{}{cd}]{co}r:{},c:{}{cd}:{}({cp}{},{}{cd}){cd}:{cd}{:02X}{cd}]", syn_i, row_id, col_ofs, src_axn_addr, src_axn_row, src_axn_col, syns.states.vec[syn_i], cg = common::C_GRN, co = common::C_ORA, cp = common::C_PUR, cd = common::C_DEFAULT);
+				print!("{cd}[[{cg}{}{cd}]{co}r:{},c:{}{cd}:{}({cp}{},{}{cd}){cd}:{cd}{:02X}{cd}]", syn_i, row_id, col_ofs, src_axn_addr, src_axn_row, src_axn_col, syns.states.vec[syn_i], cg = cmn::C_GRN, co = cmn::C_ORA, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
 
 		}
 
@@ -101,7 +101,7 @@ pub fn print_cols(cortex: &mut Cortex) {
 	for col_i in 0..width as usize {
 		if cols.states.vec[col_i] != 0 {
 			//print!("[DEN:]", , );
-			print!("\n########## [{cd}C:[{}]{cg}:{cp}{:02X}]{cd} ##########", col_i, cols.states.vec[col_i], cp = common::C_PUR, cd = common::C_DEFAULT, cg = common::C_DGR);
+			print!("\n########## [{cd}C:[{}]{cg}:{cp}{:02X}]{cd} ##########", col_i, cols.states.vec[col_i], cp = cmn::C_PUR, cd = cmn::C_DEFAULT, cg = cmn::C_DGR);
 			shitty_print_col_syns(col_i, col_i, &syns);
 		}
 	}
@@ -113,8 +113,8 @@ pub fn print_cols(cortex: &mut Cortex) {
 
 
 fn shitty_print_col_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
-	let syn_idx_base = den_idx << common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
-	let syns_per_den = 1 << common::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+	let syn_idx_base = den_idx << cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+	let syns_per_den = 1 << cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
 	print!("\n");
 
@@ -122,16 +122,16 @@ fn shitty_print_col_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 		if syns.states.vec[syn_i] != 0 {
 
 				let width = syns.width() as isize;
-				let col_id = cel_idx as isize & (common::SENSORY_CHORD_WIDTH - 1) as isize;
+				let col_id = cel_idx as isize & (cmn::SENSORY_CHORD_WIDTH - 1) as isize;
 				let row_id = syns.src_row_ids.vec[syn_i] as isize;
 				let col_ofs = syns.src_col_x_offs.vec[syn_i] as isize;
 
-				let src_axn_addr = (width * row_id) + col_id + col_ofs + common::SYNAPSE_REACH as isize;
+				let src_axn_addr = (width * row_id) + col_id + col_ofs + cmn::SYNAPSE_REACH as isize;
 
 				let (src_axn_row, src_axn_col) = axn_coords(src_axn_addr, width);
 				//print!("[width:{},col_id:{}]", width, col_id);
 
-				print!("{cd}[[{cg}{}{cd}]{co}r:{},c:{}{cd}:{}({cp}{},{}{cd}){cd}:{cd}{:02X}{cd}]", syn_i, row_id, col_ofs, src_axn_addr, src_axn_row, src_axn_col, syns.states.vec[syn_i], cg = common::C_GRN, co = common::C_ORA, cp = common::C_PUR, cd = common::C_DEFAULT);
+				print!("{cd}[[{cg}{}{cd}]{co}r:{},c:{}{cd}:{}({cp}{},{}{cd}){cd}:{cd}{:02X}{cd}]", syn_i, row_id, col_ofs, src_axn_addr, src_axn_row, src_axn_col, syns.states.vec[syn_i], cg = cmn::C_GRN, co = cmn::C_ORA, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
 
 		}
 
@@ -143,9 +143,9 @@ fn shitty_print_col_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 
 
 fn axn_coords(axn_addr: isize, width: isize) -> (isize, isize) {
-	let axn_true = axn_addr - (common::SYNAPSE_REACH as isize);
+	let axn_true = axn_addr - (cmn::SYNAPSE_REACH as isize);
 
-	let axn_row = axn_true >> common::SENSORY_CHORD_WIDTH_LOG2;
+	let axn_row = axn_true >> cmn::SENSORY_CHORD_WIDTH_LOG2;
 	let axn_col = axn_true % width;
 
 	(axn_row, axn_col)

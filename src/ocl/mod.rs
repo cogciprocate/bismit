@@ -6,7 +6,9 @@ pub use self::cl_h::{ cl_platform_id, cl_device_id, cl_context, cl_program,
 pub use self::kernel::{ Kernel };
 pub use self::envoy::{ Envoy };
 pub use self::work_size::{ WorkSize };
-use common;
+pub use self::build_options::{ BuildOptions, BuildOption };
+
+use cmn;
 
 use std;
 use std::ptr;
@@ -23,6 +25,7 @@ mod cl_h;
 mod envoy;
 mod kernel;
 mod work_size;
+mod build_options;
 
 pub const GPU_DEVICE: usize = 1;
 pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
@@ -36,7 +39,7 @@ pub struct Ocl {
 }
 
 impl Ocl {
-	pub fn new(build_options: String) -> Ocl {
+	pub fn new(build_options: BuildOptions) -> Ocl {
 		let path_string = format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME);
 		let path_string_slice = &path_string;
 		let kern_file_path = std::path::Path::new(path_string_slice);
@@ -50,7 +53,7 @@ impl Ocl {
 		let devices: [cl_device_id; 2] = new_device(platform);
 		let device: cl_device_id = devices[GPU_DEVICE];
 		let context: cl_context = new_context(device);
-		let program: cl_program = new_program(kern_c_str.as_ptr(), build_options, context, device);
+		let program: cl_program = new_program(kern_c_str.as_ptr(), build_options.to_string(), context, device);
 		let command_queue: cl_command_queue = new_command_queue(context, device); 
 
 		Ocl {
