@@ -1,13 +1,13 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
-use cortical_areas::{ CorticalAreas, Width };
+use protoareas::{ ProtoAreas, Width };
 use protoregions::{ ProtoRegion, ProtoRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
-use columns::{ Columns };
+use columns::{ MiniColumns };
 use peak_column::{ PeakColumn };
 use pyramidals::{ Pyramidal };
 
@@ -24,36 +24,36 @@ use std::collections::{ BTreeMap };
 
 
 
-pub struct Cells {
+pub struct RegionCells {
 	pub width: u32,
 	//pub depth_axonal: u8,
 	//pub depth_cellular: u8,
 	pub row_map: BTreeMap<u8, &'static str>,
 	ocl: ocl::Ocl,
 	pub axns: Axons,
-	pub cols: Columns,
+	pub cols: MiniColumns,
 	pub pyrs: Pyramidal,
 	//pub soma: Somata,
 	pub aux: Aux,
 
 }
 
-impl Cells {
-	pub fn new(region: &ProtoRegion, areas: &CorticalAreas, ocl: &Ocl) -> Cells {
+impl RegionCells {
+	pub fn new(region: &ProtoRegion, areas: &ProtoAreas, ocl: &Ocl) -> RegionCells {
 		//let (depth_axonal, depth_cellular) = region.depth();
 		let width = areas.width(&region.kind);
 
-		//print!("\nCells::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
+		//print!("\nRegionCells::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
 
-		//assert!(depth_cellular > 0, "cells::Cells::new(): Region has no cellular layers.");
+		//assert!(depth_cellular > 0, "region_cells::RegionCells::new(): Region has no cellular layers.");
 
 		let aux = Aux::new(width, 1, ocl);
 		let axns = Axons::new(width, region, ocl);
 		let pyrs = Pyramidal::new(width, region, &axns, &aux, ocl);
-		let cols = Columns::new(width, region, &axns, &pyrs, &aux, ocl);
+		let cols = MiniColumns::new(width, region, &axns, &pyrs, &aux, ocl);
 		
 
-		let mut cells = Cells {
+		let mut region_cells = RegionCells {
 			width: width,
 			//depth_axonal: depth_axonal,
 			//depth_cellular: depth_cellular,
@@ -67,9 +67,9 @@ impl Cells {
 			
 		};
 
-		cells.init_kernels();
+		region_cells.init_kernels();
 
-		cells
+		region_cells
 	}
 
 	pub fn init_kernels(&mut self) {

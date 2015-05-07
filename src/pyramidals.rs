@@ -1,14 +1,14 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
-use cortical_areas::{ CorticalAreas, Width };
+use protoareas::{ ProtoAreas, Width };
 use protoregions::{ ProtoRegion, ProtoRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
-use cells::{ Aux };
+use region_cells::{ Aux };
 use peak_column::{ PeakColumn };
-use columns::{ Columns };
+use columns::{ MiniColumns };
 use axons::{ Axons };
 
 
@@ -118,7 +118,7 @@ impl Pyramidal {
 		}
 	}
 
-	pub fn init_kernels(&mut self, cols: &Columns, axns: &Axons, aux: &Aux) {
+	pub fn init_kernels(&mut self, cols: &MiniColumns, axns: &Axons, aux: &Aux) {
 		self.kern_activate.new_arg_envoy(&cols.states);
 		self.kern_activate.new_arg_envoy(&cols.cels_status);
 		self.kern_activate.new_arg_scalar(self.axn_row_base);

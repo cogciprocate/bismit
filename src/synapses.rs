@@ -1,13 +1,13 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
-use cortical_areas::{ CorticalAreas, Width };
+use protoareas::{ ProtoAreas, Width };
 use protoregions::{ ProtoRegion, ProtoRegionKind };
 use protolayer::{ ProtoLayer, ProtoLayerKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
-use cells::{ Aux };
+use region_cells::{ Aux };
 
 use num;
 use rand;
@@ -34,6 +34,7 @@ pub struct Synapses {
 	pub src_col_x_offs: Envoy<ocl::cl_char>,
 	//pub src_col_y_offs: Envoy<ocl::cl_char>,
 	//pub flags: Envoy<ocl::cl_uchar>,
+	pub row_pool: Envoy<ocl::cl_uchar>,
 }
 
 impl Synapses {
@@ -41,18 +42,20 @@ impl Synapses {
 					region: &ProtoRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
 
 		let syns_per_row = width << per_cell_l2;
-
 		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
+
+
+		let row_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 1, 0, ocl);
+
+
 		//print!("\nNew {:?} Synapses with: depth: {}, width: {}, per_cell_l2: {}, syns_per_row(row area): {}", den_kind, depth, width, per_cell_l2, syns_per_row);
 
-		
 		let states = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
 		let mut src_row_ids = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
 
 		// SRC COL REACHES MUST BECOME CONSTANTS
 		let mut src_col_x_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -127, 127, ocl); 
-		
 		
 		//let mut src_col_y_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -31, 31, ocl);
 
@@ -103,9 +106,11 @@ impl Synapses {
 			src_col_x_offs: src_col_x_offs,
 			//src_col_y_offs: src_col_y_offs,
 			//flags: flags,
+			row_pool: row_pool,
 		};
 
 		syns.init(region);
+		//syns.refresh_row_pool();
 
 		syns
 	}
@@ -114,11 +119,11 @@ impl Synapses {
 		assert!(
 			(self.src_col_x_offs.width() == self.src_row_ids.width()) 
 			&& ((self.src_row_ids.width() == (self.width << self.per_cell_l2))), 
-			"[cells::Synapses::init(): width mismatch]"
+			"[region_cells::Synapses::init(): width mismatch]"
 		);
 
 		let syns_per_row = self.width << self.per_cell_l2;
-		let mut rng = rand::weak_rng();
+		//let mut rng = rand::weak_rng();
 
 		/* LOOP THROUGH ALL LAYERS */
 		for (&layer_name, layer) in region.layers().iter() {
@@ -142,7 +147,7 @@ impl Synapses {
 			let src_row_idx_range: Range<usize> = Range::new(0, src_row_ids_len);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
 			
-			assert!(src_row_ids_len <= (1 << self.per_cell_l2) as usize, "cells::Synapses::init(): Number of source rows must not exceed number of synapses per cell.");
+			assert!(src_row_ids_len <= (1 << self.per_cell_l2) as usize, "region_cells::Synapses::init(): Number of source rows must not exceed number of synapses per cell.");
 
 			print!("\n    syns.init(): \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", layer_name, self.den_kind, row_ids, src_row_ids);
 			
@@ -162,8 +167,8 @@ impl Synapses {
 
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
 				for ref i in ei_start..ei_end {
-					self.src_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
-					self.strengths[i] = (self.src_col_x_offs[i] >> 6) * strength_init_range.ind_sample(&mut rng); 	
+					self.src_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut self.rng)];
+					self.strengths[i] = (self.src_col_x_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng); 	
 				}
 			}
 		}
@@ -194,4 +199,19 @@ impl Synapses {
 	pub fn width(&self) -> u32 {
 		self.width
 	}
+
+	/* REFRESH_ROW_POOL(): Pretty much being refactored into the new regrow
+		- read
+		- update cols and rows where str < whatever
+		- write
+		- piss off
+	*/
+	/*fn regrow_new(&mut self) {
+		let src_row_ids_len: usize = src_row_ids.len();
+		let src_row_idx_range: Range<usize> = Range::new(0, src_row_ids_len);
+
+		for i in 0..cmn::SYNAPSE_ROW_POOL_SIZE {
+			self.row_pool[i] = src_row_ids[src_row_idx_range.ind_sample(&mut rng)];
+		}
+	}*/
 }

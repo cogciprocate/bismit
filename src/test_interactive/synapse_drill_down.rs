@@ -1,7 +1,7 @@
 use cortex::{ Cortex };
 use dendrites::{ Dendrites };
 use pyramidals::{ Pyramidal };
-use columns::{ Columns };
+use columns::{ MiniColumns };
 use synapses::{ Synapses };
 use cmn;
 
@@ -9,7 +9,7 @@ use std::io::{ self, Write, Stdout };
 use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 
 pub fn print_pyrs(cortex: &mut Cortex) {
-	let pyrs = &mut cortex.cells.pyrs;
+	let pyrs = &mut cortex.region_cells.pyrs;
 	pyrs.confab();
 
 	let mut pyr_idx = 0usize;
@@ -87,14 +87,14 @@ fn shitty_print_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 pub fn print_cols(cortex: &mut Cortex) {
 	println!("Pyramidal synapse source test running...");
 
-	let cols = &mut cortex.cells.cols;
+	let cols = &mut cortex.region_cells.cols;
 
 	cols.confab();
 
 	println!("\n");
 
 	let col_idx_base = 0usize;
-	let width = cortex.cells.width;
+	let width = cortex.region_cells.width;
 
 	let syns = &cols.syns;
 

@@ -569,7 +569,7 @@ __kernel void syns_regrow(
 	if (syn_strength > SYNAPSE_STRENGTH_FLOOR) {
 		return;
 	} else {
-		char rnd_col_ofs = ((rnd ^ ((syn_idx << 5) ^ (syn_idx >> 3))) & 0xFF);
+		char rnd_col_ofs = clamp(-127, 127, (int)((rnd ^ ((syn_idx << 5) ^ (syn_idx >> 3))) & 0xFF));
 		//rnd_row_id = ((rnd >> 8) & 0xFF);		// CHOOSE FROM PRE-BUILT ARRAY
 
 			// CHECK FOR DUPLICATES 

@@ -1,13 +1,13 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
-use cortical_areas::{ CorticalAreas, Width };
+use protoareas::{ ProtoAreas, Width };
 use protoregions::{ ProtoRegion, ProtoRegionKind };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
-use columns::{ Columns }; 
+use columns::{ MiniColumns }; 
 
 use num;
 use std::ops;

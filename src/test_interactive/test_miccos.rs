@@ -76,7 +76,7 @@ pub fn run() {
 
 				if true {
 					print!("\n[ i:{} ] [ \n", i);
-					snake_brain.cort.cells.axns.states.print_val_range(1, Some((1, 127)));
+					snake_brain.cort.region_cells.axns.states.print_val_range(1, Some((1, 127)));
 
 					//print!("\n] [==[ \n");
 					//snake_brain.cort.cortical_segments[0].columns.synapses.values.print(256);

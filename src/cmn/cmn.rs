@@ -87,6 +87,13 @@ pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 6;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
 
+pub const SYNAPSE_REACH_LOG2: u32 = 7;
+pub const SYNAPSE_REACH: u32 = 1 << SYNAPSE_REACH_LOG2;
+pub const SYNAPSE_SPAN: u32 = SYNAPSE_REACH << 1;
+pub const AXONS_MARGIN: usize = SYNAPSE_REACH as usize;
+
+pub const SYNAPSE_ROW_POOL_SIZE: u32 = 256;
+
 /* GET RID OF THIS UNLESS CL NEEDS IT */
 //pub const SYNAPSES_PER_CELL_PROXIMAL_LOG2: u32 = DENDRITES_PER_CELL_PROXIMAL_LOG2 + SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 //pub const SYNAPSES_PER_CELL_PROXIMAL: u32 = 1 << SYNAPSES_PER_CELL_PROXIMAL_LOG2;
@@ -116,11 +123,6 @@ pub const SENSORY_CHORD_WIDTH_LOG2: usize = 10;
 pub const SENSORY_CHORD_WIDTH: u32 = 1 << SENSORY_CHORD_WIDTH_LOG2; // COLUMNS_PER_SEGMENT;
 pub const MOTOR_CHORD_WIDTH: usize = 2;
 
-
-pub const SYNAPSE_REACH_LOG2: u32 = 7;
-pub const SYNAPSE_REACH: u32 = 1 << SYNAPSE_REACH_LOG2;
-pub const SYNAPSE_SPAN: u32 = SYNAPSE_REACH << 1;
-pub const AXONS_MARGIN: usize = SYNAPSE_REACH as usize;
 
 pub const DST_DEN_BOOST_LOG2: u8 = 0;
 pub const PRX_DEN_BOOST_LOG2: u8 = 0;
@@ -546,8 +548,8 @@ pub fn render_sdr(
 
 	let mut new_preds = 0usize;
 
-	let cells_per_line = 64;
-	let line_character_width = (cells_per_line * (4 + 4 + 2 + 4 + 4 + 1)) + 8;	// 8 extra for funsies
+	let region_cells_per_line = 64;
+	let line_character_width = (region_cells_per_line * (4 + 4 + 2 + 4 + 4 + 1)) + 8;	// 8 extra for funsies
 
 	//println!("\n[{}{}{}]:", C_GRN, vec_ff.len(), C_DEFAULT);
 
@@ -563,7 +565,7 @@ pub fn render_sdr(
 
 		line_out.clear();
 
-		for i in line_i..(line_i + cells_per_line) {
+		for i in line_i..(line_i + region_cells_per_line) {
 			let output_active = vec_out[i] != Default::default();
 			let col_active = vec_ff[i] != Default::default();
 			let prediction = vec_out[i] != vec_ff[i];
@@ -625,7 +627,7 @@ pub fn render_sdr(
 			println!("{}", line_out);
 		}
 
-		line_i += cells_per_line;
+		line_i += region_cells_per_line;
 		global_i += 1;
 	}
 

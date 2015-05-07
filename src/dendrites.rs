@@ -1,12 +1,12 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize, };
 use ocl::{ Envoy };
-use cortical_areas::{ CorticalAreas, Width };
+use protoareas::{ ProtoAreas, Width };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use protoregions::{ ProtoRegion, ProtoRegionKind };
 use synapses::{ Synapses };
 use axons::{ Axons };
-use cells::{ Aux };
+use region_cells::{ Aux };
 
 use num;
 use rand;

@@ -1,4 +1,4 @@
-// CorticalArea for the specifics
+// ProtoArea for the specifics
 // ProtoRegion to define prototypical shit
 
 //use protocell::{  };

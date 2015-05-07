@@ -10,13 +10,13 @@ pub trait Width {
 }
 
 pub trait AddNew {
-	fn add_new(&mut self, name: &'static str, cortical_area: CorticalArea) -> u32;
+	fn add_new(&mut self, name: &'static str, cortical_area: ProtoArea) -> u32;
 }
 
 
-pub type CorticalAreas = HashMap<&'static str, CorticalArea>;
+pub type ProtoAreas = HashMap<&'static str, ProtoArea>;
 
-impl Width for CorticalAreas {
+impl Width for ProtoAreas {
 	fn width(&self, cr_type: &ProtoRegionKind) -> u32 {
 		let mut width = 0u32;
 		for (area_name, area) in self.iter() {
@@ -28,8 +28,8 @@ impl Width for CorticalAreas {
 	}
 }
 
-impl AddNew for CorticalAreas {
-	fn add_new(&mut self, name: &'static str, cortical_area: CorticalArea) -> u32 {
+impl AddNew for ProtoAreas {
+	fn add_new(&mut self, name: &'static str, cortical_area: ProtoArea) -> u32 {
 		let width = cortical_area.width;
 		self.insert(name, cortical_area);
 		width
@@ -37,13 +37,13 @@ impl AddNew for CorticalAreas {
 }
 
 
-pub struct CorticalArea {
+pub struct ProtoArea {
 	pub width: u32,
 	pub offset: u32,
 	pub cort_reg_type: ProtoRegionKind,
 }
 
-impl CorticalArea {
+impl ProtoArea {
 	pub fn width(&self) -> u32 {
 		self.width
 	}
@@ -51,4 +51,4 @@ impl CorticalArea {
 
 
 
-//struct CorticalArea
+//struct ProtoArea

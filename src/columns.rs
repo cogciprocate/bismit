@@ -1,14 +1,14 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
-use cortical_areas::{ CorticalAreas, Width };
+use protoareas::{ ProtoAreas, Width };
 use protoregions::{ ProtoRegion, ProtoRegionKind };
 use protolayer:: { ProtoLayer };
 use protocell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
-use cells:: { Aux };
+use region_cells:: { Aux };
 use peak_column:: { PeakColumn };
 use pyramidals::{ Pyramidal };
 
@@ -21,7 +21,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 
-pub struct Columns {
+pub struct MiniColumns {
 	width: u32,
 	axn_output_row: u8,
 	kern_cycle: ocl::Kernel,
@@ -39,9 +39,9 @@ pub struct Columns {
 	
 }
 
-impl Columns {
-	pub fn new(width: u32, region: &ProtoRegion, axons: &Axons, pyrs: &Pyramidal, aux: &Aux, ocl: &Ocl) -> Columns {
-		let layer = region.col_input_layer().expect("columns::Columns::new()");
+impl MiniColumns {
+	pub fn new(width: u32, region: &ProtoRegion, axons: &Axons, pyrs: &Pyramidal, aux: &Aux, ocl: &Ocl) -> MiniColumns {
+		let layer = region.col_input_layer().expect("columns::MiniColumns::new()");
 		let depth: u8 = layer.depth();
 
 		let syns_per_den_l2: u32 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
@@ -109,7 +109,7 @@ impl Columns {
 
 		//println!("\n***Test");
 
-		Columns {
+		MiniColumns {
 			width: width,
 			axn_output_row: axn_output_row,
 			kern_cycle: kern_cycle,
