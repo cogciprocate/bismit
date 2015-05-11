@@ -1,11 +1,11 @@
 // ProtoArea for the specifics
 // ProtoRegion to define prototypical shit
 
-//use protocell::{  };
-use protolayer as layer;
-use protolayer::{ ProtoLayer, ProtoLayerFlags, AxonKind };
-use protolayer::ProtoLayerKind::{ self, Cellular, Axonal };
-use protocell::{ CellKind, Protocell, DendriteKind };
+//use proto::cell::{  };
+use proto::layer as layer;
+use proto::layer::{ ProtoLayer, ProtoLayerFlags, AxonKind };
+use proto::layer::ProtoLayerKind::{ self, Cellular, Axonal };
+use proto::cell::{ CellKind, Protocell, DendriteKind };
 
 use std;
 use std::collections::{ self, HashMap, BTreeMap };

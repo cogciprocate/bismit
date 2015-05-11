@@ -1,10 +1,10 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
-use protoareas::{ ProtoAreas, Width };
-use protoregions::{ ProtoRegion, ProtoRegionKind };
-use protolayer::{ ProtoLayer, ProtoLayerKind };
-use protocell::{ CellKind, Protocell, DendriteKind };
+use proto::areas::{ ProtoAreas, Width };
+use proto::regions::{ ProtoRegion, ProtoRegionKind };
+use proto::layer::{ ProtoLayer, ProtoLayerKind };
+use proto::cell::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use region_cells::{ Aux };
@@ -18,10 +18,22 @@ use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
+
+/* Synapses: Smallest and most numerous unit in the cortex - the soldier behind it all
+	- TODO:
+		- [high priority] Testing: 
+			- Top priority is checking for uniqueness and correct distribution frequency among src_rows and cols
+
+		- [low priority] Optimization:
+			- Obviously grow() and it's ilk need a lot of work
+
+*/
+
 pub struct Synapses {
 	depth: u8,
 	width: u32,
 	per_cell_l2: u32,
+	per_den_l2: u32,
 	den_kind: DendriteKind,
 	cell_kind: CellKind,
 	since_decay: usize,
@@ -55,7 +67,7 @@ impl Synapses {
 		let mut src_row_ids = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
 
 		// SRC COL REACHES MUST BECOME CONSTANTS
-		let mut src_col_x_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -127, 127, ocl); 
+		let mut src_col_x_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -126, 126, ocl); 
 		
 		//let mut src_col_y_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -31, 31, ocl);
 
@@ -94,6 +106,7 @@ impl Synapses {
 			width: width,
 			depth: depth,
 			per_cell_l2: per_cell_l2,
+			per_den_l2: per_den_l2,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			since_decay: 0,
@@ -109,18 +122,20 @@ impl Synapses {
 			row_pool: row_pool,
 		};
 
-		syns.init(region);
+		syns.grow(region, true);
 		//syns.refresh_row_pool();
 
 		syns
 	}
 
-	fn init(&mut self, region: &ProtoRegion) {
+	fn grow(&mut self, region: &ProtoRegion, init: bool) {
 		assert!(
 			(self.src_col_x_offs.width() == self.src_row_ids.width()) 
 			&& ((self.src_row_ids.width() == (self.width << self.per_cell_l2))), 
 			"[region_cells::Synapses::init(): width mismatch]"
 		);
+
+		self.confab();
 
 		let syns_per_row = self.width << self.per_cell_l2;
 		//let mut rng = rand::weak_rng();
@@ -145,12 +160,15 @@ impl Synapses {
 
 			let kind_base_row_pos = layer.kind_base_row_pos;
 			let src_row_idx_range: Range<usize> = Range::new(0, src_row_ids_len);
+			let src_col_x_offs_range: Range<i8> = Range::new(-126, 127);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
 			
 			assert!(src_row_ids_len <= (1 << self.per_cell_l2) as usize, "region_cells::Synapses::init(): Number of source rows must not exceed number of synapses per cell.");
 
-			print!("\n    syns.init(): \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", layer_name, self.den_kind, row_ids, src_row_ids);
-			
+			if init {
+				print!("\n    syns.init(): \"{}\" ({:?}): row_ids: {:?}, src_row_ids: {:?}", layer_name, self.den_kind, row_ids, src_row_ids);
+			}
+
 			/* LOOP THROUGH ROWS (WITHIN LAYER) */
 			for row_pos in kind_base_row_pos..(kind_base_row_pos + layer.depth) {
 				//print!("\nDEBUG: row_pos: {}", row_pos);
@@ -166,9 +184,16 @@ impl Synapses {
 				//print!("\n   Row {}: ei_start: {}, ei_end: {}, src_row_ids: {:?}", row_pos, ei_start, ei_end, src_row_ids);
 
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
-				for ref i in ei_start..ei_end {
-					self.src_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut self.rng)];
-					self.strengths[i] = (self.src_col_x_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng); 	
+				for i in ei_start..ei_end {
+					if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
+
+						self.regrow_syn(i, &src_row_idx_range, &src_col_x_offs_range,
+							&strength_init_range, &src_row_ids);
+
+						//self.src_row_ids[i] = src_row_ids[src_row_idx_range.ind_sample(&mut self.rng)];
+						//self.src_col_x_offs[i] = src_col_x_offs_range.ind_sample(&mut self.rng);
+						//self.strengths[i] = (self.src_col_x_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+					}
 				}
 			}
 		}
@@ -182,11 +207,13 @@ impl Synapses {
 		self.kern_cycle.enqueue();
 	}
 
-	pub fn regrow(&mut self) {
-		let rnd = self.rng.gen::<u32>();
+	pub fn regrow(&mut self, region: &ProtoRegion) {
+		/*let rnd = self.rng.gen::<u32>();
 		//print!("\nRegrowing with rnd: {}", rnd);
 		self.kern_regrow.set_named_arg("rnd", rnd);
-		self.kern_regrow.enqueue();
+		self.kern_regrow.enqueue();*/
+
+		self.grow(region, false);
 	}
 
 	pub fn confab(&mut self) {
@@ -200,13 +227,57 @@ impl Synapses {
 		self.width
 	}
 
+	fn regrow_syn(&mut self, 
+				syn_idx: usize, 
+				src_row_idx_range: &Range<usize>, 
+				src_col_x_offs_range: &Range<i8>,
+				strength_init_range: &Range<i8>,
+				src_row_ids: &Vec<u8>
+	) {
+		//let src_row_idx_range: Range<usize> = Range::new(0, src_row_ids.len());
+		//let src_col_x_offs_range: Range<i8> = Range::new(-126, 127);
+		//let strength_init_range: Range<i8> = Range::new(-3, 4);
+
+		//let src_row_id
+		//let src_col_x_off
+		//let strength
+
+		for i in 0..200 {
+			self.src_row_ids[syn_idx] = src_row_ids[src_row_idx_range.ind_sample(&mut self.rng)];
+			self.src_col_x_offs[syn_idx] = src_col_x_offs_range.ind_sample(&mut self.rng);
+			self.strengths[syn_idx] = (self.src_col_x_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+
+			if self.unique_src_addr(syn_idx) {
+				break;
+			} else {
+				//print!("[nu]");
+			}
+		}
+	}
+
+	fn unique_src_addr(&self, syn_idx: usize) -> bool {
+		let syn_idx_den_init: usize = (syn_idx >> self.per_den_l2) << self.per_den_l2;
+		let syn_idx_den_n: usize = syn_idx_den_init + (1 << self.per_den_l2);
+
+		for i in syn_idx_den_init..syn_idx_den_n {
+			if (self.src_row_ids[syn_idx] == self.src_row_ids[i]) 
+				&& (self.src_col_x_offs[syn_idx] == self.src_col_x_offs[i])
+				&& (i != syn_idx)
+			{
+				return false;
+			}
+		}
+
+		true
+	}
+
 	/* REFRESH_ROW_POOL(): Pretty much being refactored into the new regrow
 		- read
 		- update cols and rows where str < whatever
 		- write
 		- piss off
 	*/
-	/*fn regrow_new(&mut self) {
+	/*fn regrow_local(&mut self) {
 		let src_row_ids_len: usize = src_row_ids.len();
 		let src_row_idx_range: Range<usize> = Range::new(0, src_row_ids_len);
 

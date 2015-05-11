@@ -1,4 +1,4 @@
-use protoregions::{ ProtoRegionKind };
+use proto::regions::{ ProtoRegionKind };
 
 use std::collections::{ HashMap };
 

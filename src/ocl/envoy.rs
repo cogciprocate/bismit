@@ -111,8 +111,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 
 }
 
-impl<'b, T> Index<&'b usize> for Envoy<T>
-{
+impl<'b, T> Index<&'b usize> for Envoy<T> {
     type Output = T;
 
     fn index<'a>(&'a self, index: &'b usize) -> &'a T {
@@ -120,11 +119,23 @@ impl<'b, T> Index<&'b usize> for Envoy<T>
     }
 }
 
-impl<'b, T> IndexMut<&'b usize> for Envoy<T>
-{
-
+impl<'b, T> IndexMut<&'b usize> for Envoy<T> {
     fn index_mut<'a>(&'a mut self, index: &'b usize) -> &'a mut T {
         &mut self.vec[..][*index]
+    }
+}
+
+impl<T> Index<usize> for Envoy<T> {
+    type Output = T;
+
+    fn index<'a>(&'a self, index: usize) -> &'a T {
+        &self.vec[..][index]
+    }
+}
+
+impl<T> IndexMut<usize> for Envoy<T> {
+    fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut T {
+        &mut self.vec[..][index]
     }
 }
 

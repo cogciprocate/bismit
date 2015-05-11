@@ -1,9 +1,9 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize, };
 use ocl::{ Envoy };
-use protoareas::{ ProtoAreas, Width };
-use protocell::{ CellKind, Protocell, DendriteKind };
-use protoregions::{ ProtoRegion, ProtoRegionKind };
+use proto::areas::{ ProtoAreas, Width };
+use proto::cell::{ CellKind, Protocell, DendriteKind };
+use proto::regions::{ ProtoRegion, ProtoRegionKind };
 use synapses::{ Synapses };
 use axons::{ Axons };
 use region_cells::{ Aux };
@@ -97,8 +97,8 @@ impl Dendrites {
 		self.kern_cycle.enqueue();
 	}
 
-	pub fn regrow(&mut self) {
-		self.syns.regrow();
+	pub fn regrow(&mut self, region: &ProtoRegion) {
+		self.syns.regrow(region);
 	}
 
 	pub fn confab(&mut self) {

@@ -1,9 +1,9 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
-use protoareas::{ ProtoAreas, Width };
-use protoregions::{ ProtoRegion, ProtoRegionKind };
-use protocell::{ CellKind, Protocell, DendriteKind };
+use proto::areas::{ ProtoAreas, Width };
+use proto::regions::{ ProtoRegion, ProtoRegionKind };
+use proto::cell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -29,13 +29,14 @@ pub struct RegionCells {
 	//pub depth_axonal: u8,
 	//pub depth_cellular: u8,
 	pub row_map: BTreeMap<u8, &'static str>,
-	ocl: ocl::Ocl,
+	//pub region: ProtoRegion,
 	pub axns: Axons,
 	pub cols: MiniColumns,
 	pub pyrs: Pyramidal,
 	//pub soma: Somata,
 	pub aux: Aux,
-
+	ocl: ocl::Ocl,
+	counter: usize,
 }
 
 impl RegionCells {
@@ -58,13 +59,14 @@ impl RegionCells {
 			//depth_axonal: depth_axonal,
 			//depth_cellular: depth_cellular,
 			row_map: region.row_map(),
+			//region: region,
 			axns: axns,
 			cols: cols,
 			pyrs: pyrs,
 			//soma: Somata::new(width, depth_cellular, region, ocl),
 			aux: aux,
 			ocl: ocl.clone(),
-			
+			counter: 0,
 		};
 
 		region_cells.init_kernels();
@@ -78,23 +80,37 @@ impl RegionCells {
 		self.pyrs.init_kernels(&self.cols, &self.axns, &self.aux);
 	}
 
-	pub fn cycle(&mut self) {
+	pub fn cycle(&mut self, region: &ProtoRegion) {
 		//self.soma.dst_dens.cycle(&self.axns, &self.ocl);
 		//self.soma.cycle(&self.ocl);
 		//self.soma.inhib(&self.ocl);
 		//self.axns.cycle(&self.soma, &self.ocl);
-		//self.soma.learn(&self.ocl);
+		//self.soma.ltp(&self.ocl);
 		//self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
 
-		let learn: bool = cmn::LEARNING_ACTIVE;
+		let ltp: bool = cmn::LEARNING_ACTIVE;
 		
-		self.cols.cycle(learn);
+		self.cols.cycle(ltp);
 		
-		self.pyrs.activate(learn);	// ***** 
+		self.pyrs.activate(ltp);	// ***** 
 		
 		self.pyrs.cycle();	// ***** 
 
 		self.cols.output();
+
+		self.regrow(region);
+
+	}
+
+	pub fn regrow(&mut self, region: &ProtoRegion) {
+		if self.counter >= 1000 {
+			print!("$");
+			self.cols.regrow(region);
+			self.pyrs.regrow(region);
+			self.counter = 0;
+		} else {
+			self.counter += 1;
+		}
 	}
 }
 
@@ -193,9 +209,9 @@ impl Somata {
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}
 
-	pub fn learn(&mut self, ocl: &Ocl) {
+	pub fn ltp(&mut self, ocl: &Ocl) {
 
-		let kern = ocl::new_kernel(ocl.program, "syns_learn");
+		let kern = ocl::new_kernel(ocl.program, "syns_ltp");
 		ocl::set_kernel_arg(0, self.hcol_max_ids.buf, kern);
 		ocl::set_kernel_arg(1, self.dst_dens.syns.states.buf, kern);
 		ocl::set_kernel_arg(2, self.dst_dens.thresholds.buf, kern);

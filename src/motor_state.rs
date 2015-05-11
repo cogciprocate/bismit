@@ -14,11 +14,11 @@ impl MotorState {
 	pub fn new() -> MotorState {
 
 		let mut turn_left = true;
-		//let sdr_left = cmn::gen_fract_sdr(30, 256);
-		//let sdr_right = cmn::gen_fract_sdr(160, 256);
+		let sdr_left = cmn::gen_fract_sdr(50, 256);
+		let sdr_right = cmn::gen_fract_sdr(129, 256);
 
-		let sdr_left = iter::repeat(0).take(256).collect();
-		let sdr_right = iter::repeat(0).take(256).collect();
+		//let sdr_left = iter::repeat(0).take(256).collect();
+		//let sdr_right = iter::repeat(0).take(256).collect();
 
 		
 		MotorState {

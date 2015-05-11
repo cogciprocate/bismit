@@ -52,7 +52,9 @@ pub static BGC_GRN: &'static str = "\x1b[42m";
 pub static BGC_MAG: &'static str = "\x1b[45m";
 pub static BGC_DGR: &'static str = "\x1b[100m";
 
-pub static KERNELS_FILE_NAME: &'static str = "bismit.cl";
+
+pub const PYR_JUST_ACTIVE_FLAG: u8 = 0b10000000;
+
 
 pub const CORTICAL_SEGMENTS_TOTAL: usize = 1;
 pub const SENSORY_SEGMENTS_TOTAL: usize = 1;
@@ -161,6 +163,7 @@ pub const LEARNING_ACTIVE: bool = true;	// *****
 
 
 
+pub static KERNELS_FILE_NAME: &'static str = "bismit.cl";
 pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
 
 
@@ -217,6 +220,7 @@ pub fn build_options() -> ocl::BuildOptions {
 		.opt("ASPINY_SPAN", ASPINY_SPAN as i32)
 		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
 		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
+		.opt("PYR_JUST_ACTIVE_FLAG", PYR_JUST_ACTIVE_FLAG as i32)
 }
 
 
@@ -430,7 +434,6 @@ pub fn shuffle_vec<T: Integer + Copy >(vec: &mut Vec<T>) {
 		vec[i] = vec[ridx];
 		vec[ridx] = tmp;
 	}
-
 }
 
 /* SPARSE_VEC():
@@ -575,7 +578,7 @@ pub fn render_sdr(
 
 			if new_prediction { new_preds += 1};
 
-			if prev_prediction && !col_active {
+			if (prev_prediction && !new_prediction) && !col_active {
 				failed_preds += 1;
 			} else if prev_prediction && col_active {
 				corr_preds += 1;
@@ -642,7 +645,7 @@ pub fn render_sdr(
 
 	if print {
 		if vec_out_prev_opt.is_some() {
-			println!("\n[correct: {}, failed: {}, accuracy: {}%, new_preds: {}]", 
+			println!("\n[correct: {}, failed: {}, accuracy: {:.1}%, new_preds: {}]", 
 				corr_preds, failed_preds, pred_accy, new_preds);
 		}
 	}
@@ -656,13 +659,16 @@ pub fn corr_pred(
 			ff: u8, 
 			prev_out: u8, 
 			prev_ff: u8, 
-) -> bool {
+) -> Option<bool> {
 	let prev_new_pred = new_pred(prev_out, prev_ff);
+	let curr_new_pred = new_pred(out, ff);
 
 	if prev_new_pred && (ff != 0) {
-		true
+		Some(true)
+	} else if prev_new_pred && curr_new_pred {
+		None
 	} else {
-		false
+		Some(false)
 	}
 }
 

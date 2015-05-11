@@ -1,10 +1,10 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
-use protoareas::{ ProtoAreas, Width };
-use protoregions::{ ProtoRegion, ProtoRegionKind };
-use protolayer:: { ProtoLayer };
-use protocell::{ CellKind, Protocell, DendriteKind };
+use proto::areas::{ ProtoAreas, Width };
+use proto::regions::{ ProtoRegion, ProtoRegionKind };
+use proto::layer:: { ProtoLayer };
+use proto::cell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -27,13 +27,13 @@ pub struct MiniColumns {
 	kern_cycle: ocl::Kernel,
 	kern_post_inhib: ocl::Kernel,
 	kern_output: ocl::Kernel,
-	kern_learn: ocl::Kernel,
+	kern_ltp: ocl::Kernel,
 	rng: rand::XorShiftRng,
-	regrow_counter: usize,
+	//regrow_counter: usize,	// SLATED FOR REMOVAL
 	pub states: Envoy<ocl::cl_uchar>,
 	pub states_raw: Envoy<ocl::cl_uchar>,
 	pub cels_status: Envoy<ocl::cl_uchar>,
-	pub peak_cols: PeakColumn,
+	pub peak_spis: PeakColumn,
 	//pub syns: ColumnSynapses,
 	pub syns: Synapses,
 	
@@ -53,7 +53,7 @@ impl MiniColumns {
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let states_raw = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let cels_status = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
-		let peak_cols = PeakColumn::new(width, depth, region, &states, ocl);
+		let peak_spis = PeakColumn::new(width, depth, region, &states, ocl);
 		let syns = Synapses::new(width, depth, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
 			CellKind::SpinyStellate, region, axons, aux, ocl);
 
@@ -71,10 +71,10 @@ impl MiniColumns {
 			.arg_env(&states)
 		;
 
-		let kern_post_inhib = ocl.new_kernel("col_post_inhib_unoptd", WorkSize::TwoDim(depth as usize, width as usize))
-			.arg_env(&peak_cols.col_ids)
-			.arg_env(&peak_cols.states)
-			.arg_env(&peak_cols.wins)
+		let kern_post_inhib = ocl.new_kernel("spi_post_inhib_unoptd", WorkSize::TwoDim(depth as usize, width as usize))
+			.arg_env(&peak_spis.spi_ids)
+			.arg_env(&peak_spis.states)
+			.arg_env(&peak_spis.wins)
 			.arg_scl(layer.base_row_pos() as u32)
 			.arg_env(&states)
 			.arg_env(&axons.states)
@@ -93,12 +93,12 @@ impl MiniColumns {
 		;
 
 
-		//println!("\n*** W: {}", peak_cols.width());
+		//println!("\n*** W: {}", peak_spis.width());
 
 
-		let kern_learn = ocl.new_kernel("col_learn", WorkSize::TwoDim(depth as usize, peak_cols.width() as usize))
-			.arg_env(&peak_cols.col_ids)
-			.arg_env(&peak_cols.states)
+		let kern_ltp = ocl.new_kernel("spi_ltp", WorkSize::TwoDim(depth as usize, peak_spis.width() as usize))
+			.arg_env(&peak_spis.spi_ids)
+			.arg_env(&peak_spis.states)
 			.arg_env(&syns.states)
 			.arg_scl(syns_per_den_l2)
 			.arg_scl(0u32)
@@ -115,48 +115,56 @@ impl MiniColumns {
 			kern_cycle: kern_cycle,
 			kern_post_inhib: kern_post_inhib,
 			kern_output: kern_output,
-			kern_learn: kern_learn,
+			kern_ltp: kern_ltp,
 			rng: rand::weak_rng(),
-			regrow_counter: 0usize,
+			//regrow_counter: 0usize,
 			states_raw: states_raw,
 			states: states,
 			cels_status: cels_status,
-			peak_cols: peak_cols,
+			peak_spis: peak_spis,
 			syns: syns,
 		}
 	}
 
-	pub fn cycle(&mut self, learn: bool) {
+	pub fn cycle(&mut self, ltp: bool) {
 		self.syns.cycle();
 		self.kern_cycle.enqueue();
-		self.peak_cols.cycle(); // *****
+		self.peak_spis.cycle(); // *****
 		self.kern_post_inhib.enqueue(); // *****
-		if learn { self.learn(); }
+		if ltp { self.ltp(); }
 	}
 
 	pub fn output(&self) {
 		self.kern_output.enqueue();
 	}
 
-	pub fn learn(&mut self) {
+	pub fn ltp(&mut self) {
 		//print!("[R:{}]", self.rng.gen::<i32>());
-		self.kern_learn.set_kernel_arg(4, self.rng.gen::<u32>());
-		self.kern_learn.enqueue();
+		self.kern_ltp.set_kernel_arg(4, self.rng.gen::<u32>());
+		self.kern_ltp.enqueue();
 
-		self.regrow_counter += 1;
+		//self.regrow_counter += 1;
 
-		if self.regrow_counter >= 1000 {
-				self.syns.regrow();
+		//self.regrow();
+
+	}
+
+	pub fn regrow(&mut self, region: &ProtoRegion) {
+
+		self.syns.regrow(region);
+
+
+		/*if self.regrow_counter >= 995 {
+			self.syns.regrow();
 			self.regrow_counter = 0;
-		}
-
+		}*/
 	}
 
 	pub fn confab(&mut self) {
 		self.states.read();
 		self.states_raw.read();
 		self.cels_status.read();
-		//self.peak_cols.confab();
+		//self.peak_spis.confab();
 		self.syns.confab();
 	} 
 

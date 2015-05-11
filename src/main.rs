@@ -33,10 +33,6 @@ mod pyramidals;
 //mod cort_seg;
 //mod thalamus;
 mod cortex;
-mod protoregions;
-mod protoareas;
-mod protolayer;
-mod protocell;
 //mod protocell;
 //mod sub_cortex;
 //mod test_miccos;
@@ -44,6 +40,7 @@ mod protocell;
 //mod test_3;
 mod test_interactive;
 mod motor_state;
+mod proto;
 
 
 //mod tests;

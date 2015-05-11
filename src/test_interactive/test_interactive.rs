@@ -13,7 +13,6 @@ use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
 use microcosm::world::{ World };
 use motor_state;
 
-
 use std::default::Default;
 use std::iter;
 use std::fmt::{ Display };
@@ -25,13 +24,18 @@ use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use time;
 
 pub const INITIAL_TEST_ITERATIONS: i32 	= 1; 
-pub const STATUS_EVERY: i32 			= 400;
+pub const STATUS_EVERY: i32 			= 1000;
 pub const PRINT_DETAILS_EVERY: i32		= 10000;
 pub const SHUFFLE_ONCE: bool 			= true;
 pub const SHUFFLE_EVERY: bool 			= false;
 pub const WORLD_TURN_FACTOR: f32 		= 3f32;	
 
 
+/* RUN(): Run the interactive testing command line
+	- TODO:
+		- [incomplete][priority:very low] Proper command line using enums to represent user input and a seperate struct to manage its state
+			- Or just be lazy and leave it the beautiful disaster that it is...	
+*/
 pub fn run() -> bool {
 	let sc_width = cmn::SENSORY_CHORD_WIDTH;
 	let mut cortex = cortex::Cortex::new();
@@ -146,6 +150,7 @@ pub fn run() -> bool {
 			} else if "f\n" == in_s {
 				let in_s = rin(format!("fractal seed"));
 				let in_int: Option<u8> = in_s.trim().parse().ok();
+
 				let seed = match in_int {
 					Some(x)	=> x,
 					None => {
@@ -153,7 +158,19 @@ pub fn run() -> bool {
 						continue;
 					},
 				};
-				let tvec = cmn::gen_fract_sdr(seed, 256 * 1);
+
+				let in_s = rin(format!("cardinality factor: 256 * "));
+				let in_int: Option<usize> = in_s.trim().parse().ok();
+
+				let c_factor = match in_int {
+					Some(x)	=> x,
+					None => {
+						print!("\nError parsing number.");
+						continue;
+					},
+				};
+
+				let tvec = cmn::gen_fract_sdr(seed, 256 * c_factor);
 				cmn::print_vec_simple(&tvec);
 				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
 				continue;
@@ -237,7 +254,7 @@ pub fn run() -> bool {
 			}
 
 			if !bypass_sense {
-				cortex.sense_vec(0, "thal", &mut vec1);
+				cortex.write_vec(0, "thal", &mut vec1);
 				cortex.sense_vec(0, "motor", &mut motor_state.cur_sdr());
 			}
 
@@ -246,9 +263,9 @@ pub fn run() -> bool {
 
 			if turn_bomb_i >= turn_bomb_n {
 				//print!(" >- pow!:{} -< ", turn_bomb_i);
-				motor_state.switch();
+				//motor_state.switch();
 				turn_bomb_i = 0;
-				turn_bomb_n = (rng.gen::<u8>() as usize) << 4;
+				turn_bomb_n = (rng.gen::<u8>() as usize) << 1;
 			}
 		}
 
@@ -275,7 +292,7 @@ pub fn run() -> bool {
 				act(&mut world, worm.uid, &mut vec1, motor_state.cur_turn());
 			}
 			if !bypass_sense {
-				cortex.sense_vec(0, "thal", &mut vec1);
+				cortex.write_vec(0, "thal", &mut vec1);
 				cortex.sense_vec(0, "motor", &mut motor_state.cur_sdr());
 			}
 			//let sr_start = (512 << cmn::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
@@ -330,6 +347,11 @@ pub fn run() -> bool {
 
 
 
+
+/* PRINT_SENSE_ONLY() & PRINT_SENSE_AND_PRINT():
+	- TODO:
+		- [incomplete][priority: low] Roll up into integrated command line system and make each item togglable
+*/
 fn print_sense_only(cortex: &mut Cortex) {
 	if false {
 		print!("\nAXON STATES: ");
@@ -395,11 +417,11 @@ fn print_sense_and_print(cortex: &mut Cortex) {
 	}
 	if false {
 		print!("\nCOLUMN PEAK COL IDS: ");
-		cortex.region_cells.cols.peak_cols.col_ids.print_val_range(1 << 0, Some((0, 255)));
+		cortex.region_cells.cols.peak_spis.spi_ids.print_val_range(1 << 0, Some((0, 255)));
 	}
 	if false {
 		print!("\nCOLUMN PEAK COL STATES: ");
-		cortex.region_cells.cols.peak_cols.states.print_val_range(1 << 0, Some((1, 255)));
+		cortex.region_cells.cols.peak_spis.states.print_val_range(1 << 0, Some((1, 255)));
 	}
 
 

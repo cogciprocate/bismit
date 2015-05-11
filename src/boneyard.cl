@@ -817,7 +817,7 @@ __kernel void axns_cycle_old(
 }
 
 
-__kernel void syns_learn(
+__kernel void syns_ltp(
 				__global uchar* const hcol_max_ids,
 				__global char* const hcol_max_vals,
 				__global char* const syn_states,
@@ -961,7 +961,7 @@ __kernel void test_cell_axn_stable(__global uchar *axn, __global uchar *ax_out) 
 
 
 
- __kernel void syns_learn(
+ __kernel void syns_ltp(
 				__global uchar* const hcol_max_ids,
 				__global char* const hcol_max_vals,
 				__global char* const syn_states,

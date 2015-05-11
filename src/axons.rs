@@ -1,9 +1,9 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
-use protoareas::{ ProtoAreas, Width };
-use protoregions::{ ProtoRegion, ProtoRegionKind };
-use protocell::{ CellKind, Protocell, DendriteKind };
+use proto::areas::{ ProtoAreas, Width };
+use proto::regions::{ ProtoRegion, ProtoRegionKind };
+use proto::cell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use region_cells::{ Aux };

@@ -1,9 +1,9 @@
 use cmn;
 use ocl::{ self, Ocl, WorkSize };
 use ocl::{ Envoy };
-use protoareas::{ ProtoAreas, Width };
-use protoregions::{ ProtoRegion, ProtoRegionKind };
-use protocell::{ CellKind, Protocell, DendriteKind };
+use proto::areas::{ ProtoAreas, Width };
+use proto::regions::{ ProtoRegion, ProtoRegionKind };
+use proto::cell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use region_cells::{ Aux };
@@ -22,19 +22,25 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 
+/* Pyramidal
+	flag_sets: 0b10000000 (0x80) -> previously active
+
+*/
 pub struct Pyramidal {
 	depth: u8,
 	width: u32,
-	kern_learn: ocl::Kernel,
+	kern_ltp: ocl::Kernel,
 	kern_cycle: ocl::Kernel,
 	kern_activate: ocl::Kernel,
 	//kern_axn_cycle: ocl::Kernel,
 	axn_row_base: u8,
 	//den_prox_row: u8, 
 	rng: rand::XorShiftRng,
-	regrow_counter: usize,
+	//regrow_counter: usize,
 	pub depols: Envoy<ocl::cl_uchar>,
 	pub best_den_ids: Envoy<ocl::cl_uchar>,
+	pub last_lrnd_den_ids: Envoy<ocl::cl_uchar>,
+	pub flag_sets: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
 }
 
@@ -53,6 +59,8 @@ impl Pyramidal {
 		let depols = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 
 		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let last_lrnd_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let flag_sets = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 
 		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidal, dens_per_cel_l2, region, axons, aux, ocl);
 
@@ -79,11 +87,11 @@ impl Pyramidal {
 
 
 		assert!(width % cmn::MINIMUM_WORKGROUP_SIZE == 0);
-		let cels_per_grp: u32 = width / cmn::MINIMUM_WORKGROUP_SIZE;
+		let cels_per_wi: u32 = width / cmn::MINIMUM_WORKGROUP_SIZE;
 		let axn_idx_base: u32 = (axn_row_base as u32 * width) + cmn::SYNAPSE_REACH;
 		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", axn_idx_base);
 
-		let kern_learn = ocl.new_kernel("pyrs_learn_unoptd", 
+		let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd", 
 			WorkSize::TwoDim(depth as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 			.arg_env(&axons.states)
 			//.arg_env(&depols)
@@ -93,9 +101,11 @@ impl Pyramidal {
 			.arg_scl(axn_idx_base)
 			.arg_scl(syns_per_cel_l2)
 			.arg_scl(dens_per_cel_l2)
-			.arg_scl(cels_per_grp)
+			.arg_scl(cels_per_wi)
 			.arg_scl_named(0u32, "rnd")
 			//.arg_env(&aux.ints_1)
+			.arg_env(&flag_sets)
+			.arg_env(&last_lrnd_den_ids)
 			.arg_env(&dens.syns.strengths)
 			//.arg_env(&axons.states)
 		;
@@ -104,16 +114,18 @@ impl Pyramidal {
 		Pyramidal {
 			depth: depth,
 			width: width,
-			kern_learn: kern_learn,
+			kern_ltp: kern_ltp,
 			kern_cycle: kern_cycle,
 			kern_activate: kern_activate,
 			//kern_axn_cycle: kern_axn_cycle,
 			axn_row_base: axn_row_base,
 			//den_prox_row: den_prox_row,
 			rng: rand::weak_rng(),
-			regrow_counter: 0usize,
+			//regrow_counter: 0usize,
 			depols: depols,
 			best_den_ids: best_den_ids,
+			last_lrnd_den_ids: last_lrnd_den_ids,
+			flag_sets: flag_sets,
 			dens: dens,
 		}
 	}
@@ -127,23 +139,30 @@ impl Pyramidal {
 		self.kern_activate.new_arg_envoy(&axns.states);
 	}
 
-	pub fn activate(&mut self, learn: bool) {
+	pub fn activate(&mut self, ltp: bool) {
 		self.kern_activate.enqueue();
 
-		if learn { self.learn(); }
+		if ltp { self.ltp(); }
 
 	}
 
-	pub fn learn(&mut self) {
-		self.kern_learn.set_named_arg("rnd", self.rng.gen::<u32>());
-		self.kern_learn.enqueue();
+	pub fn ltp(&mut self) {
+		self.kern_ltp.set_named_arg("rnd", self.rng.gen::<u32>());
+		self.kern_ltp.enqueue();
 
-		self.regrow_counter += 1;
+	}
+
+	pub fn regrow(&mut self, region: &ProtoRegion) {
+
+		/*self.regrow_counter += 1;
 
 		if self.regrow_counter >= cmn::SYNAPSE_DECAY_INTERVAL {
-			self.dens.regrow();
+			
 			self.regrow_counter = 0;
-		}
+		}*/
+
+
+		self.dens.regrow(region);
 
 	}
 

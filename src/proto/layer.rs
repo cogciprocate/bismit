@@ -1,4 +1,4 @@
-use protocell::{ CellKind, Protocell, DendriteKind };
+use proto::cell::{ CellKind, Protocell, DendriteKind };
 //use ocl;
 use bitflags;
 

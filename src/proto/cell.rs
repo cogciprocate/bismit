@@ -1,5 +1,5 @@
 //use bitflags;
-use protolayer::ProtoLayerKind::{ self, Cellular };
+use proto::layer::ProtoLayerKind::{ self, Cellular };
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
