@@ -40,10 +40,10 @@ pub fn define_protoregions() -> ProtoRegions {
 		//.layer("test_3", 1, None);
 
 		//.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["motor"]))  // , "thal"
-		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal", "thal", "thal", "thal", "thal"]))  // , "motor"
+		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]))  // , "motor"
 
 		//.layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
-		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii"])) // GET RID OF PROX PARAM? [DONE]
+		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii"])) // GET RID OF PROX PARAM? [DONE]
 		//.layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["ii"], "iv"))
 		//.layer("post_thal3", 1, layer::DEFAULT, Axonal(Spatial))
 		//.layer("smellovision", 1, layer::DEFAULT, Axonal(Horizontal))
@@ -133,7 +133,8 @@ impl Cortex {
 	}
 
 	pub fn cycle(&mut self) {
-		self.region_cells.cycle(&self.protoregions[&ProtoRegionKind::Sensory]);
+		let ref region = &self.protoregions[&ProtoRegionKind::Sensory];
+		self.region_cells.cycle(region);
 	}
 
 	pub fn release_components(&mut self) {

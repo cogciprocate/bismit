@@ -78,12 +78,13 @@ impl PeakColumn {
 	}
 
 	pub fn cycle(&mut self) {
-		let mut event = self.kern_cycle_pre.enqueue();
+		self.kern_cycle_pre.enqueue(); 
+		//let mut event = self.kern_cycle_pre.enqueue();
 
 		//println!("\n### New aspiny.cycle() iteration: ###");
 
-		for i in 0..8 {
-			self.kern_cycle_wins.enqueue();
+		for i in 0..4 { // ***** (was 0..8)
+			self.kern_cycle_wins.enqueue(); 
 		}
 
 		self.kern_cycle_post.enqueue();

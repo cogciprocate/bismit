@@ -92,9 +92,9 @@ impl RegionCells {
 		
 		self.cols.cycle(ltp);
 		
-		self.pyrs.activate(ltp);	// ***** 
+		self.pyrs.activate(ltp);	
 		
-		self.pyrs.cycle();	// ***** 
+		self.pyrs.cycle();	
 
 		self.cols.output();
 
@@ -103,8 +103,8 @@ impl RegionCells {
 	}
 
 	pub fn regrow(&mut self, region: &ProtoRegion) {
-		if self.counter >= 1000 {
-			print!("$");
+		if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
+			//print!("$");
 			self.cols.regrow(region);
 			self.pyrs.regrow(region);
 			self.counter = 0;

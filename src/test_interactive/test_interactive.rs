@@ -24,7 +24,7 @@ use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use time;
 
 pub const INITIAL_TEST_ITERATIONS: i32 	= 1; 
-pub const STATUS_EVERY: i32 			= 1000;
+pub const STATUS_EVERY: i32 			= 10000;
 pub const PRINT_DETAILS_EVERY: i32		= 10000;
 pub const SHUFFLE_ONCE: bool 			= true;
 pub const SHUFFLE_EVERY: bool 			= false;
@@ -70,7 +70,8 @@ pub fn run() -> bool {
 
 	let mut rng: rand::XorShiftRng = rand::weak_rng();
 	let mut turn_bomb_i = 0usize;
-	let mut turn_bomb_n = rng.gen::<u8>() as usize;
+	let mut turn_bomb_n = 5;
+	//let mut turn_bomb_n = rng.gen::<u8>() as usize;
 	
 	let mut test_iters: i32 = INITIAL_TEST_ITERATIONS;
 	let mut first_run: bool = true;
@@ -90,8 +91,8 @@ pub fn run() -> bool {
 
 		if test_iters == 0 {
 			test_iters = 1;
-			bypass_act = true;
-			bypass_sense = true;
+			bypass_act = true; 
+			bypass_sense = true; 
 		}
 
 		let mut in_string: String = if first_run {
@@ -263,9 +264,10 @@ pub fn run() -> bool {
 
 			if turn_bomb_i >= turn_bomb_n {
 				//print!(" >- pow!:{} -< ", turn_bomb_i);
-				//motor_state.switch();
+				motor_state.switch();
 				turn_bomb_i = 0;
-				turn_bomb_n = (rng.gen::<u8>() as usize) << 1;
+				turn_bomb_n = 5;
+				//turn_bomb_n = (rng.gen::<u8>() as usize) << 1;
 			}
 		}
 
@@ -317,12 +319,6 @@ pub fn run() -> bool {
 			let out_slice = &cortex.region_cells.axns.states.vec[out_start..(out_end + 1)];
 			let ff_slice = &cortex.region_cells.cols.states.vec[..];
 
-			//print!("\n****** out_slice.len(): {} ***********", out_slice.len());
-			//print!("\n****** vec_out_prev.len(): {} ***********", vec_out_prev.len());
-			//println!("\n****** vec_out_prev.clone_from_slice(out_slice): {} ***********", vec_out_prev.clone_from_slice(out_slice));
-
-			//cmn::render_sdr(&vec_out_prev[..], Some(&vec_ff_prev[..]), None, None, &cortex.region_cells.row_map);
-
 			cmn::render_sdr(out_slice, Some(ff_slice), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.region_cells.row_map, true);
 
 			if view_all_axons {
@@ -332,6 +328,14 @@ pub fn run() -> bool {
 
 			i += 1;
 			turn_bomb_i += 1;
+
+			if turn_bomb_i >= turn_bomb_n {
+				//print!(" >- pow!:{} -< ", turn_bomb_i);
+				motor_state.switch();
+				turn_bomb_i = 0;
+				turn_bomb_n = 5;
+				//turn_bomb_n = (rng.gen::<u8>() as usize) << 1;
+			}
 		}
 
 		if !bypass_act {
@@ -524,6 +528,7 @@ fn act(world: &mut World, ent_uid: usize, vec: &mut Vec<u8>, turn_left: bool) {
 }
 
 
+
 fn rin(prompt: String) -> String {
 	let mut in_string: String = String::new();
 	print!("\n{}:> ", prompt);
@@ -543,9 +548,6 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 
 	//cmn::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
 	let scw = cmn::SENSORY_CHORD_WIDTH;
-
-	//print!("\n*********** scl_fct: {}", scl_fct);
-	//print!("\n*********** cmn::log2(sct_fct): {}", cmn::log2(scl_fct));
 
 	let mut vec1: Vec<ocl::cl_uchar> = Vec::with_capacity(scw as usize);
 
@@ -570,7 +572,7 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 
 	let scw_1_16 = scw >> 4;
 
-	//println!("***** scw_1_4: {}, scw_3_4: {}", scw_1_4, scw_3_4);
+	//println!("##### scw_1_4: {}, scw_3_4: {} #####", scw_1_4, scw_3_4);
 	/*for i in 0..scw {
 		if i >= scw_3_8 + scw_1_16 && i < scw_5_8 - scw_1_16 {
 		//if i >= scw_3_8 && i < scw_5_8 {

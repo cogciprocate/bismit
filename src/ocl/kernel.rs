@@ -152,7 +152,8 @@ impl Kernel {
 		}
 	}
 
-	pub fn enqueue(&self) -> super::cl_event {
+	pub fn enqueue(&self) {
+	//pub fn enqueue(&self) -> super::cl_event {
 
 			// TODO: VERIFY THE DIMENSIONS OF ALL THE WORKSIZES
 
@@ -162,7 +163,7 @@ impl Kernel {
 		let c_lws = self.lws.complete_worksize();
 		let lws = (&c_lws as *const (usize, usize, usize)) as *const libc::size_t;
 
-		let mut event: super::cl_event = ptr::null_mut();
+		//let mut event: super::cl_event = ptr::null_mut();
 
 		unsafe {
 			let err = super::clEnqueueNDRangeKernel(
@@ -174,16 +175,17 @@ impl Kernel {
 						lws,
 						0,
 						ptr::null(),
-						&mut event as *mut super::cl_event,
+						ptr::null_mut(),
+						//&mut event as *mut super::cl_event, // LEAKS!
 			);
 
 			let err_pre = format!("ocl::Kernel::enqueue()[{}]: ", self.name);
 			super::must_succ(&err_pre, err);
 		}
-		event
+		//event
 	}
 
-	pub fn enqueue_wait(&self, event_wait_list: Vec<super::cl_event>) -> super::cl_event {
+	/*pub fn enqueue_wait(&self, event_wait_list: Vec<super::cl_event>) -> super::cl_event {
 
 			// TODO: VERIFY THE DIMENSIONS OF ALL THE WORKSIZES
 
@@ -206,12 +208,12 @@ impl Kernel {
 						event_wait_list.len() as super::cl_uint,
 						//std::num::cast(event_wait_list.len()).expect("ocl::Kernel::enqueue_wait()"),
 						event_wait_list.as_ptr(),
-						&mut event as *mut super::cl_event,
+						&mut event as *mut super::cl_event,		// LEAKS!
 			);
 
 			let err_pre = format!("ocl::Kernel::enqueue_wait()[{}]: ", self.name);
 			super::must_succ(&err_pre, err);
 		}
 		event
-	}
+	}*/
 }

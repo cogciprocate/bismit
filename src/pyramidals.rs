@@ -133,6 +133,9 @@ impl Pyramidal {
 	pub fn init_kernels(&mut self, cols: &MiniColumns, axns: &Axons, aux: &Aux) {
 		self.kern_activate.new_arg_envoy(&cols.states);
 		self.kern_activate.new_arg_envoy(&cols.cels_status);
+		self.kern_activate.new_arg_envoy(&self.best_den_ids);
+		self.kern_activate.new_arg_envoy(&self.dens.states);
+		//self.kern_activate.new_arg_envoy(&self.flag_sets);
 		self.kern_activate.new_arg_scalar(self.axn_row_base);
 		//self.kern_activate.new_arg_envoy(&aux.ints_0);
 		self.kern_activate.new_arg_envoy(&self.depols);	
@@ -142,14 +145,14 @@ impl Pyramidal {
 	pub fn activate(&mut self, ltp: bool) {
 		self.kern_activate.enqueue();
 
-		if ltp { self.ltp(); }
-
+		if ltp { 
+			self.ltp(); 
+		}
 	}
 
 	pub fn ltp(&mut self) {
 		self.kern_ltp.set_named_arg("rnd", self.rng.gen::<u32>());
 		self.kern_ltp.enqueue();
-
 	}
 
 	pub fn regrow(&mut self, region: &ProtoRegion) {
@@ -163,14 +166,11 @@ impl Pyramidal {
 
 
 		self.dens.regrow(region);
-
 	}
 
 	pub fn cycle(&self) {
 		self.dens.cycle();
 		self.kern_cycle.enqueue();
-
-
 			//self.kern_axn_cycle.enqueue();
 	}
 
@@ -188,5 +188,4 @@ impl Pyramidal {
 	pub fn width(&self) -> u32 {
 		self.width
 	}
-	
 }

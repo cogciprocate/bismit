@@ -53,7 +53,8 @@ pub static BGC_MAG: &'static str = "\x1b[45m";
 pub static BGC_DGR: &'static str = "\x1b[100m";
 
 
-pub const PYR_JUST_ACTIVE_FLAG: u8 = 0b10000000;
+pub const PYR_JUST_ACTIVE_FLAG	: u8 = 0b10000000;
+pub const PYR_BEST_COL_DEN		: u8 = 0b01000000;
 
 
 pub const CORTICAL_SEGMENTS_TOTAL: usize = 1;
@@ -73,10 +74,11 @@ pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
 pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 
 
-
+//pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 2; 
 pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 3;
 pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2;
 
+//pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 2; 
 pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 4;
 pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
@@ -85,6 +87,8 @@ pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_
 pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
 pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 << DENDRITES_PER_CELL_PROXIMAL_LOG2;
 
+
+//pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 3; 
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 6;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
@@ -145,13 +149,13 @@ pub const STATE_ZERO: u8 = 0;
 
 pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 
-pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 640;
-pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 512;
+pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 300;
+pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 400;
 // ***** pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 550;
 // ***** pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 1080;
 
-pub const SYNAPSE_STRENGTH_FLOOR: i8 = -40;
-pub const SYNAPSE_DECAY_INTERVAL: usize = 256 * 2;
+pub const SYNAPSE_STRENGTH_FLOOR: i8 = -15;
+pub const SYNAPSE_REGROWTH_INTERVAL: usize = 1000;
 
 pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
 pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;
@@ -221,6 +225,7 @@ pub fn build_options() -> ocl::BuildOptions {
 		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
 		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
 		.opt("PYR_JUST_ACTIVE_FLAG", PYR_JUST_ACTIVE_FLAG as i32)
+		.opt("PYR_BEST_COL_DEN", PYR_BEST_COL_DEN as i32)
 }
 
 
@@ -548,6 +553,7 @@ pub fn render_sdr(
 
 	let mut failed_preds = 0usize;
 	let mut corr_preds = 0usize;
+	let mut missed_preds = 0usize;
 
 	let mut new_preds = 0usize;
 
@@ -556,27 +562,28 @@ pub fn render_sdr(
 
 	//println!("\n[{}{}{}]:", C_GRN, vec_ff.len(), C_DEFAULT);
 
-	let mut line_out: String = String::with_capacity(line_character_width);
-	let mut line_i = 0usize;
-	let mut global_i = 0usize;
+	let mut out_line: String = String::with_capacity(line_character_width);
+	let mut i_line = 0usize;
+	let mut i_global = 0usize;
 
 	print!("\n");
 	io::stdout().flush().ok();
 
 	loop {
-		if line_i >= vec_ff.len() { break }
+		if i_line >= vec_ff.len() { break }
 
-		line_out.clear();
+		out_line.clear();
 
-		for i in line_i..(line_i + region_cells_per_line) {
-			let output_active = vec_out[i] != Default::default();
+		for i in i_line..(i_line + region_cells_per_line) {
+			let cur_active = vec_out[i] != Default::default();
 			let col_active = vec_ff[i] != Default::default();
 			let prediction = vec_out[i] != vec_ff[i];
 			let new_prediction = prediction && (!col_active);
 
+			//let prev_active = vec_ff_prev[i] != Default::default();
 			let prev_prediction = new_pred(vec_out_prev[i], vec_ff_prev[i]);
 
-			if new_prediction { new_preds += 1};
+			if new_prediction { new_preds += 1 };
 
 			if (prev_prediction && !new_prediction) && !col_active {
 				failed_preds += 1;
@@ -584,42 +591,46 @@ pub fn render_sdr(
 				corr_preds += 1;
 			}
 
+			if cur_active && !prev_prediction {
+				missed_preds += 1;
+			}
+
 			if print {
-				if output_active {
+				if cur_active {
 					if new_prediction {
 						assert!(new_pred(vec_out[i], vec_ff[i]));
-						line_out.push_str(C_MAG);
+						out_line.push_str(C_MAG);
 					} else {
 
-						line_out.push_str(C_BLU);
+						out_line.push_str(C_BLU);
 					}
 					/*if corr_pred(vec_out[i], vec_ff[i], vec_out_prev[i], vec_ff_prev[i]) {
 						corr_preds += 1;
 					}*/
 				} else {
-					line_out.push_str(C_DEFAULT);
+					out_line.push_str(C_DEFAULT);
 				}
 
-				if output_active {
-					line_out.push_str(&format!("{:02X}", vec_out[i]));
+				if cur_active {
+					out_line.push_str(&format!("{:02X}", vec_out[i]));
 				} else {
-					if (i & 0x07) == 0 || (global_i & 0x07) == 0 {				// || ((global_i & 0x0F) == 7) || ((global_i & 0x0F) == 8)
-						line_out.push_str("  ");
+					if (i & 0x07) == 0 || (i_global & 0x07) == 0 {				// || ((i_global & 0x0F) == 7) || ((i_global & 0x0F) == 8)
+						out_line.push_str("  ");
 					} else {
-						line_out.push_str("--");
+						out_line.push_str("--");
 					}
 				} 
 
-				line_out.push_str(C_DEFAULT);
-				line_out.push_str(BGC_DEFAULT);
-				line_out.push_str(" ");
+				out_line.push_str(C_DEFAULT);
+				out_line.push_str(BGC_DEFAULT);
+				out_line.push_str(" ");
 			}
 		}
 
 
 		if print {
-			if ((global_i & 0xF) == 00) && (vec_ff.len() > SENSORY_CHORD_WIDTH as usize) {
-				let row_id = (global_i >> 4) as u8;
+			if ((i_global & 0xF) == 00) && (vec_ff.len() > SENSORY_CHORD_WIDTH as usize) {
+				let row_id = (i_global >> 4) as u8;
 				let row_name = match row_map.get(&row_id) {
 					Some(&name) => name,
 					None => "<render_sdr(): row name not found in map>",
@@ -627,15 +638,15 @@ pub fn render_sdr(
 				println!("\n[{}: {}]", row_id, row_name);
 			}
 			
-			println!("{}", line_out);
+			println!("{}", out_line);
 		}
 
-		line_i += region_cells_per_line;
-		global_i += 1;
+		i_line += region_cells_per_line;
+		i_global += 1;
 	}
 
 
-	let preds_total = corr_preds as f32 + failed_preds as f32;
+	let preds_total = (corr_preds + failed_preds + missed_preds) as f32;
 
 	let pred_accy = if preds_total > 0f32 {
 		(corr_preds as f32 / preds_total) * 100f32
@@ -645,8 +656,8 @@ pub fn render_sdr(
 
 	if print {
 		if vec_out_prev_opt.is_some() {
-			println!("\n[correct: {}, failed: {}, accuracy: {:.1}%, new_preds: {}]", 
-				corr_preds, failed_preds, pred_accy, new_preds);
+			println!("\n[correct: {}, failed: {}, missed: {}, accuracy: {:.1}%, new_preds: {}]", 
+				corr_preds, failed_preds, missed_preds, pred_accy, new_preds);
 		}
 	}
 
@@ -671,6 +682,7 @@ pub fn corr_pred(
 		Some(false)
 	}
 }
+
 
 pub fn new_pred(
 			out: u8, 
@@ -716,7 +728,6 @@ pub fn new_pred(
 			uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, row_width, (uint)(hcol_id + SYNAPSE_REACH));
 			return mul24((uint)(hrow_id < 0), axn_idx_spt) + mul24((uint)(hrow_id >= 0), axn_idx_hrz);
 		}
-	- 
 }*/
 pub fn axn_idx_2d(axn_row: u8, width: u32, hrz_demarc: u8) -> u32 {
 	let mut axn_idx: u32 = if axn_row < hrz_demarc {

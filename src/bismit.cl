@@ -1,3 +1,4 @@
+#define LTD_BIAS_LOG2	1
 
 
 static inline uint asp_to_spi_ofs(uint asp_idx) {
@@ -68,7 +69,7 @@ static inline void syns_ltd( // VECTORIZE
 		uchar syn_state = syn_states[i];
 		//int is_neg = (syn_strength < 0);	// NEGATIVE STRENGTH SYNAPSES GET A BONUS (LOOKS LIKE THIS MAY BE NO BUENO)
 
-		uchar rnd_char = (rnd ^ i) & 0x7F;		
+		uchar rnd_char = ((rnd ^ i) & 0x7F) >> LTD_BIAS_LOG2;		
 		int inc = (rnd_char > abs(syn_strength));
 
 		if (syn_state == 0) {
@@ -202,15 +203,12 @@ __kernel void syns_cycle(
 		uint axn_idx = axn_idx_2d(syn_src_row_ids[syn_idx], row_width, spi_pos, syn_src_spi_x_offs[syn_idx]);
 		//uint axn_idx = mad24((uint)syn_src_row_ids[syn_idx], row_width, (uint)(spi_pos + syn_src_spi_x_offs[syn_idx] + SYNAPSE_REACH));
 		uchar axn_state = axn_states[axn_idx];
-
 		
 		//syn_states[syn_idx] = axn_state;
 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
 		
-
 		//char syn_strength = syn_strengths[syn_idx];
 		//syn_states[syn_idx] = mul24((syn_strength >= 0), ((axn_state != 0) << 7) + (axn_state >> 1));
-
 
 		//aux_ints_0[syn_idx] = spi_pos;
 
@@ -224,8 +222,6 @@ __kernel void syns_cycle(
 	//aux_ints_0[aux_idx] = syn_idx;
 	//aux_ints_0[base_cel_idx] = 12321;
 }
-
-
 
 
 /*	FOR LATER:
@@ -351,7 +347,7 @@ __kernel void peak_spi_cycle_wins(
 	uint const asp_pos = mad24(row_id, row_width, asp_id);
 	uint const asp_idx = (asp_pos + ASPINY_REACH);
 
-	//uint const as_bitmask = (ASPINY_SPAN - 1);
+	uint const as_bitmask = (ASPINY_SPAN - 1);
 
 	uchar asp_state = asp_states[asp_idx];
 	uchar asp_win = asp_wins[asp_idx];
@@ -368,7 +364,7 @@ __kernel void peak_spi_cycle_wins(
 				win_count += 1;
 			}
 
-			/*if ((asp_state == cur_comp_state) && (asp_state > 0)) {		// OLD (TIEBREAK) VERSION
+			if ((asp_state == cur_comp_state) && (asp_state > 0)) {		// OLD (TIEBREAK) VERSION
 				if ((asp_idx & as_bitmask) == (asp_state & as_bitmask)) {
 					win_count += 1;
 				} else if ((cur_comp_idx & as_bitmask) != (asp_state & as_bitmask)) {
@@ -376,7 +372,7 @@ __kernel void peak_spi_cycle_wins(
 				}
 			} else if (asp_state > cur_comp_state) {
 				win_count += 1;
-			}*/
+			}
 		} else if (asp_win > cur_comp_win) {
 			win_count += 1;
 		} else {
@@ -451,8 +447,11 @@ __kernel void spi_post_inhib_unoptd (
 
 
 __kernel void pyr_activate(
-				__global uchar const* const den_prx_states,
-				__global uchar const* const spi_cels_status,
+				__global uchar const* const den_prx_states, // COL
+				__global uchar const* const spi_cels_status, // COL
+				__global uchar const* const pyr_best_den_dst_ids,
+				__global uchar const* const den_dst_states,
+				//__private uchar const pyr_flag_sets,
 				__private uchar const pyr_axn_row_base,
 				//__global int* const aux_ints_0,
 				__global uchar* const pyr_depols,	
@@ -463,21 +462,25 @@ __kernel void pyr_activate(
 	uint const row_width = get_global_size(1);
 	uint const pyr_idx = mad24(row_id, row_width, col_id);
 	uint const axn_idx = axn_idx_2d(pyr_axn_row_base + row_id, row_width, col_id, 0);
+
+	uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
+	uint const best_den_idx = den_ofs + pyr_best_den_dst_ids[pyr_idx];
+
+	uchar const best_den_state = den_dst_states[best_den_idx];
 	//uint const axn_idx = mad24(pyr_axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
 
 	uchar const den_prx_state = den_prx_states[col_id];
 	uchar const cc_status = spi_cels_status[col_id];
-	uchar pyr_depol = pyr_depols[pyr_idx];
+	uchar const pyr_depol = pyr_depols[pyr_idx];
 
 	int corr_pred = (pyr_depol && den_prx_state);
 	int anomaly = ((den_prx_state != 0) && (cc_status == 0));
 
-	int axon_active = ((corr_pred != 0) || (anomaly != 0)) && (den_prx_state != 0);
+	int activate_axon = ((corr_pred != 0) || (anomaly != 0)) && (den_prx_state != 0);
 	//pyr_depol = (corr_pred | anomaly) && (den_prx_state);
 	//pyr_depol = mul24(((corr_pred != 0) || (anomaly != 0)), den_prx_state);
 
-	
-	axn_states[axn_idx] = (uchar)mul24(axon_active, (int)den_prx_state);
+	axn_states[axn_idx] = (uchar)mul24(activate_axon, (int)best_den_state + den_prx_state);
 
 	//pyr_depols[pyr_idx] = pyr_depol;
 	//aux_ints_0[pyr_idx] = 5;
@@ -573,12 +576,18 @@ __kernel void pyrs_ltp_unoptd(
 		int pyr_just_active = pyr_flag_set & PYR_JUST_ACTIVE_FLAG;
 
 		if (axn_states[i + pyr_axn_idx_base] == 0) {
-			/*if ((pyr_just_active) && (pyr_last_lrnd_den_id == pyr_best_den_id)) {
+			if ((pyr_just_active) && (pyr_last_lrnd_den_id == pyr_best_den_id)) {
 
-				// NOT SURE WHAT WE'RE GOING TO DO WITH THIS
-				//syns_ltd(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
-				
-			}*/
+				// 	
+				//  NOT SURE WHAT WE'RE GOING TO DO WITH THIS
+				// 	DEFINITELY REDUCES OVERALL PREDICTIONS
+				// 	ALSO APPEARS TO REDUCE SUPERFLUOUS ONES
+				//	CELL SPECIFIC POST-ACTIVATION LEARNING SHOULD REDUCE THIS
+				// 	SURVEY SAYS LEAVE IT IN FOR NOW
+				//
+				syns_ltd(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
+
+			}
 
 			pyr_flag_set &= !(PYR_JUST_ACTIVE_FLAG);
 			continue;
@@ -586,9 +595,10 @@ __kernel void pyrs_ltp_unoptd(
 			syns_ltp_ltd(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
 
 			pyr_flag_set |= PYR_JUST_ACTIVE_FLAG;
-			pyr_last_lrnd_den_ids[i] = pyr_best_den_id;
+			pyr_last_lrnd_den_id = pyr_best_den_id;
 		}
 
+		pyr_last_lrnd_den_ids[i] = pyr_last_lrnd_den_id;
 		pyr_flag_sets[i] = pyr_flag_set;
 	}
 }
@@ -683,7 +693,7 @@ __kernel void syns_regrow(
 __kernel void pyr_cycle(
 				__global uchar const* const den_states,
 				//__private uchar const pyr_axn_row_base,
-				__global uchar* const pyr_best_dens,
+				__global uchar* const pyr_best_den_ids,
 				__global uchar* const pyr_depols
 				//__global uchar* const axn_states
 ) {
@@ -720,7 +730,7 @@ __kernel void pyr_cycle(
 	
 	//den_sum = den_sum >> 2;
 
-	pyr_best_dens[cel_idx] = best_den_id;
+	pyr_best_den_ids[cel_idx] = best_den_id;
 	pyr_depols[cel_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
 	//axn_states[axn_idx] = clamp(den_sum, 0u, 255u);
 

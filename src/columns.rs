@@ -128,9 +128,9 @@ impl MiniColumns {
 
 	pub fn cycle(&mut self, ltp: bool) {
 		self.syns.cycle();
-		self.kern_cycle.enqueue();
-		self.peak_spis.cycle(); // *****
-		self.kern_post_inhib.enqueue(); // *****
+		self.kern_cycle.enqueue(); 
+		self.peak_spis.cycle(); 
+		self.kern_post_inhib.enqueue(); 
 		if ltp { self.ltp(); }
 	}
 
@@ -142,22 +142,10 @@ impl MiniColumns {
 		//print!("[R:{}]", self.rng.gen::<i32>());
 		self.kern_ltp.set_kernel_arg(4, self.rng.gen::<u32>());
 		self.kern_ltp.enqueue();
-
-		//self.regrow_counter += 1;
-
-		//self.regrow();
-
 	}
 
 	pub fn regrow(&mut self, region: &ProtoRegion) {
-
 		self.syns.regrow(region);
-
-
-		/*if self.regrow_counter >= 995 {
-			self.syns.regrow();
-			self.regrow_counter = 0;
-		}*/
 	}
 
 	pub fn confab(&mut self) {

@@ -152,7 +152,7 @@
 	cmn::print_vec(&t3.vec, 1, true);*/
 
 
-	/***** Testing Axon Stuff *****
+	/*##### Testing Axon Stuff #####
 		let mut vec2: Vec<u8> = iter::repeat(0).take(1024 * 256).collect();
 
 		let mut tar_idxs: Vec<usize> = iter::repeat(0).take(1024 * 256).collect();
@@ -176,7 +176,7 @@
 		//println!("First 3: {}, {}, {}", tar_idxs[0], tar_idxs[1], tar_idxs[2]);
 		//println!("Last 3: {}, {}, {}", tar_idxs[tar_idxs.len() - 1], tar_idxs[tar_idxs.len() - 2], tar_idxs[tar_idxs.len() - 3]);
 
-	*******************/
+	###############****/
 
 	
 
