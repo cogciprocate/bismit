@@ -53,8 +53,8 @@ pub static BGC_MAG: &'static str = "\x1b[45m";
 pub static BGC_DGR: &'static str = "\x1b[100m";
 
 
-pub const PYR_JUST_ACTIVE_FLAG	: u8 = 0b10000000;
-pub const PYR_BEST_COL_DEN		: u8 = 0b01000000;
+pub const PYR_JUST_ACTIVE_FLAG		: u8 = 0b10000000;
+pub const PYR_BEST_COL_DEN_FLAG		: u8 = 0b01000000;
 
 
 pub const CORTICAL_SEGMENTS_TOTAL: usize = 1;
@@ -225,7 +225,7 @@ pub fn build_options() -> ocl::BuildOptions {
 		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
 		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
 		.opt("PYR_JUST_ACTIVE_FLAG", PYR_JUST_ACTIVE_FLAG as i32)
-		.opt("PYR_BEST_COL_DEN", PYR_BEST_COL_DEN as i32)
+		.opt("PYR_BEST_COL_DEN_FLAG", PYR_BEST_COL_DEN_FLAG as i32)
 }
 
 

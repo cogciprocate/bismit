@@ -8,7 +8,7 @@ use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use region_cells::{ Aux };
 use peak_column::{ PeakColumn };
-use columns::{ MiniColumns };
+use minicolumns::{ MiniColumns };
 use axons::{ Axons };
 
 
@@ -39,6 +39,7 @@ pub struct Pyramidal {
 	//regrow_counter: usize,
 	pub depols: Envoy<ocl::cl_uchar>,
 	pub best_den_ids: Envoy<ocl::cl_uchar>,
+	pub best_den_states: Envoy<ocl::cl_uchar>,
 	pub last_lrnd_den_ids: Envoy<ocl::cl_uchar>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
@@ -59,6 +60,7 @@ impl Pyramidal {
 		let depols = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 
 		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let best_den_states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let last_lrnd_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 
@@ -70,6 +72,7 @@ impl Pyramidal {
 			.arg_env(&dens.states)
 			//.arg_scl(axn_row_base)
 			.arg_env(&best_den_ids)
+			.arg_env(&best_den_states)
 			.arg_env(&depols) 		// v.N1
 			//.arg_env(&axons.states)
 		;
@@ -124,6 +127,7 @@ impl Pyramidal {
 			//regrow_counter: 0usize,
 			depols: depols,
 			best_den_ids: best_den_ids,
+			best_den_states: best_den_states,
 			last_lrnd_den_ids: last_lrnd_den_ids,
 			flag_sets: flag_sets,
 			dens: dens,
@@ -133,11 +137,12 @@ impl Pyramidal {
 	pub fn init_kernels(&mut self, cols: &MiniColumns, axns: &Axons, aux: &Aux) {
 		self.kern_activate.new_arg_envoy(&cols.states);
 		self.kern_activate.new_arg_envoy(&cols.cels_status);
+		self.kern_activate.new_arg_envoy(&cols.best_col_den_states);
 		self.kern_activate.new_arg_envoy(&self.best_den_ids);
 		self.kern_activate.new_arg_envoy(&self.dens.states);
-		//self.kern_activate.new_arg_envoy(&self.flag_sets);
 		self.kern_activate.new_arg_scalar(self.axn_row_base);
 		//self.kern_activate.new_arg_envoy(&aux.ints_0);
+		self.kern_activate.new_arg_envoy(&self.flag_sets);
 		self.kern_activate.new_arg_envoy(&self.depols);	
 		self.kern_activate.new_arg_envoy(&axns.states);
 	}

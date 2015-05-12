@@ -438,7 +438,7 @@ pub fn enqueue_kernel(
 	}
 }
 
-pub fn enqueue_2d_kernel(
+/*pub fn enqueue_2d_kernel(
 				command_queue: cl_h::cl_command_queue,
 				kernel: cl_kernel, 
 				//dims: cl_uint,
@@ -503,7 +503,7 @@ pub fn enqueue_3d_kernel(
 		);
 		must_succ("clEnqueueNDRangeKernel()", err);
 	}
-}
+}*/
 
 pub fn cl_finish(command_queue: cl_h::cl_command_queue) -> cl_h::cl_int {
 	unsafe{	cl_h::clFinish(command_queue) }

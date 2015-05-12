@@ -449,12 +449,16 @@ __kernel void spi_post_inhib_unoptd (
 __kernel void pyr_activate(
 				__global uchar const* const den_prx_states, // COL
 				__global uchar const* const spi_cels_status, // COL
+				__global uchar const* const spi_best_col_den_states,
 				__global uchar const* const pyr_best_den_dst_ids,
+
+				// ADD PYR BEST DEN STATE NOW THAT WE'VE ADDED IT (another kernel too I think)
+
 				__global uchar const* const den_dst_states,
-				//__private uchar const pyr_flag_sets,
 				__private uchar const pyr_axn_row_base,
 				//__global int* const aux_ints_0,
-				__global uchar* const pyr_depols,	
+				__global uchar* const pyr_flag_sets,
+				__global uchar* const pyr_depols,
 				__global uchar* const axn_states
 ) {
 	uint const row_id = get_global_id(0);
@@ -463,23 +467,29 @@ __kernel void pyr_activate(
 	uint const pyr_idx = mad24(row_id, row_width, col_id);
 	uint const axn_idx = axn_idx_2d(pyr_axn_row_base + row_id, row_width, col_id, 0);
 
-	uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
-	uint const best_den_idx = den_ofs + pyr_best_den_dst_ids[pyr_idx];
+	uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;			// REPLACE
+	uint const best_den_idx = den_ofs + pyr_best_den_dst_ids[pyr_idx];		// REPLACE
 
-	uchar const best_den_state = den_dst_states[best_den_idx];
+	uchar const best_den_state = den_dst_states[best_den_idx];				// CHANGE
+
 	//uint const axn_idx = mad24(pyr_axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
+	uchar const spi_best_col_den_state = spi_best_col_den_states[col_id];
+	uchar const pyr_flag_set = (pyr_flag_sets[pyr_idx] & !PYR_BEST_COL_DEN_FLAG);
 
 	uchar const den_prx_state = den_prx_states[col_id];
 	uchar const cc_status = spi_cels_status[col_id];
 	uchar const pyr_depol = pyr_depols[pyr_idx];
 
-	int corr_pred = (pyr_depol && den_prx_state);
-	int anomaly = ((den_prx_state != 0) && (cc_status == 0));
+	int const pyr_best_col_den = (spi_best_col_den_state == best_den_state);
+	int const pyr_best_col_den_flag = mul24(pyr_best_col_den, PYR_BEST_COL_DEN_FLAG);
 
-	int activate_axon = ((corr_pred != 0) || (anomaly != 0)) && (den_prx_state != 0);
+	int const corr_pred = (pyr_depol && den_prx_state);
+	int const anomaly = ((den_prx_state != 0) && (cc_status == 0));
+	int const activate_axon = ((corr_pred != 0) || (anomaly != 0)) && (den_prx_state != 0);
 	//pyr_depol = (corr_pred | anomaly) && (den_prx_state);
 	//pyr_depol = mul24(((corr_pred != 0) || (anomaly != 0)), den_prx_state);
 
+	pyr_flag_sets[pyr_idx] = (pyr_flag_set | pyr_best_col_den_flag);
 	axn_states[axn_idx] = (uchar)mul24(activate_axon, (int)best_den_state + den_prx_state);
 
 	//pyr_depols[pyr_idx] = pyr_depol;
@@ -573,10 +583,12 @@ __kernel void pyrs_ltp_unoptd(
 		uint den_idx_init = (i << dens_per_pyr_l2);
 		uint syn_idx = ((den_idx_init + pyr_best_den_id) << syns_per_den_l2);
 
-		int pyr_just_active = pyr_flag_set & PYR_JUST_ACTIVE_FLAG;
+		int pyr_just_active = (pyr_flag_set & PYR_JUST_ACTIVE_FLAG) == PYR_JUST_ACTIVE_FLAG;
+		int pyr_best_col_den = (pyr_flag_set & PYR_BEST_COL_DEN_FLAG) == PYR_BEST_COL_DEN_FLAG;
+
 
 		if (axn_states[i + pyr_axn_idx_base] == 0) {
-			if ((pyr_just_active) && (pyr_last_lrnd_den_id == pyr_best_den_id)) {
+			if (pyr_just_active && (pyr_last_lrnd_den_id == pyr_best_den_id)) {
 
 				// 	
 				//  NOT SURE WHAT WE'RE GOING TO DO WITH THIS
@@ -589,13 +601,16 @@ __kernel void pyrs_ltp_unoptd(
 
 			}
 
-			pyr_flag_set &= !(PYR_JUST_ACTIVE_FLAG);
+			pyr_flag_set &= !PYR_JUST_ACTIVE_FLAG;
 			continue;
 		} else {
-			syns_ltp_ltd(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
+			if (pyr_best_col_den) {
+				syns_ltp_ltd(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
+				
+				pyr_last_lrnd_den_id = pyr_best_den_id;
+			}
 
 			pyr_flag_set |= PYR_JUST_ACTIVE_FLAG;
-			pyr_last_lrnd_den_id = pyr_best_den_id;
 		}
 
 		pyr_last_lrnd_den_ids[i] = pyr_last_lrnd_den_id;
@@ -694,6 +709,7 @@ __kernel void pyr_cycle(
 				__global uchar const* const den_states,
 				//__private uchar const pyr_axn_row_base,
 				__global uchar* const pyr_best_den_ids,
+				__global uchar* const pyr_best_den_states,
 				__global uchar* const pyr_depols
 				//__global uchar* const axn_states
 ) {
@@ -731,6 +747,7 @@ __kernel void pyr_cycle(
 	//den_sum = den_sum >> 2;
 
 	pyr_best_den_ids[cel_idx] = best_den_id;
+	pyr_best_den_states[cel_idx] = best_den_state;
 	pyr_depols[cel_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
 	//axn_states[axn_idx] = clamp(den_sum, 0u, 255u);
 
@@ -747,12 +764,14 @@ __kernel void pyr_cycle(
 __kernel void col_output(
 				__global uchar const* const spi_states,	// CONVERT TO READING FROM AXON
 				__global uchar const* const pyr_depols,
+				__global uchar const* const pyr_best_den_states,
 				//__private uchar const spi_row_count,
 				__private uchar const pyr_depth,
 				//__private uchar const pyr_axn_base_row,
 				__private uchar const output_axn_row,
 				//__private uchar const pyr_base_row,
 				__global uchar* const spi_cels_status,
+				__global uchar* const spi_best_col_den_states,
 				__global uchar* const axn_states
 				
 ) {
@@ -765,13 +784,17 @@ __kernel void col_output(
 	uint const col_idx = mad24(row_id, row_width, col_id);
 
 	int spi_state = spi_states[col_idx];
+	uchar max_den_state = 0;
 	int output_total = 0;
 
 	for (uint i = 0; i < pyr_depth; i++) {
 		uint pyr_idx = mad24(i, row_width, col_id);			// v.N3
 		//uint axn_idx_pyr = mad24(pyr_axn_base_row + i, row_width, col_id + (uint)SYNAPSE_REACH); 	// v.N1
-		
-		output_total = max(output_total, (int)pyr_depols[pyr_idx]);		// v.N3
+		uchar pyr_best_den_state = pyr_best_den_states[pyr_idx];
+		uchar pyr_depol = pyr_depols[pyr_idx];
+
+		max_den_state = max(max_den_state, pyr_best_den_state);
+		output_total = max(output_total, (int)pyr_depol);		// v.N3
 		//output_total += axn_states[axn_idx_pyr];							// v.N2
 		//output_total = max(output_total, (int)axn_states[axn_idx_pyr]); 	// v.N1
 		
@@ -782,6 +805,7 @@ __kernel void col_output(
 
 
 	spi_cels_status[col_idx] = clamp(output_total, 0, 255);
+	spi_best_col_den_states[col_idx] = max_den_state;
 	axn_states[output_axn_idx] = clamp(output_total + spi_state, 0, 255); 			// v.N2 
 	//axn_states[axn_idx_output] = clamp(max(output_total, spi_state), 0, 255); 	// v.N1
 	//axn_states[output_axn_idx] = clamp(output_total, 0, 255);

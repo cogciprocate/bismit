@@ -61,7 +61,7 @@ fn test_cortex() {
 fn synapse_test(cortex: &Cortex, vec1: &Vec<ocl::cl_uchar>) -> bool {
 	vec1.clear();
 
-	// Write blank input and check synapses for columns and stuff
+	// Write blank input and check synapses for minicolumns and stuff
 
 	// Then do some other simple tests
 }

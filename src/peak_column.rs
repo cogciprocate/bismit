@@ -7,7 +7,7 @@ use proto::cell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
-use columns::{ MiniColumns }; 
+use minicolumns::{ MiniColumns }; 
 
 use num;
 use std::ops;

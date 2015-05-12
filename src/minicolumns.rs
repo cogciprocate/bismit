@@ -21,6 +21,14 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 
+/*	MiniColumns (aka. Columns)
+	- TODO:
+		- Reorganization to:
+			- MiniColumns
+				- SpinyStellate
+					- Dendrite
+
+*/
 pub struct MiniColumns {
 	width: u32,
 	axn_output_row: u8,
@@ -33,6 +41,7 @@ pub struct MiniColumns {
 	pub states: Envoy<ocl::cl_uchar>,
 	pub states_raw: Envoy<ocl::cl_uchar>,
 	pub cels_status: Envoy<ocl::cl_uchar>,
+	pub best_col_den_states: Envoy<ocl::cl_uchar>,
 	pub peak_spis: PeakColumn,
 	//pub syns: ColumnSynapses,
 	pub syns: Synapses,
@@ -41,7 +50,7 @@ pub struct MiniColumns {
 
 impl MiniColumns {
 	pub fn new(width: u32, region: &ProtoRegion, axons: &Axons, pyrs: &Pyramidal, aux: &Aux, ocl: &Ocl) -> MiniColumns {
-		let layer = region.col_input_layer().expect("columns::MiniColumns::new()");
+		let layer = region.col_input_layer().expect("minicolumns::MiniColumns::new()");
 		let depth: u8 = layer.depth();
 
 		let syns_per_den_l2: u32 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
@@ -53,6 +62,7 @@ impl MiniColumns {
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let states_raw = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let cels_status = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let best_col_den_states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let peak_spis = PeakColumn::new(width, depth, region, &states, ocl);
 		let syns = Synapses::new(width, depth, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
 			CellKind::SpinyStellate, region, axons, aux, ocl);
@@ -84,11 +94,13 @@ impl MiniColumns {
 			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&states)
 			.arg_env(&pyrs.depols)
+			.arg_env(&pyrs.best_den_states)
 			//.arg_scl(depth)
 			.arg_scl(pyr_depth)
 			//.arg_scl(pyr_axn_base_row)
 			.arg_scl(axn_output_row)
 			.arg_env(&cels_status)
+			.arg_env(&best_col_den_states)
 			.arg_env(&axons.states)
 		;
 
@@ -121,6 +133,7 @@ impl MiniColumns {
 			states_raw: states_raw,
 			states: states,
 			cels_status: cels_status,
+			best_col_den_states: best_col_den_states,
 			peak_spis: peak_spis,
 			syns: syns,
 		}

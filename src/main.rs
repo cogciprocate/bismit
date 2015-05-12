@@ -27,7 +27,7 @@ mod region_cells;
 mod axons;
 mod dendrites;
 mod synapses;
-mod columns;
+mod minicolumns;
 mod peak_column;
 mod pyramidals;
 //mod cort_seg;
@@ -39,7 +39,6 @@ mod cortex;
 //mod test_readback;
 //mod test_3;
 mod test_interactive;
-mod motor_state;
 mod proto;
 
 

@@ -1,7 +1,7 @@
 use cortex::{ Cortex };
 use dendrites::{ Dendrites };
 use pyramidals::{ Pyramidal };
-use columns::{ MiniColumns };
+use minicolumns::{ MiniColumns };
 use synapses::{ Synapses };
 use cmn;
 

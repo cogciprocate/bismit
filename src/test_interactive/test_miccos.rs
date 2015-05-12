@@ -79,7 +79,7 @@ pub fn run() {
 					snake_brain.cort.region_cells.axns.states.print_val_range(1, Some((1, 127)));
 
 					//print!("\n] [==[ \n");
-					//snake_brain.cort.cortical_segments[0].columns.synapses.values.print(256);
+					//snake_brain.cort.cortical_segments[0].minicolumns.synapses.values.print(256);
 					print!("\n]==] \n");
 				}
 

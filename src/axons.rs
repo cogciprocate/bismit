@@ -8,7 +8,7 @@ use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use region_cells::{ Aux };
 use peak_column::{ PeakColumn };
-use columns::{ MiniColumns };
+use minicolumns::{ MiniColumns };
 
 
 use std;
