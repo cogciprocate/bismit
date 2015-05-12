@@ -55,6 +55,7 @@ pub static BGC_DGR: &'static str = "\x1b[100m";
 
 pub const PYR_JUST_ACTIVE_FLAG		: u8 = 0b10000000;
 pub const PYR_BEST_COL_DEN_FLAG		: u8 = 0b01000000;
+pub const PYR_JUST_LEARNED_FLAG		: u8 = 0b00100000;
 
 
 pub const CORTICAL_SEGMENTS_TOTAL: usize = 1;
@@ -150,7 +151,7 @@ pub const STATE_ZERO: u8 = 0;
 pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 
 pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 300;
-pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 400;
+pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 5);
 // ***** pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 550;
 // ***** pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 1080;
 
@@ -226,6 +227,7 @@ pub fn build_options() -> ocl::BuildOptions {
 		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
 		.opt("PYR_JUST_ACTIVE_FLAG", PYR_JUST_ACTIVE_FLAG as i32)
 		.opt("PYR_BEST_COL_DEN_FLAG", PYR_BEST_COL_DEN_FLAG as i32)
+		.opt("PYR_JUST_LEARNED_FLAG", PYR_JUST_LEARNED_FLAG as i32)
 }
 
 
@@ -742,7 +744,7 @@ pub fn axn_idx_2d(axn_row: u8, width: u32, hrz_demarc: u8) -> u32 {
 
 /* GEN_FRACT_SDR(): Generate simple SDR from integer seed
 	- FUTURE IMPROVEMENTS: 
-		- Once the API for wrapping integers is sorted out, use one of those instead of wrap_idx.
+		- Once the Rust API for wrapping integers is sorted out, use one of those instead of wrap_idx.
 		- Create and store sdr as a "chord" or whatever else becomes the preferred SDR storage container
 
 */
@@ -754,7 +756,7 @@ pub fn gen_fract_sdr(seed: u8, len: usize) -> Vec<u8> {
 
 	for i in 0..n {
 		for j in 0..(n - i) {
-			vec[idx] = seed;
+			vec[idx] = 1;
 			idx = wrap_idx(idx + 1, len)
 		}
 		idx = wrap_idx(idx + (i << 1) + 1, len);

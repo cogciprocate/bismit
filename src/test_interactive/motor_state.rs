@@ -3,7 +3,7 @@ use cmn;
 use std::iter;
 
 pub struct MotorState {
-	turn_left: bool,
+	turn_left: bool,  // change to turn_state
 	sdr_left: Vec<u8>,
 	sdr_right: Vec<u8>,
 	left_str: &'static str,
@@ -46,11 +46,17 @@ impl MotorState {
 		}
 	}
 
-	pub fn cur_sdr(&self) -> &Vec<u8> {
-		if self.turn_left {
-			&self.sdr_left
+	pub fn cur_sdr(&self, rev: bool) -> &[u8] {
+		if self.turn_left ^ rev {
+			&self.sdr_left[..]
 		} else {
-			&self.sdr_right
+			&self.sdr_right[..]
 		}
 	}
+}
+
+
+enum TurnState {
+	Left,
+	Right,
 }

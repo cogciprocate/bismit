@@ -16,7 +16,7 @@ use ocl::{ Envoy };
 use std::default::{ Default };
 use std::iter;
 use std::fmt::{ Display };
-use std::ops;
+use std::ops::{ Range };
 use std::io::{ self, Write, Stdout };
 use std::borrow::{ Borrow };
 use rand::{ self, ThreadRng, Rng };
@@ -24,7 +24,7 @@ use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use time;
 
 pub const INITIAL_TEST_ITERATIONS: i32 	= 1; 
-pub const STATUS_EVERY: i32 			= 10000;
+pub const STATUS_EVERY: i32 			= 5000;
 pub const PRINT_DETAILS_EVERY: i32		= 10000;
 pub const SHUFFLE_ONCE: bool 			= true;
 pub const SHUFFLE_EVERY: bool 			= false;
@@ -40,7 +40,7 @@ pub fn run() -> bool {
 	let mut cortex = cortex::Cortex::new();
 	//let mut world: World = World::new(sc_width);
 
-	let mut input_czar = InputCzar::new();
+	let mut input_czar = InputCzar::new(0..70, true);
 
 	//let mut vec1: Vec<u8> = iter::repeat(0).take(sc_width as usize).collect();
 	//let mut vec1: Vec<ocl::cl_uchar> = input_czar::test_vec_init(&mut cortex);
@@ -89,8 +89,8 @@ pub fn run() -> bool {
 			first_run = false;
 			"\n".to_string()
 		} else {
-			rin(format!("<{}>bismit: [q]uit [i]ters [v]iew [a]xons [t]ests [m]otor [i={} v={} m={}]", 
-				cur_ttl_iters, test_iters, vso, input_czar.motor_state.cur_str()))
+			rin(format!("<{}>bismit: [q]uit [i]ters [v]iew [a]xons [t]ests [m]otor [i={} v={} m={} z={}]", 
+				cur_ttl_iters, test_iters, vso, input_czar.motor_state.cur_str(), input_czar.counter()))
 		};
 
 		if "q\n" == in_string {
@@ -102,7 +102,7 @@ pub fn run() -> bool {
 				continue;
 				//test_iters = TEST_ITERATIONS;
 			} else {
-				let in_int: Option<i32> = in_s.trim().parse().ok();
+				let in_int: Option<i32> = parse_num(in_s);
 				match in_int {
 					Some(x)	=> {
 						 test_iters = x;
@@ -490,6 +490,10 @@ fn rin(prompt: String) -> String {
 	io::stdout().flush().unwrap();
 	io::stdin().read_line(&mut in_string).ok().expect("Failed to read line");
 	in_string
+}
+
+fn parse_num(in_s: String) -> Option<i32> {
+	in_s.trim().replace("k","000").parse().ok()
 }
 
 

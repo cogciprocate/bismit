@@ -1,4 +1,4 @@
-#define LTD_BIAS_LOG2	1
+#define LTD_BIAS_LOG2	0
 
 
 static inline uint asp_to_spi_ofs(uint asp_idx) {
@@ -585,10 +585,12 @@ __kernel void pyrs_ltp_unoptd(
 
 		int pyr_just_active = (pyr_flag_set & PYR_JUST_ACTIVE_FLAG) == PYR_JUST_ACTIVE_FLAG;
 		int pyr_best_col_den = (pyr_flag_set & PYR_BEST_COL_DEN_FLAG) == PYR_BEST_COL_DEN_FLAG;
+		int pyr_just_learned = (pyr_flag_set & PYR_JUST_LEARNED_FLAG) == PYR_JUST_LEARNED_FLAG;
 
 
 		if (axn_states[i + pyr_axn_idx_base] == 0) {
-			if (pyr_just_active && (pyr_last_lrnd_den_id == pyr_best_den_id)) {
+			if (pyr_just_learned) {
+			//if (pyr_just_active && (pyr_last_lrnd_den_id == pyr_best_den_id)) {
 
 				// 	
 				//  NOT SURE WHAT WE'RE GOING TO DO WITH THIS
@@ -602,12 +604,14 @@ __kernel void pyrs_ltp_unoptd(
 			}
 
 			pyr_flag_set &= !PYR_JUST_ACTIVE_FLAG;
+			pyr_flag_set &= !PYR_JUST_LEARNED_FLAG;
 			continue;
 		} else {
 			if (pyr_best_col_den) {
 				syns_ltp_ltd(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
 				
 				pyr_last_lrnd_den_id = pyr_best_den_id;
+				pyr_flag_set |= PYR_JUST_LEARNED_FLAG;
 			}
 
 			pyr_flag_set |= PYR_JUST_ACTIVE_FLAG;
