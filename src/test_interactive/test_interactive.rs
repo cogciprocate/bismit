@@ -40,7 +40,7 @@ pub fn run() -> bool {
 	let mut cortex = cortex::Cortex::new();
 	//let mut world: World = World::new(sc_width);
 
-	let mut input_czar = InputCzar::new(0..70, true);
+	let mut input_czar = InputCzar::new(0..5, false);
 
 	//let mut vec1: Vec<u8> = iter::repeat(0).take(sc_width as usize).collect();
 	//let mut vec1: Vec<ocl::cl_uchar> = input_czar::test_vec_init(&mut cortex);
@@ -93,6 +93,7 @@ pub fn run() -> bool {
 				cur_ttl_iters, test_iters, vso, input_czar.motor_state.cur_str(), input_czar.counter()))
 		};
 
+
 		if "q\n" == in_string {
 			println!("Quitting...");
 			break;
@@ -114,17 +115,26 @@ pub fn run() -> bool {
 					},
 				}
 			}
+
+
 		} else if "v\n" == in_string {
 			view_sdr_only = !view_sdr_only;
 			bypass_act = true;
+
+
 		} else if "\n" == in_string {
 			// Go
+
+
 		} else if "a\n" == in_string {
 			view_all_axons = !view_all_axons;
 			bypass_act = true;
+
+
 		} else if "t\n" == in_string {
 			bypass_act = true;
 			let in_s = rin(format!("tests: [p]yrs [c]ols [f]ract"));
+
 			if "p\n" == in_s {
 				synapse_drill_down::print_pyrs(&mut cortex);
 				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
@@ -166,6 +176,8 @@ pub fn run() -> bool {
 			} else {
 				continue;
 			}
+
+
 		} else if "m\n" == in_string {
 			bypass_act = true;
 			let in_s = rin(format!("motor: [s]witch"));
@@ -210,6 +222,9 @@ pub fn run() -> bool {
 
 		let time_start = time::get_time();
 
+		if test_iters > 1 {
+			print!("Running {} iterations... \n", test_iters);
+		}
 
 
 		/*######### SENSE ONLY LOOP #########*/
@@ -437,6 +452,10 @@ fn print_sense_and_print(cortex: &mut Cortex) {
 	if true {
 		print!("\nPYRAMIDAL SYNAPSE STRENGTHS:");
 		cortex.region_cells.pyrs.dens.syns.strengths.print(1 << 14, None, None, true);
+	}
+	if true {	
+		print!("\nPYRAMIDAL SYNAPSE SOURCE FLAG SETS: ");
+		cortex.region_cells.pyrs.dens.syns.flag_sets.print(1 << 14, None, None, true);
 	}
 
 

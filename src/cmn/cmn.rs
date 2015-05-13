@@ -53,9 +53,11 @@ pub static BGC_MAG: &'static str = "\x1b[45m";
 pub static BGC_DGR: &'static str = "\x1b[100m";
 
 
-pub const PYR_JUST_ACTIVE_FLAG		: u8 = 0b10000000;
-pub const PYR_BEST_COL_DEN_FLAG		: u8 = 0b01000000;
-pub const PYR_JUST_LEARNED_FLAG		: u8 = 0b00100000;
+pub const PYR_JUST_ACTIVE_FLAG: u8 		= 0b10000000;
+pub const PYR_BEST_COL_DEN_FLAG: u8 	= 0b01000000;
+pub const PYR_JUST_LEARNED_FLAG: u8 	= 0b00100000;
+
+pub const SYN_STP_FLAG: u8				= 0b00000001;
 
 
 pub const CORTICAL_SEGMENTS_TOTAL: usize = 1;
@@ -151,7 +153,7 @@ pub const STATE_ZERO: u8 = 0;
 pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 
 pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 300;
-pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 5);
+pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 4);
 // ***** pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 550;
 // ***** pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = 1080;
 
@@ -228,6 +230,7 @@ pub fn build_options() -> ocl::BuildOptions {
 		.opt("PYR_JUST_ACTIVE_FLAG", PYR_JUST_ACTIVE_FLAG as i32)
 		.opt("PYR_BEST_COL_DEN_FLAG", PYR_BEST_COL_DEN_FLAG as i32)
 		.opt("PYR_JUST_LEARNED_FLAG", PYR_JUST_LEARNED_FLAG as i32)
+		.opt("SYN_STP_FLAG", SYN_STP_FLAG as i32)
 }
 
 

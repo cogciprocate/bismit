@@ -18,12 +18,15 @@ pub struct InputCzar {
 	counter: usize,
 	counter_range: Range<usize>,
 	random_counter: bool,
+	ttl_count: usize,
+	reset_count: usize,
 	//next_turn_counter: usize,
 	//next_turn_max: usize,
 	rng: rand::XorShiftRng,
 	sc_width: u32,
 	pub vec_optical: Vec<u8>,
 	pub vec_motor: Vec<u8>,
+	pub vec_test_noise: Vec<u8>,
 	world: World,
 	worm: EntityBody,
 	pub motor_state: motor_state::MotorState,
@@ -48,16 +51,21 @@ impl InputCzar {
 		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::SYNAPSE_SPAN as usize).collect();
 		vec_motor.clone_from_slice(&motor_state.cur_sdr(false));
 
+		let vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 1);
+
 		InputCzar {
 			counter: counter_range.end,
 			counter_range: counter_range,
 			random_counter: random_counter,
+			ttl_count: 0,
+			reset_count: 0,
 			//next_turn_counter: 0,
 			//next_turn_max: 0,
 			rng: rand::weak_rng(),
 			sc_width: sc_width,
 			vec_optical: iter::repeat(0).take(sc_width as usize).collect(),
 			vec_motor: vec_motor,
+			vec_test_noise: vec_test_noise,
 			world: world,
 			worm: worm,
 			motor_state: motor_state,
@@ -66,19 +74,32 @@ impl InputCzar {
 
 
 	pub fn next(&mut self, cortex: &mut Cortex) {
-		
 		let remain_ticks = self.tick();
 
-		if remain_ticks == 0 {
+		/*if (self.ttl_count & 0x01) == 0x01 {
+			//if (self.reset_count & 0x01) == 0x01 {
+			self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 0);
+		} else {
+			self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 1);
+		}*/
+
+		/* ##### MOTOR ##### */
+		/*if remain_ticks == 0 {
 			//print!("[> ctr = 0 <]");
 			self.motor_state.switch();
 		} else if remain_ticks == 1 {
 			self.vec_motor.clone_from_slice(&self.motor_state.cur_sdr(true));
 			//print!("[> ctr = 1 <]");
-		}
+		}*/
 
+
+		/* ##### OPTICAL ##### */
 		self.world.entities().get_mut(self.worm.uid).turn((WORLD_TURN_FACTOR/(self.sc_width as f32)), self.motor_state.cur_turn());
 		self.world.peek_from(self.worm.uid).unfold_into(&mut self.vec_optical, 0);
+
+
+		/* ##### TEST_NOISE ##### */
+		// nothing here yet
 
 		self.sense(cortex);
 	}
@@ -86,10 +107,13 @@ impl InputCzar {
 	pub fn sense(&self, cortex: &mut Cortex) {
 		cortex.write_vec(0, "thal", &self.vec_optical);
 		cortex.write_vec(0, "motor", &self.vec_motor);
+		//cortex.write_vec(0, "test_noise", &self.vec_test_noise);
 		cortex.cycle();
 	}
 
 	fn tick(&mut self) -> usize {
+		self.ttl_count += 1;
+
 		if self.counter > 0 {
 			self.counter -= 1;
 		}
@@ -109,6 +133,8 @@ impl InputCzar {
 	}
 
 	pub fn reset_counter(&mut self) {
+		self.reset_count += 1;
+
 		if self.random_counter {
 			self.counter = self.rng.gen_range::<usize>(self.counter_range.start, self.counter_range.end);
 		} else {
@@ -150,7 +176,7 @@ turn_bomb_i += 1;
 */
 
 
-fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
+fn test_vec_init(scw: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
 
 	//let vv1 = cmn::sparse_vec(2048, -128i8, 127i8, 6);
 	//cmn::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
@@ -159,7 +185,7 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 	//let mut vec1: Vec<i8> = cmn::sparse_vec(2048, -128i8, 127i8, 8);
 
 	//cmn::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
-	let scw = cmn::SENSORY_CHORD_WIDTH;
+	//let scw = cmn::SENSORY_CHORD_WIDTH;
 
 	let mut vec1: Vec<ocl::cl_uchar> = Vec::with_capacity(scw as usize);
 
@@ -194,19 +220,24 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 		}
 	}*/
 
-
 	vec1.clear();
-	for i in 0..scw {
-		if i >= scw_1_2 - (scw_1_16 / 2) && i < scw_1_2 + (scw_1_16 / 2) {
-		//if ((i >= scw_1_4 - scw_1_16) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4 + scw_1_16)) {
-		//if i >= scw_3_8 && i < scw_5_8 {
-		//if (i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16) || (i < scw_1_16) || (i >= (scw - scw_1_16)) {
-		//if i >= scw_3_8 && i < scw_5_8 {
-		//if i < scw_1_16 {
-		//if i < scw_1_16 || i >= (scw - scw_1_16) {
-			vec1.push(1);
-		} else {
-			vec1.push(0);
+
+	if vec_option == 0 {
+		vec1 = iter::repeat(0).take(scw as usize).collect();
+	} else {
+		for i in 0..scw {
+			//if i >= scw_1_2 - (scw_1_16 / 2) && i < scw_1_2 + (scw_1_16 / 2) {
+			//if ((i >= scw_1_4 - scw_1_16) && (i < scw_1_4 + scw_1_16)) || ((i >= scw_3_4 - scw_1_16) && (i < scw_3_4 + scw_1_16)) {
+			//if i >= scw_3_8 && i < scw_5_8 {
+			//if (i >= scw_1_2 - scw_1_16 && i < scw_1_2 + scw_1_16) || (i < scw_1_16) || (i >= (scw - scw_1_16)) {
+			//if i >= scw_3_8 && i < scw_5_8 {
+			//if i < scw_1_16 {
+			if i >= scw_1_2 {
+			//if i < scw_1_16 || i >= (scw - scw_1_16) {
+				vec1.push(1);
+			} else {
+				vec1.push(0);
+			}
 		}
 	}
 
@@ -219,6 +250,8 @@ fn test_vec_init(cortex: &mut Cortex) -> Vec<ocl::cl_uchar> {
 	}*/
 
 }
+
+
 
 
 #[test]

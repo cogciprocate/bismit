@@ -23,31 +23,20 @@ pub fn define_protoregions() -> ProtoRegions {
 	let mut cort_regs: ProtoRegions = ProtoRegions::new();
 
 	let mut sen = ProtoRegion::new(ProtoRegionKind::Sensory)
-		.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
-		//.layer("boat", 1, layer::DEFAULT, Axonal(Horizontal))
-		//.layer("boat2", 1, layer::DEFAULT, Axonal(Horizontal))
-		//.layer("pre_thal", 1, layer::DEFAULT, None)
-		.layer("thal", 1, layer::DEFAULT, Axonal(Spatial))
-		//.layer("post_thal", 1, layer::DEFAULT, None)
-		//.layer("post_thal2", 1, layer::DEFAULT, None)
-		//.layer("post_thal3", 1, layer::DEFAULT, None)
-		//.layer("post_thal4", 1, layer::DEFAULT, None)
-		//.layer("post_thal5", 1, layer::DEFAULT, None)
-		.layer("out", 1, layer::COLUMN_OUTPUT, Axonal(Spatial))
-		//.layer("test_2", 1, None);
-		//.layer("inhib_tmp", 1, None);
-		//.layer("inhib_tmp_2", 1, None);
-		//.layer("test_3", 1, None);
+		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
 
-		//.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["motor"]))  // , "thal"
+		.layer("thal", 1, layer::DEFAULT, Axonal(Spatial))
+
+		.layer("out", 1, layer::COLUMN_OUTPUT, Axonal(Spatial))
+
 		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]))  // , "motor"
 
-		//.layer("iv-b", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iv"], "iv"));
-		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"])) // GET RID OF PROX PARAM? [DONE]
-		//.layer("ii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["ii"], "iv"))
-		//.layer("post_thal3", 1, layer::DEFAULT, Axonal(Spatial))
-		//.layer("smellovision", 1, layer::DEFAULT, Axonal(Horizontal))
-		//.layer("motor2", 2, layer::DEFAULT, Axonal(Horizontal))
+		//.layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
+		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
+
+		.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
+		.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
+
 	;
 
 	sen.freeze();

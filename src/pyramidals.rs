@@ -40,7 +40,7 @@ pub struct Pyramidal {
 	pub depols: Envoy<ocl::cl_uchar>,
 	pub best_den_ids: Envoy<ocl::cl_uchar>,
 	pub best_den_states: Envoy<ocl::cl_uchar>,
-	pub last_lrnd_den_ids: Envoy<ocl::cl_uchar>,
+	pub prev_lrnd_den_ids: Envoy<ocl::cl_uchar>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
 }
@@ -61,7 +61,7 @@ impl Pyramidal {
 
 		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let best_den_states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
-		let last_lrnd_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let prev_lrnd_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 
 		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidal, dens_per_cel_l2, region, axons, aux, ocl);
@@ -107,8 +107,9 @@ impl Pyramidal {
 			.arg_scl(cels_per_wi)
 			.arg_scl_named(0u32, "rnd")
 			//.arg_env(&aux.ints_1)
+			.arg_env(&dens.syns.flag_sets)
 			.arg_env(&flag_sets)
-			.arg_env(&last_lrnd_den_ids)
+			.arg_env(&prev_lrnd_den_ids)
 			.arg_env(&dens.syns.strengths)
 			//.arg_env(&axons.states)
 		;
@@ -128,7 +129,7 @@ impl Pyramidal {
 			depols: depols,
 			best_den_ids: best_den_ids,
 			best_den_states: best_den_states,
-			last_lrnd_den_ids: last_lrnd_den_ids,
+			prev_lrnd_den_ids: prev_lrnd_den_ids,
 			flag_sets: flag_sets,
 			dens: dens,
 		}

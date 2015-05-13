@@ -45,7 +45,7 @@ pub struct Synapses {
 	pub src_row_ids: Envoy<ocl::cl_uchar>,
 	pub src_col_x_offs: Envoy<ocl::cl_char>,
 	//pub src_col_y_offs: Envoy<ocl::cl_char>,
-	//pub flags: Envoy<ocl::cl_uchar>,
+	pub flag_sets: Envoy<ocl::cl_uchar>,
 	pub row_pool: Envoy<ocl::cl_uchar>,
 }
 
@@ -66,12 +66,12 @@ impl Synapses {
 		let strengths = Envoy::<ocl::cl_char>::new(syns_per_row, depth, 0, ocl);
 		let mut src_row_ids = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
 
-		// SRC COL REACHES MUST BECOME CONSTANTS
+		// SRC COL REACHES SHOULD BECOME CONSTANTS
 		let mut src_col_x_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -126, 126, ocl); 
-		
 		//let mut src_col_y_offs = Envoy::<ocl::cl_char>::shuffled(syns_per_row, depth, -31, 31, ocl);
 
-		let flags = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
+		let flag_sets = Envoy::<ocl::cl_uchar>::new(syns_per_row, depth, 0, ocl);
+
 
 		let mut kern_cycle = ocl.new_kernel("syns_cycle", 
 			WorkSize::TwoDim(depth as usize, width as usize))
@@ -118,7 +118,7 @@ impl Synapses {
 			src_row_ids: src_row_ids,
 			src_col_x_offs: src_col_x_offs,
 			//src_col_y_offs: src_col_y_offs,
-			//flags: flags,
+			flag_sets: flag_sets,
 			row_pool: row_pool,
 		};
 
@@ -227,6 +227,8 @@ impl Synapses {
 		self.width
 	}
 
+
+	// NEEDS SERIOUS OPTIMIZATION
 	fn regrow_syn(&mut self, 
 				syn_idx: usize, 
 				src_row_idx_range: &Range<usize>, 
