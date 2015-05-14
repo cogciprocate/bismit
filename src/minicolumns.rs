@@ -57,6 +57,8 @@ impl MiniColumns {
 		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
 
 		let pyr_depth = region.depth_cell_kind(&CellKind::Pyramidal);
+
+		println!("\n#######   pyr_depth: {}   ########", pyr_depth);
 		//let pyr_axn_base_row = region.base_row_cell_kind(&CellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		let states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);

@@ -47,11 +47,10 @@ impl InputCzar {
 
 		let mut motor_state = motor_state::MotorState::new();
 
-		//let mut vec_motor = Vec::with_capacity(cmn::SYNAPSE_SPAN as usize);
 		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::SYNAPSE_SPAN as usize).collect();
 		vec_motor.clone_from_slice(&motor_state.cur_sdr(false));
 
-		let vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 1);
+		let vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 0);
 
 		InputCzar {
 			counter: counter_range.end,

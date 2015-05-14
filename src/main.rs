@@ -39,14 +39,12 @@ mod cortex;
 //mod test_miccos;
 //mod test_readback;
 //mod test_3;
-mod test_interactive;
+mod tests;
 mod proto;
 mod energy;
 
 
-//mod tests;
-
-use num::Integer;
+//use num::Integer;
 
 fn main() {
 	print!("================= Bismit: main() running... =================");
@@ -58,7 +56,7 @@ fn main() {
 	// hello_world::run();
 
 	
-	test_interactive::test_interactive::run();
+	tests::interactive::run();
 	//test_miccos::run();
 	
 

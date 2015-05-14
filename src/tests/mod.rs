@@ -1,6 +1,7 @@
 
 
-pub mod test_interactive;
+
+pub mod interactive;
 mod synapse_drill_down;
 mod seq_gen;
 mod input_czar;

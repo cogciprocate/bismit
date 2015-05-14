@@ -73,7 +73,7 @@ impl Pyramidal {
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_env(&dens.states)
 			//.arg_scl(axn_row_base)
-			//.arg_env(&energies)
+			.arg_env(&energies)
 			.arg_env(&best_den_ids)
 			.arg_env(&best_den_states)
 			.arg_env(&depols) 		// v.N1

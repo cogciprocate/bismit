@@ -771,10 +771,22 @@ __kernel void pyrs_ltp_unoptd(
 		uint best_den_syn_idx = ((den_idx_base + pyr_best_den_id) << syns_per_den_l2);
 		uint prev_best_den_syn_idx = ((den_idx_base + pyr_prev_best_den_id) << syns_per_den_l2);
 
+
+		if (pyr_prev_predictive && !pyr_predictive) {
+			dst_syns__prev_active__ltd(syn_states, prev_best_den_syn_idx, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+
+			if ((best_den_syn_idx != prev_best_den_syn_idx) && !pyr_active) {
+				dst_syns__prev_active__ltd(syn_states, best_den_syn_idx, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+			}
+			//uint syn_idx = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
+			//dst_syns_ltd_active(syn_states, syn_idx, (syns_per_den_l2 + dens_per_pyr_l2), rnd, syn_flag_sets, syn_strengths);
+		}
+
 		if (pyr_active) {
 			if (pyr_best_col_den) {
 				// BEST DENDRITE IN COLUMN AND BEST IN CELL
 				// SET EACH ACTIVE SYNAPSE TO SYN_STP AND SYN_PREV_BEST_ACTIVE
+				// AND PERFORM LTD ON INACTIVE
 				dst_syns__active__stp_ltd(syn_states, best_den_syn_idx, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
 				pyr_flag_set |= PYR_PREV_STP_FLAG;
 			} else {
@@ -793,12 +805,6 @@ __kernel void pyrs_ltp_unoptd(
 			pyr_flag_set &= !PYR_PREV_ACTIVE_FLAG;
 		}
 
-		if (pyr_prev_predictive && !pyr_predictive) {
-			dst_syns__prev_active__ltd(syn_states, prev_best_den_syn_idx, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
-
-			//uint syn_idx = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
-			//dst_syns_ltd_active(syn_states, syn_idx, (syns_per_den_l2 + dens_per_pyr_l2), rnd, syn_flag_sets, syn_strengths);
-		}
 
 			/*uint syn_idx = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
 			dst_syns_ltd_active(syn_states, syn_idx, (syns_per_den_l2 + dens_per_pyr_l2), rnd, syn_flag_sets, syn_strengths);*/
@@ -907,7 +913,7 @@ __kernel void syns_regrow(
 __kernel void pyr_cycle(
 				__global uchar const* const den_states,
 				//__private uchar const pyr_axn_row_base,
-				//__global uchar* const pyr_energies,
+				__global uchar* const pyr_energies,
 				__global uchar* const pyr_best_den_ids,
 				__global uchar* const pyr_best_den_states,
 				__global uchar* const pyr_depols
@@ -920,13 +926,15 @@ __kernel void pyr_cycle(
 	uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
 	//uint const axn_idx = axn_idx_2d(pyr_axn_row_base + row_id, row_width, col_id);
 	//uint const axn_idx = mad24(pyr_axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
-	//uchar pyr_energy = pyr_energies[pyr_idx];
+	uchar pyr_energy = pyr_energies[pyr_idx];
 
-	uint den_sum = 0;
+	//uint den_sum = 0;
 
 	uchar best_den_state = 0;
 	uchar best_den_id = 0;
 	//int active_dendrites = 0;
+
+	uchar den_state = 0;
 
 	//uint pyr_depol = pyr_depols[pyr_idx];
 
@@ -939,7 +947,7 @@ __kernel void pyr_cycle(
 		best_den_state = mad24(den_state_biggest, den_state, mul24(!den_state_biggest, best_den_state));
 		//best_den_state = mul24(den_state_biggest, den_state);
 
-		den_sum += den_state;
+		//den_sum += den_state;
 		//den_sum += (den_state != 0);
 		//den_sum += (den_state > 0);
 		//active_dendrites += (den_state > 0);
@@ -947,25 +955,27 @@ __kernel void pyr_cycle(
 	
 	//den_sum = den_sum >> 2;
 
-	
-
-	/*if (den_sum != 0) {
-		if (pyr_energy > 0) {
-			pyr_energy -= 1;
+	if (best_den_state > 0) {
+		if (pyr_energy >= 9) {
+			pyr_energy -= 9;
+			den_state = best_den_state;
 		} else {
-			den_sum = 0;
 			pyr_energy += 1;
 		}
 	} else {
 		if (pyr_energy < 255) {
 			pyr_energy += 1;
 		}
-	}*/
+	}
 
-	//pyr_energies[pyr_idx] = pyr_energy;
+
+	pyr_energies[pyr_idx] = pyr_energy;
 	pyr_best_den_ids[pyr_idx] = best_den_id;
 	pyr_best_den_states[pyr_idx] = best_den_state;
-	pyr_depols[pyr_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
+	pyr_depols[pyr_idx] = den_state;
+
+
+	//pyr_depols[pyr_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
 	//axn_states[axn_idx] = clamp(den_sum, 0u, 255u);
 
 	//pyr_depols[pyr_idx] = clamp(den_sum, 0, 127);
