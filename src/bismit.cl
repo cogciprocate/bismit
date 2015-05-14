@@ -1,4 +1,4 @@
-#define LTD_BIAS_LOG2	0
+// #define LTD_BIAS_LOG2	0
 
 
 static inline uint asp_to_spi_ofs(uint asp_idx) {
@@ -56,7 +56,7 @@ static inline uint axn_idx_2d(uchar row_id, uint row_width, uint col_id, char sp
 
 
 // VECTORIZE
-static inline void dst_syns_stp_ltd( 
+static inline void dst_syns__active__stp_ltd( 
 				__global uchar const* const syn_states,
 				uint const syn_idx_start,
 				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
@@ -80,9 +80,8 @@ static inline void dst_syns_stp_ltd(
 	}
 }
 
-
 // VECTORIZE --- RE-STREAMLINE (REMOVE BRANCH)
-static inline void dst_syns_ltp_ltd_post( 
+static inline void dst_syns__prev_stp__ltp_ltd( 
 				__global uchar const* const syn_states,
 				uint const syn_idx_start,
 				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
@@ -115,8 +114,68 @@ static inline void dst_syns_ltp_ltd_post(
 }
 
 
+// VECTORIZE
+static inline void dst_syns__active__set_prev_active( 
+				__global uchar const* const syn_states,
+				uint const syn_idx_start,
+				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
+				uint const rnd,
+				__global char* const syn_flag_sets,
+				__global char* const syn_strengths
+) {
+	uint const n = syn_idx_start + (1 << syns_per_den_l2);
+
+	for (uint i = syn_idx_start; i < n; i++) {
+		uchar const syn_state = syn_states[i];
+		//char syn_strength = syn_strengths[i];
+		uchar syn_flag_set = syn_flag_sets[i] & !SYN_STP_FLAG;
+		//uchar const rnd_char = (rnd ^ i) & 0x7F;		
+		//int const inc = (rnd_char > abs(syn_strength));
+
+		//syn_pba = ((syn_flag_set & SYN_PREV_ACTIVE_FLAG) == SYN_PREV_ACTIVE_FLAG)
+
+		syn_flag_set &= !SYN_PREV_ACTIVE_FLAG;
+
+		syn_flag_set |= mul24((syn_state != 0), SYN_PREV_ACTIVE_FLAG);
+
+		syn_flag_sets[i] = syn_flag_set;
+		//syn_strengths[i] = mul24((syn_state == 0), (syn_strength - inc));
+	}
+}
+
+// VECTORIZE
+static inline void dst_syns__prev_active__ltd( 
+				__global uchar const* const syn_states,
+				uint const syn_idx_start,
+				uint const syns_per_den_l2,
+				uint const rnd,
+				__global char* const syn_flag_sets,
+				__global char* const syn_strengths
+) {
+	uint const n = syn_idx_start + (1 << syns_per_den_l2);
+
+	for (uint i = syn_idx_start; i < n; i++) {
+		uchar const syn_state = syn_states[i];
+		char syn_strength = syn_strengths[i];
+		uchar syn_flag_set = syn_flag_sets[i];
+		uchar const rnd_char = (rnd ^ i) & 0x7F;		
+		int const inc = (rnd_char > abs(syn_strength));
+
+		int const prev_active = (syn_flag_set & SYN_PREV_ACTIVE_FLAG) == SYN_PREV_ACTIVE_FLAG;
+
+		if (prev_active) {
+			syn_strength -= inc;
+		} 
+
+		syn_strengths[i] = syn_strength;
+	}
+}
+
+
+
+
 // VECTORIZE --- RE-STREAMLINE (REMOVE BRANCH)
-static inline void prx_syns_ltp_ltd( 
+static inline void prx_syns__active__ltp_ltd( 
 				__global uchar const* const syn_states,
 				uint const syn_idx_start,
 				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
@@ -149,7 +208,9 @@ static inline void prx_syns_ltp_ltd(
 
 
 
-/* PYR_SYN_LTP_LTD(): Learning for pyramidal cell synapses (prediction oriented synapses)
+
+
+/* Learning for pyramidal cell synapses (prediction oriented synapses)
 	
 	Conceptual overview from an associational layer containing pyramidal cells (such as L3):
 
@@ -159,13 +220,17 @@ static inline void prx_syns_ltp_ltd(
 
 			0.10t: Input to our layer-column arrives at pyramidal cell (LCPC) proximal dendrites
 
-			0.20t: If any pyramidal cell (LCPC) is depolarized as a result of prior distal dendritic activity and receives a super-threshold amount of EPSP on its proximal dendrite (from prior time step), it will generate an EPSP ->
+			0.20t: If any pyramidal cell (LCPC) is depolarized as a result of prior distal dendritic activity and receives a suprathreshold amount of EPSP on its proximal dendrite (from prior time step), it will generate an EPSP ->
 
 			0.30t: If the layer-columnar aspiny stellate inhibitory cell (LCASIC) receives an action potential from any pyramidal cell in our layer-column, it will generate an IPSP ->
 			
 			0.40t: If the layer-columnar pyramidal cells (LCPCs) do not receive an IPSP from the LCASIC and have received an EPSP (from 0.1t), they will each generate an EPSP
 		
 		Learning (single pyramidal cell perspective):
+
+
+			### NEW STUFF COMING ###
+
 
 			NOTE: Keep in mind that distal synaptic states at this instant still reflect information from the time period ~ 1.0t in the past. That is, they still contain information from one cycle ago. They do not get refreshed with information from the current cycle until just after learning takes place, for good reason.
 
@@ -198,7 +263,7 @@ static inline void prx_syns_ltp_ltd(
 		Cycle Repeats:
 
 		Sporatically:
-			500.00t: Regrowth
+			~ 500.00t: Regrowth
 
 */
 
@@ -542,6 +607,7 @@ __kernel void pyr_activate(
 				__global uchar const* const den_dst_states,
 				__private uchar const pyr_axn_row_base,
 				//__global int* const aux_ints_0,
+				//__global uchar* const pyr_energies,
 				__global uchar* const pyr_flag_sets,
 				__global uchar* const pyr_depols,
 				__global uchar* const axn_states
@@ -564,6 +630,7 @@ __kernel void pyr_activate(
 	uchar const den_prx_state = den_prx_states[col_id];
 	uchar const cc_status = spi_cels_status[col_id];
 	uchar const pyr_depol = pyr_depols[pyr_idx];
+	
 
 	int const pyr_best_col_den = (spi_best_col_den_state == best_den_state);
 	int const pyr_best_col_den_flag = mul24(pyr_best_col_den, PYR_BEST_COL_DEN_FLAG);
@@ -606,7 +673,7 @@ __kernel void spi_ltp(
 	uchar asp_state = asp_states[asp_idx];
 
 	if (asp_state) {
-		prx_syns_ltp_ltd(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
+		prx_syns__active__ltp_ltd(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
 	}
 
 	//aux_ints_0[asp_id] = (rn ^ syn_idx) >> 2;
@@ -626,11 +693,36 @@ __kernel void spi_ltp(
 	- TODO:
 		- Vectorize (should be highly vectorizable)
 		- reducing branching will be tough with this one
-		- Tests (check that flag_set and prev_lrnd_den_id are robustly maintained)
+		- Tests (check that flag_set and prev_best_den_id are robustly maintained)
+
+		- Let's shit on these goddamn menace fucking constantly active goddamn fucking inputs
+			- The root of the problem is the propensity to build on whatever other activity is happening from your neighbors. This activity breeds even more activity and it positively feeds back
+			- If we take a dump on synaptic inputs which are active when we are inactive... it should shave some of the bullshit off
+			- Constrain this to act in very few circumstances
+
+		##########      CAN'T EQUATE AXON OUTPUT WITH PYR DEPOLS       #############
+
+
+		- if pyr_prev_active 
+
+			- if pyr_active
+
+			- if pyr_pred
+
+
+		- if pyr_prev_pred
+
+			- if pyr_active
+
+			- if pyr_pred
+
+
+
+			
 */
 __kernel void pyrs_ltp_unoptd(
 	__global uchar const* const axn_states,
-	//__global uchar const* const pyr_depols,
+	__global uchar const* const pyr_depols,
 	__global uchar const* const pyr_best_den_ids,
 	__global uchar const* const den_states,
 	__global uchar const* const syn_states,
@@ -642,7 +734,7 @@ __kernel void pyrs_ltp_unoptd(
 	//__global int* const aux_ints_1,
 	__global uchar* const syn_flag_sets,
 	__global uchar* const pyr_flag_sets,
-	__global uchar* const pyr_prev_lrnd_den_ids,
+	__global uchar* const pyr_prev_best_den_ids,
 	__global char* const syn_strengths
 ) {
 	uint const row_id = get_global_id(0);
@@ -663,39 +755,64 @@ __kernel void pyrs_ltp_unoptd(
  
 	for (uint i = pyr_idx_init; i < pyr_idx_n; i++) {
 		uchar pyr_best_den_id = pyr_best_den_ids[i];
-		uchar pyr_prev_lrnd_den_id = pyr_prev_lrnd_den_ids[i];
+		uchar pyr_prev_best_den_id = pyr_prev_best_den_ids[i];
 		uchar pyr_flag_set = pyr_flag_sets[i];
 
 		uint den_idx_base = (i << dens_per_pyr_l2);
 
-		int pyr_just_active = (pyr_flag_set & PYR_JUST_ACTIVE_FLAG) == PYR_JUST_ACTIVE_FLAG;
+		int pyr_prev_active = (pyr_flag_set & PYR_PREV_ACTIVE_FLAG) == PYR_PREV_ACTIVE_FLAG;
 		int pyr_best_col_den = (pyr_flag_set & PYR_BEST_COL_DEN_FLAG) == PYR_BEST_COL_DEN_FLAG;
-		int pyr_just_learned = (pyr_flag_set & PYR_JUST_LEARNED_FLAG) == PYR_JUST_LEARNED_FLAG;
+		int pyr_prev_learned = (pyr_flag_set & PYR_PREV_STP_FLAG) == PYR_PREV_STP_FLAG;
+		int pyr_prev_predictive = (pyr_flag_set & PYR_PREV_PRED_FLAG) == PYR_PREV_PRED_FLAG;
 
-		if (axn_states[i + pyr_axn_idx_base] != 0) {
+		int pyr_active = (axn_states[i + pyr_axn_idx_base] != 0);
+		int pyr_predictive = (pyr_depols[i] != 0);
+
+		uint best_den_syn_idx = ((den_idx_base + pyr_best_den_id) << syns_per_den_l2);
+		uint prev_best_den_syn_idx = ((den_idx_base + pyr_prev_best_den_id) << syns_per_den_l2);
+
+		if (pyr_active) {
 			if (pyr_best_col_den) {
-				uint syn_idx = ((den_idx_base + pyr_best_den_id) << syns_per_den_l2);
-
-				dst_syns_stp_ltd(syn_states, syn_idx, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
-				
-				pyr_prev_lrnd_den_id = pyr_best_den_id;
-				pyr_flag_set |= PYR_JUST_LEARNED_FLAG;
+				// BEST DENDRITE IN COLUMN AND BEST IN CELL
+				// SET EACH ACTIVE SYNAPSE TO SYN_STP AND SYN_PREV_BEST_ACTIVE
+				dst_syns__active__stp_ltd(syn_states, best_den_syn_idx, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+				pyr_flag_set |= PYR_PREV_STP_FLAG;
+			} else {
+				// NOT THE BEST DENDRITE IN COLUMN BUT STILL BEST IN CELL
+				// NEED TO SET EACH ACTIVE SYNAPSE TO SYN_PREV_BEST_ACTIVE
+				dst_syns__active__set_prev_active(syn_states, best_den_syn_idx, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
 			}
-
-			pyr_flag_set |= PYR_JUST_ACTIVE_FLAG; // Probably useless but leave in for now
+			
+			pyr_flag_set |= PYR_PREV_ACTIVE_FLAG;
 		} else {
-			if (pyr_just_learned) {
-				uint syn_idx = ((den_idx_base + pyr_prev_lrnd_den_id) << syns_per_den_l2);
+			if (pyr_prev_learned) {
+				dst_syns__prev_stp__ltp_ltd(syn_states, prev_best_den_syn_idx, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+				pyr_flag_set &= !PYR_PREV_STP_FLAG;
+			} 
 
-				dst_syns_ltp_ltd_post(syn_states, syn_idx, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
-			}
-
-			pyr_flag_set &= !PYR_JUST_ACTIVE_FLAG; // Unused ^
-			pyr_flag_set &= !PYR_JUST_LEARNED_FLAG;
-			continue;
+			pyr_flag_set &= !PYR_PREV_ACTIVE_FLAG;
 		}
 
-		pyr_prev_lrnd_den_ids[i] = pyr_prev_lrnd_den_id;
+		if (pyr_prev_predictive && !pyr_predictive) {
+			dst_syns__prev_active__ltd(syn_states, prev_best_den_syn_idx, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+
+			//uint syn_idx = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
+			//dst_syns_ltd_active(syn_states, syn_idx, (syns_per_den_l2 + dens_per_pyr_l2), rnd, syn_flag_sets, syn_strengths);
+		}
+
+			/*uint syn_idx = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
+			dst_syns_ltd_active(syn_states, syn_idx, (syns_per_den_l2 + dens_per_pyr_l2), rnd, syn_flag_sets, syn_strengths);*/
+
+			//pyr_flag_set &= !PYR_PREV_PRED_FLAG;
+
+		pyr_prev_best_den_id = pyr_best_den_id;
+
+		pyr_flag_set = (pyr_flag_set & !PYR_PREV_PRED_FLAG) | mul24(pyr_predictive, PYR_PREV_PRED_FLAG);
+
+		/*pyr_flag_set &= !PYR_PREV_PRED_FLAG;
+		pyr_flag_set |= mul24(pyr_predictive, PYR_PREV_PRED_FLAG);*/
+
+		pyr_prev_best_den_ids[i] = pyr_prev_best_den_id;
 		pyr_flag_sets[i] = pyr_flag_set;
 	}
 }
@@ -790,6 +907,7 @@ __kernel void syns_regrow(
 __kernel void pyr_cycle(
 				__global uchar const* const den_states,
 				//__private uchar const pyr_axn_row_base,
+				//__global uchar* const pyr_energies,
 				__global uchar* const pyr_best_den_ids,
 				__global uchar* const pyr_best_den_states,
 				__global uchar* const pyr_depols
@@ -798,10 +916,11 @@ __kernel void pyr_cycle(
 	uint const row_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const row_width = get_global_size(1);
-	uint const cel_idx = mad24(row_id, row_width, col_id);
-	uint const den_ofs = cel_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
+	uint const pyr_idx = mad24(row_id, row_width, col_id);
+	uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
 	//uint const axn_idx = axn_idx_2d(pyr_axn_row_base + row_id, row_width, col_id);
 	//uint const axn_idx = mad24(pyr_axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
+	//uchar pyr_energy = pyr_energies[pyr_idx];
 
 	uint den_sum = 0;
 
@@ -809,7 +928,7 @@ __kernel void pyr_cycle(
 	uchar best_den_id = 0;
 	//int active_dendrites = 0;
 
-	//uint pyr_depol = pyr_depols[cel_idx];
+	//uint pyr_depol = pyr_depols[pyr_idx];
 
 		//#pragma unroll 
 	for (uchar i = 0; i < DENDRITES_PER_CELL_DISTAL; i++) {
@@ -828,15 +947,31 @@ __kernel void pyr_cycle(
 	
 	//den_sum = den_sum >> 2;
 
-	pyr_best_den_ids[cel_idx] = best_den_id;
-	pyr_best_den_states[cel_idx] = best_den_state;
-	pyr_depols[cel_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
+	
+
+	/*if (den_sum != 0) {
+		if (pyr_energy > 0) {
+			pyr_energy -= 1;
+		} else {
+			den_sum = 0;
+			pyr_energy += 1;
+		}
+	} else {
+		if (pyr_energy < 255) {
+			pyr_energy += 1;
+		}
+	}*/
+
+	//pyr_energies[pyr_idx] = pyr_energy;
+	pyr_best_den_ids[pyr_idx] = best_den_id;
+	pyr_best_den_states[pyr_idx] = best_den_state;
+	pyr_depols[pyr_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
 	//axn_states[axn_idx] = clamp(den_sum, 0u, 255u);
 
-	//pyr_depols[cel_idx] = clamp(den_sum, 0, 127);
+	//pyr_depols[pyr_idx] = clamp(den_sum, 0, 127);
 
-	//pyr_depols[cel_idx] = (den_sum >> 1);
-	//pyr_depols[cel_idx] = active_dendrites;
+	//pyr_depols[pyr_idx] = (den_sum >> 1);
+	//pyr_depols[pyr_idx] = active_dendrites;
 }
 
 
@@ -852,8 +987,8 @@ __kernel void col_output(
 				//__private uchar const pyr_axn_base_row,
 				__private uchar const output_axn_row,
 				//__private uchar const pyr_base_row,
-				__global uchar* const spi_cels_status,
-				__global uchar* const spi_best_col_den_states,
+				__global uchar* const mcol_cels_status,
+				__global uchar* const mcol_best_col_den_states,
 				__global uchar* const axn_states
 				
 ) {
@@ -867,31 +1002,34 @@ __kernel void col_output(
 
 	int spi_state = spi_states[col_idx];
 	uchar max_den_state = 0;
-	int output_total = 0;
+	int col_pyr_depol_total = 0;
 
 	for (uint i = 0; i < pyr_depth; i++) {
-		uint pyr_idx = mad24(i, row_width, col_id);			// v.N3
-		//uint axn_idx_pyr = mad24(pyr_axn_base_row + i, row_width, col_id + (uint)SYNAPSE_REACH); 	// v.N1
+		// POTENTIALLY FALSE ASSUMPTION HERE ABOUT PYR CELLS ALL BEING INVOLVED IN OUTPUT
+		uint pyr_idx = mad24(i, row_width, col_id);	
+
 		uchar pyr_best_den_state = pyr_best_den_states[pyr_idx];
 		uchar pyr_depol = pyr_depols[pyr_idx];
 
 		max_den_state = max(max_den_state, pyr_best_den_state);
-		output_total = max(output_total, (int)pyr_depol);		// v.N3
-		//output_total += axn_states[axn_idx_pyr];							// v.N2
-		//output_total = max(output_total, (int)axn_states[axn_idx_pyr]); 	// v.N1
 		
-		//output_total += (axn_states[axn_idx_pyr] > 0);
+		col_pyr_depol_total = max(col_pyr_depol_total, (int)pyr_depol);
+
+		//col_pyr_depol_total += axn_states[axn_idx_pyr];						
+		//col_pyr_depol_total = max(col_pyr_depol_total, (int)axn_states[axn_idx_pyr]); 
+		
+		//col_pyr_depol_total += (axn_states[axn_idx_pyr] > 0);
 	}
 
-	//output_total = clamp(output_total, 0, 255);
+
+	mcol_cels_status[col_idx] = clamp(col_pyr_depol_total, 0, 255);
+	mcol_best_col_den_states[col_idx] = max_den_state;
 
 
-	spi_cels_status[col_idx] = clamp(output_total, 0, 255);
-	spi_best_col_den_states[col_idx] = max_den_state;
-	axn_states[output_axn_idx] = clamp(output_total + spi_state, 0, 255); 			// v.N2 
-	//axn_states[axn_idx_output] = clamp(max(output_total, spi_state), 0, 255); 	// v.N1
-	//axn_states[output_axn_idx] = clamp(output_total, 0, 255);
-	//axn_states[axn_idx] = test;
+
+	//axn_states[output_axn_idx] = clamp(col_pyr_depol_total, 0, 255);
+	//axn_states[output_axn_idx] = clamp(spi_state, 0, 255);
+	axn_states[output_axn_idx] = clamp(col_pyr_depol_total + spi_state, 0, 255); // *****
 }
 
 
@@ -916,7 +1054,7 @@ __kernel void col_output(
 
 
 // VECTORIZE
-static inline void syns_ltd_unused_bak( 
+/*static inline void syns_ltd_unused_bak( 
 				__global uchar const* const syn_states,
 				uint const syn_idx_start,
 				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
@@ -943,7 +1081,7 @@ static inline void syns_ltd_unused_bak(
 		
 		//syn_strengths[i] = (syn_strength - inc) + mul24((syn_state != 0), inc + inc);
 	}
-}
+}*/
 
 
 
@@ -961,7 +1099,7 @@ __kernel void pyrs_ltp_unoptd_bak(
 	__private uint const rnd,
 	//__global int* const aux_ints_1,
 	__global uchar* const pyr_flag_sets,
-	__global uchar* const pyr_prev_lrnd_den_ids,
+	__global uchar* const pyr_prev_best_den_ids,
 	__global char* const syn_strengths
 ) {
 	uint const row_id = get_global_id(0);
@@ -982,20 +1120,20 @@ __kernel void pyrs_ltp_unoptd_bak(
  
 	for (uint i = pyr_idx_init; i < pyr_idx_n; i++) {
 		uchar pyr_best_den_id = pyr_best_den_ids[i];
-		uchar pyr_prev_lrnd_den_id = pyr_prev_lrnd_den_ids[i];
+		uchar pyr_prev_best_den_id = pyr_prev_best_den_ids[i];
 		uchar pyr_flag_set = pyr_flag_sets[i];
 
 		uint den_idx_init = (i << dens_per_pyr_l2);
 		uint syn_idx = ((den_idx_init + pyr_best_den_id) << syns_per_den_l2);
 
-		int pyr_just_active = (pyr_flag_set & PYR_JUST_ACTIVE_FLAG) == PYR_JUST_ACTIVE_FLAG;
+		int pyr_prev_active = (pyr_flag_set & PYR_PREV_ACTIVE_FLAG) == PYR_PREV_ACTIVE_FLAG;
 		int pyr_best_col_den = (pyr_flag_set & PYR_BEST_COL_DEN_FLAG) == PYR_BEST_COL_DEN_FLAG;
-		int pyr_just_learned = (pyr_flag_set & PYR_JUST_LEARNED_FLAG) == PYR_JUST_LEARNED_FLAG;
+		int pyr_prev_learned = (pyr_flag_set & PYR_PREV_STP_FLAG) == PYR_PREV_STP_FLAG;
 
 
 		if (axn_states[i + pyr_axn_idx_base] == 0) {
-			if (pyr_just_learned) {
-			//if (pyr_just_active && (pyr_prev_lrnd_den_id == pyr_best_den_id)) {
+			if (pyr_prev_learned) {
+			//if (pyr_prev_active && (pyr_prev_best_den_id == pyr_best_den_id)) {
 
 				// 	
 				//  NOT SURE WHAT WE'RE GOING TO DO WITH THIS
@@ -1008,21 +1146,21 @@ __kernel void pyrs_ltp_unoptd_bak(
 
 			}
 
-			pyr_flag_set &= !PYR_JUST_ACTIVE_FLAG;
-			pyr_flag_set &= !PYR_JUST_LEARNED_FLAG;
+			pyr_flag_set &= !PYR_PREV_ACTIVE_FLAG;
+			pyr_flag_set &= !PYR_PREV_STP_FLAG;
 			continue;
 		} else {
 			if (pyr_best_col_den) {
 				//syns_ltp_ltd(syn_states, syn_idx, syns_per_den_l2, rnd, syn_strengths);
 				
-				pyr_prev_lrnd_den_id = pyr_best_den_id;
-				pyr_flag_set |= PYR_JUST_LEARNED_FLAG;
+				pyr_prev_best_den_id = pyr_best_den_id;
+				pyr_flag_set |= PYR_PREV_STP_FLAG;
 			}
 
-			pyr_flag_set |= PYR_JUST_ACTIVE_FLAG;
+			pyr_flag_set |= PYR_PREV_ACTIVE_FLAG;
 		}
 
-		pyr_prev_lrnd_den_ids[i] = pyr_prev_lrnd_den_id;
+		pyr_prev_best_den_ids[i] = pyr_prev_best_den_id;
 		pyr_flag_sets[i] = pyr_flag_set;
 	}
 }

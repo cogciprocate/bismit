@@ -147,33 +147,6 @@ impl InputCzar {
 	}
 }
 
-/*
-	turn_bomb_i += 1;
-
-			if turn_bomb_i >= turn_bomb_n {
-				//print!(" >- pow!:{} -< ", turn_bomb_i);
-				motor_state.switch();
-				turn_bomb_i = 0;
-				turn_bomb_n = 6;
-				//turn_bomb_n = (rng.gen::<u8>() as usize) << 1;
-			}
-
-
-turn_bomb_i += 1;
-
-			if turn_bomb_i >= turn_bomb_n {
-				//print!(" >- pow!:{} -< ", turn_bomb_i);
-				motor_state.switch();
-				turn_bomb_i = 0;
-				turn_bomb_n = 6;
-				//turn_bomb_n = (rng.gen::<u8>() as usize) << 1;
-			}
-
-
-
-
-
-*/
 
 
 fn test_vec_init(scw: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
