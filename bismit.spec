@@ -1,3 +1,64 @@
+
+=== Learning for pyramidal cell synapses (prediction oriented synapses) ===
+	
+	Conceptual overview from an associational layer containing pyramidal cells (such as L3):
+
+		Input and Activation (single column, single layer perspective):
+
+			0.00t: Elsewhere in nearby layers (such as L4), data is received from the thalamus or other areas of the cortex
+
+			0.10t: Input to our layer-column arrives at pyramidal cell (LCPC) proximal dendrites
+
+			0.20t: If any pyramidal cell (LCPC) is depolarized as a result of prior distal dendritic activity and receives a suprathreshold amount of EPSP on its proximal dendrite (from prior time step), it will generate an EPSP ->
+
+			0.30t: If the layer-columnar aspiny stellate inhibitory cell (LCASIC) receives an action potential from any pyramidal cell in our layer-column, it will generate an IPSP ->
+			
+			0.40t: If the layer-columnar pyramidal cells (LCPCs) do not receive an IPSP from the LCASIC and have received an EPSP (from 0.1t), they will each generate an EPSP
+		
+		Learning (single pyramidal cell perspective):
+
+
+			### NEW STUFF COMING ###
+
+			### MANY CHANGES COMING ###
+
+
+			NOTE: Keep in mind that distal synaptic states at this instant still reflect information from the time period ~ 1.0t in the past. That is, they still contain information from one cycle ago. They do not get refreshed with information from the current cycle until just after learning takes place, for good reason.
+
+			0.51t: If the pyramidal cell (LCPC) has generated an action potential:
+				- The most active distal dendrite (keeping in mind this will still reflect data from the prior cycle) will be selected
+				- Each synapse on this dendrite will be processed in the following manner:
+					- If the synapse is active, apply a short-term positive potentiation to it
+					- If the synapse is inactive, apply a long-term negative potentiation to it
+
+			0.52t: If the LCPC has not generated an action potential AND the LCPC was active in the prior cycle:
+				- NOTE: Somewhat confusing is the fact that in this step we are dealing with the the learning state of dendrites and synapses from the prior cycle, which itself is based on activation from the cycle prior to that. So basically we're now doing a follow-up and conclusion to the short-term learning applied in the step above (0.51t).
+
+				- For each synapse on the most active distal dendrite from the prior cycle:
+					- If the synapse had short-term potentiation applied:
+						- If the synapse is still active, apply a long-term negative potentiation to it
+						- If the synapse is now inactive, apply a long-term positive potentiation to it
+					- Clear away all short-term potentiation
+
+					- NOTE: The reason we potentiate the synapses which were recently active (and short-term potentiated) but are now inactive is that they are likely to be correctly predicting the input. Put another way, synapses which were active when the input was active and inactive now that the input is inactive are probably, or at least possibly, representing it. On the other hand, synapses which were active when the input was active and remain active now that input is inactive are probably not representing anything related to that input.
+			
+			0.61t: den_cycle()
+
+			0.72t: pyr_cycle()
+
+			
+		
+		Columnar Output:
+			1.00t: 
+
+		Cycle Repeats:
+
+		Sporatically:
+			~ 500.00t: Regrowth
+
+
+
+
 === Synapse Pruning and Regrowth ===
 	The "edge" overactivity issue (see written notes 04-26):
 		Synapses near the edge are sometimes being provided excessive stimulus from nearby axonal areas. This stimulus can lead to synapses being trained disproportionately strengthen in response to this. Possibilities to address this include:

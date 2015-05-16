@@ -1,5 +1,29 @@
 use cortex::{ Cortex };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* PRINT_SENSE_ONLY() & PRINT_SENSE_AND_PRINT():
 	- TODO:
 		- [incomplete][priority: low] Roll up into integrated command line system and make each item togglable
@@ -81,7 +105,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
 	/* PYRAMIDAL */
 	if true {
 		print!("\nPYRAMIDAL DEPOLARIZATIONS:");
-		cortex.region_cells.pyrs.depols.print_val_range(1 << 0, Some((1, 255)));
+		cortex.region_cells.pyrs.preds.print_val_range(1 << 0, Some((1, 255)));
 	}
 	if false {
 		print!("\nPYRAMIDAL AXON OUTPUT:");

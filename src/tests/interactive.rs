@@ -2,16 +2,11 @@
 use super::output_czar;
 use super::synapse_drill_down;
 use super::input_czar::{ self, InputCzar };
-//use super::motor_state;
 use cortex::{ self, Cortex };
 use ocl;
 use cmn;
-use chord::{ Chord };
-use ocl::{ Envoy };
-//use microcosm::entity::{ EntityBody, EntityKind, EntityBrain, Mobile };
-//use microcosm::worm::{ WormBrain };
-//use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
-//use microcosm::world::{ World };
+//use chord::{ Chord };
+//use ocl::{ Envoy };
 
 
 use std::default::{ Default };
@@ -39,33 +34,13 @@ pub const SHUFFLE_EVERY: bool 			= false;
 pub fn run() -> bool {
 	let sc_width = cmn::SENSORY_CHORD_WIDTH;
 	let mut cortex = cortex::Cortex::new();
-	//let mut world: World = World::new(sc_width);
 
 	let mut input_czar = InputCzar::new(0..5, false);
 
-	//let mut vec1: Vec<u8> = iter::repeat(0).take(sc_width as usize).collect();
-	//let mut vec1: Vec<ocl::cl_uchar> = input_czar::test_vec_init(&mut cortex);
 
 	let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(sc_width as usize).collect();
 	let mut vec_ff_prev: Vec<u8> = iter::repeat(0).take(sc_width as usize).collect();
 
-	//let mut vec2: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_width as usize).collect();
-	//cortex.write_vec(0, "pre_thal", &mut vec2);
-	//cortex.write_vec(0, "post_thal", &mut vec2);
-	//cortex.write_vec(0, "post_thal2", &mut vec2);
-	//cortex.write_vec(0, "post_thal3", &mut vec2);
-	//cortex.write_vec(0, "post_thal4", &mut vec2);
-	//cortex.write_vec(0, "post_thal5", &mut vec2);
-
-
-	//world.entities().print();
-
-	//let mut motor_state = motor_state::MotorState::new();
-
-	//let mut rng: rand::XorShiftRng = rand::weak_rng();
-	//let mut turn_bomb_i = 0usize;
-	//let mut turn_bomb_n = 6;
-	//let mut turn_bomb_n = rng.gen::<u8>() as usize;
 	
 	let mut test_iters: i32 = INITIAL_TEST_ITERATIONS;
 	let mut first_run: bool = true;
@@ -187,32 +162,6 @@ pub fn run() -> bool {
 				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
 				continue;
 				//test_iters = TEST_ITERATIONS;
-
-			/*
-			} else if "c\n" == in_s {
-				synapse_drill_down::print_cols(&mut cortex);
-				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
-				continue;
-				//test_iters = TEST_ITERATIONS;
-
-			
-			} else if "f\n" == in_s {
-				let in_s = rin(format!("fractal seed"));
-				let in_int: Option<u8> = in_s.trim().parse().ok();
-				let seed = match in_int {
-					Some(x)	=> x,
-					None => {
-						print!("\nError parsing number.");
-						continue;
-					},
-				};
-				let tvec = cmn::gen_fract_sdr(seed, 256 * 1);
-				cmn::print_vec_simple(&tvec);
-				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
-				continue;
-				//test_iters = TEST_ITERATIONS;
-			*/
-
 
 			} else {
 				continue;

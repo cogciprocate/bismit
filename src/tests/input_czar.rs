@@ -13,6 +13,8 @@ use rand::{ self, ThreadRng, Rng };
 
 pub const WORLD_TURN_FACTOR: f32 = 3f32;	
 
+pub const PARAM_MOTOR_LAYER_ON: bool = false;
+
 
 pub struct InputCzar {
 	counter: usize,
@@ -48,7 +50,10 @@ impl InputCzar {
 		let mut motor_state = motor_state::MotorState::new();
 
 		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::SYNAPSE_SPAN as usize).collect();
-		vec_motor.clone_from_slice(&motor_state.cur_sdr(false));
+		
+		if PARAM_MOTOR_LAYER_ON {
+			vec_motor.clone_from_slice(&motor_state.cur_sdr(false));
+		}
 
 		let vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 0);
 
@@ -83,13 +88,13 @@ impl InputCzar {
 		}*/
 
 		/* ##### MOTOR ##### */
-		/*if remain_ticks == 0 {
+		if PARAM_MOTOR_LAYER_ON && (remain_ticks == 0) {
 			//print!("[> ctr = 0 <]");
 			self.motor_state.switch();
 		} else if remain_ticks == 1 {
 			self.vec_motor.clone_from_slice(&self.motor_state.cur_sdr(true));
 			//print!("[> ctr = 1 <]");
-		}*/
+		}
 
 
 		/* ##### OPTICAL ##### */

@@ -95,7 +95,7 @@ impl MiniColumns {
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(depth as usize, width as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&states)
-			.arg_env(&pyrs.depols)
+			.arg_env(&pyrs.preds)
 			.arg_env(&pyrs.best_den_states)
 			//.arg_scl(depth)
 			.arg_scl(pyr_depth)

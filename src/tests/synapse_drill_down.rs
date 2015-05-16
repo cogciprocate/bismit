@@ -17,11 +17,11 @@ pub fn print_pyrs(cortex: &mut Cortex) {
 
 	println!("\n");
 
-	for pyr_depol in &pyrs.depols.vec {
-		if *pyr_depol != 0 {
+	for pyr_pred in &pyrs.preds.vec {
+		if *pyr_pred != 0 {
 			//let pyr_out_col_id = pyr_idx % pyrs.width() as usize;
 			let col_id = pyr_idx as isize & (cmn::SENSORY_CHORD_WIDTH - 1) as isize;
-			print!("\n########## [P:[{}({})]:{cp}{:02X}{cd}] ##########", pyr_idx, col_id, pyr_depol, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
+			print!("\n########## [P:[{}({})]:{cp}{:02X}{cd}] ##########", pyr_idx, col_id, pyr_pred, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
 			shitty_print_dens(pyr_idx, dens);
 		}
 		pyr_idx += 1;

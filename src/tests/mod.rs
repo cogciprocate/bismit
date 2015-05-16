@@ -9,3 +9,6 @@ mod output_czar;
 mod motor_state;
 
 
+#[cfg(test)]
+mod automated;
+

@@ -37,7 +37,7 @@ pub struct Pyramidal {
 	//den_prox_row: u8, 
 	rng: rand::XorShiftRng,
 	//regrow_counter: usize,
-	pub depols: Envoy<ocl::cl_uchar>,
+	pub preds: Envoy<ocl::cl_uchar>,
 	pub best_den_ids: Envoy<ocl::cl_uchar>,
 	pub best_den_states: Envoy<ocl::cl_uchar>,
 	pub prev_best_den_ids: Envoy<ocl::cl_uchar>,
@@ -58,7 +58,7 @@ impl Pyramidal {
 		
 		//print!("\n### Pyramidal: Proximal Dendrite Row: {}", den_prox_row);
 
-		let depols = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let preds = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 
 		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let best_den_states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
@@ -76,14 +76,14 @@ impl Pyramidal {
 			.arg_env(&energies)
 			.arg_env(&best_den_ids)
 			.arg_env(&best_den_states)
-			.arg_env(&depols) 		// v.N1
+			.arg_env(&preds) 		// v.N1
 			//.arg_env(&axons.states)
 		;
 
 		/*let kern_axn_cycle = ocl.new_kernel("pyr_axn_cycle", 
 			WorkSize::TwoDim(depth as usize, width as usize))
 			.arg_scl(axn_row_base)
-			.arg_env(&depols)
+			.arg_env(&preds)
 			.arg_env(&axons.states)
 		;*/
 
@@ -100,7 +100,7 @@ impl Pyramidal {
 		let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd", 
 			WorkSize::TwoDim(depth as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 			.arg_env(&axons.states)
-			.arg_env(&depols)
+			.arg_env(&preds)
 			.arg_env(&best_den_ids)
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns.states)
@@ -129,7 +129,7 @@ impl Pyramidal {
 			//den_prox_row: den_prox_row,
 			rng: rand::weak_rng(),
 			//regrow_counter: 0usize,
-			depols: depols,
+			preds: preds,
 			best_den_ids: best_den_ids,
 			best_den_states: best_den_states,
 			prev_best_den_ids: prev_best_den_ids,
@@ -149,7 +149,7 @@ impl Pyramidal {
 		//self.kern_activate.new_arg_envoy(&aux.ints_0);
 		//self.kern_activate.new_arg_envoy(&self.energies);
 		self.kern_activate.new_arg_envoy(&self.flag_sets);
-		self.kern_activate.new_arg_envoy(&self.depols);	
+		self.kern_activate.new_arg_envoy(&self.preds);	
 		self.kern_activate.new_arg_envoy(&axns.states);
 	}
 
@@ -191,7 +191,7 @@ impl Pyramidal {
 	}
 
 	pub fn confab(&mut self) {
-		self.depols.read();
+		self.preds.read();
 		self.best_den_ids.read();
 		self.dens.confab();
 	} 
