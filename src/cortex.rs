@@ -29,12 +29,12 @@ pub fn define_protoregions() -> ProtoRegions {
 
 		.layer("out", 1, layer::COLUMN_OUTPUT, Axonal(Spatial))
 
-		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal"]))  // , "motor"
+		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal", "thal", "thal", "motor"]))  // , "motor"
 
 		//.layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
-		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
+		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii"]))
 
-		.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
+		//.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
 		.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
 
 	;

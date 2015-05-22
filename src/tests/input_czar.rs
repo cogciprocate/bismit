@@ -11,9 +11,14 @@ use std::iter;
 use std::ops::{ Range };
 use rand::{ self, ThreadRng, Rng };
 
-pub const WORLD_TURN_FACTOR: f32 = 3f32;	
+pub const WORLD_TURN_FACTOR: f32 		= 3f32;	
 
-pub const PARAM_MOTOR_LAYER_ON: bool = false;
+pub const PARAM_SWITCH_DIRS: bool 				= true;
+pub const PARAM_NOISE_ON: bool 					= false;
+pub const PARAM_COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
+pub const PARAM_COUNTER_RANDOM: bool			= false;
+
+//pub const PARAM_RANDOM_COUNTER: bool = true;
 
 
 pub struct InputCzar {
@@ -51,11 +56,11 @@ impl InputCzar {
 
 		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::SYNAPSE_SPAN as usize).collect();
 		
-		if PARAM_MOTOR_LAYER_ON {
+		if PARAM_SWITCH_DIRS {
 			vec_motor.clone_from_slice(&motor_state.cur_sdr(false));
 		}
 
-		let vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 0);
+		let vec_test_noise = junk_vec_init(cmn::SYNAPSE_SPAN, 0);
 
 		InputCzar {
 			counter: counter_range.end,
@@ -80,20 +85,24 @@ impl InputCzar {
 	pub fn next(&mut self, cortex: &mut Cortex) {
 		let remain_ticks = self.tick();
 
-		/*if (self.ttl_count & 0x01) == 0x01 {
-			//if (self.reset_count & 0x01) == 0x01 {
-			self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 0);
-		} else {
-			self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 1);
-		}*/
+		if PARAM_NOISE_ON {
+			/*if (self.ttl_count & 0x01) == 0x01 {
+				//if (self.reset_count & 0x01) == 0x01 {
+				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 0);
+			} else {
+				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 1);
+			}*/
+		}
 
 		/* ##### MOTOR ##### */
-		if PARAM_MOTOR_LAYER_ON && (remain_ticks == 0) {
-			//print!("[> ctr = 0 <]");
-			self.motor_state.switch();
-		} else if remain_ticks == 1 {
-			self.vec_motor.clone_from_slice(&self.motor_state.cur_sdr(true));
-			//print!("[> ctr = 1 <]");
+		if PARAM_SWITCH_DIRS {
+			if remain_ticks == 0 {
+				//print!("[> ctr = 0 <]");
+				self.motor_state.switch();
+			} else if remain_ticks == 1 {
+				self.vec_motor.clone_from_slice(&self.motor_state.cur_sdr(true));
+				//print!("[> ctr = 1 <]");
+			}
 		}
 
 
@@ -153,7 +162,7 @@ impl InputCzar {
 
 
 
-fn test_vec_init(scw: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
+fn junk_vec_init(scw: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
 
 	//let vv1 = cmn::sparse_vec(2048, -128i8, 127i8, 6);
 	//cmn::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));

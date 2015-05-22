@@ -1,7 +1,9 @@
-// #define LTD_BIAS_LOG2	0
-#define FLAG_SET(flag_set, mask)			((flag_set) |= (mask))
-#define FLAG_CLEAR(flag_set, mask)			((flag_set) &= ~(mask))
-#define FLAG_TEST(flag_set, mask)			(((flag_set) & (mask)) == (mask))
+//#define LTD_BIAS_LOG2					0
+#define LTP_BIAS_LOG2					2
+
+#define FLAG_ON(flag_set, mask)			((flag_set) |= (mask))
+#define FLAG_OFF(flag_set, mask)		((flag_set) &= ~(mask))
+#define FLAG_TEST(flag_set, mask)		(((flag_set) & (mask)) == (mask))
 
 
 /*  bismit.cl: conventions
@@ -88,16 +90,17 @@ static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
 	for (uint i = syn_idx_start; i < n; i++) {
 		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
-		uchar syn_flag_set = syn_flag_sets[i] & ~SYN_STP_FLAG;
+		uchar syn_flag_set = syn_flag_sets[i];
+
 		int const inc = rnd_inc(rnd, i, syn_strength);
-		//uchar const rnd_char = (rnd ^ i) & 0x7F;		
-		//int const inc = (rnd_char > abs(syn_strength));
 		int const syn_active = syn_state != 0;
+		syn_flag_set &= ~SYN_STP_FLAG;
 
 		syn_flag_set |= mul24(syn_active, SYN_STP_FLAG);
+		syn_strength -= mul24(!syn_active, inc);
 
 		syn_flag_sets[i] = syn_flag_set;
-		syn_strengths[i] = mul24(!syn_active, (syn_strength - inc));
+		syn_strengths[i] = syn_strength;
 	}
 }
 
@@ -120,20 +123,25 @@ static inline void cel_syns_trm( 			// TERMINATION
 		int const inc = rnd_inc(rnd, i, syn_strength);
 		//uchar const rnd_char = (rnd ^ i) & 0x7F;		
 		//int const inc = (rnd_char > abs(syn_strength));
-		int const syn_active = syn_state != 0;
 		int const syn_prev_stp = (syn_flag_set & SYN_STP_FLAG) == SYN_STP_FLAG;
+		int const syn_active = syn_state != 0;
 
-		if (syn_prev_stp) {
+		syn_strength -= mul24(syn_prev_stp && syn_active, inc);
+		syn_strength += mul24(syn_prev_stp && !syn_active, inc << LTP_BIAS_LOG2);
+
+		/*if (syn_prev_stp) {
 			if (syn_active) {
 				syn_strength -= inc;			
 			} else {
-				syn_strength += inc;
+				syn_strength += (inc);
 			}
-		}
+		}*/
 
-		syn_strength -= mul24(syn_flag_set, inc);
+		//syn_strength -= mul24(syn_flag_set, inc);
 
-		syn_flag_sets[i] = syn_flag_set & ~SYN_STP_FLAG;
+		syn_flag_set &= ~SYN_STP_FLAG;
+
+		syn_flag_sets[i] = syn_flag_set;
 		syn_strengths[i] = syn_strength;
 	}
 }

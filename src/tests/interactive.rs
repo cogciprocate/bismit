@@ -35,7 +35,7 @@ pub fn run() -> bool {
 	let sc_width = cmn::SENSORY_CHORD_WIDTH;
 	let mut cortex = cortex::Cortex::new();
 
-	let mut input_czar = InputCzar::new(0..5, false);
+	let mut input_czar = InputCzar::new(input_czar::PARAM_COUNTER_RANGE, input_czar::PARAM_COUNTER_RANDOM);
 
 
 	let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(sc_width as usize).collect();
