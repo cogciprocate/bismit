@@ -34,6 +34,7 @@ use ocl;
 
 
 pub static C_DEFAULT: &'static str = "\x1b[0m";
+pub static C_UNDER: &'static str = "\x1b[1m";
 
 pub static C_DRD: &'static str = "\x1b[31m";
 pub static C_GRN: &'static str = "\x1b[32m";
@@ -52,8 +53,10 @@ pub static C_LBL: &'static str = "\x1b[94m";
 
 pub static BGC_DEFAULT: &'static str = "\x1b[49m";
 pub static BGC_GRN: &'static str = "\x1b[42m";
-pub static BGC_MAG: &'static str = "\x1b[45m";
+pub static BGC_PUR: &'static str = "\x1b[45m";
+pub static BGC_LGR: &'static str = "\x1b[47m";
 pub static BGC_DGR: &'static str = "\x1b[100m";
+
 
 
 pub const PYR_PREV_CONCRETE_FLAG: u8 		= 0b10000000;
@@ -61,8 +64,8 @@ pub const PYR_BEST_IN_COL_FLAG: u8 			= 0b01000000;
 pub const PYR_PREV_STP_FLAG: u8 			= 0b00100000;
 pub const PYR_PREV_FUZZY_FLAG: u8			= 0b00010000;
 
-pub const SYN_PREV_STP_FLAG: u8				= 0b00000001;
-pub const SYN_PREV_CONCRETE_FLAG: u8		= 0b00001000;
+pub const SYN_STP_FLAG: u8					= 0b00000001;
+pub const SYN_CONCRETE_FLAG: u8				= 0b00001000;
 
 
 pub const CORTICAL_SEGMENTS_TOTAL: usize = 1;
@@ -236,8 +239,8 @@ pub fn build_options() -> ocl::BuildOptions {
 		.opt("PYR_BEST_IN_COL_FLAG", PYR_BEST_IN_COL_FLAG as i32)
 		.opt("PYR_PREV_STP_FLAG", PYR_PREV_STP_FLAG as i32)
 		.opt("PYR_PREV_FUZZY_FLAG", PYR_PREV_FUZZY_FLAG as i32)
-		.opt("SYN_PREV_STP_FLAG", SYN_PREV_STP_FLAG as i32)
-		.opt("SYN_PREV_CONCRETE_FLAG", SYN_PREV_CONCRETE_FLAG as i32)
+		.opt("SYN_STP_FLAG", SYN_STP_FLAG as i32)
+		.opt("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
 }
 
 
@@ -609,11 +612,14 @@ pub fn render_sdr(
 
 			if print {
 				if cur_active {
+					if prediction {
+						out_line.push_str(BGC_DGR);
+					}
+
 					if new_prediction {
-						assert!(new_pred(vec_out[i], vec_ff[i]));
+						//assert!(new_pred(vec_out[i], vec_ff[i]));
 						out_line.push_str(C_MAG);
 					} else {
-
 						out_line.push_str(C_BLU);
 					}
 					/*if corr_pred(vec_out[i], vec_ff[i], vec_out_prev[i], vec_ff_prev[i]) {

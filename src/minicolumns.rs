@@ -96,7 +96,7 @@ impl MiniColumns {
 			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
 			.arg_env(&states)
 			.arg_env(&pyrs.preds)
-			.arg_env(&pyrs.best_den_states)
+			.arg_env(&pyrs.best1_den_states)
 			//.arg_scl(depth)
 			.arg_scl(pyr_depth)
 			//.arg_scl(pyr_axn_base_row)

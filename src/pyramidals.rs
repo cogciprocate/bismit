@@ -38,9 +38,11 @@ pub struct Pyramidal {
 	rng: rand::XorShiftRng,
 	//regrow_counter: usize,
 	pub preds: Envoy<ocl::cl_uchar>,
-	pub best_den_ids: Envoy<ocl::cl_uchar>,
-	pub best_den_states: Envoy<ocl::cl_uchar>,
-	pub prev_best_den_ids: Envoy<ocl::cl_uchar>,
+	pub best1_den_ids: Envoy<ocl::cl_uchar>,
+	pub best1_den_states: Envoy<ocl::cl_uchar>,
+	pub best2_den_ids: Envoy<ocl::cl_uchar>,
+	pub best2_den_states: Envoy<ocl::cl_uchar>,
+	pub prev_best1_den_ids: Envoy<ocl::cl_uchar>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
 	pub energies: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
@@ -60,9 +62,11 @@ impl Pyramidal {
 
 		let preds = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 
-		let best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
-		let best_den_states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
-		let prev_best_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let best1_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let best1_den_states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let best2_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let best2_den_states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let prev_best1_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
 		let energies = Envoy::<ocl::cl_uchar>::new(width, depth, 255, ocl);
 
@@ -74,8 +78,10 @@ impl Pyramidal {
 			.arg_env(&dens.states)
 			//.arg_scl(axn_row_base)
 			.arg_env(&energies)
-			.arg_env(&best_den_ids)
-			.arg_env(&best_den_states)
+			.arg_env(&best1_den_ids)
+			.arg_env(&best1_den_states)
+			.arg_env(&best2_den_ids)
+			.arg_env(&best2_den_states)
 			.arg_env(&preds) 		// v.N1
 			//.arg_env(&axons.states)
 		;
@@ -101,7 +107,8 @@ impl Pyramidal {
 			WorkSize::TwoDim(depth as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 			.arg_env(&axons.states)
 			.arg_env(&preds)
-			.arg_env(&best_den_ids)
+			.arg_env(&best1_den_ids)
+			.arg_env(&best2_den_ids)
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns.states)
 			.arg_scl(axn_idx_base)
@@ -112,7 +119,7 @@ impl Pyramidal {
 			//.arg_env(&aux.ints_1)
 			.arg_env(&dens.syns.flag_sets)
 			.arg_env(&flag_sets)
-			.arg_env(&prev_best_den_ids)
+			//.arg_env(&prev_best1_den_ids)
 			.arg_env(&dens.syns.strengths)
 			//.arg_env(&axons.states)
 		;
@@ -130,9 +137,11 @@ impl Pyramidal {
 			rng: rand::weak_rng(),
 			//regrow_counter: 0usize,
 			preds: preds,
-			best_den_ids: best_den_ids,
-			best_den_states: best_den_states,
-			prev_best_den_ids: prev_best_den_ids,
+			best1_den_ids: best1_den_ids,
+			best1_den_states: best1_den_states,
+			best2_den_ids: best2_den_ids,
+			best2_den_states: best2_den_states,
+			prev_best1_den_ids: prev_best1_den_ids,
 			flag_sets: flag_sets,
 			energies: energies,
 			dens: dens,
@@ -143,7 +152,7 @@ impl Pyramidal {
 		self.kern_activate.new_arg_envoy(&cols.states);
 		self.kern_activate.new_arg_envoy(&cols.cels_status);
 		self.kern_activate.new_arg_envoy(&cols.best_col_den_states);
-		self.kern_activate.new_arg_envoy(&self.best_den_ids);
+		self.kern_activate.new_arg_envoy(&self.best1_den_ids);
 		self.kern_activate.new_arg_envoy(&self.dens.states);
 		self.kern_activate.new_arg_scalar(self.axn_row_base);
 		//self.kern_activate.new_arg_envoy(&aux.ints_0);
@@ -192,7 +201,7 @@ impl Pyramidal {
 
 	pub fn confab(&mut self) {
 		self.preds.read();
-		self.best_den_ids.read();
+		self.best1_den_ids.read();
 		self.dens.confab();
 	} 
 

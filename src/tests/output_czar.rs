@@ -103,22 +103,6 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
 
 
 	/* PYRAMIDAL */
-	if true {
-		print!("\nPYRAMIDAL DEPOLARIZATIONS:");
-		cortex.region_cells.pyrs.preds.print_val_range(1 << 0, Some((1, 255)));
-	}
-	if false {
-		print!("\nPYRAMIDAL AXON OUTPUT:");
-		cortex.region_cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.region_cells.pyrs.axn_output_range()), false);
-	}
-	if true {	
-		print!("\nPYRAMIDAL DENDRITE STATES: ");
-		cortex.region_cells.pyrs.dens.states.print_val_range(1 << 10, Some((1, 255)));
-	}
-	if false {	
-		print!("\nPYRAMIDAL DENDRITE STATES RAW: ");
-		cortex.region_cells.pyrs.dens.states_raw.print_val_range(1 << 12, Some((1, 255)));
-	}
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE STATES: ");
 		cortex.region_cells.pyrs.dens.syns.states.print(1 << 16, Some((1, 255)), None, true);
@@ -152,6 +136,22 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE SOURCE FLAG SETS: ");
 		cortex.region_cells.pyrs.dens.syns.flag_sets.print(1 << 14, None, None, true);
+	}
+	if true {	
+		print!("\nPYRAMIDAL DENDRITE STATES: ");
+		cortex.region_cells.pyrs.dens.states.print_val_range(1 << 10, Some((1, 255)));
+	}
+	if false {	
+		print!("\nPYRAMIDAL DENDRITE STATES RAW: ");
+		cortex.region_cells.pyrs.dens.states_raw.print_val_range(1 << 12, Some((1, 255)));
+	}
+	if false {
+		print!("\nPYRAMIDAL AXON OUTPUT:");
+		cortex.region_cells.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.region_cells.pyrs.axn_output_range()), false);
+	}
+	if true {
+		print!("\nPYRAMIDAL DEPOLARIZATIONS:");
+		cortex.region_cells.pyrs.preds.print_val_range(1 << 0, Some((1, 255)));
 	}
 
 

@@ -237,7 +237,7 @@ impl Synapses {
 				src_row_ids: &Vec<u8>
 	) {
 		//let src_row_idx_range: Range<usize> = Range::new(0, src_row_ids.len());
-		//let src_col_x_offs_range: Range<i8> = Range::new(-126, 127);
+		//let src_col_x_offs_range: Range<i8> = Range::new(-127, 127);
 		//let strength_init_range: Range<i8> = Range::new(-3, 4);
 
 		//let src_row_id
