@@ -25,6 +25,11 @@ pub const PRINT_DETAILS_EVERY: i32		= 10000;
 pub const SHUFFLE_ONCE: bool 			= true;
 pub const SHUFFLE_EVERY: bool 			= false;
 
+pub const TOGGLE_DIRS: bool 				= true;
+pub const INTRODUCE_NOISE: bool 			= false;
+pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
+pub const COUNTER_RANDOM: bool				= false;
+
 
 /* RUN(): Run the interactive testing command line
 	- TODO:
@@ -35,7 +40,8 @@ pub fn run() -> bool {
 	let sc_width = cmn::SENSORY_CHORD_WIDTH;
 	let mut cortex = cortex::Cortex::new();
 
-	let mut input_czar = InputCzar::new(input_czar::PARAM_COUNTER_RANGE, input_czar::PARAM_COUNTER_RANDOM);
+
+	let mut input_czar = InputCzar::new(sc_width, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
 
 
 	let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(sc_width as usize).collect();

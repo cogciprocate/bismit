@@ -6,7 +6,7 @@
 #define FLAG_TEST(flag_set, mask)		(((flag_set) & (mask)) == (mask))
 
 
-/*  bismit.cl: conventions
+/*  bismit.cl: CONVENTIONS
 
 	idx: index, physical in-memory address
 	idz: index[0], first element, starting element
@@ -733,14 +733,14 @@ __kernel void pyrs_ltp_unoptd(
 	//uint const axn_idx_base = mad24(pyr_axn_row_base + row_id, row_width, col_id + (uint)SYNAPSE_REACH);
 
 	uint const pyr_idz = mul24(pyr_grp_id, pyrs_per_wi);
-	uint const pyr_idx_n = pyr_idz + pyrs_per_wi;
+	uint const pyr_idn = pyr_idz + pyrs_per_wi;
 
 	//uint const pyr_idz = mul24(pyr_grp_id, pyrs_per_wi);
 	//uint const pyr_idx_n = pyr_idz + pyrs_per_wi;
 
 	//uint debug_output = 0;
  
-	for (uint i = pyr_idz; i < pyr_idx_n; i++) {
+	for (uint i = pyr_idz; i < pyr_idn; i++) {
 		uchar pyr_best1_den_id = pyr_best1_den_ids[i];
 		uchar pyr_best2_den_id = pyr_best2_den_ids[i];
 		//uchar pyr_prev_best1_den_id = pyr_prev_best1_den_ids[i];
@@ -1044,7 +1044,7 @@ __kernel void col_output(
 	}
 
 
-	mcol_pyr_fuz_flags[col_idx] = clamp(col_pyr_fuz_total, 0, 255);
+	mcol_pyr_fuz_flags[col_idx] = clamp(col_pyr_fuz_total, 0, 255); // ***** FIX ME TO BE A FLAG
 	mcol_best_col_den_states[col_idx] = max_den_state;
 
 

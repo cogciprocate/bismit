@@ -11,12 +11,8 @@ use std::iter;
 use std::ops::{ Range };
 use rand::{ self, ThreadRng, Rng };
 
-pub const WORLD_TURN_FACTOR: f32 		= 3f32;	
+pub const WORLD_TURN_FACTOR: f32 				= 3f32;	
 
-pub const PARAM_SWITCH_DIRS: bool 				= true;
-pub const PARAM_NOISE_ON: bool 					= false;
-pub const PARAM_COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
-pub const PARAM_COUNTER_RANDOM: bool			= false;
 
 //pub const PARAM_RANDOM_COUNTER: bool = true;
 
@@ -25,12 +21,14 @@ pub struct InputCzar {
 	counter: usize,
 	counter_range: Range<usize>,
 	random_counter: bool,
+	toggle_dirs: bool,
+	introduce_noise: bool,
 	ttl_count: usize,
 	reset_count: usize,
 	//next_turn_counter: usize,
 	//next_turn_max: usize,
 	rng: rand::XorShiftRng,
-	sc_width: u32,
+	width: u32,
 	pub vec_optical: Vec<u8>,
 	pub vec_motor: Vec<u8>,
 	pub vec_test_noise: Vec<u8>,
@@ -40,10 +38,9 @@ pub struct InputCzar {
 }
 
 impl InputCzar {
-	pub fn new(counter_range: Range<usize>, random_counter: bool) -> InputCzar {
-		let sc_width = cmn::SENSORY_CHORD_WIDTH;
+	pub fn new(width: u32, counter_range: Range<usize>, random_counter: bool, toggle_dirs: bool, introduce_noise: bool) -> InputCzar {
 
-		let mut world = World::new(sc_width);
+		let mut world = World::new(width);
 
 		let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
 		world.entities().add(worm);
@@ -56,7 +53,7 @@ impl InputCzar {
 
 		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::SYNAPSE_SPAN as usize).collect();
 		
-		if PARAM_SWITCH_DIRS {
+		if toggle_dirs {
 			vec_motor.clone_from_slice(&motor_state.cur_sdr(false));
 		}
 
@@ -66,13 +63,15 @@ impl InputCzar {
 			counter: counter_range.end,
 			counter_range: counter_range,
 			random_counter: random_counter,
+			toggle_dirs: toggle_dirs,
+			introduce_noise: introduce_noise,
 			ttl_count: 0,
 			reset_count: 0,
 			//next_turn_counter: 0,
 			//next_turn_max: 0,
 			rng: rand::weak_rng(),
-			sc_width: sc_width,
-			vec_optical: iter::repeat(0).take(sc_width as usize).collect(),
+			width: width,
+			vec_optical: iter::repeat(0).take(width as usize).collect(),
 			vec_motor: vec_motor,
 			vec_test_noise: vec_test_noise,
 			world: world,
@@ -85,7 +84,7 @@ impl InputCzar {
 	pub fn next(&mut self, cortex: &mut Cortex) {
 		let remain_ticks = self.tick();
 
-		if PARAM_NOISE_ON {
+		if self.introduce_noise {
 			/*if (self.ttl_count & 0x01) == 0x01 {
 				//if (self.reset_count & 0x01) == 0x01 {
 				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 0);
@@ -95,7 +94,7 @@ impl InputCzar {
 		}
 
 		/* ##### MOTOR ##### */
-		if PARAM_SWITCH_DIRS {
+		if self.toggle_dirs {
 			if remain_ticks == 0 {
 				//print!("[> ctr = 0 <]");
 				self.motor_state.switch();
@@ -107,7 +106,7 @@ impl InputCzar {
 
 
 		/* ##### OPTICAL ##### */
-		self.world.entities().get_mut(self.worm.uid).turn((WORLD_TURN_FACTOR/(self.sc_width as f32)), self.motor_state.cur_turn());
+		self.world.entities().get_mut(self.worm.uid).turn((WORLD_TURN_FACTOR/(self.width as f32)), self.motor_state.cur_turn());
 		self.world.peek_from(self.worm.uid).unfold_into(&mut self.vec_optical, 0);
 
 
