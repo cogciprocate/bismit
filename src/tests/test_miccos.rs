@@ -14,7 +14,7 @@ use std::option::{ Option };
 
 
 pub fn run() {
-	let mut world: World = World::new(cmn::SENSORY_CHORD_WIDTH);
+	let mut world: World = World::new(cmn::SENSORY_CHORD_AREA);
 
 	let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
 	let snake = EntityBody::new("snake", EntityKind::Creature, Location::new(60f32, 60f32));
@@ -76,7 +76,7 @@ pub fn run() {
 
 				if true {
 					print!("\n[ i:{} ] [ \n", i);
-					snake_brain.cort.region_cells.axns.states.print_val_range(1, Some((1, 127)));
+					snake_brain.cort.cortical_area.axns.states.print_val_range(1, Some((1, 127)));
 
 					//print!("\n] [==[ \n");
 					//snake_brain.cort.cortical_segments[0].minicolumns.synapses.values.print(256);

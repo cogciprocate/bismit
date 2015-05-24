@@ -24,7 +24,7 @@ mod sense;
 //mod axon_space;
 //mod syn_segs;
 //mod column;
-mod region_cells;
+mod cortical_area;
 mod axons;
 mod dendrites;
 mod synapses;

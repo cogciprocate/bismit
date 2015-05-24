@@ -1,13 +1,13 @@
 use cmn;
-use ocl::{ self, Ocl, WorkSize };
-use ocl::{ Envoy };
-use proto::areas::{ ProtoAreas, Width };
+use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use proto::areas::{ ProtoAreas };
 use proto::regions::{ ProtoRegion, ProtoRegionKind };
 use proto::cell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
-use minicolumns::{ MiniColumns }; 
+use minicolumns::{ MiniColumns };
+use cortical_area:: { Aux };
 
 use num;
 use std::ops;
@@ -20,9 +20,8 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 
-pub struct PeakColumn {
-	width: u32,
-	depth: u8,
+pub struct PeakColumns {
+	pub dims: CorticalDimensions,
 	kern_cycle_pre: ocl::Kernel,
 	kern_cycle_wins: ocl::Kernel,
 	kern_cycle_post: ocl::Kernel,
@@ -32,42 +31,43 @@ pub struct PeakColumn {
 	
 }
 
-impl PeakColumn {
-	pub fn new(col_width: u32, depth: u8, region: &ProtoRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> PeakColumn {
+impl PeakColumns {
+	pub fn new(col_dims: CorticalDimensions, region: &ProtoRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> PeakColumns {
 
-		let width = col_width >> cmn::ASPINY_SPAN_LOG2;
+		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
+
+		let dims = CorticalDimensions::new(col_dims.width() >> cmn::ASPINY_SPAN_LOG2, col_dims.height(), col_dims.depth(), 0);
 
 		let padding = cmn::ASPINY_SPAN;
 
-		let spi_ids = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, 0u8, ocl);
-		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, 0u8, ocl);
-		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, width, depth, cmn::STATE_ZERO, ocl);
+		let spi_ids = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, 0u8, ocl);
+		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, 0u8, ocl);
+		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
 
 		let mut kern_cycle_pre = ocl.new_kernel("peak_spi_cycle_pre", 
-			WorkSize::TwoDim(depth as usize, width as usize))
+			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&src_states)
 			.arg_env(&states)
 			.arg_env(&spi_ids)
 		;
 
 		let mut kern_cycle_wins = ocl.new_kernel("peak_spi_cycle_wins", 
-			WorkSize::TwoDim(depth as usize, width as usize))
+			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&states)
 			//.arg_env(&spi_ids)
 			.arg_env(&wins)
 		;
 
 		let mut kern_cycle_post = ocl.new_kernel("peak_spi_cycle_post", 
-			WorkSize::TwoDim(depth as usize, width as usize))
+			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&wins)
 			//.arg_env(&spi_ids)
 			.arg_env(&states)
 		;
 
 
-		PeakColumn {
-			width: width,
-			depth: depth,
+		PeakColumns {
+			dims: dims,
 			kern_cycle_pre: kern_cycle_pre,
 			kern_cycle_wins: kern_cycle_wins,
 			kern_cycle_post: kern_cycle_post,
@@ -88,10 +88,6 @@ impl PeakColumn {
 		}
 
 		self.kern_cycle_post.enqueue();
-	}
-
-	pub fn width(&self) -> u32 {
-		self.width
 	}
 
 }

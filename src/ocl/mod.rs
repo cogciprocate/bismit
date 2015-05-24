@@ -7,6 +7,7 @@ pub use self::kernel::{ Kernel };
 pub use self::envoy::{ Envoy };
 pub use self::work_size::{ WorkSize };
 pub use self::build_options::{ BuildOptions, BuildOption };
+pub use self::cortical_dimensions::{ CorticalDimensions };
 
 use cmn;
 
@@ -26,6 +27,7 @@ mod envoy;
 mod kernel;
 mod work_size;
 mod build_options;
+mod cortical_dimensions;
 
 pub const GPU_DEVICE: usize = 1;
 pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
@@ -175,7 +177,6 @@ impl Ocl {
 
 	}
 }
-
 
 
 

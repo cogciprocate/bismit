@@ -7,8 +7,8 @@ pub struct ProtoLayer {
 	pub name: &'static str,
 	//pub kind: Option<Protocell>,
 	pub kind: ProtoLayerKind,
-	pub base_row_pos: u8,
-	pub kind_base_row_pos: u8,
+	pub base_slice_pos: u8,
+	pub kind_base_slice_pos: u8,
 	pub depth: u8,
 	pub flags: ProtoLayerFlags,
 }
@@ -17,23 +17,23 @@ impl ProtoLayer {
 	/*pub fn new(
 				name: &'static str,
 				cell: Option<Protocell>,
-				base_row_pos: u8,
-				kind_base_row_pos: u8,
+				base_slice_pos: u8,
+				kind_base_slice_pos: u8,
 				depth: u8,
 				flags: ProtoLayerFlags,
 	) -> ProtoLayer {
 		ProtoLayer {
 			name: name,
 			cell: cell,
-			base_row_pos: base_row_pos,
-			kind_base_row_pos: kind_base_row_pos,
+			base_slice_pos: base_slice_pos,
+			kind_base_slice_pos: kind_base_slice_pos,
 			depth: depth,
 			flags: flags,
 		}
 	}*/
 
-	pub fn base_row_pos(&self) -> u8 {
-		self.base_row_pos
+	pub fn base_slice_pos(&self) -> u8 {
+		self.base_slice_pos
 	}
 
 	pub fn depth(&self) -> u8 {

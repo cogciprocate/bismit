@@ -101,7 +101,7 @@ pub enum CellPrototype {
 		prx_srcs: Vec<&'static str>,
 	},
 
-	PeakColumn {
+	PeakColumns {
 		prx_srcs: Vec<&'static str>,
 	},
 
@@ -123,7 +123,7 @@ pub enum CellBlueprint {
 		flags: CellFlags,
 	},
 
-	PeakColumn {
+	PeakColumns {
 		dens: u8,
 		syns_per_den: u8,
 		flags: CellFlags,

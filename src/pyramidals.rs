@@ -1,13 +1,12 @@
 use cmn;
-use ocl::{ self, Ocl, WorkSize };
-use ocl::{ Envoy };
-use proto::areas::{ ProtoAreas, Width };
+use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use proto::areas::{ ProtoAreas };
 use proto::regions::{ ProtoRegion, ProtoRegionKind };
 use proto::cell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
-use region_cells::{ Aux };
-use peak_column::{ PeakColumn };
+use cortical_area:: { Aux };
+use peak_column::{ PeakColumns };
 use minicolumns::{ MiniColumns };
 use axons::{ Axons };
 
@@ -27,14 +26,13 @@ use std::fmt::{ Display };
 
 */
 pub struct Pyramidal {
-	depth: u8,
-	width: u32,
+	dims: CorticalDimensions,
 	kern_ltp: ocl::Kernel,
 	kern_cycle: ocl::Kernel,
 	kern_activate: ocl::Kernel,
 	//kern_axn_cycle: ocl::Kernel,
-	axn_row_base: u8,
-	//den_prox_row: u8, 
+	axn_slice_base: u8,
+	//den_prox_slice: u8, 
 	rng: rand::XorShiftRng,
 	//regrow_counter: usize,
 	pub preds: Envoy<ocl::cl_uchar>,
@@ -49,34 +47,35 @@ pub struct Pyramidal {
 }
 
 impl Pyramidal {
-	pub fn new(width: u32, region: &ProtoRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Pyramidal {
+	pub fn new(mut dims: CorticalDimensions, region: &ProtoRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Pyramidal {
 
-		let axn_row_base = region.base_row_cell_kind(&CellKind::Pyramidal);
-		let depth: u8 = region.depth_cell_kind(&CellKind::Pyramidal);
-		let dens_per_cel_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2;
-		let syns_per_cel_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
+		let axn_slice_base = region.base_slice_cell_kind(&CellKind::Pyramidal);
+		//dims.depth() = region.depth_cell_kind(&CellKind::Pyramidal);
+		let dens_per_cel_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
+		let syns_per_cel_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
 		//let col_input_layer = region.col_input_layer().expect("Pyramidal::new()");
-		//let den_prox_row = region.row_ids(vec![col_input_layer.name])[0];
+		//let den_prox_slice = region.slice_ids(vec![col_input_layer.name])[0];
 		
-		//print!("\n### Pyramidal: Proximal Dendrite Row: {}", den_prox_row);
+		//print!("\n### Pyramidal: Proximal Dendrite Row: {}", den_prox_slice);
 
-		let preds = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
+		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
-		let best1_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
-		let best1_den_states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
-		let best2_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
-		let best2_den_states = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
-		let prev_best1_den_ids = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
-		let flag_sets = Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl);
-		let energies = Envoy::<ocl::cl_uchar>::new(width, depth, 255, ocl);
+		let best1_den_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let best1_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let best2_den_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let best2_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let prev_best1_den_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
-		let dens = Dendrites::new(width, depth, DendriteKind::Distal, CellKind::Pyramidal, dens_per_cel_l2, region, axons, aux, ocl);
+		let dens_dims = dims.clone_with_pcl2(dens_per_cel_l2 as i32);
+		let dens = Dendrites::new(dens_dims, DendriteKind::Distal, CellKind::Pyramidal, region, axons, aux, ocl);
 
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle", 
-			WorkSize::TwoDim(depth as usize, width as usize))
+			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			.arg_env(&dens.states)
-			//.arg_scl(axn_row_base)
+			//.arg_scl(axn_slice_base)
 			.arg_env(&energies)
 			.arg_env(&best1_den_ids)
 			.arg_env(&best1_den_states)
@@ -87,24 +86,24 @@ impl Pyramidal {
 		;
 
 		/*let kern_axn_cycle = ocl.new_kernel("pyr_axn_cycle", 
-			WorkSize::TwoDim(depth as usize, width as usize))
-			.arg_scl(axn_row_base)
+			WorkSize::TwoDim(dims.depth() as usize, dims.width as usize))
+			.arg_scl(axn_slice_base)
 			.arg_env(&preds)
 			.arg_env(&axons.states)
 		;*/
 
 		let kern_activate = ocl.new_kernel("pyr_activate", 
-			WorkSize::TwoDim(depth as usize, width as usize))
+			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 		;
 
 
-		assert!(width % cmn::MINIMUM_WORKGROUP_SIZE == 0);
-		let cels_per_wi: u32 = width / cmn::MINIMUM_WORKGROUP_SIZE;
-		let axn_idx_base: u32 = (axn_row_base as u32 * width) + cmn::SYNAPSE_REACH;
+		assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
+		let cels_per_wi: u32 = dims.columns() / cmn::MINIMUM_WORKGROUP_SIZE;
+		let axn_idx_base: u32 = (axn_slice_base as u32 * dims.columns()) + cmn::SYNAPSE_REACH_LIN;
 		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", axn_idx_base);
 
 		let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd", 
-			WorkSize::TwoDim(depth as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
+			WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 			.arg_env(&axons.states)
 			.arg_env(&preds)
 			.arg_env(&best1_den_ids)
@@ -126,14 +125,13 @@ impl Pyramidal {
 
 
 		Pyramidal {
-			depth: depth,
-			width: width,
+			dims: dims,
 			kern_ltp: kern_ltp,
 			kern_cycle: kern_cycle,
 			kern_activate: kern_activate,
 			//kern_axn_cycle: kern_axn_cycle,
-			axn_row_base: axn_row_base,
-			//den_prox_row: den_prox_row,
+			axn_slice_base: axn_slice_base,
+			//den_prox_slice: den_prox_slice,
 			rng: rand::weak_rng(),
 			//regrow_counter: 0usize,
 			preds: preds,
@@ -149,12 +147,12 @@ impl Pyramidal {
 	}
 
 	pub fn init_kernels(&mut self, cols: &MiniColumns, axns: &Axons, aux: &Aux) {
-		self.kern_activate.new_arg_envoy(&cols.states);
+		self.kern_activate.new_arg_envoy(&cols.dens.states);
 		self.kern_activate.new_arg_envoy(&cols.cels_status);
 		self.kern_activate.new_arg_envoy(&cols.best_col_den_states);
 		self.kern_activate.new_arg_envoy(&self.best1_den_ids);
 		self.kern_activate.new_arg_envoy(&self.dens.states);
-		self.kern_activate.new_arg_scalar(self.axn_row_base);
+		self.kern_activate.new_arg_scalar(self.axn_slice_base);
 		//self.kern_activate.new_arg_envoy(&aux.ints_0);
 		//self.kern_activate.new_arg_envoy(&self.energies);
 		self.kern_activate.new_arg_envoy(&self.flag_sets);
@@ -177,26 +175,17 @@ impl Pyramidal {
 
 	pub fn regrow(&mut self, region: &ProtoRegion) {
 
-		/*self.regrow_counter += 1;
-
-		if self.regrow_counter >= cmn::SYNAPSE_DECAY_INTERVAL {
-			
-			self.regrow_counter = 0;
-		}*/
-
-
 		self.dens.regrow(region);
 	}
 
 	pub fn cycle(&self) {
 		self.dens.cycle();
 		self.kern_cycle.enqueue();
-			//self.kern_axn_cycle.enqueue();
 	}
 
 	pub fn axn_output_range(&self) -> (usize, usize) {
-		let start = (self.axn_row_base as usize * self.width as usize) + cmn::SYNAPSE_REACH as usize;
-		(start, start + ((self.width * self.depth as u32) - 1) as usize)
+		let start = (self.axn_slice_base as usize * self.dims.columns() as usize) + cmn::SYNAPSE_REACH_LIN as usize;
+		(start, start + ((self.dims.columns() * self.dims.depth() as u32) - 1) as usize)
 	}
 
 	pub fn confab(&mut self) {
@@ -205,7 +194,4 @@ impl Pyramidal {
 		self.dens.confab();
 	} 
 
-	pub fn width(&self) -> u32 {
-		self.width
-	}
 }

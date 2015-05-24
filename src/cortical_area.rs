@@ -1,16 +1,14 @@
 use cmn;
-use ocl::{ self, Ocl, WorkSize };
-use ocl::{ Envoy };
-use proto::areas::{ ProtoAreas, Width };
+use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use proto::areas::{ ProtoAreas, ProtoArea };
 use proto::regions::{ ProtoRegion, ProtoRegionKind };
 use proto::cell::{ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use minicolumns::{ MiniColumns };
-use peak_column::{ PeakColumn };
+use peak_column::{ PeakColumns };
 use pyramidals::{ Pyramidal };
-
 
 use num;
 use rand;
@@ -24,14 +22,15 @@ use std::collections::{ BTreeMap };
 
 
 
-pub struct RegionCells {
-	pub width: u32,
+pub struct CorticalArea {
+	pub name: &'static str,
+	pub dims: CorticalDimensions,
 	//pub depth_axonal: u8,
 	//pub depth_cellular: u8,
-	pub row_map: BTreeMap<u8, &'static str>,
+	pub slice_map: BTreeMap<u8, &'static str>,
 	//pub region: ProtoRegion,
 	pub axns: Axons,
-	pub cols: MiniColumns,
+	pub mcols: MiniColumns,
 	pub pyrs: Pyramidal,
 	//pub soma: Somata,
 	pub aux: Aux,
@@ -39,29 +38,39 @@ pub struct RegionCells {
 	counter: usize,
 }
 
-impl RegionCells {
-	pub fn new(region: &ProtoRegion, areas: &ProtoAreas, ocl: &Ocl) -> RegionCells {
+impl CorticalArea {
+	pub fn new(name: &'static str, region: &ProtoRegion, protoarea: &ProtoArea, ocl: &Ocl) -> CorticalArea {
 		//let (depth_axonal, depth_cellular) = region.depth();
-		let width = areas.width(&region.kind);
+		let dims = protoarea.dims.clone();
+		//let dims.width = areas.width(&region.kind);
+		//let height = areas.height(&region.kind);
 
-		//print!("\nRegionCells::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
+		//print!("\nCorticalArea::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
 
-		//assert!(depth_cellular > 0, "region_cells::RegionCells::new(): Region has no cellular layers.");
+		//assert!(depth_cellular > 0, "cortical_area::CorticalArea::new(): Region has no cellular layers.");
 
-		let aux = Aux::new(width, 1, ocl);
-		let axns = Axons::new(width, region, ocl);
-		let pyrs = Pyramidal::new(width, region, &axns, &aux, ocl);
-		let cols = MiniColumns::new(width, region, &axns, &pyrs, &aux, ocl);
+		let axns = Axons::new(dims, region, ocl);
+
+		let aux_dims = CorticalDimensions::new(dims.width() * 8, dims.height() * 8, dims.depth(), 0);
+		let aux = Aux::new(aux_dims, ocl);
+
+		let pyrs_dims = dims.clone_with_depth(region.depth_cell_kind(&CellKind::Pyramidal));
+		let pyrs = Pyramidal::new(pyrs_dims, region, &axns, &aux, ocl);
+
+		let mcols_layer = region.col_input_layer().expect("CorticalArea::new()");
+		let mcols_dims = dims.clone_with_depth(mcols_layer.depth());
+		let mcols = MiniColumns::new(mcols_dims, region, &axns, &pyrs, &aux, ocl);
 		
 
-		let mut region_cells = RegionCells {
-			width: width,
+		let mut cortical_area = CorticalArea {
+			name: name,
+			dims: dims,
 			//depth_axonal: depth_axonal,
 			//depth_cellular: depth_cellular,
-			row_map: region.row_map(),
+			slice_map: region.slice_map(),
 			//region: region,
 			axns: axns,
-			cols: cols,
+			mcols: mcols,
 			pyrs: pyrs,
 			//soma: Somata::new(width, depth_cellular, region, ocl),
 			aux: aux,
@@ -69,15 +78,15 @@ impl RegionCells {
 			counter: 0,
 		};
 
-		region_cells.init_kernels();
+		cortical_area.init_kernels();
 
-		region_cells
+		cortical_area
 	}
 
 	pub fn init_kernels(&mut self) {
-		//self.axns.init_kernels(&self.cols.asps, &self.cols, &self.aux)
-		//self.cols.syns.init_kernels(&self.axns, ocl);
-		self.pyrs.init_kernels(&self.cols, &self.axns, &self.aux);
+		//self.axns.init_kernels(&self.mcols.asps, &self.mcols, &self.aux)
+		//self.mcols.dens.syns.init_kernels(&self.axns, ocl);
+		self.pyrs.init_kernels(&self.mcols, &self.axns, &self.aux);
 	}
 
 	pub fn cycle(&mut self, region: &ProtoRegion) {
@@ -90,13 +99,13 @@ impl RegionCells {
 
 		let ltp: bool = cmn::LEARNING_ACTIVE;
 		
-		self.cols.cycle(ltp);
+		self.mcols.cycle(ltp);
 		
-		self.pyrs.activate(ltp);	
+		self.pyrs.activate(ltp);
 		
 		self.pyrs.cycle();	
 
-		self.cols.output();
+		self.mcols.output();
 
 		self.regrow(region);
 
@@ -105,7 +114,7 @@ impl RegionCells {
 	pub fn regrow(&mut self, region: &ProtoRegion) {
 		if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
 			//print!("$");
-			self.cols.regrow(region);
+			self.mcols.regrow(region);
 			self.pyrs.regrow(region);
 			self.counter = 0;
 		} else {
@@ -116,8 +125,7 @@ impl RegionCells {
 
 
 pub struct Aux {
-	depth: u8,
-	width: u32,
+	dims: CorticalDimensions,
 	pub ints_0: Envoy<ocl::cl_int>,
 	pub ints_1: Envoy<ocl::cl_int>,
 	pub chars_0: Envoy<ocl::cl_char>,
@@ -125,17 +133,18 @@ pub struct Aux {
 }
 
 impl Aux {
-	pub fn new(width: u32, depth: u8, ocl: &Ocl) -> Aux {
+	pub fn new(mut dims: CorticalDimensions, ocl: &Ocl) -> Aux {
 
-		let width_multiplier: u32 = 512;
+		//let dims_multiplier: u32 = 512;
+
+		//dims.columns() *= 512;
 
 		Aux { 
-			ints_0: Envoy::<ocl::cl_int>::new(width * width_multiplier, depth, 0, ocl),
-			ints_1: Envoy::<ocl::cl_int>::new(width * width_multiplier, depth, 0, ocl),
-			chars_0: Envoy::<ocl::cl_char>::new(width, depth, 0, ocl),
-			chars_1: Envoy::<ocl::cl_char>::new(width, depth, 0, ocl),
-			depth: depth,
-			width: width,
+			ints_0: Envoy::<ocl::cl_int>::new(dims, 0, ocl),
+			ints_1: Envoy::<ocl::cl_int>::new(dims, 0, ocl),
+			chars_0: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
+			chars_1: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
+			dims: dims,
 		}
 	}
 }
@@ -144,7 +153,7 @@ impl Aux {
 
 /*pub struct Somata {
 	depth: u8,
-	width: u32,
+	dims: CorticalDimensions, height: u32, 
 	pub dst_dens: Dendrites,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub hcol_max_vals: Envoy<ocl::cl_uchar>,
@@ -153,13 +162,13 @@ impl Aux {
 }
 
 impl Somata {
-	pub fn new(width: u32, depth: u8, region: &ProtoRegion, ocl: &Ocl) -> Somata {
+	pub fn new(dims: CorticalDimensions, height: u32,  depth: u8, region: &ProtoRegion, ocl: &Ocl) -> Somata {
 		Somata { 
 			depth: depth,
-			width: width,
+			width: width, height: height, 
 			states: Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl),
-			hcol_max_vals: Envoy::<ocl::cl_uchar>::new(width / cmn::COLUMNS_PER_HYPERCOLUMN, depth, cmn::STATE_ZERO, ocl),
-			hcol_max_ids: Envoy::<ocl::cl_uchar>::new(width / cmn::COLUMNS_PER_HYPERCOLUMN, depth, 0u8, ocl),
+			hcol_max_vals: Envoy::<ocl::cl_uchar>::new(dims.width / cmn::COLUMNS_PER_HYPERCOLUMN, depth, cmn::STATE_ZERO, ocl),
+			hcol_max_ids: Envoy::<ocl::cl_uchar>::new(dims.width / cmn::COLUMNS_PER_HYPERCOLUMN, depth, 0u8, ocl),
 			rand_ofs: Envoy::<ocl::cl_char>::shuffled(256, 1, -128, 127, ocl),
 			dst_dens: Dendrites::new(width, depth, DendriteKind::Distal, cmn::DENDRITES_PER_CELL_DISTAL, region, ocl),
 
@@ -172,7 +181,7 @@ impl Somata {
 		ocl::set_kernel_arg(1, prx_dens.states.buf, kern);
 		ocl::set_kernel_arg(2, self.states.buf, kern);
 
-		let gws = (self.depth as usize, self.width as usize);
+		let gws = (self.depth as usize, self.dims.width as usize);
 
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 
@@ -186,7 +195,7 @@ impl Somata {
 		ocl::set_kernel_arg(1, self.states.buf, kern);
 		ocl::set_kernel_arg(2, self.depth as u32, kern);
 
-		let gws = (self.depth as usize, self.width as usize);
+		let gws = (self.depth as usize, self.dims.width as usize);
 
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 
@@ -198,14 +207,14 @@ impl Somata {
 		ocl::set_kernel_arg(0, self.states.buf, kern);
 		ocl::set_kernel_arg(1, self.hcol_max_ids.buf, kern);
 		ocl::set_kernel_arg(2, self.hcol_max_vals.buf, kern);
-		let mut kern_width = self.width as usize / cmn::COLUMNS_PER_HYPERCOLUMN as usize;
+		let mut kern_dims.width = self.dims.width as usize / cmn::COLUMNS_PER_HYPERCOLUMN as usize;
 		let gws = (self.depth as usize, kern_width);
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 
 		ocl::set_kernel_arg(0, self.aux.chars_0.buf, kern);
 		ocl::set_kernel_arg(1, self.aux.chars_1.buf, kern);
-		kern_width = kern_width / (1 << grp_size_log2);
-		let gws = (self.depth_cellular as usize, self.width as usize / 64);
+		kern_dims.width = kern_dims.width / (1 << grp_size_log2);
+		let gws = (self.depth_cellular as usize, self.dims.width as usize / 64);
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}
 
@@ -219,7 +228,7 @@ impl Somata {
 		ocl::set_kernel_arg(4, self.dst_dens.syns.strengths.buf, kern);
 		ocl::set_kernel_arg(5, self.rand_ofs.buf, kern);
 
-		let mut kern_width = self.width as usize / cmn::COLUMNS_PER_HYPERCOLUMN as usize;
+		let mut kern_dims.width = self.dims.width as usize / cmn::COLUMNS_PER_HYPERCOLUMN as usize;
 		let gws = (self.depth as usize, kern_width);
 		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
 	}

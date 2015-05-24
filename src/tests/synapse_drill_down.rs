@@ -9,7 +9,7 @@ use std::io::{ self, Write, Stdout };
 use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 
 pub fn print_pyrs(cortex: &mut Cortex) {
-	let pyrs = &mut cortex.region_cells.pyrs;
+	let pyrs = &mut cortex.cortical_area.pyrs;
 	pyrs.confab();
 
 	let mut pyr_idx = 0usize;
@@ -19,8 +19,8 @@ pub fn print_pyrs(cortex: &mut Cortex) {
 
 	for pyr_pred in &pyrs.preds.vec {
 		if *pyr_pred != 0 {
-			//let pyr_out_col_id = pyr_idx % pyrs.width() as usize;
-			let col_id = pyr_idx as isize & (cmn::SENSORY_CHORD_WIDTH - 1) as isize;
+			//let pyr_out_col_id = pyr_idx % pyrs.dims.columns() as usize;
+			let col_id = pyr_idx as isize & (cmn::SENSORY_CHORD_AREA - 1) as isize;
 			print!("\n########## [P:[{}({})]:{cp}{:02X}{cd}] ##########", pyr_idx, col_id, pyr_pred, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
 			shitty_print_dens(pyr_idx, dens);
 		}
@@ -61,17 +61,17 @@ fn shitty_print_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 	for syn_i in syn_idx_base..(syn_idx_base + syns_per_den) {
 		if syns.states.vec[syn_i] != 0 {
 
-				let width = syns.width() as isize;
-				let col_id = cel_idx as isize & (cmn::SENSORY_CHORD_WIDTH - 1) as isize;
-				let row_id = syns.src_row_ids.vec[syn_i] as isize;
+				let columns = syns.dims.columns() as isize;
+				let col_id = cel_idx as isize & (cmn::SENSORY_CHORD_AREA - 1) as isize;
+				let slice_id = syns.src_slice_ids.vec[syn_i] as isize;
 				let col_ofs = syns.src_col_x_offs.vec[syn_i] as isize;
 
-				let src_axn_addr = (width * row_id) + col_id + cmn::SYNAPSE_REACH as isize;
+				let src_axn_addr = (columns * slice_id) + col_id + cmn::SYNAPSE_REACH_LIN as isize;
 
-				let (src_axn_row, src_axn_col) = axn_coords(src_axn_addr, width);
-				//print!("[width:{},col_id:{}]", width, col_id);
+				let (src_axn_slice, src_axn_col) = axn_coords(src_axn_addr, columns);
+				//print!("[columns:{},col_id:{}]", columns, col_id);
 
-				print!("{cd}[[{cg}{}{cd}]{co}r:{},c:{}{cd}:{}({cp}{},{}{cd}){cd}:{cd}{:02X}{cd}]", syn_i, row_id, col_ofs, src_axn_addr, src_axn_row, src_axn_col, syns.states.vec[syn_i], cg = cmn::C_GRN, co = cmn::C_ORA, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
+				print!("{cd}[[{cg}{}{cd}]{co}r:{},c:{}{cd}:{}({cp}{},{}{cd}){cd}:{cd}{:02X}{cd}]", syn_i, slice_id, col_ofs, src_axn_addr, src_axn_slice, src_axn_col, syns.states.vec[syn_i], cg = cmn::C_GRN, co = cmn::C_ORA, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
 
 		}
 
@@ -84,24 +84,24 @@ fn shitty_print_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 
 
 
-pub fn print_cols(cortex: &mut Cortex) {
+pub fn print_mcols(cortex: &mut Cortex) {
 	println!("Pyramidal synapse source test running...");
 
-	let cols = &mut cortex.region_cells.cols;
+	let mcols = &mut cortex.cortical_area.mcols;
 
-	cols.confab();
+	mcols.confab();
 
 	println!("\n");
 
 	let col_idx_base = 0usize;
-	let width = cortex.region_cells.width;
+	let columns = cortex.cortical_area.dims.columns();
 
-	let syns = &cols.syns;
+	let syns = &mcols.dens.syns;
 
-	for col_i in 0..width as usize {
-		if cols.states.vec[col_i] != 0 {
+	for col_i in 0..columns as usize {
+		if mcols.dens.states.vec[col_i] != 0 {
 			//print!("[DEN:]", , );
-			print!("\n########## [{cd}C:[{}]{cg}:{cp}{:02X}]{cd} ##########", col_i, cols.states.vec[col_i], cp = cmn::C_PUR, cd = cmn::C_DEFAULT, cg = cmn::C_DGR);
+			print!("\n########## [{cd}C:[{}]{cg}:{cp}{:02X}]{cd} ##########", col_i, mcols.dens.states.vec[col_i], cp = cmn::C_PUR, cd = cmn::C_DEFAULT, cg = cmn::C_DGR);
 			shitty_print_col_syns(col_i, col_i, &syns);
 		}
 	}
@@ -121,17 +121,17 @@ fn shitty_print_col_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 	for syn_i in syn_idx_base..(syn_idx_base + syns_per_den) {
 		if syns.states.vec[syn_i] != 0 {
 
-				let width = syns.width() as isize;
-				let col_id = cel_idx as isize & (cmn::SENSORY_CHORD_WIDTH - 1) as isize;
-				let row_id = syns.src_row_ids.vec[syn_i] as isize;
+				let columns = syns.dims.columns() as isize;
+				let col_id = cel_idx as isize & (cmn::SENSORY_CHORD_AREA - 1) as isize;
+				let slice_id = syns.src_slice_ids.vec[syn_i] as isize;
 				let col_ofs = syns.src_col_x_offs.vec[syn_i] as isize;
 
-				let src_axn_addr = (width * row_id) + col_id + col_ofs + cmn::SYNAPSE_REACH as isize;
+				let src_axn_addr = (columns * slice_id) + col_id + col_ofs + cmn::SYNAPSE_REACH_LIN as isize;
 
-				let (src_axn_row, src_axn_col) = axn_coords(src_axn_addr, width);
-				//print!("[width:{},col_id:{}]", width, col_id);
+				let (src_axn_slice, src_axn_col) = axn_coords(src_axn_addr, columns);
+				//print!("[columns:{},col_id:{}]", columns, col_id);
 
-				print!("{cd}[[{cg}{}{cd}]{co}r:{},c:{}{cd}:{}({cp}{},{}{cd}){cd}:{cd}{:02X}{cd}]", syn_i, row_id, col_ofs, src_axn_addr, src_axn_row, src_axn_col, syns.states.vec[syn_i], cg = cmn::C_GRN, co = cmn::C_ORA, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
+				print!("{cd}[[{cg}{}{cd}]{co}r:{},c:{}{cd}:{}({cp}{},{}{cd}){cd}:{cd}{:02X}{cd}]", syn_i, slice_id, col_ofs, src_axn_addr, src_axn_slice, src_axn_col, syns.states.vec[syn_i], cg = cmn::C_GRN, co = cmn::C_ORA, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
 
 		}
 
@@ -142,11 +142,11 @@ fn shitty_print_col_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 
 
 
-fn axn_coords(axn_addr: isize, width: isize) -> (isize, isize) {
-	let axn_true = axn_addr - (cmn::SYNAPSE_REACH as isize);
+fn axn_coords(axn_addr: isize, columns: isize) -> (isize, isize) {
+	let axn_true = axn_addr - (cmn::SYNAPSE_REACH_LIN as isize);
 
-	let axn_row = axn_true >> cmn::SENSORY_CHORD_WIDTH_LOG2;
-	let axn_col = axn_true % width;
+	let axn_slice = axn_true >> cmn::SENSORY_CHORD_AREA_LOG2;
+	let axn_col = axn_true % columns;
 
-	(axn_row, axn_col)
+	(axn_slice, axn_col)
 }

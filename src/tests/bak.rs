@@ -57,26 +57,26 @@
 		/* SYNAPSE COL_OFS (SRC_OFS) */
 
 		/*print!("\ncols.syns.src_ofs:");
-		cortex.region_cells.cols.syns.src_ofs.print_val_range(1 << 12, -128, 127);*/
+		cortex.cortical_area.mcols.dens.syns.src_ofs.print_val_range(1 << 12, -128, 127);*/
 
 		/*if false {
 			print!("\nsoma.bsl_dst_dens.syns.src_col_x_offs:");
-			cortex.region_cells.soma.bsl_dst_dens.syns.src_col_x_offs.print(1 << 14);		// 16384
+			cortex.cortical_area.soma.bsl_dst_dens.syns.src_col_x_offs.print(1 << 14);		// 16384
 
 			print!("\ncols.bsl_prx_dens.syns.src_col_x_offs:");
-			cortex.region_cells.cols.bsl_prx_dens.syns.src_col_x_offs.print(1 << 16);
+			cortex.cortical_area.mcols.bsl_prx_dens.syns.src_col_x_offs.print(1 << 16);
 		}*/
 
 		/* SYNAPSE AXN_ROW_IDS */
 
 		/*if false {
-			print!("\nsoma.bsl_dst_dens.syns.src_row_ids:");
-			cortex.region_cells.soma.bsl_dst_dens.syns.src_row_ids.print(1 << 14);		// 16384
+			print!("\nsoma.bsl_dst_dens.syns.src_slice_ids:");
+			cortex.cortical_area.soma.bsl_dst_dens.syns.src_slice_ids.print(1 << 14);		// 16384
 		}
 
 		if false {
-			print!("\ncols.bsl_prx_dens.syns.src_row_ids:");
-			cortex.region_cells.cols.bsl_prx_dens.syns.src_row_ids.print(1 << 10);
+			print!("\ncols.bsl_prx_dens.syns.src_slice_ids:");
+			cortex.cortical_area.mcols.bsl_prx_dens.syns.src_slice_ids.print(1 << 10);
 		}*/
 
 
@@ -84,34 +84,34 @@
 
 		/*if false {		
 			println!("\nsoma.bsl_dst_dens.syns.strengths: ");
-			cortex.region_cells.soma.bsl_dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
+			cortex.cortical_area.soma.bsl_dst_dens.syns.strengths.print_val_range(1 << 6, 17, 127);
 		}
 
 		if false {
 			print!("\ncols.bsl_prx_dens.syns.strengths: ");
-			cortex.region_cells.cols.bsl_prx_dens.syns.strengths.print_val_range(1 << 4, 17, 127);
+			cortex.cortical_area.mcols.bsl_prx_dens.syns.strengths.print_val_range(1 << 4, 17, 127);
 		}*/
 
 		/*if true {	
 			print!("\nsoma.dst_dens.syns.states: ");
-			cortex.region_cells.soma.dst_dens.syns.states.print(1 << 14);
+			cortex.cortical_area.soma.dst_dens.syns.states.print(1 << 14);
 		}*/
 
 		/*if true {
 			print!("\ncols.bsl_prx_dens.syns.states: ");
-			cortex.region_cells.cols.bsl_prx_dens.syns.states.print(1 << 10);
+			cortex.cortical_area.mcols.bsl_prx_dens.syns.states.print(1 << 10);
 		}*/
 
 		/* DENDRITE STATES */
 
 		/*if true {
 			print!("\nsoma.bsl_dst_dens.states: ");
-			cortex.region_cells.soma.bsl_dst_dens.states.print(1 << 10);
+			cortex.cortical_area.soma.bsl_dst_dens.states.print(1 << 10);
 		}
 
 		if true {
 			print!("\ncols.bsl_prx_dens.states: ");
-			cortex.region_cells.cols.bsl_prx_dens.states.print(1 << 6);
+			cortex.cortical_area.mcols.bsl_prx_dens.states.print(1 << 6);
 		}*/
 
 
@@ -119,19 +119,19 @@
 
 		/*if true {
 			print!("\naux.chars_0: ");
-			cortex.region_cells.aux.chars_0.print(1 << 0);
+			cortex.cortical_area.aux.chars_0.print(1 << 0);
 		}
 
 		if true {
 			print!("\naux.chars_1: ");
-			cortex.region_cells.aux.chars_1.print(1 << 0);
+			cortex.cortical_area.aux.chars_1.print(1 << 0);
 		}*/
 
 
 
 	/*if false {
-		println!("\n region_cells.somata.states: ");
-		cortex.region_cells.somata.states.print(1 << 8);
+		println!("\n cortical_area.somata.states: ");
+		cortex.cortical_area.somata.states.print(1 << 8);
 	}*/
 
 

@@ -28,7 +28,7 @@ pub struct InputCzar {
 	//next_turn_counter: usize,
 	//next_turn_max: usize,
 	rng: rand::XorShiftRng,
-	width: u32,
+	area: u32,
 	pub vec_optical: Vec<u8>,
 	pub vec_motor: Vec<u8>,
 	pub vec_test_noise: Vec<u8>,
@@ -38,9 +38,9 @@ pub struct InputCzar {
 }
 
 impl InputCzar {
-	pub fn new(width: u32, counter_range: Range<usize>, random_counter: bool, toggle_dirs: bool, introduce_noise: bool) -> InputCzar {
+	pub fn new(area: u32, counter_range: Range<usize>, random_counter: bool, toggle_dirs: bool, introduce_noise: bool) -> InputCzar {
 
-		let mut world = World::new(width);
+		let mut world = World::new(area);
 
 		let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
 		world.entities().add(worm);
@@ -51,13 +51,13 @@ impl InputCzar {
 
 		let mut motor_state = motor_state::MotorState::new();
 
-		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::SYNAPSE_SPAN as usize).collect();
+		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::SYNAPSE_SPAN_LIN as usize).collect();
 		
 		if toggle_dirs {
 			vec_motor.clone_from_slice(&motor_state.cur_sdr(false));
 		}
 
-		let vec_test_noise = junk_vec_init(cmn::SYNAPSE_SPAN, 0);
+		let vec_test_noise = junk_vec_init(cmn::SYNAPSE_SPAN_LIN, 0);
 
 		InputCzar {
 			counter: counter_range.end,
@@ -70,8 +70,8 @@ impl InputCzar {
 			//next_turn_counter: 0,
 			//next_turn_max: 0,
 			rng: rand::weak_rng(),
-			width: width,
-			vec_optical: iter::repeat(0).take(width as usize).collect(),
+			area: area,
+			vec_optical: iter::repeat(0).take(area as usize).collect(),
 			vec_motor: vec_motor,
 			vec_test_noise: vec_test_noise,
 			world: world,
@@ -87,9 +87,9 @@ impl InputCzar {
 		if self.introduce_noise {
 			/*if (self.ttl_count & 0x01) == 0x01 {
 				//if (self.reset_count & 0x01) == 0x01 {
-				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 0);
+				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN_LIN, 0);
 			} else {
-				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN, 1);
+				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN_LIN, 1);
 			}*/
 		}
 
@@ -106,7 +106,7 @@ impl InputCzar {
 
 
 		/* ##### OPTICAL ##### */
-		self.world.entities().get_mut(self.worm.uid).turn((WORLD_TURN_FACTOR/(self.width as f32)), self.motor_state.cur_turn());
+		self.world.entities().get_mut(self.worm.uid).turn((WORLD_TURN_FACTOR/(self.area as f32)), self.motor_state.cur_turn());
 		self.world.peek_from(self.worm.uid).unfold_into(&mut self.vec_optical, 0);
 
 
@@ -170,11 +170,10 @@ fn junk_vec_init(scw: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
 	//let mut vec1: Vec<i8> = cmn::sparse_vec(2048, -128i8, 127i8, 8);
 
 	//cmn::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
-	//let scw = cmn::SENSORY_CHORD_WIDTH;
 
 	let mut vec1: Vec<ocl::cl_uchar> = Vec::with_capacity(scw as usize);
 
-	//let mut vec1: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_width as usize).collect();
+	//let mut vec1: Vec<ocl::cl_uchar> = iter::repeat(0).take(sc_area as usize).collect();
 	/*for i in range(0, scw) {
 		if i < scw >> 1 {
 			vec1.push(64i8);

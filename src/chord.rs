@@ -8,16 +8,18 @@ use ocl;
 pub struct Chord {
 	pub chord: BTreeMap<u16, ocl::cl_uchar>,
 	pub width: u32,
+	pub height: u32,
 }
 impl Chord {
-	pub fn new() -> Chord {
+	pub fn new(width: u32, height: u32) -> Chord {
 		Chord { 
 			chord: BTreeMap::new(), 
-			width: cmn::SENSORY_CHORD_WIDTH, 
+			width: width,
+			height: height, 
 		}
 	}
 
-	pub fn from_vec(vec: &Vec<ocl::cl_uchar>) -> Chord {
+	pub fn from_vec(vec: &Vec<ocl::cl_uchar>, width: u32, height: u32,) -> Chord {
 		let mut chord = BTreeMap::new();
 
 		let mut i: u16 = 0;
@@ -31,7 +33,8 @@ impl Chord {
 		}
 		Chord { 
 			chord: chord,
-			width: cmn::SENSORY_CHORD_WIDTH,
+			width: width,
+			height: height,
 		}
 	}
 
@@ -105,12 +108,12 @@ impl Chord {
 
 /*
 pub struct ChordUnfolded {
-	pub notes: [ocl::cl_uchar; cmn::SENSORY_CHORD_WIDTH as usize],
+	pub notes: [ocl::cl_uchar; cmn::SENSORY_CHORD_AREA as usize],
 }
 impl ChordUnfolded {
 	pub fn new() -> ChordUnfolded {
 		ChordUnfolded { 
-			notes: [0; cmn::SENSORY_CHORD_WIDTH as usize],
+			notes: [0; cmn::SENSORY_CHORD_AREA as usize],
 		}
 	}
 
