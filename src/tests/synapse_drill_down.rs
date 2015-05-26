@@ -12,6 +12,8 @@ pub fn print_pyrs(cortex: &mut Cortex) {
 	let pyrs = &mut cortex.cortical_area.pyrs;
 	pyrs.confab();
 
+	let columns = cortex.cortical_area.dims.columns();
+
 	let mut pyr_idx = 0usize;
 	let dens = &pyrs.dens;
 
@@ -20,7 +22,7 @@ pub fn print_pyrs(cortex: &mut Cortex) {
 	for pyr_pred in &pyrs.preds.vec {
 		if *pyr_pred != 0 {
 			//let pyr_out_col_id = pyr_idx % pyrs.dims.columns() as usize;
-			let col_id = pyr_idx as isize & (cmn::SENSORY_CHORD_AREA - 1) as isize;
+			let col_id = pyr_idx as isize & (columns - 1) as isize;
 			print!("\n########## [P:[{}({})]:{cp}{:02X}{cd}] ##########", pyr_idx, col_id, pyr_pred, cp = cmn::C_PUR, cd = cmn::C_DEFAULT);
 			shitty_print_dens(pyr_idx, dens);
 		}
@@ -62,9 +64,9 @@ fn shitty_print_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 		if syns.states.vec[syn_i] != 0 {
 
 				let columns = syns.dims.columns() as isize;
-				let col_id = cel_idx as isize & (cmn::SENSORY_CHORD_AREA - 1) as isize;
+				let col_id = cel_idx as isize & (cmn::SENSORY_CHORD_COLUMNS - 1) as isize;
 				let slice_id = syns.src_slice_ids.vec[syn_i] as isize;
-				let col_ofs = syns.src_col_x_offs.vec[syn_i] as isize;
+				let col_ofs = syns.src_col_xy_offs.vec[syn_i] as isize;
 
 				let src_axn_addr = (columns * slice_id) + col_id + cmn::SYNAPSE_REACH_LIN as isize;
 
@@ -122,9 +124,9 @@ fn shitty_print_col_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 		if syns.states.vec[syn_i] != 0 {
 
 				let columns = syns.dims.columns() as isize;
-				let col_id = cel_idx as isize & (cmn::SENSORY_CHORD_AREA - 1) as isize;
+				let col_id = cel_idx as isize & (cmn::SENSORY_CHORD_COLUMNS - 1) as isize;
 				let slice_id = syns.src_slice_ids.vec[syn_i] as isize;
-				let col_ofs = syns.src_col_x_offs.vec[syn_i] as isize;
+				let col_ofs = syns.src_col_xy_offs.vec[syn_i] as isize;
 
 				let src_axn_addr = (columns * slice_id) + col_id + col_ofs + cmn::SYNAPSE_REACH_LIN as isize;
 
@@ -145,7 +147,7 @@ fn shitty_print_col_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 fn axn_coords(axn_addr: isize, columns: isize) -> (isize, isize) {
 	let axn_true = axn_addr - (cmn::SYNAPSE_REACH_LIN as isize);
 
-	let axn_slice = axn_true >> cmn::SENSORY_CHORD_AREA_LOG2;
+	let axn_slice = axn_true >> cmn::SENSORY_CHORD_COLUMNS_LOG2;
 	let axn_col = axn_true % columns;
 
 	(axn_slice, axn_col)

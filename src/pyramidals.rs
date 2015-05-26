@@ -57,6 +57,7 @@ impl Pyramidal {
 		//let den_prox_slice = region.slice_ids(vec![col_input_layer.name])[0];
 		
 		//print!("\n### Pyramidal: Proximal Dendrite Row: {}", den_prox_slice);
+		print!("\n##### PYRAMIDAL dims: {:?}", dims);
 
 		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
@@ -68,13 +69,14 @@ impl Pyramidal {
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
-		let dens_dims = dims.clone_with_pcl2(dens_per_cel_l2 as i32);
+		let dens_dims = dims.clone_with_pcl2(dens_per_cel_l2 as i8);
 		let dens = Dendrites::new(dens_dims, DendriteKind::Distal, CellKind::Pyramidal, region, axons, aux, ocl);
 
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			.arg_env(&dens.states)
+			.arg_env(&dens.states_raw)
 			//.arg_scl(axn_slice_base)
 			.arg_env(&energies)
 			.arg_env(&best1_den_ids)
@@ -107,12 +109,12 @@ impl Pyramidal {
 			.arg_env(&axons.states)
 			.arg_env(&preds)
 			.arg_env(&best1_den_ids)
-			.arg_env(&best2_den_ids)
+			.arg_env(&best2_den_ids) // ***** SLATED FOR REMOVAL
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns.states)
 			.arg_scl(axn_idx_base)
-			.arg_scl(syns_per_cel_l2)
-			.arg_scl(dens_per_cel_l2)
+			.arg_scl(syns_per_cel_l2 as u32)
+			.arg_scl(dens_per_cel_l2 as u32)
 			.arg_scl(cels_per_wi)
 			.arg_scl_named(0u32, "rnd")
 			//.arg_env(&aux.ints_1)

@@ -108,12 +108,12 @@ impl Chord {
 
 /*
 pub struct ChordUnfolded {
-	pub notes: [ocl::cl_uchar; cmn::SENSORY_CHORD_AREA as usize],
+	pub notes: [ocl::cl_uchar; cmn::SENSORY_CHORD_COLUMNS as usize],
 }
 impl ChordUnfolded {
 	pub fn new() -> ChordUnfolded {
 		ChordUnfolded { 
-			notes: [0; cmn::SENSORY_CHORD_AREA as usize],
+			notes: [0; cmn::SENSORY_CHORD_COLUMNS as usize],
 		}
 	}
 

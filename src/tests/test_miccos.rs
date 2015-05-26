@@ -14,7 +14,7 @@ use std::option::{ Option };
 
 
 pub fn run() {
-	let mut world: World = World::new(cmn::SENSORY_CHORD_AREA);
+	let mut world: World = World::new(cmn::SENSORY_CHORD_COLUMNS);
 
 	let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
 	let snake = EntityBody::new("snake", EntityKind::Creature, Location::new(60f32, 60f32));

@@ -25,6 +25,7 @@ pub struct Dendrites {
 	pub thresholds: Envoy<ocl::cl_uchar>,
 	pub states_raw: Envoy<ocl::cl_uchar>,
 	pub states: Envoy<ocl::cl_uchar>,
+	pub energies: Envoy<ocl::cl_uchar>,
 	pub syns: Synapses,
 }
 
@@ -59,22 +60,24 @@ impl Dendrites {
 		};
 
 
-		println!("\n##### New {:?} Dendrites with dims: {:?}", den_kind, dims);
+		print!("\n##### New {:?} Dendrites with dims: {:?}", den_kind, dims);
 
 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-
 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
-		let syns_dims = dims.clone_with_pcl2((dims.per_cel_l2_left() + syns_per_den_l2) as i32);
+		let syns_dims = dims.clone_with_pcl2((dims.per_cel_l2() + syns_per_den_l2 as i8));
 		let syns = Synapses::new(syns_dims, syns_per_den_l2, den_kind, cell_kind, region, axons, aux, ocl);
+
+		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
 
 		//println!("\nsyns_per_den_l2 = {}", syns_per_den_l2);
-		let kern_cycle = ocl.new_kernel(den_kernel, WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
+		let kern_cycle = ocl.new_kernel(den_kernel, WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
-			.arg_scl(syns_per_den_l2)
+			.arg_scl(syns_per_den_l2 as u32)
 			.arg_scl(den_threshold)
+			.arg_env(&energies)
 			.arg_env(&states_raw)
 			.arg_env(&states)
 		;
@@ -88,6 +91,7 @@ impl Dendrites {
 			thresholds: Envoy::<ocl::cl_uchar>::new(dims, 1, ocl),
 			states_raw: states_raw,
 			states: states,
+			energies: energies,
 			syns: syns,
 		}
 	}

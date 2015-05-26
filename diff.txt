@@ -1,0 +1,553 @@
+diff --git a/src/axons.rs b/src/axons.rs
+index 8eca60e..bda0e7b 100644
+--- a/src/axons.rs
++++ b/src/axons.rs
+@@ -57,11 +57,11 @@ impl Axons {
+ 				width, 1 << syn_span_lin_l2, depth_axn_hrz, hrz_frames_per_slice, hrz_axn_slices);*/
+ 		}
+ 
+-		println!("##### Axon depth_total: {}", depth_total);
++		//println!("##### Axon depth_total: {}", depth_total);
+ 
+ 		let dims = area_dims.clone_with_depth(depth_total);
+ 
+-		println!("##### Axon dims: {:?}", dims);
++		//println!("##### Axon dims: {:?}", dims);
+ 
+ 		let padding: u32 = (cmn::SYNAPSE_SPAN_LIN) as u32;
+ 		
+diff --git a/src/bismit.cl b/src/bismit.cl
+index 8883b01..fdcfe9d 100644
+--- a/src/bismit.cl
++++ b/src/bismit.cl
+@@ -1,5 +1,7 @@
+-//#define LTD_BIAS_LOG2					0
+-#define LTP_BIAS_LOG2					2
++//#define LTD_BIAS_LOG2				0
++#define LTP_BIAS_LOG2				2
++#define ENERGY_SETTING 				4
++#define ENERGY_RECHARGE				1
+ 
+ #define FLAG_ON(flag_set, mask)			((flag_set) |= (mask))
+ #define FLAG_OFF(flag_set, mask)		((flag_set) &= ~(mask))
+@@ -97,7 +99,7 @@ static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
+ 		syn_flag_set &= ~SYN_STP_FLAG;
+ 
+ 		syn_flag_set |= mul24(syn_active, SYN_STP_FLAG);
+-		syn_strength -= mul24(!syn_active, inc);
++		syn_strength -= mul24(!syn_active, inc); // *****
+ 
+ 		syn_flag_sets[i] = syn_flag_set;
+ 		syn_strengths[i] = syn_strength;
+@@ -126,8 +128,8 @@ static inline void cel_syns_trm( 			// TERMINATION
+ 		int const syn_prev_stp = (syn_flag_set & SYN_STP_FLAG) == SYN_STP_FLAG;
+ 		int const syn_active = syn_state != 0;
+ 
+-		syn_strength -= mul24(syn_prev_stp && syn_active, inc);
+ 		syn_strength += mul24(syn_prev_stp && !syn_active, inc << LTP_BIAS_LOG2);
++		syn_strength -= mul24(syn_prev_stp && syn_active, inc); // *****
+ 
+ 		/*if (syn_prev_stp) {
+ 			if (syn_active) {
+@@ -351,6 +353,50 @@ __kernel void syns_cycle(
+ }
+ 
+ 
++
++
++__kernel void den_cycle(
++	__global uchar const* const syn_states,
++	__global char const* const syn_strengths,
++	__private uint const syns_per_den_l2,
++	__private uint const den_threshold,
++	__global uchar* const den_energies,
++	__global uchar* const den_states_raw,
++	__global uchar* const den_states
++) {
++	uint const slice_id = get_global_id(0);
++	uint const den_id = get_global_id(1);
++	uint const slice_columns = get_global_size(1);
++	uint const den_idx = mad24(slice_id, slice_columns, den_id);
++	uint const syn_ofs = den_idx << syns_per_den_l2;
++
++	int syn_sum = 0;
++	int syn_sum_raw = 0;
++
++	int const n = (1 << syns_per_den_l2);
++
++	for (int i = 0; i < n; i += 1) {
++		char syn_strength = syn_strengths[syn_ofs + i];
++
++		//uchar syn_state = mul24((syn_states[syn_ofs + i] > 0), 1); // ***** *
++		uchar syn_state = syn_states[syn_ofs + i]; // ***** *
++
++		//syn_sum += syn_state; // ***** **
++		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); // ***** **
++		
++		syn_sum_raw += syn_state;
++	}
++	
++	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
++
++
++	//den_states_raw[den_idx] = clamp(syn_sum_raw, 0, 255); // ***** ***
++	//den_states[den_idx] = clamp(syn_sum, 0, 255); // ***** ****
++	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255); // ***** ***
++	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); // ***** ****
++}
++
++
+ /*	FOR LATER:
+ *
+ *	NEEDS REWRITE
+@@ -366,11 +412,12 @@ __kernel void syns_cycle(
+ *	IMPLEMENT LEARNING REATTACHMENT
+ *
+ */
+-__kernel void den_cycle(
++__kernel void den_cycle_original(
+ 	__global uchar const* const syn_states,
+ 	__global char const* const syn_strengths,
+ 	__private uint const syns_per_den_l2,
+ 	__private uint const den_threshold,
++	__global uchar* const den_energies,
+ 	__global uchar* const den_states_raw,
+ 	__global uchar* const den_states
+ ) {
+@@ -380,6 +427,8 @@ __kernel void den_cycle(
+ 	uint const den_idx = mad24(slice_id, slice_columns, den_id);
+ 	uint const syn_ofs = den_idx << syns_per_den_l2;
+ 
++	uchar den_energy = den_energies[den_idx];
++
+ 	int syn_sum = 0;
+ 	int syn_sum_raw = 0;
+ 
+@@ -399,11 +448,27 @@ __kernel void den_cycle(
+ 	
+ 	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
+ 
++	//uchar den_state = clamp((syn_sum >> 7), 0, 255);
++	
++	// EXPERIMENTAL ENERGY CODE
++	/*if (syn_sum > 0) {
++		if (den_energy >= ENERGY_DRAIN) {
++			//den_state = syn_sum;
++			den_energy -= ENERGY_DRAIN;
++		} else {
++			den_state = 0;
++			den_energy += ENERGY_RECHARGE;
++		}
++	} else {
++		if (den_energy < 255) {
++			den_energy += ENERGY_RECHARGE;
++		}
++	}*/
+ 
+-	//den_states_raw[den_idx] = clamp(syn_sum_raw, 0, 255); // ***** ***
+-	//den_states[den_idx] = clamp(syn_sum, 0, 255); // ***** ****
+-	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255); // ***** ***
+-	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); // ***** ****
++
++	den_energies[den_idx] = den_energy;
++	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255);
++	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); 
+ }
+ 
+ 
+@@ -710,7 +775,7 @@ __kernel void pyrs_ltp_unoptd(
+ 	__global uchar const* const axn_states,
+ 	__global uchar const* const pyr_fuzs,
+ 	__global uchar const* const pyr_best1_den_ids,
+-	__global uchar const* const pyr_best2_den_ids,
++	//__global uchar const* const pyr_best2_den_ids, // ***** SLATED FOR REMOVAL
+ 	__global uchar const* const den_states,
+ 	__global uchar const* const syn_states,
+ 	__private uint const pyr_axn_idx_base, 
+@@ -742,7 +807,7 @@ __kernel void pyrs_ltp_unoptd(
+  
+ 	for (uint i = pyr_idz; i < pyr_idn; i++) {
+ 		uchar pyr_best1_den_id = pyr_best1_den_ids[i];
+-		uchar pyr_best2_den_id = pyr_best2_den_ids[i];
++		//uchar pyr_best2_den_id = pyr_best2_den_ids[i]; // ***** SLATED FOR REMOVAL
+ 		//uchar pyr_prev_best1_den_id = pyr_prev_best1_den_ids[i];
+ 		uchar pyr_flag_set = pyr_flag_sets[i];
+ 
+@@ -758,7 +823,7 @@ __kernel void pyrs_ltp_unoptd(
+ 
+ 		uint pyr_syn_idz = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
+ 		uint best1_den_syn_idz = (den_idx_base + pyr_best1_den_id) << syns_per_den_l2;
+-		uint best2_den_syn_idz = (den_idx_base + pyr_best2_den_id) << syns_per_den_l2;
++		//uint best2_den_syn_idz = (den_idx_base + pyr_best2_den_id) << syns_per_den_l2; // ***** SLATED FOR REMOVAL
+ 		//uint prev_best1_den_syn_idz = (den_idx_base + pyr_prev_best1_den_id) << syns_per_den_l2;
+ 
+ 
+@@ -769,9 +834,9 @@ __kernel void pyrs_ltp_unoptd(
+ 
+ 		if (pyr_concrete) {
+ 			if (pyr_prev_fuzzy) { // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + TRAIN NEW DEN
+-				// SAME AS ANO + TRAIN A SECOND REDUNDANT DENDRITE AS WELL
++				// SAME AS ANO + TRAIN A SECOND REDUNDANT DENDRITE AS WELL (OR DON'T)
+ 				dst_syns__active__stp_ltd(syn_states, best1_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+-				dst_syns__active__stp_ltd(syn_states, best2_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
++				//dst_syns__active__stp_ltd(syn_states, best2_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+ 
+ 			} else if (pyr_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+ 				dst_syns__active__stp_ltd(syn_states, best1_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+@@ -905,12 +970,10 @@ __kernel void syns_regrow(
+ }
+ 
+ 
+-/*	PYR_CYCLE():
+ 
+-		- Vectorize
+-*/
+ __kernel void pyr_cycle(
+ 				__global uchar const* const den_states,
++				__global uchar const* const den_states_raw,
+ 				//__private uchar const pyr_axn_slice_base,
+ 				__global uchar* const pyr_energies,
+ 				__global uchar* const pyr_best1_den_ids,
+@@ -938,7 +1001,7 @@ __kernel void pyr_cycle(
+ 	uchar best2_den_id = 0;
+ 	//int active_dendrites = 0;
+ 
+-	uchar den_state = 0;
++	uchar pyr_state = 0;
+ 
+ 	//uint pyr_fuz = pyr_fuzs[pyr_idx];
+ 
+@@ -968,7 +1031,7 @@ __kernel void pyr_cycle(
+ 	if (best1_den_state > 0) {
+ 		if (pyr_energy >= 9) {
+ 			pyr_energy -= 9;
+-			den_state = best1_den_state;
++			pyr_state = best1_den_state;
+ 		} else {
+ 			pyr_energy += 1;
+ 		}
+@@ -984,7 +1047,91 @@ __kernel void pyr_cycle(
+ 	pyr_best1_den_states[pyr_idx] = best1_den_state;
+ 	pyr_best2_den_ids[pyr_idx] = best2_den_id;
+ 	pyr_best2_den_states[pyr_idx] = best2_den_state;
+-	pyr_fuzs[pyr_idx] = den_state;
++	pyr_fuzs[pyr_idx] = pyr_state;
++
++
++	//pyr_fuzs[pyr_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
++	//axn_states[axn_idx] = clamp(den_sum, 0u, 255u);
++
++	//pyr_fuzs[pyr_idx] = clamp(den_sum, 0, 127);
++
++	//pyr_fuzs[pyr_idx] = (den_sum >> 1);
++	//pyr_fuzs[pyr_idx] = active_dendrites;
++}
++
++
++/*	PYR_CYCLE():
++
++		- Vectorize
++*/
++__kernel void pyr_cycle_broken(
++				__global uchar const* const den_states,
++				__global uchar const* const den_states_raw,
++				//__private uchar const pyr_axn_slice_base,
++				__global uchar* const pyr_energies,
++				__global uchar* const pyr_best1_den_ids,
++				__global uchar* const pyr_best1_den_states,
++				__global uchar* const pyr_best2_den_ids,
++				__global uchar* const pyr_best2_den_states,
++				__global uchar* const pyr_fuzs
++				//__global uchar* const axn_states
++) {
++	uint const slice_id = get_global_id(0);
++	uint const col_id = get_global_id(1);
++	uint const slice_columns = get_global_size(1);
++	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
++	uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
++	//uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id);
++	//uint const axn_idx = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
++	//uchar pyr_energy = pyr_energies[pyr_idx];
++
++	//uint den_sum = 0;
++
++	uchar best1_den_state = 0;
++	uchar best1_den_id = 0;
++
++	uchar best2_den_state = 0;
++	uchar best2_den_id = 0;
++	//int active_dendrites = 0;
++
++	uchar den_max = 0; // ***** FUCKED WITH THIS
++
++	//uint pyr_fuz = pyr_fuzs[pyr_idx];
++
++		//#pragma unroll 
++	for (uchar i = 0; i < DENDRITES_PER_CELL_DISTAL; i++) {
++		uchar den_state = den_states[den_ofs + i];
++		uchar den_state_raw = den_states_raw[den_ofs + i]; // ***** FUCKED WITH THIS
++
++		int den_state_bigger = (den_state_raw > best1_den_state);
++
++		best2_den_id = mad24(den_state_bigger, best1_den_id, mul24(!den_state_bigger, best2_den_id));
++		best2_den_state = mad24(den_state_bigger, best1_den_state, mul24(!den_state_bigger, best2_den_state));
++
++		best1_den_id = mad24(den_state_bigger, i, mul24(!den_state_bigger, best1_den_id));
++		best1_den_state = mad24(den_state_bigger, den_state_raw, mul24(!den_state_bigger, best1_den_state));
++
++		//best1_den_state = mul24(den_state_bigger, den_state);
++
++		den_max = max(den_max, den_state); // ***** FUCKED WITH THIS
++
++		//den_sum += den_state;
++		//den_sum += (den_state != 0);
++		//den_sum += (den_state > 0);
++		//active_dendrites += (den_state > 0);
++	}
++	
++	//den_sum = den_sum >> 2;
++
++
++	
++	pyr_best1_den_ids[pyr_idx] = best1_den_id;
++	pyr_best1_den_states[pyr_idx] = best1_den_state;
++	pyr_best2_den_ids[pyr_idx] = best2_den_id;
++	pyr_best2_den_states[pyr_idx] = best2_den_state;
++	pyr_fuzs[pyr_idx] = den_max; // ***** FUCKED WITH THIS
++	//pyr_fuzs[pyr_idx] = best1_den_state;
++
+ 
+ 
+ 	//pyr_fuzs[pyr_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
+diff --git a/src/cmn/cmn.rs b/src/cmn/cmn.rs
+index 293488b..4dfb5bd 100644
+--- a/src/cmn/cmn.rs
++++ b/src/cmn/cmn.rs
+@@ -58,7 +58,7 @@ pub static BGC_LGR: &'static str = "\x1b[47m";
+ pub static BGC_DGR: &'static str = "\x1b[100m";
+ 
+ 
+-pub const SENSORY_CHORD_WIDTH_LOG2: usize = 6; // ******
++pub const SENSORY_CHORD_WIDTH_LOG2: usize = 5;
+ pub const SENSORY_CHORD_WIDTH: u32 = 1 << SENSORY_CHORD_WIDTH_LOG2;
+ 
+ pub const SENSORY_CHORD_HEIGHT_LOG2: usize = 5;
+@@ -86,7 +86,7 @@ pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 4);
+ 
+ 
+ pub const LEARNING_ACTIVE: bool = true;
+-pub const SYNAPSE_STRENGTH_FLOOR: i8 = -10;
++pub const SYNAPSE_STRENGTH_FLOOR: i8 = -15;
+ pub const SYNAPSE_REGROWTH_INTERVAL: usize = 1000;
+ pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;
+ pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
+@@ -573,7 +573,7 @@ pub fn render_sdr(
+ 	io::stdout().flush().ok();
+ 
+ 	loop {
+-		if i_line >= vec_ff.len() { break }
++		if i_line >= vec_out.len() { break }
+ 
+ 		out_line.clear();
+ 
+diff --git a/src/dendrites.rs b/src/dendrites.rs
+index f821341..3ac08c3 100644
+--- a/src/dendrites.rs
++++ b/src/dendrites.rs
+@@ -25,6 +25,7 @@ pub struct Dendrites {
+ 	pub thresholds: Envoy<ocl::cl_uchar>,
+ 	pub states_raw: Envoy<ocl::cl_uchar>,
+ 	pub states: Envoy<ocl::cl_uchar>,
++	pub energies: Envoy<ocl::cl_uchar>,
+ 	pub syns: Synapses,
+ }
+ 
+@@ -59,15 +60,16 @@ impl Dendrites {
+ 		};
+ 
+ 
+-		println!("\n##### New {:?} Dendrites with dims: {:?}", den_kind, dims);
++		print!("\n##### New {:?} Dendrites with dims: {:?}", den_kind, dims);
+ 
+ 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+-
+ 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+ 
+ 		let syns_dims = dims.clone_with_pcl2((dims.per_cel_l2_left() + syns_per_den_l2) as i32);
+ 		let syns = Synapses::new(syns_dims, syns_per_den_l2, den_kind, cell_kind, region, axons, aux, ocl);
+ 
++		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
++
+ 
+ 		//println!("\nsyns_per_den_l2 = {}", syns_per_den_l2);
+ 		let kern_cycle = ocl.new_kernel(den_kernel, WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
+@@ -75,6 +77,7 @@ impl Dendrites {
+ 			.arg_env(&syns.strengths)
+ 			.arg_scl(syns_per_den_l2)
+ 			.arg_scl(den_threshold)
++			.arg_env(&energies)
+ 			.arg_env(&states_raw)
+ 			.arg_env(&states)
+ 		;
+@@ -88,6 +91,7 @@ impl Dendrites {
+ 			thresholds: Envoy::<ocl::cl_uchar>::new(dims, 1, ocl),
+ 			states_raw: states_raw,
+ 			states: states,
++			energies: energies,
+ 			syns: syns,
+ 		}
+ 	}
+diff --git a/src/minicolumns.rs b/src/minicolumns.rs
+index 18b168a..d45baa3 100644
+--- a/src/minicolumns.rs
++++ b/src/minicolumns.rs
+@@ -62,7 +62,7 @@ impl MiniColumns {
+ 
+ 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+ 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+-		println!("\n##### MINICOLUMN dims: {:?}", dims);
++		print!("\n##### MINICOLUMN dims: {:?}", dims);
+ 
+ 		let dens = Dendrites::new(dims, DendriteKind::Proximal, CellKind::SpinyStellate, region, axons, aux, ocl);
+ 
+@@ -112,9 +112,6 @@ impl MiniColumns {
+ 		;
+ 
+ 
+-		println!("\n##### peak_spis.dims.per_slice(): {}", peak_spis.dims.per_slice());
+-
+-
+ 		let kern_ltp = ocl.new_kernel("spi_ltp", WorkSize::TwoDim(dims.depth() as usize, peak_spis.dims.per_slice() as usize))
+ 			.arg_env(&peak_spis.spi_ids)
+ 			.arg_env(&peak_spis.states)
+diff --git a/src/pyramidals.rs b/src/pyramidals.rs
+index cb5f671..80a4e38 100644
+--- a/src/pyramidals.rs
++++ b/src/pyramidals.rs
+@@ -42,7 +42,7 @@ pub struct Pyramidal {
+ 	pub best2_den_states: Envoy<ocl::cl_uchar>,
+ 	pub prev_best1_den_ids: Envoy<ocl::cl_uchar>,
+ 	pub flag_sets: Envoy<ocl::cl_uchar>,
+-	pub energies: Envoy<ocl::cl_uchar>,
++	//pub energies: Envoy<ocl::cl_uchar>,
+ 	pub dens: Dendrites,
+ }
+ 
+@@ -57,6 +57,7 @@ impl Pyramidal {
+ 		//let den_prox_slice = region.slice_ids(vec![col_input_layer.name])[0];
+ 		
+ 		//print!("\n### Pyramidal: Proximal Dendrite Row: {}", den_prox_slice);
++		print!("\n##### PYRAMIDAL dims: {:?}", dims);
+ 
+ 		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+ 
+@@ -75,6 +76,7 @@ impl Pyramidal {
+ 		let kern_cycle = ocl.new_kernel("pyr_cycle", 
+ 			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
+ 			.arg_env(&dens.states)
++			.arg_env(&dens.states_raw)
+ 			//.arg_scl(axn_slice_base)
+ 			.arg_env(&energies)
+ 			.arg_env(&best1_den_ids)
+@@ -107,7 +109,7 @@ impl Pyramidal {
+ 			.arg_env(&axons.states)
+ 			.arg_env(&preds)
+ 			.arg_env(&best1_den_ids)
+-			.arg_env(&best2_den_ids)
++			//.arg_env(&best2_den_ids) // ***** SLATED FOR REMOVAL
+ 			.arg_env(&dens.states)
+ 			.arg_env(&dens.syns.states)
+ 			.arg_scl(axn_idx_base)
+@@ -141,7 +143,7 @@ impl Pyramidal {
+ 			best2_den_states: best2_den_states,
+ 			prev_best1_den_ids: prev_best1_den_ids,
+ 			flag_sets: flag_sets,
+-			energies: energies,
++			//energies: energies,
+ 			dens: dens,
+ 		}
+ 	}
+diff --git a/src/synapses.rs b/src/synapses.rs
+index 76e8fce..e9e11a8 100644
+--- a/src/synapses.rs
++++ b/src/synapses.rs
+@@ -57,8 +57,8 @@ impl Synapses {
+ 		//let slice_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl); // BRING THIS BACK
+ 
+ 
+-		println!("\n##### New {:?} Synapses with dims: {:?}", den_kind, dims);
+-		println!("##### Synapses columns(): {}, per_slice(): {}", dims.columns(), dims.per_slice());
++		print!("\n##### New {:?} Synapses with dims: {:?}", den_kind, dims);
++		//println!("##### Synapses columns(): {}, per_slice(): {}", dims.columns(), dims.per_slice());
+ 
+ 		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
+ 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
+diff --git a/src/tests/input_czar.rs b/src/tests/input_czar.rs
+index f25f0df..3092bdb 100644
+--- a/src/tests/input_czar.rs
++++ b/src/tests/input_czar.rs
+@@ -237,23 +237,24 @@ fn junk_vec_init(scw: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
+ 
+ 
+ 
++mod test {
++	#[test]
++	fn test_input_czar() {
++		let mut ic = super::InputCzar::new(1024, 0..5, false, false, false);
++		//ic.set_counter(5);
+ 
+-#[test]
+-fn test_input_czar() {
+-	let mut ic = InputCzar::new(0..5, false);
+-	//ic.set_counter(5);
++		assert!(ic.counter == 5);
+ 
+-	assert!(ic.counter == 5);
++		ic.tick();
+ 
+-	ic.tick();
++		assert!(ic.counter == 4);
+ 
+-	assert!(ic.counter == 4);
+-
+-	assert!(ic.tick() == 3, format!("(3) ic.counter == {}", ic.counter));
+-	assert!(ic.tick() == 2, format!("(2) ic.counter == {}", ic.counter));
+-	assert!(ic.tick() == 1, format!("(1) ic.counter == {}", ic.counter));
+-	assert!(ic.tick() == 0, format!("(0) ic.counter == {}", ic.counter));
+-	assert!(ic.tick() == 4, format!("(4) ic.counter == {}", ic.counter));
+-	assert!(ic.tick() == 3, format!("(3) ic.counter == {}", ic.counter));
++		assert!(ic.tick() == 3, format!("(3) ic.counter == {}", ic.counter));
++		assert!(ic.tick() == 2, format!("(2) ic.counter == {}", ic.counter));
++		assert!(ic.tick() == 1, format!("(1) ic.counter == {}", ic.counter));
++		assert!(ic.tick() == 0, format!("(0) ic.counter == {}", ic.counter));
++		assert!(ic.tick() == 4, format!("(4) ic.counter == {}", ic.counter));
++		assert!(ic.tick() == 3, format!("(3) ic.counter == {}", ic.counter));
+ 
++	}
+ }
+diff --git a/src/tests/interactive.rs b/src/tests/interactive.rs
+index 64c1fe2..527e0eb 100644
+--- a/src/tests/interactive.rs
++++ b/src/tests/interactive.rs
+@@ -25,7 +25,7 @@ pub const PRINT_DETAILS_EVERY: i32		= 10000;
+ pub const SHUFFLE_ONCE: bool 			= true;
+ pub const SHUFFLE_EVERY: bool 			= false;
+ 
+-pub const TOGGLE_DIRS: bool 				= false;
++pub const TOGGLE_DIRS: bool 				= true;
+ pub const INTRODUCE_NOISE: bool 			= false;
+ pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
+ pub const COUNTER_RANDOM: bool				= false;
+diff --git a/src/tests/output_czar.rs b/src/tests/output_czar.rs
+index cae1c9f..a36c916 100644
+--- a/src/tests/output_czar.rs
++++ b/src/tests/output_czar.rs
+@@ -174,7 +174,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
+ 
+ 
+ 	/* AXON STATES (ALL) */
+-	if false {
++	if true {
+ 		print!("\nAXON STATES: ");
+ 		cortex.cortical_area.axns.states.print((1 << 4) as usize, Some((1, 255)), None, true);
+ 

@@ -60,11 +60,11 @@
 		cortex.cortical_area.mcols.dens.syns.src_ofs.print_val_range(1 << 12, -128, 127);*/
 
 		/*if false {
-			print!("\nsoma.bsl_dst_dens.syns.src_col_x_offs:");
-			cortex.cortical_area.soma.bsl_dst_dens.syns.src_col_x_offs.print(1 << 14);		// 16384
+			print!("\nsoma.bsl_dst_dens.syns.src_col_xy_offs:");
+			cortex.cortical_area.soma.bsl_dst_dens.syns.src_col_xy_offs.print(1 << 14);		// 16384
 
-			print!("\ncols.bsl_prx_dens.syns.src_col_x_offs:");
-			cortex.cortical_area.mcols.bsl_prx_dens.syns.src_col_x_offs.print(1 << 16);
+			print!("\ncols.bsl_prx_dens.syns.src_col_xy_offs:");
+			cortex.cortical_area.mcols.bsl_prx_dens.syns.src_col_xy_offs.print(1 << 16);
 		}*/
 
 		/* SYNAPSE AXN_ROW_IDS */

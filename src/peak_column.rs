@@ -36,7 +36,9 @@ impl PeakColumns {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
-		let dims = CorticalDimensions::new(col_dims.width() >> cmn::ASPINY_SPAN_LOG2, col_dims.height(), col_dims.depth(), 0);
+		//let dims = CorticalDimensions::new(col_dims.width_l2(), col_dims.height_l2(), col_dims.depth(), 0);
+
+		let dims = col_dims.clone_with_pcl2(0 - cmn::ASPINY_SPAN_LOG2 as i8);
 
 		let padding = cmn::ASPINY_SPAN;
 
@@ -44,21 +46,21 @@ impl PeakColumns {
 		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, 0u8, ocl);
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
 
-		let mut kern_cycle_pre = ocl.new_kernel("peak_spi_cycle_pre", 
+		let mut kern_cycle_pre = ocl.new_kernel("peak_sst_cycle_pre", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&src_states)
 			.arg_env(&states)
 			.arg_env(&spi_ids)
 		;
 
-		let mut kern_cycle_wins = ocl.new_kernel("peak_spi_cycle_wins", 
+		let mut kern_cycle_wins = ocl.new_kernel("peak_sst_cycle_wins", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&states)
 			//.arg_env(&spi_ids)
 			.arg_env(&wins)
 		;
 
-		let mut kern_cycle_post = ocl.new_kernel("peak_spi_cycle_post", 
+		let mut kern_cycle_post = ocl.new_kernel("peak_sst_cycle_post", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&wins)
 			//.arg_env(&spi_ids)
@@ -83,7 +85,7 @@ impl PeakColumns {
 
 		//println!("\n### New aspiny.cycle() iteration: ###");
 
-		for i in 0..4 { // ***** (was 0..8)
+		for i in 0..4 { // <<<<< (was 0..8)
 			self.kern_cycle_wins.enqueue(); 
 		}
 

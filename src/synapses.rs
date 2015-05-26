@@ -30,7 +30,7 @@ use std::fmt::{ Display };
 pub struct Synapses {
 	pub dims: CorticalDimensions, // RETURN THIS TO PRIVATE (synapse_drill_down is accessing it)
 	//per_cell_l2: u32,
-	per_den_l2: u32,
+	per_den_l2: u8,
 	den_kind: DendriteKind,
 	cell_kind: CellKind,
 	since_decay: usize,
@@ -40,32 +40,32 @@ pub struct Synapses {
 	pub states: Envoy<ocl::cl_uchar>,
 	pub strengths: Envoy<ocl::cl_char>,
 	pub src_slice_ids: Envoy<ocl::cl_uchar>,
-	pub src_col_x_offs: Envoy<ocl::cl_char>,
+	pub src_col_xy_offs: Envoy<ocl::cl_char>,
 	//pub src_col_y_offs: Envoy<ocl::cl_char>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
 	//pub slice_pool: Envoy<ocl::cl_uchar>,  // BRING THIS BACK
 }
 
 impl Synapses {
-	pub fn new(dims: CorticalDimensions, per_den_l2: u32, den_kind: DendriteKind, cell_kind: CellKind, 
+	pub fn new(dims: CorticalDimensions, per_den_l2: u8, den_kind: DendriteKind, cell_kind: CellKind, 
 					region: &ProtoRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
 
-		//let syns_per_slice = dims.columns() << dims.per_cel_l2_left();
+		//let syns_per_slice = dims.columns() << dims.per_cel_l2_left().unwrap();
 		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
 
 
 		//let slice_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl); // BRING THIS BACK
 
 
-		println!("\n##### New {:?} Synapses with dims: {:?}", den_kind, dims);
-		println!("##### Synapses columns(): {}, per_slice(): {}", dims.columns(), dims.per_slice());
+		print!("\n##### New {:?} Synapses with dims: {:?}", den_kind, dims);
+		//println!("##### Synapses columns(): {}, per_slice(): {}", dims.columns(), dims.per_slice());
 
 		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let mut src_slice_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 		// SRC COL REACHES SHOULD BECOME CONSTANTS
-		let mut src_col_x_offs = Envoy::<ocl::cl_char>::shuffled(dims, -126, 126, ocl); 
+		let mut src_col_xy_offs = Envoy::<ocl::cl_char>::shuffled(dims, -126, 126, ocl); 
 		//let mut src_col_y_offs = Envoy::<ocl::cl_char>::shuffled(dims, -31, 31, ocl);
 
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
@@ -75,10 +75,10 @@ impl Synapses {
 			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 			.arg_env(&axons.states)
-			.arg_env(&src_col_x_offs)
+			.arg_env(&src_col_xy_offs)
 			.arg_env(&src_slice_ids)
 			//.arg_env(&strengths)
-			.arg_scl(dims.per_cel_l2_left())
+			.arg_scl(dims.per_cel_l2_left().unwrap())
 			.arg_env(&aux.ints_0)
 			//.arg_env(&aux.ints_1)
 			.arg_env(&states)
@@ -90,11 +90,11 @@ impl Synapses {
 			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 			.arg_env(&strengths)
-			.arg_scl(per_den_l2)
+			.arg_scl(per_den_l2 as u32)
 			.arg_scl_named(0u32, "rnd")
 			//.arg_env(&aux.ints_0)
 			//.arg_env(&aux.ints_1)
-			.arg_env(&src_col_x_offs)
+			.arg_env(&src_col_xy_offs)
 			.arg_env(&src_slice_ids)
 		;
 
@@ -113,7 +113,7 @@ impl Synapses {
 			states: states,
 			strengths: strengths,
 			src_slice_ids: src_slice_ids,
-			src_col_x_offs: src_col_x_offs,
+			src_col_xy_offs: src_col_xy_offs,
 			//src_col_y_offs: src_col_y_offs,
 			flag_sets: flag_sets,
 			//slice_pool: slice_pool,  // BRING THIS BACK
@@ -126,8 +126,12 @@ impl Synapses {
 	}
 
 	fn grow(&mut self, region: &ProtoRegion, init: bool) {
+		if false && !init {
+			print!("\nRG:{:?}: ", self.den_kind);
+		}
+
 		assert!(
-			(self.src_col_x_offs.dims.per_slice() == self.src_slice_ids.dims.per_slice()) 
+			(self.src_col_xy_offs.dims.per_slice() == self.src_slice_ids.dims.per_slice()) 
 			&& ((self.src_slice_ids.dims.per_slice() == (self.dims.per_slice()))), 
 			"[cortical_area::Synapses::init(): dims.columns() mismatch]"
 		);
@@ -140,7 +144,7 @@ impl Synapses {
 
 		/* LOOP THROUGH ALL LAYERS */
 		for (&layer_name, layer) in region.layers().iter() {
-			let src_slice_ids: Vec<u8> = match layer.kind {
+			/*let src_slice_ids_opt: Vec<u8> = match layer.kind {
 				ProtoLayerKind::Cellular(ref cell) => {
 					if cell.cell_kind == self.cell_kind {
 						region.src_slice_ids(layer_name, self.den_kind)
@@ -149,6 +153,11 @@ impl Synapses {
 					}
 				},
 				_ => continue,
+			};*/
+
+			let src_slice_ids = match self.src_slice_ids(layer_name, layer, region) {
+				Some(ssids) => ssids,
+				None 		=> continue,
 			};
 
 			let slice_ids = region.slice_ids(vec!(layer_name));
@@ -158,12 +167,12 @@ impl Synapses {
 
 			let kind_base_slice_pos = layer.kind_base_slice_pos;
 			let src_slice_idx_range: Range<usize> = Range::new(0, src_slice_ids_len);
-			let src_col_x_offs_range: Range<i8> = Range::new(-126, 127);
+			let src_col_xy_offs_range: Range<i8> = Range::new(-126, 127);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
 
 			//println!("\n##### SYNAPSE DIMS: {:?}", self.dims);
 			
-			assert!(src_slice_ids_len <= (self.dims.per_cel()) as usize, "cortical_area::Synapses::init(): Number of source slices must not exceed number of synapses per cell.");
+			assert!(src_slice_ids_len <= (self.dims.per_cel().unwrap()) as usize, "cortical_area::Synapses::init(): Number of source slices must not exceed number of synapses per cell.");
 
 			if init {
 				print!("\n    syns.init(): \"{}\" ({:?}): slice_ids: {:?}, src_slice_ids: {:?}", layer_name, self.den_kind, slice_ids, src_slice_ids);
@@ -187,19 +196,19 @@ impl Synapses {
 				for i in ei_start..ei_end {
 					if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
 
-						self.regrow_syn(i, &src_slice_idx_range, &src_col_x_offs_range,
-							&strength_init_range, &src_slice_ids);
+						self.regrow_syn(i, &src_slice_idx_range, &src_col_xy_offs_range,
+							&strength_init_range, &src_slice_ids, init);
 
 						//self.src_slice_ids[i] = src_slice_ids[src_slice_idx_range.ind_sample(&mut self.rng)];
-						//self.src_col_x_offs[i] = src_col_x_offs_range.ind_sample(&mut self.rng);
-						//self.strengths[i] = (self.src_col_x_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+						//self.src_col_xy_offs[i] = src_col_xy_offs_range.ind_sample(&mut self.rng);
+						//self.strengths[i] = (self.src_col_xy_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
 					}
 				}
 			}
 		}
 
 		self.strengths.write();
-		self.src_col_x_offs.write();
+		self.src_col_xy_offs.write();
 		self.src_slice_ids.write();		
 	}
 
@@ -208,10 +217,9 @@ impl Synapses {
 	}
 
 	pub fn regrow(&mut self, region: &ProtoRegion) {
-		/*let rnd = self.rng.gen::<u32>();
-		//print!("\nRegrowing with rnd: {}", rnd);
-		self.kern_regrow.set_named_arg("rnd", rnd);
-		self.kern_regrow.enqueue();*/
+		//let rnd = self.rng.gen::<u32>();
+		//self.kern_regrow.set_named_arg("rnd", rnd);
+		//self.kern_regrow.enqueue();
 
 		self.grow(region, false);
 	}
@@ -220,40 +228,69 @@ impl Synapses {
 		self.states.read();
 		self.strengths.read();
 		self.src_slice_ids.read();
-		self.src_col_x_offs.read();
+		self.src_col_xy_offs.read();
 	} 
 
 	/*pub fn width(&self) -> u32 {
 		self.width
 	}*/
 
+	pub fn src_slice_ids(&self, layer_name: &'static str, layer: &ProtoLayer, region: &ProtoRegion) -> Option<Vec<u8>> {
+		match layer.kind {
+			ProtoLayerKind::Cellular(ref cell) => {
+				if cell.cell_kind == self.cell_kind {
+					Some(region.src_slice_ids(layer_name, self.den_kind))
+				} else {
+					None
+				}
+			},
+			_ => None,
+		}
+	}
+
+	pub fn den_kind(&self) -> DendriteKind {
+		self.den_kind.clone()
+	}
 
 	// NEEDS SERIOUS OPTIMIZATION
 	fn regrow_syn(&mut self, 
 				syn_idx: usize, 
 				src_slice_idx_range: &Range<usize>, 
-				src_col_x_offs_range: &Range<i8>,
+				src_col_xy_offs_range: &Range<i8>,
 				strength_init_range: &Range<i8>,
-				src_slice_ids: &Vec<u8>
+				src_slice_ids: &Vec<u8>,
+				init: bool,
 	) {
 		//let src_slice_idx_range: Range<usize> = Range::new(0, src_slice_ids.len());
-		//let src_col_x_offs_range: Range<i8> = Range::new(-127, 127);
+		//let src_col_xy_offs_range: Range<i8> = Range::new(-127, 127);
 		//let strength_init_range: Range<i8> = Range::new(-3, 4);
 
 		//let src_slice_id
 		//let src_col_x_off
 		//let strength
+		let mut print_str: String = String::with_capacity(10);
+
+		let mut tmp_str = format!("[({})({})({})=>", self.src_slice_ids[syn_idx], self.src_col_xy_offs[syn_idx],  self.strengths[syn_idx]);
+		print_str.push_str(&tmp_str);
 
 		for i in 0..200 {
 			self.src_slice_ids[syn_idx] = src_slice_ids[src_slice_idx_range.ind_sample(&mut self.rng)];
-			self.src_col_x_offs[syn_idx] = src_col_x_offs_range.ind_sample(&mut self.rng);
-			self.strengths[syn_idx] = (self.src_col_x_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+			self.src_col_xy_offs[syn_idx] = src_col_xy_offs_range.ind_sample(&mut self.rng);
+			self.strengths[syn_idx] = (self.src_col_xy_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
 
 			if self.unique_src_addr(syn_idx) {
+				print_str.push_str("$");
 				break;
 			} else {
-				//print!("[nu]");
+				print_str.push_str("^");
 			}
+		}
+
+		tmp_str = format!("=>({})({})({})] ", self.src_slice_ids[syn_idx], self.src_col_xy_offs[syn_idx],  self.strengths[syn_idx]);
+		print_str.push_str(&tmp_str);
+
+		if false && !init {
+			print!("{}", print_str);
 		}
 	}
 
@@ -263,7 +300,7 @@ impl Synapses {
 
 		for i in syn_idx_den_init..syn_idx_den_n {
 			if (self.src_slice_ids[syn_idx] == self.src_slice_ids[i]) 
-				&& (self.src_col_x_offs[syn_idx] == self.src_col_x_offs[i])
+				&& (self.src_col_xy_offs[syn_idx] == self.src_col_xy_offs[i])
 				&& (i != syn_idx)
 			{
 				return false;
@@ -272,6 +309,8 @@ impl Synapses {
 
 		true
 	}
+
+
 
 	/* REFRESH_ROW_POOL(): Pretty much being refactored into the new regrow
 		- read

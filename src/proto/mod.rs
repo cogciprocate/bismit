@@ -1,7 +1,10 @@
-//pub use self::regions;
-//pub use self::areas;
-//pub use self::layer;
-//pub use self::cell;
+
+pub use self::regions::{ ProtoRegion, ProtoRegions, ProtoRegionKind };
+pub use self::areas::{ ProtoAreas, ProtoAreasTrait, ProtoArea };
+pub use self::layer::{ ProtoLayer };
+	pub use self::layer::ProtoLayerKind::{ Cellular, Axonal };
+	pub use self::layer::AxonKind::{ Spatial, Horizontal };
+pub use self::cell::{ CellKind, Protocell, DendriteKind, CellFlags };
 
 pub mod regions;
 pub mod areas;

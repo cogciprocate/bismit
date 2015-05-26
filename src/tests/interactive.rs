@@ -1,7 +1,7 @@
 
 use super::output_czar;
 use super::synapse_drill_down;
-use super::input_czar::{ self, InputCzar };
+use super::input_czar::{ self, InputCzar, InputVecKind };
 use cortex::{ self, Cortex };
 use ocl;
 use cmn;
@@ -22,10 +22,8 @@ use time;
 pub const INITIAL_TEST_ITERATIONS: i32 	= 1; 
 pub const STATUS_EVERY: i32 			= 5000;
 pub const PRINT_DETAILS_EVERY: i32		= 10000;
-pub const SHUFFLE_ONCE: bool 			= true;
-pub const SHUFFLE_EVERY: bool 			= false;
 
-pub const TOGGLE_DIRS: bool 				= false;
+pub const TOGGLE_DIRS: bool 				= true;
 pub const INTRODUCE_NOISE: bool 			= false;
 pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
 pub const COUNTER_RANDOM: bool				= false;
@@ -37,12 +35,9 @@ pub const COUNTER_RANDOM: bool				= false;
 			- Or just be lazy and leave it the beautiful disaster that it is...	
 */
 pub fn run() -> bool {
-	let sc_columns = cmn::SENSORY_CHORD_AREA;
-	let mut cortex = cortex::Cortex::new();
-
-
-	let mut input_czar = InputCzar::new(sc_columns, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
-
+	let mut cortex = cortex::Cortex::new(cortex::define_protoregions(), cortex::define_protoareas());
+	let sc_columns = cortex.cortical_area.dims.columns();
+	let mut input_czar = InputCzar::new(sc_columns, InputVecKind::World, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
 
 	let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(sc_columns as usize).collect();
 	let mut vec_ff_prev: Vec<u8> = iter::repeat(0).take(sc_columns as usize).collect();
@@ -115,7 +110,7 @@ pub fn run() -> bool {
 
 		} else if "t\n" == in_string {
 			bypass_act = true;
-			let in_s = rin(format!("tests: [p]yrs [m]cols [f]ract"));
+			let in_s = rin(format!("tests: [p]yrs [m]cols [f]ract check[s]yns"));
 
 			if "p\n" == in_s {
 				synapse_drill_down::print_pyrs(&mut cortex);
@@ -124,6 +119,11 @@ pub fn run() -> bool {
 				//test_iters = TEST_ITERATIONS;
 			} else if "m\n" == in_s {
 				synapse_drill_down::print_mcols(&mut cortex);
+				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
+				continue;
+				//test_iters = TEST_ITERATIONS;
+			} else if "s\n" == in_s {
+				output_czar::check_synapses(&mut cortex);
 				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
 				continue;
 				//test_iters = TEST_ITERATIONS;
@@ -224,8 +224,8 @@ pub fn run() -> bool {
 			if i >= (test_iters) { break; }
 
 			let (out_start, out_end) = cortex.cortical_area.mcols.axn_output_range();
-			//println!("##### out_start: {}, out_end: {}", out_start, out_end);
 			let axn_space_len = cortex.cortical_area.axns.states.vec.len();
+			//println!("\n##### out_start: {}, out_end: {}, axn_space_len: {}", out_start, out_end, axn_space_len);
 
 			{
 				let out_slice_prev = &cortex.cortical_area.axns.states.vec[out_start..(out_end + 1)];
@@ -261,11 +261,11 @@ pub fn run() -> bool {
 			let out_slice = &cortex.cortical_area.axns.states.vec[out_start..(out_end + 1)];
 			let ff_slice = &cortex.cortical_area.mcols.dens.states.vec[..];
 
-			cmn::render_sdr(out_slice, Some(ff_slice), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.cortical_area.slice_map, true);
+			cmn::render_sdr(out_slice, Some(ff_slice), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.cortical_area.slice_map, true, cortex.cortical_area.dims.columns());
 
 			if view_all_axons {
 				print!("\n\nAXON SPACE:\n");
-				cmn::render_sdr(&cortex.cortical_area.axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.cortical_area.slice_map, true);
+				cmn::render_sdr(&cortex.cortical_area.axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.cortical_area.slice_map, true, cortex.cortical_area.dims.columns());
 			}
 
 			i += 1;

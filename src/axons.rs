@@ -57,11 +57,11 @@ impl Axons {
 				width, 1 << syn_span_lin_l2, depth_axn_hrz, hrz_frames_per_slice, hrz_axn_slices);*/
 		}
 
-		println!("##### Axon depth_total: {}", depth_total);
+		//println!("##### Axon depth_total: {}", depth_total);
 
 		let dims = area_dims.clone_with_depth(depth_total);
 
-		println!("##### Axon dims: {:?}", dims);
+		//println!("##### Axon dims: {:?}", dims);
 
 		let padding: u32 = (cmn::SYNAPSE_SPAN_LIN) as u32;
 		

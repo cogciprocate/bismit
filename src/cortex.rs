@@ -3,9 +3,8 @@ use cmn;
 use chord::{ Chord };
 use cortical_area:: { self, CorticalArea };
 use proto::regions::{ self, ProtoRegion, ProtoRegions, ProtoRegionKind };
-use proto::areas::{ self, ProtoAreas, ProtoArea, AddNew };
-use proto::layer as layer;
-use proto::layer::{ ProtoLayer };
+use proto::areas::{ self, ProtoAreas, ProtoAreasTrait, ProtoArea };
+use proto::layer::{ self, ProtoLayer };
 	use proto::layer::ProtoLayerKind::{ Cellular, Axonal };
 	use proto::layer::AxonKind::{ Spatial, Horizontal };
 use proto::cell::{ CellKind, Protocell, DendriteKind, CellFlags };
@@ -36,27 +35,27 @@ pub fn define_protoregions() -> ProtoRegions {
 		//.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
 		.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
 
+		.freeze()
 	;
 
-	sen.freeze();
 	cort_regs.add(sen);
 	cort_regs
 }
 
-pub fn define_protoareas(protoregions: &ProtoRegions) -> ProtoAreas {
-	let mut protoareas: ProtoAreas = HashMap::new();
+pub fn define_protoareas() -> ProtoAreas {
+	let mut protoareas = ProtoAreas::new()
+		.area("v1", 6, 5, ProtoRegionKind::Sensory)
+	;
 	//let mut curr_offset: u32 = 128;
-	let cort_reg_type = ProtoRegionKind::Sensory;
-
-	let ref protoregion = &protoregions[&cort_reg_type];
+	/*let region_kind = ProtoRegionKind::Sensory;
 
 	let mut v1 = ProtoArea { 
 		name: "v1",
-		dims: CorticalDimensions::new(cmn::SENSORY_CHORD_WIDTH, cmn::SENSORY_CHORD_HEIGHT, protoregion.depth_total(), 0),
-		cort_reg_type: cort_reg_type,
+		dims: CorticalDimensions::new(cmn::SENSORY_CHORD_WIDTH, cmn::SENSORY_CHORD_HEIGHT, 0, 0),
+		region_kind: region_kind,
 	};
 
-	protoareas.add(v1);
+	protoareas.add(v1);*/
 
 	protoareas
 }
@@ -70,12 +69,12 @@ pub struct Cortex {
 }
 
 impl Cortex {
-	pub fn new() -> Cortex {
+	pub fn new(protoregions: ProtoRegions, protoareas: ProtoAreas) -> Cortex {
 		print!("\nInitializing Cortex... ");
 		let time_start = time::get_time();		
 
 		let protoregions = define_protoregions();
-		let protoareas = define_protoareas(&protoregions);
+		//let protoareas = define_protoareas();
 
 		let hrz_demarc = protoregions[&ProtoRegionKind::Sensory].hrz_demarc();
 		let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", hrz_demarc as i32);
@@ -104,23 +103,33 @@ impl Cortex {
 
 	pub fn sense(&mut self, sgmt_idx: usize, layer_target: &'static str, chord: &Chord) {
 		let mut vec: Vec<ocl::cl_uchar> = chord.unfold();
-
 		self.sense_vec(sgmt_idx, layer_target, &vec);
+		panic!("SLATED FOR REMOVAL");
 	}
 
 	/* WRITE_VEC(): 
-			TODO: VALIDATE "layer_target, OTHERWISE: 
-				- thread '<main>' panicked at '[protoregions::ProtoRegion::index(): 
-				invalid layer name: "pre_thal"]', src/protoregions.rs:339
-					- Just have slice_ids return an option<u8>
+			TODO: 
+				- VALIDATE "layer_target, OTHERWISE: 
+					- thread '<main>' panicked at '[protoregions::ProtoRegion::index(): 
+					invalid layer name: "pre_thal"]', src/protoregions.rs:339
+						- Just have slice_ids return an option<u8>
+				- Handle multi-slice input vectors (for input compression, etc.)
+					- Update assert statement to support this
 	*/
 	pub fn write_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
 		let ref region = self.protoregions[&ProtoRegionKind::Sensory];
-		let axn_slice = region.slice_ids(vec!(layer_target))[0];
-		let buffer_offset = cmn::axn_idx_2d(axn_slice, self.cortical_area.dims.columns(), region.hrz_demarc()) as usize;
-		//let buffer_offset = cmn::SYNAPSE_REACH_LIN + (axn_slice as usize * self.cortical_area.axns.dims.width as usize);
+		let axn_slices: Vec<u8> = region.slice_ids(vec!(layer_target));
 
-		ocl::enqueue_write_buffer(&vec, self.cortical_area.axns.states.buf, self.ocl.command_queue, buffer_offset);
+		for slice in axn_slices { 
+			let buffer_offset = cmn::axn_idx_2d(slice, self.cortical_area.dims.columns(), region.hrz_demarc()) as usize;
+			//let buffer_offset = cmn::SYNAPSE_REACH_LIN + (axn_slice as usize * self.cortical_area.axns.dims.width as usize);
+
+			//println!("##### write_vec(): {} offset: axn_idx_2d(axn_slice: {}, dims.columns(): {}, region.hrz_demarc(): {}): {}, vec.len(): {}", layer_target, slice, self.cortical_area.dims.columns(), region.hrz_demarc(), buffer_offset, vec.len());
+
+			//assert!(vec.len() <= self.cortical_area.dims.columns() as usize); // <<<<< NEEDS CHANGING (for multi-slice inputs)
+
+			ocl::enqueue_write_buffer(&vec, self.cortical_area.axns.states.buf, self.ocl.command_queue, buffer_offset);
+		}
 	}
 
 

@@ -39,10 +39,11 @@ mod cortex;
 //mod test_miccos;
 //mod test_readback;
 //mod test_3;
-mod tests;
 mod proto;
 mod energy;
 
+//#[cfg(test)]
+mod tests;
 
 //use num::Integer;
 

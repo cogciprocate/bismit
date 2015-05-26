@@ -58,35 +58,27 @@ pub static BGC_LGR: &'static str = "\x1b[47m";
 pub static BGC_DGR: &'static str = "\x1b[100m";
 
 
-pub const SENSORY_CHORD_WIDTH_LOG2: usize = 6; // ******
+pub const SENSORY_CHORD_WIDTH_LOG2: usize = 5;
 pub const SENSORY_CHORD_WIDTH: u32 = 1 << SENSORY_CHORD_WIDTH_LOG2;
-
 pub const SENSORY_CHORD_HEIGHT_LOG2: usize = 5;
 pub const SENSORY_CHORD_HEIGHT: u32 = 1 << SENSORY_CHORD_HEIGHT_LOG2; 
+pub const SENSORY_CHORD_COLUMNS_LOG2: usize = SENSORY_CHORD_WIDTH_LOG2 + SENSORY_CHORD_HEIGHT_LOG2;
+pub const SENSORY_CHORD_COLUMNS: u32 = 1 << SENSORY_CHORD_COLUMNS_LOG2; 
 
-pub const SENSORY_CHORD_AREA_LOG2: usize = SENSORY_CHORD_WIDTH_LOG2 + SENSORY_CHORD_HEIGHT_LOG2;
-pub const SENSORY_CHORD_AREA: u32 = 1 << SENSORY_CHORD_AREA_LOG2; 
-
-
-pub const DENDRITES_PER_CELL_DISTAL_LOG2: u32 = 2;
-pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2;
-
-pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u32 = 4;
-pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
-
-pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u32 = 0;
-pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 << DENDRITES_PER_CELL_PROXIMAL_LOG2;
-
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u32 = 5;
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
-
+pub const DENDRITES_PER_CELL_DISTAL_LOG2: u8 = 3;
+pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2 as u32;
+pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u8 = 4;
+pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2 as u32;
+pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u8 = 0;
+pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 << DENDRITES_PER_CELL_PROXIMAL_LOG2 as u32;
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u8 = 5;
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as u32;
 
 pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 300;
 pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 4);
 
-
 pub const LEARNING_ACTIVE: bool = true;
-pub const SYNAPSE_STRENGTH_FLOOR: i8 = -10;
+pub const SYNAPSE_STRENGTH_FLOOR: i8 = -15;
 pub const SYNAPSE_REGROWTH_INTERVAL: usize = 1000;
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;
 pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
@@ -139,9 +131,9 @@ pub const SYNAPSE_ROW_POOL_SIZE: u32 = 256;
 //pub const PRX_DEN_BOOST_LOG2: u8 = 0;
 
 
-pub const ASPINY_REACH_LOG2: usize 			= 2;
+pub const ASPINY_REACH_LOG2: u8 			= 2;
 pub const ASPINY_REACH:	u32					= 1 << ASPINY_REACH_LOG2;
-pub const ASPINY_SPAN_LOG2: usize 			= ASPINY_REACH_LOG2 + 1;
+pub const ASPINY_SPAN_LOG2: u8 				= ASPINY_REACH_LOG2 + 1;
 pub const ASPINY_SPAN: u32	 				= 1 << ASPINY_SPAN_LOG2;
 pub const ASPINY_HEIGHT: u8 = 1;
 pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
@@ -195,7 +187,7 @@ pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxe
 
 pub fn build_options() -> ocl::BuildOptions {
 
-	assert!(SENSORY_CHORD_AREA % SYNAPSE_SPAN_LIN == 0);
+	assert!(SENSORY_CHORD_COLUMNS % SYNAPSE_SPAN_LIN == 0);
 
 	assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
 	assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
@@ -531,6 +523,7 @@ pub fn render_sdr(
 			vec_ff_prev_opt: Option<&[u8]>,
 			slice_map: &BTreeMap<u8, &'static str>,
 			print: bool,
+			sdr_len: u32,
 ) -> f32 {
 	let vec_ff = match vec_ff_opt {
 		Some(v) => v,
@@ -568,12 +561,13 @@ pub fn render_sdr(
 	let mut out_line: String = String::with_capacity(line_character_width);
 	let mut i_line = 0usize;
 	let mut i_global = 0usize;
+	let mut i_cort_area = 0u8;
 
 	print!("\n");
 	io::stdout().flush().ok();
 
 	loop {
-		if i_line >= vec_ff.len() { break }
+		if i_line >= vec_out.len() { break }
 
 		out_line.clear();
 
@@ -636,13 +630,14 @@ pub fn render_sdr(
 
 
 		if print {
-			if ((i_global & 0xF) == 00) && (vec_ff.len() > SENSORY_CHORD_AREA as usize) {
-				let slice_id = (i_global >> 4) as u8;
+			if ((i_line & (sdr_len - 1) as usize) == 0) && (vec_ff.len() > sdr_len as usize) {
+				let slice_id = (i_cort_area) as u8;
 				let slice_name = match slice_map.get(&slice_id) {
 					Some(&name) => name,
 					None => "<render_sdr(): slice name not found in map>",
 				};
 				println!("\n[{}: {}]", slice_id, slice_name);
+				i_cort_area += 1;
 			}
 			
 			println!("{}", out_line);
@@ -800,28 +795,33 @@ pub fn wrap_idx(idx: usize, len: usize) -> usize {
 
 
 
+#[cfg(test)]
+mod tests {
+
+	use super::*;
 
 
-#[test]
-fn test_axn_idx_2d() {
-	assert!(axn_idx_2d(1, 1024, 4) == 1024u32 + SYNAPSE_REACH_LIN as u32);
-	assert!(axn_idx_2d(5, 1024, 4) == 4096u32 + SYNAPSE_SPAN_LIN + SYNAPSE_REACH_LIN as u32);
-	assert!(axn_idx_2d(15, 1024, 4) == 4096u32 + (11 * SYNAPSE_SPAN_LIN) + SYNAPSE_REACH_LIN as u32);
+	#[test]
+	fn test_axn_idx_2d() {
+		assert!(axn_idx_2d(1, 1024, 4) == 1024u32 + SYNAPSE_REACH_LIN as u32);
+		assert!(axn_idx_2d(5, 1024, 4) == 4096u32 + SYNAPSE_SPAN_LIN + SYNAPSE_REACH_LIN as u32);
+		assert!(axn_idx_2d(15, 1024, 4) == 4096u32 + (11 * SYNAPSE_SPAN_LIN) + SYNAPSE_REACH_LIN as u32);
 
-}
+	}
 
-#[test]
-fn test_wrap_idx() {
-	assert!(wrap_idx(50, 40) == 10);
-	assert!(wrap_idx(30, 40) == 30);
-}
+	#[test]
+	fn test_wrap_idx() {
+		assert!(wrap_idx(50, 40) == 10);
+		assert!(wrap_idx(30, 40) == 30);
+	}
 
-#[test]
-fn test_log2() {
-	assert!(log2(126) == 6);
-	assert!(log2(128) == 7);
-	assert!(log2(129) == 7);
-	assert!(log2(7) == 2);
-	assert!(log2(8) == 3);
-	assert!(log2(9) == 3);
+	#[test]
+	fn test_log2() {
+		assert!(log2(126) == 6);
+		assert!(log2(128) == 7);
+		assert!(log2(129) == 7);
+		assert!(log2(7) == 2);
+		assert!(log2(8) == 3);
+		assert!(log2(9) == 3);
+	}
 }

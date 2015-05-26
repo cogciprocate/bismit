@@ -28,6 +28,12 @@ impl ProtoRegions {
 		}
 	}
 
+	pub fn region(mut self, pr: ProtoRegion) -> ProtoRegions {
+		//self.hash_map.insert(cr.kind.clone(), cr);
+		self.add(pr);
+		self
+	}
+
 	/*pub fn depth(&self, cr_type: ProtoRegionKind) -> (u8, u8) {
 		let mut depth_axonal_slices = 0u8;		//	Integererregional
 		let mut depth_cellular_slices = 0u8;			//	Integererlaminar
@@ -49,8 +55,8 @@ impl ProtoRegions {
 		hacr + hcr
 	}*/
 
-	pub fn add(&mut self, cr: ProtoRegion) {
-		self.hash_map.insert(cr.kind.clone(), cr);
+	pub fn add(&mut self, pr: ProtoRegion) {
+		self.hash_map.insert(pr.kind.clone(), pr);
 	}
 }
 
@@ -78,6 +84,7 @@ impl<'b> IndexMut<&'b ProtoRegionKind> for ProtoRegions
 			- Also could merge the two and have one or the other dominant
 	- [incomplete] (cel, axn)_layer_kind_slice_lists needs to be redone asap
 */
+#[derive(Clone)]
 pub struct ProtoRegion {
 	layers: HashMap<&'static str, ProtoLayer>,
 	cel_layer_kind_slice_lists: HashMap<CellKind, Vec<&'static str>>,
@@ -363,9 +370,9 @@ impl ProtoRegion {
 		- Need to revamp how axon_types and cell_types are stored before we can do much with it
 			- cel_layer_kind_slice_lists being a vector needs to change asap
  	*/
-	pub fn freeze(&mut self) {
+	pub fn freeze(mut self) -> ProtoRegion {
 		if self.frozen {
-			return;
+			return self;
 		} else {
 			self.frozen = true;
 		}
@@ -466,6 +473,7 @@ impl ProtoRegion {
 
 		/* (6) MARVEL AT THE MOST CONVOLUTED FUNCTION EVER */
 		print!("\n");
+		self
 	}
 
 
@@ -565,6 +573,8 @@ pub enum ProtoRegionKind {
 	Sensory,
 	Motor,
 }
+
+impl Copy for ProtoRegionKind {}
 
 
 /*pub struct ProtoRegion {
