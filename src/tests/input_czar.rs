@@ -1,3 +1,7 @@
+use std::iter;
+use std::ops::{ Range };
+use rand::{ self, ThreadRng, Rng };
+
 use cmn;
 use ocl;
 use cortex::{ Cortex };
@@ -7,9 +11,6 @@ use microcosm::entity::{ EntityBody, EntityKind, EntityBrain, Mobile };
 use microcosm::worm::{ WormBrain };
 use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
 
-use std::iter;
-use std::ops::{ Range };
-use rand::{ self, ThreadRng, Rng };
 
 pub const WORLD_TURN_FACTOR: f32 				= 3f32;	
 
@@ -113,8 +114,8 @@ impl InputCzar {
 				self.world.entities().get_mut(self.worm.uid).turn((WORLD_TURN_FACTOR/(self.area as f32)), self.motor_state.cur_turn());
 				self.world.peek_from(self.worm.uid).unfold_into(&mut self.vec_optical, 0);
 			},
-			InputVecKind::Band_512 => {
-				vec_band_512_fill(&mut self.vec_optical);
+			InputVecKind::Stripes(size) => {
+				sdr_stripes(size, &mut self.vec_optical);
 			},
 		}
 
@@ -170,16 +171,54 @@ impl InputCzar {
 
 pub enum InputVecKind {
 	World,
-	Band_512,
+	Stripes(usize),
 }
 
-pub fn vec_band_512_fill(vec: &mut Vec<u8>) {
+
+/*pub fn vec_band_512_fill(vec: &mut Vec<u8>) {
 	for i in 0..vec.len() {
 		if (i & 512) == 0 {
 			vec[i] = 0;
 		} else {
 			vec[i] = 1;
 		}
+	}
+}*/
+
+
+pub fn sdr_stripes(stripe_size: usize, vec: &mut Vec<u8>) {
+	for i in 0..vec.len() {
+		if (i & stripe_size) == 0 {
+			vec[i] = 0;
+		} else {
+			vec[i] = 1;
+		}
+	}
+}
+
+
+
+struct SeqGen {
+	step: usize,
+	seq_eles: Vec<u8>,
+}
+
+impl SeqGen {
+	pub fn new() -> SeqGen {
+		SeqGen {
+			step: 0,
+			seq_eles: vec![9, 200, 50, 4],
+		}
+	}
+
+	pub fn next(&mut self) -> u8 {
+		if self.step >= self.seq_eles.len() {
+			self.step = 0;
+		} else {
+			self.step += 1;
+		}
+
+		self.seq_eles[self.step]
 	}
 }
 
@@ -264,7 +303,7 @@ mod tests {
 	
 	#[test]
 	fn test_input_czar() {
-		let mut ic = super::InputCzar::new(1024, super::InputVecKind::Band_512, 0..5, false, false, false);
+		let mut ic = super::InputCzar::new(1024, super::InputVecKind::Stripes(512), 0..5, false, false, false);
 		//ic.set_counter(5);
 
 		assert!(ic.counter == 5);

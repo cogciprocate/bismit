@@ -1,12 +1,3 @@
-use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
-use proto::areas::{ ProtoAreas };
-use proto::regions::{ ProtoRegion, ProtoRegionKind };
-use proto::layer::{ ProtoLayer, ProtoLayerKind };
-use proto::cell::{ CellKind, Protocell, DendriteKind };
-use dendrites::{ Dendrites };
-use axons::{ Axons };
-use cortical_area:: { Aux };
 use num;
 use rand;
 use std::mem;
@@ -15,6 +6,16 @@ use rand::{ ThreadRng, Rng };
 use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
+
+use cmn;
+use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use proto::areas::{ Protoareas };
+use proto::regions::{ Protoregion, ProtoregionKind };
+use proto::layer::{ Protolayer, ProtolayerKind };
+use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
+use dendrites::{ Dendrites };
+use axons::{ Axons };
+use cortical_area:: { Aux };
 
 
 /* Synapses: Smallest and most numerous unit in the cortex - the soldier behind it all
@@ -32,7 +33,7 @@ pub struct Synapses {
 	//per_cell_l2: u32,
 	per_den_l2: u8,
 	den_kind: DendriteKind,
-	cell_kind: CellKind,
+	cell_kind: ProtocellKind,
 	since_decay: usize,
 	kern_cycle: ocl::Kernel,
 	kern_regrow: ocl::Kernel,
@@ -47,8 +48,8 @@ pub struct Synapses {
 }
 
 impl Synapses {
-	pub fn new(dims: CorticalDimensions, per_den_l2: u8, den_kind: DendriteKind, cell_kind: CellKind, 
-					region: &ProtoRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
+	pub fn new(dims: CorticalDimensions, per_den_l2: u8, den_kind: DendriteKind, cell_kind: ProtocellKind, 
+					region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
 
 		//let syns_per_slice = dims.columns() << dims.per_cel_l2_left().unwrap();
 		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
@@ -125,7 +126,7 @@ impl Synapses {
 		syns
 	}
 
-	fn grow(&mut self, region: &ProtoRegion, init: bool) {
+	fn grow(&mut self, region: &Protoregion, init: bool) {
 		if false && !init {
 			print!("\nRG:{:?}: ", self.den_kind);
 		}
@@ -145,7 +146,7 @@ impl Synapses {
 		/* LOOP THROUGH ALL LAYERS */
 		for (&layer_name, layer) in region.layers().iter() {
 			/*let src_slice_ids_opt: Vec<u8> = match layer.kind {
-				ProtoLayerKind::Cellular(ref cell) => {
+				ProtolayerKind::Cellular(ref cell) => {
 					if cell.cell_kind == self.cell_kind {
 						region.src_slice_ids(layer_name, self.den_kind)
 					} else {
@@ -216,7 +217,7 @@ impl Synapses {
 		self.kern_cycle.enqueue();
 	}
 
-	pub fn regrow(&mut self, region: &ProtoRegion) {
+	pub fn regrow(&mut self, region: &Protoregion) {
 		//let rnd = self.rng.gen::<u32>();
 		//self.kern_regrow.set_named_arg("rnd", rnd);
 		//self.kern_regrow.enqueue();
@@ -235,9 +236,9 @@ impl Synapses {
 		self.width
 	}*/
 
-	pub fn src_slice_ids(&self, layer_name: &'static str, layer: &ProtoLayer, region: &ProtoRegion) -> Option<Vec<u8>> {
+	pub fn src_slice_ids(&self, layer_name: &'static str, layer: &Protolayer, region: &Protoregion) -> Option<Vec<u8>> {
 		match layer.kind {
-			ProtoLayerKind::Cellular(ref cell) => {
+			ProtolayerKind::Cellular(ref cell) => {
 				if cell.cell_kind == self.cell_kind {
 					Some(region.src_slice_ids(layer_name, self.den_kind))
 				} else {
@@ -252,7 +253,7 @@ impl Synapses {
 		self.den_kind.clone()
 	}
 
-	// NEEDS SERIOUS OPTIMIZATION
+	// NEEDS SERIOUS OPTIMIZATION (cache syn values for den for a start)
 	fn regrow_syn(&mut self, 
 				syn_idx: usize, 
 				src_slice_idx_range: &Range<usize>, 

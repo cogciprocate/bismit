@@ -1,15 +1,3 @@
-use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
-use proto::areas::{ ProtoAreas };
-use proto::regions::{ ProtoRegion, ProtoRegionKind };
-use proto::cell::{ CellKind, Protocell, DendriteKind };
-use synapses::{ Synapses };
-use dendrites::{ Dendrites };
-use cortical_area:: { Aux };
-use peak_column::{ PeakColumns };
-use minicolumns::{ MiniColumns };
-
-
 use std;
 use num;
 use rand;
@@ -19,6 +7,18 @@ use rand::{ ThreadRng };
 use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
+
+use cmn;
+use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use proto::areas::{ Protoareas };
+use proto::regions::{ Protoregion, ProtoregionKind };
+use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
+use synapses::{ Synapses };
+use dendrites::{ Dendrites };
+use cortical_area:: { Aux };
+use peak_column::{ PeakColumns };
+use minicolumns::{ MiniColumns };
+
 
 pub struct Axons {
 	dims: CorticalDimensions,
@@ -31,7 +31,7 @@ pub struct Axons {
 }
 
 impl Axons {
-	pub fn new(area_dims: CorticalDimensions, region: &ProtoRegion, ocl: &Ocl) -> Axons {
+	pub fn new(area_dims: CorticalDimensions, region: &Protoregion, ocl: &Ocl) -> Axons {
 		let depth_axn_sptl = region.depth_axonal_spatial();
 		let depth_cellular = region.depth_cellular();
 		let depth_axn_hrz = region.depth_axonal_horizontal();

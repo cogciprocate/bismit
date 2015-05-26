@@ -1,15 +1,14 @@
-use ocl::{ self, Ocl, CorticalDimensions };
-use cmn;
-
 use std::ptr;
 use std::iter::{ self };
 //use std::num::{ NumCast, FromPrimitive, ToPrimitive };
 use num::{ Integer, NumCast, FromPrimitive, ToPrimitive };
 //use std::fmt::{ Display };
 use std::fmt::{ Display, Debug, LowerHex, UpperHex };
-
 use std::default::{ Default };
 use std::ops::{ self, Index, IndexMut };
+
+use ocl::{ self, Ocl, CorticalDimensions };
+use cmn;
 
 //pub trait NumCl: Integer + Copy + NumCast + Default + Display {}
 
@@ -87,9 +86,16 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 		self.depth
 	}*/
 
+	pub fn set_all_to(&mut self, val: T) {
+		for ele in self.vec.iter_mut() {
+			*ele = val;
+		}
+		self.write();
+	}
+
 	pub fn len(&self) -> usize {
 		//println!("self.dims.len(): {} == self.vec.len(): {}", self.dims.len(),  self.vec.len());
-		assert!((self.dims.len() +self.padding) as usize == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
+		assert!((self.dims.len() + self.padding) as usize == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
 		len(self.dims, 0)
 	}
 

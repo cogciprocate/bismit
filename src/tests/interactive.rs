@@ -1,14 +1,3 @@
-
-use super::output_czar;
-use super::synapse_drill_down;
-use super::input_czar::{ self, InputCzar, InputVecKind };
-use cortex::{ self, Cortex };
-use ocl;
-use cmn;
-//use chord::{ Chord };
-//use ocl::{ Envoy };
-
-
 use std::default::{ Default };
 use std::iter;
 use std::fmt::{ Display };
@@ -18,6 +7,17 @@ use std::io::{ self, Write, Stdout };
 use rand::{ self, ThreadRng, Rng };
 use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use time;
+
+use ocl;
+use cmn;
+use cortex::{ self, Cortex };
+use super::output_czar;
+use super::synapse_drill_down;
+use super::input_czar::{ self, InputCzar, InputVecKind };
+use super::hybrid;
+//use chord::{ Chord };
+//use ocl::{ Envoy };
+
 
 pub const INITIAL_TEST_ITERATIONS: i32 	= 1; 
 pub const STATUS_EVERY: i32 			= 5000;
@@ -110,7 +110,7 @@ pub fn run() -> bool {
 
 		} else if "t\n" == in_string {
 			bypass_act = true;
-			let in_s = rin(format!("tests: [p]yrs [m]cols [f]ract check[s]yns"));
+			let in_s = rin(format!("tests: [p]yrs [m]cols [f]ract [c]ycles"));
 
 			if "p\n" == in_s {
 				synapse_drill_down::print_pyrs(&mut cortex);
@@ -122,8 +122,8 @@ pub fn run() -> bool {
 				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
 				continue;
 				//test_iters = TEST_ITERATIONS;
-			} else if "s\n" == in_s {
-				output_czar::check_synapses(&mut cortex);
+			} else if "c\n" == in_s {
+				hybrid::test_cycles(&mut cortex);
 				//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
 				continue;
 				//test_iters = TEST_ITERATIONS;
@@ -281,6 +281,25 @@ pub fn run() -> bool {
 	cortex.release_components();
 	true
 }
+
+
+struct Prompt {
+	prompt_pre: &'static str,
+	prompt_post: &'static str,
+}
+
+
+struct Command {
+	text: &'static str,
+}
+
+/*struct Parameter {
+
+}
+
+struct Section {
+
+}*/
 
 
 

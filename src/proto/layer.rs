@@ -1,28 +1,30 @@
-use proto::cell::{ CellKind, Protocell, DendriteKind };
-//use ocl;
 use bitflags;
 
+use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
+//use ocl;
+
+
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
-pub struct ProtoLayer {
+pub struct Protolayer {
 	pub name: &'static str,
 	//pub kind: Option<Protocell>,
-	pub kind: ProtoLayerKind,
+	pub kind: ProtolayerKind,
 	pub base_slice_pos: u8,
 	pub kind_base_slice_pos: u8,
 	pub depth: u8,
-	pub flags: ProtoLayerFlags,
+	pub flags: ProtolayerFlags,
 }
 
-impl ProtoLayer {
+impl Protolayer {
 	/*pub fn new(
 				name: &'static str,
 				cell: Option<Protocell>,
 				base_slice_pos: u8,
 				kind_base_slice_pos: u8,
 				depth: u8,
-				flags: ProtoLayerFlags,
-	) -> ProtoLayer {
-		ProtoLayer {
+				flags: ProtolayerFlags,
+	) -> Protolayer {
+		Protolayer {
 			name: name,
 			cell: cell,
 			base_slice_pos: base_slice_pos,
@@ -46,12 +48,12 @@ impl ProtoLayer {
 
 	pub fn src_layer_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
 		let layer_names = match self.kind {
-			ProtoLayerKind::Cellular(ref protocell) => match den_type {
+			ProtolayerKind::Cellular(ref protocell) => match den_type {
 				DendriteKind::Distal =>	protocell.den_dst_srcs.clone(),
 				DendriteKind::Proximal => protocell.den_prx_srcs.clone(),
 				//DendriteKind::Apical => protocell.den_apc_srcs.clone(),
 			},
-			_ => panic!("ProtoLayer must have a kind defined to determine source layers"),
+			_ => panic!("Protolayer must have a kind defined to determine source layers"),
 		};
 
 		match layer_names {
@@ -62,13 +64,13 @@ impl ProtoLayer {
 }
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
-pub enum ProtoLayerKind {
+pub enum ProtolayerKind {
 	Cellular(Protocell),
-	Axonal(AxonKind),
+	Axonal(ProtoaxonKind),
 }
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
-pub enum AxonKind {
+pub enum ProtoaxonKind {
 	Spatial,
 	Horizontal,
 }
@@ -76,7 +78,7 @@ pub enum AxonKind {
 
 bitflags! {
 	#[derive(Debug)]
-	flags ProtoLayerFlags: u32 {
+	flags ProtolayerFlags: u32 {
 		const DEFAULT		= 0b0000000000000000,
 		const COLUMN_INPUT 	= 0b0000000000000001,
 		const COLUMN_OUTPUT	= 0b0000000000000010,
@@ -84,7 +86,7 @@ bitflags! {
 	}
 }
 
-/*pub enum ProtoLayerFlags {
+/*pub enum ProtolayerFlags {
 	ColumnInput 	= 0x0001,
 	ColumnOuput 	= 0x0002,
 	None			= 0x0000,

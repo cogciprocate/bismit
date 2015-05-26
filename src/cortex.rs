@@ -1,14 +1,3 @@
-use ocl::{ self, Ocl, CorticalDimensions };
-use cmn;
-use chord::{ Chord };
-use cortical_area:: { self, CorticalArea };
-use proto::regions::{ self, ProtoRegion, ProtoRegions, ProtoRegionKind };
-use proto::areas::{ self, ProtoAreas, ProtoAreasTrait, ProtoArea };
-use proto::layer::{ self, ProtoLayer };
-	use proto::layer::ProtoLayerKind::{ Cellular, Axonal };
-	use proto::layer::AxonKind::{ Spatial, Horizontal };
-use proto::cell::{ CellKind, Protocell, DendriteKind, CellFlags };
-
 use rand;
 use rand::distributions::{IndependentSample, Range};
 use std::ptr;
@@ -16,24 +5,37 @@ use num;
 use std::collections::{ HashMap };
 use time;
 
-	/* Eventually move define_*() to a config file or some such */
-pub fn define_protoregions() -> ProtoRegions {
-	let mut cort_regs: ProtoRegions = ProtoRegions::new();
 
-	let mut sen = ProtoRegion::new(ProtoRegionKind::Sensory)
+use ocl::{ self, Ocl, CorticalDimensions };
+use cmn;
+use chord::{ Chord };
+use cortical_area:: { self, CorticalArea };
+use proto::regions::{ self, Protoregion, Protoregions, ProtoregionKind };
+use proto::areas::{ self, Protoareas, ProtoareasTrait, Protoarea };
+use proto::layer::{ self, Protolayer, ProtolayerKind, ProtoaxonKind };
+	//use proto::layer::ProtolayerKind::{ Cellular, Axonal };
+	//use proto::layer::ProtoaxonKind::{ Spatial, Horizontal };
+use proto::cell::{ ProtocellKind, Protocell, DendriteKind, CellFlags };
+
+
+	/* Eventually move define_*() to a config file or some such */
+pub fn define_protoregions() -> Protoregions {
+	let mut cort_regs: Protoregions = Protoregions::new();
+
+	let mut sen = Protoregion::new(ProtoregionKind::Sensory)
 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
 
-		.layer("thal", 1, layer::DEFAULT, Axonal(Spatial))
+		.layer("thal", 1, layer::DEFAULT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
 
-		.layer("out", 1, layer::COLUMN_OUTPUT, Axonal(Spatial))
+		.layer("out", 1, layer::COLUMN_OUTPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
 
-		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(vec!["thal", "thal", "thal", "motor"]))  // , "motor"
+		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(0, 5, vec!["thal"]))  // , "motor"
 
 		//.layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
-		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii"]))
+		.layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["thal"]))
 
 		//.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
-		.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
+		.layer("motor", 1, layer::DEFAULT, ProtolayerKind::Axonal(ProtoaxonKind::Horizontal))
 
 		.freeze()
 	;
@@ -42,14 +44,14 @@ pub fn define_protoregions() -> ProtoRegions {
 	cort_regs
 }
 
-pub fn define_protoareas() -> ProtoAreas {
-	let mut protoareas = ProtoAreas::new()
-		.area("v1", 6, 5, ProtoRegionKind::Sensory)
+pub fn define_protoareas() -> Protoareas {
+	let mut protoareas = Protoareas::new()
+		.area("v1", 6, 5, ProtoregionKind::Sensory)
 	;
 	//let mut curr_offset: u32 = 128;
-	/*let region_kind = ProtoRegionKind::Sensory;
+	/*let region_kind = ProtoregionKind::Sensory;
 
-	let mut v1 = ProtoArea { 
+	let mut v1 = Protoarea { 
 		name: "v1",
 		dims: CorticalDimensions::new(cmn::SENSORY_CHORD_WIDTH, cmn::SENSORY_CHORD_HEIGHT, 0, 0),
 		region_kind: region_kind,
@@ -63,20 +65,20 @@ pub fn define_protoareas() -> ProtoAreas {
 
 pub struct Cortex {
 	pub cortical_area: CorticalArea,
-	pub protoregions: ProtoRegions,
-	pub protoareas: ProtoAreas,
+	pub protoregions: Protoregions,
+	pub protoareas: Protoareas,
 	pub ocl: ocl::Ocl,
 }
 
 impl Cortex {
-	pub fn new(protoregions: ProtoRegions, protoareas: ProtoAreas) -> Cortex {
+	pub fn new(protoregions: Protoregions, protoareas: Protoareas) -> Cortex {
 		print!("\nInitializing Cortex... ");
 		let time_start = time::get_time();		
 
 		let protoregions = define_protoregions();
 		//let protoareas = define_protoareas();
 
-		let hrz_demarc = protoregions[&ProtoRegionKind::Sensory].hrz_demarc();
+		let hrz_demarc = protoregions[&ProtoregionKind::Sensory].hrz_demarc();
 		let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", hrz_demarc as i32);
 		let build_options = cmn::build_options().add(hrz_demarc_opt);
 
@@ -84,7 +86,7 @@ impl Cortex {
 
 		// FOR EACH AREA...
 		let mut cortical_area: cortical_area::CorticalArea = {
-			let ref region = &protoregions[&ProtoRegionKind::Sensory];
+			let ref region = &protoregions[&ProtoregionKind::Sensory];
 			let ref area = &protoareas["v1"];
 			CorticalArea::new("v1", region, area, &ocl)
 		};
@@ -110,14 +112,14 @@ impl Cortex {
 	/* WRITE_VEC(): 
 			TODO: 
 				- VALIDATE "layer_target, OTHERWISE: 
-					- thread '<main>' panicked at '[protoregions::ProtoRegion::index(): 
+					- thread '<main>' panicked at '[protoregions::Protoregion::index(): 
 					invalid layer name: "pre_thal"]', src/protoregions.rs:339
 						- Just have slice_ids return an option<u8>
 				- Handle multi-slice input vectors (for input compression, etc.)
 					- Update assert statement to support this
 	*/
 	pub fn write_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
-		let ref region = self.protoregions[&ProtoRegionKind::Sensory];
+		let ref region = self.protoregions[&ProtoregionKind::Sensory];
 		let axn_slices: Vec<u8> = region.slice_ids(vec!(layer_target));
 
 		for slice in axn_slices { 
@@ -139,7 +141,7 @@ impl Cortex {
 	}
 
 	pub fn cycle(&mut self) {
-		let ref region = &self.protoregions[&ProtoRegionKind::Sensory];
+		let ref region = &self.protoregions[&ProtoregionKind::Sensory];
 		self.cortical_area.cycle(region);
 	}
 
@@ -162,9 +164,9 @@ impl Cortex {
 
 /*	fn cycle_syns(&self) {
 
-		let width: u32 = self.areas.width(ProtoRegionKind::Sensory);
-		let depth_total: u8 = self.protoregions.depth_total(ProtoRegionKind::Sensory);
-		let (_, depth_cellular) = self.protoregions.depth(ProtoRegionKind::Sensory);
+		let width: u32 = self.areas.width(ProtoregionKind::Sensory);
+		let depth_total: u8 = self.protoregions.depth_total(ProtoregionKind::Sensory);
+		let (_, depth_cellular) = self.protoregions.depth(ProtoregionKind::Sensory);
 		let len: u32 = dims.width * depth_total as u32;
 
 		let test_envoy = Envoy::<ocl::cl_int>::new(width, depth_total, 0, &self.ocl);
@@ -190,8 +192,8 @@ impl Cortex {
 
 /*	fn cycle_dens(&self) {
 
-		let width: u32 = self.areas.width(ProtoRegionKind::Sensory);
-		let (_, depth_cellular) = self.protoregions.depth(ProtoRegionKind::Sensory);
+		let width: u32 = self.areas.width(ProtoregionKind::Sensory);
+		let (_, depth_cellular) = self.protoregions.depth(ProtoregionKind::Sensory);
 
 		let width_dens: usize = dims.width as usize * cmn::DENDRITES_PER_CELL * depth_cellular as usize;
 
@@ -206,8 +208,8 @@ impl Cortex {
 	}*/
 
 /*	fn cycle_axns(&self) {
-		let width: u32 = self.areas.width(ProtoRegionKind::Sensory);
-		let (depth_noncellular, depth_cellular) = self.protoregions.depth(ProtoRegionKind::Sensory);
+		let width: u32 = self.areas.width(ProtoregionKind::Sensory);
+		let (depth_noncellular, depth_cellular) = self.protoregions.depth(ProtoregionKind::Sensory);
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_axns");
 		ocl::set_kernel_arg(0, self.cortical_area.dst_dens.states.buf, kern);

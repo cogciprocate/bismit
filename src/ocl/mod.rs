@@ -1,16 +1,3 @@
-
-pub use self::cl_h::{ cl_platform_id, cl_device_id, cl_context, cl_program, 
-	cl_kernel, cl_command_queue, cl_float, cl_mem, cl_event, cl_char, cl_uchar, 
-	cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus, 
-	clSetKernelArg, clEnqueueNDRangeKernel };
-pub use self::kernel::{ Kernel };
-pub use self::envoy::{ Envoy };
-pub use self::work_size::{ WorkSize };
-pub use self::build_options::{ BuildOptions, BuildOption };
-pub use self::cortical_dimensions::{ CorticalDimensions };
-
-use cmn;
-
 use std;
 use std::ptr;
 use std::mem;
@@ -21,6 +8,18 @@ use std::iter;
 use std::collections::{ HashMap };
 use num::{ self, Integer, FromPrimitive };
 use libc;
+
+
+pub use self::cl_h::{ cl_platform_id, cl_device_id, cl_context, cl_program, 
+	cl_kernel, cl_command_queue, cl_float, cl_mem, cl_event, cl_char, cl_uchar, 
+	cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus, 
+	clSetKernelArg, clEnqueueNDRangeKernel };
+pub use self::kernel::{ Kernel };
+pub use self::envoy::{ Envoy };
+pub use self::work_size::{ WorkSize };
+pub use self::build_options::{ BuildOptions, BuildOption };
+pub use self::cortical_dimensions::{ CorticalDimensions };
+use cmn;
 
 mod cl_h;
 mod envoy;

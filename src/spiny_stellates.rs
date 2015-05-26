@@ -26,11 +26,11 @@ use pyramidals::{ Pyramidals };
 	- TODO:
 		- Reorganization to:
 			- MiniColumns
-				- SpinyStellate
+				- SpinyStellates
 					- Dendrite
 
 */
-pub struct MiniColumns {
+pub struct SpinyStellates {
 	dims: CorticalDimensions,
 	axn_output_slice: u8,
 	//kern_cycle: ocl::Kernel,
@@ -49,9 +49,9 @@ pub struct MiniColumns {
 	//pub syns: Synapses,
 }
 
-impl MiniColumns {
-	pub fn new(dims: CorticalDimensions, region: &Protoregion, axons: &Axons, pyrs: &Pyramidals, aux: &Aux, ocl: &Ocl) -> MiniColumns {
-		let layer = region.col_input_layer().expect("minicolumns::MiniColumns::new()");
+impl SpinyStellates {
+	pub fn new(dims: CorticalDimensions, region: &Protoregion, axons: &Axons, pyrs: &Pyramidals, aux: &Aux, ocl: &Ocl) -> SpinyStellates {
+		let layer = region.col_input_layer().expect("minicolumns::SpinyStellates::new()");
 		//let depth: u8 = layer.depth();
 
 		let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
@@ -66,7 +66,7 @@ impl MiniColumns {
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		print!("\n##### MINICOLUMN dims: {:?}", dims);
 
-		let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, region, axons, aux, ocl);
+		let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellates, region, axons, aux, ocl);
 
 		let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let best_col_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -74,7 +74,7 @@ impl MiniColumns {
 		let peak_spis = PeakColumns::new(dims, region, &dens.states, ocl);
 
 		/*let syns = Synapses::new(dims, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
-			ProtocellKind::SpinyStellate, region, axons, aux, ocl);*/
+			ProtocellKind::SpinyStellates, region, axons, aux, ocl);*/
 
 		let output_slices = region.col_output_slices();
 		assert!(output_slices.len() == 1);
@@ -127,7 +127,7 @@ impl MiniColumns {
 
 		//println!("\n***Test");
 
-		MiniColumns {
+		SpinyStellates {
 			dims: dims,
 			axn_output_slice: axn_output_slice,
 			//kern_cycle: kern_cycle,

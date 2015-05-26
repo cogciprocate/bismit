@@ -31,6 +31,7 @@ mod synapses;
 mod minicolumns;
 mod peak_column;
 mod pyramidals;
+//mod spiny_stellates;
 //mod cort_seg;
 //mod thalamus;
 mod cortex;

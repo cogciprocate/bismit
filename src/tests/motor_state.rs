@@ -1,6 +1,6 @@
-use cmn;
-
 use std::iter;
+
+use cmn;
 
 pub struct MotorState {
 	turn_left: bool,  // change to turn_state

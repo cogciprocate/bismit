@@ -1,0 +1,58 @@
+       Fresh bitflags v0.1.1
+       Fresh rustc-serialize v0.3.14
+       Fresh gcc v0.3.4
+       Fresh libc v0.1.6
+       Fresh rand v0.3.8
+       Fresh num v0.1.24
+       Fresh time v0.1.25 (https://github.com/rust-lang/time.git#3c3e56da)
+   Compiling bismit v0.0.1 (file:///home/nick/src/github.com/cogciprocate/bismit)
+     Running `rustc src/main.rs --crate-name bismit --crate-type bin -g --out-dir /home/nick/src/github.com/cogciprocate/bismit/target/debug --emit=dep-info,link -L dependency=/home/nick/src/github.com/cogciprocate/bismit/target/debug -L dependency=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps --extern time=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/libtime-96d0addf2df9491a.rlib --extern libc=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/liblibc-9b7976990ae0dbd4.rlib --extern bitflags=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/libbitflags-518ea12e21428edd.rlib --extern microcosm=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/libmicrocosm-d4ab95d4812c2283.rlib --extern num=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/libnum-b6664aad0573bf89.rlib --extern rand=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/librand-b924d9fc5b3eb5b8.rlib -L native=/home/nick/src/github.com/cogciprocate/bismit/target/debug/build/time-96d0addf2df9491a/out`
+       Fresh microcosm v0.0.1 (file:///home/nick/src/github.com/cogciprocate/microcosm)
+error: internal compiler error: unexpected panic
+note: the compiler unexpectedly panicked. this is a bug.
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+note: run with `RUST_BACKTRACE=1` for a backtrace
+thread 'rustc' panicked at 'path not fully resolved: PathResolution { base_def: DefTy(DefId { krate: 0, node: 23251 }, true), last_private: LastMod(AllPublic), depth: 1 }', /home/rustbuild/src/rust-buildbot/slave/nightly-dist-rustc-linux/build/src/librustc/middle/def.rs:81
+
+stack backtrace:
+   1:     0x7f4945a5a799 - sys::backtrace::write::heb2f21be6fedf402u6r
+   2:     0x7f4945a62759 - panicking::on_panic::h215e76ef0683080aFMw
+   3:     0x7f4945a23432 - rt::unwind::begin_unwind_inner::h41dd51b8cb348fe8Prw
+   4:     0x7f4945a241c7 - rt::unwind::begin_unwind_fmt::h174ac1062a97fd04Vqw
+   5:     0x7f4943a3b180 - middle::ty::resolve_expr::h940e70a34f3e9953eK7
+   6:     0x7f4943b9bfa4 - middle::ty::expr_kind::h88d7094ec4c50309kM7
+   7:     0x7f4943b9bd6a - middle::ty::expr_is_lval::h158612bb2b2f92a0hL7
+   8:     0x7f494522f8c3 - check::check_expr_with_unifier::h11984922152778113403
+   9:     0x7f4945206898 - check::check_argument_types::h097cf83f0055fc349bq
+  10:     0x7f4945207fbc - check::check_method_argument_types::ha05139fc1ac71c79y9p
+  11:     0x7f494523467e - check::check_expr_with_unifier::check_method_call::h346ce473e3ae8e85FLq
+  12:     0x7f4945249c65 - check::check_expr_with_unifier::h1404431089406003791
+  13:     0x7f494527000a - check::check_decl_initializer::h47d38d76c2813b7fKgs
+  14:     0x7f49452700de - check::check_decl_local::hf66b6312d8b5550fShs
+  15:     0x7f4945270309 - check::check_stmt::hcf17a2040d2e7714Njs
+  16:     0x7f494521ebaf - check::check_block_with_expected::h0312bc73be58d7e5Yns
+  17:     0x7f4945200fbb - check::check_fn::h32842be25339ddcd7Yn
+  18:     0x7f4945218e52 - check::check_bare_fn::h29d57aeb5aed0bcdHOn
+  19:     0x7f4945224edc - check::check_method_body::h480b1ef041b2c20fSro
+  20:     0x7f4945216c03 - check::check_item_body::hb71aa664a6feb6feAfo
+  21:     0x7f49452171f2 - visit::walk_item::h6647064620690009487
+  22:     0x7f4945218a7f - check::check_item_types::h82fd474e3686823ceMn
+  23:     0x7f49452d4c86 - check_crate::he080d583c60a95e3a3C
+  24:     0x7f4945fadb0f - driver::phase_3_run_analysis_passes::h1a85613b2ea4e32bGGa
+  25:     0x7f4945f9104c - driver::compile_input::h8626aa78c5d4da0eQba
+  26:     0x7f4946047b41 - run_compiler::h96c05ebaa828b862o6b
+  27:     0x7f4946045392 - boxed::F.FnBox<A>::call_box::h14824596170961889198
+  28:     0x7f4946044b69 - rt::unwind::try::try_fn::h5275104876552890265
+  29:     0x7f4945adb448 - rust_try_inner
+  30:     0x7f4945adb435 - rust_try
+  31:     0x7f4945a4e1f7 - rt::unwind::try::inner_try::h38b71de3b475180cInw
+  32:     0x7f4946044d9a - boxed::F.FnBox<A>::call_box::h1459658178567901908
+  33:     0x7f4945a61421 - sys::thread::Thread::new::thread_start::h21edeab345ab83b4Yxv
+  34:     0x7f493fa590a4 - start_thread
+  35:     0x7f49456a3cfc - clone
+  36:                0x0 - <unknown>
+
+Could not compile `bismit`.
+
+Caused by:
+  Process didn't exit successfully: `rustc src/main.rs --crate-name bismit --crate-type bin -g --out-dir /home/nick/src/github.com/cogciprocate/bismit/target/debug --emit=dep-info,link -L dependency=/home/nick/src/github.com/cogciprocate/bismit/target/debug -L dependency=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps --extern time=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/libtime-96d0addf2df9491a.rlib --extern libc=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/liblibc-9b7976990ae0dbd4.rlib --extern bitflags=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/libbitflags-518ea12e21428edd.rlib --extern microcosm=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/libmicrocosm-d4ab95d4812c2283.rlib --extern num=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/libnum-b6664aad0573bf89.rlib --extern rand=/home/nick/src/github.com/cogciprocate/bismit/target/debug/deps/librand-b924d9fc5b3eb5b8.rlib -L native=/home/nick/src/github.com/cogciprocate/bismit/target/debug/build/time-96d0addf2df9491a/out` (exit code: 101)

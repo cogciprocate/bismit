@@ -1,10 +1,12 @@
 //use bitflags;
-use proto::layer::ProtoLayerKind::{ self, Cellular };
+use proto::layer::ProtolayerKind::{ self, Cellular };
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct Protocell {
-	pub cell_kind: CellKind,
+	pub dens_per_cel_l2: u8,
+	pub syns_per_den_l2: u8,
+	pub cell_kind: ProtocellKind,
 	pub den_dst_srcs: Option<Vec<&'static str>>,
 	pub den_prx_srcs: Option<Vec<&'static str>>,
 	//pub flags: CellFlags,
@@ -12,9 +14,11 @@ pub struct Protocell {
 
 impl Protocell {
 	pub fn new(
-					cell_kind: CellKind,
+					cell_kind: ProtocellKind,
 					den_dst_srcs: Option<Vec<&'static str>>,
 					den_prx_srcs: Option<Vec<&'static str>>, 
+					dens_per_cel_l2: u8,
+					syns_per_den_l2: u8,
 					//flags: CellFlags,
 	) -> Protocell {
 			// DO SOME CHECKS ON PARAMETERS (certain cell types must/mustn't have certain dendritic segments)
@@ -23,6 +27,8 @@ impl Protocell {
 			cell_kind: cell_kind,
 			den_dst_srcs: den_dst_srcs,
 			den_prx_srcs: den_prx_srcs,
+			dens_per_cel_l2: dens_per_cel_l2,
+			syns_per_den_l2: syns_per_den_l2,
 			//flags: flags,
 		}
 	}
@@ -30,9 +36,11 @@ impl Protocell {
 	/* NEW_PYRAMIDAL(): 
 		- get rid of proximal source (maybe)
 	*/
-	pub fn new_pyramidal(dst_srcs: Vec<&'static str>) -> ProtoLayerKind {
+	pub fn new_pyramidal(dens_per_cel_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>) -> ProtolayerKind {
 		Cellular(Protocell {
-			cell_kind: CellKind::Pyramidal,
+			dens_per_cel_l2: dens_per_cel_l2,
+			syns_per_den_l2: syns_per_den_l2,
+			cell_kind: ProtocellKind::Pyramidal,
 			den_dst_srcs: Some(dst_srcs),
 			den_prx_srcs: None,
 			//den_prx_srcs: Some(vec![prx_src]),
@@ -40,9 +48,11 @@ impl Protocell {
 		})
 	}
 
-	pub fn new_spiny_stellate(prx_srcs: Vec<&'static str>) -> ProtoLayerKind {
+	pub fn new_spiny_stellate(dens_per_cel_l2: u8, syns_per_den_l2: u8, prx_srcs: Vec<&'static str>) -> ProtolayerKind {
 		Cellular(Protocell {
-			cell_kind: CellKind::SpinyStellate,
+			dens_per_cel_l2: dens_per_cel_l2,
+			syns_per_den_l2: syns_per_den_l2,
+			cell_kind: ProtocellKind::SpinyStellate,
 			den_dst_srcs: None,
 			den_prx_srcs: Some(prx_srcs),
 			//flags: flags,
@@ -52,7 +62,7 @@ impl Protocell {
 
 
 #[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
-pub enum CellKind {
+pub enum ProtocellKind {
 	Pyramidal,
 	SpinyStellate,
 	AspinyStellate,

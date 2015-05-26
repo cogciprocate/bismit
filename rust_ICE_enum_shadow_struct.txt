@@ -1,0 +1,31 @@
+use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
+	...
+
+
+pub struct Pyramidals {
+	...
+}
+
+impl Pyramidals {
+	pub fn new(mut dims: CorticalDimensions, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Pyramidals {
+
+		let axn_slice_base = region.base_slice_cell_kind(&ProtocellKind::Pyramidals);
+			...
+
+			...
+		
+
+		let dens = Dendrites::new(dens_dims, DendriteKind::Distal, ProtocellKind::Pyramidals, region, axons, aux, ocl);
+		...
+
+		...
+
+		Pyramidals {
+			...
+		}
+	}
+
+		...
+
+		...
+}

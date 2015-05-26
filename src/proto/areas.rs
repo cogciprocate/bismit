@@ -1,26 +1,26 @@
-use ocl::{ CorticalDimensions };
-use proto::regions::{ ProtoRegionKind };
-
 use std::collections::{ HashMap };
+
+use ocl::{ CorticalDimensions };
+use proto::regions::{ ProtoregionKind };
 
 
 
 
 /*pub trait Width {
-	fn width(&self, cr_type: &ProtoRegionKind) -> u32;
+	fn width(&self, cr_type: &ProtoregionKind) -> u32;
 }*/
 
-pub trait ProtoAreasTrait {
-	fn new() -> ProtoAreas;
-	fn add(&mut self, protoarea: ProtoArea);
-	fn area(mut self, name: &'static str, width: u8, height: u8, region_kind: ProtoRegionKind) -> ProtoAreas;
+pub trait ProtoareasTrait {
+	fn new() -> Protoareas;
+	fn add(&mut self, protoarea: Protoarea);
+	fn area(mut self, name: &'static str, width: u8, height: u8, region_kind: ProtoregionKind) -> Protoareas;
 }
 
 
-pub type ProtoAreas = HashMap<&'static str, ProtoArea>;
+pub type Protoareas = HashMap<&'static str, Protoarea>;
 
-/*impl Width for ProtoAreas {
-	fn width(&self, cr_type: &ProtoRegionKind) -> u32 {
+/*impl Width for Protoareas {
+	fn width(&self, cr_type: &ProtoregionKind) -> u32 {
 		let mut width = 0u32;
 		for (area_name, area) in self.iter() {
 			if area.region_kind == *cr_type {
@@ -32,19 +32,19 @@ pub type ProtoAreas = HashMap<&'static str, ProtoArea>;
 }*/
 
 
-impl ProtoAreasTrait for ProtoAreas {
-	fn new() -> ProtoAreas {
+impl ProtoareasTrait for Protoareas {
+	fn new() -> Protoareas {
 		HashMap::new()
 	}
 
-	fn add(&mut self, protoarea: ProtoArea) {
+	fn add(&mut self, protoarea: Protoarea) {
 		let name = protoarea.name;
 		//let dims = protoarea.dims;
 		self.insert(name, protoarea);
 	}
 
-	fn area(mut self, name: &'static str, width_l2: u8, height_l2: u8, region_kind: ProtoRegionKind) -> ProtoAreas {
-		let mut new_area = ProtoArea { 
+	fn area(mut self, name: &'static str, width_l2: u8, height_l2: u8, region_kind: ProtoregionKind) -> Protoareas {
+		let mut new_area = Protoarea { 
 			name: name,
 			dims: CorticalDimensions::new(width_l2, height_l2, 0, 0),
 			region_kind: region_kind,
@@ -56,17 +56,17 @@ impl ProtoAreasTrait for ProtoAreas {
 }
 
 #[derive(PartialEq, Debug, Clone, Eq)]
-pub struct ProtoArea {
+pub struct Protoarea {
 	pub name: &'static str,
 	pub dims: CorticalDimensions,
 	//pub width: u32,
 	//pub height: u32,
-	pub region_kind: ProtoRegionKind,
+	pub region_kind: ProtoregionKind,
 }
 
-impl Copy for ProtoArea {}
+impl Copy for Protoarea {}
 
-/*impl ProtoArea {
+/*impl Protoarea {
 	pub fn width(&self) -> u32 {
 		self.width
 	}
@@ -74,4 +74,4 @@ impl Copy for ProtoArea {}
 
 
 
-//struct ProtoArea
+//struct Protoarea

@@ -1,12 +1,13 @@
+use std::io::{ self, Write, Stdout };
+use std::fmt::{ Display, Debug, LowerHex, UpperHex };
+
 use cortex::{ Cortex };
 use dendrites::{ Dendrites };
-use pyramidals::{ Pyramidal };
+use pyramidals::{ Pyramidals };
 use minicolumns::{ MiniColumns };
 use synapses::{ Synapses };
 use cmn;
 
-use std::io::{ self, Write, Stdout };
-use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 
 pub fn print_pyrs(cortex: &mut Cortex) {
 	let pyrs = &mut cortex.cortical_area.pyrs;

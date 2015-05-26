@@ -1,88 +1,9 @@
+use std::iter;
+
 use super::input_czar;
 use cortex::{ Cortex };
 use synapses::{ Synapses };
 use cmn;
-
-use std::iter;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-pub fn check_synapses(cortex: &mut Cortex) {
-	let columns = cortex.cortical_area.dims.columns();
-	let mut vec1 = iter::repeat(0).take(columns as usize).collect();
-	input_czar::vec_band_512_fill(&mut vec1);
-	cortex.write_vec(0, "thal", &vec1);
-
-		//#####  TRY THIS OUT SOMETIME  #####
-	//let pyrs_input_len = cortex.cortical_area.pyrs.len();
-	//let mut vec_pyrs = iter::repeat(0).take().collect();
-	//input_czar::vec_band_512_fill(&mut vec_pyrs);
-	//let pyr_axn_ranges = cortex.cortical_area.layer_input_ranges("iii", cortex.cortical_area.pyrs.dens.syns.den_kind());
-	//write_to_axons(axn_range, vec1);
-
-	cortex.write_vec(0, "iii", &vec1);
-
-	cortex.cortical_area.mcols.cycle(false);
-	cortex.cortical_area.pyrs.cycle();
-
-	let mut syns = &mut cortex.cortical_area.mcols.dens.syns;
-	_check_synapses(&mut syns);
-
-	let mut syns = &mut cortex.cortical_area.pyrs.dens.syns;
-	_check_synapses(&mut syns);
-	
-}
-
-fn _check_synapses(syns: &mut Synapses) {
-	let syns_per_cel_l2: usize = syns.dims.per_cel_l2_left().unwrap() as usize;
-	let cels_per_band: usize = cmn::SYNAPSE_SPAN_LIN as usize;
-	let syns_per_band: usize = cels_per_band << syns_per_cel_l2;
-	let syn_actv_band_thresh = syns_per_band / 4;
-
-	let mut cel_idz: usize = 0;
-	let mut states_ttl: usize = 0;
-
-	syns.confab();
-
-	loop {
-		if (cel_idz + cels_per_band) > syns.dims.cells() as usize {
-			break;
-		}
-
-		states_ttl = 0;
-
-		let syn_idz = cel_idz << syns_per_cel_l2;
-
-		//println!("\nsyn_idz: {}, syns_per_cel: {}, syns_per_band: {}", syn_idz, 1 << syns_per_cel_l2, syns_per_band);
-
-		for syn_idx in syn_idz..(syn_idz + syns_per_band) {
-			states_ttl += (syns.states[syn_idx] >> 7) as usize;
-		}
-
-		if (cel_idz & 512) == 0 {
-			assert!(states_ttl < syn_actv_band_thresh);
-		} else {
-			assert!(states_ttl > syn_actv_band_thresh);
-		}
-
-		print!("\nPASS [{} - {}], states_ttl: {}", cel_idz, (cel_idz + cels_per_band - 1), states_ttl);
-
-
-		cel_idz += cels_per_band;
-	}
-}
 
 
 
@@ -106,11 +27,11 @@ pub fn print_sense_only(cortex: &mut Cortex) {
 		cortex.cortical_area.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cortical_area.mcols.axn_output_range()), true);
 	}
 	if false {
-		print!("\nCOLUMN SYNAPSE STRENGTHS:");
+		print!("\nSPINY STELLATE SYNAPSE STRENGTHS:");
 		cortex.cortical_area.mcols.dens.syns.strengths.print(1 << 0, None, Some((256, 288)), true);
 	}
 	if false{	
-		print!("\nCOLUMN SYNAPSE SOURCE COLUMN OFFSETS:");
+		print!("\nSPINY STELLATE SYNAPSE SOURCE SPINY STELLATE OFFSETS:");
 		cortex.cortical_area.mcols.dens.syns.src_col_xy_offs.print(1 << 0, None, Some((256, 288)), true);
 	}
 
@@ -123,48 +44,54 @@ pub fn print_sense_only(cortex: &mut Cortex) {
 
 pub fn print_sense_and_print(cortex: &mut Cortex) {
 
-	/* COLUMN, COLUMN SYNAPSE, COLUMN RAW STATES */
-	if true {	
-		print!("\nCOLUMN STATES: ");
-		cortex.cortical_area.mcols.dens.states.print_val_range(1 << 0, Some((1, 255)));
-	}
-	if false {	
-		print!("\nCOLUMN STATES RAW: ");
-		cortex.cortical_area.mcols.dens.states_raw.print_val_range(1 << 0, Some((1, 255)));
-	}
-	if true {	
-		print!("\nCOLUMN SYNAPSE STATES: ");
-		cortex.cortical_area.mcols.dens.syns.states.print(1 << 10, Some((1, 255)), None, true);
-	}
-
-		/*if true {	
-			print!("\nCOLUMN SYNAPSE STATES: ");
+	/* SPINY STELLATE, SPINY STELLATE SYNAPSE, SPINY STELLATE RAW STATES */
+			/*if true {	
+			print!("\nSPINY STELLATE SYNAPSE STATES: ");
 			cortex.cortical_area.mcols.dens.syns.states.print(1 << 3, Some((1, 255)), None, true);
 		}*/
-
+	if true {	
+		print!("\nSPINY STELLATE SYNAPSE STATES: ");
+		cortex.cortical_area.mcols.dens.syns.states.print(1 << 10, Some((1, 255)), None, true);
+	}
 	if true {
-		print!("\nCOLUMN SYNAPSE SOURCE ROW IDS:");
+		print!("\nSPINY STELLATE SYNAPSE SOURCE ROW IDS:");
 		cortex.cortical_area.mcols.dens.syns.src_slice_ids.print(1 << 11, None, None, true);
 	}
 		if false {
-			print!("\nCOLUMN SYNAPSE SOURCE ROW IDS(0 - 1300):");
+			print!("\nSPINY STELLATE SYNAPSE SOURCE ROW IDS(0 - 1300):");
 			cortex.cortical_area.mcols.dens.syns.src_slice_ids.print(1 << 0, None, Some((0, 1300)), true);
 		}
 	if true {	
-		print!("\nCOLUMN SYNAPSE SOURCE COLUMN OFFSETS: ");
+		print!("\nSPINY STELLATE SYNAPSE SOURCE SPINY STELLATE OFFSETS: ");
 		cortex.cortical_area.mcols.dens.syns.src_col_xy_offs.print(1 << 11, None, None, true);
 	}
 	if true {
-		print!("\nCOLUMN SYNAPSE STRENGTHS:");
+		print!("\nSPINY STELLATE SYNAPSE STRENGTHS:");
 		cortex.cortical_area.mcols.dens.syns.strengths.print(1 << 11, None, None, true);
 	}
 	if false {
-		print!("\nCOLUMN PEAK COL IDS: ");
+		print!("\nSPINY STELLATE PEAK COL IDS: ");
 		cortex.cortical_area.mcols.peak_spis.spi_ids.print_val_range(1 << 0, Some((0, 255)));
 	}
 	if false {
-		print!("\nCOLUMN PEAK COL STATES: ");
+		print!("\nSPINY STELLATE PEAK COL STATES: ");
 		cortex.cortical_area.mcols.peak_spis.states.print_val_range(1 << 0, Some((1, 255)));
+	}
+	if true {	
+		print!("\nSPINY STELLATE DENDRITE STATES: ");
+		cortex.cortical_area.mcols.dens.states.print_val_range(1 << 8, Some((1, 255)));
+	}
+	if true {	
+		print!("\nSPINY STELLATE DENDRITE STATES RAW: ");
+		cortex.cortical_area.mcols.dens.states_raw.print_val_range(1 << 8, Some((1, 255)));
+	}
+	if true {	
+		print!("\nSPINY STELLATE STATES: ");
+		cortex.cortical_area.mcols.dens.states.print_val_range(1 << 0, Some((1, 255)));
+	}
+	if false {	
+		print!("\nSPINY STELLATE STATES RAW: ");
+		cortex.cortical_area.mcols.dens.states_raw.print_val_range(1 << 0, Some((1, 255)));
 	}
 
 
@@ -184,7 +111,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
 
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE SOURCE ROW IDS: ");
-		cortex.cortical_area.pyrs.dens.syns.src_slice_ids.print(1 << 14, None, None, true);
+		cortex.cortical_area.pyrs.dens.syns.src_slice_ids.print(1 << 11, None, None, true);
 	}
 
 		if false {
@@ -193,12 +120,12 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
 		}
 
 	if true {	
-		print!("\nPYRAMIDAL SYNAPSE SOURCE COLUMN OFFSETS: ");
-		cortex.cortical_area.pyrs.dens.syns.src_col_xy_offs.print(1 << 14, None, None, true);
+		print!("\nPYRAMIDAL SYNAPSE SOURCE SPINY STELLATE OFFSETS: ");
+		cortex.cortical_area.pyrs.dens.syns.src_col_xy_offs.print(1 << 11, None, None, true);
 	}
 	if true {
 		print!("\nPYRAMIDAL SYNAPSE STRENGTHS:");
-		cortex.cortical_area.pyrs.dens.syns.strengths.print(1 << 14, None, None, true);
+		cortex.cortical_area.pyrs.dens.syns.strengths.print(1 << 11, None, None, true);
 	}
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE SOURCE FLAG SETS: ");
@@ -206,11 +133,11 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
 	}
 	if true {	
 		print!("\nPYRAMIDAL DENDRITE STATES: ");
-		cortex.cortical_area.pyrs.dens.states.print_val_range(1 << 10, Some((1, 255)));
+		cortex.cortical_area.pyrs.dens.states.print_val_range(1 << 8, Some((1, 255)));
 	}
-	if false {	
+	if true {	
 		print!("\nPYRAMIDAL DENDRITE STATES RAW: ");
-		cortex.cortical_area.pyrs.dens.states_raw.print_val_range(1 << 12, Some((1, 255)));
+		cortex.cortical_area.pyrs.dens.states_raw.print_val_range(1 << 8, Some((1, 255)));
 	}
 	if false {
 		print!("\nPYRAMIDAL AXON OUTPUT:");

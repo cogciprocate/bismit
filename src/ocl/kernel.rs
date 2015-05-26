@@ -1,6 +1,3 @@
-use cmn;
-use super::{ WorkSize, Envoy };
-
 use std;
 use std::ptr;
 use std::mem;
@@ -11,6 +8,10 @@ use std::iter;
 use std::collections::{ HashMap };
 use num::{ self, Integer, FromPrimitive };
 use libc;
+
+use cmn;
+use super::{ WorkSize, Envoy };
+
 
 pub struct Kernel {
 	kernel: super::cl_kernel, //make this private!!!!!

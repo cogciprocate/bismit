@@ -1,12 +1,3 @@
-use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
-use proto::areas::{ ProtoAreas };
-use proto::cell::{ CellKind, Protocell, DendriteKind };
-use proto::regions::{ ProtoRegion, ProtoRegionKind };
-use synapses::{ Synapses };
-use axons::{ Axons };
-use cortical_area:: { Aux };
-
 use num;
 use rand;
 use std::mem;
@@ -16,11 +7,22 @@ use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
+use cmn;
+use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use proto::areas::{ Protoareas };
+use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
+use proto::regions::{ Protoregion, ProtoregionKind };
+use synapses::{ Synapses };
+use axons::{ Axons };
+use cortical_area:: { Aux };
+
+
+
 pub struct Dendrites {
-	dims: CorticalDimensions,
+	pub dims: CorticalDimensions,
 	//per_cell_l2: u32,
 	den_kind: DendriteKind,
-	cell_kind: CellKind,
+	cell_kind: ProtocellKind,
 	kern_cycle: ocl::Kernel,
 	pub thresholds: Envoy<ocl::cl_uchar>,
 	pub states_raw: Envoy<ocl::cl_uchar>,
@@ -34,8 +36,8 @@ impl Dendrites {
 					dims: CorticalDimensions,
 					//per_cell_l2: u32,
 					den_kind: DendriteKind, 
-					cell_kind: CellKind,
-					region: &ProtoRegion,
+					cell_kind: ProtocellKind,
+					region: &Protoregion,
 					axons: &Axons,
 					aux: &Aux,
 					ocl: &Ocl
@@ -103,7 +105,7 @@ impl Dendrites {
 		self.kern_cycle.enqueue();
 	}
 
-	pub fn regrow(&mut self, region: &ProtoRegion) {
+	pub fn regrow(&mut self, region: &Protoregion) {
 		self.syns.regrow(region);
 	}
 

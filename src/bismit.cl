@@ -99,7 +99,7 @@ static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
 		syn_flag_set &= ~SYN_STP_FLAG;
 
 		syn_flag_set |= mul24(syn_active, SYN_STP_FLAG);
-		syn_strength -= mul24(!syn_active, inc); // *****
+		syn_strength -= mul24(!syn_active, inc);
 
 		syn_flag_sets[i] = syn_flag_set;
 		syn_strengths[i] = syn_strength;
@@ -129,7 +129,7 @@ static inline void cel_syns_trm( 			// TERMINATION
 		int const syn_active = syn_state != 0;
 
 		syn_strength += mul24(syn_prev_stp && !syn_active, inc << LTP_BIAS_LOG2);
-		syn_strength -= mul24(syn_prev_stp && syn_active, inc); // *****
+		//syn_strength -= mul24(syn_prev_stp && syn_active, inc); // ***** LET'S TRY WITH THIS OFF
 
 		/*if (syn_prev_stp) {
 			if (syn_active) {
@@ -294,12 +294,12 @@ COL_SYNS_CYCLE():
 				- syns_cycle() will need knowledge of which axon ranges it's expected to read from
 
 	WATCH OUT FOR:
-		- Bank conflicts once src_sst_x_offs start to change
+		- Bank conflicts once src_col_xy_offs start to change
 */
 //	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
 __kernel void syns_cycle(
 	__global uchar const* const axn_states,
-	__global char const* const syn_src_sst_x_offs,
+	__global char const* const syn_src_col_xy_offs,
 	__global uchar const* const syn_src_slice_ids,
 	//__global char const* const syn_strengths,
 	__private uint const syns_per_cell_l2,
@@ -332,8 +332,8 @@ __kernel void syns_cycle(
 	for (; syn_idx < syn_n; syn_idx += wg_size) {
 		syn_sst_i -= mul24((int)syn_slice_columns, (syn_sst_i >= syn_slice_columns));
 		int sst_pos = syn_sst_i >> syns_per_cell_l2;
-		uint axn_idx = axn_idx_2d(syn_src_slice_ids[syn_idx], slice_columns, sst_pos, syn_src_sst_x_offs[syn_idx]);
-		//uint axn_idx = mad24((uint)syn_src_slice_ids[syn_idx], slice_columns, (uint)(sst_pos + syn_src_sst_x_offs[syn_idx] + SYNAPSE_REACH_LIN));
+		uint axn_idx = axn_idx_2d(syn_src_slice_ids[syn_idx], slice_columns, sst_pos, syn_src_col_xy_offs[syn_idx]);
+		//uint axn_idx = mad24((uint)syn_src_slice_ids[syn_idx], slice_columns, (uint)(sst_pos + syn_src_col_xy_offs[syn_idx] + SYNAPSE_REACH_LIN));
 		uchar axn_state = axn_states[axn_idx];
 		
 		//syn_states[syn_idx] = axn_state;
@@ -895,7 +895,7 @@ __kernel void pyrs_ltp_unoptd(
 /* SYNS_REGROW()
 
 	- [done] check for dead synapses (syn_strength < 127)
-	- [partial] replace with new random src_sst_x_offs and src_slice_id
+	- [partial] replace with new random src_col_xy_offs and src_slice_id
 	- [partial] scan through synapses on that dendrite to check for duplicates
 	- [changed] repeat if duplicate found
 	- [done] abort if duplicate found
@@ -920,7 +920,7 @@ __kernel void syns_regrow(
 	__private uint const syns_per_den_l2,
 	__private uint const rnd,
 	//__global int* const aux_ints_1,
-	__global char* const syn_src_sst_x_offs,
+	__global char* const syn_src_col_xy_offs,
 	__global uchar* const syn_src_slice_ids
 ) {
 	uint const slice_id = get_global_id(0);
@@ -944,7 +944,7 @@ __kernel void syns_regrow(
 		uint n = base_syn_idx + (1 << syns_per_den_l2);
 
 		for (uint i = base_syn_idx; i < n; i++) {
-			int dup = (rnd_col_ofs == syn_src_sst_x_offs[syn_idx]);		// ADD && ROW CHECK
+			int dup = (rnd_col_ofs == syn_src_col_xy_offs[syn_idx]);		// ADD && ROW CHECK
 			//int dup_slice = ^^^^^^
 
 			if (!dup) {
@@ -958,7 +958,7 @@ __kernel void syns_regrow(
 		}
 
 		syn_strengths[syn_idx] = 0;	
-		syn_src_sst_x_offs[syn_idx] = rnd_col_ofs;
+		syn_src_col_xy_offs[syn_idx] = rnd_col_ofs;
 		//syn_src_slice_ids[syn_idx] =
 
 			//aux_ints_1[syn_idx] = syn_strength;
@@ -966,7 +966,7 @@ __kernel void syns_regrow(
 
 	
 	/*int dead_syn = (syn_strength <= -100);
-	syn_src_sst_x_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
+	syn_src_col_xy_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
 	syn_strengths[syn_idx] = mul24(!(dead_syn), (int)syn_strength);*/
 
 	//syn_src_slice_ids[syn_idx] =

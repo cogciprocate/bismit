@@ -1,16 +1,16 @@
+use std::option::{ Option };
+
 use microcosm::entity::{ EntityBody, EntityKind, EntityBrain, Mobile };
 use microcosm::worm::{ WormBrain };
 use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
 use microcosm::world::{ World };
 use cortex::{ Cortex };
-use proto::regions::{ ProtoRegion };
+use proto::regions::{ Protoregion };
 use chord::{ Chord };
 use ocl;
 use std::clone::Clone;
 use cmn;
 //use std::ptr;
-
-use std::option::{ Option };
 
 
 pub fn run() {

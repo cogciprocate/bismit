@@ -1,14 +1,3 @@
-use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
-use proto::areas::{ ProtoAreas };
-use proto::regions::{ ProtoRegion, ProtoRegionKind };
-use proto::cell::{ CellKind, Protocell, DendriteKind };
-use synapses::{ Synapses };
-use dendrites::{ Dendrites };
-use axons::{ Axons };
-use minicolumns::{ MiniColumns };
-use cortical_area:: { Aux };
-
 use num;
 use std::ops;
 use rand;
@@ -18,6 +7,18 @@ use rand::{ ThreadRng };
 use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
+
+use cmn;
+use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use proto::areas::{ Protoareas };
+use proto::regions::{ Protoregion, ProtoregionKind };
+use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
+use synapses::{ Synapses };
+use dendrites::{ Dendrites };
+use axons::{ Axons };
+use minicolumns::{ MiniColumns };
+use cortical_area:: { Aux };
+
 
 
 pub struct PeakColumns {
@@ -32,7 +33,7 @@ pub struct PeakColumns {
 }
 
 impl PeakColumns {
-	pub fn new(col_dims: CorticalDimensions, region: &ProtoRegion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> PeakColumns {
+	pub fn new(col_dims: CorticalDimensions, region: &Protoregion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> PeakColumns {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 

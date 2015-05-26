@@ -1,16 +1,3 @@
-use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
-use proto::areas::{ ProtoAreas };
-use proto::regions::{ ProtoRegion, ProtoRegionKind };
-use proto::cell::{ CellKind, Protocell, DendriteKind };
-use synapses::{ Synapses };
-use dendrites::{ Dendrites };
-use cortical_area:: { Aux };
-use peak_column::{ PeakColumns };
-use minicolumns::{ MiniColumns };
-use axons::{ Axons };
-
-
 use num;
 use rand;
 use std::mem;
@@ -20,12 +7,25 @@ use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
+use cmn;
+use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use proto::areas::{ Protoareas };
+use proto::regions::{ Protoregion, ProtoregionKind };
+use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
+use synapses::{ Synapses };
+use dendrites::{ Dendrites };
+use cortical_area:: { Aux };
+use peak_column::{ PeakColumns };
+use minicolumns::{ MiniColumns };
+use axons::{ Axons };
 
-/* Pyramidal
+
+
+/* Pyramidals
 	flag_sets: 0b10000000 (0x80) -> previously active
 
 */
-pub struct Pyramidal {
+pub struct Pyramidals {
 	dims: CorticalDimensions,
 	kern_ltp: ocl::Kernel,
 	kern_cycle: ocl::Kernel,
@@ -45,18 +45,18 @@ pub struct Pyramidal {
 	pub energies: Envoy<ocl::cl_uchar>,
 	pub dens: Dendrites,
 }
+// protocell: &Protocell,
+impl Pyramidals {
+	pub fn new(mut dims: CorticalDimensions, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Pyramidals {
 
-impl Pyramidal {
-	pub fn new(mut dims: CorticalDimensions, region: &ProtoRegion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Pyramidal {
-
-		let axn_slice_base = region.base_slice_cell_kind(&CellKind::Pyramidal);
-		//dims.depth() = region.depth_cell_kind(&CellKind::Pyramidal);
+		let axn_slice_base = region.base_slice_cell_kind(&ProtocellKind::Pyramidal);
+		//dims.depth() = region.depth_cell_kind(&ProtocellKind::Pyramidal);
 		let dens_per_cel_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
 		let syns_per_cel_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
-		//let col_input_layer = region.col_input_layer().expect("Pyramidal::new()");
+		//let col_input_layer = region.col_input_layer().expect("Pyramidals::new()");
 		//let den_prox_slice = region.slice_ids(vec![col_input_layer.name])[0];
 		
-		//print!("\n### Pyramidal: Proximal Dendrite Row: {}", den_prox_slice);
+		//print!("\n### Pyramidals: Proximal Dendrite Row: {}", den_prox_slice);
 		print!("\n##### PYRAMIDAL dims: {:?}", dims);
 
 		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -70,7 +70,7 @@ impl Pyramidal {
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
 		let dens_dims = dims.clone_with_pcl2(dens_per_cel_l2 as i8);
-		let dens = Dendrites::new(dens_dims, DendriteKind::Distal, CellKind::Pyramidal, region, axons, aux, ocl);
+		let dens = Dendrites::new(dens_dims, DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl);
 
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle", 
@@ -126,7 +126,7 @@ impl Pyramidal {
 		;
 
 
-		Pyramidal {
+		Pyramidals {
 			dims: dims,
 			kern_ltp: kern_ltp,
 			kern_cycle: kern_cycle,
@@ -175,7 +175,7 @@ impl Pyramidal {
 		self.kern_ltp.enqueue();
 	}
 
-	pub fn regrow(&mut self, region: &ProtoRegion) {
+	pub fn regrow(&mut self, region: &Protoregion) {
 
 		self.dens.regrow(region);
 	}
