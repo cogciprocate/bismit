@@ -29,9 +29,8 @@ use cortical_area:: { Aux };
 */
 
 pub struct Synapses {
-	pub dims: CorticalDimensions, // RETURN THIS TO PRIVATE (synapse_drill_down is accessing it)
-	//per_cell_l2: u32,
-	per_den_l2: u8,
+	dims: CorticalDimensions, 
+	protocell: Protocell,
 	den_kind: DendriteKind,
 	cell_kind: ProtocellKind,
 	since_decay: usize,
@@ -48,12 +47,13 @@ pub struct Synapses {
 }
 
 impl Synapses {
-	pub fn new(dims: CorticalDimensions, per_den_l2: u8, den_kind: DendriteKind, cell_kind: ProtocellKind, 
+	pub fn new(dims: CorticalDimensions, protocell: Protocell, den_kind: DendriteKind, cell_kind: ProtocellKind, 
 					region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
 
 		//let syns_per_slice = dims.columns() << dims.per_cel_l2_left().unwrap();
 		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
 
+		let syns_per_den_l2 = protocell.syns_per_den_l2;
 
 		//let slice_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl); // BRING THIS BACK
 
@@ -91,7 +91,7 @@ impl Synapses {
 			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 			.arg_env(&strengths)
-			.arg_scl(per_den_l2 as u32)
+			.arg_scl(syns_per_den_l2 as u32)
 			.arg_scl_named(0u32, "rnd")
 			//.arg_env(&aux.ints_0)
 			//.arg_env(&aux.ints_1)
@@ -103,8 +103,9 @@ impl Synapses {
 
 		let mut syns = Synapses {
 			dims: dims,
+			protocell: protocell,
 			//per_cell_l2: per_cell_l2,
-			per_den_l2: per_den_l2,
+			//per_den_l2: per_den_l2,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			since_decay: 0,
@@ -132,8 +133,8 @@ impl Synapses {
 		}
 
 		assert!(
-			(self.src_col_xy_offs.dims.per_slice() == self.src_slice_ids.dims.per_slice()) 
-			&& ((self.src_slice_ids.dims.per_slice() == (self.dims.per_slice()))), 
+			(self.src_col_xy_offs.dims().per_slice() == self.src_slice_ids.dims().per_slice()) 
+			&& ((self.src_slice_ids.dims().per_slice() == (self.dims().per_slice()))), 
 			"[cortical_area::Synapses::init(): dims.columns() mismatch]"
 		);
 
@@ -253,6 +254,10 @@ impl Synapses {
 		self.den_kind.clone()
 	}
 
+	pub fn dims(&self) -> &CorticalDimensions {
+		&self.dims
+	}
+
 	// NEEDS SERIOUS OPTIMIZATION
 	// Cache and sort by axn_idx (pre_compute, keep seperate list) for each dendrite
 	fn regrow_syn(&mut self, 
@@ -297,8 +302,9 @@ impl Synapses {
 	}
 
 	fn unique_src_addr(&self, syn_idx: usize) -> bool {
-		let syn_idx_den_init: usize = (syn_idx >> self.per_den_l2) << self.per_den_l2;
-		let syn_idx_den_n: usize = syn_idx_den_init + (1 << self.per_den_l2);
+		let syns_per_den_l2 = self.protocell.syns_per_den_l2;
+		let syn_idx_den_init: usize = (syn_idx >> syns_per_den_l2) << syns_per_den_l2;
+		let syn_idx_den_n: usize = syn_idx_den_init + (1 << syns_per_den_l2);
 
 		for i in syn_idx_den_init..syn_idx_den_n {
 			if (self.src_slice_ids[syn_idx] == self.src_slice_ids[i]) 
@@ -311,6 +317,8 @@ impl Synapses {
 
 		true
 	}
+
+
 
 
 

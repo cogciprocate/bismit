@@ -27,8 +27,9 @@ use spiny_stellates::{ SpinyStellateCellularLayer };
 
 */
 pub struct PyramidalCellularLayer {
-	name: &'static str,
+	layer_name: &'static str,
 	dims: CorticalDimensions,
+	protocell: Protocell,
 	kern_ltp: ocl::Kernel,
 	kern_cycle: ocl::Kernel,
 	kern_activate: ocl::Kernel,
@@ -49,14 +50,19 @@ pub struct PyramidalCellularLayer {
 }
 // protocell: &Protocell,
 impl PyramidalCellularLayer {
-	pub fn new(name: &'static str, mut dims: CorticalDimensions, region: &Protoregion, 
-					axons: &Axons, aux: &Aux, ocl: &Ocl
+	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl
 	) -> PyramidalCellularLayer {
 
 		let axn_slice_base = region.base_slice_cell_kind(&ProtocellKind::Pyramidal);
+
+		let dens_per_cel_l2 = protocell.dens_per_cel_l2;
+		let syns_per_den_l2 = protocell.syns_per_den_l2;
+		let syns_per_cel_l2 = dens_per_cel_l2 + syns_per_den_l2;
+
+
 		//dims.depth() = region.depth_cell_kind(&ProtocellKind::Pyramidal);
-		let dens_per_cel_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
-		let syns_per_cel_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
+		//let dens_per_cel_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
+		//let syns_per_cel_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
 		//let col_input_layer = region.col_input_layer().expect("PyramidalCellularLayer::new()");
 		//let den_prox_slice = region.slice_ids(vec![col_input_layer.name])[0];
 		
@@ -74,7 +80,7 @@ impl PyramidalCellularLayer {
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
 		let dens_dims = dims.clone_with_pcl2(dens_per_cel_l2 as i8);
-		let dens = Dendrites::new(dens_dims, DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl);
+		let dens = Dendrites::new(dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl);
 
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle", 
@@ -131,8 +137,9 @@ impl PyramidalCellularLayer {
 
 
 		PyramidalCellularLayer {
-			name: name,
+			layer_name: layer_name,
 			dims: dims,
+			protocell: protocell,
 			kern_ltp: kern_ltp,
 			kern_cycle: kern_cycle,
 			kern_activate: kern_activate,

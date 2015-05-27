@@ -32,7 +32,9 @@ use minicolumns::{ Minicolumns };
 
 */
 pub struct SpinyStellateCellularLayer {
+	layer_name: &'static str,
 	dims: CorticalDimensions,
+	protocell: Protocell,
 	//axn_output_slice: u8,
 	//kern_cycle: ocl::Kernel,
 	//kern_post_inhib: ocl::Kernel,
@@ -52,11 +54,11 @@ pub struct SpinyStellateCellularLayer {
 
 // pyrs: &PyramidalCellularLayer,
 impl SpinyStellateCellularLayer {
-	pub fn new(name: &'static str, dims: CorticalDimensions, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> SpinyStellateCellularLayer {
+	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> SpinyStellateCellularLayer {
 		let layer = region.col_input_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
 		//let depth: u8 = layer.depth();
 
-		let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+		let syns_per_den_l2 = protocell.syns_per_den_l2;
 		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
 
 		//let pyr_depth = region.depth_cell_kind(&ProtocellKind::Pyramidal);
@@ -68,7 +70,7 @@ impl SpinyStellateCellularLayer {
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		print!("\n##### SPINY STELLATE dims: {:?}", dims);
 
-		let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, region, axons, aux, ocl);
+		let dens = Dendrites::new(dims, protocell.clone(), DendriteKind::Proximal, ProtocellKind::SpinyStellate, region, axons, aux, ocl);
 
 		//let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let best_col_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -140,7 +142,9 @@ impl SpinyStellateCellularLayer {
 		//println!("\n***Test");
 
 		SpinyStellateCellularLayer {
+			layer_name: layer_name,
 			dims: dims,
+			protocell: protocell,
 			//axn_output_slice: axn_output_slice,
 			//kern_cycle: kern_cycle,
 			//kern_post_inhib: kern_post_inhib,
@@ -172,7 +176,7 @@ impl SpinyStellateCellularLayer {
 	pub fn ltp(&mut self) {
 		//print!("[R:{}]", self.rng.gen::<i32>());
 		self.kern_ltp.set_kernel_arg(4, self.rng.gen::<u32>());
-		self.kern_ltp.enqueue(); // <<<<< PROBLEM HERE -- MAYBE SOLVED (fixed peak_col size)
+		self.kern_ltp.enqueue();
 	}
 
 	pub fn regrow(&mut self, region: &Protoregion) {

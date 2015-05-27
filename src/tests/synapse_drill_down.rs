@@ -37,7 +37,7 @@ pub fn print_pyrs(cortex: &mut Cortex) {
 fn shitty_print_dens(cel_idx: usize, dens: &Dendrites) {
 	
 
-	let den_idx_base = cel_idx << cmn::DENDRITES_PER_CELL_DISTAL_LOG2;
+	/*let den_idx_base = cel_idx << cmn::DENDRITES_PER_CELL_DISTAL_LOG2;
 	let dens_per_cel = 1 << cmn::DENDRITES_PER_CELL_DISTAL_LOG2;
 
 	let syns = &dens.syns;
@@ -49,14 +49,14 @@ fn shitty_print_dens(cel_idx: usize, dens: &Dendrites) {
 			shitty_print_syns(cel_idx, den_i, &syns);
 		}
 
-	}
+	}*/
 
 	//for den in vec
 
 }
 
 fn shitty_print_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
-	let syn_idx_base = den_idx << cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
+	/*let syn_idx_base = den_idx << cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 	let syns_per_den = 1 << cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2;
 
 	print!("\n");
@@ -80,7 +80,7 @@ fn shitty_print_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 
 	}
 
-	print!("\n");
+	print!("\n");*/
 }
 
  
@@ -88,7 +88,7 @@ fn shitty_print_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 
 
 pub fn print_mcols(cortex: &mut Cortex) {
-	println!("Pyramidal synapse source test running...");
+	/*println!("Pyramidal synapse source test running...");
 
 	let mcols = &mut cortex.cortical_area.mcols;
 
@@ -109,14 +109,14 @@ pub fn print_mcols(cortex: &mut Cortex) {
 		}
 	}
 
-	io::stdout().flush().unwrap();
+	io::stdout().flush().unwrap();*/
 }
 
 
 
 
 fn shitty_print_col_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
-	let syn_idx_base = den_idx << cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+	/*let syn_idx_base = den_idx << cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 	let syns_per_den = 1 << cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 
 	print!("\n");
@@ -140,7 +140,7 @@ fn shitty_print_col_syns(cel_idx: usize, den_idx: usize, syns: &Synapses) {
 
 	}
 
-	print!("\n");
+	print!("\n");*/
 }
 
 

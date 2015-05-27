@@ -70,20 +70,20 @@ impl CorticalArea {
 
 		for (&layer_name, layer) in protoregion.layers().iter() {
 			match layer.kind {
-				ProtolayerKind::Cellular(ref cell) => {
-					match cell.cell_kind {
+				ProtolayerKind::Cellular(ref pcell) => {
+					match pcell.cell_kind {
 						ProtocellKind::Pyramidal => {
-							print!("\n##### Making a Pyramidal ({:?}) for layer: {} (depth: {})", cell.cell_kind, layer_name, layer.depth);
+							print!("\n##### Making a Pyramidal ({:?}) for layer: {} (depth: {})", pcell.cell_kind, layer_name, layer.depth);
 							let pyrs_dims = dims.clone_with_depth(protoregion.depth_cell_kind(&ProtocellKind::Pyramidal));
-							let pyr_lyr = PyramidalCellularLayer::new(layer_name, pyrs_dims, protoregion, &axns, &aux, ocl);
+							let pyr_lyr = PyramidalCellularLayer::new(layer_name, pyrs_dims, pcell.clone(), protoregion, &axns, &aux, ocl);
 							pyrs.insert(layer_name, Box::new(pyr_lyr));
 						},
 
 						ProtocellKind::SpinyStellate => {
-							print!("\n##### Making a SpinyStellate ({:?}) for layer: {} (depth: {})", cell.cell_kind, layer_name, layer.depth);
+							print!("\n##### Making a SpinyStellate ({:?}) for layer: {} (depth: {})", pcell.cell_kind, layer_name, layer.depth);
 							let ssts_layer = protoregion.col_input_layer().expect("CorticalArea::new()");
 							let ssts_dims = dims.clone_with_depth(ssts_layer.depth());
-							let sst_lyr = SpinyStellateCellularLayer::new(layer_name, ssts_dims, protoregion, &axns, &aux, ocl);
+							let sst_lyr = SpinyStellateCellularLayer::new(layer_name, ssts_dims, pcell.clone(), protoregion, &axns, &aux, ocl);
 							ssts.insert(layer_name, Box::new(sst_lyr));
 						},
 
@@ -246,89 +246,6 @@ impl Aux {
 }
 
 
-
-/*pub struct Somata {
-	depth: u8,
-	dims: CorticalDimensions, height: u32, 
-	pub dst_dens: Dendrites,
-	pub states: Envoy<ocl::cl_uchar>,
-	pub hcol_max_vals: Envoy<ocl::cl_uchar>,
-	pub hcol_max_ids: Envoy<ocl::cl_uchar>,
-	pub rand_ofs: Envoy<ocl::cl_char>,
-}
-
-impl Somata {
-	pub fn new(dims: CorticalDimensions, height: u32,  depth: u8, protoregion: &Protoregion, ocl: &Ocl) -> Somata {
-		Somata { 
-			depth: depth,
-			width: width, height: height, 
-			states: Envoy::<ocl::cl_uchar>::new(width, depth, cmn::STATE_ZERO, ocl),
-			hcol_max_vals: Envoy::<ocl::cl_uchar>::new(dims.width / cmn::COLUMNS_PER_HYPERCOLUMN, depth, cmn::STATE_ZERO, ocl),
-			hcol_max_ids: Envoy::<ocl::cl_uchar>::new(dims.width / cmn::COLUMNS_PER_HYPERCOLUMN, depth, 0u8, ocl),
-			rand_ofs: Envoy::<ocl::cl_char>::shuffled(256, 1, -128, 127, ocl),
-			dst_dens: Dendrites::new(width, depth, DendriteKind::Distal, cmn::DENDRITES_PER_CELL_DISTAL, protoregion, ocl),
-
-		}
-	}
-
-	fn cycle_pre(&self, dst_dens: &Dendrites, prx_dens: &Dendrites, ocl: &Ocl) {
-
-		let kern = ocl::new_kernel(ocl.program, "soma_cycle_pre");
-		ocl::set_kernel_arg(1, prx_dens.states.buf, kern);
-		ocl::set_kernel_arg(2, self.states.buf, kern);
-
-		let gws = (self.depth as usize, self.dims.width as usize);
-
-		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
-
-	}
-
-	fn cycle(&self, ocl: &Ocl) {
-
-		let kern = ocl::new_kernel(ocl.program, "soma_cycle_post");
-		ocl::set_kernel_arg(0, self.dst_dens.states.buf, kern);
-		//ocl::set_kernel_arg(1, self.bsl_prx_dens.states.buf, kern);
-		ocl::set_kernel_arg(1, self.states.buf, kern);
-		ocl::set_kernel_arg(2, self.depth as u32, kern);
-
-		let gws = (self.depth as usize, self.dims.width as usize);
-
-		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
-
-	}
-
-	pub fn inhib(&self, ocl: &Ocl) {
-
-		let kern = ocl::new_kernel(ocl.program, "soma_inhib");
-		ocl::set_kernel_arg(0, self.states.buf, kern);
-		ocl::set_kernel_arg(1, self.hcol_max_ids.buf, kern);
-		ocl::set_kernel_arg(2, self.hcol_max_vals.buf, kern);
-		let mut kern_dims.width = self.dims.width as usize / cmn::COLUMNS_PER_HYPERCOLUMN as usize;
-		let gws = (self.depth as usize, kern_width);
-		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
-
-		ocl::set_kernel_arg(0, self.aux.chars_0.buf, kern);
-		ocl::set_kernel_arg(1, self.aux.chars_1.buf, kern);
-		kern_dims.width = kern_dims.width / (1 << grp_size_log2);
-		let gws = (self.depth_cellular as usize, self.dims.width as usize / 64);
-		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
-	}
-
-	pub fn ltp(&mut self, ocl: &Ocl) {
-
-		let kern = ocl::new_kernel(ocl.program, "syns_ltp");
-		ocl::set_kernel_arg(0, self.hcol_max_ids.buf, kern);
-		ocl::set_kernel_arg(1, self.dst_dens.syns.states.buf, kern);
-		ocl::set_kernel_arg(2, self.dst_dens.thresholds.buf, kern);
-		ocl::set_kernel_arg(3, self.dst_dens.states.buf, kern);
-		ocl::set_kernel_arg(4, self.dst_dens.syns.strengths.buf, kern);
-		ocl::set_kernel_arg(5, self.rand_ofs.buf, kern);
-
-		let mut kern_dims.width = self.dims.width as usize / cmn::COLUMNS_PER_HYPERCOLUMN as usize;
-		let gws = (self.depth as usize, kern_width);
-		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
-	}
-}*/
 
 
 

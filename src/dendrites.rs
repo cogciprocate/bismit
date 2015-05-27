@@ -19,7 +19,8 @@ use cortical_area:: { Aux };
 
 
 pub struct Dendrites {
-	pub dims: CorticalDimensions,
+	dims: CorticalDimensions,
+	protocell: Protocell,
 	//per_cell_l2: u32,
 	den_kind: DendriteKind,
 	cell_kind: ProtocellKind,
@@ -34,6 +35,7 @@ pub struct Dendrites {
 impl Dendrites {
 	pub fn new(
 					dims: CorticalDimensions,
+					protocell: Protocell,
 					//per_cell_l2: u32,
 					den_kind: DendriteKind, 
 					cell_kind: ProtocellKind,
@@ -47,16 +49,17 @@ impl Dendrites {
 
 		//let dims = cel_dims.clone_with_pcl2(per_cell_l2);
 
+		let syns_per_den_l2 = protocell.syns_per_den_l2;
 
-		let (den_threshold, syns_per_den_l2, den_kernel) = match den_kind {
+		let (den_threshold, den_kernel) = match den_kind {
 			DendriteKind::Distal => (
 				cmn::DENDRITE_INITIAL_THRESHOLD_DISTAL,
-				cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, 
+				//cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, 
 				"den_cycle"
 			),
 			DendriteKind::Proximal => (
 				cmn::DENDRITE_INITIAL_THRESHOLD_PROXIMAL,
-				cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, 
+				//cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, 
 				"den_cycle"
 			),
 		};
@@ -68,7 +71,7 @@ impl Dendrites {
 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
 		let syns_dims = dims.clone_with_pcl2((dims.per_cel_l2() + syns_per_den_l2 as i8));
-		let syns = Synapses::new(syns_dims, syns_per_den_l2, den_kind, cell_kind, region, axons, aux, ocl);
+		let syns = Synapses::new(syns_dims, protocell.clone(), den_kind, cell_kind, region, axons, aux, ocl);
 
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
@@ -86,6 +89,7 @@ impl Dendrites {
 		
 		Dendrites {
 			dims: dims,
+			protocell: protocell,
 			//per_cell_l2: per_cell_l2,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
@@ -115,4 +119,9 @@ impl Dendrites {
 		self.states.read();
 		self.syns.confab();
 	} 
+
+	pub fn dims(&self) -> &CorticalDimensions {
+		&self.dims
+	}
+
 }

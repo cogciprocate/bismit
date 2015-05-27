@@ -17,29 +17,29 @@ use cmn;
 pub struct Envoy<T> {
 	pub vec: Vec<T>,
 	pub buf: ocl::cl_mem,
-	pub padding: u32,
-	pub dims: CorticalDimensions,
+	padding: u32,
+	dims: CorticalDimensions,
 	//pub width: u32,
 	//pub depth: u8,
-	pub ocl: Ocl,
+	ocl: Ocl,
 }
 impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive + UpperHex> Envoy<T> {
 	pub fn new(dims: CorticalDimensions, init_val: T, ocl: &Ocl) -> Envoy<T> {
-		let len = len(dims, 0);
+		let len = dims.len() as usize;
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
 		Envoy::_new(0, dims, vec, ocl)
 	}
 
 	pub fn with_padding(padding: u32, dims: CorticalDimensions, init_val: T, ocl: &Ocl) -> Envoy<T> {
-		let len = len(dims, padding);
+		let len = (dims.len() + padding) as usize;
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
 		Envoy::_new(padding, dims, vec, ocl)
 	}
 
 	pub fn shuffled(dims: CorticalDimensions, min_val: T, max_val: T, ocl: &Ocl) -> Envoy<T> {
-		let len = len(dims, 0);
+		let len = dims.len() as usize;
 		//println!("shuffled(): len: {}", len);
 		let vec: Vec<T> = cmn::shuffled_vec(len, min_val, max_val);
 		//println!("shuffled(): vec.len(): {}", vec.len());
@@ -96,7 +96,11 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 	pub fn len(&self) -> usize {
 		//println!("self.dims.len(): {} == self.vec.len(): {}", self.dims.len(),  self.vec.len());
 		assert!((self.dims.len() + self.padding) as usize == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
-		len(self.dims, 0)
+		self.vec.len()
+	}
+
+	pub fn dims(&self) -> &CorticalDimensions {
+		&self.dims
 	}
 
 	pub fn print_simple(&mut self) {
@@ -117,7 +121,6 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
     pub fn release(&mut self) {
 		ocl::release_mem_object(self.buf);
 	}
-
 }
 
 impl<'b, T> Index<&'b usize> for Envoy<T> {
@@ -148,7 +151,7 @@ impl<T> IndexMut<usize> for Envoy<T> {
     }
 }
 
-
+/*
 fn len(dims: CorticalDimensions, padding: u32) -> usize {
 	(padding + dims.len()) as usize
-}
+}*/
