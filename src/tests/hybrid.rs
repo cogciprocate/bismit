@@ -15,17 +15,17 @@ use ocl;
 
 pub fn test_cycles(cortex: &mut Cortex) {
 	
-	/*cortex.cortical_area.mcols.dens.syns.src_col_xy_offs.set_all_to(0);
-	cortex.cortical_area.pyrs.dens.syns.src_col_xy_offs.set_all_to(0);
+	/*cortex.cortical_area.ssts.get_mut("iv").unwrap().dens.syns.src_col_xy_offs.set_all_to(0);
+	cortex.cortical_area.pyrs.get_mut("iii").unwrap().dens.syns.src_col_xy_offs.set_all_to(0);
 
-	cortex.cortical_area.mcols.dens.cycle();
-	cortex.cortical_area.pyrs.dens.cycle();*/
+	cortex.cortical_area.ssts.get_mut("iv").unwrap().dens.cycle();
+	cortex.cortical_area.pyrs.get_mut("iii").unwrap().dens.cycle();*/
 
 		//#####  TRY THIS OUT SOMETIME  #####
-	//let pyrs_input_len = cortex.cortical_area.pyrs.len();
+	//let pyrs_input_len = cortex.cortical_area.pyrs.get_mut("iii").unwrap().len();
 	//let mut vec_pyrs = iter::repeat(0).take().collect();
 	//input_czar::vec_band_512_fill(&mut vec_pyrs);
-	//let pyr_axn_ranges = cortex.cortical_area.layer_input_ranges("iii", cortex.cortical_area.pyrs.dens.syns.den_kind());
+	//let pyr_axn_ranges = cortex.cortical_area.layer_input_ranges("iii", cortex.cortical_area.pyrs.get_mut("iii").unwrap().dens.syns.den_kind());
 	//write_to_axons(axn_range, vec1);
 
 	print!("\nSpiny Stellate:");
@@ -43,7 +43,7 @@ fn test_1(input_slice_name: &'static str, cortex: &mut Cortex) {
 	input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_LIN as usize * 2), &mut vec1);
 	cortex.write_vec(0, input_slice_name, &vec1);
 
-	let mut dens = &mut cortex.cortical_area.mcols.dens;
+	let mut dens = &mut cortex.cortical_area.ssts.get_mut("iv").unwrap().dens;
 
 	dens.syns.src_col_xy_offs.set_all_to(0);
 	dens.cycle();

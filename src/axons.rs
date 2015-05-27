@@ -17,7 +17,7 @@ use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use cortical_area:: { Aux };
 use peak_column::{ PeakColumns };
-use minicolumns::{ MiniColumns };
+use minicolumns::{ Minicolumns };
 
 
 pub struct Axons {

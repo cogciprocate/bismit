@@ -3,14 +3,14 @@ use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 
 use cortex::{ Cortex };
 use dendrites::{ Dendrites };
-use pyramidals::{ Pyramidals };
-use minicolumns::{ MiniColumns };
+use pyramidals::{ PyramidalCellularLayer };
+use minicolumns::{ Minicolumns };
 use synapses::{ Synapses };
 use cmn;
 
 
 pub fn print_pyrs(cortex: &mut Cortex) {
-	let pyrs = &mut cortex.cortical_area.pyrs;
+	let pyrs = &mut cortex.cortical_area.pyrs.get_mut("iii").unwrap();
 	pyrs.confab();
 
 	let columns = cortex.cortical_area.dims.columns();
@@ -99,13 +99,13 @@ pub fn print_mcols(cortex: &mut Cortex) {
 	let col_idx_base = 0usize;
 	let columns = cortex.cortical_area.dims.columns();
 
-	let syns = &mcols.dens.syns;
+	let dens = &mut cortex.cortical_area.ssts.get_mut("iv").unwrap().dens;
 
 	for col_i in 0..columns as usize {
-		if mcols.dens.states.vec[col_i] != 0 {
+		if dens.states.vec[col_i] != 0 {
 			//print!("[DEN:]", , );
-			print!("\n########## [{cd}C:[{}]{cg}:{cp}{:02X}]{cd} ##########", col_i, mcols.dens.states.vec[col_i], cp = cmn::C_PUR, cd = cmn::C_DEFAULT, cg = cmn::C_DGR);
-			shitty_print_col_syns(col_i, col_i, &syns);
+			print!("\n########## [{cd}C:[{}]{cg}:{cp}{:02X}]{cd} ##########", col_i, dens.states.vec[col_i], cp = cmn::C_PUR, cd = cmn::C_DEFAULT, cg = cmn::C_DGR);
+			shitty_print_col_syns(col_i, col_i, &dens.syns);
 		}
 	}
 

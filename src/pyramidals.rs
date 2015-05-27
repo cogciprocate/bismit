@@ -16,16 +16,18 @@ use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use cortical_area:: { Aux };
 use peak_column::{ PeakColumns };
-use minicolumns::{ MiniColumns };
+use minicolumns::{ Minicolumns };
 use axons::{ Axons };
+use spiny_stellates::{ SpinyStellateCellularLayer };
 
 
 
-/* Pyramidals
+/* PyramidalCellularLayer
 	flag_sets: 0b10000000 (0x80) -> previously active
 
 */
-pub struct Pyramidals {
+pub struct PyramidalCellularLayer {
+	name: &'static str,
 	dims: CorticalDimensions,
 	kern_ltp: ocl::Kernel,
 	kern_cycle: ocl::Kernel,
@@ -46,17 +48,19 @@ pub struct Pyramidals {
 	pub dens: Dendrites,
 }
 // protocell: &Protocell,
-impl Pyramidals {
-	pub fn new(mut dims: CorticalDimensions, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Pyramidals {
+impl PyramidalCellularLayer {
+	pub fn new(name: &'static str, mut dims: CorticalDimensions, region: &Protoregion, 
+					axons: &Axons, aux: &Aux, ocl: &Ocl
+	) -> PyramidalCellularLayer {
 
 		let axn_slice_base = region.base_slice_cell_kind(&ProtocellKind::Pyramidal);
 		//dims.depth() = region.depth_cell_kind(&ProtocellKind::Pyramidal);
 		let dens_per_cel_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
 		let syns_per_cel_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
-		//let col_input_layer = region.col_input_layer().expect("Pyramidals::new()");
+		//let col_input_layer = region.col_input_layer().expect("PyramidalCellularLayer::new()");
 		//let den_prox_slice = region.slice_ids(vec![col_input_layer.name])[0];
 		
-		//print!("\n### Pyramidals: Proximal Dendrite Row: {}", den_prox_slice);
+		//print!("\n### PyramidalCellularLayer: Proximal Dendrite Row: {}", den_prox_slice);
 		print!("\n##### PYRAMIDAL dims: {:?}", dims);
 
 		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -126,7 +130,8 @@ impl Pyramidals {
 		;
 
 
-		Pyramidals {
+		PyramidalCellularLayer {
+			name: name,
 			dims: dims,
 			kern_ltp: kern_ltp,
 			kern_cycle: kern_cycle,
@@ -148,10 +153,10 @@ impl Pyramidals {
 		}
 	}
 
-	pub fn init_kernels(&mut self, cols: &MiniColumns, axns: &Axons, aux: &Aux) {
-		self.kern_activate.new_arg_envoy(&cols.dens.states);
-		self.kern_activate.new_arg_envoy(&cols.cels_status);
-		self.kern_activate.new_arg_envoy(&cols.best_col_den_states);
+	pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &SpinyStellateCellularLayer, axns: &Axons, aux: &Aux) {
+		self.kern_activate.new_arg_envoy(&ssts.dens.states);
+		self.kern_activate.new_arg_envoy(&mcols.cels_status);
+		self.kern_activate.new_arg_envoy(&mcols.best_col_den_states);
 		self.kern_activate.new_arg_envoy(&self.best1_den_ids);
 		self.kern_activate.new_arg_envoy(&self.dens.states);
 		self.kern_activate.new_arg_scalar(self.axn_slice_base);

@@ -46,7 +46,7 @@ pub fn define_protoregions() -> Protoregions {
 
 pub fn define_protoareas() -> Protoareas {
 	let mut protoareas = Protoareas::new()
-		.area("v1", 6, 5, ProtoregionKind::Sensory)
+		.area("v1", 5, 5, ProtoregionKind::Sensory)
 	;
 	//let mut curr_offset: u32 = 128;
 	/*let region_kind = ProtoregionKind::Sensory;

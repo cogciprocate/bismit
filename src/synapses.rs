@@ -253,7 +253,8 @@ impl Synapses {
 		self.den_kind.clone()
 	}
 
-	// NEEDS SERIOUS OPTIMIZATION (cache syn values for den for a start)
+	// NEEDS SERIOUS OPTIMIZATION
+	// Cache and sort by axn_idx (pre_compute, keep seperate list) for each dendrite
 	fn regrow_syn(&mut self, 
 				syn_idx: usize, 
 				src_slice_idx_range: &Range<usize>, 

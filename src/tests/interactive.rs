@@ -229,7 +229,7 @@ pub fn run() -> bool {
 
 			{
 				let out_slice_prev = &cortex.cortical_area.axns.states.vec[out_start..(out_end + 1)];
-				let ff_slice_prev = &cortex.cortical_area.mcols.dens.states.vec[..];
+				let ff_slice_prev = &cortex.cortical_area.ssts.get_mut("iv").unwrap().dens.states.vec[..];
 
 				vec_out_prev.clone_from_slice(out_slice_prev);
 				vec_ff_prev.clone_from_slice(ff_slice_prev);
@@ -254,12 +254,12 @@ pub fn run() -> bool {
 
 			// REQUIRES cortex.cortical_area.axns.states TO BE FILLED BY .print() unless:
 
-			if view_sdr_only { cortex.cortical_area.mcols.dens.states.read(); }
+			if view_sdr_only { cortex.cortical_area.ssts.get_mut("iv").unwrap().dens.states.read(); }
 
 			cortex.cortical_area.axns.states.read();
 
 			let out_slice = &cortex.cortical_area.axns.states.vec[out_start..(out_end + 1)];
-			let ff_slice = &cortex.cortical_area.mcols.dens.states.vec[..];
+			let ff_slice = &cortex.cortical_area.ssts.get_mut("iv").unwrap().dens.states.vec[..];
 
 			cmn::render_sdr(out_slice, Some(ff_slice), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.cortical_area.slice_map, true, cortex.cortical_area.dims.columns());
 

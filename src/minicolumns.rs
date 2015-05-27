@@ -17,26 +17,27 @@ use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cortical_area:: { Aux };
 use peak_column:: { PeakColumns };
-use pyramidals::{ Pyramidals };
+use pyramidals::{ PyramidalCellularLayer };
+use spiny_stellates::{ SpinyStellateCellularLayer };
 
 
 
 
-/*	MiniColumns (aka. Columns)
+/*	Minicolumns (aka. Columns)
 	- TODO:
 		- Reorganization to:
-			- MiniColumns
+			- Minicolumns
 				- SpinyStellate
 					- Dendrite
 
 */
-pub struct MiniColumns {
+pub struct Minicolumns {
 	dims: CorticalDimensions,
 	axn_output_slice: u8,
 	//kern_cycle: ocl::Kernel,
 	kern_post_inhib: ocl::Kernel,
 	kern_output: ocl::Kernel,
-	kern_ltp: ocl::Kernel,
+	//kern_ltp: ocl::Kernel,
 	rng: rand::XorShiftRng,
 	//regrow_counter: usize,	// SLATED FOR REMOVAL
 	//pub states: Envoy<ocl::cl_uchar>,
@@ -45,13 +46,13 @@ pub struct MiniColumns {
 	pub best_col_den_states: Envoy<ocl::cl_uchar>,
 	pub peak_spis: PeakColumns,
 	//pub syns: ColumnSynapses,
-	pub dens: Dendrites,
+	//pub dens: Dendrites,
 	//pub syns: Synapses,
 }
 
-impl MiniColumns {
-	pub fn new(dims: CorticalDimensions, region: &Protoregion, axons: &Axons, pyrs: &Pyramidals, aux: &Aux, ocl: &Ocl) -> MiniColumns {
-		let layer = region.col_input_layer().expect("minicolumns::MiniColumns::new()");
+impl Minicolumns {
+	pub fn new(dims: CorticalDimensions, region: &Protoregion, axons: &Axons, ssts: &SpinyStellateCellularLayer, pyrs: &PyramidalCellularLayer, aux: &Aux, ocl: &Ocl) -> Minicolumns {
+		let layer = region.col_input_layer().expect("minicolumns::Minicolumns::new()");
 		//let depth: u8 = layer.depth();
 
 		let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
@@ -66,12 +67,12 @@ impl MiniColumns {
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		print!("\n##### MINICOLUMN dims: {:?}", dims);
 
-		let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, region, axons, aux, ocl);
+		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, region, axons, aux, ocl);
 
 		let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let best_col_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
-		let peak_spis = PeakColumns::new(dims, region, &dens.states, ocl);
+		let peak_spis = PeakColumns::new(dims, region, &ssts.dens.states, ocl);
 
 		/*let syns = Synapses::new(dims, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
 			ProtocellKind::SpinyStellate, region, axons, aux, ocl);*/
@@ -82,8 +83,8 @@ impl MiniColumns {
 
 
 		/*let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(depth as usize, dims.columns() as usize))
-			.arg_env(&dens.syns.states)
-			.arg_env(&dens.syns.strengths)
+			.arg_env(&ssts.dens.syns.states)
+			.arg_env(&ssts.dens.syns.strengths)
 			.arg_scl(syns_per_den_l2)
 			.arg_scl(cmn::DENDRITE_INITIAL_THRESHOLD_PROXIMAL)
 			.arg_env(&states_raw)
@@ -95,13 +96,13 @@ impl MiniColumns {
 			.arg_env(&peak_spis.states)
 			.arg_env(&peak_spis.wins)
 			.arg_scl(layer.base_slice_pos() as u32)
-			.arg_env(&dens.states)
+			.arg_env(&ssts.dens.states)
 			.arg_env(&axons.states)
 		;
 
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
-			.arg_env(&dens.states)
+			.arg_env(&ssts.dens.states)
 			.arg_env(&pyrs.preds)
 			.arg_env(&pyrs.best1_den_states)
 			//.arg_scl(depth)
@@ -114,7 +115,7 @@ impl MiniColumns {
 		;
 
 
-		let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, peak_spis.dims.per_slice() as usize))
+		/*let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, peak_spis.dims.per_slice() as usize))
 			.arg_env(&peak_spis.spi_ids)
 			.arg_env(&peak_spis.states)
 			.arg_env(&dens.syns.states)
@@ -123,17 +124,17 @@ impl MiniColumns {
 			//.arg_env(&aux.ints_0)
 			.arg_env(&dens.syns.strengths)
 			//.arg_env(&axons.states)
-		;
+		;*/
 
 		//println!("\n***Test");
 
-		MiniColumns {
+		Minicolumns {
 			dims: dims,
 			axn_output_slice: axn_output_slice,
 			//kern_cycle: kern_cycle,
 			kern_post_inhib: kern_post_inhib,
 			kern_output: kern_output,
-			kern_ltp: kern_ltp,
+			//kern_ltp: kern_ltp,
 			rng: rand::weak_rng(),
 			//regrow_counter: 0usize,
 			//states_raw: states_raw,
@@ -141,39 +142,39 @@ impl MiniColumns {
 			cels_status: cels_status,
 			best_col_den_states: best_col_den_states,
 			peak_spis: peak_spis,
-			dens: dens,
+			//dens: dens,
 		}
 	}
 
 	pub fn cycle(&mut self, ltp: bool) {
-		self.dens.cycle();
+		//self.dens.cycle();
 		//self.kern_cycle.enqueue(); 
 		self.peak_spis.cycle(); 
 		self.kern_post_inhib.enqueue(); 
-		if ltp { self.ltp(); }
+		//if ltp { self.ltp(); }
 	}
 
 	pub fn output(&self) {
 		self.kern_output.enqueue();
 	}
 
-	pub fn ltp(&mut self) {
+	/*pub fn ltp(&mut self) {
 		//print!("[R:{}]", self.rng.gen::<i32>());
 		self.kern_ltp.set_kernel_arg(4, self.rng.gen::<u32>());
 
 		self.kern_ltp.enqueue(); // <<<<< PROBLEM HERE -- MAYBE SOLVED (fixed peak_col size)
-	}
+	}*/
 
-	pub fn regrow(&mut self, region: &Protoregion) {
+	/*pub fn regrow(&mut self, region: &Protoregion) {
 		self.dens.regrow(region);
-	}
+	}*/
 
 	pub fn confab(&mut self) {
 		//self.states.read();
 		//self.states_raw.read();
 		self.cels_status.read();
 		//self.peak_spis.confab();
-		self.dens.confab();
+		//self.ssts.dens.confab();
 	} 
 
 	pub fn axn_output_range(&self) -> (usize, usize) {
