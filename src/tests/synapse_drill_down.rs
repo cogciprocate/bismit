@@ -10,7 +10,7 @@ use cmn;
 
 
 pub fn print_pyrs(cortex: &mut Cortex) {
-	let pyrs = &mut cortex.cortical_area.pyrs.get_mut("iii").unwrap();
+	let pyrs = &mut cortex.cortical_area.pyrs.get_mut("iii").expect("synapse_drill_down.rs");
 	pyrs.confab();
 
 	let columns = cortex.cortical_area.dims.columns();
@@ -30,7 +30,7 @@ pub fn print_pyrs(cortex: &mut Cortex) {
 		pyr_idx += 1;
 	}
 	
-	io::stdout().flush().unwrap();
+	io::stdout().flush().unwrap()
 }
 
 
@@ -99,7 +99,7 @@ pub fn print_mcols(cortex: &mut Cortex) {
 	let col_idx_base = 0usize;
 	let columns = cortex.cortical_area.dims.columns();
 
-	let dens = &mut cortex.cortical_area.ssts.get_mut("iv").unwrap().dens;
+	let dens = &mut cortex.cortical_area.ssts.get_mut("iv").expect("synapse_drill_down.rs").dens;
 
 	for col_i in 0..columns as usize {
 		if dens.states.vec[col_i] != 0 {
@@ -109,7 +109,7 @@ pub fn print_mcols(cortex: &mut Cortex) {
 		}
 	}
 
-	io::stdout().flush().unwrap();*/
+	io::stdout().flush().unwrap()*/
 }
 
 

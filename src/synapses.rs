@@ -35,7 +35,7 @@ pub struct Synapses {
 	cell_kind: ProtocellKind,
 	since_decay: usize,
 	kern_cycle: ocl::Kernel,
-	kern_regrow: ocl::Kernel,
+	//kern_regrow: ocl::Kernel,
 	rng: rand::XorShiftRng,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub strengths: Envoy<ocl::cl_char>,
@@ -50,18 +50,22 @@ impl Synapses {
 	pub fn new(dims: CorticalDimensions, protocell: Protocell, den_kind: DendriteKind, cell_kind: ProtocellKind, 
 					region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
 
-		//let syns_per_slice = dims.columns() << dims.per_cel_l2_left().unwrap();
+		let syns_per_cel_l2: u8 = protocell.dens_per_cel_l2 + protocell.syns_per_den_l2;
+		assert!(dims.per_cel_l2() as u8 == syns_per_cel_l2);
+
+		//let syns_per_slice = dims.columns() << dims.per_cel_l2_left().expect("synapses.rs");
 		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
 
-		let syns_per_den_l2 = protocell.syns_per_den_l2;
+		let syns_per_den_l2: u8 = protocell.syns_per_den_l2;
 
 		//let slice_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl); // BRING THIS BACK
 
 
-		print!("\n##### New {:?} Synapses with dims: {:?}", den_kind, dims);
+		print!("\n            SYNAPSES::NEW(): new {:?} synapses with dims: {:?}", den_kind, dims);
 		//println!("##### Synapses columns(): {}, per_slice(): {}", dims.columns(), dims.per_slice());
 
-		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
+		let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl);
+		//let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let mut src_slice_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
@@ -79,7 +83,7 @@ impl Synapses {
 			.arg_env(&src_col_xy_offs)
 			.arg_env(&src_slice_ids)
 			//.arg_env(&strengths)
-			.arg_scl(dims.per_cel_l2_left().unwrap())
+			.arg_scl(syns_per_cel_l2)
 			.arg_env(&aux.ints_0)
 			//.arg_env(&aux.ints_1)
 			.arg_env(&states)
@@ -87,7 +91,7 @@ impl Synapses {
 
 		//println!("\n### Defining kern_regrow with len: {} ###", dims.depth() as usize * dims as usize);
 
-		let mut kern_regrow = ocl.new_kernel("syns_regrow", 
+		/*let mut kern_regrow = ocl.new_kernel("syns_regrow", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 			.arg_env(&strengths)
@@ -97,7 +101,7 @@ impl Synapses {
 			//.arg_env(&aux.ints_1)
 			.arg_env(&src_col_xy_offs)
 			.arg_env(&src_slice_ids)
-		;
+		;*/
 
 		//println!("\n### Test S1 ###");
 
@@ -110,7 +114,7 @@ impl Synapses {
 			cell_kind: cell_kind,
 			since_decay: 0,
 			kern_cycle: kern_cycle,
-			kern_regrow: kern_regrow,
+			//kern_regrow: kern_regrow,
 			rng: rand::weak_rng(),
 			states: states,
 			strengths: strengths,
@@ -174,7 +178,7 @@ impl Synapses {
 
 			//println!("\n##### SYNAPSE DIMS: {:?}", self.dims);
 			
-			assert!(src_slice_ids_len <= (self.dims.per_cel().unwrap()) as usize, "cortical_area::Synapses::init(): Number of source slices must not exceed number of synapses per cell.");
+			assert!(src_slice_ids_len <= (self.dims.per_cel().expect("synapses.rs")) as usize, "cortical_area::Synapses::init(): Number of source slices must not exceed number of synapses per cell.");
 
 			if init {
 				print!("\n    syns.init(): \"{}\" ({:?}): slice_ids: {:?}, src_slice_ids: {:?}", layer_name, self.den_kind, slice_ids, src_slice_ids);

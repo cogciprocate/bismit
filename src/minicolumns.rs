@@ -1,5 +1,6 @@
 use std::ops;
 use std::mem;
+use std::collections::{ HashMap };
 use rand::distributions::{ Normal, IndependentSample, Range };
 use rand::{ self, ThreadRng, Rng };
 use num::{ self, Integer };
@@ -35,7 +36,7 @@ pub struct Minicolumns {
 	dims: CorticalDimensions,
 	axn_output_slice: u8,
 	//kern_cycle: ocl::Kernel,
-	kern_post_inhib: ocl::Kernel,
+	//kern_post_inhib: ocl::Kernel,
 	kern_output: ocl::Kernel,
 	//kern_ltp: ocl::Kernel,
 	rng: rand::XorShiftRng,
@@ -51,21 +52,25 @@ pub struct Minicolumns {
 }
 
 impl Minicolumns {
-	pub fn new(dims: CorticalDimensions, region: &Protoregion, axons: &Axons, ssts: &SpinyStellateCellularLayer, pyrs: &PyramidalCellularLayer, aux: &Aux, ocl: &Ocl) -> Minicolumns {
+	pub fn new(dims: CorticalDimensions, region: &Protoregion, axons: &Axons, ssts_map: &HashMap<&str, Box<SpinyStellateCellularLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalCellularLayer>>, aux: &Aux, ocl: &Ocl) -> Minicolumns {
+
+		assert!(dims.depth() == 1);
+
 		let layer = region.col_input_layer().expect("minicolumns::Minicolumns::new()");
 		//let depth: u8 = layer.depth();
 
-		let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
+		let ssts = ssts_map.get("iv").expect("minicolumns.rs");
+		let pyrs = pyrs_map.get("iii").expect("minicolumns.rs");
+		//let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
 
 		let pyr_depth = region.depth_cell_kind(&ProtocellKind::Pyramidal);
 
-		//println!("\n#######   pyr_depth: {}   ########", pyr_depth);
 		//let pyr_axn_base_slice = region.base_slice_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		print!("\n##### MINICOLUMN dims: {:?}", dims);
+		print!("\n      MINICOLUMN dims: {:?}, pyr_depth: {}", dims, pyr_depth);
 
 		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, region, axons, aux, ocl);
 
@@ -91,14 +96,14 @@ impl Minicolumns {
 			.arg_env(&states)
 		;*/
 
-		let kern_post_inhib = ocl.new_kernel("sst_post_inhib_unoptd", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
+		/*let kern_post_inhib = ocl.new_kernel("sst_post_inhib_unoptd", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			.arg_env(&peak_spis.spi_ids)
 			.arg_env(&peak_spis.states)
 			.arg_env(&peak_spis.wins)
 			.arg_scl(layer.base_slice_pos() as u32)
 			.arg_env(&ssts.dens.states)
 			.arg_env(&axons.states)
-		;
+		;*/
 
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
@@ -132,7 +137,7 @@ impl Minicolumns {
 			dims: dims,
 			axn_output_slice: axn_output_slice,
 			//kern_cycle: kern_cycle,
-			kern_post_inhib: kern_post_inhib,
+			//kern_post_inhib: kern_post_inhib,
 			kern_output: kern_output,
 			//kern_ltp: kern_ltp,
 			rng: rand::weak_rng(),
@@ -146,28 +151,14 @@ impl Minicolumns {
 		}
 	}
 
-	pub fn cycle(&mut self, ltp: bool) {
-		//self.dens.cycle();
-		//self.kern_cycle.enqueue(); 
-		self.peak_spis.cycle(); 
+	/*pub fn cycle(&mut self, ltp: bool) {
+		self.peak_spis.cycle();  
 		self.kern_post_inhib.enqueue(); 
-		//if ltp { self.ltp(); }
-	}
+	}*/
 
 	pub fn output(&self) {
 		self.kern_output.enqueue();
 	}
-
-	/*pub fn ltp(&mut self) {
-		//print!("[R:{}]", self.rng.gen::<i32>());
-		self.kern_ltp.set_kernel_arg(4, self.rng.gen::<u32>());
-
-		self.kern_ltp.enqueue(); // <<<<< PROBLEM HERE -- MAYBE SOLVED (fixed peak_col size)
-	}*/
-
-	/*pub fn regrow(&mut self, region: &Protoregion) {
-		self.dens.regrow(region);
-	}*/
 
 	pub fn confab(&mut self) {
 		//self.states.read();

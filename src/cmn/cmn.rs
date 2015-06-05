@@ -65,14 +65,14 @@ pub const SENSORY_CHORD_HEIGHT: u32 = 1 << SENSORY_CHORD_HEIGHT_LOG2;
 pub const SENSORY_CHORD_COLUMNS_LOG2: usize = SENSORY_CHORD_WIDTH_LOG2 + SENSORY_CHORD_HEIGHT_LOG2;
 pub const SENSORY_CHORD_COLUMNS: u32 = 1 << SENSORY_CHORD_COLUMNS_LOG2; 
 
-pub const DENDRITES_PER_CELL_DISTAL_LOG2: u8 = 1;
+/*pub const DENDRITES_PER_CELL_DISTAL_LOG2: u8 = 1;
 pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2 as u32;
 pub const SYNAPSES_PER_DENDRITE_DISTAL_LOG2: u8 = 3;
 pub const SYNAPSES_PER_DENDRITE_DISTAL: u32 = 1 << SYNAPSES_PER_DENDRITE_DISTAL_LOG2 as u32;
 pub const DENDRITES_PER_CELL_PROXIMAL_LOG2: u8 = 0;
 pub const DENDRITES_PER_CELL_PROXIMAL: u32 = 1 << DENDRITES_PER_CELL_PROXIMAL_LOG2 as u32;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u8 = 3;
-pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as u32;
+pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as u32;*/
 
 //pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = (128 * 4);
 pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 128; // *****
@@ -149,10 +149,10 @@ pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
 pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;	
 
 
-pub const PYR_PREV_CONCRETE_FLAG: u8 		= 0b10000000;
-pub const PYR_BEST_IN_COL_FLAG: u8 			= 0b01000000;
-pub const PYR_PREV_STP_FLAG: u8 			= 0b00100000;
-pub const PYR_PREV_FUZZY_FLAG: u8			= 0b00010000;
+pub const PYR_PREV_CONCRETE_FLAG: u8 		= 0b10000000;	// 128	(0x80)
+pub const PYR_BEST_IN_COL_FLAG: u8 			= 0b01000000;	// 64	(0x40)
+pub const PYR_PREV_STP_FLAG: u8 			= 0b00100000;	// 32	(0x20)
+pub const PYR_PREV_FUZZY_FLAG: u8			= 0b00010000;	// 16	(0x10)
 
 pub const SYN_STP_FLAG: u8					= 0b00000001;
 pub const SYN_CONCRETE_FLAG: u8				= 0b00001000;
@@ -190,28 +190,29 @@ pub fn build_options() -> ocl::BuildOptions {
 
 	assert!(SENSORY_CHORD_COLUMNS % SYNAPSE_SPAN_LIN == 0);
 
-	assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
+	/*assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
 	assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
-
 	assert!(DENDRITES_PER_CELL_DISTAL_LOG2 <= 8);
 	assert!(DENDRITES_PER_CELL_DISTAL <= 256);
-	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);
+	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
 
 	ocl::BuildOptions::new(CL_BUILD_OPTIONS)
-		.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
-		.opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32)
+		/*.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
 		.opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
 		.opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
-		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)
-		//.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
+		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)*/
+
+		.opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32)
+		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
+		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
+				//.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
 		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
 		.opt("SYNAPSE_REACH_LIN", SYNAPSE_REACH_LIN as i32)
 		.opt("SYNAPSE_SPAN_LIN", SYNAPSE_SPAN_LIN as i32)
 		.opt("ASPINY_REACH", ASPINY_REACH as i32)
 		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
 		.opt("ASPINY_SPAN", ASPINY_SPAN as i32)
-		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
-		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
+
 		.opt("PYR_PREV_CONCRETE_FLAG", PYR_PREV_CONCRETE_FLAG as i32)
 		.opt("PYR_BEST_IN_COL_FLAG", PYR_BEST_IN_COL_FLAG as i32)
 		.opt("PYR_PREV_STP_FLAG", PYR_PREV_STP_FLAG as i32)
@@ -308,7 +309,7 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 		}
 
 		if idx_range.is_some() {
-			let ir = idx_range.as_ref().unwrap();
+			let ir = idx_range.as_ref().expect("cmn.rs");
 
 			if i < ir_start || i > ir_end {
 				prnt = false;
@@ -453,7 +454,7 @@ pub fn sparse_vec<T: Integer + Signed + Default + Copy + Clone + NumCast + FromP
 
 	for i in 0..notes {
 		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = FromPrimitive::from_isize(val_range.ind_sample(&mut rng)).expect("cmn::sparse_vec()");
-		//vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = std::num::cast(val_range.ind_sample(&mut rng)).unwrap();
+		//vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = std::num::cast(val_range.ind_sample(&mut rng)).expect("cmn.rs");
 	}
 
 	vec

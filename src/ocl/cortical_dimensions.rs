@@ -83,9 +83,9 @@ impl CorticalDimensions {
 	// PER_SLICE(): 2D Area of a slice measured in divisions/elements/whatever
 	pub fn per_slice(&self) -> u32 {
 		 if self.per_cel_l2 >= 0 {
-			self.columns() << self.per_cel_l2_left().unwrap()
+			self.columns() << self.per_cel_l2_left().expect("cortical_dimensions.rs")
 		} else {
-			self.columns() >> self.per_cel_l2_right().unwrap()
+			self.columns() >> self.per_cel_l2_right().expect("cortical_dimensions.rs")
 		}
 	}
 
@@ -102,9 +102,9 @@ impl CorticalDimensions {
 	// LEN(): 4D Volume - Total linear length if stretched out - measured in cell-piece-whatevers
 	pub fn len(&self) -> u32 {
 		if self.per_cel_l2 >= 0 {
-			self.cells() << self.per_cel_l2_left().unwrap()
+			self.cells() << self.per_cel_l2_left().expect("cortical_dimensions.rs")
 		} else {
-			self.cells() >> self.per_cel_l2_right().unwrap()
+			self.cells() >> self.per_cel_l2_right().expect("cortical_dimensions.rs")
 		}
 	}
 

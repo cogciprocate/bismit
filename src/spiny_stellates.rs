@@ -55,10 +55,11 @@ pub struct SpinyStellateCellularLayer {
 // pyrs: &PyramidalCellularLayer,
 impl SpinyStellateCellularLayer {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> SpinyStellateCellularLayer {
-		let layer = region.col_input_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
+		//let layer = region.col_input_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
 		//let depth: u8 = layer.depth();
 
-		let syns_per_den_l2 = protocell.syns_per_den_l2;
+		let syns_per_cel_l2 = protocell.syns_per_den_l2 + protocell.dens_per_cel_l2;
+		let syns_per_den_l2 = syns_per_cel_l2;
 		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
 
 		//let pyr_depth = region.depth_cell_kind(&ProtocellKind::Pyramidal);
@@ -68,9 +69,10 @@ impl SpinyStellateCellularLayer {
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		print!("\n##### SPINY STELLATE dims: {:?}", dims);
+		print!("\n      SPINY_STELLATE::NEW(): dims: {:?}", dims);
 
-		let dens = Dendrites::new(dims, protocell.clone(), DendriteKind::Proximal, ProtocellKind::SpinyStellate, region, axons, aux, ocl);
+		let dens_dims = dims.clone_with_pcl2(protocell.dens_per_cel_l2 as i8);
+		let dens = Dendrites::new(dens_dims, protocell.clone(), DendriteKind::Proximal, ProtocellKind::SpinyStellate, region, axons, aux, ocl);
 
 		//let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let best_col_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -162,11 +164,9 @@ impl SpinyStellateCellularLayer {
 	}
 
 	pub fn cycle(&mut self, ltp: bool) {
-		self.dens.cycle();
-		//self.kern_cycle.enqueue(); 
-		//self.peak_spis.cycle(); 
-		//self.kern_post_inhib.enqueue(); 
-		//if ltp { self.ltp(); }
+		self.dens.cycle(); // *****
+		//self.kern_post_inhib.enqueue();  // ***** TURN BACK ON
+		if ltp { self.ltp(); } // ***** TURN BACK ON
 	}
 
 	/*pub fn output(&self) {
@@ -184,10 +184,6 @@ impl SpinyStellateCellularLayer {
 	}
 
 	pub fn confab(&mut self) {
-		//self.states.read();
-		//self.states_raw.read();
-		//self.cels_status.read();
-		//self.peak_spis.confab();
 		self.dens.confab();
 	} 
 

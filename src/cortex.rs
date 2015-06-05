@@ -29,10 +29,10 @@ pub fn define_protoregions() -> Protoregions {
 
 		.layer("out", 1, layer::COLUMN_OUTPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
 
-		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(0, 5, vec!["thal"]))  // , "motor"
+		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(0, 4, vec!["thal"]))  // , "motor"
 
 		//.layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
-		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["iii"]))
+		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(2, 4, vec!["iii"]))
 		//.layer("ii", 3, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["out"])) // <<<<< FIX ME (FIX SYNS)
 
 		//.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
@@ -49,16 +49,6 @@ pub fn define_protoareas() -> Protoareas {
 	let mut protoareas = Protoareas::new()
 		.area("v1", 5, 5, ProtoregionKind::Sensory)
 	;
-	//let mut curr_offset: u32 = 128;
-	/*let region_kind = ProtoregionKind::Sensory;
-
-	let mut v1 = Protoarea { 
-		name: "v1",
-		dims: CorticalDimensions::new(cmn::SENSORY_CHORD_WIDTH, cmn::SENSORY_CHORD_HEIGHT, 0, 0),
-		region_kind: region_kind,
-	};
-
-	protoareas.add(v1);*/
 
 	protoareas
 }

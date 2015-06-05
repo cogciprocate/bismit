@@ -35,14 +35,13 @@ impl Axons {
 		let depth_axn_sptl = region.depth_axonal_spatial();
 		let depth_cellular = region.depth_cellular();
 		let depth_axn_hrz = region.depth_axonal_horizontal();
-		let depth_total = region.depth_total();
+		//let depth_total = region.depth_total(); // NOT THE TRUE AXON DEPTH
 		
 		let mut hrz_axn_slices = 0u8;
 
-
 		if depth_axn_hrz > 0 {
 			let syn_span_lin_l2 = (cmn::SYNAPSE_REACH_GEO_LOG2 + 1) << 1;
-			let hrz_frames_per_slice: u8 = (area_dims.columns() >> (syn_span_lin_l2)) as u8; // dims.width / (aspiny_span * 2)
+			let hrz_frames_per_slice: u8 = (area_dims.columns() >> syn_span_lin_l2) as u8; 
 
 			assert!(hrz_frames_per_slice > 0, 
 				"Synapse span must be equal or less than cortical area width");
@@ -53,20 +52,17 @@ impl Axons {
 				hrz_axn_slices += 1;
 			}
 
-			/*println!("\nAxons::new(): width: {}, syn_span: {}, depth_axn_hrz: {}, hrz_frames_per_slice: {}, hrz_axon_slices: {}", 
-				width, 1 << syn_span_lin_l2, depth_axn_hrz, hrz_frames_per_slice, hrz_axn_slices);*/
+			//print!("\n      AXONS::NEW(): columns: {}, syn_span: {}, depth_axn_hrz: {}, hrz_frames_per_slice: {}, hrz_axon_slices: {}", area_dims.columns(), 1 << syn_span_lin_l2, depth_axn_hrz, hrz_frames_per_slice, hrz_axn_slices);
 		}
 
-		//println!("##### Axon depth_total: {}", depth_total);
+		let physical_depth = depth_cellular + depth_axn_sptl + hrz_axn_slices;
 
-		let dims = area_dims.clone_with_depth(depth_total);
-
-		//println!("##### Axon dims: {:?}", dims);
+		let dims = area_dims.clone_with_depth(physical_depth);
 
 		let padding: u32 = (cmn::SYNAPSE_SPAN_LIN) as u32;
 		
-		//println!("####### padding: {}", padding);
-		//println!("New Axons with: depth_ac: {}, depth_c: {}, width: {}", depth_axn_sptl, depth_cellular, width);
+		print!("\n      AXONS::NEW(): new axons with: depth_axn_s: {}, depth_cel: {}, depth_axn_h: {}, physical_depth: {}, dims: {:?}", depth_axn_sptl, depth_cellular, depth_axn_hrz, physical_depth, dims);
+
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
 
 		Axons {

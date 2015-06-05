@@ -46,6 +46,7 @@ impl Dendrites {
 	) -> Dendrites {
 		//println!("\n### Test D1 ###");
 		//let width_dens = dims.width << per_cell_l2;
+		assert!(dims.per_cel_l2() as u8 == protocell.dens_per_cel_l2);
 
 		//let dims = cel_dims.clone_with_pcl2(per_cell_l2);
 
@@ -65,7 +66,7 @@ impl Dendrites {
 		};
 
 
-		print!("\n##### New {:?} Dendrites with dims: {:?}", den_kind, dims);
+		print!("\n            DENDRITES::NEW(): new {:?} dendrites with: {:?}, {:?}", den_kind, dims, protocell);
 
 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -80,10 +81,11 @@ impl Dendrites {
 		let kern_cycle = ocl.new_kernel(den_kernel, WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
-			.arg_scl(syns_per_den_l2 as u32)
+			.arg_scl(syns_per_den_l2)
 			.arg_scl(den_threshold)
 			.arg_env(&energies)
 			.arg_env(&states_raw)
+			.arg_env(&aux.ints_0)
 			.arg_env(&states)
 		;
 		

@@ -57,8 +57,13 @@ fn main() {
 	// test_casting::run();
 	// hello_world::run();
 
-	
-	tests::interactive::run();
+	if false {
+		tests::interactive::run(0);
+	} else {
+		for i in 0..20 {
+			tests::interactive::run(7000);
+		}
+	}
 	//test_miccos::run();
 	
 

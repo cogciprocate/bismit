@@ -30,6 +30,8 @@ impl Kernel {
 	pub fn new(kernel: super::cl_kernel, name: &'static str, command_queue: super::cl_command_queue, 
 		context: super::cl_command_queue, gws: WorkSize
 	) -> Kernel {
+
+		print!("\n                  KERNEL::NEW(): adding kernel: {}, gws: {:?}", name, gws);
 		Kernel {
 			kernel: kernel,
 			name: name,

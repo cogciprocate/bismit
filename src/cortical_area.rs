@@ -53,36 +53,39 @@ impl CorticalArea {
 		//let dims.width = areas.width(&protoregion.kind);
 		//let height = areas.height(&protoregion.kind);
 
+			/* <<<<< BRING BACK >>>>> */
+		//assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
+		//assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
+		//assert!(DENDRITES_PER_CELL_DISTAL_LOG2 <= 8);
+		//assert!(DENDRITES_PER_CELL_DISTAL <= 256);
+		//assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);
+
 		//print!("\nCorticalArea::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
 
 		//assert!(depth_cellular > 0, "cortical_area::CorticalArea::new(): Region has no cellular layers.");
 
 		let axns = Axons::new(dims, protoregion, ocl);
 
-		let aux_dims = CorticalDimensions::new(dims.width_l2() + 3, dims.height_l2() + 3, dims.depth(), 0);
+		let aux_dims = CorticalDimensions::new(dims.width_l2() + 1, dims.height_l2() + 1, dims.depth(), 0);
 		let aux = Aux::new(aux_dims, ocl);
 
 		let mut pyrs = HashMap::new();
 		let mut ssts = HashMap::new();
 
-		//let layer_cells: HashMap<&'static str, LayerCells> = HashMap::new();
-
-
 		for (&layer_name, layer) in protoregion.layers().iter() {
 			match layer.kind {
 				ProtolayerKind::Cellular(ref pcell) => {
+					print!("\nCORTICALAREA::NEW(): making a {:?} for layer: {} (depth: {})", pcell.cell_kind, layer_name, layer.depth);
+
 					match pcell.cell_kind {
 						ProtocellKind::Pyramidal => {
-							print!("\n##### Making a Pyramidal ({:?}) for layer: {} (depth: {})", pcell.cell_kind, layer_name, layer.depth);
-							let pyrs_dims = dims.clone_with_depth(protoregion.depth_cell_kind(&ProtocellKind::Pyramidal));
+							let pyrs_dims = dims.clone_with_depth(layer.depth);
 							let pyr_lyr = PyramidalCellularLayer::new(layer_name, pyrs_dims, pcell.clone(), protoregion, &axns, &aux, ocl);
 							pyrs.insert(layer_name, Box::new(pyr_lyr));
 						},
 
-						ProtocellKind::SpinyStellate => {
-							print!("\n##### Making a SpinyStellate ({:?}) for layer: {} (depth: {})", pcell.cell_kind, layer_name, layer.depth);
-							let ssts_layer = protoregion.col_input_layer().expect("CorticalArea::new()");
-							let ssts_dims = dims.clone_with_depth(ssts_layer.depth());
+						ProtocellKind::SpinyStellate => {							
+							let ssts_dims = dims.clone_with_depth(layer.depth);
 							let sst_lyr = SpinyStellateCellularLayer::new(layer_name, ssts_dims, pcell.clone(), protoregion, &axns, &aux, ocl);
 							ssts.insert(layer_name, Box::new(sst_lyr));
 						},
@@ -91,26 +94,13 @@ impl CorticalArea {
 					}
 				},
 
-				_ => print!("\n##### Skipping over layer: {}", layer_name),
+				_ => print!("\nCORTICALAREA::NEW(): skipping over axon layer: {}", layer_name),
 			}
 		}
 
-					/*if cell.cell_kind == self.cell_kind {
-						region.src_slice_ids(layer_name, self.den_kind)
-					} else {
-						continue
-					}*/
-
-
-		//let pyrs_dims = dims.clone_with_depth(protoregion.depth_cell_kind(&ProtocellKind::Pyramidal));
-		//let pyrs = PyramidalCellularLayer::new("old", pyrs_dims, protoregion, &axns, &aux, ocl);
-
-	
-		//let mcols_layer = protoregion.col_input_layer().expect("CorticalArea::new()");
-		let mcols_dims = dims.clone();
-		let mcols = Minicolumns::new(mcols_dims, protoregion, &axns, &ssts.get_mut("iv").unwrap(), &pyrs.get_mut("iii").unwrap(), &aux, ocl);
+		let mcols_dims = dims.clone_with_depth(1);
+		let mcols = Minicolumns::new(mcols_dims, protoregion, &axns, &ssts, &pyrs, &aux, ocl);
 		
-
 		let mut cortical_area = CorticalArea {
 			name: name,
 			dims: dims,
@@ -133,31 +123,19 @@ impl CorticalArea {
 		};
 
 		cortical_area.init_kernels();
-
 		cortical_area
 	}
 
-	pub fn init_kernels(&mut self) {
-		//self.axns.init_kernels(&self.mcols.asps, &self.mcols, &self.aux)
-		//self.mcols.dens.syns.init_kernels(&self.axns, ocl);
-		self.pyrs.get_mut("iii").unwrap().init_kernels(&self.mcols, &self.ssts.get_mut("iv").unwrap(), &self.axns, &self.aux);
-	}
 
 	pub fn cycle(&mut self, protoregion: &Protoregion) {
-		//self.soma.dst_dens.cycle(&self.axns, &self.ocl);
-		//self.soma.cycle(&self.ocl);
-		//self.soma.inhib(&self.ocl);
-		//self.axns.cycle(&self.soma, &self.ocl);
-		//self.soma.ltp(&self.ocl);
-		//self.soma.dst_dens.syns.decay(&mut self.soma.rand_ofs, &self.ocl);
 
-		let ltp: bool = cmn::LEARNING_ACTIVE;
+		let learning = true;
+			
+		self.ssts.get_mut("iv").expect("cortical_area.rs").cycle(learning);
 		
-		self.ssts.get_mut("iv").unwrap().cycle(ltp);
+		self.pyrs.get_mut("iii").expect("cortical_area.rs").activate(learning); // *****
 		
-		self.pyrs.get_mut("iii").unwrap().activate(ltp);
-		
-		self.pyrs.get_mut("iii").unwrap().cycle();	
+		self.pyrs.get_mut("iii").expect("cortical_area.rs").cycle();	// *****
 
 		self.mcols.output();
 
@@ -165,11 +143,18 @@ impl CorticalArea {
 
 	}
 
+
+	pub fn init_kernels(&mut self) {
+		//self.axns.init_kernels(&self.mcols.asps, &self.mcols, &self.aux)
+		//self.mcols.dens.syns.init_kernels(&self.axns, ocl);
+		self.pyrs.get_mut("iii").expect("cortical_area.rs").init_kernels(&self.mcols, &self.ssts.get_mut("iv").expect("cortical_area.rs"), &self.axns, &self.aux);
+	}
+
 	pub fn regrow(&mut self, protoregion: &Protoregion) {
 		if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
 			//print!("$");
-			self.ssts.get_mut("iv").unwrap().regrow(protoregion);
-			self.pyrs.get_mut("iii").unwrap().regrow(protoregion);
+			self.ssts.get_mut("iv").expect("cortical_area.rs").regrow(protoregion);
+			self.pyrs.get_mut("iii").expect("cortical_area.rs").regrow(protoregion);
 			self.counter = 0;
 		} else {
 			self.counter += 1;
@@ -205,11 +190,6 @@ impl CorticalArea {
 	}
 }
 
-/*pub enum LayerCells {
-	Pyramidal(PyramidalCellularLayer),
-	SpinyStellate(SpinyStellateCellularLayer),
-}
-*/
 
 pub struct AreaParams {
 	den_per_cel_distal_l2: u8,

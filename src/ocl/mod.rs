@@ -44,10 +44,8 @@ impl Ocl {
 		let path_string = format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME);
 		let path_string_slice = &path_string;
 		let kern_file_path = std::path::Path::new(path_string_slice);
-
 		let mut kern_str: Vec<u8> = Vec::new();
 		let kern_file = File::open(kern_file_path).unwrap().read_to_end(&mut kern_str);
-
 		let kern_c_str = ffi::CString::new(kern_str).ok().expect("Ocl::new(): kern_c_str");
 
 		let platform = new_platform();
@@ -73,7 +71,7 @@ impl Ocl {
 		let kernel = unsafe {
 			cl_h::clCreateKernel(
 				self.program, 
-				ffi::CString::new(name.as_bytes()).ok().expect("Ocl::new_kernel(): kernel").as_ptr(), 
+				ffi::CString::new(name.as_bytes()).ok().unwrap().as_ptr(), 
 				&mut err
 			)
 		};

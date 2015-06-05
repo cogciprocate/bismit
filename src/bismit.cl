@@ -14,7 +14,7 @@
 	idz: index[0], first element, starting element
 	idn: index[len], element after final element, termination point
 
-	id: identifier, but not a physical index
+	id: identifier, but not a physical array index
 
 	fuz: fuzzyness, level of predictiveness
 
@@ -298,13 +298,13 @@ COL_SYNS_CYCLE():
 */
 //	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
 __kernel void syns_cycle(
-	__global uchar const* const axn_states,
-	__global char const* const syn_src_col_xy_offs,
-	__global uchar const* const syn_src_slice_ids,
-	//__global char const* const syn_strengths,
-	__private uint const syns_per_cell_l2,
-	__global int* const aux_ints_0,
-	__global uchar* const syn_states
+				__global uchar const* const axn_states,
+				__global char const* const syn_src_col_xy_offs,
+				__global uchar const* const syn_src_slice_ids,
+				//__global char const* const syn_strengths,
+				__private uchar const syns_per_cel_l2,
+				__global int* const aux_ints_0,
+				__global uchar* const syn_states
 ) {
 	uint const slice_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
@@ -316,35 +316,34 @@ __kernel void syns_cycle(
 	uint const base_col_id = mul24(wg_id, wg_size);
 	uint const base_cel_idx = mad24(slice_id, slice_columns, base_col_id);
 
-	uint const base_syn_idx = (base_cel_idx << syns_per_cell_l2);
+	uint const base_syn_idx = (base_cel_idx << syns_per_cel_l2);
 	uint const init_syn_idx = base_syn_idx + l_id;
 
-	uint const syn_slice_columns = slice_columns << syns_per_cell_l2;
-	uint const syns_per_wg = wg_size << syns_per_cell_l2;
+	uint const syns_per_slice = slice_columns << syns_per_cel_l2;
+	uint const syns_per_wg = wg_size << syns_per_cel_l2;
 
 	uint const syn_n = base_syn_idx + syns_per_wg;
 
-	int syn_sst_i = (base_col_id << syns_per_cell_l2) + l_id;
+	int syn_sst_i = (base_col_id << syns_per_cel_l2) + l_id;
 	uint syn_idx = init_syn_idx;
 
 	uint aux_idx = mad24(slice_id, slice_columns, col_id); // DEBUG
 
 	for (; syn_idx < syn_n; syn_idx += wg_size) {
-		syn_sst_i -= mul24((int)syn_slice_columns, (syn_sst_i >= syn_slice_columns));
-		int sst_pos = syn_sst_i >> syns_per_cell_l2;
+		syn_sst_i -= mul24((int)syns_per_slice, (syn_sst_i >= syns_per_slice));
+		int sst_pos = syn_sst_i >> syns_per_cel_l2;
 		uint axn_idx = axn_idx_2d(syn_src_slice_ids[syn_idx], slice_columns, sst_pos, syn_src_col_xy_offs[syn_idx]);
-		//uint axn_idx = mad24((uint)syn_src_slice_ids[syn_idx], slice_columns, (uint)(sst_pos + syn_src_col_xy_offs[syn_idx] + SYNAPSE_REACH_LIN));
 		uchar axn_state = axn_states[axn_idx];
 		
-		//syn_states[syn_idx] = axn_state;
 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
 		
+		syn_sst_i += wg_size;
+
+
+		//syn_states[syn_idx] = axn_state;
 		//char syn_strength = syn_strengths[syn_idx];
 		//syn_states[syn_idx] = mul24((syn_strength >= 0), ((axn_state != 0) << 7) + (axn_state >> 1));
-
-		//aux_ints_0[syn_idx] = sst_pos;
-
-		syn_sst_i += wg_size;
+		//aux_ints_0[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
 	}
 
 	//aux_ints_0[0] = HORIZONTAL_AXON_ROW_DEMARCATION;
@@ -359,13 +358,14 @@ __kernel void syns_cycle(
 
 
 __kernel void den_cycle(
-	__global uchar const* const syn_states,
-	__global char const* const syn_strengths,
-	__private uint const syns_per_den_l2,
-	__private uint const den_threshold,
-	__global uchar* const den_energies,
-	__global uchar* const den_states_raw,
-	__global uchar* const den_states
+				__global uchar const* const syn_states,
+				__global char const* const syn_strengths,
+				__private uchar const syns_per_den_l2,
+				__private uint const den_threshold,
+				__global uchar* const den_energies,
+				__global uchar* const den_states_raw,
+				__global int* const aux_ints_1,
+				__global uchar* const den_states
 ) {
 	uint const slice_id = get_global_id(0);
 	uint const den_id = get_global_id(1);
@@ -393,10 +393,15 @@ __kernel void den_cycle(
 	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
 
 
-	//den_states_raw[den_idx] = clamp(syn_sum_raw, 0, 255); 
-	//den_states[den_idx] = clamp(syn_sum, 0, 255); 
+
+	//den_states_raw[den_idx] = clamp(syn_sum_raw, 0, 255); // UNUSED
+	//den_states[den_idx] = clamp(syn_sum, 0, 255); // UNUSED
+
 	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255); 
 	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); 
+
+
+	//aux_ints_1[den_idx] = clamp((syn_sum >> 7), 0, 255);
 }
 
 
@@ -416,13 +421,13 @@ __kernel void den_cycle(
 *
 */
 __kernel void den_cycle_modified_maybe_broken(
-	__global uchar const* const syn_states,
-	__global char const* const syn_strengths,
-	__private uint const syns_per_den_l2,
-	__private uint const den_threshold,
-	__global uchar* const den_energies,
-	__global uchar* const den_states_raw,
-	__global uchar* const den_states
+				__global uchar const* const syn_states,
+				__global char const* const syn_strengths,
+				__private uint const syns_per_den_l2,
+				__private uint const den_threshold,
+				__global uchar* const den_energies,
+				__global uchar* const den_states_raw,
+				__global uchar* const den_states
 ) {
 	uint const slice_id = get_global_id(0);
 	uint const den_id = get_global_id(1);
@@ -476,9 +481,9 @@ __kernel void den_cycle_modified_maybe_broken(
 
 
 __kernel void peak_sst_cycle_pre(
-	__global uchar const* const sst_states,
-	__global uchar* const asp_states,
-	__global uchar* const asp_sst_ids
+				__global uchar const* const sst_states,
+				__global uchar* const asp_states,
+				__global uchar* const asp_sst_ids
 	
 ) {
 	uint const slice_id = get_global_id(0);
@@ -533,8 +538,8 @@ FUTURE IMPROVEMENTS:
 			- MUST WIN 10/12
 */
 __kernel void peak_sst_cycle_wins(
-	__global uchar* const asp_states,
-	__global uchar* const asp_wins
+				__global uchar* const asp_states,
+				__global uchar* const asp_wins
 ) {
 	uint const slice_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
@@ -584,10 +589,10 @@ __kernel void peak_sst_cycle_wins(
 
 
 __kernel void peak_sst_cycle_post(
-	__global uchar* const asp_wins,
-	//__global uchar* const asp_sst_ids,
-	__global uchar* const asp_states
-	//__global uchar* const sst_states
+				__global uchar* const asp_wins,
+				//__global uchar* const asp_sst_ids,
+				__global uchar* const asp_states
+				//__global uchar* const sst_states
 ) {
 	uint const slice_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
@@ -611,12 +616,12 @@ __kernel void peak_sst_cycle_post(
 // CLEAN ME UP
 	//__attribute__((reqd_work_group_size(1, AXONS_WORKGROUP_SIZE, 1)))
 __kernel void sst_post_inhib_unoptd (										
-	__global uchar const* const asp_sst_ids,
-	__global uchar const* const asp_states,
-	__global uchar const* const asp_wins,
-	__private uint const sst_axn_slice,
-	__global uchar* const sst_states,
-	__global uchar* const axn_states
+				__global uchar const* const asp_sst_ids,
+				__global uchar const* const asp_states,
+				__global uchar const* const asp_wins,
+				__private uint const sst_axn_slice,
+				__global uchar* const sst_states,
+				__global uchar* const axn_states
 ) {
 	uint const slice_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
@@ -651,6 +656,7 @@ __kernel void pyr_activate(
 
 				__global uchar const* const den_dst_states,
 				__private uchar const pyr_axn_slice_base,
+				__private uchar const dens_per_cel_l2,
 				//__global int* const aux_ints_0,
 				//__global uchar* const pyr_energies,
 				__global uchar* const pyr_flag_sets,
@@ -663,7 +669,7 @@ __kernel void pyr_activate(
 	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
 	uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id, 0);
 
-	uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;			// REPLACE
+	uint const den_ofs = pyr_idx << dens_per_cel_l2;			// REPLACE
 	uint const best1_den_idx = den_ofs + pyr_best1_den_dst_ids[pyr_idx];		// REPLACE
 
 	uchar const best1_den_state = den_dst_states[best1_den_idx];				// CHANGE
@@ -675,9 +681,6 @@ __kernel void pyr_activate(
 	uchar const pyr_fuz = pyr_fuzs[pyr_idx];
 	uchar pyr_flag_set = pyr_flag_sets[pyr_idx];
 
-	pyr_flag_set &= ~PYR_BEST_IN_COL_FLAG;
-	pyr_flag_set |= mul24((mcol_best_col_den_state == best1_den_state), PYR_BEST_IN_COL_FLAG);
-
 	int const mcol_active = mcol_state != 0;
 	int const mcol_any_pred = mcol_pyr_fuz_flag != 0;
 	int const pyr_fuzictive = (pyr_fuz != 0);
@@ -688,6 +691,10 @@ __kernel void pyr_activate(
 	//int const activate_axon = crystal || anomaly;
 	//pyr_fuz = (crystal | anomaly) && (mcol_state);
 	//pyr_fuz = mul24(((crystal != 0) || (anomaly != 0)), mcol_state);
+	pyr_flag_set &= ~PYR_BEST_IN_COL_FLAG;
+
+	//pyr_flag_set |= mul24(mcol_best_col_den_state == best1_den_state, PYR_BEST_IN_COL_FLAG);
+	pyr_flag_set |= mul24((mcol_best_col_den_state == best1_den_state) && pyr_fuzictive, PYR_BEST_IN_COL_FLAG);
  
 	pyr_flag_sets[pyr_idx] = pyr_flag_set;
 	axn_states[axn_idx] = (uchar)mad24(anomaly, (int)mcol_state, mul24(crystal, (int)pyr_fuz));
@@ -700,14 +707,14 @@ __kernel void pyr_activate(
 
 
 __kernel void sst_ltp(
-	__global uchar const* const asp_sst_ids,
-	__global uchar const* const asp_states,
-	__global uchar const* const syn_states,
-	//__global uchar const* const sst_states,
-	__private uint const syns_per_den_l2,
-	__private uint const rnd,
-	//__global int* const aux_ints_0,
-	__global char* const syn_strengths
+				__global uchar const* const asp_sst_ids,
+				__global uchar const* const asp_states,
+				__global uchar const* const syn_states,
+				//__global uchar const* const sst_states,
+				__private uint const syns_per_den_l2,
+				__private uint const rnd,
+				//__global int* const aux_ints_0,
+				__global char* const syn_strengths
 ) {
 	uint const slice_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
@@ -775,22 +782,22 @@ __kernel void sst_ltp(
 			
 */
 __kernel void pyrs_ltp_unoptd(
-	__global uchar const* const axn_states,
-	__global uchar const* const pyr_fuzs,
-	__global uchar const* const pyr_best1_den_ids,
-	__global uchar const* const pyr_best2_den_ids, // ***** SLATED FOR REMOVAL
-	__global uchar const* const den_states,
-	__global uchar const* const syn_states,
-	__private uint const pyr_axn_idx_base, 
-	__private uint const syns_per_den_l2,
-	__private uint const dens_per_cel_l2,
-	__private uint const pyrs_per_wi,
-	__private uint const rnd,
-	//__global int* const aux_ints_1,
-	__global uchar* const syn_flag_sets,
-	__global uchar* const pyr_flag_sets,
-	//__global uchar* const pyr_prev_best1_den_ids,
-	__global char* const syn_strengths
+				__global uchar const* const axn_states,
+				__global uchar const* const pyr_fuzs,
+				__global uchar const* const pyr_best1_den_ids,
+				__global uchar const* const pyr_best2_den_ids, // ***** SLATED FOR REMOVAL
+				__global uchar const* const den_states,
+				__global uchar const* const syn_states,
+				__private uint const pyr_axn_idx_base, 
+				__private uint const syns_per_den_l2,
+				__private uint const dens_per_cel_l2,
+				__private uint const pyrs_per_wi,
+				__private uint const rnd,
+				__global int* const aux_ints_1,
+				__global uchar* const syn_flag_sets,
+				__global uchar* const pyr_flag_sets,
+				//__global uchar* const pyr_prev_best1_den_ids,
+				__global char* const syn_strengths
 ) {
 	uint const slice_id = get_global_id(0);
 	uint const pg_id = get_global_id(1);
@@ -838,13 +845,19 @@ __kernel void pyrs_ltp_unoptd(
 		if (pyr_concrete) {
 			if (pyr_prev_fuzzy) { // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + TRAIN NEW DEN
 				// SAME AS ANO + TRAIN A SECOND REDUNDANT DENDRITE AS WELL (OR DON'T)
+				
+				// *****	
 				dst_syns__active__stp_ltd(syn_states, best1_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
-				dst_syns__active__stp_ltd(syn_states, best2_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+				
+				//dst_syns__active__stp_ltd(syn_states, best2_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
 
 			} else if (pyr_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
 			//} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-				dst_syns__active__stp_ltd(syn_states, best1_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
 				
+				// ***** 
+				dst_syns__active__stp_ltd(syn_states, best1_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+				// *****
+
 			//} else { // EVERYTHING ELSE: JUST SET PREV ACTIVE
 				// NOT GOING TO WORRY ABOUT THIS -- ALLOW STP TO REFLECT PRIOR ACTIVITY
 				// dst_syns__active__set_prev_active(syn_states, best1_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
@@ -854,7 +867,9 @@ __kernel void pyrs_ltp_unoptd(
 			pyr_flag_set |= PYR_PREV_CONCRETE_FLAG;
 
 		} else if (pyr_prev_concrete) { // TRM	
+
 			cel_syns_trm(syn_states, pyr_syn_idz, syns_per_den_l2 + dens_per_cel_l2, rnd, syn_flag_sets, syn_strengths);
+
 			//pyr_flag_set &= ~PYR_PREV_STP_FLAG;
 			pyr_flag_set &= ~PYR_PREV_CONCRETE_FLAG;
 		}
@@ -874,7 +889,10 @@ __kernel void pyrs_ltp_unoptd(
 		pyr_flag_set |= mul24(pyr_fuzzy, PYR_PREV_FUZZY_FLAG);*/
 
 		//pyr_prev_best1_den_ids[i] = pyr_prev_best1_den_id;
-		pyr_flag_sets[i] = pyr_flag_set;
+		//pyr_flag_sets[i] = pyr_flag_set;
+
+
+		//aux_ints_1[i] = syns_per_den_l2 + dens_per_cel_l2;
 
 
 			// PROBABLY NOT GOOD (TEST LATER)
@@ -892,92 +910,12 @@ __kernel void pyrs_ltp_unoptd(
 }
 
 
-/* SYNS_REGROW()
-
-	- [done] check for dead synapses (syn_strength < 127)
-	- [partial] replace with new random src_col_xy_offs and src_slice_id
-	- [partial] scan through synapses on that dendrite to check for duplicates
-	- [changed] repeat if duplicate found
-	- [done] abort if duplicate found
-
-	FUTURE CORRECTIONS:
-		- actually assign a new src_slice
-			- either generate it host side and use the same one for every 
-				synapse or, better yet...
-			- store a pre-generated array of randomly distributed columns 
-				device side (64 - 256 will be enough) and use a piece of the
-				random seed to pick one.
-		- [partial] actually scan for duplicates
-
-	FUTURE OPTIMIZATIONS:
-		- pre-load synapse values into local memory
-		- move this to a dendrite controlled kernel (den_regrow()?) and process
-			a whole dendrite for each work item (possibly even a whole cell 
-			later)
-*/
-__kernel void syns_regrow(
-	__global char* const syn_strengths,
-	__private uint const syns_per_den_l2,
-	__private uint const rnd,
-	//__global int* const aux_ints_1,
-	__global char* const syn_src_col_xy_offs,
-	__global uchar* const syn_src_slice_ids
-) {
-	uint const slice_id = get_global_id(0);
-	uint const col_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const syn_idx = mad24(slice_id, slice_columns, col_id);
-
-	char const syn_strength = syn_strengths[syn_idx];
-
-	//uchar rnd_slice_id = 0;
-
-	if (syn_strength > SYNAPSE_STRENGTH_FLOOR) {
-		return;
-	} else {
-		char rnd_col_ofs = clamp(-127, 127, (int)((rnd ^ ((syn_idx << 5) ^ (syn_idx >> 3))) & 0xFF));
-		//rnd_slice_id = ((rnd >> 8) & 0xFF);		// CHOOSE FROM PRE-BUILT ARRAY
-
-			// CHECK FOR DUPLICATES 
-
-		uint base_syn_idx = (syn_idx >> syns_per_den_l2) << syns_per_den_l2;
-		uint n = base_syn_idx + (1 << syns_per_den_l2);
-
-		for (uint i = base_syn_idx; i < n; i++) {
-			int dup = (rnd_col_ofs == syn_src_col_xy_offs[syn_idx]);		// ADD && ROW CHECK
-			//int dup_slice = ^^^^^^
-
-			if (!dup) {
-				continue;
-			} else {
-				//	JUST EXIT IF OUR NEW RANDOM ADDR IS A DUPLICATE
-				//	AND LET IT BE REASSIGNED NEXT REGROW CYCLE
-				//aux_ints_1[syn_idx] = syn_strength;
-				return;	
-			}
-		}
-
-		syn_strengths[syn_idx] = 0;	
-		syn_src_col_xy_offs[syn_idx] = rnd_col_ofs;
-		//syn_src_slice_ids[syn_idx] =
-
-			//aux_ints_1[syn_idx] = syn_strength;
-	}
-
-	
-	/*int dead_syn = (syn_strength <= -100);
-	syn_src_col_xy_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
-	syn_strengths[syn_idx] = mul24(!(dead_syn), (int)syn_strength);*/
-
-	//syn_src_slice_ids[syn_idx] =
-
-}
-
 
 
 __kernel void pyr_cycle_working(
 				__global uchar const* const den_states,
 				__global uchar const* const den_states_raw,
+				__private uchar const dens_per_cel_l2,
 				//__private uchar const pyr_axn_slice_base,
 				__global uchar* const pyr_energies,	// ***** SLATED FOR REMOVAL
 				__global uchar* const pyr_best1_den_ids,
@@ -991,7 +929,7 @@ __kernel void pyr_cycle_working(
 	uint const col_id = get_global_id(1);
 	uint const slice_columns = get_global_size(1);
 	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
-	uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
+	uint const den_ofs = pyr_idx << dens_per_cel_l2;
 	//uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id);
 	//uint const axn_idx = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
 	uchar pyr_energy = pyr_energies[pyr_idx];	// ***** SLATED FOR REMOVAL
@@ -1010,7 +948,7 @@ __kernel void pyr_cycle_working(
 	//uint pyr_fuz = pyr_fuzs[pyr_idx];
 
 		//#pragma unroll 
-	for (uchar i = 0; i < DENDRITES_PER_CELL_DISTAL; i++) {
+	for (uchar i = 0; i < (1 << dens_per_cel_l2); i++) {
 		uchar den_state = den_states[den_ofs + i];
 		int den_state_bigger = (den_state > best1_den_state);
 
@@ -1069,6 +1007,7 @@ __kernel void pyr_cycle( // EXPERIMENTAL VERSION
 				__global uchar const* const den_states,
 				__global uchar const* const den_states_raw,
 				//__private uchar const pyr_axn_slice_base,
+				__private uchar const dens_per_cel_l2,
 				__global uchar* const pyr_energies,
 				__global uchar* const pyr_best1_den_ids,
 				__global uchar* const pyr_best1_den_states,
@@ -1081,7 +1020,7 @@ __kernel void pyr_cycle( // EXPERIMENTAL VERSION
 	uint const col_id = get_global_id(1);
 	uint const slice_columns = get_global_size(1);
 	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
-	uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
+	uint const den_ofs = pyr_idx << dens_per_cel_l2;
 	//uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id);
 	//uint const axn_idx = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
 	//uchar pyr_energy = pyr_energies[pyr_idx];
@@ -1100,7 +1039,7 @@ __kernel void pyr_cycle( // EXPERIMENTAL VERSION
 	//uint pyr_fuz = pyr_fuzs[pyr_idx];
 
 		//#pragma unroll 
-	for (uchar i = 0; i < DENDRITES_PER_CELL_DISTAL; i++) {
+	for (uchar i = 0; i < (1 << dens_per_cel_l2); i++) {
 		uchar den_state = den_states[den_ofs + i];
 		uchar den_state_raw = den_states_raw[den_ofs + i]; // ***** FUCKED WITH THIS
 
@@ -1222,6 +1161,93 @@ __kernel void col_output(
 ===============================================================================
 ===============================================================================
 =============================================================================*/
+
+
+
+
+
+
+
+/* SYNS_REGROW()
+
+	- [done] check for dead synapses (syn_strength < 127)
+	- [partial] replace with new random src_col_xy_offs and src_slice_id
+	- [partial] scan through synapses on that dendrite to check for duplicates
+	- [changed] repeat if duplicate found
+	- [done] abort if duplicate found
+
+	FUTURE CORRECTIONS:
+		- actually assign a new src_slice
+			- either generate it host side and use the same one for every 
+				synapse or, better yet...
+			- store a pre-generated array of randomly distributed columns 
+				device side (64 - 256 will be enough) and use a piece of the
+				random seed to pick one.
+		- [partial] actually scan for duplicates
+
+	FUTURE OPTIMIZATIONS:
+		- pre-load synapse values into local memory
+		- move this to a dendrite controlled kernel (den_regrow()?) and process
+			a whole dendrite for each work item (possibly even a whole cell 
+			later)
+*/
+__kernel void syns_regrow_deprec(
+				__global char* const syn_strengths,
+				__private uint const syns_per_den_l2,
+				__private uint const rnd,
+				//__global int* const aux_ints_1,
+				__global char* const syn_src_col_xy_offs,
+				__global uchar* const syn_src_slice_ids
+) {
+	uint const slice_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const slice_columns = get_global_size(1);
+	uint const syn_idx = mad24(slice_id, slice_columns, col_id);
+
+	char const syn_strength = syn_strengths[syn_idx];
+
+	//uchar rnd_slice_id = 0;
+
+	if (syn_strength > SYNAPSE_STRENGTH_FLOOR) {
+		return;
+	} else {
+		char rnd_col_ofs = clamp(-127, 127, (int)((rnd ^ ((syn_idx << 5) ^ (syn_idx >> 3))) & 0xFF));
+		//rnd_slice_id = ((rnd >> 8) & 0xFF);		// CHOOSE FROM PRE-BUILT ARRAY
+
+			// CHECK FOR DUPLICATES 
+
+		uint base_syn_idx = (syn_idx >> syns_per_den_l2) << syns_per_den_l2;
+		uint n = base_syn_idx + (1 << syns_per_den_l2);
+
+		for (uint i = base_syn_idx; i < n; i++) {
+			int dup = (rnd_col_ofs == syn_src_col_xy_offs[syn_idx]);		// ADD && ROW CHECK
+			//int dup_slice = ^^^^^^
+
+			if (!dup) {
+				continue;
+			} else {
+				//	JUST EXIT IF OUR NEW RANDOM ADDR IS A DUPLICATE
+				//	AND LET IT BE REASSIGNED NEXT REGROW CYCLE
+				//aux_ints_1[syn_idx] = syn_strength;
+				return;	
+			}
+		}
+
+		syn_strengths[syn_idx] = 0;	
+		syn_src_col_xy_offs[syn_idx] = rnd_col_ofs;
+		//syn_src_slice_ids[syn_idx] =
+
+			//aux_ints_1[syn_idx] = syn_strength;
+	}
+
+	
+	/*int dead_syn = (syn_strength <= -100);
+	syn_src_col_xy_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
+	syn_strengths[syn_idx] = mul24(!(dead_syn), (int)syn_strength);*/
+
+	//syn_src_slice_ids[syn_idx] =
+
+}
 
 
 

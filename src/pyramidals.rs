@@ -53,7 +53,7 @@ impl PyramidalCellularLayer {
 	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl
 	) -> PyramidalCellularLayer {
 
-		let axn_slice_base = region.base_slice_cell_kind(&ProtocellKind::Pyramidal);
+		let axn_slice_base = region.base_slice_cell_kind(&ProtocellKind::Pyramidal); // NEEDS UPDATE
 
 		let dens_per_cel_l2 = protocell.dens_per_cel_l2;
 		let syns_per_den_l2 = protocell.syns_per_den_l2;
@@ -67,7 +67,7 @@ impl PyramidalCellularLayer {
 		//let den_prox_slice = region.slice_ids(vec![col_input_layer.name])[0];
 		
 		//print!("\n### PyramidalCellularLayer: Proximal Dendrite Row: {}", den_prox_slice);
-		print!("\n##### PYRAMIDAL dims: {:?}", dims);
+		print!("\n      PYRAMIDALS::NEW(): dims: {:?}", dims);
 
 		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
@@ -88,6 +88,7 @@ impl PyramidalCellularLayer {
 			.arg_env(&dens.states)
 			.arg_env(&dens.states_raw)
 			//.arg_scl(axn_slice_base)
+			.arg_scl(dens_per_cel_l2)
 			.arg_env(&energies)
 			.arg_env(&best1_den_ids)
 			.arg_env(&best1_den_states)
@@ -111,7 +112,7 @@ impl PyramidalCellularLayer {
 
 		assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
 		let cels_per_wi: u32 = dims.columns() / cmn::MINIMUM_WORKGROUP_SIZE;
-		let axn_idx_base: u32 = (axn_slice_base as u32 * dims.columns()) + cmn::SYNAPSE_REACH_LIN;
+		let axn_idx_base: u32 = (axn_slice_base as u32 * dims.columns()) + cmn::SYNAPSE_REACH_LIN; // NEEDS UPDATE
 		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", axn_idx_base);
 
 		let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd", 
@@ -123,11 +124,11 @@ impl PyramidalCellularLayer {
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns.states)
 			.arg_scl(axn_idx_base)
-			.arg_scl(syns_per_cel_l2 as u32)
+			.arg_scl(syns_per_den_l2 as u32)
 			.arg_scl(dens_per_cel_l2 as u32)
 			.arg_scl(cels_per_wi)
 			.arg_scl_named(0u32, "rnd")
-			//.arg_env(&aux.ints_1)
+			.arg_env(&aux.ints_1)
 			.arg_env(&dens.syns.flag_sets)
 			.arg_env(&flag_sets)
 			//.arg_env(&prev_best1_den_ids)
@@ -167,6 +168,7 @@ impl PyramidalCellularLayer {
 		self.kern_activate.new_arg_envoy(&self.best1_den_ids);
 		self.kern_activate.new_arg_envoy(&self.dens.states);
 		self.kern_activate.new_arg_scalar(self.axn_slice_base);
+		self.kern_activate.new_arg_scalar(self.protocell.dens_per_cel_l2);
 		//self.kern_activate.new_arg_envoy(&aux.ints_0);
 		//self.kern_activate.new_arg_envoy(&self.energies);
 		self.kern_activate.new_arg_envoy(&self.flag_sets);
@@ -207,5 +209,9 @@ impl PyramidalCellularLayer {
 		self.best1_den_ids.read();
 		self.dens.confab();
 	} 
+
+	pub fn cycle_self_only(&self) {
+		self.kern_cycle.enqueue();
+	}
 
 }
