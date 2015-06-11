@@ -6,8 +6,9 @@ use std::fs::{ File };
 use std::ffi;
 use std::iter;
 use std::collections::{ HashMap };
-use num::{ self, Integer, FromPrimitive };
+use num::{ self, Integer, FromPrimitive, Zero };
 use libc;
+//use std::default::{ Default };
 
 use cmn;
 use super::{ WorkSize, Envoy };
@@ -31,7 +32,7 @@ impl Kernel {
 		context: super::cl_command_queue, gws: WorkSize
 	) -> Kernel {
 
-		print!("\n                  KERNEL::NEW(): adding kernel: {}, gws: {:?}", name, gws);
+		//print!("\n                  KERNEL::NEW(): adding kernel: {}, gws: {:?}", name, gws);
 		Kernel {
 			kernel: kernel,
 			name: name,
@@ -64,51 +65,65 @@ impl Kernel {
 		self
 	}
 
-	pub fn arg_env<T>(mut self, envoy: &Envoy<T>) -> Kernel {
-		self.new_arg_envoy(envoy);
+	pub fn arg_env<T: Integer>(mut self, envoy: &Envoy<T>) -> Kernel {
+		self.new_arg_envoy(Some(envoy));
 		self
 	}
 
 	pub fn arg_scl<T: Integer>(mut self, scalar: T) -> Kernel {
-		self.new_arg_scalar(scalar);
+		self.new_arg_scalar(Some(scalar));
 		self
 	}
 
-	pub fn arg_scl_named<T: Integer>(mut self, scalar: T, name: &'static str) -> Kernel {
-		let arg_idx = self.new_arg_scalar(scalar);
+	pub fn arg_scl_named<T: Integer>(mut self, name: &'static str, scalar_opt: Option<T>) -> Kernel {
+		let arg_idx = self.new_arg_scalar(scalar_opt);
 		self.named_args.insert(name, arg_idx);
 		self
 	}
 
+	pub fn arg_env_named<T: Integer>(mut self, name: &'static str,  envoy_opt: Option<&Envoy<T>>) -> Kernel {
+		let arg_idx = self.new_arg_envoy(envoy_opt);
+		self.named_args.insert(name, arg_idx);
+		self
+	}
 
-	pub fn arg_loc<T>(mut self, type_sample: T, length: usize) -> Kernel {
+	pub fn arg_loc<T: Integer>(mut self, type_sample: T, length: usize) -> Kernel {
 		self.new_arg_local(type_sample, length);
 		self
 	}
 
-	pub fn new_arg_envoy<T>(&mut self, envoy: &Envoy<T>) -> u32 {
-		let buf = &envoy.buf;
+
+	pub fn new_arg_envoy<T: Integer>(&mut self, envoy_opt: Option<&Envoy<T>>) -> u32 {
+		let buf = match envoy_opt {
+			Some(envoy) => envoy.buf,
+			None => ptr::null_mut()
+		};
 
 		self.new_kernel_arg(
 			mem::size_of::<super::cl_mem>() as libc::size_t, 
-			(buf as *const super::cl_mem) as *const libc::c_void,
+			(&buf as *const super::cl_mem) as *const libc::c_void,
 		)
 	}
 
-	pub fn new_arg_scalar<T>(&mut self, scalar: T) -> u32 {
+	pub fn new_arg_scalar<T: Integer>(&mut self, scalar_opt: Option<T>) -> u32 {
+		let val = match scalar_opt {
+			Some(scalar) => scalar,
+			None => Zero::zero(),
+		};
+
 		unsafe {
 			//let scal = &scalar;
 
 			self.new_kernel_arg(
 				mem::size_of::<T>() as libc::size_t,
 				//(scal as *const super::cl_mem) as *const libc::c_void,
-				mem::transmute(&scalar),
+				mem::transmute(&val),
 				//(scalar as *const super::cl_mem) as *const libc::c_void,
 			)
 		}
 	}
 
-	pub fn new_arg_local<T>(&mut self, type_sample: T, length: usize) -> u32 {
+	pub fn new_arg_local<T: Integer>(&mut self, type_sample: T, length: usize) -> u32 {
 
 		self.new_kernel_arg(
 			(mem::size_of::<T>() * length) as libc::size_t,
@@ -116,10 +131,11 @@ impl Kernel {
 		)
 	}
 
+
 	fn new_kernel_arg(&mut self, arg_size: libc::size_t, arg_value: *const libc::c_void) -> u32 {
 		let a_i = self.arg_index;
 
-		let err = unsafe {
+		/*let err = unsafe {
 			super::clSetKernelArg(
 						self.kernel, 
 						self.arg_index, 
@@ -127,30 +143,65 @@ impl Kernel {
 						arg_value,
 			)
 		};
-
-		let err_pre = format!("ocl::Kernel::new_kernel_arg()[{}]: ", self.name);
+		let err_pre = format!("\nocl::Kernel::new_kernel_arg()[{}]: ", self.name);
 		super::must_succ(&err_pre, err);
+		*/
 		//println!("Adding Kernel Argument: {}", self.arg_index);
+
+		self.set_kernel_arg(a_i, arg_size, arg_value);
+
 		self.arg_index += 1;
 		a_i
 	}
 
-	pub fn set_named_arg<T>(&mut self, name: &'static str, scalar: T) {
+	// <<<<< CHECK THAT NAME EXISTS AND GIVE A BETTER ERROR MESSAGE >>>>>
+	pub fn set_arg_scl_named<T: Integer>(&mut self, name: &'static str, scalar: T) {
 			//	TODO: ADD A CHECK FOR A VALID NAME (KEY)
 		let arg_idx = self.named_args[name];
-		self.set_kernel_arg(arg_idx, scalar);
+
+		unsafe { 
+			self.set_kernel_arg(
+				arg_idx,
+				mem::size_of::<T>() as libc::size_t,
+					//(scal as *const super::cl_mem) as *const libc::c_void,
+				mem::transmute(&scalar),
+					//(scalar as *const super::cl_mem) as *const libc::c_void,
+			)
+		}
+
+
+		//self.set_kernel_arg(arg_idx, scalar);
 	}
 
-	pub fn set_kernel_arg<T>(&mut self, arg_index: super::cl_uint, val: T) {
+	// <<<<< CHECK THAT NAME EXISTS AND GIVE A BETTER ERROR MESSAGE >>>>>
+	pub fn set_arg_env_named<T>(&mut self, name: &'static str, envoy: &Envoy<T>) {
+			//	TODO: ADD A CHECK FOR A VALID NAME (KEY)
+		
+		println!("\nset_arg_env_named(): name: {}, named_args: {:?}", name, self.named_args);
+		let arg_idx = self.named_args[name];
+		let buf = envoy.buf;
+
+		self.set_kernel_arg(
+			arg_idx,
+			mem::size_of::<super::cl_mem>() as libc::size_t, 
+			(&buf as *const super::cl_mem) as *const libc::c_void,
+		)
+
+		//self.set_kernel_arg(arg_idx, buf)
+	}
+
+	fn set_kernel_arg(&mut self, arg_index: super::cl_uint, arg_size: libc::size_t, arg_value: *const libc::c_void) {
 		unsafe {
 			let err = super::clSetKernelArg(
 						self.kernel, 
-						arg_index, 
-						mem::size_of::<T>() as libc::size_t, 
-						mem::transmute(&val),
+						arg_index,
+						arg_size, 
+						arg_value,
+						/*mem::size_of::<T>() as libc::size_t, 
+						mem::transmute(&val),*/
 			);
 
-			let err_pre = format!("ocl::Kernel::set_kernel_arg()[{}]: ", self.name);
+			let err_pre = format!("\nocl::Kernel::set_kernel_arg()[{}]: ", self.name);
 			super::must_succ(&err_pre, err);
 		}
 	}
@@ -182,7 +233,7 @@ impl Kernel {
 						//&mut event as *mut super::cl_event, // LEAKS!
 			);
 
-			let err_pre = format!("ocl::Kernel::enqueue()[{}]: ", self.name);
+			let err_pre = format!("\nocl::Kernel::enqueue()[{}]: ", self.name);
 			super::must_succ(&err_pre, err);
 		}
 		//event

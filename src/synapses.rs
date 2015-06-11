@@ -28,9 +28,13 @@ use cortical_area:: { Aux };
 
 */
 
+const DEBUG_REGROWTH: bool = false;
+
+
 pub struct Synapses {
 	dims: CorticalDimensions, 
 	protocell: Protocell,
+	protoregion: Protoregion,
 	den_kind: DendriteKind,
 	cell_kind: ProtocellKind,
 	since_decay: usize,
@@ -48,7 +52,7 @@ pub struct Synapses {
 
 impl Synapses {
 	pub fn new(dims: CorticalDimensions, protocell: Protocell, den_kind: DendriteKind, cell_kind: ProtocellKind, 
-					region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
+					protoregion: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
 
 		let syns_per_cel_l2: u8 = protocell.dens_per_cel_l2 + protocell.syns_per_den_l2;
 		assert!(dims.per_cel_l2() as u8 == syns_per_cel_l2);
@@ -108,6 +112,7 @@ impl Synapses {
 		let mut syns = Synapses {
 			dims: dims,
 			protocell: protocell,
+			protoregion: protoregion.clone(),
 			//per_cell_l2: per_cell_l2,
 			//per_den_l2: per_den_l2,
 			den_kind: den_kind,
@@ -125,15 +130,15 @@ impl Synapses {
 			//slice_pool: slice_pool,  // BRING THIS BACK
 		};
 
-		syns.grow(region, true);
+		syns.grow(true);
 		//syns.refresh_slice_pool();
 
 		syns
 	}
 
-	fn grow(&mut self, region: &Protoregion, init: bool) {
-		if false && !init {
-			print!("\nRG:{:?}: ", self.den_kind);
+	fn grow(&mut self, init: bool) {
+		if DEBUG_REGROWTH && !init {
+			print!("\nRG:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:(..)(..)(..)]\n", self.den_kind);
 		}
 
 		assert!(
@@ -149,11 +154,11 @@ impl Synapses {
 		//let mut rng = rand::weak_rng();
 
 		/* LOOP THROUGH ALL LAYERS */
-		for (&layer_name, layer) in region.layers().iter() {
+		for (&layer_name, layer) in self.protoregion.layers().clone().iter() {
 			/*let src_slice_ids_opt: Vec<u8> = match layer.kind {
 				ProtolayerKind::Cellular(ref cell) => {
 					if cell.cell_kind == self.cell_kind {
-						region.src_slice_ids(layer_name, self.den_kind)
+						self.protoregion.src_slice_ids(layer_name, self.den_kind)
 					} else {
 						continue
 					}
@@ -161,12 +166,12 @@ impl Synapses {
 				_ => continue,
 			};*/
 
-			let src_slice_ids = match self.src_slice_ids(layer_name, layer, region) {
+			let src_slice_ids = match self.src_slice_ids(layer_name, layer) {
 				Some(ssids) => ssids,
 				None 		=> continue,
 			};
 
-			let slice_ids = region.slice_ids(vec!(layer_name));
+			let slice_ids = self.protoregion.slice_ids(vec!(layer_name)).clone();
 			let src_slice_ids_len: usize = src_slice_ids.len();
 
 			assert!(src_slice_ids_len > 0, "Synapses must have at least one source slice");
@@ -222,12 +227,12 @@ impl Synapses {
 		self.kern_cycle.enqueue();
 	}
 
-	pub fn regrow(&mut self, region: &Protoregion) {
+	pub fn regrow(&mut self) {
 		//let rnd = self.rng.gen::<u32>();
-		//self.kern_regrow.set_named_arg("rnd", rnd);
+		//self.kern_regrow.set_arg_scl_named("rnd", rnd);
 		//self.kern_regrow.enqueue();
 
-		self.grow(region, false);
+		self.grow(false);
 	}
 
 	pub fn confab(&mut self) {
@@ -241,11 +246,11 @@ impl Synapses {
 		self.width
 	}*/
 
-	pub fn src_slice_ids(&self, layer_name: &'static str, layer: &Protolayer, region: &Protoregion) -> Option<Vec<u8>> {
+	pub fn src_slice_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Option<Vec<u8>> {
 		match layer.kind {
 			ProtolayerKind::Cellular(ref cell) => {
 				if cell.cell_kind == self.cell_kind {
-					Some(region.src_slice_ids(layer_name, self.den_kind))
+					Some(self.protoregion.src_slice_ids(layer_name, self.den_kind))
 				} else {
 					None
 				}
@@ -300,7 +305,7 @@ impl Synapses {
 		tmp_str = format!("=>({})({})({})] ", self.src_slice_ids[syn_idx], self.src_col_xy_offs[syn_idx],  self.strengths[syn_idx]);
 		print_str.push_str(&tmp_str);
 
-		if false && !init {
+		if DEBUG_REGROWTH && !init {
 			print!("{}", print_str);
 		}
 	}

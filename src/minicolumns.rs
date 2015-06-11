@@ -17,7 +17,7 @@ use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cortical_area:: { Aux };
-use peak_column:: { PeakColumns };
+use iinn:: { InhibitoryInterneuronNetwork };
 use pyramidals::{ PyramidalCellularLayer };
 use spiny_stellates::{ SpinyStellateCellularLayer };
 
@@ -44,48 +44,57 @@ pub struct Minicolumns {
 	//pub states: Envoy<ocl::cl_uchar>,
 	//pub states_raw: Envoy<ocl::cl_uchar>,
 	pub cels_status: Envoy<ocl::cl_uchar>,
-	pub best_col_den_states: Envoy<ocl::cl_uchar>,
-	pub peak_spis: PeakColumns,
+	pub best_pyr_den_states: Envoy<ocl::cl_uchar>,
+	//pub iinn: InhibitoryInterneuronNetwork,
 	//pub syns: ColumnSynapses,
 	//pub dens: Dendrites,
 	//pub syns: Synapses,
 }
 
 impl Minicolumns {
-	pub fn new(dims: CorticalDimensions, region: &Protoregion, axons: &Axons, ssts_map: &HashMap<&str, Box<SpinyStellateCellularLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalCellularLayer>>, aux: &Aux, ocl: &Ocl) -> Minicolumns {
+	pub fn new(dims: CorticalDimensions, protoregion: &Protoregion, axons: &Axons, ssts_map: &HashMap<&str, Box<SpinyStellateCellularLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalCellularLayer>>, aux: &Aux, ocl: &Ocl) -> Minicolumns {
 
 		assert!(dims.depth() == 1);
 
-		let layer = region.col_input_layer().expect("minicolumns::Minicolumns::new()");
+		let ssts_layer_name = "iv";
+		let pyrs_layer_name = "iii";
+
+		let layer = protoregion.col_input_layer().expect("minicolumns::Minicolumns::new()");
 		//let depth: u8 = layer.depth();
 
-		let ssts = ssts_map.get("iv").expect("minicolumns.rs");
-		let pyrs = pyrs_map.get("iii").expect("minicolumns.rs");
+		let ssts = ssts_map.get(ssts_layer_name).expect("minicolumns.rs");
+		let pyrs = pyrs_map.get(pyrs_layer_name).expect("minicolumns.rs");
 		//let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
 
-		let pyr_depth = region.depth_cell_kind(&ProtocellKind::Pyramidal);
+		let pyr_depth = protoregion.depth_cell_kind(&ProtocellKind::Pyramidal);
 
-		//let pyr_axn_base_slice = region.base_slice_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
+		//let pyr_axn_base_slice = protoregion.base_slice_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		print!("\n      MINICOLUMN dims: {:?}, pyr_depth: {}", dims, pyr_depth);
 
-		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, region, axons, aux, ocl);
+		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, protoregion, axons, aux, ocl);
 
 		let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let best_col_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
-		let peak_spis = PeakColumns::new(dims, region, &ssts.dens.states, ocl);
+		//let iinn = InhibitoryInterneuronNetwork::new(dims, protoregion, &ssts.soma(), ocl);
 
 		/*let syns = Synapses::new(dims, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
-			ProtocellKind::SpinyStellate, region, axons, aux, ocl);*/
+			ProtocellKind::SpinyStellate, protoregion, axons, aux, ocl);*/
 
-		let output_slices = region.col_output_slices();
+		let output_slices = protoregion.col_output_slices();
 		assert!(output_slices.len() == 1);
 		let axn_output_slice = output_slices[0];
 
+		let ssts_slice_ids = protoregion.slice_ids(vec![ssts_layer_name]);
+		let ssts_axn_base_slice = ssts_slice_ids[0];
+
+		let ssts_axn_idz = cmn::axn_idx_2d(ssts_axn_base_slice, dims.columns(), protoregion.hrz_demarc());
+
+		//println!("\n ##### ssts_axn_idz: {}", ssts_axn_idz);
 
 		/*let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(depth as usize, dims.columns() as usize))
 			.arg_env(&ssts.dens.syns.states)
@@ -97,32 +106,33 @@ impl Minicolumns {
 		;*/
 
 		/*let kern_post_inhib = ocl.new_kernel("sst_post_inhib_unoptd", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
-			.arg_env(&peak_spis.spi_ids)
-			.arg_env(&peak_spis.states)
-			.arg_env(&peak_spis.wins)
+			.arg_env(&iinn.spi_ids)
+			.arg_env(&iinn.states)
+			.arg_env(&iinn.wins)
 			.arg_scl(layer.base_slice_pos() as u32)
-			.arg_env(&ssts.dens.states)
+			.arg_env(&ssts.soma())
 			.arg_env(&axons.states)
 		;*/
 
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
-			.arg_env(&ssts.dens.states)
-			.arg_env(&pyrs.preds)
+			//.arg_env(&ssts.soma())
+			.arg_env(&pyrs.soma())
 			.arg_env(&pyrs.best1_den_states)
 			//.arg_scl(depth)
+			.arg_scl(ssts_axn_idz)
 			.arg_scl(pyr_depth)
 			//.arg_scl(pyr_axn_base_slice)
 			.arg_scl(axn_output_slice)
 			.arg_env(&cels_status)
-			.arg_env(&best_col_den_states)
+			.arg_env(&best_pyr_den_states)
 			.arg_env(&axons.states)
 		;
 
 
-		/*let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, peak_spis.dims.per_slice() as usize))
-			.arg_env(&peak_spis.spi_ids)
-			.arg_env(&peak_spis.states)
+		/*let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slice() as usize))
+			.arg_env(&iinn.spi_ids)
+			.arg_env(&iinn.states)
 			.arg_env(&dens.syns.states)
 			.arg_scl(syns_per_den_l2 as u32)
 			.arg_scl(0u32)
@@ -145,14 +155,14 @@ impl Minicolumns {
 			//states_raw: states_raw,
 			//states: states,
 			cels_status: cels_status,
-			best_col_den_states: best_col_den_states,
-			peak_spis: peak_spis,
+			best_pyr_den_states: best_pyr_den_states,
+			//iinn: iinn,
 			//dens: dens,
 		}
 	}
 
 	/*pub fn cycle(&mut self, ltp: bool) {
-		self.peak_spis.cycle();  
+		self.iinn.cycle();  
 		self.kern_post_inhib.enqueue(); 
 	}*/
 
@@ -164,10 +174,12 @@ impl Minicolumns {
 		//self.states.read();
 		//self.states_raw.read();
 		self.cels_status.read();
-		//self.peak_spis.confab();
+		//self.iinn.confab();
 		//self.ssts.dens.confab();
 	} 
 
+
+	// <<<<< FIX THIS NOT TO SUBTRACT THE EXTRA 1 FROM IDN >>>>>
 	pub fn axn_output_range(&self) -> (usize, usize) {
 		//println!("self.axn_output_slice: {}, self.dims.columns(): {}, cmn::SYNAPSE_REACH_LIN: {}", self.axn_output_slice as usize, self.dims.columns() as usize, cmn::SYNAPSE_REACH_LIN);
 		let start = (self.axn_output_slice as usize * self.dims.columns() as usize) + cmn::SYNAPSE_REACH_LIN as usize;

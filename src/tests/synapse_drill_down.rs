@@ -20,7 +20,7 @@ pub fn print_pyrs(cortex: &mut Cortex) {
 
 	println!("\n");
 
-	for pyr_pred in &pyrs.preds.vec {
+	for pyr_pred in &pyrs.soma().vec {
 		if *pyr_pred != 0 {
 			//let pyr_out_col_id = pyr_idx % pyrs.dims.columns() as usize;
 			let col_id = pyr_idx as isize & (columns - 1) as isize;

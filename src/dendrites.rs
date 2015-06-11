@@ -36,7 +36,6 @@ impl Dendrites {
 	pub fn new(
 					dims: CorticalDimensions,
 					protocell: Protocell,
-					//per_cell_l2: u32,
 					den_kind: DendriteKind, 
 					cell_kind: ProtocellKind,
 					region: &Protoregion,
@@ -51,19 +50,20 @@ impl Dendrites {
 		//let dims = cel_dims.clone_with_pcl2(per_cell_l2);
 
 		let syns_per_den_l2 = protocell.syns_per_den_l2;
+		let den_threshold = protocell.den_thresh_init.unwrap_or(1);
 
-		let (den_threshold, den_kernel) = match den_kind {
+		/*let (den_threshold, den_kernel) = match den_kind {
 			DendriteKind::Distal => (
-				cmn::DENDRITE_INITIAL_THRESHOLD_DISTAL,
+				protocell.den_thresh_init.unwrap_or(1),
 				//cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, 
 				"den_cycle"
 			),
 			DendriteKind::Proximal => (
-				cmn::DENDRITE_INITIAL_THRESHOLD_PROXIMAL,
+				protocell.den_thresh_init.unwrap_or(1),
 				//cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, 
-				"den_cycle"
+				
 			),
-		};
+		};*/
 
 
 		print!("\n            DENDRITES::NEW(): new {:?} dendrites with: {:?}, {:?}", den_kind, dims, protocell);
@@ -78,7 +78,7 @@ impl Dendrites {
 
 
 		//println!("\nsyns_per_den_l2 = {}", syns_per_den_l2);
-		let kern_cycle = ocl.new_kernel(den_kernel, WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
+		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)
@@ -111,8 +111,13 @@ impl Dendrites {
 		self.kern_cycle.enqueue();
 	}
 
-	pub fn regrow(&mut self, region: &Protoregion) {
-		self.syns.regrow(region);
+	// FOR TESTING PURPOSES
+	pub fn cycle_self_only(&self) {
+		self.kern_cycle.enqueue();
+	}
+
+	pub fn regrow(&mut self) {
+		self.syns.regrow();
 	}
 
 	pub fn confab(&mut self) {

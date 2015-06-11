@@ -12,8 +12,9 @@ pub fn define_prtrgns() -> Protoregions {
 		.region(Protoregion::new(ProtoregionKind::Sensory)
 			.layer("thal", 1, layer::DEFAULT, Axonal(Spatial))
 			.layer("out", 1, layer::COLUMN_OUTPUT, Axonal(Spatial))
-			.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(0, 5, vec!["thal", "thal", "thal", "motor"]))  // , "motor"
-			.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["iii"]))
+			.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(5, vec!["thal", "thal", "thal", "motor"], 256))  // , "motor"
+			.layer("iv_inhib", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv"))
+			.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["iii"], 256))
 			.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
 			.freeze()
 		)
@@ -27,18 +28,19 @@ pub fn define_prtareas() -> Protoareas {
 /* IDEAS FOR TESTS:
 	- set synapse src_ids, src_ofs, strs to 0
 		- test some specific inputs and make sure that synapses are responding exactly
-
-
 */
 #[test]
 fn test_cortex() {
 	let mut cortex = Cortex::new(define_prtrgns(), define_prtareas());
-					/* 	 InputCzar::new(columns, vec_kind, counter_range, counter_random, toggle_dirs, introduce_noise) */
-	//let mut input_czar = InputCzar::new(cmn::SENSORY_CHORD_COLUMNS, InputVecKind::Band_512, 0..10, false, false, false);
-	//input_czar.next(&mut cortex);
 
 	hybrid::test_cycles(&mut cortex);
-
-	cortex.release_components();
 }
 
+
+
+#[test]
+fn test_learning() {
+	let mut cortex = Cortex::new(define_prtrgns(), define_prtareas());
+
+	hybrid::test_learning(&mut cortex);
+}

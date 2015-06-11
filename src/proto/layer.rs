@@ -51,7 +51,8 @@ impl Protolayer {
 			ProtolayerKind::Cellular(ref protocell) => match den_type {
 				DendriteKind::Distal =>	protocell.den_dst_srcs.clone(),
 				DendriteKind::Proximal => protocell.den_prx_srcs.clone(),
-				//DendriteKind::Apical => protocell.den_apc_srcs.clone(),
+				//DendriteKind::Apical(_) => protocell.den_apc_srcs.clone(),
+				_ => panic!("Apical dendrites not yet implemented"),
 			},
 			_ => panic!("Protolayer must have a kind defined to determine source layers"),
 		};

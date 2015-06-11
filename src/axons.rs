@@ -16,7 +16,7 @@ use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use cortical_area:: { Aux };
-use peak_column::{ PeakColumns };
+use iinn::{ InhibitoryInterneuronNetwork };
 use minicolumns::{ Minicolumns };
 
 

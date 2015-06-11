@@ -12,7 +12,7 @@ use microcosm::worm::{ WormBrain };
 use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
 
 
-pub const WORLD_TURN_FACTOR: f32 				= 3f32;	
+pub const WORLD_TURN_FACTOR: f32 				= 9f32;	// (originally 3)
 
 
 //pub const PARAM_RANDOM_COUNTER: bool = true;
@@ -105,13 +105,19 @@ impl InputCzar {
 				self.vec_motor.clone_from_slice(&self.motor_state.cur_sdr(true));
 				//print!("[> ctr = 1 <]");
 			}
+
 		}
 
 
 		/* ##### OPTICAL ##### */
 		match self.optical_vec_kind {
 			InputVecKind::World => {
-				self.world.entities().get_mut(self.worm.uid).turn((WORLD_TURN_FACTOR/(self.area as f32)), self.motor_state.cur_turn());
+				let turn_amt = WORLD_TURN_FACTOR / (self.area as f32);
+				self.world.entities().get_mut(self.worm.uid).turn(turn_amt, self.motor_state.cur_turn());
+
+				if !self.toggle_dirs && remain_ticks == 0 {
+					self.world.entities().get_mut(self.worm.uid).head_north();
+				}
 				self.world.peek_from(self.worm.uid).unfold_into(&mut self.vec_optical, 0);
 			},
 			InputVecKind::Stripes(size) => {

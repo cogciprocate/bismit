@@ -14,9 +14,8 @@ use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
 
 
 
-
 //#[derive(Copy)]
-pub struct Protoregions {
+pub struct Protoregions {	// <<<<< SLATED FOR REMOVAL
 	pub hash_map: HashMap<ProtoregionKind, Protoregion>,
 }
 
@@ -100,7 +99,7 @@ impl Protoregion {
 	pub fn new (kind: ProtoregionKind)  -> Protoregion {
 		/*let mut next_slice_id = HashMap::new();
 		next_slice_id.insert(ProtocellKind::Pyramidal, 0);
-		next_slice_id.insert(ProtocellKind::PeakColumns, 0);
+		next_slice_id.insert(ProtocellKind::InhibitoryInterneuronNetwork, 0);
 		next_slice_id.insert(ProtocellKind::SpinyStellate, 0);*/
 	
 		Protoregion { 
@@ -585,7 +584,7 @@ impl Protoregion {
 	pub fn new (kind: ProtoregionKind)  -> Protoregion {
 		let mut next_slice_id = HashMap::new();
 		next_slice_id.insert(ProtocellKind::Pyramidal, 0);
-		next_slice_id.insert(ProtocellKind::PeakColumns, 0);
+		next_slice_id.insert(ProtocellKind::InhibitoryInterneuronNetwork, 0);
 		next_slice_id.insert(ProtocellKind::SpinyStellate, 0);
 	
 		Protoregion { 

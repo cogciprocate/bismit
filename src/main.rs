@@ -29,7 +29,7 @@ mod axons;
 mod dendrites;
 mod synapses;
 mod minicolumns;
-mod peak_column;
+mod iinn;
 mod pyramidals;
 mod spiny_stellates;
 //mod cort_seg;
@@ -57,7 +57,7 @@ fn main() {
 	// test_casting::run();
 	// hello_world::run();
 
-	if false {
+	if true {
 		tests::interactive::run(0);
 	} else {
 		for i in 0..20 {

@@ -36,8 +36,10 @@ use ocl;
 pub static C_DEFAULT: &'static str = "\x1b[0m";
 pub static C_UNDER: &'static str = "\x1b[1m";
 
-pub static C_DRD: &'static str = "\x1b[31m";
+pub static C_RED: &'static str = "\x1b[31m";
+pub static C_BRED: &'static str = "\x1b[1;31m";
 pub static C_GRN: &'static str = "\x1b[32m";
+pub static C_BGRN: &'static str = "\x1b[1;32m";
 pub static C_ORA: &'static str = "\x1b[33m";
 pub static C_DBL: &'static str = "\x1b[34m";
 pub static C_PUR: &'static str = "\x1b[35m";
@@ -75,8 +77,7 @@ pub const SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2: u8 = 3;
 pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as u32;*/
 
 //pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = (128 * 4);
-pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = 128; // *****
-pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 1);
+//pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 1);
 
 pub const LEARNING_ACTIVE: bool = true;
 pub const SYNAPSE_STRENGTH_FLOOR: i8 = -15;
@@ -204,7 +205,7 @@ pub fn build_options() -> ocl::BuildOptions {
 
 		.opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32)
 		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
-		.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
+		//.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
 				//.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
 		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
 		.opt("SYNAPSE_REACH_LIN", SYNAPSE_REACH_LIN as i32)
@@ -241,13 +242,13 @@ pub fn build_options() -> ocl::BuildOptions {
 
 
 
-pub fn print_vec_simple<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(vec: &Vec<T>) {
+pub fn print_vec_simple<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(vec: &[T]) {
 	print_vec(vec, 1, None, None, true);
 }
 
 
 pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(
-			vec: &Vec<T>, 
+			vec: &[T], 
 			every: usize, 
 			val_range: Option<(T, T)>, 
 			idx_range: Option<(usize, usize)>,

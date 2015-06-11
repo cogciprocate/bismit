@@ -1,9 +1,9 @@
-use rand;
-use rand::distributions::{IndependentSample, Range};
 use std::ptr;
-use num;
+use std::ops::{ Drop };
 use std::collections::{ HashMap };
+use num;
 use time;
+use rand::distributions::{ IndependentSample, Range };
 
 
 use ocl::{ self, Ocl, CorticalDimensions };
@@ -29,10 +29,12 @@ pub fn define_protoregions() -> Protoregions {
 
 		.layer("out", 1, layer::COLUMN_OUTPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
 
-		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(0, 4, vec!["thal"]))  // , "motor"
+		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(5, vec!["thal"], 256))  // , "motor"
+
+		.layer("iv_inhib", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
 		//.layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
-		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(2, 4, vec!["iii"]))
+		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["iii"], 512))
 		//.layer("ii", 3, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["out"])) // <<<<< FIX ME (FIX SYNS)
 
 		//.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
@@ -66,7 +68,7 @@ impl Cortex {
 		print!("\nInitializing Cortex... ");
 		let time_start = time::get_time();		
 
-		let protoregions = define_protoregions();
+		//let protoregions = define_protoregions();
 		//let protoareas = define_protoareas();
 
 		let hrz_demarc = protoregions[&ProtoregionKind::Sensory].hrz_demarc();
@@ -77,9 +79,9 @@ impl Cortex {
 
 		// FOR EACH AREA...
 		let mut cortical_area: cortical_area::CorticalArea = {
-			let ref region = &protoregions[&ProtoregionKind::Sensory];
-			let ref area = &protoareas["v1"];
-			CorticalArea::new("v1", region, area, &ocl)
+			let protoregion = protoregions[&ProtoregionKind::Sensory].clone();
+			let protoarea = protoareas["v1"].clone();
+			CorticalArea::new("v1", protoregion, protoarea, &ocl)
 		};
 
 		let time_complete = time::get_time() - time_start;
@@ -132,17 +134,21 @@ impl Cortex {
 	}
 
 	pub fn cycle(&mut self) {
-		let ref region = &self.protoregions[&ProtoregionKind::Sensory];
-		self.cortical_area.cycle(region);
+		//let ref region = &self.protoregions[&ProtoregionKind::Sensory];
+		self.cortical_area.cycle();
 	}
 
-	pub fn release_components(&mut self) {
-		print!("Releasing OCL Components...");
-		self.ocl.release_components();
-	}
+	/*pub fn release_components(&mut self) {
+		print!("Cortex::release_components() called! (depricated)... ");
+	}*/
 }
 
-
+impl Drop for Cortex {
+    fn drop(&mut self) {
+        print!("Releasing OCL Components...");
+		self.ocl.release_components();
+    }
+}
 
 
 

@@ -21,19 +21,22 @@ use cortical_area:: { Aux };
 
 
 
-pub struct PeakColumns {
+pub struct InhibitoryInterneuronNetwork {
+	layer_name: &'static str,
 	pub dims: CorticalDimensions,
+	protocell: Protocell,
 	kern_cycle_pre: ocl::Kernel,
 	kern_cycle_wins: ocl::Kernel,
 	kern_cycle_post: ocl::Kernel,
+	kern_post_inhib: ocl::Kernel,
 	pub spi_ids: Envoy<ocl::cl_uchar>,
 	pub wins: Envoy<ocl::cl_uchar>,
 	pub states: Envoy<ocl::cl_uchar>,
 	
 }
 
-impl PeakColumns {
-	pub fn new(col_dims: CorticalDimensions, region: &Protoregion, src_states: &Envoy<ocl::cl_uchar>, ocl: &Ocl) -> PeakColumns {
+impl InhibitoryInterneuronNetwork {
+	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, src_soma: &Envoy<u8>, src_axn_base_slice: u8, axns: &Axons, ocl: &Ocl) -> InhibitoryInterneuronNetwork {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
@@ -47,33 +50,45 @@ impl PeakColumns {
 		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, 0u8, ocl);
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
 
-		let mut kern_cycle_pre = ocl.new_kernel("peak_sst_cycle_pre", 
+		let kern_cycle_pre = ocl.new_kernel("peak_sst_cycle_pre", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
-			.arg_env(&src_states)
+			.arg_env(&src_soma)
 			.arg_env(&states)
 			.arg_env(&spi_ids)
 		;
 
-		let mut kern_cycle_wins = ocl.new_kernel("peak_sst_cycle_wins", 
+		let kern_cycle_wins = ocl.new_kernel("peak_sst_cycle_wins", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&states)
 			//.arg_env(&spi_ids)
 			.arg_env(&wins)
 		;
 
-		let mut kern_cycle_post = ocl.new_kernel("peak_sst_cycle_post", 
+		let kern_cycle_post = ocl.new_kernel("peak_sst_cycle_post", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
 			.arg_env(&wins)
 			//.arg_env(&spi_ids)
 			.arg_env(&states)
 		;
 
+		let kern_post_inhib = ocl.new_kernel("sst_post_inhib_unoptd", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
+			.arg_env(&spi_ids)
+			.arg_env(&states)
+			.arg_env(&wins)
+			.arg_scl(src_axn_base_slice)
+			.arg_env(src_soma)
+			.arg_env(&axns.states)
+		;
 
-		PeakColumns {
+
+		InhibitoryInterneuronNetwork {
+			layer_name: layer_name,
 			dims: dims,
+			protocell: protocell,
 			kern_cycle_pre: kern_cycle_pre,
 			kern_cycle_wins: kern_cycle_wins,
 			kern_cycle_post: kern_cycle_post,
+			kern_post_inhib: kern_post_inhib,
 			spi_ids: spi_ids,
 			wins: wins,
 			states: states,
@@ -91,6 +106,7 @@ impl PeakColumns {
 		}
 
 		self.kern_cycle_post.enqueue();
+		self.kern_post_inhib.enqueue();
 	}
 
 }
