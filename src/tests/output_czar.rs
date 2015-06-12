@@ -154,7 +154,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
 
 	if true {
 		print!("\nPYRAMIDAL FLAG SETS:");
-		cortex.cortical_area.pyrs.get_mut("iii").expect(EMSG).flag_sets.print_val_range(1 << 0, Some((1, 255)));
+		cortex.cortical_area.pyrs.get_mut("iii").expect(EMSG).flag_sets.print_val_range(1 << 6, Some((1, 255)));
 	}
 	if true {
 		print!("\nPYRAMIDAL DEPOLARIZATIONS:");
@@ -167,8 +167,10 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
 	if true {
 		/*print!("\naux.ints_0: ");
 		cortex.cortical_area.aux.ints_0.print((1 << 0) as usize, None, Some((0, 700)), false);*/
+		//print!("\naux.ints_0: ");
+		//cortex.cortical_area.aux.ints_0.print((1 << 0) as usize, None, Some((0, 42767)), false);
 		print!("\naux.ints_0: ");
-		cortex.cortical_area.aux.ints_0.print((1 << 0) as usize, None, Some((0, 42767)), false);
+		cortex.cortical_area.aux.ints_0.print((1 << 0) as usize, None, None, false);
 		
 		//cortex.cortical_area.aux.ints_0.print((1 << 0) as usize, Some((0, 1023)), Some((1, 19783029)), false);
 		print!("\naux.ints_1: ");

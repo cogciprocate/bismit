@@ -116,7 +116,7 @@ impl SpinyStellateCellularLayer {
 			.arg_scl(syns_per_cel_l2)
 			.arg_scl(cels_per_grp)
 			.arg_scl_named::<u32>("rnd", None)
-			.arg_env(&aux.ints_0)
+			//.arg_env(&aux.ints_0)
 			.arg_env(&dens.syns.strengths)
 			//.arg_env(&axns.states)
 		;

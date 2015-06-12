@@ -85,7 +85,7 @@ impl Dendrites {
 			.arg_scl(den_threshold)
 			.arg_env(&energies)
 			.arg_env(&states_raw)
-			.arg_env(&aux.ints_0)
+			//.arg_env(&aux.ints_0)
 			.arg_env(&states)
 		;
 		

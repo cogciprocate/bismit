@@ -158,6 +158,7 @@ pub const PYR_PREV_STP_FLAG: u8 			= 0b00100000;	// 32	(0x20)
 pub const PYR_PREV_FUZZY_FLAG: u8			= 0b00010000;	// 16	(0x10)
 
 pub const SYN_STP_FLAG: u8					= 0b00000001;
+pub const SYN_STD_FLAG: u8					= 0b00000010;
 pub const SYN_CONCRETE_FLAG: u8				= 0b00001000;
 
 
@@ -221,6 +222,7 @@ pub fn build_options() -> ocl::BuildOptions {
 		.opt("PYR_PREV_STP_FLAG", PYR_PREV_STP_FLAG as i32)
 		.opt("PYR_PREV_FUZZY_FLAG", PYR_PREV_FUZZY_FLAG as i32)
 		.opt("SYN_STP_FLAG", SYN_STP_FLAG as i32)
+		.opt("SYN_STD_FLAG", SYN_STP_FLAG as i32)
 		.opt("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
 }
 
@@ -552,9 +554,10 @@ pub fn render_sdr(
 	assert!(vec_out.len() == vec_ff_prev.len(), "cmn::render_sdr(): vec_out.len() != vec_ff_prev.len(), Input vectors must be of equal length.");
 	
 
+	let mut active_cols = 0usize;
 	let mut failed_preds = 0usize;
 	let mut corr_preds = 0usize;
-	let mut missed_preds = 0usize;
+	let mut anomalies = 0usize;
 	let mut new_preds = 0usize;
 	let mut ttl_active = 0usize;
 
@@ -585,7 +588,13 @@ pub fn render_sdr(
 			//let prev_active = vec_ff_prev[i] != Default::default();
 			let prev_prediction = new_pred(vec_out_prev[i], vec_ff_prev[i]);
 
-			if new_prediction { new_preds += 1 };
+			if col_active {
+				active_cols += 1;
+			}
+
+			if new_prediction { 
+				new_preds += 1;
+			}
 
 			if (prev_prediction && !new_prediction) && !col_active {
 				failed_preds += 1;
@@ -593,8 +602,8 @@ pub fn render_sdr(
 				corr_preds += 1;
 			}
 
-			if cur_active && !prev_prediction {
-				missed_preds += 1;
+			if col_active && !prev_prediction {
+				anomalies += 1;
 			}
 
 			if print {
@@ -653,7 +662,7 @@ pub fn render_sdr(
 	}
 
 
-	let preds_total = (corr_preds + failed_preds + missed_preds) as f32;
+	let preds_total = (corr_preds + failed_preds) as f32;
 
 	let pred_accy = if preds_total > 0f32 {
 		(corr_preds as f32 / preds_total) * 100f32
@@ -663,8 +672,8 @@ pub fn render_sdr(
 
 	if print {
 		if vec_out_prev_opt.is_some() {
-			println!("\n[correct: {}, failed: {}, missed: {}, accuracy: {:.1}%, new_preds: {}, total: {}]", 
-				corr_preds, failed_preds, missed_preds, pred_accy, new_preds, ttl_active);
+			println!("\n{{ prev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, cols active:{}, ttl active:{}, new_preds:{} }}", 
+				preds_total, corr_preds, failed_preds, pred_accy, anomalies, active_cols, ttl_active, new_preds,);
 		}
 	}
 

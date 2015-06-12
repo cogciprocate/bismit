@@ -132,16 +132,16 @@ static inline void cel_syns_trm( 			// TERMINATION
 		int const syn_prev_stp = (syn_flag_set & SYN_STP_FLAG) == SYN_STP_FLAG;
 		int const syn_active = syn_state != 0;
 
-		//syn_strength += mul24(syn_prev_stp && !syn_active, inc << LTP_BIAS_LOG2);
-		//syn_strength -= mul24(syn_prev_stp && syn_active, inc);
+		syn_strength += mul24(syn_prev_stp && !syn_active, inc << LTP_BIAS_LOG2);
+		syn_strength -= mul24(syn_prev_stp && syn_active, inc << LTD_BIAS_LOG2);
 
-		if (syn_prev_stp) {
+		/*if (syn_prev_stp) {
 			if (syn_active) {
 				syn_strength -= (inc << LTD_BIAS_LOG2);			
 			} else {
 				syn_strength += (inc << LTP_BIAS_LOG2);
 			}
-		}
+		}*/
 
 		//syn_strength -= mul24(syn_flag_set, inc);
 
@@ -307,7 +307,7 @@ __kernel void syns_cycle(
 				__global uchar const* const syn_src_slice_ids,
 				//__global char const* const syn_strengths,
 				__private uchar const syns_per_cel_l2,
-				__global int* const aux_ints_0,
+				//__global int* const aux_ints_0,
 				__global uchar* const syn_states
 ) {
 	uint const slice_id = get_global_id(0);
@@ -368,7 +368,7 @@ __kernel void den_cycle(
 				__private uint const den_threshold,
 				__global uchar* const den_energies,
 				__global uchar* const den_states_raw,
-				__global int* const aux_ints_1,
+				//__global int* const aux_ints_1,
 				__global uchar* const den_states
 ) {
 	uint const slice_id = get_global_id(0);
@@ -662,7 +662,7 @@ __kernel void sst_ltp(
 				__private uchar const syns_per_cel_l2,
 				__private uint const cels_per_grp,
 				__private uint const rnd,
-				__global int* const aux_ints_0,
+				//__global int* const aux_ints_0,
 				__global char* const syn_strengths
 ) {
 	uint const slice_id = get_global_id(0);
@@ -698,10 +698,10 @@ __kernel void pyr_activate(
 				__private uchar const pyr_axn_slice_base,
 				__private uchar const dens_per_cel_l2,
 				
-				__global int* const aux_ints_0,
 				//__global uchar* const pyr_energies,
 				__global uchar* const pyr_flag_sets,
 				__global uchar* const pyr_preds,
+				//__global int* const aux_ints_0,
 				__global uchar* const axn_states
 ) {
 	uint const slice_id = get_global_id(0);
@@ -737,8 +737,9 @@ __kernel void pyr_activate(
 	//pyr_pred = (crystal | anomaly) && (mcol_state);
 	//pyr_pred = mul24(((crystal != 0) || (anomaly != 0)), mcol_state);
 	pyr_flag_set &= ~PYR_BEST_IN_COL_FLAG;
-	//pyr_flag_set |= mul24(mcol_best_col_den_state == best1_den_state, PYR_BEST_IN_COL_FLAG);
-	pyr_flag_set |= mul24((mcol_best_col_den_state == best1_den_state) && pyr_predictive, PYR_BEST_IN_COL_FLAG);
+	
+	pyr_flag_set |= mul24(mcol_best_col_den_state == best1_den_state, PYR_BEST_IN_COL_FLAG);
+	//pyr_flag_set |= mul24((mcol_best_col_den_state == best1_den_state) && pyr_predictive, PYR_BEST_IN_COL_FLAG);
 
 
 	// SHOULDN'T BE ACTIVATING IF OTHER PYRS IN COLUMN ARE PREDICTIVE
@@ -808,10 +809,11 @@ __kernel void pyrs_ltp_unoptd(
 				__private uint const dens_per_cel_l2,
 				__private uint const pyrs_per_wi,
 				__private uint const rnd,
-				__global int* const aux_ints_1,
 				__global uchar* const syn_flag_sets,
 				__global uchar* const pyr_flag_sets,
 				//__global uchar* const pyr_prev_best1_den_ids,
+				//__global int* const aux_ints_0,
+				//__global int* const aux_ints_1,
 				__global char* const syn_strengths
 ) {
 	uint const slice_id = get_global_id(0);
@@ -859,7 +861,7 @@ __kernel void pyrs_ltp_unoptd(
 		//aux_ints_1[i] = pyr_flag_set;
 
 
-		uchar learned_what = 0;
+		//uchar learned_what = 0;
 
 
 		if (pyr_concrete) {
@@ -870,14 +872,21 @@ __kernel void pyrs_ltp_unoptd(
 				
 				dst_syns__active__stp_ltd(syn_states, best2_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
 
-				learned_what = 1;
+				//learned_what = 1;
 
 			} else if (pyr_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
 			//} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
 				
 				dst_syns__active__stp_ltd(syn_states, best1_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
 
-				learned_what = 2;
+
+				/*int iz = best1_den_syn_idz;
+				int in = iz + (1 << syns_per_den_l2);
+				for (; iz < in; iz ++) {
+					aux_ints_0[iz] = 99;
+				}*/
+
+				//learned_what = 2;
 
 			//} else { // EVERYTHING ELSE: JUST SET PREV ACTIVE
 				// NOT GOING TO WORRY ABOUT THIS -- ALLOW STP TO REFLECT PRIOR ACTIVITY
@@ -891,7 +900,7 @@ __kernel void pyrs_ltp_unoptd(
 
 			cel_syns_trm(syn_states, pyr_syn_idz, syns_per_den_l2 + dens_per_cel_l2, rnd, syn_flag_sets, syn_strengths);
 
-			learned_what = 3;
+			//learned_what = 3;
 
 			//pyr_flag_set &= ~PYR_PREV_STP_FLAG;
 			pyr_flag_set &= ~PYR_PREV_CONCRETE_FLAG;
@@ -916,7 +925,11 @@ __kernel void pyrs_ltp_unoptd(
 		// TOTAL PYRS:
 		//aux_ints_1[i] = grps_per_slice * pyrs_per_wi * get_global_size(0);
 
-		aux_ints_1[i] = mul24(pyr_best_in_col, (int)best1_den_syn_idz);
+		//aux_ints_1[i] = mul24(pyr_concrete, (int)pyr_axn_idx_base);
+		//aux_ints_1[i] = mul24(pyr_concrete, axn_states[i + pyr_axn_idx_base]);
+		//aux_ints_1[i] = (learned_what * 10) + (pyr_flag_set & 0xFF);
+
+		//aux_ints_1[i] = aux_ints_1[i] + (10 * learned_what);
 		//aux_ints_1[i] = pyr_fuzzy;
 		//aux_ints_1[i] = pyr_axn_idx_base;
 		//aux_ints_1[i] = learned_what;
@@ -1018,88 +1031,6 @@ __kernel void pyr_cycle_working(
 
 
 
-__kernel void pyr_cycle( // EXPERIMENTAL VERSION
-				__global uchar const* const den_states,
-				__global uchar const* const den_states_raw,
-				//__private uchar const pyr_axn_slice_base,
-				__private uchar const dens_per_cel_l2,
-				__global uchar* const pyr_energies,
-				__global uchar* const pyr_best1_den_ids,
-				__global uchar* const pyr_best1_den_states,
-				__global uchar* const pyr_best2_den_ids,
-				__global uchar* const pyr_best2_den_states,
-				__global uchar* const pyr_preds
-				//__global uchar* const axn_states
-) {
-	uint const slice_id = get_global_id(0);
-	uint const col_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
-	uint const den_ofs = pyr_idx << dens_per_cel_l2;
-	//uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id);
-	//uint const axn_idx = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
-	//uchar pyr_energy = pyr_energies[pyr_idx];
-
-	//uint den_sum = 0;
-
-	uchar best1_den_state = 0;
-	uchar best1_den_id = 0;
-
-	uchar best2_den_state = 0;
-	uchar best2_den_id = 0;
-	//int active_dendrites = 0;
-
-	uchar den_max = 0;
-
-	//uint pyr_pred = pyr_preds[pyr_idx];
-
-		//#pragma unroll 
-	for (uchar i = 0; i < (1 << dens_per_cel_l2); i++) {
-		uchar den_state = den_states[den_ofs + i];
-		uchar den_state_raw = den_states_raw[den_ofs + i];
-
-		int den_state_bigger = (den_state_raw > best1_den_state);
-
-		best2_den_id = mad24(den_state_bigger, best1_den_id, mul24(!den_state_bigger, best2_den_id));
-		best2_den_state = mad24(den_state_bigger, best1_den_state, mul24(!den_state_bigger, best2_den_state));
-
-		best1_den_id = mad24(den_state_bigger, i, mul24(!den_state_bigger, best1_den_id));
-		best1_den_state = mad24(den_state_bigger, den_state_raw, mul24(!den_state_bigger, best1_den_state));
-
-		//best1_den_state = mul24(den_state_bigger, den_state);
-
-		den_max = max(den_max, den_state);
-
-		//den_sum += den_state;
-		//den_sum += (den_state != 0);
-		//den_sum += (den_state > 0);
-		//active_dendrites += (den_state > 0);
-	}
-	
-	//den_sum = den_sum >> 2;
-
-
-	
-	pyr_best1_den_ids[pyr_idx] = best1_den_id;
-	pyr_best1_den_states[pyr_idx] = best1_den_state;
-	pyr_best2_den_ids[pyr_idx] = best2_den_id;
-	pyr_best2_den_states[pyr_idx] = best2_den_state;
-
-	pyr_preds[pyr_idx] = den_max; // ***** FUCKED WITH THIS
-	//pyr_preds[pyr_idx] = best1_den_state;
-
-
-
-	//pyr_preds[pyr_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
-	//axn_states[axn_idx] = clamp(den_sum, 0u, 255u);
-
-	//pyr_preds[pyr_idx] = clamp(den_sum, 0, 127);
-
-	//pyr_preds[pyr_idx] = (den_sum >> 1);
-	//pyr_preds[pyr_idx] = active_dendrites;
-}
-
-
 /*	COL_OUTPUT()
 		- rename coming
 */
@@ -1172,13 +1103,170 @@ __kernel void col_output(
 ===============================================================================
 ===============================================================================
 ===============================================================================
-=========================== SCRAPS & BONES BELOW ==============================
+========================== EXPERIMENTAL AND UNUSED ============================
 ===============================================================================
 ===============================================================================
 ===============================================================================
 ===============================================================================
 =============================================================================*/
 
+
+
+
+
+__kernel void pyr_cycle_experimental( // EXPERIMENTAL VERSION
+				__global uchar const* const den_states,
+				__global uchar const* const den_states_raw,
+				//__private uchar const pyr_axn_slice_base,
+				__private uchar const dens_per_cel_l2,
+				__global uchar* const pyr_energies,
+				__global uchar* const pyr_best1_den_ids,
+				__global uchar* const pyr_best1_den_states,
+				__global uchar* const pyr_best2_den_ids,
+				__global uchar* const pyr_best2_den_states,
+				__global uchar* const pyr_preds
+				//__global uchar* const axn_states
+) {
+	uint const slice_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const slice_columns = get_global_size(1);
+	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
+	uint const den_ofs = pyr_idx << dens_per_cel_l2;
+	//uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id);
+	//uint const axn_idx = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
+	//uchar pyr_energy = pyr_energies[pyr_idx];
+
+	//uint den_sum = 0;
+
+	uchar best1_den_state = 0;
+	uchar best1_den_id = 0;
+
+	uchar best2_den_state = 0;
+	uchar best2_den_id = 0;
+	//int active_dendrites = 0;
+
+	uchar den_max = 0;
+
+	//uint pyr_pred = pyr_preds[pyr_idx];
+
+		//#pragma unroll 
+	for (uchar i = 0; i < (1 << dens_per_cel_l2); i++) {
+		uchar den_state = den_states[den_ofs + i];
+		uchar den_state_raw = den_states_raw[den_ofs + i];
+
+		int den_state_bigger = (den_state_raw > best1_den_state);
+
+		best2_den_id = mad24(den_state_bigger, best1_den_id, mul24(!den_state_bigger, best2_den_id));
+		best2_den_state = mad24(den_state_bigger, best1_den_state, mul24(!den_state_bigger, best2_den_state));
+
+		best1_den_id = mad24(den_state_bigger, i, mul24(!den_state_bigger, best1_den_id));
+		best1_den_state = mad24(den_state_bigger, den_state_raw, mul24(!den_state_bigger, best1_den_state));
+
+		//best1_den_state = mul24(den_state_bigger, den_state);
+
+		den_max = max(den_max, den_state);
+
+		//den_sum += den_state;
+		//den_sum += (den_state != 0);
+		//den_sum += (den_state > 0);
+		//active_dendrites += (den_state > 0);
+	}
+	
+	//den_sum = den_sum >> 2;
+
+
+	
+	pyr_best1_den_ids[pyr_idx] = best1_den_id;
+	pyr_best1_den_states[pyr_idx] = best1_den_state;
+	pyr_best2_den_ids[pyr_idx] = best2_den_id;
+	pyr_best2_den_states[pyr_idx] = best2_den_state;
+
+	//pyr_preds[pyr_idx] = den_max; // ***** FUCKED WITH THIS
+	pyr_preds[pyr_idx] = best1_den_state; // ***** ^
+
+
+
+	//pyr_preds[pyr_idx] = clamp(den_sum, 0u, 255u); 	// v.N1
+	//axn_states[axn_idx] = clamp(den_sum, 0u, 255u);
+
+	//pyr_preds[pyr_idx] = clamp(den_sum, 0, 127);
+
+	//pyr_preds[pyr_idx] = (den_sum >> 1);
+	//pyr_preds[pyr_idx] = active_dendrites;
+}
+
+
+
+
+// VECTORIZE
+static inline void dst_syns__active__stp_std_experimental( 					// ANOMALY & CRYSTALLIZATION
+				__global uchar const* const syn_states,
+				uint const syn_idx_start,	// (syn_idz)
+				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
+				uint const rnd,
+				__global uchar* const syn_flag_sets,
+				__global char* const syn_strengths
+) {
+	uint const n = syn_idx_start + (1 << syns_per_den_l2);
+
+	for (uint i = syn_idx_start; i < n; i++) {
+		uchar const syn_state = syn_states[i];
+		char syn_strength = syn_strengths[i];
+		uchar syn_flag_set = syn_flag_sets[i];
+
+		int const inc = rnd_inc(rnd, i, syn_strength);
+		int const syn_active = syn_state != 0;
+		syn_flag_set &= ~SYN_STP_FLAG;
+
+		syn_flag_set |= mul24(syn_active, SYN_STP_FLAG);
+		syn_flag_set |= mul24(!syn_active, SYN_STD_FLAG);
+		//syn_strength -= mul24(!syn_active, inc << LTD_BIAS_LOG2);
+
+		syn_flag_sets[i] = syn_flag_set;
+		syn_strengths[i] = syn_strength;
+	}
+}
+
+// VECTORIZE --- RE-STREAMLINE (REMOVE BRANCH)
+static inline void cel_syns_trm_experimental( 			// TERMINATION
+				__global uchar const* const syn_states,
+				uint const syn_idx_start,	// (syn_idz)
+				uint const syns_per_cel_l2, // MAKE THIS A CONSTANT SOMEDAY
+				uint const rnd,
+				__global uchar* const syn_flag_sets,
+				__global char* const syn_strengths
+) {
+	uint const n = syn_idx_start + (1 << syns_per_cel_l2);
+
+	for (uint i = syn_idx_start; i < n; i++) {
+		uchar const syn_state = syn_states[i];
+		char syn_strength = syn_strengths[i];
+		uchar syn_flag_set = syn_flag_sets[i];
+		int const inc = rnd_inc(rnd, i, syn_strength);
+		//uchar const rnd_char = (rnd ^ i) & 0x7F;		
+		//int const inc = (rnd_char > abs(syn_strength));
+		int const syn_prev_stp = (syn_flag_set & SYN_STP_FLAG) == SYN_STP_FLAG;
+		int const syn_prev_std = (syn_flag_set & SYN_STD_FLAG) == SYN_STD_FLAG;
+		int const syn_active = syn_state != 0;
+
+		syn_strength += mul24(syn_prev_stp && !syn_active, inc << LTP_BIAS_LOG2);
+		syn_strength -= mul24(syn_prev_stp || syn_active, inc);
+
+		/*if (syn_prev_stp) {
+			if (!syn_active) {
+				syn_strength += (inc << LTP_BIAS_LOG2);
+			}
+			if (syn_active || syn_prev_std) {
+				syn_strength -= (inc << LTD_BIAS_LOG2);			
+			} 
+		}*/
+
+		syn_flag_set &= ~(SYN_STP_FLAG + SYN_STD_FLAG);
+
+		syn_flag_sets[i] = syn_flag_set;
+		syn_strengths[i] = syn_strength;
+	}
+}
 
 
 

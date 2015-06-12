@@ -88,7 +88,7 @@ impl Synapses {
 			.arg_env(&src_slice_ids)
 			//.arg_env(&strengths)
 			.arg_scl(syns_per_cel_l2)
-			.arg_env(&aux.ints_0)
+			//.arg_env(&aux.ints_0)
 			//.arg_env(&aux.ints_1)
 			.arg_env(&states)
 		;

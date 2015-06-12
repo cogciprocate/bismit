@@ -67,7 +67,7 @@ impl CorticalArea {
 
 		let axns = Axons::new(dims, &protoregion, ocl);
 
-		let aux_dims = CorticalDimensions::new(dims.width_l2() + 1, dims.height_l2() + 1, dims.depth(), 0);
+		let aux_dims = CorticalDimensions::new(dims.width_l2(), dims.height_l2(), dims.depth(), 7);
 		let aux = Aux::new(aux_dims, ocl);
 
 		let mut pyrs = HashMap::new();

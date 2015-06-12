@@ -86,7 +86,7 @@ impl PyramidalCellularLayer {
 		let dens = Dendrites::new(dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl);
 
 		
-		let kern_cycle = ocl.new_kernel("pyr_cycle", 
+		let kern_cycle = ocl.new_kernel("pyr_cycle_working", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			.arg_env(&dens.states)
 			.arg_env(&dens.states_raw)
@@ -131,11 +131,12 @@ impl PyramidalCellularLayer {
 			.arg_scl(syns_per_den_l2 as u32)
 			.arg_scl(dens_per_cel_l2 as u32)
 			.arg_scl(cels_per_wi)
-			.arg_scl_named::<u32>("rnd", None)
-			.arg_env(&aux.ints_1)
+			.arg_scl_named::<u32>("rnd", None)			
 			.arg_env(&dens.syns.flag_sets)
 			.arg_env(&flag_sets)
 			//.arg_env(&prev_best1_den_ids)
+			//.arg_env(&aux.ints_0)
+			//.arg_env(&aux.ints_1)
 			.arg_env(&dens.syns.strengths)
 			//.arg_env(&axons.states)
 		;
@@ -181,10 +182,10 @@ impl PyramidalCellularLayer {
 		self.kern_activate.new_arg_scalar(Some(self.axn_base_slice));
 		self.kern_activate.new_arg_scalar(Some(self.protocell.dens_per_cel_l2));
 
-		self.kern_activate.new_arg_envoy(Some(&aux.ints_0));
 		//self.kern_activate.new_arg_envoy(&self.energies);
 		self.kern_activate.new_arg_envoy(Some(&self.flag_sets));
 		self.kern_activate.new_arg_envoy(Some(&self.preds));	
+		//self.kern_activate.new_arg_envoy(Some(&aux.ints_0));
 		self.kern_activate.new_arg_envoy(Some(&axns.states));
 	}
 
