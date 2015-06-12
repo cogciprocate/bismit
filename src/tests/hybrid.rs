@@ -5,29 +5,340 @@ use std::mem;
 use rand;
 
 use super::input_czar::{ self, InputCzar, InputVecKind };
-//use cortex::Cortex;
 use proto::*;
-//use proto::areas::{ Protoareas, ProtoareasTrait };
-//use proto::regions::{ Protoregions, Protoregion, ProtoregionKind };
 use synapses::{ Synapses };
-use dendrites::{ Dendrites};
+use dendrites::{ Dendrites };
 use pyramidals::{ PyramidalCellularLayer };
 use cortex::{ self, Cortex };
 use cmn;
 use ocl::{ self, Envoy };
 
 
+/*	HYBRID TESTS: Tests runnable in either an interactive or automated manner
+		Useful for:
+			- designing the test itself
+			- troubleshooting test failures
+			- diagnosing tangential issues not explicitly checked for
+*/
+
+
 pub static PASS_STR: &'static str = "\x1b[1;32mpass\x1b[0m";
+ 
+
+
+// NEED A 'TestParameters' STRUCT OF SOME SORT TO UNTANGLE THIS AND MOVE STUFF INTO CHILD FUNCTIONS
+pub fn test_activation_and_learning(cortex: &mut Cortex) {
+	let emsg = "tests::hybrid::test_pyr_activation()";
+	let activation_test_runs = 2;
+
+	let learning_test_runs = 5;
+
+	let layer_name = "iii";
+	let ff_layer_name = "iv";
+
+	let src_slice_ids = cortex.cortical_area.protoregion().src_slice_ids("iii", DendriteKind::Distal);
+	let src_slice_id = src_slice_ids[0];
+	
+	let ff_layer_axn_idz = cortex.cortical_area.mcols.ff_layer_axn_idz();
+
+	let cels_len = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).dims().cells() as usize;
+	let cols_len = cortex.cortical_area.dims().columns() as usize;
+	//let cel_idx = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).dims().cells() as usize - 1;
+
+	let (cels_axn_idz, _) = {// CELS IN SCOPE
+		let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+
+		// SET ALL SYNAPSES TO THE SAME SOURCE AXON SLICE AND ZEROS ELSEWHERE
+		cels.dens.syns.src_slice_ids.set_all_to(src_slice_id);
+		cels.dens.syns.src_col_xy_offs.set_all_to(0);
+		cels.dens.syns.strengths.set_all_to(0);
+		cels.dens.syns.states.set_all_to(0);
+		cels.dens.syns.flag_sets.set_all_to(0);
+
+		cels.set_all_to_zero();
+		//cels.flag_sets.set_all_to(0);
+
+		cels.axn_range()
+	};
+
+	let (dens_per_cel, syns_per_cel, syns_per_den) = {// CELS IN SCOPE
+		let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+
+		let dens_per_cel = cels.dens.dims().per_cel().expect(emsg) as usize;
+		let syns_per_cel = cels.dens.syns.dims().per_cel().expect(emsg) as usize;
+
+		assert!(syns_per_cel % dens_per_cel == 0);
+
+		let syns_per_den = syns_per_cel / dens_per_cel;
+		(dens_per_cel, syns_per_cel, syns_per_den)
+	};
+
+
+	let mut vec_ff: Vec<u8> = iter::repeat(0).take(cortex.cortical_area.dims.columns() as usize).collect();
+
+	print!("\nRunning {} activation tests...", activation_test_runs);
+
+	for i in 0..activation_test_runs {	//	TEST CORRECT AXON ACTIVATION
+		let last_run = activation_test_runs - 1 == i;
+		let cel_idx = rand::random::<usize>() & (cels_len - 1);
+		let col_id = cel_idx & (cols_len - 1);
+
+		print!("\n[{}] => ", cel_idx);
+
+		vec_ff[col_id] = 100;
+
+		cortex.write_vec(0, ff_layer_name, &vec_ff);
+
+		if last_run {
+			println!("\nACTIVATING CELLS... ");
+		}
+
+
+		/*	TEST ACTIVATION
+
+		*/
+		// FIRST ACTIVATION:
+		cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).activate();
+
+		{// AXNS IN SCOPE
+			let axns = &mut cortex.cortical_area.axns;
+			axns.states.read();
+
+			let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
+
+			if last_run {
+				print!("\nlayer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
+				cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
+				println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
+				//cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).print_cel(cel_idx);
+
+				print!("\n => ");
+			}
+
+			for i in 0..cels_len {
+				if i & (cols_len - 1) == col_id {
+					assert!(axns.states[cels_axn_idz + i] == cel_axn_state);
+				} else {
+					assert!(axns.states[cels_axn_idz + i] == 0);
+				}
+			}
+
+
+			{
+				//	TODO: TEST FLAG CORRECTNESS (before and after)
+			}
+		}
+
+
+
+		/*	TEST PYR LEARNING
+				- set half of the synapses on a random dendrite belonging to our target cell to 100
+					- may need to reset some flags or other things
+				- run activate() again
+				- ensure that the only active cell is our target cell, and that it's fellow columners are inactive
+
+		*/
+
+		print!("\n   Running {} activation-learning tests... ", learning_test_runs);
+
+
+		/*  SYNAPSE STUFF SHOULD BE REUSABLE (for any cell type)  */
+
+		// PICK A RANDOM HALF OF DENDRITE SYNAPSES
+		let first_half: bool = rand::random::<bool>();
+
+		// CHOOSE RANDOM DEN ID
+		let den_id = rand::random::<usize>() & (dens_per_cel - 1);
+
+		// DETERMINE DEN_IDX
+		let den_idx = (cel_idx * dens_per_cel) + den_id;
+
+		// DEFINE FIRST AND (LAST + 1) SYN INDEXES
+		let syn_idz = den_idx * syns_per_den;
+		let syn_idn = syn_idz + syns_per_den;
+
+		// DEFINE ' ' FOR ACTIVE HALF
+		let syn_tar_half_idz = syn_idz + if first_half {0} else {syns_per_den >> 1};
+		let syn_tar_half_idn = syn_tar_half_idz + (syns_per_den >> 1);
+
+		
+		for i in 0..learning_test_runs {
+			let last_learning_run = i == (learning_test_runs - 1);
+
+			// REACTIVATE FF AXON
+			vec_ff[col_id] = 100;
+			cortex.write_vec(0, ff_layer_name, &vec_ff);
+
+
+			{// CELS IN SCOPE
+				let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+
+				if last_run && last_learning_run {
+					println!("uINDEXES: first_half: {}, den_id: {}, den_idx: {}, syn_idz: {}, syn_idn: {}, syn_tar_half_idz: {}, syn_tar_half_idn: {}", first_half, den_id, den_idx, syn_idz, syn_idn, syn_tar_half_idz, syn_tar_half_idn);
+				}
+
+				for syn_idx in syn_tar_half_idz..syn_tar_half_idn {
+					cels.dens.syns.states[syn_idx] = 128;
+				}
+
+
+				if last_run && last_learning_run {
+					println!("\nWRITING SYNAPSES AND CYCLING CELLS... ");
+				}
+
+				cels.dens.syns.states.write();
+
+				cels.dens.cycle_self_only();
+				cels.cycle_self_only();
+
+				/* 	MUST CALL MINICOLUMN_OUTPUT() (__kernel void col_output() KERNEL TO DETERMINE IF ANY PYRS ARE ACTIVE
+						- col_output() will cycle through each column's pyrs and set the (what should be a)
+							flag declaring whether or not at least one pyr in the column is predictive
+						- the output to the minicolumn's axon shouldn't affect tests at all
+				*/
+				cortex.cortical_area.mcols.output();
+
+				if last_run && last_learning_run {
+					cels.print_cel(cel_idx);
+				}
+			}
+
+
+
+			// PRINT AXONS ETC.
+			{// AXNS IN SCOPE -- DO NOT EDIT ME -- MULTIPLE BLOCKS EXIST (until we move to separate fn)
+				if last_run && last_learning_run {
+					let axns = &mut cortex.cortical_area.axns;
+					axns.states.read();
+					let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
+
+					print!("\nlayer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
+					cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
+					println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
+					//cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).print_cel(cel_idx);
+				}
+			}
+
+
+
+			{// CELS IN SCOPE
+				let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+
+				// SECOND ACTIVATION:
+				// TODO TEST: should see cell axon go higher
+				if true { 
+					if last_run && last_learning_run {
+						println!("\nACTIVATING CELLS AGAIN (2ND TIME)... ");
+					}
+
+					cels.activate();
+				}
+
+
+				if last_run && last_learning_run {
+					cels.print_cel(cel_idx);
+				}
+
+				// TODO: TEST FOR CORRECT FLAG_SETS
+
+				// LEARNING
+				if true { 
+					if last_run && last_learning_run {
+						println!("\nPERFORMING LEARNING... ");
+					}
+
+					cels.learn();
+
+					if last_run && last_learning_run {
+						cels.print_cel(cel_idx);
+					}
+				}
+			}
+
+
+			/*  SIMULATE NEXT CYCLE()  */
+
+			// DEACTIVATE FF AXON
+			vec_ff[col_id] = 0;
+			cortex.write_vec(0, ff_layer_name, &vec_ff);
+
+			{// CELS IN SCOPE
+				let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+
+				// DEACTIVATE SYNAPSES
+				let den_idz = cel_idx * dens_per_cel;
+				let syn_idz = den_idz * syns_per_den;
+
+				// RESET ENTIRE CELL TO ZERO (even though only half of one dendrite should be active)
+				for syn_idx in syn_idz..(syn_idz + syns_per_cel) {
+					cels.dens.syns.states[syn_idx] = 0;
+				}
+
+				// WRITE AND CYCLE
+				cels.dens.syns.states.write();
+				cels.dens.cycle_self_only();
+				cels.cycle_self_only();
+
+				// ACTIVATE AND LEARN
+				cels.activate();
+				cels.learn();
+
+				// PRINT AND TEST
+				if last_run && last_learning_run {
+					println!("\nPERFORMING LEARNING AGAIN (2ND CYCLE) -- SHOULD SEE LTP... ");
+					cels.print_cel(cel_idx);
+				}
+
+				// TODO: TEST FOR LTP
+			}
+
+
+
+			// PRINT AXONS ETC.
+			{// AXNS IN SCOPE -- DO NOT EDIT ME -- MULTIPLE BLOCKS EXIST (until we move to separate fn)
+				if last_run && last_learning_run {
+					let axns = &mut cortex.cortical_area.axns;
+					axns.states.read();
+					let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
+
+					print!("\nlayer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
+					cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
+					println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
+					//cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).print_cel(cel_idx);
+				}
+			}
+
+
+
+			// CLEAR CURRENTLY SET FF VALUE BACK TO ZERO FOR NEXT RUN (should set entire vector to 0s)
+			vec_ff[col_id] = 0;
+
+			for i in 0..cols_len {
+				assert!(vec_ff[i] == 0);
+			}
+		}	
+	}
+
+	println!("\ntest_activation(): {} ", PASS_STR);
+}
+
+
+
+
+
+
+
+
 
 /*	TEST THAT CORRECT RANGE OF CELLS IS BEING AFFECTED BY A SINGLE LEARN
 		Simulate a learning situation for a single sst
-			- (done) set axn ofs to 0
-			- (done) set strs to 0
-			- (done) choose 1 target cell, stimulate half of its synapses
+			- set axn ofs to 0
+			- set strs to 0
+			- choose 1 target cell, stimulate half of its synapses
 			- make sure all other cells are still at 0 str
 			- make sure that our target cell has the correct half of its synapse strs increased
 
-			- (done)perform regrowth
+			- perform regrowth
 			- check offs to ensure change
 */
 pub fn test_learning(cortex: &mut Cortex) {
@@ -68,7 +379,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str) {
 	cortex.cortical_area.iinns.get_mut("iv_inhib").expect(&emsg).cycle();
 
 	for i in 0..100 {
-		cels.ltp();
+		cels.learn();
 	}
 
 	cels.dens.confab();
@@ -89,6 +400,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str) {
 
 }
 
+
 pub fn _test_pyr_learning(cortex: &mut Cortex, layer_name: &'static str) {
 	let emsg = "tests::hybrid::test_pyr_learning()";
 
@@ -108,6 +420,8 @@ pub fn _test_pyr_learning(cortex: &mut Cortex, layer_name: &'static str) {
 	let cel_syn_idz = cel_idx << cels.dens.syns.dims().per_cel_l2_left().expect(emsg);
 	let cel_syn_tar_idz = cel_syn_idz + if first_half {0} else {per_cel >> 1};
 	let cel_syn_tar_idn = cel_syn_tar_idz + (per_cel >> 1);
+
+	let col_id = cel_idx & (cels.dims().columns() as usize - 1);
 	
 	println!("\n{}: cel_idx: {}, per_cel: {}, cel_syn_tar_idz: {}, cel_syn_tar_idn: {}", emsg, cel_idx, per_cel, cel_syn_tar_idz, cel_syn_tar_idn);
 
@@ -122,7 +436,7 @@ pub fn _test_pyr_learning(cortex: &mut Cortex, layer_name: &'static str) {
 	cortex.cortical_area.iinns.get_mut("iv_inhib").expect(&emsg).cycle();
 
 	for i in 0..100 {
-		cels.ltp();
+		cels.learn();
 	}
 
 	cels.dens.confab();

@@ -55,33 +55,33 @@ pub struct SpinyStellateCellularLayer {
 
 // pyrs: &PyramidalCellularLayer,
 impl SpinyStellateCellularLayer {
-	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, axns: &Axons, aux: &Aux, ocl: &Ocl) -> SpinyStellateCellularLayer {
-		//let layer = region.col_input_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
+	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, protoregion: &Protoregion, axns: &Axons, aux: &Aux, ocl: &Ocl) -> SpinyStellateCellularLayer {
+		//let layer = protoregion.col_input_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
 		//let depth: u8 = layer.depth();
 
-		let axn_base_slices = region.slice_ids(vec![layer_name]);
+		let axn_base_slices = protoregion.slice_ids(vec![layer_name]);
 		let axn_base_slice = axn_base_slices[0];
-		let axn_idz = cmn::axn_idx_2d(axn_base_slice, dims.columns(), region.hrz_demarc());
+		let axn_idz = cmn::axn_idx_2d(axn_base_slice, dims.columns(), protoregion.hrz_demarc());
 
 		let syns_per_cel_l2: u8 = protocell.syns_per_den_l2 + protocell.dens_per_cel_l2;
 
-		//let pyr_depth = region.depth_cell_kind(&ProtocellKind::Pyramidal);
+		//let pyr_depth = protoregion.depth_cell_kind(&ProtocellKind::Pyramidal);
 
-		//let pyr_axn_base_slice = region.base_slice_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
+		//let pyr_axn_base_slice = protoregion.base_slice_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		print!("\n      SPINY_STELLATE::NEW(): dims: {:?}", dims);
 
 		let dens_dims = dims.clone_with_pcl2(protocell.dens_per_cel_l2 as i8);
-		let dens = Dendrites::new(dens_dims, protocell.clone(), DendriteKind::Proximal, ProtocellKind::SpinyStellate, region, axns, aux, ocl);
+		let dens = Dendrites::new(dens_dims, protocell.clone(), DendriteKind::Proximal, ProtocellKind::SpinyStellate, protoregion, axns, aux, ocl);
 
 		//let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		//let iinn = InhibitoryInterneuronNetwork::new(dims, region, &dens.states, ocl);
+		//let iinn = InhibitoryInterneuronNetwork::new(dims, protoregion, &dens.states, ocl);
 
 		/*let syns = Synapses::new(dims, syns_per_cel_l2, syns_per_cel_l2, DendriteKind::Proximal, 
-			ProtocellKind::SpinyStellateCellularLayer, region, axns, aux, ocl);*/
+			ProtocellKind::SpinyStellateCellularLayer, protoregion, axns, aux, ocl);*/
 
 
 
@@ -160,12 +160,12 @@ impl SpinyStellateCellularLayer {
 		}
 	}
 
-	pub fn cycle(&mut self, ltp: bool) {
+	pub fn cycle(&mut self) {
 		self.dens.cycle();
 	}
 
 
-	pub fn ltp(&mut self) {
+	pub fn learn(&mut self) {
 		//print!("[R:{}]", self.rng.gen::<i32>());
 		self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<u32>());
 		self.kern_ltp.enqueue();

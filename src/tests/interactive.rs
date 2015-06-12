@@ -71,7 +71,7 @@ pub fn run(autorun_iters: i32) -> bool {
 				first_run = false;
 				"\n".to_string()
 			} else {
-				rin(format!("<{}>bismit: [q]uit [i]ters [v]iew [a]xons [t]ests [m]otor [i={} v={} m={} z={}]", 
+				rin(format!("<{}>bismit: [q]uit [i]ters [v]iew [a]xons [t]ests [m]otor [it={} v={} m={} ci={}]", 
 					cur_ttl_iters, test_iters, vso, input_czar.motor_state.cur_str(), input_czar.counter()))
 			};
 
@@ -114,7 +114,7 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			} else if "t\n" == in_string {
 				bypass_act = true;
-				let in_s = rin(format!("tests: [p]yrs [m]cols [f]ract [c]ycles [l]earning"));
+				let in_s = rin(format!("tests: [p]yrs [m]cols [f]ract [c]ycles [l]earning [a]ctivate"));
 
 				if "p\n" == in_s {
 					synapse_drill_down::print_pyrs(&mut cortex);
@@ -130,6 +130,10 @@ pub fn run(autorun_iters: i32) -> bool {
 
 				} else if "l\n" == in_s {
 					hybrid::test_learning(&mut cortex);
+					continue;
+
+				} else if "a\n" == in_s {
+					hybrid::test_activation_and_learning(&mut cortex);
 					continue;
 
 				} else if "f\n" == in_s {

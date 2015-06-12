@@ -484,7 +484,7 @@ impl Protoregion {
 	}
 
 	pub fn slice_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
-		if !self.frozen {
+		if !self.frozen { // REPLACE WITH ASSERT (evaluate release build implications first)
 			panic!("Protoregion must be frozen with freeze() before slice_ids can be called.");
 		}
 

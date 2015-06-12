@@ -123,14 +123,22 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
 		print!("\nPYRAMIDAL SYNAPSE SOURCE SPINY STELLATE OFFSETS: ");
 		cortex.cortical_area.pyrs.get_mut("iii").expect(EMSG).dens.syns.src_col_xy_offs.print(1 << 14, None, None, true);
 	}
-	if true {
+
+	if false {
 		print!("\nPYRAMIDAL SYNAPSE STRENGTHS:");
 		cortex.cortical_area.pyrs.get_mut("iii").expect(EMSG).dens.syns.strengths.print(1 << 14, None, None, true);
 	}
+
+		if true {
+		print!("\nPYRAMIDAL SYNAPSE STRENGTHS:");
+		cortex.cortical_area.pyrs.get_mut("iii").expect(EMSG).dens.syns.strengths.print(1 << 0, Some((7, 127)), None, true);
+	}
+
 	if true {	
-		print!("\nPYRAMIDAL SYNAPSE SOURCE FLAG SETS: ");
+		print!("\nPYRAMIDAL SYNAPSE FLAG SETS: ");
 		cortex.cortical_area.pyrs.get_mut("iii").expect(EMSG).dens.syns.flag_sets.print(1 << 14, None, None, true);
 	}
+
 	if true {	
 		print!("\nPYRAMIDAL DENDRITE STATES: ");
 		cortex.cortical_area.pyrs.get_mut("iii").expect(EMSG).dens.states.print_val_range(1 << 8, Some((1, 255)));
@@ -142,6 +150,11 @@ pub fn print_sense_and_print(cortex: &mut Cortex) {
 	if false {
 		print!("\nPYRAMIDAL AXON OUTPUT:");
 		cortex.cortical_area.axns.states.print((1 << 0) as usize, Some((1, 255)), Some(cortex.cortical_area.pyrs.get_mut("iii").expect(EMSG).axn_range()), false);
+	}
+
+	if true {
+		print!("\nPYRAMIDAL FLAG SETS:");
+		cortex.cortical_area.pyrs.get_mut("iii").expect(EMSG).flag_sets.print_val_range(1 << 0, Some((1, 255)));
 	}
 	if true {
 		print!("\nPYRAMIDAL DEPOLARIZATIONS:");

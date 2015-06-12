@@ -1,5 +1,5 @@
-//#define LTD_BIAS_LOG2				0
-//#define LTP_BIAS_LOG2				0
+#define LTD_BIAS_LOG2				0
+#define LTP_BIAS_LOG2				0
 #define ENERGY_SETTING 				4
 #define ENERGY_RECHARGE				1
 
@@ -103,7 +103,7 @@ static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
 		syn_flag_set &= ~SYN_STP_FLAG;
 
 		syn_flag_set |= mul24(syn_active, SYN_STP_FLAG);
-		syn_strength -= mul24(!syn_active, inc);
+		syn_strength -= mul24(!syn_active, inc << LTD_BIAS_LOG2);
 
 		syn_flag_sets[i] = syn_flag_set;
 		syn_strengths[i] = syn_strength;
@@ -132,16 +132,16 @@ static inline void cel_syns_trm( 			// TERMINATION
 		int const syn_prev_stp = (syn_flag_set & SYN_STP_FLAG) == SYN_STP_FLAG;
 		int const syn_active = syn_state != 0;
 
-		syn_strength += mul24(syn_prev_stp && !syn_active, inc);
-		syn_strength -= mul24(syn_prev_stp && syn_active, inc);
+		//syn_strength += mul24(syn_prev_stp && !syn_active, inc << LTP_BIAS_LOG2);
+		//syn_strength -= mul24(syn_prev_stp && syn_active, inc);
 
-		/*if (syn_prev_stp) {
+		if (syn_prev_stp) {
 			if (syn_active) {
-				syn_strength -= inc;			
+				syn_strength -= (inc << LTD_BIAS_LOG2);			
 			} else {
-				syn_strength += (inc);
+				syn_strength += (inc << LTP_BIAS_LOG2);
 			}
-		}*/
+		}
 
 		//syn_strength -= mul24(syn_flag_set, inc);
 
@@ -650,70 +650,6 @@ __kernel void sst_post_inhib_unoptd (
 
 
 
-__kernel void pyr_activate(
-				__global uchar const* const mcol_states, // COL
-				__global uchar const* const mcol_pyr_pred_flags, // COL
-				__global uchar const* const mcol_best_pyr_den_states,
-				__global uchar const* const pyr_best1_den_dst_ids,
-
-				// ADD PYR BEST DEN STATE NOW THAT WE'VE ADDED IT (and to another kernel somewhere also)
-
-				__global uchar const* const den_dst_states,
-				__private uint const ssts_axn_idz,
-				__private uchar const pyr_axn_slice_base,
-				__private uchar const dens_per_cel_l2,
-				//__global int* const aux_ints_0,
-				//__global uchar* const pyr_energies,
-				__global uchar* const pyr_flag_sets,
-				__global uchar* const pyr_preds,
-				__global uchar* const axn_states
-) {
-	uint const slice_id = get_global_id(0);
-	uint const col_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
-	uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id, 0);
-
-	uint const den_ofs = pyr_idx << dens_per_cel_l2;			// REPLACE
-	uint const best1_den_idx = den_ofs + pyr_best1_den_dst_ids[pyr_idx];		// REPLACE
-
-	uchar const best1_den_state = den_dst_states[best1_den_idx];				// CHANGE
-
-	//uint const axn_idx = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
-	uchar const mcol_best_col_den_state = mcol_best_pyr_den_states[col_id];
-	uchar const sst_axn_state = axn_states[ssts_axn_idz + col_id];
-	//uchar const mcol_state = mcol_states[col_id];
-	uchar const mcol_pyr_pred_flag = mcol_pyr_pred_flags[col_id];
-	uchar const pyr_pred = pyr_preds[pyr_idx];
-	uchar pyr_flag_set = pyr_flag_sets[pyr_idx];
-
-	int const mcol_active = sst_axn_state != 0;
-	//int const mcol_active = mcol_state != 0;
-	int const mcol_any_pred = mcol_pyr_pred_flag != 0;
-	int const pyr_predictive = (pyr_pred != 0);
-
-	int const crystal = pyr_predictive && mcol_active;
-	int const anomaly = mcol_active && !mcol_any_pred;
-
-	//int const activate_axon = crystal || anomaly;
-	//pyr_pred = (crystal | anomaly) && (mcol_state);
-	//pyr_pred = mul24(((crystal != 0) || (anomaly != 0)), mcol_state);
-	pyr_flag_set &= ~PYR_BEST_IN_COL_FLAG;
-
-	//pyr_flag_set |= mul24(mcol_best_col_den_state == best1_den_state, PYR_BEST_IN_COL_FLAG);
-	pyr_flag_set |= mul24((mcol_best_col_den_state == best1_den_state) && pyr_predictive, PYR_BEST_IN_COL_FLAG);
- 
-	pyr_flag_sets[pyr_idx] = pyr_flag_set;
-
-	axn_states[axn_idx] = (uchar)mad24(anomaly, (int)sst_axn_state, mul24(crystal, (int)pyr_pred));
-	//axn_states[axn_idx] = (uchar)mad24(anomaly, (int)mcol_state, mul24(crystal, (int)pyr_pred));
-
-	//pyr_preds[pyr_idx] = pyr_pred;
-	//aux_ints_0[pyr_idx] = 5;
-	//aux_ints_0[pyr_idx] = pyr_pred;
-}
-
-
 /*	SST_LTP(): Long term potentiation for Spiny Stellate Cells
 
 
@@ -731,8 +667,8 @@ __kernel void sst_ltp(
 ) {
 	uint const slice_id = get_global_id(0);
 	uint const col_grp_id = get_global_id(1);
-	uint const slice_cols = get_global_size(1);
-	uint const cel_grp_id = mad24(slice_id, slice_cols, col_grp_id);
+	uint const grp_size = get_global_size(1);
+	uint const cel_grp_id = mad24(slice_id, grp_size, col_grp_id);
 
 	uint const cel_idz = mul24(cel_grp_id, cels_per_grp);
 	uint const cel_idn = cel_idz + cels_per_grp;
@@ -745,12 +681,78 @@ __kernel void sst_ltp(
 			prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_cel_l2, rnd, syn_strengths);
 		}
 
-		aux_ints_0[cel_idx] = axn_state;
+		//aux_ints_0[cel_idx] = axn_state;
 	}
 }
 
 
+__kernel void pyr_activate(
+				//__global uchar const* const mcol_states, // COL
+				__global uchar const* const mcol_pyr_pred_flags, // COL
+				__global uchar const* const mcol_best_pyr_den_states,
+				__global uchar const* const pyr_best1_den_ids,
+				// ADD PYR BEST DEN STATE NOW THAT WE'VE ADDED IT (and to another kernel somewhere also)
+				__global uchar const* const den_states,
 
+				__private uint const ssts_axn_idz,
+				__private uchar const pyr_axn_slice_base,
+				__private uchar const dens_per_cel_l2,
+				
+				__global int* const aux_ints_0,
+				//__global uchar* const pyr_energies,
+				__global uchar* const pyr_flag_sets,
+				__global uchar* const pyr_preds,
+				__global uchar* const axn_states
+) {
+	uint const slice_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const slice_columns = get_global_size(1);
+	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
+	uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id, 0);
+
+	uint const den_ofs = pyr_idx << dens_per_cel_l2;			// REPLACE
+	uint const best1_den_idx = den_ofs + pyr_best1_den_ids[pyr_idx];		// REPLACE
+
+	uchar const best1_den_state = den_states[best1_den_idx];				// CHANGE
+
+	//uint const axn_idx = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
+	uchar const mcol_best_col_den_state = mcol_best_pyr_den_states[col_id];
+	uchar const sst_axn_state = axn_states[ssts_axn_idz + col_id];
+	//uchar const mcol_state = mcol_states[col_id];
+	uchar const mcol_pyr_pred_flag = mcol_pyr_pred_flags[col_id];
+	uchar const pyr_pred = pyr_preds[pyr_idx];
+	uchar pyr_flag_set = pyr_flag_sets[pyr_idx];
+
+	//aux_ints_0[pyr_idx] = pyr_flag_set;
+
+	int const mcol_active = sst_axn_state != 0;
+	//int const mcol_active = mcol_state != 0;
+	int const mcol_any_pred = mcol_pyr_pred_flag != 0;
+	int const pyr_predictive = (pyr_pred != 0);
+
+	int const crystal = pyr_predictive && mcol_active;
+	int const anomaly = mcol_active && !mcol_any_pred;
+
+	//int const activate_axon = crystal || anomaly;
+	//pyr_pred = (crystal | anomaly) && (mcol_state);
+	//pyr_pred = mul24(((crystal != 0) || (anomaly != 0)), mcol_state);
+	pyr_flag_set &= ~PYR_BEST_IN_COL_FLAG;
+	//pyr_flag_set |= mul24(mcol_best_col_den_state == best1_den_state, PYR_BEST_IN_COL_FLAG);
+	pyr_flag_set |= mul24((mcol_best_col_den_state == best1_den_state) && pyr_predictive, PYR_BEST_IN_COL_FLAG);
+
+
+	// SHOULDN'T BE ACTIVATING IF OTHER PYRS IN COLUMN ARE PREDICTIVE
+
+	axn_states[axn_idx] = (uchar)mad24(anomaly, (int)sst_axn_state, mul24(crystal, (int)pyr_pred));
+	//axn_states[axn_idx] = (uchar)mad24(anomaly, (int)mcol_state, mul24(crystal, (int)pyr_pred));
+
+	pyr_flag_sets[pyr_idx] = pyr_flag_set;
+
+	//pyr_preds[pyr_idx] = pyr_pred;
+
+	//aux_ints_0[pyr_idx] = 5;
+	//aux_ints_0[pyr_idx] = pyr_pred;
+}
 
 
 /* PYRS_LTP(): Pyramidal long term potentiation and depression - adjusting synapse strengths
@@ -792,10 +794,6 @@ __kernel void sst_ltp(
 		- MAINTAIN STP STATE AS LONG AS: (SYN_STATE > 0) AND (PYR_ACTIVE)
 
 		- SYN(STP -> LTP) ONLY WHEN: ((PYR_ACTIVE -> 0)) SAME TIME AS (SYN_STATE -> 0)
-
-
-
-
 			
 */
 __kernel void pyrs_ltp_unoptd(
@@ -817,9 +815,9 @@ __kernel void pyrs_ltp_unoptd(
 				__global char* const syn_strengths
 ) {
 	uint const slice_id = get_global_id(0);
-	uint const pg_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const pyr_grp_id = mad24(slice_id, slice_columns, pg_id);
+	uint const col_grp_id = get_global_id(1);
+	uint const grps_per_slice = get_global_size(1);
+	uint const pyr_grp_id = mad24(slice_id, grps_per_slice, col_grp_id);
 	//uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
 
 	//uint const axn_idx_base = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
@@ -839,7 +837,7 @@ __kernel void pyrs_ltp_unoptd(
 		uchar pyr_flag_set = pyr_flag_sets[i];
 
 		int pyr_concrete = axn_states[i + pyr_axn_idx_base] != 0;
-		int pyr_predzy = pyr_preds[i] != 0;
+		int pyr_fuzzy = pyr_preds[i] != 0;
 
 		int pyr_prev_concrete = (pyr_flag_set & PYR_PREV_CONCRETE_FLAG) == PYR_PREV_CONCRETE_FLAG;
 		//int pyr_prev_stp = (pyr_flag_set & PYR_PREV_STP_FLAG) == PYR_PREV_STP_FLAG;
@@ -858,6 +856,11 @@ __kernel void pyrs_ltp_unoptd(
 		//int pyr_cry = pyr_prev_fuzzy && pyr_concrete;
 		//int pyr_trm = pyr_prev_concrete && !pyr_concrete;
 
+		//aux_ints_1[i] = pyr_flag_set;
+
+
+		uchar learned_what = 0;
+
 
 		if (pyr_concrete) {
 			if (pyr_prev_fuzzy) { // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + TRAIN NEW DEN
@@ -867,10 +870,14 @@ __kernel void pyrs_ltp_unoptd(
 				
 				dst_syns__active__stp_ltd(syn_states, best2_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
 
+				learned_what = 1;
+
 			} else if (pyr_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
 			//} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
 				
 				dst_syns__active__stp_ltd(syn_states, best1_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+
+				learned_what = 2;
 
 			//} else { // EVERYTHING ELSE: JUST SET PREV ACTIVE
 				// NOT GOING TO WORRY ABOUT THIS -- ALLOW STP TO REFLECT PRIOR ACTIVITY
@@ -884,41 +891,35 @@ __kernel void pyrs_ltp_unoptd(
 
 			cel_syns_trm(syn_states, pyr_syn_idz, syns_per_den_l2 + dens_per_cel_l2, rnd, syn_flag_sets, syn_strengths);
 
+			learned_what = 3;
+
 			//pyr_flag_set &= ~PYR_PREV_STP_FLAG;
 			pyr_flag_set &= ~PYR_PREV_CONCRETE_FLAG;
 		}
 
 
-			/*uint syn_idx = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
-			dst_syns_ltd_active(syn_states, syn_idx, (syns_per_den_l2 + dens_per_cel_l2), rnd, syn_flag_sets, syn_strengths);*/
+		/*uint syn_idx = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
+		dst_syns_ltd_active(syn_states, syn_idx, (syns_per_den_l2 + dens_per_cel_l2), rnd, syn_flag_sets, syn_strengths);*/
 
-			//pyr_flag_set &= ~PYR_PREV_FUZZY_FLAG;
+		//pyr_flag_set &= ~PYR_PREV_FUZZY_FLAG;
 
 		//pyr_prev_best1_den_id = pyr_best1_den_id;
+		//pyr_prev_best1_den_ids[i] = pyr_prev_best1_den_id;
+		
 
 		pyr_flag_set &= ~PYR_PREV_FUZZY_FLAG;
-		pyr_flag_set |= mul24(pyr_predzy, PYR_PREV_FUZZY_FLAG);
+		pyr_flag_set |= mul24(pyr_fuzzy, PYR_PREV_FUZZY_FLAG);
 
-		/*pyr_flag_set &= ~PYR_PREV_FUZZY_FLAG;
-		pyr_flag_set |= mul24(pyr_predzy, PYR_PREV_FUZZY_FLAG);*/
+		pyr_flag_sets[i] = pyr_flag_set;
+		
 
-		//pyr_prev_best1_den_ids[i] = pyr_prev_best1_den_id;
-		//pyr_flag_sets[i] = pyr_flag_set;
+		// TOTAL PYRS:
+		//aux_ints_1[i] = grps_per_slice * pyrs_per_wi * get_global_size(0);
 
-
-		//aux_ints_1[i] = syns_per_den_l2 + dens_per_cel_l2;
-
-
-			// PROBABLY NOT GOOD (TEST LATER)
-			/*if (pyr_prev_fuzzy && !pyr_predzy) {
-				
-				// PROBABLY NOT GOOD (TEST LATER)
-				if ((best1_den_syn_idz != prev_best1_den_syn_idz) && !pyr_concrete) {
-					dst_syns__prev_active__ltd(syn_states, best1_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
-				}
-				//uint syn_idx = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
-				//dst_syns_ltd_active(syn_states, syn_idx, (syns_per_den_l2 + dens_per_cel_l2), rnd, syn_flag_sets, syn_strengths);
-			}*/
+		aux_ints_1[i] = mul24(pyr_best_in_col, (int)best1_den_syn_idz);
+		//aux_ints_1[i] = pyr_fuzzy;
+		//aux_ints_1[i] = pyr_axn_idx_base;
+		//aux_ints_1[i] = learned_what;
 
 	}
 }
@@ -1048,14 +1049,14 @@ __kernel void pyr_cycle( // EXPERIMENTAL VERSION
 	uchar best2_den_id = 0;
 	//int active_dendrites = 0;
 
-	uchar den_max = 0; // ***** FUCKED WITH THIS
+	uchar den_max = 0;
 
 	//uint pyr_pred = pyr_preds[pyr_idx];
 
 		//#pragma unroll 
 	for (uchar i = 0; i < (1 << dens_per_cel_l2); i++) {
 		uchar den_state = den_states[den_ofs + i];
-		uchar den_state_raw = den_states_raw[den_ofs + i]; // ***** FUCKED WITH THIS
+		uchar den_state_raw = den_states_raw[den_ofs + i];
 
 		int den_state_bigger = (den_state_raw > best1_den_state);
 
@@ -1067,7 +1068,7 @@ __kernel void pyr_cycle( // EXPERIMENTAL VERSION
 
 		//best1_den_state = mul24(den_state_bigger, den_state);
 
-		den_max = max(den_max, den_state); // ***** FUCKED WITH THIS
+		den_max = max(den_max, den_state);
 
 		//den_sum += den_state;
 		//den_sum += (den_state != 0);
@@ -1103,7 +1104,7 @@ __kernel void pyr_cycle( // EXPERIMENTAL VERSION
 		- rename coming
 */
 __kernel void col_output(
-				//__global uchar const* const sst_states,	// CONVERT TO READING FROM AXON
+				//__global uchar const* const sst_states,	// [done] CONVERT TO READING FROM AXON
 
 				__global uchar const* const pyr_preds,
 				__global uchar const* const pyr_best1_den_states,
@@ -1346,9 +1347,9 @@ __kernel void syns_regrow_deprec(
 	__global char* const syn_strengths
 ) {
 	uint const slice_id = get_global_id(0);
-	uint const pg_id = get_global_id(1);
+	uint const col_grp_id = get_global_id(1);
 	uint const slice_columns = get_global_size(1);
-	uint const pyr_grp_idx = mad24(slice_id, slice_columns, pg_id);
+	uint const pyr_grp_idx = mad24(slice_id, slice_columns, col_grp_id);
 	//uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
 
 	//uint const axn_idx_base = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);

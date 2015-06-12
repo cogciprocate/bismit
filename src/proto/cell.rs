@@ -16,7 +16,7 @@ pub struct Protocell {
 	pub cell_kind: ProtocellKind,
 	pub den_dst_srcs: Option<Vec<&'static str>>,		
 	pub den_prx_srcs: Option<Vec<&'static str>>,
-	pub den_apc_srcs: Option<Vec<Vec<&'static str>>>,
+	pub den_apc_srcs: Option<Vec<Vec<&'static str>>>, // <<<<< REMOVE
 	pub den_thresh_init: Option<u32>,
 	//pub flags: CellFlags,							
 }
@@ -42,7 +42,7 @@ impl Protocell {
 			cols_per_cel_l2: 0,
 			den_dst_srcs: den_dst_srcs,
 			den_prx_srcs: den_prx_srcs,
-			den_apc_srcs: None,
+			den_apc_srcs: None, // <<<<< REMOVE
 			den_thresh_init: thresh,
 			//flags: flags,
 		}

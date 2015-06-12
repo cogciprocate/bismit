@@ -93,15 +93,18 @@ impl Ocl {
 		}
 	}
 
+
+	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 	pub fn new_write_buffer<T>(&self, data: &Vec<T>) -> cl_h::cl_mem {
 		new_write_buffer(data, self.context)
 	}
 
+	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 	pub fn new_read_buffer<T>(&self, data: &Vec<T>) -> cl_h::cl_mem {
 		new_read_buffer(data, self.context)
 	}
 
-
+	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 	pub fn enqueue_write_buffer<T>(
 					&self,
 					src: &Envoy<T>,
@@ -124,6 +127,7 @@ impl Ocl {
 	}
 
 
+	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 	pub fn enqueue_read_buffer<T>(
 					&self,
 					data: &Vec<T>,
@@ -132,6 +136,7 @@ impl Ocl {
 		enqueue_read_buffer(data, buffer, self.command_queue);
 	}
 
+	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 	pub fn enqueue_copy_buffer<T>(
 					&self,
 					src: &Envoy<T>,		//	src_buffer: cl_mem,
@@ -309,6 +314,7 @@ pub fn new_command_queue(
 }
 
 
+// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 pub fn new_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
 	let mut err: cl_h::cl_int = 0;
 	unsafe {
@@ -325,6 +331,7 @@ pub fn new_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
 	}
 }
 
+// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 pub fn new_write_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
 	let mut err: cl_h::cl_int = 0;
 	unsafe {
@@ -341,6 +348,7 @@ pub fn new_write_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl
 	}
 }
 
+// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 pub fn new_read_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
 	let mut err: cl_h::cl_int = 0;
 	unsafe {
@@ -356,31 +364,32 @@ pub fn new_read_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_
 	}
 }
 
-
+// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 pub fn enqueue_write_buffer<T>(
 					data: &Vec<T>,
 					buffer: cl_h::cl_mem, 
 					command_queue: cl_h::cl_command_queue,
 					offset: usize,
-	) {
+) {
 
-		unsafe {
-			let err = cl_h::clEnqueueWriteBuffer(
-						command_queue,
-						buffer,
-						cl_h::CL_TRUE,
-						mem::transmute(offset),
-						(data.len() * mem::size_of::<T>()) as libc::size_t,
-						data.as_ptr() as *const libc::c_void,
-						0 as cl_h::cl_uint,
-						ptr::null(),
-						ptr::null_mut(),
-			);
-			must_succ("clEnqueueWriteBuffer()", err);
-		}
+	unsafe {
+		let err = cl_h::clEnqueueWriteBuffer(
+					command_queue,
+					buffer,
+					cl_h::CL_TRUE,
+					mem::transmute(offset),
+					(data.len() * mem::size_of::<T>()) as libc::size_t,
+					data.as_ptr() as *const libc::c_void,
+					0 as cl_h::cl_uint,
+					ptr::null(),
+					ptr::null_mut(),
+		);
+		must_succ("clEnqueueWriteBuffer()", err);
 	}
+}
 
 
+// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 pub fn enqueue_read_buffer<T>(
 				data: &Vec<T>,
 				buffer: cl_h::cl_mem, 

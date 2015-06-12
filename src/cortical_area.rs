@@ -195,16 +195,14 @@ impl CorticalArea {
 	pub fn cycle(&mut self) {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
-		let learning = true;
 
-			
-		self.ssts.get_mut("iv").expect(&emsg).cycle(learning);
-
+		self.ssts.get_mut("iv").expect(&emsg).cycle();
 		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle();
-
-		self.ssts.get_mut("iv").expect(&emsg).ltp();		
+		self.ssts.get_mut("iv").expect(&emsg).learn();
 		
-		self.pyrs.get_mut("iii").expect(&emsg).cycle(learning);
+		self.pyrs.get_mut("iii").expect(&emsg).activate();
+		self.pyrs.get_mut("iii").expect(&emsg).learn();
+		self.pyrs.get_mut("iii").expect(&emsg).cycle();
 
 		self.mcols.output();
 
@@ -252,6 +250,10 @@ impl CorticalArea {
 
 	pub fn protoregion(&self) -> &Protoregion {
 		&self.protoregion
+	}
+
+	pub fn dims(&self) -> &CorticalDimensions {
+		&self.dims
 	}
 }
 

@@ -35,6 +35,7 @@ use spiny_stellates::{ SpinyStellateCellularLayer };
 pub struct Minicolumns {
 	dims: CorticalDimensions,
 	axn_output_slice: u8,
+	ff_layer_axn_idz: usize,
 	//kern_cycle: ocl::Kernel,
 	//kern_post_inhib: ocl::Kernel,
 	kern_output: ocl::Kernel,
@@ -66,6 +67,8 @@ impl Minicolumns {
 		let pyrs = pyrs_map.get(pyrs_layer_name).expect("minicolumns.rs");
 		//let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
+
+		let (ff_layer_axn_idz, _) = ssts.axn_range();
 
 		let pyr_depth = protoregion.depth_cell_kind(&ProtocellKind::Pyramidal);
 
@@ -146,6 +149,7 @@ impl Minicolumns {
 		Minicolumns {
 			dims: dims,
 			axn_output_slice: axn_output_slice,
+			ff_layer_axn_idz: ff_layer_axn_idz,
 			//kern_cycle: kern_cycle,
 			//kern_post_inhib: kern_post_inhib,
 			kern_output: kern_output,
@@ -176,8 +180,11 @@ impl Minicolumns {
 		self.cels_status.read();
 		//self.iinn.confab();
 		//self.ssts.dens.confab();
-	} 
+	}
 
+	pub fn ff_layer_axn_idz(&self) -> usize {
+		self.ff_layer_axn_idz
+	}
 
 	// <<<<< FIX THIS NOT TO SUBTRACT THE EXTRA 1 FROM IDN >>>>>
 	pub fn axn_output_range(&self) -> (usize, usize) {

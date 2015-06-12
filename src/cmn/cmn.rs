@@ -150,6 +150,8 @@ pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
 pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;	
 
 
+
+
 pub const PYR_PREV_CONCRETE_FLAG: u8 		= 0b10000000;	// 128	(0x80)
 pub const PYR_BEST_IN_COL_FLAG: u8 			= 0b01000000;	// 64	(0x40)
 pub const PYR_PREV_STP_FLAG: u8 			= 0b00100000;	// 32	(0x20)
@@ -159,12 +161,12 @@ pub const SYN_STP_FLAG: u8					= 0b00000001;
 pub const SYN_CONCRETE_FLAG: u8				= 0b00001000;
 
 
+
+
+
+
 pub static KERNELS_FILE_NAME: &'static str = "bismit.cl";
 pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
-
-
-
-
 
 
 
