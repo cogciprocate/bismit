@@ -52,7 +52,8 @@ static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_
 		- Rows above HORIZONTAL_AXON_ROW_DEMARCATION are considered horizontal and will be mapped to the rear of axn_states.
 	- [incomplete] Specific unit tests
 	- [incomplete] #define slice_columns 
-*/
+
+*/ 
 static inline uint axn_idx_2d(uchar slice_id, uint slice_columns, uint col_id, char col_ofs) {
 
 	uint axn_idx_spt = mad24((uint)slice_id, slice_columns, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
@@ -65,16 +66,6 @@ static inline uint axn_idx_2d(uchar slice_id, uint slice_columns, uint col_id, c
 	return mul24((uint)(hslice_id < 0), axn_idx_spt) + mul24((uint)(hslice_id >= 0), axn_idx_hrz);
 }
 
-/*static inline uint axn_idx_wrap_2d(uchar slice_z, int sst_x) {
-	int const slice_columns = get_global_size(1);
-	int const slice_count = get_global_size(0);
-	//int const axn_len = mul24(slice_columns, slice_count);	// COMPUTE THIS AHEAD OF TIME
-
-	int axn_idx = mad24((int)slice_z, slice_columns, sst_x + SYNAPSE_REACH_LIN);
-	
-	return axn_idx;
-	//return axn_idx + mul24((axn_idx < SYNAPSE_REACH_LIN), axn_len);
-}*/
 
 static inline int rnd_inc(uint const rnd_a,	uint const rnd_b, char const syn_strength) {
 		return ((rnd_a ^ rnd_b) & 0x7F) > abs(syn_strength);
@@ -151,65 +142,6 @@ static inline void cel_syns_trm( 			// TERMINATION
 		syn_strengths[i] = syn_strength;
 	}
 }
-
-
-/*static inline void dst_syns__active__set_prev_active( 
-				__global uchar const* const syn_states,
-				uint const syn_idx_start,
-				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
-				uint const rnd,
-				__global uchar* const syn_flag_sets,
-				__global char* const syn_strengths
-) {
-	uint const n = syn_idx_start + (1 << syns_per_den_l2);
-
-	for (uint i = syn_idx_start; i < n; i++) {
-		uchar const syn_state = syn_states[i];
-		//char syn_strength = syn_strengths[i];
-		uchar syn_flag_set = syn_flag_sets[i];
-		//uchar const rnd_char = (rnd ^ i) & 0x7F;		
-		//int const inc = (rnd_char > abs(syn_strength));
-
-		//syn_pba = ((syn_flag_set & SYN_CONCRETE_FLAG) == SYN_CONCRETE_FLAG)
-
-		//syn_flag_set &= ~SYN_STP_FLAG;
-		syn_flag_set &= ~SYN_CONCRETE_FLAG;
-
-		syn_flag_set |= mul24((syn_state != 0), SYN_CONCRETE_FLAG);
-
-		syn_flag_sets[i] = syn_flag_set;
-		//syn_strengths[i] = mul24((syn_state == 0), (syn_strength - inc));
-	}
-}*/
-
-/*static inline void dst_syns__prev_active__ltd( 
-				__global uchar const* const syn_states,
-				uint const syn_idx_start,
-				uint const syns_per_den_l2,
-				uint const rnd,
-				__global uchar* const syn_flag_sets,
-				__global char* const syn_strengths
-) {
-	uint const n = syn_idx_start + (1 << syns_per_den_l2);
-
-	for (uint i = syn_idx_start; i < n; i++) {
-		uchar const syn_state = syn_states[i];
-		char syn_strength = syn_strengths[i];
-		uchar syn_flag_set = syn_flag_sets[i];
-		int const inc = rnd_inc(rnd, i, syn_strength);
-		//uchar const rnd_char = (rnd ^ i) & 0x7F;		
-		//int const inc = (rnd_char > abs(syn_strength));
-
-		int const prev_active = (syn_flag_set & SYN_CONCRETE_FLAG) == SYN_CONCRETE_FLAG;
-
-		if (prev_active) {
-			syn_strength -= inc;
-		} 
-
-		syn_strengths[i] = syn_strength;
-	}
-}*/
-
 
 
 
@@ -360,7 +292,21 @@ __kernel void syns_cycle(
 
 
 
+/*	FOR LATER:
+*
+*	NEEDS REWRITE
+*	OPTIMIZE FOR WORKGROUP
+*	VECTORIZE
+*
+*/
 
+/*	FOR NOW:
+*
+*	process synapse weights -> state
+*	determine raw value for ltping purposes (?) -> state_raw
+*	IMPLEMENT LEARNING REATTACHMENT
+*
+*/
 __kernel void den_cycle(
 				__global uchar const* const syn_states,
 				__global char const* const syn_strengths,
@@ -409,79 +355,6 @@ __kernel void den_cycle(
 }
 
 
-/*	FOR LATER:
-*
-*	NEEDS REWRITE
-*	OPTIMIZE FOR WORKGROUP
-*	VECTORIZE
-*
-*/
-
-/*	FOR NOW:
-*
-*	process synapse weights -> state
-*	determine raw value for ltping purposes (?) -> state_raw
-*	IMPLEMENT LEARNING REATTACHMENT
-*
-*/
-__kernel void den_cycle_modified_maybe_broken(
-				__global uchar const* const syn_states,
-				__global char const* const syn_strengths,
-				__private uint const syns_per_den_l2,
-				__private uint const den_threshold,
-				__global uchar* const den_energies,
-				__global uchar* const den_states_raw,
-				__global uchar* const den_states
-) {
-	uint const slice_id = get_global_id(0);
-	uint const den_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const den_idx = mad24(slice_id, slice_columns, den_id);
-	uint const syn_ofs = den_idx << syns_per_den_l2;
-
-	uchar den_energy = den_energies[den_idx];
-
-	int syn_sum = 0;
-	int syn_sum_raw = 0;
-
-	int const n = (1 << syns_per_den_l2);
-
-	for (int i = 0; i < n; i += 1) {
-		char syn_strength = syn_strengths[syn_ofs + i];
-
-		//uchar syn_state = mul24((syn_states[syn_ofs + i] > 0), 1); 
-		uchar syn_state = syn_states[syn_ofs + i]; 
-
-		//syn_sum += syn_state; 
-		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
-		
-		syn_sum_raw += syn_state;
-	}
-	
-	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
-
-	//uchar den_state = clamp((syn_sum >> 7), 0, 255);
-	
-	// EXPERIMENTAL ENERGY CODE
-	/*if (syn_sum > 0) {
-		if (den_energy >= ENERGY_DRAIN) {
-			//den_state = syn_sum;
-			den_energy -= ENERGY_DRAIN;
-		} else {
-			den_state = 0;
-			den_energy += ENERGY_RECHARGE;
-		}
-	} else {
-		if (den_energy < 255) {
-			den_energy += ENERGY_RECHARGE;
-		}
-	}*/
-
-
-	den_energies[den_idx] = den_energy;
-	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255);
-	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); 
-}
 
 
 __kernel void peak_sst_cycle_pre(
@@ -1114,6 +987,78 @@ __kernel void col_output(
 
 
 
+
+static inline void dst_syns__active__stp_std_experimental( // ANOMALY & CRYSTALLIZATION
+				__global uchar const* const syn_states,
+				uint const syn_idx_start,	// (syn_idz)
+				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
+				uint const rnd,
+				__global uchar* const syn_flag_sets,
+				__global char* const syn_strengths
+) {
+	uint const n = syn_idx_start + (1 << syns_per_den_l2);
+
+	for (uint i = syn_idx_start; i < n; i++) {
+		uchar const syn_state = syn_states[i];
+		char syn_strength = syn_strengths[i];
+		uchar syn_flag_set = syn_flag_sets[i];
+
+		int const inc = rnd_inc(rnd, i, syn_strength);
+		int const syn_active = syn_state != 0;
+		syn_flag_set &= ~SYN_STP_FLAG;
+
+		syn_flag_set |= mul24(syn_active, SYN_STP_FLAG);
+		syn_flag_set |= mul24(!syn_active, SYN_STD_FLAG);
+		//syn_strength -= mul24(!syn_active, inc << LTD_BIAS_LOG2);
+
+		syn_flag_sets[i] = syn_flag_set;
+		syn_strengths[i] = syn_strength;
+	}
+}
+
+static inline void cel_syns_trm_experimental( // TERMINATION
+				__global uchar const* const syn_states,
+				uint const syn_idx_start,	// (syn_idz)
+				uint const syns_per_cel_l2, // MAKE THIS A CONSTANT SOMEDAY
+				uint const rnd,
+				__global uchar* const syn_flag_sets,
+				__global char* const syn_strengths
+) {
+	uint const n = syn_idx_start + (1 << syns_per_cel_l2);
+
+	for (uint i = syn_idx_start; i < n; i++) {
+		uchar const syn_state = syn_states[i];
+		char syn_strength = syn_strengths[i];
+		uchar syn_flag_set = syn_flag_sets[i];
+		int const inc = rnd_inc(rnd, i, syn_strength);
+		//uchar const rnd_char = (rnd ^ i) & 0x7F;		
+		//int const inc = (rnd_char > abs(syn_strength));
+		int const syn_prev_stp = (syn_flag_set & SYN_STP_FLAG) == SYN_STP_FLAG;
+		int const syn_prev_std = (syn_flag_set & SYN_STD_FLAG) == SYN_STD_FLAG;
+		int const syn_active = syn_state != 0;
+
+		syn_strength += mul24(syn_prev_stp && !syn_active, inc << LTP_BIAS_LOG2);
+		syn_strength -= mul24(syn_prev_stp || syn_active, inc);
+
+		/*if (syn_prev_stp) {
+			if (!syn_active) {
+				syn_strength += (inc << LTP_BIAS_LOG2);
+			}
+			if (syn_active || syn_prev_std) {
+				syn_strength -= (inc << LTD_BIAS_LOG2);			
+			} 
+		}*/
+
+		syn_flag_set &= ~(SYN_STP_FLAG + SYN_STD_FLAG);
+
+		syn_flag_sets[i] = syn_flag_set;
+		syn_strengths[i] = syn_strength;
+	}
+}
+
+
+
+
 __kernel void pyr_cycle_experimental( // EXPERIMENTAL VERSION
 				__global uchar const* const den_states,
 				__global uchar const* const den_states_raw,
@@ -1197,75 +1142,63 @@ __kernel void pyr_cycle_experimental( // EXPERIMENTAL VERSION
 
 
 
-
-// VECTORIZE
-static inline void dst_syns__active__stp_std_experimental( 					// ANOMALY & CRYSTALLIZATION
+__kernel void den_cycle_experimental(
 				__global uchar const* const syn_states,
-				uint const syn_idx_start,	// (syn_idz)
-				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
-				uint const rnd,
-				__global uchar* const syn_flag_sets,
-				__global char* const syn_strengths
+				__global char const* const syn_strengths,
+				__private uint const syns_per_den_l2,
+				__private uint const den_threshold,
+				__global uchar* const den_energies,
+				__global uchar* const den_states_raw,
+				__global uchar* const den_states
 ) {
-	uint const n = syn_idx_start + (1 << syns_per_den_l2);
+	uint const slice_id = get_global_id(0);
+	uint const den_id = get_global_id(1);
+	uint const slice_columns = get_global_size(1);
+	uint const den_idx = mad24(slice_id, slice_columns, den_id);
+	uint const syn_ofs = den_idx << syns_per_den_l2;
 
-	for (uint i = syn_idx_start; i < n; i++) {
-		uchar const syn_state = syn_states[i];
-		char syn_strength = syn_strengths[i];
-		uchar syn_flag_set = syn_flag_sets[i];
+	uchar den_energy = den_energies[den_idx];
 
-		int const inc = rnd_inc(rnd, i, syn_strength);
-		int const syn_active = syn_state != 0;
-		syn_flag_set &= ~SYN_STP_FLAG;
+	int syn_sum = 0;
+	int syn_sum_raw = 0;
 
-		syn_flag_set |= mul24(syn_active, SYN_STP_FLAG);
-		syn_flag_set |= mul24(!syn_active, SYN_STD_FLAG);
-		//syn_strength -= mul24(!syn_active, inc << LTD_BIAS_LOG2);
+	int const n = (1 << syns_per_den_l2);
 
-		syn_flag_sets[i] = syn_flag_set;
-		syn_strengths[i] = syn_strength;
+	for (int i = 0; i < n; i += 1) {
+		char syn_strength = syn_strengths[syn_ofs + i];
+
+		//uchar syn_state = mul24((syn_states[syn_ofs + i] > 0), 1); 
+		uchar syn_state = syn_states[syn_ofs + i]; 
+
+		//syn_sum += syn_state; 
+		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
+		
+		syn_sum_raw += syn_state;
 	}
-}
+	
+	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
 
-// VECTORIZE --- RE-STREAMLINE (REMOVE BRANCH)
-static inline void cel_syns_trm_experimental( 			// TERMINATION
-				__global uchar const* const syn_states,
-				uint const syn_idx_start,	// (syn_idz)
-				uint const syns_per_cel_l2, // MAKE THIS A CONSTANT SOMEDAY
-				uint const rnd,
-				__global uchar* const syn_flag_sets,
-				__global char* const syn_strengths
-) {
-	uint const n = syn_idx_start + (1 << syns_per_cel_l2);
+	//uchar den_state = clamp((syn_sum >> 7), 0, 255);
+	
+	// EXPERIMENTAL ENERGY CODE
+	/*if (syn_sum > 0) {
+		if (den_energy >= ENERGY_DRAIN) {
+			//den_state = syn_sum;
+			den_energy -= ENERGY_DRAIN;
+		} else {
+			den_state = 0;
+			den_energy += ENERGY_RECHARGE;
+		}
+	} else {
+		if (den_energy < 255) {
+			den_energy += ENERGY_RECHARGE;
+		}
+	}*/
 
-	for (uint i = syn_idx_start; i < n; i++) {
-		uchar const syn_state = syn_states[i];
-		char syn_strength = syn_strengths[i];
-		uchar syn_flag_set = syn_flag_sets[i];
-		int const inc = rnd_inc(rnd, i, syn_strength);
-		//uchar const rnd_char = (rnd ^ i) & 0x7F;		
-		//int const inc = (rnd_char > abs(syn_strength));
-		int const syn_prev_stp = (syn_flag_set & SYN_STP_FLAG) == SYN_STP_FLAG;
-		int const syn_prev_std = (syn_flag_set & SYN_STD_FLAG) == SYN_STD_FLAG;
-		int const syn_active = syn_state != 0;
 
-		syn_strength += mul24(syn_prev_stp && !syn_active, inc << LTP_BIAS_LOG2);
-		syn_strength -= mul24(syn_prev_stp || syn_active, inc);
-
-		/*if (syn_prev_stp) {
-			if (!syn_active) {
-				syn_strength += (inc << LTP_BIAS_LOG2);
-			}
-			if (syn_active || syn_prev_std) {
-				syn_strength -= (inc << LTD_BIAS_LOG2);			
-			} 
-		}*/
-
-		syn_flag_set &= ~(SYN_STP_FLAG + SYN_STD_FLAG);
-
-		syn_flag_sets[i] = syn_flag_set;
-		syn_strengths[i] = syn_strength;
-	}
+	den_energies[den_idx] = den_energy;
+	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255);
+	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); 
 }
 
 

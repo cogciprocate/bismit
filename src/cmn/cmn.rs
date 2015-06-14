@@ -14,9 +14,7 @@ use std::collections::{ BTreeMap };
 use rand;
 use rand::distributions::{ self, Normal, IndependentSample, Range };
 
-
 use ocl;
-
 
 
 
@@ -672,7 +670,7 @@ pub fn render_sdr(
 
 	if print {
 		if vec_out_prev_opt.is_some() {
-			println!("\n{{ prev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, cols active:{}, ttl active:{}, new_preds:{} }}", 
+			println!("\nprev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, cols active:{}, ttl active:{}, new_preds:{}", 
 				preds_total, corr_preds, failed_preds, pred_accy, anomalies, active_cols, ttl_active, new_preds,);
 		}
 	}

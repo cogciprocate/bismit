@@ -60,6 +60,7 @@ pub struct Cortex {
 	pub cortical_area: CorticalArea,
 	pub protoregions: Protoregions,
 	pub protoareas: Protoareas,
+	pub cortical_areas: HashMap<&'static str, CorticalArea>,
 	pub ocl: ocl::Ocl,
 }
 
@@ -70,6 +71,8 @@ impl Cortex {
 
 		//let protoregions = define_protoregions();
 		//let protoareas = define_protoareas();
+
+		let mut cortical_areas = HashMap::new();
 
 		let hrz_demarc = protoregions[&ProtoregionKind::Sensory].hrz_demarc();
 		let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", hrz_demarc as i32);
@@ -84,6 +87,18 @@ impl Cortex {
 			CorticalArea::new("v1", protoregion, protoarea, &ocl)
 		};
 
+		//cortical_areas.insert(cortical_area_1);
+
+		let mut cortical_area_2: cortical_area::CorticalArea = {
+			let protoregion = protoregions[&ProtoregionKind::Sensory].clone();
+			let protoarea = protoareas["v1"].clone();
+			CorticalArea::new("v1", protoregion, protoarea, &ocl)
+		};
+
+		cortical_areas.insert("cortical_area_2", cortical_area_2);
+
+
+
 		let time_complete = time::get_time() - time_start;
 		println!("\n\n... Cortex initialized in: {}.{} sec.", time_complete.num_seconds(), time_complete.num_milliseconds());
 
@@ -91,6 +106,7 @@ impl Cortex {
 			cortical_area: cortical_area,
 			protoregions: protoregions,
 			protoareas: protoareas,
+			cortical_areas: cortical_areas,
 			ocl: ocl,
 		}
 	}
@@ -100,6 +116,16 @@ impl Cortex {
 		let mut vec: Vec<ocl::cl_uchar> = chord.unfold();
 		self.sense_vec(sgmt_idx, layer_target, &vec);
 		panic!("SLATED FOR REMOVAL");
+	}
+
+	pub fn area_mut(&mut self, area_name: &'static str) -> &mut CorticalArea {
+		let e_string = format!("cortex::Cortex::area_mut(): Area: '{}' not found", area_name);
+		self.cortical_areas.get_mut(area_name).expect(&e_string)
+	}
+
+	pub fn area(&mut self, area_name: &'static str) -> &mut CorticalArea {
+		let e_string = format!("cortex::Cortex::area_mut(): Area: '{}' not found", area_name);
+		self.cortical_areas.get_mut(area_name).expect(&e_string)
 	}
 
 	/* WRITE_VEC(): 
