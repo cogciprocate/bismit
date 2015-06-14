@@ -123,9 +123,9 @@ impl Cortex {
 		self.cortical_areas.get_mut(area_name).expect(&e_string)
 	}
 
-	pub fn area(&mut self, area_name: &'static str) -> &mut CorticalArea {
+	pub fn area(&self, area_name: &'static str) -> &CorticalArea {
 		let e_string = format!("cortex::Cortex::area_mut(): Area: '{}' not found", area_name);
-		self.cortical_areas.get_mut(area_name).expect(&e_string)
+		self.cortical_areas.get(area_name).expect(&e_string)
 	}
 
 	/* WRITE_VEC(): 
