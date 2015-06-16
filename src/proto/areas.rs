@@ -13,7 +13,7 @@ use proto::regions::{ ProtoregionKind };
 pub trait ProtoareasTrait {
 	fn new() -> Protoareas;
 	fn add(&mut self, protoarea: Protoarea);
-	fn area(mut self, name: &'static str, width: u8, height: u8, region_kind: ProtoregionKind) -> Protoareas;
+	fn area(mut self, name: &'static str, width: u8, height: u8, region_kind: ProtoregionKind, afferent_area: Option<&'static str>) -> Protoareas;
 }
 
 
@@ -43,11 +43,12 @@ impl ProtoareasTrait for Protoareas {
 		self.insert(name, protoarea);
 	}
 
-	fn area(mut self, name: &'static str, width_l2: u8, height_l2: u8, region_kind: ProtoregionKind) -> Protoareas {
+	fn area(mut self, name: &'static str, width_l2: u8, height_l2: u8, region_kind: ProtoregionKind, afferent_area: Option<&'static str>) -> Protoareas {
 		let mut new_area = Protoarea { 
 			name: name,
 			dims: CorticalDimensions::new(width_l2, height_l2, 0, 0),
 			region_kind: region_kind,
+			afferent_area: afferent_area,
 		};
 
 		self.add(new_area);
@@ -62,6 +63,7 @@ pub struct Protoarea {
 	//pub width: u32,
 	//pub height: u32,
 	pub region_kind: ProtoregionKind,
+	pub afferent_area: Option<&'static str>,
 }
 
 impl Copy for Protoarea {}

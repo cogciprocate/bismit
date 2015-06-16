@@ -70,7 +70,7 @@ pub enum ProtolayerKind {
 	Axonal(ProtoaxonKind),
 }
 
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(PartialEq, Debug, Clone, Eq, Hash, Copy)]
 pub enum ProtoaxonKind {
 	Spatial,
 	Horizontal,
@@ -79,11 +79,12 @@ pub enum ProtoaxonKind {
 
 bitflags! {
 	#[derive(Debug)]
-	flags ProtolayerFlags: u32 {
-		const DEFAULT		= 0b0000000000000000,
-		const COLUMN_INPUT 	= 0b0000000000000001,
-		const COLUMN_OUTPUT	= 0b0000000000000010,
-		const HORIZONTAL	= 0b0000000000000100,
+	flags ProtolayerFlags: usize {
+		const DEFAULT				= 0b00000000,
+		const AFFERENT_OUTPUT		= 0b00000001,
+		const HORIZONTAL			= 0b00000010,
+		const SPATIAL_ASSOCIATIVE 	= 0b00000100,
+		const TEMPORAL_ASSOCIATIVE 	= 0b00001000,
 	}
 }
 

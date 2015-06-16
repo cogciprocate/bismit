@@ -66,7 +66,7 @@ impl Dendrites {
 		};*/
 
 
-		print!("\n            DENDRITES::NEW(): new {:?} dendrites with: {:?}, {:?}", den_kind, dims, protocell);
+		//print!("\n            DENDRITES::NEW(): new {:?} dendrites with: {:?}, {:?}", den_kind, dims, protocell);
 
 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);

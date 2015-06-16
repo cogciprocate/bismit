@@ -35,7 +35,7 @@ pub struct SpinyStellateCellularLayer {
 	layer_name: &'static str,
 	dims: CorticalDimensions,
 	protocell: Protocell,
-	axn_base_slice: u8,
+	base_axn_slice: u8,
 	axn_idz: u32,
 	//kern_cycle: ocl::Kernel,
 	//kern_post_inhib: ocl::Kernel,
@@ -56,22 +56,22 @@ pub struct SpinyStellateCellularLayer {
 // pyrs: &PyramidalCellularLayer,
 impl SpinyStellateCellularLayer {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, protoregion: &Protoregion, axns: &Axons, aux: &Aux, ocl: &Ocl) -> SpinyStellateCellularLayer {
-		//let layer = protoregion.col_input_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
+		//let layer = protoregion.spt_asc_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
 		//let depth: u8 = layer.depth();
 
-		let axn_base_slices = protoregion.slice_ids(vec![layer_name]);
-		let axn_base_slice = axn_base_slices[0];
-		let axn_idz = cmn::axn_idx_2d(axn_base_slice, dims.columns(), protoregion.hrz_demarc());
+		let base_axn_slices = protoregion.slice_ids(vec![layer_name]);
+		let base_axn_slice = base_axn_slices[0];
+		let axn_idz = cmn::axn_idx_2d(base_axn_slice, dims.columns(), protoregion.hrz_demarc());
 
 		let syns_per_cel_l2: u8 = protocell.syns_per_den_l2 + protocell.dens_per_cel_l2;
 
 		//let pyr_depth = protoregion.depth_cell_kind(&ProtocellKind::Pyramidal);
 
-		//let pyr_axn_base_slice = protoregion.base_slice_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
+		//let pyr_base_axn_slice = protoregion.base_slice_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		print!("\n      SPINY_STELLATE::NEW(): dims: {:?}", dims);
+		print!("\n      SPINYSTELLATES::NEW(): dims: {:?}", dims);
 
 		let dens_dims = dims.clone_with_pcl2(protocell.dens_per_cel_l2 as i8);
 		let dens = Dendrites::new(dens_dims, protocell.clone(), DendriteKind::Proximal, ProtocellKind::SpinyStellate, protoregion, axns, aux, ocl);
@@ -105,8 +105,7 @@ impl SpinyStellateCellularLayer {
 		assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
 		let cels_per_grp: u32 = dims.columns() / cmn::MINIMUM_WORKGROUP_SIZE;
 
-		println!("\n##### SPINY_STELLATES: cels_per_grp: {}, syns_per_cel_l2: {}, axn_idz: {} ",
-			 cels_per_grp, syns_per_cel_l2, axn_idz);
+		//println!("\n##### SPINY_STELLATES: cels_per_grp: {}, syns_per_cel_l2: {}, axn_idz: {} ", cels_per_grp, syns_per_cel_l2, axn_idz);
 
 		let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slice() as usize))
@@ -143,7 +142,7 @@ impl SpinyStellateCellularLayer {
 			layer_name: layer_name,
 			dims: dims,
 			protocell: protocell,
-			axn_base_slice: axn_base_slice,
+			base_axn_slice: base_axn_slice,
 			axn_idz: axn_idz,
 			//kern_cycle: kern_cycle,
 			//kern_post_inhib: kern_post_inhib,
@@ -195,6 +194,14 @@ impl SpinyStellateCellularLayer {
 		let ssts_axn_idn = self.axn_idz + (self.dims.per_slice());
 
 		(self.axn_idz as usize, ssts_axn_idn as usize)
+	}
+
+	pub fn base_axn_slice(&self) -> u8 {
+		self.base_axn_slice
+	}
+
+	pub fn layer_name(&self) -> &'static str {
+		self.layer_name
 	}
 
 	pub fn print_cel(&mut self, cel_idx: usize) {

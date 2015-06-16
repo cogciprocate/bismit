@@ -13,7 +13,7 @@ use cmn;
 use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas, Protoarea };
 use proto::regions::{ Protoregion, ProtoregionKind };
-use proto::layer::{ Protolayer, ProtolayerKind };
+use proto::layer::{ self, Protolayer, ProtolayerKind, ProtolayerFlags };
 use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -29,6 +29,8 @@ use spiny_stellates::{ SpinyStellateCellularLayer };
 pub struct CorticalArea {
 	pub name: &'static str,
 	pub dims: CorticalDimensions,
+	ptal_name: &'static str,			// PRIMARY ASSOCIATIVE LAYER NAME
+	psal_name: &'static str,			// PRIMARY INPUT LAYER NAME
 	protoregion: Protoregion,
 	protoarea: Protoarea,
 	//pub depth_axonal: u8,
@@ -36,11 +38,11 @@ pub struct CorticalArea {
 	//pub slice_map: BTreeMap<u8, &'static str>,
 	//pub protoregion: Protoregion,
 	pub axns: Axons,
-	pub mcols: Minicolumns,
+	pub mcols: Box<Minicolumns>,
 	//pub pyrs: PyramidalCellularLayer,
-	pub pyrs: HashMap<&'static str, Box<PyramidalCellularLayer>>,
-	pub ssts: HashMap<&'static str, Box<SpinyStellateCellularLayer>>,
-	pub iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
+	pub pyrs_map: HashMap<&'static str, Box<PyramidalCellularLayer>>,		// MAKE ME PRIVATE -- FIX tests::hybrid
+	pub ssts_map: HashMap<&'static str, Box<SpinyStellateCellularLayer>>,	// MAKE ME PRIVATE -- FIX tests::hybrid
+	pub iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,	// MAKE ME PRIVATE -- FIX tests::hybrid
 	//pub soma: Somata,
 	pub aux: Aux,
 	ocl: ocl::Ocl,
@@ -49,10 +51,26 @@ pub struct CorticalArea {
 
 impl CorticalArea {
 	pub fn new(name: &'static str, protoregion: Protoregion, protoarea: Protoarea, ocl: &Ocl) -> CorticalArea {
-		//let (depth_axonal, depth_cellular) = protoregion.depth();
+		let emsg = "cortical_area::CorticalArea::new()";
+
 		let dims = protoarea.dims.clone_with_depth(protoregion.depth_total());
+
+		print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", name, 1 << dims.width_l2(), 1 << dims.height_l2(), dims.depth());
+
+		//let (depth_axonal, depth_cellular) = protoregion.depth();
+		
 		//let dims.width = areas.width(&protoregion.kind);
 		//let height = areas.height(&protoregion.kind);
+
+		let emsg_psal = format!("{}: Primary Spatial Associative Layer not defined.", emsg);
+		let psal_name = protoregion.layer_with_flag(layer::SPATIAL_ASSOCIATIVE).expect(&emsg_psal).name();
+
+		let emsg_ptal = format!("{}: Primary Temporal Associative Layer not defined.", emsg);
+		let ptal_name = protoregion.layer_with_flag(layer::TEMPORAL_ASSOCIATIVE).expect(&emsg_ptal).name();
+
+		//let psal_name = psal_name;
+		//let ptal_name = ptal_name;
+		
 
 			/* <<<<< BRING BACK >>>>> */
 		//assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
@@ -70,33 +88,33 @@ impl CorticalArea {
 		let aux_dims = CorticalDimensions::new(dims.width_l2(), dims.height_l2(), dims.depth(), 7);
 		let aux = Aux::new(aux_dims, ocl);
 
-		let mut pyrs = HashMap::new();
-		let mut ssts = HashMap::new();
+		let mut pyrs_map = HashMap::new();
+		let mut ssts_map = HashMap::new();
 		let mut iinns = HashMap::new();
 
 		for (&layer_name, layer) in protoregion.layers().iter() {
 			match layer.kind {
 				ProtolayerKind::Cellular(ref pcell) => {
-					print!("\nCORTICALAREA::NEW(): making a(n) {:?} layer: {} (depth: {})", pcell.cell_kind, layer_name, layer.depth);
+					print!("\n   CORTICALAREA::NEW(): making a(n) {:?} layer: '{}' (depth: {})", pcell.cell_kind, layer_name, layer.depth);
 
 					match pcell.cell_kind {
 						ProtocellKind::Pyramidal => {
 							let pyrs_dims = dims.clone_with_depth(layer.depth);
 							let pyr_lyr = PyramidalCellularLayer::new(layer_name, pyrs_dims, pcell.clone(), &protoregion, &axns, &aux, ocl);
-							pyrs.insert(layer_name, Box::new(pyr_lyr));
+							pyrs_map.insert(layer_name, Box::new(pyr_lyr));
 						},
 
 						ProtocellKind::SpinyStellate => {							
-							let ssts_dims = dims.clone_with_depth(layer.depth);
-							let sst_lyr = SpinyStellateCellularLayer::new(layer_name, ssts_dims, pcell.clone(), &protoregion, &axns, &aux, ocl);
-							ssts.insert(layer_name, Box::new(sst_lyr));
+							let ssts_map_dims = dims.clone_with_depth(layer.depth);
+							let sst_lyr = SpinyStellateCellularLayer::new(layer_name, ssts_map_dims, pcell.clone(), &protoregion, &axns, &aux, ocl);
+							ssts_map.insert(layer_name, Box::new(sst_lyr));
 						},
 
 						_ => (),
 					}
 				},
 
-				_ => print!("\nCORTICALAREA::NEW(): Axon layer: {} (depth: {})", layer_name, layer.depth),
+				_ => print!("\n   CORTICALAREA::NEW(): Axon layer: '{}' (depth: {})", layer_name, layer.depth),
 			}
 		}
 
@@ -112,30 +130,15 @@ impl CorticalArea {
 							let src_layer_depth = src_slice_ids.len() as u8;
 							let src_axn_base_slice = src_slice_ids[0];
 
-							let emsg = format!(
-								"cortical_area::CorticalArea::new(): \"{}\" is not a valid layer", src_layer_name,
-							);
+							let em1 = format!("{}: '{}' is not a valid layer", emsg, src_layer_name);
 
-							let src_soma_env = &ssts.get_mut(src_layer_name).expect(&emsg).soma();
+							let src_soma_env = &ssts_map.get_mut(src_layer_name).expect(&em1).soma();
 
-							//println!("\n##### src_layer_name: {}, src_slice_ids: {:?}", src_layer_name, src_slice_ids);
-
-							/*
-							let layer_name_iv = "iv";
-							let slice_ids_iv = self.protoregion.slice_ids(vec![layer_name_iv]);
-							let layer_depth_iv = slice_ids_iv.len() as u8;
-							let base_slice_iv = slice_ids_iv[0];
-							let soma_envoy_iv = &self.ssts.get_mut(layer_name_iv).expect("cortical_area.rs").soma();
-
-							self.iinns.get_mut("iv_inhib").expect("cortical_area.rs").init_kernels(soma_envoy_iv, base_slice_iv, layer_depth_iv);
-
-							*/
-
+						
 							let iinns_dims = dims.clone_with_depth(src_layer_depth);
 							let mut iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, pcell.clone(), &protoregion, src_soma_env, src_axn_base_slice, &axns, ocl);
-							//iinn_lyr.init_kernels();
-							iinns.insert(layer_name, Box::new(iinn_lyr));
 
+							iinns.insert(layer_name, Box::new(iinn_lyr));
 
 						},
 
@@ -147,12 +150,25 @@ impl CorticalArea {
 			}
 		}
 
+
 		let mcols_dims = dims.clone_with_depth(1);
-		let mcols = Minicolumns::new(mcols_dims, &protoregion, &axns, &ssts, &pyrs, &aux, ocl);
 		
+		let mcols = Box::new({
+			//let em_ssts = emsg.to_string() + ": ssts - em2".to_string();
+			let em_ssts = format!("{}: '{}' is not a valid layer", emsg, psal_name);
+			let ssts = ssts_map.get(psal_name).expect(&em_ssts);
+
+			let em_pyrs = format!("{}: '{}' is not a valid layer", emsg, ptal_name);
+			let pyrs = pyrs_map.get(ptal_name).expect(&em_pyrs);
+			Minicolumns::new(mcols_dims, &protoregion, &axns, ssts, pyrs, &aux, ocl)
+		});
+		
+
 		let mut cortical_area = CorticalArea {
 			name: name,
 			dims: dims,
+			ptal_name: ptal_name,
+			psal_name: psal_name,
 			protoregion: protoregion,
 			protoarea: protoarea,
 			//depth_axonal: depth_axonal,
@@ -161,9 +177,8 @@ impl CorticalArea {
 			//protoregion: protoregion,
 			axns: axns,
 			mcols: mcols,
-			//pyrs: pyrs,
-			pyrs: pyrs,
-			ssts: ssts,
+			pyrs_map: pyrs_map,
+			ssts_map: ssts_map,
 			iinns: iinns,
 			//layer_cells: layer_cells,
 			//soma: Somata::new(width, depth_cellular, protoregion, ocl),
@@ -179,15 +194,18 @@ impl CorticalArea {
 	pub fn init_kernels(&mut self) {
 		//self.axns.init_kernels(&self.mcols.asps, &self.mcols, &self.aux)
 		//self.mcols.dens.syns.init_kernels(&self.axns, ocl);
-		self.pyrs.get_mut("iii").expect("cortical_area.rs").init_kernels(&self.mcols, &self.ssts.get_mut("iv").expect("cortical_area.rs"), &self.axns, &self.aux);
+
+		let emsg = "cortical_area::CorticalArea::init_kernels(): you're just bad...";
+
+		self.pyrs_map.get_mut(self.ptal_name).expect(emsg).init_kernels(&self.mcols, &self.ssts_map.get_mut(self.psal_name).expect("emsg"), &self.axns, &self.aux);
 
 
 		/*
-		let layer_name_iv = "iv";
+		let layer_name_iv = self.psal_name;
 		let slice_ids_iv = self.protoregion.slice_ids(vec![layer_name_iv]);
 		let layer_depth_iv = slice_ids_iv.len() as u8;
 		let base_slice_iv = slice_ids_iv[0];
-		let soma_envoy_iv = &self.ssts.get_mut(layer_name_iv).expect("cortical_area.rs").soma();
+		let soma_envoy_iv = &self.ssts_map.get_mut(layer_name_iv).expect("cortical_area.rs").soma();
 		self.iinns.get_mut("iv_inhib").expect("cortical_area.rs").init_kernels(soma_envoy_iv, base_slice_iv, layer_depth_iv);
 		*/
 	}
@@ -196,13 +214,13 @@ impl CorticalArea {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
 
-		self.ssts.get_mut("iv").expect(&emsg).cycle();
+		self.psal_mut().cycle();
 		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle();
-		self.ssts.get_mut("iv").expect(&emsg).learn();
+		self.psal_mut().learn();
 		
-		self.pyrs.get_mut("iii").expect(&emsg).activate();
-		self.pyrs.get_mut("iii").expect(&emsg).learn();
-		self.pyrs.get_mut("iii").expect(&emsg).cycle();
+		self.ptal_mut().activate();
+		self.ptal_mut().learn();
+		self.ptal_mut().cycle();
 
 		self.mcols.output();
 
@@ -212,17 +230,44 @@ impl CorticalArea {
 	pub fn regrow(&mut self) {
 		if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
 			//print!("$");
-			self.ssts.get_mut("iv").expect("cortical_area.rs").regrow();
-			self.pyrs.get_mut("iii").expect("cortical_area.rs").regrow();
+			self.ssts_map.get_mut(self.psal_name).expect("cortical_area.rs").regrow();
+			self.ptal_mut().regrow();
 			self.counter = 0;
 		} else {
 			self.counter += 1;
 		}
 	}
 
+
+	/* PIL(): Get Primary Sensory Associative Layer (immutable) */
+	pub fn psal(&self) -> &Box<SpinyStellateCellularLayer> {
+		let e_string = "cortical_area::CorticalArea::psal(): Primary Sensory Associative Layer: '{}' not found. ";
+		self.ssts_map.get(self.psal_name).expect(e_string)
+	}
+
+	/* PIL_MUT(): Get Primary Sensory Associative Layer (mutable) */
+	pub fn psal_mut(&mut self) -> &mut Box<SpinyStellateCellularLayer> {
+		let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Sensory Associative Layer: '{}' not found. ";
+		self.ssts_map.get_mut(self.psal_name).expect(e_string)
+	}
+
+
+	/* PAL(): Get Primary Temporal Associative Layer (immutable) */
+	pub fn ptal(&self) -> &Box<PyramidalCellularLayer> {
+		let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
+		self.pyrs_map.get(self.ptal_name).expect(e_string)
+	}
+
+	/* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
+	pub fn ptal_mut(&mut self) -> &mut Box<PyramidalCellularLayer> {
+		let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
+		self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
+	}
+
+
 	pub fn axn_output_range(&self) -> (usize, usize) {
 		//println!("self.axn_output_slice: {}, self.dims.columns(): {}, cmn::SYNAPSE_REACH_LIN: {}", self.axn_output_slice as usize, self.dims.columns() as usize, cmn::SYNAPSE_REACH_LIN);
-		let output_slices = self.protoregion.col_output_slices();
+		let output_slices = self.protoregion.aff_out_slices();
 		assert!(output_slices.len() == 1);
 		let axn_output_slice = output_slices[0];
 
@@ -254,6 +299,14 @@ impl CorticalArea {
 
 	pub fn dims(&self) -> &CorticalDimensions {
 		&self.dims
+	}
+
+	pub fn psal_name(&self) -> &'static str {
+		self.psal_name
+	}
+
+	pub fn ptal_name(&self) -> &'static str {
+		self.ptal_name
 	}
 }
 

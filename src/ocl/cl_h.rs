@@ -574,7 +574,7 @@ extern {
                       options: *const libc::c_char,
                       pfn_notify: extern fn (cl_program, *mut libc::c_void),
                       user_data: *mut libc::c_void) -> cl_int;
-    pub fn clUnloadCompiler() -> cl_int;
+    pub fn clUnloadCompsaler() -> cl_int;
     pub fn clGetProgramInfo(program: cl_program,
                         param_name: cl_program_info,
                         param_value_size: libc::size_t,

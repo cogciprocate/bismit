@@ -66,8 +66,8 @@ impl PyramidalCellularLayer {
 		//dims.depth() = region.depth_cell_kind(&ProtocellKind::Pyramidal);
 		//let dens_per_cel_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
 		//let syns_per_cel_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
-		//let col_input_layer = region.col_input_layer().expect("PyramidalCellularLayer::new()");
-		//let den_prox_slice = region.slice_ids(vec![col_input_layer.name])[0];
+		//let spt_asc_layer = region.spt_asc_layer().expect("PyramidalCellularLayer::new()");
+		//let den_prox_slice = region.slice_ids(vec![spt_asc_layer.name])[0];
 		
 		//print!("\n### PyramidalCellularLayer: Proximal Dendrite Row: {}", den_prox_slice);
 		print!("\n      PYRAMIDALS::NEW(): dims: {:?}, axn_base_slice: {}", dims, axn_base_slice);
@@ -168,9 +168,9 @@ impl PyramidalCellularLayer {
 	}
 
 	// <<<<< MOVE TO MCOL >>>>>
-	pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &SpinyStellateCellularLayer, axns: &Axons, aux: &Aux) {
+	pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &Box<SpinyStellateCellularLayer>, axns: &Axons, aux: &Aux) {
 		let (ssts_axn_idz, _) = ssts.axn_range();
-		println!("\n##### Pyramidals::init_kernels(): ssts_axn_idz: {}", ssts_axn_idz as u32);
+		//println!("\n##### Pyramidals::init_kernels(): ssts_axn_idz: {}", ssts_axn_idz as u32);
 
 		//self.kern_activate.new_arg_envoy(Some(&ssts.soma()));
 		self.kern_activate.new_arg_envoy(Some(&mcols.cels_status));
@@ -256,6 +256,11 @@ impl PyramidalCellularLayer {
 	pub fn axn_base_slice(&self) -> u8 {
 		self.axn_base_slice
 	}
+
+	pub fn layer_name(&self) -> &'static str {
+		self.layer_name
+	}
+
 
 	pub fn print_cel(&mut self, cel_idx: usize) {
 		let emsg = "PyramidalCellularLayer::print_cel()";

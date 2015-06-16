@@ -6,22 +6,21 @@ use super::input_czar::{ self, InputCzar, InputVecKind };
 use super::hybrid;
 
 
-
 pub fn define_prtrgns() -> Protoregions {
 	Protoregions::new()
 		.region(Protoregion::new(ProtoregionKind::Sensory)
-			.layer("thal", 1, layer::DEFAULT, Axonal(Spatial))
-			.layer("out", 1, layer::COLUMN_OUTPUT, Axonal(Spatial))
-			.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(5, vec!["thal", "thal", "thal", "motor"], 256))  // , "motor"
-			.layer("iv_inhib", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv"))
-			.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["iii"], 256))
-			.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
+			.layer("thal_t", 1, layer::DEFAULT, Axonal(Spatial))
+			.layer("out_t", 1, layer::AFFERENT_OUTPUT, Axonal(Spatial))
+			.layer("iv_t", 1, layer::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["thal_t"], 256))  // , "motor"
+			.layer("iv_inhib_t", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv_t"))
+			.layer("iii_t", 4, layer::TEMPORAL_ASSOCIATIVE, Protocell::new_pyramidal(2, 5, vec!["iii_t"], 256))
+			.layer("motor_t", 1, layer::DEFAULT, Axonal(Horizontal))
 			.freeze()
 		)
 }
 
 pub fn define_prtareas() -> Protoareas {
-	Protoareas::new().area("v1", 6, 6, ProtoregionKind::Sensory)
+	Protoareas::new().area("v1_t", 6, 6, ProtoregionKind::Sensory, None)
 }
 
 
@@ -32,8 +31,9 @@ pub fn define_prtareas() -> Protoareas {
 #[test]
 fn test_cortex() {
 	let mut cortex = Cortex::new(define_prtrgns(), define_prtareas());
+	let area_name = "v1_t";
 
-	hybrid::test_cycles(&mut cortex);
+	hybrid::test_cycles(&mut cortex, area_name);
 }
 
 
@@ -41,6 +41,8 @@ fn test_cortex() {
 #[test]
 fn test_learning() {
 	let mut cortex = Cortex::new(define_prtrgns(), define_prtareas());
+	let area_name = "v1_t";
+	let si_layer_name = "iv_inhib_t";
 
-	hybrid::test_learning(&mut cortex);
+	hybrid::test_learning(&mut cortex, si_layer_name, area_name);
 }

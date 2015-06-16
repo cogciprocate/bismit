@@ -53,22 +53,29 @@ pub struct Minicolumns {
 }
 
 impl Minicolumns {
-	pub fn new(dims: CorticalDimensions, protoregion: &Protoregion, axons: &Axons, ssts_map: &HashMap<&str, Box<SpinyStellateCellularLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalCellularLayer>>, aux: &Aux, ocl: &Ocl) -> Minicolumns {
+	pub fn new(dims: CorticalDimensions, protoregion: &Protoregion, axons: &Axons, 
+
+					/*ssts_map: &HashMap<&str, Box<SpinyStellateCellularLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalCellularLayer>>, */
+
+					sstl: &SpinyStellateCellularLayer, 
+					pyrs: &PyramidalCellularLayer,
+
+					aux: &Aux, ocl: &Ocl) -> Minicolumns {
 
 		assert!(dims.depth() == 1);
 
-		let ssts_layer_name = "iv";
-		let pyrs_layer_name = "iii";
+		/*let psal_name = cortex.area_mut("v1").psal_name();
+		let ptal_name = cortex.area_mut("v1").ptal_name();*/
 
-		let layer = protoregion.col_input_layer().expect("minicolumns::Minicolumns::new()");
+		let layer = protoregion.spt_asc_layer().expect("minicolumns::Minicolumns::new()");
 		//let depth: u8 = layer.depth();
 
-		let ssts = ssts_map.get(ssts_layer_name).expect("minicolumns.rs");
-		let pyrs = pyrs_map.get(pyrs_layer_name).expect("minicolumns.rs");
+		/*let ssts = ssts_map.get(psal_name).expect("minicolumns.rs");
+		let pyrs = pyrs_map.get(ptal_name).expect("minicolumns.rs");*/
 		//let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
 
-		let (ff_layer_axn_idz, _) = ssts.axn_range();
+		let (ff_layer_axn_idz, _) = sstl.axn_range();
 
 		let pyr_depth = protoregion.depth_cell_kind(&ProtocellKind::Pyramidal);
 
@@ -76,26 +83,32 @@ impl Minicolumns {
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		print!("\n      MINICOLUMN dims: {:?}, pyr_depth: {}", dims, pyr_depth);
+		print!("\n      MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth);
 
 		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, protoregion, axons, aux, ocl);
 
 		let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
-		//let iinn = InhibitoryInterneuronNetwork::new(dims, protoregion, &ssts.soma(), ocl);
+		//let iinn = InhibitoryInterneuronNetwork::new(dims, protoregion, &sstl.soma(), ocl);
 
 		/*let syns = Synapses::new(dims, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
 			ProtocellKind::SpinyStellate, protoregion, axons, aux, ocl);*/
 
-		let output_slices = protoregion.col_output_slices();
+		let (sstl_axn_idz, _) = sstl.axn_range();
+		//let axn_output_slice = sstl.base_axn_slice();
+
+
+		let axn_output_slice = protoregion.aff_out_slices()[0];
+
+
+		/*let output_slices = protoregion.aff_out_slices();
 		assert!(output_slices.len() == 1);
 		let axn_output_slice = output_slices[0];
-
-		let ssts_slice_ids = protoregion.slice_ids(vec![ssts_layer_name]);
+		let ssts_slice_ids = protoregion.slice_ids(vec!["iv_old"]);
 		let ssts_axn_base_slice = ssts_slice_ids[0];
-
-		let ssts_axn_idz = cmn::axn_idx_2d(ssts_axn_base_slice, dims.columns(), protoregion.hrz_demarc());
+		let ssts_axn_idz_old = cmn::axn_idx_2d(ssts_axn_base_slice, dims.columns(), protoregion.hrz_demarc());
+		assert!(ssts_axn_idz == ssts_axn_idz_old as usize);*/
 
 		//println!("\n ##### ssts_axn_idz: {}", ssts_axn_idz);
 
@@ -119,11 +132,11 @@ impl Minicolumns {
 
 		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
-			//.arg_env(&ssts.soma())
+			//.arg_env(&sstl.soma())
 			.arg_env(&pyrs.soma())
 			.arg_env(&pyrs.best1_den_states)
 			//.arg_scl(depth)
-			.arg_scl(ssts_axn_idz)
+			.arg_scl(sstl_axn_idz as u32)
 			.arg_scl(pyr_depth)
 			//.arg_scl(pyr_axn_base_slice)
 			.arg_scl(axn_output_slice)
@@ -179,7 +192,7 @@ impl Minicolumns {
 		//self.states_raw.read();
 		self.cels_status.read();
 		//self.iinn.confab();
-		//self.ssts.dens.confab();
+		//self.sstl.dens.confab();
 	}
 
 	pub fn ff_layer_axn_idz(&self) -> usize {

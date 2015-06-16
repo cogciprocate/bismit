@@ -27,26 +27,27 @@ pub static PASS_STR: &'static str = "\x1b[1;32mpass\x1b[0m";
 
 
 // NEED A 'TestParameters' STRUCT OF SOME SORT TO UNTANGLE THIS AND MOVE STUFF INTO CHILD FUNCTIONS
-pub fn test_activation_and_learning(cortex: &mut Cortex) {
+pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str) {
 	let emsg = "tests::hybrid::test_pyr_activation()";
 	let activation_test_runs = 2;
 
 	let learning_test_runs = 5;
 
-	let layer_name = "iii";
-	let ff_layer_name = "iv";
+	let layer_name = cortex.area_mut(area_name).ptal_name();
+	let ff_layer_name = cortex.area_mut(area_name).psal_name();
 
-	let src_slice_ids = cortex.cortical_area.protoregion().src_slice_ids("iii", DendriteKind::Distal);
+	let src_slice_ids = cortex.area_mut(area_name).protoregion().src_slice_ids(layer_name, DendriteKind::Distal);
 	let src_slice_id = src_slice_ids[0];
 	
-	let ff_layer_axn_idz = cortex.cortical_area.mcols.ff_layer_axn_idz();
+	let ff_layer_axn_idz = cortex.area_mut(area_name).mcols.ff_layer_axn_idz();
 
-	let cels_len = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).dims().cells() as usize;
-	let cols_len = cortex.cortical_area.dims().columns() as usize;
-	//let cel_idx = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).dims().cells() as usize - 1;
+
+	let cels_len = cortex.area_mut(area_name).ptal().dims().cells() as usize;
+
+	let cols_len = cortex.area_mut(area_name).dims().columns() as usize;
 
 	let (cels_axn_idz, _) = {// CELS IN SCOPE
-		let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+		let cels = cortex.area_mut(area_name).ptal_mut();
 
 		// SET ALL SYNAPSES TO THE SAME SOURCE AXON SLICE AND ZEROS ELSEWHERE
 		cels.dens.syns.src_slice_ids.set_all_to(src_slice_id);
@@ -62,10 +63,10 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 	};
 
 	let (dens_per_cel, syns_per_cel, syns_per_den) = {// CELS IN SCOPE
-		let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+		let cels = cortex.area_mut(area_name).ptal_mut();
 
-		let dens_per_cel = cels.dens.dims().per_cel().expect(emsg) as usize;
-		let syns_per_cel = cels.dens.syns.dims().per_cel().expect(emsg) as usize;
+		let dens_per_cel = cels.dens.dims().per_cel().expect(&format!("{}: {}", emsg, "dens_per_cel")) as usize;
+		let syns_per_cel = cels.dens.syns.dims().per_cel().expect(&format!("{}: {}", emsg, "syns_per_cel")) as usize;
 
 		assert!(syns_per_cel % dens_per_cel == 0);
 
@@ -74,7 +75,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 	};
 
 
-	let mut vec_ff: Vec<u8> = iter::repeat(0).take(cortex.cortical_area.dims.columns() as usize).collect();
+	let mut vec_ff: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
 
 	print!("\nRunning {} activation tests...", activation_test_runs);
 
@@ -87,7 +88,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 
 		vec_ff[col_id] = 100;
 
-		cortex.write_vec(0, ff_layer_name, &vec_ff);
+		cortex.write_vec(area_name, ff_layer_name, &vec_ff);
 
 		if last_run {
 			println!("\nACTIVATING CELLS... ");
@@ -98,10 +99,10 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 
 		*/
 		// FIRST ACTIVATION:
-		cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).activate();
+		cortex.area_mut(area_name).ptal_mut().activate();
 
 		{// AXNS IN SCOPE
-			let axns = &mut cortex.cortical_area.axns;
+			let axns = &mut cortex.area_mut(area_name).axns;
 			axns.states.read();
 
 			let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
@@ -110,7 +111,6 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 				print!("\nlayer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
 				cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 				println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
-				//cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).print_cel(cel_idx);
 
 				print!("\n => ");
 			}
@@ -167,11 +167,11 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 
 			// REACTIVATE FF AXON
 			vec_ff[col_id] = 100;
-			cortex.write_vec(0, ff_layer_name, &vec_ff);
+			cortex.write_vec(area_name, ff_layer_name, &vec_ff);
 
 
 			{// CELS IN SCOPE
-				let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+				let cels = cortex.area_mut(area_name).ptal_mut();
 
 				if last_run && last_learning_run {
 					println!("uINDEXES: first_half: {}, den_id: {}, den_idx: {}, syn_idz: {}, syn_idn: {}, syn_tar_half_idz: {}, syn_tar_half_idn: {}", first_half, den_id, den_idx, syn_idz, syn_idn, syn_tar_half_idz, syn_tar_half_idn);
@@ -191,12 +191,19 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 				cels.dens.cycle_self_only();
 				cels.cycle_self_only();
 
-				/* 	MUST CALL MINICOLUMN_OUTPUT() (__kernel void col_output() KERNEL TO DETERMINE IF ANY PYRS ARE ACTIVE
-						- col_output() will cycle through each column's pyrs and set the (what should be a)
-							flag declaring whether or not at least one pyr in the column is predictive
-						- the output to the minicolumn's axon shouldn't affect tests at all
-				*/
-				cortex.cortical_area.mcols.output();
+			}
+
+
+			/* 	MUST CALL MINICOLUMN_OUTPUT() (__kernel void col_output() KERNEL TO DETERMINE IF ANY PYRS ARE ACTIVE
+					- col_output() will cycle through each column's pyrs and set the (what should be a)
+						flag declaring whether or not at least one pyr in the column is predictive
+					- the output to the minicolumn's axon shouldn't affect tests at all
+			*/
+			cortex.area(area_name).mcols.output();
+
+
+			{// CELS IN SCOPE
+				let cels = cortex.area_mut(area_name).ptal_mut();
 
 				if last_run && last_learning_run {
 					cels.print_cel(cel_idx);
@@ -208,21 +215,20 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 			// PRINT AXONS ETC.
 			{// AXNS IN SCOPE -- DO NOT EDIT ME -- MULTIPLE BLOCKS EXIST (until we move to separate fn)
 				if last_run && last_learning_run {
-					let axns = &mut cortex.cortical_area.axns;
+					let axns = &mut cortex.area_mut(area_name).axns;
 					axns.states.read();
 					let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
 
 					print!("\nlayer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
 					cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 					println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
-					//cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).print_cel(cel_idx);
 				}
 			}
 
 
 
 			{// CELS IN SCOPE
-				let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+				let cels = cortex.area_mut(area_name).ptal_mut();
 
 				// SECOND ACTIVATION:
 				// TODO TEST: should see cell axon go higher
@@ -260,10 +266,10 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 
 			// DEACTIVATE FF AXON
 			vec_ff[col_id] = 0;
-			cortex.write_vec(0, ff_layer_name, &vec_ff);
+			cortex.write_vec(area_name, ff_layer_name, &vec_ff);
 
 			{// CELS IN SCOPE
-				let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+				let cels = cortex.area_mut(area_name).ptal_mut();
 
 				// DEACTIVATE SYNAPSES
 				let den_idz = cel_idx * dens_per_cel;
@@ -297,14 +303,13 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 			// PRINT AXONS ETC.
 			{// AXNS IN SCOPE -- DO NOT EDIT ME -- MULTIPLE BLOCKS EXIST (until we move to separate fn)
 				if last_run && last_learning_run {
-					let axns = &mut cortex.cortical_area.axns;
+					let axns = &mut cortex.area_mut(area_name).axns;
 					axns.states.read();
 					let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
 
 					print!("\nlayer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
 					cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 					println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
-					//cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg).print_cel(cel_idx);
 				}
 			}
 
@@ -341,58 +346,85 @@ pub fn test_activation_and_learning(cortex: &mut Cortex) {
 			- perform regrowth
 			- check offs to ensure change
 */
-pub fn test_learning(cortex: &mut Cortex) {
-	_test_sst_learning(cortex, "iv");
-	_test_pyr_learning(cortex, "iii");
+pub fn test_learning(cortex: &mut Cortex, ilyr_name: &'static str, area_name: &'static str) {
+	let psal_name = cortex.area(area_name).psal_name();
+	println!("##### hybrid::test_learning(): psal_name: {}", psal_name);
+	//let ptal_name = cortex.area_mut(area_name).ptal_name();
+	_test_sst_learning(cortex, psal_name, ilyr_name, area_name);
+	//_test_pyr_learning(cortex, ptal_name);
 }
 
-fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str) {
-	let emsg = "tests::hybrid::test_sst_learning()";
+fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: &'static str, area_name: &'static str) {
+	let emsg = "tests::hybrid::_test_sst_learning()";
 
-	let cels = cortex.cortical_area.ssts.get_mut(layer_name).expect(emsg);
 
-	//let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.cortical_area.dims.columns() as usize).collect();
+	let (dens_per_cel, syns_per_cel, syns_per_den) = {// CELS IN SCOPE
+		let cels = cortex.area_mut(area_name).ptal_mut();
 
-	//let cel_syns = &mut ;
-	cels.dens.syns.src_col_xy_offs.set_all_to(0);
-	cels.dens.syns.strengths.set_all_to(0);
-	cels.dens.syns.states.set_all_to(0);
+		let dens_per_cel = cels.dens.dims().per_cel().expect(&format!("{}: {}", emsg, "dens_per_cel")) as usize;
+		let syns_per_cel = cels.dens.syns.dims().per_cel().expect(&format!("{}: {}", emsg, "syns_per_cel")) as usize;
 
-	let first_half: bool = rand::random::<bool>();
-	let per_cel = cels.dens.syns.dims().per_cel().expect(emsg) as usize;
+		assert!(syns_per_cel % dens_per_cel == 0);
 
-	let cel_idx = rand::random::<usize>() & ((cels.dims().cells() as usize) - 1);
-	let cel_syn_idz = cel_idx << cels.dens.syns.dims().per_cel_l2_left().expect(emsg);
-	let cel_syn_tar_idz = cel_syn_idz + if first_half {0} else {per_cel >> 1};
-	let cel_syn_tar_idn = cel_syn_tar_idz + (per_cel >> 1);
-	
-	println!("\n{}: cel_idx: {}, per_cel: {}, cel_syn_tar_idz: {}, cel_syn_tar_idn: {}", emsg, cel_idx, per_cel, cel_syn_tar_idz, cel_syn_tar_idn);
+		let syns_per_den = syns_per_cel / dens_per_cel;
+		(dens_per_cel, syns_per_cel, syns_per_den)
+	};
 
-	for syn_idx in cel_syn_tar_idz..cel_syn_tar_idn {
-		cels.dens.syns.states[syn_idx] = 255;
+	//let em99 = &format!("{}: {}; layer_name: {} ", emsg, "cel_idx (em99)", layer_name);
+	let cel_idx_mask = (cortex.area_mut(area_name).psal().dims().cells() as usize) - 1;
+	let cel_idx = rand::random::<usize>() & cel_idx_mask;
+
+
+	{
+		let cels = cortex.area_mut(area_name).ptal_mut();
+
+		//let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
+
+		//let cel_syns = &mut ;
+		cels.dens.syns.src_col_xy_offs.set_all_to(0);
+		cels.dens.syns.strengths.set_all_to(0);
+		cels.dens.syns.states.set_all_to(0);
+
+		let first_half: bool = rand::random::<bool>();
+		let per_cel = cels.dens.syns.dims().per_cel().expect(&format!("{}: {}", emsg, "per_cel")) as usize;
+
+		let cel_syn_idz = cel_idx << cels.dens.syns.dims().per_cel_l2_left().expect(&format!("{}: {}", emsg, "cel_syn_idz"));
+		let cel_syn_tar_idz = cel_syn_idz + if first_half {0} else {per_cel >> 1};
+		let cel_syn_tar_idn = cel_syn_tar_idz + (per_cel >> 1);
+		
+		println!("\n{}: cel_idx: {}, per_cel: {}, cel_syn_tar_idz: {}, cel_syn_tar_idn: {}", emsg, cel_idx, per_cel, cel_syn_tar_idz, cel_syn_tar_idn);
+
+		for syn_idx in cel_syn_tar_idz..cel_syn_tar_idn {
+			cels.dens.syns.states[syn_idx] = 255;
+		}
+
+		cels.dens.syns.states.write();
+		cels.dens.cycle_self_only();
+		//cels.soma().cycle_self_only();
 	}
 
-	cels.dens.syns.states.write();
-	cels.dens.cycle_self_only();
-	//cels.soma().cycle_self_only();
+	cortex.area_mut(area_name).iinns.get_mut(ilyr_name).expect(&format!("{}: {}", emsg, "area_name")).cycle();
 
-	cortex.cortical_area.iinns.get_mut("iv_inhib").expect(&emsg).cycle();
 
-	for i in 0..100 {
-		cels.learn();
+	{
+		let cels = cortex.area_mut(area_name).psal_mut();
+
+		for i in 0..100 {
+			cels.learn();
+		}
+
+		cels.dens.confab();
+
+		cels.print_cel(cel_idx);
+		
+		println!("\nREGROWING... ");
+		cels.regrow();
+
+		cels.print_cel(cel_idx);
 	}
 
-	cels.dens.confab();
-
-	cels.print_cel(cel_idx);
-	
-	println!("\nREGROWING... ");
-	cels.regrow();
-
-	cels.print_cel(cel_idx);
-
-	print!("\nALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
-	cmn::print_vec(&cels.dens.syns.strengths.vec[..], 1, None, None, false);
+	//print!("\nALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
+	//cmn::print_vec(&cels.dens.syns.strengths.vec[..], 1, None, None, false);
 
 	//check src_col_xy_offs
 	//check strengths
@@ -401,12 +433,12 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str) {
 }
 
 
-pub fn _test_pyr_learning(cortex: &mut Cortex, layer_name: &'static str) {
+/*pub fn _test_pyr_learning(cortex: &mut Cortex, layer_name: &'static str) {
 	let emsg = "tests::hybrid::test_pyr_learning()";
 
-	let cels = cortex.cortical_area.pyrs.get_mut(layer_name).expect(emsg);
+	let cels = cortex.area_mut(area_name).ptal_mut();
 
-	//let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.cortical_area.dims.columns() as usize).collect();
+	//let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
 
 	//let cel_syns = &mut ;
 	cels.dens.syns.src_col_xy_offs.set_all_to(0);
@@ -433,7 +465,7 @@ pub fn _test_pyr_learning(cortex: &mut Cortex, layer_name: &'static str) {
 	cels.dens.cycle_self_only();
 	//cels.soma().cycle_self_only();
 
-	cortex.cortical_area.iinns.get_mut("iv_inhib").expect(&emsg).cycle();
+	cortex.area_mut(area_name).iinns.get_mut("iv_inhib").expect(emsg).cycle();
 
 	for i in 0..100 {
 		cels.learn();
@@ -455,36 +487,38 @@ pub fn _test_pyr_learning(cortex: &mut Cortex, layer_name: &'static str) {
 	//check strengths
 	//check offs and strs for other cells to make sure they're untouched
 
-}
+}*/
 
 
 
-pub fn test_cycles(cortex: &mut Cortex) {
+pub fn test_cycles(cortex: &mut Cortex, area_name: &'static str) {
 	let emsg = "tests::hybrid::test_cycles()";
 	
-	/*cortex.cortical_area.ssts.get_mut("iv").expect(emsg).dens.syns.src_col_xy_offs.set_all_to(0);
-	cortex.cortical_area.pyrs.get_mut("iii").expect(emsg).dens.syns.src_col_xy_offs.set_all_to(0);
+	/*cortex.area_mut(area_name).psal_mut().dens.syns.src_col_xy_offs.set_all_to(0);
+	cortex.area_mut(area_name).ptal_mut().dens.syns.src_col_xy_offs.set_all_to(0);
 
-	cortex.cortical_area.ssts.get_mut("iv").expect(emsg).dens.cycle();
-	cortex.cortical_area.pyrs.get_mut("iii").expect(emsg).dens.cycle();*/
+	cortex.area_mut(area_name).psal_mut().dens.cycle();
+	cortex.area_mut(area_name).ptal_mut().dens.cycle();*/
 
 		//#####  TRY THIS OUT SOMETIME  #####
-	//let pyrs_input_len = cortex.cortical_area.pyrs.get_mut("iii").expect(emsg).len();
+	//let pyrs_input_len = cortex.area_mut(area_name).ptal_mut().len();
 	//let mut vec_pyrs = iter::repeat(0).take().collect();
 	//input_czar::vec_band_512_fill(&mut vec_pyrs);
-	//let pyr_axn_ranges = cortex.cortical_area.layer_input_ranges("iii", cortex.cortical_area.pyrs.get_mut("iii").expect(emsg).dens.syns.den_kind());
+	//let pyr_axn_ranges = cortex.area_mut(area_name).layer_input_ranges("iii", cortex.area_mut(area_name).ptal_mut().dens.syns.den_kind());
 	//write_to_axons(axn_range, vec1);
-	let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.cortical_area.dims.columns() as usize).collect();
+	let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
 	input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_LIN as usize * 2), &mut vec1);
-	
-	print!("\nSpiny Stellate...");
-	cortex.write_vec(0, "thal", &vec1);
-	test_syn_and_den_states(&mut cortex.cortical_area.ssts.get_mut("iv").expect(emsg).dens);
 
-	print!("\nPyramidal...");
-	cortex.write_vec(0, "iii", &vec1);
-	test_syn_and_den_states(&mut cortex.cortical_area.pyrs.get_mut("iii").expect(emsg).dens);
-	test_pyr_preds(&mut cortex.cortical_area.pyrs.get_mut("iii").expect(emsg));
+	print!("\nPrimary Spatial Associative Layer...");
+	let psal_name = cortex.area(area_name).psal().layer_name();
+	cortex.write_vec(area_name, psal_name, &vec1);
+	test_syn_and_den_states(&mut cortex.area_mut(area_name).psal_mut().dens);
+
+	print!("\nPrimary Temporal Associative Layer...");
+	let ptal_name = cortex.area(area_name).ptal().layer_name();
+	cortex.write_vec(area_name, ptal_name, &vec1);
+	test_syn_and_den_states(&mut cortex.area_mut(area_name).ptal_mut().dens);
+	test_pyr_preds(&mut cortex.area_mut(area_name).ptal_mut());
 }
 
 fn test_inhib(cortex: &mut Cortex) {

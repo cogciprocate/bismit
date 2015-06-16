@@ -65,8 +65,7 @@ impl Synapses {
 		//let slice_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl); // BRING THIS BACK
 
 
-		print!("\n            SYNAPSES::NEW(): new {:?} synapses with dims: {:?}", den_kind, dims);
-		//println!("##### Synapses columns(): {}, per_slice(): {}", dims.columns(), dims.per_slice());
+		print!("\n            SYNAPSES::NEW(): new {:?}, dims:{:?}", den_kind, dims);
 
 		let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl);
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
@@ -106,8 +105,6 @@ impl Synapses {
 			.arg_env(&src_col_xy_offs)
 			.arg_env(&src_slice_ids)
 		;*/
-
-		//println!("\n### Test S1 ###");
 
 		let mut syns = Synapses {
 			dims: dims,
@@ -180,28 +177,21 @@ impl Synapses {
 			let src_slice_idx_range: Range<usize> = Range::new(0, src_slice_ids_len);
 			let src_col_xy_offs_range: Range<i8> = Range::new(-126, 127);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
-
-			//println!("\n##### SYNAPSE DIMS: {:?}", self.dims);
 			
 			assert!(src_slice_ids_len <= (self.dims.per_cel().expect("synapses.rs")) as usize, "cortical_area::Synapses::init(): Number of source slices must not exceed number of synapses per cell.");
 
 			if init {
-				print!("\n    syns.init(): \"{}\" ({:?}): slice_ids: {:?}, src_slice_ids: {:?}", layer_name, self.den_kind, slice_ids, src_slice_ids);
+				print!("\n#####    syns.init(): \"{}\" ({:?}): slice_ids: {:?}, src_slice_ids: {:?}", layer_name, self.den_kind, slice_ids, src_slice_ids);
 			}
 
 			/* LOOP THROUGH ROWS (WITHIN LAYER) */
 			for slice_pos in kind_base_slice_pos..(kind_base_slice_pos + layer.depth) {
-				//print!("\nDEBUG: slice_pos: {}", slice_pos);
-				//print!("\nDEBUG: syns_per_slice: {}", syns_per_slice);
 
 				let ei_start = syns_per_slice as usize * slice_pos as usize;
-				//print!("\nDEBUG: ei_start: {}", ei_start);
 
 				let ei_end = ei_start + syns_per_slice as usize;
-				//print!("\nDEBUG: ei_end: {}", ei_end);
-				//print!("\nDEBUG: src_slice_ids: {:?}", src_slice_ids);
 
-				//print!("\n   Row {}: ei_start: {}, ei_end: {}, src_slice_ids: {:?}", slice_pos, ei_start, ei_end, src_slice_ids);
+				print!("\n   Row {}: syns_per_slice:{}, ei_start:{}, ei_end:{}, src_slice_ids:{:?}", slice_pos, syns_per_slice, ei_start, ei_end, src_slice_ids);
 
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
 				for i in ei_start..ei_end {

@@ -27,15 +27,19 @@ pub fn define_protoregions() -> Protoregions {
 
 		.layer("thal", 1, layer::DEFAULT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
 
-		.layer("out", 1, layer::COLUMN_OUTPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
+		.layer("out", 1, layer::AFFERENT_OUTPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
 
-		.layer("iv", 1, layer::COLUMN_INPUT, Protocell::new_spiny_stellate(5, vec!["thal"], 256))  // , "motor"
+		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["thal"], 256))  // , "motor"
 
 		.layer("iv_inhib", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
 		//.layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
-		.layer("iii", 4, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["iii"], 512))
-		//.layer("ii", 3, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["out"])) // <<<<< FIX ME (FIX SYNS)
+		.layer("iii", 4, layer::TEMPORAL_ASSOCIATIVE, Protocell::new_pyramidal(2, 5, vec!["iii"], 512))
+
+		/*	<<<<< NEEDS FIX >>>>>
+			Creating cells is still based on the idea (enforced by protoregion) that all cells of a certain type (ex. Pyramidal) are to be created in the same envoy. Need to change the way synapses build their indexes etc.
+		*/
+		.layer("ii", 3, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["out"], 512)) // <<<<< FIX ME (FIX SYNS)
 
 		//.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
 		.layer("motor", 1, layer::DEFAULT, ProtolayerKind::Axonal(ProtoaxonKind::Horizontal))
@@ -49,7 +53,8 @@ pub fn define_protoregions() -> Protoregions {
 
 pub fn define_protoareas() -> Protoareas {
 	let mut protoareas = Protoareas::new()
-		.area("v1", 5, 5, ProtoregionKind::Sensory)
+		.area("v1", 5, 5, ProtoregionKind::Sensory, Some("v1"))
+		.area("a1", 4, 4, ProtoregionKind::Sensory, None)
 	;
 
 	protoareas
@@ -57,11 +62,11 @@ pub fn define_protoareas() -> Protoareas {
 
 
 pub struct Cortex {
-	pub cortical_area: CorticalArea,
-	pub protoregions: Protoregions,
-	pub protoareas: Protoareas,
-	pub cortical_areas: HashMap<&'static str, CorticalArea>,
-	pub ocl: ocl::Ocl,
+	//pub cortical_area: CorticalArea, // <<<<< SLATED FOR REMOVAL
+	protoregions: Protoregions,
+	protoareas: Protoareas,
+	cortical_areas: HashMap<&'static str, Box<CorticalArea>>,
+	ocl: ocl::Ocl,
 }
 
 impl Cortex {
@@ -81,21 +86,27 @@ impl Cortex {
 		let ocl: ocl::Ocl = ocl::Ocl::new(build_options);
 
 		// FOR EACH AREA...
-		let mut cortical_area: cortical_area::CorticalArea = {
+
+		for (_, protoarea) in &protoareas {
+			cortical_areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.name, protoregions[&protoarea.region_kind].clone(), protoarea.clone(), &ocl)));
+		}
+
+
+		/*let mut cortical_area_1: cortical_area::CorticalArea = {
 			let protoregion = protoregions[&ProtoregionKind::Sensory].clone();
 			let protoarea = protoareas["v1"].clone();
 			CorticalArea::new("v1", protoregion, protoarea, &ocl)
 		};
 
-		//cortical_areas.insert(cortical_area_1);
+		cortical_areas.insert(cortical_area_1.name, Box::new(cortical_area_1));*/
 
-		let mut cortical_area_2: cortical_area::CorticalArea = {
+		/*let mut cortical_area_2: cortical_area::CorticalArea = {
 			let protoregion = protoregions[&ProtoregionKind::Sensory].clone();
 			let protoarea = protoareas["v1"].clone();
-			CorticalArea::new("v1", protoregion, protoarea, &ocl)
+			CorticalArea::new("v1_b", protoregion, protoarea, &ocl)
 		};
 
-		cortical_areas.insert("cortical_area_2", cortical_area_2);
+		cortical_areas.insert(cortical_area_2.name, Box::new(cortical_area_2));*/
 
 
 
@@ -103,7 +114,7 @@ impl Cortex {
 		println!("\n\n... Cortex initialized in: {}.{} sec.", time_complete.num_seconds(), time_complete.num_milliseconds());
 
 		Cortex {
-			cortical_area: cortical_area,
+			//cortical_area: cortical_area,
 			protoregions: protoregions,
 			protoareas: protoareas,
 			cortical_areas: cortical_areas,
@@ -112,60 +123,64 @@ impl Cortex {
 	}
 
 
-	pub fn sense(&mut self, sgmt_idx: usize, layer_target: &'static str, chord: &Chord) {
-		let mut vec: Vec<ocl::cl_uchar> = chord.unfold();
-		self.sense_vec(sgmt_idx, layer_target, &vec);
-		panic!("SLATED FOR REMOVAL");
-	}
-
-	pub fn area_mut(&mut self, area_name: &'static str) -> &mut CorticalArea {
+	
+	pub fn area_mut(&mut self, area_name: &'static str) -> &mut Box<CorticalArea> {
 		let e_string = format!("cortex::Cortex::area_mut(): Area: '{}' not found", area_name);
 		self.cortical_areas.get_mut(area_name).expect(&e_string)
 	}
 
-	pub fn area(&self, area_name: &'static str) -> &CorticalArea {
+	pub fn area(&self, area_name: &'static str) -> &Box<CorticalArea> {
 		let e_string = format!("cortex::Cortex::area_mut(): Area: '{}' not found", area_name);
 		self.cortical_areas.get(area_name).expect(&e_string)
 	}
 
-	/* WRITE_VEC(): 
+	/*	WRITE_VEC(): 
 			TODO: 
 				- VALIDATE "layer_target, OTHERWISE: 
 					- thread '<main>' panicked at '[protoregions::Protoregion::index(): 
-					invalid layer name: "pre_thal"]', src/protoregions.rs:339
+					invalid layer name: "XXXXX"]', src/protoregions.rs:339
 						- Just have slice_ids return an option<u8>
 				- Handle multi-slice input vectors (for input compression, etc.)
 					- Update assert statement to support this
 	*/
-	pub fn write_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
+	pub fn write_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
+		let emsg = "cortex::Cortex::write_vec()";
 		let ref region = self.protoregions[&ProtoregionKind::Sensory];
 		let axn_slices: Vec<u8> = region.slice_ids(vec!(layer_target));
 
 		for slice in axn_slices { 
-			let buffer_offset = cmn::axn_idx_2d(slice, self.cortical_area.dims.columns(), region.hrz_demarc()) as usize;
+			let buffer_offset = cmn::axn_idx_2d(slice, self.cortical_areas.get(area_name).expect(emsg).dims.columns(), region.hrz_demarc()) as usize;
 			//let buffer_offset = cmn::SYNAPSE_REACH_LIN + (axn_slice as usize * self.cortical_area.axns.dims.width as usize);
 
 			//println!("##### write_vec(): {} offset: axn_idx_2d(axn_slice: {}, dims.columns(): {}, region.hrz_demarc(): {}): {}, vec.len(): {}", layer_target, slice, self.cortical_area.dims.columns(), region.hrz_demarc(), buffer_offset, vec.len());
 
 			//assert!(vec.len() <= self.cortical_area.dims.columns() as usize); // <<<<< NEEDS CHANGING (for multi-slice inputs)
 
-			ocl::enqueue_write_buffer(&vec, self.cortical_area.axns.states.buf, self.ocl.command_queue, buffer_offset);
+			ocl::enqueue_write_buffer(&vec, self.cortical_areas.get(area_name).expect(emsg).axns.states.buf, self.ocl.command_queue, buffer_offset);
 		}
 	}
 
 
-	pub fn sense_vec(&mut self, sgmt_idx: usize, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
-		self.write_vec(sgmt_idx, layer_target, vec);
+	pub fn sense_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
+		self.write_vec(area_name, layer_target, vec);
 		self.cycle();
 	}
 
 	pub fn cycle(&mut self) {
 		//let ref region = &self.protoregions[&ProtoregionKind::Sensory];
-		self.cortical_area.cycle();
+		for (area_name, cortical_area) in self.cortical_areas.iter_mut() {
+			cortical_area.cycle();
+		}
 	}
 
 	/*pub fn release_components(&mut self) {
 		print!("Cortex::release_components() called! (depricated)... ");
+	}*/
+
+	/*pub fn sense(&mut self, area_name: &'static str, layer_target: &'static str, chord: &Chord) {
+		let mut vec: Vec<ocl::cl_uchar> = chord.unfold();
+		self.sense_vec(area_name, layer_target, &vec);
+		panic!("SLATED FOR REMOVAL");
 	}*/
 }
 
