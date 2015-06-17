@@ -19,6 +19,7 @@ use cortical_area:: { Aux };
 
 
 pub struct Dendrites {
+	layer_name: &'static str,
 	dims: CorticalDimensions,
 	protocell: Protocell,
 	//per_cell_l2: u32,
@@ -34,6 +35,7 @@ pub struct Dendrites {
 
 impl Dendrites {
 	pub fn new(
+					layer_name: &'static str,
 					dims: CorticalDimensions,
 					protocell: Protocell,
 					den_kind: DendriteKind, 
@@ -72,7 +74,7 @@ impl Dendrites {
 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
 		let syns_dims = dims.clone_with_pcl2((dims.per_cel_l2() + syns_per_den_l2 as i8));
-		let syns = Synapses::new(syns_dims, protocell.clone(), den_kind, cell_kind, region, axons, aux, ocl);
+		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, region, axons, aux, ocl);
 
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
@@ -90,6 +92,7 @@ impl Dendrites {
 		;
 		
 		Dendrites {
+			layer_name: layer_name,
 			dims: dims,
 			protocell: protocell,
 			//per_cell_l2: per_cell_l2,

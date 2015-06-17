@@ -74,7 +74,7 @@ impl SpinyStellateCellularLayer {
 		print!("\n      SPINYSTELLATES::NEW(): dims: {:?}", dims);
 
 		let dens_dims = dims.clone_with_pcl2(protocell.dens_per_cel_l2 as i8);
-		let dens = Dendrites::new(dens_dims, protocell.clone(), DendriteKind::Proximal, ProtocellKind::SpinyStellate, protoregion, axns, aux, ocl);
+		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Proximal, ProtocellKind::SpinyStellate, protoregion, axns, aux, ocl);
 
 		//let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);

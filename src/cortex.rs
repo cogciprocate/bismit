@@ -29,17 +29,18 @@ pub fn define_protoregions() -> Protoregions {
 
 		.layer("out", 1, layer::AFFERENT_OUTPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
 
-		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["thal"], 256))  // , "motor"
+		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["thal"], 256)) 
+		//.layer("vi", 5, layer::DEFAULT, Protocell::new_spiny_stellate(3, vec!["thal"], 256)) 
 
 		.layer("iv_inhib", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
 		//.layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
 		.layer("iii", 4, layer::TEMPORAL_ASSOCIATIVE, Protocell::new_pyramidal(2, 5, vec!["iii"], 512))
 
-		/*	<<<<< NEEDS FIX >>>>>
+		/*	<<<<< ADDING ADDITIONAL PYRS (AND PRESUMABLY SSTS) NEEDS FIX >>>>>
 			Creating cells is still based on the idea (enforced by protoregion) that all cells of a certain type (ex. Pyramidal) are to be created in the same envoy. Need to change the way synapses build their indexes etc.
 		*/
-		.layer("ii", 3, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["out"], 512)) // <<<<< FIX ME (FIX SYNS)
+		//.layer("ii", 3, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["out"], 512)) // <<<<< FIX ME (FIX SYNS)
 
 		//.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
 		.layer("motor", 1, layer::DEFAULT, ProtolayerKind::Axonal(ProtoaxonKind::Horizontal))
@@ -54,7 +55,7 @@ pub fn define_protoregions() -> Protoregions {
 pub fn define_protoareas() -> Protoareas {
 	let mut protoareas = Protoareas::new()
 		.area("v1", 5, 5, ProtoregionKind::Sensory, Some("v1"))
-		.area("a1", 4, 4, ProtoregionKind::Sensory, None)
+		//.area("a1", 4, 4, ProtoregionKind::Sensory, None)
 	;
 
 	protoareas
@@ -168,7 +169,7 @@ impl Cortex {
 
 	pub fn cycle(&mut self) {
 		//let ref region = &self.protoregions[&ProtoregionKind::Sensory];
-		for (area_name, cortical_area) in self.cortical_areas.iter_mut() {
+		for (_, cortical_area) in self.cortical_areas.iter_mut() {
 			cortical_area.cycle();
 		}
 	}

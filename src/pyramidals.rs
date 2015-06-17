@@ -70,7 +70,7 @@ impl PyramidalCellularLayer {
 		//let den_prox_slice = region.slice_ids(vec![spt_asc_layer.name])[0];
 		
 		//print!("\n### PyramidalCellularLayer: Proximal Dendrite Row: {}", den_prox_slice);
-		print!("\n      PYRAMIDALS::NEW(): dims: {:?}, axn_base_slice: {}", dims, axn_base_slice);
+		print!("\n      PYRAMIDALS::NEW(): layer: '{}' dims: {:?}, axn_base_slice: {}", layer_name, dims, axn_base_slice);
 
 		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
@@ -83,7 +83,7 @@ impl PyramidalCellularLayer {
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
 		let dens_dims = dims.clone_with_pcl2(dens_per_cel_l2 as i8);
-		let dens = Dendrites::new(dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl);
+		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl);
 
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle_working", 

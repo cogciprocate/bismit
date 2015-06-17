@@ -57,19 +57,12 @@ impl CorticalArea {
 
 		print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", name, 1 << dims.width_l2(), 1 << dims.height_l2(), dims.depth());
 
-		//let (depth_axonal, depth_cellular) = protoregion.depth();
-		
-		//let dims.width = areas.width(&protoregion.kind);
-		//let height = areas.height(&protoregion.kind);
 
 		let emsg_psal = format!("{}: Primary Spatial Associative Layer not defined.", emsg);
 		let psal_name = protoregion.layer_with_flag(layer::SPATIAL_ASSOCIATIVE).expect(&emsg_psal).name();
 
 		let emsg_ptal = format!("{}: Primary Temporal Associative Layer not defined.", emsg);
 		let ptal_name = protoregion.layer_with_flag(layer::TEMPORAL_ASSOCIATIVE).expect(&emsg_ptal).name();
-
-		//let psal_name = psal_name;
-		//let ptal_name = ptal_name;
 		
 
 			/* <<<<< BRING BACK >>>>> */
@@ -78,10 +71,8 @@ impl CorticalArea {
 		//assert!(DENDRITES_PER_CELL_DISTAL_LOG2 <= 8);
 		//assert!(DENDRITES_PER_CELL_DISTAL <= 256);
 		//assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);
-
-		//print!("\nCorticalArea::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
-
 		//assert!(depth_cellular > 0, "cortical_area::CorticalArea::new(): Region has no cellular layers.");
+		//print!("\nCorticalArea::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
 
 		let axns = Axons::new(dims, &protoregion, ocl);
 

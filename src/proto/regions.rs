@@ -479,13 +479,17 @@ impl Protoregion {
 		&self.layers
 	}
 
+	pub fn get_layer(&self, layer_name: &'static str) -> Option<&Protolayer> {
+		self.layers.get(layer_name)
+	}
+
 	pub fn slices_by_layer_name(&self, cell_kind: &ProtocellKind) -> Option<&Vec<&'static str>> {
 		self.cel_layer_kind_slice_lists.get(cell_kind)
 	}
 
 	pub fn slice_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
 		if !self.frozen { // REPLACE WITH ASSERT (evaluate release build implications first)
-			panic!("Protoregion must be frozen with freeze() before slice_ids can be called.");
+			panic!("Protoregion must be frozen with .freeze() before slice_ids can be called.");
 		}
 
 		let mut slice_ids = Vec::new();

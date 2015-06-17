@@ -28,10 +28,12 @@ use cortical_area:: { Aux };
 
 */
 
-const DEBUG_REGROWTH: bool = false;
+const DEBUG_NEW: bool = true;
+const DEBUG_GROW: bool = false;
 
 
 pub struct Synapses {
+	layer_name: &'static str,
 	dims: CorticalDimensions, 
 	protocell: Protocell,
 	protoregion: Protoregion,
@@ -51,7 +53,7 @@ pub struct Synapses {
 }
 
 impl Synapses {
-	pub fn new(dims: CorticalDimensions, protocell: Protocell, den_kind: DendriteKind, cell_kind: ProtocellKind, 
+	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, den_kind: DendriteKind, cell_kind: ProtocellKind, 
 					protoregion: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
 
 		let syns_per_cel_l2: u8 = protocell.dens_per_cel_l2 + protocell.syns_per_den_l2;
@@ -64,8 +66,9 @@ impl Synapses {
 
 		//let slice_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl); // BRING THIS BACK
 
-
-		print!("\n            SYNAPSES::NEW(): new {:?}, dims:{:?}", den_kind, dims);
+		if DEBUG_NEW {
+			print!("\n            SYNAPSES::NEW(): new {:?}, dims:{:?}", den_kind, dims);
+		}
 
 		let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl);
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
@@ -107,6 +110,7 @@ impl Synapses {
 		;*/
 
 		let mut syns = Synapses {
+			layer_name: layer_name,
 			dims: dims,
 			protocell: protocell,
 			protoregion: protoregion.clone(),
@@ -133,8 +137,15 @@ impl Synapses {
 		syns
 	}
 
+
+	/*	SYNAPSES::GROW(): This whole thing needs a massive amount of reworking
+			- We no longer have one contiguous space
+			- Tons of info in self.protocell we could use instead of protoregion calls
+				- Look towards depricating calls to protoregion
+
+	*/
 	fn grow(&mut self, init: bool) {
-		if DEBUG_REGROWTH && !init {
+		if DEBUG_GROW && !init {
 			print!("\nRG:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:(..)(..)(..)]\n", self.den_kind);
 		}
 
@@ -147,24 +158,62 @@ impl Synapses {
 		self.confab();
 
 		let syns_per_slice = self.dims.per_slice();
-		//self.dims.columns() << self.dims.per_cel_l2;
-		//let mut rng = rand::weak_rng();
+		let layer_name = self.layer_name;
+		// CLEAN THIS UP A BIT SOMEHOW...
+		let layer = self.protoregion.get_layer(layer_name).expect("Synapses::grow()::emsg1").clone();
+
+		let src_slice_ids = match self.src_slice_ids(layer_name, &layer) {
+			Some(ss_ids) => ss_ids,
+			None 		=> panic!("Synapses::grow(): src_slice_ids() returned 'None', probably a bad layer_name"),
+		};
+
+		let slice_ids = self.protoregion.slice_ids(vec!(layer_name)).clone();
+		let src_slice_ids_len: usize = src_slice_ids.len();
+
+		assert!(src_slice_ids_len > 0, "Synapses must have at least one source slice");
+
+		//let kind_base_slice_pos = layer.kind_base_slice_pos; // BASED ON OLD SYSTEM
+		let src_slice_idx_range: Range<usize> = Range::new(0, src_slice_ids_len);
+		let src_col_xy_offs_range: Range<i8> = Range::new(-126, 127);
+		let strength_init_range: Range<i8> = Range::new(-3, 4);
+		
+		assert!(src_slice_ids_len <= (self.dims.per_cel().expect("synapses.rs")) as usize, "cortical_area::Synapses::init(): Number of source slices must not exceed number of synapses per cell.");
+
+		if init && DEBUG_GROW {
+			print!("\n#####    syns.init(): \"{}\" ({:?}): slice_ids: {:?}, src_slice_ids: {:?}", layer_name, self.den_kind, slice_ids, src_slice_ids);
+		}
+
+		/* LOOP THROUGH ROWS (WITHIN LAYER) */
+		for slice_pos in 0..layer.depth {
+
+			let ei_start = syns_per_slice as usize * slice_pos as usize;
+
+			let ei_end = ei_start + syns_per_slice as usize;
+
+			if init && DEBUG_GROW {
+				print!("\n   Row {}: syns_per_slice:{}, ei_start:{}, ei_end:{}, src_slice_ids:{:?}", slice_pos, syns_per_slice, ei_start, ei_end, src_slice_ids);
+			}
+
+			/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
+			for i in ei_start..ei_end {
+				if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
+
+					self.regrow_syn(i, &src_slice_idx_range, &src_col_xy_offs_range,
+						&strength_init_range, &src_slice_ids, init);
+
+					//self.src_slice_ids[i] = src_slice_ids[src_slice_idx_range.ind_sample(&mut self.rng)];
+					//self.src_col_xy_offs[i] = src_col_xy_offs_range.ind_sample(&mut self.rng);
+					//self.strengths[i] = (self.src_col_xy_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+				}
+			}
+		}
+
+
 
 		/* LOOP THROUGH ALL LAYERS */
-		for (&layer_name, layer) in self.protoregion.layers().clone().iter() {
-			/*let src_slice_ids_opt: Vec<u8> = match layer.kind {
-				ProtolayerKind::Cellular(ref cell) => {
-					if cell.cell_kind == self.cell_kind {
-						self.protoregion.src_slice_ids(layer_name, self.den_kind)
-					} else {
-						continue
-					}
-				},
-				_ => continue,
-			};*/
-
+		/*for (&layer_name, layer) in self.protoregion.layers().clone().iter() {
 			let src_slice_ids = match self.src_slice_ids(layer_name, layer) {
-				Some(ssids) => ssids,
+				Some(ss_ids) => ss_ids,
 				None 		=> continue,
 			};
 
@@ -180,7 +229,7 @@ impl Synapses {
 			
 			assert!(src_slice_ids_len <= (self.dims.per_cel().expect("synapses.rs")) as usize, "cortical_area::Synapses::init(): Number of source slices must not exceed number of synapses per cell.");
 
-			if init {
+			if init && DEBUG_GROW {
 				print!("\n#####    syns.init(): \"{}\" ({:?}): slice_ids: {:?}, src_slice_ids: {:?}", layer_name, self.den_kind, slice_ids, src_slice_ids);
 			}
 
@@ -191,7 +240,9 @@ impl Synapses {
 
 				let ei_end = ei_start + syns_per_slice as usize;
 
-				print!("\n   Row {}: syns_per_slice:{}, ei_start:{}, ei_end:{}, src_slice_ids:{:?}", slice_pos, syns_per_slice, ei_start, ei_end, src_slice_ids);
+				if init && DEBUG_GROW {
+					print!("\n   Row {}: syns_per_slice:{}, ei_start:{}, ei_end:{}, src_slice_ids:{:?}", slice_pos, syns_per_slice, ei_start, ei_end, src_slice_ids);
+				}
 
 				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
 				for i in ei_start..ei_end {
@@ -206,12 +257,55 @@ impl Synapses {
 					}
 				}
 			}
-		}
+		}*/
 
 		self.strengths.write();
 		self.src_col_xy_offs.write();
 		self.src_slice_ids.write();		
 	}
+
+
+	fn regrow_syn(&mut self, 
+				syn_idx: usize, 
+				src_slice_idx_range: &Range<usize>, 
+				src_col_xy_offs_range: &Range<i8>,
+				strength_init_range: &Range<i8>,
+				src_slice_ids: &Vec<u8>,
+				init: bool,
+	) {
+		//let src_slice_idx_range: Range<usize> = Range::new(0, src_slice_ids.len());
+		//let src_col_xy_offs_range: Range<i8> = Range::new(-127, 127);
+		//let strength_init_range: Range<i8> = Range::new(-3, 4);
+
+		//let src_slice_id
+		//let src_col_x_off
+		//let strength
+		let mut print_str: String = String::with_capacity(10);
+
+		let mut tmp_str = format!("[({})({})({})=>", self.src_slice_ids[syn_idx], self.src_col_xy_offs[syn_idx],  self.strengths[syn_idx]);
+		print_str.push_str(&tmp_str);
+
+		for i in 0..200 {
+			self.src_slice_ids[syn_idx] = src_slice_ids[src_slice_idx_range.ind_sample(&mut self.rng)];
+			self.src_col_xy_offs[syn_idx] = src_col_xy_offs_range.ind_sample(&mut self.rng);
+			self.strengths[syn_idx] = (self.src_col_xy_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+
+			if self.unique_src_addr(syn_idx) {
+				print_str.push_str("$");
+				break;
+			} else {
+				print_str.push_str("^");
+			}
+		}
+
+		tmp_str = format!("=>({})({})({})] ", self.src_slice_ids[syn_idx], self.src_col_xy_offs[syn_idx],  self.strengths[syn_idx]);
+		print_str.push_str(&tmp_str);
+
+		if DEBUG_GROW && !init {
+			print!("{}", print_str);
+		}
+	}
+	
 
 	pub fn cycle(&self) {
 		self.kern_cycle.enqueue();
@@ -259,46 +353,6 @@ impl Synapses {
 
 	// NEEDS SERIOUS OPTIMIZATION
 	// Cache and sort by axn_idx (pre_compute, keep seperate list) for each dendrite
-	fn regrow_syn(&mut self, 
-				syn_idx: usize, 
-				src_slice_idx_range: &Range<usize>, 
-				src_col_xy_offs_range: &Range<i8>,
-				strength_init_range: &Range<i8>,
-				src_slice_ids: &Vec<u8>,
-				init: bool,
-	) {
-		//let src_slice_idx_range: Range<usize> = Range::new(0, src_slice_ids.len());
-		//let src_col_xy_offs_range: Range<i8> = Range::new(-127, 127);
-		//let strength_init_range: Range<i8> = Range::new(-3, 4);
-
-		//let src_slice_id
-		//let src_col_x_off
-		//let strength
-		let mut print_str: String = String::with_capacity(10);
-
-		let mut tmp_str = format!("[({})({})({})=>", self.src_slice_ids[syn_idx], self.src_col_xy_offs[syn_idx],  self.strengths[syn_idx]);
-		print_str.push_str(&tmp_str);
-
-		for i in 0..200 {
-			self.src_slice_ids[syn_idx] = src_slice_ids[src_slice_idx_range.ind_sample(&mut self.rng)];
-			self.src_col_xy_offs[syn_idx] = src_col_xy_offs_range.ind_sample(&mut self.rng);
-			self.strengths[syn_idx] = (self.src_col_xy_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
-
-			if self.unique_src_addr(syn_idx) {
-				print_str.push_str("$");
-				break;
-			} else {
-				print_str.push_str("^");
-			}
-		}
-
-		tmp_str = format!("=>({})({})({})] ", self.src_slice_ids[syn_idx], self.src_col_xy_offs[syn_idx],  self.strengths[syn_idx]);
-		print_str.push_str(&tmp_str);
-
-		if DEBUG_REGROWTH && !init {
-			print!("{}", print_str);
-		}
-	}
 
 	fn unique_src_addr(&self, syn_idx: usize) -> bool {
 		let syns_per_den_l2 = self.protocell.syns_per_den_l2;
