@@ -47,7 +47,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 		Envoy::_new(0, dims, vec, ocl)
 	}
 
-	pub fn _new(padding: u32, dims: CorticalDimensions, mut vec: Vec<T>, ocl: &Ocl) -> Envoy<T> {
+	fn _new(padding: u32, dims: CorticalDimensions, mut vec: Vec<T>, ocl: &Ocl) -> Envoy<T> {
 		//println!("New Envoy with depth: {}, width: {}, padding: {}", depth, width, padding);
 
 		let buf: ocl::cl_mem = ocl::new_buffer(&mut vec, ocl.context);

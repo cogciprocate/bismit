@@ -95,12 +95,12 @@ impl Ocl {
 
 
 	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
-	pub fn new_write_buffer<T>(&self, data: &Vec<T>) -> cl_h::cl_mem {
+	pub fn new_write_buffer<T>(&self, data: &[T]) -> cl_h::cl_mem {
 		new_write_buffer(data, self.context)
 	}
 
 	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
-	pub fn new_read_buffer<T>(&self, data: &Vec<T>) -> cl_h::cl_mem {
+	pub fn new_read_buffer<T>(&self, data: &[T]) -> cl_h::cl_mem {
 		new_read_buffer(data, self.context)
 	}
 
@@ -130,7 +130,7 @@ impl Ocl {
 	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 	pub fn enqueue_read_buffer<T>(
 					&self,
-					data: &Vec<T>,
+					data: &[T],
 					buffer: cl_h::cl_mem, 
 	) {
 		enqueue_read_buffer(data, buffer, self.command_queue);
@@ -315,7 +315,7 @@ pub fn new_command_queue(
 
 
 // <<<<< CONVERT FROM VEC TO SLICE >>>>>
-pub fn new_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
+pub fn new_buffer<T>(data: &[T], context: cl_h::cl_context) -> cl_h::cl_mem {
 	let mut err: cl_h::cl_int = 0;
 	unsafe {
 		let buf = cl_h::clCreateBuffer(
@@ -332,7 +332,7 @@ pub fn new_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
 }
 
 // <<<<< CONVERT FROM VEC TO SLICE >>>>>
-pub fn new_write_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
+pub fn new_write_buffer<T>(data: &[T], context: cl_h::cl_context) -> cl_h::cl_mem {
 	let mut err: cl_h::cl_int = 0;
 	unsafe {
 		let buf = cl_h::clCreateBuffer(
@@ -349,7 +349,7 @@ pub fn new_write_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl
 }
 
 // <<<<< CONVERT FROM VEC TO SLICE >>>>>
-pub fn new_read_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_mem {
+pub fn new_read_buffer<T>(data: &[T], context: cl_h::cl_context) -> cl_h::cl_mem {
 	let mut err: cl_h::cl_int = 0;
 	unsafe {
 		let buf = cl_h::clCreateBuffer(
@@ -366,7 +366,7 @@ pub fn new_read_buffer<T>(data: &Vec<T>, context: cl_h::cl_context) -> cl_h::cl_
 
 // <<<<< CONVERT FROM VEC TO SLICE >>>>>
 pub fn enqueue_write_buffer<T>(
-					data: &Vec<T>,
+					data: &[T],
 					buffer: cl_h::cl_mem, 
 					command_queue: cl_h::cl_command_queue,
 					offset: usize,
@@ -391,7 +391,7 @@ pub fn enqueue_write_buffer<T>(
 
 // <<<<< CONVERT FROM VEC TO SLICE >>>>>
 pub fn enqueue_read_buffer<T>(
-				data: &Vec<T>,
+				data: &[T],
 				buffer: cl_h::cl_mem, 
 				command_queue: cl_h::cl_command_queue,
 ) {

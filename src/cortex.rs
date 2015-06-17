@@ -130,7 +130,7 @@ impl Cortex {
 				- Handle multi-slice input vectors (for input compression, etc.)
 					- Update assert statement to support this
 	*/
-	pub fn write_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
+	pub fn write_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &[ocl::cl_uchar]) {
 		let emsg = "cortex::Cortex::write_vec()";
 		let ref region = self.protoregions[&ProtoregionKind::Sensory];
 		let axn_slices: Vec<u8> = region.slice_ids(vec!(layer_target));
@@ -143,12 +143,12 @@ impl Cortex {
 
 			//assert!(vec.len() <= self.cortical_area.dims.columns() as usize); // <<<<< NEEDS CHANGING (for multi-slice inputs)
 
-			ocl::enqueue_write_buffer(&vec, self.cortical_areas.get(area_name).expect(emsg).axns.states.buf, self.ocl.command_queue, buffer_offset);
+			ocl::enqueue_write_buffer(vec, self.cortical_areas.get(area_name).expect(emsg).axns.states.buf, self.ocl.command_queue, buffer_offset);
 		}
 	}
 
 
-	pub fn sense_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &Vec<ocl::cl_uchar>) {
+	pub fn sense_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &[ocl::cl_uchar]) {
 		self.write_vec(area_name, layer_target, vec);
 		self.cycle();
 	}
