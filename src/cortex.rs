@@ -10,6 +10,7 @@ use ocl::{ self, Ocl, CorticalDimensions };
 use cmn;
 use chord::{ Chord };
 use cortical_area:: { self, CorticalArea };
+use thalamus::{ Thalamus };
 use proto::regions::{ self, Protoregion, Protoregions, ProtoregionKind };
 use proto::areas::{ self, Protoareas, ProtoareasTrait, Protoarea };
 use proto::layer::{ self, Protolayer, ProtolayerKind, ProtoaxonKind };
@@ -54,8 +55,8 @@ pub fn define_protoregions() -> Protoregions {
 
 pub fn define_protoareas() -> Protoareas {
 	let mut protoareas = Protoareas::new()
-		.area("v1", 5, 5, ProtoregionKind::Sensory, Some("v1"))
-		//.area("a1", 4, 4, ProtoregionKind::Sensory, None)
+		.area("v1", 5, 5, ProtoregionKind::Sensory, Some(vec!["a1"]))
+		.area("a1", 4, 4, ProtoregionKind::Sensory, None)
 	;
 
 	protoareas
@@ -67,7 +68,8 @@ pub struct Cortex {
 	protoregions: Protoregions,
 	protoareas: Protoareas,
 	cortical_areas: HashMap<&'static str, Box<CorticalArea>>,
-	ocl: ocl::Ocl,
+	thalamus: Thalamus,
+	ocl: ocl::Ocl, // GIVE TO THALAMUS
 }
 
 impl Cortex {
@@ -92,24 +94,7 @@ impl Cortex {
 			cortical_areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.name, protoregions[&protoarea.region_kind].clone(), protoarea.clone(), &ocl)));
 		}
 
-
-		/*let mut cortical_area_1: cortical_area::CorticalArea = {
-			let protoregion = protoregions[&ProtoregionKind::Sensory].clone();
-			let protoarea = protoareas["v1"].clone();
-			CorticalArea::new("v1", protoregion, protoarea, &ocl)
-		};
-
-		cortical_areas.insert(cortical_area_1.name, Box::new(cortical_area_1));*/
-
-		/*let mut cortical_area_2: cortical_area::CorticalArea = {
-			let protoregion = protoregions[&ProtoregionKind::Sensory].clone();
-			let protoarea = protoareas["v1"].clone();
-			CorticalArea::new("v1_b", protoregion, protoarea, &ocl)
-		};
-
-		cortical_areas.insert(cortical_area_2.name, Box::new(cortical_area_2));*/
-
-
+		let thalamus = Thalamus::new(&protoareas);
 
 		let time_complete = time::get_time() - time_start;
 		println!("\n\n... Cortex initialized in: {}.{} sec.", time_complete.num_seconds(), time_complete.num_milliseconds());
@@ -119,7 +104,8 @@ impl Cortex {
 			protoregions: protoregions,
 			protoareas: protoareas,
 			cortical_areas: cortical_areas,
-			ocl: ocl,
+			thalamus: thalamus,
+			ocl: ocl, // GIVE TO THALAMUS
 		}
 	}
 

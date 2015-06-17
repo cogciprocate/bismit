@@ -13,24 +13,11 @@ use proto::regions::{ ProtoregionKind };
 pub trait ProtoareasTrait {
 	fn new() -> Protoareas;
 	fn add(&mut self, protoarea: Protoarea);
-	fn area(mut self, name: &'static str, width: u8, height: u8, region_kind: ProtoregionKind, afferent_area: Option<&'static str>) -> Protoareas;
+	fn area(mut self, name: &'static str, width: u8, height: u8, region_kind: ProtoregionKind, afferent_area: Option<Vec<&'static str>>) -> Protoareas;
 }
 
 
 pub type Protoareas = HashMap<&'static str, Protoarea>;
-
-/*impl Width for Protoareas {
-	fn width(&self, cr_type: &ProtoregionKind) -> u32 {
-		let mut width = 0u32;
-		for (area_name, area) in self.iter() {
-			if area.region_kind == *cr_type {
-				width += area.width;
-			}
-		}
-		width
-	}
-}*/
-
 
 impl ProtoareasTrait for Protoareas {
 	fn new() -> Protoareas {
@@ -43,12 +30,12 @@ impl ProtoareasTrait for Protoareas {
 		self.insert(name, protoarea);
 	}
 
-	fn area(mut self, name: &'static str, width_l2: u8, height_l2: u8, region_kind: ProtoregionKind, afferent_area: Option<&'static str>) -> Protoareas {
+	fn area(mut self, name: &'static str, width_l2: u8, height_l2: u8, region_kind: ProtoregionKind, afferent_areas: Option<Vec<&'static str>>) -> Protoareas {
 		let mut new_area = Protoarea { 
 			name: name,
 			dims: CorticalDimensions::new(width_l2, height_l2, 0, 0),
 			region_kind: region_kind,
-			afferent_area: afferent_area,
+			afferent_areas: afferent_areas,
 		};
 
 		self.add(new_area);
@@ -60,13 +47,11 @@ impl ProtoareasTrait for Protoareas {
 pub struct Protoarea {
 	pub name: &'static str,
 	pub dims: CorticalDimensions,
-	//pub width: u32,
-	//pub height: u32,
 	pub region_kind: ProtoregionKind,
-	pub afferent_area: Option<&'static str>,
+	pub afferent_areas: Option<Vec<&'static str>>,
 }
 
-impl Copy for Protoarea {}
+//impl Copy for Protoarea {}
 
 /*impl Protoarea {
 	pub fn width(&self) -> u32 {

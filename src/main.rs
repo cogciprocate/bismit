@@ -35,6 +35,7 @@ mod spiny_stellates;
 //mod cort_seg;
 //mod thalamus;
 mod cortex;
+mod thalamus;
 //mod protocell;
 //mod sub_cortex;
 //mod test_miccos;
