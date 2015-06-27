@@ -25,8 +25,8 @@ impl MotorState {
 			turn_left: turn_left,
 			sdr_left: sdr_left,
 			sdr_right: sdr_right,
-			left_str: "Left",
-			right_str: "Right",
+			left_str: "left",
+			right_str: "right",
 		}
 	}
 

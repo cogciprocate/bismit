@@ -34,7 +34,7 @@ use spiny_stellates::{ SpinyStellateCellularLayer };
 */
 pub struct Minicolumns {
 	dims: CorticalDimensions,
-	axn_output_slice: u8,
+	axn_output_slc: u8,
 	ff_layer_axn_idz: usize,
 	//kern_cycle: ocl::Kernel,
 	//kern_post_inhib: ocl::Kernel,
@@ -73,13 +73,13 @@ impl Minicolumns {
 		/*let ssts = ssts_map.get(psal_name).expect("minicolumns.rs");
 		let pyrs = pyrs_map.get(ptal_name).expect("minicolumns.rs");*/
 		//let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
-		//let syns_per_cel: u32 = 1 << syns_per_den_l2;
+		//let syns_per_grp: u32 = 1 << syns_per_den_l2;
 
 		let (ff_layer_axn_idz, _) = sstl.axn_range();
 
 		let pyr_depth = protoregion.depth_cell_kind(&ProtocellKind::Pyramidal);
 
-		//let pyr_axn_base_slice = protoregion.base_slice_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
+		//let pyr_axn_base_slc = protoregion.base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -96,18 +96,18 @@ impl Minicolumns {
 			ProtocellKind::SpinyStellate, protoregion, axons, aux, ocl);*/
 
 		let (sstl_axn_idz, _) = sstl.axn_range();
-		//let axn_output_slice = sstl.base_axn_slice();
+		//let axn_output_slc = sstl.base_axn_slc();
 
 
-		let axn_output_slice = protoregion.aff_out_slices()[0];
+		let axn_output_slc = protoregion.aff_out_slcs()[0];
 
 
-		/*let output_slices = protoregion.aff_out_slices();
-		assert!(output_slices.len() == 1);
-		let axn_output_slice = output_slices[0];
-		let ssts_slice_ids = protoregion.slice_ids(vec!["iv_old"]);
-		let ssts_axn_base_slice = ssts_slice_ids[0];
-		let ssts_axn_idz_old = cmn::axn_idx_2d(ssts_axn_base_slice, dims.columns(), protoregion.hrz_demarc());
+		/*let output_slcs = protoregion.aff_out_slcs();
+		assert!(output_slcs.len() == 1);
+		let axn_output_slc = output_slcs[0];
+		let ssts_slc_ids = protoregion.slc_ids(vec!["iv_old"]);
+		let ssts_axn_base_slc = ssts_slc_ids[0];
+		let ssts_axn_idz_old = cmn::axn_idx_2d(ssts_axn_base_slc, dims.columns(), protoregion.hrz_demarc());
 		assert!(ssts_axn_idz == ssts_axn_idz_old as usize);*/
 
 		//println!("\n ##### ssts_axn_idz: {}", ssts_axn_idz);
@@ -125,7 +125,7 @@ impl Minicolumns {
 			.arg_env(&iinn.spi_ids)
 			.arg_env(&iinn.states)
 			.arg_env(&iinn.wins)
-			.arg_scl(layer.base_slice_pos() as u32)
+			.arg_scl(layer.base_slc_pos() as u32)
 			.arg_env(&ssts.soma())
 			.arg_env(&axons.states)
 		;*/
@@ -138,15 +138,15 @@ impl Minicolumns {
 			//.arg_scl(depth)
 			.arg_scl(sstl_axn_idz as u32)
 			.arg_scl(pyr_depth)
-			//.arg_scl(pyr_axn_base_slice)
-			.arg_scl(axn_output_slice)
+			//.arg_scl(pyr_axn_base_slc)
+			.arg_scl(axn_output_slc)
 			.arg_env(&cels_status)
 			.arg_env(&best_pyr_den_states)
 			.arg_env(&axons.states)
 		;
 
 
-		/*let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slice() as usize))
+		/*let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&iinn.spi_ids)
 			.arg_env(&iinn.states)
 			.arg_env(&dens.syns.states)
@@ -161,7 +161,7 @@ impl Minicolumns {
 
 		Minicolumns {
 			dims: dims,
-			axn_output_slice: axn_output_slice,
+			axn_output_slc: axn_output_slc,
 			ff_layer_axn_idz: ff_layer_axn_idz,
 			//kern_cycle: kern_cycle,
 			//kern_post_inhib: kern_post_inhib,
@@ -199,10 +199,10 @@ impl Minicolumns {
 		self.ff_layer_axn_idz
 	}
 
-	// <<<<< FIX THIS NOT TO SUBTRACT THE EXTRA 1 FROM IDN >>>>>
+	// <<<<< FIX THIS NOT TO SUBTRACT THE EXTRA 1 FROM IDN (AND TO OUTPUT AN ops::Range >>>>>
 	pub fn axn_output_range(&self) -> (usize, usize) {
-		//println!("self.axn_output_slice: {}, self.dims.columns(): {}, cmn::SYNAPSE_REACH_LIN: {}", self.axn_output_slice as usize, self.dims.columns() as usize, cmn::SYNAPSE_REACH_LIN);
-		let start = (self.axn_output_slice as usize * self.dims.columns() as usize) + cmn::SYNAPSE_REACH_LIN as usize;
-		(start, start + (self.dims.per_slice() - 1) as usize)
+		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::SYNAPSE_REACH_LIN: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::SYNAPSE_REACH_LIN);
+		let start = (self.axn_output_slc as usize * self.dims.columns() as usize) + cmn::SYNAPSE_REACH_LIN as usize;
+		(start, start + (self.dims.per_slc() - 1) as usize)
 	}
 }

@@ -25,21 +25,21 @@ pub struct Envoy<T> {
 }
 impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive + UpperHex> Envoy<T> {
 	pub fn new(dims: CorticalDimensions, init_val: T, ocl: &Ocl) -> Envoy<T> {
-		let len = dims.len() as usize;
+		let len = dims.physical_len() as usize;
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
 		Envoy::_new(0, dims, vec, ocl)
 	}
 
 	pub fn with_padding(padding: u32, dims: CorticalDimensions, init_val: T, ocl: &Ocl) -> Envoy<T> {
-		let len = (dims.len() + padding) as usize;
+		let len = (dims.physical_len() + padding) as usize;
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
 		Envoy::_new(padding, dims, vec, ocl)
 	}
 
 	pub fn shuffled(dims: CorticalDimensions, min_val: T, max_val: T, ocl: &Ocl) -> Envoy<T> {
-		let len = dims.len() as usize;
+		let len = dims.physical_len() as usize;
 		//println!("shuffled(): len: {}", len);
 		let vec: Vec<T> = cmn::shuffled_vec(len, min_val, max_val);
 		//println!("shuffled(): vec.len(): {}", vec.len());
@@ -58,7 +58,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 			padding: padding,
 			//width: width,
 			//depth: depth,
-			dims: dims,
+			dims: dims.clone(),
 			ocl: ocl.clone(),
 		};
 
@@ -75,7 +75,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 	}
 
 	pub fn read(&mut self) {
-		ocl::enqueue_read_buffer(&mut self.vec, self.buf, self.ocl.command_queue);
+		ocl::enqueue_read_buffer(&mut self.vec, self.buf, self.ocl.command_queue, 0);
 	}
 
 	/*pub fn width(&self) -> u32 {
@@ -95,7 +95,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 
 	pub fn len(&self) -> usize {
 		//println!("self.dims.len(): {} == self.vec.len(): {}", self.dims.len(),  self.vec.len());
-		assert!((self.dims.len() + self.padding) as usize == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
+		assert!(((self.dims.physical_len() + self.padding) as usize) == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
 		self.vec.len()
 	}
 

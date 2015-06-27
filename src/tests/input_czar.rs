@@ -133,10 +133,12 @@ impl InputCzar {
 	}
 
 	pub fn sense(&self, cortex: &mut Cortex) {
-		cortex.write_vec("v1", "thal", &self.vec_optical);
-		cortex.write_vec("v1", "motor", &self.vec_motor);
-		//cortex.write_vec("v1", "test_noise", &self.vec_test_noise);
-		cortex.cycle();
+		cortex.write_input("v1", &self.vec_optical);
+		//cortex.write_input("v2", &self.vec_optical); // *****
+		//cortex.write_input("a1", &self.vec_optical); // *****
+		cortex.write("v1", "motor", &self.vec_motor);
+		//cortex.write("v1", "test_noise", &self.vec_test_noise);
+		cortex.cycle("v1");
 	}
 
 	fn tick(&mut self) -> usize {
@@ -192,12 +194,12 @@ pub enum InputVecKind {
 }*/
 
 
-pub fn sdr_stripes(stripe_size: usize, vec: &mut Vec<u8>) {
+pub fn sdr_stripes(stripe_size: usize, vec: &mut [u8]) {
 	for i in 0..vec.len() {
 		if (i & stripe_size) == 0 {
-			vec[i] = 0;
-		} else {
 			vec[i] = 1;
+		} else {
+			vec[i] = 0;
 		}
 	}
 }

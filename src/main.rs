@@ -1,17 +1,18 @@
 #![allow(non_camel_case_types, dead_code, unused_variables, unused_mut, unused_assignments, unused_imports,)]
-
-//#![feature(rand, io, collections, path, libc, std_misc, old_path)]
-#![feature(collections)]
+#![feature(vec_push_all, clone_from_slice)]
 
 extern crate num;
 extern crate microcosm;
 extern crate libc;
 extern crate time;
+extern crate yaml_rust;
 
 #[macro_use]
 extern crate rand;
 #[macro_use] 
 extern crate bitflags;
+#[macro_use] 
+extern crate enum_primitive;
 
 
 
@@ -68,8 +69,11 @@ fn main() {
 	//test_miccos::run();
 	
 
+	// <<<<< MOVE THIS TO CMN AND MAKE A FUNCTION FOR IT >>>>>
 	let time_complete = time::get_time() - time_start;
-	println!("\n====== Bismit: main() complete in: {}.{} sec. ======", time_complete.num_seconds(), time_complete.num_milliseconds());
+	let t_sec = time_complete.num_seconds();
+	let t_ms = time_complete.num_milliseconds() - (t_sec * 1000);
+	println!("\n====== Bismit: main() complete in: {}.{} seconds ======", t_sec, t_ms);
 }
 
 

@@ -45,8 +45,9 @@ impl WorkSize {
 		}
 	}
 
-	/* THIS IS POTENTIALLY VERY BUGGY SINCE THE POINTER TO 's' IS LEFT DANGLING 
-		FIX IT ASAP
+	/* AS_PTR():
+		THIS COULD BE BUGGY SINCE THE POINTER TO 's' IS LEFT DANGLING
+		TODO: CHECK INTO IT
 	*/
 	pub fn as_ptr(&self) -> *const libc::size_t {
 

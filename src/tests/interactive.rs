@@ -11,6 +11,7 @@ use time;
 use ocl;
 use cmn;
 use cortex::{ self, Cortex };
+use proto::layer;
 use super::output_czar;
 //use super::synapse_drill_down;
 use super::input_czar::{ self, InputCzar, InputVecKind };
@@ -19,9 +20,9 @@ use super::hybrid;
 //use ocl::{ Envoy };
 
 
-pub const INITIAL_TEST_ITERATIONS: i32 	= 1; 
-pub const STATUS_EVERY: i32 			= 5000;
-pub const PRINT_DETAILS_EVERY: i32		= 10000;
+pub const INITIAL_TEST_ITERATIONS: i32 		= 1; 
+pub const STATUS_EVERY: i32 				= 5000;
+pub const PRINT_DETAILS_EVERY: i32			= 10000;
 
 pub const TOGGLE_DIRS: bool 				= false;
 pub const INTRODUCE_NOISE: bool 			= false;
@@ -36,9 +37,9 @@ pub const COUNTER_RANDOM: bool				= false;
 */
 pub fn run(autorun_iters: i32) -> bool {
 	let mut cortex = cortex::Cortex::new(cortex::define_protoregions(), cortex::define_protoareas());
-	let area_name = "v1";
+	let mut area_name = "a1".to_string();
 	let inhib_layer_name = "iv_inhib";
-	let sc_columns = cortex.area(area_name).dims.columns();
+	let sc_columns = cortex.area(&area_name).dims.columns();
 	let mut input_czar = InputCzar::new(sc_columns, InputVecKind::World, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
 
 	let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(sc_columns as usize).collect();
@@ -59,8 +60,6 @@ pub fn run(autorun_iters: i32) -> bool {
 
 	loop {
 		/*######### COMMAND LINE #########*/
-		let vso = if view_sdr_only { "sdr" } else { "all" };
-
 		bypass_act = false;
 
 		if test_iters == 0 {
@@ -73,8 +72,16 @@ pub fn run(autorun_iters: i32) -> bool {
 				first_run = false;
 				"\n".to_string()
 			} else {
-				rin(format!("<{}>bismit: [q]uit [i]ters [v]iew [a]xons [t]ests [m]otor [it={} v={} m={} ci={}]", 
-					cur_ttl_iters, test_iters, vso, input_czar.motor_state.cur_str(), input_czar.counter()))
+				let axn_state = if view_all_axons { "on" } else { "off" };
+				let view_state = if view_sdr_only { "sdr" } else { "all" };
+
+				rin(format!("bismit: [{ttl_i}/({loop_i})]: [v]iew:[{}] [a]xons:[{}] \
+					[m]otor:[{}] a[r]ea:[{}] [t]ests [q]uit [i]ters:[{iters}]", 
+					view_state, axn_state, input_czar.motor_state.cur_str(), area_name, 
+					iters = test_iters,
+					loop_i = input_czar.counter(), 
+					ttl_i = cur_ttl_iters,
+				))
 			};
 
 
@@ -94,48 +101,56 @@ pub fn run(autorun_iters: i32) -> bool {
 							 //continue;
 						},
 						None    => {
-							print!("\nInvalid number.");
+							print!("\nInvalid number.\n");
 							continue;
 						},
 					}
 				}
 
+			} else if "r\n" == in_string {
+				let in_str = rin(format!("area name"));
+				let in_s1 = in_str.trim();
+				area_name = in_s1.to_string();
+				continue;
+
 			} else if "v\n" == in_string {
 				view_sdr_only = !view_sdr_only;
 				bypass_act = true;
 
-
 			} else if "\n" == in_string {
-				// Go
-
+				// DO NOT REMOVE
 
 			} else if "a\n" == in_string {
 				view_all_axons = !view_all_axons;
 				bypass_act = true;
 
-
 			} else if "t\n" == in_string {
 				bypass_act = true;
-				let in_s = rin(format!("tests: [f]ract [c]ycles [l]earning [a]ctivate"));
+				let in_s = rin(format!("tests: [f]ract [c]ycles [l]earning [a]ctivate a[r]ea_output o[u]tput"));
 
 				if "p\n" == in_s {
 					//synapse_drill_down::print_pyrs(&mut cortex);
 					continue;
 
-				} else if "m\n" == in_s {
-					//synapse_drill_down::print_mcols(&mut cortex);
+				} else if "u\n" == in_s {
+					let in_str = rin(format!("area name"));
+					let in_s1 = in_str.trim();
+					let out_len = cortex.area(&in_s).dims.columns();
+					let mut t_vec: Vec<u8> = iter::repeat(0).take(out_len as usize).collect();
+					cortex.area_mut(&in_s).read_output(&mut t_vec, layer::AFFERENT_OUTPUT);
+					cmn::print_vec_simple(&t_vec);
 					continue;
 
 				} else if "c\n" == in_s {
-					hybrid::test_cycles(&mut cortex, area_name);
+					hybrid::test_cycles(&mut cortex, &area_name);
 					continue;
 
 				} else if "l\n" == in_s {
-					hybrid::test_learning(&mut cortex, inhib_layer_name, area_name);
+					hybrid::test_learning(&mut cortex, inhib_layer_name, &area_name);
 					continue;
 
 				} else if "a\n" == in_s {
-					hybrid::test_activation_and_learning(&mut cortex, area_name);
+					hybrid::test_activation_and_learning(&mut cortex, &area_name);
 					continue;
 
 				} else if "f\n" == in_s {
@@ -163,6 +178,14 @@ pub fn run(autorun_iters: i32) -> bool {
 
 					let tvec = cmn::gen_fract_sdr(seed, 256 * c_factor);
 					cmn::print_vec_simple(&tvec[..]);
+					continue;
+
+				} else if "r\n" == in_s {
+					let in_str = rin(format!("area name"));
+					let in_s = in_str.trim();
+					//let in_int: Option<u8> = in_s.trim().parse().ok();
+
+					cortex.print_area_output(&in_s);
 					continue;
 
 				} else {
@@ -214,7 +237,7 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			if i % PRINT_DETAILS_EVERY == 0 || i < 0 {
 				if !view_sdr_only { 
-					output_czar::print_sense_only(&mut cortex); 
+					output_czar::print_sense_only(&mut cortex, &area_name); 
 				} else { 
 					//print!("\n");
 				}
@@ -236,20 +259,20 @@ pub fn run(autorun_iters: i32) -> bool {
 		loop {
 			if i >= (test_iters) { break; }
 
-			let (out_start, out_end) = cortex.area(area_name).mcols.axn_output_range();
+			let (out_start, out_end) = cortex.area(&area_name).mcols.axn_output_range();
 
-			let (ssts_axn_idz, ssts_axn_idn) = cortex.area_mut(area_name).psal_mut().axn_range();
+			let (ssts_axn_idz, ssts_axn_idn) = cortex.area_mut(&area_name).psal_mut().axn_range();
 			{
 
 				// <<<<< FIX THIS INDEX NOT TO HAVE TO ADD AN EXTRA 1 >>>>>
-				let out_slice_prev = &cortex.area(area_name).axns.states.vec[out_start..(out_end + 1)];
+				let out_slc_prev = &cortex.area(&area_name).axns.states.vec[out_start..(out_end + 1)];
 
-				let ff_slice_prev = &cortex.area(area_name).axns.states.vec[ssts_axn_idz..ssts_axn_idn];
-				//let ff_slice_prev = &cortex.area(area_name).psal_mut().dens.states.vec[..];
+				let ff_slc_prev = &cortex.area(&area_name).axns.states.vec[ssts_axn_idz..ssts_axn_idn];
+				//let ff_slc_prev = &cortex.area(&area_name).psal_mut().dens.states.vec[..];
 
 
-				vec_out_prev.clone_from_slice(out_slice_prev);
-				vec_ff_prev.clone_from_slice(ff_slice_prev);
+				vec_out_prev.clone_from_slice(out_slc_prev);
+				vec_ff_prev.clone_from_slice(ff_slc_prev);
 			}
 
 			if !bypass_act {
@@ -266,26 +289,28 @@ pub fn run(autorun_iters: i32) -> bool {
 					cmn::print_vec(&input_czar.vec_optical[..], 1 , None, None, false);
 				}
 
-				output_czar::print_sense_and_print(&mut cortex);
+				output_czar::print_sense_and_print(&mut cortex, &area_name);
 			}
 
-			// REQUIRES cortex.area(area_name).axns.states TO BE FILLED BY .print() unless:
+			// REQUIRES cortex.area(&area_name).axns.states TO BE FILLED BY .print() unless:
 
-			if view_sdr_only { cortex.area_mut(area_name).psal_mut().dens.states.read(); }
+			if view_sdr_only { cortex.area_mut(&area_name).psal_mut().dens.states.read(); }
 
-			cortex.area_mut(area_name).axns.states.read();
+			cortex.area_mut(&area_name).axns.states.read();
 
-			let out_slice = &cortex.area(area_name).axns.states.vec[out_start..(out_end + 1)];
-			let ff_slice = &cortex.area(area_name).axns.states.vec[ssts_axn_idz..ssts_axn_idn];
-			//let ff_slice = &cortex.area(area_name).psal_mut().dens.states.vec[..];
+			let out_slc = &cortex.area(&area_name).axns.states.vec[out_start..(out_end + 1)];
+			let ff_slc = &cortex.area(&area_name).axns.states.vec[ssts_axn_idz..ssts_axn_idn];
+			//let ff_slc = &cortex.area(&area_name).psal_mut().dens.states.vec[..];
 
-			cmn::render_sdr(out_slice, Some(ff_slice), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.area(area_name).protoregion().slice_map(), true, cortex.area(area_name).dims.columns());
+			print!("\n'{}' output:", &area_name);
+
+			cmn::render_sdr(out_slc, Some(ff_slc), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
 
 			if view_all_axons {
 				print!("\n\nAXON SPACE:\n");
-				let axn_space_len = cortex.area(area_name).axns.states.vec.len();
+				let axn_space_len = cortex.area(&area_name).axns.states.vec.len();
 
-				cmn::render_sdr(&cortex.area(area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(area_name).protoregion().slice_map(), true, cortex.area(area_name).dims.columns());
+				cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
 			}
 
 			i += 1;
@@ -316,16 +341,6 @@ struct Command {
 	text: &'static str,
 }
 
-/*struct Parameter {
-
-}
-
-struct Section {
-
-}*/
-
-
-
 
 
 fn rin(prompt: String) -> String {
@@ -338,6 +353,7 @@ fn rin(prompt: String) -> String {
 
 fn parse_num(in_s: String) -> Option<i32> {
 	in_s.trim().replace("k","000").parse().ok()
+	//in_s.trim().replace("m","000000").parse().ok()
 }
 
 

@@ -1,11 +1,15 @@
-#define LTD_BIAS_LOG2				0
-#define LTP_BIAS_LOG2				0
-#define ENERGY_SETTING 				4
-#define ENERGY_RECHARGE				1
+#define LTD_BIAS_LOG2					0
+#define LTP_BIAS_LOG2					0
+#define ENERGY_SETTING 					4
+#define ENERGY_RECHARGE					1
 
 #define FLAG_ON(flag_set, mask)			((flag_set) |= (mask))
 #define FLAG_OFF(flag_set, mask)		((flag_set) &= ~(mask))
 #define FLAG_TEST(flag_set, mask)		(((flag_set) & (mask)) == (mask))
+
+#define ENERGY_LEVEL_MIN				9		
+#define ENERGY_LEVEL_MAX				255
+#define ENERGY_REGEN_AMOUNT				1
 
 
 /*  bismit.cl: CONVENTIONS
@@ -35,35 +39,35 @@ static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_
 
 
 /* AXN_IDX_2D(): Axon Address Resolution
-	- We must calculate the address for both the horizontal slice and spatial (vertical) slice case.
-		- When calculating vertical slices: 
-			- Simply multiply slice_id * slice dims.width and add offset, cell column id, and global padding (SYNAPSE_REACH_LIN).
-		- When calculating horizontal slices:
-			- Horizontal slices are always physically after spatial slices within axn_states so we must add that space first (HARF * slice_columns). That gets us to the beginning of horizontal slice space after padding is added (padding = SYNAPSE_REACH_LIN).
-			- We then multiply SYNAPSE_SPAN_LIN (which is SYNAPSE_REACH_LIN * 2) by the horizontal slice_id to get to the correct horizontal slice.
-			- We must add padding + an extra SYNAPSE_REACH_LIN to get us to the middle of the slice.
+	- We must calculate the address for both the horizontal slc and spatial (vertical) slc case.
+		- When calculating vertical slcs: 
+			- Simply multiply slc_id * slc dims.width and add offset, cell column id, and global padding (SYNAPSE_REACH_LIN).
+		- When calculating horizontal slcs:
+			- Horizontal slcs are always physically after spatial slcs within axn_states so we must add that space first (HARF * slc_columns). That gets us to the beginning of horizontal slc space after padding is added (padding = SYNAPSE_REACH_LIN).
+			- We then multiply SYNAPSE_SPAN_LIN (which is SYNAPSE_REACH_LIN * 2) by the horizontal slc_id to get to the correct horizontal slc.
+			- We must add padding + an extra SYNAPSE_REACH_LIN to get us to the middle of the slc.
 			- We then apply the offset (col_ofs) to get to the exact axon_idx.
-			- col_id is irrelevant and unused for horiz. slices.
+			- col_id is irrelevant and unused for horiz. slcs.
 		
 	- As always, for performance reasons we calculate both cases and multiply by a bool rather than branch
 
 
-	- [in progress] Accommodate horizontal axon slices, slices which are nonspatial and look the same from any column in a region.
+	- [in progress] Accommodate horizontal axon slcs, slcs which are nonspatial and look the same from any column in a region.
 		- Rows above HORIZONTAL_AXON_ROW_DEMARCATION are considered horizontal and will be mapped to the rear of axn_states.
 	- [incomplete] Specific unit tests
-	- [incomplete] #define slice_columns 
+	- [incomplete] #define slc_columns 
 
 */ 
-static inline uint axn_idx_2d(uchar slice_id, uint slice_columns, uint col_id, char col_ofs) {
+static inline uint axn_idx_2d(uchar slc_id, uint slc_columns, uint col_id, char col_ofs) {
 
-	uint axn_idx_spt = mad24((uint)slice_id, slice_columns, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
+	uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
 
-	int hslice_id = slice_id - HORIZONTAL_AXON_ROW_DEMARCATION;
-	int hcol_id = mad24(hslice_id, SYNAPSE_SPAN_LIN, col_ofs + SYNAPSE_REACH_LIN);
-	uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slice_columns, (uint)(hcol_id + SYNAPSE_REACH_LIN));
+	int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
+	int hcol_id = mad24(hslc_id, SYNAPSE_SPAN_LIN, col_ofs + SYNAPSE_REACH_LIN);
+	uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_columns, (uint)(hcol_id + SYNAPSE_REACH_LIN));
 
 	
-	return mul24((uint)(hslice_id < 0), axn_idx_spt) + mul24((uint)(hslice_id >= 0), axn_idx_hrz);
+	return mul24((uint)(hslc_id < 0), axn_idx_spt) + mul24((uint)(hslc_id >= 0), axn_idx_hrz);
 }
 
 
@@ -106,12 +110,12 @@ static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
 static inline void cel_syns_trm( 			// TERMINATION
 				__global uchar const* const syn_states,
 				uint const syn_idx_start,	// (syn_idz)
-				uint const syns_per_cel_l2, // MAKE THIS A CONSTANT SOMEDAY
+				uint const syns_per_grp_l2, // MAKE THIS A CONSTANT SOMEDAY
 				uint const rnd,
 				__global uchar* const syn_flag_sets,
 				__global char* const syn_strengths
 ) {
-	uint const n = syn_idx_start + (1 << syns_per_cel_l2);
+	uint const n = syn_idx_start + (1 << syns_per_grp_l2);
 
 	for (uint i = syn_idx_start; i < n; i++) {
 		uchar const syn_state = syn_states[i];
@@ -208,7 +212,7 @@ static inline void prx_syns__active__ltp_ltd(
 			event_t async_work_group_copy(__global T *dst, const __local T *src, size_t num_elements, event_t event)
 			void wait_group_events (int num_events, event_t *event_list)
 		- Globalize wherever possible:
-			- slice_columns
+			- slc_columns
 			- 
 
 	CLEAN UP:
@@ -220,12 +224,12 @@ static inline void prx_syns__active__ltp_ltd(
 
 /* 
 COL_SYNS_CYCLE():
-		number of source slices can not exceed: 
+		number of source slcs can not exceed: 
 			ROWS * (SYNAPSES_PER_CELL_PROXIMAL + SYNAPSE_WORKGROUP_SIZE)
 
 	TODO:
 		- Vectorize!
-		- Col Inputs/Outputs probably need to be limited to one slice.
+		- Col Inputs/Outputs probably need to be limited to one slc.
 			- This isn't feasable. Need to intelligently prefetch:
 				- syns_cycle() will need knowledge of which axon ranges it's expected to read from
 
@@ -236,39 +240,39 @@ COL_SYNS_CYCLE():
 __kernel void syns_cycle(
 				__global uchar const* const axn_states,
 				__global char const* const syn_src_col_xy_offs,
-				__global uchar const* const syn_src_slice_ids,
+				__global uchar const* const syn_src_slc_ids,
 				//__global char const* const syn_strengths,
-				__private uchar const syns_per_cel_l2,
+				__private uchar const syns_per_grp_l2,
 				//__global int* const aux_ints_0,
 				__global uchar* const syn_states
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
+	uint const slc_columns = get_global_size(1);
 	uint const l_id = get_local_id(1); 
 	uint const wg_id = get_group_id(1);
 	uint const wg_size = get_local_size(1);
 	
 	uint const base_col_id = mul24(wg_id, wg_size);
-	uint const base_cel_idx = mad24(slice_id, slice_columns, base_col_id);
+	uint const base_cel_idx = mad24(slc_id, slc_columns, base_col_id);
 
-	uint const base_syn_idx = (base_cel_idx << syns_per_cel_l2);
+	uint const base_syn_idx = (base_cel_idx << syns_per_grp_l2);
 	uint const init_syn_idx = base_syn_idx + l_id;
 
-	uint const syns_per_slice = slice_columns << syns_per_cel_l2;
-	uint const syns_per_wg = wg_size << syns_per_cel_l2;
+	uint const syns_per_slc = slc_columns << syns_per_grp_l2;
+	uint const syns_per_wg = wg_size << syns_per_grp_l2;
 
 	uint const syn_n = base_syn_idx + syns_per_wg;
 
-	int syn_sst_i = (base_col_id << syns_per_cel_l2) + l_id;
+	int syn_sst_i = (base_col_id << syns_per_grp_l2) + l_id;
 	uint syn_idx = init_syn_idx;
 
-	uint aux_idx = mad24(slice_id, slice_columns, col_id); // DEBUG
+	uint aux_idx = mad24(slc_id, slc_columns, col_id); // DEBUG
 
 	for (; syn_idx < syn_n; syn_idx += wg_size) {
-		syn_sst_i -= mul24((int)syns_per_slice, (syn_sst_i >= syns_per_slice));
-		int sst_pos = syn_sst_i >> syns_per_cel_l2;
-		uint axn_idx = axn_idx_2d(syn_src_slice_ids[syn_idx], slice_columns, sst_pos, syn_src_col_xy_offs[syn_idx]);
+		syn_sst_i -= mul24((int)syns_per_slc, (syn_sst_i >= syns_per_slc));
+		int sst_pos = syn_sst_i >> syns_per_grp_l2;
+		uint axn_idx = axn_idx_2d(syn_src_slc_ids[syn_idx], slc_columns, sst_pos, syn_src_col_xy_offs[syn_idx]);
 		uchar axn_state = axn_states[axn_idx];
 		
 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
@@ -284,7 +288,7 @@ __kernel void syns_cycle(
 
 	//aux_ints_0[0] = HORIZONTAL_AXON_ROW_DEMARCATION;
 
-	//uint aux_idx = mad24(slice_id, slice_columns, col_id);
+	//uint aux_idx = mad24(slc_id, slc_columns, col_id);
 	//aux_ints_0[aux_idx] = l_id;
 	//aux_ints_0[aux_idx] = syn_idx;
 	//aux_ints_0[base_cel_idx] = 12321;
@@ -317,10 +321,111 @@ __kernel void den_cycle(
 				//__global int* const aux_ints_1,
 				__global uchar* const den_states
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const den_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const den_idx = mad24(slice_id, slice_columns, den_id);
+	uint const slc_columns = get_global_size(1);
+	uint const den_idx = mad24(slc_id, slc_columns, den_id);
+	uint const syn_ofs = den_idx << syns_per_den_l2;
+
+	uchar den_energy = den_energies[den_idx];
+
+	int syn_sum = 0;
+	int syn_sum_raw = 0;
+
+	int const n = (1 << syns_per_den_l2);
+
+	for (int i = 0; i < n; i += 1) {
+		char syn_strength = syn_strengths[syn_ofs + i];
+
+		//uchar syn_state = mul24((syn_states[syn_ofs + i] > 0), 1);
+		uchar syn_state = syn_states[syn_ofs + i]; 
+
+		//syn_sum += syn_state;
+		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
+		
+		syn_sum_raw += syn_state;
+	}
+	
+	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
+
+
+	if (syn_sum != 0) {
+		if (den_energy >= ENERGY_LEVEL_MIN) {
+			den_energy -= ENERGY_LEVEL_MIN;
+			//output_state = best1_den_state; 	// NEW
+		} else {
+			den_energy += ENERGY_REGEN_AMOUNT;
+			syn_sum = 0; 						// NEW
+		}
+	} else {
+		if (den_energy < ENERGY_LEVEL_MAX) {
+			den_energy += ENERGY_REGEN_AMOUNT;
+		}
+	}
+
+
+	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255); 
+	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); 
+
+	//den_states_raw[den_idx] = clamp(syn_sum_raw, 0, 255); 	// UNUSED
+	//den_states[den_idx] = clamp(syn_sum, 0, 255);	 			// UNUSED
+
+	//aux_ints_1[den_idx] = clamp((syn_sum >> 7), 0, 255); 		// DEBUGGING
+}
+
+
+/* //############################### ORIGINAL ###############################
+
+
+//######################## WORKSPACE ###########################
+
+// EXPERIMENTAL ENERGY CODE -- WORKING -- (FROM PYR_CYCLE)
+	if (input_state > 0) {
+		if (energy >= 9) {
+			energy -= 9;
+			output_state = best1_den_state;
+		} else {
+			energy += 1;
+		}
+	} else {
+		if (energy < 255) {
+			energy += 1;
+		}
+	}
+
+
+// EXPERIMENTAL ENERGY CODE (FROM DEN_CYCLE)
+
+	if (input_state > 0) {
+		if (energy >= ENERGY_DRAIN) {
+			energy -= ENERGY_DRAIN;
+		} else {
+			output_state = 0;
+			energy += ENERGY_RECHARGE;
+		}
+	} else {
+		if (energy < 255) {
+			energy += ENERGY_RECHARGE;
+		}
+	}
+
+
+//###############################################################
+
+__kernel void den_cycle_original(
+				__global uchar const* const syn_states,
+				__global char const* const syn_strengths,
+				__private uchar const syns_per_den_l2,
+				__private uint const den_threshold,
+				__global uchar* const den_energies,
+				__global uchar* const den_states_raw,
+				//__global int* const aux_ints_1,
+				__global uchar* const den_states
+) {
+	uint const slc_id = get_global_id(0);
+	uint const den_id = get_global_id(1);
+	uint const slc_columns = get_global_size(1);
+	uint const den_idx = mad24(slc_id, slc_columns, den_id);
 	uint const syn_ofs = den_idx << syns_per_den_l2;
 
 	int syn_sum = 0;
@@ -353,8 +458,7 @@ __kernel void den_cycle(
 
 	//aux_ints_1[den_idx] = clamp((syn_sum >> 7), 0, 255);
 }
-
-
+*/ //################################ END #######################################
 
 
 __kernel void peak_sst_cycle_pre(
@@ -363,10 +467,10 @@ __kernel void peak_sst_cycle_pre(
 				__global uchar* const asp_sst_ids
 	
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const asp_pos = mad24(slice_id, slice_columns, asp_id);
+	uint const slc_columns = get_global_size(1);
+	uint const asp_pos = mad24(slc_id, slc_columns, asp_id);
 	uint const asp_idx = (asp_pos + ASPINY_REACH);
 	uint const sst_ofs = asp_pos << ASPINY_SPAN_LOG2;
 
@@ -418,10 +522,10 @@ __kernel void peak_sst_cycle_wins(
 				__global uchar* const asp_states,
 				__global uchar* const asp_wins
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const asp_pos = mad24(slice_id, slice_columns, asp_id);
+	uint const slc_columns = get_global_size(1);
+	uint const asp_pos = mad24(slc_id, slc_columns, asp_id);
 	uint const asp_idx = (asp_pos + ASPINY_REACH);
 
 	uint const as_bitmask = (ASPINY_SPAN - 1);
@@ -471,10 +575,10 @@ __kernel void peak_sst_cycle_post(
 				__global uchar* const asp_states
 				//__global uchar* const sst_states
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const asp_pos = mad24(slice_id, slice_columns, asp_id);
+	uint const slc_columns = get_global_size(1);
+	uint const asp_pos = mad24(slc_id, slc_columns, asp_id);
 	uint const asp_idx = (asp_pos + ASPINY_REACH);
 	//uint const sst_ofs = asp_pos << ASPINY_SPAN_LOG2;
 
@@ -496,16 +600,16 @@ __kernel void sst_post_inhib_unoptd (
 				__global uchar const* const asp_sst_ids,
 				__global uchar const* const asp_states,
 				__global uchar const* const asp_wins,
-				__private uchar const sst_axn_slice,
+				__private uchar const sst_axn_slc,
 				__global uchar* const sst_states,
 				__global uchar* const axn_states
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const sst_idx = mad24(slice_id, slice_columns, col_id);
-	uint const axn_idx = axn_idx_2d(sst_axn_slice, slice_columns, col_id, 0);
-	//uint const axn_idx = mad24(sst_axn_slice, slice_columns, sst_idx + (uint)SYNAPSE_REACH_LIN);
+	uint const slc_columns = get_global_size(1);
+	uint const sst_idx = mad24(slc_id, slc_columns, col_id);
+	uint const axn_idx = axn_idx_2d(sst_axn_slc, slc_columns, col_id, 0);
+	//uint const axn_idx = mad24(sst_axn_slc, slc_columns, sst_idx + (uint)SYNAPSE_REACH_LIN);
 	uint const asp_idx = (sst_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
 
 	uchar const asp_state = asp_states[asp_idx];
@@ -532,16 +636,18 @@ __kernel void sst_ltp(
 				__global uchar const* const syn_states,
 				//__global uchar const* const sst_states,
 				__private uint const cel_axn_idz,
-				__private uchar const syns_per_cel_l2,
-				__private uint const cels_per_grp,
+				__private uchar const syns_per_grp_l2,
+				//__private uint const cels_per_grp,
 				__private uint const rnd,
 				//__global int* const aux_ints_0,
 				__global char* const syn_strengths
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const col_grp_id = get_global_id(1);
 	uint const grp_size = get_global_size(1);
-	uint const cel_grp_id = mad24(slice_id, grp_size, col_grp_id);
+	uint const cel_grp_id = mad24(slc_id, grp_size, col_grp_id);
+
+	uint cels_per_grp = get_local_size(1);
 
 	uint const cel_idz = mul24(cel_grp_id, cels_per_grp);
 	uint const cel_idn = cel_idz + cels_per_grp;
@@ -550,8 +656,8 @@ __kernel void sst_ltp(
 		uchar axn_state = axn_states[cel_axn_idz + cel_idx];
 		
 		if (axn_state) {
-			uint syn_idz = cel_idx << syns_per_cel_l2;	
-			prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_cel_l2, rnd, syn_strengths);
+			uint syn_idz = cel_idx << syns_per_grp_l2;	
+			prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_grp_l2, rnd, syn_strengths);
 		}
 
 		//aux_ints_0[cel_idx] = axn_state;
@@ -568,8 +674,8 @@ __kernel void pyr_activate(
 				__global uchar const* const den_states,
 
 				__private uint const ssts_axn_idz,
-				__private uchar const pyr_axn_slice_base,
-				__private uchar const dens_per_cel_l2,
+				__private uchar const pyr_axn_slc_base,
+				__private uchar const dens_per_grp_l2,
 				
 				//__global uchar* const pyr_energies,
 				__global uchar* const pyr_flag_sets,
@@ -577,18 +683,18 @@ __kernel void pyr_activate(
 				//__global int* const aux_ints_0,
 				__global uchar* const axn_states
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
-	uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id, 0);
+	uint const slc_columns = get_global_size(1);
+	uint const pyr_idx = mad24(slc_id, slc_columns, col_id);
+	uint const axn_idx = axn_idx_2d(pyr_axn_slc_base + slc_id, slc_columns, col_id, 0);
 
-	uint const den_ofs = pyr_idx << dens_per_cel_l2;			// REPLACE
+	uint const den_ofs = pyr_idx << dens_per_grp_l2;			// REPLACE
 	uint const best1_den_idx = den_ofs + pyr_best1_den_ids[pyr_idx];		// REPLACE
 
 	uchar const best1_den_state = den_states[best1_den_idx];				// CHANGE
 
-	//uint const axn_idx = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
+	//uint const axn_idx = mad24(pyr_axn_slc_base + slc_id, slc_columns, col_id + (uint)SYNAPSE_REACH_LIN);
 	uchar const mcol_best_col_den_state = mcol_best_pyr_den_states[col_id];
 	uchar const sst_axn_state = axn_states[ssts_axn_idz + col_id];
 	//uchar const mcol_state = mcol_states[col_id];
@@ -679,7 +785,7 @@ __kernel void pyrs_ltp_unoptd(
 				__global uchar const* const syn_states,
 				__private uint const pyr_axn_idx_base, 
 				__private uint const syns_per_den_l2,
-				__private uint const dens_per_cel_l2,
+				__private uint const dens_per_grp_l2,
 				__private uint const pyrs_per_wi,
 				__private uint const rnd,
 				__global uchar* const syn_flag_sets,
@@ -689,13 +795,13 @@ __kernel void pyrs_ltp_unoptd(
 				//__global int* const aux_ints_1,
 				__global char* const syn_strengths
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const col_grp_id = get_global_id(1);
-	uint const grps_per_slice = get_global_size(1);
-	uint const pyr_grp_id = mad24(slice_id, grps_per_slice, col_grp_id);
+	uint const grps_per_slc = get_global_size(1);
+	uint const pyr_grp_id = mad24(slc_id, grps_per_slc, col_grp_id);
 	//uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
 
-	//uint const axn_idx_base = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
+	//uint const axn_idx_base = mad24(pyr_axn_slc_base + slc_id, slc_columns, col_id + (uint)SYNAPSE_REACH_LIN);
 
 	uint const pyr_idz = mul24(pyr_grp_id, pyrs_per_wi);
 	uint const pyr_idn = pyr_idz + pyrs_per_wi;
@@ -719,7 +825,7 @@ __kernel void pyrs_ltp_unoptd(
 		int pyr_prev_fuzzy = (pyr_flag_set & PYR_PREV_FUZZY_FLAG) == PYR_PREV_FUZZY_FLAG;
 		int pyr_best_in_col = (pyr_flag_set & PYR_BEST_IN_COL_FLAG) == PYR_BEST_IN_COL_FLAG;
 
-		uint den_idx_base = i << dens_per_cel_l2;
+		uint den_idx_base = i << dens_per_grp_l2;
 
 		uint pyr_syn_idz = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
 		uint best1_den_syn_idz = (den_idx_base + pyr_best1_den_id) << syns_per_den_l2;
@@ -771,7 +877,7 @@ __kernel void pyrs_ltp_unoptd(
 
 		} else if (pyr_prev_concrete) { // TRM	
 
-			cel_syns_trm(syn_states, pyr_syn_idz, syns_per_den_l2 + dens_per_cel_l2, rnd, syn_flag_sets, syn_strengths);
+			cel_syns_trm(syn_states, pyr_syn_idz, syns_per_den_l2 + dens_per_grp_l2, rnd, syn_flag_sets, syn_strengths);
 
 			//learned_what = 3;
 
@@ -781,7 +887,7 @@ __kernel void pyrs_ltp_unoptd(
 
 
 		/*uint syn_idx = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
-		dst_syns_ltd_active(syn_states, syn_idx, (syns_per_den_l2 + dens_per_cel_l2), rnd, syn_flag_sets, syn_strengths);*/
+		dst_syns_ltd_active(syn_states, syn_idx, (syns_per_den_l2 + dens_per_grp_l2), rnd, syn_flag_sets, syn_strengths);*/
 
 		//pyr_flag_set &= ~PYR_PREV_FUZZY_FLAG;
 
@@ -796,7 +902,7 @@ __kernel void pyrs_ltp_unoptd(
 		
 
 		// TOTAL PYRS:
-		//aux_ints_1[i] = grps_per_slice * pyrs_per_wi * get_global_size(0);
+		//aux_ints_1[i] = grps_per_slc * pyrs_per_wi * get_global_size(0);
 
 		//aux_ints_1[i] = mul24(pyr_concrete, (int)pyr_axn_idx_base);
 		//aux_ints_1[i] = mul24(pyr_concrete, axn_states[i + pyr_axn_idx_base]);
@@ -813,26 +919,27 @@ __kernel void pyrs_ltp_unoptd(
 
 
 
-__kernel void pyr_cycle_working(
+__kernel void pyr_cycle(
 				__global uchar const* const den_states,
 				__global uchar const* const den_states_raw,
-				__private uchar const dens_per_cel_l2,
-				//__private uchar const pyr_axn_slice_base,
+				__private uint const den_grps_per_cel,
+				__private uchar const dens_per_grp_l2,
+				//__private uchar const pyr_axn_slc_base,
 				__global uchar* const pyr_energies,	// <<<<< SLATED FOR REMOVAL
 				__global uchar* const pyr_best1_den_ids,
 				__global uchar* const pyr_best1_den_states,
-				__global uchar* const pyr_best2_den_ids,
-				__global uchar* const pyr_best2_den_states,
+				//__global uchar* const pyr_best2_den_ids,
+				//__global uchar* const pyr_best2_den_states,
 				__global uchar* const pyr_preds
 				//__global uchar* const axn_states
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
-	uint const den_ofs = pyr_idx << dens_per_cel_l2;
-	//uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id);
-	//uint const axn_idx = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
+	uint const slc_columns = get_global_size(1);
+	uint const pyr_idx = mad24(slc_id, slc_columns, col_id);
+	uint const den_ofs = pyr_idx << dens_per_grp_l2;
+	//uint const axn_idx = axn_idx_2d(pyr_axn_slc_base + slc_id, slc_columns, col_id);
+	//uint const axn_idx = mad24(pyr_axn_slc_base + slc_id, slc_columns, col_id + (uint)SYNAPSE_REACH_LIN);
 	uchar pyr_energy = pyr_energies[pyr_idx];	// <<<<< SLATED FOR REMOVAL
 
 	//uint den_sum = 0;
@@ -849,7 +956,7 @@ __kernel void pyr_cycle_working(
 	//uint pyr_pred = pyr_preds[pyr_idx];
 
 		//#pragma unroll 
-	for (uchar i = 0; i < (1 << dens_per_cel_l2); i++) {
+	for (uchar i = 0; i < (1 << dens_per_grp_l2); i++) {
 		uchar den_state = den_states[den_ofs + i];
 		int den_state_bigger = (den_state > best1_den_state);
 
@@ -866,12 +973,11 @@ __kernel void pyr_cycle_working(
 		//den_sum += (den_state > 0);
 		//active_dendrites += (den_state > 0);
 	}
-	
-	//den_sum = den_sum >> 2;
 
-
+		
 	// EXPERIMENTAL ENERGY CODE  // <<<<< SLATED FOR REMOVAL
-	if (best1_den_state > 0) {
+	
+	/*if (best1_den_state > 0) {
 		if (pyr_energy >= 9) {
 			pyr_energy -= 9;
 			pyr_state = best1_den_state;
@@ -882,14 +988,16 @@ __kernel void pyr_cycle_working(
 		if (pyr_energy < 255) {
 			pyr_energy += 1;
 		}
-	}
+	}*/
+
+	pyr_state = best1_den_state; // YEAH... I KNOW...
 
 
-	pyr_energies[pyr_idx] = pyr_energy;	 // <<<<< SLATED FOR REMOVAL
+	//pyr_energies[pyr_idx] = pyr_energy;	 // <<<<< SLATED FOR REMOVAL
 	pyr_best1_den_ids[pyr_idx] = best1_den_id;
 	pyr_best1_den_states[pyr_idx] = best1_den_state;
-	pyr_best2_den_ids[pyr_idx] = best2_den_id;
-	pyr_best2_den_states[pyr_idx] = best2_den_state;
+	//pyr_best2_den_ids[pyr_idx] = best2_den_id;
+	//pyr_best2_den_states[pyr_idx] = best2_den_state;
 	pyr_preds[pyr_idx] = pyr_state;
 
 
@@ -912,23 +1020,23 @@ __kernel void col_output(
 
 				__global uchar const* const pyr_preds,
 				__global uchar const* const pyr_best1_den_states,
-				//__private uchar const sst_slice_count,
+				//__private uchar const sst_slc_count,
 				__private uint const sst_axn_idz,
 				__private uchar const pyr_depth,
-				//__private uchar const pyr_axn_base_slice,
-				__private uchar const output_axn_slice,
-				//__private uchar const pyr_base_slice,
+				//__private uchar const pyr_axn_base_slc,
+				__private uchar const output_axn_slc,
+				//__private uchar const pyr_base_slc,
 				__global uchar* const mcol_pyr_pred_flags,
 				__global uchar* const mcol_best_pyr_den_states,
 				__global uchar* const axn_states
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const output_axn_idx = axn_idx_2d(output_axn_slice + slice_id, slice_columns, col_id, 0);
-	//uint const output_axn_idx = mad24(output_axn_slice + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
-	//uint const axn_idx_output = axn_idx_wrap_2d(axn_slice_output, col_id);
-	uint const col_idx = mad24(slice_id, slice_columns, col_id);
+	uint const slc_columns = get_global_size(1);
+	uint const output_axn_idx = axn_idx_2d(output_axn_slc + slc_id, slc_columns, col_id, 0);
+	//uint const output_axn_idx = mad24(output_axn_slc + slc_id, slc_columns, col_id + (uint)SYNAPSE_REACH_LIN);
+	//uint const axn_idx_output = axn_idx_wrap_2d(axn_slc_output, col_id);
+	uint const col_idx = mad24(slc_id, slc_columns, col_id);
 
 	//int sst_state = sst_states[col_idx];
 	int sst_axn_state = axn_states[sst_axn_idz + col_idx];
@@ -937,7 +1045,7 @@ __kernel void col_output(
 
 	for (uint i = 0; i < pyr_depth; i++) {
 		// POTENTIALLY FALSE ASSUMPTION HERE ABOUT PYR CELLS ALL BEING INVOLVED IN OUTPUT
-		uint pyr_idx = mad24(i, slice_columns, col_id);	
+		uint pyr_idx = mad24(i, slc_columns, col_id);	
 
 		uchar pyr_best1_den_state = pyr_best1_den_states[pyr_idx];
 		uchar pyr_pred = pyr_preds[pyr_idx];
@@ -1019,12 +1127,12 @@ static inline void dst_syns__active__stp_std_experimental( // ANOMALY & CRYSTALL
 static inline void cel_syns_trm_experimental( // TERMINATION
 				__global uchar const* const syn_states,
 				uint const syn_idx_start,	// (syn_idz)
-				uint const syns_per_cel_l2, // MAKE THIS A CONSTANT SOMEDAY
+				uint const syns_per_grp_l2, // MAKE THIS A CONSTANT SOMEDAY
 				uint const rnd,
 				__global uchar* const syn_flag_sets,
 				__global char* const syn_strengths
 ) {
-	uint const n = syn_idx_start + (1 << syns_per_cel_l2);
+	uint const n = syn_idx_start + (1 << syns_per_grp_l2);
 
 	for (uint i = syn_idx_start; i < n; i++) {
 		uchar const syn_state = syn_states[i];
@@ -1062,8 +1170,8 @@ static inline void cel_syns_trm_experimental( // TERMINATION
 __kernel void pyr_cycle_experimental( // EXPERIMENTAL VERSION
 				__global uchar const* const den_states,
 				__global uchar const* const den_states_raw,
-				//__private uchar const pyr_axn_slice_base,
-				__private uchar const dens_per_cel_l2,
+				//__private uchar const pyr_axn_slc_base,
+				__private uchar const dens_per_grp_l2,
 				__global uchar* const pyr_energies,
 				__global uchar* const pyr_best1_den_ids,
 				__global uchar* const pyr_best1_den_states,
@@ -1072,13 +1180,13 @@ __kernel void pyr_cycle_experimental( // EXPERIMENTAL VERSION
 				__global uchar* const pyr_preds
 				//__global uchar* const axn_states
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const pyr_idx = mad24(slice_id, slice_columns, col_id);
-	uint const den_ofs = pyr_idx << dens_per_cel_l2;
-	//uint const axn_idx = axn_idx_2d(pyr_axn_slice_base + slice_id, slice_columns, col_id);
-	//uint const axn_idx = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
+	uint const slc_columns = get_global_size(1);
+	uint const pyr_idx = mad24(slc_id, slc_columns, col_id);
+	uint const den_ofs = pyr_idx << dens_per_grp_l2;
+	//uint const axn_idx = axn_idx_2d(pyr_axn_slc_base + slc_id, slc_columns, col_id);
+	//uint const axn_idx = mad24(pyr_axn_slc_base + slc_id, slc_columns, col_id + (uint)SYNAPSE_REACH_LIN);
 	//uchar pyr_energy = pyr_energies[pyr_idx];
 
 	//uint den_sum = 0;
@@ -1095,7 +1203,7 @@ __kernel void pyr_cycle_experimental( // EXPERIMENTAL VERSION
 	//uint pyr_pred = pyr_preds[pyr_idx];
 
 		//#pragma unroll 
-	for (uchar i = 0; i < (1 << dens_per_cel_l2); i++) {
+	for (uchar i = 0; i < (1 << dens_per_grp_l2); i++) {
 		uchar den_state = den_states[den_ofs + i];
 		uchar den_state_raw = den_states_raw[den_ofs + i];
 
@@ -1151,10 +1259,10 @@ __kernel void den_cycle_experimental(
 				__global uchar* const den_states_raw,
 				__global uchar* const den_states
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const den_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const den_idx = mad24(slice_id, slice_columns, den_id);
+	uint const slc_columns = get_global_size(1);
+	uint const den_idx = mad24(slc_id, slc_columns, den_id);
 	uint const syn_ofs = den_idx << syns_per_den_l2;
 
 	uchar den_energy = den_energies[den_idx];
@@ -1213,10 +1321,10 @@ __kernel void sst_ltp_old(
 				//__global int* const aux_ints_0,
 				__global char* const syn_strengths
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const asp_pos = mad24(slice_id, slice_columns, asp_id);
+	uint const slc_columns = get_global_size(1);
+	uint const asp_pos = mad24(slc_id, slc_columns, asp_id);
 	uint const asp_idx = (asp_pos + ASPINY_REACH);
 
 	uint const sst_idx = asp_sst_id_to_sst_idx(asp_idx, (asp_sst_ids[asp_idx]));
@@ -1237,13 +1345,13 @@ __kernel void sst_ltp_old(
 /* SYNS_REGROW()
 
 	- [done] check for dead synapses (syn_strength < 127)
-	- [partial] replace with new random src_col_xy_offs and src_slice_id
+	- [partial] replace with new random src_col_xy_offs and src_slc_id
 	- [partial] scan through synapses on that dendrite to check for duplicates
 	- [changed] repeat if duplicate found
 	- [done] abort if duplicate found
 
 	FUTURE CORRECTIONS:
-		- actually assign a new src_slice
+		- actually assign a new src_slc
 			- either generate it host side and use the same one for every 
 				synapse or, better yet...
 			- store a pre-generated array of randomly distributed columns 
@@ -1263,22 +1371,22 @@ __kernel void syns_regrow_deprec(
 				__private uint const rnd,
 				//__global int* const aux_ints_1,
 				__global char* const syn_src_col_xy_offs,
-				__global uchar* const syn_src_slice_ids
+				__global uchar* const syn_src_slc_ids
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const syn_idx = mad24(slice_id, slice_columns, col_id);
+	uint const slc_columns = get_global_size(1);
+	uint const syn_idx = mad24(slc_id, slc_columns, col_id);
 
 	char const syn_strength = syn_strengths[syn_idx];
 
-	//uchar rnd_slice_id = 0;
+	//uchar rnd_slc_id = 0;
 
 	if (syn_strength > SYNAPSE_STRENGTH_FLOOR) {
 		return;
 	} else {
 		char rnd_col_ofs = clamp(-127, 127, (int)((rnd ^ ((syn_idx << 5) ^ (syn_idx >> 3))) & 0xFF));
-		//rnd_slice_id = ((rnd >> 8) & 0xFF);		// CHOOSE FROM PRE-BUILT ARRAY
+		//rnd_slc_id = ((rnd >> 8) & 0xFF);		// CHOOSE FROM PRE-BUILT ARRAY
 
 			// CHECK FOR DUPLICATES 
 
@@ -1287,7 +1395,7 @@ __kernel void syns_regrow_deprec(
 
 		for (uint i = base_syn_idx; i < n; i++) {
 			int dup = (rnd_col_ofs == syn_src_col_xy_offs[syn_idx]);		// ADD && ROW CHECK
-			//int dup_slice = ^^^^^^
+			//int dup_slc = ^^^^^^
 
 			if (!dup) {
 				continue;
@@ -1301,7 +1409,7 @@ __kernel void syns_regrow_deprec(
 
 		syn_strengths[syn_idx] = 0;	
 		syn_src_col_xy_offs[syn_idx] = rnd_col_ofs;
-		//syn_src_slice_ids[syn_idx] =
+		//syn_src_slc_ids[syn_idx] =
 
 			//aux_ints_1[syn_idx] = syn_strength;
 	}
@@ -1311,7 +1419,7 @@ __kernel void syns_regrow_deprec(
 	syn_src_col_xy_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
 	syn_strengths[syn_idx] = mul24(!(dead_syn), (int)syn_strength);*/
 
-	//syn_src_slice_ids[syn_idx] =
+	//syn_src_slc_ids[syn_idx] =
 
 }
 
@@ -1359,7 +1467,7 @@ __kernel void syns_regrow_deprec(
 	__global uchar const* const syn_states,
 	__private uint const pyr_axn_idx_base, 
 	__private uint const syns_per_den_l2,
-	__private uint const dens_per_cel_l2,
+	__private uint const dens_per_grp_l2,
 	__private uint const pyrs_per_wi,
 	__private uint const rnd,
 	//__global int* const aux_ints_1,
@@ -1367,13 +1475,13 @@ __kernel void syns_regrow_deprec(
 	__global uchar* const pyr_prev_best1_den_ids,
 	__global char* const syn_strengths
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const col_grp_id = get_global_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const pyr_grp_idx = mad24(slice_id, slice_columns, col_grp_id);
+	uint const slc_columns = get_global_size(1);
+	uint const pyr_grp_idx = mad24(slc_id, slc_columns, col_grp_id);
 	//uint const den_ofs = pyr_idx << DENDRITES_PER_CELL_DISTAL_LOG2;
 
-	//uint const axn_idx_base = mad24(pyr_axn_slice_base + slice_id, slice_columns, col_id + (uint)SYNAPSE_REACH_LIN);
+	//uint const axn_idx_base = mad24(pyr_axn_slc_base + slc_id, slc_columns, col_id + (uint)SYNAPSE_REACH_LIN);
 
 	uint const pyr_idz = mul24(pyr_grp_idx, pyrs_per_wi);
 	uint const pyr_idx_n = pyr_idz + pyrs_per_wi;	
@@ -1388,7 +1496,7 @@ __kernel void syns_regrow_deprec(
 		uchar pyr_prev_best1_den_id = pyr_prev_best1_den_ids[i];
 		uchar pyr_flag_set = pyr_flag_sets[i];
 
-		uint den_idx_init = (i << dens_per_cel_l2);
+		uint den_idx_init = (i << dens_per_grp_l2);
 		uint syn_idx = ((den_idx_init + pyr_best1_den_id) << syns_per_den_l2);
 
 		int pyr_prev_concrete = (pyr_flag_set & PYR_PREV_CONCRETE_FLAG) == PYR_PREV_CONCRETE_FLAG;
@@ -1442,11 +1550,11 @@ __kernel void syns_regrow_deprec(
 	__private uint const syns_per_den_l2,
 	__global uchar* const den_states
 ) {
-	uint const slice_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);
 	uint const den_id = get_global_id(1);
 	//uint const l_id = get_local_id(1);
-	uint const slice_columns = get_global_size(1);
-	uint const den_idx = mad24(slice_id, slice_columns, den_id);
+	uint const slc_columns = get_global_size(1);
+	uint const den_idx = mad24(slc_id, slc_columns, den_id);
 	//uint const syn4_per_den_l2 = syns_per_den_l2 - 2;
 	//uint const syn_ofs = den_idx << syn4_per_den_l2;
 	uint const syn_ofs = den_idx << syns_per_den_l2;

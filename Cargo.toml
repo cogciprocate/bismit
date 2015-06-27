@@ -8,6 +8,7 @@ bitflags = "0.1.1"
 rand = "0.3.5"
 num = "0.1.19"
 libc = "0.1.5"
+enum_primitive = "0.0.2"
 
 [dependencies.microcosm]
 git = "https://github.com/cogciprocate/microcosm.git"
@@ -15,12 +16,14 @@ git = "https://github.com/cogciprocate/microcosm.git"
 [dependencies.time]
 git = "https://github.com/rust-lang/time.git"
 
+[dependencies.yaml-rust]
+git = "https://github.com/chyh1990/yaml-rust.git"
+
 #[dependencies.bitflags]
 #git = "https://github.com/rust-lang/bitflags.git"
 
 
-
 # Comment
-# 
+
 
 

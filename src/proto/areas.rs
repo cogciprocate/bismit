@@ -4,16 +4,10 @@ use ocl::{ CorticalDimensions };
 use proto::regions::{ ProtoregionKind };
 
 
-
-
-/*pub trait Width {
-	fn width(&self, cr_type: &ProtoregionKind) -> u32;
-}*/
-
 pub trait ProtoareasTrait {
 	fn new() -> Protoareas;
 	fn add(&mut self, protoarea: Protoarea);
-	fn area(mut self, name: &'static str, width: u8, height: u8, region_kind: ProtoregionKind, afferent_area: Option<Vec<&'static str>>) -> Protoareas;
+	fn area(mut self, name: &'static str, width: u32, height: u32, region_kind: ProtoregionKind, afferent_area: Option<Vec<&'static str>>) -> Protoareas;
 }
 
 
@@ -30,10 +24,21 @@ impl ProtoareasTrait for Protoareas {
 		self.insert(name, protoarea);
 	}
 
-	fn area(mut self, name: &'static str, width_l2: u8, height_l2: u8, region_kind: ProtoregionKind, afferent_areas: Option<Vec<&'static str>>) -> Protoareas {
+	fn area(
+				mut self, 
+				name: &'static str, 
+				width: u32, 
+				height: u32, 
+				/*width_l2: u8, 
+				height_l2: u8, */
+				region_kind: ProtoregionKind, 
+				afferent_areas: Option<Vec<&'static str>>,
+	) -> Protoareas {
+
 		let mut new_area = Protoarea { 
 			name: name,
-			dims: CorticalDimensions::new(width_l2, height_l2, 0, 0),
+			dims: CorticalDimensions::new(width, height, 0, 0, None),
+			//dims: CorticalDimensions::new(width_l2, height_l2, 0, 0),
 			region_kind: region_kind,
 			afferent_areas: afferent_areas,
 		};
@@ -53,12 +58,3 @@ pub struct Protoarea {
 
 //impl Copy for Protoarea {}
 
-/*impl Protoarea {
-	pub fn width(&self) -> u32 {
-		self.width
-	}
-}*/
-
-
-
-//struct Protoarea

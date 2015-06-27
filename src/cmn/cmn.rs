@@ -519,7 +519,7 @@ pub fn log2(n: u32) -> u32 {
 			vec_ff_opt: Option<&[T]>, 
 			vec_out_prev_opt: Option<&[T]>, 
 			vec_ff_prev_opt: Option<&[T]>,
-			slice_map: &BTreeMap<u8, &'static str>,
+			slc_map: &BTreeMap<u8, &'static str>,
 ) {
 */
 pub fn render_sdr(
@@ -527,7 +527,7 @@ pub fn render_sdr(
 			vec_ff_opt: Option<&[u8]>, 
 			vec_out_prev_opt: Option<&[u8]>, 
 			vec_ff_prev_opt: Option<&[u8]>,
-			slice_map: &BTreeMap<u8, &'static str>,
+			slc_map: &BTreeMap<u8, &'static str>,
 			print: bool,
 			sdr_len: u32,
 ) -> f32 {
@@ -644,12 +644,12 @@ pub fn render_sdr(
 
 		if print {
 			if ((i_line & (sdr_len - 1) as usize) == 0) && (vec_ff.len() > sdr_len as usize) {
-				let slice_id = (i_cort_area) as u8;
-				let slice_name = match slice_map.get(&slice_id) {
+				let slc_id = (i_cort_area) as u8;
+				let slc_name = match slc_map.get(&slc_id) {
 					Some(&name) => name,
-					None => "<render_sdr(): slice name not found in map>",
+					None => "<render_sdr(): slc name not found in map>",
 				};
-				println!("\n[{}: {}]", slice_id, slice_name);
+				println!("\n[{}: {}]", slc_id, slc_name);
 				i_cort_area += 1;
 			}
 			
@@ -734,21 +734,21 @@ pub fn new_pred(
 
 
 
-/* AXN_IDX_2D(): Host side address resolution - concerned with start idx of a slice
+/* AXN_IDX_2D(): Host side address resolution - concerned with start idx of a slc
 	- OpenCL device side version below (for reference) - concerned with invidiual indexes: 
-		static inline uint axn_idx_2d(uchar slice_id, uint slice_width, uint col_id, char col_ofs) {
-			uint axn_idx_spt = mad24((uint)slice_id, slice_width, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
-			int hslice_id = slice_id - HORIZONTAL_AXON_ROW_DEMARCATION;
-			int hcol_id = mad24(hslice_id, SYNAPSE_SPAN_LIN, col_ofs + SYNAPSE_REACH_LIN);
-			uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slice_width, (uint)(hcol_id + SYNAPSE_REACH_LIN));
-			return mul24((uint)(hslice_id < 0), axn_idx_spt) + mul24((uint)(hslice_id >= 0), axn_idx_hrz);
+		static inline uint axn_idx_2d(uchar slc_id, uint slc_width, uint col_id, char col_ofs) {
+			uint axn_idx_spt = mad24((uint)slc_id, slc_width, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
+			int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
+			int hcol_id = mad24(hslc_id, SYNAPSE_SPAN_LIN, col_ofs + SYNAPSE_REACH_LIN);
+			uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_width, (uint)(hcol_id + SYNAPSE_REACH_LIN));
+			return mul24((uint)(hslc_id < 0), axn_idx_spt) + mul24((uint)(hslc_id >= 0), axn_idx_hrz);
 		}
 }*/
-pub fn axn_idx_2d(axn_slice: u8, width: u32, hrz_demarc: u8) -> u32 {
-	let mut axn_idx: u32 = if axn_slice < hrz_demarc {
-		(axn_slice as u32 * width)
+pub fn axn_idx_2d(axn_slc: u8, width: u32, hrz_demarc: u8) -> u32 {
+	let mut axn_idx: u32 = if axn_slc < hrz_demarc {
+		(axn_slc as u32 * width)
 	} else {
-		(hrz_demarc as u32 * width) + SYNAPSE_SPAN_LIN * (axn_slice as u32 - hrz_demarc as u32)
+		(hrz_demarc as u32 * width) + SYNAPSE_SPAN_LIN * (axn_slc as u32 - hrz_demarc as u32)
 	};
 
 	axn_idx + SYNAPSE_REACH_LIN as u32

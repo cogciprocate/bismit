@@ -21,7 +21,7 @@ use cortical_area:: { Aux };
 pub struct Dendrites {
 	layer_name: &'static str,
 	dims: CorticalDimensions,
-	protocell: Protocell,
+	//protocell: Protocell,
 	//per_cell_l2: u32,
 	den_kind: DendriteKind,
 	cell_kind: ProtocellKind,
@@ -37,6 +37,7 @@ impl Dendrites {
 	pub fn new(
 					layer_name: &'static str,
 					dims: CorticalDimensions,
+					//src_grps: Vec<Vec<&'static str>>,
 					protocell: Protocell,
 					den_kind: DendriteKind, 
 					cell_kind: ProtocellKind,
@@ -47,9 +48,9 @@ impl Dendrites {
 	) -> Dendrites {
 		//println!("\n### Test D1 ###");
 		//let width_dens = dims.width << per_cell_l2;
-		assert!(dims.per_cel_l2() as u8 == protocell.dens_per_cel_l2);
+		assert!(dims.per_grp_l2() as u8 == protocell.dens_per_grp_l2);
 
-		//let dims = cel_dims.clone_with_pcl2(per_cell_l2);
+		//let dims = cel_dims.clone_with_pgl2(per_cell_l2);
 
 		let syns_per_den_l2 = protocell.syns_per_den_l2;
 		let den_threshold = protocell.den_thresh_init.unwrap_or(1);
@@ -73,14 +74,14 @@ impl Dendrites {
 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
-		let syns_dims = dims.clone_with_pcl2((dims.per_cel_l2() + syns_per_den_l2 as i8));
+		let syns_dims = dims.clone_with_pgl2((dims.per_grp_l2() + syns_per_den_l2 as i8));
 		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, region, axons, aux, ocl);
 
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
 
 		//println!("\nsyns_per_den_l2 = {}", syns_per_den_l2);
-		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
+		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)
@@ -94,7 +95,7 @@ impl Dendrites {
 		Dendrites {
 			layer_name: layer_name,
 			dims: dims,
-			protocell: protocell,
+			//protocell: protocell,
 			//per_cell_l2: per_cell_l2,
 			den_kind: den_kind,
 			cell_kind: cell_kind,

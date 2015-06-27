@@ -201,7 +201,7 @@ impl Kernel {
 						mem::transmute(&val),*/
 			);
 
-			let err_pre = format!("\nocl::Kernel::set_kernel_arg()[{}]: ", self.name);
+			let err_pre = format!("ocl::Kernel::set_kernel_arg('{}'):", self.name);
 			super::must_succ(&err_pre, err);
 		}
 	}
@@ -233,7 +233,7 @@ impl Kernel {
 						//&mut event as *mut super::cl_event, // LEAKS!
 			);
 
-			let err_pre = format!("\nocl::Kernel::enqueue()[{}]: ", self.name);
+			let err_pre = format!("ocl::Kernel::enqueue()[{}]:", self.name);
 			super::must_succ(&err_pre, err);
 		}
 		//event

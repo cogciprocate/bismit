@@ -28,15 +28,15 @@ impl BuildOptions {
 		self
 	}
 
-	pub fn as_slice(&mut self) -> &str {
+	pub fn as_slc(&mut self) -> &str {
 		&self.string
 	}
 
 	pub fn to_string(mut self) -> String {
 		for option in self.options.iter_mut() {
-			self.string.push_str(option.as_slice());
+			self.string.push_str(option.as_slc());
 		}
-		//println!("\n\tBuildOptions::as_slice(): length: {}, \n \tstring: {}", self.string.len(), self.string);
+		//println!("\n\tBuildOptions::as_slc(): length: {}, \n \tstring: {}", self.string.len(), self.string);
 		self.string
 	}
 
@@ -59,7 +59,7 @@ impl BuildOption {
 		}
 	}
 
-	pub fn as_slice(&mut self) -> &str {
+	pub fn as_slc(&mut self) -> &str {
 		self.string = format!(" -D{}={}", self.name, self.val);
 
 		&self.string

@@ -27,7 +27,7 @@ pub static PASS_STR: &'static str = "\x1b[1;32mpass\x1b[0m";
 
 
 // NEED A 'TestParameters' STRUCT OF SOME SORT TO UNTANGLE THIS AND MOVE STUFF INTO CHILD FUNCTIONS
-pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str) {
+pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 	let emsg = "tests::hybrid::test_pyr_activation()";
 	let activation_test_runs = 2;
 
@@ -36,8 +36,8 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str
 	let layer_name = cortex.area_mut(area_name).ptal_name();
 	let ff_layer_name = cortex.area_mut(area_name).psal_name();
 
-	let src_slice_ids = cortex.area_mut(area_name).protoregion().src_slice_ids(layer_name, DendriteKind::Distal);
-	let src_slice_id = src_slice_ids[0];
+	let src_slc_ids = cortex.area_mut(area_name).protoregion().src_slc_ids(layer_name, DendriteKind::Distal);
+	let src_slc_id = src_slc_ids[0];
 	
 	let ff_layer_axn_idz = cortex.area_mut(area_name).mcols.ff_layer_axn_idz();
 
@@ -50,11 +50,11 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str
 		let cels = cortex.area_mut(area_name).ptal_mut();
 
 		// SET ALL SYNAPSES TO THE SAME SOURCE AXON SLICE AND ZEROS ELSEWHERE
-		cels.dens.syns.src_slice_ids.set_all_to(src_slice_id);
-		cels.dens.syns.src_col_xy_offs.set_all_to(0);
-		cels.dens.syns.strengths.set_all_to(0);
-		cels.dens.syns.states.set_all_to(0);
-		cels.dens.syns.flag_sets.set_all_to(0);
+		cels.dens_mut().syns.src_slc_ids.set_all_to(src_slc_id);
+		cels.dens_mut().syns.src_col_xy_offs.set_all_to(0);
+		cels.dens_mut().syns.strengths.set_all_to(0);
+		cels.dens_mut().syns.states.set_all_to(0);
+		cels.dens_mut().syns.flag_sets.set_all_to(0);
 
 		cels.set_all_to_zero();
 		//cels.flag_sets.set_all_to(0);
@@ -62,16 +62,16 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str
 		cels.axn_range()
 	};
 
-	let (dens_per_cel, syns_per_cel, syns_per_den) = {// CELS IN SCOPE
+	let (dens_per_grp, syns_per_grp, syns_per_den) = {// CELS IN SCOPE
 		let cels = cortex.area_mut(area_name).ptal_mut();
 
-		let dens_per_cel = cels.dens.dims().per_cel().expect(&format!("{}: {}", emsg, "dens_per_cel")) as usize;
-		let syns_per_cel = cels.dens.syns.dims().per_cel().expect(&format!("{}: {}", emsg, "syns_per_cel")) as usize;
+		let dens_per_grp = cels.dens_mut().dims().per_cel() as usize;
+		let syns_per_grp = cels.dens_mut().syns.dims().per_cel() as usize;
 
-		assert!(syns_per_cel % dens_per_cel == 0);
+		assert!(syns_per_grp % dens_per_grp == 0);
 
-		let syns_per_den = syns_per_cel / dens_per_cel;
-		(dens_per_cel, syns_per_cel, syns_per_den)
+		let syns_per_den = syns_per_grp / dens_per_grp;
+		(dens_per_grp, syns_per_grp, syns_per_den)
 	};
 
 
@@ -88,7 +88,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str
 
 		vec_ff[col_id] = 100;
 
-		cortex.write_vec(area_name, ff_layer_name, &vec_ff);
+		cortex.write(area_name, ff_layer_name, &vec_ff);
 
 		if last_run {
 			println!("\nACTIVATING CELLS... ");
@@ -148,10 +148,10 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str
 		let first_half: bool = rand::random::<bool>();
 
 		// CHOOSE RANDOM DEN ID
-		let den_id = rand::random::<usize>() & (dens_per_cel - 1);
+		let den_id = rand::random::<usize>() & (dens_per_grp - 1);
 
 		// DETERMINE DEN_IDX
-		let den_idx = (cel_idx * dens_per_cel) + den_id;
+		let den_idx = (cel_idx * dens_per_grp) + den_id;
 
 		// DEFINE FIRST AND (LAST + 1) SYN INDEXES
 		let syn_idz = den_idx * syns_per_den;
@@ -167,7 +167,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str
 
 			// REACTIVATE FF AXON
 			vec_ff[col_id] = 100;
-			cortex.write_vec(area_name, ff_layer_name, &vec_ff);
+			cortex.write(area_name, ff_layer_name, &vec_ff);
 
 
 			{// CELS IN SCOPE
@@ -178,7 +178,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str
 				}
 
 				for syn_idx in syn_tar_half_idz..syn_tar_half_idn {
-					cels.dens.syns.states[syn_idx] = 128;
+					cels.dens_mut().syns.states[syn_idx] = 128;
 				}
 
 
@@ -186,9 +186,9 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str
 					println!("\nWRITING SYNAPSES AND CYCLING CELLS... ");
 				}
 
-				cels.dens.syns.states.write();
+				cels.dens_mut().syns.states.write();
 
-				cels.dens.cycle_self_only();
+				cels.dens_mut().cycle_self_only();
 				cels.cycle_self_only();
 
 			}
@@ -266,23 +266,23 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str
 
 			// DEACTIVATE FF AXON
 			vec_ff[col_id] = 0;
-			cortex.write_vec(area_name, ff_layer_name, &vec_ff);
+			cortex.write(area_name, ff_layer_name, &vec_ff);
 
 			{// CELS IN SCOPE
 				let cels = cortex.area_mut(area_name).ptal_mut();
 
 				// DEACTIVATE SYNAPSES
-				let den_idz = cel_idx * dens_per_cel;
+				let den_idz = cel_idx * dens_per_grp;
 				let syn_idz = den_idz * syns_per_den;
 
 				// RESET ENTIRE CELL TO ZERO (even though only half of one dendrite should be active)
-				for syn_idx in syn_idz..(syn_idz + syns_per_cel) {
-					cels.dens.syns.states[syn_idx] = 0;
+				for syn_idx in syn_idz..(syn_idz + syns_per_grp) {
+					cels.dens_mut().syns.states[syn_idx] = 0;
 				}
 
 				// WRITE AND CYCLE
-				cels.dens.syns.states.write();
-				cels.dens.cycle_self_only();
+				cels.dens_mut().syns.states.write();
+				cels.dens_mut().cycle_self_only();
 				cels.cycle_self_only();
 
 				// ACTIVATE AND LEARN
@@ -346,7 +346,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &'static str
 			- perform regrowth
 			- check offs to ensure change
 */
-pub fn test_learning(cortex: &mut Cortex, ilyr_name: &'static str, area_name: &'static str) {
+pub fn test_learning(cortex: &mut Cortex, ilyr_name: &'static str, area_name: &str) {
 	let psal_name = cortex.area(area_name).psal_name();
 	println!("##### hybrid::test_learning(): psal_name: {}", psal_name);
 	//let ptal_name = cortex.area_mut(area_name).ptal_name();
@@ -354,20 +354,20 @@ pub fn test_learning(cortex: &mut Cortex, ilyr_name: &'static str, area_name: &'
 	//_test_pyr_learning(cortex, ptal_name);
 }
 
-fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: &'static str, area_name: &'static str) {
+fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: &'static str, area_name: &str) {
 	let emsg = "tests::hybrid::_test_sst_learning()";
 
 
-	let (dens_per_cel, syns_per_cel, syns_per_den) = {// CELS IN SCOPE
+	let (dens_per_grp, syns_per_grp, syns_per_den) = {// CELS IN SCOPE
 		let cels = cortex.area_mut(area_name).ptal_mut();
 
-		let dens_per_cel = cels.dens.dims().per_cel().expect(&format!("{}: {}", emsg, "dens_per_cel")) as usize;
-		let syns_per_cel = cels.dens.syns.dims().per_cel().expect(&format!("{}: {}", emsg, "syns_per_cel")) as usize;
+		let dens_per_grp = cels.dens_mut().dims().per_cel() as usize;
+		let syns_per_grp = cels.dens_mut().syns.dims().per_cel() as usize;
 
-		assert!(syns_per_cel % dens_per_cel == 0);
+		assert!(syns_per_grp % dens_per_grp == 0);
 
-		let syns_per_den = syns_per_cel / dens_per_cel;
-		(dens_per_cel, syns_per_cel, syns_per_den)
+		let syns_per_den = syns_per_grp / dens_per_grp;
+		(dens_per_grp, syns_per_grp, syns_per_den)
 	};
 
 	//let em99 = &format!("{}: {}; layer_name: {} ", emsg, "cel_idx (em99)", layer_name);
@@ -381,25 +381,25 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 		//let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
 
 		//let cel_syns = &mut ;
-		cels.dens.syns.src_col_xy_offs.set_all_to(0);
-		cels.dens.syns.strengths.set_all_to(0);
-		cels.dens.syns.states.set_all_to(0);
+		cels.dens_mut().syns.src_col_xy_offs.set_all_to(0);
+		cels.dens_mut().syns.strengths.set_all_to(0);
+		cels.dens_mut().syns.states.set_all_to(0);
 
 		let first_half: bool = rand::random::<bool>();
-		let per_cel = cels.dens.syns.dims().per_cel().expect(&format!("{}: {}", emsg, "per_cel")) as usize;
+		let per_cel = cels.dens_mut().syns.dims().per_cel() as usize;
 
-		let cel_syn_idz = cel_idx << cels.dens.syns.dims().per_cel_l2_left().expect(&format!("{}: {}", emsg, "cel_syn_idz"));
+		let cel_syn_idz = cel_idx << cels.dens_mut().syns.dims().per_grp_l2_left();
 		let cel_syn_tar_idz = cel_syn_idz + if first_half {0} else {per_cel >> 1};
 		let cel_syn_tar_idn = cel_syn_tar_idz + (per_cel >> 1);
 		
 		println!("\n{}: cel_idx: {}, per_cel: {}, cel_syn_tar_idz: {}, cel_syn_tar_idn: {}", emsg, cel_idx, per_cel, cel_syn_tar_idz, cel_syn_tar_idn);
 
 		for syn_idx in cel_syn_tar_idz..cel_syn_tar_idn {
-			cels.dens.syns.states[syn_idx] = 255;
+			cels.dens_mut().syns.states[syn_idx] = 255;
 		}
 
-		cels.dens.syns.states.write();
-		cels.dens.cycle_self_only();
+		cels.dens_mut().syns.states.write();
+		cels.dens_mut().cycle_self_only();
 		//cels.soma().cycle_self_only();
 	}
 
@@ -413,7 +413,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 			cels.learn();
 		}
 
-		cels.dens.confab();
+		cels.dens_mut().confab();
 
 		cels.print_cel(cel_idx);
 		
@@ -424,7 +424,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	}
 
 	//print!("\nALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
-	//cmn::print_vec(&cels.dens.syns.strengths.vec[..], 1, None, None, false);
+	//cmn::print_vec(&cels.dens_mut().syns.strengths.vec[..], 1, None, None, false);
 
 	//check src_col_xy_offs
 	//check strengths
@@ -441,15 +441,15 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	//let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
 
 	//let cel_syns = &mut ;
-	cels.dens.syns.src_col_xy_offs.set_all_to(0);
-	cels.dens.syns.strengths.set_all_to(0);
-	cels.dens.syns.states.set_all_to(0);
+	cels.dens_mut().syns.src_col_xy_offs.set_all_to(0);
+	cels.dens_mut().syns.strengths.set_all_to(0);
+	cels.dens_mut().syns.states.set_all_to(0);
 
 	let first_half: bool = rand::random::<bool>();
-	let per_cel = cels.dens.syns.dims().per_cel().expect(emsg) as usize;
+	let per_cel = cels.dens_mut().syns.dims().per_cel().expect(emsg) as usize;
 
 	let cel_idx = rand::random::<usize>() & ((cels.dims().cells() as usize) - 1);
-	let cel_syn_idz = cel_idx << cels.dens.syns.dims().per_cel_l2_left().expect(emsg);
+	let cel_syn_idz = cel_idx << cels.dens_mut().syns.dims().per_grp_l2_left();
 	let cel_syn_tar_idz = cel_syn_idz + if first_half {0} else {per_cel >> 1};
 	let cel_syn_tar_idn = cel_syn_tar_idz + (per_cel >> 1);
 
@@ -458,11 +458,11 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	println!("\n{}: cel_idx: {}, per_cel: {}, cel_syn_tar_idz: {}, cel_syn_tar_idn: {}", emsg, cel_idx, per_cel, cel_syn_tar_idz, cel_syn_tar_idn);
 
 	for syn_idx in cel_syn_tar_idz..cel_syn_tar_idn {
-		cels.dens.syns.states[syn_idx] = 255;
+		cels.dens_mut().syns.states[syn_idx] = 255;
 	}
 
-	cels.dens.syns.states.write();
-	cels.dens.cycle_self_only();
+	cels.dens_mut().syns.states.write();
+	cels.dens_mut().cycle_self_only();
 	//cels.soma().cycle_self_only();
 
 	cortex.area_mut(area_name).iinns.get_mut("iv_inhib").expect(emsg).cycle();
@@ -471,7 +471,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 		cels.learn();
 	}
 
-	cels.dens.confab();
+	cels.dens_mut().confab();
 
 	cels.print_cel(cel_idx);
 	
@@ -481,7 +481,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	cels.print_cel(cel_idx);
 
 	print!("\nALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
-	cmn::print_vec(&cels.dens.syns.strengths.vec[..], 1, None, None, false);
+	cmn::print_vec(&cels.dens_mut().syns.strengths.vec[..], 1, None, None, false);
 
 	//check src_col_xy_offs
 	//check strengths
@@ -491,7 +491,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 
 
 
-pub fn test_cycles(cortex: &mut Cortex, area_name: &'static str) {
+pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
 	let emsg = "tests::hybrid::test_cycles()";
 	
 	/*cortex.area_mut(area_name).psal_mut().dens.syns.src_col_xy_offs.set_all_to(0);
@@ -511,13 +511,13 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &'static str) {
 
 	print!("\nPrimary Spatial Associative Layer...");
 	let psal_name = cortex.area(area_name).psal().layer_name();
-	cortex.write_vec(area_name, psal_name, &vec1);
-	test_syn_and_den_states(&mut cortex.area_mut(area_name).psal_mut().dens);
+	cortex.write(area_name, psal_name, &vec1);
+	test_syn_and_den_states(&mut cortex.area_mut(area_name).psal_mut().dens_mut());
 
 	print!("\nPrimary Temporal Associative Layer...");
 	let ptal_name = cortex.area(area_name).ptal().layer_name();
-	cortex.write_vec(area_name, ptal_name, &vec1);
-	test_syn_and_den_states(&mut cortex.area_mut(area_name).ptal_mut().dens);
+	cortex.write(area_name, ptal_name, &vec1);
+	test_syn_and_den_states(&mut cortex.area_mut(area_name).ptal_mut().dens_mut());
 	test_pyr_preds(&mut cortex.area_mut(area_name).ptal_mut());
 }
 
@@ -530,27 +530,27 @@ fn test_pyr_preds(pyrs: &mut PyramidalCellularLayer) {
 	let emsg = "tests::hybrid::test_pyr_preds()";
 
 	io::stdout().flush().unwrap();
-	pyrs.dens.states.set_all_to(0);
+	pyrs.dens_mut().states.set_all_to(0);
 
-	let dens_per_cel = pyrs.dens.dims().per_cel().expect(emsg) as usize;
-	let dens_len = pyrs.dens.states.len() as usize;
+	let dens_per_grp = pyrs.dens_mut().dims().per_cel() as usize;
+	let dens_len = pyrs.dens_mut().states.len() as usize;
 
-	for i in 0..dens_per_cel {
-		pyrs.dens.states[i] = 255;
+	for i in 0..dens_per_grp {
+		pyrs.dens_mut().states[i] = 255;
 	}
 
-	let last_cell_idz =  dens_len - dens_per_cel;
+	let last_cell_idz =  dens_len - dens_per_grp;
 
 	for i in last_cell_idz..dens_len {
-		pyrs.dens.states[i] = 255;
+		pyrs.dens_mut().states[i] = 255;
 	}
 
-	//pyrs.dens.states[50] = 255;
-	pyrs.dens.states.write();
+	//pyrs.dens_mut().states[50] = 255;
+	pyrs.dens_mut().states.write();
 	pyrs.cycle_self_only();
 
 	let pyrs_len = pyrs.soma().len() as usize;
-	//pyrs.dens.states.print_simple();
+	//pyrs.dens_mut().states.print_simple();
 	pyrs.soma_mut().read();
 
 	for i in 0..pyrs_len {
@@ -573,11 +573,11 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 	dens.syns.src_col_xy_offs.set_all_to(0);
 	dens.cycle();
 
-	let syns_per_cel_l2: usize = dens.syns.dims().per_cel_l2_left().expect(emsg) as usize;
-	let dens_per_cel_l2: usize = dens.dims().per_cel_l2_left().expect(emsg) as usize;
+	let syns_per_grp_l2: usize = dens.syns.dims().per_grp_l2_left() as usize;
+	let dens_per_grp_l2: usize = dens.dims().per_grp_l2_left() as usize;
 	let cels_per_group: usize = cmn::SYNAPSE_SPAN_LIN as usize;
-	let syns_per_group: usize = cels_per_group << syns_per_cel_l2;
-	let dens_per_group: usize = cels_per_group << dens_per_cel_l2;
+	let syns_per_group: usize = cels_per_group << syns_per_grp_l2;
+	let dens_per_group: usize = cels_per_group << dens_per_grp_l2;
 	let actv_group_thresh = syns_per_group / 4;
 	//let den_actv_group_thresh = dens_per_group;
 
@@ -599,10 +599,10 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 		syn_states_ttl = 0;
 		den_states_ttl = 0;
 
-		let syn_idz = cel_idz << syns_per_cel_l2;
-		let den_idz = cel_idz << dens_per_cel_l2;
+		let syn_idz = cel_idz << syns_per_grp_l2;
+		let den_idz = cel_idz << dens_per_grp_l2;
 
-		//println!("\nsyn_idz: {}, syns_per_cel: {}, syns_per_group: {}", syn_idz, 1 << syns_per_cel_l2, syns_per_group);
+		//println!("\nsyn_idz: {}, syns_per_grp: {}, syns_per_group: {}", syn_idz, 1 << syns_per_grp_l2, syns_per_group);
 
 		for syn_idx in syn_idz..(syn_idz + syns_per_group) {
 			syn_states_ttl += (dens.syns.states[syn_idx] >> 7) as usize;

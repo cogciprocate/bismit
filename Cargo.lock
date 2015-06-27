@@ -3,17 +3,27 @@ name = "bismit"
 version = "0.0.1"
 dependencies = [
  "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "enum_primitive 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "microcosm 0.0.1 (git+https://github.com/cogciprocate/microcosm.git)",
  "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.25 (git+https://github.com/rust-lang/time.git)",
+ "yaml-rust 0.2.0 (git+https://github.com/chyh1990/yaml-rust.git)",
 ]
 
 [[package]]
 name = "bitflags"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "enum_primitive"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "gcc"
@@ -60,4 +70,9 @@ dependencies = [
  "gcc 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "yaml-rust"
+version = "0.2.0"
+source = "git+https://github.com/chyh1990/yaml-rust.git#fd7aedfa8d5636c410d985e5aa5c768be504586e"
 

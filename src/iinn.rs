@@ -36,13 +36,11 @@ pub struct InhibitoryInterneuronNetwork {
 }
 
 impl InhibitoryInterneuronNetwork {
-	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, src_soma: &Envoy<u8>, src_axn_base_slice: u8, axns: &Axons, ocl: &Ocl) -> InhibitoryInterneuronNetwork {
+	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, src_soma: &Envoy<u8>, src_axn_base_slc: u8, axns: &Axons, ocl: &Ocl) -> InhibitoryInterneuronNetwork {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
-		//let dims = CorticalDimensions::new(col_dims.width_l2(), col_dims.height_l2(), col_dims.depth(), 0);
-
-		let dims = col_dims.clone_with_pcl2(0 - cmn::ASPINY_SPAN_LOG2 as i8);
+		let dims = col_dims.clone_with_pgl2(0 - cmn::ASPINY_SPAN_LOG2 as i8);
 
 		let padding = cmn::ASPINY_SPAN;
 
@@ -51,21 +49,21 @@ impl InhibitoryInterneuronNetwork {
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
 
 		let kern_cycle_pre = ocl.new_kernel("peak_sst_cycle_pre", 
-			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
+			WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
 			.arg_env(&src_soma)
 			.arg_env(&states)
 			.arg_env(&spi_ids)
 		;
 
 		let kern_cycle_wins = ocl.new_kernel("peak_sst_cycle_wins", 
-			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
+			WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
 			.arg_env(&states)
 			//.arg_env(&spi_ids)
 			.arg_env(&wins)
 		;
 
 		let kern_cycle_post = ocl.new_kernel("peak_sst_cycle_post", 
-			WorkSize::TwoDim(dims.depth() as usize, dims.per_slice() as usize))
+			WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
 			.arg_env(&wins)
 			//.arg_env(&spi_ids)
 			.arg_env(&states)
@@ -75,7 +73,7 @@ impl InhibitoryInterneuronNetwork {
 			.arg_env(&spi_ids)
 			.arg_env(&states)
 			.arg_env(&wins)
-			.arg_scl(src_axn_base_slice)
+			.arg_scl(src_axn_base_slc)
 			.arg_env(src_soma)
 			.arg_env(&axns.states)
 		;

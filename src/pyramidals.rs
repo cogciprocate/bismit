@@ -34,19 +34,20 @@ pub struct PyramidalCellularLayer {
 	kern_cycle: ocl::Kernel,
 	kern_activate: ocl::Kernel,		// <<<<< MOVE TO MCOL
 	//kern_axn_cycle: ocl::Kernel,
-	axn_base_slice: u8,
+	axn_base_slc: u8,
 	axn_idz: u32,
-	//den_prox_slice: u8, 
+	//den_prox_slc: u8, 
 	rng: rand::XorShiftRng,
 	//regrow_counter: usize,
 	pub preds: Envoy<ocl::cl_uchar>,
 	pub best1_den_ids: Envoy<ocl::cl_uchar>,
 	pub best1_den_states: Envoy<ocl::cl_uchar>,
-	pub best2_den_ids: Envoy<ocl::cl_uchar>,
-	pub best2_den_states: Envoy<ocl::cl_uchar>,
+	pub best2_den_ids: Envoy<ocl::cl_uchar>,		// <<<<< SLATED FOR REMOVAL
+	pub best2_den_states: Envoy<ocl::cl_uchar>,		// <<<<< SLATED FOR REMOVAL
 	//pub prev_best1_den_ids: Envoy<ocl::cl_uchar>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
 	pub energies: Envoy<ocl::cl_uchar>, // <<<<< SLATED FOR REMOVAL
+	//den_grps: Vec<Box<Dendrites>>,
 	pub dens: Dendrites,
 }
 // protocell: &Protocell,
@@ -54,68 +55,77 @@ impl PyramidalCellularLayer {
 	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl
 	) -> PyramidalCellularLayer {
 
-		let axn_base_slices = region.slice_ids(vec![layer_name]);
-		let axn_base_slice = axn_base_slices[0];
-		let axn_idz = cmn::axn_idx_2d(axn_base_slice, dims.columns(), region.hrz_demarc());
-
-		let dens_per_cel_l2 = protocell.dens_per_cel_l2;
-		let syns_per_den_l2 = protocell.syns_per_den_l2;
-		let syns_per_cel_l2 = dens_per_cel_l2 + syns_per_den_l2;
-
+		let axn_base_slcs = region.slc_ids(vec![layer_name]);
+		let axn_base_slc = axn_base_slcs[0];
+		let axn_idz = cmn::axn_idx_2d(axn_base_slc, dims.columns(), region.hrz_demarc());
 
 		//dims.depth() = region.depth_cell_kind(&ProtocellKind::Pyramidal);
-		//let dens_per_cel_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
-		//let syns_per_cel_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
+		//let dens_per_grp_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
+		//let syns_per_grp_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
 		//let spt_asc_layer = region.spt_asc_layer().expect("PyramidalCellularLayer::new()");
-		//let den_prox_slice = region.slice_ids(vec![spt_asc_layer.name])[0];
+		//let den_prox_slc = region.slc_ids(vec![spt_asc_layer.name])[0];
 		
-		//print!("\n### PyramidalCellularLayer: Proximal Dendrite Row: {}", den_prox_slice);
-		print!("\n      PYRAMIDALS::NEW(): layer: '{}' dims: {:?}, axn_base_slice: {}", layer_name, dims, axn_base_slice);
+		//print!("\n### PyramidalCellularLayer: Proximal Dendrite Row: {}", den_prox_slc);
+		print!("\n      PYRAMIDALS::NEW(): layer: '{}' dims: {:?}, axn_base_slc: {}", layer_name, dims, axn_base_slc);
 
 		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
 		let best1_den_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let best1_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let best2_den_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let best2_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let best2_den_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);		// <<<<< SLATED FOR REMOVAL
+		let best2_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);		// <<<<< SLATED FOR REMOVAL
 		let prev_best1_den_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
-		let dens_dims = dims.clone_with_pcl2(dens_per_cel_l2 as i8);
-		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl);
+
+		let dens_per_grp_l2 = protocell.dens_per_grp_l2;
+		let syns_per_den_l2 = protocell.syns_per_den_l2;
+		let syns_per_grp_l2 = dens_per_grp_l2 + syns_per_den_l2;
+
+		let den_grps_per_cel = region[&layer_name].dst_src_grps_len();
+
+		let den_grp_dims = dims.clone_with_pgl2(dens_per_grp_l2 as i8).groups(den_grps_per_cel);
+
+		let dens = Dendrites::new(layer_name, den_grp_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl);
+
+		//let mut den_grps = Vec::with_capacity(src_grps.len());
+
+		/*for grp in src_grps {
+			den_grps.push(Box::new(Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl)));
+		}*/
 
 		
-		let kern_cycle = ocl.new_kernel("pyr_cycle_working", 
+		let kern_cycle = ocl.new_kernel("pyr_cycle", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			.arg_env(&dens.states)
 			.arg_env(&dens.states_raw)
-			//.arg_scl(axn_base_slice)
-			.arg_scl(dens_per_cel_l2)
+			//.arg_scl(axn_base_slc)
+			.arg_scl(den_grps_per_cel)
+			.arg_scl(dens_per_grp_l2)
 			.arg_env(&energies)
 			.arg_env(&best1_den_ids)
 			.arg_env(&best1_den_states)
-			.arg_env(&best2_den_ids)
-			.arg_env(&best2_den_states)
-			.arg_env(&preds) 		// v.N1
+			//.arg_env(&best2_den_ids)				// <<<<< SLATED FOR REMOVAL
+			//.arg_env(&best2_den_states)			// <<<<< SLATED FOR REMOVAL
+			.arg_env(&preds) 
 			//.arg_env(&axons.states)
 		;
 
 		/*let kern_axn_cycle = ocl.new_kernel("pyr_axn_cycle", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.width as usize))
-			.arg_scl(axn_base_slice)
+			.arg_scl(axn_base_slc)
 			.arg_env(&preds)
 			.arg_env(&axons.states)
 		;*/
 
 		let kern_activate = ocl.new_kernel("pyr_activate",		 // <<<<< MOVE TO MCOL
-			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
-		;
+			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize));
 
 
 		assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
-		let cels_per_wi: u32 = dims.columns() / cmn::MINIMUM_WORKGROUP_SIZE;
-		let axn_idx_base: u32 = (axn_base_slice as u32 * dims.columns()) + cmn::SYNAPSE_REACH_LIN; // NEEDS UPDATE TO NEW SYSTEM
+		let cels_per_wi: u32 = dims.per_slc() / cmn::MINIMUM_WORKGROUP_SIZE;
+		let axn_idx_base: u32 = (axn_base_slc as u32 * dims.columns()) + cmn::SYNAPSE_REACH_LIN; // NEEDS UPDATE TO NEW SYSTEM
 		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", axn_idx_base);
 		assert!(axn_idx_base == axn_idz);
 
@@ -129,7 +139,7 @@ impl PyramidalCellularLayer {
 			.arg_env(&dens.syns.states)
 			.arg_scl(axn_idx_base)
 			.arg_scl(syns_per_den_l2 as u32)
-			.arg_scl(dens_per_cel_l2 as u32)
+			.arg_scl(dens_per_grp_l2 as u32)
 			.arg_scl(cels_per_wi)
 			.arg_scl_named::<u32>("rnd", None)			
 			.arg_env(&dens.syns.flag_sets)
@@ -150,20 +160,21 @@ impl PyramidalCellularLayer {
 			kern_cycle: kern_cycle,
 			kern_activate: kern_activate,		// <<<<< MOVE TO MCOL
 			//kern_axn_cycle: kern_axn_cycle,
-			axn_base_slice: axn_base_slice,
+			axn_base_slc: axn_base_slc,
 			axn_idz: axn_idz,
-			//den_prox_slice: den_prox_slice,
+			//den_prox_slc: den_prox_slc,
 			rng: rand::weak_rng(),
 			//regrow_counter: 0usize,
 			preds: preds,
 			best1_den_ids: best1_den_ids,
 			best1_den_states: best1_den_states,
-			best2_den_ids: best2_den_ids,
-			best2_den_states: best2_den_states,
+			best2_den_ids: best2_den_ids,			// <<<<< SLATED FOR REMOVAL
+			best2_den_states: best2_den_states,		// <<<<< SLATED FOR REMOVAL
 			//prev_best1_den_ids: prev_best1_den_ids,
 			flag_sets: flag_sets,
 			energies: energies,
 			dens: dens,
+			//den_grps: den_grps,
 		}
 	}
 
@@ -179,8 +190,8 @@ impl PyramidalCellularLayer {
 		self.kern_activate.new_arg_envoy(Some(&self.dens.states));
 
 		self.kern_activate.new_arg_scalar(Some(ssts_axn_idz as u32));
-		self.kern_activate.new_arg_scalar(Some(self.axn_base_slice));
-		self.kern_activate.new_arg_scalar(Some(self.protocell.dens_per_cel_l2));
+		self.kern_activate.new_arg_scalar(Some(self.axn_base_slc));
+		self.kern_activate.new_arg_scalar(Some(self.protocell.dens_per_grp_l2));
 
 		//self.kern_activate.new_arg_envoy(&self.energies);
 		self.kern_activate.new_arg_envoy(Some(&self.flag_sets));
@@ -203,12 +214,12 @@ impl PyramidalCellularLayer {
 	}
 
 	pub fn regrow(&mut self) {
-		self.dens.regrow();
+		self.dens_mut().regrow();
 	}
 
 	pub fn cycle(&mut self) {
 		//self.activate(ltp);
-		self.dens.cycle();
+		self.dens_mut().cycle();
 		self.kern_cycle.enqueue();
 	}
 
@@ -216,12 +227,12 @@ impl PyramidalCellularLayer {
 		self.preds.read();
 		self.best1_den_ids.read();
 		self.best1_den_states.read();
-		self.best2_den_ids.read();
-		self.best2_den_states.read();
+		self.best2_den_ids.read();		// <<<<< SLATED FOR REMOVAL
+		self.best2_den_states.read();	// <<<<< SLATED FOR REMOVAL
 		self.flag_sets.read();
 		self.energies.read();
 
-		self.dens.confab();
+		self.dens_mut().confab();
 	}
 
 	pub fn soma(&self) -> &Envoy<u8> {
@@ -239,7 +250,7 @@ impl PyramidalCellularLayer {
 
 	// AXN_OUTPUT_RANGE(): USED BY OUTPUT_CZAR (DEBUGGING/TESTING)
 /*	pub fn axn_output_range(&self) -> (usize, usize) {
-		let start = (self.axn_base_slice as usize * self.dims.columns() as usize) + cmn::SYNAPSE_REACH_LIN as usize;
+		let start = (self.axn_base_slc as usize * self.dims.columns() as usize) + cmn::SYNAPSE_REACH_LIN as usize;
 		(start, start + ((self.dims.columns() * self.dims.depth() as u32) - 1) as usize)
 	}*/
 
@@ -248,13 +259,13 @@ impl PyramidalCellularLayer {
 	}
 
 	pub fn axn_range(&self) -> (usize, usize) {
-		let ssts_axn_idn = self.axn_idz + (self.dims.per_slice());
+		let ssts_axn_idn = self.axn_idz + (self.dims.per_slc());
 
 		(self.axn_idz as usize, ssts_axn_idn as usize)
 	}
 
-	pub fn axn_base_slice(&self) -> u8 {
-		self.axn_base_slice
+	pub fn axn_base_slc(&self) -> u8 {
+		self.axn_base_slc
 	}
 
 	pub fn layer_name(&self) -> &'static str {
@@ -267,47 +278,54 @@ impl PyramidalCellularLayer {
 
 		self.confab();
 
-		let cel_den_idz = (cel_idx << self.dens.dims().per_cel_l2_left().expect(emsg)) as usize;
-		let cel_syn_idz = (cel_idx << self.dens.syns.dims().per_cel_l2_left().expect(emsg)) as usize;
+		let cel_den_idz = (cel_idx << self.dens_mut().dims().per_grp_l2_left()) as usize;
+		let cel_syn_idz = (cel_idx << self.dens_mut().syns.dims().per_grp_l2_left()) as usize;
 
-		let dens_per_cel = self.dens.dims().per_cel().expect(emsg) as usize;
-		let syns_per_cel = self.dens.syns.dims().per_cel().expect(emsg) as usize;
+		let dens_per_grp = self.dens_mut().dims().per_cel() as usize;
+		let syns_per_grp = self.dens_mut().syns.dims().per_cel() as usize;
 
-		let cel_den_range = cel_den_idz..(cel_den_idz + dens_per_cel);
-		let cel_syn_range = cel_syn_idz..(cel_syn_idz + syns_per_cel);
+		let cel_den_range = cel_den_idz..(cel_den_idz + dens_per_grp);
+		let cel_syn_range = cel_syn_idz..(cel_syn_idz + syns_per_grp);
 
 		print!("\nPrinting Pyramidal Cell:");
 		print!("\n   preds[{}]: {}", cel_idx, self.preds[cel_idx]);
 		print!("\n   best1_den_ids[{}]: {}", cel_idx, self.best1_den_ids[cel_idx]);
 		print!("\n   best1_den_states[{}]: {}", cel_idx, self.best1_den_states[cel_idx]);
-		print!("\n   best2_den_ids[{}]: {}", cel_idx, self.best2_den_ids[cel_idx]);
-		print!("\n   best2_den_states[{}]: {}", cel_idx, self.best2_den_states[cel_idx]);
+		print!("\n   best2_den_ids[{}]: {}", cel_idx, self.best2_den_ids[cel_idx]);			// <<<<< SLATED FOR REMOVAL
+		print!("\n   best2_den_states[{}]: {}", cel_idx, self.best2_den_states[cel_idx]);	// <<<<< SLATED FOR REMOVAL
 		print!("\n   flag_sets[{}]: {}", cel_idx, self.flag_sets[cel_idx]);
 		print!("\n   energies[{}]: {}", cel_idx, self.energies[cel_idx]);
 
 		print!("\n");
 
 		print!("\ndens.states[{:?}]: ", cel_den_range.clone()); 
-		cmn::print_vec_simple(&self.dens.states.vec[cel_den_range.clone()]);
+		cmn::print_vec_simple(&self.dens_mut().states.vec[cel_den_range.clone()]);
 
 		print!("\ndens.syns.states[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens.syns.states.vec[cel_syn_range.clone()]);
+		cmn::print_vec_simple(&self.dens_mut().syns.states.vec[cel_syn_range.clone()]);
 
 		print!("\ndens.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens.syns.strengths.vec[cel_syn_range.clone()]);
+		cmn::print_vec_simple(&self.dens_mut().syns.strengths.vec[cel_syn_range.clone()]);
 
 		print!("\ndens.src_col_xy_offs[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens.syns.src_col_xy_offs.vec[cel_syn_range.clone()]);
+		cmn::print_vec_simple(&self.dens_mut().syns.src_col_xy_offs.vec[cel_syn_range.clone()]);
 	}
 
 	pub fn set_all_to_zero(&mut self) {
 		self.preds.set_all_to(0);
 		self.best1_den_ids.set_all_to(0);
 		self.best1_den_states.set_all_to(0);
-		self.best2_den_ids.set_all_to(0);
-		self.best2_den_states.set_all_to(0);
+		self.best2_den_ids.set_all_to(0);			// <<<<< SLATED FOR REMOVAL
+		self.best2_den_states.set_all_to(0);		// <<<<< SLATED FOR REMOVAL
 		self.flag_sets.set_all_to(0);
 		self.energies.set_all_to(0);
 	}
 
+	pub fn dens(&self) -> &Dendrites {
+		&self.dens
+	}
+
+	pub fn dens_mut(&mut self) -> &mut Dendrites {
+		&mut self.dens
+	}
 }

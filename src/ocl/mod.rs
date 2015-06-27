@@ -6,6 +6,7 @@ use std::fs::{ File };
 use std::ffi;
 use std::iter;
 use std::collections::{ HashMap };
+use std::fmt::{ Display };
 use num::{ self, Integer, FromPrimitive };
 use libc;
 
@@ -42,8 +43,8 @@ pub struct Ocl {
 impl Ocl {
 	pub fn new(build_options: BuildOptions) -> Ocl {
 		let path_string = format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME);
-		let path_string_slice = &path_string;
-		let kern_file_path = std::path::Path::new(path_string_slice);
+		let path_string_slc = &path_string;
+		let kern_file_path = std::path::Path::new(path_string_slc);
 		let mut kern_str: Vec<u8> = Vec::new();
 		let kern_file = File::open(kern_file_path).unwrap().read_to_end(&mut kern_str);
 		let kern_c_str = ffi::CString::new(kern_str).ok().expect("Ocl::new(): kern_c_str");
@@ -89,7 +90,6 @@ impl Ocl {
 			context:  self.context,
 			program:  self.program,
 			command_queue: self.command_queue,
-
 		}
 	}
 
@@ -133,7 +133,7 @@ impl Ocl {
 					data: &[T],
 					buffer: cl_h::cl_mem, 
 	) {
-		enqueue_read_buffer(data, buffer, self.command_queue);
+		enqueue_read_buffer(data, buffer, self.command_queue, 0);
 	}
 
 	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
@@ -178,26 +178,23 @@ impl Ocl {
 		}
 
 	}
-}
 
+	pub fn get_max_work_group_size(&self) -> u32 {
+		let max_work_group_size: u64 = 0;
 
+		let mut err = unsafe { 
+			cl_h::clGetDeviceInfo(
+				self.device,
+				cl_h::CL_DEVICE_MAX_WORK_GROUP_SIZE,
+				mem::size_of::<u64>() as u64,
+				mem::transmute(&max_work_group_size),
+				ptr::null_mut(),
+			) 
+		}; 
 
+		must_succ("clGetDeviceInfo", err);
 
-fn to_error_str(err_code: cl_h::cl_int) -> String {
-	/*let err_opt: Option<cl_h::CLStatus> = FromPrimitive::from_isize(err_code as isize);
-	match err_opt {
-		Some(e) => e.to_string(),
-		None => format!("Unknown Error Code: {}", err_code as isize)
-	}*/
-
-	format!("Error codes temporarily unavailable. err_code: {}", err_code as isize)
-}
-
-
-pub fn must_succ(message: &str, err: cl_h::cl_int) {
-	if err != cl_h::CLStatus::CL_SUCCESS as cl_h::cl_int {
-		format!("\n{} failed with code: {}", message, to_error_str(err));
-		panic!(format!("\n{} failed with code: {}", message, to_error_str(err)));
+		max_work_group_size as u32
 	}
 }
 
@@ -254,7 +251,7 @@ pub fn new_program(
 				device: cl_h::cl_device_id,
 ) -> cl_h::cl_program {
 
-	let ocl_build_options_slice: &str = &build_opt;
+	let ocl_build_options_slc: &str = &build_opt;
 
 	let mut err: cl_h::cl_int = 0;
 
@@ -272,7 +269,7 @@ pub fn new_program(
 					program,
 					0, 
 					ptr::null(), 
-					ffi::CString::new(ocl_build_options_slice.as_bytes()).ok().expect("ocl::new_program(): clBuildProgram").as_ptr(), 
+					ffi::CString::new(ocl_build_options_slc.as_bytes()).ok().expect("ocl::new_program(): clBuildProgram").as_ptr(), 
 					mem::transmute(ptr::null::<fn()>()), 
 					ptr::null_mut(),
 		);
@@ -394,13 +391,14 @@ pub fn enqueue_read_buffer<T>(
 				data: &[T],
 				buffer: cl_h::cl_mem, 
 				command_queue: cl_h::cl_command_queue,
+				offset: usize,
 ) {
 	unsafe {
 		let err = cl_h::clEnqueueReadBuffer(
 					command_queue, 
 					buffer, 
 					cl_h::CL_TRUE, 
-					0, 
+					mem::transmute(offset), 
 					(data.len() * mem::size_of::<T>()) as libc::size_t, 
 					data.as_ptr() as *mut libc::c_void, 
 					0, 
@@ -643,22 +641,26 @@ pub fn print_junk(
 	let name = cl_h::CL_DEVICE_NAME as cl_h::cl_device_info;
 
 	let mut err = unsafe { cl_h::clGetDeviceInfo(
-					device,
-					name,
-					0,
-					ptr::null_mut(),
-					&mut size,
+		device,
+		name,
+		0,
+		ptr::null_mut(),
+		&mut size,
 	) }; 
+
 	must_succ("clGetPlatformInfo(size)", err);
+
 	unsafe {
         let mut device_info: Vec<u8> = iter::repeat(32u8).take(size as usize).collect();
+
         err = cl_h::clGetDeviceInfo(
-					device,
-					name,
-					size,
-					device_info.as_mut_ptr() as *mut libc::c_void,
-					ptr::null_mut(),
+			device,
+			name,
+			size,
+			device_info.as_mut_ptr() as *mut libc::c_void,
+			ptr::null_mut(),
 		);
+
         must_succ("clGetDeviceInfo()", err);
         println!("*** Device Name ({}): {}", name, cstring_to_string(device_info));
 	}
@@ -666,6 +668,7 @@ pub fn print_junk(
 	//Get Program Info
 	unsafe {
 		let name = cl_h::CL_PROGRAM_SOURCE as cl_h::cl_program_info;
+
         err = cl_h::clGetProgramInfo(
 					program,
 					name,
@@ -727,3 +730,20 @@ pub fn print_junk(
 fn cstring_to_string(cs: Vec<u8>) -> String {
 	String::from_utf8(cs).unwrap()
 }
+
+
+pub fn must_succ(message: &str, err_code: cl_h::cl_int) {
+	if err_code != cl_h::CLStatus::CL_SUCCESS as cl_h::cl_int {
+		//format!("##### \n{} failed with code: {}\n\n #####", message, err_string(err_code));
+		panic!(format!("\n\n#####> {} failed with code: {}\n\n", message, err_string(err_code)));
+	}
+}
+
+fn err_string(err_code: cl_int) -> String {
+	match CLStatus::from_i32(err_code) {
+		Some(cls) => format!("{:?}", cls),
+		None => format!("[Unknown Error Code: {}]", err_code as isize),
+	}
+}
+
+

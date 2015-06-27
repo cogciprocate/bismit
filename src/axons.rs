@@ -37,25 +37,25 @@ impl Axons {
 		let depth_axn_hrz = region.depth_axonal_horizontal();
 		//let depth_total = region.depth_total(); // NOT THE TRUE AXON DEPTH
 		
-		let mut hrz_axn_slices = 0u8;
+		let mut hrz_axn_slcs = 0u8;
 
 		if depth_axn_hrz > 0 {
 			let syn_span_lin_l2 = (cmn::SYNAPSE_REACH_GEO_LOG2 + 1) << 1;
-			let hrz_frames_per_slice: u8 = (area_dims.columns() >> syn_span_lin_l2) as u8; 
+			let hrz_frames_per_slc: u8 = (area_dims.columns() >> syn_span_lin_l2) as u8; 
 
-			assert!(hrz_frames_per_slice > 0, 
+			assert!(hrz_frames_per_slc > 0, 
 				"Synapse span must be equal or less than cortical area width");
 
-			hrz_axn_slices += depth_axn_hrz / hrz_frames_per_slice;
+			hrz_axn_slcs += depth_axn_hrz / hrz_frames_per_slc;
 
-			if (depth_axn_hrz % hrz_frames_per_slice) != 0 {
-				hrz_axn_slices += 1;
+			if (depth_axn_hrz % hrz_frames_per_slc) != 0 {
+				hrz_axn_slcs += 1;
 			}
 
-			//print!("\n      AXONS::NEW(): columns: {}, syn_span: {}, depth_axn_hrz: {}, hrz_frames_per_slice: {}, hrz_axon_slices: {}", area_dims.columns(), 1 << syn_span_lin_l2, depth_axn_hrz, hrz_frames_per_slice, hrz_axn_slices);
+			//print!("\n      AXONS::NEW(): columns: {}, syn_span: {}, depth_axn_hrz: {}, hrz_frames_per_slc: {}, hrz_axon_slcs: {}", area_dims.columns(), 1 << syn_span_lin_l2, depth_axn_hrz, hrz_frames_per_slc, hrz_axn_slcs);
 		}
 
-		let physical_depth = depth_cellular + depth_axn_sptl + hrz_axn_slices;
+		let physical_depth = depth_cellular + depth_axn_sptl + hrz_axn_slcs;
 
 		let dims = area_dims.clone_with_depth(physical_depth);
 
@@ -76,32 +76,3 @@ impl Axons {
 		}
 	}
 }
-
-
-	/*pub fn cycle(&self, soma: &Somata, ocl: &Ocl) {
-		let mut kern = ocl.new_kernel("axns_cycle", WorkSize::TwoDim(self.depth_cellular as usize, self.dims.width as usize));
-
-		kern.arg(&soma.states);
-		kern.arg(&soma.hcol_max_ids);
-		kern.arg(&self.states);
-		kern.arg_scalar(self.depth_axn_sptl as u32);
-
-		kern.enqueue();
-	} */
-
-
-	/*pub fn cycle_orig(&self, soma: &Somata, ocl: &Ocl) {
-
-		let kern = ocl::new_kernel(ocl.program, "axns_cycle");
-
-		ocl::set_kernel_arg(0, soma.states.buf, kern);
-		//ocl::set_kernel_arg(1, soma.hcol_max_vals.buf, kern);
-		ocl::set_kernel_arg(1, soma.hcol_max_ids.buf, kern);
-		ocl::set_kernel_arg(2, self.states.buf, kern);
-		ocl::set_kernel_arg(3, self.depth_axn_sptl as u32, kern);
-
-		let gws = (self.depth_cellular as usize, self.dims.width as usize);
-
-		ocl::enqueue_2d_kernel(ocl.command_queue, kern, None, &gws, None);
-
-	} */

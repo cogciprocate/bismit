@@ -10,24 +10,23 @@ use proto::layer::ProtolayerKind::{ self, Cellular };
 */
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct Protocell {
-	pub dens_per_cel_l2: u8,
+	pub dens_per_grp_l2: u8,
 	pub syns_per_den_l2: u8,
 	pub cols_per_cel_l2: u8,
 	pub cell_kind: ProtocellKind,
-	pub den_dst_srcs: Option<Vec<&'static str>>,		
+	pub den_dst_srcs: Option<Vec<Vec<&'static str>>>,		
 	pub den_prx_srcs: Option<Vec<&'static str>>,
-	pub den_apc_srcs: Option<Vec<Vec<&'static str>>>, // <<<<< REMOVE
 	pub den_thresh_init: Option<u32>,
 	//pub flags: CellFlags,							
 }
 
 impl Protocell {
 	pub fn new(					
-					dens_per_cel_l2: u8,
+					dens_per_grp_l2: u8,
 					syns_per_den_l2: u8,
 					cols_per_cel_l2: u8,
 					cell_kind: ProtocellKind,
-					den_dst_srcs: Option<Vec<&'static str>>,
+					den_dst_srcs: Option<Vec<Vec<&'static str>>>,
 					den_prx_srcs: Option<Vec<&'static str>>,
 					thresh: Option<u32>,
 					//flags: CellFlags,
@@ -37,12 +36,11 @@ impl Protocell {
 
 		Protocell {
 			cell_kind: cell_kind,
-			dens_per_cel_l2: dens_per_cel_l2,
+			dens_per_grp_l2: dens_per_grp_l2,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
 			den_dst_srcs: den_dst_srcs,
 			den_prx_srcs: den_prx_srcs,
-			den_apc_srcs: None, // <<<<< REMOVE
 			den_thresh_init: thresh,
 			//flags: flags,
 		}
@@ -51,30 +49,29 @@ impl Protocell {
 	/* NEW_PYRAMIDAL(): 
 		- get rid of proximal source (maybe)
 	*/
-	pub fn new_pyramidal(dens_per_cel_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, thresh: u32) -> ProtolayerKind {
+	pub fn new_pyramidal(dens_per_grp_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, thresh: u32) -> ProtolayerKind {
 		Cellular(Protocell {
-			dens_per_cel_l2: dens_per_cel_l2,
+			dens_per_grp_l2: dens_per_grp_l2,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
 			cell_kind: ProtocellKind::Pyramidal,
-			den_dst_srcs: Some(dst_srcs),
+			den_dst_srcs: Some(vec![dst_srcs]),
 			den_prx_srcs: None,
-			den_apc_srcs: None,
 			den_thresh_init: Some(thresh),
 			//den_prx_srcs: Some(vec![prx_src]),
 			//flags: flags,
 		})
 	}
 
-	pub fn new_spiny_stellate(syns_per_den_l2: u8, prx_srcs: Vec<&'static str>, thresh: u32) -> ProtolayerKind {
+	// SWITCH TO DISTAL
+	pub fn new_spiny_stellate(syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, thresh: u32) -> ProtolayerKind {
 		Cellular(Protocell {
-			dens_per_cel_l2: 0,
+			dens_per_grp_l2: 0,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
 			cell_kind: ProtocellKind::SpinyStellate,
-			den_dst_srcs: None,
-			den_prx_srcs: Some(prx_srcs),
-			den_apc_srcs: None,
+			den_dst_srcs: Some(vec![dst_srcs]),
+			den_prx_srcs: None,
 			den_thresh_init: Some(thresh),
 			//flags: flags,
 		})
@@ -82,15 +79,21 @@ impl Protocell {
 
 	pub fn new_inhibitory(cols_per_cel_l2: u8, dst_src: &'static str) -> ProtolayerKind {
 		Cellular(Protocell {
-			dens_per_cel_l2: 0,
+			dens_per_grp_l2: 0,
 			syns_per_den_l2: 0,
 			cols_per_cel_l2: cols_per_cel_l2,
 			cell_kind: ProtocellKind::Inhibitory,
-			den_dst_srcs: Some(vec![dst_src]),
+			den_dst_srcs: Some(vec![vec![dst_src]]),
 			den_prx_srcs: None,
-			den_apc_srcs: None,
 			den_thresh_init: None,
 		})
+	}
+
+	pub fn dst_src_grps_len(&self) -> u32 {
+		match self.den_dst_srcs {
+			Some(ref src_grps) => src_grps.len() as u32,
+			None => 0u32,
+		}
 	}
 }
 
@@ -109,7 +112,6 @@ pub enum ProtocellKind {
 pub enum DendriteKind {
 	Proximal,
 	Distal, 
-	Apical(u8),
 }
 
 pub enum DendriteClass {
@@ -128,6 +130,7 @@ bitflags! {
 }
 
  
+
 
 
 
