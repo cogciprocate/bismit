@@ -602,7 +602,7 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 		let syn_idz = cel_idz << syns_per_grp_l2;
 		let den_idz = cel_idz << dens_per_grp_l2;
 
-		//println!("\nsyn_idz: {}, syns_per_grp: {}, syns_per_group: {}", syn_idz, 1 << syns_per_grp_l2, syns_per_group);
+		println!("\nsyn_idz: {}, syns_per_grp: {}, syns_per_group: {}", syn_idz, 1 << syns_per_grp_l2, syns_per_group);
 
 		for syn_idx in syn_idz..(syn_idz + syns_per_group) {
 			syn_states_ttl += (dens.syns.states[syn_idx] >> 7) as usize;
@@ -613,25 +613,31 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 		}
 
 		if (cel_idz & 512) == 0 {
-			//print!("\n   -Inactive-");
+			print!("\n   -Inactive-");
 
 			if (syn_states_ttl < actv_group_thresh) || (den_states_ttl < actv_group_thresh) {
 				test_failed = true;
 			}
 
+			/*assert!(syn_states_ttl > actv_group_thresh);
+			assert!(den_states_ttl > actv_group_thresh);*/
+
 		} else {
-			//print!("\n   -Active-");
+			print!("\n   -Active-");
 
 			if (syn_states_ttl > actv_group_thresh) || (den_states_ttl > actv_group_thresh) {
 				test_failed = true;
 			}
 
+			/*assert!(syn_states_ttl < actv_group_thresh);
+			assert!(den_states_ttl < actv_group_thresh);*/
+
 		}
 
-		//print!("\nSYN [{} - {}]: {}", cel_idz, (cel_idz + cels_per_group - 1), syn_states_ttl);
-		//print!("   DEN [{} - {}]: {}", cel_idz, (cel_idz + cels_per_group - 1), den_states_ttl);
+		print!("\nSYN [{} - {}]: {}", cel_idz, (cel_idz + cels_per_group - 1), syn_states_ttl);
+		print!("   DEN [{} - {}]: {}", cel_idz, (cel_idz + cels_per_group - 1), den_states_ttl);
 
-		//io::stdout().flush().unwrap();
+		io::stdout().flush().unwrap();
 
 		cel_idz += cels_per_group;
 	}

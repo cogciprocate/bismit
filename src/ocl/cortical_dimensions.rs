@@ -77,6 +77,10 @@ impl CorticalDimensions {
 		self.depth
 	}
 
+	pub fn grps_per_cel(&self) -> u32 {
+		self.grps_per_cel
+	}
+
 	pub fn per_grp_l2(&self) -> i8 {
 		self.per_grp_l2
 	}
@@ -86,6 +90,17 @@ impl CorticalDimensions {
 			Some(pi) => pi,
 			None => panic!("\ncortical_dimensions::CorticalDimensions::physical_increment(): Physical Increment not set!"),
 		}
+	}
+
+	// COLUMNS(): 2D Area of a slc measured in cells
+	pub fn columns(&self) -> u32 {
+		self.height * self.width
+		//1 << (self.height_l2 + self.width_l2) as u32
+	}
+
+	// CELLS(): 3D Volume measured in cells
+	pub fn cells(&self) -> u32 {
+		self.columns() * self.depth as u32
 	}
 
 	pub fn set_physical_increment(&mut self, physical_increment: u32) {
@@ -113,7 +128,7 @@ impl CorticalDimensions {
 		len_components(1, self.per_grp_l2, self.grps_per_cel)
 	}
 
-	pub fn per_grp(&self) -> u32 {
+	pub fn per_slc_per_grp(&self) -> u32 {
 		len_components(self.columns(), self.per_grp_l2, 1)
 	}
 
@@ -122,16 +137,7 @@ impl CorticalDimensions {
 		len_components(self.columns(), self.per_grp_l2, self.grps_per_cel)
 	}
 
-	// COLUMNS(): 2D Area of a slc measured in cells
-	pub fn columns(&self) -> u32 {
-		self.height * self.width
-		//1 << (self.height_l2 + self.width_l2) as u32
-	}
-
-	// CELLS(): 3D Volume measured in cells
-	pub fn cells(&self) -> u32 {
-		self.columns() * self.depth as u32
-	}
+	
 
 	// LEN(): 4D Volume - Total linear length if stretched out - measured in cell-piece-whatevers
 	/* TEMPORARY */

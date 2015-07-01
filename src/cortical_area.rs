@@ -92,13 +92,17 @@ impl CorticalArea {
 					match pcell.cell_kind {
 						Pyramidal => {
 							let pyrs_dims = dims.clone_with_depth(layer.depth);
-							let pyr_lyr = PyramidalCellularLayer::new(layer_name, pyrs_dims, pcell.clone(), &protoregion, &axns, &aux, ocl);
+
+							let pyr_lyr = PyramidalCellularLayer::new(
+								layer_name, pyrs_dims, pcell.clone(), &protoregion, &axns, &aux, ocl);
+
 							pyrs_map.insert(layer_name, Box::new(pyr_lyr));
 						},
 
 						SpinyStellate => {							
 							let ssts_map_dims = dims.clone_with_depth(layer.depth);
-							let sst_lyr = SpinyStellateCellularLayer::new(layer_name, ssts_map_dims, pcell.clone(), &protoregion, &axns, &aux, ocl);
+							let sst_lyr = SpinyStellateCellularLayer::new(
+								layer_name, ssts_map_dims, pcell.clone(), &protoregion, &axns, &aux, ocl);
 							ssts_map.insert(layer_name, Box::new(sst_lyr));
 						},
 
@@ -370,8 +374,8 @@ impl Aux {
 		//dims.columns() *= 512;
 
 		Aux { 
-			ints_0: Envoy::<ocl::cl_int>::new(dims, 0, ocl),
-			ints_1: Envoy::<ocl::cl_int>::new(dims, 0, ocl),
+			ints_0: Envoy::<ocl::cl_int>::new(dims, -999, ocl),
+			ints_1: Envoy::<ocl::cl_int>::new(dims, -999, ocl),
 			chars_0: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			chars_1: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			dims: dims,

@@ -60,7 +60,7 @@ impl Kernel {
 		if lws.dims() == self.gws.dims() {
 			self.lws = lws;
 		} else {
-			panic!("ocl::Kernel::gwo(): Work size mismatch.");
+			panic!("ocl::Kernel::lws(): Work size mismatch.");
 		}
 		self
 	}

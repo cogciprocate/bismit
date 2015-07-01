@@ -57,16 +57,7 @@ static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_
 	- [incomplete] Specific unit tests
 	- [incomplete] #define slc_columns 
 
-*/
-static inline uint axn_idx_2d_tmp(uchar slc_id, uint slc_columns, uint col_id, char col_ofs) {
-	uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
-	int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
-	int hcol_id = mad24(hslc_id, SYNAPSE_SPAN_LIN, col_ofs + SYNAPSE_REACH_LIN);
-	uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_columns, (uint)(hcol_id + SYNAPSE_REACH_LIN));
-	
-	return mul24((uint)(hslc_id < 0), axn_idx_spt) + mul24((uint)(hslc_id >= 0), axn_idx_hrz);
-}
-
+*/ 
 static inline uint axn_idx_2d(uchar slc_id, uint slc_columns, uint col_id, char col_ofs) {
 	uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
 	int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
@@ -83,7 +74,12 @@ static inline uint axn_idx_2d(uchar slc_id, uint slc_columns, uint col_id, char 
 
 
 */
-/*static inline uint axn_idx_3d(uchar slc_id, uint slc_columns, uint col_id, char hw_ofs) {
+static inline uint axn_idx_3d(uchar slc_id, uint slc_columns, uint col_id, char hw_ofs) {
+	/* 
+		- SPLIT UP SLC_OFS
+		- MULTIPLY HEIGHT_OFS * WIDTH
+		- ADD TOGETHER
+	*/
 
 	uint area_width = 99; // ***** <<<<< OBVIOUSLY, SUPPLY THIS TO THE FUNCTION
 
@@ -110,7 +106,7 @@ static inline uint axn_idx_2d(uchar slc_id, uint slc_columns, uint col_id, char 
 	
 	return mul24((uint)(hslc_id < 0), axn_idx_physical) + mul24((uint)(hslc_id >= 0), axn_idx_hrz);
 }
-*/
+
 
 static inline int rnd_inc(uint const rnd_a,	uint const rnd_b, char const syn_strength) {
 		return ((rnd_a ^ rnd_b) & 0x7F) > abs(syn_strength);
@@ -283,99 +279,19 @@ __kernel void syns_cycle(
 				__global char const* const syn_src_col_xy_offs,
 				__global uchar const* const syn_src_slc_ids,
 				//__global char const* const syn_strengths,
-				__private uint const syn_grp_i,
-				__private uchar const syns_per_grp_l2,
-				__global int* const aux_ints_0,
-				__global uchar* const syn_states
-) {
-	//uint const slc_id = get_global_id(0);
-	//uint const col_id = get_global_id(1);
-
-	uint const slc_columns = mul24(get_global_size(1), get_global_size(2)); // PRECOMPUTE or depricate
-	uint const layer_total_per_grp = mul24(slc_columns, get_global_size(0)); // PRECOMPUTE
-	uint const wg_size = mul24(get_local_size(1), get_local_size(2)); // PRECOMPUTE or depricate
-	uint const base_cel_grp_ofs = mul24(syn_grp_i, layer_total_per_grp); // PRECOMPUTE
-
-	uint const z_id = get_global_id(0);
-	uint const y_id = get_global_id(1);
-	uint const x_id = get_global_id(2);
-
-	uint const col_id = mad24(y_id, get_global_size(1), x_id); // FOR DEBUG PURPOSES
-	uint aux_idx = mad24(z_id, slc_columns, col_id); // FOR DEBUG PURPOSES
-	
-	uint const wg_id = mad24(get_group_id(1), get_num_groups(2), get_group_id(2));
-	uint const l_id = mad24(get_local_id(1), get_local_size(2), get_local_id(2));
-	
-	uint const base_col_id = mul24(wg_id, wg_size);
-	uint const grp_cel_idx = mad24(z_id, slc_columns, base_col_id);
-	uint const base_cel_idx = base_cel_grp_ofs + grp_cel_idx;
-	//uint const base_cel_idx = grp_cel_idx;
-	uint const base_syn_idx = (base_cel_idx << syns_per_grp_l2);
-	uint const init_syn_idx = base_syn_idx + l_id;
-
-	uint const syns_per_slc = slc_columns << syns_per_grp_l2;
-	uint const syns_per_wg = wg_size << syns_per_grp_l2;
-
-
-	int syn_col_i = (base_col_id << syns_per_grp_l2) + l_id;
-	uint syn_idx = init_syn_idx;
-	uint const syn_n = base_syn_idx + syns_per_wg;
-
-	for (; syn_idx < syn_n; syn_idx += wg_size) {
-		syn_col_i -= mul24((int)syns_per_slc, (syn_col_i >= syns_per_slc));
-		int col_pos = syn_col_i >> syns_per_grp_l2;
-		uint axn_idx = axn_idx_2d(syn_src_slc_ids[syn_idx], slc_columns, col_pos, syn_src_col_xy_offs[syn_idx]);
-		uchar axn_state = axn_states[axn_idx];
-
-		//aux_ints_0[syn_idx - l_id] = axn_idx;
-		
-		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
-		
-		syn_col_i += wg_size;
-
-
-		//syn_states[syn_idx] = axn_state;
-		//char syn_strength = syn_strengths[syn_idx];
-		//syn_states[syn_idx] = mul24((syn_strength >= 0), ((axn_state != 0) << 7) + (axn_state >> 1));
-		//aux_ints_0[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
-		//aux_ints_0[syn_idx] = axn_idx;
-	}
-
-	//aux_ints_0[0] = HORIZONTAL_AXON_ROW_DEMARCATION;
-
-	//uint aux_idx = mad24(z_id, slc_columns, col_id);
-	//aux_ints_0[init_syn_idx] = base_col_id;
-	//aux_ints_0[init_syn_idx] = 1;
-	//aux_ints_0[base_cel_idx] = 12321;
-}
-
-
-
-/*__kernel void syns_cycle_original(
-				__global uchar const* const axn_states,
-				__global char const* const syn_src_col_xy_offs,
-				__global uchar const* const syn_src_slc_ids,
-				//__global char const* const syn_strengths,
 				__private uchar const syns_per_grp_l2,
 				//__global int* const aux_ints_0,
 				__global uchar* const syn_states
 ) {
-	//uint const slc_id = get_global_id(0);
-	//uint const col_id = get_global_id(1);
-
-	uint const z_id = get_global_id(0);
-	uint const x_id = get_global_id(1);
-	uint const y_id = get_global_id(2);
-
-	uint const col_id = mul24(x_id, y_id);
-
+	uint const slc_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
 	uint const slc_columns = get_global_size(1);
 	uint const l_id = get_local_id(1); 
 	uint const wg_id = get_group_id(1);
 	uint const wg_size = get_local_size(1);
 	
 	uint const base_col_id = mul24(wg_id, wg_size);
-	uint const base_cel_idx = mad24(z_id, slc_columns, base_col_id);
+	uint const base_cel_idx = mad24(slc_id, slc_columns, base_col_id);
 
 	uint const base_syn_idx = (base_cel_idx << syns_per_grp_l2);
 	uint const init_syn_idx = base_syn_idx + l_id;
@@ -388,7 +304,7 @@ __kernel void syns_cycle(
 	int syn_sst_i = (base_col_id << syns_per_grp_l2) + l_id;
 	uint syn_idx = init_syn_idx;
 
-	//uint aux_idx = mad24(z_id, slc_columns, col_id); // DEBUG
+	uint aux_idx = mad24(slc_id, slc_columns, col_id); // DEBUG
 
 	for (; syn_idx < syn_n; syn_idx += wg_size) {
 		syn_sst_i -= mul24((int)syns_per_slc, (syn_sst_i >= syns_per_slc));
@@ -409,11 +325,11 @@ __kernel void syns_cycle(
 
 	//aux_ints_0[0] = HORIZONTAL_AXON_ROW_DEMARCATION;
 
-	//uint aux_idx = mad24(z_id, slc_columns, col_id);
+	//uint aux_idx = mad24(slc_id, slc_columns, col_id);
 	//aux_ints_0[aux_idx] = l_id;
 	//aux_ints_0[aux_idx] = syn_idx;
 	//aux_ints_0[base_cel_idx] = 12321;
-}*/
+}
 
 
 
@@ -442,83 +358,11 @@ __kernel void den_cycle(
 				//__global int* const aux_ints_1,
 				__global uchar* const den_states
 ) {
-	uint const den_idx = get_global_id(0);
-	//uint const x_id = get_global_id(1);
-	//uint const y_id = get_global_id(2);
-	//uint const slc_columns = mul24(get_global_size(1), get_global_size(2));
-	//uint const den_idx = mad24(z_id, slc_columns, mul24(x_id, y_id));
-	uint const syn_idz = den_idx << syns_per_den_l2;
-
-	/*uint const z_id = get_global_id(0);
-	uint const x_id = get_global_id(1);
-	uint const y_id = get_global_id(2);
-	uint const slc_columns = mul24(get_global_size(1), get_global_size(2));
-	uint const den_idx = mad24(z_id, slc_columns, mul24(x_id, y_id));
-	uint const syn_idz = den_idx << syns_per_den_l2;*/
-
-	uchar den_energy = den_energies[den_idx];
-
-	int syn_sum = 0;
-	int syn_sum_raw = 0;
-
-	int const n = (1 << syns_per_den_l2);
-
-	for (int i = 0; i < n; i += 1) {
-		char syn_strength = syn_strengths[syn_idz + i];
-
-		//uchar syn_state = mul24((syn_states[syn_idz + i] > 0), 1);
-		uchar syn_state = syn_states[syn_idz + i]; 
-
-		//syn_sum += syn_state;
-		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
-		
-		syn_sum_raw += syn_state;
-	}
-	
-	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
-
-
-	if (syn_sum != 0) {
-		if (den_energy >= ENERGY_LEVEL_MIN) {
-			den_energy -= ENERGY_LEVEL_MIN;
-			//output_state = best1_den_state; 	// NEW
-		} else {
-			den_energy += ENERGY_REGEN_AMOUNT;
-			syn_sum = 0; 						// NEW
-		}
-	} else {
-		if (den_energy < ENERGY_LEVEL_MAX) {
-			den_energy += ENERGY_REGEN_AMOUNT;
-		}
-	}
-
-
-	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255); 
-	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); 
-
-	//den_states_raw[den_idx] = clamp(syn_sum_raw, 0, 255); 	// UNUSED
-	//den_states[den_idx] = clamp(syn_sum, 0, 255);	 			// UNUSED
-
-	//aux_ints_1[den_idx] = clamp((syn_sum >> 7), 0, 255); 		// DEBUGGING
-}
-
-
-
-__kernel void den_cycle_original(
-				__global uchar const* const syn_states,
-				__global char const* const syn_strengths,
-				__private uchar const syns_per_den_l2,
-				__private uint const den_threshold,
-				__global uchar* const den_energies,
-				__global uchar* const den_states_raw,
-				//__global int* const aux_ints_1,
-				__global uchar* const den_states
-) {
 	uint const slc_id = get_global_id(0);
 	uint const den_id = get_global_id(1);
 	uint const slc_columns = get_global_size(1);
 	uint const den_idx = mad24(slc_id, slc_columns, den_id);
-	uint const syn_idz = den_idx << syns_per_den_l2;
+	uint const syn_ofs = den_idx << syns_per_den_l2;
 
 	uchar den_energy = den_energies[den_idx];
 
@@ -528,10 +372,10 @@ __kernel void den_cycle_original(
 	int const n = (1 << syns_per_den_l2);
 
 	for (int i = 0; i < n; i += 1) {
-		char syn_strength = syn_strengths[syn_idz + i];
+		char syn_strength = syn_strengths[syn_ofs + i];
 
-		//uchar syn_state = mul24((syn_states[syn_idz + i] > 0), 1);
-		uchar syn_state = syn_states[syn_idz + i]; 
+		//uchar syn_state = mul24((syn_states[syn_ofs + i] > 0), 1);
+		uchar syn_state = syn_states[syn_ofs + i]; 
 
 		//syn_sum += syn_state;
 		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
@@ -567,7 +411,10 @@ __kernel void den_cycle_original(
 }
 
 
-/* 	//##################### DEN_CYCLE(): WORKSPACE ##############################
+/* //############################### ORIGINAL ###############################
+
+
+//######################## WORKSPACE ###########################
 
 // EXPERIMENTAL ENERGY CODE -- WORKING -- (FROM PYR_CYCLE)
 	if (input_state > 0) {
@@ -583,6 +430,7 @@ __kernel void den_cycle_original(
 		}
 	}
 
+
 // EXPERIMENTAL ENERGY CODE (FROM DEN_CYCLE)
 
 	if (input_state > 0) {
@@ -597,6 +445,7 @@ __kernel void den_cycle_original(
 			energy += ENERGY_RECHARGE;
 		}
 	}
+
 
 //###############################################################
 
@@ -614,7 +463,7 @@ __kernel void den_cycle_original(
 	uint const den_id = get_global_id(1);
 	uint const slc_columns = get_global_size(1);
 	uint const den_idx = mad24(slc_id, slc_columns, den_id);
-	uint const syn_idz = den_idx << syns_per_den_l2;
+	uint const syn_ofs = den_idx << syns_per_den_l2;
 
 	int syn_sum = 0;
 	int syn_sum_raw = 0;
@@ -622,10 +471,10 @@ __kernel void den_cycle_original(
 	int const n = (1 << syns_per_den_l2);
 
 	for (int i = 0; i < n; i += 1) {
-		char syn_strength = syn_strengths[syn_idz + i];
+		char syn_strength = syn_strengths[syn_ofs + i];
 
-		//uchar syn_state = mul24((syn_states[syn_idz + i] > 0), 1);
-		uchar syn_state = syn_states[syn_idz + i]; 
+		//uchar syn_state = mul24((syn_states[syn_ofs + i] > 0), 1);
+		uchar syn_state = syn_states[syn_ofs + i]; 
 
 		//syn_sum += syn_state;
 		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
@@ -1121,13 +970,11 @@ __kernel void pyr_cycle(
 				__global uchar* const pyr_preds
 				//__global uchar* const axn_states
 ) {
-	//uint const slc_id = get_global_id(0);
-	//uint const col_id = get_global_id(1);
-	//uint const slc_columns = get_global_size(1);
-	//uint const pyr_idx = mad24(slc_id, slc_columns, col_id);
-
-	uint const pyr_idx = get_global_id(0);
-	
+	uint const slc_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const slc_columns = get_global_size(1);
+	uint const pyr_idx = mad24(slc_id, slc_columns, col_id);
+	uint const den_ofs = pyr_idx << dens_per_grp_l2;
 	//uint const axn_idx = axn_idx_2d(pyr_axn_slc_base + slc_id, slc_columns, col_id);
 	//uint const axn_idx = mad24(pyr_axn_slc_base + slc_id, slc_columns, col_id + (uint)SYNAPSE_REACH_LIN);
 	uchar pyr_energy = pyr_energies[pyr_idx];	// <<<<< SLATED FOR REMOVAL
@@ -1143,30 +990,27 @@ __kernel void pyr_cycle(
 
 	uchar pyr_state = 0;
 
-
 	//uint pyr_pred = pyr_preds[pyr_idx];
 
-	for (uint den_grp = 0; den_grp < den_grps_per_cel; den_grp++) {
-		uint const den_idz = mad24(den_grp, get_global_size(0), pyr_idx) << dens_per_grp_l2;
- 
-		for (uint den_idx = 0; den_idx < (1 << dens_per_grp_l2); den_idx++) {
-			uchar den_state = den_states[den_idz + den_idx];
-			int den_state_bigger = (den_state > best1_den_state);
+		//#pragma unroll 
+	for (uchar i = 0; i < (1 << dens_per_grp_l2); i++) {
+		uchar den_state = den_states[den_ofs + i];
+		int den_state_bigger = (den_state > best1_den_state);
 
-			best2_den_id = mad24(den_state_bigger, best1_den_id, mul24(!den_state_bigger, best2_den_id));
-			best2_den_state = mad24(den_state_bigger, best1_den_state, mul24(!den_state_bigger, best2_den_state));
+		best2_den_id = mad24(den_state_bigger, best1_den_id, mul24(!den_state_bigger, best2_den_id));
+		best2_den_state = mad24(den_state_bigger, best1_den_state, mul24(!den_state_bigger, best2_den_state));
 
-			best1_den_id = mad24(den_state_bigger, (int)den_idx, mul24(!den_state_bigger, best1_den_id));
-			best1_den_state = mad24(den_state_bigger, den_state, mul24(!den_state_bigger, best1_den_state));
+		best1_den_id = mad24(den_state_bigger, i, mul24(!den_state_bigger, best1_den_id));
+		best1_den_state = mad24(den_state_bigger, den_state, mul24(!den_state_bigger, best1_den_state));
 
-			//best1_den_state = mul24(den_state_bigger, den_state);
+		//best1_den_state = mul24(den_state_bigger, den_state);
 
-			//den_sum += den_state;
-			//den_sum += (den_state != 0);
-			//den_sum += (den_state > 0);
-			//active_dendrites += (den_state > 0);
-		}
+		//den_sum += den_state;
+		//den_sum += (den_state != 0);
+		//den_sum += (den_state > 0);
+		//active_dendrites += (den_state > 0);
 	}
+
 		
 	// EXPERIMENTAL ENERGY CODE  // <<<<< SLATED FOR REMOVAL
 	
@@ -1456,7 +1300,7 @@ __kernel void den_cycle_experimental(
 	uint const den_id = get_global_id(1);
 	uint const slc_columns = get_global_size(1);
 	uint const den_idx = mad24(slc_id, slc_columns, den_id);
-	uint const syn_idz = den_idx << syns_per_den_l2;
+	uint const syn_ofs = den_idx << syns_per_den_l2;
 
 	uchar den_energy = den_energies[den_idx];
 
@@ -1466,10 +1310,10 @@ __kernel void den_cycle_experimental(
 	int const n = (1 << syns_per_den_l2);
 
 	for (int i = 0; i < n; i += 1) {
-		char syn_strength = syn_strengths[syn_idz + i];
+		char syn_strength = syn_strengths[syn_ofs + i];
 
-		//uchar syn_state = mul24((syn_states[syn_idz + i] > 0), 1); 
-		uchar syn_state = syn_states[syn_idz + i]; 
+		//uchar syn_state = mul24((syn_states[syn_ofs + i] > 0), 1); 
+		uchar syn_state = syn_states[syn_ofs + i]; 
 
 		//syn_sum += syn_state; 
 		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
@@ -1749,14 +1593,14 @@ __kernel void syns_regrow_deprec(
 	uint const slc_columns = get_global_size(1);
 	uint const den_idx = mad24(slc_id, slc_columns, den_id);
 	//uint const syn4_per_den_l2 = syns_per_den_l2 - 2;
-	//uint const syn_idz = den_idx << syn4_per_den_l2;
-	uint const syn_idz = den_idx << syns_per_den_l2;
+	//uint const syn_ofs = den_idx << syn4_per_den_l2;
+	uint const syn_ofs = den_idx << syns_per_den_l2;
 
 	int syn_sum = 0;
 	uint const n = (1 << syns_per_den_l2);
 
 	for (uint i = 0; i < n; i += 1) {
-		uchar syn_state = syn_states[syn_idz + i];
+		uchar syn_state = syn_states[syn_ofs + i];
 		syn_sum += syn_state;
 	}
 

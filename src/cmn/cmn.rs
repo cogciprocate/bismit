@@ -275,7 +275,8 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 
 	let mut ttl_nz = 0usize;
 	let mut ttl_ir = 0usize;
-	let mut within_idx_range = false;
+	let mut within_idx_range = true;
+	let mut within_val_range = true;
 	let mut hi: T = vr_start;
 	let mut lo: T = vr_end;
 	let mut sum: isize = 0;
@@ -328,33 +329,38 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 		if val_range.is_some() {
 			if vec[i] < vr_start || vec[i] > vr_end {
 				prnt = false;
-			} else if within_idx_range {
-				if show_zeros && vec[i] == Default::default() {
-					ttl_ir += 1;
-				} else if vec[i] != Default::default() {
-					ttl_ir += 1;
+				within_val_range = false;
+			} else {
+				if within_idx_range {
+					if vec[i] == Default::default() {
+						ttl_ir += 1;
+					} else {
+						ttl_ir += 1;
+					}
 				}
+
+				within_val_range = true;
 			}
 		} else {
 			//ttl_ir += 1;
 		}
 
-		sum += vec[i].to_isize().expect("cmn::print_vec(): vec[i]");
-		//sum += std::num::cast::<T, isize>(vec[i]).expect("cmn::print_vec, sum");
+		if within_idx_range && within_val_range {
+			sum += vec[i].to_isize().expect("cmn::print_vec(): vec[i]");
 
+			if vec[i] > hi { hi = vec[i] };
 
-		if vec[i] > hi { hi = vec[i] };
+			if vec[i] < lo { lo = vec[i] };
 
-		if (vec[i] < lo) && (vec[i] != Default::default()) { lo = vec[i] };
-
-		if vec[i] != Default::default() {
-			ttl_nz += 1usize;
-			color = C_ORA;
-		} else {
-			if show_zeros {
-				color = C_DEFAULT;
+			if vec[i] != Default::default() {
+				ttl_nz += 1usize;
+				color = C_ORA;
 			} else {
-				prnt = false;
+				if show_zeros {
+					color = C_DEFAULT;
+				} else {
+					prnt = false;
+				}
 			}
 		}
 
@@ -568,6 +574,7 @@ pub fn render_sdr(
 	let mut out_line: String = String::with_capacity(line_character_width);
 	let mut i_line = 0usize;
 	let mut i_global = 0usize;
+	let mut i_pattern = 0usize; // DEPRICATE
 	let mut i_cort_area = 0u8;
 
 	print!("\n");
@@ -643,14 +650,19 @@ pub fn render_sdr(
 
 
 		if print {
-			if ((i_line & (sdr_len - 1) as usize) == 0) && (vec_ff.len() > sdr_len as usize) {
+			if ((i_line % sdr_len as usize) == 0) && (vec_ff.len() > sdr_len as usize) {
 				let slc_id = (i_cort_area) as u8;
+
 				let slc_name = match slc_map.get(&slc_id) {
 					Some(&name) => name,
 					None => "<render_sdr(): slc name not found in map>",
 				};
+
 				println!("\n[{}: {}]", slc_id, slc_name);
 				i_cort_area += 1;
+				i_pattern = 0; // DEPRICATE
+			} else {
+				i_pattern += 1; // DEPRICATE
 			}
 			
 			println!("{}", out_line);

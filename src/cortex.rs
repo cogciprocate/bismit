@@ -12,69 +12,10 @@ use chord::{ Chord };
 use cortical_area:: { self, CorticalArea };
 use thalamus::{ Thalamus };
 use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, layer, Protocell };
-//use proto::regions::{ self, Protoregion, Protoregions, ProtoregionKind };
-//use proto::areas::{ self, Protoareas, ProtoareasTrait, Protoarea };
-//use proto::layer::{ self, Protolayer, ProtolayerKind, ProtoaxonKind };
-	//use proto::layer::{ Cellular, Axonal };
-	//use proto::layer::ProtoaxonKind::{ Spatial, Horizontal };
-//use proto::cell::{ ProtocellKind, Protocell, DendriteKind, CellFlags };
-
-
-	/* Eventually move define_*() to a config file or some such */
-pub fn define_protoregions() -> Protoregions {
-	let mut cort_regs: Protoregions = Protoregions::new();
-
-	let mut sen = Protoregion::new(Sensory)
-		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
-
-		.layer("eff_in", 1, layer::EFFERENT_INPUT, Axonal(Spatial))
-
-		.layer("thal", 1, layer::AFFERENT_INPUT, Axonal(Spatial))
-
-		.layer("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
-
-		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["thal"], 256)) 
-		//.layer("vi", 5, layer::DEFAULT, Protocell::new_spiny_stellate(3, vec!["thal"], 256)) 
-
-		.layer("iv_inhib", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv"))
-
-		//.layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
-		.layer("iii", 4, layer::TEMPORAL_ASSOCIATIVE, Protocell::new_pyramidal(2, 4, vec!["iii"], 512).apical(vec!["eff_in"]))
-
-		/*	<<<<< ADDING ADDITIONAL PYRS (AND PRESUMABLY SSTS) NEEDS FIX >>>>>
-			Creating cells is still based on the idea (enforced by protoregion) that all cells of a certain type (ex. Pyramidal) are to be created in the same envoy. Need to change the way synapses build their indexes etc.
-		*/
-		//.layer("ii", 3, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["out"], 512)) // <<<<< FIX ME (FIX SYNS)
-
-		//.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
-		.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
-
-		.freeze()
-	;
-
-	cort_regs.add(sen);
-	cort_regs
-}
-
-pub fn define_protoareas() -> Protoareas {
-	let mut protoareas = Protoareas::new()
-		//.area("v1", 32, 32, Sensory, Some(vec!["v2"]))
-		.area("v1", 48, 48, Sensory, Some(vec!["b1"]))
-		.area("b1", 48, 48, Sensory, Some(vec!["a1"]))
-		.area("a1", 48, 48, Sensory, None)
-	;
-
-	protoareas
-}
-
 
 pub struct Cortex {
-	//pub cortical_area: CorticalArea, // <<<<< SLATED FOR REMOVAL
-	//protoregions: Protoregions,
-	//protoareas: Protoareas,
 	areas: HashMap<&'static str, Box<CorticalArea>>,
 	thal: Thalamus,
-	//ocl: ocl::Ocl, // GIVE TO THALAMUS
 }
 
 impl Cortex {
@@ -82,23 +23,12 @@ impl Cortex {
 		print!("\nInitializing Cortex... ");
 		let time_start = time::get_time();		
 
-		//let protoregions = define_protoregions();
-		//let protoareas = define_protoareas();
-
 		let mut areas = HashMap::new();
 
 		let hrz_demarc = protoregions[&Sensory].hrz_demarc();
 		let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", hrz_demarc as i32);
 		let build_options = cmn::build_options().add(hrz_demarc_opt);
 
-
-		/* OCL:
-			- NEED TO MOVE PARTS OF OCL, SUCH AS PROGRAM, TO CORTICAL AREA.
-			- NEED TO CONSIDER WHICH PARTS MUST REMAIN GLOBAL
-			- NEED TO GET DEVICE INFORMATION AT THIS POINT (SUCH AS WORKGROUP SIZE)
-				- PASS THIS TO PROTOAREA SOMEHOW AND ADD IT TO DIMS
-					- IMPART TO PROTOAREA?
-		*/
 		let ocl: ocl::Ocl = ocl::Ocl::new(build_options);
 
 		let max_work_group_size = ocl.get_max_work_group_size();
@@ -143,31 +73,6 @@ impl Cortex {
 		self.areas.get(area_name).expect(&emsg)
 	}
 
-	/*	WRITE_VEC(): 
-			TODO: 
-				- VALIDATE "layer_target, OTHERWISE: 
-					- thread '<main>' panicked at '[protoregions::Protoregion::index(): 
-					invalid layer name: "XXXXX"]', src/protoregions.rs:339
-						- Just have slc_ids return an option<u8>
-				- Handle multi-slc input vectors (for input compression, etc.)
-					- Update assert statement to support this
-	*/
-	/*pub fn write_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &[ocl::cl_uchar]) {
-		let emsg = "cortex::Cortex::write_vec()";
-		let ref region = self.protoregions[&Sensory];
-		let axn_slcs: Vec<u8> = region.slc_ids(vec!(layer_target));
-
-		for slc in axn_slcs { 
-			let buffer_offset = cmn::axn_idx_2d(slc, self.areas.get(area_name).expect(emsg).dims.columns(), region.hrz_demarc()) as usize;
-			//let buffer_offset = cmn::SYNAPSE_REACH_LIN + (axn_slc as usize * self.cortical_area.axns.dims.width as usize);
-
-			//println!("##### write_vec(): {} offset: axn_idx_2d(axn_slc: {}, dims.columns(): {}, region.hrz_demarc(): {}): {}, vec.len(): {}", layer_target, slc, self.cortical_area.dims.columns(), region.hrz_demarc(), buffer_offset, vec.len());
-
-			//assert!(vec.len() <= self.cortical_area.dims.columns() as usize); // <<<<< NEEDS CHANGING (for multi-slc inputs)
-
-			ocl::enqueue_write_buffer(vec, self.areas.get(area_name).expect(emsg).axns.states.buf, self.ocl.command_queue, buffer_offset);
-		}
-	}*/
 
 	pub fn write_input(&mut self, area_name: &str, sdr: &[ocl::cl_uchar]) {
 		let emsg = format!("cortex::Cortex::write_input(): Area: '{}' not found. ", area_name);
@@ -225,6 +130,90 @@ impl Cortex {
 
 	}
 
+	pub fn valid_area(&self, area_name: &str) -> bool {
+		self.areas.contains_key(area_name)
+	}
+}
+
+
+
+
+	/*	WRITE_VEC(): 
+			TODO: 
+				- VALIDATE "layer_target, OTHERWISE: 
+					- thread '<main>' panicked at '[protoregions::Protoregion::index(): 
+					invalid layer name: "XXXXX"]', src/protoregions.rs:339
+						- Just have slc_ids return an option<u8>
+				- Handle multi-slc input vectors (for input compression, etc.)
+					- Update assert statement to support this
+	*/
+	/*pub fn write_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &[ocl::cl_uchar]) {
+		let emsg = "cortex::Cortex::write_vec()";
+		let ref region = self.protoregions[&Sensory];
+		let axn_slcs: Vec<u8> = region.slc_ids(vec!(layer_target));
+
+		for slc in axn_slcs { 
+			let buffer_offset = cmn::axn_idx_2d(slc, self.areas.get(area_name).expect(emsg).dims.columns(), region.hrz_demarc()) as usize;
+			//let buffer_offset = cmn::SYNAPSE_REACH_LIN + (axn_slc as usize * self.cortical_area.axns.dims.width as usize);
+
+			//println!("##### write_vec(): {} offset: axn_idx_2d(axn_slc: {}, dims.columns(): {}, region.hrz_demarc(): {}): {}, vec.len(): {}", layer_target, slc, self.cortical_area.dims.columns(), region.hrz_demarc(), buffer_offset, vec.len());
+
+			//assert!(vec.len() <= self.cortical_area.dims.columns() as usize); // <<<<< NEEDS CHANGING (for multi-slc inputs)
+
+			ocl::enqueue_write_buffer(vec, self.areas.get(area_name).expect(emsg).axns.states.buf, self.ocl.command_queue, buffer_offset);
+		}
+	}*/
+
+
+
+	/* Eventually move define_*() to a config file or some such */
+/*pub fn define_protoregions() -> Protoregions {
+	let mut cort_regs: Protoregions = Protoregions::new();
+
+	let mut sen = Protoregion::new(Sensory)
+		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
+
+		.layer("eff_in", 1, layer::EFFERENT_INPUT, Axonal(Spatial))
+
+		.layer("aff_in", 1, layer::AFFERENT_INPUT, Axonal(Spatial))
+
+		.layer("aff_out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
+
+		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["aff_in"], 256)) 
+		//.layer("vi", 5, layer::DEFAULT, Protocell::new_spiny_stellate(3, vec!["thal"], 256)) 
+
+		.layer("iv_inhib", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv"))
+
+		//.layer("iii", 1, layer::DEFAULT, Protocell::new_pyramidal(vec!["iii", "iii", "iii", "iii", "motor"]))
+		.layer("iii", 4, layer::TEMPORAL_ASSOCIATIVE, Protocell::new_pyramidal(2, 4, vec!["iii"], 512).apical(vec!["eff_in"]))
+
+		/*	<<<<< ADDING ADDITIONAL PYRS (AND PRESUMABLY SSTS) NEEDS FIX >>>>>
+			Creating cells is still based on the idea (enforced by protoregion) that all cells of a certain type (ex. Pyramidal) are to be created in the same envoy. Need to change the way synapses build their indexes etc.
+		*/
+		//.layer("ii", 3, layer::DEFAULT, Protocell::new_pyramidal(2, 5, vec!["out"], 512)) // <<<<< FIX ME (FIX SYNS)
+
+		//.layer("temp_padding", 2, layer::DEFAULT, Axonal(Horizontal))
+		.layer("motor", 1, layer::DEFAULT, Axonal(Horizontal))
+
+		.freeze()
+	;
+
+	cort_regs.add(sen);
+	cort_regs
+}
+
+pub fn define_protoareas() -> Protoareas {
+	let mut protoareas = Protoareas::new()
+		//.area("v1", 32, 32, Sensory, Some(vec!["v2"]))
+		.area("v1", 48, 48, Sensory, Some(vec!["b1"]))
+		.area("b1", 48, 48, Sensory, Some(vec!["a1"]))
+		.area("a1", 48, 48, Sensory, None)
+	;
+
+	protoareas
+}*/
+
+
 	/*pub fn release_components(&mut self) {
 		print!("Cortex::release_components() called! (depricated)... ");
 	}*/
@@ -234,7 +223,9 @@ impl Cortex {
 		self.sense_vec(area_name, layer_target, &vec);
 		panic!("SLATED FOR REMOVAL");
 	}*/
-}
+
+
+
 
 /*impl Drop for Cortex {
     fn drop(&mut self) {
@@ -242,14 +233,6 @@ impl Cortex {
 		self.ocl.release_components();
     }
 }*/
-
-
-
-
-
-
-
-
 
 
 /*	fn cycle_syns(&self) {
@@ -297,7 +280,7 @@ impl Cortex {
 
 	}*/
 
-/*	fn cycle_axns(&self) {
+	/*	fn cycle_axns(&self) {
 		let width: u32 = self.areas.width(Sensory);
 		let (depth_noncellular, depth_cellular) = self.protoregions.depth(Sensory);
 

@@ -43,7 +43,8 @@ pub struct Synapses {
 	den_kind: DendriteKind,
 	cell_kind: ProtocellKind,
 	since_decay: usize,
-	kern_cycle: ocl::Kernel,
+	kernels: Vec<Box<ocl::Kernel>>,
+	//kern_cycle: ocl::Kernel,
 	//kern_regrow: ocl::Kernel,
 	rng: rand::XorShiftRng,
 	pub states: Envoy<ocl::cl_uchar>,
@@ -68,36 +69,45 @@ impl Synapses {
 
 		//let slc_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl); // BRING THIS BACK
 
-		if DEBUG_NEW {
-			print!("\n            SYNAPSES::NEW(): new {:?}, dims:{:?}", den_kind, dims);
-		}
-
 		let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl);
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let mut src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
-
-		let dst_src_slc_id_grps = protoregion.dst_src_slc_id_grps(layer_name);
-
 		// SRC COL REACHES SHOULD BECOME CONSTANTS
 		let mut src_col_xy_offs = Envoy::<ocl::cl_char>::shuffled(dims, -126, 126, ocl); 
 		//let mut src_col_y_offs = Envoy::<ocl::cl_char>::shuffled(dims, -31, 31, ocl);
-
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 
-		let mut kern_cycle = ocl.new_kernel("syns_cycle", 
-			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
-			.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
-			.arg_env(&axons.states)
-			.arg_env(&src_col_xy_offs)
-			.arg_env(&src_slc_ids)
-			//.arg_env(&strengths)
-			.arg_scl(syns_per_grp_l2)
-			//.arg_env(&aux.ints_0)
-			//.arg_env(&aux.ints_1)
-			.arg_env(&states)
-		;
+		let dst_src_slc_id_grps = protoregion.dst_src_slc_id_grps(layer_name);
+		assert!(dst_src_slc_id_grps.len() == dims.grps_per_cel() as usize);
+
+		let mut kernels = Vec::with_capacity(dst_src_slc_id_grps.len());
+
+		if DEBUG_NEW { print!("\n            SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims); }
+
+			// *****NEW WorkSize::ThreeDim(dims.depth() as usize, dims.width() as usize, dims.height() as usize))
+			// *****NEW .lws(WorkSize::ThreeDim(1 as usize, wg_size as usize))
+
+		for syn_grp_i in 0..dst_src_slc_id_grps.len() {
+			kernels.push(Box::new(
+				ocl.new_kernel("syns_cycle", 
+					WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
+					.lws(WorkSize::ThreeDim(1, 16, 16 as usize)) // TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
+					//WorkSize::ThreeDim(dims.columns() as usize, 1 as usize, dims.depth() as usize))
+					//WorkSize::TwoDim(dims.columns() as usize, dims.depth() as usize))
+					//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
+					.arg_env(&axons.states)
+					.arg_env(&src_col_xy_offs)
+					.arg_env(&src_slc_ids)
+					//.arg_env(&strengths)
+					.arg_scl(syn_grp_i as u32)
+					.arg_scl(syns_per_grp_l2)
+					.arg_env(&aux.ints_0)
+					//.arg_env(&aux.ints_1)
+					.arg_env(&states)
+			))
+		}
 
 		//println!("\n### Defining kern_regrow with len: {} ###", dims.depth() as usize * dims as usize);
 
@@ -123,7 +133,8 @@ impl Synapses {
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			since_decay: 0,
-			kern_cycle: kern_cycle,
+			//kern_cycle: kern_cycle,
+			kernels: kernels,
 			//kern_regrow: kern_regrow,
 			rng: rand::weak_rng(),
 			states: states,
@@ -153,48 +164,39 @@ impl Synapses {
 			"[cortical_area::Synapses::init(): dims.columns() mismatch]"
 		);
 
-		//self.confab();
+		self.strengths.read();
+		self.src_slc_ids.read();
+		self.src_col_xy_offs.read();
 
-		let syns_per_grp = self.dims.per_grp();
-		let syns_per_slc = self.dims.per_slc();
-		let layer_name = self.layer_name;
 
-		let slc_ids = self.protoregion.slc_ids(vec!(layer_name)).clone();
-
+		//let syns_per_slc = self.dims.per_slc() as usize;
+		//let grps_per_cel = self.dims.grps_per_cel() as usize;
+		let syns_per_layer_grp = self.dims.per_slc_per_grp() as usize * self.dims.depth() as usize;
+		//let slc_ids = self.protoregion.slc_ids(vec!(self.layer_name)).clone();
+		let dst_src_slc_id_grps = self.dst_src_slc_id_grps.clone();
 		let mut src_grp_i = 0usize;
 
-		let dst_src_slc_id_grps = self.dst_src_slc_id_grps.clone();
-
 		for src_slc_ids in dst_src_slc_id_grps {
-			let src_slc_ids_len: usize = src_slc_ids.len();
+			assert!(src_slc_ids.len() > 0, "Synapses must have at least one source slice.");
+			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, "cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
 
-			assert!(src_slc_ids_len > 0, "Synapses must have at least one source slc");
+			if init && DEBUG_GROW { }
 
-			//let kind_base_slc_pos = layer.kind_base_slc_pos; // BASED ON OLD SYSTEM
-			let src_slc_idx_range: Range<usize> = Range::new(0, src_slc_ids_len);
+			let src_slc_id_range: Range<usize> = Range::new(0, src_slc_ids.len());
 			let src_col_xy_offs_range: Range<i8> = Range::new(-126, 127);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
-			
-			assert!(src_slc_ids_len <= (self.dims.per_cel()) as usize, "cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
+
+			let idz = syns_per_layer_grp * src_grp_i as usize;
+			let idn = idz + syns_per_layer_grp as usize;
 
 			if init && DEBUG_GROW {
-				print!("\n                syns.init(): \"{}\" ({:?}): slc_ids: {:?}, src_slc_ids: {:?}", layer_name, self.den_kind, slc_ids, src_slc_ids);
+				print!("\n                syns.init(): \"{}\" ({:?}): src_slc_ids: {:?}, syns_per_layer_grp:{}, idz:{}, idn:{}", self.layer_name, self.den_kind, src_slc_ids, syns_per_layer_grp, idz, idn);	
 			}
 
-			for slc_i in 0..self.dims.depth() {
-				let ei_start = (syns_per_slc as usize * slc_i as usize) + (syns_per_grp as usize * src_grp_i as usize);
-				let ei_end = ei_start + syns_per_grp as usize;
-
-				if init && DEBUG_GROW {
-					print!("\n                    src_grp_i: {}, slc_i: {}, syns_per_grp:{}, ei_start:{}, ei_end:{}, src_slc_ids:{:?}", src_grp_i, slc_i, syns_per_grp, ei_start, ei_end, src_slc_ids);
-				}
-
-				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
-				for i in ei_start..ei_end {
-					if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
-						self.regrow_syn(i, &src_slc_idx_range, &src_col_xy_offs_range,
-							&strength_init_range, &src_slc_ids, init);
-					}
+			for i in idz..idn {
+				if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
+					self.regrow_syn(i, &src_slc_id_range, &src_col_xy_offs_range,
+						&strength_init_range, &src_slc_ids, init);
 				}
 			}
 
@@ -202,84 +204,9 @@ impl Synapses {
 		}
 
 		self.strengths.write();
-		self.src_col_xy_offs.write();
-		self.src_slc_ids.write();		
+		self.src_slc_ids.write();
+		self.src_col_xy_offs.write();	
 	}
-
-
-	/*	SYNAPSES::GROW(): This whole thing needs a massive amount of reworking
-			- We no longer have one contiguous space
-			- Tons of info in self.protocell we could use instead of protoregion calls
-				- Look towards depricating calls to protoregion
-
-	*/
-	fn grow_old(&mut self, init: bool) {
-		if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
-			print!("\nRG:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:(..)(..)(..)]\n", self.den_kind);
-		}
-
-		assert!(
-			(self.src_col_xy_offs.dims().per_slc() == self.src_slc_ids.dims().per_slc()) 
-			&& ((self.src_slc_ids.dims().per_slc() == (self.dims().per_slc()))), 
-			"[cortical_area::Synapses::init(): dims.columns() mismatch]"
-		);
-
-		self.confab();
-
-		let syns_per_slc = self.dims.per_slc();
-		let layer_name = self.layer_name;
-		// CLEAN THIS UP A BIT SOMEHOW...
-		let layer = self.protoregion.get_layer(layer_name).expect("Synapses::grow()::emsg1").clone();
-
-		let src_slc_ids = self.src_slc_ids(layer_name, &layer);
-
-		let slc_ids = self.protoregion.slc_ids(vec!(layer_name)).clone();
-		let src_slc_ids_len: usize = src_slc_ids.len();
-
-		assert!(src_slc_ids_len > 0, "Synapses must have at least one source slc");
-
-		//let kind_base_slc_pos = layer.kind_base_slc_pos; // BASED ON OLD SYSTEM
-		let src_slc_idx_range: Range<usize> = Range::new(0, src_slc_ids_len);
-		let src_col_xy_offs_range: Range<i8> = Range::new(-126, 127);
-		let strength_init_range: Range<i8> = Range::new(-3, 4);
-		
-		assert!(src_slc_ids_len <= (self.dims.per_cel()) as usize, "cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
-
-		if init && DEBUG_GROW {
-			print!("\n#####    syns.init(): \"{}\" ({:?}): slc_ids: {:?}, src_slc_ids: {:?}", layer_name, self.den_kind, slc_ids, src_slc_ids);
-		}
-
-		/* LOOP THROUGH ROWS (WITHIN LAYER) */
-		for slc_pos in 0..layer.depth {
-
-			let ei_start = syns_per_slc as usize * slc_pos as usize;
-
-			let ei_end = ei_start + syns_per_slc as usize;
-
-			if init && DEBUG_GROW {
-				print!("\n   Row {}: syns_per_slc:{}, ei_start:{}, ei_end:{}, src_slc_ids:{:?}", slc_pos, syns_per_slc, ei_start, ei_end, src_slc_ids);
-			}
-
-			/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
-			for i in ei_start..ei_end {
-				if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
-
-					self.regrow_syn(i, &src_slc_idx_range, &src_col_xy_offs_range,
-						&strength_init_range, &src_slc_ids, init);
-
-					//self.src_slc_ids[i] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
-					//self.src_col_xy_offs[i] = src_col_xy_offs_range.ind_sample(&mut self.rng);
-					//self.strengths[i] = (self.src_col_xy_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
-				}
-			}
-		}
-
-
-		self.strengths.write();
-		self.src_col_xy_offs.write();
-		self.src_slc_ids.write();		
-	}
-
 
 	fn regrow_syn(&mut self, 
 				syn_idx: usize, 
@@ -361,14 +288,15 @@ impl Synapses {
 	
 
 	pub fn cycle(&self) {
-		self.kern_cycle.enqueue();
+		for kern in self.kernels.iter() {
+			kern.enqueue();
+		}
 	}
 
 	pub fn regrow(&mut self) {
 		//let rnd = self.rng.gen::<u32>();
 		//self.kern_regrow.set_arg_scl_named("rnd", rnd);
 		//self.kern_regrow.enqueue();
-		self.confab();
 
 		self.grow(false);
 	}
@@ -393,6 +321,78 @@ impl Synapses {
 
 
 
+/*	SYNAPSES::GROW(): This whole thing needs a massive amount of reworking
+			- We no longer have one contiguous space
+			- Tons of info in self.protocell we could use instead of protoregion calls
+				- Look towards depricating calls to protoregion
+*/
+/*fn grow_old(&mut self, init: bool) {
+	if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
+		print!("\nRG:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:(..)(..)(..)]\n", self.den_kind);
+	}
+
+	assert!(
+		(self.src_col_xy_offs.dims().per_slc() == self.src_slc_ids.dims().per_slc()) 
+		&& ((self.src_slc_ids.dims().per_slc() == (self.dims().per_slc()))), 
+		"[cortical_area::Synapses::init(): dims.columns() mismatch]"
+	);
+
+	self.strengths.read();
+	self.src_slc_ids.read();
+	self.src_col_xy_offs.read();
+
+	let syns_per_slc = self.dims.per_slc();
+	let layer_name = self.layer_name;
+	// CLEAN THIS UP A BIT SOMEHOW...
+	let layer = self.protoregion.get_layer(layer_name).expect("Synapses::grow()::emsg1").clone();
+
+	let src_slc_ids = self.src_slc_ids(layer_name, &layer);
+
+	let slc_ids = self.protoregion.slc_ids(vec!(layer_name)).clone();
+	let src_slc_ids_len: usize = src_slc_ids.len();
+
+	assert!(src_slc_ids_len > 0, "Synapses must have at least one source slc");
+
+	//let kind_base_slc_pos = layer.kind_base_slc_pos; // BASED ON OLD SYSTEM
+	let src_slc_idx_range: Range<usize> = Range::new(0, src_slc_ids_len);
+	let src_col_xy_offs_range: Range<i8> = Range::new(-126, 127);
+	let strength_init_range: Range<i8> = Range::new(-3, 4);
+	
+	assert!(src_slc_ids_len <= (self.dims.per_cel()) as usize, "cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
+
+	if init && DEBUG_GROW {
+		print!("\n#####    syns.init(): \"{}\" ({:?}): slc_ids: {:?}, src_slc_ids: {:?}", layer_name, self.den_kind, slc_ids, src_slc_ids);
+	}
+
+	// LOOP THROUGH ROWS (WITHIN LAYER) 
+	for slc_pos in 0..layer.depth {
+
+		let ei_start = syns_per_slc as usize * slc_pos as usize;
+
+		let ei_end = ei_start + syns_per_slc as usize;
+
+		if init && DEBUG_GROW {
+			print!("\n   Row {}: syns_per_slc:{}, ei_start:{}, ei_end:{}, src_slc_ids:{:?}", slc_pos, syns_per_slc, ei_start, ei_end, src_slc_ids);
+		}
+
+		// LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) 
+		for i in ei_start..ei_end {
+			if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
+
+				self.regrow_syn(i, &src_slc_idx_range, &src_col_xy_offs_range,
+					&strength_init_range, &src_slc_ids, init);
+
+				//self.src_slc_ids[i] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
+				//self.src_col_xy_offs[i] = src_col_xy_offs_range.ind_sample(&mut self.rng);
+				//self.strengths[i] = (self.src_col_xy_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+			}
+		}
+	}
+
+	self.strengths.write();
+	self.src_slc_ids.write();
+	self.src_col_xy_offs.write();
+}*/
 
 
 

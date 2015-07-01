@@ -6,7 +6,7 @@ use cmn;
 use ocl;
 use cortical_area:: { CorticalArea };
 use proto::{ Protoareas, ProtoareasTrait, Protoarea, Protoregion, Protoregions, ProtoregionKind, layer };
-//use tests::input_czar;
+use tests::input_czar;
 
 /*	THALAMUS:
 		- Input/Output is from a CorticalArea's point of view
@@ -167,7 +167,6 @@ impl Thalamus {
 		let emsg2 = format!("{}'{}' ", emsg, tar_area_name);
 		areas.get_mut(tar_area_name).expect(&emsg2)
 			.write_input(&self.tract_efferent_output[slc_range.clone()], layer::EFFERENT_INPUT);
-
  	}
 
 	/*fn area_output_target(&self, src_area_name: &'static str) {

@@ -11,13 +11,14 @@ use time;
 use ocl;
 use cmn;
 use cortex::{ self, Cortex };
-use proto::layer;
+//use proto::layer;
 use super::output_czar;
 //use super::synapse_drill_down;
 use super::input_czar::{ self, InputCzar, InputVecKind };
 use super::hybrid;
 //use chord::{ Chord };
 //use ocl::{ Envoy };
+use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, layer, Protocell };
 
 
 pub const INITIAL_TEST_ITERATIONS: i32 		= 1; 
@@ -30,14 +31,66 @@ pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
 pub const COUNTER_RANDOM: bool				= false;
 
 
+/* Eventually move defines to a config file or some such */
+pub fn define_protoregions() -> Protoregions {
+	let mut cort_regs: Protoregions = Protoregions::new();
+
+	let mut sen = Protoregion::new(Sensory)
+		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
+
+		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
+
+		.layer("eff_in", 1, layer::EFFERENT_INPUT, Axonal(Spatial))
+
+		//.layer("nothing", 1, layer::DEFAULT, Axonal(Spatial))
+
+		.layer("aff_in", 1, layer::AFFERENT_INPUT, Axonal(Spatial))
+
+		.layer("aff_out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
+
+		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
+			Protocell::new_spiny_stellate(5, vec!["aff_in"], 256)) 
+
+		.layer("iv_inhib", 0, layer::DEFAULT, 
+			Protocell::new_inhibitory(4, "iv"))
+
+		.layer("iii", 2, layer::TEMPORAL_ASSOCIATIVE, 
+			Protocell::new_pyramidal(2, 4, vec!["iii"], 768).apical(vec!["eff_in"]))
+
+		.freeze()
+	;
+
+	cort_regs.add(sen);
+	cort_regs
+}
+
+pub fn define_protoareas() -> Protoareas {
+	let area_side = 48 as u32;
+
+	let mut protoareas = Protoareas::new()
+		.area("v1", area_side, area_side, Sensory, 
+			//None
+			Some(vec!["b1"])
+		)
+		.area("b1", area_side, area_side, Sensory, 
+			//None
+			Some(vec!["a1"])
+		)
+		.area("a1", area_side, area_side, Sensory, None)
+	;
+
+	protoareas
+}
+
+
 /* RUN(): Run the interactive testing command line
 	- TODO:
 		- [incomplete][priority:very low] Proper command line using enums to represent user input and a seperate struct to manage its state
 			- Or just be lazy and leave it the beautiful disaster that it is...	
 */
 pub fn run(autorun_iters: i32) -> bool {
-	let mut cortex = cortex::Cortex::new(cortex::define_protoregions(), cortex::define_protoareas());
-	let mut area_name = "a1".to_string();
+	let mut cortex = cortex::Cortex::new(define_protoregions(), define_protoareas());
+	let mut area_name = "v1".to_string();
 	let inhib_layer_name = "iv_inhib";
 	let sc_columns = cortex.area(&area_name).dims.columns();
 	let mut input_czar = InputCzar::new(sc_columns, InputVecKind::World, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
@@ -110,7 +163,13 @@ pub fn run(autorun_iters: i32) -> bool {
 			} else if "r\n" == in_string {
 				let in_str = rin(format!("area name"));
 				let in_s1 = in_str.trim();
-				area_name = in_s1.to_string();
+				let new_area_name = in_s1.to_string();
+				
+				if cortex.valid_area(&new_area_name) {
+					area_name = new_area_name;
+				} else {
+					print!("\nInvalid area.");
+				}
 				continue;
 
 			} else if "v\n" == in_string {

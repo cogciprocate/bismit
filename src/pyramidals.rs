@@ -38,6 +38,7 @@ pub struct PyramidalCellularLayer {
 	axn_idz: u32,
 	//den_prox_slc: u8, 
 	rng: rand::XorShiftRng,
+	den_grps_per_cel: u32,
 	//regrow_counter: usize,
 	pub preds: Envoy<ocl::cl_uchar>,
 	pub best1_den_ids: Envoy<ocl::cl_uchar>,
@@ -97,7 +98,7 @@ impl PyramidalCellularLayer {
 
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle", 
-			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
+			WorkSize::OneDim(dims.depth() as usize * dims.columns() as usize))
 			.arg_env(&dens.states)
 			.arg_env(&dens.states_raw)
 			//.arg_scl(axn_base_slc)
@@ -141,7 +142,7 @@ impl PyramidalCellularLayer {
 			.arg_scl(syns_per_den_l2 as u32)
 			.arg_scl(dens_per_grp_l2 as u32)
 			.arg_scl(cels_per_wi)
-			.arg_scl_named::<u32>("rnd", None)			
+			.arg_scl_named::<u32>("rnd", None)		
 			.arg_env(&dens.syns.flag_sets)
 			.arg_env(&flag_sets)
 			//.arg_env(&prev_best1_den_ids)
@@ -164,6 +165,7 @@ impl PyramidalCellularLayer {
 			axn_idz: axn_idz,
 			//den_prox_slc: den_prox_slc,
 			rng: rand::weak_rng(),
+			den_grps_per_cel: den_grps_per_cel,
 			//regrow_counter: 0usize,
 			preds: preds,
 			best1_den_ids: best1_den_ids,

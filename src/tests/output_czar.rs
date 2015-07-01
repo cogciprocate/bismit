@@ -121,7 +121,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 		}
 
 	if true {	
-		print!("\nPYRAMIDAL SYNAPSE SOURCE SPINY STELLATE OFFSETS: ");
+		print!("\nPYRAMIDAL SYNAPSE SOURCE COLUMN OFFSETS: ");
 		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_col_xy_offs.print(1 << 14, None, None, true);
 	}
 
@@ -177,11 +177,11 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 		//print!("\naux.ints_0: ");
 		//cortex.area_mut(area_name).aux.ints_0.print((1 << 0) as usize, None, Some((0, 42767)), false);
 		print!("\naux.ints_0: ");
-		cortex.area_mut(area_name).aux.ints_0.print((1 << 0) as usize, None, None, false);
+		cortex.area_mut(area_name).aux.ints_0.print((1 << 0) as usize, Some((-256, 255 * 255)), None, true);
 		
 		//cortex.area_mut(area_name).aux.ints_0.print((1 << 0) as usize, Some((0, 1023)), Some((1, 19783029)), false);
 		print!("\naux.ints_1: ");
-		cortex.area_mut(area_name).aux.ints_1.print((1 << 0) as usize, None, None, false);
+		cortex.area_mut(area_name).aux.ints_1.print((1 << 0) as usize, Some((-256, 255 * 255)), None, true);
 	}
 	if false {
 		print!("\naux.chars_0: ");
@@ -193,9 +193,9 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 
 
 	/* AXON STATES (ALL) */
-	if true {
+	if false {
 		print!("\nAXON STATES: ");
-		cortex.area_mut(area_name).axns.states.print((1 << 4) as usize, Some((1, 255)), None, true);
+		cortex.area_mut(area_name).axns.states.print((1 << 4) as usize, Some((0, 255)), None, true);
 
 	}
 

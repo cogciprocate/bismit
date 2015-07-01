@@ -136,7 +136,7 @@ impl InputCzar {
 		cortex.write_input("v1", &self.vec_optical);
 		//cortex.write_input("v2", &self.vec_optical); // *****
 		//cortex.write_input("a1", &self.vec_optical); // *****
-		cortex.write("v1", "motor", &self.vec_motor);
+		cortex.write("v1", "motor_in", &self.vec_motor);
 		//cortex.write("v1", "test_noise", &self.vec_test_noise);
 		cortex.cycle("v1");
 	}
@@ -197,9 +197,9 @@ pub enum InputVecKind {
 pub fn sdr_stripes(stripe_size: usize, vec: &mut [u8]) {
 	for i in 0..vec.len() {
 		if (i & stripe_size) == 0 {
-			vec[i] = 1;
-		} else {
 			vec[i] = 0;
+		} else {
+			vec[i] = 255;
 		}
 	}
 }

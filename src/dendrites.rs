@@ -69,19 +69,18 @@ impl Dendrites {
 		};*/
 
 
-		//print!("\n            DENDRITES::NEW(): new {:?} dendrites with: {:?}, {:?}", den_kind, dims, protocell);
 
 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
+
+		print!("\n            DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", layer_name, dims, states.len());
 
 		let syns_dims = dims.clone_with_pgl2((dims.per_grp_l2() + syns_per_den_l2 as i8));
 		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, region, axons, aux, ocl);
 
-		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
-
-		//println!("\nsyns_per_den_l2 = {}", syns_per_den_l2);
-		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
+		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::OneDim(states.len()))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)
@@ -91,6 +90,17 @@ impl Dendrites {
 			//.arg_env(&aux.ints_0)
 			.arg_env(&states)
 		;
+
+		/*let kern_cycle = ocl.new_kernel("den_cycle_old", WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
+			.arg_env(&syns.states)
+			.arg_env(&syns.strengths)
+			.arg_scl(syns_per_den_l2)
+			.arg_scl(den_threshold)
+			.arg_env(&energies)
+			.arg_env(&states_raw)
+			//.arg_env(&aux.ints_0)
+			.arg_env(&states)
+		;*/
 		
 		Dendrites {
 			layer_name: layer_name,
