@@ -512,16 +512,16 @@ impl Protoregion {
 		self.slc_ids(src_layer_names)
  	}
 
- 	pub fn dst_src_slc_id_grps(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
- 		let src_grps = self[&layer_name].dst_src_grps();
+ 	pub fn dst_src_slc_id_tufts(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
+ 		let src_tufts = self[&layer_name].dst_src_tufts();
 
- 		let mut src_grp_slc_ids = Vec::with_capacity(src_grps.len());
+ 		let mut src_tuft_slc_ids = Vec::with_capacity(src_tufts.len());
 
- 		for grp in src_grps {
- 			src_grp_slc_ids.push(self.slc_ids(grp));
+ 		for tuft in src_tufts {
+ 			src_tuft_slc_ids.push(self.slc_ids(tuft));
 		}
 
-		src_grp_slc_ids
+		src_tuft_slc_ids
 	}
 
  	pub fn spt_asc_layer(&self) -> Option<Protolayer> {

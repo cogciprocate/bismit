@@ -162,7 +162,7 @@ impl Thalamus {
 
 
 		/* TESTING */
-		//let test_vec = input_czar::sdr_stripes(512, &mut self.tract_efferent_output[slc_range.clone()]);
+		//let test_vec = input_czar::sdr_stripes(512, false, &mut self.tract_efferent_output[slc_range.clone()]);
 
 		let emsg2 = format!("{}'{}' ", emsg, tar_area_name);
 		areas.get_mut(tar_area_name).expect(&emsg2)

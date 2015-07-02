@@ -56,6 +56,8 @@ impl Ocl {
 		let program: cl_program = new_program(kern_c_str.as_ptr(), build_options.to_string(), context, device);
 		let command_queue: cl_command_queue = new_command_queue(context, device); 
 
+		program_build_info(program, device);
+
 		Ocl {
 			platform: platform,
 			device:  device,
@@ -619,7 +621,9 @@ pub fn program_build_info(program: cl_h::cl_program, device_id: cl_h::cl_device_
 
         let pbi = cstring_to_string(program_build_info);
 
-        println!("*** Program Info ({}): \n {}", name, pbi);
+        if pbi.len() > 1 {
+       		print!("\n\nOpenCL Program Build Info ({})[{}]: \n\n {}", name, pbi.len(), pbi);
+   		}
 
         let rs: Box<String> = Box::new(pbi);
         rs

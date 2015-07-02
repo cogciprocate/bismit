@@ -55,7 +55,7 @@ pub fn define_protoregions() -> Protoregions {
 			Protocell::new_inhibitory(4, "iv"))
 
 		.layer("iii", 2, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(2, 4, vec!["iii"], 768).apical(vec!["eff_in"]))
+			Protocell::new_pyramidal(2, 4, vec!["iii"], 640).apical(vec!["eff_in"]))
 
 		.freeze()
 	;
@@ -93,7 +93,9 @@ pub fn run(autorun_iters: i32) -> bool {
 	let mut area_name = "v1".to_string();
 	let inhib_layer_name = "iv_inhib";
 	let sc_columns = cortex.area(&area_name).dims.columns();
-	let mut input_czar = InputCzar::new(sc_columns, InputVecKind::World, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
+	//let input_kind = InputVecKind::Stripes { stripe_size: 512, zeros_first: true };
+	let input_kind = InputVecKind::World;
+	let mut input_czar = InputCzar::new(sc_columns, input_kind, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
 
 	let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(sc_columns as usize).collect();
 	let mut vec_ff_prev: Vec<u8> = iter::repeat(0).take(sc_columns as usize).collect();

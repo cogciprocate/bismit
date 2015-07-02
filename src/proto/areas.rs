@@ -2,6 +2,7 @@ use std::collections::{ HashMap };
 
 use ocl::{ CorticalDimensions };
 use proto::regions::{ ProtoregionKind };
+use cmn;
 
 
 pub trait ProtoareasTrait {
@@ -34,6 +35,9 @@ impl ProtoareasTrait for Protoareas {
 				region_kind: ProtoregionKind, 
 				afferent_areas: Option<Vec<&'static str>>,
 	) -> Protoareas {
+
+		assert!(width > cmn::SYNAPSE_SPAN_GEO);
+		assert!(height > cmn::SYNAPSE_SPAN_GEO);
 
 		let mut new_area = Protoarea { 
 			name: name,

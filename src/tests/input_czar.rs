@@ -120,8 +120,8 @@ impl InputCzar {
 				}
 				self.world.peek_from(self.worm.uid).unfold_into(&mut self.vec_optical, 0);
 			},
-			InputVecKind::Stripes(size) => {
-				sdr_stripes(size, &mut self.vec_optical);
+			InputVecKind::Stripes { stripe_size, zeros_first } => {
+				sdr_stripes(stripe_size, zeros_first, &mut self.vec_optical[..]);
 			},
 		}
 
@@ -179,7 +179,7 @@ impl InputCzar {
 
 pub enum InputVecKind {
 	World,
-	Stripes(usize),
+	Stripes { stripe_size: usize, zeros_first: bool },
 }
 
 
@@ -194,12 +194,18 @@ pub enum InputVecKind {
 }*/
 
 
-pub fn sdr_stripes(stripe_size: usize, vec: &mut [u8]) {
+pub fn sdr_stripes(stripe_size: usize, zeros_first: bool, vec: &mut [u8]) {
+	let (first, second) = if zeros_first { 
+		(0, 255)
+	} else {
+		(255,0)
+	};
+
 	for i in 0..vec.len() {
 		if (i & stripe_size) == 0 {
-			vec[i] = 0;
+			vec[i] = first;
 		} else {
-			vec[i] = 255;
+			vec[i] = second;
 		}
 	}
 }

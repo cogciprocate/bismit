@@ -10,7 +10,7 @@ use proto::layer::ProtolayerKind::{ self, Cellular };
 */
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct Protocell {
-	pub dens_per_grp_l2: u8,
+	pub dens_per_tuft_l2: u8,
 	pub syns_per_den_l2: u8,
 	pub cols_per_cel_l2: u8,
 	pub cell_kind: ProtocellKind,
@@ -22,7 +22,7 @@ pub struct Protocell {
 
 impl Protocell {
 	pub fn new(					
-					dens_per_grp_l2: u8,
+					dens_per_tuft_l2: u8,
 					syns_per_den_l2: u8,
 					cols_per_cel_l2: u8,
 					cell_kind: ProtocellKind,
@@ -36,7 +36,7 @@ impl Protocell {
 
 		Protocell {
 			cell_kind: cell_kind,
-			dens_per_grp_l2: dens_per_grp_l2,
+			dens_per_tuft_l2: dens_per_tuft_l2,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
 			den_dst_srcs: den_dst_srcs,
@@ -49,9 +49,9 @@ impl Protocell {
 	/* NEW_PYRAMIDAL(): 
 		- get rid of proximal source (maybe)
 	*/
-	pub fn new_pyramidal(dens_per_grp_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, thresh: u32) -> ProtolayerKind {
+	pub fn new_pyramidal(dens_per_tuft_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, thresh: u32) -> ProtolayerKind {
 		Cellular(Protocell {
-			dens_per_grp_l2: dens_per_grp_l2,
+			dens_per_tuft_l2: dens_per_tuft_l2,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
 			cell_kind: ProtocellKind::Pyramidal,
@@ -66,7 +66,7 @@ impl Protocell {
 	// SWITCH TO DISTAL
 	pub fn new_spiny_stellate(syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, thresh: u32) -> ProtolayerKind {
 		Cellular(Protocell {
-			dens_per_grp_l2: 0,
+			dens_per_tuft_l2: 0,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
 			cell_kind: ProtocellKind::SpinyStellate,
@@ -79,7 +79,7 @@ impl Protocell {
 
 	pub fn new_inhibitory(cols_per_cel_l2: u8, dst_src: &'static str) -> ProtolayerKind {
 		Cellular(Protocell {
-			dens_per_grp_l2: 0,
+			dens_per_tuft_l2: 0,
 			syns_per_den_l2: 0,
 			cols_per_cel_l2: cols_per_cel_l2,
 			cell_kind: ProtocellKind::Inhibitory,
@@ -89,9 +89,9 @@ impl Protocell {
 		})
 	}
 
-	pub fn dst_src_grps_len(&self) -> u32 {
+	pub fn dst_src_tufts_len(&self) -> u32 {
 		match self.den_dst_srcs {
-			Some(ref src_grps) => src_grps.len() as u32,
+			Some(ref src_tufts) => src_tufts.len() as u32,
 			None => 0u32,
 		}
 	}

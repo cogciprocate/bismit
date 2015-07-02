@@ -2,6 +2,7 @@
 use cmn;
 use proto::{ Protoregion, Protoregions, ProtoregionKind, Protoareas, ProtoareasTrait, Protoarea, ProtolayerKind, ProtoaxonKind, layer, Protocell };
 use cortex::{ self, Cortex };
+use ocl;
 use super::input_czar::{ self, InputCzar, InputVecKind };
 use super::hybrid;
 
@@ -20,7 +21,7 @@ pub fn define_prtrgns() -> Protoregions {
 }
 
 pub fn define_prtareas() -> Protoareas {
-	Protoareas::new().area("v1_t", 64, 64, ProtoregionKind::Sensory, None)
+	Protoareas::new().area("v1_t", 32, 32, ProtoregionKind::Sensory, None)
 }
 
 
@@ -45,4 +46,46 @@ fn test_learning() {
 	let si_layer_name = "iv_inhib_t";
 
 	hybrid::test_learning(&mut cortex, si_layer_name, area_name);
+}
+
+
+#[test]
+fn test_kernels() {
+	let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", 128 as i32);
+	let build_options = cmn::build_options().add(hrz_demarc_opt);
+	let ocl = ocl::Ocl::new(build_options);
+
+	let dims = ocl::CorticalDimensions::new(16, 16, 1, 0, Some(ocl.get_max_work_group_size()));
+
+	let mut dim_ids = ocl::Envoy::<u32>::shuffled(dims, 0, 15, &ocl);
+	let mut dim_offs = ocl::Envoy::<i8>::shuffled(dims, -16, 15, &ocl);
+	let mut safe_dim_offs = ocl::Envoy::<i8>::new(dims, 0, &ocl);
+
+
+	let kern_test_safe_dim_ofs = ocl.new_kernel("test_safe_dim_ofs", 
+		ocl::WorkSize::OneDim(dims.physical_len() as usize))
+		.arg_env(&dim_ids)
+		.arg_env(&dim_offs)
+		.arg_scl(dims.width())
+		.arg_env(&safe_dim_offs) 
+	;
+
+
+	kern_test_safe_dim_ofs.enqueue();
+
+	print!("\ndim_ids:");
+	dim_ids.print_simple();
+	print!("\ndim_offs:");
+	dim_offs.print_simple();
+	print!("\nsafe_dim_offs:");
+	safe_dim_offs.print_simple();
+	//safe_dim_offs.read();
+
+	for i in 0..safe_dim_offs.len() {
+		let safe_dim_id: isize = dim_ids[i] as isize + safe_dim_offs[i] as isize;
+		assert!(safe_dim_id >= 0);
+		assert!(safe_dim_id < dims.width() as isize);
+	}
+
+	ocl.release_components();
 }

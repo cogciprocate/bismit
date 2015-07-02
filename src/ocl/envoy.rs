@@ -38,6 +38,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 		Envoy::_new(padding, dims, vec, ocl)
 	}
 
+	// SHUFFLED(): max_val is inclusive!
 	pub fn shuffled(dims: CorticalDimensions, min_val: T, max_val: T, ocl: &Ocl) -> Envoy<T> {
 		let len = dims.physical_len() as usize;
 		//println!("shuffled(): len: {}", len);

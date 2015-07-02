@@ -31,14 +31,9 @@ impl Cortex {
 
 		let ocl: ocl::Ocl = ocl::Ocl::new(build_options);
 
-		let max_work_group_size = ocl.get_max_work_group_size();
-
-		println!("\n##### ocl.get_max_work_group_size(): {}", max_work_group_size);
-
-
 		for (_, protoarea) in &protoareas {
 			let mut protoarea_clone = protoarea.clone();
-			protoarea_clone.dims.set_physical_increment(max_work_group_size);
+			protoarea_clone.dims.set_physical_increment(ocl.get_max_work_group_size());
 
 			areas.insert(protoarea_clone.name, Box::new(CorticalArea::new(protoarea_clone.name, protoregions[&protoarea.region_kind].clone(), protoarea_clone, &ocl)));
 		}

@@ -71,21 +71,21 @@ impl Protolayer {
 		};
 	}*/
 
-	pub fn dst_src_grps(&self) -> Vec<Vec<&'static str>> {
-		let layer_grps = match self.kind {
+	pub fn dst_src_tufts(&self) -> Vec<Vec<&'static str>> {
+		let layer_tufts = match self.kind {
 			ProtolayerKind::Cellular(ref protocell) => protocell.den_dst_srcs.clone(),
 			_ => panic!(format!("Protolayer '{}' is not Cellular.", self.name)),
 		};
 
-		match layer_grps {
+		match layer_tufts {
 			Some(v) => v,
 			None => Vec::with_capacity(0),
 		}
 	}
 
-	pub fn dst_src_grps_len(&self) -> u32 {
+	pub fn dst_src_tufts_len(&self) -> u32 {
 		match self.kind {
-			ProtolayerKind::Cellular(ref protocell) => protocell.dst_src_grps_len(),
+			ProtolayerKind::Cellular(ref protocell) => protocell.dst_src_tufts_len(),
 			_ => 0,
 		}
 	}

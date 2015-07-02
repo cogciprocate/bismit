@@ -73,7 +73,7 @@ impl Minicolumns {
 		/*let ssts = ssts_map.get(psal_name).expect("minicolumns.rs");
 		let pyrs = pyrs_map.get(ptal_name).expect("minicolumns.rs");*/
 		//let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
-		//let syns_per_grp: u32 = 1 << syns_per_den_l2;
+		//let syns_per_tuft: u32 = 1 << syns_per_den_l2;
 
 		let (ff_layer_axn_idz, _) = sstl.axn_range();
 
@@ -134,7 +134,7 @@ impl Minicolumns {
 			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
 			//.arg_env(&sstl.soma())
 			.arg_env(&pyrs.soma())
-			.arg_env(&pyrs.best1_den_states)
+			.arg_env(&pyrs.best_den_states)
 			//.arg_scl(depth)
 			.arg_scl(sstl_axn_idz as u32)
 			.arg_scl(pyr_depth)

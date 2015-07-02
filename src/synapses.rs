@@ -39,7 +39,7 @@ pub struct Synapses {
 	syns_per_den_l2: u8,
 	protocell: Protocell,
 	protoregion: Protoregion,
-	dst_src_slc_id_grps: Vec<Vec<u8>>,
+	dst_src_slc_id_tufts: Vec<Vec<u8>>,
 	den_kind: DendriteKind,
 	cell_kind: ProtocellKind,
 	since_decay: usize,
@@ -60,10 +60,10 @@ impl Synapses {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, den_kind: DendriteKind, cell_kind: ProtocellKind, 
 					protoregion: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
 
-		let syns_per_grp_l2: u8 = protocell.dens_per_grp_l2 + protocell.syns_per_den_l2;
-		assert!(dims.per_grp_l2() as u8 == syns_per_grp_l2);
+		let syns_per_tuft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
+		assert!(dims.per_tuft_l2() as u8 == syns_per_tuft_l2);
 
-		//let syns_per_slc = dims.columns() << dims.per_grp_l2_left().expect("synapses.rs");
+		//let syns_per_slc = dims.columns() << dims.per_tuft_l2_left().expect("synapses.rs");
 		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
 		let syns_per_den_l2: u8 = protocell.syns_per_den_l2;
 
@@ -79,19 +79,21 @@ impl Synapses {
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 
-		let dst_src_slc_id_grps = protoregion.dst_src_slc_id_grps(layer_name);
-		assert!(dst_src_slc_id_grps.len() == dims.grps_per_cel() as usize);
+		let dst_src_slc_id_tufts = protoregion.dst_src_slc_id_tufts(layer_name);
+		assert!(dst_src_slc_id_tufts.len() == dims.tufts_per_cel() as usize);
 
-		let mut kernels = Vec::with_capacity(dst_src_slc_id_grps.len());
+		let mut kernels = Vec::with_capacity(dst_src_slc_id_tufts.len());
 
 		if DEBUG_NEW { print!("\n            SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims); }
 
 			// *****NEW WorkSize::ThreeDim(dims.depth() as usize, dims.width() as usize, dims.height() as usize))
 			// *****NEW .lws(WorkSize::ThreeDim(1 as usize, wg_size as usize))
 
-		for syn_grp_i in 0..dst_src_slc_id_grps.len() {
+		let cels_per_slice = dims.depth() as u32 * dims.height() * dims.width();
+
+		for syn_tuft_i in 0..dst_src_slc_id_tufts.len() {
 			kernels.push(Box::new(
-				ocl.new_kernel("syns_cycle", 
+				ocl.new_kernel("syns_cycle_simple", 
 					WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
 					.lws(WorkSize::ThreeDim(1, 16, 16 as usize)) // TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					//WorkSize::ThreeDim(dims.columns() as usize, 1 as usize, dims.depth() as usize))
@@ -101,13 +103,33 @@ impl Synapses {
 					.arg_env(&src_col_xy_offs)
 					.arg_env(&src_slc_ids)
 					//.arg_env(&strengths)
-					.arg_scl(syn_grp_i as u32)
-					.arg_scl(syns_per_grp_l2)
+					.arg_scl(syn_tuft_i as u32 * cels_per_slice)
+					.arg_scl(syns_per_tuft_l2)
 					.arg_env(&aux.ints_0)
 					//.arg_env(&aux.ints_1)
 					.arg_env(&states)
 			))
 		}
+
+		// for syn_tuft_i in 0..dst_src_slc_id_tufts.len() {
+		// 	kernels.push(Box::new(
+		// 		ocl.new_kernel("syns_cycle_2d_workgroup_optimized", 
+		// 			WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
+		// 			.lws(WorkSize::ThreeDim(1, 16, 16 as usize)) // TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
+		// 			//WorkSize::ThreeDim(dims.columns() as usize, 1 as usize, dims.depth() as usize))
+		// 			//WorkSize::TwoDim(dims.columns() as usize, dims.depth() as usize))
+		// 			//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
+		// 			.arg_env(&axons.states)
+		// 			.arg_env(&src_col_xy_offs)
+		// 			.arg_env(&src_slc_ids)
+		// 			//.arg_env(&strengths)
+		// 			.arg_scl(syn_tuft_i as u32)
+		// 			.arg_scl(syns_per_tuft_l2)
+		// 			.arg_env(&aux.ints_0)
+		// 			//.arg_env(&aux.ints_1)
+		// 			.arg_env(&states)
+		// 	))
+		// }
 
 		//println!("\n### Defining kern_regrow with len: {} ###", dims.depth() as usize * dims as usize);
 
@@ -129,7 +151,7 @@ impl Synapses {
 			syns_per_den_l2: syns_per_den_l2,
 			protocell: protocell,
 			protoregion: protoregion.clone(),
-			dst_src_slc_id_grps: dst_src_slc_id_grps,
+			dst_src_slc_id_tufts: dst_src_slc_id_tufts,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			since_decay: 0,
@@ -170,13 +192,13 @@ impl Synapses {
 
 
 		//let syns_per_slc = self.dims.per_slc() as usize;
-		//let grps_per_cel = self.dims.grps_per_cel() as usize;
-		let syns_per_layer_grp = self.dims.per_slc_per_grp() as usize * self.dims.depth() as usize;
+		//let tufts_per_cel = self.dims.tufts_per_cel() as usize;
+		let syns_per_layer_tuft = self.dims.per_slc_per_tuft() as usize * self.dims.depth() as usize;
 		//let slc_ids = self.protoregion.slc_ids(vec!(self.layer_name)).clone();
-		let dst_src_slc_id_grps = self.dst_src_slc_id_grps.clone();
-		let mut src_grp_i = 0usize;
+		let dst_src_slc_id_tufts = self.dst_src_slc_id_tufts.clone();
+		let mut src_tuft_i = 0usize;
 
-		for src_slc_ids in dst_src_slc_id_grps {
+		for src_slc_ids in dst_src_slc_id_tufts {
 			assert!(src_slc_ids.len() > 0, "Synapses must have at least one source slice.");
 			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, "cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
 
@@ -186,11 +208,11 @@ impl Synapses {
 			let src_col_xy_offs_range: Range<i8> = Range::new(-126, 127);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
 
-			let idz = syns_per_layer_grp * src_grp_i as usize;
-			let idn = idz + syns_per_layer_grp as usize;
+			let idz = syns_per_layer_tuft * src_tuft_i as usize;
+			let idn = idz + syns_per_layer_tuft as usize;
 
 			if init && DEBUG_GROW {
-				print!("\n                syns.init(): \"{}\" ({:?}): src_slc_ids: {:?}, syns_per_layer_grp:{}, idz:{}, idn:{}", self.layer_name, self.den_kind, src_slc_ids, syns_per_layer_grp, idz, idn);	
+				print!("\n                syns.init(): \"{}\" ({:?}): src_slc_ids: {:?}, syns_per_layer_tuft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind, src_slc_ids, syns_per_layer_tuft, idz, idn);	
 			}
 
 			for i in idz..idn {
@@ -200,7 +222,7 @@ impl Synapses {
 				}
 			}
 
-			src_grp_i += 1;
+			src_tuft_i += 1;
 		}
 
 		self.strengths.write();
@@ -252,7 +274,7 @@ impl Synapses {
 	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
 	pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
 		
-		//println!("\n##### SYNAPSES::SRC_SLICE_IDS({}): {:?}", layer_name, self.dst_src_slc_id_grps);
+		//println!("\n##### SYNAPSES::SRC_SLICE_IDS({}): {:?}", layer_name, self.dst_src_slc_id_tufts);
 
 		match layer.kind {
 			ProtolayerKind::Cellular(ref cell) => {

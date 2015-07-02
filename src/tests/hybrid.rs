@@ -62,16 +62,16 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 		cels.axn_range()
 	};
 
-	let (dens_per_grp, syns_per_grp, syns_per_den) = {// CELS IN SCOPE
+	let (dens_per_tuft, syns_per_tuft, syns_per_den) = {// CELS IN SCOPE
 		let cels = cortex.area_mut(area_name).ptal_mut();
 
-		let dens_per_grp = cels.dens_mut().dims().per_cel() as usize;
-		let syns_per_grp = cels.dens_mut().syns.dims().per_cel() as usize;
+		let dens_per_tuft = cels.dens_mut().dims().per_cel() as usize;
+		let syns_per_tuft = cels.dens_mut().syns.dims().per_cel() as usize;
 
-		assert!(syns_per_grp % dens_per_grp == 0);
+		assert!(syns_per_tuft % dens_per_tuft == 0);
 
-		let syns_per_den = syns_per_grp / dens_per_grp;
-		(dens_per_grp, syns_per_grp, syns_per_den)
+		let syns_per_den = syns_per_tuft / dens_per_tuft;
+		(dens_per_tuft, syns_per_tuft, syns_per_den)
 	};
 
 
@@ -148,10 +148,10 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 		let first_half: bool = rand::random::<bool>();
 
 		// CHOOSE RANDOM DEN ID
-		let den_id = rand::random::<usize>() & (dens_per_grp - 1);
+		let den_id = rand::random::<usize>() & (dens_per_tuft - 1);
 
 		// DETERMINE DEN_IDX
-		let den_idx = (cel_idx * dens_per_grp) + den_id;
+		let den_idx = (cel_idx * dens_per_tuft) + den_id;
 
 		// DEFINE FIRST AND (LAST + 1) SYN INDEXES
 		let syn_idz = den_idx * syns_per_den;
@@ -272,11 +272,11 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 				let cels = cortex.area_mut(area_name).ptal_mut();
 
 				// DEACTIVATE SYNAPSES
-				let den_idz = cel_idx * dens_per_grp;
+				let den_idz = cel_idx * dens_per_tuft;
 				let syn_idz = den_idz * syns_per_den;
 
 				// RESET ENTIRE CELL TO ZERO (even though only half of one dendrite should be active)
-				for syn_idx in syn_idz..(syn_idz + syns_per_grp) {
+				for syn_idx in syn_idz..(syn_idz + syns_per_tuft) {
 					cels.dens_mut().syns.states[syn_idx] = 0;
 				}
 
@@ -358,16 +358,16 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	let emsg = "tests::hybrid::_test_sst_learning()";
 
 
-	let (dens_per_grp, syns_per_grp, syns_per_den) = {// CELS IN SCOPE
+	let (dens_per_tuft, syns_per_tuft, syns_per_den) = {// CELS IN SCOPE
 		let cels = cortex.area_mut(area_name).ptal_mut();
 
-		let dens_per_grp = cels.dens_mut().dims().per_cel() as usize;
-		let syns_per_grp = cels.dens_mut().syns.dims().per_cel() as usize;
+		let dens_per_tuft = cels.dens_mut().dims().per_cel() as usize;
+		let syns_per_tuft = cels.dens_mut().syns.dims().per_cel() as usize;
 
-		assert!(syns_per_grp % dens_per_grp == 0);
+		assert!(syns_per_tuft % dens_per_tuft == 0);
 
-		let syns_per_den = syns_per_grp / dens_per_grp;
-		(dens_per_grp, syns_per_grp, syns_per_den)
+		let syns_per_den = syns_per_tuft / dens_per_tuft;
+		(dens_per_tuft, syns_per_tuft, syns_per_den)
 	};
 
 	//let em99 = &format!("{}: {}; layer_name: {} ", emsg, "cel_idx (em99)", layer_name);
@@ -388,7 +388,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 		let first_half: bool = rand::random::<bool>();
 		let per_cel = cels.dens_mut().syns.dims().per_cel() as usize;
 
-		let cel_syn_idz = cel_idx << cels.dens_mut().syns.dims().per_grp_l2_left();
+		let cel_syn_idz = cel_idx << cels.dens_mut().syns.dims().per_tuft_l2_left();
 		let cel_syn_tar_idz = cel_syn_idz + if first_half {0} else {per_cel >> 1};
 		let cel_syn_tar_idn = cel_syn_tar_idz + (per_cel >> 1);
 		
@@ -449,7 +449,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	let per_cel = cels.dens_mut().syns.dims().per_cel().expect(emsg) as usize;
 
 	let cel_idx = rand::random::<usize>() & ((cels.dims().cells() as usize) - 1);
-	let cel_syn_idz = cel_idx << cels.dens_mut().syns.dims().per_grp_l2_left();
+	let cel_syn_idz = cel_idx << cels.dens_mut().syns.dims().per_tuft_l2_left();
 	let cel_syn_tar_idz = cel_syn_idz + if first_half {0} else {per_cel >> 1};
 	let cel_syn_tar_idn = cel_syn_tar_idz + (per_cel >> 1);
 
@@ -507,7 +507,7 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
 	//let pyr_axn_ranges = cortex.area_mut(area_name).layer_input_ranges("iii", cortex.area_mut(area_name).ptal_mut().dens.syns.den_kind());
 	//write_to_axons(axn_range, vec1);
 	let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
-	input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_LIN as usize * 2), &mut vec1);
+	input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_LIN as usize * 2), true, &mut vec1);
 
 	print!("\nPrimary Spatial Associative Layer...");
 	let psal_name = cortex.area(area_name).psal().layer_name();
@@ -532,14 +532,14 @@ fn test_pyr_preds(pyrs: &mut PyramidalCellularLayer) {
 	io::stdout().flush().unwrap();
 	pyrs.dens_mut().states.set_all_to(0);
 
-	let dens_per_grp = pyrs.dens_mut().dims().per_cel() as usize;
+	let dens_per_tuft = pyrs.dens_mut().dims().per_cel() as usize;
 	let dens_len = pyrs.dens_mut().states.len() as usize;
 
-	for i in 0..dens_per_grp {
+	for i in 0..dens_per_tuft {
 		pyrs.dens_mut().states[i] = 255;
 	}
 
-	let last_cell_idz =  dens_len - dens_per_grp;
+	let last_cell_idz =  dens_len - dens_per_tuft;
 
 	for i in last_cell_idz..dens_len {
 		pyrs.dens_mut().states[i] = 255;
@@ -573,11 +573,11 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 	dens.syns.src_col_xy_offs.set_all_to(0);
 	dens.cycle();
 
-	let syns_per_grp_l2: usize = dens.syns.dims().per_grp_l2_left() as usize;
-	let dens_per_grp_l2: usize = dens.dims().per_grp_l2_left() as usize;
+	let syns_per_tuft_l2: usize = dens.syns.dims().per_tuft_l2_left() as usize;
+	let dens_per_tuft_l2: usize = dens.dims().per_tuft_l2_left() as usize;
 	let cels_per_group: usize = cmn::SYNAPSE_SPAN_LIN as usize;
-	let syns_per_group: usize = cels_per_group << syns_per_grp_l2;
-	let dens_per_group: usize = cels_per_group << dens_per_grp_l2;
+	let syns_per_group: usize = cels_per_group << syns_per_tuft_l2;
+	let dens_per_group: usize = cels_per_group << dens_per_tuft_l2;
 	let actv_group_thresh = syns_per_group / 4;
 	//let den_actv_group_thresh = dens_per_group;
 
@@ -599,10 +599,10 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 		syn_states_ttl = 0;
 		den_states_ttl = 0;
 
-		let syn_idz = cel_idz << syns_per_grp_l2;
-		let den_idz = cel_idz << dens_per_grp_l2;
+		let syn_idz = cel_idz << syns_per_tuft_l2;
+		let den_idz = cel_idz << dens_per_tuft_l2;
 
-		println!("\nsyn_idz: {}, syns_per_grp: {}, syns_per_group: {}", syn_idz, 1 << syns_per_grp_l2, syns_per_group);
+		println!("\nsyn_idz: {}, syns_per_tuft: {}, syns_per_group: {}", syn_idz, 1 << syns_per_tuft_l2, syns_per_group);
 
 		for syn_idx in syn_idz..(syn_idz + syns_per_group) {
 			syn_states_ttl += (dens.syns.states[syn_idx] >> 7) as usize;

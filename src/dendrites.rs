@@ -37,7 +37,7 @@ impl Dendrites {
 	pub fn new(
 					layer_name: &'static str,
 					dims: CorticalDimensions,
-					//src_grps: Vec<Vec<&'static str>>,
+					//src_tufts: Vec<Vec<&'static str>>,
 					protocell: Protocell,
 					den_kind: DendriteKind, 
 					cell_kind: ProtocellKind,
@@ -48,7 +48,7 @@ impl Dendrites {
 	) -> Dendrites {
 		//println!("\n### Test D1 ###");
 		//let width_dens = dims.width << per_cell_l2;
-		assert!(dims.per_grp_l2() as u8 == protocell.dens_per_grp_l2);
+		assert!(dims.per_tuft_l2() as u8 == protocell.dens_per_tuft_l2);
 
 		//let dims = cel_dims.clone_with_pgl2(per_cell_l2);
 
@@ -76,7 +76,7 @@ impl Dendrites {
 
 		print!("\n            DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", layer_name, dims, states.len());
 
-		let syns_dims = dims.clone_with_pgl2((dims.per_grp_l2() + syns_per_den_l2 as i8));
+		let syns_dims = dims.clone_with_pgl2((dims.per_tuft_l2() + syns_per_den_l2 as i8));
 		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, region, axons, aux, ocl);
 
 
