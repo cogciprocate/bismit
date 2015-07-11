@@ -57,6 +57,7 @@ impl InhibitoryInterneuronNetwork {
 		let kern_inhib_simple = ocl.new_kernel("inhib_simple",
 			WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
 			.arg_env(&src_soma)
+			.arg_scl(src_axn_base_slc)
 			.arg_env(&aux.ints_1)
 			.arg_env(&axns.states)
 		;
@@ -111,15 +112,15 @@ impl InhibitoryInterneuronNetwork {
 	}
 
 	pub fn cycle(&mut self) {
-		self.kern_cycle_pre.enqueue(); 
+		// self.kern_cycle_pre.enqueue(); 
 
 
-		for i in 0..1 { // <<<<< (was 0..8)
-		 	self.kern_cycle_wins.enqueue(); 
-		}
+		// for i in 0..1 { // <<<<< (was 0..8)
+		//  	self.kern_cycle_wins.enqueue(); 
+		// }
 
-		self.kern_cycle_post.enqueue();
-		self.kern_post_inhib.enqueue();
+		// self.kern_cycle_post.enqueue();
+		// self.kern_post_inhib.enqueue();
 
 		self.kern_inhib_simple.enqueue();
 	}

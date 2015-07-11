@@ -49,7 +49,7 @@ pub fn define_protoregions() -> Protoregions {
 		.layer("aff_out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
 
 		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 256)) 
+			Protocell::new_spiny_stellate(5, vec!["aff_in"], 512)) 
 
 		.layer("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
@@ -65,7 +65,7 @@ pub fn define_protoregions() -> Protoregions {
 }
 
 pub fn define_protoareas() -> Protoareas {
-	let area_side = 24 as u32;
+	let area_side = 48 as u32;
 
 	let mut protoareas = Protoareas::new()
 		.area("v1", area_side, area_side, Sensory, 

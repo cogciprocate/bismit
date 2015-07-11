@@ -44,27 +44,82 @@
 // 		##### Debug Message Prefix
 
 
+
+// DEPRICATE
 static inline uint asp_to_sst_ofs(uint asp_idx) {
 	return (asp_idx - ASPINY_REACH) << ASPINY_SPAN_LOG2;
 }
 
+// DEPRICATE
 static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_id) {
 	return (asp_to_sst_ofs(asp_idx) + (asp_sst_id & (ASPINY_SPAN - 1)));
 }
 
+// DEPRICATE
+static inline char split_v_ofs(char src_uv_ofs) {
+	return ((char)(src_uv_ofs & 0xF0)) >> 4;
+}
+
+// DEPRICATE
+static inline char split_u_ofs(char src_uv_ofs) {
+	return ((char)((src_uv_ofs & 0x0F) << 4)) >> 4;
+}
+
+// DEPRICATE
 static inline uint col_id_3d(uint v_id, uint u_id) {
 	return mad24(v_id, get_global_size(1), u_id);
 }
 
-// CEL_IDX_3D: LINEAR INDEX OF A CELL
-static inline uint cel_idx_3d(uint slc_id, uint v_size, uint v_id, uint u_size, uint u_id) {
-	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
-}
 
 static inline int dim_is_safe(uint dim_size, uint dim_id, char dim_ofs) {
 	int dim_ttl = (int)dim_id + dim_ofs;
 	return (dim_ttl >= 0) && (dim_ttl <= (int)dim_size);
 }
+
+
+// CEL_IDX_3D: LINEAR INDEX OF A CELL
+static inline uint cel_idx_3d_unsafe(uint slc_id, uint v_size, uint v_id, uint u_size, uint u_id) {
+
+	// int v_ofs_is_safe = dim_is_safe(v_size, v_id, v_ofs);
+	// int u_ofs_is_safe = dim_is_safe(u_size, u_id, u_ofs);
+	// int cel_idx_is_safe = v_ofs_is_safe && u_ofs_is_safe;
+
+	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
+}
+
+
+// 	SAFE_CEL_STATE_3D(): 'Safe' Cell State Resolution
+// 		- If id + ofs are out of cortical bounds, zero is returned
+//			- otherwise resolved state is returned 
+//		- Intended primarily for use by the inhibition-related kernel(s)
+static inline uchar safe_cel_state_3d(
+				uchar slc_id, uint v_size, uint v_id, char v_ofs, 
+				uint u_size, uint u_id, char u_ofs, 
+				__global uchar const* const cel_states
+) {
+	int v_ofs_is_safe = dim_is_safe(v_size, v_id, v_ofs);
+	int u_ofs_is_safe = dim_is_safe(u_size, u_id, u_ofs);
+	int cel_idx_is_safe = v_ofs_is_safe && u_ofs_is_safe;
+
+	//uint safe_v_id = mad24((uint)v_ofs_is_safe, (uint)v_ofs, v_id);
+	//uint safe_u_id = mad24((uint)u_ofs_is_safe, (uint)u_ofs, u_id);
+
+	uint cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
+
+	return mul24(cel_idx_is_safe, cel_states[cel_idx]);
+}
+
+// 	CEL_IDX_3D_SAFE(): [WORK IN PROGRESS]: For whatever that means... 
+// 		if out of bounds, return the edge for now...
+/*
+	static inline uint cel_idx_3d_safe_wip(uint slc_id, uint v_size, uint v_id, int v_ofs, uint u_size, uint u_id, int u_ofs) {
+		//int v_ofs_is_safe = dim_is_safe(v_size, v_id, v_ofs);
+		//int u_ofs_is_safe = dim_is_safe(u_size, u_id, u_ofs);
+		//int cel_idx_is_safe = v_ofs_is_safe && u_ofs_is_safe;
+
+		return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
+	}
+*/
 
 // 	SAFE_DIM_OFS(): Ensure that a dimensional (x,y,z) id does not exceed it's global cortical boundary
 //		- Can be depricated if synapses guarantee that their offsets are safe upon growth/regrowth
@@ -86,14 +141,6 @@ __kernel void test_safe_dim_ofs(
 	char safe_do = safe_dim_ofs(dim_size, dim_ids[id], dim_offs[id]);
 
 	safe_dim_offs[id] = safe_do;
-}
-
-static inline char split_v_ofs(char src_uv_ofs) {
-	return ((char)(src_uv_ofs & 0xF0)) >> 4;
-}
-
-static inline char split_u_ofs(char src_uv_ofs) {
-	return ((char)((src_uv_ofs & 0x0F) << 4)) >> 4;
 }
 
 
@@ -142,28 +189,6 @@ static inline uint axn_idx_3d(uchar slc_id, uint v_size, uint v_id, char v_ofs, 
 	uint axn_idx_spt = mad24((uint)slc_id, uv_size, (uint)(uv_id + uv_ofs));
 
 	return axn_idx_2d(slc_id, uv_size, uv_id, uv_ofs);
-}
-
-
-// 	SAFE_CEL_STATE_3D(): 'Safe' Cell State Resolution
-// 		- If id + ofs are out of cortical bounds, zero is returned
-//			- otherwise resolved state is returned 
-//		- Intended primarily for use by the inhibition-related kernel(s)
-static inline uchar safe_cel_state_3d(
-				uchar slc_id, uint v_size, uint v_id, char v_ofs, 
-				uint u_size, uint u_id, char u_ofs, 
-				__global uchar const* const cel_states
-) {
-	int v_ofs_is_safe = dim_is_safe(v_size, v_id, v_ofs);
-	int u_ofs_is_safe = dim_is_safe(u_size, u_id, u_ofs);
-	int cel_idx_is_safe = v_ofs_is_safe && u_ofs_is_safe;
-
-	uint safe_v_id = mad24((uint)v_ofs_is_safe, (uint)v_ofs, v_id);
-	uint safe_u_id = mad24((uint)u_ofs_is_safe, (uint)u_ofs, u_id);
-
-	uint cel_idx = cel_idx_3d(slc_id, v_size, safe_v_id, u_size, safe_u_id);
-
-	return mul24(cel_idx_is_safe, cel_states[cel_idx]);
 }
 
 
@@ -372,7 +397,7 @@ __kernel void syns_cycle_simple(
 
 	uint const col_id = col_id_3d(v_id, u_id);
 
-	uint const syn_idz = (cel_idx_3d(slc_id, v_size, v_id, u_size, u_id) + cel_idz) << syns_per_tuft_l2;
+	uint const syn_idz = (cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) << syns_per_tuft_l2;
 	uint const syn_idn = syn_idz + (1 << syns_per_tuft_l2);
 
 	for (uint syn_idx = syn_idz; syn_idx < syn_idn; syn_idx++) {
@@ -785,9 +810,10 @@ __kernel void den_cycle_original(
 */ //################################ END #######################################
 
 
-// 	INHIB_SIMPLE(): Cell Inhibition
+// 	INHIB_SIMPLE(): Cell Inhibition - reads from soma, writes to axon
 //		- If any nearby cells are more active (have a higher soma 'state')
-//			- cell will not fire
+//			- cell will not 'fire'
+//			- otherwise, write soma (cel_states[cel_idx]) to axon (axn_states[axn_idx])
 //
 //		- Overly simplistic algorithm 
 // 			- Distance should be taken into account when state is considered
@@ -797,161 +823,63 @@ __kernel void den_cycle_original(
 //			- be vectorized
 //			- use a few other hex grid tricks (see written notes)
 __kernel void inhib_simple(
-				__global uchar const* const sst_states,
+				__global uchar const* const cel_states,
 				//__global uchar* const iinn_states,
-				//__global uchar* const iinn_sst_ids
+				//__global uchar* const iinn_cel_ids
+
+				// GET SST BASE AXON LAYER
+
+				__private uchar const cel_base_axn_slc,		// <<<<< DEPRICATE: USE A GLOBAL OFFSET
+
 				__global int* const aux_ints_1,
 				__global uchar* const axn_states
 ) {
-	// uint const slc_id = get_global_id(0);
-	// uint const iinn_id = get_global_id(1);
-	// uint const slc_columns = get_global_size(1);
-	// uint const iinn_pos = mad24(slc_id, slc_columns, iinn_id);
-	//uint const iinn_idx = (iinn_pos + ASPINY_REACH);
-	//uint const sst_ofs = iinn_pos << ASPINY_SPAN_LOG2;
-
-
-	uint const slc_id = get_global_id(0);
+	uint const slc_id = get_global_id(0);	// <<<<< TODO: USE A GLOBAL OFFSET
 	uint const v_id = get_global_id(1);
 	uint const u_id = get_global_id(2);
 
 	uint const v_size = get_global_size(1);
 	uint const u_size = get_global_size(2);
 
+	uint const cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
+	uint const axn_idx = axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
 
-	// 	SEMI-NON-RETARDO METHOD
-	// 		var results = []
-	// 		for each -N ≤ dx ≤ N:
-	//     		for each max(-N, -dx-N) ≤ dy ≤ min(N, -dx+N):
-	//         		var dz = -dx-dy
-	//         		results.append(cube_add(center, Cube(dx, dy, dz)))
+	uchar const cel_state = cel_states[cel_idx];
 
-	// 	RETARDO METHOD:
-	// 		var results = []
-	// 		for each -N ≤ dx ≤ N:
-	//     		for each -N ≤ dy ≤ N:
-	//         		for each -N ≤ dz ≤ N:
-	//             		if dx + dy + dz = 0:
-	//                 		results.append(cube_add(center, Cube(dx, dy, dz)))
+	int const radius_pos = 4; // 61 Cells
+	int const radius_neg = 0 - radius_pos;
 
+	int i_am_the_big_dog = 1;
+	//int biggest_dog = 0;
 
-	int radius_pos = 4; // 61 Cells
-	int radius_neg = 0 - radius_pos;
+	//uint dumb_iter = 0;
 
-	//int v_min = (int)v_id - radius;
-	//int v_max = (int)v_id + radius;
+	for (int u = radius_neg; u <= radius_pos; u++) {
+		int u_neg = 0 - u;
+		int v_z = max(radius_neg, u_neg - radius_pos);
+		int v_m = min(radius_pos, u_neg + radius_pos);
 
-	//int u_min = (int)u_id - radius;
-	//int u_max = (int)u_id + radius;
+		for (int v = v_z; v <= v_m; v++) {
 
+			int neighbor_state = safe_cel_state_3d(slc_id, v_size, v_id, v, u_size, u_id, u, cel_states);			
 
-	if ((v_id == 8) && (u_id == 8)) { 	// DEBUG ONLY
-				int fuck_it = 0; 		// DEBUG ONLY
+			if (neighbor_state > cel_state) {
+				i_am_the_big_dog = 0;
+			}
 
 
-				for (int u = radius_neg; u <= radius_pos; u++) {
-					int u_neg = 0 - u;
+			/*if ((v_id == 8) && (u_id == 8)) {
+				aux_ints_1[dumb_iter] = safe_cel_state_3d(slc_id, 
+					v_size, v_id, v, u_size, u_id, u, cel_states);
+			}*/
 
-					int v_z = max(radius_neg, u_neg - radius_pos);
-					int v_m = min(radius_pos, u_neg + radius_pos);
+			//dumb_iter += 1;
+		}
+	}
 
-					for (int v = v_z; v <= v_m; v++) {
+	axn_states[axn_idx] = mul24(i_am_the_big_dog, (int)cel_state);
+	//aux_ints_1[axn_idx] = mul24(i_am_the_big_dog, (int)cel_state);
 
-						int awesome_fuck_it_idx = mul24(10000, fuck_it) + mul24(100, u + 8) + mul24(1, v + 8);
-
-						aux_ints_1[fuck_it] = awesome_fuck_it_idx;
-
-						fuck_it += 1;
-					}
-				}
-
-
-	} // DEBUG ONLY	
-
-
-
-	/*
-
-	int v_min = (int)v_id - radius;
-	int v_max = (int)v_id + radius;
-
-	int u_min = (int)u_id - radius;
-	int u_max = (int)u_id + radius;
-
-
-	if ((v_id == 8) && (u_id == 8)) { 		// DEBUG ONLY
-
-				int fuck_it = 0; 		// DEBUG ONLY
-
-				for (int u = u_min; u <= u_max; u++) {
-					
-					int neg_dx = u_max - u;
-					//int pos_dx = u;
-					int neg_N = v_min;
-					int pos_N = v_max;
-
-
-					// max(-N, -dx-N) ≤ dy
-					int v_idz =	max(neg_N, neg_dx + neg_N);
-
-					// dy ≤ min(N, -dx+N)
-					int v_idm = min(pos_N, neg_dx + pos_N);
-
-
-					for (int v = v_idz; v <= v_idm; v++) {
-						//cel_idx_3d(slc_id, v_size, v_id, u_size, u_id)
-
-						//aux_ints_1[cel_idx_3d(slc_id, v_size, v, u_size, u)] = fuck_it;
-
-						int awesome_fuck_it_idx = mul24(10000,fuck_it) + mul24(100,u) + mul24(1,v);
-
-						aux_ints_1[fuck_it] = awesome_fuck_it_idx;
-
-						//aux_ints_1[fuck_it] = v;
-
-						// mad24(v, (int)u_size, u);
-
-						//aux_ints_1[cel_idx_3d(slc_id, v_size, v, u_size, u)] = 
-						//	safe_cel_state_3d(slc_id, v_size, v, 0, u_size, u, 0, axn_states);
-
-						fuck_it += 1;
-					}
-				}
-
-	} // DEBUG ONLY*/
-
-
-	/*if ((v_id == 8) && (u_id == 8)) { 		// DEBUG ONLY
-		int fuck_it = 0; 		// DEBUG ONLY
-
-				for (int u = u_min; u <= u_max; u++) {
-
-					// max(-N, -dx-N)
-					int v_idz = v_id + max(radius, (0 - ((int)u_id - u)) - radius);
-					// min(N, -dx+N)
-					int v_idm = v_id + min(radius, (0 - ((int)u_id - u)) + radius);
-
-					// WORKS (81 w/radius = 4):
-					//int v_idz = v_min;
-					//int v_idm = v_max;
-
-					for (int v = v_idz; v <= v_idm; v++) {
-						//cel_idx_3d(slc_id, v_size, v_id, u_size, u_id)
-
-						//aux_ints_1[cel_idx_3d(slc_id, v_size, v, u_size, u)] = fuck_it;
-						//aux_ints_1[fuck_it] = mad24(v, (int)u_size, u);
-
-						int awesome_fuck_it_idx = mul24(10000,fuck_it) + mul24(100,u) + mul24(1,v);
-						aux_ints_1[awesome_fuck_it_idx] = awesome_fuck_it_idx;
-
-						// 	aux_ints_1[cel_idx_3d(slc_id, v_size, v, u_size, u)] = 
-						// 		safe_cel_state_3d(slc_id, v_size, v, 0, u_size, u, 0, axn_states);
-
-						safe_cel_state_3d(slc_id, v_size, v, 0, u_size, u, 0, axn_states);
-						fuck_it += 1;
-					}
-				}
-	} // DEBUG ONLY*/
 }
 
 
