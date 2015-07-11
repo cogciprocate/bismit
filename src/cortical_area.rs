@@ -76,7 +76,7 @@ impl CorticalArea {
 
 		let axns = Axons::new(dims, &protoregion, ocl);
 
-		let aux_dims = CorticalDimensions::new(dims.width(), dims.height(), dims.depth(), 7, Some(dims.physical_increment()));
+		let aux_dims = CorticalDimensions::new(dims.width(), dims.height(), dims.depth(), 10, Some(dims.physical_increment()));
 		//let aux_dims = CorticalDimensions::new(dims.width_l2(), dims.height_l2(), dims.depth(), 7);
 		let aux = Aux::new(aux_dims, ocl);
 
@@ -133,7 +133,7 @@ impl CorticalArea {
 
 						
 							let iinns_dims = dims.clone_with_depth(src_layer_depth);
-							let mut iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, pcell.clone(), &protoregion, src_soma_env, src_axn_base_slc, &axns, ocl);
+							let mut iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, pcell.clone(), &protoregion, src_soma_env, src_axn_base_slc, &axns, &aux, ocl);
 
 							iinns.insert(layer_name, Box::new(iinn_lyr));
 
@@ -373,9 +373,11 @@ impl Aux {
 
 		//dims.columns() *= 512;
 
+		let int_32_min = -2147483648;
+
 		Aux { 
-			ints_0: Envoy::<ocl::cl_int>::new(dims, -999, ocl),
-			ints_1: Envoy::<ocl::cl_int>::new(dims, -999, ocl),
+			ints_0: Envoy::<ocl::cl_int>::new(dims, int_32_min + 100, ocl),
+			ints_1: Envoy::<ocl::cl_int>::new(dims, int_32_min + 100, ocl),
 			chars_0: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			chars_1: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			dims: dims,

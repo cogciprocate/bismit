@@ -31,6 +31,9 @@ mod dendrites;
 mod synapses;
 mod minicolumns;
 mod iinn;
+
+mod iinn_new;
+
 mod pyramidals;
 mod spiny_stellates;
 //mod cort_seg;

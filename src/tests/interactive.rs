@@ -65,18 +65,21 @@ pub fn define_protoregions() -> Protoregions {
 }
 
 pub fn define_protoareas() -> Protoareas {
-	let area_side = 48 as u32;
+	let area_side = 24 as u32;
 
 	let mut protoareas = Protoareas::new()
 		.area("v1", area_side, area_side, Sensory, 
-			//None
-			Some(vec!["b1"])
+			None
+			//Some(vec!["b1"])
 		)
-		.area("b1", area_side, area_side, Sensory, 
-			//None
-			Some(vec!["a1"])
+
+		/* .area("b1", area_side, area_side, Sensory, 
+		 	//None
+		 	Some(vec!["a1"])
 		)
+
 		.area("a1", area_side, area_side, Sensory, None)
+		*/
 	;
 
 	protoareas

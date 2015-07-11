@@ -11,18 +11,31 @@
 #define ENERGY_LEVEL_MAX				255
 #define ENERGY_REGEN_AMOUNT				1
 
+#define OLD_INHIB
 
 //  bismit.cl: CONVENTIONS
 //
-// 		idx: index, physical in-memory address
+// 		idx: current index (of a loop, workgroup, queue, etc.)
+//			- almost always a physical in-memory address
+//
 // 		idz: index[0], first element, starting element
+//
 // 		idn: index[len], element after final element, termination point
+//			- ex.: for(int i = 0, i < idn, i++)
+//
+// 		idm: index[max], final (valid) element just before idn (idn - 1 = idm)
+//			- ex.: for(int i = 0, i <= idm, i++)
+//
 //
 // 		id: identifier, but not a physical array index
 //
-//		z_id
-//		y_id
-//		x_id
+//		y_id // DEPRICATING
+//		x_id // DEPRICATING
+//
+//		slc_id
+//		w_id
+//		v_id
+//		u_id
 //
 // 		fuz: fuzzyness, level of predictiveness
 //
@@ -39,22 +52,27 @@ static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_
 	return (asp_to_sst_ofs(asp_idx) + (asp_sst_id & (ASPINY_SPAN - 1)));
 }
 
-static inline uint col_id_3d(uint y_id, uint x_id) {
-	return mad24(y_id, get_global_size(1), x_id);
+static inline uint col_id_3d(uint v_id, uint u_id) {
+	return mad24(v_id, get_global_size(1), u_id);
 }
 
 // CEL_IDX_3D: LINEAR INDEX OF A CELL
-static inline uint cel_idx_3d(uint z_id, uint y_size, uint y_id, uint x_size, uint x_id) {
-	return mad24(z_id, mul24(y_size, x_size), mad24(y_id, x_size, x_id));	
+static inline uint cel_idx_3d(uint slc_id, uint v_size, uint v_id, uint u_size, uint u_id) {
+	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
+}
+
+static inline int dim_is_safe(uint dim_size, uint dim_id, char dim_ofs) {
+	int dim_ttl = (int)dim_id + dim_ofs;
+	return (dim_ttl >= 0) && (dim_ttl <= (int)dim_size);
 }
 
 // 	SAFE_DIM_OFS(): Ensure that a dimensional (x,y,z) id does not exceed it's global cortical boundary
 //		- Can be depricated if synapses guarantee that their offsets are safe upon growth/regrowth
-// 
 static inline char safe_dim_ofs(uint dim_size, uint dim_id, char dim_ofs) {
-	int dim_ttl = dim_id + dim_ofs;
-	return dim_ofs + mul24(dim_ttl < 0, (0 - dim_ttl) << 1) - 
-		mul24(dim_ttl >= (int)dim_size, (int)(dim_ttl - (dim_size - 1)) << 1);
+	int dim_ttl = (int)dim_id + dim_ofs;
+
+	return dim_ofs + mul24(dim_ttl < 0, (0 - dim_ttl) << 1)
+		- mul24(dim_ttl >= (int)dim_size, (int)(dim_ttl - (dim_size - 1)) << 1);
 }
 
 __kernel void test_safe_dim_ofs(
@@ -64,15 +82,18 @@ __kernel void test_safe_dim_ofs(
 				__global char* const safe_dim_offs
 ) {
 	uint id = get_global_id(0);
-	safe_dim_offs[id] = safe_dim_ofs(dim_size, dim_ids[id], dim_offs[id]);
+
+	char safe_do = safe_dim_ofs(dim_size, dim_ids[id], dim_offs[id]);
+
+	safe_dim_offs[id] = safe_do;
 }
 
-static inline char split_y_ofs(char src_xy_ofs) {
-	return ((char)(src_xy_ofs & 0xF0)) >> 4;
+static inline char split_v_ofs(char src_uv_ofs) {
+	return ((char)(src_uv_ofs & 0xF0)) >> 4;
 }
 
-static inline char split_x_ofs(char src_xy_ofs) {
-	return ((char)((src_xy_ofs & 0x0F) << 4)) >> 4;
+static inline char split_u_ofs(char src_uv_ofs) {
+	return ((char)((src_uv_ofs & 0x0F) << 4)) >> 4;
 }
 
 
@@ -90,7 +111,7 @@ static inline char split_x_ofs(char src_xy_ofs) {
 // 		- We then apply the offset (col_ofs) to get to the exact axon_idx.
 // 		- col_id is irrelevant and unused for horiz. slcs.
 //		
-// 		- As always, for performance reasons we calculate both cases and multiply by a bool rather than branch
+// 		- As always, for performance reasons, rather than branch we calculate both cases and multiply by a bool 
 //
 //
 // 	- [complete] Accommodate horizontal axon slcs, slcs which are nonspatial and look the same from any column in a region.
@@ -107,17 +128,42 @@ static inline uint axn_idx_2d(uchar slc_id, uint slc_columns, uint col_id, int c
 	return mul24((uint)(hslc_id < 0), axn_idx_spt) + mul24((uint)(hslc_id >= 0), axn_idx_hrz);
 }
 
-static inline uint axn_idx_3d(uchar z_id, uint y_size, uint y_id, char y_ofs, uint x_size, uint x_id, char x_ofs) {
-	char safe_x_ofs = safe_dim_ofs(x_size, x_id, x_ofs);
-	char safe_y_ofs = safe_dim_ofs(y_size, y_id, y_ofs);
+// 	AXN_IDX_3D(): Axon Address Resolution
+// 		- slc_id assumed to be a valid axon slice
+// 		- safe_dim_ofs can be depricated later (see function comments)
+static inline uint axn_idx_3d(uchar slc_id, uint v_size, uint v_id, char v_ofs, uint u_size, uint u_id, char u_ofs) {
+	char safe_v_ofs = safe_dim_ofs(v_size, v_id, v_ofs);
+	char safe_u_ofs = safe_dim_ofs(u_size, u_id, u_ofs);
 
-	uint xy_size = mul24(y_size, x_size);
-	uint xy_id = mad24(y_id, x_size, x_id);
-	int xy_ofs = mad24((int)safe_y_ofs, (int)x_size, (int)safe_x_ofs);
+	uint uv_size = mul24(v_size, u_size);
+	uint uv_id = mad24(v_id, u_size, u_id);
+	int uv_ofs = mad24((int)safe_v_ofs, (int)u_size, (int)safe_u_ofs);
 
-	uint axn_idx_spt = mad24((uint)z_id, xy_size, (uint)(xy_id + xy_ofs));
+	uint axn_idx_spt = mad24((uint)slc_id, uv_size, (uint)(uv_id + uv_ofs));
 
-	return axn_idx_2d(z_id, xy_size, xy_id, xy_ofs);
+	return axn_idx_2d(slc_id, uv_size, uv_id, uv_ofs);
+}
+
+
+// 	SAFE_CEL_STATE_3D(): 'Safe' Cell State Resolution
+// 		- If id + ofs are out of cortical bounds, zero is returned
+//			- otherwise resolved state is returned 
+//		- Intended primarily for use by the inhibition-related kernel(s)
+static inline uchar safe_cel_state_3d(
+				uchar slc_id, uint v_size, uint v_id, char v_ofs, 
+				uint u_size, uint u_id, char u_ofs, 
+				__global uchar const* const cel_states
+) {
+	int v_ofs_is_safe = dim_is_safe(v_size, v_id, v_ofs);
+	int u_ofs_is_safe = dim_is_safe(u_size, u_id, u_ofs);
+	int cel_idx_is_safe = v_ofs_is_safe && u_ofs_is_safe;
+
+	uint safe_v_id = mad24((uint)v_ofs_is_safe, (uint)v_ofs, v_id);
+	uint safe_u_id = mad24((uint)u_ofs_is_safe, (uint)u_ofs, u_id);
+
+	uint cel_idx = cel_idx_3d(slc_id, v_size, safe_v_id, u_size, safe_u_id);
+
+	return mul24(cel_idx_is_safe, cel_states[cel_idx]);
 }
 
 
@@ -144,7 +190,7 @@ static inline uint axn_idx_3d(uchar z_id, uint y_size, uint y_id, char y_ofs, ui
 
 	//uint offset_physical = (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN);
 
-	uint axn_idx_physical = mad24((uint)slc_id, slc_columns, phy_ofs);
+	uint axn_idx_physical = mad24((uint)slc_id, slc_columns, phv_ofs);
 
 	int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
 
@@ -308,7 +354,7 @@ static inline void prx_syns__active__ltp_ltd(
 // SYNS_CYCLE_SIMPLE(): Simple synapse cycling with non-workgroup-optimized writes
 __kernel void syns_cycle_simple(
 				__global uchar const* const axn_states,
-				__global char const* const syn_src_col_xy_offs,
+				__global char const* const syn_src_col_uv_offs,
 				__global uchar const* const syn_src_slc_ids,
 				//__global char const* const syn_strengths,
 				//__private uint const syn_tuft_i,
@@ -317,24 +363,24 @@ __kernel void syns_cycle_simple(
 				__global int* const aux_ints_0,
 				__global uchar* const syn_states
 ) {
-	uint const z_id = get_global_id(0);
-	uint const y_id = get_global_id(1);
-	uint const x_id = get_global_id(2);
+	uint const slc_id = get_global_id(0);
+	uint const v_id = get_global_id(1);
+	uint const u_id = get_global_id(2);
 
-	uint const y_size = get_global_size(1);
-	uint const x_size = get_global_size(2);
+	uint const v_size = get_global_size(1);
+	uint const u_size = get_global_size(2);
 
-	uint const col_id = col_id_3d(y_id, x_id);
+	uint const col_id = col_id_3d(v_id, u_id);
 
-	uint const syn_idz = (cel_idx_3d(z_id, y_size, y_id, x_size, x_id) + cel_idz) << syns_per_tuft_l2;
+	uint const syn_idz = (cel_idx_3d(slc_id, v_size, v_id, u_size, u_id) + cel_idz) << syns_per_tuft_l2;
 	uint const syn_idn = syn_idz + (1 << syns_per_tuft_l2);
 
 	for (uint syn_idx = syn_idz; syn_idx < syn_idn; syn_idx++) {
 		uchar src_slc_id = syn_src_slc_ids[syn_idx];
-		char src_xy_ofs = syn_src_col_xy_offs[syn_idx];
-		char y_ofs = split_y_ofs(src_xy_ofs);
-		char x_ofs = split_x_ofs(src_xy_ofs);
-		uint axn_idx = axn_idx_3d(src_slc_id, y_size, y_id, y_ofs, x_size, x_id, x_ofs);
+		char src_uv_ofs = syn_src_col_uv_offs[syn_idx];
+		char v_ofs = split_v_ofs(src_uv_ofs);
+		char u_ofs = split_u_ofs(src_uv_ofs);
+		uint axn_idx = axn_idx_3d(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs);
 
 		uchar axn_state = axn_states[axn_idx];
 	
@@ -343,8 +389,10 @@ __kernel void syns_cycle_simple(
 		// if ((syn_idx & 0xFF) == 0) {
 		// 	aux_ints_0[syn_idx] = axn_idx;
 		// }
+
 	}
 }
+
 
 
 
@@ -359,13 +407,13 @@ __kernel void syns_cycle_simple(
 // 			- syns_cycle() will need knowledge of which axon ranges it's expected to read from
 //
 // WATCH OUT FOR:
-// 	- Bank conflicts once src_col_xy_offs start to change
+// 	- Bank conflicts once src_col_uv_offs start to change
 
 
 //	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
 __kernel void syns_cycle_2d_workgroup_optimized(
 				__global uchar const* const axn_states,
-				__global char const* const syn_src_col_xy_offs,
+				__global char const* const syn_src_col_uv_offs,
 				__global uchar const* const syn_src_slc_ids,
 				//__global char const* const syn_strengths,
 				__private uint const syn_tuft_i,
@@ -381,18 +429,18 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 	uint const wg_size = mul24(get_local_size(1), get_local_size(2)); // PRECOMPUTE or depricate
 	uint const base_cel_tuft_ofs = mul24(syn_tuft_i, layer_total_per_tuft); // PRECOMPUTE
 
-	uint const z_id = get_global_id(0);
-	uint const y_id = get_global_id(1);
-	uint const x_id = get_global_id(2);
+	uint const slc_id = get_global_id(0);
+	uint const v_id = get_global_id(1);
+	uint const u_id = get_global_id(2);
 
-	uint const col_id = mad24(y_id, get_global_size(1), x_id); // FOR DEBUG PURPOSES
-	uint aux_idx = mad24(z_id, slc_columns, col_id); // FOR DEBUG PURPOSES
+	uint const col_id = mad24(v_id, get_global_size(1), u_id); // FOR DEBUG PURPOSES
+	uint auu_idx = mad24(slc_id, slc_columns, col_id); // FOR DEBUG PURPOSES
 	
 	uint const wg_id = mad24(get_group_id(1), get_num_groups(2), get_group_id(2));
 	uint const l_id = mad24(get_local_id(1), get_local_size(2), get_local_id(2));
 	
 	uint const base_col_id = mul24(wg_id, wg_size);
-	uint const tuft_cel_idx = mad24(z_id, slc_columns, base_col_id);
+	uint const tuft_cel_idx = mad24(slc_id, slc_columns, base_col_id);
 	uint const base_cel_idx = base_cel_tuft_ofs + tuft_cel_idx;
 	//uint const base_cel_idx = tuft_cel_idx;
 	uint const base_syn_idx = (base_cel_idx << syns_per_tuft_l2);
@@ -409,7 +457,7 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 	for (; syn_idx < syn_n; syn_idx += wg_size) {
 		syn_col_i -= mul24((int)syns_per_slc, (syn_col_i >= syns_per_slc));
 		int col_pos = syn_col_i >> syns_per_tuft_l2;
-		uint axn_idx = axn_idx_2d(syn_src_slc_ids[syn_idx], slc_columns, col_pos, syn_src_col_xy_offs[syn_idx]);
+		uint axn_idx = axn_idx_2d(syn_src_slc_ids[syn_idx], slc_columns, col_pos, syn_src_col_uv_offs[syn_idx]);
 		uchar axn_state = axn_states[axn_idx];
 
 		//aux_ints_0[syn_idx - l_id] = axn_idx;
@@ -428,7 +476,7 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 
 	//aux_ints_0[0] = HORIZONTAL_AXON_ROW_DEMARCATION;
 
-	//uint aux_idx = mad24(z_id, slc_columns, col_id);
+	//uint auu_idx = mad24(slc_id, slc_columns, col_id);
 	//aux_ints_0[init_syn_idx] = base_col_id;
 	//aux_ints_0[init_syn_idx] = 1;
 	//aux_ints_0[base_cel_idx] = 12321;
@@ -438,7 +486,7 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 
 /*__kernel void syns_cycle_original(
 				__global uchar const* const axn_states,
-				__global char const* const syn_src_col_xy_offs,
+				__global char const* const syn_src_col_uv_offs,
 				__global uchar const* const syn_src_slc_ids,
 				//__global char const* const syn_strengths,
 				__private uchar const syns_per_tuft_l2,
@@ -448,11 +496,11 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 	//uint const slc_id = get_global_id(0);
 	//uint const col_id = get_global_id(1);
 
-	uint const z_id = get_global_id(0);
-	uint const x_id = get_global_id(1);
-	uint const y_id = get_global_id(2);
+	uint const slc_id = get_global_id(0);
+	uint const u_id = get_global_id(1);
+	uint const v_id = get_global_id(2);
 
-	uint const col_id = mul24(x_id, y_id);
+	uint const col_id = mul24(u_id, v_id);
 
 	uint const slc_columns = get_global_size(1);
 	uint const l_id = get_local_id(1); 
@@ -460,7 +508,7 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 	uint const wg_size = get_local_size(1);
 	
 	uint const base_col_id = mul24(wg_id, wg_size);
-	uint const base_cel_idx = mad24(z_id, slc_columns, base_col_id);
+	uint const base_cel_idx = mad24(slc_id, slc_columns, base_col_id);
 
 	uint const base_syn_idx = (base_cel_idx << syns_per_tuft_l2);
 	uint const init_syn_idx = base_syn_idx + l_id;
@@ -473,12 +521,12 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 	int syn_sst_i = (base_col_id << syns_per_tuft_l2) + l_id;
 	uint syn_idx = init_syn_idx;
 
-	//uint aux_idx = mad24(z_id, slc_columns, col_id); // DEBUG
+	//uint auu_idx = mad24(slc_id, slc_columns, col_id); // DEBUG
 
 	for (; syn_idx < syn_n; syn_idx += wg_size) {
 		syn_sst_i -= mul24((int)syns_per_slc, (syn_sst_i >= syns_per_slc));
 		int sst_pos = syn_sst_i >> syns_per_tuft_l2;
-		uint axn_idx = axn_idx_2d(syn_src_slc_ids[syn_idx], slc_columns, sst_pos, syn_src_col_xy_offs[syn_idx]);
+		uint axn_idx = axn_idx_2d(syn_src_slc_ids[syn_idx], slc_columns, sst_pos, syn_src_col_uv_offs[syn_idx]);
 		uchar axn_state = axn_states[axn_idx];
 		
 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
@@ -494,9 +542,9 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 
 	//aux_ints_0[0] = HORIZONTAL_AXON_ROW_DEMARCATION;
 
-	//uint aux_idx = mad24(z_id, slc_columns, col_id);
-	//aux_ints_0[aux_idx] = l_id;
-	//aux_ints_0[aux_idx] = syn_idx;
+	//uint auu_idx = mad24(slc_id, slc_columns, col_id);
+	//aux_ints_0[auu_idx] = l_id;
+	//aux_ints_0[auu_idx] = syn_idx;
 	//aux_ints_0[base_cel_idx] = 12321;
 }*/
 
@@ -528,17 +576,17 @@ __kernel void den_cycle(
 				__global uchar* const den_states
 ) {
 	uint const den_idx = get_global_id(0);
-	//uint const x_id = get_global_id(1);
-	//uint const y_id = get_global_id(2);
+	//uint const u_id = get_global_id(1);
+	//uint const v_id = get_global_id(2);
 	//uint const slc_columns = mul24(get_global_size(1), get_global_size(2));
-	//uint const den_idx = mad24(z_id, slc_columns, mul24(x_id, y_id));
+	//uint const den_idx = mad24(slc_id, slc_columns, mul24(u_id, v_id));
 	uint const syn_idz = den_idx << syns_per_den_l2;
 
-	/*uint const z_id = get_global_id(0);
-	uint const x_id = get_global_id(1);
-	uint const y_id = get_global_id(2);
+	/*uint const slc_id = get_global_id(0);
+	uint const u_id = get_global_id(1);
+	uint const v_id = get_global_id(2);
 	uint const slc_columns = mul24(get_global_size(1), get_global_size(2));
-	uint const den_idx = mad24(z_id, slc_columns, mul24(x_id, y_id));
+	uint const den_idx = mad24(slc_id, slc_columns, mul24(u_id, v_id));
 	uint const syn_idz = den_idx << syns_per_den_l2;*/
 
 	uchar den_energy = den_energies[den_idx];
@@ -641,6 +689,9 @@ __kernel void den_cycle_old(
 		}
 	}
 
+	safe_cel_state_3d(5, 5, 5, 5, 5, 5, 5, den_states);
+
+
 
 	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255); 
 	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); 
@@ -733,6 +784,181 @@ __kernel void den_cycle_original(
 }
 */ //################################ END #######################################
 
+
+// 	INHIB_SIMPLE(): Cell Inhibition
+//		- If any nearby cells are more active (have a higher soma 'state')
+//			- cell will not fire
+//
+//		- Overly simplistic algorithm 
+// 			- Distance should be taken into account when state is considered
+//			- Search area broadened
+// 		- Horribly unoptimized, Should:
+//			- Cache values for an area in local (workgroup) memory
+//			- be vectorized
+//			- use a few other hex grid tricks (see written notes)
+__kernel void inhib_simple(
+				__global uchar const* const sst_states,
+				//__global uchar* const iinn_states,
+				//__global uchar* const iinn_sst_ids
+				__global int* const aux_ints_1,
+				__global uchar* const axn_states
+) {
+	// uint const slc_id = get_global_id(0);
+	// uint const iinn_id = get_global_id(1);
+	// uint const slc_columns = get_global_size(1);
+	// uint const iinn_pos = mad24(slc_id, slc_columns, iinn_id);
+	//uint const iinn_idx = (iinn_pos + ASPINY_REACH);
+	//uint const sst_ofs = iinn_pos << ASPINY_SPAN_LOG2;
+
+
+	uint const slc_id = get_global_id(0);
+	uint const v_id = get_global_id(1);
+	uint const u_id = get_global_id(2);
+
+	uint const v_size = get_global_size(1);
+	uint const u_size = get_global_size(2);
+
+
+	// 	SEMI-NON-RETARDO METHOD
+	// 		var results = []
+	// 		for each -N ≤ dx ≤ N:
+	//     		for each max(-N, -dx-N) ≤ dy ≤ min(N, -dx+N):
+	//         		var dz = -dx-dy
+	//         		results.append(cube_add(center, Cube(dx, dy, dz)))
+
+	// 	RETARDO METHOD:
+	// 		var results = []
+	// 		for each -N ≤ dx ≤ N:
+	//     		for each -N ≤ dy ≤ N:
+	//         		for each -N ≤ dz ≤ N:
+	//             		if dx + dy + dz = 0:
+	//                 		results.append(cube_add(center, Cube(dx, dy, dz)))
+
+
+	int radius_pos = 4; // 61 Cells
+	int radius_neg = 0 - radius_pos;
+
+	//int v_min = (int)v_id - radius;
+	//int v_max = (int)v_id + radius;
+
+	//int u_min = (int)u_id - radius;
+	//int u_max = (int)u_id + radius;
+
+
+	if ((v_id == 8) && (u_id == 8)) { 	// DEBUG ONLY
+				int fuck_it = 0; 		// DEBUG ONLY
+
+
+				for (int u = radius_neg; u <= radius_pos; u++) {
+					int u_neg = 0 - u;
+
+					int v_z = max(radius_neg, u_neg - radius_pos);
+					int v_m = min(radius_pos, u_neg + radius_pos);
+
+					for (int v = v_z; v <= v_m; v++) {
+
+						int awesome_fuck_it_idx = mul24(10000, fuck_it) + mul24(100, u + 8) + mul24(1, v + 8);
+
+						aux_ints_1[fuck_it] = awesome_fuck_it_idx;
+
+						fuck_it += 1;
+					}
+				}
+
+
+	} // DEBUG ONLY	
+
+
+
+	/*
+
+	int v_min = (int)v_id - radius;
+	int v_max = (int)v_id + radius;
+
+	int u_min = (int)u_id - radius;
+	int u_max = (int)u_id + radius;
+
+
+	if ((v_id == 8) && (u_id == 8)) { 		// DEBUG ONLY
+
+				int fuck_it = 0; 		// DEBUG ONLY
+
+				for (int u = u_min; u <= u_max; u++) {
+					
+					int neg_dx = u_max - u;
+					//int pos_dx = u;
+					int neg_N = v_min;
+					int pos_N = v_max;
+
+
+					// max(-N, -dx-N) ≤ dy
+					int v_idz =	max(neg_N, neg_dx + neg_N);
+
+					// dy ≤ min(N, -dx+N)
+					int v_idm = min(pos_N, neg_dx + pos_N);
+
+
+					for (int v = v_idz; v <= v_idm; v++) {
+						//cel_idx_3d(slc_id, v_size, v_id, u_size, u_id)
+
+						//aux_ints_1[cel_idx_3d(slc_id, v_size, v, u_size, u)] = fuck_it;
+
+						int awesome_fuck_it_idx = mul24(10000,fuck_it) + mul24(100,u) + mul24(1,v);
+
+						aux_ints_1[fuck_it] = awesome_fuck_it_idx;
+
+						//aux_ints_1[fuck_it] = v;
+
+						// mad24(v, (int)u_size, u);
+
+						//aux_ints_1[cel_idx_3d(slc_id, v_size, v, u_size, u)] = 
+						//	safe_cel_state_3d(slc_id, v_size, v, 0, u_size, u, 0, axn_states);
+
+						fuck_it += 1;
+					}
+				}
+
+	} // DEBUG ONLY*/
+
+
+	/*if ((v_id == 8) && (u_id == 8)) { 		// DEBUG ONLY
+		int fuck_it = 0; 		// DEBUG ONLY
+
+				for (int u = u_min; u <= u_max; u++) {
+
+					// max(-N, -dx-N)
+					int v_idz = v_id + max(radius, (0 - ((int)u_id - u)) - radius);
+					// min(N, -dx+N)
+					int v_idm = v_id + min(radius, (0 - ((int)u_id - u)) + radius);
+
+					// WORKS (81 w/radius = 4):
+					//int v_idz = v_min;
+					//int v_idm = v_max;
+
+					for (int v = v_idz; v <= v_idm; v++) {
+						//cel_idx_3d(slc_id, v_size, v_id, u_size, u_id)
+
+						//aux_ints_1[cel_idx_3d(slc_id, v_size, v, u_size, u)] = fuck_it;
+						//aux_ints_1[fuck_it] = mad24(v, (int)u_size, u);
+
+						int awesome_fuck_it_idx = mul24(10000,fuck_it) + mul24(100,u) + mul24(1,v);
+						aux_ints_1[awesome_fuck_it_idx] = awesome_fuck_it_idx;
+
+						// 	aux_ints_1[cel_idx_3d(slc_id, v_size, v, u_size, u)] = 
+						// 		safe_cel_state_3d(slc_id, v_size, v, 0, u_size, u, 0, axn_states);
+
+						safe_cel_state_3d(slc_id, v_size, v, 0, u_size, u, 0, axn_states);
+						fuck_it += 1;
+					}
+				}
+	} // DEBUG ONLY*/
+}
+
+
+
+
+
+// <<<<< FOLLOWING SECTION SLATED FOR REMOVAL/DEPRICATION >>>>>
 
 __kernel void peak_sst_cycle_pre(
 				__global uchar const* const sst_states,
@@ -859,7 +1085,6 @@ __kernel void peak_sst_cycle_post(
 	uchar const asp_win = asp_wins[asp_idx];
 
 	asp_states[asp_idx] = asp_win;
-
 	asp_wins[asp_idx] = 0;
 }
 
@@ -898,12 +1123,15 @@ __kernel void sst_post_inhib_unoptd (
 	axn_states[axn_idx] = mul24(sst_state, (win > 0));
 }
 
+// <<<<< END REMOVE/DEPRICATE SECTION >>>>>
 
 
-/*	SST_LTP(): Long term potentiation for Spiny Stellate Cells
 
 
-*/
+
+
+
+// SST_LTP(): Long term potentiation for Spiny Stellate Cells
 __kernel void sst_ltp(
 				__global uchar const* const axn_states,
 				__global uchar const* const syn_states,
@@ -1697,7 +1925,7 @@ __kernel void sst_ltp_old(
 /* SYNS_REGROW()
 
 	- [done] check for dead synapses (syn_strength < 127)
-	- [partial] replace with new random src_col_xy_offs and src_slc_id
+	- [partial] replace with new random src_col_uv_offs and src_slc_id
 	- [partial] scan through synapses on that dendrite to check for duplicates
 	- [changed] repeat if duplicate found
 	- [done] abort if duplicate found
@@ -1722,7 +1950,7 @@ __kernel void syns_regrow_deprec(
 				__private uint const syns_per_den_l2,
 				__private uint const rnd,
 				//__global int* const aux_ints_1,
-				__global char* const syn_src_col_xy_offs,
+				__global char* const syn_src_col_uv_offs,
 				__global uchar* const syn_src_slc_ids
 ) {
 	uint const slc_id = get_global_id(0);
@@ -1746,7 +1974,7 @@ __kernel void syns_regrow_deprec(
 		uint n = base_syn_idx + (1 << syns_per_den_l2);
 
 		for (uint i = base_syn_idx; i < n; i++) {
-			int dup = (rnd_col_ofs == syn_src_col_xy_offs[syn_idx]);		// ADD && ROW CHECK
+			int dup = (rnd_col_ofs == syn_src_col_uv_offs[syn_idx]);		// ADD && ROW CHECK
 			//int dup_slc = ^^^^^^
 
 			if (!dup) {
@@ -1760,7 +1988,7 @@ __kernel void syns_regrow_deprec(
 		}
 
 		syn_strengths[syn_idx] = 0;	
-		syn_src_col_xy_offs[syn_idx] = rnd_col_ofs;
+		syn_src_col_uv_offs[syn_idx] = rnd_col_ofs;
 		//syn_src_slc_ids[syn_idx] =
 
 			//aux_ints_1[syn_idx] = syn_strength;
@@ -1768,7 +1996,7 @@ __kernel void syns_regrow_deprec(
 
 	
 	/*int dead_syn = (syn_strength <= -100);
-	syn_src_col_xy_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
+	syn_src_col_uv_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
 	syn_strengths[syn_idx] = mul24(!(dead_syn), (int)syn_strength);*/
 
 	//syn_src_slc_ids[syn_idx] =

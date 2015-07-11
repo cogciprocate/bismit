@@ -21,7 +21,7 @@ use cortical_area:: { Aux };
 
 
 
-pub struct InhibitoryInterneuronNetwork {
+pub struct InhibitoryInterneuronNetworkNew {
 	layer_name: &'static str,
 	pub dims: CorticalDimensions,
 	protocell: Protocell,
@@ -29,17 +29,13 @@ pub struct InhibitoryInterneuronNetwork {
 	kern_cycle_wins: ocl::Kernel,
 	kern_cycle_post: ocl::Kernel,
 	kern_post_inhib: ocl::Kernel,
-
-	kern_inhib_simple: ocl::Kernel,
-
 	pub spi_ids: Envoy<ocl::cl_uchar>,
 	pub wins: Envoy<ocl::cl_uchar>,
 	pub states: Envoy<ocl::cl_uchar>,
-	
 }
 
-impl InhibitoryInterneuronNetwork {
-	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, src_soma: &Envoy<u8>, src_axn_base_slc: u8, axns: &Axons, aux: &Aux, ocl: &Ocl) -> InhibitoryInterneuronNetwork {
+impl InhibitoryInterneuronNetworkNew {
+	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, src_soma: &Envoy<u8>, src_axn_base_slc: u8, axns: &Axons, ocl: &Ocl) -> InhibitoryInterneuronNetworkNew {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
@@ -51,14 +47,9 @@ impl InhibitoryInterneuronNetwork {
 		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, 0u8, ocl);
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
 
-		println!("\n##### fuck_it: {}", dims.depth());
-
-
-		let kern_inhib_simple = ocl.new_kernel("inhib_simple",
-			WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
+		let kern_inhib_1 = ocl.new_kernel("inhib_1",
+			WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
 			.arg_env(&src_soma)
-			.arg_env(&aux.ints_1)
-			.arg_env(&axns.states)
 		;
 
 
@@ -93,7 +84,7 @@ impl InhibitoryInterneuronNetwork {
 		;
 
 
-		InhibitoryInterneuronNetwork {
+		InhibitoryInterneuronNetworkNew {
 			layer_name: layer_name,
 			dims: dims,
 			protocell: protocell,
@@ -101,9 +92,6 @@ impl InhibitoryInterneuronNetwork {
 			kern_cycle_wins: kern_cycle_wins,
 			kern_cycle_post: kern_cycle_post,
 			kern_post_inhib: kern_post_inhib,
-
-			kern_inhib_simple: kern_inhib_simple,
-
 			spi_ids: spi_ids,
 			wins: wins,
 			states: states,
@@ -112,16 +100,16 @@ impl InhibitoryInterneuronNetwork {
 
 	pub fn cycle(&mut self) {
 		self.kern_cycle_pre.enqueue(); 
+		//let mut event = self.kern_cycle_pre.enqueue();
 
+		//println!("\n### New aspiny.cycle() iteration: ###");
 
-		for i in 0..1 { // <<<<< (was 0..8)
-		 	self.kern_cycle_wins.enqueue(); 
+		for i in 0..4 { // <<<<< (was 0..8)
+			self.kern_cycle_wins.enqueue(); 
 		}
 
 		self.kern_cycle_post.enqueue();
 		self.kern_post_inhib.enqueue();
-
-		self.kern_inhib_simple.enqueue();
 	}
 
 }

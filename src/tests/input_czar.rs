@@ -317,7 +317,7 @@ mod tests {
 	
 	#[test]
 	fn test_input_czar() {
-		let mut ic = super::InputCzar::new(1024, super::InputVecKind::Stripes(512), 0..5, false, false, false);
+		let mut ic = super::InputCzar::new(1024, super::InputVecKind::Stripes { stripe_size: 512, zeros_first: false }, 0..5, false, false, false);
 		//ic.set_counter(5);
 
 		assert!(ic.counter == 5);
