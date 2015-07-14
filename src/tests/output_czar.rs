@@ -195,7 +195,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 
 
 	/* AXON STATES (ALL) */
-	if true {
+	if false {
 		print!("\nAXON STATES: ");
 		cortex.area_mut(area_name).axns.states.print((1 << 8) as usize, Some((0, 255)), None, true);
 

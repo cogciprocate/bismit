@@ -76,7 +76,7 @@ impl CorticalArea {
 
 		let axns = Axons::new(dims, &protoregion, ocl);
 
-		let aux_dims = CorticalDimensions::new(dims.width(), dims.height(), dims.depth(), 10, Some(dims.physical_increment()));
+		let aux_dims = CorticalDimensions::new(dims.width(), dims.height(), dims.depth(), 8, Some(dims.physical_increment()));
 		//let aux_dims = CorticalDimensions::new(dims.width_l2(), dims.height_l2(), dims.depth(), 7);
 		let aux = Aux::new(aux_dims, ocl);
 
@@ -238,15 +238,15 @@ impl CorticalArea {
 	}
 
 
-	/* PIL(): Get Primary Sensory Associative Layer (immutable) */
+	/* PIL(): Get Primary Spatial Associative Layer (immutable) */
 	pub fn psal(&self) -> &Box<SpinyStellateCellularLayer> {
-		let e_string = "cortical_area::CorticalArea::psal(): Primary Sensory Associative Layer: '{}' not found. ";
+		let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
 		self.ssts_map.get(self.psal_name).expect(e_string)
 	}
 
-	/* PIL_MUT(): Get Primary Sensory Associative Layer (mutable) */
+	/* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
 	pub fn psal_mut(&mut self) -> &mut Box<SpinyStellateCellularLayer> {
-		let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Sensory Associative Layer: '{}' not found. ";
+		let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
 		self.ssts_map.get_mut(self.psal_name).expect(e_string)
 	}
 

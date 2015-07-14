@@ -73,16 +73,16 @@ static inline uint col_id_3d(uint v_id, uint u_id) {
 
 static inline int dim_is_safe(uint dim_size, uint dim_id, char dim_ofs) {
 	int dim_ttl = (int)dim_id + dim_ofs;
-	return (dim_ttl >= 0) && (dim_ttl <= (int)dim_size);
+	return (dim_ttl >= 0) & (dim_ttl < (int)dim_size);
 }
 
 
 // CEL_IDX_3D: LINEAR INDEX OF A CELL
 static inline uint cel_idx_3d_unsafe(uint slc_id, uint v_size, uint v_id, uint u_size, uint u_id) {
 
-	// int v_ofs_is_safe = dim_is_safe(v_size, v_id, v_ofs);
-	// int u_ofs_is_safe = dim_is_safe(u_size, u_id, u_ofs);
-	// int cel_idx_is_safe = v_ofs_is_safe && u_ofs_is_safe;
+	// int v_ofs_is_safe = dim_is_safe(v_size, v_id, v_ofs);	// USE ELSEWHERE
+	// int u_ofs_is_safe = dim_is_safe(u_size, u_id, u_ofs);	// USE ELSEWHERE
+	// int cel_idx_is_safe = v_ofs_is_safe && u_ofs_is_safe;	// USE ELSEWHERE
 
 	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
 }
@@ -99,12 +99,12 @@ static inline uchar safe_cel_state_3d(
 ) {
 	int v_ofs_is_safe = dim_is_safe(v_size, v_id, v_ofs);
 	int u_ofs_is_safe = dim_is_safe(u_size, u_id, u_ofs);
-	int cel_idx_is_safe = v_ofs_is_safe && u_ofs_is_safe;
+	int cel_idx_is_safe = v_ofs_is_safe & u_ofs_is_safe;
 
-	//uint safe_v_id = mad24((uint)v_ofs_is_safe, (uint)v_ofs, v_id);
-	//uint safe_u_id = mad24((uint)u_ofs_is_safe, (uint)u_ofs, u_id);
+	//uint safe_v_id = mad24((uint)v_ofs_is_safe, (uint)v_ofs, v_id); 	// UNNECESSARY
+	//uint safe_u_id = mad24((uint)u_ofs_is_safe, (uint)u_ofs, u_id);	// UNNECESSARY
 
-	uint cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
+	uint cel_idx = cel_idx_3d_unsafe(slc_id, v_size, (int)v_id + v_ofs, u_size, (int)u_id + u_ofs);
 
 	return mul24(cel_idx_is_safe, cel_states[cel_idx]);
 }
@@ -178,6 +178,13 @@ static inline uint axn_idx_2d(uchar slc_id, uint slc_columns, uint col_id, int c
 // 	AXN_IDX_3D(): Axon Address Resolution
 // 		- slc_id assumed to be a valid axon slice
 // 		- safe_dim_ofs can be depricated later (see function comments)
+//
+//		- TODO: Make dendrite reach properly reflective, taking all three planar axis into consideration
+//			- currently dendrites are all reflecting clockwise
+// 		
+//		- TODO: Deal with corner cases
+//			- synapses in the acute corners are going to have to have double reflection into a 120-deg space
+//
 static inline uint axn_idx_3d(uchar slc_id, uint v_size, uint v_id, char v_ofs, uint u_size, uint u_id, char u_ofs) {
 	char safe_v_ofs = safe_dim_ofs(v_size, v_id, v_ofs);
 	char safe_u_ofs = safe_dim_ofs(u_size, u_id, u_ofs);
@@ -810,19 +817,8 @@ __kernel void den_cycle_original(
 */ //################################ END #######################################
 
 
-// 	INHIB_SIMPLE(): Cell Inhibition - reads from soma, writes to axon
-//		- If any nearby cells are more active (have a higher soma 'state')
-//			- cell will not 'fire'
-//			- otherwise, write soma (cel_states[cel_idx]) to axon (axn_states[axn_idx])
-//
-//		- Overly simplistic algorithm 
-// 			- Distance should be taken into account when state is considered
-//			- Search area broadened
-// 		- Horribly unoptimized, Should:
-//			- Cache values for an area in local (workgroup) memory
-//			- be vectorized
-//			- use a few other hex grid tricks (see written notes)
-__kernel void inhib_simple(
+
+/*__kernel void inhib_simple_original(
 				__global uchar const* const cel_states,
 				//__global uchar* const iinn_states,
 				//__global uchar* const iinn_cel_ids
@@ -863,26 +859,133 @@ __kernel void inhib_simple(
 
 			int neighbor_state = safe_cel_state_3d(slc_id, v_size, v_id, v, u_size, u_id, u, cel_states);			
 
-			if (neighbor_state > cel_state) {
-				i_am_the_big_dog = 0;
-			}
+			// if (neighbor_state < cel_state) {
+			// 	i_am_the_big_dog = 0;
+			// }
+
+			i_am_the_big_dog &= (neighbor_state <= cel_state);
 
 
-			/*if ((v_id == 8) && (u_id == 8)) {
-				aux_ints_1[dumb_iter] = safe_cel_state_3d(slc_id, 
-					v_size, v_id, v, u_size, u_id, u, cel_states);
-			}*/
+			// if ((v_id == 8) && (u_id == 8)) {
+			// 	aux_ints_1[dumb_iter] = safe_cel_state_3d(slc_id, 
+			// 		v_size, v_id, v, u_size, u_id, u, cel_states);
+			// }
 
 			//dumb_iter += 1;
+
+			if (cel_idx == 384) {
+				aux_ints_1[axn_idx] = neighbor_state;
+			}
 		}
 	}
 
-	axn_states[axn_idx] = mul24(i_am_the_big_dog, (int)cel_state);
-	//aux_ints_1[axn_idx] = mul24(i_am_the_big_dog, (int)cel_state);
+	//axn_states[axn_idx] = mul24(i_am_the_big_dog, (int)cel_state);
+	axn_states[axn_idx] = cel_states[cel_idx];
+
+}*/
+
+
+// 	INHIB_SIMPLE(): Cell Inhibition - reads from soma, writes to axon
+//		- If any nearby cells are more active (have a higher soma 'state')
+//			- cell will not 'fire'
+//			- otherwise, write soma (cel_states[cel_idx]) to axon (axn_states[axn_idx])
+//
+//		- Overly simplistic algorithm 
+// 			- Distance should be taken into account when state is considered
+//			- Search area broadened
+// 		- Horribly unoptimized, Should:
+//			- Cache values for an area in local (workgroup) memory
+//			- be vectorized
+//			- use a few other hex grid tricks (see written notes 03-Jun)
+__kernel void inhib_simple(
+				__global uchar const* const cel_states,
+				//__global uchar* const iinn_states,
+				//__global uchar* const iinn_cel_ids
+
+				// GET SST BASE AXON LAYER
+
+				__private uchar const cel_base_axn_slc,		// <<<<< DEPRICATE: USE A GLOBAL OFFSET
+
+				__global int* const aux_ints_1,
+				__global uchar* const axn_states
+) {
+	uint const slc_id = get_global_id(0);	// <<<<< TODO: USE A GLOBAL OFFSET
+	uint const v_id = get_global_id(1);
+	uint const u_id = get_global_id(2);
+
+	uint const v_size = get_global_size(1);
+	uint const u_size = get_global_size(2);
+
+	uint const cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
+	uint const axn_idx = axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
+
+	uchar const cel_state = cel_states[cel_idx];
+
+	int const radius_pos = 4; // 61 Cells
+	int const radius_neg = 0 - radius_pos;
+
+	int unsuppressed = cel_state > 0;
+	//uchar biggest_neighbor = 0;
+
+	//uint dumb_iter = 0;
+
+	for (int v = radius_neg; v <= radius_pos; v++) {
+		int v_neg = 0 - v;
+		int u_z = max(radius_neg, v_neg - radius_pos);
+		int u_m = min(radius_pos, v_neg + radius_pos);
+
+		for (int u = u_z; u <= u_m; u++) {
+
+			uchar neighbor_state = safe_cel_state_3d(slc_id, v_size, v_id, v, u_size, u_id, u, cel_states);	// ORIGINAL		
+			///uchar neighbor_state = cel_states[cel_idx_3d_unsafe(slc_id, v_size, v_id + v, u_size, u_id + u)]; // DEBUG
+
+
+			// STREAMLINE ME
+			/*if ((neighbor_state > cel_state) && (cel_state > 0)) {
+				unsuppressed = 0;
+			}*/
+
+
+			//unsuppressed |= (neighbor_state > cel_state); // DEBUG
+			unsuppressed &= (neighbor_state <= cel_state); // ORIGINAL
+
+			// DEBUG
+			// if (neighbor_state > 0) {
+			// 	biggest_neighbor = neighbor_state;
+			// }
+
+
+			// [DEBUG]: PICK ONLY A FEW POINTS
+			/*if (((v_id == 10) && (u_id == 10)) 
+				|| ((v_id == 20) && (u_id == 20)) 
+				|| ((v_id == 30) && (u_id == 30))
+				|| ((v_id == 40) && (u_id == 40))) {
+				uint unsafe_target_axn_idx = axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, v, u_size, u_id, u);
+
+				//aux_ints_1[dumb_iter] = safe_cel_state_3d(slc_id, 
+				//	v_size, v_id, v, u_size, u_id, u, cel_states);
+				//aux_ints_1[unsafe_target_axn_idx] = 1;
+				//axn_states[unsafe_target_axn_idx] = neighbor_state;
+				axn_states[unsafe_target_axn_idx] = 1 + unsuppressed;
+			}
+			
+			dumb_iter += 1;
+			*/
+
+			
+
+			/*if (cel_idx == 384) {
+				aux_ints_1[axn_idx + mad24(v, 100, u)] = neighbor_state + 1;
+			}*/
+		}
+	}
+
+	axn_states[axn_idx] = mul24((uint)unsuppressed, (uint)cel_state); // ORIGINAL *****
+	//axn_states[axn_idx] = cel_states[cel_idx]; // DEBUG *****
+	//axn_states[axn_idx] = unsuppressed; // DEBUG
+	//axn_states[axn_idx] = biggest_dog; // DEBUG
 
 }
-
-
 
 
 

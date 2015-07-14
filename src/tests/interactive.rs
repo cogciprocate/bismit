@@ -8,7 +8,7 @@ use rand::{ self, ThreadRng, Rng };
 use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use time;
 
-use ocl;
+use ocl::{ self, CorticalDimensions };
 use cmn;
 use cortex::{ self, Cortex };
 //use proto::layer;
@@ -16,6 +16,7 @@ use super::output_czar;
 //use super::synapse_drill_down;
 use super::input_czar::{ self, InputCzar, InputVecKind };
 use super::hybrid;
+use super::renderer::{ Renderer };
 //use chord::{ Chord };
 //use ocl::{ Envoy };
 use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, layer, Protocell };
@@ -55,7 +56,7 @@ pub fn define_protoregions() -> Protoregions {
 			Protocell::new_inhibitory(4, "iv"))
 
 		.layer("iii", 2, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(2, 4, vec!["iii"], 640).apical(vec!["eff_in"]))
+			Protocell::new_pyramidal(2, 4, vec!["iii"], 512).apical(vec!["eff_in"]))
 
 		.freeze()
 	;
@@ -95,13 +96,21 @@ pub fn run(autorun_iters: i32) -> bool {
 	let mut cortex = cortex::Cortex::new(define_protoregions(), define_protoareas());
 	let mut area_name = "v1".to_string();
 	let inhib_layer_name = "iv_inhib";
-	let sc_columns = cortex.area(&area_name).dims.columns();
-	//let input_kind = InputVecKind::Stripes { stripe_size: 512, zeros_first: true };
-	let input_kind = InputVecKind::World;
-	let mut input_czar = InputCzar::new(sc_columns, input_kind, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
+	let area_dims = cortex.area(&area_name).dims().clone();
 
-	let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(sc_columns as usize).collect();
-	let mut vec_ff_prev: Vec<u8> = iter::repeat(0).take(sc_columns as usize).collect();
+	//let input_kind = InputVecKind::Stripes { stripe_size: 512, zeros_first: true };
+	let input_kind = InputVecKind::Hexballs { edge_size: 4, invert: false };
+	//let input_kind = InputVecKind::World;
+	//let input_kind = InputVecKind::Exp1;
+
+	cortex.area_mut(&area_name).psal_mut().dens_mut().syns.src_col_xy_offs.set_all_to(0); // ***** EXPERIMENTAL-DEBUG
+
+	let mut input_czar = InputCzar::new(area_dims.clone(), input_kind, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
+
+	let mut rndr = Renderer::new(cortex.area(&area_name).dims().clone());
+
+	let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(area_dims.columns() as usize).collect();
+	let mut vec_ff_prev: Vec<u8> = iter::repeat(0).take(area_dims.columns() as usize).collect();
 
 	let mut test_iters: i32 = if autorun_iters > 0 {
 		autorun_iters
@@ -367,6 +376,9 @@ pub fn run(autorun_iters: i32) -> bool {
 			//let ff_slc = &cortex.area(&area_name).psal_mut().dens.states.vec[..];
 
 			print!("\n'{}' output:", &area_name);
+
+			rndr.render(out_slc, ff_slc);
+
 
 			cmn::render_sdr(out_slc, Some(ff_slc), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
 

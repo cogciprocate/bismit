@@ -1,9 +1,10 @@
 use std::iter;
 use std::ops::{ Range };
+use std::cmp;
 use rand::{ self, ThreadRng, Rng };
 
 use cmn;
-use ocl;
+use ocl::{ self, CorticalDimensions };
 use cortex::{ Cortex };
 use super::motor_state;
 use microcosm::world::{ World };
@@ -19,6 +20,7 @@ pub const WORLD_TURN_FACTOR: f32 				= 9f32;	// (originally 3)
 
 
 pub struct InputCzar {
+	dims: CorticalDimensions,
 	counter: usize,
 	counter_range: Range<usize>,
 	random_counter: bool,
@@ -29,7 +31,6 @@ pub struct InputCzar {
 	//next_turn_counter: usize,
 	//next_turn_max: usize,
 	rng: rand::XorShiftRng,
-	area: u32,
 	optical_vec_kind: InputVecKind,
 	pub vec_optical: Vec<u8>,
 	pub vec_motor: Vec<u8>,
@@ -40,7 +41,9 @@ pub struct InputCzar {
 }
 
 impl InputCzar {
-	pub fn new(area: u32, optical_vec_kind: InputVecKind, counter_range: Range<usize>, random_counter: bool, toggle_dirs: bool, introduce_noise: bool) -> InputCzar {
+	pub fn new(dims: CorticalDimensions, optical_vec_kind: InputVecKind, counter_range: Range<usize>, random_counter: bool, toggle_dirs: bool, introduce_noise: bool) -> InputCzar {
+
+		let area = dims.columns();
 
 		let mut world = World::new(area);
 
@@ -62,6 +65,7 @@ impl InputCzar {
 		let vec_test_noise = junk0_vec_init(cmn::SYNAPSE_SPAN_LIN, 0);
 
 		InputCzar {
+			dims: dims,
 			counter: counter_range.end,
 			counter_range: counter_range,
 			random_counter: random_counter,
@@ -72,7 +76,6 @@ impl InputCzar {
 			//next_turn_counter: 0,
 			//next_turn_max: 0,
 			rng: rand::weak_rng(),
-			area: area,
 			optical_vec_kind: optical_vec_kind,
 			vec_optical: iter::repeat(0).take(area as usize).collect(),
 			vec_motor: vec_motor,
@@ -112,7 +115,7 @@ impl InputCzar {
 		/* ##### OPTICAL ##### */
 		match self.optical_vec_kind {
 			InputVecKind::World => {
-				let turn_amt = WORLD_TURN_FACTOR / (self.area as f32);
+				let turn_amt = WORLD_TURN_FACTOR / (self.dims.columns() as f32);
 				self.world.entities().get_mut(self.worm.uid).turn(turn_amt, self.motor_state.cur_turn());
 
 				if !self.toggle_dirs && remain_ticks == 0 {
@@ -120,8 +123,17 @@ impl InputCzar {
 				}
 				self.world.peek_from(self.worm.uid).unfold_into(&mut self.vec_optical, 0);
 			},
+
 			InputVecKind::Stripes { stripe_size, zeros_first } => {
 				sdr_stripes(stripe_size, zeros_first, &mut self.vec_optical[..]);
+			},
+
+			InputVecKind::Hexballs { edge_size, invert } => {
+				sdr_hexballs(edge_size, invert, self.dims, self.counter, &mut self.vec_optical[..]);
+			},
+
+			InputVecKind::Exp1 => {
+				sdr_exp1(&mut self.vec_optical[..]);
 			},
 		}
 
@@ -180,6 +192,8 @@ impl InputCzar {
 pub enum InputVecKind {
 	World,
 	Stripes { stripe_size: usize, zeros_first: bool },
+	Hexballs { edge_size: usize, invert: bool },
+	Exp1,
 }
 
 
@@ -193,6 +207,87 @@ pub enum InputVecKind {
 	}
 }*/
 
+pub fn sdr_exp1(vec: &mut [u8]) {
+
+	// for i in 0..vec.len() {
+	// 	if (i >= 384 - 64) && (i < 384 + 64) {
+	// 		vec[i] = (i - (384 - 64)) as u8;
+	// 	} else {
+	// 		vec[i] = 0;
+	// 	}
+	// }
+
+	for i in 0..vec.len() {
+		if i == 384 {
+			vec[i] = 99;
+		} else {
+			vec[i] = 0;
+		}
+	}
+}
+
+
+pub fn sdr_hexballs(edge_size: usize, invert: bool, dims: CorticalDimensions, counter: usize, vec: &mut [u8]) {
+	let v_size = dims.height() as isize;
+	let u_size = dims.width() as isize;
+
+	let edge_size = edge_size as isize;
+
+	let (on, off) = if invert { 
+		(0, 255)
+	} else {
+		(255,0)
+	};
+
+	for c in vec.iter_mut() {
+		*c = off;
+	}
+
+	//println!("\n##### MAKING HEXBALLS #####");
+
+	let frequency = edge_size * 3;
+
+	let global_ofs = counter as isize;
+
+	let (hc_init_v, hc_init_u) = (edge_size + global_ofs, edge_size + global_ofs);
+
+	let loop_iters = cmp::min(v_size, u_size) / frequency;
+
+	for i in 0..loop_iters {
+
+		//print!("[ball:{}]", i);
+
+		let (v_id, u_id) = (hc_init_u + (i * frequency), hc_init_v + (i * frequency));
+
+		let v_ofs_z = 0 - edge_size;
+		let v_ofs_n = edge_size + 1;
+
+		for v_ofs in v_ofs_z..v_ofs_n {
+			let v_ofs_inv = 0 - v_ofs;
+			let u_ofs_z = cmp::max(0 - edge_size, v_ofs_inv - edge_size);
+			let u_ofs_n = cmp::min(edge_size, v_ofs_inv + edge_size) + 1;
+			//print!("[v_ofs:{}]", v_ofs);
+
+			for u_ofs in u_ofs_z..u_ofs_n {
+				vec[gimme_a_valid_col_id(dims, v_id + v_ofs, u_id + u_ofs)] = on;
+				//print!("{} ", gimme_a_valid_col_id(dims, v_id + v_ofs, u_id + u_ofs));
+			}
+
+		}
+	}
+}
+
+pub fn gimme_a_valid_col_id(dims: CorticalDimensions, v_id: isize, u_id: isize) -> usize {
+	let v_ok = (v_id < dims.height() as isize) && (v_id >= 0);
+	let u_ok = (u_id < dims.width() as isize) && (u_id >= 0);
+
+	if v_ok && u_ok {
+		((v_id * dims.width() as isize) + u_id) as usize
+	} else {
+		0
+	}
+}
+
 
 pub fn sdr_stripes(stripe_size: usize, zeros_first: bool, vec: &mut [u8]) {
 	let (first, second) = if zeros_first { 
@@ -203,9 +298,9 @@ pub fn sdr_stripes(stripe_size: usize, zeros_first: bool, vec: &mut [u8]) {
 
 	for i in 0..vec.len() {
 		if (i & stripe_size) == 0 {
-			vec[i] = first;
+			vec[i] = first & i as u8;
 		} else {
-			vec[i] = second;
+			vec[i] = second & i as u8;
 		}
 	}
 }
