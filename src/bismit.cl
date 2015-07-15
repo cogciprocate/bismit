@@ -386,7 +386,8 @@ static inline void prx_syns__active__ltp_ltd(
 // SYNS_CYCLE_SIMPLE(): Simple synapse cycling with non-workgroup-optimized writes
 __kernel void syns_cycle_simple(
 				__global uchar const* const axn_states,
-				__global char const* const syn_src_col_uv_offs,
+				__global char const* const syn_src_col_u_offs,
+				__global char const* const syn_src_col_v_offs,
 				__global uchar const* const syn_src_slc_ids,
 				//__global char const* const syn_strengths,
 				//__private uint const syn_tuft_i,
@@ -409,9 +410,13 @@ __kernel void syns_cycle_simple(
 
 	for (uint syn_idx = syn_idz; syn_idx < syn_idn; syn_idx++) {
 		uchar src_slc_id = syn_src_slc_ids[syn_idx];
-		char src_uv_ofs = syn_src_col_uv_offs[syn_idx];
-		char v_ofs = split_v_ofs(src_uv_ofs);
-		char u_ofs = split_u_ofs(src_uv_ofs);
+
+		//char src_uv_ofs = syn_src_col_v_offs[syn_idx];
+		// char v_ofs = split_v_ofs(src_uv_ofs);
+		// char u_ofs = split_u_ofs(src_uv_ofs);
+		// uint axn_idx = axn_idx_3d(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs);
+		char v_ofs = syn_src_col_v_offs[syn_idx];
+		char u_ofs = syn_src_col_u_offs[syn_idx];
 		uint axn_idx = axn_idx_3d(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs);
 
 		uchar axn_state = axn_states[axn_idx];
@@ -445,7 +450,7 @@ __kernel void syns_cycle_simple(
 //	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
 __kernel void syns_cycle_2d_workgroup_optimized(
 				__global uchar const* const axn_states,
-				__global char const* const syn_src_col_uv_offs,
+				__global char const* const syn_src_col_v_offs,
 				__global uchar const* const syn_src_slc_ids,
 				//__global char const* const syn_strengths,
 				__private uint const syn_tuft_i,
@@ -489,7 +494,7 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 	for (; syn_idx < syn_n; syn_idx += wg_size) {
 		syn_col_i -= mul24((int)syns_per_slc, (syn_col_i >= syns_per_slc));
 		int col_pos = syn_col_i >> syns_per_tuft_l2;
-		uint axn_idx = axn_idx_2d(syn_src_slc_ids[syn_idx], slc_columns, col_pos, syn_src_col_uv_offs[syn_idx]);
+		uint axn_idx = axn_idx_2d(syn_src_slc_ids[syn_idx], slc_columns, col_pos, syn_src_col_v_offs[syn_idx]);
 		uchar axn_state = axn_states[axn_idx];
 
 		//aux_ints_0[syn_idx - l_id] = axn_idx;
@@ -518,7 +523,7 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 
 /*__kernel void syns_cycle_original(
 				__global uchar const* const axn_states,
-				__global char const* const syn_src_col_uv_offs,
+				__global char const* const syn_src_col_v_offs,
 				__global uchar const* const syn_src_slc_ids,
 				//__global char const* const syn_strengths,
 				__private uchar const syns_per_tuft_l2,
@@ -558,7 +563,7 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 	for (; syn_idx < syn_n; syn_idx += wg_size) {
 		syn_sst_i -= mul24((int)syns_per_slc, (syn_sst_i >= syns_per_slc));
 		int sst_pos = syn_sst_i >> syns_per_tuft_l2;
-		uint axn_idx = axn_idx_2d(syn_src_slc_ids[syn_idx], slc_columns, sst_pos, syn_src_col_uv_offs[syn_idx]);
+		uint axn_idx = axn_idx_2d(syn_src_slc_ids[syn_idx], slc_columns, sst_pos, syn_src_col_v_offs[syn_idx]);
 		uchar axn_state = axn_states[axn_idx];
 		
 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
@@ -1981,7 +1986,7 @@ __kernel void syns_regrow_deprec(
 				__private uint const syns_per_den_l2,
 				__private uint const rnd,
 				//__global int* const aux_ints_1,
-				__global char* const syn_src_col_uv_offs,
+				__global char* const syn_src_col_v_offs,
 				__global uchar* const syn_src_slc_ids
 ) {
 	uint const slc_id = get_global_id(0);
@@ -2005,7 +2010,7 @@ __kernel void syns_regrow_deprec(
 		uint n = base_syn_idx + (1 << syns_per_den_l2);
 
 		for (uint i = base_syn_idx; i < n; i++) {
-			int dup = (rnd_col_ofs == syn_src_col_uv_offs[syn_idx]);		// ADD && ROW CHECK
+			int dup = (rnd_col_ofs == syn_src_col_v_offs[syn_idx]);		// ADD && ROW CHECK
 			//int dup_slc = ^^^^^^
 
 			if (!dup) {
@@ -2019,7 +2024,7 @@ __kernel void syns_regrow_deprec(
 		}
 
 		syn_strengths[syn_idx] = 0;	
-		syn_src_col_uv_offs[syn_idx] = rnd_col_ofs;
+		syn_src_col_v_offs[syn_idx] = rnd_col_ofs;
 		//syn_src_slc_ids[syn_idx] =
 
 			//aux_ints_1[syn_idx] = syn_strength;
@@ -2027,7 +2032,7 @@ __kernel void syns_regrow_deprec(
 
 	
 	/*int dead_syn = (syn_strength <= -100);
-	syn_src_col_uv_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
+	syn_src_col_v_offs[syn_idx] = mul24(dead_syn, (int)rnd_col_ofs);
 	syn_strengths[syn_idx] = mul24(!(dead_syn), (int)syn_strength);*/
 
 	//syn_src_slc_ids[syn_idx] =

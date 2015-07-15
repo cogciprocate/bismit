@@ -221,8 +221,8 @@ impl SpinyStellateCellularLayer {
 		print!("\ncell.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
 		cmn::print_vec_simple(&self.dens.syns.strengths.vec[cel_syn_range.clone()]);
 
-		print!("\ncell.syns.src_col_xy_offs[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens.syns.src_col_xy_offs.vec[cel_syn_range.clone()]);
+		print!("\ncell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
+		cmn::print_vec_simple(&self.dens.syns.src_col_v_offs.vec[cel_syn_range.clone()]);
 	}
 
 	pub fn dens(&self) -> &Dendrites {

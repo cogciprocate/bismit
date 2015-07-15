@@ -103,7 +103,7 @@ pub fn run(autorun_iters: i32) -> bool {
 	//let input_kind = InputVecKind::World;
 	//let input_kind = InputVecKind::Exp1;
 
-	cortex.area_mut(&area_name).psal_mut().dens_mut().syns.src_col_xy_offs.set_all_to(0); // ***** EXPERIMENTAL-DEBUG
+	//cortex.area_mut(&area_name).psal_mut().dens_mut().syns.src_col_v_offs.set_all_to(0); // ***** EXPERIMENTAL-DEBUG
 
 	let mut input_czar = InputCzar::new(area_dims.clone(), input_kind, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
 
@@ -380,7 +380,7 @@ pub fn run(autorun_iters: i32) -> bool {
 			rndr.render(out_slc, ff_slc);
 
 
-			cmn::render_sdr(out_slc, Some(ff_slc), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
+			//cmn::render_sdr(out_slc, Some(ff_slc), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
 
 			if view_all_axons {
 				print!("\n\nAXON SPACE:\n");

@@ -33,7 +33,7 @@ pub fn print_sense_only(cortex: &mut Cortex, area_name: &str) {
 	}
 	if false{	
 		print!("\nSPINY STELLATE SYNAPSE SOURCE SPINY STELLATE OFFSETS:");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_col_xy_offs.print(1 << 0, None, Some((256, 288)), true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_col_v_offs.print(1 << 0, None, Some((256, 288)), true);
 	}
 
 	if false {
@@ -64,7 +64,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 		}
 	if true {	
 		print!("\nSPINY STELLATE SYNAPSE SOURCE SPINY STELLATE OFFSETS: ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_col_xy_offs.print(1 << 11, None, None, true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_col_v_offs.print(1 << 11, None, None, true);
 	}
 	if true {
 		print!("\nSPINY STELLATE SYNAPSE STRENGTHS:");
@@ -122,7 +122,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE SOURCE COLUMN OFFSETS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_col_xy_offs.print(1 << 14, None, None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_col_v_offs.print(1 << 14, None, None, true);
 	}
 
 	if false {

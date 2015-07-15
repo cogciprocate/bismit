@@ -51,7 +51,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 
 		// SET ALL SYNAPSES TO THE SAME SOURCE AXON SLICE AND ZEROS ELSEWHERE
 		cels.dens_mut().syns.src_slc_ids.set_all_to(src_slc_id);
-		cels.dens_mut().syns.src_col_xy_offs.set_all_to(0);
+		cels.dens_mut().syns.src_col_v_offs.set_all_to(0);
 		cels.dens_mut().syns.strengths.set_all_to(0);
 		cels.dens_mut().syns.states.set_all_to(0);
 		cels.dens_mut().syns.flag_sets.set_all_to(0);
@@ -381,7 +381,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 		//let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
 
 		//let cel_syns = &mut ;
-		cels.dens_mut().syns.src_col_xy_offs.set_all_to(0);
+		cels.dens_mut().syns.src_col_v_offs.set_all_to(0);
 		cels.dens_mut().syns.strengths.set_all_to(0);
 		cels.dens_mut().syns.states.set_all_to(0);
 
@@ -426,7 +426,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	//print!("\nALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
 	//cmn::print_vec(&cels.dens_mut().syns.strengths.vec[..], 1, None, None, false);
 
-	//check src_col_xy_offs
+	//check src_col_v_offs
 	//check strengths
 	//check offs and strs for other cells to make sure they're untouched
 
@@ -441,7 +441,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	//let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
 
 	//let cel_syns = &mut ;
-	cels.dens_mut().syns.src_col_xy_offs.set_all_to(0);
+	cels.dens_mut().syns.src_col_v_offs.set_all_to(0);
 	cels.dens_mut().syns.strengths.set_all_to(0);
 	cels.dens_mut().syns.states.set_all_to(0);
 
@@ -483,7 +483,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	print!("\nALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
 	cmn::print_vec(&cels.dens_mut().syns.strengths.vec[..], 1, None, None, false);
 
-	//check src_col_xy_offs
+	//check src_col_v_offs
 	//check strengths
 	//check offs and strs for other cells to make sure they're untouched
 
@@ -494,8 +494,8 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
 	let emsg = "tests::hybrid::test_cycles()";
 	
-	/*cortex.area_mut(area_name).psal_mut().dens.syns.src_col_xy_offs.set_all_to(0);
-	cortex.area_mut(area_name).ptal_mut().dens.syns.src_col_xy_offs.set_all_to(0);
+	/*cortex.area_mut(area_name).psal_mut().dens.syns.src_col_v_offs.set_all_to(0);
+	cortex.area_mut(area_name).ptal_mut().dens.syns.src_col_v_offs.set_all_to(0);
 
 	cortex.area_mut(area_name).psal_mut().dens.cycle();
 	cortex.area_mut(area_name).ptal_mut().dens.cycle();*/
@@ -570,7 +570,7 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 	let emsg = "tests::hybrid::test_syn_and_den_states()";
 
 	io::stdout().flush().unwrap();
-	dens.syns.src_col_xy_offs.set_all_to(0);
+	dens.syns.src_col_v_offs.set_all_to(0);
 	dens.cycle();
 
 	let syns_per_tuft_l2: usize = dens.syns.dims().per_tuft_l2_left() as usize;

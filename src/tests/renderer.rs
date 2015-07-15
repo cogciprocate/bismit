@@ -16,8 +16,8 @@ impl Renderer {
 
 		Renderer { 
 			dims: dims,
-			axn_history: Vec::with_capacity(sdr_len),
-			sst_history: Vec::with_capacity(sdr_len),
+			axn_history: iter::repeat(0).take(sdr_len).collect(),
+			sst_history: iter::repeat(0).take(sdr_len).collect(),
 		}
 	}
 
@@ -30,7 +30,14 @@ impl Renderer {
 		let mut margin = String::with_capacity(height as usize + 10);
 		//let mut margin: String = iter::repeat(' ').take(height as usize - 1).collect();
 
-		let mut print_str = String::with_capacity(256);
+		let mut print_buf = String::with_capacity(256);
+
+		let mut active_axns = 0usize;
+		let mut active_ssts = 0usize;
+		let mut failed_preds = 0usize;
+		let mut corr_preds = 0usize;
+		let mut anomalies = 0usize;
+		let mut new_preds = 0usize;
 
 		print!("\n\n");
 
@@ -45,30 +52,77 @@ impl Renderer {
 				let sdr_cmpd = (sdr_val >> 4) | (((sdr_val & 0x0F) != 0) as u8);
 				//let sdr_cmpd = sdr_val;
 
-				if sdr_cmpd == 0 {
-					print_str.push('-');
-				} else {
-					print_str.push_str(cmn::C_BLU);
-					print_str.push(char::from_digit(sdr_cmpd as u32, 16).unwrap()); // PRESUMABLY FASTER THAN format!()
-					print_str.push_str(cmn::C_DEFAULT);
+				let axn_active = axn_sdr[sdr_idx] != 0;
+				let sst_active = sst_sdr[sdr_idx] != 0;
+				let prediction = axn_sdr[sdr_idx] != sst_sdr[sdr_idx];
+				let new_prediction = prediction && (!sst_active);
+
+				//let prev_active = vec_ff_prev[i] != Default::default();
+				let prev_prediction = cmn::new_pred(self.axn_history[sdr_idx], self.sst_history[sdr_idx]);
+
+				if sst_active {	active_ssts += 1; }
+				if new_prediction { new_preds += 1;	}
+				if sst_active && !prev_prediction {	anomalies += 1; }
+
+				if (prev_prediction && !new_prediction) && !sst_active {
+					failed_preds += 1;
+				} else if prev_prediction && sst_active {
+					corr_preds += 1;
 				}
 
-				print_str.push(' ');
+				if sdr_cmpd == 0 {
+					print_buf.push('-');
+				} else {
+					active_axns += 1;
+
+					if prediction {
+						print_buf.push_str(cmn::BGC_DGR);
+					}
+
+					if new_prediction {
+						print_buf.push_str(cmn::C_MAG);
+					} else {
+						print_buf.push_str(cmn::C_BLU);
+					}
+					print_buf.push(char::from_digit(sdr_cmpd as u32, 16).unwrap()); // PRESUMABLY FASTER THAN format!()
+				}
+
+				print_buf.push_str(cmn::BGC_DEFAULT);
+				print_buf.push_str(cmn::C_DEFAULT);
+				print_buf.push(' ');
 			}
 
 			margin.push(' ');
 			//margin.pop();
 
-			print!("{}\n", &print_str);
-			print_str.clear();
+			print!("{}\n", &print_buf);
+			print_buf.clear();
 		}
 
-		for hst_i in 0..self.axn_history.len() {
-			self.axn_history[hst_i] = axn_sdr[hst_i];
-			self.sst_history[hst_i] = sst_sdr[hst_i];
-		}
+		self.axn_history.clear();
+		self.sst_history.clear();
 
-		print!("\n");
+		self.axn_history.push_all(axn_sdr);
+		self.sst_history.push_all(sst_sdr);
+
+		// for hst_i in 0..self.axn_sdr.len() {
+		// 	self.axn_history[hst_i] = axn_sdr[hst_i];
+		// 	self.sst_history[hst_i] = sst_sdr[hst_i];
+		// }
+		let preds_total = (corr_preds + failed_preds) as f32;
+
+		let pred_accy = if preds_total > 0f32 {
+			(corr_preds as f32 / preds_total) * 100f32
+		} else {
+			0f32
+		};
+
+		print!("{}{}\n", cmn::C_DEFAULT, cmn::BGC_DEFAULT);
+		println!("\nprev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, \
+			new preds:{}, ssts active:{}, axns active:{}", 
+			preds_total, corr_preds, failed_preds, pred_accy, 
+			anomalies, new_preds, active_ssts, active_axns,
+		);
 	}
 }
 

@@ -309,8 +309,8 @@ impl PyramidalCellularLayer {
 		print!("\ndens.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
 		cmn::print_vec_simple(&self.dens_mut().syns.strengths.vec[cel_syn_range.clone()]);
 
-		print!("\ndens.src_col_xy_offs[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens_mut().syns.src_col_xy_offs.vec[cel_syn_range.clone()]);
+		print!("\ndens.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
+		cmn::print_vec_simple(&self.dens_mut().syns.src_col_v_offs.vec[cel_syn_range.clone()]);
 	}
 
 	pub fn set_all_to_zero(&mut self) {

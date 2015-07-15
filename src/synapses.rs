@@ -50,8 +50,8 @@ pub struct Synapses {
 	pub states: Envoy<ocl::cl_uchar>,
 	pub strengths: Envoy<ocl::cl_char>,
 	pub src_slc_ids: Envoy<ocl::cl_uchar>,
-	pub src_col_xy_offs: Envoy<ocl::cl_char>,
-	//pub src_col_y_offs: Envoy<ocl::cl_char>,
+	pub src_col_u_offs: Envoy<ocl::cl_char>,
+	pub src_col_v_offs: Envoy<ocl::cl_char>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
 	//pub slc_pool: Envoy<ocl::cl_uchar>,  // BRING THIS BACK (OPTIMIZATION)
 }
@@ -74,8 +74,8 @@ impl Synapses {
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let mut src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		// SRC COL REACHES SHOULD BECOME CONSTANTS
-		let mut src_col_xy_offs = Envoy::<ocl::cl_char>::shuffled(dims, -126, 126, ocl); 
-		//let mut src_col_y_offs = Envoy::<ocl::cl_char>::shuffled(dims, -31, 31, ocl);
+		let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, -15, 15, ocl); 
+		let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, -15, 15, ocl); 
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 
@@ -100,7 +100,8 @@ impl Synapses {
 					//WorkSize::TwoDim(dims.columns() as usize, dims.depth() as usize))
 					//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 					.arg_env(&axons.states)
-					.arg_env(&src_col_xy_offs)
+					.arg_env(&src_col_u_offs)
+					.arg_env(&src_col_v_offs)
 					.arg_env(&src_slc_ids)
 					//.arg_env(&strengths)
 					.arg_scl(syn_tuft_i as u32 * cels_per_slice)
@@ -120,7 +121,7 @@ impl Synapses {
 		// 			//WorkSize::TwoDim(dims.columns() as usize, dims.depth() as usize))
 		// 			//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 		// 			.arg_env(&axons.states)
-		// 			.arg_env(&src_col_xy_offs)
+		// 			.arg_env(&src_col_v_offs)
 		// 			.arg_env(&src_slc_ids)
 		// 			//.arg_env(&strengths)
 		// 			.arg_scl(syn_tuft_i as u32)
@@ -141,7 +142,7 @@ impl Synapses {
 			.arg_scl_named(0u32, "rnd")
 			//.arg_env(&aux.ints_0)
 			//.arg_env(&aux.ints_1)
-			.arg_env(&src_col_xy_offs)
+			.arg_env(&src_col_v_offs)
 			.arg_env(&src_slc_ids)
 		;*/
 
@@ -162,8 +163,8 @@ impl Synapses {
 			states: states,
 			strengths: strengths,
 			src_slc_ids: src_slc_ids,
-			src_col_xy_offs: src_col_xy_offs,
-			//src_col_y_offs: src_col_y_offs,
+			src_col_u_offs: src_col_u_offs,
+			src_col_v_offs: src_col_v_offs,
 			flag_sets: flag_sets,
 			//slc_pool: slc_pool,  // BRING THIS BACK
 		};
@@ -181,14 +182,14 @@ impl Synapses {
 		}
 
 		assert!(
-			(self.src_col_xy_offs.dims().per_slc() == self.src_slc_ids.dims().per_slc()) 
+			(self.src_col_v_offs.dims().per_slc() == self.src_slc_ids.dims().per_slc()) 
 			&& ((self.src_slc_ids.dims().per_slc() == (self.dims().per_slc()))), 
 			"[cortical_area::Synapses::init(): dims.columns() mismatch]"
 		);
 
 		self.strengths.read();
 		self.src_slc_ids.read();
-		self.src_col_xy_offs.read();
+		self.src_col_v_offs.read();
 
 
 		//let syns_per_slc = self.dims.per_slc() as usize;
@@ -205,7 +206,7 @@ impl Synapses {
 			if init && DEBUG_GROW { }
 
 			let src_slc_id_range: Range<usize> = Range::new(0, src_slc_ids.len());
-			let src_col_xy_offs_range: Range<i8> = Range::new(-126, 127);
+			let src_col_offs_range: Range<i8> = Range::new(-15, 16);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
 
 			let idz = syns_per_layer_tuft * src_tuft_i as usize;
@@ -217,7 +218,7 @@ impl Synapses {
 
 			for i in idz..idn {
 				if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
-					self.regrow_syn(i, &src_slc_id_range, &src_col_xy_offs_range,
+					self.regrow_syn(i, &src_slc_id_range, &src_col_offs_range,
 						&strength_init_range, &src_slc_ids, init);
 				}
 			}
@@ -227,19 +228,19 @@ impl Synapses {
 
 		self.strengths.write();
 		self.src_slc_ids.write();
-		self.src_col_xy_offs.write();	
+		self.src_col_v_offs.write();	
 	}
 
 	fn regrow_syn(&mut self, 
 				syn_idx: usize, 
 				src_slc_idx_range: &Range<usize>, 
-				src_col_xy_offs_range: &Range<i8>,
+				src_col_offs_range: &Range<i8>,
 				strength_init_range: &Range<i8>,
 				src_slc_ids: &Vec<u8>,
 				init: bool,
 	) {
 		//let src_slc_idx_range: Range<usize> = Range::new(0, src_slc_ids.len());
-		//let src_col_xy_offs_range: Range<i8> = Range::new(-127, 127);
+		//let src_col_offs_range: Range<i8> = Range::new(-127, 127);
 		//let strength_init_range: Range<i8> = Range::new(-3, 4);
 
 		//let src_slc_id
@@ -247,13 +248,14 @@ impl Synapses {
 		//let strength
 		let mut print_str: String = String::with_capacity(10);
 
-		let mut tmp_str = format!("[({})({})({})=>", self.src_slc_ids[syn_idx], self.src_col_xy_offs[syn_idx],  self.strengths[syn_idx]);
+		let mut tmp_str = format!("[({})({})({})=>", self.src_slc_ids[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
 		print_str.push_str(&tmp_str);
 
 		for i in 0..200 {
 			self.src_slc_ids[syn_idx] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
-			self.src_col_xy_offs[syn_idx] = src_col_xy_offs_range.ind_sample(&mut self.rng);
-			self.strengths[syn_idx] = (self.src_col_xy_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+			self.src_col_u_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
+			self.src_col_v_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
+			self.strengths[syn_idx] = (self.src_col_v_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
 
 			if self.unique_src_addr(syn_idx) {
 				print_str.push_str("$");
@@ -263,7 +265,7 @@ impl Synapses {
 			}
 		}
 
-		tmp_str = format!("=>({})({})({})] ", self.src_slc_ids[syn_idx], self.src_col_xy_offs[syn_idx],  self.strengths[syn_idx]);
+		tmp_str = format!("=>({})({})({})] ", self.src_slc_ids[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
 		print_str.push_str(&tmp_str);
 
 		if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
@@ -298,7 +300,7 @@ impl Synapses {
 
 		for i in syn_idx_den_init..syn_idx_den_n {
 			if (self.src_slc_ids[syn_idx] == self.src_slc_ids[i]) 
-				&& (self.src_col_xy_offs[syn_idx] == self.src_col_xy_offs[i])
+				&& (self.src_col_v_offs[syn_idx] == self.src_col_v_offs[i])
 				&& (i != syn_idx)
 			{
 				return false;
@@ -327,7 +329,7 @@ impl Synapses {
 		self.states.read();
 		self.strengths.read();
 		self.src_slc_ids.read();
-		self.src_col_xy_offs.read();
+		self.src_col_v_offs.read();
 	} 
 
 	pub fn den_kind(&self) -> DendriteKind {
@@ -354,14 +356,14 @@ impl Synapses {
 	}
 
 	assert!(
-		(self.src_col_xy_offs.dims().per_slc() == self.src_slc_ids.dims().per_slc()) 
+		(self.src_col_v_offs.dims().per_slc() == self.src_slc_ids.dims().per_slc()) 
 		&& ((self.src_slc_ids.dims().per_slc() == (self.dims().per_slc()))), 
 		"[cortical_area::Synapses::init(): dims.columns() mismatch]"
 	);
 
 	self.strengths.read();
 	self.src_slc_ids.read();
-	self.src_col_xy_offs.read();
+	self.src_col_v_offs.read();
 
 	let syns_per_slc = self.dims.per_slc();
 	let layer_name = self.layer_name;
@@ -377,7 +379,7 @@ impl Synapses {
 
 	//let kind_base_slc_pos = layer.kind_base_slc_pos; // BASED ON OLD SYSTEM
 	let src_slc_idx_range: Range<usize> = Range::new(0, src_slc_ids_len);
-	let src_col_xy_offs_range: Range<i8> = Range::new(-126, 127);
+	let src_col_offs_range: Range<i8> = Range::new(-126, 127);
 	let strength_init_range: Range<i8> = Range::new(-3, 4);
 	
 	assert!(src_slc_ids_len <= (self.dims.per_cel()) as usize, "cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
@@ -401,19 +403,19 @@ impl Synapses {
 		for i in ei_start..ei_end {
 			if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
 
-				self.regrow_syn(i, &src_slc_idx_range, &src_col_xy_offs_range,
+				self.regrow_syn(i, &src_slc_idx_range, &src_col_offs_range,
 					&strength_init_range, &src_slc_ids, init);
 
 				//self.src_slc_ids[i] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
-				//self.src_col_xy_offs[i] = src_col_xy_offs_range.ind_sample(&mut self.rng);
-				//self.strengths[i] = (self.src_col_xy_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+				//self.src_col_v_offs[i] = src_col_offs_range.ind_sample(&mut self.rng);
+				//self.strengths[i] = (self.src_col_v_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
 			}
 		}
 	}
 
 	self.strengths.write();
 	self.src_slc_ids.write();
-	self.src_col_xy_offs.write();
+	self.src_col_v_offs.write();
 }*/
 
 
@@ -441,7 +443,7 @@ impl Synapses {
 
 			let kind_base_slc_pos = layer.kind_base_slc_pos;
 			let src_slc_idx_range: Range<usize> = Range::new(0, src_slc_ids_len);
-			let src_col_xy_offs_range: Range<i8> = Range::new(-126, 127);
+			let src_col_offs_range: Range<i8> = Range::new(-126, 127);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
 			
 			assert!(src_slc_ids_len <= (self.dims.per_cel().expect("synapses.rs")) as usize, "cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
@@ -465,12 +467,12 @@ impl Synapses {
 				for i in ei_start..ei_end {
 					if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
 
-						self.regrow_syn(i, &src_slc_idx_range, &src_col_xy_offs_range,
+						self.regrow_syn(i, &src_slc_idx_range, &src_col_offs_range,
 							&strength_init_range, &src_slc_ids, init);
 
 						//self.src_slc_ids[i] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
-						//self.src_col_xy_offs[i] = src_col_xy_offs_range.ind_sample(&mut self.rng);
-						//self.strengths[i] = (self.src_col_xy_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+						//self.src_col_v_offs[i] = src_col_offs_range.ind_sample(&mut self.rng);
+						//self.strengths[i] = (self.src_col_v_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
 					}
 				}
 			}
