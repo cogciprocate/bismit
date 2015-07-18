@@ -210,14 +210,18 @@ impl CorticalArea {
 	pub fn cycle(&mut self) -> Option<Vec<&'static str>> {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
+		let inhibition_bypass = false;
+		let learning_bypass = false;
 
 		self.psal_mut().cycle();
-		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle();
+		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(inhibition_bypass);
 		self.psal_mut().learn();
 		
-		self.ptal_mut().activate();
-		self.ptal_mut().learn();
-		self.ptal_mut().cycle();
+		if !learning_bypass {
+			self.ptal_mut().activate();	// *****
+			self.ptal_mut().learn();		// *****
+			self.ptal_mut().cycle();		// *****
+		}
 
 		self.mcols.output();
 

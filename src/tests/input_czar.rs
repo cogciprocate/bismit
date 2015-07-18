@@ -128,8 +128,8 @@ impl InputCzar {
 				sdr_stripes(stripe_size, zeros_first, &mut self.vec_optical[..]);
 			},
 
-			InputVecKind::Hexballs { edge_size, invert } => {
-				sdr_hexballs(edge_size, invert, self.dims, self.counter, &mut self.vec_optical[..]);
+			InputVecKind::Hexballs { edge_size, invert, fill } => {
+				sdr_hexballs(edge_size, invert, fill, self.dims, self.counter, &mut self.vec_optical[..]);
 			},
 
 			InputVecKind::Exp1 => {
@@ -192,7 +192,7 @@ impl InputCzar {
 pub enum InputVecKind {
 	World,
 	Stripes { stripe_size: usize, zeros_first: bool },
-	Hexballs { edge_size: usize, invert: bool },
+	Hexballs { edge_size: usize, invert: bool, fill: bool },
 	Exp1,
 }
 
@@ -227,37 +227,38 @@ pub fn sdr_exp1(vec: &mut [u8]) {
 }
 
 
-pub fn sdr_hexballs(edge_size: usize, invert: bool, dims: CorticalDimensions, counter: usize, vec: &mut [u8]) {
+pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: CorticalDimensions, counter: usize, vec: &mut [u8]) {
 	let v_size = dims.height() as isize;
 	let u_size = dims.width() as isize;
-
 	let edge_size = edge_size as isize;
+	let mut rng = rand::weak_rng();
 
 	let (on, off) = if invert { 
-		(0, 255)
+		(0, 127)
 	} else {
-		(255,0)
+		(127,0)
 	};
 
 	for c in vec.iter_mut() {
 		*c = off;
 	}
 
-	//println!("\n##### MAKING HEXBALLS #####");
+	let hexagon_count = 3;
+	let gap_factor = 4;
+	let gap_extra = 2;
+	let movement_factor = edge_size + 4;
+	let movement_start_offset = (movement_factor * -6) + 12;
 
-	let frequency = edge_size * 3;
+	let first_hex_ofs = (counter as isize * movement_factor) + movement_start_offset;
+	let hex_spacing = (edge_size * gap_factor) + gap_extra;
+	let (hc_init_v, hc_init_u) = (edge_size + first_hex_ofs, edge_size + first_hex_ofs);
 
-	let global_ofs = counter as isize;
 
-	let (hc_init_v, hc_init_u) = (edge_size + global_ofs, edge_size + global_ofs);
-
-	let loop_iters = cmp::min(v_size, u_size) / frequency;
-
-	for i in 0..loop_iters {
+	for i in 0..hexagon_count {
 
 		//print!("[ball:{}]", i);
 
-		let (v_id, u_id) = (hc_init_u + (i * frequency), hc_init_v + (i * frequency));
+		let (v_id, u_id) = (hc_init_u + (i * hex_spacing), hc_init_v + (i * hex_spacing));
 
 		let v_ofs_z = 0 - edge_size;
 		let v_ofs_n = edge_size + 1;
@@ -269,7 +270,19 @@ pub fn sdr_hexballs(edge_size: usize, invert: bool, dims: CorticalDimensions, co
 			//print!("[v_ofs:{}]", v_ofs);
 
 			for u_ofs in u_ofs_z..u_ofs_n {
-				vec[gimme_a_valid_col_id(dims, v_id + v_ofs, u_id + u_ofs)] = on;
+				let mut cell_write: bool = if fill_hex {
+					true
+				} else if v_ofs.abs() == edge_size || u_ofs.abs() == edge_size || (v_ofs + u_ofs).abs() == edge_size {
+					true
+				} else {
+					false
+				};
+
+				let (col_id, valid) = gimme_a_valid_col_id(dims, v_id + v_ofs, u_id + u_ofs);
+
+				if cell_write && valid {
+					vec[col_id] = on & rng.gen::<u8>();
+				}
 				//print!("{} ", gimme_a_valid_col_id(dims, v_id + v_ofs, u_id + u_ofs));
 			}
 
@@ -277,14 +290,14 @@ pub fn sdr_hexballs(edge_size: usize, invert: bool, dims: CorticalDimensions, co
 	}
 }
 
-pub fn gimme_a_valid_col_id(dims: CorticalDimensions, v_id: isize, u_id: isize) -> usize {
+pub fn gimme_a_valid_col_id(dims: CorticalDimensions, v_id: isize, u_id: isize) -> (usize, bool) {
 	let v_ok = (v_id < dims.height() as isize) && (v_id >= 0);
 	let u_ok = (u_id < dims.width() as isize) && (u_id >= 0);
 
 	if v_ok && u_ok {
-		((v_id * dims.width() as isize) + u_id) as usize
+		(((v_id * dims.width() as isize) + u_id) as usize, true)
 	} else {
-		0
+		(0, false)
 	}
 }
 

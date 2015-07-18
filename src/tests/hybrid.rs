@@ -403,7 +403,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 		//cels.soma().cycle_self_only();
 	}
 
-	cortex.area_mut(area_name).iinns.get_mut(ilyr_name).expect(&format!("{}: {}", emsg, "area_name")).cycle();
+	cortex.area_mut(area_name).iinns.get_mut(ilyr_name).expect(&format!("{}: {}", emsg, "area_name")).cycle(false);
 
 
 	{

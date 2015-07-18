@@ -41,9 +41,32 @@
 //
 // 		***** High Priority Comment, Temporary Code Change
 // 		<<<<< Medium Priority Comment, To Do
-// 		##### Debug Message Prefix
+// 		##### Debug / Informational Message
 
 
+// 	W_COORD():
+static inline int w_ofs(int v_ofs, int u_ofs) {
+	return (0 - v_ofs) - u_ofs;
+}
+
+
+
+/*
+
+static inline int w_id(int 
+
+// 	CEL_DIST(): Distance between two cells (cubic coordinates)
+static inline uint cel_dist(int v_1, int u_1, int v_2, int u_2) {
+	int w_1 = w_coord(v_1, u_1); 
+	int w_2 = w_coord(v_2, u_2); 
+
+	//return (abs_diff(u_1, u_2) + abs_diff(v_1, v_2) + abs_diff(w_1, w_2)) >> 1;
+	//return max(max(abs_diff(u_1, u_2), abs_diff(v_1, v_2)), abs_diff(w_1, w_2));
+	//return abs_diff(w_1, w_2);
+	return max(max(abs_diff(u_1, u_2), abs_diff(v_1, v_2)), (uint)0);
+}
+
+*/
 
 // DEPRICATE
 static inline uint asp_to_sst_ofs(uint asp_idx) {
@@ -55,15 +78,15 @@ static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_
 	return (asp_to_sst_ofs(asp_idx) + (asp_sst_id & (ASPINY_SPAN - 1)));
 }
 
-// DEPRICATE
-static inline char split_v_ofs(char src_uv_ofs) {
-	return ((char)(src_uv_ofs & 0xF0)) >> 4;
-}
+// // DEPRICATE
+// static inline char split_v_ofs(char src_uv_ofs) {
+// 	return ((char)(src_uv_ofs & 0xF0)) >> 4;
+// }
 
-// DEPRICATE
-static inline char split_u_ofs(char src_uv_ofs) {
-	return ((char)((src_uv_ofs & 0x0F) << 4)) >> 4;
-}
+// // DEPRICATE
+// static inline char split_u_ofs(char src_uv_ofs) {
+// 	return ((char)((src_uv_ofs & 0x0F) << 4)) >> 4;
+// }
 
 // DEPRICATE
 static inline uint col_id_3d(uint v_id, uint u_id) {
@@ -349,6 +372,10 @@ static inline void prx_syns__active__ltp_ltd(
 
 }
 
+
+static inline int square(int x) {
+	return mul24(x, x);
+}
 
 
 
@@ -662,76 +689,10 @@ __kernel void den_cycle(
 		}
 	}
 
+	int den_reduction = syns_per_den_l2 - 1;
 
-	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255); 
-	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); 
-
-	//den_states_raw[den_idx] = clamp(syn_sum_raw, 0, 255); 	// UNUSED
-	//den_states[den_idx] = clamp(syn_sum, 0, 255);	 			// UNUSED
-
-	//aux_ints_1[den_idx] = clamp((syn_sum >> 7), 0, 255); 		// DEBUGGING
-}
-
-
-
-__kernel void den_cycle_old(
-				__global uchar const* const syn_states,
-				__global char const* const syn_strengths,
-				__private uchar const syns_per_den_l2,
-				__private uint const den_threshold,
-				__global uchar* const den_energies,
-				__global uchar* const den_states_raw,
-				//__global int* const aux_ints_1,
-				__global uchar* const den_states
-) {
-	uint const slc_id = get_global_id(0);
-	uint const den_id = get_global_id(1);
-	uint const slc_columns = get_global_size(1);
-	uint const den_idx = mad24(slc_id, slc_columns, den_id);
-	uint const syn_idz = den_idx << syns_per_den_l2;
-
-	uchar den_energy = den_energies[den_idx];
-
-	int syn_sum = 0;
-	int syn_sum_raw = 0;
-
-	int const n = (1 << syns_per_den_l2);
-
-	for (int i = 0; i < n; i += 1) {
-		char syn_strength = syn_strengths[syn_idz + i];
-
-		//uchar syn_state = mul24((syn_states[syn_idz + i] > 0), 1);
-		uchar syn_state = syn_states[syn_idz + i]; 
-
-		//syn_sum += syn_state;
-		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
-		
-		syn_sum_raw += syn_state;
-	}
-	
-	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
-
-
-	if (syn_sum != 0) {
-		if (den_energy >= ENERGY_LEVEL_MIN) {
-			den_energy -= ENERGY_LEVEL_MIN;
-			//output_state = best1_den_state; 	// NEW
-		} else {
-			den_energy += ENERGY_REGEN_AMOUNT;
-			syn_sum = 0; 						// NEW
-		}
-	} else {
-		if (den_energy < ENERGY_LEVEL_MAX) {
-			den_energy += ENERGY_REGEN_AMOUNT;
-		}
-	}
-
-	safe_cel_state_3d(5, 5, 5, 5, 5, 5, 5, den_states);
-
-
-
-	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255); 
-	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); 
+	den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255); 
+	den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255); 
 
 	//den_states_raw[den_idx] = clamp(syn_sum_raw, 0, 255); 	// UNUSED
 	//den_states[den_idx] = clamp(syn_sum, 0, 255);	 			// UNUSED
@@ -740,154 +701,22 @@ __kernel void den_cycle_old(
 }
 
 
-/* 	//##################### DEN_CYCLE(): WORKSPACE ##############################
-
-// EXPERIMENTAL ENERGY CODE -- WORKING -- (FROM PYR_CYCLE)
-	if (input_state > 0) {
-		if (energy >= 9) {
-			energy -= 9;
-			output_state = best1_den_state;
-		} else {
-			energy += 1;
-		}
-	} else {
-		if (energy < 255) {
-			energy += 1;
-		}
-	}
-
-// EXPERIMENTAL ENERGY CODE (FROM DEN_CYCLE)
-
-	if (input_state > 0) {
-		if (energy >= ENERGY_DRAIN) {
-			energy -= ENERGY_DRAIN;
-		} else {
-			output_state = 0;
-			energy += ENERGY_RECHARGE;
-		}
-	} else {
-		if (energy < 255) {
-			energy += ENERGY_RECHARGE;
-		}
-	}
-
-//###############################################################
-
-__kernel void den_cycle_original(
-				__global uchar const* const syn_states,
-				__global char const* const syn_strengths,
-				__private uchar const syns_per_den_l2,
-				__private uint const den_threshold,
-				__global uchar* const den_energies,
-				__global uchar* const den_states_raw,
-				//__global int* const aux_ints_1,
-				__global uchar* const den_states
-) {
-	uint const slc_id = get_global_id(0);
-	uint const den_id = get_global_id(1);
-	uint const slc_columns = get_global_size(1);
-	uint const den_idx = mad24(slc_id, slc_columns, den_id);
-	uint const syn_idz = den_idx << syns_per_den_l2;
-
-	int syn_sum = 0;
-	int syn_sum_raw = 0;
-
-	int const n = (1 << syns_per_den_l2);
-
-	for (int i = 0; i < n; i += 1) {
-		char syn_strength = syn_strengths[syn_idz + i];
-
-		//uchar syn_state = mul24((syn_states[syn_idz + i] > 0), 1);
-		uchar syn_state = syn_states[syn_idz + i]; 
-
-		//syn_sum += syn_state;
-		syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
-		
-		syn_sum_raw += syn_state;
-	}
-	
-	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
 
 
 
-	//den_states_raw[den_idx] = clamp(syn_sum_raw, 0, 255); // UNUSED
-	//den_states[den_idx] = clamp(syn_sum, 0, 255); // UNUSED
-
-	den_states_raw[den_idx] = clamp((syn_sum_raw >> 7), 0, 255); 
-	den_states[den_idx] = clamp((syn_sum >> 7), 0, 255); 
-
-
-	//aux_ints_1[den_idx] = clamp((syn_sum >> 7), 0, 255);
-}
-*/ //################################ END #######################################
 
 
 
-/*__kernel void inhib_simple_original(
-				__global uchar const* const cel_states,
-				//__global uchar* const iinn_states,
-				//__global uchar* const iinn_cel_ids
-
-				// GET SST BASE AXON LAYER
-
-				__private uchar const cel_base_axn_slc,		// <<<<< DEPRICATE: USE A GLOBAL OFFSET
-
-				__global int* const aux_ints_1,
-				__global uchar* const axn_states
-) {
-	uint const slc_id = get_global_id(0);	// <<<<< TODO: USE A GLOBAL OFFSET
-	uint const v_id = get_global_id(1);
-	uint const u_id = get_global_id(2);
-
-	uint const v_size = get_global_size(1);
-	uint const u_size = get_global_size(2);
-
-	uint const cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
-	uint const axn_idx = axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
-
-	uchar const cel_state = cel_states[cel_idx];
-
-	int const radius_pos = 4; // 61 Cells
-	int const radius_neg = 0 - radius_pos;
-
-	int i_am_the_big_dog = 1;
-	//int biggest_dog = 0;
-
-	//uint dumb_iter = 0;
-
-	for (int u = radius_neg; u <= radius_pos; u++) {
-		int u_neg = 0 - u;
-		int v_z = max(radius_neg, u_neg - radius_pos);
-		int v_m = min(radius_pos, u_neg + radius_pos);
-
-		for (int v = v_z; v <= v_m; v++) {
-
-			int neighbor_state = safe_cel_state_3d(slc_id, v_size, v_id, v, u_size, u_id, u, cel_states);			
-
-			// if (neighbor_state < cel_state) {
-			// 	i_am_the_big_dog = 0;
-			// }
-
-			i_am_the_big_dog &= (neighbor_state <= cel_state);
 
 
-			// if ((v_id == 8) && (u_id == 8)) {
-			// 	aux_ints_1[dumb_iter] = safe_cel_state_3d(slc_id, 
-			// 		v_size, v_id, v, u_size, u_id, u, cel_states);
-			// }
 
-			//dumb_iter += 1;
 
-			if (cel_idx == 384) {
-				aux_ints_1[axn_idx] = neighbor_state;
-			}
-		}
-	}
 
-	//axn_states[axn_idx] = mul24(i_am_the_big_dog, (int)cel_state);
-	axn_states[axn_idx] = cel_states[cel_idx];
 
-}*/
+
+
+
+
 
 
 // 	INHIB_SIMPLE(): Cell Inhibition - reads from soma, writes to axon
@@ -899,9 +728,9 @@ __kernel void den_cycle_original(
 // 			- Distance should be taken into account when state is considered
 //			- Search area broadened
 // 		- Horribly unoptimized, Should:
-//			- Cache values for an area in local (workgroup) memory
+//			- cache values for an area in local (workgroup) memory
+//				- or just prefetch global cache? (comparison needed)
 //			- be vectorized
-//			- use a few other hex grid tricks (see written notes 03-Jun)
 __kernel void inhib_simple(
 				__global uchar const* const cel_states,
 				//__global uchar* const iinn_states,
@@ -926,70 +755,144 @@ __kernel void inhib_simple(
 
 	uchar const cel_state = cel_states[cel_idx];
 
-	int const radius_pos = 4; // 61 Cells
+	//int const radius_pos = 4; // 61 Cells
+	int const radius_pos = 7; // (4:61), (7:XXX), (9:271)
 	int const radius_neg = 0 - radius_pos;
 
-	int unsuppressed = cel_state > 0;
-	//uchar biggest_neighbor = 0;
+	int uninhibited = 1;
 
 	//uint dumb_iter = 0;
 
-	for (int v = radius_neg; v <= radius_pos; v++) {
-		int v_neg = 0 - v;
+	for (int v_ofs = radius_neg; v_ofs <= radius_pos; v_ofs++) {
+		int v_neg = 0 - v_ofs;
 		int u_z = max(radius_neg, v_neg - radius_pos);
 		int u_m = min(radius_pos, v_neg + radius_pos);
 
-		for (int u = u_z; u <= u_m; u++) {
+		for (int u_ofs = u_z; u_ofs <= u_m; u_ofs++) {
 
-			uchar neighbor_state = safe_cel_state_3d(slc_id, v_size, v_id, v, u_size, u_id, u, cel_states);	// ORIGINAL		
-			///uchar neighbor_state = cel_states[cel_idx_3d_unsafe(slc_id, v_size, v_id + v, u_size, u_id + u)]; // DEBUG
+			uchar neighbor_state 
+				= safe_cel_state_3d(slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs, cel_states);	// ORIGINAL		
+			//uchar neighbor_state = cel_states[
+			//cel_idx_3d_unsafe(slc_id, v_size, v_id + v_ofs, u_size, u_id + u_ofs)]; // DEBUG
 
+
+			int distance = (abs(v_ofs) + abs(u_ofs) + abs(w_ofs(v_ofs, u_ofs)))	>> 1;
+
+
+			//int cel_influence = mul24((int)cel_state, (distance + 1) << 1); // CRAP
+			//int neighbor_influence = mul24((int)neighbor_state, radius_pos - distance); // CRAP
+
+
+			// 	NEW ALGORITHM 16-JUL:
+			// 		- FOCAL CELL IS AT LEAST AS INFLUENTIAL AS NEIGHBOR AT THE FOCAL 
+			// 		CELL'S LOCATION (A.K.A. THE CELL CELL IS UNINHIBITED)
+			// 			- IF CEL_FOCAL_INFLUENCE__AT_CEL_FOCAL >= NEIGHBOR_INFLUENCE__AT_CEL_FOCAL
+			//
+
+			int influence_center_offset = 1; // MOVES CENTER OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+			int influence_horizon_offset = 4; // STRETCHES EDGE OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+
+			int influence_horizon = radius_pos + influence_horizon_offset;
+
+			int influence_max = square(influence_horizon);
+
+			int cel_influence_factor = influence_max;
+			int nei_influence_factor = influence_max - square(distance - influence_center_offset);
+
+			int cel_influence = mul24((int)cel_state, cel_influence_factor);
+			int nei_influence = mul24((int)neighbor_state, nei_influence_factor);
+
+			//int cel_win = (cel_influence - nei_influence) > 0;
+			//int cel_win = cel_influence >= nei_influence;
+			//int cel_win = cel_state >= neighbor_state;
+
+			uninhibited &= cel_influence >= nei_influence;
+
+			/*if (i_suck) {
+				inhibited = 0;
+			}*/
 
 			// STREAMLINE ME
-			/*if ((neighbor_state > cel_state) && (cel_state > 0)) {
-				unsuppressed = 0;
+			/*if (cel_influence < neighbor_influence) {
+				inhibited = 0;
 			}*/
 
 
-			//unsuppressed |= (neighbor_state > cel_state); // DEBUG
-			unsuppressed &= (neighbor_state <= cel_state); // ORIGINAL
+			//int distance = abs(v_ofs) + abs(u);
+			//int distance = abs_diff(v_id, v_id + v_ofs) + abs_diff(u_id, u_id + u_ofs);
+			//int distance = cel_dist(v_id, u_id, v_id + v_ofs, u_id + u_ofs);
 
-			// DEBUG
-			// if (neighbor_state > 0) {
-			// 	biggest_neighbor = neighbor_state;
-			// }
+			//int distance = (v_id + v_ofs) - (u_id + u_ofs);
+			//int distance = v_ofs - u_ofs;
+
+			//int distance = w_ofs(v_ofs, u_ofs);
 
 
 			// [DEBUG]: PICK ONLY A FEW POINTS
-			/*if (((v_id == 10) && (u_id == 10)) 
+			/*
+			if (((v_id == 10) && (u_id == 10)) 
 				|| ((v_id == 20) && (u_id == 20)) 
 				|| ((v_id == 30) && (u_id == 30))
 				|| ((v_id == 40) && (u_id == 40))) {
-				uint unsafe_target_axn_idx = axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, v, u_size, u_id, u);
+				uint unsafe_target_axn_idx = axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, v_ofs, u_size, u_id, u_ofs);
 
 				//aux_ints_1[dumb_iter] = safe_cel_state_3d(slc_id, 
-				//	v_size, v_id, v, u_size, u_id, u, cel_states);
+				//	v_size, v_id, v_ofs, u_size, u_id, u_ofs, cel_states);
 				//aux_ints_1[unsafe_target_axn_idx] = 1;
 				//axn_states[unsafe_target_axn_idx] = neighbor_state;
-				axn_states[unsafe_target_axn_idx] = 1 + unsuppressed;
+				axn_states[unsafe_target_axn_idx] = 1 + inhibited;
 			}
-			
-			dumb_iter += 1;
 			*/
-
+			
+			//dumb_iter += 1;
 			
 
-			/*if (cel_idx == 384) {
-				aux_ints_1[axn_idx + mad24(v, 100, u)] = neighbor_state + 1;
-			}*/
+			// int debug_idx_ofs = 257;	 // SET TO WHATEVER
+			// for (int i = 0; i < mul24(get_global_size(0), mul24(v_size, u_size)); i += 1024) {
+
+			// 	if (((int)cel_idx & 0xFFFFFFFF) == debug_idx_ofs) {
+			// 		aux_ints_1[mul24(i, 1024) + dumb_iter] 
+			// 				//= cel_influence;
+			// 				//= distance + 100;
+			// 				//= cel_idx;
+			// 				= neighbor_state - cel_state;
+
+			// 	}
+
+			// 	// if (cel_idx == 384) {
+			// 	// 	//aux_ints_1[axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, v_ofs, u_size, u_id, u_ofs)] = distance;
+			// 	// 	aux_ints_1[520 + dumb_iter] 
+			// 	// 		//= cel_influence;
+			// 	// 		= distance + 100;
+			// 	// }
+			// }
 		}
 	}
 
-	axn_states[axn_idx] = mul24((uint)unsuppressed, (uint)cel_state); // ORIGINAL *****
-	//axn_states[axn_idx] = cel_states[cel_idx]; // DEBUG *****
-	//axn_states[axn_idx] = unsuppressed; // DEBUG
-	//axn_states[axn_idx] = biggest_dog; // DEBUG
+	axn_states[axn_idx] = mul24((uint)uninhibited, (uint)cel_state);
 
+}
+
+
+
+
+__kernel void inhib_passthrough(
+				__global uchar const* const cel_states,
+				__private uchar const cel_base_axn_slc,		// <<<<< DEPRICATE: USE A GLOBAL OFFSET
+				__global uchar* const axn_states
+) {
+	uint const slc_id = get_global_id(0);	// <<<<< TODO: USE A GLOBAL OFFSET
+	uint const v_id = get_global_id(1);
+	uint const u_id = get_global_id(2);
+	uint const v_size = get_global_size(1);
+	uint const u_size = get_global_size(2);
+
+	uint const cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
+	uint const axn_idx = axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
+
+	uchar const cel_state = cel_states[cel_idx];
+
+	axn_states[axn_idx] = cel_state;
 }
 
 
@@ -1623,6 +1526,12 @@ __kernel void col_output(
 
 
 
+
+
+
+
+
+
 /*=============================================================================
 ===============================================================================
 ===============================================================================
@@ -1634,6 +1543,160 @@ __kernel void col_output(
 ===============================================================================
 ===============================================================================
 =============================================================================*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*__kernel void inhib_simple_archived(
+				__global uchar const* const cel_states,
+				//__global uchar* const iinn_states,
+				//__global uchar* const iinn_cel_ids
+
+				// GET SST BASE AXON LAYER
+
+				__private uchar const cel_base_axn_slc,		// <<<<< DEPRICATE: USE A GLOBAL OFFSET
+
+				__global int* const aux_ints_1,
+				__global uchar* const axn_states
+) {
+	uint const slc_id = get_global_id(0);	// <<<<< TODO: USE A GLOBAL OFFSET
+	uint const v_id = get_global_id(1);
+	uint const u_id = get_global_id(2);
+
+	uint const v_size = get_global_size(1);
+	uint const u_size = get_global_size(2);
+
+	uint const cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
+	uint const axn_idx = axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
+
+	uchar const cel_state = cel_states[cel_idx];
+
+	//int const radius_pos = 4; // 61 Cells
+	int const radius_pos = 9; // 271 Cells
+	int const radius_neg = 0 - radius_pos;
+
+	//int const influence_max = (radius_pos - 1);
+
+	int inhibited = 0;
+	//uchar biggest_neighbor = 0;
+
+	uint dumb_iter = 0;
+
+	for (int v_ofs = radius_neg; v_ofs <= radius_pos; v_ofs++) {
+		int v_neg = 0 - v_ofs;
+		int u_z = max(radius_neg, v_neg - radius_pos);
+		int u_m = min(radius_pos, v_neg + radius_pos);
+
+		for (int u_ofs = u_z; u_ofs <= u_m; u_ofs++) {
+
+			uchar neighbor_state 
+				= safe_cel_state_3d(slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs, cel_states);	// ORIGINAL		
+			//uchar neighbor_state = cel_states[
+			//cel_idx_3d_unsafe(slc_id, v_size, v_id + v_ofs, u_size, u_id + u_ofs)]; // DEBUG
+
+
+			int distance = (abs(v_ofs) + abs(u_ofs) + abs(w_ofs(v_ofs, u_ofs)))	>> 1;
+
+
+			//int cel_influence = mul24((int)cel_state, (distance + 1) << 1); // CRAP
+			//int neighbor_influence = mul24((int)neighbor_state, radius_pos - distance); // CRAP
+
+
+			// 	NEW ALGORITHM 16-JUL:
+			// 		- FOCAL CELL IS AT LEAST AS INFLUENTIAL AS NEIGHBOR AT THE FOCAL 
+			// 		CELL'S LOCATION (A.K.A. THE CELL CELL IS UNINHIBITED)
+			// 			- IF CEL_FOCAL_INFLUENCE__AT_CEL_FOCAL >= NEIGHBOR_INFLUENCE__AT_CEL_FOCAL
+			//
+
+			int cel_influence_factor = radius_pos - distance;
+			int neighbor_influence_factor = radius_pos;
+
+
+			int cel_influence = mul24((int)cel_state, cel_influence_factor);
+			int neighbor_influence = mul24((int)neighbor_state, neighbor_influence_factor);
+
+			int i_suck = neighbor_influence > cel_influence + 900;
+
+			//inhibited &= i_suck;
+
+			if (i_suck) {
+				inhibited = 0;
+			}
+
+			// STREAMLINE ME
+			// if (cel_influence < neighbor_influence) {
+			// 	inhibited = 0;
+			// }
+
+
+			//int distance = abs(v_ofs) + abs(u);
+			//int distance = abs_diff(v_id, v_id + v_ofs) + abs_diff(u_id, u_id + u_ofs);
+			//int distance = cel_dist(v_id, u_id, v_id + v_ofs, u_id + u_ofs);
+
+			//int distance = (v_id + v_ofs) - (u_id + u_ofs);
+			//int distance = v_ofs - u_ofs;
+
+			//int distance = w_ofs(v_ofs, u_ofs);
+
+
+			// [DEBUG]: PICK ONLY A FEW POINTS
+			
+			// if (((v_id == 10) && (u_id == 10)) 
+			// 	|| ((v_id == 20) && (u_id == 20)) 
+			// 	|| ((v_id == 30) && (u_id == 30))
+			// 	|| ((v_id == 40) && (u_id == 40))) {
+			// 	uint unsafe_target_axn_idx = axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, v_ofs, u_size, u_id, u_ofs);
+
+			// 	//aux_ints_1[dumb_iter] = safe_cel_state_3d(slc_id, 
+			// 	//	v_size, v_id, v_ofs, u_size, u_id, u_ofs, cel_states);
+			// 	//aux_ints_1[unsafe_target_axn_idx] = 1;
+			// 	//axn_states[unsafe_target_axn_idx] = neighbor_state;
+			// 	axn_states[unsafe_target_axn_idx] = 1 + inhibited;
+			// }
+			
+			
+			dumb_iter += 1;
+			
+
+			// int debug_idx_ofs = 32;	 // SET TO WHATEVER
+			// for (int i = 0; i < mul24(get_global_size(0), mul24(v_size, u_size)); i += 1024) {
+
+			// 	if (((int)cel_idx & 0xFFFFFFFF) == debug_idx_ofs) {
+			// 		aux_ints_1[mul24(i, 1024) + dumb_iter] 
+			// 				//= cel_influence;
+			// 				= distance + 100;
+			// 				//= cel_idx;
+			// 	}
+
+			// 	if (cel_idx == 384) {
+			// 		//aux_ints_1[axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, v_ofs, u_size, u_id, u_ofs)] = distance;
+					
+			// 	}
+
+			// 	// if (cel_idx == 520) {
+			// 	// 	//aux_ints_1[axn_idx_3d(slc_id + cel_base_axn_slc, v_size, v_id, v_ofs, u_size, u_id, u_ofs)] = distance;
+			// 	// 	aux_ints_1[520 + dumb_iter] 
+			// 	// 		//= cel_influence;
+			// 	// 		= distance + 100;
+			// 	// }
+			// }
+		}
+	}
+
+	axn_states[axn_idx] = mul24((uint)~inhibited, (uint)cel_state);
+
+}*/
 
 
 

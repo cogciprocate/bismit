@@ -55,7 +55,7 @@ impl Renderer {
 				let axn_active = axn_sdr[sdr_idx] != 0;
 				let sst_active = sst_sdr[sdr_idx] != 0;
 				let prediction = axn_sdr[sdr_idx] != sst_sdr[sdr_idx];
-				let new_prediction = prediction && (!sst_active);
+				let new_prediction = prediction && (!sst_active); // RENAME (it's not necessarily a new pred)
 
 				//let prev_active = vec_ff_prev[i] != Default::default();
 				let prev_prediction = cmn::new_pred(self.axn_history[sdr_idx], self.sst_history[sdr_idx]);
@@ -71,7 +71,8 @@ impl Renderer {
 				}
 
 				if sdr_cmpd == 0 {
-					print_buf.push('-');
+					//print_buf.push('-');
+					print_buf.push_str("--");
 				} else {
 					active_axns += 1;
 
@@ -84,7 +85,8 @@ impl Renderer {
 					} else {
 						print_buf.push_str(cmn::C_BLU);
 					}
-					print_buf.push(char::from_digit(sdr_cmpd as u32, 16).unwrap()); // PRESUMABLY FASTER THAN format!()
+					print_buf.push_str(&format!("{:02X}", sdr_val));
+					//print_buf.push(char::from_digit(sdr_cmpd as u32, 16).unwrap()); // PRESUMABLY FASTER THAN format!()
 				}
 
 				print_buf.push_str(cmn::BGC_DEFAULT);

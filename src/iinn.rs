@@ -31,6 +31,7 @@ pub struct InhibitoryInterneuronNetwork {
 	kern_post_inhib: ocl::Kernel,
 
 	kern_inhib_simple: ocl::Kernel,
+	kern_inhib_passthrough: ocl::Kernel,
 
 	pub spi_ids: Envoy<ocl::cl_uchar>,
 	pub wins: Envoy<ocl::cl_uchar>,
@@ -59,6 +60,13 @@ impl InhibitoryInterneuronNetwork {
 			.arg_env(&src_soma)
 			.arg_scl(src_axn_base_slc)
 			.arg_env(&aux.ints_1)
+			.arg_env(&axns.states)
+		;
+
+		let kern_inhib_passthrough = ocl.new_kernel("inhib_passthrough",
+			WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
+			.arg_env(&src_soma)
+			.arg_scl(src_axn_base_slc)
 			.arg_env(&axns.states)
 		;
 
@@ -104,6 +112,7 @@ impl InhibitoryInterneuronNetwork {
 			kern_post_inhib: kern_post_inhib,
 
 			kern_inhib_simple: kern_inhib_simple,
+			kern_inhib_passthrough: kern_inhib_passthrough,
 
 			spi_ids: spi_ids,
 			wins: wins,
@@ -111,7 +120,7 @@ impl InhibitoryInterneuronNetwork {
 		}
 	}
 
-	pub fn cycle(&mut self) {
+	pub fn cycle(&mut self, bypass: bool) {
 		// self.kern_cycle_pre.enqueue(); 
 
 
@@ -121,8 +130,11 @@ impl InhibitoryInterneuronNetwork {
 
 		// self.kern_cycle_post.enqueue();
 		// self.kern_post_inhib.enqueue();
-
-		self.kern_inhib_simple.enqueue();
+		if bypass {
+			self.kern_inhib_passthrough.enqueue();
+		} else {
+			self.kern_inhib_simple.enqueue();
+		}
 	}
 
 }

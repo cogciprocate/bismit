@@ -74,8 +74,11 @@ impl Synapses {
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let mut src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		// SRC COL REACHES SHOULD BECOME CONSTANTS
-		let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, -15, 15, ocl); 
-		let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, -15, 15, ocl); 
+		//let mut src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl); 
+		//let mut src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
+		let syn_reach = cmn::SYNAPSE_REACH_GEO as i8;
+		let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach, ocl); 
+		let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 
@@ -201,12 +204,14 @@ impl Synapses {
 
 		for src_slc_ids in dst_src_slc_id_tufts {
 			assert!(src_slc_ids.len() > 0, "Synapses must have at least one source slice.");
-			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, "cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
+			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, 
+				"cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
 
 			if init && DEBUG_GROW { }
 
+			let syn_reach = cmn::SYNAPSE_REACH_GEO as i8;
 			let src_slc_id_range: Range<usize> = Range::new(0, src_slc_ids.len());
-			let src_col_offs_range: Range<i8> = Range::new(-15, 16);
+			let src_col_offs_range: Range<i8> = Range::new(0 - syn_reach, syn_reach + 1);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
 
 			let idz = syns_per_layer_tuft * src_tuft_i as usize;
@@ -308,6 +313,11 @@ impl Synapses {
 		}
 
 		true
+	}
+
+	pub fn set_offs_to_zero(&mut self) {
+		self.src_col_v_offs.set_all_to(0);
+		self.src_col_u_offs.set_all_to(0);
 	}
 	
 
