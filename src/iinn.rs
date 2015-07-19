@@ -52,11 +52,10 @@ impl InhibitoryInterneuronNetwork {
 		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, 0u8, ocl);
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
 
-		println!("\n##### fuck_it: {}", dims.depth());
-
 
 		let kern_inhib_simple = ocl.new_kernel("inhib_simple",
 			WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
+			.lws(WorkSize::ThreeDim(1, 8, 8 as usize))
 			.arg_env(&src_soma)
 			.arg_scl(src_axn_base_slc)
 			.arg_env(&aux.ints_1)
@@ -65,6 +64,7 @@ impl InhibitoryInterneuronNetwork {
 
 		let kern_inhib_passthrough = ocl.new_kernel("inhib_passthrough",
 			WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
+			.lws(WorkSize::ThreeDim(1, 8, 8 as usize))
 			.arg_env(&src_soma)
 			.arg_scl(src_axn_base_slc)
 			.arg_env(&axns.states)

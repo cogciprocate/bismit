@@ -243,13 +243,13 @@ pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: Cortic
 		*c = off;
 	}
 
-	let hexagon_count = 3;
-	let gap_factor = 4;
-	let gap_extra = 2;
-	let movement_factor = edge_size + 4;
-	let movement_start_offset = (movement_factor * -6) + 12;
+	let hexagon_count = 9;
+	let gap_factor = 3;
+	let gap_extra = 0;
+	let movement_factor = edge_size - 1;
+	let movement_start_offset = (movement_factor * gap_factor) + 80;
 
-	let first_hex_ofs = (counter as isize * movement_factor) + movement_start_offset;
+	let first_hex_ofs = (counter as isize * movement_factor) - movement_start_offset;
 	let hex_spacing = (edge_size * gap_factor) + gap_extra;
 	let (hc_init_v, hc_init_u) = (edge_size + first_hex_ofs, edge_size + first_hex_ofs);
 
@@ -258,7 +258,7 @@ pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: Cortic
 
 		//print!("[ball:{}]", i);
 
-		let (v_id, u_id) = (hc_init_u + (i * hex_spacing), hc_init_v + (i * hex_spacing));
+		let (v_id, u_id) = (hc_init_u + (i * hex_spacing), hc_init_v + (i * hex_spacing) + (i * 5) - 15);
 
 		let v_ofs_z = 0 - edge_size;
 		let v_ofs_n = edge_size + 1;

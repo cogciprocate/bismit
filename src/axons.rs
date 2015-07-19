@@ -39,7 +39,8 @@ impl Axons {
 		
 		let mut hrz_axn_slcs = 0u8;
 
-		if depth_axn_hrz > 0 {
+		// <<<<< REDO THIS TO FIT INTO: MIN(V_SIZE, U_SIZE) * MIN(V_SIZE, U_SIZE)
+		if depth_axn_hrz > 0 { 
 			let syn_span_lin_l2 = (cmn::SYNAPSE_REACH_GEO_LOG2 + 1) << 1;
 			let hrz_frames_per_slc: u8 = (area_dims.columns() >> syn_span_lin_l2) as u8; 
 

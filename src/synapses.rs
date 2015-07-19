@@ -96,9 +96,10 @@ impl Synapses {
 
 		for syn_tuft_i in 0..dst_src_slc_id_tufts.len() {
 			kernels.push(Box::new(
-				ocl.new_kernel("syns_cycle_simple", 
+				//ocl.new_kernel("syns_cycle_simple", 
+				ocl.new_kernel("syns_cycle_wg_opt", 
 					WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
-					.lws(WorkSize::ThreeDim(1, 16, 16 as usize)) // TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
+					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					//WorkSize::ThreeDim(dims.columns() as usize, 1 as usize, dims.depth() as usize))
 					//WorkSize::TwoDim(dims.columns() as usize, dims.depth() as usize))
 					//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))

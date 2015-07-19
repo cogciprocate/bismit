@@ -204,7 +204,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 
 
 	/* AXON REGION OUTPUT (L3) */
-	if true {
+	if false {
 		print!("\nAXON REGION OUTPUT (L3):");
 		//cortex.area_mut(area_name).axns.states.print((1 << 0) as usize, Some((1, 255)), Some((3000, 4423)));
 		let mar = cortex.area_mut(area_name).mcols.axn_output_range();

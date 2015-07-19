@@ -28,7 +28,7 @@ pub const PRINT_DETAILS_EVERY: i32			= 10000;
 
 pub const TOGGLE_DIRS: bool 				= false;
 pub const INTRODUCE_NOISE: bool 			= false;
-pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
+pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 8 };
 pub const COUNTER_RANDOM: bool				= false;
 
 
@@ -55,8 +55,8 @@ pub fn define_protoregions() -> Protoregions {
 		.layer("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
 
-		.layer("iii", 2, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(2, 4, vec!["iii"], 640).apical(vec!["eff_in"]))
+		.layer("iii", 4, layer::TEMPORAL_ASSOCIATIVE, 
+			Protocell::new_pyramidal(2, 5, vec!["iii"], 512).apical(vec!["eff_in"]))
 
 		.freeze()
 	;
@@ -66,7 +66,7 @@ pub fn define_protoregions() -> Protoregions {
 }
 
 pub fn define_protoareas() -> Protoareas {
-	let area_side = 48 as u32;
+	let area_side = 32 as u32;
 
 	let mut protoareas = Protoareas::new()
 		.area("v1", area_side, area_side, Sensory, 
@@ -74,13 +74,12 @@ pub fn define_protoareas() -> Protoareas {
 			Some(vec!["b1"])
 		)
 
-		 .area("b1", area_side, area_side, Sensory, 
+		.area("b1", area_side, area_side, Sensory, 
 		 	//None
 		 	Some(vec!["a1"])
 		)
 
 		.area("a1", area_side, area_side, Sensory, None)
-		
 	;
 
 	protoareas
@@ -99,8 +98,8 @@ pub fn run(autorun_iters: i32) -> bool {
 	let area_dims = cortex.area(&area_name).dims().clone();
 
 	//let input_kind = InputVecKind::Stripes { stripe_size: 512, zeros_first: true };
-	let input_kind = InputVecKind::Hexballs { edge_size: 4, invert: false, fill: false };
-	//let input_kind = InputVecKind::World;
+	//let input_kind = InputVecKind::Hexballs { edge_size: 8, invert: false, fill: false };
+	let input_kind = InputVecKind::World;
 	//let input_kind = InputVecKind::Exp1;
 
 	//cortex.area_mut(&area_name).psal_mut().dens_mut().syns.set_offs_to_zero(); // ***** EXPERIMENTAL-DEBUG
