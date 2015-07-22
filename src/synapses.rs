@@ -98,11 +98,11 @@ impl Synapses {
 			kernels.push(Box::new(
 				//ocl.new_kernel("syns_cycle_simple", 
 				ocl.new_kernel("syns_cycle_wg_opt", 
+				//ocl.new_kernel("syns_cycle_simple_vec4", 
+				//ocl.new_kernel("syns_cycle_wg_opt_vec4", 
+					//WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize / 2, dims.width() as usize / 2))
 					WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
 					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
-					//WorkSize::ThreeDim(dims.columns() as usize, 1 as usize, dims.depth() as usize))
-					//WorkSize::TwoDim(dims.columns() as usize, dims.depth() as usize))
-					//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
 					.arg_env(&axons.states)
 					.arg_env(&src_col_u_offs)
 					.arg_env(&src_col_v_offs)

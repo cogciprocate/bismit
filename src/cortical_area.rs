@@ -210,7 +210,7 @@ impl CorticalArea {
 	pub fn cycle(&mut self) -> Option<Vec<&'static str>> {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
-		let bypass_inhibition = false;
+		let bypass_inhibition = true;
 		let bypass_pyrs = false;
 
 		self.psal_mut().cycle();
