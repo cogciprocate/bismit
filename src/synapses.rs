@@ -6,6 +6,7 @@ use rand::{ ThreadRng, Rng };
 use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
+use std::collections::{ BTreeSet };
 
 use cmn;
 use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
@@ -44,6 +45,7 @@ pub struct Synapses {
 	cell_kind: ProtocellKind,
 	since_decay: usize,
 	kernels: Vec<Box<ocl::Kernel>>,
+	src_idx_cache: SrcIdxCache,
 	//kern_cycle: ocl::Kernel,
 	//kern_regrow: ocl::Kernel,
 	rng: rand::XorShiftRng,
@@ -65,7 +67,9 @@ impl Synapses {
 
 		//let syns_per_slc = dims.columns() << dims.per_tuft_l2_left().expect("synapses.rs");
 		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
-		let syns_per_den_l2: u8 = protocell.syns_per_den_l2;
+		//let syns_per_den_l2: u8 = protocell.syns_per_den_l2;
+
+		//let dens_per_tuft: u32 = 1 << protocell.dens_per_tuft_l2 as u32;
 
 		//let slc_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl); // BRING THIS BACK
 
@@ -73,15 +77,21 @@ impl Synapses {
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let mut src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
-		// SRC COL REACHES SHOULD BECOME CONSTANTS
-		//let mut src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl); 
-		//let mut src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
+
 		let syn_reach = cmn::SYNAPSE_REACH_GEO as i8;
 		let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach, ocl); 
 		let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 
+		// SRC_IDX_CACHE
+		// let area_dens = (dims.tufts() * dens_per_tuft) as usize;
+		// let src_idx_cache = Vec::with_capacity(dens_per_tuft as usize);
+		// for i in 0..area_dens {	src_idx_cache.push(Box::new(BTreeSet::new())); }
+		let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, protocell.dens_per_tuft_l2, dims.clone());
+
+
+		// KERNELS
 		let dst_src_slc_id_tufts = protoregion.dst_src_slc_id_tufts(layer_name);
 		assert!(dst_src_slc_id_tufts.len() == dims.tufts_per_cel() as usize);
 
@@ -89,26 +99,26 @@ impl Synapses {
 
 		if DEBUG_NEW { print!("\n            SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims); }
 
-			// *****NEW WorkSize::ThreeDim(dims.depth() as usize, dims.width() as usize, dims.height() as usize))
+			// *****NEW WorkSize::ThreeDim(dims.depth() as usize, dims.u_size() as usize, dims.v_size() as usize))
 			// *****NEW .lws(WorkSize::ThreeDim(1 as usize, wg_size as usize))
 
-		let cels_per_slice = dims.depth() as u32 * dims.height() * dims.width();
+		let cels_per_area = dims.cells();
 
 		for syn_tuft_i in 0..dst_src_slc_id_tufts.len() {
 			kernels.push(Box::new(
 				//ocl.new_kernel("syns_cycle_simple", 
-				ocl.new_kernel("syns_cycle_wg_opt", 
 				//ocl.new_kernel("syns_cycle_simple_vec4", 
-				//ocl.new_kernel("syns_cycle_wg_opt_vec4", 
-					//WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize / 2, dims.width() as usize / 2))
-					WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
-					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
+				//ocl.new_kernel("syns_cycle_wow", 
+				ocl.new_kernel("syns_cycle_wow_vec4", 
+					//WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize / 2, dims.u_size() as usize / 2))
+					WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					.arg_env(&axons.states)
 					.arg_env(&src_col_u_offs)
 					.arg_env(&src_col_v_offs)
 					.arg_env(&src_slc_ids)
 					//.arg_env(&strengths)
-					.arg_scl(syn_tuft_i as u32 * cels_per_slice)
+					.arg_scl(syn_tuft_i as u32 * cels_per_area)
 					.arg_scl(syns_per_tuft_l2)
 					.arg_env(&aux.ints_0)
 					//.arg_env(&aux.ints_1)
@@ -119,7 +129,7 @@ impl Synapses {
 		// for syn_tuft_i in 0..dst_src_slc_id_tufts.len() {
 		// 	kernels.push(Box::new(
 		// 		ocl.new_kernel("syns_cycle_2d_workgroup_optimized", 
-		// 			WorkSize::ThreeDim(dims.depth() as usize, dims.height() as usize, dims.width() as usize))
+		// 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 		// 			.lws(WorkSize::ThreeDim(1, 16, 16 as usize)) // TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 		// 			//WorkSize::ThreeDim(dims.columns() as usize, 1 as usize, dims.depth() as usize))
 		// 			//WorkSize::TwoDim(dims.columns() as usize, dims.depth() as usize))
@@ -153,7 +163,7 @@ impl Synapses {
 		let mut syns = Synapses {
 			layer_name: layer_name,
 			dims: dims,
-			syns_per_den_l2: syns_per_den_l2,
+			syns_per_den_l2: protocell.syns_per_den_l2,
 			protocell: protocell,
 			protoregion: protoregion.clone(),
 			dst_src_slc_id_tufts: dst_src_slc_id_tufts,
@@ -162,6 +172,7 @@ impl Synapses {
 			since_decay: 0,
 			//kern_cycle: kern_cycle,
 			kernels: kernels,
+			src_idx_cache: src_idx_cache,
 			//kern_regrow: kern_regrow,
 			rng: rand::weak_rng(),
 			states: states,
@@ -174,6 +185,8 @@ impl Synapses {
 		};
 
 		syns.grow(true);
+		//syns.init_src_idx_cache(dens_per_tuft);
+
 		//syns.refresh_slc_pool();
 
 		syns
@@ -208,7 +221,7 @@ impl Synapses {
 			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, 
 				"cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
 
-			if init && DEBUG_GROW { }
+			//if init && DEBUG_GROW { }
 
 			let syn_reach = cmn::SYNAPSE_REACH_GEO as i8;
 			let src_slc_id_range: Range<usize> = Range::new(0, src_slc_ids.len());
@@ -228,8 +241,6 @@ impl Synapses {
 						&strength_init_range, &src_slc_ids, init);
 				}
 			}
-
-			src_tuft_i += 1;
 		}
 
 		self.strengths.write();
@@ -252,32 +263,67 @@ impl Synapses {
 		//let src_slc_id
 		//let src_col_x_off
 		//let strength
-		let mut print_str: String = String::with_capacity(10);
 
-		let mut tmp_str = format!("[({})({})({})=>", self.src_slc_ids[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
-		print_str.push_str(&tmp_str);
+		// DEBUG
+			//let mut print_str: String = String::with_capacity(10); 
+			//let mut tmp_str = format!("[({})({})({})=>", self.src_slc_ids[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
+			//print_str.push_str(&tmp_str);
 
-		for i in 0..200 {
+		//for i in 0..200 {
+		loop {
+			let old_ofs = AxnOfs { 
+				slc: self.src_slc_ids[syn_idx], 
+				v_ofs: self.src_col_v_offs[syn_idx],
+				u_ofs: self.src_col_u_offs[syn_idx],
+			};
+
 			self.src_slc_ids[syn_idx] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
-			self.src_col_u_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
 			self.src_col_v_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
+			self.src_col_u_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
 			self.strengths[syn_idx] = (self.src_col_v_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
 
-			if self.unique_src_addr(syn_idx) {
-				print_str.push_str("$");
+			let new_ofs = AxnOfs { 
+				slc: self.src_slc_ids[syn_idx], 
+				v_ofs: self.src_col_v_offs[syn_idx],
+				u_ofs: self.src_col_u_offs[syn_idx],
+			};
+
+			if self.src_idx_cache.insert(syn_idx, old_ofs, new_ofs) {
+				//print_str.push_str("$"); // DEBUG
 				break;
 			} else {
-				print_str.push_str("^");
+				//print_str.push_str("^"); // DEBUG
+				//print!("^");
 			}
 		}
 
-		tmp_str = format!("=>({})({})({})] ", self.src_slc_ids[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
-		print_str.push_str(&tmp_str);
+		// DEBUG
+			// tmp_str = format!("=>({})({})({})] ", self.src_slc_ids[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
+			// print_str.push_str(&tmp_str);
 
-		if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
-			print!("{}", print_str);
-		}
+			// if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
+			// 	print!("{}", print_str);
+			// }
 	}
+
+	// NEEDS SERIOUS OPTIMIZATION
+	// Cache and sort by axn_idx (pre_compute, keep seperate list) for each dendrite
+	// fn unique_src_addr_old(&self, syn_idx: usize) -> bool {
+	// 	let syns_per_den_l2 = self.protocell.syns_per_den_l2;
+	// 	let syn_idx_den_init: usize = (syn_idx >> syns_per_den_l2) << syns_per_den_l2;
+	// 	let syn_idx_den_n: usize = syn_idx_den_init + (1 << syns_per_den_l2);
+
+	// 	for i in syn_idx_den_init..syn_idx_den_n {
+	// 		if (self.src_slc_ids[syn_idx] == self.src_slc_ids[i]) 
+	// 			&& (self.src_col_v_offs[syn_idx] == self.src_col_v_offs[i])
+	// 			&& (i != syn_idx)
+	// 		{
+	// 			return false;
+	// 		}
+	// 	}
+
+	// 	true
+	// }
 
 	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
 	pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
@@ -297,24 +343,6 @@ impl Synapses {
 		}
 	}
 
-	// NEEDS SERIOUS OPTIMIZATION
-	// Cache and sort by axn_idx (pre_compute, keep seperate list) for each dendrite
-	fn unique_src_addr(&self, syn_idx: usize) -> bool {
-		let syns_per_den_l2 = self.protocell.syns_per_den_l2;
-		let syn_idx_den_init: usize = (syn_idx >> syns_per_den_l2) << syns_per_den_l2;
-		let syn_idx_den_n: usize = syn_idx_den_init + (1 << syns_per_den_l2);
-
-		for i in syn_idx_den_init..syn_idx_den_n {
-			if (self.src_slc_ids[syn_idx] == self.src_slc_ids[i]) 
-				&& (self.src_col_v_offs[syn_idx] == self.src_col_v_offs[i])
-				&& (i != syn_idx)
-			{
-				return false;
-			}
-		}
-
-		true
-	}
 
 	pub fn set_offs_to_zero(&mut self) {
 		self.src_col_v_offs.set_all_to(0);
@@ -351,8 +379,111 @@ impl Synapses {
 		&self.dims
 	}
 
+	// fn init_src_idx_cache(&mut self, dens_per_tuft: u32) {
+	// 	let area_dens = (self.dims.tufts() * dens_per_tuft) as usize;
+	// 	//let syns_per_den = 1 << self.protocell.syns_per_den_l2;
+	// 	//print!("\n##### INIT_SRC_IDX_CACHE(): area_dens = {}", area_dens);
+
+	// 	for i in 0..area_dens {
+	// 		// let syn_idz = i << self.protocell.syns_per_den_l2;
+	// 		// let syn_idn = syn_idz + syns_per_den;
+	// 		// let sr = syn_idz..syn_idn;
+
+	// 		// let slc_ids = self.src_slc_ids[sr.clone()];
+	// 		// let u_offs = self.src_col_u_offs[sr.clone()];
+	// 		// let v_offs = self.src_col_v_offs[sr.clone()];
+
+	// 		// let mut idxs: BTreeSet<u32> = BTreeSet::new();
+
+	// 		// for j in 0..syns_per_den {
+
+	// 		// }
+
+	// 		self.src_idx_cache.push(Box::new(BTreeSet::new()));
+	// 	}
+	// }
 }
 
+
+struct SrcIdxCache {
+	syns_per_den_l2: u8,
+	dens_per_tuft_l2: u8,
+	dims: CorticalDimensions,
+	dens: Vec<Box<BTreeSet<i32>>>,
+}
+
+impl SrcIdxCache {
+	fn new(syns_per_den_l2: u8, dens_per_tuft_l2: u8, dims: CorticalDimensions) -> SrcIdxCache {
+		let dens_per_tuft = 1 << dens_per_tuft_l2 as u32;
+		let area_dens = (dens_per_tuft * dims.tufts()) as usize;
+		let mut dens = Vec::with_capacity(dens_per_tuft as usize);
+
+		for i in 0..area_dens {	dens.push(Box::new(BTreeSet::new())); }
+
+		//print!("\n##### CREATING SRCIDXCACHE WITH: dens: {}", dens.len());
+
+		SrcIdxCache {
+			syns_per_den_l2: syns_per_den_l2,
+			dens_per_tuft_l2: dens_per_tuft_l2,
+			dims: dims,
+			dens: dens,
+		}
+	}
+
+	pub fn insert(&mut self, syn_idx: usize, new_ofs: AxnOfs, old_ofs: AxnOfs) -> bool {
+		let den_id = syn_idx >> self.syns_per_den_l2;
+
+		let new_ofs_key: i32 = self.axn_ofs(&new_ofs);
+		let is_unique: bool = self.dens[den_id].insert(new_ofs_key);
+
+		if is_unique {
+			let old_ofs_key: i32 = self.axn_ofs(&old_ofs);
+			self.dens[den_id].remove(&old_ofs_key);
+		}
+
+		is_unique
+	}
+
+	fn axn_ofs(&self, axn_ofs: &AxnOfs) -> i32 {
+		(axn_ofs.slc as i32 * self.dims.columns() as i32) 
+		+ (axn_ofs.v_ofs as i32 * self.dims.u_size() as i32)
+		+ axn_ofs.u_ofs as i32
+	}
+}
+
+struct AxnOfs {
+	slc: u8,
+	v_ofs: i8,
+	u_ofs: i8,
+}
+
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_uniqueness() {
+
+	}
+}
+
+// fn unique_src_addr_old(&self, syn_idx: usize) -> bool {
+// 	let syns_per_den_l2 = self.protocell.syns_per_den_l2;
+// 	let syn_idx_den_init: usize = (syn_idx >> syns_per_den_l2) << syns_per_den_l2;
+// 	let syn_idx_den_n: usize = syn_idx_den_init + (1 << syns_per_den_l2);
+
+// 	for i in syn_idx_den_init..syn_idx_den_n {
+// 		if (self.src_slc_ids[syn_idx] == self.src_slc_ids[i]) 
+// 			&& (self.src_col_v_offs[syn_idx] == self.src_col_v_offs[i])
+// 			&& (i != syn_idx)
+// 		{
+// 			return false;
+// 		}
+// 	}
+
+// 	true
+// }
 
 
 

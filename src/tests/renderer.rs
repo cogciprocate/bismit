@@ -12,7 +12,7 @@ pub struct Renderer {
 
 impl Renderer {
 	pub fn new(dims: CorticalDimensions) -> Renderer {
-		let sdr_len = (dims.width() * dims.height()) as usize;
+		let sdr_len = (dims.u_size() * dims.v_size()) as usize;
 
 		Renderer { 
 			dims: dims,
@@ -23,8 +23,8 @@ impl Renderer {
 
 	// DRAW(): height-row-v, width-col-u
 	pub fn render(&mut self, axn_sdr: &[u8], sst_sdr: &[u8]) {
-		let height = self.dims.height();
-		let width = self.dims.width();
+		let height = self.dims.v_size();
+		let width = self.dims.u_size();
 		assert!((height * width) as usize == axn_sdr.len());
 
 		let mut margin = String::with_capacity(height as usize + 10);

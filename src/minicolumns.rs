@@ -203,6 +203,6 @@ impl Minicolumns {
 	pub fn axn_output_range(&self) -> (usize, usize) {
 		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::SYNAPSE_REACH_LIN: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::SYNAPSE_REACH_LIN);
 		let start = (self.axn_output_slc as usize * self.dims.columns() as usize) + cmn::SYNAPSE_REACH_LIN as usize;
-		(start, start + (self.dims.per_slc() - 1) as usize)
+		(start, start + self.dims.per_slc() as usize)
 	}
 }

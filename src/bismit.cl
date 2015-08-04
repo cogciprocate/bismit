@@ -1,6 +1,3 @@
-// ASSUMPTIONS BEING MADE:
-//		syns_per_tuft > 4
-// 		u_size and v_size are multiples of 8
 
 #define LTD_BIAS_LOG2					0
 #define LTP_BIAS_LOG2					0
@@ -46,6 +43,30 @@
 // 		***** High Priority Comment, Temporary Code Change
 // 		<<<<< Medium Priority Comment, To Do
 // 		##### Debug / Informational Message
+//
+//
+// 		ASSUMPTIONS BEING MADE: (add assert!s)
+//			syns_per_tuft > 4
+// 			u_size and v_size (global) are multiples of 8
+
+
+
+
+
+
+
+/*=============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+================================== FUNCTIONS ==================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+=============================================================================*/
+
 
 
 // 	W_COORD():
@@ -71,16 +92,6 @@ static inline uint cel_dist(int v_1, int u_1, int v_2, int u_2) {
 }
 
 */
-
-// DEPRICATE
-static inline uint asp_to_sst_ofs(uint asp_idx) {
-	return (asp_idx - ASPINY_REACH) << ASPINY_SPAN_LOG2;
-}
-
-// DEPRICATE
-static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_id) {
-	return (asp_to_sst_ofs(asp_idx) + (asp_sst_id & (ASPINY_SPAN - 1)));
-}
 
 
 // DIM_IS_SAFE(): BOUNDS CHECK FOR A SINGLE DIMENSION OF A CELLULAR COORDINATE
@@ -400,16 +411,22 @@ static inline int square(int x) {
 
 
 
+
+
 /*=============================================================================
 ===============================================================================
 ===============================================================================
 ===============================================================================
 ===============================================================================
+=================================== KERNELS ===================================
 ===============================================================================
 ===============================================================================
 ===============================================================================
 ===============================================================================
 =============================================================================*/
+
+
+
 
 
 
@@ -429,8 +446,9 @@ static inline int square(int x) {
 // 	- One day soon this beast of a .cl file will be split up.
 
 
-//SYNS_CYCLE_WG_OPT():
-__kernel void syns_cycle_wg_opt(
+
+// SYNS_CYCLE_SIMPLE(): Simple synapse cycling without workgroup optimization or vectorization
+__kernel void syns_cycle_simple(
 				__global uchar const* const axn_states,
 				__global char const* const syn_src_col_u_offs,
 				__global char const* const syn_src_col_v_offs,
@@ -441,227 +459,30 @@ __kernel void syns_cycle_wg_opt(
 				__global uchar* const syn_states
 ) {
 	uint const slc_id = get_global_id(0);
-	uint const v_id_global = get_global_id(1);
-	uint const u_id_global = get_global_id(2);
+	uint const v_id = get_global_id(1);
+	uint const u_id = get_global_id(2);
+
 	uint const v_size = get_global_size(1);
 	uint const u_size = get_global_size(2);
 
-	uint const v_work_size = get_local_size(1);
-	uint const u_work_size = get_local_size(2);
+	uint const syn_idz = (cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) << syns_per_tuft_l2;
+	uint const syn_idn = syn_idz + (1 << syns_per_tuft_l2);
 
-			/* <<<<< SHOULD PROBABLY DO THIS USING GET_NUM_GROUPS()... >>>>> */
-	// BASE DIM_ID (COORDINATE) FOR CURRENT SLICE (GLOBAL ID ON THE INITIAL EDGE OF THE SLICE)
-	uint const v_id_slc_base = mul24(v_size, slc_id);
-	uint const u_id_slc_base = mul24(u_size, slc_id);
-
-	// DIM_ID WITHIN CURRENT SLICE
-	uint const v_id_slc = v_id_global - v_id_slc_base;
-	uint const u_id_slc = u_id_global - u_id_slc_base;
-
-	// BASE DIM_ID FOR CURRENT WORKGROUP
-	uint const v_id_base = v_id_slc - get_local_id(1);
-	uint const u_id_base = u_id_slc - get_local_id(2);
-			/* <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> */
-
-	uint const syns_per_tuft = 1 << syns_per_tuft_l2;
-	uint const syns_per_wg = mul24(v_work_size, u_work_size);
-
-	uint syns_per_iter = syns_per_wg; 	// PRECALCULATE -- MAKE CONST
-	uint u_per_iter = 0;	// PRECALCULATE -- MAKE CONST
-	uint v_per_iter = 0; 	// PRECALCULATE -- MAKE CONST
-	
-	while (syns_per_iter >= syns_per_tuft) { // PRECALCULATE
-		u_per_iter += 1;
-		syns_per_iter -= syns_per_tuft;
-	}
-
-	while (u_per_iter >= u_work_size) { // PRECALCULATE
-		v_per_iter += 1;
-		u_per_iter -= u_work_size;
-	}
-
-
-	int cur_syn_ofs = mad24(get_local_id(1), u_work_size, get_local_id(2));
-	int cur_u_wg = 0;
-	int cur_v_wg = 0;
-	
-	while (cur_syn_ofs >= syns_per_tuft) {
-		cur_u_wg += 1;
-		cur_syn_ofs -= syns_per_tuft;
-	}
-
-	while (cur_u_wg >= u_work_size) {
-		cur_v_wg += 1;
-		cur_u_wg -= u_work_size;
-	}
-
-	for (uint i = 0; i < syns_per_tuft; i++) {
-		int cur_syn_ofs_is_oob = (cur_syn_ofs >= syns_per_tuft);
-		cur_u_wg += cur_syn_ofs_is_oob;
-		cur_syn_ofs -= mul24(cur_syn_ofs_is_oob, (int)syns_per_tuft);
-
-		int cur_u_wg_is_oob = (cur_u_wg >= u_work_size);
-		cur_v_wg += cur_u_wg_is_oob;
-		cur_u_wg -= mul24(cur_u_wg_is_oob, (int)u_work_size);
-
-		uint v_id = v_id_base + cur_v_wg;
-		uint u_id = u_id_base + cur_u_wg;
-
-		uint syn_idx = ((cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) 
-			<< syns_per_tuft_l2) + cur_syn_ofs;
-
+	for (uint syn_idx = syn_idz; syn_idx < syn_idn; syn_idx++) {
+		uchar src_slc_id = syn_src_slc_ids[syn_idx];
 		char v_ofs = syn_src_col_v_offs[syn_idx];
 		char u_ofs = syn_src_col_u_offs[syn_idx];
-		uchar src_slc_id = syn_src_slc_ids[syn_idx];
 
+		//uint axn_idx = axn_idx_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs);
+		//uchar axn_state = axn_states[axn_idx];
 		uchar axn_state = axn_state_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs, axn_states);
+	
 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
-
-		cur_syn_ofs += syns_per_iter;
-		cur_u_wg += u_per_iter;
-		cur_v_wg += v_per_iter;
-
 	}
 }
 
 
-// SYNS_CYCLE_WG_OPT_VEC4():
-__kernel void syns_cycle_wg_opt_vec4(
-				__global uchar const* const axn_states,
-				__global char4 const* const syn_src_col_u_offs,
-				__global char4 const* const syn_src_col_v_offs,
-				__global uchar4 const* const syn_src_slc_ids,
-				__private uint const cel_idz,
-				__private uchar const syns_per_tuft_l2,
-				__global int* const aux_ints_0,
-				__global uchar4* const syn_states
-) {
-	uint const slc_id = get_global_id(0);
-	uint const v_id_global = get_global_id(1);
-	uint const u_id_global = get_global_id(2);
-	uint const v_size = get_global_size(1);
-	uint const u_size = get_global_size(2);
-
-	uint const v_work_size = get_local_size(1);
-	uint const u_work_size = get_local_size(2);
-
-			/* <<<<< SHOULD PROBABLY DO THIS USING GET_NUM_GROUPS()... >>>>> */
-	// BASE DIM_ID (COORDINATE) FOR CURRENT SLICE (GLOBAL ID ON THE INITIAL EDGE OF THE SLICE)
-	uint const v_id_slc_base = mul24(v_size, slc_id);
-	uint const u_id_slc_base = mul24(u_size, slc_id);
-
-	// DIM_ID WITHIN CURRENT SLICE
-	uint const v_id_slc = v_id_global - v_id_slc_base;
-	uint const u_id_slc = u_id_global - u_id_slc_base;
-
-	// BASE DIM_ID FOR CURRENT WORKGROUP
-	uint const v_id_base = v_id_slc - get_local_id(1);
-	uint const u_id_base = u_id_slc - get_local_id(2);
-			/* <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> */
-
-	uint const syn4s_per_tuft = 1 << (syns_per_tuft_l2 - 2); // VEC4'D
-	uint const syn4s_per_wg = mul24(v_work_size, u_work_size); // DON'T DIVIDE ME (DOING SAME SYN4S AS SYNS)
-
-	uint syn4s_per_iter = syn4s_per_wg; 	// PRECALCULATE -- MAKE CONST
-	uint u_per_iter = 0;	// PRECALCULATE -- MAKE CONST
-	uint v_per_iter = 0; 	// PRECALCULATE -- MAKE CONST
-	
-	while (syn4s_per_iter >= syn4s_per_tuft) { // PRECALCULATE
-		u_per_iter += 1;
-		syn4s_per_iter -= syn4s_per_tuft;
-	}
-
-	while (u_per_iter >= u_work_size) { // PRECALCULATE
-		v_per_iter += 1;
-		u_per_iter -= u_work_size;
-	}
-
-
-	int cur_syn_ofs = mad24(get_local_id(1), u_work_size, get_local_id(2));
-	int cur_u_wg = 0;
-	int cur_v_wg = 0;
-	
-	while (cur_syn_ofs >= syn4s_per_tuft) {
-		cur_u_wg += 1;
-		cur_syn_ofs -= syn4s_per_tuft;
-	}
-
-	while (cur_u_wg >= u_work_size) {
-		cur_v_wg += 1;
-		cur_u_wg -= u_work_size;
-	}
-
-	for (uint i = 0; i < syn4s_per_tuft; i++) {
-		int cur_syn_ofs_is_oob = (cur_syn_ofs >= syn4s_per_tuft);
-		cur_u_wg += cur_syn_ofs_is_oob;
-		cur_syn_ofs -= mul24(cur_syn_ofs_is_oob, (int)syn4s_per_tuft);
-
-		int cur_u_wg_is_oob = (cur_u_wg >= u_work_size);
-		cur_v_wg += cur_u_wg_is_oob;
-		cur_u_wg -= mul24(cur_u_wg_is_oob, (int)u_work_size);
-
-		uint v_id = v_id_base + cur_v_wg;
-		uint u_id = u_id_base + cur_u_wg;
-
-		uint syn4_idx = (((cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) 
-			<< syns_per_tuft_l2) + cur_syn_ofs) >> 2; // VEC4'D IDX
-
-		char4 v_ofs = syn_src_col_v_offs[syn4_idx];
-		char4 u_ofs = syn_src_col_u_offs[syn4_idx];
-		uchar4 src_slc_id = syn_src_slc_ids[syn4_idx];
-
-		// uchar axn_state = axn_state_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs, axn_states);
-		// syn_states[syn4_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
-
-		uchar4 axn_state = axn_state_3d_safe_vec4(
-			src_slc_id, v_size, (int4)((int)v_id), v_ofs, u_size, (int4)((int)u_id), u_ofs, axn_states);
-
-		syn_states[syn4_idx] = (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80) | (axn_state >> (uchar4)1);
-
-		cur_syn_ofs += syn4s_per_iter;
-		cur_u_wg += u_per_iter;
-		cur_v_wg += v_per_iter;
-
-	}
-}
-
-
-// // SYNS_CYCLE_SIMPLE(): Simple synapse cycling with non-workgroup-optimized writes
-// __kernel void syns_cycle_simple(
-// 				__global uchar const* const axn_states,
-// 				__global char const* const syn_src_col_u_offs,
-// 				__global char const* const syn_src_col_v_offs,
-// 				__global uchar const* const syn_src_slc_ids,
-// 				__private uint const cel_idz,
-// 				__private uchar const syns_per_tuft_l2,
-// 				__global int* const aux_ints_0,
-// 				__global uchar* const syn_states
-// ) {
-// 	uint const slc_id = get_global_id(0);
-// 	uint const v_id = get_global_id(1);
-// 	uint const u_id = get_global_id(2);
-
-// 	uint const v_size = get_global_size(1);
-// 	uint const u_size = get_global_size(2);
-
-// 	uint const syn_idz = (cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) << syns_per_tuft_l2;
-// 	uint const syn_idn = syn_idz + (1 << syns_per_tuft_l2);
-
-// 	for (uint syn_idx = syn_idz; syn_idx < syn_idn; syn_idx++) {
-// 		uchar src_slc_id = syn_src_slc_ids[syn_idx];
-// 		char v_ofs = syn_src_col_v_offs[syn_idx];
-// 		char u_ofs = syn_src_col_u_offs[syn_idx];
-
-// 		//uint axn_idx = axn_idx_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs);
-// 		//uchar axn_state = axn_states[axn_idx];
-// 		uchar axn_state = axn_state_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs, axn_states);
-	
-// 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
-// 	}
-// }
-
-
-// SYNS_CYCLE_SIMPLE(): Simple synapse cycling with non-workgroup-optimized writes
+// SYNS_CYCLE_SIMPLE_VEC4(): Simple synapse cycling with vectorization
 __kernel void syns_cycle_simple_vec4(
 				__global uchar const* const axn_states,
 				__global char4 const* const syn_src_col_u_offs,
@@ -697,6 +518,204 @@ __kernel void syns_cycle_simple_vec4(
 
 
 
+//SYNS_CYCLE_WG_OPT(): Cycle synapses with workgroup optimized writes
+__kernel void syns_cycle_wow(
+				__global uchar const* const axn_states,
+				__global char const* const syn_src_col_u_offs,
+				__global char const* const syn_src_col_v_offs,
+				__global uchar const* const syn_src_slc_ids,
+				__private uint const cel_idz,
+				__private uchar const syns_per_tuft_l2,
+				__global int* const aux_ints_0,
+				__global uchar* const syn_states
+) {
+	uint const slc_id = get_global_id(0);
+	uint const v_size = get_global_size(1);
+	uint const u_size = get_global_size(2);
+
+	uint const v_work_size = get_local_size(1);
+	uint const u_work_size = get_local_size(2);
+
+	/* <<<<< SHOULD PROBABLY DO THIS USING GET_NUM_GROUPS()... >>>>> */
+
+	// // BASE DIM_ID (COORDINATE) FOR CURRENT SLICE (GLOBAL ID ON THE INITIAL EDGE OF THE SLICE)
+	// uint const v_id_slc_base = mul24(v_size, slc_id);
+	// uint const u_id_slc_base = mul24(u_size, slc_id);
+
+	// // DIM_ID WITHIN CURRENT SLICE
+	// uint const v_id_slc = v_id_global - v_id_slc_base;
+	// uint const u_id_slc = u_id_global - u_id_slc_base;
+
+	// // BASE DIM_ID FOR CURRENT WORKGROUP
+	// uint const v_id_base = v_id_slc - get_local_id(1);
+	// uint const u_id_base = u_id_slc - get_local_id(2);
+	/* <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> */
+
+	// BASE DIM_ID FOR CURRENT WORKGROUP
+	uint const v_id_base = get_global_id(1) - get_local_id(1);
+	uint const u_id_base = get_global_id(2) - get_local_id(2);
+			
+
+	uint const syns_per_tuft = 1 << syns_per_tuft_l2;
+	uint const syns_per_wg = mul24(v_work_size, u_work_size);
+
+	uint syns_per_iter = syns_per_wg; 	// PRECALCULATE -- MAKE CONST
+	uint u_per_iter = 0;	// PRECALCULATE -- MAKE CONST
+	uint v_per_iter = 0; 	// PRECALCULATE -- MAKE CONST
+	
+	while (syns_per_iter >= syns_per_tuft) { // PRECALCULATE
+		u_per_iter += 1;
+		syns_per_iter -= syns_per_tuft;
+	}
+
+	while (u_per_iter >= u_work_size) { // PRECALCULATE
+		v_per_iter += 1;
+		u_per_iter -= u_work_size;
+	}
+
+
+	int cur_syn_ofs = mad24(get_local_id(1), u_work_size, get_local_id(2));
+	int cur_u_wg = 0;
+	int cur_v_wg = 0;
+	
+	while (cur_syn_ofs >= syns_per_tuft) {
+		cur_u_wg += 1;
+		cur_syn_ofs -= syns_per_tuft;
+	}
+
+	while (cur_u_wg >= u_work_size) {
+		cur_v_wg += 1;
+		cur_u_wg -= u_work_size;
+	}
+
+	for (uint i = 0; i < syns_per_tuft; i += 1) {
+		int cur_syn_ofs_is_oob = (cur_syn_ofs >= syns_per_tuft);
+		cur_u_wg += cur_syn_ofs_is_oob;
+		cur_syn_ofs -= mul24(cur_syn_ofs_is_oob, (int)syns_per_tuft);
+
+		int cur_u_wg_is_oob = (cur_u_wg >= u_work_size);
+		cur_v_wg += cur_u_wg_is_oob;
+		cur_u_wg -= mul24(cur_u_wg_is_oob, (int)u_work_size);
+
+		uint v_id = v_id_base + cur_v_wg;
+		uint u_id = u_id_base + cur_u_wg;
+
+		uint syn_idx = ((cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) 
+			<< syns_per_tuft_l2) + cur_syn_ofs;
+
+		char v_ofs = syn_src_col_v_offs[syn_idx];
+		char u_ofs = syn_src_col_u_offs[syn_idx];
+		uchar src_slc_id = syn_src_slc_ids[syn_idx];
+
+		uchar axn_state = axn_state_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs, axn_states);
+		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
+
+		if ((slc_id == 1) && (get_global_id(1) == 6) && (get_global_id(2) == 6) && (cel_idz == 0)) {
+			aux_ints_0[i] = v_id_base;
+		}
+
+		cur_syn_ofs += syns_per_iter;
+		cur_u_wg += u_per_iter;
+		cur_v_wg += v_per_iter;
+
+	}
+}
+
+
+// SYNS_CYCLE_WG_OPT_VEC4(): Cycle synapses with workgroup optimized writes and vectorization
+__kernel void syns_cycle_wow_vec4(
+				__global uchar const* const axn_states,
+				__global char4 const* const syn_src_col_u_offs,
+				__global char4 const* const syn_src_col_v_offs,
+				__global uchar4 const* const syn_src_slc_ids,
+				__private uint const cel_idz,
+				__private uchar const syns_per_tuft_l2,
+				__global int* const aux_ints_0,
+				__global uchar4* const syn_states
+) {
+	uint const slc_id = get_global_id(0);
+	uint const v_size = get_global_size(1);
+	uint const u_size = get_global_size(2);
+
+	uint const v_work_size = get_local_size(1);
+	uint const u_work_size = get_local_size(2);
+
+	uint const v_id_base = get_global_id(1) - get_local_id(1);
+	uint const u_id_base = get_global_id(2) - get_local_id(2);
+
+	uint const syn4s_per_tuft = (1 << (syns_per_tuft_l2)) >> 2; // VEC4'D
+	uint const syn4s_per_wg = mul24(v_work_size, u_work_size); // DON'T DIVIDE ME (DOING SAME SYN4S AS SYNS)
+
+	uint syn4s_per_iter = syn4s_per_wg; 	// PRECALCULATE -- MAKE CONST
+	uint u_per_iter = 0;	// PRECALCULATE -- MAKE CONST
+	uint v_per_iter = 0; 	// PRECALCULATE -- MAKE CONST
+	
+	while (syn4s_per_iter >= syn4s_per_tuft) { // PRECALCULATE
+		u_per_iter += 1;
+		syn4s_per_iter -= syn4s_per_tuft;
+	}
+
+	while (u_per_iter >= u_work_size) { // PRECALCULATE
+		v_per_iter += 1;
+		u_per_iter -= u_work_size;
+	}
+
+
+	int cur_syn4_ofs = mad24(get_local_id(1), u_work_size, get_local_id(2));
+	int cur_u_wg = 0;
+	int cur_v_wg = 0;
+	
+	while (cur_syn4_ofs >= syn4s_per_tuft) {
+		cur_u_wg += 1;
+		cur_syn4_ofs -= syn4s_per_tuft;
+	}
+
+	while (cur_u_wg >= u_work_size) {
+		cur_v_wg += 1;
+		cur_u_wg -= u_work_size;
+	}
+
+	for (uint i = 0; i < syn4s_per_tuft; i++) {
+		int cur_syn4_ofs_is_oob = (cur_syn4_ofs >= syn4s_per_tuft);
+		cur_u_wg += cur_syn4_ofs_is_oob;
+		cur_syn4_ofs -= mul24(cur_syn4_ofs_is_oob, (int)syn4s_per_tuft);
+
+		int cur_u_wg_is_oob = (cur_u_wg >= u_work_size);
+		cur_v_wg += cur_u_wg_is_oob;
+		cur_u_wg -= mul24(cur_u_wg_is_oob, (int)u_work_size);
+
+		uint v_id = v_id_base + cur_v_wg;
+		uint u_id = u_id_base + cur_u_wg;
+
+		uint syn4_idx = (((cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) 
+			<< syns_per_tuft_l2) >> 2) + cur_syn4_ofs; // VEC4'D IDX
+
+		char4 v_ofs = syn_src_col_v_offs[syn4_idx];
+		char4 u_ofs = syn_src_col_u_offs[syn4_idx];
+		uchar4 src_slc_id = syn_src_slc_ids[syn4_idx];
+
+		// uchar axn_state = axn_state_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs, axn_states);
+		// syn_states[syn4_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
+
+		uchar4 axn_state = axn_state_3d_safe_vec4(src_slc_id, v_size, (int4)((int)v_id), 
+			v_ofs, u_size, (int4)((int)u_id), u_ofs, axn_states);
+
+		syn_states[syn4_idx] = (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80) | (axn_state >> (uchar4)1);
+
+
+		if ((slc_id == 1) && (get_global_id(1) == 6) && (get_global_id(2) == 6) && (cel_idz == 0)) {
+			aux_ints_0[i] = cur_u_wg;
+		}
+
+		cur_syn4_ofs += syn4s_per_iter;
+		cur_u_wg += u_per_iter;
+		cur_v_wg += v_per_iter;
+
+	}
+}
+
+
+
 
 // SYNS_CYCLE():
 // 	number of source slcs can not exceed: 
@@ -713,7 +732,7 @@ __kernel void syns_cycle_simple_vec4(
 
 
 //	__attribute__((reqd_work_group_size(1, SYNAPSE_WORKGROUP_SIZE, 1)))
-__kernel void syns_cycle_2d_workgroup_optimized(
+__kernel void syns_cycle_2d_wow(
 				__global uchar const* const axn_states,
 				__global char const* const syn_src_col_v_offs,
 				__global uchar const* const syn_src_slc_ids,
@@ -724,8 +743,8 @@ __kernel void syns_cycle_2d_workgroup_optimized(
 ) {
 	uint const slc_columns = mul24(get_global_size(1), get_global_size(2)); // PRECOMPUTE or depricate
 	uint const layer_total_per_tuft = mul24(slc_columns, get_global_size(0)); // PRECOMPUTE
-	uint const wg_size = mul24(get_local_size(1), get_local_size(2)); // PRECOMPUTE or depricate
 	uint const base_cel_tuft_ofs = mul24(syn_tuft_i, layer_total_per_tuft); // PRECOMPUTE
+	uint const wg_size = mul24(get_local_size(1), get_local_size(2)); // PRECOMPUTE or depricate
 
 	uint const slc_id = get_global_id(0);
 	uint const v_id = get_global_id(1);
@@ -973,9 +992,6 @@ __kernel void inhib_simple(
 
 }
 
-
-
-
 __kernel void inhib_passthrough(
 				__global uchar const* const cel_states,
 				__private uchar const cel_base_axn_slc,		// <<<<< DEPRICATE: USE A GLOBAL OFFSET
@@ -994,6 +1010,333 @@ __kernel void inhib_passthrough(
 
 	axn_states[axn_idx] = cel_state;
 }
+
+
+// SST_LTP(): Long term potentiation for Spiny Stellate Cells
+__kernel void sst_ltp(
+				__global uchar const* const axn_states,
+				__global uchar const* const syn_states,
+				__private uint const cel_axn_idz,
+				__private uchar const syns_per_tuft_l2,
+				__private uint const rnd,
+				__global char* const syn_strengths
+) {
+	uint const slc_id = get_global_id(0);
+	uint const col_tuft_id = get_global_id(1);
+	uint const tuft_size = get_global_size(1);
+	uint const cel_tuft_id = mad24(slc_id, tuft_size, col_tuft_id);
+
+	uint cels_per_tuft = get_local_size(1);
+
+	uint const cel_idz = mul24(cel_tuft_id, cels_per_tuft);
+	uint const cel_idn = cel_idz + cels_per_tuft;
+
+	for (uint cel_idx = cel_idz; cel_idx < cel_idn; cel_idx++) {
+		uchar axn_state = axn_states[cel_axn_idz + cel_idx];
+		
+		if (axn_state) {
+			uint syn_idz = cel_idx << syns_per_tuft_l2;	
+			prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tuft_l2, rnd, syn_strengths);
+		}
+	}
+}
+
+
+// PYR_ACTIVATE(): CONVERT TO 1 WORK_DIM
+__kernel void pyr_activate(
+				__global uchar const* const mcol_pyr_pred_flags, // COL
+				__global uchar const* const mcol_best_pyr_den_states,
+				__global uchar const* const pyr_best_den_ids,
+				// ADD PYR BEST DEN STATE NOW THAT WE'VE ADDED IT (and to another kernel somewhere also)
+				__global uchar const* const den_states,
+				__private uint const ssts_axn_idz,
+				__private uchar const pyr_axn_slc_base,
+				__private uchar const dens_per_tuft_l2,
+				__global uchar* const pyr_flag_sets,
+				__global uchar* const pyr_preds,
+				//__global int* const aux_ints_0,
+				__global uchar* const axn_states
+) {
+	uint const slc_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const slc_columns = get_global_size(1);
+	uint const pyr_idx = mad24(slc_id, slc_columns, col_id);
+	uint const axn_idx = axn_idx_2d(pyr_axn_slc_base + slc_id, slc_columns, col_id, 0);
+
+	uint const den_ofs = pyr_idx << dens_per_tuft_l2;			// REPLACE
+	uint const best_den_idx = den_ofs + pyr_best_den_ids[pyr_idx];		// REPLACE
+
+	uchar const best_den_state = den_states[best_den_idx];				// CHANGE
+
+	//uint const axn_idx = mad24(pyr_axn_slc_base + slc_id, slc_columns, col_id + (uint)SYNAPSE_REACH_LIN);
+	uchar const mcol_best_col_den_state = mcol_best_pyr_den_states[col_id];
+	uchar const sst_axn_state = axn_states[ssts_axn_idz + col_id];
+	//uchar const mcol_state = mcol_states[col_id];
+	uchar const mcol_pyr_pred_flag = mcol_pyr_pred_flags[col_id];
+	uchar const pyr_pred = pyr_preds[pyr_idx];
+	uchar pyr_flag_set = pyr_flag_sets[pyr_idx];
+
+	//aux_ints_0[pyr_idx] = pyr_flag_set;
+
+	int const mcol_active = sst_axn_state != 0;
+	//int const mcol_active = mcol_state != 0;
+	int const mcol_any_pred = mcol_pyr_pred_flag != 0;
+	int const pyr_predictive = (pyr_pred != 0);
+
+	int const crystal = pyr_predictive && mcol_active;
+	int const anomaly = mcol_active && !mcol_any_pred;
+
+	//int const activate_axon = crystal || anomaly;
+	//pyr_pred = (crystal | anomaly) && (mcol_state);
+	//pyr_pred = mul24(((crystal != 0) || (anomaly != 0)), mcol_state);
+	pyr_flag_set &= ~PYR_BEST_IN_COL_FLAG;
+	
+	pyr_flag_set |= mul24(mcol_best_col_den_state == best_den_state, PYR_BEST_IN_COL_FLAG);
+	//pyr_flag_set |= mul24((mcol_best_col_den_state == best_den_state) && pyr_predictive, PYR_BEST_IN_COL_FLAG);
+
+
+	// SHOULDN'T BE ACTIVATING IF OTHER PYRS IN COLUMN ARE PREDICTIVE
+
+	axn_states[axn_idx] = (uchar)mad24(anomaly, (int)sst_axn_state, mul24(crystal, (int)pyr_pred));
+	//axn_states[axn_idx] = (uchar)mad24(anomaly, (int)mcol_state, mul24(crystal, (int)pyr_pred));
+
+	pyr_flag_sets[pyr_idx] = pyr_flag_set;
+
+	//pyr_preds[pyr_idx] = pyr_pred;
+
+	//aux_ints_0[pyr_idx] = 5;
+	//aux_ints_0[pyr_idx] = pyr_pred;
+}
+
+
+// PYRS_LTP(): Pyramidal long term potentiation and depression - adjusting synapse strengths
+//
+//	- For each pyramidal cell:
+//		- if cell axon is currently active:
+//			- cause learning to take place on it's most active dendrite
+//		- if cell axon is currently inactive:
+//			- check to see if the cell's axon was previously active (by checking flag_set)
+//				- if so, depress (reduce strengths of) any currently active synapses
+//					- NOTE: The reasoning here is that any synapses which are active just after (but not before) the cell was active are likely to be unrelated to it's prior activity. In other words, a rough implementation of LTD (simplified and optimized and theorized and ... oh who knows). 
+//
+//	- TODO:
+//		- Vectorize (should be highly vectorizable)
+//		- reducing branching will be tough with this one
+//		- Tests (check that flag_set and prev_best_den_id are robustly maintained)
+//
+//
+//
+//		- if pyr_prev_concrete 
+//			- if pyr_concrete
+//			- if pyr_pred
+//
+//		- if pyr_prev_pred
+//			- if pyr_concrete
+//			- if pyr_pred
+//
+//	- Misc Notes:
+//
+//		- SYN(    -> STP) WHEN: (SYN_STATE > 0) AND (PYR_TANGIBLE) AND (PYR_BEST_IN_COLUMN)
+//		                    OR: (SYN_STATE > 0) AND (PYR_TANGIBLE) AND (PYR_PREV_PRED)
+//
+//		- MAINTAIN STP STATE AS LONG AS: (SYN_STATE > 0) AND (PYR_ACTIVE)
+//
+//		- SYN(STP -> LTP) ONLY WHEN: ((PYR_ACTIVE -> 0)) SAME TIME AS (SYN_STATE -> 0)
+//			
+// 	TODO: CONVERT TO 1 WORK_DIM
+__kernel void pyrs_ltp_unoptd(
+				__global uchar const* const axn_states,
+				__global uchar const* const pyr_preds,
+				__global uchar const* const pyr_best_den_ids,
+				__global uchar const* const den_states,
+				__global uchar const* const syn_states,
+				__private uint const pyr_axn_idx_base, 
+				__private uint const syns_per_den_l2,
+				__private uint const dens_per_tuft_l2,
+				__private uint const pyrs_per_wi,
+				__private uint const rnd,
+				__global uchar* const syn_flag_sets,
+				__global uchar* const pyr_flag_sets,
+				//__global int* const aux_ints_0,
+				//__global int* const aux_ints_1,
+				__global char* const syn_strengths
+) {
+	uint const slc_id = get_global_id(0);
+	uint const col_tuft_id = get_global_id(1);
+	uint const tufts_per_slc = get_global_size(1);
+	uint const pyr_tuft_id = mad24(slc_id, tufts_per_slc, col_tuft_id);
+	uint const pyr_idz = mul24(pyr_tuft_id, pyrs_per_wi);
+	uint const pyr_idn = pyr_idz + pyrs_per_wi;
+ 
+	for (uint i = pyr_idz; i < pyr_idn; i++) {
+		uchar pyr_best_den_id = pyr_best_den_ids[i];
+		uchar pyr_flag_set = pyr_flag_sets[i];
+
+		int pyr_concrete = axn_states[i + pyr_axn_idx_base] != 0;
+		int pyr_fuzzy = pyr_preds[i] != 0;
+
+		int pyr_prev_concrete = (pyr_flag_set & PYR_PREV_CONCRETE_FLAG) == PYR_PREV_CONCRETE_FLAG;
+		int pyr_prev_fuzzy = (pyr_flag_set & PYR_PREV_FUZZY_FLAG) == PYR_PREV_FUZZY_FLAG;
+		int pyr_best_in_col = (pyr_flag_set & PYR_BEST_IN_COL_FLAG) == PYR_BEST_IN_COL_FLAG;
+
+		uint den_idx_base = i << dens_per_tuft_l2;
+
+		uint pyr_syn_idz = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
+		uint best_den_syn_idz = (den_idx_base + pyr_best_den_id) << syns_per_den_l2;
+
+		if (pyr_concrete) {
+			if (pyr_prev_fuzzy) { 
+				// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + TRAIN NEW DEN
+				// SAME AS ANO + TRAIN A SECOND REDUNDANT DENDRITE AS WELL (OR DON'T)
+				dst_syns__active__stp_ltd(syn_states, best_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+
+			} else if (pyr_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
+			//} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+				dst_syns__active__stp_ltd(syn_states, best_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+			}
+
+			pyr_flag_set |= PYR_PREV_CONCRETE_FLAG;
+
+		} else if (pyr_prev_concrete) {
+
+			cel_syns_trm(syn_states, pyr_syn_idz, syns_per_den_l2 + dens_per_tuft_l2, rnd, syn_flag_sets, syn_strengths);
+
+			pyr_flag_set &= ~PYR_PREV_CONCRETE_FLAG;
+		}		
+
+		pyr_flag_set &= ~PYR_PREV_FUZZY_FLAG;
+		pyr_flag_set |= mul24(pyr_fuzzy, PYR_PREV_FUZZY_FLAG);
+
+		pyr_flag_sets[i] = pyr_flag_set;
+	}
+}
+
+
+
+
+__kernel void pyr_cycle(
+				__global uchar const* const den_states,
+				__global uchar const* const den_states_raw,
+				__private uint const den_tufts_per_cel,
+				__private uchar const dens_per_tuft_l2,
+				__global uchar* const pyr_best_den_ids,
+				__global uchar* const pyr_best_den_states,
+				__global uchar* const pyr_preds
+) {
+	uint const pyr_idx = get_global_id(0);
+	uchar best_den_state = 0;
+	uchar best_den_id = 0;
+	uchar pyr_state = 0;
+
+	for (uint den_tuft = 0; den_tuft < den_tufts_per_cel; den_tuft++) {
+		uint const den_idz = mad24(den_tuft, get_global_size(0), pyr_idx) << dens_per_tuft_l2;
+ 
+		for (uint den_idx = 0; den_idx < (1 << dens_per_tuft_l2); den_idx++) {
+			uchar den_state = den_states[den_idz + den_idx];
+			int den_state_bigger = (den_state > best_den_state);
+
+			best_den_id = mad24(den_state_bigger, (int)den_idx, mul24(!den_state_bigger, best_den_id));
+			best_den_state = mad24(den_state_bigger, den_state, mul24(!den_state_bigger, best_den_state));
+		}
+	}
+
+	pyr_state = best_den_state; // YEAH... I KNOW...
+
+	pyr_best_den_ids[pyr_idx] = best_den_id;
+	pyr_best_den_states[pyr_idx] = best_den_state;
+	pyr_preds[pyr_idx] = pyr_state;
+}
+
+
+//	COL_OUTPUT()
+//		- rename coming
+//
+// 
+__kernel void col_output(
+				__global uchar const* const pyr_preds,
+				__global uchar const* const pyr_best_den_states,
+				__private uint const sst_axn_idz,
+				__private uchar const pyr_depth,
+				__private uchar const output_axn_slc,
+				__global uchar* const mcol_pyr_pred_flags,
+				__global uchar* const mcol_best_pyr_den_states,
+				__global uchar* const axn_states
+) {
+	uint const slc_id = get_global_id(0);
+	uint const col_id = get_global_id(1);
+	uint const slc_columns = get_global_size(1);
+	uint const output_axn_idx = axn_idx_2d(output_axn_slc + slc_id, slc_columns, col_id, 0);
+	uint const col_idx = mad24(slc_id, slc_columns, col_id);
+
+	int sst_axn_state = axn_states[sst_axn_idz + col_idx];
+	uchar max_den_state = 0;
+	int col_pyr_pred_total = 0;
+
+	for (uint i = 0; i < pyr_depth; i++) {
+		// POTENTIALLY FALSE ASSUMPTION HERE ABOUT PYR CELLS ALL BEING INVOLVED IN OUTPUT
+		uint pyr_idx = mad24(i, slc_columns, col_id);	
+
+		uchar pyr_best_den_state = pyr_best_den_states[pyr_idx];
+		uchar pyr_pred = pyr_preds[pyr_idx];
+
+		max_den_state = max(max_den_state, pyr_best_den_state);
+		
+		col_pyr_pred_total = max(col_pyr_pred_total, (int)pyr_pred);
+	}
+
+
+	mcol_pyr_pred_flags[col_idx] = clamp(col_pyr_pred_total, 0, 255); // <<<<< FIX ME TO BE A FLAGSET
+	mcol_best_pyr_den_states[col_idx] = max_den_state;
+	axn_states[output_axn_idx] = clamp(col_pyr_pred_total + sst_axn_state, 0, 255);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*=============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+========================== EXPERIMENTAL AND UNUSED ============================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+=============================================================================*/
+
+
+
+
+
+
+
+
+
+
+
+
+// DEPRICATE
+static inline uint asp_to_sst_ofs(uint asp_idx) {
+	return (asp_idx - ASPINY_REACH) << ASPINY_SPAN_LOG2;
+}
+
+// DEPRICATE
+static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_id) {
+	return (asp_to_sst_ofs(asp_idx) + (asp_sst_id & (ASPINY_SPAN - 1)));
+}
+
+
 
 // <<<<< FOLLOWING SECTION SLATED FOR REMOVAL/DEPRICATION >>>>>
 
@@ -1161,319 +1504,3 @@ __kernel void sst_post_inhib_unoptd (
 }
 
 // <<<<< END REMOVE/DEPRICATE SECTION >>>>>
-
-
-
-// SST_LTP(): Long term potentiation for Spiny Stellate Cells
-__kernel void sst_ltp(
-				__global uchar const* const axn_states,
-				__global uchar const* const syn_states,
-				__private uint const cel_axn_idz,
-				__private uchar const syns_per_tuft_l2,
-				__private uint const rnd,
-				__global char* const syn_strengths
-) {
-	uint const slc_id = get_global_id(0);
-	uint const col_tuft_id = get_global_id(1);
-	uint const tuft_size = get_global_size(1);
-	uint const cel_tuft_id = mad24(slc_id, tuft_size, col_tuft_id);
-
-	uint cels_per_tuft = get_local_size(1);
-
-	uint const cel_idz = mul24(cel_tuft_id, cels_per_tuft);
-	uint const cel_idn = cel_idz + cels_per_tuft;
-
-	for (uint cel_idx = cel_idz; cel_idx < cel_idn; cel_idx++) {
-		uchar axn_state = axn_states[cel_axn_idz + cel_idx];
-		
-		if (axn_state) {
-			uint syn_idz = cel_idx << syns_per_tuft_l2;	
-			prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tuft_l2, rnd, syn_strengths);
-		}
-	}
-}
-
-
-// PYR_ACTIVATE(): CONVERT TO 1 WORK_DIM
-__kernel void pyr_activate(
-				__global uchar const* const mcol_pyr_pred_flags, // COL
-				__global uchar const* const mcol_best_pyr_den_states,
-				__global uchar const* const pyr_best_den_ids,
-				// ADD PYR BEST DEN STATE NOW THAT WE'VE ADDED IT (and to another kernel somewhere also)
-				__global uchar const* const den_states,
-				__private uint const ssts_axn_idz,
-				__private uchar const pyr_axn_slc_base,
-				__private uchar const dens_per_tuft_l2,
-				__global uchar* const pyr_flag_sets,
-				__global uchar* const pyr_preds,
-				//__global int* const aux_ints_0,
-				__global uchar* const axn_states
-) {
-	uint const slc_id = get_global_id(0);
-	uint const col_id = get_global_id(1);
-	uint const slc_columns = get_global_size(1);
-	uint const pyr_idx = mad24(slc_id, slc_columns, col_id);
-	uint const axn_idx = axn_idx_2d(pyr_axn_slc_base + slc_id, slc_columns, col_id, 0);
-
-	uint const den_ofs = pyr_idx << dens_per_tuft_l2;			// REPLACE
-	uint const best_den_idx = den_ofs + pyr_best_den_ids[pyr_idx];		// REPLACE
-
-	uchar const best_den_state = den_states[best_den_idx];				// CHANGE
-
-	//uint const axn_idx = mad24(pyr_axn_slc_base + slc_id, slc_columns, col_id + (uint)SYNAPSE_REACH_LIN);
-	uchar const mcol_best_col_den_state = mcol_best_pyr_den_states[col_id];
-	uchar const sst_axn_state = axn_states[ssts_axn_idz + col_id];
-	//uchar const mcol_state = mcol_states[col_id];
-	uchar const mcol_pyr_pred_flag = mcol_pyr_pred_flags[col_id];
-	uchar const pyr_pred = pyr_preds[pyr_idx];
-	uchar pyr_flag_set = pyr_flag_sets[pyr_idx];
-
-	//aux_ints_0[pyr_idx] = pyr_flag_set;
-
-	int const mcol_active = sst_axn_state != 0;
-	//int const mcol_active = mcol_state != 0;
-	int const mcol_any_pred = mcol_pyr_pred_flag != 0;
-	int const pyr_predictive = (pyr_pred != 0);
-
-	int const crystal = pyr_predictive && mcol_active;
-	int const anomaly = mcol_active && !mcol_any_pred;
-
-	//int const activate_axon = crystal || anomaly;
-	//pyr_pred = (crystal | anomaly) && (mcol_state);
-	//pyr_pred = mul24(((crystal != 0) || (anomaly != 0)), mcol_state);
-	pyr_flag_set &= ~PYR_BEST_IN_COL_FLAG;
-	
-	pyr_flag_set |= mul24(mcol_best_col_den_state == best_den_state, PYR_BEST_IN_COL_FLAG);
-	//pyr_flag_set |= mul24((mcol_best_col_den_state == best_den_state) && pyr_predictive, PYR_BEST_IN_COL_FLAG);
-
-
-	// SHOULDN'T BE ACTIVATING IF OTHER PYRS IN COLUMN ARE PREDICTIVE
-
-	axn_states[axn_idx] = (uchar)mad24(anomaly, (int)sst_axn_state, mul24(crystal, (int)pyr_pred));
-	//axn_states[axn_idx] = (uchar)mad24(anomaly, (int)mcol_state, mul24(crystal, (int)pyr_pred));
-
-	pyr_flag_sets[pyr_idx] = pyr_flag_set;
-
-	//pyr_preds[pyr_idx] = pyr_pred;
-
-	//aux_ints_0[pyr_idx] = 5;
-	//aux_ints_0[pyr_idx] = pyr_pred;
-}
-
-
-// PYRS_LTP(): Pyramidal long term potentiation and depression - adjusting synapse strengths
-//
-//	- For each pyramidal cell:
-//		- if cell axon is currently active:
-//			- cause learning to take place on it's most active dendrite
-//		- if cell axon is currently inactive:
-//			- check to see if the cell's axon was previously active (by checking flag_set)
-//				- if so, depress (reduce strengths of) any currently active synapses
-//					- NOTE: The reasoning here is that any synapses which are active just after (but not before) the cell was active are likely to be unrelated to it's prior activity. In other words, a rough implementation of LTD (simplified and optimized and theorized and ... oh who knows). 
-//
-//	- TODO:
-//		- Vectorize (should be highly vectorizable)
-//		- reducing branching will be tough with this one
-//		- Tests (check that flag_set and prev_best_den_id are robustly maintained)
-//
-//		- Let's shit on these goddamn menace fucking constantly active goddamn fucking inputs
-//			- The root of the problem is the propensity to build on whatever other activity is happening from your neighbors. This activity breeds even more activity and it positively feeds back
-//			- If we take a dump on synaptic inputs which are active when we are inactive... it should shave some of the bullshit off
-//			- Constrain this to act in very few circumstances
-//
-//		##########      CAN'T EQUATE AXON OUTPUT WITH PYR DEPOLS       #############
-//
-//
-//		- if pyr_prev_concrete 
-//			- if pyr_concrete
-//			- if pyr_pred
-//
-//		- if pyr_prev_pred
-//			- if pyr_concrete
-//			- if pyr_pred
-//
-//	- Misc Notes:
-//
-//		- SYN(    -> STP) WHEN: (SYN_STATE > 0) AND (PYR_TANGIBLE) AND (PYR_BEST_IN_COLUMN)
-//		                    OR: (SYN_STATE > 0) AND (PYR_TANGIBLE) AND (PYR_PREV_PRED)
-//
-//		- MAINTAIN STP STATE AS LONG AS: (SYN_STATE > 0) AND (PYR_ACTIVE)
-//
-//		- SYN(STP -> LTP) ONLY WHEN: ((PYR_ACTIVE -> 0)) SAME TIME AS (SYN_STATE -> 0)
-//			
-// 	TODO: CONVERT TO 1 WORK_DIM
-__kernel void pyrs_ltp_unoptd(
-				__global uchar const* const axn_states,
-				__global uchar const* const pyr_preds,
-				__global uchar const* const pyr_best_den_ids,
-				__global uchar const* const den_states,
-				__global uchar const* const syn_states,
-				__private uint const pyr_axn_idx_base, 
-				__private uint const syns_per_den_l2,
-				__private uint const dens_per_tuft_l2,
-				__private uint const pyrs_per_wi,
-				__private uint const rnd,
-				__global uchar* const syn_flag_sets,
-				__global uchar* const pyr_flag_sets,
-				//__global int* const aux_ints_0,
-				//__global int* const aux_ints_1,
-				__global char* const syn_strengths
-) {
-	uint const slc_id = get_global_id(0);
-	uint const col_tuft_id = get_global_id(1);
-	uint const tufts_per_slc = get_global_size(1);
-	uint const pyr_tuft_id = mad24(slc_id, tufts_per_slc, col_tuft_id);
-	uint const pyr_idz = mul24(pyr_tuft_id, pyrs_per_wi);
-	uint const pyr_idn = pyr_idz + pyrs_per_wi;
- 
-	for (uint i = pyr_idz; i < pyr_idn; i++) {
-		uchar pyr_best_den_id = pyr_best_den_ids[i];
-		uchar pyr_flag_set = pyr_flag_sets[i];
-
-		int pyr_concrete = axn_states[i + pyr_axn_idx_base] != 0;
-		int pyr_fuzzy = pyr_preds[i] != 0;
-
-		int pyr_prev_concrete = (pyr_flag_set & PYR_PREV_CONCRETE_FLAG) == PYR_PREV_CONCRETE_FLAG;
-		int pyr_prev_fuzzy = (pyr_flag_set & PYR_PREV_FUZZY_FLAG) == PYR_PREV_FUZZY_FLAG;
-		int pyr_best_in_col = (pyr_flag_set & PYR_BEST_IN_COL_FLAG) == PYR_BEST_IN_COL_FLAG;
-
-		uint den_idx_base = i << dens_per_tuft_l2;
-
-		uint pyr_syn_idz = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL
-		uint best_den_syn_idz = (den_idx_base + pyr_best_den_id) << syns_per_den_l2;
-
-		if (pyr_concrete) {
-			if (pyr_prev_fuzzy) { 
-				// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + TRAIN NEW DEN
-				// SAME AS ANO + TRAIN A SECOND REDUNDANT DENDRITE AS WELL (OR DON'T)
-				dst_syns__active__stp_ltd(syn_states, best_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
-
-			} else if (pyr_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
-			//} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-				dst_syns__active__stp_ltd(syn_states, best_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
-			}
-
-			pyr_flag_set |= PYR_PREV_CONCRETE_FLAG;
-
-		} else if (pyr_prev_concrete) {
-
-			cel_syns_trm(syn_states, pyr_syn_idz, syns_per_den_l2 + dens_per_tuft_l2, rnd, syn_flag_sets, syn_strengths);
-
-			pyr_flag_set &= ~PYR_PREV_CONCRETE_FLAG;
-		}		
-
-		pyr_flag_set &= ~PYR_PREV_FUZZY_FLAG;
-		pyr_flag_set |= mul24(pyr_fuzzy, PYR_PREV_FUZZY_FLAG);
-
-		pyr_flag_sets[i] = pyr_flag_set;
-	}
-}
-
-
-
-
-__kernel void pyr_cycle(
-				__global uchar const* const den_states,
-				__global uchar const* const den_states_raw,
-				__private uint const den_tufts_per_cel,
-				__private uchar const dens_per_tuft_l2,
-				__global uchar* const pyr_best_den_ids,
-				__global uchar* const pyr_best_den_states,
-				__global uchar* const pyr_preds
-) {
-	uint const pyr_idx = get_global_id(0);
-	uchar best_den_state = 0;
-	uchar best_den_id = 0;
-	uchar pyr_state = 0;
-
-	for (uint den_tuft = 0; den_tuft < den_tufts_per_cel; den_tuft++) {
-		uint const den_idz = mad24(den_tuft, get_global_size(0), pyr_idx) << dens_per_tuft_l2;
- 
-		for (uint den_idx = 0; den_idx < (1 << dens_per_tuft_l2); den_idx++) {
-			uchar den_state = den_states[den_idz + den_idx];
-			int den_state_bigger = (den_state > best_den_state);
-
-			best_den_id = mad24(den_state_bigger, (int)den_idx, mul24(!den_state_bigger, best_den_id));
-			best_den_state = mad24(den_state_bigger, den_state, mul24(!den_state_bigger, best_den_state));
-		}
-	}
-
-	pyr_state = best_den_state; // YEAH... I KNOW...
-
-	pyr_best_den_ids[pyr_idx] = best_den_id;
-	pyr_best_den_states[pyr_idx] = best_den_state;
-	pyr_preds[pyr_idx] = pyr_state;
-}
-
-
-//	COL_OUTPUT()
-//		- rename coming
-//
-// 
-__kernel void col_output(
-				__global uchar const* const pyr_preds,
-				__global uchar const* const pyr_best_den_states,
-				__private uint const sst_axn_idz,
-				__private uchar const pyr_depth,
-				__private uchar const output_axn_slc,
-				__global uchar* const mcol_pyr_pred_flags,
-				__global uchar* const mcol_best_pyr_den_states,
-				__global uchar* const axn_states
-) {
-	uint const slc_id = get_global_id(0);
-	uint const col_id = get_global_id(1);
-	uint const slc_columns = get_global_size(1);
-	uint const output_axn_idx = axn_idx_2d(output_axn_slc + slc_id, slc_columns, col_id, 0);
-	uint const col_idx = mad24(slc_id, slc_columns, col_id);
-
-	int sst_axn_state = axn_states[sst_axn_idz + col_idx];
-	uchar max_den_state = 0;
-	int col_pyr_pred_total = 0;
-
-	for (uint i = 0; i < pyr_depth; i++) {
-		// POTENTIALLY FALSE ASSUMPTION HERE ABOUT PYR CELLS ALL BEING INVOLVED IN OUTPUT
-		uint pyr_idx = mad24(i, slc_columns, col_id);	
-
-		uchar pyr_best_den_state = pyr_best_den_states[pyr_idx];
-		uchar pyr_pred = pyr_preds[pyr_idx];
-
-		max_den_state = max(max_den_state, pyr_best_den_state);
-		
-		col_pyr_pred_total = max(col_pyr_pred_total, (int)pyr_pred);
-	}
-
-
-	mcol_pyr_pred_flags[col_idx] = clamp(col_pyr_pred_total, 0, 255); // <<<<< FIX ME TO BE A FLAG
-	mcol_best_pyr_den_states[col_idx] = max_den_state;
-	axn_states[output_axn_idx] = clamp(col_pyr_pred_total + sst_axn_state, 0, 255);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*=============================================================================
-===============================================================================
-===============================================================================
-===============================================================================
-===============================================================================
-========================== EXPERIMENTAL AND UNUSED ============================
-===============================================================================
-===============================================================================
-===============================================================================
-===============================================================================
-=============================================================================*/
-
-
-
-
-

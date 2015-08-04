@@ -316,7 +316,7 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 		if idx_range.is_some() {
 			let ir = idx_range.as_ref().expect("cmn.rs");
 
-			if i < ir_start || i > ir_end {
+			if i < ir_start || i >= ir_end {
 				prnt = false;
 				within_idx_range = false;
 			} else {
@@ -327,7 +327,7 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 		}
 
 		if val_range.is_some() {
-			if vec[i] < vr_start || vec[i] > vr_end {
+			if vec[i] < vr_start || vec[i] >= vr_end {
 				prnt = false;
 				within_val_range = false;
 			} else {
@@ -341,9 +341,7 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 
 				within_val_range = true;
 			}
-		} else {
-			//ttl_ir += 1;
-		}
+		} 
 
 		if within_idx_range && within_val_range {
 			sum += vec[i].to_isize().expect("cmn::print_vec(): vec[i]");
@@ -389,10 +387,14 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 	}
 
 
-	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prntd:{}){cd} ", ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
+	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),\
+		ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prntd:{}){cd} ", 
+		ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 }
 
-pub fn shuffled_vec<T: Integer + Default + Display + NumCast + Copy + Clone + ToPrimitive + FromPrimitive >(size: usize, min_val: T, max_val: T) -> Vec<T> {
+pub fn shuffled_vec<T: Integer + Default + Display + NumCast + Copy + Clone + ToPrimitive + FromPrimitive >(
+				size: usize, min_val: T, max_val: T
+) -> Vec<T> {
 
 	//println!("min_val: {}, max_val: {}", min_val, max_val);
 

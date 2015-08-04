@@ -1,41 +1,45 @@
-/*	CorticalDimensions: Dimensions of a cortical area in units of cells 
+/*	CorticalDimensions: Dimensions of a cortical area in units of cells
+		- Used to define both the volume and granularity of a cortical area.
+		- Also contains extra information such as opencl kernel workgroup size
+
 
 		<<<<< THIS DESCRIPTION IS WAY OUT OF DATE >>>>>
+		<<<<< TODO: ADD INFORMATION ABOUT TUFTS (OUR 5TH DIMENSION?) >>>>>
 
 		Stored in log base 2 as a constraint (for simplicity and computational efficiency in OpenCL kernels). 
 
-		Cells are cubes 1(W,x) x 1(H,y) x 1(D,z)
+		Cells are hexagonal prisms
 
 		Dimensions are in the context of bismit where: 
 			- Column is 1 x 1 x N (a rod)
 			- Slice (unfortunately coincident with rust terminology) has dimensions N x M x 1 (a plane)
 			- Row has no meaning
 		
-		So, width * height determines number of columns
+		So, u_size * v_size determines number of columns
 
-		The 4th parameter, per_cel_l2, is basically components or divisions per cell and can also be thought of as a 4th dimension if you want to get all metaphysical about it. It can be positive or negative reflecting whether or not it's bigger or smaller than a cell and it's stored inverted. Don't think too hard about it.
+		The 4th parameter, per_cel_l2, is basically components or divisions per cell and can also be thought of as a 4th dimension. It can be positive or negative reflecting whether or not it's bigger or smaller than a cell and it's stored inverted. Don't think too hard about it.
 */
 
 #[derive(PartialEq, Debug, Clone, Eq)]
 pub struct CorticalDimensions {
-	//width_l2: u8, // in cell-edges (log base 2) (WxHxD: 1x1xN)
-	//height_l2: u8, // in cell-edges (log2) (1x1xN)
-	width: u32,
-	height: u32,
+	//u_size_l2: u8, // in cell-edges (log base 2) (WxHxD: 1x1xN)
+	//v_size_l2: u8, // in cell-edges (log2) (1x1xN)
+	u_size: u32,
+	v_size: u32,
 	depth: u8, // in cell-edges (NxMx1)
-	tufts_per_cel: u32,
-	per_tuft_l2: i8, // divisions per cell (log2)
+	tufts_per_cel: u32, // dendritic tufts per cell
+	per_tuft_l2: i8, // divisions per cell-tuft (log2)
 	physical_increment: Option<u32>,
 }
 
 impl CorticalDimensions {
-	pub fn new(width: u32, height: u32, depth: u8, per_tuft_l2: i8, physical_increment: Option<u32>) -> CorticalDimensions {
-	//pub fn new(width_l2: u8, height_l2: u8,	depth: u8, per_tuft_l2: i8,) -> CorticalDimensions {
+	pub fn new(u_size: u32, v_size: u32, depth: u8, per_tuft_l2: i8, physical_increment: Option<u32>) -> CorticalDimensions {
+	//pub fn new(u_size_l2: u8, v_size_l2: u8,	depth: u8, per_tuft_l2: i8,) -> CorticalDimensions {
 		CorticalDimensions { 
-			width: width,
-			height: height,
-			/*width_l2: width_l2,
-			height_l2: height_l2,*/
+			u_size: u_size,
+			v_size: v_size,
+			/*u_size_l2: u_size_l2,
+			v_size_l2: v_size_l2,*/
 			depth: depth,
 			tufts_per_cel: 1,
 			per_tuft_l2: per_tuft_l2,
@@ -43,33 +47,39 @@ impl CorticalDimensions {
 		}
 	}
 
-	pub fn groups(mut self, tufts_per_cel: u32) -> CorticalDimensions {
-		self.tufts_per_cel = tufts_per_cel;
-		self
+	pub fn set_physical_increment(&mut self, physical_increment: u32) {
+		self.physical_increment = Some(physical_increment);
 	}
 
-	pub fn width(&self) -> u32 {
-		self.width
+	pub fn physical_increment(&self) -> u32 {
+		match self.physical_increment {
+			Some(pi) => pi,
+			None => panic!("\ncortical_dimensions::CorticalDimensions::physical_increment(): Physical Increment not set!"),
+		}
 	}
 
-	pub fn height(&self) -> u32 {
-		self.height
+	pub fn u_size(&self) -> u32 {
+		self.u_size
 	}
 
-	/*pub fn width_l2(&self) -> u8 {
-		self.width_l2
+	pub fn v_size(&self) -> u32 {
+		self.v_size
 	}
 
-	pub fn height_l2(&self) -> u8 {
-		self.height_l2
+	/*pub fn u_size_l2(&self) -> u8 {
+		self.u_size_l2
 	}
 
-	pub fn width(&self) -> u32 {
-		1 << self.width_l2 as u32
+	pub fn v_size_l2(&self) -> u8 {
+		self.v_size_l2
 	}
 
-	pub fn height(&self) -> u32 {
-		1 << self.height_l2 as u32
+	pub fn u_size(&self) -> u32 {
+		1 << self.u_size_l2 as u32
+	}
+
+	pub fn v_size(&self) -> u32 {
+		1 << self.v_size_l2 as u32
 	}
 	*/
 
@@ -85,26 +95,21 @@ impl CorticalDimensions {
 		self.per_tuft_l2
 	}
 
-	pub fn physical_increment(&self) -> u32 {
-		match self.physical_increment {
-			Some(pi) => pi,
-			None => panic!("\ncortical_dimensions::CorticalDimensions::physical_increment(): Physical Increment not set!"),
-		}
-	}
 
-	// COLUMNS(): 2D Area of a slc measured in cells
+	// COLUMNS(): 2D Area of a slc measured in cell sides
 	pub fn columns(&self) -> u32 {
-		self.height * self.width
-		//1 << (self.height_l2 + self.width_l2) as u32
+		self.v_size * self.u_size
+		//1 << (self.v_size_l2 + self.u_size_l2) as u32
 	}
 
-	// CELLS(): 3D Volume measured in cells
+	// CELLS(): 3D Volume of area measured in cells
 	pub fn cells(&self) -> u32 {
 		self.columns() * self.depth as u32
 	}
 
-	pub fn set_physical_increment(&mut self, physical_increment: u32) {
-		self.physical_increment = Some(physical_increment);
+	// TUFTS(): 4D Volume of area measured in tufts
+	pub fn tufts(&self) -> u32 {
+		self.cells() * self.tufts_per_cel
 	}
 
 	pub fn per_tuft_l2_left(&self) -> u32 {
@@ -136,6 +141,8 @@ impl CorticalDimensions {
 	pub fn per_slc(&self) -> u32 {
 		len_components(self.columns(), self.per_tuft_l2, self.tufts_per_cel)
 	}
+
+	// 
 
 	
 
@@ -177,7 +184,10 @@ impl CorticalDimensions {
 		CorticalDimensions { physical_increment: Some(physical_increment), .. *self } 
 	}
 
-
+	pub fn with_tufts(mut self, tufts_per_cel: u32) -> CorticalDimensions {
+		self.tufts_per_cel = tufts_per_cel;
+		self
+	}
 }
 
 impl Copy for CorticalDimensions {}
@@ -198,7 +208,6 @@ fn len_components(cells: u32, per_tuft_l2: i8, tufts_per_cel: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-
 	use super::*;
 
 

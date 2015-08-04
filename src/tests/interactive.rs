@@ -11,6 +11,7 @@ use time;
 use ocl::{ self, CorticalDimensions };
 use cmn;
 use cortex::{ self, Cortex };
+use encode:: { IdxReader };
 //use proto::layer;
 use super::output_czar;
 //use super::synapse_drill_down;
@@ -38,25 +39,20 @@ pub fn define_protoregions() -> Protoregions {
 
 	let mut sen = Protoregion::new(Sensory)
 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
-
 		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
-
 		.layer("eff_in", 1, layer::EFFERENT_INPUT, Axonal(Spatial))
-
 		//.layer("nothing", 1, layer::DEFAULT, Axonal(Spatial))
-
 		.layer("aff_in", 1, layer::AFFERENT_INPUT, Axonal(Spatial))
-
 		.layer("aff_out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
 
 		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 256)) 
+			Protocell::new_spiny_stellate(5, vec!["aff_in"], 384)) 
 
 		.layer("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
 
 		.layer("iii", 4, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(2, 5, vec!["iii"], 4000).apical(vec!["eff_in"]))
+			Protocell::new_pyramidal(2, 5, vec!["iii"], 900).apical(vec!["eff_in"]))
 
 		.freeze()
 	;
@@ -66,7 +62,7 @@ pub fn define_protoregions() -> Protoregions {
 }
 
 pub fn define_protoareas() -> Protoareas {
-	let area_side = 48 as u32;
+	let area_side = 32 as u32;
 
 	let mut protoareas = Protoareas::new()
 		.area("v1", area_side, area_side, Sensory, 
@@ -88,7 +84,8 @@ pub fn define_protoareas() -> Protoareas {
 
 /* RUN(): Run the interactive testing command line
 	- TODO:
-		- [incomplete][priority:very low] Proper command line using enums to represent user input and a seperate struct to manage its state
+		- [incomplete][priority:very low] Proper command line using enums to 
+		represent user input and a seperate struct to manage its state
 			- Or just be lazy and leave it the beautiful disaster that it is...	
 */
 pub fn run(autorun_iters: i32) -> bool {
@@ -98,18 +95,26 @@ pub fn run(autorun_iters: i32) -> bool {
 	let area_dims = cortex.area(&area_name).dims().clone();
 
 	//let input_kind = InputVecKind::Stripes { stripe_size: 512, zeros_first: true };
-	let input_kind = InputVecKind::Hexballs { edge_size: 9, invert: false, fill: false };
+	//let input_kind = InputVecKind::Hexballs { edge_size: 9, invert: false, fill: false };
 	//let input_kind = InputVecKind::World;
 	//let input_kind = InputVecKind::Exp1;
 
-	cortex.area_mut(&area_name).psal_mut().dens_mut().syns.set_offs_to_zero(); // ***** EXPERIMENTAL-DEBUG
+	let mut ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte");
+	let input_kind = InputVecKind::IdxReader(Box::new(ir));
+
+	/* ***** DISABLE STUFF ***** */	
+	cortex.area_mut(&area_name).psal_mut().dens_mut().syns.set_offs_to_zero();
+	cortex.area_mut(&area_name).bypass_inhib = true;
+	cortex.area_mut(&area_name).disable_pyrs = true;
+	//cortex.area_mut(&area_name).disable_regrowth = true;
+	/* ***** ############# ***** */
 
 	let mut input_czar = InputCzar::new(area_dims.clone(), input_kind, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
 
 	let mut rndr = Renderer::new(cortex.area(&area_name).dims().clone());
 
-	let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(area_dims.columns() as usize).collect();
-	let mut vec_ff_prev: Vec<u8> = iter::repeat(0).take(area_dims.columns() as usize).collect();
+	//let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(area_dims.columns() as usize).collect();
+	//let mut vec_ff_prev: Vec<u8> = iter::repeat(0).take(area_dims.columns() as usize).collect();
 
 	let mut test_iters: i32 = if autorun_iters > 0 {
 		autorun_iters
@@ -291,10 +296,11 @@ pub fn run(autorun_iters: i32) -> bool {
 
 
 
+		// CURRENT ACTIVE ITERATION
+		let mut i = 0i32;
+
 		/*######### SENSE ONLY LOOP #########*/
 		if !view_sdr_only { print!("\nRunning {} sense only loop(s) ... \n", test_iters - 1); }
-
-		let mut i = 0i32;
 
 		loop {
 			if i >= (test_iters - 1) { break; }
@@ -310,8 +316,6 @@ pub fn run(autorun_iters: i32) -> bool {
 			if i % PRINT_DETAILS_EVERY == 0 || i < 0 {
 				if !view_sdr_only { 
 					output_czar::print_sense_only(&mut cortex, &area_name); 
-				} else { 
-					//print!("\n");
 				}
 			}
 						
@@ -330,22 +334,6 @@ pub fn run(autorun_iters: i32) -> bool {
 
 		loop {
 			if i >= (test_iters) { break; }
-
-			let (out_start, out_end) = cortex.area(&area_name).mcols.axn_output_range();
-
-			let (ssts_axn_idz, ssts_axn_idn) = cortex.area_mut(&area_name).psal_mut().axn_range();
-			{
-
-				// <<<<< FIX THIS INDEX NOT TO HAVE TO ADD AN EXTRA 1 >>>>>
-				let out_slc_prev = &cortex.area(&area_name).axns.states.vec[out_start..(out_end + 1)];
-
-				let ff_slc_prev = &cortex.area(&area_name).axns.states.vec[ssts_axn_idz..ssts_axn_idn];
-				//let ff_slc_prev = &cortex.area(&area_name).psal_mut().dens.states.vec[..];
-
-
-				vec_out_prev.clone_from_slice(out_slc_prev);
-				vec_ff_prev.clone_from_slice(ff_slc_prev);
-			}
 
 			if !bypass_act {
 				input_czar.next(&mut cortex);
@@ -370,7 +358,10 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			cortex.area_mut(&area_name).axns.states.read();
 
-			let out_slc = &cortex.area(&area_name).axns.states.vec[out_start..(out_end + 1)];
+			let (eff_out_idz, eff_out_idn) = cortex.area(&area_name).mcols.axn_output_range();
+			let (ssts_axn_idz, ssts_axn_idn) = cortex.area_mut(&area_name).psal_mut().axn_range();
+
+			let out_slc = &cortex.area(&area_name).axns.states.vec[eff_out_idz..eff_out_idn];
 			let ff_slc = &cortex.area(&area_name).axns.states.vec[ssts_axn_idz..ssts_axn_idn];
 			//let ff_slc = &cortex.area(&area_name).psal_mut().dens.states.vec[..];
 

@@ -6,6 +6,7 @@ use rand::{ self, ThreadRng, Rng };
 use cmn;
 use ocl::{ self, CorticalDimensions };
 use cortex::{ Cortex };
+use encode:: { IdxReader };
 use super::motor_state;
 use microcosm::world::{ World };
 use microcosm::entity::{ EntityBody, EntityKind, EntityBrain, Mobile };
@@ -135,6 +136,12 @@ impl InputCzar {
 			InputVecKind::Exp1 => {
 				sdr_exp1(&mut self.vec_optical[..]);
 			},
+
+			InputVecKind::IdxReader(ref mut ir) => {
+				ir.next(&mut self.vec_optical[..]);
+			}
+
+			//_ => (),
 		}
 
 
@@ -194,6 +201,7 @@ pub enum InputVecKind {
 	Stripes { stripe_size: usize, zeros_first: bool },
 	Hexballs { edge_size: usize, invert: bool, fill: bool },
 	Exp1,
+	IdxReader(Box<IdxReader>),
 }
 
 
@@ -228,8 +236,8 @@ pub fn sdr_exp1(vec: &mut [u8]) {
 
 
 pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: CorticalDimensions, counter: usize, vec: &mut [u8]) {
-	let v_size = dims.height() as isize;
-	let u_size = dims.width() as isize;
+	let v_size = dims.v_size() as isize;
+	let u_size = dims.u_size() as isize;
 	let edge_size = edge_size as isize;
 	let mut rng = rand::weak_rng();
 
@@ -291,11 +299,11 @@ pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: Cortic
 }
 
 pub fn gimme_a_valid_col_id(dims: CorticalDimensions, v_id: isize, u_id: isize) -> (usize, bool) {
-	let v_ok = (v_id < dims.height() as isize) && (v_id >= 0);
-	let u_ok = (u_id < dims.width() as isize) && (u_id >= 0);
+	let v_ok = (v_id < dims.v_size() as isize) && (v_id >= 0);
+	let u_ok = (u_id < dims.u_size() as isize) && (u_id >= 0);
 
 	if v_ok && u_ok {
-		(((v_id * dims.width() as isize) + u_id) as usize, true)
+		(((v_id * dims.u_size() as isize) + u_id) as usize, true)
 	} else {
 		(0, false)
 	}

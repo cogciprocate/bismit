@@ -43,8 +43,7 @@ pub struct Ocl {
 impl Ocl {
 	pub fn new(build_options: BuildOptions) -> Ocl {
 		let path_string = format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME);
-		let path_string_slc = &path_string;
-		let kern_file_path = std::path::Path::new(path_string_slc);
+		let kern_file_path = std::path::Path::new(&path_string);
 		let mut kern_str: Vec<u8> = Vec::new();
 		let kern_file = File::open(kern_file_path).unwrap().read_to_end(&mut kern_str);
 		let kern_c_str = ffi::CString::new(kern_str).ok().expect("Ocl::new(): kern_c_str");

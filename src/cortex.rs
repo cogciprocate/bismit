@@ -116,7 +116,7 @@ impl Cortex {
 		self.area_mut(ao_name).axns.states.read();
 
 		let (out_start_ao, out_end_ao) = self.area(ao_name).mcols.axn_output_range();
-		let out_slc_ao = &self.area(ao_name).axns.states.vec[out_start_ao..(out_end_ao + 1)];
+		let out_slc_ao = &self.area(ao_name).axns.states.vec[out_start_ao..out_end_ao];
 
 		let cols = self.area(ao_name).dims.columns(); // DEBUG PURPOSES
 		print!("\nArea: '{}' - out_start_ao: {}, out_end_ao: {}, cols: {}", ao_name, out_start_ao, out_end_ao, cols);

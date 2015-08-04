@@ -24,6 +24,10 @@ use spiny_stellates::{ SpinyStellateCellularLayer };
 
 
 pub struct CorticalArea {
+	pub bypass_inhib: bool,
+	pub disable_pyrs: bool,
+	pub disable_ssts: bool,
+	pub disable_regrowth: bool,
 	pub name: &'static str,
 	pub dims: CorticalDimensions,
 	ptal_name: &'static str,			// PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
@@ -54,7 +58,7 @@ impl CorticalArea {
 
 
 		print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", 
-			name, dims.width(), dims.height(), dims.depth());
+			name, dims.u_size(), dims.v_size(), dims.depth());
 		/*print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", name, 1 << dims.width_l2(), 1 << dims.height_l2(), dims.depth());*/
 
 
@@ -76,7 +80,7 @@ impl CorticalArea {
 
 		let axns = Axons::new(dims, &protoregion, ocl);
 
-		let aux_dims = CorticalDimensions::new(dims.width(), dims.height(), dims.depth(), 8, Some(dims.physical_increment()));
+		let aux_dims = CorticalDimensions::new(dims.u_size(), dims.v_size(), dims.depth(), 1, Some(dims.physical_increment()));
 		//let aux_dims = CorticalDimensions::new(dims.width_l2(), dims.height_l2(), dims.depth(), 7);
 		let aux = Aux::new(aux_dims, ocl);
 
@@ -162,6 +166,10 @@ impl CorticalArea {
 		
 
 		let mut cortical_area = CorticalArea {
+			bypass_inhib: false,
+			disable_pyrs: false,
+			disable_ssts: false,
+			disable_regrowth: false,
 			name: name,
 			dims: dims,
 			ptal_name: ptal_name,
@@ -210,22 +218,21 @@ impl CorticalArea {
 	pub fn cycle(&mut self) -> Option<Vec<&'static str>> {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
-		let bypass_inhibition = true;
-		let bypass_pyrs = false;
+		if !self.disable_ssts {	self.psal_mut().cycle(); }
 
-		self.psal_mut().cycle();
-		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(bypass_inhibition);
-		self.psal_mut().learn();
+		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.bypass_inhib);
+
+		if !self.disable_ssts {	self.psal_mut().learn(); }
 		
-		if !bypass_pyrs {
-			self.ptal_mut().activate();	// *****
-			self.ptal_mut().learn();		// *****
-			self.ptal_mut().cycle();		// *****
+		if !self.disable_pyrs {
+			self.ptal_mut().activate();
+			self.ptal_mut().learn();	
+			self.ptal_mut().cycle();
 		}
 
 		self.mcols.output();
 
-		self.regrow();
+		if !self.disable_regrowth { self.regrow(); }
 
 		self.afferent_target_names()
 	}

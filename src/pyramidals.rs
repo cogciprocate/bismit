@@ -86,7 +86,7 @@ impl PyramidalCellularLayer {
 
 		let den_tufts_per_cel = region[&layer_name].dst_src_tufts_len();
 
-		let den_tuft_dims = dims.clone_with_pgl2(dens_per_tuft_l2 as i8).groups(den_tufts_per_cel);
+		let den_tuft_dims = dims.clone_with_pgl2(dens_per_tuft_l2 as i8).with_tufts(den_tufts_per_cel);
 
 		let dens = Dendrites::new(layer_name, den_tuft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl);
 

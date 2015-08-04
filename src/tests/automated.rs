@@ -78,7 +78,7 @@ fn test_safe_dim_ofs(ocl: &ocl::Ocl, dims: ocl::CorticalDimensions) {
 		ocl::WorkSize::OneDim(dims.physical_len() as usize))
 		.arg_env(&dim_ids)
 		.arg_env(&dim_offs)
-		.arg_scl(dims.width())
+		.arg_scl(dims.u_size())
 		.arg_env(&safe_dim_offs) 
 	;
 
@@ -95,6 +95,6 @@ fn test_safe_dim_ofs(ocl: &ocl::Ocl, dims: ocl::CorticalDimensions) {
 	for i in 0..safe_dim_offs.len() {
 		let safe_dim_id: isize = dim_ids[i] as isize + safe_dim_offs[i] as isize;
 		assert!(safe_dim_id >= 0);
-		assert!(safe_dim_id < dims.width() as isize);
+		assert!(safe_dim_id < dims.u_size() as isize);
 	}
 }

@@ -45,7 +45,7 @@ impl Thalamus {
 			let pa_input_depth = protoregions[&pa.region_kind].layer_with_flag(layer::AFFERENT_INPUT)
 				.expect(&format!("{}{}", emsg, "pa_input_depth -- flag not found")).depth;
 
-			//let pa_columns = (pa.dims.width() * pa.dims.height()) as usize;
+			//let pa_columns = (pa.dims.u_size() * pa.dims.v_size()) as usize;
 			let pa_columns = pa.dims.columns() as usize;
 			let pa_len = pa_columns * pa_input_depth as usize;
 

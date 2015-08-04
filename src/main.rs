@@ -47,6 +47,7 @@ mod thalamus;
 //mod test_3;
 mod proto;
 mod energy;
+mod encode;
 
 //#[cfg(test)]
 mod tests;
@@ -69,7 +70,10 @@ fn main() {
 			tests::interactive::run(7000);
 		}
 	}
+	
 	//test_miccos::run();
+
+	//test_reader();
 	
 
 	// <<<<< MOVE THIS TO CMN AND MAKE A FUNCTION FOR IT >>>>>
@@ -79,7 +83,30 @@ fn main() {
 	println!("\n====== Bismit: main() complete in: {}.{} seconds ======", t_sec, t_ms);
 }
 
+// fn test_reader() {
+// 	let mut mr = encode::IdxReader::new("data/train-images-idx3-ubyte");
 
+// 	let sdr_side = 28usize;
+
+// 	let mut vec1: Vec<u8> = std::iter::repeat(0).take(sdr_side * sdr_side).collect();
+
+// 	print!("\ntest_reader():\n");
+
+// 	for i in 0..10 {
+// 		mr.next(&mut vec1[..]);
+
+// 		print!("\nFrame {}:\n", i);
+
+// 		for pl in 0..sdr_side {
+// 			for pc in 0..sdr_side {
+// 				let idx = (pl * sdr_side) + pc;
+// 				print!(" {:02X}", vec1[idx]);
+// 			}
+// 			print!("\n");
+// 		}
+// 	}
+
+// }
 
 
 
