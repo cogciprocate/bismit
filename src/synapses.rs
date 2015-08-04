@@ -59,37 +59,25 @@ pub struct Synapses {
 }
 
 impl Synapses {
-	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, den_kind: DendriteKind, cell_kind: ProtocellKind, 
-					protoregion: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl) -> Synapses {
-
+	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, 
+					den_kind: DendriteKind, cell_kind: ProtocellKind, protoregion: &Protoregion, 
+					axons: &Axons, aux: &Aux, ocl: &Ocl
+	) -> Synapses {
 		let syns_per_tuft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
 		assert!(dims.per_tuft_l2() as u8 == syns_per_tuft_l2);
-
-		//let syns_per_slc = dims.columns() << dims.per_tuft_l2_left().expect("synapses.rs");
 		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
-		//let syns_per_den_l2: u8 = protocell.syns_per_den_l2;
+		let syn_reach = cmn::SYNAPSE_REACH_GEO as i8;
 
-		//let dens_per_tuft: u32 = 1 << protocell.dens_per_tuft_l2 as u32;
+		let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, protocell.dens_per_tuft_l2, dims.clone());
 
 		//let slc_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl); // BRING THIS BACK
-
-		let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl);
-		//let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
+		//let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let mut src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
-
-		let syn_reach = cmn::SYNAPSE_REACH_GEO as i8;
 		let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach, ocl); 
 		let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
-
-
-		// SRC_IDX_CACHE
-		// let area_dens = (dims.tufts() * dens_per_tuft) as usize;
-		// let src_idx_cache = Vec::with_capacity(dens_per_tuft as usize);
-		// for i in 0..area_dens {	src_idx_cache.push(Box::new(BTreeSet::new())); }
-		let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, protocell.dens_per_tuft_l2, dims.clone());
-
 
 		// KERNELS
 		let dst_src_slc_id_tufts = protoregion.dst_src_slc_id_tufts(layer_name);
@@ -110,7 +98,6 @@ impl Synapses {
 				//ocl.new_kernel("syns_cycle_simple_vec4", 
 				//ocl.new_kernel("syns_cycle_wow", 
 				ocl.new_kernel("syns_cycle_wow_vec4", 
-					//WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize / 2, dims.u_size() as usize / 2))
 					WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					.arg_env(&axons.states)
@@ -125,40 +112,6 @@ impl Synapses {
 					.arg_env(&states)
 			))
 		}
-
-		// for syn_tuft_i in 0..dst_src_slc_id_tufts.len() {
-		// 	kernels.push(Box::new(
-		// 		ocl.new_kernel("syns_cycle_2d_workgroup_optimized", 
-		// 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
-		// 			.lws(WorkSize::ThreeDim(1, 16, 16 as usize)) // TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
-		// 			//WorkSize::ThreeDim(dims.columns() as usize, 1 as usize, dims.depth() as usize))
-		// 			//WorkSize::TwoDim(dims.columns() as usize, dims.depth() as usize))
-		// 			//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
-		// 			.arg_env(&axons.states)
-		// 			.arg_env(&src_col_v_offs)
-		// 			.arg_env(&src_slc_ids)
-		// 			//.arg_env(&strengths)
-		// 			.arg_scl(syn_tuft_i as u32)
-		// 			.arg_scl(syns_per_tuft_l2)
-		// 			.arg_env(&aux.ints_0)
-		// 			//.arg_env(&aux.ints_1)
-		// 			.arg_env(&states)
-		// 	))
-		// }
-
-		//println!("\n### Defining kern_regrow with len: {} ###", dims.depth() as usize * dims as usize);
-
-		/*let mut kern_regrow = ocl.new_kernel("syns_regrow", 
-			WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
-			//.lws(WorkSize::TwoDim(1 as usize, wg_size as usize))
-			.arg_env(&strengths)
-			.arg_scl(syns_per_den_l2 as u32)
-			.arg_scl_named(0u32, "rnd")
-			//.arg_env(&aux.ints_0)
-			//.arg_env(&aux.ints_1)
-			.arg_env(&src_col_v_offs)
-			.arg_env(&src_slc_ids)
-		;*/
 
 		let mut syns = Synapses {
 			layer_name: layer_name,
@@ -185,8 +138,6 @@ impl Synapses {
 		};
 
 		syns.grow(true);
-		//syns.init_src_idx_cache(dens_per_tuft);
-
 		//syns.refresh_slc_pool();
 
 		syns
@@ -208,11 +159,7 @@ impl Synapses {
 		self.src_slc_ids.read();
 		self.src_col_v_offs.read();
 
-
-		//let syns_per_slc = self.dims.per_slc() as usize;
-		//let tufts_per_cel = self.dims.tufts_per_cel() as usize;
 		let syns_per_layer_tuft = self.dims.per_slc_per_tuft() as usize * self.dims.depth() as usize;
-		//let slc_ids = self.protoregion.slc_ids(vec!(self.layer_name)).clone();
 		let dst_src_slc_id_tufts = self.dst_src_slc_id_tufts.clone();
 		let mut src_tuft_i = 0usize;
 
@@ -220,8 +167,6 @@ impl Synapses {
 			assert!(src_slc_ids.len() > 0, "Synapses must have at least one source slice.");
 			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, 
 				"cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
-
-			//if init && DEBUG_GROW { }
 
 			let syn_reach = cmn::SYNAPSE_REACH_GEO as i8;
 			let src_slc_id_range: Range<usize> = Range::new(0, src_slc_ids.len());
@@ -256,20 +201,12 @@ impl Synapses {
 				src_slc_ids: &Vec<u8>,
 				init: bool,
 	) {
-		//let src_slc_idx_range: Range<usize> = Range::new(0, src_slc_ids.len());
-		//let src_col_offs_range: Range<i8> = Range::new(-127, 127);
-		//let strength_init_range: Range<i8> = Range::new(-3, 4);
-
-		//let src_slc_id
-		//let src_col_x_off
-		//let strength
 
 		// DEBUG
 			//let mut print_str: String = String::with_capacity(10); 
 			//let mut tmp_str = format!("[({})({})({})=>", self.src_slc_ids[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
 			//print_str.push_str(&tmp_str);
 
-		//for i in 0..200 {
 		loop {
 			let old_ofs = AxnOfs { 
 				slc: self.src_slc_ids[syn_idx], 
@@ -293,7 +230,6 @@ impl Synapses {
 				break;
 			} else {
 				//print_str.push_str("^"); // DEBUG
-				//print!("^");
 			}
 		}
 
@@ -306,24 +242,6 @@ impl Synapses {
 			// }
 	}
 
-	// NEEDS SERIOUS OPTIMIZATION
-	// Cache and sort by axn_idx (pre_compute, keep seperate list) for each dendrite
-	// fn unique_src_addr_old(&self, syn_idx: usize) -> bool {
-	// 	let syns_per_den_l2 = self.protocell.syns_per_den_l2;
-	// 	let syn_idx_den_init: usize = (syn_idx >> syns_per_den_l2) << syns_per_den_l2;
-	// 	let syn_idx_den_n: usize = syn_idx_den_init + (1 << syns_per_den_l2);
-
-	// 	for i in syn_idx_den_init..syn_idx_den_n {
-	// 		if (self.src_slc_ids[syn_idx] == self.src_slc_ids[i]) 
-	// 			&& (self.src_col_v_offs[syn_idx] == self.src_col_v_offs[i])
-	// 			&& (i != syn_idx)
-	// 		{
-	// 			return false;
-	// 		}
-	// 	}
-
-	// 	true
-	// }
 
 	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
 	pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
@@ -357,10 +275,6 @@ impl Synapses {
 	}
 
 	pub fn regrow(&mut self) {
-		//let rnd = self.rng.gen::<u32>();
-		//self.kern_regrow.set_arg_scl_named("rnd", rnd);
-		//self.kern_regrow.enqueue();
-
 		self.grow(false);
 	}
 
@@ -378,30 +292,6 @@ impl Synapses {
 	pub fn dims(&self) -> &CorticalDimensions {
 		&self.dims
 	}
-
-	// fn init_src_idx_cache(&mut self, dens_per_tuft: u32) {
-	// 	let area_dens = (self.dims.tufts() * dens_per_tuft) as usize;
-	// 	//let syns_per_den = 1 << self.protocell.syns_per_den_l2;
-	// 	//print!("\n##### INIT_SRC_IDX_CACHE(): area_dens = {}", area_dens);
-
-	// 	for i in 0..area_dens {
-	// 		// let syn_idz = i << self.protocell.syns_per_den_l2;
-	// 		// let syn_idn = syn_idz + syns_per_den;
-	// 		// let sr = syn_idz..syn_idn;
-
-	// 		// let slc_ids = self.src_slc_ids[sr.clone()];
-	// 		// let u_offs = self.src_col_u_offs[sr.clone()];
-	// 		// let v_offs = self.src_col_v_offs[sr.clone()];
-
-	// 		// let mut idxs: BTreeSet<u32> = BTreeSet::new();
-
-	// 		// for j in 0..syns_per_den {
-
-	// 		// }
-
-	// 		self.src_idx_cache.push(Box::new(BTreeSet::new()));
-	// 	}
-	// }
 }
 
 
