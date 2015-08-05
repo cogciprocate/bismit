@@ -19,15 +19,13 @@ use axons::{ Axons };
 use cortical_area:: { Aux };
 
 
-/* Synapses: Smallest and most numerous unit in the cortex - the soldier behind it all
-	- TODO:
-		- [high priority] Testing: 
-			- Top priority is checking for uniqueness and correct distribution frequency among src_slcs and cols
+//	Synapses: Smallest and most numerous unit in the cortex - the soldier at the bottom
+// 		- TODO:
+// 		- [high priority] Testing: 
+// 			- [INCOMPLETE] Check for uniqueness and correct distribution frequency among src_slcs and cols
+// 		- [low priority] Optimization:
+// 			- [COMPLETE] Obviously grow() and it's ilk need a lot of work
 
-		- [low priority] Optimization:
-			- Obviously grow() and it's ilk need a lot of work
-
-*/
 
 const DEBUG_NEW: bool = true;
 const DEBUG_GROW: bool = true;
@@ -357,155 +355,3 @@ mod tests {
 
 	}
 }
-
-// fn unique_src_addr_old(&self, syn_idx: usize) -> bool {
-// 	let syns_per_den_l2 = self.protocell.syns_per_den_l2;
-// 	let syn_idx_den_init: usize = (syn_idx >> syns_per_den_l2) << syns_per_den_l2;
-// 	let syn_idx_den_n: usize = syn_idx_den_init + (1 << syns_per_den_l2);
-
-// 	for i in syn_idx_den_init..syn_idx_den_n {
-// 		if (self.src_slc_ids[syn_idx] == self.src_slc_ids[i]) 
-// 			&& (self.src_col_v_offs[syn_idx] == self.src_col_v_offs[i])
-// 			&& (i != syn_idx)
-// 		{
-// 			return false;
-// 		}
-// 	}
-
-// 	true
-// }
-
-
-
-/*	SYNAPSES::GROW(): This whole thing needs a massive amount of reworking
-			- We no longer have one contiguous space
-			- Tons of info in self.protocell we could use instead of protoregion calls
-				- Look towards depricating calls to protoregion
-*/
-/*fn grow_old(&mut self, init: bool) {
-	if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
-		print!("\nRG:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:(..)(..)(..)]\n", self.den_kind);
-	}
-
-	assert!(
-		(self.src_col_v_offs.dims().per_slc() == self.src_slc_ids.dims().per_slc()) 
-		&& ((self.src_slc_ids.dims().per_slc() == (self.dims().per_slc()))), 
-		"[cortical_area::Synapses::init(): dims.columns() mismatch]"
-	);
-
-	self.strengths.read();
-	self.src_slc_ids.read();
-	self.src_col_v_offs.read();
-
-	let syns_per_slc = self.dims.per_slc();
-	let layer_name = self.layer_name;
-	// CLEAN THIS UP A BIT SOMEHOW...
-	let layer = self.protoregion.get_layer(layer_name).expect("Synapses::grow()::emsg1").clone();
-
-	let src_slc_ids = self.src_slc_ids(layer_name, &layer);
-
-	let slc_ids = self.protoregion.slc_ids(vec!(layer_name)).clone();
-	let src_slc_ids_len: usize = src_slc_ids.len();
-
-	assert!(src_slc_ids_len > 0, "Synapses must have at least one source slc");
-
-	//let kind_base_slc_pos = layer.kind_base_slc_pos; // BASED ON OLD SYSTEM
-	let src_slc_idx_range: Range<usize> = Range::new(0, src_slc_ids_len);
-	let src_col_offs_range: Range<i8> = Range::new(-126, 127);
-	let strength_init_range: Range<i8> = Range::new(-3, 4);
-	
-	assert!(src_slc_ids_len <= (self.dims.per_cel()) as usize, "cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
-
-	if init && DEBUG_GROW {
-		print!("\n#####    syns.init(): \"{}\" ({:?}): slc_ids: {:?}, src_slc_ids: {:?}", layer_name, self.den_kind, slc_ids, src_slc_ids);
-	}
-
-	// LOOP THROUGH ROWS (WITHIN LAYER) 
-	for slc_pos in 0..layer.depth {
-
-		let ei_start = syns_per_slc as usize * slc_pos as usize;
-
-		let ei_end = ei_start + syns_per_slc as usize;
-
-		if init && DEBUG_GROW {
-			print!("\n   Row {}: syns_per_slc:{}, ei_start:{}, ei_end:{}, src_slc_ids:{:?}", slc_pos, syns_per_slc, ei_start, ei_end, src_slc_ids);
-		}
-
-		// LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) 
-		for i in ei_start..ei_end {
-			if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
-
-				self.regrow_syn(i, &src_slc_idx_range, &src_col_offs_range,
-					&strength_init_range, &src_slc_ids, init);
-
-				//self.src_slc_ids[i] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
-				//self.src_col_v_offs[i] = src_col_offs_range.ind_sample(&mut self.rng);
-				//self.strengths[i] = (self.src_col_v_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
-			}
-		}
-	}
-
-	self.strengths.write();
-	self.src_slc_ids.write();
-	self.src_col_v_offs.write();
-}*/
-
-
-
-
-
-
-
-
-
-
-
-
-		/* LOOP THROUGH ALL LAYERS */
-		/*for (&layer_name, layer) in self.protoregion.layers().clone().iter() {
-			let src_slc_ids = match self.src_slc_ids(layer_name, layer) {
-				Some(ss_ids) => ss_ids,
-				None 		=> continue,
-			};
-
-			let slc_ids = self.protoregion.slc_ids(vec!(layer_name)).clone();
-			let src_slc_ids_len: usize = src_slc_ids.len();
-
-			assert!(src_slc_ids_len > 0, "Synapses must have at least one source slc");
-
-			let kind_base_slc_pos = layer.kind_base_slc_pos;
-			let src_slc_idx_range: Range<usize> = Range::new(0, src_slc_ids_len);
-			let src_col_offs_range: Range<i8> = Range::new(-126, 127);
-			let strength_init_range: Range<i8> = Range::new(-3, 4);
-			
-			assert!(src_slc_ids_len <= (self.dims.per_cel().expect("synapses.rs")) as usize, "cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
-
-			if init && DEBUG_GROW {
-				print!("\n#####    syns.init(): \"{}\" ({:?}): slc_ids: {:?}, src_slc_ids: {:?}", layer_name, self.den_kind, slc_ids, src_slc_ids);
-			}
-
-			/* LOOP THROUGH ROWS (WITHIN LAYER) */
-			for slc_pos in kind_base_slc_pos..(kind_base_slc_pos + layer.depth) {
-
-				let ei_start = syns_per_slc as usize * slc_pos as usize;
-
-				let ei_end = ei_start + syns_per_slc as usize;
-
-				if init && DEBUG_GROW {
-					print!("\n   Row {}: syns_per_slc:{}, ei_start:{}, ei_end:{}, src_slc_ids:{:?}", slc_pos, syns_per_slc, ei_start, ei_end, src_slc_ids);
-				}
-
-				/* LOOP THROUGH ENVOY VECTOR ELEMENTS (WITHIN ROW) */
-				for i in ei_start..ei_end {
-					if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
-
-						self.regrow_syn(i, &src_slc_idx_range, &src_col_offs_range,
-							&strength_init_range, &src_slc_ids, init);
-
-						//self.src_slc_ids[i] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
-						//self.src_col_v_offs[i] = src_col_offs_range.ind_sample(&mut self.rng);
-						//self.strengths[i] = (self.src_col_v_offs[i] >> 6) * strength_init_range.ind_sample(&mut self.rng);
-					}
-				}
-			}
-		}*/

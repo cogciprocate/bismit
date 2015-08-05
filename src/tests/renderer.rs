@@ -91,7 +91,7 @@ impl Renderer {
 
 				print_buf.push_str(cmn::BGC_DEFAULT);
 				print_buf.push_str(cmn::C_DEFAULT);
-				print_buf.push(' ');
+				//print_buf.push(' ');
 			}
 
 			margin.push(' ');

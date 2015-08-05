@@ -121,7 +121,7 @@ impl Cortex {
 		let cols = self.area(ao_name).dims.columns(); // DEBUG PURPOSES
 		print!("\nArea: '{}' - out_start_ao: {}, out_end_ao: {}, cols: {}", ao_name, out_start_ao, out_end_ao, cols);
 
-		cmn::render_sdr(out_slc_ao, None, None, None, &self.area(ao_name).protoregion().slc_map(), true, cols);
+		//cmn::render_sdr(out_slc_ao, None, None, None, &self.area(ao_name).protoregion().slc_map(), true, cols);
 
 	}
 

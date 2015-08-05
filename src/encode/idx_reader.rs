@@ -4,6 +4,7 @@ use std::io::prelude::*;
 use std::io::{ BufReader };
 use std::path::{ Path };
 use std::iter;
+use num::{ Float };
 
 use ocl::{ CorticalDimensions };
 
@@ -14,10 +15,13 @@ pub struct IdxReader {
 	images_count: usize,
 	image_height: usize, 
 	image_width: usize,
+	image_len: usize,
+	ttl_header_len: usize,
 	margins: Margins,
 	image_counter: usize,
 	file_path: String,
 	file_reader: BufReader<File>,
+	image_buffer: Vec<u8>,
 	// len_file: usize,
 	// len_image: usize,
 	//dim_sizes: Vec<usize>,
@@ -53,6 +57,7 @@ impl IdxReader {
 		    Ok(bytes) => (), //print!("\n{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
 		}
 		
+		let ttl_header_len = 4 + (magic_dims * 4);
 		let mut dim_sizes: Vec<usize> = iter::repeat(0).take(magic_dims).collect();
 
 		for i in 0..magic_dims {
@@ -73,13 +78,23 @@ impl IdxReader {
     	let margin_top = margins_vert / 2;
     	let margin_bottom = margins_vert - margin_top;
 
-		print!("\ndim_sizes: {:?}", dim_sizes);
+    	//let image_buffer: Vec<u8> = iter::repeat(0).take(dim_sizes[1] * dim_sizes[2]).collect();
+    	let mut image_buffer: Vec<u8> = Vec::with_capacity(dim_sizes[0] * dim_sizes[1] * dim_sizes[2]);
+    	
+    	match reader.read_to_end(&mut image_buffer) {
+    		Err(why) => panic!("\ncouldn't read '{}': {}", &path_string, Error::description(&why)),
+		    Ok(bytes) => print!("\n{}: {} bytes read.", display, bytes),
+		}
+
+		print!("\nIDXREADER: initialized with dimensions: {:?}", dim_sizes);
 
 	    IdxReader {
 	    	ganglion_dims: ganglion_dims,
 	    	images_count: dim_sizes[0],
 	    	image_height: dim_sizes[1],
 	    	image_width: dim_sizes[2],
+	    	image_len: dim_sizes[1] * dim_sizes[2],
+	    	ttl_header_len: ttl_header_len,
 	    	margins: Margins { 
 	    		left: margin_left, 
 	    		right: margin_right, 
@@ -90,29 +105,159 @@ impl IdxReader {
 	    	//file: file,
 	    	file_path: format!("{}", path.display()),
 	    	file_reader: reader,
+	    	image_buffer: image_buffer,
 	    	//dim_sizes: dim_sizes,
     	}
     }
 
     // NEXT(): TODO - ROTATE IMAGE AND CORRECT ASPECT RATIO
     pub fn next(&mut self, ganglion_image: &mut [u8]) {
-    	assert!((self.image_height * self.image_width) <= ganglion_image.len(), 
+    	assert!(ganglion_image.len() == self.ganglion_dims.columns() as usize);
+    	assert!((self.image_len) <= ganglion_image.len(), 
     		"Ganglion vector size must be greater than or equal to IDX image size");
 
-    	assert!(ganglion_image.len() == self.ganglion_dims.columns() as usize);
-
-    	
-
-
-
-  //   	let mut ganglion_image_slice = &mut ganglion_image[margin..(margin + self.len_image)];
-  
-  //   	match self.file_reader.read(ganglion_image_slice) {
+  //   	match self.file_reader.read(&mut self.image_buffer[..]) {
 		//     Err(why) => panic!("\ncouldn't read '{}': {}", &self.file_path, Error::description(&why)),
-		//     Ok(bytes) => (), //print!("\n{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
+		//     Ok(bytes) => assert!(bytes == self.image_buffer.len(), "\n bytes read != buffer length"), 
+		//     	//print!("\n{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
 		// }
+
+		let img_idz = self.image_counter * self.image_len;
+		let img_idn = img_idz + self.image_len;
+
+		self.image_pixel_to_hex(&self.image_buffer[img_idz..img_idn], ganglion_image);
+
+		self.image_counter += 1;
 	}
+
+
+	pub fn image_pixel_to_hex(&self, source: &[u8], target: &mut [u8]) {
+
+		let v_size = self.ganglion_dims.v_size() as usize;
+		let u_size = self.ganglion_dims.u_size() as usize;
+
+		//let margins_horiz = self.ganglion_dims.u_size() as usize - self.image_width;
+		//let margins_vert =  - self.image_height;
+
+		for v_id in 0..v_size {
+			for u_id in 0..u_size {
+				let (x, y) = coord_hex_to_pixel(v_size, v_id, u_size, u_id, 
+					self.image_height as usize, self.image_width as usize);
+
+				//let y = self.image_height - y_inv;
+
+				let mut src_idx = (y * self.image_width as usize) + x;
+				
+				//if src_idx >= source.len() { src_idx = 0 }; // ***** REMOVE
+
+				let tar_idx = (v_id * u_size) + u_id;
+
+				target[tar_idx] = source[src_idx];
+			}
+		}
+	}
+
+	// pub fn image_pixel_to_hex_crude(&self, source: &[u8], target: &mut [u8]) {
+	// 	for v in 0..self.image_height {
+	// 		for u in 0..self.image_width {
+	// 			let src_idx = (v * self.image_width as usize) + u;
+	// 			let tar_idx = ((v + self.margins.top as usize) * self.ganglion_dims.u_size() as usize) 
+	// 				+ (u + self.margins.left as usize);
+	// 			target[tar_idx] = source[src_idx];
+	// 		}
+	// 	}
+	// }
 }
+
+
+const HEX_SIDE: f64 = 0.4f64;
+//const C1_OFS: f64 = 0f64 * HEX_SIDE;
+//const C2_OFS: f64 = 0f64 * HEX_SIDE;	
+//const V_OFS: f64 = 0f64;
+//const W_OFS: f64 = 0f64;
+const Y_OFS: f64 = 36f64 * HEX_SIDE;
+const X_OFS: f64 = 36f64 * HEX_SIDE;
+
+const SQRT_3: f64 = 1.73205080756f64;
+
+
+// V_ID: Index of v ... implied to be inverted
+// V: Geometric 
+
+pub fn coord_hex_to_pixel(v_size: usize, v_id: usize, u_size: usize, u_id: usize, 
+				y_size: usize, x_size: usize,
+) -> (usize, usize) {
+	let u = u_id as f64;
+	let u_inv = 0f64 - u;
+	let v = v_id as f64;
+	//let v_inv = 0f64 - v;
+	//let w = u_inv + v_inv;
+	let w_inv = v + u;
+	//let s = HEX_SIDE;
+
+	//let c1 = w_inv - C1_OFS;
+	//let c2 = u_inv - C2_OFS;
+
+	let mut x = w_inv * 1.5f64 * HEX_SIDE;
+	let mut y = (u_inv + (w_inv / 2f64)) * SQRT_3 * HEX_SIDE;
+
+	//let mut y = u * 1.5f64 * s;
+	//let mut x = (v_inv + (u / 2f64)) * SQRT_3 * s;
+
+	y += Y_OFS;
+	x -= X_OFS;
+	
+	//x = x_size as f64 - x;
+	//y = y_size as f64 - y;
+
+	if y < 0f64 || y >= y_size as f64 || x < 0f64 || x >= x_size as f64 { 
+		y = 0f64;
+		x = 0f64;
+	}
+
+	(x as usize, y as usize)
+}
+
+// function hex_to_pixel(hex):
+	//     x = size * 3/2 * hex.q
+	//     y = size * sqrt(3) * (hex.r + hex.q/2)
+	//     return Point(x, y)
+
+// pub fn point_pixel_to_hex_incomplete(x_int: usize, y_int: usize) -> (usize, usize) {
+// 	let sqrt3 = 3f64.sqrt();
+
+// 	let edge_size = 0.5f64;
+// 	let hex_width = edge_size * 2f64;
+// 	let height = (sqrt3 / 2f64) * hex_width;
+
+// 	let x = (x_int as f64 - edge_size) / hex_width;
+// 	let y = y_int as f64;	
+
+// 	(0, 0)
+// }
+
+
+// public Coord PointToCoord(double x, double z) {
+// 	x = (x - halfHexWidth) / hexWidth;
+
+// 	double t1 = z / hexRadius, t2 = Math.Floor(x + t1);
+// 	double r = Math.Floor((Math.Floor(t1 - x) + t2) / 3); 
+// 	double q = Math.Floor((Math.Floor(2 * x + 1) + t2) / 3) - r;
+
+// 	return new Coord((int) q, (int) r); 
+// }
+
+// function pixel_to_hex(x, y):
+//     q = x * 2/3 / size
+//     r = (-x / 3 + sqrt(3)/3 * y) / size
+//     return hex_round(Hex(q, r))
+
+
+// function hex_to_pixel(hex):
+//     x = size * 3/2 * hex.q
+//     y = size * sqrt(3) * (hex.r + hex.q/2)
+//     return Point(x, y)
+
 
 struct Margins {
 	left: usize,
@@ -151,3 +296,4 @@ struct Margins {
 // The data is stored like in a C array, i.e. the index in the last dimension changes the fastest. 
   
 // Happy hacking.
+

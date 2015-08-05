@@ -51,7 +51,7 @@ pub fn define_protoregions() -> Protoregions {
 		.layer("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
 
-		.layer("iii", 4, layer::TEMPORAL_ASSOCIATIVE, 
+		.layer("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
 			Protocell::new_pyramidal(2, 5, vec!["iii"], 900).apical(vec!["eff_in"]))
 
 		.freeze()
@@ -62,7 +62,7 @@ pub fn define_protoregions() -> Protoregions {
 }
 
 pub fn define_protoareas() -> Protoareas {
-	let area_side = 32 as u32;
+	let area_side = 48 as u32;
 
 	let mut protoareas = Protoareas::new()
 		.area("v1", area_side, area_side, Sensory, 
@@ -376,7 +376,7 @@ pub fn run(autorun_iters: i32) -> bool {
 				print!("\n\nAXON SPACE:\n");
 				let axn_space_len = cortex.area(&area_name).axns.states.vec.len();
 
-				cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
+				//cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
 			}
 
 			i += 1;
