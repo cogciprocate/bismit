@@ -41,13 +41,11 @@ pub struct Ocl {
 }
 
 impl Ocl {
-	pub fn new(build_options: BuildOptions) -> Ocl {
-		let path_string = format!("{}/{}/{}", env!("P"), "bismit/src", KERNELS_FILE_NAME);
-		let kern_file_path = std::path::Path::new(&path_string);
-		let mut kern_str: Vec<u8> = Vec::new();
-		let kern_file = File::open(kern_file_path).unwrap().read_to_end(&mut kern_str);
-		let kern_c_str = ffi::CString::new(kern_str).ok().expect("Ocl::new(): kern_c_str");
-
+	pub fn new(mut build_options: BuildOptions) -> Ocl {
+		//format!("{}/{}/{}", env!("P"), "bismit/cl", KERNELS_FILE_NAME)
+		build_options.kern(KERNELS_FILE_NAME.to_string());
+		let kern_c_str = parse_kernel_files(&build_options);
+		
 		let platform = new_platform();
 		let devices: [cl_device_id; 2] = new_device(platform);
 		let device: cl_device_id = devices[GPU_DEVICE];
@@ -197,6 +195,19 @@ impl Ocl {
 
 		max_work_group_size as u32
 	}
+}
+
+
+fn parse_kernel_files(build_options: &BuildOptions) -> ffi::CString {
+	let mut kern_str: Vec<u8> = Vec::new();
+
+	for f_n in build_options.kernel_file_names().iter().rev() {
+		let file_name = format!("{}/{}/{}", env!("P"), "bismit/cl", f_n);
+		let kern_file_path = std::path::Path::new(&file_name);
+		let kern_file = File::open(kern_file_path).unwrap().read_to_end(&mut kern_str);
+	}
+
+	ffi::CString::new(kern_str).ok().expect("Ocl::new(): kern_c_str")
 }
 
 

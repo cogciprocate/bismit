@@ -1,6 +1,7 @@
 pub struct BuildOptions {
 	options: Vec<BuildOption>,
 	string: String,
+	kernel_file_names: Vec<String>,
 }
 
 impl BuildOptions {
@@ -8,6 +9,7 @@ impl BuildOptions {
 		let mut bo = BuildOptions {
 			options: Vec::with_capacity(1 << 5),
 			string: String::with_capacity(1 << 11),
+			kernel_file_names: Vec::with_capacity(20),
 		};
 
 		bo.str(cl_options)
@@ -28,6 +30,10 @@ impl BuildOptions {
 		self
 	}
 
+	pub fn kern(&mut self, file_name: String) {
+		self.kernel_file_names.push(file_name);
+	}
+
 	pub fn as_slc(&mut self) -> &str {
 		&self.string
 	}
@@ -40,6 +46,9 @@ impl BuildOptions {
 		self.string
 	}
 
+	pub fn kernel_file_names(&self) -> &Vec<String> {
+		&self.kernel_file_names
+	}
 }
 
 

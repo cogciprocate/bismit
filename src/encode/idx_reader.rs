@@ -17,7 +17,7 @@ pub struct IdxReader {
 	image_width: usize,
 	image_len: usize,
 	ttl_header_len: usize,
-	margins: Margins,
+	margins: Margins, // DEPRICATE
 	image_counter: usize,
 	file_path: String,
 	file_reader: BufReader<File>,
@@ -95,7 +95,7 @@ impl IdxReader {
 	    	image_width: dim_sizes[2],
 	    	image_len: dim_sizes[1] * dim_sizes[2],
 	    	ttl_header_len: ttl_header_len,
-	    	margins: Margins { 
+	    	margins: Margins { 	// DEPRICATE
 	    		left: margin_left, 
 	    		right: margin_right, 
 	    		top: margin_top,
@@ -110,7 +110,6 @@ impl IdxReader {
     	}
     }
 
-    // NEXT(): TODO - ROTATE IMAGE AND CORRECT ASPECT RATIO
     pub fn next(&mut self, ganglion_image: &mut [u8]) {
     	assert!(ganglion_image.len() == self.ganglion_dims.columns() as usize);
     	assert!((self.image_len) <= ganglion_image.len(), 
@@ -132,51 +131,43 @@ impl IdxReader {
 
 
 	pub fn image_pixel_to_hex(&self, source: &[u8], target: &mut [u8]) {
-
 		let v_size = self.ganglion_dims.v_size() as usize;
 		let u_size = self.ganglion_dims.u_size() as usize;
-
-		//let margins_horiz = self.ganglion_dims.u_size() as usize - self.image_width;
-		//let margins_vert =  - self.image_height;
 
 		for v_id in 0..v_size {
 			for u_id in 0..u_size {
 				let (x, y) = coord_hex_to_pixel(v_size, v_id, u_size, u_id, 
 					self.image_height as usize, self.image_width as usize);
-
-				//let y = self.image_height - y_inv;
-
-				let mut src_idx = (y * self.image_width as usize) + x;
 				
-				//if src_idx >= source.len() { src_idx = 0 }; // ***** REMOVE
-
 				let tar_idx = (v_id * u_size) + u_id;
+				let src_idx = (y * self.image_width as usize) + x;
 
 				target[tar_idx] = source[src_idx];
+				//target[tar_idx] = (x != 0 || y != 0) as u8; // SHOW INPUT SQUARE
 			}
 		}
 	}
 
-	// pub fn image_pixel_to_hex_crude(&self, source: &[u8], target: &mut [u8]) {
-	// 	for v in 0..self.image_height {
-	// 		for u in 0..self.image_width {
-	// 			let src_idx = (v * self.image_width as usize) + u;
-	// 			let tar_idx = ((v + self.margins.top as usize) * self.ganglion_dims.u_size() as usize) 
-	// 				+ (u + self.margins.left as usize);
-	// 			target[tar_idx] = source[src_idx];
-	// 		}
-	// 	}
-	// }
+	pub fn image_pixel_to_hex_crude(&self, source: &[u8], target: &mut [u8]) {
+		for v in 0..self.image_height {
+			for u in 0..self.image_width {
+				let src_idx = (v * self.image_width as usize) + u;
+				let tar_idx = ((v + self.margins.top as usize) * self.ganglion_dims.u_size() as usize) 
+					+ (u + self.margins.left as usize);
+				target[tar_idx] = source[src_idx];
+			}
+		}
+	}
 }
 
 
-const HEX_SIDE: f64 = 0.4f64;
+const HEX_SIDE: f64 = 0.5f64;
 //const C1_OFS: f64 = 0f64 * HEX_SIDE;
 //const C2_OFS: f64 = 0f64 * HEX_SIDE;	
 //const V_OFS: f64 = 0f64;
 //const W_OFS: f64 = 0f64;
-const Y_OFS: f64 = 36f64 * HEX_SIDE;
-const X_OFS: f64 = 36f64 * HEX_SIDE;
+const Y_OFS: f64 = 29f64 * HEX_SIDE;
+const X_OFS: f64 = 43f64 * HEX_SIDE;
 
 const SQRT_3: f64 = 1.73205080756f64;
 
@@ -184,6 +175,7 @@ const SQRT_3: f64 = 1.73205080756f64;
 // V_ID: Index of v ... implied to be inverted
 // V: Geometric 
 
+// COORD_HEX_TO_PIXEL(): Eventually either move this to GPU or at least use SIMD
 pub fn coord_hex_to_pixel(v_size: usize, v_id: usize, u_size: usize, u_id: usize, 
 				y_size: usize, x_size: usize,
 ) -> (usize, usize) {
@@ -210,12 +202,17 @@ pub fn coord_hex_to_pixel(v_size: usize, v_id: usize, u_size: usize, u_id: usize
 	//x = x_size as f64 - x;
 	//y = y_size as f64 - y;
 
-	if y < 0f64 || y >= y_size as f64 || x < 0f64 || x >= x_size as f64 { 
-		y = 0f64;
-		x = 0f64;
-	}
+	let valid = (y >= 0f64 && y < y_size as f64 && x >= 0f64 && x < x_size as f64) as usize;
 
-	(x as usize, y as usize)
+	(x as usize * valid, y as usize * valid)
+}
+
+
+struct Margins {
+	left: usize,
+	right: usize,
+	top: usize,
+	bottom: usize,
 }
 
 // function hex_to_pixel(hex):
@@ -259,12 +256,6 @@ pub fn coord_hex_to_pixel(v_size: usize, v_id: usize, u_size: usize, u_id: usize
 //     return Point(x, y)
 
 
-struct Margins {
-	left: usize,
-	right: usize,
-	top: usize,
-	bottom: usize,
-}
 
 // THE IDX FILE FORMAT
 

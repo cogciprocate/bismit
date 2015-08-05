@@ -27,7 +27,8 @@ impl Cortex {
 
 		let hrz_demarc = protoregions[&Sensory].hrz_demarc();
 		let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", hrz_demarc as i32);
-		let build_options = cmn::build_options().add(hrz_demarc_opt);
+		let mut build_options = cmn::build_options().add(hrz_demarc_opt);
+		build_options.kern("filters.cl".to_string());
 
 		let ocl: ocl::Ocl = ocl::Ocl::new(build_options);
 
