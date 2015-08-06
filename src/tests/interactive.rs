@@ -53,8 +53,6 @@ pub fn define_protoregions() -> Protoregions {
 
 		.layer("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
 			Protocell::new_pyramidal(2, 5, vec!["iii"], 900).apical(vec!["eff_in"]))
-
-		.freeze()
 	;
 
 	cort_regs.add(sen);

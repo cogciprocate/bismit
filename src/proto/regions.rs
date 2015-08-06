@@ -56,6 +56,12 @@ impl Protoregions {
 	pub fn add(&mut self, pr: Protoregion) {
 		self.hash_map.insert(pr.kind.clone(), pr);
 	}
+
+	pub fn freeze(&mut self) {
+		for (prk, pr) in self.hash_map.iter_mut() {
+			pr.freeze();
+		}
+	}
 }
 
 impl<'b> Index<&'b ProtoregionKind> for Protoregions
@@ -370,9 +376,9 @@ impl Protoregion {
 
 		TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS
  	*/
-	pub fn freeze(mut self) -> Protoregion {
+	pub fn freeze(&mut self) {
 		if self.frozen {
-			return self;
+			return;
 		} else {
 			self.frozen = true;
 		}
@@ -473,7 +479,6 @@ impl Protoregion {
 
 		/* (6) MARVEL AT THE MOST CONVOLUTED FUNCTION EVER */
 		print!("\n");
-		self
 	}
 
 

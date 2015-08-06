@@ -11,6 +11,7 @@ pub use self::layer::{ Protolayer, ProtolayerKind, ProtoaxonKind };
 pub use self::cell::{ ProtocellKind, Protocell, DendriteKind, CellFlags };
 	pub use self::cell::ProtocellKind::{ Pyramidal, SpinyStellate, Inhibitory };
 
+pub mod filter;
 pub mod regions;
 pub mod areas;
 pub mod layer;

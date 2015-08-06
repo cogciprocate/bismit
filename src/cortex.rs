@@ -19,9 +19,11 @@ pub struct Cortex {
 }
 
 impl Cortex {
-	pub fn new(protoregions: Protoregions, protoareas: Protoareas) -> Cortex {
+	pub fn new(mut protoregions: Protoregions, protoareas: Protoareas) -> Cortex {
 		print!("\nInitializing Cortex... ");
-		let time_start = time::get_time();		
+		let time_start = time::get_time();
+
+		protoregions.freeze();
 
 		let mut areas = HashMap::new();
 
@@ -29,6 +31,7 @@ impl Cortex {
 		let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", hrz_demarc as i32);
 		let mut build_options = cmn::build_options().add(hrz_demarc_opt);
 		build_options.kern("filters.cl".to_string());
+		build_options.kern("bismit.cl".to_string());
 
 		let ocl: ocl::Ocl = ocl::Ocl::new(build_options);
 

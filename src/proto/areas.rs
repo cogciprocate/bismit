@@ -2,6 +2,7 @@ use std::collections::{ HashMap };
 
 use ocl::{ CorticalDimensions };
 use proto::regions::{ ProtoregionKind };
+use proto::filter::{ ProtoFilter };
 use cmn;
 
 
@@ -58,6 +59,7 @@ pub struct Protoarea {
 	pub dims: CorticalDimensions,
 	pub region_kind: ProtoregionKind,
 	pub afferent_areas: Option<Vec<&'static str>>,
+	//pub filters: Option<Vec<ProtoFilter>>,
 }
 
 //impl Copy for Protoarea {}

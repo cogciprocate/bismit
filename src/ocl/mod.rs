@@ -5,8 +5,9 @@ use std::io::{ Read };
 use std::fs::{ File };
 use std::ffi;
 use std::iter;
-use std::collections::{ HashMap };
+use std::collections::{ HashMap, HashSet };
 use std::fmt::{ Display };
+use std::error::{ Error };
 use num::{ self, Integer, FromPrimitive };
 use libc;
 
@@ -45,7 +46,7 @@ impl Ocl {
 		//format!("{}/{}/{}", env!("P"), "bismit/cl", KERNELS_FILE_NAME)
 		build_options.kern(KERNELS_FILE_NAME.to_string());
 		let kern_c_str = parse_kernel_files(&build_options);
-		
+
 		let platform = new_platform();
 		let devices: [cl_device_id; 2] = new_device(platform);
 		let device: cl_device_id = devices[GPU_DEVICE];
@@ -199,12 +200,28 @@ impl Ocl {
 
 
 fn parse_kernel_files(build_options: &BuildOptions) -> ffi::CString {
-	let mut kern_str: Vec<u8> = Vec::new();
+	let mut kern_str: Vec<u8> = Vec::with_capacity(10000);
+	let mut kern_history: HashSet<String> = HashSet::with_capacity(20);
 
 	for f_n in build_options.kernel_file_names().iter().rev() {
 		let file_name = format!("{}/{}/{}", env!("P"), "bismit/cl", f_n);
-		let kern_file_path = std::path::Path::new(&file_name);
-		let kern_file = File::open(kern_file_path).unwrap().read_to_end(&mut kern_str);
+
+		{
+			if kern_history.contains(&file_name) { continue; }
+			let kern_file_path = std::path::Path::new(&file_name);
+
+			let mut kern_file = match File::open(&kern_file_path) {
+				Err(why) => panic!("\nCouldn't open '{}': {}", &file_name, Error::description(&why)),
+				Ok(file) => file,
+			};
+
+			match kern_file.read_to_end(&mut kern_str) {
+	    		Err(why) => panic!("\ncouldn't read '{}': {}", &file_name, Error::description(&why)),
+			    Ok(bytes) => print!("\n{}: {} bytes read.", &file_name, bytes),
+			}
+		}
+
+		kern_history.insert(file_name);
 	}
 
 	ffi::CString::new(kern_str).ok().expect("Ocl::new(): kern_c_str")
