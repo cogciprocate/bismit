@@ -16,7 +16,6 @@ use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, 
 pub struct Cortex {
 	areas: HashMap<&'static str, Box<CorticalArea>>,
 	thal: Thalamus,
-	//ocl_context: OclContext,
 }
 
 impl Cortex {
@@ -25,17 +24,12 @@ impl Cortex {
 		let time_start = time::get_time();
 
 		protoregions.freeze();
-
 		let mut areas = HashMap::new();
-
 		let mut i = 0;
 
 		for (_, pa) in &protoareas {
 			let mut protoarea = pa.clone();
 			let protoregion = protoregions[&protoarea.region_kind].clone();
-
-			// let ocl_context = OclContext::new(None);
-			// let ocl: ocl::OclProgQueue = ocl::OclProgQueue::new(&ocl_context, Some(i));
 			
 			areas.insert(protoarea.name, Box::new(
 				CorticalArea::new(protoarea, protoregion, i)
@@ -53,12 +47,8 @@ impl Cortex {
 		println!("\n\n... Cortex initialized in: {}.{} seconds.", t_sec, t_ms);
 
 		Cortex {
-			//cortical_area: cortical_area,
-			//protoregions: protoregions,
-			//protoareas: protoareas,
 			areas: areas,
 			thal: thal,
-			//ocl: ocl, // GIVE TO THALAMUS
 		}
 	}
 

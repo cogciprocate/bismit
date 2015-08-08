@@ -59,6 +59,22 @@ impl CorticalArea {
 
 		let ocl_context: ocl::OclContext = OclContext::new(None);
 		let mut ocl: ocl::OclProgQueue = ocl::OclProgQueue::new(&ocl_context, Some(device_idx));
+		let mut build_options = gen_build_options(&protoarea, &protoregion);
+
+		// CUSTOM KERNELS
+		match protoarea.filters {
+			Some(ref protofilters) => {
+				for pf in protofilters.iter() {
+					match pf.cl_file_name() {
+						Some(ref clfn)  => build_options.add_kern_file(clfn.clone()),
+						None => (),
+					}
+				}
+			},
+			None => (),
+		};
+
+		ocl.build(build_options);
 
 		let dims = protoarea.dims.clone_with_depth(protoregion.depth_total())
 			.with_physical_increment(ocl.get_max_work_group_size());
@@ -66,8 +82,6 @@ impl CorticalArea {
 		print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", 
 			protoarea.name, dims.u_size(), dims.v_size(), dims.depth());
 		/*print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", name, 1 << dims.width_l2(), 1 << dims.height_l2(), dims.depth());*/
-
-		ocl.build(gen_build_options(&protoarea, &protoregion));
 
 		let emsg_psal = format!("{}: Primary Spatial Associative Layer not defined.", emsg);
 		let psal_name = protoregion.layer_with_flag(layer::SPATIAL_ASSOCIATIVE).expect(&emsg_psal).name();
@@ -88,7 +102,6 @@ impl CorticalArea {
 		let axns = Axons::new(dims, &protoregion, &ocl);
 
 		let aux_dims = CorticalDimensions::new(dims.u_size(), dims.v_size(), dims.depth(), 1, Some(dims.physical_increment()));
-		//let aux_dims = CorticalDimensions::new(dims.width_l2(), dims.height_l2(), dims.depth(), 7);
 		let aux = Aux::new(aux_dims, &ocl);
 
 		let mut pyrs_map = HashMap::new();

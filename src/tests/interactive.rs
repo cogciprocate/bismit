@@ -63,8 +63,8 @@ pub fn define_protoareas() -> Protoareas {
 	let area_side = 48 as u32;
 
 	let mut protoareas = Protoareas::new()
-		.area("v1", area_side, area_side, Sensory, Some(vec![
-			Protofilter::new("retina", Some("filters.cl")), Protofilter::new("retina", Some("filters.cl")) ]),
+		.area("v1", area_side, area_side, Sensory, 
+			Some(vec![Protofilter::new("retina", Some("filters.cl")),]),
 			//None
 			Some(vec!["b1"])
 		)

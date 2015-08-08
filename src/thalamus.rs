@@ -107,7 +107,8 @@ impl Thalamus {
 		let emsg = format!("cortex::Cortex::write_vec(): Invalid area name: {}", area_name);
 		let area = areas.get(area_name).expect(&emsg);
 
-		let ref region = self.protoregions[&ProtoregionKind::Sensory];
+		//let ref region = self.protoregions[&ProtoregionKind::Sensory];
+		let region = area.protoregion();
 		let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
 		
 		for slc in axn_slcs { 
