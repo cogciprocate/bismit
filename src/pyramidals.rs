@@ -8,7 +8,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
 use proto::regions::{ Protoregion, ProtoregionKind };
 use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
@@ -53,7 +53,7 @@ pub struct PyramidalCellularLayer {
 }
 // protocell: &Protocell,
 impl PyramidalCellularLayer {
-	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &Ocl
+	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &OclProgQueue
 	) -> PyramidalCellularLayer {
 
 		let axn_base_slcs = region.slc_ids(vec![layer_name]);
@@ -97,7 +97,7 @@ impl PyramidalCellularLayer {
 		}*/
 
 		
-		let kern_cycle = ocl.new_kernel("pyr_cycle", 
+		let kern_cycle = ocl.new_kernel("pyr_cycle".to_string(), 
 			WorkSize::OneDim(dims.depth() as usize * dims.columns() as usize))
 			.arg_env(&dens.states)
 			.arg_env(&dens.states_raw)
@@ -120,7 +120,7 @@ impl PyramidalCellularLayer {
 			.arg_env(&axons.states)
 		;*/
 
-		let kern_activate = ocl.new_kernel("pyr_activate",		 // <<<<< MOVE TO MCOL
+		let kern_activate = ocl.new_kernel("pyr_activate".to_string(),		 // <<<<< MOVE TO MCOL
 			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize));
 
 
@@ -130,7 +130,7 @@ impl PyramidalCellularLayer {
 		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", axn_idx_base);
 		assert!(axn_idx_base == axn_idz);
 
-		let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd", 
+		let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd".to_string(), 
 			WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 			.arg_env(&axons.states)
 			.arg_env(&preds)
@@ -186,7 +186,7 @@ impl PyramidalCellularLayer {
 		//println!("\n##### Pyramidals::init_kernels(): ssts_axn_idz: {}", ssts_axn_idz as u32);
 
 		//self.kern_activate.new_arg_envoy(Some(&ssts.soma()));
-		self.kern_activate.new_arg_envoy(Some(&mcols.cels_status));
+		self.kern_activate.new_arg_envoy(Some(&mcols.pred_totals));
 		self.kern_activate.new_arg_envoy(Some(&mcols.best_pyr_den_states));
 		self.kern_activate.new_arg_envoy(Some(&self.best_den_ids));
 		self.kern_activate.new_arg_envoy(Some(&self.dens.states));

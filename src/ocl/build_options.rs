@@ -20,17 +20,22 @@ impl BuildOptions {
 		self
 	}
 
-	pub fn opt(mut self, name: &'static str, val: i32) -> BuildOptions {
+	pub fn new_opt(mut self, name: &'static str, val: i32) -> BuildOptions {
 		self.options.push(BuildOption::new(name, val));
 		self
 	}
 
-	pub fn add(mut self, bo: BuildOption) -> BuildOptions {
+	pub fn opt(mut self, bo: BuildOption) -> BuildOptions {
 		self.options.push(bo);
 		self
 	}
 
-	pub fn kern(&mut self, file_name: String) {
+	pub fn kern_file(mut self, file_name: String) -> BuildOptions {
+		self.add_kern_file(file_name);
+		self
+	}
+
+	pub fn add_kern_file(&mut self, file_name: String) {
 		self.kernel_file_names.push(file_name);
 	}
 

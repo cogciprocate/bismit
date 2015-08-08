@@ -9,7 +9,7 @@ use std::fmt::{ Display };
 use std::collections::{ BTreeSet };
 
 use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
 use proto::regions::{ Protoregion, ProtoregionKind };
 use proto::layer::{ Protolayer, ProtolayerKind };
@@ -59,7 +59,7 @@ pub struct Synapses {
 impl Synapses {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, 
 					den_kind: DendriteKind, cell_kind: ProtocellKind, protoregion: &Protoregion, 
-					axons: &Axons, aux: &Aux, ocl: &Ocl
+					axons: &Axons, aux: &Aux, ocl: &OclProgQueue
 	) -> Synapses {
 		let syns_per_tuft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
 		assert!(dims.per_tuft_l2() as u8 == syns_per_tuft_l2);
@@ -92,10 +92,10 @@ impl Synapses {
 
 		for syn_tuft_i in 0..dst_src_slc_id_tufts.len() {
 			kernels.push(Box::new(
-				//ocl.new_kernel("syns_cycle_simple", 
-				//ocl.new_kernel("syns_cycle_simple_vec4", 
-				//ocl.new_kernel("syns_cycle_wow", 
-				ocl.new_kernel("syns_cycle_wow_vec4", 
+				//ocl.new_kernel("syns_cycle_simple".to_string(), 
+				//ocl.new_kernel("syns_cycle_simple_vec4".to_string(), 
+				//ocl.new_kernel("syns_cycle_wow".to_string(), 
+				ocl.new_kernel("syns_cycle_wow_vec4".to_string(), 
 					WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					.arg_env(&axons.states)
@@ -146,12 +146,6 @@ impl Synapses {
 		if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
 			print!("\nRG:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:(..)(..)(..)]\n", self.den_kind);
 		}
-
-		assert!(
-			(self.src_col_v_offs.dims().per_slc() == self.src_slc_ids.dims().per_slc()) 
-			&& ((self.src_slc_ids.dims().per_slc() == (self.dims().per_slc()))), 
-			"[cortical_area::Synapses::init(): dims.columns() mismatch]"
-		);
 
 		self.strengths.read();
 		self.src_slc_ids.read();

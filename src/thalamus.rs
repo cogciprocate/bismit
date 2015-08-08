@@ -24,11 +24,11 @@ pub struct Thalamus {
 	map: HashMap<&'static str, usize>,
 	protoareas: Protoareas, // <<<<< EVENTUALLY DISCARD
 	protoregions: Protoregions,
-	ocl: ocl::Ocl,
+	//ocl: ocl::OclProgQueue,
 }
 
 impl Thalamus {
-	pub fn new(protoareas: Protoareas, protoregions: Protoregions, ocl: ocl::Ocl) -> Thalamus {
+	pub fn new(protoareas: Protoareas, protoregions: Protoregions) -> Thalamus {
 		let emsg = "thalamus::Thalamus::new(): ";
 		let mut index = Vec::with_capacity(protoareas.len());
 		let mut map = HashMap::with_capacity(protoareas.len());
@@ -84,7 +84,7 @@ impl Thalamus {
 			map: map,
 			protoareas: protoareas, // <<<<< EVENTUALLY DISCARD
 			protoregions: protoregions,
-			ocl: ocl,
+			//ocl: ocl,
 		}
 	}
 
@@ -118,7 +118,7 @@ impl Thalamus {
 
 			//assert!(sdr.len() <= self.cortical_area.dims.columns() as usize); // <<<<< NEEDS CHANGING (for multi-slc inputs)
 
-			ocl::enqueue_write_buffer(sdr, area.axns.states.buf, self.ocl.command_queue, buffer_offset);
+			ocl::enqueue_write_buffer(sdr, area.axns.states.buf, area.ocl().queue(), buffer_offset);
 		}
 	}
 
@@ -173,13 +173,6 @@ impl Thalamus {
 		let area = self.map[src_area.name];
 
 	}*/
-}
-
-impl Drop for Thalamus {
-    fn drop(&mut self) {
-        print!("Releasing OCL Components...");
-		self.ocl.release_components();
-    }
 }
 
 

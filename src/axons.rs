@@ -9,7 +9,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
 use proto::regions::{ Protoregion, ProtoregionKind };
 use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
@@ -31,7 +31,7 @@ pub struct Axons {
 }
 
 impl Axons {
-	pub fn new(area_dims: CorticalDimensions, region: &Protoregion, ocl: &Ocl) -> Axons {
+	pub fn new(area_dims: CorticalDimensions, region: &Protoregion, ocl: &OclProgQueue) -> Axons {
 		let depth_axn_sptl = region.depth_axonal_spatial();
 		let depth_cellular = region.depth_cellular();
 		let depth_axn_hrz = region.depth_axonal_horizontal();

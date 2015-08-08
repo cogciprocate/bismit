@@ -8,7 +8,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
 use proto::regions::{ Protoregion, ProtoregionKind };
 use proto::layer:: { Protolayer };
@@ -44,7 +44,7 @@ pub struct Minicolumns {
 	//regrow_counter: usize,	// SLATED FOR REMOVAL
 	//pub states: Envoy<ocl::cl_uchar>,
 	//pub states_raw: Envoy<ocl::cl_uchar>,
-	pub cels_status: Envoy<ocl::cl_uchar>,
+	pub pred_totals: Envoy<ocl::cl_uchar>,
 	pub best_pyr_den_states: Envoy<ocl::cl_uchar>,
 	//pub iinn: InhibitoryInterneuronNetwork,
 	//pub syns: ColumnSynapses,
@@ -60,7 +60,7 @@ impl Minicolumns {
 					sstl: &SpinyStellateCellularLayer, 
 					pyrs: &PyramidalCellularLayer,
 
-					aux: &Aux, ocl: &Ocl) -> Minicolumns {
+					aux: &Aux, ocl: &OclProgQueue) -> Minicolumns {
 
 		assert!(dims.depth() == 1);
 
@@ -87,7 +87,7 @@ impl Minicolumns {
 
 		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, protoregion, axons, aux, ocl);
 
-		let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let pred_totals = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
 		//let iinn = InhibitoryInterneuronNetwork::new(dims, protoregion, &sstl.soma(), ocl);
@@ -112,25 +112,8 @@ impl Minicolumns {
 
 		//println!("\n ##### ssts_axn_idz: {}", ssts_axn_idz);
 
-		/*let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(depth as usize, dims.columns() as usize))
-			.arg_env(&ssts.dens.syns.states)
-			.arg_env(&ssts.dens.syns.strengths)
-			.arg_scl(syns_per_den_l2)
-			.arg_scl(cmn::DENDRITE_INITIAL_THRESHOLD_PROXIMAL)
-			.arg_env(&states_raw)
-			.arg_env(&states)
-		;*/
-
-		/*let kern_post_inhib = ocl.new_kernel("sst_post_inhib_unoptd", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
-			.arg_env(&iinn.spi_ids)
-			.arg_env(&iinn.states)
-			.arg_env(&iinn.wins)
-			.arg_scl(layer.base_slc_pos() as u32)
-			.arg_env(&ssts.soma())
-			.arg_env(&axons.states)
-		;*/
-
-		let kern_output = ocl.new_kernel("col_output", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
+		let kern_output = ocl.new_kernel("col_output".to_string(), 
+			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
 			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
 			//.arg_env(&sstl.soma())
 			.arg_env(&pyrs.soma())
@@ -140,24 +123,11 @@ impl Minicolumns {
 			.arg_scl(pyr_depth)
 			//.arg_scl(pyr_axn_base_slc)
 			.arg_scl(axn_output_slc)
-			.arg_env(&cels_status)
+			.arg_env(&pred_totals)
 			.arg_env(&best_pyr_den_states)
 			.arg_env(&axons.states)
 		;
 
-
-		/*let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
-			.arg_env(&iinn.spi_ids)
-			.arg_env(&iinn.states)
-			.arg_env(&dens.syns.states)
-			.arg_scl(syns_per_den_l2 as u32)
-			.arg_scl(0u32)
-			//.arg_env(&aux.ints_0)
-			.arg_env(&dens.syns.strengths)
-			//.arg_env(&axons.states)
-		;*/
-
-		//println!("\n***Test");
 
 		Minicolumns {
 			dims: dims,
@@ -171,7 +141,7 @@ impl Minicolumns {
 			//regrow_counter: 0usize,
 			//states_raw: states_raw,
 			//states: states,
-			cels_status: cels_status,
+			pred_totals: pred_totals,
 			best_pyr_den_states: best_pyr_den_states,
 			//iinn: iinn,
 			//dens: dens,
@@ -190,7 +160,7 @@ impl Minicolumns {
 	pub fn confab(&mut self) {
 		//self.states.read();
 		//self.states_raw.read();
-		self.cels_status.read();
+		self.pred_totals.read();
 		//self.iinn.confab();
 		//self.sstl.dens.confab();
 	}
@@ -199,7 +169,6 @@ impl Minicolumns {
 		self.ff_layer_axn_idz
 	}
 
-	// <<<<< FIX THIS NOT TO SUBTRACT THE EXTRA 1 FROM IDN (AND TO OUTPUT AN ops::Range >>>>>
 	pub fn axn_output_range(&self) -> (usize, usize) {
 		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::SYNAPSE_REACH_LIN: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::SYNAPSE_REACH_LIN);
 		let start = (self.axn_output_slc as usize * self.dims.columns() as usize) + cmn::SYNAPSE_REACH_LIN as usize;

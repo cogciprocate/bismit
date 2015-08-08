@@ -11,7 +11,9 @@ use std::error::{ Error };
 use num::{ self, Integer, FromPrimitive };
 use libc;
 
+use cmn;
 
+pub use self::ocl::{ OclContext, OclProgQueue };
 pub use self::cl_h::{ cl_platform_id, cl_device_id, cl_context, cl_program, 
 	cl_kernel, cl_command_queue, cl_float, cl_mem, cl_event, cl_char, cl_uchar, 
 	cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus, 
@@ -21,8 +23,8 @@ pub use self::envoy::{ Envoy };
 pub use self::work_size::{ WorkSize };
 pub use self::build_options::{ BuildOptions, BuildOption };
 pub use self::cortical_dimensions::{ CorticalDimensions };
-use cmn;
 
+mod ocl;
 mod cl_h;
 mod envoy;
 mod kernel;
@@ -30,240 +32,131 @@ mod work_size;
 mod build_options;
 mod cortical_dimensions;
 
-pub const GPU_DEVICE: usize = 1;
-pub const KERNELS_FILE_NAME: &'static str = "bismit.cl";
+const DEFAULT_PLATFORM: usize = 0;
+const DEFAULT_CL_DEVICE: usize = 0;
 
-pub struct Ocl {
-	pub platform: cl_platform_id,
-	pub device: cl_device_id,
-	pub context: cl_context,
-	pub program: cl_program,
-	pub command_queue: cl_command_queue,
-}
-
-impl Ocl {
-	pub fn new(mut build_options: BuildOptions) -> Ocl {
-		//format!("{}/{}/{}", env!("P"), "bismit/cl", KERNELS_FILE_NAME)
-		build_options.kern(KERNELS_FILE_NAME.to_string());
-		let kern_c_str = parse_kernel_files(&build_options);
-
-		let platform = new_platform();
-		let devices: [cl_device_id; 2] = new_device(platform);
-		let device: cl_device_id = devices[GPU_DEVICE];
-		let context: cl_context = new_context(device);
-		let program: cl_program = new_program(kern_c_str.as_ptr(), build_options.to_string(), context, device);
-		let command_queue: cl_command_queue = new_command_queue(context, device); 
-
-		program_build_info(program, device);
-
-		Ocl {
-			platform: platform,
-			device:  device,
-			context:  context,
-			program:  program,
-			command_queue: command_queue,
-
-		}
-	}
-
-	pub fn new_kernel(&self, name: &'static str, gws: WorkSize) -> Kernel {
-		let mut err: cl_h::cl_int = 0;
-
-		let kernel = unsafe {
-			cl_h::clCreateKernel(
-				self.program, 
-				ffi::CString::new(name.as_bytes()).ok().unwrap().as_ptr(), 
-				&mut err
-			)
-		};
-		
-		let err_pre = format!("Ocl::new_kernel({}):", name);
-		must_succ(&err_pre, err);
-
-		Kernel::new(kernel, name, self.command_queue, self.context, gws)	
-	}
-
-	pub fn clone(&self) -> Ocl {
-		Ocl {
-			platform: self.platform,
-			device:  self.device,
-			context:  self.context,
-			program:  self.program,
-			command_queue: self.command_queue,
-		}
-	}
+static BUILTIN_CL_FILE_NAME: &'static str = "bismit.cl";
+static BUILTIN_FILTERS_CL_FILE_NAME: &'static str = "filters.cl";
+static CL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
+const DEVICES_MAX: u32 = 16;
+const DEFAULT_DEVICE_TYPE: cl_h::cl_bitfield = 1 << 2; // CL_DEVICE_TYPE_GPU
+// pub static CL_DEVICE_TYPE_DEFAULT:                       cl_bitfield = 1 << 0;
+// 		CL_DEVICE_TYPE_DEFAULT:	The default OpenCL device in the system.
+// pub static CL_DEVICE_TYPE_CPU:                           cl_bitfield = 1 << 1;
+// 		CL_DEVICE_TYPE_CPU:	An OpenCL device that is the host processor. 
+// 		The host processor runs the OpenCL implementations and is a single or multi-core CPU.
+// pub static CL_DEVICE_TYPE_GPU:                           cl_bitfield = 1 << 2;
+// 		CL_DEVICE_TYPE_GPU:	An OpenCL device that is a GPU. By this we mean that the device can 
+//		also be used to accelerate a 3D API such as OpenGL or DirectX.
+// pub static CL_DEVICE_TYPE_ACCELERATOR:                   cl_bitfield = 1 << 3;
+// 		CL_DEVICE_TYPE_ACCELERATOR:	Dedicated OpenCL accelerators (for example the IBM CELL Blade). 
+//		These devices communicate with the host processor using a peripheral interconnect such as PCIe.
+// pub static CL_DEVICE_TYPE_ALL:                           cl_bitfield = 0xFFFFFFFF;
+// 		CL_DEVICE_TYPE_ALL
 
 
-	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
-	pub fn new_write_buffer<T>(&self, data: &[T]) -> cl_h::cl_mem {
-		new_write_buffer(data, self.context)
-	}
+pub fn base_build_options() -> BuildOptions {
 
-	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
-	pub fn new_read_buffer<T>(&self, data: &[T]) -> cl_h::cl_mem {
-		new_read_buffer(data, self.context)
-	}
+	assert!(cmn::SENSORY_CHORD_COLUMNS % cmn::SYNAPSE_SPAN_LIN == 0);
 
-	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
-	pub fn enqueue_write_buffer<T>(
-					&self,
-					src: &Envoy<T>,
-	) {
+	/*assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
+	assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
+	assert!(DENDRITES_PER_CELL_DISTAL_LOG2 <= 8);
+	assert!(DENDRITES_PER_CELL_DISTAL <= 256);
+	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
 
-		unsafe {
-			let err = cl_h::clEnqueueWriteBuffer(
-						self.command_queue,
-						src.buf,
-						cl_h::CL_TRUE,
-						0,
-						(src.vec.len() * mem::size_of::<T>()) as libc::size_t,
-						src.vec.as_ptr() as *const libc::c_void,
-						0 as cl_h::cl_uint,
-						ptr::null(),
-						ptr::null_mut(),
-			);
-			must_succ("clEnqueueWriteBuffer()", err);
-		}
-	}
+	BuildOptions::new(CL_BUILD_SWITCHES)
+		/*.new_opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
+		.new_opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
+		.new_opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
+		.new_opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)*/
 
+		.new_opt("COLUMN_DOMINANCE_FLOOR", cmn::COLUMN_DOMINANCE_FLOOR as i32)
+		.new_opt("SYNAPSE_STRENGTH_FLOOR", cmn::SYNAPSE_STRENGTH_FLOOR as i32)
+		//.new_opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
+				//.new_opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
+		.new_opt("ASPINY_REACH_LOG2", cmn::ASPINY_REACH_LOG2 as i32)
+		.new_opt("SYNAPSE_REACH_LIN", cmn::SYNAPSE_REACH_LIN as i32)
+		.new_opt("SYNAPSE_SPAN_LIN", cmn::SYNAPSE_SPAN_LIN as i32)
+		.new_opt("ASPINY_REACH", cmn::ASPINY_REACH as i32)
+		.new_opt("ASPINY_SPAN_LOG2", cmn::ASPINY_SPAN_LOG2 as i32)
+		.new_opt("ASPINY_SPAN", cmn::ASPINY_SPAN as i32)
 
-	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
-	pub fn enqueue_read_buffer<T>(
-					&self,
-					data: &[T],
-					buffer: cl_h::cl_mem, 
-	) {
-		enqueue_read_buffer(data, buffer, self.command_queue, 0);
-	}
-
-	// <<<<< CONVERT FROM VEC TO SLICE >>>>>
-	pub fn enqueue_copy_buffer<T>(
-					&self,
-					src: &Envoy<T>,		//	src_buffer: cl_mem,
-					dst: &Envoy<T>,		//	dst_buffer: cl_mem,
-					src_offset: usize,
-					dst_offset: usize,
-					len_copy_bytes: usize,
-	) {
-		unsafe {
-			let err = cl_h::clEnqueueCopyBuffer(
-				self.command_queue,
-				src.buf,				//	src_buffer,
-				dst.buf,				//	dst_buffer,
-				mem::transmute(src_offset),
-				mem::transmute(dst_offset),
-				mem::transmute(len_copy_bytes),
-				0,
-				ptr::null(),
-				ptr::null_mut(),
-			);
-			must_succ("clEnqueueCopyBuffer()", err);
-		}
-	}
-
-	pub fn enqueue_kernel(
-				&self,
-				kernel: cl_h::cl_kernel, 
-				gws: usize,
-	) { 
-		enqueue_kernel(kernel, self.command_queue, gws);
-	}
-
-	pub fn release_components(&self) {
-
-		unsafe {
-			cl_h::clReleaseCommandQueue(self.command_queue);
-			cl_h::clReleaseProgram(self.program);
-			cl_h::clReleaseContext(self.context);
-		}
-
-	}
-
-	pub fn get_max_work_group_size(&self) -> u32 {
-		let max_work_group_size: u64 = 0;
-
-		let mut err = unsafe { 
-			cl_h::clGetDeviceInfo(
-				self.device,
-				cl_h::CL_DEVICE_MAX_WORK_GROUP_SIZE,
-				mem::size_of::<u64>() as u64,
-				mem::transmute(&max_work_group_size),
-				ptr::null_mut(),
-			) 
-		}; 
-
-		must_succ("clGetDeviceInfo", err);
-
-		max_work_group_size as u32
-	}
-}
-
-
-fn parse_kernel_files(build_options: &BuildOptions) -> ffi::CString {
-	let mut kern_str: Vec<u8> = Vec::with_capacity(10000);
-	let mut kern_history: HashSet<String> = HashSet::with_capacity(20);
-
-	for f_n in build_options.kernel_file_names().iter().rev() {
-		let file_name = format!("{}/{}/{}", env!("P"), "bismit/cl", f_n);
-
-		{
-			if kern_history.contains(&file_name) { continue; }
-			let kern_file_path = std::path::Path::new(&file_name);
-
-			let mut kern_file = match File::open(&kern_file_path) {
-				Err(why) => panic!("\nCouldn't open '{}': {}", &file_name, Error::description(&why)),
-				Ok(file) => file,
-			};
-
-			match kern_file.read_to_end(&mut kern_str) {
-	    		Err(why) => panic!("\ncouldn't read '{}': {}", &file_name, Error::description(&why)),
-			    Ok(bytes) => print!("\n{}: {} bytes read.", &file_name, bytes),
-			}
-		}
-
-		kern_history.insert(file_name);
-	}
-
-	ffi::CString::new(kern_str).ok().expect("Ocl::new(): kern_c_str")
+		.new_opt("PYR_PREV_CONCRETE_FLAG", cmn::PYR_PREV_CONCRETE_FLAG as i32)
+		.new_opt("PYR_BEST_IN_COL_FLAG", cmn::PYR_BEST_IN_COL_FLAG as i32)
+		.new_opt("PYR_PREV_STP_FLAG", cmn::PYR_PREV_STP_FLAG as i32)
+		.new_opt("PYR_PREV_FUZZY_FLAG", cmn::PYR_PREV_FUZZY_FLAG as i32)
+		.new_opt("SYN_STP_FLAG", cmn::SYN_STP_FLAG as i32)
+		.new_opt("SYN_STD_FLAG", cmn::SYN_STP_FLAG as i32)
+		.new_opt("SYN_CONCRETE_FLAG", cmn::SYN_CONCRETE_FLAG as i32)
 }
 
 
 // Create Platform and get ID
-pub fn new_platform() -> cl_h::cl_platform_id {
+pub fn get_platform_ids() -> Vec<cl_h::cl_platform_id> {
 	let mut num_platforms = 0 as cl_h::cl_uint;
 	
 	let mut err: cl_h::cl_int = unsafe { cl_h::clGetPlatformIDs(0, ptr::null_mut(), &mut num_platforms) };
 	must_succ("clGetPlatformIDs()", err);
 
+	let mut platforms: Vec<cl_h::cl_platform_id> = Vec::with_capacity(num_platforms as usize);
+	for i in 0..num_platforms as usize { platforms.push(0 as cl_platform_id); }
+
 	unsafe {
-		let mut platform: cl_h::cl_platform_id = 0 as cl_h::cl_platform_id;
-
-		err = cl_h::clGetPlatformIDs(1, &mut platform, ptr::null_mut()); 
+		err = cl_h::clGetPlatformIDs(num_platforms, platforms.as_mut_ptr(), ptr::null_mut()); 
 		must_succ("clGetPlatformIDs()", err);
-
-		platform
 	}
 	
+	platforms
 }
 
-pub fn new_device(platform: cl_h::cl_platform_id) -> [cl_h::cl_device_id; 2] {
-	let mut device: [cl_h::cl_device_id; 2] = [0 as cl_h::cl_device_id; 2];
+// GET_DEVICE_IDS():
+pub fn get_device_ids(platform: cl_h::cl_platform_id) -> Vec<cl_h::cl_device_id> {
 
-	unsafe {
-		let err = cl_h::clGetDeviceIDs(platform, cl_h::CL_DEVICE_TYPE_GPU, 2, device.as_mut_ptr(), ptr::null_mut());
-		must_succ("clGetDeviceIDs()", err);
+	let device_type = DEFAULT_DEVICE_TYPE;
+	
+	let mut devices_avaliable: cl_h::cl_uint = 0;
+	let mut devices_array: [cl_h::cl_device_id; DEVICES_MAX as usize] = [0 as cl_h::cl_device_id; DEVICES_MAX as usize];
+	// Find number of valid devices
+
+	let err = unsafe { cl_h::clGetDeviceIDs(
+		platform, 
+		device_type, 
+		DEVICES_MAX, 
+		devices_array.as_mut_ptr(), 
+		&mut devices_avaliable
+	) };
+
+	must_succ("clGetDeviceIDs()", err);
+
+	let mut devices: Vec<cl_h::cl_device_id> = Vec::with_capacity(devices_avaliable as usize);
+
+	for i in 0..devices_avaliable as usize {
+		devices.push(devices_array[i]);
 	}
-	device
+
+	devices
 }
 
-pub fn new_context(device: cl_h::cl_device_id) -> cl_h::cl_context {
+// NEW_DEVICE_2MAX(): DEPRICATE
+// pub fn new_device_2max(platform: cl_h::cl_platform_id) -> [cl_h::cl_device_id; 2] {
+// 	let mut device: [cl_h::cl_device_id; 2] = [0 as cl_h::cl_device_id; 2];
+
+// 	unsafe {
+// 		let err = cl_h::clGetDeviceIDs(platform, cl_h::CL_DEVICE_TYPE_GPU, 2, device.as_mut_ptr(), ptr::null_mut());
+// 		must_succ("clGetDeviceIDs()", err);
+// 	}
+// 	device
+// }
+
+pub fn create_context(devices: &Vec<cl_h::cl_device_id>) -> cl_h::cl_context {
 	let mut err: cl_h::cl_int = 0;
 
 	unsafe {
 		let context: cl_h::cl_context = cl_h::clCreateContext(
 						ptr::null(), 
-						1, 
-						&device, 
+						devices.len() as cl_h::cl_uint, 
+						devices.as_ptr(),
 						mem::transmute(ptr::null::<fn()>()), 
 						ptr::null_mut(), 
 						&mut err);

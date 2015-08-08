@@ -1044,7 +1044,7 @@ __kernel void sst_ltp(
 
 // PYR_ACTIVATE(): CONVERT TO 1 WORK_DIM
 __kernel void pyr_activate(
-				__global uchar const* const mcol_pyr_pred_flags, // COL
+				__global uchar const* const mcol_pred_totals, // COL
 				__global uchar const* const mcol_best_pyr_den_states,
 				__global uchar const* const pyr_best_den_ids,
 				// ADD PYR BEST DEN STATE NOW THAT WE'VE ADDED IT (and to another kernel somewhere also)
@@ -1072,7 +1072,7 @@ __kernel void pyr_activate(
 	uchar const mcol_best_col_den_state = mcol_best_pyr_den_states[col_id];
 	uchar const sst_axn_state = axn_states[ssts_axn_idz + col_id];
 	//uchar const mcol_state = mcol_states[col_id];
-	uchar const mcol_pyr_pred_flag = mcol_pyr_pred_flags[col_id];
+	uchar const mcol_pred_total = mcol_pred_totals[col_id];
 	uchar const pyr_pred = pyr_preds[pyr_idx];
 	uchar pyr_flag_set = pyr_flag_sets[pyr_idx];
 
@@ -1080,7 +1080,7 @@ __kernel void pyr_activate(
 
 	int const mcol_active = sst_axn_state != 0;
 	//int const mcol_active = mcol_state != 0;
-	int const mcol_any_pred = mcol_pyr_pred_flag != 0;
+	int const mcol_any_pred = mcol_pred_total != 0;
 	int const pyr_predictive = (pyr_pred != 0);
 
 	int const crystal = pyr_predictive && mcol_active;
@@ -1258,7 +1258,7 @@ __kernel void col_output(
 				__private uint const sst_axn_idz,
 				__private uchar const pyr_depth,
 				__private uchar const output_axn_slc,
-				__global uchar* const mcol_pyr_pred_flags,
+				__global uchar* const mcol_pred_totals,
 				__global uchar* const mcol_best_pyr_den_states,
 				__global uchar* const axn_states
 ) {
@@ -1285,7 +1285,7 @@ __kernel void col_output(
 	}
 
 
-	mcol_pyr_pred_flags[col_idx] = clamp(col_pyr_pred_total, 0, 255); // <<<<< FIX ME TO BE A FLAGSET
+	mcol_pred_totals[col_idx] = clamp(col_pyr_pred_total, 0, 255); // <<<<< FIX ME TO BE A FLAGSET
 	mcol_best_pyr_den_states[col_idx] = max_den_state;
 	axn_states[output_axn_idx] = clamp(col_pyr_pred_total + sst_axn_state, 0, 255);
 }

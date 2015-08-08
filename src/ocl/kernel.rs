@@ -15,8 +15,8 @@ use super::{ WorkSize, Envoy };
 
 
 pub struct Kernel {
-	kernel: super::cl_kernel, //make this private!!!!!
-	name: &'static str,
+	kernel: super::cl_kernel,
+	name: String,
 	arg_index: u32,
 	named_args: HashMap<&'static str, u32>,
 	arg_count: u32,
@@ -28,8 +28,8 @@ pub struct Kernel {
 }
 
 impl Kernel {
-	pub fn new(kernel: super::cl_kernel, name: &'static str, command_queue: super::cl_command_queue, 
-		context: super::cl_command_queue, gws: WorkSize
+	pub fn new(kernel: super::cl_kernel, name: String, command_queue: super::cl_command_queue, 
+		context: super::cl_context, gws: WorkSize
 	) -> Kernel {
 
 		//print!("\n                  KERNEL::NEW(): adding kernel: {}, gws: {:?}", name, gws);
@@ -201,7 +201,7 @@ impl Kernel {
 						mem::transmute(&val),*/
 			);
 
-			let err_pre = format!("ocl::Kernel::set_kernel_arg('{}'):", self.name);
+			let err_pre = format!("ocl::Kernel::set_kernel_arg('{}'):", &self.name);
 			super::must_succ(&err_pre, err);
 		}
 	}
@@ -233,7 +233,7 @@ impl Kernel {
 						//&mut event as *mut super::cl_event, // LEAKS!
 			);
 
-			let err_pre = format!("ocl::Kernel::enqueue()[{}]:", self.name);
+			let err_pre = format!("ocl::Kernel::enqueue()[{}]:", &self.name);
 			super::must_succ(&err_pre, err);
 		}
 		//event
@@ -265,7 +265,7 @@ impl Kernel {
 						&mut event as *mut super::cl_event,		// LEAKS!
 			);
 
-			let err_pre = format!("ocl::Kernel::enqueue_wait()[{}]: ", self.name);
+			let err_pre = format!("ocl::Kernel::enqueue_wait()[{}]: ", &self.name);
 			super::must_succ(&err_pre, err);
 		}
 		event

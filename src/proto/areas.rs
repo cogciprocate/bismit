@@ -2,14 +2,17 @@ use std::collections::{ HashMap };
 
 use ocl::{ CorticalDimensions };
 use proto::regions::{ ProtoregionKind };
-use proto::filter::{ ProtoFilter };
+use proto::filter::{ Protofilter };
 use cmn;
 
 
 pub trait ProtoareasTrait {
 	fn new() -> Protoareas;
 	fn add(&mut self, protoarea: Protoarea);
-	fn area(mut self, name: &'static str, width: u32, height: u32, region_kind: ProtoregionKind, afferent_area: Option<Vec<&'static str>>) -> Protoareas;
+	fn area(mut self, name: &'static str, width: u32, height: u32, 
+		region_kind: ProtoregionKind, filters: Option<Vec<Protofilter>>, 
+		afferent_area: Option<Vec<&'static str>>
+	) -> Protoareas;
 }
 
 
@@ -34,6 +37,7 @@ impl ProtoareasTrait for Protoareas {
 				/*width_l2: u8, 
 				height_l2: u8, */
 				region_kind: ProtoregionKind, 
+				filters: Option<Vec<Protofilter>>,
 				afferent_areas: Option<Vec<&'static str>>,
 	) -> Protoareas {
 
@@ -45,6 +49,7 @@ impl ProtoareasTrait for Protoareas {
 			dims: CorticalDimensions::new(width, height, 0, 0, None),
 			//dims: CorticalDimensions::new(width_l2, height_l2, 0, 0),
 			region_kind: region_kind,
+			filters: filters,
 			afferent_areas: afferent_areas,
 		};
 
@@ -58,8 +63,8 @@ pub struct Protoarea {
 	pub name: &'static str,
 	pub dims: CorticalDimensions,
 	pub region_kind: ProtoregionKind,
+	pub filters: Option<Vec<Protofilter>>,
 	pub afferent_areas: Option<Vec<&'static str>>,
-	//pub filters: Option<Vec<ProtoFilter>>,
 }
 
 //impl Copy for Protoarea {}

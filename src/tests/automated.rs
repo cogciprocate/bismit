@@ -24,10 +24,10 @@ pub fn define_prtareas() -> Protoareas {
 	Protoareas::new().area("v1_t", 32, 32, ProtoregionKind::Sensory, None)
 }
 
-pub fn init_ocl() -> (ocl::Ocl, ocl::CorticalDimensions) {
+pub fn init_ocl() -> (ocl::OclProgQueue, ocl::CorticalDimensions) {
 	let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", 128 as i32);
 	let build_options = cmn::build_options().add(hrz_demarc_opt);
-	let ocl = ocl::Ocl::new(build_options);
+	let ocl = ocl::OclProgQueue::new(build_options);
 	let dims = ocl::CorticalDimensions::new(16, 16, 1, 0, Some(ocl.get_max_work_group_size()));
 	(ocl, dims)
 }
@@ -60,7 +60,7 @@ fn test_learning() {
 fn test_kernels() {
 	// let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", 128 as i32);
 	// let build_options = cmn::build_options().add(hrz_demarc_opt);
-	// let ocl = ocl::Ocl::new(build_options);
+	// let ocl = ocl::OclProgQueue::new(build_options);
 	// let dims = ocl::CorticalDimensions::new(16, 16, 1, 0, Some(ocl.get_max_work_group_size()));
 	let (ocl, dims) = init_ocl();
 
@@ -69,7 +69,7 @@ fn test_kernels() {
 	ocl.release_components();
 }
 
-fn test_safe_dim_ofs(ocl: &ocl::Ocl, dims: ocl::CorticalDimensions) {
+fn test_safe_dim_ofs(ocl: &ocl::OclProgQueue, dims: ocl::CorticalDimensions) {
 	let mut dim_ids = ocl::Envoy::<u32>::shuffled(dims, 0, 15, &ocl);
 	let mut dim_offs = ocl::Envoy::<i8>::shuffled(dims, -16, 15, &ocl);
 	let mut safe_dim_offs = ocl::Envoy::<i8>::new(dims, 0, &ocl);

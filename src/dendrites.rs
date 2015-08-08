@@ -8,7 +8,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
 use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
 use proto::regions::{ Protoregion, ProtoregionKind };
@@ -44,7 +44,7 @@ impl Dendrites {
 					region: &Protoregion,
 					axons: &Axons,
 					aux: &Aux,
-					ocl: &Ocl
+					ocl: &OclProgQueue
 	) -> Dendrites {
 		//println!("\n### Test D1 ###");
 		//let width_dens = dims.width << per_cell_l2;
@@ -80,7 +80,7 @@ impl Dendrites {
 		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, region, axons, aux, ocl);
 
 
-		let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::OneDim(states.len()))
+		let kern_cycle = ocl.new_kernel("den_cycle".to_string(), WorkSize::OneDim(states.len()))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)

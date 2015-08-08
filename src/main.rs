@@ -32,7 +32,7 @@ mod synapses;
 mod minicolumns;
 mod iinn;
 
-mod iinn_new;
+//mod iinn_new;
 
 mod pyramidals;
 mod spiny_stellates;
@@ -48,6 +48,7 @@ mod thalamus;
 mod proto;
 mod energy;
 mod encode;
+mod sensory_filter;
 
 //#[cfg(test)]
 mod tests;

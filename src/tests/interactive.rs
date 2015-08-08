@@ -20,7 +20,7 @@ use super::hybrid;
 use super::renderer::{ Renderer };
 //use chord::{ Chord };
 //use ocl::{ Envoy };
-use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, layer, Protocell };
+use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, layer, Protocell, Protofilter };
 
 
 pub const INITIAL_TEST_ITERATIONS: i32 		= 1; 
@@ -63,17 +63,18 @@ pub fn define_protoareas() -> Protoareas {
 	let area_side = 48 as u32;
 
 	let mut protoareas = Protoareas::new()
-		.area("v1", area_side, area_side, Sensory, 
-			None
-			//Some(vec!["b1"])
+		.area("v1", area_side, area_side, Sensory, Some(vec![
+			Protofilter::new("retina", Some("filters.cl")), Protofilter::new("retina", Some("filters.cl")) ]),
+			//None
+			Some(vec!["b1"])
 		)
 
-		// .area("b1", area_side, area_side, Sensory, 
-		//  	//None
-		//  	Some(vec!["a1"])
-		// )
+		.area("b1", area_side, area_side, Sensory, None,
+		 	//None
+		 	Some(vec!["a1"])
+		)
 
-		// .area("a1", area_side, area_side, Sensory, None)
+		.area("a1", area_side, area_side, Sensory, None, None)
 	;
 
 	protoareas

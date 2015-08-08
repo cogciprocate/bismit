@@ -7,7 +7,7 @@ use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 use std::default::{ Default };
 use std::ops::{ self, Index, IndexMut };
 
-use ocl::{ self, Ocl, CorticalDimensions };
+use ocl::{ self, OclProgQueue, CorticalDimensions };
 use cmn;
 
 //pub trait NumCl: Integer + Copy + NumCast + Default + Display {}
@@ -18,20 +18,20 @@ pub struct Envoy<T> {
 	pub vec: Vec<T>,
 	pub buf: ocl::cl_mem,
 	padding: u32,
-	dims: CorticalDimensions,
+	//dims: CorticalDimensions,
 	//pub width: u32,
 	//pub depth: u8,
-	ocl: Ocl,
+	ocl: OclProgQueue,
 }
 impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive + UpperHex> Envoy<T> {
-	pub fn new(dims: CorticalDimensions, init_val: T, ocl: &Ocl) -> Envoy<T> {
+	pub fn new(dims: CorticalDimensions, init_val: T, ocl: &OclProgQueue) -> Envoy<T> {
 		let len = dims.physical_len() as usize;
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
 		Envoy::_new(0, dims, vec, ocl)
 	}
 
-	pub fn with_padding(padding: u32, dims: CorticalDimensions, init_val: T, ocl: &Ocl) -> Envoy<T> {
+	pub fn with_padding(padding: u32, dims: CorticalDimensions, init_val: T, ocl: &OclProgQueue) -> Envoy<T> {
 		let len = (dims.physical_len() + padding) as usize;
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
@@ -39,7 +39,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 	}
 
 	// SHUFFLED(): max_val is inclusive!
-	pub fn shuffled(dims: CorticalDimensions, min_val: T, max_val: T, ocl: &Ocl) -> Envoy<T> {
+	pub fn shuffled(dims: CorticalDimensions, min_val: T, max_val: T, ocl: &OclProgQueue) -> Envoy<T> {
 		let len = dims.physical_len() as usize;
 		//println!("shuffled(): len: {}", len);
 		let vec: Vec<T> = cmn::shuffled_vec(len, min_val, max_val);
@@ -48,10 +48,10 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 		Envoy::_new(0, dims, vec, ocl)
 	}
 
-	fn _new(padding: u32, dims: CorticalDimensions, mut vec: Vec<T>, ocl: &Ocl) -> Envoy<T> {
+	fn _new(padding: u32, dims: CorticalDimensions, mut vec: Vec<T>, ocl: &OclProgQueue) -> Envoy<T> {
 		//println!("New Envoy with depth: {}, width: {}, padding: {}", depth, width, padding);
 
-		let buf: ocl::cl_mem = ocl::new_buffer(&mut vec, ocl.context);
+		let buf: ocl::cl_mem = ocl::new_buffer(&mut vec, ocl.context());
 
 		let mut envoy = Envoy {
 			vec: vec,
@@ -59,7 +59,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 			padding: padding,
 			//width: width,
 			//depth: depth,
-			dims: dims.clone(),
+			//dims: dims.clone(),
 			ocl: ocl.clone(),
 		};
 
@@ -76,7 +76,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 	}
 
 	pub fn read(&mut self) {
-		ocl::enqueue_read_buffer(&mut self.vec, self.buf, self.ocl.command_queue, 0);
+		ocl::enqueue_read_buffer(&mut self.vec, self.buf, self.ocl.queue(), 0);
 	}
 
 	/*pub fn width(&self) -> u32 {
@@ -96,13 +96,13 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 
 	pub fn len(&self) -> usize {
 		//println!("self.dims.len(): {} == self.vec.len(): {}", self.dims.len(),  self.vec.len());
-		assert!(((self.dims.physical_len() + self.padding) as usize) == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
+		// assert!(((self.dims.physical_len() + self.padding) as usize) == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
 		self.vec.len()
 	}
 
-	pub fn dims(&self) -> &CorticalDimensions {
-		&self.dims
-	}
+	// pub fn dims(&self) -> &CorticalDimensions {
+	// 	&self.dims
+	// }
 
 	pub fn print_simple(&mut self) {
 		self.read();

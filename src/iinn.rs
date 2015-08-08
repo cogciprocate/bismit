@@ -9,7 +9,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
 use proto::regions::{ Protoregion, ProtoregionKind };
 use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
@@ -25,10 +25,10 @@ pub struct InhibitoryInterneuronNetwork {
 	layer_name: &'static str,
 	pub dims: CorticalDimensions,
 	protocell: Protocell,
-	kern_cycle_pre: ocl::Kernel,
-	kern_cycle_wins: ocl::Kernel,
-	kern_cycle_post: ocl::Kernel,
-	kern_post_inhib: ocl::Kernel,
+	//kern_cycle_pre: ocl::Kernel,
+	//kern_cycle_wins: ocl::Kernel,
+	//kern_cycle_post: ocl::Kernel,
+	//kern_post_inhib: ocl::Kernel,
 
 	kern_inhib_simple: ocl::Kernel,
 	kern_inhib_passthrough: ocl::Kernel,
@@ -40,7 +40,7 @@ pub struct InhibitoryInterneuronNetwork {
 }
 
 impl InhibitoryInterneuronNetwork {
-	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, src_soma: &Envoy<u8>, src_axn_base_slc: u8, axns: &Axons, aux: &Aux, ocl: &Ocl) -> InhibitoryInterneuronNetwork {
+	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, src_soma: &Envoy<u8>, src_axn_base_slc: u8, axns: &Axons, aux: &Aux, ocl: &OclProgQueue) -> InhibitoryInterneuronNetwork {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
@@ -53,7 +53,7 @@ impl InhibitoryInterneuronNetwork {
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
 
 
-		let kern_inhib_simple = ocl.new_kernel("inhib_simple",
+		let kern_inhib_simple = ocl.new_kernel("inhib_simple".to_string(),
 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDim(1, 8, 8 as usize))
 			.arg_env(&src_soma)
@@ -62,7 +62,7 @@ impl InhibitoryInterneuronNetwork {
 			.arg_env(&axns.states)
 		;
 
-		let kern_inhib_passthrough = ocl.new_kernel("inhib_passthrough",
+		let kern_inhib_passthrough = ocl.new_kernel("inhib_passthrough".to_string(),
 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDim(1, 8, 8 as usize))
 			.arg_env(&src_soma)
@@ -70,46 +70,14 @@ impl InhibitoryInterneuronNetwork {
 			.arg_env(&axns.states)
 		;
 
-
-		let kern_cycle_pre = ocl.new_kernel("peak_sst_cycle_pre", 
-			WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
-			.arg_env(&src_soma)
-			.arg_env(&states)
-			.arg_env(&spi_ids)
-		;
-
-		let kern_cycle_wins = ocl.new_kernel("peak_sst_cycle_wins", 
-			WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
-			.arg_env(&states)
-			//.arg_env(&spi_ids)
-			.arg_env(&wins)
-		;
-
-		let kern_cycle_post = ocl.new_kernel("peak_sst_cycle_post", 
-			WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
-			.arg_env(&wins)
-			//.arg_env(&spi_ids)
-			.arg_env(&states)
-		;
-
-		let kern_post_inhib = ocl.new_kernel("sst_post_inhib_unoptd", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
-			.arg_env(&spi_ids)
-			.arg_env(&states)
-			.arg_env(&wins)
-			.arg_scl(src_axn_base_slc)
-			.arg_env(src_soma)
-			.arg_env(&axns.states)
-		;
-
-
 		InhibitoryInterneuronNetwork {
 			layer_name: layer_name,
 			dims: dims,
 			protocell: protocell,
-			kern_cycle_pre: kern_cycle_pre,
-			kern_cycle_wins: kern_cycle_wins,
-			kern_cycle_post: kern_cycle_post,
-			kern_post_inhib: kern_post_inhib,
+			//kern_cycle_pre: kern_cycle_pre,
+			//kern_cycle_wins: kern_cycle_wins,
+			//kern_cycle_post: kern_cycle_post,
+			//kern_post_inhib: kern_post_inhib,
 
 			kern_inhib_simple: kern_inhib_simple,
 			kern_inhib_passthrough: kern_inhib_passthrough,

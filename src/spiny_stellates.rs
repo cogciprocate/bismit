@@ -7,7 +7,7 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 
 use cmn;
-use ocl::{ self, Ocl, WorkSize, Envoy, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
 use proto::regions::{ Protoregion, ProtoregionKind };
 use proto::layer:: { Protolayer };
@@ -55,7 +55,7 @@ pub struct SpinyStellateCellularLayer {
 
 // pyrs: &PyramidalCellularLayer,
 impl SpinyStellateCellularLayer {
-	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, protoregion: &Protoregion, axns: &Axons, aux: &Aux, ocl: &Ocl) -> SpinyStellateCellularLayer {
+	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, protoregion: &Protoregion, axns: &Axons, aux: &Aux, ocl: &OclProgQueue) -> SpinyStellateCellularLayer {
 		//let layer = protoregion.spt_asc_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
 		//let depth: u8 = layer.depth();
 
@@ -84,24 +84,6 @@ impl SpinyStellateCellularLayer {
 			ProtocellKind::SpinyStellateCellularLayer, protoregion, axns, aux, ocl);*/
 
 
-
-		/*let kern_cycle = ocl.new_kernel("den_cycle", WorkSize::TwoDim(depth as usize, dims.columns() as usize))
-			.arg_env(&dens.syns.states)
-			.arg_env(&dens.syns.strengths)
-			.arg_scl(syns_per_tuft_l2)
-			.arg_scl(cmn::DENDRITE_INITIAL_THRESHOLD_PROXIMAL)
-			.arg_env(&states_raw)
-			.arg_env(&states)
-		;*/
-
-		/*let kern_post_inhib = ocl.new_kernel("sst_post_inhib_unoptd", WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
-			.arg_env(&iinn.spi_ids)
-			.arg_env(&iinn.states)
-			.arg_env(&iinn.wins)
-			.arg_scl(layer.base_slc_pos() as u32)
-			.arg_env(&dens.states)
-			.arg_env(&axns.states)
-		;*/
 		//assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
 		//let cels_per_tuft: u32 = dims.columns() / cmn::MINIMUM_WORKGROUP_SIZE;
 
@@ -109,7 +91,8 @@ impl SpinyStellateCellularLayer {
 
 		//println!("\n##### SPINY_STELLATES: cels_per_tuft: {}, syns_per_tuft_l2: {}, axn_idz: {} ", cels_per_tuft, syns_per_tuft_l2, axn_idz);
 
-		let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
+		let kern_ltp = ocl.new_kernel("sst_ltp".to_string(), 
+			WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&axns.states)
 			.arg_env(&dens.syns.states)

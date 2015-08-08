@@ -6,7 +6,7 @@ use time;
 use rand::distributions::{ IndependentSample, Range };
 
 
-use ocl::{ self, Ocl, CorticalDimensions };
+use ocl::{ self, OclContext, OclProgQueue, CorticalDimensions };
 use cmn;
 use chord::{ Chord };
 use cortical_area:: { self, CorticalArea };
@@ -16,6 +16,7 @@ use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, 
 pub struct Cortex {
 	areas: HashMap<&'static str, Box<CorticalArea>>,
 	thal: Thalamus,
+	//ocl_context: OclContext,
 }
 
 impl Cortex {
@@ -27,22 +28,23 @@ impl Cortex {
 
 		let mut areas = HashMap::new();
 
-		let hrz_demarc = protoregions[&Sensory].hrz_demarc();
-		let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", hrz_demarc as i32);
-		let mut build_options = cmn::build_options().add(hrz_demarc_opt);
-		build_options.kern("filters.cl".to_string());
-		build_options.kern("bismit.cl".to_string());
+		let mut i = 0;
 
-		let ocl: ocl::Ocl = ocl::Ocl::new(build_options);
+		for (_, pa) in &protoareas {
+			let mut protoarea = pa.clone();
+			let protoregion = protoregions[&protoarea.region_kind].clone();
 
-		for (_, protoarea) in &protoareas {
-			let mut protoarea_clone = protoarea.clone();
-			protoarea_clone.dims.set_physical_increment(ocl.get_max_work_group_size());
+			// let ocl_context = OclContext::new(None);
+			// let ocl: ocl::OclProgQueue = ocl::OclProgQueue::new(&ocl_context, Some(i));
+			
+			areas.insert(protoarea.name, Box::new(
+				CorticalArea::new(protoarea, protoregion, i)
+			));
 
-			areas.insert(protoarea_clone.name, Box::new(CorticalArea::new(protoarea_clone.name, protoregions[&protoarea.region_kind].clone(), protoarea_clone, &ocl)));
+			i += 1;
 		}
 
-		let thal = Thalamus::new(protoareas, protoregions, ocl);
+		let thal = Thalamus::new(protoareas, protoregions);
 
 		// <<<<< MOVE THIS TO CMN AND MAKE A FUNCTION FOR IT >>>>>
 		let time_complete = time::get_time() - time_start;
@@ -59,7 +61,6 @@ impl Cortex {
 			//ocl: ocl, // GIVE TO THALAMUS
 		}
 	}
-
 
 	
 	pub fn area_mut(&mut self, area_name: &str) -> &mut Box<CorticalArea> {
@@ -133,8 +134,6 @@ impl Cortex {
 		self.areas.contains_key(area_name)
 	}
 }
-
-
 
 
 	/*	WRITE_VEC(): 

@@ -163,14 +163,6 @@ pub const SYN_CONCRETE_FLAG: u8				= 0b00001000;
 
 
 
-
-
-pub static KERNELS_FILE_NAME: &'static str = "bismit.cl";
-pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
-
-
-
-
 /*=============================================================================
 ===============================================================================
 ===============================================================================
@@ -189,41 +181,6 @@ pub const CL_BUILD_OPTIONS: &'static str = "-cl-denorms-are-zero -cl-fast-relaxe
 
 
 
-pub fn build_options() -> ocl::BuildOptions {
-
-	assert!(SENSORY_CHORD_COLUMNS % SYNAPSE_SPAN_LIN == 0);
-
-	/*assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
-	assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
-	assert!(DENDRITES_PER_CELL_DISTAL_LOG2 <= 8);
-	assert!(DENDRITES_PER_CELL_DISTAL <= 256);
-	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
-
-	ocl::BuildOptions::new(CL_BUILD_OPTIONS)
-		/*.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
-		.opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
-		.opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
-		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)*/
-
-		.opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32)
-		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
-		//.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
-				//.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
-		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
-		.opt("SYNAPSE_REACH_LIN", SYNAPSE_REACH_LIN as i32)
-		.opt("SYNAPSE_SPAN_LIN", SYNAPSE_SPAN_LIN as i32)
-		.opt("ASPINY_REACH", ASPINY_REACH as i32)
-		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
-		.opt("ASPINY_SPAN", ASPINY_SPAN as i32)
-
-		.opt("PYR_PREV_CONCRETE_FLAG", PYR_PREV_CONCRETE_FLAG as i32)
-		.opt("PYR_BEST_IN_COL_FLAG", PYR_BEST_IN_COL_FLAG as i32)
-		.opt("PYR_PREV_STP_FLAG", PYR_PREV_STP_FLAG as i32)
-		.opt("PYR_PREV_FUZZY_FLAG", PYR_PREV_FUZZY_FLAG as i32)
-		.opt("SYN_STP_FLAG", SYN_STP_FLAG as i32)
-		.opt("SYN_STD_FLAG", SYN_STP_FLAG as i32)
-		.opt("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
-}
 
 
 
@@ -520,178 +477,169 @@ pub fn log2(n: u32) -> u32 {
 	}
 }
 
-
-
-/*pub fn render_sdr<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(
-			vec_out: &[T], 
-			vec_ff_opt: Option<&[T]>, 
-			vec_out_prev_opt: Option<&[T]>, 
-			vec_ff_prev_opt: Option<&[T]>,
+// RENDER_SDR_SQUARE(): Show SDR in a square grid -- DEPRICATE (hex version in tests/renderer)
+pub fn render_sdr_square(
+			vec_out: &[u8], 
+			vec_ff_opt: Option<&[u8]>, 
+			vec_out_prev_opt: Option<&[u8]>, 
+			vec_ff_prev_opt: Option<&[u8]>,
 			slc_map: &BTreeMap<u8, &'static str>,
-) {
-*/
-// pub fn render_sdr(
-// 			vec_out: &[u8], 
-// 			vec_ff_opt: Option<&[u8]>, 
-// 			vec_out_prev_opt: Option<&[u8]>, 
-// 			vec_ff_prev_opt: Option<&[u8]>,
-// 			slc_map: &BTreeMap<u8, &'static str>,
-// 			print: bool,
-// 			sdr_len: u32,
-// ) -> f32 {
-// 	let vec_ff = match vec_ff_opt {
-// 		Some(v) => v,
-// 		None => vec_out.clone(),
-// 	};
+			print: bool,
+			sdr_len: u32,
+) -> f32 {
+	let vec_ff = match vec_ff_opt {
+		Some(v) => v,
+		None => vec_out.clone(),
+	};
 
-// 	let vec_out_prev = match vec_out_prev_opt {
-// 		Some(v) => v,
-// 		None => vec_out.clone(),
-// 	};
+	let vec_out_prev = match vec_out_prev_opt {
+		Some(v) => v,
+		None => vec_out.clone(),
+	};
 
-// 	let vec_ff_prev = match vec_ff_prev_opt {
-// 		Some(v) => v,
-// 		None => vec_out.clone(),
-// 	};
+	let vec_ff_prev = match vec_ff_prev_opt {
+		Some(v) => v,
+		None => vec_out.clone(),
+	};
 
-// 	//println!("vec_ff.len(): {}, vec_out.len(): {}", vec_ff.len(), vec_out.len());
+	//println!("vec_ff.len(): {}, vec_out.len(): {}", vec_ff.len(), vec_out.len());
 
-// 	assert!(vec_ff.len() == vec_out.len(), "cmn::render_sdr(): vec_ff.len() != vec_out.len(), Input vectors must be of equal length.");
-// 	assert!(vec_out.len() == vec_out_prev.len(), "cmn::render_sdr(): vec_out.len() != vec_out_prev.len(), Input vectors must be of equal length.");
-// 	assert!(vec_out.len() == vec_ff_prev.len(), "cmn::render_sdr(): vec_out.len() != vec_ff_prev.len(), Input vectors must be of equal length.");
+	assert!(vec_ff.len() == vec_out.len(), "cmn::render_sdr(): vec_ff.len() != vec_out.len(), Input vectors must be of equal length.");
+	assert!(vec_out.len() == vec_out_prev.len(), "cmn::render_sdr(): vec_out.len() != vec_out_prev.len(), Input vectors must be of equal length.");
+	assert!(vec_out.len() == vec_ff_prev.len(), "cmn::render_sdr(): vec_out.len() != vec_ff_prev.len(), Input vectors must be of equal length.");
 	
 
-// 	let mut active_cols = 0usize;
-// 	let mut failed_preds = 0usize;
-// 	let mut corr_preds = 0usize;
-// 	let mut anomalies = 0usize;
-// 	let mut new_preds = 0usize;
-// 	let mut ttl_active = 0usize;
+	let mut active_cols = 0usize;
+	let mut failed_preds = 0usize;
+	let mut corr_preds = 0usize;
+	let mut anomalies = 0usize;
+	let mut new_preds = 0usize;
+	let mut ttl_active = 0usize;
 
-// 	let cortical_area_per_line = 64;
-// 	let line_character_width = (cortical_area_per_line * (4 + 4 + 2 + 4 + 4 + 1)) + 8;	// 8 extra for funsies
+	let cortical_area_per_line = 64;
+	let line_character_width = (cortical_area_per_line * (4 + 4 + 2 + 4 + 4 + 1)) + 8;	// 8 extra for funsies
 
-// 	//println!("\n[{}{}{}]:", C_GRN, vec_ff.len(), C_DEFAULT);
+	//println!("\n[{}{}{}]:", C_GRN, vec_ff.len(), C_DEFAULT);
 
-// 	let mut out_line: String = String::with_capacity(line_character_width);
-// 	let mut i_line = 0usize;
-// 	let mut i_global = 0usize;
-// 	let mut i_pattern = 0usize; // DEPRICATE
-// 	let mut i_cort_area = 0u8;
+	let mut out_line: String = String::with_capacity(line_character_width);
+	let mut i_line = 0usize;
+	let mut i_global = 0usize;
+	let mut i_pattern = 0usize; // DEPRICATE
+	let mut i_cort_area = 0u8;
 
-// 	print!("\n");
-// 	io::stdout().flush().ok();
+	print!("\n");
+	io::stdout().flush().ok();
 
-// 	loop {
-// 		if i_line >= vec_out.len() { break }
+	loop {
+		if i_line >= vec_out.len() { break }
 
-// 		out_line.clear();
+		out_line.clear();
 
-// 		for i in i_line..(i_line + cortical_area_per_line) {
-// 			let cur_active = vec_out[i] != Default::default();
-// 			let col_active = vec_ff[i] != Default::default();
-// 			let prediction = vec_out[i] != vec_ff[i];
-// 			let new_prediction = prediction && (!col_active);
+		for i in i_line..(i_line + cortical_area_per_line) {
+			let cur_active = vec_out[i] != Default::default();
+			let col_active = vec_ff[i] != Default::default();
+			let prediction = vec_out[i] != vec_ff[i];
+			let new_prediction = prediction && (!col_active);
 
-// 			//let prev_active = vec_ff_prev[i] != Default::default();
-// 			let prev_prediction = new_pred(vec_out_prev[i], vec_ff_prev[i]);
+			//let prev_active = vec_ff_prev[i] != Default::default();
+			let prev_prediction = new_pred(vec_out_prev[i], vec_ff_prev[i]);
 
-// 			if col_active {
-// 				active_cols += 1;
-// 			}
+			if col_active {
+				active_cols += 1;
+			}
 
-// 			if new_prediction { 
-// 				new_preds += 1;
-// 			}
+			if new_prediction { 
+				new_preds += 1;
+			}
 
-// 			if (prev_prediction && !new_prediction) && !col_active {
-// 				failed_preds += 1;
-// 			} else if prev_prediction && col_active {
-// 				corr_preds += 1;
-// 			}
+			if (prev_prediction && !new_prediction) && !col_active {
+				failed_preds += 1;
+			} else if prev_prediction && col_active {
+				corr_preds += 1;
+			}
 
-// 			if col_active && !prev_prediction {
-// 				anomalies += 1;
-// 			}
+			if col_active && !prev_prediction {
+				anomalies += 1;
+			}
 
-// 			if print {
-// 				if cur_active {
-// 					if prediction {
-// 						out_line.push_str(BGC_DGR);
-// 					}
+			if print {
+				if cur_active {
+					if prediction {
+						out_line.push_str(BGC_DGR);
+					}
 
-// 					if new_prediction {
-// 						//assert!(new_pred(vec_out[i], vec_ff[i]));
-// 						out_line.push_str(C_MAG);
-// 					} else {
-// 						out_line.push_str(C_BLU);
-// 					}
-// 					/*if corr_pred(vec_out[i], vec_ff[i], vec_out_prev[i], vec_ff_prev[i]) {
-// 						corr_preds += 1;
-// 					}*/
-// 				} else {
-// 					out_line.push_str(C_DEFAULT);
-// 				}
+					if new_prediction {
+						//assert!(new_pred(vec_out[i], vec_ff[i]));
+						out_line.push_str(C_MAG);
+					} else {
+						out_line.push_str(C_BLU);
+					}
+					/*if corr_pred(vec_out[i], vec_ff[i], vec_out_prev[i], vec_ff_prev[i]) {
+						corr_preds += 1;
+					}*/
+				} else {
+					out_line.push_str(C_DEFAULT);
+				}
 
-// 				if cur_active {
-// 					out_line.push_str(&format!("{:02X}", vec_out[i]));
-// 					ttl_active += 1;
-// 				} else {
-// 					if (i & 0x07) == 0 || (i_global & 0x07) == 0 {				// || ((i_global & 0x0F) == 7) || ((i_global & 0x0F) == 8)
-// 						out_line.push_str("  ");
-// 					} else {
-// 						out_line.push_str("--");
-// 					}
-// 				} 
+				if cur_active {
+					out_line.push_str(&format!("{:02X}", vec_out[i]));
+					ttl_active += 1;
+				} else {
+					if (i & 0x07) == 0 || (i_global & 0x07) == 0 {				// || ((i_global & 0x0F) == 7) || ((i_global & 0x0F) == 8)
+						out_line.push_str("  ");
+					} else {
+						out_line.push_str("--");
+					}
+				} 
 
-// 				out_line.push_str(C_DEFAULT);
-// 				out_line.push_str(BGC_DEFAULT);
-// 				out_line.push_str(" ");
-// 			}
-// 		}
+				out_line.push_str(C_DEFAULT);
+				out_line.push_str(BGC_DEFAULT);
+				out_line.push_str(" ");
+			}
+		}
 
 
-// 		if print {
-// 			if ((i_line % sdr_len as usize) == 0) && (vec_ff.len() > sdr_len as usize) {
-// 				let slc_id = (i_cort_area) as u8;
+		if print {
+			if ((i_line % sdr_len as usize) == 0) && (vec_ff.len() > sdr_len as usize) {
+				let slc_id = (i_cort_area) as u8;
 
-// 				let slc_name = match slc_map.get(&slc_id) {
-// 					Some(&name) => name,
-// 					None => "<render_sdr(): slc name not found in map>",
-// 				};
+				let slc_name = match slc_map.get(&slc_id) {
+					Some(&name) => name,
+					None => "<render_sdr(): slc name not found in map>",
+				};
 
-// 				println!("\n[{}: {}]", slc_id, slc_name);
-// 				i_cort_area += 1;
-// 				i_pattern = 0; // DEPRICATE
-// 			} else {
-// 				i_pattern += 1; // DEPRICATE
-// 			}
+				println!("\n[{}: {}]", slc_id, slc_name);
+				i_cort_area += 1;
+				i_pattern = 0; // DEPRICATE
+			} else {
+				i_pattern += 1; // DEPRICATE
+			}
 			
-// 			println!("{}", out_line);
-// 		}
+			println!("{}", out_line);
+		}
 
-// 		i_line += cortical_area_per_line;
-// 		i_global += 1;
-// 	}
+		i_line += cortical_area_per_line;
+		i_global += 1;
+	}
 
 
-// 	let preds_total = (corr_preds + failed_preds) as f32;
+	let preds_total = (corr_preds + failed_preds) as f32;
 
-// 	let pred_accy = if preds_total > 0f32 {
-// 		(corr_preds as f32 / preds_total) * 100f32
-// 	} else {
-// 		0f32
-// 	};
+	let pred_accy = if preds_total > 0f32 {
+		(corr_preds as f32 / preds_total) * 100f32
+	} else {
+		0f32
+	};
 
-// 	if print {
-// 		if vec_out_prev_opt.is_some() {
-// 			println!("\nprev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, cols active:{}, ttl active:{}, new_preds:{}", 
-// 				preds_total, corr_preds, failed_preds, pred_accy, anomalies, active_cols, ttl_active, new_preds,);
-// 		}
-// 	}
+	if print {
+		if vec_out_prev_opt.is_some() {
+			println!("\nprev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, cols active:{}, ttl active:{}, new_preds:{}", 
+				preds_total, corr_preds, failed_preds, pred_accy, anomalies, active_cols, ttl_active, new_preds,);
+		}
+	}
 
-// 	pred_accy
-// }
+	pred_accy
+}
 
 
 pub fn corr_pred(

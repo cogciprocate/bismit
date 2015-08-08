@@ -47,10 +47,6 @@ impl CorticalDimensions {
 		}
 	}
 
-	pub fn set_physical_increment(&mut self, physical_increment: u32) {
-		self.physical_increment = Some(physical_increment);
-	}
-
 	pub fn physical_increment(&self) -> u32 {
 		match self.physical_increment {
 			Some(pi) => pi,
@@ -182,6 +178,15 @@ impl CorticalDimensions {
 
 	pub fn clone_with_physical_increment(&self, physical_increment: u32) -> CorticalDimensions {
 		CorticalDimensions { physical_increment: Some(physical_increment), .. *self } 
+	}
+
+	pub fn set_physical_increment(&mut self, physical_increment: u32) {
+		self.physical_increment = Some(physical_increment);
+	}
+
+	pub fn with_physical_increment(mut self, physical_increment: u32) -> CorticalDimensions {
+		self.set_physical_increment(physical_increment);
+		self
 	}
 
 	pub fn with_tufts(mut self, tufts_per_cel: u32) -> CorticalDimensions {
