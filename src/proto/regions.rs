@@ -555,6 +555,7 @@ impl Protoregion {
  	}
 
  	/* TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS */
+ 	// DEPRICATE IN FAVOR OF LAYERS_WITH_FLAG(), RETURNING A VEC OF PROTOLAYERS
  	pub fn layer_with_flag(&self, flag: ProtolayerFlags) -> Option<Protolayer> {
  		let mut input_layer: Option<Protolayer> = None;
  		

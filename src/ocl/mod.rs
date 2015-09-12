@@ -283,7 +283,6 @@ pub fn new_read_buffer<T>(data: &[T], context: cl_h::cl_context) -> cl_h::cl_mem
 	}
 }
 
-// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 pub fn enqueue_write_buffer<T>(
 					data: &[T],
 					buffer: cl_h::cl_mem, 
@@ -308,7 +307,6 @@ pub fn enqueue_write_buffer<T>(
 }
 
 
-// <<<<< CONVERT FROM VEC TO SLICE >>>>>
 pub fn enqueue_read_buffer<T>(
 				data: &[T],
 				buffer: cl_h::cl_mem, 

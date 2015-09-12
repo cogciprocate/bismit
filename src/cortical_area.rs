@@ -190,16 +190,19 @@ impl CorticalArea {
 
 		// FILTERS
 
+		// <<<<< CHANGE TO LAYERS_WITH_FLAG() >>>>>
+		let aff_in_layer = protoregion.layer_with_flag(layer::AFFERENT_INPUT).expect(&emsg);
 		let mut filters_vec = Vec::with_capacity(5);
 
 		let filters = match protoarea.filters {
 			Some(ref protofilters) => {
 				for pf in protofilters.iter() {
 					filters_vec.push(Box::new(SensoryFilter::new(
-						pf.filter_name(), pf.cl_file_name(), dims.clone(), &ocl
+						pf.filter_name(), pf.cl_file_name(), protoarea.name,
+						dims.clone_with_depth(aff_in_layer.depth()), 
+						&axns, aff_in_layer.base_slc(), &ocl
 					)));
 				}
-				//filters_vec.push(Box::new(SensoryFilter::new("retina".to_string(), dims.clone(), &ocl)));
 				Some(filters_vec)
 			},
 			None => None,
@@ -292,32 +295,6 @@ impl CorticalArea {
 	}
 
 
-	/* PIL(): Get Primary Spatial Associative Layer (immutable) */
-	pub fn psal(&self) -> &Box<SpinyStellateCellularLayer> {
-		let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
-		self.ssts_map.get(self.psal_name).expect(e_string)
-	}
-
-	/* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
-	pub fn psal_mut(&mut self) -> &mut Box<SpinyStellateCellularLayer> {
-		let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
-		self.ssts_map.get_mut(self.psal_name).expect(e_string)
-	}
-
-
-	/* PAL(): Get Primary Temporal Associative Layer (immutable) */
-	pub fn ptal(&self) -> &Box<PyramidalCellularLayer> {
-		let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
-		self.pyrs_map.get(self.ptal_name).expect(e_string)
-	}
-
-	/* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
-	pub fn ptal_mut(&mut self) -> &mut Box<PyramidalCellularLayer> {
-		let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
-		self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
-	}
-
-
 	/* AXN_OUTPUT(): NEEDS UPDATING (DEPRICATION?) */
 	pub fn axn_output_range(&self) -> (usize, usize) {
 		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::SYNAPSE_REACH_LIN: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::SYNAPSE_REACH_LIN);
@@ -344,16 +321,27 @@ impl CorticalArea {
 	}
 
 	pub fn write_input(&mut self, sdr: &[ocl::cl_uchar], layer_flags: layer::ProtolayerFlags) {
-		match self.filters {
-			Some(ref filters_vec) => (),
-			None => (),
+		if layer_flags.contains(layer::AFFERENT_INPUT) {
+			match self.filters {
+				Some(ref mut filters_vec) => {
+					filters_vec[0].write(sdr);
+
+					for fltr in filters_vec.iter_mut() { // ***** UN-MUT ME
+						fltr.cycle();
+					}
+
+					return
+				},
+				None => (),
+			}
 		}
 
 		let axn_range = self.axn_range(layer_flags);
-
-		assert!(sdr.len() == axn_range.len() as usize, format!("\nsdr.len(): {} != axn_range.len(): {}", sdr.len(), axn_range.len()));
-
+		assert!(sdr.len() == axn_range.len() as usize, 
+			format!("\nsdr.len(): {} != axn_range.len(): {}", sdr.len(), axn_range.len()));
+		
 		self.write_to_axons(axn_range, sdr);
+
 	}
 
 	pub fn read_output(&self, sdr: &mut [ocl::cl_uchar], layer_flags: layer::ProtolayerFlags) {
@@ -368,7 +356,7 @@ impl CorticalArea {
 		let emsg = format!("cortical_area::CorticalArea::axn_range(): \
 			'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
 
-		let layer = self.protoregion.layer_with_flag(layer_flags).expect(&emsg);
+		let layer = self.protoregion.layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
 		let len = self.dims.columns() * layer.depth as u32;
 		let base_slc = layer.base_slc_pos;
 		let buffer_offset = cmn::axn_idx_2d(base_slc, self.dims.columns(), self.protoregion.hrz_demarc());
@@ -385,6 +373,33 @@ impl CorticalArea {
 		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
 		ocl::enqueue_write_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
 	}
+
+
+	/* PIL(): Get Primary Spatial Associative Layer (immutable) */
+	pub fn psal(&self) -> &Box<SpinyStellateCellularLayer> {
+		let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
+		self.ssts_map.get(self.psal_name).expect(e_string)
+	}
+
+	/* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
+	pub fn psal_mut(&mut self) -> &mut Box<SpinyStellateCellularLayer> {
+		let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
+		self.ssts_map.get_mut(self.psal_name).expect(e_string)
+	}
+
+
+	/* PAL(): Get Primary Temporal Associative Layer (immutable) */
+	pub fn ptal(&self) -> &Box<PyramidalCellularLayer> {
+		let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
+		self.pyrs_map.get(self.ptal_name).expect(e_string)
+	}
+
+	/* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
+	pub fn ptal_mut(&mut self) -> &mut Box<PyramidalCellularLayer> {
+		let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
+		self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
+	}
+
 
 	pub fn protoregion(&self) -> &Protoregion {
 		&self.protoregion

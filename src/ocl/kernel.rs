@@ -21,15 +21,13 @@ pub struct Kernel {
 	named_args: HashMap<&'static str, u32>,
 	arg_count: u32,
 	command_queue: super::cl_command_queue,
-	context: super::cl_context,
 	gwo: WorkSize,
 	gws: WorkSize,
 	lws: WorkSize,
 }
 
 impl Kernel {
-	pub fn new(kernel: super::cl_kernel, name: String, command_queue: super::cl_command_queue, 
-		context: super::cl_context, gws: WorkSize
+	pub fn new(kernel: super::cl_kernel, name: String, command_queue: super::cl_command_queue, gws: WorkSize
 	) -> Kernel {
 
 		//print!("\n                  KERNEL::NEW(): adding kernel: {}, gws: {:?}", name, gws);
@@ -40,7 +38,6 @@ impl Kernel {
 			named_args: HashMap::with_capacity(5),
 			arg_count: 0u32,
 			command_queue: command_queue,
-			context: context,
 			gwo: WorkSize::Unspecified,
 			gws: gws,
 			lws: WorkSize::Unspecified,

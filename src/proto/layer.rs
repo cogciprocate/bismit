@@ -36,7 +36,7 @@ impl Protolayer {
 		}
 	}*/
 
-	pub fn base_slc_pos(&self) -> u8 {
+	pub fn base_slc(&self) -> u8 {
 		self.base_slc_pos
 	}
 

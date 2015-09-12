@@ -141,7 +141,7 @@ impl OclProgQueue {
 		let err_pre = format!("Ocl::new_kernel({}):", &name);
 		super::must_succ(&err_pre, err);
 
-		Kernel::new(kernel, name, self.queue, self.context, gws)	
+		Kernel::new(kernel, name, self.queue, gws)	
 	}
 
 	pub fn clone(&self) -> OclProgQueue {
