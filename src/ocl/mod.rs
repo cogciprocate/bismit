@@ -47,10 +47,10 @@ const DEFAULT_DEVICE_TYPE: cl_h::cl_bitfield = 1 << 2; // CL_DEVICE_TYPE_GPU
 // 		The host processor runs the OpenCL implementations and is a single or multi-core CPU.
 // pub static CL_DEVICE_TYPE_GPU:                           cl_bitfield = 1 << 2;
 // 		CL_DEVICE_TYPE_GPU:	An OpenCL device that is a GPU. By this we mean that the device can 
-//		also be used to accelerate a 3D API such as OpenGL or DirectX.
+// 		also be used to accelerate a 3D API such as OpenGL or DirectX.
 // pub static CL_DEVICE_TYPE_ACCELERATOR:                   cl_bitfield = 1 << 3;
 // 		CL_DEVICE_TYPE_ACCELERATOR:	Dedicated OpenCL accelerators (for example the IBM CELL Blade). 
-//		These devices communicate with the host processor using a peripheral interconnect such as PCIe.
+// 		These devices communicate with the host processor using a peripheral interconnect such as PCIe.
 // pub static CL_DEVICE_TYPE_ALL:                           cl_bitfield = 0xFFFFFFFF;
 // 		CL_DEVICE_TYPE_ALL
 
