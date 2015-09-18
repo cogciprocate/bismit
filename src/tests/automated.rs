@@ -10,12 +10,12 @@ use super::hybrid;
 pub fn define_prtrgns() -> Protoregions {
 	Protoregions::new()
 		.region(Protoregion::new(ProtoregionKind::Sensory)
-			.layer("thal_t", 1, layer::AFFERENT_INPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
-			.layer("out_t", 1, layer::AFFERENT_OUTPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
-			.layer("iv_t", 1, layer::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["thal_t"], 256))  // , "motor"
-			.layer("iv_inhib_t", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv_t"))
-			.layer("iii_t", 4, layer::TEMPORAL_ASSOCIATIVE, Protocell::new_pyramidal(2, 5, vec!["iii_t"], 256))
-			.layer("motor_t", 1, layer::DEFAULT, ProtolayerKind::Axonal(ProtoaxonKind::Horizontal))
+			.l("thal_t", 1, layer::AFFERENT_INPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
+			.l("out_t", 1, layer::AFFERENT_OUTPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
+			.l("iv_t", 1, layer::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["thal_t"], 256))  // , "motor"
+			.l("iv_inhib_t", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv_t"))
+			.l("iii_t", 4, layer::TEMPORAL_ASSOCIATIVE, Protocell::new_pyramidal(2, 5, vec!["iii_t"], 256))
+			.l("motor_t", 1, layer::DEFAULT, ProtolayerKind::Axonal(ProtoaxonKind::Horizontal))
 			.freeze()
 		)
 }

@@ -88,8 +88,9 @@ impl InputCzar {
 	}
 
 
-	pub fn next(&mut self, cortex: &mut Cortex) {
+	pub fn next(&mut self, cortex: &mut Cortex) -> usize {
 		let remain_ticks = self.tick();
+		let mut input_status: usize = 0;
 
 		if self.introduce_noise {
 			/*if (self.ttl_count & 0x01) == 0x01 {
@@ -138,7 +139,7 @@ impl InputCzar {
 			},
 
 			InputVecKind::IdxReader(ref mut ir) => {
-				ir.next(&mut self.vec_optical[..]);
+				input_status = ir.next(&mut self.vec_optical[..]);
 			}
 
 			//_ => (),
@@ -149,6 +150,7 @@ impl InputCzar {
 		// nothing here yet
 
 		self.sense(cortex);
+		return input_status;
 	}
 
 	pub fn sense(&self, cortex: &mut Cortex) {

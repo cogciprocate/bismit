@@ -98,6 +98,8 @@ pub const SYNAPSE_REACH_LIN: u32 = (1 << (((SYNAPSE_REACH_GEO_LOG2 + 1) << 1) - 
 pub const SYNAPSE_SPAN_LIN: u32 = (1 << ((SYNAPSE_REACH_GEO_LOG2 + 1) << 1));	// (SYNAPSE_SPAN_LIN ^ 2)
 
 
+pub const MAX_EFFERENT_AREAS: usize = 64;
+
 /*pub const SYNAPSE_REACH_LIN_LOG2: u32 = 7;
 pub const SYNAPSE_REACH_LIN: u32 = 1 << SYNAPSE_REACH_LIN_LOG2;
 pub const SYNAPSE_SPAN_LIN: u32 = SYNAPSE_REACH_LIN << 1;
@@ -147,8 +149,6 @@ pub const AXONS_WORKGROUP_SIZE: u32 = 256;
 
 pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
 pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;	
-
-
 
 
 pub const PYR_PREV_CONCRETE_FLAG: u8 		= 0b10000000;	// 128	(0x80)

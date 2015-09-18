@@ -10,10 +10,7 @@ use std::collections::{ BTreeSet };
 
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::areas::{ Protoareas };
-use proto::regions::{ Protoregion, ProtoregionKind };
-use proto::layer::{ Protolayer, ProtolayerKind };
-use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
+use proto::{ Protoregion, ProtoregionKind, Protoareas, ProtocellKind, Protocell, DendriteKind, Protolayer, ProtolayerKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cortical_area:: { Aux };
@@ -38,7 +35,7 @@ pub struct Synapses {
 	syns_per_den_l2: u8,
 	protocell: Protocell,
 	protoregion: Protoregion,
-	dst_src_slc_id_tufts: Vec<Vec<u8>>,
+	dst_tuft_src_slc_ids: Vec<Vec<u8>>,
 	den_kind: DendriteKind,
 	cell_kind: ProtocellKind,
 	since_decay: usize,
@@ -78,10 +75,10 @@ impl Synapses {
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 		// KERNELS
-		let dst_src_slc_id_tufts = protoregion.dst_src_slc_id_tufts(layer_name);
-		assert!(dst_src_slc_id_tufts.len() == dims.tufts_per_cel() as usize);
+		let dst_tuft_src_slc_ids = protoregion.dst_tuft_src_slc_ids(layer_name);
+		assert!(dst_tuft_src_slc_ids.len() == dims.tufts_per_cel() as usize);
 
-		let mut kernels = Vec::with_capacity(dst_src_slc_id_tufts.len());
+		let mut kernels = Vec::with_capacity(dst_tuft_src_slc_ids.len());
 
 		if DEBUG_NEW { print!("\n            SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims); }
 
@@ -90,7 +87,7 @@ impl Synapses {
 
 		let cels_per_area = dims.cells();
 
-		for syn_tuft_i in 0..dst_src_slc_id_tufts.len() {
+		for syn_tuft_i in 0..dst_tuft_src_slc_ids.len() {
 			kernels.push(Box::new(
 				//ocl.new_kernel("syns_cycle_simple".to_string(), 
 				//ocl.new_kernel("syns_cycle_simple_vec4".to_string(), 
@@ -117,7 +114,7 @@ impl Synapses {
 			syns_per_den_l2: protocell.syns_per_den_l2,
 			protocell: protocell,
 			protoregion: protoregion.clone(),
-			dst_src_slc_id_tufts: dst_src_slc_id_tufts,
+			dst_tuft_src_slc_ids: dst_tuft_src_slc_ids,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			since_decay: 0,
@@ -152,11 +149,12 @@ impl Synapses {
 		self.src_col_v_offs.read();
 
 		let syns_per_layer_tuft = self.dims.per_slc_per_tuft() as usize * self.dims.depth() as usize;
-		let dst_src_slc_id_tufts = self.dst_src_slc_id_tufts.clone();
+		let dst_tuft_src_slc_ids = self.dst_tuft_src_slc_ids.clone();
 		let mut src_tuft_i = 0usize;
 
-		for src_slc_ids in dst_src_slc_id_tufts {
-			assert!(src_slc_ids.len() > 0, "Synapses must have at least one source slice.");
+		for src_slc_ids in &dst_tuft_src_slc_ids {
+			if src_slc_ids.len() == 0 { continue; }
+			//assert!(src_slc_ids.len() > 0, "Synapses must have at least one source slice.");
 			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, 
 				"cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
 
@@ -234,26 +232,6 @@ impl Synapses {
 			// }
 	}
 
-
-	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
-	pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
-		
-		//println!("\n##### SYNAPSES::SRC_SLICE_IDS({}): {:?}", layer_name, self.dst_src_slc_id_tufts);
-
-		match layer.kind {
-			ProtolayerKind::Cellular(ref cell) => {
-				if cell.cell_kind == self.cell_kind {
-					self.protoregion.src_slc_ids(layer_name, self.den_kind)
-				} else {
-					panic!("Synapse::src_slc_ids(): cell_kind mismatch! ")
-				}
-			},
-
-			_ => panic!("Synapse::src_slc_ids(): ProtolayerKind not Cellular! "),
-		}
-	}
-
-
 	pub fn set_offs_to_zero(&mut self) {
 		self.src_col_v_offs.set_all_to(0);
 		self.src_col_u_offs.set_all_to(0);
@@ -284,6 +262,24 @@ impl Synapses {
 	pub fn dims(&self) -> &CorticalDimensions {
 		&self.dims
 	}
+
+	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
+	// pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
+		
+	// 	//println!("\n##### SYNAPSES::SRC_SLICE_IDS({}): {:?}", layer_name, self.dst_tuft_src_slc_ids);
+
+	// 	match layer.kind {
+	// 		ProtolayerKind::Cellular(ref cell) => {
+	// 			if cell.cell_kind == self.cell_kind {
+	// 				self.protoregion.src_slc_ids(layer_name, self.den_kind)
+	// 			} else {
+	// 				panic!("Synapse::src_slc_ids(): cell_kind mismatch! ")
+	// 			}
+	// 		},
+
+	// 		_ => panic!("Synapse::src_slc_ids(): ProtolayerKind not Cellular! "),
+	// 	}
+	// }
 }
 
 

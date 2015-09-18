@@ -54,8 +54,16 @@ pub struct CorticalArea {
 }
 
 impl CorticalArea {
-	pub fn new(protoarea: Protoarea, protoregion: Protoregion, device_idx: usize) -> CorticalArea {
+	pub fn new(protoarea: Protoarea, mut protoregion: Protoregion, device_idx: usize) -> CorticalArea {
 		let emsg = "cortical_area::CorticalArea::new()";
+
+		print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}'", protoarea.name);
+
+		// AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
+		protoregion.set_layer_depth(layer::AFFERENT_INPUT, protoarea.efferent_areas.len() as u8);
+		protoregion.set_layer_depth(layer::EFFERENT_INPUT, protoarea.afferent_areas.len() as u8);
+		protoregion.freeze();			
+		let protoregion = protoregion;		
 
 		let ocl_context: ocl::OclContext = OclContext::new(None);
 		let mut ocl: ocl::OclProgQueue = ocl::OclProgQueue::new(&ocl_context, Some(device_idx));
@@ -79,8 +87,10 @@ impl CorticalArea {
 		let dims = protoarea.dims.clone_with_depth(protoregion.depth_total())
 			.with_physical_increment(ocl.get_max_work_group_size());
 
-		print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", 
-			protoarea.name, dims.u_size(), dims.v_size(), dims.depth());
+		print!("\nCORTICALAREA::NEW(): Area '{}' details: \
+			(width: {}, height: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}", 
+			protoarea.name, dims.u_size(), dims.v_size(), dims.depth(), 
+			protoarea.efferent_areas, protoarea.afferent_areas);
 		/*print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", name, 1 << dims.width_l2(), 1 << dims.height_l2(), dims.depth());*/
 
 		let emsg_psal = format!("{}: Primary Spatial Associative Layer not defined.", emsg);
@@ -261,7 +271,7 @@ impl CorticalArea {
 		*/
 	}
 
-	pub fn cycle(&mut self) -> Option<Vec<&'static str>> {
+	pub fn cycle(&mut self) -> (Vec<&'static str>, Vec<&'static str>) {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
 		if !self.disable_ssts {	self.psal_mut().cycle(); }
@@ -280,7 +290,7 @@ impl CorticalArea {
 
 		if !self.disable_regrowth { self.regrow(); }
 
-		self.afferent_target_names()
+		(self.afferent_target_names(), self.efferent_target_names())
 	}
 
 	pub fn regrow(&mut self) {
@@ -337,8 +347,9 @@ impl CorticalArea {
 		}
 
 		let axn_range = self.axn_range(layer_flags);
-		assert!(sdr.len() == axn_range.len() as usize, 
-			format!("\nsdr.len(): {} != axn_range.len(): {}", sdr.len(), axn_range.len()));
+		assert!(sdr.len() == axn_range.len() as usize, format!("\n\
+			cortical_area::CorticalArea::write_input()<area: '{}'>: \
+			sdr.len(): {} != axn_range.len(): {}", self.name, sdr.len(), axn_range.len()));
 		
 		self.write_to_axons(axn_range, sdr);
 
@@ -347,13 +358,15 @@ impl CorticalArea {
 	pub fn read_output(&self, sdr: &mut [ocl::cl_uchar], layer_flags: layer::ProtolayerFlags) {
 		let axn_range = self.axn_range(layer_flags);
 
-		assert!(sdr.len() == axn_range.len() as usize, format!("\nsdr.len(): {} != axn_range.len(): {}", sdr.len(), axn_range.len()));
+		assert!(sdr.len() == axn_range.len() as usize, format!("\n\
+			cortical_area::CorticalArea::read_output()<area: '{}'>: \
+			sdr.len(): {} != axn_range.len(): {}", self.name, sdr.len(), axn_range.len()));
 
 		self.read_from_axons(axn_range, sdr);
 	}
 
-	fn axn_range(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {
-		let emsg = format!("cortical_area::CorticalArea::axn_range(): \
+	pub fn axn_range(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {
+		let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
 			'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
 
 		let layer = self.protoregion.layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
@@ -417,8 +430,12 @@ impl CorticalArea {
 		self.ptal_name
 	}
 
-	pub fn afferent_target_names(&self) -> Option<Vec<&'static str>> {
+	pub fn afferent_target_names(&self) -> Vec<&'static str> {
 		self.protoarea.afferent_areas.clone()
+	}
+
+	pub fn efferent_target_names(&self) -> Vec<&'static str> {
+		self.protoarea.efferent_areas.clone()
 	}
 
 	pub fn ocl(&self) -> &OclProgQueue {

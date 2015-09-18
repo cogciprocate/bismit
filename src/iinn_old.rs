@@ -39,7 +39,7 @@ impl InhibitoryInterneuronNetworkNew {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
-		let dims = col_dims.clone_with_pgl2(0 - cmn::ASPINY_SPAN_LOG2 as i8);
+		let dims = col_dims.clone_with_ptl2(0 - cmn::ASPINY_SPAN_LOG2 as i8);
 
 		let padding = cmn::ASPINY_SPAN;
 

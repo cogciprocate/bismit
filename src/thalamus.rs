@@ -5,7 +5,7 @@ use std::iter;
 use cmn;
 use ocl;
 use cortical_area:: { CorticalArea };
-use proto::{ Protoareas, ProtoareasTrait, Protoarea, Protoregion, Protoregions, ProtoregionKind, layer };
+use proto::{ Protoareas, ProtoareasTrait, Protoarea, Protoregion, Protoregions, ProtoregionKind, layer, Sensory };
 use tests::input_czar;
 
 /*	THALAMUS:
@@ -15,76 +15,95 @@ use tests::input_czar;
 
 */
 pub struct Thalamus {
-	concourse: Vec<ocl::cl_uchar>,
+	//concourse: Vec<ocl::cl_uchar>,
 	//tract_afferent_input: Vec<ocl::cl_uchar>,
-	tract_afferent_output: Vec<ocl::cl_uchar>,
 	//tract_efferent_input: Vec<ocl::cl_uchar>,
-	tract_efferent_output: Vec<ocl::cl_uchar>,
-	index: Vec<AreaInfo>, // <<<<< POSSIBLY CONVERT TO ARRAY FOR SIMPLICITY -- CONFUSING NAME
-	map: HashMap<&'static str, usize>,
-	protoareas: Protoareas, // <<<<< EVENTUALLY DISCARD
-	protoregions: Protoregions,
+	// tract_afferent_output: Vec<ocl::cl_uchar>,
+	// index: Vec<AreaInfo>, 
+	// map: HashMap<&'static str, usize>,
+	// tract_efferent_output: Vec<ocl::cl_uchar>,
+	// index: Vec<AreaInfo>,
+	// map: HashMap<&'static str, usize>,
+	//protoareas: Protoareas, // <<<<< EVENTUALLY DISCARD
+	//protoregions: Protoregions,
 	//ocl: ocl::OclProgQueue,
+	tract_afferent_output: ThalamicTract,
+	tract_efferent_output: ThalamicTract,
 }
 
-impl Thalamus {
-	pub fn new(protoareas: Protoareas, protoregions: Protoregions) -> Thalamus {
-		let emsg = "thalamus::Thalamus::new(): ";
-		let mut index = Vec::with_capacity(protoareas.len());
-		let mut map = HashMap::with_capacity(protoareas.len());
+impl Thalamus { // , protoregions: Protoregions
+	pub fn new(areas: &HashMap<&'static str, Box<CorticalArea>>) -> Thalamus {
+		let epre = "thalamus::Thalamus::new(): ";
 
-		let (mut ai_len, mut ao_len, mut ei_len, mut eo_len) = (0, 0, 0, 0);
+		let mut tao = ThalamicTract::new(Vec::with_capacity(0), 
+			Vec::with_capacity(areas.len()), HashMap::with_capacity(areas.len()));
 
-		let mut cc_len = 0usize;
+		let mut teo = ThalamicTract::new(Vec::with_capacity(0), 
+			Vec::with_capacity(areas.len()), HashMap::with_capacity(areas.len()));
+
+
+		// let mut index_eff = Vec::with_capacity(areas.len());
+		// let mut map_eff = HashMap::with_capacity(areas.len());		
+
+		//let (mut ai_len, mut ao_len, mut ei_len, mut eo_len) = (0, 0, 0, 0);
+
+		print!("\n\n");
 		let mut i = 0usize;
 
 		/*  <<<<< TAKE IN TO ACCOUNT MULTI-SLICE INPUT LAYERS >>>>>  */
-		for (&pa_name, pa) in &protoareas {
-			//print!("\nTHALAMUS::NEW(): Adding area: '{}'", pa_name);
+		for (&area_name, ref area) in areas {
+			//print!("\nTHALAMUS::NEW(): Adding area: '{}'", area_name);
+			//if area.region_kind != Sensory { continue; };
+			//let emsga = format!("{}{}", epre, "area_input_depth -- flag not found");
 
-			let pa_input_depth = protoregions[&pa.region_kind].layer_with_flag(layer::AFFERENT_INPUT)
-				.expect(&format!("{}{}", emsg, "pa_input_depth -- flag not found")).depth;
+			// let area_input_depth = protoregions[&area.region_kind]
+			// 	.layer_with_flag(layer::AFFERENT_INPUT).expect(&emsga).depth;
 
-			//let pa_columns = (pa.dims.u_size() * pa.dims.v_size()) as usize;
-			let pa_columns = pa.dims.columns() as usize;
-			let pa_len = pa_columns * pa_input_depth as usize;
+			// //let area_columns = (area.dims.u_size() * area.dims.v_size()) as usize;
+			// let area_columns = area.dims.columns() as usize;
+			// let area_len = area_columns * area_input_depth as usize;
 
-			index.push(
-				AreaInfo {
-					cc_range: cc_len..(cc_len + pa_len),
-					protoarea: pa.clone(),
-				}
-			);
+			let aff_len = area.axn_range(layer::AFFERENT_INPUT).len();
+			tao.add_area(area_name, i, aff_len);
 
-			cc_len += pa_len;
+			let eff_len = area.axn_range(layer::EFFERENT_INPUT).len();
+			teo.add_area(area_name, i, eff_len);
 
-			assert!(index[i].protoarea.name == pa_name);
+			//let cc_area_len = if aff_in_len > eff_in_len { aff_in_len } else { eff_in_len };
 
-			map.insert(pa.name, i);
+			print!("\nTHALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", epre, area_name, aff_len, eff_len);			
+
+			// tao.index.push(AreaInfo { range: tao.axn_len..(tao.axn_len + aff_len) });
+			// tao.axn_len += aff_len;
+			// tao.map.insert(area.name, i);
+
+			// teo.index.push(AreaInfo { range: teo.axn_len..(teo.axn_len + aff_len) });
+			// teo.axn_len += aff_len;
+			// teo.map.insert(area.name, i);			
 
 			i += 1;
 		}
 
-		let concourse: Vec<ocl::cl_uchar> = iter::repeat(0).take(cc_len).collect();
+		//let concourse: Vec<ocl::cl_uchar> = iter::repeat(0).take(cc_len).collect();
 
-		//let tract_afferent_input: Vec<ocl::cl_uchar> = iter::repeat(0).take(cc_len).collect();
-		let tract_afferent_output: Vec<ocl::cl_uchar> = iter::repeat(0).take(cc_len).collect();
-		//let tract_efferent_input: Vec<ocl::cl_uchar> = iter::repeat(0).take(cc_len).collect();
-		let tract_efferent_output: Vec<ocl::cl_uchar> = iter::repeat(0).take(cc_len).collect();
+		//let tract_afferent_output: Vec<ocl::cl_uchar> = iter::repeat(0).take(aff_len).collect();
+		//let tract_efferent_output: Vec<ocl::cl_uchar> = iter::repeat(0).take(aff_len).collect();
 
 		//print!("\n\n##### THALAMUS::NEW(): \n\n    INDEX: {:?}\n\n    MAP: {:?}\n\n    CONCOURSE.LEN(): {}", index, map, concourse.len());
 
-		Thalamus {
-			concourse: concourse,
+		Thalamus {			
+			//concourse: concourse,
 			//tract_afferent_input: tract_afferent_input,
-			tract_afferent_output: tract_afferent_output,
+			//tract_afferent_output: tract_afferent_output,
 			//tract_efferent_input: tract_efferent_input,
-			tract_efferent_output: tract_efferent_output,
-			index: index,
-			map: map,
-			protoareas: protoareas, // <<<<< EVENTUALLY DISCARD
-			protoregions: protoregions,
+			//tract_efferent_output: tract_efferent_output,
+			//index: index,
+			//map: map,
+			//protoareas: protoareas, // <<<<< EVENTUALLY DISCARD
+			//protoregions: protoregions,
 			//ocl: ocl,
+			tract_afferent_output: tao,
+			tract_efferent_output: teo,
 		}
 	}
 
@@ -133,18 +152,20 @@ impl Thalamus {
 	pub fn forward_afferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
 				 areas: &mut HashMap<&'static str, Box<CorticalArea>>,
 	) {
-		let area_index = self.map[src_area_name];
-		let slc_range = self.index[area_index].cc_range.clone();
+		let area_index = self.tract_afferent_output.map[src_area_name];
+		let slc_range = self.tract_afferent_output.index[area_index].range.clone();
 
 		let emsg = "thalamus::Thalamus::forward_afferent_output(): Area not found: ";
 
-		let emsg1 = format!("{}'{}' ", emsg, src_area_name);
-		areas.get_mut(src_area_name).expect(&emsg1)
-			.read_output(&mut self.tract_afferent_output[slc_range.clone()], layer::AFFERENT_OUTPUT);
+		{
+			let emsg1 = format!("{}'{}' ", emsg, src_area_name);
+			let src_area = areas.get_mut(src_area_name).expect(&emsg1);
+			src_area.read_output(&mut self.tract_afferent_output.ganglion[slc_range.clone()], layer::AFFERENT_OUTPUT);
+		}
 
 		let emsg2 = format!("{}'{}' ", emsg, tar_area_name);
-		areas.get_mut(tar_area_name).expect(&emsg2)
-			.write_input(&self.tract_afferent_output[slc_range.clone()], layer::AFFERENT_INPUT);
+		let tar_area = areas.get_mut(tar_area_name).expect(&emsg2);
+		tar_area.write_input(&self.tract_afferent_output.ganglion[slc_range.clone()], layer::AFFERENT_INPUT);
 
 		//cmn::print_vec_simple(&self.tract_afferent_output[..]);
 	}
@@ -152,22 +173,23 @@ impl Thalamus {
 	pub fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
 				 areas: &mut HashMap<&'static str, Box<CorticalArea>>,
 	) {
-		let area_index = self.map[src_area_name];
-		let slc_range = self.index[area_index].cc_range.clone();
+		let area_index = self.tract_efferent_output.map[src_area_name];
+		let slc_range = self.tract_efferent_output.index[area_index].range.clone();
 
 		let emsg = "thalamus::Thalamus::backward_efferent_output(): Area not found: ";
 
-		let emsg1 = format!("{}'{}' ", emsg, src_area_name);
-		areas.get_mut(src_area_name).expect(&emsg1)
-			.read_output(&mut self.tract_efferent_output[slc_range.clone()], layer::EFFERENT_OUTPUT);
-
+		{
+			let emsg1 = format!("{}'{}' ", emsg, src_area_name);
+			let src_area = areas.get_mut(src_area_name).expect(&emsg1);		
+			src_area.read_output(&mut self.tract_efferent_output.ganglion[slc_range.clone()], layer::EFFERENT_OUTPUT);
+		}
 
 		/* TESTING */
 		//let test_vec = input_czar::sdr_stripes(512, false, &mut self.tract_efferent_output[slc_range.clone()]);
 
 		let emsg2 = format!("{}'{}' ", emsg, tar_area_name);
-		areas.get_mut(tar_area_name).expect(&emsg2)
-			.write_input(&self.tract_efferent_output[slc_range.clone()], layer::EFFERENT_INPUT);
+		let tar_area = areas.get_mut(tar_area_name).expect(&emsg2);		
+		tar_area.write_input(&self.tract_efferent_output.ganglion[slc_range.clone()], layer::EFFERENT_INPUT);
  	}
 
 	/*fn area_output_target(&self, src_area_name: &'static str) {
@@ -176,11 +198,42 @@ impl Thalamus {
 	}*/
 }
 
+struct ThalamicTract {
+	ganglion: Vec<ocl::cl_uchar>,
+	index: Vec<AreaInfo>, 
+	map: HashMap<&'static str, usize>,
+	ttl_len: usize,
+}
+
+impl ThalamicTract {
+	fn new(
+				ganglion: Vec<ocl::cl_uchar>,
+				index: Vec<AreaInfo>, 
+				map: HashMap<&'static str, usize>,
+	) -> ThalamicTract {
+		ThalamicTract {
+			ganglion: ganglion,
+			index: index,
+			map: map,
+			ttl_len: 0,
+		}
+	}
+
+	fn add_area(&mut self, area_name: &'static str, idx: usize, len: usize) {
+		self.index.push(AreaInfo { range: self.ttl_len..(self.ttl_len + len) });
+		self.map.insert(area_name, idx);
+		self.ttl_len += len;
+
+		// tao.index.push(AreaInfo { range: tao.axn_len..(tao.axn_len + aff_len) });
+		// tao.axn_len += aff_len;
+		// tao.map.insert(area.name, i);
+	}
+
+}
 
 #[derive(PartialEq, Debug, Clone, Eq)]
 struct AreaInfo {
-	cc_range: Range<usize>,		// RENAME / ELABORATE / EXPAND
-	protoarea: Protoarea,
+	range: Range<usize>,		// RENAME / ELABORATE / EXPAND
 }
 
 

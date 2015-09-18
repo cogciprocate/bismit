@@ -168,7 +168,7 @@ impl CorticalDimensions {
 		}
 	}
 
-	pub fn clone_with_pgl2(&self, per_tuft_l2: i8) -> CorticalDimensions {
+	pub fn clone_with_ptl2(&self, per_tuft_l2: i8) -> CorticalDimensions {
 		CorticalDimensions { per_tuft_l2: per_tuft_l2, .. *self }
 	}
 

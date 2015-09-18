@@ -12,7 +12,14 @@
 #define ENERGY_LEVEL_MAX				255
 #define ENERGY_REGEN_AMOUNT				1
 
-#define OLD_INHIB
+// INHIB_RADIUS: A CELL'S SPHERE OF INFLUENCE
+#define INHIB_RADIUS					5
+// INHIB_INFL_CENTER_OFFSET: MOVES CENTER OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+#define INHIB_INFL_CENTER_OFFSET		1 
+// INHIB_INFL_HORIZ_OFFSET: STRETCHES EDGE OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+#define INHIB_INFL_HORIZ_OFFSET			4 
+
+#define RETNAL_THRESHOLD 				48
 
 //  bismit.cl: CONVENTIONS
 //
@@ -160,8 +167,8 @@ __kernel void test_safe_dim_ofs(
 				__global uint const* const dim_ids,
 				__global char const* const dim_offs,
 				__private uint const dim_size,
-				__global char* const safe_dim_offs
-) {
+				__global char* const safe_dim_offs)
+{
 	uint id = get_global_id(0);
 
 	char safe_do = safe_dim_ofs(dim_size, dim_ids[id], dim_offs[id]);
@@ -240,8 +247,8 @@ static inline int4 cel_idx_3d_unsafe_vec4(int4 slc_id, int4 v_size, int4 v_id, i
 static inline uchar axn_state_3d_safe(uchar slc_id, 
 				uint v_size, uint v_id, char v_ofs, 
 				uint u_size, uint u_id, char u_ofs,
-				__global uchar const* const axn_states
-) {
+				__global uchar const* const axn_states) 
+{
 	uint idx_hrz = axn_idx_hrz(slc_id, v_size, v_ofs, u_size, u_ofs);
 	uint idx_spt = cel_idx_3d_unsafe(slc_id, v_size, (int)v_id + (int)v_ofs, u_size, (int)u_id + (int)u_ofs);
 	int idx_is_hrz = idx_hrz != 0;
@@ -254,8 +261,8 @@ static inline uchar axn_state_3d_safe(uchar slc_id,
 static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id_uchar4, 
 				uint v_size_scl, int4 v_id, char4 v_ofs_char4, 
 				uint u_size_scl, int4 u_id, char4 u_ofs_char4,
-				__global uchar const* const axn_states
-) {
+				__global uchar const* const axn_states) 
+{
 	int4 v_size = (int4)((int)v_size_scl);
 	int4 u_size = (int4)((int)u_size_scl);
 	int4 slc_id = convert_int4(slc_id_uchar4);
@@ -287,8 +294,8 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id_uchar4,
 static inline uchar cel_state_3d_safe(uchar slc_id, 
 				uint v_size, uint v_id, char v_ofs, 
 				uint u_size, uint u_id, char u_ofs, 
-				__global uchar const* const cel_states
-) {
+				__global uchar const* const cel_states) 
+{
 	int v_ofs_is_safe = dim_is_safe(v_size, v_id, v_ofs);
 	int u_ofs_is_safe = dim_is_safe(u_size, u_id, u_ofs);
 	int cel_idx_is_safe = v_ofs_is_safe & u_ofs_is_safe;
@@ -306,7 +313,9 @@ static inline uchar cel_state_3d_safe(uchar slc_id,
 // 	CEL_IDX_3D_SAFE(): [WORK IN PROGRESS]: For whatever that means... 
 // 		if out of bounds, return the edge for now...
 /*
-	static inline uint cel_idx_3d_safe_wip(uint slc_id, uint v_size, uint v_id, int v_ofs, uint u_size, uint u_id, int u_ofs) {
+	static inline uint cel_idx_3d_safe_wip(uint slc_id, uint v_size, 
+				uint v_id, int v_ofs, uint u_size, uint u_id, int u_ofs
+	) {
 		//int v_ofs_is_safe = dim_is_safe(v_size, v_id, v_ofs);
 		//int u_ofs_is_safe = dim_is_safe(u_size, u_id, u_ofs);
 		//int cel_idx_is_safe = v_ofs_is_safe && u_ofs_is_safe;
@@ -326,8 +335,8 @@ static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
 				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
 				uint const rnd,
 				__global uchar* const syn_flag_sets,
-				__global char* const syn_strengths
-) {
+				__global char* const syn_strengths) 
+{
 	uint const n = syn_idx_start + (1 << syns_per_den_l2);
 
 	for (uint i = syn_idx_start; i < n; i++) {
@@ -354,8 +363,8 @@ static inline void cel_syns_trm( 			// TERMINATION
 				uint const syns_per_tuft_l2, // MAKE THIS A CONSTANT SOMEDAY
 				uint const rnd,
 				__global uchar* const syn_flag_sets,
-				__global char* const syn_strengths
-) {
+				__global char* const syn_strengths) 
+{
 	uint const n = syn_idx_start + (1 << syns_per_tuft_l2);
 
 	for (uint i = syn_idx_start; i < n; i++) {
@@ -384,8 +393,8 @@ static inline void prx_syns__active__ltp_ltd(
 				uint const syn_idx_start,
 				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
 				uint const rnd,
-				__global char* const syn_strengths
-) {
+				__global char* const syn_strengths) 
+{
 	uint const n = syn_idx_start + (1 << syns_per_den_l2);
 
 	for (uint i = syn_idx_start; i < n; i++) {
@@ -456,8 +465,8 @@ __kernel void syns_cycle_simple(
 				__private uint const cel_idz,
 				__private uchar const syns_per_tuft_l2,
 				__global int* const aux_ints_0,
-				__global uchar* const syn_states
-) {
+				__global uchar* const syn_states) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const v_id = get_global_id(1);
 	uint const u_id = get_global_id(2);
@@ -491,8 +500,8 @@ __kernel void syns_cycle_simple_vec4(
 				__private uint const cel_idz,
 				__private uchar const syns_per_tuft_l2,
 				__global int* const aux_ints_0,
-				__global uchar4* const syn_states
-) {
+				__global uchar4* const syn_states) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const v_id = get_global_id(1);
 	uint const u_id = get_global_id(2);
@@ -527,8 +536,8 @@ __kernel void syns_cycle_wow(
 				__private uint const cel_idz,
 				__private uchar const syns_per_tuft_l2,
 				__global int* const aux_ints_0,
-				__global uchar* const syn_states
-) {
+				__global uchar* const syn_states) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const v_size = get_global_size(1);
 	uint const u_size = get_global_size(2);
@@ -631,8 +640,8 @@ __kernel void syns_cycle_wow_vec4(
 				__private uint const cel_idz,
 				__private uchar const syns_per_tuft_l2,
 				__global int* const aux_ints_0,
-				__global uchar4* const syn_states
-) {
+				__global uchar4* const syn_states) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const v_size = get_global_size(1);
 	uint const u_size = get_global_size(2);
@@ -739,8 +748,8 @@ __kernel void syns_cycle_2d_wow(
 				__private uint const syn_tuft_i,
 				__private uchar const syns_per_tuft_l2,
 				__global int* const aux_ints_0,
-				__global uchar* const syn_states
-) {
+				__global uchar* const syn_states) 
+{
 	uint const slc_columns = mul24(get_global_size(1), get_global_size(2)); // PRECOMPUTE or depricate
 	uint const layer_total_per_tuft = mul24(slc_columns, get_global_size(0)); // PRECOMPUTE
 	uint const base_cel_tuft_ofs = mul24(syn_tuft_i, layer_total_per_tuft); // PRECOMPUTE
@@ -805,8 +814,8 @@ __kernel void den_cycle(
 				__global uchar* const den_energies,
 				__global uchar* const den_states_raw,
 				//__global int* const aux_ints_1,
-				__global uchar* const den_states
-) {
+				__global uchar* const den_states) 
+{
 	uint const den_idx = get_global_id(0);
 	uint const syn_idz = den_idx << syns_per_den_l2;
 
@@ -862,8 +871,8 @@ __kernel void inhib_simple(
 				__global uchar const* const cel_states,
 				__private uchar const cel_base_axn_slc,		// <<<<< DEPRICATE: USE A GLOBAL OFFSET
 				__global int* const aux_ints_1,
-				__global uchar* const axn_states
-) {
+				__global uchar* const axn_states) 
+{
 	uint const slc_id = get_global_id(0);	// <<<<< TODO: USE A GLOBAL OFFSET
 	uint const v_id = get_global_id(1);
 	uint const u_id = get_global_id(2);
@@ -875,7 +884,7 @@ __kernel void inhib_simple(
 	uchar const cel_state = cel_states[cel_idx];
 
 	//int const radius_pos = 4; // 61 Cells
-	int const radius_pos = 7; // (4:61), (7:XXX), (9:271)
+	int const radius_pos = INHIB_RADIUS; // (4:61), (7:XXX), (9:271)
 	int const radius_neg = 0 - radius_pos;
 
 	int uninhibited = 1;
@@ -908,11 +917,12 @@ __kernel void inhib_simple(
 			// 			- IF CEL_FOCAL_INFLUENCE__AT_CEL_FOCAL >= NEIGHBOR_INFLUENCE__AT_CEL_FOCAL
 			//
 
-			int influence_center_offset = 1; // MOVES CENTER OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
-			int influence_horizon_offset = 4; // STRETCHES EDGE OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+			 // MOVES CENTER OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+			int influence_center_offset = INHIB_INFL_CENTER_OFFSET;
+			// STRETCHES EDGE OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+			int influence_horizon_offset = INHIB_INFL_HORIZ_OFFSET; 
 
 			int influence_horizon = radius_pos + influence_horizon_offset;
-
 			int influence_max = square(influence_horizon);
 
 			int cel_influence_factor = influence_max;
@@ -927,9 +937,6 @@ __kernel void inhib_simple(
 
 			uninhibited &= cel_influence >= nei_influence;
 
-			/*if (i_suck) {
-				inhibited = 0;
-			}*/
 
 			// STREAMLINE ME
 			/*if (cel_influence < neighbor_influence) {
@@ -995,8 +1002,8 @@ __kernel void inhib_simple(
 __kernel void inhib_passthrough(
 				__global uchar const* const cel_states,
 				__private uchar const cel_base_axn_slc,		// <<<<< DEPRICATE: USE A GLOBAL OFFSET
-				__global uchar* const axn_states
-) {
+				__global uchar* const axn_states) 
+{
 	uint const slc_id = get_global_id(0);	// <<<<< TODO: USE A GLOBAL OFFSET
 	uint const v_id = get_global_id(1);
 	uint const u_id = get_global_id(2);
@@ -1019,8 +1026,8 @@ __kernel void sst_ltp(
 				__private uint const cel_axn_idz,
 				__private uchar const syns_per_tuft_l2,
 				__private uint const rnd,
-				__global char* const syn_strengths
-) {
+				__global char* const syn_strengths) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const col_tuft_id = get_global_id(1);
 	uint const tuft_size = get_global_size(1);
@@ -1055,8 +1062,8 @@ __kernel void pyr_activate(
 				__global uchar* const pyr_flag_sets,
 				__global uchar* const pyr_preds,
 				//__global int* const aux_ints_0,
-				__global uchar* const axn_states
-) {
+				__global uchar* const axn_states) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const slc_columns = get_global_size(1);
@@ -1159,8 +1166,8 @@ __kernel void pyrs_ltp_unoptd(
 				__global uchar* const pyr_flag_sets,
 				//__global int* const aux_ints_0,
 				//__global int* const aux_ints_1,
-				__global char* const syn_strengths
-) {
+				__global char* const syn_strengths) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const col_tuft_id = get_global_id(1);
 	uint const tufts_per_slc = get_global_size(1);
@@ -1221,8 +1228,8 @@ __kernel void pyr_cycle(
 				__private uchar const dens_per_tuft_l2,
 				__global uchar* const pyr_best_den_ids,
 				__global uchar* const pyr_best_den_states,
-				__global uchar* const pyr_preds
-) {
+				__global uchar* const pyr_preds) 
+{
 	uint const pyr_idx = get_global_id(0);
 	uchar best_den_state = 0;
 	uchar best_den_id = 0;
@@ -1260,8 +1267,8 @@ __kernel void col_output(
 				__private uchar const output_axn_slc,
 				__global uchar* const mcol_pred_totals,
 				__global uchar* const mcol_best_pyr_den_states,
-				__global uchar* const axn_states
-) {
+				__global uchar* const axn_states) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const slc_columns = get_global_size(1);
@@ -1343,9 +1350,8 @@ static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_
 __kernel void peak_sst_cycle_pre(
 				__global uchar const* const sst_states,
 				__global uchar* const asp_states,
-				__global uchar* const asp_sst_ids
-	
-) {
+				__global uchar* const asp_sst_ids) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
 	uint const slc_columns = get_global_size(1);
@@ -1399,8 +1405,8 @@ FUTURE IMPROVEMENTS:
 */
 __kernel void peak_sst_cycle_wins(
 				__global uchar* const asp_states,
-				__global uchar* const asp_wins
-) {
+				__global uchar* const asp_wins) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
 	uint const slc_columns = get_global_size(1);
@@ -1451,9 +1457,9 @@ __kernel void peak_sst_cycle_wins(
 __kernel void peak_sst_cycle_post(
 				__global uchar* const asp_wins,
 				//__global uchar* const asp_sst_ids,
-				__global uchar* const asp_states
+				__global uchar* const asp_states)
 				//__global uchar* const sst_states
-) {
+{
 	uint const slc_id = get_global_id(0);
 	uint const asp_id = get_global_id(1);
 	uint const slc_columns = get_global_size(1);
@@ -1480,8 +1486,8 @@ __kernel void sst_post_inhib_unoptd (
 				__global uchar const* const asp_wins,
 				__private uchar const sst_axn_slc,
 				__global uchar* const sst_states,
-				__global uchar* const axn_states
-) {
+				__global uchar* const axn_states) 
+{
 	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
 	uint const slc_columns = get_global_size(1);

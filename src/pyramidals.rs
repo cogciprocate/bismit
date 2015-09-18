@@ -9,9 +9,7 @@ use std::fmt::{ Display };
 
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::areas::{ Protoareas };
-use proto::regions::{ Protoregion, ProtoregionKind };
-use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
+use proto::{ Protoareas, Protoregion, ProtoregionKind, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use cortical_area:: { Aux };
@@ -86,7 +84,7 @@ impl PyramidalCellularLayer {
 
 		let den_tufts_per_cel = region[&layer_name].dst_src_tufts_len();
 
-		let den_tuft_dims = dims.clone_with_pgl2(dens_per_tuft_l2 as i8).with_tufts(den_tufts_per_cel);
+		let den_tuft_dims = dims.clone_with_ptl2(dens_per_tuft_l2 as i8).with_tufts(den_tufts_per_cel);
 
 		let dens = Dendrites::new(layer_name, den_tuft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, region, axons, aux, ocl);
 
@@ -126,7 +124,9 @@ impl PyramidalCellularLayer {
 
 		assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
 		let cels_per_wi: u32 = dims.per_slc() / cmn::MINIMUM_WORKGROUP_SIZE;
-		let axn_idx_base: u32 = (axn_base_slc as u32 * dims.columns()) + cmn::SYNAPSE_REACH_LIN; // NEEDS UPDATE TO NEW SYSTEM
+
+		// <<<<< NEEDS UPDATE TO NEW AXON INDEXING SYSTEM >>>>>
+		let axn_idx_base: u32 = (axn_base_slc as u32 * dims.columns()) + cmn::SYNAPSE_REACH_LIN; 
 		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", axn_idx_base);
 		assert!(axn_idx_base == axn_idz);
 

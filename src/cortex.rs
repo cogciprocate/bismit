@@ -14,31 +14,33 @@ use thalamus::{ Thalamus };
 use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, layer, Protocell };
 
 pub struct Cortex {
-	areas: HashMap<&'static str, Box<CorticalArea>>,
+	// AREAS: PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
+	pub areas: HashMap<&'static str, Box<CorticalArea>>, 
 	thal: Thalamus,
 }
 
 impl Cortex {
-	pub fn new(mut protoregions: Protoregions, protoareas: Protoareas) -> Cortex {
+	pub fn new(mut protoregions: Protoregions, mut protoareas: Protoareas) -> Cortex {
 		print!("\nInitializing Cortex... ");
 		let time_start = time::get_time();
 
-		protoregions.freeze();
+		//protoregions.freeze(); REDESIGNED
+		protoareas.freeze();
+
 		let mut areas = HashMap::new();
 		let mut i = 0;
 
 		for (_, pa) in &protoareas {
-			let mut protoarea = pa.clone();
-			let protoregion = protoregions[&protoarea.region_kind].clone();
-			
-			areas.insert(protoarea.name, Box::new(
-				CorticalArea::new(protoarea, protoregion, i)
-			));
+			if pa.region_kind != Sensory { continue; };
+			let protoarea = pa.clone();
+			let protoregion = protoregions[&protoarea.region_kind].clone();				
+
+			areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.clone(), protoregion, i)));
 
 			i += 1;
 		}
 
-		let thal = Thalamus::new(protoareas, protoregions);
+		let thal = Thalamus::new(&areas);
 
 		// <<<<< MOVE THIS TO CMN AND MAKE A FUNCTION FOR IT >>>>>
 		let time_complete = time::get_time() - time_start;
@@ -86,25 +88,60 @@ impl Cortex {
 	pub fn cycle(&mut self, area_name: &str) {
 		let emsg = format!("cortex::Cortex::cycle(): Area: '{}' not found. ", area_name);
 
-		let afferent_areas = {
-			//println!("\nCycling '{}'", area_name);
+		//: (Option<Vec<&'static str>>, Vec<&'static str>)
+		let (afferent_areas, efferent_areas) = {
+			//println!("\nCycling '{}'", area_name);			
 			self.areas.get_mut(area_name).expect(&emsg).cycle()
 		};
 
-		match afferent_areas {
-			Some(aff_area_names) => {
-				for area_name_aff in aff_area_names {
-					//println!("\nForwarding from '{}' to '{}'", area_name, area_name_aff);
-					self.thal.forward_afferent_output(area_name, area_name_aff, &mut self.areas);
+		for area_name_aff in afferent_areas {
+			//println!("\nForwarding from '{}' to '{}'", area_name, area_name_aff);					
+			self.thal.backward_efferent_output(area_name_aff, area_name, &mut self.areas);
+			self.thal.forward_afferent_output(area_name, area_name_aff, &mut self.areas);
 
-					self.cycle(area_name_aff);
+			// NEEDS TO HAPPEN IN A DIFFERENT THREAD (ONE FOR EACH LAYER)
+			self.cycle(area_name_aff);									
+		}
 
-					self.thal.backward_efferent_output(area_name_aff, area_name, &mut self.areas);					
-				}
-			},
+		// match afferent_areas {
+		// 	Some(aff_area_names) => {
+				
+		// 	},
 
-			None => (),
-		};
+		// 	None => (),
+		// };
+	}
+
+	pub fn cycle_new(&mut self) {
+
+		for area in self.areas.iter() {
+
+		}
+
+		// CYCLE EACH AREA
+
+		// FORWARD AFF AND EFF OUTPUTS FOR EACH AREA
+			// SORT OUT MULTIPLE INPUTS
+
+		// let (afferent_areas, efferent_areas) = {
+		// 	println!("\nCycling all areas... ");			
+		// 	//let emsg = format!("cortex::Cortex::cycle(): Area: '{}' not found. ", area_name);
+		// 	//self.areas.get_mut(area_name).expect(&emsg).cycle()
+		// };
+
+		// match afferent_areas {
+		// 	Some(aff_area_names) => {
+		// 		for area_name_aff in aff_area_names {
+		// 			println!("\nOutputting from '{}' to '{}'", area_name, area_name_aff);					
+		// 			self.thal.backward_efferent_output(area_name_aff, area_name, &mut self.areas);
+		// 			self.thal.forward_afferent_output(area_name, area_name_aff, &mut self.areas);
+
+		// 			self.cycle(area_name_aff);									
+		// 		}
+		// 	},
+
+		// 	None => (),
+		// };
 	}
 
 	pub fn print_area_output(&mut self, ao_name: &str) {

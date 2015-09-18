@@ -20,7 +20,7 @@ use super::hybrid;
 use super::renderer::{ Renderer };
 //use chord::{ Chord };
 //use ocl::{ Envoy };
-use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, layer, Protocell, Protofilter };
+use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter };
 
 
 pub const INITIAL_TEST_ITERATIONS: i32 		= 1; 
@@ -29,33 +29,34 @@ pub const PRINT_DETAILS_EVERY: i32			= 10000;
 
 pub const TOGGLE_DIRS: bool 				= false;
 pub const INTRODUCE_NOISE: bool 			= false;
-pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 8 };
+pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 5000 };
 pub const COUNTER_RANDOM: bool				= false;
+const REPEATS_PER_IMAGE: usize 				= 20;
 
 
 /* Eventually move defines to a config file or some such */
 pub fn define_protoregions() -> Protoregions {
 	let mut cort_regs: Protoregions = Protoregions::new();
 
-	let mut sen = Protoregion::new(Sensory)
-		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
-		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
-		.layer("eff_in", 1, layer::EFFERENT_INPUT, Axonal(Spatial))
-		//.layer("nothing", 1, layer::DEFAULT, Axonal(Spatial))
-		.layer("aff_in", 1, layer::AFFERENT_INPUT, Axonal(Spatial))
-		.layer("aff_out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
-
-		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 384)) 
-
-		.layer("iv_inhib", 0, layer::DEFAULT, 
+	cort_regs.add(Protoregion::new(Sensory)
+		//.l("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
+		.l("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
+		.l("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
+		//.l("nothing", 1, layer::DEFAULT, Axonal(Spatial))
+		.l("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
+		.l("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
+		.l("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
+			Protocell::new_spiny_stellate(5, vec!["aff_in"], 256)) 
+		.l("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
+		.l("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
+			Protocell::new_pyramidal(0, 5, vec!["iii"], 500).apical(vec!["eff_in"]))
+	);
 
-		.layer("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(2, 5, vec!["iii"], 900).apical(vec!["eff_in"]))
-	;
+	cort_regs.add(Protoregion::new(Thalamic)
+		.l("sensory", 1, layer::AFFERENT_OUTPUT, Axonal(Spatial))
+	);
 
-	cort_regs.add(sen);
 	cort_regs
 }
 
@@ -63,8 +64,16 @@ pub fn define_protoareas() -> Protoareas {
 	let area_side = 48 as u32;
 
 	let mut protoareas = Protoareas::new()
+		.area("v0", area_side, area_side, Thalamic, None, Some(vec!["v1"]))
+		.area("u0", area_side, area_side, Thalamic, None, Some(vec!["u1"]))
+
+		.area("u1", area_side, area_side, Sensory, None,
+			//None
+			Some(vec!["b1"])
+		)
+
 		.area("v1", area_side, area_side, Sensory, 
-			Some(vec![Protofilter::new("retina", Some("filters.cl")),]),
+			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),
 			//None
 			Some(vec!["b1"])
 		)
@@ -98,15 +107,19 @@ pub fn run(autorun_iters: i32) -> bool {
 	//let input_kind = InputVecKind::World;
 	//let input_kind = InputVecKind::Exp1;
 
-	let mut ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte");
+	let mut ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte", REPEATS_PER_IMAGE);
+	let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
+
 	let input_kind = InputVecKind::IdxReader(Box::new(ir));
 
 	/* ***** DISABLE STUFF ***** */	
-	cortex.area_mut(&area_name).psal_mut().dens_mut().syns.set_offs_to_zero();
-	cortex.area_mut(&area_name).bypass_inhib = true;
-	cortex.area_mut(&area_name).disable_pyrs = true;
-	//cortex.area_mut(&area_name).disable_regrowth = true;
-	/* ***** ############# ***** */
+	for (area_name, area) in &mut cortex.areas {
+		//area.psal_mut().dens_mut().syns.set_offs_to_zero();
+		//area.bypass_inhib = true;
+		//area.disable_pyrs = true;
+		//area.disable_regrowth = true;
+	}
+	/* ************************* */
 
 	let mut input_czar = InputCzar::new(area_dims.clone(), input_kind, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
 
@@ -127,6 +140,7 @@ pub fn run(autorun_iters: i32) -> bool {
 	let mut view_all_axons: bool = false;
 	let mut view_sdr_only: bool = true;
 	let mut cur_ttl_iters: i32 = 0;
+	let mut input_status: String = String::with_capacity(100);
 
 	loop {
 		/*######### COMMAND LINE #########*/
@@ -187,7 +201,8 @@ pub fn run(autorun_iters: i32) -> bool {
 				} else {
 					print!("\nInvalid area.");
 				}
-				continue;
+				//continue;
+				bypass_act = true;
 
 			} else if "v\n" == in_string {
 				view_sdr_only = !view_sdr_only;
@@ -335,7 +350,9 @@ pub fn run(autorun_iters: i32) -> bool {
 			if i >= (test_iters) { break; }
 
 			if !bypass_act {
-				input_czar.next(&mut cortex);
+				let cur_frame = input_czar.next(&mut cortex);
+				input_status.clear();
+				input_status.push_str(&format!("[{}] -> '{}'", cur_frame, ir_labels.get_first_byte(cur_frame)));
 			}
 
 			//let sr_start = (512 << cmn::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
@@ -366,7 +383,7 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			print!("\n'{}' output:", &area_name);
 
-			rndr.render(out_slc, ff_slc);
+			rndr.render(out_slc, ff_slc, &input_status);
 
 
 			//cmn::render_sdr(out_slc, Some(ff_slc), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());

@@ -9,9 +9,7 @@ use std::fmt::{ Display };
 
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::areas::{ Protoareas };
-use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
-use proto::regions::{ Protoregion, ProtoregionKind };
+use proto::{ Protoregion, ProtoregionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axons::{ Axons };
 use cortical_area:: { Aux };
@@ -50,7 +48,7 @@ impl Dendrites {
 		//let width_dens = dims.width << per_cell_l2;
 		assert!(dims.per_tuft_l2() as u8 == protocell.dens_per_tuft_l2);
 
-		//let dims = cel_dims.clone_with_pgl2(per_cell_l2);
+		//let dims = cel_dims.clone_with_ptl2(per_cell_l2);
 
 		let syns_per_den_l2 = protocell.syns_per_den_l2;
 		let den_threshold = protocell.den_thresh_init.unwrap_or(1);
@@ -76,7 +74,7 @@ impl Dendrites {
 
 		print!("\n            DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", layer_name, dims, states.len());
 
-		let syns_dims = dims.clone_with_pgl2((dims.per_tuft_l2() + syns_per_den_l2 as i8));
+		let syns_dims = dims.clone_with_ptl2((dims.per_tuft_l2() + syns_per_den_l2 as i8));
 		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, region, axons, aux, ocl);
 
 

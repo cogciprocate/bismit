@@ -1,7 +1,9 @@
 // PROTO: More of a blueprint than a prototype
 
-pub use self::regions::{ Protoregion, Protoregions, ProtoregionKind };
-	pub use self::regions::ProtoregionKind::{ Associational, Sensory, Motor }; // SLATED FOR REDESIGN
+pub use self::regions::{ Protoregions };
+
+pub use self::region::{ Protoregion, ProtoregionKind };
+	pub use self::region::ProtoregionKind::{ Associational, Sensory, Motor, Thalamic }; // SLATED FOR REDESIGN
 
 pub use self::areas::{ Protoareas, ProtoareasTrait, Protoarea };
 
@@ -16,6 +18,7 @@ pub use self::filter::{ Protofilter };
 
 pub mod filter;
 pub mod regions;
+pub mod region;
 pub mod areas;
 pub mod layer;
 pub mod cell;

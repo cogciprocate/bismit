@@ -11,7 +11,7 @@ use std::fmt::{ Display };
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
-use proto::regions::{ Protoregion, ProtoregionKind };
+use proto::{ Protoregion, ProtoregionKind };
 use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -56,7 +56,7 @@ impl Axons {
 		// 	//print!("\n      AXONS::NEW(): columns: {}, syn_span: {}, depth_axn_hrz: {}, hrz_frames_per_slc: {}, hrz_axon_slcs: {}", area_dims.columns(), 1 << syn_span_lin_l2, depth_axn_hrz, hrz_frames_per_slc, hrz_axn_slcs);
 		// }
 
-		let hrz_axn_slcs: u8 = 1;
+		hrz_axn_slcs = 1;
 
 		let physical_depth = depth_cellular + depth_axn_sptl + hrz_axn_slcs;
 

@@ -12,13 +12,15 @@ use ocl::{ CorticalDimensions };
 //		bytes (u8) into a ganglion (SDR frame buffer: &[u8])
 pub struct IdxReader {
 	ganglion_dims: CorticalDimensions,
-	images_count: usize,
-	image_height: usize, 
+	repeats_per_image: usize,
+	repeat_counter: usize,
+	frame_counter: usize,
+	frames_count: usize,
 	image_width: usize,
+	image_height: usize,	
 	image_len: usize,
 	ttl_header_len: usize,
 	margins: Margins, // DEPRICATE
-	image_counter: usize,
 	file_path: String,
 	file_reader: BufReader<File>,
 	image_buffer: Vec<u8>,
@@ -28,7 +30,7 @@ pub struct IdxReader {
 }
 
 impl IdxReader {
-	pub fn new(ganglion_dims: CorticalDimensions, file_name: &str) -> IdxReader {
+	pub fn new(ganglion_dims: CorticalDimensions, file_name: &str, repeats_per_image: usize) -> IdxReader {
 		let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
 		let path = Path::new(&path_string);
 		let display = path.display();
@@ -70,8 +72,11 @@ impl IdxReader {
 			;
 		}
 
-		let margins_horiz = ganglion_dims.u_size() as usize - dim_sizes[2];
-		let margins_vert = ganglion_dims.v_size() as usize - dim_sizes[1];
+		let image_width = if magic_dims > 1 { dim_sizes[1] } else { 1 };
+		let image_height = if magic_dims > 2 { dim_sizes[2] } else { 1 };
+
+		let margins_horiz = ganglion_dims.u_size() as usize - image_width;
+		let margins_vert = ganglion_dims.v_size() as usize - image_height;
 
 		let margin_left = margins_horiz / 2;
     	let margin_right = margins_horiz - margin_left;
@@ -79,7 +84,13 @@ impl IdxReader {
     	let margin_bottom = margins_vert - margin_top;
 
     	//let image_buffer: Vec<u8> = iter::repeat(0).take(dim_sizes[1] * dim_sizes[2]).collect();
-    	let mut image_buffer: Vec<u8> = Vec::with_capacity(dim_sizes[0] * dim_sizes[1] * dim_sizes[2]);
+    	let mut buffer_cap: usize = 1;
+
+    	for &size in &dim_sizes {
+    		buffer_cap *= size as usize;
+		}
+
+    	let mut image_buffer: Vec<u8> = Vec::with_capacity(buffer_cap);
     	
     	match reader.read_to_end(&mut image_buffer) {
     		Err(why) => panic!("\ncouldn't read '{}': {}", &path_string, Error::description(&why)),
@@ -90,18 +101,20 @@ impl IdxReader {
 
 	    IdxReader {
 	    	ganglion_dims: ganglion_dims,
-	    	images_count: dim_sizes[0],
-	    	image_height: dim_sizes[1],
-	    	image_width: dim_sizes[2],
-	    	image_len: dim_sizes[1] * dim_sizes[2],
+	    	repeats_per_image: repeats_per_image,
+	    	repeat_counter: 0,
+	    	frame_counter: 0,
+	    	frames_count: dim_sizes[0],
+	    	image_width: image_width,
+	    	image_height: image_height,	    	
+	    	image_len: image_width * image_height,
 	    	ttl_header_len: ttl_header_len,
 	    	margins: Margins { 	// DEPRICATE
 	    		left: margin_left, 
 	    		right: margin_right, 
 	    		top: margin_top,
 	    		bottom: margin_bottom,
-    		},
-	    	image_counter: 0,
+    		},	    	
 	    	//file: file,
 	    	file_path: format!("{}", path.display()),
 	    	file_reader: reader,
@@ -110,23 +123,61 @@ impl IdxReader {
     	}
     }
 
-    pub fn next(&mut self, ganglion_image: &mut [u8]) {
-    	assert!(ganglion_image.len() == self.ganglion_dims.columns() as usize);
-    	assert!((self.image_len) <= ganglion_image.len(), 
-    		"Ganglion vector size must be greater than or equal to IDX image size");
+    pub fn next(&mut self, ganglion_frame: &mut [u8]) -> usize {
+    	assert!(ganglion_frame.len() == self.ganglion_dims.columns() as usize);
+    	assert!((self.image_len) <= ganglion_frame.len(), 
+    		"Ganglion vector size must be greater than or equal to IDX image size");    	
 
-  //   	match self.file_reader.read(&mut self.image_buffer[..]) {
+  		//   	match self.file_reader.read(&mut self.image_buffer[..]) {
 		//     Err(why) => panic!("\ncouldn't read '{}': {}", &self.file_path, Error::description(&why)),
 		//     Ok(bytes) => assert!(bytes == self.image_buffer.len(), "\n bytes read != buffer length"), 
 		//     	//print!("\n{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
 		// }
 
-		let img_idz = self.image_counter * self.image_len;
+		let img_idz = self.frame_counter * self.image_len;
 		let img_idn = img_idz + self.image_len;
 
-		self.image_pixel_to_hex(&self.image_buffer[img_idz..img_idn], ganglion_image);
+		self.image_pixel_to_hex(&self.image_buffer[img_idz..img_idn], ganglion_frame);
 
-		self.image_counter += 1;
+		let prev_frame = self.frame_counter;
+		self.increment_frame();
+		return prev_frame;
+	}
+
+	pub fn get_raw_frame(&self, frame_idx: usize, ganglion_frame: &mut [u8]) -> usize {
+		assert!(ganglion_frame.len() == self.ganglion_dims.columns() as usize);
+		assert!(frame_idx < self.frames_count);
+		//let mut bytes_copied = 0;
+
+		let img_idz = frame_idx * self.image_len;
+		//let img_idn = img_idz + self.image_len;
+
+		for idx in 0..self.image_len {
+			ganglion_frame[idx] = self.image_buffer[img_idz + idx];
+		}
+
+		return self.image_len;
+	}
+
+	pub fn get_first_byte(&self, frame_idx: usize) -> u8 {
+		assert!(frame_idx < self.frames_count);
+		let img_idz = frame_idx * self.image_len;
+
+		return self.image_buffer[img_idz];
+
+	}
+
+	fn increment_frame(&mut self) {		
+		self.repeat_counter += 1;
+
+		if self.repeat_counter >= self.repeats_per_image {
+			self.repeat_counter = 0;
+			self.frame_counter += 1;
+
+			if self.frame_counter >= self.frames_count {
+				self.frame_counter = 0;
+			}
+		}
 	}
 
 

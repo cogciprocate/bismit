@@ -22,7 +22,7 @@ impl Renderer {
 	}
 
 	// DRAW(): height-row-v, width-col-u
-	pub fn render(&mut self, axn_sdr: &[u8], sst_sdr: &[u8]) {
+	pub fn render(&mut self, axn_sdr: &[u8], sst_sdr: &[u8], input_status: &str) {
 		let height = self.dims.v_size();
 		let width = self.dims.u_size();
 		assert!((height * width) as usize == axn_sdr.len());
@@ -121,9 +121,9 @@ impl Renderer {
 
 		print!("{}{}\n", cmn::C_DEFAULT, cmn::BGC_DEFAULT);
 		println!("\nprev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, \
-			new preds:{}, ssts active:{}, axns active:{}", 
+			new preds:{}, ssts active:{}, axns active:{}, input status:{}", 
 			preds_total, corr_preds, failed_preds, pred_accy, 
-			anomalies, new_preds, active_ssts, active_axns,
+			anomalies, new_preds, active_ssts, active_axns, input_status,
 		);
 	}
 }
