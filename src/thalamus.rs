@@ -5,7 +5,8 @@ use std::iter;
 use cmn;
 use ocl;
 use cortical_area:: { CorticalArea };
-use proto::{ Protoareas, ProtoareasTrait, Protoarea, Protoregion, Protoregions, ProtoregionKind, layer, Sensory };
+use proto::{ Protoareas, ProtoareasTrait, Protoarea, Protoregion, Protoregions, 
+	ProtoregionKind, layer, Sensory, Thalamic };
 use tests::input_czar;
 
 /*	THALAMUS:
@@ -118,12 +119,11 @@ impl Thalamus { // , protoregions: Protoregions
 	}
 
 
-	/*	THALAMUS::WRITE()
-			<<<<< NEEDS UPDATING TO NEW SYSTEM - CALL AREA.WRITE() >>>>>
-				- Change input param to &CorticalArea
-
-			TODO: DEPRICATE
-	*/ 
+	// THALAMUS::WRITE(): USED FOR TESTING PURPOSES
+	// 	<<<<< NEEDS UPDATING TO NEW SYSTEM - CALL AREA.WRITE() >>>>>
+	// 		- Change input param to &CorticalArea			
+	// 	TODO: DEPRICATE
+	
 	pub fn write(&self, area_name: &str, layer_target: &'static str, 
 				sdr: &[ocl::cl_uchar], areas: &HashMap<&'static str, Box<CorticalArea>>,
 	) {
@@ -154,63 +154,48 @@ impl Thalamus { // , protoregions: Protoregions
 			TODO: HANDLE MULTIPLE TARGET REGIONS
 	*/
 	pub fn forward_afferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
-				 areas: &mut HashMap<&'static str, Box<CorticalArea>>,
+				 areas: &HashMap<&'static str, Box<CorticalArea>>,
 	) {
 		let emsg = "thalamus::Thalamus::forward_afferent_output(): Area not found: ";
 
-		// let area_index = self.tract_afferent_output.map[src_area_name];
-		// let slc_range = self.tract_afferent_output.index[area_index].range.clone();
-
-		//let slc_range = self.tract_afferent_output.info(src_area_name).range.clone();
-
+		let emsg1 = format!("{}'{}' ", emsg, src_area_name);
+		areas.get(src_area_name).expect(&emsg1).read_output(
+			self.tract_afferent_output.output_ganglion(src_area_name, tar_area_name),
+			layer::AFFERENT_OUTPUT, 
+		);
 		
-		
-		{
-			let emsg1 = format!("{}'{}' ", emsg, src_area_name);
-			//let output_range = self.tract_afferent_output.output_range(src_area_name, tar_area_name);
-			let mut aog = self.tract_afferent_output.output_ganglion(src_area_name, tar_area_name);
-			let src_area = areas.get_mut(src_area_name).expect(&emsg1);
-			src_area.read_output(aog, layer::AFFERENT_OUTPUT);
-		}
-
 		let emsg2 = format!("{}'{}' ", emsg, tar_area_name);
-		//let input_range = self.tract_afferent_output.input_range(tar_area_name);		
-		let aig = self.tract_afferent_output.input_ganglion(tar_area_name);
-		let tar_area = areas.get_mut(tar_area_name).expect(&emsg2);
-		tar_area.write_input(aig, layer::AFFERENT_INPUT);
+		areas.get(tar_area_name).expect(&emsg2).write_input(
+			self.tract_afferent_output.input_ganglion(tar_area_name),
+			layer::AFFERENT_INPUT,
+		);
 
 		//cmn::print_vec_simple(&self.tract_afferent_output[..]);
 	}
 
 	pub fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
-				 areas: &mut HashMap<&'static str, Box<CorticalArea>>,
+				 areas: &HashMap<&'static str, Box<CorticalArea>>,
 	) {
 		let emsg = "thalamus::Thalamus::backward_efferent_output(): Area not found: ";
+		let emsg_src = format!("{}'{}' ", emsg, src_area_name);
+		let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
 
-		// let area_index = self.tract_efferent_output.map[src_area_name];
-		// let slc_range = self.tract_efferent_output.index[area_index].range.clone();
-
-		//let slc_range = self.tract_afferent_output.info(src_area_name).range.clone();		
-
+		match areas.get(tar_area_name) {
+			Some(area) => if area.protoregion().kind == Thalamic { return; },
+			None => return,
+		}
 		
-		let emsg1 = format!("{}'{}' ", emsg, src_area_name);
-		//let output_range = self.tract_efferent_output.output_range(src_area_name, tar_area_name);				
-		//let mut eog = self.tract_efferent_output.output_ganglion(src_area_name, tar_area_name);
-		areas.get_mut(src_area_name).expect(&emsg1).read_output(
+		areas.get(src_area_name).expect(&emsg_src).read_output(
 			self.tract_efferent_output.output_ganglion(src_area_name, tar_area_name), 
-			layer::EFFERENT_OUTPUT
+			layer::EFFERENT_OUTPUT,
 		);
 	
-
 		/* TEST */
 		//let test_vec = input_czar::sdr_stripes(512, false, &mut self.tract_efferent_output[slc_range.clone()]);
-
-		let emsg2 = format!("{}'{}' ", emsg, tar_area_name);		
-		//let input_range = self.tract_efferent_output.input_range(tar_area_name);		
-		//let eig = ;
-		areas.get_mut(tar_area_name).expect(&emsg2).write_input(
+		
+		areas.get(tar_area_name).expect(&emsg_tar).write_input(
 			self.tract_efferent_output.input_ganglion(tar_area_name), 
-			layer::EFFERENT_INPUT
+			layer::EFFERENT_INPUT,
 		);
  	}
 

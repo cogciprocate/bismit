@@ -42,12 +42,12 @@ impl SensoryFilter {
 		}
 	}
 
-	pub fn write(&mut self, sdr: &[ocl::cl_uchar]) {
+	pub fn write(&self, sdr: &[ocl::cl_uchar]) {
 		assert!(sdr.len() == self.input.len());
 		self.input.write_direct(sdr, 0);
 	}
 
-	pub fn cycle(&mut self) {
+	pub fn cycle(&self) {
 		self.kern_cycle.enqueue();
 		//print!("\nPrinting {} for {}:\n", &self.filter_name, self.area_name);
 		//self.input.print_simple();

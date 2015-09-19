@@ -75,7 +75,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 		self.ocl.enqueue_write_buffer(self);
 	}
 
-	pub fn write_direct(&mut self, sdr: &[T], offset: usize) {
+	pub fn write_direct(&self, sdr: &[T], offset: usize) {
 		ocl::enqueue_write_buffer(sdr, self.buf, self.ocl.queue(), offset);
 	}
 

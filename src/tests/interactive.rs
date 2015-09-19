@@ -54,7 +54,7 @@ pub fn define_protoregions() -> Protoregions {
 	);
 
 	cort_regs.add(Protoregion::new(Thalamic)
-		.l("sensory", 1, layer::AFFERENT_OUTPUT, Axonal(Spatial))
+		.l("external_input", 1, layer::AFFERENT_OUTPUT, Axonal(Spatial))
 	);
 
 	cort_regs

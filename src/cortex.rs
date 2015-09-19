@@ -85,7 +85,7 @@ impl Cortex {
 		self.cycle();
 	}*/
 
-	pub fn cycle(&mut self, area_name: &str) {
+	pub fn cycle_old(&mut self, area_name: &str) {
 		let emsg = format!("cortex::Cortex::cycle(): Area: '{}' not found. ", area_name);
 
 		//: (Option<Vec<&'static str>>, Vec<&'static str>)
@@ -100,7 +100,7 @@ impl Cortex {
 			self.thal.forward_afferent_output(area_name, area_name_aff, &mut self.areas);
 
 			// NEEDS TO HAPPEN IN A DIFFERENT THREAD (ONE FOR EACH LAYER)
-			self.cycle(area_name_aff);									
+			self.cycle_old(area_name_aff);									
 		}
 
 		// match afferent_areas {
@@ -112,36 +112,22 @@ impl Cortex {
 		// };
 	}
 
-	pub fn cycle_new(&mut self) {
-
-		for area in self.areas.iter() {
-
+	pub fn cycle(&mut self) {
+		for (area_name, area) in self.areas.iter_mut() {
+			area.cycle();
 		}
 
-		// CYCLE EACH AREA
+		for (area_name, area) in self.areas.iter() {
+			for aff_area_name in area.afferent_target_names().iter() {
+				print!("\nForwarding from: '{}' to '{}'", area_name, aff_area_name);
+				self.thal.forward_afferent_output(area_name, aff_area_name, &self.areas);
+			}
 
-		// FORWARD AFF AND EFF OUTPUTS FOR EACH AREA
-			// SORT OUT MULTIPLE INPUTS
-
-		// let (afferent_areas, efferent_areas) = {
-		// 	println!("\nCycling all areas... ");			
-		// 	//let emsg = format!("cortex::Cortex::cycle(): Area: '{}' not found. ", area_name);
-		// 	//self.areas.get_mut(area_name).expect(&emsg).cycle()
-		// };
-
-		// match afferent_areas {
-		// 	Some(aff_area_names) => {
-		// 		for area_name_aff in aff_area_names {
-		// 			println!("\nOutputting from '{}' to '{}'", area_name, area_name_aff);					
-		// 			self.thal.backward_efferent_output(area_name_aff, area_name, &mut self.areas);
-		// 			self.thal.forward_afferent_output(area_name, area_name_aff, &mut self.areas);
-
-		// 			self.cycle(area_name_aff);									
-		// 		}
-		// 	},
-
-		// 	None => (),
-		// };
+			for eff_area_name in area.efferent_target_names().iter() {
+				print!("\nBackwarding from: '{}' to '{}'", area_name, eff_area_name);
+				self.thal.backward_efferent_output(area_name, eff_area_name, &self.areas);
+			}
+		}
 	}
 
 	pub fn print_area_output(&mut self, ao_name: &str) {

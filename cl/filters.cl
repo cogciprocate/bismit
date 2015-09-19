@@ -64,7 +64,7 @@ __kernel void retina(
 	int const is_off_cen_cel = cel_idx & 1;
 	int const is_large_cel = ((cel_idx & 3) >> 1) ^ is_off_cen_cel;
 
-	int radius = is_large_cel ? 6 : 3;
+	int radius = is_large_cel ? 4 : 3;
 
 	int const neighbors_avg = get_neighbors_avg(slc_id, v_size, v_id, u_size, u_id, cel_states,
 		cel_idx, radius);

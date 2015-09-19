@@ -330,13 +330,13 @@ impl CorticalArea {
 		axn_irs
 	}
 
-	pub fn write_input(&mut self, sdr: &[ocl::cl_uchar], layer_flags: layer::ProtolayerFlags) {
+	pub fn write_input(&self, sdr: &[ocl::cl_uchar], layer_flags: layer::ProtolayerFlags) {
 		if layer_flags.contains(layer::AFFERENT_INPUT) {
 			match self.filters {
-				Some(ref mut filters_vec) => {
+				Some(ref filters_vec) => {
 					filters_vec[0].write(sdr);
 
-					for fltr in filters_vec.iter_mut() { // ***** UN-MUT ME
+					for fltr in filters_vec.iter() { // ***** UN-MUT ME
 						fltr.cycle();
 					}
 
@@ -400,7 +400,7 @@ impl CorticalArea {
 		ocl::enqueue_read_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
 	}
 
-	pub fn write_to_axons(&mut self, axn_range: Range<u32>, sdr: &[ocl::cl_uchar]) {
+	pub fn write_to_axons(&self, axn_range: Range<u32>, sdr: &[ocl::cl_uchar]) {
 		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
 		ocl::enqueue_write_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
 	}

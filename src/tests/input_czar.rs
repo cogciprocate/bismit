@@ -159,7 +159,8 @@ impl InputCzar {
 		//cortex.write_input("a1", &self.vec_optical); // *****
 		cortex.write("v1", "motor_in", &self.vec_motor);
 		//cortex.write("v1", "test_noise", &self.vec_test_noise);
-		cortex.cycle("v1");
+		//cortex.cycle_old("v1");
+		cortex.cycle();
 	}
 
 	fn tick(&mut self) -> usize {
