@@ -368,13 +368,31 @@ impl CorticalArea {
 	pub fn axn_range(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {
 		let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
 			'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
-
 		let layer = self.protoregion.layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
 		let len = self.dims.columns() * layer.depth as u32;
 		let base_slc = layer.base_slc_pos;
 		let buffer_offset = cmn::axn_idx_2d(base_slc, self.dims.columns(), self.protoregion.hrz_demarc());
 
 		buffer_offset..(buffer_offset + len)
+	}
+
+	// 	INPUT_SRC_AREAS(): 
+	// 		- REMINDER: AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
+	pub fn input_src_area_names(&self, layer_flags: layer::ProtolayerFlags) -> Vec<&'static str> {
+		 // let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
+		 // 	'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
+		// let layer = self.protoregion.layer_with_flag(layer_flags);
+		// return layer.expect(&emsg).depth();
+
+		// 
+		if layer_flags == layer::EFFERENT_INPUT {
+			self.protoarea.afferent_areas.clone()
+		} else if layer_flags == layer::AFFERENT_INPUT {
+			self.protoarea.efferent_areas.clone()
+		} else {
+			panic!("CorticalArea::input_src_areas(): Can only be called with an \
+				input layer flag as argument");
+		}		
 	}
 
 	pub fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut [ocl::cl_uchar]) {

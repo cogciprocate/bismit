@@ -64,14 +64,16 @@ impl Thalamus { // , protoregions: Protoregions
 			// let area_len = area_columns * area_input_depth as usize;
 
 			let aff_len = area.axn_range(layer::AFFERENT_INPUT).len();
-			tao.add_area(area_name, i, aff_len);
+			let aff_srcs = area.input_src_area_names(layer::AFFERENT_INPUT);
+			tao.add_area(area_name, i, aff_len, aff_srcs);
 
 			let eff_len = area.axn_range(layer::EFFERENT_INPUT).len();
-			teo.add_area(area_name, i, eff_len);
+			let eff_srcs = area.input_src_area_names(layer::EFFERENT_INPUT);
+			teo.add_area(area_name, i, eff_len, eff_srcs);
 
 			//let cc_area_len = if aff_in_len > eff_in_len { aff_in_len } else { eff_in_len };
 
-			print!("\nTHALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", epre, area_name, aff_len, eff_len);			
+			print!("\nTHALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", area_name, aff_len, eff_len);			
 
 			// tao.index.push(AreaInfo { range: tao.axn_len..(tao.axn_len + aff_len) });
 			// tao.axn_len += aff_len;
@@ -84,6 +86,8 @@ impl Thalamus { // , protoregions: Protoregions
 			i += 1;
 		}
 
+		tao.init();
+		teo.init();
 		//let concourse: Vec<ocl::cl_uchar> = iter::repeat(0).take(cc_len).collect();
 
 		//let tract_afferent_output: Vec<ocl::cl_uchar> = iter::repeat(0).take(aff_len).collect();
@@ -152,20 +156,28 @@ impl Thalamus { // , protoregions: Protoregions
 	pub fn forward_afferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
 				 areas: &mut HashMap<&'static str, Box<CorticalArea>>,
 	) {
-		let area_index = self.tract_afferent_output.map[src_area_name];
-		let slc_range = self.tract_afferent_output.index[area_index].range.clone();
-
 		let emsg = "thalamus::Thalamus::forward_afferent_output(): Area not found: ";
 
+		// let area_index = self.tract_afferent_output.map[src_area_name];
+		// let slc_range = self.tract_afferent_output.index[area_index].range.clone();
+
+		//let slc_range = self.tract_afferent_output.info(src_area_name).range.clone();
+
+		
+		
 		{
 			let emsg1 = format!("{}'{}' ", emsg, src_area_name);
+			//let output_range = self.tract_afferent_output.output_range(src_area_name, tar_area_name);
+			let mut aog = self.tract_afferent_output.output_ganglion(src_area_name, tar_area_name);
 			let src_area = areas.get_mut(src_area_name).expect(&emsg1);
-			src_area.read_output(&mut self.tract_afferent_output.ganglion[slc_range.clone()], layer::AFFERENT_OUTPUT);
+			src_area.read_output(aog, layer::AFFERENT_OUTPUT);
 		}
 
 		let emsg2 = format!("{}'{}' ", emsg, tar_area_name);
+		//let input_range = self.tract_afferent_output.input_range(tar_area_name);		
+		let aig = self.tract_afferent_output.input_ganglion(tar_area_name);
 		let tar_area = areas.get_mut(tar_area_name).expect(&emsg2);
-		tar_area.write_input(&self.tract_afferent_output.ganglion[slc_range.clone()], layer::AFFERENT_INPUT);
+		tar_area.write_input(aig, layer::AFFERENT_INPUT);
 
 		//cmn::print_vec_simple(&self.tract_afferent_output[..]);
 	}
@@ -173,23 +185,33 @@ impl Thalamus { // , protoregions: Protoregions
 	pub fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
 				 areas: &mut HashMap<&'static str, Box<CorticalArea>>,
 	) {
-		let area_index = self.tract_efferent_output.map[src_area_name];
-		let slc_range = self.tract_efferent_output.index[area_index].range.clone();
-
 		let emsg = "thalamus::Thalamus::backward_efferent_output(): Area not found: ";
 
-		{
-			let emsg1 = format!("{}'{}' ", emsg, src_area_name);
-			let src_area = areas.get_mut(src_area_name).expect(&emsg1);		
-			src_area.read_output(&mut self.tract_efferent_output.ganglion[slc_range.clone()], layer::EFFERENT_OUTPUT);
-		}
+		// let area_index = self.tract_efferent_output.map[src_area_name];
+		// let slc_range = self.tract_efferent_output.index[area_index].range.clone();
 
-		/* TESTING */
+		//let slc_range = self.tract_afferent_output.info(src_area_name).range.clone();		
+
+		
+		let emsg1 = format!("{}'{}' ", emsg, src_area_name);
+		//let output_range = self.tract_efferent_output.output_range(src_area_name, tar_area_name);				
+		//let mut eog = self.tract_efferent_output.output_ganglion(src_area_name, tar_area_name);
+		areas.get_mut(src_area_name).expect(&emsg1).read_output(
+			self.tract_efferent_output.output_ganglion(src_area_name, tar_area_name), 
+			layer::EFFERENT_OUTPUT
+		);
+	
+
+		/* TEST */
 		//let test_vec = input_czar::sdr_stripes(512, false, &mut self.tract_efferent_output[slc_range.clone()]);
 
-		let emsg2 = format!("{}'{}' ", emsg, tar_area_name);
-		let tar_area = areas.get_mut(tar_area_name).expect(&emsg2);		
-		tar_area.write_input(&self.tract_efferent_output.ganglion[slc_range.clone()], layer::EFFERENT_INPUT);
+		let emsg2 = format!("{}'{}' ", emsg, tar_area_name);		
+		//let input_range = self.tract_efferent_output.input_range(tar_area_name);		
+		//let eig = ;
+		areas.get_mut(tar_area_name).expect(&emsg2).write_input(
+			self.tract_efferent_output.input_ganglion(tar_area_name), 
+			layer::EFFERENT_INPUT
+		);
  	}
 
 	/*fn area_output_target(&self, src_area_name: &'static str) {
@@ -198,42 +220,121 @@ impl Thalamus { // , protoregions: Protoregions
 	}*/
 }
 
+// THALAMICTRACT: A BUFFER FOR COMMUNICATION BETWEEN CORTICAL AREAS
 struct ThalamicTract {
-	ganglion: Vec<ocl::cl_uchar>,
-	index: Vec<AreaInfo>, 
-	map: HashMap<&'static str, usize>,
+	ganglion: Vec<ocl::cl_uchar>,			// BUFFER DIVIDED UP BY AREA
+	area_info: Vec<AreaInfo>,				// INFO ABOUT TARGET AREAS
+	area_map: HashMap<&'static str, usize>,	// MAP OF TARGET AREA NAMES -> AREA INFO INDEXES
 	ttl_len: usize,
 }
 
 impl ThalamicTract {
-	fn new(
-				ganglion: Vec<ocl::cl_uchar>,
-				index: Vec<AreaInfo>, 
-				map: HashMap<&'static str, usize>,
+	fn new(		ganglion: Vec<ocl::cl_uchar>,
+				area_info: Vec<AreaInfo>, 
+				area_map: HashMap<&'static str, usize>,
 	) -> ThalamicTract {
 		ThalamicTract {
 			ganglion: ganglion,
-			index: index,
-			map: map,
+			area_info: area_info,
+			area_map: area_map,
 			ttl_len: 0,
 		}
 	}
 
-	fn add_area(&mut self, area_name: &'static str, idx: usize, len: usize) {
-		self.index.push(AreaInfo { range: self.ttl_len..(self.ttl_len + len) });
-		self.map.insert(area_name, idx);
+	fn add_area(&mut self, tar_area_name: &'static str, idx: usize, len: usize, src_areas: Vec<&'static str>) {
+		// self.area_info.push(AreaInfo { 
+		// 	range: self.ttl_len..(self.ttl_len + len),
+		// 	src_areas: src_areas,
+		// });
+		self.area_info.push(AreaInfo::new(self.ttl_len, len, src_areas));
+		self.area_map.insert(tar_area_name, idx);
 		self.ttl_len += len;
+	}
 
-		// tao.index.push(AreaInfo { range: tao.axn_len..(tao.axn_len + aff_len) });
-		// tao.axn_len += aff_len;
-		// tao.map.insert(area.name, i);
+	fn init(&mut self) {
+		self.ganglion.resize(self.ttl_len, 0);
+	}
+
+	fn input_ganglion(&self, tar_area_name: &str) -> &[u8] {
+		let range = self.input_range(tar_area_name);
+		&self.ganglion[range]
+	}
+
+	fn output_ganglion(&mut self, src_area_name: &str, tar_area_name: &str) -> &mut [u8] {
+		let range = self.output_range(src_area_name, tar_area_name);
+		&mut self.ganglion[range]
+	}
+
+	//  OUTPUT_RANGE(): RANGE OF THE TRACT DESIGNATED TO BUFFER OUTPUT FROM 
+	//	THE 'OUTPUT' CORTICAL AREA DESTINED FOR THE 'INPUT' CORTICAL AREA(S).
+	//		- LENGTH WILL EQUAL THE NUMBER OF COLUMNS FOR THE LARGER OF THE TWO AREAS.
+	fn output_range(&self, src_area_name: &str, tar_area_name: &str) -> Range<usize> {
+		//let area_count = self.info(tar_area_name).src_areas.len();
+		// let mut slc_range = self.info(tar_area_name).range.clone();
+		// slc_range.end = slc_range.start 
+		// 	+ (self.info(tar_area_name).output_len());
+
+		// return slc_range;
+		self.info(tar_area_name).src_area_range(src_area_name)
+	}
+
+	//  INPUT_RANGE(): RANGE OF THE TRACT DESIGNATED TO BUFFER THE CONCATENATED
+	// 	OUTPUTS FROM THE 'OUTPUT' CORTICAL AREAS TO AN 'INPUT' CORTICAL AREA
+	// 		- IN INSTANCES WHERE THE 'INPUT' CORTICAL AREA IS RECEIVING INPUT FROM MULTIPLE AREAS:
+	//			- THE TOTAL LENGTH WILL BE THE SUM OF THE COLUMN COUNT OF EVERY INPUT AREA:
+	//		   		- DEPTH_TOTAL * COLUMNS
+	// 			- THE RANGE WILL ENCOMPASS THE RANGES USED PREVIOUSLY FOR OUTPUTS
+	// 		- IN CASES WHERE A CORTICAL AREA HAS ONLY ONE INPUT SOURCE AREA, INPUT RANGE WILL
+	//		  EQUAL OUTPUT RANGE.
+	fn input_range(&self, tar_area_name: &str) -> Range<usize> {
+		self.info(tar_area_name).range.clone()
+	}
+
+	fn info(&self, tar_area_name: &str) -> &AreaInfo {
+		let idx = self.area_map[tar_area_name];
+		&self.area_info[idx]
 	}
 
 }
 
 #[derive(PartialEq, Debug, Clone, Eq)]
 struct AreaInfo {
-	range: Range<usize>,		// RENAME / ELABORATE / EXPAND
+	range: Range<usize>,
+	src_areas: Vec<&'static str>,
+	output_len: usize,
+}
+
+impl AreaInfo {
+	fn new(range_start: usize, range_len: usize, src_areas: Vec<&'static str>) -> AreaInfo {
+		AreaInfo { 
+			range: range_start..(range_start + range_len),			
+			output_len: if src_areas.len() == 0 { 0 } else { range_len / src_areas.len() },
+			src_areas: src_areas,
+		}
+	}
+
+	fn src_area_range(&self, src_area_name: &str) -> Range<usize> {
+		let start = self.range.start + (self.src_area_index(src_area_name) * self.output_len());
+		return start..(start + self.output_len());
+	}
+
+	fn src_area_index(&self, src_area_name: &str) -> usize {
+		let mut idx = 0;
+
+		for san in self.src_areas.iter() {
+			if &src_area_name == san { 
+				break; 
+			} else {
+				idx += 1;
+			}
+		}
+		
+		idx
+	}
+
+	fn output_len(&self) -> usize {
+		self.output_len
+	}
 }
 
 

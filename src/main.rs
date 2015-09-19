@@ -1,5 +1,5 @@
 #![allow(non_camel_case_types, dead_code, unused_variables, unused_mut, unused_assignments, unused_imports,)]
-#![feature(vec_push_all, clone_from_slice)]
+#![feature(vec_push_all, clone_from_slice, vec_resize)]
 
 extern crate num;
 extern crate microcosm;
