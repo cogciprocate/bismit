@@ -91,7 +91,7 @@ pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
 pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;
 pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 
-pub const SYNAPSE_REACH_GEO_LOG2: u32 = 3;
+pub const SYNAPSE_REACH_GEO_LOG2: u32 = 2;
 pub const SYNAPSE_REACH_GEO: u32 = 1 << SYNAPSE_REACH_GEO_LOG2;
 pub const SYNAPSE_SPAN_GEO: u32 = SYNAPSE_REACH_GEO << 1;
 pub const SYNAPSE_REACH_LIN: u32 = (1 << (((SYNAPSE_REACH_GEO_LOG2 + 1) << 1) - 1));	// ((SYNAPSE_SPAN_LIN ^ 2) / 2)

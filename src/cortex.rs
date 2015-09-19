@@ -85,32 +85,32 @@ impl Cortex {
 		self.cycle();
 	}*/
 
-	pub fn cycle_old(&mut self, area_name: &str) {
-		let emsg = format!("cortex::Cortex::cycle(): Area: '{}' not found. ", area_name);
+	// pub fn cycle_old(&mut self, area_name: &str) {
+	// 	let emsg = format!("cortex::Cortex::cycle(): Area: '{}' not found. ", area_name);
 
-		//: (Option<Vec<&'static str>>, Vec<&'static str>)
-		let (afferent_areas, efferent_areas) = {
-			//println!("\nCycling '{}'", area_name);			
-			self.areas.get_mut(area_name).expect(&emsg).cycle()
-		};
+	// 	//: (Option<Vec<&'static str>>, Vec<&'static str>)
+	// 	let (afferent_areas, efferent_areas) = {
+	// 		//println!("\nCycling '{}'", area_name);			
+	// 		self.areas.get_mut(area_name).expect(&emsg).cycle()
+	// 	};
 
-		for area_name_aff in afferent_areas {
-			//println!("\nForwarding from '{}' to '{}'", area_name, area_name_aff);					
-			self.thal.backward_efferent_output(area_name_aff, area_name, &mut self.areas);
-			self.thal.forward_afferent_output(area_name, area_name_aff, &mut self.areas);
+	// 	for area_name_aff in afferent_areas {
+	// 		//println!("\nForwarding from '{}' to '{}'", area_name, area_name_aff);					
+	// 		self.thal.backward_efferent_output(area_name_aff, area_name, &mut self.areas);
+	// 		self.thal.forward_afferent_output(area_name, area_name_aff, &mut self.areas);
 
-			// NEEDS TO HAPPEN IN A DIFFERENT THREAD (ONE FOR EACH LAYER)
-			self.cycle_old(area_name_aff);									
-		}
+	// 		// NEEDS TO HAPPEN IN A DIFFERENT THREAD (ONE FOR EACH LAYER)
+	// 		self.cycle_old(area_name_aff);									
+	// 	}
 
-		// match afferent_areas {
-		// 	Some(aff_area_names) => {
+	// 	// match afferent_areas {
+	// 	// 	Some(aff_area_names) => {
 				
-		// 	},
+	// 	// 	},
 
-		// 	None => (),
-		// };
-	}
+	// 	// 	None => (),
+	// 	// };
+	// }
 
 	pub fn cycle(&mut self) {
 		for (area_name, area) in self.areas.iter_mut() {
@@ -119,12 +119,12 @@ impl Cortex {
 
 		for (area_name, area) in self.areas.iter() {
 			for aff_area_name in area.afferent_target_names().iter() {
-				print!("\nForwarding from: '{}' to '{}'", area_name, aff_area_name);
+				//print!("\nForwarding from: '{}' to '{}'", area_name, aff_area_name);
 				self.thal.forward_afferent_output(area_name, aff_area_name, &self.areas);
 			}
 
 			for eff_area_name in area.efferent_target_names().iter() {
-				print!("\nBackwarding from: '{}' to '{}'", area_name, eff_area_name);
+				//print!("\nBackwarding from: '{}' to '{}'", area_name, eff_area_name);
 				self.thal.backward_efferent_output(area_name, eff_area_name, &self.areas);
 			}
 		}

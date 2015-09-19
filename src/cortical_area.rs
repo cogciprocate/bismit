@@ -271,7 +271,7 @@ impl CorticalArea {
 		*/
 	}
 
-	pub fn cycle(&mut self) -> (Vec<&'static str>, Vec<&'static str>) {
+	pub fn cycle(&mut self) /*-> (&Vec<&'static str>, &Vec<&'static str>)*/ {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
 		if !self.disable_ssts {	self.psal_mut().cycle(); }
@@ -290,7 +290,7 @@ impl CorticalArea {
 
 		if !self.disable_regrowth { self.regrow(); }
 
-		(self.afferent_target_names(), self.efferent_target_names())
+		/*(self.afferent_target_names(), self.efferent_target_names())*/
 	}
 
 	pub fn regrow(&mut self) {
@@ -448,12 +448,14 @@ impl CorticalArea {
 		self.ptal_name
 	}
 
-	pub fn afferent_target_names(&self) -> Vec<&'static str> {
-		self.protoarea.afferent_areas.clone()
+	pub fn afferent_target_names(&self) -> &Vec<&'static str> {
+		//self.protoarea.afferent_areas.clone
+		&self.protoarea.afferent_areas
 	}
 
-	pub fn efferent_target_names(&self) -> Vec<&'static str> {
-		self.protoarea.efferent_areas.clone()
+	pub fn efferent_target_names(&self) -> &Vec<&'static str> {
+		//self.protoarea.efferent_areas.clone()
+		&self.protoarea.efferent_areas
 	}
 
 	pub fn ocl(&self) -> &OclProgQueue {

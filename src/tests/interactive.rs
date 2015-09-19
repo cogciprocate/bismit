@@ -46,11 +46,11 @@ pub fn define_protoregions() -> Protoregions {
 		.l("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
 		.l("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
 		.l("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 256)) 
+			Protocell::new_spiny_stellate(5, vec!["aff_in"], 2000)) 
 		.l("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
 		.l("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(0, 5, vec!["iii"], 500).apical(vec!["eff_in"]))
+			Protocell::new_pyramidal(0, 4, vec!["iii"], 568).apical(vec!["eff_in"]))
 	);
 
 	cort_regs.add(Protoregion::new(Thalamic)
