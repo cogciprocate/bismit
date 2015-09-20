@@ -24,7 +24,7 @@ impl Renderer {
 
 	// DRAW(): height-row-v, width-col-u
 	// TODO: NEED TO MAKE SST_AXNS OPTIONAL 
-	pub fn render(&mut self, out_axns: &[u8], sst_axns: &[u8], input_status: &str) {
+	pub fn render(&mut self, out_axns: &[u8], sst_axns: &[u8], input_status: &str, print_summary: bool) {
 		let height = self.dims.v_size();
 		let width = self.dims.u_size();
 		assert!((height * width) as usize == out_axns.len());
@@ -41,7 +41,7 @@ impl Renderer {
 		let mut anomalies = 0usize;
 		let mut new_preds = 0usize;
 
-		print!("\n\n");
+		print!("\n");
 
 		for v in 0..height {
 			//let v = (height - 1) - v_mirror;
@@ -122,11 +122,14 @@ impl Renderer {
 		};
 
 		print!("{}{}\n", cmn::C_DEFAULT, cmn::BGC_DEFAULT);
-		println!("\nprev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, \
-			new preds:{}, ssts active:{}, axns active:{}, input status:{}", 
-			preds_total, corr_preds, failed_preds, pred_accy, 
-			anomalies, new_preds, active_ssts, active_axns, input_status,
-		);
+
+		if print_summary {
+			println!("prev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, \
+				new preds:{}, ssts active:{}, axns active:{}, input status:{}", 
+				preds_total, corr_preds, failed_preds, pred_accy, 
+				anomalies, new_preds, active_ssts, active_axns, input_status,
+			);
+		}
 	}
 
 	pub fn render_axon_space(&mut self, axn_space: &[u8], slc_map: &BTreeMap<u8, &'static str>, 
@@ -137,9 +140,9 @@ impl Renderer {
 		for (&slc_id, &slc_name) in slc_map {
 			let axn_idz = cmn::axn_idz_2d(slc_id, col_count, hrz_demarc) as usize;
 			let axn_idn = axn_idz + col_count as usize;			
-			print!("\nAxon slice '{}': slc_id: {}, axn_idz: {}", slc_name, slc_id, axn_idz);
+			print!("Axon slice '{}': slc_id: {}, axn_idz: {}", slc_name, slc_id, axn_idz);
 
-			self.render(&axn_space[axn_idz..axn_idn], &axn_space[axn_idz..axn_idn], slc_name);
+			self.render(&axn_space[axn_idz..axn_idn], &axn_space[axn_idz..axn_idn], slc_name, false);
 		}
 	}
 }
@@ -194,7 +197,7 @@ pub fn render_sdr(
 	let mut i_pattern = 0usize; // DEPRICATE
 	let mut i_cort_area = 0u8;
 
-	print!("\n");
+	println!("");
 	io::stdout().flush().ok();
 
 	loop {

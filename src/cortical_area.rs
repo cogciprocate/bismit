@@ -54,16 +54,12 @@ pub struct CorticalArea {
 }
 
 impl CorticalArea {
-	pub fn new(protoarea: Protoarea, mut protoregion: Protoregion, device_idx: usize) -> CorticalArea {
+	pub fn new(protoarea: Protoarea, protoregion: Protoregion, device_idx: usize) -> CorticalArea {
 		let emsg = "cortical_area::CorticalArea::new()";
 
-		print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}'", protoarea.name);
-
-		// AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
-		protoregion.set_layer_depth(layer::AFFERENT_INPUT, protoarea.efferent_areas.len() as u8);
-		protoregion.set_layer_depth(layer::EFFERENT_INPUT, protoarea.afferent_areas.len() as u8);
-		protoregion.freeze();			
-		let protoregion = protoregion;		
+		println!("\nCORTICALAREA::NEW(): Creating Cortical Area: '{}'", protoarea.name);		
+				
+		//let protoregion = protoregion;		
 
 		let ocl_context: ocl::OclContext = OclContext::new(None);
 		let mut ocl: ocl::OclProgQueue = ocl::OclProgQueue::new(&ocl_context, Some(device_idx));
@@ -87,11 +83,11 @@ impl CorticalArea {
 		let dims = protoarea.dims.clone_with_depth(protoregion.depth_total())
 			.with_physical_increment(ocl.get_max_work_group_size());
 
-		print!("\nCORTICALAREA::NEW(): Area '{}' details: \
+		println!("\nCORTICALAREA::NEW(): Area '{}' details: \
 			(width: {}, height: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}", 
 			protoarea.name, dims.u_size(), dims.v_size(), dims.depth(), 
 			protoarea.efferent_areas, protoarea.afferent_areas);
-		/*print!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", name, 1 << dims.width_l2(), 1 << dims.height_l2(), dims.depth());*/
+		/*println!("\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", name, 1 << dims.width_l2(), 1 << dims.height_l2(), dims.depth());*/
 
 		let emsg_psal = format!("{}: Primary Spatial Associative Layer not defined.", emsg);
 		let psal_name = protoregion.layer_with_flag(layer::SPATIAL_ASSOCIATIVE).expect(&emsg_psal).name();
@@ -107,7 +103,7 @@ impl CorticalArea {
 		//assert!(DENDRITES_PER_CELL_DISTAL <= 256);
 		//assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);
 		//assert!(depth_cellular > 0, "cortical_area::CorticalArea::new(): Region has no cellular layers.");
-		//print!("\nCorticalArea::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
+		//println!("CorticalArea::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
 
 		let axns = Axons::new(dims, &protoregion, &ocl);
 
@@ -122,7 +118,7 @@ impl CorticalArea {
 		for (&layer_name, layer) in protoregion.layers().iter() {
 			match layer.kind {
 				Cellular(ref pcell) => {
-					print!("\n   CORTICALAREA::NEW(): making a(n) {:?} layer: '{}' (depth: {})", pcell.cell_kind, layer_name, layer.depth);
+					println!("   CORTICALAREA::NEW(): making a(n) {:?} layer: '{}' (depth: {})", pcell.cell_kind, layer_name, layer.depth);
 
 					match pcell.cell_kind {
 						Pyramidal => {
@@ -145,7 +141,7 @@ impl CorticalArea {
 					}
 				},
 
-				_ => print!("\n   CORTICALAREA::NEW(): Axon layer: '{}' (depth: {})", layer_name, layer.depth),
+				_ => println!("   CORTICALAREA::NEW(): Axon layer: '{}' (depth: {})", layer_name, layer.depth),
 			}
 		}
 
@@ -163,7 +159,7 @@ impl CorticalArea {
 							let src_layer_depth = src_slc_ids.len() as u8;
 							let src_axn_base_slc = src_slc_ids[0];
 
-							print!("\n   CORTICALAREA::NEW(): Inhibitory cells: src_layer_names: \
+							println!("   CORTICALAREA::NEW(): Inhibitory cells: src_layer_names: \
 								{:?}, src_axn_base_slc: {:?}", src_layer_names, src_axn_base_slc);
 
 							let em1 = format!("{}: '{}' is not a valid layer", emsg, src_layer_name);
@@ -503,7 +499,7 @@ impl Aux {
 
 impl Drop for CorticalArea {
 	fn drop(&mut self) {
-    	print!("\nReleasing OpenCL components for '{}'... ", self.name);
+    	println!("Releasing OpenCL components for '{}'... ", self.name);
     	self.ocl.release_components();
     	self.ocl_context.release_components();
     	print!(" ...complete. ");

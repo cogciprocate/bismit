@@ -1,7 +1,7 @@
 use std::collections::{ HashMap };
 
 use ocl::{ CorticalDimensions };
-use proto::region::{ ProtoregionKind };
+use proto::region::{ RegionKind };
 use proto::filter::{ Protofilter };
 use cmn;
 
@@ -10,7 +10,7 @@ pub trait ProtoareasTrait {
 	fn new() -> Protoareas;
 	fn add(&mut self, protoarea: Protoarea);
 	fn area(mut self, name: &'static str, width: u32, height: u32, 
-		region_kind: ProtoregionKind, filters: Option<Vec<Protofilter>>, 
+		region_kind: &'static str, filters: Option<Vec<Protofilter>>, 
 		afferent_areas: Option<Vec<&'static str>>,
 	) -> Protoareas;
 	fn freeze(&mut self);
@@ -37,7 +37,8 @@ impl ProtoareasTrait for Protoareas {
 				height: u32, 
 				/*width_l2: u8, 
 				height_l2: u8, */
-				region_kind: ProtoregionKind, 
+				region_name: &'static str,
+				//region_kind: RegionKind, 
 				filters: Option<Vec<Protofilter>>,
 				afferent_areas_opt: Option<Vec<&'static str>>,
 	) -> Protoareas {
@@ -54,7 +55,8 @@ impl ProtoareasTrait for Protoareas {
 			name: name,
 			dims: CorticalDimensions::new(width, height, 0, 0, None),
 			//dims: CorticalDimensions::new(width_l2, height_l2, 0, 0),
-			region_kind: region_kind,
+			//region_kind: region_kind,
+			region_name: region_name,
 			filters: filters,
 			afferent_areas: afferent_areas,
 			efferent_areas: Vec::with_capacity(5),
@@ -100,7 +102,8 @@ impl ProtoareasTrait for Protoareas {
 pub struct Protoarea {
 	pub name: &'static str,
 	pub dims: CorticalDimensions,
-	pub region_kind: ProtoregionKind,
+	pub region_name: &'static str,
+	//pub region_kind: RegionKind,
 	pub filters: Option<Vec<Protofilter>>,
 	pub afferent_areas: Vec<&'static str>,
 	pub efferent_areas: Vec<&'static str>,

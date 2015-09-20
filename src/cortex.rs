@@ -11,7 +11,8 @@ use cmn;
 use chord::{ Chord };
 use cortical_area:: { self, CorticalArea };
 use thalamus::{ Thalamus };
-use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, layer, Protocell };
+use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, 
+	Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell };
 
 pub struct Cortex {
 	// AREAS: PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
@@ -21,28 +22,31 @@ pub struct Cortex {
 
 impl Cortex {
 	pub fn new(mut protoregions: Protoregions, mut protoareas: Protoareas) -> Cortex {
-		print!("\nInitializing Cortex... ");
+		println!("Initializing Cortex... ");
 		let time_start = time::get_time();
 
-		//protoregions.freeze(); REDESIGNED
 		protoareas.freeze();
 
 		let mut areas = HashMap::new();
 		let mut i = 0;
 
-		for (_, pa) in &protoareas {
-			if pa.region_kind != Sensory { continue; };
+		for (_, pa) in &protoareas {			
 			let protoarea = pa.clone();
-			let protoregion = protoregions[&protoarea.region_kind].clone();				
-
-			areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.clone(), protoregion, i)));
-
-			i += 1;
+			
+			let mut protoregion = protoregions[protoarea.region_name].clone();		
+				
+			if protoregion.kind == Thalamic { 
+				continue; 
+			} else {
+				protoregion.freeze(&protoarea);	
+				areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.clone(), protoregion, i)));
+				i += 1;
+			}
 		}
 
 		let thal = Thalamus::new(&areas);
 
-		// <<<<< MOVE THIS TO CMN AND MAKE A FUNCTION FOR IT >>>>>
+		// <<<<< MOVE THIS TIMING STUFF ELSEWHERE AND MAKE A FUNCTION FOR IT >>>>>
 		let time_complete = time::get_time() - time_start;
 		let t_sec = time_complete.num_seconds();
 		let t_ms = time_complete.num_milliseconds() - (t_sec * 1000);
@@ -119,12 +123,12 @@ impl Cortex {
 
 		for (area_name, area) in self.areas.iter() {
 			for aff_area_name in area.afferent_target_names().iter() {
-				//print!("\nForwarding from: '{}' to '{}'", area_name, aff_area_name);
+				//println!("Forwarding from: '{}' to '{}'", area_name, aff_area_name);
 				self.thal.forward_afferent_output(area_name, aff_area_name, &self.areas);
 			}
 
 			for eff_area_name in area.efferent_target_names().iter() {
-				//print!("\nBackwarding from: '{}' to '{}'", area_name, eff_area_name);
+				//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
 				self.thal.backward_efferent_output(area_name, eff_area_name, &self.areas);
 			}
 		}
@@ -137,7 +141,7 @@ impl Cortex {
 		let out_slc_ao = &self.area(ao_name).axns.states.vec[out_start_ao..out_end_ao];
 
 		let cols = self.area(ao_name).dims.columns(); // DEBUG PURPOSES
-		print!("\nArea: '{}' - out_start_ao: {}, out_end_ao: {}, cols: {}", ao_name, out_start_ao, out_end_ao, cols);
+		println!("Area: '{}' - out_start_ao: {}, out_end_ao: {}, cols: {}", ao_name, out_start_ao, out_end_ao, cols);
 
 		//cmn::render_sdr(out_slc_ao, None, None, None, &self.area(ao_name).protoregion().slc_map(), true, cols);
 

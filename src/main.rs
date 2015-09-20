@@ -56,7 +56,7 @@ mod tests;
 //use num::Integer;
 
 fn main() {
-	print!("================= Bismit: main() running... =================");
+	println!("================= Bismit: main() running... =================");
 	let time_start = time::get_time();
 	// test_1::run_kernel();
 	// sense::ascii_sense();
@@ -91,19 +91,19 @@ fn main() {
 
 // 	let mut vec1: Vec<u8> = std::iter::repeat(0).take(sdr_side * sdr_side).collect();
 
-// 	print!("\ntest_reader():\n");
+// 	println!("test_reader():\n");
 
 // 	for i in 0..10 {
 // 		mr.next(&mut vec1[..]);
 
-// 		print!("\nFrame {}:\n", i);
+// 		println!("Frame {}:\n", i);
 
 // 		for pl in 0..sdr_side {
 // 			for pc in 0..sdr_side {
 // 				let idx = (pl * sdr_side) + pc;
 // 				print!(" {:02X}", vec1[idx]);
 // 			}
-// 			print!("\n");
+// 			println!("");
 // 		}
 // 	}
 

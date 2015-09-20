@@ -42,7 +42,7 @@ impl OclContext {
 		let devices: Vec<cl_device_id> = super::get_device_ids(platform);
 		if devices.len() == 0 { panic!("\nNo OpenCL devices found!\n"); }
 
-		print!("\nOcl::new(): devices: {:#?}", devices);
+		println!("OCL::NEW(): device list: {:?}", devices);
 
 		let context: cl_context = super::create_context(&devices);
 
@@ -112,7 +112,7 @@ impl OclProgQueue {
 
 		let kern_c_str = parse_kernel_files(&build_options);
 
-		println!("\nOCL::BUILD(): DEVICE: {:#?}", self.device);
+		println!("OCL::BUILD(): DEVICE: {:#?}", self.device);
 
 		let prg = super::new_program(kern_c_str.as_ptr(), build_options.to_string(), self.context, self.device);
 
@@ -303,7 +303,7 @@ fn parse_kernel_files(build_options: &BuildOptions) -> ffi::CString {
 
 			match kern_file.read_to_end(&mut kern_str) {
 	    		Err(why) => panic!("\ncouldn't read '{}': {}", &file_name, Error::description(&why)),
-			    Ok(bytes) => print!("\nOCL::BUILD(): parsing {}: {} bytes read.", &file_name, bytes),
+			    Ok(bytes) => println!("OCL::BUILD(): parsing {}: {} bytes read.", &file_name, bytes),
 			}
 		}
 

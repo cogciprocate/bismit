@@ -4,7 +4,7 @@ use std::io::{ self, Write, Stdout };
 use std::mem;
 use rand;
 
-use super::input_czar::{ self, InputCzar, InputVecKind };
+use super::input_czar::{ self, InputCzar, InputKind };
 use proto::*;
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -77,14 +77,14 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 
 	let mut vec_ff: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
 
-	print!("\nRunning {} activation tests...", activation_test_runs);
+	println!("Running {} activation tests...", activation_test_runs);
 
 	for i in 0..activation_test_runs {	//	TEST CORRECT AXON ACTIVATION
 		let last_run = activation_test_runs - 1 == i;
 		let cel_idx = rand::random::<usize>() & (cels_len - 1);
 		let col_id = cel_idx & (cols_len - 1);
 
-		print!("\n[{}] => ", cel_idx);
+		println!("[{}] => ", cel_idx);
 
 		vec_ff[col_id] = 100;
 
@@ -108,11 +108,11 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 			let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
 
 			if last_run {
-				print!("\nlayer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
+				println!("layer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
 				cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 				println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
 
-				print!("\n => ");
+				println!(" => ");
 			}
 
 			for i in 0..cels_len {
@@ -139,7 +139,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 
 		*/
 
-		print!("\n   Running {} activation-learning tests... ", learning_test_runs);
+		println!("   Running {} activation-learning tests... ", learning_test_runs);
 
 
 		/*  SYNAPSE STUFF SHOULD BE REUSABLE (for any cell type)  */
@@ -174,7 +174,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 				let cels = cortex.area_mut(area_name).ptal_mut();
 
 				if last_run && last_learning_run {
-					print!("\nuINDEXES: first_half: {}, den_id: {}, den_idx: {}, syn_idz: {}, syn_idn: {}, syn_tar_half_idz: {}, syn_tar_half_idn: {}", first_half, den_id, den_idx, syn_idz, syn_idn, syn_tar_half_idz, syn_tar_half_idn);
+					println!("uINDEXES: first_half: {}, den_id: {}, den_idx: {}, syn_idz: {}, syn_idn: {}, syn_tar_half_idz: {}, syn_tar_half_idn: {}", first_half, den_id, den_idx, syn_idz, syn_idn, syn_tar_half_idz, syn_tar_half_idn);
 				}
 
 				for syn_idx in syn_tar_half_idz..syn_tar_half_idn {
@@ -219,7 +219,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 					axns.states.read();
 					let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
 
-					print!("\nlayer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
+					println!("layer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
 					cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 					println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
 				}
@@ -307,7 +307,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 					axns.states.read();
 					let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
 
-					print!("\nlayer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
+					println!("layer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
 					cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 					println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
 				}
@@ -324,7 +324,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 		}	
 	}
 
-	print!("\ntest_activation(): {} ", PASS_STR);
+	println!("test_activation(): {} ", PASS_STR);
 }
 
 
@@ -348,7 +348,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 */
 pub fn test_learning(cortex: &mut Cortex, ilyr_name: &'static str, area_name: &str) {
 	let psal_name = cortex.area(area_name).psal_name();
-	print!("\n##### hybrid::test_learning(): psal_name: {}", psal_name);
+	println!("##### hybrid::test_learning(): psal_name: {}", psal_name);
 	//let ptal_name = cortex.area_mut(area_name).ptal_name();
 	_test_sst_learning(cortex, psal_name, ilyr_name, area_name);
 	//_test_pyr_learning(cortex, ptal_name);
@@ -423,7 +423,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 		cels.print_cel(cel_idx);
 	}
 
-	//print!("\nALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
+	//println!("ALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
 	//cmn::print_vec(&cels.dens_mut().syns.strengths.vec[..], 1, None, None, false);
 
 	//check src_col_v_offs
@@ -480,7 +480,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 
 	cels.print_cel(cel_idx);
 
-	print!("\nALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
+	println!("ALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
 	cmn::print_vec(&cels.dens_mut().syns.strengths.vec[..], 1, None, None, false);
 
 	//check src_col_v_offs
@@ -509,12 +509,12 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
 	let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
 	input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_LIN as usize * 2), true, &mut vec1);
 
-	print!("\nPrimary Spatial Associative Layer...");
+	println!("Primary Spatial Associative Layer...");
 	let psal_name = cortex.area(area_name).psal().layer_name();
 	cortex.write(area_name, psal_name, &vec1);
 	test_syn_and_den_states(&mut cortex.area_mut(area_name).psal_mut().dens_mut());
 
-	print!("\nPrimary Temporal Associative Layer...");
+	println!("Primary Temporal Associative Layer...");
 	let ptal_name = cortex.area(area_name).ptal().layer_name();
 	cortex.write(area_name, ptal_name, &vec1);
 	test_syn_and_den_states(&mut cortex.area_mut(area_name).ptal_mut().dens_mut());
@@ -534,7 +534,7 @@ fn test_pyr_preds(pyrs: &mut PyramidalCellularLayer) {
 	pyrs.dens_mut().states.set_all_to(0);
 
 	let dens_per_tuft = pyrs.dens_mut().dims().per_tuft() as usize;
-	print!("\n\n##### dens_per_tuft: {}", dens_per_tuft);
+	println!("\n##### dens_per_tuft: {}", dens_per_tuft);
 	//let dens_len = pyrs.dens_mut().states.len() as usize;	
 	let pyrs_len = pyrs.soma().len() as usize;
 	let den_tuft_len = pyrs_len * dens_per_tuft;
@@ -572,7 +572,7 @@ fn test_pyr_preds(pyrs: &mut PyramidalCellularLayer) {
 		}
 	}
 
-	print!("\n   test_pyr_preds(): {} ", PASS_STR);
+	println!("   test_pyr_preds(): {} ", PASS_STR);
 }
 
 
@@ -591,7 +591,7 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 	let actv_group_thresh = syns_per_group / 4;
 	//let den_actv_group_thresh = dens_per_group;
 
-	//print!("\nThreshold: {}", actv_group_thresh);
+	//println!("Threshold: {}", actv_group_thresh);
 
 	let mut cel_idz: usize = 0;
 	let mut syn_states_ttl: usize = 0;
@@ -623,7 +623,7 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 		}
 
 		if (cel_idz & 512) == 0 {
-			print!("\n   -Inactive-");
+			println!("   -Inactive-");
 
 			if (syn_states_ttl < actv_group_thresh) || (den_states_ttl < actv_group_thresh) {
 				test_failed = true;
@@ -633,7 +633,7 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 			assert!(den_states_ttl > actv_group_thresh);*/
 
 		} else {
-			print!("\n   -Active-");
+			println!("   -Active-");
 
 			if (syn_states_ttl > actv_group_thresh) || (den_states_ttl > actv_group_thresh) {
 				test_failed = true;
@@ -644,7 +644,7 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 
 		}
 
-		print!("\nSYN [{} - {}]: {}", cel_idz, (cel_idz + cels_per_group - 1), syn_states_ttl);
+		println!("SYN [{} - {}]: {}", cel_idz, (cel_idz + cels_per_group - 1), syn_states_ttl);
 		print!("   DEN [{} - {}]: {}", cel_idz, (cel_idz + cels_per_group - 1), den_states_ttl);
 
 		io::stdout().flush().unwrap();
@@ -654,5 +654,5 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 
 	assert!(test_failed);
 
-	print!("\n   test_syn_and_den_states(): {} ", PASS_STR);
+	println!("   test_syn_and_den_states(): {} ", PASS_STR);
 }

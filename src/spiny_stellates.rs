@@ -8,7 +8,7 @@ use std::fmt::{ Display };
 
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::{ Protoregion, ProtoregionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
+use proto::{ Protoregion, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -68,7 +68,7 @@ impl SpinyStellateCellularLayer {
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		print!("\n      SPINYSTELLATES::NEW(): base_axn_slc: {}, axn_idz: {}, dims: {:?}", base_axn_slc, axn_idz, dims);
+		println!("      SPINYSTELLATES::NEW(): base_axn_slc: {}, axn_idz: {}, dims: {:?}", base_axn_slc, axn_idz, dims);
 
 		let dens_dims = dims.clone_with_ptl2(protocell.dens_per_tuft_l2 as i8);
 		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::SpinyStellate, protoregion, axns, aux, ocl);
@@ -196,13 +196,13 @@ impl SpinyStellateCellularLayer {
 
 		println!("\ncell.state[{}]: {}", cel_idx, self.dens.states[cel_idx]);
 
-		print!("\ncell.syns.states[{:?}]: ", cel_syn_range.clone()); 
+		println!("cell.syns.states[{:?}]: ", cel_syn_range.clone()); 
 		cmn::print_vec_simple(&self.dens.syns.states.vec[cel_syn_range.clone()]);
 
-		print!("\ncell.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
+		println!("cell.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
 		cmn::print_vec_simple(&self.dens.syns.strengths.vec[cel_syn_range.clone()]);
 
-		print!("\ncell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
+		println!("cell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
 		cmn::print_vec_simple(&self.dens.syns.src_col_v_offs.vec[cel_syn_range.clone()]);
 	}
 

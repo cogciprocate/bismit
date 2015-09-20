@@ -15,7 +15,7 @@ use encode:: { IdxReader };
 //use proto::layer;
 use super::output_czar;
 //use super::synapse_drill_down;
-use super::input_czar::{ self, InputCzar, InputVecKind };
+use super::input_czar::{ self, InputCzar, InputKind, InputSource };
 use super::hybrid;
 use super::renderer::{ Renderer };
 //use chord::{ Chord };
@@ -38,23 +38,24 @@ const REPEATS_PER_IMAGE: usize 				= 4;
 pub fn define_protoregions() -> Protoregions {
 	let mut cort_regs: Protoregions = Protoregions::new();
 
-	cort_regs.add(Protoregion::new(Sensory)
-		//.l("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
-		.l("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
-		.l("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
-		//.l("nothing", 1, layer::DEFAULT, Axonal(Spatial))
-		.l("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
-		.l("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
-		.l("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
+	cort_regs.add(Protoregion::new("visual", Sensory)
+		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
+		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
+		//.layer("olfac", 1, layer::DEFAULT, Axonal(Horizontal))
+		.layer("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
+		//.layer("nothing", 1, layer::DEFAULT, Axonal(Spatial))
+		.layer("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
+		.layer("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
+		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
-		.l("iv_inhib", 0, layer::DEFAULT, 
+		.layer("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
-		.l("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
+		.layer("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
 			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
 	);
 
-	cort_regs.add(Protoregion::new(Thalamic)
-		.l("external_input", 1, layer::AFFERENT_OUTPUT, Axonal(Spatial))
+	cort_regs.add(Protoregion::new("retinal", Thalamic)
+		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial))
 	);
 
 	cort_regs
@@ -65,20 +66,41 @@ pub fn define_protoareas() -> Protoareas {
 
 	let mut protoareas = Protoareas::new()
 		
+		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
 		//.area("u0", area_side, area_side, Thalamic, None, Some(vec!["u1"]))
 		// .area("u1", area_side, area_side, Sensory, None,
 		// 	//None
 		// 	Some(vec!["b1"])
 		// )
 
-		.area("v0", area_side, area_side, Thalamic, None, Some(vec!["v1"]))
-		.area("v1", area_side, area_side, Sensory, 
+		// let ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte", 
+		// 	REPEATS_PER_IMAGE);
+		// let input_sources: Vec<InputSource> = vec![InputSource::new(
+		// 	InputKind::IdxReader(Box::new(ir)), "v1")];
+
+		// .area("v0", area_side, area_side, 
+		// 	Thalamic(ProtoInputSource::IdxReader { 
+		// 		file_name: "data/train-images-idx3-ubyte", 
+		// 		repeats: REPEATS_PER_IMAGE,
+		// 	}),
+		// 	None, 
+		// 	Some(vec!["v1"]),
+		// )
+
+		.area("v0", area_side, area_side, 
+			"retinal",
+			None, 
+			Some(vec!["v1"]),
+		)
+
+		.area("v1", area_side, area_side, 
+			"visual",
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),
 			//None
 			Some(vec!["b1"])
 		)
 
-		.area("b1", area_side, area_side, Sensory, None,
+		.area("b1", area_side, area_side, "visual", None,
 		 	None
 		 	//Some(vec!["a1"])
 		)
@@ -102,16 +124,6 @@ pub fn run(autorun_iters: i32) -> bool {
 	let inhib_layer_name = "iv_inhib";
 	let area_dims = cortex.area(&area_name).dims().clone();
 
-	//let input_kind = InputVecKind::Stripes { stripe_size: 512, zeros_first: true };
-	//let input_kind = InputVecKind::Hexballs { edge_size: 9, invert: false, fill: false };
-	//let input_kind = InputVecKind::World;
-	//let input_kind = InputVecKind::Exp1;
-
-	let mut ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte", REPEATS_PER_IMAGE);
-	let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
-
-	let input_kind = InputVecKind::IdxReader(Box::new(ir));
-
 	/* ***** DISABLE STUFF ***** */	
 	for (area_name, area) in &mut cortex.areas {
 		//area.psal_mut().dens_mut().syns.set_offs_to_zero();
@@ -121,7 +133,19 @@ pub fn run(autorun_iters: i32) -> bool {
 	}
 	/* ************************* */
 
-	let mut input_czar = InputCzar::new(area_dims.clone(), input_kind, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
+	//let input_kind = InputKind::Stripes { stripe_size: 512, zeros_first: true };
+	//let input_kind = InputKind::Hexballs { edge_size: 9, invert: false, fill: false };
+	//let input_kind = InputKind::World;
+	//let input_kind = InputKind::Exp1;	
+
+	let mut ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte", REPEATS_PER_IMAGE);
+	let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
+
+	let input_sources: Vec<InputSource> = vec![
+		InputSource::new(InputKind::IdxReader(Box::new(ir)), "v1"),
+	];
+
+	let mut input_czar = InputCzar::new(area_dims.clone(), input_sources, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
 
 	let mut rndr = Renderer::new(cortex.area(&area_name).dims().clone());
 
@@ -383,7 +407,7 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			print!("\n'{}' output:", &area_name);
 
-			rndr.render(out_slc, ff_slc, &input_status);
+			rndr.render(out_slc, ff_slc, &input_status, true);
 
 
 			//cmn::render_sdr(out_slc, Some(ff_slc), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());

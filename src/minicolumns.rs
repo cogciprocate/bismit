@@ -9,7 +9,7 @@ use std::fmt::{ Display };
 
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::{ Protoregion, ProtoregionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
+use proto::{ Protoregion, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -80,7 +80,7 @@ impl Minicolumns {
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		print!("\n      MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth);
+		println!("      MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth);
 
 		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, protoregion, axons, aux, ocl);
 

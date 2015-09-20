@@ -890,8 +890,7 @@ __kernel void inhib_simple(
 
 	uchar const cel_state = cel_states[cel_idx];
 
-	//int const radius_pos = 4; // 61 Cells
-	int const radius_pos = INHIB_RADIUS; // (4:61), (7:XXX), (9:271)
+	int const radius_pos = INHIB_RADIUS;
 	int const radius_neg = 0 - radius_pos;
 
 	int uninhibited = 1;
@@ -924,9 +923,9 @@ __kernel void inhib_simple(
 			// 			- IF CEL_FOCAL_INFLUENCE__AT_CEL_FOCAL >= NEIGHBOR_INFLUENCE__AT_CEL_FOCAL
 			//
 
-			 // MOVES CENTER OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+			 // MOVES CENTER OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM FOCAL CELL
 			int influence_center_offset = INHIB_INFL_CENTER_OFFSET;
-			// STRETCHES EDGE OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+			// STRETCHES EDGE OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM FOCAL CELL
 			int influence_horizon_offset = INHIB_INFL_HORIZ_OFFSET; 
 
 			int influence_horizon = radius_pos + influence_horizon_offset;

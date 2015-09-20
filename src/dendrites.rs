@@ -9,7 +9,7 @@ use std::fmt::{ Display };
 
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::{ Protoregion, ProtoregionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
+use proto::{ Protoregion, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axons::{ Axons };
 use cortical_area:: { Aux };
@@ -72,7 +72,7 @@ impl Dendrites {
 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
-		print!("\n            DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", layer_name, dims, states.len());
+		println!("            DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", layer_name, dims, states.len());
 
 		let syns_dims = dims.clone_with_ptl2((dims.per_tuft_l2() + syns_per_den_l2 as i8));
 		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, region, axons, aux, ocl);

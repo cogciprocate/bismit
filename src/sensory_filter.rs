@@ -49,7 +49,7 @@ impl SensoryFilter {
 
 	pub fn cycle(&self) {
 		self.kern_cycle.enqueue();
-		//print!("\nPrinting {} for {}:\n", &self.filter_name, self.area_name);
+		//println!("Printing {} for {}:\n", &self.filter_name, self.area_name);
 		//self.input.print_simple();
 	}
 }

@@ -1,6 +1,7 @@
 use std::iter;
 use std::ops::{ Range };
 use std::cmp;
+use std::collections::{ HashMap };
 use rand::{ self, ThreadRng, Rng };
 
 use cmn;
@@ -29,31 +30,21 @@ pub struct InputCzar {
 	introduce_noise: bool,
 	ttl_count: usize,
 	reset_count: usize,
-	//next_turn_counter: usize,
-	//next_turn_max: usize,
 	rng: rand::XorShiftRng,
-	optical_vec_kind: InputVecKind,
+	input_sources: Vec<InputSource>,
+	//optical_vec_kind: InputKind,
 	pub vec_optical: Vec<u8>,
 	pub vec_motor: Vec<u8>,
 	pub vec_test_noise: Vec<u8>,
-	world: World,
-	worm: EntityBody,
+	//world: World,
+	//worm: EntityBody,
 	pub motor_state: motor_state::MotorState,
 }
 
 impl InputCzar {
-	pub fn new(dims: CorticalDimensions, optical_vec_kind: InputVecKind, counter_range: Range<usize>, random_counter: bool, toggle_dirs: bool, introduce_noise: bool) -> InputCzar {
+	pub fn new(dims: CorticalDimensions, input_sources: Vec<InputSource>, counter_range: Range<usize>, random_counter: bool, toggle_dirs: bool, introduce_noise: bool) -> InputCzar {
 
 		let area = dims.columns();
-
-		let mut world = World::new(area);
-
-		let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
-		world.entities().add(worm);
-		world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(220f32, -220f32)));
-		world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(220f32, 220f32)));
-		world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-220f32, -220f32)));
-		world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-220f32, 220f32)));
 
 		let mut motor_state = motor_state::MotorState::new();
 
@@ -77,16 +68,29 @@ impl InputCzar {
 			//next_turn_counter: 0,
 			//next_turn_max: 0,
 			rng: rand::weak_rng(),
-			optical_vec_kind: optical_vec_kind,
+			input_sources: input_sources,
+			//optical_vec_kind: optical_vec_kind,
 			vec_optical: iter::repeat(0).take(area as usize).collect(),
 			vec_motor: vec_motor,
 			vec_test_noise: vec_test_noise,
-			world: world,
-			worm: worm,
+			//world: world,
+			//worm: worm,
 			motor_state: motor_state,
 		}
 	}
 
+	fn init_world(&self) -> (World, EntityBody) {
+		let mut world = World::new(self.dims.columns());
+
+		let worm =  EntityBody::new("worm", EntityKind::Creature, Location::origin());
+		world.entities().add(worm);
+		world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(220f32, -220f32)));
+		world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(220f32, 220f32)));
+		world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-220f32, -220f32)));
+		world.entities().add(EntityBody::new("food", EntityKind::Food, Location::new(-220f32, 220f32)));
+
+		(world, worm)
+	}
 
 	pub fn next(&mut self, cortex: &mut Cortex) -> usize {
 		let remain_ticks = self.tick();
@@ -115,30 +119,30 @@ impl InputCzar {
 
 
 		/* ##### OPTICAL ##### */
-		match self.optical_vec_kind {
-			InputVecKind::World => {
-				let turn_amt = WORLD_TURN_FACTOR / (self.dims.columns() as f32);
-				self.world.entities().get_mut(self.worm.uid).turn(turn_amt, self.motor_state.cur_turn());
+		match self.input_sources[0].kind {
+			InputKind::World => {
+				// let turn_amt = WORLD_TURN_FACTOR / (self.dims.columns() as f32);
+				// self.world.entities().get_mut(self.worm.uid).turn(turn_amt, self.motor_state.cur_turn());
 
-				if !self.toggle_dirs && remain_ticks == 0 {
-					self.world.entities().get_mut(self.worm.uid).head_north();
-				}
-				self.world.peek_from(self.worm.uid).unfold_into(&mut self.vec_optical, 0);
+				// if !self.toggle_dirs && remain_ticks == 0 {
+				// 	self.world.entities().get_mut(self.worm.uid).head_north();
+				// }
+				// self.world.peek_from(self.worm.uid).unfold_into(&mut self.vec_optical, 0);
 			},
 
-			InputVecKind::Stripes { stripe_size, zeros_first } => {
+			InputKind::Stripes { stripe_size, zeros_first } => {
 				sdr_stripes(stripe_size, zeros_first, &mut self.vec_optical[..]);
 			},
 
-			InputVecKind::Hexballs { edge_size, invert, fill } => {
+			InputKind::Hexballs { edge_size, invert, fill } => {
 				sdr_hexballs(edge_size, invert, fill, self.dims, self.counter, &mut self.vec_optical[..]);
 			},
 
-			InputVecKind::Exp1 => {
+			InputKind::Exp1 => {
 				sdr_exp1(&mut self.vec_optical[..]);
 			},
 
-			InputVecKind::IdxReader(ref mut ir) => {
+			InputKind::IdxReader(ref mut ir) => {
 				input_status = ir.next(&mut self.vec_optical[..]);
 			}
 
@@ -154,10 +158,10 @@ impl InputCzar {
 	}
 
 	pub fn sense(&self, cortex: &mut Cortex) {
-		cortex.write_input("v1", &self.vec_optical);
+		cortex.write_input(self.input_sources[0].target_area_name, &self.vec_optical);
 		//cortex.write_input("v2", &self.vec_optical); // *****
 		//cortex.write_input("a1", &self.vec_optical); // *****
-		cortex.write("v1", "motor_in", &self.vec_motor);
+		cortex.write(self.input_sources[0].target_area_name, "motor_in", &self.vec_motor);
 		//cortex.write("v1", "test_noise", &self.vec_test_noise);
 		//cortex.cycle_old("v1");
 		cortex.cycle();
@@ -199,12 +203,26 @@ impl InputCzar {
 	}
 }
 
-pub enum InputVecKind {
+pub enum InputKind {
 	World,
 	Stripes { stripe_size: usize, zeros_first: bool },
 	Hexballs { edge_size: usize, invert: bool, fill: bool },
 	Exp1,
 	IdxReader(Box<IdxReader>),
+}
+
+pub struct InputSource {
+	kind: InputKind,
+	target_area_name: &'static str,	
+}
+
+impl InputSource {
+	pub fn new(kind: InputKind, target_area_name: &'static str) -> InputSource {
+		InputSource {
+			target_area_name: target_area_name,
+			kind: kind,
+		}
+	}
 }
 
 
@@ -439,7 +457,7 @@ mod tests {
 	#[test]
 	fn test_input_czar() {
 		let dims = CorticalDimensions::new(32, 32, 1, 0, None);
-		let mut ic = super::InputCzar::new(dims, super::InputVecKind::Stripes { stripe_size: 512, zeros_first: false }, 0..5, false, false, false);
+		let mut ic = super::InputCzar::new(dims, super::InputKind::Stripes { stripe_size: 512, zeros_first: false }, 0..5, false, false, false);
 		//ic.set_counter(5);
 
 		assert!(ic.counter == 5);

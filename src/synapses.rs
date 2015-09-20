@@ -10,7 +10,7 @@ use std::collections::{ BTreeSet };
 
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::{ Protoregion, ProtoregionKind, Protoareas, ProtocellKind, Protocell, DendriteKind, Protolayer, ProtolayerKind };
+use proto::{ Protoregion, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind, Protolayer, ProtolayerKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cortical_area:: { Aux };
@@ -80,7 +80,7 @@ impl Synapses {
 
 		let mut kernels = Vec::with_capacity(dst_tuft_src_slc_ids.len());
 
-		if DEBUG_NEW { print!("\n            SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims); }
+		if DEBUG_NEW { println!("            SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims); }
 
 			// *****NEW WorkSize::ThreeDim(dims.depth() as usize, dims.u_size() as usize, dims.v_size() as usize))
 			// *****NEW .lws(WorkSize::ThreeDim(1 as usize, wg_size as usize))
@@ -141,7 +141,7 @@ impl Synapses {
 
 	fn grow(&mut self, init: bool) {
 		if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
-			print!("\nRG:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:(..)(..)(..)]\n", self.den_kind);
+			println!("RG:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:(..)(..)(..)]\n", self.den_kind);
 		}
 
 		self.strengths.read();
@@ -167,7 +167,7 @@ impl Synapses {
 			let syn_idn = syn_idz + syns_per_layer_tuft as usize;
 
 			if init && DEBUG_GROW {
-				print!("\n                \
+				println!("                \
 					SYNAPSES::GROW()[INIT]: \"{}\" ({:?}): src_slc_ids: {:?}, syns_per_layer_tuft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind, src_slc_ids, syns_per_layer_tuft, syn_idz, syn_idn);	
 			}
 
@@ -302,7 +302,7 @@ impl SrcIdxCache {
 
 		for i in 0..area_dens {	dens.push(Box::new(BTreeSet::new())); }
 
-		//print!("\n##### CREATING SRCIDXCACHE WITH: dens: {}", dens.len());
+		//println!("##### CREATING SRCIDXCACHE WITH: dens: {}", dens.len());
 
 		SrcIdxCache {
 			syns_per_den_l2: syns_per_den_l2,

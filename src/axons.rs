@@ -11,7 +11,7 @@ use std::fmt::{ Display };
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
-use proto::{ Protoregion, ProtoregionKind };
+use proto::{ Protoregion, RegionKind };
 use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -53,7 +53,7 @@ impl Axons {
 		// 		hrz_axn_slcs += 1;
 		// 	}
 
-		// 	//print!("\n      AXONS::NEW(): columns: {}, syn_span: {}, depth_axn_hrz: {}, hrz_frames_per_slc: {}, hrz_axon_slcs: {}", area_dims.columns(), 1 << syn_span_lin_l2, depth_axn_hrz, hrz_frames_per_slc, hrz_axn_slcs);
+		// 	//println!("      AXONS::NEW(): columns: {}, syn_span: {}, depth_axn_hrz: {}, hrz_frames_per_slc: {}, hrz_axon_slcs: {}", area_dims.columns(), 1 << syn_span_lin_l2, depth_axn_hrz, hrz_frames_per_slc, hrz_axn_slcs);
 		// }
 
 		hrz_axn_slcs = 1;
@@ -64,7 +64,7 @@ impl Axons {
 
 		let padding: u32 = (cmn::SYNAPSE_SPAN_LIN) as u32;
 		
-		print!("\n      AXONS::NEW(): new axons with: depth_axn_s: {}, depth_cel: {}, depth_axn_h: {}, physical_depth: {}, padding: {}, dims: {:?}", depth_axn_sptl, depth_cellular, depth_axn_hrz, physical_depth, padding, dims);
+		println!("      AXONS::NEW(): new axons with: depth_axn_s: {}, depth_cel: {}, depth_axn_h: {}, physical_depth: {}, padding: {}, dims: {:?}", depth_axn_sptl, depth_cellular, depth_axn_hrz, physical_depth, padding, dims);
 
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
 

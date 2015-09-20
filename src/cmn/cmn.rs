@@ -91,7 +91,7 @@ pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
 pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;
 pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 
-pub const SYNAPSE_REACH_GEO_LOG2: u32 = 2;
+pub const SYNAPSE_REACH_GEO_LOG2: u32 = 3;
 pub const SYNAPSE_REACH_GEO: u32 = 1 << SYNAPSE_REACH_GEO_LOG2;
 pub const SYNAPSE_SPAN_GEO: u32 = SYNAPSE_REACH_GEO << 1;
 pub const SYNAPSE_REACH_LIN: u32 = (1 << (((SYNAPSE_REACH_GEO_LOG2 + 1) << 1) - 1));	// ((SYNAPSE_SPAN_LIN ^ 2) / 2)
@@ -527,7 +527,7 @@ pub fn render_sdr_square(
 	let mut i_pattern = 0usize; // DEPRICATE
 	let mut i_cort_area = 0u8;
 
-	print!("\n");
+	println!("");
 	io::stdout().flush().ok();
 
 	loop {
@@ -697,7 +697,7 @@ pub fn new_pred(
 
 
 /* AXN_IDX_2D(): Host side address resolution - concerned with start idx of a slc
-	- OpenCL device side version below (for reference) - concerned with invidiual indexes: 
+	- OpenCL device side version below (for reference) - concerned with individual indexes: 
 		static inline uint axn_idz_2d(uchar slc_id, uint slc_columns, uint col_id, char col_ofs) {
 			uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
 			int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;

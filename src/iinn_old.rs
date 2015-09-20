@@ -11,7 +11,7 @@ use std::fmt::{ Display };
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
-use proto::regions::{ Protoregion, ProtoregionKind };
+use proto::regions::{ Protoregion, RegionKind };
 use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };

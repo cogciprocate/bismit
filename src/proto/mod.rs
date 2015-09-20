@@ -2,8 +2,8 @@
 
 pub use self::regions::{ Protoregions };
 
-pub use self::region::{ Protoregion, ProtoregionKind };
-	pub use self::region::ProtoregionKind::{ Associational, Sensory, Motor, Thalamic }; // SLATED FOR REDESIGN
+pub use self::region::{ Protoregion, RegionKind };
+	pub use self::region::RegionKind::{ Associational, Sensory, Motor, Thalamic }; // SLATED FOR REDESIGN
 
 pub use self::areas::{ Protoareas, ProtoareasTrait, Protoarea };
 

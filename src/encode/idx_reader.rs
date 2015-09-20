@@ -8,8 +8,10 @@ use num::{ Float };
 
 use ocl::{ CorticalDimensions };
 
-// IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned 
-//		bytes (u8) into a ganglion (SDR frame buffer: &[u8])
+//	IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned 
+//	bytes (u8) into a ganglion (SDR frame buffer: &[u8])
+//		- TODO: CONVERT FROM STORING FILE IN MEMORY TO STREAMING FILE (WITH LARGE BUFFER)
+//			- TEST DIFFERENT BUFFERING STRATEGIES (see notes)
 pub struct IdxReader {
 	ganglion_dims: CorticalDimensions,
 	repeats_per_image: usize,
@@ -45,7 +47,7 @@ impl IdxReader {
 
 		match reader.read(&mut header_magic[..]) {
 		    Err(why) => panic!("\ncouldn't read '{}': {}", display, Error::description(&why)),
-		    Ok(bytes) => (), //print!("\n{} contains:\n{:?}\n{} bytes read.", display, header_magic, bytes),
+		    Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", display, header_magic, bytes),
 		}
 
 		let magic_data_type = header_magic[2];
@@ -56,7 +58,7 @@ impl IdxReader {
 
 		match reader.read(&mut header_dim_sizes_bytes[..]) {
 		    Err(why) => panic!("\ncouldn't read '{}': {}", display, Error::description(&why)),
-		    Ok(bytes) => (), //print!("\n{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
+		    Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
 		}
 		
 		let ttl_header_len = 4 + (magic_dims * 4);
@@ -92,12 +94,13 @@ impl IdxReader {
 
     	let mut image_buffer: Vec<u8> = Vec::with_capacity(buffer_cap);
     	
+    	// TODO: CONVERT TO STREAM
     	match reader.read_to_end(&mut image_buffer) {
     		Err(why) => panic!("\ncouldn't read '{}': {}", &path_string, Error::description(&why)),
-		    Ok(bytes) => print!("\n{}: {} bytes read.", display, bytes),
+		    Ok(bytes) => println!("{}: {} bytes read.", display, bytes),
 		}
 
-		print!("\nIDXREADER: initialized with dimensions: {:?}", dim_sizes);
+		println!("IDXREADER: initialized with dimensions: {:?}", dim_sizes);
 
 	    IdxReader {
 	    	ganglion_dims: ganglion_dims,
@@ -131,7 +134,7 @@ impl IdxReader {
   		//   	match self.file_reader.read(&mut self.image_buffer[..]) {
 		//     Err(why) => panic!("\ncouldn't read '{}': {}", &self.file_path, Error::description(&why)),
 		//     Ok(bytes) => assert!(bytes == self.image_buffer.len(), "\n bytes read != buffer length"), 
-		//     	//print!("\n{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
+		//     	//println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
 		// }
 
 		let img_idz = self.frame_counter * self.image_len;

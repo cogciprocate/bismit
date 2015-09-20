@@ -3,7 +3,7 @@ use cmn;
 use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter };
 use cortex::{ self, Cortex };
 use ocl;
-use super::input_czar::{ self, InputCzar, InputVecKind };
+use super::input_czar::{ self, InputCzar, InputKind };
 use super::hybrid;
 
 
@@ -41,7 +41,7 @@ pub fn define_prtareas() -> Protoareas {
 	let area_side = 48 as u32;
 
 	Protoareas::new()
-		.area("v1_test", area_side, area_side, Sensory, 
+		.area("v1", area_side, area_side, Sensory, 
 			None,
 			//Some(vec![Protofilter::new("retina", Some("filters.cl"))]),
 			None,
@@ -53,7 +53,7 @@ pub fn define_prtareas() -> Protoareas {
 #[test]
 fn test_cortex() {
 	let mut cortex = Cortex::new(define_prtrgns(), define_prtareas());
-	let area_name = "v1_test";
+	let area_name = "v1";
 
 	hybrid::test_cycles(&mut cortex, area_name);
 }
@@ -63,8 +63,8 @@ fn test_cortex() {
 #[test]
 fn test_learning() {
 	let mut cortex = Cortex::new(define_prtrgns(), define_prtareas());
-	let area_name = "v1_test";
-	let si_layer_name = "iv_inhib_test";
+	let area_name = "v1";
+	let si_layer_name = "iv_inhib";
 
 	hybrid::test_learning(&mut cortex, si_layer_name, area_name);
 }
@@ -99,11 +99,11 @@ fn test_safe_dim_ofs(ocl: &ocl::OclProgQueue, dims: ocl::CorticalDimensions) {
 
 	kern_test_safe_dim_ofs.enqueue();
 
-	print!("\ndim_ids:");
+	println!("dim_ids:");
 	dim_ids.print_simple();
-	print!("\ndim_offs:");
+	println!("dim_offs:");
 	dim_offs.print_simple();
-	print!("\nsafe_dim_offs:");
+	println!("safe_dim_offs:");
 	safe_dim_offs.print_simple();
 	//safe_dim_offs.read();
 

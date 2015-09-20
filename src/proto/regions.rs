@@ -10,52 +10,54 @@ use std::hash::{ self, Hash, SipHasher, Hasher };
 use super::layer::{ self, Protolayer, ProtolayerFlags, ProtoaxonKind, ProtolayerKind };
 	//use super::layer::ProtolayerKind::{ self, Cellular, Axonal };
 use super::cell::{ ProtocellKind, Protocell, DendriteKind };
-use super::{ Protoregion, ProtoregionKind };
+use super::{ Protoregion, RegionKind };
 
 
 
 
 //#[derive(Copy)]
-pub struct Protoregions {	// <<<<< SLATED FOR REMOVAL
-	pub hash_map: HashMap<ProtoregionKind, Protoregion>,
+pub struct Protoregions {
+	map: HashMap<&'static str, Protoregion>,
 }
 
 impl Protoregions {
 	pub fn new() -> Protoregions {
 		Protoregions {
-			hash_map: HashMap::new(),
+			map: HashMap::new(),
 		}
 	}
 
-	pub fn region(mut self, pr: Protoregion) -> Protoregions {
+	pub fn r(mut self, pr: Protoregion) -> Protoregions {
 		self.add(pr);
 		self
 	}	
 
 	pub fn add(&mut self, pr: Protoregion) {
-		self.hash_map.insert(pr.kind.clone(), pr);
+		self.map.insert(pr.name.clone(), pr);
 	}
 
 	// pub fn freeze(&mut self) {
-	// 	for (prk, pr) in self.hash_map.iter_mut() {
+	// 	for (prk, pr) in self.map.iter_mut() {
 	// 		pr.freeze();
 	// 	}
 	// }
 }
 
-impl<'b> Index<&'b ProtoregionKind> for Protoregions
+impl<'b> Index<&'b str> for Protoregions
 {
     type Output = Protoregion;
 
-    fn index<'a>(&'a self, index: &'b ProtoregionKind) -> &'a Protoregion {
-        self.hash_map.get(index).expect("proto::regions::Protoregions::index(): Invalid region kind.")
+    fn index<'a>(&'a self, region_name: &'b str) -> &'a Protoregion {
+        self.map.get(region_name).expect(&format!("proto::regions::Protoregions::index(): \
+        	Invalid region name: '{}'.", region_name))
     }
 }
 
-impl<'b> IndexMut<&'b ProtoregionKind> for Protoregions
+impl<'b> IndexMut<&'b str> for Protoregions
 {
-    fn index_mut<'a>(&'a mut self, index: &'b ProtoregionKind) -> &'a mut Protoregion {
-        self.hash_map.get_mut(index).expect("proto::regions::Protoregions::index_mut(): Invalid region kind.")
+    fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut Protoregion {
+        self.map.get_mut(region_name).expect(&format!("proto::regions::Protoregions::index_mut(): \
+        	Invalid region name: '{}'.", region_name))
     }
 }
 

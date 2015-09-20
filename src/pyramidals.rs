@@ -9,7 +9,7 @@ use std::fmt::{ Display };
 
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::{ Protoareas, Protoregion, ProtoregionKind, ProtocellKind, Protocell, DendriteKind };
+use proto::{ Protoareas, Protoregion, RegionKind, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use cortical_area:: { Aux };
@@ -64,8 +64,8 @@ impl PyramidalCellularLayer {
 		//let spt_asc_layer = region.spt_asc_layer().expect("PyramidalCellularLayer::new()");
 		//let den_prox_slc = region.slc_ids(vec![spt_asc_layer.name])[0];
 		
-		//print!("\n### PyramidalCellularLayer: Proximal Dendrite Row: {}", den_prox_slc);
-		print!("\n      PYRAMIDALS::NEW(): layer: '{}' dims: {:?}, axn_base_slc: {}", layer_name, dims, axn_base_slc);
+		//println!("### PyramidalCellularLayer: Proximal Dendrite Row: {}", den_prox_slc);
+		println!("      PYRAMIDALS::NEW(): layer: '{}' dims: {:?}, axn_base_slc: {}", layer_name, dims, axn_base_slc);
 
 		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
@@ -185,7 +185,7 @@ impl PyramidalCellularLayer {
 		let (ssts_axn_idz, _) = ssts.axn_range();
 		//println!("\n##### Pyramidals::init_kernels(): ssts_axn_idz: {}", ssts_axn_idz as u32);
 
-		print!("\n   PYRAMIDALS::INIT_KERNELS()[ACTIVATE]: ssts_axn_range(): {:?}", ssts.axn_range());
+		println!("   PYRAMIDALS::INIT_KERNELS()[ACTIVATE]: ssts_axn_range(): {:?}", ssts.axn_range());
 
 		//self.kern_activate.new_arg_envoy(Some(&ssts.soma()));
 		self.kern_activate.new_arg_envoy(Some(&mcols.pred_totals));
@@ -291,27 +291,27 @@ impl PyramidalCellularLayer {
 		let cel_den_range = cel_den_idz..(cel_den_idz + dens_per_tuft);
 		let cel_syn_range = cel_syn_idz..(cel_syn_idz + syns_per_tuft);
 
-		print!("\nPrinting Pyramidal Cell:");
-		print!("\n   preds[{}]: {}", cel_idx, self.preds[cel_idx]);
-		print!("\n   best_den_ids[{}]: {}", cel_idx, self.best_den_ids[cel_idx]);
-		print!("\n   best_den_states[{}]: {}", cel_idx, self.best_den_states[cel_idx]);
-		//print!("\n   best2_den_ids[{}]: {}", cel_idx, self.best2_den_ids[cel_idx]);			// <<<<< SLATED FOR REMOVAL
-		//print!("\n   best2_den_states[{}]: {}", cel_idx, self.best2_den_states[cel_idx]);	// <<<<< SLATED FOR REMOVAL
-		print!("\n   flag_sets[{}]: {}", cel_idx, self.flag_sets[cel_idx]);
-		print!("\n   energies[{}]: {}", cel_idx, self.energies[cel_idx]);
+		println!("Printing Pyramidal Cell:");
+		println!("   preds[{}]: {}", cel_idx, self.preds[cel_idx]);
+		println!("   best_den_ids[{}]: {}", cel_idx, self.best_den_ids[cel_idx]);
+		println!("   best_den_states[{}]: {}", cel_idx, self.best_den_states[cel_idx]);
+		//println!("   best2_den_ids[{}]: {}", cel_idx, self.best2_den_ids[cel_idx]);			// <<<<< SLATED FOR REMOVAL
+		//println!("   best2_den_states[{}]: {}", cel_idx, self.best2_den_states[cel_idx]);	// <<<<< SLATED FOR REMOVAL
+		println!("   flag_sets[{}]: {}", cel_idx, self.flag_sets[cel_idx]);
+		println!("   energies[{}]: {}", cel_idx, self.energies[cel_idx]);
 
-		print!("\n");
+		println!("");
 
-		print!("\ndens.states[{:?}]: ", cel_den_range.clone()); 
+		println!("dens.states[{:?}]: ", cel_den_range.clone()); 
 		cmn::print_vec_simple(&self.dens_mut().states.vec[cel_den_range.clone()]);
 
-		print!("\ndens.syns.states[{:?}]: ", cel_syn_range.clone()); 
+		println!("dens.syns.states[{:?}]: ", cel_syn_range.clone()); 
 		cmn::print_vec_simple(&self.dens_mut().syns.states.vec[cel_syn_range.clone()]);
 
-		print!("\ndens.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
+		println!("dens.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
 		cmn::print_vec_simple(&self.dens_mut().syns.strengths.vec[cel_syn_range.clone()]);
 
-		print!("\ndens.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
+		println!("dens.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
 		cmn::print_vec_simple(&self.dens_mut().syns.src_col_v_offs.vec[cel_syn_range.clone()]);
 	}
 

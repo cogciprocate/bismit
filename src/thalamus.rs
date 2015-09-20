@@ -6,8 +6,10 @@ use cmn;
 use ocl;
 use cortical_area:: { CorticalArea };
 use proto::{ Protoareas, ProtoareasTrait, Protoarea, Protoregion, Protoregions, 
-	ProtoregionKind, layer, Sensory, Thalamic };
+	RegionKind, layer, Sensory, Thalamic };
+use encode:: { IdxReader };
 use tests::input_czar;
+
 
 /*	THALAMUS:
 		- Input/Output is from a CorticalArea's point of view
@@ -34,7 +36,7 @@ pub struct Thalamus {
 
 impl Thalamus { // , protoregions: Protoregions
 	pub fn new(areas: &HashMap<&'static str, Box<CorticalArea>>) -> Thalamus {
-		let epre = "thalamus::Thalamus::new(): ";
+		//let epre = "thalamus::Thalamus::new(): ";
 
 		let mut tao = ThalamicTract::new(Vec::with_capacity(0), 
 			Vec::with_capacity(areas.len()), HashMap::with_capacity(areas.len()));
@@ -48,12 +50,12 @@ impl Thalamus { // , protoregions: Protoregions
 
 		//let (mut ai_len, mut ao_len, mut ei_len, mut eo_len) = (0, 0, 0, 0);
 
-		print!("\n\n");
+		//println!("\n");
 		let mut i = 0usize;
 
 		/*  <<<<< TAKE IN TO ACCOUNT MULTI-SLICE INPUT LAYERS >>>>>  */
 		for (&area_name, ref area) in areas {
-			//print!("\nTHALAMUS::NEW(): Adding area: '{}'", area_name);
+			//println!("THALAMUS::NEW(): Adding area: '{}'", area_name);
 			//if area.region_kind != Sensory { continue; };
 			//let emsga = format!("{}{}", epre, "area_input_depth -- flag not found");
 
@@ -65,16 +67,14 @@ impl Thalamus { // , protoregions: Protoregions
 			// let area_len = area_columns * area_input_depth as usize;
 
 			let aff_len = area.axn_range(layer::AFFERENT_INPUT).len();
-			let aff_srcs = area.input_src_area_names(layer::AFFERENT_INPUT);
-			tao.add_area(area_name, i, aff_len, aff_srcs);
-
 			let eff_len = area.axn_range(layer::EFFERENT_INPUT).len();
-			let eff_srcs = area.input_src_area_names(layer::EFFERENT_INPUT);
-			teo.add_area(area_name, i, eff_len, eff_srcs);
+
+			tao.add_area(area_name, i, aff_len, area.input_src_area_names(layer::AFFERENT_INPUT));
+			teo.add_area(area_name, i, eff_len,	area.input_src_area_names(layer::EFFERENT_INPUT));
 
 			//let cc_area_len = if aff_in_len > eff_in_len { aff_in_len } else { eff_in_len };
 
-			print!("\nTHALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", area_name, aff_len, eff_len);			
+			println!("THALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", area_name, aff_len, eff_len);			
 
 			// tao.index.push(AreaInfo { range: tao.axn_len..(tao.axn_len + aff_len) });
 			// tao.axn_len += aff_len;
@@ -94,7 +94,7 @@ impl Thalamus { // , protoregions: Protoregions
 		//let tract_afferent_output: Vec<ocl::cl_uchar> = iter::repeat(0).take(aff_len).collect();
 		//let tract_efferent_output: Vec<ocl::cl_uchar> = iter::repeat(0).take(aff_len).collect();
 
-		//print!("\n\n##### THALAMUS::NEW(): \n\n    INDEX: {:?}\n\n    MAP: {:?}\n\n    CONCOURSE.LEN(): {}", index, map, concourse.len());
+		//println!("\n##### THALAMUS::NEW(): \n\n    INDEX: {:?}\n\n    MAP: {:?}\n\n    CONCOURSE.LEN(): {}", index, map, concourse.len());
 
 		Thalamus {			
 			//concourse: concourse,
@@ -130,7 +130,7 @@ impl Thalamus { // , protoregions: Protoregions
 		let emsg = format!("cortex::Cortex::write_vec(): Invalid area name: {}", area_name);
 		let area = areas.get(area_name).expect(&emsg);
 
-		//let ref region = self.protoregions[&ProtoregionKind::Sensory];
+		//let ref region = self.protoregions[&RegionKind::Sensory];
 		let region = area.protoregion();
 		let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
 		
@@ -324,3 +324,25 @@ impl AreaInfo {
 
 
 
+
+pub enum InputKind {
+	World,
+	Stripes { stripe_size: usize, zeros_first: bool },
+	Hexballs { edge_size: usize, invert: bool, fill: bool },
+	Exp1,
+	IdxReader(Box<IdxReader>),
+}
+
+pub struct InputSource {
+	kind: InputKind,
+	target_area_name: &'static str,	
+}
+
+impl InputSource {
+	pub fn new(kind: InputKind, target_area_name: &'static str) -> InputSource {
+		InputSource {
+			target_area_name: target_area_name,
+			kind: kind,
+		}
+	}
+}
