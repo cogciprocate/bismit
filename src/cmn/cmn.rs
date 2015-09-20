@@ -698,19 +698,19 @@ pub fn new_pred(
 
 /* AXN_IDX_2D(): Host side address resolution - concerned with start idx of a slc
 	- OpenCL device side version below (for reference) - concerned with invidiual indexes: 
-		static inline uint axn_idx_2d(uchar slc_id, uint slc_width, uint col_id, char col_ofs) {
-			uint axn_idx_spt = mad24((uint)slc_id, slc_width, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
+		static inline uint axn_idz_2d(uchar slc_id, uint slc_columns, uint col_id, char col_ofs) {
+			uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
 			int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
 			int hcol_id = mad24(hslc_id, SYNAPSE_SPAN_LIN, col_ofs + SYNAPSE_REACH_LIN);
-			uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_width, (uint)(hcol_id + SYNAPSE_REACH_LIN));
+			uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_columns, (uint)(hcol_id + SYNAPSE_REACH_LIN));
 			return mul24((uint)(hslc_id < 0), axn_idx_spt) + mul24((uint)(hslc_id >= 0), axn_idx_hrz);
 		}
 }*/
-pub fn axn_idx_2d(axn_slc: u8, width: u32, hrz_demarc: u8) -> u32 {
+pub fn axn_idz_2d(axn_slc: u8, columns: u32, hrz_demarc: u8) -> u32 {
 	let mut axn_idx: u32 = if axn_slc < hrz_demarc {
-		(axn_slc as u32 * width)
+		(axn_slc as u32 * columns)
 	} else {
-		(hrz_demarc as u32 * width) + SYNAPSE_SPAN_LIN * (axn_slc as u32 - hrz_demarc as u32)
+		(hrz_demarc as u32 * columns) + SYNAPSE_SPAN_LIN * (axn_slc as u32 - hrz_demarc as u32)
 	};
 
 	axn_idx + SYNAPSE_REACH_LIN as u32
@@ -777,10 +777,10 @@ mod tests {
 
 
 	#[test]
-	fn test_axn_idx_2d() {
-		assert!(axn_idx_2d(1, 1024, 4) == 1024u32 + SYNAPSE_REACH_LIN as u32);
-		assert!(axn_idx_2d(5, 1024, 4) == 4096u32 + SYNAPSE_SPAN_LIN + SYNAPSE_REACH_LIN as u32);
-		assert!(axn_idx_2d(15, 1024, 4) == 4096u32 + (11 * SYNAPSE_SPAN_LIN) + SYNAPSE_REACH_LIN as u32);
+	fn test_axn_idz_2d() {
+		assert!(axn_idz_2d(1, 1024, 4) == 1024u32 + SYNAPSE_REACH_LIN as u32);
+		assert!(axn_idz_2d(5, 1024, 4) == 4096u32 + SYNAPSE_SPAN_LIN + SYNAPSE_REACH_LIN as u32);
+		assert!(axn_idz_2d(15, 1024, 4) == 4096u32 + (11 * SYNAPSE_SPAN_LIN) + SYNAPSE_REACH_LIN as u32);
 
 	}
 

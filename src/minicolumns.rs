@@ -104,7 +104,7 @@ impl Minicolumns {
 		let axn_output_slc = output_slcs[0];
 		let ssts_slc_ids = protoregion.slc_ids(vec!["iv_old"]);
 		let ssts_axn_base_slc = ssts_slc_ids[0];
-		let ssts_axn_idz_old = cmn::axn_idx_2d(ssts_axn_base_slc, dims.columns(), protoregion.hrz_demarc());
+		let ssts_axn_idz_old = cmn::axn_idz_2d(ssts_axn_base_slc, dims.columns(), protoregion.hrz_demarc());
 		assert!(ssts_axn_idz == ssts_axn_idz_old as usize);*/
 
 		//println!("\n ##### ssts_axn_idz: {}", ssts_axn_idz);

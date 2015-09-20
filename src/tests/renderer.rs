@@ -3,6 +3,7 @@ use cmn;
 
 use std::char;
 use std::iter;
+use std::collections::{ BTreeMap };
 
 pub struct Renderer {
 	dims: CorticalDimensions,
@@ -22,10 +23,11 @@ impl Renderer {
 	}
 
 	// DRAW(): height-row-v, width-col-u
-	pub fn render(&mut self, axn_sdr: &[u8], sst_sdr: &[u8], input_status: &str) {
+	// TODO: NEED TO MAKE SST_AXNS OPTIONAL 
+	pub fn render(&mut self, out_axns: &[u8], sst_axns: &[u8], input_status: &str) {
 		let height = self.dims.v_size();
 		let width = self.dims.u_size();
-		assert!((height * width) as usize == axn_sdr.len());
+		assert!((height * width) as usize == out_axns.len());
 
 		let mut margin = String::with_capacity(height as usize + 10);
 		//let mut margin: String = iter::repeat(' ').take(height as usize - 1).collect();
@@ -48,13 +50,13 @@ impl Renderer {
 			for u in 0..width {
 				//let u = (width - 1) - u_mirror;
 				let sdr_idx = ((v * width) + u) as usize;
-				let sdr_val = axn_sdr[sdr_idx];
+				let sdr_val = out_axns[sdr_idx];
 				let sdr_cmpd = (sdr_val >> 4) | (((sdr_val & 0x0F) != 0) as u8);
 				//let sdr_cmpd = sdr_val;
 
-				let axn_active = axn_sdr[sdr_idx] != 0;
-				let sst_active = sst_sdr[sdr_idx] != 0;
-				let prediction = axn_sdr[sdr_idx] != sst_sdr[sdr_idx];
+				let axn_active = out_axns[sdr_idx] != 0;
+				let sst_active = sst_axns[sdr_idx] != 0;
+				let prediction = out_axns[sdr_idx] != sst_axns[sdr_idx];
 				let new_prediction = prediction && (!sst_active); // RENAME (it's not necessarily a new pred)
 
 				//let prev_active = vec_ff_prev[i] != Default::default();
@@ -104,12 +106,12 @@ impl Renderer {
 		self.axn_history.clear();
 		self.sst_history.clear();
 
-		self.axn_history.push_all(axn_sdr);
-		self.sst_history.push_all(sst_sdr);
+		self.axn_history.push_all(out_axns);
+		self.sst_history.push_all(sst_axns);
 
-		// for hst_i in 0..self.axn_sdr.len() {
-		// 	self.axn_history[hst_i] = axn_sdr[hst_i];
-		// 	self.sst_history[hst_i] = sst_sdr[hst_i];
+		// for hst_i in 0..self.out_axns.len() {
+		// 	self.axn_history[hst_i] = out_axns[hst_i];
+		// 	self.sst_history[hst_i] = sst_axns[hst_i];
 		// }
 		let preds_total = (corr_preds + failed_preds) as f32;
 
@@ -125,6 +127,20 @@ impl Renderer {
 			preds_total, corr_preds, failed_preds, pred_accy, 
 			anomalies, new_preds, active_ssts, active_axns, input_status,
 		);
+	}
+
+	pub fn render_axon_space(&mut self, axn_space: &[u8], slc_map: &BTreeMap<u8, &'static str>, 
+					col_count: u32, hrz_demarc: u8
+	) {
+		assert!(col_count == self.dims.columns(), "Column count mismatch.");
+
+		for (&slc_id, &slc_name) in slc_map {
+			let axn_idz = cmn::axn_idz_2d(slc_id, col_count, hrz_demarc) as usize;
+			let axn_idn = axn_idz + col_count as usize;			
+			print!("\nAxon slice '{}': slc_id: {}, axn_idz: {}", slc_name, slc_id, axn_idz);
+
+			self.render(&axn_space[axn_idz..axn_idn], &axn_space[axn_idz..axn_idn], slc_name);
+		}
 	}
 }
 

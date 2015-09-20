@@ -54,14 +54,15 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 		print!("\nSPINY STELLATE SYNAPSE STATES: ");
 		cortex.area_mut(area_name).psal_mut().dens_mut().syns.states.print(1 << 10, Some((1, 255)), None, true);
 	}
+
 	if true {
 		print!("\nSPINY STELLATE SYNAPSE SOURCE ROW IDS:");
 		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_slc_ids.print(1 << 11, None, None, true);
+	} else if false {
+		print!("\nSPINY STELLATE SYNAPSE SOURCE ROW IDS(0 - 1300):");
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_slc_ids.print(1 << 0, None, Some((0, 1300)), true);
 	}
-		if false {
-			print!("\nSPINY STELLATE SYNAPSE SOURCE ROW IDS(0 - 1300):");
-			cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_slc_ids.print(1 << 0, None, Some((0, 1300)), true);
-		}
+
 	if true {	
 		print!("\nSPINY STELLATE SYNAPSE SOURCE SPINY STELLATE OFFSETS: ");
 		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_col_v_offs.print(1 << 11, None, None, true);
@@ -100,37 +101,31 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 	/* PYRAMIDAL */
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE STATES: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states.print(1 << 16, Some((1, 255)), None, true);
-	}	
-
-		if false {	
-			print!("\nPYRAMIDAL SYNAPSE STATES (all): ");
-			cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states.print(1 << 0, Some((0, 255)), None, true);
-			//print!("\nPYRAMIDAL SYNAPSE STATES (524288 - 524588): ");
-			//cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states.print(1 << 1, Some((0, 255)), Some((524288, 524588)), true);
-		}
-
-	if true {	
-		print!("\nPYRAMIDAL SYNAPSE SOURCE ROW IDS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_slc_ids.print(1 << 14, None, None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states.print(1 << 12, Some((1, 255)), None, true);
+	} else if false {	
+		print!("\nPYRAMIDAL SYNAPSE STATES (all): ");
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states.print(1 << 0, Some((0, 255)), None, true);
+		//print!("\nPYRAMIDAL SYNAPSE STATES (524288 - 524588): ");
+		//cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states.print(1 << 1, Some((0, 255)), Some((524288, 524588)), true);
 	}
 
-		if false {
-			print!("\nPYRAMIDAL SYNAPSE SOURCE ROW IDS(0 - 1300):");
-			cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_slc_ids.print(1 << 1, None, Some((0, 1300)), true);
-		}
+	if true {	
+		print!("\nPYRAMIDAL SYNAPSE SOURCE SLICE IDS: ");
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_slc_ids.print(1 << 11, None, None, true);
+	} else if false {
+		print!("\nPYRAMIDAL SYNAPSE SOURCE SLICE IDS(0 - 1300):");
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_slc_ids.print(1 << 1, None, Some((0, 1300)), true);
+	}
 
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE SOURCE COLUMN OFFSETS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_col_v_offs.print(1 << 14, None, None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_col_v_offs.print(1 << 11, None, None, true);
 	}
 
-	if false {
+	if true {
 		print!("\nPYRAMIDAL SYNAPSE STRENGTHS:");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.strengths.print(1 << 14, None, None, true);
-	}
-
-		if true {
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.strengths.print(1 << 11, None, None, true);
+	} else if false {
 		print!("\nPYRAMIDAL SYNAPSE STRENGTHS:");
 		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.strengths.print(1 << 0, Some((7, 127)), None, true);
 	}

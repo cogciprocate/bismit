@@ -417,6 +417,13 @@ static inline int square(int x) {
 }
 
 
+static inline uint calc_syn_idz(uint const tuft_id, uint const cel_count, uint const cel_id, 
+				uchar const syns_per_tuft_l2) 
+{
+	uint const syn_tuft_ofs = mul24(tuft_id, cel_count) << syns_per_tuft_l2;
+	return syn_tuft_ofs + (cel_id << syns_per_tuft_l2);
+}
+
 
 
 
@@ -1019,34 +1026,37 @@ __kernel void inhib_passthrough(
 }
 
 
-// SST_LTP(): Long term potentiation for Spiny Stellate Cells
-__kernel void sst_ltp(
+
+// SST_LTP(): Long term potentiation for Spiny Stellate Cells - Completely unoptimized
+__kernel void sst_ltp_simple(
 				__global uchar const* const axn_states,
 				__global uchar const* const syn_states,
 				__private uint const cel_axn_idz,
+				//__private uint const tufts_per_cel,
 				__private uchar const syns_per_tuft_l2,
 				__private uint const rnd,
+				__global int* const aux_ints_0,
 				__global char* const syn_strengths) 
 {
-	uint const slc_id = get_global_id(0);
-	uint const col_tuft_id = get_global_id(1);
-	uint const tuft_size = get_global_size(1);
-	uint const cel_tuft_id = mad24(slc_id, tuft_size, col_tuft_id);
+	uint const tuft_id = get_global_id(0);
+	uint const cel_id = get_global_id(1);
+	uint const cel_count = get_global_size(1);
 
-	uint cels_per_tuft = get_local_size(1);
+	uint const axn_idx = cel_axn_idz + cel_id;
+	uint const axn_state = axn_states[axn_idx];
 
-	uint const cel_idz = mul24(cel_tuft_id, cels_per_tuft);
-	uint const cel_idn = cel_idz + cels_per_tuft;
+	// TESTING
+	// uint const cel_tuft_id = cel_id + mul24(tuft_id, cel_count);
+	// aux_ints_0[cel_tuft_id] = axn_state;
+	// END TESTING	
 
-	for (uint cel_idx = cel_idz; cel_idx < cel_idn; cel_idx++) {
-		uchar axn_state = axn_states[cel_axn_idz + cel_idx];
-		
-		if (axn_state) {
-			uint syn_idz = cel_idx << syns_per_tuft_l2;	
-			prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tuft_l2, rnd, syn_strengths);
-		}
+	if (axn_state) {
+		uint const syn_idz = calc_syn_idz(tuft_id, cel_count, cel_id, syns_per_tuft_l2);
+		prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tuft_l2, rnd, syn_strengths);
 	}
 }
+
+
 
 
 // PYR_ACTIVATE(): CONVERT TO 1 WORK_DIM
@@ -1267,7 +1277,7 @@ __kernel void col_output(
 				__private uchar const output_axn_slc,
 				__global uchar* const mcol_pred_totals,
 				__global uchar* const mcol_best_pyr_den_states,
-				__global uchar* const axn_states) 
+				__global uchar* const axn_states)
 {
 	uint const slc_id = get_global_id(0);
 	uint const col_id = get_global_id(1);
@@ -1326,6 +1336,36 @@ __kernel void col_output(
 
 
 
+// __kernel void sst_ltp(
+// 				__global uchar const* const axn_states,
+// 				__global uchar const* const syn_states,
+// 				__private uint const cel_axn_idz,
+// 				__private uchar const syns_per_tuft_l2,
+// 				__private uint const rnd,
+// 				__global int* const aux_ints_0,
+// 				__global char* const syn_strengths) 
+// {
+// 	uint const slc_id = get_global_id(0);
+// 	uint const col_tuft_id = get_global_id(1);
+// 	uint const tuft_size = get_global_size(1);
+// 	uint const cel_tuft_id = mad24(slc_id, tuft_size, col_tuft_id);
+
+// 	uint cels_per_tuft = get_local_size(1);
+
+// 	uint const cel_idz = mul24(cel_tuft_id, cels_per_tuft);
+// 	uint const cel_idn = cel_idz + cels_per_tuft;
+
+// 	for (uint cel_idx = cel_idz; cel_idx < cel_idn; cel_idx++) {
+// 		uchar axn_state = axn_states[cel_axn_idz + cel_idx];
+
+// 		aux_ints_0[cel_idx] = axn_state;
+		
+// 		if (axn_state) {
+// 			uint syn_idz = cel_idx << syns_per_tuft_l2;	
+// 			prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tuft_l2, rnd, syn_strengths);
+// 		}
+// 	}
+// }
 
 
 

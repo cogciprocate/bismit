@@ -28,7 +28,7 @@ pub static PASS_STR: &'static str = "\x1b[1;32mpass\x1b[0m";
 
 // NEED A 'TestParameters' STRUCT OF SOME SORT TO UNTANGLE THIS AND MOVE STUFF INTO CHILD FUNCTIONS
 pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
-	let emsg = "tests::hybrid::test_pyr_activation()";
+	let emsg = "\ntests::hybrid::test_pyr_activation()";
 	let activation_test_runs = 2;
 
 	let learning_test_runs = 5;
@@ -174,7 +174,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 				let cels = cortex.area_mut(area_name).ptal_mut();
 
 				if last_run && last_learning_run {
-					println!("uINDEXES: first_half: {}, den_id: {}, den_idx: {}, syn_idz: {}, syn_idn: {}, syn_tar_half_idz: {}, syn_tar_half_idn: {}", first_half, den_id, den_idx, syn_idz, syn_idn, syn_tar_half_idz, syn_tar_half_idn);
+					print!("\nuINDEXES: first_half: {}, den_id: {}, den_idx: {}, syn_idz: {}, syn_idn: {}, syn_tar_half_idz: {}, syn_tar_half_idn: {}", first_half, den_id, den_idx, syn_idz, syn_idn, syn_tar_half_idz, syn_tar_half_idn);
 				}
 
 				for syn_idx in syn_tar_half_idz..syn_tar_half_idn {
@@ -324,7 +324,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 		}	
 	}
 
-	println!("\ntest_activation(): {} ", PASS_STR);
+	print!("\ntest_activation(): {} ", PASS_STR);
 }
 
 
@@ -348,14 +348,14 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 */
 pub fn test_learning(cortex: &mut Cortex, ilyr_name: &'static str, area_name: &str) {
 	let psal_name = cortex.area(area_name).psal_name();
-	println!("##### hybrid::test_learning(): psal_name: {}", psal_name);
+	print!("\n##### hybrid::test_learning(): psal_name: {}", psal_name);
 	//let ptal_name = cortex.area_mut(area_name).ptal_name();
 	_test_sst_learning(cortex, psal_name, ilyr_name, area_name);
 	//_test_pyr_learning(cortex, ptal_name);
 }
 
 fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: &'static str, area_name: &str) {
-	let emsg = "tests::hybrid::_test_sst_learning()";
+	let emsg = "\ntests::hybrid::_test_sst_learning()";
 
 
 	let (dens_per_tuft, syns_per_tuft, syns_per_den) = {// CELS IN SCOPE
@@ -403,7 +403,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 		//cels.soma().cycle_self_only();
 	}
 
-	cortex.area_mut(area_name).iinns.get_mut(ilyr_name).expect(&format!("{}: {}", emsg, "area_name")).cycle(false);
+	cortex.area_mut(area_name).iinns.get_mut(ilyr_name).expect(&format!("{}: {}", emsg, "ilyr_name")).cycle(false);
 
 
 	{
@@ -492,7 +492,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 
 
 pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
-	let emsg = "tests::hybrid::test_cycles()";
+	let emsg = "\ntests::hybrid::test_cycles()";
 	
 	/*cortex.area_mut(area_name).psal_mut().dens.syns.src_col_v_offs.set_all_to(0);
 	cortex.area_mut(area_name).ptal_mut().dens.syns.src_col_v_offs.set_all_to(0);
@@ -526,39 +526,49 @@ fn test_inhib(cortex: &mut Cortex) {
 }
  
 
+// TEST PYRAMIDAL CELLS 'PREDICTIVENESS' AKA: SOMA STATES
 fn test_pyr_preds(pyrs: &mut PyramidalCellularLayer) {
-	let emsg = "tests::hybrid::test_pyr_preds()";
+	let emsg = "\ntests::hybrid::test_pyr_preds()";
 
 	io::stdout().flush().unwrap();
 	pyrs.dens_mut().states.set_all_to(0);
 
-	let dens_per_tuft = pyrs.dens_mut().dims().per_cel() as usize;
-	let dens_len = pyrs.dens_mut().states.len() as usize;
+	let dens_per_tuft = pyrs.dens_mut().dims().per_tuft() as usize;
+	print!("\n\n##### dens_per_tuft: {}", dens_per_tuft);
+	//let dens_len = pyrs.dens_mut().states.len() as usize;	
+	let pyrs_len = pyrs.soma().len() as usize;
+	let den_tuft_len = pyrs_len * dens_per_tuft;
 
+	// WRITE 255 TO THE DENDRITES CORRESPONDING TO THE FIRST AND LAST CELL
+	// FOR THE FIRST TUFT ONLY
 	for i in 0..dens_per_tuft {
 		pyrs.dens_mut().states[i] = 255;
 	}
+	
+	let last_cel_den_idz =  den_tuft_len - dens_per_tuft;
 
-	let last_cell_idz =  dens_len - dens_per_tuft;
-
-	for i in last_cell_idz..dens_len {
+	for i in last_cel_den_idz..den_tuft_len {
 		pyrs.dens_mut().states[i] = 255;
 	}
 
-	//pyrs.dens_mut().states[50] = 255;
+	// WRITE THE DENDRITE STATES TO DEVICE
 	pyrs.dens_mut().states.write();
-	pyrs.cycle_self_only();
 
-	let pyrs_len = pyrs.soma().len() as usize;
-	//pyrs.dens_mut().states.print_simple();
+	// CYCLE THE PYRAMIDAL CELL ONLY, WITHOUT CYCLING IT'S DENS OR SYNS (WHICH WOULD OVERWRITE THE ABOVE)
+	pyrs.cycle_self_only();	
+	
+	// READ THE PYRAMIDAL CELL SOMA STATES (PREDS)
 	pyrs.soma_mut().read();
+	//pyrs.dens_mut().states.print_simple();
+	//pyrs.soma_mut().print_simple();
 
-	for i in 0..pyrs_len {
+	// TEST TO MAKE SURE THAT *ONLY* THE FIRST AND LAST CELL HAVE NON-ZERO VALUES
+	for idx in 0..pyrs_len {
 		//print!("([{}]:{})", i, pyrs.soma()[i]);
-		if i == 0 || i == (pyrs_len - 1) {
-			assert!(pyrs.soma()[i] > 0);
+		if idx == 0 || idx == (pyrs_len - 1) {
+			assert!(pyrs.soma()[idx] > 0);
 		} else {
-			assert!(pyrs.soma()[i] == 0);
+			assert!(pyrs.soma()[idx] == 0);
 		}
 	}
 
@@ -567,7 +577,7 @@ fn test_pyr_preds(pyrs: &mut PyramidalCellularLayer) {
 
 
 fn test_syn_and_den_states(dens: &mut Dendrites) {
-	let emsg = "tests::hybrid::test_syn_and_den_states()";
+	let emsg = "\ntests::hybrid::test_syn_and_den_states()";
 
 	io::stdout().flush().unwrap();
 	dens.syns.src_col_v_offs.set_all_to(0);

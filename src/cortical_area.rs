@@ -155,7 +155,7 @@ impl CorticalArea {
 				Cellular(ref pcell) => {
 					match pcell.cell_kind {
 						Inhibitory => {
-							let src_layer_names = layer.src_layer_names(DendriteKind::Distal);
+							let src_layer_names = layer.src_layer_names(DendriteKind::Distal);							
 							assert!(src_layer_names.len() == 1);
 
 							let src_layer_name = src_layer_names[0];
@@ -163,10 +163,11 @@ impl CorticalArea {
 							let src_layer_depth = src_slc_ids.len() as u8;
 							let src_axn_base_slc = src_slc_ids[0];
 
+							print!("\n   CORTICALAREA::NEW(): Inhibitory cells: src_layer_names: \
+								{:?}, src_axn_base_slc: {:?}", src_layer_names, src_axn_base_slc);
+
 							let em1 = format!("{}: '{}' is not a valid layer", emsg, src_layer_name);
-
 							let src_soma_env = &ssts_map.get_mut(src_layer_name).expect(&em1).soma();
-
 						
 							let iinns_dims = dims.clone_with_depth(src_layer_depth);
 							let mut iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, pcell.clone(), &protoregion, src_soma_env, src_axn_base_slc, &axns, &aux, &ocl);
@@ -322,7 +323,7 @@ impl CorticalArea {
 		let src_slc_ids = self.protoregion.src_slc_ids(layer_name, *den_kind);
 
 		for ssid in src_slc_ids {
-			let idz = cmn::axn_idx_2d(ssid, self.dims.columns(), self.protoregion.hrz_demarc());
+			let idz = cmn::axn_idz_2d(ssid, self.dims.columns(), self.protoregion.hrz_demarc());
 		 	let idn = idz + self.dims.columns();
 			axn_irs.push(idz..idn);
 		}
@@ -371,7 +372,7 @@ impl CorticalArea {
 		let layer = self.protoregion.layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
 		let len = self.dims.columns() * layer.depth as u32;
 		let base_slc = layer.base_slc_pos;
-		let buffer_offset = cmn::axn_idx_2d(base_slc, self.dims.columns(), self.protoregion.hrz_demarc());
+		let buffer_offset = cmn::axn_idz_2d(base_slc, self.dims.columns(), self.protoregion.hrz_demarc());
 
 		buffer_offset..(buffer_offset + len)
 	}

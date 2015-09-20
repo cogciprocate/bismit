@@ -56,7 +56,7 @@ impl PyramidalCellularLayer {
 
 		let axn_base_slcs = region.slc_ids(vec![layer_name]);
 		let axn_base_slc = axn_base_slcs[0];
-		let axn_idz = cmn::axn_idx_2d(axn_base_slc, dims.columns(), region.hrz_demarc());
+		let axn_idz = cmn::axn_idz_2d(axn_base_slc, dims.columns(), region.hrz_demarc());
 
 		//dims.depth() = region.depth_cell_kind(&ProtocellKind::Pyramidal);
 		//let dens_per_tuft_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
@@ -184,6 +184,8 @@ impl PyramidalCellularLayer {
 	pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &Box<SpinyStellateCellularLayer>, axns: &Axons, aux: &Aux) {
 		let (ssts_axn_idz, _) = ssts.axn_range();
 		//println!("\n##### Pyramidals::init_kernels(): ssts_axn_idz: {}", ssts_axn_idz as u32);
+
+		print!("\n   PYRAMIDALS::INIT_KERNELS()[ACTIVATE]: ssts_axn_range(): {:?}", ssts.axn_range());
 
 		//self.kern_activate.new_arg_envoy(Some(&ssts.soma()));
 		self.kern_activate.new_arg_envoy(Some(&mcols.pred_totals));

@@ -31,7 +31,7 @@ pub const TOGGLE_DIRS: bool 				= false;
 pub const INTRODUCE_NOISE: bool 			= false;
 pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 5000 };
 pub const COUNTER_RANDOM: bool				= false;
-const REPEATS_PER_IMAGE: usize 				= 20;
+const REPEATS_PER_IMAGE: usize 				= 4;
 
 
 /* Eventually move defines to a config file or some such */
@@ -46,11 +46,11 @@ pub fn define_protoregions() -> Protoregions {
 		.l("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
 		.l("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
 		.l("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 2000)) 
+			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
 		.l("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
 		.l("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(0, 4, vec!["iii"], 568).apical(vec!["eff_in"]))
+			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
 	);
 
 	cort_regs.add(Protoregion::new(Thalamic)
@@ -64,14 +64,14 @@ pub fn define_protoareas() -> Protoareas {
 	let area_side = 48 as u32;
 
 	let mut protoareas = Protoareas::new()
+		
+		//.area("u0", area_side, area_side, Thalamic, None, Some(vec!["u1"]))
+		// .area("u1", area_side, area_side, Sensory, None,
+		// 	//None
+		// 	Some(vec!["b1"])
+		// )
+
 		.area("v0", area_side, area_side, Thalamic, None, Some(vec!["v1"]))
-		.area("u0", area_side, area_side, Thalamic, None, Some(vec!["u1"]))
-
-		.area("u1", area_side, area_side, Sensory, None,
-			//None
-			Some(vec!["b1"])
-		)
-
 		.area("v1", area_side, area_side, Sensory, 
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),
 			//None
@@ -79,11 +79,11 @@ pub fn define_protoareas() -> Protoareas {
 		)
 
 		.area("b1", area_side, area_side, Sensory, None,
-		 	//None
-		 	Some(vec!["a1"])
+		 	None
+		 	//Some(vec!["a1"])
 		)
 
-		.area("a1", area_side, area_side, Sensory, None, None)
+		//.area("a1", area_side, area_side, Sensory, None, None)
 	;
 
 	protoareas
@@ -390,9 +390,17 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			if view_all_axons {
 				print!("\n\nAXON SPACE:\n");
+				
 				let axn_space_len = cortex.area(&area_name).axns.states.vec.len();
 
-				//cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
+				rndr.render_axon_space(&cortex.area(&area_name).axns.states.vec[..], 
+					&cortex.area(&area_name).protoregion().slc_map(),
+					cortex.area(&area_name).dims.columns(),
+					cortex.area(&area_name).protoregion().hrz_demarc(),
+				);
+				
+
+				// cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
 			}
 
 			i += 1;

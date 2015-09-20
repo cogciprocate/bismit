@@ -83,6 +83,7 @@ impl CorticalDimensions {
 		self.depth
 	}
 
+	// TUFTS_PER_CEL(): Dendrite tufts per cell
 	pub fn tufts_per_cel(&self) -> u32 {
 		self.tufts_per_cel
 	}
@@ -103,8 +104,8 @@ impl CorticalDimensions {
 		self.columns() * self.depth as u32
 	}
 
-	// TUFTS(): 4D Volume of area measured in tufts
-	pub fn tufts(&self) -> u32 {
+	// TUFTS(): 4D Volume of area measured in (dendrite-tuft * cells)
+	pub fn cel_tufts(&self) -> u32 {
 		self.cells() * self.tufts_per_cel
 	}
 
@@ -129,6 +130,10 @@ impl CorticalDimensions {
 		len_components(1, self.per_tuft_l2, self.tufts_per_cel)
 	}
 
+	pub fn per_tuft(&self) -> u32 {
+		len_components(1, self.per_tuft_l2, 1)
+	}
+
 	pub fn per_slc_per_tuft(&self) -> u32 {
 		len_components(self.columns(), self.per_tuft_l2, 1)
 	}
@@ -138,10 +143,7 @@ impl CorticalDimensions {
 		len_components(self.columns(), self.per_tuft_l2, self.tufts_per_cel)
 	}
 
-	// 
-
 	
-
 	// LEN(): 4D Volume - Total linear length if stretched out - measured in cell-piece-whatevers
 	/* TEMPORARY */
 	/*pub fn len(&self) -> u32 {

@@ -1,45 +1,59 @@
 
 use cmn;
-use proto::{ Protoregion, Protoregions, ProtoregionKind, Protoareas, ProtoareasTrait, Protoarea, ProtolayerKind, ProtoaxonKind, layer, Protocell };
+use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter };
 use cortex::{ self, Cortex };
 use ocl;
 use super::input_czar::{ self, InputCzar, InputVecKind };
 use super::hybrid;
 
 
+// 	IDEAS FOR TESTS:
+// 		- set synapse src_ids, src_ofs, strs to 0
+// 		- test some specific inputs and make sure that synapses are responding exactly
+
+
 pub fn define_prtrgns() -> Protoregions {
-	Protoregions::new()
-		.region(Protoregion::new(ProtoregionKind::Sensory)
-			.l("thal_t", 1, layer::AFFERENT_INPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
-			.l("out_t", 1, layer::AFFERENT_OUTPUT, ProtolayerKind::Axonal(ProtoaxonKind::Spatial))
-			.l("iv_t", 1, layer::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["thal_t"], 256))  // , "motor"
-			.l("iv_inhib_t", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv_t"))
-			.l("iii_t", 4, layer::TEMPORAL_ASSOCIATIVE, Protocell::new_pyramidal(2, 5, vec!["iii_t"], 256))
-			.l("motor_t", 1, layer::DEFAULT, ProtolayerKind::Axonal(ProtoaxonKind::Horizontal))
-			.freeze()
-		)
+	let mut cort_regs: Protoregions = Protoregions::new();
+
+	cort_regs.add(Protoregion::new(Sensory)
+		//.l("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
+		.l("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
+		.l("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
+		//.l("nothing", 1, layer::DEFAULT, Axonal(Spatial))
+		.l("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
+		.l("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
+		.l("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
+			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
+		.l("iv_inhib_test", 0, layer::DEFAULT, 
+			Protocell::new_inhibitory(4, "iv"))
+		.l("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
+			Protocell::new_pyramidal(0, 5, vec!["iii"], 800).apical(vec!["eff_in"]))
+	);
+
+	cort_regs.add(Protoregion::new(Thalamic)
+		.l("external_input", 1, layer::AFFERENT_OUTPUT, Axonal(Spatial))
+	);
+
+	cort_regs
 }
 
 pub fn define_prtareas() -> Protoareas {
-	Protoareas::new().area("v1_t", 32, 32, ProtoregionKind::Sensory, None)
+	let area_side = 48 as u32;
+
+	Protoareas::new()
+		.area("v1_test", area_side, area_side, Sensory, 
+			None,
+			//Some(vec![Protofilter::new("retina", Some("filters.cl"))]),
+			None,
+			//Some(vec!["b1"]),
+		)
 }
 
-pub fn init_ocl() -> (ocl::OclProgQueue, ocl::CorticalDimensions) {
-	let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", 128 as i32);
-	let build_options = cmn::build_options().add(hrz_demarc_opt);
-	let ocl = ocl::OclProgQueue::new(build_options);
-	let dims = ocl::CorticalDimensions::new(16, 16, 1, 0, Some(ocl.get_max_work_group_size()));
-	(ocl, dims)
-}
 
-/* IDEAS FOR TESTS:
-	- set synapse src_ids, src_ofs, strs to 0
-		- test some specific inputs and make sure that synapses are responding exactly
-*/
 #[test]
 fn test_cortex() {
 	let mut cortex = Cortex::new(define_prtrgns(), define_prtareas());
-	let area_name = "v1_t";
+	let area_name = "v1_test";
 
 	hybrid::test_cycles(&mut cortex, area_name);
 }
@@ -49,24 +63,25 @@ fn test_cortex() {
 #[test]
 fn test_learning() {
 	let mut cortex = Cortex::new(define_prtrgns(), define_prtareas());
-	let area_name = "v1_t";
-	let si_layer_name = "iv_inhib_t";
+	let area_name = "v1_test";
+	let si_layer_name = "iv_inhib_test";
 
 	hybrid::test_learning(&mut cortex, si_layer_name, area_name);
 }
 
 
 #[test]
+// TEST_KERNELS(): TODO: NEED TO UPDATE TO NEW OCL INSTANTIATION SYSTEM
 fn test_kernels() {
 	// let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", 128 as i32);
 	// let build_options = cmn::build_options().add(hrz_demarc_opt);
 	// let ocl = ocl::OclProgQueue::new(build_options);
 	// let dims = ocl::CorticalDimensions::new(16, 16, 1, 0, Some(ocl.get_max_work_group_size()));
-	let (ocl, dims) = init_ocl();
+	//let (ocl, dims) = init_ocl();
 
-	test_safe_dim_ofs(&ocl, dims.clone());
+	//test_safe_dim_ofs(&ocl, dims.clone());
 
-	ocl.release_components();
+	//ocl.release_components();
 }
 
 fn test_safe_dim_ofs(ocl: &ocl::OclProgQueue, dims: ocl::CorticalDimensions) {
@@ -74,7 +89,7 @@ fn test_safe_dim_ofs(ocl: &ocl::OclProgQueue, dims: ocl::CorticalDimensions) {
 	let mut dim_offs = ocl::Envoy::<i8>::shuffled(dims, -16, 15, &ocl);
 	let mut safe_dim_offs = ocl::Envoy::<i8>::new(dims, 0, &ocl);
 
-	let kern_test_safe_dim_ofs = ocl.new_kernel("test_safe_dim_ofs", 
+	let kern_test_safe_dim_ofs = ocl.new_kernel("test_safe_dim_ofs".to_string(), 
 		ocl::WorkSize::OneDim(dims.physical_len() as usize))
 		.arg_env(&dim_ids)
 		.arg_env(&dim_offs)
@@ -98,3 +113,13 @@ fn test_safe_dim_ofs(ocl: &ocl::OclProgQueue, dims: ocl::CorticalDimensions) {
 		assert!(safe_dim_id < dims.u_size() as isize);
 	}
 }
+
+
+
+// pub fn init_ocl() -> (ocl::OclProgQueue, ocl::CorticalDimensions) {
+// 	// let hrz_demarc_opt = ocl::BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", 128 as i32);
+// 	// let build_options = cmn::build_options().add(hrz_demarc_opt);
+// 	// let ocl = ocl::OclProgQueue::new(build_options);
+// 	//let dims = ocl::CorticalDimensions::new(16, 16, 1, 0, Some(ocl.get_max_work_group_size()));
+// 	(ocl, dims)
+// }

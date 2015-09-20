@@ -64,7 +64,7 @@ impl Axons {
 
 		let padding: u32 = (cmn::SYNAPSE_SPAN_LIN) as u32;
 		
-		print!("\n      AXONS::NEW(): new axons with: depth_axn_s: {}, depth_cel: {}, depth_axn_h: {}, physical_depth: {}, dims: {:?}", depth_axn_sptl, depth_cellular, depth_axn_hrz, physical_depth, dims);
+		print!("\n      AXONS::NEW(): new axons with: depth_axn_s: {}, depth_cel: {}, depth_axn_h: {}, physical_depth: {}, padding: {}, dims: {:?}", depth_axn_sptl, depth_cellular, depth_axn_hrz, physical_depth, padding, dims);
 
 		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
 

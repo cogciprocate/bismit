@@ -433,10 +433,13 @@ fn junk0_vec_init(sca: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
 
 #[cfg(test)]
 mod tests {
+	use super::*;
+	use ocl::{ self, CorticalDimensions };
 	
 	#[test]
 	fn test_input_czar() {
-		let mut ic = super::InputCzar::new(1024, super::InputVecKind::Stripes { stripe_size: 512, zeros_first: false }, 0..5, false, false, false);
+		let dims = CorticalDimensions::new(32, 32, 1, 0, None);
+		let mut ic = super::InputCzar::new(dims, super::InputVecKind::Stripes { stripe_size: 512, zeros_first: false }, 0..5, false, false, false);
 		//ic.set_counter(5);
 
 		assert!(ic.counter == 5);

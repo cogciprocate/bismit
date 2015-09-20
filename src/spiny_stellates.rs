@@ -58,7 +58,7 @@ impl SpinyStellateCellularLayer {
 
 		let base_axn_slcs = protoregion.slc_ids(vec![layer_name]);
 		let base_axn_slc = base_axn_slcs[0];
-		let axn_idz = cmn::axn_idx_2d(base_axn_slc, dims.columns(), protoregion.hrz_demarc());
+		let axn_idz = cmn::axn_idz_2d(base_axn_slc, dims.columns(), protoregion.hrz_demarc());
 
 		let syns_per_tuft_l2: u8 = protocell.syns_per_den_l2 + protocell.dens_per_tuft_l2;
 
@@ -68,7 +68,7 @@ impl SpinyStellateCellularLayer {
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		print!("\n      SPINYSTELLATES::NEW(): dims: {:?}", dims);
+		print!("\n      SPINYSTELLATES::NEW(): base_axn_slc: {}, axn_idz: {}, dims: {:?}", base_axn_slc, axn_idz, dims);
 
 		let dens_dims = dims.clone_with_ptl2(protocell.dens_per_tuft_l2 as i8);
 		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::SpinyStellate, protoregion, axns, aux, ocl);
@@ -88,18 +88,19 @@ impl SpinyStellateCellularLayer {
 
 		//println!("\n##### SPINY_STELLATES: cels_per_tuft: {}, syns_per_tuft_l2: {}, axn_idz: {} ", cels_per_tuft, syns_per_tuft_l2, axn_idz);
 
-		let kern_ltp = ocl.new_kernel("sst_ltp".to_string(), 
-			WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
+		let kern_ltp = ocl.new_kernel("sst_ltp_simple".to_string(), 
+			//WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
+			WorkSize::TwoDim(dims.tufts_per_cel() as usize, dims.cells() as usize))
 		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&axns.states)
 			.arg_env(&dens.syns.states)
 			.arg_scl(axn_idz)
+			//.arg_scl(dims.tufts_per_cel())
 			.arg_scl(syns_per_tuft_l2)
 			//.arg_scl(cels_per_tuft)
 			.arg_scl_named::<u32>("rnd", None)
-			//.arg_env(&aux.ints_0)
+			.arg_env(&aux.ints_0)
 			.arg_env(&dens.syns.strengths)
-			//.arg_env(&axns.states)
 		;
 
 

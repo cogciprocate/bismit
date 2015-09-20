@@ -85,7 +85,7 @@ impl Synapses {
 			// *****NEW WorkSize::ThreeDim(dims.depth() as usize, dims.u_size() as usize, dims.v_size() as usize))
 			// *****NEW .lws(WorkSize::ThreeDim(1 as usize, wg_size as usize))
 
-		let cels_per_area = dims.cells();
+		let cels_per_kernel = dims.cells();
 
 		for syn_tuft_i in 0..dst_tuft_src_slc_ids.len() {
 			kernels.push(Box::new(
@@ -100,7 +100,7 @@ impl Synapses {
 					.arg_env(&src_col_v_offs)
 					.arg_env(&src_slc_ids)
 					//.arg_env(&strengths)
-					.arg_scl(syn_tuft_i as u32 * cels_per_area)
+					.arg_scl(syn_tuft_i as u32 * cels_per_kernel)
 					.arg_scl(syns_per_tuft_l2)
 					.arg_env(&aux.ints_0)
 					//.arg_env(&aux.ints_1)
@@ -163,19 +163,23 @@ impl Synapses {
 			let src_col_offs_range: Range<i8> = Range::new(0 - syn_reach, syn_reach + 1);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
 
-			let idz = syns_per_layer_tuft * src_tuft_i as usize;
-			let idn = idz + syns_per_layer_tuft as usize;
+			let syn_idz = syns_per_layer_tuft * src_tuft_i as usize;
+			let syn_idn = syn_idz + syns_per_layer_tuft as usize;
 
 			if init && DEBUG_GROW {
-				print!("\n                syns.init(): \"{}\" ({:?}): src_slc_ids: {:?}, syns_per_layer_tuft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind, src_slc_ids, syns_per_layer_tuft, idz, idn);	
+				print!("\n                \
+					SYNAPSES::GROW()[INIT]: \"{}\" ({:?}): src_slc_ids: {:?}, syns_per_layer_tuft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind, src_slc_ids, syns_per_layer_tuft, syn_idz, syn_idn);	
 			}
 
-			for i in idz..idn {
-				if init || (self.strengths[i] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
-					self.regrow_syn(i, &src_slc_id_range, &src_col_offs_range,
+			for syn_idx in syn_idz..syn_idn {
+				if init || (self.strengths[syn_idx] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
+					//syn_idx = i + (src_slc_ids * 
+					self.regrow_syn(syn_idx, &src_slc_id_range, &src_col_offs_range,
 						&strength_init_range, &src_slc_ids, init);
 				}
 			}
+
+			src_tuft_i += 1;
 		}
 
 		self.strengths.write();
@@ -293,7 +297,7 @@ struct SrcIdxCache {
 impl SrcIdxCache {
 	fn new(syns_per_den_l2: u8, dens_per_tuft_l2: u8, dims: CorticalDimensions) -> SrcIdxCache {
 		let dens_per_tuft = 1 << dens_per_tuft_l2 as u32;
-		let area_dens = (dens_per_tuft * dims.tufts()) as usize;
+		let area_dens = (dens_per_tuft * dims.cel_tufts()) as usize;
 		let mut dens = Vec::with_capacity(dens_per_tuft as usize);
 
 		for i in 0..area_dens {	dens.push(Box::new(BTreeSet::new())); }
