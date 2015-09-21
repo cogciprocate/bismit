@@ -11,7 +11,7 @@ use std::ops::{ Range };
 
 use cmn;
 use ocl::{ self, OclProgQueue, OclContext, WorkSize, Envoy, CorticalDimensions, BuildOptions, BuildOption  };
-use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Pyramidal, SpinyStellate, Inhibitory, layer, Protocell, DendriteKind };
+use proto::{ Protoregion, Protoregions, Protoareas, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Pyramidal, SpinyStellate, Inhibitory, layer, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -86,7 +86,7 @@ impl CorticalArea {
 		println!("\nCORTICALAREA::NEW(): Area '{}' details: \
 			(width: {}, height: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}", 
 			protoarea.name, dims.u_size(), dims.v_size(), dims.depth(), 
-			protoarea.efferent_areas, protoarea.afferent_areas);
+			protoarea.eff_areas, protoarea.aff_areas);
 		/*println!("\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", name, 1 << dims.width_l2(), 1 << dims.height_l2(), dims.depth());*/
 
 		let emsg_psal = format!("{}: Primary Spatial Associative Layer not defined.", emsg);
@@ -383,9 +383,9 @@ impl CorticalArea {
 
 		// 
 		if layer_flags == layer::EFFERENT_INPUT {
-			self.protoarea.afferent_areas.clone()
+			self.protoarea.aff_areas.clone()
 		} else if layer_flags == layer::AFFERENT_INPUT {
-			self.protoarea.efferent_areas.clone()
+			self.protoarea.eff_areas.clone()
 		} else {
 			panic!("CorticalArea::input_src_areas(): Can only be called with an \
 				input layer flag as argument");
@@ -446,13 +446,13 @@ impl CorticalArea {
 	}
 
 	pub fn afferent_target_names(&self) -> &Vec<&'static str> {
-		//self.protoarea.afferent_areas.clone
-		&self.protoarea.afferent_areas
+		//self.protoarea.aff_areas.clone
+		&self.protoarea.aff_areas
 	}
 
 	pub fn efferent_target_names(&self) -> &Vec<&'static str> {
-		//self.protoarea.efferent_areas.clone()
-		&self.protoarea.efferent_areas
+		//self.protoarea.eff_areas.clone()
+		&self.protoarea.eff_areas
 	}
 
 	pub fn ocl(&self) -> &OclProgQueue {
@@ -499,10 +499,10 @@ impl Aux {
 
 impl Drop for CorticalArea {
 	fn drop(&mut self) {
-    	println!("Releasing OpenCL components for '{}'... ", self.name);
+    	print!("Releasing OpenCL components for '{}'... ", self.name);
     	self.ocl.release_components();
     	self.ocl_context.release_components();
-    	print!(" ...complete. ");
+    	print!(" ...complete. \n");
 	}
 }
 

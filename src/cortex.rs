@@ -11,7 +11,7 @@ use cmn;
 use chord::{ Chord };
 use cortical_area:: { self, CorticalArea };
 use thalamus::{ Thalamus };
-use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, 
+use proto::{ Protoregion, Protoregions, Protoareas, Protoarea, Cellular, 
 	Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell };
 
 pub struct Cortex {
@@ -30,21 +30,26 @@ impl Cortex {
 		let mut areas = HashMap::new();
 		let mut i = 0;
 
-		for (_, pa) in &protoareas {			
-			let protoarea = pa.clone();
-			
-			let mut protoregion = protoregions[protoarea.region_name].clone();		
+		for (_, pa) in protoareas.map().iter().filter(|&(_, pa)| 
+					protoregions[pa.region_name].kind != Thalamic
+		) {			
+			let protoarea = pa.clone();			
+			let mut protoregion = protoregions[protoarea.region_name].clone();
+
+			protoregion.freeze(&protoarea);	
+			areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.clone(), protoregion, i)));
+			i += 1;
 				
-			if protoregion.kind == Thalamic { 
-				continue; 
-			} else {
-				protoregion.freeze(&protoarea);	
-				areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.clone(), protoregion, i)));
-				i += 1;
-			}
+			// if protoregion.kind == Thalamic { 
+			// 	continue; 
+			// } else {
+			// 	protoregion.freeze(&protoarea);	
+			// 	areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.clone(), protoregion, i)));
+			// 	i += 1;
+			// }
 		}
 
-		let thal = Thalamus::new(&areas);
+		let thal = Thalamus::new(&areas, protoregions, protoareas);
 
 		// <<<<< MOVE THIS TIMING STUFF ELSEWHERE AND MAKE A FUNCTION FOR IT >>>>>
 		let time_complete = time::get_time() - time_start;

@@ -185,8 +185,8 @@ impl Protoregion {
 			return;
 		} else {
 			// AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
-			self.set_layer_depth(layer::AFFERENT_INPUT, protoarea.efferent_areas.len() as u8);
-			self.set_layer_depth(layer::EFFERENT_INPUT, protoarea.afferent_areas.len() as u8);
+			self.set_layer_depth(layer::AFFERENT_INPUT, protoarea.eff_areas.len() as u8);
+			self.set_layer_depth(layer::EFFERENT_INPUT, protoarea.aff_areas.len() as u8);
 			self.frozen = true;
 		}		
 
@@ -544,17 +544,9 @@ pub enum RegionKind {
 	Sensory,
 	Motor,
 	Thalamic,
-	//Thalamic(Box<ProtoInputSource>),
+	//Thalamic(Box<Protoinput>),
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Hash)]
-pub enum ProtoInputSource {
-	World,
-	Stripes { stripe_size: usize, zeros_first: bool },
-	Hexballs { edge_size: usize, invert: bool, fill: bool },
-	Exp1,
-	IdxReader { file_name: &'static str, repeats: usize },
-}
 
 //impl Copy for RegionKind {}
 

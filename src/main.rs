@@ -49,6 +49,7 @@ mod proto;
 mod energy;
 mod encode;
 mod sensory_filter;
+mod input_source;
 
 //#[cfg(test)]
 mod tests;

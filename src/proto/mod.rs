@@ -5,7 +5,7 @@ pub use self::regions::{ Protoregions };
 pub use self::region::{ Protoregion, RegionKind };
 	pub use self::region::RegionKind::{ Associational, Sensory, Motor, Thalamic }; // SLATED FOR REDESIGN
 
-pub use self::areas::{ Protoareas, ProtoareasTrait, Protoarea };
+pub use self::areas::{ Protoareas, Protoarea, Protoinput };
 
 pub use self::layer::{ Protolayer, ProtolayerKind, ProtoaxonKind };
 	pub use self::layer::ProtolayerKind::{ Cellular, Axonal };

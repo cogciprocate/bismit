@@ -20,7 +20,7 @@ use super::hybrid;
 use super::renderer::{ Renderer };
 //use chord::{ Chord };
 //use ocl::{ Envoy };
-use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter };
+use proto::{ Protoregion, Protoregions, Protoareas, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 
 
 pub const INITIAL_TEST_ITERATIONS: i32 		= 1; 
@@ -54,7 +54,7 @@ pub fn define_protoregions() -> Protoregions {
 			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
 	);
 
-	cort_regs.add(Protoregion::new("retinal", Thalamic)
+	cort_regs.add(Protoregion::new("external", Thalamic)
 		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial))
 	);
 
@@ -72,14 +72,10 @@ pub fn define_protoareas() -> Protoareas {
 		// 	//None
 		// 	Some(vec!["b1"])
 		// )
-
-		// let ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte", 
-		// 	REPEATS_PER_IMAGE);
-		// let input_sources: Vec<InputSource> = vec![InputSource::new(
-		// 	InputKind::IdxReader(Box::new(ir)), "v1")];
+		
 
 		// .area("v0", area_side, area_side, 
-		// 	Thalamic(ProtoInputSource::IdxReader { 
+		// 	Thalamic(Protoinput::IdxReader { 
 		// 		file_name: "data/train-images-idx3-ubyte", 
 		// 		repeats: REPEATS_PER_IMAGE,
 		// 	}),
@@ -87,20 +83,23 @@ pub fn define_protoareas() -> Protoareas {
 		// 	Some(vec!["v1"]),
 		// )
 
-		.area("v0", area_side, area_side, 
-			"retinal",
+		.area_ext("v0", "external", area_side, area_side, 
+			Protoinput::IdxReader { 
+				file_name: "data/train-images-idx3-ubyte", 
+				repeats: REPEATS_PER_IMAGE,
+			},
+
 			None, 
 			Some(vec!["v1"]),
 		)
 
-		.area("v1", area_side, area_side, 
-			"visual",
+		.area("v1", "visual", area_side, area_side, 
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),
 			//None
 			Some(vec!["b1"])
 		)
 
-		.area("b1", area_side, area_side, "visual", None,
+		.area("b1", "visual", area_side, area_side, None,
 		 	None
 		 	//Some(vec!["a1"])
 		)
@@ -194,7 +193,7 @@ pub fn run(autorun_iters: i32) -> bool {
 
 
 			if "q\n" == in_string {
-				print!("Quitting... ");
+				print!("\nExiting interactive test mode... ");
 				break;
 			} else if "i\n" == in_string {
 				let in_s = rin(format!("Iterations: [i={}]", test_iters));
