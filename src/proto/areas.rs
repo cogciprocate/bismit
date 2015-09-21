@@ -40,7 +40,7 @@ impl <'a>Protoareas {
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
 	) -> Protoareas {
-		self.add(Protoarea::new(name, region_name, width, height, Some(protoinput), 
+		self.add(Protoarea::new(name, region_name, width, height, protoinput, 
 			filters, aff_areas_opt));
 
 		self
@@ -54,7 +54,7 @@ impl <'a>Protoareas {
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
 	) -> Protoareas {
-		self.add(Protoarea::new(name, region_name, width, height, None, filters, aff_areas_opt));
+		self.add(Protoarea::new(name, region_name, width, height, Protoinput::None, filters, aff_areas_opt));
 		self
 	}
 
@@ -112,7 +112,7 @@ pub struct Protoarea {
 	pub region_name: &'static str,
 	pub dims: CorticalDimensions,	
 	//pub region_kind: RegionKind,
-	pub input: Option<Protoinput>,
+	pub input: Protoinput,
 	pub filters: Option<Vec<Protofilter>>,
 	pub aff_areas: Vec<&'static str>,
 	pub eff_areas: Vec<&'static str>,
@@ -124,7 +124,7 @@ impl Protoarea {
 				region_name: &'static str,
 				width: u32, 
 				height: u32, 				
-				input: Option<Protoinput>,
+				input: Protoinput,
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
 	) -> Protoarea {

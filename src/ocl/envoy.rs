@@ -14,6 +14,11 @@ use cmn;
 
 //impl <T: NumCl> NumCl for T {}
 
+pub type AxonState = Envoy<u8>;
+pub type DendriteState = Envoy<u8>;
+pub type SynapseState = Envoy<u8>;
+
+
 pub struct Envoy<T> {
 	pub vec: Vec<T>,
 	pub buf: ocl::cl_mem,

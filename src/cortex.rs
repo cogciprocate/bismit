@@ -9,14 +9,14 @@ use rand::distributions::{ IndependentSample, Range };
 use ocl::{ self, OclContext, OclProgQueue, CorticalDimensions };
 use cmn;
 use chord::{ Chord };
-use cortical_area:: { self, CorticalArea };
+use cortical_area:: { self, CorticalArea, CorticalAreas };
 use thalamus::{ Thalamus };
 use proto::{ Protoregion, Protoregions, Protoareas, Protoarea, Cellular, 
 	Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell };
 
 pub struct Cortex {
 	// AREAS: PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
-	pub areas: HashMap<&'static str, Box<CorticalArea>>, 
+	pub areas: CorticalAreas, 
 	thal: Thalamus,
 }
 
@@ -122,9 +122,7 @@ impl Cortex {
 	// }
 
 	pub fn cycle(&mut self) {
-		for (area_name, area) in self.areas.iter_mut() {
-			area.cycle();
-		}
+		self.thal.cycle_external_input(&self.areas);
 
 		for (area_name, area) in self.areas.iter() {
 			for aff_area_name in area.afferent_target_names().iter() {
@@ -136,6 +134,10 @@ impl Cortex {
 				//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
 				self.thal.backward_efferent_output(area_name, eff_area_name, &self.areas);
 			}
+		}
+
+		for (area_name, area) in self.areas.iter_mut() {
+			area.cycle();
 		}
 	}
 

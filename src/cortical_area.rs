@@ -22,6 +22,7 @@ use spiny_stellates::{ SpinyStellateCellularLayer };
 use sensory_filter::{ SensoryFilter };
 
 
+pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 
 
 pub struct CorticalArea {
@@ -40,8 +41,8 @@ pub struct CorticalArea {
 	pub ssts_map: HashMap<&'static str, Box<SpinyStellateCellularLayer>>,	// MAKE ME PRIVATE -- FIX tests::hybrid
 	pub iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,	// MAKE ME PRIVATE -- FIX tests::hybrid
 	pub filters: Option<Vec<Box<SensoryFilter>>>,
-	ptal_name: &'static str,			// PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
-	psal_name: &'static str,			// PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
+	ptal_name: &'static str,	// PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
+	psal_name: &'static str,	// PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
 	//pub soma: Somata,
 	pub aux: Aux,
 	ocl: OclProgQueue,

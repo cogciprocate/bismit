@@ -4,7 +4,7 @@ use std::iter;
 
 use cmn;
 use ocl;
-use cortical_area:: { CorticalArea };
+use cortical_area:: { CorticalArea, CorticalAreas };
 use proto::{ Protoareas, Protoarea, Protoregion, Protoregions, 
 	RegionKind, layer, Sensory, Thalamic };
 use encode:: { IdxReader };
@@ -19,29 +19,29 @@ use tests::input_czar;
 pub struct Thalamus {
 	tract_afferent_output: ThalamicTract,
 	tract_efferent_output: ThalamicTract,
+	input_sources: Vec<InputSource>,
 }
 
 impl Thalamus {
 	pub fn new(areas: &HashMap<&'static str, Box<CorticalArea>>, protoregions: Protoregions,
 				protoareas: Protoareas,
-	) -> Thalamus {
-
-
+	) -> Thalamus {		
 		let mut tao = ThalamicTract::new(Vec::with_capacity(0), 
 			Vec::with_capacity(areas.len()), HashMap::with_capacity(areas.len()));
 
 		let mut teo = ThalamicTract::new(Vec::with_capacity(0), 
 			Vec::with_capacity(areas.len()), HashMap::with_capacity(areas.len()));
 
-		for (_, pa) in protoareas.map().iter()
-					.filter(|&(_, pa)| protoregions[pa.region_name].kind == Thalamic) 
+		let mut input_sources = Vec::new();
+
+		for (_, pa) in protoareas.map().iter().filter(|&(_, pa)| 
+					protoregions[pa.region_name].kind == Thalamic) 
 		{			
-			let is = InputSource::new(pa);			
+			input_sources.push(InputSource::new(pa));
 		}
 
 		let mut i = 0usize;
-
-		/*  <<<<< TAKE IN TO ACCOUNT MULTI-SLICE INPUT LAYERS >>>>>  */
+		/*  <<<<< TODO: TAKE IN TO ACCOUNT MULTI-SLICE INPUT LAYERS >>>>>  */
 		for (&area_name, ref area) in areas {
 			let aff_len = area.axn_range(layer::AFFERENT_INPUT).len();
 			let eff_len = area.axn_range(layer::EFFERENT_INPUT).len();
@@ -54,18 +54,22 @@ impl Thalamus {
 			i += 1;
 		}
 
-		tao.init();
-		teo.init();
-
 		Thalamus {
-			tract_afferent_output: tao,
-			tract_efferent_output: teo,
+			tract_afferent_output: tao.init(),
+			tract_efferent_output: teo.init(),
+			input_sources: input_sources,
 		}
 	}
 
-	// WRITE_INPUT(): 
-	pub fn write_input(&self, sdr: &[ocl::cl_uchar], area: &mut CorticalArea) {
-		// <<<<< TODO: CHECK SIZES AND SCALE WHEN NECESSARY >>>>>
+	pub fn cycle_external_input(&mut self, areas: &CorticalAreas) {
+		for src in &self.input_sources {
+			//let input_gang = input_sources
+			//area.write_input(input_gang, layer::AFFERENT_INPUT);
+		}		
+	}
+
+	// WRITE_INPUT(): <<<<< TODO: CHECK SIZES AND SCALE WHEN NECESSARY >>>>>
+	pub fn write_input(&self, sdr: &[ocl::cl_uchar], area: &mut CorticalArea) {		
 		area.write_input(sdr, layer::AFFERENT_INPUT);
 	}
 
@@ -171,8 +175,9 @@ impl ThalamicTract {
 		self.ttl_len += len;
 	}
 
-	fn init(&mut self) {
+	fn init(mut self) -> ThalamicTract {
 		self.ganglion.resize(self.ttl_len, 0);
+		self
 	}
 
 	fn input_ganglion(&self, tar_area_name: &str) -> &[u8] {

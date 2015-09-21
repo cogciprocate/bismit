@@ -10,11 +10,11 @@ pub struct InputSource {
 
 impl InputSource {
 	pub fn new(protoarea: &Protoarea) -> InputSource {
-		let emsg = format!("\nInputSource::new(): No input source specified for area: '{}'", protoarea.name);
-		let input = protoarea.input.clone().expect(&emsg);
+		//let emsg = format!("\nInputSource::new(): No input source specified for area: '{}'", protoarea.name);
+		let input = &protoarea.input;
 
 		let (kind, targets) = match input {
-			Protoinput::IdxReader { file_name, repeats } => {
+			&Protoinput::IdxReader { file_name, repeats } => {
 				let ir = IdxReader::new(protoarea.dims.clone(), file_name, repeats);
 				(InputSourceKind::IdxReader(Box::new(ir)), protoarea.aff_areas.clone())
 			}
