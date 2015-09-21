@@ -52,6 +52,7 @@ pub struct CorticalArea {
 	pub disable_pyrs: bool,
 	pub disable_ssts: bool,
 	pub disable_regrowth: bool,
+	pub disable_learning: bool,
 }
 
 impl CorticalArea {
@@ -244,6 +245,7 @@ impl CorticalArea {
 			disable_pyrs: false,
 			disable_ssts: false,
 			disable_regrowth: false,
+			disable_learning: false,
 		};
 
 		cortical_area.init_kernels();
@@ -269,6 +271,7 @@ impl CorticalArea {
 		*/
 	}
 
+	// CYCLE(): <<<<< TODO: ISOLATE LEARN INTO SEPARATE THREAD >>>>>
 	pub fn cycle(&mut self) /*-> (&Vec<&'static str>, &Vec<&'static str>)*/ {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
@@ -276,11 +279,11 @@ impl CorticalArea {
 
 		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.bypass_inhib);
 
-		if !self.disable_ssts {	self.psal_mut().learn(); }
+		if !self.disable_ssts {	if !self.disable_learning { self.psal_mut().learn(); } }
 		
 		if !self.disable_pyrs {
 			self.ptal_mut().activate();
-			self.ptal_mut().learn();	
+			if !self.disable_learning { self.ptal_mut().learn(); }
 			self.ptal_mut().cycle();
 		}
 

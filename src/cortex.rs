@@ -15,14 +15,14 @@ use proto::{ Protoregion, Protoregions, Protoareas, Protoarea, Cellular,
 	Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell };
 
 pub struct Cortex {
-	// AREAS: PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
+	// AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
 	pub areas: CorticalAreas, 
 	thal: Thalamus,
 }
 
 impl Cortex {
 	pub fn new(mut protoregions: Protoregions, mut protoareas: Protoareas) -> Cortex {
-		println!("Initializing Cortex... ");
+		println!("\nInitializing Cortex... ");
 		let time_start = time::get_time();
 
 		protoareas.freeze();
@@ -39,14 +39,6 @@ impl Cortex {
 			protoregion.freeze(&protoarea);	
 			areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.clone(), protoregion, i)));
 			i += 1;
-				
-			// if protoregion.kind == Thalamic { 
-			// 	continue; 
-			// } else {
-			// 	protoregion.freeze(&protoarea);	
-			// 	areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.clone(), protoregion, i)));
-			// 	i += 1;
-			// }
 		}
 
 		let thal = Thalamus::new(&areas, protoregions, protoareas);
@@ -62,7 +54,6 @@ impl Cortex {
 			thal: thal,
 		}
 	}
-
 	
 	pub fn area_mut(&mut self, area_name: &str) -> &mut Box<CorticalArea> {
 		let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
@@ -74,7 +65,6 @@ impl Cortex {
 		self.areas.get(area_name).expect(&emsg)
 	}
 
-
 	pub fn write_input(&mut self, area_name: &str, sdr: &[ocl::cl_uchar]) {
 		let emsg = format!("cortex::Cortex::write_input(): Area: '{}' not found. ", area_name);
 		let area = self.areas.get_mut(area_name).expect(&emsg);
@@ -82,44 +72,11 @@ impl Cortex {
 		//self.thal.write_input(area_name, sdr, &mut self.areas)
 	}
 
-
-	/* WRITE(): TESTING PURPOSES */
+	/* WRITE(): TESTING PURPOSES -- TODO: MOVE TO A TESTS SUB-MODULE */
 	pub fn write(&mut self, area_name: &str, layer_target: &'static str, sdr: &[ocl::cl_uchar]) {
 		self.thal.write(area_name, layer_target, sdr, &mut self.areas)
 	}
 
-	/*pub fn sense_vec(&mut self, area_name: &'static str, layer_target: &'static str, sdr: &[ocl::cl_uchar]) {
-		//self.thal.write(area_name, layer_target, sdr, &self.areas);
-		self.write(area_name, layer_target, sdr);
-		self.cycle();
-	}*/
-
-	// pub fn cycle_old(&mut self, area_name: &str) {
-	// 	let emsg = format!("cortex::Cortex::cycle(): Area: '{}' not found. ", area_name);
-
-	// 	//: (Option<Vec<&'static str>>, Vec<&'static str>)
-	// 	let (afferent_areas, efferent_areas) = {
-	// 		//println!("\nCycling '{}'", area_name);			
-	// 		self.areas.get_mut(area_name).expect(&emsg).cycle()
-	// 	};
-
-	// 	for area_name_aff in afferent_areas {
-	// 		//println!("\nForwarding from '{}' to '{}'", area_name, area_name_aff);					
-	// 		self.thal.backward_efferent_output(area_name_aff, area_name, &mut self.areas);
-	// 		self.thal.forward_afferent_output(area_name, area_name_aff, &mut self.areas);
-
-	// 		// NEEDS TO HAPPEN IN A DIFFERENT THREAD (ONE FOR EACH LAYER)
-	// 		self.cycle_old(area_name_aff);									
-	// 	}
-
-	// 	// match afferent_areas {
-	// 	// 	Some(aff_area_names) => {
-				
-	// 	// 	},
-
-	// 	// 	None => (),
-	// 	// };
-	// }
 
 	pub fn cycle(&mut self) {
 		self.thal.cycle_external_input(&self.areas);
@@ -157,6 +114,40 @@ impl Cortex {
 	pub fn valid_area(&self, area_name: &str) -> bool {
 		self.areas.contains_key(area_name)
 	}
+
+
+	/*pub fn sense_vec(&mut self, area_name: &'static str, layer_target: &'static str, sdr: &[ocl::cl_uchar]) {
+		//self.thal.write(area_name, layer_target, sdr, &self.areas);
+		self.write(area_name, layer_target, sdr);
+		self.cycle();
+	}*/
+
+	// pub fn cycle_old(&mut self, area_name: &str) {
+	// 	let emsg = format!("cortex::Cortex::cycle(): Area: '{}' not found. ", area_name);
+
+	// 	//: (Option<Vec<&'static str>>, Vec<&'static str>)
+	// 	let (afferent_areas, efferent_areas) = {
+	// 		//println!("\nCycling '{}'", area_name);			
+	// 		self.areas.get_mut(area_name).expect(&emsg).cycle()
+	// 	};
+
+	// 	for area_name_aff in afferent_areas {
+	// 		//println!("\nForwarding from '{}' to '{}'", area_name, area_name_aff);					
+	// 		self.thal.backward_efferent_output(area_name_aff, area_name, &mut self.areas);
+	// 		self.thal.forward_afferent_output(area_name, area_name_aff, &mut self.areas);
+
+	// 		// NEEDS TO HAPPEN IN A DIFFERENT THREAD (ONE FOR EACH LAYER)
+	// 		self.cycle_old(area_name_aff);									
+	// 	}
+
+	// 	// match afferent_areas {
+	// 	// 	Some(aff_area_names) => {
+				
+	// 	// 	},
+
+	// 	// 	None => (),
+	// 	// };
+	// }
 }
 
 

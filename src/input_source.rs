@@ -1,11 +1,15 @@
+use std::iter;
 
-use proto::{ Protoarea, Protoinput };
+use cortical_area:: { CorticalArea, CorticalAreas };
+use cortex::{ Cortex };
+use proto::{ layer, Protoarea, Protoinput };
 use encode:: { IdxReader };
 
 
 pub struct InputSource {
 	kind: InputSourceKind,
-	targets: Vec<&'static str>,	
+	targets: Vec<&'static str>, 
+	ganglion: Vec<u8>,
 }
 
 impl InputSource {
@@ -13,17 +17,36 @@ impl InputSource {
 		//let emsg = format!("\nInputSource::new(): No input source specified for area: '{}'", protoarea.name);
 		let input = &protoarea.input;
 
-		let (kind, targets) = match input {
+		let (kind, targets, len) = match input {
 			&Protoinput::IdxReader { file_name, repeats } => {
-				let ir = IdxReader::new(protoarea.dims.clone(), file_name, repeats);
-				(InputSourceKind::IdxReader(Box::new(ir)), protoarea.aff_areas.clone())
+				let ir = IdxReader::new(protoarea.dims.clone_with_depth(1), file_name, repeats);
+				let len = ir.dims().cells();
+				( // RETURN TUPLE
+					InputSourceKind::IdxReader(Box::new(ir)), 
+					protoarea.aff_areas.clone(), 
+					len
+				)
 			}
 			_ => panic!("\nInputSource::new(): Input type not supported."),
 		};
 
+		let ganglion = iter::repeat(0).take(len as usize).collect();
+
 		InputSource {
 			kind: kind,
-			targets: targets,			
+			targets: targets,
+			ganglion: ganglion,			
+		}
+	}
+
+	pub fn next(&mut self, areas: &CorticalAreas) {
+		match self.kind {
+			InputSourceKind::IdxReader(ref mut ir) => { let _ = ir.next(&mut self.ganglion[..]); },
+			_ => (),
+		}
+
+		for target in self.targets.iter() {
+			areas[target].write_input(&self.ganglion, layer::AFFERENT_INPUT);
 		}
 	}
 }

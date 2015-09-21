@@ -67,21 +67,21 @@ pub fn define_protoareas() -> Protoareas {
 	let mut protoareas = Protoareas::new()
 		
 		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
-		//.area("u0", area_side, area_side, Thalamic, None, Some(vec!["u1"]))
-		// .area("u1", area_side, area_side, Sensory, None,
-		// 	//None
-		// 	Some(vec!["b1"])
-		// )
-		
+		.area_ext("u0", "external", area_side, area_side, 
+			Protoinput::IdxReader { 
+				file_name: "data/train-labels-idx1-ubyte", 
+				repeats: REPEATS_PER_IMAGE,
+			},
 
-		// .area("v0", area_side, area_side, 
-		// 	Thalamic(Protoinput::IdxReader { 
-		// 		file_name: "data/train-images-idx3-ubyte", 
-		// 		repeats: REPEATS_PER_IMAGE,
-		// 	}),
-		// 	None, 
-		// 	Some(vec!["v1"]),
-		// )
+			None, 
+			Some(vec!["u1"]),
+		)
+
+		.area("u1", "visual", area_side, area_side, None,
+			//None,
+			Some(vec!["b1"]),
+		)
+		
 
 		.area_ext("v0", "external", area_side, area_side, 
 			Protoinput::IdxReader { 
@@ -95,16 +95,16 @@ pub fn define_protoareas() -> Protoareas {
 
 		.area("v1", "visual", area_side, area_side, 
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),
-			//None
-			Some(vec!["b1"])
+			//None,
+			Some(vec!["b1"]),
 		)
 
-		.area("b1", "visual", area_side, area_side, None,
-		 	None
-		 	//Some(vec!["a1"])
+		.area("b1", "visual", area_side, area_side,
+		 	None,
+		 	Some(vec!["a1"]),
 		)
 
-		//.area("a1", area_side, area_side, Sensory, None, None)
+		.area("a1", "visual", area_side, area_side, None, None)
 	;
 
 	protoareas
@@ -118,6 +118,9 @@ pub fn define_protoareas() -> Protoareas {
 			- Or just be lazy and leave it the beautiful disaster that it is...	
 */
 pub fn run(autorun_iters: i32) -> bool {
+	// KEEP UNTIL WE FIGURE OUT HOW TO GENERATE THIS NUMBER ELSEWHERE
+	let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
+	
 	let mut cortex = cortex::Cortex::new(define_protoregions(), define_protoareas());
 	let mut area_name = "v1".to_string();
 	let inhib_layer_name = "iv_inhib";
@@ -129,22 +132,22 @@ pub fn run(autorun_iters: i32) -> bool {
 		//area.bypass_inhib = true;
 		//area.disable_pyrs = true;
 		//area.disable_regrowth = true;
+		//area.disable_learning = true;
 	}
 	/* ************************* */
 
 	//let input_kind = InputKind::Stripes { stripe_size: 512, zeros_first: true };
 	//let input_kind = InputKind::Hexballs { edge_size: 9, invert: false, fill: false };
 	//let input_kind = InputKind::World;
-	//let input_kind = InputKind::Exp1;	
+	//let input_kind = InputKind::Exp1;		
+	
 
-	let mut ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte", REPEATS_PER_IMAGE);
-	let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
-
-	let input_sources: Vec<InputSource> = vec![
-		InputSource::new(InputKind::IdxReader(Box::new(ir)), "v1"),
-	];
-
-	let mut input_czar = InputCzar::new(area_dims.clone(), input_sources, COUNTER_RANGE, COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
+	// let mut ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte", REPEATS_PER_IMAGE);
+	// let input_sources: Vec<InputSource> = vec![
+	// 	InputSource::new(InputKind::IdxReader(Box::new(ir)), "v1"),
+	// ];
+	// let mut input_czar = InputCzar::new(area_dims.clone(), input_sources, COUNTER_RANGE, 
+	// 	COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
 
 	let mut rndr = Renderer::new(cortex.area(&area_name).dims().clone());
 
@@ -183,10 +186,10 @@ pub fn run(autorun_iters: i32) -> bool {
 				let view_state = if view_sdr_only { "sdr" } else { "all" };
 
 				rin(format!("bismit: [{ttl_i}/({loop_i})]: [v]iew:[{}] [a]xons:[{}] \
-					[m]otor:[{}] a[r]ea:[{}] [t]ests [q]uit [i]ters:[{iters}]", 
-					view_state, axn_state, input_czar.motor_state.cur_str(), area_name, 
+					[m]otor:[X] a[r]ea:[{}] [t]ests [q]uit [i]ters:[{iters}]", 
+					view_state, axn_state, /*input_czar.motor_state.cur_str(),*/ area_name, 
 					iters = test_iters,
-					loop_i = input_czar.counter(), 
+					loop_i = 0, //input_czar.counter(), 
 					ttl_i = cur_ttl_iters,
 				))
 			};
@@ -309,9 +312,9 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			} else if "m\n" == in_string {
 				bypass_act = true;
-				let in_s = rin(format!("motor: [s]witch"));
+				let in_s = rin(format!("motor: [s]witch(disconnected)"));
 				if "s\n" == in_s {
-					input_czar.motor_state.switch();
+					//input_czar.motor_state.switch();
 					//println!("\nREPLACE ME - synapse_sources::run() - line 100ish");
 					continue;
 					//test_iters = TEST_ITERATIONS;
@@ -357,7 +360,8 @@ pub fn run(autorun_iters: i32) -> bool {
 			}
 						
 			if !bypass_act {
-				input_czar.next(&mut cortex);
+				//input_czar.next(&mut cortex);
+				cortex.cycle();
 			}
 
 
@@ -373,8 +377,10 @@ pub fn run(autorun_iters: i32) -> bool {
 			if i >= (test_iters) { break; }
 
 			if !bypass_act {
-				let cur_frame = input_czar.next(&mut cortex);
+				//input_czar.next(&mut cortex); // Just increments counter
+				cortex.cycle();
 				input_status.clear();
+				let cur_frame = cur_ttl_iters as usize % 5000;
 				input_status.push_str(&format!("[{}] -> '{}'", cur_frame, ir_labels.get_first_byte(cur_frame)));
 			}
 
@@ -383,9 +389,9 @@ pub fn run(autorun_iters: i32) -> bool {
 			if !view_sdr_only {
 				print!("\n\n=== Iteration {}/{} ===", i + 1, test_iters);
 
-				if true {
+				if false {
 					print!("\nSENSORY INPUT VECTOR:");
-					cmn::print_vec(&input_czar.vec_optical[..], 1 , None, None, false);
+					//cmn::print_vec(&input_czar.vec_optical[..], 1 , None, None, false);
 				}
 
 				output_czar::print_sense_and_print(&mut cortex, &area_name);
@@ -408,9 +414,6 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			rndr.render(out_slc, ff_slc, &input_status, true);
 
-
-			//cmn::render_sdr(out_slc, Some(ff_slc), Some(&vec_out_prev[..]), Some(&vec_ff_prev[..]), &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
-
 			if view_all_axons {
 				print!("\n\nAXON SPACE:\n");
 				
@@ -420,8 +423,7 @@ pub fn run(autorun_iters: i32) -> bool {
 					&cortex.area(&area_name).protoregion().slc_map(),
 					cortex.area(&area_name).dims.columns(),
 					cortex.area(&area_name).protoregion().hrz_demarc(),
-				);
-				
+				);				
 
 				// cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
 			}

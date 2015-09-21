@@ -62,7 +62,8 @@ impl Thalamus {
 	}
 
 	pub fn cycle_external_input(&mut self, areas: &CorticalAreas) {
-		for src in &self.input_sources {
+		for src in self.input_sources.iter_mut() {
+			src.next(areas);
 			//let input_gang = input_sources
 			//area.write_input(input_gang, layer::AFFERENT_INPUT);
 		}		
@@ -77,8 +78,7 @@ impl Thalamus {
 	// THALAMUS::WRITE(): USED FOR TESTING PURPOSES
 	// 	<<<<< NEEDS UPDATING TO NEW SYSTEM - CALL AREA.WRITE() >>>>>
 	// 		- Change input param to &CorticalArea			
-	// 	TODO: DEPRICATE
-	
+	// 	TODO: DEPRICATE	
 	pub fn write(&self, area_name: &str, layer_target: &'static str, 
 				sdr: &[ocl::cl_uchar], areas: &HashMap<&'static str, Box<CorticalArea>>,
 	) {
@@ -96,7 +96,7 @@ impl Thalamus {
 		}
 	}
 
-	/*	READ_OUTPUT(): Read output (afferent or efferent) from a cortical area and store it 
+	/*	FORWARD_AFFERENT_OUTPUT(): Read afferent output from a cortical area and store it 
 		in our pseudo thalamus' cache (the 'tract').
 
 			TODO: RENAME OR BREAK UP
@@ -106,21 +106,22 @@ impl Thalamus {
 				 areas: &HashMap<&'static str, Box<CorticalArea>>,
 	) {
 		let emsg = "thalamus::Thalamus::forward_afferent_output(): Area not found: ";
+		let emsg_src = format!("{}'{}' ", emsg, src_area_name);
+		let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
 
-		let emsg1 = format!("{}'{}' ", emsg, src_area_name);
-		areas.get(src_area_name).expect(&emsg1).read_output(
+		areas.get(src_area_name).expect(&emsg_src).read_output(
 			self.tract_afferent_output.output_ganglion(src_area_name, tar_area_name),
 			layer::AFFERENT_OUTPUT, 
-		);
+		);		
 		
-		let emsg2 = format!("{}'{}' ", emsg, tar_area_name);
-		areas.get(tar_area_name).expect(&emsg2).write_input(
+		areas.get(tar_area_name).expect(&emsg_tar).write_input(
 			self.tract_afferent_output.input_ganglion(tar_area_name),
 			layer::AFFERENT_INPUT,
 		);
 
 	}
 
+	// BACKWARD_EFFERENT_OUTPUT():  Cause an efferent frame to descend
 	pub fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
 				 areas: &HashMap<&'static str, Box<CorticalArea>>,
 	) {
@@ -177,6 +178,7 @@ impl ThalamicTract {
 
 	fn init(mut self) -> ThalamicTract {
 		self.ganglion.resize(self.ttl_len, 0);
+		println!("THALAMICTRACT::INIT(): area_map: {:?}, area_info: {:?}", self.area_map, self.area_info);
 		self
 	}
 

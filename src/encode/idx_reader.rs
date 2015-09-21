@@ -212,6 +212,10 @@ impl IdxReader {
 			}
 		}
 	}
+
+	pub fn dims(&self) -> &CorticalDimensions {
+		&self.ganglion_dims
+	}
 }
 
 
