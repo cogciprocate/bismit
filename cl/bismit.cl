@@ -121,13 +121,13 @@ static inline uint axn_idx_hrz(uchar slc_id, uint v_size, char v_ofs, uint u_siz
 		int hrz_sct_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
 
 		// 	IDX_HRZ_SCT: Axon position within horizontal section
-		// 		- SYNAPSE_REACH_LIN := Dead center of section
-		// 		- SYNAPSE_SPAN_LIN used in lieu of u_size because indexes are bounded 
+		// 		- AXON_MARGIN_SIZE := Dead center of section
+		// 		- AXON_BUFFER_SIZE used in lieu of u_size because indexes are bounded 
 		//			by the horizontal section rather than the entire slice.
-		uint idx_hrz_sct = SYNAPSE_REACH_LIN + mad24((int)v_ofs, (int)SYNAPSE_SPAN_LIN, (int)u_ofs);
+		uint idx_hrz_sct = AXON_MARGIN_SIZE + mad24((int)v_ofs, (int)AXON_BUFFER_SIZE, (int)u_ofs);
 
 		// HRZ_AXN_ID: Position within slice
-		uint hrz_axn_id = mad24(hrz_sct_id,  SYNAPSE_SPAN_LIN, (int)idx_hrz_sct);
+		uint hrz_axn_id = mad24(hrz_sct_id,  AXON_BUFFER_SIZE, (int)idx_hrz_sct);
 
 		// AXN_IDX: Physical index within axon space (array)
 		int axn_idx = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, mul24(u_size, v_size), hrz_axn_id);
@@ -143,8 +143,8 @@ static inline uint axn_idx_hrz(uchar slc_id, uint v_size, char v_ofs, uint u_siz
 // AXN_IDX_HRZ_VEC4(): Axon index for a horizontal axon
 static inline int4 axn_idx_hrz_vec4(int4 slc_id, int4 v_size, int4 v_ofs, int4 u_size, int4 u_ofs) {
 		int4 hrz_sct_id = slc_id - (int4)HORIZONTAL_AXON_ROW_DEMARCATION;
-		int4 idx_hrz_sct = (int4)SYNAPSE_REACH_LIN + mad24(v_ofs, (int4)SYNAPSE_SPAN_LIN, u_ofs);
-		int4 hrz_axn_id = mad24(hrz_sct_id,  (int4)SYNAPSE_SPAN_LIN, idx_hrz_sct);
+		int4 idx_hrz_sct = (int4)AXON_MARGIN_SIZE + mad24(v_ofs, (int4)AXON_BUFFER_SIZE, u_ofs);
+		int4 hrz_axn_id = mad24(hrz_sct_id,  (int4)AXON_BUFFER_SIZE, idx_hrz_sct);
 		int4 axn_idx = mad24((int4)HORIZONTAL_AXON_ROW_DEMARCATION, mul24(u_size, v_size), hrz_axn_id);
 		int4 slc_id_is_hrz = hrz_sct_id >= 0;
 		return (slc_id_is_hrz & axn_idx);
@@ -180,14 +180,14 @@ __kernel void test_safe_dim_ofs(
 // AXN_IDX_2D(): Axon Address Resolution
 // 	- We must calculate the address for both the horizontal slc and spatial (vertical) slc case.
 // 		- When calculating vertical slcs: 
-// 		- Simply multiply slc_id * slc dims.width and add offset, cell column id, and global padding (SYNAPSE_REACH_LIN).
+// 		- Simply multiply slc_id * slc dims.width and add offset, cell column id, and global padding (AXON_MARGIN_SIZE).
 // 		- When calculating horizontal slcs:
 // 		- Horizontal slcs are always physically after spatial slcs within axn_states so we 
 //		must add that space first (HARF * slc_columns). That gets us to the beginning of horizontal 
-//		slc space after padding is added (padding = SYNAPSE_REACH_LIN).
-// 		- We then multiply SYNAPSE_SPAN_LIN (which is SYNAPSE_REACH_LIN * 2) by the horizontal
+//		slc space after padding is added (padding = AXON_MARGIN_SIZE).
+// 		- We then multiply AXON_BUFFER_SIZE (which is AXON_MARGIN_SIZE * 2) by the horizontal
 //		slc_id to get to the correct horizontal slc.
-// 		- We must add padding + an extra SYNAPSE_REACH_LIN to get us to the middle of the slc.
+// 		- We must add padding + an extra AXON_MARGIN_SIZE to get us to the middle of the slc.
 // 		- We then apply the offset (col_ofs) to get to the exact axon_idx.
 // 		- col_id is irrelevant and unused for horiz. slcs.
 //		
@@ -200,10 +200,10 @@ __kernel void test_safe_dim_ofs(
 // 	- [incomplete] #define slc_columns 
 //
 static inline uint axn_idx_2d(uchar slc_id, uint slc_columns, uint col_id, int col_ofs) {
-	uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + SYNAPSE_REACH_LIN));
+	uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + AXON_MARGIN_SIZE));
 	int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
-	int hcol_id = mad24(hslc_id, SYNAPSE_SPAN_LIN, col_ofs + SYNAPSE_REACH_LIN);
-	uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_columns, (uint)(hcol_id + SYNAPSE_REACH_LIN));
+	int hcol_id = mad24(hslc_id, AXON_BUFFER_SIZE, col_ofs + AXON_MARGIN_SIZE);
+	uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_columns, (uint)(hcol_id + AXON_MARGIN_SIZE));
 	
 	return mul24((uint)(hslc_id < 0), axn_idx_spt) + mul24((uint)(hslc_id >= 0), axn_idx_hrz);
 }
@@ -254,7 +254,7 @@ static inline uchar axn_state_3d_safe(uchar slc_id,
 	int idx_is_hrz = idx_hrz != 0;
 	uint axn_idx = mad24((uint)idx_is_hrz, idx_hrz, mul24((uint)!idx_is_hrz, idx_spt));
 	int idx_is_safe = dim_is_safe(v_size, v_id, v_ofs) & dim_is_safe(u_size, u_id, u_ofs);
-	return mul24(idx_is_safe, axn_states[axn_idx + SYNAPSE_REACH_LIN]);
+	return mul24(idx_is_safe, axn_states[axn_idx + AXON_MARGIN_SIZE]);
 }
 
 // AXN_STATE_3D_SAFE_VEC4():
@@ -277,10 +277,10 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id_uchar4,
 	int4 idx_is_safe = dim_is_safe_vec4(v_size, v_id, v_ofs) & dim_is_safe_vec4(u_size, u_id, u_ofs);
 
 	uchar4 axn_state = (uchar4)(
-		((uchar)idx_is_safe.s0 & axn_states[axn_idx.s0 + SYNAPSE_REACH_LIN]),
-		((uchar)idx_is_safe.s1 & axn_states[axn_idx.s1 + SYNAPSE_REACH_LIN]),
-		((uchar)idx_is_safe.s2 & axn_states[axn_idx.s2 + SYNAPSE_REACH_LIN]),
-		((uchar)idx_is_safe.s3 & axn_states[axn_idx.s3 + SYNAPSE_REACH_LIN])
+		((uchar)idx_is_safe.s0 & axn_states[axn_idx.s0 + AXON_MARGIN_SIZE]),
+		((uchar)idx_is_safe.s1 & axn_states[axn_idx.s1 + AXON_MARGIN_SIZE]),
+		((uchar)idx_is_safe.s2 & axn_states[axn_idx.s2 + AXON_MARGIN_SIZE]),
+		((uchar)idx_is_safe.s3 & axn_states[axn_idx.s3 + AXON_MARGIN_SIZE])
 	);
 	//uchar4 axn_state = (uchar4)((uchar)idx_is_safe.s0, (uchar)idx_is_safe.s1, (uchar)idx_is_safe.s2, (uchar)idx_is_safe.s3) ;
 	return axn_state;
@@ -1084,7 +1084,7 @@ __kernel void pyr_activate(
 
 	uchar const best_den_state = den_states[best_den_idx];				// CHANGE
 
-	//uint const axn_idx = mad24(pyr_axn_slc_base + slc_id, slc_columns, col_id + (uint)SYNAPSE_REACH_LIN);
+	//uint const axn_idx = mad24(pyr_axn_slc_base + slc_id, slc_columns, col_id + (uint)AXON_MARGIN_SIZE);
 	uchar const mcol_best_col_den_state = mcol_best_pyr_den_states[col_id];
 	uchar const sst_axn_state = axn_states[ssts_axn_idz + col_id];
 	//uchar const mcol_state = mcol_states[col_id];
@@ -1532,7 +1532,7 @@ __kernel void sst_post_inhib_unoptd (
 	uint const slc_columns = get_global_size(1);
 	uint const sst_idx = mad24(slc_id, slc_columns, col_id);
 	uint const axn_idx = axn_idx_2d(sst_axn_slc, slc_columns, col_id, 0);
-	//uint const axn_idx = mad24(sst_axn_slc, slc_columns, sst_idx + (uint)SYNAPSE_REACH_LIN);
+	//uint const axn_idx = mad24(sst_axn_slc, slc_columns, sst_idx + (uint)AXON_MARGIN_SIZE);
 	uint const asp_idx = (sst_idx >> ASPINY_SPAN_LOG2) + ASPINY_REACH;
 
 	uchar const asp_state = asp_states[asp_idx];

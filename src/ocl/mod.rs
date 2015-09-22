@@ -57,8 +57,7 @@ const DEFAULT_DEVICE_TYPE: cl_h::cl_bitfield = 1 << 2; // CL_DEVICE_TYPE_GPU
 
 pub fn base_build_options() -> BuildOptions {
 
-	assert!(cmn::SENSORY_CHORD_COLUMNS % cmn::SYNAPSE_SPAN_LIN == 0);
-
+	//assert!(cmn::SENSORY_CHORD_COLUMNS % cmn::AXON_BUFFER_SIZE == 0);
 	/*assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
 	assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
 	assert!(DENDRITES_PER_CELL_DISTAL_LOG2 <= 8);
@@ -76,8 +75,8 @@ pub fn base_build_options() -> BuildOptions {
 		//.new_opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
 				//.new_opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
 		.new_opt("ASPINY_REACH_LOG2", cmn::ASPINY_REACH_LOG2 as i32)
-		.new_opt("SYNAPSE_REACH_LIN", cmn::SYNAPSE_REACH_LIN as i32)
-		.new_opt("SYNAPSE_SPAN_LIN", cmn::SYNAPSE_SPAN_LIN as i32)
+		.new_opt("AXON_MARGIN_SIZE", cmn::AXON_MARGIN_SIZE as i32)
+		.new_opt("AXON_BUFFER_SIZE", cmn::AXON_BUFFER_SIZE as i32)
 		.new_opt("ASPINY_REACH", cmn::ASPINY_REACH as i32)
 		.new_opt("ASPINY_SPAN_LOG2", cmn::ASPINY_SPAN_LOG2 as i32)
 		.new_opt("ASPINY_SPAN", cmn::ASPINY_SPAN as i32)

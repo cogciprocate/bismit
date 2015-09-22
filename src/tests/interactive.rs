@@ -94,17 +94,18 @@ pub fn define_protoareas() -> Protoareas {
 		)
 
 		.area("v1", "visual", area_side, area_side, 
-			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),
-			//None,
+			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
 			Some(vec!["b1"]),
+			//None,
 		)
 
 		.area("b1", "visual", area_side, area_side,
 		 	None,
-		 	Some(vec!["a1"]),
+		 	//Some(vec!["a1"]),
+		 	None,
 		)
 
-		.area("a1", "visual", area_side, area_side, None, None)
+		// .area("a1", "visual", area_side, area_side, None, None)
 	;
 
 	protoareas

@@ -507,7 +507,7 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
 	//let pyr_axn_ranges = cortex.area_mut(area_name).layer_input_ranges("iii", cortex.area_mut(area_name).ptal_mut().dens.syns.den_kind());
 	//write_to_axons(axn_range, vec1);
 	let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
-	input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_LIN as usize * 2), true, &mut vec1);
+	input_czar::sdr_stripes((cmn::AXON_BUFFER_SIZE as usize * 2), true, &mut vec1);
 
 	println!("Primary Spatial Associative Layer...");
 	let psal_name = cortex.area(area_name).psal().layer_name();
@@ -585,7 +585,7 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 
 	let syns_per_tuft_l2: usize = dens.syns.dims().per_tuft_l2_left() as usize;
 	let dens_per_tuft_l2: usize = dens.dims().per_tuft_l2_left() as usize;
-	let cels_per_group: usize = cmn::SYNAPSE_SPAN_LIN as usize;
+	let cels_per_group: usize = cmn::AXON_BUFFER_SIZE as usize;
 	let syns_per_group: usize = cels_per_group << syns_per_tuft_l2;
 	let dens_per_group: usize = cels_per_group << dens_per_tuft_l2;
 	let actv_group_thresh = syns_per_group / 4;

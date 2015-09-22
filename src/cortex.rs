@@ -167,7 +167,7 @@ impl Cortex {
 
 		for slc in axn_slcs { 
 			let buffer_offset = cmn::axn_idz_2d(slc, self.areas.get(area_name).expect(emsg).dims.columns(), region.hrz_demarc()) as usize;
-			//let buffer_offset = cmn::SYNAPSE_REACH_LIN + (axn_slc as usize * self.cortical_area.axns.dims.width as usize);
+			//let buffer_offset = cmn::AXON_MARGIN_SIZE + (axn_slc as usize * self.cortical_area.axns.dims.width as usize);
 
 			//println!("##### write_vec(): {} offset: axn_idz_2d(axn_slc: {}, dims.columns(): {}, region.hrz_demarc(): {}): {}, vec.len(): {}", layer_target, slc, self.cortical_area.dims.columns(), region.hrz_demarc(), buffer_offset, vec.len());
 

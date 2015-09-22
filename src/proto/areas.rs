@@ -128,8 +128,8 @@ impl Protoarea {
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
 	) -> Protoarea {
-		assert!(width > cmn::SYNAPSE_SPAN_GEO);
-		assert!(height > cmn::SYNAPSE_SPAN_GEO);
+		assert!(width > cmn::SYNAPSE_SPAN);
+		assert!(height > cmn::SYNAPSE_SPAN);
 
 		let aff_areas = match aff_areas_opt {
 			Some(ae) => ae,

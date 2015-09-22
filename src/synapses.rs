@@ -61,7 +61,7 @@ impl Synapses {
 		let syns_per_tuft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
 		assert!(dims.per_tuft_l2() as u8 == syns_per_tuft_l2);
 		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
-		let syn_reach = cmn::SYNAPSE_REACH_GEO as i8;
+		let syn_reach = cmn::SYNAPSE_REACH as i8;
 
 		let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, protocell.dens_per_tuft_l2, dims.clone());
 
@@ -70,8 +70,8 @@ impl Synapses {
 		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let mut src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
-		let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach, ocl); 
-		let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach, ocl);
+		let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl); 
+		let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 		// KERNELS
@@ -158,7 +158,7 @@ impl Synapses {
 			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, 
 				"cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
 
-			let syn_reach = cmn::SYNAPSE_REACH_GEO as i8;
+			let syn_reach = cmn::SYNAPSE_REACH as i8;
 			let src_slc_id_range: Range<usize> = Range::new(0, src_slc_ids.len());
 			let src_col_offs_range: Range<i8> = Range::new(0 - syn_reach, syn_reach + 1);
 			let strength_init_range: Range<i8> = Range::new(-3, 4);

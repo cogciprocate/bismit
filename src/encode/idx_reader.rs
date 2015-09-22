@@ -18,6 +18,7 @@ pub struct IdxReader {
 	repeat_counter: usize,
 	frame_counter: usize,
 	frames_count: usize,
+	image_dim_count: usize,
 	image_width: usize,
 	image_height: usize,	
 	image_len: usize,
@@ -108,6 +109,7 @@ impl IdxReader {
 	    	repeat_counter: 0,
 	    	frame_counter: 0,
 	    	frames_count: dim_sizes[0],
+	    	image_dim_count: magic_dims,
 	    	image_width: image_width,
 	    	image_height: image_height,	    	
 	    	image_len: image_width * image_height,
@@ -140,7 +142,12 @@ impl IdxReader {
 		let img_idz = self.frame_counter * self.image_len;
 		let img_idn = img_idz + self.image_len;
 
-		self.image_pixel_to_hex(&self.image_buffer[img_idz..img_idn], ganglion_frame);
+		match self.image_dim_count {
+			3 => self.encode_2d_image(&self.image_buffer[img_idz..img_idn], ganglion_frame),
+			2 => panic!("\nOne dimensional (linear) idx images not yet supported."),
+			1 => self.encode_scalar(&self.image_buffer[img_idz..img_idn], ganglion_frame),
+			_ => panic!("\nIdx files with more than three or less than one dimension(s) not supported."),
+		}
 
 		let prev_frame = self.frame_counter;
 		self.increment_frame();
@@ -184,7 +191,7 @@ impl IdxReader {
 	}
 
 
-	pub fn image_pixel_to_hex(&self, source: &[u8], target: &mut [u8]) {
+	pub fn encode_scalar(&self, source: &[u8], target: &mut [u8]) {
 		let v_size = self.ganglion_dims.v_size() as usize;
 		let u_size = self.ganglion_dims.u_size() as usize;
 
@@ -202,7 +209,26 @@ impl IdxReader {
 		}
 	}
 
-	pub fn image_pixel_to_hex_crude(&self, source: &[u8], target: &mut [u8]) {
+
+	pub fn encode_2d_image(&self, source: &[u8], target: &mut [u8]) {
+		let v_size = self.ganglion_dims.v_size() as usize;
+		let u_size = self.ganglion_dims.u_size() as usize;
+
+		for v_id in 0..v_size {
+			for u_id in 0..u_size {
+				let (x, y) = coord_hex_to_pixel(v_size, v_id, u_size, u_id, 
+					self.image_height as usize, self.image_width as usize);
+				
+				let tar_idx = (v_id * u_size) + u_id;
+				let src_idx = (y * self.image_width as usize) + x;
+
+				target[tar_idx] = source[src_idx];
+				//target[tar_idx] = (x != 0 || y != 0) as u8; // SHOW INPUT SQUARE
+			}
+		}
+	}
+
+	pub fn encode_2d_image_crude(&self, source: &[u8], target: &mut [u8]) {
 		for v in 0..self.image_height {
 			for u in 0..self.image_width {
 				let src_idx = (v * self.image_width as usize) + u;

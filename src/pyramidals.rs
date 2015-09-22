@@ -126,7 +126,7 @@ impl PyramidalCellularLayer {
 		let cels_per_wi: u32 = dims.per_slc() / cmn::MINIMUM_WORKGROUP_SIZE;
 
 		// <<<<< NEEDS UPDATE TO NEW AXON INDEXING SYSTEM >>>>>
-		let axn_idx_base: u32 = (axn_base_slc as u32 * dims.columns()) + cmn::SYNAPSE_REACH_LIN; 
+		let axn_idx_base: u32 = (axn_base_slc as u32 * dims.columns()) + cmn::AXON_MARGIN_SIZE; 
 		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", axn_idx_base);
 		assert!(axn_idx_base == axn_idz);
 
@@ -254,7 +254,7 @@ impl PyramidalCellularLayer {
 
 	// AXN_OUTPUT_RANGE(): USED BY OUTPUT_CZAR (DEBUGGING/TESTING)
 /*	pub fn axn_output_range(&self) -> (usize, usize) {
-		let start = (self.axn_base_slc as usize * self.dims.columns() as usize) + cmn::SYNAPSE_REACH_LIN as usize;
+		let start = (self.axn_base_slc as usize * self.dims.columns() as usize) + cmn::AXON_MARGIN_SIZE as usize;
 		(start, start + ((self.dims.columns() * self.dims.depth() as u32) - 1) as usize)
 	}*/
 

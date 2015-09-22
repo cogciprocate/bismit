@@ -48,13 +48,13 @@ impl InputCzar {
 
 		let mut motor_state = motor_state::MotorState::new();
 
-		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::SYNAPSE_SPAN_LIN as usize).collect();
+		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::AXON_BUFFER_SIZE as usize).collect();
 		
 		if toggle_dirs {
 			vec_motor.clone_from_slice(&motor_state.cur_sdr(false));
 		}
 
-		let vec_test_noise = junk0_vec_init(cmn::SYNAPSE_SPAN_LIN, 0);
+		let vec_test_noise = junk0_vec_init(cmn::AXON_BUFFER_SIZE, 0);
 
 		InputCzar {
 			dims: dims,
@@ -99,9 +99,9 @@ impl InputCzar {
 		if self.introduce_noise {
 			/*if (self.ttl_count & 0x01) == 0x01 {
 				//if (self.reset_count & 0x01) == 0x01 {
-				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN_LIN, 0);
+				self.vec_test_noise = test_vec_init(cmn::AXON_BUFFER_SIZE, 0);
 			} else {
-				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN_LIN, 1);
+				self.vec_test_noise = test_vec_init(cmn::AXON_BUFFER_SIZE, 1);
 			}*/
 		}
 

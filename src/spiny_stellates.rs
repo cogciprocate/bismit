@@ -84,7 +84,7 @@ impl SpinyStellateCellularLayer {
 		//assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
 		//let cels_per_tuft: u32 = dims.columns() / cmn::MINIMUM_WORKGROUP_SIZE;
 
-		//let work_size = dims.physical_len() / cmn::SYNAPSE_SPAN_LIN as usize;
+		//let work_size = dims.physical_len() / cmn::AXON_BUFFER_SIZE as usize;
 
 		//println!("\n##### SPINY_STELLATES: cels_per_tuft: {}, syns_per_tuft_l2: {}, axn_idz: {} ", cels_per_tuft, syns_per_tuft_l2, axn_idz);
 

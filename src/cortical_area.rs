@@ -98,7 +98,7 @@ impl CorticalArea {
 		let ptal_name = protoregion.layer_with_flag(layer::TEMPORAL_ASSOCIATIVE).expect(&emsg_ptal).name();
 		
 
-			/* <<<<< BRING BACK >>>>> */
+			/* <<<<< BRING BACK UPDATED VERSIONS OF BELOW >>>>> */
 		//assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
 		//assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
 		//assert!(DENDRITES_PER_CELL_DISTAL_LOG2 <= 8);
@@ -271,7 +271,7 @@ impl CorticalArea {
 		*/
 	}
 
-	// CYCLE(): <<<<< TODO: ISOLATE LEARN INTO SEPARATE THREAD >>>>>
+	// CYCLE(): <<<<< TODO: ISOLATE LEARNING INTO SEPARATE THREAD >>>>>
 	pub fn cycle(&mut self) /*-> (&Vec<&'static str>, &Vec<&'static str>)*/ {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
@@ -308,12 +308,12 @@ impl CorticalArea {
 
 	/* AXN_OUTPUT(): NEEDS UPDATING (DEPRICATION?) */
 	pub fn axn_output_range(&self) -> (usize, usize) {
-		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::SYNAPSE_REACH_LIN: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::SYNAPSE_REACH_LIN);
+		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::AXON_MARGIN_SIZE: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::AXON_MARGIN_SIZE);
 		let output_slcs = self.protoregion.aff_out_slcs();
 		assert!(output_slcs.len() == 1);
 		let axn_output_slc = output_slcs[0];
 
-		let start = (axn_output_slc as usize * self.dims.columns() as usize) + cmn::SYNAPSE_REACH_LIN as usize;
+		let start = (axn_output_slc as usize * self.dims.columns() as usize) + cmn::AXON_MARGIN_SIZE as usize;
 		(start, start + (self.dims.per_slc()) as usize)
 	}
 
