@@ -1,5 +1,5 @@
-use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use cmn;
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, };
+use cmn::{ self, CorticalDimensions };
 use axons::{ Axons };
 
 pub struct SensoryFilter {

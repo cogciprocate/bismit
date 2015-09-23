@@ -7,12 +7,16 @@ use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 use std::default::{ Default };
 use std::ops::{ self, Index, IndexMut };
 
-use ocl::{ self, OclProgQueue, CorticalDimensions };
+use ocl::{ self, OclProgQueue };
 use cmn;
 
 //pub trait NumCl: Integer + Copy + NumCast + Default + Display {}
 
 //impl <T: NumCl> NumCl for T {}
+
+pub trait EnvoyDimensions {
+	fn physical_len(&self) -> u32;
+}
 
 pub type AxonState = Envoy<u8>;
 pub type DendriteState = Envoy<u8>;
@@ -23,20 +27,20 @@ pub struct Envoy<T> {
 	pub vec: Vec<T>,
 	pub buf: ocl::cl_mem,
 	padding: u32,
-	//dims: CorticalDimensions,
+	//dims: EnvoyDimensions,
 	//pub width: u32,
 	//pub depth: u8,
 	ocl: OclProgQueue,
 }
 impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive + UpperHex> Envoy<T> {
-	pub fn new(dims: CorticalDimensions, init_val: T, ocl: &OclProgQueue) -> Envoy<T> {
+	pub fn new<E: EnvoyDimensions>(dims: E, init_val: T, ocl: &OclProgQueue) -> Envoy<T> {
 		let len = dims.physical_len() as usize;
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
 		Envoy::_new(0, dims, vec, ocl)
 	}
 
-	pub fn with_padding(padding: u32, dims: CorticalDimensions, init_val: T, ocl: &OclProgQueue) -> Envoy<T> {
+	pub fn with_padding<E: EnvoyDimensions>(padding: u32, dims: E, init_val: T, ocl: &OclProgQueue) -> Envoy<T> {
 		let len = (dims.physical_len() + padding) as usize;
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 
@@ -44,7 +48,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 	}
 
 	// SHUFFLED(): max_val is inclusive!
-	pub fn shuffled(dims: CorticalDimensions, min_val: T, max_val: T, ocl: &OclProgQueue) -> Envoy<T> {
+	pub fn shuffled<E: EnvoyDimensions>(dims: E, min_val: T, max_val: T, ocl: &OclProgQueue) -> Envoy<T> {
 		let len = dims.physical_len() as usize;
 		//println!("shuffled(): len: {}", len);
 		let vec: Vec<T> = cmn::shuffled_vec(len, min_val, max_val);
@@ -53,7 +57,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 		Envoy::_new(0, dims, vec, ocl)
 	}
 
-	fn _new(padding: u32, dims: CorticalDimensions, mut vec: Vec<T>, ocl: &OclProgQueue) -> Envoy<T> {
+	fn _new<E: EnvoyDimensions>(padding: u32, dims: E, mut vec: Vec<T>, ocl: &OclProgQueue) -> Envoy<T> {
 		//println!("New Envoy with depth: {}, width: {}, padding: {}", depth, width, padding);
 
 		let buf: ocl::cl_mem = ocl::new_buffer(&mut vec, ocl.context());
@@ -109,7 +113,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 		self.vec.len()
 	}
 
-	// pub fn dims(&self) -> &CorticalDimensions {
+	// pub fn dims(&self) -> &E {
 	// 	&self.dims
 	// }
 
@@ -162,6 +166,6 @@ impl<T> IndexMut<usize> for Envoy<T> {
 }
 
 /*
-fn len(dims: CorticalDimensions, padding: u32) -> usize {
+fn len(dims: E, padding: u32) -> usize {
 	(padding + dims.len()) as usize
 }*/

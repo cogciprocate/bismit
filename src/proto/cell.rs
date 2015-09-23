@@ -14,8 +14,8 @@ pub struct Protocell {
 	pub syns_per_den_l2: u8,
 	pub cols_per_cel_l2: u8,
 	pub cell_kind: ProtocellKind,
-	pub den_dst_srcs: Option<Vec<Vec<&'static str>>>,		
-	pub den_prx_srcs: Option<Vec<&'static str>>,
+	pub den_dst_src_lyrs: Option<Vec<Vec<&'static str>>>,		
+	pub den_prx_src_lyrs: Option<Vec<&'static str>>,
 	pub den_thresh_init: Option<u32>,
 	//pub flags: CellFlags,							
 }
@@ -26,8 +26,8 @@ impl Protocell {
 					syns_per_den_l2: u8,
 					cols_per_cel_l2: u8,
 					cell_kind: ProtocellKind,
-					den_dst_srcs: Option<Vec<Vec<&'static str>>>,
-					den_prx_srcs: Option<Vec<&'static str>>,
+					den_dst_src_lyrs: Option<Vec<Vec<&'static str>>>,
+					den_prx_src_lyrs: Option<Vec<&'static str>>,
 					thresh: Option<u32>,
 					//flags: CellFlags,
 	) -> Protocell {
@@ -39,8 +39,8 @@ impl Protocell {
 			dens_per_tuft_l2: dens_per_tuft_l2,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
-			den_dst_srcs: den_dst_srcs,
-			den_prx_srcs: den_prx_srcs,
+			den_dst_src_lyrs: den_dst_src_lyrs,
+			den_prx_src_lyrs: den_prx_src_lyrs,
 			den_thresh_init: thresh,
 			//flags: flags,
 		}
@@ -55,10 +55,10 @@ impl Protocell {
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
 			cell_kind: ProtocellKind::Pyramidal,
-			den_dst_srcs: Some(vec![dst_srcs]),
-			den_prx_srcs: None,
+			den_dst_src_lyrs: Some(vec![dst_srcs]),
+			den_prx_src_lyrs: None,
 			den_thresh_init: Some(thresh),
-			//den_prx_srcs: Some(vec![prx_src]),
+			//den_prx_src_lyrs: Some(vec![prx_src]),
 			//flags: flags,
 		})
 	}
@@ -70,8 +70,8 @@ impl Protocell {
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
 			cell_kind: ProtocellKind::SpinyStellate,
-			den_dst_srcs: Some(vec![dst_srcs]),
-			den_prx_srcs: None,
+			den_dst_src_lyrs: Some(vec![dst_srcs]),
+			den_prx_src_lyrs: None,
 			den_thresh_init: Some(thresh),
 			//flags: flags,
 		})
@@ -83,18 +83,18 @@ impl Protocell {
 			syns_per_den_l2: 0,
 			cols_per_cel_l2: cols_per_cel_l2,
 			cell_kind: ProtocellKind::Inhibitory,
-			den_dst_srcs: Some(vec![vec![dst_src]]),
-			den_prx_srcs: None,
+			den_dst_src_lyrs: Some(vec![vec![dst_src]]),
+			den_prx_src_lyrs: None,
 			den_thresh_init: None,
 		})
 	}
 
-	pub fn dst_src_tufts_len(&self) -> u32 {
-		match self.den_dst_srcs {
-			Some(ref src_tufts) => src_tufts.len() as u32,
-			None => 0u32,
-		}
-	}
+	// pub fn dst_src_lyrs_len(&self) -> u32 {
+	// 	match self.den_dst_src_lyrs {
+	// 		Some(ref dst_srcs) => dst_srcs.len() as u32,
+	// 		None => 0u32,
+	// 	}
+	// }
 }
 
 

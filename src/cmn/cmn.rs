@@ -702,9 +702,9 @@ pub fn new_pred(
 
 
 
-
 /* AXN_IDX_2D(): Host side address resolution - concerned with start idx of a slc
-	- OpenCL device side version below (for reference) - concerned with individual indexes: 
+	- OpenCL device side version below [outdated] (for reference) - concerned with individual indexes:
+
 		static inline uint axn_idz_2d(uchar slc_id, uint slc_columns, uint col_id, char col_ofs) {
 			uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + AXON_MARGIN_SIZE));
 			int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;

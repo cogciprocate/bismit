@@ -8,10 +8,10 @@ use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
-use cmn;
-use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
+use cmn::{ self, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::areas::{ Protoareas };
-use proto::{ Protoregion, RegionKind };
+use proto::{ ProtolayerMap, RegionKind };
 use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -31,7 +31,7 @@ pub struct Axons {
 }
 
 impl Axons {
-	pub fn new(area_dims: CorticalDimensions, region: &Protoregion, ocl: &OclProgQueue) -> Axons {
+	pub fn new(area_dims: CorticalDimensions, region: &ProtolayerMap, ocl: &OclProgQueue) -> Axons {
 		let depth_axn_sptl = region.depth_axonal_spatial();
 		let depth_cellular = region.depth_cellular();
 		let depth_axn_hrz = region.depth_axonal_horizontal();

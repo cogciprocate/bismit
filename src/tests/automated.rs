@@ -1,6 +1,6 @@
 
 use cmn;
-use proto::{ Protoregion, Protoregions, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter };
+use proto::{ ProtolayerMap, ProtolayerMaps, Protoareas, ProtoareasTrait, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter };
 use cortex::{ self, Cortex };
 use ocl;
 use super::input_czar::{ self, InputCzar, InputKind };
@@ -12,10 +12,10 @@ use super::hybrid;
 // 		- test some specific inputs and make sure that synapses are responding exactly
 
 
-pub fn define_prtrgns() -> Protoregions {
-	let mut cort_regs: Protoregions = Protoregions::new();
+pub fn define_prtrgns() -> ProtolayerMaps {
+	let mut cort_regs: ProtolayerMaps = ProtolayerMaps::new();
 
-	cort_regs.add(Protoregion::new(Sensory)
+	cort_regs.add(ProtolayerMap::new(Sensory)
 		//.l("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
 		.l("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
 		.l("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
@@ -30,7 +30,7 @@ pub fn define_prtrgns() -> Protoregions {
 			Protocell::new_pyramidal(0, 5, vec!["iii"], 800).apical(vec!["eff_in"]))
 	);
 
-	cort_regs.add(Protoregion::new(Thalamic)
+	cort_regs.add(ProtolayerMap::new(Thalamic)
 		.l("external_input", 1, layer::AFFERENT_OUTPUT, Axonal(Spatial))
 	);
 

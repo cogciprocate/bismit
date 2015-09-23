@@ -6,7 +6,7 @@ use std::path::{ Path };
 use std::iter;
 use num::{ Float };
 
-use ocl::{ CorticalDimensions };
+use cmn::{ CorticalDimensions };
 
 //	IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned 
 //	bytes (u8) into a ganglion (SDR frame buffer: &[u8])

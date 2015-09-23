@@ -5,7 +5,11 @@
 */
 
 pub use self::cmn::*;
+pub use self::cortical_dimensions::{ CorticalDimensions };
+pub use self::area_map::{ AreaMap };
 //pub use self::prediction::*;
 
 mod cmn;
+mod cortical_dimensions;
+mod area_map;
 //mod prediction;

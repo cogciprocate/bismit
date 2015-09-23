@@ -26,12 +26,12 @@
 // 		idx: current index (of a loop, workgroup, queue, etc.)
 //			- almost always a physical in-memory address
 //
-// 		idz: index[0], first element, starting element
+// 		idz:= index[0], first element, starting element
 //
-// 		idn: index[len], element after final element, termination point
+// 		idn:= index[len]: element after final element, termination point
 //			- ex.: for(int i = 0, i < idn, i++)
 //
-// 		idm: index[max], final (valid) element just before idn (idn - 1 = idm)
+// 		idm:= index[max]:= index[len - 1]: final (valid) element just before idn. idn - 1 = idm.
 //			- ex.: for(int i = 0, i <= idm, i++)
 //
 //
@@ -45,7 +45,7 @@
 //		v_id
 //		u_id
 //
-// 		fuz: fuzzyness, level of predictiveness
+// 		fuz [Tenative]: fuzzyness, level of predictiveness
 //
 // 		***** High Priority Comment, Temporary Code Change
 // 		<<<<< Medium Priority Comment, To Do
@@ -55,6 +55,25 @@
 // 		ASSUMPTIONS BEING MADE: (add assert!s)
 //			syns_per_tuft > 4
 // 			u_size and v_size (global) are multiples of 8
+
+
+
+
+
+/*=============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+================================= __CONSTANT ==================================
+===============================================================================
+===============================================================================
+===============================================================================
+===============================================================================
+=============================================================================*/
+
+// __constant uint axn_slc_idzs[AXN_SLC_COUNT] = { AXN_SLC_IDZS };
+// __constant uchar axn_slc_scale_factors[AXN_SLC_COUNT] = { AXN_SLC_SCALE_FACTORS };
 
 
 

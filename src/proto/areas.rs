@@ -1,9 +1,7 @@
 use std::collections::{ self, HashMap };
 
-use ocl::{ CorticalDimensions };
-use proto::region::{ RegionKind };
-use proto::filter::{ Protofilter };
-use cmn;
+use proto::{ RegionKind, Protofilter };
+use cmn::{ self, CorticalDimensions };
 
 
 // pub trait ProtoareasTrait {

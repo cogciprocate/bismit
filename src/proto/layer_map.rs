@@ -13,7 +13,7 @@ use super::layer::{ self, Protolayer, ProtolayerFlags, ProtoaxonKind, Protolayer
 use super::cell::{ ProtocellKind, Protocell, DendriteKind };
 
 
-/* PROTOREGION {}
+/* PROTOREGION {} <<<<< TODO: REDESIGN AND/OR REFACTOR >>>>>
 	- [incomplete] THIS NEEDS TO BE STORED IN A DATABASE OR SOMETHING - GETTING TOO UNRULY
 		- Or... redesign using a trait that can handle ProtocellKind and ProtoaxonKind both
 			- Also could merge the two and have one or the other dominant
@@ -21,7 +21,7 @@ use super::cell::{ ProtocellKind, Protocell, DendriteKind };
 		- should be instances of some new type which manages their lists
 */
 #[derive(Clone)]
-pub struct Protoregion {
+pub struct ProtolayerMap {
 	pub name: &'static str,
 	pub kind: RegionKind,
 	layers: HashMap<&'static str, Protolayer>,
@@ -34,9 +34,9 @@ pub struct Protoregion {
 	hrz_demarc: u8,
 }
 
-impl Protoregion {
-	pub fn new (region_name: &'static str, kind: RegionKind)  -> Protoregion {	
-		Protoregion { 
+impl ProtolayerMap {
+	pub fn new (region_name: &'static str, kind: RegionKind)  -> ProtolayerMap {	
+		ProtolayerMap { 
 			name: region_name,
 			kind: kind,
 			layers: HashMap::new(),
@@ -57,7 +57,7 @@ impl Protoregion {
 					layer_depth: u8,
 					flags: ProtolayerFlags,
 					kind: ProtolayerKind,
-	) -> Protoregion {
+	) -> ProtolayerMap {
 
 		let next_kind_base_slc_pos = match kind {
 			ProtolayerKind::Cellular(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
@@ -86,7 +86,7 @@ impl Protoregion {
 			None 			=> ProtocellKind::Nada,
 		};*/
 		if self.frozen {
-			panic!("Protoregion::add(): Cannot add new layers after region is frozen.");
+			panic!("ProtolayerMap::add(): Cannot add new layers after region is frozen.");
 		}		
 
 		self.layers.insert(layer.name, layer);
@@ -117,7 +117,7 @@ impl Protoregion {
 						Some(vec) => {
 							
 							layer.kind_base_slc_pos = vec.len() as u8;
-							//layer.kind_base_slc_pos = std::num::cast(vec.len()).expect("Protoregion::add()");
+							//layer.kind_base_slc_pos = std::num::cast(vec.len()).expect("ProtolayerMap::add()");
 							//println!("{:?} base_slc_pos: {}", cell_kind, layer.kind_base_slc_pos);
 
 							for i in 0..layer.depth {							 
@@ -161,7 +161,7 @@ impl Protoregion {
 	// SET_LAYER_DEPTH(): ASSUMES PROPER FLAG UNIQUENESS CONSTRAINS ALREADY APPLIED
 	pub fn set_layer_depth(&mut self, flags: ProtolayerFlags, depth: u8) {
 		if self.frozen { 
-			panic!("region::Protoregion::set_layer_depth(): \
+			panic!("region::ProtolayerMap::set_layer_depth(): \
 				Cannot set layer depth after region has been frozen."); 
 		} 
 
@@ -214,7 +214,7 @@ impl Protoregion {
 			println!("    Adding Cell Kind: '{:?}', len: {}, kind_base_slc: {}", cell_kind, list.len(), next_base_slc);
 			assert!(list.len() == self.depth_cell_kind(&cell_kind) as usize);
 			next_base_slc += list.len() as u8;
-			//next_base_slc += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::Protoregion::freeze()");
+			//next_base_slc += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::ProtolayerMap::freeze()");
 		}
 
 		/* (2b) SAVE DEMARCATION BETWEEN VERTICAL (SPATIAL) AND HORIZONTAL ROWS */
@@ -300,7 +300,7 @@ impl Protoregion {
 	pub fn base_slc_cell_kind(&self, cell_kind: &ProtocellKind) -> u8 {
 		match self.cel_layer_kind_base_slc_ids.get(cell_kind) {
 			Some(base_slc) 	=> base_slc.clone(),
-			None 			=> panic!("Protoregion::base_slc_cell_king(): Base slc for type not found"),
+			None 			=> panic!("ProtolayerMap::base_slc_cell_king(): Base slc for type not found"),
 		}
 	}
 	
@@ -383,7 +383,7 @@ impl Protoregion {
 
 		//println!("CKRC: kind: {:?} -> count = {}, count2 = {}", &cell_kind, count, count2);
 
-		assert!(count as usize == count2, "Protoregion::depth_cell_kind(): mismatch");
+		assert!(count as usize == count2, "ProtolayerMap::depth_cell_kind(): mismatch");
 
 		count
 	}
@@ -408,7 +408,7 @@ impl Protoregion {
 			None 		=> 0,
 		};
 
-		assert!(count as usize == count2, "Protoregion::depth_axon_kind(): mismatch");
+		assert!(count as usize == count2, "ProtolayerMap::depth_axon_kind(): mismatch");
 
 		count
 	}	
@@ -427,13 +427,13 @@ impl Protoregion {
 
 	pub fn slc_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
 		if !self.frozen { // REPLACE WITH ASSERT (evaluate release build implications first)
-			panic!("Protoregion must be frozen with .freeze() before slc_ids can be called.");
+			panic!("ProtolayerMap must be frozen with .freeze() before slc_ids can be called.");
 		}
 
 		let mut slc_ids = Vec::new();
 
 		for layer_name in layer_names.iter() {
-			let l = &self[layer_name];
+			let l = &self.layers[layer_name];
 				for i in l.base_slc_pos..(l.base_slc_pos + l.depth) {
 					slc_ids.push(i);
 				}
@@ -442,23 +442,54 @@ impl Protoregion {
 		slc_ids
 	}
 
+	// SRC_SLC_IDS(): Get a merged list of source slice ids for all source layers.
 	pub fn src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
-		let src_layer_names = self[&layer_name].src_layer_names(den_type);
+		let src_lyr_names = self.layers[&layer_name].src_lyr_names(den_type);
 		
-		self.slc_ids(src_layer_names)
+		self.slc_ids(src_lyr_names)
  	}
 
- 	pub fn dst_tuft_src_slc_ids(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
- 		let src_tufts = self[&layer_name].dst_src_tufts();
+ 	// DST_SRC_SLC_IDS(): Get a grouped list of source slice ids for each distal dendritic tuft in a layer.
+ 	pub fn dst_src_slc_ids(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
+ 		let src_tufts = self.dst_src_lyrs_by_tuft(layer_name);
 
- 		let mut src_tuft_slc_ids = Vec::with_capacity(src_tufts.len());
+ 		let mut dst_src_slc_ids = Vec::with_capacity(src_tufts.len());
 
  		for tuft in src_tufts {
- 			src_tuft_slc_ids.push(self.slc_ids(tuft));
+ 			dst_src_slc_ids.push(self.slc_ids(tuft));
 		}
 
-		src_tuft_slc_ids
+		dst_src_slc_ids
 	}
+
+	// DST_SRC_LYRS_BY_TUFT(): Get a grouped list of source layer names for each distal dendritic tuft in a layer.
+	pub fn dst_src_lyrs_by_tuft(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
+		// TODO: RETURN ONLY VALID TUFTS!
+		let mut potential_tufts = self.layers[layer_name].dst_src_lyrs_by_tuft();
+		let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
+
+		for mut potential_tuft_src_lyrs in potential_tufts.drain(..) {
+			let mut valid_src_lyrs: Vec<&'static str> = Vec::with_capacity(potential_tuft_src_lyrs.len());
+
+			for lyr_name in potential_tuft_src_lyrs.drain(..) {
+				if self.layers[lyr_name].depth > 0 {
+					valid_src_lyrs.push(lyr_name);
+				}
+			}
+
+			if valid_src_lyrs.len() > 0 {
+				valid_tufts.push(valid_src_lyrs);
+			}
+		}
+
+		valid_tufts		
+	}
+
+
+	// pub fn dst_src_tuft_count(&self, layer_name: &'static str) -> u32 {
+	// 	let mut valid_tufts = Vec<
+	// 	self[&layer_name].dst_src_lyrs_by_tuft()
+	// }	
 
  	pub fn spt_asc_layer(&self) -> Option<Protolayer> {
  		let mut input_layer: Option<Protolayer> = None;
@@ -521,21 +552,21 @@ impl Protoregion {
 	// }
 }
 
-impl<'b> Index<&'b&'static str> for Protoregion
-{
-    type Output = Protolayer;
+// impl<'b> Index<&'b&'static str> for ProtolayerMap
+// {
+//     type Output = Protolayer;
 
-    fn index<'a>(&'a self, index: &'b&'static str) -> &'a Protolayer {
-        self.layers.get(index).unwrap_or_else(|| panic!("Protoregion::index(): invalid layer name: '{}'", index))
-    }
-}
+//     fn index<'a>(&'a self, index: &'b&'static str) -> &'a Protolayer {
+//         self.layers.get(index).unwrap_or_else(|| panic!("ProtolayerMap::index(): invalid layer name: '{}'", index))
+//     }
+// }
 
-impl<'b> IndexMut<&'b&'static str> for Protoregion
-{
-    fn index_mut<'a>(&'a mut self, index: &'b&'static str) -> &'a mut Protolayer {
-        self.layers.get_mut(index).unwrap_or_else(|| panic!("[Protoregion::index(): invalid layer name: '{}'", index))
-    }
-}
+// impl<'b> IndexMut<&'b&'static str> for ProtolayerMap
+// {
+//     fn index_mut<'a>(&'a mut self, index: &'b&'static str) -> &'a mut Protolayer {
+//         self.layers.get_mut(index).unwrap_or_else(|| panic!("[ProtolayerMap::index(): invalid layer name: '{}'", index))
+//     }
+// }
 
 
 #[derive(PartialEq, Eq, Debug, Clone, Hash)]
@@ -551,19 +582,19 @@ pub enum RegionKind {
 //impl Copy for RegionKind {}
 
 
-/*pub struct Protoregion {
+/*pub struct ProtolayerMap {
 	pub layers: HashMap<&'static str, Protolayer>,
 	pub kind: RegionKind,
 }
 
-impl Protoregion {
-	pub fn new (kind: RegionKind)  -> Protoregion {
+impl ProtolayerMap {
+	pub fn new (kind: RegionKind)  -> ProtolayerMap {
 		let mut next_slc_id = HashMap::new();
 		next_slc_id.insert(ProtocellKind::Pyramidal, 0);
 		next_slc_id.insert(ProtocellKind::InhibitoryInterneuronNetwork, 0);
 		next_slc_id.insert(ProtocellKind::SpinyStellate, 0);
 	
-		Protoregion { 
+		ProtolayerMap { 
 			layers: HashMap::new(),
 			kind: kind,
 		}
@@ -653,9 +684,9 @@ impl Protoregion {
 	}
 
 	pub fn src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
-		let src_layer_names = self[layer_name].src_layer_names(den_type);
+		let src_lyr_names = self[layer_name].src_lyr_names(den_type);
 		
-		self.slc_ids(src_layer_names)
+		self.slc_ids(src_lyr_names)
  	}
 
  	pub fn col_input_slc(&self) -> u8 {
@@ -667,21 +698,21 @@ impl Protoregion {
 
 }
 
-impl Index<&'static str> for Protoregion
+impl Index<&'static str> for ProtolayerMap
 {
     type Output = Protolayer;
 
     fn index<'a>(&'a self, index: &&'static str) -> &'a Protolayer {
-        self.layers.get(index).unwrap_or_else(|| panic!("[Protoregion::index(): invalid layer name: \"{}\"]", index))
+        self.layers.get(index).unwrap_or_else(|| panic!("[ProtolayerMap::index(): invalid layer name: \"{}\"]", index))
     }
 }
 
-impl IndexMut<&'static str> for Protoregion
+impl IndexMut<&'static str> for ProtolayerMap
 {
     type Output = Protolayer;
 
     fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut Protolayer {
-        self.layers.get_mut(index).unwrap_or_else(|| panic!("[Protoregion::index(): invalid layer name: \"{}\"]", index))
+        self.layers.get_mut(index).unwrap_or_else(|| panic!("[ProtolayerMap::index(): invalid layer name: \"{}\"]", index))
     }
 }*/
 
@@ -698,15 +729,15 @@ impl IndexMut<&'static str> for Protoregion
 	}
 
 	pub fn kind_src_slc_ids(&self, layer_name: &'static str) -> Vec<u8> {
-		let src_layer_names = self[layer_name].src_layer_names();
+		let src_lyr_names = self[layer_name].src_lyr_names();
 		
 		let mut src_slc_ids = Vec::new();
 
-		for &src_slc_name in src_layer_names.iter() {
+		for &src_slc_name in src_lyr_names.iter() {
 			src_slc_ids.push_all(self.kind_slc_ids(src_slc_name).as_slc());
 		}
 
-		//println!("Protoregion::layer_srcs_slc_ids(): (name:sources:idxs) [{}]:{:?}:{:?}", layer_name, src_layer_names, src_slc_ids);
+		//println!("ProtolayerMap::layer_srcs_slc_ids(): (name:sources:idxs) [{}]:{:?}:{:?}", layer_name, src_lyr_names, src_slc_ids);
 		
 		src_slc_ids
  	}*/

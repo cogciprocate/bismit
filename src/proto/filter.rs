@@ -1,4 +1,3 @@
-use ocl;
 
 #[derive(PartialEq, Debug, Clone, Eq)]
 pub struct Protofilter {

@@ -1,5 +1,4 @@
-use ocl::{ CorticalDimensions };
-use cmn;
+use cmn::{ self, CorticalDimensions };
 
 use std::char;
 use std::iter;

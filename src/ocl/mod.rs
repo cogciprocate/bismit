@@ -19,10 +19,9 @@ pub use self::cl_h::{ cl_platform_id, cl_device_id, cl_context, cl_program,
 	cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus, 
 	clSetKernelArg, clEnqueueNDRangeKernel };
 pub use self::kernel::{ Kernel };
-pub use self::envoy::{ Envoy };
+pub use self::envoy::{ Envoy, EnvoyDimensions };
 pub use self::work_size::{ WorkSize };
 pub use self::build_options::{ BuildOptions, BuildOption };
-pub use self::cortical_dimensions::{ CorticalDimensions };
 
 mod ocl;
 mod cl_h;
@@ -30,7 +29,6 @@ mod envoy;
 mod kernel;
 mod work_size;
 mod build_options;
-mod cortical_dimensions;
 
 const DEFAULT_PLATFORM: usize = 0;
 const DEFAULT_CL_DEVICE: usize = 0;

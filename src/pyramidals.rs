@@ -7,9 +7,9 @@ use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
-use cmn;
-use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::{ Protoareas, Protoregion, RegionKind, ProtocellKind, Protocell, DendriteKind };
+use cmn::{ self, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy };
+use proto::{ Protoareas, ProtolayerMap, RegionKind, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use cortical_area:: { Aux };
@@ -51,7 +51,7 @@ pub struct PyramidalCellularLayer {
 }
 // protocell: &Protocell,
 impl PyramidalCellularLayer {
-	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, axons: &Axons, aux: &Aux, ocl: &OclProgQueue
+	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, region: &ProtolayerMap, axons: &Axons, aux: &Aux, ocl: &OclProgQueue
 	) -> PyramidalCellularLayer {
 
 		let axn_base_slcs = region.slc_ids(vec![layer_name]);
@@ -82,7 +82,8 @@ impl PyramidalCellularLayer {
 		let syns_per_den_l2 = protocell.syns_per_den_l2;
 		let syns_per_tuft_l2 = dens_per_tuft_l2 + syns_per_den_l2;
 
-		let den_tufts_per_cel = region[&layer_name].dst_src_tufts_len();
+		//let den_tufts_per_cel = region[&layer_name].dst_src_tufts_len();
+		let den_tufts_per_cel = region.dst_src_lyrs_by_tuft(layer_name).len() as u32;
 
 		let den_tuft_dims = dims.clone_with_ptl2(dens_per_tuft_l2 as i8).with_tufts(den_tufts_per_cel);
 

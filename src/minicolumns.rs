@@ -7,9 +7,9 @@ use num::{ self, Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
-use cmn;
-use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::{ Protoregion, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
+use cmn::{ self, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy };
+use proto::{ ProtolayerMap, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -50,7 +50,7 @@ pub struct Minicolumns {
 }
 
 impl Minicolumns {
-	pub fn new(dims: CorticalDimensions, protoregion: &Protoregion, axons: &Axons, 
+	pub fn new(dims: CorticalDimensions, protoregion: &ProtolayerMap, axons: &Axons, 
 
 					/*ssts_map: &HashMap<&str, Box<SpinyStellateCellularLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalCellularLayer>>, */
 

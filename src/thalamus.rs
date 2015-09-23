@@ -5,7 +5,7 @@ use std::iter;
 use cmn;
 use ocl;
 use cortical_area:: { CorticalArea, CorticalAreas };
-use proto::{ Protoareas, Protoarea, Protoregion, Protoregions, 
+use proto::{ Protoareas, Protoarea, ProtolayerMap, ProtolayerMaps, 
 	RegionKind, layer, Sensory, Thalamic };
 use encode:: { IdxReader };
 use input_source::{ InputSource };
@@ -23,7 +23,7 @@ pub struct Thalamus {
 }
 
 impl Thalamus {
-	pub fn new(areas: &HashMap<&'static str, Box<CorticalArea>>, protoregions: Protoregions,
+	pub fn new(areas: &HashMap<&'static str, Box<CorticalArea>>, protoregions: ProtolayerMaps,
 				protoareas: Protoareas,
 	) -> Thalamus {		
 		let mut tao = ThalamicTract::new(Vec::with_capacity(0), 

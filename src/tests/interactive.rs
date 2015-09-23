@@ -8,8 +8,7 @@ use rand::{ self, ThreadRng, Rng };
 use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use time;
 
-use ocl::{ self, CorticalDimensions };
-use cmn;
+use cmn::{ self, CorticalDimensions };
 use cortex::{ self, Cortex };
 use encode:: { IdxReader };
 //use proto::layer;
@@ -20,7 +19,7 @@ use super::hybrid;
 use super::renderer::{ Renderer };
 //use chord::{ Chord };
 //use ocl::{ Envoy };
-use proto::{ Protoregion, Protoregions, Protoareas, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
+use proto::{ ProtolayerMap, ProtolayerMaps, Protoareas, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 
 
 pub const INITIAL_TEST_ITERATIONS: i32 		= 1; 
@@ -35,10 +34,10 @@ const REPEATS_PER_IMAGE: usize 				= 4;
 
 
 /* Eventually move defines to a config file or some such */
-pub fn define_protoregions() -> Protoregions {
-	let mut cort_regs: Protoregions = Protoregions::new();
+pub fn define_protoregions() -> ProtolayerMaps {
+	let mut cort_regs: ProtolayerMaps = ProtolayerMaps::new();
 
-	cort_regs.add(Protoregion::new("visual", Sensory)
+	cort_regs.add(ProtolayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
 		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
 		//.layer("olfac", 1, layer::DEFAULT, Axonal(Horizontal))
@@ -54,7 +53,7 @@ pub fn define_protoregions() -> Protoregions {
 			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
 	);
 
-	cort_regs.add(Protoregion::new("external", Thalamic)
+	cort_regs.add(ProtolayerMap::new("external", Thalamic)
 		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial))
 	);
 
@@ -67,20 +66,20 @@ pub fn define_protoareas() -> Protoareas {
 	let mut protoareas = Protoareas::new()
 		
 		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
-		.area_ext("u0", "external", area_side, area_side, 
-			Protoinput::IdxReader { 
-				file_name: "data/train-labels-idx1-ubyte", 
-				repeats: REPEATS_PER_IMAGE,
-			},
+		// .area_ext("u0", "external", area_side, area_side, 
+		// 	Protoinput::IdxReader { 
+		// 		file_name: "data/train-labels-idx1-ubyte", 
+		// 		repeats: REPEATS_PER_IMAGE,
+		// 	},
 
-			None, 
-			Some(vec!["u1"]),
-		)
+		// 	None, 
+		// 	Some(vec!["u1"]),
+		// )
 
-		.area("u1", "visual", area_side, area_side, None,
-			//None,
-			Some(vec!["b1"]),
-		)
+		// .area("u1", "visual", area_side, area_side, None,
+		// 	//None,
+		// 	Some(vec!["b1"]),
+		// )
 		
 
 		.area_ext("v0", "external", area_side, area_side, 

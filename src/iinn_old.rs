@@ -11,7 +11,7 @@ use std::fmt::{ Display };
 use cmn;
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
 use proto::areas::{ Protoareas };
-use proto::regions::{ Protoregion, RegionKind };
+use proto::regions::{ ProtolayerMap, RegionKind };
 use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -35,7 +35,7 @@ pub struct InhibitoryInterneuronNetworkNew {
 }
 
 impl InhibitoryInterneuronNetworkNew {
-	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, region: &Protoregion, src_soma: &Envoy<u8>, src_axn_base_slc: u8, axns: &Axons, ocl: &OclProgQueue) -> InhibitoryInterneuronNetworkNew {
+	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, region: &ProtolayerMap, src_soma: &Envoy<u8>, src_axn_base_slc: u8, axns: &Axons, ocl: &OclProgQueue) -> InhibitoryInterneuronNetworkNew {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 

@@ -8,9 +8,9 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 use std::collections::{ BTreeSet };
 
-use cmn;
-use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::{ Protoregion, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind, Protolayer, ProtolayerKind };
+use cmn::{ self, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy };
+use proto::{ ProtolayerMap, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind, Protolayer, ProtolayerKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cortical_area:: { Aux };
@@ -34,8 +34,8 @@ pub struct Synapses {
 	dims: CorticalDimensions,
 	syns_per_den_l2: u8,
 	protocell: Protocell,
-	protoregion: Protoregion,
-	dst_tuft_src_slc_ids: Vec<Vec<u8>>,
+	protoregion: ProtolayerMap,
+	dst_src_slc_ids: Vec<Vec<u8>>,
 	den_kind: DendriteKind,
 	cell_kind: ProtocellKind,
 	since_decay: usize,
@@ -55,7 +55,7 @@ pub struct Synapses {
 
 impl Synapses {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, 
-					den_kind: DendriteKind, cell_kind: ProtocellKind, protoregion: &Protoregion, 
+					den_kind: DendriteKind, cell_kind: ProtocellKind, protoregion: &ProtolayerMap, 
 					axons: &Axons, aux: &Aux, ocl: &OclProgQueue
 	) -> Synapses {
 		let syns_per_tuft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
@@ -75,10 +75,10 @@ impl Synapses {
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 		// KERNELS
-		let dst_tuft_src_slc_ids = protoregion.dst_tuft_src_slc_ids(layer_name);
-		assert!(dst_tuft_src_slc_ids.len() == dims.tufts_per_cel() as usize);
+		let dst_src_slc_ids = protoregion.dst_src_slc_ids(layer_name);
+		assert!(dst_src_slc_ids.len() == dims.tufts_per_cel() as usize);		
 
-		let mut kernels = Vec::with_capacity(dst_tuft_src_slc_ids.len());
+		let mut kernels = Vec::with_capacity(dst_src_slc_ids.len());
 
 		if DEBUG_NEW { println!("            SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims); }
 
@@ -87,7 +87,7 @@ impl Synapses {
 
 		let cels_per_kernel = dims.cells();
 
-		for syn_tuft_i in 0..dst_tuft_src_slc_ids.len() {
+		for syn_tuft_i in 0..dst_src_slc_ids.len() {
 			kernels.push(Box::new(
 				//ocl.new_kernel("syns_cycle_simple".to_string(), 
 				//ocl.new_kernel("syns_cycle_simple_vec4".to_string(), 
@@ -114,7 +114,7 @@ impl Synapses {
 			syns_per_den_l2: protocell.syns_per_den_l2,
 			protocell: protocell,
 			protoregion: protoregion.clone(),
-			dst_tuft_src_slc_ids: dst_tuft_src_slc_ids,
+			dst_src_slc_ids: dst_src_slc_ids,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			since_decay: 0,
@@ -149,10 +149,10 @@ impl Synapses {
 		self.src_col_v_offs.read();
 
 		let syns_per_layer_tuft = self.dims.per_slc_per_tuft() as usize * self.dims.depth() as usize;
-		let dst_tuft_src_slc_ids = self.dst_tuft_src_slc_ids.clone();
+		let dst_src_slc_ids = self.dst_src_slc_ids.clone();
 		let mut src_tuft_i = 0usize;
 
-		for src_slc_ids in &dst_tuft_src_slc_ids {
+		for src_slc_ids in &dst_src_slc_ids {
 			if src_slc_ids.len() == 0 { continue; }
 			//assert!(src_slc_ids.len() > 0, "Synapses must have at least one source slice.");
 			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, 
@@ -270,7 +270,7 @@ impl Synapses {
 	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
 	// pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
 		
-	// 	//println!("\n##### SYNAPSES::SRC_SLICE_IDS({}): {:?}", layer_name, self.dst_tuft_src_slc_ids);
+	// 	//println!("\n##### SYNAPSES::SRC_SLICE_IDS({}): {:?}", layer_name, self.dst_src_slc_ids);
 
 	// 	match layer.kind {
 	// 		ProtolayerKind::Cellular(ref cell) => {

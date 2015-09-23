@@ -6,12 +6,12 @@ use time;
 use rand::distributions::{ IndependentSample, Range };
 
 
-use ocl::{ self, OclContext, OclProgQueue, CorticalDimensions };
-use cmn;
+use ocl::{ self, OclContext, OclProgQueue };
+use cmn::{ self, CorticalDimensions, AreaMap };
 use chord::{ Chord };
 use cortical_area:: { self, CorticalArea, CorticalAreas };
 use thalamus::{ Thalamus };
-use proto::{ Protoregion, Protoregions, Protoareas, Protoarea, Cellular, 
+use proto::{ ProtolayerMap, ProtolayerMaps, Protoareas, Protoarea, Cellular, 
 	Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell };
 
 pub struct Cortex {
@@ -21,7 +21,7 @@ pub struct Cortex {
 }
 
 impl Cortex {
-	pub fn new(mut protoregions: Protoregions, mut protoareas: Protoareas) -> Cortex {
+	pub fn new(mut protoregions: ProtolayerMaps, mut protoareas: Protoareas) -> Cortex {
 		println!("\nInitializing Cortex... ");
 		let time_start = time::get_time();
 
@@ -32,12 +32,15 @@ impl Cortex {
 
 		for (_, pa) in protoareas.map().iter().filter(|&(_, pa)| 
 					protoregions[pa.region_name].kind != Thalamic
-		) {			
-			let protoarea = pa.clone();			
-			let mut protoregion = protoregions[protoarea.region_name].clone();
+		) {	
+			let area_map = AreaMap::new(&protoregions, pa);
 
-			protoregion.freeze(&protoarea);	
-			areas.insert(protoarea.name, Box::new(CorticalArea::new(protoarea.clone(), protoregion, i)));
+			// let protoarea = pa.clone();			
+			// let mut protoregion = protoregions[protoarea.region_name].clone();
+
+			// protoregion.freeze(&protoarea);	
+
+			areas.insert(area_map.protoarea().name, Box::new(CorticalArea::new(area_map, i)));
 			i += 1;
 		}
 
@@ -154,7 +157,7 @@ impl Cortex {
 	/*	WRITE_VEC(): 
 			TODO: 
 				- VALIDATE "layer_target, OTHERWISE: 
-					- thread '<main>' panicked at '[protoregions::Protoregion::index(): 
+					- thread '<main>' panicked at '[protoregions::ProtolayerMap::index(): 
 					invalid layer name: "XXXXX"]', src/protoregions.rs:339
 						- Just have slc_ids return an option<u8>
 				- Handle multi-slc input vectors (for input compression, etc.)
@@ -180,10 +183,10 @@ impl Cortex {
 
 
 	/* Eventually move define_*() to a config file or some such */
-/*pub fn define_protoregions() -> Protoregions {
-	let mut cort_regs: Protoregions = Protoregions::new();
+/*pub fn define_protoregions() -> ProtolayerMaps {
+	let mut cort_regs: ProtolayerMaps = ProtolayerMaps::new();
 
-	let mut sen = Protoregion::new(Sensory)
+	let mut sen = ProtolayerMap::new(Sensory)
 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
 
 		.layer("eff_in", 1, layer::EFFERENT_INPUT, Axonal(Spatial))

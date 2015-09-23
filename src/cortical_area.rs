@@ -9,9 +9,9 @@ use std::fmt::{ Display };
 use std::collections::{ BTreeMap, HashMap };
 use std::ops::{ Range };
 
-use cmn;
-use ocl::{ self, OclProgQueue, OclContext, WorkSize, Envoy, CorticalDimensions, BuildOptions, BuildOption  };
-use proto::{ Protoregion, Protoregions, Protoareas, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Pyramidal, SpinyStellate, Inhibitory, layer, Protocell, DendriteKind };
+use cmn::{ self, CorticalDimensions, AreaMap };
+use ocl::{ self, OclProgQueue, OclContext, WorkSize, Envoy, BuildOptions, BuildOption  };
+use proto::{ ProtolayerMap, ProtolayerMaps, Protoareas, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Pyramidal, SpinyStellate, Inhibitory, layer, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -28,12 +28,13 @@ pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 pub struct CorticalArea {
 	pub name: &'static str,
 	pub dims: CorticalDimensions,
-	protoarea: Protoarea,
-	protoregion: Protoregion,
+	area_map: AreaMap,
+	// protoarea: Protoarea,
+	// protoregion: ProtolayerMap,
 	//pub depth_axonal: u8,
 	//pub depth_cellular: u8,
 	//pub slc_map: BTreeMap<u8, &'static str>,
-	//pub protoregion: Protoregion,
+	//pub protoregion: ProtolayerMap,
 	pub axns: Axons,
 	pub mcols: Box<Minicolumns>,
 	//pub pyrs: PyramidalCellularLayer,
@@ -56,19 +57,22 @@ pub struct CorticalArea {
 }
 
 impl CorticalArea {
-	pub fn new(protoarea: Protoarea, protoregion: Protoregion, device_idx: usize) -> CorticalArea {
+	pub fn new(area_map: AreaMap, device_idx: usize) -> CorticalArea {
 		let emsg = "cortical_area::CorticalArea::new()";
 
-		println!("\nCORTICALAREA::NEW(): Creating Cortical Area: '{}'", protoarea.name);		
+		println!("\nCORTICALAREA::NEW(): Creating Cortical Area: '{}'", area_map.protoarea().name);		
 				
 		//let protoregion = protoregion;		
 
+		// let protoarea = area_map.proto 
+		// protoregion: ProtolayerMap,
+
 		let ocl_context: ocl::OclContext = OclContext::new(None);
 		let mut ocl: ocl::OclProgQueue = ocl::OclProgQueue::new(&ocl_context, Some(device_idx));
-		let mut build_options = gen_build_options(&protoarea, &protoregion);
+		let mut build_options = gen_build_options(&area_map.protoarea(), &area_map.protoregion());
 
 		// CUSTOM KERNELS
-		match protoarea.filters {
+		match area_map.protoarea().filters {
 			Some(ref protofilters) => {
 				for pf in protofilters.iter() {
 					match pf.cl_file_name() {
@@ -82,20 +86,20 @@ impl CorticalArea {
 
 		ocl.build(build_options);
 
-		let dims = protoarea.dims.clone_with_depth(protoregion.depth_total())
+		let dims = area_map.protoarea().dims.clone_with_depth(area_map.protoregion().depth_total())
 			.with_physical_increment(ocl.get_max_work_group_size());
 
 		println!("\nCORTICALAREA::NEW(): Area '{}' details: \
 			(width: {}, height: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}", 
-			protoarea.name, dims.u_size(), dims.v_size(), dims.depth(), 
-			protoarea.eff_areas, protoarea.aff_areas);
+			area_map.protoarea().name, dims.u_size(), dims.v_size(), dims.depth(), 
+			area_map.protoarea().eff_areas, area_map.protoarea().aff_areas);
 		/*println!("\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, depth: {})", name, 1 << dims.width_l2(), 1 << dims.height_l2(), dims.depth());*/
 
 		let emsg_psal = format!("{}: Primary Spatial Associative Layer not defined.", emsg);
-		let psal_name = protoregion.layer_with_flag(layer::SPATIAL_ASSOCIATIVE).expect(&emsg_psal).name();
+		let psal_name = area_map.protoregion().layer_with_flag(layer::SPATIAL_ASSOCIATIVE).expect(&emsg_psal).name();
 
 		let emsg_ptal = format!("{}: Primary Temporal Associative Layer not defined.", emsg);
-		let ptal_name = protoregion.layer_with_flag(layer::TEMPORAL_ASSOCIATIVE).expect(&emsg_ptal).name();
+		let ptal_name = area_map.protoregion().layer_with_flag(layer::TEMPORAL_ASSOCIATIVE).expect(&emsg_ptal).name();
 		
 
 			/* <<<<< BRING BACK UPDATED VERSIONS OF BELOW >>>>> */
@@ -107,7 +111,7 @@ impl CorticalArea {
 		//assert!(depth_cellular > 0, "cortical_area::CorticalArea::new(): Region has no cellular layers.");
 		//println!("CorticalArea::new(): depth_axonal: {}, depth_cellular: {}, width: {}", depth_axonal, depth_cellular, width);
 
-		let axns = Axons::new(dims, &protoregion, &ocl);
+		let axns = Axons::new(dims, &area_map.protoregion(), &ocl);
 
 		let aux_dims = CorticalDimensions::new(dims.u_size(), dims.v_size(), dims.depth(), 1, Some(dims.physical_increment()));
 		let aux = Aux::new(aux_dims, &ocl);
@@ -117,7 +121,7 @@ impl CorticalArea {
 		let mut iinns = HashMap::new();
 
 		// DATA CELLS
-		for (&layer_name, layer) in protoregion.layers().iter() {
+		for (&layer_name, layer) in area_map.protoregion().layers().iter() {
 			match layer.kind {
 				Cellular(ref pcell) => {
 					println!("   CORTICALAREA::NEW(): making a(n) {:?} layer: '{}' (depth: {})", pcell.cell_kind, layer_name, layer.depth);
@@ -127,7 +131,7 @@ impl CorticalArea {
 							let pyrs_dims = dims.clone_with_depth(layer.depth);
 
 							let pyr_lyr = PyramidalCellularLayer::new(
-								layer_name, pyrs_dims, pcell.clone(), &protoregion, &axns, &aux, &ocl);
+								layer_name, pyrs_dims, pcell.clone(), &area_map.protoregion(), &axns, &aux, &ocl);
 
 							pyrs_map.insert(layer_name, Box::new(pyr_lyr));
 						},
@@ -135,7 +139,7 @@ impl CorticalArea {
 						SpinyStellate => {							
 							let ssts_map_dims = dims.clone_with_depth(layer.depth);
 							let sst_lyr = SpinyStellateCellularLayer::new(
-								layer_name, ssts_map_dims, pcell.clone(), &protoregion, &axns, &aux, &ocl);
+								layer_name, ssts_map_dims, pcell.clone(), &area_map.protoregion(), &axns, &aux, &ocl);
 							ssts_map.insert(layer_name, Box::new(sst_lyr));
 						},
 
@@ -148,27 +152,27 @@ impl CorticalArea {
 		}
 
 		// CONTROL CELLS
-		for (&layer_name, layer) in protoregion.layers().iter() {
+		for (&layer_name, layer) in area_map.protoregion().layers().iter() {
 			match layer.kind {
 				Cellular(ref pcell) => {
 					match pcell.cell_kind {
 						Inhibitory => {
-							let src_layer_names = layer.src_layer_names(DendriteKind::Distal);							
-							assert!(src_layer_names.len() == 1);
+							let src_lyr_names = layer.src_lyr_names(DendriteKind::Distal);							
+							assert!(src_lyr_names.len() == 1);
 
-							let src_layer_name = src_layer_names[0];
-							let src_slc_ids = protoregion.slc_ids(vec![src_layer_name]);
+							let src_lyr_name = src_lyr_names[0];
+							let src_slc_ids = area_map.protoregion().slc_ids(vec![src_lyr_name]);
 							let src_layer_depth = src_slc_ids.len() as u8;
 							let src_axn_base_slc = src_slc_ids[0];
 
-							println!("   CORTICALAREA::NEW(): Inhibitory cells: src_layer_names: \
-								{:?}, src_axn_base_slc: {:?}", src_layer_names, src_axn_base_slc);
+							println!("   CORTICALAREA::NEW(): Inhibitory cells: src_lyr_names: \
+								{:?}, src_axn_base_slc: {:?}", src_lyr_names, src_axn_base_slc);
 
-							let em1 = format!("{}: '{}' is not a valid layer", emsg, src_layer_name);
-							let src_soma_env = &ssts_map.get_mut(src_layer_name).expect(&em1).soma();
+							let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
+							let src_soma_env = &ssts_map.get_mut(src_lyr_name).expect(&em1).soma();
 						
 							let iinns_dims = dims.clone_with_depth(src_layer_depth);
-							let mut iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, pcell.clone(), &protoregion, src_soma_env, src_axn_base_slc, &axns, &aux, &ocl);
+							let mut iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, pcell.clone(), &area_map.protoregion(), src_soma_env, src_axn_base_slc, &axns, &aux, &ocl);
 
 							iinns.insert(layer_name, Box::new(iinn_lyr));
 
@@ -193,21 +197,21 @@ impl CorticalArea {
 
 			let em_pyrs = format!("{}: '{}' is not a valid layer", emsg, ptal_name);
 			let pyrs = pyrs_map.get(ptal_name).expect(&em_pyrs);
-			Minicolumns::new(mcols_dims, &protoregion, &axns, ssts, pyrs, &aux, &ocl)
+			Minicolumns::new(mcols_dims, &area_map.protoregion(), &axns, ssts, pyrs, &aux, &ocl)
 		});
 
 
 		// FILTERS
 
 		// <<<<< CHANGE TO LAYERS_WITH_FLAG() >>>>>
-		let aff_in_layer = protoregion.layer_with_flag(layer::AFFERENT_INPUT).expect(&emsg);
+		let aff_in_layer = area_map.protoregion().layer_with_flag(layer::AFFERENT_INPUT).expect(&emsg);
 		let mut filters_vec = Vec::with_capacity(5);
 
-		let filters = match protoarea.filters {
+		let filters = match area_map.protoarea().filters {
 			Some(ref protofilters) => {
 				for pf in protofilters.iter() {
 					filters_vec.push(Box::new(SensoryFilter::new(
-						pf.filter_name(), pf.cl_file_name(), protoarea.name,
+						pf.filter_name(), pf.cl_file_name(), area_map.protoarea().name,
 						dims.clone_with_depth(aff_in_layer.depth()), 
 						&axns, aff_in_layer.base_slc(), &ocl
 					)));
@@ -219,12 +223,13 @@ impl CorticalArea {
 
 
 		let mut cortical_area = CorticalArea {
-			name: protoarea.name,
+			name: area_map.protoarea().name,
 			dims: dims,
+			area_map: area_map,
 			ptal_name: ptal_name,
 			psal_name: psal_name,
-			protoregion: protoregion,
-			protoarea: protoarea,
+			// protoregion: protoregion,
+			// protoarea: protoarea,
 			//depth_axonal: depth_axonal,
 			//depth_cellular: depth_cellular,
 			//slc_map: protoregion.slc_map(),
@@ -309,7 +314,7 @@ impl CorticalArea {
 	/* AXN_OUTPUT(): NEEDS UPDATING (DEPRICATION?) */
 	pub fn axn_output_range(&self) -> (usize, usize) {
 		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::AXON_MARGIN_SIZE: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::AXON_MARGIN_SIZE);
-		let output_slcs = self.protoregion.aff_out_slcs();
+		let output_slcs = self.area_map.protoregion().aff_out_slcs();
 		assert!(output_slcs.len() == 1);
 		let axn_output_slc = output_slcs[0];
 
@@ -320,10 +325,10 @@ impl CorticalArea {
 	/* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
 	pub fn layer_input_ranges(&self, layer_name: &'static str, den_kind: &DendriteKind) -> Vec<Range<u32>> {
 		let mut axn_irs: Vec<Range<u32>> = Vec::with_capacity(10);
-		let src_slc_ids = self.protoregion.src_slc_ids(layer_name, *den_kind);
+		let src_slc_ids = self.area_map.protoregion().src_slc_ids(layer_name, *den_kind);
 
 		for ssid in src_slc_ids {
-			let idz = cmn::axn_idz_2d(ssid, self.dims.columns(), self.protoregion.hrz_demarc());
+			let idz = cmn::axn_idz_2d(ssid, self.dims.columns(), self.area_map.protoregion().hrz_demarc());
 		 	let idn = idz + self.dims.columns();
 			axn_irs.push(idz..idn);
 		}
@@ -369,10 +374,10 @@ impl CorticalArea {
 	pub fn axn_range(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {
 		let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
 			'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
-		let layer = self.protoregion.layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
+		let layer = self.area_map.protoregion().layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
 		let len = self.dims.columns() * layer.depth as u32;
 		let base_slc = layer.base_slc_pos;
-		let buffer_offset = cmn::axn_idz_2d(base_slc, self.dims.columns(), self.protoregion.hrz_demarc());
+		let buffer_offset = cmn::axn_idz_2d(base_slc, self.dims.columns(), self.area_map.protoregion().hrz_demarc());
 
 		buffer_offset..(buffer_offset + len)
 	}
@@ -382,14 +387,14 @@ impl CorticalArea {
 	pub fn input_src_area_names(&self, layer_flags: layer::ProtolayerFlags) -> Vec<&'static str> {
 		 // let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
 		 // 	'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
-		// let layer = self.protoregion.layer_with_flag(layer_flags);
+		// let layer = self.area_map.protoregion().layer_with_flag(layer_flags);
 		// return layer.expect(&emsg).depth();
 
 		// 
 		if layer_flags == layer::EFFERENT_INPUT {
-			self.protoarea.aff_areas.clone()
+			self.area_map.protoarea().aff_areas.clone()
 		} else if layer_flags == layer::AFFERENT_INPUT {
-			self.protoarea.eff_areas.clone()
+			self.area_map.protoarea().eff_areas.clone()
 		} else {
 			panic!("CorticalArea::input_src_areas(): Can only be called with an \
 				input layer flag as argument");
@@ -433,8 +438,8 @@ impl CorticalArea {
 	}
 
 
-	pub fn protoregion(&self) -> &Protoregion {
-		&self.protoregion
+	pub fn protoregion(&self) -> &ProtolayerMap {
+		&self.area_map.protoregion()
 	}
 
 	pub fn dims(&self) -> &CorticalDimensions {
@@ -450,13 +455,13 @@ impl CorticalArea {
 	}
 
 	pub fn afferent_target_names(&self) -> &Vec<&'static str> {
-		//self.protoarea.aff_areas.clone
-		&self.protoarea.aff_areas
+		//self.area_map.protoarea().aff_areas.clone
+		&self.area_map.protoarea().aff_areas
 	}
 
 	pub fn efferent_target_names(&self) -> &Vec<&'static str> {
-		//self.protoarea.eff_areas.clone()
-		&self.protoarea.eff_areas
+		//self.area_map.protoarea().eff_areas.clone()
+		&self.area_map.protoarea().eff_areas
 	}
 
 	pub fn ocl(&self) -> &OclProgQueue {
@@ -511,7 +516,7 @@ impl Drop for CorticalArea {
 }
 
 
-fn gen_build_options(protoarea: &Protoarea, protoregion: &Protoregion) -> BuildOptions {
+fn gen_build_options(protoarea: &Protoarea, protoregion: &ProtolayerMap) -> BuildOptions {
 	let mut build_options = ocl::base_build_options()
 		.opt(BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", protoregion.hrz_demarc() as i32))
 		//.kern_file("filters.cl".to_string())

@@ -4,8 +4,8 @@ use std::cmp;
 use std::collections::{ HashMap };
 use rand::{ self, ThreadRng, Rng };
 
-use cmn;
-use ocl::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDimensions };
+use ocl::{ self };
 use cortex::{ Cortex };
 use encode:: { IdxReader };
 use super::motor_state;

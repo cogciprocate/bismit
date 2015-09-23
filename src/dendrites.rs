@@ -7,9 +7,9 @@ use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
-use cmn;
-use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::{ Protoregion, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
+use cmn::{ self, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy };
+use proto::{ ProtolayerMap, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axons::{ Axons };
 use cortical_area:: { Aux };
@@ -39,7 +39,7 @@ impl Dendrites {
 					protocell: Protocell,
 					den_kind: DendriteKind, 
 					cell_kind: ProtocellKind,
-					region: &Protoregion,
+					region: &ProtolayerMap,
 					axons: &Axons,
 					aux: &Aux,
 					ocl: &OclProgQueue

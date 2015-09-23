@@ -10,29 +10,29 @@ use std::hash::{ self, Hash, SipHasher, Hasher };
 use super::layer::{ self, Protolayer, ProtolayerFlags, ProtoaxonKind, ProtolayerKind };
 	//use super::layer::ProtolayerKind::{ self, Cellular, Axonal };
 use super::cell::{ ProtocellKind, Protocell, DendriteKind };
-use super::{ Protoregion, RegionKind };
+use super::{ ProtolayerMap, RegionKind };
 
 
 
 
 //#[derive(Copy)]
-pub struct Protoregions {
-	map: HashMap<&'static str, Protoregion>,
+pub struct ProtolayerMaps {
+	map: HashMap<&'static str, ProtolayerMap>,
 }
 
-impl Protoregions {
-	pub fn new() -> Protoregions {
-		Protoregions {
+impl ProtolayerMaps {
+	pub fn new() -> ProtolayerMaps {
+		ProtolayerMaps {
 			map: HashMap::new(),
 		}
 	}
 
-	pub fn r(mut self, pr: Protoregion) -> Protoregions {
+	pub fn r(mut self, pr: ProtolayerMap) -> ProtolayerMaps {
 		self.add(pr);
 		self
 	}	
 
-	pub fn add(&mut self, pr: Protoregion) {
+	pub fn add(&mut self, pr: ProtolayerMap) {
 		self.map.insert(pr.name.clone(), pr);
 	}
 
@@ -43,20 +43,20 @@ impl Protoregions {
 	// }
 }
 
-impl<'b> Index<&'b str> for Protoregions
+impl<'b> Index<&'b str> for ProtolayerMaps
 {
-    type Output = Protoregion;
+    type Output = ProtolayerMap;
 
-    fn index<'a>(&'a self, region_name: &'b str) -> &'a Protoregion {
-        self.map.get(region_name).expect(&format!("proto::regions::Protoregions::index(): \
+    fn index<'a>(&'a self, region_name: &'b str) -> &'a ProtolayerMap {
+        self.map.get(region_name).expect(&format!("proto::regions::ProtolayerMaps::index(): \
         	Invalid region name: '{}'.", region_name))
     }
 }
 
-impl<'b> IndexMut<&'b str> for Protoregions
+impl<'b> IndexMut<&'b str> for ProtolayerMaps
 {
-    fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut Protoregion {
-        self.map.get_mut(region_name).expect(&format!("proto::regions::Protoregions::index_mut(): \
+    fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut ProtolayerMap {
+        self.map.get_mut(region_name).expect(&format!("proto::regions::ProtolayerMaps::index_mut(): \
         	Invalid region name: '{}'.", region_name))
     }
 }

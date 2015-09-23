@@ -1,3 +1,5 @@
+use ocl::{ EnvoyDimensions };
+
 /*	CorticalDimensions: Dimensions of a cortical area in units of cells
 		- Used to define both the volume and granularity of a cortical area.
 		- Also contains extra information such as opencl kernel workgroup size
@@ -153,22 +155,7 @@ impl CorticalDimensions {
 	/* CORTICAL_LEN(): 'VIRTUAL' CORTEX SIZE, NOT TO BE CONFUSED WITH THE PHYSICAL IN-MEMORY SIZE */
 	/*fn cortical_len(&self) -> u32 {
 		len_components(self.cells(), self.per_tuft_l2)
-	}*/
-
-	/* PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
-	pub fn physical_len(&self) -> u32 {
-		let cols = self.columns();
-		let phys_inc = self.physical_increment();
-
-		let len_mod = cols % phys_inc;
-
-		if len_mod == 0 {
-			len_components(cols * self.depth as u32, self.per_tuft_l2, self.tufts_per_cel)
-		} else {
-			let pad = self.physical_increment() - len_mod;
-			len_components((cols + pad) * self.depth as u32, self.per_tuft_l2, self.tufts_per_cel)
-		}
-	}
+	}*/	
 
 	pub fn clone_with_ptl2(&self, per_tuft_l2: i8) -> CorticalDimensions {
 		CorticalDimensions { per_tuft_l2: per_tuft_l2, .. *self }
@@ -198,6 +185,23 @@ impl CorticalDimensions {
 }
 
 impl Copy for CorticalDimensions {}
+
+impl EnvoyDimensions for CorticalDimensions {
+	/* PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
+	fn physical_len(&self) -> u32 {
+		let cols = self.columns();
+		let phys_inc = self.physical_increment();
+
+		let len_mod = cols % phys_inc;
+
+		if len_mod == 0 {
+			len_components(cols * self.depth as u32, self.per_tuft_l2, self.tufts_per_cel)
+		} else {
+			let pad = self.physical_increment() - len_mod;
+			len_components((cols + pad) * self.depth as u32, self.per_tuft_l2, self.tufts_per_cel)
+		}
+	}
+}
 
 
 fn len_components(cells: u32, per_tuft_l2: i8, tufts_per_cel: u32) -> u32 {

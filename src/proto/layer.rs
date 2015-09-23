@@ -49,11 +49,11 @@ impl Protolayer {
 	}
 
 	/* SRC_LAYER_NAMES(): TODO: DEPRICATE OR RENAME */
-	pub fn src_layer_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
+	pub fn src_lyr_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
 		let layer_names = match self.kind {
 			ProtolayerKind::Cellular(ref protocell) => match den_type {
-				Distal => Some(protocell.den_dst_srcs.clone().unwrap()[0].clone()),
-				Proximal => protocell.den_prx_srcs.clone(),
+				Distal => Some(protocell.den_dst_src_lyrs.clone().unwrap()[0].clone()),
+				Proximal => protocell.den_prx_src_lyrs.clone(),
 			},
 			_ => panic!(format!("Protolayer '{}' is not Cellular.", self.name)),
 		};
@@ -64,31 +64,31 @@ impl Protolayer {
 		}
 	}
 
-/*	pub fn dst_src_layer_names(&self) -> Vec<Vec<&'static str>> {
+/*	pub fn dst_src_lyr_names(&self) -> Vec<Vec<&'static str>> {
 		let layer_names = match self.kind {
-			ProtolayerKind::Cellular(ref protocell) => protocell.den_dst_srcs.clone(),
+			ProtolayerKind::Cellular(ref protocell) => protocell.den_dst_src_lyrs.clone(),
 			_ => panic!(format!("Protolayer '{}' is not Cellular.", self.name)),
 		};
 	}*/
 
-	pub fn dst_src_tufts(&self) -> Vec<Vec<&'static str>> {
-		let layer_tufts = match self.kind {
-			ProtolayerKind::Cellular(ref protocell) => protocell.den_dst_srcs.clone(),
+	pub fn dst_src_lyrs_by_tuft(&self) -> Vec<Vec<&'static str>> {
+		let layers_by_tuft = match self.kind {
+			ProtolayerKind::Cellular(ref protocell) => protocell.den_dst_src_lyrs.clone(),
 			_ => panic!(format!("Protolayer '{}' is not Cellular.", self.name)),
 		};
 
-		match layer_tufts {
+		match layers_by_tuft {
 			Some(v) => v,
 			None => Vec::with_capacity(0),
 		}
 	}
 
-	pub fn dst_src_tufts_len(&self) -> u32 {
-		match self.kind {
-			ProtolayerKind::Cellular(ref protocell) => protocell.dst_src_tufts_len(),
-			_ => 0,
-		}
-	}
+	// pub fn dst_src_lyrs_len(&self) -> u32 {
+	// 	match self.kind {
+	// 		ProtolayerKind::Cellular(ref protocell) => protocell.dst_src_lyrs_len(),
+	// 		_ => 0,
+	// 	}
+	// }
 }
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
@@ -101,7 +101,7 @@ impl ProtolayerKind {
 	pub fn apical(mut self, dst_srcs: Vec<&'static str>) -> ProtolayerKind {
 		match &mut self {
 			&mut ProtolayerKind::Cellular(ref mut pc) => {
-				match pc.den_dst_srcs {
+				match pc.den_dst_src_lyrs {
 					Some(ref mut vec) => vec.push(dst_srcs),
 					None => (),
 				}

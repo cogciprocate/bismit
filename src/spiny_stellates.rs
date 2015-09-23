@@ -6,9 +6,9 @@ use num::{ self, Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
-use cmn;
-use ocl::{ self, OclProgQueue, WorkSize, Envoy, CorticalDimensions };
-use proto::{ Protoregion, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
+use cmn::{ self, CorticalDimensions };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy };
+use proto::{ ProtolayerMap, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
@@ -52,7 +52,7 @@ pub struct SpinyStellateCellularLayer {
 
 // pyrs: &PyramidalCellularLayer,
 impl SpinyStellateCellularLayer {
-	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, protoregion: &Protoregion, axns: &Axons, aux: &Aux, ocl: &OclProgQueue) -> SpinyStellateCellularLayer {
+	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, protoregion: &ProtolayerMap, axns: &Axons, aux: &Aux, ocl: &OclProgQueue) -> SpinyStellateCellularLayer {
 		//let layer = protoregion.spt_asc_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
 		//let depth: u8 = layer.depth();
 
