@@ -23,7 +23,7 @@ pub struct Thalamus {
 }
 
 impl Thalamus {
-	pub fn new(areas: &HashMap<&'static str, Box<CorticalArea>>, protoregions: ProtolayerMaps,
+	pub fn new(areas: &HashMap<&'static str, Box<CorticalArea>>, protolayer_maps: ProtolayerMaps,
 				protoareas: Protoareas,
 	) -> Thalamus {		
 		let mut tao = ThalamicTract::new(Vec::with_capacity(0), 
@@ -35,7 +35,7 @@ impl Thalamus {
 		let mut input_sources = Vec::new();
 
 		for (_, pa) in protoareas.map().iter().filter(|&(_, pa)| 
-					protoregions[pa.region_name].kind == Thalamic) 
+					protolayer_maps[pa.region_name].kind == Thalamic) 
 		{			
 			input_sources.push(InputSource::new(pa));
 		}
@@ -85,8 +85,8 @@ impl Thalamus {
 		let emsg = format!("cortex::Cortex::write_vec(): Invalid area name: {}", area_name);
 		let area = areas.get(area_name).expect(&emsg);
 
-		//let ref region = self.protoregions[&RegionKind::Sensory];
-		let region = area.protoregion();
+		//let ref region = self.protolayer_maps[&RegionKind::Sensory];
+		let region = area.protolayer_map();
 		let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
 		
 		for slc in axn_slcs { 
@@ -130,7 +130,7 @@ impl Thalamus {
 		let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
 
 		match areas.get(tar_area_name) {
-			Some(area) => if area.protoregion().kind == Thalamic { return; },
+			Some(area) => if area.protolayer_map().kind == Thalamic { return; },
 			None => return,
 		}
 		

@@ -72,13 +72,22 @@
 ===============================================================================
 =============================================================================*/
 
-// __constant uint axn_slc_idzs[AXN_SLC_COUNT] = { AXN_SLC_IDZS };
-// __constant uchar axn_slc_scale_factors[AXN_SLC_COUNT] = { AXN_SLC_SCALE_FACTORS };
+__constant uint axn_slc_idzs[AXN_SLC_COUNT] = { AXN_SLC_IDZS };
+__constant uchar axn_slc_v_scales[AXN_SLC_COUNT] = { AXN_SLC_V_SCALES };
+__constant uchar axn_slc_u_scales[AXN_SLC_COUNT] = { AXN_SLC_U_SCALES };
 
 
+static inline uint get_axn_slc_idz(uint slc_id) {
+	return axn_slc_idzs[slc_id];
+}
 
+static inline uchar get_axn_v_scale(uint slc_id) {
+	return axn_slc_v_scales[slc_id];
+}
 
-
+static inline uchar get_axn_u_scale(uint slc_id) {
+	return axn_slc_u_scales[slc_id];
+}
 
 
 /*=============================================================================
@@ -913,6 +922,12 @@ __kernel void inhib_simple(
 	int const radius_neg = 0 - radius_pos;
 
 	int uninhibited = 1;
+
+
+	// ***** DEBUG-TESTING *****
+	// if (cel_idx < AXN_SLC_COUNT) {
+	// 	aux_ints_1[cel_idx] = get_axn_v_scale(cel_idx);
+	// }
 
 	//uint dumb_iter = 0;
 

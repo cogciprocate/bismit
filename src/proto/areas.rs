@@ -146,6 +146,10 @@ impl Protoarea {
 			eff_areas: Vec::with_capacity(5),
 		}
 	}
+
+	pub fn dims(&self) -> CorticalDimensions {
+		self.dims.clone()
+	}
 }
 
 

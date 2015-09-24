@@ -34,7 +34,7 @@ const REPEATS_PER_IMAGE: usize 				= 4;
 
 
 /* Eventually move defines to a config file or some such */
-pub fn define_protoregions() -> ProtolayerMaps {
+pub fn define_protolayer_maps() -> ProtolayerMaps {
 	let mut cort_regs: ProtolayerMaps = ProtolayerMaps::new();
 
 	cort_regs.add(ProtolayerMap::new("visual", Sensory)
@@ -119,9 +119,13 @@ pub fn define_protoareas() -> Protoareas {
 */
 pub fn run(autorun_iters: i32) -> bool {
 	// KEEP UNTIL WE FIGURE OUT HOW TO GENERATE THIS NUMBER ELSEWHERE
-	let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
+	let mut ir_labels_vec: Vec<u8> = Vec::with_capacity(1);
+	ir_labels_vec.push(0);
+
+	let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), 
+		"data/train-labels-idx1-ubyte", REPEATS_PER_IMAGE);
 	
-	let mut cortex = cortex::Cortex::new(define_protoregions(), define_protoareas());
+	let mut cortex = cortex::Cortex::new(define_protolayer_maps(), define_protoareas());
 	let mut area_name = "v1".to_string();
 	let inhib_layer_name = "iv_inhib";
 	let area_dims = cortex.area(&area_name).dims().clone();
@@ -361,6 +365,7 @@ pub fn run(autorun_iters: i32) -> bool {
 						
 			if !bypass_act {
 				//input_czar.next(&mut cortex);
+				ir_labels.next(&mut ir_labels_vec[..]);
 				cortex.cycle();
 			}
 
@@ -378,10 +383,11 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			if !bypass_act {
 				//input_czar.next(&mut cortex); // Just increments counter
+				ir_labels.next(&mut ir_labels_vec[..]);
 				cortex.cycle();
 				input_status.clear();
 				let cur_frame = cur_ttl_iters as usize % 5000;
-				input_status.push_str(&format!("[{}] -> '{}'", cur_frame, ir_labels.get_first_byte(cur_frame)));
+				input_status.push_str(&format!("[{}] -> '{}'", cur_frame, ir_labels_vec[0]));
 			}
 
 			//let sr_start = (512 << cmn::SYNAPSES_PER_CELL_PROXIMAL_LOG2) as usize;
@@ -420,12 +426,12 @@ pub fn run(autorun_iters: i32) -> bool {
 				let axn_space_len = cortex.area(&area_name).axns.states.vec.len();
 
 				rndr.render_axon_space(&cortex.area(&area_name).axns.states.vec[..], 
-					&cortex.area(&area_name).protoregion().slc_map(),
+					&cortex.area(&area_name).protolayer_map().slc_map(),
 					cortex.area(&area_name).dims.columns(),
-					cortex.area(&area_name).protoregion().hrz_demarc(),
+					cortex.area(&area_name).protolayer_map().hrz_demarc(),
 				);				
 
-				// cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).protoregion().slc_map(), true, cortex.area(&area_name).dims.columns());
+				// cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).protolayer_map().slc_map(), true, cortex.area(&area_name).dims.columns());
 			}
 
 			i += 1;

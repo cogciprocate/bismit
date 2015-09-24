@@ -14,7 +14,7 @@ use std::collections::{ BTreeMap };
 use rand;
 use rand::distributions::{ self, Normal, IndependentSample, Range };
 
-use ocl;
+use ocl::{ self, BuildOptions };
 
 
 
@@ -182,9 +182,48 @@ pub const SYN_CONCRETE_FLAG: u8				= 0b00001000;
 =============================================================================*/
 
 
+pub static BUILTIN_CL_FILE_NAME: &'static str = "bismit.cl";
+pub static BUILTIN_FILTERS_CL_FILE_NAME: &'static str = "filters.cl";
+static CL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
 
 
+pub fn base_build_options() -> BuildOptions {
 
+	//assert!(SENSORY_CHORD_COLUMNS % AXON_BUFFER_SIZE == 0);
+	/*assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
+	assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
+	assert!(DENDRITES_PER_CELL_DISTAL_LOG2 <= 8);
+	assert!(DENDRITES_PER_CELL_DISTAL <= 256);
+	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
+
+	let mut build_options = BuildOptions::new(CL_BUILD_SWITCHES)
+		/*.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
+		.opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
+		.opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
+		.opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)*/
+
+		.opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32)
+		.opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
+		//.opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
+		//.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
+		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
+		.opt("AXON_MARGIN_SIZE", AXON_MARGIN_SIZE as i32)
+		.opt("AXON_BUFFER_SIZE", AXON_BUFFER_SIZE as i32)
+		.opt("ASPINY_REACH", ASPINY_REACH as i32)
+		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
+		.opt("ASPINY_SPAN", ASPINY_SPAN as i32)
+
+		.opt("PYR_PREV_CONCRETE_FLAG", PYR_PREV_CONCRETE_FLAG as i32)
+		.opt("PYR_BEST_IN_COL_FLAG", PYR_BEST_IN_COL_FLAG as i32)
+		.opt("PYR_PREV_STP_FLAG", PYR_PREV_STP_FLAG as i32)
+		.opt("PYR_PREV_FUZZY_FLAG", PYR_PREV_FUZZY_FLAG as i32)
+		.opt("SYN_STP_FLAG", SYN_STP_FLAG as i32)
+		.opt("SYN_STD_FLAG", SYN_STP_FLAG as i32)
+		.opt("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
+	;	
+
+	build_options
+}
 
 
 

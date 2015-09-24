@@ -36,7 +36,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 	let layer_name = cortex.area_mut(area_name).ptal_name();
 	let ff_layer_name = cortex.area_mut(area_name).psal_name();
 
-	let src_slc_ids = cortex.area_mut(area_name).protoregion().src_slc_ids(layer_name, DendriteKind::Distal);
+	let src_slc_ids = cortex.area_mut(area_name).protolayer_map().src_slc_ids(layer_name, DendriteKind::Distal);
 	let src_slc_id = src_slc_ids[0];
 	
 	let ff_layer_axn_idz = cortex.area_mut(area_name).mcols.ff_layer_axn_idz();

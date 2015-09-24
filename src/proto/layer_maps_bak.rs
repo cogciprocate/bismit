@@ -27,7 +27,7 @@ impl ProtolayerMaps {
 		}
 	}
 
-	pub fn r(mut self, pr: ProtolayerMap) -> ProtolayerMaps {
+	pub fn layer_map(mut self, pr: ProtolayerMap) -> ProtolayerMaps {
 		self.add(pr);
 		self
 	}	

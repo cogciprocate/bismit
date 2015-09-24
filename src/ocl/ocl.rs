@@ -21,6 +21,9 @@ use super::work_size::{ WorkSize };
 use super::build_options::{ BuildOptions, BuildOption };
 //use super::cortical_dimensions::{ CorticalDimensions };
 
+const DEFAULT_PLATFORM: usize = 0;
+const DEFAULT_DEVICE: usize = 0;
+
 pub struct OclContext {
 	//platforms: Vec<cl_platform_id>,
 	platform: cl_platform_id,
@@ -35,7 +38,7 @@ impl OclContext {
 
 		let platform = match platform_idx {
 			Some(pf_idx) => platforms[pf_idx],
-			None => platforms[super::DEFAULT_PLATFORM],
+			None => platforms[DEFAULT_PLATFORM],
 		};
 		
 		let devices: Vec<cl_device_id> = super::get_device_ids(platform);
@@ -89,7 +92,7 @@ impl OclProgQueue {
 	pub fn new(context: &OclContext, device_idx: Option<usize>) -> OclProgQueue {
 		let device: cl_device_id = match device_idx {
 			Some(dvc_idx) => context.valid_device(dvc_idx),
-			None => context.devices()[super::DEFAULT_CL_DEVICE],
+			None => context.devices()[DEFAULT_DEVICE],
 		};
 
 		let queue: cl_command_queue = super::new_command_queue(context.context(), device); 
@@ -104,16 +107,13 @@ impl OclProgQueue {
 
 	pub fn build(&mut self, mut build_options: BuildOptions) /*-> Ocl*/ {
 		if self.program.is_some() { panic!("\nOcl::build(): Pre-existing build detected. Use: \
-			'{your_Ocl_instance} = {your_Ocl_instance}.clear_build()' first.") }
-
-		build_options.add_kern_file(super::BUILTIN_FILTERS_CL_FILE_NAME.to_string());
-		build_options.add_kern_file(super::BUILTIN_CL_FILE_NAME.to_string()); // ** MUST BE ADDED LAST **
+			'{your_Ocl_instance} = {your_Ocl_instance}.clear_build()' first.") }		
 
 		let kern_c_str = parse_kernel_files(&build_options);
 
 		println!("OCL::BUILD(): DEVICE: {:#?}", self.device);
 
-		let prg = super::new_program(kern_c_str.as_ptr(), build_options.to_string(), self.context, self.device);
+		let prg = super::new_program(kern_c_str.as_ptr(), build_options.to_build_string(), self.context, self.device);
 
 		super::program_build_info(prg, self.device);
 
@@ -288,6 +288,10 @@ fn parse_kernel_files(build_options: &BuildOptions) -> ffi::CString {
 	let mut kern_str: Vec<u8> = Vec::with_capacity(10000);
 	let mut kern_history: HashSet<String> = HashSet::with_capacity(20);
 
+	let dd_string = build_options.cl_file_header();
+	kern_str.push_all(&dd_string);
+	print!("OCL::PARSE_KERNEL_FILES(): KERNEL FILE DIRECTIVES HEADER: \n{}", String::from_utf8(dd_string).ok().unwrap());
+
 	for f_n in build_options.kernel_file_names().iter().rev() {
 		let file_name = format!("{}/{}/{}", env!("P"), "bismit/cl", f_n);
 
@@ -309,5 +313,5 @@ fn parse_kernel_files(build_options: &BuildOptions) -> ffi::CString {
 		kern_history.insert(file_name);
 	}
 
-	ffi::CString::new(kern_str).ok().expect("Ocl::new(): kern_c_str")
+	ffi::CString::new(kern_str).ok().expect("Ocl::new(): ocl::parse_kernel_files(): ffi::CString::new(): Error.")
 }

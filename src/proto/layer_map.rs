@@ -183,7 +183,7 @@ impl ProtolayerMap {
 	pub fn freeze(&mut self, protoarea: &Protoarea) {
 		if self.frozen {
 			return;
-		} else {
+		} else {			
 			// AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
 			self.set_layer_depth(layer::AFFERENT_INPUT, protoarea.eff_areas.len() as u8);
 			self.set_layer_depth(layer::EFFERENT_INPUT, protoarea.aff_areas.len() as u8);
@@ -577,6 +577,49 @@ pub enum RegionKind {
 	Thalamic,
 	//Thalamic(Box<Protoinput>),
 }
+
+
+
+pub struct ProtolayerMaps {
+	map: HashMap<&'static str, ProtolayerMap>,
+}
+
+impl ProtolayerMaps {
+	pub fn new() -> ProtolayerMaps {
+		ProtolayerMaps {
+			map: HashMap::new(),
+		}
+	}
+
+	pub fn layer_map(mut self, pr: ProtolayerMap) -> ProtolayerMaps {
+		self.add(pr);
+		self
+	}	
+
+	pub fn add(&mut self, pr: ProtolayerMap) {
+		self.map.insert(pr.name.clone(), pr);
+	}
+}
+
+impl<'b> Index<&'b str> for ProtolayerMaps
+{
+    type Output = ProtolayerMap;
+
+    fn index<'a>(&'a self, region_name: &'b str) -> &'a ProtolayerMap {
+        self.map.get(region_name).expect(&format!("proto::regions::ProtolayerMaps::index(): \
+        	Invalid region name: '{}'.", region_name))
+    }
+}
+
+impl<'b> IndexMut<&'b str> for ProtolayerMaps
+{
+    fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut ProtolayerMap {
+        self.map.get_mut(region_name).expect(&format!("proto::regions::ProtolayerMaps::index_mut(): \
+        	Invalid region name: '{}'.", region_name))
+    }
+}
+
+
 
 
 //impl Copy for RegionKind {}

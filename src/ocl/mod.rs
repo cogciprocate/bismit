@@ -16,7 +16,7 @@ use cmn;
 pub use self::ocl::{ OclContext, OclProgQueue };
 pub use self::cl_h::{ cl_platform_id, cl_device_id, cl_context, cl_program, 
 	cl_kernel, cl_command_queue, cl_float, cl_mem, cl_event, cl_char, cl_uchar, 
-	cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus, 
+	cl_short, cl_ushort, cl_int, cl_uint, cl_long, cl_bitfield, CLStatus, 
 	clSetKernelArg, clEnqueueNDRangeKernel };
 pub use self::kernel::{ Kernel };
 pub use self::envoy::{ Envoy, EnvoyDimensions };
@@ -30,14 +30,7 @@ mod kernel;
 mod work_size;
 mod build_options;
 
-const DEFAULT_PLATFORM: usize = 0;
-const DEFAULT_CL_DEVICE: usize = 0;
 
-static BUILTIN_CL_FILE_NAME: &'static str = "bismit.cl";
-static BUILTIN_FILTERS_CL_FILE_NAME: &'static str = "filters.cl";
-static CL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
-const DEVICES_MAX: u32 = 16;
-const DEFAULT_DEVICE_TYPE: cl_h::cl_bitfield = 1 << 2; // CL_DEVICE_TYPE_GPU
 // pub static CL_DEVICE_TYPE_DEFAULT:                       cl_bitfield = 1 << 0;
 // 		CL_DEVICE_TYPE_DEFAULT:	The default OpenCL device in the system.
 // pub static CL_DEVICE_TYPE_CPU:                           cl_bitfield = 1 << 1;
@@ -51,42 +44,9 @@ const DEFAULT_DEVICE_TYPE: cl_h::cl_bitfield = 1 << 2; // CL_DEVICE_TYPE_GPU
 // 		These devices communicate with the host processor using a peripheral interconnect such as PCIe.
 // pub static CL_DEVICE_TYPE_ALL:                           cl_bitfield = 0xFFFFFFFF;
 // 		CL_DEVICE_TYPE_ALL
+const DEFAULT_DEVICE_TYPE: cl_bitfield = 1 << 2; // CL_DEVICE_TYPE_GPU
 
-
-pub fn base_build_options() -> BuildOptions {
-
-	//assert!(cmn::SENSORY_CHORD_COLUMNS % cmn::AXON_BUFFER_SIZE == 0);
-	/*assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
-	assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
-	assert!(DENDRITES_PER_CELL_DISTAL_LOG2 <= 8);
-	assert!(DENDRITES_PER_CELL_DISTAL <= 256);
-	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
-
-	BuildOptions::new(CL_BUILD_SWITCHES)
-		/*.new_opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
-		.new_opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
-		.new_opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
-		.new_opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)*/
-
-		.new_opt("COLUMN_DOMINANCE_FLOOR", cmn::COLUMN_DOMINANCE_FLOOR as i32)
-		.new_opt("SYNAPSE_STRENGTH_FLOOR", cmn::SYNAPSE_STRENGTH_FLOOR as i32)
-		//.new_opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
-				//.new_opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
-		.new_opt("ASPINY_REACH_LOG2", cmn::ASPINY_REACH_LOG2 as i32)
-		.new_opt("AXON_MARGIN_SIZE", cmn::AXON_MARGIN_SIZE as i32)
-		.new_opt("AXON_BUFFER_SIZE", cmn::AXON_BUFFER_SIZE as i32)
-		.new_opt("ASPINY_REACH", cmn::ASPINY_REACH as i32)
-		.new_opt("ASPINY_SPAN_LOG2", cmn::ASPINY_SPAN_LOG2 as i32)
-		.new_opt("ASPINY_SPAN", cmn::ASPINY_SPAN as i32)
-
-		.new_opt("PYR_PREV_CONCRETE_FLAG", cmn::PYR_PREV_CONCRETE_FLAG as i32)
-		.new_opt("PYR_BEST_IN_COL_FLAG", cmn::PYR_BEST_IN_COL_FLAG as i32)
-		.new_opt("PYR_PREV_STP_FLAG", cmn::PYR_PREV_STP_FLAG as i32)
-		.new_opt("PYR_PREV_FUZZY_FLAG", cmn::PYR_PREV_FUZZY_FLAG as i32)
-		.new_opt("SYN_STP_FLAG", cmn::SYN_STP_FLAG as i32)
-		.new_opt("SYN_STD_FLAG", cmn::SYN_STP_FLAG as i32)
-		.new_opt("SYN_CONCRETE_FLAG", cmn::SYN_CONCRETE_FLAG as i32)
-}
+const DEVICES_MAX: u32 = 16;
 
 
 // Create Platform and get ID
