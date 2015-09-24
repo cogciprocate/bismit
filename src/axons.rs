@@ -62,7 +62,7 @@ impl Axons {
 
 		let dims = area_dims.clone_with_depth(physical_depth);
 
-		let padding: u32 = (cmn::AXON_BUFFER_SIZE) as u32;
+		let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
 		
 		println!("      AXONS::NEW(): new axons with: depth_axn_s: {}, depth_cel: {}, depth_axn_h: {}, physical_depth: {}, padding: {}, dims: {:?}", depth_axn_sptl, depth_cellular, depth_axn_hrz, physical_depth, padding, dims);
 

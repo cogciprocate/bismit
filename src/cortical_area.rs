@@ -50,8 +50,10 @@ pub struct CorticalArea {
 	ocl_context: OclContext,
 	counter: usize,
 	pub bypass_inhib: bool,
+	pub bypass_filters: bool,
 	pub disable_pyrs: bool,
 	pub disable_ssts: bool,
+	pub disable_mcols: bool,
 	pub disable_regrowth: bool,
 	pub disable_learning: bool,
 }
@@ -238,34 +240,36 @@ impl CorticalArea {
 			ocl_context: ocl_context,
 			counter: 0,
 			bypass_inhib: false,
+			bypass_filters: false,
 			disable_pyrs: false,
 			disable_ssts: false,
+			disable_mcols: false,
 			disable_regrowth: false,
 			disable_learning: false,
 		};
 
-		cortical_area.init_kernels();
+		//cortical_area.init_kernels();
 		cortical_area
 	}
 
-	pub fn init_kernels(&mut self) {
-		//self.axns.init_kernels(&self.mcols.asps, &self.mcols, &self.aux)
-		//self.mcols.dens.syns.init_kernels(&self.axns, ocl);
+	// pub fn init_kernels(&mut self) {
+	// 	//self.axns.init_kernels(&self.mcols.asps, &self.mcols, &self.aux)
+	// 	//self.mcols.dens.syns.init_kernels(&self.axns, ocl);
 
-		let emsg = "cortical_area::CorticalArea::init_kernels(): Invalid Primary Spatial Associative Layer Name.";
+	// 	let emsg = "cortical_area::CorticalArea::init_kernels(): Invalid Primary Spatial Associative Layer Name.";
 
-		self.pyrs_map.get_mut(self.ptal_name).expect(emsg).init_kernels(&self.mcols, &self.ssts_map.get_mut(self.psal_name).expect("emsg"), &self.axns, &self.aux);
+	// 	self.pyrs_map.get_mut(self.ptal_name).expect(emsg).init_kernels(&self.mcols, &self.ssts_map.get_mut(self.psal_name).expect("emsg"), &self.axns, &self.aux);
 
 
-		/*
-		let layer_name_iv = self.psal_name;
-		let slc_ids_iv = self.protolayer_map.slc_ids(vec![layer_name_iv]);
-		let layer_depth_iv = slc_ids_iv.len() as u8;
-		let base_slc_iv = slc_ids_iv[0];
-		let soma_envoy_iv = &self.ssts_map.get_mut(layer_name_iv).expect("cortical_area.rs").soma();
-		self.iinns.get_mut("iv_inhib").expect("cortical_area.rs").init_kernels(soma_envoy_iv, base_slc_iv, layer_depth_iv);
-		*/
-	}
+	// 	/*
+	// 	let layer_name_iv = self.psal_name;
+	// 	let slc_ids_iv = self.protolayer_map.slc_ids(vec![layer_name_iv]);
+	// 	let layer_depth_iv = slc_ids_iv.len() as u8;
+	// 	let base_slc_iv = slc_ids_iv[0];
+	// 	let soma_envoy_iv = &self.ssts_map.get_mut(layer_name_iv).expect("cortical_area.rs").soma();
+	// 	self.iinns.get_mut("iv_inhib").expect("cortical_area.rs").init_kernels(soma_envoy_iv, base_slc_iv, layer_depth_iv);
+	// 	*/
+	// }
 
 	// CYCLE(): <<<<< TODO: ISOLATE LEARNING INTO SEPARATE THREAD >>>>>
 	pub fn cycle(&mut self) /*-> (&Vec<&'static str>, &Vec<&'static str>)*/ {
@@ -276,14 +280,15 @@ impl CorticalArea {
 		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.bypass_inhib);
 
 		if !self.disable_ssts {	if !self.disable_learning { self.psal_mut().learn(); } }
+
+		if !self.disable_mcols { self.mcols.activate(); }
 		
-		if !self.disable_pyrs {
-			self.ptal_mut().activate();
+		if !self.disable_pyrs {			
 			if !self.disable_learning { self.ptal_mut().learn(); }
 			self.ptal_mut().cycle();
 		}
 
-		self.mcols.output();
+		if !self.disable_mcols { self.mcols.output(); }
 
 		if !self.disable_regrowth { self.regrow(); }
 
@@ -303,14 +308,15 @@ impl CorticalArea {
 
 
 	/* AXN_OUTPUT(): NEEDS UPDATING (DEPRICATION?) */
-	pub fn axn_output_range(&self) -> (usize, usize) {
-		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::AXON_MARGIN_SIZE: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::AXON_MARGIN_SIZE);
+	pub fn axn_output_range(&self) -> (u32, u32) {
+		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::AXON_MAR__GIN_SIZE: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::AXON_MAR__GIN_SIZE);
 		let output_slcs = self.area_map.protolayer_map().aff_out_slcs();
 		assert!(output_slcs.len() == 1);
 		let axn_output_slc = output_slcs[0];
 
-		let start = (axn_output_slc as usize * self.dims.columns() as usize) + cmn::AXON_MARGIN_SIZE as usize;
-		(start, start + (self.dims.per_slc()) as usize)
+		//let start = (axn_output_slc as usize * self.dims.columns() as usize) + cmn::AXON_MAR__GIN_SIZE as usize;
+		let start = cmn::axn_idz_2d(axn_output_slc, self.dims.columns(), self.area_map.hrz_demarc());
+		(start, start + (self.dims.per_slc()))
 	}
 
 	/* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
@@ -319,7 +325,7 @@ impl CorticalArea {
 		let src_slc_ids = self.area_map.protolayer_map().src_slc_ids(layer_name, *den_kind);
 
 		for ssid in src_slc_ids {
-			let idz = cmn::axn_idz_2d(ssid, self.dims.columns(), self.area_map.protolayer_map().hrz_demarc());
+			let idz = cmn::axn_idz_2d(ssid, self.dims.columns(), self.area_map.hrz_demarc());
 		 	let idn = idz + self.dims.columns();
 			axn_irs.push(idz..idn);
 		}
@@ -328,7 +334,7 @@ impl CorticalArea {
 	}
 
 	pub fn write_input(&self, sdr: &[ocl::cl_uchar], layer_flags: layer::ProtolayerFlags) {
-		if layer_flags.contains(layer::AFFERENT_INPUT) {
+		if layer_flags.contains(layer::AFFERENT_INPUT) && !self.bypass_filters {
 			match self.filters {
 				Some(ref filters_vec) => {
 					filters_vec[0].write(sdr);
@@ -344,6 +350,9 @@ impl CorticalArea {
 		}
 
 		let axn_range = self.axn_range(layer_flags);
+
+		println!("\nCORTICALAREA::WRITE_INPUT(): axn_range: {:?}", axn_range);
+
 		assert!(sdr.len() == axn_range.len() as usize, format!("\n\
 			cortical_area::CorticalArea::write_input()<area: '{}'>: \
 			sdr.len(): {} != axn_range.len(): {}", self.name, sdr.len(), axn_range.len()));
@@ -360,6 +369,20 @@ impl CorticalArea {
 			sdr.len(): {} != axn_range.len(): {}", self.name, sdr.len(), axn_range.len()));
 
 		self.read_from_axons(axn_range, sdr);
+	}
+
+	// READ_FROM_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
+	// <<<<< TODO: DEPRICATE IN FAVOR OF ENVOY::WRITE_DIRECT() >>>>>
+	pub fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut [ocl::cl_uchar]) {
+		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
+		ocl::enqueue_read_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
+	}
+
+	// WRITE_TO_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
+	// <<<<< TODO: DEPRICATE IN FAVOR OF ENVOY::WRITE_DIRECT() >>>>>
+	pub fn write_to_axons(&self, axn_range: Range<u32>, sdr: &[ocl::cl_uchar]) {
+		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
+		ocl::enqueue_write_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
 	}
 
 	pub fn axn_range(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {
@@ -392,14 +415,9 @@ impl CorticalArea {
 		}		
 	}
 
-	pub fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut [ocl::cl_uchar]) {
-		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-		ocl::enqueue_read_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
-	}
 
-	pub fn write_to_axons(&self, axn_range: Range<u32>, sdr: &[ocl::cl_uchar]) {
-		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-		ocl::enqueue_write_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
+	pub fn mcols(&self) -> &Box<Minicolumns> {
+		&self.mcols
 	}
 
 
@@ -507,3 +525,27 @@ impl Drop for CorticalArea {
 }
 
 
+
+// mod tests {
+// 	use std::ops::{ Range };
+// 	use super::*;
+// 	use ocl::{ self };
+
+// 	trait CorticalAreaTests {
+// 		fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut [ocl::cl_uchar]);
+// 		fn write_to_axons(&self, axn_range: Range<u32>, sdr: &[ocl::cl_uchar]);
+// 	}
+
+// 	impl CorticalAreaTests for CorticalArea {
+// 		pub fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut [ocl::cl_uchar]) {
+// 			assert!((axn_range.end - axn_range.start) as usize == sdr.len());
+// 			ocl::enqueue_read_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
+// 		}
+
+// 		pub fn write_to_axons(&self, axn_range: Range<u32>, sdr: &[ocl::cl_uchar]) {
+// 			assert!((axn_range.end - axn_range.start) as usize == sdr.len());
+// 			ocl::enqueue_write_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
+// 		}
+// 	}
+
+// }

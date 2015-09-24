@@ -94,15 +94,15 @@ pub fn define_protoareas() -> Protoareas {
 
 		.area("v1", "visual", area_side, area_side, 
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-			Some(vec!["b1"]),
-			//None,
+			//Some(vec!["b1"]),
+			None,
 		)
 
-		.area("b1", "visual", area_side, area_side,
-		 	None,
-		 	//Some(vec!["a1"]),
-		 	None,
-		)
+		// .area("b1", "visual", area_side, area_side,
+		//  	None,
+		//  	//Some(vec!["a1"]),
+		//  	None,
+		// )
 
 		// .area("a1", "visual", area_side, area_side, None, None)
 	;
@@ -134,7 +134,10 @@ pub fn run(autorun_iters: i32) -> bool {
 	for (area_name, area) in &mut cortex.areas {
 		//area.psal_mut().dens_mut().syns.set_offs_to_zero();
 		//area.bypass_inhib = true;
+		//area.bypass_filters = true;
 		//area.disable_pyrs = true;
+		//area.disable_ssts = true;
+		//area.disable_mcols = true;
 		//area.disable_regrowth = true;
 		//area.disable_learning = true;
 	}

@@ -48,13 +48,13 @@ impl InputCzar {
 
 		let mut motor_state = motor_state::MotorState::new();
 
-		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::AXON_BUFFER_SIZE as usize).collect();
+		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize).collect();
 		
 		if toggle_dirs {
 			vec_motor.clone_from_slice(&motor_state.cur_sdr(false));
 		}
 
-		let vec_test_noise = junk0_vec_init(cmn::AXON_BUFFER_SIZE, 0);
+		let vec_test_noise = junk0_vec_init(cmn::SYNAPSE_SPAN_RHOMBAL_AREA, 0);
 
 		InputCzar {
 			dims: dims,
@@ -99,9 +99,9 @@ impl InputCzar {
 		if self.introduce_noise {
 			/*if (self.ttl_count & 0x01) == 0x01 {
 				//if (self.reset_count & 0x01) == 0x01 {
-				self.vec_test_noise = test_vec_init(cmn::AXON_BUFFER_SIZE, 0);
+				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN_RHOMBAL_AREA, 0);
 			} else {
-				self.vec_test_noise = test_vec_init(cmn::AXON_BUFFER_SIZE, 1);
+				self.vec_test_noise = test_vec_init(cmn::SYNAPSE_SPAN_RHOMBAL_AREA, 1);
 			}*/
 		}
 
@@ -453,12 +453,15 @@ fn junk0_vec_init(sca: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use ocl::{ self, CorticalDimensions };
+	use ocl::{ self };
+	use cmn::{ CorticalDimensions };
 	
 	#[test]
 	fn test_input_czar() {
 		let dims = CorticalDimensions::new(32, 32, 1, 0, None);
-		let mut ic = super::InputCzar::new(dims, super::InputKind::Stripes { stripe_size: 512, zeros_first: false }, 0..5, false, false, false);
+		let mut ic = super::InputCzar::new(dims, 
+			vec![InputSource::new(InputKind::Stripes { stripe_size: 512, zeros_first: false }, "v0")],
+			0..5, false, false, false);
 		//ic.set_counter(5);
 
 		assert!(ic.counter == 5);

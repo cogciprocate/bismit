@@ -31,11 +31,13 @@ use spiny_stellates::{ SpinyStellateCellularLayer };
 */
 pub struct Minicolumns {
 	dims: CorticalDimensions,
-	axn_output_slc: u8,
+	aff_out_axn_slc: u8, 
+	hrz_demarc: u8,		// TEMPORARY
 	ff_layer_axn_idz: usize,
 	//kern_cycle: ocl::Kernel,
 	//kern_post_inhib: ocl::Kernel,
 	kern_output: ocl::Kernel,
+	kern_activate: ocl::Kernel,
 	//kern_ltp: ocl::Kernel,
 	rng: rand::XorShiftRng,
 	//regrow_counter: usize,	// SLATED FOR REMOVAL
@@ -54,12 +56,13 @@ impl Minicolumns {
 
 					/*ssts_map: &HashMap<&str, Box<SpinyStellateCellularLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalCellularLayer>>, */
 
-					sstl: &SpinyStellateCellularLayer, 
+					ssts: &SpinyStellateCellularLayer, 
 					pyrs: &PyramidalCellularLayer,
 
 					aux: &Aux, ocl: &OclProgQueue) -> Minicolumns {
 
 		assert!(dims.depth() == 1);
+		assert!(dims.v_size() == pyrs.dims().v_size() && dims.u_size() == pyrs.dims().u_size());
 
 		/*let psal_name = cortex.area_mut("v1").psal_name();
 		let ptal_name = cortex.area_mut("v1").ptal_name();*/
@@ -72,7 +75,7 @@ impl Minicolumns {
 		//let syns_per_den_l2 = cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2;
 		//let syns_per_tuft: u32 = 1 << syns_per_den_l2;
 
-		let (ff_layer_axn_idz, _) = sstl.axn_range();
+		let (ff_layer_axn_idz, _) = ssts.axn_range();
 
 		let pyr_depth = protoregion.depth_cell_kind(&ProtocellKind::Pyramidal);
 
@@ -87,39 +90,52 @@ impl Minicolumns {
 		let pred_totals = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
-		//let iinn = InhibitoryInterneuronNetwork::new(dims, protoregion, &sstl.soma(), ocl);
+		//let iinn = InhibitoryInterneuronNetwork::new(dims, protoregion, &ssts.soma(), ocl);
 
 		/*let syns = Synapses::new(dims, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
 			ProtocellKind::SpinyStellate, protoregion, axons, aux, ocl);*/
 
-		let (sstl_axn_idz, _) = sstl.axn_range();
-		//let axn_output_slc = sstl.base_axn_slc();
-
-
-		let axn_output_slc = protoregion.aff_out_slcs()[0];
-
+		let aff_out_axn_slc = protoregion.aff_out_slcs()[0];
 
 		/*let output_slcs = protoregion.aff_out_slcs();
 		assert!(output_slcs.len() == 1);
-		let axn_output_slc = output_slcs[0];
+		let aff_out_axn_slc = output_slcs[0];
 		let ssts_slc_ids = protoregion.slc_ids(vec!["iv_old"]);
 		let ssts_axn_base_slc = ssts_slc_ids[0];
 		let ssts_axn_idz_old = cmn::axn_idz_2d(ssts_axn_base_slc, dims.columns(), protoregion.hrz_demarc());
 		assert!(ssts_axn_idz == ssts_axn_idz_old as usize);*/
 
+		// REPLACE ME WITH AREAMAP GOODNESS
+		let (ssts_axn_idz, _) = ssts.axn_range();		
+
+		let kern_activate = ocl.new_kernel("mcol_activate_pyrs".to_string(),
+			WorkSize::ThreeDim(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+			.arg_env(&pred_totals)
+			.arg_env(&best_pyr_den_states)
+			.arg_env(&pyrs.best_den_ids)
+			.arg_env(&pyrs.dens.states)
+			.arg_scl(ssts_axn_idz as u32)
+			.arg_scl(pyrs.axn_base_slc())
+			.arg_scl(pyrs.protocell().dens_per_tuft_l2)
+			.arg_env(&pyrs.flag_sets)
+			.arg_env(&pyrs.preds)
+			//.arg_env(&aux.ints_0)
+			.arg_env(&axons.states)
+		;
+
 		//println!("\n ##### ssts_axn_idz: {}", ssts_axn_idz);
 
-		let kern_output = ocl.new_kernel("col_output".to_string(), 
-			WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
-			//.lws(WorkSize::TwoDim(1 as usize, cmn::AXONS_WORKGROUP_SIZE as usize))
-			//.arg_env(&sstl.soma())
+		let kern_output = ocl.new_kernel("mcol_output".to_string(), 
+			//WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
+			WorkSize::ThreeDim(1 as usize, dims.v_size() as usize, dims.u_size() as usize))
+			//.arg_env(&ssts.soma())
 			.arg_env(&pyrs.soma())
 			.arg_env(&pyrs.best_den_states)
 			//.arg_scl(depth)
-			.arg_scl(sstl_axn_idz as u32)
+			.arg_scl(ssts_axn_idz as u32)
 			.arg_scl(pyr_depth)
 			//.arg_scl(pyr_axn_base_slc)
-			.arg_scl(axn_output_slc)
+			.arg_scl(aff_out_axn_slc)
 			.arg_env(&pred_totals)
 			.arg_env(&best_pyr_den_states)
 			.arg_env(&axons.states)
@@ -128,11 +144,13 @@ impl Minicolumns {
 
 		Minicolumns {
 			dims: dims,
-			axn_output_slc: axn_output_slc,
+			aff_out_axn_slc: aff_out_axn_slc,
+			hrz_demarc: protoregion.hrz_demarc(),
 			ff_layer_axn_idz: ff_layer_axn_idz,
 			//kern_cycle: kern_cycle,
 			//kern_post_inhib: kern_post_inhib,
 			kern_output: kern_output,
+			kern_activate: kern_activate,
 			//kern_ltp: kern_ltp,
 			rng: rand::weak_rng(),
 			//regrow_counter: 0usize,
@@ -145,10 +163,38 @@ impl Minicolumns {
 		}
 	}
 
+
+	// pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &Box<SpinyStellateCellularLayer>, axns: &Axons, aux: &Aux) {
+	// 	let (ssts_axn_idz, _) = ssts.axn_range();
+	// 	//println!("\n##### Pyramidals::init_kernels(): ssts_axn_idz: {}", ssts_axn_idz as u32);
+
+	// 	println!("   PYRAMIDALS::INIT_KERNELS()[ACTIVATE]: ssts_axn_range(): {:?}", ssts.axn_range());
+
+	// 	//self.kern_activate.new_arg_envoy(Some(&ssts.soma()));
+	// 	self.kern_activate.new_arg_envoy(Some(&mcols.pred_totals));
+	// 	self.kern_activate.new_arg_envoy(Some(&mcols.best_pyr_den_states));
+	// 	self.kern_activate.new_arg_envoy(Some(&self.best_den_ids));
+	// 	self.kern_activate.new_arg_envoy(Some(&self.dens.states));
+
+	// 	self.kern_activate.new_arg_scalar(Some(ssts_axn_idz as u32));
+	// 	self.kern_activate.new_arg_scalar(Some(self.axn_base_slc));
+	// 	self.kern_activate.new_arg_scalar(Some(self.protocell.dens_per_tuft_l2));
+
+	// 	//self.kern_activate.new_arg_envoy(&self.energies);
+	// 	self.kern_activate.new_arg_envoy(Some(&self.flag_sets));
+	// 	self.kern_activate.new_arg_envoy(Some(&self.preds));	
+	// 	//self.kern_activate.new_arg_envoy(Some(&aux.ints_0));
+	// 	self.kern_activate.new_arg_envoy(Some(&axns.states));
+	// }
+
 	/*pub fn cycle(&mut self, ltp: bool) {
 		self.iinn.cycle();  
 		self.kern_post_inhib.enqueue(); 
 	}*/
+
+	pub fn activate(&self) {
+		self.kern_activate.enqueue();
+	}
 
 	pub fn output(&self) {
 		self.kern_output.enqueue();
@@ -159,16 +205,19 @@ impl Minicolumns {
 		//self.states_raw.read();
 		self.pred_totals.read();
 		//self.iinn.confab();
-		//self.sstl.dens.confab();
+		//self.ssts.dens.confab();
 	}
 
 	pub fn ff_layer_axn_idz(&self) -> usize {
 		self.ff_layer_axn_idz
 	}
 
+	// AXN_OUTPUT_RANGE(): USED FOR TESTING / DEBUGGING PURPOSES
 	pub fn axn_output_range(&self) -> (usize, usize) {
-		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::AXON_MARGIN_SIZE: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::AXON_MARGIN_SIZE);
-		let start = (self.axn_output_slc as usize * self.dims.columns() as usize) + cmn::AXON_MARGIN_SIZE as usize;
+		//	println!("self.aff_out_axn_slc: {}, self.dims.columns(): {}, cmn::AXON_MAR__GIN_SIZE: {}", 
+		//		self.aff_out_axn_slc as usize, self.dims.columns() as usize, cmn::AXON_MAR__GIN_SIZE);
+		//let start = (self.aff_out_axn_slc as usize * self.dims.columns() as usize) + cmn::AXON_MAR__GIN_SIZE as usize;
+		let start = cmn::axn_idz_2d(self.aff_out_axn_slc, self.dims.columns(), self.hrz_demarc) as usize;
 		(start, start + self.dims.per_slc() as usize)
 	}
 }

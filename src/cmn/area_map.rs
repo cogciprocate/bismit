@@ -48,6 +48,10 @@ impl AreaMap {
 		&self.protolayer_map
 	}
 
+	pub fn hrz_demarc(&self) -> u8 {
+		self.protolayer_map.hrz_demarc()
+	}
+
 	pub fn gen_build_options(&self) -> BuildOptions {
 		let mut build_options = cmn::base_build_options()
 			.add_opt(BuildOption::new("HORIZONTAL_AXON_ROW_DEMARCATION", self.protolayer_map.hrz_demarc() as i32))

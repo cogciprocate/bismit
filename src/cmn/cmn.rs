@@ -94,23 +94,25 @@ pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 // pub const SYNAPSE_REACH_GEO_LOG2: u32 = 3;
 // pub const SYNAPSE_REACH_GEO: u32 = 1 << SYNAPSE_REACH_GEO_LOG2;
 // pub const SYNAPSE_SPAN_GEO: u32 = SYNAPSE_REACH_GEO << 1;
-// pub const AXON_MARGIN_SIZE: u32 = (1 << (((SYNAPSE_REACH_GEO_LOG2 + 1) << 1) - 1));	// ((AXON_BUFFER_SIZE ^ 2) / 2)
-// pub const AXON_BUFFER_SIZE: u32 = (1 << ((SYNAPSE_REACH_GEO_LOG2 + 1) << 1));	// (AXON_BUFFER_SIZE ^ 2)
+// pub const AXON_MAR__GIN_SIZE: u32 = (1 << (((SYNAPSE_REACH_GEO_LOG2 + 1) << 1) - 1));	// ((AXON_BUFFER_SIZE ^ 2) / 2)
+// pub const AXON_BUF__FER_SIZE: u32 = (1 << ((SYNAPSE_REACH_GEO_LOG2 + 1) << 1));	// (AXON_BUFFER_SIZE ^ 2)
 
 pub const SYNAPSE_REACH: u32 = 8;
 pub const SYNAPSE_SPAN: u32 = SYNAPSE_REACH * 2;
+pub const SYNAPSE_SPAN_RHOMBAL_AREA: u32 = SYNAPSE_SPAN * SYNAPSE_SPAN;
+pub const SYNAPSE_REACH_CELLS: u32 = (3 * (SYNAPSE_REACH * SYNAPSE_REACH)) + (3 * SYNAPSE_REACH) + 1;
 
-pub const AXON_MARGIN_SIZE: u32 = (SYNAPSE_REACH * SYNAPSE_REACH) + SYNAPSE_REACH;
-pub const AXON_BUFFER_SIZE: u32 = AXON_MARGIN_SIZE * 2;
-
+//pub const AXON_MARGIN_SIZE: u32 = (SYNAPSE_REACH * SYNAPSE_REACH) + SYNAPSE_REACH;
+//pub const AXON_BUFFER_SIZE: u32 = AXON_MARGIN_SIZE * 2;
+pub const AXON_MARGIN_SIZE: u32 = 0;
 
 
 pub const MAX_EFFERENT_AREAS: usize = 64;
 
-/*pub const AXON_MARGIN_SIZE_LOG2: u32 = 7;
-pub const AXON_MARGIN_SIZE: u32 = 1 << AXON_MARGIN_SIZE_LOG2;
-pub const AXON_BUFFER_SIZE: u32 = AXON_MARGIN_SIZE << 1;
-pub const AXON_MARGIN_SIZE: usize = AXON_MARGIN_SIZE as usize;*/
+/*pub const AXON_MAR__GIN_SIZE_LOG2: u32 = 7;
+pub const AXON_MAR__GIN_SIZE: u32 = 1 << AXON_MAR__GIN_SIZE_LOG2;
+pub const AXON_BUF__FER_SIZE: u32 = AXON_MAR__GIN_SIZE << 1;
+pub const AXON_MAR__GIN_SIZE: usize = AXON_MAR__GIN_SIZE as usize;*/
 
 
 pub const SYNAPSE_ROW_POOL_SIZE: u32 = 256;
@@ -208,7 +210,8 @@ pub fn base_build_options() -> BuildOptions {
 		//.opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
 		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
 		.opt("AXON_MARGIN_SIZE", AXON_MARGIN_SIZE as i32)
-		.opt("AXON_BUFFER_SIZE", AXON_BUFFER_SIZE as i32)
+		//.opt("AXON_BUFFER_SIZE", AXON_BUFFER_SIZE as i32)
+		.opt("SYNAPSE_SPAN_RHOMBAL_AREA", SYNAPSE_SPAN_RHOMBAL_AREA as i32)
 		.opt("ASPINY_REACH", ASPINY_REACH as i32)
 		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
 		.opt("ASPINY_SPAN", ASPINY_SPAN as i32)
@@ -745,10 +748,10 @@ pub fn new_pred(
 	- OpenCL device side version below [outdated] (for reference) - concerned with individual indexes:
 
 		static inline uint axn_idz_2d(uchar slc_id, uint slc_columns, uint col_id, char col_ofs) {
-			uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + AXON_MARGIN_SIZE));
+			uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + AXON_MAR__GIN_SIZE));
 			int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
-			int hcol_id = mad24(hslc_id, AXON_BUFFER_SIZE, col_ofs + AXON_MARGIN_SIZE);
-			uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_columns, (uint)(hcol_id + AXON_MARGIN_SIZE));
+			int hcol_id = mad24(hslc_id, SYNAPSE_SPAN_RHOMBAL_AREA, col_ofs + AXON_MAR__GIN_SIZE);
+			uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_columns, (uint)(hcol_id + AXON_MAR__GIN_SIZE));
 			return mul24((uint)(hslc_id < 0), axn_idx_spt) + mul24((uint)(hslc_id >= 0), axn_idx_hrz);
 		}
 }*/
@@ -756,7 +759,7 @@ pub fn axn_idz_2d(axn_slc: u8, columns: u32, hrz_demarc: u8) -> u32 {
 	let mut axn_idx: u32 = if axn_slc < hrz_demarc {
 		(axn_slc as u32 * columns)
 	} else {
-		(hrz_demarc as u32 * columns) + AXON_BUFFER_SIZE * (axn_slc as u32 - hrz_demarc as u32)
+		(hrz_demarc as u32 * columns) + (SYNAPSE_SPAN_RHOMBAL_AREA * (axn_slc as u32 - hrz_demarc as u32))
 	};
 
 	axn_idx + AXON_MARGIN_SIZE as u32
@@ -825,8 +828,8 @@ mod tests {
 	#[test]
 	fn test_axn_idz_2d() {
 		assert!(axn_idz_2d(1, 1024, 4) == 1024u32 + AXON_MARGIN_SIZE as u32);
-		assert!(axn_idz_2d(5, 1024, 4) == 4096u32 + AXON_BUFFER_SIZE + AXON_MARGIN_SIZE as u32);
-		assert!(axn_idz_2d(15, 1024, 4) == 4096u32 + (11 * AXON_BUFFER_SIZE) + AXON_MARGIN_SIZE as u32);
+		assert!(axn_idz_2d(5, 1024, 4) == 4096u32 + SYNAPSE_SPAN_RHOMBAL_AREA + AXON_MARGIN_SIZE as u32);
+		assert!(axn_idz_2d(15, 1024, 4) == 4096u32 + (11 * SYNAPSE_SPAN_RHOMBAL_AREA) + AXON_MARGIN_SIZE as u32);
 
 	}
 

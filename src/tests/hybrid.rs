@@ -99,7 +99,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 
 		*/
 		// FIRST ACTIVATION:
-		cortex.area_mut(area_name).ptal_mut().activate();
+		cortex.area_mut(area_name).mcols().activate();
 
 		{// AXNS IN SCOPE
 			let axns = &mut cortex.area_mut(area_name).axns;
@@ -227,39 +227,36 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 
 
 
-			{// CELS IN SCOPE
-				let cels = cortex.area_mut(area_name).ptal_mut();
-
-				// SECOND ACTIVATION:
-				// TODO TEST: should see cell axon go higher
-				if true { 
-					if last_run && last_learning_run {
-						println!("\nACTIVATING CELLS AGAIN (2ND TIME)... ");
-					}
-
-					cels.activate();
+			// SECOND ACTIVATION:
+			// TODO TEST: should see cell axon go higher
+			if true { 
+				if last_run && last_learning_run {
+					println!("\nACTIVATING CELLS AGAIN (2ND TIME)... ");
 				}
 
+				cortex.area_mut(area_name).mcols().activate();
+			}
+
+
+			if last_run && last_learning_run {
+				cortex.area_mut(area_name).ptal_mut().print_cel(cel_idx);
+			}
+
+			// TODO: TEST FOR CORRECT FLAG_SETS
+
+			// LEARNING
+			if true { 
+				if last_run && last_learning_run {
+					println!("\nPERFORMING LEARNING... ");
+				}
+
+				cortex.area_mut(area_name).ptal_mut().learn();
 
 				if last_run && last_learning_run {
-					cels.print_cel(cel_idx);
-				}
-
-				// TODO: TEST FOR CORRECT FLAG_SETS
-
-				// LEARNING
-				if true { 
-					if last_run && last_learning_run {
-						println!("\nPERFORMING LEARNING... ");
-					}
-
-					cels.learn();
-
-					if last_run && last_learning_run {
-						cels.print_cel(cel_idx);
-					}
+					cortex.area_mut(area_name).ptal_mut().print_cel(cel_idx);
 				}
 			}
+			
 
 
 			/*  SIMULATE NEXT CYCLE()  */
@@ -268,35 +265,32 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 			vec_ff[col_id] = 0;
 			cortex.write(area_name, ff_layer_name, &vec_ff);
 
-			{// CELS IN SCOPE
-				let cels = cortex.area_mut(area_name).ptal_mut();
 
-				// DEACTIVATE SYNAPSES
-				let den_idz = cel_idx * dens_per_tuft;
-				let syn_idz = den_idz * syns_per_den;
+			// DEACTIVATE SYNAPSES
+			let den_idz = cel_idx * dens_per_tuft;
+			let syn_idz = den_idz * syns_per_den;
 
-				// RESET ENTIRE CELL TO ZERO (even though only half of one dendrite should be active)
-				for syn_idx in syn_idz..(syn_idz + syns_per_tuft) {
-					cels.dens_mut().syns.states[syn_idx] = 0;
-				}
-
-				// WRITE AND CYCLE
-				cels.dens_mut().syns.states.write();
-				cels.dens_mut().cycle_self_only();
-				cels.cycle_self_only();
-
-				// ACTIVATE AND LEARN
-				cels.activate();
-				cels.learn();
-
-				// PRINT AND TEST
-				if last_run && last_learning_run {
-					println!("\nPERFORMING LEARNING AGAIN (2ND CYCLE) -- SHOULD SEE LTP... ");
-					cels.print_cel(cel_idx);
-				}
-
-				// TODO: TEST FOR LTP
+			// RESET ENTIRE CELL TO ZERO (even though only half of one dendrite should be active)
+			for syn_idx in syn_idz..(syn_idz + syns_per_tuft) {
+				cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states[syn_idx] = 0;
 			}
+
+			// WRITE AND CYCLE
+			cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states.write();
+			cortex.area_mut(area_name).ptal_mut().dens_mut().cycle_self_only();
+			cortex.area_mut(area_name).ptal_mut().cycle_self_only();
+
+			// ACTIVATE AND LEARN
+			cortex.area_mut(area_name).mcols().activate();
+			cortex.area_mut(area_name).ptal_mut().learn();
+
+			// PRINT AND TEST
+			if last_run && last_learning_run {
+				println!("\nPERFORMING LEARNING AGAIN (2ND CYCLE) -- SHOULD SEE LTP... ");
+				cortex.area_mut(area_name).ptal_mut().print_cel(cel_idx);
+			}
+
+			// TODO: TEST FOR LTP
 
 
 
@@ -507,7 +501,7 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
 	//let pyr_axn_ranges = cortex.area_mut(area_name).layer_input_ranges("iii", cortex.area_mut(area_name).ptal_mut().dens.syns.den_kind());
 	//write_to_axons(axn_range, vec1);
 	let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
-	input_czar::sdr_stripes((cmn::AXON_BUFFER_SIZE as usize * 2), true, &mut vec1);
+	input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize * 2), true, &mut vec1);
 
 	println!("Primary Spatial Associative Layer...");
 	let psal_name = cortex.area(area_name).psal().layer_name();
@@ -585,7 +579,7 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 
 	let syns_per_tuft_l2: usize = dens.syns.dims().per_tuft_l2_left() as usize;
 	let dens_per_tuft_l2: usize = dens.dims().per_tuft_l2_left() as usize;
-	let cels_per_group: usize = cmn::AXON_BUFFER_SIZE as usize;
+	let cels_per_group: usize = cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize;
 	let syns_per_group: usize = cels_per_group << syns_per_tuft_l2;
 	let dens_per_group: usize = cels_per_group << dens_per_tuft_l2;
 	let actv_group_thresh = syns_per_group / 4;

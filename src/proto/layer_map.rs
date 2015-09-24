@@ -1,6 +1,6 @@
 use std;
 use std::collections::{ self, HashMap, BTreeMap };
-use std::collections::hash_state::{ HashState };
+//use std::collections::hash_state::{ HashState };
 use num;
 use std::ops::{ Index, IndexMut, Range };
 use std::hash::{ self, Hash, SipHasher, Hasher };
