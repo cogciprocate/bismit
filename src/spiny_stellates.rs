@@ -88,14 +88,18 @@ impl SpinyStellateCellularLayer {
 
 		//println!("\n##### SPINY_STELLATES: cels_per_tuft: {}, syns_per_tuft_l2: {}, axn_idz: {} ", cels_per_tuft, syns_per_tuft_l2, axn_idz);
 
-		let kern_ltp = ocl.new_kernel("sst_ltp_simple".to_string(), 
+		let grp_count = cmn::MINIMUM_WORKGROUP_SIZE;
+		let cols_per_grp = dims.cols_per_subgrp(grp_count).unwrap();
+			//.unwrap_or_else(|s: &'static str| panic!(s));
+
+		let kern_ltp = ocl.new_kernel("sst_ltp".to_string(), 
 			//WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
-			WorkSize::TwoDim(dims.tufts_per_cel() as usize, dims.cells() as usize))
+			WorkSize::TwoDim(dims.tufts_per_cel() as usize, grp_count as usize))
 		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&axns.states)
 			.arg_env(&dens.syns.states)
 			.arg_scl(axn_idz)
-			//.arg_scl(dims.tufts_per_cel())
+			.arg_scl(cols_per_grp)
 			.arg_scl(syns_per_tuft_l2)
 			//.arg_scl(cels_per_tuft)
 			.arg_scl_named::<u32>("rnd", None)

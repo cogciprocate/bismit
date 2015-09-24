@@ -283,26 +283,28 @@ impl CorticalArea {
 
 		if !self.disable_mcols { self.mcols.activate(); }
 		
-		if !self.disable_pyrs {			
+		if !self.disable_pyrs {
 			if !self.disable_learning { self.ptal_mut().learn(); }
 			self.ptal_mut().cycle();
 		}
 
 		if !self.disable_mcols { self.mcols.output(); }
 
-		if !self.disable_regrowth { self.regrow(); }
+		//if !self.disable_regrowth { self.regrow(); } // BEING CALLED DIRECTLY FROM CORTEXs
 
 		/*(self.afferent_target_names(), self.efferent_target_names())*/
 	}
 
 	pub fn regrow(&mut self) {
-		if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
-			//print!("$");
-			self.ssts_map.get_mut(self.psal_name).expect("cortical_area.rs").regrow();
-			self.ptal_mut().regrow();
-			self.counter = 0;
-		} else {
-			self.counter += 1;
+		if !self.disable_regrowth { 
+			if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
+				//print!("$");
+				self.ssts_map.get_mut(self.psal_name).expect("cortical_area.rs").regrow();
+				self.ptal_mut().regrow();
+				self.counter = 0;
+			} else {
+				self.counter += 1;
+			}
 		}
 	}
 
@@ -351,7 +353,7 @@ impl CorticalArea {
 
 		let axn_range = self.axn_range(layer_flags);
 
-		println!("\nCORTICALAREA::WRITE_INPUT(): axn_range: {:?}", axn_range);
+		//println!("\nCORTICALAREA::WRITE_INPUT(): axn_range: {:?}", axn_range);
 
 		assert!(sdr.len() == axn_range.len() as usize, format!("\n\
 			cortical_area::CorticalArea::write_input()<area: '{}'>: \

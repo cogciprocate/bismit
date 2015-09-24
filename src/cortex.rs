@@ -82,19 +82,11 @@ impl Cortex {
 
 
 	pub fn cycle(&mut self) {
-		self.thal.cycle_external_input(&self.areas);
-
-		for (area_name, area) in self.areas.iter() {
-			for aff_area_name in area.afferent_target_names().iter() {
-				//println!("Forwarding from: '{}' to '{}'", area_name, aff_area_name);
-				self.thal.forward_afferent_output(area_name, aff_area_name, &self.areas);
-			}
-
-			for eff_area_name in area.efferent_target_names().iter() {
-				//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
-				self.thal.backward_efferent_output(area_name, eff_area_name, &self.areas);
-			}
+		for (area_name, area) in self.areas.iter_mut() {
+			area.regrow();
 		}
+
+		self.thal.cycle_cortical_ganglions(&self.areas);		
 
 		for (area_name, area) in self.areas.iter_mut() {
 			area.cycle();

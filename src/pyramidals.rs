@@ -33,7 +33,7 @@ pub struct PyramidalCellularLayer {
 	//kern_activate: ocl::Kernel,		// <<<<< MOVE TO MCOL
 	//kern_axn_cycle: ocl::Kernel,
 	axn_base_slc: u8,
-	axn_idz: u32,
+	pyr_lyr_axn_idz: u32,
 	//den_prox_slc: u8, 
 	rng: rand::XorShiftRng,
 	den_tufts_per_cel: u32,
@@ -56,7 +56,7 @@ impl PyramidalCellularLayer {
 
 		let axn_base_slcs = protolayer_map.slc_ids(vec![layer_name]);
 		let axn_base_slc = axn_base_slcs[0];
-		let axn_idz = cmn::axn_idz_2d(axn_base_slc, dims.columns(), protolayer_map.hrz_demarc());
+		let pyr_lyr_axn_idz = cmn::axn_idz_2d(axn_base_slc, dims.columns(), protolayer_map.hrz_demarc());
 
 		//dims.depth() = protolayer_map.depth_cell_kind(&ProtocellKind::Pyramidal);
 		//let dens_per_tuft_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
@@ -84,7 +84,6 @@ impl PyramidalCellularLayer {
 
 		//let den_tufts_per_cel = protolayer_map[&layer_name].dst_src_tufts_len();
 		let den_tufts_per_cel = protolayer_map.dst_src_lyrs_by_tuft(layer_name).len() as u32;
-
 		let den_tuft_dims = dims.clone_with_ptl2(dens_per_tuft_l2 as i8).with_tufts(den_tufts_per_cel);
 
 		let dens = Dendrites::new(layer_name, den_tuft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, protolayer_map, axons, aux, ocl);
@@ -123,27 +122,31 @@ impl PyramidalCellularLayer {
 		// 	WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize));
 
 
-		assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
-		let cels_per_wi: u32 = dims.per_slc() / cmn::MINIMUM_WORKGROUP_SIZE;
+		// assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
+		// let cels_per_wi: u32 = dims.per_slc() / cmn::MINIMUM_WORKGROUP_SIZE;
+
+		let grp_count = cmn::MINIMUM_WORKGROUP_SIZE;
+		let cols_per_grp = dims.cols_per_subgrp(grp_count).unwrap();
+			//.unwrap_or_else(|s: &'static str| panic!(s));
 
 		// <<<<< NEEDS UPDATE TO NEW AXON INDEXING SYSTEM >>>>>
-		//let axn_idx_base: u32 = (axn_base_slc as u32 * dims.columns()) + cmn::AXON_MAR__GIN_SIZE; 
-		let axn_idx_base: u32 = cmn::axn_idz_2d(axn_base_slc, dims.columns(), protolayer_map.hrz_demarc());
-		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", axn_idx_base);
-		assert!(axn_idx_base == axn_idz);
+		//let pyr_lyr_axn_idz: u32 = (axn_base_slc as u32 * dims.columns()) + cmn::AXON_MAR__GIN_SIZE; 
+		//let pyr_lyr_axn_idz: u32 = cmn::axn_idz_2d(axn_base_slc, dims.columns(), protolayer_map.hrz_demarc());
+		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", pyr_lyr_axn_idz);
+		//assert!(pyr_lyr_axn_idz == pyr_lyr_axn_idz);
 
 		let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd".to_string(), 
-			WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
+			WorkSize::ThreeDim(dims.depth() as usize, den_tufts_per_cel as usize, grp_count as usize))
 			.arg_env(&axons.states)
 			.arg_env(&preds)
 			.arg_env(&best_den_ids)
 			//.arg_env(&best2_den_ids) // <<<<< SLATED FOR REMOVAL
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns.states)
-			.arg_scl(axn_idx_base)
+			.arg_scl(pyr_lyr_axn_idz)
 			.arg_scl(syns_per_den_l2 as u32)
 			.arg_scl(dens_per_tuft_l2 as u32)
-			.arg_scl(cels_per_wi)
+			.arg_scl(cols_per_grp)
 			.arg_scl_named::<u32>("rnd", None)		
 			.arg_env(&dens.syns.flag_sets)
 			.arg_env(&flag_sets)
@@ -164,7 +167,7 @@ impl PyramidalCellularLayer {
 			//kern_activate: kern_activate,		// <<<<< MOVE TO MCOL
 			//kern_axn_cycle: kern_axn_cycle,
 			axn_base_slc: axn_base_slc,
-			axn_idz: axn_idz,
+			pyr_lyr_axn_idz: pyr_lyr_axn_idz,
 			//den_prox_slc: den_prox_slc,
 			rng: rand::weak_rng(),
 			den_tufts_per_cel: den_tufts_per_cel,
@@ -184,8 +187,8 @@ impl PyramidalCellularLayer {
 
 	// <<<<< MOVE TO MCOL >>>>>
 	// pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &Box<SpinyStellateCellularLayer>, axns: &Axons, aux: &Aux) {
-	// 	let (ssts_axn_idz, _) = ssts.axn_range();
-	// 	//println!("\n##### Pyramidals::init_kernels(): ssts_axn_idz: {}", ssts_axn_idz as u32);
+	// 	let (ssts_pyr_lyr_axn_idz, _) = ssts.axn_range();
+	// 	//println!("\n##### Pyramidals::init_kernels(): ssts_pyr_lyr_axn_idz: {}", ssts_pyr_lyr_axn_idz as u32);
 
 	// 	println!("   PYRAMIDALS::INIT_KERNELS()[ACTIVATE]: ssts_axn_range(): {:?}", ssts.axn_range());
 
@@ -195,7 +198,7 @@ impl PyramidalCellularLayer {
 	// 	self.kern_activate.new_arg_envoy(Some(&self.best_den_ids));
 	// 	self.kern_activate.new_arg_envoy(Some(&self.dens.states));
 
-	// 	self.kern_activate.new_arg_scalar(Some(ssts_axn_idz as u32));
+	// 	self.kern_activate.new_arg_scalar(Some(ssts_pyr_lyr_axn_idz as u32));
 	// 	self.kern_activate.new_arg_scalar(Some(self.axn_base_slc));
 	// 	self.kern_activate.new_arg_scalar(Some(self.protocell.dens_per_tuft_l2));
 
@@ -257,9 +260,9 @@ impl PyramidalCellularLayer {
 	}
 
 	pub fn axn_range(&self) -> (usize, usize) {
-		let ssts_axn_idn = self.axn_idz + (self.dims.per_slc());
+		let ssts_axn_idn = self.pyr_lyr_axn_idz + (self.dims.per_slc());
 
-		(self.axn_idz as usize, ssts_axn_idn as usize)
+		(self.pyr_lyr_axn_idz as usize, ssts_axn_idn as usize)
 	}
 
 	pub fn axn_base_slc(&self) -> u8 {

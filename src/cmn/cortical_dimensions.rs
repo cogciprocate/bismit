@@ -1,4 +1,4 @@
-use ocl::{ EnvoyDimensions };
+use ocl::{ OclProgQueue, EnvoyDimensions };
 
 /*	CorticalDimensions: Dimensions of a cortical area in units of cells
 		- Used to define both the volume and granularity of a cortical area.
@@ -37,6 +37,9 @@ pub struct CorticalDimensions {
 impl CorticalDimensions {
 	pub fn new(u_size: u32, v_size: u32, depth: u8, per_tuft_l2: i8, physical_increment: Option<u32>) -> CorticalDimensions {
 	//pub fn new(u_size_l2: u8, v_size_l2: u8,	depth: u8, per_tuft_l2: i8,) -> CorticalDimensions {
+		
+		//let physical_increment = resolve_physical_increment(ocl);
+
 		CorticalDimensions { 
 			u_size: u_size,
 			v_size: v_size,
@@ -145,6 +148,15 @@ impl CorticalDimensions {
 		len_components(self.columns(), self.per_tuft_l2, self.tufts_per_cel)
 	}
 
+
+	pub fn cols_per_subgrp(&self, subgroup_count: u32) -> Result<u32, &'static str> {
+		if self.columns() % subgroup_count == 0 {
+			return Ok(self.physical_len() / subgroup_count) 
+		} else {
+			return Err("Invalid subgroup size.");
+		}
+	}
+
 	
 	// LEN(): 4D Volume - Total linear length if stretched out - measured in cell-piece-whatevers
 	/* TEMPORARY */
@@ -203,6 +215,13 @@ impl EnvoyDimensions for CorticalDimensions {
 	}
 }
 
+
+fn resolve_physical_increment(ocl: Option<&OclProgQueue>) -> Option<u32> {
+	match ocl {
+		Some(ocl) => Some(ocl.get_max_work_group_size()),
+		None => None,
+	}
+}
 
 fn len_components(cells: u32, per_tuft_l2: i8, tufts_per_cel: u32) -> u32 {
 	//println!("\n\n##### TOTAL_LEN(): cells: {}, pcl2: {}", cells, per_tuft_l2);

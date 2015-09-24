@@ -81,6 +81,13 @@ static inline uint get_axn_slc_idz(uint slc_id) {
 	return axn_slc_idzs[slc_id];
 }
 
+static inline int4 get_axn_slc_idz_vec4(int4 slc_id) {
+	return (int4)(	axn_slc_idzs[slc_id.s0], 
+					axn_slc_idzs[slc_id.s1], 
+					axn_slc_idzs[slc_id.s2], 
+					axn_slc_idzs[slc_id.s3]);
+}
+
 static inline uchar get_axn_v_scale(uint slc_id) {
 	return axn_slc_v_scales[slc_id];
 }
@@ -147,13 +154,13 @@ static inline int4 dim_is_safe_vec4(int4 dim_size, int4 dim_id, int4 dim_ofs) {
 =============================================================================*/
 
 
-// CEL_IDX_3D_UNSAFE(): LINEAR INDEX OF A CELL - NOT ACCURATE AXONS
+// CEL_IDX_3D_UNSAFE(): LINEAR INDEX OF A CELL - NOT ACCURATE FOR AXONS
 static inline uint cel_idx_3d_unsafe(uint slc_id, uint v_size, uint v_id, uint u_size, uint u_id) {
 	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
 }
 
 
-// CEL_IDX_3D_UNSAFE_VEC4(): LINEAR INDEX OF A CELL - NOT ACCURATE AXONS
+// CEL_IDX_3D_UNSAFE_VEC4(): LINEAR INDEX OF A CELL - NOT FOR ACCURATE AXONS
 static inline int4 cel_idx_3d_unsafe_vec4(int4 slc_id, int4 v_size, int4 v_id, int4 u_size, int4 u_id) {
 	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
 }
@@ -186,13 +193,15 @@ static inline uchar cel_state_3d_safe(uchar slc_id,
 
 // AXN_IDX_3D_UNSAFE(): LINEAR INDEX OF AN AXON
 static inline uint axn_idx_3d_unsafe(uint slc_id, uint v_size, uint v_id, uint u_size, uint u_id) {
-	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
+	//return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));
+	return get_axn_slc_idz(slc_id) + mad24(v_id, u_size, u_id);
 }
 
 
-// AXN_IDX_3D_UNSAFE_VEC4(): LINEAR INDEX OF AN AXON
+// AXN_IDX_3D_UNSAFE_VEC4(): LINEAR INDEX OF AN AXON, VEC4
 static inline int4 axn_idx_3d_unsafe_vec4(int4 slc_id, int4 v_size, int4 v_id, int4 u_size, int4 u_id) {
-	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
+	//return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
+	return get_axn_slc_idz_vec4(slc_id) + mad24(v_id, u_size, u_id);
 }
 
 
@@ -244,7 +253,7 @@ static inline uchar axn_state_3d_safe(uchar slc_id,
 				__global uchar const* const axn_states) 
 {
 	uint idx_hrz = axn_idx_hrz(slc_id, v_size, v_ofs, u_size, u_ofs);
-	uint idx_spt = cel_idx_3d_unsafe(slc_id, v_size, (int)v_id + (int)v_ofs, u_size, (int)u_id + (int)u_ofs);
+	uint idx_spt = axn_idx_3d_unsafe(slc_id, v_size, (int)v_id + (int)v_ofs, u_size, (int)u_id + (int)u_ofs);
 	int idx_is_hrz = idx_hrz != 0;
 	uint axn_idx = mad24((uint)idx_is_hrz, idx_hrz, mul24((uint)!idx_is_hrz, idx_spt));
 	int idx_is_safe = dim_is_safe(v_size, v_id, v_ofs) & dim_is_safe(u_size, u_id, u_ofs);
@@ -264,7 +273,7 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id_uchar4,
 	int4 u_ofs = convert_int4(u_ofs_char4);
 
 	int4 idx_hrz = axn_idx_hrz_vec4(slc_id, v_size, v_ofs, u_size, u_ofs);
-	int4 idx_spt = cel_idx_3d_unsafe_vec4(slc_id, v_size, (int4)v_id + (int4)v_ofs, u_size, (int4)u_id + (int4)u_ofs);
+	int4 idx_spt = axn_idx_3d_unsafe_vec4(slc_id, v_size, (int4)v_id + (int4)v_ofs, u_size, (int4)u_id + (int4)u_ofs);
 	int4 idx_is_hrz = idx_hrz != 0;
 
 	int4 axn_idx = (idx_is_hrz & idx_hrz) | (~idx_is_hrz & idx_spt);
@@ -761,7 +770,7 @@ __kernel void inhib_simple(
 	uint const u_size = get_global_size(2);
 	uint const cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
 	//uint const axn_idx = axn_idx_3d_safe(slc_id + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
-	uint const cel_axn_idx = cel_idx_3d_unsafe(slc_id + cel_base_axn_slc, v_size, v_id, u_size, u_id);
+	uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id + cel_base_axn_slc, v_size, v_id, u_size, u_id);
 
 	uchar const cel_state = cel_states[cel_idx];
 
@@ -899,7 +908,7 @@ __kernel void inhib_passthrough(
 
 	uint const cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
 	//uint const axn_idx = axn_idx_3d_safe(slc_id + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
-	uint const cel_axn_idx = cel_idx_3d_unsafe(slc_id + cel_base_axn_slc, v_size, v_id, u_size, u_id);
+	uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id + cel_base_axn_slc, v_size, v_id, u_size, u_id);
 
 	uchar const cel_state = cel_states[cel_idx];
 
@@ -907,8 +916,7 @@ __kernel void inhib_passthrough(
 }
 
 
-
-// SST_LTP(): Long term potentiation for Spiny Stellate Cells - Completely unoptimized
+// SST_LTP_SIMPLE(): Long term potentiation for Spiny Stellate Cells - Completely unoptimized
 __kernel void sst_ltp_simple(
 				__global uchar const* const axn_states,
 				__global uchar const* const syn_states,
@@ -934,6 +942,43 @@ __kernel void sst_ltp_simple(
 	if (axn_state) {
 		uint const syn_idz = calc_syn_idz(tuft_id, cel_count, cel_id, syns_per_tuft_l2);
 		prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tuft_l2, rnd, syn_strengths);
+	}
+}
+
+
+// SST_LTP(): Long term potentiation for Spiny Stellate Cells
+// <<<<< TODO: ADD AN ADDITIONAL DIMENSION [0] FOR SLC_ID TO SUPPORT MULTIPLE SLICE SST LAYERS >>>>>
+__kernel void sst_ltp(
+				__global uchar const* const axn_states,
+				__global uchar const* const syn_states,
+				__private uint const cel_lyr_axn_idz,
+				__private uint const cols_per_grp,
+				__private uchar const syns_per_tuft_l2,
+				__private uint const rnd,
+				__global int* const aux_ints_0,
+				__global char* const syn_strengths) 
+{
+	uint const tuft_id = get_global_id(0);
+	uint const cel_grp_id = get_global_id(1);
+	uint const cel_count = get_global_size(1);
+
+	uint const cel_idz = mul24(cel_grp_id, cols_per_grp);
+	uint const cel_axn_idz = cel_lyr_axn_idz + cel_idz;	
+
+	// TESTING
+	// uint const cel_tuft_id = cel_id + mul24(tuft_id, cel_count);
+	// aux_ints_0[cel_tuft_id] = axn_state;
+	// END TESTING
+
+	for (uint i = 0; i < cols_per_grp; i += 1) {
+		uint const cel_idx = cel_idz + i;
+		uint const cel_axn_idx = cel_axn_idz + i;
+		uint const axn_state = axn_states[cel_axn_idx];
+
+		if (axn_state) {			
+			uint const syn_idz = calc_syn_idz(tuft_id, cel_count, cel_idx, syns_per_tuft_l2);
+			prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tuft_l2, rnd, syn_strengths);
+		}
 	}
 }
 
@@ -965,7 +1010,7 @@ __kernel void mcol_activate_pyrs(
 	//uint const pyr_idx = mad24(slc_id, slc_columns, col_id);
 	//uint const axn_idx = axn_idx_2d(pyr_axn_slc_base + slc_id, slc_columns, col_id, 0);
 	uint const pyr_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
-	uint const cel_axn_idx = cel_idx_3d_unsafe(pyr_axn_slc_base + slc_id, v_size, v_id, u_size, u_id);
+	uint const cel_axn_idx = axn_idx_3d_unsafe(pyr_axn_slc_base + slc_id, v_size, v_id, u_size, u_id);
 	uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
 
 	// ******************
@@ -1024,13 +1069,15 @@ __kernel void mcol_activate_pyrs(
 //		- if cell axon is currently inactive:
 //			- check to see if the cell's axon was previously active (by checking flag_set)
 //				- if so, depress (reduce strengths of) any currently active synapses
-//					- NOTE: The reasoning here is that any synapses which are active just after (but not before) the cell was active are likely to be unrelated to it's prior activity. In other words, a rough implementation of LTD (simplified and optimized and theorized and ... oh who knows). 
+//					- NOTE: The reasoning here is that any synapses which are active just after 
+//					(but not before) the cell was active are likely to be unrelated to it's prior 
+//					activity. In other words, a rough implementation of LTD (simplified and 
+//					optimized and theorized and ... oh who knows). 
 //
 //	- TODO:
 //		- Vectorize (should be highly vectorizable)
 //		- reducing branching will be tough with this one
 //		- Tests (check that flag_set and prev_best_den_id are robustly maintained)
-//
 //
 //
 //		- if pyr_prev_concrete 
@@ -1050,17 +1097,16 @@ __kernel void mcol_activate_pyrs(
 //
 //		- SYN(STP -> LTP) ONLY WHEN: ((PYR_ACTIVE -> 0)) SAME TIME AS (SYN_STATE -> 0)
 //			
-// 	TODO: CONVERT TO 3 WORK_DIMS
 __kernel void pyrs_ltp_unoptd(
 				__global uchar const* const axn_states,
 				__global uchar const* const pyr_preds,
 				__global uchar const* const pyr_best_den_ids,
 				__global uchar const* const den_states,
 				__global uchar const* const syn_states,
-				__private uint const pyr_axn_idz, 
+				__private uint const pyr_lyr_axn_idz, 
 				__private uint const syns_per_den_l2,
 				__private uint const dens_per_tuft_l2,
-				__private uint const pyrs_per_wi,
+				__private uint const cols_per_grp,
 				__private uint const rnd,
 				__global uchar* const syn_flag_sets,
 				__global uchar* const pyr_flag_sets,
@@ -1069,18 +1115,27 @@ __kernel void pyrs_ltp_unoptd(
 				__global char* const syn_strengths) 
 {
 	uint const slc_id = get_global_id(0);
-	uint const col_tuft_id = get_global_id(1);
-	uint const tufts_per_slc = get_global_size(1);
-	uint const pyr_tuft_id = mad24(slc_id, tufts_per_slc, col_tuft_id);
-	uint const pyr_idz = mul24(pyr_tuft_id, pyrs_per_wi);
-	uint const pyr_idn = pyr_idz + pyrs_per_wi;
- 
-	for (uint i = pyr_idz; i < pyr_idn; i++) {
-		uchar pyr_best_den_id = pyr_best_den_ids[i];
-		uchar pyr_flag_set = pyr_flag_sets[i];
+	uint const tuft_id = get_global_id(1);
+	uint const grp_id = get_global_id(2);
+	uint const tuft_count = get_global_size(1);	
+	uint const grp_count = get_global_size(2); // GRP_COUNT: COLUMNS / COLS_PER_GRP
 
-		int pyr_concrete = axn_states[i + pyr_axn_idz] != 0;
-		int pyr_fuzzy = pyr_preds[i] != 0;
+	uint const pyr_grp_id = cel_idx_3d_unsafe(slc_id, tuft_count, tuft_id, grp_count, grp_id);
+	uint const pyr_idz = mul24(grp_id, cols_per_grp);
+
+	uint const axn_grp_id = axn_idx_3d_unsafe(slc_id, tuft_count, tuft_id, grp_count, grp_id);
+	uint const pyr_axn_idz = mul24(grp_id, cols_per_grp);
+ 
+	//for (uint pyr_idx = pyr_idz; pyr_idx < pyr_idn; pyr_idx++) {
+	for (uint i = 0; i < cols_per_grp; i++) {
+		uint const pyr_idx = pyr_idz + i;
+		uint const pyr_axn_idx = pyr_axn_idz + i;
+
+		uchar pyr_best_den_id = pyr_best_den_ids[pyr_idx];
+		uchar pyr_flag_set = pyr_flag_sets[pyr_idx];
+
+		int pyr_concrete = axn_states[pyr_axn_idx] != 0;
+		int pyr_fuzzy = pyr_preds[pyr_idx] != 0;
 
 		int pyr_prev_concrete = (pyr_flag_set & PYR_PREV_CONCRETE_FLAG) == PYR_PREV_CONCRETE_FLAG;
 		int pyr_prev_fuzzy = (pyr_flag_set & PYR_PREV_FUZZY_FLAG) == PYR_PREV_FUZZY_FLAG;
@@ -1114,7 +1169,7 @@ __kernel void pyrs_ltp_unoptd(
 		pyr_flag_set &= ~PYR_PREV_FUZZY_FLAG;
 		pyr_flag_set |= mul24(pyr_fuzzy, PYR_PREV_FUZZY_FLAG);
 
-		pyr_flag_sets[i] = pyr_flag_set;
+		pyr_flag_sets[pyr_idx] = pyr_flag_set;
 	}
 }
 
@@ -1174,7 +1229,7 @@ __kernel void mcol_output(
 	uint const u_id = get_global_id(2);
 	uint const v_size = get_global_size(1);
 	uint const u_size = get_global_size(2);
-	uint const aff_out_axn_idx = cel_idx_3d_unsafe(aff_out_axn_slc + slc_id, v_size, v_id, u_size, u_id);
+	uint const aff_out_axn_idx = axn_idx_3d_unsafe(aff_out_axn_slc + slc_id, v_size, v_id, u_size, u_id);
 	uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
 	//uint const pyr_axn_idx = axn_idx_2d( + slc_id, slc_columns, col_id, 0);
 	//uint const col_id = mad24(slc_id, slc_columns, col_id);
@@ -1474,9 +1529,9 @@ static inline uint cel_dist(int v_1, int u_1, int v_2, int u_2) {
 // 				__global char* const syn_strengths) 
 // {
 // 	uint const slc_id = get_global_id(0);
-// 	uint const col_tuft_id = get_global_id(1);
+// 	uint const cel_grp_id = get_global_id(1);
 // 	uint const tuft_size = get_global_size(1);
-// 	uint const cel_tuft_id = mad24(slc_id, tuft_size, col_tuft_id);
+// 	uint const cel_tuft_id = mad24(slc_id, tuft_size, cel_grp_id);
 
 // 	uint cels_per_tuft = get_local_size(1);
 
