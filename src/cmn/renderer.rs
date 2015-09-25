@@ -1,4 +1,4 @@
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDimensions, SliceMap };
 
 use std::char;
 use std::iter;
@@ -8,16 +8,18 @@ pub struct Renderer {
 	dims: CorticalDimensions,
 	axn_history: Vec<u8>,
 	sst_history: Vec<u8>,
+	slice_map: SliceMap,
 }
 
 impl Renderer {
-	pub fn new(dims: CorticalDimensions) -> Renderer {
+	pub fn new(dims: CorticalDimensions, slice_map: &SliceMap) -> Renderer {
 		let sdr_len = (dims.u_size() * dims.v_size()) as usize;
 
 		Renderer { 
 			dims: dims,
 			axn_history: iter::repeat(0).take(sdr_len).collect(),
 			sst_history: iter::repeat(0).take(sdr_len).collect(),
+			slice_map: slice_map.clone(),
 		}
 	}
 
@@ -137,7 +139,8 @@ impl Renderer {
 		assert!(col_count == self.dims.columns(), "Column count mismatch.");
 
 		for (&slc_id, &slc_name) in slc_map {
-			let axn_idz = cmn::axn_idz_2d(slc_id, col_count, hrz_demarc) as usize;
+			//let axn_idz = cmn::axn_idz_2d(slc_id, col_count, hrz_demarc) as usize;
+			let axn_idz = self.slice_map.idz(slc_id) as usize;
 			let axn_idn = axn_idz + col_count as usize;			
 			print!("Axon slice '{}': slc_id: {}, axn_idz: {}", slc_name, slc_id, axn_idz);
 

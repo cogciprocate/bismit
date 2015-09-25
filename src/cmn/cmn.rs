@@ -104,7 +104,7 @@ pub const SYNAPSE_REACH_CELLS: u32 = (3 * (SYNAPSE_REACH * SYNAPSE_REACH)) + (3 
 
 //pub const AXON_MARGIN_SIZE: u32 = (SYNAPSE_REACH * SYNAPSE_REACH) + SYNAPSE_REACH;
 //pub const AXON_BUFFER_SIZE: u32 = AXON_MARGIN_SIZE * 2;
-pub const AXON_MARGIN_SIZE: u32 = 0;
+pub const AXON_MARGIN_SIZE: u32 = 0; // DEPRICATE
 
 
 pub const MAX_EFFERENT_AREAS: usize = 64;
@@ -742,30 +742,6 @@ pub fn new_pred(
 }*/
 
 
-
-
-/* AXN_IDX_2D(): Host side address resolution - concerned with start idx of a slc
-	- OpenCL device side version below [outdated] (for reference) - concerned with individual indexes:
-
-		static inline uint axn_idz_2d(uchar slc_id, uint slc_columns, uint col_id, char col_ofs) {
-			uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + AXON_MAR__GIN_SIZE));
-			int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
-			int hcol_id = mad24(hslc_id, SYNAPSE_SPAN_RHOMBAL_AREA, col_ofs + AXON_MAR__GIN_SIZE);
-			uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_columns, (uint)(hcol_id + AXON_MAR__GIN_SIZE));
-			return mul24((uint)(hslc_id < 0), axn_idx_spt) + mul24((uint)(hslc_id >= 0), axn_idx_hrz);
-		}
-}*/
-pub fn axn_idz_2d(axn_slc: u8, columns: u32, hrz_demarc: u8) -> u32 {
-	let mut axn_idx: u32 = if axn_slc < hrz_demarc {
-		(axn_slc as u32 * columns)
-	} else {
-		(hrz_demarc as u32 * columns) + (SYNAPSE_SPAN_RHOMBAL_AREA * (axn_slc as u32 - hrz_demarc as u32))
-	};
-
-	axn_idx + AXON_MARGIN_SIZE as u32
-}
-
-
 /* GEN_FRACT_SDR(): Generate simple SDR from integer seed
 	- FUTURE IMPROVEMENTS: 
 		- Once the Rust API for wrapping integers is sorted out, use one of those instead of wrap_idx.
@@ -825,13 +801,13 @@ mod tests {
 	use super::*;
 
 
-	#[test]
-	fn test_axn_idz_2d() {
-		assert!(axn_idz_2d(1, 1024, 4) == 1024u32 + AXON_MARGIN_SIZE as u32);
-		assert!(axn_idz_2d(5, 1024, 4) == 4096u32 + SYNAPSE_SPAN_RHOMBAL_AREA + AXON_MARGIN_SIZE as u32);
-		assert!(axn_idz_2d(15, 1024, 4) == 4096u32 + (11 * SYNAPSE_SPAN_RHOMBAL_AREA) + AXON_MARGIN_SIZE as u32);
+	// #[test]
+	// fn test_axn_idz_2d() {
+	// 	assert!(axn_idz_2d(1, 1024, 4) == 1024u32 + AXON_MARGIN_SIZE as u32);
+	// 	assert!(axn_idz_2d(5, 1024, 4) == 4096u32 + SYNAPSE_SPAN_RHOMBAL_AREA + AXON_MARGIN_SIZE as u32);
+	// 	assert!(axn_idz_2d(15, 1024, 4) == 4096u32 + (11 * SYNAPSE_SPAN_RHOMBAL_AREA) + AXON_MARGIN_SIZE as u32);
 
-	}
+	// }
 
 	#[test]
 	fn test_wrap_idx() {

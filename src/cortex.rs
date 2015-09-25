@@ -76,9 +76,9 @@ impl Cortex {
 	}
 
 	/* WRITE(): TESTING PURPOSES -- TODO: MOVE TO A TESTS SUB-MODULE */
-	pub fn write(&mut self, area_name: &str, layer_target: &'static str, sdr: &[ocl::cl_uchar]) {
-		self.thal.write(area_name, layer_target, sdr, &mut self.areas)
-	}
+	// pub fn write(&mut self, area_name: &str, layer_target: &'static str, sdr: &[ocl::cl_uchar]) {
+	// 	self.thal.write(area_name, layer_target, sdr, &mut self.areas)
+	// }
 
 
 	pub fn cycle(&mut self) {
@@ -93,18 +93,18 @@ impl Cortex {
 		}
 	}
 
-	pub fn print_area_output(&mut self, ao_name: &str) {
-		self.area_mut(ao_name).axns.states.read();
+	// pub fn print_area_output(&mut self, ao_name: &str) {
+	// 	self.area_mut(ao_name).axns.states.read();
 
-		let (out_start_ao, out_end_ao) = self.area(ao_name).mcols.axn_output_range();
-		let out_slc_ao = &self.area(ao_name).axns.states.vec[out_start_ao as usize..out_end_ao as usize];
+	// 	let (out_start_ao, out_end_ao) = self.area(ao_name).mcols.aff_out_axn_range();
+	// 	let out_slc_ao = &self.area(ao_name).axns.states.vec[out_start_ao as usize..out_end_ao as usize];
 
-		let cols = self.area(ao_name).dims.columns(); // DEBUG PURPOSES
-		println!("Area: '{}' - out_start_ao: {}, out_end_ao: {}, cols: {}", ao_name, out_start_ao, out_end_ao, cols);
+	// 	let cols = self.area(ao_name).dims.columns(); // DEBUG PURPOSES
+	// 	println!("Area: '{}' - out_start_ao: {}, out_end_ao: {}, cols: {}", ao_name, out_start_ao, out_end_ao, cols);
 
-		//cmn::render_sdr(out_slc_ao, None, None, None, &self.area(ao_name).protoregion().slc_map(), true, cols);
+	// 	//cmn::render_sdr(out_slc_ao, None, None, None, &self.area(ao_name).protoregion().slc_map(), true, cols);
 
-	}
+	// }
 
 	pub fn valid_area(&self, area_name: &str) -> bool {
 		self.areas.contains_key(area_name)

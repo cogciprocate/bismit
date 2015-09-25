@@ -7,7 +7,7 @@ use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDimensions, AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ Protoareas, ProtolayerMap, RegionKind, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
@@ -51,12 +51,14 @@ pub struct PyramidalCellularLayer {
 }
 // protocell: &Protocell,
 impl PyramidalCellularLayer {
-	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, protolayer_map: &ProtolayerMap, axons: &Axons, aux: &Aux, ocl: &OclProgQueue
+	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, 
+		area_map: &AreaMap, axons: &Axons, aux: &Aux, ocl: &OclProgQueue
 	) -> PyramidalCellularLayer {
 
-		let axn_base_slcs = protolayer_map.slc_ids(vec![layer_name]);
+		let axn_base_slcs = area_map.protolayer_map().slc_ids(vec![layer_name]);
 		let axn_base_slc = axn_base_slcs[0];
-		let pyr_lyr_axn_idz = cmn::axn_idz_2d(axn_base_slc, dims.columns(), protolayer_map.hrz_demarc());
+		//let pyr_lyr_axn_idz = cmn::axn_idz_2d(axn_base_slc, dims.columns(), protolayer_map.hrz_demarc());
+		let pyr_lyr_axn_idz = area_map.axn_idz(axn_base_slc);
 
 		//dims.depth() = protolayer_map.depth_cell_kind(&ProtocellKind::Pyramidal);
 		//let dens_per_tuft_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
@@ -83,10 +85,10 @@ impl PyramidalCellularLayer {
 		let syns_per_tuft_l2 = dens_per_tuft_l2 + syns_per_den_l2;
 
 		//let den_tufts_per_cel = protolayer_map[&layer_name].dst_src_tufts_len();
-		let den_tufts_per_cel = protolayer_map.dst_src_lyrs_by_tuft(layer_name).len() as u32;
+		let den_tufts_per_cel = area_map.protolayer_map().dst_src_lyrs_by_tuft(layer_name).len() as u32;
 		let den_tuft_dims = dims.clone_with_ptl2(dens_per_tuft_l2 as i8).with_tufts(den_tufts_per_cel);
 
-		let dens = Dendrites::new(layer_name, den_tuft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, protolayer_map, axons, aux, ocl);
+		let dens = Dendrites::new(layer_name, den_tuft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, aux, ocl);
 
 		//let mut den_tufts = Vec::with_capacity(src_tufts.len());
 

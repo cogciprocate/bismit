@@ -8,7 +8,7 @@ pub mod input_czar;
 mod output_czar;
 mod motor_state;
 mod hybrid;
-mod renderer;
+//mod renderer;
 
 #[cfg(test)]
 mod automated;

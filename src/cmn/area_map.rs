@@ -11,9 +11,11 @@ use cmn::{ self, CorticalDimensions };
 //		- Leave the 'init phase' stuff to the proto-*s.
 pub struct AreaMap {
 	protoarea: Protoarea,
-	protolayer_map: ProtolayerMap,
+	protolayer_map: ProtolayerMap,	
 
 	pub slices: SliceMap,
+
+	hrz_demarc: u8,
 
 	// Create maps for each aspect which have their own types and are queryable 
 	// into sub-lists of the same type
@@ -33,10 +35,13 @@ impl AreaMap {
 
 		let slices = SliceMap::new(&protolayer_map, protoarea.dims());
 
+		let hrz_demarc = protolayer_map.hrz_demarc();
+
 		AreaMap {
 			protoarea: protoarea,
 			protolayer_map: protolayer_map,
 			slices: slices,
+			hrz_demarc: hrz_demarc,
 		}
 	}
 
@@ -48,8 +53,8 @@ impl AreaMap {
 		&self.protolayer_map
 	}
 
-	pub fn hrz_demarc(&self) -> u8 {
-		self.protolayer_map.hrz_demarc()
+	pub fn axn_idz(&self, slc_id: u8) -> u32 {
+		self.slices.idz(slc_id)
 	}
 
 	pub fn gen_build_options(&self) -> BuildOptions {
@@ -87,7 +92,7 @@ impl AreaMap {
 }
 
 
-
+#[derive(Debug, Clone)]
 pub struct SliceMap {
 	idzs: Vec<u32>,
 	layer_names: Vec<&'static str>,
@@ -105,7 +110,7 @@ impl SliceMap {
 		let mut u_scales = Vec::with_capacity(slc_map.len());
 
 		for (&slc_id, &layer_name) in slc_map.iter() {
-			idzs.push(cmn::axn_idz_2d(slc_id, area_dims.columns(), layer_map.hrz_demarc()));
+			idzs.push(axn_idz_2d(slc_id, area_dims.columns(), layer_map.hrz_demarc()));
 			layer_names.push(layer_name);
 			v_scales.push(16);
 			u_scales.push(16);
@@ -130,6 +135,10 @@ impl SliceMap {
 		// }
 	}
 
+	pub fn idz(&self, slc_id: u8) -> u32 {
+		self.idzs[slc_id as usize]
+	}
+
 	pub fn len(&self) -> u32 {
 		self.idzs.len() as u32
 	}
@@ -150,4 +159,26 @@ fn literal_list<T: Display>(vec: &Vec<T>) -> String {
 	}
 
 	literal
+}
+
+
+/* AXN_IDX_2D(): Host side address resolution - concerned with start idx of a slc
+	- OpenCL device side version below [outdated] (for reference) - concerned with individual indexes:
+
+		static inline uint axn_idz_2d(uchar slc_id, uint slc_columns, uint col_id, char col_ofs) {
+			uint axn_idx_spt = mad24((uint)slc_id, slc_columns, (uint)(col_id + col_ofs + AXON_MAR__GIN_SIZE));
+			int hslc_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
+			int hcol_id = mad24(hslc_id, SYNAPSE_SPAN_RHOMBAL_AREA, col_ofs + AXON_MAR__GIN_SIZE);
+			uint axn_idx_hrz = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, slc_columns, (uint)(hcol_id + AXON_MAR__GIN_SIZE));
+			return mul24((uint)(hslc_id < 0), axn_idx_spt) + mul24((uint)(hslc_id >= 0), axn_idx_hrz);
+		}
+}*/
+pub fn axn_idz_2d(axn_slc: u8, columns: u32, hrz_demarc: u8) -> u32 {
+	let mut axn_idx: u32 = if axn_slc < hrz_demarc {
+		(axn_slc as u32 * columns)
+	} else {
+		(hrz_demarc as u32 * columns) + (cmn::SYNAPSE_SPAN_RHOMBAL_AREA * (axn_slc as u32 - hrz_demarc as u32))
+	};
+
+	axn_idx + cmn::AXON_MARGIN_SIZE as u32
 }

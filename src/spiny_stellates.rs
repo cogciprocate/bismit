@@ -6,7 +6,7 @@ use num::{ self, Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDimensions, AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ ProtolayerMap, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
@@ -33,7 +33,7 @@ pub struct SpinyStellateCellularLayer {
 	dims: CorticalDimensions,
 	protocell: Protocell,
 	base_axn_slc: u8,
-	axn_idz: u32,
+	lyr_axn_idz: u32,
 	//kern_cycle: ocl::Kernel,
 	//kern_post_inhib: ocl::Kernel,
 	//kern_output: ocl::Kernel,
@@ -52,33 +52,36 @@ pub struct SpinyStellateCellularLayer {
 
 // pyrs: &PyramidalCellularLayer,
 impl SpinyStellateCellularLayer {
-	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, protoregion: &ProtolayerMap, axns: &Axons, aux: &Aux, ocl: &OclProgQueue) -> SpinyStellateCellularLayer {
-		//let layer = protoregion.spt_asc_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
+	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, area_map: &AreaMap, 
+				axns: &Axons, aux: &Aux, ocl: &OclProgQueue
+	) -> SpinyStellateCellularLayer {
+		//let layer = area_map.protolayer_map().spt_asc_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
 		//let depth: u8 = layer.depth();
 
-		let base_axn_slcs = protoregion.slc_ids(vec![layer_name]);
+		let base_axn_slcs = area_map.protolayer_map().slc_ids(vec![layer_name]);
 		let base_axn_slc = base_axn_slcs[0];
-		let axn_idz = cmn::axn_idz_2d(base_axn_slc, dims.columns(), protoregion.hrz_demarc());
+		//let lyr_axn_idz = cmn::axn_idz_2d(base_axn_slc, dims.columns(), area_map.protolayer_map().hrz_demarc());
+		let lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
 		let syns_per_tuft_l2: u8 = protocell.syns_per_den_l2 + protocell.dens_per_tuft_l2;
 
-		//let pyr_depth = protoregion.depth_cell_kind(&ProtocellKind::Pyramidal);
+		//let pyr_depth = area_map.protolayer_map().depth_cell_kind(&ProtocellKind::Pyramidal);
 
-		//let pyr_base_axn_slc = protoregion.base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
+		//let pyr_base_axn_slc = area_map.protolayer_map().base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		println!("      SPINYSTELLATES::NEW(): base_axn_slc: {}, axn_idz: {}, dims: {:?}", base_axn_slc, axn_idz, dims);
+		println!("      SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}", base_axn_slc, lyr_axn_idz, dims);
 
 		let dens_dims = dims.clone_with_ptl2(protocell.dens_per_tuft_l2 as i8);
-		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::SpinyStellate, protoregion, axns, aux, ocl);
+		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::SpinyStellate, area_map, axns, aux, ocl);
 
 		//let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		//let iinn = InhibitoryInterneuronNetwork::new(dims, protoregion, &dens.states, ocl);
+		//let iinn = InhibitoryInterneuronNetwork::new(dims, area_map.protolayer_map(), &dens.states, ocl);
 
 		/*let syns = Synapses::new(dims, syns_per_tuft_l2, syns_per_tuft_l2, DendriteKind::Proximal, 
-			ProtocellKind::SpinyStellateCellularLayer, protoregion, axns, aux, ocl);*/
+			ProtocellKind::SpinyStellateCellularLayer, area_map.protolayer_map(), axns, aux, ocl);*/
 
 
 		//assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
@@ -86,7 +89,7 @@ impl SpinyStellateCellularLayer {
 
 		//let work_size = dims.physical_len() / cmn::AXON_BUF__FER_SIZE as usize;
 
-		//println!("\n##### SPINY_STELLATES: cels_per_tuft: {}, syns_per_tuft_l2: {}, axn_idz: {} ", cels_per_tuft, syns_per_tuft_l2, axn_idz);
+		//println!("\n##### SPINY_STELLATES: cels_per_tuft: {}, syns_per_tuft_l2: {}, lyr_axn_idz: {} ", cels_per_tuft, syns_per_tuft_l2, lyr_axn_idz);
 
 		let grp_count = cmn::MINIMUM_WORKGROUP_SIZE;
 		let cols_per_grp = dims.cols_per_subgrp(grp_count).unwrap();
@@ -98,7 +101,7 @@ impl SpinyStellateCellularLayer {
 		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&axns.states)
 			.arg_env(&dens.syns.states)
-			.arg_scl(axn_idz)
+			.arg_scl(lyr_axn_idz)
 			.arg_scl(cols_per_grp)
 			.arg_scl(syns_per_tuft_l2)
 			//.arg_scl(cels_per_tuft)
@@ -130,7 +133,7 @@ impl SpinyStellateCellularLayer {
 			dims: dims,
 			protocell: protocell,
 			base_axn_slc: base_axn_slc,
-			axn_idz: axn_idz,
+			lyr_axn_idz: lyr_axn_idz,
 			//kern_cycle: kern_cycle,
 			//kern_post_inhib: kern_post_inhib,
 			//kern_output: kern_output,
@@ -175,13 +178,7 @@ impl SpinyStellateCellularLayer {
 
 	pub fn dims(&self) -> &CorticalDimensions {
 		&self.dims
-	}
-
-	pub fn axn_range(&self) -> (usize, usize) {
-		let ssts_axn_idn = self.axn_idz + (self.dims.per_slc());
-
-		(self.axn_idz as usize, ssts_axn_idn as usize)
-	}
+	}	
 
 	pub fn base_axn_slc(&self) -> u8 {
 		self.base_axn_slc
@@ -216,5 +213,10 @@ impl SpinyStellateCellularLayer {
 
 	pub fn dens_mut(&mut self) -> &mut Dendrites {
 		&mut self.dens
+	}
+
+	pub fn axn_range(&self) -> ops::Range<usize> {
+		let ssts_axn_idn = self.lyr_axn_idz + (self.dims.per_slc());
+		self.lyr_axn_idz as usize..ssts_axn_idn as usize
 	}
 }

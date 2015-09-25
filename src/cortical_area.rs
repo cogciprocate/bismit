@@ -9,7 +9,7 @@ use std::fmt::{ Display };
 use std::collections::{ BTreeMap, HashMap };
 use std::ops::{ Range };
 
-use cmn::{ self, CorticalDimensions, AreaMap };
+use cmn::{ self, CorticalDimensions, AreaMap, Renderer };
 use ocl::{ self, OclProgQueue, OclContext, WorkSize, Envoy, BuildOptions, BuildOption  };
 use proto::{ ProtolayerMap, ProtolayerMaps, Protoareas, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Pyramidal, SpinyStellate, Inhibitory, layer, Protocell, DendriteKind };
 use synapses::{ Synapses };
@@ -48,6 +48,7 @@ pub struct CorticalArea {
 	pub aux: Aux,
 	ocl: OclProgQueue,
 	ocl_context: OclContext,
+	renderer: Renderer,
 	counter: usize,
 	pub bypass_inhib: bool,
 	pub bypass_filters: bool,
@@ -110,7 +111,11 @@ impl CorticalArea {
 		let mut ssts_map = HashMap::new();
 		let mut iinns = HashMap::new();
 
-		// DATA CELLS
+
+		/*=============================================================================
+		================================== DATA CELLS =================================
+		=============================================================================*/
+
 		for (&layer_name, layer) in area_map.protolayer_map().layers().iter() {
 			match layer.kind {
 				Cellular(ref pcell) => {
@@ -122,7 +127,7 @@ impl CorticalArea {
 							let pyrs_dims = dims.clone_with_depth(layer.depth);
 
 							let pyr_lyr = PyramidalCellularLayer::new(
-								layer_name, pyrs_dims, pcell.clone(), &area_map.protolayer_map(), &axns, &aux, &ocl);
+								layer_name, pyrs_dims, pcell.clone(), &area_map, &axns, &aux, &ocl);
 
 							pyrs_map.insert(layer_name, Box::new(pyr_lyr));
 						},
@@ -130,7 +135,7 @@ impl CorticalArea {
 						SpinyStellate => {							
 							let ssts_map_dims = dims.clone_with_depth(layer.depth);
 							let sst_lyr = SpinyStellateCellularLayer::new(
-								layer_name, ssts_map_dims, pcell.clone(), &area_map.protolayer_map(), &axns, &aux, &ocl);
+								layer_name, ssts_map_dims, pcell.clone(), &area_map, &axns, &aux, &ocl);
 							ssts_map.insert(layer_name, Box::new(sst_lyr));
 						},
 
@@ -142,7 +147,11 @@ impl CorticalArea {
 			}
 		}
 
-		// CONTROL CELLS
+
+		/*=============================================================================
+		================================ CONTROL CELLS ================================
+		=============================================================================*/
+
 		for (&layer_name, layer) in area_map.protolayer_map().layers().iter() {
 			match layer.kind {
 				Cellular(ref pcell) => {
@@ -164,7 +173,7 @@ impl CorticalArea {
 						
 							let iinns_dims = dims.clone_with_depth(src_layer_depth);
 							let mut iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, 
-								pcell.clone(), &area_map.protolayer_map(), src_soma_env, 
+								pcell.clone(), &area_map, src_soma_env, 
 								src_axn_base_slc, &axns, &aux, &ocl);
 
 							iinns.insert(layer_name, Box::new(iinn_lyr));
@@ -190,13 +199,15 @@ impl CorticalArea {
 
 			let em_pyrs = format!("{}: '{}' is not a valid layer", emsg, ptal_name);
 			let pyrs = pyrs_map.get(ptal_name).expect(&em_pyrs);
-			Minicolumns::new(mcols_dims, &area_map.protolayer_map(), &axns, ssts, pyrs, &aux, &ocl)
+			Minicolumns::new(mcols_dims, &area_map, &axns, ssts, pyrs, &aux, &ocl)
 		});
 
 
-		// FILTERS
+		/*=============================================================================
+		=================================== FILTERS ===================================
+		=============================================================================*/
 
-		// <<<<< CHANGE TO LAYERS_WITH_FLAG() >>>>>
+		// <<<<< CHANGE TO LAYER**S**_WITH_FLAG() >>>>>
 		let aff_in_layer = area_map.protolayer_map().layer_with_flag(layer::AFFERENT_INPUT).expect(&emsg);
 		let mut filters_vec = Vec::with_capacity(5);
 
@@ -214,6 +225,7 @@ impl CorticalArea {
 			None => None,
 		};
 
+		let mut renderer = Renderer::new(dims.clone(), &area_map.slices);
 
 		let mut cortical_area = CorticalArea {
 			name: area_map.protoarea().name,
@@ -238,6 +250,7 @@ impl CorticalArea {
 			aux: aux,
 			ocl: ocl,
 			ocl_context: ocl_context,
+			renderer: renderer,
 			counter: 0,
 			bypass_inhib: false,
 			bypass_filters: false,
@@ -311,14 +324,15 @@ impl CorticalArea {
 
 	/* AXN_OUTPUT(): NEEDS UPDATING (DEPRICATION?) */
 	pub fn axn_output_range(&self) -> (u32, u32) {
-		//println!("self.axn_output_slc: {}, self.dims.columns(): {}, cmn::AXON_MAR__GIN_SIZE: {}", self.axn_output_slc as usize, self.dims.columns() as usize, cmn::AXON_MAR__GIN_SIZE);
+		//println!("self.axn_aff_out_slc: {}, self.dims.columns(): {}, cmn::AXON_MAR__GIN_SIZE: {}", self.axn_aff_out_slc as usize, self.dims.columns() as usize, cmn::AXON_MAR__GIN_SIZE);
 		let output_slcs = self.area_map.protolayer_map().aff_out_slcs();
-		assert!(output_slcs.len() == 1);
-		let axn_output_slc = output_slcs[0];
+		assert!(output_slcs.len() == 1, "\nCorticalArea: ERROR: Too many afferent output layers defined.");
+		let axn_aff_out_slc = output_slcs[0];
 
-		//let start = (axn_output_slc as usize * self.dims.columns() as usize) + cmn::AXON_MAR__GIN_SIZE as usize;
-		let start = cmn::axn_idz_2d(axn_output_slc, self.dims.columns(), self.area_map.hrz_demarc());
-		(start, start + (self.dims.per_slc()))
+		//let start = (axn_aff_out_slc as usize * self.dims.columns() as usize) + cmn::AXON_MAR__GIN_SIZE as usize;
+		//let start = cmn::axn_idz_2d(axn_aff_out_slc, self.dims.columns(), self.area_map.hrz_demarc());
+		let idz = self.area_map.axn_idz(axn_aff_out_slc);
+		(idz, idz + (self.dims.per_slc()))
 	}
 
 	/* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
@@ -327,13 +341,29 @@ impl CorticalArea {
 		let src_slc_ids = self.area_map.protolayer_map().src_slc_ids(layer_name, *den_kind);
 
 		for ssid in src_slc_ids {
-			let idz = cmn::axn_idz_2d(ssid, self.dims.columns(), self.area_map.hrz_demarc());
+			//let idz = cmn::axn_idz_2d(ssid, self.dims.columns(), self.area_map.hrz_demarc());
+			let idz = self.area_map.axn_idz(ssid);
 		 	let idn = idz + self.dims.columns();
 			axn_irs.push(idz..idn);
 		}
 
 		axn_irs
 	}
+
+	// pub fn write_to_layer(&self, layer_target: &'static str, sdr: &[ocl::cl_uchar]) {
+	// 	let emsg = format!("cortex::Cortex::write_vec(): Invalid area name: {}", area_name);
+	// 	//let area = areas.get(area_name).expect(&emsg);
+
+	// 	//let ref region = self.protolayer_maps[&RegionKind::Sensory];
+	// 	let region = this.area_map.protolayer_map();
+	// 	let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
+		
+	// 	for slc in axn_slcs { 
+	// 		//let buffer_offset = cmn::axn_idz_2d(slc, area.dims.columns(), region.hrz_demarc()) as usize;
+	// 		let buffer_offset = self.area_map.axn_idz(slc);
+	// 		ocl::enqueue_write_buffer(sdr, area.axns.states.buf, area.ocl().queue(), buffer_offset);
+	// 	}
+	// }
 
 	pub fn write_input(&self, sdr: &[ocl::cl_uchar], layer_flags: layer::ProtolayerFlags) {
 		if layer_flags.contains(layer::AFFERENT_INPUT) && !self.bypass_filters {
@@ -393,9 +423,10 @@ impl CorticalArea {
 		let layer = self.area_map.protolayer_map().layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
 		let len = self.dims.columns() * layer.depth as u32;
 		let base_slc = layer.base_slc_pos;
-		let buffer_offset = cmn::axn_idz_2d(base_slc, self.dims.columns(), self.area_map.protolayer_map().hrz_demarc());
+		//let buffer_offset = cmn::axn_idz_2d(base_slc, self.dims.columns(), self.area_map.protolayer_map().hrz_demarc());
+		let idz = self.area_map.axn_idz(base_slc);
 
-		buffer_offset..(buffer_offset + len)
+		idz..(idz + len)
 	}
 
 	// 	INPUT_SRC_AREAS(): 
@@ -449,6 +480,7 @@ impl CorticalArea {
 	}
 
 
+	// <<<<< TODO: DEPRICATE >>>>>
 	pub fn protolayer_map(&self) -> &ProtolayerMap {
 		&self.area_map.protolayer_map()
 	}
@@ -477,6 +509,21 @@ impl CorticalArea {
 
 	pub fn ocl(&self) -> &OclProgQueue {
 		&self.ocl
+	}
+
+	pub fn render_aff_out(&mut self, input_status: &str, print_summary: bool) {
+		let out_axns = &self.axns.states.vec[self.mcols.aff_out_axn_range()];
+		let sst_axns = &self.axns.states.vec[self.psal().axn_range()];
+		self.renderer.render(out_axns, sst_axns, input_status, print_summary);
+	}
+
+	pub fn render_axon_space(&mut self) {
+		let axn_states = &self.axns.states.vec[..];
+		let slc_map = &self.protolayer_map().slc_map();
+		let cols = self.dims.columns();
+		let hrz_demarc = self.area_map.protolayer_map().hrz_demarc();
+
+		self.renderer.render_axon_space(axn_states, slc_map, cols, hrz_demarc)
 	}
 }
 

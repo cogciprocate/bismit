@@ -88,7 +88,10 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 
 		vec_ff[col_id] = 100;
 
-		cortex.write(area_name, ff_layer_name, &vec_ff);
+		//cortex.write(area_name, ff_layer_name, &vec_ff);
+		cortex.area(area_name).psal().soma().write_direct(&vec_ff, 0);
+
+		// write_input(&self, sdr: &[ocl::cl_uchar], layer_flags: layer::ProtolayerFlags)
 
 		if last_run {
 			println!("\nACTIVATING CELLS... ");
@@ -167,7 +170,8 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 
 			// REACTIVATE FF AXON
 			vec_ff[col_id] = 100;
-			cortex.write(area_name, ff_layer_name, &vec_ff);
+			//cortex.write(area_name, ff_layer_name, &vec_ff);
+			cortex.area(area_name).psal().soma().write_direct(&vec_ff, 0);
 
 
 			{// CELS IN SCOPE
@@ -263,7 +267,8 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 
 			// DEACTIVATE FF AXON
 			vec_ff[col_id] = 0;
-			cortex.write(area_name, ff_layer_name, &vec_ff);
+			//cortex.write(area_name, ff_layer_name, &vec_ff);
+			cortex.area(area_name).psal().soma().write_direct(&vec_ff, 0);
 
 
 			// DEACTIVATE SYNAPSES
@@ -504,13 +509,15 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
 	input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize * 2), true, &mut vec1);
 
 	println!("Primary Spatial Associative Layer...");
-	let psal_name = cortex.area(area_name).psal().layer_name();
-	cortex.write(area_name, psal_name, &vec1);
+	//let psal_name = cortex.area(area_name).psal().layer_name();
+	//cortex.write(area_name, psal_name, &vec1);
+	cortex.area(area_name).psal().soma().write_direct(&vec1, 0);
 	test_syn_and_den_states(&mut cortex.area_mut(area_name).psal_mut().dens_mut());
 
 	println!("Primary Temporal Associative Layer...");
-	let ptal_name = cortex.area(area_name).ptal().layer_name();
-	cortex.write(area_name, ptal_name, &vec1);
+	//let ptal_name = cortex.area(area_name).ptal().layer_name();
+	//cortex.write(area_name, ptal_name, &vec1);
+	cortex.area(area_name).ptal().soma().write_direct(&vec1, 0);
 	test_syn_and_den_states(&mut cortex.area_mut(area_name).ptal_mut().dens_mut());
 	test_pyr_preds(&mut cortex.area_mut(area_name).ptal_mut());
 }

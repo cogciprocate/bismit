@@ -7,7 +7,7 @@ use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDimensions, AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ ProtolayerMap, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
@@ -39,7 +39,7 @@ impl Dendrites {
 					protocell: Protocell,
 					den_kind: DendriteKind, 
 					cell_kind: ProtocellKind,
-					region: &ProtolayerMap,
+					area_map: &AreaMap,
 					axons: &Axons,
 					aux: &Aux,
 					ocl: &OclProgQueue
@@ -75,7 +75,7 @@ impl Dendrites {
 		println!("            DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", layer_name, dims, states.len());
 
 		let syns_dims = dims.clone_with_ptl2((dims.per_tuft_l2() + syns_per_den_l2 as i8));
-		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, region, axons, aux, ocl);
+		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, area_map, axons, aux, ocl);
 
 
 		let kern_cycle = ocl.new_kernel("den_cycle".to_string(), WorkSize::OneDim(states.len()))

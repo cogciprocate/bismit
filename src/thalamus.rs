@@ -95,23 +95,24 @@ impl Thalamus {
 	// THALAMUS::WRITE(): USED FOR TESTING PURPOSES
 	// 	<<<<< NEEDS UPDATING TO NEW SYSTEM - CALL AREA.WRITE() >>>>>
 	// 		- Change input param to &CorticalArea			
-	// 	TODO: DEPRICATE	
-	pub fn write(&self, area_name: &str, layer_target: &'static str, 
-				sdr: &[ocl::cl_uchar], areas: &HashMap<&'static str, Box<CorticalArea>>,
-	) {
-		let emsg = format!("cortex::Cortex::write_vec(): Invalid area name: {}", area_name);
-		let area = areas.get(area_name).expect(&emsg);
+	// 	TODO: DEPRICATE
+	// pub fn write(&self, area_name: &str, layer_target: &'static str, 
+	// 			sdr: &[ocl::cl_uchar], areas: &HashMap<&'static str, Box<CorticalArea>>,
+	// ) {
+	// 	let emsg = format!("cortex::Cortex::write_vec(): Invalid area name: {}", area_name);
+	// 	let area = areas.get(area_name).expect(&emsg);
 
-		//let ref region = self.protolayer_maps[&RegionKind::Sensory];
-		let region = area.protolayer_map();
-		let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
+	// 	//let ref region = self.protolayer_maps[&RegionKind::Sensory];
+	// 	let region = area.protolayer_map();
+	// 	let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
 		
-		for slc in axn_slcs { 
-			let buffer_offset = cmn::axn_idz_2d(slc, area.dims.columns(), region.hrz_demarc()) as usize;
-
-			ocl::enqueue_write_buffer(sdr, area.axns.states.buf, area.ocl().queue(), buffer_offset);
-		}
-	}
+	// 	for slc in axn_slcs { 
+	// 		//let buffer_offset = cmn::axn_idz_2d(slc, area.dims.columns(), region.hrz_demarc()) as usize;
+	// 		let buffer_offset = self.area_map.axn_idz(slc);
+	// 		ocl::enqueue_write_buffer(sdr, area.axns.states.buf, area.ocl().queue(), buffer_offset);
+	// 	}
+	// }
+	
 
 	/*	FORWARD_AFFERENT_OUTPUT(): Read afferent output from a cortical area and store it 
 		in our pseudo thalamus' cache (the 'tract').
@@ -276,3 +277,6 @@ impl AreaInfo {
 }
 
 
+mod tests {
+	
+}

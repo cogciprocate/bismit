@@ -24,8 +24,8 @@ pub fn print_sense_only(cortex: &mut Cortex, area_name: &str) {
 
 	if false {
 		print!("\nAXON REGION OUTPUT: ");
-		let mar = cortex.area_mut(area_name).mcols.axn_output_range();
-		cortex.area_mut(area_name).axns.states.print((1 << 0) as usize, Some((1, 255)), Some(mar), true);
+		let or = cortex.area_mut(area_name).mcols.aff_out_axn_range();
+		cortex.area_mut(area_name).axns.states.print((1 << 0) as usize, Some((1, 255)), Some((or.start, or.end + 1)), true);
 	}
 	if false {
 		print!("\nSPINY STELLATE SYNAPSE STRENGTHS: ");
@@ -202,10 +202,10 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 	if false {
 		print!("\nAXON REGION OUTPUT (L3): ");
 		//cortex.area_mut(area_name).axns.states.print((1 << 0) as usize, Some((1, 255)), Some((3000, 4423)));
-		let mar = cortex.area_mut(area_name).mcols.axn_output_range();
+		let or = cortex.area_mut(area_name).mcols.aff_out_axn_range();
 		cortex.area_mut(area_name).axns.states.print(
 			(1 << 0) as usize, Some((0, 255)), 
-			Some(mar), 
+			Some((or.start, or.end + 1)), 
 			false
 		);
 	}

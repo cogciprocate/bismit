@@ -155,19 +155,7 @@ impl CorticalDimensions {
 		} else {
 			return Err("Invalid subgroup size.");
 		}
-	}
-
-	
-	// LEN(): 4D Volume - Total linear length if stretched out - measured in cell-piece-whatevers
-	/* TEMPORARY */
-	/*pub fn len(&self) -> u32 {
-		self.physical_len()
-	}*/
-
-	/* CORTICAL_LEN(): 'VIRTUAL' CORTEX SIZE, NOT TO BE CONFUSED WITH THE PHYSICAL IN-MEMORY SIZE */
-	/*fn cortical_len(&self) -> u32 {
-		len_components(self.cells(), self.per_tuft_l2)
-	}*/	
+	}	
 
 	pub fn clone_with_ptl2(&self, per_tuft_l2: i8) -> CorticalDimensions {
 		CorticalDimensions { per_tuft_l2: per_tuft_l2, .. *self }
@@ -240,13 +228,23 @@ fn len_components(cells: u32, per_tuft_l2: i8, tufts_per_cel: u32) -> u32 {
 mod tests {
 	use super::*;
 
-
 	#[test]
 	fn test_len() {
 
 		// Actually test the damn thing...
 
 	}
-
-
 }
+
+
+
+	// LEN(): 4D Volume - Total linear length if stretched out - measured in cell-piece-whatevers
+	/* TEMPORARY */
+	/*pub fn len(&self) -> u32 {
+		self.physical_len()
+	}*/
+
+	/* CORTICAL_LEN(): 'VIRTUAL' CORTEX SIZE, NOT TO BE CONFUSED WITH THE PHYSICAL IN-MEMORY SIZE */
+	/*fn cortical_len(&self) -> u32 {
+		len_components(self.cells(), self.per_tuft_l2)
+	}*/	

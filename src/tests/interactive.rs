@@ -8,7 +8,7 @@ use rand::{ self, ThreadRng, Rng };
 use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use time;
 
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDimensions, Renderer };
 use cortex::{ self, Cortex };
 use encode:: { IdxReader };
 //use proto::layer;
@@ -16,7 +16,6 @@ use super::output_czar;
 //use super::synapse_drill_down;
 use super::input_czar::{ self, InputCzar, InputKind, InputSource };
 use super::hybrid;
-use super::renderer::{ Renderer };
 //use chord::{ Chord };
 //use ocl::{ Envoy };
 use proto::{ ProtolayerMap, ProtolayerMaps, Protoareas, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
@@ -154,9 +153,7 @@ pub fn run(autorun_iters: i32) -> bool {
 	// 	InputSource::new(InputKind::IdxReader(Box::new(ir)), "v1"),
 	// ];
 	// let mut input_czar = InputCzar::new(area_dims.clone(), input_sources, COUNTER_RANGE, 
-	// 	COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);
-
-	let mut rndr = Renderer::new(cortex.area(&area_name).dims().clone());
+	// 	COUNTER_RANDOM, TOGGLE_DIRS, INTRODUCE_NOISE);	
 
 	//let mut vec_out_prev: Vec<u8> = iter::repeat(0).take(area_dims.columns() as usize).collect();
 	//let mut vec_ff_prev: Vec<u8> = iter::repeat(0).take(area_dims.columns() as usize).collect();
@@ -309,7 +306,8 @@ pub fn run(autorun_iters: i32) -> bool {
 					let in_s = in_str.trim();
 					//let in_int: Option<u8> = in_s.trim().parse().ok();
 
-					cortex.print_area_output(&in_s);
+					println!("\n##### DISABLED #####");
+					//cortex.print_area_output(&in_s);
 					continue;
 
 				} else {
@@ -412,27 +410,23 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			cortex.area_mut(&area_name).axns.states.read();
 
-			let (eff_out_idz, eff_out_idn) = cortex.area(&area_name).mcols.axn_output_range();
-			let (ssts_axn_idz, ssts_axn_idn) = cortex.area_mut(&area_name).psal_mut().axn_range();
+			//let (eff_out_idz, eff_out_idn) = cortex.area(&area_name).mcols.axn_output_range();
+			//let (ssts_axn_idz, ssts_axn_idn) = cortex.area_mut(&area_name).psal_mut().axn_range();
 
-			let out_slc = &cortex.area(&area_name).axns.states.vec[eff_out_idz..eff_out_idn];
-			let ff_slc = &cortex.area(&area_name).axns.states.vec[ssts_axn_idz..ssts_axn_idn];
+			//let out_slc = &cortex.area(&area_name).axns.states.vec[eff_out_idz..eff_out_idn];
+			//let ff_slc = &cortex.area(&area_name).axns.states.vec[ssts_axn_idz..ssts_axn_idn];
 			//let ff_slc = &cortex.area(&area_name).psal_mut().dens.states.vec[..];
 
 			print!("\n'{}' output:", &area_name);
 
-			rndr.render(out_slc, ff_slc, &input_status, true);
+			cortex.area_mut(&area_name).render_aff_out(&input_status, true);
 
 			if view_all_axons {
 				print!("\n\nAXON SPACE:\n");
 				
 				let axn_space_len = cortex.area(&area_name).axns.states.vec.len();
 
-				rndr.render_axon_space(&cortex.area(&area_name).axns.states.vec[..], 
-					&cortex.area(&area_name).protolayer_map().slc_map(),
-					cortex.area(&area_name).dims.columns(),
-					cortex.area(&area_name).protolayer_map().hrz_demarc(),
-				);				
+				cortex.area_mut(&area_name).render_axon_space();				
 
 				// cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).protolayer_map().slc_map(), true, cortex.area(&area_name).dims.columns());
 			}

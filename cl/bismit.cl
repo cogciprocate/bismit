@@ -6,7 +6,7 @@
 
 #define FLAG_ON(flag_set, mask)			((flag_set) |= (mask))
 #define FLAG_OFF(flag_set, mask)		((flag_set) &= ~(mask))
-#define FLAG_TEST(flag_set, mask)		(((flag_set) & (mask)) == (mask))
+#define FLAG_EVAL(flag_set, mask)		(((flag_set) & (mask)) == (mask))
 
 #define ENERGY_LEVEL_MIN				9		
 #define ENERGY_LEVEL_MAX				255
@@ -109,8 +109,6 @@ static inline uchar get_axn_u_scale(uint slc_id) {
 ===============================================================================
 =============================================================================*/
 
-
-
 // 	W_COORD():
 static inline int w_ofs(int v_ofs, int u_ofs) {
 	return (0 - v_ofs) - u_ofs;
@@ -153,7 +151,6 @@ static inline int4 dim_is_safe_vec4(int4 dim_size, int4 dim_id, int4 dim_ofs) {
 ================================ CELL INDEXING ================================
 =============================================================================*/
 
-
 // CEL_IDX_3D_UNSAFE(): LINEAR INDEX OF A CELL - NOT ACCURATE FOR AXONS
 static inline uint cel_idx_3d_unsafe(uint slc_id, uint v_size, uint v_id, uint u_size, uint u_id) {
 	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
@@ -189,7 +186,6 @@ static inline uchar cel_state_3d_safe(uchar slc_id,
 /*=============================================================================
 ================================ AXON INDEXING ================================
 =============================================================================*/
-
 
 // AXN_IDX_3D_UNSAFE(): LINEAR INDEX OF AN AXON
 static inline uint axn_idx_3d_unsafe(uint slc_id, uint v_size, uint v_id, uint u_size, uint u_id) {
@@ -290,11 +286,9 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id_uchar4,
 }
 
 
-
 /*=============================================================================
 ================================== LEARNING ===================================
 =============================================================================*/
-
 
 // TODO: VECTORIZE
 static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
