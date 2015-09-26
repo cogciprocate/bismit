@@ -1,6 +1,6 @@
 
 use cmn::{ self, CorticalDimensions };
-use proto::{ ProtolayerMap, ProtolayerMaps, Protoareas, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
+use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 use cortex::{ self, Cortex };
 use ocl::{ Envoy, WorkSize, OclProgQueue, EnvoyDimensions };
 use super::input_czar::{ self, InputCzar, InputKind };
@@ -13,10 +13,10 @@ use super::hybrid;
 
 
 /* Eventually move defines to a config file or some such */
-pub fn define_protolayer_maps() -> ProtolayerMaps {
-	let mut cort_regs: ProtolayerMaps = ProtolayerMaps::new();
+pub fn define_protolayer_maps() -> ProtoLayerMaps {
+	let mut cort_regs: ProtoLayerMaps = ProtoLayerMaps::new();
 
-	cort_regs.add(ProtolayerMap::new("visual", Sensory)
+	cort_regs.add(ProtoLayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
 		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
 		//.layer("olfac", 1, layer::DEFAULT, Axonal(Horizontal))
@@ -32,17 +32,17 @@ pub fn define_protolayer_maps() -> ProtolayerMaps {
 			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
 	);
 
-	cort_regs.add(ProtolayerMap::new("external", Thalamic)
+	cort_regs.add(ProtoLayerMap::new("external", Thalamic)
 		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial))
 	);
 
 	cort_regs
 }
 
-pub fn define_protoareas() -> Protoareas {
+pub fn define_protoareas() -> ProtoAreaMaps {
 	let area_side = 32 as u32;
 
-	let mut protoareas = Protoareas::new()
+	let mut protoareas = ProtoAreaMaps::new()
 
 		.area_ext("v0", "external", area_side, area_side, 
 			Protoinput::IdxReader { 

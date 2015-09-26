@@ -14,4 +14,5 @@ mod cmn;
 mod cortical_dimensions;
 mod area_map;
 mod renderer;
+pub mod input_source;
 //mod prediction;

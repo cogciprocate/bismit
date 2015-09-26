@@ -8,7 +8,7 @@ use super::input_czar::{ self, InputCzar, InputKind };
 use proto::*;
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
-use pyramidals::{ PyramidalCellularLayer };
+use pyramidals::{ PyramidalLayer };
 use cortex::{ self, Cortex };
 use cmn;
 use ocl::{ self, Envoy };
@@ -36,7 +36,8 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 	let layer_name = cortex.area_mut(area_name).ptal_name();
 	let ff_layer_name = cortex.area_mut(area_name).psal_name();
 
-	let src_slc_ids = cortex.area_mut(area_name).protolayer_map().src_slc_ids(layer_name, DendriteKind::Distal);
+	let src_slc_ids = cortex.area_mut(area_name).area_map().proto_layer_map()
+		.src_slc_ids(layer_name, DendriteKind::Distal);
 	let src_slc_id = src_slc_ids[0];
 	
 	let ff_layer_axn_idz = cortex.area_mut(area_name).mcols.ff_layer_axn_idz();
@@ -522,13 +523,14 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
 	test_pyr_preds(&mut cortex.area_mut(area_name).ptal_mut());
 }
 
+
 fn test_inhib(cortex: &mut Cortex) {
 
 }
  
 
 // TEST PYRAMIDAL CELLS 'PREDICTIVENESS' AKA: SOMA STATES
-fn test_pyr_preds(pyrs: &mut PyramidalCellularLayer) {
+fn test_pyr_preds(pyrs: &mut PyramidalLayer) {
 	let emsg = "\ntests::hybrid::test_pyr_preds()";
 
 	io::stdout().flush().unwrap();

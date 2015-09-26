@@ -18,7 +18,7 @@ use super::input_czar::{ self, InputCzar, InputKind, InputSource };
 use super::hybrid;
 //use chord::{ Chord };
 //use ocl::{ Envoy };
-use proto::{ ProtolayerMap, ProtolayerMaps, Protoareas, Protoarea, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
+use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 
 
 pub const INITIAL_TEST_ITERATIONS: i32 		= 1; 
@@ -33,16 +33,15 @@ const REPEATS_PER_IMAGE: usize 				= 4;
 
 
 /* Eventually move defines to a config file or some such */
-pub fn define_protolayer_maps() -> ProtolayerMaps {
-	let mut cort_regs: ProtolayerMaps = ProtolayerMaps::new();
+pub fn define_protolayer_maps() -> ProtoLayerMaps {
+	let mut cort_regs: ProtoLayerMaps = ProtoLayerMaps::new();
 
-	cort_regs.add(ProtolayerMap::new("visual", Sensory)
+	cort_regs.add(ProtoLayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
 		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
 		//.layer("olfac", 1, layer::DEFAULT, Axonal(Horizontal))
-		.layer("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
-		//.layer("nothing", 1, layer::DEFAULT, Axonal(Spatial))
-		.layer("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
+		.layer("eff_in", 0, layer::EFFERENT_INPUT | layer::INTERAREA, Axonal(Spatial))
+		.layer("aff_in", 0, layer::AFFERENT_INPUT | layer::INTERAREA, Axonal(Spatial))
 		.layer("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
 		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
@@ -52,17 +51,17 @@ pub fn define_protolayer_maps() -> ProtolayerMaps {
 			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
 	);
 
-	cort_regs.add(ProtolayerMap::new("external", Thalamic)
+	cort_regs.add(ProtoLayerMap::new("external", Thalamic)
 		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial))
 	);
 
 	cort_regs
 }
 
-pub fn define_protoareas() -> Protoareas {
+pub fn define_protoareas() -> ProtoAreaMaps {
 	let area_side = 48 as u32;
 
-	let mut protoareas = Protoareas::new()
+	let mut protoareas = ProtoAreaMaps::new()
 		
 		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
 		// .area_ext("u0", "external", area_side, area_side, 
@@ -428,7 +427,7 @@ pub fn run(autorun_iters: i32) -> bool {
 
 				cortex.area_mut(&area_name).render_axon_space();				
 
-				// cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).protolayer_map().slc_map(), true, cortex.area(&area_name).dims.columns());
+				// cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).proto_layer_map().slc_map(), true, cortex.area(&area_name).dims.columns());
 			}
 
 			i += 1;

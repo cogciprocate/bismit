@@ -8,27 +8,18 @@ use std::fmt::{ Display };
 
 use cmn::{ self, CorticalDimensions, AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
-use proto::{ ProtolayerMap, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
+use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cortical_area:: { Aux };
 use iinn:: { InhibitoryInterneuronNetwork };
-use pyramidals::{ PyramidalCellularLayer };
+use pyramidals::{ PyramidalLayer };
 use minicolumns::{ Minicolumns };
 
 
 
-
-/*	Minicolumns (aka. Columns)
-	- TODO:
-		- Reorganization to:
-			- Minicolumns
-				- SpinyStellateCellularLayer
-					- Dendrite
-
-*/
-pub struct SpinyStellateCellularLayer {
+pub struct SpinyStellateLayer {
 	layer_name: &'static str,
 	dims: CorticalDimensions,
 	protocell: Protocell,
@@ -50,24 +41,24 @@ pub struct SpinyStellateCellularLayer {
 	//pub syns: Synapses,
 }
 
-// pyrs: &PyramidalCellularLayer,
-impl SpinyStellateCellularLayer {
+// pyrs: &PyramidalLayer,
+impl SpinyStellateLayer {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, area_map: &AreaMap, 
 				axns: &Axons, aux: &Aux, ocl: &OclProgQueue
-	) -> SpinyStellateCellularLayer {
-		//let layer = area_map.protolayer_map().spt_asc_layer().expect("spiny_stellates::SpinyStellateCellularLayer::new()");
+	) -> SpinyStellateLayer {
+		//let layer = area_map.proto_layer_map().spt_asc_layer().expect("spiny_stellates::SpinyStellateLayer::new()");
 		//let depth: u8 = layer.depth();
 
-		let base_axn_slcs = area_map.protolayer_map().slc_ids(vec![layer_name]);
+		let base_axn_slcs = area_map.proto_layer_map().slc_ids(vec![layer_name]);
 		let base_axn_slc = base_axn_slcs[0];
-		//let lyr_axn_idz = cmn::axn_idz_2d(base_axn_slc, dims.columns(), area_map.protolayer_map().hrz_demarc());
+		//let lyr_axn_idz = cmn::axn_idz_2d(base_axn_slc, dims.columns(), area_map.proto_layer_map().hrz_demarc());
 		let lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
 		let syns_per_tuft_l2: u8 = protocell.syns_per_den_l2 + protocell.dens_per_tuft_l2;
 
-		//let pyr_depth = area_map.protolayer_map().depth_cell_kind(&ProtocellKind::Pyramidal);
+		//let pyr_depth = area_map.proto_layer_map().depth_cell_kind(&ProtocellKind::Pyramidal);
 
-		//let pyr_base_axn_slc = area_map.protolayer_map().base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
+		//let pyr_base_axn_slc = area_map.proto_layer_map().base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -78,10 +69,10 @@ impl SpinyStellateCellularLayer {
 
 		//let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		//let iinn = InhibitoryInterneuronNetwork::new(dims, area_map.protolayer_map(), &dens.states, ocl);
+		//let iinn = InhibitoryInterneuronNetwork::new(dims, area_map.proto_layer_map(), &dens.states, ocl);
 
 		/*let syns = Synapses::new(dims, syns_per_tuft_l2, syns_per_tuft_l2, DendriteKind::Proximal, 
-			ProtocellKind::SpinyStellateCellularLayer, area_map.protolayer_map(), axns, aux, ocl);*/
+			ProtocellKind::SpinyStellateLayer, area_map.proto_layer_map(), axns, aux, ocl);*/
 
 
 		//assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
@@ -128,7 +119,7 @@ impl SpinyStellateCellularLayer {
 
 		//println!("\n***Test");
 
-		SpinyStellateCellularLayer {
+		SpinyStellateLayer {
 			layer_name: layer_name,
 			dims: dims,
 			protocell: protocell,
@@ -189,7 +180,7 @@ impl SpinyStellateCellularLayer {
 	}
 
 	pub fn print_cel(&mut self, cel_idx: usize) {
-		let emsg = "SpinyStellateCellularLayer::print()";
+		let emsg = "SpinyStellateLayer::print()";
 
 		let cel_syn_idz = (cel_idx << self.dens.syns.dims().per_tuft_l2_left()) as usize;
 		let per_cel = self.dens.syns.dims().per_cel() as usize;

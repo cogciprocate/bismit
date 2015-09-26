@@ -8,10 +8,9 @@ use rand::distributions::{ IndependentSample, Range };
 
 use ocl::{ self, OclContext, OclProgQueue };
 use cmn::{ self, CorticalDimensions, AreaMap };
-use chord::{ Chord };
 use cortical_area:: { self, CorticalArea, CorticalAreas };
 use thalamus::{ Thalamus };
-use proto::{ ProtolayerMap, ProtolayerMaps, Protoareas, Protoarea, Cellular, 
+use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, 
 	Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell };
 
 pub struct Cortex {
@@ -21,30 +20,28 @@ pub struct Cortex {
 }
 
 impl Cortex {
-	pub fn new(mut protoregions: ProtolayerMaps, mut protoareas: Protoareas) -> Cortex {
+	pub fn new(proto_layer_maps: ProtoLayerMaps, mut proto_area_maps: ProtoAreaMaps) -> Cortex {
 		println!("\nInitializing Cortex... ");
 		let time_start = time::get_time();
 
-		protoareas.freeze();
+		proto_area_maps.freeze();		
 
 		let mut areas = HashMap::new();
-		let mut i = 0;
+		let mut device_idx = 0;
 
-		for (_, pa) in protoareas.map().iter().filter(|&(_, pa)| 
-					protoregions[pa.region_name].kind != Thalamic
+		let thal = Thalamus::new(&proto_layer_maps, &proto_area_maps);
+
+		for (&area_name, pa) in proto_area_maps.maps().iter().filter(|&(_, pa)| 
+					proto_layer_maps[pa.region_name].kind != Thalamic
 		) {	
-			let area_map = AreaMap::new(&protoregions, pa);
-
+			//let area_map = AreaMap::new(&proto_layer_maps, pa);
 			// let protoarea = pa.clone();			
-			// let mut protoregion = protoregions[protoarea.region_name].clone();
+			// let mut protoregion = proto_layer_maps[protoarea.region_name].clone();
+			// protoregion.freeze(&protoarea);
+			areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name), device_idx)));
 
-			// protoregion.freeze(&protoarea);	
-
-			areas.insert(area_map.protoarea().name, Box::new(CorticalArea::new(area_map, i)));
-			i += 1;
-		}
-
-		let thal = Thalamus::new(&areas, protoregions, protoareas);
+			device_idx += 1;
+		}		
 
 		// <<<<< MOVE THIS TIMING STUFF ELSEWHERE AND MAKE A FUNCTION FOR IT >>>>>
 		let time_complete = time::get_time() - time_start;
@@ -149,15 +146,15 @@ impl Cortex {
 	/*	WRITE_VEC(): 
 			TODO: 
 				- VALIDATE "layer_target, OTHERWISE: 
-					- thread '<main>' panicked at '[protoregions::ProtolayerMap::index(): 
-					invalid layer name: "XXXXX"]', src/protoregions.rs:339
+					- thread '<main>' panicked at '[proto_layer_maps::ProtoLayerMap::index(): 
+					invalid layer name: "XXXXX"]', src/proto_layer_maps.rs:339
 						- Just have slc_ids return an option<u8>
 				- Handle multi-slc input vectors (for input compression, etc.)
 					- Update assert statement to support this
 	*/
 	/*pub fn write_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &[ocl::cl_uchar]) {
 		let emsg = "cortex::Cortex::write_vec()";
-		let ref region = self.protoregions[&Sensory];
+		let ref region = self.proto_layer_maps[&Sensory];
 		let axn_slcs: Vec<u8> = region.slc_ids(vec!(layer_target));
 
 		for slc in axn_slcs { 
@@ -175,10 +172,10 @@ impl Cortex {
 
 
 	/* Eventually move define_*() to a config file or some such */
-/*pub fn define_protoregions() -> ProtolayerMaps {
-	let mut cort_regs: ProtolayerMaps = ProtolayerMaps::new();
+/*pub fn define_proto_layer_maps() -> ProtoLayerMaps {
+	let mut cort_regs: ProtoLayerMaps = ProtoLayerMaps::new();
 
-	let mut sen = ProtolayerMap::new(Sensory)
+	let mut sen = ProtoLayerMap::new(Sensory)
 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
 
 		.layer("eff_in", 1, layer::EFFERENT_INPUT, Axonal(Spatial))
@@ -210,15 +207,15 @@ impl Cortex {
 	cort_regs
 }
 
-pub fn define_protoareas() -> Protoareas {
-	let mut protoareas = Protoareas::new()
+pub fn define_proto_area_maps() -> ProtoAreaMaps {
+	let mut proto_area_maps = ProtoAreaMaps::new()
 		//.area("v1", 32, 32, Sensory, Some(vec!["v2"]))
 		.area("v1", 48, 48, Sensory, Some(vec!["b1"]))
 		.area("b1", 48, 48, Sensory, Some(vec!["a1"]))
 		.area("a1", 48, 48, Sensory, None)
 	;
 
-	protoareas
+	proto_area_maps
 }*/
 
 
@@ -246,8 +243,8 @@ pub fn define_protoareas() -> Protoareas {
 /*	fn cycle_syns(&self) {
 
 		let width: u32 = self.areas.width(Sensory);
-		let depth_total: u8 = self.protoregions.depth_total(Sensory);
-		let (_, depth_cellular) = self.protoregions.depth(Sensory);
+		let depth_total: u8 = self.proto_layer_maps.depth_total(Sensory);
+		let (_, depth_cellular) = self.proto_layer_maps.depth(Sensory);
 		let len: u32 = dims.width * depth_total as u32;
 
 		let test_envoy = Envoy::<ocl::cl_int>::new(width, depth_total, 0, &self.ocl);
@@ -274,7 +271,7 @@ pub fn define_protoareas() -> Protoareas {
 /*	fn cycle_dens(&self) {
 
 		let width: u32 = self.areas.width(Sensory);
-		let (_, depth_cellular) = self.protoregions.depth(Sensory);
+		let (_, depth_cellular) = self.proto_layer_maps.depth(Sensory);
 
 		let width_dens: usize = dims.width as usize * cmn::DENDRITES_PER_CELL * depth_cellular as usize;
 
@@ -290,7 +287,7 @@ pub fn define_protoareas() -> Protoareas {
 
 	/*	fn cycle_axns(&self) {
 		let width: u32 = self.areas.width(Sensory);
-		let (depth_noncellular, depth_cellular) = self.protoregions.depth(Sensory);
+		let (depth_noncellular, depth_cellular) = self.proto_layer_maps.depth(Sensory);
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_axns");
 		ocl::set_kernel_arg(0, self.cortical_area.dst_dens.states.buf, kern);

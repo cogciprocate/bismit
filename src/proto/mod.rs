@@ -2,23 +2,24 @@
 
 //pub use self::layer_maps::{  };
 
-pub use self::layer_map::{ ProtolayerMaps, ProtolayerMap, RegionKind };
-	pub use self::layer_map::RegionKind::{ Associational, Sensory, Motor, Thalamic }; // SLATED FOR REDESIGN
+pub use self::proto_layer_map::{ ProtoLayerMaps, ProtoLayerMap, RegionKind };
+	pub use self::proto_layer_map::RegionKind::{ Associational, Sensory, Motor, Thalamic }; // SLATED FOR REDESIGN
 
-pub use self::areas::{ Protoareas, Protoarea, Protoinput };
+pub use self::proto_area_map::{ ProtoAreaMaps, ProtoAreaMap, Protoinput };
 
-pub use self::layer::{ Protolayer, ProtolayerKind, ProtoaxonKind };
-	pub use self::layer::ProtolayerKind::{ Cellular, Axonal };
-	pub use self::layer::ProtoaxonKind::{ Spatial, Horizontal };
+pub use self::protolayer as layer;
+pub use self::protolayer::{ Protolayer, ProtolayerKind, ProtoaxonKind };
+	pub use self::protolayer::ProtolayerKind::{ Cellular, Axonal };
+	pub use self::protolayer::ProtoaxonKind::{ Spatial, Horizontal };
 
-pub use self::cell::{ ProtocellKind, Protocell, DendriteKind, CellFlags };
-	pub use self::cell::ProtocellKind::{ Pyramidal, SpinyStellate, Inhibitory };
+pub use self::protocell::{ ProtocellKind, Protocell, DendriteKind, CellFlags };
+	pub use self::protocell::ProtocellKind::{ Pyramidal, SpinyStellate, Inhibitory };
 
-pub use self::filter::{ Protofilter };
+pub use self::protofilter::{ Protofilter };
 
-pub mod filter;
+mod protofilter;
 //pub mod regions;
-pub mod layer_map;
-pub mod areas;
-pub mod layer;
-pub mod cell;
+mod proto_layer_map;
+mod proto_area_map;
+pub mod protolayer;
+mod protocell;

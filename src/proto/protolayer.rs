@@ -1,7 +1,7 @@
 use bitflags;
 
-use proto::cell::{ ProtocellKind, Protocell, DendriteKind };
-use proto::cell::DendriteKind::{ Distal, Proximal };
+use proto::{ ProtocellKind, Protocell, DendriteKind };
+use proto::DendriteKind::{ Distal, Proximal };
 use self::ProtolayerKind::{ Cellular, Axonal };
 //use ocl;
 
@@ -11,8 +11,8 @@ pub struct Protolayer {
 	pub name: &'static str,
 	//pub kind: Option<Protocell>,
 	pub kind: ProtolayerKind,
-	pub base_slc_pos: u8, // <<<<< REMOVE THE '_pos'
-	pub kind_base_slc_pos: u8, // <<<<< ''
+	pub base_slc_id: u8, // <<<<< REMOVE THE '_pos'
+	pub kind_base_slc_id: u8, // <<<<< ''
 	pub depth: u8,
 	pub flags: ProtolayerFlags,
 }
@@ -21,23 +21,23 @@ impl Protolayer {
 	/*pub fn new(
 				name: &'static str,
 				cell: Option<Protocell>,
-				base_slc_pos: u8,
-				kind_base_slc_pos: u8,
+				base_slc_id: u8,
+				kind_base_slc_id: u8,
 				depth: u8,
 				flags: ProtolayerFlags,
 	) -> Protolayer {
 		Protolayer {
 			name: name,
 			cell: cell,
-			base_slc_pos: base_slc_pos,
-			kind_base_slc_pos: kind_base_slc_pos,
+			base_slc_id: base_slc_id,
+			kind_base_slc_id: kind_base_slc_id,
 			depth: depth,
 			flags: flags,
 		}
 	}*/
 
 	pub fn base_slc(&self) -> u8 {
-		self.base_slc_pos
+		self.base_slc_id
 	}
 
 	pub fn depth(&self) -> u8 {
@@ -131,6 +131,7 @@ bitflags! {
 		const TEMPORAL_ASSOCIATIVE 	= 0b00001000,
 		const EFFERENT_INPUT		= 0b00010000,
 		const EFFERENT_OUTPUT		= 0b00100000,
+		const INTERAREA				= 0b01000000,
 	}
 }
 

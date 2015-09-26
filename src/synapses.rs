@@ -10,7 +10,7 @@ use std::collections::{ BTreeSet };
 
 use cmn::{ self, CorticalDimensions, AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
-use proto::{ ProtolayerMap, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind, Protolayer, ProtolayerKind };
+use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind, Protolayer, ProtolayerKind };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cortical_area:: { Aux };
@@ -34,7 +34,7 @@ pub struct Synapses {
 	dims: CorticalDimensions,
 	syns_per_den_l2: u8,
 	protocell: Protocell,
-	//protoregion: ProtolayerMap,
+	//protoregion: ProtoLayerMap,
 	dst_src_slc_ids: Vec<Vec<u8>>,
 	den_kind: DendriteKind,
 	cell_kind: ProtocellKind,
@@ -75,7 +75,7 @@ impl Synapses {
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 		// KERNELS
-		let dst_src_slc_ids = area_map.protolayer_map().dst_src_slc_ids(layer_name);
+		let dst_src_slc_ids = area_map.proto_layer_map().dst_src_slc_ids(layer_name);
 		assert!(dst_src_slc_ids.len() == dims.tufts_per_cel() as usize);		
 
 		let mut kernels = Vec::with_capacity(dst_src_slc_ids.len());

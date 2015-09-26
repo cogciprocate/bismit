@@ -9,14 +9,14 @@ use std::fmt::{ Display };
 
 use cmn::{ self, CorticalDimensions, AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
-use proto::{ ProtolayerMap, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
+use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cortical_area:: { Aux };
 use iinn:: { InhibitoryInterneuronNetwork };
-use pyramidals::{ PyramidalCellularLayer };
-use spiny_stellates::{ SpinyStellateCellularLayer };
+use pyramidals::{ PyramidalLayer };
+use spiny_stellates::{ SpinyStellateLayer };
 
 
 
@@ -55,10 +55,10 @@ pub struct Minicolumns {
 impl Minicolumns {
 	pub fn new(dims: CorticalDimensions, area_map: &AreaMap, axons: &Axons, 
 
-					/*ssts_map: &HashMap<&str, Box<SpinyStellateCellularLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalCellularLayer>>, */
+					/*ssts_map: &HashMap<&str, Box<SpinyStellateLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalLayer>>, */
 
-					ssts: &SpinyStellateCellularLayer, 
-					pyrs: &PyramidalCellularLayer,
+					ssts: &SpinyStellateLayer, 
+					pyrs: &PyramidalLayer,
 
 					aux: &Aux, ocl: &OclProgQueue) -> Minicolumns {
 
@@ -68,7 +68,7 @@ impl Minicolumns {
 		/*let psal_name = cortex.area_mut("v1").psal_name();
 		let ptal_name = cortex.area_mut("v1").ptal_name();*/
 
-		let layer = area_map.protolayer_map().spt_asc_layer().expect("minicolumns::Minicolumns::new()");
+		let layer = area_map.proto_layer_map().spt_asc_layer().expect("minicolumns::Minicolumns::new()");
 		//let depth: u8 = layer.depth();
 
 		/*let ssts = ssts_map.get(psal_name).expect("minicolumns.rs");
@@ -77,33 +77,33 @@ impl Minicolumns {
 		//let syns_per_tuft: u32 = 1 << syns_per_den_l2;
 
 		let ff_layer_axn_idz = ssts.axn_range().start;
-		let pyr_depth = area_map.protolayer_map().depth_cell_kind(&ProtocellKind::Pyramidal);
+		let pyr_depth = area_map.proto_layer_map().depth_cell_kind(&ProtocellKind::Pyramidal);
 
-		//let pyr_axn_base_slc = area_map.protolayer_map().base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
+		//let pyr_axn_base_slc = area_map.proto_layer_map().base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		println!("      MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth);
 
-		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, area_map.protolayer_map(), axons, aux, ocl);
+		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, area_map.proto_layer_map(), axons, aux, ocl);
 
 		let pred_totals = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
-		//let iinn = InhibitoryInterneuronNetwork::new(dims, area_map.protolayer_map(), &ssts.soma(), ocl);
+		//let iinn = InhibitoryInterneuronNetwork::new(dims, area_map.proto_layer_map(), &ssts.soma(), ocl);
 
 		/*let syns = Synapses::new(dims, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
-			ProtocellKind::SpinyStellate, area_map.protolayer_map(), axons, aux, ocl);*/
+			ProtocellKind::SpinyStellate, area_map.proto_layer_map(), axons, aux, ocl);*/
 
-		let aff_out_axn_slc = area_map.protolayer_map().aff_out_slcs()[0];
+		let aff_out_axn_slc = area_map.proto_layer_map().aff_out_slcs()[0];
 		let aff_out_axn_idz = area_map.axn_idz(aff_out_axn_slc);
 
-		/*let output_slcs = area_map.protolayer_map().aff_out_slcs();
+		/*let output_slcs = area_map.proto_layer_map().aff_out_slcs();
 		assert!(output_slcs.len() == 1);
 		let aff_out_axn_slc = output_slcs[0];
-		let ssts_slc_ids = area_map.protolayer_map().slc_ids(vec!["iv_old"]);
+		let ssts_slc_ids = area_map.proto_layer_map().slc_ids(vec!["iv_old"]);
 		let ssts_axn_base_slc = ssts_slc_ids[0];
-		let ff_layer_axn_idz_old = cmn::axn_idz_2d(ssts_axn_base_slc, dims.columns(), area_map.protolayer_map().hrz_demarc());
+		let ff_layer_axn_idz_old = cmn::axn_idz_2d(ssts_axn_base_slc, dims.columns(), area_map.proto_layer_map().hrz_demarc());
 		assert!(ff_layer_axn_idz == ff_layer_axn_idz_old as usize);*/
 
 		// REPLACE ME WITH AREAMAP GOODNESS
@@ -147,7 +147,7 @@ impl Minicolumns {
 			dims: dims,
 			aff_out_axn_slc: aff_out_axn_slc,
 			aff_out_axn_idz: aff_out_axn_idz,
-			//hrz_demarc: area_map.protolayer_map().hrz_demarc(),
+			//hrz_demarc: area_map.proto_layer_map().hrz_demarc(),
 			ff_layer_axn_idz: ff_layer_axn_idz,
 			//kern_cycle: kern_cycle,
 			//kern_post_inhib: kern_post_inhib,
@@ -166,7 +166,7 @@ impl Minicolumns {
 	}
 
 
-	// pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &Box<SpinyStellateCellularLayer>, axns: &Axons, aux: &Aux) {
+	// pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &Box<SpinyStellateLayer>, axns: &Axons, aux: &Aux) {
 	// 	let (ff_layer_axn_idz, _) = ssts.axn_range();
 	// 	//println!("\n##### Pyramidals::init_kernels(): ff_layer_axn_idz: {}", ff_layer_axn_idz as u32);
 

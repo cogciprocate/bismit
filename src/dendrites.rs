@@ -9,7 +9,7 @@ use std::fmt::{ Display };
 
 use cmn::{ self, CorticalDimensions, AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
-use proto::{ ProtolayerMap, RegionKind, Protoareas, ProtocellKind, Protocell, DendriteKind };
+use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axons::{ Axons };
 use cortical_area:: { Aux };

@@ -1,17 +1,21 @@
 use num::{ Num };
 use std::fmt::{ Display };
+use std::ops::{ Range };
 //use std::num::ToString;
 
 use ocl::{ BuildOptions, BuildOption };
-use proto::{ ProtolayerMaps, ProtolayerMap, Protoarea };
+use proto::{ layer, ProtoLayerMaps, ProtoLayerMap, ProtoAreaMap };
 use cmn::{ self, CorticalDimensions };
 
 // 	AREAMAP { }:
-// 		- Move in functionality from the 'execution phase' side of protoarea and protolayer_map.
+// 		- Move in functionality from the 'execution phase' side of protoarea_map and protolayer_map.
 //		- Leave the 'init phase' stuff to the proto-*s.
+#[derive(Clone)]
 pub struct AreaMap {
-	protoarea: Protoarea,
-	protolayer_map: ProtolayerMap,	
+	area_name: &'static str,
+	dims: CorticalDimensions,
+	protoarea_map: ProtoAreaMap,
+	protolayer_map: ProtoLayerMap,	
 
 	pub slices: SliceMap,
 
@@ -28,33 +32,59 @@ pub struct AreaMap {
 }
 
 impl AreaMap {
-	pub fn new(protolayer_maps: &ProtolayerMaps, protoarea: &Protoarea) -> AreaMap {
-		let protoarea = protoarea.clone();			
-		let mut protolayer_map = protolayer_maps[protoarea.region_name].clone();
-		protolayer_map.freeze(&protoarea);
+	pub fn new(protolayer_maps: &ProtoLayerMaps, protoarea_map: &ProtoAreaMap) -> AreaMap {
+		let protoarea_map = protoarea_map.clone();			
+		let mut protolayer_map = protolayer_maps[protoarea_map.region_name].clone();
+		protolayer_map.freeze(&protoarea_map);
 
-		let slices = SliceMap::new(&protolayer_map, protoarea.dims());
-
+		let dims = protoarea_map.dims();
+		let slices = SliceMap::new(&protolayer_map, dims);
 		let hrz_demarc = protolayer_map.hrz_demarc();
+		let area_name = protoarea_map.name;
 
 		AreaMap {
-			protoarea: protoarea,
+			area_name: area_name,
+			dims: dims,
+			protoarea_map: protoarea_map,
 			protolayer_map: protolayer_map,
 			slices: slices,
 			hrz_demarc: hrz_demarc,
 		}
 	}
 
-	pub fn protoarea(&self) -> &Protoarea {
-		&self.protoarea
+	pub fn proto_area_map(&self) -> &ProtoAreaMap {
+		&self.protoarea_map
 	}
 
-	pub fn protolayer_map(&self) -> &ProtolayerMap {
+	pub fn proto_layer_map(&self) -> &ProtoLayerMap {
 		&self.protolayer_map
 	}
 
 	pub fn axn_idz(&self, slc_id: u8) -> u32 {
 		self.slices.idz(slc_id)
+	}
+
+	pub fn axn_range_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {
+		let emsg = format!("\nAreaMap::axn_range(): '{:?}' flag not set for any layer in area: '{}'.", 
+			layer_flags, self.area_name);
+		let layer = self.protolayer_map.layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
+		let layer_len = self.dims.columns() * layer.depth as u32;
+		let layer_base_slc = layer.base_slc_id;
+		//let buffer_offset = cmn::axn_idz_2d(base_slc, self.dims.columns(), self.area_map.proto_layer_map().hrz_demarc());
+		let layer_idz = self.axn_idz(layer_base_slc);
+
+		layer_idz..(layer_idz + layer_len)
+	}
+
+	pub fn input_src_area_names(&self, layer_flags: layer::ProtolayerFlags) -> Vec<&'static str> {
+		if layer_flags == layer::EFFERENT_INPUT {
+			self.protoarea_map.aff_areas.clone()
+		} else if layer_flags == layer::AFFERENT_INPUT {
+			self.protoarea_map.eff_areas.clone()
+		} else {
+			panic!("\nAreaMap::input_src_area_names(): Can only be called with an \
+				input layer flag as argument");
+		}		
 	}
 
 	pub fn gen_build_options(&self) -> BuildOptions {
@@ -71,7 +101,7 @@ impl AreaMap {
 		;
 
 		// CUSTOM KERNELS
-		match self.protoarea.filters {
+		match self.protoarea_map.filters {
 			Some(ref protofilters) => {
 				for pf in protofilters.iter() {
 					match pf.cl_file_name() {
@@ -101,7 +131,7 @@ pub struct SliceMap {
 }
 
 impl SliceMap {
-	pub fn new(layer_map: &ProtolayerMap, area_dims: CorticalDimensions) -> SliceMap {
+	pub fn new(layer_map: &ProtoLayerMap, area_dims: CorticalDimensions) -> SliceMap {
 		let slc_map = layer_map.slc_map();
 
 		let mut idzs = Vec::with_capacity(slc_map.len());
@@ -110,6 +140,19 @@ impl SliceMap {
 		let mut u_scales = Vec::with_capacity(slc_map.len());
 
 		for (&slc_id, &layer_name) in slc_map.iter() {
+			// CALCULATE SCALE FOR V AND U
+			let layer = &layer_map.layers()[layer_name];
+
+			let (v_scale, u_scale) = if layer.flags.contains(layer::INTERAREA) {
+				
+
+				let v_scl = 16;
+				let u_scl = 16;
+				(v_scl, u_scl)
+			} else {
+				(16, 16) // 100%
+			};
+
 			idzs.push(axn_idz_2d(slc_id, area_dims.columns(), layer_map.hrz_demarc()));
 			layer_names.push(layer_name);
 			v_scales.push(16);

@@ -2,10 +2,10 @@ use std::ops::{ Range };
 use std::collections::{ HashMap };
 use std::iter;
 
-use cmn;
+use cmn::{ self, AreaMap};
 use ocl;
 use cortical_area:: { CorticalArea, CorticalAreas };
-use proto::{ Protoareas, Protoarea, ProtolayerMap, ProtolayerMaps, 
+use proto::{ ProtoAreaMaps, ProtoAreaMap, ProtoLayerMap, ProtoLayerMaps, 
 	RegionKind, layer, Sensory, Thalamic };
 use encode:: { IdxReader };
 use input_source::{ InputSource };
@@ -20,44 +20,74 @@ pub struct Thalamus {
 	tract_afferent_output: ThalamicTract,
 	tract_efferent_output: ThalamicTract,
 	input_sources: Vec<InputSource>,
+	area_maps: HashMap<&'static str, AreaMap>,
 }
 
 impl Thalamus {
-	pub fn new(areas: &HashMap<&'static str, Box<CorticalArea>>, protolayer_maps: ProtolayerMaps,
-				protoareas: Protoareas,
-	) -> Thalamus {		
+	pub fn new(/*areas: &HashMap<&'static str, Box<CorticalArea>>,*/ plmaps: &ProtoLayerMaps,
+				pamaps: &ProtoAreaMaps,
+	) -> Thalamus {
+		//assert_eq!(pamaps.maps().len(), areas.len());
+		let area_count = pamaps.maps().len();
+
 		let mut tao = ThalamicTract::new(Vec::with_capacity(0), 
-			Vec::with_capacity(areas.len()), HashMap::with_capacity(areas.len()));
+			Vec::with_capacity(area_count), HashMap::with_capacity(area_count));
 
 		let mut teo = ThalamicTract::new(Vec::with_capacity(0), 
-			Vec::with_capacity(areas.len()), HashMap::with_capacity(areas.len()));
+			Vec::with_capacity(area_count), HashMap::with_capacity(area_count));
 
 		let mut input_sources = Vec::new();
+		let mut area_maps = HashMap::new();
 
-		for (_, pa) in protoareas.map().iter().filter(|&(_, pa)| 
-					protolayer_maps[pa.region_name].kind == Thalamic) 
+		/*=============================================================================
+		=================================== THALAMIC ==================================
+		=============================================================================*/
+		for (_, pa) in pamaps.maps().iter().filter(|&(_, pa)| 
+					plmaps[pa.region_name].kind == Thalamic) 
 		{			
 			input_sources.push(InputSource::new(pa));
 		}
 
-		let mut i = 0usize;
-		/*  <<<<< TODO: TAKE IN TO ACCOUNT MULTI-SLICE INPUT LAYERS >>>>>  */
-		for (&area_name, ref area) in areas {
-			let aff_len = area.axn_range(layer::AFFERENT_INPUT).len();
-			let eff_len = area.axn_range(layer::EFFERENT_INPUT).len();
 
-			tao.add_area(area_name, i, aff_len, area.input_src_area_names(layer::AFFERENT_INPUT));
-			teo.add_area(area_name, i, eff_len,	area.input_src_area_names(layer::EFFERENT_INPUT));
+		/*=============================================================================
+		================================= NON-THALAMIC ================================
+		=============================================================================*/
+		let mut i = 0usize;		
 
-			println!("THALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", area_name, aff_len, eff_len);			
+		for (&area_name, ref pa) in pamaps.maps().iter().filter(|&(_, pa)|
+					plmaps[pa.region_name].kind != Thalamic
+		) {	
+			let area_map = AreaMap::new(&plmaps, pa);
+
+			//let aff_len = area.axn_range(layer::AFFERENT_INPUT).len();
+			//let eff_len = area.axn_range(layer::EFFERENT_INPUT).len();
+
+			//let area_map: &AreaMap = &area_maps[area_name];
+
+			let aff_len = area_map.axn_range_by_flag(layer::AFFERENT_INPUT).len();
+			let eff_len = area_map.axn_range_by_flag(layer::EFFERENT_INPUT).len();
+
+			tao.add_area(area_name, i, aff_len, area_map.input_src_area_names(layer::AFFERENT_INPUT));
+			teo.add_area(area_name, i, eff_len,	area_map.input_src_area_names(layer::EFFERENT_INPUT));
+
+			println!("THALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", area_name, aff_len, eff_len);
+
+			area_maps.insert(area_name, area_map);		
 			
 			i += 1;
 		}
+
+		// // TEST:
+		// let mut i2 = 0usize;
+		// for (&area_name, ref area) in areas { i2 += 1; }
+		// assert!(i == i2);
+		// //
 
 		Thalamus {
 			tract_afferent_output: tao.init(),
 			tract_efferent_output: teo.init(),
 			input_sources: input_sources,
+			area_maps: area_maps,
 		}
 	}
 
@@ -102,8 +132,8 @@ impl Thalamus {
 	// 	let emsg = format!("cortex::Cortex::write_vec(): Invalid area name: {}", area_name);
 	// 	let area = areas.get(area_name).expect(&emsg);
 
-	// 	//let ref region = self.protolayer_maps[&RegionKind::Sensory];
-	// 	let region = area.protolayer_map();
+	// 	//let ref region = self.plmaps[&RegionKind::Sensory];
+	// 	let region = area.proto_layer_maps();
 	// 	let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
 		
 	// 	for slc in axn_slcs { 
@@ -148,7 +178,7 @@ impl Thalamus {
 		let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
 
 		match areas.get(tar_area_name) {
-			Some(area) => if area.protolayer_map().kind == Thalamic { return; },
+			Some(area) => if self.area_maps[tar_area_name].proto_layer_map().kind == Thalamic { return; },
 			None => return,
 		}
 		
@@ -165,6 +195,10 @@ impl Thalamus {
 			layer::EFFERENT_INPUT,
 		);
  	}
+
+ 	pub fn area_map(&self, area_name: &'static str) -> AreaMap {
+ 		return self.area_maps[area_name].clone();
+	}
 }
 
 // THALAMICTRACT: A BUFFER FOR COMMUNICATION BETWEEN CORTICAL AREAS

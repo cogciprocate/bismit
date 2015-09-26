@@ -88,12 +88,28 @@ static inline int4 get_axn_slc_idz_vec4(int4 slc_id) {
 					axn_slc_idzs[slc_id.s3]);
 }
 
+
 static inline uchar get_axn_v_scale(uint slc_id) {
 	return axn_slc_v_scales[slc_id];
 }
 
+static inline int4 get_axn_v_scale_vec4(int4 slc_id) {
+	return (int4)(	axn_slc_v_scales[slc_id.s0], 
+					axn_slc_v_scales[slc_id.s1], 
+					axn_slc_v_scales[slc_id.s2], 
+					axn_slc_v_scales[slc_id.s3]);
+}
+
+
 static inline uchar get_axn_u_scale(uint slc_id) {
 	return axn_slc_u_scales[slc_id];
+}
+
+static inline int4 get_axn_u_scale_vec4(int4 slc_id) {
+	return (int4)(	axn_slc_u_scales[slc_id.s0], 
+					axn_slc_u_scales[slc_id.s1], 
+					axn_slc_u_scales[slc_id.s2], 
+					axn_slc_u_scales[slc_id.s3]);
 }
 
 
@@ -156,12 +172,10 @@ static inline uint cel_idx_3d_unsafe(uint slc_id, uint v_size, uint v_id, uint u
 	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
 }
 
-
 // CEL_IDX_3D_UNSAFE_VEC4(): LINEAR INDEX OF A CELL - NOT FOR ACCURATE AXONS
 static inline int4 cel_idx_3d_unsafe_vec4(int4 slc_id, int4 v_size, int4 v_id, int4 u_size, int4 u_id) {
 	return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
 }
-
 
 // 	SAFE_CEL_STATE_3D(): 'Safe' Cell State Resolution
 // 		- If id + ofs are out of cortical bounds, zero is returned
@@ -182,22 +196,27 @@ static inline uchar cel_state_3d_safe(uchar slc_id,
 }
 
 
-
 /*=============================================================================
 ================================ AXON INDEXING ================================
 =============================================================================*/
 
-// AXN_IDX_3D_UNSAFE(): LINEAR INDEX OF AN AXON
+// AXN_IDX_3D_UNSAFE(): Linear index of an axon
 static inline uint axn_idx_3d_unsafe(uint slc_id, uint v_size, uint v_id, uint u_size, uint u_id) {
-	//return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));
-	return get_axn_slc_idz(slc_id) + mad24(v_id, u_size, u_id);
+	// 	CALCULATE scaled index:
+	// 		- Multiply by the pre-defined scale for specified slice then divide by 16.
+	// 		- A scale of 16 = 100%, 8 = 50%, 32 = 200%, etc.
+	uint scaled_v_id = mul24(v_id, get_axn_v_scale(slc_id)) >> 4;
+	uint scaled_u_id = mul24(u_id, get_axn_u_scale(slc_id)) >> 4;
+
+	// RETURN the sum of the pre-defined axon offset for the slice and the linear offset within that slice
+	return get_axn_slc_idz(slc_id) + mad24(scaled_v_id, u_size, scaled_u_id);
 }
 
-
-// AXN_IDX_3D_UNSAFE_VEC4(): LINEAR INDEX OF AN AXON, VEC4
+// AXN_IDX_3D_UNSAFE_VEC4(): Linear index of an axon, vec4
 static inline int4 axn_idx_3d_unsafe_vec4(int4 slc_id, int4 v_size, int4 v_id, int4 u_size, int4 u_id) {
-	//return mad24(slc_id, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
-	return get_axn_slc_idz_vec4(slc_id) + mad24(v_id, u_size, u_id);
+	int4 scaled_v_id = mul24(v_id, get_axn_v_scale_vec4(slc_id)) >> 4;
+	int4 scaled_u_id = mul24(u_id, get_axn_u_scale_vec4(slc_id)) >> 4;
+	return get_axn_slc_idz_vec4(slc_id) + mad24(scaled_v_id, u_size, scaled_u_id);
 }
 
 
@@ -205,7 +224,7 @@ static inline int4 axn_idx_3d_unsafe_vec4(int4 slc_id, int4 v_size, int4 v_id, i
 // <<<<< TODO: DEPRICATE >>>>>
 //		- If axon is not horizontal, return 0
 static inline uint axn_idx_hrz(uchar slc_id, uint v_size, char v_ofs, uint u_size, char u_ofs) {
-		// HRZ_SCT_ID: Id of horizontal section (basically a mini-slice_id)
+		// HRZ_SCT_ID: Id of horizontal section (basically a sub-slice_id)
 		int hrz_sct_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
 
 		// 	IDX_HRZ_SCT: Axon position within horizontal section
@@ -228,7 +247,6 @@ static inline uint axn_idx_hrz(uchar slc_id, uint v_size, char v_ofs, uint u_siz
 		return mul24(slc_id_is_hrz, axn_idx);
 }
 
-
 // AXN_IDX_HRZ_VEC4(): Axon index for a horizontal axon
 // <<<<< TODO: DEPRICATE >>>>>
 static inline int4 axn_idx_hrz_vec4(int4 slc_id, int4 v_size, int4 v_ofs, int4 u_size, int4 u_ofs) {
@@ -239,7 +257,6 @@ static inline int4 axn_idx_hrz_vec4(int4 slc_id, int4 v_size, int4 v_ofs, int4 u
 		int4 slc_id_is_hrz = hrz_sct_id >= 0;
 		return (slc_id_is_hrz & axn_idx);
 }
-
 
 
 // AXN_STATE_3D_SAFE():

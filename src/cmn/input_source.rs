@@ -2,7 +2,7 @@ use std::iter;
 
 use cortical_area:: { CorticalArea, CorticalAreas };
 use cortex::{ Cortex };
-use proto::{ layer, Protoarea, Protoinput };
+use proto::{ layer, ProtoAreaMap, Protoinput };
 use encode:: { IdxReader };
 
 
@@ -13,7 +13,7 @@ pub struct InputSource {
 }
 
 impl InputSource {
-	pub fn new(protoarea: &Protoarea) -> InputSource {
+	pub fn new(protoarea: &ProtoAreaMap) -> InputSource {
 		//let emsg = format!("\nInputSource::new(): No input source specified for area: '{}'", protoarea.name);
 		let input = &protoarea.input;
 

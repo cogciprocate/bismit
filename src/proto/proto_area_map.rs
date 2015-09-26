@@ -1,32 +1,32 @@
 use std::collections::{ self, HashMap };
 
-use proto::{ RegionKind, Protofilter };
+use proto::{ RegionKind, Protofilter, layer };
 use cmn::{ self, CorticalDimensions };
 
 
-// pub trait ProtoareasTrait {
-// 	fn new() -> Protoareas;
-// 	fn add(&mut self, protoarea: Protoarea);
+// pub trait ProtoAreaMapsTrait {
+// 	fn new() -> ProtoAreaMaps;
+// 	fn add(&mut self, protoarea: ProtoAreaMap);
 // 	fn area(mut self, name: &'static str, width: u32, height: u32, 
 // 		region_kind: &'static str, filters: Option<Vec<Protofilter>>, 
 // 		aff_areas: Option<Vec<&'static str>>,
-// 	) -> Protoareas;
+// 	) -> ProtoAreaMaps;
 // 	fn freeze(&mut self);
 // }
 
-pub struct Protoareas {
-	map: HashMap<&'static str, Protoarea>,
+pub struct ProtoAreaMaps {
+	maps: HashMap<&'static str, ProtoAreaMap>,
 }
 
-impl <'a>Protoareas {
-	pub fn new() -> Protoareas {
-		Protoareas { map: HashMap::new() }
+impl <'a>ProtoAreaMaps {
+	pub fn new() -> ProtoAreaMaps {
+		ProtoAreaMaps { maps: HashMap::new() }
 	}
 
-	fn add(&mut self, protoarea: Protoarea) {
+	fn add(&mut self, protoarea: ProtoAreaMap) {
 		let name = protoarea.name;
 		//let dims = protoarea.dims;
-		self.map.insert(name, protoarea);
+		self.maps.insert(name, protoarea);
 	}
 
 	pub fn area_ext(mut self, 
@@ -37,8 +37,8 @@ impl <'a>Protoareas {
 				protoinput: Protoinput,				
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
-	) -> Protoareas {
-		self.add(Protoarea::new(name, region_name, width, height, protoinput, 
+	) -> ProtoAreaMaps {
+		self.add(ProtoAreaMap::new(name, region_name, width, height, protoinput, 
 			filters, aff_areas_opt));
 
 		self
@@ -51,8 +51,8 @@ impl <'a>Protoareas {
 				height: u32, 
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
-	) -> Protoareas {
-		self.add(Protoarea::new(name, region_name, width, height, Protoinput::None, filters, aff_areas_opt));
+	) -> ProtoAreaMaps {
+		self.add(ProtoAreaMap::new(name, region_name, width, height, Protoinput::None, filters, aff_areas_opt));
 		self
 	}
 
@@ -61,7 +61,7 @@ impl <'a>Protoareas {
 	pub fn freeze(&mut self) {
 		let mut eff_list: Vec<(&'static str, &'static str)> = Vec::with_capacity(5);
 
-		for (area_name, area) in self.map.iter() {
+		for (area_name, area) in self.maps.iter() {
 			for aff_area_name in &area.aff_areas {
 				eff_list.push((aff_area_name, area_name));
 			}
@@ -77,26 +77,26 @@ impl <'a>Protoareas {
 		}
 
 		if eff_list.len() > cmn::MAX_EFFERENT_AREAS { 
-			panic!("areas::Protoareas::freeze(): \
+			panic!("areas::ProtoAreaMaps::freeze(): \
 				An area cannot have more than {} efferent areas.", cmn::MAX_EFFERENT_AREAS); 
 		}
 
 		for (area_name, eff_area_name) in eff_list {
-			let emsg = format!("proto::areas::Protoareas::freeze(): Area: '{}' not found. ", area_name);
-			self.map.get_mut(area_name).expect(&emsg).eff_areas.push(eff_area_name);
+			let emsg = format!("proto::areas::ProtoAreaMaps::freeze(): Area: '{}' not found. ", area_name);
+			self.maps.get_mut(area_name).expect(&emsg).eff_areas.push(eff_area_name);
 		}
 	}
 
-	pub fn map(&self) -> &HashMap<&'static str, Protoarea> {
-		&self.map
+	pub fn maps(&self) -> &HashMap<&'static str, ProtoAreaMap> {
+		&self.maps
 	}
 }
 
-// impl Iterator for Protoareas {
-//     type Item = Protoarea;
+// impl Iterator for ProtoAreaMaps {
+//     type Item = ProtoAreaMap;
 
-//     fn next(&self) -> Option<&Protoarea> {
-//     		return self.map.next();
+//     fn next(&self) -> Option<&ProtoAreaMap> {
+//     		return self.maps.next();
 //         }
 //         None
 //     }
@@ -105,7 +105,7 @@ impl <'a>Protoareas {
 
 
 #[derive(PartialEq, Debug, Clone, Eq)]
-pub struct Protoarea {
+pub struct ProtoAreaMap {
 	pub name: &'static str,
 	pub region_name: &'static str,
 	pub dims: CorticalDimensions,	
@@ -116,7 +116,7 @@ pub struct Protoarea {
 	pub eff_areas: Vec<&'static str>,
 }
 
-impl Protoarea {
+impl ProtoAreaMap {
 	pub fn new(
 				name: &'static str, 
 				region_name: &'static str,
@@ -125,7 +125,7 @@ impl Protoarea {
 				input: Protoinput,
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
-	) -> Protoarea {
+	) -> ProtoAreaMap {
 		assert!(width > cmn::SYNAPSE_SPAN);
 		assert!(height > cmn::SYNAPSE_SPAN);
 
@@ -134,7 +134,7 @@ impl Protoarea {
 			None => Vec::with_capacity(0),
 		};
 
-		Protoarea { 
+		ProtoAreaMap { 
 			name: name,
 			region_name: region_name,
 			dims: CorticalDimensions::new(width, height, 0, 0, None),

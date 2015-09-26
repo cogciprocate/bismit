@@ -15,12 +15,13 @@ extern crate bitflags;
 extern crate enum_primitive;
 
 
+pub use cmn::input_source;
 
 mod cmn;
 //mod cl_h;
 mod ocl;
-mod chord;
-mod sense;
+//mod chord;
+//mod sense;
 //mod envoy;
 //mod axon_space;
 //mod syn_segs;
@@ -46,10 +47,10 @@ mod thalamus;
 //mod test_readback;
 //mod test_3;
 mod proto;
-mod energy;
+//mod energy;
 mod encode;
 mod sensory_filter;
-mod input_source;
+//mod input_source;
 
 //#[cfg(test)]
 mod tests;

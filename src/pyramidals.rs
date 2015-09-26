@@ -9,22 +9,22 @@ use std::fmt::{ Display };
 
 use cmn::{ self, CorticalDimensions, AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
-use proto::{ Protoareas, ProtolayerMap, RegionKind, ProtocellKind, Protocell, DendriteKind };
+use proto::{ ProtoAreaMaps, ProtoLayerMap, RegionKind, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use cortical_area:: { Aux };
 use iinn::{ InhibitoryInterneuronNetwork };
 use minicolumns::{ Minicolumns };
 use axons::{ Axons };
-use spiny_stellates::{ SpinyStellateCellularLayer };
+use spiny_stellates::{ SpinyStellateLayer };
 
 
 
-/* PyramidalCellularLayer
+/* PyramidalLayer
 	flag_sets: 0b10000000 (0x80) -> previously active
 
 */
-pub struct PyramidalCellularLayer {
+pub struct PyramidalLayer {
 	layer_name: &'static str,
 	dims: CorticalDimensions,
 	protocell: Protocell,
@@ -50,12 +50,12 @@ pub struct PyramidalCellularLayer {
 	pub dens: Dendrites,
 }
 // protocell: &Protocell,
-impl PyramidalCellularLayer {
+impl PyramidalLayer {
 	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, 
 		area_map: &AreaMap, axons: &Axons, aux: &Aux, ocl: &OclProgQueue
-	) -> PyramidalCellularLayer {
+	) -> PyramidalLayer {
 
-		let axn_base_slcs = area_map.protolayer_map().slc_ids(vec![layer_name]);
+		let axn_base_slcs = area_map.proto_layer_map().slc_ids(vec![layer_name]);
 		let axn_base_slc = axn_base_slcs[0];
 		//let pyr_lyr_axn_idz = cmn::axn_idz_2d(axn_base_slc, dims.columns(), protolayer_map.hrz_demarc());
 		let pyr_lyr_axn_idz = area_map.axn_idz(axn_base_slc);
@@ -63,10 +63,10 @@ impl PyramidalCellularLayer {
 		//dims.depth() = protolayer_map.depth_cell_kind(&ProtocellKind::Pyramidal);
 		//let dens_per_tuft_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
 		//let syns_per_tuft_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
-		//let spt_asc_layer = protolayer_map.spt_asc_layer().expect("PyramidalCellularLayer::new()");
+		//let spt_asc_layer = protolayer_map.spt_asc_layer().expect("PyramidalLayer::new()");
 		//let den_prox_slc = protolayer_map.slc_ids(vec![spt_asc_layer.name])[0];
 		
-		//println!("### PyramidalCellularLayer: Proximal Dendrite Row: {}", den_prox_slc);
+		//println!("### PyramidalLayer: Proximal Dendrite Row: {}", den_prox_slc);
 		println!("      PYRAMIDALS::NEW(): layer: '{}' dims: {:?}, axn_base_slc: {}", layer_name, dims, axn_base_slc);
 
 		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -85,7 +85,7 @@ impl PyramidalCellularLayer {
 		let syns_per_tuft_l2 = dens_per_tuft_l2 + syns_per_den_l2;
 
 		//let den_tufts_per_cel = protolayer_map[&layer_name].dst_src_tufts_len();
-		let den_tufts_per_cel = area_map.protolayer_map().dst_src_lyrs_by_tuft(layer_name).len() as u32;
+		let den_tufts_per_cel = area_map.proto_layer_map().dst_src_lyrs_by_tuft(layer_name).len() as u32;
 		let den_tuft_dims = dims.clone_with_ptl2(dens_per_tuft_l2 as i8).with_tufts(den_tufts_per_cel);
 
 		let dens = Dendrites::new(layer_name, den_tuft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, aux, ocl);
@@ -160,7 +160,7 @@ impl PyramidalCellularLayer {
 		;
 
 
-		PyramidalCellularLayer {
+		PyramidalLayer {
 			layer_name: layer_name,
 			dims: dims,
 			protocell: protocell,
@@ -188,7 +188,7 @@ impl PyramidalCellularLayer {
 	}
 
 	// <<<<< MOVE TO MCOL >>>>>
-	// pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &Box<SpinyStellateCellularLayer>, axns: &Axons, aux: &Aux) {
+	// pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &Box<SpinyStellateLayer>, axns: &Axons, aux: &Aux) {
 	// 	let (ssts_pyr_lyr_axn_idz, _) = ssts.axn_range();
 	// 	//println!("\n##### Pyramidals::init_kernels(): ssts_pyr_lyr_axn_idz: {}", ssts_pyr_lyr_axn_idz as u32);
 
@@ -277,7 +277,7 @@ impl PyramidalCellularLayer {
 
 
 	pub fn print_cel(&mut self, cel_idx: usize) {
-		let emsg = "PyramidalCellularLayer::print_cel()";
+		let emsg = "PyramidalLayer::print_cel()";
 
 		self.confab();
 
