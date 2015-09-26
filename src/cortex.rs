@@ -34,10 +34,6 @@ impl Cortex {
 		for (&area_name, pa) in proto_area_maps.maps().iter().filter(|&(_, pa)| 
 					proto_layer_maps[pa.region_name].kind != Thalamic
 		) {	
-			//let area_map = AreaMap::new(&proto_layer_maps, pa);
-			// let protoarea = pa.clone();			
-			// let mut protoregion = proto_layer_maps[protoarea.region_name].clone();
-			// protoregion.freeze(&protoarea);
 			areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name), device_idx)));
 
 			device_idx += 1;

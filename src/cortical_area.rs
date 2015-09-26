@@ -63,7 +63,7 @@ impl CorticalArea {
 	pub fn new(area_map: AreaMap, device_idx: usize) -> CorticalArea {
 		let emsg = "cortical_area::CorticalArea::new()";
 
-		println!("\nCORTICALAREA::NEW(): Creating Cortical Area: '{}'", area_map.proto_area_map().name);		
+		println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}'...", area_map.proto_area_map().name);		
 				
 		//let protolayer_map = protolayer_map;		
 		// let protoarea = area_map.proto 
@@ -79,9 +79,9 @@ impl CorticalArea {
 		let dims = area_map.proto_area_map().dims.clone_with_depth(area_map.proto_layer_map().depth_total())
 			.with_physical_increment(ocl.get_max_work_group_size());
 
-		println!("\nCORTICALAREA::NEW(): Area '{}' details: \
+		println!("{}CORTICALAREA::NEW(): Area '{}' details: \
 			(u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}", 
-			area_map.proto_area_map().name, dims.u_size(), dims.v_size(), dims.depth(), 
+			cmn::MT, area_map.proto_area_map().name, dims.u_size(), dims.v_size(), dims.depth(), 
 			area_map.proto_area_map().eff_areas, area_map.proto_area_map().aff_areas);
 		/*println!("\nCORTICALAREA::NEW(): Creating Cortical Area: '{}' (width: {}, height: {}, 
 			depth: {})", name, 1 << dims.width_l2(), 1 << dims.height_l2(), dims.depth());*/
@@ -208,21 +208,23 @@ impl CorticalArea {
 		=============================================================================*/
 
 		// <<<<< CHANGE TO LAYER**S**_WITH_FLAG() >>>>>
-		let aff_in_layer = area_map.proto_layer_map().layer_with_flag(layer::AFFERENT_INPUT).expect(&emsg);
-		let mut filters_vec = Vec::with_capacity(5);
+		let filters = {
+			let aff_in_layer = area_map.proto_layer_map().layer_with_flag(layer::AFFERENT_INPUT).expect(&emsg);
+			let mut filters_vec = Vec::with_capacity(5);
 
-		let filters = match area_map.proto_area_map().filters {
-			Some(ref protofilters) => {
-				for pf in protofilters.iter() {
-					filters_vec.push(Box::new(SensoryFilter::new(
-						pf.filter_name(), pf.cl_file_name(), area_map.proto_area_map().name,
-						dims.clone_with_depth(aff_in_layer.depth()), 
-						&axns, aff_in_layer.base_slc(), &ocl
-					)));
-				}
-				Some(filters_vec)
-			},
-			None => None,
+			match area_map.proto_area_map().filters {
+				Some(ref protofilters) => {
+					for pf in protofilters.iter() {
+						filters_vec.push(Box::new(SensoryFilter::new(
+							pf.filter_name(), pf.cl_file_name(), area_map.proto_area_map().name,
+							dims.clone_with_depth(aff_in_layer.depth()), 
+							&axns, aff_in_layer.base_slc(), &ocl
+						)));
+					}
+					Some(filters_vec)
+				},
+				None => None,
+			}
 		};
 
 		let mut renderer = Renderer::new(dims.clone(), &area_map.slices);
@@ -323,16 +325,17 @@ impl CorticalArea {
 
 
 	/* AXN_OUTPUT(): NEEDS UPDATING (DEPRICATION?) */
-	pub fn axn_output_range(&self) -> (u32, u32) {
+	pub fn axn_output_range(&self) -> Range<u32> {
 		//println!("self.axn_aff_out_slc: {}, self.dims.columns(): {}, cmn::AXON_MAR__GIN_SIZE: {}", self.axn_aff_out_slc as usize, self.dims.columns() as usize, cmn::AXON_MAR__GIN_SIZE);
-		let output_slcs = self.area_map.proto_layer_map().aff_out_slcs();
-		assert!(output_slcs.len() == 1, "\nCorticalArea: ERROR: Too many afferent output layers defined.");
-		let axn_aff_out_slc = output_slcs[0];
+		// let output_slcs = self.area_map.proto_layer_map().aff_out_slcs();
+		// assert!(output_slcs.len() == 1, "\nCorticalArea: ERROR: Too many afferent output layers defined.");
+		// let axn_aff_out_slc = output_slcs[0];
 
-		//let start = (axn_aff_out_slc as usize * self.dims.columns() as usize) + cmn::AXON_MAR__GIN_SIZE as usize;
-		//let start = cmn::axn_idz_2d(axn_aff_out_slc, self.dims.columns(), self.area_map.hrz_demarc());
-		let idz = self.area_map.axn_idz(axn_aff_out_slc);
-		(idz, idz + (self.dims.per_slc()))
+		// //let start = (axn_aff_out_slc as usize * self.dims.columns() as usize) + cmn::AXON_MAR__GIN_SIZE as usize;
+		// //let start = cmn::axn_idz_2d(axn_aff_out_slc, self.dims.columns(), self.area_map.hrz_demarc());
+		// let idz = self.area_map.axn_idz(axn_aff_out_slc);
+		// (idz, idz + (self.dims.per_slc()))
+		self.area_map.axn_range_by_flag(layer::AFFERENT_OUTPUT)
 	}
 
 	/* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
@@ -381,7 +384,7 @@ impl CorticalArea {
 			}
 		}
 
-		let axn_range = self.axn_range(layer_flags);
+		let axn_range = self.area_map.axn_range_by_flag(layer_flags);
 
 		//println!("\nCORTICALAREA::WRITE_INPUT(): axn_range: {:?}", axn_range);
 
@@ -394,7 +397,7 @@ impl CorticalArea {
 	}
 
 	pub fn read_output(&self, sdr: &mut [ocl::cl_uchar], layer_flags: layer::ProtolayerFlags) {
-		let axn_range = self.axn_range(layer_flags);
+		let axn_range = self.area_map.axn_range_by_flag(layer_flags);
 
 		assert!(sdr.len() == axn_range.len() as usize, format!("\n\
 			cortical_area::CorticalArea::read_output()<area: '{}'>: \
@@ -417,37 +420,37 @@ impl CorticalArea {
 		ocl::enqueue_write_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
 	}
 
-	pub fn axn_range(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {
-		let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
-			'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
-		let layer = self.area_map.proto_layer_map().layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
-		let len = self.dims.columns() * layer.depth as u32;
-		let base_slc = layer.base_slc_id;
-		//let buffer_offset = cmn::axn_idz_2d(base_slc, self.dims.columns(), self.area_map.proto_layer_map().hrz_demarc());
-		let idz = self.area_map.axn_idz(base_slc);
+	// pub fn axn_range(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {
+	// 	let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
+	// 		'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
+	// 	let layer = self.area_map.proto_layer_map().layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
+	// 	let len = self.dims.columns() * layer.depth as u32;
+	// 	let base_slc = layer.base_slc_id;
+	// 	//let buffer_offset = cmn::axn_idz_2d(base_slc, self.dims.columns(), self.area_map.proto_layer_map().hrz_demarc());
+	// 	let idz = self.area_map.axn_idz(base_slc);
 
-		idz..(idz + len)
-	}
+	// 	idz..(idz + len)
+	// }
 
 	// 	INPUT_SRC_AREAS():
 	//  <<<<< TODO: DEPRICATE OR WRAP AREA_MAP::INPUT_SRC_AREA_NAMES() >>>>>
 	// 		- REMINDER: AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
-	pub fn input_src_area_names(&self, layer_flags: layer::ProtolayerFlags) -> Vec<&'static str> {
-		 // let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
-		 // 	'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
-		// let layer = self.area_map.proto_layer_map().layer_with_flag(layer_flags);
-		// return layer.expect(&emsg).depth();
+	// pub fn input_src_area_names(&self, layer_flags: layer::ProtolayerFlags) -> Vec<&'static str> {
+	// 	 // let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
+	// 	 // 	'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
+	// 	// let layer = self.area_map.proto_layer_map().layer_with_flag(layer_flags);
+	// 	// return layer.expect(&emsg).depth();
 
-		// 
-		if layer_flags == layer::EFFERENT_INPUT {
-			self.area_map.proto_area_map().aff_areas.clone()
-		} else if layer_flags == layer::AFFERENT_INPUT {
-			self.area_map.proto_area_map().eff_areas.clone()
-		} else {
-			panic!("\nCorticalArea::input_src_areas(): Can only be called with an \
-				input layer flag as argument");
-		}		
-	}
+	// 	// 
+	// 	if layer_flags == layer::EFFERENT_INPUT {
+	// 		self.area_map.proto_area_map().aff_areas.clone()
+	// 	} else if layer_flags == layer::AFFERENT_INPUT {
+	// 		self.area_map.proto_area_map().eff_areas.clone()
+	// 	} else {
+	// 		panic!("\nCorticalArea::input_src_areas(): Can only be called with an \
+	// 			input layer flag as argument");
+	// 	}		
+	// }
 
 
 	pub fn mcols(&self) -> &Box<Minicolumns> {

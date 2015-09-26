@@ -13,9 +13,9 @@ use super::layer::{ self, Protolayer, ProtolayerFlags, ProtoaxonKind, Protolayer
 use super::{ ProtocellKind, Protocell, DendriteKind };
 
 
-/* PROTOREGION {} <<<<< TODO: REDESIGN AND/OR REFACTOR >>>>>
-	- [incomplete] THIS NEEDS TO BE STORED IN A DATABASE OR SOMETHING - GETTING TOO UNRULY
-		- Or... redesign using a trait that can handle ProtocellKind and ProtoaxonKind both
+/* PROTOLAYERMAP (PROTOREGION) {} <<<<< TODO: SPLIT UP, REDESIGN, AND REFACTOR >>>>>
+	- [incomplete] SEPERATE CONCERNS and consolidate similar data structures - GETTING TOO UNRULY
+		- redesign using a trait that can handle ProtocellKind and ProtoaxonKind both
 			- Also could merge the two and have one or the other dominant
 	- [incomplete] (cel, axn)_layer_kind_slc_lists needs to be redone asap
 		- should be instances of some new type which manages their lists
@@ -181,6 +181,8 @@ impl ProtoLayerMap {
 	//
 	// 	<<<<< TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS 	
 	pub fn freeze(&mut self, protoarea: &ProtoAreaMap) {
+		println!("\nPROTOLAYERMAP: Assembling layer map for area '{}'...", protoarea.name);
+
 		if self.frozen {
 			return;
 		} else {			
@@ -500,7 +502,7 @@ impl ProtoLayerMap {
  			}
  		}
 
-		input_layer		
+		input_layer
  	}
 
  	pub fn aff_out_slcs(&self) -> Vec<u8> {
@@ -519,17 +521,33 @@ impl ProtoLayerMap {
  	// TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS
  	// DEPRICATE IN FAVOR OF LAYERS_WITH_FLAG(), RETURNING A VEC OF PROTOLAYERS
  	// REIMPLEMENT AS AN OVERLOAD OF Index & IndexMut WHICH RETURNS AN UNWRAPPED VEC OF LAYERS
- 	pub fn layer_with_flag(&self, flag: ProtolayerFlags) -> Option<Protolayer> {
- 		let mut input_layer: Option<Protolayer> = None;
+ 	// pub fn layer_with_flag(&self, flag: ProtolayerFlags) -> Option<Protolayer> {
+ 	// 	let mut input_layer: Option<Protolayer> = None;
  		
+ 	// 	for (layer_name, layer) in self.layers.iter() {
+ 	// 		if (layer.flags & flag) == flag {
+ 	// 			input_layer = Some(layer.clone());
+ 	// 		}
+ 	// 	}
+
+		// input_layer		
+ 	// }
+
+
+ 	// TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS
+ 	// DEPRICATE IN FAVOR OF LAYERS_WITH_FLAG(), RETURNING A VEC OF PROTOLAYERS
+ 	// REIMPLEMENT AS AN OVERLOAD OF Index & IndexMut WHICH RETURNS AN UNWRAPPED VEC OF LAYERS
+ 	pub fn layer_with_flag(&self, flag: ProtolayerFlags) -> Option<&Protolayer> {
+ 		//let mut input_layers: Vec<&Protolayer>
+ 		 		
  		for (layer_name, layer) in self.layers.iter() {
  			if (layer.flags & flag) == flag {
- 				input_layer = Some(layer.clone());
+ 				return Some(&layer);
  			}
  		}
-
-		input_layer		
+ 		return None;
  	}
+
 
  	pub fn slc_map(&self) -> BTreeMap<u8, &'static str> {
  		self.slc_map.clone()

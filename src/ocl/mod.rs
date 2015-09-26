@@ -497,7 +497,7 @@ pub fn program_build_info(program: cl_h::cl_program, device_id: cl_h::cl_device_
         let pbi = cstring_to_string(program_build_info);
 
         if pbi.len() > 1 {
-       		println!("\nOpenCL Program Build Info ({})[{}]: \n\n {}", name, pbi.len(), pbi);
+       		print!("\nOCL Program Build Info ({})[{}]: \n\n {}", name, pbi.len(), pbi);
    		}
 
         let rs: Box<String> = Box::new(pbi);

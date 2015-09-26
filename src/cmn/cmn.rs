@@ -30,7 +30,7 @@ use ocl::{ self, BuildOptions };
 =============================================================================*/
 
 
-
+pub static MT: &'static str = "    ";
 
 pub static C_DEFAULT: &'static str = "\x1b[0m";
 pub static C_UNDER: &'static str = "\x1b[1m";

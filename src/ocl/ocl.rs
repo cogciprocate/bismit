@@ -21,6 +21,8 @@ use super::work_size::{ WorkSize };
 use super::build_options::{ BuildOptions, BuildOption };
 //use super::cortical_dimensions::{ CorticalDimensions };
 
+pub static MT: &'static str = "    ";
+
 const DEFAULT_PLATFORM: usize = 0;
 const DEFAULT_DEVICE: usize = 0;
 
@@ -44,7 +46,7 @@ impl OclContext {
 		let devices: Vec<cl_device_id> = super::get_device_ids(platform);
 		if devices.len() == 0 { panic!("\nNo OpenCL devices found!\n"); }
 
-		println!("OCL::NEW(): device list: {:?}", devices);
+		println!("{}OCL::NEW(): device list: {:?}", MT, devices);
 
 		let context: cl_context = super::create_context(&devices);
 
@@ -111,7 +113,7 @@ impl OclProgQueue {
 
 		let kern_c_str = parse_kernel_files(&build_options);
 
-		println!("OCL::BUILD(): DEVICE: {:#?}", self.device);
+		println!("{}OCL::BUILD(): DEVICE: {:#?}", MT, self.device);
 
 		let prg = super::new_program(kern_c_str.as_ptr(), build_options.to_build_string(), self.context, self.device);
 
@@ -290,7 +292,8 @@ fn parse_kernel_files(build_options: &BuildOptions) -> ffi::CString {
 
 	let dd_string = build_options.cl_file_header();
 	kern_str.push_all(&dd_string);
-	print!("OCL::PARSE_KERNEL_FILES(): KERNEL FILE DIRECTIVES HEADER: \n{}", String::from_utf8(dd_string).ok().unwrap());
+	print!("OCL::PARSE_KERNEL_FILES(): KERNEL FILE DIRECTIVES HEADER: \n{}", 
+		String::from_utf8(dd_string).ok().unwrap());
 
 	for f_n in build_options.kernel_file_names().iter().rev() {
 		let file_name = format!("{}/{}/{}", env!("P"), "bismit/cl", f_n);
@@ -306,7 +309,7 @@ fn parse_kernel_files(build_options: &BuildOptions) -> ffi::CString {
 
 			match kern_file.read_to_end(&mut kern_str) {
 	    		Err(why) => panic!("\ncouldn't read '{}': {}", &file_name, Error::description(&why)),
-			    Ok(bytes) => println!("OCL::BUILD(): parsing {}: {} bytes read.", &file_name, bytes),
+			    Ok(bytes) => println!("{}OCL::BUILD(): parsing {}: {} bytes read.", MT, &file_name, bytes),
 			}
 		}
 

@@ -8,7 +8,7 @@ pub use self::proto_layer_map::{ ProtoLayerMaps, ProtoLayerMap, RegionKind };
 pub use self::proto_area_map::{ ProtoAreaMaps, ProtoAreaMap, Protoinput };
 
 pub use self::protolayer as layer;
-pub use self::protolayer::{ Protolayer, ProtolayerKind, ProtoaxonKind };
+pub use self::protolayer::{ Protolayer, ProtolayerKind, ProtoaxonKind, ProtolayerFlags };
 	pub use self::protolayer::ProtolayerKind::{ Cellular, Axonal };
 	pub use self::protolayer::ProtoaxonKind::{ Spatial, Horizontal };
 

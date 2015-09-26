@@ -24,17 +24,11 @@ pub struct Thalamus {
 }
 
 impl Thalamus {
-	pub fn new(/*areas: &HashMap<&'static str, Box<CorticalArea>>,*/ plmaps: &ProtoLayerMaps,
-				pamaps: &ProtoAreaMaps,
-	) -> Thalamus {
-		//assert_eq!(pamaps.maps().len(), areas.len());
+	pub fn new(plmaps: &ProtoLayerMaps,	pamaps: &ProtoAreaMaps) -> Thalamus {
 		let area_count = pamaps.maps().len();
 
-		let mut tao = ThalamicTract::new(Vec::with_capacity(0), 
-			Vec::with_capacity(area_count), HashMap::with_capacity(area_count));
-
-		let mut teo = ThalamicTract::new(Vec::with_capacity(0), 
-			Vec::with_capacity(area_count), HashMap::with_capacity(area_count));
+		let mut tao = ThalamicTract::new(area_count);
+		let mut teo = ThalamicTract::new(area_count);
 
 		let mut input_sources = Vec::new();
 		let mut area_maps = HashMap::new();
@@ -57,31 +51,20 @@ impl Thalamus {
 		for (&area_name, ref pa) in pamaps.maps().iter().filter(|&(_, pa)|
 					plmaps[pa.region_name].kind != Thalamic
 		) {	
-			let area_map = AreaMap::new(&plmaps, pa);
-
-			//let aff_len = area.axn_range(layer::AFFERENT_INPUT).len();
-			//let eff_len = area.axn_range(layer::EFFERENT_INPUT).len();
-
-			//let area_map: &AreaMap = &area_maps[area_name];
+			let area_map = AreaMap::new(pa, plmaps, pamaps);
 
 			let aff_len = area_map.axn_range_by_flag(layer::AFFERENT_INPUT).len();
 			let eff_len = area_map.axn_range_by_flag(layer::EFFERENT_INPUT).len();
 
-			tao.add_area(area_name, i, aff_len, area_map.input_src_area_names(layer::AFFERENT_INPUT));
-			teo.add_area(area_name, i, eff_len,	area_map.input_src_area_names(layer::EFFERENT_INPUT));
+			tao.add_area(area_name, /*i,*/ aff_len, area_map.input_src_area_names(layer::AFFERENT_INPUT));
+			teo.add_area(area_name, /*i,*/ eff_len,	area_map.input_src_area_names(layer::EFFERENT_INPUT));
 
-			println!("THALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", area_name, aff_len, eff_len);
+			println!("{}THALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", cmn::MT, area_name, aff_len, eff_len);
 
 			area_maps.insert(area_name, area_map);		
 			
 			i += 1;
 		}
-
-		// // TEST:
-		// let mut i2 = 0usize;
-		// for (&area_name, ref area) in areas { i2 += 1; }
-		// assert!(i == i2);
-		// //
 
 		Thalamus {
 			tract_afferent_output: tao.init(),
@@ -204,33 +187,40 @@ impl Thalamus {
 // THALAMICTRACT: A BUFFER FOR COMMUNICATION BETWEEN CORTICAL AREAS
 struct ThalamicTract {
 	ganglion: Vec<ocl::cl_uchar>,			// BUFFER DIVIDED UP BY AREA
-	area_info: Vec<AreaInfo>,				// INFO ABOUT TARGET AREAS
-	area_map: HashMap<&'static str, usize>,	// MAP OF TARGET AREA NAMES -> AREA INFO INDEXES
+	//area_info: Vec<TractAreaInfo>,				// INFO ABOUT TARGET AREAS
+	tract_areas: HashMap<&'static str, TractAreaInfo>,	// MAP OF TARGET AREA NAMES -> AREA INFO INDEXES
 	ttl_len: usize,
 }
 
 impl ThalamicTract {
-	fn new(		ganglion: Vec<ocl::cl_uchar>,
-				area_info: Vec<AreaInfo>, 
-				area_map: HashMap<&'static str, usize>,
+	fn new(area_count: usize,
+				//ganglion: Vec<ocl::cl_uchar>,
+				//area_info: Vec<TractAreaInfo>, 
+				//tract_areas: HashMap<&'static str, TractAreaInfo>,
 	) -> ThalamicTract {
+
+		let ganglion = Vec::with_capacity(0);
+		//Vec::with_capacity(area_count), 
+		let tract_areas = HashMap::with_capacity(area_count);
+
 		ThalamicTract {
 			ganglion: ganglion,
-			area_info: area_info,
-			area_map: area_map,
+			//area_info: area_info,
+			tract_areas: tract_areas,
 			ttl_len: 0,
 		}
 	}
 
-	fn add_area(&mut self, tar_area_name: &'static str, idx: usize, len: usize, src_areas: Vec<&'static str>) {
-		self.area_info.push(AreaInfo::new(self.ttl_len, len, src_areas));
-		self.area_map.insert(tar_area_name, idx);
+	fn add_area(&mut self, tar_area_name: &'static str, /*idx: usize,*/ len: usize, src_areas: Vec<&'static str>) {
+		//self.area_info.push(TractAreaInfo::new(self.ttl_len, len, src_areas));
+		//self.tract_areas.insert(tar_area_name, idx);
+		self.tract_areas.insert(tar_area_name, TractAreaInfo::new(self.ttl_len, len, src_areas));
 		self.ttl_len += len;
 	}
 
 	fn init(mut self) -> ThalamicTract {
 		self.ganglion.resize(self.ttl_len, 0);
-		println!("THALAMICTRACT::INIT(): area_map: {:?}, area_info: {:?}", self.area_map, self.area_info);
+		println!("{}THALAMICTRACT::INIT(): tract_areas: {:?}", cmn::MT, self.tract_areas);
 		self
 	}
 
@@ -263,23 +253,24 @@ impl ThalamicTract {
 		self.info(tar_area_name).range.clone()
 	}
 
-	fn info(&self, tar_area_name: &str) -> &AreaInfo {
-		let idx = self.area_map[tar_area_name];
-		&self.area_info[idx]
+	fn info(&self, tar_area_name: &str) -> &TractAreaInfo {
+		//let idx = self.area_map[tar_area_name];
+		//&self.area_info[idx]
+		&self.tract_areas[tar_area_name]
 	}
 
 }
 
 #[derive(PartialEq, Debug, Clone, Eq)]
-struct AreaInfo {
+struct TractAreaInfo {
 	range: Range<usize>,
 	src_areas: Vec<&'static str>,
 	output_len: usize,
 }
 
-impl AreaInfo {
-	fn new(range_start: usize, range_len: usize, src_areas: Vec<&'static str>) -> AreaInfo {
-		AreaInfo { 
+impl TractAreaInfo {
+	fn new(range_start: usize, range_len: usize, src_areas: Vec<&'static str>) -> TractAreaInfo {
+		TractAreaInfo { 
 			range: range_start..(range_start + range_len),			
 			output_len: if src_areas.len() == 0 { 0 } else { range_len / src_areas.len() },
 			src_areas: src_areas,
