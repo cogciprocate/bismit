@@ -8,7 +8,8 @@ use std::default::{ Default };
 use std::fmt::{ Display };
 use std::collections::{ BTreeSet };
 
-use cmn::{ self, CorticalDimensions, AreaMap };
+use cmn::{ self, CorticalDimensions };
+use map::{ AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind, Protolayer, ProtolayerKind };
 use dendrites::{ Dendrites };
@@ -80,19 +81,29 @@ impl Synapses {
 
 		let mut kernels = Vec::with_capacity(dst_src_slc_ids.len());
 
-		if DEBUG_NEW { println!("            SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims); }
+		if DEBUG_NEW { println!("{mt}{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims, mt = cmn::MT); }
 
 			// *****NEW WorkSize::ThreeDim(dims.depth() as usize, dims.u_size() as usize, dims.v_size() as usize))
 			// *****NEW .lws(WorkSize::ThreeDim(1 as usize, wg_size as usize))
 
 		let cels_per_kernel = dims.cells();
 
+
+		// SYNAPSE KERNEL VARIATIONS:
+		// 		- It may be the case that vec4 versions are unsuitable.
+		// 			- Is having each of the four synapses on the same v_id causing some weird problem?
+		// 	
+		//		FURTHER RESEARCH REQUIRED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		//
+		//
 		for syn_tuft_i in 0..dst_src_slc_ids.len() {
 			kernels.push(Box::new(
+
 				//ocl.new_kernel("syns_cycle_simple".to_string(), 
 				//ocl.new_kernel("syns_cycle_simple_vec4".to_string(), 
 				//ocl.new_kernel("syns_cycle_wow".to_string(), 
 				ocl.new_kernel("syns_cycle_wow_vec4".to_string(), 
+
 					WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					.arg_env(&axons.states)

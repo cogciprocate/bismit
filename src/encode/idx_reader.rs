@@ -6,10 +6,10 @@ use std::path::{ Path };
 use std::iter;
 use num::{ Float };
 
-use cmn::{ CorticalDimensions };
+use cmn::{ CorticalDimensions, Sdr };
 
 //	IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned 
-//	bytes (u8) into a ganglion (SDR frame buffer: &[u8])
+//	bytes (u8) into a ganglion (SDR frame buffer: &Sdr)
 //		- TODO: CONVERT FROM STORING FILE IN MEMORY TO STREAMING FILE (WITH LARGE BUFFER)
 //			- TEST DIFFERENT BUFFERING STRATEGIES (see notes)
 pub struct IdxReader {
@@ -128,7 +128,7 @@ impl IdxReader {
     	}
     }
 
-    pub fn next(&mut self, ganglion_frame: &mut [u8]) -> usize {
+    pub fn next(&mut self, ganglion_frame: &mut Sdr) -> usize {
     	assert!(ganglion_frame.len() == self.ganglion_dims.columns() as usize);
     	assert!((self.image_len) <= ganglion_frame.len(), 
     		"Ganglion vector size must be greater than or equal to IDX image size");    	
@@ -154,7 +154,7 @@ impl IdxReader {
 		return prev_frame;
 	}
 
-	pub fn get_raw_frame(&self, frame_idx: usize, ganglion_frame: &mut [u8]) -> usize {
+	pub fn get_raw_frame(&self, frame_idx: usize, ganglion_frame: &mut Sdr) -> usize {
 		assert!(ganglion_frame.len() == self.ganglion_dims.columns() as usize);
 		assert!(frame_idx < self.frames_count);
 		//let mut bytes_copied = 0;
@@ -191,7 +191,7 @@ impl IdxReader {
 	}
 
 
-	pub fn encode_scalar(&self, source: &[u8], target: &mut [u8]) {
+	pub fn encode_scalar(&self, source: &Sdr, target: &mut Sdr) {
 		let v_size = self.ganglion_dims.v_size() as usize;
 		let u_size = self.ganglion_dims.u_size() as usize;
 
@@ -210,7 +210,7 @@ impl IdxReader {
 	}
 
 
-	pub fn encode_2d_image(&self, source: &[u8], target: &mut [u8]) {
+	pub fn encode_2d_image(&self, source: &Sdr, target: &mut Sdr) {
 		let v_size = self.ganglion_dims.v_size() as usize;
 		let u_size = self.ganglion_dims.u_size() as usize;
 
@@ -228,7 +228,7 @@ impl IdxReader {
 		}
 	}
 
-	pub fn encode_2d_image_crude(&self, source: &[u8], target: &mut [u8]) {
+	pub fn encode_2d_image_crude(&self, source: &Sdr, target: &mut Sdr) {
 		for v in 0..self.image_height {
 			for u in 0..self.image_width {
 				let src_idx = (v * self.image_width as usize) + u;

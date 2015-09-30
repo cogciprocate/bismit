@@ -4,7 +4,7 @@ use std::cmp;
 use std::collections::{ HashMap };
 use rand::{ self, ThreadRng, Rng };
 
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDimensions, Sdr };
 use ocl::{ self };
 use cortex::{ Cortex };
 use encode:: { IdxReader };
@@ -237,7 +237,7 @@ impl InputSource {
 	}
 }*/
 
-pub fn sdr_exp1(vec: &mut [u8]) {
+pub fn sdr_exp1(vec: &mut Sdr) {
 
 	// for i in 0..vec.len() {
 	// 	if (i >= 384 - 64) && (i < 384 + 64) {
@@ -257,7 +257,7 @@ pub fn sdr_exp1(vec: &mut [u8]) {
 }
 
 
-pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: CorticalDimensions, counter: usize, vec: &mut [u8]) {
+pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: CorticalDimensions, counter: usize, vec: &mut Sdr) {
 	let v_size = dims.v_size() as isize;
 	let u_size = dims.u_size() as isize;
 	let edge_size = edge_size as isize;
@@ -332,7 +332,7 @@ pub fn gimme_a_valid_col_id(dims: CorticalDimensions, v_id: isize, u_id: isize) 
 }
 
 
-pub fn sdr_stripes(stripe_size: usize, zeros_first: bool, vec: &mut [u8]) {
+pub fn sdr_stripes(stripe_size: usize, zeros_first: bool, vec: &mut Sdr) {
 	let (first, second) = if zeros_first { 
 		(0, 255)
 	} else {

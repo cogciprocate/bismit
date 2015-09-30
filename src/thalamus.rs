@@ -2,7 +2,8 @@ use std::ops::{ Range };
 use std::collections::{ HashMap };
 use std::iter;
 
-use cmn::{ self, AreaMap};
+use cmn::{ self, Sdr };
+use map::{ AreaMap };
 use ocl;
 use cortical_area:: { CorticalArea, CorticalAreas };
 use proto::{ ProtoAreaMaps, ProtoAreaMap, ProtoLayerMap, ProtoLayerMaps, 
@@ -49,8 +50,8 @@ impl Thalamus {
 		let mut i = 0usize;		
 
 		for (&area_name, ref pa) in pamaps.maps().iter().filter(|&(_, pa)|
-					plmaps[pa.region_name].kind != Thalamic
-		) {	
+					plmaps[pa.region_name].kind != Thalamic)
+		{	
 			let area_map = AreaMap::new(pa, plmaps, pamaps);
 
 			let aff_len = area_map.axn_range_by_flag(layer::AFFERENT_INPUT).len();
@@ -60,6 +61,8 @@ impl Thalamus {
 			teo.add_area(area_name, /*i,*/ eff_len,	area_map.input_src_area_names(layer::EFFERENT_INPUT));
 
 			println!("{}THALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", cmn::MT, area_name, aff_len, eff_len);
+
+			area_map.slices().print_debug();
 
 			area_maps.insert(area_name, area_map);		
 			
@@ -74,7 +77,7 @@ impl Thalamus {
 		}
 	}
 
-	fn cycle_external_ganglions(&mut self, areas: &CorticalAreas) {
+	pub fn cycle_external_ganglions(&mut self, areas: &CorticalAreas) {
 		for src in self.input_sources.iter_mut() {
 			src.next(areas);
 			//let input_gang = input_sources
@@ -95,37 +98,14 @@ impl Thalamus {
 			}
 		}
 
-		self.cycle_external_ganglions(areas);
+		//self.cycle_external_ganglions(areas);
 	}
 
 
 	// WRITE_INPUT(): <<<<< TODO: CHECK SIZES AND SCALE WHEN NECESSARY >>>>>
-	pub fn write_input(&self, sdr: &[ocl::cl_uchar], area: &mut CorticalArea) {		
+	pub fn write_input(&self, sdr: &Sdr, area: &mut CorticalArea) {		
 		area.write_input(sdr, layer::AFFERENT_INPUT);
-	}
-
-
-	// THALAMUS::WRITE(): USED FOR TESTING PURPOSES
-	// 	<<<<< NEEDS UPDATING TO NEW SYSTEM - CALL AREA.WRITE() >>>>>
-	// 		- Change input param to &CorticalArea			
-	// 	TODO: DEPRICATE
-	// pub fn write(&self, area_name: &str, layer_target: &'static str, 
-	// 			sdr: &[ocl::cl_uchar], areas: &HashMap<&'static str, Box<CorticalArea>>,
-	// ) {
-	// 	let emsg = format!("cortex::Cortex::write_vec(): Invalid area name: {}", area_name);
-	// 	let area = areas.get(area_name).expect(&emsg);
-
-	// 	//let ref region = self.plmaps[&RegionKind::Sensory];
-	// 	let region = area.proto_layer_maps();
-	// 	let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
-		
-	// 	for slc in axn_slcs { 
-	// 		//let buffer_offset = cmn::axn_idz_2d(slc, area.dims.columns(), region.hrz_demarc()) as usize;
-	// 		let buffer_offset = self.area_map.axn_idz(slc);
-	// 		ocl::enqueue_write_buffer(sdr, area.axns.states.buf, area.ocl().queue(), buffer_offset);
-	// 	}
-	// }
-	
+	}	
 
 	/*	FORWARD_AFFERENT_OUTPUT(): Read afferent output from a cortical area and store it 
 		in our pseudo thalamus' cache (the 'tract').
@@ -139,6 +119,10 @@ impl Thalamus {
 		let emsg = "thalamus::Thalamus::forward_afferent_output(): Area not found: ";
 		let emsg_src = format!("{}'{}' ", emsg, src_area_name);
 		let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
+
+		//println!("\n ##### FORWARDING AFFERENT OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
+
+		//if self.area_maps[
 
 		areas.get(src_area_name).expect(&emsg_src).read_output(
 			self.tract_afferent_output.output_ganglion(src_area_name, tar_area_name),
@@ -164,6 +148,8 @@ impl Thalamus {
 			Some(area) => if self.area_maps[tar_area_name].proto_layer_map().kind == Thalamic { return; },
 			None => return,
 		}
+
+		//println!("\n ##### BACKWARDING EFFERENT OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
 		
 		areas.get(src_area_name).expect(&emsg_src).read_output(
 			self.tract_efferent_output.output_ganglion(src_area_name, tar_area_name), 
@@ -211,7 +197,7 @@ impl ThalamicTract {
 		}
 	}
 
-	fn add_area(&mut self, tar_area_name: &'static str, /*idx: usize,*/ len: usize, src_areas: Vec<&'static str>) {
+	fn add_area(&mut self, tar_area_name: &'static str, /*idx: usize,*/ len: usize, src_areas: &Vec<&'static str>) {
 		//self.area_info.push(TractAreaInfo::new(self.ttl_len, len, src_areas));
 		//self.tract_areas.insert(tar_area_name, idx);
 		self.tract_areas.insert(tar_area_name, TractAreaInfo::new(self.ttl_len, len, src_areas));
@@ -224,12 +210,12 @@ impl ThalamicTract {
 		self
 	}
 
-	fn input_ganglion(&self, tar_area_name: &str) -> &[u8] {
+	fn input_ganglion(&self, tar_area_name: &str) -> &Sdr {
 		let range = self.input_range(tar_area_name);
 		&self.ganglion[range]
 	}
 
-	fn output_ganglion(&mut self, src_area_name: &str, tar_area_name: &str) -> &mut [u8] {
+	fn output_ganglion(&mut self, src_area_name: &str, tar_area_name: &str) -> &mut Sdr {
 		let range = self.output_range(src_area_name, tar_area_name);
 		&mut self.ganglion[range]
 	}
@@ -269,11 +255,11 @@ struct TractAreaInfo {
 }
 
 impl TractAreaInfo {
-	fn new(range_start: usize, range_len: usize, src_areas: Vec<&'static str>) -> TractAreaInfo {
+	fn new(range_start: usize, range_len: usize, src_areas: &Vec<&'static str>) -> TractAreaInfo {
 		TractAreaInfo { 
 			range: range_start..(range_start + range_len),			
 			output_len: if src_areas.len() == 0 { 0 } else { range_len / src_areas.len() },
-			src_areas: src_areas,
+			src_areas: src_areas.clone(),
 		}
 	}
 
@@ -305,3 +291,27 @@ impl TractAreaInfo {
 mod tests {
 	
 }
+
+
+
+	// THALAMUS::WRITE(): USED FOR TESTING PURPOSES
+	// 	<<<<< NEEDS UPDATING TO NEW SYSTEM - CALL AREA.WRITE() >>>>>
+	// 		- Change input param to &CorticalArea			
+	// 	TODO: DEPRICATE
+	// pub fn write(&self, area_name: &str, layer_target: &'static str, 
+	// 			sdr: &Sdr, areas: &HashMap<&'static str, Box<CorticalArea>>,
+	// ) {
+	// 	let emsg = format!("cortex::Cortex::write_vec(): Invalid area name: {}", area_name);
+	// 	let area = areas.get(area_name).expect(&emsg);
+
+	// 	//let ref region = self.plmaps[&RegionKind::Sensory];
+	// 	let region = area.proto_layer_maps();
+	// 	let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
+		
+	// 	for slc in axn_slcs { 
+	// 		//let buffer_offset = cmn::axn_idz_2d(slc, area.dims.columns(), region.hrz_demarc()) as usize;
+	// 		let buffer_offset = self.area_map.axn_idz(slc);
+	// 		ocl::enqueue_write_buffer(sdr, area.axns.states.buf, area.ocl().queue(), buffer_offset);
+	// 	}
+	// }
+	

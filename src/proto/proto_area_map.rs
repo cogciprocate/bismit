@@ -147,8 +147,12 @@ impl ProtoAreaMap {
 		}
 	}
 
-	pub fn dims(&self) -> CorticalDimensions {
-		self.dims.clone()
+	pub fn dims(&self) -> &CorticalDimensions {
+		&self.dims
+	}
+
+	pub fn input(&self) -> &Protoinput {
+		&self.input
 	}
 }
 

@@ -1,12 +1,15 @@
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, };
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDimensions, HexTilePlane, Sdr };
 use axons::{ Axons };
+use proto::{ layer };
+use map::{ AreaMap };
+
 
 pub struct SensoryFilter {
 	filter_name: String,
 	cl_file_name: Option<String>,
 	area_name: &'static str,
-	dims: CorticalDimensions,
+	//dims: CorticalDimensions,
 	input: Envoy<ocl::cl_uchar>,
 	kern_cycle: ocl::Kernel,
 }
@@ -15,14 +18,21 @@ impl SensoryFilter {
 	pub fn new(
 				filter_name: String, 
 				cl_file_name: Option<String>, 
-				area_name: &'static str,
-				dims: CorticalDimensions, 
+				area_map: &AreaMap,
+				//area_name: &'static str,
+				//dims: CorticalDimensions, 
 				axns: &Axons,
-				axn_base_slc: u8,
+				//axn_base_slc: u8,
 				ocl: &OclProgQueue, 
-	) -> SensoryFilter {
+		) -> SensoryFilter 
+	{
+		let axn_base_slc = area_map.axn_base_slc_by_flag(layer::AFFERENT_INPUT);
+		let dims = area_map.slc_src_area_dims(axn_base_slc, layer::AFFERENT_INPUT);
+		assert!(dims.depth() == 1, "\nAfferent input layer depths of more than one for cortical \
+			areas with sensory filters are not yet supported. Please set the depth of any \
+			afferent input layers with filters to 1.");
 
-		let input = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let input = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);		
 
 		let kern_cycle = ocl.new_kernel(filter_name.clone(),
 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
@@ -35,14 +45,14 @@ impl SensoryFilter {
 		SensoryFilter {
 			filter_name: filter_name,
 			cl_file_name: cl_file_name,
-			area_name: area_name,
-			dims: dims,
+			area_name: area_map.area_name(),
+			//dims: dims,
 			input: input,
 			kern_cycle: kern_cycle,
 		}
 	}
 
-	pub fn write(&self, sdr: &[ocl::cl_uchar]) {
+	pub fn write(&self, sdr: &Sdr) {
 		assert!(sdr.len() == self.input.len());
 		self.input.write_direct(sdr, 0);
 	}

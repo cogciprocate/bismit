@@ -92,7 +92,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 		//cortex.write(area_name, ff_layer_name, &vec_ff);
 		cortex.area(area_name).psal().soma().write_direct(&vec_ff, 0);
 
-		// write_input(&self, sdr: &[ocl::cl_uchar], layer_flags: layer::ProtolayerFlags)
+		// write_input(&self, sdr: &Sdr, layer_flags: layer::ProtolayerFlags)
 
 		if last_run {
 			println!("\nACTIVATING CELLS... ");

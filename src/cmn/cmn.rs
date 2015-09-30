@@ -15,6 +15,7 @@ use rand;
 use rand::distributions::{ self, Normal, IndependentSample, Range };
 
 use ocl::{ self, BuildOptions };
+use super::{ Sdr };
 
 
 
@@ -528,10 +529,10 @@ pub fn log2(n: u32) -> u32 {
 
 // RENDER_SDR_SQUARE(): Show SDR in a square grid -- DEPRICATE (hex version in tests/renderer)
 pub fn render_sdr_square(
-			vec_out: &[u8], 
-			vec_ff_opt: Option<&[u8]>, 
-			vec_out_prev_opt: Option<&[u8]>, 
-			vec_ff_prev_opt: Option<&[u8]>,
+			vec_out: &Sdr, 
+			vec_ff_opt: Option<&Sdr>, 
+			vec_out_prev_opt: Option<&Sdr>, 
+			vec_ff_prev_opt: Option<&Sdr>,
 			slc_map: &BTreeMap<u8, &'static str>,
 			print: bool,
 			sdr_len: u32,

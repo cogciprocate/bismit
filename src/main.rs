@@ -15,7 +15,7 @@ extern crate bitflags;
 extern crate enum_primitive;
 
 
-pub use cmn::input_source;
+//pub use cmn::input_source::{ InputSource };
 
 mod cmn;
 //mod cl_h;
@@ -50,7 +50,8 @@ mod proto;
 //mod energy;
 mod encode;
 mod sensory_filter;
-//mod input_source;
+mod input_source;
+mod map;
 
 //#[cfg(test)]
 mod tests;

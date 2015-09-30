@@ -1,6 +1,6 @@
 use std::iter;
 
-use cmn;
+use cmn::{ self, Sdr };
 
 pub struct MotorState {
 	turn_left: bool,  // change to turn_state
@@ -46,7 +46,7 @@ impl MotorState {
 		}
 	}
 
-	pub fn cur_sdr(&self, rev: bool) -> &[u8] {
+	pub fn cur_sdr(&self, rev: bool) -> &Sdr {
 		if self.turn_left ^ rev {
 			&self.sdr_left[..]
 		} else {

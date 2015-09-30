@@ -38,7 +38,9 @@ __kernel void retina(
 
 	uint const cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
 	//uint const axn_idx = axn_idx_3d_safe(slc_id + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
-	uint const axn_idx = cel_idx_3d_unsafe(slc_id + cel_base_axn_slc, v_size, v_id, u_size, u_id);
+	uint const tar_axn_idz = get_axn_slc_idz(slc_id + cel_base_axn_slc);
+	uint const axn_idx = tar_axn_idz + cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
+	//uint const axn_idx = axn_idx_3d_unsafe(tar_axn_slc, v_id, 0, u_id, 0);
 
 	int const center_state = cel_states[cel_idx];
 

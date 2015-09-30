@@ -6,13 +6,24 @@
 
 pub use self::cmn::*;
 pub use self::cortical_dimensions::{ CorticalDimensions };
-pub use self::area_map::{ AreaMap, SliceMap };
+pub use self::slice_dimensions::{ SliceDimensions };
+//pub use self::area_map::{ AreaMap, SliceMap };
 pub use self::renderer::{ Renderer };
 //pub use self::prediction::*;
 
 mod cmn;
 mod cortical_dimensions;
-mod area_map;
+//mod area_map;
+mod slice_dimensions;
 mod renderer;
-pub mod input_source;
+//pub mod input_source;
 //mod prediction;
+
+
+pub trait HexTilePlane {
+	fn v_size(&self) -> u32;
+	fn u_size(&self) -> u32;
+	fn count(&self) -> u32;
+}
+
+pub type Sdr = [u8];

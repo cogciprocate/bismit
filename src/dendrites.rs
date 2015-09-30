@@ -7,7 +7,8 @@ use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
-use cmn::{ self, CorticalDimensions, AreaMap };
+use cmn::{ self, CorticalDimensions };
+use map::{ AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };

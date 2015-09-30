@@ -8,7 +8,8 @@ use num::{ Integer };
 use std::default::{ Default };
 use std::fmt::{ Display };
 
-use cmn::{ self, CorticalDimensions, AreaMap };
+use cmn::{ self, CorticalDimensions };
+use map::{ AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
@@ -46,9 +47,9 @@ impl InhibitoryInterneuronNetwork {
 
 		let padding = cmn::ASPINY_SPAN;
 
-		let spi_ids = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, 0u8, ocl);
-		let wins = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, 0u8, ocl);
-		let states = Envoy::<ocl::cl_uchar>::with_padding(padding, dims, cmn::STATE_ZERO, ocl);
+		let spi_ids = Envoy::<ocl::cl_uchar>::with_padding(dims, 0u8, ocl, padding);
+		let wins = Envoy::<ocl::cl_uchar>::with_padding(dims, 0u8, ocl, padding);
+		let states = Envoy::<ocl::cl_uchar>::with_padding(dims, cmn::STATE_ZERO, ocl, padding);
 
 
 		let kern_inhib_simple = ocl.new_kernel("inhib_simple".to_string(),

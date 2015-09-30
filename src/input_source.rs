@@ -13,17 +13,17 @@ pub struct InputSource {
 }
 
 impl InputSource {
-	pub fn new(protoarea: &ProtoAreaMap) -> InputSource {
-		//let emsg = format!("\nInputSource::new(): No input source specified for area: '{}'", protoarea.name);
-		let input = &protoarea.input;
+	pub fn new(proto_area_map: &ProtoAreaMap) -> InputSource {
+		//let emsg = format!("\nInputSource::new(): No input source specified for area: '{}'", proto_area_map.name);
+		let input = &proto_area_map.input;
 
 		let (kind, targets, len) = match input {
 			&Protoinput::IdxReader { file_name, repeats } => {
-				let ir = IdxReader::new(protoarea.dims.clone_with_depth(1), file_name, repeats);
+				let ir = IdxReader::new(proto_area_map.dims.clone_with_depth(1), file_name, repeats);
 				let len = ir.dims().cells();
 				( // RETURN TUPLE
 					InputSourceKind::IdxReader(Box::new(ir)), 
-					protoarea.aff_areas.clone(), 
+					proto_area_map.aff_areas.clone(), 
 					len
 				)
 			}
@@ -39,7 +39,7 @@ impl InputSource {
 		}
 	}
 
-	pub fn next(&mut self, areas: &CorticalAreas) {
+	pub fn next(&mut self, areas: &CorticalAreas) {		
 		match self.kind {
 			InputSourceKind::IdxReader(ref mut ir) => { let _ = ir.next(&mut self.ganglion[..]); },
 			_ => (),
@@ -47,6 +47,9 @@ impl InputSource {
 
 		for target in self.targets.iter() {
 			areas[target].write_input(&self.ganglion, layer::AFFERENT_INPUT);
+
+			// println!("\n##### INPUTSOURCE::NEXT(): Writing ganglion with len: {} to area: '{}': \n{:?}", 
+			// 	self.ganglion.len(), target, self.ganglion);
 		}
 	}
 }

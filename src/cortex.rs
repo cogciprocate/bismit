@@ -7,7 +7,8 @@ use rand::distributions::{ IndependentSample, Range };
 
 
 use ocl::{ self, OclContext, OclProgQueue };
-use cmn::{ self, CorticalDimensions, AreaMap };
+use cmn::{ self, CorticalDimensions, Sdr };
+use map::{ AreaMap };
 use cortical_area:: { self, CorticalArea, CorticalAreas };
 use thalamus::{ Thalamus };
 use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, 
@@ -61,7 +62,7 @@ impl Cortex {
 		self.areas.get(area_name).expect(&emsg)
 	}
 
-	pub fn write_input(&mut self, area_name: &str, sdr: &[ocl::cl_uchar]) {
+	pub fn write_input(&mut self, area_name: &str, sdr: &Sdr) {
 		let emsg = format!("cortex::Cortex::write_input(): Area: '{}' not found. ", area_name);
 		let area = self.areas.get_mut(area_name).expect(&emsg);
 		self.thal.write_input(sdr, area);
@@ -69,7 +70,7 @@ impl Cortex {
 	}
 
 	/* WRITE(): TESTING PURPOSES -- TODO: MOVE TO A TESTS SUB-MODULE */
-	// pub fn write(&mut self, area_name: &str, layer_target: &'static str, sdr: &[ocl::cl_uchar]) {
+	// pub fn write(&mut self, area_name: &str, layer_target: &'static str, sdr: &Sdr) {
 	// 	self.thal.write(area_name, layer_target, sdr, &mut self.areas)
 	// }
 
@@ -79,7 +80,8 @@ impl Cortex {
 			area.regrow();
 		}
 
-		self.thal.cycle_cortical_ganglions(&self.areas);		
+		self.thal.cycle_external_ganglions(&self.areas);
+		self.thal.cycle_cortical_ganglions(&self.areas);
 
 		for (area_name, area) in self.areas.iter_mut() {
 			area.cycle();
@@ -104,7 +106,7 @@ impl Cortex {
 	}
 
 
-	/*pub fn sense_vec(&mut self, area_name: &'static str, layer_target: &'static str, sdr: &[ocl::cl_uchar]) {
+	/*pub fn sense_vec(&mut self, area_name: &'static str, layer_target: &'static str, sdr: &Sdr) {
 		//self.thal.write(area_name, layer_target, sdr, &self.areas);
 		self.write(area_name, layer_target, sdr);
 		self.cycle();
@@ -148,7 +150,7 @@ impl Cortex {
 				- Handle multi-slc input vectors (for input compression, etc.)
 					- Update assert statement to support this
 	*/
-	/*pub fn write_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &[ocl::cl_uchar]) {
+	/*pub fn write_vec(&mut self, area_name: &'static str, layer_target: &'static str, vec: &Sdr) {
 		let emsg = "cortex::Cortex::write_vec()";
 		let ref region = self.proto_layer_maps[&Sensory];
 		let axn_slcs: Vec<u8> = region.slc_ids(vec!(layer_target));

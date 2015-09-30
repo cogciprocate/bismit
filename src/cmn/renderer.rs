@@ -1,37 +1,54 @@
-use cmn::{ self, CorticalDimensions, SliceMap };
+use cmn::{ self, CorticalDimensions, SliceDimensions, HexTilePlane, Sdr };
+use map::{ SliceMap };
 
 use std::char;
 use std::iter;
 use std::collections::{ BTreeMap };
 
 pub struct Renderer {
-	dims: CorticalDimensions,
+	//dims: CorticalDimensions,
 	axn_history: Vec<u8>,
 	sst_history: Vec<u8>,
-	slice_map: SliceMap,
+	//slices: SliceMap,
+	aff_out_dims: SliceDimensions,
 }
 
 impl Renderer {
-	pub fn new(dims: CorticalDimensions, slice_map: &SliceMap) -> Renderer {
-		let sdr_len = (dims.u_size() * dims.v_size()) as usize;
+	pub fn new(area_dims: &CorticalDimensions) -> Renderer {		
+		let dims = SliceDimensions::new(area_dims, None).unwrap();
+		let sdr_len = (dims.columns()) as usize;
 
 		Renderer { 
-			dims: dims,
+			aff_out_dims: dims,
 			axn_history: iter::repeat(0).take(sdr_len).collect(),
 			sst_history: iter::repeat(0).take(sdr_len).collect(),
-			slice_map: slice_map.clone(),
+			//slice_map: slice_map.clone(),
 		}
 	}
 
-	// DRAW(): height-row-v, width-col-u
+	// DRAW(): v_size-row-v, u_size-col-u
 	// TODO: NEED TO MAKE SST_AXNS OPTIONAL 
-	pub fn render(&mut self, out_axns: &[u8], sst_axns: &[u8], input_status: &str, print_summary: bool) {
-		let height = self.dims.v_size();
-		let width = self.dims.u_size();
-		assert!((height * width) as usize == out_axns.len());
+	pub fn render(&mut self, out_axns: &Sdr, sst_axns_opt: Option<&Sdr>, dims_opt: Option<&SliceDimensions>, 
+				input_status: &str, print_summary: bool) 
+	{
+		let dims = match dims_opt {
+			Some(dims) => dims,
+			None => &self.aff_out_dims,
+		};
 
-		let mut margin = String::with_capacity(height as usize + 10);
-		//let mut margin: String = iter::repeat(' ').take(height as usize - 1).collect();
+		let v_size = dims.v_size();
+		let u_size = dims.u_size();
+		assert!((v_size * u_size) as usize == out_axns.len());
+
+		let sst_axns = match sst_axns_opt {
+			Some(sst_axns) => sst_axns,
+			None => out_axns,
+		};
+
+		let use_history = sst_axns_opt.is_some();
+
+		let mut margin = String::with_capacity(v_size as usize + 10);
+		//let mut margin: String = iter::repeat(' ').take(v_size as usize - 1).collect();
 
 		let mut print_buf = String::with_capacity(256);
 
@@ -44,13 +61,13 @@ impl Renderer {
 
 		print!("\n");
 
-		for v in 0..height {
-			//let v = (height - 1) - v_mirror;
+		for v in 0..v_size {
+			//let v = (v_size - 1) - v_mirror;
 			print!("{}", margin);
 			
-			for u in 0..width {
-				//let u = (width - 1) - u_mirror;
-				let sdr_idx = ((v * width) + u) as usize;
+			for u in 0..u_size {
+				//let u = (u_size - 1) - u_mirror;
+				let sdr_idx = ((v * u_size) + u) as usize;
 				let sdr_val = out_axns[sdr_idx];
 				let sdr_cmpd = (sdr_val >> 4) | (((sdr_val & 0x0F) != 0) as u8);
 				//let sdr_cmpd = sdr_val;
@@ -61,7 +78,11 @@ impl Renderer {
 				let new_prediction = prediction && (!sst_active); // RENAME (it's not necessarily a new pred)
 
 				//let prev_active = vec_ff_prev[i] != Default::default();
-				let prev_prediction = cmn::new_pred(self.axn_history[sdr_idx], self.sst_history[sdr_idx]);
+				let prev_prediction = if use_history {
+					cmn::new_pred(self.axn_history[sdr_idx], self.sst_history[sdr_idx])
+				} else {
+					false
+				};
 
 				if sst_active {	active_ssts += 1; }
 				if new_prediction { new_preds += 1;	}
@@ -104,11 +125,13 @@ impl Renderer {
 			print_buf.clear();
 		}
 
-		self.axn_history.clear();
-		self.sst_history.clear();
+		if use_history {
+			self.axn_history.clear();
+			self.sst_history.clear();
 
-		self.axn_history.push_all(out_axns);
-		self.sst_history.push_all(sst_axns);
+			self.axn_history.push_all(out_axns);
+			self.sst_history.push_all(sst_axns);
+		}
 
 		// for hst_i in 0..self.out_axns.len() {
 		// 	self.axn_history[hst_i] = out_axns[hst_i];
@@ -133,28 +156,27 @@ impl Renderer {
 		}
 	}
 
-	pub fn render_axon_space(&mut self, axn_space: &[u8], slc_map: &BTreeMap<u8, &'static str>, 
-					col_count: u32, hrz_demarc: u8
-	) {
-		assert!(col_count == self.dims.columns(), "Column count mismatch.");
-
-		for (&slc_id, &slc_name) in slc_map {
+	pub fn render_axon_space(&mut self, axn_space: &Sdr, slices: &SliceMap) {
+		for slc_id in 0..slices.slc_count() {			
 			//let axn_idz = cmn::axn_idz_2d(slc_id, col_count, hrz_demarc) as usize;
-			let axn_idz = self.slice_map.idz(slc_id) as usize;
-			let axn_idn = axn_idz + col_count as usize;			
-			print!("Axon slice '{}': slc_id: {}, axn_idz: {}", slc_name, slc_id, axn_idz);
+			let slc_dims = &slices.dims()[slc_id as usize];
+			let axn_idz = slices.idz(slc_id) as usize;
+			let axn_idn = axn_idz + slc_dims.columns() as usize;		
+			let layer_name = slices.layer_name(slc_id);			
 
-			self.render(&axn_space[axn_idz..axn_idn], &axn_space[axn_idz..axn_idn], slc_name, false);
+			print!("Axon slice '{}': slc_id: {}, axn_idz: {}", layer_name, slc_id, axn_idz);
+
+			self.render(&axn_space[axn_idz..axn_idn], None, Some(&slc_dims), layer_name, false);
 		}
 	}
 }
 
 /*
 pub fn render_sdr(
-			vec_out: &[u8], 
-			vec_ff_opt: Option<&[u8]>, 
-			vec_out_prev_opt: Option<&[u8]>, 
-			vec_ff_prev_opt: Option<&[u8]>,
+			vec_out: &Sdr, 
+			vec_ff_opt: Option<&Sdr>, 
+			vec_out_prev_opt: Option<&Sdr>, 
+			vec_ff_prev_opt: Option<&Sdr>,
 			slc_map: &BTreeMap<u8, &'static str>,
 			print: bool,
 			sdr_len: u32,
@@ -189,11 +211,11 @@ pub fn render_sdr(
 	let mut ttl_active = 0usize;
 
 	let cortical_area_per_line = 64;
-	let line_character_width = (cortical_area_per_line * (4 + 4 + 2 + 4 + 4 + 1)) + 8;	// 8 extra for funsies
+	let line_character_u_size = (cortical_area_per_line * (4 + 4 + 2 + 4 + 4 + 1)) + 8;	// 8 extra for funsies
 
 	//println!("\n[{}{}{}]:", C_GRN, vec_ff.len(), C_DEFAULT);
 
-	let mut out_line: String = String::with_capacity(line_character_width);
+	let mut out_line: String = String::with_capacity(line_character_u_size);
 	let mut i_line = 0usize;
 	let mut i_global = 0usize;
 	let mut i_pattern = 0usize; // DEPRICATE

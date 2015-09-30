@@ -73,6 +73,8 @@
 =============================================================================*/
 
 __constant uint axn_slc_idzs[AXN_SLC_COUNT] = { AXN_SLC_IDZS };
+__constant uint axn_slc_v_sizes[AXN_SLC_COUNT] = { AXN_SLC_V_SIZES };
+__constant uint axn_slc_u_sizes[AXN_SLC_COUNT] = { AXN_SLC_U_SIZES };
 __constant uchar axn_slc_v_scales[AXN_SLC_COUNT] = { AXN_SLC_V_SCALES };
 __constant uchar axn_slc_u_scales[AXN_SLC_COUNT] = { AXN_SLC_U_SCALES };
 
@@ -81,7 +83,7 @@ static inline uint get_axn_slc_idz(uint slc_id) {
 	return axn_slc_idzs[slc_id];
 }
 
-static inline int4 get_axn_slc_idz_vec4(int4 slc_id) {
+static inline int4 get_axn_slc_idz_vec4(uchar4 slc_id) {
 	return (int4)(	axn_slc_idzs[slc_id.s0], 
 					axn_slc_idzs[slc_id.s1], 
 					axn_slc_idzs[slc_id.s2], 
@@ -89,11 +91,35 @@ static inline int4 get_axn_slc_idz_vec4(int4 slc_id) {
 }
 
 
+// static inline uchar get_axn_v_size(uint slc_id) {
+// 	return axn_slc_v_sizes[slc_id];
+// }
+
+// static inline int4 get_axn_v_size_vec4(int4 slc_id) {
+// 	return (int4)(	axn_slc_v_sizes[slc_id.s0], 
+// 					axn_slc_v_sizes[slc_id.s1], 
+// 					axn_slc_v_sizes[slc_id.s2], 
+// 					axn_slc_v_sizes[slc_id.s3]);
+// }
+
+
+static inline uchar get_axn_u_size(uint slc_id) {
+	return axn_slc_u_sizes[slc_id];
+}
+
+static inline int4 get_axn_u_size_vec4(uchar4 slc_id) {
+	return (int4)(	axn_slc_u_sizes[slc_id.s0], 
+					axn_slc_u_sizes[slc_id.s1], 
+					axn_slc_u_sizes[slc_id.s2], 
+					axn_slc_u_sizes[slc_id.s3]);
+}
+
+
 static inline uchar get_axn_v_scale(uint slc_id) {
 	return axn_slc_v_scales[slc_id];
 }
 
-static inline int4 get_axn_v_scale_vec4(int4 slc_id) {
+static inline int4 get_axn_v_scale_vec4(uchar4 slc_id) {
 	return (int4)(	axn_slc_v_scales[slc_id.s0], 
 					axn_slc_v_scales[slc_id.s1], 
 					axn_slc_v_scales[slc_id.s2], 
@@ -105,7 +131,7 @@ static inline uchar get_axn_u_scale(uint slc_id) {
 	return axn_slc_u_scales[slc_id];
 }
 
-static inline int4 get_axn_u_scale_vec4(int4 slc_id) {
+static inline int4 get_axn_u_scale_vec4(uchar4 slc_id) {
 	return (int4)(	axn_slc_u_scales[slc_id.s0], 
 					axn_slc_u_scales[slc_id.s1], 
 					axn_slc_u_scales[slc_id.s2], 
@@ -201,23 +227,89 @@ static inline uchar cel_state_3d_safe(uchar slc_id,
 =============================================================================*/
 
 // AXN_IDX_3D_UNSAFE(): Linear index of an axon
-static inline uint axn_idx_3d_unsafe(uint slc_id, uint v_size, uint v_id, uint u_size, uint u_id) {
+static inline uint axn_idx_3d_unsafe(uint const slc_id, uint const v_id, char const v_ofs, 
+				uint const u_id, char const u_ofs) 
+	{
+	// GET THE U_SIZE (the 'least significant' of the dimensions as far as opencl is concerned)
+	// of the source slice:
+	uint const u_size = get_axn_u_size(slc_id);
+
 	// 	CALCULATE scaled index:
 	// 		- Multiply by the pre-defined scale for specified slice then divide by 16.
 	// 		- A scale of 16 = 100%, 8 = 50%, 32 = 200%, etc.
-	uint scaled_v_id = mul24(v_id, get_axn_v_scale(slc_id)) >> 4;
-	uint scaled_u_id = mul24(u_id, get_axn_u_scale(slc_id)) >> 4;
+	uint const scaled_v_id = (mul24(v_id, get_axn_v_scale(slc_id)) >> 4) + v_ofs;
+	uint const scaled_u_id = (mul24(u_id, get_axn_u_scale(slc_id)) >> 4) + u_ofs;
 
 	// RETURN the sum of the pre-defined axon offset for the slice and the linear offset within that slice
 	return get_axn_slc_idz(slc_id) + mad24(scaled_v_id, u_size, scaled_u_id);
 }
 
 // AXN_IDX_3D_UNSAFE_VEC4(): Linear index of an axon, vec4
-static inline int4 axn_idx_3d_unsafe_vec4(int4 slc_id, int4 v_size, int4 v_id, int4 u_size, int4 u_id) {
-	int4 scaled_v_id = mul24(v_id, get_axn_v_scale_vec4(slc_id)) >> 4;
-	int4 scaled_u_id = mul24(u_id, get_axn_u_scale_vec4(slc_id)) >> 4;
-	return get_axn_slc_idz_vec4(slc_id) + mad24(scaled_v_id, u_size, scaled_u_id);
+static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id_uchar4, int4 const v_id, int4 const v_ofs, 
+			int4 const u_id, int4 const u_ofs) 
+{
+	//int4 slc_id = convert_int4(slc_id_uchar4);
+
+	int4 const u_size = get_axn_u_size_vec4(slc_id_uchar4);
+
+	int4 const scaled_v_id = (mul24(v_id, get_axn_v_scale_vec4(slc_id_uchar4)) >> 4) + v_ofs;
+	int4 const scaled_u_id = (mul24(u_id, get_axn_u_scale_vec4(slc_id_uchar4)) >> 4) + u_ofs;
+
+	return get_axn_slc_idz_vec4(slc_id_uchar4) + mad24(scaled_v_id, u_size, scaled_u_id);
 }
+
+
+
+// AXN_STATE_3D_SAFE():
+static inline uchar axn_state_3d_safe(uchar slc_id, uint v_id, char v_ofs, uint u_id, 
+			char u_ofs, __global uchar const* const axn_states) 
+{
+	//uint idx_hrz = axn_idx_hrz(slc_id, v_size, v_ofs, u_size, u_ofs);
+	uint idx_spt = axn_idx_3d_unsafe(slc_id, v_id, v_ofs, u_id, u_ofs);
+	//int idx_is_hrz = idx_hrz != 0;
+	//uint axn_idx = mad24((uint)idx_is_hrz, idx_hrz, mul24((uint)!idx_is_hrz, idx_spt));
+	uint axn_idx = idx_spt; // TEMP
+
+	//int idx_is_safe = dim_is_safe(v_size, v_id, v_ofs) & dim_is_safe(u_size, u_id, u_ofs);
+
+	//return mul24(idx_is_safe, axn_states[axn_idx + AXON_MARGIN_SIZE]);
+	return axn_states[axn_idx];
+}
+
+// AXN_STATE_3D_SAFE_VEC4():
+static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id_uchar4, int4 v_id, char4 v_ofs_char4, 
+	int4 u_id, char4 u_ofs_char4, __global uchar const* const axn_states) 
+{
+	//int4 v_size = (int4)((int)v_size_scl);
+	//int4 u_size = (int4)((int)u_size_scl);
+	//int4 slc_id = convert_int4(slc_id_uchar4);
+	int4 v_ofs = convert_int4(v_ofs_char4);
+	int4 u_ofs = convert_int4(u_ofs_char4);
+
+	//int4 idx_hrz = axn_idx_hrz_vec4(slc_id, v_size, v_ofs, u_size, u_ofs);
+	int4 idx_spt = axn_idx_3d_unsafe_vec4(slc_id_uchar4, v_id, v_ofs, u_id, u_ofs);
+	//int4 idx_is_hrz = idx_hrz != 0;
+
+	//int4 axn_idx = (idx_is_hrz & idx_hrz) | (~idx_is_hrz & idx_spt);
+	int4 axn_idx = idx_spt;
+
+	//int4 idx_is_safe = dim_is_safe_vec4(v_size, v_id, v_ofs) & dim_is_safe_vec4(u_size, u_id, u_ofs);
+
+	// uchar4 axn_state = (uchar4)(
+	// 	((uchar)idx_is_safe.s0 & axn_states[axn_idx.s0 + AXON_MARGIN_SIZE]),
+	// 	((uchar)idx_is_safe.s1 & axn_states[axn_idx.s1 + AXON_MARGIN_SIZE]),
+	// 	((uchar)idx_is_safe.s2 & axn_states[axn_idx.s2 + AXON_MARGIN_SIZE]),
+	// 	((uchar)idx_is_safe.s3 & axn_states[axn_idx.s3 + AXON_MARGIN_SIZE]));
+
+	uchar4 axn_state = (uchar4)(
+		(axn_states[axn_idx.s0]),
+		(axn_states[axn_idx.s1]),
+		(axn_states[axn_idx.s2]),
+		(axn_states[axn_idx.s3]));
+
+	return axn_state;
+}
+
 
 
 // AXN_IDX_HRZ(): Axon index for a horizontal axon
@@ -256,50 +348,6 @@ static inline int4 axn_idx_hrz_vec4(int4 slc_id, int4 v_size, int4 v_ofs, int4 u
 		int4 axn_idx = mad24((int4)HORIZONTAL_AXON_ROW_DEMARCATION, mul24(u_size, v_size), hrz_axn_id);
 		int4 slc_id_is_hrz = hrz_sct_id >= 0;
 		return (slc_id_is_hrz & axn_idx);
-}
-
-
-// AXN_STATE_3D_SAFE():
-static inline uchar axn_state_3d_safe(uchar slc_id, 
-				uint v_size, uint v_id, char v_ofs, 
-				uint u_size, uint u_id, char u_ofs,
-				__global uchar const* const axn_states) 
-{
-	uint idx_hrz = axn_idx_hrz(slc_id, v_size, v_ofs, u_size, u_ofs);
-	uint idx_spt = axn_idx_3d_unsafe(slc_id, v_size, (int)v_id + (int)v_ofs, u_size, (int)u_id + (int)u_ofs);
-	int idx_is_hrz = idx_hrz != 0;
-	uint axn_idx = mad24((uint)idx_is_hrz, idx_hrz, mul24((uint)!idx_is_hrz, idx_spt));
-	int idx_is_safe = dim_is_safe(v_size, v_id, v_ofs) & dim_is_safe(u_size, u_id, u_ofs);
-	return mul24(idx_is_safe, axn_states[axn_idx + AXON_MARGIN_SIZE]);
-}
-
-// AXN_STATE_3D_SAFE_VEC4():
-static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id_uchar4, 
-				uint v_size_scl, int4 v_id, char4 v_ofs_char4, 
-				uint u_size_scl, int4 u_id, char4 u_ofs_char4,
-				__global uchar const* const axn_states) 
-{
-	int4 v_size = (int4)((int)v_size_scl);
-	int4 u_size = (int4)((int)u_size_scl);
-	int4 slc_id = convert_int4(slc_id_uchar4);
-	int4 v_ofs = convert_int4(v_ofs_char4);
-	int4 u_ofs = convert_int4(u_ofs_char4);
-
-	int4 idx_hrz = axn_idx_hrz_vec4(slc_id, v_size, v_ofs, u_size, u_ofs);
-	int4 idx_spt = axn_idx_3d_unsafe_vec4(slc_id, v_size, (int4)v_id + (int4)v_ofs, u_size, (int4)u_id + (int4)u_ofs);
-	int4 idx_is_hrz = idx_hrz != 0;
-
-	int4 axn_idx = (idx_is_hrz & idx_hrz) | (~idx_is_hrz & idx_spt);
-	int4 idx_is_safe = dim_is_safe_vec4(v_size, v_id, v_ofs) & dim_is_safe_vec4(u_size, u_id, u_ofs);
-
-	uchar4 axn_state = (uchar4)(
-		((uchar)idx_is_safe.s0 & axn_states[axn_idx.s0 + AXON_MARGIN_SIZE]),
-		((uchar)idx_is_safe.s1 & axn_states[axn_idx.s1 + AXON_MARGIN_SIZE]),
-		((uchar)idx_is_safe.s2 & axn_states[axn_idx.s2 + AXON_MARGIN_SIZE]),
-		((uchar)idx_is_safe.s3 & axn_states[axn_idx.s3 + AXON_MARGIN_SIZE])
-	);
-	//uchar4 axn_state = (uchar4)((uchar)idx_is_safe.s0, (uchar)idx_is_safe.s1, (uchar)idx_is_safe.s2, (uchar)idx_is_safe.s3) ;
-	return axn_state;
 }
 
 
@@ -391,6 +439,13 @@ static inline void prx_syns__active__ltp_ltd(
 
 
 
+__kernel void reference_all_the_things(__private int const for_sanitys_sake) {
+	get_axn_u_size_vec4((uchar4)0);
+	cel_idx_3d_unsafe_vec4((int4)0, (int4)0, (int4)0, (int4)0, (int4)0);
+	axn_idx_hrz(0, 0, 0, 0, 0);
+	dim_is_safe_vec4((int4)0, (int4)0, (int4)0);
+	axn_idx_hrz_vec4((int4)0, (int4)0, (int4)0, (int4)0, (int4)0);
+}
 
 /*=============================================================================
 ===============================================================================
@@ -418,7 +473,7 @@ static inline void prx_syns__active__ltp_ltd(
 // 		- 
 //
 // CLEAN UP:
-// 	- One day soon this beast of a .cl file will be split up.
+// 	- TODO: Split this beast up.
 
 
 
@@ -450,7 +505,7 @@ __kernel void syns_cycle_simple(
 
 		//uint axn_idx = axn_idx_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs);
 		//uchar axn_state = axn_states[axn_idx];
-		uchar axn_state = axn_state_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs, axn_states);
+		uchar axn_state = axn_state_3d_safe(src_slc_id, v_id, v_ofs, u_id, u_ofs, axn_states);
 	
 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
 	}
@@ -485,7 +540,12 @@ __kernel void syns_cycle_simple_vec4(
 		char4 u_ofs = syn_src_col_u_offs[syn4_idx];
 
 		uchar4 axn_state = axn_state_3d_safe_vec4(
-			src_slc_id, v_size, (int4)((int)v_id), v_ofs, u_size, (int4)((int)u_id), u_ofs, axn_states);
+			src_slc_id, 
+			(int4)((int)v_id),
+			v_ofs, 
+			(int4)((int)u_id), 
+			u_ofs, 
+			axn_states);
 
 		syn_states[syn4_idx] = (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80) | (axn_state >> (uchar4)1);
 	}
@@ -582,7 +642,7 @@ __kernel void syns_cycle_wow(
 		char u_ofs = syn_src_col_u_offs[syn_idx];
 		uchar src_slc_id = syn_src_slc_ids[syn_idx];
 
-		uchar axn_state = axn_state_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs, axn_states);
+		uchar axn_state = axn_state_3d_safe(src_slc_id, v_id, v_ofs, u_id, u_ofs, axn_states);
 		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
 
 		if ((slc_id == 1) && (get_global_id(1) == 6) && (get_global_id(2) == 6) && (cel_idz == 0)) {
@@ -672,8 +732,13 @@ __kernel void syns_cycle_wow_vec4(
 		// uchar axn_state = axn_state_3d_safe(src_slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs, axn_states);
 		// syn_states[syn4_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
 
-		uchar4 axn_state = axn_state_3d_safe_vec4(src_slc_id, v_size, (int4)((int)v_id), 
-			v_ofs, u_size, (int4)((int)u_id), u_ofs, axn_states);
+		uchar4 axn_state = axn_state_3d_safe_vec4(
+			src_slc_id, 
+			(int4)((int)v_id), 
+			v_ofs, 
+			(int4)((int)u_id), 
+			u_ofs, 
+			axn_states);
 
 		syn_states[syn4_idx] = (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80) | (axn_state >> (uchar4)1);
 
@@ -781,7 +846,7 @@ __kernel void inhib_simple(
 	uint const u_size = get_global_size(2);
 	uint const cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
 	//uint const axn_idx = axn_idx_3d_safe(slc_id + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
-	uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id + cel_base_axn_slc, v_size, v_id, u_size, u_id);
+	uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id + cel_base_axn_slc, v_id, 0, u_id, 0);
 
 	uchar const cel_state = cel_states[cel_idx];
 
@@ -919,7 +984,7 @@ __kernel void inhib_passthrough(
 
 	uint const cel_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
 	//uint const axn_idx = axn_idx_3d_safe(slc_id + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
-	uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id + cel_base_axn_slc, v_size, v_id, u_size, u_id);
+	uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id + cel_base_axn_slc, v_id, 0, u_id, 0);
 
 	uchar const cel_state = cel_states[cel_idx];
 
@@ -1021,7 +1086,7 @@ __kernel void mcol_activate_pyrs(
 	//uint const pyr_idx = mad24(slc_id, slc_columns, col_id);
 	//uint const axn_idx = axn_idx_2d(pyr_axn_slc_base + slc_id, slc_columns, col_id, 0);
 	uint const pyr_idx = cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id);
-	uint const cel_axn_idx = axn_idx_3d_unsafe(pyr_axn_slc_base + slc_id, v_size, v_id, u_size, u_id);
+	uint const cel_axn_idx = axn_idx_3d_unsafe(pyr_axn_slc_base + slc_id, v_id, 0, u_id, 0);
 	uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
 
 	// ******************
@@ -1134,7 +1199,7 @@ __kernel void pyrs_ltp_unoptd(
 	uint const pyr_grp_id = cel_idx_3d_unsafe(slc_id, tuft_count, tuft_id, grp_count, grp_id);
 	uint const pyr_idz = mul24(grp_id, cols_per_grp);
 
-	uint const axn_grp_id = axn_idx_3d_unsafe(slc_id, tuft_count, tuft_id, grp_count, grp_id);
+	uint const axn_grp_id = get_axn_slc_idz(slc_id) + cel_idx_3d_unsafe(0, tuft_count, tuft_id, grp_count, grp_id);
 	uint const pyr_axn_idz = mul24(grp_id, cols_per_grp);
  
 	//for (uint pyr_idx = pyr_idz; pyr_idx < pyr_idn; pyr_idx++) {
@@ -1240,7 +1305,7 @@ __kernel void mcol_output(
 	uint const u_id = get_global_id(2);
 	uint const v_size = get_global_size(1);
 	uint const u_size = get_global_size(2);
-	uint const aff_out_axn_idx = axn_idx_3d_unsafe(aff_out_axn_slc + slc_id, v_size, v_id, u_size, u_id);
+	uint const aff_out_axn_idx = axn_idx_3d_unsafe(aff_out_axn_slc + slc_id, v_id, 0, u_id, 0);
 	uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
 	//uint const pyr_axn_idx = axn_idx_2d( + slc_id, slc_columns, col_id, 0);
 	//uint const col_id = mad24(slc_id, slc_columns, col_id);
@@ -1567,15 +1632,15 @@ static inline uint cel_dist(int v_1, int u_1, int v_2, int u_2) {
 
 
 
-// DEPRICATE
-static inline uint asp_to_sst_ofs(uint asp_idx) {
-	return (asp_idx - ASPINY_REACH) << ASPINY_SPAN_LOG2;
-}
+// // DEPRICATE
+// static inline uint asp_to_sst_ofs(uint asp_idx) {
+// 	return (asp_idx - ASPINY_REACH) << ASPINY_SPAN_LOG2;
+// }
 
-// DEPRICATE
-static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_id) {
-	return (asp_to_sst_ofs(asp_idx) + (asp_sst_id & (ASPINY_SPAN - 1)));
-}
+// // DEPRICATE
+// static inline uint asp_sst_id_to_sst_idx(uint const asp_idx, uint const asp_sst_id) {
+// 	return (asp_to_sst_ofs(asp_idx) + (asp_sst_id & (ASPINY_SPAN - 1)));
+// }
 
 
 

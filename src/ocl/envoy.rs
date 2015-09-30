@@ -18,6 +18,10 @@ pub trait EnvoyDimensions {
 	fn physical_len(&self) -> u32;
 }
 
+impl<'a, T> EnvoyDimensions for &'a T where T: EnvoyDimensions {
+    fn physical_len(&self) -> u32 { (*self).physical_len() }
+}
+
 pub type AxonState = Envoy<u8>;
 pub type DendriteState = Envoy<u8>;
 pub type SynapseState = Envoy<u8>;
@@ -40,7 +44,7 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 		Envoy::_new(0, dims, vec, ocl)
 	}
 
-	pub fn with_padding<E: EnvoyDimensions>(padding: u32, dims: E, init_val: T, ocl: &OclProgQueue) -> Envoy<T> {
+	pub fn with_padding<E: EnvoyDimensions>(dims: E, init_val: T, ocl: &OclProgQueue, padding: u32) -> Envoy<T> {
 		let len = (dims.physical_len() + padding) as usize;
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
 

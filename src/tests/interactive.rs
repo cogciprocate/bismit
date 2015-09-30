@@ -61,8 +61,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 pub fn define_protoareas() -> ProtoAreaMaps {
 	let area_side = 48 as u32;
 
-	let mut protoareas = ProtoAreaMaps::new()
-		
+	let mut protoareas = ProtoAreaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
 		// .area_ext("u0", "external", area_side, area_side, 
 		// 	Protoinput::IdxReader { 
@@ -77,10 +76,12 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 		// .area("u1", "visual", area_side, area_side, None,
 		// 	//None,
 		// 	Some(vec!["b1"]),
-		// )
-		
+		// )		
 
-		.area_ext("v0", "external", area_side, area_side, 
+		.area_ext("v0", "external", 
+			//area_side * 2, area_side * 2,
+			area_side, area_side,
+			//area_side / 2, area_side / 2, 
 			Protoinput::IdxReader { 
 				file_name: "data/train-images-idx3-ubyte", 
 				repeats: REPEATS_PER_IMAGE,
@@ -90,14 +91,21 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			Some(vec!["v1"]),
 		)
 
-		.area("v1", "visual", area_side / 2, area_side / 2, 
+		.area("v1", "visual", 
+			//area_side * 2, area_side * 2,
+			//area_side, area_side,
+			//area_side / 2, area_side / 2,
+			32, 32,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
 			Some(vec!["b1"]),
 			//None,
 		)
 
-		.area("b1", "visual", area_side, area_side,
-		 	None,
+		.area("b1", "visual", 
+			//area_side * 2, area_side * 2,			
+			area_side, area_side,
+			//32, 32,
+		 	None,		 	
 		 	//Some(vec!["a1"]),
 		 	None,
 		)
@@ -136,8 +144,8 @@ pub fn run(autorun_iters: i32) -> bool {
 		//area.disable_pyrs = true;
 		//area.disable_ssts = true;
 		//area.disable_mcols = true;
-		//area.disable_regrowth = true;
-		//area.disable_learning = true;
+		area.disable_regrowth = true;
+		area.disable_learning = true;
 	}
 	/* ************************* */
 
