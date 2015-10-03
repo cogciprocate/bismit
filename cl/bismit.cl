@@ -154,12 +154,12 @@ static inline int4 get_axn_u_scale_vec4(uchar4 slc_id) {
 =============================================================================*/
 
 // 	W_COORD():
-static inline int w_ofs(int v_ofs, int u_ofs) {
+static inline int w_ofs(int const v_ofs, int const u_ofs) {
 	return (0 - v_ofs) - u_ofs;
 }
 
 
-static inline int square(int x) {
+static inline int square(int const x) {
 	return mul24(x, x);
 }
 
@@ -178,14 +178,14 @@ static inline uint calc_syn_idz(uint const tuft_id, uint const cel_count, uint c
 
 
 // DIM_IS_SAFE(): BOUNDS CHECK FOR A SINGLE DIMENSION OF A CELLULAR COORDINATE
-static inline int dim_is_safe(int dim_size, int dim_id, int dim_ofs) {
+static inline int dim_is_safe(int const dim_size, int const dim_id, int const dim_ofs) {
 	int dim_ttl = dim_id + dim_ofs;
 	return (dim_ttl >= 0) & (dim_ttl < dim_size);
 }
 
 
 // DIM_IS_SAFE_VEC4(): BOUNDS CHECK FOR A SINGLE DIMENSION OF A CELLULAR COORDINATE
-static inline int4 dim_is_safe_vec4(int4 dim_size, int4 dim_id, int4 dim_ofs) {
+static inline int4 dim_is_safe_vec4(int4 const dim_size, int4 const dim_id, int4 const dim_ofs) {
 	int4 dim_ttl = dim_id + dim_ofs;
 	return (dim_ttl >= 0) & (dim_ttl < dim_size);
 }
@@ -232,8 +232,8 @@ static inline uchar cel_state_3d_safe(uchar slc_id,
 // AXN_IDX_3D_UNSAFE(): Linear index of an axon
 // 		- Using ints as intermediate variables to be consistent with vectorized version even
 // 		though it will only affect invalid indexes
-static inline uint axn_idx_3d_unsafe(uchar const slc_id, uint const v_id, char const v_ofs, 
-				uint const u_id, char const u_ofs, int* const idx_is_safe) 
+static inline uint axn_idx_3d_unsafe(uchar const slc_id, uint const v_id_unscaled, 
+			char const v_ofs, uint const u_id_unscaled, char const u_ofs, int* const idx_is_safe) 
 	{
 	// GET THE DIM SIZES:
 	// 		- 'u' is (the 'least significant' dimension as far as opencl is concerned)
@@ -243,32 +243,47 @@ static inline uint axn_idx_3d_unsafe(uchar const slc_id, uint const v_id, char c
 	// 	CALCULATE SCALED INDEX:
 	// 		- Multiply by the pre-defined scale for specified slice then divide by 16.
 	// 		- A scale of 16 = 100%, 8 = 50%, 32 = 200%, etc.
-	int const scaled_v_id = (mul24(v_id, get_axn_v_scale(slc_id)) >> 4);
-	int const scaled_u_id = (mul24(u_id, get_axn_u_scale(slc_id)) >> 4);
+	int const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale(slc_id)) >> 4);
+	int const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale(slc_id)) >> 4);
+
+	//int const v_id_hrz = v_size >> 1;
+	//int const u_id_hrz = u_size >> 1;
+
+	int const v_id = v_id_scaled;
+	int const u_id = u_id_scaled;
+		
+	//mad24((uint)idx_is_hrz, idx_hrz, mul24((uint)!idx_is_hrz, idx_spt));
 
 	// CHECK SAFETY:
-	*idx_is_safe = dim_is_safe(v_size, scaled_v_id, v_ofs) & dim_is_safe(u_size, scaled_u_id, u_ofs);
+	*idx_is_safe = dim_is_safe(v_size, v_id, v_ofs) & dim_is_safe(u_size, u_id, u_ofs);
 
 	// RETURN the sum of the pre-defined axon offset for the slice and the linear offset within that slice
-	return get_axn_slc_idz(slc_id) + (uint)mad24(scaled_v_id + v_ofs, u_size, scaled_u_id + u_ofs);
+	return get_axn_slc_idz(slc_id) + (uint)mad24(v_id + v_ofs, u_size, u_id + u_ofs);
 }
 
 // AXN_IDX_3D_UNSAFE_VEC4(): Linear index of an axon, vec4
-static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id, int4 const v_id, char4 const v_ofs_char4, 
-			int4 const u_id, char4 const u_ofs_char4, int4* const idx_is_safe) 
+static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id, int4 const v_id_unscaled, 
+		char4 const v_ofs_char4, int4 const u_id_unscaled, char4 const u_ofs_char4, int4* const idx_is_safe)
 {
-	int4 v_ofs = convert_int4(v_ofs_char4);
-	int4 u_ofs = convert_int4(u_ofs_char4);
+	int4 const v_ofs = convert_int4(v_ofs_char4);
+	int4 const u_ofs = convert_int4(u_ofs_char4);
 
 	int4 const v_size = get_axn_v_size_vec4(slc_id);
 	int4 const u_size = get_axn_u_size_vec4(slc_id);
 
-	int4 const scaled_v_id = (mul24(v_id, get_axn_v_scale_vec4(slc_id)) >> 4) + v_ofs;
-	int4 const scaled_u_id = (mul24(u_id, get_axn_u_scale_vec4(slc_id)) >> 4) + u_ofs;
+	int4 const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale_vec4(slc_id)) >> 4);
+	int4 const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale_vec4(slc_id)) >> 4);
 
-	*idx_is_safe = dim_is_safe_vec4(v_size, scaled_v_id, v_ofs) & dim_is_safe_vec4(u_size, scaled_u_id, u_ofs);
+	//int4 const v_id_hrz = v_size >> 1;
+	//int4 const u_id_hrz = u_size >> 1;
 
-	return get_axn_slc_idz_vec4(slc_id) + mad24(scaled_v_id, u_size, scaled_u_id);
+
+	// int const v_id = (idx_is_hrz & idx_hrz) | (~idx_is_hrz & idx_spt)
+	// int const u_id = idx_is_hrz & idx_hrz) | (~idx_is_hrz & idx_spt);
+
+	*idx_is_safe = dim_is_safe_vec4(v_size, v_id_scaled, v_ofs) & dim_is_safe_vec4(u_size, u_id_scaled, u_ofs);
+
+	return get_axn_slc_idz_vec4(slc_id) + mad24(v_id_scaled + v_ofs, u_size, u_id_scaled + u_ofs);
 }
 
 
@@ -286,8 +301,8 @@ static inline uchar axn_state_3d_safe(uchar slc_id, uint v_id, char v_ofs, uint 
 	//uint axn_idx = mad24((uint)idx_is_hrz, idx_hrz, mul24((uint)!idx_is_hrz, idx_spt));
 	uint axn_idx = idx_spt; // TEMP
 
-	return mul24(idx_is_safe, axn_states[axn_idx]);
-	//return axn_states[axn_idx];
+	//return mul24(idx_is_safe, axn_states[axn_idx]);
+	return mul24(1, axn_states[axn_idx]);
 }
 
 // AXN_STATE_3D_SAFE_VEC4():
@@ -314,12 +329,6 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 		((uchar)idx_is_safe.s1 & axn_states[axn_idx.s1]),
 		((uchar)idx_is_safe.s2 & axn_states[axn_idx.s2]),
 		((uchar)idx_is_safe.s3 & axn_states[axn_idx.s3]));
-	 
-	// uchar4 axn_state = (uchar4)(
-	// 	(axn_states[axn_idx.s0]),
-	// 	(axn_states[axn_idx.s1]),
-	// 	(axn_states[axn_idx.s2]),
-	// 	(axn_states[axn_idx.s3]));
 
 	return axn_state;
 }

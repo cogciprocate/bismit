@@ -137,14 +137,14 @@ pub fn run(autorun_iters: i32) -> bool {
 
 	/* ***** DISABLE STUFF ***** */	
 	for (area_name, area) in &mut cortex.areas {
-		//area.psal_mut().dens_mut().syns.set_offs_to_zero();
-		//area.bypass_inhib = true;
-		//area.bypass_filters = true;
-		//area.disable_pyrs = true;
+		area.psal_mut().dens_mut().syns.set_offs_to_zero();
+		area.bypass_inhib = true;
+		area.bypass_filters = true;
+		area.disable_pyrs = true;
 		//area.disable_ssts = true;
 		//area.disable_mcols = true;
-		//area.disable_learning = true;
-		//area.disable_regrowth = true;		
+		area.disable_learning = true;
+		area.disable_regrowth = true;		
 	}
 
 	/* ************************* */
