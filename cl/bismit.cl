@@ -246,14 +246,14 @@ static inline uint axn_idx_3d_unsafe(uchar const slc_id, uint const v_id_unscale
 	int const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale(slc_id)) >> 4);
 	int const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale(slc_id)) >> 4);
 
-	//int const v_id_hrz = v_size >> 1;
-	//int const u_id_hrz = u_size >> 1;
+	int const v_id_hrz = v_size >> 1;
+	int const u_id_hrz = u_size >> 1;	
 
-	int const v_id = v_id_scaled;
-	int const u_id = u_id_scaled;
+	int const idx_is_hrz = slc_id > HORIZONTAL_AXON_ROW_DEMARCATION;
+
+	int const v_id = mad24(idx_is_hrz, v_id_hrz, mul24(!idx_is_hrz, v_id_scaled));
+	int const u_id = mad24(idx_is_hrz, u_id_hrz, mul24(!idx_is_hrz, u_id_scaled));
 		
-	//mad24((uint)idx_is_hrz, idx_hrz, mul24((uint)!idx_is_hrz, idx_spt));
-
 	// CHECK SAFETY:
 	*idx_is_safe = dim_is_safe(v_size, v_id, v_ofs) & dim_is_safe(u_size, u_id, u_ofs);
 
@@ -274,16 +274,17 @@ static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id, int4 const v_id_u
 	int4 const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale_vec4(slc_id)) >> 4);
 	int4 const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale_vec4(slc_id)) >> 4);
 
-	//int4 const v_id_hrz = v_size >> 1;
-	//int4 const u_id_hrz = u_size >> 1;
+	int4 const v_id_hrz = v_size >> 1;
+	int4 const u_id_hrz = u_size >> 1;
 
+	int4 const idx_is_hrz = convert_int4(slc_id) > (int4)HORIZONTAL_AXON_ROW_DEMARCATION;
 
-	// int const v_id = (idx_is_hrz & idx_hrz) | (~idx_is_hrz & idx_spt)
-	// int const u_id = idx_is_hrz & idx_hrz) | (~idx_is_hrz & idx_spt);
+	int4 const v_id = (idx_is_hrz & v_id_hrz) | (~idx_is_hrz & v_id_scaled);
+	int4 const u_id = (idx_is_hrz & u_id_hrz) | (~idx_is_hrz & u_id_scaled);
 
-	*idx_is_safe = dim_is_safe_vec4(v_size, v_id_scaled, v_ofs) & dim_is_safe_vec4(u_size, u_id_scaled, u_ofs);
+	*idx_is_safe = dim_is_safe_vec4(v_size, v_id, v_ofs) & dim_is_safe_vec4(u_size, u_id, u_ofs);
 
-	return get_axn_slc_idz_vec4(slc_id) + mad24(v_id_scaled + v_ofs, u_size, u_id_scaled + u_ofs);
+	return get_axn_slc_idz_vec4(slc_id) + mad24(v_id + v_ofs, u_size, u_id + u_ofs);
 }
 
 
@@ -338,40 +339,40 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 // AXN_IDX_HRZ(): Axon index for a horizontal axon
 // <<<<< TODO: DEPRICATE >>>>>
 //		- If axon is not horizontal, return 0
-static inline uint axn_idx_hrz(uchar slc_id, uint v_size, char v_ofs, uint u_size, char u_ofs) {
-		// HRZ_SCT_ID: Id of horizontal section (basically a sub-slice_id)
-		int hrz_sct_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
+// static inline uint axn_idx_hrz(uchar slc_id, uint v_size, char v_ofs, uint u_size, char u_ofs) {
+// 		// HRZ_SCT_ID: Id of horizontal section (basically a sub-slice_id)
+// 		int hrz_sct_id = slc_id - HORIZONTAL_AXON_ROW_DEMARCATION;
 
-		// 	IDX_HRZ_SCT: Axon position within horizontal section
-		// 		- AXON_MARGIN_SIZE := Dead center of section
-		// 		- SYNAPSE_SPAN_RHOMBAL_AREA used in lieu of u_size because indexes are bounded 
-		//			by the horizontal section rather than the entire slice.
-		uint idx_hrz_sct = AXON_MARGIN_SIZE + mad24((int)v_ofs, (int)SYNAPSE_SPAN_RHOMBAL_AREA, (int)u_ofs);
+// 		// 	IDX_HRZ_SCT: Axon position within horizontal section
+// 		// 		- AXON_MARGIN_SIZE := Dead center of section
+// 		// 		- SYNAPSE_SPAN_RHOMBAL_AREA used in lieu of u_size because indexes are bounded 
+// 		//			by the horizontal section rather than the entire slice.
+// 		uint idx_hrz_sct = AXON_MARGIN_SIZE + mad24((int)v_ofs, (int)SYNAPSE_SPAN_RHOMBAL_AREA, (int)u_ofs);
 
-		// HRZ_AXN_ID: Position within slice
-		uint hrz_axn_id = mad24(hrz_sct_id,  SYNAPSE_SPAN_RHOMBAL_AREA, (int)idx_hrz_sct);
+// 		// HRZ_AXN_ID: Position within slice
+// 		uint hrz_axn_id = mad24(hrz_sct_id,  SYNAPSE_SPAN_RHOMBAL_AREA, (int)idx_hrz_sct);
 
-		// AXN_IDX: Physical index within axon space (array)
-		int axn_idx = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, mul24(u_size, v_size), hrz_axn_id);
+// 		// AXN_IDX: Physical index within axon space (array)
+// 		int axn_idx = mad24((uint)HORIZONTAL_AXON_ROW_DEMARCATION, mul24(u_size, v_size), hrz_axn_id);
 
-		// Let's see if our address is even a horizontal one...
-		int slc_id_is_hrz = hrz_sct_id >= 0;
+// 		// Let's see if our address is even a horizontal one...
+// 		int slc_id_is_hrz = hrz_sct_id >= 0;
 
-		// If this isn't a horizontal address, return 0, which cannot be a horizontal address
-		//		- unless, of course, there are only horizontal axons in this space...
-		return mul24(slc_id_is_hrz, axn_idx);
-}
+// 		// If this isn't a horizontal address, return 0, which cannot be a horizontal address
+// 		//		- unless, of course, there are only horizontal axons in this space...
+// 		return mul24(slc_id_is_hrz, axn_idx);
+// }
 
 // AXN_IDX_HRZ_VEC4(): Axon index for a horizontal axon
 // <<<<< TODO: DEPRICATE >>>>>
-static inline int4 axn_idx_hrz_vec4(int4 slc_id, int4 v_size, int4 v_ofs, int4 u_size, int4 u_ofs) {
-		int4 hrz_sct_id = slc_id - (int4)HORIZONTAL_AXON_ROW_DEMARCATION;
-		int4 idx_hrz_sct = (int4)AXON_MARGIN_SIZE + mad24(v_ofs, (int4)SYNAPSE_SPAN_RHOMBAL_AREA, u_ofs);
-		int4 hrz_axn_id = mad24(hrz_sct_id,  (int4)SYNAPSE_SPAN_RHOMBAL_AREA, idx_hrz_sct);
-		int4 axn_idx = mad24((int4)HORIZONTAL_AXON_ROW_DEMARCATION, mul24(u_size, v_size), hrz_axn_id);
-		int4 slc_id_is_hrz = hrz_sct_id >= 0;
-		return (slc_id_is_hrz & axn_idx);
-}
+// static inline int4 axn_idx_hrz_vec4(int4 slc_id, int4 v_size, int4 v_ofs, int4 u_size, int4 u_ofs) {
+// 		int4 hrz_sct_id = slc_id - (int4)HORIZONTAL_AXON_ROW_DEMARCATION;
+// 		int4 idx_hrz_sct = (int4)AXON_MARGIN_SIZE + mad24(v_ofs, (int4)SYNAPSE_SPAN_RHOMBAL_AREA, u_ofs);
+// 		int4 hrz_axn_id = mad24(hrz_sct_id,  (int4)SYNAPSE_SPAN_RHOMBAL_AREA, idx_hrz_sct);
+// 		int4 axn_idx = mad24((int4)HORIZONTAL_AXON_ROW_DEMARCATION, mul24(u_size, v_size), hrz_axn_id);
+// 		int4 slc_id_is_hrz = hrz_sct_id >= 0;
+// 		return (slc_id_is_hrz & axn_idx);
+// }
 
 
 /*=============================================================================
@@ -465,9 +466,9 @@ static inline void prx_syns__active__ltp_ltd(
 __kernel void reference_all_the_things(__private int const for_sanitys_sake) {
 	//get_axn_u_size_vec4((uchar4)0);
 	cel_idx_3d_unsafe_vec4((uchar4)0, (int4)0, (int4)0, (int4)0, (int4)0);
-	axn_idx_hrz(0, 0, 0, 0, 0);
-	dim_is_safe_vec4((int4)0, (int4)0, (int4)0);
-	axn_idx_hrz_vec4((int4)0, (int4)0, (int4)0, (int4)0, (int4)0);
+	//axn_idx_hrz(0, 0, 0, 0, 0);
+	//dim_is_safe_vec4((int4)0, (int4)0, (int4)0);
+	//axn_idx_hrz_vec4((int4)0, (int4)0, (int4)0, (int4)0, (int4)0);
 }
 
 /*=============================================================================
