@@ -49,7 +49,7 @@ impl AreaMap {
 		println!("{}AREAMAP::NEW(): area name: {}, eff areas: {:?}, aff areas: {:?}", cmn::MT, proto_area_map.name, 
 			proto_area_map.eff_areas, proto_area_map.aff_areas);
 
-		let dims = proto_area_map.dims().clone();		
+		let dims = proto_area_map.dims().clone_with_depth(proto_layer_map.depth_total());		
 		let hrz_demarc = proto_layer_map.hrz_demarc();
 		let area_name = proto_area_map.name;
 
@@ -175,8 +175,7 @@ impl AreaMap {
 			None => (),
 		};
 
-		build_options.add_kern_file(cmn::BUILTIN_FILTERS_CL_FILE_NAME.to_string());
-		build_options.add_kern_file(cmn::BUILTIN_CL_FILE_NAME.to_string()); // ** MUST BE ADDED LAST **
+		cmn::load_builtin_kernel_files(&mut build_options);
 
 		build_options
 	}
@@ -199,6 +198,10 @@ impl AreaMap {
 
 	pub fn slices(&self) -> &SliceMap {
 		&self.slices
+	}
+
+	pub fn dims(&self) -> &CorticalDimensions {
+		&self.dims
 	}
 }
 

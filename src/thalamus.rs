@@ -10,7 +10,7 @@ use proto::{ ProtoAreaMaps, ProtoAreaMap, ProtoLayerMap, ProtoLayerMaps,
 	RegionKind, layer, Sensory, Thalamic };
 use encode:: { IdxReader };
 use input_source::{ InputSource };
-use tests::input_czar;
+//use tests::input_czar;
 
 
 //	THALAMUS:
@@ -165,8 +165,8 @@ impl Thalamus {
 		);
  	}
 
- 	pub fn area_map(&self, area_name: &'static str) -> AreaMap {
- 		return self.area_maps[area_name].clone();
+ 	pub fn area_map(&self, area_name: &'static str) -> &AreaMap {
+ 		&self.area_maps[area_name]
 	}
 }
 

@@ -128,7 +128,7 @@ impl PyramidalLayer {
 		// assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
 		// let cels_per_wi: u32 = dims.per_slc() / cmn::MINIMUM_WORKGROUP_SIZE;
 
-		let grp_count = cmn::MINIMUM_WORKGROUP_SIZE;
+		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
 		let cols_per_grp = dims.cols_per_subgrp(grp_count).unwrap();
 			//.unwrap_or_else(|s: &'static str| panic!(s));
 
@@ -303,16 +303,16 @@ impl PyramidalLayer {
 		println!("");
 
 		println!("dens.states[{:?}]: ", cel_den_range.clone()); 
-		cmn::print_vec_simple(&self.dens_mut().states.vec[cel_den_range.clone()]);
+		cmn::print_vec_simple(&self.dens_mut().states.vec()[cel_den_range.clone()]);
 
 		println!("dens.syns.states[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens_mut().syns.states.vec[cel_syn_range.clone()]);
+		cmn::print_vec_simple(&self.dens_mut().syns.states.vec()[cel_syn_range.clone()]);
 
 		println!("dens.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens_mut().syns.strengths.vec[cel_syn_range.clone()]);
+		cmn::print_vec_simple(&self.dens_mut().syns.strengths.vec()[cel_syn_range.clone()]);
 
 		println!("dens.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens_mut().syns.src_col_v_offs.vec[cel_syn_range.clone()]);
+		cmn::print_vec_simple(&self.dens_mut().syns.src_col_v_offs.vec()[cel_syn_range.clone()]);
 	}
 
 	pub fn set_all_to_zero(&mut self) {

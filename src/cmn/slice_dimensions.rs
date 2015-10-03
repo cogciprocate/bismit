@@ -14,8 +14,8 @@ use map::{ InterAreaInfoCache };
 pub struct SliceDimensions {
 	v_size: u32,
 	u_size: u32,
-	v_scale: u8,
-	u_scale: u8,
+	v_scale: u32,
+	u_scale: u32,
 }
 
 impl SliceDimensions {
@@ -51,11 +51,11 @@ impl SliceDimensions {
 		}	
 	}	
 
-	pub fn v_scale(&self) -> u8 {
+	pub fn v_scale(&self) -> u32 {
 		self.v_scale
 	}
 
-	pub fn u_scale(&self) -> u8 {
+	pub fn u_scale(&self) -> u32 {
 		self.u_scale
 	}
 
@@ -91,7 +91,7 @@ impl EnvoyDimensions for SliceDimensions {
 
 
 pub fn get_src_scales(src_area_dims: &CorticalDimensions, tar_area_dims: &CorticalDimensions) 
-		-> Result<(u8, u8), String> 
+		-> Result<(u32, u32), String> 
 	{
 	let v_res = calc_scale(src_area_dims.v_size(), tar_area_dims.v_size());
 	let u_res = calc_scale(src_area_dims.u_size(), tar_area_dims.u_size());
@@ -115,7 +115,7 @@ pub fn get_src_scales(src_area_dims: &CorticalDimensions, tar_area_dims: &Cortic
 	}
 }
 
-pub fn calc_scale(src_dim: u32, tar_dim: u32) -> Result<u8, &'static str> {
+pub fn calc_scale(src_dim: u32, tar_dim: u32) -> Result<u32, &'static str> {
 	// let scale_incr = if src_dim >= 16 { src_dim / 16 } 
 	// 	else if src_dim > 0 { 1 }
 	// 	else { panic!("area_map::calc_scale(): Source dimension cannot be zero.") };
@@ -131,7 +131,7 @@ pub fn calc_scale(src_dim: u32, tar_dim: u32) -> Result<u8, &'static str> {
 
 	return match src_dim / scale_incr {
 		0 => return Err("Source area dimension cannot be zero."),
-		s @ 1...255 => Ok(s as u8),
+		s @ 1...255 => Ok(s as u32),
 		_ => return Err("Source area cannot have a dimension more than 16 times target area dimension."),
 	}
 }

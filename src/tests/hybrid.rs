@@ -4,7 +4,7 @@ use std::io::{ self, Write, Stdout };
 use std::mem;
 use rand;
 
-use super::input_czar::{ self, InputCzar, InputKind };
+use interactive::{ self, input_czar, InputCzar, InputKind };
 use proto::*;
 use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -113,7 +113,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 
 			if last_run {
 				println!("layer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
-				cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
+				cmn::print_vec(&axns.states.vec()[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 				println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
 
 				println!(" => ");
@@ -225,7 +225,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 					let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
 
 					println!("layer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
-					cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
+					cmn::print_vec(&axns.states.vec()[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 					println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
 				}
 			}
@@ -308,7 +308,7 @@ pub fn test_activation_and_learning(cortex: &mut Cortex, area_name: &str) {
 					let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
 
 					println!("layer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
-					cmn::print_vec(&axns.states.vec[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
+					cmn::print_vec(&axns.states.vec()[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 					println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
 				}
 			}
@@ -424,7 +424,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	}
 
 	//println!("ALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
-	//cmn::print_vec(&cels.dens_mut().syns.strengths.vec[..], 1, None, None, false);
+	//cmn::print_vec(&cels.dens_mut().syns.strengths.vec()[..], 1, None, None, false);
 
 	//check src_col_v_offs
 	//check strengths
@@ -481,7 +481,7 @@ fn _test_sst_learning(cortex: &mut Cortex, layer_name: &'static str, ilyr_name: 
 	cels.print_cel(cel_idx);
 
 	println!("ALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
-	cmn::print_vec(&cels.dens_mut().syns.strengths.vec[..], 1, None, None, false);
+	cmn::print_vec(&cels.dens_mut().syns.strengths.vec()[..], 1, None, None, false);
 
 	//check src_col_v_offs
 	//check strengths

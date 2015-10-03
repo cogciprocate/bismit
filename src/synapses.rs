@@ -88,23 +88,27 @@ impl Synapses {
 
 		let cels_per_kernel = dims.cells();
 
-
 		// SYNAPSE KERNEL VARIATIONS:
 		// 		- It may be the case that vec4 versions are unsuitable.
 		// 			- Is having each of the four synapses on the same v_id causing some weird problem?
 		// 	
 		//		FURTHER RESEARCH REQUIRED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		//
+		// 		POSSIBLE CANDIDATE: Worksize is too long for vec kernels
 		//
+
 		for syn_tuft_i in 0..dst_src_slc_ids.len() {
 			kernels.push(Box::new(
+				// ocl.new_kernel("syns_cycle_simple".to_string(),
 
-				//ocl.new_kernel("syns_cycle_simple".to_string(), 
-				//ocl.new_kernel("syns_cycle_simple_vec4".to_string(), 
-				//ocl.new_kernel("syns_cycle_wow".to_string(), 
+				// ocl.new_kernel("syns_cycle_simple_vec4".to_string(), 
+
+				// ocl.new_kernel("syns_cycle_wow".to_string(),
+
 				ocl.new_kernel("syns_cycle_wow_vec4".to_string(), 
+				
+					WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
 
-					WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					.arg_env(&axons.states)
 					.arg_env(&src_col_u_offs)

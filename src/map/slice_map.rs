@@ -29,8 +29,8 @@ pub struct SliceMap {
 	layer_names: Vec<&'static str>,
 	v_sizes: Vec<u32>,
 	u_sizes: Vec<u32>,
-	v_scales: Vec<u8>,
-	u_scales: Vec<u8>,
+	v_scales: Vec<u32>,
+	u_scales: Vec<u32>,
 	dims: Vec<SliceDimensions>,
 	physical_len: u32
 }
@@ -171,11 +171,11 @@ impl SliceMap {
 		&self.u_sizes
 	}
 
-	pub fn v_scales(&self) -> &Vec<u8> {
+	pub fn v_scales(&self) -> &Vec<u32> {
 		&self.v_scales
 	}
 
-	pub fn u_scales(&self) -> &Vec<u8> {
+	pub fn u_scales(&self) -> &Vec<u32> {
 		&self.u_scales
 	}
 

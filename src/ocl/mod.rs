@@ -19,7 +19,7 @@ pub use self::cl_h::{ cl_platform_id, cl_device_id, cl_context, cl_program,
 	cl_short, cl_ushort, cl_int, cl_uint, cl_long, cl_bitfield, CLStatus, 
 	clSetKernelArg, clEnqueueNDRangeKernel };
 pub use self::kernel::{ Kernel };
-pub use self::envoy::{ Envoy, EnvoyDimensions };
+pub use self::envoy::{ Envoy, EnvoyDimensions, OclNum };
 pub use self::work_size::{ WorkSize };
 pub use self::build_options::{ BuildOptions, BuildOption };
 

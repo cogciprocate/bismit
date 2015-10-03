@@ -38,7 +38,11 @@ impl CorticalDimensions {
 	pub fn new(u_size: u32, v_size: u32, depth: u8, per_tuft_l2: i8, physical_increment: Option<u32>) -> CorticalDimensions {
 	//pub fn new(u_size_l2: u8, v_size_l2: u8,	depth: u8, per_tuft_l2: i8,) -> CorticalDimensions {
 		
+		//assert!(super::OPENCL_PREFERRED_VECTOR_MULTIPLE == 4);
+		//println!("\n\n##### v_size: {}, u_size: {}", v_size, u_size);
 		//let physical_increment = resolve_physical_increment(ocl);
+		//assert!(v_size % 4 == 0, "CorticalDimensions::new(): Size of dimension 'v' must be a multiple of 4.");
+		//assert!(u_size % 4 == 0, "CorticalDimensions::new(): Size of dimension 'u' must be a multiple of 4.");
 
 		CorticalDimensions { 
 			u_size: u_size,

@@ -52,6 +52,7 @@ mod encode;
 mod sensory_filter;
 mod input_source;
 mod map;
+mod interactive;
 
 //#[cfg(test)]
 mod tests;
@@ -68,10 +69,10 @@ fn main() {
 	// hello_world::run();
 
 	if true {
-		tests::interactive::run(0);
+		interactive::visualize::run(0);
 	} else {
 		for i in 0..20 {
-			tests::interactive::run(7000);
+			interactive::visualize::run(7000);
 		}
 	}
 	

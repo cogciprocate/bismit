@@ -12,10 +12,9 @@ use cmn::{ self, CorticalDimensions, Renderer };
 use cortex::{ self, Cortex };
 use encode:: { IdxReader };
 //use proto::layer;
-use super::output_czar;
 //use super::synapse_drill_down;
-use super::input_czar::{ self, InputCzar, InputKind, InputSource };
-use super::hybrid;
+use interactive::{ self, input_czar, output_czar, InputCzar, InputKind, InputSource };
+use tests::hybrid;
 //use chord::{ Chord };
 //use ocl::{ Envoy };
 use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
@@ -144,9 +143,16 @@ pub fn run(autorun_iters: i32) -> bool {
 		//area.disable_pyrs = true;
 		//area.disable_ssts = true;
 		//area.disable_mcols = true;
-		area.disable_regrowth = true;
-		area.disable_learning = true;
+		//area.disable_learning = true;
+		//area.disable_regrowth = true;		
 	}
+
+	/* ************************* */
+	/* ************************* */
+
+		// CURRENTLY USING NON-VEC4 SYNAPSE KERNEL
+
+	/* ************************* */
 	/* ************************* */
 
 	//let input_kind = InputKind::Stripes { stripe_size: 512, zeros_first: true };
@@ -405,7 +411,7 @@ pub fn run(autorun_iters: i32) -> bool {
 
 				if false {
 					print!("\nSENSORY INPUT VECTOR:");
-					//cmn::print_vec(&input_czar.vec_optical[..], 1 , None, None, false);
+					//cmn::print_vec(&input_czar.vec()_optical[..], 1 , None, None, false);
 				}
 
 				output_czar::print_sense_and_print(&mut cortex, &area_name);
@@ -420,9 +426,9 @@ pub fn run(autorun_iters: i32) -> bool {
 			//let (eff_out_idz, eff_out_idn) = cortex.area(&area_name).mcols.axn_output_range();
 			//let (ssts_axn_idz, ssts_axn_idn) = cortex.area_mut(&area_name).psal_mut().axn_range();
 
-			//let out_slc = &cortex.area(&area_name).axns.states.vec[eff_out_idz..eff_out_idn];
-			//let ff_slc = &cortex.area(&area_name).axns.states.vec[ssts_axn_idz..ssts_axn_idn];
-			//let ff_slc = &cortex.area(&area_name).psal_mut().dens.states.vec[..];
+			//let out_slc = &cortex.area(&area_name).axns.states.vec()[eff_out_idz..eff_out_idn];
+			//let ff_slc = &cortex.area(&area_name).axns.states.vec()[ssts_axn_idz..ssts_axn_idn];
+			//let ff_slc = &cortex.area(&area_name).psal_mut().dens.states.vec()[..];
 
 			print!("\n'{}' output:", &area_name);
 
@@ -431,11 +437,11 @@ pub fn run(autorun_iters: i32) -> bool {
 			if view_all_axons {
 				print!("\n\nAXON SPACE:\n");
 				
-				let axn_space_len = cortex.area(&area_name).axns.states.vec.len();
+				let axn_space_len = cortex.area(&area_name).axns.states.vec().len();
 
 				cortex.area_mut(&area_name).render_axon_space();				
 
-				// cmn::render_sdr(&cortex.area(&area_name).axns.states.vec[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).proto_layer_map().slc_map(), true, cortex.area(&area_name).dims.columns());
+				// cmn::render_sdr(&cortex.area(&area_name).axns.states.vec()[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).proto_layer_map().slc_map(), true, cortex.area(&area_name).dims.columns());
 			}
 
 			i += 1;

@@ -824,12 +824,11 @@ extern {
                               event_list: *mut cl_event) -> cl_int;
     pub fn clEnqueueBarrier(command_queue: cl_command_queue) -> cl_int;
 
-    /* Extension function access
-     *
-     * Returns the extension function address for the given function name,
-     * or NULL if a valid function can not be found. The client must
-     * check to make sure the address is not NULL, before using or
-     * or calling the returned function address.
-     */
+     // Extension function access
+     // *
+     // * Returns the extension function address for the given function name,
+     // * or NULL if a valid function can not be found. The client must
+     // * check to make sure the address is not NULL, before using or
+     // * or calling the returned function address.     
     pub fn clGetExtensionFunctionAddress(func_name: *mut libc::c_char);
 }

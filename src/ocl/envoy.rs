@@ -11,7 +11,6 @@ use ocl::{ self, OclProgQueue };
 use cmn;
 
 //pub trait NumCl: Integer + Copy + NumCast + Default + Display {}
-
 //impl <T: NumCl> NumCl for T {}
 
 pub trait EnvoyDimensions {
@@ -22,13 +21,20 @@ impl<'a, T> EnvoyDimensions for &'a T where T: EnvoyDimensions {
     fn physical_len(&self) -> u32 { (*self).physical_len() }
 }
 
+pub trait OclNum: Integer + Copy + Clone + NumCast + Default + Display + Debug
+	+ FromPrimitive + ToPrimitive + UpperHex {}
+
+impl<T> OclNum for T where T: Integer + Copy + Clone + NumCast + Default + Display + Debug
+	+ FromPrimitive + ToPrimitive + UpperHex {}
+
+
 pub type AxonState = Envoy<u8>;
 pub type DendriteState = Envoy<u8>;
 pub type SynapseState = Envoy<u8>;
 
 
 pub struct Envoy<T> {
-	pub vec: Vec<T>,
+	vec: Vec<T>,
 	pub buf: ocl::cl_mem,
 	padding: u32,
 	//dims: EnvoyDimensions,
@@ -36,7 +42,8 @@ pub struct Envoy<T> {
 	//pub depth: u8,
 	ocl: OclProgQueue,
 }
-impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + ToPrimitive + UpperHex> Envoy<T> {
+
+impl<T: OclNum> Envoy<T> {
 	pub fn new<E: EnvoyDimensions>(dims: E, init_val: T, ocl: &OclProgQueue) -> Envoy<T> {
 		let len = dims.physical_len() as usize;
 		let vec: Vec<T> = iter::repeat(init_val).take(len).collect();
@@ -138,6 +145,14 @@ impl<T: Integer + Copy + Clone + NumCast + Default + Display + FromPrimitive + T
 
     pub fn release(&mut self) {
 		ocl::release_mem_object(self.buf);
+	}
+
+	pub fn vec(&self) -> &Vec<T> {
+		&self.vec
+	}
+
+	pub fn vec_mut(&mut self) -> &mut Vec<T> {
+		&mut self.vec
 	}
 }
 

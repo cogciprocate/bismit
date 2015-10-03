@@ -64,8 +64,10 @@ impl CorticalArea {
 
 		ocl.build(area_map.gen_build_options());
 
-		let dims = area_map.proto_area_map().dims.clone_with_depth(area_map.proto_layer_map().depth_total())
-			.with_physical_increment(ocl.get_max_work_group_size());
+		// let dims = area_map.proto_area_map().dims.clone_with_depth(area_map.proto_layer_map().depth_total())
+		// 	.with_physical_increment(ocl.get_max_work_group_size());
+
+		let dims = area_map.dims().clone_with_physical_increment(ocl.get_max_work_group_size());
 
 		println!("{}CORTICALAREA::NEW(): Area '{}' details: \
 			(u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}", 
@@ -439,13 +441,13 @@ impl CorticalArea {
 	}
 
 	pub fn render_aff_out(&mut self, input_status: &str, print_summary: bool) {
-		let out_axns = &self.axns.states.vec[self.mcols.aff_out_axn_range()];
-		let sst_axns = &self.axns.states.vec[self.psal().axn_range()];
+		let out_axns = &self.axns.states.vec()[self.mcols.aff_out_axn_range()];
+		let sst_axns = &self.axns.states.vec()[self.psal().axn_range()];
 		self.renderer.render(out_axns, Some(sst_axns), None, input_status, print_summary);
 	}
 
 	pub fn render_axon_space(&mut self) {
-		let axn_states = &self.axns.states.vec[..];
+		let axn_states = &self.axns.states.vec()[..];
 		let slc_map = &self.area_map.proto_layer_map().slc_map();
 		let cols = self.dims.columns();
 		let hrz_demarc = self.area_map.proto_layer_map().hrz_demarc();

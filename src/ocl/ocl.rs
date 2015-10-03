@@ -16,7 +16,7 @@ use super::cl_h::{ self, cl_platform_id, cl_device_id, cl_context, cl_program,
 	cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus, 
 	clSetKernelArg, clEnqueueNDRangeKernel };
 use super::kernel::{ Kernel };
-use super::envoy::{ Envoy };
+use super::envoy::{ Envoy, OclNum };
 use super::work_size::{ WorkSize };
 use super::build_options::{ BuildOptions, BuildOption };
 //use super::cortical_dimensions::{ CorticalDimensions };
@@ -180,7 +180,7 @@ impl OclProgQueue {
 		super::new_read_buffer(data, self.context)
 	}
 
-	pub fn enqueue_write_buffer<T>(
+	pub fn enqueue_write_buffer<T: OclNum>(
 					&self,
 					src: &Envoy<T>,
 	) {
@@ -191,8 +191,8 @@ impl OclProgQueue {
 						src.buf,
 						cl_h::CL_TRUE,
 						0,
-						(src.vec.len() * mem::size_of::<T>()) as libc::size_t,
-						src.vec.as_ptr() as *const libc::c_void,
+						(src.vec().len() * mem::size_of::<T>()) as libc::size_t,
+						src.vec().as_ptr() as *const libc::c_void,
 						0 as cl_h::cl_uint,
 						ptr::null(),
 						ptr::null_mut(),
@@ -292,8 +292,8 @@ fn parse_kernel_files(build_options: &BuildOptions) -> ffi::CString {
 
 	let dd_string = build_options.cl_file_header();
 	kern_str.push_all(&dd_string);
-	print!("OCL::PARSE_KERNEL_FILES(): KERNEL FILE DIRECTIVES HEADER: \n{}", 
-		String::from_utf8(dd_string).ok().unwrap());
+	// print!("OCL::PARSE_KERNEL_FILES(): KERNEL FILE DIRECTIVES HEADER: \n{}", 
+	// 	String::from_utf8(dd_string).ok().unwrap());
 
 	for f_n in build_options.kernel_file_names().iter().rev() {
 		let file_name = format!("{}/{}/{}", env!("P"), "bismit/cl", f_n);

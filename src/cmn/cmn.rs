@@ -30,8 +30,8 @@ use super::{ Sdr };
 ===============================================================================
 =============================================================================*/
 
-
-pub static MT: &'static str = "    ";
+// MT: Mini-tab: 4 spaces ('mini' compared to the huge tab on certain terminals)
+pub static MT: &'static str = "    "; 
 
 pub static C_DEFAULT: &'static str = "\x1b[0m";
 pub static C_UNDER: &'static str = "\x1b[1m";
@@ -60,12 +60,12 @@ pub static BGC_LGR: &'static str = "\x1b[47m";
 pub static BGC_DGR: &'static str = "\x1b[100m";
 
 
-pub const SENSORY_CHORD_WIDTH_LOG2: usize = 5;
-pub const SENSORY_CHORD_WIDTH: u32 = 1 << SENSORY_CHORD_WIDTH_LOG2;
-pub const SENSORY_CHORD_HEIGHT_LOG2: usize = 5;
-pub const SENSORY_CHORD_HEIGHT: u32 = 1 << SENSORY_CHORD_HEIGHT_LOG2; 
-pub const SENSORY_CHORD_COLUMNS_LOG2: usize = SENSORY_CHORD_WIDTH_LOG2 + SENSORY_CHORD_HEIGHT_LOG2;
-pub const SENSORY_CHORD_COLUMNS: u32 = 1 << SENSORY_CHORD_COLUMNS_LOG2; 
+// pub const SENSORY_CHORD_WIDTH_LOG2: usize = 5;
+// pub const SENSORY_CHORD_WIDTH: u32 = 1 << SENSORY_CHORD_WIDTH_LOG2;
+// pub const SENSORY_CHORD_HEIGHT_LOG2: usize = 5;
+// pub const SENSORY_CHORD_HEIGHT: u32 = 1 << SENSORY_CHORD_HEIGHT_LOG2; 
+// pub const SENSORY_CHORD_COLUMNS_LOG2: usize = SENSORY_CHORD_WIDTH_LOG2 + SENSORY_CHORD_HEIGHT_LOG2;
+// pub const SENSORY_CHORD_COLUMNS: u32 = 1 << SENSORY_CHORD_COLUMNS_LOG2; 
 
 /*pub const DENDRITES_PER_CELL_DISTAL_LOG2: u8 = 1;
 pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2 as u32;
@@ -79,18 +79,18 @@ pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXI
 //pub const DENDRITE_INITIAL_THRESHOLD_PROXIMAL: u32 = (128 * 4);
 //pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 1);
 
-pub const LEARNING_ACTIVE: bool = true;
-pub const SYNAPSE_STRENGTH_FLOOR: i8 = -15;
-pub const SYNAPSE_REGROWTH_INTERVAL: usize = 200;
-pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;
+//pub const LEARNING_ACTIVE: bool = true;
+pub const SYNAPSE_STRENGTH_FLOOR: i8 = -15; 			// DIRECTLY AFFECTS LEARNING RATE
+pub const SYNAPSE_REGROWTH_INTERVAL: usize = 800; 		// DIRECTLY AFFECTS LEARNING RATE
+pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;	
 pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
 pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
 
-pub const CORTICAL_SEGMENTS_TOTAL: usize = 1;
-pub const SENSORY_SEGMENTS_TOTAL: usize = 1;
-pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
-pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;
-pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
+//pub const CORTICAL_SEGMENTS_TOTAL: usize = 1;
+//pub const SENSORY_SEGMENTS_TOTAL: usize = 1;
+//pub const MOTOR_SEGMENTS_TOTAL: usize = 1;
+//pub const HYPERCOLUMNS_PER_SEGMENT: usize = 16;
+//pub const COLUMNS_PER_HYPERCOLUMN: u32 = 64;
 
 // pub const SYNAPSE_REACH_GEO_LOG2: u32 = 3;
 // pub const SYNAPSE_REACH_GEO: u32 = 1 << SYNAPSE_REACH_GEO_LOG2;
@@ -144,6 +144,7 @@ pub const SYNAPSE_ROW_POOL_SIZE: u32 = 256;
 //pub const PRX_DEN_BOOST_LOG2: u8 = 0;
 
 
+// OVERWRITEN BY KERNEL CONSTANT - NEEDS UPDATE AND SYNTHESIS
 pub const ASPINY_REACH_LOG2: u8 			= 2;
 pub const ASPINY_REACH:	u32					= 1 << ASPINY_REACH_LOG2;
 pub const ASPINY_SPAN_LOG2: u8 				= ASPINY_REACH_LOG2 + 1;
@@ -154,11 +155,11 @@ pub const COLUMN_DOMINANCE_FLOOR: usize = 7;
 
 pub const STATE_ZERO: u8 = 0;
 
-pub const SYNAPSES_WORKGROUP_SIZE: u32 = 256;
-pub const AXONS_WORKGROUP_SIZE: u32 = 256;
-
-pub const PREFERRED_WORKGROUP_SIZE: u32 = 256;
-pub const MINIMUM_WORKGROUP_SIZE: u32 = 64;	
+pub const OPENCL_PREFERRED_VECTOR_MULTIPLE: u32 = 4;
+pub const OPENCL_PREFERRED_WORKGROUP_SIZE: u32 = 256;
+pub const OPENCL_MINIMUM_WORKGROUP_SIZE: u32 = 64;	
+pub const SYNAPSES_WORKGROUP_SIZE: u32 = OPENCL_PREFERRED_WORKGROUP_SIZE;
+//pub const AXONS_WORKGROUP_SIZE: u32 = OPENCL_PREFERRED_WORKGROUP_SIZE;
 
 
 pub const PYR_PREV_CONCRETE_FLAG: u8 		= 0b10000000;	// 128	(0x80)
@@ -184,10 +185,19 @@ pub const SYN_CONCRETE_FLAG: u8				= 0b00001000;
 ===============================================================================
 =============================================================================*/
 
-
-pub static BUILTIN_CL_FILE_NAME: &'static str = "bismit.cl";
-pub static BUILTIN_FILTERS_CL_FILE_NAME: &'static str = "filters.cl";
+//pub static BUILTIN_OPENCL_KERNEL_FILE_NAME: &'static str = "bismit.cl";
+//pub static BUILTIN_FILTERS_CL_FILE_NAME: &'static str = "filters.cl";
 static CL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
+
+
+// BUILTIN_OPENCL_KERNEL_FILE_NAMES: Loaded in reverse order.
+pub static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 4] = [
+	"tests.cl", 
+	"filters.cl", 
+	"synapses.cl", 
+	"bismit.cl",
+];
+
 
 
 pub fn base_build_options() -> BuildOptions {
@@ -224,14 +234,17 @@ pub fn base_build_options() -> BuildOptions {
 		.opt("SYN_STP_FLAG", SYN_STP_FLAG as i32)
 		.opt("SYN_STD_FLAG", SYN_STP_FLAG as i32)
 		.opt("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
-	;	
+	;
 
 	build_options
 }
 
-
-
-
+// LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED
+pub fn load_builtin_kernel_files(build_options: &mut BuildOptions) {
+	for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
+		build_options.add_kern_file(BUILTIN_OPENCL_KERNEL_FILE_NAMES[i].to_string());
+	}
+}
 
 
 

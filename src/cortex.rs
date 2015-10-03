@@ -25,17 +25,17 @@ impl Cortex {
 		println!("\nInitializing Cortex... ");
 		let time_start = time::get_time();
 
-		proto_area_maps.freeze();		
-
-		let mut areas = HashMap::new();
-		let mut device_idx = 0;
+		proto_area_maps.freeze();
 
 		let thal = Thalamus::new(&proto_layer_maps, &proto_area_maps);
+
+		let mut areas = HashMap::new();
+		let mut device_idx = 0;		
 
 		for (&area_name, pa) in proto_area_maps.maps().iter().filter(|&(_, pa)| 
 					proto_layer_maps[pa.region_name].kind != Thalamic
 		) {	
-			areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name), device_idx)));
+			areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(), device_idx)));
 
 			device_idx += 1;
 		}		
