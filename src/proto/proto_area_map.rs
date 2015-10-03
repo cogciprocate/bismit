@@ -1,6 +1,6 @@
 use std::collections::{ self, HashMap };
 
-use proto::{ RegionKind, Protofilter, layer };
+use proto::{ layer, RegionKind, Protofilter, Protoinput };
 use cmn::{ self, CorticalDimensions };
 
 
@@ -104,7 +104,7 @@ impl <'a>ProtoAreaMaps {
 
 
 
-#[derive(PartialEq, Debug, Clone, Eq)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct ProtoAreaMap {
 	pub name: &'static str,
 	pub region_name: &'static str,
@@ -156,14 +156,4 @@ impl ProtoAreaMap {
 	}
 }
 
-
-#[derive(PartialEq, Eq, Debug, Clone, Hash)]
-pub enum Protoinput {
-	World,
-	Stripes { stripe_size: usize, zeros_first: bool },
-	Hexballs { edge_size: usize, invert: bool, fill: bool },
-	Exp1,
-	IdxReader { file_name: &'static str, repeats: usize },
-	None,
-}
 

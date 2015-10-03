@@ -18,8 +18,8 @@ impl InputSource {
 		let input = &proto_area_map.input;
 
 		let (kind, targets, len) = match input {
-			&Protoinput::IdxReader { file_name, repeats } => {
-				let ir = IdxReader::new(proto_area_map.dims.clone_with_depth(1), file_name, repeats);
+			&Protoinput::IdxReader { file_name, repeats, scale } => {
+				let ir = IdxReader::new(proto_area_map.dims.clone_with_depth(1), file_name, repeats, scale);
 				let len = ir.dims().cells();
 				( // RETURN TUPLE
 					InputSourceKind::IdxReader(Box::new(ir)), 

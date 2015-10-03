@@ -46,6 +46,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			Protoinput::IdxReader { 
 				file_name: "data/train-images-idx3-ubyte", 
 				repeats: 1,
+				scale: 1.1,
 			},
 
 			None, 

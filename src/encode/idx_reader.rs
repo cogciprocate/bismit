@@ -8,6 +8,18 @@ use num::{ Float };
 
 use cmn::{ CorticalDimensions, Sdr };
 
+
+// const HEX_SIDE: f64 = 0.5f64;
+// //const C1_OFS: f64 = 0f64 * HEX_SIDE;
+// //const C2_OFS: f64 = 0f64 * HEX_SIDE;	
+// //const V_OFS: f64 = 0f64;
+// //const W_OFS: f64 = 0f64;
+// const Y_OFS: f64 = 29f64 * HEX_SIDE;
+// const X_OFS: f64 = 43f64 * HEX_SIDE;
+
+const SQRT_3: f64 = 1.73205080756f64;
+
+
 //	IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned 
 //	bytes (u8) into a ganglion (SDR frame buffer: &Sdr)
 //		- TODO: CONVERT FROM STORING FILE IN MEMORY TO STREAMING FILE (WITH LARGE BUFFER)
@@ -15,6 +27,7 @@ use cmn::{ CorticalDimensions, Sdr };
 pub struct IdxReader {
 	ganglion_dims: CorticalDimensions,
 	repeats_per_image: usize,
+	scale_factor: f64,
 	repeat_counter: usize,
 	frame_counter: usize,
 	frames_count: usize,
@@ -33,7 +46,7 @@ pub struct IdxReader {
 }
 
 impl IdxReader {
-	pub fn new(ganglion_dims: CorticalDimensions, file_name: &str, repeats_per_image: usize) -> IdxReader {
+	pub fn new(ganglion_dims: CorticalDimensions, file_name: &str, repeats_per_image: usize, scale_factor: f64) -> IdxReader {
 		let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
 		let path = Path::new(&path_string);
 		let display = path.display();
@@ -106,6 +119,7 @@ impl IdxReader {
 	    IdxReader {
 	    	ganglion_dims: ganglion_dims,
 	    	repeats_per_image: repeats_per_image,
+	    	scale_factor: scale_factor,
 	    	repeat_counter: 0,
 	    	frame_counter: 0,
 	    	frames_count: dim_sizes[0],
@@ -195,18 +209,20 @@ impl IdxReader {
 		let v_size = self.ganglion_dims.v_size() as usize;
 		let u_size = self.ganglion_dims.u_size() as usize;
 
-		for v_id in 0..v_size {
-			for u_id in 0..u_size {
-				let (x, y) = coord_hex_to_pixel(v_size, v_id, u_size, u_id, 
-					self.image_height as usize, self.image_width as usize);
+		// for v_id in 0..v_size {
+		// 	for u_id in 0..u_size {
+		// 		let (x, y, valid) = coord_hex_to_pixel(v_size, v_id, u_size, u_id, 
+		// 			self.image_height as usize, self.image_width as usize);
 				
-				let tar_idx = (v_id * u_size) + u_id;
-				let src_idx = (y * self.image_width as usize) + x;
+		// 		if valid {
+		// 			let tar_idx = (v_id * u_size) + u_id;
+		// 			let src_idx = (y * self.image_width as usize) + x;
 
-				target[tar_idx] = source[src_idx];
-				//target[tar_idx] = (x != 0 || y != 0) as u8; // SHOW INPUT SQUARE
-			}
-		}
+		// 			target[tar_idx] = source[src_idx]; 
+		// 		}
+		// 		//target[tar_idx] = (x != 0 || y != 0) as u8; // SHOW INPUT SQUARE
+		// 	}
+		// }
 	}
 
 
@@ -214,30 +230,35 @@ impl IdxReader {
 		let v_size = self.ganglion_dims.v_size() as usize;
 		let u_size = self.ganglion_dims.u_size() as usize;
 
-		for v_id in 0..v_size {
+		let x_size = self.image_width;
+		let y_size = self.image_height;
+
+		let hex_side = (x_size + y_size) as f64 / 
+			(self.scale_factor * (v_size + u_size) as f64);
+
+		let (x_ofs, y_ofs) = calc_offs(v_size, u_size, x_size, y_size, hex_side);
+
+		//println!("\n##### hex_side: {}, x_ofs: {}, y_ofs: {}", hex_side, x_ofs, y_ofs);
+
+		// let y_ofs = 29f64 * hex_side;
+		// let x_ofs = 43f64 * hex_side;
+
+		for v_id in 0..v_size  {
 			for u_id in 0..u_size {
-				let (x, y) = coord_hex_to_pixel(v_size, v_id, u_size, u_id, 
-					self.image_height as usize, self.image_width as usize);
+				let (x, y, valid) = coord_hex_to_pixel(v_id as f64, u_id as f64, x_size as f64, 
+					y_size as f64, hex_side, x_ofs, y_ofs);
 				
-				let tar_idx = (v_id * u_size) + u_id;
-				let src_idx = (y * self.image_width as usize) + x;
+				if valid {
+					let tar_idx = (v_id * u_size) + u_id;
+					let src_idx = (y as usize * x_size) + x as usize;
 
-				target[tar_idx] = source[src_idx];
-				//target[tar_idx] = (x != 0 || y != 0) as u8; // SHOW INPUT SQUARE
+					target[tar_idx] = source[src_idx];
+					//target[tar_idx] = 1 as u8; // SHOW INPUT SQUARE
+				}
 			}
 		}
 	}
-
-	pub fn encode_2d_image_crude(&self, source: &Sdr, target: &mut Sdr) {
-		for v in 0..self.image_height {
-			for u in 0..self.image_width {
-				let src_idx = (v * self.image_width as usize) + u;
-				let tar_idx = ((v + self.margins.top as usize) * self.ganglion_dims.u_size() as usize) 
-					+ (u + self.margins.left as usize);
-				target[tar_idx] = source[src_idx];
-			}
-		}
-	}
+	
 
 	pub fn dims(&self) -> &CorticalDimensions {
 		&self.ganglion_dims
@@ -245,27 +266,17 @@ impl IdxReader {
 }
 
 
-const HEX_SIDE: f64 = 0.5f64;
-//const C1_OFS: f64 = 0f64 * HEX_SIDE;
-//const C2_OFS: f64 = 0f64 * HEX_SIDE;	
-//const V_OFS: f64 = 0f64;
-//const W_OFS: f64 = 0f64;
-const Y_OFS: f64 = 29f64 * HEX_SIDE;
-const X_OFS: f64 = 43f64 * HEX_SIDE;
-
-const SQRT_3: f64 = 1.73205080756f64;
-
-
 // V_ID: Index of v ... implied to be inverted
 // V: Geometric 
 
 // COORD_HEX_TO_PIXEL(): Eventually either move this to GPU or at least use SIMD
-pub fn coord_hex_to_pixel(v_size: usize, v_id: usize, u_size: usize, u_id: usize, 
-				y_size: usize, x_size: usize,
-) -> (usize, usize) {
-	let u = u_id as f64;
-	let u_inv = 0f64 - u;
-	let v = v_id as f64;
+pub fn coord_hex_to_pixel(v_id: f64, u_id: f64, x_size: f64, y_size: f64, hex_side: f64, 
+			x_ofs: f64, y_ofs: f64, 
+	) -> (f64, f64, bool) 
+{
+	let u = u_id;
+	let u_inv = 0.0 - u;
+	let v = v_id;
 	//let v_inv = 0f64 - v;
 	//let w = u_inv + v_inv;
 	let w_inv = v + u;
@@ -274,21 +285,21 @@ pub fn coord_hex_to_pixel(v_size: usize, v_id: usize, u_size: usize, u_id: usize
 	//let c1 = w_inv - C1_OFS;
 	//let c2 = u_inv - C2_OFS;
 
-	let mut x = w_inv * 1.5f64 * HEX_SIDE;
-	let mut y = (u_inv + (w_inv / 2f64)) * SQRT_3 * HEX_SIDE;
+	let mut x = w_inv * 1.5 * hex_side;
+	let mut y = (u_inv + (w_inv / 2.0)) * SQRT_3 * hex_side;
 
 	//let mut y = u * 1.5f64 * s;
 	//let mut x = (v_inv + (u / 2f64)) * SQRT_3 * s;
 
-	y += Y_OFS;
-	x -= X_OFS;
+	x -= x_ofs;
+	y += y_ofs;	
 	
 	//x = x_size as f64 - x;
 	//y = y_size as f64 - y;
 
-	let valid = (y >= 0f64 && y < y_size as f64 && x >= 0f64 && x < x_size as f64) as usize;
+	let valid = (y >= 0.0 && y < y_size) && (x >= 0.0 && x < x_size);
 
-	(x as usize * valid, y as usize * valid)
+	(x, y, valid)
 }
 
 
@@ -298,6 +309,35 @@ struct Margins {
 	top: usize,
 	bottom: usize,
 }
+
+
+fn calc_offs(v_size: usize, u_size: usize, y_size: usize, x_size: usize, hex_side: f64) -> (f64, f64) {
+	let v_mid = v_size >> 1;
+	let u_mid = u_size >> 1;
+
+	let (x_ofs_inv, y_ofs_inv, _) = coord_hex_to_pixel(v_mid as f64, u_mid as f64, 
+		x_size as f64, y_size as f64, hex_side, 0.0, 0.0);
+
+	let x_mid = x_size >> 1;
+	let y_mid = y_size >> 1;	
+
+	((x_ofs_inv - x_mid as f64), (y_mid as f64 - y_ofs_inv))
+}
+
+
+
+
+	// pub fn encode_2d_image_crude(&self, source: &Sdr, target: &mut Sdr) {
+	// 	for v in 0..self.image_height {
+	// 		for u in 0..self.image_width {
+	// 			let src_idx = (v * self.image_width as usize) + u;
+	// 			let tar_idx = ((v + self.margins.top as usize) * self.ganglion_dims.u_size() as usize) 
+	// 				+ (u + self.margins.left as usize);
+	// 			target[tar_idx] = source[src_idx];
+	// 		}
+	// 	}
+	// }
+
 
 // function hex_to_pixel(hex):
 	//     x = size * 3/2 * hex.q

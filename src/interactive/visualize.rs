@@ -58,7 +58,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 }
 
 pub fn define_protoareas() -> ProtoAreaMaps {
-	let area_side = 48 as u32;
+	let area_side = 64 as u32;
 
 	let mut protoareas = ProtoAreaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
@@ -78,12 +78,13 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 		// )		
 
 		.area_ext("v0", "external", 
-			//area_side * 2, area_side * 2,
+			// area_side * 2, area_side * 2,
 			area_side, area_side,
-			//area_side / 2, area_side / 2, 
+			// area_side / 2, area_side / 2, 
 			Protoinput::IdxReader { 
 				file_name: "data/train-images-idx3-ubyte", 
-				repeats: REPEATS_PER_IMAGE,
+				repeats: REPEATS_PER_IMAGE, 
+				scale: 1.4,
 			},
 
 			None, 
@@ -91,21 +92,21 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 		)
 
 		.area("v1", "visual", 
-			//area_side * 2, area_side * 2,
-			//area_side, area_side,
-			//area_side / 2, area_side / 2,
-			32, 32,
+			// area_side * 2, area_side * 2,
+			area_side, area_side,
+			// area_side / 2, area_side / 2,
+			// 128, 128,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
 			Some(vec!["b1"]),
 			//None,
 		)
 
 		.area("b1", "visual", 
-			//area_side * 2, area_side * 2,			
-			area_side, area_side,
-			//32, 32,
+			// area_side * 2, area_side * 2,			
+			// area_side, area_side,
+			32, 32,
 		 	None,		 	
-		 	//Some(vec!["a1"]),
+		 	// Some(vec!["a1"]),
 		 	None,
 		)
 
@@ -128,7 +129,7 @@ pub fn run(autorun_iters: i32) -> bool {
 	ir_labels_vec.push(0);
 
 	let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), 
-		"data/train-labels-idx1-ubyte", REPEATS_PER_IMAGE);
+		"data/train-labels-idx1-ubyte", REPEATS_PER_IMAGE, 1.0);
 	
 	let mut cortex = cortex::Cortex::new(define_protolayer_maps(), define_protoareas());
 	let mut area_name = "v1".to_string();
@@ -137,20 +138,19 @@ pub fn run(autorun_iters: i32) -> bool {
 
 	/* ***** DISABLE STUFF ***** */	
 	for (area_name, area) in &mut cortex.areas {
-		area.psal_mut().dens_mut().syns.set_offs_to_zero();
-		area.bypass_inhib = true;
-		area.bypass_filters = true;
-		area.disable_pyrs = true;
-		//area.disable_ssts = true;
-		//area.disable_mcols = true;
-		area.disable_learning = true;
-		area.disable_regrowth = true;		
+		// area.psal_mut().dens_mut().syns.set_offs_to_zero();
+		// area.bypass_inhib = true;
+		// area.bypass_filters = true;
+		// area.disable_pyrs = true;
+
+		// area.disable_ssts = true;
+		// area.disable_mcols = true;
+		// area.disable_learning = true;
+		// area.disable_regrowth = true;		
 	}
-
 	/* ************************* */
 	/* ************************* */
 
-		// CURRENTLY USING NON-VEC4 SYNAPSE KERNEL
 
 	/* ************************* */
 	/* ************************* */
