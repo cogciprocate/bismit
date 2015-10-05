@@ -72,11 +72,11 @@ impl Synapses {
 		//let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl);
 		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
-		let mut src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
+		let src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		// let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl); 
 		// let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl);
-		let mut src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl); 
-		let mut src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
+		let src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl); 
+		let src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 		// KERNELS

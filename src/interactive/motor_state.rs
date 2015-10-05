@@ -13,7 +13,7 @@ pub struct MotorState {
 impl MotorState {
 	pub fn new() -> MotorState {
 
-		let mut turn_left = true;
+		let turn_left = true;
 		let sdr_left = cmn::gen_fract_sdr(50, 256);
 		let sdr_right = cmn::gen_fract_sdr(129, 256);
 

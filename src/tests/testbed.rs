@@ -40,7 +40,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 pub fn define_protoareas() -> ProtoAreaMaps {
 	let area_side = 32 as u32;
 
-	let mut protoareas = ProtoAreaMaps::new()
+	let protoareas = ProtoAreaMaps::new()
 
 		.area_ext("v0", "external", area_side, area_side, 
 			Protoinput::IdxReader { 

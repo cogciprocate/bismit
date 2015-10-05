@@ -202,7 +202,7 @@ pub fn base_build_options() -> BuildOptions {
 	assert!(DENDRITES_PER_CELL_DISTAL <= 256);
 	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
 
-	let mut build_options = BuildOptions::new(CL_BUILD_SWITCHES)
+	let build_options = BuildOptions::new(CL_BUILD_SWITCHES)
 		/*.opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
 		.opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
 		.opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)

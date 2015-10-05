@@ -18,8 +18,8 @@ use super::{ TestBed };
 pub fn test_axn_idxs(testbed: &TestBed) {
 	let syn_reach = cmn::SYNAPSE_REACH as i8;
 
-	let mut u_offs = Envoy::<i8>::shuffled(testbed.dims, 0 - syn_reach, syn_reach + 1, &testbed.ocl); 
-	let mut v_offs = Envoy::<i8>::shuffled(testbed.dims, 0 - syn_reach, syn_reach + 1, &testbed.ocl);
+	let u_offs = Envoy::<i8>::shuffled(testbed.dims, 0 - syn_reach, syn_reach + 1, &testbed.ocl); 
+	let v_offs = Envoy::<i8>::shuffled(testbed.dims, 0 - syn_reach, syn_reach + 1, &testbed.ocl);
 
 	let mut outs_sc = Envoy::<u32>::new(testbed.dims, 0, &testbed.ocl);
 	let mut outs_v4 = Envoy::<u32>::new(testbed.dims, 0, &testbed.ocl);

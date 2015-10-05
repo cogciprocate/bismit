@@ -46,7 +46,7 @@ impl InputCzar {
 
 		let area = dims.columns();
 
-		let mut motor_state = motor_state::MotorState::new();
+		let motor_state = motor_state::MotorState::new();
 
 		let mut vec_motor: Vec<u8> = iter::repeat(0).take(cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize).collect();
 		
@@ -300,7 +300,7 @@ pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: Cortic
 			//print!("[v_ofs:{}]", v_ofs);
 
 			for u_ofs in u_ofs_z..u_ofs_n {
-				let mut cell_write: bool = if fill_hex {
+				let cell_write: bool = if fill_hex {
 					true
 				} else if v_ofs.abs() == edge_size || u_ofs.abs() == edge_size || (v_ofs + u_ofs).abs() == edge_size {
 					true

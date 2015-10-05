@@ -80,7 +80,7 @@ impl ProtoLayerMap {
 	/* PROTOREGION::ADD()
 		- [incomplete] NEED TO CHECK FOR DUPLICATE LAYERS!
 	*/
-	pub fn add(&mut self, mut layer: Protolayer) {
+	pub fn add(&mut self, layer: Protolayer) {
 		/*let ck_tmp = match layer.kind {
 			Some(ref kind) 	=> kind.cell_kind.clone(),
 			None 			=> ProtocellKind::Nada,
@@ -378,7 +378,7 @@ impl ProtoLayerMap {
 			}
 		}
 
-		let mut count2 = match self.cel_layer_kind_slc_lists.get(cell_kind) {
+		let count2 = match self.cel_layer_kind_slc_lists.get(cell_kind) {
 			Some(vec) 	=> vec.len(),
 			None 		=> 0,
 		};
@@ -405,7 +405,7 @@ impl ProtoLayerMap {
 			}
 		}
 
-		let mut count2 = match self.axn_layer_kind_slc_lists.get(axon_kind) {
+		let count2 = match self.axn_layer_kind_slc_lists.get(axon_kind) {
 			Some(vec) 	=> vec.len(),
 			None 		=> 0,
 		};

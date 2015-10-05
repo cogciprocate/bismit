@@ -110,7 +110,7 @@ impl OclProgQueue {
 		}
 	}
 
-	pub fn build(&mut self, mut build_options: BuildOptions) /*-> Ocl*/ {
+	pub fn build(&mut self, build_options: BuildOptions) /*-> Ocl*/ {
 		if self.program.is_some() { panic!("\nOcl::build(): Pre-existing build detected. Use: \
 			'{your_Ocl_instance} = {your_Ocl_instance}.clear_build()' first.") }		
 
@@ -264,7 +264,7 @@ impl OclProgQueue {
 	pub fn get_max_work_group_size(&self) -> u32 {
 		let max_work_group_size: u64 = 0;
 
-		let mut err = unsafe { 
+		let err = unsafe { 
 			cl_h::clGetDeviceInfo(
 				self.device,
 				cl_h::CL_DEVICE_MAX_WORK_GROUP_SIZE,

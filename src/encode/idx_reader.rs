@@ -51,7 +51,7 @@ impl IdxReader {
 		let path = Path::new(&path_string);
 		let display = path.display();
 
-		let mut file = match File::open(&path) {
+		let file = match File::open(&path) {
 			Err(why) => panic!("\ncouldn't open '{}': {}", display, Error::description(&why)),
 			Ok(file) => file,
 		};

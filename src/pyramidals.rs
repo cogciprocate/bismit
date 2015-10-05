@@ -52,7 +52,7 @@ pub struct PyramidalLayer {
 }
 // protocell: &Protocell,
 impl PyramidalLayer {
-	pub fn new(layer_name: &'static str, mut dims: CorticalDimensions, protocell: Protocell, 
+	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, 
 		area_map: &AreaMap, axons: &Axons, aux: &Aux, ocl: &OclProgQueue
 	) -> PyramidalLayer {
 

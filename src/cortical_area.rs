@@ -165,7 +165,7 @@ impl CorticalArea {
 							let src_soma_env = &ssts_map.get_mut(src_lyr_name).expect(&em1).soma();
 						
 							let iinns_dims = dims.clone_with_depth(src_layer_depth);
-							let mut iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, 
+							let iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, 
 								pcell.clone(), &area_map, src_soma_env, 
 								src_axn_base_slc, &axns, &aux, &ocl);
 
@@ -227,9 +227,9 @@ impl CorticalArea {
 			}
 		};
 
-		let mut renderer = Renderer::new(&dims);
+		let renderer = Renderer::new(&dims);
 
-		let mut cortical_area = CorticalArea {
+		let cortical_area = CorticalArea {
 			name: area_map.proto_area_map().name,
 			dims: dims,
 			area_map: area_map,
@@ -480,7 +480,7 @@ pub struct Aux {
 }
 
 impl Aux {
-	pub fn new(mut dims: CorticalDimensions, ocl: &OclProgQueue) -> Aux {
+	pub fn new(dims: CorticalDimensions, ocl: &OclProgQueue) -> Aux {
 
 		//let dims_multiplier: u32 = 512;
 

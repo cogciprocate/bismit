@@ -60,7 +60,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 pub fn define_protoareas() -> ProtoAreaMaps {
 	let area_side = 48 as u32;
 
-	let mut protoareas = ProtoAreaMaps::new()		
+	let protoareas = ProtoAreaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
 		// .area_ext("u0", "external", area_side, area_side, 
 		// 	Protoinput::IdxReader { 
@@ -197,7 +197,7 @@ pub fn run(autorun_iters: i32) -> bool {
 		}
 
 		if autorun_iters == 0 {
-			let mut in_string: String = if first_run {
+			let in_string: String = if first_run {
 				first_run = false;
 				"\n".to_string()
 			} else {

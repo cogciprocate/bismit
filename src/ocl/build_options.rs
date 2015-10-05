@@ -6,7 +6,7 @@ pub struct BuildOptions {
 
 impl BuildOptions {
 	pub fn new(cl_options: &'static str) -> BuildOptions {
-		let mut bo = BuildOptions {
+		let bo = BuildOptions {
 			options: Vec::with_capacity(1 << 5),
 			string: String::with_capacity(1 << 11),
 			kernel_file_names: Vec::with_capacity(20),
