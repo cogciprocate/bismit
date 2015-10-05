@@ -71,7 +71,7 @@ __kernel void retina(
 
 	// int const neighbor_avg = neighbors_sum / neighbor_count;	
 
-	int const every_two = cel_idx & 1;
+	int const every_two = (cel_idx + v_id) & 1;
 	int const every_four = ((cel_idx & 3) >> 1) ^ every_two;
 
 	//int const is_fractal_thingy = mul24(cel_idx, cel_idx + 1) & 1;

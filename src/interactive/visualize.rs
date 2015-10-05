@@ -58,7 +58,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 }
 
 pub fn define_protoareas() -> ProtoAreaMaps {
-	let area_side = 48 as u32;
+	let area_side = 64 as u32;
 
 	let protoareas = ProtoAreaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
