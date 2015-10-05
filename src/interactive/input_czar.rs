@@ -1,8 +1,8 @@
 use std::iter;
 use std::ops::{ Range };
 use std::cmp;
-use std::collections::{ HashMap };
-use rand::{ self, ThreadRng, Rng };
+// use std::collections::{ HashMap };
+use rand::{ self, /*ThreadRng,*/ Rng };
 
 use cmn::{ self, CorticalDimensions, Sdr };
 use ocl::{ self };
@@ -10,9 +10,9 @@ use cortex::{ Cortex };
 use encode:: { IdxReader };
 use super::motor_state;
 use microcosm::world::{ World };
-use microcosm::entity::{ EntityBody, EntityKind, EntityBrain, Mobile };
-use microcosm::worm::{ WormBrain };
-use microcosm::common::{ Location, Peek, Scent, WORM_SPEED, TAU };
+use microcosm::entity::{ EntityBody, EntityKind, /*EntityBrain, Mobile*/ };
+// use microcosm::worm::{ WormBrain };
+use microcosm::common::{ Location, /*Peek, Scent, WORM_SPEED, TAU*/ };
 
 
 pub const WORLD_TURN_FACTOR: f32 				= 9f32;	// (originally 3)

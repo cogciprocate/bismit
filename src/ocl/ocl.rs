@@ -4,21 +4,24 @@ use std::mem;
 use std::io::{ Read };
 use std::fs::{ File };
 use std::ffi;
-use std::iter;
-use std::collections::{ HashMap, HashSet };
-use std::fmt::{ Display };
+// use std::iter;
+// use std::collections::{ HashMap, HashSet };
+use std::collections::{ HashSet };
+// use std::fmt::{ Display };
 use std::error::{ Error };
-use num::{ self, Integer, FromPrimitive };
+// use num::{ self, Integer, FromPrimitive };
 use libc;
 
+// use super::cl_h::{ self, cl_platform_id, cl_device_id, cl_context, cl_program, 
+// 	cl_kernel, cl_command_queue, cl_float, cl_mem, cl_event, cl_char, cl_uchar, 
+// 	cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus, 
+// 	clSetKernelArg, clEnqueueNDRangeKernel };
 use super::cl_h::{ self, cl_platform_id, cl_device_id, cl_context, cl_program, 
-	cl_kernel, cl_command_queue, cl_float, cl_mem, cl_event, cl_char, cl_uchar, 
-	cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus, 
-	clSetKernelArg, clEnqueueNDRangeKernel };
+	cl_kernel, cl_command_queue, cl_mem, cl_int, cl_uint };
 use super::kernel::{ Kernel };
 use super::envoy::{ Envoy, OclNum };
 use super::work_size::{ WorkSize };
-use super::build_options::{ BuildOptions, BuildOption };
+use super::build_options::{ BuildOptions, /*BuildOption*/ };
 //use super::cortical_dimensions::{ CorticalDimensions };
 
 pub static MT: &'static str = "    ";

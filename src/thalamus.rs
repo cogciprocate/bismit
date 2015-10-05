@@ -1,14 +1,14 @@
 use std::ops::{ Range };
 use std::collections::{ HashMap };
-use std::iter;
+// use std::iter;
 
 use cmn::{ self, Sdr };
 use map::{ AreaMap };
 use ocl;
 use cortical_area:: { CorticalArea, CorticalAreas };
-use proto::{ ProtoAreaMaps, ProtoAreaMap, ProtoLayerMap, ProtoLayerMaps, 
-	RegionKind, layer, Sensory, Thalamic };
-use encode:: { IdxReader };
+use proto::{ ProtoAreaMaps, /*ProtoAreaMap, ProtoLayerMap,*/ ProtoLayerMaps, 
+	/*RegionKind,*/ layer, /*Sensory,*/ Thalamic };
+//use encode:: { IdxReader };
 use input_source::{ InputSource };
 //use tests::input_czar;
 

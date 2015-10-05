@@ -1,9 +1,9 @@
 use cmn::{ self, CorticalDimensions, SliceDimensions, HexTilePlane, Sdr };
 use map::{ SliceMap };
 
-use std::char;
+//use std::char;
 use std::iter;
-use std::collections::{ BTreeMap };
+//use std::collections::{ BTreeMap };
 
 pub struct Renderer {
 	//dims: CorticalDimensions,

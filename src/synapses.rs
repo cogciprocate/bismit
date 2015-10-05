@@ -1,18 +1,19 @@
-use num;
+// use num;
 use rand;
-use std::mem;
-use rand::distributions::{ Normal, IndependentSample, Range };
-use rand::{ ThreadRng, Rng };
-use num::{ Integer };
-use std::default::{ Default };
-use std::fmt::{ Display };
+// use std::mem;
+use rand::distributions::{ /*Normal,*/ IndependentSample, Range };
+// use rand::{ ThreadRng, Rng };
+// use num::{ Integer };
+// use std::default::{ Default };
+// use std::fmt::{ Display };
 use std::collections::{ BTreeSet };
 
 use cmn::{ self, CorticalDimensions };
 use map::{ AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
-use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind, Protolayer, ProtolayerKind };
-use dendrites::{ Dendrites };
+use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, 
+	DendriteKind, /*Protolayer, ProtolayerKind*/ };
+// use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cortical_area:: { Aux };
 

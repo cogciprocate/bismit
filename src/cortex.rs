@@ -1,18 +1,18 @@
-use std::ptr;
-use std::ops::{ Drop };
+// use std::ptr;
+// use std::ops::{ Drop };
 use std::collections::{ HashMap };
-use num;
+// use num;
 use time;
-use rand::distributions::{ IndependentSample, Range };
+// use rand::distributions::{ IndependentSample, Range };
 
 
-use ocl::{ self, OclContext, OclProgQueue };
-use cmn::{ self, CorticalDimensions, Sdr };
-use map::{ AreaMap };
-use cortical_area:: { self, CorticalArea, CorticalAreas };
+// use ocl::{ self, OclContext, OclProgQueue };
+use cmn::{ /*self, CorticalDimensions,*/ Sdr };
+// use map::{ AreaMap };
+use cortical_area:: { /*self,*/ CorticalArea, CorticalAreas };
 use thalamus::{ Thalamus };
-use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, 
-	Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell };
+use proto::{ /*ProtoLayerMap,*/ ProtoLayerMaps, ProtoAreaMaps, /*ProtoAreaMap,*/ /*Cellular, */
+	/*Axonal, Spatial, Horizontal, Sensory,*/ Thalamic, /*layer, Protocell*/ };
 
 pub struct Cortex {
 	// AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it

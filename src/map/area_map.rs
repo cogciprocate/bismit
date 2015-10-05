@@ -1,14 +1,14 @@
-use num::{ Num };
+// use num::{ Num };
 use std::fmt::{ Display };
 use std::ops::{ Range };
-use std::collections::{ HashMap };
+// use std::collections::{ HashMap };
 //use std::num::ToString;
 
 use ocl::{ BuildOptions, BuildOption };
 use proto::{ layer, ProtoLayerMaps, ProtoLayerMap, Protolayer, ProtolayerFlags, ProtoAreaMaps, ProtoAreaMap };
 use cmn::{ self, CorticalDimensions, SliceDimensions };
 use map::{ SliceMap, InterAreaInfoCache };
-use map::slice_map;
+// use map::slice_map;
 
 // 	AREAMAP { }:
 // 		- Move in functionality from the 'execution phase' side of ProtoAreaMap and ProtoLayerMap.

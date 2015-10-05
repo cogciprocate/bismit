@@ -1,6 +1,6 @@
-use bitflags;
+// use bitflags;
 
-use proto::{ ProtocellKind, Protocell, DendriteKind };
+use proto::{ /*ProtocellKind,*/ Protocell, DendriteKind };
 use proto::DendriteKind::{ Distal, Proximal };
 use self::ProtolayerKind::{ Cellular, Axonal };
 //use ocl;

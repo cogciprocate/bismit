@@ -1,21 +1,22 @@
-use num;
-use rand;
-use std::mem;
-use std::iter; // TEMPORARY
+// use num;
+// use rand;
+// use std::mem;
+// use std::iter; // TEMPORARY
 //use rand::distributions::{ Normal, IndependentSample, Range };
-use rand::{ ThreadRng };
-use num::{ Integer };
-use std::default::{ Default };
-use std::fmt::{ Display };
-use std::collections::{ BTreeMap, HashMap };
+// use rand::{ ThreadRng };
+// use num::{ Integer };
+// use std::default::{ Default };
+// use std::fmt::{ Display };
+use std::collections::{ /*BTreeMap,*/ HashMap };
 use std::ops::{ Range };
 
 use cmn::{ self, CorticalDimensions, Renderer, Sdr };
 use map::{ AreaMap };
-use ocl::{ self, OclProgQueue, OclContext, WorkSize, Envoy, BuildOptions, BuildOption  };
-use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Pyramidal, SpinyStellate, Inhibitory, layer, Protocell, DendriteKind };
-use synapses::{ Synapses };
-use dendrites::{ Dendrites };
+use ocl::{ self, OclProgQueue, OclContext, /*WorkSize,*/ Envoy, /*BuildOptions,*/ /*BuildOption*/ };
+use proto::{ /*ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap,*/ Cellular, /*Axonal, Spatial, Horizontal, Sensory,*/ Pyramidal, SpinyStellate, Inhibitory, layer, /*Protocell,*/ DendriteKind };
+
+// use synapses::{ Synapses };
+// use dendrites::{ Dendrites };
 use axons::{ Axons };
 use minicolumns::{ Minicolumns };
 use iinn::{ InhibitoryInterneuronNetwork };

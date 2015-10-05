@@ -1,5 +1,5 @@
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, };
-use cmn::{ self, CorticalDimensions, HexTilePlane, Sdr };
+use cmn::{ self, /*CorticalDimensions,*/ HexTilePlane, Sdr };
 use axons::{ Axons };
 use proto::{ layer };
 use map::{ AreaMap };

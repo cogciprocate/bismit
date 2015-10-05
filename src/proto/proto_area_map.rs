@@ -1,6 +1,6 @@
-use std::collections::{ self, HashMap };
+use std::collections::{ /*self,*/ HashMap };
 
-use proto::{ layer, RegionKind, Protofilter, Protoinput };
+use proto::{ /*layer, RegionKind,*/ Protofilter, Protoinput };
 use cmn::{ self, CorticalDimensions };
 
 

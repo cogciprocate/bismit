@@ -1,22 +1,22 @@
 use std::ops;
-use std::mem;
-use rand::distributions::{ Normal, IndependentSample, Range };
-use rand::{ self, ThreadRng, Rng };
-use num::{ self, Integer };
-use std::default::{ Default };
-use std::fmt::{ Display };
+// use std::mem;
+use rand::distributions::{ /*Normal, IndependentSample,*/ Range };
+use rand::{ self, /*ThreadRng,*/ Rng };
+// use num::{ self, Integer };
+// use std::default::{ Default };
+// use std::fmt::{ Display };
 
 use cmn::{ self, CorticalDimensions };
 use map::{ AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
-use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind };
-use synapses::{ Synapses };
+use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, DendriteKind };
+// use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axons::{ Axons };
 use cortical_area:: { Aux };
-use iinn:: { InhibitoryInterneuronNetwork };
-use pyramidals::{ PyramidalLayer };
-use minicolumns::{ Minicolumns };
+// use iinn:: { InhibitoryInterneuronNetwork };
+// use pyramidals::{ PyramidalLayer };
+// use minicolumns::{ Minicolumns };
 
 
 

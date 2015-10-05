@@ -1,13 +1,16 @@
-use num::{ Num };
-use std::fmt::{ Display };
-use std::ops::{ Range };
-use std::collections::{ HashMap };
+//use num::{ Num };
+//use std::fmt::{ Display };
+//use std::ops::{ Range };
+//use std::collections::{ HashMap };
 //use std::num::ToString;
 
-use ocl::{ BuildOptions, BuildOption, EnvoyDimensions };
-use proto::{ layer, ProtoLayerMaps, ProtoLayerMap, Protolayer, ProtolayerFlags, ProtoAreaMaps, ProtoAreaMap };
-use cmn::{ self, CorticalDimensions, HexTilePlane };
-use map::{ InterAreaInfoCache };
+//use ocl::{ BuildOptions, BuildOption, EnvoyDimensions };
+use ocl::{ EnvoyDimensions };
+//use proto::{ layer, ProtoLayerMaps, ProtoLayerMap, Protolayer, ProtolayerFlags, ProtoAreaMaps, ProtoAreaMap };
+//use cmn::{ self, CorticalDimensions, HexTilePlane };
+use cmn::{ CorticalDimensions, HexTilePlane };
+//use map::{ InterAreaInfoCache };
+
 
 
 #[derive(Clone, Debug)]

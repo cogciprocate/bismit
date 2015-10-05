@@ -1,10 +1,10 @@
 
-use cmn::{ self, CorticalDimensions };
-use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
-use cortex::{ self, Cortex };
-use ocl::{ Envoy, WorkSize, OclProgQueue, EnvoyDimensions, OclNum };
-use interactive::{ input_czar, InputCzar, InputKind };
-use super::hybrid;
+use cmn::{ self, /*CorticalDimensions*/ };
+// use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
+// use cortex::{ self, Cortex };
+use ocl::{ Envoy, WorkSize, /*OclProgQueue, EnvoyDimensions,*/ OclNum };
+// use interactive::{ input_czar, InputCzar, InputKind };
+// use super::hybrid;
 use super::{ TestBed };
  
 

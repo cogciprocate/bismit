@@ -1,23 +1,23 @@
-use std::default::{ Default };
+// use std::default::{ Default };
 use std::iter;
-use std::fmt::{ Display };
+// use std::fmt::{ Display };
 use std::ops::{ Range };
-use std::io::{ self, Write, Stdout };
+use std::io::{ self, Write, /*Stdout*/ };
 //use std::borrow::{ Borrow };
-use rand::{ self, ThreadRng, Rng };
-use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
+// use rand::{ self, ThreadRng, Rng };
+// use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use time;
 
-use cmn::{ self, CorticalDimensions, Renderer };
+use cmn::{ self, CorticalDimensions, /*Renderer*/ };
 use cortex::{ self, Cortex };
 use encode:: { IdxReader };
 //use proto::layer;
 //use super::synapse_drill_down;
-use interactive::{ self, input_czar, output_czar, InputCzar, InputKind, InputSource };
+use interactive::{ /*self, input_czar,*/ output_czar, /*InputCzar, InputKind, InputSource*/ };
 use tests::hybrid;
 //use chord::{ Chord };
 //use ocl::{ Envoy };
-use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
+use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, /*ProtoAreaMap,*/ /*Cellular,*/ Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 
 
 pub const INITIAL_TEST_ITERATIONS: i32 		= 1; 

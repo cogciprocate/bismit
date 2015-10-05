@@ -1,18 +1,13 @@
-// use std;
-// use num::{ self, Integer, Signed, NumCast, ToPrimitive, FromPrimitive };
 use num::{ ToPrimitive, FromPrimitive };
-// use std::num::{ NumCast, ToPrimitive, FromPrimitive };
-//use std::ops::{ self, BitOr };
 use std::default::{ Default }; 
-//use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 use std::iter::{ self };
-use std::cmp::{ self, Ord };
-use std::io::{ self, Write, Stdout };
+use std::cmp::{ self };
+use std::io::{ self, Write };
 use std::collections::{ BTreeMap };
 use rand;
-use rand::distributions::{ self, Normal, IndependentSample, Range };
+use rand::distributions::{ self, IndependentSample, Range };
 
-use ocl::{ self, BuildOptions, OclNum };
+use ocl::{ BuildOptions, OclNum };
 use super::{ Sdr };
 
 

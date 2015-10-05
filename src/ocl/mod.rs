@@ -1,17 +1,18 @@
-use std;
+// use std;
 use std::ptr;
 use std::mem;
 use std::io::{ Read };
-use std::fs::{ File };
+// use std::fs::{ File };
 use std::ffi;
 use std::iter;
-use std::collections::{ HashMap, HashSet };
-use std::fmt::{ Display };
-use std::error::{ Error };
-use num::{ self, Integer, FromPrimitive };
+// use std::collections::{ HashMap, HashSet };
+// use std::fmt::{ Display };
+// use std::error::{ Error };
+// use num::{ self, Integer, FromPrimitive };
+use num::{ FromPrimitive };
 use libc;
 
-use cmn;
+// use cmn;
 
 pub use self::ocl::{ OclContext, OclProgQueue };
 pub use self::cl_h::{ cl_platform_id, cl_device_id, cl_context, cl_program, 

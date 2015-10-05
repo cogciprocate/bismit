@@ -1,16 +1,16 @@
-use std;
-use std::collections::{ self, HashMap, BTreeMap };
+// use std;
+use std::collections::{ /*self,*/ HashMap, BTreeMap };
 //use std::collections::hash_state::{ HashState };
-use num;
-use std::ops::{ Index, IndexMut, Range };
-use std::hash::{ self, Hash, SipHasher, Hasher };
+// use num;
+use std::ops::{ Index, IndexMut, /*Range*/ };
+use std::hash::{ /*self, Hash, SipHasher,*/ Hasher };
 
 //use proto::{  };
 //use super::layer as layer;
 use super::{ ProtoAreaMap };
 use super::layer::{ self, Protolayer, ProtolayerFlags, ProtoaxonKind, ProtolayerKind };
 	//use super::layer::ProtolayerKind::{ self, Cellular, Axonal };
-use super::{ ProtocellKind, Protocell, DendriteKind };
+use super::{ ProtocellKind, /*Protocell,*/ DendriteKind };
 
 
 /* PROTOLAYERMAP (PROTOREGION) {} <<<<< TODO: SPLIT UP, REDESIGN, AND REFACTOR >>>>>

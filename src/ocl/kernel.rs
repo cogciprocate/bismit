@@ -1,16 +1,16 @@
-use std;
+// use std;
 use std::ptr;
 use std::mem;
-use std::io::{ Read };
-use std::fs::{ File };
-use std::ffi;
-use std::iter;
+// use std::io::{ Read };
+// use std::fs::{ File };
+// use std::ffi;
+// use std::iter;
 use std::collections::{ HashMap };
-use num::{ self, Integer, FromPrimitive, Zero };
+use num::{ /*self,*/ Integer, /*FromPrimitive,*/ Zero };
 use libc;
 //use std::default::{ Default };
 
-use cmn;
+// use cmn;
 use super::{ WorkSize, Envoy };
 
 

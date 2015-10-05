@@ -1,12 +1,12 @@
-use num::{ Num };
-use std::fmt::{ Display };
-use std::ops::{ Range };
+// use num::{ Num };
+// use std::fmt::{ Display };
+// use std::ops::{ Range };
 use std::collections::{ HashMap };
 //use std::num::ToString;
 
-use ocl::{ BuildOptions, BuildOption };
-use proto::{ layer, ProtoLayerMaps, ProtoLayerMap, Protolayer, ProtolayerFlags, ProtoAreaMaps, ProtoAreaMap };
-use cmn::{ self, CorticalDimensions, SliceDimensions };
+// use ocl::{ BuildOptions, BuildOption };
+use proto::{ layer, /*ProtoLayerMaps,*/ /*ProtoLayerMap,*/ Protolayer, ProtolayerFlags, ProtoAreaMaps, /*ProtoAreaMap*/ };
+use cmn::{ /*self,*/ CorticalDimensions, SliceDimensions };
 
 pub struct LayerMap {
 	map: HashMap<&'static str, LayerInfo>,

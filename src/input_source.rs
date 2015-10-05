@@ -1,7 +1,7 @@
 use std::iter;
 
-use cortical_area:: { CorticalArea, CorticalAreas };
-use cortex::{ Cortex };
+use cortical_area:: { /*CorticalArea,*/ CorticalAreas };
+// use cortex::{ Cortex };
 use proto::{ layer, ProtoAreaMap, Protoinput };
 use encode:: { IdxReader };
 

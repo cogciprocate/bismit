@@ -1,9 +1,9 @@
-use std::iter;
+// use std::iter;
 
-use super::input_czar;
+// use super::input_czar;
 use cortex::{ Cortex };
-use synapses::{ Synapses };
-use cmn;
+// use synapses::{ Synapses };
+// use cmn;
 
 
 const EMSG: &'static str = "tests::output_czar::";

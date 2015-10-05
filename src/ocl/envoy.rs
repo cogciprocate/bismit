@@ -1,11 +1,11 @@
-use std::ptr;
+// use std::ptr;
 use std::iter::{ self };
 //use std::num::{ NumCast, FromPrimitive, ToPrimitive };
 use num::{ Integer, NumCast, FromPrimitive, ToPrimitive };
 //use std::fmt::{ Display };
-use std::fmt::{ Display, Debug, LowerHex, UpperHex };
+use std::fmt::{ Display, Debug, /*LowerHex,*/ UpperHex };
 use std::default::{ Default };
-use std::ops::{ self, Index, IndexMut };
+use std::ops::{ /*self,*/ Index, IndexMut };
 
 use ocl::{ self, OclProgQueue };
 use cmn;

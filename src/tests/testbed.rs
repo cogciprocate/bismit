@@ -1,11 +1,11 @@
-use cmn::{ self, CorticalDimensions };
-use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
-use cortex::{ self, Cortex };
+use cmn::{ /*self,*/ CorticalDimensions };
+use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, /*ProtoAreaMap, Cellular,*/ Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
+// use cortex::{ self, Cortex };
 use thalamus::{ Thalamus };
-use ocl::{ Envoy, WorkSize, OclContext, OclProgQueue, EnvoyDimensions, BuildOptions, BuildOption };
-use interactive::{ input_czar, InputCzar, InputKind };
-use super::hybrid;
-use super::kernels;
+use ocl::{ /*Envoy, WorkSize,*/ OclContext, OclProgQueue, /*EnvoyDimensions, BuildOptions, BuildOption*/ };
+// use interactive::{ input_czar, InputCzar, InputKind };
+// use super::hybrid;
+// use super::kernels;
 
 pub static PRIMARY_AREA_NAME: &'static str = "v1";
 pub static INHIB_LAYER_NAME: &'static str = "iv_inhib";

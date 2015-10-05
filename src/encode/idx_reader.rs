@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::io::{ BufReader };
 use std::path::{ Path };
 use std::iter;
-use num::{ Float };
+// use num::{ Float };
 
 use cmn::{ CorticalDimensions, Sdr };
 

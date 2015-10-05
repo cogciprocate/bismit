@@ -1,17 +1,17 @@
-use std::ops::{ Range };
+// use std::ops::{ Range };
 use std::iter;
-use std::io::{ self, Write, Stdout };
-use std::mem;
+use std::io::{ self, Write, /*Stdout*/ };
+// use std::mem;
 use rand;
 
-use interactive::{ self, input_czar, InputCzar, InputKind };
+use interactive::{ /*self,*/ input_czar, /*InputCzar, InputKind*/ };
 use proto::*;
-use synapses::{ Synapses };
+// use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use pyramidals::{ PyramidalLayer };
-use cortex::{ self, Cortex };
+use cortex::{ /*self,*/ Cortex };
 use cmn;
-use ocl::{ self, Envoy };
+// use ocl::{ self, Envoy };
 
 
 /*	HYBRID TESTS: Tests runnable in either an interactive or automated manner
