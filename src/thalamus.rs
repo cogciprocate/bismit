@@ -61,6 +61,7 @@ impl Thalamus {
 			teo.add_area(area_name, /*i,*/ eff_len,	area_map.input_src_area_names(layer::EFFERENT_INPUT));
 
 			println!("{}THALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", cmn::MT, area_name, aff_len, eff_len);
+			assert!(aff_len > 0 || eff_len > 0, "Areas must have at least one afferent or efferent area.");
 
 			area_map.slices().print_debug();
 

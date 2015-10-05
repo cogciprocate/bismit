@@ -3,6 +3,7 @@
 	- Some of it will be eventually moved to other modules
 	- Some of it may remain and be renamed to utils or some such
 */
+//use std::ops::{ Deref, DerefMut };
 
 pub use self::cmn::*;
 pub use self::cortical_dimensions::{ CorticalDimensions };
@@ -27,3 +28,24 @@ pub trait HexTilePlane {
 }
 
 pub type Sdr = [u8];
+
+
+
+// THIS WORKS BUT HAVE TO ASSIGN ALL THE SLICES TO IT BEFORE USE
+// pub struct Sdr([u8]);
+
+// impl Deref for Sdr {
+// 	type Target = [u8];
+// 	fn deref(&self) -> &[u8] { &self.0 }
+// }
+
+// impl DerefMut for Sdr {
+// 	fn deref_mut(&mut self) -> &mut [u8] { &mut self.0 }
+// }
+
+
+// struct Board([[Square; 8]; 8]);
+// And to keep all base type's methods, impl Deref (and DerefMut):
+// impl Deref<[[Square; 8]; 8]> for Board {
+//     fn deref(&self) -> &[[Square, 8]; 8] { &self.0 }
+// }

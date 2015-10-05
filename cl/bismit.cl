@@ -1008,6 +1008,7 @@ __kernel void mcol_output(
 
 	mcol_pred_totals[col_id] = clamp(col_pyr_pred_total, 0, 255); // <<<<< FIX ME TO BE A FLAGSET
 	mcol_best_pyr_den_states[col_id] = max_den_state;
+	//axn_states[aff_out_axn_idx] = mul24(idx_is_safe, clamp(col_pyr_pred_total + sst_axn_state, 0, 255)); // N1
 	axn_states[aff_out_axn_idx] = clamp(col_pyr_pred_total + sst_axn_state, 0, 255);
 }
 

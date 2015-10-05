@@ -1,3 +1,10 @@
+// FILTERS.CL: Experimental and very badly optimized (on purpose).
+
+
+#define INHIB_SMALL_CELL_RADIUS		 3
+#define INHIB_LARGE_CELL_RADIUS		 5
+
+
 
 static inline int get_neighbors_avg(uchar const slc_id, uint const v_size, uint const v_id, 
 			uint const u_size, uint const u_id, __global uchar const* const cel_states, 
@@ -64,10 +71,16 @@ __kernel void retina(
 
 	// int const neighbor_avg = neighbors_sum / neighbor_count;	
 
-	int const is_off_cen_cel = cel_idx & 1;
-	int const is_large_cel = ((cel_idx & 3) >> 1) ^ is_off_cen_cel;
+	int const every_two = cel_idx & 1;
+	int const every_four = ((cel_idx & 3) >> 1) ^ every_two;
 
-	int radius = is_large_cel ? 4 : 3;
+	//int const is_fractal_thingy = mul24(cel_idx, cel_idx + 1) & 1;
+
+	// INTRODUCE A SLIGHT FRACTAL TO DISRUPT THE NATURAL TENDENCY TO FORM LINES
+	int const is_off_cen_cel = every_two; // ^ is_fractal_thingy;
+	int const is_large_cel = every_four;
+
+	int const radius = is_large_cel ? INHIB_LARGE_CELL_RADIUS : INHIB_SMALL_CELL_RADIUS;
 
 	int const neighbors_avg = get_neighbors_avg(slc_id, v_size, v_id, u_size, u_id, cel_states,
 		cel_idx, radius);

@@ -1,20 +1,18 @@
-
-//use prediction;
-
-use std;
-use num::{ self, Integer, Signed, NumCast, ToPrimitive, FromPrimitive };
-//use std::num::{ NumCast, ToPrimitive, FromPrimitive };
-use std::ops::{ self, BitOr };
+// use std;
+// use num::{ self, Integer, Signed, NumCast, ToPrimitive, FromPrimitive };
+use num::{ ToPrimitive, FromPrimitive };
+// use std::num::{ NumCast, ToPrimitive, FromPrimitive };
+//use std::ops::{ self, BitOr };
 use std::default::{ Default }; 
-use std::fmt::{ Display, Debug, LowerHex, UpperHex };
+//use std::fmt::{ Display, Debug, LowerHex, UpperHex };
 use std::iter::{ self };
-use std::cmp::{ Ord };
+use std::cmp::{ self, Ord };
 use std::io::{ self, Write, Stdout };
 use std::collections::{ BTreeMap };
 use rand;
 use rand::distributions::{ self, Normal, IndependentSample, Range };
 
-use ocl::{ self, BuildOptions };
+use ocl::{ self, BuildOptions, OclNum };
 use super::{ Sdr };
 
 
@@ -99,9 +97,9 @@ pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
 // pub const AXON_BUF__FER_SIZE: u32 = (1 << ((SYNAPSE_REACH_GEO_LOG2 + 1) << 1));	// (AXON_BUFFER_SIZE ^ 2)
 
 pub const SYNAPSE_REACH: u32 = 8;
-pub const SYNAPSE_SPAN: u32 = SYNAPSE_REACH * 2;
-pub const SYNAPSE_SPAN_RHOMBAL_AREA: u32 = SYNAPSE_SPAN * SYNAPSE_SPAN;
-pub const SYNAPSE_REACH_CELLS: u32 = (3 * (SYNAPSE_REACH * SYNAPSE_REACH)) + (3 * SYNAPSE_REACH) + 1;
+pub const SYNAPSE_SPAN: u32 = SYNAPSE_REACH * 2; // TESTING PURPOSES
+pub const SYNAPSE_SPAN_RHOMBAL_AREA: u32 = SYNAPSE_SPAN * SYNAPSE_SPAN; // TESTING PURPOSES
+//pub const SYNAPSE_REACH_CELLS: u32 = (3 * (SYNAPSE_REACH * SYNAPSE_REACH)) + (3 * SYNAPSE_REACH) + 1;
 
 //pub const AXON_MARGIN_SIZE: u32 = (SYNAPSE_REACH * SYNAPSE_REACH) + SYNAPSE_REACH;
 //pub const AXON_BUFFER_SIZE: u32 = AXON_MARGIN_SIZE * 2;
@@ -222,7 +220,7 @@ pub fn base_build_options() -> BuildOptions {
 		.opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
 		.opt("AXON_MARGIN_SIZE", AXON_MARGIN_SIZE as i32)
 		//.opt("AXON_BUFFER_SIZE", AXON_BUFFER_SIZE as i32)
-		.opt("SYNAPSE_SPAN_RHOMBAL_AREA", SYNAPSE_SPAN_RHOMBAL_AREA as i32)
+		//.opt("SYNAPSE_SPAN_RHOMBAL_AREA", SYNAPSE_SPAN_RHOMBAL_AREA as i32)
 		.opt("ASPINY_REACH", ASPINY_REACH as i32)
 		.opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
 		.opt("ASPINY_SPAN", ASPINY_SPAN as i32)
@@ -262,15 +260,36 @@ pub fn load_builtin_kernel_files(build_options: &mut BuildOptions) {
 
 
 
+pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
+	assert!(radius >= 0);
+
+	let tile_count = (3 * radius as usize) * (radius as usize + 1) + 1;
+	let mut mold = Vec::with_capacity(tile_count);
+
+	let v_ofs_z = 0 - radius;
+	let v_ofs_n = radius + 1;
+
+	for v_ofs in v_ofs_z..v_ofs_n {
+		let v_ofs_inv = 0 - v_ofs;
+		let u_ofs_z = cmp::max(0 - radius, v_ofs_inv - radius);
+		let u_ofs_n = cmp::min(radius, v_ofs_inv + radius) + 1;
+		//print!("[v_ofs:{}]", v_ofs);
+
+		for u_ofs in u_ofs_z..u_ofs_n {
+			mold.push((v_ofs, u_ofs));
+		}
+	}
+
+	mold
+}
 
 
-
-pub fn print_vec_simple<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(vec: &[T]) {
+pub fn print_vec_simple<T: OclNum>(vec: &[T]) {
 	print_vec(vec, 1, None, None, true);
 }
 
 
-pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex >(
+pub fn print_vec<T: OclNum>(
 			vec: &[T], 
 			every: usize, 
 			val_range: Option<(T, T)>, 
@@ -412,9 +431,7 @@ pub fn print_vec<T: Integer + Display + Default + NumCast + Copy + FromPrimitive
 		ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 }
 
-pub fn shuffled_vec<T: Integer + Default + Display + NumCast + Copy + Clone + ToPrimitive + FromPrimitive >(
-				size: usize, min_val: T, max_val: T
-) -> Vec<T> {
+pub fn shuffled_vec<T: OclNum>(size: usize, min_val: T, max_val: T) -> Vec<T> {
 
 	//println!("min_val: {}, max_val: {}", min_val, max_val);
 
@@ -451,7 +468,7 @@ pub fn shuffled_vec<T: Integer + Default + Display + NumCast + Copy + Clone + To
 }
 
 // Fisher-Yates
-pub fn shuffle_vec<T: Integer + Copy >(vec: &mut Vec<T>) {
+pub fn shuffle_vec<T: OclNum>(vec: &mut Vec<T>) {
 	let len = vec.len();
 	let mut rng = rand::weak_rng();
 
@@ -470,7 +487,7 @@ pub fn shuffle_vec<T: Integer + Copy >(vec: &mut Vec<T>) {
 
 	sp_fctr_log2: sparsity factor (log2)
 */
-pub fn sparse_vec<T: Integer + Signed + Default + Copy + Clone + NumCast + FromPrimitive + ToPrimitive >(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
+pub fn sparse_vec<T: OclNum>(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
 	let mut vec: Vec<T> = iter::repeat(min_val).cycle().take(size).collect();
 
 	let len = vec.len();
@@ -492,7 +509,7 @@ pub fn sparse_vec<T: Integer + Signed + Default + Copy + Clone + NumCast + FromP
 	vec
 }
 
-pub fn dup_check<T: Integer + Copy + Clone + Ord >(in_vec: &mut Vec<T>) -> (usize, usize) {
+pub fn dup_check<T: OclNum>(in_vec: &mut Vec<T>) -> (usize, usize) {
 	
 
 	let mut vec = in_vec.clone();

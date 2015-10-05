@@ -42,6 +42,7 @@ pub struct Synapses {
 	since_decay: usize,
 	kernels: Vec<Box<ocl::Kernel>>,
 	src_idx_cache: SrcIdxCache,
+	hex_tile_offs: Vec<(i8, i8)>,
 	//kern_cycle: ocl::Kernel,
 	//kern_regrow: ocl::Kernel,
 	rng: rand::XorShiftRng,
@@ -71,8 +72,10 @@ impl Synapses {
 		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let mut src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
-		let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl); 
-		let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl);
+		// let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl); 
+		// let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl);
+		let mut src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl); 
+		let mut src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 		// KERNELS
@@ -99,16 +102,13 @@ impl Synapses {
 
 		for syn_tuft_i in 0..dst_src_slc_ids.len() {
 			kernels.push(Box::new(
+
 				// ocl.new_kernel("syns_cycle_simple".to_string(),
-
-				// ocl.new_kernel("syns_cycle_simple_vec4".to_string(), 
-
+				// ocl.new_kernel("syns_cycle_simple_vec4".to_string(),
 				// ocl.new_kernel("syns_cycle_wow".to_string(),
-
 				ocl.new_kernel("syns_cycle_wow_vec4".to_string(), 
 				
 					WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
-
 					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					.arg_env(&axons.states)
 					.arg_env(&src_col_u_offs)
@@ -136,6 +136,7 @@ impl Synapses {
 			//kern_cycle: kern_cycle,
 			kernels: kernels,
 			src_idx_cache: src_idx_cache,
+			hex_tile_offs: cmn::hex_tile_offs(cmn::SYNAPSE_REACH as i8),
 			//kern_regrow: kern_regrow,
 			rng: rand::weak_rng(),
 			states: states,
@@ -146,6 +147,8 @@ impl Synapses {
 			flag_sets: flag_sets,
 			//slc_pool: slc_pool,  // BRING THIS BACK
 		};
+
+		//println!("\nHex tile offsets: \n{:?}", syns.hex_tile_offs);
 
 		syns.grow(true);
 		//syns.refresh_slc_pool();
@@ -174,8 +177,10 @@ impl Synapses {
 				"cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
 
 			let syn_reach = cmn::SYNAPSE_REACH as i8;
+
 			let src_slc_id_range: Range<usize> = Range::new(0, src_slc_ids.len());
-			let src_col_offs_range: Range<i8> = Range::new(0 - syn_reach, syn_reach + 1);
+			// let src_col_offs_range: Range<i8> = Range::new(0 - syn_reach, syn_reach + 1);
+			let src_col_offs_range: Range<usize> = Range::new(0, self.hex_tile_offs.len());
 			let strength_init_range: Range<i8> = Range::new(-3, 4);
 
 			let syn_idz = syns_per_layer_tuft * src_tuft_i as usize;
@@ -205,7 +210,8 @@ impl Synapses {
 	fn regrow_syn(&mut self, 
 				syn_idx: usize, 
 				src_slc_idx_range: &Range<usize>, 
-				src_col_offs_range: &Range<i8>,
+				src_col_offs_range: &Range<usize>,
+				// src_col_offs_range: &Range<i8>,
 				strength_init_range: &Range<i8>,
 				src_slc_ids: &Vec<u8>,
 				init: bool,
@@ -224,8 +230,10 @@ impl Synapses {
 			};
 
 			self.src_slc_ids[syn_idx] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
-			self.src_col_v_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
-			self.src_col_u_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
+			self.src_col_u_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].1;
+			self.src_col_v_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].0;
+			// self.src_col_v_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
+			// self.src_col_u_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
 			self.strengths[syn_idx] = (self.src_col_v_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
 
 			let new_ofs = AxnOfs { 

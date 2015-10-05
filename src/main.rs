@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types, dead_code, unused_variables, unused_mut, unused_assignments, unused_imports,)]
+#![allow(non_camel_case_types, dead_code, unused_variables, unused_mut, unused_assignments, /*unused_imports,*/)]
 #![feature(vec_push_all, clone_from_slice, vec_resize, drain)]
 
 extern crate num;

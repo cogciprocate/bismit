@@ -226,6 +226,7 @@ impl IdxReader {
 	}
 
 
+	// ENCODE_2D_IMAGE(): Horribly unoptimized.
 	pub fn encode_2d_image(&self, source: &Sdr, target: &mut Sdr) {
 		let v_size = self.ganglion_dims.v_size() as usize;
 		let u_size = self.ganglion_dims.u_size() as usize;
@@ -238,11 +239,6 @@ impl IdxReader {
 
 		let (x_ofs, y_ofs) = calc_offs(v_size, u_size, x_size, y_size, hex_side);
 
-		//println!("\n##### hex_side: {}, x_ofs: {}, y_ofs: {}", hex_side, x_ofs, y_ofs);
-
-		// let y_ofs = 29f64 * hex_side;
-		// let x_ofs = 43f64 * hex_side;
-
 		for v_id in 0..v_size  {
 			for u_id in 0..u_size {
 				let (x, y, valid) = coord_hex_to_pixel(v_id as f64, u_id as f64, x_size as f64, 
@@ -253,7 +249,7 @@ impl IdxReader {
 					let src_idx = (y as usize * x_size) + x as usize;
 
 					target[tar_idx] = source[src_idx];
-					//target[tar_idx] = 1 as u8; // SHOW INPUT SQUARE
+					// target[tar_idx] = 1 as u8; // SHOW INPUT SQUARE
 				}
 			}
 		}
@@ -266,10 +262,7 @@ impl IdxReader {
 }
 
 
-// V_ID: Index of v ... implied to be inverted
-// V: Geometric 
-
-// COORD_HEX_TO_PIXEL(): Eventually either move this to GPU or at least use SIMD
+// COORD_HEX_TO_PIXEL(): Eventually either move this to GPU or at least use SIMD.
 pub fn coord_hex_to_pixel(v_id: f64, u_id: f64, x_size: f64, y_size: f64, hex_side: f64, 
 			x_ofs: f64, y_ofs: f64, 
 	) -> (f64, f64, bool) 

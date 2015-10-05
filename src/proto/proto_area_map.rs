@@ -126,8 +126,8 @@ impl ProtoAreaMap {
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
 	) -> ProtoAreaMap {
-		assert!(width > cmn::SYNAPSE_SPAN);
-		assert!(height > cmn::SYNAPSE_SPAN);
+		assert!(width > cmn::SYNAPSE_REACH * 2);
+		assert!(height > cmn::SYNAPSE_REACH * 2);
 
 		let aff_areas = match aff_areas_opt {
 			Some(ae) => ae,

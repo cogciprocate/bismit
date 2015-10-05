@@ -33,9 +33,9 @@ const REPEATS_PER_IMAGE: usize 				= 4;
 
 /* Eventually move defines to a config file or some such */
 pub fn define_protolayer_maps() -> ProtoLayerMaps {
-	let mut cort_regs: ProtoLayerMaps = ProtoLayerMaps::new();
+	let mut proto_layer_maps: ProtoLayerMaps = ProtoLayerMaps::new();
 
-	cort_regs.add(ProtoLayerMap::new("visual", Sensory)
+	proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
 		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
 		//.layer("olfac", 1, layer::DEFAULT, Axonal(Horizontal))
@@ -50,15 +50,15 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
 	);
 
-	cort_regs.add(ProtoLayerMap::new("external", Thalamic)
+	proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
 		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial))
 	);
 
-	cort_regs
+	proto_layer_maps
 }
 
 pub fn define_protoareas() -> ProtoAreaMaps {
-	let area_side = 64 as u32;
+	let area_side = 48 as u32;
 
 	let mut protoareas = ProtoAreaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
@@ -84,7 +84,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			Protoinput::IdxReader { 
 				file_name: "data/train-images-idx3-ubyte", 
 				repeats: REPEATS_PER_IMAGE, 
-				scale: 1.4,
+				scale: 1.3, // 1.4 seems the best side but something weird is afoot!
 			},
 
 			None, 
@@ -97,18 +97,19 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			// area_side / 2, area_side / 2,
 			// 128, 128,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-			Some(vec!["b1"]),
-			//None,
+			//Some(vec!["b1"]),
+			None,
 		)
 
-		.area("b1", "visual", 
-			// area_side * 2, area_side * 2,			
-			// area_side, area_side,
-			32, 32,
-		 	None,		 	
-		 	// Some(vec!["a1"]),
-		 	None,
-		)
+		// .area("b1", "visual", 
+		// 	// area_side * 2, area_side * 2,			
+		// 	//area_side, area_side,
+		// 	//32, 32,
+		// 	256, 256,
+		//  	None,		 	
+		//  	// Some(vec!["a1"]),
+		//  	None,
+		// )
 
 		// .area("a1", "visual", area_side, area_side, None, None)
 	;
@@ -145,6 +146,7 @@ pub fn run(autorun_iters: i32) -> bool {
 
 		// area.disable_ssts = true;
 		// area.disable_mcols = true;
+
 		// area.disable_learning = true;
 		// area.disable_regrowth = true;		
 	}

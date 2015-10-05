@@ -6,7 +6,13 @@ use ocl::{ Envoy, WorkSize, OclProgQueue, EnvoyDimensions, OclNum };
 use interactive::{ input_czar, InputCzar, InputKind };
 use super::hybrid;
 use super::{ TestBed };
+ 
 
+
+// TEST THAT:
+//		- VECTORIZED AND NON-VECTORIZED INDEX RESOLUTION FUNCTIONS RETURN THE SAME RESULTS
+// 		- KERNEL CALCULATED AXON INDEXES FALL WITHIN THE CORRECT RANGE (ON THE APPROPRIATE SLICE)
+// 		- 
 
 
 pub fn test_axn_idxs(testbed: &TestBed) {
