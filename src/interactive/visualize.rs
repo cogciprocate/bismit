@@ -84,7 +84,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			Protoinput::IdxReader { 
 				file_name: "data/train-images-idx3-ubyte", 
 				repeats: REPEATS_PER_IMAGE, 
-				scale: 1.3, // 1.4 seems the best side but something weird is afoot!
+				scale: 1.3,
 			},
 
 			None, 
@@ -97,19 +97,19 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			// area_side / 2, area_side / 2,
 			// 128, 128,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-			//Some(vec!["b1"]),
-			None,
+			Some(vec!["b1"]),
+			//None,
 		)
 
-		// .area("b1", "visual", 
-		// 	// area_side * 2, area_side * 2,			
-		// 	//area_side, area_side,
-		// 	//32, 32,
-		// 	256, 256,
-		//  	None,		 	
-		//  	// Some(vec!["a1"]),
-		//  	None,
-		// )
+		.area("b1", "visual", 
+			// area_side * 2, area_side * 2,			
+			//area_side, area_side,
+			//32, 32,
+			256, 256,
+		 	None,		 	
+		 	// Some(vec!["a1"]),
+		 	None,
+		)
 
 		// .area("a1", "visual", area_side, area_side, None, None)
 	;
@@ -137,7 +137,9 @@ pub fn run(autorun_iters: i32) -> bool {
 	let inhib_layer_name = "iv_inhib";
 	let area_dims = cortex.area(&area_name).dims().clone();
 
+	/* ************************* */
 	/* ***** DISABLE STUFF ***** */	
+	/* ************************* */
 	for (area_name, area) in &mut cortex.areas {
 		// area.psal_mut().dens_mut().syns.set_offs_to_zero();
 		// area.bypass_inhib = true;
@@ -151,9 +153,6 @@ pub fn run(autorun_iters: i32) -> bool {
 		// area.disable_regrowth = true;		
 	}
 	/* ************************* */
-	/* ************************* */
-
-
 	/* ************************* */
 	/* ************************* */
 

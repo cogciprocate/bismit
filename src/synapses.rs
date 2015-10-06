@@ -73,10 +73,14 @@ impl Synapses {
 		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
 		let src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
-		let mut src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl); 
-		let mut src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl);
-		// let src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl); 
-		// let src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
+
+
+		//let src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl); // *****
+		//let src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl); // *****
+		let src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl); // *****
+		let src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl); // *****
+
+
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
 
 		// KERNELS
@@ -188,8 +192,10 @@ impl Synapses {
 			let syn_idn = syn_idz + syns_per_layer_tuft as usize;
 
 			if init && DEBUG_GROW {
-				println!("                \
-					SYNAPSES::GROW()[INIT]: \"{}\" ({:?}): src_slc_ids: {:?}, syns_per_layer_tuft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind, src_slc_ids, syns_per_layer_tuft, syn_idz, syn_idn);	
+				println!("{mt}{mt}{mt}{mt}{mt}\
+					SYNAPSES::GROW()[INIT]: \"{}\" ({:?}): src_slc_ids: {:?}, \
+					syns_per_layer_tuft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind, 
+					src_slc_ids, syns_per_layer_tuft, syn_idz, syn_idn, mt = cmn::MT);	
 			}
 
 			for syn_idx in syn_idz..syn_idn {
@@ -206,6 +212,7 @@ impl Synapses {
 		self.strengths.write();
 		self.src_slc_ids.write();
 		self.src_col_v_offs.write();	
+		self.src_col_u_offs.write();
 	}
 
 	fn regrow_syn(&mut self, 
@@ -231,10 +238,12 @@ impl Synapses {
 			};
 
 			self.src_slc_ids[syn_idx] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
-			// self.src_col_u_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].1;
-			// self.src_col_v_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].0;
-			// self.src_col_v_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
-			// self.src_col_u_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
+
+			self.src_col_u_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].1; // *****
+			self.src_col_v_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].0; // *****
+			// self.src_col_v_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng); // *****
+			// self.src_col_u_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng); // *****
+
 			self.strengths[syn_idx] = (self.src_col_v_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
 
 			let new_ofs = AxnOfs { 

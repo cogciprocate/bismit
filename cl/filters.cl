@@ -71,14 +71,16 @@ __kernel void retina(
 
 	// int const neighbor_avg = neighbors_sum / neighbor_count;	
 
-	int const every_two = (cel_idx + v_id) & 1;
-	int const every_four = ((cel_idx & 3) >> 1) ^ every_two;
+	int const one_of_two = cel_idx & 1;
+	// int const one_of_two = (cel_idx + v_id) & 1; // UNNECESSARY OFFSET FLIP - testing purposes and what not
+
+	int const two_of_four = ((cel_idx & 3) >> 1) ^ one_of_two;
 
 	//int const is_fractal_thingy = mul24(cel_idx, cel_idx + 1) & 1;
 
 	// INTRODUCE A SLIGHT FRACTAL TO DISRUPT THE NATURAL TENDENCY TO FORM LINES
-	int const is_off_cen_cel = every_two; // ^ is_fractal_thingy;
-	int const is_large_cel = every_four;
+	int const is_off_cen_cel = one_of_two; // ^ is_fractal_thingy;
+	int const is_large_cel = two_of_four;
 
 	int const radius = is_large_cel ? INHIB_LARGE_CELL_RADIUS : INHIB_SMALL_CELL_RADIUS;
 

@@ -118,9 +118,11 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 	}
 
 	if true {	
-		print!("\nPYRAMIDAL SYNAPSE SOURCE COLUMN OFFSETS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_col_v_offs.print(1 << 11, None, None, true);
-	}
+		print!("\nPYRAMIDAL SYNAPSE SOURCE V OFFSETS: ");
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_col_v_offs.print(1 << 10, None, None, true);
+		print!("\nPYRAMIDAL SYNAPSE SOURCE U OFFSETS: ");
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_col_u_offs.print(1 << 10, None, None, true);
+	}	
 
 	if true {
 		print!("\nPYRAMIDAL SYNAPSE STRENGTHS: ");
