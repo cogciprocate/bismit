@@ -7,7 +7,7 @@ Bismit is one of the first of the next paradigm of learning networks. Going beyo
 
 Intended to be used as a platform for quickly prototyping and testing completely different arrangements of layer structure within a cortical area, as well as different arrangements of connections between cortical areas. Layers can be composed using a simple syntax using intelligent defaults and optional arguments (such as the .apical argument below):
 
-'''
+```
 proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
 		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
 		.layer("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
@@ -22,11 +22,11 @@ proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
 
 proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
 		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial)));
-'''
+```
 
 Likewise for areas:
 
-'''
+```
 let proto_area_maps = ProtoAreaMaps::new()
 	.area_ext("v0", "external", 64, 64,
 		Protoinput::IdxReader { 
@@ -46,7 +46,7 @@ let proto_area_maps = ProtoAreaMaps::new()
 	.area("b1", "visual", 48, 48, None,	Some(vec!["a1"])),
 
 	.area("a1", "visual", 32, 32, None, None);
-'''
+```
 
 Bismit is written in Rust and OpenCL C and is in an unstable pre-alpha stage. Full basic functionality is expected by the end 2015.
 
