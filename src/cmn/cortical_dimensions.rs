@@ -71,23 +71,6 @@ impl CorticalDimensions {
 		self.v_size
 	}
 
-	/*pub fn u_size_l2(&self) -> u8 {
-		self.u_size_l2
-	}
-
-	pub fn v_size_l2(&self) -> u8 {
-		self.v_size_l2
-	}
-
-	pub fn u_size(&self) -> u32 {
-		1 << self.u_size_l2 as u32
-	}
-
-	pub fn v_size(&self) -> u32 {
-		1 << self.v_size_l2 as u32
-	}
-	*/
-
 	pub fn depth(&self) -> u8 {
 		self.depth
 	}
@@ -105,7 +88,6 @@ impl CorticalDimensions {
 	// COLUMNS(): 2D Area of a slc measured in cell sides
 	pub fn columns(&self) -> u32 {
 		self.v_size * self.u_size
-		//1 << (self.v_size_l2 + self.u_size_l2) as u32
 	}
 
 	// CELLS(): 3D Volume of area measured in cells
@@ -135,7 +117,6 @@ impl CorticalDimensions {
 	}
 
 	pub fn per_cel(&self) -> u32 {
-		//(1 << self.per_tuft_l2_left()) as u32
 		len_components(1, self.per_tuft_l2, self.tufts_per_cel)
 	}
 
@@ -228,17 +209,35 @@ fn len_components(cells: u32, per_tuft_l2: i8, tufts_per_cel: u32) -> u32 {
 
 
 
-#[cfg(test)]
-mod tests {
-	use super::*;
 
-	#[test]
-	fn test_len() {
-
-		// Actually test the damn thing...
-
+	/*pub fn u_size_l2(&self) -> u8 {
+		self.u_size_l2
 	}
-}
+
+	pub fn v_size_l2(&self) -> u8 {
+		self.v_size_l2
+	}
+
+	pub fn u_size(&self) -> u32 {
+		1 << self.u_size_l2 as u32
+	}
+
+	pub fn v_size(&self) -> u32 {
+		1 << self.v_size_l2 as u32
+	}
+	*/
+
+// #[cfg(test)]
+// mod tests {
+// 	use super::*;
+
+// 	#[test]
+// 	fn test_len() {
+
+// 		// Actually test the damn thing...
+
+// 	}
+// }
 
 
 

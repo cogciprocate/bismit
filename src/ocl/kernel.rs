@@ -11,7 +11,7 @@ use libc;
 //use std::default::{ Default };
 
 // use cmn;
-use super::{ WorkSize, Envoy };
+use super::{ WorkSize, Envoy, OclNum };
 
 
 pub struct Kernel {
@@ -62,7 +62,7 @@ impl Kernel {
 		self
 	}
 
-	pub fn arg_env<T: Integer>(mut self, envoy: &Envoy<T>) -> Kernel {
+	pub fn arg_env<T: OclNum>(mut self, envoy: &Envoy<T>) -> Kernel {
 		self.new_arg_envoy(Some(envoy));
 		self
 	}
@@ -78,7 +78,7 @@ impl Kernel {
 		self
 	}
 
-	pub fn arg_env_named<T: Integer>(mut self, name: &'static str,  envoy_opt: Option<&Envoy<T>>) -> Kernel {
+	pub fn arg_env_named<T: OclNum>(mut self, name: &'static str,  envoy_opt: Option<&Envoy<T>>) -> Kernel {
 		let arg_idx = self.new_arg_envoy(envoy_opt);
 		self.named_args.insert(name, arg_idx);
 		self
@@ -90,9 +90,9 @@ impl Kernel {
 	}
 
 
-	pub fn new_arg_envoy<T: Integer>(&mut self, envoy_opt: Option<&Envoy<T>>) -> u32 {
+	pub fn new_arg_envoy<T: OclNum>(&mut self, envoy_opt: Option<&Envoy<T>>) -> u32 {
 		let buf = match envoy_opt {
-			Some(envoy) => envoy.buf,
+			Some(envoy) => envoy.buf(),
 			None => ptr::null_mut()
 		};
 
@@ -171,12 +171,12 @@ impl Kernel {
 	}
 
 	// <<<<< CHECK THAT NAME EXISTS AND GIVE A BETTER ERROR MESSAGE >>>>>
-	pub fn set_arg_env_named<T>(&mut self, name: &'static str, envoy: &Envoy<T>) {
+	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, envoy: &Envoy<T>) {
 			//	TODO: ADD A CHECK FOR A VALID NAME (KEY)
 		
 		println!("\nset_arg_env_named(): name: {}, named_args: {:?}", name, self.named_args);
 		let arg_idx = self.named_args[name];
-		let buf = envoy.buf;
+		let buf = envoy.buf();
 
 		self.set_kernel_arg(
 			arg_idx,

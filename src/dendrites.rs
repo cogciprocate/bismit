@@ -29,7 +29,7 @@ pub struct Dendrites {
 	pub states_raw: Envoy<ocl::cl_uchar>,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub energies: Envoy<ocl::cl_uchar>,
-	pub syns: Synapses,
+	syns: Synapses,
 }
 
 impl Dendrites {
@@ -138,10 +138,18 @@ impl Dendrites {
 		self.states_raw.read();
 		self.states.read();
 		self.syns.confab();
-	} 
+	}
 
 	pub fn dims(&self) -> &CorticalDimensions {
 		&self.dims
+	}
+
+	pub fn syns(&self) -> &Synapses {
+		&self.syns
+	}
+
+	pub fn syns_mut(&mut self) -> &mut Synapses {
+		&mut self.syns
 	}
 
 }

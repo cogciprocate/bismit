@@ -1,4 +1,4 @@
-BISMIT
+#BISMIT
 
 Biologically Inspired Sensory Motor Inference Tool: 
 A model of the neocortex for interpreting data and taking action based on prediction.
@@ -9,6 +9,6 @@ Bismit is written in Rust and OpenCL C and is in an unstable pre-alpha stage. Fu
 
 
 
-POSTSCRIPT (move this elsewhere): 
+[//]: # POSTSCRIPT (move this elsewhere): 
 
-We are now within close reach, eight to ten years or a factor of about a thousand, of matching the processing power of the human neocortex on a $1000 device. By harnessing the inexpensive parallel computing power offered by GPGPUs (or any other OpenCL device) we can build a platform to best utilize that amount of power, intended for maximum performance with maximum flexibility in computing device interoperability.
+[//]: # We are now within close reach, eight to ten years or a factor of about a thousand, of matching the processing power of the human neocortex on a $1000 device. By harnessing the inexpensive parallel computing power offered by GPGPUs (or any other OpenCL device) we can build a platform to best utilize that amount of power, intended for maximum performance with maximum flexibility in computing device interoperability.

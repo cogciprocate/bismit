@@ -92,14 +92,14 @@ impl SpinyStellateLayer {
 			WorkSize::TwoDim(dims.tufts_per_cel() as usize, grp_count as usize))
 		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&axns.states)
-			.arg_env(&dens.syns.states)
+			.arg_env(&dens.syns().states)
 			.arg_scl(lyr_axn_idz)
 			.arg_scl(cols_per_grp)
 			.arg_scl(syns_per_tuft_l2)
 			//.arg_scl(cels_per_tuft)
 			.arg_scl_named::<u32>("rnd", None)
 			.arg_env(&aux.ints_0)
-			.arg_env(&dens.syns.strengths)
+			.arg_env(&dens.syns().strengths)
 		;
 
 
@@ -107,13 +107,13 @@ impl SpinyStellateLayer {
 
 		/*let kern_ltp_old = ocl.new_kernel("sst_ltp_old", WorkSize::TwoDim(dims.depth() as usize, 16 as usize)) // ***** FIX
 		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
-			.arg_env(&dens.syns.states)
-			.arg_env(&dens.syns.states)
-			.arg_env(&dens.syns.states)
+			.arg_env(&dens.syns().states)
+			.arg_env(&dens.syns().states)
+			.arg_env(&dens.syns().states)
 			.arg_scl(syns_per_tuft_l2 as u32)
 			.arg_scl_named::<u32>("rnd", None)
 			//.arg_env(&aux.ints_0)
-			.arg_env(&dens.syns.strengths)
+			.arg_env(&dens.syns().strengths)
 			//.arg_env(&axns.states)
 		;*/
 
@@ -183,20 +183,20 @@ impl SpinyStellateLayer {
 	pub fn print_cel(&mut self, cel_idx: usize) {
 		let emsg = "SpinyStellateLayer::print()";
 
-		let cel_syn_idz = (cel_idx << self.dens.syns.dims().per_tuft_l2_left()) as usize;
-		let per_cel = self.dens.syns.dims().per_cel() as usize;
+		let cel_syn_idz = (cel_idx << self.dens.syns().dims().per_tuft_l2_left()) as usize;
+		let per_cel = self.dens.syns().dims().per_cel() as usize;
 		let cel_syn_range = cel_syn_idz..(cel_syn_idz + per_cel);
 
 		println!("\ncell.state[{}]: {}", cel_idx, self.dens.states[cel_idx]);
 
 		println!("cell.syns.states[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens.syns.states.vec()[cel_syn_range.clone()]);
+		cmn::print_vec_simple(&self.dens.syns().states.vec()[cel_syn_range.clone()]);
 
 		println!("cell.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens.syns.strengths.vec()[cel_syn_range.clone()]);
+		cmn::print_vec_simple(&self.dens.syns().strengths.vec()[cel_syn_range.clone()]);
 
 		println!("cell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens.syns.src_col_v_offs.vec()[cel_syn_range.clone()]);
+		cmn::print_vec_simple(&self.dens.syns().src_col_v_offs.vec()[cel_syn_range.clone()]);
 	}
 
 	pub fn dens(&self) -> &Dendrites {

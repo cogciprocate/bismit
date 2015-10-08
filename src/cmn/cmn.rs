@@ -254,6 +254,13 @@ pub fn load_builtin_kernel_files(build_options: &mut BuildOptions) {
 =============================================================================*/
 
 
+// CEL_IDX_3D(): Simple index resolution for a cell within a particular layer
+pub fn cel_idx_3d(depth: u8, slc_id: u8, v_size: u32, v_id: u32, u_size: u32, u_id: u32) -> u32 {
+	assert!(slc_id < depth);
+	(slc_id as u32 * v_size * u_size) + (v_id * u_size) + u_id
+}
+
+
 
 pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
 	assert!(radius >= 0);

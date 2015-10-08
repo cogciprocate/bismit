@@ -10,7 +10,7 @@
 use std::collections::{ /*BTreeMap,*/ HashMap };
 use std::ops::{ Range };
 
-use cmn::{ self, CorticalDimensions, Renderer, Sdr };
+use cmn::{ self, CorticalDimensions, Renderer, Sdr, DataCellLayer };
 use map::{ AreaMap };
 use ocl::{ self, OclProgQueue, OclContext, /*WorkSize,*/ Envoy, /*BuildOptions,*/ /*BuildOption*/ };
 use proto::{ /*ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap,*/ Cellular, /*Axonal, Spatial, Horizontal, Sensory,*/ Pyramidal, SpinyStellate, Inhibitory, layer, /*Protocell,*/ DendriteKind };
@@ -364,14 +364,14 @@ impl CorticalArea {
 	// <<<<< TODO: DEPRICATE IN FAVOR OF ENVOY::WRITE_DIRECT() >>>>>
 	pub fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr) {
 		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-		ocl::enqueue_read_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
+		ocl::enqueue_read_buffer(sdr, self.axns.states.buf(), self.ocl.queue(), axn_range.start as usize);
 	}
 
 	// WRITE_TO_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
 	// <<<<< TODO: DEPRICATE IN FAVOR OF ENVOY::WRITE_DIRECT() >>>>>
 	pub fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr) {
 		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-		ocl::enqueue_write_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
+		ocl::enqueue_write_buffer(sdr, self.axns.states.buf(), self.ocl.queue(), axn_range.start as usize);
 	}
 
 	pub fn write_to_slice(&self, slc_id: u8, sdr: &Sdr) {
@@ -511,7 +511,7 @@ impl Drop for CorticalArea {
 
 	// pub fn init_kernels(&mut self) {
 	// 	//self.axns.init_kernels(&self.mcols.asps, &self.mcols, &self.aux)
-	// 	//self.mcols.dens.syns.init_kernels(&self.axns, ocl);
+	// 	//self.mcols.dens.syns().init_kernels(&self.axns, ocl);
 
 	// 	let emsg = "cortical_area::CorticalArea::init_kernels(): Invalid Primary Spatial Associative Layer Name.";
 

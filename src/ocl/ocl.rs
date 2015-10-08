@@ -175,11 +175,11 @@ impl OclProgQueue {
 	}
 
 
-	pub fn new_write_buffer<T>(&self, data: &[T]) -> cl_h::cl_mem {
+	pub fn new_write_buffer<T: OclNum>(&self, data: &[T]) -> cl_h::cl_mem {
 		super::new_write_buffer(data, self.context)
 	}
 
-	pub fn new_read_buffer<T>(&self, data: &[T]) -> cl_h::cl_mem {
+	pub fn new_read_buffer<T: OclNum>(&self, data: &[T]) -> cl_h::cl_mem {
 		super::new_read_buffer(data, self.context)
 	}
 
@@ -191,7 +191,7 @@ impl OclProgQueue {
 		unsafe {
 			let err = cl_h::clEnqueueWriteBuffer(
 						self.queue,
-						src.buf,
+						src.buf(),
 						cl_h::CL_TRUE,
 						0,
 						(src.vec().len() * mem::size_of::<T>()) as libc::size_t,
@@ -205,7 +205,7 @@ impl OclProgQueue {
 	}
 
 
-	pub fn enqueue_read_buffer<T>(
+	pub fn enqueue_read_buffer<T: OclNum>(
 					&self,
 					data: &[T],
 					buffer: cl_h::cl_mem, 
@@ -213,7 +213,7 @@ impl OclProgQueue {
 		super::enqueue_read_buffer(data, buffer, self.queue, 0);
 	}
 
-	pub fn enqueue_copy_buffer<T>(
+	pub fn enqueue_copy_buffer<T: OclNum>(
 					&self,
 					src: &Envoy<T>,		//	src_buffer: cl_mem,
 					dst: &Envoy<T>,		//	dst_buffer: cl_mem,
@@ -224,8 +224,8 @@ impl OclProgQueue {
 		unsafe {
 			let err = cl_h::clEnqueueCopyBuffer(
 				self.queue,
-				src.buf,				//	src_buffer,
-				dst.buf,				//	dst_buffer,
+				src.buf(),				//	src_buffer,
+				dst.buf(),				//	dst_buffer,
 				src_offset as u64,
 				dst_offset as u64,
 				len_copy_bytes as u64,

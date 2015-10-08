@@ -3,7 +3,7 @@
 // use super::input_czar;
 use cortex::{ Cortex };
 // use synapses::{ Synapses };
-// use cmn;
+use cmn::{ DataCellLayer };
 
 
 const EMSG: &'static str = "tests::output_czar::";
@@ -29,16 +29,16 @@ pub fn print_sense_only(cortex: &mut Cortex, area_name: &str) {
 	}
 	if false {
 		print!("\nSPINY STELLATE SYNAPSE STRENGTHS: ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns.strengths.print(1 << 0, None, Some((256, 288)), true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().strengths.print(1 << 0, None, Some((256, 288)), true);
 	}
 	if false{	
 		print!("\nSPINY STELLATE SYNAPSE SOURCE SPINY STELLATE OFFSETS: ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_col_v_offs.print(1 << 0, None, Some((256, 288)), true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().src_col_v_offs.print(1 << 0, None, Some((256, 288)), true);
 	}
 
 	if false {
 		print!("\nPYRAMIDAL DENDRITE SYNAPSE STRENGTHS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.strengths.print(1 << 0, None, Some((256, 319)), true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().strengths.print(1 << 0, None, Some((256, 319)), true);
 	}
 }
 
@@ -48,28 +48,28 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 	/* SPINY STELLATE, SPINY STELLATE SYNAPSE, SPINY STELLATE RAW STATES */
 			/*if true {	
 			print!("\nSPINY STELLATE SYNAPSE STATES: ");
-			cortex.area_mut(area_name).psal_mut().dens_mut().syns.states.print(1 << 3, Some((1, 255)), None, true);
+			cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().states.print(1 << 3, Some((1, 255)), None, true);
 		}*/
 	if true {	
 		print!("\nSPINY STELLATE SYNAPSE STATES: ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns.states.print(1 << 10, Some((1, 255)), None, true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().states.print(1 << 10, Some((1, 255)), None, true);
 	}
 
 	if true {
 		print!("\nSPINY STELLATE SYNAPSE SOURCE ROW IDS: ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_slc_ids.print(1 << 11, None, None, true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 11, None, None, true);
 	} else if false {
 		print!("\nSPINY STELLATE SYNAPSE SOURCE ROW IDS(0 - 1300): ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_slc_ids.print(1 << 0, None, Some((0, 1300)), true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 0, None, Some((0, 1300)), true);
 	}
 
 	if true {	
 		print!("\nSPINY STELLATE SYNAPSE SOURCE SPINY STELLATE OFFSETS: ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns.src_col_v_offs.print(1 << 11, None, None, true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().src_col_v_offs.print(1 << 11, None, None, true);
 	}
 	if true {
 		print!("\nSPINY STELLATE SYNAPSE STRENGTHS: ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns.strengths.print(1 << 11, None, None, true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().strengths.print(1 << 11, None, None, true);
 	}
 	if false {
 		print!("\nSPINY STELLATE PEAK COL IDS: ");
@@ -101,40 +101,40 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 	/* PYRAMIDAL */
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE STATES: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states.print(1 << 12, Some((1, 255)), None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().states.print(1 << 12, Some((1, 255)), None, true);
 	} else if false {	
 		print!("\nPYRAMIDAL SYNAPSE STATES (all): ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states.print(1 << 0, Some((0, 255)), None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().states.print(1 << 0, Some((0, 255)), None, true);
 		//print!("\nPYRAMIDAL SYNAPSE STATES (524288 - 524588): ");
-		//cortex.area_mut(area_name).ptal_mut().dens_mut().syns.states.print(1 << 1, Some((0, 255)), Some((524288, 524588)), true);
+		//cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().states.print(1 << 1, Some((0, 255)), Some((524288, 524588)), true);
 	}
 
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE SOURCE SLICE IDS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_slc_ids.print(1 << 11, None, None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 11, None, None, true);
 	} else if false {
 		print!("\nPYRAMIDAL SYNAPSE SOURCE SLICE IDS(0 - 1300): ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_slc_ids.print(1 << 1, None, Some((0, 1300)), true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 1, None, Some((0, 1300)), true);
 	}
 
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE SOURCE V OFFSETS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_col_v_offs.print(1 << 10, None, None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().src_col_v_offs.print(1 << 10, None, None, true);
 		print!("\nPYRAMIDAL SYNAPSE SOURCE U OFFSETS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.src_col_u_offs.print(1 << 10, None, None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().src_col_u_offs.print(1 << 10, None, None, true);
 	}	
 
 	if true {
 		print!("\nPYRAMIDAL SYNAPSE STRENGTHS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.strengths.print(1 << 11, None, None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().strengths.print(1 << 11, None, None, true);
 	} else if false {
 		print!("\nPYRAMIDAL SYNAPSE STRENGTHS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.strengths.print(1 << 0, Some((7, 127)), None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().strengths.print(1 << 0, Some((7, 127)), None, true);
 	}
 
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE FLAG SETS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns.flag_sets.print(1 << 14, None, None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().flag_sets.print(1 << 14, None, None, true);
 	}
 
 	if true {	

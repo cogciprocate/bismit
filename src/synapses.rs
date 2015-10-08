@@ -23,7 +23,42 @@ use cortical_area:: { Aux };
 // 		- [high priority] Testing: 
 // 			- [INCOMPLETE] Check for uniqueness and correct distribution frequency among src_slcs and cols
 // 		- [low priority] Optimization:
-// 			- [COMPLETE] Obviously grow() and it's ilk need a lot of work
+// 			- [Complete] Obviously grow() and it's ilk need a lot of work
+/*
+	Synapse index space (for each of the synapse property Envoys) is first divided by tuft, then slice, then cell, then synapse. This means that even though a cell may have three (or any number of) tufts, and that you would naturally tend to think that synapse space would be first divided by slice, then cell, then tuft, tufts are moved to the front of that list. The reason for this is nuanced but it basically boils down to performance. When a kernel is processing synapses it's best to process tuft-at-a-time as the first order iteration rather than slice or cell-at-a-time because the each tuft inherently shares synapses whos axon sources are going to tend to be similar, making cache performance consistently better. This makes indexing very confusing so there's a definite trade off in complexity (for us poor humans). 
+
+	Calculating a particular synapse index is shown below in syn_idx(). This is (hopefully) the exact same method the kernel uses for addressing: tuft is most significant, followed by slice, then cell, then synapse. Dendrites are not necessary to calculate a synapses index unless you happen only to have a synapses id (address) within a dendrite. Mostly the id within a cell is used and the dendrite is irrelevant, especially on the host side. 
+
+	Synapse space breakdown (m := n - 1, n being the number of elements in any particular segment):
+		- Tuft[0]
+			- Slice[0]
+				- Cell[0]
+					- Synapse[0]
+					...
+					- Synapse[m]
+				...
+				- Cell[m]
+					...
+			- Slice[1]
+			 	...
+			...
+			- Slice[m]
+			 	...
+		...
+		- Tuft[m]
+			...
+
+	So even though tufts are, conceptually, children (sub-components) of a cell:
+	|-->
+	|	- Slice
+	|		- Cell
+	|--------<	- Tuft
+					- Dendrite
+						-Synapse
+
+	 ... for indexing purposes tufts are parent to slices, which are parent to cells (then dendrites, then synapses).
+
+*/
 
 
 const DEBUG_NEW: bool = true;
@@ -229,6 +264,7 @@ impl Synapses {
 			//let mut print_str: String = String::with_capacity(10); 
 			//let mut tmp_str = format!("[({})({})({})=>", self.src_slc_ids[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
 			//print_str.push_str(&tmp_str);
+		let syn_span = 2 * cmn::SYNAPSE_REACH as i8;
 
 		loop {
 			let old_ofs = AxnOfs { 
@@ -239,18 +275,29 @@ impl Synapses {
 
 			self.src_slc_ids[syn_idx] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
 
-			self.src_col_u_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].1; // *****
-			self.src_col_v_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].0; // *****
-			// self.src_col_v_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng); // *****
-			// self.src_col_u_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng); // *****
+			self.src_col_v_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].0; 
+			self.src_col_u_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].1;			
+			// self.src_col_v_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
+			// self.src_col_u_offs[syn_idx] = src_col_offs_range.ind_sample(&mut self.rng);
 
-			self.strengths[syn_idx] = (self.src_col_v_offs[syn_idx] >> 6) * strength_init_range.ind_sample(&mut self.rng);
+			let intensity_reduction_l2 = 3;
+
+			// <<<<< TODO: NEED SOMETHING SIMPLER/FASTER TO INIT STRENGTHS >>>>>
+			let syn_str_intensity = (syn_span - 
+					(self.src_col_v_offs[syn_idx].abs() + 
+					self.src_col_u_offs[syn_idx].abs())
+				) >> intensity_reduction_l2;
+
+			self.strengths[syn_idx] = syn_str_intensity * strength_init_range.ind_sample(&mut self.rng);
 
 			let new_ofs = AxnOfs { 
 				slc: self.src_slc_ids[syn_idx], 
 				v_ofs: self.src_col_v_offs[syn_idx],
 				u_ofs: self.src_col_u_offs[syn_idx],
 			};
+
+			// <<<<< TODO: VERIFY AXON INDEX SAFETY >>>>>
+			// 	- Will need to know u and v coords of host cell
 
 			if self.src_idx_cache.insert(syn_idx, old_ofs, new_ofs) {
 				//print_str.push_str("$"); // DEBUG
@@ -298,7 +345,7 @@ impl Synapses {
 
 	pub fn dims(&self) -> &CorticalDimensions {
 		&self.dims
-	}
+	}	
 
 	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
 	// pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
@@ -374,11 +421,110 @@ struct AxnOfs {
 
 
 #[cfg(test)]
-mod tests {
-	use super::*;
+pub mod tests {
+	#![allow(non_snake_case)]
+	use rand::distributions::{ IndependentSample, Range };
+
+	//use cortex::{ Cortex };
+	use super::{ Synapses };
+	//use pyramidals::{ PyramidalLayer };
+	use pyramidals::tests::{ CelProps };
+	use cmn::{ DataCellLayer };
+
+	#[derive(Debug)]
+	pub struct SynProps {
+		pub idx: u32,	
+		pub tuft_id: u32,
+		pub cel_syn_id: u32,		
+		//pub per_tuft: u32,
+		pub cel_props: CelProps,
+	}
+
+	impl SynProps {
+		pub fn new<D: DataCellLayer>(tuft_id: u32, cel_syn_id: u32, 
+					cel_props: CelProps, cels: &Box<D>
+			) -> SynProps 
+		{
+			// let tuft_syn_idz = tuft_id * cels.dens().syns().dims().per_tuft();
+			// let tuft_cel_syn_idz = tuft_syn_idz * cel_props.idx * cels.dens().syns().dims().per_cel() as usize;
+			// let syn_idx = tuft_syn_idz + tuft_syn_id as usize;
+			// let per_tuft = cels.dens().syns().dims().per_tuft();
+			let syn_idx = syn_idx(cels.dens().syns(), tuft_id, cel_props.idx, cel_syn_id);
+
+			SynProps { 
+				idx: syn_idx, 
+				tuft_id: tuft_id,
+				cel_syn_id: cel_syn_id, 				
+				//per_tuft: per_tuft, 
+				cel_props: cel_props, 
+			}
+		}
+
+		pub fn new_random<D: DataCellLayer>(cels: &mut Box<D>, cel_props: CelProps) -> SynProps {			
+			let tuft_id_range = Range::new(0, cels.dens().syns().dims().tufts_per_cel());
+			let cel_syn_id_range = Range::new(0, cels.dens().syns().dims().per_tuft());
+
+			let tuft_id = tuft_id_range.ind_sample(&mut cels.dens_mut().syns_mut().rng); 
+			let cel_syn_id = cel_syn_id_range.ind_sample(&mut cels.dens_mut().syns_mut().rng);
+
+			SynProps::new(tuft_id, cel_syn_id, cel_props, cels)
+		}
+	}
+
 
 	#[test]
-	fn test_uniqueness() {
+	fn test_uniqueness_UNIMPLEMENTED() {
+		// UNIMPLEMENTED
+	}
 
+
+
+	// SYN_IDX(): BASICALLY FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
+	// 		- Synapse index space heirarchy:  | Tuft - Slice - Cell - Synapse |
+	// 		- 'cel_idx' already has slice built in to its value
+	pub fn syn_idx(syns: &Synapses, tuft_id: u32, cel_idx: u32, cel_syn_id: u32) -> u32 {
+		//  NOTE: 'syns.dims' expresses dimensions from the perspective of the 
+		//  | Slice - Cell - Tuft - Synapse | heirarchy which is why the function
+		//  names are confusing (see explanation at top of file).
+
+		let tuft_count = syns.dims.tufts_per_cel();
+		let slcs_per_tuft = syns.dims.depth();
+		let cels_per_slc = syns.dims.columns();
+		let syns_per_cel = syns.dims.per_tuft();
+
+		assert!((tuft_count * slcs_per_tuft as u32 * cels_per_slc * syns_per_cel) as usize == syns.states.len());
+		assert!(tuft_id < tuft_count);
+		assert!(cel_idx < slcs_per_tuft as u32 * cels_per_slc);
+		assert!(cel_syn_id < syns_per_cel);
+
+		let syns_per_tuft = slcs_per_tuft as u32 * cels_per_slc * syns_per_cel;
+
+		let tuft_syn_idz = tuft_id * syns_per_tuft;
+		// 'cel_idx' includes slc_id, v_id, and u_id
+		let slc_cel_syn_idz = cel_idx * syns_per_cel;
+		let syn_idx = tuft_syn_idz + slc_cel_syn_idz + cel_syn_id;
+
+		println!("\n#####\n\n\
+			tuft_count: {} \n\
+			slcs_per_tuft: {} \n\
+			cels_per_slc: {}\n\
+			syns_per_cel: {}\n\
+			\n\
+			tuft_id: {},\n\
+			cel_idx: {},\n\
+			cel_syn_id: {}, \n\
+			\n\
+			tuft_syn_idz: {},\n\
+			tuft_cel_slc_syn_idz: {},\n\
+			syn_idx: {},\n\
+			\n\
+			#####", 
+			tuft_count, slcs_per_tuft, 
+			cels_per_slc, syns_per_cel, 
+			tuft_id, cel_idx, cel_syn_id,
+			tuft_syn_idz, slc_cel_syn_idz, syn_idx
+		);
+
+		syn_idx
 	}
 }

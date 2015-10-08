@@ -1,10 +1,10 @@
 
-use cmn::{ self, CorticalDimensions };
-use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
-use cortex::{ self, Cortex };
-use thalamus::{ Thalamus };
-use ocl::{ Envoy, WorkSize, OclContext, OclProgQueue, EnvoyDimensions, BuildOptions, BuildOption };
-use interactive::{ input_czar, InputCzar, InputKind };
+// use cmn::{ self, CorticalDimensions };
+// use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
+use cortex::{ /*self,*/ Cortex };
+// use thalamus::{ Thalamus };
+// use ocl::{ Envoy, WorkSize, OclContext, OclProgQueue, EnvoyDimensions, BuildOptions, BuildOption };
+// use interactive::{ input_czar, InputCzar, InputKind };
 use super::{ hybrid, kernels, testbed, TestBed };
 
 
@@ -18,14 +18,6 @@ use super::{ hybrid, kernels, testbed, TestBed };
 fn test_cortex() {
 	let mut cortex = Cortex::new(testbed::define_protolayer_maps(), testbed::define_protoareas());
 	hybrid::test_cycles(&mut cortex, testbed::PRIMARY_AREA_NAME);
-}
-
-
-
-#[test]
-fn test_learning() {
-	let mut cortex = Cortex::new(testbed::define_protolayer_maps(), testbed::define_protoareas());
-	hybrid::test_learning(&mut cortex, testbed::INHIB_LAYER_NAME, testbed::PRIMARY_AREA_NAME);
 }
 
 

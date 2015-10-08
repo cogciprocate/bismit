@@ -9,11 +9,13 @@ pub use self::cmn::*;
 pub use self::cortical_dimensions::{ CorticalDimensions };
 pub use self::slice_dimensions::{ SliceDimensions };
 //pub use self::area_map::{ AreaMap, SliceMap };
+pub use self::data_cell_layer::{ DataCellLayer };
 pub use self::renderer::{ Renderer };
 //pub use self::prediction::*;
 
 mod cmn;
 mod cortical_dimensions;
+mod data_cell_layer;
 //mod area_map;
 mod slice_dimensions;
 mod renderer;

@@ -35,7 +35,7 @@ pub type SynapseState = Envoy<u8>;
 
 pub struct Envoy<T> {
 	vec: Vec<T>,
-	pub buf: ocl::cl_mem,
+	buf: ocl::cl_mem,
 	padding: u32,
 	//dims: EnvoyDimensions,
 	//pub width: u32,
@@ -153,6 +153,10 @@ impl<T: OclNum> Envoy<T> {
 
 	pub fn vec_mut(&mut self) -> &mut Vec<T> {
 		&mut self.vec
+	}
+
+	pub fn buf(&self) -> ocl::cl_mem {
+		self.buf
 	}
 }
 

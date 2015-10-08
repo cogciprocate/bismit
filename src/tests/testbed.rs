@@ -7,67 +7,138 @@ use ocl::{ /*Envoy, WorkSize,*/ OclContext, OclProgQueue, /*EnvoyDimensions, Bui
 // use super::hybrid;
 // use super::kernels;
 
-pub static PRIMARY_AREA_NAME: &'static str = "v1";
-pub static INHIB_LAYER_NAME: &'static str = "iv_inhib";
+pub static PRIMARY_AREA_NAME: &'static str 	= "v1";
+pub static INHIB_LAYER_NAME: &'static str 	= "iv_inhib";
+const REPEATS_PER_IMAGE: usize 				= 1;
 
-/* Eventually move defines to a config file or some such */
 pub fn define_protolayer_maps() -> ProtoLayerMaps {
-	let mut cort_regs: ProtoLayerMaps = ProtoLayerMaps::new();
+	let mut proto_layer_maps: ProtoLayerMaps = ProtoLayerMaps::new();
 
-	cort_regs.add(ProtoLayerMap::new("visual", Sensory)
+	proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
 		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
 		//.layer("olfac", 1, layer::DEFAULT, Axonal(Horizontal))
-		.layer("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
-		//.layer("nothing", 1, layer::DEFAULT, Axonal(Spatial))
-		.layer("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
+		.layer("eff_in", 0, layer::EFFERENT_INPUT /*| layer::INTERAREA*/, Axonal(Spatial))
+		.layer("aff_in", 0, layer::AFFERENT_INPUT /*| layer::INTERAREA*/, Axonal(Spatial))
 		.layer("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
 		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
 		.layer("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
-		.layer("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
+		.layer("iii", 3, layer::TEMPORAL_ASSOCIATIVE, 
 			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
 	);
 
-	cort_regs.add(ProtoLayerMap::new("external", Thalamic)
+	proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
 		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial))
 	);
 
-	cort_regs
+	proto_layer_maps
 }
 
 pub fn define_protoareas() -> ProtoAreaMaps {
-	let area_side = 32 as u32;
+	let area_side = 64 as u32;
 
-	let protoareas = ProtoAreaMaps::new()
+	let protoareas = ProtoAreaMaps::new()		
 
-		.area_ext("v0", "external", area_side, area_side, 
+		.area_ext("v0", "external", 
+			// area_side * 2, area_side * 2,
+			area_side, area_side,
+			// area_side / 2, area_side / 2, 
 			Protoinput::IdxReader { 
 				file_name: "data/train-images-idx3-ubyte", 
-				repeats: 1,
-				scale: 1.1,
+				repeats: REPEATS_PER_IMAGE, 
+				scale: 1.3,
 			},
 
 			None, 
-			Some(vec![PRIMARY_AREA_NAME]),
+			Some(vec!["v1"]),
 		)
 
-		.area(PRIMARY_AREA_NAME, "visual", area_side, area_side, 
+		.area("v1", "visual", 
+			// area_side * 2, area_side * 2,
+			area_side, area_side,
+			// area_side / 2, area_side / 2,
+			// 128, 128,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
 			Some(vec!["b1"]),
 			//None,
 		)
 
-		.area("b1", "visual", area_side, area_side,
-		 	None,
-		 	//Some(vec!["a1"]),
+		.area("b1", "visual", 
+			// area_side * 2, area_side * 2,			
+			area_side, area_side,
+			//32, 32,
+			//256, 256,
+		 	None,		 	
+		 	// Some(vec!["a1"]),
 		 	None,
 		)
+
+		// .area("a1", "visual", area_side, area_side, None, None)
 	;
 
 	protoareas
 }
+
+// /* Eventually move defines to a config file or some such */
+// pub fn define_protolayer_maps() -> ProtoLayerMaps {
+// 	let mut cort_regs: ProtoLayerMaps = ProtoLayerMaps::new();
+
+// 	cort_regs.add(ProtoLayerMap::new("visual", Sensory)
+// 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
+// 		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
+// 		//.layer("olfac", 1, layer::DEFAULT, Axonal(Horizontal))
+// 		.layer("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
+// 		//.layer("nothing", 1, layer::DEFAULT, Axonal(Spatial))
+// 		.layer("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
+// 		.layer("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
+// 		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
+// 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
+// 		.layer("iv_inhib", 0, layer::DEFAULT, 
+// 			Protocell::new_inhibitory(4, "iv"))
+// 		.layer("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
+// 			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
+// 	);
+
+// 	cort_regs.add(ProtoLayerMap::new("external", Thalamic)
+// 		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial))
+// 	);
+
+// 	cort_regs
+// }
+
+// pub fn define_protoareas() -> ProtoAreaMaps {
+// 	let area_side = 64 as u32;
+
+// 	let protoareas = ProtoAreaMaps::new()
+
+// 		.area_ext("v0", "external", area_side, area_side, 
+// 			Protoinput::IdxReader { 
+// 				file_name: "data/train-images-idx3-ubyte", 
+// 				repeats: 1,
+// 				scale: 1.1,
+// 			},
+
+// 			None, 
+// 			Some(vec![PRIMARY_AREA_NAME]),
+// 		)
+
+// 		.area(PRIMARY_AREA_NAME, "visual", area_side, area_side, 
+// 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
+// 			Some(vec!["b1"]),
+// 			//None,
+// 		)
+
+// 		.area("b1", "visual", area_side, area_side,
+// 		 	None,
+// 		 	//Some(vec!["a1"]),
+// 		 	None,
+// 		)
+// 	;
+
+// 	protoareas
+// }
 
 
 // TESTBED {}: Stripped down cortex/cortical area

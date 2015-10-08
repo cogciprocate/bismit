@@ -63,7 +63,7 @@ mod map;
 mod interactive;
 
 //#[cfg(test)]
-mod tests;
+pub mod tests;
 
 //use num::Integer;
 

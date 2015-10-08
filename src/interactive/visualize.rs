@@ -14,7 +14,7 @@ use encode:: { IdxReader };
 //use proto::layer;
 //use super::synapse_drill_down;
 use interactive::{ /*self, input_czar,*/ output_czar, /*InputCzar, InputKind, InputSource*/ };
-use tests::hybrid;
+//use tests::{ hybrid, /*learning*/ };
 //use chord::{ Chord };
 //use ocl::{ Envoy };
 use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, /*ProtoAreaMap,*/ /*Cellular,*/ Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
@@ -26,9 +26,9 @@ pub const PRINT_DETAILS_EVERY: i32			= 10000;
 
 pub const TOGGLE_DIRS: bool 				= false;
 pub const INTRODUCE_NOISE: bool 			= false;
-pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 5000 };
+pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
 pub const COUNTER_RANDOM: bool				= false;
-const REPEATS_PER_IMAGE: usize 				= 4;
+const REPEATS_PER_IMAGE: usize 				= 1;
 
 
 /* Eventually move defines to a config file or some such */
@@ -103,9 +103,9 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 
 		.area("b1", "visual", 
 			// area_side * 2, area_side * 2,			
-			//area_side, area_side,
+			area_side, area_side,
 			//32, 32,
-			256, 256,
+			//256, 256,
 		 	None,		 	
 		 	// Some(vec!["a1"]),
 		 	None,
@@ -141,7 +141,7 @@ pub fn run(autorun_iters: i32) -> bool {
 	/* ***** DISABLE STUFF ***** */	
 	/* ************************* */
 	for (area_name, area) in &mut cortex.areas {
-		// area.psal_mut().dens_mut().syns.set_offs_to_zero();
+		// area.psal_mut().dens_mut().syns_mut().set_offs_to_zero();
 		// area.bypass_inhib = true;
 		// area.bypass_filters = true;
 		// area.disable_pyrs = true;
@@ -277,15 +277,18 @@ pub fn run(autorun_iters: i32) -> bool {
 					continue;
 
 				} else if "c\n" == in_s {
-					hybrid::test_cycles(&mut cortex, &area_name);
+					println!("\n##### DISABLED #####");
+					//hybrid::test_cycles(&mut cortex, &area_name);
 					continue;
 
 				} else if "l\n" == in_s {
-					hybrid::test_learning(&mut cortex, inhib_layer_name, &area_name);
+					println!("\n##### DISABLED #####");
+					//learning::test_learning_cell_range(&mut cortex, inhib_layer_name, &area_name);
 					continue;
 
 				} else if "a\n" == in_s {
-					hybrid::test_activation_and_learning(&mut cortex, &area_name);
+					println!("\n##### DISABLED #####");
+					//learning::test_learning_activation(&mut cortex, &area_name);
 					continue;
 
 				} else if "f\n" == in_s {

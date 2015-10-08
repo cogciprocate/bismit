@@ -251,10 +251,10 @@ pub fn define_proto_area_maps() -> ProtoAreaMaps {
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_syns");
 		ocl::set_kernel_arg(0, self.cortical_area.axns.states.buf, kern);
-		ocl::set_kernel_arg(1, self.cortical_area.dst_dens.syns.axn_slc_ids.buf, kern);
-		ocl::set_kernel_arg(2, self.cortical_area.dst_dens.syns.axn_col_offs.buf, kern);
-		ocl::set_kernel_arg(3, self.cortical_area.dst_dens.syns.strengths.buf, kern);
-		ocl::set_kernel_arg(4, self.cortical_area.dst_dens.syns.states.buf, kern);
+		ocl::set_kernel_arg(1, self.cortical_area.dst_dens.syns().axn_slc_ids.buf, kern);
+		ocl::set_kernel_arg(2, self.cortical_area.dst_dens.syns().axn_col_offs.buf, kern);
+		ocl::set_kernel_arg(3, self.cortical_area.dst_dens.syns().strengths.buf, kern);
+		ocl::set_kernel_arg(4, self.cortical_area.dst_dens.syns().states.buf, kern);
 
 		//println!("depth_total: {}, depth_cellular: {}, width_syn_slc: {}", depth_total, depth_cellular, width_syn_slc);
 
@@ -275,7 +275,7 @@ pub fn define_proto_area_maps() -> ProtoAreaMaps {
 
 		let kern = ocl::new_kernel(self.ocl.program, "cycle_dens");
 
-		ocl::set_kernel_arg(0, self.cortical_area.dst_dens.syns.states.buf, kern);
+		ocl::set_kernel_arg(0, self.cortical_area.dst_dens.syns().states.buf, kern);
 		ocl::set_kernel_arg(1, self.cortical_area.dst_dens.thresholds.buf, kern);
 		ocl::set_kernel_arg(2, self.cortical_area.dst_dens.states.buf, kern);
 
