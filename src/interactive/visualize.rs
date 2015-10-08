@@ -111,6 +111,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 		 	None,
 		)
 
+
 		// .area("a1", "visual", area_side, area_side, None, None)
 	;
 
