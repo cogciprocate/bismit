@@ -17,12 +17,15 @@ use proto::{ /*ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap,*/ Cel
 
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
-use axons::{ Axons };
+use axon_space::{ AxonSpace };
 use minicolumns::{ Minicolumns };
 use iinn::{ InhibitoryInterneuronNetwork };
 use pyramidals::{ PyramidalLayer };
 use spiny_stellates::{ SpinyStellateLayer };
 use sensory_filter::{ SensoryFilter };
+
+#[cfg(test)]
+pub use self::tests::{ CorticalAreaTest };
 
 
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
@@ -32,7 +35,7 @@ pub struct CorticalArea {
 	pub name: &'static str,
 	pub dims: CorticalDimensions,
 	area_map: AreaMap,
-	pub axns: Axons,
+	pub axns: AxonSpace,
 	pub mcols: Box<Minicolumns>,
 	pub pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,		// MAKE ME PRIVATE -- FIX tests::hybrid
 	pub ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,	// MAKE ME PRIVATE -- FIX tests::hybrid
@@ -90,7 +93,7 @@ impl CorticalArea {
 		//assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);
 		//assert!(depth_cellular > 0, "cortical_area::CorticalArea::new(): Region has no cellular layers.");
 
-		let axns = Axons::new(&area_map, &ocl);
+		let axns = AxonSpace::new(&area_map, &ocl);
 
 		let aux_dims = CorticalDimensions::new(dims.u_size(), dims.v_size(), dims.depth(), 1, 
 			Some(dims.physical_increment()));
@@ -104,7 +107,7 @@ impl CorticalArea {
 		/*=============================================================================
 		================================== DATA CELLS =================================
 		=============================================================================*/
-		// BREAK OFF INTO NEW STRUCT
+		// BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
 
 		for (&layer_name, layer) in area_map.proto_layer_map().layers().iter() {
@@ -142,7 +145,7 @@ impl CorticalArea {
 		/*=============================================================================
 		================================ CONTROL CELLS ================================
 		=============================================================================*/
-		// BREAK OFF INTO NEW STRUCT
+		// BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
 
 		for (&layer_name, layer) in area_map.proto_layer_map().layers().iter() {
@@ -156,10 +159,10 @@ impl CorticalArea {
 							let src_lyr_name = src_lyr_names[0];
 							let src_slc_ids = area_map.proto_layer_map().slc_ids(vec![src_lyr_name]);
 							let src_layer_depth = src_slc_ids.len() as u8;
-							let src_axn_base_slc = src_slc_ids[0];
+							let src_axn_slc_base = src_slc_ids[0];
 
 							println!("   CORTICALAREA::NEW(): Inhibitory cells: src_lyr_names: \
-								{:?}, src_axn_base_slc: {:?}", src_lyr_names, src_axn_base_slc);
+								{:?}, src_axn_slc_base: {:?}", src_lyr_names, src_axn_slc_base);
 
 							let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
 							let src_soma_env = &ssts_map.get_mut(src_lyr_name).expect(&em1).soma();
@@ -167,7 +170,7 @@ impl CorticalArea {
 							let iinns_dims = dims.clone_with_depth(src_layer_depth);
 							let iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, 
 								pcell.clone(), &area_map, src_soma_env, 
-								src_axn_base_slc, &axns, &aux, &ocl);
+								src_axn_slc_base, &axns, &aux, &ocl);
 
 							iinns.insert(layer_name, Box::new(iinn_lyr));
 
@@ -184,7 +187,7 @@ impl CorticalArea {
 
 		let mcols_dims = dims.clone_with_depth(1);
 		
-		// <<<<< EVENTUALLY ADD TO CONTROL CELLS >>>>>
+		// <<<<< EVENTUALLY ADD TO CONTROL CELLS (+PROTOCONTROLCELLS) >>>>>
 		let mcols = Box::new({
 			//let em_ssts = emsg.to_string() + ": ssts - em2".to_string();
 			let em_ssts = format!("{}: '{}' is not a valid layer", emsg, psal_name);
@@ -199,12 +202,12 @@ impl CorticalArea {
 		/*=============================================================================
 		=================================== FILTERS ===================================
 		=============================================================================*/
-		// BREAK OFF INTO NEW STRUCT
+		// BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
 		// <<<<< CHANGE TO LAYER**S**_WITH_FLAG() >>>>>
 		let filters = {
 			//let aff_in_layer = area_map.proto_layer_map().layer_with_flag(layer::AFFERENT_INPUT).expect(&emsg);
-			//let axn_base_slc = aff_in_layer.base_slc();
+			//let axn_slc_base = aff_in_layer.base_slc();
 			let mut filters_vec = Vec::with_capacity(5);
 
 			match area_map.proto_area_map().filters {
@@ -347,7 +350,7 @@ impl CorticalArea {
 		// let axn_range = self.area_map.axn_range_by_flag(layer_flags);	
 		// let mut test_sdr: Vec<u8> = iter::repeat(0).take(axn_range.len()).collect();
 		// self.read_from_axons(axn_range, &mut test_sdr[..]);
-		// println!("##### Axons: {:?}", test_sdr);
+		// println!("##### AxonSpace: {:?}", test_sdr);
 	}
 
 	pub fn read_output(&self, sdr: &mut Sdr, layer_flags: layer::ProtolayerFlags) {
@@ -362,19 +365,21 @@ impl CorticalArea {
 
 	// READ_FROM_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
 	// <<<<< TODO: DEPRICATE IN FAVOR OF ENVOY::WRITE_DIRECT() >>>>>
-	pub fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr) {
+	fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr) {
 		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
 		ocl::enqueue_read_buffer(sdr, self.axns.states.buf(), self.ocl.queue(), axn_range.start as usize);
 	}
 
 	// WRITE_TO_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
 	// <<<<< TODO: DEPRICATE IN FAVOR OF ENVOY::WRITE_DIRECT() >>>>>
-	pub fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr) {
+	fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr) {
 		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
 		ocl::enqueue_write_buffer(sdr, self.axns.states.buf(), self.ocl.queue(), axn_range.start as usize);
 	}
 
-	pub fn write_to_slice(&self, slc_id: u8, sdr: &Sdr) {
+	pub fn write_to_axon_slice(&self, slc_id: u8, sdr: &Sdr) {
+		// check str.len() == slice cols (areamap should have this info)
+		// 
 
 	}
 
@@ -509,6 +514,39 @@ impl Drop for CorticalArea {
 
 
 
+#[cfg(test)]
+mod tests {
+	use std::ops::{ Range };
+	use super::*;
+	use axon_space::{ AxnCoords, AxonSpaceTest };
+	use cmn::{ Sdr };
+
+	pub trait CorticalAreaTest {
+		fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr);
+		fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr);
+		fn write_to_axon(&mut self, coords: AxnCoords, val: u8);
+	}
+
+	impl CorticalAreaTest for CorticalArea {
+		fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr) {
+			self.read_from_axons(axn_range, sdr);
+		}
+
+		fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr) {
+			self.write_to_axons(axn_range, sdr);
+		}
+
+		fn write_to_axon(&mut self, coords: AxnCoords, val: u8) {
+			self.axns.write_to_axon(coords, val);
+		}
+	}
+}
+
+
+
+
+
+
 	// pub fn init_kernels(&mut self) {
 	// 	//self.axns.init_kernels(&self.mcols.asps, &self.mcols, &self.aux)
 	// 	//self.mcols.dens.syns().init_kernels(&self.axns, ocl);
@@ -590,31 +628,3 @@ impl Drop for CorticalArea {
 	// 			input layer flag as argument");
 	// 	}		
 	// }
-
-
-
-
-
-// mod tests {
-// 	use std::ops::{ Range };
-// 	use super::*;
-// 	use ocl::{ self };
-
-// 	trait CorticalAreaTests {
-// 		fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr);
-// 		fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr);
-// 	}
-
-// 	impl CorticalAreaTests for CorticalArea {
-// 		pub fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr) {
-// 			assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-// 			ocl::enqueue_read_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
-// 		}
-
-// 		pub fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr) {
-// 			assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-// 			ocl::enqueue_write_buffer(sdr, self.axns.states.buf, self.ocl.queue(), axn_range.start as usize);
-// 		}
-// 	}
-
-// }

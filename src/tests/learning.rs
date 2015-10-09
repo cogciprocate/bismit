@@ -6,11 +6,11 @@ use rand;
 
 use interactive::{ /*self,*/ /*input_czar,*/ /*InputCzar, InputKind*/ };
 use proto::*;
-// use synapses::{ Synapses };
-// use dendrites::{ Dendrites };
-//use pyramidals::{ PyramidalLayer };
-use synapses::tests as syn_tests;
-use pyramidals::tests as pyr_tests;
+
+use cortical_area::{ CorticalAreaTest };
+use cmn::{ CelCoords };
+use synapses::tests::{ SynCoords };
+use axon_space::{ AxnCoords, AxonSpaceTest };
 use cortex::{ Cortex };
 use cmn::{ self, DataCellLayer };
 use super::{ testbed };
@@ -63,28 +63,30 @@ use super::{ testbed };
 			Check. 
 */
 #[test]
-fn test_pyr_syn_learning() {		
+fn test_ptal_syn_learning() {		
 	let mut cortex = Cortex::new(testbed::define_protolayer_maps(), testbed::define_protoareas());
-	let area_name = testbed::PRIMARY_AREA_NAME;
+	let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+	//let pyr_out_axn_idz = area.area_map().axn_idz(area.ptal().axn_slc_base());
+	//let pyr_col_in_axn_idz = area.area_map().axn_idz(area.psal().axn_slc_base());
+	let psal_axn_slc = area.psal().axn_slc_base();
+	let ptal_axn_slc = area.ptal().axn_slc_base();
 
-	//let mut rng = rand::weak_rng();
+	println!("\nInitiating synapse learning test for the primary temporal associative layer \
+		of area: '{}'.", testbed::PRIMARY_AREA_NAME);
 
-	let pyr_props = pyr_tests::CelProps::new_random(cortex.area_mut(area_name).ptal_mut());
-	let syn_props = syn_tests::SynProps::new_random(
-		&mut cortex.area_mut(area_name).ptal_mut(),	pyr_props);
+	for i in 0..1 {
+		let pyr = CelCoords::new_random(area.ptal());
+		let syn = SynCoords::new_random(area.ptal().dims(), pyr);
+		let axn_in = AxnCoords::from_cel_coords(psal_axn_slc, &syn.cel_coords, area.area_map()).unwrap();
+		let axn_out = AxnCoords::from_cel_coords(ptal_axn_slc, &syn.cel_coords, area.area_map()).unwrap();
 
+		area.write_to_axon(axn_in, 255);
 
-	// TEMP - DEBUG
-	let cels_per_tuft = cortex.area(area_name).ptal().dens().syns().dims().columns();
-	let syns_per_cel = cortex.area(area_name).ptal().dens().syns().dims().per_cel();
-
-	println!("cels_per_tuft: {}, syns_per_cel: {}", cels_per_tuft, syns_per_cel);
-
-	println!("\nsyn_dims: {:?}\n\
-		syn_props: {:?}\n", cortex.area(area_name).ptal().dens().syns().dims(), syn_props);
+		area.axns.states.print_simple();
+		println!("syn: {:?}", syn);
+	}
 
 	assert!(false, " JUST DEBUGGING :) ");
-
 }
 
 
@@ -132,12 +134,14 @@ pub fn test_learning_activation(/*cortex: &mut Cortex,*/ /*area_name: &str*/) {
 	let (cels_axn_idz, _) = {// CELS IN SCOPE
 		let cels = cortex.area_mut(area_name).ptal_mut();
 
-		// SET ALL SYNAPSES TO THE SAME SOURCE AXON SLICE AND ZEROS ELSEWHERE
-		cels.dens_mut().syns_mut().src_slc_ids.set_all_to(src_slc_id);
-		cels.dens_mut().syns_mut().src_col_v_offs.set_all_to(0);
-		cels.dens_mut().syns_mut().strengths.set_all_to(0);
-		cels.dens_mut().syns_mut().states.set_all_to(0);
-		cels.dens_mut().syns_mut().flag_sets.set_all_to(0);
+		{ // SET ALL SYNAPSES TO THE SAME SOURCE AXON SLICE AND ZEROS ELSEWHERE
+			let mut syns = cels.dens_mut().syns_mut();
+			syns.src_slc_ids.set_all_to(src_slc_id);
+			syns.src_col_v_offs.set_all_to(0);
+			syns.strengths.set_all_to(0);
+			syns.states.set_all_to(0);
+			syns.flag_sets.set_all_to(0);
+		}
 
 		cels.set_all_to_zero();
 		//cels.flag_sets.set_all_to(0);

@@ -13,6 +13,9 @@ pub use self::data_cell_layer::{ DataCellLayer };
 pub use self::renderer::{ Renderer };
 //pub use self::prediction::*;
 
+#[cfg(test)]
+pub use self::data_cell_layer::tests::{ CelCoords };
+
 mod cmn;
 mod cortical_dimensions;
 mod data_cell_layer;

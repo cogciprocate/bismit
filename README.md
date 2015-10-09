@@ -5,7 +5,7 @@ A model of the neocortex for interpreting data and taking action based on past e
 
 Bismit is one of the first of the next paradigm of learning networks. Going beyond Bayesian and hidden Markov models, incorporating ideas from the theory of hierarchical temporal memory, such as sparse distributed representations and temporal context, Bismit is a model which incorporates our most recent and up-to-date findings about the neocortex. It is not a typical "Machine Learning" platform and does not use traditional statistical methods. 
 
-Intended to be used as a platform for quickly prototyping and testing completely different arrangements of layer structure within a cortical area, as well as different arrangements of connections between cortical areas. Layers can be composed using a simple syntax using intelligent defaults and optional arguments (such as the .apical argument below):
+Intended to be used as a platform for quickly prototyping and testing completely different arrangements of both connections between cortical areas (regions) and layer structure within a cortical area. Layers can be composed in a declarative style using a simple syntax with intelligent defaults and optional arguments (such as the .layer and .apical arguments below):
 
 ```
 proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
@@ -17,7 +17,7 @@ proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
 		.layer("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
-		.layer("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
+		.layer("iii", 4, layer::TEMPORAL_ASSOCIATIVE, 
 			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"])));
 
 proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
@@ -28,17 +28,17 @@ Likewise for areas:
 
 ```
 let proto_area_maps = ProtoAreaMaps::new()
-	.area_ext("v0", "external", 64, 64,
+	.area_ext("v0", "external", 128, 128,
 		Protoinput::IdxReader { 
 			file_name: "data/train-images-idx3-ubyte", 
-			repeats: REPEATS_PER_IMAGE, 
+			repeats: 5, 
 			scale: 1.3,
 		},
 		None, 
 		Some(vec!["v1"]),
 	)
 
-	.area("v1", "visual", 64, 64,
+	.area("v1", "visual", 128, 128,
 		Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
 		Some(vec!["b1"]),
 	)

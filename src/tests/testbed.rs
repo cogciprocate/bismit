@@ -37,7 +37,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 }
 
 pub fn define_protoareas() -> ProtoAreaMaps {
-	let area_side = 64 as u32;
+	let area_side = 32 as u32;
 
 	let protoareas = ProtoAreaMaps::new()		
 

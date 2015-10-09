@@ -77,16 +77,6 @@ impl AreaMap {
 		}
 	}	
 
-	pub fn axn_base_slc_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> u8 {
-		self.proto_layer_map.layer_with_flag(layer_flags).expect("Cannot find layer").base_slc()
-	}
-
-	pub fn axn_range_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {				
-		let (layer, layer_len) = self.layer_source_area_info(layer_flags);
-		let layer_idz = self.axn_idz(layer.base_slc_id);
-		layer_idz..(layer_idz + layer_len)
-	}
-
 	pub fn slc_src_area_dims(&self, slc_id: u8, layer_flags: layer::ProtolayerFlags) -> &SliceDimensions {
 		//self.proto_layer_map.layer_with_flag(layer_flags).expect("Cannot find layer").layer_base_slc()
 
@@ -151,6 +141,7 @@ impl AreaMap {
 		}
 	}
 
+	// ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
 	pub fn gen_build_options(&self) -> BuildOptions {
 		let mut build_options = cmn::base_build_options()
 			.opt("HORIZONTAL_AXON_ROW_DEMARCATION", self.hrz_demarc as i32)
@@ -178,6 +169,16 @@ impl AreaMap {
 		cmn::load_builtin_kernel_files(&mut build_options);
 
 		build_options
+	}
+
+	pub fn axn_slc_base_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> u8 {
+		self.proto_layer_map.layer_with_flag(layer_flags).expect("Cannot find layer").base_slc()
+	}
+
+	pub fn axn_range_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {				
+		let (layer, layer_len) = self.layer_source_area_info(layer_flags);
+		let layer_idz = self.axn_idz(layer.base_slc_id);
+		layer_idz..(layer_idz + layer_len)
 	}
 
 	pub fn area_name(&self) -> &'static str {
@@ -220,6 +221,49 @@ pub fn literal_list<T: Display>(vec: &Vec<T>) -> String {
 	}
 
 	literal
+}
+
+
+
+
+#[cfg(test)]
+pub mod tests {
+	use super::{ AreaMap };
+
+	pub trait AreaMapTests {
+		fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8,
+			) -> Result<u32, &'static str>;
+	}
+
+	impl AreaMapTests for AreaMap {
+		fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8
+			) -> Result<u32, &'static str> 
+		{
+			let slc_count = self.slices().slc_count();
+			let v_size = self.dims().v_size();
+			let u_size = self.dims().u_size();
+
+			if coords_are_safe(slc_count, slc_id, v_size, v_id, v_ofs, u_size, u_id, v_ofs) {
+				Ok(self.axn_idz(slc_id) + (u_size * v_id) + u_id)
+			} else {
+				Err("Axon coordinates invalid.")
+			}
+		}
+	}
+
+	fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: i8, 
+			u_size: u32, u_id: u32, u_ofs: i8
+		) -> bool 
+	{
+		(slc_id < slc_count)
+			&& coord_is_safe(v_size, v_id, v_ofs)
+			&& coord_is_safe(u_size, u_id, v_ofs)
+	}
+
+	fn coord_is_safe(dim_size: u32, coord_id: u32, coord_ofs: i8) -> bool {
+		let coord_ttl = coord_id as isize + coord_ofs as isize;
+		(coord_ttl >= 0) && (coord_ttl < dim_size as isize)
+	}
 }
 
 

@@ -83,7 +83,7 @@ pub fn compare_envoys<T: OclNum>(env1: &mut Envoy<T>, env2: &mut Envoy<T>) -> bo
 // 	let mut safe_dim_offs = Envoy::<i8>::new(dims, 0, &ocl);
 
 // 	let kern_test_safe_dim_ofs = ocl.new_kernel("test_safe_dim_ofs".to_string(), 
-// 		WorkSize::OneDim(dims.physical_len() as usize))
+// 		WorkSize::OneDim(dims.len() as usize))
 // 		.arg_env(&dim_ids)
 // 		.arg_env(&dim_offs)
 // 		.arg_scl(dims.u_size())

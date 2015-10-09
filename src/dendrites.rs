@@ -12,7 +12,7 @@ use map::{ AreaMap };
 use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
-use axons::{ Axons };
+use axon_space::{ AxonSpace };
 use cortical_area:: { Aux };
 
 
@@ -41,7 +41,7 @@ impl Dendrites {
 					den_kind: DendriteKind, 
 					cell_kind: ProtocellKind,
 					area_map: &AreaMap,
-					axons: &Axons,
+					axons: &AxonSpace,
 					aux: &Aux,
 					ocl: &OclProgQueue
 	) -> Dendrites {

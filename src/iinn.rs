@@ -14,7 +14,7 @@ use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind,*/ Protocell, /*DendriteKind*/ };
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
-use axons::{ Axons };
+use axon_space::{ AxonSpace };
 // use minicolumns::{ Minicolumns };
 use cortical_area:: { Aux };
 
@@ -39,7 +39,7 @@ pub struct InhibitoryInterneuronNetwork {
 }
 
 impl InhibitoryInterneuronNetwork {
-	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, area_map: &AreaMap, src_soma: &Envoy<u8>, src_axn_base_slc: u8, axns: &Axons, aux: &Aux, ocl: &OclProgQueue) -> InhibitoryInterneuronNetwork {
+	pub fn new(layer_name: &'static str, col_dims: CorticalDimensions, protocell: Protocell, area_map: &AreaMap, src_soma: &Envoy<u8>, src_axn_slc_base: u8, axns: &AxonSpace, aux: &Aux, ocl: &OclProgQueue) -> InhibitoryInterneuronNetwork {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
@@ -56,7 +56,7 @@ impl InhibitoryInterneuronNetwork {
 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDim(1, 8, 8 as usize))
 			.arg_env(&src_soma)
-			.arg_scl(src_axn_base_slc)
+			.arg_scl(src_axn_slc_base)
 			.arg_env(&aux.ints_1)
 			.arg_env(&axns.states)
 		;
@@ -65,7 +65,7 @@ impl InhibitoryInterneuronNetwork {
 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDim(1, 8, 8 as usize))
 			.arg_env(&src_soma)
-			.arg_scl(src_axn_base_slc)
+			.arg_scl(src_axn_slc_base)
 			.arg_env(&axns.states)
 		;
 

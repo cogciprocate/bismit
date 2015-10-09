@@ -136,7 +136,7 @@ impl CorticalDimensions {
 
 	pub fn cols_per_subgrp(&self, subgroup_count: u32) -> Result<u32, &'static str> {
 		if self.columns() % subgroup_count == 0 {
-			return Ok(self.physical_len() / subgroup_count) 
+			return Ok(self.len() / subgroup_count) 
 		} else {
 			return Err("Invalid subgroup size.");
 		}
@@ -167,13 +167,8 @@ impl CorticalDimensions {
 		self.tufts_per_cel = tufts_per_cel;
 		self
 	}
-}
 
-impl Copy for CorticalDimensions {}
-
-impl EnvoyDimensions for CorticalDimensions {
-	/* PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
-	fn physical_len(&self) -> u32 {
+	pub fn linear_len(&self) -> u32 {
 		let cols = self.columns();
 		let phys_inc = self.physical_increment();
 
@@ -185,6 +180,15 @@ impl EnvoyDimensions for CorticalDimensions {
 			let pad = self.physical_increment() - len_mod;
 			len_components((cols + pad) * self.depth as u32, self.per_tuft_l2, self.tufts_per_cel)
 		}
+	}
+}
+
+impl Copy for CorticalDimensions {}
+
+impl EnvoyDimensions for CorticalDimensions {
+	/* PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
+	fn len(&self) -> u32 {
+		self.linear_len()
 	}
 }
 
@@ -244,7 +248,7 @@ fn len_components(cells: u32, per_tuft_l2: i8, tufts_per_cel: u32) -> u32 {
 	// LEN(): 4D Volume - Total linear length if stretched out - measured in cell-piece-whatevers
 	/* TEMPORARY */
 	/*pub fn len(&self) -> u32 {
-		self.physical_len()
+		self.len()
 	}*/
 
 	/* CORTICAL_LEN(): 'VIRTUAL' CORTEX SIZE, NOT TO BE CONFUSED WITH THE PHYSICAL IN-MEMORY SIZE */

@@ -13,7 +13,7 @@ use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, /*Protocell, DendriteKind*/ };
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
-use axons::{ Axons };
+use axon_space::{ AxonSpace };
 use cortical_area:: { Aux };
 // use iinn:: { InhibitoryInterneuronNetwork };
 use pyramidals::{ PyramidalLayer };
@@ -54,7 +54,7 @@ pub struct Minicolumns {
 }
 
 impl Minicolumns {
-	pub fn new(dims: CorticalDimensions, area_map: &AreaMap, axons: &Axons, 
+	pub fn new(dims: CorticalDimensions, area_map: &AreaMap, axons: &AxonSpace, 
 
 					/*ssts_map: &HashMap<&str, Box<SpinyStellateLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalLayer>>, */
 
@@ -80,7 +80,7 @@ impl Minicolumns {
 		let ff_layer_axn_idz = ssts.axn_range().start;
 		let pyr_depth = area_map.proto_layer_map().depth_cell_kind(&ProtocellKind::Pyramidal);
 
-		//let pyr_axn_base_slc = area_map.proto_layer_map().base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
+		//let pyr_axn_slc_base = area_map.proto_layer_map().base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -103,8 +103,8 @@ impl Minicolumns {
 		assert!(output_slcs.len() == 1);
 		let aff_out_axn_slc = output_slcs[0];
 		let ssts_slc_ids = area_map.proto_layer_map().slc_ids(vec!["iv_old"]);
-		let ssts_axn_base_slc = ssts_slc_ids[0];
-		let ff_layer_axn_idz_old = cmn::axn_idz_2d(ssts_axn_base_slc, dims.columns(), area_map.proto_layer_map().hrz_demarc());
+		let ssts_axn_slc_base = ssts_slc_ids[0];
+		let ff_layer_axn_idz_old = cmn::axn_idz_2d(ssts_axn_slc_base, dims.columns(), area_map.proto_layer_map().hrz_demarc());
 		assert!(ff_layer_axn_idz == ff_layer_axn_idz_old as usize);*/
 
 		// REPLACE ME WITH AREAMAP GOODNESS
@@ -117,7 +117,7 @@ impl Minicolumns {
 			.arg_env(&pyrs.best_den_ids)
 			.arg_env(&pyrs.dens.states)
 			.arg_scl(ff_layer_axn_idz as u32)
-			.arg_scl(pyrs.axn_base_slc())
+			.arg_scl(pyrs.axn_slc_base())
 			.arg_scl(pyrs.protocell().dens_per_tuft_l2)
 			.arg_env(&pyrs.flag_sets)
 			.arg_env(&pyrs.preds)
@@ -136,7 +136,7 @@ impl Minicolumns {
 			//.arg_scl(depth)
 			.arg_scl(ff_layer_axn_idz as u32)
 			.arg_scl(pyr_depth)
-			//.arg_scl(pyr_axn_base_slc)
+			//.arg_scl(pyr_axn_slc_base)
 			.arg_scl(aff_out_axn_slc)
 			.arg_env(&pred_totals)
 			.arg_env(&best_pyr_den_states)
@@ -167,7 +167,7 @@ impl Minicolumns {
 	}
 
 
-	// pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &Box<SpinyStellateLayer>, axns: &Axons, aux: &Aux) {
+	// pub fn init_kernels(&mut self, mcols: &Minicolumns, ssts: &Box<SpinyStellateLayer>, axns: &AxonSpace, aux: &Aux) {
 	// 	let (ff_layer_axn_idz, _) = ssts.axn_range();
 	// 	//println!("\n##### Pyramidals::init_kernels(): ff_layer_axn_idz: {}", ff_layer_axn_idz as u32);
 
@@ -180,7 +180,7 @@ impl Minicolumns {
 	// 	self.kern_activate.new_arg_envoy(Some(&self.dens.states));
 
 	// 	self.kern_activate.new_arg_scalar(Some(ff_layer_axn_idz as u32));
-	// 	self.kern_activate.new_arg_scalar(Some(self.axn_base_slc));
+	// 	self.kern_activate.new_arg_scalar(Some(self.axn_slc_base));
 	// 	self.kern_activate.new_arg_scalar(Some(self.protocell.dens_per_tuft_l2));
 
 	// 	//self.kern_activate.new_arg_envoy(&self.energies);

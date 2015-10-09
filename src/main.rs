@@ -35,7 +35,7 @@ mod ocl;
 //mod syn_segs;
 //mod column;
 mod cortical_area;
-mod axons;
+mod axon_space;
 mod dendrites;
 mod synapses;
 mod minicolumns;
@@ -62,7 +62,7 @@ mod input_source;
 mod map;
 mod interactive;
 
-//#[cfg(test)]
+#[cfg(test)]
 pub mod tests;
 
 //use num::Integer;

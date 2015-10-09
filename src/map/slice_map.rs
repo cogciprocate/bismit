@@ -95,7 +95,7 @@ impl SliceMap {
 
 			//axn_idzs.push(axn_idz_2d(slc_id, area_dims.columns(), plmap.hrz_demarc()));
 			axn_idzs.push(axn_idz_ttl);
-			axn_idz_ttl += slc_dims.physical_len();
+			axn_idz_ttl += slc_dims.len();
 
 			layer_names.push(layer_name);
 			v_sizes.push(slc_dims.v_size());
@@ -186,7 +186,7 @@ impl SliceMap {
 
 impl EnvoyDimensions for SliceMap {
 	/* PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
-	fn physical_len(&self) -> u32 {
+	fn len(&self) -> u32 {
 		self.axn_count()
 	}
 }

@@ -14,7 +14,7 @@ use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, 
 	DendriteKind, /*Protolayer, ProtolayerKind*/ };
 // use dendrites::{ Dendrites };
-use axons::{ Axons };
+use axon_space::{ AxonSpace };
 use cortical_area:: { Aux };
 
 
@@ -94,7 +94,7 @@ pub struct Synapses {
 impl Synapses {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, 
 					den_kind: DendriteKind, cell_kind: ProtocellKind, area_map: &AreaMap, 
-					axons: &Axons, aux: &Aux, ocl: &OclProgQueue
+					axons: &AxonSpace, aux: &Aux, ocl: &OclProgQueue
 	) -> Synapses {
 		let syns_per_tuft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
 		assert!(dims.per_tuft_l2() as u8 == syns_per_tuft_l2);
@@ -423,51 +423,60 @@ struct AxnOfs {
 #[cfg(test)]
 pub mod tests {
 	#![allow(non_snake_case)]
+	use rand;
 	use rand::distributions::{ IndependentSample, Range };
 
 	//use cortex::{ Cortex };
-	use super::{ Synapses };
+	//use super::{ Synapses };
 	//use pyramidals::{ PyramidalLayer };
-	use pyramidals::tests::{ CelProps };
-	use cmn::{ DataCellLayer };
+	use cmn::{ CelCoords };
+	use cmn::{ /*DataCellLayer,*/ CorticalDimensions };
 
 	#[derive(Debug)]
-	pub struct SynProps {
+	pub struct SynCoords {
 		pub idx: u32,	
 		pub tuft_id: u32,
-		pub cel_syn_id: u32,		
-		//pub per_tuft: u32,
-		pub cel_props: CelProps,
+		pub syn_id_cel: u32,		
+		pub cel_coords: CelCoords,
+		pub layer_dims: CorticalDimensions,
 	}
 
-	impl SynProps {
-		pub fn new<D: DataCellLayer>(tuft_id: u32, cel_syn_id: u32, 
-					cel_props: CelProps, cels: &Box<D>
-			) -> SynProps 
+	impl SynCoords {
+		pub fn new(tuft_id: u32, syn_id_cel: u32, cel_coords: CelCoords, 
+					layer_dims: &CorticalDimensions
+			) -> SynCoords 
 		{
-			// let tuft_syn_idz = tuft_id * cels.dens().syns().dims().per_tuft();
-			// let tuft_cel_syn_idz = tuft_syn_idz * cel_props.idx * cels.dens().syns().dims().per_cel() as usize;
-			// let syn_idx = tuft_syn_idz + tuft_syn_id as usize;
-			// let per_tuft = cels.dens().syns().dims().per_tuft();
-			let syn_idx = syn_idx(cels.dens().syns(), tuft_id, cel_props.idx, cel_syn_id);
+			let syn_idx = syn_idx(&layer_dims, tuft_id, cel_coords.idx, syn_id_cel);
 
-			SynProps { 
+			SynCoords { 
 				idx: syn_idx, 
 				tuft_id: tuft_id,
-				cel_syn_id: cel_syn_id, 				
-				//per_tuft: per_tuft, 
-				cel_props: cel_props, 
+				syn_id_cel: syn_id_cel, 				
+				cel_coords: cel_coords,
+				layer_dims: layer_dims.clone(),
 			}
 		}
 
-		pub fn new_random<D: DataCellLayer>(cels: &mut Box<D>, cel_props: CelProps) -> SynProps {			
-			let tuft_id_range = Range::new(0, cels.dens().syns().dims().tufts_per_cel());
-			let cel_syn_id_range = Range::new(0, cels.dens().syns().dims().per_tuft());
+		pub fn new_random(layer_dims: &CorticalDimensions, cel_coords: CelCoords) -> SynCoords {			
+			let tuft_id_range = Range::new(0, layer_dims.tufts_per_cel());
+			let syn_id_cel_range = Range::new(0, layer_dims.per_tuft());
 
-			let tuft_id = tuft_id_range.ind_sample(&mut cels.dens_mut().syns_mut().rng); 
-			let cel_syn_id = cel_syn_id_range.ind_sample(&mut cels.dens_mut().syns_mut().rng);
+			let mut rng = rand::weak_rng();
 
-			SynProps::new(tuft_id, cel_syn_id, cel_props, cels)
+			let tuft_id = tuft_id_range.ind_sample(&mut rng); 
+			let syn_id_cel = syn_id_cel_range.ind_sample(&mut rng);
+
+			SynCoords::new(tuft_id, syn_id_cel, cel_coords, layer_dims)
+		}
+
+		// CEL_IDZ(): Get index of zeroth synapse on cell
+		pub fn cel_idz(&self) -> u32 {
+			0
+		}
+
+		// CEL_IDZ(): Get index of nth synapse on cell, the synapse beyond the last
+		pub fn cel_idn(&self) -> u32 {
+			0
 		}
 	}
 
@@ -482,48 +491,48 @@ pub mod tests {
 	// SYN_IDX(): BASICALLY FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
 	// 		- Synapse index space heirarchy:  | Tuft - Slice - Cell - Synapse |
 	// 		- 'cel_idx' already has slice built in to its value
-	pub fn syn_idx(syns: &Synapses, tuft_id: u32, cel_idx: u32, cel_syn_id: u32) -> u32 {
-		//  NOTE: 'syns.dims' expresses dimensions from the perspective of the 
+	pub fn syn_idx(layer_dims: &CorticalDimensions, tuft_id: u32, cel_idx: u32, syn_id_cel: u32) -> u32 {
+		//  NOTE: 'layer_dims' expresses dimensions from the perspective of the 
 		//  | Slice - Cell - Tuft - Synapse | heirarchy which is why the function
-		//  names are confusing (see explanation at top of file).
+		//  names seem confusing (see explanation at top of file).
 
-		let tuft_count = syns.dims.tufts_per_cel();
-		let slcs_per_tuft = syns.dims.depth();
-		let cels_per_slc = syns.dims.columns();
-		let syns_per_cel = syns.dims.per_tuft();
+		let tuft_count = layer_dims.tufts_per_cel();
+		let slcs_per_tuft = layer_dims.depth();
+		let cels_per_slc = layer_dims.columns();
+		let syns_per_cel = layer_dims.per_tuft();
 
-		assert!((tuft_count * slcs_per_tuft as u32 * cels_per_slc * syns_per_cel) as usize == syns.states.len());
+		assert!((tuft_count * slcs_per_tuft as u32 * cels_per_slc * syns_per_cel) == layer_dims.linear_len());
 		assert!(tuft_id < tuft_count);
 		assert!(cel_idx < slcs_per_tuft as u32 * cels_per_slc);
-		assert!(cel_syn_id < syns_per_cel);
+		assert!(syn_id_cel < syns_per_cel);
 
 		let syns_per_tuft = slcs_per_tuft as u32 * cels_per_slc * syns_per_cel;
 
-		let tuft_syn_idz = tuft_id * syns_per_tuft;
+		let syn_idz_tuft = tuft_id * syns_per_tuft;
 		// 'cel_idx' includes slc_id, v_id, and u_id
-		let slc_cel_syn_idz = cel_idx * syns_per_cel;
-		let syn_idx = tuft_syn_idz + slc_cel_syn_idz + cel_syn_id;
+		let syn_idz_slc_cel = cel_idx * syns_per_cel;
+		let syn_idx = syn_idz_tuft + syn_idz_slc_cel + syn_id_cel;
 
-		println!("\n#####\n\n\
-			tuft_count: {} \n\
-			slcs_per_tuft: {} \n\
-			cels_per_slc: {}\n\
-			syns_per_cel: {}\n\
-			\n\
-			tuft_id: {},\n\
-			cel_idx: {},\n\
-			cel_syn_id: {}, \n\
-			\n\
-			tuft_syn_idz: {},\n\
-			tuft_cel_slc_syn_idz: {},\n\
-			syn_idx: {},\n\
-			\n\
-			#####", 
-			tuft_count, slcs_per_tuft, 
-			cels_per_slc, syns_per_cel, 
-			tuft_id, cel_idx, cel_syn_id,
-			tuft_syn_idz, slc_cel_syn_idz, syn_idx
-		);
+		// println!("\n#####\n\n\
+		// 	tuft_count: {} \n\
+		// 	slcs_per_tuft: {} \n\
+		// 	cels_per_slc: {}\n\
+		// 	syns_per_cel: {}\n\
+		// 	\n\
+		// 	tuft_id: {},\n\
+		// 	cel_idx: {},\n\
+		// 	syn_id_cel: {}, \n\
+		// 	\n\
+		// 	tuft_syn_idz: {},\n\
+		// 	tuft_cel_slc_syn_idz: {},\n\
+		// 	syn_idx: {},\n\
+		// 	\n\
+		// 	#####", 
+		// 	tuft_count, slcs_per_tuft, 
+		// 	cels_per_slc, syns_per_cel, 
+		// 	tuft_id, cel_idx, syn_id_cel,
+		// 	tuft_syn_idz, slc_syn_id_celz, syn_idx
+		// );
 
 		syn_idx
 	}

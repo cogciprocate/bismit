@@ -18,8 +18,11 @@ use ocl::{ self, OclProgQueue, Envoy, EnvoyDimensions };
 //use iinn::{ InhibitoryInterneuronNetwork };
 //use minicolumns::{ Minicolumns };
 
+#[cfg(test)]
+pub use self::tests::{ AxonSpaceTest, AxnCoords };
 
-pub struct Axons {
+
+pub struct AxonSpace {
 	//dims: CorticalDimensions,
 	//depth_axn_sptl: u8,
 	//depth_cellular: u8,
@@ -29,8 +32,8 @@ pub struct Axons {
 	pub states: Envoy<ocl::cl_uchar>,
 }
 
-impl Axons {
-	pub fn new(area_map: &AreaMap, ocl: &OclProgQueue) -> Axons {
+impl AxonSpace {
+	pub fn new(area_map: &AreaMap, ocl: &OclProgQueue) -> AxonSpace {
 		//let depth_axn_sptl = region.depth_axonal_spatial();
 		//let depth_cellular = region.depth_cellular();
 		//let depth_axn_hrz = region.depth_axonal_horizontal();
@@ -62,11 +65,11 @@ impl Axons {
 
 		//let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
 		
-		println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", area_map.slices().physical_len(), mt = cmn::MT);
+		println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", area_map.slices().len(), mt = cmn::MT);
 
 		let states = Envoy::<ocl::cl_uchar>::new(area_map.slices(), cmn::STATE_ZERO, ocl);
 
-		Axons {
+		AxonSpace {
 			//dims: dims,
 			//depth_axn_sptl: depth_axn_sptl,
 			//depth_cellular: depth_cellular,
@@ -76,4 +79,54 @@ impl Axons {
 			states: states,
 		}
 	}
+}
+
+
+
+#[cfg(test)]
+mod tests {
+	use super::{ AxonSpace };
+	use map::{ AreaMap, AreaMapTests };
+	use cmn::{ CelCoords };
+
+	pub trait AxonSpaceTest {
+		fn write_to_axon(&mut self, coords: AxnCoords, val: u8);
+	}
+
+	impl AxonSpaceTest for AxonSpace {
+		fn write_to_axon(&mut self, coords: AxnCoords, val: u8) {
+			self.states.read();
+			self.states[coords.idx() as usize] = val;
+			self.states.write();
+		}
+	}
+
+	pub struct AxnCoords {
+		idx: u32,
+		slc_id: u8, 
+		v_id: u32, 
+		u_id: u32,
+	}
+
+	impl AxnCoords {
+		pub fn new(slc_id: u8, v_id: u32, u_id: u32, area_map: &AreaMap
+			) -> Result<AxnCoords, &'static str> 
+		{
+			match area_map.axn_idx(slc_id, v_id, 0, u_id, 0) {
+				Ok(idx) => Ok(AxnCoords { idx: idx, slc_id: slc_id, v_id: v_id, u_id: u_id }),
+				Err(e) => Err(e),
+			}
+		}
+
+		pub fn from_cel_coords(cel_axn_slc_base: u8, cel_coords: &CelCoords, area_map: &AreaMap
+			) -> Result<AxnCoords, &'static str>
+		{
+			AxnCoords::new(cel_axn_slc_base, cel_coords.v_id,
+				cel_coords.u_id, area_map)
+		}
+
+		pub fn idx(&self) -> u32 {
+			self.idx
+		}
+	}	
 }

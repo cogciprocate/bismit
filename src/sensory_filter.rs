@@ -1,6 +1,6 @@
 use ocl::{ self, OclProgQueue, WorkSize, Envoy, };
 use cmn::{ self, /*CorticalDimensions,*/ HexTilePlane, Sdr };
-use axons::{ Axons };
+use axon_space::{ AxonSpace };
 use proto::{ layer };
 use map::{ AreaMap };
 
@@ -21,13 +21,13 @@ impl SensoryFilter {
 				area_map: &AreaMap,
 				//area_name: &'static str,
 				//dims: CorticalDimensions, 
-				axns: &Axons,
-				//axn_base_slc: u8,
+				axns: &AxonSpace,
+				//axn_slc_base: u8,
 				ocl: &OclProgQueue, 
 		) -> SensoryFilter 
 	{
-		let axn_base_slc = area_map.axn_base_slc_by_flag(layer::AFFERENT_INPUT);
-		let dims = area_map.slc_src_area_dims(axn_base_slc, layer::AFFERENT_INPUT);
+		let axn_slc_base = area_map.axn_slc_base_by_flag(layer::AFFERENT_INPUT);
+		let dims = area_map.slc_src_area_dims(axn_slc_base, layer::AFFERENT_INPUT);
 		assert!(dims.depth() == 1, "\nAfferent input layer depths of more than one for cortical \
 			areas with sensory filters are not yet supported. Please set the depth of any \
 			afferent input layers with filters to 1.");
@@ -38,7 +38,7 @@ impl SensoryFilter {
 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDim(1, 8, 8 as usize))
 			.arg_env(&input)
-			.arg_scl(axn_base_slc)
+			.arg_scl(axn_slc_base)
 			.arg_env(&axns.states)
 		;
 
