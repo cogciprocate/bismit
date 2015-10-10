@@ -22,12 +22,12 @@ impl SensoryFilter {
 				//area_name: &'static str,
 				//dims: CorticalDimensions, 
 				axns: &AxonSpace,
-				//axn_slc_base: u8,
+				//base_axn_slc: u8,
 				ocl: &OclProgQueue, 
 		) -> SensoryFilter 
 	{
-		let axn_slc_base = area_map.axn_slc_base_by_flag(layer::AFFERENT_INPUT);
-		let dims = area_map.slc_src_area_dims(axn_slc_base, layer::AFFERENT_INPUT);
+		let base_axn_slc = area_map.base_axn_slc_by_flag(layer::AFFERENT_INPUT);
+		let dims = area_map.slc_src_area_dims(base_axn_slc, layer::AFFERENT_INPUT);
 		assert!(dims.depth() == 1, "\nAfferent input layer depths of more than one for cortical \
 			areas with sensory filters are not yet supported. Please set the depth of any \
 			afferent input layers with filters to 1.");
@@ -38,7 +38,7 @@ impl SensoryFilter {
 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDim(1, 8, 8 as usize))
 			.arg_env(&input)
-			.arg_scl(axn_slc_base)
+			.arg_scl(base_axn_slc)
 			.arg_env(&axns.states)
 		;
 

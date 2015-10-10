@@ -8,11 +8,10 @@ use interactive::{ /*self,*/ /*input_czar,*/ /*InputCzar, InputKind*/ };
 use proto::*;
 
 use cortical_area::{ CorticalAreaTest };
-use cmn::{ CelCoords };
-use synapses::tests::{ SynCoords };
-use axon_space::{ AxnCoords, AxonSpaceTest };
+use synapses::tests::{ /*SynCoords,*/ SynapsesTest };
+use axon_space::{ /*AxnCoords,*/ AxonSpaceTest };
 use cortex::{ Cortex };
-use cmn::{ self, DataCellLayer };
+use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
 use super::{ testbed };
 
 
@@ -66,24 +65,57 @@ use super::{ testbed };
 fn test_ptal_syn_learning() {		
 	let mut cortex = Cortex::new(testbed::define_protolayer_maps(), testbed::define_protoareas());
 	let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
-	//let pyr_out_axn_idz = area.area_map().axn_idz(area.ptal().axn_slc_base());
-	//let pyr_col_in_axn_idz = area.area_map().axn_idz(area.psal().axn_slc_base());
-	let psal_axn_slc = area.psal().axn_slc_base();
-	let ptal_axn_slc = area.ptal().axn_slc_base();
+	//let pyr_out_axn_idz = area.area_map().axn_idz(area.ptal().base_axn_slc());
+	//let pyr_col_in_axn_idz = area.area_map().axn_idz(area.psal().base_axn_slc());
+	let src_axn_slc = area.psal().base_axn_slc();
+	let pyr_axn_slc = area.ptal().base_axn_slc();
+
+	area.psal_mut().dens_mut().syns_mut().set_offs_to_zero();
+	area.ptal_mut().dens_mut().syns_mut().set_offs_to_zero();
 
 	println!("\nInitiating synapse learning test for the primary temporal associative layer \
 		of area: '{}'.", testbed::PRIMARY_AREA_NAME);
 
-	for i in 0..1 {
-		let pyr = CelCoords::new_random(area.ptal());
-		let syn = SynCoords::new_random(area.ptal().dims(), pyr);
-		let axn_in = AxnCoords::from_cel_coords(psal_axn_slc, &syn.cel_coords, area.area_map()).unwrap();
-		let axn_out = AxnCoords::from_cel_coords(ptal_axn_slc, &syn.cel_coords, area.area_map()).unwrap();
+	for i in 0..5 {
+		let pyr_coords = area.ptal_mut().rand_cel_coords();
+		//let syn_coords = SynCoords::new_random(area.ptal().dens().syns().dims(), pyr_coords);
+		let syn_coords = area.ptal_mut().dens_mut().syns_mut().rand_syn_coords(pyr_coords);
+		//let axn_in = AxnCoords::from_cel_coords(src_axn_slc, &syn_coords.cel_coords, area.area_map()).unwrap();
+		//let axn_out = AxnCoords::from_cel_coords(pyr_axn_slc, &syn_coords.cel_coords, area.area_map()).unwrap();
 
-		area.write_to_axon(axn_in, 255);
+		let (v_ofs, u_ofs, dst_src_axn_idx) = area.rand_safe_src_axn(&syn_coords, pyr_axn_slc);
 
-		area.axns.states.print_simple();
-		println!("syn: {:?}", syn);
+		area.ptal_mut().dens_mut().syns_mut().set_offs(v_ofs, u_ofs, syn_coords.idx as usize);
+		area.ptal_mut().dens_mut().syns_mut().set_src_slc(pyr_axn_slc, syn_coords.idx as usize);
+
+		area.write_to_axon(128, dst_src_axn_idx as usize);
+
+		area.ptal_mut().dens_mut().syns_mut().cycle();
+
+
+		let syn_val = area.ptal_mut().dens_mut().syns_mut().syn_state(syn_coords.idx);
+		let axn_val = area.axn_state(dst_src_axn_idx as usize);
+
+		println!("\n##### pyr_axn_slc: {}, v_ofs: {}, u_ofs: {}, dst_src_axn_idx: {}, axn_val: {}, \
+			syn_val: {}, syn_coords: {:?}", pyr_axn_slc, v_ofs, u_ofs, dst_src_axn_idx, axn_val, 
+			syn_val, syn_coords);
+
+		// ### TEMP ###
+		// print!("v_offs: ");
+		// area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.print(1 << 0, Some((-128, 127)), None, false);
+		// print!("u_offs: ");
+		// area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.print(1 << 0, Some((-128, 127)), None, false);
+		print!("states: ");
+		area.ptal_mut().dens_mut().syns_mut().states.print(1 << 0, Some((0, 255)), None, false);
+
+		assert!(axn_val > 0);
+		assert!(syn_val > 0);
+
+		// CLEAN UP
+		area.ptal_mut().dens_mut().syns_mut().set_offs(0, 0, syn_coords.idx as usize);
+		area.write_to_axon(0, dst_src_axn_idx as usize);
+		area.ptal_mut().dens_mut().syns_mut().states.set_all_to(0);
+		area.ptal_mut().dens_mut().syns_mut().states.write();
 	}
 
 	assert!(false, " JUST DEBUGGING :) ");
@@ -91,6 +123,15 @@ fn test_ptal_syn_learning() {
 
 
 
+
+// #[test]
+// fn test_sst_indexing() {
+// 	let mut cortex = Cortex::new(testbed::define_protolayer_maps(), testbed::define_protoareas());
+// 	let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+
+// 	let aff_in_axn_slc = 	
+
+// }
 
 
 // #[test]

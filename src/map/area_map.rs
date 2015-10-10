@@ -171,7 +171,7 @@ impl AreaMap {
 		build_options
 	}
 
-	pub fn axn_slc_base_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> u8 {
+	pub fn base_axn_slc_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> u8 {
 		self.proto_layer_map.layer_with_flag(layer_flags).expect("Cannot find layer").base_slc()
 	}
 
@@ -230,12 +230,12 @@ pub fn literal_list<T: Display>(vec: &Vec<T>) -> String {
 pub mod tests {
 	use super::{ AreaMap };
 
-	pub trait AreaMapTests {
+	pub trait AreaMapTest {
 		fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8,
 			) -> Result<u32, &'static str>;
 	}
 
-	impl AreaMapTests for AreaMap {
+	impl AreaMapTest for AreaMap {
 		fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8
 			) -> Result<u32, &'static str> 
 		{
@@ -243,26 +243,35 @@ pub mod tests {
 			let v_size = self.dims().v_size();
 			let u_size = self.dims().u_size();
 
-			if coords_are_safe(slc_count, slc_id, v_size, v_id, v_ofs, u_size, u_id, v_ofs) {
-				Ok(self.axn_idz(slc_id) + (u_size * v_id) + u_id)
+			// println!("axn_idz: {}, slc_count: {}, slc_id: {}, v_size: {}, v_id: {}, v_ofs: {}, \
+			// 	u_size: {}, u_id: {}, u_ofs: {}", self.axn_idz(slc_id), slc_count, slc_id, v_size, 
+			// 	v_id, v_ofs, u_size, u_id, u_ofs);
+
+			if coords_are_safe(slc_count, slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs) {
+				Ok(axn_idx_unsafe(self.axn_idz(slc_id), v_id, v_ofs, u_size, u_id, u_ofs))
 			} else {
 				Err("Axon coordinates invalid.")
 			}
 		}
 	}
 
-	fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: i8, 
+	pub fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: i8, 
 			u_size: u32, u_id: u32, u_ofs: i8
 		) -> bool 
 	{
-		(slc_id < slc_count)
-			&& coord_is_safe(v_size, v_id, v_ofs)
-			&& coord_is_safe(u_size, u_id, v_ofs)
+		(slc_id < slc_count) && coord_is_safe(v_size, v_id, v_ofs) 
+			&& coord_is_safe(u_size, u_id, u_ofs)
 	}
 
-	fn coord_is_safe(dim_size: u32, coord_id: u32, coord_ofs: i8) -> bool {
+	pub fn coord_is_safe(dim_size: u32, coord_id: u32, coord_ofs: i8) -> bool {
 		let coord_ttl = coord_id as isize + coord_ofs as isize;
 		(coord_ttl >= 0) && (coord_ttl < dim_size as isize)
+	}
+
+	pub fn axn_idx_unsafe(idz: u32, v_id: u32, v_ofs: i8, u_size: u32, u_id: u32, u_ofs: i8) -> u32 {
+		let v = (v_id as isize + v_ofs as isize) as u32;
+		let u = (u_id as isize + u_ofs as isize) as u32;
+		idz + (v * u_size) + u
 	}
 }
 

@@ -9,6 +9,7 @@
 // use std::fmt::{ Display };
 use std::collections::{ /*BTreeMap,*/ HashMap };
 use std::ops::{ Range };
+use rand;
 
 use cmn::{ self, CorticalDimensions, Renderer, Sdr, DataCellLayer };
 use map::{ AreaMap };
@@ -48,6 +49,7 @@ pub struct CorticalArea {
 	ocl_context: OclContext,
 	renderer: Renderer,
 	counter: usize,
+	rng: rand::XorShiftRng,
 	pub bypass_inhib: bool,
 	pub bypass_filters: bool,
 	pub disable_pyrs: bool,
@@ -159,10 +161,10 @@ impl CorticalArea {
 							let src_lyr_name = src_lyr_names[0];
 							let src_slc_ids = area_map.proto_layer_map().slc_ids(vec![src_lyr_name]);
 							let src_layer_depth = src_slc_ids.len() as u8;
-							let src_axn_slc_base = src_slc_ids[0];
+							let src_base_axn_slc = src_slc_ids[0];
 
 							println!("   CORTICALAREA::NEW(): Inhibitory cells: src_lyr_names: \
-								{:?}, src_axn_slc_base: {:?}", src_lyr_names, src_axn_slc_base);
+								{:?}, src_base_axn_slc: {:?}", src_lyr_names, src_base_axn_slc);
 
 							let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
 							let src_soma_env = &ssts_map.get_mut(src_lyr_name).expect(&em1).soma();
@@ -170,7 +172,7 @@ impl CorticalArea {
 							let iinns_dims = dims.clone_with_depth(src_layer_depth);
 							let iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, 
 								pcell.clone(), &area_map, src_soma_env, 
-								src_axn_slc_base, &axns, &aux, &ocl);
+								src_base_axn_slc, &axns, &aux, &ocl);
 
 							iinns.insert(layer_name, Box::new(iinn_lyr));
 
@@ -207,7 +209,7 @@ impl CorticalArea {
 		// <<<<< CHANGE TO LAYER**S**_WITH_FLAG() >>>>>
 		let filters = {
 			//let aff_in_layer = area_map.proto_layer_map().layer_with_flag(layer::AFFERENT_INPUT).expect(&emsg);
-			//let axn_slc_base = aff_in_layer.base_slc();
+			//let base_axn_slc = aff_in_layer.base_slc();
 			let mut filters_vec = Vec::with_capacity(5);
 
 			match area_map.proto_area_map().filters {
@@ -249,6 +251,7 @@ impl CorticalArea {
 			ocl_context: ocl_context,
 			renderer: renderer,
 			counter: 0,
+			rng: rand::weak_rng(),
 			bypass_inhib: false,
 			bypass_filters: false,
 			disable_pyrs: false,
@@ -517,27 +520,62 @@ impl Drop for CorticalArea {
 #[cfg(test)]
 mod tests {
 	use std::ops::{ Range };
+	use rand::distributions::{ IndependentSample, Range as RandRange };
+
 	use super::*;
-	use axon_space::{ AxnCoords, AxonSpaceTest };
+	use axon_space::{ AxonSpaceTest };
 	use cmn::{ Sdr };
+	use synapses::{ SynCoords };
+	use map::{ AreaMapTest };
 
 	pub trait CorticalAreaTest {
-		fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr);
-		fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr);
-		fn write_to_axon(&mut self, coords: AxnCoords, val: u8);
+		fn read_from_axons(&self, sdr: &mut Sdr, axn_range: Range<u32>);
+		fn write_to_axons(&self, sdr: &Sdr, axn_range: Range<u32>);
+		fn axn_state(&self, idx: usize) -> u8;
+		fn write_to_axon(&self, val: u8, idx: usize);
+		fn rand_safe_src_axn(&mut self, syn_coords: &SynCoords, src_axn_slc: u8
+			) -> (i8, i8, u32);
 	}
 
 	impl CorticalAreaTest for CorticalArea {
-		fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr) {
+		fn read_from_axons(&self, sdr: &mut Sdr, axn_range: Range<u32>) {
 			self.read_from_axons(axn_range, sdr);
 		}
 
-		fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr) {
+		fn write_to_axons(&self, sdr: &Sdr, axn_range: Range<u32>) {
 			self.write_to_axons(axn_range, sdr);
 		}
 
-		fn write_to_axon(&mut self, coords: AxnCoords, val: u8) {
-			self.axns.write_to_axon(coords, val);
+		fn axn_state(&self, idx: usize) -> u8 {
+			self.axns.axn_state(idx)
+		}
+
+		fn write_to_axon(&self, val: u8, idx: usize) {
+			self.axns.write_to_axon(val, idx);
+		}
+
+		fn rand_safe_src_axn(&mut self, syn_coords: &SynCoords, src_axn_slc: u8) -> (i8, i8, u32) {
+			let v_ofs_range = RandRange::new(-8i8, 9);
+			let u_ofs_range = RandRange::new(-8i8, 9);
+
+			for i in 0..50 {
+				let v_ofs = v_ofs_range.ind_sample(&mut self.rng);
+				let u_ofs = u_ofs_range.ind_sample(&mut self.rng);
+
+				if v_ofs | u_ofs == 0 {
+					continue;
+				}
+
+				let idx_rslt = self.area_map.axn_idx(src_axn_slc, syn_coords.cel_coords.v_id, 
+					v_ofs, syn_coords.cel_coords.u_id, u_ofs);
+
+				match idx_rslt {
+					Ok(idx) => return (v_ofs, u_ofs, idx),
+					Err(_) => (),
+				}
+			}
+
+			panic!("SynCoords::rand_safe_src_axn_offs(): Error finding valid offset pair.");
 		}
 	}
 }

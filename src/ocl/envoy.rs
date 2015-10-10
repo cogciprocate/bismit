@@ -103,13 +103,9 @@ impl<T: OclNum> Envoy<T> {
 		ocl::enqueue_read_buffer(&mut self.vec, self.buf, self.ocl.queue(), 0);
 	}
 
-	/*pub fn width(&self) -> u32 {
-		self.width
+	pub fn read_direct(&self, sdr: &mut [T], offset: usize) {
+		ocl::enqueue_read_buffer(sdr, self.buf, self.ocl.queue(), offset);
 	}
-
-	pub fn depth(&self) -> u8 {
-		self.depth
-	}*/
 
 	pub fn set_all_to(&mut self, val: T) {
 		for ele in self.vec.iter_mut() {
@@ -119,14 +115,8 @@ impl<T: OclNum> Envoy<T> {
 	}
 
 	pub fn len(&self) -> usize {
-		//println!("self.dims.len(): {} == self.vec.len(): {}", self.dims.len(),  self.vec.len());
-		// assert!(((self.dims.len() + self.padding) as usize) == self.vec.len(), "envoy::Envoy::len(): Envoy len mismatch" );
 		self.vec.len()
 	}
-
-	// pub fn dims(&self) -> &E {
-	// 	&self.dims
-	// }
 
 	pub fn print_simple(&mut self) {
 		self.read();

@@ -1,5 +1,5 @@
 // use num;
-use rand;
+use rand::{ self, XorShiftRng };
 // use std::mem;
 // use rand::distributions::{ Normal, IndependentSample, Range };
 use rand::{ /*ThreadRng,*/ Rng };
@@ -33,10 +33,10 @@ pub struct PyramidalLayer {
 	kern_cycle: ocl::Kernel,
 	//kern_activate: ocl::Kernel,		// <<<<< MOVE TO MCOL
 	//kern_axn_cycle: ocl::Kernel,
-	axn_slc_base: u8,
+	base_axn_slc: u8,
 	pyr_lyr_axn_idz: u32,
 	//den_prox_slc: u8, 
-	rng: rand::XorShiftRng,
+	rng: XorShiftRng,
 	den_tufts_per_cel: u32,
 	//regrow_counter: usize,
 	pub preds: Envoy<ocl::cl_uchar>,
@@ -56,10 +56,10 @@ impl PyramidalLayer {
 		area_map: &AreaMap, axons: &AxonSpace, aux: &Aux, ocl: &OclProgQueue
 	) -> PyramidalLayer {
 
-		let axn_slc_bases = area_map.proto_layer_map().slc_ids(vec![layer_name]);
-		let axn_slc_base = axn_slc_bases[0];
-		//let pyr_lyr_axn_idz = cmn::axn_idz_2d(axn_slc_base, dims.columns(), protolayer_map.hrz_demarc());
-		let pyr_lyr_axn_idz = area_map.axn_idz(axn_slc_base);
+		let base_axn_slcs = area_map.proto_layer_map().slc_ids(vec![layer_name]);
+		let base_axn_slc = base_axn_slcs[0];
+		//let pyr_lyr_axn_idz = cmn::axn_idz_2d(base_axn_slc, dims.columns(), protolayer_map.hrz_demarc());
+		let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
 		//dims.depth() = protolayer_map.depth_cell_kind(&ProtocellKind::Pyramidal);
 		//let dens_per_tuft_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
@@ -68,7 +68,7 @@ impl PyramidalLayer {
 		//let den_prox_slc = protolayer_map.slc_ids(vec![spt_asc_layer.name])[0];
 		
 		//println!("### PyramidalLayer: Proximal Dendrite Row: {}", den_prox_slc);
-		println!("      PYRAMIDALS::NEW(): layer: '{}' dims: {:?}, axn_slc_base: {}", layer_name, dims, axn_slc_base);
+		println!("      PYRAMIDALS::NEW(): layer: '{}' dims: {:?}, base_axn_slc: {}", layer_name, dims, base_axn_slc);
 
 		let preds = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
@@ -102,7 +102,7 @@ impl PyramidalLayer {
 			WorkSize::OneDim(dims.depth() as usize * dims.columns() as usize))
 			.arg_env(&dens.states)
 			.arg_env(&dens.states_raw)
-			//.arg_scl(axn_slc_base)
+			//.arg_scl(base_axn_slc)
 			.arg_scl(den_tufts_per_cel)
 			.arg_scl(dens_per_tuft_l2)
 			//.arg_env(&energies)
@@ -116,7 +116,7 @@ impl PyramidalLayer {
 
 		/*let kern_axn_cycle = ocl.new_kernel("pyr_axn_cycle", 
 			WorkSize::TwoDim(dims.depth() as usize, dims.width as usize))
-			.arg_scl(axn_slc_base)
+			.arg_scl(base_axn_slc)
 			.arg_env(&preds)
 			.arg_env(&axons.states)
 		;*/
@@ -133,8 +133,8 @@ impl PyramidalLayer {
 			//.unwrap_or_else(|s: &'static str| panic!(s));
 
 		// <<<<< NEEDS UPDATE TO NEW AXON INDEXING SYSTEM >>>>>
-		//let pyr_lyr_axn_idz: u32 = (axn_slc_base as u32 * dims.columns()) + cmn::AXON_MAR__GIN_SIZE; 
-		//let pyr_lyr_axn_idz: u32 = cmn::axn_idz_2d(axn_slc_base, dims.columns(), protolayer_map.hrz_demarc());
+		//let pyr_lyr_axn_idz: u32 = (base_axn_slc as u32 * dims.columns()) + cmn::AXON_MAR__GIN_SIZE; 
+		//let pyr_lyr_axn_idz: u32 = cmn::axn_idz_2d(base_axn_slc, dims.columns(), protolayer_map.hrz_demarc());
 		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", pyr_lyr_axn_idz);
 		//assert!(pyr_lyr_axn_idz == pyr_lyr_axn_idz);
 
@@ -169,7 +169,7 @@ impl PyramidalLayer {
 			kern_cycle: kern_cycle,
 			//kern_activate: kern_activate,		// <<<<< MOVE TO MCOL
 			//kern_axn_cycle: kern_axn_cycle,
-			axn_slc_base: axn_slc_base,
+			base_axn_slc: base_axn_slc,
 			pyr_lyr_axn_idz: pyr_lyr_axn_idz,
 			//den_prox_slc: den_prox_slc,
 			rng: rand::weak_rng(),
@@ -202,7 +202,7 @@ impl PyramidalLayer {
 	// 	self.kern_activate.new_arg_envoy(Some(&self.dens.states));
 
 	// 	self.kern_activate.new_arg_scalar(Some(ssts_pyr_lyr_axn_idz as u32));
-	// 	self.kern_activate.new_arg_scalar(Some(self.axn_slc_base));
+	// 	self.kern_activate.new_arg_scalar(Some(self.base_axn_slc));
 	// 	self.kern_activate.new_arg_scalar(Some(self.protocell.dens_per_tuft_l2));
 
 	// 	//self.kern_activate.new_arg_envoy(&self.energies);
@@ -257,7 +257,7 @@ impl DataCellLayer for PyramidalLayer {
 
 	// AXN_OUTPUT_RANGE(): USED BY OUTPUT_CZAR (DEBUGGING/TESTING)
 /*	fn axn_output_range(&self) -> (usize, usize) {
-		let start = (self.axn_slc_base as usize * self.dims.columns() as usize) + cmn::AXON_MAR__GIN_SIZE as usize;
+		let start = (self.base_axn_slc as usize * self.dims.columns() as usize) + cmn::AXON_MAR__GIN_SIZE as usize;
 		(start, start + ((self.dims.columns() * self.dims.depth() as u32) - 1) as usize)
 	}*/
 
@@ -271,8 +271,8 @@ impl DataCellLayer for PyramidalLayer {
 		(self.pyr_lyr_axn_idz as usize, ssts_axn_idn as usize)
 	}
 
-	fn axn_slc_base(&self) -> u8 {
-		self.axn_slc_base
+	fn base_axn_slc(&self) -> u8 {
+		self.base_axn_slc
 	}
 
 	fn layer_name(&self) -> &'static str {
@@ -338,12 +338,42 @@ impl DataCellLayer for PyramidalLayer {
 
 	fn dens_mut(&mut self) -> &mut Dendrites {
 		&mut self.dens
-	}
+	}	
 }
 
 
 #[cfg(test)]
 pub mod tests {
+	use rand::{ XorShiftRng };
+	use rand::distributions::{ IndependentSample, Range };
+
+	use cmn::{ self, /*CorticalDimensions,*/ DataCellLayer, DataCellLayerTest, CelCoords };
+	use super::{ PyramidalLayer };
+
+	impl DataCellLayerTest for PyramidalLayer {
+		fn rng(&mut self) -> &mut XorShiftRng {
+			&mut self.rng
+		}
+
+		fn rand_cel_coords(&mut self) -> CelCoords {
+			let slc_range = Range::new(0, self.dims().depth());
+			let v_range = Range::new(0, self.dims().v_size());
+			let u_range = Range::new(0, self.dims().u_size());
+
+			//let mut rng = rand::weak_rng();
+
+			let slc_id_lyr = slc_range.ind_sample(self.rng());
+			let u_id = u_range.ind_sample(self.rng());
+			let v_id = v_range.ind_sample(self.rng());
+
+			let slc_id_axn = self.base_axn_slc() + slc_id_lyr;
+			CelCoords::new(slc_id_axn, slc_id_lyr, v_id, u_id, self.dims())
+		}
+
+		fn cel_idx(&self, slc_id: u8, v_id: u32, u_id: u32)-> u32 {
+			cmn::cel_idx_3d(self.dims().depth(), slc_id, self.dims().v_size(), v_id, self.dims().u_size(), u_id)
+		}
+	}
 	//use super::{ PyramidalLayer };
 	// use rand::distributions::{ IndependentSample, Range };
 	// use cmn::{ DataCellLayer };

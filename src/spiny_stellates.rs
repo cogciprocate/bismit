@@ -24,7 +24,7 @@ pub struct SpinyStellateLayer {
 	layer_name: &'static str,
 	dims: CorticalDimensions,
 	protocell: Protocell,
-	axn_slc_base: u8,
+	base_axn_slc: u8,
 	lyr_axn_idz: u32,
 	//kern_cycle: ocl::Kernel,
 	//kern_post_inhib: ocl::Kernel,
@@ -50,20 +50,20 @@ impl SpinyStellateLayer {
 		//let layer = area_map.proto_layer_map().spt_asc_layer().expect("spiny_stellates::SpinyStellateLayer::new()");
 		//let depth: u8 = layer.depth();
 
-		let axn_slc_bases = area_map.proto_layer_map().slc_ids(vec![layer_name]);
-		let axn_slc_base = axn_slc_bases[0];
-		//let lyr_axn_idz = cmn::axn_idz_2d(axn_slc_base, dims.columns(), area_map.proto_layer_map().hrz_demarc());
-		let lyr_axn_idz = area_map.axn_idz(axn_slc_base);
+		let base_axn_slcs = area_map.proto_layer_map().slc_ids(vec![layer_name]);
+		let base_axn_slc = base_axn_slcs[0];
+		//let lyr_axn_idz = cmn::axn_idz_2d(base_axn_slc, dims.columns(), area_map.proto_layer_map().hrz_demarc());
+		let lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
 		let syns_per_tuft_l2: u8 = protocell.syns_per_den_l2 + protocell.dens_per_tuft_l2;
 
 		//let pyr_depth = area_map.proto_layer_map().depth_cell_kind(&ProtocellKind::Pyramidal);
 
-		//let pyr_axn_slc_base = area_map.proto_layer_map().base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
+		//let pyr_base_axn_slc = area_map.proto_layer_map().base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
 
 		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		println!("      SPINYSTELLATES::NEW(): axn_slc_base: {}, lyr_axn_idz: {}, dims: {:?}", axn_slc_base, lyr_axn_idz, dims);
+		println!("      SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}", base_axn_slc, lyr_axn_idz, dims);
 
 		let dens_dims = dims.clone_with_ptl2(protocell.dens_per_tuft_l2 as i8);
 		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::SpinyStellate, area_map, axns, aux, ocl);
@@ -124,7 +124,7 @@ impl SpinyStellateLayer {
 			layer_name: layer_name,
 			dims: dims,
 			protocell: protocell,
-			axn_slc_base: axn_slc_base,
+			base_axn_slc: base_axn_slc,
 			lyr_axn_idz: lyr_axn_idz,
 			//kern_cycle: kern_cycle,
 			//kern_post_inhib: kern_post_inhib,
@@ -172,8 +172,8 @@ impl SpinyStellateLayer {
 		&self.dims
 	}	
 
-	pub fn axn_slc_base(&self) -> u8 {
-		self.axn_slc_base
+	pub fn base_axn_slc(&self) -> u8 {
+		self.base_axn_slc
 	}
 
 	pub fn layer_name(&self) -> &'static str {

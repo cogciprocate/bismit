@@ -1,5 +1,14 @@
 
 
+static inline uchar syn_fire(uchar const axn_state) {
+	return ((axn_state != 0) << 7) + (axn_state >> (SYNAPSE_AXON_BIAS_LOG2));
+}
+
+static inline uchar4 syn_fire_vec4(uchar4 const axn_state) {
+	return (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80) 
+		| (axn_state >> (uchar4)(SYNAPSE_AXON_BIAS_LOG2));
+}
+
 // SYNS_CYCLE_SIMPLE(): Simple synapse cycling without workgroup optimization or vectorization
 __kernel void syns_cycle_simple(
 				__global uchar const* const axn_states,
@@ -11,14 +20,14 @@ __kernel void syns_cycle_simple(
 				__global int* const aux_ints_0,
 				__global uchar* const syn_states) 
 {
-	uint const slc_id = get_global_id(0);
+	uint const slc_id_lyr = get_global_id(0);
 	uint const v_id = get_global_id(1);
 	uint const u_id = get_global_id(2);
 
 	uint const v_size = get_global_size(1);
 	uint const u_size = get_global_size(2);
 
-	uint const syn_idz = (cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) << syns_per_tuft_l2;
+	uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz) << syns_per_tuft_l2;
 	uint const syn_idn = syn_idz + (1 << syns_per_tuft_l2);
 
 	for (uint syn_idx = syn_idz; syn_idx < syn_idn; syn_idx++) {
@@ -30,7 +39,8 @@ __kernel void syns_cycle_simple(
 		//uchar axn_state = axn_states[axn_idx];
 		uchar axn_state = axn_state_3d_safe(src_slc_id, v_id, v_ofs, u_id, u_ofs, axn_states);
 	
-		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
+		// syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
+		syn_states[syn_idx] = syn_fire(axn_state);
 	}
 }
 
@@ -46,14 +56,14 @@ __kernel void syns_cycle_simple_vec4(
 				__global int* const aux_ints_0,
 				__global uchar4* const syn_states) 
 {
-	uint const slc_id = get_global_id(0);
+	uint const slc_id_lyr = get_global_id(0);
 	uint const v_id = get_global_id(1);
 	uint const u_id = get_global_id(2);
 
 	uint const v_size = get_global_size(1);
 	uint const u_size = get_global_size(2);
 
-	uint const syn4_idz = ((cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) 
+	uint const syn4_idz = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz) 
 		<< (syns_per_tuft_l2 - 2)); // DIVIDED BY 4 BECAUSE VECTORS
 	uint const syn4_idn = syn4_idz + (1 << (syns_per_tuft_l2 - 2)); // DIVIDED BY 4 BECAUSE VECTORS
 
@@ -70,7 +80,8 @@ __kernel void syns_cycle_simple_vec4(
 			u_ofs, 
 			axn_states);
 
-		syn_states[syn4_idx] = (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80) | (axn_state >> (uchar4)1);
+		// syn_states[syn4_idx] = (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80) | (axn_state >> (uchar4)1);
+		syn_states[syn4_idx] = syn_fire_vec4(axn_state);
 	}
 }
 
@@ -87,7 +98,7 @@ __kernel void syns_cycle_wow(
 				__global int* const aux_ints_0,
 				__global uchar* const syn_states) 
 {
-	uint const slc_id = get_global_id(0);
+	uint const slc_id_lyr = get_global_id(0);
 	uint const v_size = get_global_size(1);
 	uint const u_size = get_global_size(2);
 
@@ -97,8 +108,8 @@ __kernel void syns_cycle_wow(
 	/* <<<<< SHOULD PROBABLY DO THIS USING GET_NUM_GROUPS()... >>>>> */
 
 	// // BASE DIM_ID (COORDINATE) FOR CURRENT SLICE (GLOBAL ID ON THE INITIAL EDGE OF THE SLICE)
-	// uint const v_id_slc_base = mul24(v_size, slc_id);
-	// uint const u_id_slc_base = mul24(u_size, slc_id);
+	// uint const v_id_slc_base = mul24(v_size, slc_id_lyr);
+	// uint const u_id_slc_base = mul24(u_size, slc_id_lyr);
 
 	// // DIM_ID WITHIN CURRENT SLICE
 	// uint const v_id_slc = v_id_global - v_id_slc_base;
@@ -158,7 +169,7 @@ __kernel void syns_cycle_wow(
 		uint v_id = v_id_base + cur_v_wg;
 		uint u_id = u_id_base + cur_u_wg;
 
-		uint syn_idx = ((cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) 
+		uint syn_idx = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz) 
 			<< syns_per_tuft_l2) + cur_syn_ofs;
 
 		char v_ofs = syn_src_col_v_offs[syn_idx];
@@ -166,11 +177,14 @@ __kernel void syns_cycle_wow(
 		uchar src_slc_id = syn_src_slc_ids[syn_idx];
 
 		uchar axn_state = axn_state_3d_safe(src_slc_id, v_id, v_ofs, u_id, u_ofs, axn_states);
-		syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
 
-		if ((slc_id == 1) && (get_global_id(1) == 6) && (get_global_id(2) == 6) && (cel_idz == 0)) {
-			aux_ints_0[i] = v_id_base;
-		}
+		// syn_states[syn_idx] = ((axn_state != 0) << 7) + (axn_state >> 1);
+		syn_states[syn_idx] = syn_fire(axn_state);
+
+		// ### DO NOT REMOVE ###
+		// if ((slc_id_lyr == 1) && (get_global_id(1) == 6) && (get_global_id(2) == 6) && (cel_idz == 0)) {
+		// 	aux_ints_0[i] = v_id_base;
+		// }
 
 		cur_syn_ofs += syns_per_iter;
 		cur_u_wg += u_per_iter;
@@ -191,7 +205,7 @@ __kernel void syns_cycle_wow_vec4(
 				__global int* const aux_ints_0,
 				__global uchar4* const syn_states) 
 {
-	uint const slc_id = get_global_id(0);
+	uint const slc_id_lyr = get_global_id(0);
 	uint const v_size = get_global_size(1);
 	uint const u_size = get_global_size(2);
 
@@ -245,7 +259,7 @@ __kernel void syns_cycle_wow_vec4(
 		uint v_id = v_id_base + cur_v_wg;
 		uint u_id = u_id_base + cur_u_wg;
 
-		uint syn4_idx = (((cel_idx_3d_unsafe(slc_id, v_size, v_id, u_size, u_id) + cel_idz) 
+		uint syn4_idx = (((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz) 
 			<< syns_per_tuft_l2) >> 2) + cur_syn4_ofs; // VEC4'D IDX
 
 		char4 v_ofs = syn_src_col_v_offs[syn4_idx];
@@ -263,12 +277,14 @@ __kernel void syns_cycle_wow_vec4(
 			u_ofs, 
 			axn_states);
 
-		syn_states[syn4_idx] = (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80) | (axn_state >> (uchar4)1);
+		// syn_states[syn4_idx] = (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80) | (axn_state >> (uchar4)1);
+		syn_states[syn4_idx] = syn_fire_vec4(axn_state);
 
 
-		if ((slc_id == 1) && (get_global_id(1) == 6) && (get_global_id(2) == 6) && (cel_idz == 0)) {
-			aux_ints_0[i] = cur_u_wg;
-		}
+		// ### DO NOT REMOVE ###
+		// if ((slc_id_lyr == 1) && (get_global_id(1) == 6) && (get_global_id(2) == 6) && (cel_idz == 0)) {
+		// 	aux_ints_0[i] = cur_u_wg;
+		// }
 
 		cur_syn4_ofs += syn4s_per_iter;
 		cur_u_wg += u_per_iter;

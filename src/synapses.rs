@@ -17,6 +17,8 @@ use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protoc
 use axon_space::{ AxonSpace };
 use cortical_area:: { Aux };
 
+#[cfg(test)]
+pub use self::tests::{ SynCoords };
 
 //	Synapses: Smallest and most numerous unit in the cortex - the soldier at the bottom
 // 		- TODO:
@@ -143,10 +145,10 @@ impl Synapses {
 		for syn_tuft_i in 0..dst_src_slc_ids.len() {
 			kernels.push(Box::new(
 
-				// ocl.new_kernel("syns_cycle_simple".to_string(),
+				ocl.new_kernel("syns_cycle_simple".to_string(),
 				// ocl.new_kernel("syns_cycle_simple_vec4".to_string(),
 				// ocl.new_kernel("syns_cycle_wow".to_string(),
-				ocl.new_kernel("syns_cycle_wow_vec4".to_string(), 
+				// ocl.new_kernel("syns_cycle_wow_vec4".to_string(), 
 				
 					WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
 					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
@@ -316,12 +318,6 @@ impl Synapses {
 			// }
 	}
 
-	pub fn set_offs_to_zero(&mut self) {
-		self.src_col_v_offs.set_all_to(0);
-		self.src_col_u_offs.set_all_to(0);
-	}
-	
-
 	pub fn cycle(&self) {
 		for kern in self.kernels.iter() {
 			kern.enqueue();
@@ -420,17 +416,64 @@ struct AxnOfs {
 }
 
 
+
 #[cfg(test)]
 pub mod tests {
 	#![allow(non_snake_case)]
-	use rand;
+	// use rand;
 	use rand::distributions::{ IndependentSample, Range };
 
 	//use cortex::{ Cortex };
 	//use super::{ Synapses };
 	//use pyramidals::{ PyramidalLayer };
+	use super::{ Synapses };
+	// use map::{ AreaMap, AreaMapTest };
 	use cmn::{ CelCoords };
 	use cmn::{ /*DataCellLayer,*/ CorticalDimensions };
+
+	pub trait SynapsesTest {
+		fn set_offs_to_zero(&mut self);
+		fn set_offs(&self, v_ofs: i8, u_ofs: i8, idx: usize);
+		fn set_src_slc(&self, src_slc_id: u8, idx: usize);
+		fn syn_state(&self, idx: u32) -> u8;
+		fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords;		
+	}
+
+	impl SynapsesTest for Synapses {
+		fn set_offs_to_zero(&mut self) {
+			self.src_col_v_offs.set_all_to(0);
+			self.src_col_u_offs.set_all_to(0);
+		}
+
+		fn set_offs(&self, v_ofs: i8, u_ofs: i8, idx: usize) {
+			let sdr_v = vec![v_ofs];
+			let sdr_u = vec![u_ofs];
+			self.src_col_v_offs.write_direct(&sdr_v[..], idx);
+			self.src_col_u_offs.write_direct(&sdr_u[..], idx);
+		}
+
+		fn set_src_slc(&self, src_slc_id: u8, idx: usize) {
+			let sdr = vec![src_slc_id];
+			self.src_slc_ids.write_direct(&sdr[..], idx);
+		}
+
+		fn syn_state(&self, idx: u32) -> u8 {
+			let mut sdr = vec![0u8];
+			self.states.read_direct(&mut sdr[..], idx as usize);
+			sdr[0]
+		}
+
+		fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords {
+			let tuft_id_range = Range::new(0, self.dims.tufts_per_cel());
+			let syn_id_cel_range = Range::new(0, self.dims.per_tuft());
+
+			let tuft_id = tuft_id_range.ind_sample(&mut self.rng); 
+			let syn_id_cel = syn_id_cel_range.ind_sample(&mut self.rng);
+
+			SynCoords::new(tuft_id, syn_id_cel, cel_coords, &self.dims)
+		}
+		
+	}
 
 	#[derive(Debug)]
 	pub struct SynCoords {
@@ -438,7 +481,7 @@ pub mod tests {
 		pub tuft_id: u32,
 		pub syn_id_cel: u32,		
 		pub cel_coords: CelCoords,
-		pub layer_dims: CorticalDimensions,
+		// pub layer_dims: CorticalDimensions,
 	}
 
 	impl SynCoords {
@@ -453,31 +496,45 @@ pub mod tests {
 				tuft_id: tuft_id,
 				syn_id_cel: syn_id_cel, 				
 				cel_coords: cel_coords,
-				layer_dims: layer_dims.clone(),
+				// layer_dims: layer_dims.clone(),
 			}
 		}
 
-		pub fn new_random(layer_dims: &CorticalDimensions, cel_coords: CelCoords) -> SynCoords {			
-			let tuft_id_range = Range::new(0, layer_dims.tufts_per_cel());
-			let syn_id_cel_range = Range::new(0, layer_dims.per_tuft());
-
-			let mut rng = rand::weak_rng();
-
-			let tuft_id = tuft_id_range.ind_sample(&mut rng); 
-			let syn_id_cel = syn_id_cel_range.ind_sample(&mut rng);
-
-			SynCoords::new(tuft_id, syn_id_cel, cel_coords, layer_dims)
-		}
-
 		// CEL_IDZ(): Get index of zeroth synapse on cell
-		pub fn cel_idz(&self) -> u32 {
+		pub fn syn_idz_cel(&self) -> u32 {
 			0
 		}
 
 		// CEL_IDZ(): Get index of nth synapse on cell, the synapse beyond the last
-		pub fn cel_idn(&self) -> u32 {
+		pub fn syn_idn_cel(&self) -> u32 {
 			0
 		}
+
+		// pub fn rand_safe_src_axn(&self, src_axn_slc: u8, area_map: &AreaMap) -> (i8, i8, u32) {
+		// 	let v_ofs_range = Range::new(-8i8, 9);
+		// 	let u_ofs_range = Range::new(-8i8, 9);
+
+		// 	let mut rng = rand::weak_rng();
+
+		// 	for i in 0..50 {
+		// 		let v_ofs = v_ofs_range.ind_sample(&mut rng);
+		// 		let u_ofs = u_ofs_range.ind_sample(&mut rng);
+
+		// 		if v_ofs | u_ofs == 0 {
+		// 			continue;
+		// 		}
+
+		// 		let idx_rslt = area_map.axn_idx(src_axn_slc, self.cel_coords.v_id, 
+		// 			v_ofs, self.cel_coords.u_id, u_ofs);
+
+		// 		match idx_rslt {
+		// 			Ok(idx) => return (v_ofs, u_ofs, idx),
+		// 			Err(_) => (),
+		// 		}
+		// 	}
+
+		// 	panic!("SynCoords::rand_safe_src_axn_offs(): Error finding valid offset pair.");
+		// }
 	}
 
 
@@ -537,3 +594,18 @@ pub mod tests {
 		syn_idx
 	}
 }
+
+
+
+
+// pub fn new_random(layer_dims: &CorticalDimensions, cel_coords: CelCoords) -> SynCoords {			
+		// 	let tuft_id_range = Range::new(0, layer_dims.tufts_per_cel());
+		// 	let syn_id_cel_range = Range::new(0, layer_dims.per_tuft());
+
+		// 	let mut rng = rand::weak_rng();
+
+		// 	let tuft_id = tuft_id_range.ind_sample(&mut rng); 
+		// 	let syn_id_cel = syn_id_cel_range.ind_sample(&mut rng);
+
+		// 	SynCoords::new(tuft_id, syn_id_cel, cel_coords, layer_dims)
+		// }

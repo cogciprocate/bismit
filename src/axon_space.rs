@@ -86,19 +86,25 @@ impl AxonSpace {
 #[cfg(test)]
 mod tests {
 	use super::{ AxonSpace };
-	use map::{ AreaMap, AreaMapTests };
+	use map::{ AreaMap, AreaMapTest };
 	use cmn::{ CelCoords };
 
 	pub trait AxonSpaceTest {
-		fn write_to_axon(&mut self, coords: AxnCoords, val: u8);
+		fn axn_state(&self, idx: usize) -> u8;
+		fn write_to_axon(&self, val: u8, idx: usize);
 	}
 
 	impl AxonSpaceTest for AxonSpace {
-		fn write_to_axon(&mut self, coords: AxnCoords, val: u8) {
-			self.states.read();
-			self.states[coords.idx() as usize] = val;
-			self.states.write();
+		fn axn_state(&self, idx: usize) -> u8 {
+			let mut sdr = vec![0u8];
+			self.states.read_direct(&mut sdr, idx);
+			sdr[0]
 		}
+
+		fn write_to_axon(&self, val: u8, idx: usize) {
+			let sdr = vec![val];
+			self.states.write_direct(&sdr, idx);
+		}		
 	}
 
 	pub struct AxnCoords {
@@ -118,10 +124,10 @@ mod tests {
 			}
 		}
 
-		pub fn from_cel_coords(cel_axn_slc_base: u8, cel_coords: &CelCoords, area_map: &AreaMap
+		pub fn from_cel_coords(cel_base_axn_slc: u8, cel_coords: &CelCoords, area_map: &AreaMap
 			) -> Result<AxnCoords, &'static str>
 		{
-			AxnCoords::new(cel_axn_slc_base, cel_coords.v_id,
+			AxnCoords::new(cel_base_axn_slc, cel_coords.v_id,
 				cel_coords.u_id, area_map)
 		}
 

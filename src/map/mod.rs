@@ -5,7 +5,7 @@ pub use self::slice_map::{ SliceMap };
 pub use self::layer_map:: { InterAreaInfoCache };
 
 #[cfg(test)]
-pub use self::area_map::tests::{ AreaMapTests };
+pub use self::area_map::tests::{ AreaMapTest };
 
 
 mod area_map;

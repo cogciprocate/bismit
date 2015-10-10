@@ -14,7 +14,7 @@ pub use self::renderer::{ Renderer };
 //pub use self::prediction::*;
 
 #[cfg(test)]
-pub use self::data_cell_layer::tests::{ CelCoords };
+pub use self::data_cell_layer::tests::{ CelCoords, DataCellLayerTest };
 
 mod cmn;
 mod cortical_dimensions;
