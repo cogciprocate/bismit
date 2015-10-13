@@ -145,7 +145,7 @@ impl AreaMap {
 	pub fn gen_build_options(&self) -> BuildOptions {
 		let mut build_options = cmn::base_build_options()
 			.opt("HORIZONTAL_AXON_ROW_DEMARCATION", self.hrz_demarc as i32)
-			.opt("AXN_SLC_COUNT", self.slices.slc_count() as i32)
+			.opt("AXN_SLC_COUNT", self.slices.depth() as i32)
 			.add_opt(BuildOption::with_str_val("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
 			.add_opt(BuildOption::with_str_val("AXN_SLC_V_SIZES", literal_list(self.slices.v_sizes())))
 			.add_opt(BuildOption::with_str_val("AXN_SLC_U_SIZES", literal_list(self.slices.u_sizes())))
@@ -233,13 +233,14 @@ pub mod tests {
 	pub trait AreaMapTest {
 		fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8,
 			) -> Result<u32, &'static str>;
+		fn print_slc_map(&self);
 	}
 
 	impl AreaMapTest for AreaMap {
 		fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8
 			) -> Result<u32, &'static str> 
 		{
-			let slc_count = self.slices().slc_count();
+			let slc_count = self.slices().depth();
 			let v_size = self.dims().v_size();
 			let u_size = self.dims().u_size();
 
@@ -252,6 +253,16 @@ pub mod tests {
 			} else {
 				Err("Axon coordinates invalid.")
 			}
+		}
+
+		fn print_slc_map(&self) {
+			print!("\nSlice Map: ");
+
+			for i in 0..self.slices.slc_count() {
+				print!("[{}: '{}', {}]", i, self.slices.layer_names()[i], self.slices.axn_idzs()[i]);
+			}
+
+			print!("\n");
 		}
 	}
 

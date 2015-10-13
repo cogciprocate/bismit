@@ -10,7 +10,7 @@ use interactive::{ /*self,*/ input_czar, /*InputCzar, InputKind*/ };
 use dendrites::{ Dendrites };
 use pyramidals::{ PyramidalLayer };
 use cortex::{ /*self,*/ Cortex };
-use cmn::{ self, DataCellLayer };
+use cmn::{ self, DataCellLayer, DataCellLayerTest };
 // use ocl::{ self, Envoy };
 
 

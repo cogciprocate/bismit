@@ -1,15 +1,14 @@
-use cmn::{ /*self,*/ CorticalDimensions };
-use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, /*ProtoAreaMap, Cellular,*/ Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
-// use cortex::{ self, Cortex };
+use cmn::{ CorticalDimensions };
+use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 use thalamus::{ Thalamus };
-use ocl::{ /*Envoy, WorkSize,*/ OclContext, OclProgQueue, /*EnvoyDimensions, BuildOptions, BuildOption*/ };
-// use interactive::{ input_czar, InputCzar, InputKind };
-// use super::hybrid;
-// use super::kernels;
+use ocl::{ OclContext, OclProgQueue };
+use cortex::{ Cortex };
+
 
 pub static PRIMARY_AREA_NAME: &'static str 	= "v1";
 pub static INHIB_LAYER_NAME: &'static str 	= "iv_inhib";
 const REPEATS_PER_IMAGE: usize 				= 1;
+
 
 pub fn define_protolayer_maps() -> ProtoLayerMaps {
 	let mut proto_layer_maps: ProtoLayerMaps = ProtoLayerMaps::new();
@@ -26,7 +25,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 		.layer("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
 		.layer("iii", 3, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
+			Protocell::new_pyramidal(2, 4, vec!["iii"], 1200).apical(vec!["eff_in"]))
 	);
 
 	proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
@@ -61,19 +60,19 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			// area_side / 2, area_side / 2,
 			// 128, 128,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-			Some(vec!["b1"]),
-			//None,
+			// Some(vec!["b1"]),
+			None,
 		)
 
-		.area("b1", "visual", 
-			// area_side * 2, area_side * 2,			
-			area_side, area_side,
-			//32, 32,
-			//256, 256,
-		 	None,		 	
-		 	// Some(vec!["a1"]),
-		 	None,
-		)
+		// .area("b1", "visual", 
+		// 	// area_side * 2, area_side * 2,			
+		// 	area_side, area_side,
+		// 	//32, 32,
+		// 	//256, 256,
+		//  	None,		 	
+		//  	// Some(vec!["a1"]),
+		//  	None,
+		// )
 
 		// .area("a1", "visual", area_side, area_side, None, None)
 	;
@@ -81,64 +80,12 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 	protoareas
 }
 
-// /* Eventually move defines to a config file or some such */
-// pub fn define_protolayer_maps() -> ProtoLayerMaps {
-// 	let mut cort_regs: ProtoLayerMaps = ProtoLayerMaps::new();
 
-// 	cort_regs.add(ProtoLayerMap::new("visual", Sensory)
-// 		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
-// 		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
-// 		//.layer("olfac", 1, layer::DEFAULT, Axonal(Horizontal))
-// 		.layer("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
-// 		//.layer("nothing", 1, layer::DEFAULT, Axonal(Spatial))
-// 		.layer("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
-// 		.layer("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
-// 		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
-// 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
-// 		.layer("iv_inhib", 0, layer::DEFAULT, 
-// 			Protocell::new_inhibitory(4, "iv"))
-// 		.layer("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
-// 			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
-// 	);
+// FRESH_CORTEX(): Mmmm... Yummy.
+pub fn fresh_cortex() -> Cortex {
+	Cortex::new(define_protolayer_maps(), define_protoareas())
+}
 
-// 	cort_regs.add(ProtoLayerMap::new("external", Thalamic)
-// 		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial))
-// 	);
-
-// 	cort_regs
-// }
-
-// pub fn define_protoareas() -> ProtoAreaMaps {
-// 	let area_side = 64 as u32;
-
-// 	let protoareas = ProtoAreaMaps::new()
-
-// 		.area_ext("v0", "external", area_side, area_side, 
-// 			Protoinput::IdxReader { 
-// 				file_name: "data/train-images-idx3-ubyte", 
-// 				repeats: 1,
-// 				scale: 1.1,
-// 			},
-
-// 			None, 
-// 			Some(vec![PRIMARY_AREA_NAME]),
-// 		)
-
-// 		.area(PRIMARY_AREA_NAME, "visual", area_side, area_side, 
-// 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-// 			Some(vec!["b1"]),
-// 			//None,
-// 		)
-
-// 		.area("b1", "visual", area_side, area_side,
-// 		 	None,
-// 		 	//Some(vec!["a1"]),
-// 		 	None,
-// 		)
-// 	;
-
-// 	protoareas
-// }
 
 
 // TESTBED {}: Stripped down cortex/cortical area

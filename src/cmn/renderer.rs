@@ -157,7 +157,7 @@ impl Renderer {
 	}
 
 	pub fn render_axon_space(&mut self, axn_space: &Sdr, slices: &SliceMap) {
-		for slc_id in 0..slices.slc_count() {			
+		for slc_id in 0..slices.depth() {			
 			//let axn_idz = cmn::axn_idz_2d(slc_id, col_count, hrz_demarc) as usize;
 			let slc_dims = &slices.dims()[slc_id as usize];
 			let axn_idz = slices.idz(slc_id) as usize;

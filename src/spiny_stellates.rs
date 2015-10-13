@@ -84,7 +84,7 @@ impl SpinyStellateLayer {
 		//println!("\n##### SPINY_STELLATES: cels_per_tuft: {}, syns_per_tuft_l2: {}, lyr_axn_idz: {} ", cels_per_tuft, syns_per_tuft_l2, lyr_axn_idz);
 
 		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-		let cols_per_grp = dims.cols_per_subgrp(grp_count).unwrap();
+		let cols_per_grp = dims.per_subgrp(grp_count).unwrap();
 			//.unwrap_or_else(|s: &'static str| panic!(s));
 
 		let kern_ltp = ocl.new_kernel("sst_ltp".to_string(), 

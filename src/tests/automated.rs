@@ -50,7 +50,7 @@ fn test_kernels() {
 
 // 	let mut build_options = cmn::base_build_options()
 // 		.opt("HORIZONTAL_AXON_ROW_DEMARCATION", 128 as i32)
-// 		.opt("AXN_SLC_COUNT", self.slices.slc_count() as i32)
+// 		.opt("AXN_SLC_COUNT", self.slices.depth() as i32)
 // 		.add_opt(BuildOption::with_str_val("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
 // 		.add_opt(BuildOption::with_str_val("AXN_SLC_V_SIZES", literal_list(self.slices.v_sizes())))
 // 		.add_opt(BuildOption::with_str_val("AXN_SLC_U_SIZES", literal_list(self.slices.u_sizes())))

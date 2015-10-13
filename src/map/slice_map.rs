@@ -105,6 +105,13 @@ impl SliceMap {
 			dims.push(slc_dims);
 		}
 
+		assert_eq!(axn_idzs.len(), layer_names.len());
+		assert_eq!(axn_idzs.len(), dims.len());
+		assert_eq!(axn_idzs.len(), v_sizes.len());
+		assert_eq!(axn_idzs.len(), u_sizes.len());
+		assert_eq!(axn_idzs.len(), v_scales.len());
+		assert_eq!(axn_idzs.len(), u_scales.len());
+
 		SliceMap {
 			axn_idzs: axn_idzs,
 			layer_names: layer_names,
@@ -151,7 +158,11 @@ impl SliceMap {
 		self.layer_names[slc_id as usize]
 	}
 
-	pub fn slc_count(&self) -> u8 {
+	pub fn slc_count(&self) -> usize {
+		self.axn_idzs.len() 
+	}
+
+	pub fn depth(&self) -> u8 {
 		self.axn_idzs.len() as u8
 	}
 
@@ -161,6 +172,10 @@ impl SliceMap {
 
 	pub fn axn_idzs(&self) -> &Vec<u32> {
 		&self.axn_idzs
+	}
+
+	pub fn layer_names(&self) -> &Vec<&'static str> {
+		&self.layer_names
 	}
 
 	pub fn v_sizes(&self) -> &Vec<u32> {

@@ -529,12 +529,15 @@ mod tests {
 	use map::{ AreaMapTest };
 
 	pub trait CorticalAreaTest {
+		//fn axons
 		fn read_from_axons(&self, sdr: &mut Sdr, axn_range: Range<u32>);
 		fn write_to_axons(&self, sdr: &Sdr, axn_range: Range<u32>);
 		fn axn_state(&self, idx: usize) -> u8;
 		fn write_to_axon(&self, val: u8, idx: usize);
 		fn rand_safe_src_axn(&mut self, syn_coords: &SynCoords, src_axn_slc: u8
 			) -> (i8, i8, u32);
+		fn print_aux(&mut self);
+		fn print_axns(&mut self);
 	}
 
 	impl CorticalAreaTest for CorticalArea {
@@ -576,6 +579,23 @@ mod tests {
 			}
 
 			panic!("SynCoords::rand_safe_src_axn_offs(): Error finding valid offset pair.");
+		}
+
+		fn print_aux(&mut self) {
+			print!("aux.ints_0: ");
+			let view_radius = 1 << 24;
+			self.aux.ints_0.print((1 << 0) as usize, 
+				Some((0 - view_radius, view_radius)), None, true);
+			
+			print!("aux.ints_1: ");
+			self.aux.ints_1.print((1 << 0) as usize, 
+				Some((0 - view_radius, view_radius)), None, true);
+		}
+
+		fn print_axns(&mut self) {
+			print!("axns: ");
+			//let view_radius = 1 << 24;
+			self.axns.states.print(1 << 0, Some((0, 255)), None, false);
 		}
 	}
 }

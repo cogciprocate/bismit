@@ -420,20 +420,17 @@ struct AxnOfs {
 #[cfg(test)]
 pub mod tests {
 	#![allow(non_snake_case)]
-	// use rand;
-	use rand::distributions::{ IndependentSample, Range };
+	use std::ops::{ Range };
+	use rand::distributions::{ IndependentSample, Range as RandRange };
 
-	//use cortex::{ Cortex };
-	//use super::{ Synapses };
-	//use pyramidals::{ PyramidalLayer };
 	use super::{ Synapses };
-	// use map::{ AreaMap, AreaMapTest };
 	use cmn::{ CelCoords };
-	use cmn::{ /*DataCellLayer,*/ CorticalDimensions };
+	use cmn::{ CorticalDimensions };
 
 	pub trait SynapsesTest {
 		fn set_offs_to_zero(&mut self);
-		fn set_offs(&self, v_ofs: i8, u_ofs: i8, idx: usize);
+		fn set_all_to_zero(&mut self);
+		fn set_src_offs(&self, v_ofs: i8, u_ofs: i8, idx: usize);
 		fn set_src_slc(&self, src_slc_id: u8, idx: usize);
 		fn syn_state(&self, idx: u32) -> u8;
 		fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords;		
@@ -445,7 +442,16 @@ pub mod tests {
 			self.src_col_u_offs.set_all_to(0);
 		}
 
-		fn set_offs(&self, v_ofs: i8, u_ofs: i8, idx: usize) {
+		fn set_all_to_zero(&mut self) {
+			self.states.set_all_to(0);
+			self.strengths.set_all_to(0);
+			self.src_slc_ids.set_all_to(0);
+			self.src_col_u_offs.set_all_to(0);
+			self.src_col_v_offs.set_all_to(0);
+			self.flag_sets.set_all_to(0);
+		}
+
+		fn set_src_offs(&self, v_ofs: i8, u_ofs: i8, idx: usize) {
 			let sdr_v = vec![v_ofs];
 			let sdr_u = vec![u_ofs];
 			self.src_col_v_offs.write_direct(&sdr_v[..], idx);
@@ -464,8 +470,8 @@ pub mod tests {
 		}
 
 		fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords {
-			let tuft_id_range = Range::new(0, self.dims.tufts_per_cel());
-			let syn_id_cel_range = Range::new(0, self.dims.per_tuft());
+			let tuft_id_range = RandRange::new(0, self.dims.tufts_per_cel());
+			let syn_id_cel_range = RandRange::new(0, self.dims.per_tuft());
 
 			let tuft_id = tuft_id_range.ind_sample(&mut self.rng); 
 			let syn_id_cel = syn_id_cel_range.ind_sample(&mut self.rng);
@@ -481,7 +487,7 @@ pub mod tests {
 		pub tuft_id: u32,
 		pub syn_id_cel: u32,		
 		pub cel_coords: CelCoords,
-		// pub layer_dims: CorticalDimensions,
+		pub layer_dims: CorticalDimensions,
 	}
 
 	impl SynCoords {
@@ -496,45 +502,17 @@ pub mod tests {
 				tuft_id: tuft_id,
 				syn_id_cel: syn_id_cel, 				
 				cel_coords: cel_coords,
-				// layer_dims: layer_dims.clone(),
+				layer_dims: layer_dims.clone(),
 			}
 		}
 
-		// CEL_IDZ(): Get index of zeroth synapse on cell
-		pub fn syn_idz_cel(&self) -> u32 {
-			0
+		pub fn syn_range_cel(&self) -> Range<usize> {
+			let syns_per_cel = self.layer_dims.per_tuft() as usize;
+			let syn_idz_cel = syn_idx(&self.layer_dims, self.tuft_id, 
+				self.cel_coords.idx, 0) as usize;
+
+			syn_idz_cel..(syn_idz_cel + syns_per_cel)
 		}
-
-		// CEL_IDZ(): Get index of nth synapse on cell, the synapse beyond the last
-		pub fn syn_idn_cel(&self) -> u32 {
-			0
-		}
-
-		// pub fn rand_safe_src_axn(&self, src_axn_slc: u8, area_map: &AreaMap) -> (i8, i8, u32) {
-		// 	let v_ofs_range = Range::new(-8i8, 9);
-		// 	let u_ofs_range = Range::new(-8i8, 9);
-
-		// 	let mut rng = rand::weak_rng();
-
-		// 	for i in 0..50 {
-		// 		let v_ofs = v_ofs_range.ind_sample(&mut rng);
-		// 		let u_ofs = u_ofs_range.ind_sample(&mut rng);
-
-		// 		if v_ofs | u_ofs == 0 {
-		// 			continue;
-		// 		}
-
-		// 		let idx_rslt = area_map.axn_idx(src_axn_slc, self.cel_coords.v_id, 
-		// 			v_ofs, self.cel_coords.u_id, u_ofs);
-
-		// 		match idx_rslt {
-		// 			Ok(idx) => return (v_ofs, u_ofs, idx),
-		// 			Err(_) => (),
-		// 		}
-		// 	}
-
-		// 	panic!("SynCoords::rand_safe_src_axn_offs(): Error finding valid offset pair.");
-		// }
 	}
 
 
@@ -545,7 +523,7 @@ pub mod tests {
 
 
 
-	// SYN_IDX(): BASICALLY FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
+	// SYN_IDX(): FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
 	// 		- Synapse index space heirarchy:  | Tuft - Slice - Cell - Synapse |
 	// 		- 'cel_idx' already has slice built in to its value
 	pub fn syn_idx(layer_dims: &CorticalDimensions, tuft_id: u32, cel_idx: u32, syn_id_cel: u32) -> u32 {
@@ -558,7 +536,7 @@ pub mod tests {
 		let cels_per_slc = layer_dims.columns();
 		let syns_per_cel = layer_dims.per_tuft();
 
-		assert!((tuft_count * slcs_per_tuft as u32 * cels_per_slc * syns_per_cel) == layer_dims.linear_len());
+		assert!((tuft_count * slcs_per_tuft as u32 * cels_per_slc * syns_per_cel) == layer_dims.physical_len());
 		assert!(tuft_id < tuft_count);
 		assert!(cel_idx < slcs_per_tuft as u32 * cels_per_slc);
 		assert!(syn_id_cel < syns_per_cel);

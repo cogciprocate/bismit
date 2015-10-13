@@ -120,7 +120,7 @@ impl Minicolumns {
 			.arg_scl(pyrs.base_axn_slc())
 			.arg_scl(pyrs.protocell().dens_per_tuft_l2)
 			.arg_env(&pyrs.flag_sets)
-			.arg_env(&pyrs.preds)
+			.arg_env(&pyrs.states)
 			//.arg_env(&aux.ints_0)
 			.arg_env(&axons.states)
 		;

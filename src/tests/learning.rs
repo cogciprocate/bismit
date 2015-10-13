@@ -1,18 +1,37 @@
-// use std::ops::{ Range };
+use std::ops::{ Range };
 use std::iter;
-use std::io::{ /*self,*/ Write, /*Stdout*/ };
+use std::io::{ Write };
 // use std::mem;
 use rand;
 
-use interactive::{ /*self,*/ /*input_czar,*/ /*InputCzar, InputKind*/ };
 use proto::*;
 
-use cortical_area::{ CorticalAreaTest };
+use cortical_area::{ CorticalArea, CorticalAreaTest };
+use map::{ AreaMapTest };
 use synapses::tests::{ /*SynCoords,*/ SynapsesTest };
 use axon_space::{ /*AxnCoords,*/ AxonSpaceTest };
 use cortex::{ Cortex };
 use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
 use super::{ testbed };
+
+
+// TEST_DENS():
+/* 
+
+
+*/
+#[test]
+fn test_dens() {
+	let mut cortex = testbed::fresh_cortex();
+	let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+
+	let 
+
+	for i in 0..1 {
+
+
+	}
+}
 
 
 // TEST_PYR_SYN_LEARNING(): 
@@ -63,64 +82,247 @@ use super::{ testbed };
 */
 #[test]
 fn test_ptal_syn_learning() {		
-	let mut cortex = Cortex::new(testbed::define_protolayer_maps(), testbed::define_protoareas());
+	let mut cortex = testbed::fresh_cortex();
 	let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
-	//let pyr_out_axn_idz = area.area_map().axn_idz(area.ptal().base_axn_slc());
-	//let pyr_col_in_axn_idz = area.area_map().axn_idz(area.psal().base_axn_slc());
+	// let axn_idz_pyr_lyr = area.area_map().axn_idz(area.ptal().base_axn_slc());
+	let axn_idz_sst_lyr = area.area_map().axn_idz(area.psal().base_axn_slc());
+
 	let src_axn_slc = area.psal().base_axn_slc();
 	let pyr_axn_slc = area.ptal().base_axn_slc();
 
-	area.psal_mut().dens_mut().syns_mut().set_offs_to_zero();
-	area.ptal_mut().dens_mut().syns_mut().set_offs_to_zero();
+	//area.psal_mut().dens_mut().syns_mut().set_offs_to_zero();
+
+	// PRINT SLICE MAP
+	// area.area_map().print_slc_map();
 
 	println!("\nInitiating synapse learning test for the primary temporal associative layer \
 		of area: '{}'.", testbed::PRIMARY_AREA_NAME);
 
-	for i in 0..5 {
-		let pyr_coords = area.ptal_mut().rand_cel_coords();
-		//let syn_coords = SynCoords::new_random(area.ptal().dens().syns().dims(), pyr_coords);
-		let syn_coords = area.ptal_mut().dens_mut().syns_mut().rand_syn_coords(pyr_coords);
+	for i in 0..1 {
+
+		/*=============================================================================
+		=================================== INIT ===================================
+		=============================================================================*/
+
+		area.ptal_mut().dens_mut().syns_mut().set_all_to_zero();
+		area.axns.states.set_all_to(0);
+
+		let cel_coords = area.ptal_mut().rand_cel_coords();
+		let syn_coords = area.ptal_mut().dens_mut().syns_mut()
+			.rand_syn_coords(cel_coords);
 		//let axn_in = AxnCoords::from_cel_coords(src_axn_slc, &syn_coords.cel_coords, area.area_map()).unwrap();
 		//let axn_out = AxnCoords::from_cel_coords(pyr_axn_slc, &syn_coords.cel_coords, area.area_map()).unwrap();
 
-		let (v_ofs, u_ofs, dst_src_axn_idx) = area.rand_safe_src_axn(&syn_coords, pyr_axn_slc);
+		let axn_idx_col_in = axn_idz_sst_lyr + syn_coords.cel_coords.col_id();
+		let (v_ofs, u_ofs, axn_idx_dst_src) = area.rand_safe_src_axn(&syn_coords, pyr_axn_slc);
 
-		area.ptal_mut().dens_mut().syns_mut().set_offs(v_ofs, u_ofs, syn_coords.idx as usize);
-		area.ptal_mut().dens_mut().syns_mut().set_src_slc(pyr_axn_slc, syn_coords.idx as usize);
+		let syn_range = syn_coords.syn_range_cel();
+		// let syn_range_half = syn_range.start..(syn_range.start + syn_range.len() / 2); // FIRST HALF
+		let syn_range_half = (syn_range.start + syn_range.len() / 2)
+			..(syn_range.start + syn_range.len()); // SECOND HALF
+		let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states.len();
 
-		area.write_to_axon(128, dst_src_axn_idx as usize);
+		for syn_idx in syn_range_half.clone() {
+			area.ptal_mut().dens_mut().syns_mut().set_src_offs(v_ofs, u_ofs, syn_idx as usize);
+			area.ptal_mut().dens_mut().syns_mut().set_src_slc(pyr_axn_slc, syn_idx as usize);
+		}
 
-		area.ptal_mut().dens_mut().syns_mut().cycle();
+		print_all(&mut area, &syn_range_all, "\n - Confirm Init - ");
 
+		/*=============================================================================
+		=================================== 0 ===================================
+		=============================================================================*/
+
+		// ACTIVATE PTAL SYNAPSE SOURCE AXON
+		area.write_to_axon(128, axn_idx_dst_src as usize);
+
+		// CYCLE ONLY
+		area.ptal_mut().cycle();
 
 		let syn_val = area.ptal_mut().dens_mut().syns_mut().syn_state(syn_coords.idx);
-		let axn_val = area.axn_state(dst_src_axn_idx as usize);
+		let axn_val = area.axn_state(axn_idx_dst_src as usize);
+		
+		println!("\n##### pyr_axn_slc: {}, v_ofs: {}, u_ofs: {}, axn_idx_dst_src: {}, axn_val: {}, \
+			syn_val: {}, \n{}syn_coords: {:?}", pyr_axn_slc, v_ofs, u_ofs, axn_idx_dst_src, axn_val, 
+			syn_val, cmn::MT, syn_coords);		
 
-		println!("\n##### pyr_axn_slc: {}, v_ofs: {}, u_ofs: {}, dst_src_axn_idx: {}, axn_val: {}, \
-			syn_val: {}, syn_coords: {:?}", pyr_axn_slc, v_ofs, u_ofs, dst_src_axn_idx, axn_val, 
-			syn_val, syn_coords);
+		print_all(&mut area, &syn_range_all, "\n - Confirm 0 - Activ_Cheat, Cycle - ");
+		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
 
-		// ### TEMP ###
-		// print!("v_offs: ");
-		// area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.print(1 << 0, Some((-128, 127)), None, false);
-		// print!("u_offs: ");
-		// area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.print(1 << 0, Some((-128, 127)), None, false);
-		print!("states: ");
-		area.ptal_mut().dens_mut().syns_mut().states.print(1 << 0, Some((0, 255)), None, false);
+		/*=============================================================================
+		=================================== 1A ===================================
+		=============================================================================*/
 
-		assert!(axn_val > 0);
-		assert!(syn_val > 0);
+		// ACTIVATE, & LEARN ONLY
+		area.mcols.activate();
+		// area.ptal_mut().learn();
+		// area.ptal_mut().cycle();
 
-		// CLEAN UP
-		area.ptal_mut().dens_mut().syns_mut().set_offs(0, 0, syn_coords.idx as usize);
-		area.write_to_axon(0, dst_src_axn_idx as usize);
-		area.ptal_mut().dens_mut().syns_mut().states.set_all_to(0);
-		area.ptal_mut().dens_mut().syns_mut().states.write();
+		print_all(&mut area, &syn_range_all, "\n - Confirm 1A - Activate - ");
+		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
+
+		/*=============================================================================
+		=================================== 1B ===================================
+		=============================================================================*/
+
+		// ACTIVATE, LEARN &, CYCLE
+		// area.mcols.activate();
+		area.ptal_mut().learn();
+		// area.ptal_mut().cycle();
+
+		print_all(&mut area, &syn_range_all, "\n - Confirm 1B - Learn - ");
+		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
+
+		/*=============================================================================
+		=================================== 1C ===================================
+		=============================================================================*/
+
+		// ACTIVATE PTAL SYNAPSE SOURCE AXON
+		area.write_to_axon(128, axn_idx_dst_src as usize);
+
+		// ACTIVATE, LEARN &, CYCLE
+		// area.mcols.activate();
+		// area.ptal_mut().learn();
+		area.ptal_mut().cycle();
+
+		print_all(&mut area, &syn_range_all, "\n - Confirm 1C - Activ_Cheat, Cycle - ");
+		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
+
+		/*=============================================================================
+		=================================== 2A ===================================
+		=============================================================================*/
+
+		// PRINT SLICE MAP FOR REFERENCE
+		area.area_map().print_slc_map();
+
+		// ACTIVATE COLUMN PSAL AXON
+		area.write_to_axon(128, axn_idx_col_in as usize);
+		// ACTIVATE PTAL SYNAPSE SOURCE AXON
+		// area.write_to_axon(128, axn_idx_dst_src as usize);
+
+		// ACTIVATE, LEARN &, CYCLE
+		area.mcols.activate();
+		// area.ptal_mut().learn();
+		// area.ptal_mut().cycle();
+
+		print_all(&mut area, &syn_range_all, "\n - Confirm 2A - Activ_InCol, Activate - ");
+		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
+
+		/*=============================================================================
+		=================================== 2B ===================================
+		=============================================================================*/
+
+		// ACTIVATE COLUMN PSAL AXON
+		//area.write_to_axon(128, axn_idx_col_in as usize);
+		// ACTIVATE PTAL SYNAPSE SOURCE AXON
+		//area.write_to_axon(128, axn_idx_dst_src as usize);
+
+		// ACTIVATE, LEARN &, CYCLE
+		// area.mcols.activate();
+		area.ptal_mut().learn();
+		// area.ptal_mut().cycle();
+
+		print_all(&mut area, &syn_range_all, "\n - Confirm 2B - Learn - ");
+		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
+
+		// <<<<< TODO: assert!(chosen-half of syns are +1, others are -1) >>>>>
+		// CURRENTLY: indexes are a mess
+
+		/*=============================================================================
+		=================================== 2C ===================================
+		=============================================================================*/
+
+		// ACTIVATE COLUMN PSAL AXON
+		//area.write_to_axon(128, axn_idx_col_in as usize);
+		// ACTIVATE PTAL SYNAPSE SOURCE AXON
+		//area.write_to_axon(128, axn_idx_dst_src as usize);
+
+		// ACTIVATE, LEARN &, CYCLE
+		// area.mcols.activate();
+		// area.ptal_mut().learn();
+		area.ptal_mut().cycle();
+
+		print_all(&mut area, &syn_range_all, "\n - Confirm 2C - Cycle - ");
+
+		/*=============================================================================
+		=================================== 3 ===================================
+		=============================================================================*/
+
+		// ZERO COLUMN PSAL AXON
+		area.write_to_axon(0, axn_idx_col_in as usize);
+		// ZERO PTAL SYNAPSE SOURCE AXON
+		area.write_to_axon(0, axn_idx_dst_src as usize);
+
+		// ACTIVATE, LEARN &, CYCLE
+		al_cycle(&mut area);
+
+		print_all(&mut area, &syn_range_all, "\n - Confirm 3 - Zero_InCol, Zero_Cheat - Activate, Learn, Cycle - ");
+
 	}
 
+	print!("\n\n");
 	assert!(false, " JUST DEBUGGING :) ");
 }
 
+
+// CYCLE, ACTIVATE, & LEARN
+fn al_cycle(area: &mut CorticalArea) {
+	area.mcols.activate();
+	area.ptal_mut().learn();
+	area.ptal_mut().cycle();
+}
+
+
+fn confirm_syns(area: &mut CorticalArea, syn_range: &Range<usize>, state_neq: u8, 
+		flag_set_eq: u8, strength_eq: i8) 
+{
+	for syn_idx in syn_range.clone() {
+		area.ptal_mut().dens_mut().syns_mut().states.read();
+		area.ptal_mut().dens_mut().syns_mut().flag_sets.read();
+		area.ptal_mut().dens_mut().syns_mut().strengths.read();
+		assert!(area.ptal_mut().dens_mut().syns_mut().states[syn_idx] != state_neq);
+		assert!(area.ptal_mut().dens_mut().syns_mut().flag_sets[syn_idx] == flag_set_eq);
+		assert!(area.ptal_mut().dens_mut().syns_mut().strengths[syn_idx] == strength_eq);
+	}
+}
+
+
+fn print_all(area: &mut CorticalArea, syn_range: &Range<usize>, desc: &'static str) {
+	//println!("\n - Confirm 1A - Activate");
+	println!("{}", desc);
+	area.ptal_mut().print_all();
+	print_syns(area, syn_range);
+	area.print_aux();
+	area.print_axns();
+}
+
+
+// MOVE ME TO SYNS
+fn print_syns(area: &mut CorticalArea, syn_range: &Range<usize>) {
+	// print!("v_offs: ");
+	// area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.print(1 << 0, Some((-128, 127)), None, false);
+	// print!("u_offs: ");
+	// area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.print(1 << 0, Some((-128, 127)), None, false);
+	print!("syns.states: ");
+	area.ptal_mut().dens_mut().syns_mut().states.print(1 << 0, Some((0, 255)), 
+		Some((syn_range.start, syn_range.end)), false);
+	print!("syns.flag_sets: ");
+	area.ptal_mut().dens_mut().syns_mut().flag_sets.print(1 << 0, Some((0, 255)), 
+		Some((syn_range.start, syn_range.end)), false);
+	print!("syns.strengths: ");
+	area.ptal_mut().dens_mut().syns_mut().strengths.print(1 << 0, Some((-128, 127)), 
+		Some((syn_range.start, syn_range.end)), false);
+}
+
+
+// pub const PYR_PREV_CONCRETE_FLAG: u8 		= 128	(0x80)
+// pub const PYR_BEST_IN_COL_FLAG: u8 			= 64	(0x40)
+// pub const PYR_PREV_STP_FLAG: u8 				= 32	(0x20)
+// pub const PYR_PREV_FUZZY_FLAG: u8			= 16	(0x10)
+
+// pub const SYN_STP_FLAG: u8					= 1;
+// pub const SYN_STD_FLAG: u8					= 2;
+// pub const SYN_CONCRETE_FLAG: u8				= 8;
 
 
 
@@ -148,6 +350,7 @@ fn test_ptal_syn_learning() {
 
 
 // NEED A 'TestParameters' STRUCT OF SOME SORT TO UNTANGLE THIS AND MOVE STUFF INTO CHILD FUNCTIONS
+// <<<<< TODO: REWRITE OR DEPRICATE >>>>>
 #[test]
 pub fn test_learning_activation(/*cortex: &mut Cortex,*/ /*area_name: &str*/) {
 	let mut cortex = Cortex::new(testbed::define_protolayer_maps(), testbed::define_protoareas());

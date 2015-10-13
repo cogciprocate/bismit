@@ -13,13 +13,10 @@ pub trait DataCellLayer {
 	fn confab(&mut self);
 	fn soma(&self) -> &Envoy<u8>;
 	fn soma_mut(&mut self) -> &mut Envoy<u8>;
-	fn cycle_self_only(&self);
 	fn dims(&self) -> &CorticalDimensions;
 	fn axn_range(&self) -> (usize, usize);
 	fn base_axn_slc(&self) -> u8;
-	fn layer_name(&self) -> &'static str;
-	fn print_cel(&mut self, cel_idx: usize);
-	fn set_all_to_zero(&mut self);
+	fn layer_name(&self) -> &'static str;	
 	fn protocell(&self) -> &Protocell;
 	fn dens(&self) -> &Dendrites;
 	fn dens_mut(&mut self) -> &mut Dendrites;
@@ -35,9 +32,13 @@ pub mod tests {
 	use cmn::{ self, CorticalDimensions };
 
 	pub trait DataCellLayerTest {
+		fn cycle_self_only(&self);
+		fn print_cel(&mut self, cel_idx: usize);
+		fn print_all(&mut self);
 		fn rng(&mut self) -> &mut XorShiftRng;
 		fn rand_cel_coords(&mut self) -> CelCoords;
 		fn cel_idx(&self, slc_id: u8, v_id: u32, u_id: u32)-> u32;
+		fn set_all_to_zero(&mut self);
 	}
 
 
@@ -69,6 +70,11 @@ pub mod tests {
 
 		pub fn idx(&self) -> u32 {
 			self.idx
+		}
+
+		pub fn col_id(&self) -> u32 {
+			cmn::cel_idx_3d(1, 0, self.layer_dims.v_size(), self.v_id, 
+				self.layer_dims.u_size(), self.u_id)
 		}
 	}
 }

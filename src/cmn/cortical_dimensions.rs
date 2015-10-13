@@ -133,8 +133,7 @@ impl CorticalDimensions {
 		len_components(self.columns(), self.per_tuft_l2, self.tufts_per_cel)
 	}
 
-
-	pub fn cols_per_subgrp(&self, subgroup_count: u32) -> Result<u32, &'static str> {
+	pub fn per_subgrp(&self, subgroup_count: u32) -> Result<u32, &'static str> {
 		if self.columns() % subgroup_count == 0 {
 			return Ok(self.len() / subgroup_count) 
 		} else {
@@ -168,7 +167,7 @@ impl CorticalDimensions {
 		self
 	}
 
-	pub fn linear_len(&self) -> u32 {
+	pub fn physical_len(&self) -> u32 {
 		let cols = self.columns();
 		let phys_inc = self.physical_increment();
 
@@ -188,7 +187,7 @@ impl Copy for CorticalDimensions {}
 impl EnvoyDimensions for CorticalDimensions {
 	/* PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
 	fn len(&self) -> u32 {
-		self.linear_len()
+		self.physical_len()
 	}
 }
 
