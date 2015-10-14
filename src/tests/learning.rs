@@ -105,15 +105,13 @@ fn test_dens() {
 		=============================================================================*/
 
 		area.write_to_axon(128, src_axn_idx as usize);
-		area.ptal_mut().dens_mut().cycle();
-
-		print!("\n");
+		area.ptal_mut().dens_mut().cycle();		
 
 		let den_state = area.ptal_mut().dens().states[den_coords.idx as usize];
 
+		print!("\n");
 		println!("dens.state[{}]: '{}'", den_coords.idx, den_state);
 
-		let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states.len();
 		print_all(area, " - Dens - ");
 
 		print!("\n");

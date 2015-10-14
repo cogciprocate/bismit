@@ -120,7 +120,7 @@ pub fn print_vec<T: OclNum>(
 		}
 
 		if val_range.is_some() {
-			if vec[i] < vr_start || vec[i] >= vr_end {
+			if vec[i] < vr_start || vec[i] > vr_end {
 				prnt = false;
 				within_val_range = false;
 			} else {

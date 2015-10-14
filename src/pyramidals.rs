@@ -367,8 +367,9 @@ pub mod tests {
 			self.best_den_states.print(1, Some((0, 255)), None, false);
 			print!("pyrs.flag_sets: ");
 			self.flag_sets.print(1, Some((0, 255)), None, false);
-			print!("pyrs.energies: ");
-			self.energies.print(1, Some((0, 255)), None, false);
+			
+			// print!("pyrs.energies: ");
+			// self.energies.print(1, Some((0, 255)), None, false);
 
 
 			if print_children {

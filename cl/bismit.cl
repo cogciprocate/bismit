@@ -483,18 +483,18 @@ __kernel void den_cycle(
 	
 	syn_sum = mul24((syn_sum > den_threshold), syn_sum);
 
-	if (syn_sum != 0) {
-		if (den_energy >= ENERGY_LEVEL_MIN) {
-			den_energy -= ENERGY_LEVEL_MIN;
-		} else {
-			den_energy += ENERGY_REGEN_AMOUNT;
-			syn_sum = 0;
-		}
-	} else {
-		if (den_energy < ENERGY_LEVEL_MAX) {
-			den_energy += ENERGY_REGEN_AMOUNT;
-		}
-	}
+	// if (syn_sum != 0) {
+	// 	if (den_energy >= ENERGY_LEVEL_MIN) {
+	// 		den_energy -= ENERGY_LEVEL_MIN;
+	// 	} else {
+	// 		den_energy += ENERGY_REGEN_AMOUNT;
+	// 		syn_sum = 0;
+	// 	}
+	// } else {
+	// 	if (den_energy < ENERGY_LEVEL_MAX) {
+	// 		den_energy += ENERGY_REGEN_AMOUNT;
+	// 	}
+	// }
 
 	int den_reduction = syns_per_den_l2 - 1;
 
