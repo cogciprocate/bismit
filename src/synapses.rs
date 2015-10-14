@@ -568,7 +568,7 @@ pub mod tests {
 			}
 		}
 
-		pub fn syn_range_tuftsection(&self) -> Range<usize> {
+		pub fn cel_syn_range_tftsec(&self) -> Range<usize> {
 			let syns_per_cel_tft = self.layer_dims.per_tft() as usize;
 			let syn_idz_cel = syn_idx(&self.layer_dims, self.tft_id, 
 				self.cel_coords.idx, 0) as usize;

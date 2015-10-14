@@ -228,7 +228,7 @@ pub mod tests {
 			}
 		}
 
-		pub fn den_range_cel_tft(&self) -> Range<usize> {
+		pub fn cel_den_range_tftsec(&self) -> Range<usize> {
 			let dens_per_cel_tft = self.layer_dims.per_tft() as usize;
 			let den_idz_cel_tft = den_idx(&self.layer_dims, self.tft_id, 
 				self.cel_coords.idx, 0) as usize;
@@ -236,7 +236,7 @@ pub mod tests {
 			den_idz_cel_tft..(den_idz_cel_tft + dens_per_cel_tft)
 		}
 
-		pub fn syn_range_tuftsection(&self, syns_per_den_l2: u8) -> Range<usize> {
+		pub fn cel_syn_range_tftsec(&self, syns_per_den_l2: u8) -> Range<usize> {
 			let syns_per_cel_tft = (self.layer_dims.per_tft() as usize) << syns_per_den_l2 as usize;
 			let syn_idz_cel_tft = (den_idx(&self.layer_dims, self.tft_id, 
 				self.cel_coords.idx, 0) as usize) << syns_per_den_l2 as usize;
