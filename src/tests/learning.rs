@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use std::ops::{ Range };
 use std::iter;
 use std::io::{ Write };
@@ -21,16 +22,16 @@ use super::{ testbed };
 
 */
 #[test]
-fn test_dens() {
-	let mut cortex = testbed::fresh_cortex();
-	let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+fn test_dens_UNIMPLEMENTED() {
+	//let mut cortex = testbed::fresh_cortex();
+	//let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
-	let 
+	// let 
 
-	for i in 0..1 {
+	// for i in 0..1 {
 
 
-	}
+	// }
 }
 
 

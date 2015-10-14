@@ -128,42 +128,61 @@ impl Synapses {
 
 		if DEBUG_NEW { println!("{mt}{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims, mt = cmn::MT); }
 
-			// *****NEW WorkSize::ThreeDim(dims.depth() as usize, dims.u_size() as usize, dims.v_size() as usize))
-			// *****NEW .lws(WorkSize::ThreeDim(1 as usize, wg_size as usize))
+		let min_wg_sqrt = 8 as usize;
+		assert_eq!((min_wg_sqrt * min_wg_sqrt), cmn::OPENCL_MINIMUM_WORKGROUP_SIZE as usize);
 
-		let cels_per_kernel = dims.cells();
+		// OBVIOUSLY THIS NAME IS CONFUSING: See above for explanation.
+		let cel_tufts_per_syntuft = dims.cells();
 
-		// SYNAPSE KERNEL VARIATIONS:
-		// 		- It may be the case that vec4 versions are unsuitable.
-		// 			- Is having each of the four synapses on the same v_id causing some weird problem?
-		// 	
-		//		FURTHER RESEARCH REQUIRED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		//
-		// 		POSSIBLE CANDIDATE: Worksize is too long for vec kernels
-		//
-
-		for syn_tuft_i in 0..dst_src_slc_ids.len() {
+		for tuft_id in 0..dst_src_slc_ids.len() {
 			kernels.push(Box::new(
 
-				ocl.new_kernel("syns_cycle_simple".to_string(),
-				// ocl.new_kernel("syns_cycle_simple_vec4".to_string(),
-				// ocl.new_kernel("syns_cycle_wow".to_string(),
-				// ocl.new_kernel("syns_cycle_wow_vec4".to_string(), 
-				
-					WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
-					.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
+				// ocl.new_kernel("syns_cycle_layer".to_string(),
+				// ocl.new_kernel("syns_cycle_vec4_layer".to_string(),
+				// ocl.new_kernel("syns_cycle_wow_layer".to_string(),
+				ocl.new_kernel("syns_cycle_wow_vec4_layer".to_string(), 
+					
+					WorkSize::TwoDim(dims.v_size() as usize, (dims.u_size()) as usize))
+					.lws(WorkSize::TwoDim(min_wg_sqrt, min_wg_sqrt))
+					// WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
+					// .lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					.arg_env(&axons.states)
 					.arg_env(&src_col_u_offs)
 					.arg_env(&src_col_v_offs)
 					.arg_env(&src_slc_ids)
 					//.arg_env(&strengths)
-					.arg_scl(syn_tuft_i as u32 * cels_per_kernel)
+					.arg_scl(tuft_id as u32 * cel_tufts_per_syntuft)
 					.arg_scl(syns_per_tuft_l2)
-					.arg_env(&aux.ints_0)
-					//.arg_env(&aux.ints_1)
+					.arg_scl(dims.depth() as u8)
+					// .arg_env(&aux.ints_0)
+					// .arg_env(&aux.ints_1)
 					.arg_env(&states)
 			))
 		}
+
+
+		// for tuft_id in 0..dst_src_slc_ids.len() {
+		// 	kernels.push(Box::new(
+
+		// 		ocl.new_kernel("syns_cycle_simple".to_string(),
+		// 		// ocl.new_kernel("syns_cycle_simple_vec4".to_string(),
+		// 		// ocl.new_kernel("syns_cycle_wow".to_string(),
+		// 		// ocl.new_kernel("syns_cycle_wow_vec4".to_string(), 
+				
+		// 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
+		// 			.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
+		// 			.arg_env(&axons.states)
+		// 			.arg_env(&src_col_u_offs)
+		// 			.arg_env(&src_col_v_offs)
+		// 			.arg_env(&src_slc_ids)
+		// 			//.arg_env(&strengths)
+		// 			.arg_scl(tuft_id as u32 * cel_tufts_per_syntuft)
+		// 			.arg_scl(syns_per_tuft_l2)
+		// 			.arg_env(&aux.ints_0)
+		// 			//.arg_env(&aux.ints_1)
+		// 			.arg_env(&states)
+		// 	))
+		// }
 
 		let mut syns = Synapses {
 			layer_name: layer_name,

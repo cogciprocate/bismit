@@ -187,7 +187,7 @@ static CL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-
 pub static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 4] = [
 	"tests.cl", 
 	"filters.cl", 
-	"synapses.cl", 
+	"syns.cl", 
 	"bismit.cl",
 ];
 

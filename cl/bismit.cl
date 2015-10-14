@@ -962,9 +962,9 @@ __kernel void pyrs_ltp_unoptd(
 				__global int* const aux_ints_1,
 				__global char* const syn_strengths) 
 {
-	// uint const tuft_id = get_global_id(0);
-	uint const slc_id_lyr = get_global_id(0);	
-	uint const grp_id = get_global_id(1);
+	uint const tuft_id = get_global_id(0);
+	uint const slc_id_lyr = get_global_id(1);	
+	uint const grp_id = get_global_id(2);
 	uint const tuft_count = get_global_size(1);	
 	uint const grp_count = get_global_size(2); // GRP_COUNT: COLUMNS / COLS_PER_GRP
 
