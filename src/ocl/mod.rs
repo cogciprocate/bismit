@@ -5,12 +5,13 @@ use std::io::{ Read };
 // use std::fs::{ File };
 use std::ffi;
 use std::iter;
+use std::fmt::{ Display, Debug, /*LowerHex,*/ UpperHex };
 // use std::collections::{ HashMap, HashSet };
 // use std::fmt::{ Display };
 // use std::error::{ Error };
 // use num::{ self, Integer, FromPrimitive };
-use num::{ FromPrimitive };
 use libc;
+use num::{ Integer, NumCast, FromPrimitive, ToPrimitive };
 
 // use cmn;
 
@@ -20,9 +21,10 @@ pub use self::cl_h::{ cl_platform_id, cl_device_id, cl_context, cl_program,
 	cl_short, cl_ushort, cl_int, cl_uint, cl_long, cl_bitfield, CLStatus, 
 	clSetKernelArg, clEnqueueNDRangeKernel };
 pub use self::kernel::{ Kernel };
-pub use self::envoy::{ Envoy, EnvoyDimensions, OclNum };
+pub use self::envoy::{ Envoy, EnvoyDimensions };
 pub use self::work_size::{ WorkSize };
 pub use self::build_options::{ BuildOptions, BuildOption };
+pub use self::formatting as fmt;
 
 mod ocl;
 mod cl_h;
@@ -30,6 +32,12 @@ mod envoy;
 mod kernel;
 mod work_size;
 mod build_options;
+pub mod formatting;
+
+
+/*=============================================================================
+================================== CONSTANTS ==================================
+=============================================================================*/
 
 
 // pub static CL_DEVICE_TYPE_DEFAULT:                       cl_bitfield = 1 << 0;
@@ -49,6 +57,20 @@ const DEFAULT_DEVICE_TYPE: cl_bitfield = 1 << 2; // CL_DEVICE_TYPE_GPU
 
 const DEVICES_MAX: u32 = 16;
 
+/*=============================================================================
+=================================== TRAITS ====================================
+=============================================================================*/
+
+pub trait OclNum: Integer + Copy + Clone + NumCast + Default + Display + Debug
+	+ FromPrimitive + ToPrimitive + UpperHex {}
+
+impl<T> OclNum for T where T: Integer + Copy + Clone + NumCast + Default + Display + Debug
+	+ FromPrimitive + ToPrimitive + UpperHex {}
+
+
+/*=============================================================================
+================================== FUNCTIONS ==================================
+=============================================================================*/
 
 // Create Platform and get ID
 pub fn get_platform_ids() -> Vec<cl_h::cl_platform_id> {

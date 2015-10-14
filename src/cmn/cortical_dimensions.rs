@@ -29,14 +29,14 @@ pub struct CorticalDimensions {
 	u_size: u32,
 	v_size: u32,
 	depth: u8, // in cell-edges (NxMx1)
-	tufts_per_cel: u32, // dendritic tufts per cell
-	per_tuft_l2: i8, // divisions per cell-tuft (log2)
+	tfts_per_cel: u32, // dendritic tufts per cell
+	per_tft_l2: i8, // divisions per cell-tuft (log2)
 	physical_increment: Option<u32>,
 }
 
 impl CorticalDimensions {
-	pub fn new(u_size: u32, v_size: u32, depth: u8, per_tuft_l2: i8, physical_increment: Option<u32>) -> CorticalDimensions {
-	//pub fn new(u_size_l2: u8, v_size_l2: u8,	depth: u8, per_tuft_l2: i8,) -> CorticalDimensions {
+	pub fn new(u_size: u32, v_size: u32, depth: u8, per_tft_l2: i8, physical_increment: Option<u32>) -> CorticalDimensions {
+	//pub fn new(u_size_l2: u8, v_size_l2: u8,	depth: u8, per_tft_l2: i8,) -> CorticalDimensions {
 		
 		//assert!(super::OPENCL_PREFERRED_VECTOR_MULTIPLE == 4);
 		//println!("\n\n##### v_size: {}, u_size: {}", v_size, u_size);
@@ -50,8 +50,8 @@ impl CorticalDimensions {
 			/*u_size_l2: u_size_l2,
 			v_size_l2: v_size_l2,*/
 			depth: depth,
-			tufts_per_cel: 1,
-			per_tuft_l2: per_tuft_l2,
+			tfts_per_cel: 1,
+			per_tft_l2: per_tft_l2,
 			physical_increment: physical_increment, // <<<<< PENDING RENAME
 		}
 	}
@@ -76,12 +76,12 @@ impl CorticalDimensions {
 	}
 
 	// TUFTS_PER_CEL(): Dendrite tufts per cell
-	pub fn tufts_per_cel(&self) -> u32 {
-		self.tufts_per_cel
+	pub fn tfts_per_cel(&self) -> u32 {
+		self.tfts_per_cel
 	}
 
-	pub fn per_tuft_l2(&self) -> i8 {
-		self.per_tuft_l2
+	pub fn per_tft_l2(&self) -> i8 {
+		self.per_tft_l2
 	}
 
 
@@ -96,41 +96,41 @@ impl CorticalDimensions {
 	}
 
 	// TUFTS(): 4D Volume of area measured in (dendrite-tuft * cells)
-	pub fn cel_tufts(&self) -> u32 {
-		self.cells() * self.tufts_per_cel
+	pub fn cel_tfts(&self) -> u32 {
+		self.cells() * self.tfts_per_cel
 	}
 
-	pub fn per_tuft_l2_left(&self) -> u32 {
-		if self.per_tuft_l2 >= 0 {
-			self.per_tuft_l2 as u32
+	pub fn per_tft_l2_left(&self) -> u32 {
+		if self.per_tft_l2 >= 0 {
+			self.per_tft_l2 as u32
 		} else {
-			panic!("\nocl::CorticalDimensions::per_tuft_l2_left(): may only be called if per_tuft_l2 is positive");
+			panic!("\nocl::CorticalDimensions::per_tft_l2_left(): may only be called if per_tft_l2 is positive");
 		}
 	}
 
-	pub fn per_tuft_l2_right(&self) -> u32 {
-		if self.per_tuft_l2 < 0 {
-			(0 - self.per_tuft_l2) as u32
+	pub fn per_tft_l2_right(&self) -> u32 {
+		if self.per_tft_l2 < 0 {
+			(0 - self.per_tft_l2) as u32
 		} else {
-			panic!("\nocl::CorticalDimensions::per_tuft_l2_right(): may only be called if per_tuft_l2 is negative");
+			panic!("\nocl::CorticalDimensions::per_tft_l2_right(): may only be called if per_tft_l2 is negative");
 		}
 	}
 
 	pub fn per_cel(&self) -> u32 {
-		len_components(1, self.per_tuft_l2, self.tufts_per_cel)
+		len_components(1, self.per_tft_l2, self.tfts_per_cel)
 	}
 
-	pub fn per_tuft(&self) -> u32 {
-		len_components(1, self.per_tuft_l2, 1)
+	pub fn per_tft(&self) -> u32 {
+		len_components(1, self.per_tft_l2, 1)
 	}
 
-	pub fn per_slc_per_tuft(&self) -> u32 {
-		len_components(self.columns(), self.per_tuft_l2, 1)
+	pub fn per_slc_per_tft(&self) -> u32 {
+		len_components(self.columns(), self.per_tft_l2, 1)
 	}
 
 	// PER_SLICE(): 2D Area of a slc measured in divisions/components/whatever
 	pub fn per_slc(&self) -> u32 {
-		len_components(self.columns(), self.per_tuft_l2, self.tufts_per_cel)
+		len_components(self.columns(), self.per_tft_l2, self.tfts_per_cel)
 	}
 
 	pub fn per_subgrp(&self, subgroup_count: u32) -> Result<u32, &'static str> {
@@ -141,8 +141,8 @@ impl CorticalDimensions {
 		}
 	}	
 
-	pub fn clone_with_ptl2(&self, per_tuft_l2: i8) -> CorticalDimensions {
-		CorticalDimensions { per_tuft_l2: per_tuft_l2, .. *self }
+	pub fn clone_with_ptl2(&self, per_tft_l2: i8) -> CorticalDimensions {
+		CorticalDimensions { per_tft_l2: per_tft_l2, .. *self }
 	}
 
 	pub fn clone_with_depth(&self, depth: u8) -> CorticalDimensions {
@@ -162,8 +162,8 @@ impl CorticalDimensions {
 		self
 	}
 
-	pub fn with_tufts(mut self, tufts_per_cel: u32) -> CorticalDimensions {
-		self.tufts_per_cel = tufts_per_cel;
+	pub fn with_tfts(mut self, tfts_per_cel: u32) -> CorticalDimensions {
+		self.tfts_per_cel = tfts_per_cel;
 		self
 	}
 
@@ -174,10 +174,10 @@ impl CorticalDimensions {
 		let len_mod = cols % phys_inc;
 
 		if len_mod == 0 {
-			len_components(cols * self.depth as u32, self.per_tuft_l2, self.tufts_per_cel)
+			len_components(cols * self.depth as u32, self.per_tft_l2, self.tfts_per_cel)
 		} else {
 			let pad = self.physical_increment() - len_mod;
-			len_components((cols + pad) * self.depth as u32, self.per_tuft_l2, self.tufts_per_cel)
+			len_components((cols + pad) * self.depth as u32, self.per_tft_l2, self.tfts_per_cel)
 		}
 	}
 }
@@ -199,14 +199,14 @@ fn resolve_physical_increment(ocl: Option<&OclProgQueue>) -> Option<u32> {
 	}
 }
 
-fn len_components(cells: u32, per_tuft_l2: i8, tufts_per_cel: u32) -> u32 {
-	//println!("\n\n##### TOTAL_LEN(): cells: {}, pcl2: {}", cells, per_tuft_l2);
-	let tufts = cells * tufts_per_cel;
+fn len_components(cells: u32, per_tft_l2: i8, tfts_per_cel: u32) -> u32 {
+	//println!("\n\n##### TOTAL_LEN(): cells: {}, pcl2: {}", cells, per_tft_l2);
+	let tufts = cells * tfts_per_cel;
 
-	if per_tuft_l2 >= 0 {
-		tufts << per_tuft_l2
+	if per_tft_l2 >= 0 {
+		tufts << per_tft_l2
 	} else {
-		tufts >> (0 - per_tuft_l2)
+		tufts >> (0 - per_tft_l2)
 	}
 }
 

@@ -7,31 +7,121 @@ use rand;
 
 use proto::*;
 
+use ocl;
 use cortical_area::{ CorticalArea, CorticalAreaTest };
 use map::{ AreaMapTest };
-use synapses::tests::{ /*SynCoords,*/ SynapsesTest };
+use synapses::{ SynapsesTest };
+use dendrites::{ DendritesTest, /*DenCoords*/ };
 use axon_space::{ /*AxnCoords,*/ AxonSpaceTest };
 use cortex::{ Cortex };
 use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
 use super::{ testbed };
 
 
-// TEST_DENS():
-/* 
+/*=============================================================================
+=================================== UTILITY ===================================
+=============================================================================*/
 
 
-*/
+// CYCLE, ACTIVATE, & LEARN
+fn al_cycle(area: &mut CorticalArea) {
+	area.mcols.activate();
+	area.ptal_mut().learn();
+	area.ptal_mut().cycle();
+}
+
+
+fn confirm_syns(area: &mut CorticalArea, syn_range: &Range<usize>, state_neq: u8, 
+		flag_set_eq: u8, strength_eq: i8) 
+{
+	for syn_idx in syn_range.clone() {
+		area.ptal_mut().dens_mut().syns_mut().states.read();
+		area.ptal_mut().dens_mut().syns_mut().flag_sets.read();
+		area.ptal_mut().dens_mut().syns_mut().strengths.read();
+		assert!(area.ptal_mut().dens_mut().syns_mut().states[syn_idx] != state_neq);
+		assert!(area.ptal_mut().dens_mut().syns_mut().flag_sets[syn_idx] == flag_set_eq);
+		assert!(area.ptal_mut().dens_mut().syns_mut().strengths[syn_idx] == strength_eq);
+	}
+}
+
+
+fn print_all(area: &mut CorticalArea, desc: &'static str) {
+	//println!("\n - Confirm 1A - Activate");
+	println!("\n{}", desc);
+	area.ptal_mut().print_all(true);
+	// area.ptal_mut().dens_mut().syns_mut().print_all();
+	area.print_aux();
+	area.print_axns();
+}
+
+
+
+/*=============================================================================
+==================================== TESTS ====================================
+=============================================================================*/
+
+
+
 #[test]
-fn test_dens_UNIMPLEMENTED() {
-	//let mut cortex = testbed::fresh_cortex();
-	//let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+fn test_dens() {
+	let mut cortex = testbed::fresh_cortex();
+	let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
-	// let 
+	for i in 0..1 {
 
-	// for i in 0..1 {
+		/*=============================================================================
+		=================================== INIT ===================================
+		=============================================================================*/
 
+		area.ptal_mut().dens_mut().set_all_to_zero(true);
+		//area.ptal_mut().dens_mut().syns_mut().set_all_to_zero();
+		area.axns.states.set_all_to(0);
 
-	// }
+		let cel_coords = area.ptal_mut().rand_cel_coords();
+		let den_coords = area.ptal_mut().dens_mut().rand_den_coords(&cel_coords);
+
+		let den_dims = den_coords.dims().clone();
+
+		// SET SOURCE SLICE TO AFF IN SLICE FOR EVERY SYNAPSE:
+		let unused_slc_id = area.area_map().base_axn_slc_by_flag(layer::UNUSED_TESTING);
+		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(unused_slc_id);
+
+		// SET SOURCE SLICE TO AFF IN SLICE FOR OUR CELL'S SYNAPSES ONLY:
+		let cel_syn_range = den_coords.syn_range_tuftsection(area.ptal().dens().syns().syns_per_den_l2());
+		let src_axn_slc_id = area.area_map().base_axn_slc_by_flag(layer::AFFERENT_INPUT);
+		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_axn_slc_id, cel_syn_range);
+
+		// GET THE AXON INDEX CORRESPONDING TO OUR CELL AND SOURCE SLICE
+		let src_axn_idx = area.area_map().axn_idx(src_axn_slc_id, cel_coords.v_id, 
+					0, cel_coords.u_id, 0).unwrap();
+
+		print!("\n");
+		println!("{}", cel_coords);
+		println!("{}", den_coords);
+		println!("Axon Info: src_axn_slc_id: {}, src_axn_idx: {}", src_axn_slc_id, src_axn_idx);
+
+		/*=============================================================================
+		=================================== WRITE ===================================
+		=============================================================================*/
+
+		area.write_to_axon(128, src_axn_idx as usize);
+		area.ptal_mut().dens_mut().cycle();
+
+		print!("\n");
+
+		let den_state = area.ptal_mut().dens().states[den_coords.idx as usize];
+
+		println!("dens.state[{}]: '{}'", den_coords.idx, den_state);
+
+		let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states.len();
+		print_all(area, " - Dens - ");
+
+		print!("\n");
+		assert!(den_state != 0, "Dendrite not activated");
+	}
+
+	print!("\n");
+	panic!(" -- DEBUGGING -- ");
 }
 
 
@@ -88,7 +178,7 @@ fn test_ptal_syn_learning() {
 	// let axn_idz_pyr_lyr = area.area_map().axn_idz(area.ptal().base_axn_slc());
 	let axn_idz_sst_lyr = area.area_map().axn_idz(area.psal().base_axn_slc());
 
-	let src_axn_slc = area.psal().base_axn_slc();
+	let src_axn_slc_id = area.psal().base_axn_slc();
 	let pyr_axn_slc = area.ptal().base_axn_slc();
 
 	//area.psal_mut().dens_mut().syns_mut().set_offs_to_zero();
@@ -110,14 +200,14 @@ fn test_ptal_syn_learning() {
 
 		let cel_coords = area.ptal_mut().rand_cel_coords();
 		let syn_coords = area.ptal_mut().dens_mut().syns_mut()
-			.rand_syn_coords(cel_coords);
-		//let axn_in = AxnCoords::from_cel_coords(src_axn_slc, &syn_coords.cel_coords, area.area_map()).unwrap();
+			.rand_syn_coords(&cel_coords);
+		//let axn_in = AxnCoords::from_cel_coords(src_axn_slc_id, &syn_coords.cel_coords, area.area_map()).unwrap();
 		//let axn_out = AxnCoords::from_cel_coords(pyr_axn_slc, &syn_coords.cel_coords, area.area_map()).unwrap();
 
 		let axn_idx_col_in = axn_idz_sst_lyr + syn_coords.cel_coords.col_id();
-		let (v_ofs, u_ofs, axn_idx_dst_src) = area.rand_safe_src_axn(&syn_coords, pyr_axn_slc);
+		let (v_ofs, u_ofs, axn_idx_dst_src) = area.rand_safe_src_axn(&cel_coords, pyr_axn_slc);
 
-		let syn_range = syn_coords.syn_range_cel();
+		let syn_range = syn_coords.syn_range_tuftsection();
 		// let syn_range_half = syn_range.start..(syn_range.start + syn_range.len() / 2); // FIRST HALF
 		let syn_range_half = (syn_range.start + syn_range.len() / 2)
 			..(syn_range.start + syn_range.len()); // SECOND HALF
@@ -128,7 +218,7 @@ fn test_ptal_syn_learning() {
 			area.ptal_mut().dens_mut().syns_mut().set_src_slc(pyr_axn_slc, syn_idx as usize);
 		}
 
-		print_all(&mut area, &syn_range_all, "\n - Confirm Init - ");
+		print_all(&mut area, "\n - Confirm Init - ");
 
 		/*=============================================================================
 		=================================== 0 ===================================
@@ -147,7 +237,7 @@ fn test_ptal_syn_learning() {
 			syn_val: {}, \n{}syn_coords: {:?}", pyr_axn_slc, v_ofs, u_ofs, axn_idx_dst_src, axn_val, 
 			syn_val, cmn::MT, syn_coords);		
 
-		print_all(&mut area, &syn_range_all, "\n - Confirm 0 - Activ_Cheat, Cycle - ");
+		print_all(&mut area, "\n - Confirm 0 - Activ_Cheat, Cycle - ");
 		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
 
 		/*=============================================================================
@@ -159,7 +249,7 @@ fn test_ptal_syn_learning() {
 		// area.ptal_mut().learn();
 		// area.ptal_mut().cycle();
 
-		print_all(&mut area, &syn_range_all, "\n - Confirm 1A - Activate - ");
+		print_all(&mut area, "\n - Confirm 1A - Activate - ");
 		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
 
 		/*=============================================================================
@@ -171,7 +261,7 @@ fn test_ptal_syn_learning() {
 		area.ptal_mut().learn();
 		// area.ptal_mut().cycle();
 
-		print_all(&mut area, &syn_range_all, "\n - Confirm 1B - Learn - ");
+		print_all(&mut area, "\n - Confirm 1B - Learn - ");
 		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
 
 		/*=============================================================================
@@ -186,7 +276,7 @@ fn test_ptal_syn_learning() {
 		// area.ptal_mut().learn();
 		area.ptal_mut().cycle();
 
-		print_all(&mut area, &syn_range_all, "\n - Confirm 1C - Activ_Cheat, Cycle - ");
+		print_all(&mut area, "\n - Confirm 1C - Activ_Cheat, Cycle - ");
 		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
 
 		/*=============================================================================
@@ -206,7 +296,7 @@ fn test_ptal_syn_learning() {
 		// area.ptal_mut().learn();
 		// area.ptal_mut().cycle();
 
-		print_all(&mut area, &syn_range_all, "\n - Confirm 2A - Activ_InCol, Activate - ");
+		print_all(&mut area, "\n - Confirm 2A - Activ_InCol, Activate - ");
 		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
 
 		/*=============================================================================
@@ -223,7 +313,7 @@ fn test_ptal_syn_learning() {
 		area.ptal_mut().learn();
 		// area.ptal_mut().cycle();
 
-		print_all(&mut area, &syn_range_all, "\n - Confirm 2B - Learn - ");
+		print_all(&mut area, "\n - Confirm 2B - Learn - ");
 		confirm_syns(&mut area, &syn_range_half, 0, 0, 0);
 
 		// <<<<< TODO: assert!(chosen-half of syns are +1, others are -1) >>>>>
@@ -243,7 +333,7 @@ fn test_ptal_syn_learning() {
 		// area.ptal_mut().learn();
 		area.ptal_mut().cycle();
 
-		print_all(&mut area, &syn_range_all, "\n - Confirm 2C - Cycle - ");
+		print_all(&mut area, "\n - Confirm 2C - Cycle - ");
 
 		/*=============================================================================
 		=================================== 3 ===================================
@@ -257,63 +347,32 @@ fn test_ptal_syn_learning() {
 		// ACTIVATE, LEARN &, CYCLE
 		al_cycle(&mut area);
 
-		print_all(&mut area, &syn_range_all, "\n - Confirm 3 - Zero_InCol, Zero_Cheat - Activate, Learn, Cycle - ");
+		print_all(&mut area, "\n - Confirm 3 - Zero_InCol, Zero_Cheat - Activate, Learn, Cycle - ");
 
 	}
 
 	print!("\n\n");
-	assert!(false, " JUST DEBUGGING :) ");
+	// panic!(" --  JUST DEBUGGING :) -- ");
 }
 
-
-// CYCLE, ACTIVATE, & LEARN
-fn al_cycle(area: &mut CorticalArea) {
-	area.mcols.activate();
-	area.ptal_mut().learn();
-	area.ptal_mut().cycle();
-}
-
-
-fn confirm_syns(area: &mut CorticalArea, syn_range: &Range<usize>, state_neq: u8, 
-		flag_set_eq: u8, strength_eq: i8) 
-{
-	for syn_idx in syn_range.clone() {
-		area.ptal_mut().dens_mut().syns_mut().states.read();
-		area.ptal_mut().dens_mut().syns_mut().flag_sets.read();
-		area.ptal_mut().dens_mut().syns_mut().strengths.read();
-		assert!(area.ptal_mut().dens_mut().syns_mut().states[syn_idx] != state_neq);
-		assert!(area.ptal_mut().dens_mut().syns_mut().flag_sets[syn_idx] == flag_set_eq);
-		assert!(area.ptal_mut().dens_mut().syns_mut().strengths[syn_idx] == strength_eq);
-	}
-}
-
-
-fn print_all(area: &mut CorticalArea, syn_range: &Range<usize>, desc: &'static str) {
-	//println!("\n - Confirm 1A - Activate");
-	println!("{}", desc);
-	area.ptal_mut().print_all();
-	print_syns(area, syn_range);
-	area.print_aux();
-	area.print_axns();
-}
 
 
 // MOVE ME TO SYNS
-fn print_syns(area: &mut CorticalArea, syn_range: &Range<usize>) {
-	// print!("v_offs: ");
-	// area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.print(1 << 0, Some((-128, 127)), None, false);
-	// print!("u_offs: ");
-	// area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.print(1 << 0, Some((-128, 127)), None, false);
-	print!("syns.states: ");
-	area.ptal_mut().dens_mut().syns_mut().states.print(1 << 0, Some((0, 255)), 
-		Some((syn_range.start, syn_range.end)), false);
-	print!("syns.flag_sets: ");
-	area.ptal_mut().dens_mut().syns_mut().flag_sets.print(1 << 0, Some((0, 255)), 
-		Some((syn_range.start, syn_range.end)), false);
-	print!("syns.strengths: ");
-	area.ptal_mut().dens_mut().syns_mut().strengths.print(1 << 0, Some((-128, 127)), 
-		Some((syn_range.start, syn_range.end)), false);
-}
+// fn print_syns(area: &mut CorticalArea, syn_range: &Range<usize>) {
+// 	// print!("v_offs: ");
+// 	// area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.print(1 << 0, Some((-128, 127)), None, false);
+// 	// print!("u_offs: ");
+// 	// area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.print(1 << 0, Some((-128, 127)), None, false);
+// 	print!("syns.states: ");
+// 	area.ptal_mut().dens_mut().syns_mut().states.print(1 << 0, Some((0, 255)), 
+// 		Some((syn_range.start, syn_range.end)), false);
+// 	print!("syns.flag_sets: ");
+// 	area.ptal_mut().dens_mut().syns_mut().flag_sets.print(1 << 0, Some((0, 255)), 
+// 		Some((syn_range.start, syn_range.end)), false);
+// 	print!("syns.strengths: ");
+// 	area.ptal_mut().dens_mut().syns_mut().strengths.print(1 << 0, Some((-128, 127)), 
+// 		Some((syn_range.start, syn_range.end)), false);
+// }
 
 
 // pub const PYR_PREV_CONCRETE_FLAG: u8 		= 128	(0x80)
@@ -444,7 +503,7 @@ pub fn test_learning_activation(/*cortex: &mut Cortex,*/ /*area_name: &str*/) {
 
 			if last_run {
 				println!("layer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
-				cmn::print_vec(&axns.states.vec()[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
+				ocl::fmt::print_vec(&axns.states.vec()[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 				println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
 
 				println!(" => ");
@@ -557,7 +616,7 @@ pub fn test_learning_activation(/*cortex: &mut Cortex,*/ /*area_name: &str*/) {
 				let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
 
 				println!("layer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
-				cmn::print_vec(&axns.states.vec()[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
+				ocl::fmt::print_vec(&axns.states.vec()[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 				println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
 			}
 			
@@ -642,7 +701,7 @@ pub fn test_learning_activation(/*cortex: &mut Cortex,*/ /*area_name: &str*/) {
 				let cel_axn_state = axns.states[cels_axn_idz + cel_idx];
 
 				println!("layer '{}' axons (cels_axn_idz: {}, cel_idx: {}): ", layer_name, cels_axn_idz, cel_idx);
-				cmn::print_vec(&axns.states.vec()[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
+				ocl::fmt::print_vec(&axns.states.vec()[cels_axn_idz..(cels_axn_idz + cels_len)], 1, None, None, false);
 				println!("\ncell[{}] axon state: {}", cel_idx, cel_axn_state);
 			}			
 
@@ -723,7 +782,7 @@ fn _test_sst_learning(cortex: &mut Cortex, /*layer_name: &'static str,*/ ilyr_na
 		let first_half: bool = rand::random::<bool>();
 		let per_cel = cels.dens_mut().syns_mut().dims().per_cel() as usize;
 
-		let cel_syn_idz = cel_idx << cels.dens_mut().syns_mut().dims().per_tuft_l2_left();
+		let cel_syn_idz = cel_idx << cels.dens_mut().syns_mut().dims().per_tft_l2_left();
 		let cel_syn_tar_idz = cel_syn_idz + if first_half {0} else {per_cel >> 1};
 		let cel_syn_tar_idn = cel_syn_tar_idz + (per_cel >> 1);
 		
@@ -761,7 +820,7 @@ fn _test_sst_learning(cortex: &mut Cortex, /*layer_name: &'static str,*/ ilyr_na
 	//assert!(false);
 
 	//println!("ALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
-	//cmn::print_vec(&cels.dens_mut().syns_mut().strengths.vec()[..], 1, None, None, false);
+	//ocl::fmt::print_vec(&cels.dens_mut().syns_mut().strengths.vec()[..], 1, None, None, false);
 
 	//check src_col_v_offs
 	//check strengths
@@ -825,7 +884,7 @@ fn _test_sst_learning(cortex: &mut Cortex, /*layer_name: &'static str,*/ ilyr_na
 // 	cels.print_cel(cel_idx);
 
 // 	println!("ALL CELLS: cell.syn_strengths[{:?}]: ", cel_syn_idz..(cel_syn_idz + per_cel));
-// 	cmn::print_vec(&cels.dens_mut().syns_mut().strengths.vec()[..], 1, None, None, false);
+// 	ocl::fmt::print_vec(&cels.dens_mut().syns_mut().strengths.vec()[..], 1, None, None, false);
 
 // 	//check src_col_v_offs
 // 	//check strengths

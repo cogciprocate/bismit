@@ -37,7 +37,7 @@ pub struct PyramidalLayer {
 	pyr_lyr_axn_idz: u32,
 	//den_prox_slc: u8, 
 	rng: XorShiftRng,
-	tufts_per_cel: u32,
+	tfts_per_cel: u32,
 	//regrow_counter: usize,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub best_den_ids: Envoy<ocl::cl_uchar>,
@@ -47,7 +47,7 @@ pub struct PyramidalLayer {
 	//pub prev_best_den_ids: Envoy<ocl::cl_uchar>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
 	pub energies: Envoy<ocl::cl_uchar>, // <<<<< SLATED FOR REMOVAL
-	//den_tufts: Vec<Box<Dendrites>>,
+	//den_tfts: Vec<Box<Dendrites>>,
 	pub dens: Dendrites,
 }
 // protocell: &Protocell,
@@ -62,8 +62,8 @@ impl PyramidalLayer {
 		let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
 		//dims.depth() = protolayer_map.depth_cell_kind(&ProtocellKind::Pyramidal);
-		//let dens_per_tuft_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
-		//let syns_per_tuft_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
+		//let dens_per_tft_l2 = cmn::DENDRITES_PER_CELL_DISTAL_LOG2; // SET IN PROTOAREA
+		//let syns_per_tft_l2 = cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2; // SET IN PROTOAREA
 		//let spt_asc_layer = protolayer_map.spt_asc_layer().expect("PyramidalLayer::new()");
 		//let den_prox_slc = protolayer_map.slc_ids(vec![spt_asc_layer.name])[0];
 		
@@ -80,29 +80,29 @@ impl PyramidalLayer {
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
 
 
-		let dens_per_tuft_l2 = protocell.dens_per_tuft_l2;
+		let dens_per_tft_l2 = protocell.dens_per_tuft_l2;
 		let syns_per_den_l2 = protocell.syns_per_den_l2;
-		let syns_per_tuft_l2 = dens_per_tuft_l2 + syns_per_den_l2;
+		let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
 
-		//let tufts_per_cel = protolayer_map[&layer_name].dst_src_tufts_len();
-		let tufts_per_cel = area_map.proto_layer_map().dst_src_lyrs_by_tuft(layer_name).len() as u32;
-		let den_tuft_dims = dims.clone_with_ptl2(dens_per_tuft_l2 as i8).with_tufts(tufts_per_cel);
+		//let tfts_per_cel = protolayer_map[&layer_name].dst_src_tfts_len();
+		let tfts_per_cel = area_map.proto_layer_map().dst_src_lyrs_by_tuft(layer_name).len() as u32;
+		let den_tft_dims = dims.clone_with_ptl2(dens_per_tft_l2 as i8).with_tfts(tfts_per_cel);
 
-		let dens = Dendrites::new(layer_name, den_tuft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, aux, ocl);
+		let dens = Dendrites::new(layer_name, den_tft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, aux, ocl);
 
 		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
 		let cels_per_grp_kern_ltp = dims.per_subgrp(grp_count).unwrap();
 
 		println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
-			pyr_lyr_axn_idz: {}, syns_per_den_l2: {}, dens_per_tuft_l2: {}, cels_per_grp_kern_ltp: {}, dims: {:?},", 
-			layer_name, base_axn_slc, pyr_lyr_axn_idz, syns_per_den_l2, dens_per_tuft_l2, 
+			pyr_lyr_axn_idz: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, cels_per_grp_kern_ltp: {}, dims: {:?},", 
+			layer_name, base_axn_slc, pyr_lyr_axn_idz, syns_per_den_l2, dens_per_tft_l2, 
 			cels_per_grp_kern_ltp, dims, mt = cmn::MT);
 
 
-		//let mut den_tufts = Vec::with_capacity(src_tufts.len());
+		//let mut den_tfts = Vec::with_capacity(src_tfts.len());
 
-		/*for tuft in src_tufts {
-			den_tufts.push(Box::new(Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, protolayer_map, axons, aux, ocl)));
+		/*for tft in src_tfts {
+			den_tfts.push(Box::new(Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, protolayer_map, axons, aux, ocl)));
 		}*/
 
 		
@@ -111,8 +111,8 @@ impl PyramidalLayer {
 			.arg_env(&dens.states)
 			.arg_env(&dens.states_raw)
 			//.arg_scl(base_axn_slc)
-			.arg_scl(tufts_per_cel)
-			.arg_scl(dens_per_tuft_l2)
+			.arg_scl(tfts_per_cel)
+			.arg_scl(dens_per_tft_l2)
 			//.arg_env(&energies)
 			.arg_env(&best_den_ids)
 			.arg_env(&best_den_states)
@@ -147,7 +147,7 @@ impl PyramidalLayer {
 		//assert!(pyr_lyr_axn_idz == pyr_lyr_axn_idz);
 
 		let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd".to_string(), 
-			WorkSize::ThreeDim(tufts_per_cel as usize, dims.depth() as usize, grp_count as usize))
+			WorkSize::ThreeDim(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
 			.arg_env(&axons.states)
 			.arg_env(&states)
 			.arg_env(&best_den_ids)
@@ -156,7 +156,7 @@ impl PyramidalLayer {
 			.arg_env(&dens.syns().states)
 			.arg_scl(pyr_lyr_axn_idz)
 			.arg_scl(syns_per_den_l2 as u32)
-			.arg_scl(dens_per_tuft_l2 as u32)
+			.arg_scl(dens_per_tft_l2 as u32)
 			.arg_scl(cels_per_grp_kern_ltp)
 			.arg_scl_named::<u32>("rnd", None)		
 			.arg_env(&dens.syns().flag_sets)
@@ -181,7 +181,7 @@ impl PyramidalLayer {
 			pyr_lyr_axn_idz: pyr_lyr_axn_idz,
 			//den_prox_slc: den_prox_slc,
 			rng: rand::weak_rng(),
-			tufts_per_cel: tufts_per_cel,
+			tfts_per_cel: tfts_per_cel,
 			//regrow_counter: 0usize,
 			states: states,
 			best_den_ids: best_den_ids,
@@ -192,7 +192,7 @@ impl PyramidalLayer {
 			flag_sets: flag_sets,
 			energies: energies,
 			dens: dens,
-			//den_tufts: den_tufts,
+			//den_tfts: den_tfts,
 		}
 	}
 
@@ -211,7 +211,7 @@ impl PyramidalLayer {
 
 	// 	self.kern_activate.new_arg_scalar(Some(ssts_pyr_lyr_axn_idz as u32));
 	// 	self.kern_activate.new_arg_scalar(Some(self.base_axn_slc));
-	// 	self.kern_activate.new_arg_scalar(Some(self.protocell.dens_per_tuft_l2));
+	// 	self.kern_activate.new_arg_scalar(Some(self.protocell.dens_per_tft_l2));
 
 	// 	//self.kern_activate.new_arg_envoy(&self.energies);
 	// 	self.kern_activate.new_arg_envoy(Some(&self.flag_sets));
@@ -298,11 +298,14 @@ impl DataCellLayer for PyramidalLayer {
 
 #[cfg(test)]
 pub mod tests {
+	use std::ops::{ Range };
 	use rand::{ XorShiftRng };
-	use rand::distributions::{ IndependentSample, Range };
+	use rand::distributions::{ IndependentSample, Range as RandRange };
 
 	use cmn::{ self, /*CorticalDimensions,*/ DataCellLayer, DataCellLayerTest, CelCoords };
+	// use ocl;
 	use super::{ PyramidalLayer };
+	use synapses::{ SynapsesTest };
 
 	impl DataCellLayerTest for PyramidalLayer {
 		// CYCLE_SELF_ONLY(): USED BY TESTS
@@ -315,14 +318,14 @@ pub mod tests {
 
 			self.confab();
 
-			let cel_den_idz = (cel_idx << self.dens_mut().dims().per_tuft_l2_left()) as usize;
-			let cel_syn_idz = (cel_idx << self.dens_mut().syns_mut().dims().per_tuft_l2_left()) as usize;
+			let cel_den_idz = (cel_idx << self.dens_mut().dims().per_tft_l2_left()) as usize;
+			let cel_syn_idz = (cel_idx << self.dens_mut().syns_mut().dims().per_tft_l2_left()) as usize;
 
-			let dens_per_tuft = self.dens_mut().dims().per_cel() as usize;
-			let syns_per_tuft = self.dens_mut().syns_mut().dims().per_cel() as usize;
+			let dens_per_tft = self.dens_mut().dims().per_cel() as usize;
+			let syns_per_tft = self.dens_mut().syns_mut().dims().per_cel() as usize;
 
-			let cel_den_range = cel_den_idz..(cel_den_idz + dens_per_tuft);
-			let cel_syn_range = cel_syn_idz..(cel_syn_idz + syns_per_tuft);
+			let cel_den_range = cel_den_idz..(cel_den_idz + dens_per_tft);
+			let cel_syn_range = cel_syn_idz..(cel_syn_idz + syns_per_tft);
 
 			println!("Printing Pyramidal Cell:");
 			println!("   states[{}]: {}", cel_idx, self.states[cel_idx]);
@@ -334,32 +337,50 @@ pub mod tests {
 			println!("");
 
 			println!("dens.states[{:?}]: ", cel_den_range.clone()); 
-			cmn::print_vec_simple(&self.dens_mut().states.vec()[cel_den_range.clone()]);
+			// ocl::fmt::print_vec_simple(&self.dens_mut().states.vec()[cel_den_range.clone()]);
+			self.dens.states.print(1, None, Some(cel_den_range.clone()), false);
 
 			println!("dens.syns().states[{:?}]: ", cel_syn_range.clone()); 
-			cmn::print_vec_simple(&self.dens_mut().syns_mut().states.vec()[cel_syn_range.clone()]);
+			// ocl::fmt::print_vec_simple(&self.dens_mut().syns_mut().states.vec()[cel_syn_range.clone()]);
+			self.dens.syns_mut().states.print(1, None, Some(cel_den_range.clone()), false);
 
 			println!("dens.syns().strengths[{:?}]: ", cel_syn_range.clone()); 
-			cmn::print_vec_simple(&self.dens_mut().syns_mut().strengths.vec()[cel_syn_range.clone()]);
+			// ocl::fmt::print_vec_simple(&self.dens_mut().syns_mut().strengths.vec()[cel_syn_range.clone()]);
+			self.dens.syns_mut().strengths.print(1, None, Some(cel_den_range.clone()), false);
 
 			println!("dens.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
-			cmn::print_vec_simple(&self.dens_mut().syns_mut().src_col_v_offs.vec()[cel_syn_range.clone()]);
+			// ocl::fmt::print_vec_simple(&self.dens_mut().syns_mut().src_col_v_offs.vec()[cel_syn_range.clone()]);
+			self.dens.syns_mut().src_col_v_offs.print(1, None, Some(cel_den_range.clone()), false);
 
 			println!("dens.src_col_u_offs[{:?}]: ", cel_syn_range.clone()); 
-			cmn::print_vec_simple(&self.dens_mut().syns_mut().src_col_u_offs.vec()[cel_syn_range.clone()]);
+			// ocl::fmt::print_vec_simple(&self.dens_mut().syns_mut().src_col_u_offs.vec()[cel_syn_range.clone()]);
+			self.dens.syns_mut().src_col_u_offs.print(1, None, Some(cel_den_range.clone()), false);
 		}	
 
-		fn print_all(&mut self) {
+		// PRINT_ALL(): TODO: change argument to print dens at some point
+		fn print_range(&mut self, range: Range<usize>, print_children: bool) {
 			print!("pyrs.states: ");
-			self.states.print(1 << 0, Some((0, 255)), None, false);
+			self.states.print(1, Some((0, 255)), None, false);
 			print!("pyrs.best_den_ids: ");
-			self.best_den_ids.print(1 << 0, Some((0, 255)), None, false);
+			self.best_den_ids.print(1, Some((0, 255)), None, false);
 			print!("pyrs.best_den_states: ");
-			self.best_den_states.print(1 << 0, Some((0, 255)), None, false);
+			self.best_den_states.print(1, Some((0, 255)), None, false);
 			print!("pyrs.flag_sets: ");
-			self.flag_sets.print(1 << 0, Some((0, 255)), None, false);
+			self.flag_sets.print(1, Some((0, 255)), None, false);
 			print!("pyrs.energies: ");
-			self.energies.print(1 << 0, Some((0, 255)), None, false);
+			self.energies.print(1, Some((0, 255)), None, false);
+
+
+			if print_children {
+				print!("dens.states: ");
+				self.dens.states.print(1, Some((0, 255)), None, false);
+				self.dens.syns_mut().print_all(); 
+			}
+		}
+
+		fn print_all(&mut self, print_children: bool) {
+			let range = 0..self.states.len();
+			self.print_range(range, print_children);
 		}
 
 		fn rng(&mut self) -> &mut XorShiftRng {
@@ -367,9 +388,9 @@ pub mod tests {
 		}
 
 		fn rand_cel_coords(&mut self) -> CelCoords {
-			let slc_range = Range::new(0, self.dims().depth());
-			let v_range = Range::new(0, self.dims().v_size());
-			let u_range = Range::new(0, self.dims().u_size());
+			let slc_range = RandRange::new(0, self.dims().depth());
+			let v_range = RandRange::new(0, self.dims().v_size());
+			let u_range = RandRange::new(0, self.dims().u_size());
 
 			//let mut rng = rand::weak_rng();
 

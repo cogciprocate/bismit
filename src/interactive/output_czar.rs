@@ -25,20 +25,20 @@ pub fn print_sense_only(cortex: &mut Cortex, area_name: &str) {
 	if false {
 		print!("\nAXON REGION OUTPUT: ");
 		let or = cortex.area_mut(area_name).mcols.aff_out_axn_range();
-		cortex.area_mut(area_name).axns.states.print((1 << 0) as usize, Some((1, 255)), Some((or.start, or.end + 1)), true);
+		cortex.area_mut(area_name).axns.states.print((1 << 0) as usize, Some((1, 255)), Some(or.start..or.end), true);
 	}
 	if false {
 		print!("\nSPINY STELLATE SYNAPSE STRENGTHS: ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().strengths.print(1 << 0, None, Some((256, 288)), true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().strengths.print(1 << 0, None, None, true);
 	}
 	if false{	
 		print!("\nSPINY STELLATE SYNAPSE SOURCE SPINY STELLATE OFFSETS: ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().src_col_v_offs.print(1 << 0, None, Some((256, 288)), true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().src_col_v_offs.print(1 << 0, None, None, true);
 	}
 
 	if false {
 		print!("\nPYRAMIDAL DENDRITE SYNAPSE STRENGTHS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().strengths.print(1 << 0, None, Some((256, 319)), true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().strengths.print(1 << 0, None, None, true);
 	}
 }
 
@@ -60,7 +60,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 11, None, None, true);
 	} else if false {
 		print!("\nSPINY STELLATE SYNAPSE SOURCE ROW IDS(0 - 1300): ");
-		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 0, None, Some((0, 1300)), true);
+		cortex.area_mut(area_name).psal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 0, None, None, true);
 	}
 
 	if true {	
@@ -114,7 +114,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 11, None, None, true);
 	} else if false {
 		print!("\nPYRAMIDAL SYNAPSE SOURCE SLICE IDS(0 - 1300): ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 1, None, Some((0, 1300)), true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 1, None, None, true);
 	}
 
 	if true {	
@@ -148,7 +148,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 	if false {
 		print!("\nPYRAMIDAL AXON OUTPUT: ");
 		let air = cortex.area_mut(area_name).ptal_mut().axn_range();
-		cortex.area_mut(area_name).axns.states.print((1 << 0) as usize, Some((1, 255)), Some(air), false);
+		cortex.area_mut(area_name).axns.states.print((1 << 0) as usize, Some((1, 255)), None, false);
 	}
 
 	if true {
@@ -206,7 +206,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 		let or = cortex.area_mut(area_name).mcols.aff_out_axn_range();
 		cortex.area_mut(area_name).axns.states.print(
 			(1 << 0) as usize, Some((0, 255)), 
-			Some((or.start, or.end + 1)), 
+			Some(or.start..or.end), 
 			false
 		);
 	}

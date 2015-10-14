@@ -42,6 +42,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 		.layer("eff_in", 0, layer::EFFERENT_INPUT /*| layer::INTERAREA*/, Axonal(Spatial))
 		.layer("aff_in", 0, layer::AFFERENT_INPUT /*| layer::INTERAREA*/, Axonal(Spatial))
 		.layer("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
+		.layer("unused", 1, layer::UNUSED_TESTING, Axonal(Spatial))
 		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
 		.layer("iv_inhib", 0, layer::DEFAULT, 
@@ -274,7 +275,8 @@ pub fn run(autorun_iters: i32) -> bool {
 					let out_len = cortex.area(&in_s).dims.columns();
 					let mut t_vec: Vec<u8> = iter::repeat(0).take(out_len as usize).collect();
 					cortex.area_mut(&in_s).read_output(&mut t_vec, layer::AFFERENT_OUTPUT);
-					cmn::print_vec_simple(&t_vec);
+					// ocl::fmt::print_vec_simple(&t_vec);
+					println!("\n##### PRINTING TEMPORARILY DISABLED #####");
 					continue;
 
 				} else if "c\n" == in_s {
@@ -316,7 +318,8 @@ pub fn run(autorun_iters: i32) -> bool {
 					};
 
 					let tvec = cmn::gen_fract_sdr(seed, 256 * c_factor);
-					cmn::print_vec_simple(&tvec[..]);
+					// ocl::fmt::print_vec_simple(&tvec[..]);
+					println!("\n##### PRINTING TEMPORARILY DISABLED #####");
 					continue;
 
 				} else if "r\n" == in_s {
@@ -416,7 +419,7 @@ pub fn run(autorun_iters: i32) -> bool {
 
 				if false {
 					print!("\nSENSORY INPUT VECTOR:");
-					//cmn::print_vec(&input_czar.vec()_optical[..], 1 , None, None, false);
+					//ocl::fmt::print_vec(&input_czar.vec()_optical[..], 1 , None, None, false);
 				}
 
 				output_czar::print_sense_and_print(&mut cortex, &area_name);

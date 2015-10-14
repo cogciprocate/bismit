@@ -25,16 +25,19 @@ pub trait DataCellLayer {
 
 #[cfg(test)]
 pub mod tests {
+	use std::ops::{ Range };
 	use rand::{ XorShiftRng };
 	// use rand::distributions::{ IndependentSample, Range };
 
 	// use super::{ DataCellLayer };
 	use cmn::{ self, CorticalDimensions };
+	use std::fmt::{ Display, Formatter, Result };
 
 	pub trait DataCellLayerTest {
 		fn cycle_self_only(&self);
 		fn print_cel(&mut self, cel_idx: usize);
-		fn print_all(&mut self);
+		fn print_range(&mut self, range: Range<usize>, print_syns: bool);
+		fn print_all(&mut self, print_syns: bool);
 		fn rng(&mut self) -> &mut XorShiftRng;
 		fn rand_cel_coords(&mut self) -> CelCoords;
 		fn cel_idx(&self, slc_id: u8, v_id: u32, u_id: u32)-> u32;
@@ -42,7 +45,7 @@ pub mod tests {
 	}
 
 
-	#[derive(Debug)]
+	#[derive(Debug, Clone)]
 	pub struct CelCoords {
 		pub idx: u32,
 		pub slc_id_lyr: u8,
@@ -76,5 +79,16 @@ pub mod tests {
 			cmn::cel_idx_3d(1, 0, self.layer_dims.v_size(), self.v_id, 
 				self.layer_dims.u_size(), self.u_id)
 		}
+
+		pub fn print(&self) {
+			
+		}
+	}
+
+	impl Display for CelCoords {
+	    fn fmt(&self, fmtr: &mut Formatter) -> Result {
+	        write!(fmtr, "CelCoords {{ idx: {}, slc_id_lyr: {}, slc_id_axn: {}, v_id: {}, u_id: {} }}", 
+				self.idx, self.slc_id_lyr, self.slc_id_axn, self.v_id, self.u_id)
+	    }
 	}
 }

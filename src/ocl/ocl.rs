@@ -16,12 +16,13 @@ use libc;
 // 	cl_kernel, cl_command_queue, cl_float, cl_mem, cl_event, cl_char, cl_uchar, 
 // 	cl_short, cl_ushort, cl_int, cl_uint, cl_long, CLStatus, 
 // 	clSetKernelArg, clEnqueueNDRangeKernel };
-use super::cl_h::{ self, cl_platform_id, cl_device_id, cl_context, cl_program, 
-	cl_kernel, cl_command_queue, cl_mem, cl_int, cl_uint };
-use super::kernel::{ Kernel };
-use super::envoy::{ Envoy, OclNum };
-use super::work_size::{ WorkSize };
-use super::build_options::{ BuildOptions, /*BuildOption*/ };
+use super::{ cl_h, cl_platform_id, cl_device_id, cl_context, cl_program, 
+	cl_kernel, cl_command_queue, cl_mem, cl_int, cl_uint, Kernel, Envoy, OclNum, WorkSize, BuildOptions };
+
+// use super::kernel::{ Kernel };
+// use super::envoy::{ Envoy, OclNum };
+// use super::work_size::{ WorkSize };
+// use super::build_options::{ BuildOptions, /*BuildOption*/ };
 //use super::cortical_dimensions::{ CorticalDimensions };
 
 pub static MT: &'static str = "    ";

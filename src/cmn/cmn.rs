@@ -5,7 +5,7 @@ use std::cmp::{ self };
 use std::io::{ self, Write };
 use std::collections::{ BTreeMap };
 use rand;
-use rand::distributions::{ self, IndependentSample, Range };
+use rand::distributions::{ IndependentSample, Range };
 
 use ocl::{ BuildOptions, OclNum };
 use super::{ Sdr };
@@ -288,204 +288,204 @@ pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
 }
 
 
-pub fn print_vec_simple<T: OclNum>(vec: &[T]) {
-	print_vec(vec, 1, None, None, true);
-}
+// pub fn print_vec_simple<T: OclNum>(vec: &[T]) {
+// 	print_vec(vec, 1, None, None, true);
+// }
 
 
-pub fn print_vec<T: OclNum>(
-			vec: &[T], 
-			every: usize, 
-			val_range: Option<(T, T)>, 
-			idx_range: Option<(usize, usize)>,
-			show_zeros: bool, 
-) {
+// pub fn print_vec<T: OclNum>(
+// 			vec: &[T], 
+// 			every: usize, 
+// 			val_range: Option<(T, T)>, 
+// 			idx_range: Option<(usize, usize)>,
+// 			show_zeros: bool, 
+// ) {
 
 
-	/*let val_range = match val_range {
-		Some(x) => x,
-		_ => 0,
-	}*/
-	let (ir_start, ir_end) = match idx_range {
-		Some(ir)	=> ir,
-		None		=> (0usize, 0usize),
-	};
+// 	/*let val_range = match val_range {
+// 		Some(x) => x,
+// 		_ => 0,
+// 	}*/
+// 	let (ir_start, ir_end) = match idx_range {
+// 		Some(ir)	=> ir,
+// 		None		=> (0usize, 0usize),
+// 	};
 
-	let (vr_start, vr_end) = match val_range {
-		Some(vr)	=> vr,
-		None		=> (Default::default(), Default::default()),
-	};
+// 	let (vr_start, vr_end) = match val_range {
+// 		Some(vr)	=> vr,
+// 		None		=> (Default::default(), Default::default()),
+// 	};
 
-	let mut ttl_nz = 0usize;
-	let mut ttl_ir = 0usize;
-	let mut within_idx_range = true;
-	let mut within_val_range = true;
-	let mut hi: T = vr_start;
-	let mut lo: T = vr_end;
-	let mut sum: isize = 0;
-	let mut ttl_prntd: usize = 0;
-	let len = vec.len();
-
-
-	let mut color: &'static str = C_DEFAULT;
-	let mut prnt: bool = false;
-
-	print!("{cdgr}[{cg}{}{cdgr}/{}", vec.len(), every, cg = C_GRN, cdgr = C_DGR);
-
-	if val_range.is_some() {
-		print!(";[{},{}]", vr_start, vr_end);
-	}
-
-	if idx_range.is_some() {
-		 		// DUPLICATE
-		print!(";[{},{}]", ir_start, ir_end);
-	}
-	print!("]:{cd} ", cd = C_DEFAULT,);
+// 	let mut ttl_nz = 0usize;
+// 	let mut ttl_ir = 0usize;
+// 	let mut within_idx_range = true;
+// 	let mut within_val_range = true;
+// 	let mut hi: T = vr_start;
+// 	let mut lo: T = vr_end;
+// 	let mut sum: isize = 0;
+// 	let mut ttl_prntd: usize = 0;
+// 	let len = vec.len();
 
 
-		/* Yes, this clusterfuck needs rewriting someday */
-	for i in 0..vec.len() {
+// 	let mut color: &'static str = C_DEFAULT;
+// 	let mut prnt: bool = false;
 
-		prnt = false;
+// 	print!("{cdgr}[{cg}{}{cdgr}/{}", vec.len(), every, cg = C_GRN, cdgr = C_DGR);
 
-		if every != 0 {
-			if i % every == 0 {
-				prnt = true;
-			} else {
-				prnt = false;
-			}
-		}
+// 	if val_range.is_some() {
+// 		print!(";[{},{}]", vr_start, vr_end);
+// 	}
 
-		if idx_range.is_some() {
-			let ir = idx_range.as_ref().expect("cmn.rs");
-
-			if i < ir_start || i >= ir_end {
-				prnt = false;
-				within_idx_range = false;
-			} else {
-				within_idx_range = true;
-			}
-		} else {
-			within_idx_range = true;
-		}
-
-		if val_range.is_some() {
-			if vec[i] < vr_start || vec[i] >= vr_end {
-				prnt = false;
-				within_val_range = false;
-			} else {
-				if within_idx_range {
-					if vec[i] == Default::default() {
-						ttl_ir += 1;
-					} else {
-						ttl_ir += 1;
-					}
-				}
-
-				within_val_range = true;
-			}
-		} 
-
-		if within_idx_range && within_val_range {
-			sum += vec[i].to_isize().expect("cmn::print_vec(): vec[i]");
-
-			if vec[i] > hi { hi = vec[i] };
-
-			if vec[i] < lo { lo = vec[i] };
-
-			if vec[i] != Default::default() {
-				ttl_nz += 1usize;
-				color = C_ORA;
-			} else {
-				if show_zeros {
-					color = C_DEFAULT;
-				} else {
-					prnt = false;
-				}
-			}
-		}
-
-		if prnt {
-			print!("{cg}[{cd}{}{cg}:{cc}{}{cg}]{cd}", i, vec[i], cc = color, cd = C_DEFAULT, cg = C_DGR);
-			ttl_prntd += 1;
-		}
-	}
-
-	let mut anz: f32 = 0f32;
-	let mut nz_pct: f32 = 0f32;
-
-	let mut ir_pct: f32 = 0f32;
-	let mut avg_ir: f32 = 0f32;
-
-	if ttl_nz > 0 {
-		anz = sum as f32 / ttl_nz as f32;
-		nz_pct = (ttl_nz as f32 / len as f32) * 100f32;
-		//print!("[ttl_nz: {}, nz_pct: {:.0}%, len: {}]", ttl_nz, nz_pct, len);
-	}
-
-	if ttl_ir > 0 {
-		avg_ir = sum as f32 / ttl_ir as f32;
-		ir_pct = (ttl_ir as f32 / len as f32) * 100f32;
-		//print!("[ttl_nz: {}, nz_pct: {:.0}%, len: {}]", ttl_nz, nz_pct, len);
-	}
+// 	if idx_range.is_some() {
+// 		 		// DUPLICATE
+// 		print!(";[{},{}]", ir_start, ir_end);
+// 	}
+// 	print!("]:{cd} ", cd = C_DEFAULT,);
 
 
-	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),\
-		ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prntd:{}){cd} ", 
-		ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
-}
+// 		/* Yes, this clusterfuck needs rewriting someday */
+// 	for i in 0..vec.len() {
 
-pub fn shuffled_vec<T: OclNum>(size: usize, min_val: T, max_val: T) -> Vec<T> {
+// 		prnt = false;
 
-	//println!("min_val: {}, max_val: {}", min_val, max_val);
+// 		if every != 0 {
+// 			if i % every == 0 {
+// 				prnt = true;
+// 			} else {
+// 				prnt = false;
+// 			}
+// 		}
 
-	//let min: isize = num::cast(min_val).expect("cmn::shuffled_vec(), min");
-	//let max: isize = num::cast::<T, isize>(max_val).expect("cmn::shuffled_vec(), max") + 1is;
-	//let size: usize = num::cast(max_val - min_val).expect("cmn::shuffled_vec(), size");
-	//let size: usize = num::from_int(max - min).expect("cmn::shuffled_vec(), size");
+// 		if idx_range.is_some() {
+// 			let ir = idx_range.as_ref().expect("cmn.rs");
 
-	//assert!(max - min > 0, "Vector size must be greater than zero.");
-	let mut vec: Vec<T> = Vec::with_capacity(size);
+// 			if i < ir_start || i >= ir_end {
+// 				prnt = false;
+// 				within_idx_range = false;
+// 			} else {
+// 				within_idx_range = true;
+// 			}
+// 		} else {
+// 			within_idx_range = true;
+// 		}
 
-	assert!(size > 0, "\ncmn::shuffled_vec(): Vector size must be greater than zero.");
-	assert!(min_val < max_val, "\ncmn::shuffled_vec(): Minimum value must be less than maximum.");
+// 		if val_range.is_some() {
+// 			if vec[i] < vr_start || vec[i] >= vr_end {
+// 				prnt = false;
+// 				within_val_range = false;
+// 			} else {
+// 				if within_idx_range {
+// 					if vec[i] == Default::default() {
+// 						ttl_ir += 1;
+// 					} else {
+// 						ttl_ir += 1;
+// 					}
+// 				}
 
-	let min = min_val.to_isize().expect("\ncmn::shuffled_vec(), min");
-	let max = max_val.to_isize().expect("\ncmn::shuffled_vec(), max") + 1;
+// 				within_val_range = true;
+// 			}
+// 		} 
 
-	let mut range = (min..max).cycle();
+// 		if within_idx_range && within_val_range {
+// 			sum += vec[i].to_isize().expect("ocl::fmt::print_vec(): vec[i]");
 
-	for i in (0..size) {
-		vec.push(FromPrimitive::from_isize(range.next().expect("\ncmn::shuffled_vec(), range")).expect("\ncmn::shuffled_vec(), from_usize"));
-	}
+// 			if vec[i] > hi { hi = vec[i] };
 
-	//let mut vec: Vec<T> = (min..max).cycle().take(size).collect();
+// 			if vec[i] < lo { lo = vec[i] };
+
+// 			if vec[i] != Default::default() {
+// 				ttl_nz += 1usize;
+// 				color = C_ORA;
+// 			} else {
+// 				if show_zeros {
+// 					color = C_DEFAULT;
+// 				} else {
+// 					prnt = false;
+// 				}
+// 			}
+// 		}
+
+// 		if prnt {
+// 			print!("{cg}[{cd}{}{cg}:{cc}{}{cg}]{cd}", i, vec[i], cc = color, cd = C_DEFAULT, cg = C_DGR);
+// 			ttl_prntd += 1;
+// 		}
+// 	}
+
+// 	let mut anz: f32 = 0f32;
+// 	let mut nz_pct: f32 = 0f32;
+
+// 	let mut ir_pct: f32 = 0f32;
+// 	let mut avg_ir: f32 = 0f32;
+
+// 	if ttl_nz > 0 {
+// 		anz = sum as f32 / ttl_nz as f32;
+// 		nz_pct = (ttl_nz as f32 / len as f32) * 100f32;
+// 		//print!("[ttl_nz: {}, nz_pct: {:.0}%, len: {}]", ttl_nz, nz_pct, len);
+// 	}
+
+// 	if ttl_ir > 0 {
+// 		avg_ir = sum as f32 / ttl_ir as f32;
+// 		ir_pct = (ttl_ir as f32 / len as f32) * 100f32;
+// 		//print!("[ttl_nz: {}, nz_pct: {:.0}%, len: {}]", ttl_nz, nz_pct, len);
+// 	}
 
 
-	/*let mut vec: Vec<T> = iter::range_inclusive::<T>(min_val, max_val).cycle().take(size).collect();*/
+// 	println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),\
+// 		ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prntd:{}){cd} ", 
+// 		ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
+// }
+
+// pub fn shuffled_vec<T: OclNum>(size: usize, min_val: T, max_val: T) -> Vec<T> {
+
+// 	//println!("min_val: {}, max_val: {}", min_val, max_val);
+
+// 	//let min: isize = num::cast(min_val).expect("cmn::shuffled_vec(), min");
+// 	//let max: isize = num::cast::<T, isize>(max_val).expect("cmn::shuffled_vec(), max") + 1is;
+// 	//let size: usize = num::cast(max_val - min_val).expect("cmn::shuffled_vec(), size");
+// 	//let size: usize = num::from_int(max - min).expect("cmn::shuffled_vec(), size");
+
+// 	//assert!(max - min > 0, "Vector size must be greater than zero.");
+// 	let mut vec: Vec<T> = Vec::with_capacity(size);
+
+// 	assert!(size > 0, "\ncmn::shuffled_vec(): Vector size must be greater than zero.");
+// 	assert!(min_val < max_val, "\ncmn::shuffled_vec(): Minimum value must be less than maximum.");
+
+// 	let min = min_val.to_isize().expect("\ncmn::shuffled_vec(), min");
+// 	let max = max_val.to_isize().expect("\ncmn::shuffled_vec(), max") + 1;
+
+// 	let mut range = (min..max).cycle();
+
+// 	for i in (0..size) {
+// 		vec.push(FromPrimitive::from_isize(range.next().expect("\ncmn::shuffled_vec(), range")).expect("\ncmn::shuffled_vec(), from_usize"));
+// 	}
+
+// 	//let mut vec: Vec<T> = (min..max).cycle().take(size).collect();
+
+
+// 	/*let mut vec: Vec<T> = iter::range_inclusive::<T>(min_val, max_val).cycle().take(size).collect();*/
 
 	
-	shuffle_vec(&mut vec);
+// 	shuffle_vec(&mut vec);
 
-	vec
+// 	vec
 
-}
+// }
 
-// Fisher-Yates
-pub fn shuffle_vec<T: OclNum>(vec: &mut Vec<T>) {
-	let len = vec.len();
-	let mut rng = rand::weak_rng();
+// // Fisher-Yates
+// pub fn shuffle_vec<T: OclNum>(vec: &mut Vec<T>) {
+// 	let len = vec.len();
+// 	let mut rng = rand::weak_rng();
 
-	let mut ridx: usize;
-	let mut tmp: T;
+// 	let mut ridx: usize;
+// 	let mut tmp: T;
 
-	for i in 0..len {
-		ridx = distributions::Range::new(i, len).ind_sample(&mut rng);
-		tmp = vec[i];
-		vec[i] = vec[ridx];
-		vec[ridx] = tmp;
-	}
-}
+// 	for i in 0..len {
+// 		ridx = distributions::Range::new(i, len).ind_sample(&mut rng);
+// 		tmp = vec[i];
+// 		vec[i] = vec[ridx];
+// 		vec[ridx] = tmp;
+// 	}
+// }
 
 /* SPARSE_VEC():
 

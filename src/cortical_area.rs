@@ -524,8 +524,8 @@ mod tests {
 
 	use super::*;
 	use axon_space::{ AxonSpaceTest };
-	use cmn::{ Sdr };
-	use synapses::{ SynCoords };
+	use cmn::{ Sdr, CelCoords };
+	// use synapses::{ SynCoords };
 	use map::{ AreaMapTest };
 
 	pub trait CorticalAreaTest {
@@ -534,7 +534,7 @@ mod tests {
 		fn write_to_axons(&self, sdr: &Sdr, axn_range: Range<u32>);
 		fn axn_state(&self, idx: usize) -> u8;
 		fn write_to_axon(&self, val: u8, idx: usize);
-		fn rand_safe_src_axn(&mut self, syn_coords: &SynCoords, src_axn_slc: u8
+		fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8
 			) -> (i8, i8, u32);
 		fn print_aux(&mut self);
 		fn print_axns(&mut self);
@@ -557,7 +557,7 @@ mod tests {
 			self.axns.write_to_axon(val, idx);
 		}
 
-		fn rand_safe_src_axn(&mut self, syn_coords: &SynCoords, src_axn_slc: u8) -> (i8, i8, u32) {
+		fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8) -> (i8, i8, u32) {
 			let v_ofs_range = RandRange::new(-8i8, 9);
 			let u_ofs_range = RandRange::new(-8i8, 9);
 
@@ -569,8 +569,8 @@ mod tests {
 					continue;
 				}
 
-				let idx_rslt = self.area_map.axn_idx(src_axn_slc, syn_coords.cel_coords.v_id, 
-					v_ofs, syn_coords.cel_coords.u_id, u_ofs);
+				let idx_rslt = self.area_map.axn_idx(src_axn_slc, cel_coords.v_id, 
+					v_ofs, cel_coords.u_id, u_ofs);
 
 				match idx_rslt {
 					Ok(idx) => return (v_ofs, u_ofs, idx),

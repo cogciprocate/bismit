@@ -89,7 +89,7 @@ impl SpinyStellateLayer {
 
 		let kern_ltp = ocl.new_kernel("sst_ltp".to_string(), 
 			//WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
-			WorkSize::TwoDim(dims.tufts_per_cel() as usize, grp_count as usize))
+			WorkSize::TwoDim(dims.tfts_per_cel() as usize, grp_count as usize))
 		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&axns.states)
 			.arg_env(&dens.syns().states)
@@ -183,20 +183,27 @@ impl SpinyStellateLayer {
 	pub fn print_cel(&mut self, cel_idx: usize) {
 		let emsg = "SpinyStellateLayer::print()";
 
-		let cel_syn_idz = (cel_idx << self.dens.syns().dims().per_tuft_l2_left()) as usize;
+		let cel_syn_idz = (cel_idx << self.dens.syns().dims().per_tft_l2_left()) as usize;
 		let per_cel = self.dens.syns().dims().per_cel() as usize;
 		let cel_syn_range = cel_syn_idz..(cel_syn_idz + per_cel);
 
 		println!("\ncell.state[{}]: {}", cel_idx, self.dens.states[cel_idx]);
 
 		println!("cell.syns.states[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens.syns().states.vec()[cel_syn_range.clone()]);
+		// ocl::fmt::print_vec_simple(&self.dens.syns().states.vec()[cel_syn_range.clone()]);
+		self.dens.syns_mut().states.print(1, None, Some(cel_syn_range.clone()), false);
 
 		println!("cell.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens.syns().strengths.vec()[cel_syn_range.clone()]);
+		// ocl::fmt::print_vec_simple(&self.dens.syns().strengths.vec()[cel_syn_range.clone()]);
+		self.dens.syns_mut().strengths.print(1, None, Some(cel_syn_range.clone()), false);
 
 		println!("cell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
-		cmn::print_vec_simple(&self.dens.syns().src_col_v_offs.vec()[cel_syn_range.clone()]);
+		// ocl::fmt::print_vec_simple(&self.dens.syns().src_col_v_offs.vec()[cel_syn_range.clone()]);
+		self.dens.syns_mut().src_col_v_offs.print(1, None, Some(cel_syn_range.clone()), false);
+
+		println!("cell.syns.src_col_u_offs[{:?}]: ", cel_syn_range.clone()); 
+		// ocl::fmt::print_vec_simple(&self.dens.syns().src_col_v_offs.vec()[cel_syn_range.clone()]);
+		self.dens.syns_mut().src_col_u_offs.print(1, None, Some(cel_syn_range.clone()), false);
 	}
 
 	pub fn dens(&self) -> &Dendrites {

@@ -378,12 +378,12 @@ impl SeqGen {
 fn junk0_vec_init(sca: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
 
 	//let vv1 = cmn::sparse_vec(2048, -128i8, 127i8, 6);
-	//cmn::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
+	//ocl::fmt::print_vec(&vv1, 1, false, Some(ops::Range{ start: -127, end: 127 }));
 
 	//let mut vec1: Vec<i8> = cmn::shuffled_vec(1024, 0, 127);
 	//let mut vec1: Vec<i8> = cmn::sparse_vec(2048, -128i8, 127i8, 8);
 
-	//cmn::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
+	//ocl::fmt::print_vec(&vec1, 1, false, Some(ops::Range{ start: -128, end: 127 }));
 
 	let mut vec1: Vec<ocl::cl_uchar> = Vec::with_capacity(sca as usize);
 

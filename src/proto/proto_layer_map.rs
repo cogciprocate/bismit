@@ -391,13 +391,13 @@ impl ProtoLayerMap {
 	}
 
 	pub fn depth_axon_kind(&self, axon_kind: &ProtoaxonKind) -> u8 {
-		let mut count = 0u8;
+		let mut axonal_layer_count = 0u8;
 
 		for (_, layer) in self.layers.iter() {
 			match layer.kind {
 				ProtolayerKind::Axonal(ref ak) => {
 					if ak == axon_kind {
-						count += layer.depth;
+						axonal_layer_count += layer.depth;
 					}
 				},
 
@@ -405,14 +405,15 @@ impl ProtoLayerMap {
 			}
 		}
 
-		let count2 = match self.axn_layer_kind_slc_lists.get(axon_kind) {
+		let layer_kind_slc_lists_len = match self.axn_layer_kind_slc_lists.get(axon_kind) {
 			Some(vec) 	=> vec.len(),
 			None 		=> 0,
 		};
 
-		assert!(count as usize == count2, "ProtoLayerMap::depth_axon_kind(): mismatch");
+		assert!(axonal_layer_count as usize == layer_kind_slc_lists_len || !self.frozen, 
+			"ProtoLayerMap::depth_axon_kind(): mismatch");
 
-		count
+		axonal_layer_count
 	}	
 
 

@@ -1,14 +1,18 @@
 // use std::ptr;
 use std::iter::{ self };
+use rand::{ self };
+use rand::distributions::{ IndependentSample, Range as RandRange };
 //use std::num::{ NumCast, FromPrimitive, ToPrimitive };
-use num::{ Integer, NumCast, FromPrimitive, ToPrimitive };
+use num::{ /*Integer, NumCast,*/ FromPrimitive, ToPrimitive };
 //use std::fmt::{ Display };
-use std::fmt::{ Display, Debug, /*LowerHex,*/ UpperHex };
-use std::default::{ Default };
-use std::ops::{ /*self,*/ Index, IndexMut };
+// use std::fmt::{ Display, Debug, /*LowerHex,*/ UpperHex };
+// use std::default::{ Default };
+use std::ops::{ Range, Index, IndexMut };
 
 use ocl::{ self, OclProgQueue };
-use cmn;
+use super::{ fmt, OclNum };
+
+// use cmn;
 
 //pub trait NumCl: Integer + Copy + NumCast + Default + Display {}
 //impl <T: NumCl> NumCl for T {}
@@ -21,17 +25,9 @@ impl<'a, T> EnvoyDimensions for &'a T where T: EnvoyDimensions {
     fn len(&self) -> u32 { (*self).len() }
 }
 
-pub trait OclNum: Integer + Copy + Clone + NumCast + Default + Display + Debug
-	+ FromPrimitive + ToPrimitive + UpperHex {}
-
-impl<T> OclNum for T where T: Integer + Copy + Clone + NumCast + Default + Display + Debug
-	+ FromPrimitive + ToPrimitive + UpperHex {}
-
-
 pub type AxonState = Envoy<u8>;
 pub type DendriteState = Envoy<u8>;
 pub type SynapseState = Envoy<u8>;
-
 
 pub struct Envoy<T> {
 	vec: Vec<T>,
@@ -62,7 +58,7 @@ impl<T: OclNum> Envoy<T> {
 	pub fn shuffled<E: EnvoyDimensions>(dims: E, min_val: T, max_val: T, ocl: &OclProgQueue) -> Envoy<T> {
 		let len = dims.len() as usize;
 		//println!("shuffled(): len: {}", len);
-		let vec: Vec<T> = cmn::shuffled_vec(len, min_val, max_val);
+		let vec: Vec<T> = shuffled_vec(len, min_val, max_val);
 		//println!("shuffled(): vec.len(): {}", vec.len());
 
 		Envoy::_new(0, dims, vec, ocl)
@@ -114,23 +110,30 @@ impl<T: OclNum> Envoy<T> {
 		self.write();
 	}
 
+	pub fn set_range_to(&mut self, val: T, range: Range<usize>) {
+		for idx in range {
+			self.vec[idx] = val;
+		}
+		self.write();
+	}
+
 	pub fn len(&self) -> usize {
 		self.vec.len()
 	}
 
 	pub fn print_simple(&mut self) {
 		self.read();
-		cmn::print_vec_simple(&self.vec[..]);
+		fmt::print_vec(&self.vec[..], 1, None, None, true);
     }
 
     pub fn print_val_range(&mut self, every: usize, val_range: Option<(T, T)>,) {
     	self.read();
-		cmn::print_vec(&self.vec[..], every, val_range, None, true);
+		fmt::print_vec(&self.vec[..], every, val_range, None, true);
     }
 
-    pub fn print(&mut self, every: usize, val_range: Option<(T, T)>, idx_range: Option<(usize, usize)>, zeros: bool) {
+    pub fn print(&mut self, every: usize, val_range: Option<(T, T)>, idx_range: Option<Range<usize>>, zeros: bool) {
     	self.read();
-		cmn::print_vec(&self.vec[..], every, val_range, idx_range, zeros);
+		fmt::print_vec(&self.vec[..], every, val_range, idx_range, zeros);
 	}
 
     pub fn release(&mut self) {
@@ -178,7 +181,58 @@ impl<T> IndexMut<usize> for Envoy<T> {
     }
 }
 
-/*
-fn len(dims: E, padding: u32) -> usize {
-	(padding + dims.len()) as usize
-}*/
+
+pub fn shuffled_vec<T: OclNum>(size: usize, min_val: T, max_val: T) -> Vec<T> {
+
+	//println!("min_val: {}, max_val: {}", min_val, max_val);
+
+	//let min: isize = num::cast(min_val).expect("ocl::envoy::shuffled_vec(), min");
+	//let max: isize = num::cast::<T, isize>(max_val).expect("ocl::envoy::shuffled_vec(), max") + 1is;
+	//let size: usize = num::cast(max_val - min_val).expect("ocl::envoy::shuffled_vec(), size");
+	//let size: usize = num::from_int(max - min).expect("ocl::envoy::shuffled_vec(), size");
+
+	//assert!(max - min > 0, "Vector size must be greater than zero.");
+	let mut vec: Vec<T> = Vec::with_capacity(size);
+
+	assert!(size > 0, "\nocl::envoy::shuffled_vec(): Vector size must be greater than zero.");
+	assert!(min_val < max_val, "\nocl::envoy::shuffled_vec(): Minimum value must be less than maximum.");
+
+	let min = min_val.to_isize().expect("\nocl::envoy::shuffled_vec(), min");
+	let max = max_val.to_isize().expect("\nocl::envoy::shuffled_vec(), max") + 1;
+
+	let mut range = (min..max).cycle();
+
+	for i in (0..size) {
+		vec.push(FromPrimitive::from_isize(range.next().expect("\nocl::envoy::shuffled_vec(), range")).expect("\nocl::envoy::shuffled_vec(), from_usize"));
+	}
+
+	//let mut vec: Vec<T> = (min..max).cycle().take(size).collect();
+
+
+	/*let mut vec: Vec<T> = iter::range_inclusive::<T>(min_val, max_val).cycle().take(size).collect();*/
+
+	
+	shuffle_vec(&mut vec);
+
+	vec
+
+}
+
+
+// Fisher-Yates
+pub fn shuffle_vec<T: OclNum>(vec: &mut Vec<T>) {
+	let len = vec.len();
+	let mut rng = rand::weak_rng();
+
+	let mut ridx: usize;
+	let mut tmp: T;
+
+	for i in 0..len {
+		ridx = RandRange::new(i, len).ind_sample(&mut rng);
+		tmp = vec[i];
+		vec[i] = vec[ridx];
+		vec[ridx] = tmp;
+	}
+}
+
+

@@ -74,7 +74,7 @@ fn test_pyr_preds(pyrs: &mut PyramidalLayer) {
 	io::stdout().flush().unwrap();
 	pyrs.dens_mut().states.set_all_to(0);
 
-	let dens_per_tuft = pyrs.dens_mut().dims().per_tuft() as usize;
+	let dens_per_tuft = pyrs.dens_mut().dims().per_tft() as usize;
 	println!("\n##### dens_per_tuft: {}", dens_per_tuft);
 	//let dens_len = pyrs.dens_mut().states.len() as usize;	
 	let pyrs_len = pyrs.soma().len() as usize;
@@ -124,8 +124,8 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 	dens.syns_mut().src_col_v_offs.set_all_to(0);
 	dens.cycle();
 
-	let syns_per_tuft_l2: usize = dens.syns().dims().per_tuft_l2_left() as usize;
-	let dens_per_tuft_l2: usize = dens.dims().per_tuft_l2_left() as usize;
+	let syns_per_tuft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
+	let dens_per_tuft_l2: usize = dens.dims().per_tft_l2_left() as usize;
 	let cels_per_group: usize = cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize;
 	let syns_per_group: usize = cels_per_group << syns_per_tuft_l2;
 	let dens_per_group: usize = cels_per_group << dens_per_tuft_l2;
