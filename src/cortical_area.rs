@@ -97,10 +97,6 @@ impl CorticalArea {
 
 		let axns = AxonSpace::new(&area_map, &ocl);
 
-		let aux_dims = CorticalDimensions::new(dims.u_size(), dims.v_size(), dims.depth(), 1, 
-			Some(dims.physical_increment()));
-		let aux = Aux::new(aux_dims, &ocl);
-
 		let mut pyrs_map = HashMap::new();
 		let mut ssts_map = HashMap::new();
 		let mut iinns = HashMap::new();
@@ -123,7 +119,7 @@ impl CorticalArea {
 							let pyrs_dims = dims.clone_with_depth(layer.depth);
 
 							let pyr_lyr = PyramidalLayer::new(
-								layer_name, pyrs_dims, pcell.clone(), &area_map, &axns, &aux, &ocl);
+								layer_name, pyrs_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl);
 
 							pyrs_map.insert(layer_name, Box::new(pyr_lyr));
 						},
@@ -131,7 +127,7 @@ impl CorticalArea {
 						SpinyStellate => {							
 							let ssts_map_dims = dims.clone_with_depth(layer.depth);
 							let sst_lyr = SpinyStellateLayer::new(
-								layer_name, ssts_map_dims, pcell.clone(), &area_map, &axns, &aux, &ocl);
+								layer_name, ssts_map_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl);
 							ssts_map.insert(layer_name, Box::new(sst_lyr));
 						},
 
@@ -172,7 +168,7 @@ impl CorticalArea {
 							let iinns_dims = dims.clone_with_depth(src_layer_depth);
 							let iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, 
 								pcell.clone(), &area_map, src_soma_env, 
-								src_base_axn_slc, &axns, &aux, &ocl);
+								src_base_axn_slc, &axns, /*&aux,*/ &ocl);
 
 							iinns.insert(layer_name, Box::new(iinn_lyr));
 
@@ -197,7 +193,7 @@ impl CorticalArea {
 
 			let em_pyrs = format!("{}: '{}' is not a valid layer", emsg, ptal_name);
 			let pyrs = pyrs_map.get(ptal_name).expect(&em_pyrs);
-			Minicolumns::new(mcols_dims, &area_map, &axns, ssts, pyrs, &aux, &ocl)
+			Minicolumns::new(mcols_dims, &area_map, &axns, ssts, pyrs, /*&aux,*/ &ocl)
 		});
 
 
@@ -233,6 +229,13 @@ impl CorticalArea {
 		};
 
 		let renderer = Renderer::new(&dims);
+
+		let aux = Aux::new(pyrs_map[ptal_name].dens().syns().dims(), &ocl);
+
+		pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
+			.set_arg_env_named("aux_ints_0", &aux.ints_0);
+
+		// TODO: give aux to whoever
 
 		let cortical_area = CorticalArea {
 			name: area_map.proto_area_map().name,
@@ -483,12 +486,12 @@ pub struct Aux {
 	dims: CorticalDimensions,
 	pub ints_0: Envoy<ocl::cl_int>,
 	pub ints_1: Envoy<ocl::cl_int>,
-	pub chars_0: Envoy<ocl::cl_char>,
-	pub chars_1: Envoy<ocl::cl_char>,
+	// pub chars_0: Envoy<ocl::cl_char>,
+	// pub chars_1: Envoy<ocl::cl_char>,
 }
 
 impl Aux {
-	pub fn new(dims: CorticalDimensions, ocl: &OclProgQueue) -> Aux {
+	pub fn new(dims: &CorticalDimensions, ocl: &OclProgQueue) -> Aux {
 
 		//let dims_multiplier: u32 = 512;
 
@@ -499,10 +502,19 @@ impl Aux {
 		Aux { 
 			ints_0: Envoy::<ocl::cl_int>::new(dims, int_32_min + 100, ocl),
 			ints_1: Envoy::<ocl::cl_int>::new(dims, int_32_min + 100, ocl),
-			chars_0: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
-			chars_1: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
-			dims: dims,
+			// chars_0: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
+			// chars_1: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
+			dims: dims.clone(),
 		}
+	}
+
+	pub unsafe fn resize(&mut self, new_dims: &CorticalDimensions) {
+		let int_32_min = -2147483648;
+		self.dims = new_dims.clone();
+		self.ints_0.resize(&self.dims, int_32_min + 100);
+		self.ints_1.resize(&self.dims, int_32_min + 100);
+		// self.chars_0.resize(&self.dims, 0);
+		// self.chars_1.resize(&self.dims, 0);
 	}
 }
 

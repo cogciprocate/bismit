@@ -237,19 +237,31 @@ pub mod tests {
 	}
 
 	impl AreaMapTest for AreaMap {
-		fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8
+		/* AXN_IDX(): Some documentation for this can be found in bismit.cl
+		 		Basically all we're doing is scaling up or down the v and u coordinates based on a predetermined scaling factor. The scaling factor only applies when a foreign cortical area is a source for the axon's slice AND is a different size than the local cortical area. The scale factor is based on the relative size of the two areas. Most of the time the scaling factor is 1:1 (scale factor of 16). The algorithm below for calculating an axon index is the same as the one in the kernel and gives precisely the same results.
+		*/
+		fn axn_idx(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8
 			) -> Result<u32, &'static str> 
 		{
 			let slc_count = self.slices().depth();
-			let v_size = self.dims().v_size();
-			let u_size = self.dims().u_size();
 
-			// println!("axn_idz: {}, slc_count: {}, slc_id: {}, v_size: {}, v_id: {}, v_ofs: {}, \
-			// 	u_size: {}, u_id: {}, u_ofs: {}", self.axn_idz(slc_id), slc_count, slc_id, v_size, 
-			// 	v_id, v_ofs, u_size, u_id, u_ofs);
+			let v_size = self.slices.v_sizes()[slc_id as usize];
+			let u_size = self.slices.u_sizes()[slc_id as usize];
 
-			if coords_are_safe(slc_count, slc_id, v_size, v_id, v_ofs, u_size, u_id, u_ofs) {
-				Ok(axn_idx_unsafe(self.axn_idz(slc_id), v_id, v_ofs, u_size, u_id, u_ofs))
+			let v_scale = self.slices.v_scales()[slc_id as usize];
+			let u_scale = self.slices.u_scales()[slc_id as usize];
+
+			let v_id_scaled = (v_id_unscaled * v_scale) / 16;
+			let u_id_scaled = (u_id_unscaled * u_scale) / 16;
+
+			println!("axn_idz: {}, slc_count: {}, slc_id: {}, v_scale: {}, v_size: {}, 
+				v_id_unscaled: {}, v_id_scaled: {}, v_ofs: {}, u_scale: {}, u_size: {}, \
+				u_id_unscaled: {}, u_id_scaled: {}, u_ofs: {}", self.axn_idz(slc_id), 
+				slc_count, slc_id, v_scale, v_size, v_id_unscaled, v_id_scaled, v_ofs, 
+				u_scale, u_size, u_id_unscaled, u_id_scaled, u_ofs);
+
+			if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled, v_ofs, u_size, u_id_scaled, u_ofs) {
+				Ok(axn_idx_unsafe(self.axn_idz(slc_id), v_id_scaled, v_ofs, u_size, u_id_scaled, u_ofs))
 			} else {
 				Err("Axon coordinates invalid.")
 			}
@@ -280,9 +292,9 @@ pub mod tests {
 	}
 
 	pub fn axn_idx_unsafe(idz: u32, v_id: u32, v_ofs: i8, u_size: u32, u_id: u32, u_ofs: i8) -> u32 {
-		let v = (v_id as isize + v_ofs as isize) as u32;
-		let u = (u_id as isize + u_ofs as isize) as u32;
-		idz + (v * u_size) + u
+		let v = v_id as isize + v_ofs as isize;
+		let u = u_id as isize + u_ofs as isize;
+		(idz as isize + (v * u_size as isize) + u) as u32
 	}
 }
 

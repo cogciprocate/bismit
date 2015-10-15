@@ -13,7 +13,7 @@ use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ /*ProtoAreaMaps, ProtoLayerMap, RegionKind,*/ ProtocellKind, Protocell, DendriteKind };
 // use synapses::{ Synapses };
 use dendrites::{ Dendrites };
-use cortical_area:: { Aux };
+// use cortical_area:: { Aux };
 // use iinn::{ InhibitoryInterneuronNetwork };
 // use minicolumns::{ Minicolumns };
 use axon_space::{ AxonSpace };
@@ -53,7 +53,7 @@ pub struct PyramidalLayer {
 // protocell: &Protocell,
 impl PyramidalLayer {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, 
-		area_map: &AreaMap, axons: &AxonSpace, aux: &Aux, ocl: &OclProgQueue
+		area_map: &AreaMap, axons: &AxonSpace, /*aux: &Aux,*/ ocl: &OclProgQueue
 	) -> PyramidalLayer {
 
 		let base_axn_slcs = area_map.proto_layer_map().slc_ids(vec![layer_name]);
@@ -88,7 +88,7 @@ impl PyramidalLayer {
 		let tfts_per_cel = area_map.proto_layer_map().dst_src_lyrs_by_tuft(layer_name).len() as u32;
 		let den_tft_dims = dims.clone_with_ptl2(dens_per_tft_l2 as i8).with_tfts(tfts_per_cel);
 
-		let dens = Dendrites::new(layer_name, den_tft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, aux, ocl);
+		let dens = Dendrites::new(layer_name, den_tft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, /*aux,*/ ocl);
 
 		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
 		let cels_per_grp_kern_ltp = dims.per_subgrp(grp_count).unwrap();
@@ -118,6 +118,8 @@ impl PyramidalLayer {
 			.arg_env(&best_den_states)
 			//.arg_env(&best2_den_ids)				// <<<<< SLATED FOR REMOVAL
 			//.arg_env(&best2_den_states)			// <<<<< SLATED FOR REMOVAL
+			// .arg_env_named("aux_ints_0", None)
+			// .arg_env_named("aux_ints_1", None)
 			.arg_env(&states) 
 			//.arg_env(&axons.states)
 		;
@@ -162,8 +164,10 @@ impl PyramidalLayer {
 			.arg_env(&dens.syns().flag_sets)
 			.arg_env(&flag_sets)
 			//.arg_env(&prev_best_den_ids)
-			.arg_env(&aux.ints_0)
-			.arg_env(&aux.ints_1)
+			// .arg_env_named("aux_ints_0", None)
+			// .arg_env_named("aux_ints_1", None)
+			// .arg_env(&aux.ints_0)
+			// .arg_env(&aux.ints_1)
 			.arg_env(&dens.syns().strengths)
 			//.arg_env(&axons.states)
 		;

@@ -13,7 +13,7 @@ use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protoc
 // use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
-use cortical_area:: { Aux };
+// use cortical_area:: { Aux };
 // use iinn:: { InhibitoryInterneuronNetwork };
 // use pyramidals::{ PyramidalLayer };
 // use minicolumns::{ Minicolumns };
@@ -45,7 +45,7 @@ pub struct SpinyStellateLayer {
 // pyrs: &PyramidalLayer,
 impl SpinyStellateLayer {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, area_map: &AreaMap, 
-				axns: &AxonSpace, aux: &Aux, ocl: &OclProgQueue
+				axns: &AxonSpace, /*aux: &Aux,*/ ocl: &OclProgQueue
 	) -> SpinyStellateLayer {
 		//let layer = area_map.proto_layer_map().spt_asc_layer().expect("spiny_stellates::SpinyStellateLayer::new()");
 		//let depth: u8 = layer.depth();
@@ -66,7 +66,7 @@ impl SpinyStellateLayer {
 		println!("      SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}", base_axn_slc, lyr_axn_idz, dims);
 
 		let dens_dims = dims.clone_with_ptl2(protocell.dens_per_tuft_l2 as i8);
-		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::SpinyStellate, area_map, axns, aux, ocl);
+		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::SpinyStellate, area_map, axns, /*aux,*/ ocl);
 
 		//let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -98,7 +98,9 @@ impl SpinyStellateLayer {
 			.arg_scl(syns_per_tuft_l2)
 			//.arg_scl(cels_per_tuft)
 			.arg_scl_named::<u32>("rnd", None)
-			.arg_env(&aux.ints_0)
+			// .arg_env(&aux.ints_0)
+			// .arg_env_named("aux_ints_0", None)
+			// .arg_env_named("aux_ints_1", None)
 			.arg_env(&dens.syns().strengths)
 		;
 

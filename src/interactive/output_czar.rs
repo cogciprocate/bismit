@@ -181,12 +181,12 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 		print!("\naux.ints_1: ");
 		cortex.area_mut(area_name).aux.ints_1.print((1 << 0) as usize, Some((0 - view_radius, view_radius)), None, true);
 	}
-	if false {
-		print!("\naux.chars_0: ");
-		cortex.area_mut(area_name).aux.chars_0.print((1 << 0) as usize, Some((-128, 127)), None, true);
-		print!("\naux.chars_1: ");
-		cortex.area_mut(area_name).aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None, true);
-	}
+	// if false {
+	// 	print!("\naux.chars_0: ");
+	// 	cortex.area_mut(area_name).aux.chars_0.print((1 << 0) as usize, Some((-128, 127)), None, true);
+	// 	print!("\naux.chars_1: ");
+	// 	cortex.area_mut(area_name).aux.chars_1.print((1 << 0) as usize, Some((-128, 127)), None, true);
+	// }
 
 
 

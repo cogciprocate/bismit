@@ -10,12 +10,12 @@ use std::collections::{ BTreeSet };
 
 use cmn::{ self, CorticalDimensions };
 use map::{ AreaMap };
-use ocl::{ self, OclProgQueue, WorkSize, Envoy };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, OclNum };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, 
 	DendriteKind, /*Protolayer, ProtolayerKind*/ };
 // use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
-use cortical_area:: { Aux };
+// use cortical_area:: { Aux };
 
 #[cfg(test)]
 pub use self::tests::{ SynCoords, SynapsesTest };
@@ -96,7 +96,7 @@ pub struct Synapses {
 impl Synapses {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, 
 					den_kind: DendriteKind, cell_kind: ProtocellKind, area_map: &AreaMap, 
-					axons: &AxonSpace, aux: &Aux, ocl: &OclProgQueue
+					axons: &AxonSpace, /*aux: &Aux,*/ ocl: &OclProgQueue
 	) -> Synapses {
 		let syns_per_tft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
 		assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
@@ -122,11 +122,15 @@ impl Synapses {
 
 		// KERNELS
 		let dst_src_slc_ids = area_map.proto_layer_map().dst_src_slc_ids(layer_name);
-		assert!(dst_src_slc_ids.len() == dims.tfts_per_cel() as usize);		
+		assert!(dst_src_slc_ids.len() == dims.tfts_per_cel() as usize,
+			"Synapses::new(): Error creating synapses: layer '{}' has one or more invalid \
+			source layers defined. If a source layer is an afferent or efferent input, please \
+			ensure that the source area for that the layer exists.", layer_name);		
 
 		let mut kernels = Vec::with_capacity(dst_src_slc_ids.len());
 
-		if DEBUG_NEW { println!("{mt}{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", den_kind, states.len(), dims, mt = cmn::MT); }
+		if DEBUG_NEW { println!("{mt}{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", 
+			den_kind, states.len(), dims, mt = cmn::MT); }
 
 		let min_wg_sqrt = 8 as usize;
 		assert_eq!((min_wg_sqrt * min_wg_sqrt), cmn::OPENCL_MINIMUM_WORKGROUP_SIZE as usize);
@@ -154,8 +158,8 @@ impl Synapses {
 					.arg_scl(tft_id as u32 * cel_tfts_per_syntuft)
 					.arg_scl(syns_per_tft_l2)
 					.arg_scl(dims.depth() as u8)
-					// .arg_env(&aux.ints_0)
-					// .arg_env(&aux.ints_1)
+					// .arg_env_named::<i32>("aux_ints_0", None)
+					// .arg_env_named("aux_ints_1", None)
 					.arg_env(&states)
 			))
 		}
@@ -353,6 +357,16 @@ impl Synapses {
 		self.src_slc_ids.read();
 		self.src_col_v_offs.read();
 	} 
+
+	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
+		let using_aux = false;
+
+		if using_aux {
+			for kernel in self.kernels.iter_mut() {
+				kernel.set_arg_env_named(name, env);
+			}
+		}
+	}
 
 	pub fn den_kind(&self) -> DendriteKind {
 		self.den_kind.clone()

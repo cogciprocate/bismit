@@ -37,6 +37,13 @@ __kernel void syns_cycle_layer(
 			char const u_ofs = syn_src_col_u_offs[syn_idx];
 
 			uchar axn_state = axn_state_3d_safe(src_slc_id, v_id, v_ofs, u_id, u_ofs, axn_states);
+
+			// DEBUG STUFF:
+			// if (src_slc_id != 0) {
+			// // if (v_id == 5 && u_id == 5) {
+			// 	int idx_is_safe = 0;
+			// 	aux_ints_0[syn_idx] = axn_idx_3d_unsafe(src_slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
+			// }
 		
 			syn_states[syn_idx] = syn_fire(axn_state);
 		}

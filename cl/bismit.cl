@@ -467,7 +467,7 @@ __kernel void den_cycle(
 	uint const den_idx = get_global_id(0);
 	uint const syn_idz = den_idx << syns_per_den_l2;
 
-	uchar den_energy = den_energies[den_idx];
+	// uchar den_energy = den_energies[den_idx];
 
 	int syn_sum = 0;
 	int syn_sum_raw = 0;
@@ -518,7 +518,7 @@ __kernel void den_cycle(
 __kernel void inhib_simple(
 				__global uchar const* const cel_states,
 				__private uchar const cel_base_axn_slc,
-				__global int* const aux_ints_1,
+				// __global int* const aux_ints_1,
 				__global uchar* const axn_states)
 {
 	uint const slc_id_lyr = get_global_id(0);
@@ -685,7 +685,7 @@ __kernel void sst_ltp_simple(
 				//__private uint const tufts_per_cel,
 				__private uchar const syns_per_tuft_l2,
 				__private uint const rnd,
-				__global int* const aux_ints_0,
+				// __global int* const aux_ints_0,
 				__global char* const syn_strengths) 
 {
 	uint const tuft_id = get_global_id(0);
@@ -717,7 +717,7 @@ __kernel void sst_ltp(
 				__private uint const cols_per_grp,
 				__private uchar const syns_per_tuft_l2,
 				__private uint const rnd,
-				__global int* const aux_ints_0,
+				// __global int* const aux_ints_0,
 				__global char* const syn_strengths) 
 {
 	uint const tuft_id = get_global_id(0);
@@ -958,8 +958,8 @@ __kernel void pyrs_ltp_unoptd(
 				__private uint const rnd,
 				__global uchar* const syn_flag_sets,
 				__global uchar* const cel_flag_sets,
-				__global int* const aux_ints_0,
-				__global int* const aux_ints_1,
+				// __global int* const aux_ints_0,
+				// __global int* const aux_ints_1,
 				__global char* const syn_strengths) 
 {
 	uint const tuft_id = get_global_id(0);
@@ -1001,7 +1001,7 @@ __kernel void pyrs_ltp_unoptd(
 
 		if (cel_concrete) {
 			// aux_ints_0[cel_idx] = 10;
-			aux_ints_0[cel_idx] = cel_syn_idz;
+			// aux_ints_0[cel_idx] = cel_syn_idz;
 
 			if (cel_prev_fuzzy) { 
 				// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + TRAIN NEW DEN

@@ -16,7 +16,7 @@ use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind,*/ Protoc
 // use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
 // use minicolumns::{ Minicolumns };
-use cortical_area:: { Aux };
+// use cortical_area:: { Aux };
 
 
 
@@ -39,7 +39,7 @@ pub struct InhibitoryInterneuronNetwork {
 }
 
 impl InhibitoryInterneuronNetwork {
-	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, area_map: &AreaMap, src_soma: &Envoy<u8>, src_base_axn_slc: u8, axns: &AxonSpace, aux: &Aux, ocl: &OclProgQueue) -> InhibitoryInterneuronNetwork {
+	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, area_map: &AreaMap, src_soma: &Envoy<u8>, src_base_axn_slc: u8, axns: &AxonSpace, /*aux: &Aux,*/ ocl: &OclProgQueue) -> InhibitoryInterneuronNetwork {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
@@ -62,7 +62,8 @@ impl InhibitoryInterneuronNetwork {
 			.lws(WorkSize::ThreeDim(1, 8, 8 as usize))
 			.arg_env(&src_soma)
 			.arg_scl(src_base_axn_slc)
-			.arg_env(&aux.ints_1)
+			// .arg_env_named("aux_ints_0", None)
+			// .arg_env_named("aux_ints_1", None)
 			.arg_env(&axns.states)
 		;
 

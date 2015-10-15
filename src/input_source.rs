@@ -26,8 +26,11 @@ impl InputSource {
 					proto_area_map.aff_areas.clone(), 
 					len
 				)
-			}
-			_ => panic!("\nInputSource::new(): Input type not supported."),
+			},
+
+			&Protoinput::None => (InputSourceKind::None, vec![], 0),
+
+			_ => panic!("\nInputSource::new(): Input type not yet supported."),
 		};
 
 		let ganglion = iter::repeat(0).take(len as usize).collect();

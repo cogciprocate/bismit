@@ -13,7 +13,7 @@ use ocl::{ self, OclProgQueue, WorkSize, Envoy };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axon_space::{ AxonSpace };
-use cortical_area:: { Aux };
+// use cortical_area:: { Aux };
 
 #[cfg(test)]
 pub use self::tests::{ DenCoords, DendritesTest };
@@ -43,7 +43,7 @@ impl Dendrites {
 					cell_kind: ProtocellKind,
 					area_map: &AreaMap,
 					axons: &AxonSpace,
-					aux: &Aux,
+					// aux: &Aux,
 					ocl: &OclProgQueue
 	) -> Dendrites {
 		//println!("\n### Test D1 ###");
@@ -77,7 +77,8 @@ impl Dendrites {
 		println!("            DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", layer_name, dims, states.len());
 
 		let syns_dims = dims.clone_with_ptl2((dims.per_tft_l2() + syns_per_den_l2 as i8));
-		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, area_map, axons, aux, ocl);
+		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, 
+			area_map, axons, /*aux,*/ ocl);
 
 
 		let kern_cycle = ocl.new_kernel("den_cycle".to_string(), WorkSize::OneDim(states.len()))
@@ -87,7 +88,8 @@ impl Dendrites {
 			.arg_scl(den_threshold)
 			.arg_env(&energies)
 			.arg_env(&states_raw)
-			//.arg_env(&aux.ints_0)
+			// .arg_env_named("aux_ints_0", None)
+			// .arg_env_named("aux_ints_1", None)
 			.arg_env(&states)
 		;
 

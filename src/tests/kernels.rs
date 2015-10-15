@@ -2,10 +2,10 @@
 use cmn::{ self, /*CorticalDimensions*/ };
 // use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 // use cortex::{ self, Cortex };
-use ocl::{ Envoy, WorkSize, /*OclProgQueue, EnvoyDimensions,*/ OclNum };
+use ocl::{ Envoy, WorkSize, /*OclProgQueue, EnvoyDimensions,*/ /*OclNum*/ };
 // use interactive::{ input_czar, InputCzar, InputKind };
 // use super::hybrid;
-use super::{ TestBed };
+use super::{ TestBed, util };
  
 
 
@@ -13,8 +13,6 @@ use super::{ TestBed };
 //		- VECTORIZED AND NON-VECTORIZED INDEX RESOLUTION FUNCTIONS RETURN THE SAME RESULTS
 // 		- KERNEL CALCULATED AXON INDEXES FALL WITHIN THE CORRECT RANGE (ON THE APPROPRIATE SLICE)
 // 		- 
-
-
 pub fn test_axn_idxs(testbed: &TestBed) {
 	let syn_reach = cmn::SYNAPSE_REACH as i8;
 
@@ -43,38 +41,11 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 	kern_sc.enqueue();
 	kern_v4.enqueue();
 
-	let failure = compare_envoys(&mut outs_sc, &mut outs_v4);
+	let failure = util::compare_envoys(&mut outs_sc, &mut outs_v4);
 
 	if failure { panic!("Vectorized and non-vectorized kernel results are not equal.") };
 }
 
-
-pub fn compare_envoys<T: OclNum>(env1: &mut Envoy<T>, env2: &mut Envoy<T>) -> bool {	
-	print!("\nVector comparison:\n");	
-	assert!(env1.vec().len() == env2.vec().len());
-
-	env1.read();
-	env2.read();
-
-	let mut failure = false;
-
-	for i in 0..env1.vec().len() {
-		let (e1_val, e2_val) = (env1.vec()[i], env2.vec()[i]);
-
-		if e1_val != e2_val {
-			failure = true;
-			print!("{}", cmn::C_RED);
-		} else {
-			print!("{}", cmn::C_DEFAULT);
-		}
-
-		print!("[n:{}, v4:{}]{}", e1_val, e2_val, cmn::C_DEFAULT);
-	}
-
-	print!("\n");
-
-	failure
-}
 
 
 // pub fn test_safe_dim_ofs(ocl: &OclProgQueue, dims: CorticalDimensions) {

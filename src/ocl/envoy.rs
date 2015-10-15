@@ -79,9 +79,6 @@ impl<T: OclNum> Envoy<T> {
 			ocl: ocl.clone(),
 		};
 
-
-		envoy.len();
-
 		envoy.write();
 
 		envoy
@@ -134,6 +131,15 @@ impl<T: OclNum> Envoy<T> {
     pub fn print(&mut self, every: usize, val_range: Option<(T, T)>, idx_range: Option<Range<usize>>, zeros: bool) {
     	self.read();
 		fmt::print_vec(&self.vec[..], every, val_range, idx_range, zeros);
+	}
+
+	pub unsafe fn resize(&mut self, new_dims: &EnvoyDimensions, val: T) {
+		// RELEASES OLD BUFFER -- IF ANY KERNELS HAD REFERENCES TO IT THEY BREAK
+		self.release();
+		self.vec.resize(new_dims.len() as usize, val);
+		self.buf = ocl::new_buffer(&mut self.vec, self.ocl.context());
+		// JUST TO VERIFY
+		self.write();
 	}
 
     pub fn release(&mut self) {

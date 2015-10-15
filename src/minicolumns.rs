@@ -14,7 +14,7 @@ use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, /*Prot
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
-use cortical_area:: { Aux };
+// use cortical_area:: { Aux };
 // use iinn:: { InhibitoryInterneuronNetwork };
 use pyramidals::{ PyramidalLayer };
 use spiny_stellates::{ SpinyStellateLayer };
@@ -61,7 +61,7 @@ impl Minicolumns {
 					ssts: &SpinyStellateLayer, 
 					pyrs: &PyramidalLayer,
 
-					aux: &Aux, ocl: &OclProgQueue) -> Minicolumns {
+					/*aux: &Aux,*/ ocl: &OclProgQueue) -> Minicolumns {
 
 		assert!(dims.depth() == 1);
 		assert!(dims.v_size() == pyrs.dims().v_size() && dims.u_size() == pyrs.dims().u_size());
@@ -121,7 +121,8 @@ impl Minicolumns {
 			.arg_scl(pyrs.protocell().dens_per_tuft_l2)
 			.arg_env(&pyrs.flag_sets)
 			.arg_env(&pyrs.states)
-			//.arg_env(&aux.ints_0)
+			// .arg_env_named("aux_ints_0", None)
+			// .arg_env_named("aux_ints_1", None)
 			.arg_env(&axons.states)
 		;
 
