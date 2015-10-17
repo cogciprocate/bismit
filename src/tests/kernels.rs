@@ -72,9 +72,9 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 // 	//safe_dim_offs.read();
 
 // 	for i in 0..safe_dim_offs.len() {
-// 		let safe_dim_id: isize = dim_ids[i] as isize + safe_dim_offs[i] as isize;
+// 		let safe_dim_id: i64 = dim_ids[i] as i64 + safe_dim_offs[i] as i64;
 // 		assert!(safe_dim_id >= 0);
-// 		assert!(safe_dim_id < dims.u_size() as isize);
+// 		assert!(safe_dim_id < dims.u_size() as i64);
 // 	}
 // }
 

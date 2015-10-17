@@ -38,7 +38,7 @@ impl Renderer {
 
 		let v_size = dims.v_size();
 		let u_size = dims.u_size();
-		assert!((v_size * u_size) as usize == out_axns.len());
+		debug_assert!((v_size * u_size) as usize == out_axns.len());
 
 		let sst_axns = match sst_axns_opt {
 			Some(sst_axns) => sst_axns,

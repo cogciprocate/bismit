@@ -254,11 +254,12 @@ pub mod tests {
 			let v_id_scaled = (v_id_unscaled * v_scale) / 16;
 			let u_id_scaled = (u_id_unscaled * u_scale) / 16;
 
-			println!("axn_idz: {}, slc_count: {}, slc_id: {}, v_scale: {}, v_size: {}, 
-				v_id_unscaled: {}, v_id_scaled: {}, v_ofs: {}, u_scale: {}, u_size: {}, \
-				u_id_unscaled: {}, u_id_scaled: {}, u_ofs: {}", self.axn_idz(slc_id), 
-				slc_count, slc_id, v_scale, v_size, v_id_unscaled, v_id_scaled, v_ofs, 
-				u_scale, u_size, u_id_unscaled, u_id_scaled, u_ofs);
+			// println!("AreaMapTest::axn_idx(): \
+			// axn_idz: {}, slc_count: {}, slc_id: {}, v_scale: {}, v_size: {}, \
+			// v_id_unscaled: {}, v_id_scaled: {}, v_ofs: {}, u_scale: {}, u_size: {}, \
+			// u_id_unscaled: {}, u_id_scaled: {}, u_ofs: {}", self.axn_idz(slc_id), 
+			// slc_count, slc_id, v_scale, v_size, v_id_unscaled, v_id_scaled, v_ofs, 
+			// u_scale, u_size, u_id_unscaled, u_id_scaled, u_ofs);
 
 			if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled, v_ofs, u_size, u_id_scaled, u_ofs) {
 				Ok(axn_idx_unsafe(self.axn_idz(slc_id), v_id_scaled, v_ofs, u_size, u_id_scaled, u_ofs))
@@ -287,14 +288,14 @@ pub mod tests {
 	}
 
 	pub fn coord_is_safe(dim_size: u32, coord_id: u32, coord_ofs: i8) -> bool {
-		let coord_ttl = coord_id as isize + coord_ofs as isize;
-		(coord_ttl >= 0) && (coord_ttl < dim_size as isize)
+		let coord_ttl = coord_id as i64 + coord_ofs as i64;
+		(coord_ttl >= 0) && (coord_ttl < dim_size as i64)
 	}
 
 	pub fn axn_idx_unsafe(idz: u32, v_id: u32, v_ofs: i8, u_size: u32, u_id: u32, u_ofs: i8) -> u32 {
-		let v = v_id as isize + v_ofs as isize;
-		let u = u_id as isize + u_ofs as isize;
-		(idz as isize + (v * u_size as isize) + u) as u32
+		let v = v_id as i64 + v_ofs as i64;
+		let u = u_id as i64 + u_ofs as i64;
+		(idz as i64 + (v * u_size as i64) + u) as u32
 	}
 }
 

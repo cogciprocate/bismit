@@ -74,7 +74,7 @@ pub fn print_vec<T: OclNum>(
 	let mut within_val_range = true;
 	let mut hi: T = vr_start;
 	let mut lo: T = vr_end;
-	let mut sum: isize = 0;
+	let mut sum: i64 = 0;
 	let mut ttl_prntd: usize = 0;
 	let len = vec.len();
 
@@ -137,7 +137,7 @@ pub fn print_vec<T: OclNum>(
 		} 
 
 		if within_idx_range && within_val_range {
-			sum += vec[i].to_isize().expect("ocl::envoy::print_vec(): vec[i]");
+			sum += vec[i].to_i64().expect("ocl::envoy::print_vec(): vec[i]");
 
 			if vec[i] > hi { hi = vec[i] };
 

@@ -644,7 +644,7 @@ pub fn must_succ(message: &str, err_code: cl_h::cl_int) {
 fn err_string(err_code: cl_int) -> String {
 	match CLStatus::from_i32(err_code) {
 		Some(cls) => format!("{:?}", cls),
-		None => format!("[Unknown Error Code: {}]", err_code as isize),
+		None => format!("[Unknown Error Code: {}]", err_code as i64),
 	}
 }
 

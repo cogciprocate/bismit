@@ -1,11 +1,11 @@
 // use num;
 // use rand;
 // use std::mem;
-// use rand::distributions::{ Normal, IndependentSample, Range };
 // use rand::{ ThreadRng };
 // use num::{ Integer };
 // use std::default::{ Default };
 // use std::fmt::{ Display };
+// use std::ops::{ Range };
 
 use cmn::{ self, CorticalDimensions };
 use map::{ AreaMap };
@@ -174,7 +174,10 @@ pub mod tests {
 	pub trait DendritesTest {
 		fn set_all_to_zero(&mut self, set_syns_zero: bool);
 		fn den_state_direct(&self, idx: u32) -> u8;
-		fn rand_den_coords(&mut self, cel_coords: &CelCoords) -> DenCoords;		
+		fn rand_den_coords(&mut self, cel_coords: &CelCoords) -> DenCoords;
+		fn den_idx(&self, tft_id: u32, cel_idx: u32, den_id_tft: u32) -> u32;
+		fn tft_id_range(&self) -> Range<u32>;
+		fn den_id_range(&self) -> Range<u32>;
 	}
 
 	impl DendritesTest for Dendrites {
@@ -202,6 +205,18 @@ pub mod tests {
 
 			DenCoords::new(tft_id, den_id_cel, cel_coords, &self.dims)
 		}
+
+		fn den_idx(&self, tft_id: u32, cel_idx: u32, den_id_tft: u32) -> u32 {
+			den_idx(&self.dims, tft_id, cel_idx, den_id_tft)
+		}
+
+		fn tft_id_range(&self) -> Range<u32> {
+			0..self.dims.tfts_per_cel()
+		}
+
+		fn den_id_range(&self) -> Range<u32> {
+			0..self.dims.per_tft()
+		}
 		
 	}
 
@@ -209,41 +224,48 @@ pub mod tests {
 	pub struct DenCoords {
 		pub idx: u32,	
 		pub tft_id: u32,
-		pub den_id_cel_tft: u32,	
+		pub den_id_tft: u32,	
 		pub cel_coords: CelCoords,
-		pub layer_dims: CorticalDimensions,
+		pub layer_dims: CorticalDimensions, // Potentially move / remove dims
 	}
 
 	impl DenCoords {
-		pub fn new(tft_id: u32, den_id_cel_tft: u32, cel_coords: &CelCoords, 
+		pub fn new(tft_id: u32, den_id_tft: u32, cel_coords: &CelCoords, 
 					layer_dims: &CorticalDimensions
 			) -> DenCoords 
 		{
-			let den_idx = den_idx(&layer_dims, tft_id, cel_coords.idx, den_id_cel_tft);
+			let den_idx = den_idx(&layer_dims, tft_id, cel_coords.idx, den_id_tft);
 
 			DenCoords { 
 				idx: den_idx, 
 				tft_id: tft_id,
-				den_id_cel_tft: den_id_cel_tft, 				
+				den_id_tft: den_id_tft, 				
 				cel_coords: cel_coords.clone(),
 				layer_dims: layer_dims.clone(),
 			}
 		}
 
 		pub fn cel_den_range_tftsec(&self) -> Range<usize> {
-			let dens_per_cel_tft = self.layer_dims.per_tft() as usize;
 			let den_idz_cel_tft = den_idx(&self.layer_dims, self.tft_id, 
 				self.cel_coords.idx, 0) as usize;
+			let dens_per_cel_tft = self.layer_dims.per_tft() as usize;			
 
 			den_idz_cel_tft..(den_idz_cel_tft + dens_per_cel_tft)
 		}
 
-		pub fn cel_syn_range_tftsec(&self, syns_per_den_l2: u8) -> Range<usize> {
-			let syns_per_cel_tft = (self.layer_dims.per_tft() as usize) << syns_per_den_l2 as usize;
+		pub fn cel_syn_range_tftsec(&self, syns_per_den_l2: u8) -> Range<usize> {			
 			let syn_idz_cel_tft = (den_idx(&self.layer_dims, self.tft_id, 
 				self.cel_coords.idx, 0) as usize) << syns_per_den_l2 as usize;
+			let syns_per_cel_tft = (self.layer_dims.per_tft() as usize) << syns_per_den_l2 as usize;
 
 			syn_idz_cel_tft..(syn_idz_cel_tft + syns_per_cel_tft)
+		}
+
+		pub fn syn_range(&self, syns_per_den_l2: u8) -> Range<usize> {
+			let syn_idz_den = (self.idx << syns_per_den_l2) as usize;
+			let syns_per_den = (1 << syns_per_den_l2) as usize;
+
+			syn_idz_den..(syn_idz_den + syns_per_den)
 		}
 
 		pub fn dims(&self) -> &CorticalDimensions {
@@ -253,8 +275,8 @@ pub mod tests {
 
 	impl Display for DenCoords {
 	    fn fmt(&self, fmtr: &mut Formatter) -> Result {
-	        write!(fmtr, "DenCoords {{ idx: {}, tft_id: {}, den_id_cel_tft: {} }}", 
-				self.idx, self.tft_id, self.den_id_cel_tft)
+	        write!(fmtr, "DenCoords {{ idx: {}, tft_id: {}, den_id_tft: {} }}", 
+				self.idx, self.tft_id, self.den_id_tft)
 	    }
 	}
 
@@ -263,7 +285,7 @@ pub mod tests {
 	// den_idx(): FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
 	// 		- Synapse index space heirarchy:  | Tuft - Slice - Cell - Dendrite - Synapse |
 	// 		- 'cel_idx' already has slice built in to its value
-	pub fn den_idx(layer_dims: &CorticalDimensions, tft_id: u32, cel_idx: u32, den_id_cel_tft: u32) -> u32 {
+	pub fn den_idx(layer_dims: &CorticalDimensions, tft_id: u32, cel_idx: u32, den_id_tft: u32) -> u32 {
 		//  NOTE: 'layer_dims' expresses dimensions from the perspective of the 
 		//  | Slice - Cell - Tuft - Dendrite - Synapse | heirarchy which is why the function
 		//  names seem confusing (see explanation at top of synapses.rs).
@@ -276,14 +298,14 @@ pub mod tests {
 		assert!((tft_count * slcs_per_tft as u32 * cels_per_slc * dens_per_cel_tft) == layer_dims.physical_len());
 		assert!(tft_id < tft_count);
 		assert!(cel_idx < slcs_per_tft as u32 * cels_per_slc);
-		assert!(den_id_cel_tft < dens_per_cel_tft);
+		assert!(den_id_tft < dens_per_cel_tft);
 
 		let dens_per_tft = slcs_per_tft as u32 * cels_per_slc * dens_per_cel_tft;
 
 		let den_idz_tft = tft_id * dens_per_tft;
 		// 'cel_idx' includes slc_id, v_id, and u_id
 		let den_idz_slc_cel_tft = cel_idx * dens_per_cel_tft;
-		let den_idx = den_idz_tft + den_idz_slc_cel_tft + den_id_cel_tft;
+		let den_idx = den_idz_tft + den_idz_slc_cel_tft + den_id_tft;
 
 		den_idx
 	}

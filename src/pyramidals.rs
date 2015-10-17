@@ -91,7 +91,7 @@ impl PyramidalLayer {
 		let dens = Dendrites::new(layer_name, den_tft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, /*aux,*/ ocl);
 
 		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-		let cels_per_grp_kern_ltp = dims.per_subgrp(grp_count).unwrap();
+		let cels_per_grp_kern_ltp = dims.per_subgrp(grp_count).expect("PyramidalLayer::new()");
 
 		println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
 			pyr_lyr_axn_idz: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, cels_per_grp_kern_ltp: {}, dims: {:?},", 

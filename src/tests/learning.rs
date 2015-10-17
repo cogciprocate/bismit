@@ -130,7 +130,7 @@ fn test_ptal_syn_learning() {
 		=============================================================================*/
 
 		// ACTIVATE PTAL SYNAPSE SOURCE AXON
-		area.write_to_axon(128, axn_idx_dst_src as usize);
+		area.write_to_axon(128, axn_idx_dst_src);
 
 		// CYCLE ONLY
 		area.ptal_mut().cycle();
@@ -174,7 +174,7 @@ fn test_ptal_syn_learning() {
 		=============================================================================*/
 
 		// ACTIVATE PTAL SYNAPSE SOURCE AXON
-		area.write_to_axon(128, axn_idx_dst_src as usize);
+		area.write_to_axon(128, axn_idx_dst_src);
 
 		// ACTIVATE, LEARN &, CYCLE
 		// area.mcols.activate();
@@ -192,7 +192,7 @@ fn test_ptal_syn_learning() {
 		area.area_map().print_slc_map();
 
 		// ACTIVATE COLUMN PSAL AXON
-		area.write_to_axon(128, axn_idx_col_in as usize);
+		area.write_to_axon(128, axn_idx_col_in);
 		// ACTIVATE PTAL SYNAPSE SOURCE AXON
 		// area.write_to_axon(128, axn_idx_dst_src as usize);
 
@@ -245,9 +245,9 @@ fn test_ptal_syn_learning() {
 		=============================================================================*/
 
 		// ZERO COLUMN PSAL AXON
-		area.write_to_axon(0, axn_idx_col_in as usize);
+		area.write_to_axon(0, axn_idx_col_in);
 		// ZERO PTAL SYNAPSE SOURCE AXON
-		area.write_to_axon(0, axn_idx_dst_src as usize);
+		area.write_to_axon(0, axn_idx_dst_src);
 
 		// ACTIVATE, LEARN &, CYCLE
 		util::al_cycle(&mut area);

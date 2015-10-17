@@ -134,8 +134,8 @@ impl CorticalDimensions {
 	}
 
 	pub fn per_subgrp(&self, subgroup_count: u32) -> Result<u32, &'static str> {
-		if self.columns() % subgroup_count == 0 {
-			return Ok(self.len() / subgroup_count) 
+		if self.physical_len() % subgroup_count == 0 {
+			return Ok(self.physical_len() / subgroup_count) 
 		} else {
 			return Err("Invalid subgroup size.");
 		}
@@ -177,6 +177,7 @@ impl CorticalDimensions {
 			len_components(cols * self.depth as u32, self.per_tft_l2, self.tfts_per_cel)
 		} else {
 			let pad = self.physical_increment() - len_mod;
+			assert_eq!((cols + pad) % self.physical_increment(), 0);
 			len_components((cols + pad) * self.depth as u32, self.per_tft_l2, self.tfts_per_cel)
 		}
 	}

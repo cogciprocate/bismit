@@ -258,9 +258,9 @@ pub fn sdr_exp1(vec: &mut Sdr) {
 
 
 pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: CorticalDimensions, counter: usize, vec: &mut Sdr) {
-	let v_size = dims.v_size() as isize;
-	let u_size = dims.u_size() as isize;
-	let edge_size = edge_size as isize;
+	let v_size = dims.v_size() as i64;
+	let u_size = dims.u_size() as i64;
+	let edge_size = edge_size as i64;
 	let mut rng = rand::weak_rng();
 
 	let (on, off) = if invert { 
@@ -279,7 +279,7 @@ pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: Cortic
 	let movement_factor = edge_size - 1;
 	let movement_start_offset = (movement_factor * gap_factor) + 80;
 
-	let first_hex_ofs = (counter as isize * movement_factor) - movement_start_offset;
+	let first_hex_ofs = (counter as i64 * movement_factor) - movement_start_offset;
 	let hex_spacing = (edge_size * gap_factor) + gap_extra;
 	let (hc_init_v, hc_init_u) = (edge_size + first_hex_ofs, edge_size + first_hex_ofs);
 
@@ -320,12 +320,12 @@ pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: Cortic
 	}
 }
 
-pub fn gimme_a_valid_col_id(dims: CorticalDimensions, v_id: isize, u_id: isize) -> (usize, bool) {
-	let v_ok = (v_id < dims.v_size() as isize) && (v_id >= 0);
-	let u_ok = (u_id < dims.u_size() as isize) && (u_id >= 0);
+pub fn gimme_a_valid_col_id(dims: CorticalDimensions, v_id: i64, u_id: i64) -> (usize, bool) {
+	let v_ok = (v_id < dims.v_size() as i64) && (v_id >= 0);
+	let u_ok = (u_id < dims.u_size() as i64) && (u_id >= 0);
 
 	if v_ok && u_ok {
-		(((v_id * dims.u_size() as isize) + u_id) as usize, true)
+		(((v_id * dims.u_size() as i64) + u_id) as usize, true)
 	} else {
 		(0, false)
 	}

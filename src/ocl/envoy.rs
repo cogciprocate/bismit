@@ -192,8 +192,8 @@ pub fn shuffled_vec<T: OclNum>(size: usize, min_val: T, max_val: T) -> Vec<T> {
 
 	//println!("min_val: {}, max_val: {}", min_val, max_val);
 
-	//let min: isize = num::cast(min_val).expect("ocl::envoy::shuffled_vec(), min");
-	//let max: isize = num::cast::<T, isize>(max_val).expect("ocl::envoy::shuffled_vec(), max") + 1is;
+	//let min: i64 = num::cast(min_val).expect("ocl::envoy::shuffled_vec(), min");
+	//let max: i64 = num::cast::<T, i64>(max_val).expect("ocl::envoy::shuffled_vec(), max") + 1is;
 	//let size: usize = num::cast(max_val - min_val).expect("ocl::envoy::shuffled_vec(), size");
 	//let size: usize = num::from_int(max - min).expect("ocl::envoy::shuffled_vec(), size");
 
@@ -203,13 +203,13 @@ pub fn shuffled_vec<T: OclNum>(size: usize, min_val: T, max_val: T) -> Vec<T> {
 	assert!(size > 0, "\nocl::envoy::shuffled_vec(): Vector size must be greater than zero.");
 	assert!(min_val < max_val, "\nocl::envoy::shuffled_vec(): Minimum value must be less than maximum.");
 
-	let min = min_val.to_isize().expect("\nocl::envoy::shuffled_vec(), min");
-	let max = max_val.to_isize().expect("\nocl::envoy::shuffled_vec(), max") + 1;
+	let min = min_val.to_i64().expect("\nocl::envoy::shuffled_vec(), min");
+	let max = max_val.to_i64().expect("\nocl::envoy::shuffled_vec(), max") + 1;
 
 	let mut range = (min..max).cycle();
 
 	for i in (0..size) {
-		vec.push(FromPrimitive::from_isize(range.next().expect("\nocl::envoy::shuffled_vec(), range")).expect("\nocl::envoy::shuffled_vec(), from_usize"));
+		vec.push(FromPrimitive::from_i64(range.next().expect("\nocl::envoy::shuffled_vec(), range")).expect("\nocl::envoy::shuffled_vec(), from_usize"));
 	}
 
 	//let mut vec: Vec<T> = (min..max).cycle().take(size).collect();

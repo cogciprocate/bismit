@@ -8,10 +8,10 @@
 use proto::*;
 
 // use ocl;
-use cortical_area::{ /*CorticalArea,*/ CorticalAreaTest };
+use cortical_area::{ CorticalArea, CorticalAreaTest };
 use map::{ AreaMapTest };
 use synapses::{ SynapsesTest };
-use dendrites::{ DendritesTest, /*DenCoords*/ };
+use dendrites::{ DendritesTest, DenCoords };
 use axon_space::{ /*AxnCoords,*/ AxonSpaceTest };
 // use cortex::{ Cortex };
 use cmn::{ /*self,*/ /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
@@ -19,7 +19,7 @@ use super::{ testbed, util };
 
 
 const DENS_TEST_ITERATIONS: usize = 500;
-const CELS_TEST_ITERATIONS: usize = 1;
+const CELS_TEST_ITERATIONS: usize = 50; //50;
 
 
 #[test]
@@ -36,9 +36,9 @@ fn test_dens() {
 
 	for i in 0..DENS_TEST_ITERATIONS {
 
-		/*=============================================================================
-		===================================== INIT ====================================
-		=============================================================================*/
+		//=============================================================================
+		//=================================== INIT ====================================
+		//=============================================================================
 
 		// area.ptal_mut().dens_mut().set_all_to_zero(true);
 		// area.ptal_mut().dens_mut().syns_mut().set_all_to_zero();
@@ -51,35 +51,35 @@ fn test_dens() {
 
 		// GET SOURCE SLICE TO USE TO SIMULATE INPUT:
 		let cel_syn_range = den_coords.cel_syn_range_tftsec(area.ptal().dens().syns().syns_per_den_l2());
-		let src_axn_slc_id = area.area_map().base_axn_slc_by_flag(layer::AFFERENT_INPUT);		
+		let src_slc_id = area.area_map().base_axn_slc_by_flag(layer::AFFERENT_INPUT);		
 
 		// GET THE AXON INDEX CORRESPONDING TO OUR CELL AND SOURCE SLICE:
-		let src_axn_idx = area.area_map().axn_idx(src_axn_slc_id, cel_coords.v_id, 
+		let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id, 
 					0, cel_coords.u_id, 0).unwrap();
 
 		// PRINT SOME DEBUG INFO IN CASE OF FAILURE:
 		print!("\n");
 		println!("{}", cel_coords);
 		println!("{}", den_coords);
-		println!("Axon Info: src_axn_slc_id: {}, src_axn_idx: {}", src_axn_slc_id, src_axn_idx);
+		println!("Axon Info: src_slc_id: {}, src_axn_idx: {}", src_slc_id, src_axn_idx);
 
-		/*=============================================================================
-		=========================== ACTIVATE AXON AND CYCLE ===========================
-		=============================================================================*/
+		//=============================================================================
+		//========================= ACTIVATE AXON AND CYCLE ===========================
+		//=============================================================================
 
 		// SET SOURCE SLICE TO AFF IN SLICE FOR OUR CELL'S SYNAPSES ONLY:
-		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_axn_slc_id, 
+		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_slc_id, 
 			cel_syn_range.clone());
 
 		// WRITE INPUT:
-		area.write_to_axon(128, src_axn_idx as usize);
+		area.write_to_axon(128, src_axn_idx);
 
 		// CYCLE SYNS AND DENS:
 		area.ptal_mut().dens_mut().cycle();	
 
-		/*=============================================================================
-		=================================== EVALUATE ==================================
-		=============================================================================*/
+		//=============================================================================
+		//================================= EVALUATE ==================================
+		//=============================================================================
 
 		let mut result = vec![0];
 
@@ -99,12 +99,12 @@ fn test_dens() {
 
 		// <<<<< TODO: TEST OTHER RANDOM OR NEARBY CELLS >>>>>
 
-		/*=============================================================================
-		=================================== CLEAN UP ==================================
-		=============================================================================*/
+		//=============================================================================
+		//================================= CLEAN UP ==================================
+		//=============================================================================
 
 		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, cel_syn_range);
-		area.write_to_axon(0, src_axn_idx as usize);
+		area.write_to_axon(0, src_axn_idx);
 	}
 
 	// print!("\n");
@@ -118,89 +118,118 @@ fn test_dens() {
 		Test that input on each dendridic tuft is reaching the cell soma.
 */
 #[test]
-fn test_cel_tufts() {
+fn test_cel() {
 	let mut cortex = testbed::init_test_cortex_2();
 	let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
+	// Zero all dendrite and synapse envoys:
 	area.ptal_mut().dens_mut().set_all_to_zero(true);
 	area.axns.states.set_all_to(0);
 
-	// SET SOURCE SLICE TO UNUSED SLICE FOR EVERY SYNAPSE:
+	// Set source slice to an unused slice for all synapses:
 	let unused_slc_id = area.area_map().base_axn_slc_by_flag(layer::UNUSED_TESTING);
 	area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(unused_slc_id);
 
+	// 'input' source slice which will be assigned to the synapses being tested:
+	let src_slc_id = area.area_map().base_axn_slc_by_flag(layer::AFFERENT_INPUT);	
+
+	// Run tests
 	for i in 0..CELS_TEST_ITERATIONS {
+		test_rand_cel(area, unused_slc_id, src_slc_id, i);
+	}
+}
 
-		/*=============================================================================
-		===================================== INIT ====================================
-		=============================================================================*/
 
-		let cel_coords = area.ptal_mut().rand_cel_coords();
-		let den_coords = area.ptal_mut().dens_mut().rand_den_coords(&cel_coords);
+fn test_rand_cel(area: &mut CorticalArea, unused_slc_id: u8, src_slc_id: u8, iter: usize) {
 
-		let den_dims = den_coords.dims().clone();
+	// Get a random cell:
+	let cel_coords = area.ptal_mut().rand_cel_coords();
 
-		// GET SOURCE SLICE TO USE TO SIMULATE INPUT:
-		let cel_syn_range = den_coords.cel_syn_range_tftsec(area.ptal().dens().syns().syns_per_den_l2());
-		let src_axn_slc_id = area.area_map().base_axn_slc_by_flag(layer::AFFERENT_INPUT);		
+	// For each tuft on that cell:
+	for tft_id in area.ptal().dens().tft_id_range() {
+		// And for each dendrite:
+		for den_id_tft in area.ptal().dens().den_id_range() {
+			// Get a random dendrite on that cell:
+			// let den_coords = area.ptal_mut().dens_mut().rand_den_coords(&cel_coords);
 
-		// GET THE AXON INDEX CORRESPONDING TO OUR CELL AND SOURCE SLICE:
-		let src_axn_idx = area.area_map().axn_idx(src_axn_slc_id, cel_coords.v_id, 
-					0, cel_coords.u_id, 0).unwrap();
+			let den_coords = DenCoords::new(tft_id, den_id_tft, &cel_coords, area.ptal().dens().dims());
 
-		// PRINT SOME DEBUG INFO IN CASE OF FAILURE:
-		print!("\n");
-		println!("{}", cel_coords);
-		println!("{}", den_coords);
-		println!("Axon Info: src_axn_slc_id: {}, src_axn_idx: {}", src_axn_slc_id, src_axn_idx);
+			// Get synapse range corresponding to our dendrite:
+			let den_syn_range = den_coords.syn_range(area.ptal().dens().syns().syns_per_den_l2());
 
-		/*=============================================================================
-		=========================== ACTIVATE AXON AND CYCLE ===========================
-		=============================================================================*/
+			// Axon index corresponding to our cell and source slice:
+			let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id, 
+				0, cel_coords.u_id, 0).unwrap();
 
-		// SET SOURCE SLICE TO AFF IN SLICE FOR OUR CELL'S SYNAPSES ONLY:
-		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_axn_slc_id, 
-			cel_syn_range.clone());
+			//=============================================================================
+			//========================= ACTIVATE AXON AND CYCLE ===========================
+			//=============================================================================
 
-		// WRITE INPUT:
-		area.write_to_axon(128, src_axn_idx as usize);
+			// Set source slice to our source slice for our dendrite's synapses only
+			area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_slc_id, 
+				den_syn_range.clone());
 
-		// CYCLE SYNS AND DENS:
-		area.ptal_mut().dens_mut().cycle();	
+			// Write input:
+			area.write_to_axon(128, src_axn_idx);
 
-		/*=============================================================================
-		=================================== EVALUATE ==================================
-		=============================================================================*/
+			// Cycle syns and dens:
+			area.ptal_mut().dens_mut().cycle();	
 
-		let mut den_state = vec![0];
+			//=============================================================================
+			//================================= EVALUATE ==================================
+			//=============================================================================
+	
+			let mut den_state = vec![0];
+			let den_idx = area.ptal().dens().den_idx(tft_id, cel_coords.idx, den_id_tft);
 
-		// DEBUG INFO (uncomment when needed):
-		// print!("Synapse src_slc_ids: ");
-		// area.ptal_mut().dens_mut().syns_mut().src_slc_ids.print(1, None, Some(cel_syn_range.clone()), true);
-		// util::print_all(area, " -- TEST_CEL_TUFTS() -- ");
-		// print!("\n");
-
-		// CHECK EACH DENDRITE ON OUR TEST CELL:
-		for den_idx in den_coords.cel_den_range_tftsec() {
 			area.ptal().dens().states.read_direct(&mut den_state[0..1], den_idx as usize);
-			// let den_state = result[0];
 
-			println!("dens.state[{}]: '{}'", den_idx, den_state[0]);
+			// Ensure that the dendrite is active:
+			if den_state[0] == 0 {
+				println!("\niter: {}", iter);
+				println!("{}", cel_coords);
+				println!("{}", den_coords);
+				println!("Axon Info: unused_slc_id: {}, src_slc_id: {}, src_axn_idx: {}", 
+					unused_slc_id, src_slc_id, src_axn_idx);
+				println!("dens.state[{}]: '{}'", den_idx, den_state[0]);
+				print!("Synapse src_slc_ids: ");
+				area.ptal_mut().dens_mut().syns_mut().src_slc_ids
+					.print(1, None, Some(den_syn_range.clone()), true);
+				util::print_all(area, " -- TEST_CEL_TUFTS() -- ");
+				print!("\n");
 
-			// ENSURE THAT THE DENDRITE IS ACTIVE:
-			assert!(den_state[0] != 0, "Error: dendrite not activated on test cell.");
+				panic!("Error: dendrite not activated on test cell.");
+			}
+
+			// assert!(den_state[0] != 0, "Error: dendrite not activated on test cell. Debug: {}", debug_info);
+
+			// Make sure neighbors, etc. are inactive
+			util::eval_nearby(den_idx as usize, 0, &area.ptal().dens().states);
+
+			// <<<<< TODO: TEST OTHER RANDOM OR NEARBY CELLS >>>>>
+
+			//=============================================================================
+			//================================= CLEAN UP ==================================
+			//=============================================================================
+
+			area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range);
+			area.write_to_axon(0, src_axn_idx);
 		}
-
-		// <<<<< TODO: TEST OTHER RANDOM OR NEARBY CELLS >>>>>
-
-		/*=============================================================================
-		=================================== CLEAN UP ==================================
-		=============================================================================*/
-
-		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, cel_syn_range);
-		area.write_to_axon(0, src_axn_idx as usize);
 	}
 
 	// print!("\n");
 	// panic!(" -- DEBUGGING -- ");
 }
+
+
+
+
+
+// pub enum ElemSpec {
+// 	All,
+// 	List(Box<Vec<usize>>),
+// 	Range(Range<usize>),
+// 	Single(usize),
+// 	RandSingle(Range<usize>),
+// 	RandRange(Range<usize>),
+// }

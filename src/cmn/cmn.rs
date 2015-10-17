@@ -322,7 +322,7 @@ pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
 // 	let mut within_val_range = true;
 // 	let mut hi: T = vr_start;
 // 	let mut lo: T = vr_end;
-// 	let mut sum: isize = 0;
+// 	let mut sum: i64 = 0;
 // 	let mut ttl_prntd: usize = 0;
 // 	let len = vec.len();
 
@@ -387,7 +387,7 @@ pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
 // 		} 
 
 // 		if within_idx_range && within_val_range {
-// 			sum += vec[i].to_isize().expect("ocl::fmt::print_vec(): vec[i]");
+// 			sum += vec[i].to_i64().expect("ocl::fmt::print_vec(): vec[i]");
 
 // 			if vec[i] > hi { hi = vec[i] };
 
@@ -439,8 +439,8 @@ pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
 
 // 	//println!("min_val: {}, max_val: {}", min_val, max_val);
 
-// 	//let min: isize = num::cast(min_val).expect("cmn::shuffled_vec(), min");
-// 	//let max: isize = num::cast::<T, isize>(max_val).expect("cmn::shuffled_vec(), max") + 1is;
+// 	//let min: i64 = num::cast(min_val).expect("cmn::shuffled_vec(), min");
+// 	//let max: i64 = num::cast::<T, i64>(max_val).expect("cmn::shuffled_vec(), max") + 1is;
 // 	//let size: usize = num::cast(max_val - min_val).expect("cmn::shuffled_vec(), size");
 // 	//let size: usize = num::from_int(max - min).expect("cmn::shuffled_vec(), size");
 
@@ -450,13 +450,13 @@ pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
 // 	assert!(size > 0, "\ncmn::shuffled_vec(): Vector size must be greater than zero.");
 // 	assert!(min_val < max_val, "\ncmn::shuffled_vec(): Minimum value must be less than maximum.");
 
-// 	let min = min_val.to_isize().expect("\ncmn::shuffled_vec(), min");
-// 	let max = max_val.to_isize().expect("\ncmn::shuffled_vec(), max") + 1;
+// 	let min = min_val.to_i64().expect("\ncmn::shuffled_vec(), min");
+// 	let max = max_val.to_i64().expect("\ncmn::shuffled_vec(), max") + 1;
 
 // 	let mut range = (min..max).cycle();
 
 // 	for i in (0..size) {
-// 		vec.push(FromPrimitive::from_isize(range.next().expect("\ncmn::shuffled_vec(), range")).expect("\ncmn::shuffled_vec(), from_usize"));
+// 		vec.push(FromPrimitive::from_i64(range.next().expect("\ncmn::shuffled_vec(), range")).expect("\ncmn::shuffled_vec(), from_usize"));
 // 	}
 
 // 	//let mut vec: Vec<T> = (min..max).cycle().take(size).collect();
@@ -498,15 +498,15 @@ pub fn sparse_vec<T: OclNum>(size: usize, min_val: T, max_val: T, sp_fctr_log2: 
 
 	let notes = len >> sp_fctr_log2;
 
-	let range_max: isize = max_val.to_isize().expect("cmn::sparse_vec(): max_val.to_isize()") as isize + 1;
-	let range_min: isize = min_val.to_isize().expect("cmn::sparse_vec(): min_val.to_isize()") as isize;
+	let range_max: i64 = max_val.to_i64().expect("cmn::sparse_vec(): max_val.to_i64()") as i64 + 1;
+	let range_min: i64 = min_val.to_i64().expect("cmn::sparse_vec(): min_val.to_i64()") as i64;
 
 	let mut rng = rand::weak_rng();
 	let val_range = Range::new(range_min, range_max);
 	let idx_range = Range::new(0, 1 << sp_fctr_log2);
 
 	for i in 0..notes {
-		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = FromPrimitive::from_isize(val_range.ind_sample(&mut rng)).expect("cmn::sparse_vec()");
+		vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = FromPrimitive::from_i64(val_range.ind_sample(&mut rng)).expect("cmn::sparse_vec()");
 		//vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = std::num::cast(val_range.ind_sample(&mut rng)).expect("cmn.rs");
 	}
 

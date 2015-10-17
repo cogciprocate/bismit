@@ -87,3 +87,81 @@ pub fn compare_envoys<T: OclNum>(env1: &mut Envoy<T>, env2: &mut Envoy<T>) -> bo
 
 	failure
 }
+
+
+// TEST_NEARBY(): Ensure that elements near a focal index are equal to a particular value.
+//		- idz and idm (first and last elements) are also checked along with their nearby elements
+pub fn eval_nearby<T: OclNum>(foc_idx: usize, other_val: T, env: &Envoy<T>) {		
+	// let mut checklist = Vec::new();
+	let check_margin = 384;
+
+	// assert!(env[foc_idx] == foc_val);
+
+	// index[0]
+	let idz = 0;
+	// index[n]
+	let idn = env.len();
+
+	assert!(idn > 0);
+	assert!(foc_idx < idn);
+
+	if idn <= check_margin * 4 {
+		// CHECK THE WHOLE LIST (except for foc_idx)
+	} else {
+		let start_mrg = check_margin;
+		let start_mrg_2 = check_margin * 2;
+
+		let end_mrg = idn - check_margin;
+		let end_mrg_2 = idn - (check_margin * 2);
+
+		let foc_idx_l = if foc_idx >= start_mrg_2 {
+			foc_idx - check_margin
+		} else if foc_idx >= start_mrg {
+			start_mrg
+		} else {
+			foc_idx
+		};		
+
+		let foc_idx_r = if foc_idx < end_mrg_2 {
+			foc_idx + check_margin
+		} else if foc_idx < end_mrg {
+			end_mrg
+		} else {
+			foc_idx
+		};
+
+		for i in (0usize..start_mrg) 			// start of list
+			.chain(foc_idx_l..foc_idx)			// left of foc_idx
+			.chain(foc_idx..foc_idx_r)			// right of foc_idx
+			.chain(end_mrg..idn)				// end of list
+			.filter(|&i| i != foc_idx)			// filter foc_idx itself from list
+		{
+			// debug_assert!(i != foc_idx);
+			// checklist.push(i);
+			assert!(env[i] == other_val);
+		}
+
+		// println!("\n##### checklist: {:?} len: {}", checklist, checklist.len());
+	}
+
+}
+
+
+#[test]
+fn test_eval_nearby_UNIMPLEMENTED() {
+
+}
+
+
+
+// let foc_idx_l = match foc_idx {
+		// 	idz...start_mrg => foc_idx,
+		// 	start_mrg...start_mrg_2 => start_mrg,
+		// 	_ => foc_idx - start_mrg,
+		// };
+
+		// let foc_idx_r = match foc_idx {
+		// 	end_mrg...idn => foc_idx,
+		// 	end_mrg_2...end_mrg => end_mrg,
+		// 	_ => foc_idx + check_margin,
+		// };

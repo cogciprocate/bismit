@@ -346,9 +346,9 @@ impl CorticalArea {
 
 		let axn_range = self.area_map.axn_range_by_flag(layer_flags);
 		//println!("\nCORTICALAREA::WRITE_INPUT(): axn_range: {:?}", axn_range);
-		assert!(sdr.len() == axn_range.len() as usize, format!("\n\
+		assert!(sdr.len() == axn_range.len() as usize, "\n\
 			cortical_area::CorticalArea::write_input()<area: '{}'>: \
-			sdr.len(): {} != axn_range.len(): {}", self.name, sdr.len(), axn_range.len()));
+			sdr.len(): {} != axn_range.len(): {}", self.name, sdr.len(), axn_range.len());
 		
 		self.write_to_axons(axn_range, sdr);
 
@@ -545,7 +545,7 @@ mod tests {
 		fn read_from_axons(&self, sdr: &mut Sdr, axn_range: Range<u32>);
 		fn write_to_axons(&self, sdr: &Sdr, axn_range: Range<u32>);
 		fn axn_state(&self, idx: usize) -> u8;
-		fn write_to_axon(&self, val: u8, idx: usize);
+		fn write_to_axon(&self, val: u8, idx: u32);
 		fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8
 			) -> (i8, i8, u32);
 		fn print_aux(&mut self);
@@ -565,7 +565,7 @@ mod tests {
 			self.axns.axn_state(idx)
 		}
 
-		fn write_to_axon(&self, val: u8, idx: usize) {
+		fn write_to_axon(&self, val: u8, idx: u32) {
 			self.axns.write_to_axon(val, idx);
 		}
 

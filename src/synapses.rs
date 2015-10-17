@@ -608,46 +608,46 @@ pub mod tests {
 	// SYN_IDX(): FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
 	// 		- Synapse index space heirarchy:  | Tuft - Slice - Cell - Dendrite - Synapse |
 	// 		- 'cel_idx' already has slice built in to its value
-	pub fn syn_idx(layer_dims: &CorticalDimensions, tft_id: u32, cel_idx: u32, syn_id_cel: u32) -> u32 {
+	pub fn syn_idx(layer_dims: &CorticalDimensions, tft_id: u32, cel_idx: u32, syn_id_celtft: u32) -> u32 {
 		//  NOTE: 'layer_dims' expresses dimensions from the perspective of the 
 		//  | Slice - Cell - Tuft - Dendrite - Synapse | heirarchy which is why the function
 		//  names seem confusing (see explanation at top of file).
 
 		let tft_count = layer_dims.tfts_per_cel();
-		let slcs_per_tft = layer_dims.depth();
+		let slcs_per_tftsec = layer_dims.depth();
 		let cels_per_slc = layer_dims.columns();
 		let syns_per_cel_tft = layer_dims.per_tft();
 
-		assert!((tft_count * slcs_per_tft as u32 * cels_per_slc * syns_per_cel_tft) == layer_dims.physical_len());
+		assert!((tft_count * slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft) == layer_dims.physical_len());
 		assert!(tft_id < tft_count);
-		assert!(cel_idx < slcs_per_tft as u32 * cels_per_slc);
-		assert!(syn_id_cel < syns_per_cel_tft);
+		assert!(cel_idx < slcs_per_tftsec as u32 * cels_per_slc);
+		assert!(syn_id_celtft < syns_per_cel_tft);
 
-		let syns_per_tft = slcs_per_tft as u32 * cels_per_slc * syns_per_cel_tft;
+		let syns_per_tftsec = slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft;
 
-		let syn_idz_tft = tft_id * syns_per_tft;
+		let syn_idz_tft = tft_id * syns_per_tftsec;
 		// 'cel_idx' includes slc_id, v_id, and u_id
 		let syn_idz_slc_cel = cel_idx * syns_per_cel_tft;
-		let syn_idx = syn_idz_tft + syn_idz_slc_cel + syn_id_cel;
+		let syn_idx = syn_idz_tft + syn_idz_slc_cel + syn_id_celtft;
 
 		// println!("\n#####\n\n\
 		// 	tft_count: {} \n\
-		// 	slcs_per_tft: {} \n\
+		// 	slcs_per_tftsec: {} \n\
 		// 	cels_per_slc: {}\n\
 		// 	syns_per_cel_tft: {}\n\
 		// 	\n\
 		// 	tft_id: {},\n\
 		// 	cel_idx: {},\n\
-		// 	syn_id_cel: {}, \n\
+		// 	syn_id_celtft: {}, \n\
 		// 	\n\
 		// 	tft_syn_idz: {},\n\
 		// 	tft_cel_slc_syn_idz: {},\n\
 		// 	syn_idx: {},\n\
 		// 	\n\
 		// 	#####", 
-		// 	tft_count, slcs_per_tft, 
+		// 	tft_count, slcs_per_tftsec, 
 		// 	cels_per_slc, syns_per_cel_tft, 
-		// 	tft_id, cel_idx, syn_id_cel,
+		// 	tft_id, cel_idx, syn_id_celtft,
 		// 	tft_syn_idz, slc_syn_id_celz, syn_idx
 		// );
 

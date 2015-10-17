@@ -133,7 +133,7 @@ pub fn init_test_cortex_2() -> Cortex {
 
 	let pamaps = ProtoAreaMaps::new()
 		.area(area_name, lmap_name, 48, 48, None, None)
-		.area_ext("dummy_area", "dummy_lm", 42, 42, Protoinput::None, None, Some(vec![area_name]))
+		.area_ext("dummy_area", "dummy_lm", 64, 63, Protoinput::None, None, Some(vec![area_name]))
 	;
 
 	Cortex::new(plmaps, pamaps)

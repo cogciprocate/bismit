@@ -30,7 +30,7 @@ impl SliceDimensions {
 				let src_scales_res = get_src_scales(src_area_dims, area_dims);
 
 				if src_scales_res.is_ok() {
-					let (v_scale, u_scale) = src_scales_res.unwrap();
+					let (v_scale, u_scale) = src_scales_res.expect("SliceDimensions::new()");
 
 					Ok(SliceDimensions { 
 						v_size: src_area_dims.v_size(),
@@ -39,7 +39,7 @@ impl SliceDimensions {
 						u_scale: u_scale,
 					})
 				} else {
-					Err(src_scales_res.err().unwrap())
+					Err(src_scales_res.err().expect("SliceDimensions::new()"))
 				}
 			},
 
