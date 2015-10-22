@@ -54,7 +54,7 @@
 //		v_id
 //		u_id
 //
-// 		fuz [Tenative]: fuzzyness, level of predictiveness
+// 		vat [Tenative]: vatic, fuzzyness, level of predictiveness
 //
 // 		***** High Priority Comment, Temporary Code Change
 // 		<<<<< Medium Priority Comment, To Do
@@ -796,9 +796,9 @@ __kernel void mcol_activate_pyrs(
 	int const mcol_active = sst_axn_state != 0;
 	//int const mcol_active = mcol_state != 0;
 	int const mcol_any_pred = mcol_flag_set & MCOL_IS_PREDICTIVE_FLAG == MCOL_IS_PREDICTIVE_FLAG;
-	int const pyr_predictive = (pyr_pred != 0);
+	int const pyr_is_vatic = (pyr_pred != 0);
 
-	int const crystal = pyr_predictive && mcol_active;
+	int const crystal = pyr_is_vatic && mcol_active;
 	int const anomaly = mcol_active && !mcol_any_pred;
 
 	//int const activate_axon = crystal || anomaly;
@@ -807,7 +807,7 @@ __kernel void mcol_activate_pyrs(
 	pyr_flag_set &= ~PYR_BEST_IN_COL_FLAG;
 	
 	//pyr_flag_set |= mul24(best_den_state == mcol_best_col_den_state, PYR_BEST_IN_COL_FLAG);
-	//pyr_flag_set |= mul24((mcol_best_col_den_state == best_den_state) && pyr_predictive, 
+	//pyr_flag_set |= mul24((mcol_best_col_den_state == best_den_state) && pyr_is_vatic, 
 	//	PYR_BEST_IN_COL_FLAG);
 	pyr_flag_set |= mul24(best_den_state != 0 && best_den_state == mcol_best_col_den_state, 
 		PYR_BEST_IN_COL_FLAG);
@@ -948,11 +948,11 @@ __kernel void mcol_activate_pyrs(
 		
 		Given that indexing structure, the following kernel structure appears to be the best balance of performance and simplicity:
 
-			Kernel: WorkSize: OneDim(cell groups**) - Iterate through cell groups
-				- Loop: Cells - Iterate through cells within each group.
-					- Loop: Tufts - Iterate through cell tufts.
-						- Function call: For each tuft, if work needs to be done, a function is called which will ->
-						  Loop: Synapses - Unroll tuft synapses.
+			Kernel: WorkSize: OneDim(cell groups **) - Iterate through cell groups
+				- Loop: cells - Iterate through cells within each group.
+					- Loop: tufts - Iterate through cell tufts.
+						- Function call: dendrites - For each tuft, if work needs to be done, pick the most active or previously active dendrite(s) then call a function is called which will ->
+						  Loop: synapses - Iterate through dendrite synapses.
 							- STP, LTP, and LTD take place on synapses within this smallest loop.
 
 
@@ -963,13 +963,13 @@ __kernel void mcol_activate_pyrs(
 // <<<<< TODO: FIX: NOT TAKING IN TO ACCOUNT MULTIPLE TUFTS! MAJOR INDEXING PROBLEMS >>>>>
 __kernel void pyrs_ltp(
 				__global uchar const* const axn_states,
-				__global uchar const* const cel_fuzzyness,
+				__global uchar const* const cel_states,
 				__global uchar const* const cel_best_den_ids,
 				__global uchar const* const den_states,
 				__global uchar const* const syn_states,
 				__private uint const dens_per_tuft_l2,
 				__private uint const syns_per_den_l2,
-				__private uint const cols_per_grp,
+				__private uint const cels_per_cel_grp,
 				__private uint const axn_idz_cel_lyr,
 				__private uint const rnd,
 				__global uchar* const syn_flag_sets,
@@ -978,35 +978,33 @@ __kernel void pyrs_ltp(
 				// __global int* const aux_ints_1,
 				__global char* const syn_strengths) 
 {
-	uint const tuft_id = get_global_id(0);
-	uint const slc_id_lyr = get_global_id(1);	
-	uint const grp_id = get_global_id(2);
-
-	uint const cel_id = get_global_id(0);
+	uint const cel_grp_id = get_global_id(0);
+	// uint const slc_id_lyr = get_global_id(1);	
+	// uint const grp_id = get_global_id(2);
 
 	uint const tuft_count = get_global_size(1);
-	uint const grp_count = get_global_size(2); // GRP_COUNT: COLUMNS / COLS_PER_GRP
+	uint const grp_count = get_global_size(2);
 
-	uint const cel_grp_id = cel_idx_3d_unsafe(slc_id_lyr, tuft_count, tuft_id, grp_count, grp_id);
-	uint const cel_idz_grp = mul24(grp_id, cols_per_grp);
+	// uint const cel_grp_id = cel_idx_3d_unsafe(slc_id_lyr, tuft_count, tuft_id, grp_count, grp_id);
+	uint const cel_idz_cel_grp = mul24(cel_grp_id, cels_per_cel_grp);
 
-	uint const axn_grp_id = get_axn_idz(slc_id_lyr) + cel_idx_3d_unsafe(0, tuft_count, tuft_id, grp_count, grp_id);
-	//uint const cel_axn_idz = mul24(grp_id, cols_per_grp);
-	uint const axn_idz_cel_slc = axn_idz_cel_lyr + cel_idz_grp;
+	// uint const axn_grp_id = get_axn_idz(slc_id_lyr) + cel_idx_3d_unsafe(0, tuft_count, tuft_id, grp_count, cel_grp_id);
+	//uint const cel_axn_idz = mul24(grp_id, cels_per_cel_grp);
+	uint const axn_idz_cel_grp = axn_idz_cel_lyr + cel_idz_cel_grp;
  
 	//for (uint cel_idx = cel_idz_grp; cel_idx < cel_idn; cel_idx++) {
-	for (uint cel_id_grp = 0; cel_id_grp < cols_per_grp; cel_id_grp++) {
-		uint const cel_idx = cel_idz_grp + cel_id_grp;
-		uint const cel_axn_idx = axn_idz_cel_slc + cel_id_grp;
+	for (uint cel_id_cel_grp = 0; cel_id_cel_grp < cels_per_cel_grp; cel_id_cel_grp++) {
+		uint const cel_idx = cel_idz_cel_grp + cel_id_cel_grp;
+		uint const cel_axn_idx = axn_idz_cel_grp + cel_id_cel_grp;
 
 		uchar cel_best_den_id = cel_best_den_ids[cel_idx];
 		uchar cel_flag_set = cel_flag_sets[cel_idx];
 
-		int cel_concrete = axn_states[cel_axn_idx] != 0;
-		int cel_fuzzy = cel_fuzzyness[cel_idx] != 0;
+		int cel_is_concrete = axn_states[cel_axn_idx] != 0;
+		int cel_is_vatic = cel_states[cel_idx] != 0;
 
 		int cel_prev_concrete = (cel_flag_set & PYR_PREV_CONCRETE_FLAG) == PYR_PREV_CONCRETE_FLAG;
-		int cel_prev_fuzzy = (cel_flag_set & PYR_PREV_FUZZY_FLAG) == PYR_PREV_FUZZY_FLAG;
+		int cel_prev_vatic = (cel_flag_set & PYR_PREV_VATIC_FLAG) == PYR_PREV_VATIC_FLAG;
 		int cel_best_in_col = (cel_flag_set & PYR_BEST_IN_COL_FLAG) == PYR_BEST_IN_COL_FLAG;		
 
 		// NOT TAKING IN TO ACCOUNT TUFTS!
@@ -1017,11 +1015,13 @@ __kernel void pyrs_ltp(
 		// TESTING 
 		// dst_syns__active__stp_ltd(syn_states, best_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
 
-		if (cel_concrete) {
+		aux_ints_0[cel_idx] = cel_axn_idx;
+
+		if (cel_is_concrete) {
 			// aux_ints_0[cel_idx] = 10;
 			aux_ints_0[cel_idx] = cel_syn_idz;
 
-			if (cel_prev_fuzzy) { 
+			if (cel_prev_vatic) { 
 				// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + TRAIN NEW DEN
 				// SAME AS ANO + TRAIN A SECOND REDUNDANT DENDRITE AS WELL (OR DON'T)
 				dst_syns__active__stp_ltd(syn_states, best_den_syn_idz, syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
@@ -1043,8 +1043,8 @@ __kernel void pyrs_ltp(
 		}
 
 
-		cel_flag_set &= ~PYR_PREV_FUZZY_FLAG;
-		cel_flag_set |= mul24(cel_fuzzy, PYR_PREV_FUZZY_FLAG);
+		cel_flag_set &= ~PYR_PREV_VATIC_FLAG;
+		cel_flag_set |= mul24(cel_is_vatic, PYR_PREV_VATIC_FLAG);
 
 		cel_flag_sets[cel_idx] = cel_flag_set;
 	}

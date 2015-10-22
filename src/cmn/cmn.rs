@@ -173,7 +173,7 @@ pub const MCOL_IS_PREDICTIVE: u8 			= 0b00000001;
 pub const PYR_PREV_CONCRETE_FLAG: u8 		= 0b10000000;	// 128	(0x80)
 pub const PYR_BEST_IN_COL_FLAG: u8 			= 0b01000000;	// 64	(0x40)
 pub const PYR_PREV_STP_FLAG: u8 			= 0b00100000;	// 32	(0x20)
-pub const PYR_PREV_FUZZY_FLAG: u8			= 0b00010000;	// 16	(0x10)
+pub const PYR_PREV_VATIC_FLAG: u8			= 0b00010000;	// 16	(0x10)
 
 pub const SYN_STP_FLAG: u8					= 0b00000001;
 pub const SYN_STD_FLAG: u8					= 0b00000010;
@@ -244,7 +244,7 @@ pub fn base_build_options() -> BuildOptions {
 		.opt("PYR_PREV_CONCRETE_FLAG", PYR_PREV_CONCRETE_FLAG as i32)
 		.opt("PYR_BEST_IN_COL_FLAG", PYR_BEST_IN_COL_FLAG as i32)
 		.opt("PYR_PREV_STP_FLAG", PYR_PREV_STP_FLAG as i32)
-		.opt("PYR_PREV_FUZZY_FLAG", PYR_PREV_FUZZY_FLAG as i32)
+		.opt("PYR_PREV_VATIC_FLAG", PYR_PREV_VATIC_FLAG as i32)
 		.opt("SYN_STP_FLAG", SYN_STP_FLAG as i32)
 		.opt("SYN_STD_FLAG", SYN_STP_FLAG as i32)
 		.opt("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)

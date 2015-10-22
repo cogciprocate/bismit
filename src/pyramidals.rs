@@ -98,8 +98,7 @@ impl PyramidalLayer {
 		}*/
 
 		
-		let kern_cycle = ocl.new_kernel("pyr_cycle".to_string(), 
-
+		let kern_cycle = ocl.new_kernel("pyr_cycle".to_string(),
 			// WorkSize::OneDim(dims.depth() as usize * dims.columns() as usize))
 			WorkSize::OneDim(dims.cells() as usize))
 
@@ -119,13 +118,13 @@ impl PyramidalLayer {
 			//.arg_env(&axons.states)
 		;
 
-
 		let syns_per_tftsec = dens.syns().syns_per_tftsec();
-		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-		let cels_per_grp = dims.per_subgrp(grp_count).expect("PyramidalLayer::new()");
+		let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
+		let cels_per_cel_grp = dims.per_subgrp(cel_grp_count).expect("PyramidalLayer::new()");
 
 		let kern_ltp = ocl.new_kernel("pyrs_ltp".to_string(), 
-			WorkSize::ThreeDim(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
+			//WorkSize::ThreeDim(tfts_per_cel as usize, dims.depth() as usize, cel_grp_count as usize))
+			WorkSize::OneDim(cel_grp_count as usize))
 			.arg_env(&axons.states)
 			.arg_env(&states)
 			.arg_env(&best_den_ids)
@@ -134,7 +133,7 @@ impl PyramidalLayer {
 			// .arg_scl(tfts_per_cel as u32)
 			.arg_scl(dens_per_tft_l2 as u32)
 			.arg_scl(syns_per_den_l2 as u32)			
-			.arg_scl(cels_per_grp)
+			.arg_scl(cels_per_cel_grp)
 			.arg_scl(pyr_lyr_axn_idz)
 			.arg_scl_named::<u32>("rnd", None)		
 			.arg_env(&dens.syns().flag_sets)
@@ -151,9 +150,9 @@ impl PyramidalLayer {
 
 
 		println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
-			pyr_lyr_axn_idz: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, cels_per_grp_kern_ltp: {}, dims: {:?},", 
+			pyr_lyr_axn_idz: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, cels_per_cel_grp: {}, dims: {:?},", 
 			layer_name, base_axn_slc, pyr_lyr_axn_idz, syns_per_den_l2, dens_per_tft_l2, 
-			cels_per_grp, dims, mt = cmn::MT);
+			cels_per_cel_grp, dims, mt = cmn::MT);
 
 
 		PyramidalLayer {
