@@ -171,8 +171,16 @@ impl AreaMap {
 		build_options
 	}
 
-	pub fn base_axn_slc_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> u8 {
-		self.proto_layer_map.layer_with_flag(layer_flags).expect("Cannot find layer").base_slc()
+	pub fn base_axn_slc_ids_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> Vec<u8> {
+		// self.proto_layer_map.layer_with_flag(layer_flags).expect("Cannot find layer").base_slc()
+		let layers = self.proto_layer_map.layers_with_flag(layer_flags);
+		let mut slc_ids = Vec::with_capacity(layers.len());
+
+		for &layer in layers.iter() {
+			slc_ids.push(layer.base_slc());
+		}
+
+		slc_ids
 	}
 
 	pub fn axn_range_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {				
@@ -228,12 +236,13 @@ pub fn literal_list<T: Display>(vec: &Vec<T>) -> String {
 
 #[cfg(test)]
 pub mod tests {
+	use std::fmt::{ Display, Formatter, Result as FmtResult };
 	use super::{ AreaMap };
 
 	pub trait AreaMapTest {
-		fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8,
-			) -> Result<u32, &'static str>;
-		fn print_slc_map(&self);
+		fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8) 
+			-> Result<u32, &'static str>;
+		// fn print_slc_map(&self);
 	}
 
 	impl AreaMapTest for AreaMap {
@@ -268,15 +277,23 @@ pub mod tests {
 			}
 		}
 
-		fn print_slc_map(&self) {
-			print!("\nSlice Map: ");
 
-			for i in 0..self.slices.slc_count() {
-				print!("[{}: '{}', {}]", i, self.slices.layer_names()[i], self.slices.axn_idzs()[i]);
-			}
+		// fn print_slc_map(&self) {
+		// 	print!("\nslice map: ");
 
-			print!("\n");
-		}
+		// 	for i in 0..self.slices.slc_count() {
+		// 		print!("[{}: '{}', {}]", i, self.slices.layer_names()[i], self.slices.axn_idzs()[i]);
+		// 	}
+
+		// 	print!("\n");
+		// }
+
+	}
+
+	impl Display for AreaMap {
+	    fn fmt(&self, fmtr: &mut Formatter) -> FmtResult {
+	        write!(fmtr, "area slices: {}", self.slices)
+	    }
 	}
 
 	pub fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: i8, 

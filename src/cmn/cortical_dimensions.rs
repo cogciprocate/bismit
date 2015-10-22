@@ -1,4 +1,4 @@
-use ocl::{ OclProgQueue, EnvoyDimensions };
+use ocl::{ EnvoyDimensions };
 
 /*	CorticalDimensions: Dimensions of a cortical area in units of cells
 		- Used to define both the volume and granularity of a cortical area.
@@ -56,13 +56,6 @@ impl CorticalDimensions {
 		}
 	}
 
-	pub fn physical_increment(&self) -> u32 {
-		match self.physical_increment {
-			Some(pi) => pi,
-			None => panic!("\ncortical_dimensions::CorticalDimensions::physical_increment(): Physical Increment not set!"),
-		}
-	}
-
 	pub fn u_size(&self) -> u32 {
 		self.u_size
 	}
@@ -84,6 +77,29 @@ impl CorticalDimensions {
 		self.per_tft_l2
 	}
 
+	// PHYSICAL_INCREMENT(): 
+	// 		TODO: improve this description
+	pub fn physical_increment(&self) -> Result<u32, &'static str> {
+		match self.physical_increment {
+			Some(pi) => Ok(pi),
+			None => Err("physical increment not set"),
+		}
+	}
+
+	// SCALED_PHYSICAL_INCREMENT(): Represents the increment of the columns, not simply the dens/syns/whatever
+	// 		i.e. if cel_phys_incr == 256, syns must have an phys_incr of cel_phys_incr * syns_per_cel
+	//
+	// 		TODO: DEPRICATE
+	// pub fn scaled_physical_increment(&self) -> Result<u32, &'static str> {
+	// 	match self.physical_increment {
+	// 		Some(pi) => {
+	// 			let phys_incr = (pi << self.per_tft_l2_left()) * self.tfts_per_cel;
+	// 			Ok(phys_incr)
+	// 		},
+
+	// 		None => Err("physical increment not set"),
+	// 	}
+	// }
 
 	// COLUMNS(): 2D Area of a slc measured in cell sides
 	pub fn columns(&self) -> u32 {
@@ -134,8 +150,10 @@ impl CorticalDimensions {
 	}
 
 	pub fn per_subgrp(&self, subgroup_count: u32) -> Result<u32, &'static str> {
-		if self.physical_len() % subgroup_count == 0 {
-			return Ok(self.physical_len() / subgroup_count) 
+		let physical_len = try!(self.physical_len());
+
+		if physical_len % subgroup_count == 0 {
+			return Ok(physical_len / subgroup_count) 
 		} else {
 			return Err("Invalid subgroup size.");
 		}
@@ -167,18 +185,20 @@ impl CorticalDimensions {
 		self
 	}
 
-	pub fn physical_len(&self) -> u32 {
+	// PHYSICAL_LEN(): Length of array required to hold the section of cortex represented by these dimensions
+	// 		- Rounded based on columns and is therefore safe for 
+	pub fn physical_len(&self) -> Result<u32, &'static str> {
 		let cols = self.columns();
-		let phys_inc = self.physical_increment();
+		let phys_incr = try!(self.physical_increment());
 
-		let len_mod = cols % phys_inc;
+		let len_mod = cols % phys_incr;
 
 		if len_mod == 0 {
-			len_components(cols * self.depth as u32, self.per_tft_l2, self.tfts_per_cel)
+			Ok(len_components(cols * self.depth as u32, self.per_tft_l2, self.tfts_per_cel))
 		} else {
-			let pad = self.physical_increment() - len_mod;
-			assert_eq!((cols + pad) % self.physical_increment(), 0);
-			len_components((cols + pad) * self.depth as u32, self.per_tft_l2, self.tfts_per_cel)
+			let pad = phys_incr - len_mod;
+			debug_assert_eq!((cols + pad) % phys_incr, 0);
+			Ok(len_components((cols + pad) * self.depth as u32, self.per_tft_l2, self.tfts_per_cel))
 		}
 	}
 }
@@ -186,19 +206,20 @@ impl CorticalDimensions {
 impl Copy for CorticalDimensions {}
 
 impl EnvoyDimensions for CorticalDimensions {
-	/* PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
-	fn len(&self) -> u32 {
-		self.physical_len()
+	// PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT 
+	// TODO: RETURN A RESULT<>
+	fn physical_len(&self) -> u32 {
+		self.physical_len().expect("EnvoyDimensions::len()")
 	}
 }
 
 
-fn resolve_physical_increment(ocl: Option<&OclProgQueue>) -> Option<u32> {
-	match ocl {
-		Some(ocl) => Some(ocl.get_max_work_group_size()),
-		None => None,
-	}
-}
+// fn resolve_physical_increment(ocl: Option<&OclProgQueue>) -> Option<u32> {
+// 	match ocl {
+// 		Some(ocl) => Some(ocl.get_max_work_group_size()),
+// 		None => None,
+// 	}
+// }
 
 fn len_components(cells: u32, per_tft_l2: i8, tfts_per_cel: u32) -> u32 {
 	//println!("\n\n##### TOTAL_LEN(): cells: {}, pcl2: {}", cells, per_tft_l2);

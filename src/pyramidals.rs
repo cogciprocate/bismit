@@ -9,7 +9,7 @@ use rand::{ /*ThreadRng,*/ Rng };
 
 use cmn::{ self, CorticalDimensions, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, OclProgQueue, WorkSize, Envoy };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, OclNum };
 use proto::{ /*ProtoAreaMaps, ProtoLayerMap, RegionKind,*/ ProtocellKind, Protocell, DendriteKind };
 // use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -88,15 +88,7 @@ impl PyramidalLayer {
 		let tfts_per_cel = area_map.proto_layer_map().dst_src_lyrs_by_tuft(layer_name).len() as u32;
 		let den_tft_dims = dims.clone_with_ptl2(dens_per_tft_l2 as i8).with_tfts(tfts_per_cel);
 
-		let dens = Dendrites::new(layer_name, den_tft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, /*aux,*/ ocl);
-
-		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-		let cels_per_grp_kern_ltp = dims.per_subgrp(grp_count).expect("PyramidalLayer::new()");
-
-		println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
-			pyr_lyr_axn_idz: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, cels_per_grp_kern_ltp: {}, dims: {:?},", 
-			layer_name, base_axn_slc, pyr_lyr_axn_idz, syns_per_den_l2, dens_per_tft_l2, 
-			cels_per_grp_kern_ltp, dims, mt = cmn::MT);
+		let dens = Dendrites::new(layer_name, den_tft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, /*aux,*/ ocl);		
 
 
 		//let mut den_tfts = Vec::with_capacity(src_tfts.len());
@@ -107,7 +99,10 @@ impl PyramidalLayer {
 
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle".to_string(), 
-			WorkSize::OneDim(dims.depth() as usize * dims.columns() as usize))
+
+			// WorkSize::OneDim(dims.depth() as usize * dims.columns() as usize))
+			WorkSize::OneDim(dims.cells() as usize))
+
 			.arg_env(&dens.states)
 			.arg_env(&dens.states_raw)
 			//.arg_scl(base_axn_slc)
@@ -118,59 +113,47 @@ impl PyramidalLayer {
 			.arg_env(&best_den_states)
 			//.arg_env(&best2_den_ids)				// <<<<< SLATED FOR REMOVAL
 			//.arg_env(&best2_den_states)			// <<<<< SLATED FOR REMOVAL
-			// .arg_env_named("aux_ints_0", None)
-			// .arg_env_named("aux_ints_1", None)
+			// .arg_env_named::<i32>("aux_ints_0", None)
+			// .arg_env_named::<i32>("aux_ints_1", None)
 			.arg_env(&states) 
 			//.arg_env(&axons.states)
 		;
 
-		/*let kern_axn_cycle = ocl.new_kernel("pyr_axn_cycle", 
-			WorkSize::TwoDim(dims.depth() as usize, dims.width as usize))
-			.arg_scl(base_axn_slc)
-			.arg_env(&states)
-			.arg_env(&axons.states)
-		;*/
 
-		// let kern_activate = ocl.new_kernel("pyr_activate".to_string(),		 // <<<<< MOVE TO MCOL
-		// 	WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize));
+		let syns_per_tftsec = dens.syns().syns_per_tftsec();
+		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
+		let cels_per_grp = dims.per_subgrp(grp_count).expect("PyramidalLayer::new()");
 
-
-		// assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
-		// let cels_per_wi: u32 = dims.per_slc() / cmn::MINIMUM_WORKGROUP_SIZE;
-
-		// let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-		// let cels_per_grp_kern_ltp = dims.per_subgrp(grp_count).unwrap();
-			//.unwrap_or_else(|s: &'static str| panic!(s));
-
-		// <<<<< NEEDS UPDATE TO NEW AXON INDEXING SYSTEM >>>>>
-		//let pyr_lyr_axn_idz: u32 = (base_axn_slc as u32 * dims.columns()) + cmn::AXON_MAR__GIN_SIZE; 
-		//let pyr_lyr_axn_idz: u32 = cmn::axn_idz_2d(base_axn_slc, dims.columns(), protolayer_map.hrz_demarc());
-		//println!("\n### PYRAMIDAL AXON IDX BASE: {} ###", pyr_lyr_axn_idz);
-		//assert!(pyr_lyr_axn_idz == pyr_lyr_axn_idz);
-
-		let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd".to_string(), 
+		let kern_ltp = ocl.new_kernel("pyrs_ltp".to_string(), 
 			WorkSize::ThreeDim(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
 			.arg_env(&axons.states)
 			.arg_env(&states)
 			.arg_env(&best_den_ids)
-			//.arg_env(&best2_den_ids) // <<<<< SLATED FOR REMOVAL
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns().states)
-			.arg_scl(pyr_lyr_axn_idz)
-			.arg_scl(syns_per_den_l2 as u32)
+			// .arg_scl(tfts_per_cel as u32)
 			.arg_scl(dens_per_tft_l2 as u32)
-			.arg_scl(cels_per_grp_kern_ltp)
+			.arg_scl(syns_per_den_l2 as u32)			
+			.arg_scl(cels_per_grp)
+			.arg_scl(pyr_lyr_axn_idz)
 			.arg_scl_named::<u32>("rnd", None)		
 			.arg_env(&dens.syns().flag_sets)
 			.arg_env(&flag_sets)
 			//.arg_env(&prev_best_den_ids)
-			// .arg_env_named("aux_ints_0", None)
-			// .arg_env_named("aux_ints_1", None)
+			.arg_env_named::<i32>("aux_ints_0", None)
+			// .arg_env_named::<i32>("aux_ints_1", None)
 			// .arg_env(&aux.ints_0)
 			// .arg_env(&aux.ints_1)
 			.arg_env(&dens.syns().strengths)
 			//.arg_env(&axons.states)
 		;
+
+
+
+		println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
+			pyr_lyr_axn_idz: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, cels_per_grp_kern_ltp: {}, dims: {:?},", 
+			layer_name, base_axn_slc, pyr_lyr_axn_idz, syns_per_den_l2, dens_per_tft_l2, 
+			cels_per_grp, dims, mt = cmn::MT);
 
 
 		PyramidalLayer {
@@ -197,6 +180,19 @@ impl PyramidalLayer {
 			energies: energies,
 			dens: dens,
 			//den_tfts: den_tfts,
+		}
+	}
+
+	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
+		let using_aux_cycle = false;
+		let using_aux_learning = true;
+
+		if using_aux_cycle {
+			self.kern_cycle.set_arg_env_named(name, env);
+		}
+
+		if using_aux_learning {
+			self.kern_ltp.set_arg_env_named(name, env);
 		}
 	}
 
@@ -361,7 +357,7 @@ pub mod tests {
 			self.dens.syns_mut().src_col_u_offs.print(1, None, Some(cel_den_range.clone()), false);
 		}	
 
-		// PRINT_ALL(): TODO: change argument to print dens at some point
+		// PRINT_ALL(): TODO: [complete] change argument to print dens at some point
 		fn print_range(&mut self, range: Range<usize>, print_children: bool) {
 			print!("pyrs.states: ");
 			self.states.print(1, Some((0, 255)), None, false);
@@ -378,8 +374,11 @@ pub mod tests {
 
 			if print_children {
 				print!("dens.states: ");
-				self.dens.states.print(1, Some((0, 255)), None, false);
-				self.dens.syns_mut().print_all(); 
+				// FOR EACH TUFT:
+					// Calculate range for tuft dens
+					self.dens.states.print(1, Some((1, 255)), None, false);
+					// Calculate range for tuft syns
+					self.dens.syns_mut().print_all(); 
 			}
 		}
 
@@ -462,3 +461,29 @@ pub mod tests {
 	// 	}
 	// }
 }
+
+
+
+		// let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd".to_string(), 
+		// 	WorkSize::ThreeDim(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
+		// 	.arg_env(&axons.states)
+		// 	.arg_env(&states)
+		// 	.arg_env(&best_den_ids)
+		// 	.arg_env(&dens.states)
+		// 	.arg_env(&dens.syns().states)
+		// 	// .arg_scl(tfts_per_cel as u32)
+		// 	.arg_scl(dens_per_tft_l2 as u32)
+		// 	.arg_scl(syns_per_den_l2 as u32)			
+		// 	.arg_scl(cels_per_grp_kern_ltp)
+		// 	.arg_scl(pyr_lyr_axn_idz)
+		// 	.arg_scl_named::<u32>("rnd", None)		
+		// 	.arg_env(&dens.syns().flag_sets)
+		// 	.arg_env(&flag_sets)
+		// 	//.arg_env(&prev_best_den_ids)
+		// 	.arg_env_named::<i32>("aux_ints_0", None)
+		// 	// .arg_env_named::<i32>("aux_ints_1", None)
+		// 	// .arg_env(&aux.ints_0)
+		// 	// .arg_env(&aux.ints_1)
+		// 	.arg_env(&dens.syns().strengths)
+		// 	//.arg_env(&axons.states)
+		// ;

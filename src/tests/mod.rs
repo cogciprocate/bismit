@@ -15,7 +15,7 @@ pub mod testbed;
 pub mod kernels;
 pub mod util;
 mod dens_tfts;
-mod learning;
+pub mod learning;
 mod automated;
 
 pub static PASS_STR: &'static str = "\x1b[1;32mpass\x1b[0m";

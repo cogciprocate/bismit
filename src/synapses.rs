@@ -100,6 +100,7 @@ impl Synapses {
 	) -> Synapses {
 		let syns_per_tft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
 		assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
+
 		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
 		let syn_reach = cmn::SYNAPSE_REACH as i8;
 
@@ -129,8 +130,11 @@ impl Synapses {
 
 		let mut kernels = Vec::with_capacity(dst_src_slc_ids.len());
 
-		if DEBUG_NEW { println!("{mt}{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, dims: {:?}", 
-			den_kind, states.len(), dims, mt = cmn::MT); }
+		if DEBUG_NEW { 
+			println!("{mt}{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
+				dims: {:?}, phys_len: {}", 
+				den_kind, states.len(), dims, dims.physical_len().unwrap(), mt = cmn::MT); 
+		}
 
 		let min_wg_sqrt = 8 as usize;
 		assert_eq!((min_wg_sqrt * min_wg_sqrt), cmn::OPENCL_MINIMUM_WORKGROUP_SIZE as usize);
@@ -159,7 +163,7 @@ impl Synapses {
 					.arg_scl(syns_per_tft_l2)
 					.arg_scl(dims.depth() as u8)
 					// .arg_env_named::<i32>("aux_ints_0", None)
-					// .arg_env_named("aux_ints_1", None)
+					// .arg_env_named::<i32>("aux_ints_1", None)
 					.arg_env(&states)
 			))
 		}
@@ -380,6 +384,14 @@ impl Synapses {
 		self.syns_per_den_l2
 	}
 
+	pub fn syns_per_tftsec(&self) -> u32 {
+		let slcs_per_tftsec = self.dims.depth();
+		let cels_per_slc = self.dims.columns();
+		let syns_per_cel_tft = self.dims.per_tft();
+
+		slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft
+	}
+
 	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
 	// pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
 		
@@ -458,7 +470,7 @@ struct AxnOfs {
 pub mod tests {
 	#![allow(non_snake_case)]
 	use std::ops::{ Range };
-	use std::fmt::{ Display, Formatter, Result };
+	use std::fmt::{ Display, Formatter, Result as FmtResult };
 	use rand::{ XorShiftRng };
 	use rand::distributions::{ IndependentSample, Range as RandRange };
 
@@ -592,9 +604,9 @@ pub mod tests {
 	}
 
 	impl Display for SynCoords {
-	    fn fmt(&self, fmtr: &mut Formatter) -> Result {
-	        write!(fmtr, "SynCoords {{ idx: {}, tft_id: {}, syn_id_cel_tft: {} }}", 
-				self.idx, self.tft_id, self.syn_id_cel_tft)
+	    fn fmt(&self, fmtr: &mut Formatter) -> FmtResult {
+	        write!(fmtr, "SynCoords {{ idx: {}, tft_id: {}, syn_id_cel_tft: {}, parent_cel: {} }}", 
+				self.idx, self.tft_id, self.syn_id_cel_tft, self.cel_coords)
 	    }
 	}
 
@@ -618,7 +630,7 @@ pub mod tests {
 		let cels_per_slc = layer_dims.columns();
 		let syns_per_cel_tft = layer_dims.per_tft();
 
-		assert!((tft_count * slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft) == layer_dims.physical_len());
+		// assert!((tft_count * slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft) == layer_dims.physical_len());
 		assert!(tft_id < tft_count);
 		assert!(cel_idx < slcs_per_tftsec as u32 * cels_per_slc);
 		assert!(syn_id_celtft < syns_per_cel_tft);

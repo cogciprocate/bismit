@@ -722,6 +722,7 @@ __kernel void sst_ltp(
 {
 	uint const tuft_id = get_global_id(0);
 	uint const cel_grp_id = get_global_id(1);
+	
 	uint const cel_count = get_global_size(1);
 
 	uint const cel_idz = mul24(cel_grp_id, cols_per_grp);
@@ -748,7 +749,7 @@ __kernel void sst_ltp(
 // MCOL_ACTIVATE(): CONVERT TO 3 WORK DIMS
 // 		- ASSUMES SSTS IS ONLY 1 SLICE DEEP
 __kernel void mcol_activate_pyrs(
-				__global uchar const* const mcol_pred_totals, // COL
+				__global uchar const* const mcol_flag_sets, // COL
 				__global uchar const* const mcol_best_pyr_den_states,
 				__global uchar const* const pyr_best_den_ids,
 				// ADD PYR BEST DEN STATE NOW THAT WE'VE ADDED IT (and to another kernel somewhere also)
@@ -757,8 +758,8 @@ __kernel void mcol_activate_pyrs(
 				__private uchar const pyr_axn_slc_base,
 				__private uchar const dens_per_tuft_l2,
 				__global uchar* const pyr_flag_sets,
-				__global uchar* const pyr_preds,
-				//__global int* const aux_ints_0,
+				__global uchar* const pyr_states,
+				// __global int* const aux_ints_0,
 				__global uchar* const axn_states) 
 {
 	uint const slc_id_lyr = get_global_id(0);
@@ -786,15 +787,15 @@ __kernel void mcol_activate_pyrs(
 	uchar const mcol_best_col_den_state = mcol_best_pyr_den_states[col_id];
 	uchar const sst_axn_state = axn_states[ssts_axn_idz + col_id];
 	//uchar const mcol_state = mcol_states[col_id];
-	uchar const mcol_pred_total = mcol_pred_totals[col_id];
-	uchar const pyr_pred = pyr_preds[pyr_idx];
+	uchar const mcol_flag_set = mcol_flag_sets[col_id];
+	uchar const pyr_pred = pyr_states[pyr_idx];
 	uchar pyr_flag_set = pyr_flag_sets[pyr_idx];
 
 	//aux_ints_0[pyr_idx] = pyr_flag_set;
 
 	int const mcol_active = sst_axn_state != 0;
 	//int const mcol_active = mcol_state != 0;
-	int const mcol_any_pred = mcol_pred_total != 0;
+	int const mcol_any_pred = mcol_flag_set & MCOL_IS_PREDICTIVE_FLAG == MCOL_IS_PREDICTIVE_FLAG;
 	int const pyr_predictive = (pyr_pred != 0);
 
 	int const crystal = pyr_predictive && mcol_active;
@@ -819,7 +820,7 @@ __kernel void mcol_activate_pyrs(
 
 	pyr_flag_sets[pyr_idx] = pyr_flag_set;
 
-	//pyr_preds[pyr_idx] = pyr_pred;
+	//pyr_states[pyr_idx] = pyr_pred;
 
 	//aux_ints_0[pyr_idx] = 5;
 	//aux_ints_0[pyr_idx] = pyr_pred;
@@ -827,23 +828,26 @@ __kernel void mcol_activate_pyrs(
 
 
 
+
+
+
+
 // PYRS_LTP(): Pyramidal long term potentiation and depression - adjusting synapse strengths
 //
 //	- For each pyramidal cell:
 //		- if cell axon is currently active:
-//			- cause learning to take place on it's most active dendrite
+//			- cause learning to take place on its most active dendrite
 //		- if cell axon is currently inactive:
 //			- check to see if the cell's axon was previously active (by checking flag_set)
 //				- if so, depress (reduce strengths of) any currently active synapses
 //					- NOTE: The reasoning here is that any synapses which are active just after 
-//					(but not before) the cell was active are likely to be unrelated to it's prior 
-//					activity. In other words, a rough implementation of LTD (simplified and 
-//					optimized and theorized and ... oh who knows). 
+//					(but not before) the cell was active are likely to be unrelated to its prior 
+//					activity. In other words, a rough implementation of 'real' LTD.
 //
 //	- TODO:
-//		- Vectorize (should be highly vectorizable)
+//		- [incomplete] Vectorize (should be highly vectorizable)
 //		- reducing branching will be tough with this one
-//		- Tests (check that flag_set and prev_best_den_id are robustly maintained)
+//		- [in progress] Tests (check that flag_set and prev_best_den_id are robustly maintained)
 //
 //
 //		- if pyr_prev_concrete 
@@ -941,31 +945,46 @@ __kernel void mcol_activate_pyrs(
 				...
 
 			-----------------------
+		
+		Given that indexing structure, the following kernel structure appears to be the best balance of performance and simplicity:
 
+			Kernel: WorkSize: OneDim(cell groups**) - Iterate through cell groups
+				- Loop: Cells - Iterate through cells within each group.
+					- Loop: Tufts - Iterate through cell tufts.
+						- Function call: For each tuft, if work needs to be done, a function is called which will ->
+						  Loop: Synapses - Unroll tuft synapses.
+							- STP, LTP, and LTD take place on synapses within this smallest loop.
+
+
+
+		** Note: Cell groups are divisions of the cell space for the layer into groups of arbitrary size. Cell groups are used in lieu of individual cells as the primary work dimension because during any given cycle. Most cells will need no work done on its synapses, therefore most work items would be idle. By bundling a group of cells into each work item, all threads can keep busy.
 
 */
 // <<<<< TODO: FIX: NOT TAKING IN TO ACCOUNT MULTIPLE TUFTS! MAJOR INDEXING PROBLEMS >>>>>
-__kernel void pyrs_ltp_unoptd(
+__kernel void pyrs_ltp(
 				__global uchar const* const axn_states,
 				__global uchar const* const cel_fuzzyness,
 				__global uchar const* const cel_best_den_ids,
 				__global uchar const* const den_states,
 				__global uchar const* const syn_states,
-				__private uint const axn_idz_cel_lyr, 
-				__private uint const syns_per_den_l2,
 				__private uint const dens_per_tuft_l2,
+				__private uint const syns_per_den_l2,
 				__private uint const cols_per_grp,
+				__private uint const axn_idz_cel_lyr,
 				__private uint const rnd,
 				__global uchar* const syn_flag_sets,
 				__global uchar* const cel_flag_sets,
-				// __global int* const aux_ints_0,
+				__global int* const aux_ints_0,
 				// __global int* const aux_ints_1,
 				__global char* const syn_strengths) 
 {
 	uint const tuft_id = get_global_id(0);
 	uint const slc_id_lyr = get_global_id(1);	
 	uint const grp_id = get_global_id(2);
-	uint const tuft_count = get_global_size(1);	
+
+	uint const cel_id = get_global_id(0);
+
+	uint const tuft_count = get_global_size(1);
 	uint const grp_count = get_global_size(2); // GRP_COUNT: COLUMNS / COLS_PER_GRP
 
 	uint const cel_grp_id = cel_idx_3d_unsafe(slc_id_lyr, tuft_count, tuft_id, grp_count, grp_id);
@@ -988,11 +1007,10 @@ __kernel void pyrs_ltp_unoptd(
 
 		int cel_prev_concrete = (cel_flag_set & PYR_PREV_CONCRETE_FLAG) == PYR_PREV_CONCRETE_FLAG;
 		int cel_prev_fuzzy = (cel_flag_set & PYR_PREV_FUZZY_FLAG) == PYR_PREV_FUZZY_FLAG;
-		int cel_best_in_col = (cel_flag_set & PYR_BEST_IN_COL_FLAG) == PYR_BEST_IN_COL_FLAG;
-
-		uint den_idx_base = cel_id_grp << dens_per_tuft_l2;
+		int cel_best_in_col = (cel_flag_set & PYR_BEST_IN_COL_FLAG) == PYR_BEST_IN_COL_FLAG;		
 
 		// NOT TAKING IN TO ACCOUNT TUFTS!
+		uint den_idx_base = cel_idx << dens_per_tuft_l2;
 		uint cel_syn_idz = ((den_idx_base) << syns_per_den_l2);	 // WHOLE CELL -- BROKEN
 		uint best_den_syn_idz = (den_idx_base + cel_best_den_id) << syns_per_den_l2; // BROKEN
 
@@ -1001,7 +1019,7 @@ __kernel void pyrs_ltp_unoptd(
 
 		if (cel_concrete) {
 			// aux_ints_0[cel_idx] = 10;
-			// aux_ints_0[cel_idx] = cel_syn_idz;
+			aux_ints_0[cel_idx] = cel_syn_idz;
 
 			if (cel_prev_fuzzy) { 
 				// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + TRAIN NEW DEN
@@ -1042,7 +1060,7 @@ __kernel void pyr_cycle(
 				__private uchar const dens_per_tuft_l2,
 				__global uchar* const pyr_best_den_ids,
 				__global uchar* const pyr_best_den_states,
-				__global uchar* const pyr_preds) 
+				__global uchar* const pyr_states) 
 {
 	uint const pyr_idx = get_global_id(0);
 	uchar best_den_state = 0;
@@ -1061,13 +1079,19 @@ __kernel void pyr_cycle(
 			best_den_state = mad24(den_state_bigger, den_state, mul24(!den_state_bigger, best_den_state));
 			pyr_state += den_state;
 		}
+
+		// TESTING: 
+		// if (den_tuft == 0) {
+		// 	// pyr_state = 200;
+		// 	pyr_state = 1;
+		// }
 	}
 
 	//pyr_state = best_den_state;
 
 	pyr_best_den_ids[pyr_idx] = best_den_id;
 	pyr_best_den_states[pyr_idx] = best_den_state;
-	pyr_preds[pyr_idx] = clamp(pyr_state, 0, 255);
+	pyr_states[pyr_idx] = clamp(pyr_state, 0, 255);
 }
 
 
@@ -1076,13 +1100,14 @@ __kernel void pyr_cycle(
 //
 // TODO: CONVERT TO 3 WORK DIMS
 __kernel void mcol_output(
-				__global uchar const* const pyr_preds,
+				__global uchar const* const pyr_states,
 				__global uchar const* const pyr_best_den_states,
 				__private uint const sst_axn_idz,
 				__private uchar const pyr_depth,
 				__private uchar const aff_out_axn_slc,
-				__global uchar* const mcol_pred_totals,
+				__global uchar* const mcol_flag_sets,
 				__global uchar* const mcol_best_pyr_den_states,
+				// __global int* const aux_ints_0,
 				__global uchar* const axn_states)
 {
 	uint const slc_id_lyr = get_global_id(0);
@@ -1107,7 +1132,7 @@ __kernel void mcol_output(
 		uint pyr_idx = cel_idx_3d_unsafe(i, v_size, v_id, u_size, u_id);
 
 		uchar pyr_best_den_state = pyr_best_den_states[pyr_idx];
-		uchar pyr_pred = pyr_preds[pyr_idx];
+		uchar pyr_pred = pyr_states[pyr_idx];
 
 		max_den_state = max(max_den_state, pyr_best_den_state);
 		
@@ -1115,7 +1140,7 @@ __kernel void mcol_output(
 	}
 
 
-	mcol_pred_totals[col_id] = clamp(col_pyr_pred_total, 0, 255); // <<<<< FIX ME TO BE A FLAGSET
+	mcol_flag_sets[col_id] = mul24((col_pyr_pred_total > 0), MCOL_IS_PREDICTIVE_FLAG);
 	mcol_best_pyr_den_states[col_id] = max_den_state;
 	//axn_states[aff_out_axn_idx] = mul24(idx_is_safe, clamp(col_pyr_pred_total + sst_axn_state, 0, 255)); // N1
 	axn_states[aff_out_axn_idx] = clamp(col_pyr_pred_total + sst_axn_state, 0, 255);
@@ -1151,7 +1176,7 @@ __kernel void mcol_output(
 
 // __kernel void pyrs_ltp_unoptd_broken(
 // 				__global uchar const* const axn_states,
-// 				__global uchar const* const pyr_preds,
+// 				__global uchar const* const pyr_states,
 // 				__global uchar const* const pyr_best_den_ids,
 // 				__global uchar const* const den_states,
 // 				__global uchar const* const syn_states,
@@ -1188,7 +1213,7 @@ __kernel void mcol_output(
 // 		uchar pyr_flag_set = pyr_flag_sets[pyr_idx];
 
 // 		int pyr_concrete = axn_states[pyr_axn_idx] != 0;
-// 		int pyr_fuzzy = pyr_preds[pyr_idx] != 0;
+// 		int pyr_fuzzy = pyr_states[pyr_idx] != 0;
 
 // 		int pyr_prev_concrete = (pyr_flag_set & PYR_PREV_CONCRETE_FLAG) == PYR_PREV_CONCRETE_FLAG;
 // 		int pyr_prev_fuzzy = (pyr_flag_set & PYR_PREV_FUZZY_FLAG) == PYR_PREV_FUZZY_FLAG;

@@ -186,7 +186,7 @@ impl CorticalArea {
 		let mcols_dims = dims.clone_with_depth(1);
 		
 		// <<<<< EVENTUALLY ADD TO CONTROL CELLS (+PROTOCONTROLCELLS) >>>>>
-		let mcols = Box::new({
+		let mut mcols = Box::new({
 			//let em_ssts = emsg.to_string() + ": ssts - em2".to_string();
 			let em_ssts = format!("{}: '{}' is not a valid layer", emsg, psal_name);
 			let ssts = ssts_map.get(psal_name).expect(&em_ssts);
@@ -232,8 +232,11 @@ impl CorticalArea {
 
 		let aux = Aux::new(pyrs_map[ptal_name].dens().syns().dims(), &ocl);
 
+		mcols.set_arg_env_named("aux_ints_0", &aux.ints_0);
+		pyrs_map.get_mut(ptal_name).unwrap().set_arg_env_named("aux_ints_0", &aux.ints_0);		
 		pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
 			.set_arg_env_named("aux_ints_0", &aux.ints_0);
+
 
 		// TODO: give aux to whoever
 
@@ -394,6 +397,10 @@ impl CorticalArea {
 		&self.mcols
 	}
 
+	pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> {
+		&mut self.mcols
+	}
+
 
 	/* PIL(): Get Primary Spatial Associative Layer (immutable) */
 	pub fn psal(&self) -> &Box<SpinyStellateLayer> {
@@ -420,6 +427,9 @@ impl CorticalArea {
 		self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
 	}
 
+	pub fn axns(&self) -> &AxonSpace {
+		&self.axns
+	}
 
 	// <<<<< TODO: DEPRICATE >>>>>
 	// pub fn protolayer_map(&self) -> &ProtoLayerMap {
@@ -470,6 +480,7 @@ impl CorticalArea {
 	pub fn area_map(&self) -> &AreaMap {
 		&self.area_map
 	}
+
 }
 
 
@@ -546,10 +557,13 @@ mod tests {
 		fn write_to_axons(&self, sdr: &Sdr, axn_range: Range<u32>);
 		fn axn_state(&self, idx: usize) -> u8;
 		fn write_to_axon(&self, val: u8, idx: u32);
+		fn read_from_axon(&self, idx: u32) -> u8;
 		fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8
 			) -> (i8, i8, u32);
 		fn print_aux(&mut self);
 		fn print_axns(&mut self);
+		fn activate_axon(&mut self, idx: u32);
+		fn deactivate_axon(&self, idx: u32);
 	}
 
 	impl CorticalAreaTest for CorticalArea {
@@ -563,6 +577,10 @@ mod tests {
 
 		fn axn_state(&self, idx: usize) -> u8 {
 			self.axns.axn_state(idx)
+		}
+
+		fn read_from_axon(&self, idx: u32) -> u8 {
+			self.axns.axn_state(idx as usize)
 		}
 
 		fn write_to_axon(&self, val: u8, idx: u32) {
@@ -607,7 +625,16 @@ mod tests {
 		fn print_axns(&mut self) {
 			print!("axns: ");
 			//let view_radius = 1 << 24;
-			self.axns.states.print(1 << 0, Some((0, 255)), None, false);
+			self.axns.states.print(1 << 0, Some((1, 255)), None, false);
+		}
+
+		fn activate_axon(&mut self, idx: u32) {
+			let val = RandRange::new(1, 255).ind_sample(&mut self.rng);
+			self.axns.write_to_axon(val, idx);
+		}
+
+		fn deactivate_axon(&self, idx: u32) {
+			self.axns.write_to_axon(0, idx);
 		}
 	}
 }

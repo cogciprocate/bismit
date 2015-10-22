@@ -47,8 +47,8 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
 		.layer("iv_inhib", 0, layer::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
-		.layer("iii", 1, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
+		.layer("iii", 3, layer::TEMPORAL_ASSOCIATIVE, 
+			Protocell::new_pyramidal(2, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
 	);
 
 	proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
@@ -80,8 +80,9 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 
 		.area_ext("v0", "external", 
 			// area_side * 2, area_side * 2,
-			area_side, area_side,
+			// area_side, area_side,
 			// area_side / 2, area_side / 2, 
+			63, 64,
 			Protoinput::IdxReader { 
 				file_name: "data/train-images-idx3-ubyte", 
 				repeats: REPEATS_PER_IMAGE, 

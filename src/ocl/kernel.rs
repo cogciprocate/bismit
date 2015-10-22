@@ -174,7 +174,7 @@ impl Kernel {
 	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, envoy: &Envoy<T>) {
 			//	TODO: ADD A CHECK FOR A VALID NAME (KEY)
 		
-		println!("\nset_arg_env_named(): name: {}, named_args: {:?}", name, self.named_args);
+		// println!("\nset_arg_env_named(): name: {}, named_args: {:?}", name, self.named_args);
 		let arg_idx = self.named_args[name];
 		let buf = envoy.buf();
 

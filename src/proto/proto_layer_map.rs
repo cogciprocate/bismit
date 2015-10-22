@@ -158,8 +158,8 @@ impl ProtoLayerMap {
 	}
 
 
-	// SET_LAYER_DEPTH(): ASSUMES PROPER FLAG UNIQUENESS CONSTRAINS ALREADY APPLIED
-	pub fn set_layer_depth(&mut self, flags: ProtolayerFlags, depth: u8) {
+	// SET_LAYERS_DEPTH(): ASSUMES PROPER FLAG UNIQUENESS CONSTRAINS ALREADY APPLIED
+	pub fn set_layers_depth(&mut self, flags: ProtolayerFlags, depth: u8) {
 		if self.frozen { 
 			panic!("region::ProtoLayerMap::set_layer_depth(): \
 				Cannot set layer depth after region has been frozen."); 
@@ -187,8 +187,8 @@ impl ProtoLayerMap {
 			return;
 		} else {			
 			// AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
-			self.set_layer_depth(layer::AFFERENT_INPUT, protoarea.eff_areas.len() as u8);
-			self.set_layer_depth(layer::EFFERENT_INPUT, protoarea.aff_areas.len() as u8);
+			self.set_layers_depth(layer::AFFERENT_INPUT, protoarea.eff_areas.len() as u8);
+			self.set_layers_depth(layer::EFFERENT_INPUT, protoarea.aff_areas.len() as u8);
 			self.frozen = true;
 		}		
 
@@ -519,25 +519,8 @@ impl ProtoLayerMap {
 		output_slcs		
  	}
 
- 	// TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS
- 	// DEPRICATE IN FAVOR OF LAYERS_WITH_FLAG(), RETURNING A VEC OF PROTOLAYERS
- 	// REIMPLEMENT AS AN OVERLOAD OF Index & IndexMut WHICH RETURNS AN UNWRAPPED VEC OF LAYERS
- 	// pub fn layer_with_flag(&self, flag: ProtolayerFlags) -> Option<Protolayer> {
- 	// 	let mut input_layer: Option<Protolayer> = None;
- 		
- 	// 	for (layer_name, layer) in self.layers.iter() {
- 	// 		if (layer.flags & flag) == flag {
- 	// 			input_layer = Some(layer.clone());
- 	// 		}
- 	// 	}
 
-		// input_layer		
- 	// }
-
-
- 	// TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS
- 	// DEPRICATE IN FAVOR OF LAYERS_WITH_FLAG(), RETURNING A VEC OF PROTOLAYERS
- 	// REIMPLEMENT AS AN OVERLOAD OF Index & IndexMut WHICH RETURNS AN UNWRAPPED VEC OF LAYERS
+ 	// TODO: DEPRICATE IN FAVOR OF LAYERS_WITH_FLAG()
  	pub fn layer_with_flag(&self, flag: ProtolayerFlags) -> Option<&Protolayer> {
  		//let mut input_layers: Vec<&Protolayer>
  		 		
@@ -547,6 +530,19 @@ impl ProtoLayerMap {
  			}
  		}
  		return None;
+ 	}
+
+
+ 	pub fn layers_with_flag(&self, flag: ProtolayerFlags) -> Vec<&Protolayer> {
+ 		let mut layers: Vec<&Protolayer> = Vec::with_capacity(8);
+ 		 		
+ 		for (layer_name, layer) in self.layers.iter() {
+ 			if (layer.flags & flag) == flag {
+ 				layers.push(&layer);
+ 			}
+ 		}
+
+ 		layers
  	}
 
 
@@ -571,21 +567,21 @@ impl ProtoLayerMap {
 	// }
 }
 
-// impl<'b> Index<&'b&'static str> for ProtoLayerMap
-// {
-//     type Output = Protolayer;
+impl<'b> Index<&'b&'static str> for ProtoLayerMap
+{
+    type Output = Protolayer;
 
-//     fn index<'a>(&'a self, index: &'b&'static str) -> &'a Protolayer {
-//         self.layers.get(index).unwrap_or_else(|| panic!("ProtoLayerMap::index(): invalid layer name: '{}'", index))
-//     }
-// }
+    fn index<'a>(&'a self, index: &'b&'static str) -> &'a Protolayer {
+        self.layers.get(index).unwrap_or_else(|| panic!("ProtoLayerMap::index(): invalid layer name: '{}'", index))
+    }
+}
 
-// impl<'b> IndexMut<&'b&'static str> for ProtoLayerMap
-// {
-//     fn index_mut<'a>(&'a mut self, index: &'b&'static str) -> &'a mut Protolayer {
-//         self.layers.get_mut(index).unwrap_or_else(|| panic!("[ProtoLayerMap::index(): invalid layer name: '{}'", index))
-//     }
-// }
+impl<'b> IndexMut<&'b&'static str> for ProtoLayerMap
+{
+    fn index_mut<'a>(&'a mut self, index: &'b&'static str) -> &'a mut Protolayer {
+        self.layers.get_mut(index).unwrap_or_else(|| panic!("[ProtoLayerMap::index(): invalid layer name: '{}'", index))
+    }
+}
 
 
 #[derive(PartialEq, Eq, Debug, Clone, Hash)]

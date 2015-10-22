@@ -7,8 +7,7 @@
 	// unused_imports,
 )]
 
-#![feature(vec_push_all, clone_from_slice, vec_resize, drain)]
-
+#![feature(vec_push_all, clone_from_slice, vec_resize, drain, zero_one)]
 extern crate num;
 extern crate microcosm;
 extern crate libc;
@@ -22,38 +21,19 @@ extern crate bitflags;
 #[macro_use] 
 extern crate enum_primitive;
 
-
-//pub use cmn::input_source::{ InputSource };
-
+#[macro_use]
 mod cmn;
-//mod cl_h;
 mod ocl;
-//mod chord;
-//mod sense;
-//mod envoy;
-//mod axon_space;
-//mod syn_segs;
-//mod column;
 mod cortical_area;
 mod axon_space;
 mod dendrites;
 mod synapses;
 mod minicolumns;
 mod iinn;
-
-//mod iinn_new;
-
 mod pyramidals;
 mod spiny_stellates;
-//mod cort_seg;
-//mod thalamus;
 mod cortex;
 mod thalamus;
-//mod protocell;
-//mod sub_cortex;
-//mod test_miccos;
-//mod test_readback;
-//mod test_3;
 mod proto;
 //mod energy;
 mod encode;
@@ -65,7 +45,6 @@ mod interactive;
 #[cfg(test)]
 pub mod tests;
 
-//use num::Integer;
 
 fn main() {
 	println!("================= Bismit: main() running... =================");

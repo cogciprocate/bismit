@@ -86,8 +86,8 @@ impl HexTilePlane for SliceDimensions {
 }
 
 impl EnvoyDimensions for SliceDimensions {
-	/* PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
-	fn len(&self) -> u32 {
+	/* PHYSICAL_LEN(): TODO: ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
+	fn physical_len(&self) -> u32 {
 		self.columns()
 	}
 }

@@ -295,7 +295,7 @@ pub mod tests {
 		let cels_per_slc = layer_dims.columns();
 		let dens_per_cel_tft = layer_dims.per_tft();
 
-		assert!((tft_count * slcs_per_tft as u32 * cels_per_slc * dens_per_cel_tft) == layer_dims.physical_len());
+		// assert!((tft_count * slcs_per_tft as u32 * cels_per_slc * dens_per_cel_tft) == layer_dims.physical_len());
 		assert!(tft_id < tft_count);
 		assert!(cel_idx < slcs_per_tft as u32 * cels_per_slc);
 		assert!(den_id_tft < dens_per_cel_tft);

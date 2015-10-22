@@ -95,7 +95,7 @@ impl SliceMap {
 
 			//axn_idzs.push(axn_idz_2d(slc_id, area_dims.columns(), plmap.hrz_demarc()));
 			axn_idzs.push(axn_idz_ttl);
-			axn_idz_ttl += slc_dims.len();
+			axn_idz_ttl += slc_dims.physical_len();
 
 			layer_names.push(layer_name);
 			v_sizes.push(slc_dims.v_size());
@@ -201,9 +201,37 @@ impl SliceMap {
 
 impl EnvoyDimensions for SliceMap {
 	/* PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
-	fn len(&self) -> u32 {
+	fn physical_len(&self) -> u32 {
 		self.axn_count()
 	}
 }
 
 
+#[cfg(test)]
+pub mod tests {
+	use std::fmt::{ Display, Formatter, Result as FmtResult };
+	use super::{ SliceMap };
+
+	pub trait SliceMapTest {
+		fn print(&self);
+	}
+
+	impl SliceMapTest for SliceMap {
+		fn print(&self) {
+			unimplemented!();
+		}
+	}
+
+	impl Display for SliceMap {
+		fn fmt(&self, fmtr: &mut Formatter) -> FmtResult {
+			let mut output = String::with_capacity(30 * self.slc_count());
+
+			for i in 0..self.slc_count() {
+				output.push_str(&format!("[{}: '{}', {}]", i, self.layer_names()[i], 
+					self.axn_idzs()[i]));
+			}
+
+			fmtr.write_str(&output)
+		}
+	}
+}

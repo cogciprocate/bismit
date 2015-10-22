@@ -8,11 +8,12 @@ use std::ops::{ Range };
 // use proto::*;
 
 
-use ocl::{ /*self,*/ Envoy, /*WorkSize,*/ /*OclProgQueue, EnvoyDimensions,*/ OclNum };
+use ocl::{ /*self,*/ Envoy, EnvoyTest, /*WorkSize,*/ /*OclProgQueue, EnvoyDimensions,*/ OclNum };
 // use super::{ TestBed };
 use cortical_area::{ CorticalArea, CorticalAreaTest };
 // use map::{ AreaMapTest };
 use synapses::{ SynapsesTest };
+use minicolumns::{ MinicolumnsTest };
 // use dendrites::{ DendritesTest, /*DenCoords*/ };
 // use axon_space::{ /*AxnCoords,*/ AxonSpaceTest };
 // use cortex::{ Cortex };
@@ -31,9 +32,10 @@ use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
 
 // CYCLE, ACTIVATE, & LEARN
 pub fn al_cycle(area: &mut CorticalArea) {
-	area.mcols.activate();
+	area.mcols().activate();
 	area.ptal_mut().learn();
 	area.ptal_mut().cycle();
+	area.mcols().output();
 }
 
 
@@ -51,12 +53,22 @@ pub fn confirm_syns(area: &mut CorticalArea, syn_range: &Range<usize>, state_neq
 }
 
 
+pub fn assert_neq_range<T: OclNum>(env: &Envoy<T>, idx_range: &Range<usize>, val_neq: T) -> bool {
+	for idx in idx_range.clone() {
+		if env.read_idx_direct(idx) == val_neq { return false };
+	}
+
+	true
+}
+
+
 pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
 	//println!("\n - Confirm 1A - Activate");
-	println!("\n{}", desc);
+	println!("{}", desc);	
 	area.ptal_mut().print_all(true);
 	// area.ptal_mut().dens_mut().syns_mut().print_all();
 	area.print_aux();
+	area.mcols_mut().print_all();
 	area.print_axns();
 }
 
@@ -91,7 +103,8 @@ pub fn compare_envoys<T: OclNum>(env1: &mut Envoy<T>, env2: &mut Envoy<T>) -> bo
 
 // TEST_NEARBY(): Ensure that elements near a focal index are equal to a particular value.
 //		- idz and idm (first and last elements) are also checked along with their nearby elements
-pub fn eval_nearby<T: OclNum>(foc_idx: usize, other_val: T, env: &Envoy<T>) {		
+// <<<<< TODO: THIS FUNCTION NEEDS SERIOUS STREAMLINING & OPTIMIZATION >>>>>
+pub fn eval_others<T: OclNum>(env: &mut Envoy<T>, foc_idx: usize, other_val: T) {	// -> Result<(), &'static str>	
 	// let mut checklist = Vec::new();
 	let check_margin = 384;
 
@@ -105,8 +118,11 @@ pub fn eval_nearby<T: OclNum>(foc_idx: usize, other_val: T, env: &Envoy<T>) {
 	assert!(idn > 0);
 	assert!(foc_idx < idn);
 
+	env.read();
+
 	if idn <= check_margin * 4 {
 		// CHECK THE WHOLE LIST (except for foc_idx)
+		unimplemented!();
 	} else {
 		let start_mrg = check_margin;
 		let start_mrg_2 = check_margin * 2;
@@ -130,15 +146,16 @@ pub fn eval_nearby<T: OclNum>(foc_idx: usize, other_val: T, env: &Envoy<T>) {
 			foc_idx
 		};
 
-		for i in (0usize..start_mrg) 			// start of list
+		let iter = (0usize..start_mrg) 			// start of list
 			.chain(foc_idx_l..foc_idx)			// left of foc_idx
 			.chain(foc_idx..foc_idx_r)			// right of foc_idx
 			.chain(end_mrg..idn)				// end of list
-			.filter(|&i| i != foc_idx)			// filter foc_idx itself from list
-		{
+			.filter(|&i| i != foc_idx);			// filter foc_idx itself from list
+
+		for i in iter {
 			// debug_assert!(i != foc_idx);
 			// checklist.push(i);
-			assert!(env[i] == other_val);
+			assert_eq!(env[i], other_val);
 		}
 
 		// println!("\n##### checklist: {:?} len: {}", checklist, checklist.len());
@@ -148,7 +165,7 @@ pub fn eval_nearby<T: OclNum>(foc_idx: usize, other_val: T, env: &Envoy<T>) {
 
 
 #[test]
-fn test_eval_nearby_UNIMPLEMENTED() {
+fn test_eval_others_UNIMPLEMENTED() {
 
 }
 

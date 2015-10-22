@@ -65,7 +65,7 @@ impl AxonSpace {
 
 		//let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
 		
-		println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", area_map.slices().len(), mt = cmn::MT);
+		println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", area_map.slices().physical_len(), mt = cmn::MT);
 
 		let states = Envoy::<ocl::cl_uchar>::new(area_map.slices(), cmn::STATE_ZERO, ocl);
 
@@ -88,6 +88,7 @@ mod tests {
 	use super::{ AxonSpace };
 	use map::{ AreaMap, AreaMapTest };
 	use cmn::{ CelCoords };
+	use ocl::{ EnvoyTest };
 
 	pub trait AxonSpaceTest {
 		fn axn_state(&self, idx: usize) -> u8;
@@ -96,15 +97,17 @@ mod tests {
 
 	impl AxonSpaceTest for AxonSpace {
 		fn axn_state(&self, idx: usize) -> u8 {
-			let mut sdr = vec![0u8];
-			self.states.read_direct(&mut sdr, idx);
-			sdr[0]
+			// let mut sdr = vec![0u8];
+			// self.states.read_direct(&mut sdr, idx);
+			// sdr[0]
+
+			self.states.read_idx_direct(idx)
 		}
 
 		fn write_to_axon(&self, val: u8, idx: u32) {
 			let sdr = vec![val];
 			self.states.write_direct(&sdr, idx as usize);
-		}		
+		}
 	}
 
 	pub struct AxnCoords {

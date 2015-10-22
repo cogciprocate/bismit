@@ -9,7 +9,7 @@ use rand::{ self, /*ThreadRng, Rng*/ };
 
 use cmn::{ self, CorticalDimensions, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, OclProgQueue, WorkSize, Envoy };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, OclNum };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, /*Protocell, DendriteKind*/ };
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
@@ -19,6 +19,8 @@ use axon_space::{ AxonSpace };
 use pyramidals::{ PyramidalLayer };
 use spiny_stellates::{ SpinyStellateLayer };
 
+#[cfg(test)]
+pub use self::tests::{ MinicolumnsTest };
 
 
 
@@ -45,7 +47,7 @@ pub struct Minicolumns {
 	//regrow_counter: usize,	// SLATED FOR REMOVAL
 	//pub states: Envoy<ocl::cl_uchar>,
 	//pub states_raw: Envoy<ocl::cl_uchar>,
-	pub pred_totals: Envoy<ocl::cl_uchar>,
+	pub flag_sets: Envoy<ocl::cl_uchar>,
 	pub best_pyr_den_states: Envoy<ocl::cl_uchar>,
 	//pub iinn: InhibitoryInterneuronNetwork,
 	//pub syns: ColumnSynapses,
@@ -88,7 +90,7 @@ impl Minicolumns {
 
 		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, area_map.proto_layer_map(), axons, aux, ocl);
 
-		let pred_totals = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
 		//let iinn = InhibitoryInterneuronNetwork::new(dims, area_map.proto_layer_map(), &ssts.soma(), ocl);
@@ -112,7 +114,7 @@ impl Minicolumns {
 
 		let kern_activate = ocl.new_kernel("mcol_activate_pyrs".to_string(),
 			WorkSize::ThreeDim(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
-			.arg_env(&pred_totals)
+			.arg_env(&flag_sets)
 			.arg_env(&best_pyr_den_states)
 			.arg_env(&pyrs.best_den_ids)
 			.arg_env(&pyrs.dens.states)
@@ -121,8 +123,8 @@ impl Minicolumns {
 			.arg_scl(pyrs.protocell().dens_per_tuft_l2)
 			.arg_env(&pyrs.flag_sets)
 			.arg_env(&pyrs.states)
-			// .arg_env_named("aux_ints_0", None)
-			// .arg_env_named("aux_ints_1", None)
+			// .arg_env_named::<i32>("aux_ints_0", None)
+			// .arg_env_named::<i32>("aux_ints_1", None)
 			.arg_env(&axons.states)
 		;
 
@@ -139,8 +141,10 @@ impl Minicolumns {
 			.arg_scl(pyr_depth)
 			//.arg_scl(pyr_base_axn_slc)
 			.arg_scl(aff_out_axn_slc)
-			.arg_env(&pred_totals)
+			.arg_env(&flag_sets)
 			.arg_env(&best_pyr_den_states)
+			// .arg_env_named::<i32>("aux_ints_0", None)
+			// .arg_env_named::<i32>("aux_ints_1", None)
 			.arg_env(&axons.states)
 		;
 
@@ -160,7 +164,7 @@ impl Minicolumns {
 			//regrow_counter: 0usize,
 			//states_raw: states_raw,
 			//states: states,
-			pred_totals: pred_totals,
+			flag_sets: flag_sets,
 			best_pyr_den_states: best_pyr_den_states,
 			//iinn: iinn,
 			//dens: dens,
@@ -175,7 +179,7 @@ impl Minicolumns {
 	// 	println!("   PYRAMIDALS::INIT_KERNELS()[ACTIVATE]: ssts_axn_range(): {:?}", ssts.axn_range());
 
 	// 	//self.kern_activate.new_arg_envoy(Some(&ssts.soma()));
-	// 	self.kern_activate.new_arg_envoy(Some(&mcols.pred_totals));
+	// 	self.kern_activate.new_arg_envoy(Some(&mcols.flag_sets));
 	// 	self.kern_activate.new_arg_envoy(Some(&mcols.best_pyr_den_states));
 	// 	self.kern_activate.new_arg_envoy(Some(&self.best_den_ids));
 	// 	self.kern_activate.new_arg_envoy(Some(&self.dens.states));
@@ -196,6 +200,19 @@ impl Minicolumns {
 		self.kern_post_inhib.enqueue(); 
 	}*/
 
+	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
+		let activate_using_aux = false;
+		let output_using_aux = false;
+
+		if activate_using_aux {
+			self.kern_activate.set_arg_env_named(name, env);
+		}
+
+		if output_using_aux {
+			self.kern_output.set_arg_env_named(name, env);
+		}
+	}
+
 	pub fn activate(&self) {
 		self.kern_activate.enqueue();
 	}
@@ -207,7 +224,7 @@ impl Minicolumns {
 	pub fn confab(&mut self) {
 		//self.states.read();
 		//self.states_raw.read();
-		self.pred_totals.read();
+		self.flag_sets.read();
 		//self.iinn.confab();
 		//self.ssts.dens.confab();
 	}
@@ -224,4 +241,34 @@ impl Minicolumns {
 		//let start = cmn::axn_idz_2d(self.aff_out_axn_slc, self.dims.columns(), self.hrz_demarc) as usize;		
 		self.aff_out_axn_idz as usize..self.aff_out_axn_idz as usize + self.dims.per_slc() as usize
 	}
+}
+
+
+#[cfg(test)]
+pub mod tests {
+	use std::ops::{ Range };
+	use super::{ Minicolumns };
+
+	pub trait MinicolumnsTest {
+		fn print_range(&mut self, range: Range<usize>);
+		fn print_all(&mut self);
+	}
+
+	impl MinicolumnsTest for Minicolumns {
+		fn print_range(&mut self, range: Range<usize>) {
+			print!("mcols.flag_sets: ");
+			self.flag_sets.print(1 << 0, Some((0, 255)), 
+				Some(range.clone()), false);
+
+			print!("mcols.best_pyr_den_states: ");
+			self.best_pyr_den_states.print(1 << 0, Some((0, 255)), 
+				Some(range.clone()), false);
+		}
+
+		fn print_all(&mut self) {
+			let range = 0..self.flag_sets.len();
+			self.print_range(range);
+		}
+	}
+
 }

@@ -6,6 +6,7 @@ use std::io::{ Read };
 use std::ffi;
 use std::iter;
 use std::fmt::{ Display, Debug, /*LowerHex,*/ UpperHex };
+use std::num::{ Zero };
 // use std::collections::{ HashMap, HashSet };
 // use std::fmt::{ Display };
 // use std::error::{ Error };
@@ -25,6 +26,9 @@ pub use self::envoy::{ Envoy, EnvoyDimensions };
 pub use self::work_size::{ WorkSize };
 pub use self::build_options::{ BuildOptions, BuildOption };
 pub use self::formatting as fmt;
+
+#[cfg(test)]
+pub use self::envoy::tests::{ EnvoyTest };
 
 mod ocl;
 mod cl_h;
@@ -61,10 +65,10 @@ const DEVICES_MAX: u32 = 16;
 =================================== TRAITS ====================================
 =============================================================================*/
 
-pub trait OclNum: Integer + Copy + Clone + NumCast + Default + Display + Debug
+pub trait OclNum: Integer + Copy + Clone + NumCast + Default + Zero + Display + Debug
 	+ FromPrimitive + ToPrimitive + UpperHex {}
 
-impl<T> OclNum for T where T: Integer + Copy + Clone + NumCast + Default + Display + Debug
+impl<T> OclNum for T where T: Integer + Copy + Clone + NumCast + Default + Zero + Display + Debug
 	+ FromPrimitive + ToPrimitive + UpperHex {}
 
 

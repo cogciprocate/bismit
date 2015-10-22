@@ -16,6 +16,8 @@ pub use self::renderer::{ Renderer };
 #[cfg(test)]
 pub use self::data_cell_layer::tests::{ CelCoords, DataCellLayerTest };
 
+#[macro_use]
+mod macros;
 mod cmn;
 mod cortical_dimensions;
 mod data_cell_layer;
