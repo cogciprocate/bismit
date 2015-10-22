@@ -793,13 +793,13 @@ __kernel void mcol_activate_pyrs(
 
 	//aux_ints_0[pyr_idx] = pyr_flag_set;
 
-	int const mcol_active = sst_axn_state != 0;
+	int const mcol_is_active = sst_axn_state != 0;
 	//int const mcol_active = mcol_state != 0;
 	int const mcol_any_pred = mcol_flag_set & MCOL_IS_PREDICTIVE_FLAG == MCOL_IS_PREDICTIVE_FLAG;
 	int const pyr_is_vatic = (pyr_pred != 0);
 
-	int const crystal = pyr_is_vatic && mcol_active;
-	int const anomaly = mcol_active && !mcol_any_pred;
+	int const crystalized = pyr_is_vatic && mcol_is_active;
+	int const anomalous = mcol_is_active && !mcol_any_pred;
 
 	//int const activate_axon = crystal || anomaly;
 	//pyr_pred = (crystal | anomaly) && (mcol_state);
@@ -815,7 +815,7 @@ __kernel void mcol_activate_pyrs(
 
 	// SHOULDN'T BE ACTIVATING IF OTHER PYRS IN COLUMN ARE PREDICTIVE
 
-	axn_states[cel_axn_idx] = (uchar)mad24(anomaly, (int)sst_axn_state, mul24(crystal, (int)pyr_pred));
+	axn_states[cel_axn_idx] = (uchar)mad24(anomalous, (int)sst_axn_state, mul24(crystalized, (int)pyr_pred));
 	//axn_states[axn_idx] = (uchar)mad24(anomaly, (int)mcol_state, mul24(crystal, (int)pyr_pred));
 
 	pyr_flag_sets[pyr_idx] = pyr_flag_set;
@@ -1062,36 +1062,36 @@ __kernel void pyr_cycle(
 				__global uchar* const pyr_best_den_states,
 				__global uchar* const pyr_states) 
 {
-	uint const pyr_idx = get_global_id(0);
+	uint const cel_idx = get_global_id(0);
 	uchar best_den_state = 0;
 	uchar best_den_id = 0;
 	//uchar pyr_state = 0;
-	int pyr_state = 0;
+	int cel_state = 0;
 
 	for (uint den_tuft = 0; den_tuft < den_tufts_per_cel; den_tuft++) {
-		uint const den_idz = mad24(den_tuft, get_global_size(0), pyr_idx) << dens_per_tuft_l2;
+		uint const den_idz = mad24(den_tuft, get_global_size(0), cel_idx) << dens_per_tuft_l2;
  
-		for (uint den_idx = 0; den_idx < (1 << dens_per_tuft_l2); den_idx++) {
-			uchar den_state = den_states[den_idz + den_idx];
+		for (uint den_id = 0; den_id < (1 << dens_per_tuft_l2); den_id++) {
+			uchar den_state = den_states[den_idz + den_id];
 			int den_state_bigger = (den_state > best_den_state);
 
-			best_den_id = mad24(den_state_bigger, (int)den_idx, mul24(!den_state_bigger, best_den_id));
+			best_den_id = mad24(den_state_bigger, (int)den_id, mul24(!den_state_bigger, best_den_id));
 			best_den_state = mad24(den_state_bigger, den_state, mul24(!den_state_bigger, best_den_state));
-			pyr_state += den_state;
+			cel_state += den_state;
 		}
 
 		// TESTING: 
 		// if (den_tuft == 0) {
-		// 	// pyr_state = 200;
-		// 	pyr_state = 1;
+		// 	// cel_state = 200;
+		// 	cel_state = 1;
 		// }
 	}
 
-	//pyr_state = best_den_state;
+	//cel_state = best_den_state;
 
-	pyr_best_den_ids[pyr_idx] = best_den_id;
-	pyr_best_den_states[pyr_idx] = best_den_state;
-	pyr_states[pyr_idx] = clamp(pyr_state, 0, 255);
+	pyr_best_den_ids[cel_idx] = best_den_id;
+	pyr_best_den_states[cel_idx] = best_den_state;
+	pyr_states[cel_idx] = clamp(cel_state, 0, 255);
 }
 
 
