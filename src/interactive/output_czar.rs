@@ -156,7 +156,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 		cortex.area_mut(area_name).ptal_mut().flag_sets.print_val_range(1 << 6, Some((1, 255)));
 	}
 	if true {
-		print!("\nPYRAMIDAL DEPOLARIZATIONS: ");
+		print!("\nPYRAMIDAL STATES: ");
 		cortex.area_mut(area_name).ptal_mut().soma_mut().print_val_range(1 << 0, Some((1, 255)));
 	}
 

@@ -43,12 +43,17 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 		.layer("aff_in", 0, layer::AFFERENT_INPUT /*| layer::INTERAREA*/, Axonal(Spatial))
 		.layer("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
 		.layer("unused", 1, layer::UNUSED_TESTING, Axonal(Spatial))
+		.layer("iv_inhib", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv"))
+
 		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
-		.layer("iv_inhib", 0, layer::DEFAULT, 
-			Protocell::new_inhibitory(4, "iv"))
+			Protocell::new_spiny_stellate(5, vec!["aff_in"], 400)
+		)
+
 		.layer("iii", 3, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(2, 5, vec!["iii"], 1200).apical(vec!["eff_in"]))
+			Protocell::new_pyramidal(2, 5, vec!["iii"], 800)
+				.apical(vec!["eff_in"])
+				// .apical(vec!["unused"])
+		)
 	);
 
 	proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
@@ -59,7 +64,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 }
 
 pub fn define_protoareas() -> ProtoAreaMaps {
-	let area_side = 48 as u32;
+	let area_side = 32 as u32;
 
 	let protoareas = ProtoAreaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
@@ -80,9 +85,9 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 
 		.area_ext("v0", "external", 
 			// area_side * 2, area_side * 2,
-			// area_side, area_side,
+			area_side, area_side,
 			// area_side / 2, area_side / 2, 
-			63, 64,
+			// 32, 32,
 			Protoinput::IdxReader { 
 				file_name: "data/train-images-idx3-ubyte", 
 				repeats: REPEATS_PER_IMAGE, 
@@ -105,8 +110,8 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 
 		.area("b1", "visual", 
 			// area_side * 2, area_side * 2,			
-			// area_side, area_side,
-			61, 57,
+			area_side, area_side,
+			// 16, 16,
 			//32, 32,
 			//256, 256,
 		 	None,		 	

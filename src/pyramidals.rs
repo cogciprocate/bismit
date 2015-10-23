@@ -24,9 +24,9 @@ pub struct PyramidalLayer {
 	rng: XorShiftRng,
 	tfts_per_cel: u32,
 	pub states: Envoy<ocl::cl_uchar>,
-	pub best_den_ids: Envoy<ocl::cl_uchar>,
-	pub best_den_states: Envoy<ocl::cl_uchar>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
+	pub tft_best_den_ids: Envoy<ocl::cl_uchar>,
+	pub tft_best_den_states: Envoy<ocl::cl_uchar>,
 	// pub energies: Envoy<ocl::cl_uchar>, // <<<<< SLATED FOR REMOVAL
 	pub dens: Dendrites,
 }
@@ -37,26 +37,32 @@ impl PyramidalLayer {
 	) -> PyramidalLayer {
 		let base_axn_slcs = area_map.proto_layer_map().slc_ids(vec![layer_name]);
 		let base_axn_slc = base_axn_slcs[0];
-		let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);
+		let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);		
 
-		let 
+		let tfts_per_cel = area_map.proto_layer_map().dst_src_lyrs_by_tuft(layer_name).len() as u32;
+
+		let best_dens_per_cel = tfts_per_cel;
+		let dims_best_dens = dims.clone().with_tfts(tfts_per_cel);
 
 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let best_den_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let prev_best_den_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let tft_best_den_ids = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl);
+		let tft_best_den_states = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl);		
 		// let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
 		let dens_per_tft_l2 = protocell.dens_per_tuft_l2;
 		let syns_per_den_l2 = protocell.syns_per_den_l2;
 		let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
 
-		let tfts_per_cel = area_map.proto_layer_map().dst_src_lyrs_by_tuft(layer_name).len() as u32;
-		let den_tft_dims = dims.clone_with_ptl2(dens_per_tft_l2 as i8).with_tfts(tfts_per_cel);
+		let dims_dens = dims.clone_with_ptl2(dens_per_tft_l2 as i8).with_tfts(tfts_per_cel);
 
-		let dens = Dendrites::new(layer_name, den_tft_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, ocl);		
+		println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
+			pyr_lyr_axn_idz: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, \
+			best_den_len: {}, dims: {:?},", 
+			layer_name, base_axn_slc, pyr_lyr_axn_idz, syns_per_den_l2, dens_per_tft_l2, 
+			tft_best_den_ids.len(), dims, mt = cmn::MT);
 
+		let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, ocl);		
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle".to_string(),
 			WorkSize::OneDim(dims.cells() as usize))
@@ -65,9 +71,9 @@ impl PyramidalLayer {
 			.arg_scl(tfts_per_cel)
 			.arg_scl(dens_per_tft_l2)
 			//.arg_env(&energies) // <<<<< SLATED FOR REMOVAL
-			.arg_env(&best_den_ids)
-			.arg_env(&best_den_states)
-			// .arg_env_named::<i32>("aux_ints_0", None)
+			.arg_env(&tft_best_den_ids)
+			.arg_env(&tft_best_den_states)
+			.arg_env_named::<i32>("aux_ints_0", None)
 			// .arg_env_named::<i32>("aux_ints_1", None)
 			.arg_env(&states) 
 		;
@@ -80,7 +86,7 @@ impl PyramidalLayer {
 			WorkSize::OneDim(cel_grp_count as usize))
 			.arg_env(&axons.states)
 			.arg_env(&states)
-			.arg_env(&best_den_ids)
+			.arg_env(&tft_best_den_ids)
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns().states)
 			// .arg_scl(tfts_per_cel as u32)
@@ -94,15 +100,7 @@ impl PyramidalLayer {
 			.arg_env_named::<i32>("aux_ints_0", None)
 			// .arg_env_named::<i32>("aux_ints_1", None)
 			.arg_env(&dens.syns().strengths)
-		;
-
-
-
-		println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
-			pyr_lyr_axn_idz: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, cels_per_cel_grp: {}, dims: {:?},", 
-			layer_name, base_axn_slc, pyr_lyr_axn_idz, syns_per_den_l2, dens_per_tft_l2, 
-			cels_per_cel_grp, dims, mt = cmn::MT);
-
+		;		
 
 		PyramidalLayer {
 			layer_name: layer_name,
@@ -115,16 +113,16 @@ impl PyramidalLayer {
 			rng: rand::weak_rng(),
 			tfts_per_cel: tfts_per_cel,
 			states: states,
-			best_den_ids: best_den_ids,
-			best_den_states: best_den_states,
 			flag_sets: flag_sets,
+			tft_best_den_ids: tft_best_den_ids,
+			tft_best_den_states: tft_best_den_states,			
 			// energies: energies, // <<<<< SLATED FOR REMOVAL
 			dens: dens,
 		}
 	}
 
 	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
-		let using_aux_cycle = false;
+		let using_aux_cycle = true;
 		let using_aux_learning = true;
 
 		if using_aux_cycle {
@@ -154,8 +152,8 @@ impl DataCellLayer for PyramidalLayer {
 
 	fn confab(&mut self) {
 		self.states.read();
-		self.best_den_ids.read();
-		self.best_den_states.read();
+		self.tft_best_den_ids.read();
+		self.tft_best_den_states.read();
 		self.flag_sets.read();
 		// self.energies.read(); // <<<<< SLATED FOR REMOVAL
 
@@ -209,7 +207,6 @@ pub mod tests {
 	use rand::distributions::{ IndependentSample, Range as RandRange };
 
 	use cmn::{ self, DataCellLayer, DataCellLayerTest, CelCoords };
-	// use ocl;
 	use super::{ PyramidalLayer };
 	use synapses::{ SynapsesTest };
 
@@ -235,8 +232,8 @@ pub mod tests {
 
 			println!("Printing Pyramidal Cell:");
 			println!("   states[{}]: {}", cel_idx, self.states[cel_idx]);
-			println!("   best_den_ids[{}]: {}", cel_idx, self.best_den_ids[cel_idx]);
-			println!("   best_den_states[{}]: {}", cel_idx, self.best_den_states[cel_idx]);
+			println!("   tft_best_den_ids[{}]: {}", cel_idx, self.tft_best_den_ids[cel_idx]);
+			println!("   tft_best_den_states[{}]: {}", cel_idx, self.tft_best_den_states[cel_idx]);
 			println!("   flag_sets[{}]: {}", cel_idx, self.flag_sets[cel_idx]);
 			// println!("   energies[{}]: {}", cel_idx, self.energies[cel_idx]); // <<<<< SLATED FOR REMOVAL
 
@@ -262,10 +259,10 @@ pub mod tests {
 		fn print_range(&mut self, range: Range<usize>, print_children: bool) {
 			print!("pyrs.states: ");
 			self.states.print(1, Some((0, 255)), None, false);
-			print!("pyrs.best_den_ids: ");
-			self.best_den_ids.print(1, Some((0, 255)), None, false);
-			print!("pyrs.best_den_states: ");
-			self.best_den_states.print(1, Some((0, 255)), None, false);
+			print!("pyrs.tft_best_den_ids: ");
+			self.tft_best_den_ids.print(1, Some((0, 255)), None, false);
+			print!("pyrs.tft_best_den_states: ");
+			self.tft_best_den_states.print(1, Some((0, 255)), None, false);
 			print!("pyrs.flag_sets: ");
 			self.flag_sets.print(1, Some((0, 255)), None, false);			
 			// print!("pyrs.energies: ");							// <<<<< SLATED FOR REMOVAL
@@ -310,8 +307,8 @@ pub mod tests {
 
 		fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL
 			self.states.set_all_to(0);
-			self.best_den_ids.set_all_to(0);
-			self.best_den_states.set_all_to(0);
+			self.tft_best_den_ids.set_all_to(0);
+			self.tft_best_den_states.set_all_to(0);
 			//self.best2_den_ids.set_all_to(0);			// <<<<< SLATED FOR REMOVAL
 			//self.best2_den_states.set_all_to(0);		// <<<<< SLATED FOR REMOVAL
 			self.flag_sets.set_all_to(0);

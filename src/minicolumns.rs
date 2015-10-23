@@ -116,7 +116,7 @@ impl Minicolumns {
 			WorkSize::ThreeDim(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.arg_env(&flag_sets)
 			.arg_env(&best_pyr_den_states)
-			.arg_env(&pyrs.best_den_ids)
+			.arg_env(&pyrs.tft_best_den_ids)
 			.arg_env(&pyrs.dens.states)
 			.arg_scl(ff_layer_axn_idz as u32)
 			.arg_scl(pyrs.base_axn_slc())
@@ -131,11 +131,11 @@ impl Minicolumns {
 		//println!("\n ##### ff_layer_axn_idz: {}", ff_layer_axn_idz);
 
 		let kern_output = ocl.new_kernel("mcol_output".to_string(), 
-			//WorkSize::TwoDim(dims.depth() as usize, dims.columns() as usize))
-			WorkSize::ThreeDim(1 as usize, dims.v_size() as usize, dims.u_size() as usize))
+			// WorkSize::ThreeDim(1 as usize, dims.v_size() as usize, dims.u_size() as usize))
+			WorkSize::TwoDim(dims.v_size() as usize, dims.u_size() as usize))
 			//.arg_env(&ssts.soma())
 			.arg_env(&pyrs.soma())
-			.arg_env(&pyrs.best_den_states)
+			.arg_env(&pyrs.tft_best_den_states)
 			//.arg_scl(depth)
 			.arg_scl(ff_layer_axn_idz as u32)
 			.arg_scl(pyr_depth)
