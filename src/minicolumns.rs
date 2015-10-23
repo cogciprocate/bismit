@@ -136,7 +136,7 @@ impl Minicolumns {
 			//.arg_env(&ssts.soma())
 			.arg_env(&pyrs.soma())
 			.arg_env(&pyrs.tft_best_den_states)
-			//.arg_scl(depth)
+			.arg_scl(pyrs.tfts_per_cel())
 			.arg_scl(ff_layer_axn_idz as u32)
 			.arg_scl(pyr_depth)
 			//.arg_scl(pyr_base_axn_slc)

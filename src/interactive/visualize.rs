@@ -50,7 +50,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 		)
 
 		.layer("iii", 3, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(2, 5, vec!["iii"], 800)
+			Protocell::new_pyramidal(2, 5, vec!["iii"], 600)
 				.apical(vec!["eff_in"])
 				// .apical(vec!["unused"])
 		)

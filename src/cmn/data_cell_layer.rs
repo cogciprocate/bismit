@@ -16,6 +16,7 @@ pub trait DataCellLayer {
 	fn dims(&self) -> &CorticalDimensions;
 	fn axn_range(&self) -> (usize, usize);
 	fn base_axn_slc(&self) -> u8;
+	fn tfts_per_cel(&self) -> u32;
 	fn layer_name(&self) -> &'static str;	
 	fn protocell(&self) -> &Protocell;
 	fn dens(&self) -> &Dendrites;

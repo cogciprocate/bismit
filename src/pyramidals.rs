@@ -182,6 +182,10 @@ impl DataCellLayer for PyramidalLayer {
 		self.base_axn_slc
 	}
 
+	fn tfts_per_cel(&self) -> u32 {
+		self.tfts_per_cel
+	}
+
 	fn layer_name(&self) -> &'static str {
 		self.layer_name
 	}
