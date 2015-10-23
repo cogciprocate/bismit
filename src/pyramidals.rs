@@ -25,6 +25,7 @@ pub struct PyramidalLayer {
 	tfts_per_cel: u32,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
+	pub best_den_states: Envoy<ocl::cl_uchar>,
 	pub tft_best_den_ids: Envoy<ocl::cl_uchar>,
 	pub tft_best_den_states: Envoy<ocl::cl_uchar>,
 	// pub energies: Envoy<ocl::cl_uchar>, // <<<<< SLATED FOR REMOVAL
@@ -46,6 +47,7 @@ impl PyramidalLayer {
 
 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		let tft_best_den_ids = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl);
 		let tft_best_den_states = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl);		
 		// let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
@@ -114,6 +116,7 @@ impl PyramidalLayer {
 			tfts_per_cel: tfts_per_cel,
 			states: states,
 			flag_sets: flag_sets,
+			best_den_states: best_den_states,
 			tft_best_den_ids: tft_best_den_ids,
 			tft_best_den_states: tft_best_den_states,			
 			// energies: energies, // <<<<< SLATED FOR REMOVAL
@@ -152,6 +155,7 @@ impl DataCellLayer for PyramidalLayer {
 
 	fn confab(&mut self) {
 		self.states.read();
+		self.best_den_states.read();
 		self.tft_best_den_ids.read();
 		self.tft_best_den_states.read();
 		self.flag_sets.read();
@@ -236,9 +240,11 @@ pub mod tests {
 
 			println!("Printing Pyramidal Cell:");
 			println!("   states[{}]: {}", cel_idx, self.states[cel_idx]);
+			println!("   flag_sets[{}]: {}", cel_idx, self.flag_sets[cel_idx]);
+			println!("   best_den_states[{}]: {}", cel_idx, self.best_den_states[cel_idx]);
 			println!("   tft_best_den_ids[{}]: {}", cel_idx, self.tft_best_den_ids[cel_idx]);
 			println!("   tft_best_den_states[{}]: {}", cel_idx, self.tft_best_den_states[cel_idx]);
-			println!("   flag_sets[{}]: {}", cel_idx, self.flag_sets[cel_idx]);
+			
 			// println!("   energies[{}]: {}", cel_idx, self.energies[cel_idx]); // <<<<< SLATED FOR REMOVAL
 
 			println!("");
@@ -263,12 +269,15 @@ pub mod tests {
 		fn print_range(&mut self, range: Range<usize>, print_children: bool) {
 			print!("pyrs.states: ");
 			self.states.print(1, Some((0, 255)), None, false);
+			print!("pyrs.flag_sets: ");
+			self.flag_sets.print(1, Some((0, 255)), None, false);
+			print!("pyrs.best_den_states: ");
+			self.best_den_states.print(1, Some((0, 255)), None, false);
 			print!("pyrs.tft_best_den_ids: ");
 			self.tft_best_den_ids.print(1, Some((0, 255)), None, false);
 			print!("pyrs.tft_best_den_states: ");
 			self.tft_best_den_states.print(1, Some((0, 255)), None, false);
-			print!("pyrs.flag_sets: ");
-			self.flag_sets.print(1, Some((0, 255)), None, false);			
+						
 			// print!("pyrs.energies: ");							// <<<<< SLATED FOR REMOVAL
 			// self.energies.print(1, Some((0, 255)), None, false); // <<<<< SLATED FOR REMOVAL
 
@@ -311,11 +320,13 @@ pub mod tests {
 
 		fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL
 			self.states.set_all_to(0);
+			self.flag_sets.set_all_to(0);
+			self.best_den_states.set_all_to(0);
 			self.tft_best_den_ids.set_all_to(0);
 			self.tft_best_den_states.set_all_to(0);
 			//self.best2_den_ids.set_all_to(0);			// <<<<< SLATED FOR REMOVAL
 			//self.best2_den_states.set_all_to(0);		// <<<<< SLATED FOR REMOVAL
-			self.flag_sets.set_all_to(0);
+			
 			// self.energies.set_all_to(0);				// <<<<< SLATED FOR REMOVAL
 		}
 	}
