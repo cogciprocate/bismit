@@ -438,14 +438,14 @@ impl SrcIdxCache {
 	}
 
 	pub fn insert(&mut self, syn_idx: usize, new_ofs: AxnOfs, old_ofs: AxnOfs) -> bool {
-		let den_id = syn_idx >> self.syns_per_den_l2;
+		let den_idx = syn_idx >> self.syns_per_den_l2;
 
 		let new_ofs_key: i32 = self.axn_ofs(&new_ofs);
-		let is_unique: bool = self.dens[den_id].insert(new_ofs_key);
+		let is_unique: bool = self.dens[den_idx].insert(new_ofs_key);
 
 		if is_unique {
 			let old_ofs_key: i32 = self.axn_ofs(&old_ofs);
-			self.dens[den_id].remove(&old_ofs_key);
+			self.dens[den_idx].remove(&old_ofs_key);
 		}
 
 		is_unique
@@ -477,6 +477,8 @@ pub mod tests {
 	use super::{ Synapses };
 	use cmn::{ CelCoords };
 	use cmn::{ CorticalDimensions };
+
+	const PRINT_DEBUG_INFO: bool = false;
 
 	pub trait SynapsesTest {
 		fn set_offs_to_zero(&mut self);
@@ -524,13 +526,15 @@ pub mod tests {
 		}
 
 		fn rand_syn_coords(&mut self, cel_coords: &CelCoords) -> SynCoords {
-			let tft_id_range = RandRange::new(0, self.dims.tfts_per_cel());
-			let syn_id_cel_range = RandRange::new(0, self.dims.per_tft());
+			let tft_id_range = RandRange::new(0, cel_coords.tfts_per_cel);
+			let den_id_tft_range = RandRange::new(0, 1 << (cel_coords.dens_per_tft_l2 as u32));
+			let syn_id_den_range = RandRange::new(0, 1 << (cel_coords.syns_per_den_l2 as u32));
 
 			let tft_id = tft_id_range.ind_sample(&mut self.rng); 
-			let syn_id_cel = syn_id_cel_range.ind_sample(&mut self.rng);
+			let den_id_tft = den_id_tft_range.ind_sample(&mut self.rng);
+			let syn_id_den = syn_id_den_range.ind_sample(&mut self.rng);
 
-			SynCoords::new(tft_id, syn_id_cel, cel_coords, &self.dims)
+			SynCoords::new(tft_id, den_id_tft, syn_id_den, cel_coords)
 		}
 
 		fn print_range(&mut self, range: Range<usize>) {
@@ -573,40 +577,57 @@ pub mod tests {
 	pub struct SynCoords {
 		pub idx: u32,	
 		pub tft_id: u32,
-		pub syn_id_cel_tft: u32,		
+		pub den_id_tft: u32,
+		pub syn_id_den: u32,		
 		pub cel_coords: CelCoords,
-		pub layer_dims: CorticalDimensions,
+		// pub layer_dims: CorticalDimensions,
 	}
 
 	impl SynCoords {
-		pub fn new(tft_id: u32, syn_id_cel_tft: u32, cel_coords: &CelCoords, 
-					layer_dims: &CorticalDimensions
+		pub fn new(tft_id: u32, den_id_tft: u32, syn_id_den: u32, cel_coords: &CelCoords, 
+					// layer_dims: &CorticalDimensions
 			) -> SynCoords 
 		{
-			let syn_idx = syn_idx(&layer_dims, tft_id, cel_coords.idx, syn_id_cel_tft);
+			// let syns_per_tft = 1 << (cel_coords.dens_per_tft_l2 as u32 
+			// 	+ cel_coords.syns_per_den_l2 as u32);
+
+			// 'tft_count' is synonymous with 'tfts_per_cel':
+			let tft_count = cel_coords.tfts_per_cel;
+			let syns_per_den = 1 << (cel_coords.syns_per_den_l2 as u32);
+			let dens_per_tft = 1 << (cel_coords.dens_per_tft_l2 as u32);
+
+			let syn_idx = syn_idx(&cel_coords.layer_dims, tft_count, dens_per_tft, 
+				syns_per_den, tft_id, cel_coords.idx, den_id_tft, syn_id_den);
 
 			SynCoords { 
 				idx: syn_idx, 
 				tft_id: tft_id,
-				syn_id_cel_tft: syn_id_cel_tft, 				
+				den_id_tft: den_id_tft,
+				syn_id_den: syn_id_den, 				
 				cel_coords: cel_coords.clone(),
-				layer_dims: layer_dims.clone(),
+				// layer_dims: layer_dims.clone(),
 			}
 		}
 
 		pub fn cel_syn_range_tftsec(&self) -> Range<usize> {
-			let syns_per_cel_tft = self.layer_dims.per_tft() as usize;
-			let syn_idz_cel = syn_idx(&self.layer_dims, self.tft_id, 
-				self.cel_coords.idx, 0) as usize;
+			let tft_count = self.cel_coords.tfts_per_cel;
+			let syns_per_den = 1 << (self.cel_coords.syns_per_den_l2 as u32);
+			let dens_per_tft = 1 << (self.cel_coords.dens_per_tft_l2 as u32);			
 
-			syn_idz_cel..(syn_idz_cel + syns_per_cel_tft)
+			// Get the idz for the synapse on this cell with: den_id_tft = 0, syn_id_tft = 0:
+			let syn_idz_cel_tft = syn_idx(&self.cel_coords.layer_dims, tft_count, dens_per_tft, 
+				syns_per_den, self.tft_id, self.cel_coords.idx, 0, 0) as usize;
+
+			let syns_per_tft = syns_per_den * dens_per_tft;
+
+			syn_idz_cel_tft..(syn_idz_cel_tft + syns_per_tft as usize)
 		}
 	}
 
 	impl Display for SynCoords {
 	    fn fmt(&self, fmtr: &mut Formatter) -> FmtResult {
-	        write!(fmtr, "SynCoords {{ idx: {}, tft_id: {}, syn_id_cel_tft: {}, parent_cel: {} }}", 
-				self.idx, self.tft_id, self.syn_id_cel_tft, self.cel_coords)
+	        write!(fmtr, "SynCoords {{ idx: {}, tft_id: {}, syn_id_den: {}, parent_cel: {} }}", 
+				self.idx, self.tft_id, self.syn_id_den, self.cel_coords)
 	    }
 	}
 
@@ -620,64 +641,56 @@ pub mod tests {
 	// SYN_IDX(): FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
 	// 		- Synapse index space heirarchy:  | Tuft - Slice - Cell - Dendrite - Synapse |
 	// 		- 'cel_idx' already has slice built in to its value
-	pub fn syn_idx(layer_dims: &CorticalDimensions, tft_id: u32, cel_idx: u32, syn_id_celtft: u32) -> u32 {
-		//  NOTE: 'layer_dims' expresses dimensions from the perspective of the 
+	// 		- 'tft_count' is synonymous with 'tfts_per_cel'
+	// 		- X_cel_tft is synonymous with X_tft but is verbosely described for clarity
+	pub fn syn_idx(cel_layer_dims: &CorticalDimensions, tft_count: u32, dens_per_cel_tft: u32, syns_per_den: u32, 
+					tft_id: u32, cel_idx: u32, den_id_cel_tft: u32, syn_id_den: u32) -> u32 
+	{
+		//  NOTE: 'cel_layer_dims' expresses dimensions from the perspective of the 
 		//  | Slice - Cell - Tuft - Dendrite - Synapse | heirarchy which is why the function
-		//  names seem confusing (see explanation at top of file).
+		//  names (and other variable names) seem confusing (see explanation at top of file).
 
-		let tft_count = layer_dims.tfts_per_cel();
-		let slcs_per_tftsec = layer_dims.depth();
-		let cels_per_slc = layer_dims.columns();
-		let syns_per_cel_tft = layer_dims.per_tft();
+		let slcs_per_tftsec = cel_layer_dims.depth() as u32;
+		let cels_per_slc = cel_layer_dims.columns();
 
-		// assert!((tft_count * slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft) == layer_dims.physical_len());
 		assert!(tft_id < tft_count);
-		assert!(cel_idx < slcs_per_tftsec as u32 * cels_per_slc);
-		assert!(syn_id_celtft < syns_per_cel_tft);
+		assert!(cel_idx < slcs_per_tftsec * cels_per_slc);
+		assert!(den_id_cel_tft < dens_per_cel_tft);
+		assert!(syn_id_den < syns_per_den);
 
-		let syns_per_tftsec = slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft;
 
-		let syn_idz_tft = tft_id * syns_per_tftsec;
-		// 'cel_idx' includes slc_id, v_id, and u_id
-		let syn_idz_slc_cel = cel_idx * syns_per_cel_tft;
-		let syn_idx = syn_idz_tft + syn_idz_slc_cel + syn_id_celtft;
+		let syns_per_tftsec = slcs_per_tftsec * cels_per_slc * dens_per_cel_tft * syns_per_den;
+		let syn_idz_tftsec = tft_id * syns_per_tftsec;
+		// 'cel_idx' includes slc_id, v_id, and u_id:
+		let syn_idz_tft_slc_cel = cel_idx * dens_per_cel_tft * syns_per_den;
+		let syn_id_cel_tft = (den_id_cel_tft * syns_per_den) + syn_id_den;
 
-		// println!("\n#####\n\n\
-		// 	tft_count: {} \n\
-		// 	slcs_per_tftsec: {} \n\
-		// 	cels_per_slc: {}\n\
-		// 	syns_per_cel_tft: {}\n\
-		// 	\n\
-		// 	tft_id: {},\n\
-		// 	cel_idx: {},\n\
-		// 	syn_id_celtft: {}, \n\
-		// 	\n\
-		// 	tft_syn_idz: {},\n\
-		// 	tft_cel_slc_syn_idz: {},\n\
-		// 	syn_idx: {},\n\
-		// 	\n\
-		// 	#####", 
-		// 	tft_count, slcs_per_tftsec, 
-		// 	cels_per_slc, syns_per_cel_tft, 
-		// 	tft_id, cel_idx, syn_id_celtft,
-		// 	tft_syn_idz, slc_syn_id_celz, syn_idx
-		// );
+		let syn_idx = syn_idz_tftsec + syn_idz_tft_slc_cel + syn_id_cel_tft;
+
+		if PRINT_DEBUG_INFO {
+			println!("\n#####\n\n\
+				tft_count: {} \n\
+				slcs_per_tftsec: {} \n\
+				cels_per_slc: {}\n\
+				syns_per_den: {}\n\
+				\n\
+				cel_idx: {},\n\
+				tft_id: {},\n\
+				den_id_tft: {}, \n\
+				syn_id_den: {}, \n\
+				\n\
+				syn_idz_tftsec: {},\n\
+				syn_idz_tft_slc_cel: {},\n\
+				syn_idx: {},\n\
+				\n\
+				#####", 
+				tft_count, slcs_per_tftsec, cels_per_slc, syns_per_den, 
+				cel_idx, tft_id, den_id_cel_tft, syn_id_den, 
+				syn_idz_tftsec, syn_idz_tft_slc_cel, syn_idx,
+			);
+		}
 
 		syn_idx
 	}
 }
 
-
-
-
-// pub fn new_random(layer_dims: &CorticalDimensions, cel_coords: CelCoords) -> SynCoords {			
-		// 	let tft_id_range = Range::new(0, layer_dims.tfts_per_cel_tft());
-		// 	let syn_id_cel_range = Range::new(0, layer_dims.per_tft());
-
-		// 	let mut rng = rand::weak_rng();
-
-		// 	let tft_id = tft_id_range.ind_sample(&mut rng); 
-		// 	let syn_id_cel = syn_id_cel_range.ind_sample(&mut rng);
-
-		// 	SynCoords::new(tft_id, syn_id_cel, cel_coords, layer_dims)
-		// }

@@ -128,7 +128,7 @@ impl Minicolumns {
 			.arg_scl(pyrs.protocell().dens_per_tuft_l2)
 			.arg_env(&pyrs.flag_sets)
 			.arg_env(&pyrs.states)
-			// .arg_env_named::<i32>("aux_ints_0", None)
+			.arg_env_named::<i32>("aux_ints_0", None)
 			// .arg_env_named::<i32>("aux_ints_1", None)
 			.arg_env(&axons.states)
 		;
@@ -207,7 +207,7 @@ impl Minicolumns {
 	}*/
 
 	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
-		let activate_using_aux = false;
+		let activate_using_aux = true;
 		let output_using_aux = false;
 
 		if activate_using_aux {

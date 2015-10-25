@@ -98,6 +98,7 @@ pub fn fresh_cortex() -> Cortex {
 ===============================================================================
 =============================================================================*/
 
+// LOTS OF TUFTS, THRESHOLD AT MIN
 pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 	let area_name = PRIMARY_AREA_NAME;
 	let lmap_name = "lm_test";
@@ -134,7 +135,12 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
 	let pamaps = ProtoAreaMaps::new()
 		.area(area_name, lmap_name, 32, 32, None, None)
+
+		// <<<<< VERY IMPORTANT: DO NOT DELETE! >>>>>
+		// THIS EXTERNAL AREA MAY BE CAUSING INDEXING PROBLEMS
 		.area_ext("dummy_area", "dummy_lm", 67, 63, Protoinput::None, None, Some(vec![area_name]))
+
+		// .area_ext("dummy_area", "dummy_lm", 32, 32, Protoinput::None, None, Some(vec![area_name]))
 	;
 
 	Cortex::new(plmaps, pamaps)

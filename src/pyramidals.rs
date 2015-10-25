@@ -3,7 +3,7 @@ use rand::{ self, XorShiftRng, Rng };
 
 use cmn::{ self, CorticalDimensions, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, OclProgQueue, WorkSize, Envoy, OclNum };
+use ocl::{ self, OclProgQueue, WorkSize, Envoy, OclNum, Kernel };
 use proto::{ ProtocellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -17,12 +17,14 @@ pub struct PyramidalLayer {
 	layer_name: &'static str,
 	dims: CorticalDimensions,
 	protocell: Protocell,
-	kern_ltp: ocl::Kernel,
-	kern_cycle: ocl::Kernel,
+	kern_ltp: Kernel,
+	kern_cycle: Kernel,
 	base_axn_slc: u8,
 	pyr_lyr_axn_idz: u32,
 	rng: XorShiftRng,
 	tfts_per_cel: u32,
+	dens_per_tft_l2: u8,
+	syns_per_den_l2: u8,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
 	pub best_den_states: Envoy<ocl::cl_uchar>,
@@ -59,9 +61,9 @@ impl PyramidalLayer {
 		let dims_dens = dims.clone_with_ptl2(dens_per_tft_l2 as i8).with_tfts(tfts_per_cel);
 
 		println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
-			pyr_lyr_axn_idz: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, \
+			pyr_lyr_axn_idz: {}, tfts_per_cel: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, \
 			best_den_len: {}, dims: {:?},", 
-			layer_name, base_axn_slc, pyr_lyr_axn_idz, syns_per_den_l2, dens_per_tft_l2, 
+			layer_name, base_axn_slc, pyr_lyr_axn_idz, tfts_per_cel, syns_per_den_l2, dens_per_tft_l2, 
 			tft_best_den_ids.len(), dims, mt = cmn::MT);
 
 		let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, ocl);		
@@ -91,7 +93,7 @@ impl PyramidalLayer {
 			.arg_env(&tft_best_den_ids)
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns().states)
-			// .arg_scl(tfts_per_cel as u32)
+			.arg_scl(tfts_per_cel as u32)
 			.arg_scl(dens_per_tft_l2 as u32)
 			.arg_scl(syns_per_den_l2 as u32)			
 			.arg_scl(cels_per_cel_grp)
@@ -100,7 +102,7 @@ impl PyramidalLayer {
 			.arg_env(&dens.syns().flag_sets)
 			.arg_env(&flag_sets)
 			.arg_env_named::<i32>("aux_ints_0", None)
-			// .arg_env_named::<i32>("aux_ints_1", None)
+			.arg_env_named::<i32>("aux_ints_1", None)
 			.arg_env(&dens.syns().strengths)
 		;		
 
@@ -114,6 +116,8 @@ impl PyramidalLayer {
 			pyr_lyr_axn_idz: pyr_lyr_axn_idz,
 			rng: rand::weak_rng(),
 			tfts_per_cel: tfts_per_cel,
+			dens_per_tft_l2: dens_per_tft_l2,
+			syns_per_den_l2: syns_per_den_l2,
 			states: states,
 			flag_sets: flag_sets,
 			best_den_states: best_den_states,
@@ -124,6 +128,11 @@ impl PyramidalLayer {
 		}
 	}
 
+	pub fn kern_ltp(&mut self) -> &mut Kernel {
+		&mut self.kern_ltp
+	}
+
+	// <<<<< TODO: DEPRICATE >>>>>
 	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
 		let using_aux_cycle = true;
 		let using_aux_learning = true;
@@ -204,7 +213,7 @@ impl DataCellLayer for PyramidalLayer {
 
 	fn dens_mut(&mut self) -> &mut Dendrites {
 		&mut self.dens
-	}	
+	}
 }
 
 
@@ -310,8 +319,10 @@ pub mod tests {
 			let u_id = u_range.ind_sample(self.rng());
 			let v_id = v_range.ind_sample(self.rng());
 
-			let slc_id_axn = self.base_axn_slc() + slc_id_lyr;
-			CelCoords::new(slc_id_axn, slc_id_lyr, v_id, u_id, self.dims())
+			let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
+
+			CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims(),
+				self.tfts_per_cel, self.dens_per_tft_l2, self.syns_per_den_l2)
 		}
 
 		fn cel_idx(&self, slc_id: u8, v_id: u32, u_id: u32)-> u32 {

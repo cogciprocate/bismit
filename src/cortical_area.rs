@@ -232,13 +232,20 @@ impl CorticalArea {
 
 		let aux = Aux::new(pyrs_map[ptal_name].dens().syns().dims(), &ocl);
 
+
+		// <<<<< TODO: CLEAN THIS UP >>>>>
+		// MAKE ABOVE LIKE BELOW (eliminate set_arg_env_named() everywhere)
 		mcols.set_arg_env_named("aux_ints_0", &aux.ints_0);
 		pyrs_map.get_mut(ptal_name).unwrap().set_arg_env_named("aux_ints_0", &aux.ints_0);		
 		pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
 			.set_arg_env_named("aux_ints_0", &aux.ints_0);
 
+		// mcols.set_arg_env_named("aux_ints_1", &aux.ints_0);
+		pyrs_map.get_mut(ptal_name).unwrap().kern_ltp().set_arg_env_named("aux_ints_1", &aux.ints_1);
 
-		// TODO: give aux to whoever
+		// pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
+			// .set_arg_env_named("aux_ints_1", &aux.ints_0);
+
 
 		let cortical_area = CorticalArea {
 			name: area_map.proto_area_map().name,
@@ -559,7 +566,7 @@ mod tests {
 		fn write_to_axon(&self, val: u8, idx: u32);
 		fn read_from_axon(&self, idx: u32) -> u8;
 		fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8
-			) -> (i8, i8, u32);
+			) -> (i8, i8, u32, u32);
 		fn print_aux(&mut self);
 		fn print_axns(&mut self);
 		fn activate_axon(&mut self, idx: u32);
@@ -587,7 +594,7 @@ mod tests {
 			self.axns.write_to_axon(val, idx);
 		}
 
-		fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8) -> (i8, i8, u32) {
+		fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8) -> (i8, i8, u32, u32) {
 			let v_ofs_range = RandRange::new(-8i8, 9);
 			let u_ofs_range = RandRange::new(-8i8, 9);
 
@@ -603,7 +610,12 @@ mod tests {
 					v_ofs, cel_coords.u_id, u_ofs);
 
 				match idx_rslt {
-					Ok(idx) => return (v_ofs, u_ofs, idx),
+					Ok(idx) => {
+						let col_id = self.area_map.axn_col_id(src_axn_slc, cel_coords.v_id, 
+							v_ofs, cel_coords.u_id, u_ofs).unwrap();
+						return (v_ofs, u_ofs, col_id, idx)
+					},
+
 					Err(_) => (),
 				}
 			}
