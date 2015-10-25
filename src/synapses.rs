@@ -573,6 +573,7 @@ pub mod tests {
 		}		
 	}
 
+	// <<<<< TODO: NEEDS UPDATING TO MATCH / INTEGRATE WITH DEN_COORDS >>>>>
 	#[derive(Debug, Clone)]
 	pub struct SynCoords {
 		pub idx: u32,	
@@ -609,12 +610,12 @@ pub mod tests {
 			}
 		}
 
-		pub fn cel_syn_range_tftsec(&self) -> Range<usize> {
+		pub fn syn_idx_range_tft(&self) -> Range<usize> {
 			let tft_count = self.cel_coords.tfts_per_cel;
 			let syns_per_den = 1 << (self.cel_coords.syns_per_den_l2 as u32);
 			let dens_per_tft = 1 << (self.cel_coords.dens_per_tft_l2 as u32);			
 
-			// Get the idz for the synapse on this cell with: den_id_tft = 0, syn_id_tft = 0:
+			// Get the idz for the synapse on this tuft with: den_id_tft = 0, syn_id_den = 0:
 			let syn_idz_cel_tft = syn_idx(&self.cel_coords.layer_dims, tft_count, dens_per_tft, 
 				syns_per_den, self.tft_id, self.cel_coords.idx, 0, 0) as usize;
 
@@ -622,12 +623,24 @@ pub mod tests {
 
 			syn_idz_cel_tft..(syn_idz_cel_tft + syns_per_tft as usize)
 		}
+
+		pub fn syn_idx_range_den(&self) -> Range<usize> {
+			let tft_count = self.cel_coords.tfts_per_cel;
+			let syns_per_den = 1 << (self.cel_coords.syns_per_den_l2 as u32);
+			let dens_per_tft = 1 << (self.cel_coords.dens_per_tft_l2 as u32);			
+
+			// Get the idz for the synapse on this dendrite with: syn_id_den = 0:
+			let syn_idz_den = syn_idx(&self.cel_coords.layer_dims, tft_count, dens_per_tft, 
+				syns_per_den, self.tft_id, self.cel_coords.idx, self.den_id_tft, 0) as usize;
+
+			syn_idz_den..(syn_idz_den + syns_per_den as usize)
+		}
 	}
 
 	impl Display for SynCoords {
 	    fn fmt(&self, fmtr: &mut Formatter) -> FmtResult {
-	        write!(fmtr, "SynCoords {{ idx: {}, tft_id: {}, syn_id_den: {}, parent_cel: {} }}", 
-				self.idx, self.tft_id, self.syn_id_den, self.cel_coords)
+	        write!(fmtr, "SynCoords {{ idx: {}, tft_id: {}, den_id_tft: {} syn_id_den: {}, parent_cel: {} }}", 
+				self.idx, self.tft_id, self.den_id_tft, self.syn_id_den, self.cel_coords)
 	    }
 	}
 

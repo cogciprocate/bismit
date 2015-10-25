@@ -70,15 +70,15 @@ impl PyramidalLayer {
 		
 		let kern_cycle = ocl.new_kernel("pyr_cycle".to_string(),
 			WorkSize::OneDim(dims.cells() as usize))
-			.arg_env(&dens.states)
 			.arg_env(&dens.states_raw)
+			.arg_env(&dens.states)
 			.arg_scl(tfts_per_cel)
 			.arg_scl(dens_per_tft_l2)
 			//.arg_env(&energies) // <<<<< SLATED FOR REMOVAL
 			.arg_env(&tft_best_den_ids)
 			.arg_env(&tft_best_den_states)
 			.arg_env_named::<i32>("aux_ints_0", None)
-			// .arg_env_named::<i32>("aux_ints_1", None)
+			.arg_env_named::<i32>("aux_ints_1", None)
 			.arg_env(&states) 
 		;
 
@@ -91,6 +91,7 @@ impl PyramidalLayer {
 			.arg_env(&axons.states)
 			.arg_env(&states)
 			.arg_env(&tft_best_den_ids)
+			.arg_env(&tft_best_den_states)
 			.arg_env(&dens.states)
 			.arg_env(&dens.syns().states)
 			.arg_scl(tfts_per_cel as u32)
@@ -128,8 +129,14 @@ impl PyramidalLayer {
 		}
 	}
 
+	// USED BY AUX
 	pub fn kern_ltp(&mut self) -> &mut Kernel {
 		&mut self.kern_ltp
+	}
+
+	// USED BY AUX
+	pub fn kern_cycle(&mut self) -> &mut Kernel {
+		&mut self.kern_cycle
 	}
 
 	// <<<<< TODO: DEPRICATE >>>>>

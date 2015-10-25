@@ -182,7 +182,7 @@ fn test_dens() {
 		let den_dims = den_coords.dims().clone();
 
 		// GET SOURCE SLICE TO USE TO SIMULATE INPUT:
-		let cel_syn_range = den_coords.cel_syn_range_tftsec(area.ptal().dens().syns().syns_per_den_l2());
+		let cel_syn_range = den_coords.syn_idx_range_tft(area.ptal().dens().syns().syns_per_den_l2());
 		let src_slc_ids = area.area_map().base_axn_slc_ids_by_flag(layer::AFFERENT_INPUT);
 		assert!(src_slc_ids.len() == 1);
 		let src_slc_id = src_slc_ids[0];

@@ -60,6 +60,12 @@
 // 		<<<<< Medium Priority Comment, To Do
 // 		##### Debug / Informational Message
 //
+//		
+//		Kernel variable order guideline: 
+// 			- __global const* pointers (read-only arrays) first, 
+// 			- __local, __private scalars, etc. in the middle,
+//			- __global non-const pointers (output arrays) last,
+//		
 //
 // 		ASSUMPTIONS BEING MADE: (add assert!s)
 //			syns_per_tft > 4
@@ -185,19 +191,27 @@ static inline uint calc_syn_idz(uint const tuft_id, uint const cel_count, uint c
 	return syn_tuft_ofs + (cel_id << syns_per_tft_l2);
 }
 
+// static inline uint calc_cel_tft_idx(uint const cels_per_lyr, uint const cel_idx, 
+// 			uint const tfts_per_cel, uint const tft_id)
+// {
+// 	return mad24(cel_idx, tfts_per_cel, tft_id);
+// }
 
-static inline uint get_cel_tft_idx(uint const cel_idx, uint const tfts_per_cel, uint const tft_id) {
-	return mad24(cel_idx, tfts_per_cel, tft_id);
+// GET_CEL_TFT_IDX(): Uses same indexing principle as dendrites and synapses (see synapses.rs)
+static inline uint calc_cel_tft_idx(uint const cel_count, uint const cel_idx, 
+			uint const tfts_per_cel, uint const tft_id)
+{
+	return  mad24(tft_id, cel_count, cel_idx);
 }
 
-// COORD_IS_SAFE(): BOUNDS CHECK FOR A SINGLE DIMENSION OF A CELLULAR COORDINATE
+// COORD_IS_SAFE(): Bounds check for a single dimension of a cellular coordinate
 static inline int coord_is_safe(int const dim_size, int const coord_id, int const coord_ofs) {
 	int coord_ttl = coord_id + coord_ofs;
 	return (coord_ttl >= 0) & (coord_ttl < dim_size);
 }
 
 
-// COORD_IS_SAFE_VEC4(): BOUNDS CHECK FOR A SINGLE DIMENSION OF A CELLULAR COORDINATE
+// COORD_IS_SAFE_VEC4(): Bounds check for a single dimension of a cellular coordinate
 static inline int4 coord_is_safe_vec4(int4 const dim_size, int4 const coord_id, int4 const coord_ofs) {
 	int4 coord_ttl = coord_id + coord_ofs;
 	return (coord_ttl >= 0) & (coord_ttl < dim_size);
@@ -814,9 +828,9 @@ __kernel void mcol_activate_pyrs(
 	int const pyr_is_vatic = (pyr_state != 0);
 
 	// DEBUG
-	if (pyr_is_vatic) { 
-		aux_ints_0[cel_idx] = pyr_axn_idx;
-	}
+	// if (pyr_is_vatic) { 
+	// 	aux_ints_0[cel_idx] = pyr_axn_idx;
+	// }
 
 	int const crystalized = pyr_is_vatic && mcol_is_active;
 	int const anomalous = mcol_is_active && !mcol_any_pred;
@@ -985,6 +999,7 @@ __kernel void pyrs_ltp(
 				__global uchar const* const axn_states,
 				__global uchar const* const cel_states,
 				__global uchar const* const cel_tft_best_den_ids,
+				__global uchar const* const cel_tft_best_den_states,
 				__global uchar const* const den_states,
 				__global uchar const* const syn_states,
 				__private uint const tfts_per_cel,
@@ -1019,15 +1034,28 @@ __kernel void pyrs_ltp(
 
 		for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
 			// uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
-			uint const cel_tft_idx = get_cel_tft_idx(cel_idx, tfts_per_cel, tft_id);
-			uchar const den_id_tft_best = cel_tft_best_den_ids[cel_tft_idx];
-			uint const den_idz_tft = mad24(tft_id, cel_count, cel_idx) << dens_per_tft_l2;
+			uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
+			uint const den_idz_tft = cel_tft_idx << dens_per_tft_l2;
+			
+			uchar const den_id_tft_best = cel_tft_best_den_ids[cel_tft_idx];			
 
 			uint const syn_idz_tft = den_idz_tft << syns_per_den_l2;
 			uint const syn_idz_best_den_tft = (den_idz_tft + den_id_tft_best) << syns_per_den_l2;
 
+			/*##################
+				
+
+				CURRENTLY DEPRESSING ALL SYNAPSES ON ALL TUFTS WITH THE SAME DEN_ID_TFT AS AN ACTIVE SYNAPSE
+
+				NEED TO CHECK THAT WE'RE ON THE RIGHT TUFT BEFORE DOING SHIT!
+
+
+			*/
+
 			if (cel_is_concrete) {
-				aux_ints_1[cel_tft_idx] = 10;
+				// aux_ints_1[cel_tft_idx] = 10;
+
+				int const tuft_is_active = cel_tft_best_den_ids[cel_tft_idx];
 
 				if (cel_prev_vatic) { 
 					// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + (NOT)TRAIN NEW DEN
@@ -1035,14 +1063,14 @@ __kernel void pyrs_ltp(
 					dst_syns__active__stp_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
 						syn_flag_sets, syn_strengths);
 
-					aux_ints_1[cel_tft_idx] = 11;
+					// aux_ints_1[cel_tft_idx] = 11;
 
 				} else if (cel_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
 				//} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
 					dst_syns__active__stp_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
 						syn_flag_sets, syn_strengths);
 
-					aux_ints_1[cel_tft_idx] = 12;
+					// aux_ints_1[cel_tft_idx] = 12;
 				}
 
 				cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
@@ -1051,7 +1079,7 @@ __kernel void pyrs_ltp(
 				cel_syns_trm(syn_states, syn_idz_tft, syns_per_den_l2 + dens_per_tft_l2, rnd, 
 					syn_flag_sets, syn_strengths);
 
-				aux_ints_1[cel_tft_idx] = 20;
+				// aux_ints_1[cel_tft_idx] = 20;
 
 				cel_flag_set &= ~CEL_PREV_CONCRETE_FLAG;
 			}
@@ -1066,49 +1094,88 @@ __kernel void pyrs_ltp(
 
 
 
-
+// TODO: Investigate the bizarre glitch with this kernel with the phantom best_dens
 __kernel void pyr_cycle(
-				__global uchar const* const den_states,
-				__global uchar const* const den_states_raw,
+				__global uchar const* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
+				__global uchar const* const den_states,				
 				__private uint const tfts_per_cel,
 				__private uchar const dens_per_tft_l2,				
 				__global uchar* const cel_tft_best_den_ids,
 				__global uchar* const cel_tft_best_den_states,
 				__global int* const aux_ints_0,
+				__global int* const aux_ints_1,
 				__global uchar* const pyr_states) 
 {
 	uint const cel_idx = get_global_id(0);
 	uint const cel_count = get_global_size(0);
 
-	int pyr_state = 0;
+	uint pyr_state = 0;
 
 	for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
-		uint const den_idz_tft = mad24(tft_id, cel_count, cel_idx) << dens_per_tft_l2;
+		uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
+		uint const den_idz_tft = cel_tft_idx << dens_per_tft_l2;
 		// uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
-		uint const cel_tft_idx = get_cel_tft_idx(cel_idx, tfts_per_cel, tft_id);
 
-		uchar best_den_id = 0;
-		uchar best_den_state = 0;
-
-		// aux_ints_0[cel_tft_idx] = cel_idx;
+		// Used for activation and ultimately learning:
+		uint best_den_id = 0;
+		// Used for activation and ultimately learning:
+		uint best_den_state_raw = 0;
+		// Used for pyr_state:
+		uint best_den_state = 0;
  
 		for (uint den_id_tft = 0; den_id_tft < (1 << dens_per_tft_l2); den_id_tft++) {
-			uchar const den_state = den_states[den_idz_tft + den_id_tft];
+			uint const den_idx = den_idz_tft + den_id_tft;
+
+			uint const den_state_raw = den_states_raw[den_idx];
+			uint const den_state = den_states[den_idx];
+
+			int const den_state_bigger_raw = (den_state_raw > best_den_state_raw);
 			int const den_state_bigger = (den_state > best_den_state);
 
-			best_den_id = mad24(den_state_bigger, (int)den_id_tft, mul24(!den_state_bigger, best_den_id));
-			best_den_state = mad24(den_state_bigger, den_state, mul24(!den_state_bigger, best_den_state));
-			pyr_state += den_state;
+			best_den_id = mad24((uint)den_state_bigger_raw, den_id_tft,
+				mul24((uint)!den_state_bigger_raw, best_den_id));
+
+			best_den_state_raw = mad24((uint)den_state_bigger_raw, den_state_raw, 
+				mul24((uint)!den_state_bigger_raw, best_den_state_raw));			
+
+			best_den_state = mad24((uint)den_state_bigger, den_state, 
+				mul24((uint)!den_state_bigger, best_den_state));
+
+			// if (den_state > 0) {
+			// 	aux_ints_0[den_idx] = cel_idx;
+			// }
 		}
 
 		cel_tft_best_den_ids[cel_tft_idx] = best_den_id;
-		cel_tft_best_den_states[cel_tft_idx] = best_den_state;
+		cel_tft_best_den_states[cel_tft_idx] = best_den_state_raw;
 
-		// aux_ints_0[cel_tft_idx] = best_den_id;
+		// TODO: Might need a more sophisticated algorithm with a non-linear rate to determine pyr_state:
+		pyr_state = max(pyr_state, best_den_state);
+		// pyr_state += best_den_state;
+
+		// if (best_den_state > 0) {
+		// 	aux_ints_0[cel_tft_idx] = pyr_state;
+		// }
 	}
+	
+	// TODO: pyr_state: (see above)
+	pyr_states[cel_idx] = clamp(pyr_state, (uint)0, (uint)255);
 
-	//pyr_state = best_den_state;
-	pyr_states[cel_idx] = clamp(pyr_state, 0, 255);
+
+	// WTF?
+	// uchar pyr_state_bizarre = pyr_states[cel_idx];
+
+	// // aux_ints_1[cel_idx] = pyr_states[cel_idx];
+
+	// if (pyr_state != 0) {
+	// 	aux_ints_0[cel_idx] = pyr_states[cel_idx];
+	// 	// aux_ints_1[cel_idx] = pyr_states[cel_idx];
+	// }
+
+	// if (pyr_state_crazy != 0) {
+	// 	aux_ints_1[cel_idx] = pyr_states[cel_idx];
+	// }
+
 }
 
 
@@ -1134,6 +1201,8 @@ __kernel void mcol_output(
 	uint const v_size = get_global_size(0);
 	uint const u_size = get_global_size(1);
 
+	uint const cel_count = mul24(pyr_depth, mul24(v_size, u_size));
+
 	int idx_is_safe = 0;
 	uint const aff_out_axn_idx = axn_idx_3d_unsafe(aff_out_axn_slc, v_id, 0, u_id, 0, &idx_is_safe);
 	uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
@@ -1148,7 +1217,6 @@ __kernel void mcol_output(
 	int mcol_pyr_state_max = 0;
 
 	// Amalgamate the best dendrite out of every cell and cell tuft in the column:
-	// 
 	for (uint i = 0; i < pyr_depth; i++) {
 		uint const cel_idx = cel_idx_3d_unsafe(i, v_size, v_id, u_size, u_id);
 
@@ -1157,7 +1225,7 @@ __kernel void mcol_output(
 
 		for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
 			// uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
-			uint const cel_tft_idx = get_cel_tft_idx(cel_idx, tfts_per_cel, tft_id);
+			uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
 
 			pyr_best_den_state = max(pyr_best_den_state, 
 				cel_tft_best_den_states[cel_tft_idx]);

@@ -94,13 +94,13 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 
 	// Get a random cell and a random synapse on that cell:
 	let cel_coords = area.ptal_mut().rand_cel_coords();
+	let syn_coords = area.ptal_mut().dens_mut().syns_mut()
+		.rand_syn_coords(&cel_coords);
 
 	// Base slice for primary temporal pyramidals of our layer:
 	let ptal_axn_slc_idz = area.ptal_mut().base_axn_slc();
 	// assert!(ptal_axn_slc_idz == cel_coords.slc_id_lyr, "cel_coords axon slice mismatch");
 	assert_eq!(ptal_axn_slc_idz, cel_coords.axn_slc_id - cel_coords.slc_id_lyr);
-	let syn_coords = area.ptal_mut().dens_mut().syns_mut()
-		.rand_syn_coords(&cel_coords);
 
 	// Our cell's proximal source axon (the column spatial axon):
 	let prx_src_axn_idx = area.area_map().axn_idz(prx_src_slc) + cel_coords.col_id();
@@ -124,16 +124,23 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 
 	//================================ SYN RANGE ==================================
 	// A random dendrite id on the cell tuft:
-	// let den_id_cel_tft = 
-	// The synapse range for entire tuft in which our random synapse resides:
-	let syn_range = syn_coords.cel_syn_range_tftsec();
+	let syn_idx_range_den = syn_coords.syn_idx_range_den();
+	// The synapse range for the entire tuft in which our random synapse resides:
+	let syn_idx_range_tft = syn_coords.syn_idx_range_tft();
 
-	// The first half of the synapses on our tuft (UNUSED):
-	let syn_range_first_half = syn_range.start..(syn_range.start + syn_range.len() / 2);
+	// The first half of the synapses on our tuft:
+	// let syn_idx_range_tft_first_half = syn_idx_range_tft.start..(syn_idx_range_tft.start + syn_idx_range_tft.len() / 2);
 
 	// The second half of the synapses on our tuft:
-	let syn_range_second_half = (syn_range.start + syn_range.len() / 2)
-		..(syn_range.start + syn_range.len());
+	// let syn_idx_range_tft_second_half = (syn_idx_range_tft.start + syn_idx_range_tft.len() / 2)
+	// 	..(syn_idx_range_tft.start + syn_idx_range_tft.len());
+
+	// The first half of the synapses on our tuft:
+	// let syn_idx_range_den_first_half = syn_idx_range_den.start..(syn_idx_range_den.start + syn_idx_range_den.len() / 2);
+
+	// The second half of the synapses on our tuft:
+	let syn_idx_range_den_second_half = (syn_idx_range_den.start + syn_idx_range_den.len() / 2)
+		..(syn_idx_range_den.start + syn_idx_range_den.len());
 
 	// The synapse count for our cell's entire layer (all slices, cells, and tufts):
 	let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states.len();
@@ -141,7 +148,9 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	// Set the sources for the synapses on the second half of our chosen tuft to our preselected nearby axon:
 	// <<<<< TODO: IMPLEMENT THIS (for efficiency): >>>>>
 	// 		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range);
-	for syn_idx in syn_range_second_half.clone() {
+
+	// for syn_idx in syn_idx_range_den_second_half.clone() {
+	for syn_idx in syn_idx_range_tft.clone() {
 		area.ptal_mut().dens_mut().syns_mut().set_src_offs(fn_v_ofs, fn_u_ofs, syn_idx as usize);
 		area.ptal_mut().dens_mut().syns_mut().set_src_slc(fake_neighbor_slc, syn_idx as usize);
 	}
@@ -158,7 +167,8 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 		{mt}[col_out]: aff_out_axn_idx (aff_out_slc: {}, col_id: {}): {}, \n\n\
 		\
 		{mt}fn_v_ofs: {}, fn_u_ofs: {}, \n\
-		{mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_tft_range: {:?}, syn_active_range: {:?}, \n\
+		{mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_tft: {:?}, \n\
+		{mt}syn_active_range (2nd half): {:?}, \n\
 		{mt}syn_coords: {}",		
 
 		prx_src_slc, cel_coords.col_id(), prx_src_axn_idx,
@@ -167,7 +177,8 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 		aff_out_slc, cel_coords.col_id(), aff_out_axn_idx, 
 
 		fn_v_ofs, fn_u_ofs,
-		fake_neighbor_axn_val, syn_val, syn_range, syn_range_second_half, 
+		fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_tft, 
+		syn_idx_range_den_second_half, 
 		syn_coords,
 		mt = cmn::MT);
 
@@ -193,7 +204,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 
 
 	util::print_all(area, "\n - Confirm 0 - ");
-	util::confirm_syns(area, &syn_range_second_half, 0, 0, 0);
+	util::confirm_syns(area, &syn_idx_range_den_second_half, 0, 0, 0);
 
 	print!("\n");
 	// <<<<< TODO: VERIFY THAT MCOLS.OUTPUT() AXON IS ACTIVE (and print it's idx) >>>>>
@@ -222,7 +233,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	// area.mcols().output();
 
 	util::print_all(area, "\n - Confirm 1A - ");
-	util::confirm_syns(area, &syn_range_second_half, 0, 0, 0);
+	util::confirm_syns(area, &syn_idx_range_den_second_half, 0, 0, 0);
 
 	print!("\n");
 
@@ -243,7 +254,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	// area.mcols().output();
 
 	util::print_all(area, "\n - Confirm 1B - ");
-	util::confirm_syns(area, &syn_range_second_half, 0, 0, 0);
+	util::confirm_syns(area, &syn_idx_range_den_second_half, 0, 0, 0);
 
 	print!("\n");
 
@@ -266,7 +277,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	area.mcols().output();
 
 	util::print_all(area, "\n - Confirm 1C - ");
-	util::confirm_syns(area, &syn_range_second_half, 0, 0, 0);
+	util::confirm_syns(area, &syn_idx_range_den_second_half, 0, 0, 0);
 
 	print!("\n");
 
@@ -294,7 +305,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	// area.mcols().output();
 
 	util::print_all(area, "\n - Confirm 2A - ");
-	// util::confirm_syns(area, &syn_range_second_half, 0, 0, 0);
+	// util::confirm_syns(area, &syn_idx_range_den_second_half, 0, 0, 0);
 
 	print!("\n");
 
@@ -303,7 +314,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 
 	// MOVED THIS FROM 1B -- PROBABLY WAS IN WRONG SPOT
 	// printlny!("\nConfirming flag sets...");
-	// assert!(util::assert_neq_range(&area.ptal().dens().syns().flag_sets, &syn_range_second_half, 0));
+	// assert!(util::assert_neq_range(&area.ptal().dens().syns().flag_sets, &syn_idx_range_den_second_half, 0));
 
 	//=============================================================================
 	//=================================== 2B ===================================
@@ -323,7 +334,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	// area.mcols().output();
 
 	util::print_all(area, "\n - Confirm 2B - ");
-	// util::confirm_syns(area, &syn_range_first_half, 0, 0, 0);
+	// util::confirm_syns(area, &syn_idx_range_tft_first_half, 0, 0, 0);
 
 	print!("\n");
 
@@ -377,9 +388,9 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	println!("\n ========================== 4: Clean-up-ification ========================== \n");
 
 	printlny!("Cleaning up...");
-	area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, syn_range.clone());
-	area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, syn_range.clone());
-	area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, syn_range.clone());
+	area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, syn_idx_range_tft.clone());
+	area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, syn_idx_range_tft.clone());
+	area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, syn_idx_range_tft.clone());
 
 	print!("\n");
 	panic!(" -- DEBUGGING -- ");

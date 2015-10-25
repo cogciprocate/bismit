@@ -220,6 +220,7 @@ pub mod tests {
 		
 	}
 
+	// <<<<< TODO: NEEDS UPDATING TO MATCH / INTEGRATE WITH SYN_COORDS >>>>>
 	#[derive(Debug, Clone)]
 	pub struct DenCoords {
 		pub idx: u32,	
@@ -253,7 +254,7 @@ pub mod tests {
 			den_idz_cel_tft..(den_idz_cel_tft + dens_per_cel_tft)
 		}
 
-		pub fn cel_syn_range_tftsec(&self, syns_per_den_l2: u8) -> Range<usize> {			
+		pub fn syn_idx_range_tft(&self, syns_per_den_l2: u8) -> Range<usize> {			
 			let syn_idz_cel_tft = (den_idx(&self.layer_dims, self.tft_id, 
 				self.cel_coords.idx, 0) as usize) << syns_per_den_l2 as usize;
 			let syns_per_cel_tft = (self.layer_dims.per_tft() as usize) << syns_per_den_l2 as usize;
