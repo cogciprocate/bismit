@@ -49,25 +49,25 @@ bitflags! {
 
 // ACTIVATE, LEARN, CYCLE, & OUTPUT
 // pub fn ptal_alco(area: &mut CorticalArea, activ: bool, learn: bool, cycle: bool, output: bool) {
-pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches) {
+pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: bool) {
 
 	if switches.contains(ACTIVATE) {
-		printlny!("Activating...");
+		if print { printlny!("Activating..."); }
 		area.mcols().activate();
 	}
 
 	if switches.contains(LEARN) {
-		printlny!("Learning...");
+		if print { printlny!("Learning..."); }
 		area.ptal_mut().learn();
 	}
 
 	if switches.contains(CYCLE) {
-		printlny!("Cycling...");
+		if print { printlny!("Cycling..."); }
 		area.ptal_mut().cycle();
 	}
 
 	if switches.contains(OUTPUT) {
-		printlny!("Outputting...");
+		if print { printlny!("Outputting..."); }
 		area.mcols().output();
 	}
 }

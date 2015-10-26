@@ -18,6 +18,8 @@ use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
 use super::{ util };
 use super::util::{ NONE, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL };
 
+const LEARNING_ITERS_PER_CELL: usize = 5;
+const PRINT_DEBUG_INFO: bool = true;
 
 //=============================================================================
 //=============================================================================
@@ -85,8 +87,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 {
 	let aff_out_slcs = area.area_map().base_axn_slc_ids_by_flag(layer::AFFERENT_OUTPUT);
 	assert!(aff_out_slcs.len() == 1);
-	let aff_out_slc = aff_out_slcs[0];
-	
+	let aff_out_slc = aff_out_slcs[0];	
 
 	//=============================================================================
 	//=================================== INIT ====================================
@@ -107,14 +108,6 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 
 	// Our cell's axon:
 	let cel_axn_idx = cel_coords.cel_axn_idx(area.area_map());
-
-	// <<<<< TODO: CHECK THAT THIS CEL_AXN_IDX FALLS WITHIN THE CORRECT RANGE FOR
-	// PYRAMIDAL AXON INDEXES FOR THE LAYER >>>>>
-	// 
-	// !@$%!@#$!@#$!@#!@#$!    THIS IS CURRENTLY WRONG!     !$@!#$!@#$@#!$!@!$@#$
-// 
-// 						PROBABLY FIXED
-	//
 
 	// Our cell's COLUMN output axon:
 	let aff_out_axn_idx = area.area_map().axn_idz(aff_out_slc) + cel_coords.col_id();
@@ -159,7 +152,6 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	// PRINT ALL THE THINGS!:
 	let syn_val = area.ptal_mut().dens_mut().syns_mut().syn_state(syn_coords.idx);
 	let fake_neighbor_axn_val = area.axn_state(fake_neighbor_axn_idx as usize);
-
 	
 	println!("\nDEBUG INFO - PRINT ALL THE THINGS!: \n\
 		{mt}[prx_src]: prx_src_axn_idx (prx_src_slc: {}, col_id: {}): {} \n\
@@ -183,236 +175,197 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 		syn_coords,
 		mt = cmn::MT);
 
-
-
-
 	// This and every other util::print_all() is very expensive:
-	util::print_all(area, "\n - Confirm Init - ");
+	if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm Init - "); }
 
-	//=============================================================================
-	//===================================== 0 =====================================
-	//=============================================================================
-	println!("\n ========================== 0: Initialization ========================== \n");
+	for i in 0..LEARNING_ITERS_PER_CELL {
+		//=============================================================================
+		//===================================== 0 =====================================
+		//=============================================================================
+		println!("\n ========================== {}.0: Initialization ========================== \n", i);
+		println!(" ============================== {}.0.0 =============================== \n", i);
 
-	// Activate distal source axon:
-	printlny!("Activating distal source axon: [{}]...", fake_neighbor_axn_idx); 
-	area.activate_axon(fake_neighbor_axn_idx);
+		// Activate distal source axon:
+		printlny!("Activating distal source axon: [{}]...", fake_neighbor_axn_idx); 
+		area.activate_axon(fake_neighbor_axn_idx);
 
-	// Cycle and output for column:
-	// printlny!("Cycling and outputting: calling area.ptal_mut().cycle() and area.mcols().output()..."); 
-	// area.ptal_mut().cycle();
-	// area.mcols().output();
-	util::ptal_alco(area, CYCLE | OUTPUT);
+		util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
 
-	util::print_all(area, "\n - Confirm 0 - ");
-	util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
+		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 0 - "); }
+		// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
 
-	print!("\n");
-	// <<<<< TODO: VERIFY THAT MCOLS.OUTPUT() AXON IS ACTIVE (and print it's idx) >>>>>
-	// <<<<< TODO: CHECK CELL AXON (should be zero here and active on next step) >>>>>
+		print!("\n");
+		// <<<<< TODO: VERIFY THAT MCOLS.OUTPUT() AXON IS ACTIVE (and print it's idx) >>>>>
+		// <<<<< TODO: CHECK CELL AXON (should be zero here and active on next step) >>>>>
 
-	// Ensure key axons are active:
-	assert!(area.read_from_axon(fake_neighbor_axn_idx) > 0);
-	printlny!("Pyramidal cell fake neighbor axon is correctly active.");
+		// Ensure key axons are active:
+		assert!(area.read_from_axon(fake_neighbor_axn_idx) > 0);
+		printlny!("Pyramidal cell fake neighbor axon is correctly active.");
 
-	// Ensure minicolumn is predictive as a result of pyramidal activity:
-	assert!(area.mcols().flag_sets.read_idx_direct(cel_coords.col_id() as usize) == cmn::MCOL_IS_VATIC_FLAG);
-	printlny!("Minicolumn is correctly vatic (predictive).");
+		// Ensure minicolumn is predictive as a result of pyramidal activity:
+		assert!(area.mcols().flag_sets.read_idx_direct(cel_coords.col_id() as usize) == cmn::MCOL_IS_VATIC_FLAG);
+		printlny!("Minicolumn is correctly vatic (predictive).");
 
-	//=============================================================================
-	//==================================== 1A =====================================
-	//=============================================================================
-	println!("\n ========================== 1: Premonition ========================== ");
-	println!(" ============================== 1A =============================== \n");
+		//=============================================================================
+		//==================================== 1A =====================================
+		//=============================================================================
+		println!("\n ========================== {}.1: Premonition ========================== ", i);
+		println!(" ============================== {}.1.0 =============================== \n", i);
 
+		util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
 
-	// ACTIVATE ONLY
-	// printlny!("Activating pyramidals: calling area.mcols().activate()...");
-	// area.mcols().activate();
-	// area.ptal_mut().learn();
-	// area.ptal_mut().cycle();
-	// area.mcols().output();
-	util::ptal_alco(area, ACTIVATE);
+		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1A - "); }
+		// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
 
-	util::print_all(area, "\n - Confirm 1A - ");
-	util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
+		print!("\n");
 
-	print!("\n");
+		// Ensure our cell is flagged best in (mini) column:
+		assert!(area.ptal().flag_sets.read_idx_direct(cel_coords.idx() as usize) == cmn::CEL_BEST_IN_COL_FLAG);
+		printlny!("Our cell is correctly flagged best in column.");
 
-	// Ensure our cell is flagged best in (mini) column:
-	assert!(area.ptal().flag_sets.read_idx_direct(cel_coords.idx() as usize) == cmn::CEL_BEST_IN_COL_FLAG);
-	printlny!("Our cell is correctly flagged best in column.");
+		//=============================================================================
+		//================================= 1B ===================================
+		//=============================================================================
+		println!("\n ========================== {}.1.1 ========================== \n", i);
 
-	//=============================================================================
-	//================================= 1B ===================================
-	//=============================================================================
-	println!("\n ========================== 1B ========================== \n");
+		util::ptal_alco(area, LEARN, PRINT_DEBUG_INFO);
 
-	// ACTIVATE, LEARN &, CYCLE
-	// printlny!("Learning: calling area.ptal_mut().learn()...");
-	// area.mcols().activate();
-	// area.ptal_mut().learn();
-	// area.ptal_mut().cycle();
-	// area.mcols().output();
-	util::ptal_alco(area, LEARN);
+		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1B - "); }
+		// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
 
-	util::print_all(area, "\n - Confirm 1B - ");
-	util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
+		print!("\n");
 
-	print!("\n");
+		// <<<<< TODO: Ensure our cells synapses have not learned anything: >>>>>
 
-	// <<<<< TODO: Ensure our cells synapses have not learned anything: >>>>>
+		//=============================================================================
+		//=================================== 1C ===================================
+		//=============================================================================
+		println!("\n ========================== {}.1.2 ========================== \n", i);
 
-	//=============================================================================
-	//=================================== 1C ===================================
-	//=============================================================================
-	println!("\n ========================== 1C ========================== \n");
+		// ACTIVATE PTAL SYNAPSE SOURCE AXON
+		printlny!("Activating distal source axon: [{}]...", fake_neighbor_axn_idx);
+		area.activate_axon(fake_neighbor_axn_idx);
 
-	// ACTIVATE PTAL SYNAPSE SOURCE AXON
-	// printlny!("Activating distal source axon: [{}]...", fake_neighbor_axn_idx);
-	area.activate_axon(fake_neighbor_axn_idx);
+		util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
 
-	// ACTIVATE, LEARN &, CYCLE
-	// printlny!("Cycling and outputting: calling area.ptal_mut().cycle() and area.mcols().output()..."); 
-	// area.mcols().activate();
-	// area.ptal_mut().learn();
-	// area.ptal_mut().cycle();
-	// area.mcols().output();
-	util::ptal_alco(area, CYCLE | OUTPUT);
+		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1C - "); }
+		// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
 
-	util::print_all(area, "\n - Confirm 1C - ");
-	util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
+		print!("\n");
 
-	print!("\n");
+		//=============================================================================
+		//=================================== 2A ===================================
+		//=============================================================================
+		println!("\n ========================== {}.2: Vindication ========================== ", i);
+		println!(" ============================== {}.2.0 =============================== \n", i);
 
-	//=============================================================================
-	//=================================== 2A ===================================
-	//=============================================================================
-	println!("\n ========================== 2: Vindication ========================== ");
-	println!(" ============================== 2A =============================== \n");
+		// ACTIVATE COLUMN PSAL AXON
+		printlny!("Activating proximal source axon: [{}]...", prx_src_axn_idx);
+		area.activate_axon(prx_src_axn_idx);
+		// ACTIVATE PTAL SYNAPSE SOURCE AXON
+		printlny!("Activating distal source (neighbor) axon: [{}]...", prx_src_axn_idx);
+		area.activate_axon(fake_neighbor_axn_idx);
 
-	// PRINT SLICE MAP FOR REFERENCE
-	// area.area_map().print_slc_map();
+		util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
 
-	// ACTIVATE COLUMN PSAL AXON
-	printlny!("{cy}Activating proximal source axon: [{}]...{cd}", 
-		prx_src_axn_idx, cy = cmn::C_YEL, cd = cmn::C_DEFAULT);
-	area.activate_axon(prx_src_axn_idx);
-	// ACTIVATE PTAL SYNAPSE SOURCE AXON
-	// area.activate_axon(fake_neighbor_axn_idx as usize);
+		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2A - "); }
+		// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
 
-	// ACTIVATE, LEARN &, CYCLE
-	// printlny!("Activating pyramidals: calling area.mcols().activate()...");
-	// area.mcols().activate();
-	// area.ptal_mut().learn();
-	// area.ptal_mut().cycle();
-	// area.mcols().output();
-	util::ptal_alco(area, ACTIVATE);
+		print!("\n");
 
-	util::print_all(area, "\n - Confirm 2A - ");
-	// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
+		// ##### ADD ME: assert!(THE PYRAMIDAL OUTPUT AXON (NOT SOMA) IS ACTIVE)
+		// THIS IS CURRENTLY NOT ACTIVATING!!!
 
-	print!("\n");
+		// MOVED THIS FROM 1B -- PROBABLY WAS IN WRONG SPOT
+		// printlny!("\nConfirming flag sets...");
+		// assert!(util::assert_neq_range(&area.ptal().dens().syns().flag_sets, &syn_range_focus, 0));
 
-	// ##### ADD ME: assert!(THE PYRAMIDAL OUTPUT AXON (NOT SOMA) IS ACTIVE)
-	// THIS IS CURRENTLY NOT ACTIVATING!!!
+		//=============================================================================
+		//=================================== 2B ===================================
+		//=============================================================================
+		println!("\n ========================== {}.2.1 ========================== \n", i);
 
-	// MOVED THIS FROM 1B -- PROBABLY WAS IN WRONG SPOT
-	// printlny!("\nConfirming flag sets...");
-	// assert!(util::assert_neq_range(&area.ptal().dens().syns().flag_sets, &syn_range_focus, 0));
+		util::ptal_alco(area, LEARN, PRINT_DEBUG_INFO);
 
-	//=============================================================================
-	//=================================== 2B ===================================
-	//=============================================================================
-	println!("\n ========================== 2B ========================== \n");
+		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2B - "); }
+		// util::confirm_syns(area, &syn_idx_range_tft_first_half, 0, 0, 0);
 
-	// ACTIVATE COLUMN PSAL AXON
-	//area.activate_axon(prx_src_axn_idx as usize);
-	// ACTIVATE PTAL SYNAPSE SOURCE AXON
-	//area.activate_axon(fake_neighbor_axn_idx as usize);
+		print!("\n");
 
-	// ACTIVATE, LEARN &, CYCLE
-	// area.mcols().activate();
-	// printlny!("Learning: calling area.ptal_mut().learn()...");
-	// area.ptal_mut().learn();
-	// area.ptal_mut().cycle();
-	// area.mcols().output();
-	util::ptal_alco(area, LEARN);
+		// <<<<< TODO: assert!(chosen-half of syns are +1, others are -1) >>>>>
+		// CURRENTLY: indexes are a mess
 
-	util::print_all(area, "\n - Confirm 2B - ");
-	// util::confirm_syns(area, &syn_idx_range_tft_first_half, 0, 0, 0);
+		//=============================================================================
+		//=================================== 2C ===================================
+		//=============================================================================
+		println!("\n ========================== {}.2.2 ========================== \n", i);
 
-	print!("\n");
+		util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
 
-	// <<<<< TODO: assert!(chosen-half of syns are +1, others are -1) >>>>>
-	// CURRENTLY: indexes are a mess
+		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2C - "); }
 
-	//=============================================================================
-	//=================================== 2C ===================================
-	//=============================================================================
-	println!("\n ========================== 2C ========================== \n");
+		print!("\n");
 
-	// ACTIVATE COLUMN PSAL AXON
-	//area.activate_axon(prx_src_axn_idx as usize);
-	// ACTIVATE PTAL SYNAPSE SOURCE AXON
-	//area.activate_axon(fake_neighbor_axn_idx as usize);
+		//=============================================================================
+		//=================================== 3 ===================================
+		//=============================================================================
+		println!("\n ========================== {}.4: Continuation ========================== ", i);
+		println!(" =============================== {}.4.0 =============================== \n", i);
 
-	// ACTIVATE, LEARN &, CYCLE
-	// printlny!("Cycling and outputting: calling area.ptal_mut().cycle() and area.mcols().output()..."); 
-	// area.mcols().activate();
-	// area.ptal_mut().learn();
-	// area.ptal_mut().cycle();
-	// area.mcols().output();
-	util::ptal_alco(area, CYCLE | OUTPUT);
+		// ACTIVATE, LEARN, CYCLE, & OUTPUT multiple times without touching inputs:
+		let cont_iters = 10;
+		printlny!("Performing complete cycle(A|L|C|O) {} times...", cont_iters);
 
-	util::print_all(area, "\n - Confirm 2C - ");
+		for _ in 0..cont_iters {
+			util::ptal_alco(area, ALL, false);
+		}
 
-	print!("\n");
+		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
 
-	//=============================================================================
-	//=================================== 3 ===================================
-	//=============================================================================
-	println!("\n ========================== 3: Continuation ========================== ");
-	println!(" =============================== 3 =============================== \n");
+		print!("\n");
 
-	// printlny!("Deactivating input axons...");
-	// ZERO COLUMN PSAL AXON
-	// area.deactivate_axon(prx_src_axn_idx);
-	// ZERO PTAL SYNAPSE SOURCE AXON
-	// area.deactivate_axon(fake_neighbor_axn_idx);
+		//=============================================================================
+		//=================================== 3 ===================================
+		//=============================================================================
+		println!("\n ========================== {}.5: Deactivation ========================== ", i);
+		println!(" =============================== {}.5.0 =============================== \n", i);
 
-	// ACTIVATE, LEARN, CYCLE, & OUTPUT
-	util::ptal_alco(area, ALL);
+		// ZERO PTAL SYNAPSE SOURCE AXON
+		printlny!("Deactivating distal source (neighbor) axon..."); 
+		area.deactivate_axon(fake_neighbor_axn_idx);
 
-	util::print_all(area, "\n - Confirm 3 - ");
+		// ACTIVATE, LEARN, CYCLE, & OUTPUT
+		util::ptal_alco(area, CYCLE, PRINT_DEBUG_INFO);
 
-	print!("\n");
+		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
 
+		print!("\n");
 
-	//=============================================================================
-	//=================================== 4 ===================================
-	//=============================================================================
-	println!("\n ========================== 4: Termination ========================== ");
-	println!(" =============================== 4 =============================== \n");
+		//=============================================================================
+		//=================================== 4 ===================================
+		//=============================================================================
+		println!("\n ========================== {}.6: Termination ========================== ", i);
+		println!(" =============================== {}.6.0 =============================== \n", i);
 
-	printlny!("Deactivating input axons...");
-	// ZERO COLUMN PSAL AXON
-	area.deactivate_axon(prx_src_axn_idx);
-	// ZERO PTAL SYNAPSE SOURCE AXON
-	area.deactivate_axon(fake_neighbor_axn_idx);
+		// ZERO COLUMN PSAL AXON
+		printlny!("Deactivating proximal source axon...");
+		area.deactivate_axon(prx_src_axn_idx);
+		// ZERO PTAL SYNAPSE SOURCE AXON
+		// printlny!("Deactivating distal source (neighbor) axon...");
+		// area.deactivate_axon(fake_neighbor_axn_idx);
 
-	// ACTIVATE, LEARN &, CYCLE
-	// printlny!("Activating, learning, cycling, and outputting...");
-	util::ptal_alco(area, ALL);
+		util::ptal_alco(area, ACTIVATE | LEARN | OUTPUT, PRINT_DEBUG_INFO);
 
-	util::print_all(area, "\n - Confirm 3 - ");
+		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
 
-	print!("\n");
+		print!("\n");
+
+	}
 
 	//=============================================================================
 	//=================================== CLEAN UP ===================================
 	//=============================================================================
-	println!("\n ========================== 4: Clean-up-ification ========================== \n");
+	println!("\n ========================== Clean-up ========================== \n");
 
 	printlny!("Cleaning up...");
 	area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, syn_idx_range_tft.clone());
