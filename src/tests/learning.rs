@@ -1,4 +1,4 @@
-#![allow(non_snake_case)]
+#![allow(non_snake_case, unused_imports)]
 // use std::ops::{ Range };
 // use std::iter;
 // use std::io::{ Write };
@@ -16,6 +16,7 @@ use axon_space::{ AxonSpaceTest };
 // use cortex::{ Cortex };
 use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
 use super::{ util };
+use super::util::{ NONE, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL };
 
 
 //=============================================================================
@@ -85,7 +86,6 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	let aff_out_slcs = area.area_map().base_axn_slc_ids_by_flag(layer::AFFERENT_OUTPUT);
 	assert!(aff_out_slcs.len() == 1);
 	let aff_out_slc = aff_out_slcs[0];
-
 	
 
 	//=============================================================================
@@ -142,6 +142,8 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	let syn_idx_range_den_second_half = (syn_idx_range_den.start + syn_idx_range_den.len() / 2)
 		..(syn_idx_range_den.start + syn_idx_range_den.len());
 
+	let syn_range_focus = syn_idx_range_den_second_half;
+
 	// The synapse count for our cell's entire layer (all slices, cells, and tufts):
 	let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states.len();
 
@@ -149,8 +151,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	// <<<<< TODO: IMPLEMENT THIS (for efficiency): >>>>>
 	// 		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range);
 
-	// for syn_idx in syn_idx_range_den_second_half.clone() {
-	for syn_idx in syn_idx_range_tft.clone() {
+	for syn_idx in syn_range_focus.clone() {
 		area.ptal_mut().dens_mut().syns_mut().set_src_offs(fn_v_ofs, fn_u_ofs, syn_idx as usize);
 		area.ptal_mut().dens_mut().syns_mut().set_src_slc(fake_neighbor_slc, syn_idx as usize);
 	}
@@ -178,7 +179,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 
 		fn_v_ofs, fn_u_ofs,
 		fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_tft, 
-		syn_idx_range_den_second_half, 
+		syn_range_focus, 
 		syn_coords,
 		mt = cmn::MT);
 
@@ -198,13 +199,13 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	area.activate_axon(fake_neighbor_axn_idx);
 
 	// Cycle and output for column:
-	printlny!("Cycling and outputting: calling area.ptal_mut().cycle() and area.mcols().output()..."); 
-	area.ptal_mut().cycle();
-	area.mcols().output();
-
+	// printlny!("Cycling and outputting: calling area.ptal_mut().cycle() and area.mcols().output()..."); 
+	// area.ptal_mut().cycle();
+	// area.mcols().output();
+	util::ptal_alco(area, CYCLE | OUTPUT);
 
 	util::print_all(area, "\n - Confirm 0 - ");
-	util::confirm_syns(area, &syn_idx_range_den_second_half, 0, 0, 0);
+	util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
 
 	print!("\n");
 	// <<<<< TODO: VERIFY THAT MCOLS.OUTPUT() AXON IS ACTIVE (and print it's idx) >>>>>
@@ -225,15 +226,16 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	println!(" ============================== 1A =============================== \n");
 
 
-	// ACTIVATE, & LEARN ONLY
-	printlny!("Activating pyramidals: calling area.mcols().activate()...");
-	area.mcols().activate();
+	// ACTIVATE ONLY
+	// printlny!("Activating pyramidals: calling area.mcols().activate()...");
+	// area.mcols().activate();
 	// area.ptal_mut().learn();
 	// area.ptal_mut().cycle();
 	// area.mcols().output();
+	util::ptal_alco(area, ACTIVATE);
 
 	util::print_all(area, "\n - Confirm 1A - ");
-	util::confirm_syns(area, &syn_idx_range_den_second_half, 0, 0, 0);
+	util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
 
 	print!("\n");
 
@@ -247,14 +249,15 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	println!("\n ========================== 1B ========================== \n");
 
 	// ACTIVATE, LEARN &, CYCLE
-	printlny!("Learning: calling area.ptal_mut().learn()...");
+	// printlny!("Learning: calling area.ptal_mut().learn()...");
 	// area.mcols().activate();
-	area.ptal_mut().learn();
+	// area.ptal_mut().learn();
 	// area.ptal_mut().cycle();
 	// area.mcols().output();
+	util::ptal_alco(area, LEARN);
 
 	util::print_all(area, "\n - Confirm 1B - ");
-	util::confirm_syns(area, &syn_idx_range_den_second_half, 0, 0, 0);
+	util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
 
 	print!("\n");
 
@@ -270,14 +273,15 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	area.activate_axon(fake_neighbor_axn_idx);
 
 	// ACTIVATE, LEARN &, CYCLE
-	printlny!("Cycling and outputting: calling area.ptal_mut().cycle() and area.mcols().output()..."); 
+	// printlny!("Cycling and outputting: calling area.ptal_mut().cycle() and area.mcols().output()..."); 
 	// area.mcols().activate();
 	// area.ptal_mut().learn();
-	area.ptal_mut().cycle();
-	area.mcols().output();
+	// area.ptal_mut().cycle();
+	// area.mcols().output();
+	util::ptal_alco(area, CYCLE | OUTPUT);
 
 	util::print_all(area, "\n - Confirm 1C - ");
-	util::confirm_syns(area, &syn_idx_range_den_second_half, 0, 0, 0);
+	util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
 
 	print!("\n");
 
@@ -298,14 +302,15 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	// area.activate_axon(fake_neighbor_axn_idx as usize);
 
 	// ACTIVATE, LEARN &, CYCLE
-	printlny!("Activating pyramidals: calling area.mcols().activate()...");
-	area.mcols().activate();
+	// printlny!("Activating pyramidals: calling area.mcols().activate()...");
+	// area.mcols().activate();
 	// area.ptal_mut().learn();
 	// area.ptal_mut().cycle();
 	// area.mcols().output();
+	util::ptal_alco(area, ACTIVATE);
 
 	util::print_all(area, "\n - Confirm 2A - ");
-	// util::confirm_syns(area, &syn_idx_range_den_second_half, 0, 0, 0);
+	// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
 
 	print!("\n");
 
@@ -314,7 +319,7 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 
 	// MOVED THIS FROM 1B -- PROBABLY WAS IN WRONG SPOT
 	// printlny!("\nConfirming flag sets...");
-	// assert!(util::assert_neq_range(&area.ptal().dens().syns().flag_sets, &syn_idx_range_den_second_half, 0));
+	// assert!(util::assert_neq_range(&area.ptal().dens().syns().flag_sets, &syn_range_focus, 0));
 
 	//=============================================================================
 	//=================================== 2B ===================================
@@ -328,10 +333,11 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 
 	// ACTIVATE, LEARN &, CYCLE
 	// area.mcols().activate();
-	printlny!("Learning: calling area.ptal_mut().learn()...");
-	area.ptal_mut().learn();
+	// printlny!("Learning: calling area.ptal_mut().learn()...");
+	// area.ptal_mut().learn();
 	// area.ptal_mut().cycle();
 	// area.mcols().output();
+	util::ptal_alco(area, LEARN);
 
 	util::print_all(area, "\n - Confirm 2B - ");
 	// util::confirm_syns(area, &syn_idx_range_tft_first_half, 0, 0, 0);
@@ -352,11 +358,12 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	//area.activate_axon(fake_neighbor_axn_idx as usize);
 
 	// ACTIVATE, LEARN &, CYCLE
-	printlny!("Cycling and outputting: calling area.ptal_mut().cycle() and area.mcols().output()..."); 
+	// printlny!("Cycling and outputting: calling area.ptal_mut().cycle() and area.mcols().output()..."); 
 	// area.mcols().activate();
 	// area.ptal_mut().learn();
-	area.ptal_mut().cycle();
-	area.mcols().output();
+	// area.ptal_mut().cycle();
+	// area.mcols().output();
+	util::ptal_alco(area, CYCLE | OUTPUT);
 
 	util::print_all(area, "\n - Confirm 2C - ");
 
@@ -365,18 +372,38 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 	//=============================================================================
 	//=================================== 3 ===================================
 	//=============================================================================
-	println!("\n ========================== 3: Termination ========================== ");
+	println!("\n ========================== 3: Continuation ========================== ");
 	println!(" =============================== 3 =============================== \n");
 
-	printlny!("Deactivating all axons...");
+	// printlny!("Deactivating input axons...");
+	// ZERO COLUMN PSAL AXON
+	// area.deactivate_axon(prx_src_axn_idx);
+	// ZERO PTAL SYNAPSE SOURCE AXON
+	// area.deactivate_axon(fake_neighbor_axn_idx);
+
+	// ACTIVATE, LEARN, CYCLE, & OUTPUT
+	util::ptal_alco(area, ALL);
+
+	util::print_all(area, "\n - Confirm 3 - ");
+
+	print!("\n");
+
+
+	//=============================================================================
+	//=================================== 4 ===================================
+	//=============================================================================
+	println!("\n ========================== 4: Termination ========================== ");
+	println!(" =============================== 4 =============================== \n");
+
+	printlny!("Deactivating input axons...");
 	// ZERO COLUMN PSAL AXON
 	area.deactivate_axon(prx_src_axn_idx);
 	// ZERO PTAL SYNAPSE SOURCE AXON
 	area.deactivate_axon(fake_neighbor_axn_idx);
 
 	// ACTIVATE, LEARN &, CYCLE
-	printlny!("Activating, learning, cycling, and outputting...");
-	util::al_cycle(area);
+	// printlny!("Activating, learning, cycling, and outputting...");
+	util::ptal_alco(area, ALL);
 
 	util::print_all(area, "\n - Confirm 3 - ");
 

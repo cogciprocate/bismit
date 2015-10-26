@@ -353,15 +353,15 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 // TODO: VECTORIZE
 static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
 				__global uchar const* const syn_states,
-				uint const syn_idx_start,	// (syn_idz)
-				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
+				uint const syn_idz,	// (syn_idz)
+				uint const syns_per_den_l2, // MAKE THIS A GLOBAL?
 				uint const rnd,
 				__global uchar* const syn_flag_sets,
 				__global char* const syn_strengths) 
 {
-	uint const n = syn_idx_start + (1 << syns_per_den_l2);
+	uint const n = syn_idz + (1 << syns_per_den_l2);
 
-	for (uint i = syn_idx_start; i < n; i++) {
+	for (uint i = syn_idz; i < n; i++) {
 		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
 		uchar syn_flag_set = syn_flag_sets[i];
@@ -381,15 +381,15 @@ static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
 // TODO: VECTORIZE 
 static inline void cel_syns_trm( 			// TERMINATION
 				__global uchar const* const syn_states,
-				uint const syn_idx_start,	// (syn_idz)
-				uint const syns_per_tft_l2, // MAKE THIS A CONSTANT SOMEDAY
+				uint const syn_idz,	// (syn_idz)
+				uint const syns_per_tft_l2, // MAKE THIS A GLOBAL?
 				uint const rnd,
 				__global uchar* const syn_flag_sets,
 				__global char* const syn_strengths) 
 {
-	uint const n = syn_idx_start + (1 << syns_per_tft_l2);
+	uint const n = syn_idz + (1 << syns_per_tft_l2);
 
-	for (uint i = syn_idx_start; i < n; i++) {
+	for (uint i = syn_idz; i < n; i++) {
 		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
 		uchar syn_flag_set = syn_flag_sets[i];
@@ -410,14 +410,14 @@ static inline void cel_syns_trm( 			// TERMINATION
 // TODO: VECTORIZE 
 static inline void prx_syns__active__ltp_ltd( 
 				__global uchar const* const syn_states,
-				uint const syn_idx_start,
-				uint const syns_per_den_l2, // MAKE THIS A CONSTANT SOMEDAY
+				uint const syn_idz,
+				uint const syns_per_den_l2, // MAKE THIS A GLOBAL?
 				uint const rnd,
 				__global char* const syn_strengths) 
 {
-	uint const n = syn_idx_start + (1 << syns_per_den_l2);
+	uint const n = syn_idz + (1 << syns_per_den_l2);
 
-	for (uint i = syn_idx_start; i < n; i++) {
+	for (uint i = syn_idz; i < n; i++) {
 		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
 		int const inc = rnd_inc(rnd, i, syn_strength);
@@ -1036,42 +1036,40 @@ __kernel void pyrs_ltp(
 			// uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
 			uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
 			uint const den_idz_tft = cel_tft_idx << dens_per_tft_l2;
-			
+
 			uchar const den_id_tft_best = cel_tft_best_den_ids[cel_tft_idx];			
 
 			uint const syn_idz_tft = den_idz_tft << syns_per_den_l2;
 			uint const syn_idz_best_den_tft = (den_idz_tft + den_id_tft_best) << syns_per_den_l2;
 
-			/*##################
-				
-
+			/*
 				CURRENTLY DEPRESSING ALL SYNAPSES ON ALL TUFTS WITH THE SAME DEN_ID_TFT AS AN ACTIVE SYNAPSE
 
 				NEED TO CHECK THAT WE'RE ON THE RIGHT TUFT BEFORE DOING SHIT!
-
-
 			*/
 
-			if (cel_is_concrete) {
+			int const tuft_is_active = cel_tft_best_den_states[cel_tft_idx] != 0;
+
+			if (cel_is_concrete && tuft_is_active) {
 				// aux_ints_1[cel_tft_idx] = 10;
 
-				int const tuft_is_active = cel_tft_best_den_ids[cel_tft_idx];
-
-				if (cel_prev_vatic) { 
-					// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + (NOT)TRAIN NEW DEN
-					// SAME AS ANOMALY (BELOW) + (NOT)TRAIN A SECOND REDUNDANT DENDRITE AS WELL
+				// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + (NOT)TRAIN NEW DEN
+				// SAME AS ANOMALY (BELOW) + (NOT)TRAIN A SECOND REDUNDANT DENDRITE AS WELL
+				// ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+				if (cel_prev_vatic | cel_best_in_col) { 					
 					dst_syns__active__stp_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
 						syn_flag_sets, syn_strengths);
 
 					// aux_ints_1[cel_tft_idx] = 11;
-
-				} else if (cel_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
-				//} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-					dst_syns__active__stp_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
-						syn_flag_sets, syn_strengths);
-
-					// aux_ints_1[cel_tft_idx] = 12;
 				}
+
+				// } else if (cel_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
+				// //} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+				// 	dst_syns__active__stp_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
+				// 		syn_flag_sets, syn_strengths);
+
+				// 	// aux_ints_1[cel_tft_idx] = 12;
+				// }
 
 				cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
 
@@ -1237,7 +1235,7 @@ __kernel void mcol_output(
 		mcol_pyr_state_max = max(mcol_pyr_state_max, (int)pyr_state);
 	}
 
-	mcol_flag_sets[col_id] = mul24((mcol_pyr_state_max > 0), MCOL_IS_VATIC_FLAG);
+	mcol_flag_sets[col_id] = mul24((mcol_pyr_state_max != 0), MCOL_IS_VATIC_FLAG);
 	mcol_best_den_states[col_id] = mcol_den_state_max;
 	//axn_states[aff_out_axn_idx] = mul24(idx_is_safe, clamp(mcol_pyr_state_max + psa_cel_axn_state, 0, 255)); // N1
 	axn_states[aff_out_axn_idx] = clamp(mcol_pyr_state_max + psa_cel_axn_state, 0, 255);

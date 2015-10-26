@@ -20,22 +20,56 @@ use minicolumns::{ MinicolumnsTest };
 use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
 // use super::{ testbed };
 
-
 /*=============================================================================
 ===============================================================================
 =================================== UTILITY ===================================
 ===============================================================================
 =============================================================================*/
 
+bitflags! {
+	#[derive(Debug)]
+	flags PtalAlcoSwitches: u32 {
+		const NONE				= 0b00000000,
+		const ACTIVATE 			= 0b00000001,
+		const LEARN				= 0b00000010,
+		const CYCLE 			= 0b00000100,
+		const OUTPUT 		 	= 0b00001000,
+		const ALL 				= 0xFFFFFFFF,
+	}
+}
 
 
+// ACTIVATE, LEARN, CYCLE, & OUTPUT
+// pub fn al_cycle_depricate(area: &mut CorticalArea) {
+// 	area.mcols().activate();
+// 	area.ptal_mut().learn();
+// 	area.ptal_mut().cycle();
+// 	area.mcols().output();
+// }
 
-// CYCLE, ACTIVATE, & LEARN
-pub fn al_cycle(area: &mut CorticalArea) {
-	area.mcols().activate();
-	area.ptal_mut().learn();
-	area.ptal_mut().cycle();
-	area.mcols().output();
+// ACTIVATE, LEARN, CYCLE, & OUTPUT
+// pub fn ptal_alco(area: &mut CorticalArea, activ: bool, learn: bool, cycle: bool, output: bool) {
+pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches) {
+
+	if switches.contains(ACTIVATE) {
+		printlny!("Activating...");
+		area.mcols().activate();
+	}
+
+	if switches.contains(LEARN) {
+		printlny!("Learning...");
+		area.ptal_mut().learn();
+	}
+
+	if switches.contains(CYCLE) {
+		printlny!("Cycling...");
+		area.ptal_mut().cycle();
+	}
+
+	if switches.contains(OUTPUT) {
+		printlny!("Outputting...");
+		area.mcols().output();
+	}
 }
 
 
