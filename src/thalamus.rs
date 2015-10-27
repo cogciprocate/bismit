@@ -57,8 +57,8 @@ impl Thalamus {
 			let aff_len = area_map.axn_range_by_flag(layer::AFFERENT_INPUT).len();
 			let eff_len = area_map.axn_range_by_flag(layer::EFFERENT_INPUT).len();
 
-			tao.add_area(area_name, /*i,*/ aff_len, area_map.input_src_area_names(layer::AFFERENT_INPUT));
-			teo.add_area(area_name, /*i,*/ eff_len,	area_map.input_src_area_names(layer::EFFERENT_INPUT));
+			tao.add_area(area_name, /*i,*/ aff_len, area_map.input_src_area_names_by_flag(layer::AFFERENT_INPUT));
+			teo.add_area(area_name, /*i,*/ eff_len,	area_map.input_src_area_names_by_flag(layer::EFFERENT_INPUT));
 
 			println!("{}THALAMUS::NEW(): Area: '{}', aff_len: {}, eff_len: {}", cmn::MT, area_name, aff_len, eff_len);
 			assert!(aff_len > 0 || eff_len > 0, "Areas must have at least one afferent or efferent area.");

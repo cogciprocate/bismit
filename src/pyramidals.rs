@@ -77,6 +77,7 @@ impl PyramidalLayer {
 			//.arg_env(&energies) // <<<<< SLATED FOR REMOVAL
 			.arg_env(&tft_best_den_ids)
 			.arg_env(&tft_best_den_states)
+			.arg_env(&best_den_states)
 			.arg_env_named::<i32>("aux_ints_0", None)
 			.arg_env_named::<i32>("aux_ints_1", None)
 			.arg_env(&states) 

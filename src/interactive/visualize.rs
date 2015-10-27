@@ -1,7 +1,7 @@
 // use std::default::{ Default };
 use std::iter;
 // use std::fmt::{ Display };
-use std::ops::{ Range };
+// use std::ops::{ Range };
 use std::io::{ self, Write, /*Stdout*/ };
 //use std::borrow::{ Borrow };
 // use rand::{ self, ThreadRng, Rng };
@@ -24,10 +24,10 @@ pub const INITIAL_TEST_ITERATIONS: i32 		= 1;
 pub const STATUS_EVERY: i32 				= 5000;
 pub const PRINT_DETAILS_EVERY: i32			= 10000;
 
-pub const TOGGLE_DIRS: bool 				= false;
-pub const INTRODUCE_NOISE: bool 			= false;
-pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
-pub const COUNTER_RANDOM: bool				= false;
+// pub const TOGGLE_DIRS: bool 				= false;
+// pub const INTRODUCE_NOISE: bool 			= false;
+// pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
+// pub const COUNTER_RANDOM: bool				= false;
 const REPEATS_PER_IMAGE: usize 				= 1;
 
 
@@ -104,20 +104,20 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			// area_side / 2, area_side / 2,
 			// 128, 128,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-			Some(vec!["b1"]),
-			// None,
+			// Some(vec!["b1"]),
+			None,
 		)
 
-		.area("b1", "visual", 
-			// area_side * 2, area_side * 2,			
-			area_side, area_side,
-			// 16, 16,
-			//32, 32,
-			//256, 256,
-		 	None,		 	
-		 	// Some(vec!["a1"]),
-		 	None,
-		)
+		// .area("b1", "visual", 
+		// 	// area_side * 2, area_side * 2,			
+		// 	area_side, area_side,
+		// 	// 16, 16,
+		// 	//32, 32,
+		// 	//256, 256,
+		//  	None,		 	
+		//  	// Some(vec!["a1"]),
+		//  	None,
+		// )
 
 
 		// .area("a1", "visual", area_side, area_side, None, None)

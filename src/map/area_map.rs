@@ -90,7 +90,7 @@ impl AreaMap {
 		}
 	}
 
-	pub fn input_src_area_names(&self, layer_flags: layer::ProtolayerFlags) -> &Vec<&'static str> {
+	pub fn input_src_area_names_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> &Vec<&'static str> {
 		if layer_flags == layer::EFFERENT_INPUT {
 			//panic!("Fix me");
 			&self.proto_area_map.aff_areas
@@ -98,7 +98,7 @@ impl AreaMap {
 			//panic!("Fix me");
 			&self.proto_area_map.eff_areas
 		} else {
-			panic!("\nAreaMap::input_src_area_names(): Can only be called with an \
+			panic!("\nAreaMap::input_src_area_names_by_flag(): Can only be called with an \
 				input layer flag as argument");
 		}		
 	}
@@ -171,7 +171,7 @@ impl AreaMap {
 		build_options
 	}
 
-	pub fn base_axn_slc_ids_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> Vec<u8> {
+	pub fn axn_base_slc_ids_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> Vec<u8> {
 		// self.proto_layer_map.layer_with_flag(layer_flags).expect("Cannot find layer").base_slc()
 		let layers = self.proto_layer_map.layers_with_flag(layer_flags);
 		let mut slc_ids = Vec::with_capacity(layers.len());

@@ -722,7 +722,7 @@ mod tests {
 	// 	INPUT_SRC_AREAS():
 	//  <<<<< TODO: DEPRICATE OR WRAP AREA_MAP::INPUT_SRC_AREA_NAMES() >>>>>
 	// 		- REMINDER: AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
-	// pub fn input_src_area_names(&self, layer_flags: layer::ProtolayerFlags) -> Vec<&'static str> {
+	// pub fn input_src_area_names_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> Vec<&'static str> {
 	// 	 // let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
 	// 	 // 	'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
 	// 	// let layer = self.area_map.proto_layer_map().layer_with_flag(layer_flags);

@@ -1,12 +1,12 @@
 
-#define LTD_BIAS_LOG2					0
-#define LTP_BIAS_LOG2					0
+// #define LTD_BIAS_LOG2					0
+// #define LTP_BIAS_LOG2					0
 #define ENERGY_SETTING 					4
 #define ENERGY_RECHARGE					1
 
-#define FLAG_ON(flag_set, mask)			((flag_set) |= (mask))
-#define FLAG_OFF(flag_set, mask)		((flag_set) &= ~(mask))
-#define FLAG_EVAL(flag_set, mask)		(((flag_set) & (mask)) == (mask))
+// #define FLAG_ON(flag_set, mask)			((flag_set) |= (mask))
+// #define FLAG_OFF(flag_set, mask)		((flag_set) &= ~(mask))
+// #define FLAG_EVAL(flag_set, mask)		(((flag_set) & (mask)) == (mask))
 
 #define ENERGY_LEVEL_MIN				9		
 #define ENERGY_LEVEL_MAX				255
@@ -180,7 +180,7 @@ static inline int square(int const x) {
 
 
 static inline int rnd_inc(uint const rnd_a,	uint const rnd_b, char const syn_strength) {
-		return ((rnd_a ^ rnd_b) & 0x7F) > abs(syn_strength);
+	return ((rnd_a ^ rnd_b) & 0x7F) > abs(syn_strength);
 }
 
 
@@ -350,10 +350,17 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 ================================== LEARNING ===================================
 =============================================================================*/
 
-// TODO: VECTORIZE
-static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
+// DST_DEN_SYNS_LEARN_INIT(): 
+// 		- Occurs when a cell is active.
+// 		- Applies to a single dendrite on that cell.
+// 			- Must only be called with a syn_idz of the best (most active) dendrite on an active tuft on an active cell. 
+// 		- Is intended to handle both crystalization (predictions becoming or staying true) or anomalies (situations where no cell in the column had predicted the column's spatial input).
+//
+// 		STDEP set when depression has already been applied (needs to be cleared by trmn)
+// 		STPOT set when potentiation is due to be applied (by trmn)
+static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
 				__global uchar const* const syn_states,
-				uint const syn_idz,	// (syn_idz)
+				uint const syn_idz,	
 				uint const syns_per_den_l2, // MAKE THIS A GLOBAL?
 				uint const rnd,
 				__global uchar* const syn_flag_sets,
@@ -365,23 +372,41 @@ static inline void dst_syns__active__stp_ltd( 					// ANOMALY & CRYSTALLIZATION
 		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
 		uchar syn_flag_set = syn_flag_sets[i];
-
 		int const inc = rnd_inc(rnd, i, syn_strength);
-		int const syn_active = syn_state != 0;
-		syn_flag_set &= ~SYN_STP_FLAG;
+		int const syn_is_active = syn_state != 0;
+		int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == SYN_STPOT_FLAG;
+		int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == SYN_STDEP_FLAG;
 
-		syn_flag_set |= mul24(syn_active, SYN_STP_FLAG);
-		syn_strength -= mul24(!syn_active, inc << LTD_BIAS_LOG2);
+		// Synapse has either a short term potentiation or short term depression flag:
+		int const syn_has_stX_flag = (syn_has_stpot | syn_has_stdep);
+
+		// Synapse is active and does not have a short term depression or potentiation flag:
+		int const syn_needs_stpot = syn_is_active && !syn_has_stX_flag;
+		// Synapse is inactive and does not have a short term depression or potentiation flag:
+		int const syn_needs_stdep = !syn_is_active && !syn_has_stX_flag;
+
+		// If syn_needs_stdep, depress the synapse's strength by 'inc' (generally a 1 or 0) ...
+		// syn_strength -= mul24(syn_needs_stdep, inc);			
+
+		// Deactivate synapse short term potentiation and depression flags regardless of their states:
+		// syn_flag_set &= ~(SYN_STPOT_FLAG | SYN_STDEP_FLAG);
+
+		// If syn_needs_stpot activate STPOT flag:
+		syn_flag_set |= mul24(syn_needs_stpot, SYN_STPOT_FLAG);
+		// If syn_needs_stdep activate STDEP flag:
+		syn_flag_set |= mul24(syn_needs_stdep, SYN_STDEP_FLAG);
 
 		syn_flag_sets[i] = syn_flag_set;
 		syn_strengths[i] = syn_strength;
 	}
 }
 
-// TODO: VECTORIZE 
-static inline void cel_syns_trm( 			// TERMINATION
+// DST_TFT_SYNS_LEARN_TRMN(): Learning termination for a tuft:
+// 		- Occurs when a cell which had been active becomes inactive.
+// TODO: VECTORIZE
+static inline void tft_syns_trm( 
 				__global uchar const* const syn_states,
-				uint const syn_idz,	// (syn_idz)
+				uint const syn_idz,
 				uint const syns_per_tft_l2, // MAKE THIS A GLOBAL?
 				uint const rnd,
 				__global uchar* const syn_flag_sets,
@@ -394,13 +419,20 @@ static inline void cel_syns_trm( 			// TERMINATION
 		char syn_strength = syn_strengths[i];
 		uchar syn_flag_set = syn_flag_sets[i];
 		int const inc = rnd_inc(rnd, i, syn_strength);
-		int const syn_prev_stp = (syn_flag_set & SYN_STP_FLAG) == SYN_STP_FLAG;
-		int const syn_active = syn_state != 0;
+		int const syn_is_active = syn_state != 0;
+		int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == SYN_STPOT_FLAG;
+		int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == SYN_STDEP_FLAG;
 
-		syn_strength += mul24(syn_prev_stp && !syn_active, inc << LTP_BIAS_LOG2);
-		syn_strength -= mul24(syn_prev_stp && syn_active, inc << LTD_BIAS_LOG2);
+		// If synapse had STPOT flag and is now inactive (synapse correlated with cell activity):
+		syn_strength += mul24(syn_has_stpot && !syn_is_active, inc);
+		// If synapse had STPOT flag and is still active (synapse did not correllate with cell activity):
+		syn_strength -= mul24(syn_has_stpot && syn_is_active, inc);
 
-		syn_flag_set &= ~SYN_STP_FLAG;
+		// If synapse had STDEP flag:
+		syn_strength -= mul24(syn_has_stdep, inc);
+
+		// Deactivate synapse short term potentiation and depression flags regardless of their states:
+		syn_flag_set &= ~(SYN_STPOT_FLAG | SYN_STDEP_FLAG);
 
 		syn_flag_sets[i] = syn_flag_set;
 		syn_strengths[i] = syn_strength;
@@ -421,10 +453,10 @@ static inline void prx_syns__active__ltp_ltd(
 		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
 		int const inc = rnd_inc(rnd, i, syn_strength);
-		int const syn_active = syn_state != 0;
+		int const syn_is_active = syn_state != 0;
 
-		syn_strength += mul24(syn_active, inc);
-		syn_strength -= mul24(!syn_active, inc);
+		syn_strength += mul24(syn_is_active, inc);
+		syn_strength -= mul24(!syn_is_active, inc);
 
 		syn_strengths[i] = syn_strength;
 	}
@@ -824,7 +856,7 @@ __kernel void mcol_activate_pyrs(
 
 	int const mcol_is_active = psa_cel_axn_state != 0;
 	//int const mcol_active = mcol_state != 0;
-	int const mcol_any_pred = mcol_flag_set & MCOL_IS_VATIC_FLAG == MCOL_IS_VATIC_FLAG;
+	int const mcol_any_pred = (mcol_flag_set & MCOL_IS_VATIC_FLAG) == MCOL_IS_VATIC_FLAG;
 	int const pyr_is_vatic = (pyr_state != 0);
 
 	// DEBUG
@@ -865,42 +897,52 @@ __kernel void mcol_activate_pyrs(
 
 
 // PYRS_LTP(): Pyramidal long term potentiation and depression - adjusting synapse strengths
-//
-//	- For each pyramidal cell:
-//		- if cell axon is currently active:
-//			- cause learning to take place on its most active dendrite
-//		- if cell axon is currently inactive:
-//			- check to see if the cell's axon was previously active (by checking flag_set)
-//				- if so, depress (reduce strengths of) any currently active synapses
-//					- NOTE: The reasoning here is that any synapses which are active just after 
-//					(but not before) the cell was active are likely to be unrelated to its prior 
-//					activity. In other words, a rough implementation of 'real' LTD.
-//
-//	- TODO:
-//		- [incomplete] Vectorize (should be highly vectorizable)
-//		- reducing branching will be tough with this one
-//		- [in progress] Tests (check that flag_set and prev_best_den_id are robustly maintained)
-//
-//
-//		- if pyr_prev_concrete 
-//			- if pyr_concrete
-//			- if pyr_state
-//
-//		- if pyr_prev_pred
-//			- if pyr_concrete
-//			- if pyr_state
-//
-//	- Misc Notes:
-//
-//		- SYN(    -> STP) WHEN: (SYN_STATE > 0) AND (CEL_TANGIBLE) AND (CEL_BEST_IN_COLUMN)
-//		                    OR: (SYN_STATE > 0) AND (CEL_TANGIBLE) AND (CEL_PREV_PRED)
-//
-//		- MAINTAIN STP STATE AS LONG AS: (SYN_STATE > 0) AND (CEL_ACTIVE)
-//
-//		- SYN(STP -> LTP) ONLY WHEN: ((CEL_ACTIVE -> 0)) SAME TIME AS (SYN_STATE -> 0)
-//
+/*
 
-/* INDEXING EXAMPLE: <<<<< TODO: UPDATE TO CORRECT DENDRITE INDEXING >>>>>
+	First, to clarify:
+		- The term 'vatic' is meant to mean predictive or in a state of expectance. May be referred to (incorrectly) as fuzzy or 'fuz'. A few other (depricated) terms might be thrown around due to much renaming but basically if a pyramidal soma is active, that cell is vatic.
+		- the term 'concrete' is meant to mean that the cell has an active axon and therefore has not been inhibited by anything else (e.g. the most likely culprits, pyramidals within the same layer and column, our cells colleagues).
+
+	The learning process is as follows:
+		- For each pyramidal cell:
+			- If the cell is concrete AND {the cell *was* previously vatic OR it *is* the best in the column}:
+				- For each tuft on that cell:
+					- If tuft is active (i.e. has a best dendrite state != 0):
+						- Cause 'Learning Initiation' to take place on that most active dendrite (see below).
+			- If the cell's axon is not concrete but was previously (flag_set & CEL_PREV_CONCRETE_FLAG):
+				- 'Terminate' each tuft.				
+
+	Learning Initiation:
+		- 
+
+
+
+
+	- TODO:
+		- [incomplete] Vectorize (should be highly vectorizable)
+		- reducing branching will be tough with this one
+		- [in progress] Tests (check that flag_set and prev_best_den_id are robustly maintained)
+
+
+		- if pyr_prev_concrete 
+			- if pyr_concrete
+			- if pyr_state
+
+		- if pyr_prev_pred
+			- if pyr_concrete
+			- if pyr_state
+
+	- Misc Notes:
+
+		- SYN(    -> STPOT) WHEN: (SYN_STATE > 0) AND (CEL_TANGIBLE) AND (CEL_BEST_IN_COLUMN)
+		                    OR: (SYN_STATE > 0) AND (CEL_TANGIBLE) AND (CEL_PREV_PRED)
+
+		- MAINTAIN STPOT STATE AS LONG AS: (SYN_STATE > 0) AND (CEL_ACTIVE)
+
+		- SYN(STPOT -> LTP) ONLY WHEN: ((CEL_ACTIVE -> 0)) SAME TIME AS (SYN_STATE -> 0)
+
+
+	INDEXING EXAMPLE: <<<<< TODO: UPDATE TO CORRECT DENDRITE INDEXING >>>>>
 
 		Let's imagine we have an area in the cortex with the following properties:
 
@@ -987,7 +1029,7 @@ __kernel void mcol_activate_pyrs(
 					- Loop: tufts - Iterate through cell tufts.
 						- Function call: dendrites - For each tuft, if work needs to be done, pick the most active or previously active dendrite(s) then call a function is called which will ->
 						  Loop: synapses - Iterate through dendrite synapses.
-							- STP, LTP, and LTD take place on synapses within this the smallest loop.
+							- STPOT, LTP, and LTD take place on synapses within this the smallest loop.
 
 
 
@@ -1042,39 +1084,35 @@ __kernel void pyrs_ltp(
 			uint const syn_idz_tft = den_idz_tft << syns_per_den_l2;
 			uint const syn_idz_best_den_tft = (den_idz_tft + den_id_tft_best) << syns_per_den_l2;
 
-			/*
-				CURRENTLY DEPRESSING ALL SYNAPSES ON ALL TUFTS WITH THE SAME DEN_ID_TFT AS AN ACTIVE SYNAPSE
-
-				NEED TO CHECK THAT WE'RE ON THE RIGHT TUFT BEFORE DOING SHIT!
-			*/
-
 			int const tuft_is_active = cel_tft_best_den_states[cel_tft_idx] != 0;
 
-			if (cel_is_concrete && tuft_is_active) {
-				// aux_ints_1[cel_tft_idx] = 10;
+			if (cel_is_concrete) {
+				if (tuft_is_active) {
+					// aux_ints_1[cel_tft_idx] = 10;
 
-				// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN + (NOT)TRAIN NEW DEN
-				// SAME AS ANOMALY (BELOW) + (NOT)TRAIN A SECOND REDUNDANT DENDRITE AS WELL
-				// ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-				if (cel_prev_vatic | cel_best_in_col) { 					
-					dst_syns__active__stp_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
-						syn_flag_sets, syn_strengths);
+					// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN
+					// ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+					if (cel_prev_vatic | cel_best_in_col) { 					
+						dst_syns__active__stpot_stdep(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
+							syn_flag_sets, syn_strengths);
 
-					// aux_ints_1[cel_tft_idx] = 11;
+						// aux_ints_1[cel_tft_idx] = 11;
+					}
+
+					// } else if (cel_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
+					// //} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+					// 	dst_syns__active__stpot_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
+					// 		syn_flag_sets, syn_strengths);
+
+					// 	// aux_ints_1[cel_tft_idx] = 12;
+					// }
 				}
 
-				// } else if (cel_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
-				// //} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-				// 	dst_syns__active__stp_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
-				// 		syn_flag_sets, syn_strengths);
-
-				// 	// aux_ints_1[cel_tft_idx] = 12;
-				// }
-
+				// TODO: Could be moved into above if block
 				cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
 
 			} else if (cel_prev_concrete) {
-				cel_syns_trm(syn_states, syn_idz_tft, syns_per_den_l2 + dens_per_tft_l2, rnd, 
+				tft_syns_trm(syn_states, syn_idz_tft, syns_per_den_l2 + dens_per_tft_l2, rnd, 
 					syn_flag_sets, syn_strengths);
 
 				// aux_ints_1[cel_tft_idx] = 20;
@@ -1100,6 +1138,7 @@ __kernel void pyr_cycle(
 				__private uchar const dens_per_tft_l2,				
 				__global uchar* const cel_tft_best_den_ids,
 				__global uchar* const cel_tft_best_den_states,
+				__global uchar* const pyr_best_den_states,
 				__global int* const aux_ints_0,
 				__global int* const aux_ints_1,
 				__global uchar* const pyr_states) 
@@ -1108,6 +1147,7 @@ __kernel void pyr_cycle(
 	uint const cel_count = get_global_size(0);
 
 	uint pyr_state = 0;
+	uint pyr_best_den_state = 0;
 
 	for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
 		uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
@@ -1118,7 +1158,7 @@ __kernel void pyr_cycle(
 		uint best_den_id = 0;
 		// Used for activation and ultimately learning:
 		uint best_den_state_raw = 0;
-		// Used for pyr_state:
+		// Used for pyr_state and pyr_best_den_state:
 		uint best_den_state = 0;
  
 		for (uint den_id_tft = 0; den_id_tft < (1 << dens_per_tft_l2); den_id_tft++) {
@@ -1147,6 +1187,8 @@ __kernel void pyr_cycle(
 		cel_tft_best_den_ids[cel_tft_idx] = best_den_id;
 		cel_tft_best_den_states[cel_tft_idx] = best_den_state_raw;
 
+		pyr_best_den_state = max(pyr_best_den_state, best_den_state_raw);
+
 		// TODO: Might need a more sophisticated algorithm with a non-linear rate to determine pyr_state:
 		pyr_state = max(pyr_state, best_den_state);
 		// pyr_state += best_den_state;
@@ -1155,10 +1197,11 @@ __kernel void pyr_cycle(
 		// 	aux_ints_0[cel_tft_idx] = pyr_state;
 		// }
 	}
+
+	pyr_best_den_states[cel_idx] = pyr_best_den_state;
 	
 	// TODO: pyr_state: (see above)
 	pyr_states[cel_idx] = clamp(pyr_state, (uint)0, (uint)255);
-
 
 	// WTF?
 	// uchar pyr_state_bizarre = pyr_states[cel_idx];
@@ -1221,15 +1264,15 @@ __kernel void mcol_output(
 		uchar pyr_state = pyr_states[cel_idx];
 		uchar pyr_best_den_state = 0;
 
-		for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
-			// uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
-			uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
+		// for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
+		// 	// uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
+		// 	uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
 
-			pyr_best_den_state = max(pyr_best_den_state, 
-				cel_tft_best_den_states[cel_tft_idx]);
-		}
+		// 	pyr_best_den_state = max(pyr_best_den_state, 
+		// 		cel_tft_best_den_states[cel_tft_idx]);
+		// }
 
-		pyr_best_den_states[cel_idx] = pyr_best_den_state;
+		// pyr_best_den_states[cel_idx] = pyr_best_den_state;
 
 		mcol_den_state_max = max(mcol_den_state_max, pyr_best_den_state);		
 		mcol_pyr_state_max = max(mcol_pyr_state_max, (int)pyr_state);

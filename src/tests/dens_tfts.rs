@@ -40,14 +40,14 @@ fn test_cel() {
 	area.axns.states.set_all_to(0);
 
 	// Set source slice to an unused slice for all synapses:
-	let unused_slc_ids = area.area_map().base_axn_slc_ids_by_flag(layer::UNUSED_TESTING);
+	let unused_slc_ids = area.area_map().axn_base_slc_ids_by_flag(layer::UNUSED_TESTING);
 	assert!(unused_slc_ids.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
 	let zeroed_slc_id = unused_slc_ids[0];
 
 	area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(zeroed_slc_id);
 
 	// 'input' source slice which will be assigned to the synapses being tested:
-	// let src_slc_ids = area.area_map().base_axn_slc_ids_by_flag(layer::AFFERENT_INPUT);
+	// let src_slc_ids = area.area_map().axn_base_slc_ids_by_flag(layer::AFFERENT_INPUT);
 	// assert!(src_slc_ids.len() == 1);
 	// let src_slc_id = ;
 
@@ -61,7 +61,7 @@ fn test_cel() {
 	// Run tests:
 	for i in 0..CELS_TEST_ITERATIONS {
 		_test_rand_cel(area, zeroed_slc_id, unused_slc_ids[1], i);
-		learning::_test_pyr_learning(area, zeroed_slc_id, prx_src_slc_id, unused_slc_ids[1], i);
+		// learning::_test_pyr_learning(area, zeroed_slc_id, prx_src_slc_id, unused_slc_ids[1], i);
 	}
 }
 
@@ -163,7 +163,7 @@ fn test_dens() {
 	area.ptal_mut().dens_mut().set_all_to_zero(true);
 
 	// SET SOURCE SLICE TO UNUSED SLICE FOR EVERY SYNAPSE:
-	let zeroed_slc_id = area.area_map().base_axn_slc_ids_by_flag(layer::UNUSED_TESTING)[0];
+	let zeroed_slc_id = area.area_map().axn_base_slc_ids_by_flag(layer::UNUSED_TESTING)[0];
 	area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(zeroed_slc_id);
 
 	for i in 0..DENS_TEST_ITERATIONS {
@@ -183,7 +183,7 @@ fn test_dens() {
 
 		// GET SOURCE SLICE TO USE TO SIMULATE INPUT:
 		let cel_syn_range = den_coords.syn_idx_range_tft(area.ptal().dens().syns().syns_per_den_l2());
-		let src_slc_ids = area.area_map().base_axn_slc_ids_by_flag(layer::AFFERENT_INPUT);
+		let src_slc_ids = area.area_map().axn_base_slc_ids_by_flag(layer::AFFERENT_INPUT);
 		assert!(src_slc_ids.len() == 1);
 		let src_slc_id = src_slc_ids[0];
 

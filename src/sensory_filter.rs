@@ -26,7 +26,7 @@ impl SensoryFilter {
 				ocl: &OclProgQueue, 
 		) -> SensoryFilter 
 	{
-		let base_axn_slc_ids = area_map.base_axn_slc_ids_by_flag(layer::AFFERENT_INPUT);
+		let base_axn_slc_ids = area_map.axn_base_slc_ids_by_flag(layer::AFFERENT_INPUT);
 		assert!(base_axn_slc_ids.len() == 1);
 		let base_axn_slc = base_axn_slc_ids[0];
 
