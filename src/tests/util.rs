@@ -73,23 +73,44 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 }
 
 
-pub fn confirm_syns(area: &mut CorticalArea, syn_range: &Range<usize>, state_neq: u8, 
-		flag_set_eq: u8, strength_eq: i8) 
+// pub fn confirm_syns(area: &mut CorticalArea, syn_range: &Range<usize>, state_neq: u8, 
+// 		flag_set_eq: u8, strength_eq: i8) 
+// {
+// 	for syn_idx in syn_range.clone() {
+// 		area.ptal_mut().dens_mut().syns_mut().states.read();
+// 		area.ptal_mut().dens_mut().syns_mut().flag_sets.read();
+// 		area.ptal_mut().dens_mut().syns_mut().strengths.read();
+// 		assert!(area.ptal_mut().dens_mut().syns_mut().states[syn_idx] != state_neq);
+// 		assert!(area.ptal_mut().dens_mut().syns_mut().flag_sets[syn_idx] == flag_set_eq);
+// 		assert!(area.ptal_mut().dens_mut().syns_mut().strengths[syn_idx] == strength_eq);
+// 	}
+// }
+
+
+// pub fn assert_neq_range<T: OclNum>(env: &Envoy<T>, idx_range: Range<usize>, val_neq: T) -> bool {
+// 	for idx in idx_range {
+// 		if env.read_idx_direct(idx) == val_neq { return false };
+// 	}
+
+// 	true
+// }
+
+// pub fn assert_eq_range<T: OclNum>(env: &Envoy<T>, idx_range: Range<usize>, val_eq: T) -> bool {
+// 	for idx in idx_range.clone() {
+// 		if env.read_idx_direct(idx) != val_eq { return false };
+// 	}
+
+// 	true
+// }
+
+// ASSERT_RANGE():
+// 		- [FIXME] TODO: Use env.read_direct and read the entire range at once into a Vec.
+//		- [FIXME] TODO: See if using an iterator (map?) function would be more idiomatic.
+pub fn assert_range<T: OclNum, F>(env: &Envoy<T>, idx_range: Range<usize>, comp: F) -> bool 
+	where F : Fn(T) -> bool
 {
-	for syn_idx in syn_range.clone() {
-		area.ptal_mut().dens_mut().syns_mut().states.read();
-		area.ptal_mut().dens_mut().syns_mut().flag_sets.read();
-		area.ptal_mut().dens_mut().syns_mut().strengths.read();
-		assert!(area.ptal_mut().dens_mut().syns_mut().states[syn_idx] != state_neq);
-		assert!(area.ptal_mut().dens_mut().syns_mut().flag_sets[syn_idx] == flag_set_eq);
-		assert!(area.ptal_mut().dens_mut().syns_mut().strengths[syn_idx] == strength_eq);
-	}
-}
-
-
-pub fn assert_neq_range<T: OclNum>(env: &Envoy<T>, idx_range: &Range<usize>, val_neq: T) -> bool {
 	for idx in idx_range.clone() {
-		if env.read_idx_direct(idx) == val_neq { return false };
+		if !comp(env.read_idx_direct(idx)) { return false };
 	}
 
 	true
@@ -105,6 +126,10 @@ pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
 	area.mcols_mut().print_all();
 	area.print_axns();
 }
+
+// pub fn print_range(range: Range<usize>) -> String {
+// 	format!("{}..{}", range.start, range.end)
+// }
 
 
 pub fn compare_envoys<T: OclNum>(env1: &mut Envoy<T>, env2: &mut Envoy<T>) -> bool {	
@@ -137,7 +162,7 @@ pub fn compare_envoys<T: OclNum>(env1: &mut Envoy<T>, env2: &mut Envoy<T>) -> bo
 
 // TEST_NEARBY(): Ensure that elements near a focal index are equal to a particular value.
 //		- idz and idm (first and last elements) are also checked along with their nearby elements
-// <<<<< TODO: THIS FUNCTION NEEDS SERIOUS STREAMLINING & OPTIMIZATION >>>>>
+// <<<<< [FIXME] TODO: THIS FUNCTION NEEDS SERIOUS STREAMLINING & OPTIMIZATION >>>>>
 pub fn eval_others<T: OclNum>(env: &mut Envoy<T>, foc_idx: usize, other_val: T) {	// -> Result<(), &'static str>	
 	// let mut checklist = Vec::new();
 	let check_margin = 384;

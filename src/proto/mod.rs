@@ -17,21 +17,13 @@ pub use self::protocell::{ ProtocellKind, Protocell, DendriteKind, CellFlags };
 
 pub use self::protofilter::{ Protofilter };
 
+pub use self::protoinput::{ Protoinput };
+
 mod protofilter;
 //pub mod regions;
 mod proto_layer_map;
 mod proto_area_map;
 pub mod protolayer;
 mod protocell;
+mod protoinput;
 
-
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum Protoinput {
-	World,
-	Stripes { stripe_size: usize, zeros_first: bool },
-	Hexballs { edge_size: usize, invert: bool, fill: bool },
-	Exp1,
-	IdxReader { file_name: &'static str, repeats: usize, scale: f64 },
-	None,
-}

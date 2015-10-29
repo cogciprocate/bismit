@@ -31,6 +31,7 @@ pub struct IdxReader {
 	repeat_counter: usize,
 	frame_counter: usize,
 	frames_count: usize,
+	loop_frames: Option<u32>,
 	image_dim_count: usize,
 	image_width: usize,
 	image_height: usize,	
@@ -123,6 +124,7 @@ impl IdxReader {
 	    	repeat_counter: 0,
 	    	frame_counter: 0,
 	    	frames_count: dim_sizes[0],
+	    	loop_frames: None,
 	    	image_dim_count: magic_dims,
 	    	image_width: image_width,
 	    	image_height: image_height,	    	
@@ -141,6 +143,11 @@ impl IdxReader {
 	    	//dim_sizes: dim_sizes,
     	}
     }
+
+    pub fn loop_frames(mut self, frames_to_loop: u32) -> IdxReader {
+    	self.loop_frames = Some(frames_to_loop);
+    	self
+	}
 
     pub fn next(&mut self, ganglion_frame: &mut Sdr) -> usize {
     	assert!(ganglion_frame.len() == self.ganglion_dims.columns() as usize);
@@ -197,6 +204,16 @@ impl IdxReader {
 		if self.repeat_counter >= self.repeats_per_image {
 			self.repeat_counter = 0;
 			self.frame_counter += 1;
+
+			match self.loop_frames {
+				Some(frames_to_loop) => {
+					if self.frame_counter >= frames_to_loop as usize {
+						self.frame_counter = 0;
+					}
+				},
+
+				None => (),
+			}
 
 			if self.frame_counter >= self.frames_count {
 				self.frame_counter = 0;

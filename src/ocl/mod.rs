@@ -2,6 +2,7 @@
 use std::ptr;
 use std::mem;
 use std::io::{ Read };
+// use std::convert::{ From, Into };
 // use std::fs::{ File };
 use std::ffi;
 use std::iter;
@@ -71,7 +72,7 @@ pub trait OclNum: Integer + Copy + Clone + NumCast + Default + Zero + Display + 
 impl<T> OclNum for T where T: Integer + Copy + Clone + NumCast + Default + Zero + Display + Debug
 	+ FromPrimitive + ToPrimitive + UpperHex {}
 
-
+// + From<u32> + From<i32> + From<usize> + From<i8> + From<u8> + Into<usize> + Into<i8>
 /*=============================================================================
 ================================== FUNCTIONS ==================================
 =============================================================================*/

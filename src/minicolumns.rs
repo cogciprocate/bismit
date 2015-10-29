@@ -140,7 +140,7 @@ impl Minicolumns {
 			WorkSize::TwoDim(dims.v_size() as usize, dims.u_size() as usize))
 			//.arg_env(&ssts.soma())
 			.arg_env(&pyrs.soma())
-			.arg_env(&pyrs.tft_best_den_states)
+			// .arg_env(&pyrs.tft_best_den_states)
 			.arg_scl(pyrs.tfts_per_cel())
 			.arg_scl(ff_layer_axn_idz as u32)
 			.arg_scl(pyr_depth)

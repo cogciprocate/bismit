@@ -28,7 +28,7 @@ pub const PRINT_DETAILS_EVERY: i32			= 10000;
 // pub const INTRODUCE_NOISE: bool 			= false;
 // pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
 // pub const COUNTER_RANDOM: bool				= false;
-const REPEATS_PER_IMAGE: usize 				= 1;
+const REPEATS_PER_IMAGE: usize 				= 3;
 
 
 /* Eventually move defines to a config file or some such */
@@ -50,7 +50,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 		)
 
 		.layer("iii", 3, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(2, 5, vec!["iii"], 600)
+			Protocell::new_pyramidal(2, 4, vec!["iii"], 400)
 				.apical(vec!["eff_in"])
 				// .apical(vec!["unused"])
 		)
@@ -64,7 +64,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 }
 
 pub fn define_protoareas() -> ProtoAreaMaps {
-	let area_side = 32 as u32;
+	let area_side = 48 as u32;
 
 	let protoareas = ProtoAreaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
@@ -88,10 +88,11 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			area_side, area_side,
 			// area_side / 2, area_side / 2, 
 			// 32, 32,
-			Protoinput::IdxReader { 
+			Protoinput::IdxReaderLoop { 
 				file_name: "data/train-images-idx3-ubyte", 
 				repeats: REPEATS_PER_IMAGE, 
 				scale: 1.3,
+				loop_frames: 12,
 			},
 
 			None, 
@@ -112,7 +113,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 		// 	// area_side * 2, area_side * 2,			
 		// 	area_side, area_side,
 		// 	// 16, 16,
-		// 	//32, 32,
+		// 	// 32, 32,
 		// 	//256, 256,
 		//  	None,		 	
 		//  	// Some(vec!["a1"]),
@@ -150,7 +151,7 @@ pub fn run(autorun_iters: i32) -> bool {
 	/* ***** DISABLE STUFF ***** */	
 	/* ************************* */
 	for (area_name, area) in &mut cortex.areas {
-		// area.psal_mut().dens_mut().syns_mut().set_offs_to_zero();
+		// area.psal_mut().dens_mut().syns_mut().set_offs_to_zero_temp();
 		// area.bypass_inhib = true;
 		// area.bypass_filters = true;
 		// area.disable_pyrs = true;
@@ -238,7 +239,7 @@ pub fn run(autorun_iters: i32) -> bool {
 							 //continue;
 						},
 						None    => {
-							print!("\nInvalid number.\n");
+							print!("Invalid number.\n");
 							continue;
 						},
 					}
@@ -252,7 +253,7 @@ pub fn run(autorun_iters: i32) -> bool {
 				if cortex.valid_area(&new_area_name) {
 					area_name = new_area_name;
 				} else {
-					print!("\nInvalid area.");
+					print!("Invalid area.");
 				}
 				//continue;
 				bypass_act = true;

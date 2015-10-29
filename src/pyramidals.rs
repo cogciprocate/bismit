@@ -157,7 +157,7 @@ impl PyramidalLayer {
 
 impl DataCellLayer for PyramidalLayer {
 	fn learn(&mut self) {
-		self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<u32>());
+		self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>());
 		self.kern_ltp.enqueue();
 	}
 

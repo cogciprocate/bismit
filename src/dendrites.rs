@@ -16,7 +16,7 @@ use axon_space::{ AxonSpace };
 // use cortical_area:: { Aux };
 
 #[cfg(test)]
-pub use self::tests::{ DenCoords, DendritesTest };
+pub use self::tests::{ DenCoords, DendritesTest, den_idx };
 
 pub struct Dendrites {
 	layer_name: &'static str,

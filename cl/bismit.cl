@@ -179,8 +179,24 @@ static inline int square(int const x) {
 }
 
 
-static inline int rnd_inc(uint const rnd_a,	uint const rnd_b, char const syn_strength) {
-	return ((rnd_a ^ rnd_b) & 0x7F) > abs(syn_strength);
+static inline int rnd_mix(int const rnd_a, int seed) {
+	seed ^= (seed ^ rnd_a) << 13;
+	seed ^= seed >> 17;
+	seed ^= seed << 5;
+	return seed;
+}
+
+//aux_ints_1[cel_grp_id] = ((rnd ^ (cel_grp_id << 3)) & 0x7F);
+
+static inline int rnd_inc(int const rnd_a, int const seed, char const syn_strength) {
+	// return ((rnd_a ^ rnd_b) & 0x7F) > syn_strength;
+	return (rnd_mix(rnd_a, seed) & 0x7F) > syn_strength;
+}
+
+
+static inline int rnd_dec(int const rnd_a, int const seed, char const syn_strength) {
+	// return (-1 - ((rnd_a ^ rnd_b) & 0x7F)) < syn_strength;
+	return (-1 - (rnd_mix(rnd_a, seed) & 0x7F)) < syn_strength;
 }
 
 
@@ -350,6 +366,9 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 ================================== LEARNING ===================================
 =============================================================================*/
 
+// ISSUE: LOTS OF PROBLEMS WITH GLITCHES AND COMPILER BUGS ON THESE FUNCTIONS!
+// 		UPDATE: CATALYST 15.9 SEEMS TO HAVE FIXED SEVERAL (ALL?).
+
 // DST_DEN_SYNS_LEARN_INIT(): 
 // 		- Occurs when a cell is active.
 // 		- Applies to a single dendrite on that cell.
@@ -362,28 +381,28 @@ static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
 				__global uchar const* const syn_states,
 				uint const syn_idz,	
 				uint const syns_per_den_l2, // MAKE THIS A GLOBAL?
-				uint const rnd,
+				int const rnd,
 				__global uchar* const syn_flag_sets,
 				__global char* const syn_strengths) 
 {
 	uint const n = syn_idz + (1 << syns_per_den_l2);
 
 	for (uint i = syn_idz; i < n; i++) {
-		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
 		uchar syn_flag_set = syn_flag_sets[i];
-		int const inc = rnd_inc(rnd, i, syn_strength);
+		uchar const syn_state = syn_states[i];
+		// int const inc = rnd_inc(rnd, syn_idz + i, syn_strength);
 		int const syn_is_active = syn_state != 0;
-		int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == SYN_STPOT_FLAG;
-		int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == SYN_STDEP_FLAG;
+		int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == (SYN_STPOT_FLAG);
+		int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == (SYN_STDEP_FLAG);
 
 		// Synapse has either a short term potentiation or short term depression flag:
 		int const syn_has_stX_flag = (syn_has_stpot | syn_has_stdep);
 
 		// Synapse is active and does not have a short term depression or potentiation flag:
-		int const syn_needs_stpot = syn_is_active && !syn_has_stX_flag;
+		int const syn_needs_stpot = syn_is_active && (!syn_has_stX_flag);
 		// Synapse is inactive and does not have a short term depression or potentiation flag:
-		int const syn_needs_stdep = !syn_is_active && !syn_has_stX_flag;
+		int const syn_needs_stdep = (!syn_is_active) && (!syn_has_stX_flag);
 
 		// If syn_needs_stdep, depress the synapse's strength by 'inc' (generally a 1 or 0) ...
 		// syn_strength -= mul24(syn_needs_stdep, inc);			
@@ -391,12 +410,17 @@ static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
 		// Deactivate synapse short term potentiation and depression flags regardless of their states:
 		// syn_flag_set &= ~(SYN_STPOT_FLAG | SYN_STDEP_FLAG);
 
+
 		// If syn_needs_stpot activate STPOT flag:
-		syn_flag_set |= mul24(syn_needs_stpot, SYN_STPOT_FLAG);
+		syn_flag_set = syn_flag_set | mul24(syn_needs_stpot, (SYN_STPOT_FLAG)) 
+			| mul24(syn_needs_stdep, (SYN_STDEP_FLAG));
 		// If syn_needs_stdep activate STDEP flag:
-		syn_flag_set |= mul24(syn_needs_stdep, SYN_STDEP_FLAG);
+		// syn_flag_set |= mul24(syn_needs_stdep, (SYN_STDEP_FLAG));
 
 		syn_flag_sets[i] = syn_flag_set;
+		// syn_flag_sets[i] = ;
+		// syn_flag_sets[i] = 2 | 1;
+
 		syn_strengths[i] = syn_strength;
 	}
 }
@@ -408,7 +432,7 @@ static inline void tft_syns_trm(
 				__global uchar const* const syn_states,
 				uint const syn_idz,
 				uint const syns_per_tft_l2, // MAKE THIS A GLOBAL?
-				uint const rnd,
+				int const rnd,
 				__global uchar* const syn_flag_sets,
 				__global char* const syn_strengths) 
 {
@@ -418,18 +442,20 @@ static inline void tft_syns_trm(
 		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
 		uchar syn_flag_set = syn_flag_sets[i];
-		int const inc = rnd_inc(rnd, i, syn_strength);
+		int const should_inc = rnd_inc(rnd, (syn_idz + i), syn_strength);
+		int const should_dec = rnd_dec(rnd, (syn_idz + i), syn_strength);
 		int const syn_is_active = syn_state != 0;
 		int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == SYN_STPOT_FLAG;
 		int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == SYN_STDEP_FLAG;
 
 		// If synapse had STPOT flag and is now inactive (synapse correlated with cell activity):
-		syn_strength += mul24(syn_has_stpot && !syn_is_active, inc);
+		syn_strength += mul24(syn_has_stpot && !syn_is_active, should_inc);
+
 		// If synapse had STPOT flag and is still active (synapse did not correllate with cell activity):
-		syn_strength -= mul24(syn_has_stpot && syn_is_active, inc);
+		syn_strength -= mul24(syn_has_stpot && syn_is_active, should_dec);
 
 		// If synapse had STDEP flag:
-		syn_strength -= mul24(syn_has_stdep, inc);
+		syn_strength -= mul24(syn_has_stdep, should_dec);
 
 		// Deactivate synapse short term potentiation and depression flags regardless of their states:
 		syn_flag_set &= ~(SYN_STPOT_FLAG | SYN_STDEP_FLAG);
@@ -444,7 +470,7 @@ static inline void prx_syns__active__ltp_ltd(
 				__global uchar const* const syn_states,
 				uint const syn_idz,
 				uint const syns_per_den_l2, // MAKE THIS A GLOBAL?
-				uint const rnd,
+				int const rnd,
 				__global char* const syn_strengths) 
 {
 	uint const n = syn_idz + (1 << syns_per_den_l2);
@@ -452,7 +478,7 @@ static inline void prx_syns__active__ltp_ltd(
 	for (uint i = syn_idz; i < n; i++) {
 		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
-		int const inc = rnd_inc(rnd, i, syn_strength);
+		int const inc = rnd_inc(rnd, syn_idz + i, syn_strength);
 		int const syn_is_active = syn_state != 0;
 
 		syn_strength += mul24(syn_is_active, inc);
@@ -465,7 +491,7 @@ static inline void prx_syns__active__ltp_ltd(
 
 
 
-
+// Just to squelch 'unused' warnings:
 __kernel void reference_all_the_things(__private int const for_sanitys_sake) {
 	//get_axn_u_size_vec4((uchar4)0);
 	cel_idx_3d_unsafe_vec4((uchar4)0, (int4)0, (int4)0, (int4)0, (int4)0);
@@ -1049,7 +1075,7 @@ __kernel void pyrs_ltp(
 				__private uint const syns_per_den_l2,
 				__private uint const cels_per_cel_grp,
 				__private uint const axn_idz_cel_lyr,
-				__private uint const rnd,
+				__private int const rnd,
 				__global uchar* const syn_flag_sets,
 				__global uchar* const cel_flag_sets,
 				__global int* const aux_ints_0,
@@ -1061,6 +1087,9 @@ __kernel void pyrs_ltp(
 	uint const cel_count = mul24(cel_grp_count, cels_per_cel_grp);
 	uint const cel_idz_cel_grp = mul24(cel_grp_id, cels_per_cel_grp);
 	// uint const axn_idz_cel_grp = axn_idz_cel_lyr + cel_idz_cel_grp;
+
+	// aux_ints_1[cel_grp_id] = -1 - (rnd_mix(rnd, cel_grp_id) & 0x7F);
+	// aux_ints_1[cel_grp_id] = rnd_mix(rnd, cel_grp_id);
  
 	for (uint cel_id_cel_grp = 0; cel_id_cel_grp < cels_per_cel_grp; cel_id_cel_grp++) {
 		uint const cel_idx = cel_idz_cel_grp + cel_id_cel_grp;
@@ -1070,9 +1099,9 @@ __kernel void pyrs_ltp(
 
 		int const cel_is_concrete = axn_states[cel_axn_idx] != 0;
 		int const cel_is_vatic = cel_states[cel_idx] != 0;
-		int const cel_prev_concrete = (cel_flag_set & CEL_PREV_CONCRETE_FLAG) == CEL_PREV_CONCRETE_FLAG;
-		int const cel_prev_vatic = (cel_flag_set & CEL_PREV_VATIC_FLAG) == CEL_PREV_VATIC_FLAG;
-		int const cel_best_in_col = (cel_flag_set & CEL_BEST_IN_COL_FLAG) == CEL_BEST_IN_COL_FLAG;
+		int const cel_prev_concrete = (cel_flag_set & (CEL_PREV_CONCRETE_FLAG)) == (CEL_PREV_CONCRETE_FLAG);
+		int const cel_prev_vatic = (cel_flag_set & (CEL_PREV_VATIC_FLAG)) == (CEL_PREV_VATIC_FLAG);
+		int const cel_best_in_col = (cel_flag_set & (CEL_BEST_IN_COL_FLAG)) == (CEL_BEST_IN_COL_FLAG);
 
 		for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
 			// uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
@@ -1086,13 +1115,17 @@ __kernel void pyrs_ltp(
 
 			int const tuft_is_active = cel_tft_best_den_states[cel_tft_idx] != 0;
 
-			if (cel_is_concrete) {
+			if (cel_is_concrete) {				
+
 				if (tuft_is_active) {
-					// aux_ints_1[cel_tft_idx] = 10;
+					// aux_ints_0[cel_tft_idx] = cel_prev_vatic;
+					// aux_ints_1[cel_tft_idx] = cel_best_in_col;
+
 
 					// PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN
 					// ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-					if (cel_prev_vatic | cel_best_in_col) { 					
+					if (cel_prev_vatic | cel_best_in_col) { 
+						// aux_ints_1[cel_tft_idx] = 10;					
 						dst_syns__active__stpot_stdep(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
 							syn_flag_sets, syn_strengths);
 
@@ -1225,7 +1258,7 @@ __kernel void pyr_cycle(
 //
 __kernel void mcol_output(
 				__global uchar const* const pyr_states,				
-				__global uchar const* const cel_tft_best_den_states,
+				// __global uchar const* const cel_tft_best_den_states,
 				__private uint const tfts_per_cel,
 				__private uint const sst_axn_idz,
 				__private uchar const pyr_depth,
@@ -1262,7 +1295,7 @@ __kernel void mcol_output(
 		uint const cel_idx = cel_idx_3d_unsafe(i, v_size, v_id, u_size, u_id);
 
 		uchar pyr_state = pyr_states[cel_idx];
-		uchar pyr_best_den_state = 0;
+		uchar pyr_best_den_state = pyr_best_den_states[cel_idx];
 
 		// for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
 		// 	// uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);

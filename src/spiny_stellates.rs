@@ -150,7 +150,8 @@ impl SpinyStellateLayer {
 
 	pub fn learn(&mut self) {
 		//print!("[R:{}]", self.rng.gen::<i32>());
-		self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<u32>());
+		let rnd = self.rng.gen::<u32>();
+		self.kern_ltp.set_arg_scl_named("rnd", rnd);
 		self.kern_ltp.enqueue();
 	}
 

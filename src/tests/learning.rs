@@ -5,7 +5,7 @@ use std::ops::{ Range };
 // use std::mem;
 // use rand;
 
-use ocl::{ EnvoyTest };
+use ocl::{ EnvoyTest, OclNum };
 use proto::{ layer };
 // use ocl;
 use cortical_area::{ CorticalArea, CorticalAreaTest };
@@ -18,9 +18,12 @@ use cmn::{ self, CelCoords, DataCellLayer, DataCellLayerTest };
 use super::{ util, testbed };
 use super::util::{ NONE, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL };
 
-const LEARNING_TEST_ITERATIONS: usize = 1; //50;
-const LEARNING_ITERS_PER_CELL: usize = 5;
+// const LEARNING_TEST_ITERATIONS: usize = 5; //50;
+const LEARNING_ITERS_PER_CELL: usize = 1;
+const LEARNING_CONTINUATION_ITERS: usize = 4;
+
 const PRINT_DEBUG_INFO: bool = true;
+const PRINT_FINAL_ITER_ONLY: bool = false;
 
 //=============================================================================
 //=============================================================================
@@ -87,9 +90,12 @@ const PRINT_DEBUG_INFO: bool = true;
 #[test]
 fn test_dst_den_learning() {
 	let mut ltb = LearningTestBed::new();
-	ltb.run();
+	ltb.test1();
 
+	print!("\n");
+	panic!(" -- DEBUGGING -- ");
 }
+
 
 
 pub struct LearningTestBed {
@@ -103,8 +109,12 @@ pub struct LearningTestBed {
 	aff_out_axn_idx: u32, 
 	cel_axn_idx: u32,
 
+	fake_v_ofs: i8,
+	fake_u_ofs: i8,
+
 	syn_coords: SynCoords,
-	syn_range_focus: Range<usize>,
+	focus_syns: Range<usize>,
+	off_focus_syns: Range<usize>,
 
 	cortex: Cortex,
 }
@@ -121,8 +131,11 @@ impl LearningTestBed {
 			fake_neighbor_axn_idx, 
 			aff_out_axn_idx, 
 			cel_axn_idx,
+			fake_v_ofs,
+			fake_u_ofs,
 			syn_coords,
-			syn_range_focus) = {
+			focus_syns,
+			off_focus_syns) = {
 
 			let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
@@ -171,7 +184,8 @@ impl LearningTestBed {
 			let aff_out_axn_idx = area.area_map().axn_idz(aff_out_slc) + cel_coords.col_id();
 
 			// A random, nearby axon for our cell to use as a distal source axon:
-			let (fn_v_ofs, fn_u_ofs, fn_col_id, fake_neighbor_axn_idx) = area.rand_safe_src_axn(&cel_coords, fake_neighbor_slc);
+			let (fake_v_ofs, fake_u_ofs, fn_col_id, fake_neighbor_axn_idx) = 
+				area.rand_safe_src_axn(&cel_coords, fake_neighbor_slc);
 
 			//================================ SYN RANGE ==================================
 			// A random dendrite id on the cell tuft:
@@ -187,13 +201,16 @@ impl LearningTestBed {
 			// 	..(syn_idx_range_tft.start + syn_idx_range_tft.len());
 
 			// The first half of the synapses on our tuft:
-			// let syn_idx_range_den_first_half = syn_idx_range_den.start..(syn_idx_range_den.start + syn_idx_range_den.len() / 2);
+			let syn_idx_range_den_first_half = syn_idx_range_den.start..(syn_idx_range_den.start 
+				+ syn_idx_range_den.len() / 2);
 
 			// The second half of the synapses on our tuft:
 			let syn_idx_range_den_second_half = (syn_idx_range_den.start + syn_idx_range_den.len() / 2)
 				..(syn_idx_range_den.start + syn_idx_range_den.len());
 
-			let syn_range_focus = syn_idx_range_den_second_half;
+			let focus_syns = syn_idx_range_den_second_half;
+			let off_focus_syns = syn_idx_range_den_first_half;
+					
 
 			// The synapse count for our cell's entire layer (all slices, cells, and tufts):
 			let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states.len();
@@ -202,8 +219,8 @@ impl LearningTestBed {
 			// <<<<< TODO: IMPLEMENT THIS (for efficiency): >>>>>
 			// 		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range);
 
-			for syn_idx in syn_range_focus.clone() {
-				area.ptal_mut().dens_mut().syns_mut().set_src_offs(fn_v_ofs, fn_u_ofs, syn_idx as usize);
+			for syn_idx in focus_syns.clone() {
+				area.ptal_mut().dens_mut().syns_mut().set_src_offs(fake_v_ofs, fake_u_ofs, syn_idx as usize);
 				area.ptal_mut().dens_mut().syns_mut().set_src_slc(fake_neighbor_slc, syn_idx as usize);
 			}		
 			
@@ -219,7 +236,7 @@ impl LearningTestBed {
 				{mt}[cel_axn]: cel_axn_idx (cel_coords.axn_slc_id: {}, col_id: {}): {} \n\
 				{mt}[col_out]: aff_out_axn_idx (aff_out_slc: {}, col_id: {}): {}, \n\n\
 				\
-				{mt}fn_v_ofs: {}, fn_u_ofs: {}, \n\
+				{mt}fake_v_ofs: {}, fake_u_ofs: {}, \n\
 				{mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_tft: {:?}, \n\
 				{mt}syn_active_range (2nd half): {:?}, \n\
 				{mt}syn_coords: {}",		
@@ -229,9 +246,9 @@ impl LearningTestBed {
 				cel_coords.axn_slc_id, cel_coords.col_id(), cel_axn_idx,
 				aff_out_slc, cel_coords.col_id(), aff_out_axn_idx, 
 
-				fn_v_ofs, fn_u_ofs,
+				fake_v_ofs, fake_u_ofs,
 				fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_tft, 
-				syn_range_focus, 
+				focus_syns, 
 				syn_coords,
 				mt = cmn::MT);
 
@@ -243,8 +260,11 @@ impl LearningTestBed {
 			fake_neighbor_axn_idx, 
 			aff_out_axn_idx, 
 			cel_axn_idx,
+			fake_v_ofs,
+			fake_u_ofs,
 			syn_coords,
-			syn_range_focus)
+			focus_syns,
+			off_focus_syns,)
 		};
 
 		LearningTestBed {
@@ -258,348 +278,91 @@ impl LearningTestBed {
 			aff_out_axn_idx: aff_out_axn_idx, 
 			cel_axn_idx: cel_axn_idx,
 
+			fake_v_ofs: fake_v_ofs,
+			fake_u_ofs: fake_u_ofs,
+
 			syn_coords: syn_coords,
-			syn_range_focus: syn_range_focus,
+			focus_syns: focus_syns,
+			off_focus_syns: off_focus_syns,
 
 			cortex: cortex,
 		}
 	}
 
+
 	// Run tests:
-	fn run(&mut self) {
-		let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
-
+	/*
+			Possible options and things to test:
+				- Activating synapses on more than one cell or tuft at a time.
+				- Activate other dendrites on a tuft to make sure best den is working correctly.
+				- Randomizing or having irregular groupings of active synapses on a dendrite (using a list of ranges).
+	
+	*/
+	fn test1(&mut self) {
 		for i in 0..LEARNING_ITERS_PER_CELL {
-			//=============================================================================
-			//===================================== 0 =====================================
-			//=============================================================================
-			println!("\n ========================== {}.0: Initialization ========================== ", i);
-			println!(" ============================== {}.0.0 =============================== \n", i);
-
-			// Activate distal source axon:
-			printlny!("Activating distal source (neighbor) axon: [{}]...", self.fake_neighbor_axn_idx);
-			area.activate_axon(self.fake_neighbor_axn_idx);
-
-			util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
-
-			if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 0 - "); }
-			// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
-
-			print!("\n");
-			// <<<<< TODO: VERIFY THAT MCOLS.OUTPUT() AXON IS ACTIVE (and print it's idx) >>>>>
-			// <<<<< TODO: CHECK CELL AXON (should be zero here and active on next step) >>>>>
-
-			// Ensure key axons are active:
-			assert!(area.read_from_axon(self.fake_neighbor_axn_idx) > 0);
-			printlny!("Pyramidal cell fake neighbor axon is correctly active.");
-
-			// Ensure minicolumn is predictive as a result of pyramidal activity:
-			// [FIXME] TODO: REENABLE BELOW!
-			// assert!(area.mcols().flag_sets.read_idx_direct(cel_coords.col_id() as usize) == cmn::MCOL_IS_VATIC_FLAG);
-			// printlny!("Minicolumn is correctly vatic (predictive).");
-
-			//=============================================================================
-			//==================================== 1A =====================================
-			//=============================================================================
-			println!("\n ========================== {}.1: Premonition ========================== ", i);
-			println!(" ============================== {}.1.0 =============================== \n", i);
-
-			util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
-
-			if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1A - "); }
-			// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
-
-			print!("\n");
-
-			// Ensure our cell is flagged best in (mini) column:
-			// [FIXME] TODO: REENABLE BELOW!
-			// assert!(area.ptal().flag_sets.read_idx_direct(cel_coords.idx() as usize) == cmn::CEL_BEST_IN_COL_FLAG);
-			// printlny!("Our cell is correctly flagged best in column.");
-
-			//=============================================================================
-			//================================= 1B ===================================
-			//=============================================================================
-			println!("\n ========================== {}.1.1 ========================== \n", i);
-
-			util::ptal_alco(area, LEARN, PRINT_DEBUG_INFO);
-
-			if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1B - "); }
-			// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
-
-			print!("\n");
-
-			// <<<<< TODO: Ensure our cells synapses have not learned anything: >>>>>
-
-			//=============================================================================
-			//=================================== 1C ===================================
-			//=============================================================================
-			println!("\n ========================== {}.1.2 ========================== \n", i);
-
-			// ACTIVATE PTAL SYNAPSE SOURCE AXON
-			// printlny!("Activating distal source axon: [{}]...", fake_neighbor_axn_idx);
-			// area.activate_axon(fake_neighbor_axn_idx);
-
-			util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
-
-			if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1C - "); }
-			// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
-
-			print!("\n");
-
-			//=============================================================================
-			//=================================== 2A ===================================
-			//=============================================================================
-			println!("\n ========================== {}.2: Vindication ========================== ", i);
-			println!(" ============================== {}.2.0 =============================== \n", i);
-
-			// ACTIVATE COLUMN PSAL AXON
-			printlny!("Activating proximal source axon: [{}]...", self.prx_src_axn_idx);
-			area.activate_axon(self.prx_src_axn_idx);
-			// ACTIVATE PTAL SYNAPSE SOURCE AXON
-			// printlny!("Activating distal source (neighbor) axon: [{}]...", fake_neighbor_axn_idx);
-			// area.activate_axon(fake_neighbor_axn_idx);
-
-			util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
-
-			if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2A - "); }
-			// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
-
-			print!("\n");
-
-			// ##### ADD ME: assert!(THE PYRAMIDAL OUTPUT AXON (NOT SOMA) IS ACTIVE)
-			// THIS IS CURRENTLY NOT ACTIVATING!!!
-
-			// MOVED THIS FROM 1B -- PROBABLY WAS IN WRONG SPOT
-			// printlny!("\nConfirming flag sets...");
-			// assert!(util::assert_neq_range(&area.ptal().dens().syns().flag_sets, &syn_range_focus, 0));
-
-			//=============================================================================
-			//=================================== 2B ===================================
-			//=============================================================================
-			println!("\n ========================== {}.2.1 ========================== \n", i);
-
-			util::ptal_alco(area, LEARN, PRINT_DEBUG_INFO);
-
-			if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2B - "); }
-			// util::confirm_syns(area, &syn_idx_range_tft_first_half, 0, 0, 0);
-
-			print!("\n");
-
-			// <<<<< TODO: assert!(chosen-half of syns are +1, others are -1) >>>>>
-			// CURRENTLY: indexes are a mess
-
-			//=============================================================================
-			//=================================== 2C ===================================
-			//=============================================================================
-			println!("\n ========================== {}.2.2 ========================== \n", i);
-
-			util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
-
-			if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2C - "); }
-
-			print!("\n");
-
-			//=============================================================================
-			//=================================== 3 ===================================
-			//=============================================================================
-			println!("\n ========================== {}.4: Continuation ========================== ", i);
-			println!(" =============================== {}.4.0 =============================== \n", i);
-
-			// ACTIVATE, LEARN, CYCLE, & OUTPUT multiple times without touching inputs:
-			let cont_iters = 3;
-			printlny!("Performing complete cycle(A|L|C|O) {} times...", cont_iters);
-
-			for _ in 0..cont_iters {
-				util::ptal_alco(area, ALL, false);
-			}
-
-			if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
-
-			print!("\n");
-
-			//=============================================================================
-			//=================================== 3 ===================================
-			//=============================================================================
-			println!("\n ========================== {}.5: Deactivation ========================== ", i);
-			println!(" =============================== {}.5.0 =============================== \n", i);
-
-			// ZERO PTAL SYNAPSE SOURCE AXON
-			printlny!("Deactivating distal source (neighbor) axon..."); 
-			area.deactivate_axon(self.fake_neighbor_axn_idx);
-
-			util::ptal_alco(area, CYCLE, PRINT_DEBUG_INFO);
-			// util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
-
-			if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
-
-			print!("\n");
-
-			//=============================================================================
-			//=================================== 4 ===================================
-			//=============================================================================
-			println!("\n ========================== {}.6: Termination ========================== ", i);
-			println!(" =============================== {}.6.0 =============================== \n", i);
-
-			// ZERO COLUMN PSAL AXON
-			printlny!("Deactivating proximal source axon...");
-			area.deactivate_axon(self.prx_src_axn_idx);
-			// ZERO PTAL SYNAPSE SOURCE AXON
-			// printlny!("Deactivating distal source (neighbor) axon...");
-			// area.deactivate_axon(fake_neighbor_axn_idx);
-
-			// util::ptal_alco(area, ALL, PRINT_DEBUG_INFO);
-			util::ptal_alco(area, ACTIVATE | LEARN | OUTPUT, PRINT_DEBUG_INFO);
-
-			if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
-
-			print!("\n");		
+			self.learning_iter(i);			
 		}
 
-		//=============================================================================
-		//=================================== CLEAN UP ===================================
-		//=============================================================================
-		println!("\n ========================== Clean-up ========================== \n");
+		self.flip_focus_syns();
 
-		printlny!("Cleaning up...");
-		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(self.unused_slc_id, 
-			self.syn_coords.syn_idx_range_tft().clone());
-		area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, 
-			self.syn_coords.syn_idx_range_tft().clone());
-		area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, 
-			self.syn_coords.syn_idx_range_tft().clone());
-		area.ptal_mut().dens_mut().syns_mut().strengths.set_range_to(0, 
-			self.syn_coords.syn_idx_range_tft().clone());
+		for i in 0..LEARNING_ITERS_PER_CELL {
+			self.learning_iter(i);			
+		}
 
-		// TODO: CLEAN UP SYN STRENGTHS
-
-		print!("\n");
-		panic!(" -- DEBUGGING -- ");
-	}
-}
-
-pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_slc: u8,
-			fake_neighbor_slc: u8, iter: usize) 
-{
-	// Afferent output slice id:
-	let aff_out_slcs = area.area_map().axn_base_slc_ids_by_flag(layer::AFFERENT_OUTPUT);
-	assert!(aff_out_slcs.len() == 1);
-	let aff_out_slc = aff_out_slcs[0];
-
-	// Get a random cell and a random synapse on that cell:
-	let cel_coords = area.ptal_mut().rand_cel_coords();
-	let syn_coords = area.ptal_mut().dens_mut().syns_mut()
-		.rand_syn_coords(&cel_coords);
-
-	// Base slice for primary temporal pyramidals of our layer:
-	let ptal_axn_slc_idz = area.ptal_mut().base_axn_slc();
-	// assert!(ptal_axn_slc_idz == cel_coords.slc_id_lyr, "cel_coords axon slice mismatch");
-	assert_eq!(ptal_axn_slc_idz, cel_coords.axn_slc_id - cel_coords.slc_id_lyr);
-
-	// Our cell's proximal source axon (the column spatial axon):
-	let prx_src_axn_idx = area.area_map().axn_idz(prx_src_slc) + cel_coords.col_id();
-
-	// Our cell's axon:
-	let cel_axn_idx = cel_coords.cel_axn_idx(area.area_map());
-
-	// Our cell's COLUMN output axon:
-	let aff_out_axn_idx = area.area_map().axn_idz(aff_out_slc) + cel_coords.col_id();
-
-	// A random, nearby axon for our cell to use as a distal source axon:
-	let (fn_v_ofs, fn_u_ofs, fn_col_id, fake_neighbor_axn_idx) = area.rand_safe_src_axn(&cel_coords, fake_neighbor_slc);
-
-	//================================ SYN RANGE ==================================
-	// A random dendrite id on the cell tuft:
-	let syn_idx_range_den = syn_coords.syn_idx_range_den();
-	// The synapse range for the entire tuft in which our random synapse resides:
-	let syn_idx_range_tft = syn_coords.syn_idx_range_tft();
-
-	// The first half of the synapses on our tuft:
-	// let syn_idx_range_tft_first_half = syn_idx_range_tft.start..(syn_idx_range_tft.start + syn_idx_range_tft.len() / 2);
-
-	// The second half of the synapses on our tuft:
-	// let syn_idx_range_tft_second_half = (syn_idx_range_tft.start + syn_idx_range_tft.len() / 2)
-	// 	..(syn_idx_range_tft.start + syn_idx_range_tft.len());
-
-	// The first half of the synapses on our tuft:
-	// let syn_idx_range_den_first_half = syn_idx_range_den.start..(syn_idx_range_den.start + syn_idx_range_den.len() / 2);
-
-	// The second half of the synapses on our tuft:
-	let syn_idx_range_den_second_half = (syn_idx_range_den.start + syn_idx_range_den.len() / 2)
-		..(syn_idx_range_den.start + syn_idx_range_den.len());
-
-	let syn_range_focus = syn_idx_range_den_second_half;
-
-	// The synapse count for our cell's entire layer (all slices, cells, and tufts):
-	let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states.len();
-
-	// Set the sources for the synapses on the second half of our chosen tuft to our preselected nearby axon:
-	// <<<<< TODO: IMPLEMENT THIS (for efficiency): >>>>>
-	// 		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range);
-
-	for syn_idx in syn_range_focus.clone() {
-		area.ptal_mut().dens_mut().syns_mut().set_src_offs(fn_v_ofs, fn_u_ofs, syn_idx as usize);
-		area.ptal_mut().dens_mut().syns_mut().set_src_slc(fake_neighbor_slc, syn_idx as usize);
+		self.clean_up(true);
 	}
 
-	// PRINT ALL THE THINGS!:
-	let syn_val = area.ptal_mut().dens_mut().syns_mut().syn_state(syn_coords.idx);
-	let fake_neighbor_axn_val = area.axn_state(fake_neighbor_axn_idx as usize);
 	
-	// This and every other util::print_all() is very expensive:
-	if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm Init - "); }
 
-	for i in 0..LEARNING_ITERS_PER_CELL {
+
+	fn learning_iter(&mut self, i: usize) {
+		let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+		let syn_idx = self.syn_coords.idx();
+		let den_idx = self.syn_coords.den_idx();
+		let tft_idx = self.syn_coords.tft_idx();
+		let cel_idx = self.syn_coords.cel_coords.idx();
+		let col_id = self.syn_coords.cel_coords.col_id();
+
+		let final_iter = i == (LEARNING_ITERS_PER_CELL - 1);
+		let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
+			&& PRINT_DEBUG_INFO;
 
 		//=============================================================================
 		//===================================== 0 =====================================
 		//=============================================================================
 		println!("\n ========================== {}.0: Initialization ========================== ", i);
-
-		println!("DEBUG INFO - PRINT ALL THE THINGS!: \n\
-			{mt}[prx_src]: prx_src_axn_idx (prx_src_slc: {}, col_id: {}): {} \n\
-			{mt}[dst_src]: fake_neighbor_axn_idx (''_slc: {}, col_id: {}): {}, \n\
-			{mt}[cel_axn]: cel_axn_idx (cel_coords.axn_slc_id: {}, col_id: {}): {} \n\
-			{mt}[col_out]: aff_out_axn_idx (aff_out_slc: {}, col_id: {}): {}, \n\n\
-			\
-			{mt}fn_v_ofs: {}, fn_u_ofs: {}, \n\
-			{mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_tft: {:?}, \n\
-			{mt}syn_active_range (2nd half): {:?}, \n\
-			{mt}syn_coords: {}",		
-
-			prx_src_slc, cel_coords.col_id(), prx_src_axn_idx,
-			fake_neighbor_slc, fn_col_id, fake_neighbor_axn_idx, 
-			cel_coords.axn_slc_id, cel_coords.col_id(), cel_axn_idx,
-			aff_out_slc, cel_coords.col_id(), aff_out_axn_idx, 
-
-			fn_v_ofs, fn_u_ofs,
-			fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_tft, 
-			syn_range_focus, 
-			syn_coords,
-			mt = cmn::MT);
-
 		println!(" ============================== {}.0.0 =============================== \n", i);
 
 		// Activate distal source axon:
-		printlny!("Activating distal source (neighbor) axon: [{}]...", fake_neighbor_axn_idx);
-		area.activate_axon(fake_neighbor_axn_idx);
+		printlny!("Activating distal source (neighbor) axon: [{}]...", self.fake_neighbor_axn_idx);
+		area.activate_axon(self.fake_neighbor_axn_idx);
 
-		util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
+		util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
 
-		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 0 - "); }
-		// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
+		if print_debug { util::print_all(area, "\n - Confirm 0 - "); }
 
 		print!("\n");
-		// <<<<< TODO: VERIFY THAT MCOLS.OUTPUT() AXON IS ACTIVE (and print it's idx) >>>>>
-		// <<<<< TODO: CHECK CELL AXON (should be zero here and active on next step) >>>>>
+		// util::assert_neq_range(, self.focus_syns.clone(), 0);
+		util::assert_range(&area.ptal().dens().syns().states, self.focus_syns.clone(), 
+			| x | x != 0 );
+
+		// printlny!("Synapses in range '{}..{}' are correctly active.", self.focus_syns.start, self.focus_syns.end);
+		assert!(area.ptal().dens().states_raw.read_idx_direct(den_idx as usize) != 0);
+		// printlny!("Dendrite '{}' is correctly active.", den_idx);
+		assert!(area.ptal().best_den_states.read_idx_direct(cel_idx as usize) != 0);
+		// printlny!("Cell best dendrite state is correct.");
+		assert!(area.ptal().tft_best_den_ids.read_idx_direct(tft_idx as usize) as u32 
+			== self.syn_coords.den_id_tft);
+		assert!(area.ptal().tft_best_den_states.read_idx_direct(tft_idx as usize) != 0);
+		// assert!(area.mcols().flag_sets.read_idx_direct(col_id as usize) == cmn::MCOL_IS_VATIC_FLAG);
+		// printlny!("Minicolumn is correctly vatic (predictive).");
 
 		// Ensure key axons are active:
-		assert!(area.read_from_axon(fake_neighbor_axn_idx) > 0);
+		assert!(area.read_from_axon(self.fake_neighbor_axn_idx) > 0);
 		printlny!("Pyramidal cell fake neighbor axon is correctly active.");
 
-		// Ensure minicolumn is predictive as a result of pyramidal activity:
-		// [FIXME] TODO: REENABLE BELOW!
-		// assert!(area.mcols().flag_sets.read_idx_direct(cel_coords.col_id() as usize) == cmn::MCOL_IS_VATIC_FLAG);
-		// printlny!("Minicolumn is correctly vatic (predictive).");
+		// <<<<< [FIXME] TODO: VERIFY THAT MCOLS.OUTPUT() AXON IS ACTIVE (and print it's idx) >>>>>
+		// <<<<< [FIXME] TODO: CHECK CELL AXON (should be zero here and active on next step) >>>>>			
 
 		//=============================================================================
 		//==================================== 1A =====================================
@@ -607,10 +370,9 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 		println!("\n ========================== {}.1: Premonition ========================== ", i);
 		println!(" ============================== {}.1.0 =============================== \n", i);
 
-		util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
+		util::ptal_alco(area, ACTIVATE, print_debug);
 
-		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1A - "); }
-		// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
+		// if print_debug { util::print_all(area, "\n - Confirm 1A - "); }
 
 		print!("\n");
 
@@ -624,10 +386,9 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 		//=============================================================================
 		println!("\n ========================== {}.1.1 ========================== \n", i);
 
-		util::ptal_alco(area, LEARN, PRINT_DEBUG_INFO);
+		util::ptal_alco(area, LEARN, print_debug);
 
-		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1B - "); }
-		// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
+		if print_debug { util::print_all(area, "\n - Confirm 1B - "); }
 
 		print!("\n");
 
@@ -642,10 +403,9 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 		// printlny!("Activating distal source axon: [{}]...", fake_neighbor_axn_idx);
 		// area.activate_axon(fake_neighbor_axn_idx);
 
-		util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
+		util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
 
-		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1C - "); }
-		// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
+		// if print_debug { util::print_all(area, "\n - Confirm 1C - "); }
 
 		print!("\n");
 
@@ -656,16 +416,16 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 		println!(" ============================== {}.2.0 =============================== \n", i);
 
 		// ACTIVATE COLUMN PSAL AXON
-		printlny!("Activating proximal source axon: [{}]...", prx_src_axn_idx);
-		area.activate_axon(prx_src_axn_idx);
+		printlny!("Activating proximal source axon: [{}]...", self.prx_src_axn_idx);
+		area.activate_axon(self.prx_src_axn_idx);
+
 		// ACTIVATE PTAL SYNAPSE SOURCE AXON
 		// printlny!("Activating distal source (neighbor) axon: [{}]...", fake_neighbor_axn_idx);
 		// area.activate_axon(fake_neighbor_axn_idx);
 
-		util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
+		util::ptal_alco(area, ACTIVATE, print_debug);
 
-		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2A - "); }
-		// util::confirm_syns(area, &syn_range_focus, 0, 0, 0);
+		if print_debug { util::print_all(area, "\n - Confirm 2A - "); }
 
 		print!("\n");
 
@@ -674,103 +434,452 @@ pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_sl
 
 		// MOVED THIS FROM 1B -- PROBABLY WAS IN WRONG SPOT
 		// printlny!("\nConfirming flag sets...");
-		// assert!(util::assert_neq_range(&area.ptal().dens().syns().flag_sets, &syn_range_focus, 0));
+		// assert!(util::assert_neq_range(&area.ptal().dens().syns().flag_sets, focus_syns, 0));
 
 		//=============================================================================
 		//=================================== 2B ===================================
 		//=============================================================================
 		println!("\n ========================== {}.2.1 ========================== \n", i);
 
-		util::ptal_alco(area, LEARN, PRINT_DEBUG_INFO);
+		util::ptal_alco(area, LEARN, print_debug);
 
-		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2B - "); }
-		// util::confirm_syns(area, &syn_idx_range_tft_first_half, 0, 0, 0);
+		if print_debug { util::print_all(area, "\n - Confirm 2B - "); }
 
 		print!("\n");
 
-		// <<<<< TODO: assert!(chosen-half of syns are +1, others are -1) >>>>>
-		// CURRENTLY: indexes are a mess
+		// <<<<< [FIXME] TODO: assert!(chosen-half of syns are STPOT, others are STDEP) >>>>>
 
 		//=============================================================================
 		//=================================== 2C ===================================
 		//=============================================================================
 		println!("\n ========================== {}.2.2 ========================== \n", i);
 
-		util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
+		// util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
 
-		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2C - "); }
+		if print_debug { util::print_all(area, "\n - Confirm 2C - "); }
 
 		print!("\n");
 
 		//=============================================================================
 		//=================================== 3 ===================================
 		//=============================================================================
-		println!("\n ========================== {}.4: Continuation ========================== ", i);
-		println!(" =============================== {}.4.0 =============================== \n", i);
+		println!("\n ========================== {}.3: Continuation ========================== ", i);
+		println!(" =============================== {}.3.0 =============================== \n", i);
 
 		// ACTIVATE, LEARN, CYCLE, & OUTPUT multiple times without touching inputs:
-		let cont_iters = 3;
-		printlny!("Performing complete cycle(A|L|C|O) {} times...", cont_iters);
 
-		for _ in 0..cont_iters {
+		printlny!("Performing complete cycle(A|L|C|O) {} times...", LEARNING_CONTINUATION_ITERS);
+
+		for _ in 0..LEARNING_CONTINUATION_ITERS {
 			util::ptal_alco(area, ALL, false);
 		}
 
-		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
-
-		print!("\n");
-
-		//=============================================================================
-		//=================================== 3 ===================================
-		//=============================================================================
-		println!("\n ========================== {}.5: Deactivation ========================== ", i);
-		println!(" =============================== {}.5.0 =============================== \n", i);
-
-		// ZERO PTAL SYNAPSE SOURCE AXON
-		printlny!("Deactivating distal source (neighbor) axon..."); 
-		area.deactivate_axon(fake_neighbor_axn_idx);
-
-		util::ptal_alco(area, CYCLE, PRINT_DEBUG_INFO);
-		// util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
-
-		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
+		// if print_debug { util::print_all(area, "\n - Confirm 3 - "); }
 
 		print!("\n");
 
 		//=============================================================================
 		//=================================== 4 ===================================
 		//=============================================================================
-		println!("\n ========================== {}.6: Termination ========================== ", i);
-		println!(" =============================== {}.6.0 =============================== \n", i);
+		println!("\n ========================== {}.4: Deactivation ========================== ", i);
+		println!(" =============================== {}.4.0 =============================== \n", i);
+
+		// ZERO PTAL SYNAPSE SOURCE AXON
+		printlny!("Deactivating distal source (neighbor) axon..."); 
+		area.deactivate_axon(self.fake_neighbor_axn_idx);
+
+		util::ptal_alco(area, CYCLE, print_debug);
+		// util::ptal_alco(area, ACTIVATE, print_debug);
+
+		if print_debug { util::print_all(area, "\n - Confirm 3 - "); }
+
+		util::assert_range(&area.ptal().dens().syns().flag_sets, self.focus_syns.clone(), 
+			| x | x == cmn::SYN_STPOT_FLAG );
+
+		// [FIXME] TODO: Check that off-focus synapses are STDEP
+		// [FIXME] TODO: Check that synapses are correctly inactive
+		// [FIXME] TODO: Check that EVERYTHING ELSE besides pyr flag_sets is 0
+
+		print!("\n");
+
+		//=============================================================================
+		//=================================== 5 ===================================
+		//=============================================================================
+		println!("\n ========================== {}.5: Termination ========================== ", i);
+		println!(" =============================== {}.5.0 =============================== \n", i);
 
 		// ZERO COLUMN PSAL AXON
 		printlny!("Deactivating proximal source axon...");
-		area.deactivate_axon(prx_src_axn_idx);
+		area.deactivate_axon(self.prx_src_axn_idx);
 		// ZERO PTAL SYNAPSE SOURCE AXON
 		// printlny!("Deactivating distal source (neighbor) axon...");
 		// area.deactivate_axon(fake_neighbor_axn_idx);
 
-		// util::ptal_alco(area, ALL, PRINT_DEBUG_INFO);
-		util::ptal_alco(area, ACTIVATE | LEARN | OUTPUT, PRINT_DEBUG_INFO);
+		// util::ptal_alco(area, ALL, print_debug);
+		util::ptal_alco(area, ACTIVATE | LEARN | OUTPUT, print_debug);
 
-		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
+		if print_debug { util::print_all(area, "\n - Confirm 3 - "); }
 
-		print!("\n");		
+		util::assert_range(&area.ptal().dens().syns().strengths, self.focus_syns.clone(), 
+			| x | x > 0 );
+
+		util::assert_range(&area.ptal().dens().syns().strengths, self.off_focus_syns.clone(), 
+			| x | x < 0 );
+
+		// [FIXME] TODO: Check that synapses flags are all zero
+		// [FIXME] TODO: Check that synapses strengths are + for focus and - for off-focus
+
+		print!("\n");
 	}
 
-	//=============================================================================
-	//=================================== CLEAN UP ===================================
-	//=============================================================================
-	println!("\n ========================== Clean-up ========================== \n");
+	fn flip_focus_syns(&mut self) {
+		// Zero the existing src slcs and offs for our dendrite:
+		self.clean_up(false);
 
-	printlny!("Cleaning up...");
-	area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, syn_idx_range_tft.clone());
-	area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, syn_idx_range_tft.clone());
-	area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, syn_idx_range_tft.clone());
+		// Make sure our ranges are valid:
+		if self.focus_syns.end == self.off_focus_syns.start {
+			assert!(self.off_focus_syns.end - self.focus_syns.start 
+				== self.focus_syns.len() + self.off_focus_syns.len());
+		} else if self.off_focus_syns.end == self.focus_syns.start {
+			assert!(self.focus_syns.end - self.off_focus_syns.start 
+				== self.focus_syns.len() + self.off_focus_syns.len());
+		} else {
+			panic!("Focus and off focus synapses ranges are overlapping or have a gap!");
+		}
 
-	print!("\n");
-	panic!(" -- DEBUGGING -- ");
+		// Swap the ranges:
+		let old_focus = self.focus_syns.clone();
+		self.focus_syns = self.off_focus_syns.clone();
+		self.off_focus_syns = old_focus;
+
+		// Set everything back up:
+		let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(self.unused_slc_id);
+
+		for syn_idx in self.focus_syns.clone() {
+			area.ptal_mut().dens_mut().syns_mut().set_src_offs(self.fake_v_ofs, self.fake_u_ofs, syn_idx as usize);
+			area.ptal_mut().dens_mut().syns_mut().set_src_slc(self.fake_neighbor_slc, syn_idx as usize);
+		}
+	}
+
+
+	fn clean_up(&mut self, zero_strengths: bool) {
+		//=============================================================================
+		//=================================== CLEAN UP ===================================
+		//=============================================================================
+		println!("\n ========================== Clean-up ========================== \n");
+
+		let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+
+		printlny!("Cleaning up...");
+		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(self.unused_slc_id, 
+			self.syn_coords.syn_idx_range_tft().clone());
+		area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, 
+			self.syn_coords.syn_idx_range_tft().clone());
+		area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, 
+			self.syn_coords.syn_idx_range_tft().clone());
+
+		if zero_strengths {
+			area.ptal_mut().dens_mut().syns_mut().strengths.set_range_to(0, 
+				self.syn_coords.syn_idx_range_tft().clone());
+		}
+	}
 }
+
+// pub fn _test_pyr_learning(area: &mut CorticalArea, unused_slc_id: u8, prx_src_slc: u8,
+// 			fake_neighbor_slc: u8, iter: usize) 
+// {
+// 	// Afferent output slice id:
+// 	let aff_out_slcs = area.area_map().axn_base_slc_ids_by_flag(layer::AFFERENT_OUTPUT);
+// 	assert!(aff_out_slcs.len() == 1);
+// 	let aff_out_slc = aff_out_slcs[0];
+
+// 	// Get a random cell and a random synapse on that cell:
+// 	let cel_coords = area.ptal_mut().rand_cel_coords();
+// 	let syn_coords = area.ptal_mut().dens_mut().syns_mut()
+// 		.rand_syn_coords(&cel_coords);
+
+// 	// Base slice for primary temporal pyramidals of our layer:
+// 	let ptal_axn_slc_idz = area.ptal_mut().base_axn_slc();
+// 	// assert!(ptal_axn_slc_idz == cel_coords.slc_id_lyr, "cel_coords axon slice mismatch");
+// 	assert_eq!(ptal_axn_slc_idz, cel_coords.axn_slc_id - cel_coords.slc_id_lyr);
+
+// 	// Our cell's proximal source axon (the column spatial axon):
+// 	let prx_src_axn_idx = area.area_map().axn_idz(prx_src_slc) + cel_coords.col_id();
+
+// 	// Our cell's axon:
+// 	let cel_axn_idx = cel_coords.cel_axn_idx(area.area_map());
+
+// 	// Our cell's COLUMN output axon:
+// 	let aff_out_axn_idx = area.area_map().axn_idz(aff_out_slc) + cel_coords.col_id();
+
+// 	// A random, nearby axon for our cell to use as a distal source axon:
+// 	let (fake_v_ofs, fake_u_ofs, fn_col_id, fake_neighbor_axn_idx) = area.rand_safe_src_axn(&cel_coords, fake_neighbor_slc);
+
+// 	//================================ SYN RANGE ==================================
+// 	// A random dendrite id on the cell tuft:
+// 	let syn_idx_range_den = syn_coords.syn_idx_range_den();
+// 	// The synapse range for the entire tuft in which our random synapse resides:
+// 	let syn_idx_range_tft = syn_coords.syn_idx_range_tft();
+
+// 	// The first half of the synapses on our tuft:
+// 	// let syn_idx_range_tft_first_half = syn_idx_range_tft.start..(syn_idx_range_tft.start + syn_idx_range_tft.len() / 2);
+
+// 	// The second half of the synapses on our tuft:
+// 	// let syn_idx_range_tft_second_half = (syn_idx_range_tft.start + syn_idx_range_tft.len() / 2)
+// 	// 	..(syn_idx_range_tft.start + syn_idx_range_tft.len());
+
+// 	// The first half of the synapses on our tuft:
+// 	// let syn_idx_range_den_first_half = syn_idx_range_den.start..(syn_idx_range_den.start + syn_idx_range_den.len() / 2);
+
+// 	// The second half of the synapses on our tuft:
+// 	let syn_idx_range_den_second_half = (syn_idx_range_den.start + syn_idx_range_den.len() / 2)
+// 		..(syn_idx_range_den.start + syn_idx_range_den.len());
+
+// 	let focus_syns = syn_idx_range_den_second_half;
+
+// 	// The synapse count for our cell's entire layer (all slices, cells, and tufts):
+// 	let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states.len();
+
+// 	// Set the sources for the synapses on the second half of our chosen tuft to our preselected nearby axon:
+// 	// <<<<< TODO: IMPLEMENT THIS (for efficiency): >>>>>
+// 	// 		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range);
+
+// 	for syn_idx in focus_syns.clone() {
+// 		area.ptal_mut().dens_mut().syns_mut().set_src_offs(fake_v_ofs, fake_u_ofs, syn_idx as usize);
+// 		area.ptal_mut().dens_mut().syns_mut().set_src_slc(fake_neighbor_slc, syn_idx as usize);
+// 	}
+
+// 	// PRINT ALL THE THINGS!:
+// 	let syn_val = area.ptal_mut().dens_mut().syns_mut().syn_state(syn_coords.idx);
+// 	let fake_neighbor_axn_val = area.axn_state(fake_neighbor_axn_idx as usize);
+	
+// 	// This and every other util::print_all() is very expensive:
+// 	if print_debug { util::print_all(area, "\n - Confirm Init - "); }
+
+// 	for i in 0..LEARNING_ITERS_PER_CELL {
+
+// 		//=============================================================================
+// 		//===================================== 0 =====================================
+// 		//=============================================================================
+// 		println!("\n ========================== {}.0: Initialization ========================== ", i);
+
+// 		println!("DEBUG INFO - PRINT ALL THE THINGS!: \n\
+// 			{mt}[prx_src]: prx_src_axn_idx (prx_src_slc: {}, col_id: {}): {} \n\
+// 			{mt}[dst_src]: fake_neighbor_axn_idx (''_slc: {}, col_id: {}): {}, \n\
+// 			{mt}[cel_axn]: cel_axn_idx (cel_coords.axn_slc_id: {}, col_id: {}): {} \n\
+// 			{mt}[col_out]: aff_out_axn_idx (aff_out_slc: {}, col_id: {}): {}, \n\n\
+// 			\
+// 			{mt}fake_v_ofs: {}, fake_u_ofs: {}, \n\
+// 			{mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_tft: {:?}, \n\
+// 			{mt}syn_active_range (2nd half): {:?}, \n\
+// 			{mt}syn_coords: {}",		
+
+// 			prx_src_slc, cel_coords.col_id(), prx_src_axn_idx,
+// 			fake_neighbor_slc, fn_col_id, fake_neighbor_axn_idx, 
+// 			cel_coords.axn_slc_id, cel_coords.col_id(), cel_axn_idx,
+// 			aff_out_slc, cel_coords.col_id(), aff_out_axn_idx, 
+
+// 			fake_v_ofs, fake_u_ofs,
+// 			fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_tft, 
+// 			focus_syns, 
+// 			syn_coords,
+// 			mt = cmn::MT);
+
+// 		println!(" ============================== {}.0.0 =============================== \n", i);
+
+// 		// Activate distal source axon:
+// 		printlny!("Activating distal source (neighbor) axon: [{}]...", fake_neighbor_axn_idx);
+// 		area.activate_axon(fake_neighbor_axn_idx);
+
+// 		util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
+
+// 		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 0 - "); }
+// 		// util::confirm_syns(area, &focus_syns, 0, 0, 0);
+
+// 		print!("\n");
+// 		// <<<<< TODO: VERIFY THAT MCOLS.OUTPUT() AXON IS ACTIVE (and print it's idx) >>>>>
+// 		// <<<<< TODO: CHECK CELL AXON (should be zero here and active on next step) >>>>>
+
+// 		// Ensure key axons are active:
+// 		assert!(area.read_from_axon(fake_neighbor_axn_idx) > 0);
+// 		printlny!("Pyramidal cell fake neighbor axon is correctly active.");
+
+// 		// Ensure minicolumn is predictive as a result of pyramidal activity:
+// 		// [FIXME] TODO: REENABLE BELOW!
+// 		// assert!(area.mcols().flag_sets.read_idx_direct(cel_coords.col_id() as usize) == cmn::MCOL_IS_VATIC_FLAG);
+// 		// printlny!("Minicolumn is correctly vatic (predictive).");
+
+// 		//=============================================================================
+// 		//==================================== 1A =====================================
+// 		//=============================================================================
+// 		println!("\n ========================== {}.1: Premonition ========================== ", i);
+// 		println!(" ============================== {}.1.0 =============================== \n", i);
+
+// 		util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
+
+// 		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1A - "); }
+// 		// util::confirm_syns(area, &focus_syns, 0, 0, 0);
+
+// 		print!("\n");
+
+// 		// Ensure our cell is flagged best in (mini) column:
+// 		// [FIXME] TODO: REENABLE BELOW!
+// 		// assert!(area.ptal().flag_sets.read_idx_direct(cel_coords.idx() as usize) == cmn::CEL_BEST_IN_COL_FLAG);
+// 		// printlny!("Our cell is correctly flagged best in column.");
+
+// 		//=============================================================================
+// 		//================================= 1B ===================================
+// 		//=============================================================================
+// 		println!("\n ========================== {}.1.1 ========================== \n", i);
+
+// 		util::ptal_alco(area, LEARN, PRINT_DEBUG_INFO);
+
+// 		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1B - "); }
+// 		// util::confirm_syns(area, &focus_syns, 0, 0, 0);
+
+// 		print!("\n");
+
+// 		// <<<<< TODO: Ensure our cells synapses have not learned anything: >>>>>
+
+// 		//=============================================================================
+// 		//=================================== 1C ===================================
+// 		//=============================================================================
+// 		println!("\n ========================== {}.1.2 ========================== \n", i);
+
+// 		// ACTIVATE PTAL SYNAPSE SOURCE AXON
+// 		// printlny!("Activating distal source axon: [{}]...", fake_neighbor_axn_idx);
+// 		// area.activate_axon(fake_neighbor_axn_idx);
+
+// 		util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
+
+// 		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 1C - "); }
+// 		// util::confirm_syns(area, &focus_syns, 0, 0, 0);
+
+// 		print!("\n");
+
+// 		//=============================================================================
+// 		//=================================== 2A ===================================
+// 		//=============================================================================
+// 		println!("\n ========================== {}.2: Vindication ========================== ", i);
+// 		println!(" ============================== {}.2.0 =============================== \n", i);
+
+// 		// ACTIVATE COLUMN PSAL AXON
+// 		printlny!("Activating proximal source axon: [{}]...", prx_src_axn_idx);
+// 		area.activate_axon(prx_src_axn_idx);
+// 		// ACTIVATE PTAL SYNAPSE SOURCE AXON
+// 		// printlny!("Activating distal source (neighbor) axon: [{}]...", fake_neighbor_axn_idx);
+// 		// area.activate_axon(fake_neighbor_axn_idx);
+
+// 		util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
+
+// 		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2A - "); }
+// 		// util::confirm_syns(area, &focus_syns, 0, 0, 0);
+
+// 		print!("\n");
+
+// 		// ##### ADD ME: assert!(THE PYRAMIDAL OUTPUT AXON (NOT SOMA) IS ACTIVE)
+// 		// THIS IS CURRENTLY NOT ACTIVATING!!!
+
+// 		// MOVED THIS FROM 1B -- PROBABLY WAS IN WRONG SPOT
+// 		// printlny!("\nConfirming flag sets...");
+// 		// assert!(util::assert_neq_range(&area.ptal().dens().syns().flag_sets, focus_syns, 0));
+
+// 		//=============================================================================
+// 		//=================================== 2B ===================================
+// 		//=============================================================================
+// 		println!("\n ========================== {}.2.1 ========================== \n", i);
+
+// 		util::ptal_alco(area, LEARN, PRINT_DEBUG_INFO);
+
+// 		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2B - "); }
+// 		// util::confirm_syns(area, &syn_idx_range_tft_first_half, 0, 0, 0);
+
+// 		print!("\n");
+
+// 		// <<<<< TODO: assert!(chosen-half of syns are +1, others are -1) >>>>>
+// 		// CURRENTLY: indexes are a mess
+
+// 		//=============================================================================
+// 		//=================================== 2C ===================================
+// 		//=============================================================================
+// 		println!("\n ========================== {}.2.2 ========================== \n", i);
+
+// 		util::ptal_alco(area, CYCLE | OUTPUT, PRINT_DEBUG_INFO);
+
+// 		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2C - "); }
+
+// 		print!("\n");
+
+// 		//=============================================================================
+// 		//=================================== 3 ===================================
+// 		//=============================================================================
+// 		println!("\n ========================== {}.4: Continuation ========================== ", i);
+// 		println!(" =============================== {}.4.0 =============================== \n", i);
+
+// 		// ACTIVATE, LEARN, CYCLE, & OUTPUT multiple times without touching inputs:
+// 		let cont_iters = 3;
+// 		printlny!("Performing complete cycle(A|L|C|O) {} times...", cont_iters);
+
+// 		for _ in 0..cont_iters {
+// 			util::ptal_alco(area, ALL, false);
+// 		}
+
+// 		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
+
+// 		print!("\n");
+
+// 		//=============================================================================
+// 		//=================================== 3 ===================================
+// 		//=============================================================================
+// 		println!("\n ========================== {}.5: Deactivation ========================== ", i);
+// 		println!(" =============================== {}.5.0 =============================== \n", i);
+
+// 		// ZERO PTAL SYNAPSE SOURCE AXON
+// 		printlny!("Deactivating distal source (neighbor) axon..."); 
+// 		area.deactivate_axon(fake_neighbor_axn_idx);
+
+// 		util::ptal_alco(area, CYCLE, PRINT_DEBUG_INFO);
+// 		// util::ptal_alco(area, ACTIVATE, PRINT_DEBUG_INFO);
+
+// 		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
+
+// 		print!("\n");
+
+// 		//=============================================================================
+// 		//=================================== 4 ===================================
+// 		//=============================================================================
+// 		println!("\n ========================== {}.6: Termination ========================== ", i);
+// 		println!(" =============================== {}.6.0 =============================== \n", i);
+
+// 		// ZERO COLUMN PSAL AXON
+// 		printlny!("Deactivating proximal source axon...");
+// 		area.deactivate_axon(prx_src_axn_idx);
+// 		// ZERO PTAL SYNAPSE SOURCE AXON
+// 		// printlny!("Deactivating distal source (neighbor) axon...");
+// 		// area.deactivate_axon(fake_neighbor_axn_idx);
+
+// 		// util::ptal_alco(area, ALL, PRINT_DEBUG_INFO);
+// 		util::ptal_alco(area, ACTIVATE | LEARN | OUTPUT, PRINT_DEBUG_INFO);
+
+// 		if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 3 - "); }
+
+// 		print!("\n");		
+// 	}
+
+// 	//=============================================================================
+// 	//=================================== CLEAN UP ===================================
+// 	//=============================================================================
+// 	println!("\n ========================== Clean-up ========================== \n");
+
+// 	printlny!("Cleaning up...");
+// 	area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, syn_idx_range_tft.clone());
+// 	area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, syn_idx_range_tft.clone());
+// 	area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, syn_idx_range_tft.clone());
+
+// 	print!("\n");
+// 	panic!(" -- DEBUGGING -- ");
+// }
 
 
 // pub const CEL_PREV_CONCRETE_FLAG: u8 		= 128	(0x80)

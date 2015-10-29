@@ -175,8 +175,8 @@ pub const CEL_BEST_IN_COL_FLAG: u8 			= 0b01000000;	// 64	(0x40)
 pub const CEL_PREV_STPOT_FLAG: u8 			= 0b00100000;	// 32	(0x20)
 pub const CEL_PREV_VATIC_FLAG: u8			= 0b00010000;	// 16	(0x10)
 
-pub const SYN_STPOT_FLAG: u8				= 0b00000001;
-pub const SYN_STDEP_FLAG: u8				= 0b00000010;
+pub const SYN_STDEP_FLAG: u8				= 0b00000001;
+pub const SYN_STPOT_FLAG: u8				= 0b00000010;
 pub const SYN_CONCRETE_FLAG: u8				= 0b00001000;
 
 

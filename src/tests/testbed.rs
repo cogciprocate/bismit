@@ -63,21 +63,21 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
 
-			Some(vec!["b1"]),
-			// None,
+			// Some(vec!["b1"]),
+			None,
 		)
 
-		.area("b1", "visual", 
-			// area_side * 2, area_side * 2,			
-			area_side, area_side,
-			//32, 32,
-			//256, 256,
+		// .area("b1", "visual", 
+		// 	// area_side * 2, area_side * 2,			
+		// 	area_side, area_side,
+		// 	//32, 32,
+		// 	//256, 256,
 
-		 	None,
+		//  	None,
 
-		 	// Some(vec!["a1"]),
-		 	None,
-		)
+		//  	// Some(vec!["a1"]),
+		//  	None,
+		// )
 
 		// .area("a1", "visual", area_side, area_side, None, None)
 	;

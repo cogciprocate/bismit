@@ -519,8 +519,8 @@ impl Aux {
 		let int_32_min = -2147483648;
 
 		Aux { 
-			ints_0: Envoy::<ocl::cl_int>::new(dims, int_32_min + 100, ocl),
-			ints_1: Envoy::<ocl::cl_int>::new(dims, int_32_min + 100, ocl),
+			ints_0: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl),
+			ints_1: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl),
 			// chars_0: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			// chars_1: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			dims: dims.clone(),
@@ -530,8 +530,8 @@ impl Aux {
 	pub unsafe fn resize(&mut self, new_dims: &CorticalDimensions) {
 		let int_32_min = -2147483648;
 		self.dims = new_dims.clone();
-		self.ints_0.resize(&self.dims, int_32_min + 100);
-		self.ints_1.resize(&self.dims, int_32_min + 100);
+		self.ints_0.resize(&self.dims, int_32_min);
+		self.ints_1.resize(&self.dims, int_32_min);
 		// self.chars_0.resize(&self.dims, 0);
 		// self.chars_1.resize(&self.dims, 0);
 	}

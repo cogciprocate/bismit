@@ -28,6 +28,17 @@ impl InputSource {
 				)
 			},
 
+			&Protoinput::IdxReaderLoop { file_name, repeats, scale, loop_frames } => {
+				let ir = IdxReader::new(proto_area_map.dims.clone_with_depth(1), file_name, repeats, scale)
+					.loop_frames(loop_frames);
+				let len = ir.dims().cells();
+				( // RETURN TUPLE
+					InputSourceKind::IdxReader(Box::new(ir)), 
+					proto_area_map.aff_areas.clone(), 
+					len
+				)
+			},
+
 			&Protoinput::None => (InputSourceKind::None, vec![], 0),
 
 			_ => panic!("\nInputSource::new(): Input type not yet supported."),
@@ -45,6 +56,7 @@ impl InputSource {
 	pub fn next(&mut self, areas: &CorticalAreas) {		
 		match self.kind {
 			InputSourceKind::IdxReader(ref mut ir) => { let _ = ir.next(&mut self.ganglion[..]); },
+			InputSourceKind::IdxReaderLoop(ref mut ir) => { let _ = ir.next(&mut self.ganglion[..]); },
 			_ => (),
 		}
 
@@ -64,5 +76,6 @@ pub enum InputSourceKind {
 	Hexballs { edge_size: usize, invert: bool, fill: bool },
 	Exp1,
 	IdxReader(Box<IdxReader>),
+	IdxReaderLoop(Box<IdxReader>),
 	None,
 }

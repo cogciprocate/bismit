@@ -81,6 +81,7 @@ impl Kernel {
 	pub fn arg_env_named<T: OclNum>(mut self, name: &'static str,  envoy_opt: Option<&Envoy<T>>) -> Kernel {
 		let arg_idx = self.new_arg_envoy(envoy_opt);
 		self.named_args.insert(name, arg_idx);
+
 		self
 	}
 
@@ -151,24 +152,35 @@ impl Kernel {
 		a_i
 	}
 
-	// <<<<< CHECK THAT NAME EXISTS AND GIVE A BETTER ERROR MESSAGE >>>>>
+	// // <<<<< CHECK THAT NAME EXISTS AND GIVE A BETTER ERROR MESSAGE >>>>>
 	pub fn set_arg_scl_named<T: Integer>(&mut self, name: &'static str, scalar: T) {
-			//	TODO: ADD A CHECK FOR A VALID NAME (KEY)
-		let arg_idx = self.named_args[name];
+		//	TODO: ADD A CHECK FOR A VALID NAME (KEY)
+		let arg_idx = self.named_args[name]; 
 
-		unsafe { 
-			self.set_kernel_arg(
-				arg_idx,
-				mem::size_of::<T>() as libc::size_t,
-					//(scal as *const super::cl_mem) as *const libc::c_void,
-				mem::transmute(&scalar),
-					//(scalar as *const super::cl_mem) as *const libc::c_void,
-			)
-		}
+		// let scalar_ptr: *const libc::c_void = &scalar as *const _ as *const libc::c_void;
 
-
-		//self.set_kernel_arg(arg_idx, scalar);
+		self.set_kernel_arg(
+			arg_idx,
+			mem::size_of::<T>() as libc::size_t, 
+			// mem::transmute(val),
+			&scalar as *const _ as *const libc::c_void,
+		)
 	}
+
+	// <<<<< CHECK THAT NAME EXISTS AND GIVE A BETTER ERROR MESSAGE >>>>>
+	// pub fn set_arg_scl_named(&mut self, name: &'static str, scalar: i32) {
+	// 	//	TODO: ADD A CHECK FOR A VALID NAME (KEY)
+	// 	let arg_idx = self.named_args[name]; 
+
+	// 	// let scalar_ptr: *const libc::c_void = &scalar as *const _ as *const libc::c_void;
+
+	// 	self.set_kernel_arg(
+	// 		arg_idx,
+	// 		mem::size_of::<i32>() as libc::size_t, 
+	// 		// mem::transmute(val),
+	// 		&scalar as *const _ as *const libc::c_void,
+	// 	)
+	// }
 
 	// <<<<< CHECK THAT NAME EXISTS AND GIVE A BETTER ERROR MESSAGE >>>>>
 	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, envoy: &Envoy<T>) {

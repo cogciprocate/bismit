@@ -392,6 +392,12 @@ impl Synapses {
 		slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft
 	}
 
+	// [FIXME] TODO: Depricate me evenutally
+	pub fn set_offs_to_zero_temp(&mut self) {
+		self.src_col_v_offs.set_all_to(0);
+		self.src_col_u_offs.set_all_to(0);
+	}
+
 	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
 	// pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
 		
@@ -474,9 +480,10 @@ pub mod tests {
 	use rand::{ XorShiftRng };
 	use rand::distributions::{ IndependentSample, Range as RandRange };
 
-	use super::{ Synapses };
 	use cmn::{ CelCoords };
 	use cmn::{ CorticalDimensions };
+	use dendrites::{ self };
+	use super::{ Synapses };
 
 	const PRINT_DEBUG_INFO: bool = false;
 
@@ -634,6 +641,23 @@ pub mod tests {
 				syns_per_den, self.tft_id, self.cel_coords.idx, self.den_id_tft, 0) as usize;
 
 			syn_idz_den..(syn_idz_den + syns_per_den as usize)
+		}
+
+		// [FIXME] TODO: MOVE THIS TO DEN_COORDS & INTEGRATE
+		pub fn tft_idx(&self) -> u32 {
+			(self.tft_id * self.cel_coords.layer_dims.cells()) + self.cel_coords.idx
+		}
+
+		pub fn den_idx(&self) -> u32 {
+			let den_dims = self.cel_coords.layer_dims
+				.clone_with_ptl2(self.cel_coords.dens_per_tft_l2 as i8)
+				.with_tfts(self.cel_coords.tfts_per_cel);
+
+			dendrites::den_idx(&den_dims, self.tft_id, self.cel_coords.idx, self.den_id_tft)
+		}
+
+		pub fn idx(&self) -> u32 {
+			self.idx
 		}
 	}
 
