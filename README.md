@@ -1,52 +1,25 @@
 #BISMIT
 
 Biologically Inspired Sensory Motor Inference Tool: 
-A model of the neocortex for interpreting data and taking action based on past experience.
+A model of the neocortex for learning and taking action.
 
-Bismit is one of the first of the next paradigm of learning networks. Going beyond Bayesian and hidden Markov models, incorporating ideas from the theory of hierarchical temporal memory, such as sparse distributed representations and temporal context, Bismit is a model which incorporates our most recent and up-to-date findings about the neocortex. It is not a typical "Machine Learning" platform and does not use traditional statistical methods. 
+Bismit is one of the first members of the next paradigm of cortical learning networks. Going beyond simple Bayesian neural networks and incorporating ideas from the theory of hierarchical temporal memory, such as sparse distributed representations and temporal context, Bismit is a model which incorporates our most recent and up-to-date findings about the neocortex. It is not a typical "Machine Learning" platform and does not use traditional statistical methods (though they are a fundamental part of its theory). 
 
-Intended to be used as a platform for quickly prototyping and testing completely different arrangements of both connections between cortical areas (regions) and layer structure within a cortical area. Layers can be composed in a declarative style using a simple syntax with intelligent defaults and optional arguments (such as the .layer and .apical arguments below):
+Intended to be used as a platform for prototyping and testing completely different arrangements of both connections between cortical areas (regions) and layer structure within a cortical area.
 
-```
-proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
-		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
-		.layer("eff_in", 0, layer::EFFERENT_INPUT, Axonal(Spatial))
-		.layer("aff_in", 0, layer::AFFERENT_INPUT, Axonal(Spatial))
-		.layer("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
-		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)) 
-		.layer("iv_inhib", 0, layer::DEFAULT, 
-			Protocell::new_inhibitory(4, "iv"))
-		.layer("iii", 4, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(0, 5, vec!["iii"], 1200).apical(vec!["eff_in"])));
+Bismit uses a structure which mirrors the human neocortex very closely. The cortex is broken into 'areas', which are broken into 'layers', and so on. Here is a full hierarchy:
+	- Cortex
+		- Areas
+			- Layers
+				- Slices
+					- Cells
+						- Cell tufts (in the case of pyramidal cells)
+							- Dendrites
+								- Synapses
 
-proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
-		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial)));
-```
+The cortex is also granulated into columns in the other two dimensions, exactly like the real neocortex.
 
-Likewise for areas:
-
-```
-let proto_area_maps = ProtoAreaMaps::new()
-	.area_ext("v0", "external", 128, 128,
-		Protoinput::IdxReader { 
-			file_name: "data/train-images-idx3-ubyte", 
-			repeats: 5, 
-			scale: 1.3,
-		},
-		None, 
-		Some(vec!["v1"]),
-	)
-
-	.area("v1", "visual", 128, 128,
-		Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-		Some(vec!["b1"]),
-	)
-
-	.area("b1", "visual", 48, 48, None,	Some(vec!["a1"])),
-
-	.area("a1", "visual", 32, 32, None, None);
-```
+Much more information and documentation coming soon.
 
 Bismit is written in Rust and OpenCL C and is in an unstable pre-alpha stage. Full basic functionality is expected by the end 2015.
 

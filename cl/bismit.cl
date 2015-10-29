@@ -186,17 +186,29 @@ static inline int rnd_mix(int const rnd_a, int seed) {
 	return seed;
 }
 
-//aux_ints_1[cel_grp_id] = ((rnd ^ (cel_grp_id << 3)) & 0x7F);
 
-static inline int rnd_inc(int const rnd_a, int const seed, char const syn_strength) {
-	// return ((rnd_a ^ rnd_b) & 0x7F) > syn_strength;
-	return (rnd_mix(rnd_a, seed) & 0x7F) > syn_strength;
+/* RND INC/DEC NOTES:
+		- Must cap at the min and max limits (-128, 127).
+		- Must not get stuck at max limit. If at max, must be decrementable. At min, who cares.
+		- Must be easy to move near zero and more difficult the larger the pos or neg value.
+
+		inc -> abs(val) < rnd 
+		dec -> (abs(val) + is_max) < rnd
+			- account for pos-neg val
+			- handle deadlock
+
+*/
+// RND_INC(): Returns a 1 or 0 representing whether or not to increment a value:
+static inline int rnd_inc(int const rnd_a, int const seed, char const val) {
+	// return (rnd_mix(rnd_a, seed) & 0x7F) > val;
+	return (rnd_mix(rnd_a, seed) & 0x7F) > abs(val); // WORKING
 }
 
-
-static inline int rnd_dec(int const rnd_a, int const seed, char const syn_strength) {
-	// return (-1 - ((rnd_a ^ rnd_b) & 0x7F)) < syn_strength;
-	return (-1 - (rnd_mix(rnd_a, seed) & 0x7F)) < syn_strength;
+// RND_DEC(): Returns a 1 or 0 representing whether or not to decrement a value:
+static inline int rnd_dec(int const rnd_a, int const seed, char const val) {
+	// int const abs_str = abs(val);
+	int const str_is_max = val == 0x7F;
+	return ((rnd_mix(rnd_a, seed) & 0x7F) + str_is_max) > abs(val); // WORKING
 }
 
 
@@ -1315,6 +1327,7 @@ __kernel void mcol_output(
 	mcol_best_den_states[col_id] = mcol_den_state_max;
 	//axn_states[aff_out_axn_idx] = mul24(idx_is_safe, clamp(mcol_pyr_state_max + psa_cel_axn_state, 0, 255)); // N1
 	axn_states[aff_out_axn_idx] = clamp(mcol_pyr_state_max + psa_cel_axn_state, 0, 255);
+	// axn_states[aff_out_axn_idx] = clamp(mcol_den_state_max, 0, 255);
 }
 
 

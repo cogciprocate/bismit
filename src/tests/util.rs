@@ -106,7 +106,7 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 // ASSERT_RANGE():
 // 		- [FIXME] TODO: Use env.read_direct and read the entire range at once into a Vec.
 //		- [FIXME] TODO: See if using an iterator (map?) function would be more idiomatic.
-pub fn assert_range<T: OclNum, F>(env: &Envoy<T>, idx_range: Range<usize>, comp: F) -> bool 
+pub fn eval_range<T: OclNum, F>(env: &Envoy<T>, idx_range: Range<usize>, comp: F) -> bool 
 	where F : Fn(T) -> bool
 {
 	for idx in idx_range.clone() {

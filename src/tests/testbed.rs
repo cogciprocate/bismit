@@ -113,20 +113,22 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 		.layer("test1", 1, layer::UNUSED_TESTING, Axonal(Spatial))
 		.layer("test2", 1, layer::UNUSED_TESTING, Axonal(Spatial))
 		.layer("test3", 1, layer::UNUSED_TESTING, Axonal(Spatial))
-		.layer("test4", 1, layer::UNUSED_TESTING, Axonal(Spatial))
-		.layer("test5", 1, layer::UNUSED_TESTING, Axonal(Spatial))
+		// .layer("test4", 1, layer::UNUSED_TESTING, Axonal(Spatial))
+		// .layer("test5", 1, layer::UNUSED_TESTING, Axonal(Spatial))
 		.layer("unused", 1, layer::UNUSED_TESTING, Axonal(Spatial))
 		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
 			Protocell::new_spiny_stellate(5, vec!["unused"], 1))
 		// .layer("iv_inhib", 0, layer::DEFAULT, 
 		// 	Protocell::new_inhibitory(4, "iv"))
-		.layer("iii", 3, layer::TEMPORAL_ASSOCIATIVE, 
+		.layer("iii", 2, layer::TEMPORAL_ASSOCIATIVE, 
 			Protocell::new_pyramidal(2, 4, vec!["unused"], 1)
 				.apical(vec!["test1"])
 				.apical(vec!["test2"])
-				.apical(vec!["test3"])
-				.apical(vec!["test4"])
-				.apical(vec!["test5"]))
+				// .apical(vec!["test3"])
+				// .apical(vec!["test4"])
+				// .apical(vec!["test5"])
+		)
+
 	);
 
 	plmaps.add(ProtoLayerMap::new("dummy_lm", Thalamic)
@@ -138,7 +140,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
 		// <<<<< VERY IMPORTANT: DO NOT DELETE! >>>>>
 		// THIS EXTERNAL AREA MAY BE CAUSING INDEXING PROBLEMS
-		.area_ext("dummy_area", "dummy_lm", 67, 63, Protoinput::None, None, Some(vec![area_name]))
+		.area_ext("dummy_area", "dummy_lm", 67, 61, Protoinput::None, None, Some(vec![area_name]))
 
 		// .area_ext("dummy_area", "dummy_lm", 32, 32, Protoinput::None, None, Some(vec![area_name]))
 	;
