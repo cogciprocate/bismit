@@ -24,54 +24,62 @@
 
 #define RETNAL_THRESHOLD 				48
 
-//  bismit.cl: CONVENTIONS
-//
-// 		idx: current index (of a loop, workgroup, queue, etc.)
-//			- almost always a physical in-memory address
-//
-// 		idz := index[0], first element, starting element
-//
-//		idz_parent: first element within the subset of a parent group
-//			- ex.: syn_idx := syn_idz_den + syn_id_den
-//
-// 		idn := index[len]: element after final element, termination point
-//			- ex.: for(int i = 0, i < idn, i++)
-//
-// 		idm := index[max] := index[len - 1]: final (valid) element just before idn. idn - 1 = idm.
-//			- ex.: for(int i = 0, i <= idm, i++)
-//
-//
-// 		id: identifier, but not a physical array index
-//
-//		id_parent: identifier within the subset of a parent group
-//			- ex.: syn_idx := syn_idz_den + syn_id_den
-//
-//		y_id // DEPRICATING
-//		x_id // DEPRICATING
-//
-//		slc_id
-//		w_id
-//		v_id
-//		u_id
-//
-// 		vat [tenative]: vatic, fuzzyness, level of predictiveness
-//
-// 		***** High Priority Comment, Temporary Code Change
-// 		<<<<< Medium Priority Comment, To Do
-// 		##### Debug / Informational Message
-//
-//		
-//		Kernel variable order guideline: 
-// 			- __global const* pointers (read-only arrays) first, 
-// 			- __local, __private scalars, etc. in the middle,
-//			- __global non-const pointers (output arrays) last,
-//		
-//
-// 		ASSUMPTIONS BEING MADE: (add assert!s)
-//			syns_per_tft > 4
-// 			u_size and v_size (global) are multiples of 8
-//
-//		vloadn(size_t offset, const __constant gentype *p )
+ /* bismit.cl: CONVENTIONS
+
+		idx: current index (of a loop, workgroup, queue, etc.)
+			- almost always a physical in-memory address
+
+		idz := index[0], first element, starting element
+
+		idz_parent: first element within the subset of a parent group
+			- ex.: syn_idx := syn_idz_den + syn_id_den
+
+		idn := index[len]: element after final element, termination point
+			- ex.: for(int i = 0, i < idn, i++)
+
+		idm := index[max] := index[len - 1]: final (valid) element just before idn. idn - 1 = idm.
+			- ex.: for(int i = 0, i <= idm, i++)
+
+		id: identifier, but not a physical array index
+
+		id_{parent}: identifier within the subset of a parent group
+			- ex.: syn_idx := syn_idz_den + syn_id_den
+
+		{var_name}_l2 : A scalar representing the log base 2 representation of a value (log2 val).
+			- 'lg' is too vague and 'lb' is seldom used therefore l2 is the convention used for logs.
+
+		{var_name}_l2i : A scalar representing the inverse log base 2 of a value (1 / log2 val).
+
+		Coordinates: 
+			- slc_id : The id of a slice in axon space (or subset therof such as a layer). This is the 'depth' coordinate corresponding to how far from the top of layer 0/1 we would be in a neocortex.
+			- v_id : The 'v' coordinate of a tile (or in this case an axon, cell, etc.) within a slice in hexagonal tile space.
+			- u_id : The 'u' coordinate of a tile in hexagonal tile space.
+			- w_id : The 'w' coordinate of a tile in hexagonal tile space.
+
+			- Coordinates are oriented (on the unit circle) with 'u' at 30deg, 'v' at 150deg, and 'w' at 270deg. Any references to 'v' are considered to be inverted (negative) when plotting coordinates in real space. In other words a 'v' value of 5 would equal -5 when plotting or mapping to real 2d space. This is simply a convenience (necessity?) for indexing in OpenCL.
+
+			- 'w' is seldom used because coordinates are stored in 'axial coordinates' which just means that only two of the three coordinates are actually stored / used because the third can be reconstructed from the other two when needed.
+
+
+		vat [tenative]: vatic, fuzzyness, level of predictiveness
+
+		***** High Priority Comment, Temporary Code Change
+		<<<<< Medium Priority Comment, To Do
+		##### Debug / Informational Message
+
+		
+		Kernel variable order guideline: 
+			- __global const* pointers (read-only arrays) first, 
+			- __local, __private scalars, etc. in the middle,
+			- __global non-const pointers (output arrays) last,
+		
+
+		ASSUMPTIONS BEING MADE: (add assert!s)
+			syns_per_tft > 4
+			u_size and v_size (global) are multiples of 8
+
+		vloadn(size_t offset, const __constant gentype *p )
+*/
 
 
 
@@ -197,7 +205,7 @@ static inline int rnd_mix(int const rnd_a, int seed) {
 			- account for pos-neg val
 			- handle deadlock
 
-
+		- Learning rate (lr_l2i) is 100% at 0, 50% at 1, 25% at 2, etc.
 */
 
 
@@ -483,17 +491,17 @@ static inline void tft_syns_trm(
 				uint const syn_idz,
 				uint const syns_per_tft_l2,
 				int const rnd,
+				int const lr_l2i, // LEARNING RATE INVERSE LOG BASE 2 (1/L2)
 				__global uchar* const syn_flag_sets,
 				__global int* const aux_ints_0,
 				__global char* const syn_strengths) 
 {
 	uint const n = syn_idz + (1 << syns_per_tft_l2);
 
-	// TODO: MOVE TO HOST SIDE: These should be calculated host side and passed in:
-	int const lr_l2i = 0; int lr_mask = 0x7F << lr_l2i;
+	int lr_mask = 0x7F << lr_l2i;
 	lshft_mask(&lr_mask, lr_l2i);
 
-	aux_ints_0[syn_idz] = lr_mask;
+	// aux_ints_0[syn_idz] = lr_mask;
 	// aux_ints_0[syn_idz] = rnd_mix(rnd, syn_idz) & lr_mask;
 
 
@@ -534,7 +542,7 @@ static inline void prx_syns__active__ltp_ltd(
 {
 	uint const n = syn_idz + (1 << syns_per_den_l2);
 
-	// TODO: These should be calculated host side and passed in:
+	// [FIXME] TODO: These should be calculated host side and passed in:
 	int const lr_l2i = 0; int const lr_mask = 0x7F << lr_l2i;
 	lshft_mask(&lr_mask, lr_l2i);
 
@@ -1140,6 +1148,7 @@ __kernel void pyrs_ltp(
 				__private uint const syns_per_den_l2,
 				__private uint const cels_per_cel_grp,
 				__private uint const axn_idz_cel_lyr,
+				__private int const learning_rate_l2i,
 				__private int const rnd,
 				__global uchar* const syn_flag_sets,
 				__global uchar* const cel_flag_sets,
@@ -1151,7 +1160,9 @@ __kernel void pyrs_ltp(
 	uint const cel_grp_count = get_global_size(0);
 	uint const cel_count = mul24(cel_grp_count, cels_per_cel_grp);
 	uint const cel_idz_cel_grp = mul24(cel_grp_id, cels_per_cel_grp);
-	// uint const axn_idz_cel_grp = axn_idz_cel_lyr + cel_idz_cel_grp;
+
+	// TODO: MOVE THIS INVERSE LEARNING RATE TO HOST:
+	// int const learning_rate_l2i = 0;
 
 	// aux_ints_1[cel_grp_id] = -1 - (rnd_mix(rnd, cel_grp_id) & 0x7F);
 	// aux_ints_1[cel_grp_id] = rnd_mix(rnd, cel_grp_id);
@@ -1211,7 +1222,7 @@ __kernel void pyrs_ltp(
 
 			} else if (cel_prev_concrete) {
 				tft_syns_trm(syn_states, syn_idz_tft, syns_per_den_l2 + dens_per_tft_l2, rnd, 
-					syn_flag_sets, aux_ints_0, syn_strengths);
+					learning_rate_l2i, syn_flag_sets, aux_ints_0, syn_strengths);
 
 				// aux_ints_1[cel_tft_idx] = 20;
 

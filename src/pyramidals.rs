@@ -86,6 +86,7 @@ impl PyramidalLayer {
 		let syns_per_tftsec = dens.syns().syns_per_tftsec();
 		let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
 		let cels_per_cel_grp = dims.per_subgrp(cel_grp_count).expect("PyramidalLayer::new()");
+		let learning_rate_l2i = 0i32;
 
 		let kern_ltp = ocl.new_kernel("pyrs_ltp".to_string(), 
 			WorkSize::OneDim(cel_grp_count as usize))
@@ -100,7 +101,8 @@ impl PyramidalLayer {
 			.arg_scl(syns_per_den_l2 as u32)			
 			.arg_scl(cels_per_cel_grp)
 			.arg_scl(pyr_lyr_axn_idz)
-			.arg_scl_named::<u32>("rnd", None)		
+			.arg_scl_named::<i32>("lr_l2i", Some(learning_rate_l2i))
+			.arg_scl_named::<i32>("rnd", None)		
 			.arg_env(&dens.syns().flag_sets)
 			.arg_env(&flag_sets)
 			.arg_env_named::<i32>("aux_ints_0", None)

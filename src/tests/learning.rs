@@ -92,8 +92,8 @@ fn test_dst_den_learning() {
 	let mut ltb = LearningTestBed::new();
 	// 180 -> +-64 (slow), +-96 (fast)
 	// 360 -> +-96 (slow), +-119 (fast)
-	let on_focus_iters = 25;
-	let off_focus_iters = 25;
+	let on_focus_iters = 360;
+	let off_focus_iters = 0;
 	ltb.test_on_off(on_focus_iters, off_focus_iters);
 
 	// let on_focus_iters = 180;
