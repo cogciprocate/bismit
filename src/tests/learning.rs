@@ -20,7 +20,7 @@ use super::util::{ NONE, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL };
 
 // const LEARNING_TEST_ITERATIONS: usize = 5; //50;
 // const LEARNING_ITERS_PER_CELL: usize = 2;
-const LEARNING_CONTINUATION_ITERS: usize = 4;
+const LEARNING_CONTINUATION_ITERS: usize = 3;
 
 const PRINT_DEBUG_INFO: bool = true;
 const PRINT_FINAL_ITER_ONLY: bool = true;
@@ -90,10 +90,15 @@ const PRINT_FINAL_ITER_ONLY: bool = true;
 #[test]
 fn test_dst_den_learning() {
 	let mut ltb = LearningTestBed::new();
-
-	let on_focus_iters = 1800;
-	let off_focus_iters = 900;
+	// 180 -> +-64 (slow), +-96 (fast)
+	// 360 -> +-96 (slow), +-119 (fast)
+	let on_focus_iters = 25;
+	let off_focus_iters = 25;
 	ltb.test_on_off(on_focus_iters, off_focus_iters);
+
+	// let on_focus_iters = 180;
+	// let off_focus_iters = 180;
+	// ltb.test_on_off(on_focus_iters, off_focus_iters);
 
 	print!("\n");
 	panic!(" -- DEBUGGING -- ");

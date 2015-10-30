@@ -188,7 +188,7 @@ static inline int rnd_mix(int const rnd_a, int seed) {
 
 
 /* RND INC/DEC NOTES:
-		- Must cap at the min and max limits (-128, 127).
+		- Must cap at the min and max limits (-127, 127).
 		- Must not get stuck at max limit. If at max, must be decrementable. At min, who cares.
 		- Must be easy to move near zero and more difficult the larger the pos or neg value.
 
@@ -197,19 +197,19 @@ static inline int rnd_mix(int const rnd_a, int seed) {
 			- account for pos-neg val
 			- handle deadlock
 
-*/
-// RND_INC(): Returns a 1 or 0 representing whether or not to increment a value:
-static inline int rnd_inc(int const rnd_a, int const seed, char const val) {
-	// return (rnd_mix(rnd_a, seed) & 0x7F) > val;
-	return (rnd_mix(rnd_a, seed) & 0x7F) > abs(val); // WORKING
-}
 
-// RND_DEC(): Returns a 1 or 0 representing whether or not to decrement a value:
-static inline int rnd_dec(int const rnd_a, int const seed, char const val) {
-	// int const abs_str = abs(val);
-	int const str_is_max = val == 0x7F;
-	return ((rnd_mix(rnd_a, seed) & 0x7F) + str_is_max) > abs(val); // WORKING
-}
+*/
+
+
+
+
+
+
+
+
+
+
+
 
 
 static inline uint calc_syn_idz(uint const tuft_id, uint const cel_count, uint const cel_id, 
@@ -379,7 +379,7 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 =============================================================================*/
 
 // ISSUE: LOTS OF PROBLEMS WITH GLITCHES AND COMPILER BUGS ON THESE FUNCTIONS!
-// 		UPDATE: CATALYST 15.9 SEEMS TO HAVE FIXED SEVERAL (ALL?).
+// 		UPDATE: CATALYST 15.9 SEEMS TO HAVE FIXED SEVERAL (ALL?). NOT SURE ABOUT 
 
 // DST_DEN_SYNS_LEARN_INIT(): 
 // 		- Occurs when a cell is active.
@@ -392,7 +392,7 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
 				__global uchar const* const syn_states,
 				uint const syn_idz,	
-				uint const syns_per_den_l2, // MAKE THIS A GLOBAL?
+				uint const syns_per_den_l2,
 				int const rnd,
 				__global uchar* const syn_flag_sets,
 				__global char* const syn_strengths) 
@@ -437,25 +437,72 @@ static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
 	}
 }
 
+
+
+/*=============================================================================
+===================================== WIP =====================================
+=============================================================================*/
+
+
+// RND_INC(): Returns a 1 or 0 representing whether or not to increment a value:
+static inline int rnd_inc(int const rnd_a, int const seed, char const val, 
+			int const lr_l2i, int const lr_mask) 
+{
+	// return (rnd_mix(rnd_a, seed) & 0x7F) > abs(val);	// FAST
+	// return ((char)rnd_mix(rnd_a, seed)) > abs(val); 	// SLOWER VARIANT
+	return (rnd_mix(rnd_a, seed) & lr_mask) 
+		> (abs(val) + (lr_mask - 0x7f));				// ADJUSTABLE VARIANT
+}
+
+// RND_DEC(): Returns a 1 or 0 representing whether or not to decrement a value:
+static inline int rnd_dec(int const rnd_a, int const seed, char const val, 
+			int const lr_l2i, int const lr_mask) 
+{
+	int const str_is_max = val == 127;
+
+	// return ((rnd_mix(rnd_a, seed) & 0x7F)) > (abs(val) - str_is_max);   	// FAST
+	// return ((char)rnd_mix(rnd_a, seed)) > (char)(abs(val) - str_is_max);	// SLOWER VARIANT
+	return ((rnd_mix(rnd_a, seed) & lr_mask)) 
+		> ((abs(val) - str_is_max) + (lr_mask - 0x7f));						// ADJUSTABLE VARIANT
+}
+
+static inline void lshft_mask(int* mask, int shft_l2) {
+	for (int i = 0; i < shft_l2; i++) { *mask |= (1 << i); }
+}
+
+/*=============================================================================
+==================================== /WIP =====================================
+=============================================================================*/
+
+
 // DST_TFT_SYNS_LEARN_TRMN(): Learning termination for a tuft:
 // 		- Occurs when a cell which had been active becomes inactive.
 // TODO: VECTORIZE
 static inline void tft_syns_trm( 
 				__global uchar const* const syn_states,
 				uint const syn_idz,
-				uint const syns_per_tft_l2, // MAKE THIS A GLOBAL?
+				uint const syns_per_tft_l2,
 				int const rnd,
 				__global uchar* const syn_flag_sets,
+				__global int* const aux_ints_0,
 				__global char* const syn_strengths) 
 {
 	uint const n = syn_idz + (1 << syns_per_tft_l2);
+
+	// TODO: MOVE TO HOST SIDE: These should be calculated host side and passed in:
+	int const lr_l2i = 0; int lr_mask = 0x7F << lr_l2i;
+	lshft_mask(&lr_mask, lr_l2i);
+
+	aux_ints_0[syn_idz] = lr_mask;
+	// aux_ints_0[syn_idz] = rnd_mix(rnd, syn_idz) & lr_mask;
+
 
 	for (uint i = syn_idz; i < n; i++) {
 		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
 		uchar syn_flag_set = syn_flag_sets[i];
-		int const should_inc = rnd_inc(rnd, (syn_idz + i), syn_strength);
-		int const should_dec = rnd_dec(rnd, (syn_idz + i), syn_strength);
+		int const should_inc = rnd_inc(rnd, (syn_idz + i), syn_strength, lr_l2i, lr_mask);
+		int const should_dec = rnd_dec(rnd, (syn_idz + i), syn_strength, lr_l2i, lr_mask);
 		int const syn_is_active = syn_state != 0;
 		int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == SYN_STPOT_FLAG;
 		int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == SYN_STDEP_FLAG;
@@ -481,20 +528,26 @@ static inline void tft_syns_trm(
 static inline void prx_syns__active__ltp_ltd( 
 				__global uchar const* const syn_states,
 				uint const syn_idz,
-				uint const syns_per_den_l2, // MAKE THIS A GLOBAL?
+				uint const syns_per_den_l2,
 				int const rnd,
 				__global char* const syn_strengths) 
 {
 	uint const n = syn_idz + (1 << syns_per_den_l2);
 
+	// TODO: These should be calculated host side and passed in:
+	int const lr_l2i = 0; int const lr_mask = 0x7F << lr_l2i;
+	lshft_mask(&lr_mask, lr_l2i);
+
 	for (uint i = syn_idz; i < n; i++) {
 		uchar const syn_state = syn_states[i];
 		char syn_strength = syn_strengths[i];
-		int const inc = rnd_inc(rnd, syn_idz + i, syn_strength);
+		// int const inc = rnd_inc(rnd, syn_idz + i, syn_strength);
+		int const should_inc = rnd_inc(rnd, (syn_idz + i), syn_strength, lr_l2i, lr_mask);
+		int const should_dec = rnd_dec(rnd, (syn_idz + i), syn_strength, lr_l2i, lr_mask);
 		int const syn_is_active = syn_state != 0;
 
-		syn_strength += mul24(syn_is_active, inc);
-		syn_strength -= mul24(!syn_is_active, inc);
+		syn_strength += mul24(syn_is_active, should_inc);
+		syn_strength -= mul24(!syn_is_active, should_dec);
 
 		syn_strengths[i] = syn_strength;
 	}
@@ -1158,7 +1211,7 @@ __kernel void pyrs_ltp(
 
 			} else if (cel_prev_concrete) {
 				tft_syns_trm(syn_states, syn_idz_tft, syns_per_den_l2 + dens_per_tft_l2, rnd, 
-					syn_flag_sets, syn_strengths);
+					syn_flag_sets, aux_ints_0, syn_strengths);
 
 				// aux_ints_1[cel_tft_idx] = 20;
 
