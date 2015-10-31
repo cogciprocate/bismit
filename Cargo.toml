@@ -4,14 +4,18 @@ version = "0.0.1"
 authors = ["Nick Sanders <github.com/nsan1129>"]
 
 [dependencies]
-bitflags = "0.1.1"
-rand = "0.3.5"
-num = "0.1.19"
-libc = "0.1.5"
-enum_primitive = "0.0.2"
+bitflags = "0.3"
+rand = "0.3"
+num = "0.1"
+libc = "0.1"
+enum_primitive = "0.1"
+ocl = "*"
 
 [dependencies.microcosm]
 git = "https://github.com/cogciprocate/microcosm.git"
+
+#[dependencies.ocl]
+#git = "https://github.com/cogciprocate/ocl_rust.git"
 
 [dependencies.time]
 git = "https://github.com/rust-lang/time.git"

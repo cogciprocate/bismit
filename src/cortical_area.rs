@@ -549,7 +549,7 @@ impl Drop for CorticalArea {
 
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 	use std::ops::{ Range };
 	use rand::distributions::{ IndependentSample, Range as RandRange };
 

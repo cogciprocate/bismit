@@ -852,7 +852,7 @@ pub fn wrap_idx(idx: usize, len: usize) -> usize {
 
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 
 	use super::*;
 

@@ -7,7 +7,7 @@ use cortex::{ Cortex };
 
 pub static PRIMARY_AREA_NAME: &'static str 	= "v1";
 pub static INHIB_LAYER_NAME: &'static str 	= "iv_inhib";
-const REPEATS_PER_IMAGE: usize 				= 1;
+const CYCLES_PER_FRAME: usize 				= 1;
 
 
 pub fn define_protolayer_maps() -> ProtoLayerMaps {
@@ -47,7 +47,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			// area_side / 2, area_side / 2, 
 			Protoinput::IdxReader { 
 				file_name: "data/train-images-idx3-ubyte", 
-				repeats: REPEATS_PER_IMAGE, 
+				cyc_per: CYCLES_PER_FRAME, 
 				scale: 1.3,
 			},
 

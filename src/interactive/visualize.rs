@@ -28,7 +28,7 @@ pub const PRINT_DETAILS_EVERY: i32			= 10000;
 // pub const INTRODUCE_NOISE: bool 			= false;
 // pub const COUNTER_RANGE: Range<usize>		= Range { start: 0, end: 10 };
 // pub const COUNTER_RANDOM: bool				= false;
-const REPEATS_PER_IMAGE: usize 				= 3;
+const CYCLES_PER_FRAME: usize 				= 1;
 
 
 /* Eventually move defines to a config file or some such */
@@ -50,7 +50,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 		)
 
 		.layer("iii", 3, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(2, 4, vec!["iii"], 400)
+			Protocell::new_pyramidal(1, 4, vec!["iii"], 400)
 				.apical(vec!["eff_in"])
 				// .apical(vec!["unused"])
 		)
@@ -71,7 +71,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 		// .area_ext("u0", "external", area_side, area_side, 
 		// 	Protoinput::IdxReader { 
 		// 		file_name: "data/train-labels-idx1-ubyte", 
-		// 		repeats: REPEATS_PER_IMAGE,
+		// 		cyc_per: CYCLES_PER_FRAME,
 		// 	},
 
 		// 	None, 
@@ -90,7 +90,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			// 32, 32,
 			Protoinput::IdxReaderLoop { 
 				file_name: "data/train-images-idx3-ubyte", 
-				repeats: REPEATS_PER_IMAGE, 
+				cyc_per: CYCLES_PER_FRAME, 
 				scale: 1.3,
 				loop_frames: 12,
 			},
@@ -140,7 +140,7 @@ pub fn run(autorun_iters: i32) -> bool {
 	ir_labels_vec.push(0);
 
 	let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), 
-		"data/train-labels-idx1-ubyte", REPEATS_PER_IMAGE, 1.0);
+		"data/train-labels-idx1-ubyte", CYCLES_PER_FRAME, 1.0);
 	
 	let mut cortex = cortex::Cortex::new(define_protolayer_maps(), define_protoareas());
 	let mut area_name = "v1".to_string();
@@ -172,7 +172,7 @@ pub fn run(autorun_iters: i32) -> bool {
 	//let input_kind = InputKind::Exp1;		
 	
 
-	// let mut ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte", REPEATS_PER_IMAGE);
+	// let mut ir = IdxReader::new(area_dims.clone(), "data/train-images-idx3-ubyte", CYCLES_PER_FRAME);
 	// let input_sources: Vec<InputSource> = vec![
 	// 	InputSource::new(InputKind::IdxReader(Box::new(ir)), "v1"),
 	// ];

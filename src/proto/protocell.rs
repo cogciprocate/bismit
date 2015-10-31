@@ -121,7 +121,7 @@ pub enum DendriteClass {
 
 //#[derive(PartialEq, Debug, Clone, Eq, Hash)]
 bitflags! {
-	#[derive(Debug)]
+	// #[derive(Debug)]
 	flags CellFlags: u32 {
 		const HAPPY 		= 0b00000001,
 		const SAD			= 0b00000010,

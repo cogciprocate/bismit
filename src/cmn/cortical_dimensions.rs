@@ -253,7 +253,7 @@ fn len_components(cells: u32, per_tft_l2: i8, tfts_per_cel: u32) -> u32 {
 	*/
 
 // #[cfg(test)]
-// mod tests {
+// pub mod tests {
 // 	use super::*;
 
 // 	#[test]

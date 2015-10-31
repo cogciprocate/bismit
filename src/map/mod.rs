@@ -8,6 +8,6 @@ pub use self::layer_map:: { InterAreaInfoCache };
 pub use self::area_map::tests::{ AreaMapTest };
 
 
-mod area_map;
+pub mod area_map;
 mod layer_map;
 mod slice_map;

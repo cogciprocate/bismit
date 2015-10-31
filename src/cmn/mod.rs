@@ -20,7 +20,7 @@ pub use self::data_cell_layer::tests::{ CelCoords, DataCellLayerTest };
 mod macros;
 mod cmn;
 mod cortical_dimensions;
-mod data_cell_layer;
+pub mod data_cell_layer;
 //mod area_map;
 mod slice_dimensions;
 mod renderer;

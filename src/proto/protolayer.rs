@@ -122,7 +122,7 @@ pub enum ProtoaxonKind {
 
 
 bitflags! {
-	#[derive(Debug)]
+	// #[derive(Debug)]
 	flags ProtolayerFlags: usize {
 		const DEFAULT				= 0b00000000,
 		const AFFERENT_INPUT		= 0b00000001,

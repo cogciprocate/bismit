@@ -289,7 +289,7 @@ impl TractAreaInfo {
 }
 
 
-mod tests {
+pub mod tests {
 	
 }
 

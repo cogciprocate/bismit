@@ -451,7 +451,7 @@ fn junk0_vec_init(sca: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
 
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 	use super::*;
 	// use ocl::{ self };
 	use cmn::{ CorticalDimensions };

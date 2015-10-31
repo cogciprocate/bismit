@@ -1,18 +1,12 @@
-#![allow(
-	// non_camel_case_types,
-	dead_code, 
-	unused_variables, 
-	// unused_mut, 
-	unused_assignments, 
-	// unused_imports,
-)]
+#![allow(dead_code, unused_variables, unused_assignments, )]
 
-#![feature(vec_push_all, clone_from_slice, vec_resize, drain, zero_one)]
+#![feature(vec_push_all, clone_from_slice, drain)]
 extern crate num;
-extern crate microcosm;
 extern crate libc;
 extern crate time;
 //extern crate yaml_rust;
+extern crate microcosm;
+extern crate ocl;
 
 #[macro_use]
 extern crate rand;
@@ -23,7 +17,7 @@ extern crate enum_primitive;
 
 #[macro_use]
 mod cmn;
-mod ocl;
+// mod ocl;
 mod cortical_area;
 mod axon_space;
 mod dendrites;

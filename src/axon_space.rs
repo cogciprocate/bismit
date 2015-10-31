@@ -84,7 +84,7 @@ impl AxonSpace {
 
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 	use super::{ AxonSpace };
 	use map::{ AreaMap, AreaMapTest };
 	use cmn::{ CelCoords };

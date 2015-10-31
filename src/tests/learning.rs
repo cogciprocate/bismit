@@ -22,7 +22,7 @@ use super::util::{ NONE, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL };
 // const LEARNING_ITERS_PER_CELL: usize = 2;
 const LEARNING_CONTINUATION_ITERS: usize = 3;
 
-const PRINT_DEBUG_INFO: bool = true;
+const PRINT_DEBUG_INFO: bool = false;
 const PRINT_FINAL_ITER_ONLY: bool = true;
 
 //=============================================================================
@@ -93,15 +93,15 @@ fn test_dst_den_learning() {
 	// 180 -> +-64 (slow), +-96 (fast)
 	// 360 -> +-96 (slow), +-119 (fast)
 	let on_focus_iters = 360;
-	let off_focus_iters = 0;
+	let off_focus_iters = 360;
 	ltb.test_on_off(on_focus_iters, off_focus_iters);
 
 	// let on_focus_iters = 180;
 	// let off_focus_iters = 180;
 	// ltb.test_on_off(on_focus_iters, off_focus_iters);
 
-	print!("\n");
-	panic!(" -- DEBUGGING -- ");
+	// print!("\n");
+	// panic!(" -- DEBUGGING -- ");
 }
 
 
@@ -224,7 +224,7 @@ impl LearningTestBed {
 			let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states.len();
 
 			// Set the sources for the synapses on the second half of our chosen tuft to our preselected nearby axon:
-			// <<<<< TODO: IMPLEMENT THIS (for efficiency): >>>>>
+			// <<<<< [FIXME] TODO: IMPLEMENT THIS (for efficiency): >>>>>
 			// 		area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range);
 
 			for syn_idx in focus_syns.clone() {

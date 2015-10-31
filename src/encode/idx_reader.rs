@@ -26,7 +26,7 @@ const SQRT_3: f64 = 1.73205080756f64;
 //			- TEST DIFFERENT BUFFERING STRATEGIES (see notes)
 pub struct IdxReader {
 	ganglion_dims: CorticalDimensions,
-	repeats_per_image: usize,
+	cycles_per_frame: usize,
 	scale_factor: f64,
 	repeat_counter: usize,
 	frame_counter: usize,
@@ -47,7 +47,7 @@ pub struct IdxReader {
 }
 
 impl IdxReader {
-	pub fn new(ganglion_dims: CorticalDimensions, file_name: &str, repeats_per_image: usize, scale_factor: f64) -> IdxReader {
+	pub fn new(ganglion_dims: CorticalDimensions, file_name: &str, cycles_per_frame: usize, scale_factor: f64) -> IdxReader {
 		let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
 		let path = Path::new(&path_string);
 		let display = path.display();
@@ -119,7 +119,7 @@ impl IdxReader {
 
 	    IdxReader {
 	    	ganglion_dims: ganglion_dims,
-	    	repeats_per_image: repeats_per_image,
+	    	cycles_per_frame: cycles_per_frame,
 	    	scale_factor: scale_factor,
 	    	repeat_counter: 0,
 	    	frame_counter: 0,
@@ -201,7 +201,7 @@ impl IdxReader {
 	fn increment_frame(&mut self) {		
 		self.repeat_counter += 1;
 
-		if self.repeat_counter >= self.repeats_per_image {
+		if self.repeat_counter >= self.cycles_per_frame {
 			self.repeat_counter = 0;
 			self.frame_counter += 1;
 
