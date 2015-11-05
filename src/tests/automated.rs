@@ -3,7 +3,7 @@
 // use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 use cortex::{ /*self,*/ Cortex };
 // use thalamus::{ Thalamus };
-// use ocl::{ Envoy, WorkSize, OclContext, OclProgQueue, EnvoyDimensions, BuildOptions, BuildOption };
+// use ocl::{ Envoy, WorkSize, Context, ProQueue, EnvoyDimensions, BuildOptions, BuildOption };
 // use interactive::{ input_czar, InputCzar, InputKind };
 use super::{ hybrid, kernels, testbed, TestBed };
 
@@ -29,11 +29,11 @@ fn test_kernels() {
 
 
 
-// pub fn init_ocl() -> (OclProgQueue, CorticalDimensions) {
+// pub fn init_ocl() -> (ProQueue, CorticalDimensions) {
 // 	let mut build_options = gen_build_options();
 
-// 	let ocl_context = OclContext::new(None);
-// 	let mut ocl = OclProgQueue::new(&ocl_context, None);
+// 	let ocl_context = Context::new(None);
+// 	let mut ocl = ProQueue::new(&ocl_context, None);
 // 	ocl.build(build_options);
 
 // 	let dims = CorticalDimensions::new(32, 32, 1, 0, Some(ocl.get_max_work_group_size()));

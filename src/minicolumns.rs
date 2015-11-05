@@ -9,7 +9,7 @@ use rand::{ self, /*ThreadRng, Rng*/ };
 
 use cmn::{ self, CorticalDimensions, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, OclProgQueue, WorkSize, Envoy, OclNum };
+use ocl::{ self, ProQueue, WorkSize, Envoy, OclNum };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, /*Protocell, DendriteKind*/ };
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
@@ -63,7 +63,7 @@ impl Minicolumns {
 					ssts: &SpinyStellateLayer, 
 					pyrs: &PyramidalLayer,
 
-					/*aux: &Aux,*/ ocl: &OclProgQueue) -> Minicolumns {
+					/*aux: &Aux,*/ ocl: &ProQueue) -> Minicolumns {
 
 		assert!(dims.depth() == 1);
 		assert!(dims.v_size() == pyrs.dims().v_size() && dims.u_size() == pyrs.dims().u_size());

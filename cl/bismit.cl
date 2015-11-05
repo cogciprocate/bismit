@@ -474,7 +474,7 @@ static inline int rnd_dec(int const rnd_a, int const seed, char const val,
 		> ((abs(val) - str_is_max) + (lr_mask - 0x7f));						// ADJUSTABLE VARIANT
 }
 
-static inline void lshft_mask(int* mask, int shft_l2) {
+static inline void lshft_mask(int* mask, int const shft_l2) {
 	for (int i = 0; i < shft_l2; i++) { *mask |= (1 << i); }
 }
 
@@ -503,7 +503,6 @@ static inline void tft_syns_trm(
 
 	// aux_ints_0[syn_idz] = lr_mask;
 	// aux_ints_0[syn_idz] = rnd_mix(rnd, syn_idz) & lr_mask;
-
 
 	for (uint i = syn_idz; i < n; i++) {
 		uchar const syn_state = syn_states[i];
@@ -542,8 +541,9 @@ static inline void prx_syns__active__ltp_ltd(
 {
 	uint const n = syn_idz + (1 << syns_per_den_l2);
 
-	// [FIXME] TODO: These should be calculated host side and passed in:
-	int const lr_l2i = 0; int const lr_mask = 0x7F << lr_l2i;
+	// TODO: These should be calculated host side and passed in:
+	int const lr_l2i = 0; 
+	int lr_mask = 0x7F << lr_l2i;
 	lshft_mask(&lr_mask, lr_l2i);
 
 	for (uint i = syn_idz; i < n; i++) {

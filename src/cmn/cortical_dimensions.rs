@@ -214,7 +214,7 @@ impl EnvoyDimensions for CorticalDimensions {
 }
 
 
-// fn resolve_physical_increment(ocl: Option<&OclProgQueue>) -> Option<u32> {
+// fn resolve_physical_increment(ocl: Option<&ProQueue>) -> Option<u32> {
 // 	match ocl {
 // 		Some(ocl) => Some(ocl.get_max_work_group_size()),
 // 		None => None,

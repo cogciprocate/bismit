@@ -1,7 +1,7 @@
 use cmn::{ CorticalDimensions };
 use proto::{ layer, ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, Axonal, Spatial, Horizontal, Sensory, Thalamic, Protocell, Protofilter, Protoinput };
 use thalamus::{ Thalamus };
-use ocl::{ OclContext, OclProgQueue };
+use ocl::{ Context, ProQueue };
 use cortex::{ Cortex };
 
 
@@ -152,8 +152,8 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
 // TESTBED {}: Stripped down cortex/cortical area
 pub struct TestBed {
-	pub ocl_context: OclContext,
-	pub ocl: OclProgQueue,
+	pub ocl_context: Context,
+	pub ocl: ProQueue,
 	pub thal: Thalamus,
 	pub dims: CorticalDimensions,
 }
@@ -168,8 +168,8 @@ impl TestBed {
 		let thal = Thalamus::new(&proto_layer_maps, &proto_area_maps);
 		let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
-		let ocl_context = OclContext::new(None);
-		let mut ocl = OclProgQueue::new(&ocl_context, None);
+		let ocl_context = Context::new(None);
+		let mut ocl = ProQueue::new(&ocl_context, None);
 		ocl.build(area_map.gen_build_options());
 
 		let dims = area_map.dims().clone_with_physical_increment(ocl.get_max_work_group_size());

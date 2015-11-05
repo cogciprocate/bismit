@@ -6,7 +6,7 @@ use time;
 // use rand::distributions::{ IndependentSample, Range };
 
 
-// use ocl::{ self, OclContext, OclProgQueue };
+// use ocl::{ self, Context, ProQueue };
 use cmn::{ /*self, CorticalDimensions,*/ Sdr };
 // use map::{ AreaMap };
 use cortical_area:: { /*self,*/ CorticalArea, CorticalAreas };

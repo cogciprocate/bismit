@@ -2,7 +2,7 @@
 use cmn::{ self, /*CorticalDimensions*/ };
 // use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 // use cortex::{ self, Cortex };
-use ocl::{ Envoy, WorkSize, /*OclProgQueue, EnvoyDimensions,*/ /*OclNum*/ };
+use ocl::{ Envoy, WorkSize, /*ProQueue, EnvoyDimensions,*/ /*OclNum*/ };
 // use interactive::{ input_czar, InputCzar, InputKind };
 // use super::hybrid;
 use super::{ TestBed, util };
@@ -48,7 +48,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 
 
 
-// pub fn test_safe_dim_ofs(ocl: &OclProgQueue, dims: CorticalDimensions) {
+// pub fn test_safe_dim_ofs(ocl: &ProQueue, dims: CorticalDimensions) {
 // 	let mut dim_ids = Envoy::<u32>::shuffled(dims, 0, 15, &ocl);
 // 	let mut dim_offs = Envoy::<i8>::shuffled(dims, -16, 15, &ocl);
 // 	let mut safe_dim_offs = Envoy::<i8>::new(dims, 0, &ocl);

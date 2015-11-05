@@ -13,7 +13,7 @@ use rand;
 
 use cmn::{ self, CorticalDimensions, Renderer, Sdr, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, OclProgQueue, OclContext, /*WorkSize,*/ Envoy, /*BuildOptions,*/ /*BuildOption*/ };
+use ocl::{ self, ProQueue, Context, /*WorkSize,*/ Envoy, /*BuildOptions,*/ /*BuildOption*/ };
 use proto::{ /*ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap,*/ Cellular, /*Axonal, Spatial, Horizontal, Sensory,*/ Pyramidal, SpinyStellate, Inhibitory, layer, /*Protocell,*/ DendriteKind };
 
 // use synapses::{ Synapses };
@@ -45,8 +45,8 @@ pub struct CorticalArea {
 	ptal_name: &'static str,	// PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
 	psal_name: &'static str,	// PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
 	pub aux: Aux,
-	ocl: OclProgQueue,
-	ocl_context: OclContext,
+	ocl_pq: ProQueue,
+	ocl_context: Context,
 	renderer: Renderer,
 	counter: usize,
 	rng: rand::XorShiftRng,
@@ -65,15 +65,16 @@ impl CorticalArea {
 
 		println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}'...", area_map.proto_area_map().name);		
 
-		let ocl_context: ocl::OclContext = OclContext::new(None);
-		let mut ocl: ocl::OclProgQueue = ocl::OclProgQueue::new(&ocl_context, Some(device_idx));
+		let ocl_context: ocl::Context = Context::new(None, None).expect(
+			"CorticalArea::new(): ocl_context creation error");
+		let mut ocl_pq: ocl::ProQueue = ocl::ProQueue::new(&ocl_context, Some(device_idx));
 
-		ocl.build(area_map.gen_build_options());
+		ocl_pq.build(area_map.gen_build_options()).expect("CorticalArea::new(): ocl_pq.build(): error");;
 
 		// let dims = area_map.proto_area_map().dims.clone_with_depth(area_map.proto_layer_map().depth_total())
-		// 	.with_physical_increment(ocl.get_max_work_group_size());
+		// 	.with_physical_increment(ocl_pq.get_max_work_group_size());
 
-		let dims = area_map.dims().clone_with_physical_increment(ocl.get_max_work_group_size());
+		let dims = area_map.dims().clone_with_physical_increment(ocl_pq.get_max_work_group_size());
 
 		println!("{}CORTICALAREA::NEW(): Area '{}' details: \
 			(u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}", 
@@ -95,7 +96,7 @@ impl CorticalArea {
 		//assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);
 		//assert!(depth_cellular > 0, "cortical_area::CorticalArea::new(): Region has no cellular layers.");
 
-		let axns = AxonSpace::new(&area_map, &ocl);
+		let axns = AxonSpace::new(&area_map, &ocl_pq);
 
 		let mut pyrs_map = HashMap::new();
 		let mut ssts_map = HashMap::new();
@@ -119,7 +120,7 @@ impl CorticalArea {
 							let pyrs_dims = dims.clone_with_depth(layer.depth);
 
 							let pyr_lyr = PyramidalLayer::new(
-								layer_name, pyrs_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl);
+								layer_name, pyrs_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq);
 
 							pyrs_map.insert(layer_name, Box::new(pyr_lyr));
 						},
@@ -127,7 +128,7 @@ impl CorticalArea {
 						SpinyStellate => {							
 							let ssts_map_dims = dims.clone_with_depth(layer.depth);
 							let sst_lyr = SpinyStellateLayer::new(
-								layer_name, ssts_map_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl);
+								layer_name, ssts_map_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq);
 							ssts_map.insert(layer_name, Box::new(sst_lyr));
 						},
 
@@ -168,7 +169,7 @@ impl CorticalArea {
 							let iinns_dims = dims.clone_with_depth(src_layer_depth);
 							let iinn_lyr = InhibitoryInterneuronNetwork::new(layer_name, iinns_dims, 
 								pcell.clone(), &area_map, src_soma_env, 
-								src_base_axn_slc, &axns, /*&aux,*/ &ocl);
+								src_base_axn_slc, &axns, /*&aux,*/ &ocl_pq);
 
 							iinns.insert(layer_name, Box::new(iinn_lyr));
 
@@ -193,7 +194,7 @@ impl CorticalArea {
 
 			let em_pyrs = format!("{}: '{}' is not a valid layer", emsg, ptal_name);
 			let pyrs = pyrs_map.get(ptal_name).expect(&em_pyrs);
-			Minicolumns::new(mcols_dims, &area_map, &axns, ssts, pyrs, /*&aux,*/ &ocl)
+			Minicolumns::new(mcols_dims, &area_map, &axns, ssts, pyrs, /*&aux,*/ &ocl_pq)
 		});
 
 
@@ -219,7 +220,7 @@ impl CorticalArea {
 							//dims.clone_with_depth(aff_in_layer.depth()), 
 							&axns, 
 							//aff_in_layer.base_slc(), 
-							&ocl
+							&ocl_pq
 						)));
 					}
 					Some(filters_vec)
@@ -230,7 +231,7 @@ impl CorticalArea {
 
 		let renderer = Renderer::new(&dims);
 
-		let aux = Aux::new(pyrs_map[ptal_name].dens().syns().dims(), &ocl);
+		let aux = Aux::new(pyrs_map[ptal_name].dens().syns().dims(), &ocl_pq);
 
 
 		// <<<<< TODO: CLEAN THIS UP >>>>>
@@ -261,7 +262,7 @@ impl CorticalArea {
 			iinns: iinns,
 			filters: filters,
 			aux: aux,
-			ocl: ocl,
+			ocl_pq: ocl_pq,
 			ocl_context: ocl_context,
 			renderer: renderer,
 			counter: 0,
@@ -384,14 +385,14 @@ impl CorticalArea {
 	// <<<<< TODO: DEPRICATE IN FAVOR OF ENVOY::WRITE_DIRECT() >>>>>
 	fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr) {
 		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-		ocl::enqueue_read_buffer(sdr, self.axns.states.buf(), self.ocl.queue(), axn_range.start as usize);
+		ocl::enqueue_read_buffer(sdr, self.axns.states.buf(), self.ocl_pq.cmd_queue(), axn_range.start as usize);
 	}
 
 	// WRITE_TO_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
 	// <<<<< TODO: DEPRICATE IN FAVOR OF ENVOY::WRITE_DIRECT() >>>>>
 	fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr) {
 		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-		ocl::enqueue_write_buffer(sdr, self.axns.states.buf(), self.ocl.queue(), axn_range.start as usize);
+		ocl::enqueue_write_buffer(sdr, self.axns.states.buf(), self.ocl_pq.cmd_queue(), axn_range.start as usize);
 	}
 
 	pub fn write_to_axon_slice(&self, slc_id: u8, sdr: &Sdr) {
@@ -466,8 +467,8 @@ impl CorticalArea {
 		&self.area_map.proto_area_map().eff_areas
 	}
 
-	pub fn ocl(&self) -> &OclProgQueue {
-		&self.ocl
+	pub fn ocl_pq(&self) -> &ProQueue {
+		&self.ocl_pq
 	}
 
 	pub fn render_aff_out(&mut self, input_status: &str, print_summary: bool) {
@@ -510,7 +511,7 @@ pub struct Aux {
 }
 
 impl Aux {
-	pub fn new(dims: &CorticalDimensions, ocl: &OclProgQueue) -> Aux {
+	pub fn new(dims: &CorticalDimensions, ocl_pq: &ProQueue) -> Aux {
 
 		//let dims_multiplier: u32 = 512;
 
@@ -519,8 +520,8 @@ impl Aux {
 		let int_32_min = -2147483648;
 
 		Aux { 
-			ints_0: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl),
-			ints_1: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl),
+			ints_0: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl_pq),
+			ints_1: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl_pq),
 			// chars_0: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			// chars_1: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			dims: dims.clone(),
@@ -540,8 +541,10 @@ impl Aux {
 impl Drop for CorticalArea {
 	fn drop(&mut self) {
     	print!("Releasing OpenCL components for '{}'... ", self.name);
-    	self.ocl.release_components();
+    	self.ocl_pq.release_components();
+    	print!("[ Program ][ Command Queue ]");
     	self.ocl_context.release_components();
+    	print!("[ Platform ]");
     	print!(" ...complete. \n");
 	}
 }

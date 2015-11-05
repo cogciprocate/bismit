@@ -9,7 +9,7 @@
 
 use cmn::{ self, CorticalDimensions };
 use map::{ AreaMap };
-use ocl::{ self, OclProgQueue, WorkSize, Envoy };
+use ocl::{ self, ProQueue, WorkSize, Envoy };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axon_space::{ AxonSpace };
@@ -44,7 +44,7 @@ impl Dendrites {
 					area_map: &AreaMap,
 					axons: &AxonSpace,
 					// aux: &Aux,
-					ocl: &OclProgQueue
+					ocl: &ProQueue
 	) -> Dendrites {
 		//println!("\n### Test D1 ###");
 		//let width_dens = dims.width << per_cell_l2;
