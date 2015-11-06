@@ -211,8 +211,8 @@ pub static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 4] = [
 	"bismit.cl",
 ];
 
-
-
+//	BASE_BUILD_OPTIONS():
+// 		-Used by AreaMap.
 pub fn base_build_options() -> BuildOptions {
 
 	//assert!(SENSORY_CHORD_COLUMNS % AXON_BUFFER_SIZE == 0);
@@ -253,7 +253,8 @@ pub fn base_build_options() -> BuildOptions {
 	build_options
 }
 
-// LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED
+// LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
+//		-Used by AreaMap
 pub fn load_builtin_kernel_files(build_options: &mut BuildOptions) {
 	for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
 		build_options.add_kern_file(BUILTIN_OPENCL_KERNEL_FILE_NAMES[i].to_string());

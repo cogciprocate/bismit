@@ -69,7 +69,7 @@ impl CorticalArea {
 			"CorticalArea::new(): ocl_context creation error");
 		let mut ocl_pq: ocl::ProQueue = ocl::ProQueue::new(&ocl_context, Some(device_idx));
 
-		ocl_pq.build(area_map.gen_build_options()).expect("CorticalArea::new(): ocl_pq.build(): error");;
+		ocl_pq.build(area_map.gen_build_options()).expect("CorticalArea::new(): ocl_pq.build(): error");
 
 		// let dims = area_map.proto_area_map().dims.clone_with_depth(area_map.proto_layer_map().depth_total())
 		// 	.with_physical_increment(ocl_pq.get_max_work_group_size());

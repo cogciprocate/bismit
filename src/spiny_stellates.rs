@@ -45,7 +45,7 @@ pub struct SpinyStellateLayer {
 // pyrs: &PyramidalLayer,
 impl SpinyStellateLayer {
 	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, area_map: &AreaMap, 
-				axns: &AxonSpace, /*aux: &Aux,*/ ocl: &ProQueue
+				axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQueue
 	) -> SpinyStellateLayer {
 		//let layer = area_map.proto_layer_map().spt_asc_layer().expect("spiny_stellates::SpinyStellateLayer::new()");
 		//let depth: u8 = layer.depth();
@@ -66,7 +66,7 @@ impl SpinyStellateLayer {
 		println!("      SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}", base_axn_slc, lyr_axn_idz, dims);
 
 		let dens_dims = dims.clone_with_ptl2(protocell.dens_per_tuft_l2 as i8);
-		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::SpinyStellate, area_map, axns, /*aux,*/ ocl);
+		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Distal, ProtocellKind::SpinyStellate, area_map, axns, /*aux,*/ ocl_pq);
 
 		//let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 		//let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
@@ -87,7 +87,7 @@ impl SpinyStellateLayer {
 		let cels_per_grp = dims.per_subgrp(grp_count).expect("SpinyStellateLayer::new()");
 			//.unwrap_or_else(|s: &'static str| panic!(s));
 
-		let kern_ltp = ocl.new_kernel("sst_ltp".to_string(), 
+		let kern_ltp = ocl_pq.new_kernel("sst_ltp".to_string(), 
 			//WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 			WorkSize::TwoDim(dims.tfts_per_cel() as usize, grp_count as usize))
 		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
