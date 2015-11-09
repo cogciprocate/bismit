@@ -1,7 +1,7 @@
 use std::collections::{ /*self,*/ HashMap };
 
 use proto::{ /*layer, RegionKind,*/ Protofilter, Protoinput };
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDims };
 
 
 // pub trait ProtoAreaMapsTrait {
@@ -108,7 +108,7 @@ impl <'a>ProtoAreaMaps {
 pub struct ProtoAreaMap {
 	pub name: &'static str,
 	pub region_name: &'static str,
-	pub dims: CorticalDimensions,	
+	pub dims: CorticalDims,	
 	//pub region_kind: RegionKind,
 	pub input: Protoinput,
 	pub filters: Option<Vec<Protofilter>>,
@@ -137,8 +137,8 @@ impl ProtoAreaMap {
 		ProtoAreaMap { 
 			name: name,
 			region_name: region_name,
-			dims: CorticalDimensions::new(width, height, 0, 0, None),
-			//dims: CorticalDimensions::new(width_l2, height_l2, 0, 0),
+			dims: CorticalDims::new(width, height, 0, 0, None),
+			//dims: CorticalDims::new(width_l2, height_l2, 0, 0),
 			//region_kind: region_kind,
 			input: input,
 			filters: filters,
@@ -147,7 +147,7 @@ impl ProtoAreaMap {
 		}
 	}
 
-	pub fn dims(&self) -> &CorticalDimensions {
+	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 

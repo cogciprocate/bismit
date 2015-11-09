@@ -1,4 +1,4 @@
-use cmn::{ self, CorticalDimensions, SliceDimensions, HexTilePlane, Sdr };
+use cmn::{ self, CorticalDims, SliceDims, HexTilePlane, Sdr };
 use map::{ SliceMap };
 
 //use std::char;
@@ -6,16 +6,16 @@ use std::iter;
 //use std::collections::{ BTreeMap };
 
 pub struct Renderer {
-	//dims: CorticalDimensions,
+	//dims: CorticalDims,
 	axn_history: Vec<u8>,
 	sst_history: Vec<u8>,
 	//slices: SliceMap,
-	aff_out_dims: SliceDimensions,
+	aff_out_dims: SliceDims,
 }
 
 impl Renderer {
-	pub fn new(area_dims: &CorticalDimensions) -> Renderer {		
-		let dims = SliceDimensions::new(area_dims, None).unwrap();
+	pub fn new(area_dims: &CorticalDims) -> Renderer {		
+		let dims = SliceDims::new(area_dims, None).unwrap();
 		let sdr_len = (dims.columns()) as usize;
 
 		Renderer { 
@@ -28,7 +28,7 @@ impl Renderer {
 
 	// DRAW(): v_size-row-v, u_size-col-u
 	// TODO: NEED TO MAKE SST_AXNS OPTIONAL 
-	pub fn render(&mut self, out_axns: &Sdr, sst_axns_opt: Option<&Sdr>, dims_opt: Option<&SliceDimensions>, 
+	pub fn render(&mut self, out_axns: &Sdr, sst_axns_opt: Option<&Sdr>, dims_opt: Option<&SliceDims>, 
 				input_status: &str, print_summary: bool) 
 	{
 		let dims = match dims_opt {

@@ -1,6 +1,6 @@
-use ocl::{ EnvoyDimensions };
+use ocl::{ EnvoyDims, ProQueue };
 
-/*	CorticalDimensions: Dimensions of a cortical area in units of cells
+/*	CorticalDims: Dimensions of a cortical area in units of cells
 		- Used to define both the volume and granularity of a cortical area.
 		- Also contains extra information such as opencl kernel workgroup size
 
@@ -23,7 +23,7 @@ use ocl::{ EnvoyDimensions };
 */
 
 #[derive(PartialEq, Debug, Clone, Eq)]
-pub struct CorticalDimensions {
+pub struct CorticalDims {
 	//u_size_l2: u8, // in cell-edges (log base 2) (WxHxD: 1x1xN)
 	//v_size_l2: u8, // in cell-edges (log2) (1x1xN)
 	u_size: u32,
@@ -34,17 +34,17 @@ pub struct CorticalDimensions {
 	physical_increment: Option<u32>,
 }
 
-impl CorticalDimensions {
-	pub fn new(u_size: u32, v_size: u32, depth: u8, per_tft_l2: i8, physical_increment: Option<u32>) -> CorticalDimensions {
-	//pub fn new(u_size_l2: u8, v_size_l2: u8,	depth: u8, per_tft_l2: i8,) -> CorticalDimensions {
+impl CorticalDims {
+	pub fn new(u_size: u32, v_size: u32, depth: u8, per_tft_l2: i8, physical_increment: Option<u32>) -> CorticalDims {
+	//pub fn new(u_size_l2: u8, v_size_l2: u8,	depth: u8, per_tft_l2: i8,) -> CorticalDims {
 		
 		//assert!(super::OPENCL_PREFERRED_VECTOR_MULTIPLE == 4);
 		//println!("\n\n##### v_size: {}, u_size: {}", v_size, u_size);
 		//let physical_increment = resolve_physical_increment(ocl);
-		//assert!(v_size % 4 == 0, "CorticalDimensions::new(): Size of dimension 'v' must be a multiple of 4.");
-		//assert!(u_size % 4 == 0, "CorticalDimensions::new(): Size of dimension 'u' must be a multiple of 4.");
+		//assert!(v_size % 4 == 0, "CorticalDims::new(): Size of dimension 'v' must be a multiple of 4.");
+		//assert!(u_size % 4 == 0, "CorticalDims::new(): Size of dimension 'u' must be a multiple of 4.");
 
-		CorticalDimensions { 
+		CorticalDims { 
 			u_size: u_size,
 			v_size: v_size,
 			/*u_size_l2: u_size_l2,
@@ -120,7 +120,7 @@ impl CorticalDimensions {
 		if self.per_tft_l2 >= 0 {
 			self.per_tft_l2 as u32
 		} else {
-			panic!("\nocl::CorticalDimensions::per_tft_l2_left(): may only be called if per_tft_l2 is positive");
+			panic!("\nocl::CorticalDims::per_tft_l2_left(): may only be called if per_tft_l2 is positive");
 		}
 	}
 
@@ -128,7 +128,7 @@ impl CorticalDimensions {
 		if self.per_tft_l2 < 0 {
 			(0 - self.per_tft_l2) as u32
 		} else {
-			panic!("\nocl::CorticalDimensions::per_tft_l2_right(): may only be called if per_tft_l2 is negative");
+			panic!("\nocl::CorticalDims::per_tft_l2_right(): may only be called if per_tft_l2 is negative");
 		}
 	}
 
@@ -149,8 +149,8 @@ impl CorticalDimensions {
 		len_components(self.columns(), self.per_tft_l2, self.tfts_per_cel)
 	}
 
-	pub fn per_subgrp(&self, subgroup_count: u32) -> Result<u32, &'static str> {
-		let physical_len = try!(self.physical_len());
+	pub fn per_subgrp(&self, subgroup_count: u32, ocl_pq: &ProQueue) -> Result<u32, &'static str> {
+		let physical_len = self.padded_envoy_len(ocl_pq) as u32;
 
 		if physical_len % subgroup_count == 0 {
 			return Ok(physical_len / subgroup_count) 
@@ -159,57 +159,56 @@ impl CorticalDimensions {
 		}
 	}	
 
-	pub fn clone_with_ptl2(&self, per_tft_l2: i8) -> CorticalDimensions {
-		CorticalDimensions { per_tft_l2: per_tft_l2, .. *self }
+	pub fn clone_with_ptl2(&self, per_tft_l2: i8) -> CorticalDims {
+		CorticalDims { per_tft_l2: per_tft_l2, .. *self }
 	}
 
-	pub fn clone_with_depth(&self, depth: u8) -> CorticalDimensions {
-		CorticalDimensions { depth: depth, .. *self }
+	pub fn clone_with_depth(&self, depth: u8) -> CorticalDims {
+		CorticalDims { depth: depth, .. *self }
 	}
 
-	pub fn clone_with_physical_increment(&self, physical_increment: u32) -> CorticalDimensions {
-		CorticalDimensions { physical_increment: Some(physical_increment), .. *self } 
+	pub fn clone_with_physical_increment(&self, physical_increment: u32) -> CorticalDims {
+		CorticalDims { physical_increment: Some(physical_increment), .. *self } 
 	}
 
 	pub fn set_physical_increment(&mut self, physical_increment: u32) {
 		self.physical_increment = Some(physical_increment);
 	}
 
-	pub fn with_physical_increment(mut self, physical_increment: u32) -> CorticalDimensions {
+	pub fn with_physical_increment(mut self, physical_increment: u32) -> CorticalDims {
 		self.set_physical_increment(physical_increment);
 		self
 	}
 
-	pub fn with_tfts(mut self, tfts_per_cel: u32) -> CorticalDimensions {
+	pub fn with_tfts(mut self, tfts_per_cel: u32) -> CorticalDims {
 		self.tfts_per_cel = tfts_per_cel;
 		self
 	}
 
-	// PHYSICAL_LEN(): Length of array required to hold the section of cortex represented by these dimensions
-	// 		- Rounded based on columns and is therefore safe for 
-	pub fn physical_len(&self) -> Result<u32, &'static str> {
+	/// Length of the envoy required to properly represent this section of cortex.
+	///
+	///	Rounded based on columns for versatility's sake.
+	pub fn padded_envoy_len(&self, ocl_pq: &ProQueue) -> usize {
 		let cols = self.columns();
-		let phys_incr = try!(self.physical_increment());
+		let phys_incr = ocl_pq.get_max_work_group_size();
 
 		let len_mod = cols % phys_incr;
 
 		if len_mod == 0 {
-			Ok(len_components(cols * self.depth as u32, self.per_tft_l2, self.tfts_per_cel))
+			len_components(cols * self.depth as u32, self.per_tft_l2, self.tfts_per_cel) as usize
 		} else {
 			let pad = phys_incr - len_mod;
 			debug_assert_eq!((cols + pad) % phys_incr, 0);
-			Ok(len_components((cols + pad) * self.depth as u32, self.per_tft_l2, self.tfts_per_cel))
+			len_components((cols + pad) * self.depth as u32, self.per_tft_l2, self.tfts_per_cel) as usize
 		}
 	}
 }
 
-impl Copy for CorticalDimensions {}
+impl Copy for CorticalDims {}
 
-impl EnvoyDimensions for CorticalDimensions {
-	// PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT 
-	// TODO: RETURN A RESULT<>
-	fn physical_len(&self) -> u32 {
-		self.physical_len().expect("EnvoyDimensions::len()")
+impl EnvoyDims for CorticalDims {
+	fn padded_envoy_len(&self, ocl_pq: &ProQueue) -> usize {
+		self.padded_envoy_len(ocl_pq)
 	}
 }
 

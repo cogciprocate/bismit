@@ -6,7 +6,7 @@ use std::ops::{ Range };
 
 use ocl::{ BuildOptions, BuildOption };
 use proto::{ layer, ProtoLayerMaps, ProtoLayerMap, Protolayer, ProtolayerFlags, ProtoAreaMaps, ProtoAreaMap };
-use cmn::{ self, CorticalDimensions, SliceDimensions };
+use cmn::{ self, CorticalDims, SliceDims };
 use map::{ SliceMap, InterAreaInfoCache };
 // use map::slice_map;
 
@@ -16,7 +16,7 @@ use map::{ SliceMap, InterAreaInfoCache };
 #[derive(Clone)]
 pub struct AreaMap {
 	area_name: &'static str,
-	dims: CorticalDimensions,
+	dims: CorticalDims,
 	ia_cache: InterAreaInfoCache,
 
 
@@ -77,7 +77,7 @@ impl AreaMap {
 		}
 	}	
 
-	pub fn slc_src_area_dims(&self, slc_id: u8, layer_flags: layer::ProtolayerFlags) -> &SliceDimensions {
+	pub fn slc_src_area_dims(&self, slc_id: u8, layer_flags: layer::ProtolayerFlags) -> &SliceDims {
 		//self.proto_layer_map.layer_with_flag(layer_flags).expect("Cannot find layer").layer_base_slc()
 
 		// GET SOURCE AREA DIMS!
@@ -158,7 +158,11 @@ impl AreaMap {
 			Some(ref protofilters) => {
 				for pf in protofilters.iter() {
 					match pf.cl_file_name() {
-						Some(ref clfn)  => build_options.add_kern_file(clfn.clone()),
+						Some(ref clfn)  => {							
+							build_options.add_kern_file(format!("{}/{}", cmn::cl_root_path(), clfn.clone()))
+							// build_options.add_kern_file(format!("{}/{}", "cl", clfn.clone()))
+						},
+
 						None => (),
 					}
 				}
@@ -209,7 +213,7 @@ impl AreaMap {
 		&self.slices
 	}
 
-	pub fn dims(&self) -> &CorticalDimensions {
+	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 }

@@ -1,6 +1,6 @@
 use ocl::{ Envoy };
 use dendrites::{ Dendrites };
-use cmn::{ /*self,*/ CorticalDimensions };
+use cmn::{ /*self,*/ CorticalDims };
 use proto::{ Protocell };
 
 // #[cfg(test)]
@@ -13,7 +13,7 @@ pub trait DataCellLayer {
 	fn confab(&mut self);
 	fn soma(&self) -> &Envoy<u8>;
 	fn soma_mut(&mut self) -> &mut Envoy<u8>;
-	fn dims(&self) -> &CorticalDimensions;
+	fn dims(&self) -> &CorticalDims;
 	fn axn_range(&self) -> (usize, usize);
 	fn base_axn_slc(&self) -> u8;
 	fn tfts_per_cel(&self) -> u32;
@@ -32,7 +32,7 @@ pub mod tests {
 
 	// use super::{ DataCellLayer };
 	use map::{ AreaMap, AreaMapTest };
-	use cmn::{ self, CorticalDimensions };
+	use cmn::{ self, CorticalDims };
 	use std::fmt::{ Display, Formatter, Result };
 
 	pub trait DataCellLayerTest {
@@ -54,7 +54,7 @@ pub mod tests {
 		pub axn_slc_id: u8,
 		pub v_id: u32,
 		pub u_id: u32,
-		pub layer_dims: CorticalDimensions,	
+		pub layer_dims: CorticalDims,	
 		pub tfts_per_cel: u32,
 		pub dens_per_tft_l2: u8,
 		pub syns_per_den_l2: u8,
@@ -62,7 +62,7 @@ pub mod tests {
 
 	impl CelCoords {
 		pub fn new(axn_slc_id: u8, slc_id_lyr: u8, v_id: u32, u_id: u32, 
-					dims: &CorticalDimensions, tfts_per_cel: u32, dens_per_tft_l2: u8,
+					dims: &CorticalDims, tfts_per_cel: u32, dens_per_tft_l2: u8,
 					syns_per_den_l2: u8) -> CelCoords 
 		{
 			let idx = cmn::cel_idx_3d(dims.depth(), slc_id_lyr, dims.v_size(), 

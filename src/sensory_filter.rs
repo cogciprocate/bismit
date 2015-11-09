@@ -1,5 +1,5 @@
 use ocl::{ self, ProQueue, WorkSize, Envoy, };
-use cmn::{ self, /*CorticalDimensions,*/ HexTilePlane, Sdr };
+use cmn::{ self, /*CorticalDims,*/ HexTilePlane, Sdr };
 use axon_space::{ AxonSpace };
 use proto::{ layer };
 use map::{ AreaMap };
@@ -9,7 +9,7 @@ pub struct SensoryFilter {
 	filter_name: String,
 	cl_file_name: Option<String>,
 	area_name: &'static str,
-	//dims: CorticalDimensions,
+	//dims: CorticalDims,
 	input: Envoy<ocl::cl_uchar>,
 	kern_cycle: ocl::Kernel,
 }
@@ -20,7 +20,7 @@ impl SensoryFilter {
 				cl_file_name: Option<String>, 
 				area_map: &AreaMap,
 				//area_name: &'static str,
-				//dims: CorticalDimensions, 
+				//dims: CorticalDims, 
 				axns: &AxonSpace,
 				//base_axn_slc: u8,
 				ocl: &ProQueue, 
@@ -38,8 +38,8 @@ impl SensoryFilter {
 		let input = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);		
 
 		let kern_cycle = ocl.new_kernel(filter_name.clone(),
-			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
-			.lws(WorkSize::ThreeDim(1, 8, 8 as usize))
+			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+			.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
 			.arg_env(&input)
 			.arg_scl(base_axn_slc)
 			.arg_env(&axns.states)

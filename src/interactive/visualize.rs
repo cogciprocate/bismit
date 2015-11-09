@@ -8,7 +8,7 @@ use std::io::{ self, Write, /*Stdout*/ };
 // use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
 use time;
 
-use cmn::{ self, CorticalDimensions, /*Renderer*/ };
+use cmn::{ self, CorticalDims, /*Renderer*/ };
 use cortex::{ self, Cortex };
 use encode:: { IdxReader };
 //use proto::layer;
@@ -67,7 +67,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 	let area_side = 48 as u32;
 
 	let protoareas = ProtoAreaMaps::new()		
-		//let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
+		//let mut ir_labels = IdxReader::new(CorticalDims::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
 		// .area_ext("u0", "external", area_side, area_side, 
 		// 	Protoinput::IdxReader { 
 		// 		file_name: "data/train-labels-idx1-ubyte", 
@@ -139,7 +139,7 @@ pub fn run(autorun_iters: i32) -> bool {
 	let mut ir_labels_vec: Vec<u8> = Vec::with_capacity(1);
 	ir_labels_vec.push(0);
 
-	let mut ir_labels = IdxReader::new(CorticalDimensions::new(1, 1, 1, 0, None), 
+	let mut ir_labels = IdxReader::new(CorticalDims::new(1, 1, 1, 0, None), 
 		"data/train-labels-idx1-ubyte", CYCLES_PER_FRAME, 1.0);
 	
 	let mut cortex = cortex::Cortex::new(define_protolayer_maps(), define_protoareas());

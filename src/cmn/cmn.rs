@@ -255,10 +255,19 @@ pub fn base_build_options() -> BuildOptions {
 
 // LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
 //		-Used by AreaMap
+// [FIXME]: TEMPORARY: Gonna need a better way to determine path...
 pub fn load_builtin_kernel_files(build_options: &mut BuildOptions) {
 	for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
-		build_options.add_kern_file(BUILTIN_OPENCL_KERNEL_FILE_NAMES[i].to_string());
+		build_options.add_kern_file(
+			format!("{}/{}", cl_root_path(), BUILTIN_OPENCL_KERNEL_FILE_NAMES[i].to_string())
+		);
 	}
+}
+
+// [FIXME]: TEMPORARY
+pub fn cl_root_path() -> String {
+	// format!("{}/{}", env!("P"), "bismit/cl")
+	"cl".to_string()
 }
 
 
@@ -535,31 +544,31 @@ pub fn sparse_vec<T: OclNum>(size: usize, min_val: T, max_val: T, sp_fctr_log2: 
 	vec
 }
 
-pub fn dup_check<T: OclNum>(in_vec: &mut Vec<T>) -> (usize, usize) {
+// pub fn dup_check<T: OclNum>(in_vec: &mut Vec<T>) -> (usize, usize) {
 	
 
-	let mut vec = in_vec.clone();
+// 	let mut vec = in_vec.clone();
 
-	vec.sort();
+// 	vec.sort();
 
 
-	let mut dups = 0usize;
-	let mut unis = 0usize;
-	let mut prev_val = vec[vec.len() - 1];
+// 	let mut dups = 0usize;
+// 	let mut unis = 0usize;
+// 	let mut prev_val = vec[vec.len() - 1];
 
-	for x in vec.iter() {
-		if prev_val == *x {
-			dups += 1;
-			//print!{"[{}]", *x};
-		} else {
-			unis += 1;
-		}
-		prev_val = *x;
-	}
+// 	for x in vec.iter() {
+// 		if prev_val == *x {
+// 			dups += 1;
+// 			//print!{"[{}]", *x};
+// 		} else {
+// 			unis += 1;
+// 		}
+// 		prev_val = *x;
+// 	}
 
-	println!("len: {}, dups: {}, unis: {}", vec.len(), dups, unis);
-	(dups, unis)
-}
+// 	println!("len: {}, dups: {}, unis: {}", vec.len(), dups, unis);
+// 	(dups, unis)
+// }
 
 
 /*pub fn log2(n: u32) -> u32 {

@@ -11,7 +11,7 @@ use std::collections::{ /*BTreeMap,*/ HashMap };
 use std::ops::{ Range };
 use rand;
 
-use cmn::{ self, CorticalDimensions, Renderer, Sdr, DataCellLayer };
+use cmn::{ self, CorticalDims, Renderer, Sdr, DataCellLayer };
 use map::{ AreaMap };
 use ocl::{ self, ProQueue, Context, /*WorkSize,*/ Envoy, /*BuildOptions,*/ /*BuildOption*/ };
 use proto::{ /*ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap,*/ Cellular, /*Axonal, Spatial, Horizontal, Sensory,*/ Pyramidal, SpinyStellate, Inhibitory, layer, /*Protocell,*/ DendriteKind };
@@ -34,7 +34,7 @@ pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 
 pub struct CorticalArea {
 	pub name: &'static str,
-	pub dims: CorticalDimensions,
+	pub dims: CorticalDims,
 	area_map: AreaMap,
 	pub axns: AxonSpace,
 	pub mcols: Box<Minicolumns>,
@@ -445,7 +445,7 @@ impl CorticalArea {
 	// 	&self.area_map.proto_layer_map()
 	// }
 
-	pub fn dims(&self) -> &CorticalDimensions {
+	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 
@@ -503,7 +503,7 @@ pub struct AreaParams {
 
 
 pub struct Aux {
-	dims: CorticalDimensions,
+	dims: CorticalDims,
 	pub ints_0: Envoy<ocl::cl_int>,
 	pub ints_1: Envoy<ocl::cl_int>,
 	// pub chars_0: Envoy<ocl::cl_char>,
@@ -511,7 +511,7 @@ pub struct Aux {
 }
 
 impl Aux {
-	pub fn new(dims: &CorticalDimensions, ocl_pq: &ProQueue) -> Aux {
+	pub fn new(dims: &CorticalDims, ocl_pq: &ProQueue) -> Aux {
 
 		//let dims_multiplier: u32 = 512;
 
@@ -528,7 +528,7 @@ impl Aux {
 		}
 	}
 
-	pub unsafe fn resize(&mut self, new_dims: &CorticalDimensions) {
+	pub unsafe fn resize(&mut self, new_dims: &CorticalDims) {
 		let int_32_min = -2147483648;
 		self.dims = new_dims.clone();
 		self.ints_0.resize(&self.dims, int_32_min);

@@ -1,4 +1,4 @@
-use cmn::{ CorticalDimensions };
+use cmn::{ CorticalDims };
 use proto::{ layer, ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, Axonal, Spatial, Horizontal, Sensory, Thalamic, Protocell, Protofilter, Protoinput };
 use thalamus::{ Thalamus };
 use ocl::{ Context, ProQueue };
@@ -155,7 +155,7 @@ pub struct TestBed {
 	pub ocl_context: Context,
 	pub ocl: ProQueue,
 	pub thal: Thalamus,
-	pub dims: CorticalDimensions,
+	pub dims: CorticalDims,
 }
 
 impl TestBed {
@@ -168,9 +168,9 @@ impl TestBed {
 		let thal = Thalamus::new(&proto_layer_maps, &proto_area_maps);
 		let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
-		let ocl_context = Context::new(None);
+		let ocl_context = Context::new(None, None).unwrap();
 		let mut ocl = ProQueue::new(&ocl_context, None);
-		ocl.build(area_map.gen_build_options());
+		ocl.build(area_map.gen_build_options()).ok();
 
 		let dims = area_map.dims().clone_with_physical_increment(ocl.get_max_work_group_size());
 

@@ -10,7 +10,7 @@
 
 use cmn::{ self };
 use map::{ AreaMap };
-use ocl::{ self, ProQueue, Envoy, EnvoyDimensions };
+use ocl::{ self, ProQueue, Envoy, EnvoyDims };
 //use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind };
 //use synapses::{ Synapses };
 //use dendrites::{ Dendrites };
@@ -23,7 +23,7 @@ pub use self::tests::{ AxonSpaceTest, AxnCoords };
 
 
 pub struct AxonSpace {
-	//dims: CorticalDimensions,
+	//dims: CorticalDims,
 	//depth_axn_sptl: u8,
 	//depth_cellular: u8,
 	//depth_axn_hrz: u8,
@@ -33,7 +33,7 @@ pub struct AxonSpace {
 }
 
 impl AxonSpace {
-	pub fn new(area_map: &AreaMap, ocl: &ProQueue) -> AxonSpace {
+	pub fn new(area_map: &AreaMap, ocl_pq: &ProQueue) -> AxonSpace {
 		//let depth_axn_sptl = region.depth_axonal_spatial();
 		//let depth_cellular = region.depth_cellular();
 		//let depth_axn_hrz = region.depth_axonal_horizontal();
@@ -65,9 +65,10 @@ impl AxonSpace {
 
 		//let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
 		
-		println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", area_map.slices().physical_len(), mt = cmn::MT);
+		println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", 
+			area_map.slices().padded_envoy_len(ocl_pq), mt = cmn::MT);
 
-		let states = Envoy::<ocl::cl_uchar>::new(area_map.slices(), cmn::STATE_ZERO, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(area_map.slices(), cmn::STATE_ZERO, ocl_pq);
 
 		AxonSpace {
 			//dims: dims,

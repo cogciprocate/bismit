@@ -6,7 +6,7 @@ use std::path::{ Path };
 use std::iter;
 // use num::{ Float };
 
-use cmn::{ CorticalDimensions, Sdr };
+use cmn::{ CorticalDims, Sdr };
 
 
 // const HEX_SIDE: f64 = 0.5f64;
@@ -25,7 +25,7 @@ const SQRT_3: f64 = 1.73205080756f64;
 //		- TODO: CONVERT FROM STORING FILE IN MEMORY TO STREAMING FILE (WITH LARGE BUFFER)
 //			- TEST DIFFERENT BUFFERING STRATEGIES (see notes)
 pub struct IdxReader {
-	ganglion_dims: CorticalDimensions,
+	ganglion_dims: CorticalDims,
 	cycles_per_frame: usize,
 	scale_factor: f64,
 	repeat_counter: usize,
@@ -47,7 +47,7 @@ pub struct IdxReader {
 }
 
 impl IdxReader {
-	pub fn new(ganglion_dims: CorticalDimensions, file_name: &str, cycles_per_frame: usize, scale_factor: f64) -> IdxReader {
+	pub fn new(ganglion_dims: CorticalDims, file_name: &str, cycles_per_frame: usize, scale_factor: f64) -> IdxReader {
 		let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
 		let path = Path::new(&path_string);
 		let display = path.display();
@@ -273,7 +273,7 @@ impl IdxReader {
 	}
 	
 
-	pub fn dims(&self) -> &CorticalDimensions {
+	pub fn dims(&self) -> &CorticalDims {
 		&self.ganglion_dims
 	}
 }

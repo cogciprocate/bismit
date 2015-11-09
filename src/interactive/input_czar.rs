@@ -4,7 +4,7 @@ use std::cmp;
 // use std::collections::{ HashMap };
 use rand::{ self, /*ThreadRng,*/ Rng };
 
-use cmn::{ self, CorticalDimensions, Sdr };
+use cmn::{ self, CorticalDims, Sdr };
 use ocl::{ self };
 use cortex::{ Cortex };
 use encode:: { IdxReader };
@@ -22,7 +22,7 @@ pub const WORLD_TURN_FACTOR: f32 				= 9f32;	// (originally 3)
 
 
 pub struct InputCzar {
-	dims: CorticalDimensions,
+	dims: CorticalDims,
 	counter: usize,
 	counter_range: Range<usize>,
 	random_counter: bool,
@@ -42,7 +42,7 @@ pub struct InputCzar {
 }
 
 impl InputCzar {
-	pub fn new(dims: CorticalDimensions, input_sources: Vec<InputSource>, counter_range: Range<usize>, random_counter: bool, toggle_dirs: bool, introduce_noise: bool) -> InputCzar {
+	pub fn new(dims: CorticalDims, input_sources: Vec<InputSource>, counter_range: Range<usize>, random_counter: bool, toggle_dirs: bool, introduce_noise: bool) -> InputCzar {
 
 		let area = dims.columns();
 
@@ -257,7 +257,7 @@ pub fn sdr_exp1(vec: &mut Sdr) {
 }
 
 
-pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: CorticalDimensions, counter: usize, vec: &mut Sdr) {
+pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: CorticalDims, counter: usize, vec: &mut Sdr) {
 	let v_size = dims.v_size() as i64;
 	let u_size = dims.u_size() as i64;
 	let edge_size = edge_size as i64;
@@ -320,7 +320,7 @@ pub fn sdr_hexballs(edge_size: usize, invert: bool, fill_hex: bool, dims: Cortic
 	}
 }
 
-pub fn gimme_a_valid_col_id(dims: CorticalDimensions, v_id: i64, u_id: i64) -> (usize, bool) {
+pub fn gimme_a_valid_col_id(dims: CorticalDims, v_id: i64, u_id: i64) -> (usize, bool) {
 	let v_ok = (v_id < dims.v_size() as i64) && (v_id >= 0);
 	let u_ok = (u_id < dims.u_size() as i64) && (u_id >= 0);
 
@@ -454,11 +454,11 @@ fn junk0_vec_init(sca: u32, vec_option: usize) -> Vec<ocl::cl_uchar> {
 pub mod tests {
 	use super::*;
 	// use ocl::{ self };
-	use cmn::{ CorticalDimensions };
+	use cmn::{ CorticalDims };
 	
 	#[test]
 	fn test_input_czar() {
-		let dims = CorticalDimensions::new(32, 32, 1, 0, None);
+		let dims = CorticalDims::new(32, 32, 1, 0, None);
 		let mut ic = super::InputCzar::new(dims, 
 			vec![InputSource::new(InputKind::Stripes { stripe_size: 512, zeros_first: false }, "v0")],
 			0..5, false, false, false);

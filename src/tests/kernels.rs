@@ -1,8 +1,8 @@
 
-use cmn::{ self, /*CorticalDimensions*/ };
+use cmn::{ self, /*CorticalDims*/ };
 // use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 // use cortex::{ self, Cortex };
-use ocl::{ Envoy, WorkSize, /*ProQueue, EnvoyDimensions,*/ /*OclNum*/ };
+use ocl::{ Envoy, WorkSize, /*ProQueue, EnvoyDims,*/ /*OclNum*/ };
 // use interactive::{ input_czar, InputCzar, InputKind };
 // use super::hybrid;
 use super::{ TestBed, util };
@@ -23,7 +23,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 	let mut outs_v4 = Envoy::<u32>::new(testbed.dims, 0, &testbed.ocl);
 
 	let kern_sc = testbed.ocl.new_kernel("test_axn_idxs_scl".to_string(), 
-		WorkSize::ThreeDim(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, testbed.dims.u_size() as usize))
+		WorkSize::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, testbed.dims.u_size() as usize))
 		.arg_env(&u_offs)		
 		.arg_env(&v_offs)
 		.arg_env(&outs_sc) 
@@ -31,7 +31,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 	;
 
 	let kern_v4 = testbed.ocl.new_kernel("test_axn_idxs_vec4".to_string(), 
-		WorkSize::ThreeDim(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, (testbed.dims.u_size() / 4) as usize))
+		WorkSize::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, (testbed.dims.u_size() / 4) as usize))
 		.arg_env(&u_offs)		
 		.arg_env(&v_offs)
 		//.arg_env(&outs_sc) 
@@ -48,7 +48,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 
 
 
-// pub fn test_safe_dim_ofs(ocl: &ProQueue, dims: CorticalDimensions) {
+// pub fn test_safe_dim_ofs(ocl: &ProQueue, dims: CorticalDims) {
 // 	let mut dim_ids = Envoy::<u32>::shuffled(dims, 0, 15, &ocl);
 // 	let mut dim_offs = Envoy::<i8>::shuffled(dims, -16, 15, &ocl);
 // 	let mut safe_dim_offs = Envoy::<i8>::new(dims, 0, &ocl);

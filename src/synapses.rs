@@ -8,7 +8,7 @@ use rand::distributions::{ /*Normal,*/ IndependentSample, Range };
 // use std::fmt::{ Display };
 use std::collections::{ BTreeSet };
 
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQueue, WorkSize, Envoy, OclNum };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, 
@@ -70,7 +70,7 @@ const DEBUG_REGROW_DETAIL: bool = false;
 
 pub struct Synapses {
 	layer_name: &'static str,
-	dims: CorticalDimensions,
+	dims: CorticalDims,
 	syns_per_den_l2: u8,
 	protocell: Protocell,
 	//protoregion: ProtoLayerMap,
@@ -94,9 +94,9 @@ pub struct Synapses {
 }
 
 impl Synapses {
-	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, 
+	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, 
 					den_kind: DendriteKind, cell_kind: ProtocellKind, area_map: &AreaMap, 
-					axons: &AxonSpace, /*aux: &Aux,*/ ocl: &ProQueue
+					axons: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQueue
 	) -> Synapses {
 		let syns_per_tft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
 		assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
@@ -106,20 +106,20 @@ impl Synapses {
 
 		let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, protocell.dens_per_tuft_l2, dims.clone());
 
-		//let slc_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl); // BRING THIS BACK
-		//let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl);
-		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
-		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl);
-		let src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
+		//let slc_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
+		//let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl_pq);
+		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq);
+		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq);
+		let src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq);
 
 
-		//let src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl); // *****
-		//let src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl); // *****
-		let src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl); // *****
-		let src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl); // *****
+		//let src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl_pq); // *****
+		//let src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl_pq); // *****
+		let src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq); // *****
+		let src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq); // *****
 
 
-		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl);
+		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq);
 
 		// KERNELS
 		let dst_src_slc_ids = area_map.proto_layer_map().dst_src_slc_ids(layer_name);
@@ -133,7 +133,7 @@ impl Synapses {
 		if DEBUG_NEW { 
 			println!("{mt}{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
 				dims: {:?}, phys_len: {}", 
-				den_kind, states.len(), dims, dims.physical_len().unwrap(), mt = cmn::MT); 
+				den_kind, states.len(), dims, dims.padded_envoy_len(ocl_pq), mt = cmn::MT); 
 		}
 
 		let min_wg_sqrt = 8 as usize;
@@ -145,15 +145,15 @@ impl Synapses {
 		for tft_id in 0..dst_src_slc_ids.len() {
 			kernels.push(Box::new(
 
-				// ocl.new_kernel("syns_cycle_layer".to_string(),
-				// ocl.new_kernel("syns_cycle_vec4_layer".to_string(),
-				// ocl.new_kernel("syns_cycle_wow_layer".to_string(),
-				ocl.new_kernel("syns_cycle_wow_vec4_layer".to_string(), 
+				// ocl_pq.new_kernel("syns_cycle_layer".to_string(),
+				// ocl_pq.new_kernel("syns_cycle_vec4_layer".to_string(),
+				// ocl_pq.new_kernel("syns_cycle_wow_layer".to_string(),
+				ocl_pq.new_kernel("syns_cycle_wow_vec4_layer".to_string(), 
 					
-					WorkSize::TwoDim(dims.v_size() as usize, (dims.u_size()) as usize))
-					.lws(WorkSize::TwoDim(min_wg_sqrt, min_wg_sqrt))
-					// WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
-					// .lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
+					WorkSize::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
+					.lws(WorkSize::TwoDims(min_wg_sqrt, min_wg_sqrt))
+					// WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
+					// .lws(WorkSize::ThreeDims(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					.arg_env(&axons.states)
 					.arg_env(&src_col_u_offs)
 					.arg_env(&src_col_v_offs)
@@ -172,13 +172,13 @@ impl Synapses {
 		// for tft_id in 0..dst_src_slc_ids.len() {
 		// 	kernels.push(Box::new(
 
-		// 		ocl.new_kernel("syns_cycle_simple".to_string(),
-		// 		// ocl.new_kernel("syns_cycle_simple_vec4".to_string(),
-		// 		// ocl.new_kernel("syns_cycle_wow".to_string(),
-		// 		// ocl.new_kernel("syns_cycle_wow_vec4".to_string(), 
+		// 		ocl_pq.new_kernel("syns_cycle_simple".to_string(),
+		// 		// ocl_pq.new_kernel("syns_cycle_simple_vec4".to_string(),
+		// 		// ocl_pq.new_kernel("syns_cycle_wow".to_string(),
+		// 		// ocl_pq.new_kernel("syns_cycle_wow_vec4".to_string(), 
 				
-		// 			WorkSize::ThreeDim(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
-		// 			.lws(WorkSize::ThreeDim(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
+		// 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
+		// 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 		// 			.arg_env(&axons.states)
 		// 			.arg_env(&src_col_u_offs)
 		// 			.arg_env(&src_col_v_offs)
@@ -376,7 +376,7 @@ impl Synapses {
 		self.den_kind.clone()
 	}
 
-	pub fn dims(&self) -> &CorticalDimensions {
+	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 
@@ -421,12 +421,12 @@ impl Synapses {
 struct SrcIdxCache {
 	syns_per_den_l2: u8,
 	dens_per_tft_l2: u8,
-	dims: CorticalDimensions,
+	dims: CorticalDims,
 	dens: Vec<Box<BTreeSet<i32>>>,
 }
 
 impl SrcIdxCache {
-	fn new(syns_per_den_l2: u8, dens_per_tft_l2: u8, dims: CorticalDimensions) -> SrcIdxCache {
+	fn new(syns_per_den_l2: u8, dens_per_tft_l2: u8, dims: CorticalDims) -> SrcIdxCache {
 		let dens_per_tft = 1 << dens_per_tft_l2 as u32;
 		let area_dens = (dens_per_tft * dims.cel_tfts()) as usize;
 		let mut dens = Vec::with_capacity(dens_per_tft as usize);
@@ -481,7 +481,7 @@ pub mod tests {
 	use rand::distributions::{ IndependentSample, Range as RandRange };
 
 	use cmn::{ CelCoords };
-	use cmn::{ CorticalDimensions };
+	use cmn::{ CorticalDims };
 	use dendrites::{ self };
 	use super::{ Synapses };
 
@@ -588,12 +588,12 @@ pub mod tests {
 		pub den_id_tft: u32,
 		pub syn_id_den: u32,		
 		pub cel_coords: CelCoords,
-		// pub layer_dims: CorticalDimensions,
+		// pub layer_dims: CorticalDims,
 	}
 
 	impl SynCoords {
 		pub fn new(tft_id: u32, den_id_tft: u32, syn_id_den: u32, cel_coords: &CelCoords, 
-					// layer_dims: &CorticalDimensions
+					// layer_dims: &CorticalDims
 			) -> SynCoords 
 		{
 			// let syns_per_tft = 1 << (cel_coords.dens_per_tft_l2 as u32 
@@ -680,7 +680,7 @@ pub mod tests {
 	// 		- 'cel_idx' already has slice built in to its value
 	// 		- 'tft_count' is synonymous with 'tfts_per_cel'
 	// 		- X_cel_tft is synonymous with X_tft but is verbosely described for clarity
-	pub fn syn_idx(cel_layer_dims: &CorticalDimensions, tft_count: u32, dens_per_cel_tft: u32, syns_per_den: u32, 
+	pub fn syn_idx(cel_layer_dims: &CorticalDims, tft_count: u32, dens_per_cel_tft: u32, syns_per_den: u32, 
 					tft_id: u32, cel_idx: u32, den_id_cel_tft: u32, syn_id_den: u32) -> u32 
 	{
 		//  NOTE: 'cel_layer_dims' expresses dimensions from the perspective of the 

@@ -7,7 +7,7 @@ use rand::{ self, /*ThreadRng, Rng*/ };
 // use std::default::{ Default };
 // use std::fmt::{ Display };
 
-use cmn::{ self, CorticalDimensions, DataCellLayer };
+use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
 use ocl::{ self, ProQueue, WorkSize, Envoy, OclNum };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, /*Protocell, DendriteKind*/ };
@@ -33,7 +33,7 @@ pub use self::tests::{ MinicolumnsTest };
 
 */
 pub struct Minicolumns {
-	dims: CorticalDimensions,
+	dims: CorticalDims,
 	aff_out_axn_slc: u8,
 	aff_out_axn_idz: u32,
 	//hrz_demarc: u8,		// TEMPORARY
@@ -56,7 +56,7 @@ pub struct Minicolumns {
 }
 
 impl Minicolumns {
-	pub fn new(dims: CorticalDimensions, area_map: &AreaMap, axons: &AxonSpace, 
+	pub fn new(dims: CorticalDims, area_map: &AreaMap, axons: &AxonSpace, 
 
 					/*ssts_map: &HashMap<&str, Box<SpinyStellateLayer>>, pyrs_map: &HashMap<&str, Box<PyramidalLayer>>, */
 
@@ -116,7 +116,7 @@ impl Minicolumns {
 		let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
 		let kern_activate = ocl.new_kernel("mcol_activate_pyrs".to_string(),
-			WorkSize::ThreeDim(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+			WorkSize::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			// WorkSize::OneDim(pyrs.dims().cells() as usize);
 			.arg_env(&flag_sets)
 			.arg_env(&best_den_states)
@@ -136,8 +136,8 @@ impl Minicolumns {
 		//println!("\n ##### ff_layer_axn_idz: {}", ff_layer_axn_idz);
 
 		let kern_output = ocl.new_kernel("mcol_output".to_string(), 
-			// WorkSize::ThreeDim(1 as usize, dims.v_size() as usize, dims.u_size() as usize))
-			WorkSize::TwoDim(dims.v_size() as usize, dims.u_size() as usize))
+			// WorkSize::ThreeDims(1 as usize, dims.v_size() as usize, dims.u_size() as usize))
+			WorkSize::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
 			//.arg_env(&ssts.soma())
 			.arg_env(&pyrs.soma())
 			// .arg_env(&pyrs.tft_best_den_states)

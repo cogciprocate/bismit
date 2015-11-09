@@ -7,7 +7,7 @@ use time;
 
 
 // use ocl::{ self, Context, ProQueue };
-use cmn::{ /*self, CorticalDimensions,*/ Sdr };
+use cmn::{ /*self, CorticalDims,*/ Sdr };
 // use map::{ AreaMap };
 use cortical_area:: { /*self,*/ CorticalArea, CorticalAreas };
 use thalamus::{ Thalamus };

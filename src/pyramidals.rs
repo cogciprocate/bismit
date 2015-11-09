@@ -1,7 +1,7 @@
 
 use rand::{ self, XorShiftRng, Rng };
 
-use cmn::{ self, CorticalDimensions, DataCellLayer };
+use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
 use ocl::{ self, ProQueue, WorkSize, Envoy, OclNum, Kernel };
 use proto::{ ProtocellKind, Protocell, DendriteKind };
@@ -15,7 +15,7 @@ use axon_space::{ AxonSpace };
 */
 pub struct PyramidalLayer {
 	layer_name: &'static str,
-	dims: CorticalDimensions,
+	dims: CorticalDims,
 	protocell: Protocell,
 	kern_ltp: Kernel,
 	kern_cycle: Kernel,
@@ -35,8 +35,8 @@ pub struct PyramidalLayer {
 }
 
 impl PyramidalLayer {
-	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, 
-		area_map: &AreaMap, axons: &AxonSpace, ocl: &ProQueue
+	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, 
+		area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQueue
 	) -> PyramidalLayer {
 		let base_axn_slcs = area_map.proto_layer_map().slc_ids(vec![layer_name]);
 		let base_axn_slc = base_axn_slcs[0];
@@ -47,11 +47,11 @@ impl PyramidalLayer {
 		let best_dens_per_cel = tfts_per_cel;
 		let dims_best_dens = dims.clone().with_tfts(tfts_per_cel);
 
-		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let tft_best_den_ids = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl);
-		let tft_best_den_states = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl);		
+		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq);
+		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq);
+		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq);
+		let tft_best_den_ids = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl_pq);
+		let tft_best_den_states = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl_pq);		
 		// let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
 		let dens_per_tft_l2 = protocell.dens_per_tuft_l2;
@@ -66,9 +66,9 @@ impl PyramidalLayer {
 			layer_name, base_axn_slc, pyr_lyr_axn_idz, tfts_per_cel, syns_per_den_l2, dens_per_tft_l2, 
 			tft_best_den_ids.len(), dims, mt = cmn::MT);
 
-		let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, ocl);		
+		let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, ocl_pq);		
 		
-		let kern_cycle = ocl.new_kernel("pyr_cycle".to_string(),
+		let kern_cycle = ocl_pq.new_kernel("pyr_cycle".to_string(),
 			WorkSize::OneDim(dims.cells() as usize))
 			.arg_env(&dens.states_raw)
 			.arg_env(&dens.states)
@@ -85,10 +85,10 @@ impl PyramidalLayer {
 
 		let syns_per_tftsec = dens.syns().syns_per_tftsec();
 		let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-		let cels_per_cel_grp = dims.per_subgrp(cel_grp_count).expect("PyramidalLayer::new()");
+		let cels_per_cel_grp = dims.per_subgrp(cel_grp_count, ocl_pq).expect("PyramidalLayer::new()");
 		let learning_rate_l2i = 0i32;
 
-		let kern_ltp = ocl.new_kernel("pyrs_ltp".to_string(), 
+		let kern_ltp = ocl_pq.new_kernel("pyrs_ltp".to_string(), 
 			WorkSize::OneDim(cel_grp_count as usize))
 			.arg_env(&axons.states)
 			.arg_env(&states)
@@ -191,7 +191,7 @@ impl DataCellLayer for PyramidalLayer {
 		&mut self.states
 	}	
 
-	fn dims(&self) -> &CorticalDimensions {
+	fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 
@@ -355,8 +355,8 @@ pub mod tests {
 
 
 
-		// let kern_ltp = ocl.new_kernel("pyrs_ltp_unoptd".to_string(), 
-		// 	WorkSize::ThreeDim(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
+		// let kern_ltp = ocl_pq.new_kernel("pyrs_ltp_unoptd".to_string(), 
+		// 	WorkSize::ThreeDims(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
 		// 	.arg_env(&axons.states)
 		// 	.arg_env(&states)
 		// 	.arg_env(&best_den_ids)

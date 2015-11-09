@@ -6,7 +6,7 @@ use std::collections::{ HashMap };
 
 // use ocl::{ BuildOptions, BuildOption };
 use proto::{ layer, /*ProtoLayerMaps,*/ /*ProtoLayerMap,*/ Protolayer, ProtolayerFlags, ProtoAreaMaps, /*ProtoAreaMap*/ };
-use cmn::{ /*self,*/ CorticalDimensions, SliceDimensions };
+use cmn::{ /*self,*/ CorticalDims, SliceDims };
 
 pub struct LayerMap {
 	map: HashMap<&'static str, LayerInfo>,
@@ -33,7 +33,7 @@ pub struct InterAreaInfoCache {
 
 impl InterAreaInfoCache {
 	pub fn new(
-				area_dims: &CorticalDimensions,
+				area_dims: &CorticalDims,
 				eff_area_names: &Vec<&'static str>, 
 				aff_area_names: &Vec<&'static str>, 
 				aff_in_layer: Option<&Protolayer>, 				
@@ -91,7 +91,7 @@ pub struct LayerSourceAreas {
 }
 
 impl LayerSourceAreas {
-	fn new(area_dims: &CorticalDimensions, src_area_names: &Vec<&'static str>, pamaps: &ProtoAreaMaps) -> LayerSourceAreas {
+	fn new(area_dims: &CorticalDims, src_area_names: &Vec<&'static str>, pamaps: &ProtoAreaMaps) -> LayerSourceAreas {
 		let mut map = HashMap::with_capacity(src_area_names.len());
 
 		let mut axns_sum = 0;
@@ -118,7 +118,7 @@ impl LayerSourceAreas {
 		self.axns_sum
 	}
 
-	fn area_dims(&self, area_name: &'static str) -> &SliceDimensions {
+	fn area_dims(&self, area_name: &'static str) -> &SliceDims {
 		let area_info = &self.map[area_name];
 		//(area_info.dims.v_size, area_info.dims.u_size)
 		&area_info.dims
@@ -135,20 +135,20 @@ impl LayerSourceAreas {
 // TODO: DEPRICATE IN FAVOR OF SLICE MAP
 struct SourceAreaInfo {
 	pub name: &'static str,
-	pub dims: SliceDimensions,
+	pub dims: SliceDims,
 	// pub v_size: u32,
 	// pub u_size: u32,
 }
 
 impl SourceAreaInfo {
-	fn new(area_dims: &CorticalDimensions, src_area_name: &'static str, src_area_dims: &CorticalDimensions
+	fn new(area_dims: &CorticalDims, src_area_name: &'static str, src_area_dims: &CorticalDims
 		) -> SourceAreaInfo 
 	{
-		let slc_dims = SliceDimensions::new(area_dims, Some(src_area_dims)).unwrap();
+		let slc_dims = SliceDims::new(area_dims, Some(src_area_dims)).unwrap();
 		SourceAreaInfo { name: src_area_name, dims: slc_dims /*v_size: v_size, u_size: u_size*/ }
 	}
 
-	pub fn dims(&self) -> &SliceDimensions {
+	pub fn dims(&self) -> &SliceDims {
 		&self.dims
 	}
 }

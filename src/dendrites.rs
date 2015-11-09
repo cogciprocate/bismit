@@ -7,7 +7,7 @@
 // use std::fmt::{ Display };
 // use std::ops::{ Range };
 
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQueue, WorkSize, Envoy };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, DendriteKind };
@@ -20,7 +20,7 @@ pub use self::tests::{ DenCoords, DendritesTest, den_idx };
 
 pub struct Dendrites {
 	layer_name: &'static str,
-	dims: CorticalDimensions,
+	dims: CorticalDims,
 	//protocell: Protocell,
 	//per_cell_l2: u32,
 	den_kind: DendriteKind,
@@ -36,7 +36,7 @@ pub struct Dendrites {
 impl Dendrites {
 	pub fn new(
 					layer_name: &'static str,
-					dims: CorticalDimensions,
+					dims: CorticalDims,
 					//src_tfts: Vec<Vec<&'static str>>,
 					protocell: Protocell,
 					den_kind: DendriteKind, 
@@ -93,7 +93,7 @@ impl Dendrites {
 			.arg_env(&states)
 		;
 
-		/*let kern_cycle = ocl.new_kernel("den_cycle_old", WorkSize::TwoDim(dims.depth() as usize, dims.per_slc() as usize))
+		/*let kern_cycle = ocl.new_kernel("den_cycle_old", WorkSize::TwoDims(dims.depth() as usize, dims.per_slc() as usize))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)
@@ -143,7 +143,7 @@ impl Dendrites {
 		self.syns.confab();
 	}
 
-	pub fn dims(&self) -> &CorticalDimensions {
+	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 
@@ -168,7 +168,7 @@ pub mod tests {
 
 	use super::{ Dendrites };
 	use cmn::{ CelCoords };
-	use cmn::{ CorticalDimensions };
+	use cmn::{ CorticalDims };
 	use synapses::{ SynapsesTest };
 
 	pub trait DendritesTest {
@@ -227,12 +227,12 @@ pub mod tests {
 		pub tft_id: u32,
 		pub den_id_tft: u32,	
 		pub cel_coords: CelCoords,
-		pub layer_dims: CorticalDimensions, // Potentially move / remove dims
+		pub layer_dims: CorticalDims, // Potentially move / remove dims
 	}
 
 	impl DenCoords {
 		pub fn new(tft_id: u32, den_id_tft: u32, cel_coords: &CelCoords, 
-					layer_dims: &CorticalDimensions
+					layer_dims: &CorticalDims
 			) -> DenCoords 
 		{
 			let den_idx = den_idx(&layer_dims, tft_id, cel_coords.idx, den_id_tft);
@@ -269,7 +269,7 @@ pub mod tests {
 			syn_idz_den..(syn_idz_den + syns_per_den)
 		}
 
-		pub fn dims(&self) -> &CorticalDimensions {
+		pub fn dims(&self) -> &CorticalDims {
 			&self.layer_dims
 		}
 	}
@@ -286,7 +286,7 @@ pub mod tests {
 	// den_idx(): FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
 	// 		- Synapse index space heirarchy:  | Tuft - Slice - Cell - Dendrite - Synapse |
 	// 		- 'cel_idx' already has slice built in to its value
-	pub fn den_idx(layer_dims: &CorticalDimensions, tft_id: u32, cel_idx: u32, den_id_tft: u32) -> u32 {
+	pub fn den_idx(layer_dims: &CorticalDims, tft_id: u32, cel_idx: u32, den_id_tft: u32) -> u32 {
 		//  NOTE: 'layer_dims' expresses dimensions from the perspective of the 
 		//  | Slice - Cell - Tuft - Dendrite - Synapse | heirarchy which is why the function
 		//  names seem confusing (see explanation at top of synapses.rs).
@@ -296,7 +296,7 @@ pub mod tests {
 		let cels_per_slc = layer_dims.columns();
 		let dens_per_cel_tft = layer_dims.per_tft();
 
-		// assert!((tft_count * slcs_per_tft as u32 * cels_per_slc * dens_per_cel_tft) == layer_dims.physical_len());
+		// assert!((tft_count * slcs_per_tft as u32 * cels_per_slc * dens_per_cel_tft) == layer_dims.padded_envoy_len());
 		assert!(tft_id < tft_count);
 		assert!(cel_idx < slcs_per_tft as u32 * cels_per_slc);
 		assert!(den_id_tft < dens_per_cel_tft);

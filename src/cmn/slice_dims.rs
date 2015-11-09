@@ -4,47 +4,47 @@
 //use std::collections::{ HashMap };
 //use std::num::ToString;
 
-//use ocl::{ BuildOptions, BuildOption, EnvoyDimensions };
-use ocl::{ EnvoyDimensions };
+//use ocl::{ BuildOptions, BuildOption, EnvoyDims };
+use ocl::{ self, EnvoyDims, ProQueue };
 //use proto::{ layer, ProtoLayerMaps, ProtoLayerMap, Protolayer, ProtolayerFlags, ProtoAreaMaps, ProtoAreaMap };
-//use cmn::{ self, CorticalDimensions, HexTilePlane };
-use cmn::{ CorticalDimensions, HexTilePlane };
+//use cmn::{ self, CorticalDims, HexTilePlane };
+use cmn::{ CorticalDims, HexTilePlane };
 //use map::{ InterAreaInfoCache };
 
 
 
 #[derive(Clone, Debug)]
-pub struct SliceDimensions {
+pub struct SliceDims {
 	v_size: u32,
 	u_size: u32,
 	v_scale: u32,
 	u_scale: u32,
 }
 
-impl SliceDimensions {
-	pub fn new(area_dims: &CorticalDimensions, src_area_dims_opt: Option<&CorticalDimensions>) 
-		-> Result<SliceDimensions, String> 
+impl SliceDims {
+	pub fn new(area_dims: &CorticalDims, src_area_dims_opt: Option<&CorticalDims>) 
+		-> Result<SliceDims, String> 
 	{
 		match src_area_dims_opt {
 			Some(src_area_dims) => {
 				let src_scales_res = get_src_scales(src_area_dims, area_dims);
 
 				if src_scales_res.is_ok() {
-					let (v_scale, u_scale) = src_scales_res.expect("SliceDimensions::new()");
+					let (v_scale, u_scale) = src_scales_res.expect("SliceDims::new()");
 
-					Ok(SliceDimensions { 
+					Ok(SliceDims { 
 						v_size: src_area_dims.v_size(),
 						u_size: src_area_dims.u_size(),
 						v_scale: v_scale,
 						u_scale: u_scale,
 					})
 				} else {
-					Err(src_scales_res.err().expect("SliceDimensions::new()"))
+					Err(src_scales_res.err().expect("SliceDims::new()"))
 				}
 			},
 
 			None => {
-				Ok(SliceDimensions { 
+				Ok(SliceDims { 
 					v_size: area_dims.v_size(),
 					u_size: area_dims.u_size(),
 					v_scale: 16,
@@ -69,9 +69,13 @@ impl SliceDimensions {
 	pub fn depth(&self) -> u8 {
 		1u8
 	}
+
+	// pub fn linear_len(&self) -> u32 {
+	// 	self.columns()
+	// }
 }
 
-impl HexTilePlane for SliceDimensions {
+impl HexTilePlane for SliceDims {
 	fn v_size(&self) -> u32 {
 		self.v_size
 	}
@@ -85,15 +89,15 @@ impl HexTilePlane for SliceDimensions {
 	}
 }
 
-impl EnvoyDimensions for SliceDimensions {
-	/* PHYSICAL_LEN(): TODO: ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
-	fn physical_len(&self) -> u32 {
-		self.columns()
+impl EnvoyDims for SliceDims {
+	// [FIXME]: TODO: ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT 
+	fn padded_envoy_len(&self, ocl_pq: &ProQueue) -> usize {
+		ocl::padded_len(self.columns() as usize, ocl_pq.get_max_work_group_size() as usize)
 	}
 }
 
 
-pub fn get_src_scales(src_area_dims: &CorticalDimensions, tar_area_dims: &CorticalDimensions) 
+pub fn get_src_scales(src_area_dims: &CorticalDims, tar_area_dims: &CorticalDims) 
 		-> Result<(u32, u32), String> 
 	{
 	let v_res = calc_scale(src_area_dims.v_size(), tar_area_dims.v_size());

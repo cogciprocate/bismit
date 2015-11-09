@@ -4,9 +4,9 @@
 // use std::collections::{ HashMap };
 //use std::num::ToString;
 
-use ocl::{ /*BuildOptions, BuildOption,*/ EnvoyDimensions };
+use ocl::{ self, EnvoyDims, ProQueue };
 use proto::{ /*layer, ProtoLayerMaps,*/ ProtoLayerMap, /*Protolayer, ProtolayerFlags, ProtoAreaMaps,*/ ProtoAreaMap };
-use cmn::{ self, CorticalDimensions, SliceDimensions, HexTilePlane };
+use cmn::{ self, CorticalDims, SliceDims, HexTilePlane };
 use map::{ InterAreaInfoCache };
 use map::area_map;
 
@@ -31,12 +31,12 @@ pub struct SliceMap {
 	u_sizes: Vec<u32>,
 	v_scales: Vec<u32>,
 	u_scales: Vec<u32>,
-	dims: Vec<SliceDimensions>,
+	dims: Vec<SliceDims>,
 	physical_len: u32
 }
 
 impl SliceMap {
-	pub fn new(area_dims: &CorticalDimensions, pamap: &ProtoAreaMap, plmap: &ProtoLayerMap, 
+	pub fn new(area_dims: &CorticalDims, pamap: &ProtoAreaMap, plmap: &ProtoLayerMap, 
 					ia_cache: &InterAreaInfoCache,
 	) -> SliceMap {		
 		let proto_slc_map = plmap.slc_map();
@@ -90,12 +90,12 @@ impl SliceMap {
 					slc_dims
 				},
 
-				None =>	SliceDimensions::new(area_dims, None).unwrap(), // 100%
+				None =>	SliceDims::new(area_dims, None).unwrap(), // 100%
 			};
 
 			//axn_idzs.push(axn_idz_2d(slc_id, area_dims.columns(), plmap.hrz_demarc()));
 			axn_idzs.push(axn_idz_ttl);
-			axn_idz_ttl += slc_dims.physical_len();
+			axn_idz_ttl += slc_dims.columns();
 
 			layer_names.push(layer_name);
 			v_sizes.push(slc_dims.v_size());
@@ -194,15 +194,15 @@ impl SliceMap {
 		&self.u_scales
 	}
 
-	pub fn dims(&self) -> &Vec<SliceDimensions> {
+	pub fn dims(&self) -> &Vec<SliceDims> {
 		&self.dims
 	}
 }
 
-impl EnvoyDimensions for SliceMap {
-	/* PHYSICAL_LEN(): ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT */
-	fn physical_len(&self) -> u32 {
-		self.axn_count()
+impl EnvoyDims for SliceMap {
+	fn padded_envoy_len(&self, ocl_pq: &ProQueue) -> usize {
+		// assert!((ocl_pq.get_max_work_group_size() % self.axn_count()) == 0 || self.axn_count() == 0);
+		ocl::padded_len(self.axn_count() as usize, ocl_pq.get_max_work_group_size() as usize)
 	}
 }
 

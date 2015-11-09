@@ -6,7 +6,7 @@ use rand::{ self, /*ThreadRng,*/ Rng };
 // use std::default::{ Default };
 // use std::fmt::{ Display };
 
-use cmn::{ self, CorticalDimensions };
+use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQueue, WorkSize, Envoy };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, DendriteKind };
@@ -22,7 +22,7 @@ use axon_space::{ AxonSpace };
 
 pub struct SpinyStellateLayer {
 	layer_name: &'static str,
-	dims: CorticalDimensions,
+	dims: CorticalDims,
 	protocell: Protocell,
 	base_axn_slc: u8,
 	lyr_axn_idz: u32,
@@ -44,7 +44,7 @@ pub struct SpinyStellateLayer {
 
 // pyrs: &PyramidalLayer,
 impl SpinyStellateLayer {
-	pub fn new(layer_name: &'static str, dims: CorticalDimensions, protocell: Protocell, area_map: &AreaMap, 
+	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, area_map: &AreaMap, 
 				axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQueue
 	) -> SpinyStellateLayer {
 		//let layer = area_map.proto_layer_map().spt_asc_layer().expect("spiny_stellates::SpinyStellateLayer::new()");
@@ -84,13 +84,13 @@ impl SpinyStellateLayer {
 		//println!("\n##### SPINY_STELLATES: cels_per_tuft: {}, syns_per_tuft_l2: {}, lyr_axn_idz: {} ", cels_per_tuft, syns_per_tuft_l2, lyr_axn_idz);
 
 		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-		let cels_per_grp = dims.per_subgrp(grp_count).expect("SpinyStellateLayer::new()");
+		let cels_per_grp = dims.per_subgrp(grp_count, ocl_pq).expect("SpinyStellateLayer::new()");
 			//.unwrap_or_else(|s: &'static str| panic!(s));
 
 		let kern_ltp = ocl_pq.new_kernel("sst_ltp".to_string(), 
-			//WorkSize::TwoDim(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
-			WorkSize::TwoDim(dims.tfts_per_cel() as usize, grp_count as usize))
-		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
+			//WorkSize::TwoDims(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
+			WorkSize::TwoDims(dims.tfts_per_cel() as usize, grp_count as usize))
+		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDims(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&axns.states)
 			.arg_env(&dens.syns().states)
 			.arg_scl(lyr_axn_idz)
@@ -107,8 +107,8 @@ impl SpinyStellateLayer {
 
 
 
-		/*let kern_ltp_old = ocl.new_kernel("sst_ltp_old", WorkSize::TwoDim(dims.depth() as usize, 16 as usize)) // ***** FIX
-		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDim(dims.depth() as usize, iinn.dims.per_slc() as usize))
+		/*let kern_ltp_old = ocl.new_kernel("sst_ltp_old", WorkSize::TwoDims(dims.depth() as usize, 16 as usize)) // ***** FIX
+		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDims(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&dens.syns().states)
 			.arg_env(&dens.syns().states)
 			.arg_env(&dens.syns().states)
@@ -171,7 +171,7 @@ impl SpinyStellateLayer {
 		&mut self.dens.states
 	}
 
-	pub fn dims(&self) -> &CorticalDimensions {
+	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}	
 
