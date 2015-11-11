@@ -382,17 +382,17 @@ impl CorticalArea {
 	}
 
 	// READ_FROM_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
-	// <<<<< TODO: DEPRICATE IN FAVOR OF ENVOY::WRITE_DIRECT() >>>>>
 	fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr) {
 		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-		ocl::enqueue_read_buffer(sdr, self.axns.states.buf(), self.ocl_pq.cmd_queue(), axn_range.start as usize);
+		// ocl::enqueue_read_buffer(sdr, self.axns.states.buf(), self.ocl_pq.cmd_queue(), axn_range.start as usize);
+		self.axns.states.read_direct(sdr, axn_range.start as usize, None, None);
 	}
 
 	// WRITE_TO_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
-	// <<<<< TODO: DEPRICATE IN FAVOR OF ENVOY::WRITE_DIRECT() >>>>>
-	fn write_to_axons(&self, axn_range: Range<u32>, sdr: &Sdr) {
+	fn write_to_axons(&mut self, axn_range: Range<u32>, sdr: &Sdr) {
 		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-		ocl::enqueue_write_buffer(sdr, self.axns.states.buf(), self.ocl_pq.cmd_queue(), axn_range.start as usize);
+		// ocl::enqueue_write_buffer(sdr, self.axns.states.buf(), self.ocl_pq.cmd_queue(), axn_range.start as usize);
+		self.axns.states.write_direct(sdr, axn_range.start as usize, None, None);
 	}
 
 	pub fn write_to_axon_slice(&self, slc_id: u8, sdr: &Sdr) {

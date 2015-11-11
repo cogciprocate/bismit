@@ -107,7 +107,7 @@ pub mod tests {
 
 		fn write_to_axon(&mut self, val: u8, idx: u32) {
 			let sdr = vec![val];
-			self.states.write_direct(&sdr, idx as usize);
+			self.states.write_direct(&sdr, idx as usize, None, None);
 		}
 	}
 

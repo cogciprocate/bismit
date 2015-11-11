@@ -192,7 +192,7 @@ pub mod tests {
 
 		fn den_state_direct(&self, idx: u32) -> u8 {
 			let mut sdr = vec![0u8];
-			self.states.read_direct(&mut sdr[..], idx as usize);
+			self.states.read_direct(&mut sdr[..], idx as usize, None, None);
 			sdr[0]
 		}
 

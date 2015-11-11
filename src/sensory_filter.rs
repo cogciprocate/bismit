@@ -57,7 +57,7 @@ impl SensoryFilter {
 
 	pub fn write(&mut self, sdr: &Sdr) {
 		assert!(sdr.len() == self.input.len());
-		self.input.write_direct(sdr, 0);
+		self.input.write_direct(sdr, 0, None, None);
 	}
 
 	pub fn cycle(&self) {
