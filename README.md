@@ -7,18 +7,16 @@ Bismit is one of the first members of the next paradigm of cortical learning net
 
 Bismit uses a structure which maps to the human neocortex.  Following is a full hierarchy of the structures in use.
    - Cortex
-      - Region (v, u, w)
-         - Area (v, u, w)
-            - Layer (z)
-               - Slice (z)
-                  - Cell (z, v, u, w)
+      - Region
+         - Area
+            - Layer
+               - Slice
+                  - Cell
                      - Tuft
                         - Dendrite
                            - Synapse
 
-*Coordinates listed are those relevant to each level: 'z' represents depth, v, u, and w represent the the remaning two dimensions (normally x and y) divided into the three dimensions required for hexagonal grids.*
-
-Much more information and documentation coming soon.
+Much more information and documentation coming.
 
 Bismit is written in Rust and OpenCL C and is in an unstable pre-alpha stage. Full basic functionality is expected by the end 2015.
 

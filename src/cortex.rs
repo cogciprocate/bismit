@@ -1,22 +1,17 @@
-// use std::ptr;
-// use std::ops::{ Drop };
 use std::collections::{ HashMap };
-// use num;
 use time;
-// use rand::distributions::{ IndependentSample, Range };
 
 
-// use ocl::{ self, Context, ProQueue };
-use cmn::{ /*self, CorticalDims,*/ Sdr };
-// use map::{ AreaMap };
-use cortical_area:: { /*self,*/ CorticalArea, CorticalAreas };
+use cmn::{ Sdr };
+use map::{ AreaMap };
+use cortical_area:: { CorticalArea, CorticalAreas };
 use thalamus::{ Thalamus };
-use proto::{ /*ProtoLayerMap,*/ ProtoLayerMaps, ProtoAreaMaps, /*ProtoAreaMap,*/ /*Cellular, */
-	/*Axonal, Spatial, Horizontal, Sensory,*/ Thalamic, /*layer, Protocell*/ };
+use proto::{ ProtoLayerMaps, ProtoAreaMaps, Thalamic, };
 
 pub struct Cortex {
 	// AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
-	pub areas: CorticalAreas, 
+	pub areas: CorticalAreas,
+	area_maps: HashMap<&'static str, AreaMap>,
 	thal: Thalamus,
 }
 
@@ -38,7 +33,9 @@ impl Cortex {
 			areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(), device_idx)));
 
 			device_idx += 1;
-		}		
+		}
+
+		let area_maps = thal.area_maps().clone();	
 
 		// <<<<< MOVE THIS TIMING STUFF ELSEWHERE AND MAKE A FUNCTION FOR IT >>>>>
 		let time_complete = time::get_time() - time_start;
@@ -48,6 +45,7 @@ impl Cortex {
 
 		Cortex {
 			areas: areas,
+			area_maps: area_maps,
 			thal: thal,
 		}
 	}
@@ -66,13 +64,7 @@ impl Cortex {
 		let emsg = format!("cortex::Cortex::write_input(): Area: '{}' not found. ", area_name);
 		let area = self.areas.get_mut(area_name).expect(&emsg);
 		self.thal.write_input(sdr, area);
-		//self.thal.write_input(area_name, sdr, &mut self.areas)
 	}
-
-	/* WRITE(): TESTING PURPOSES -- TODO: MOVE TO A TESTS SUB-MODULE */
-	// pub fn write(&mut self, area_name: &str, layer_target: &'static str, sdr: &Sdr) {
-	// 	self.thal.write(area_name, layer_target, sdr, &mut self.areas)
-	// }
 
 
 	pub fn cycle(&mut self) {
@@ -80,64 +72,29 @@ impl Cortex {
 			area.regrow();
 		}
 
-		self.thal.cycle_external_ganglions(&self.areas);
-		self.thal.cycle_cortical_ganglions(&self.areas);
+		self.thal.cycle_external_ganglions(&mut self.areas);
+
+		for (area_name, area_map) in self.area_maps.iter() {
+			for aff_area_name in area_map.aff_areas().iter() {
+				//println!("Forwarding from: '{}' to '{}'", area_name, aff_area_name);
+				self.thal.forward_afferent_output(area_name, aff_area_name, &mut self.areas);
+			}
+
+			for eff_area_name in area_map.eff_areas().iter() {
+				//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
+				self.thal.backward_efferent_output(area_name, eff_area_name, &mut self.areas);
+			}
+		}
 
 		for (area_name, area) in self.areas.iter_mut() {
 			area.cycle();
 		}
 	}
 
-	// pub fn print_area_output(&mut self, ao_name: &str) {
-	// 	self.area_mut(ao_name).axns.states.read();
-
-	// 	let (out_start_ao, out_end_ao) = self.area(ao_name).mcols.aff_out_axn_range();
-	// 	let out_slc_ao = &self.area(ao_name).axns.states.vec[out_start_ao as usize..out_end_ao as usize];
-
-	// 	let cols = self.area(ao_name).dims.columns(); // DEBUG PURPOSES
-	// 	println!("Area: '{}' - out_start_ao: {}, out_end_ao: {}, cols: {}", ao_name, out_start_ao, out_end_ao, cols);
-
-	// 	//cmn::render_sdr(out_slc_ao, None, None, None, &self.area(ao_name).protoregion().slc_map(), true, cols);
-
-	// }
 
 	pub fn valid_area(&self, area_name: &str) -> bool {
 		self.areas.contains_key(area_name)
 	}
-
-
-	/*pub fn sense_vec(&mut self, area_name: &'static str, layer_target: &'static str, sdr: &Sdr) {
-		//self.thal.write(area_name, layer_target, sdr, &self.areas);
-		self.write(area_name, layer_target, sdr);
-		self.cycle();
-	}*/
-
-	// pub fn cycle_old(&mut self, area_name: &str) {
-	// 	let emsg = format!("cortex::Cortex::cycle(): Area: '{}' not found. ", area_name);
-
-	// 	//: (Option<Vec<&'static str>>, Vec<&'static str>)
-	// 	let (afferent_areas, efferent_areas) = {
-	// 		//println!("\nCycling '{}'", area_name);			
-	// 		self.areas.get_mut(area_name).expect(&emsg).cycle()
-	// 	};
-
-	// 	for area_name_aff in afferent_areas {
-	// 		//println!("\nForwarding from '{}' to '{}'", area_name, area_name_aff);					
-	// 		self.thal.backward_efferent_output(area_name_aff, area_name, &mut self.areas);
-	// 		self.thal.forward_afferent_output(area_name, area_name_aff, &mut self.areas);
-
-	// 		// NEEDS TO HAPPEN IN A DIFFERENT THREAD (ONE FOR EACH LAYER)
-	// 		self.cycle_old(area_name_aff);									
-	// 	}
-
-	// 	// match afferent_areas {
-	// 	// 	Some(aff_area_names) => {
-				
-	// 	// 	},
-
-	// 	// 	None => (),
-	// 	// };
-	// }
 }
 
 
@@ -249,7 +206,7 @@ pub fn define_proto_area_maps() -> ProtoAreaMaps {
 
 		//println!("cycle_cel_syns running with dims.width = {}, depth = {}", width, depth_total);
 
-		let kern = ocl::new_kernel(self.ocl.program, "cycle_syns");
+		let kern = ocl::create_kernel(self.ocl.program, "cycle_syns");
 		ocl::set_kernel_arg(0, self.cortical_area.axns.states.buf, kern);
 		ocl::set_kernel_arg(1, self.cortical_area.dst_dens.syns().axn_slc_ids.buf, kern);
 		ocl::set_kernel_arg(2, self.cortical_area.dst_dens.syns().axn_col_offs.buf, kern);
@@ -273,7 +230,7 @@ pub fn define_proto_area_maps() -> ProtoAreaMaps {
 
 		let width_dens: usize = dims.width as usize * cmn::DENDRITES_PER_CELL * depth_cellular as usize;
 
-		let kern = ocl::new_kernel(self.ocl.program, "cycle_dens");
+		let kern = ocl::create_kernel(self.ocl.program, "cycle_dens");
 
 		ocl::set_kernel_arg(0, self.cortical_area.dst_dens.syns().states.buf, kern);
 		ocl::set_kernel_arg(1, self.cortical_area.dst_dens.thresholds.buf, kern);
@@ -287,7 +244,7 @@ pub fn define_proto_area_maps() -> ProtoAreaMaps {
 		let width: u32 = self.areas.width(Sensory);
 		let (depth_noncellular, depth_cellular) = self.proto_layer_maps.depth(Sensory);
 
-		let kern = ocl::new_kernel(self.ocl.program, "cycle_axns");
+		let kern = ocl::create_kernel(self.ocl.program, "cycle_axns");
 		ocl::set_kernel_arg(0, self.cortical_area.dst_dens.states.buf, kern);
 		ocl::set_kernel_arg(1, self.cortical_area.axns.states.buf, kern);
 		ocl::set_kernel_arg(2, depth_noncellular as u32, kern);

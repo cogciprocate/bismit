@@ -78,7 +78,7 @@ impl Thalamus {
 		}
 	}
 
-	pub fn cycle_external_ganglions(&mut self, areas: &CorticalAreas) {
+	pub fn cycle_external_ganglions(&mut self, areas: &mut CorticalAreas) {
 		for src in self.input_sources.iter_mut() {
 			src.next(areas);
 			//let input_gang = input_sources
@@ -86,21 +86,31 @@ impl Thalamus {
 		}		
 	}
 
-	pub fn cycle_cortical_ganglions(&mut self, areas: &CorticalAreas) {
-		for (area_name, area) in areas.iter() {
-			for aff_area_name in area.afferent_target_names().iter() {
-				//println!("Forwarding from: '{}' to '{}'", area_name, aff_area_name);
-				self.forward_afferent_output(area_name, aff_area_name, &areas);
-			}
+	// pub fn cycle_cortical_ganglions(&mut self, areas: &mut CorticalAreas) {
+	// 	// for (area_name, area) in areas.iter() {
+	// 	// 	for aff_area_name in area.afferent_target_names().iter() {
+	// 	// 		//println!("Forwarding from: '{}' to '{}'", area_name, aff_area_name);
+	// 	// 		self.forward_afferent_output(area_name, aff_area_name, areas);
+	// 	// 	}
 
-			for eff_area_name in area.efferent_target_names().iter() {
-				//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
-				self.backward_efferent_output(area_name, eff_area_name, &areas);
-			}
-		}
+	// 	// 	for eff_area_name in area.efferent_target_names().iter() {
+	// 	// 		//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
+	// 	// 		self.backward_efferent_output(area_name, eff_area_name, areas);
+	// 	// 	}
+	// 	// }
 
-		//self.cycle_external_ganglions(areas);
-	}
+	// 	// for (area_name, area_map) in self.area_maps.iter() {
+	// 	// 	for aff_area_name in area_map.aff_areas().iter() {
+	// 	// 		//println!("Forwarding from: '{}' to '{}'", area_name, aff_area_name);
+	// 	// 		self.forward_afferent_output(area_name, aff_area_name, areas);
+	// 	// 	}
+
+	// 	// 	for eff_area_name in area_map.eff_areas().iter() {
+	// 	// 		//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
+	// 	// 		self.backward_efferent_output(area_name, eff_area_name, areas);
+	// 	// 	}
+	// 	// }
+	// }
 
 
 	// WRITE_INPUT(): <<<<< TODO: CHECK SIZES AND SCALE WHEN NECESSARY >>>>>
@@ -114,8 +124,8 @@ impl Thalamus {
 			TODO: RENAME OR BREAK UP
 			TODO: HANDLE MULTIPLE TARGET REGIONS
 	*/
-	fn forward_afferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
-				 areas: &HashMap<&'static str, Box<CorticalArea>>,
+	pub fn forward_afferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
+				 areas: &mut CorticalAreas,
 	) {
 		let emsg = "thalamus::Thalamus::forward_afferent_output(): Area not found: ";
 		let emsg_src = format!("{}'{}' ", emsg, src_area_name);
@@ -130,7 +140,7 @@ impl Thalamus {
 			layer::AFFERENT_OUTPUT, 
 		);		
 		
-		areas.get(tar_area_name).expect(&emsg_tar).write_input(
+		areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
 			self.tract_afferent_output.input_ganglion(tar_area_name),
 			layer::AFFERENT_INPUT,
 		);
@@ -138,8 +148,8 @@ impl Thalamus {
 	}
 
 	// BACKWARD_EFFERENT_OUTPUT():  Cause an efferent frame to descend
-	fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
-				 areas: &HashMap<&'static str, Box<CorticalArea>>,
+	pub fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
+				 areas: &mut CorticalAreas,
 	) {
 		let emsg = "thalamus::Thalamus::backward_efferent_output(): Area not found: ";
 		let emsg_src = format!("{}'{}' ", emsg, src_area_name);
@@ -160,11 +170,15 @@ impl Thalamus {
 		/* TEST */
 		//let test_vec = input_czar::sdr_stripes(512, false, &mut self.tract_efferent_output[slc_range.clone()]);
 		
-		areas.get(tar_area_name).expect(&emsg_tar).write_input(
+		areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
 			self.tract_efferent_output.input_ganglion(tar_area_name), 
 			layer::EFFERENT_INPUT,
 		);
  	}
+
+ 	pub fn area_maps(&self) -> &HashMap<&'static str, AreaMap> {
+ 		&self.area_maps
+	}
 
  	pub fn area_map(&self, area_name: &'static str) -> &AreaMap {
  		&self.area_maps[area_name]

@@ -9,14 +9,14 @@ rand = "0.3"
 num = "0.1"
 libc = "0.1"
 enum_primitive = "0.1"
-ocl = "0.1"
+#ocl = "0.1"
 
 [dependencies.microcosm]
 git = "https://github.com/cogciprocate/microcosm.git"
 
-#[dependencies.ocl]
+[dependencies.ocl]
 #git = "https://github.com/cogciprocate/ocl_rust.git"
-#path = "/home/nick/projects/ocl"
+path = "/home/nick/projects/ocl"
 
 [dependencies.time]
 git = "https://github.com/rust-lang/time.git"

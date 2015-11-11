@@ -338,12 +338,12 @@ impl CorticalArea {
 		axn_irs
 	}
 
-	pub fn write_input(&self, sdr: &Sdr, layer_flags: layer::ProtolayerFlags) {
+	pub fn write_input(&mut self, sdr: &Sdr, layer_flags: layer::ProtolayerFlags) {
 		//let tar_slice_size = area_map.
 
 		if layer_flags.contains(layer::AFFERENT_INPUT) && !self.bypass_filters {
 			match self.filters {
-				Some(ref filters_vec) => {
+				Some(ref mut filters_vec) => {
 					filters_vec[0].write(sdr);
 
 					for fltr in filters_vec.iter() { // ***** UN-MUT ME
@@ -553,38 +553,38 @@ impl Drop for CorticalArea {
 
 #[cfg(test)]
 pub mod tests {
-	use std::ops::{ Range };
+	// use std::ops::{ Range };
 	use rand::distributions::{ IndependentSample, Range as RandRange };
 
 	use super::*;
 	use axon_space::{ AxonSpaceTest };
-	use cmn::{ Sdr, CelCoords };
+	use cmn::{ /*Sdr,*/ CelCoords };
 	// use synapses::{ SynCoords };
 	use map::{ AreaMapTest };
 
 	pub trait CorticalAreaTest {
 		//fn axons
-		fn read_from_axons(&self, sdr: &mut Sdr, axn_range: Range<u32>);
-		fn write_to_axons(&self, sdr: &Sdr, axn_range: Range<u32>);
+		// fn read_from_axons(&self, sdr: &mut Sdr, axn_range: Range<u32>);
+		// fn write_to_axons(&self, sdr: &Sdr, axn_range: Range<u32>);
 		fn axn_state(&self, idx: usize) -> u8;
-		fn write_to_axon(&self, val: u8, idx: u32);
+		fn write_to_axon(&mut self, val: u8, idx: u32);
 		fn read_from_axon(&self, idx: u32) -> u8;
 		fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8
 			) -> (i8, i8, u32, u32);
 		fn print_aux(&mut self);
 		fn print_axns(&mut self);
 		fn activate_axon(&mut self, idx: u32);
-		fn deactivate_axon(&self, idx: u32);
+		fn deactivate_axon(&mut self, idx: u32);
 	}
 
 	impl CorticalAreaTest for CorticalArea {
-		fn read_from_axons(&self, sdr: &mut Sdr, axn_range: Range<u32>) {
-			self.read_from_axons(axn_range, sdr);
-		}
+		// fn read_from_axons(&self, sdr: &mut Sdr, axn_range: Range<u32>) {
+		// 	self.read_from_axons(axn_range, sdr);
+		// }
 
-		fn write_to_axons(&self, sdr: &Sdr, axn_range: Range<u32>) {
-			self.write_to_axons(axn_range, sdr);
-		}
+		// fn write_to_axons(&self, sdr: &Sdr, axn_range: Range<u32>) {
+		// 	self.write_to_axons(axn_range, sdr);
+		// }
 
 		fn axn_state(&self, idx: usize) -> u8 {
 			self.axns.axn_state(idx)
@@ -594,7 +594,7 @@ pub mod tests {
 			self.axns.axn_state(idx as usize)
 		}
 
-		fn write_to_axon(&self, val: u8, idx: u32) {
+		fn write_to_axon(&mut self, val: u8, idx: u32) {
 			self.axns.write_to_axon(val, idx);
 		}
 
@@ -649,7 +649,7 @@ pub mod tests {
 			self.axns.write_to_axon(val, idx);
 		}
 
-		fn deactivate_axon(&self, idx: u32) {
+		fn deactivate_axon(&mut self, idx: u32) {
 			self.axns.write_to_axon(0, idx);
 		}
 	}

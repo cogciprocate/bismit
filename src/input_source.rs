@@ -53,7 +53,7 @@ impl InputSource {
 		}
 	}
 
-	pub fn next(&mut self, areas: &CorticalAreas) {		
+	pub fn next(&mut self, areas: &mut CorticalAreas) {		
 		match self.kind {
 			InputSourceKind::IdxReader(ref mut ir) => { let _ = ir.next(&mut self.ganglion[..]); },
 			InputSourceKind::IdxReaderLoop(ref mut ir) => { let _ = ir.next(&mut self.ganglion[..]); },
@@ -61,7 +61,8 @@ impl InputSource {
 		}
 
 		for target in self.targets.iter() {
-			areas[target].write_input(&self.ganglion, layer::AFFERENT_INPUT);
+			areas.get_mut(target).expect("InputSource::next(): Invalid area name, 'targets' mismatch error.")
+				.write_input(&self.ganglion, layer::AFFERENT_INPUT);
 
 			// println!("\n##### INPUTSOURCE::NEXT(): Writing ganglion with len: {} to area: '{}': \n{:?}", 
 			// 	self.ganglion.len(), target, self.ganglion);

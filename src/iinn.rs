@@ -57,7 +57,7 @@ impl InhibitoryInterneuronNetwork {
 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
 
 
-		let kern_inhib_simple = ocl.new_kernel("inhib_simple".to_string(),
+		let kern_inhib_simple = ocl.create_kernel("inhib_simple".to_string(),
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
 			.arg_env(&src_soma)
@@ -67,7 +67,7 @@ impl InhibitoryInterneuronNetwork {
 			.arg_env(&axns.states)
 		;
 
-		let kern_inhib_passthrough = ocl.new_kernel("inhib_passthrough".to_string(),
+		let kern_inhib_passthrough = ocl.create_kernel("inhib_passthrough".to_string(),
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			//.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
 			.arg_env(&src_soma)
@@ -94,19 +94,19 @@ impl InhibitoryInterneuronNetwork {
 	}
 
 	pub fn cycle(&mut self, bypass: bool) {
-		// self.kern_cycle_pre.enqueue(); 
+		// self.kern_cycle_pre.enqueue(None, None); 
 
 
 		// for i in 0..1 { // <<<<< (was 0..8)
-		//  	self.kern_cycle_wins.enqueue(); 
+		//  	self.kern_cycle_wins.enqueue(None, None); 
 		// }
 
-		// self.kern_cycle_post.enqueue();
-		// self.kern_post_inhib.enqueue();
+		// self.kern_cycle_post.enqueue(None, None);
+		// self.kern_post_inhib.enqueue(None, None);
 		if bypass {
-			self.kern_inhib_passthrough.enqueue();
+			self.kern_inhib_passthrough.enqueue(None, None);
 		} else {
-			self.kern_inhib_simple.enqueue();
+			self.kern_inhib_simple.enqueue(None, None);
 		}
 	}
 

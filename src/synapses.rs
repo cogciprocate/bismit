@@ -145,10 +145,10 @@ impl Synapses {
 		for tft_id in 0..dst_src_slc_ids.len() {
 			kernels.push(Box::new(
 
-				// ocl_pq.new_kernel("syns_cycle_layer".to_string(),
-				// ocl_pq.new_kernel("syns_cycle_vec4_layer".to_string(),
-				// ocl_pq.new_kernel("syns_cycle_wow_layer".to_string(),
-				ocl_pq.new_kernel("syns_cycle_wow_vec4_layer".to_string(), 
+				// ocl_pq.create_kernel("syns_cycle_layer".to_string(),
+				// ocl_pq.create_kernel("syns_cycle_vec4_layer".to_string(),
+				// ocl_pq.create_kernel("syns_cycle_wow_layer".to_string(),
+				ocl_pq.create_kernel("syns_cycle_wow_vec4_layer".to_string(), 
 					
 					WorkSize::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
 					.lws(WorkSize::TwoDims(min_wg_sqrt, min_wg_sqrt))
@@ -172,10 +172,10 @@ impl Synapses {
 		// for tft_id in 0..dst_src_slc_ids.len() {
 		// 	kernels.push(Box::new(
 
-		// 		ocl_pq.new_kernel("syns_cycle_simple".to_string(),
-		// 		// ocl_pq.new_kernel("syns_cycle_simple_vec4".to_string(),
-		// 		// ocl_pq.new_kernel("syns_cycle_wow".to_string(),
-		// 		// ocl_pq.new_kernel("syns_cycle_wow_vec4".to_string(), 
+		// 		ocl_pq.create_kernel("syns_cycle_simple".to_string(),
+		// 		// ocl_pq.create_kernel("syns_cycle_simple_vec4".to_string(),
+		// 		// ocl_pq.create_kernel("syns_cycle_wow".to_string(),
+		// 		// ocl_pq.create_kernel("syns_cycle_wow_vec4".to_string(), 
 				
 		// 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
 		// 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
@@ -231,9 +231,9 @@ impl Synapses {
 			println!("RG:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:(..)(..)(..)]\n", self.den_kind);
 		}
 
-		self.strengths.read();
-		self.src_slc_ids.read();
-		self.src_col_v_offs.read();
+		self.strengths.read_wait();
+		self.src_slc_ids.read_wait();
+		self.src_col_v_offs.read_wait();
 
 		let syns_per_layer_tft = self.dims.per_slc_per_tft() as usize * self.dims.depth() as usize;
 		let dst_src_slc_ids = self.dst_src_slc_ids.clone();
@@ -273,10 +273,10 @@ impl Synapses {
 			src_tft_i += 1;
 		}
 
-		self.strengths.write();
-		self.src_slc_ids.write();
-		self.src_col_v_offs.write();	
-		self.src_col_u_offs.write();
+		self.strengths.write_wait();
+		self.src_slc_ids.write_wait();
+		self.src_col_v_offs.write_wait();	
+		self.src_col_u_offs.write_wait();
 	}
 
 	fn regrow_syn(&mut self, 
@@ -347,7 +347,7 @@ impl Synapses {
 
 	pub fn cycle(&self) {
 		for kern in self.kernels.iter() {
-			kern.enqueue();
+			kern.enqueue(None, None);
 		}
 	}
 
@@ -356,10 +356,10 @@ impl Synapses {
 	}
 
 	pub fn confab(&mut self) {
-		self.states.read();
-		self.strengths.read();
-		self.src_slc_ids.read();
-		self.src_col_v_offs.read();
+		self.states.read_wait();
+		self.strengths.read_wait();
+		self.src_slc_ids.read_wait();
+		self.src_col_v_offs.read_wait();
 	} 
 
 	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
@@ -490,8 +490,8 @@ pub mod tests {
 	pub trait SynapsesTest {
 		fn set_offs_to_zero(&mut self);
 		fn set_all_to_zero(&mut self);
-		fn set_src_offs(&self, v_ofs: i8, u_ofs: i8, idx: usize);
-		fn set_src_slc(&self, src_slc_id: u8, idx: usize);
+		fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize);
+		fn set_src_slc(&mut self, src_slc_id: u8, idx: usize);
 		fn syn_state(&self, idx: u32) -> u8;
 		fn rand_syn_coords(&mut self, cel_coords: &CelCoords) -> SynCoords;
 		fn print_range(&mut self, range: Range<usize>);
@@ -514,14 +514,14 @@ pub mod tests {
 			self.flag_sets.set_all_to(0);
 		}
 
-		fn set_src_offs(&self, v_ofs: i8, u_ofs: i8, idx: usize) {
+		fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize) {
 			let sdr_v = vec![v_ofs];
 			let sdr_u = vec![u_ofs];
 			self.src_col_v_offs.write_direct(&sdr_v[..], idx);
 			self.src_col_u_offs.write_direct(&sdr_u[..], idx);
 		}
 
-		fn set_src_slc(&self, src_slc_id: u8, idx: usize) {
+		fn set_src_slc(&mut self, src_slc_id: u8, idx: usize) {
 			let sdr = vec![src_slc_id];
 			self.src_slc_ids.write_direct(&sdr[..], idx);
 		}

@@ -115,7 +115,7 @@ impl Minicolumns {
 
 		let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
-		let kern_activate = ocl.new_kernel("mcol_activate_pyrs".to_string(),
+		let kern_activate = ocl.create_kernel("mcol_activate_pyrs".to_string(),
 			WorkSize::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			// WorkSize::OneDim(pyrs.dims().cells() as usize);
 			.arg_env(&flag_sets)
@@ -135,7 +135,7 @@ impl Minicolumns {
 
 		//println!("\n ##### ff_layer_axn_idz: {}", ff_layer_axn_idz);
 
-		let kern_output = ocl.new_kernel("mcol_output".to_string(), 
+		let kern_output = ocl.create_kernel("mcol_output".to_string(), 
 			// WorkSize::ThreeDims(1 as usize, dims.v_size() as usize, dims.u_size() as usize))
 			WorkSize::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
 			//.arg_env(&ssts.soma())
@@ -203,7 +203,7 @@ impl Minicolumns {
 
 	/*pub fn cycle(&mut self, ltp: bool) {
 		self.iinn.cycle();  
-		self.kern_post_inhib.enqueue(); 
+		self.kern_post_inhib.enqueue(None, None); 
 	}*/
 
 	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
@@ -220,17 +220,17 @@ impl Minicolumns {
 	}
 
 	pub fn activate(&self) {
-		self.kern_activate.enqueue();
+		self.kern_activate.enqueue(None, None);
 	}
 
 	pub fn output(&self) {
-		self.kern_output.enqueue();
+		self.kern_output.enqueue(None, None);
 	}
 
 	pub fn confab(&mut self) {
-		//self.states.read();
-		//self.states_raw.read();
-		self.flag_sets.read();
+		//self.states.read_wait();
+		//self.states_raw.read_wait();
+		self.flag_sets.read_wait();
 		//self.iinn.confab();
 		//self.ssts.dens.confab();
 	}

@@ -37,7 +37,7 @@ impl SensoryFilter {
 
 		let input = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);		
 
-		let kern_cycle = ocl.new_kernel(filter_name.clone(),
+		let kern_cycle = ocl.create_kernel(filter_name.clone(),
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
 			.arg_env(&input)
@@ -55,13 +55,13 @@ impl SensoryFilter {
 		}
 	}
 
-	pub fn write(&self, sdr: &Sdr) {
+	pub fn write(&mut self, sdr: &Sdr) {
 		assert!(sdr.len() == self.input.len());
 		self.input.write_direct(sdr, 0);
 	}
 
 	pub fn cycle(&self) {
-		self.kern_cycle.enqueue();
+		self.kern_cycle.enqueue(None, None);
 		//println!("Printing {} for {}:\n", &self.filter_name, self.area_name);
 		//self.input.print_simple();
 	}

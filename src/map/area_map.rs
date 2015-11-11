@@ -193,6 +193,14 @@ impl AreaMap {
 		layer_idz..(layer_idz + layer_len)
 	}
 
+	pub fn aff_areas(&self) -> &Vec<&'static str> {
+		&self.proto_area_map().aff_areas
+	}
+
+	pub fn eff_areas(&self) -> &Vec<&'static str> {
+		&self.proto_area_map().eff_areas
+	}
+
 	pub fn area_name(&self) -> &'static str {
 		self.area_name
 	}

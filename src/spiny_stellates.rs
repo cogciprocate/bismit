@@ -87,10 +87,10 @@ impl SpinyStellateLayer {
 		let cels_per_grp = dims.per_subgrp(grp_count, ocl_pq).expect("SpinyStellateLayer::new()");
 			//.unwrap_or_else(|s: &'static str| panic!(s));
 
-		let kern_ltp = ocl_pq.new_kernel("sst_ltp".to_string(), 
+		let kern_ltp = ocl_pq.create_kernel("sst_ltp".to_string(), 
 			//WorkSize::TwoDims(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 			WorkSize::TwoDims(dims.tfts_per_cel() as usize, grp_count as usize))
-		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDims(dims.depth() as usize, iinn.dims.per_slc() as usize))
+		//let kern_ltp = ocl.create_kernel("sst_ltp", WorkSize::TwoDims(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&axns.states)
 			.arg_env(&dens.syns().states)
 			.arg_scl(lyr_axn_idz)
@@ -107,8 +107,8 @@ impl SpinyStellateLayer {
 
 
 
-		/*let kern_ltp_old = ocl.new_kernel("sst_ltp_old", WorkSize::TwoDims(dims.depth() as usize, 16 as usize)) // ***** FIX
-		//let kern_ltp = ocl.new_kernel("sst_ltp", WorkSize::TwoDims(dims.depth() as usize, iinn.dims.per_slc() as usize))
+		/*let kern_ltp_old = ocl.create_kernel("sst_ltp_old", WorkSize::TwoDims(dims.depth() as usize, 16 as usize)) // ***** FIX
+		//let kern_ltp = ocl.create_kernel("sst_ltp", WorkSize::TwoDims(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&dens.syns().states)
 			.arg_env(&dens.syns().states)
 			.arg_env(&dens.syns().states)
@@ -152,7 +152,7 @@ impl SpinyStellateLayer {
 		//print!("[R:{}]", self.rng.gen::<i32>());
 		let rnd = self.rng.gen::<u32>();
 		self.kern_ltp.set_arg_scl_named("rnd", rnd);
-		self.kern_ltp.enqueue();
+		self.kern_ltp.enqueue(None, None);
 	}
 
 	pub fn regrow(&mut self) {

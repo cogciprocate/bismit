@@ -93,7 +93,7 @@ pub mod tests {
 
 	pub trait AxonSpaceTest {
 		fn axn_state(&self, idx: usize) -> u8;
-		fn write_to_axon(&self, val: u8, idx: u32);
+		fn write_to_axon(&mut self, val: u8, idx: u32);
 	}
 
 	impl AxonSpaceTest for AxonSpace {
@@ -105,7 +105,7 @@ pub mod tests {
 			self.states.read_idx_direct(idx)
 		}
 
-		fn write_to_axon(&self, val: u8, idx: u32) {
+		fn write_to_axon(&mut self, val: u8, idx: u32) {
 			let sdr = vec![val];
 			self.states.write_direct(&sdr, idx as usize);
 		}

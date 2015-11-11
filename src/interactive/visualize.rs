@@ -435,9 +435,9 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			// REQUIRES cortex.area(&area_name).axns.states TO BE FILLED BY .print() unless:
 
-			if view_sdr_only { cortex.area_mut(&area_name).psal_mut().dens.states.read(); }
+			if view_sdr_only { cortex.area_mut(&area_name).psal_mut().dens.states.read_wait(); }
 
-			cortex.area_mut(&area_name).axns.states.read();
+			cortex.area_mut(&area_name).axns.states.read_wait();
 
 			//let (eff_out_idz, eff_out_idn) = cortex.area(&area_name).mcols.axn_output_range();
 			//let (ssts_axn_idz, ssts_axn_idn) = cortex.area_mut(&area_name).psal_mut().axn_range();

@@ -81,7 +81,7 @@ impl Dendrites {
 			area_map, axons, /*aux,*/ ocl);
 
 
-		let kern_cycle = ocl.new_kernel("den_cycle".to_string(), WorkSize::OneDim(states.len()))
+		let kern_cycle = ocl.create_kernel("den_cycle".to_string(), WorkSize::OneDim(states.len()))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)
@@ -93,7 +93,7 @@ impl Dendrites {
 			.arg_env(&states)
 		;
 
-		/*let kern_cycle = ocl.new_kernel("den_cycle_old", WorkSize::TwoDims(dims.depth() as usize, dims.per_slc() as usize))
+		/*let kern_cycle = ocl.create_kernel("den_cycle_old", WorkSize::TwoDims(dims.depth() as usize, dims.per_slc() as usize))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)
@@ -124,12 +124,12 @@ impl Dendrites {
 	pub fn cycle(&self) {
 		self.syns.cycle();
 
-		self.kern_cycle.enqueue();
+		self.kern_cycle.enqueue(None, None);
 	}
 
 	// FOR TESTING PURPOSES
 	pub fn cycle_self_only(&self) {
-		self.kern_cycle.enqueue();
+		self.kern_cycle.enqueue(None, None);
 	}
 
 	pub fn regrow(&mut self) {
@@ -137,9 +137,9 @@ impl Dendrites {
 	}
 
 	pub fn confab(&mut self) {
-		self.thresholds.read();
-		self.states_raw.read();
-		self.states.read();
+		self.thresholds.read_wait();
+		self.states_raw.read_wait();
+		self.states.read_wait();
 		self.syns.confab();
 	}
 

@@ -68,7 +68,7 @@ impl PyramidalLayer {
 
 		let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, ocl_pq);		
 		
-		let kern_cycle = ocl_pq.new_kernel("pyr_cycle".to_string(),
+		let kern_cycle = ocl_pq.create_kernel("pyr_cycle".to_string(),
 			WorkSize::OneDim(dims.cells() as usize))
 			.arg_env(&dens.states_raw)
 			.arg_env(&dens.states)
@@ -88,7 +88,7 @@ impl PyramidalLayer {
 		let cels_per_cel_grp = dims.per_subgrp(cel_grp_count, ocl_pq).expect("PyramidalLayer::new()");
 		let learning_rate_l2i = 0i32;
 
-		let kern_ltp = ocl_pq.new_kernel("pyrs_ltp".to_string(), 
+		let kern_ltp = ocl_pq.create_kernel("pyrs_ltp".to_string(), 
 			WorkSize::OneDim(cel_grp_count as usize))
 			.arg_env(&axons.states)
 			.arg_env(&states)
@@ -160,7 +160,7 @@ impl PyramidalLayer {
 impl DataCellLayer for PyramidalLayer {
 	fn learn(&mut self) {
 		self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>());
-		self.kern_ltp.enqueue();
+		self.kern_ltp.enqueue(None, None);
 	}
 
 	fn regrow(&mut self) {
@@ -169,16 +169,16 @@ impl DataCellLayer for PyramidalLayer {
 
 	fn cycle(&mut self) {
 		self.dens_mut().cycle();
-		self.kern_cycle.enqueue();
+		self.kern_cycle.enqueue(None, None);
 	}
 
 	fn confab(&mut self) {
-		self.states.read();
-		self.best_den_states.read();
-		self.tft_best_den_ids.read();
-		self.tft_best_den_states.read();
-		self.flag_sets.read();
-		// self.energies.read(); // <<<<< SLATED FOR REMOVAL
+		self.states.read_wait();
+		self.best_den_states.read_wait();
+		self.tft_best_den_ids.read_wait();
+		self.tft_best_den_states.read_wait();
+		self.flag_sets.read_wait();
+		// self.energies.read_wait(); // <<<<< SLATED FOR REMOVAL
 
 		self.dens_mut().confab();
 	}
@@ -240,7 +240,7 @@ pub mod tests {
 	impl DataCellLayerTest for PyramidalLayer {
 		// CYCLE_SELF_ONLY(): USED BY TESTS
 		fn cycle_self_only(&self) {
-			self.kern_cycle.enqueue();
+			self.kern_cycle.enqueue(None, None);
 		}
 
 		fn print_cel(&mut self, cel_idx: usize) {
@@ -355,7 +355,7 @@ pub mod tests {
 
 
 
-		// let kern_ltp = ocl_pq.new_kernel("pyrs_ltp_unoptd".to_string(), 
+		// let kern_ltp = ocl_pq.create_kernel("pyrs_ltp_unoptd".to_string(), 
 		// 	WorkSize::ThreeDims(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
 		// 	.arg_env(&axons.states)
 		// 	.arg_env(&states)

@@ -50,13 +50,13 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
 	println!("Primary Spatial Associative Layer...");
 	//let psal_name = cortex.area(area_name).psal().layer_name();
 	//cortex.write(area_name, psal_name, &vec1);
-	cortex.area(area_name).psal().soma().write_direct(&vec1, 0);
+	cortex.area_mut(area_name).psal_mut().soma_mut().write_direct(&vec1, 0);
 	test_syn_and_den_states(&mut cortex.area_mut(area_name).psal_mut().dens_mut());
 
 	println!("Primary Temporal Associative Layer...");
 	//let ptal_name = cortex.area(area_name).ptal().layer_name();
 	//cortex.write(area_name, ptal_name, &vec1);
-	cortex.area(area_name).ptal().soma().write_direct(&vec1, 0);
+	cortex.area_mut(area_name).ptal_mut().soma_mut().write_direct(&vec1, 0);
 	test_syn_and_den_states(&mut cortex.area_mut(area_name).ptal_mut().dens_mut());
 	test_pyr_preds(&mut cortex.area_mut(area_name).ptal_mut());
 }
@@ -94,13 +94,13 @@ fn test_pyr_preds(pyrs: &mut PyramidalLayer) {
 	}
 
 	// WRITE THE DENDRITE STATES TO DEVICE
-	pyrs.dens_mut().states.write();
+	pyrs.dens_mut().states.write_wait();
 
 	// CYCLE THE PYRAMIDAL CELL ONLY, WITHOUT CYCLING IT'S DENS OR SYNS (WHICH WOULD OVERWRITE THE ABOVE)
 	pyrs.cycle_self_only();	
 	
 	// READ THE PYRAMIDAL CELL SOMA STATES (PREDS)
-	pyrs.soma_mut().read();
+	pyrs.soma_mut().read_wait();
 	//pyrs.dens_mut().states.print_simple();
 	//pyrs.soma_mut().print_simple();
 
