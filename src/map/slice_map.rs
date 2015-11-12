@@ -1,26 +1,9 @@
-// use num::{ Num };
-// use std::fmt::{ Display };
-// use std::ops::{ Range };
-// use std::collections::{ HashMap };
-//use std::num::ToString;
 
-use ocl::{ self, EnvoyDims, ProQueue };
-use proto::{ /*layer, ProtoLayerMaps,*/ ProtoLayerMap, /*Protolayer, ProtolayerFlags, ProtoAreaMaps,*/ ProtoAreaMap };
+use ocl::{ self, EnvoyDims };
+use proto::{ ProtoLayerMap, ProtoAreaMap };
 use cmn::{ self, CorticalDims, SliceDims, HexTilePlane };
 use map::{ InterAreaInfoCache };
 use map::area_map;
-
-
-// pub fn axn_idz_2d(axn_slc: u8, columns: u32, hrz_demarc: u8) -> u32 {
-// 	let mut axn_idx: u32 = if axn_slc < hrz_demarc {
-// 		(axn_slc as u32 * columns)
-// 	} else {
-// 		(hrz_demarc as u32 * columns) + (cmn::SYNAPSE_SPAN_RHOMBAL_AREA * (axn_slc as u32 - hrz_demarc as u32))
-// 	};
-
-// 	axn_idx + cmn::AXON_MARGIN_SIZE as u32
-// }
-
 
 
 #[derive(Debug, Clone)]
@@ -200,9 +183,9 @@ impl SliceMap {
 }
 
 impl EnvoyDims for SliceMap {
-	fn padded_envoy_len(&self, ocl_pq: &ProQueue) -> usize {
+	fn padded_envoy_len(&self, incr: usize) -> usize {
 		// assert!((ocl_pq.get_max_work_group_size() % self.axn_count()) == 0 || self.axn_count() == 0);
-		ocl::padded_len(self.axn_count() as usize, ocl_pq.get_max_work_group_size() as usize)
+		ocl::padded_len(self.axn_count() as usize, incr)
 	}
 }
 

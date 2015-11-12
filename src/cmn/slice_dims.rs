@@ -1,16 +1,6 @@
-//use num::{ Num };
-//use std::fmt::{ Display };
-//use std::ops::{ Range };
-//use std::collections::{ HashMap };
-//use std::num::ToString;
 
-//use ocl::{ BuildOptions, BuildOption, EnvoyDims };
-use ocl::{ self, EnvoyDims, ProQueue };
-//use proto::{ layer, ProtoLayerMaps, ProtoLayerMap, Protolayer, ProtolayerFlags, ProtoAreaMaps, ProtoAreaMap };
-//use cmn::{ self, CorticalDims, HexTilePlane };
+use ocl::{ self, EnvoyDims };
 use cmn::{ CorticalDims, HexTilePlane };
-//use map::{ InterAreaInfoCache };
-
 
 
 #[derive(Clone, Debug)]
@@ -69,10 +59,6 @@ impl SliceDims {
 	pub fn depth(&self) -> u8 {
 		1u8
 	}
-
-	// pub fn linear_len(&self) -> u32 {
-	// 	self.columns()
-	// }
 }
 
 impl HexTilePlane for SliceDims {
@@ -91,8 +77,8 @@ impl HexTilePlane for SliceDims {
 
 impl EnvoyDims for SliceDims {
 	// [FIXME]: TODO: ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT 
-	fn padded_envoy_len(&self, ocl_pq: &ProQueue) -> usize {
-		ocl::padded_len(self.columns() as usize, ocl_pq.get_max_work_group_size() as usize)
+	fn padded_envoy_len(&self, incr: usize) -> usize {
+		ocl::padded_len(self.columns() as usize, incr)
 	}
 }
 

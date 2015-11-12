@@ -44,7 +44,7 @@ impl Dendrites {
 					area_map: &AreaMap,
 					axons: &AxonSpace,
 					// aux: &Aux,
-					ocl: &ProQueue
+					ocl_pq: &ProQueue
 	) -> Dendrites {
 		//println!("\n### Test D1 ###");
 		//let width_dens = dims.width << per_cell_l2;
@@ -70,18 +70,18 @@ impl Dendrites {
 
 
 
-		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl);
+		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
+		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
+		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl_pq.queue());
 
 		println!("            DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", layer_name, dims, states.len());
 
 		let syns_dims = dims.clone_with_ptl2((dims.per_tft_l2() + syns_per_den_l2 as i8));
 		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, 
-			area_map, axons, /*aux,*/ ocl);
+			area_map, axons, /*aux,*/ ocl_pq);
 
 
-		let kern_cycle = ocl.create_kernel("den_cycle".to_string(), WorkSize::OneDim(states.len()))
+		let kern_cycle = ocl_pq.create_kernel("den_cycle".to_string(), WorkSize::OneDim(states.len()))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)
@@ -112,7 +112,7 @@ impl Dendrites {
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			kern_cycle: kern_cycle,
-			thresholds: Envoy::<ocl::cl_uchar>::new(dims, 1, ocl),
+			thresholds: Envoy::<ocl::cl_uchar>::new(dims, 1, ocl_pq.queue()),
 			states_raw: states_raw,
 			states: states,
 			energies: energies,

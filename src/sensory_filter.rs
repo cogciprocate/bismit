@@ -23,7 +23,7 @@ impl SensoryFilter {
 				//dims: CorticalDims, 
 				axns: &AxonSpace,
 				//base_axn_slc: u8,
-				ocl: &ProQueue, 
+				ocl_pq: &ProQueue, 
 		) -> SensoryFilter 
 	{
 		let base_axn_slc_ids = area_map.axn_base_slc_ids_by_flag(layer::AFFERENT_INPUT);
@@ -35,9 +35,9 @@ impl SensoryFilter {
 			areas with sensory filters are not yet supported. Please set the depth of any \
 			afferent input layers with filters to 1.");
 
-		let input = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);		
+		let input = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());		
 
-		let kern_cycle = ocl.create_kernel(filter_name.clone(),
+		let kern_cycle = ocl_pq.create_kernel(filter_name.clone(),
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
 			.arg_env(&input)

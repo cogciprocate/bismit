@@ -39,7 +39,7 @@ pub struct InhibitoryInterneuronNetwork {
 }
 
 impl InhibitoryInterneuronNetwork {
-	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, area_map: &AreaMap, src_soma: &Envoy<u8>, src_base_axn_slc: u8, axns: &AxonSpace, /*aux: &Aux,*/ ocl: &ProQueue) -> InhibitoryInterneuronNetwork {
+	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, area_map: &AreaMap, src_soma: &Envoy<u8>, src_base_axn_slc: u8, axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQueue) -> InhibitoryInterneuronNetwork {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
@@ -52,12 +52,12 @@ impl InhibitoryInterneuronNetwork {
 		// let wins = Envoy::<ocl::cl_uchar>::with_padding(dims, 0u8, ocl, padding);
 		// let states = Envoy::<ocl::cl_uchar>::with_padding(dims, cmn::STATE_ZERO, ocl, padding);
 
-		let spi_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let wins = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let spi_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
+		let wins = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
+		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
 
 
-		let kern_inhib_simple = ocl.create_kernel("inhib_simple".to_string(),
+		let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple".to_string(),
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
 			.arg_env(&src_soma)
@@ -67,7 +67,7 @@ impl InhibitoryInterneuronNetwork {
 			.arg_env(&axns.states)
 		;
 
-		let kern_inhib_passthrough = ocl.create_kernel("inhib_passthrough".to_string(),
+		let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough".to_string(),
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			//.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
 			.arg_env(&src_soma)

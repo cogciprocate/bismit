@@ -150,7 +150,7 @@ impl CorticalDims {
 	}
 
 	pub fn per_subgrp(&self, subgroup_count: u32, ocl_pq: &ProQueue) -> Result<u32, &'static str> {
-		let physical_len = self.padded_envoy_len(ocl_pq) as u32;
+		let physical_len = self.padded_envoy_len(ocl_pq.get_max_work_group_size()) as u32;
 
 		if physical_len % subgroup_count == 0 {
 			return Ok(physical_len / subgroup_count) 
@@ -167,15 +167,15 @@ impl CorticalDims {
 		CorticalDims { depth: depth, .. *self }
 	}
 
-	pub fn clone_with_physical_increment(&self, physical_increment: u32) -> CorticalDims {
-		CorticalDims { physical_increment: Some(physical_increment), .. *self } 
+	pub fn clone_with_physical_increment(&self, physical_increment: usize) -> CorticalDims {
+		CorticalDims { physical_increment: Some(physical_increment as u32), .. *self } 
 	}
 
-	pub fn set_physical_increment(&mut self, physical_increment: u32) {
-		self.physical_increment = Some(physical_increment);
+	pub fn set_physical_increment(&mut self, physical_increment: usize) {
+		self.physical_increment = Some(physical_increment as u32);
 	}
 
-	pub fn with_physical_increment(mut self, physical_increment: u32) -> CorticalDims {
+	pub fn with_physical_increment(mut self, physical_increment: usize) -> CorticalDims {
 		self.set_physical_increment(physical_increment);
 		self
 	}
@@ -188,17 +188,17 @@ impl CorticalDims {
 	/// Length of the envoy required to properly represent this section of cortex.
 	///
 	///	Rounded based on columns for versatility's sake.
-	pub fn padded_envoy_len(&self, ocl_pq: &ProQueue) -> usize {
+	pub fn padded_envoy_len(&self, incr: usize) -> usize {
 		let cols = self.columns();
-		let phys_incr = ocl_pq.get_max_work_group_size();
+		// let phys_incr = ocl_pq.get_max_work_group_size();
 
-		let len_mod = cols % phys_incr;
+		let len_mod = cols % incr as u32;
 
 		if len_mod == 0 {
 			len_components(cols * self.depth as u32, self.per_tft_l2, self.tfts_per_cel) as usize
 		} else {
-			let pad = phys_incr - len_mod;
-			debug_assert_eq!((cols + pad) % phys_incr, 0);
+			let pad = incr as u32 - len_mod;
+			debug_assert_eq!((cols + pad) % incr as u32, 0);
 			len_components((cols + pad) * self.depth as u32, self.per_tft_l2, self.tfts_per_cel) as usize
 		}
 	}
@@ -207,8 +207,8 @@ impl CorticalDims {
 impl Copy for CorticalDims {}
 
 impl EnvoyDims for CorticalDims {
-	fn padded_envoy_len(&self, ocl_pq: &ProQueue) -> usize {
-		self.padded_envoy_len(ocl_pq)
+	fn padded_envoy_len(&self, incr: usize) -> usize {
+		self.padded_envoy_len(incr)
 	}
 }
 

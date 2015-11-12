@@ -108,18 +108,18 @@ impl Synapses {
 
 		//let slc_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
 		//let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl_pq);
-		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq);
-		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq);
-		let src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq);
+		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq.queue());
+		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq.queue());
+		let src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq.queue());
 
 
 		//let src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl_pq); // *****
 		//let src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl_pq); // *****
-		let src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq); // *****
-		let src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq); // *****
+		let src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq.queue()); // *****
+		let src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq.queue()); // *****
 
 
-		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq);
+		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq.queue());
 
 		// KERNELS
 		let dst_src_slc_ids = area_map.proto_layer_map().dst_src_slc_ids(layer_name);
@@ -133,7 +133,8 @@ impl Synapses {
 		if DEBUG_NEW { 
 			println!("{mt}{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
 				dims: {:?}, phys_len: {}", 
-				den_kind, states.len(), dims, dims.padded_envoy_len(ocl_pq), mt = cmn::MT); 
+				den_kind, states.len(), dims, dims.padded_envoy_len(
+					ocl_pq.get_max_work_group_size()), mt = cmn::MT); 
 		}
 
 		let min_wg_sqrt = 8 as usize;

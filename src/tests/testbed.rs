@@ -153,7 +153,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 // TESTBED {}: Stripped down cortex/cortical area
 pub struct TestBed {
 	pub ocl_context: Context,
-	pub ocl: ProQueue,
+	pub ocl_pq: ProQueue,
 	pub thal: Thalamus,
 	pub dims: CorticalDims,
 }
@@ -169,14 +169,14 @@ impl TestBed {
 		let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
 		let ocl_context = Context::new(None, None).unwrap();
-		let mut ocl = ProQueue::new(&ocl_context, None);
-		ocl.build(area_map.gen_build_options()).ok();
+		let mut ocl_pq = ProQueue::new(&ocl_context, None);
+		ocl_pq.build(area_map.gen_build_options()).ok();
 
-		let dims = area_map.dims().clone_with_physical_increment(ocl.get_max_work_group_size());
+		let dims = area_map.dims().clone_with_physical_increment(ocl_pq.get_max_work_group_size());
 
 		TestBed {
 			ocl_context: ocl_context,
-			ocl: ocl,
+			ocl_pq: ocl_pq,
 			thal: thal,
 			dims: dims,
 		}
@@ -186,8 +186,8 @@ impl TestBed {
 impl Drop for TestBed {
 	fn drop(&mut self) {
     	print!("Releasing OpenCL components for test bed... ");
-    	self.ocl.release_components();
-    	self.ocl_context.release_components();
+    	self.ocl_pq.release();
+    	self.ocl_context.release();
     	print!(" ...complete. \n");
 	}
 }

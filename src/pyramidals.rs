@@ -47,11 +47,11 @@ impl PyramidalLayer {
 		let best_dens_per_cel = tfts_per_cel;
 		let dims_best_dens = dims.clone().with_tfts(tfts_per_cel);
 
-		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq);
-		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq);
-		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq);
-		let tft_best_den_ids = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl_pq);
-		let tft_best_den_states = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl_pq);		
+		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
+		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
+		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
+		let tft_best_den_ids = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl_pq.queue());
+		let tft_best_den_states = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl_pq.queue());		
 		// let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
 		let dens_per_tft_l2 = protocell.dens_per_tuft_l2;

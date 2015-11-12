@@ -63,7 +63,7 @@ impl Minicolumns {
 					ssts: &SpinyStellateLayer, 
 					pyrs: &PyramidalLayer,
 
-					/*aux: &Aux,*/ ocl: &ProQueue) -> Minicolumns {
+					/*aux: &Aux,*/ ocl_pq: &ProQueue) -> Minicolumns {
 
 		assert!(dims.depth() == 1);
 		assert!(dims.v_size() == pyrs.dims().v_size() && dims.u_size() == pyrs.dims().u_size());
@@ -91,8 +91,8 @@ impl Minicolumns {
 
 		//let dens = Dendrites::new(dims, DendriteKind::Proximal, ProtocellKind::SpinyStellate, area_map.proto_layer_map(), axons, aux, ocl);
 
-		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
+		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
+		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
 
 		//let iinn = InhibitoryInterneuronNetwork::new(dims, area_map.proto_layer_map(), &ssts.soma(), ocl);
 
@@ -115,7 +115,7 @@ impl Minicolumns {
 
 		let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
-		let kern_activate = ocl.create_kernel("mcol_activate_pyrs".to_string(),
+		let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs".to_string(),
 			WorkSize::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			// WorkSize::OneDim(pyrs.dims().cells() as usize);
 			.arg_env(&flag_sets)
@@ -135,7 +135,7 @@ impl Minicolumns {
 
 		//println!("\n ##### ff_layer_axn_idz: {}", ff_layer_axn_idz);
 
-		let kern_output = ocl.create_kernel("mcol_output".to_string(), 
+		let kern_output = ocl_pq.create_kernel("mcol_output".to_string(), 
 			// WorkSize::ThreeDims(1 as usize, dims.v_size() as usize, dims.u_size() as usize))
 			WorkSize::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
 			//.arg_env(&ssts.soma())

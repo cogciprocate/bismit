@@ -520,8 +520,8 @@ impl Aux {
 		let int_32_min = -2147483648;
 
 		Aux { 
-			ints_0: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl_pq),
-			ints_1: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl_pq),
+			ints_0: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl_pq.queue()),
+			ints_1: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl_pq.queue()),
 			// chars_0: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			// chars_1: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			dims: dims.clone(),
@@ -541,9 +541,9 @@ impl Aux {
 impl Drop for CorticalArea {
 	fn drop(&mut self) {
     	print!("Releasing OpenCL components for '{}'... ", self.name);
-    	self.ocl_pq.release_components();
+    	self.ocl_pq.release();
     	print!("[ Program ][ Command Queue ]");
-    	self.ocl_context.release_components();
+    	self.ocl_context.release();
     	print!("[ Platform ]");
     	print!(" ...complete. \n");
 	}
