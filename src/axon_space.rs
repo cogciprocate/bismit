@@ -10,7 +10,7 @@
 
 use cmn::{ self };
 use map::{ AreaMap };
-use ocl::{ self, ProQueue, Envoy, EnvoyDims };
+use ocl::{ self, ProQue, Envoy, EnvoyDims };
 //use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind };
 //use synapses::{ Synapses };
 //use dendrites::{ Dendrites };
@@ -33,7 +33,7 @@ pub struct AxonSpace {
 }
 
 impl AxonSpace {
-	pub fn new(area_map: &AreaMap, ocl_pq: &ProQueue) -> AxonSpace {
+	pub fn new(area_map: &AreaMap, ocl_pq: &ProQue) -> AxonSpace {
 		//let depth_axn_sptl = region.depth_axonal_spatial();
 		//let depth_cellular = region.depth_cellular();
 		//let depth_axn_hrz = region.depth_axonal_horizontal();

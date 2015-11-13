@@ -8,7 +8,7 @@ use std::collections::{ BTreeMap };
 use rand;
 use rand::distributions::{ IndependentSample, Range };
 
-use ocl::{ BuildOptions, OclNum };
+use ocl::{ BuildConfig, OclNum };
 use super::{ Sdr };
 
 
@@ -213,7 +213,7 @@ pub static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 4] = [
 
 //	BASE_BUILD_OPTIONS():
 // 		-Used by AreaMap.
-pub fn base_build_options() -> BuildOptions {
+pub fn base_build_options() -> BuildConfig {
 
 	//assert!(SENSORY_CHORD_COLUMNS % AXON_BUFFER_SIZE == 0);
 	/*assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
@@ -222,32 +222,32 @@ pub fn base_build_options() -> BuildOptions {
 	assert!(DENDRITES_PER_CELL_DISTAL <= 256);
 	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
 
-	let build_options = BuildOptions::new(CL_BUILD_SWITCHES)
-		// .opt("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
-		// .opt("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
-		// .opt("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
-		// .opt("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)
+	let build_options = BuildConfig::new(CL_BUILD_SWITCHES)
+		// .cmplr_def("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
+		// .cmplr_def("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
+		// .cmplr_def("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
+		// .cmplr_def("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)
 
-		// .opt("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32)
-		// .opt("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
-		// .opt("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
-		// .opt("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
-		// .opt("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
-		// .opt("AXON_MARGIN_SIZE", AXON_MARGIN_SIZE as i32)
-		// .opt("AXON_BUFFER_SIZE", AXON_BUFFER_SIZE as i32)
-		// .opt("SYNAPSE_SPAN_RHOMBAL_AREA", SYNAPSE_SPAN_RHOMBAL_AREA as i32)
-		// .opt("ASPINY_REACH", ASPINY_REACH as i32)
-		// .opt("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
-		// .opt("ASPINY_SPAN", ASPINY_SPAN as i32)
+		// .cmplr_def("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32)
+		// .cmplr_def("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
+		// .cmplr_def("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
+		// .cmplr_def("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
+		// .cmplr_def("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
+		// .cmplr_def("AXON_MARGIN_SIZE", AXON_MARGIN_SIZE as i32)
+		// .cmplr_def("AXON_BUFFER_SIZE", AXON_BUFFER_SIZE as i32)
+		// .cmplr_def("SYNAPSE_SPAN_RHOMBAL_AREA", SYNAPSE_SPAN_RHOMBAL_AREA as i32)
+		// .cmplr_def("ASPINY_REACH", ASPINY_REACH as i32)
+		// .cmplr_def("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
+		// .cmplr_def("ASPINY_SPAN", ASPINY_SPAN as i32)
 
-		.opt("MCOL_IS_VATIC_FLAG", MCOL_IS_VATIC_FLAG as i32)
-		.opt("CEL_PREV_CONCRETE_FLAG", CEL_PREV_CONCRETE_FLAG as i32)
-		.opt("CEL_BEST_IN_COL_FLAG", CEL_BEST_IN_COL_FLAG as i32)
-		.opt("CEL_PREV_STPOT_FLAG", CEL_PREV_STPOT_FLAG as i32)
-		.opt("CEL_PREV_VATIC_FLAG", CEL_PREV_VATIC_FLAG as i32)
-		.opt("SYN_STPOT_FLAG", SYN_STPOT_FLAG as i32)
-		.opt("SYN_STDEP_FLAG", SYN_STDEP_FLAG as i32)
-		.opt("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
+		.cmplr_def("MCOL_IS_VATIC_FLAG", MCOL_IS_VATIC_FLAG as i32)
+		.cmplr_def("CEL_PREV_CONCRETE_FLAG", CEL_PREV_CONCRETE_FLAG as i32)
+		.cmplr_def("CEL_BEST_IN_COL_FLAG", CEL_BEST_IN_COL_FLAG as i32)
+		.cmplr_def("CEL_PREV_STPOT_FLAG", CEL_PREV_STPOT_FLAG as i32)
+		.cmplr_def("CEL_PREV_VATIC_FLAG", CEL_PREV_VATIC_FLAG as i32)
+		.cmplr_def("SYN_STPOT_FLAG", SYN_STPOT_FLAG as i32)
+		.cmplr_def("SYN_STDEP_FLAG", SYN_STDEP_FLAG as i32)
+		.cmplr_def("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
 	;
 
 	build_options
@@ -256,7 +256,7 @@ pub fn base_build_options() -> BuildOptions {
 // LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
 //		-Used by AreaMap
 // [FIXME]: TEMPORARY: Gonna need a better way to determine path...
-pub fn load_builtin_kernel_files(build_options: &mut BuildOptions) {
+pub fn load_builtin_kernel_files(build_options: &mut BuildConfig) {
 	for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
 		build_options.add_kern_file(
 			format!("{}/{}", cl_root_path(), BUILTIN_OPENCL_KERNEL_FILE_NAMES[i].to_string())

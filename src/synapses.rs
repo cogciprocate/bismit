@@ -10,7 +10,7 @@ use std::collections::{ BTreeSet };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQueue, WorkSize, Envoy, OclNum };
+use ocl::{ self, ProQue, WorkSize, Envoy, OclNum };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, 
 	DendriteKind, /*Protolayer, ProtolayerKind*/ };
 // use dendrites::{ Dendrites };
@@ -96,7 +96,7 @@ pub struct Synapses {
 impl Synapses {
 	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, 
 					den_kind: DendriteKind, cell_kind: ProtocellKind, area_map: &AreaMap, 
-					axons: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQueue
+					axons: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue
 	) -> Synapses {
 		let syns_per_tft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
 		assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);

@@ -1,4 +1,4 @@
-use ocl::{ self, ProQueue, WorkSize, Envoy, };
+use ocl::{ self, ProQue, WorkSize, Envoy, };
 use cmn::{ self, /*CorticalDims,*/ HexTilePlane, Sdr };
 use axon_space::{ AxonSpace };
 use proto::{ layer };
@@ -23,7 +23,7 @@ impl SensoryFilter {
 				//dims: CorticalDims, 
 				axns: &AxonSpace,
 				//base_axn_slc: u8,
-				ocl_pq: &ProQueue, 
+				ocl_pq: &ProQue, 
 		) -> SensoryFilter 
 	{
 		let base_axn_slc_ids = area_map.axn_base_slc_ids_by_flag(layer::AFFERENT_INPUT);

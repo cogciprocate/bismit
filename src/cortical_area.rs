@@ -13,7 +13,7 @@ use rand;
 
 use cmn::{ self, CorticalDims, Renderer, Sdr, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, ProQueue, Context, /*WorkSize,*/ Envoy, /*BuildOptions,*/ /*BuildOption*/ };
+use ocl::{ self, ProQue, Context, /*WorkSize,*/ Envoy, /*BuildConfig,*/ /*BuildOption*/ };
 use proto::{ /*ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap,*/ Cellular, /*Axonal, Spatial, Horizontal, Sensory,*/ Pyramidal, SpinyStellate, Inhibitory, layer, /*Protocell,*/ DendriteKind };
 
 // use synapses::{ Synapses };
@@ -45,7 +45,7 @@ pub struct CorticalArea {
 	ptal_name: &'static str,	// PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
 	psal_name: &'static str,	// PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
 	pub aux: Aux,
-	ocl_pq: ProQueue,
+	ocl_pq: ProQue,
 	ocl_context: Context,
 	renderer: Renderer,
 	counter: usize,
@@ -67,7 +67,7 @@ impl CorticalArea {
 
 		let ocl_context: ocl::Context = Context::new(None, None).expect(
 			"CorticalArea::new(): ocl_context creation error");
-		let mut ocl_pq: ocl::ProQueue = ocl::ProQueue::new(&ocl_context, Some(device_idx));
+		let mut ocl_pq: ocl::ProQue = ocl::ProQue::new(&ocl_context, Some(device_idx));
 
 		ocl_pq.build(area_map.gen_build_options()).expect("CorticalArea::new(): ocl_pq.build(): error");
 
@@ -467,7 +467,7 @@ impl CorticalArea {
 		&self.area_map.proto_area_map().eff_areas
 	}
 
-	pub fn ocl_pq(&self) -> &ProQueue {
+	pub fn ocl_pq(&self) -> &ProQue {
 		&self.ocl_pq
 	}
 
@@ -511,7 +511,7 @@ pub struct Aux {
 }
 
 impl Aux {
-	pub fn new(dims: &CorticalDims, ocl_pq: &ProQueue) -> Aux {
+	pub fn new(dims: &CorticalDims, ocl_pq: &ProQue) -> Aux {
 
 		//let dims_multiplier: u32 = 512;
 

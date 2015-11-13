@@ -3,7 +3,7 @@ use rand::{ self, XorShiftRng, Rng };
 
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, ProQueue, WorkSize, Envoy, OclNum, Kernel };
+use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, Kernel };
 use proto::{ ProtocellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -36,7 +36,7 @@ pub struct PyramidalLayer {
 
 impl PyramidalLayer {
 	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, 
-		area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQueue
+		area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue
 	) -> PyramidalLayer {
 		let base_axn_slcs = area_map.proto_layer_map().slc_ids(vec![layer_name]);
 		let base_axn_slc = base_axn_slcs[0];

@@ -4,7 +4,7 @@ use std::ops::{ Range };
 // use std::collections::{ HashMap };
 //use std::num::ToString;
 
-use ocl::{ BuildOptions, BuildOption };
+use ocl::{ BuildConfig, BuildOpt };
 use proto::{ layer, ProtoLayerMaps, ProtoLayerMap, Protolayer, ProtolayerFlags, ProtoAreaMaps, ProtoAreaMap };
 use cmn::{ self, CorticalDims, SliceDims };
 use map::{ SliceMap, InterAreaInfoCache };
@@ -86,7 +86,7 @@ impl AreaMap {
 		// 		- return 
 		match self.ia_cache.src_area_for_slc(slc_id, layer_flags) {
 			Some(ref area) => area.dims(),
-			None => panic!("Cannot find a slice with id: '{}' and flags: '{:?}'.", slc_id, layer_flags),
+			None => panic!("Cannot find a slice with id: `{}` and flags: `{:?}`.", slc_id, layer_flags),
 		}
 	}
 
@@ -105,7 +105,7 @@ impl AreaMap {
 
 	// LAYER_SOURCE_AREA_INFO(): DEPRICATE THIS UGLY BASTARD
 	pub fn layer_source_area_info(&self, layer_flags: layer::ProtolayerFlags) -> (&Protolayer, u32) {
-		let emsg = format!("\nAreaMap:: '{:?}' flag not set for any layer in area: '{}'.", 
+		let emsg = format!("\nAreaMap:: `{:?}` flag not set for any layer in area: `{}`.", 
 			layer_flags, self.area_name);
 
 		if layer_flags.contains(layer::AFFERENT_INPUT) {
@@ -142,15 +142,15 @@ impl AreaMap {
 	}
 
 	// ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
-	pub fn gen_build_options(&self) -> BuildOptions {
+	pub fn gen_build_options(&self) -> BuildConfig {
 		let mut build_options = cmn::base_build_options()
-			.opt("HORIZONTAL_AXON_ROW_DEMARCATION", self.hrz_demarc as i32)
-			.opt("AXN_SLC_COUNT", self.slices.depth() as i32)
-			.add_opt(BuildOption::with_str_val("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
-			.add_opt(BuildOption::with_str_val("AXN_SLC_V_SIZES", literal_list(self.slices.v_sizes())))
-			.add_opt(BuildOption::with_str_val("AXN_SLC_U_SIZES", literal_list(self.slices.u_sizes())))
-			.add_opt(BuildOption::with_str_val("AXN_SLC_V_SCALES", literal_list(self.slices.v_scales())))
-			.add_opt(BuildOption::with_str_val("AXN_SLC_U_SCALES", literal_list(self.slices.u_scales())))
+			.cmplr_def("HORIZONTAL_AXON_ROW_DEMARCATION", self.hrz_demarc as i32)
+			.cmplr_def("AXN_SLC_COUNT", self.slices.depth() as i32)
+			.bo(BuildOpt::m_def("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
+			.bo(BuildOpt::m_def("AXN_SLC_V_SIZES", literal_list(self.slices.v_sizes())))
+			.bo(BuildOpt::m_def("AXN_SLC_U_SIZES", literal_list(self.slices.u_sizes())))
+			.bo(BuildOpt::m_def("AXN_SLC_V_SCALES", literal_list(self.slices.v_scales())))
+			.bo(BuildOpt::m_def("AXN_SLC_U_SCALES", literal_list(self.slices.u_scales())))
 		;
 
 		// CUSTOM KERNELS

@@ -8,7 +8,7 @@ use rand::{ self, /*ThreadRng,*/ Rng };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQueue, WorkSize, Envoy };
+use ocl::{ self, ProQue, WorkSize, Envoy };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, DendriteKind };
 // use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -45,7 +45,7 @@ pub struct SpinyStellateLayer {
 // pyrs: &PyramidalLayer,
 impl SpinyStellateLayer {
 	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, area_map: &AreaMap, 
-				axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQueue
+				axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue
 	) -> SpinyStellateLayer {
 		//let layer = area_map.proto_layer_map().spt_asc_layer().expect("spiny_stellates::SpinyStellateLayer::new()");
 		//let depth: u8 = layer.depth();

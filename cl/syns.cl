@@ -1,4 +1,4 @@
-// [LINE 1285]
+// [LINE 1428]
 
 static inline uchar syn_fire(uchar const axn_state) {
 	return ((axn_state != 0) << 7) + (axn_state >> (SYNAPSE_AXON_BIAS_LOG2));

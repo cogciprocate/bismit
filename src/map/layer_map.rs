@@ -4,7 +4,7 @@
 use std::collections::{ HashMap };
 //use std::num::ToString;
 
-// use ocl::{ BuildOptions, BuildOption };
+// use ocl::{ BuildConfig, BuildOption };
 use proto::{ layer, /*ProtoLayerMaps,*/ /*ProtoLayerMap,*/ Protolayer, ProtolayerFlags, ProtoAreaMaps, /*ProtoAreaMap*/ };
 use cmn::{ /*self,*/ CorticalDims, SliceDims };
 

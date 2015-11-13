@@ -8,7 +8,7 @@ use std::ops::{ Range };
 // use proto::*;
 
 
-use ocl::{ /*self,*/ Envoy, EnvoyTest, /*WorkSize,*/ /*ProQueue, EnvoyDims,*/ OclNum };
+use ocl::{ /*self,*/ Envoy, EnvoyTest, /*WorkSize,*/ /*ProQue, EnvoyDims,*/ OclNum };
 // use super::{ TestBed };
 use cortical_area::{ CorticalArea, CorticalAreaTest };
 // use map::{ AreaMapTest };

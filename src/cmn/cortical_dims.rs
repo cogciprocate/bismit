@@ -1,4 +1,4 @@
-use ocl::{ EnvoyDims, ProQueue };
+use ocl::{ EnvoyDims, ProQue };
 
 /*	CorticalDims: Dimensions of a cortical area in units of cells
 		- Used to define both the volume and granularity of a cortical area.
@@ -149,7 +149,7 @@ impl CorticalDims {
 		len_components(self.columns(), self.per_tft_l2, self.tfts_per_cel)
 	}
 
-	pub fn per_subgrp(&self, subgroup_count: u32, ocl_pq: &ProQueue) -> Result<u32, &'static str> {
+	pub fn per_subgrp(&self, subgroup_count: u32, ocl_pq: &ProQue) -> Result<u32, &'static str> {
 		let physical_len = self.padded_envoy_len(ocl_pq.get_max_work_group_size()) as u32;
 
 		if physical_len % subgroup_count == 0 {
@@ -213,7 +213,7 @@ impl EnvoyDims for CorticalDims {
 }
 
 
-// fn resolve_physical_increment(ocl: Option<&ProQueue>) -> Option<u32> {
+// fn resolve_physical_increment(ocl: Option<&ProQue>) -> Option<u32> {
 // 	match ocl {
 // 		Some(ocl) => Some(ocl.get_max_work_group_size()),
 // 		None => None,

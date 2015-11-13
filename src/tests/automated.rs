@@ -3,7 +3,7 @@
 // use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 use cortex::{ /*self,*/ Cortex };
 // use thalamus::{ Thalamus };
-// use ocl::{ Envoy, WorkSize, Context, ProQueue, EnvoyDims, BuildOptions, BuildOption };
+// use ocl::{ Envoy, WorkSize, Context, ProQue, EnvoyDims, BuildConfig, BuildOption };
 // use interactive::{ input_czar, InputCzar, InputKind };
 use super::{ hybrid, kernels, testbed, TestBed };
 
@@ -29,11 +29,11 @@ fn test_kernels() {
 
 
 
-// pub fn init_ocl() -> (ProQueue, CorticalDims) {
+// pub fn init_ocl() -> (ProQue, CorticalDims) {
 // 	let mut build_options = gen_build_options();
 
 // 	let ocl_context = Context::new(None);
-// 	let mut ocl = ProQueue::new(&ocl_context, None);
+// 	let mut ocl = ProQue::new(&ocl_context, None);
 // 	ocl.build(build_options);
 
 // 	let dims = CorticalDims::new(32, 32, 1, 0, Some(ocl.get_max_work_group_size()));
@@ -42,20 +42,20 @@ fn test_kernels() {
 // }
 
 
-// pub fn gen_build_options() -> BuildOptions {
+// pub fn gen_build_options() -> BuildConfig {
 
 // 	proto_area_maps.freeze();
 
 // 	let thal = Thalamus::new(&proto_layer_maps, &proto_area_maps);
 
 // 	let mut build_options = cmn::base_build_options()
-// 		.opt("HORIZONTAL_AXON_ROW_DEMARCATION", 128 as i32)
-// 		.opt("AXN_SLC_COUNT", self.slices.depth() as i32)
-// 		.add_opt(BuildOption::with_str_val("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
-// 		.add_opt(BuildOption::with_str_val("AXN_SLC_V_SIZES", literal_list(self.slices.v_sizes())))
-// 		.add_opt(BuildOption::with_str_val("AXN_SLC_U_SIZES", literal_list(self.slices.u_sizes())))
-// 		.add_opt(BuildOption::with_str_val("AXN_SLC_V_SCALES", literal_list(self.slices.v_scales())))
-// 		.add_opt(BuildOption::with_str_val("AXN_SLC_U_SCALES", literal_list(self.slices.u_scales())))
+// 		.cmplr_def("HORIZONTAL_AXON_ROW_DEMARCATION", 128 as i32)
+// 		.cmplr_def("AXN_SLC_COUNT", self.slices.depth() as i32)
+// 		.bo(BuildOpt::m_def("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
+// 		.bo(BuildOpt::m_def("AXN_SLC_V_SIZES", literal_list(self.slices.v_sizes())))
+// 		.bo(BuildOpt::m_def("AXN_SLC_U_SIZES", literal_list(self.slices.u_sizes())))
+// 		.bo(BuildOpt::m_def("AXN_SLC_V_SCALES", literal_list(self.slices.v_scales())))
+// 		.bo(BuildOpt::m_def("AXN_SLC_U_SCALES", literal_list(self.slices.u_scales())))
 // 	;
 
 // 	cmn::load_builtin_kernel_files(&mut build_options);
