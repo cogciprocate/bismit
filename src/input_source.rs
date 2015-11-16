@@ -23,8 +23,10 @@ impl InputSource {
 
 		let (kind, targets, len) = match input {
 			&Protoinput::IdxReader { file_name, cyc_per, scale } => {
-				let ir = IdxReader::new(proto_area_map.dims.clone_with_depth(1), file_name, cyc_per, scale);
+				let ir = IdxReader::new(proto_area_map.dims.clone_with_depth(1), file_name, cyc_per, scale);				
 				let len = ir.dims().cells();
+				debug_assert!(proto_area_map.dims.columns() == len);
+
 				( // RETURN TUPLE
 					InputSourceKind::IdxReader(Box::new(ir)), 
 					proto_area_map.aff_areas.clone(), 
@@ -36,6 +38,8 @@ impl InputSource {
 				let ir = IdxReader::new(proto_area_map.dims.clone_with_depth(1), file_name, cyc_per, scale)
 					.loop_frames(loop_frames);
 				let len = ir.dims().cells();
+				debug_assert!(proto_area_map.dims.columns() == len);
+				
 				( // RETURN TUPLE
 					InputSourceKind::IdxReader(Box::new(ir)), 
 					proto_area_map.aff_areas.clone(), 
@@ -43,14 +47,16 @@ impl InputSource {
 				)
 			},
 
-			&Protoinput::None => (InputSourceKind::None, vec![], 0),
+			&Protoinput::None => (InputSourceKind::None, proto_area_map.aff_areas.clone(), 
+				proto_area_map.dims.columns()),
 
 			_ => panic!("\nInputSource::new(): Input type not yet supported."),
 		};
 
 		// [FIXME] Multiple source output areas disabled.
-		assert!(targets.len() == 1, "Output to more than one area temporarily disabled. Please \
-			create duplicate external source areas for now.");
+		assert!(targets.len() == 1, "Output to more or less than one area temporarily disabled. \
+			Please create duplicate external source areas for now. Current source areas for '{}': {:?}.", 
+			proto_area_map.name, targets);
 
 		let ganglion = iter::repeat(0).take(len as usize).collect();
 

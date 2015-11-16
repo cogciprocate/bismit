@@ -139,7 +139,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 		.area(area_name, lmap_name, 32, 32, None, None)
 
 		// <<<<< VERY IMPORTANT: DO NOT DELETE! >>>>>
-		// THIS EXTERNAL AREA MAY BE CAUSING INDEXING PROBLEMS
+		// [FIXME] THIS EXTERNAL AREA MAY BE CAUSING INDEXING PROBLEMS
 		.area_ext("dummy_area", "dummy_lm", 67, 61, Protoinput::None, None, Some(vec![area_name]))
 
 		// .area_ext("dummy_area", "dummy_lm", 32, 32, Protoinput::None, None, Some(vec![area_name]))
