@@ -68,27 +68,27 @@ impl Cortex {
 
 
 	pub fn cycle(&mut self) {
-		for (area_name, area) in self.areas.iter_mut() {
-			area.regrow();
-		}
-
+		// for (area_name, area) in self.areas.iter_mut() {
+		// 	area.regrow();
+		// }
 		self.thal.cycle_external_ganglions(&mut self.areas);
 
-		for (area_name, area_map) in self.area_maps.iter() {
-			for aff_area_name in area_map.aff_areas().iter() {
-				//println!("Forwarding from: '{}' to '{}'", area_name, aff_area_name);
-				self.thal.forward_afferent_output(area_name, aff_area_name, &mut self.areas);
-			}
-
-			for eff_area_name in area_map.eff_areas().iter() {
-				//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
-				self.thal.backward_efferent_output(area_name, eff_area_name, &mut self.areas);
-			}
-		}
-
 		for (area_name, area) in self.areas.iter_mut() {
-			area.cycle();
+			area.cycle(&mut self.thal);
 		}
+
+
+		// for (area_name, area_map) in self.area_maps.iter() {
+		// 	for aff_area_name in area_map.aff_areas().iter() {
+		// 		//println!("Forwarding from: '{}' to '{}'", area_name, aff_area_name);
+		// 		self.thal.forward_afferent_output(area_name, aff_area_name, &mut self.areas);
+		// 	}
+
+		// 	for eff_area_name in area_map.eff_areas().iter() {
+		// 		//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
+		// 		self.thal.backward_efferent_output(area_name, eff_area_name, &mut self.areas);
+		// 	}
+		// }
 	}
 
 

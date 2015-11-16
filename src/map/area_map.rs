@@ -99,7 +99,7 @@ impl AreaMap {
 			&self.proto_area_map.eff_areas
 		} else {
 			panic!("\nAreaMap::input_src_area_names_by_flag(): Can only be called with an \
-				input layer flag as argument");
+				input layer flag (afferent or efferent) as argument");
 		}		
 	}
 

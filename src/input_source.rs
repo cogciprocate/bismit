@@ -1,18 +1,22 @@
 use std::iter;
 
-use cortical_area:: { /*CorticalArea,*/ CorticalAreas };
+// use cmn::{ Sdr };
+// use cortical_area:: { CorticalArea, CorticalAreas };
 // use cortex::{ Cortex };
-use proto::{ layer, ProtoAreaMap, Protoinput };
-use encode:: { IdxReader };
+use proto::{ /*layer,*/ ProtoAreaMap, Protoinput };
+use encode::{ IdxReader };
+use thalamus::{ ThalamicTract };
 
 
 pub struct InputSource {
+	area_name: &'static str,
 	kind: InputSourceKind,
 	targets: Vec<&'static str>, 
 	ganglion: Vec<u8>,
 }
 
 impl InputSource {
+	// [FIXME] Multiple source output areas disabled.
 	pub fn new(proto_area_map: &ProtoAreaMap) -> InputSource {
 		//let emsg = format!("\nInputSource::new(): No input source specified for area: '{}'", proto_area_map.name);
 		let input = &proto_area_map.input;
@@ -44,29 +48,46 @@ impl InputSource {
 			_ => panic!("\nInputSource::new(): Input type not yet supported."),
 		};
 
+		// [FIXME] Multiple source output areas disabled.
+		assert!(targets.len() == 1, "Output to more than one area temporarily disabled. Please \
+			create duplicate external source areas for now.");
+
 		let ganglion = iter::repeat(0).take(len as usize).collect();
 
 		InputSource {
+			area_name: proto_area_map.name,
 			kind: kind,
 			targets: targets,
 			ganglion: ganglion,			
 		}
 	}
 
-	pub fn next(&mut self, areas: &mut CorticalAreas) {		
+	// [FIXME] Multiple source output areas disabled.
+	pub fn next(&mut self, /*ganglion: &mut Sdr*/ aff_tract: &mut ThalamicTract) {
+		// This is temp (mult src out areas):
+		debug_assert!(self.targets.len() == 1);
+		let dst_area_name = self.targets[0];
+
+		let mut ganglion = aff_tract.output_ganglion(self.area_name, dst_area_name)
+			.expect("InputSource::next(): Invalid area name");
+
 		match self.kind {
-			InputSourceKind::IdxReader(ref mut ir) => { let _ = ir.next(&mut self.ganglion[..]); },
-			InputSourceKind::IdxReaderLoop(ref mut ir) => { let _ = ir.next(&mut self.ganglion[..]); },
+			InputSourceKind::IdxReader(ref mut ir) => { let _ = ir.next(ganglion); },
+			InputSourceKind::IdxReaderLoop(ref mut ir) => { let _ = ir.next(ganglion); },
 			_ => (),
 		}
 
-		for target in self.targets.iter() {
-			areas.get_mut(target).expect("InputSource::next(): Invalid area name, 'targets' mismatch error.")
-				.write_input(&self.ganglion, layer::AFFERENT_INPUT);
+		// for target in self.targets.iter() {
+			// areas.get_mut(target).expect("InputSource::next(): Invalid area name, 'targets' mismatch error.")
+			// 	.write_input(&self.ganglion, layer::AFFERENT_INPUT);
 
 			// println!("\n##### INPUTSOURCE::NEXT(): Writing ganglion with len: {} to area: '{}': \n{:?}", 
 			// 	self.ganglion.len(), target, self.ganglion);
-		}
+		// }
+	}
+
+	pub fn area_name(&self) -> &'static str {
+		self.area_name
 	}
 }
 
