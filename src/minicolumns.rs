@@ -115,7 +115,7 @@ impl Minicolumns {
 
 		let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
-		let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs".to_string(),
+		let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs",
 			WorkSize::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			// WorkSize::OneDim(pyrs.dims().cells() as usize);
 			.arg_env(&flag_sets)
@@ -135,7 +135,7 @@ impl Minicolumns {
 
 		//println!("\n ##### ff_layer_axn_idz: {}", ff_layer_axn_idz);
 
-		let kern_output = ocl_pq.create_kernel("mcol_output".to_string(), 
+		let kern_output = ocl_pq.create_kernel("mcol_output", 
 			// WorkSize::ThreeDims(1 as usize, dims.v_size() as usize, dims.u_size() as usize))
 			WorkSize::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
 			//.arg_env(&ssts.soma())

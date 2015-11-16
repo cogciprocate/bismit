@@ -51,11 +51,11 @@ fn test_kernels() {
 // 	let mut build_options = cmn::base_build_options()
 // 		.cmplr_def("HORIZONTAL_AXON_ROW_DEMARCATION", 128 as i32)
 // 		.cmplr_def("AXN_SLC_COUNT", self.slices.depth() as i32)
-// 		.bo(BuildOpt::m_def("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
-// 		.bo(BuildOpt::m_def("AXN_SLC_V_SIZES", literal_list(self.slices.v_sizes())))
-// 		.bo(BuildOpt::m_def("AXN_SLC_U_SIZES", literal_list(self.slices.u_sizes())))
-// 		.bo(BuildOpt::m_def("AXN_SLC_V_SCALES", literal_list(self.slices.v_scales())))
-// 		.bo(BuildOpt::m_def("AXN_SLC_U_SCALES", literal_list(self.slices.u_scales())))
+// 		.bo(BuildOpt::include_def("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
+// 		.bo(BuildOpt::include_def("AXN_SLC_V_SIZES", literal_list(self.slices.v_sizes())))
+// 		.bo(BuildOpt::include_def("AXN_SLC_U_SIZES", literal_list(self.slices.u_sizes())))
+// 		.bo(BuildOpt::include_def("AXN_SLC_V_SCALES", literal_list(self.slices.v_scales())))
+// 		.bo(BuildOpt::include_def("AXN_SLC_U_SCALES", literal_list(self.slices.u_scales())))
 // 	;
 
 // 	cmn::load_builtin_kernel_files(&mut build_options);

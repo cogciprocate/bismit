@@ -37,7 +37,7 @@ impl SensoryFilter {
 
 		let input = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());		
 
-		let kern_cycle = ocl_pq.create_kernel(filter_name.clone(),
+		let kern_cycle = ocl_pq.create_kernel(&filter_name.clone(),
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
 			.arg_env(&input)

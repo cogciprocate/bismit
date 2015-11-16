@@ -146,10 +146,10 @@ impl Synapses {
 		for tft_id in 0..dst_src_slc_ids.len() {
 			kernels.push(Box::new(
 
-				// ocl_pq.create_kernel("syns_cycle_layer".to_string(),
-				// ocl_pq.create_kernel("syns_cycle_vec4_layer".to_string(),
-				// ocl_pq.create_kernel("syns_cycle_wow_layer".to_string(),
-				ocl_pq.create_kernel("syns_cycle_wow_vec4_layer".to_string(), 
+				// ocl_pq.create_kernel("syns_cycle_layer",
+				// ocl_pq.create_kernel("syns_cycle_vec4_layer",
+				// ocl_pq.create_kernel("syns_cycle_wow_layer",
+				ocl_pq.create_kernel("syns_cycle_wow_vec4_layer", 
 					
 					WorkSize::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
 					.lws(WorkSize::TwoDims(min_wg_sqrt, min_wg_sqrt))
@@ -173,10 +173,10 @@ impl Synapses {
 		// for tft_id in 0..dst_src_slc_ids.len() {
 		// 	kernels.push(Box::new(
 
-		// 		ocl_pq.create_kernel("syns_cycle_simple".to_string(),
-		// 		// ocl_pq.create_kernel("syns_cycle_simple_vec4".to_string(),
-		// 		// ocl_pq.create_kernel("syns_cycle_wow".to_string(),
-		// 		// ocl_pq.create_kernel("syns_cycle_wow_vec4".to_string(), 
+		// 		ocl_pq.create_kernel("syns_cycle_simple",
+		// 		// ocl_pq.create_kernel("syns_cycle_simple_vec4",
+		// 		// ocl_pq.create_kernel("syns_cycle_wow",
+		// 		// ocl_pq.create_kernel("syns_cycle_wow_vec4", 
 				
 		// 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
 		// 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS

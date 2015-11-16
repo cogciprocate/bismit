@@ -77,9 +77,9 @@ impl CorticalArea {
 		let dims = area_map.dims().clone_with_physical_increment(ocl_pq.get_max_work_group_size());
 
 		println!("{}CORTICALAREA::NEW(): Area '{}' details: \
-			(u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}", 
+			(u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: {:?}", 
 			cmn::MT, area_map.proto_area_map().name, dims.u_size(), dims.v_size(), dims.depth(), 
-			area_map.proto_area_map().eff_areas, area_map.proto_area_map().aff_areas);
+			area_map.proto_area_map().eff_areas, area_map.proto_area_map().aff_areas, ocl_pq.queue().device_id());
 
 		let emsg_psal = format!("{}: Primary Spatial Associative Layer not defined.", emsg);
 		let psal_name = area_map.proto_layer_map().layer_with_flag(layer::SPATIAL_ASSOCIATIVE).expect(&emsg_psal).name();
@@ -107,7 +107,6 @@ impl CorticalArea {
 		================================== DATA CELLS =================================
 		=============================================================================*/
 		// BREAK OFF THIS CODE INTO NEW STRUCT DEF
-
 
 		for (&layer_name, layer) in area_map.proto_layer_map().layers().iter() {
 			match layer.kind {
@@ -188,7 +187,7 @@ impl CorticalArea {
 		
 		// <<<<< EVENTUALLY ADD TO CONTROL CELLS (+PROTOCONTROLCELLS) >>>>>
 		let mut mcols = Box::new({
-			//let em_ssts = emsg.to_string() + ": ssts - em2".to_string();
+			//let em_ssts = emsg.to_string() + ": ssts - em2";
 			let em_ssts = format!("{}: '{}' is not a valid layer", emsg, psal_name);
 			let ssts = ssts_map.get(psal_name).expect(&em_ssts);
 
@@ -319,9 +318,9 @@ impl CorticalArea {
 
 
 	/* AXN_OUTPUT(): NEEDS UPDATING (DEPRICATION?) */
-	pub fn axn_output_range(&self) -> Range<u32> {
-		self.area_map.axn_range_by_flag(layer::AFFERENT_OUTPUT)
-	}
+	// pub fn axn_output_range(&self) -> Range<u32> {
+	// 	self.area_map.axn_range_by_flag(layer::AFFERENT_OUTPUT)
+	// }
 
 	/* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
 	pub fn layer_input_ranges(&self, layer_name: &'static str, den_kind: &DendriteKind) -> Vec<Range<u32>> {
@@ -358,11 +357,14 @@ impl CorticalArea {
 
 		let axn_range = self.area_map.axn_range_by_flag(layer_flags);
 		//println!("\nCORTICALAREA::WRITE_INPUT(): axn_range: {:?}", axn_range);
-		assert!(sdr.len() == axn_range.len() as usize, "\n\
+		debug_assert!(sdr.len() == axn_range.len() as usize, "\n\
 			cortical_area::CorticalArea::write_input()<area: '{}'>: \
 			sdr.len(): {} != axn_range.len(): {}", self.name, sdr.len(), axn_range.len());
 		
-		self.write_to_axons(axn_range, sdr);
+		// self.write_to_axons(axn_range, sdr);
+
+		debug_assert!((axn_range.end - axn_range.start) as usize == sdr.len());
+		self.axns.states.write_direct(sdr, axn_range.start as usize, None, None);
 
 		// // 	TESTING:	
 		// let axn_range = self.area_map.axn_range_by_flag(layer_flags);	
@@ -371,36 +373,31 @@ impl CorticalArea {
 		// println!("##### AxonSpace: {:?}", test_sdr);
 	}
 
+	// WRITE_TO_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
+	// fn write_to_axons(&mut self, axn_range: Range<u32>, sdr: &Sdr) {
+	// 	debug_assert!((axn_range.end - axn_range.start) as usize == sdr.len());
+	// 	// ocl::enqueue_write_buffer(sdr, self.axns.states.buf(), self.ocl_pq.cmd_queue(), axn_range.start as usize);
+	// 	self.axns.states.write_direct(sdr, axn_range.start as usize, None, None);
+	// }
+
 	pub fn read_output(&self, sdr: &mut Sdr, layer_flags: layer::ProtolayerFlags) {
 		let axn_range = self.area_map.axn_range_by_flag(layer_flags);
 
-		assert!(sdr.len() == axn_range.len() as usize, format!("\n\
+		debug_assert!(sdr.len() == axn_range.len() as usize, format!("\n\
 			cortical_area::CorticalArea::read_output()<area: '{}', flags: '{:?}'>: \
 			sdr.len(): {} != axn_range.len(): {}", self.name, layer_flags, sdr.len(), axn_range.len()));
 
-		self.read_from_axons(axn_range, sdr);
-	}
-
-	// READ_FROM_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
-	fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr) {
-		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-		// ocl::enqueue_read_buffer(sdr, self.axns.states.buf(), self.ocl_pq.cmd_queue(), axn_range.start as usize);
+		// self.read_from_axons(axn_range, sdr);
+		debug_assert!((axn_range.end - axn_range.start) as usize == sdr.len());
 		self.axns.states.read_direct(sdr, axn_range.start as usize, None, None);
 	}
 
-	// WRITE_TO_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
-	fn write_to_axons(&mut self, axn_range: Range<u32>, sdr: &Sdr) {
-		assert!((axn_range.end - axn_range.start) as usize == sdr.len());
-		// ocl::enqueue_write_buffer(sdr, self.axns.states.buf(), self.ocl_pq.cmd_queue(), axn_range.start as usize);
-		self.axns.states.write_direct(sdr, axn_range.start as usize, None, None);
-	}
-
-	pub fn write_to_axon_slice(&self, slc_id: u8, sdr: &Sdr) {
-		// check str.len() == slice cols (areamap should have this info)
-		// 
-
-	}
-
+	// READ_FROM_AXONS(): PUBLIC FOR TESTING/DEBUGGING PURPOSES
+	// fn read_from_axons(&self, axn_range: Range<u32>, sdr: &mut Sdr) {
+	// 	debug_assert!((axn_range.end - axn_range.start) as usize == sdr.len());
+	// 	// ocl::enqueue_read_buffer(sdr, self.axns.states.buf(), self.ocl_pq.cmd_queue(), axn_range.start as usize);
+	// 	self.axns.states.read_direct(sdr, axn_range.start as usize, None, None);
+	// }	
 
 	pub fn mcols(&self) -> &Box<Minicolumns> {
 		&self.mcols

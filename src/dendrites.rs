@@ -81,7 +81,7 @@ impl Dendrites {
 			area_map, axons, /*aux,*/ ocl_pq);
 
 
-		let kern_cycle = ocl_pq.create_kernel("den_cycle".to_string(), WorkSize::OneDim(states.len()))
+		let kern_cycle = ocl_pq.create_kernel("den_cycle", WorkSize::OneDim(states.len()))
 			.arg_env(&syns.states)
 			.arg_env(&syns.strengths)
 			.arg_scl(syns_per_den_l2)

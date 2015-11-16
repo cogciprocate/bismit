@@ -22,7 +22,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 	let mut outs_sc = Envoy::<u32>::new(testbed.dims, 0, &testbed.ocl_pq.queue());
 	let mut outs_v4 = Envoy::<u32>::new(testbed.dims, 0, &testbed.ocl_pq.queue());
 
-	let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl".to_string(), 
+	let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl", 
 		WorkSize::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, testbed.dims.u_size() as usize))
 		.arg_env(&u_offs)		
 		.arg_env(&v_offs)
@@ -30,7 +30,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 		//.arg_env(&outs_v4) 
 	;
 
-	let kern_v4 = testbed.ocl_pq.create_kernel("test_axn_idxs_vec4".to_string(), 
+	let kern_v4 = testbed.ocl_pq.create_kernel("test_axn_idxs_vec4", 
 		WorkSize::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, (testbed.dims.u_size() / 4) as usize))
 		.arg_env(&u_offs)		
 		.arg_env(&v_offs)
@@ -53,7 +53,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 // 	let mut dim_offs = Envoy::<i8>::shuffled(dims, -16, 15, &ocl);
 // 	let mut safe_dim_offs = Envoy::<i8>::new(dims, 0, &ocl);
 
-// 	let kern_test_safe_dim_ofs = ocl.create_kernel("test_safe_dim_ofs".to_string(), 
+// 	let kern_test_safe_dim_ofs = ocl.create_kernel("test_safe_dim_ofs", 
 // 		WorkSize::OneDim(dims.len() as usize))
 // 		.arg_env(&dim_ids)
 // 		.arg_env(&dim_offs)

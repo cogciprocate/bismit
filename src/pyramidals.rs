@@ -68,7 +68,7 @@ impl PyramidalLayer {
 
 		let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, ProtocellKind::Pyramidal, area_map, axons, ocl_pq);		
 		
-		let kern_cycle = ocl_pq.create_kernel("pyr_cycle".to_string(),
+		let kern_cycle = ocl_pq.create_kernel("pyr_cycle",
 			WorkSize::OneDim(dims.cells() as usize))
 			.arg_env(&dens.states_raw)
 			.arg_env(&dens.states)
@@ -88,7 +88,7 @@ impl PyramidalLayer {
 		let cels_per_cel_grp = dims.per_subgrp(cel_grp_count, ocl_pq).expect("PyramidalLayer::new()");
 		let learning_rate_l2i = 0i32;
 
-		let kern_ltp = ocl_pq.create_kernel("pyrs_ltp".to_string(), 
+		let kern_ltp = ocl_pq.create_kernel("pyrs_ltp", 
 			WorkSize::OneDim(cel_grp_count as usize))
 			.arg_env(&axons.states)
 			.arg_env(&states)
@@ -355,7 +355,7 @@ pub mod tests {
 
 
 
-		// let kern_ltp = ocl_pq.create_kernel("pyrs_ltp_unoptd".to_string(), 
+		// let kern_ltp = ocl_pq.create_kernel("pyrs_ltp_unoptd", 
 		// 	WorkSize::ThreeDims(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
 		// 	.arg_env(&axons.states)
 		// 	.arg_env(&states)

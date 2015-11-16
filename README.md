@@ -6,15 +6,15 @@ A model of the neocortex for learning and taking action.
 Bismit is one of the first members of the next paradigm of cortical learning networks. Going beyond simple Bayesian neural networks and incorporating ideas from the theory of hierarchical temporal memory, such as sparse distributed representations and temporal context, Bismit is a model which incorporates our most recent and up-to-date findings about the neocortex. It is not a typical machine learning or deep learning platform and does not function like a traditional neural network. 
 
 Bismit uses a structure which maps to the human neocortex.  Following is a full hierarchy of the structures in use.
-   - Cortex
-      - Region
-         - Area
-            - Layer
-               - Slice
-                  - Cell
-                     - Tuft
-                        - Dendrite
-                           - Synapse
+- Cortex
+   - Region
+      - Area
+         - Layer
+            - Slice
+               - Cell
+                  - Tuft
+                     - Dendrite
+                        - Synapse
 
 Much more information and documentation coming.
 

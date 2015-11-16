@@ -57,7 +57,7 @@ impl InhibitoryInterneuronNetwork {
 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
 
 
-		let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple".to_string(),
+		let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple",
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
 			.arg_env(&src_soma)
@@ -67,7 +67,7 @@ impl InhibitoryInterneuronNetwork {
 			.arg_env(&axns.states)
 		;
 
-		let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough".to_string(),
+		let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough",
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			//.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
 			.arg_env(&src_soma)

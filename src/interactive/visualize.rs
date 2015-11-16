@@ -46,11 +46,11 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 		.layer("iv_inhib", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
 		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 400)
+			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)
 		)
 
 		.layer("iii", 3, layer::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(1, 4, vec!["iii"], 400)
+			Protocell::new_pyramidal(2, 4, vec!["iii"], 1200)
 				.apical(vec!["eff_in"])
 				// .apical(vec!["unused"])
 		)
@@ -105,23 +105,23 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			// area_side / 2, area_side / 2,
 			// 128, 128,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-			// Some(vec!["b1"]),
-			None,
+			Some(vec!["b1"]),
+			// None,
 		)
 
-		// .area("b1", "visual", 
-		// 	// area_side * 2, area_side * 2,			
-		// 	area_side, area_side,
-		// 	// 16, 16,
-		// 	// 32, 32,
-		// 	//256, 256,
-		//  	None,		 	
-		//  	// Some(vec!["a1"]),
-		//  	None,
-		// )
+		.area("b1", "visual", 
+			// area_side * 2, area_side * 2,			
+			area_side, area_side,
+			// 16, 16,
+			// 32, 32,
+			//256, 256,
+		 	None,		 	
+		 	Some(vec!["a1"]),
+		 	// None,
+		)
 
 
-		// .area("a1", "visual", area_side, area_side, None, None)
+		.area("a1", "visual", area_side, area_side, None, None)
 	;
 
 	protoareas
