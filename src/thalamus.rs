@@ -135,59 +135,59 @@ impl Thalamus {
 			TODO: RENAME OR BREAK UP
 			TODO: HANDLE MULTIPLE TARGET REGIONS
 	*/
-	pub fn forward_afferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
-				 areas: &mut CorticalAreas) 
-	{
-		let emsg = "thalamus::Thalamus::forward_afferent_output(): Area not found: ";
-		let emsg_src = format!("{}'{}' ", emsg, src_area_name);
-		let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
+	// pub fn forward_afferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
+	// 			 areas: &mut CorticalAreas) 
+	// {
+	// 	let emsg = "thalamus::Thalamus::forward_afferent_output(): Area not found: ";
+	// 	let emsg_src = format!("{}'{}' ", emsg, src_area_name);
+	// 	let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
 
-		//println!("\n ##### FORWARDING AFFERENT OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
+	// 	//println!("\n ##### FORWARDING AFFERENT OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
 
-		//if self.area_maps[
+	// 	//if self.area_maps[
 
-		areas.get(src_area_name).expect(&emsg_src).read_output(
-			self.afferent_tract.output_ganglion(src_area_name, tar_area_name).unwrap(),
-			layer::AFFERENT_OUTPUT, 
-		);		
+	// 	areas.get(src_area_name).expect(&emsg_src).read_output(
+	// 		self.afferent_tract.output_ganglion(src_area_name, tar_area_name),
+	// 		layer::AFFERENT_OUTPUT, 
+	// 	);		
 		
-		areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
-			self.afferent_tract.input_ganglion(tar_area_name).unwrap(),
-			layer::AFFERENT_INPUT,
-		);
+	// 	areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
+	// 		self.afferent_tract.input_ganglion(tar_area_name),
+	// 		layer::AFFERENT_INPUT,
+	// 	);
 
-	}
+	// }
 
 	// pub fn read_afferent_output(&mut self, src_area_name &str, 
 
 	// BACKWARD_EFFERENT_OUTPUT():  Cause an efferent frame to descend
-	pub fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
-				 areas: &mut CorticalAreas) 
-	{
-		let emsg = "thalamus::Thalamus::backward_efferent_output(): Area not found: ";
-		let emsg_src = format!("{}'{}' ", emsg, src_area_name);
-		let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
+	// pub fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
+	// 			 areas: &mut CorticalAreas) 
+	// {
+	// 	let emsg = "thalamus::Thalamus::backward_efferent_output(): Area not found: ";
+	// 	let emsg_src = format!("{}'{}' ", emsg, src_area_name);
+	// 	let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
 
-		match areas.get(tar_area_name) {
-			Some(area) => if self.area_maps[tar_area_name].proto_layer_map().kind == Thalamic { return; },
-			None => return,
-		}
+	// 	match areas.get(tar_area_name) {
+	// 		Some(area) => if self.area_maps[tar_area_name].proto_layer_map().kind == Thalamic { return; },
+	// 		None => return,
+	// 	}
 
-		//println!("\n ##### BACKWARDING EFFERENT OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
+	// 	//println!("\n ##### BACKWARDING EFFERENT OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
 		
-		areas.get(src_area_name).expect(&emsg_src).read_output(
-			self.efferent_tract.output_ganglion(src_area_name, tar_area_name).unwrap(), 
-			layer::EFFERENT_OUTPUT,
-		);
+	// 	areas.get(src_area_name).expect(&emsg_src).read_output(
+	// 		self.efferent_tract.output_ganglion(src_area_name, tar_area_name), 
+	// 		layer::EFFERENT_OUTPUT,
+	// 	);
 	
-		/* TEST */
-		//let test_vec = input_czar::sdr_stripes(512, false, &mut self.efferent_tract[slc_range.clone()]);
+	// 	/* TEST */
+	// 	//let test_vec = input_czar::sdr_stripes(512, false, &mut self.efferent_tract[slc_range.clone()]);
 		
-		areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
-			self.efferent_tract.input_ganglion(tar_area_name).unwrap(), 
-			layer::EFFERENT_INPUT,
-		);
- 	}
+	// 	areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
+	// 		self.efferent_tract.input_ganglion(tar_area_name), 
+	// 		layer::EFFERENT_INPUT,
+	// 	);
+ // 	}
 
  	pub fn aff_tract(&mut self) -> &mut ThalamicTract {
  		&mut self.afferent_tract
@@ -247,12 +247,13 @@ impl ThalamicTract {
 		self
 	}
 
-	pub fn input_ganglion(&self, tar_area_name: &str) -> Option<&Sdr> {
-		let range = match self.input_range(tar_area_name) {
-			Some(r) => r,
-			None => return None,
-		};
+	pub fn input_ganglion(&self, tar_area_name: &str) -> &Sdr {
+		// let range = match self.input_range(tar_area_name) {
+		// 	Some(r) => r,
+		// 	None => return None,
+		// };
 			// .expect("ThalamicTract::input_ganglion(): Invalid target name.");
+		let range = self.input_range(tar_area_name);
 
 		// println!(" ### ThalamicTract.input_ganglion(): range: {:?}", range);
 		debug_assert!(range.end <= self.ganglion.len(), "ThalamicTract::input_ganglion(): \
@@ -260,35 +261,41 @@ impl ThalamicTract {
 			(length: {}).", 
 			tar_area_name, self.ganglion.len());
 		
-		Some(&self.ganglion[range])
+		&self.ganglion[range]
 	}
 
-	pub fn output_ganglion(&mut self, src_area_name: &str, tar_area_name: &str) -> Option<&mut Sdr> {
-		let range = match self.output_range(src_area_name, tar_area_name) {
-			Some(r) => r,
-			None => return None,
-		};
+	pub fn output_ganglion(&mut self, src_area_name: &str, tar_area_name: &str) -> &mut Sdr {
+		// let range = match self.output_range(src_area_name, tar_area_name) {
+		// 	Some(r) => r,
+		// 	None => return None,
+		// };
 			// .expect("ThalamicTract::output_ganglion(): Invalid target name.");
+		let range = self.output_range(src_area_name, tar_area_name);
 
 		// println!(" ### ThalamicTract.output_ganglion(): range: {:?}", range);
 		debug_assert!(range.end <= self.ganglion.len(), "ThalamicTract::output_ganglion(): \
 			Index range for source area: '{}' and target area: '{}' exceeds the boundaries \
 			of the output tract (length: {}).", src_area_name, tar_area_name, self.ganglion.len());
 		
-		Some(&mut self.ganglion[range])
+		&mut self.ganglion[range]
 	}
 
 	//  OUTPUT_RANGE(): RANGE OF THE TRACT DESIGNATED TO BUFFER OUTPUT FROM 
 	//	THE 'OUTPUT' CORTICAL AREA DESTINED FOR THE 'INPUT' CORTICAL AREA(S).
-	//		- LENGTH WILL EQUAL THE NUMBER OF COLUMNS FOR THE LARGER OF THE TWO AREAS.
-	fn output_range(&self, src_area_name: &str, tar_area_name: &str) -> Option<Range<usize>> {
+	//		- [out of date] LENGTH WILL EQUAL THE NUMBER OF COLUMNS FOR THE LARGER OF THE TWO AREAS. 
+	fn output_range(&self, src_area_name: &str, tar_area_name: &str) -> Range<usize> {
 		// println!("  ### ThalamicTract.output_range(): src_area_name:{}, tar_area_name: {}", 
 			// src_area_name, tar_area_name);
 
-		match self.tract_areas.get(tar_area_name) {
-			Some(ref info) => Some(info.src_area_range(src_area_name)),
-			None => None,
-		}
+		// match self.tract_areas.get(tar_area_name) {
+		// 	Some(ref info) => Some(info.src_area_range(src_area_name)),
+		// 	None => None,
+		// }
+		debug_assert!(self.tract_areas.contains_key(tar_area_name), "Thalamus::output_range(): \
+			Invalid target area name: '{}'");
+
+		self.tract_areas.get(tar_area_name).expect(&format!("ThalamicTract.output_range(): Invalid \
+			target area name: '{}'.", tar_area_name)).src_area_range(src_area_name)
 	}
 
 	//  INPUT_RANGE(): RANGE OF THE TRACT DESIGNATED TO BUFFER THE CONCATENATED
@@ -299,14 +306,19 @@ impl ThalamicTract {
 	// 			- THE RANGE WILL ENCOMPASS THE RANGES USED PREVIOUSLY FOR OUTPUTS
 	// 		- IN CASES WHERE A CORTICAL AREA HAS ONLY ONE INPUT SOURCE AREA, INPUT RANGE WILL
 	//		  EQUAL OUTPUT RANGE.
-	fn input_range(&self, tar_area_name: &str) -> Option<Range<usize>> {
+	fn input_range(&self, tar_area_name: &str) -> Range<usize> {
 		// println!("  ### ThalamicTract.input_range(): tar_area_name: {}", 
 			// tar_area_name);
 		// self.info(tar_area_name).expect("ThalamicTract::input_range()").range.clone()
-		match self.tract_areas.get(tar_area_name) {
-			Some(ref info) => Some(info.full_range()),
-			None => None,
-		}
+		// match self.tract_areas.get(tar_area_name) {
+		// 	Some(ref info) => Some(info.full_range()),
+		// 	None => None,
+		// }
+		debug_assert!(self.tract_areas.contains_key(tar_area_name), "Thalamus::input_range(): \
+			Invalid target area name: '{}'");
+
+		self.tract_areas.get(tar_area_name).expect(&format!("ThalamicTract.output_range(): Invalid \
+			target area name: '{}'.", tar_area_name)).full_range()
 	}
 
 	// fn info(&self, tar_area_name: &str) -> Option<&TractAreaInfo> {
@@ -345,7 +357,7 @@ impl TractAreaInfo {
 
 	// Returns the index of the source area in the src_areas vector.
 	// Returns 0 if src_area_name was not found.
-	// [FIXME] This is seriously wonky. Return an option or result.
+	// [FIXME] This is seriously wonky. Return an option or result?
 	fn src_area_index(&self, src_area_name: &str) -> usize {
 		let mut idx = 0;
 
@@ -357,11 +369,14 @@ impl TractAreaInfo {
 			}
 		}
 		
-		if idx == self.src_areas.len() {
-			0
-		} else {
-			idx
-		}
+		// if idx == self.src_areas.len() {
+		// 	0
+		// } else {
+		// 	idx
+		// }
+
+		debug_assert!(idx != self.src_areas.len());
+		idx		
 	}
 
 	fn output_len(&self) -> usize {

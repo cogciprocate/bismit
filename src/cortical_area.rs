@@ -146,7 +146,6 @@ impl CorticalArea {
 		=============================================================================*/
 		// BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
-
 		for (&layer_name, layer) in area_map.proto_layer_map().layers().iter() {
 			match layer.kind {
 				Cellular(ref pcell) => {
@@ -290,22 +289,22 @@ impl CorticalArea {
 		// Afferent input comes from efferent areas. Efferent input comes from afferent areas.
 		for eff_area_name in self.area_map.eff_areas().clone() {
 			// println!("   Writing afferent input from '{}'...", eff_area_name);
-			let aff_gang = thal.aff_tract().input_ganglion(self.name).expect("CorticalArea::cycle(): \
-				Afferent input.");
+			// let aff_gang = thal.aff_tract().input_ganglion(self.name).expect("CorticalArea::cycle(): \
+			// 	Afferent input.");
 
 			self.write_input(
-				aff_gang,
+				thal.aff_tract().input_ganglion(self.name),
 				layer::AFFERENT_INPUT,
 			);
 		}
 
 		for aff_area_name in self.area_map.aff_areas().clone() {
 			// println!("   Reading efferent input from '{}'...", aff_area_name);	
-			let eff_gang = thal.eff_tract().input_ganglion(self.name).expect("CorticalArea::cycle(): \
-				Efferent input.");
-
+			// let eff_gang = thal.eff_tract().input_ganglion(self.name).expect("CorticalArea::cycle(): \
+			// 	Efferent input.");
+			
 			self.write_input(
-				eff_gang, 
+				thal.eff_tract().input_ganglion(self.name), 
 				layer::EFFERENT_INPUT,
 			);
 		}
@@ -332,24 +331,24 @@ impl CorticalArea {
 		//////////// Output: ////////////
 		// Afferent output goes to afferent areas. Efferent output goes to efferent areas.		
 		for aff_area_name in self.area_map.aff_areas().clone() {
-			let aff_area_gang = thal.aff_tract().output_ganglion(self.name, aff_area_name)
-				.expect("CorticalArea::cycle(): Afferent output.");
+			// let aff_area_gang = thal.aff_tract().output_ganglion(self.name, aff_area_name)
+			// 	.expect("CorticalArea::cycle(): Afferent output.");
 
 			self.read_output(
-				aff_area_gang,
+				thal.aff_tract().output_ganglion(self.name, aff_area_name),
 				layer::AFFERENT_OUTPUT, 
 			);
 		}
 
 		for eff_area_name in self.area_map.eff_areas().clone() {
-			let eff_area_gang = match thal.eff_tract().output_ganglion(self.name, eff_area_name) {
-				Some(eag) => eag,
-				None => continue,
-			};
+			// let eff_area_gang = match thal.eff_tract().output_ganglion(self.name, eff_area_name) {
+			// 	Some(eag) => eag,
+			// 	None => continue,
+			// };
 				// .expect("CorticalArea::cycle(): Efferent output.");
 
 			self.read_output(
-				eff_area_gang, 
+				thal.eff_tract().output_ganglion(self.name, eff_area_name), 
 				layer::EFFERENT_OUTPUT,
 			);
 		}

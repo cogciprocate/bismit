@@ -16,7 +16,7 @@ pub struct InputSource {
 }
 
 impl InputSource {
-	// [FIXME] Multiple source output areas disabled.
+	// [FIXME] Multiple output target areas disabled.
 	pub fn new(proto_area_map: &ProtoAreaMap) -> InputSource {
 		//let emsg = format!("\nInputSource::new(): No input source specified for area: '{}'", proto_area_map.name);
 		let input = &proto_area_map.input;
@@ -53,7 +53,7 @@ impl InputSource {
 			_ => panic!("\nInputSource::new(): Input type not yet supported."),
 		};
 
-		// [FIXME] Multiple source output areas disabled.
+		// [FIXME] Multiple output target areas disabled.
 		assert!(targets.len() == 1, "Output to more or less than one area temporarily disabled. \
 			Please create duplicate external source areas for now. Current source areas for '{}': {:?}.", 
 			proto_area_map.name, targets);
@@ -68,14 +68,13 @@ impl InputSource {
 		}
 	}
 
-	// [FIXME] Multiple source output areas disabled.
+	// [FIXME] Multiple output target areas disabled.
 	pub fn next(&mut self, /*ganglion: &mut Sdr*/ aff_tract: &mut ThalamicTract) {
-		// This is temp (mult src out areas):
+		// This is temp (mult out tar areas):
 		debug_assert!(self.targets.len() == 1);
 		let dst_area_name = self.targets[0];
 
-		let mut ganglion = aff_tract.output_ganglion(self.area_name, dst_area_name)
-			.expect("InputSource::next(): Invalid area name");
+		let mut ganglion = aff_tract.output_ganglion(self.area_name, dst_area_name);
 
 		match self.kind {
 			InputSourceKind::IdxReader(ref mut ir) => { let _ = ir.next(ganglion); },
