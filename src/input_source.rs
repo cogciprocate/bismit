@@ -1,11 +1,9 @@
 use std::iter;
 
-// use cmn::{ Sdr };
-// use cortical_area:: { CorticalArea, CorticalAreas };
-// use cortex::{ Cortex };
-use proto::{ /*layer,*/ ProtoAreaMap, Protoinput };
+use cmn::{ Sdr };
+use ocl::{ EventList };
+use proto::{ ProtoAreaMap, Protoinput };
 use encode::{ IdxReader };
-use thalamus::{ ThalamicTract };
 
 
 pub struct InputSource {
@@ -69,12 +67,12 @@ impl InputSource {
 	}
 
 	// [FIXME] Multiple output target areas disabled.
-	pub fn next(&mut self, /*ganglion: &mut Sdr*/ aff_tract: &mut ThalamicTract) {
+	pub fn next(&mut self, ganglion: &mut Sdr, events: &mut EventList) {
 		// This is temp (mult out tar areas):
 		debug_assert!(self.targets.len() == 1);
-		let dst_area_name = self.targets[0];
+		// let dst_area_name = self.targets[0];
 
-		let mut ganglion = aff_tract.output_ganglion(self.area_name, dst_area_name);
+		// let mut ganglion = tract.ganglion_mut(self.area_name, map::AFFERENT_OUTPUT);
 
 		match self.kind {
 			InputSourceKind::IdxReader(ref mut ir) => { let _ = ir.next(ganglion); },
@@ -84,7 +82,7 @@ impl InputSource {
 
 		// for target in self.targets.iter() {
 			// areas.get_mut(target).expect("InputSource::next(): Invalid area name, 'targets' mismatch error.")
-			// 	.write_input(&self.ganglion, layer::AFFERENT_INPUT);
+			// 	.write_input(&self.ganglion, map::AFFERENT_INPUT);
 
 			// println!("\n##### INPUTSOURCE::NEXT(): Writing ganglion with len: {} to area: '{}': \n{:?}", 
 			// 	self.ganglion.len(), target, self.ganglion);

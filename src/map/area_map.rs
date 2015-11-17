@@ -5,9 +5,9 @@ use std::ops::{ Range };
 //use std::num::ToString;
 
 use ocl::{ BuildConfig, BuildOpt };
-use proto::{ layer, ProtoLayerMaps, ProtoLayerMap, Protolayer, ProtolayerFlags, ProtoAreaMaps, ProtoAreaMap };
+use proto::{ ProtoLayerMaps, ProtoLayerMap, Protolayer, ProtoAreaMaps, ProtoAreaMap };
 use cmn::{ self, CorticalDims, SliceDims };
-use map::{ SliceMap, InterAreaInfoCache };
+use map::{ self, SliceMap, InterAreaInfoCache, LayerFlags };
 // use map::slice_map;
 
 // 	AREAMAP { }:
@@ -18,24 +18,16 @@ pub struct AreaMap {
 	area_name: &'static str,
 	dims: CorticalDims,
 	ia_cache: InterAreaInfoCache,
-
-
-	// aff_in_layer_name: &'static str,
-	// eff_in_layer_name: &'static str,
-
 	slices: SliceMap,
-
 	hrz_demarc: u8,
 
-	// Create maps for each aspect which have their own types and are queryable 
+	// TODO: Create maps for each aspect which have their own types and are queryable 
 	// into sub-lists of the same type
-
 	// layers: LayerMap
 	// slices: SliceMap
 	// etc...
-
-	//emsg: &'static str,
 	// other new types: TuftMap/CellMap
+
 	proto_area_map: ProtoAreaMap,
 	proto_layer_map: ProtoLayerMap,
 }
@@ -57,9 +49,9 @@ impl AreaMap {
 			&dims,
 			&proto_area_map.eff_areas, // EFF AREAS
 			&proto_area_map.aff_areas, // AFF AREAS
-			proto_layer_map.layer_with_flag(layer::AFFERENT_INPUT), // AFF INPUT LAYER			
-			proto_layer_map.layer_with_flag(layer::EFFERENT_INPUT), // EFF INPUT LAYER
-			proto_layer_map.layer_with_flag(layer::AFFERENT_OUTPUT), // AFF & EFF OUTPUT LAYER
+			proto_layer_map.layer_with_flag(map::AFFERENT_INPUT), // AFF INPUT LAYER			
+			proto_layer_map.layer_with_flag(map::EFFERENT_INPUT), // EFF INPUT LAYER
+			proto_layer_map.layer_with_flag(map::AFFERENT_OUTPUT), // AFF & EFF OUTPUT LAYER
 			pamaps,
 		);
 
@@ -77,7 +69,7 @@ impl AreaMap {
 		}
 	}	
 
-	pub fn slc_src_area_dims(&self, slc_id: u8, layer_flags: layer::ProtolayerFlags) -> &SliceDims {
+	pub fn slc_src_area_dims(&self, slc_id: u8, layer_flags: LayerFlags) -> &SliceDims {
 		//self.proto_layer_map.layer_with_flag(layer_flags).expect("Cannot find layer").layer_base_slc()
 
 		// GET SOURCE AREA DIMS!
@@ -90,11 +82,11 @@ impl AreaMap {
 		}
 	}
 
-	pub fn input_src_area_names_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> &Vec<&'static str> {
-		if layer_flags == layer::EFFERENT_INPUT {
+	pub fn input_src_area_names_by_flag(&self, layer_flags: LayerFlags) -> &Vec<&'static str> {
+		if layer_flags == map::EFFERENT_INPUT {
 			//panic!("Fix me");
 			&self.proto_area_map.aff_areas
-		} else if layer_flags == layer::AFFERENT_INPUT {
+		} else if layer_flags == map::AFFERENT_INPUT {
 			//panic!("Fix me");
 			&self.proto_area_map.eff_areas
 		} else {
@@ -104,29 +96,29 @@ impl AreaMap {
 	}
 
 	// LAYER_SOURCE_AREA_INFO(): DEPRICATE THIS UGLY BASTARD
-	pub fn layer_source_area_info(&self, layer_flags: layer::ProtolayerFlags) -> (&Protolayer, u32) {
+	pub fn layer_source_area_info(&self, layer_flags: LayerFlags) -> (&Protolayer, u32) {
 		let emsg = format!("\nAreaMap:: `{:?}` flag not set for any layer in area: `{}`.", 
 			layer_flags, self.area_name);
 
-		if layer_flags.contains(layer::AFFERENT_INPUT) {
+		if layer_flags.contains(map::AFFERENT_INPUT) {
 			//println!("##### AFF IN CONTAINED");
 			match &self.ia_cache.aff_in_layer { 
 				&Some(ref l) => (l, self.ia_cache.eff_areas.axns_sum()), 
 				&None => panic!(emsg), 
 			}
-		} else if layer_flags.contains(layer::EFFERENT_INPUT) {
+		} else if layer_flags.contains(map::EFFERENT_INPUT) {
 			//println!("##### EFF IN CONTAINED");
 			match &self.ia_cache.eff_in_layer { 
 				&Some(ref l) => (l, self.ia_cache.aff_areas.axns_sum()), 
 				&None => panic!(emsg), 
 			}
-		} else if layer_flags.contains(layer::AFFERENT_OUTPUT) {
+		} else if layer_flags.contains(map::AFFERENT_OUTPUT) {
 			//println!("##### AFF OUT CONTAINED");
 			match &self.ia_cache.out_layer { 
 				&Some(ref l) => (l, self.dims.columns()), 
 				&None => panic!(emsg), 
 			} 
-		} else if layer_flags.contains(layer::EFFERENT_OUTPUT) { // REDUNDANT (MERGE WITH ABOVE)
+		} else if layer_flags.contains(map::EFFERENT_OUTPUT) { // REDUNDANT (MERGE WITH ABOVE)
 			//println!("##### EFF OUT CONTAINED");
 			match &self.ia_cache.out_layer { 
 				&Some(ref l) => (l, self.dims.columns()), 
@@ -175,7 +167,7 @@ impl AreaMap {
 		build_options
 	}
 
-	pub fn axn_base_slc_ids_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> Vec<u8> {
+	pub fn axn_base_slc_ids_by_flag(&self, layer_flags: LayerFlags) -> Vec<u8> {
 		// self.proto_layer_map.layer_with_flag(layer_flags).expect("Cannot find layer").base_slc()
 		let layers = self.proto_layer_map.layers_with_flag(layer_flags);
 		let mut slc_ids = Vec::with_capacity(layers.len());
@@ -187,10 +179,22 @@ impl AreaMap {
 		slc_ids
 	}
 
-	pub fn axn_range_by_flag(&self, layer_flags: layer::ProtolayerFlags) -> Range<u32> {				
+	pub fn axn_range_by_flag(&self, layer_flags: LayerFlags) -> Range<u32> {				
 		let (layer, layer_len) = self.layer_source_area_info(layer_flags);
 		let layer_idz = self.axn_idz(layer.base_slc_id);
 		layer_idz..(layer_idz + layer_len)
+	}
+
+	// [TODO] Layer source area system needs rework.
+	pub fn output_layer_info_by_flag(&self) -> Vec<(LayerFlags, u32)> {
+		let layers = self.proto_layer_map.layers_with_flag(map::OUTPUT);
+		let mut layer_info = Vec::with_capacity(layers.len());
+		
+		for &layer in layers.iter() {
+			layer_info.push((layer.flags, self.dims.columns()));
+		}
+
+		layer_info
 	}
 
 	pub fn aff_areas(&self) -> &Vec<&'static str> {

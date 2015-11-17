@@ -5,8 +5,9 @@ use std::collections::{ HashMap };
 //use std::num::ToString;
 
 // use ocl::{ BuildConfig, BuildOption };
-use proto::{ layer, /*ProtoLayerMaps,*/ /*ProtoLayerMap,*/ Protolayer, ProtolayerFlags, ProtoAreaMaps, /*ProtoAreaMap*/ };
+use proto::{ Protolayer, ProtoAreaMaps };
 use cmn::{ /*self,*/ CorticalDims, SliceDims };
+use map::{ self, LayerFlags };
 
 pub struct LayerMap {
 	map: HashMap<&'static str, LayerInfo>,
@@ -40,7 +41,7 @@ impl InterAreaInfoCache {
 				eff_in_layer: Option<&Protolayer>,
 				out_layer: Option<&Protolayer>,
 				pamaps: &ProtoAreaMaps,
-		) -> InterAreaInfoCache 
+			) -> InterAreaInfoCache 
 	{
 		let eff_areas = LayerSourceAreas::new(area_dims, eff_area_names, pamaps);
 		let aff_areas = LayerSourceAreas::new(area_dims, aff_area_names, pamaps);
@@ -54,11 +55,11 @@ impl InterAreaInfoCache {
 		}
 	}
 
-	pub fn src_area_for_slc(&self, slc_id: u8, flags: ProtolayerFlags) -> Option<&SourceAreaInfo> {
-		let (layer_src_areas, layer_opt) = if flags.contains(layer::AFFERENT_INPUT) {
+	pub fn src_area_for_slc(&self, slc_id: u8, flags: LayerFlags) -> Option<&SourceAreaInfo> {
+		let (layer_src_areas, layer_opt) = if flags.contains(map::AFFERENT_INPUT) {
 			// println!("##### AFF -> slc_id: {}, flags: {:?}", slc_id, flags);
 			(&self.eff_areas, &self.aff_in_layer)			
-		} else if flags.contains(layer::EFFERENT_INPUT) {			
+		} else if flags.contains(map::EFFERENT_INPUT) {			
 			// println!("##### EFF -> slc_id: {}, flags: {:?}", slc_id, flags);
 			(&self.aff_areas, &self.eff_in_layer)
 		} else {
@@ -160,5 +161,4 @@ fn clone_rewrap_layer(pl_ref_opt: Option<&Protolayer>) -> Option<Protolayer> {
 		None => None,
 	}
 }
-
 

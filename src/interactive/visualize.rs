@@ -1,23 +1,13 @@
-// use std::default::{ Default };
 use std::iter;
-// use std::fmt::{ Display };
-// use std::ops::{ Range };
-use std::io::{ self, Write, /*Stdout*/ };
-//use std::borrow::{ Borrow };
-// use rand::{ self, ThreadRng, Rng };
-// use num::{ self, Integer, NumCast, FromPrimitive, ToPrimitive };
+use std::io::{ self, Write };
 use time;
 
-use cmn::{ self, CorticalDims, /*Renderer*/ };
+use cmn::{ self, CorticalDims };
+use map::{ self };
 use cortex::{ self, Cortex };
 use encode:: { IdxReader };
-//use proto::layer;
-//use super::synapse_drill_down;
-use interactive::{ /*self, input_czar,*/ output_czar, /*InputCzar, InputKind, InputSource*/ };
-//use tests::{ hybrid, /*learning*/ };
-//use chord::{ Chord };
-//use ocl::{ Envoy };
-use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, /*ProtoAreaMap,*/ /*Cellular,*/ Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
+use interactive::{ output_czar };
+use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, Axonal, Spatial, Horizontal, Sensory, Thalamic, Protocell, Protofilter, Protoinput };
 
 
 pub const INITIAL_TEST_ITERATIONS: i32 		= 1; 
@@ -36,20 +26,20 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 	let mut proto_layer_maps: ProtoLayerMaps = ProtoLayerMaps::new();
 
 	proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
-		//.layer("test_noise", 1, layer::DEFAULT, Axonal(Spatial))
-		.layer("motor_in", 1, layer::DEFAULT, Axonal(Horizontal))
-		//.layer("olfac", 1, layer::DEFAULT, Axonal(Horizontal))
-		.input_layer("eff_in", layer::EFFERENT_INPUT, Axonal(Spatial))
-		.input_layer("aff_in", layer::AFFERENT_INPUT, Axonal(Spatial))
-		.layer("out", 1, layer::AFFERENT_OUTPUT | layer::EFFERENT_OUTPUT, Axonal(Spatial))
-		.layer("unused", 1, layer::UNUSED_TESTING, Axonal(Spatial))
-		.layer("iv_inhib", 0, layer::DEFAULT, Protocell::new_inhibitory(4, "iv"))
+		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
+		.layer("motor_in", 1, map::DEFAULT, Axonal(Horizontal))
+		//.layer("olfac", 1, map::DEFAULT, Axonal(Horizontal))
+		.input_layer("eff_in", map::EFFERENT_INPUT, Axonal(Spatial))
+		.input_layer("aff_in", map::AFFERENT_INPUT, Axonal(Spatial))
+		.layer("out", 1, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT, Axonal(Spatial))
+		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
+		.layer("iv_inhib", 0, map::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
-		.layer("iv", 1, layer::SPATIAL_ASSOCIATIVE, 
+		.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, 
 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)
 		)
 
-		.layer("iii", 3, layer::TEMPORAL_ASSOCIATIVE, 
+		.layer("iii", 3, map::TEMPORAL_ASSOCIATIVE, 
 			Protocell::new_pyramidal(2, 4, vec!["iii"], 1200)
 				.apical(vec!["eff_in"])
 				// .apical(vec!["unused"])
@@ -57,7 +47,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 	);
 
 	proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
-		.layer("ganglion", 1, layer::AFFERENT_OUTPUT | layer::AFFERENT_INPUT, Axonal(Spatial))
+		.layer("ganglion", 1, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT, Axonal(Spatial))
 	);
 
 	proto_layer_maps
@@ -281,8 +271,8 @@ pub fn run(autorun_iters: i32) -> bool {
 					let in_str = rin(format!("area name"));
 					let in_s1 = in_str.trim();
 					let out_len = cortex.area(&in_s).dims.columns();
-					let mut t_vec: Vec<u8> = iter::repeat(0).take(out_len as usize).collect();
-					cortex.area_mut(&in_s).read_output(&mut t_vec, layer::AFFERENT_OUTPUT);
+					let t_vec: Vec<u8> = iter::repeat(0).take(out_len as usize).collect();
+					// cortex.area_mut(&in_s).read_output(&mut t_vec, map::AFFERENT_OUTPUT);
 					// ocl::fmt::print_vec_simple(&t_vec);
 					println!("\n##### PRINTING TEMPORARILY DISABLED #####");
 					continue;

@@ -9,7 +9,7 @@
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Envoy };
+use ocl::{ self, ProQue, WorkSize, Envoy, EventList };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axon_space::{ AxonSpace };
@@ -121,10 +121,10 @@ impl Dendrites {
 	}
 
 
-	pub fn cycle(&self) {
-		self.syns.cycle();
+	pub fn cycle(&self, wait_events: Option<&EventList>) {
+		self.syns.cycle(wait_events);
 
-		self.kern_cycle.enqueue(None, None);
+		self.kern_cycle.enqueue(wait_events, None);
 	}
 
 	// FOR TESTING PURPOSES

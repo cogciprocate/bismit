@@ -1,8 +1,7 @@
 use ocl::{ self, ProQue, WorkSize, Envoy, };
-use cmn::{ self, /*CorticalDims,*/ HexTilePlane, Sdr };
+use cmn::{ self, HexTilePlane, Sdr };
 use axon_space::{ AxonSpace };
-use proto::{ layer };
-use map::{ AreaMap };
+use map::{ self, AreaMap };
 
 
 pub struct SensoryFilter {
@@ -26,11 +25,11 @@ impl SensoryFilter {
 				ocl_pq: &ProQue, 
 		) -> SensoryFilter 
 	{
-		let base_axn_slc_ids = area_map.axn_base_slc_ids_by_flag(layer::AFFERENT_INPUT);
+		let base_axn_slc_ids = area_map.axn_base_slc_ids_by_flag(map::AFFERENT_INPUT);
 		assert!(base_axn_slc_ids.len() == 1);
 		let base_axn_slc = base_axn_slc_ids[0];
 
-		let dims = area_map.slc_src_area_dims(base_axn_slc, layer::AFFERENT_INPUT);
+		let dims = area_map.slc_src_area_dims(base_axn_slc, map::AFFERENT_INPUT);
 		assert!(dims.depth() == 1, "\nAfferent input layer depths of more than one for cortical \
 			areas with sensory filters are not yet supported. Please set the depth of any \
 			afferent input layers with filters to 1.");

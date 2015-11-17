@@ -8,7 +8,7 @@ use rand::{ self, /*ThreadRng,*/ Rng };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Envoy };
+use ocl::{ self, ProQue, WorkSize, Envoy, EventList };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, DendriteKind };
 // use synapses::{ Synapses };
 use dendrites::{ Dendrites };
@@ -143,8 +143,8 @@ impl SpinyStellateLayer {
 		}
 	}
 
-	pub fn cycle(&mut self) {
-		self.dens.cycle();
+	pub fn cycle(&self, wait_events: Option<&EventList>) {
+		self.dens.cycle(wait_events);
 	}
 
 

@@ -43,7 +43,7 @@ bitflags! {
 // pub fn al_cycle_depricate(area: &mut CorticalArea) {
 // 	area.mcols().activate();
 // 	area.ptal_mut().learn();
-// 	area.ptal_mut().cycle();
+// 	area.ptal_mut().cycle(None);
 // 	area.mcols().output();
 // }
 
@@ -63,12 +63,12 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 
 	if switches.contains(CYCLE) {
 		if print { printlny!("Cycling..."); }
-		area.ptal_mut().cycle();
+		area.ptal_mut().cycle(None);
 	}
 
 	if switches.contains(OUTPUT) {
 		if print { printlny!("Outputting..."); }
-		area.mcols().output();
+		area.mcols().output(None);
 	}
 }
 

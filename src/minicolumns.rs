@@ -9,7 +9,7 @@ use rand::{ self, /*ThreadRng, Rng*/ };
 
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Envoy, OclNum };
+use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, EventList };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, /*Protocell, DendriteKind*/ };
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
@@ -223,8 +223,8 @@ impl Minicolumns {
 		self.kern_activate.enqueue(None, None);
 	}
 
-	pub fn output(&self) {
-		self.kern_output.enqueue(None, None);
+	pub fn output(&self, wait_events: Option<&EventList>) {
+		self.kern_output.enqueue(wait_events, None);
 	}
 
 	pub fn confab(&mut self) {

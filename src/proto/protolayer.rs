@@ -1,5 +1,6 @@
 // use bitflags;
 
+use map::{ LayerFlags };
 use proto::{ /*ProtocellKind,*/ Protocell, DendriteKind };
 use proto::DendriteKind::{ Distal, Proximal };
 use self::ProtolayerKind::{ Cellular, Axonal };
@@ -14,7 +15,7 @@ pub struct Protolayer {
 	pub base_slc_id: u8, // <<<<< REMOVE THE '_pos'
 	pub kind_base_slc_id: u8, // <<<<< ''
 	pub depth: u8,
-	pub flags: ProtolayerFlags,
+	pub flags: LayerFlags,
 }
 
 impl Protolayer {
@@ -24,7 +25,7 @@ impl Protolayer {
 				base_slc_id: u8,
 				kind_base_slc_id: u8,
 				depth: u8,
-				flags: ProtolayerFlags,
+				flags: LayerFlags,
 	) -> Protolayer {
 		Protolayer {
 			name: name,
@@ -55,7 +56,7 @@ impl Protolayer {
 				Distal => Some(protocell.den_dst_src_lyrs.clone().unwrap()[0].clone()),
 				Proximal => protocell.den_prx_src_lyrs.clone(),
 			},
-			_ => panic!(format!("Protolayer '{}' is not Cellular.", self.name)),
+			_ => panic!(format!("Protolayer '{}' is not 'Cellular'.", self.name)),
 		};
 
 		match layer_names {
@@ -74,7 +75,7 @@ impl Protolayer {
 	pub fn dst_src_lyrs_by_tuft(&self) -> Vec<Vec<&'static str>> {
 		let layers_by_tuft = match self.kind {
 			ProtolayerKind::Cellular(ref protocell) => protocell.den_dst_src_lyrs.clone(),
-			_ => panic!(format!("Protolayer '{}' is not Cellular.", self.name)),
+			_ => panic!(format!("Protolayer '{}' is not 'Cellular'.", self.name)),
 		};
 
 		match layers_by_tuft {
@@ -121,23 +122,7 @@ pub enum ProtoaxonKind {
 }
 
 
-bitflags! {
-	// #[derive(Debug)]
-	flags ProtolayerFlags: usize {
-		const DEFAULT				= 0b00000000,
-		const AFFERENT_INPUT		= 0b00000001,
-		const AFFERENT_OUTPUT		= 0b00000010,
-		const SPATIAL_ASSOCIATIVE 	= 0b00000100,
-		const TEMPORAL_ASSOCIATIVE 	= 0b00001000,
-		const EFFERENT_INPUT		= 0b00010000,
-		const EFFERENT_OUTPUT		= 0b00100000,
-		const INPUT_LAYER			= 0b01000000,
-		const UNUSED_TESTING		= 0b10000000,
-		//const INTERAREA				= 0b01000000,
-	}
-}
-
-/*pub enum ProtolayerFlags {
+/*pub enum LayerFlags {
 	ColumnInput 	= 0x0001,
 	ColumnOuput 	= 0x0002,
 	None			= 0x0000,

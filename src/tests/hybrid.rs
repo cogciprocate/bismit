@@ -123,7 +123,7 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
 
 	io::stdout().flush().unwrap();
 	dens.syns_mut().src_col_v_offs.set_all_to(0);
-	dens.cycle();
+	dens.cycle(None);
 
 	let syns_per_tuft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
 	let dens_per_tuft_l2: usize = dens.dims().per_tft_l2_left() as usize;

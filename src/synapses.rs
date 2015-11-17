@@ -10,7 +10,7 @@ use std::collections::{ BTreeSet };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Envoy, OclNum };
+use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, EventList };
 use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, 
 	DendriteKind, /*Protolayer, ProtolayerKind*/ };
 // use dendrites::{ Dendrites };
@@ -346,9 +346,9 @@ impl Synapses {
 			// }
 	}
 
-	pub fn cycle(&self) {
+	pub fn cycle(&self, wait_events: Option<&EventList>) {
 		for kern in self.kernels.iter() {
-			kern.enqueue(None, None);
+			kern.enqueue(wait_events, None);
 		}
 	}
 

@@ -1,16 +1,11 @@
-// use std;
-use std::collections::{ /*self,*/ HashMap, BTreeMap };
-//use std::collections::hash_state::{ HashState };
-// use num;
-use std::ops::{ Index, IndexMut, /*Range*/ };
-use std::hash::{ /*self, Hash, SipHasher,*/ Hasher };
+use std::collections::{ HashMap, BTreeMap };
+use std::ops::{ Index, IndexMut,  };
+use std::hash::{ Hasher };
 
-//use proto::{  };
-//use super::layer as layer;
+use map::{ self, LayerFlags };
 use super::{ ProtoAreaMap };
-use super::layer::{ self, Protolayer, ProtolayerFlags, ProtoaxonKind, ProtolayerKind };
-	//use super::layer::ProtolayerKind::{ self, Cellular, Axonal };
-use super::{ ProtocellKind, /*Protocell,*/ DendriteKind };
+use super::layer::{ Protolayer, ProtoaxonKind, ProtolayerKind };
+use super::{ ProtocellKind, DendriteKind };
 
 
 /* PROTOLAYERMAP (PROTOREGION) {} <<<<< TODO: SPLIT UP, REDESIGN, AND REFACTOR >>>>>
@@ -52,11 +47,12 @@ impl ProtoLayerMap {
 	}
 
 	pub fn input_layer(
-					mut self, 
-					layer_name: &'static str,
-					flags: ProtolayerFlags,
-					kind: ProtolayerKind,
-	) -> ProtoLayerMap {
+				mut self, 
+				layer_name: &'static str,
+				flags: LayerFlags,
+				kind: ProtolayerKind,
+			) -> ProtoLayerMap 
+	{
 
 		let next_kind_base_slc_id = match kind {
 			ProtolayerKind::Cellular(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
@@ -69,7 +65,7 @@ impl ProtoLayerMap {
 			base_slc_id: 0, 
 			kind_base_slc_id: next_kind_base_slc_id,
 			depth: 0,
-			flags: flags | layer::INPUT_LAYER,
+			flags: flags | map::INPUT,
 		};
 
 		self.add(cl);
@@ -77,13 +73,13 @@ impl ProtoLayerMap {
 	}
 
 	pub fn layer(
-					mut self, 
-					layer_name: &'static str,
-					layer_depth: u8,
-					flags: ProtolayerFlags,
-					kind: ProtolayerKind,
-	) -> ProtoLayerMap {
-
+				mut self, 
+				layer_name: &'static str,
+				layer_depth: u8,
+				flags: LayerFlags,
+				kind: ProtolayerKind,
+			) -> ProtoLayerMap 
+	{
 		let next_kind_base_slc_id = match kind {
 			ProtolayerKind::Cellular(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
 			ProtolayerKind::Axonal(ref axon_kind) => self.depth_axon_kind(&axon_kind),
@@ -184,7 +180,7 @@ impl ProtoLayerMap {
 
 
 	// SET_LAYERS_DEPTH(): ASSUMES PROPER FLAG UNIQUENESS CONSTRAINS ALREADY APPLIED
-	pub fn set_layers_depth(&mut self, flags: ProtolayerFlags, depth: u8) {
+	pub fn set_layers_depth(&mut self, flags: LayerFlags, depth: u8) {
 		if self.frozen { 
 			panic!("region::ProtoLayerMap::set_layer_depth(): \
 				Cannot set layer depth after region has been frozen."); 
@@ -212,8 +208,8 @@ impl ProtoLayerMap {
 			return;
 		} else {			
 			// AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
-			self.set_layers_depth(layer::AFFERENT_INPUT, protoarea.eff_areas.len() as u8);
-			self.set_layers_depth(layer::EFFERENT_INPUT, protoarea.aff_areas.len() as u8);
+			self.set_layers_depth(map::AFFERENT_INPUT, protoarea.eff_areas.len() as u8);
+			self.set_layers_depth(map::EFFERENT_INPUT, protoarea.aff_areas.len() as u8);
 			self.frozen = true;
 		}		
 
@@ -523,7 +519,7 @@ impl ProtoLayerMap {
  		let mut input_layer: Option<Protolayer> = None;
  		
  		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.flags & layer::SPATIAL_ASSOCIATIVE) == layer::SPATIAL_ASSOCIATIVE {
+ 			if (layer.flags & map::SPATIAL_ASSOCIATIVE) == map::SPATIAL_ASSOCIATIVE {
  				input_layer = Some(layer.clone());
  			}
  		}
@@ -535,7 +531,7 @@ impl ProtoLayerMap {
  		let mut output_slcs: Vec<u8> = Vec::with_capacity(4);
  		
  		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.flags & layer::AFFERENT_OUTPUT) == layer::AFFERENT_OUTPUT {
+ 			if (layer.flags & map::AFFERENT_OUTPUT) == map::AFFERENT_OUTPUT {
  				let v = self.slc_ids(vec![layer.name]);
  				output_slcs.push_all(&v);
  			}
@@ -546,7 +542,7 @@ impl ProtoLayerMap {
 
 
  	// TODO: DEPRICATE IN FAVOR OF LAYERS_WITH_FLAG()
- 	pub fn layer_with_flag(&self, flag: ProtolayerFlags) -> Option<&Protolayer> {
+ 	pub fn layer_with_flag(&self, flag: LayerFlags) -> Option<&Protolayer> {
  		//let mut input_layers: Vec<&Protolayer>
  		 		
  		for (layer_name, layer) in self.layers.iter() {
@@ -558,8 +554,8 @@ impl ProtoLayerMap {
  	}
 
 
- 	pub fn layers_with_flag(&self, flag: ProtolayerFlags) -> Vec<&Protolayer> {
- 		let mut layers: Vec<&Protolayer> = Vec::with_capacity(8);
+ 	pub fn layers_with_flag(&self, flag: LayerFlags) -> Vec<&Protolayer> {
+ 		let mut layers: Vec<&Protolayer> = Vec::new();
  		 		
  		for (layer_name, layer) in self.layers.iter() {
  			if (layer.flags & flag) == flag {
@@ -687,7 +683,7 @@ impl ProtoLayerMap {
 					&mut self, 
 					layer_name: &'static str,
 					layer_depth: u8,
-					flags: ProtolayerFlags,
+					flags: LayerFlags,
 					cell: Option<Protocell>,
 	) {
 		let (noncell_slcs, cell_slcs) = self.depth();

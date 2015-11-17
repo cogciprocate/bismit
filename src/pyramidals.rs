@@ -3,7 +3,7 @@ use rand::{ self, XorShiftRng, Rng };
 
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, Kernel };
+use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, Kernel, EventList };
 use proto::{ ProtocellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -167,9 +167,9 @@ impl DataCellLayer for PyramidalLayer {
 		self.dens_mut().regrow();
 	}
 
-	fn cycle(&mut self) {
-		self.dens_mut().cycle();
-		self.kern_cycle.enqueue(None, None);
+	fn cycle(&self, wait_events: Option<&EventList>) {
+		self.dens().cycle(wait_events);
+		self.kern_cycle.enqueue(wait_events, None);
 	}
 
 	fn confab(&mut self) {

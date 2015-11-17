@@ -7,9 +7,8 @@ use std::ops::{ Range };
 
 use ocl::{ EnvoyTest, OclNum };
 use proto::{ layer };
-// use ocl;
 use cortical_area::{ CorticalArea, CorticalAreaTest };
-// use map::{ AreaMapTest };
+use map;
 use synapses::{ SynapsesTest, SynCoords };
 use dendrites::{ DendritesTest, /*DenCoords*/ };
 use axon_space::{ AxonSpaceTest };
@@ -152,7 +151,7 @@ impl LearningTestBed {
 			area.axns.states.set_all_to(0);
 
 			// Set source slice to an unused slice for all synapses:
-			let unused_slc_ids = area.area_map().axn_base_slc_ids_by_flag(layer::UNUSED_TESTING);
+			let unused_slc_ids = area.area_map().axn_base_slc_ids_by_flag(map::UNUSED_TESTING);
 			assert!(unused_slc_ids.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
 			let unused_slc_id = unused_slc_ids[0];
 			area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(unused_slc_id);
@@ -168,7 +167,7 @@ impl LearningTestBed {
 				area.area_map(), area.ptal().dens().syns().dims(), mt = cmn::MT);
 
 			// Afferent output slice id:
-			let aff_out_slcs = area.area_map().axn_base_slc_ids_by_flag(layer::AFFERENT_OUTPUT);
+			let aff_out_slcs = area.area_map().axn_base_slc_ids_by_flag(map::AFFERENT_OUTPUT);
 			assert!(aff_out_slcs.len() == 1);
 			let aff_out_slc = aff_out_slcs[0];
 
@@ -650,7 +649,7 @@ impl LearningTestBed {
 // 			fake_neighbor_slc: u8=ter: usize) 
 // {
 // 	// Afferent output slice id:
-// 	let aff_out_slcs = area.area_map().axn_base_slc_ids_by_flag(layer::AFFERENT_OUTPUT);
+// 	let aff_out_slcs = area.area_map().axn_base_slc_ids_by_flag(map::AFFERENT_OUTPUT);
 // 	assert!(aff_out_slcs.len() == 1);
 // 	let aff_out_slc = aff_out_slcs[0];
 
