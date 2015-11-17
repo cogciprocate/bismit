@@ -280,37 +280,12 @@ impl CorticalArea {
 
 
 	// CYCLE(): <<<<< TODO: ISOLATE LEARNING INTO SEPARATE THREAD >>>>>
-	pub fn cycle(&mut self, thal: &mut Thalamus) /*-> (&Vec<&'static str>, &Vec<&'static str>)*/ {
+	pub fn cycle(&mut self, thal: &mut Thalamus) {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
-
-		// println!("Cycling input for '{}'...", self.name);
-
-		/////////// Input: ////////////
-		// Afferent input comes from efferent areas. Efferent input comes from afferent areas.
-		for eff_area_name in self.area_map.eff_areas().clone() {
-			// println!("   Writing afferent input from '{}'...", eff_area_name);
-			// let aff_gang = thal.aff_tract().input_ganglion(self.name).expect("CorticalArea::cycle(): \
-			// 	Afferent input.");
-
-			self.write_input(
-				thal.aff_tract().input_ganglion(self.name),
-				layer::AFFERENT_INPUT,
-			);
-		}
-
-		for aff_area_name in self.area_map.aff_areas().clone() {
-			// println!("   Reading efferent input from '{}'...", aff_area_name);	
-			// let eff_gang = thal.eff_tract().input_ganglion(self.name).expect("CorticalArea::cycle(): \
-			// 	Efferent input.");
-			
-			self.write_input(
-				thal.eff_tract().input_ganglion(self.name), 
-				layer::EFFERENT_INPUT,
-			);
-		}
-
-
+		
 		if !self.disable_ssts {	self.psal_mut().cycle(); }
+
+		self.cycle_aff_input(thal);
 
 		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.bypass_inhib);
 
@@ -323,13 +298,49 @@ impl CorticalArea {
 			self.ptal_mut().cycle();
 		}
 
+		self.cycle_eff_input(thal);
+
 		if !self.disable_mcols { self.mcols.output(); }
 
+		self.cycle_eff_output(thal);
+		self.cycle_aff_output(thal);
 
-		// println!("Cycling output for '{}'...", self.name);
+		if !self.disable_regrowth { self.regrow(); }
+	}
 
-		//////////// Output: ////////////
-		// Afferent output goes to afferent areas. Efferent output goes to efferent areas.		
+	fn cycle_aff_input(&mut self, thal: &mut Thalamus) {
+		// println!("Cycling afferent input for '{}'...", self.name);
+		// Afferent input comes from efferent areas.
+		for eff_area_name in self.area_map.eff_areas().clone() {
+			// println!("   Writing afferent input from '{}'...", eff_area_name);
+			// let aff_gang = thal.aff_tract().input_ganglion(self.name).expect("CorticalArea::cycle(): \
+			// 	Afferent input.");
+
+			self.write_input(
+				thal.aff_tract().input_ganglion(self.name),
+				layer::AFFERENT_INPUT,
+			);
+		}		
+	}
+
+	fn cycle_eff_input(&mut self, thal: &mut Thalamus) {
+		// println!("Cycling efferent input for '{}'...", self.name);
+		// Efferent input comes from afferent areas.
+		for aff_area_name in self.area_map.aff_areas().clone() {
+			// println!("   Reading efferent input from '{}'...", aff_area_name);	
+			// let eff_gang = thal.eff_tract().input_ganglion(self.name).expect("CorticalArea::cycle(): \
+			// 	Efferent input.");
+			
+			self.write_input(
+				thal.eff_tract().input_ganglion(self.name), 
+				layer::EFFERENT_INPUT,
+			);
+		}
+	}
+
+	fn cycle_aff_output(&mut self, thal: &mut Thalamus) {
+		// println!("Cycling afferent output for '{}'...", self.name);
+		// Afferent output goes to afferent areas.	
 		for aff_area_name in self.area_map.aff_areas().clone() {
 			// let aff_area_gang = thal.aff_tract().output_ganglion(self.name, aff_area_name)
 			// 	.expect("CorticalArea::cycle(): Afferent output.");
@@ -339,7 +350,11 @@ impl CorticalArea {
 				layer::AFFERENT_OUTPUT, 
 			);
 		}
+	}
 
+	fn cycle_eff_output(&mut self, thal: &mut Thalamus) {
+		// println!("Cycling output for '{}'...", self.name);
+		// Efferent output goes to efferent areas.	
 		for eff_area_name in self.area_map.eff_areas().clone() {
 			// let eff_area_gang = match thal.eff_tract().output_ganglion(self.name, eff_area_name) {
 			// 	Some(eag) => eag,
@@ -352,11 +367,6 @@ impl CorticalArea {
 				layer::EFFERENT_OUTPUT,
 			);
 		}
-
-
-		if !self.disable_regrowth { self.regrow(); }
-
-		/*(self.afferent_target_names(), self.efferent_target_names())*/
 	}
 
 	pub fn regrow(&mut self) {

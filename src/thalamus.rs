@@ -17,6 +17,8 @@ use input_source::{ InputSource };
 //	- Input/Output is from a CorticalArea's point of view
 // 		- input: to layer / area
 // 		- output: from layer / area
+// [FIXME] TODO: This system will need revamping. Inputs with multiple source areas (such as multiple
+// afferent source areas) will need to be broken down into separate layers rather than just separate rows.
 pub struct Thalamus {
 	afferent_tract: ThalamicTract,
 	efferent_tract: ThalamicTract,
@@ -209,16 +211,16 @@ impl Thalamus {
 // THALAMICTRACT: A BUFFER FOR COMMUNICATION BETWEEN CORTICAL AREAS
 pub struct ThalamicTract {
 	ganglion: Vec<ocl::cl_uchar>,			// BUFFER DIVIDED UP BY AREA
-	//area_info: Vec<TractAreaInfo>,				// INFO ABOUT TARGET AREAS
-	tract_areas: HashMap<&'static str, TractAreaInfo>,	// MAP OF TARGET AREA NAMES -> AREA INFO INDEXES
+	//area_info: Vec<TractArea>,				// INFO ABOUT TARGET AREAS
+	tract_areas: HashMap<&'static str, TractArea>,	// MAP OF TARGET AREA NAMES -> AREA INFO INDEXES
 	ttl_len: usize,
 }
 
 impl ThalamicTract {
 	fn new(area_count: usize,
 				//ganglion: Vec<ocl::cl_uchar>,
-				//area_info: Vec<TractAreaInfo>, 
-				//tract_areas: HashMap<&'static str, TractAreaInfo>,
+				//area_info: Vec<TractArea>, 
+				//tract_areas: HashMap<&'static str, TractArea>,
 			) -> ThalamicTract 
 	{
 
@@ -235,9 +237,9 @@ impl ThalamicTract {
 	}
 
 	fn add_area(&mut self, tar_area_name: &'static str, /*idx: usize,*/ len: usize, src_areas: &Vec<&'static str>) {
-		//self.area_info.push(TractAreaInfo::new(self.ttl_len, len, src_areas));
+		//self.area_info.push(TractArea::new(self.ttl_len, len, src_areas));
 		//self.tract_areas.insert(tar_area_name, idx);
-		self.tract_areas.insert(tar_area_name, TractAreaInfo::new(self.ttl_len, len, src_areas));
+		self.tract_areas.insert(tar_area_name, TractArea::new(self.ttl_len, len, src_areas));
 		self.ttl_len += len;
 	}
 
@@ -321,7 +323,7 @@ impl ThalamicTract {
 			target area name: '{}'.", tar_area_name)).full_range()
 	}
 
-	// fn info(&self, tar_area_name: &str) -> Option<&TractAreaInfo> {
+	// fn info(&self, tar_area_name: &str) -> Option<&TractArea> {
 	// 	//let idx = self.area_map[tar_area_name];
 	// 	//&self.area_info[idx]
 	// 	println!("   ### ThalamicTract.info(): tar_area_name: {}", tar_area_name);
@@ -332,15 +334,17 @@ impl ThalamicTract {
 }
 
 #[derive(PartialEq, Debug, Clone, Eq)]
-struct TractAreaInfo {
+// [FIXME] TODO: This system will need revamping. Inputs with multiple source areas (such as multiple
+// afferent source areas) will need to be broken down into separate layers rather than just separate rows.
+struct TractArea {
 	range: Range<usize>,
 	src_areas: Vec<&'static str>,
 	output_len: usize,
 }
 
-impl TractAreaInfo {
-	fn new(range_start: usize, range_len: usize, src_areas: &Vec<&'static str>) -> TractAreaInfo {
-		TractAreaInfo { 
+impl TractArea {
+	fn new(range_start: usize, range_len: usize, src_areas: &Vec<&'static str>) -> TractArea {
+		TractArea { 
 			range: range_start..(range_start + range_len),			
 			output_len: if src_areas.len() == 0 { 0 } else { range_len / src_areas.len() },
 			src_areas: src_areas.clone(),

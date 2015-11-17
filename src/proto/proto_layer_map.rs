@@ -51,6 +51,31 @@ impl ProtoLayerMap {
 		}
 	}
 
+	pub fn input_layer(
+					mut self, 
+					layer_name: &'static str,
+					flags: ProtolayerFlags,
+					kind: ProtolayerKind,
+	) -> ProtoLayerMap {
+
+		let next_kind_base_slc_id = match kind {
+			ProtolayerKind::Cellular(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
+			ProtolayerKind::Axonal(ref axon_kind) => self.depth_axon_kind(&axon_kind),
+		};
+		
+		let cl = Protolayer {
+			name : layer_name,
+			kind: kind,
+			base_slc_id: 0, 
+			kind_base_slc_id: next_kind_base_slc_id,
+			depth: 0,
+			flags: flags | layer::INPUT_LAYER,
+		};
+
+		self.add(cl);
+		self
+	}
+
 	pub fn layer(
 					mut self, 
 					layer_name: &'static str,
