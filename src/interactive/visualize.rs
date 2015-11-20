@@ -27,8 +27,8 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 
 	proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
-		.layer("motor_in", 1, map::DEFAULT, Axonal(Horizontal))
-		//.layer("olfac", 1, map::DEFAULT, Axonal(Horizontal))
+		.input_layer("motor_in", map::DEFAULT, Axonal(Horizontal))
+		.input_layer("olfac", map::DEFAULT, Axonal(Horizontal))
 		.input_layer("eff_in", map::EFFERENT_INPUT, Axonal(Spatial))
 		.input_layer("aff_in", map::AFFERENT_INPUT, Axonal(Spatial))
 		.layer("out", 1, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT, Axonal(Spatial))
@@ -36,11 +36,11 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 		.layer("iv_inhib", 0, map::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
 		.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600)
+			Protocell::new_spiny_stellate(5, vec!["aff_in"], 700, 8)
 		)
 
-		.layer("iii", 3, map::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(2, 4, vec!["iii"], 1200)
+		.layer("iii", 2, map::TEMPORAL_ASSOCIATIVE, 
+			Protocell::new_pyramidal(1, 5, vec!["iii"], 2200, 8)
 				.apical(vec!["eff_in"])
 				// .apical(vec!["unused"])
 		)
@@ -54,7 +54,7 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 }
 
 pub fn define_protoareas() -> ProtoAreaMaps {
-	let area_side = 48 as u32;
+	let area_side = 32 as u32;
 
 	let protoareas = ProtoAreaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDims::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
@@ -78,12 +78,14 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			area_side, area_side,
 			// area_side / 2, area_side / 2, 
 			// 32, 32,
+
 			Protoinput::IdxReaderLoop { 
 				file_name: "data/train-images-idx3-ubyte", 
 				cyc_per: CYCLES_PER_FRAME, 
 				scale: 1.3,
-				loop_frames: 12,
+				loop_frames: 31,
 			},
+			// Protoinput::None,
 
 			None, 
 			Some(vec!["v1"]),
@@ -106,12 +108,27 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			// 32, 32,
 			//256, 256,
 		 	None,		 	
-		 	Some(vec!["a1"]),
-		 	// None,
+		 	// Some(vec!["a1"]),
+		 	None,
 		)
 
 
-		.area("a1", "visual", area_side, area_side, None, None)
+		// .area("a1", "visual", area_side, area_side, None, /*None,*/ Some(vec!["a2"]))
+
+		// .area("a2", "visual", area_side, area_side, None, Some(vec!["a3"]))
+		// .area("a3", "visual", area_side, area_side, None, Some(vec!["a4"]))
+		// .area("a4", "visual", area_side, area_side, None, Some(vec!["a5"]))
+		// .area("a5", "visual", area_side, area_side, None, Some(vec!["a6"]))
+		// .area("a6", "visual", area_side, area_side, None, Some(vec!["a7"]))
+		// .area("a7", "visual", area_side, area_side, None, Some(vec!["a8"]))
+		// .area("a8", "visual", area_side, area_side, None, Some(vec!["a9"]))
+		// .area("a9", "visual", area_side, area_side, None, Some(vec!["aA"]))
+		// .area("aA", "visual", area_side, area_side, None, Some(vec!["aB"]))
+		// .area("aB", "visual", area_side, area_side, None, Some(vec!["aC"]))
+		// .area("aC", "visual", area_side, area_side, None, Some(vec!["aD"]))
+		// .area("aD", "visual", area_side, area_side, None, Some(vec!["aE"]))
+		// .area("aE", "visual", area_side, area_side, None, Some(vec!["aF"]))
+		// .area("aF", "visual", area_side, area_side, None, None)
 	;
 
 	protoareas

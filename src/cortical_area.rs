@@ -277,7 +277,7 @@ impl CorticalArea {
 	// CYCLE(): <<<<< TODO: ISOLATE LEARNING INTO SEPARATE THREAD >>>>>
 	pub fn cycle(&mut self, thal: &mut Thalamus) {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
-		
+
 		if !self.disable_ssts {	
 			let aff_input_events = {
 				self.events_lists.get(&map::AFFERENT_INPUT)
@@ -286,13 +286,13 @@ impl CorticalArea {
 			self.psal().cycle(aff_input_events); 
 		}
 
-		self.aff_input(thal);
+		self.aff_input(thal);					
 
 		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.bypass_inhib);
 
 		if !self.disable_ssts {	if !self.disable_learning { self.psal_mut().learn(); } }
 
-		if !self.disable_mcols { self.mcols.activate(); }
+		if !self.disable_mcols { self.mcols.activate(); }		
 		
 		if !self.disable_pyrs {			
 			if !self.disable_learning { self.ptal_mut().learn(); }
@@ -308,13 +308,13 @@ impl CorticalArea {
 
 		if !self.disable_mcols { 
 			let output_events = {
-				self.events_lists.get(&map::AFFERENT_OUTPUT)
+				self.events_lists.get_mut(&map::AFFERENT_OUTPUT)
 			};
 
 			self.mcols.output(output_events); 
 		}
 
-		self.output(thal);
+		self.output(thal);	
 
 		if !self.disable_regrowth { self.regrow(); }
 	}

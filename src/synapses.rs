@@ -11,9 +11,7 @@ use std::collections::{ BTreeSet };
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, EventList };
-use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, 
-	DendriteKind, /*Protolayer, ProtolayerKind*/ };
-// use dendrites::{ Dendrites };
+use proto::{ ProtocellKind, Protocell, DendriteKind };
 use axon_space::{ AxonSpace };
 // use cortical_area:: { Aux };
 
@@ -50,15 +48,15 @@ pub use self::tests::{ SynCoords, SynapsesTest };
 		- Tuft[m]
 			...
 
-	So even though tufts are, conceptually, children (sub-components) of a cell:
-	|-->
+	So even though tufts are, conceptually, children (sub-components) of a cell...
+	+-->
 	|	- Slice
 	|		- Cell
-	|--------<	- Tuft
+	+--------<	- Tuft
 					- Dendrite
 						-Synapse
 
-	 ... for indexing purposes tufts are parent to slices, which are parent to cells (then dendrites, then synapses).
+	 ... **for indexing purposes** tufts are parent to slices, which are parent to cells (then dendrites, then synapses).
 
 */
 
@@ -73,16 +71,13 @@ pub struct Synapses {
 	dims: CorticalDims,
 	syns_per_den_l2: u8,
 	protocell: Protocell,
-	//protoregion: ProtoLayerMap,
-	dst_src_slc_ids: Vec<Vec<u8>>,
+	src_slc_ids_list: Vec<Vec<u8>>,
 	den_kind: DendriteKind,
 	cell_kind: ProtocellKind,
 	since_decay: usize,
 	kernels: Vec<Box<ocl::Kernel>>,
 	src_idx_cache: SrcIdxCache,
 	hex_tile_offs: Vec<(i8, i8)>,
-	//kern_cycle: ocl::Kernel,
-	//kern_regrow: ocl::Kernel,
 	rng: XorShiftRng,
 	pub states: Envoy<ocl::cl_uchar>,
 	pub strengths: Envoy<ocl::cl_char>,
@@ -95,40 +90,42 @@ pub struct Synapses {
 
 impl Synapses {
 	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, 
-					den_kind: DendriteKind, cell_kind: ProtocellKind, area_map: &AreaMap, 
-					axons: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue
-	) -> Synapses {
+				den_kind: DendriteKind, cell_kind: ProtocellKind, area_map: &AreaMap, 
+				axons: &AxonSpace, ocl_pq: &ProQue
+			) -> Synapses 
+	{
 		let syns_per_tft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
 		assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
-
-		let wg_size = cmn::SYNAPSES_WORKGROUP_SIZE;
-		let syn_reach = cmn::SYNAPSE_REACH as i8;
 
 		let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, protocell.dens_per_tuft_l2, dims.clone());
 
 		//let slc_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-		//let states = Envoy::<ocl::cl_uchar>::with_padding(32768, dims, 0, ocl_pq);
 		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq.queue());
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq.queue());
 		let src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq.queue());
 
-
-		//let src_col_u_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl_pq); // *****
-		//let src_col_v_offs = Envoy::<ocl::cl_char>::shuffled(dims, 0 - syn_reach, syn_reach + 1, ocl_pq); // *****
-		let src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq.queue()); // *****
-		let src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq.queue()); // *****
-
-
+		let src_col_u_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq.queue());
+		let src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq.queue()); 
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq.queue());
 
-		// KERNELS
-		let dst_src_slc_ids = area_map.proto_layer_map().dst_src_slc_ids(layer_name);
-		assert!(dst_src_slc_ids.len() == dims.tfts_per_cel() as usize,
+		let (src_slc_ids_list, syn_reach) = match den_kind {
+			DendriteKind::Proximal => {
+				(vec![area_map.proto_layer_map().src_slc_ids(layer_name, den_kind)],
+					protocell.den_prx_syn_reach)
+			},
+			DendriteKind::Distal => {
+				(area_map.proto_layer_map().dst_src_slc_ids(layer_name),
+					protocell.den_dst_syn_reach)
+			},
+		};
+
+		assert!(src_slc_ids_list.len() == dims.tfts_per_cel() as usize,
 			"Synapses::new(): Error creating synapses: layer '{}' has one or more invalid \
 			source layers defined. If a source layer is an afferent or efferent input, please \
-			ensure that the source area for that the layer exists.", layer_name);		
+			ensure that the source area for that the layer exists. (src_slc_ids_list: {:?})", layer_name,
+			src_slc_ids_list);
 
-		let mut kernels = Vec::with_capacity(dst_src_slc_ids.len());
+		let mut kernels = Vec::with_capacity(src_slc_ids_list.len());
 
 		if DEBUG_NEW { 
 			println!("{mt}{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
@@ -143,7 +140,7 @@ impl Synapses {
 		// OBVIOUSLY THIS NAME IS CONFUSING: See above for explanation.
 		let cel_tfts_per_syntuft = dims.cells();
 
-		for tft_id in 0..dst_src_slc_ids.len() {
+		for tft_id in 0..src_slc_ids_list.len() {
 			kernels.push(Box::new(
 
 				// ocl_pq.create_kernel("syns_cycle_layer",
@@ -153,13 +150,10 @@ impl Synapses {
 					
 					WorkSize::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
 					.lws(WorkSize::TwoDims(min_wg_sqrt, min_wg_sqrt))
-					// WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
-					// .lws(WorkSize::ThreeDims(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
 					.arg_env(&axons.states)
 					.arg_env(&src_col_u_offs)
 					.arg_env(&src_col_v_offs)
 					.arg_env(&src_slc_ids)
-					//.arg_env(&strengths)
 					.arg_scl(tft_id as u32 * cel_tfts_per_syntuft)
 					.arg_scl(syns_per_tft_l2)
 					.arg_scl(dims.depth() as u8)
@@ -170,43 +164,20 @@ impl Synapses {
 		}
 
 
-		// for tft_id in 0..dst_src_slc_ids.len() {
-		// 	kernels.push(Box::new(
-
-		// 		ocl_pq.create_kernel("syns_cycle_simple",
-		// 		// ocl_pq.create_kernel("syns_cycle_simple_vec4",
-		// 		// ocl_pq.create_kernel("syns_cycle_wow",
-		// 		// ocl_pq.create_kernel("syns_cycle_wow_vec4", 
-				
-		// 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, (dims.u_size()) as usize))
-		// 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize)) // <<<<< TEMP UNTIL WE FIGURE OUT A WAY TO CALC THIS
-		// 			.arg_env(&axons.states)
-		// 			.arg_env(&src_col_u_offs)
-		// 			.arg_env(&src_col_v_offs)
-		// 			.arg_env(&src_slc_ids)
-		// 			//.arg_env(&strengths)
-		// 			.arg_scl(tft_id as u32 * cel_tfts_per_syntuft)
-		// 			.arg_scl(syns_per_tft_l2)
-		// 			.arg_env(&aux.ints_0)
-		// 			//.arg_env(&aux.ints_1)
-		// 			.arg_env(&states)
-		// 	))
-		// }
-
 		let mut syns = Synapses {
 			layer_name: layer_name,
 			dims: dims,
 			syns_per_den_l2: protocell.syns_per_den_l2,
 			protocell: protocell,
 			//protoregion: protoregion.clone(),
-			dst_src_slc_ids: dst_src_slc_ids,
+			src_slc_ids_list: src_slc_ids_list,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			since_decay: 0,
 			//kern_cycle: kern_cycle,
 			kernels: kernels,
 			src_idx_cache: src_idx_cache,
-			hex_tile_offs: cmn::hex_tile_offs(cmn::SYNAPSE_REACH as i8),
+			hex_tile_offs: cmn::hex_tile_offs(syn_reach),
 			//kern_regrow: kern_regrow,
 			rng: rand::weak_rng(),
 			states: states,
@@ -237,16 +208,16 @@ impl Synapses {
 		self.src_col_v_offs.read_wait();
 
 		let syns_per_layer_tft = self.dims.per_slc_per_tft() as usize * self.dims.depth() as usize;
-		let dst_src_slc_ids = self.dst_src_slc_ids.clone();
+		let src_slc_ids_list = self.src_slc_ids_list.clone();
 		let mut src_tft_i = 0usize;
 
-		for src_slc_ids in &dst_src_slc_ids {
+		for src_slc_ids in &src_slc_ids_list {
 			if src_slc_ids.len() == 0 { continue; }
 			//assert!(src_slc_ids.len() > 0, "Synapses must have at least one source slice.");
 			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, 
 				"cortical_area::Synapses::init(): Number of source slcs must not exceed number of synapses per cell.");
 
-			let syn_reach = cmn::SYNAPSE_REACH as i8;
+			// let syn_reach = cmn::SYNAPSE_REACH as i8;
 
 			let src_slc_id_range: Range<usize> = Range::new(0, src_slc_ids.len());
 			// let src_col_offs_range: Range<i8> = Range::new(0 - syn_reach, syn_reach + 1);
@@ -286,13 +257,13 @@ impl Synapses {
 				src_col_offs_range: &Range<usize>,
 				// src_col_offs_range: &Range<i8>,
 				strength_init_range: &Range<i8>,
-				src_slc_ids: &Vec<u8>,
+				src_slc_ids_list: &Vec<u8>,
 				init: bool,
 	) {
 
 		// DEBUG
 			//let mut print_str: String = String::with_capacity(10); 
-			//let mut tmp_str = format!("[({})({})({})=>", self.src_slc_ids[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
+			//let mut tmp_str = format!("[({})({})({})=>", self.src_slc_ids_list[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
 			//print_str.push_str(&tmp_str);
 		let syn_span = 2 * cmn::SYNAPSE_REACH as i8;
 
@@ -303,7 +274,7 @@ impl Synapses {
 				u_ofs: self.src_col_u_offs[syn_idx],
 			};
 
-			self.src_slc_ids[syn_idx] = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
+			self.src_slc_ids[syn_idx] = src_slc_ids_list[src_slc_idx_range.ind_sample(&mut self.rng)];
 
 			self.src_col_v_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].0; 
 			self.src_col_u_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].1;			
@@ -312,7 +283,7 @@ impl Synapses {
 
 			let intensity_reduction_l2 = 3;
 
-			// <<<<< TODO: NEED SOMETHING SIMPLER/FASTER TO INIT STRENGTHS >>>>>
+			// [FIXME] TODO: NEED SOMETHING SIMPLER/FASTER TO INIT STRENGTHS
 			let syn_str_intensity = (syn_span - 
 					(self.src_col_v_offs[syn_idx].abs() + 
 					self.src_col_u_offs[syn_idx].abs())
@@ -326,14 +297,16 @@ impl Synapses {
 				u_ofs: self.src_col_u_offs[syn_idx],
 			};
 
-			// <<<<< TODO: VERIFY AXON INDEX SAFETY >>>>>
+			// [FIXME] TODO: VERIFY AXON INDEX SAFETY
 			// 	- Will need to know u and v coords of host cell
 
 			if self.src_idx_cache.insert(syn_idx, old_ofs, new_ofs) {
-				//print_str.push_str("$"); // DEBUG
+				// DEBUG
+				//print_str.push_str("$"); 
 				break;
 			} else {
-				//print_str.push_str("^"); // DEBUG
+				// DEBUG
+				//print_str.push_str("^"); 
 			}
 		}
 
@@ -363,6 +336,7 @@ impl Synapses {
 		self.src_col_v_offs.read_wait();
 	} 
 
+	// Debugging purposes
 	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
 		let using_aux = false;
 
@@ -402,7 +376,7 @@ impl Synapses {
 	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
 	// pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
 		
-	// 	//println!("\n##### SYNAPSES::SRC_SLICE_IDS({}): {:?}", layer_name, self.dst_src_slc_ids);
+	// 	//println!("\n##### SYNAPSES::SRC_SLICE_IDS({}): {:?}", layer_name, self.src_slc_ids);
 
 	// 	match layer.kind {
 	// 		ProtolayerKind::Cellular(ref cell) => {

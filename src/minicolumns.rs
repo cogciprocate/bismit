@@ -223,8 +223,15 @@ impl Minicolumns {
 		self.kern_activate.enqueue(None, None);
 	}
 
-	pub fn output(&self, wait_events: Option<&EventList>) {
-		self.kern_output.enqueue(wait_events, None);
+	pub fn output(&self, new_events: Option<&mut EventList>) {
+		match new_events {
+			Some(ne) => {
+				ne.release_all();
+				self.kern_output.enqueue(None, Some(ne));
+			},
+
+			None => self.kern_output.enqueue(None, None),
+		}
 	}
 
 	pub fn confab(&mut self) {

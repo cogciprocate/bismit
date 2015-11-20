@@ -75,8 +75,10 @@ impl InputSource {
 		// let mut ganglion = tract.ganglion_mut(self.area_name, map::AFFERENT_OUTPUT);
 
 		match self.kind {
-			InputSourceKind::IdxReader(ref mut ir) => { let _ = ir.next(ganglion); },
-			InputSourceKind::IdxReaderLoop(ref mut ir) => { let _ = ir.next(ganglion); },
+			InputSourceKind::IdxReader(ref mut ir) |
+			InputSourceKind::IdxReaderLoop(ref mut ir)
+				=> { let _ = ir.next(ganglion); },
+				
 			_ => (),
 		}
 

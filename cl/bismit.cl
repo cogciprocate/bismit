@@ -56,7 +56,7 @@
 			- u_id : The 'u' coordinate of a tile in hexagonal tile space.
 			- w_id : The 'w' coordinate of a tile in hexagonal tile space.
 
-			- Coordinates are oriented (on the unit circle) with 'u' at 30deg, 'v' at 150deg, and 'w' at 270deg. Any references to 'v' are considered to be inverted (negative) when plotting coordinates in real space. In other words a 'v' value of 5 would equal -5 when plotting or mapping to real 2d space. This is simply a convenience (necessity?) for indexing in OpenCL.
+			- Coordinates are oriented (on the unit circle) with 'u' at 30deg, 'v' at 150deg, and 'w' at 270deg. Any references to 'v' are considered to be inverted (negative) when plotting coordinates in real space. In other words a 'v' value of 5 would equal -5 when plotting or mapping to real 2d space. This is simply a convenience ( / necessity?) for indexing in OpenCL.
 
 			- 'w' is seldom used because coordinates are stored in 'axial coordinates' which just means that only two of the three coordinates are actually stored / used because the third can be reconstructed from the other two when needed.
 
@@ -74,7 +74,7 @@
 			- __global non-const pointers (output arrays) last,
 		
 
-		ASSUMPTIONS BEING MADE: (add assert!s)
+		ASSUMPTIONS BEING MADE: (TODO: add assert!s in host)
 			syns_per_tft > 4
 			u_size and v_size (global) are multiples of 8
 
@@ -193,32 +193,6 @@ static inline int rnd_mix(int const rnd_a, int seed) {
 	seed ^= seed << 5;
 	return seed;
 }
-
-
-/* RND INC/DEC NOTES:
-		- Must cap at the min and max limits (-127, 127).
-		- Must not get stuck at max limit. If at max, must be decrementable. At min, who cares.
-		- Must be easy to move near zero and more difficult the larger the pos or neg value.
-
-		inc -> abs(val) < rnd 
-		dec -> (abs(val) + is_max) < rnd
-			- account for pos-neg val
-			- handle deadlock
-
-		- Learning rate (lr_l2i) is 100% at 0, 50% at 1, 25% at 2, etc.
-*/
-
-
-
-
-
-
-
-
-
-
-
-
 
 static inline uint calc_syn_idz(uint const tuft_id, uint const cel_count, uint const cel_id, 
 				uchar const syns_per_tft_l2) 
@@ -451,6 +425,18 @@ static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
 ===================================== WIP =====================================
 =============================================================================*/
 
+/* RND INC/DEC NOTES:
+		- Must cap at the min and max limits (-127, 127).
+		- Must not get stuck at max limit. If at max, must be decrementable. At min, who cares.
+		- Must be easy to move near zero and more difficult the larger the pos or neg value.
+
+		inc -> abs(val) < rnd 
+		dec -> (abs(val) + is_max) < rnd
+			- account for pos-neg val
+			- handle deadlock
+
+		- Learning rate (lr_l2i) is 100% at 0, 50% at 1, 25% at 2, etc.
+*/
 
 // RND_INC(): Returns a 1 or 0 representing whether or not to increment a value:
 static inline int rnd_inc(int const rnd_a, int const seed, char const val, 

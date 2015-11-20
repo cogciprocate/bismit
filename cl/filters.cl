@@ -1,9 +1,8 @@
-// FILTERS.CL: Experimental and very badly optimized (on purpose).
+// FILTERS.CL: Experimental and very badly optimized.
 
 
 #define INHIB_SMALL_CELL_RADIUS		 3
 #define INHIB_LARGE_CELL_RADIUS		 5
-
 
 
 static inline int get_neighbors_avg(uchar const slc_id_lyr, uint const v_size, uint const v_id, 

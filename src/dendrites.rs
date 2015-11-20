@@ -68,13 +68,12 @@ impl Dendrites {
 			),
 		};*/
 
-
-
 		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl_pq.queue());
 
-		println!("            DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", layer_name, dims, states.len());
+		println!("{mt}{mt}{mt}, DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", 
+			layer_name, dims, states.len(), mt = cmn::MT);
 
 		let syns_dims = dims.clone_with_ptl2((dims.per_tft_l2() + syns_per_den_l2 as i8));
 		let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, 
@@ -93,22 +92,10 @@ impl Dendrites {
 			.arg_env(&states)
 		;
 
-		/*let kern_cycle = ocl.create_kernel("den_cycle_old", WorkSize::TwoDims(dims.depth() as usize, dims.per_slc() as usize))
-			.arg_env(&syns.states)
-			.arg_env(&syns.strengths)
-			.arg_scl(syns_per_den_l2)
-			.arg_scl(den_threshold)
-			.arg_env(&energies)
-			.arg_env(&states_raw)
-			//.arg_env(&aux.ints_0)
-			.arg_env(&states)
-		;*/
 		
 		Dendrites {
 			layer_name: layer_name,
 			dims: dims,
-			//protocell: protocell,
-			//per_cell_l2: per_cell_l2,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			kern_cycle: kern_cycle,

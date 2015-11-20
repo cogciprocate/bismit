@@ -73,6 +73,7 @@ impl Cortex {
 		// for (area_name, area) in self.areas.iter_mut() {
 		// 	area.regrow();
 		// }
+
 		self.thal.cycle_external_ganglions(&mut self.areas);
 
 		for (area_name, area) in self.areas.iter_mut() {

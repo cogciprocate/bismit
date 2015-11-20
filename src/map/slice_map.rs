@@ -36,37 +36,17 @@ impl SliceMap {
 		=================================  ================================
 		=============================================================================*/
 
-		//eff_in_layer_base_slc_id = ia_cache.eff_in_layer_name
 		let mut axn_idz_ttl = 0u32;
 
 		for (&slc_id, &layer_name) in proto_slc_map.iter() {
-			// CALCULATE SCALE FOR V AND U
 			let layer = &plmap.layers()[layer_name];
 			let src_area_opt = ia_cache.src_area_for_slc(slc_id, layer.flags);
 
 			let slc_dims = match src_area_opt {
 				Some(src_area) => {
-					//let src_area = src_area.unwrap();					
-
-					//let src_area_name = src_area.name
-
-					//let src_v_size = src_v_size * 4;
-					//let src_u_size = src_u_size * 4;
-
-					// let v_scl = calc_scale(src_dims.v_size(), area_dims.v_size()).expect(
-					// 	&format!("\nSliceMap::new(): Error processing {} for area: '{}', layer: '{}' \
-					// 	source area: {}", "v_size", pamap.name, layer_name, src_area_name));
-					// let u_scl = calc_scale(src_dims.u_size(), area_dims.u_size()).expect(
-					// 	&format!("\nSliceMap::new(): Error processing {} for area: '{}', layer: '{}' \
-					// 	source area: {}", "u_size", pamap.name, layer_name, src_area_name));
-
-					// let (v_scl, u_scl) = slc_dims.calc_scale(area_dims).expect(
-					// 	&format!("\nSliceMap::new(): Error calculating scale for area: '{}', layer: '{}' \
-					// 	source area: {}", pamap.name, layer_name, src_area.name));
-
 					let slc_dims = src_area.dims.clone();
 
-					println!("{}SLICEMAP::NEW(): Processing inter-area slice '{}': slc_id: {}, src_area_name: {}, \
+					println!("{}SLICEMAP::NEW(): Adding inter-area slice '{}': slc_id: {}, src_area_name: {}, \
 						v_size: {}, u_size: {}.", cmn::MT, layer_name, slc_id, src_area.name,
 						slc_dims.v_size(), slc_dims.u_size());
 

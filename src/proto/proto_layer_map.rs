@@ -467,11 +467,13 @@ impl ProtoLayerMap {
 	}
 
 	// SRC_SLC_IDS(): Get a merged list of source slice ids for all source layers.
+	// [FIXME] TODO: Merge this with dst_* below.
 	pub fn src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
 		let src_lyr_names = self.layers[&layer_name].src_lyr_names(den_type);
 		
 		self.slc_ids(src_lyr_names)
  	}
+
 
  	// DST_SRC_SLC_IDS(): Get a grouped list of source slice ids for each distal dendritic tuft in a layer.
  	pub fn dst_src_slc_ids(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
@@ -488,7 +490,7 @@ impl ProtoLayerMap {
 
 	// DST_SRC_LYRS_BY_TUFT(): Get a grouped list of source layer names for each distal dendritic tuft in a layer.
 	pub fn dst_src_lyrs_by_tuft(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
-		// TODO: RETURN ONLY VALID TUFTS!
+		// [FIXME][DONE?] TODO: RETURN ONLY VALID TUFTS!
 		let mut potential_tufts = self.layers[layer_name].dst_src_lyrs_by_tuft();
 		let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
 

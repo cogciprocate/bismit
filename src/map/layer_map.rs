@@ -24,6 +24,7 @@ pub struct LayerInfo {
 
 #[derive(Clone)]
 // NEEDS RENAME & INTEGRATION WITH / CONVERSION TO LAYERMAP
+// [FIXME] TODO: DEPRICATE
 pub struct InterAreaInfoCache {
 	pub eff_areas: LayerSourceAreas, // eff. areas -> aff. input layer	
 	pub aff_areas: LayerSourceAreas, // aff. areas -> eff. input layer
