@@ -44,8 +44,8 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 
 		.area_ext("v0", "external", 
 			// area_side * 2, area_side * 2,
-			area_side, area_side,
-			// area_side / 2, area_side / 2, 
+			area_side, 
+						// area_side / 2, area_side / 2, 
 			Protoinput::IdxReader { 
 				file_name: "data/train-images-idx3-ubyte", 
 				cyc_per: CYCLES_PER_FRAME, 
@@ -53,19 +53,18 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 			},
 
 			None, 
-			Some(vec!["v1"]),
+			None,
 		)
 
 		.area("v1", "visual", 
 			// area_side * 2, area_side * 2,
-			area_side, area_side,
+			area_side, 
 			// area_side / 2, area_side / 2,
 			// 128, 128,
 
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
 
-			// Some(vec!["b1"]),
-			None,
+			Some(vec!["v0"]),
 		)
 
 		// .area("b1", "visual", 
@@ -137,11 +136,11 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 	);
 
 	let pamaps = ProtoAreaMaps::new()
-		.area(area_name, lmap_name, 32, 32, None, None)
+		.area(area_name, lmap_name, 32, None, Some(vec!["dummy_area"]))
 
 		// <<<<< VERY IMPORTANT: DO NOT DELETE! >>>>>
 		// [FIXME] THIS EXTERNAL AREA MAY BE CAUSING INDEXING PROBLEMS
-		.area_ext("dummy_area", "dummy_lm", 67, 61, Protoinput::None, None, Some(vec![area_name]))
+		.area_ext("dummy_area", "dummy_lm", 67, Protoinput::None, None, None)
 
 		// .area_ext("dummy_area", "dummy_lm", 32, 32, Protoinput::None, None, Some(vec![area_name]))
 	;

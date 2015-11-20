@@ -200,7 +200,7 @@ impl ProtoLayerMap {
 	// 		- Need to revamp how axon_types and cell_types are stored before we can do much with it
 	// 		- cel_layer_kind_slc_lists being a vector needs to change asap
 	//
-	// 	<<<<< TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS 	
+	// 	[FIXME] TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS 	
 	pub fn freeze(&mut self, protoarea: &ProtoAreaMap) {
 		println!("\nPROTOLAYERMAP: Assembling layer map for area '{}'...", protoarea.name);
 

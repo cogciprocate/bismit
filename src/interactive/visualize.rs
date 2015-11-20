@@ -95,7 +95,8 @@ pub fn define_pamaps() -> ProtoAreaMaps {
 			// Protoinput::None,
 
 			None, 
-			Some(vec!["v1"]),
+			// Some(vec!["v1"]),
+			None,
 		)
 
 		.area("v1", "visual", 
@@ -104,7 +105,7 @@ pub fn define_pamaps() -> ProtoAreaMaps {
 			// area_side / 2, area_side / 2,
 			// 128, 128,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-			Some(vec!["b1"]),
+			Some(vec!["v0"]),
 			// None,
 		)
 
@@ -116,7 +117,8 @@ pub fn define_pamaps() -> ProtoAreaMaps {
 			//256, 256,
 		 	None,		 	
 		 	// Some(vec!["a1"]),
-		 	None,
+		 	Some(vec!["v1"]),
+		 	// None,
 		)
 
 
