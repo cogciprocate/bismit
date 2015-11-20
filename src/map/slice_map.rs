@@ -53,7 +53,7 @@ impl SliceMap {
 					slc_dims
 				},
 
-				None =>	SliceDims::new(area_dims, None).unwrap(), // 100%
+				None =>	SliceDims::new(area_dims, None).expect("SliceMap::new()"), // 100%
 			};
 
 			//axn_idzs.push(axn_idz_2d(slc_id, area_dims.columns(), plmap.hrz_demarc()));

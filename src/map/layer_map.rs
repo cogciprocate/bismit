@@ -146,7 +146,7 @@ impl SourceAreaInfo {
 	fn new(area_dims: &CorticalDims, src_area_name: &'static str, src_area_dims: &CorticalDims
 		) -> SourceAreaInfo 
 	{
-		let slc_dims = SliceDims::new(area_dims, Some(src_area_dims)).unwrap();
+		let slc_dims = SliceDims::new(area_dims, Some(src_area_dims)).expect("SourceAreaInfo::new()");
 		SourceAreaInfo { name: src_area_name, dims: slc_dims /*v_size: v_size, u_size: u_size*/ }
 	}
 

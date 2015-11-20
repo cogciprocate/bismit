@@ -8,6 +8,7 @@ use cortex::{ self, Cortex };
 use encode:: { IdxReader };
 use interactive::{ output_czar };
 use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, Axonal, Spatial, Horizontal, Sensory, Thalamic, Protocell, Protofilter, Protoinput };
+use input_source::{ InputGanglion };
 
 
 pub const INITIAL_TEST_ITERATIONS: i32 		= 1; 
@@ -22,16 +23,16 @@ const CYCLES_PER_FRAME: usize 				= 1;
 
 
 /* Eventually move defines to a config file or some such */
-pub fn define_protolayer_maps() -> ProtoLayerMaps {
-	let mut proto_layer_maps: ProtoLayerMaps = ProtoLayerMaps::new();
+pub fn define_plmaps() -> ProtoLayerMaps {
+	let mut plmaps: ProtoLayerMaps = ProtoLayerMaps::new();
 
-	proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
+	plmaps.add(ProtoLayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
 		.input_layer("motor_in", map::DEFAULT, Axonal(Horizontal))
-		.input_layer("olfac", map::DEFAULT, Axonal(Horizontal))
-		.input_layer("eff_in", map::EFFERENT_INPUT, Axonal(Spatial))
-		.input_layer("aff_in", map::AFFERENT_INPUT, Axonal(Spatial))
-		.layer("out", 1, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT, Axonal(Spatial))
+		// .input_layer("olfac", map::NONSPATIAL | map::INPUT, Axonal(Horizontal))
+		.input_layer("eff_in", map::EFFERENT | map::INPUT, Axonal(Spatial))
+		.input_layer("aff_in", map::AFFERENT | map::INPUT, Axonal(Spatial))
+		.layer("out", 1, map::AFFERENT | map::EFFERENT | map::OUTPUT, Axonal(Spatial))
 		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("iv_inhib", 0, map::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
@@ -46,17 +47,21 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 		)
 	);
 
-	proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
-		.layer("ganglion", 1, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT, Axonal(Spatial))
+	plmaps.add(ProtoLayerMap::new("v0_layer_map", Thalamic)
+		.layer("ganglion", 1, map::AFFERENT | map::EFFERENT | map::OUTPUT, Axonal(Spatial))
 	);
 
-	proto_layer_maps
+	plmaps.add(ProtoLayerMap::new("o0_layer_map", Thalamic)
+		.layer("ganglion", 1, map::NONSPATIAL | map::OUTPUT, Axonal(Horizontal))
+	);
+
+	plmaps
 }
 
-pub fn define_protoareas() -> ProtoAreaMaps {
+pub fn define_pamaps() -> ProtoAreaMaps {
 	let area_side = 32 as u32;
 
-	let protoareas = ProtoAreaMaps::new()		
+	let pamaps = ProtoAreaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDims::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
 		// .area_ext("u0", "external", area_side, area_side, 
 		// 	Protoinput::IdxReader { 
@@ -71,11 +76,13 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 		// .area("u1", "visual", area_side, area_side, None,
 		// 	//None,
 		// 	Some(vec!["b1"]),
-		// )		
+		// )
 
-		.area_ext("v0", "external", 
+		// .area_ext("o0", "o0_layer_map", 32, Protoinput::Zeros, None, Some(vec!["v1"]))
+
+		.area_ext("v0", "v0_layer_map", 
 			// area_side * 2, area_side * 2,
-			area_side, area_side,
+			area_side,
 			// area_side / 2, area_side / 2, 
 			// 32, 32,
 
@@ -93,7 +100,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 
 		.area("v1", "visual", 
 			// area_side * 2, area_side * 2,
-			area_side, area_side,
+			area_side, 
 			// area_side / 2, area_side / 2,
 			// 128, 128,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
@@ -103,7 +110,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 
 		.area("b1", "visual", 
 			// area_side * 2, area_side * 2,			
-			area_side, area_side,
+			area_side,
 			// 16, 16,
 			// 32, 32,
 			//256, 256,
@@ -131,7 +138,7 @@ pub fn define_protoareas() -> ProtoAreaMaps {
 		// .area("aF", "visual", area_side, area_side, None, None)
 	;
 
-	protoareas
+	pamaps
 }
 
 
@@ -149,7 +156,7 @@ pub fn run(autorun_iters: i32) -> bool {
 	let mut ir_labels = IdxReader::new(CorticalDims::new(1, 1, 1, 0, None), 
 		"data/train-labels-idx1-ubyte", CYCLES_PER_FRAME, 1.0);
 	
-	let mut cortex = cortex::Cortex::new(define_protolayer_maps(), define_protoareas());
+	let mut cortex = cortex::Cortex::new(define_plmaps(), define_pamaps());
 	let mut area_name = "v1".to_string();
 	let inhib_layer_name = "iv_inhib";
 	let area_dims = cortex.area(&area_name).dims().clone();

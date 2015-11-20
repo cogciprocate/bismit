@@ -7,6 +7,7 @@ use std::iter;
 // use num::{ Float };
 
 use cmn::{ CorticalDims, Sdr };
+use input_source::{ InputGanglion };
 
 
 // const HEX_SIDE: f64 = 0.5f64;
@@ -147,33 +148,7 @@ impl IdxReader {
     pub fn loop_frames(mut self, frames_to_loop: u32) -> IdxReader {
     	self.loop_frames = Some(frames_to_loop);
     	self
-	}
-
-    pub fn next(&mut self, ganglion_frame: &mut Sdr) -> usize {
-    	assert!(ganglion_frame.len() == self.ganglion_dims.columns() as usize);
-    	assert!((self.image_len) <= ganglion_frame.len(), 
-    		"Ganglion vector size must be greater than or equal to IDX image size");    	
-
-  		//   	match self.file_reader.read(&mut self.image_buffer[..]) {
-		//     Err(why) => panic!("\ncouldn't read '{}': {}", &self.file_path, Error::description(&why)),
-		//     Ok(bytes) => assert!(bytes == self.image_buffer.len(), "\n bytes read != buffer length"), 
-		//     	//println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
-		// }
-
-		let img_idz = self.frame_counter * self.image_len;
-		let img_idn = img_idz + self.image_len;
-
-		match self.image_dim_count {
-			3 => self.encode_2d_image(&self.image_buffer[img_idz..img_idn], ganglion_frame),
-			2 => panic!("\nOne dimensional (linear) idx images not yet supported."),
-			1 => self.encode_scalar(&self.image_buffer[img_idz..img_idn], ganglion_frame),
-			_ => panic!("\nIdx files with more than three or less than one dimension(s) not supported."),
-		}
-
-		let prev_frame = self.frame_counter;
-		self.increment_frame();
-		return prev_frame;
-	}
+	}    
 
 	pub fn get_raw_frame(&self, frame_idx: usize, ganglion_frame: &mut Sdr) -> usize {
 		assert!(ganglion_frame.len() == self.ganglion_dims.columns() as usize);
@@ -275,6 +250,34 @@ impl IdxReader {
 
 	pub fn dims(&self) -> &CorticalDims {
 		&self.ganglion_dims
+	}
+}
+
+impl InputGanglion for IdxReader {
+	fn next(&mut self, ganglion_frame: &mut Sdr) -> usize {
+    	assert!(ganglion_frame.len() == self.ganglion_dims.columns() as usize);
+    	assert!((self.image_len) <= ganglion_frame.len(), 
+    		"Ganglion vector size must be greater than or equal to IDX image size");    	
+
+  		//   	match self.file_reader.read(&mut self.image_buffer[..]) {
+		//     Err(why) => panic!("\ncouldn't read '{}': {}", &self.file_path, Error::description(&why)),
+		//     Ok(bytes) => assert!(bytes == self.image_buffer.len(), "\n bytes read != buffer length"), 
+		//     	//println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
+		// }
+
+		let img_idz = self.frame_counter * self.image_len;
+		let img_idn = img_idz + self.image_len;
+
+		match self.image_dim_count {
+			3 => self.encode_2d_image(&self.image_buffer[img_idz..img_idn], ganglion_frame),
+			2 => panic!("\nOne dimensional (linear) idx images not yet supported."),
+			1 => self.encode_scalar(&self.image_buffer[img_idz..img_idn], ganglion_frame),
+			_ => panic!("\nIdx files with more than three or less than one dimension(s) not supported."),
+		}
+
+		let prev_frame = self.frame_counter;
+		self.increment_frame();
+		return prev_frame;
 	}
 }
 

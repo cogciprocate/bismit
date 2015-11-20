@@ -78,7 +78,8 @@ impl AreaMap {
 		// 		- return 
 		match self.ia_cache.src_area_for_slc(slc_id, layer_flags) {
 			Some(ref area) => area.dims(),
-			None => panic!("Cannot find a slice with id: `{}` and flags: `{:?}`.", slc_id, layer_flags),
+			None => panic!("AreaMap:: Cannot find a slice with id: `{}` and flags: `{:?}`.", 
+				slc_id, layer_flags),
 		}
 	}
 

@@ -2,6 +2,7 @@ use std::collections::{ /*self,*/ HashMap };
 
 use proto::{ /*layer, RegionKind,*/ Protofilter, Protoinput };
 use cmn::{ self, CorticalDims };
+// use map;
 
 
 // pub trait ProtoAreaMapsTrait {
@@ -32,13 +33,13 @@ impl <'a>ProtoAreaMaps {
 	pub fn area_ext(mut self, 
 				name: &'static str, 
 				region_name: &'static str,
-				width: u32, 
-				height: u32, 
+				side: u32, 
 				protoinput: Protoinput,				
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
-	) -> ProtoAreaMaps {
-		self.add(ProtoAreaMap::new(name, region_name, width, height, protoinput, 
+			) -> ProtoAreaMaps 
+	{
+		self.add(ProtoAreaMap::new(name, region_name, side, protoinput, 
 			filters, aff_areas_opt));
 
 		self
@@ -47,12 +48,12 @@ impl <'a>ProtoAreaMaps {
 	pub fn area(mut self, 
 				name: &'static str,
 				region_name: &'static str,
-				width: u32, 
-				height: u32, 
+				side: u32, 
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
-	) -> ProtoAreaMaps {
-		self.add(ProtoAreaMap::new(name, region_name, width, height, Protoinput::None, filters, aff_areas_opt));
+			) -> ProtoAreaMaps 
+	{
+		self.add(ProtoAreaMap::new(name, region_name, side, Protoinput::None, filters, aff_areas_opt));
 		self
 	}
 
@@ -76,10 +77,8 @@ impl <'a>ProtoAreaMaps {
 			// }
 		}
 
-		if eff_list.len() > cmn::MAX_EFFERENT_AREAS { 
-			panic!("areas::ProtoAreaMaps::freeze(): \
-				An area cannot have more than {} efferent areas.", cmn::MAX_EFFERENT_AREAS); 
-		}
+		assert!(eff_list.len() <= cmn::MAX_EFFERENT_AREAS, "areas::ProtoAreaMaps::freeze(): \
+				An area cannot have more than {} efferent areas.", cmn::MAX_EFFERENT_AREAS);
 
 		for (area_name, eff_area_name) in eff_list {
 			let emsg = format!("proto::areas::ProtoAreaMaps::freeze(): Area: '{}' not found. ", area_name);
@@ -120,14 +119,14 @@ impl ProtoAreaMap {
 	pub fn new(
 				name: &'static str, 
 				region_name: &'static str,
-				width: u32, 
-				height: u32, 				
+				side: u32,
 				input: Protoinput,
 				filters: Option<Vec<Protofilter>>,
 				aff_areas_opt: Option<Vec<&'static str>>,
-	) -> ProtoAreaMap {
-		assert!(width >= cmn::SYNAPSE_REACH * 2);
-		assert!(height >= cmn::SYNAPSE_REACH * 2);
+			) -> ProtoAreaMap 
+	{
+		// [FIXME] TODO: This is out of date. Need to instead verify that 'side' is > Protocell::den_*_syn_reach.
+		assert!(side >= cmn::SYNAPSE_REACH * 2);
 
 		let aff_areas = match aff_areas_opt {
 			Some(ae) => ae,
@@ -137,7 +136,7 @@ impl ProtoAreaMap {
 		ProtoAreaMap { 
 			name: name,
 			region_name: region_name,
-			dims: CorticalDims::new(width, height, 0, 0, None),
+			dims: CorticalDims::new(side, side, 0, 0, None),
 			//dims: CorticalDims::new(width_l2, height_l2, 0, 0),
 			//region_kind: region_kind,
 			input: input,

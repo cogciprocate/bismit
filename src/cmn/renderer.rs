@@ -15,7 +15,7 @@ pub struct Renderer {
 
 impl Renderer {
 	pub fn new(area_dims: &CorticalDims) -> Renderer {		
-		let dims = SliceDims::new(area_dims, None).unwrap();
+		let dims = SliceDims::new(area_dims, None).expect("Renderer::new()");
 		let sdr_len = (dims.columns()) as usize;
 
 		Renderer { 

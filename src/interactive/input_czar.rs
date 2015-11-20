@@ -8,6 +8,7 @@ use cmn::{ self, CorticalDims, Sdr };
 use ocl::{ self };
 use cortex::{ Cortex };
 use encode:: { IdxReader };
+use input_source::{ InputGanglion };
 use super::motor_state;
 use microcosm::world::{ World };
 use microcosm::entity::{ EntityBody, EntityKind, /*EntityBrain, Mobile*/ };

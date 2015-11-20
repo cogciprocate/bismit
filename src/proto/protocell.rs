@@ -49,9 +49,15 @@ impl Protocell {
 			den_dst_syn_reach: den_dst_syn_reach,
 			den_thresh_init: thresh,
 			//flags: flags,
-		}
+		}.verify()
 	}
 
+	pub fn verify(self) -> Protocell {
+		assert!(self.den_prx_syn_reach >= 0 && self.den_dst_syn_reach >= 0, 
+			"Synapse reach must be between 0..127");
+
+		self
+	}
 	/* NEW_PYRAMIDAL(): 
 		- get rid of proximal source (maybe)
 	*/
@@ -70,7 +76,7 @@ impl Protocell {
 			den_thresh_init: Some(thresh),			
 			//den_prx_src_lyrs: Some(vec![prx_src]),
 			//flags: flags,
-		})
+		}.verify())
 	}
 
 	// SWITCH TO DISTAL
@@ -88,7 +94,7 @@ impl Protocell {
 			den_dst_syn_reach: prx_reach,
 			den_thresh_init: Some(thresh),
 			//flags: flags,
-		})
+		}.verify())
 	}
 
 	pub fn new_inhibitory(cols_per_cel_l2: u8, dst_src: &'static str) -> ProtolayerKind 
@@ -103,8 +109,9 @@ impl Protocell {
 			den_prx_syn_reach: 0,
 			den_dst_syn_reach: 0,
 			den_thresh_init: None,
-		})
+		}.verify())
 	}
+
 
 	// pub fn dst_src_lyrs_len(&self) -> u32 {
 	// 	match self.den_dst_src_lyrs {
