@@ -1,19 +1,15 @@
 // use std::collections::{ HashMap };
 use std::ops::{ Range };
-// use std::iter;
 
 use proto::{ Protolayer, ProtoareaMap, ProtoareaMaps, ProtolayerMap, ProtolayerMaps };
 use cmn::{ self, CorticalDims };
-use map::{ self, LayerFlags, /*SliceDims*/ };
+use map::{ self, LayerFlags, };
 
 
 #[derive(Clone)]
 pub struct LayerMap {
 	area_name: &'static str,
 	index: Vec<LayerInfo>,
-	// names: HashMap<&'static str, usize>,
-	// slices: HashMap<u8, usize>,
-	// flags: HashMap<LayerFlags, Vec<usize>>,
 }
 
 impl LayerMap {
@@ -29,11 +25,6 @@ impl LayerMap {
 		}
 
 		// println!("{mt}{mt}LAYERMAP::NEW(): index: {:?}", index, mt = cmn::MT);
-
-		// let names = HashMap::with_capacity(index.capacity());
-		// let slices = HashMap::with_capacity(index.capacity());
-		// let flags = HashMap::with_capacity(index.capacity());
-
 		LayerMap { area_name: pamap.name, index: index, /*names: names, slices: slices, flags: flags*/ }
 	}
 
@@ -44,36 +35,6 @@ impl LayerMap {
 
 	// [FIXME] TODO: Cache results. Use iterator mapping and filtering.
 	pub fn layer_src_info_by_flag(&self, flags: LayerFlags) -> Vec<&SourceLayerInfo> {
-		// let mut src_layers = Vec::with_capacity(8);
-
-		// // let comp_flagset = flags; // (flags & !map::INPUT) | map::OUTPUT;
-
-		// for layer in self.index.iter() {
-		// 	// println!("\n*** LAYERMAP::SANBF('{}', '{}'):L1: comp_flagset: '{:?}', layer.flags: '{:?}', Match: {}", 
-		// 	// 	self.area_name, layer.name, comp_flagset, layer.flags, layer.flags.contains(comp_flagset));
-
-		// 	if layer.flags.contains(flags) {
-		// 		// println!("*** LAYERMAP::SANBF('{}', '{}'):L2: layer.sources: '{:?}'", 
-		// 		// 	self.area_name, layer.name, layer.sources);
-
-		// 		for src_layer in layer.sources.iter() {
-		// 			// println!("*** LAYERMAP::SANBF('{}', '{}'):L3: comp_flagset: '{:?}', source_layer.flags: '{:?}'", 
-		// 			// 	self.area_name, layer.name, flags, source_layer.flags);
-
-		// 			// if src_layer.flags.contains(flags.mirror_io()) {
-		// 			// 	// names.push((source_layer.area_name, source_layer.flags));
-		// 			// 	src_layers.push(src_layer);
-		// 			// 	// println!("*** LAYERMAP::SANBF('{}', '{}'): Pushing: {}, {:?}", 
-		// 			// 	// 	self.area_name, layer.name, source_layer.area_name, source_layer.flags);
-		// 			// }
-		// 			debug_assert!(src_layer.flags.contains(flags.mirror_io()));
-		// 			src_layers.push(src_layer);
-		// 		}				
-		// 	}
-		// }
-
-		// src_layers
-
 		let mut src_layers = Vec::with_capacity(8);
 
 		for layer in self.layer_info_by_flag(flags).iter() {
@@ -96,7 +57,6 @@ impl LayerMap {
 
 		for lyr in layer_info {			
 			for src_lyr in lyr.src_info() {
-				// println!("   ###### SRC LAYER_INFO: {:?}", src_lyr);
 				if slc_id >= src_lyr.dst_slc_range().start 
 					&& slc_id < src_lyr.dst_slc_range().end
 				{
@@ -111,22 +71,6 @@ impl LayerMap {
 			None
 		}
 	}
-
-	// pub fn slc_src_layer_dims(&self, slc_id: u8, layer_flags: LayerFlags) -> Vec<&CorticalDims> {
-	// 	let mut src_layer_dims = Vec::with_capacity(8);
-	// 	let layer_info = self.layer_info_by_flag(layer_flags);
-
-	// 	for lyr in layer_info {
-	// 		if slc_id >= lyr.slc_idz() && slc_id <= lyr.slc_idm() {
-	// 			for src_lyr in lyr.src_info() {
-	// 				// println!("   ###### SRC LAYER_INFO: {:?}", src_lyr);
-	// 				src_layer_dims.push(src_lyr.dims());
-	// 			}
-	// 		}
-	// 	}
-
-	// 	src_layer_dims
-	// }
 }
 
 
@@ -134,10 +78,7 @@ impl LayerMap {
 pub struct LayerInfo {
 	name: &'static str,	
 	flags: LayerFlags,
-	// slices: Vec<u8>,
 	slc_range: Range<u8>,
-	// slc_idz: u8,
-	// depth: u8,
 	sources: Vec<SourceLayerInfo>,
 	axn_count: u32,
 	proto: Protolayer,
@@ -150,8 +91,6 @@ impl LayerInfo {
 		let name = protolayer.name;
 		let flags = protolayer.flags;
 		let slc_range = protolayer.base_slc_id..(protolayer.base_slc_id + protolayer.depth);
-		// let slc_idz = protolayer.base_slc_id;
-		// let depth = protolayer.depth;
 		let mut sources = Vec::with_capacity(8);
 
 		let mut base_slc_id = protolayer.base_slc_id;
@@ -159,16 +98,6 @@ impl LayerInfo {
 
 		// If layer is an input layer, add sources:
 		if flags.contains(map::INPUT) {
-			// let mut src_areas = Vec::with_capacity(pamap.aff_areas.len() + pamap.eff_areas.len());
-
-			// for area_name in pamap.aff_areas.iter() {
-			// 	src_areas.push((area_name, map::FEEDBACK));
-			// }
-
-			// for area_name in pamap.eff_areas.iter() {
-			// 	src_areas.push((area_name, map::FEEDFORWARD));
-			// }
-
 			let src_areas: Vec<(&'static str, LayerFlags)> = pamap.aff_areas.iter()
 				.map(|&an| (an, map::FEEDBACK)).chain(pamap.eff_areas.iter()
 					.map(|&an| (an, map::FEEDFORWARD))).collect();
@@ -188,8 +117,6 @@ impl LayerInfo {
 
 					for src_layer in src_layers.iter() {
 						let src_layer_axns = src_pamap.dims().columns()	* src_layer.depth() as u32;
-						// let slc_dims = SliceDims::new(src_pamap.dims(), Some(src_area_dims))
-						// 	.expect("LayerInfo::new(): Error calling 'SliceDims::new()'.");
 
 						sources.push(SourceLayerInfo::new(src_area_name, src_pamap.dims(), 
 							src_layer.flags, src_layer_axns, base_slc_id, (*src_layer).clone()));
@@ -204,12 +131,8 @@ impl LayerInfo {
 							mt = cmn::MT);
 					}
 				}
-
-				// println!("{mt}{mt}{mt}##### src_layers: {:?} :", src_layers, mt = cmn::MT);
 			} 
 
-			// println!("{mt}{mt}{mt}###### LayerInfo::new(): area: {}, layer: {}, SOURCE LAYERS: {:?}", 
-			// 	pamap.name, name, sources, mt = cmn::MT);
 		} else {
 			base_slc_id += protolayer.depth();
 			axn_count += pamap.dims().columns() * protolayer.depth() as u32;
@@ -223,8 +146,6 @@ impl LayerInfo {
 			name: name,
 			flags: protolayer.flags,
 			slc_range: slc_range,
-			// slc_idz: slc_idz,
-			// depth: depth,
 			sources: sources,
 			axn_count: axn_count,
 			proto: protolayer.clone(),
@@ -243,15 +164,6 @@ impl LayerInfo {
 		&self.slc_range
 	}
 
-	// pub fn slc_idz(&self) -> u8 {
-	// 	self.slc_range.start
-	// }
-
-	// pub fn slc_idn(&self) -> u8 {
-	// 	// assert!(self.slc_range.len() > 0);
-	// 	self.slc_range.end
-	// }
-
 	pub fn depth(&self) -> u8 {
 		self.slc_range.len() as u8
 	}
@@ -264,7 +176,6 @@ pub struct SourceLayerInfo {
 	dims: CorticalDims,
 	flags: LayerFlags,
 	dst_slc_range: Range<u8>,
-	// axn_count: u32,
 	protolayer: Protolayer,
 }
 
@@ -281,7 +192,6 @@ impl SourceLayerInfo {
 			dims: dims,
 			flags: flags, 
 			dst_slc_range: dst_slc_range,
-			// axn_count: axn_count, 
 			protolayer: protolayer,
 		}
 	}
