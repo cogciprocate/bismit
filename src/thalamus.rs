@@ -87,7 +87,7 @@ impl Thalamus {
 
 	// WRITE_INPUT(): <<<<< TODO: CHECK SIZES AND SCALE WHEN NECESSARY >>>>>
 	// pub fn write_input(&self, sdr: &Sdr, area: &mut CorticalArea) {		
-	// 	area.write_input(sdr, map::AFF_IN_OLD);
+	// 	area.write_input(sdr, map::FF_IN);
 	// }
 
 	pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerFlags) -> (&EventList, &Sdr) { 		
@@ -338,7 +338,7 @@ pub mod tests {
 	// }
 
 
-	/*	FORWARD_AFF_OUT_OLD(): Read afferent output from a cortical area and store it 
+	/*	FORWARD_FF_OUT(): Read afferent output from a cortical area and store it 
 		in our thalamus' cache (the 'tract').
 
 			TODO: RENAME OR BREAK UP
@@ -357,19 +357,19 @@ pub mod tests {
 
 	// 	areas.get(src_area_name).expect(&emsg_src).read_output(
 	// 		self.afferent_tract.output_ganglion(src_area_name, tar_area_name),
-	// 		map::AFF_OUT_OLD, 
+	// 		map::FF_OUT, 
 	// 	);		
 		
 	// 	areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
 	// 		self.afferent_tract.input_ganglion(tar_area_name),
-	// 		map::AFF_IN_OLD,
+	// 		map::FF_IN,
 	// 	);
 
 	// }
 
 	// pub fn read_afferent_output(&mut self, src_area_name &str, 
 
-	// BACKWARD_EFF_OUT_OLD():  Cause an efferent frame to descend
+	// BACKWARD_FB_OUT():  Cause an efferent frame to descend
 	// pub fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
 	// 			 areas: &mut CorticalAreas) 
 	// {
@@ -386,7 +386,7 @@ pub mod tests {
 		
 	// 	areas.get(src_area_name).expect(&emsg_src).read_output(
 	// 		self.efferent_tract.output_ganglion(src_area_name, tar_area_name), 
-	// 		map::EFF_OUT_OLD,
+	// 		map::FB_OUT,
 	// 	);
 	
 	// 	/* TEST */
@@ -394,7 +394,7 @@ pub mod tests {
 		
 	// 	areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
 	// 		self.efferent_tract.input_ganglion(tar_area_name), 
-	// 		map::EFF_IN_OLD,
+	// 		map::FB_IN,
 	// 	);
  // 	}
 

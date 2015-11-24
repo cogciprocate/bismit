@@ -18,9 +18,9 @@ pub fn define_protolayer_maps() -> ProtolayerMaps {
 		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
 		.layer("motor_in", 1, map::DEFAULT, Axonal(Horizontal))
 		//.layer("olfac", 1, map::DEFAULT, Axonal(Horizontal))
-		.layer("eff_in", 0, map::EFF_IN_OLD /*| map::INTERAREA*/, Axonal(Spatial))
-		.layer("aff_in", 0, map::AFF_IN_OLD /*| map::INTERAREA*/, Axonal(Spatial))
-		.layer("out", 1, map::AFF_OUT_OLD | map::EFF_OUT_OLD, Axonal(Spatial))
+		.layer("eff_in", 0, map::FB_IN /*| map::INTERAREA*/, Axonal(Spatial))
+		.layer("aff_in", 0, map::FF_IN /*| map::INTERAREA*/, Axonal(Spatial))
+		.layer("out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))
 		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, 
 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600, 8)) 
@@ -31,7 +31,7 @@ pub fn define_protolayer_maps() -> ProtolayerMaps {
 	);
 
 	proto_layer_maps.add(ProtolayerMap::new("external", Thalamic)
-		.layer("ganglion", 1, map::AFF_OUT_OLD, Axonal(Spatial))
+		.layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
 	);
 
 	proto_layer_maps
@@ -106,9 +106,9 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 	let mut plmaps = ProtolayerMaps::new();
 
 	plmaps.add(ProtolayerMap::new(lmap_name, Sensory)
-		.layer("eff_in", 0, map::EFF_IN_OLD, Axonal(Spatial))
-		.layer("aff_in", 0, map::AFF_IN_OLD, Axonal(Spatial))
-		.layer("out", 1, map::AFF_OUT_OLD | map::EFF_OUT_OLD, Axonal(Spatial))
+		.layer("eff_in", 0, map::FB_IN, Axonal(Spatial))
+		.layer("aff_in", 0, map::FF_IN, Axonal(Spatial))
+		.layer("out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))
 		.layer("test0", 1, map::DEFAULT, Axonal(Spatial))
 		.layer("test1", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("test2", 1, map::UNUSED_TESTING, Axonal(Spatial))
@@ -132,7 +132,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 	);
 
 	plmaps.add(ProtolayerMap::new("dummy_lm", Thalamic)
-		.layer("ganglion", 1, map::AFF_OUT_OLD, Axonal(Spatial))
+		.layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
 	);
 
 	let pamaps = ProtoareaMaps::new()

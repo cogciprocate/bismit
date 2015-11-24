@@ -77,7 +77,7 @@ impl InputSource {
 		debug_assert!(self.targets.len() == 1);
 		// let dst_area_name = self.targets[0];
 
-		// let mut ganglion = tract.ganglion_mut(self.area_name, map::AFF_OUT_OLD);
+		// let mut ganglion = tract.ganglion_mut(self.area_name, map::FF_OUT);
 
 		match self.kind {
 			InputSourceKind::IdxReader(ref mut ig) |
@@ -89,7 +89,7 @@ impl InputSource {
 
 		// for target in self.targets.iter() {
 			// areas.get_mut(target).expect("InputSource::next(): Invalid area name, 'targets' mismatch error.")
-			// 	.write_input(&self.ganglion, map::AFF_IN_OLD);
+			// 	.write_input(&self.ganglion, map::FF_IN);
 
 			// println!("\n##### INPUTSOURCE::NEXT(): Writing ganglion with len: {} to area: '{}': \n{:?}", 
 			// 	self.ganglion.len(), target, self.ganglion);

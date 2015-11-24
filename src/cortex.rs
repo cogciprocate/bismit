@@ -144,11 +144,11 @@ impl Drop for Cortex {
 	let mut sen = ProtolayerMap::new(Sensory)
 		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
 
-		.layer("eff_in", 1, map::EFF_IN_OLD, Axonal(Spatial))
+		.layer("eff_in", 1, map::FB_IN, Axonal(Spatial))
 
-		.layer("aff_in", 1, map::AFF_IN_OLD, Axonal(Spatial))
+		.layer("aff_in", 1, map::FF_IN, Axonal(Spatial))
 
-		.layer("aff_out", 1, map::AFF_OUT_OLD | map::EFF_OUT_OLD, Axonal(Spatial))
+		.layer("aff_out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))
 
 		.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["aff_in"], 256)) 
 		//.layer("vi", 5, map::DEFAULT, Protocell::new_spiny_stellate(3, vec!["thal"], 256)) 

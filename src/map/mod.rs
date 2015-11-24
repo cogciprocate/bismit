@@ -32,33 +32,30 @@ bitflags! {
 		const TEMPORAL_ASSOCIATIVE 	= 0b0000_0000_0000_0000__0000_0000_0010_0000 << 32,		
 		const UNUSED_TESTING		= 0b0000_0000_0000_0000__1000_0000_0000_0000 << 32,
 
-		const AFF_IN_OLD		= FEEDFORWARD.bits | INPUT.bits | SPATIAL.bits,
-		const AFF_OUT_OLD		= FEEDFORWARD.bits | OUTPUT.bits | SPATIAL.bits,
-		const EFF_IN_OLD		= FEEDBACK.bits | INPUT.bits | SPATIAL.bits,
-		const EFF_OUT_OLD		= FEEDBACK.bits | OUTPUT.bits | SPATIAL.bits,
+		const FF_IN			= FEEDFORWARD.bits | INPUT.bits | SPATIAL.bits,
+		const FF_OUT		= FEEDFORWARD.bits | OUTPUT.bits | SPATIAL.bits,
+		const FB_IN			= FEEDBACK.bits | INPUT.bits | SPATIAL.bits,
+		const FB_OUT		= FEEDBACK.bits | OUTPUT.bits | SPATIAL.bits,
 	}
 }
 
 impl LayerFlags {
-
-	// [FIXME]: TODO: Return result.
+	// [FIXME]: Consider: Return result instead of asserts?
 	pub fn mirror_io(&self) -> LayerFlags {
 		debug_assert!(!(self.contains(INPUT) && self.contains(OUTPUT)),
 			"LayerFlags::mirror_io(): LayerFlags input / output cannot be flipped if the bitfield \
 			contains both input and output flags active. [bits: '{:?}']", self);
 
-		// debug_assert!(self.contains(INPUT) == true, "DEBUG: Self contains input? '{:?}'", self);
-
-		// debug_assert!((self.bits & INPUT.bits) == INPUT.bits && (self.bits & OUTPUT.bits) == OUTPUT.bits, 
-		// 	"LayerFlags::mirror_io(): LayerFlags input / output cannot be flipped if the bitfield \
-		// 	contains neither input nor output flags. [bits: '{:?}']", self);
+		debug_assert!(self.bits & !(INPUT.bits & OUTPUT.bits) == self.bits,
+			"LayerFlags::mirror_io(): LayerFlags input / output cannot be flipped if the bitfield \
+			contains neither input nor output flags. [bits: '{:?}']", self);
 
 		let bits = if self.contains(INPUT) {
 			(self.bits & !INPUT.bits) | OUTPUT.bits
 		} else if self.contains(OUTPUT) {
 			(self.bits & !OUTPUT.bits) | INPUT.bits
 		} else {
-			panic!("LayerFlags::mirror_io():  Internal consistency error.");
+			panic!("LayerFlags::mirror_io(): Internal consistency error.");
 		};
 
 		LayerFlags { bits: bits }

@@ -281,7 +281,7 @@ pub fn run(autorun_iters: i32) -> bool {
 					let in_s1 = in_str.trim();
 					let out_len = cortex.area(&in_s).dims.columns();
 					let t_vec: Vec<u8> = iter::repeat(0).take(out_len as usize).collect();
-					// cortex.area_mut(&in_s).read_output(&mut t_vec, map::AFF_OUT_OLD);
+					// cortex.area_mut(&in_s).read_output(&mut t_vec, map::FF_OUT);
 					// ocl::fmt::print_vec_simple(&t_vec);
 					println!("\n##### PRINTING TEMPORARILY DISABLED #####");
 					continue;

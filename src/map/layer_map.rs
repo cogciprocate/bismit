@@ -37,34 +37,57 @@ impl LayerMap {
 		LayerMap { area_name: pamap.name, index: index, /*names: names, slices: slices, flags: flags*/ }
 	}
 
-	// [FIXME] Cache results.
-	pub fn src_area_names_by_flag(&self, flags: LayerFlags) -> Vec<(&'static str, LayerFlags)> {
-		let mut names = Vec::with_capacity(8);
+	// [FIXME] TODO: Cache results.
+	pub fn layer_info_by_flag(&self, flags: LayerFlags) -> Vec<&LayerInfo> {
+		self.index.iter().filter(|li| li.flags.contains(flags)).map(|li| li).collect()
+	}
 
-		// let comp_flagset = flags; // (flags & !map::INPUT) | map::OUTPUT;
+	// [FIXME] TODO: Cache results. Use iterator mapping and filtering.
+	pub fn layer_src_info_by_flag(&self, flags: LayerFlags) -> Vec<&SourceLayerInfo> {
+		// let mut src_layers = Vec::with_capacity(8);
 
-		for layer in self.index.iter() {
-			// println!("\n*** LAYERMAP::SANBF('{}', '{}'):L1: comp_flagset: '{:?}', layer.flags: '{:?}', Match: {}", 
-			// 	self.area_name, layer.name, comp_flagset, layer.flags, layer.flags.contains(comp_flagset));
+		// // let comp_flagset = flags; // (flags & !map::INPUT) | map::OUTPUT;
 
-			if layer.flags.contains(flags) {
-				// println!("*** LAYERMAP::SANBF('{}', '{}'):L2: layer.sources: '{:?}'", 
-				// 	self.area_name, layer.name, layer.sources);
+		// for layer in self.index.iter() {
+		// 	// println!("\n*** LAYERMAP::SANBF('{}', '{}'):L1: comp_flagset: '{:?}', layer.flags: '{:?}', Match: {}", 
+		// 	// 	self.area_name, layer.name, comp_flagset, layer.flags, layer.flags.contains(comp_flagset));
 
-				for source_layer in layer.sources.iter() {
-					// println!("*** LAYERMAP::SANBF('{}', '{}'):L3: comp_flagset: '{:?}', source_layer.flags: '{:?}'", 
-					// 	self.area_name, layer.name, flags, source_layer.flags);
+		// 	if layer.flags.contains(flags) {
+		// 		// println!("*** LAYERMAP::SANBF('{}', '{}'):L2: layer.sources: '{:?}'", 
+		// 		// 	self.area_name, layer.name, layer.sources);
 
-					if source_layer.flags.contains(flags.mirror_io()) {
-						names.push((source_layer.area_name, source_layer.flags));
-						// println!("*** LAYERMAP::SANBF('{}', '{}'): Pushing: {}, {:?}", 
-						// 	self.area_name, layer.name, source_layer.area_name, source_layer.flags);
-					}
-				}				
+		// 		for src_layer in layer.sources.iter() {
+		// 			// println!("*** LAYERMAP::SANBF('{}', '{}'):L3: comp_flagset: '{:?}', source_layer.flags: '{:?}'", 
+		// 			// 	self.area_name, layer.name, flags, source_layer.flags);
+
+		// 			// if src_layer.flags.contains(flags.mirror_io()) {
+		// 			// 	// names.push((source_layer.area_name, source_layer.flags));
+		// 			// 	src_layers.push(src_layer);
+		// 			// 	// println!("*** LAYERMAP::SANBF('{}', '{}'): Pushing: {}, {:?}", 
+		// 			// 	// 	self.area_name, layer.name, source_layer.area_name, source_layer.flags);
+		// 			// }
+		// 			debug_assert!(src_layer.flags.contains(flags.mirror_io()));
+		// 			src_layers.push(src_layer);
+		// 		}				
+		// 	}
+		// }
+
+		// src_layers
+
+		let mut src_layers = Vec::with_capacity(8);
+
+		for layer in self.layer_info_by_flag(flags).iter() {
+			for src_layer in layer.sources.iter() {
+				debug_assert!(src_layer.flags.contains(flags.mirror_io()));
+				src_layers.push(src_layer);
 			}
 		}
 
-		names
+		src_layers
+	}
+
+	pub fn layer_src_area_names_by_flag(&self, flags: LayerFlags) -> Vec<&'static str> {
+		self.layer_src_info_by_flag(flags).iter().map(|sli| sli.area_name()).collect()
 	}
 }
 
@@ -85,25 +108,24 @@ impl LayerInfo {
 				plmaps: &ProtolayerMaps) -> LayerInfo {
 		let name = protolayer.name;
 		let flags = protolayer.flags;
-		// let slices = (protolayer.base_slc_id..(protolayer.base_slc_id + protolayer.depth)).collect();
 		let slice_range = protolayer.base_slc_id..(protolayer.base_slc_id + protolayer.depth);
 		let mut sources = Vec::with_capacity(8);
 
-		// println!("{mt}{mt}LAYERINFO::NEW(): layer: {:?}", protolayer, mt = cmn::MT);
-
+		// If layer is an input layer, add sources:
 		if flags.contains(map::INPUT) {
-			// let mut src_area_names = pamap.aff_areas.clone();
-			// src_area_names.extend(pamap.eff_areas.iter().cloned());
+			// let mut src_areas = Vec::with_capacity(pamap.aff_areas.len() + pamap.eff_areas.len());
 
-			let mut src_areas = Vec::with_capacity(pamap.aff_areas.len() + pamap.eff_areas.len());
+			// for area_name in pamap.aff_areas.iter() {
+			// 	src_areas.push((area_name, map::FEEDBACK));
+			// }
 
-			for area_name in pamap.aff_areas.iter() {
-				src_areas.push((area_name, "aff"));
-			}
+			// for area_name in pamap.eff_areas.iter() {
+			// 	src_areas.push((area_name, map::FEEDFORWARD));
+			// }
 
-			for area_name in pamap.eff_areas.iter() {
-				src_areas.push((area_name, "eff"));
-			}
+			let src_areas: Vec<(&'static str, LayerFlags)> = pamap.aff_areas.iter()
+				.map(|&an| (an, map::FEEDBACK)).chain(pamap.eff_areas.iter()
+					.map(|&an| (an, map::FEEDFORWARD))).collect();
 
 			// For each potential source area (aff or eff):
 			// - get that area's layers
@@ -111,23 +133,25 @@ impl LayerInfo {
 			//    - other flags identical
 			// - filter out feedback from eff areas and feedforward from aff areas
 			// - push what's left to sources
-			for &(src_area_name, src_area_type) in src_areas.iter() {
-				let layer_map_name = pamaps.maps().get(src_area_name).expect("LayerInfo::new()")
-					.layer_map_name;
-				let src_layer_map = &plmaps[layer_map_name];
-				let src_layers = src_layer_map.layers_with_flags(flags.mirror_io());				
+			for (src_area_name, src_area_flow) in src_areas {
+				// Our layer must contain the flow direction flag corresponding with the source area.
+				if flags.contains(src_area_flow) {
+					let src_pamap = pamaps.maps().get(src_area_name).expect("LayerInfo::new()");
+					let src_layer_map = &plmaps[src_pamap.layer_map_name];
+					let src_layers = src_layer_map.layers_with_flags(flags.mirror_io() | src_area_flow);
 
-				for src_layer in src_layers.iter() {
-					if src_area_type == "eff" && flags.contains(map::FEEDFORWARD)
-						|| src_area_type == "aff" && flags.contains(map::FEEDBACK)
-					{
+					for src_layer in src_layers.iter() {
+						let src_layer_len = src_pamap.dims().columns() as usize 
+							* src_layer.depth() as usize;
+
 						sources.push(SourceLayerInfo::new(src_area_name, src_layer.flags, 
-							(*src_layer).clone()));
+							src_layer_len, (*src_layer).clone()));
 
-						println!("{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding '{}' source layer: \
-							src_area_name: '{}', src_layer_map.name: '{}', src_layer.name: '{}', \
-							src_layer.flags: '{:?}'", name, src_area_type, src_area_name, src_layer_map.name, 
-							src_layer.name, src_layer.flags, mt = cmn::MT);
+						println!("{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding source layer: \
+							src_area_name: '{}', src_area_flow: '{:?}', src_layer_map.name: '{}', \
+							src_layer.name: '{}', src_layer.flags: '{:?}'", name, src_area_name, 
+							src_area_flow, src_layer_map.name, src_layer.name, src_layer.flags, 
+							mt = cmn::MT);
 					}
 				}
 
@@ -146,6 +170,19 @@ impl LayerInfo {
 			proto: protolayer.clone(),
 		}
 	}
+
+	pub fn src_info(&self) -> &Vec<SourceLayerInfo>  {
+		// let mut src_layers = Vec::with_capacity(8);
+
+		// for src_layer in self.sources.iter() {
+		// 	if src_layer.flags.contains(flags.mirror_io()) {
+		// 		src_layers.push(src_layer);
+		// 		// println!("*** LAYERMAP::SANBF('{}', '{}'): Pushing: {}, {:?}", 
+		// 		// 	self.area_name, layer.name, source_layer.area_name, source_layer.flags);
+		// 	}
+		// }
+		&self.sources
+	}
 }
 
 
@@ -153,14 +190,21 @@ impl LayerInfo {
 pub struct SourceLayerInfo {
 	area_name: &'static str,
 	flags: LayerFlags,
+	len: usize,
 	proto: Protolayer,
 }
 
 impl SourceLayerInfo {
-	pub fn new(area_name: &'static str, flags: LayerFlags, proto: Protolayer) -> SourceLayerInfo {
+	pub fn new(area_name: &'static str, flags: LayerFlags, len: usize, proto: Protolayer
+		) -> SourceLayerInfo 
+	{
 		SourceLayerInfo {
-			area_name: area_name, flags: flags, proto: proto,
+			area_name: area_name, flags: flags, len: len, proto: proto,
 		}
+	}
+
+	pub fn area_name(&self) -> &'static str {
+		self.area_name
 	}
 }
 

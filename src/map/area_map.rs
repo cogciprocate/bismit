@@ -50,9 +50,9 @@ impl AreaMap {
 			&dims,
 			&pamap.eff_areas, // EFF AREAS
 			&pamap.aff_areas, // AFF AREAS
-			plmap.layer_with_flag(map::AFF_IN_OLD), // AFF INPUT LAYER			
-			plmap.layer_with_flag(map::EFF_IN_OLD), // EFF INPUT LAYER
-			plmap.layer_with_flag(map::AFF_OUT_OLD), // AFF & EFF OUTPUT LAYER
+			plmap.layer_with_flag(map::FF_IN), // AFF INPUT LAYER			
+			plmap.layer_with_flag(map::FB_IN), // EFF INPUT LAYER
+			plmap.layer_with_flag(map::FF_OUT), // AFF & EFF OUTPUT LAYER
 			pamaps,
 		);
 
@@ -87,45 +87,34 @@ impl AreaMap {
 		}
 	}
 
-	pub fn src_area_names_by_flag(&self, layer_flags: LayerFlags) -> Vec<(&'static str, LayerFlags)> {
-		// if layer_flags == map::EFF_IN_OLD {
-		// 	//panic!("Fix me");
-		// 	&self.pamap.aff_areas
-		// } else if layer_flags == map::AFF_IN_OLD {
-		// 	//panic!("Fix me");
-		// 	&self.pamap.eff_areas
-		// } else {
-		// 	panic!("\nAreaMap::src_area_names_by_flag(): Can only be called with an \
-		// 		input layer flag (afferent or efferent) as argument");
-		// }		
-
-		self.layers.src_area_names_by_flag(layer_flags)
-	}
+	// pub fn layer_src_info_by_flag(&self, layer_flags: LayerFlags) -> Vec<(&'static str, LayerFlags)> {
+	// 	self.layers.layer_src_info_by_flag(layer_flags)
+	// }
 
 	// LAYER_SOURCE_AREA_INFO(): DEPRICATE THIS UGLY BASTARD
 	pub fn layer_source_area_info(&self, layer_flags: LayerFlags) -> (&Protolayer, u32) {
 		let emsg = format!("\nAreaMap:: `{:?}` flag not set for any layer in area: `{}`.", 
 			layer_flags, self.area_name);
 
-		if layer_flags.contains(map::AFF_IN_OLD) {
+		if layer_flags.contains(map::FF_IN) {
 			//println!("##### AFF IN CONTAINED");
 			match &self.ia_cache.aff_in_layer { 
 				&Some(ref l) => (l, self.ia_cache.eff_areas.axns_sum()), 
 				&None => panic!(emsg), 
 			}
-		} else if layer_flags.contains(map::EFF_IN_OLD) {
+		} else if layer_flags.contains(map::FB_IN) {
 			//println!("##### EFF IN CONTAINED");
 			match &self.ia_cache.eff_in_layer { 
 				&Some(ref l) => (l, self.ia_cache.aff_areas.axns_sum()), 
 				&None => panic!(emsg), 
 			}
-		} else if layer_flags.contains(map::AFF_OUT_OLD) {
+		} else if layer_flags.contains(map::FF_OUT) {
 			//println!("##### AFF OUT CONTAINED");
 			match &self.ia_cache.out_layer { 
 				&Some(ref l) => (l, self.dims.columns()), 
 				&None => panic!(emsg), 
 			} 
-		} else if layer_flags.contains(map::EFF_OUT_OLD) { // REDUNDANT (MERGE WITH ABOVE)
+		} else if layer_flags.contains(map::FB_OUT) { // REDUNDANT (MERGE WITH ABOVE)
 			//println!("##### EFF OUT CONTAINED");
 			match &self.ia_cache.out_layer { 
 				&Some(ref l) => (l, self.dims.columns()), 
@@ -188,7 +177,13 @@ impl AreaMap {
 
 	pub fn axn_range_by_flag(&self, layer_flags: LayerFlags) -> Range<u32> {				
 		let (layer, layer_len) = self.layer_source_area_info(layer_flags);
+		// let layers = self.layers.layer_info_by_flag(layer_flags);
+		// assert!(layers.len() == 1, "AreaMap::axn_range_by_flag(): [FIXME]: Axon range \
+		// 	can not yet be calculated for more than one source layer / area. Flags: {:?}",
+		// 	layer_flags);
+
 		let layer_idz = self.axn_idz(layer.base_slc_id);
+
 		layer_idz..(layer_idz + layer_len)
 	}
 
@@ -230,6 +225,10 @@ impl AreaMap {
 
 	pub fn slices(&self) -> &SliceMap {
 		&self.slices
+	}
+
+	pub fn layers(&self) -> &LayerMap {
+		&self.layers
 	}
 
 	pub fn dims(&self) -> &CorticalDims {
@@ -291,10 +290,10 @@ impl InterAreaInfoCache {
 	}
 
 	pub fn src_area_for_slc(&self, slc_id: u8, flags: LayerFlags) -> Option<&SourceAreaInfo> {
-		let (layer_src_areas, layer_opt) = if flags.contains(map::AFF_IN_OLD) {
+		let (layer_src_areas, layer_opt) = if flags.contains(map::FF_IN) {
 			// println!("##### AFF -> slc_id: {}, flags: {:?}", slc_id, flags);
 			(&self.eff_areas, &self.aff_in_layer)			
-		} else if flags.contains(map::EFF_IN_OLD) {			
+		} else if flags.contains(map::FB_IN) {			
 			// println!("##### EFF -> slc_id: {}, flags: {:?}", slc_id, flags);
 			(&self.aff_areas, &self.eff_in_layer)
 		} else {

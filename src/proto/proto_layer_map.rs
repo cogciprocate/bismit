@@ -208,8 +208,8 @@ impl ProtolayerMap {
 			return;
 		} else {			
 			// FEEDFORWARD INPUT COMES FROM FEEDBACK AREAS, FEEDBACK INPUT COMES FROM FEEDFORWARD AREAS
-			self.set_layers_depth(map::AFF_IN_OLD, protoarea.eff_areas.len() as u8);
-			self.set_layers_depth(map::EFF_IN_OLD, protoarea.aff_areas.len() as u8);
+			self.set_layers_depth(map::FF_IN, protoarea.eff_areas.len() as u8);
+			self.set_layers_depth(map::FB_IN, protoarea.aff_areas.len() as u8);
 			self.frozen = true;
 		}		
 
@@ -533,7 +533,7 @@ impl ProtolayerMap {
  		let mut output_slcs: Vec<u8> = Vec::with_capacity(4);
  		
  		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.flags & map::AFF_OUT_OLD) == map::AFF_OUT_OLD {
+ 			if (layer.flags & map::FF_OUT) == map::FF_OUT {
  				let v = self.slc_ids(vec![layer.name]);
  				output_slcs.push_all(&v);
  			}
