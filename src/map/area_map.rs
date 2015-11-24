@@ -5,9 +5,9 @@ use std::ops::{ Range };
 //use std::num::ToString;
 
 use ocl::{ BuildConfig, BuildOpt };
-use proto::{ ProtolayerMaps, ProtolayerMap, Protolayer, ProtoareaMaps, ProtoareaMap };
+use proto::{ ProtolayerMaps, ProtolayerMap, /*Protolayer,*/ ProtoareaMaps, ProtoareaMap };
 use cmn::{ self, CorticalDims };
-use map::{ self, SliceMap, SliceDims, LayerFlags, LayerMap, LayerSourceAreas, SourceAreaInfo };
+use map::{ self, SliceMap, LayerFlags, LayerMap, /*LayerSourceAreas, SourceAreaInfo*/ };
 // use map::slice_map;
 
 // 	AREAMAP { }:
@@ -17,7 +17,7 @@ use map::{ self, SliceMap, SliceDims, LayerFlags, LayerMap, LayerSourceAreas, So
 pub struct AreaMap {
 	area_name: &'static str,
 	dims: CorticalDims,
-	ia_cache: InterAreaInfoCache,
+	// ia_cache: InterAreaInfoCache,
 	slices: SliceMap,
 	layers: LayerMap,
 	hrz_demarc: u8,
@@ -46,24 +46,24 @@ impl AreaMap {
 		let hrz_demarc = plmap.hrz_demarc();
 		// let area_name = pamap.name;
 
-		let ia_cache = InterAreaInfoCache::new(
-			&dims,
-			&pamap.eff_areas, // EFF AREAS
-			&pamap.aff_areas, // AFF AREAS
-			plmap.layer_with_flag(map::FF_IN), // AFF INPUT LAYER			
-			plmap.layer_with_flag(map::FB_IN), // EFF INPUT LAYER
-			plmap.layer_with_flag(map::FF_OUT), // AFF & EFF OUTPUT LAYER
-			pamaps,
-		);
-
-		let slices = SliceMap::new(&dims, &pamap, &plmap, &ia_cache);
+		// let ia_cache = InterAreaInfoCache::new(
+		// 	&dims,
+		// 	&pamap.eff_areas, // EFF AREAS
+		// 	&pamap.aff_areas, // AFF AREAS
+		// 	plmap.layer_with_flag(map::FF_IN), // AFF INPUT LAYER			
+		// 	plmap.layer_with_flag(map::FB_IN), // EFF INPUT LAYER
+		// 	plmap.layer_with_flag(map::FF_OUT), // AFF & EFF OUTPUT LAYER
+		// 	pamaps,
+		// );
 
 		let layers = LayerMap::new(&pamap, &plmap, pamaps, plmaps);
+
+		let slices = SliceMap::new(&dims, &pamap, &plmap, /*&ia_cache,*/ &layers);
 
 		AreaMap {
 			area_name: pamap.name,
 			dims: dims,
-			ia_cache: ia_cache,
+			// ia_cache: ia_cache,
 			slices: slices,
 			layers: layers,
 			hrz_demarc: hrz_demarc,
@@ -71,62 +71,31 @@ impl AreaMap {
 			plmap: plmap,
 			//emsg: emsg,
 		}
-	}	
-
-	pub fn slc_src_area_dims(&self, slc_id: u8, layer_flags: LayerFlags) -> &SliceDims {
-		//self.plmap.layer_with_flag(layer_flags).expect("Cannot find layer").layer_base_slc()
-
-		// GET SOURCE AREA DIMS!
-		// 		- get layer name
-		// 		- get layer slice list
-		// 		- return 
-		match self.ia_cache.src_area_for_slc(slc_id, layer_flags) {
-			Some(ref area) => area.dims(),
-			None => panic!("AreaMap:: Cannot find a slice with id: `{}` and flags: `{:?}`.", 
-				slc_id, layer_flags),
-		}
 	}
 
-	// pub fn layer_src_info_by_flag(&self, layer_flags: LayerFlags) -> Vec<(&'static str, LayerFlags)> {
-	// 	self.layers.layer_src_info_by_flag(layer_flags)
-	// }
+	pub fn slc_src_layer_dims(&self, slc_id: u8, layer_flags: LayerFlags) -> Option<&CorticalDims> {
+		// match self.ia_cache.src_area_for_slc(slc_id, layer_flags) {
+		// 	Some(ref area) => area.dims(),
+		// 	None => panic!("AreaMap:: Cannot find a slice with id: `{}` and flags: `{:?}`.", 
+		// 		slc_id, layer_flags),
+		// }
 
-	// LAYER_SOURCE_AREA_INFO(): DEPRICATE THIS UGLY BASTARD
-	pub fn layer_source_area_info(&self, layer_flags: LayerFlags) -> (&Protolayer, u32) {
-		let emsg = format!("\nAreaMap:: `{:?}` flag not set for any layer in area: `{}`.", 
-			layer_flags, self.area_name);
+		// let mut src_layer_dims = Vec::with_capacity(8);
+		// let layer_info = self.layers.layer_info_by_flag(layer_flags);
 
-		if layer_flags.contains(map::FF_IN) {
-			//println!("##### AFF IN CONTAINED");
-			match &self.ia_cache.aff_in_layer { 
-				&Some(ref l) => (l, self.ia_cache.eff_areas.axns_sum()), 
-				&None => panic!(emsg), 
-			}
-		} else if layer_flags.contains(map::FB_IN) {
-			//println!("##### EFF IN CONTAINED");
-			match &self.ia_cache.eff_in_layer { 
-				&Some(ref l) => (l, self.ia_cache.aff_areas.axns_sum()), 
-				&None => panic!(emsg), 
-			}
-		} else if layer_flags.contains(map::FF_OUT) {
-			//println!("##### AFF OUT CONTAINED");
-			match &self.ia_cache.out_layer { 
-				&Some(ref l) => (l, self.dims.columns()), 
-				&None => panic!(emsg), 
-			} 
-		} else if layer_flags.contains(map::FB_OUT) { // REDUNDANT (MERGE WITH ABOVE)
-			//println!("##### EFF OUT CONTAINED");
-			match &self.ia_cache.out_layer { 
-				&Some(ref l) => (l, self.dims.columns()), 
-				&None => panic!(emsg), 
-			} 
-		} else { 
-			//println!("##### CALCULATING LAYER LENGTH OLD SCHOOL");
-			let l = self.plmap.layer_with_flag(layer_flags).expect(&emsg);
-			//let layer_len = axn_idz_2d(l.base_slc_id, self.dims.columns(), self.hrz_demarc);
-			let layer_len = self.dims.columns();
-			(l, layer_len)
-		}
+		// // println!("### LAYER_INFO (len:{}): {:?}", layer_info.len(), layer_info);
+
+		// for lyr in layer_info {
+		// 	if slc_id >= lyr.slc_range().start && slc_id < lyr.slc_range().end {
+		// 		for src_lyr in lyr.src_info() {
+		// 			// println!("   ###### SRC LAYER_INFO: {:?}", src_lyr);
+		// 			src_layer_dims.push(src_lyr.dims());
+		// 		}
+		// 	}
+		// }
+
+		// src_layer_dims
+		self.layers.slc_src_layer_info(slc_id, layer_flags).map(|sli| sli.dims())
 	}
 
 	// ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
@@ -176,13 +145,26 @@ impl AreaMap {
 	}
 
 	pub fn axn_range_by_flag(&self, layer_flags: LayerFlags) -> Range<u32> {				
-		let (layer, layer_len) = self.layer_source_area_info(layer_flags);
-		// let layers = self.layers.layer_info_by_flag(layer_flags);
-		// assert!(layers.len() == 1, "AreaMap::axn_range_by_flag(): [FIXME]: Axon range \
-		// 	can not yet be calculated for more than one source layer / area. Flags: {:?}",
-		// 	layer_flags);
+		// let (layer, layer_len) = self.layer_source_area_info(layer_flags);
+		let layers = self.layers.layer_info_by_flag(layer_flags);
+		assert!(layers.len() == 1, "AreaMap::axn_range_by_flag(): Axon range \
+			can not be calculated for more than one layer at a time. Flags: {:?}",
+			layer_flags);
 
-		let layer_idz = self.axn_idz(layer.base_slc_id);
+		// let layer_idz = self.axn_idz(layer.base_slc_id);
+		let layer_idz = self.axn_idz(layers[0].slc_range().start);
+		let layer_len = layers[0].axn_count();
+
+		debug_assert!({
+				let slc_idm = layers[0].slc_range().start + layers[0].depth() - 1;
+				let slc_len = self.slices.slc_axn_count(slc_idm);
+				let axn_idz = self.axn_idz(slc_idm);
+				let axn_idn = axn_idz + slc_len;
+				// println!("\n\n# (layer_idz, layer_len) = ({}, {}), axn_idn = {}, \
+				// 	slc_len = {}, axn_idz = {}, \n# layer: {:?}\n", 
+				// 	layer_idz, layer_len, axn_idn, slc_len, axn_idz, layers[0]);
+				(layer_idz + layer_len) == axn_idn
+			}, "AreaMap::axn_range(): Axon index mismatch.");
 
 		layer_idz..(layer_idz + layer_len)
 	}
@@ -255,67 +237,67 @@ pub fn literal_list<T: Display>(vec: &Vec<T>) -> String {
 
 
 
-#[derive(Clone)]
+// #[derive(Clone)]
 // NEEDS RENAME & INTEGRATION WITH / CONVERSION TO LAYERMAP
 // [FIXME] TODO: DEPRICATE
-pub struct InterAreaInfoCache {
-	pub eff_areas: LayerSourceAreas, // eff. areas -> aff. input layer	
-	pub aff_areas: LayerSourceAreas, // aff. areas -> eff. input layer
-	pub aff_in_layer: Option<Protolayer>,
-	pub eff_in_layer: Option<Protolayer>,
-	pub out_layer: Option<Protolayer>,
-}
+// pub struct InterAreaInfoCache {
+// 	pub eff_areas: LayerSourceAreas, // eff. areas -> aff. input layer	
+// 	pub aff_areas: LayerSourceAreas, // aff. areas -> eff. input layer
+// 	pub aff_in_layer: Option<Protolayer>,
+// 	pub eff_in_layer: Option<Protolayer>,
+// 	pub out_layer: Option<Protolayer>,
+// }
 
-impl InterAreaInfoCache {
-	pub fn new(
-				area_dims: &CorticalDims,
-				eff_area_names: &Vec<&'static str>, 
-				aff_area_names: &Vec<&'static str>, 
-				aff_in_layer: Option<&Protolayer>, 				
-				eff_in_layer: Option<&Protolayer>,
-				out_layer: Option<&Protolayer>,
-				pamaps: &ProtoareaMaps,
-			) -> InterAreaInfoCache 
-	{
-		let eff_areas = LayerSourceAreas::new(area_dims, eff_area_names, pamaps);
-		let aff_areas = LayerSourceAreas::new(area_dims, aff_area_names, pamaps);
+// impl InterAreaInfoCache {
+// 	pub fn new(
+// 				area_dims: &CorticalDims,
+// 				eff_area_names: &Vec<&'static str>, 
+// 				aff_area_names: &Vec<&'static str>, 
+// 				aff_in_layer: Option<&Protolayer>, 				
+// 				eff_in_layer: Option<&Protolayer>,
+// 				out_layer: Option<&Protolayer>,
+// 				pamaps: &ProtoareaMaps,
+// 			) -> InterAreaInfoCache 
+// 	{
+// 		let eff_areas = LayerSourceAreas::new(area_dims, eff_area_names, pamaps);
+// 		let aff_areas = LayerSourceAreas::new(area_dims, aff_area_names, pamaps);
 
-		InterAreaInfoCache { 
-			eff_areas: eff_areas, 			
-			aff_areas: aff_areas, 
-			aff_in_layer: aff_in_layer.map(|l| l.clone()),
-			eff_in_layer: eff_in_layer.map(|l| l.clone()),
-			out_layer: out_layer.map(|l| l.clone()),
-		}
-	}
+// 		InterAreaInfoCache { 
+// 			eff_areas: eff_areas, 			
+// 			aff_areas: aff_areas, 
+// 			aff_in_layer: aff_in_layer.map(|l| l.clone()),
+// 			eff_in_layer: eff_in_layer.map(|l| l.clone()),
+// 			out_layer: out_layer.map(|l| l.clone()),
+// 		}
+// 	}
 
-	pub fn src_area_for_slc(&self, slc_id: u8, flags: LayerFlags) -> Option<&SourceAreaInfo> {
-		let (layer_src_areas, layer_opt) = if flags.contains(map::FF_IN) {
-			// println!("##### AFF -> slc_id: {}, flags: {:?}", slc_id, flags);
-			(&self.eff_areas, &self.aff_in_layer)			
-		} else if flags.contains(map::FB_IN) {			
-			// println!("##### EFF -> slc_id: {}, flags: {:?}", slc_id, flags);
-			(&self.aff_areas, &self.eff_in_layer)
-		} else {
-			// println!("##### NONE -> slc_id: {}, flags: {:?}", slc_id, flags);
-			return None
-		};
+// 	pub fn src_area_for_slc(&self, slc_id: u8, flags: LayerFlags) -> Option<&SourceAreaInfo> {
+// 		let (layer_src_areas, layer_opt) = if flags.contains(map::FF_IN) {
+// 			// println!("##### AFF -> slc_id: {}, flags: {:?}", slc_id, flags);
+// 			(&self.eff_areas, &self.aff_in_layer)			
+// 		} else if flags.contains(map::FB_IN) {			
+// 			// println!("##### EFF -> slc_id: {}, flags: {:?}", slc_id, flags);
+// 			(&self.aff_areas, &self.eff_in_layer)
+// 		} else {
+// 			// println!("##### NONE -> slc_id: {}, flags: {:?}", slc_id, flags);
+// 			return None
+// 		};
 
-		match layer_opt {
-			&Some(ref layer) => {
-				if slc_id >= layer.base_slc_id && slc_id < layer.base_slc_id + layer.depth {
-					assert!(layer.depth as usize == layer_src_areas.len());
-					let layer_sub_idx = slc_id - layer.base_slc_id;					
-					let src_area_info = layer_src_areas.area_info_by_idx(layer_sub_idx);
-					Some(src_area_info)
-				} else {
-					return None;
-				}
-			},
-			&None => None,
-		}
-	}
-}
+// 		match layer_opt {
+// 			&Some(ref layer) => {
+// 				if slc_id >= layer.base_slc_id && slc_id < layer.base_slc_id + layer.depth {
+// 					assert!(layer.depth as usize == layer_src_areas.len());
+// 					let layer_sub_idx = slc_id - layer.base_slc_id;					
+// 					let src_area_info = layer_src_areas.area_info_by_idx(layer_sub_idx);
+// 					Some(src_area_info)
+// 				} else {
+// 					return None;
+// 				}
+// 			},
+// 			&None => None,
+// 		}
+// 	}
+// }
 
 // fn clone_rewrap_layer(pl_ref_opt: Option<&Protolayer>) -> Option<Protolayer> {
 // 	match pl_ref_opt {
@@ -428,6 +410,49 @@ pub mod tests {
 	}
 }
 
+
+
+	// pub fn layer_src_info_by_flag(&self, layer_flags: LayerFlags) -> Vec<(&'static str, LayerFlags)> {
+	// 	self.layers.layer_src_info_by_flag(layer_flags)
+	// }
+
+	// LAYER_SOURCE_AREA_INFO(): DEPRICATE THIS UGLY BASTARD
+	// pub fn layer_source_area_info(&self, layer_flags: LayerFlags) -> (&Protolayer, u32) {
+	// 	let emsg = format!("\nAreaMap:: `{:?}` flag not set for any layer in area: `{}`.", 
+	// 		layer_flags, self.area_name);
+
+	// 	if layer_flags.contains(map::FF_IN) {
+	// 		//println!("##### AFF IN CONTAINED");
+	// 		match &self.ia_cache.aff_in_layer { 
+	// 			&Some(ref l) => (l, self.ia_cache.eff_areas.axns_sum()), 
+	// 			&None => panic!(emsg), 
+	// 		}
+	// 	} else if layer_flags.contains(map::FB_IN) {
+	// 		//println!("##### EFF IN CONTAINED");
+	// 		match &self.ia_cache.eff_in_layer { 
+	// 			&Some(ref l) => (l, self.ia_cache.aff_areas.axns_sum()), 
+	// 			&None => panic!(emsg), 
+	// 		}
+	// 	} else if layer_flags.contains(map::FF_OUT) {
+	// 		//println!("##### AFF OUT CONTAINED");
+	// 		match &self.ia_cache.out_layer { 
+	// 			&Some(ref l) => (l, self.dims.columns()), 
+	// 			&None => panic!(emsg), 
+	// 		} 
+	// 	} else if layer_flags.contains(map::FB_OUT) { // REDUNDANT (MERGE WITH ABOVE)
+	// 		//println!("##### EFF OUT CONTAINED");
+	// 		match &self.ia_cache.out_layer { 
+	// 			&Some(ref l) => (l, self.dims.columns()), 
+	// 			&None => panic!(emsg), 
+	// 		} 
+	// 	} else { 
+	// 		//println!("##### CALCULATING LAYER LENGTH OLD SCHOOL");
+	// 		let l = self.plmap.layer_with_flag(layer_flags).expect(&emsg);
+	// 		//let layer_len = axn_idz_2d(l.base_slc_id, self.dims.columns(), self.hrz_demarc);
+	// 		let layer_len = self.dims.columns();
+	// 		(l, layer_len)
+	// 	}
+	// }
 
 
 /* AXN_IDX_2D(): Host side address resolution - concerned with start idx of a slc

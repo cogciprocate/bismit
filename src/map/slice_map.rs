@@ -2,7 +2,7 @@
 use ocl::{ self, EnvoyDims };
 use proto::{ ProtolayerMap, ProtoareaMap };
 use cmn::{ self, CorticalDims, HexTilePlane };
-use map::{ area_map, InterAreaInfoCache, SliceDims };
+use map::{ area_map, /*InterAreaInfoCache,*/ SliceDims, LayerMap };
 
 
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ pub struct SliceMap {
 
 impl SliceMap {
 	pub fn new(area_dims: &CorticalDims, pamap: &ProtoareaMap, plmap: &ProtolayerMap, 
-					ia_cache: &InterAreaInfoCache,
+					/*ia_cache: &InterAreaInfoCache,*/ layers: &LayerMap,
 	) -> SliceMap {		
 		let proto_slc_map = plmap.slc_map();
 
@@ -35,14 +35,17 @@ impl SliceMap {
 
 		for (&slc_id, &layer_name) in proto_slc_map.iter() {
 			let layer = &plmap.layers()[layer_name];
-			let src_area_opt = ia_cache.src_area_for_slc(slc_id, layer.flags);
+			// let src_area_opt = ia_cache.src_area_for_slc(slc_id, layer.flags);
+			let src_layer_info = layers.slc_src_layer_info(slc_id, layer.flags);
 
-			let slc_dims = match src_area_opt {
-				Some(src_area) => {
-					let slc_dims = src_area.dims().clone();
+			let slc_dims = match src_layer_info {
+				Some(sli) => {
+					// let slc_dims = sli.dims().clone();
+					let slc_dims = SliceDims::new(area_dims, Some(sli.dims()))
+						.expect("SliceMap::new(): Error creating SliceDims.");
 
 					println!("{}SLICEMAP::NEW(): Adding inter-area slice '{}': slc_id: {}, src_area_name: {}, \
-						v_size: {}, u_size: {}.", cmn::MT, layer_name, slc_id, src_area.name(),
+						v_size: {}, u_size: {}.", cmn::MT, layer_name, slc_id, sli.area_name(),
 						slc_dims.v_size(), slc_dims.u_size());
 
 					slc_dims
@@ -110,9 +113,13 @@ impl SliceMap {
 		self.layer_names[slc_id as usize]
 	}
 
+	pub fn slc_axn_count(&self, slc_id: u8) -> u32 {
+		self.v_sizes[slc_id as usize] * self.u_sizes[slc_id as usize]
+	}
+
 	pub fn slc_count(&self) -> usize {
 		self.axn_idzs.len() 
-	}
+	}	
 
 	pub fn depth(&self) -> u8 {
 		self.axn_idzs.len() as u8

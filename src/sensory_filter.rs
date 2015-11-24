@@ -25,11 +25,15 @@ impl SensoryFilter {
 				ocl_pq: &ProQue, 
 		) -> SensoryFilter 
 	{
-		let base_axn_slc_ids = area_map.axn_base_slc_ids_by_flag(map::FF_IN);
+		let layer_flags = map::FF_IN;
+		let base_axn_slc_ids = area_map.axn_base_slc_ids_by_flag(layer_flags);
 		assert!(base_axn_slc_ids.len() == 1);
 		let base_axn_slc = base_axn_slc_ids[0];
 
-		let dims = area_map.slc_src_area_dims(base_axn_slc, map::FF_IN);
+		let dims = area_map.slc_src_layer_dims(base_axn_slc, layer_flags).expect(&format!(
+			"SensoryFilter::new(): No source slice layer with base axon slice: '{}' and \
+			flags: '{:?}' found.", base_axn_slc, layer_flags));
+		
 		assert!(dims.depth() == 1, "\nAfferent input layer depths of more than one for cortical \
 			areas with sensory filters are not yet supported. Please set the depth of any \
 			afferent input layers with filters to 1.");

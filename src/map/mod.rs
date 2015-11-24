@@ -1,8 +1,8 @@
 
 
-pub use self::area_map::{ AreaMap, InterAreaInfoCache };
+pub use self::area_map::{ AreaMap, /*InterAreaInfoCache*/ };
 pub use self::slice_map::{ SliceMap };
-pub use self::layer_map:: { LayerMap, LayerSourceAreas, SourceAreaInfo };
+pub use self::layer_map:: { LayerMap, /*LayerSourceAreas, SourceAreaInfo*/ };
 pub use self::slice_dims::{ SliceDims };
 
 #[cfg(test)]
