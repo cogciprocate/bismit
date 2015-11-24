@@ -2,7 +2,7 @@
 
 use cmn::{ Sdr };
 use ocl::{ EventList };
-use proto::{ ProtoAreaMap, Protoinput };
+use proto::{ ProtoareaMap, Protoinput };
 use encode::{ IdxReader };
 
 pub trait InputGanglion {
@@ -20,7 +20,7 @@ pub struct InputSource {
 
 impl InputSource {
 	// [FIXME] Multiple output target areas disabled.
-	pub fn new(pamap: &ProtoAreaMap) -> InputSource {
+	pub fn new(pamap: &ProtoareaMap) -> InputSource {
 		//let emsg = format!("\nInputSource::new(): No input source specified for area: '{}'", pamap.name);
 		let input = &pamap.input;
 
@@ -77,7 +77,7 @@ impl InputSource {
 		debug_assert!(self.targets.len() == 1);
 		// let dst_area_name = self.targets[0];
 
-		// let mut ganglion = tract.ganglion_mut(self.area_name, map::AFFERENT_OUTPUT);
+		// let mut ganglion = tract.ganglion_mut(self.area_name, map::AFF_OUT_OLD);
 
 		match self.kind {
 			InputSourceKind::IdxReader(ref mut ig) |
@@ -89,7 +89,7 @@ impl InputSource {
 
 		// for target in self.targets.iter() {
 			// areas.get_mut(target).expect("InputSource::next(): Invalid area name, 'targets' mismatch error.")
-			// 	.write_input(&self.ganglion, map::AFFERENT_INPUT);
+			// 	.write_input(&self.ganglion, map::AFF_IN_OLD);
 
 			// println!("\n##### INPUTSOURCE::NEXT(): Writing ganglion with len: {} to area: '{}': \n{:?}", 
 			// 	self.ganglion.len(), target, self.ganglion);

@@ -5,26 +5,26 @@ use cmn::{ self, CorticalDims };
 // use map;
 
 
-// pub trait ProtoAreaMapsTrait {
-// 	fn new() -> ProtoAreaMaps;
-// 	fn add(&mut self, protoarea: ProtoAreaMap);
+// pub trait ProtoareaMapsTrait {
+// 	fn new() -> ProtoareaMaps;
+// 	fn add(&mut self, protoarea: ProtoareaMap);
 // 	fn area(mut self, name: &'static str, width: u32, height: u32, 
 // 		region_kind: &'static str, filters: Option<Vec<Protofilter>>, 
 // 		aff_areas: Option<Vec<&'static str>>,
-// 	) -> ProtoAreaMaps;
+// 	) -> ProtoareaMaps;
 // 	fn freeze(&mut self);
 // }
 
-pub struct ProtoAreaMaps {
-	maps: HashMap<&'static str, ProtoAreaMap>,
+pub struct ProtoareaMaps {
+	maps: HashMap<&'static str, ProtoareaMap>,
 }
 
-impl <'a>ProtoAreaMaps {
-	pub fn new() -> ProtoAreaMaps {
-		ProtoAreaMaps { maps: HashMap::new() }
+impl <'a>ProtoareaMaps {
+	pub fn new() -> ProtoareaMaps {
+		ProtoareaMaps { maps: HashMap::new() }
 	}
 
-	fn add(&mut self, protoarea: ProtoAreaMap) {
+	fn add(&mut self, protoarea: ProtoareaMap) {
 		let name = protoarea.name;
 		//let dims = protoarea.dims;
 		self.maps.insert(name, protoarea);
@@ -32,14 +32,14 @@ impl <'a>ProtoAreaMaps {
 
 	pub fn area_ext(mut self, 
 				name: &'static str, 
-				region_name: &'static str,
+				layer_map_name: &'static str,
 				side: u32, 
 				protoinput: Protoinput,				
 				filters: Option<Vec<Protofilter>>,
 				eff_areas_opt: Option<Vec<&'static str>>,
-			) -> ProtoAreaMaps 
+			) -> ProtoareaMaps 
 	{
-		self.add(ProtoAreaMap::new(name, region_name, side, protoinput, 
+		self.add(ProtoareaMap::new(name, layer_map_name, side, protoinput, 
 			filters, eff_areas_opt));
 
 		self
@@ -47,13 +47,13 @@ impl <'a>ProtoAreaMaps {
 
 	pub fn area(mut self, 
 				name: &'static str,
-				region_name: &'static str,
+				layer_map_name: &'static str,
 				side: u32, 
 				filters: Option<Vec<Protofilter>>,
 				eff_areas_opt: Option<Vec<&'static str>>,
-			) -> ProtoAreaMaps 
+			) -> ProtoareaMaps 
 	{
-		self.add(ProtoAreaMap::new(name, region_name, side, Protoinput::None, filters, eff_areas_opt));
+		self.add(ProtoareaMap::new(name, layer_map_name, side, Protoinput::None, filters, eff_areas_opt));
 		self
 	}
 
@@ -68,11 +68,11 @@ impl <'a>ProtoAreaMaps {
 			}
 		}
 
-		assert!(aff_list.len() <= cmn::MAX_AFFERENT_AREAS, "areas::ProtoAreaMaps::freeze(): \
-				An area cannot have more than {} afferent areas.", cmn::MAX_AFFERENT_AREAS);
+		assert!(aff_list.len() <= cmn::MAX_FEEDFORWARD_AREAS, "areas::ProtoareaMaps::freeze(): \
+				An area cannot have more than {} afferent areas.", cmn::MAX_FEEDFORWARD_AREAS);
 
 		for (area_name, aff_area_name) in aff_list {
-			let emsg = format!("proto::areas::ProtoAreaMaps::freeze(): Area: '{}' not found. ", area_name);
+			let emsg = format!("proto::areas::ProtoareaMaps::freeze(): Area: '{}' not found. ", area_name);
 			self.maps.get_mut(area_name).expect(&emsg).aff_areas.push(aff_area_name);
 		}
 	}
@@ -88,24 +88,24 @@ impl <'a>ProtoAreaMaps {
 	// 		}
 	// 	}
 
-	// 	assert!(eff_list.len() <= cmn::MAX_EFFERENT_AREAS, "areas::ProtoAreaMaps::freeze(): \
-	// 			An area cannot have more than {} efferent areas.", cmn::MAX_EFFERENT_AREAS);
+	// 	assert!(eff_list.len() <= cmn::MAX_FEEDBACK_AREAS, "areas::ProtoareaMaps::freeze(): \
+	// 			An area cannot have more than {} efferent areas.", cmn::MAX_FEEDBACK_AREAS);
 
 	// 	for (area_name, eff_area_name) in eff_list {
-	// 		let emsg = format!("proto::areas::ProtoAreaMaps::freeze(): Area: '{}' not found. ", area_name);
+	// 		let emsg = format!("proto::areas::ProtoareaMaps::freeze(): Area: '{}' not found. ", area_name);
 	// 		self.maps.get_mut(area_name).expect(&emsg).eff_areas.push(eff_area_name);
 	// 	}
 	// }
 
-	pub fn maps(&self) -> &HashMap<&'static str, ProtoAreaMap> {
+	pub fn maps(&self) -> &HashMap<&'static str, ProtoareaMap> {
 		&self.maps
 	}
 }
 
-// impl Iterator for ProtoAreaMaps {
-//     type Item = ProtoAreaMap;
+// impl Iterator for ProtoareaMaps {
+//     type Item = ProtoareaMap;
 
-//     fn next(&self) -> Option<&ProtoAreaMap> {
+//     fn next(&self) -> Option<&ProtoareaMap> {
 //     		return self.maps.next();
 //         }
 //         None
@@ -115,9 +115,9 @@ impl <'a>ProtoAreaMaps {
 
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct ProtoAreaMap {
+pub struct ProtoareaMap {
 	pub name: &'static str,
-	pub region_name: &'static str,
+	pub layer_map_name: &'static str,
 	pub dims: CorticalDims,	
 	//pub region_kind: RegionKind,
 	pub input: Protoinput,
@@ -126,15 +126,15 @@ pub struct ProtoAreaMap {
 	pub eff_areas: Vec<&'static str>,
 }
 
-impl ProtoAreaMap {
+impl ProtoareaMap {
 	pub fn new(
 				name: &'static str, 
-				region_name: &'static str,
+				layer_map_name: &'static str,
 				side: u32,
 				input: Protoinput,
 				filters: Option<Vec<Protofilter>>,
 				eff_areas_opt: Option<Vec<&'static str>>,
-			) -> ProtoAreaMap 
+			) -> ProtoareaMap 
 	{
 		// [FIXME] TODO: This is out of date. Need to instead verify that 'side' is > Protocell::den_*_syn_reach.
 		assert!(side >= cmn::SYNAPSE_REACH * 2);
@@ -144,9 +144,9 @@ impl ProtoAreaMap {
 			None => Vec::with_capacity(0),
 		};
 
-		ProtoAreaMap { 
+		ProtoareaMap { 
 			name: name,
-			region_name: region_name,
+			layer_map_name: layer_map_name,
 			dims: CorticalDims::new(side, side, 0, 0, None),
 			//dims: CorticalDims::new(width_l2, height_l2, 0, 0),
 			//region_kind: region_kind,

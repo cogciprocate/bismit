@@ -1,9 +1,8 @@
 
 use ocl::{ self, EnvoyDims };
-use proto::{ ProtoLayerMap, ProtoAreaMap };
-use cmn::{ self, CorticalDims, SliceDims, HexTilePlane };
-use map::{ InterAreaInfoCache };
-use map::area_map;
+use proto::{ ProtolayerMap, ProtoareaMap };
+use cmn::{ self, CorticalDims, HexTilePlane };
+use map::{ area_map, InterAreaInfoCache, SliceDims };
 
 
 #[derive(Debug, Clone)]
@@ -19,7 +18,7 @@ pub struct SliceMap {
 }
 
 impl SliceMap {
-	pub fn new(area_dims: &CorticalDims, pamap: &ProtoAreaMap, plmap: &ProtoLayerMap, 
+	pub fn new(area_dims: &CorticalDims, pamap: &ProtoareaMap, plmap: &ProtolayerMap, 
 					ia_cache: &InterAreaInfoCache,
 	) -> SliceMap {		
 		let proto_slc_map = plmap.slc_map();
@@ -32,10 +31,6 @@ impl SliceMap {
 		let mut u_sizes = Vec::with_capacity(proto_slc_map.len());
 		let mut dims = Vec::with_capacity(proto_slc_map.len());
 
-		/*=============================================================================
-		=================================  ================================
-		=============================================================================*/
-
 		let mut axn_idz_ttl = 0u32;
 
 		for (&slc_id, &layer_name) in proto_slc_map.iter() {
@@ -44,10 +39,10 @@ impl SliceMap {
 
 			let slc_dims = match src_area_opt {
 				Some(src_area) => {
-					let slc_dims = src_area.dims.clone();
+					let slc_dims = src_area.dims().clone();
 
 					println!("{}SLICEMAP::NEW(): Adding inter-area slice '{}': slc_id: {}, src_area_name: {}, \
-						v_size: {}, u_size: {}.", cmn::MT, layer_name, slc_id, src_area.name,
+						v_size: {}, u_size: {}.", cmn::MT, layer_name, slc_id, src_area.name(),
 						slc_dims.v_size(), slc_dims.u_size());
 
 					slc_dims
@@ -56,7 +51,6 @@ impl SliceMap {
 				None =>	SliceDims::new(area_dims, None).expect("SliceMap::new()"), // 100%
 			};
 
-			//axn_idzs.push(axn_idz_2d(slc_id, area_dims.columns(), plmap.hrz_demarc()));
 			axn_idzs.push(axn_idz_ttl);
 			axn_idz_ttl += slc_dims.columns();
 
@@ -88,8 +82,6 @@ impl SliceMap {
 	}
 
 	pub fn print_debug(&self) {
-		//let mini_tab = "   "; // 3 spaces
-
 		println!(
 			"\n{mt}SLICEMAP::PRINT_DEBUG(): Area slices: \
 			\n{mt}{mt}layer_names: {:?}, \
@@ -108,9 +100,6 @@ impl SliceMap {
 		);
 
 		println!("");
-		// for i in 0..self.axn_idzs.len() {
-
-		// }
 	}
 
 	pub fn idz(&self, slc_id: u8) -> u32 {
@@ -164,7 +153,6 @@ impl SliceMap {
 
 impl EnvoyDims for SliceMap {
 	fn padded_envoy_len(&self, incr: usize) -> usize {
-		// assert!((ocl_pq.get_max_work_group_size() % self.axn_count()) == 0 || self.axn_count() == 0);
 		ocl::padded_len(self.axn_count() as usize, incr)
 	}
 }

@@ -1,5 +1,5 @@
-use cmn::{ self, CorticalDims, SliceDims, HexTilePlane, Sdr };
-use map::{ SliceMap };
+use cmn::{ self, CorticalDims, HexTilePlane, Sdr };
+use map::{ SliceMap, SliceDims };
 
 //use std::char;
 use std::iter;

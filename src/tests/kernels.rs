@@ -1,6 +1,6 @@
 
 use cmn::{ self, /*CorticalDims*/ };
-// use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, ProtoAreaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
+// use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 // use cortex::{ self, Cortex };
 use ocl::{ Envoy, WorkSize, /*ProQue, EnvoyDims,*/ /*OclNum*/ };
 // use interactive::{ input_czar, InputCzar, InputKind };

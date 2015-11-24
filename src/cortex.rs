@@ -4,7 +4,7 @@ use time;
 use map::{ AreaMap };
 use cortical_area:: { CorticalArea, CorticalAreas };
 use thalamus::{ Thalamus };
-use proto::{ ProtoLayerMaps, ProtoAreaMaps, Thalamic, };
+use proto::{ ProtolayerMaps, ProtoareaMaps, Thalamic, };
 use ocl::{ Context };
 
 pub struct Cortex {
@@ -15,7 +15,7 @@ pub struct Cortex {
 }
 
 impl Cortex {
-	pub fn new(proto_layer_maps: ProtoLayerMaps, mut proto_area_maps: ProtoAreaMaps) -> Cortex {
+	pub fn new(proto_layer_maps: ProtolayerMaps, mut proto_area_maps: ProtoareaMaps) -> Cortex {
 		println!("\nInitializing Cortex... ");
 		let time_start = time::get_time();
 
@@ -29,7 +29,7 @@ impl Cortex {
 		let mut device_idx = 0;		
 
 		for (&area_name, pa) in proto_area_maps.maps().iter().filter(|&(_, pa)| 
-					proto_layer_maps[pa.region_name].kind != Thalamic
+					proto_layer_maps[pa.layer_map_name].kind != Thalamic
 		) {	
 			areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(), 
 				device_idx, &ocl_context)));
@@ -112,7 +112,7 @@ impl Drop for Cortex {
 	/*	WRITE_VEC(): 
 			TODO: 
 				- VALIDATE "layer_target, OTHERWISE: 
-					- thread '<main>' panicked at '[proto_layer_maps::ProtoLayerMap::index(): 
+					- thread '<main>' panicked at '[proto_layer_maps::ProtolayerMap::index(): 
 					invalid layer name: "XXXXX"]', src/proto_layer_maps.rs:339
 						- Just have slc_ids return an option<u8>
 				- Handle multi-slc input vectors (for input compression, etc.)
@@ -138,17 +138,17 @@ impl Drop for Cortex {
 
 
 	/* Eventually move define_*() to a config file or some such */
-/*pub fn define_proto_layer_maps() -> ProtoLayerMaps {
-	let mut cort_regs: ProtoLayerMaps = ProtoLayerMaps::new();
+/*pub fn define_proto_layer_maps() -> ProtolayerMaps {
+	let mut cort_regs: ProtolayerMaps = ProtolayerMaps::new();
 
-	let mut sen = ProtoLayerMap::new(Sensory)
+	let mut sen = ProtolayerMap::new(Sensory)
 		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
 
-		.layer("eff_in", 1, map::EFFERENT_INPUT, Axonal(Spatial))
+		.layer("eff_in", 1, map::EFF_IN_OLD, Axonal(Spatial))
 
-		.layer("aff_in", 1, map::AFFERENT_INPUT, Axonal(Spatial))
+		.layer("aff_in", 1, map::AFF_IN_OLD, Axonal(Spatial))
 
-		.layer("aff_out", 1, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT, Axonal(Spatial))
+		.layer("aff_out", 1, map::AFF_OUT_OLD | map::EFF_OUT_OLD, Axonal(Spatial))
 
 		.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, Protocell::new_spiny_stellate(5, vec!["aff_in"], 256)) 
 		//.layer("vi", 5, map::DEFAULT, Protocell::new_spiny_stellate(3, vec!["thal"], 256)) 
@@ -173,8 +173,8 @@ impl Drop for Cortex {
 	cort_regs
 }
 
-pub fn define_proto_area_maps() -> ProtoAreaMaps {
-	let mut proto_area_maps = ProtoAreaMaps::new()
+pub fn define_proto_area_maps() -> ProtoareaMaps {
+	let mut proto_area_maps = ProtoareaMaps::new()
 		//.area("v1", 32, 32, Sensory, Some(vec!["v2"]))
 		.area("v1", 48, 48, Sensory, Some(vec!["b1"]))
 		.area("b1", 48, 48, Sensory, Some(vec!["a1"]))

@@ -3,10 +3,10 @@
 
 //pub use self::layer_maps::{  };
 
-pub use self::proto_layer_map::{ ProtoLayerMaps, ProtoLayerMap, RegionKind };
+pub use self::proto_layer_map::{ ProtolayerMaps, ProtolayerMap, RegionKind };
 	pub use self::proto_layer_map::RegionKind::{ Associational, Sensory, Motor, Thalamic }; // SLATED FOR REDESIGN
 
-pub use self::proto_area_map::{ ProtoAreaMaps, ProtoAreaMap };
+pub use self::proto_area_map::{ ProtoareaMaps, ProtoareaMap };
 
 pub use self::protolayer as layer;
 pub use self::protolayer::{ Protolayer, ProtolayerKind, ProtoaxonKind };

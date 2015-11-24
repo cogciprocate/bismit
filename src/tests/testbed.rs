@@ -1,6 +1,6 @@
 use cmn::{ CorticalDims };
 use map;
-use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, Axonal, Spatial, Horizontal, Sensory, Thalamic, Protocell, Protofilter, Protoinput };
+use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, Sensory, Thalamic, Protocell, Protofilter, Protoinput };
 use thalamus::{ Thalamus };
 use ocl::{ Context, ProQue };
 use cortex::{ Cortex };
@@ -11,16 +11,16 @@ pub static INHIB_LAYER_NAME: &'static str 	= "iv_inhib";
 const CYCLES_PER_FRAME: usize 				= 1;
 
 
-pub fn define_protolayer_maps() -> ProtoLayerMaps {
-	let mut proto_layer_maps: ProtoLayerMaps = ProtoLayerMaps::new();
+pub fn define_protolayer_maps() -> ProtolayerMaps {
+	let mut proto_layer_maps: ProtolayerMaps = ProtolayerMaps::new();
 
-	proto_layer_maps.add(ProtoLayerMap::new("visual", Sensory)
+	proto_layer_maps.add(ProtolayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
 		.layer("motor_in", 1, map::DEFAULT, Axonal(Horizontal))
 		//.layer("olfac", 1, map::DEFAULT, Axonal(Horizontal))
-		.layer("eff_in", 0, map::EFFERENT_INPUT /*| map::INTERAREA*/, Axonal(Spatial))
-		.layer("aff_in", 0, map::AFFERENT_INPUT /*| map::INTERAREA*/, Axonal(Spatial))
-		.layer("out", 1, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT, Axonal(Spatial))
+		.layer("eff_in", 0, map::EFF_IN_OLD /*| map::INTERAREA*/, Axonal(Spatial))
+		.layer("aff_in", 0, map::AFF_IN_OLD /*| map::INTERAREA*/, Axonal(Spatial))
+		.layer("out", 1, map::AFF_OUT_OLD | map::EFF_OUT_OLD, Axonal(Spatial))
 		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, 
 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600, 8)) 
@@ -30,17 +30,17 @@ pub fn define_protolayer_maps() -> ProtoLayerMaps {
 			Protocell::new_pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"]))
 	);
 
-	proto_layer_maps.add(ProtoLayerMap::new("external", Thalamic)
-		.layer("ganglion", 1, map::AFFERENT_OUTPUT | map::AFFERENT_INPUT, Axonal(Spatial))
+	proto_layer_maps.add(ProtolayerMap::new("external", Thalamic)
+		.layer("ganglion", 1, map::AFF_OUT_OLD, Axonal(Spatial))
 	);
 
 	proto_layer_maps
 }
 
-pub fn define_protoareas() -> ProtoAreaMaps {
+pub fn define_protoareas() -> ProtoareaMaps {
 	let area_side = 32 as u32;
 
-	let protoareas = ProtoAreaMaps::new()		
+	let protoareas = ProtoareaMaps::new()		
 
 		.area_ext("v0", "external", 
 			// area_side * 2, area_side * 2,
@@ -103,12 +103,12 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 	let area_name = PRIMARY_AREA_NAME;
 	let lmap_name = "lm_test";
 
-	let mut plmaps = ProtoLayerMaps::new();
+	let mut plmaps = ProtolayerMaps::new();
 
-	plmaps.add(ProtoLayerMap::new(lmap_name, Sensory)
-		.layer("eff_in", 0, map::EFFERENT_INPUT, Axonal(Spatial))
-		.layer("aff_in", 0, map::AFFERENT_INPUT, Axonal(Spatial))
-		.layer("out", 1, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT, Axonal(Spatial))
+	plmaps.add(ProtolayerMap::new(lmap_name, Sensory)
+		.layer("eff_in", 0, map::EFF_IN_OLD, Axonal(Spatial))
+		.layer("aff_in", 0, map::AFF_IN_OLD, Axonal(Spatial))
+		.layer("out", 1, map::AFF_OUT_OLD | map::EFF_OUT_OLD, Axonal(Spatial))
 		.layer("test0", 1, map::DEFAULT, Axonal(Spatial))
 		.layer("test1", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("test2", 1, map::UNUSED_TESTING, Axonal(Spatial))
@@ -131,11 +131,11 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
 	);
 
-	plmaps.add(ProtoLayerMap::new("dummy_lm", Thalamic)
-		.layer("ganglion", 1, map::AFFERENT_OUTPUT | map::AFFERENT_INPUT, Axonal(Spatial))
+	plmaps.add(ProtolayerMap::new("dummy_lm", Thalamic)
+		.layer("ganglion", 1, map::AFF_OUT_OLD, Axonal(Spatial))
 	);
 
-	let pamaps = ProtoAreaMaps::new()
+	let pamaps = ProtoareaMaps::new()
 		.area(area_name, lmap_name, 32, None, Some(vec!["dummy_area"]))
 
 		// <<<<< VERY IMPORTANT: DO NOT DELETE! >>>>>

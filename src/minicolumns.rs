@@ -10,7 +10,7 @@ use rand::{ self, /*ThreadRng, Rng*/ };
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
 use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, EventList };
-use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, /*Protocell, DendriteKind*/ };
+use proto::{ /*ProtolayerMap, RegionKind, ProtoareaMaps,*/ ProtocellKind, /*Protocell, DendriteKind*/ };
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -99,6 +99,7 @@ impl Minicolumns {
 		/*let syns = Synapses::new(dims, syns_per_den_l2, syns_per_den_l2, DendriteKind::Proximal, 
 			ProtocellKind::SpinyStellate, area_map.proto_layer_map(), axons, aux, ocl);*/
 
+		debug_assert!(area_map.proto_layer_map().aff_out_slcs().len() > 0);
 		let aff_out_axn_slc = area_map.proto_layer_map().aff_out_slcs()[0];
 		let aff_out_axn_idz = area_map.axn_idz(aff_out_axn_slc);
 

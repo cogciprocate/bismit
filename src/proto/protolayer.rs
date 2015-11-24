@@ -1,41 +1,40 @@
-// use bitflags;
-
-use map::{ LayerFlags };
-use proto::{ /*ProtocellKind,*/ Protocell, DendriteKind };
+use map::{ self, LayerFlags };
+use proto::{ Protocell, DendriteKind };
 use proto::DendriteKind::{ Distal, Proximal };
 use self::ProtolayerKind::{ Cellular, Axonal };
-//use ocl;
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct Protolayer {
 	pub name: &'static str,
-	//pub kind: Option<Protocell>,
 	pub kind: ProtolayerKind,
-	pub base_slc_id: u8, // <<<<< REMOVE THE '_pos'
-	pub kind_base_slc_id: u8, // <<<<< ''
 	pub depth: u8,
+	pub base_slc_id: u8, 
+	pub kind_base_slc_id: u8,
 	pub flags: LayerFlags,
 }
 
 impl Protolayer {
-	/*pub fn new(
+	pub fn new(
 				name: &'static str,
-				cell: Option<Protocell>,
+				kind: ProtolayerKind,
+				depth: u8,			
 				base_slc_id: u8,
 				kind_base_slc_id: u8,
-				depth: u8,
-				flags: LayerFlags,
-	) -> Protolayer {
+				flags: LayerFlags,				
+			) -> Protolayer
+	{
+		debug_assert!(!(flags.contains(map::OUTPUT) && flags.contains(map::INPUT)));
+
 		Protolayer {
-			name: name,
-			cell: cell,
-			base_slc_id: base_slc_id,
-			kind_base_slc_id: kind_base_slc_id,
+			name : name,
+			kind: kind,
 			depth: depth,
+			base_slc_id: base_slc_id, 
+			kind_base_slc_id: kind_base_slc_id,			
 			flags: flags,
 		}
-	}*/
+	}
 
 	pub fn base_slc(&self) -> u8 {
 		self.base_slc_id
@@ -49,7 +48,7 @@ impl Protolayer {
 		self.name
 	}
 
-	/* SRC_LAYER_NAMES(): TODO: DEPRICATE OR RENAME */
+	// SRC_LAYER_NAMES(): TODO: DEPRICATE OR RENAME 
 	pub fn src_lyr_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
 		let layer_names = match self.kind {
 			ProtolayerKind::Cellular(ref protocell) => match den_type {
@@ -65,13 +64,6 @@ impl Protolayer {
 		}
 	}
 
-/*	pub fn dst_src_lyr_names(&self) -> Vec<Vec<&'static str>> {
-		let layer_names = match self.kind {
-			ProtolayerKind::Cellular(ref protocell) => protocell.den_dst_src_lyrs.clone(),
-			_ => panic!(format!("Protolayer '{}' is not Cellular.", self.name)),
-		};
-	}*/
-
 	pub fn dst_src_lyrs_by_tuft(&self) -> Vec<Vec<&'static str>> {
 		let layers_by_tuft = match self.kind {
 			ProtolayerKind::Cellular(ref protocell) => protocell.den_dst_src_lyrs.clone(),
@@ -83,13 +75,6 @@ impl Protolayer {
 			None => Vec::with_capacity(0),
 		}
 	}
-
-	// pub fn dst_src_lyrs_len(&self) -> u32 {
-	// 	match self.kind {
-	// 		ProtolayerKind::Cellular(ref protocell) => protocell.dst_src_lyrs_len(),
-	// 		_ => 0,
-	// 	}
-	// }
 }
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
@@ -120,11 +105,3 @@ pub enum ProtoaxonKind {
 	Spatial,
 	Horizontal,
 }
-
-
-/*pub enum LayerFlags {
-	ColumnInput 	= 0x0001,
-	ColumnOuput 	= 0x0002,
-	None			= 0x0000,
-}*/
-

@@ -7,7 +7,7 @@ use map::{ self };
 use cortex::{ self, Cortex };
 use encode:: { IdxReader };
 use interactive::{ output_czar };
-use proto::{ ProtoLayerMap, ProtoLayerMaps, ProtoAreaMaps, Axonal, Spatial, Horizontal, Sensory, Thalamic, Protocell, Protofilter, Protoinput };
+use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, Sensory, Thalamic, Protocell, Protofilter, Protoinput };
 use input_source::{ InputGanglion };
 
 
@@ -23,16 +23,16 @@ const CYCLES_PER_FRAME: usize 				= 1;
 
 
 /* Eventually move defines to a config file or some such */
-pub fn define_plmaps() -> ProtoLayerMaps {
-	let mut plmaps: ProtoLayerMaps = ProtoLayerMaps::new();
+pub fn define_plmaps() -> ProtolayerMaps {
+	let mut plmaps: ProtolayerMaps = ProtolayerMaps::new();
 
-	plmaps.add(ProtoLayerMap::new("visual", Sensory)
+	plmaps.add(ProtolayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
-		.input_layer("motor_in", map::DEFAULT, Axonal(Horizontal))
-		// .input_layer("olfac", map::NONSPATIAL | map::INPUT, Axonal(Horizontal))
-		.input_layer("eff_in", map::EFFERENT | map::INPUT, Axonal(Spatial))
-		.input_layer("aff_in", map::AFFERENT | map::INPUT, Axonal(Spatial))
-		.layer("out", 1, map::AFFERENT | map::EFFERENT | map::OUTPUT, Axonal(Spatial))
+		.input_layer("motor_in", map::NONSPATIAL | map::INPUT, Axonal(Horizontal))
+		.input_layer("olfac", map::NONSPATIAL | map::INPUT, Axonal(Horizontal))
+		.input_layer("eff_in", map::SPATIAL | map::INPUT | map::FEEDBACK, Axonal(Spatial))
+		.input_layer("aff_in", map::SPATIAL | map::INPUT | map::FEEDFORWARD, Axonal(Spatial))
+		.layer("out", 1, map::SPATIAL | map::OUTPUT | map::FEEDFORWARD | map::FEEDBACK, Axonal(Spatial))
 		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("iv_inhib", 0, map::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
@@ -43,25 +43,24 @@ pub fn define_plmaps() -> ProtoLayerMaps {
 		.layer("iii", 2, map::TEMPORAL_ASSOCIATIVE, 
 			Protocell::new_pyramidal(1, 5, vec!["iii"], 2200, 8)
 				.apical(vec!["eff_in"])
-				// .apical(vec!["unused"])
 		)
 	);
 
-	plmaps.add(ProtoLayerMap::new("v0_layer_map", Thalamic)
-		.layer("ganglion", 1, map::AFFERENT | map::EFFERENT | map::OUTPUT, Axonal(Spatial))
+	plmaps.add(ProtolayerMap::new("v0_layer_map", Thalamic)
+		.layer("ganglion", 1, map::SPATIAL | map::OUTPUT | map::FEEDFORWARD, Axonal(Spatial))
 	);
 
-	plmaps.add(ProtoLayerMap::new("o0_layer_map", Thalamic)
+	plmaps.add(ProtolayerMap::new("o0_layer_map", Thalamic)
 		.layer("ganglion", 1, map::NONSPATIAL | map::OUTPUT, Axonal(Horizontal))
 	);
 
 	plmaps
 }
 
-pub fn define_pamaps() -> ProtoAreaMaps {
+pub fn define_pamaps() -> ProtoareaMaps {
 	let area_side = 32 as u32;
 
-	let pamaps = ProtoAreaMaps::new()		
+	let pamaps = ProtoareaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDims::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
 		// .area_ext("u0", "external", area_side, area_side, 
 		// 	Protoinput::IdxReader { 
@@ -81,10 +80,7 @@ pub fn define_pamaps() -> ProtoAreaMaps {
 		// .area_ext("o0", "o0_layer_map", 32, Protoinput::Zeros, None, Some(vec!["v1"]))
 
 		.area_ext("v0", "v0_layer_map", 
-			// area_side * 2, area_side * 2,
 			area_side,
-			// area_side / 2, area_side / 2, 
-			// 32, 32,
 
 			Protoinput::IdxReaderLoop { 
 				file_name: "data/train-images-idx3-ubyte", 
@@ -92,52 +88,39 @@ pub fn define_pamaps() -> ProtoAreaMaps {
 				scale: 1.3,
 				loop_frames: 31,
 			},
-			// Protoinput::None,
 
 			None, 
-			// Some(vec!["v1"]),
 			None,
 		)
 
 		.area("v1", "visual", 
-			// area_side * 2, area_side * 2,
 			area_side, 
-			// area_side / 2, area_side / 2,
-			// 128, 128,
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
 			Some(vec!["v0"]),
-			// None,
 		)
 
 		.area("b1", "visual", 
-			// area_side * 2, area_side * 2,			
 			area_side,
-			// 16, 16,
-			// 32, 32,
-			//256, 256,
 		 	None,		 	
-		 	// Some(vec!["a1"]),
 		 	Some(vec!["v1"]),
-		 	// None,
 		)
 
 
-		// .area("a1", "visual", area_side, area_side, None, /*None,*/ Some(vec!["a2"]))
-
-		// .area("a2", "visual", area_side, area_side, None, Some(vec!["a3"]))
-		// .area("a3", "visual", area_side, area_side, None, Some(vec!["a4"]))
-		// .area("a4", "visual", area_side, area_side, None, Some(vec!["a5"]))
-		// .area("a5", "visual", area_side, area_side, None, Some(vec!["a6"]))
-		// .area("a6", "visual", area_side, area_side, None, Some(vec!["a7"]))
-		// .area("a7", "visual", area_side, area_side, None, Some(vec!["a8"]))
-		// .area("a8", "visual", area_side, area_side, None, Some(vec!["a9"]))
-		// .area("a9", "visual", area_side, area_side, None, Some(vec!["aA"]))
-		// .area("aA", "visual", area_side, area_side, None, Some(vec!["aB"]))
-		// .area("aB", "visual", area_side, area_side, None, Some(vec!["aC"]))
-		// .area("aC", "visual", area_side, area_side, None, Some(vec!["aD"]))
-		// .area("aD", "visual", area_side, area_side, None, Some(vec!["aE"]))
-		// .area("aE", "visual", area_side, area_side, None, Some(vec!["aF"]))
-		// .area("aF", "visual", area_side, area_side, None, None)
+		// .area("a1", "visual", area_side, None, Some(vec!["b1"]))
+		// .area("a2", "visual", area_side, None, Some(vec!["a1"]))
+		// .area("a3", "visual", area_side, None, Some(vec!["a2"]))
+		// .area("a4", "visual", area_side, None, Some(vec!["a3"]))
+		// .area("a5", "visual", area_side, None, Some(vec!["a4"]))
+		// .area("a6", "visual", area_side, None, Some(vec!["a5"]))
+		// .area("a7", "visual", area_side, None, Some(vec!["a6"]))
+		// .area("a8", "visual", area_side, None, Some(vec!["a7"]))
+		// .area("a9", "visual", area_side, None, Some(vec!["a8"]))
+		// .area("aA", "visual", area_side, None, Some(vec!["a9"]))
+		// .area("aB", "visual", area_side, None, Some(vec!["aA"]))
+		// .area("aC", "visual", area_side, None, Some(vec!["aB"]))
+		// .area("aD", "visual", area_side, None, Some(vec!["aC"]))
+		// .area("aE", "visual", area_side, None, Some(vec!["aD"]))
+		// .area("aF", "visual", area_side, None, Some(vec!["aE"]))
 	;
 
 	pamaps
@@ -298,7 +281,7 @@ pub fn run(autorun_iters: i32) -> bool {
 					let in_s1 = in_str.trim();
 					let out_len = cortex.area(&in_s).dims.columns();
 					let t_vec: Vec<u8> = iter::repeat(0).take(out_len as usize).collect();
-					// cortex.area_mut(&in_s).read_output(&mut t_vec, map::AFFERENT_OUTPUT);
+					// cortex.area_mut(&in_s).read_output(&mut t_vec, map::AFF_OUT_OLD);
 					// ocl::fmt::print_vec_simple(&t_vec);
 					println!("\n##### PRINTING TEMPORARILY DISABLED #####");
 					continue;
@@ -515,7 +498,7 @@ fn rin(prompt: String) -> String {
 	print!("\n{}:> ", prompt);
 	io::stdout().flush().unwrap();
 	io::stdin().read_line(&mut in_string).ok().expect("Failed to read line");
-	in_string
+	in_string.to_lowercase()
 }
 
 fn parse_num(in_s: String) -> Option<i32> {

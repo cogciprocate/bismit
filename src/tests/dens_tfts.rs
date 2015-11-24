@@ -47,7 +47,7 @@ fn test_cel() {
 	area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(zeroed_slc_id);
 
 	// 'input' source slice which will be assigned to the synapses being tested:
-	// let src_slc_ids = area.area_map().axn_base_slc_ids_by_flag(map::AFFERENT_INPUT);
+	// let src_slc_ids = area.area_map().axn_base_slc_ids_by_flag(map::AFF_IN_OLD);
 	// assert!(src_slc_ids.len() == 1);
 	// let src_slc_id = ;
 
@@ -183,7 +183,7 @@ fn test_dens() {
 
 		// GET SOURCE SLICE TO USE TO SIMULATE INPUT:
 		let cel_syn_range = den_coords.syn_idx_range_tft(area.ptal().dens().syns().syns_per_den_l2());
-		let src_slc_ids = area.area_map().axn_base_slc_ids_by_flag(map::AFFERENT_INPUT);
+		let src_slc_ids = area.area_map().axn_base_slc_ids_by_flag(map::AFF_IN_OLD);
 		assert!(src_slc_ids.len() == 1);
 		let src_slc_id = src_slc_ids[0];
 

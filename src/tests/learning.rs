@@ -167,7 +167,7 @@ impl LearningTestBed {
 				area.area_map(), area.ptal().dens().syns().dims(), mt = cmn::MT);
 
 			// Afferent output slice id:
-			let aff_out_slcs = area.area_map().axn_base_slc_ids_by_flag(map::AFFERENT_OUTPUT);
+			let aff_out_slcs = area.area_map().axn_base_slc_ids_by_flag(map::AFF_OUT_OLD);
 			assert!(aff_out_slcs.len() == 1);
 			let aff_out_slc = aff_out_slcs[0];
 
@@ -649,7 +649,7 @@ impl LearningTestBed {
 // 			fake_neighbor_slc: u8=ter: usize) 
 // {
 // 	// Afferent output slice id:
-// 	let aff_out_slcs = area.area_map().axn_base_slc_ids_by_flag(map::AFFERENT_OUTPUT);
+// 	let aff_out_slcs = area.area_map().axn_base_slc_ids_by_flag(map::AFF_OUT_OLD);
 // 	assert!(aff_out_slcs.len() == 1);
 // 	let aff_out_slc = aff_out_slcs[0];
 

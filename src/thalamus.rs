@@ -6,7 +6,7 @@ use cmn::{ self, Sdr };
 use map::{ self, AreaMap, LayerFlags };
 use ocl::{ self, EventList };
 use cortical_area:: { CorticalAreas };
-use proto::{ ProtoAreaMaps, ProtoLayerMaps, Thalamic };
+use proto::{ ProtoareaMaps, ProtolayerMaps, Thalamic };
 
 use input_source::{ InputSource };
 
@@ -23,7 +23,7 @@ pub struct Thalamus {
 }
 
 impl Thalamus {
-	pub fn new(plmaps: &ProtoLayerMaps,	pamaps: &ProtoAreaMaps) -> Thalamus {
+	pub fn new(plmaps: &ProtolayerMaps,	pamaps: &ProtoareaMaps) -> Thalamus {
 		let area_count = pamaps.maps().len();
 
 		let mut tract = ThalamicTract::new();
@@ -34,7 +34,7 @@ impl Thalamus {
 		=================================== THALAMIC ==================================
 		=============================================================================*/
 		for (&area_name, pa) in pamaps.maps().iter().filter(|&(_, pa)| 
-					plmaps[pa.region_name].kind == Thalamic) 
+					plmaps[pa.layer_map_name].kind == Thalamic) 
 		{			
 			input_sources.push(InputSource::new(pa));
 		}
@@ -43,7 +43,7 @@ impl Thalamus {
 		====================================== ALL ====================================
 		=============================================================================*/
 		for (&area_name, pa) in pamaps.maps().iter()
-			// .filter(|&(_, pa)| plmaps[pa.region_name].kind != Thalamic)
+			// .filter(|&(_, pa)| plmaps[pa.layer_map_name].kind != Thalamic)
 		{	
 			let area_map = AreaMap::new(pa, plmaps, pamaps);
 
@@ -53,7 +53,7 @@ impl Thalamus {
 				tract.add_area(area_name, flags, cols as usize);
 			}
 
-			println!("{}THALAMUS::NEW(): Area: '{}', source area info: {:?}.", cmn::MT, area_name, layer_info);
+			println!("{}THALAMUS::NEW(): Area: '{}', area info: {:?}.", cmn::MT, area_name, layer_info);
 			assert!(layer_info.len() > 0, "Areas must have at least one afferent or efferent area.");
 
 			area_map.slices().print_debug();
@@ -79,17 +79,18 @@ impl Thalamus {
 			// src.next(aff_tract);
 			let src_area_name = src.area_name();
 			let (ganglion, events) = self.tract.ganglion_mut(src_area_name, 
-				map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT);
+				map::OUTPUT | map::SPATIAL | map::FEEDFORWARD);
+			// println!("cycle_ext: ganglion: {:?}", ganglion);
 			src.next(ganglion, events);
 		}		
 	}
 
 	// WRITE_INPUT(): <<<<< TODO: CHECK SIZES AND SCALE WHEN NECESSARY >>>>>
 	// pub fn write_input(&self, sdr: &Sdr, area: &mut CorticalArea) {		
-	// 	area.write_input(sdr, map::AFFERENT_INPUT);
+	// 	area.write_input(sdr, map::AFF_IN_OLD);
 	// }
 
-	pub fn ganglion(&self, src_area_name: &'static str, layer_mask: LayerFlags) -> (&EventList, &Sdr) { 		
+	pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerFlags) -> (&EventList, &Sdr) { 		
 		self.tract.ganglion(src_area_name, layer_mask)
 	}
 
@@ -110,15 +111,17 @@ impl Thalamus {
 
 // THALAMICTRACT: A buffer for I/O between areas
 pub struct ThalamicTract {
-	ganglion: Vec<ocl::cl_uchar>,				
-	tract_areas: HashMap<(&'static str, LayerFlags), TractArea>,	
+	ganglion: Vec<ocl::cl_uchar>,
+	// tract_areas: Vec<TractArea>
+	// tract_area_cache: HashMap<(&'static str, LayerFlags), usize>,	
+	tract_areas: TractAreaCache,
 	ttl_len: usize,
 }
 
 impl ThalamicTract {
 	fn new() -> ThalamicTract {
 		let ganglion = Vec::with_capacity(0);
-		let tract_areas = HashMap::new();
+		let tract_areas = TractAreaCache::new();
 
 		ThalamicTract {
 			ganglion: ganglion,
@@ -128,7 +131,7 @@ impl ThalamicTract {
 	}
 
 	fn add_area(&mut self, src_area_name: &'static str, layer_flags: LayerFlags, len: usize) {
-		self.tract_areas.insert((src_area_name, layer_flags), 
+		self.tract_areas.insert(src_area_name, layer_flags, 
 			TractArea::new(src_area_name, layer_flags, self.ttl_len..(self.ttl_len + len)));
 		self.ttl_len += len;
 	}
@@ -140,10 +143,10 @@ impl ThalamicTract {
 	}
 
 
-	fn ganglion(&self, src_area_name: &'static str, layer_flags: LayerFlags) -> (&EventList, &Sdr) {
-		let ta = self.tract_areas.get(&(src_area_name, layer_flags)).expect(&format!(
-			"ThalamicTract::ganglion(): Invalid source area name and/or flags: \
-			('{}', '{:?}').", src_area_name, layer_flags));
+	fn ganglion(&mut self, src_area_name: &'static str, layer_flags: LayerFlags) -> (&EventList, &Sdr) {
+		let ta = self.tract_areas.get(src_area_name, layer_flags)
+			.expect(&format!("ThalamicTract::ganglion(): Invalid source area name and/or flags: \
+			'{}', ({:?}).", src_area_name, layer_flags));
 
 		let range = ta.range();
 		let events = ta.events();
@@ -157,11 +160,11 @@ impl ThalamicTract {
 		(events, &self.ganglion[range])
 	}
 
-	fn ganglion_mut(&mut self, src_area_name: &'static str, layer_flags: LayerFlags)
-			-> (&mut Sdr, &mut EventList) 
+	fn ganglion_mut(&mut self, src_area_name: &'static str, layer_flags: LayerFlags
+			) -> (&mut Sdr, &mut EventList) 
 	{
-		let ta = self.tract_areas.get_mut(&(src_area_name, layer_flags)).expect(&format!(
-			"ThalamicTract::ganglion(): Invalid target area name and/or flags: \
+		let ta = self.tract_areas.get_mut(src_area_name, layer_flags)
+			.expect(&format!("ThalamicTract::ganglion_mut(): Invalid target area name and/or flags: \
 			('{}', '{:?}').", src_area_name, layer_flags));
 
 		let range = ta.range();
@@ -177,7 +180,88 @@ impl ThalamicTract {
 	}
 }
 
-// #[derive(PartialEq, Debug, Clone, Eq)]
+struct TractAreaCache {
+	areas: Vec<TractArea>,
+	index: HashMap<(&'static str, LayerFlags), usize>,
+}
+
+impl TractAreaCache {
+	fn new() -> TractAreaCache {
+		TractAreaCache {
+			areas: Vec::with_capacity(32),
+			index: HashMap::with_capacity(48),
+		}
+	}
+
+	fn insert(&mut self, src_area_name: &'static str, layer_flags: LayerFlags, tract_area: TractArea)
+	{
+		self.areas.push(tract_area);
+		let dup_area = self.index.insert((src_area_name, layer_flags), (self.areas.len() - 1));
+		assert!(dup_area.is_none(), "TractAreaCache::insert(): Cannot add two areas \
+			with the same name and flags.");
+	}
+
+	fn get(&mut self, src_area_name: &'static str, layer_flags: LayerFlags
+			) -> Option<&TractArea> 
+	{
+		match self.area_search(src_area_name, layer_flags) {
+			Some(idx) => self.areas.get(idx),
+			None => None,
+		}
+	}
+
+	fn get_mut(&mut self, src_area_name: &'static str, layer_flags: LayerFlags
+			) -> Option<&mut TractArea> 
+	{
+		match self.area_search(src_area_name, layer_flags) {
+			Some(idx) => {
+				// println!("   TAC::get_mut(): idx: {}, areas: {:?}", idx, self.areas);
+				self.areas.get_mut(idx)
+			},
+			None => {
+				// println!("   TAC::get_mut(): returning: 'None'");
+				None
+			},
+		}
+	}
+
+	fn area_search(&mut self, src_area_name: &'static str, layer_flags: LayerFlags) -> Option<usize> {
+		// let cleared_flags = clear_io_flags(layer_flags);
+		// println!("TractAreaCache::area_search(): Searching for area: {}, flags: {:?}. ALL: {:?}", 
+		// 	src_area_name, layer_flags, self.areas);
+		let area_idx = self.index.get(&(src_area_name, layer_flags)).map(|&idx| idx);
+
+		// println!("   area_idx: {:?}", area_idx);
+
+		let mut matching_areas: Vec<usize> = Vec::with_capacity(4);
+
+		match area_idx {
+			Some(idx) => return Some(idx),
+			None => {
+				for i in 0..self.areas.len() {
+					if self.areas[i].layer_flags.contains(layer_flags) 
+						&& self.areas[i].src_area_name == src_area_name
+					{
+						matching_areas.push(i);
+					}
+				}
+
+				match matching_areas.len() {
+					0 => return None,
+					1 => {
+						self.index.insert((src_area_name, layer_flags), matching_areas[0]);
+						return Some(matching_areas[0]);
+					},
+					_ => panic!("TractAreaCache::area_search(): Multiple tract areas matching flags: \
+						'{:?}' for area: '{}' found. Please use additional flags to specify tract \
+						area more precisely."),
+				}
+			}
+		}
+	}
+}
+
+#[derive(Debug)]
 struct TractArea {
 	src_area_name: &'static str,
 	layer_flags: LayerFlags,
@@ -211,6 +295,13 @@ impl TractArea {
 		&mut self.events
 	}
 }
+
+
+// Remove input and output flags and return result.
+// [FIXME]: TODO: Verify flags?
+// fn clear_io_flags(layer_flags: LayerFlags) -> LayerFlags {
+// 	layer_flags & !(map::OUTPUT | map::INPUT)
+// }
 
 
 pub mod tests {
@@ -247,7 +338,7 @@ pub mod tests {
 	// }
 
 
-	/*	FORWARD_AFFERENT_OUTPUT(): Read afferent output from a cortical area and store it 
+	/*	FORWARD_AFF_OUT_OLD(): Read afferent output from a cortical area and store it 
 		in our thalamus' cache (the 'tract').
 
 			TODO: RENAME OR BREAK UP
@@ -260,25 +351,25 @@ pub mod tests {
 	// 	let emsg_src = format!("{}'{}' ", emsg, src_area_name);
 	// 	let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
 
-	// 	//println!("\n ##### FORWARDING AFFERENT OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
+	// 	//println!("\n ##### FORWARDING FEEDFORWARD OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
 
 	// 	//if self.area_maps[
 
 	// 	areas.get(src_area_name).expect(&emsg_src).read_output(
 	// 		self.afferent_tract.output_ganglion(src_area_name, tar_area_name),
-	// 		map::AFFERENT_OUTPUT, 
+	// 		map::AFF_OUT_OLD, 
 	// 	);		
 		
 	// 	areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
 	// 		self.afferent_tract.input_ganglion(tar_area_name),
-	// 		map::AFFERENT_INPUT,
+	// 		map::AFF_IN_OLD,
 	// 	);
 
 	// }
 
 	// pub fn read_afferent_output(&mut self, src_area_name &str, 
 
-	// BACKWARD_EFFERENT_OUTPUT():  Cause an efferent frame to descend
+	// BACKWARD_EFF_OUT_OLD():  Cause an efferent frame to descend
 	// pub fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
 	// 			 areas: &mut CorticalAreas) 
 	// {
@@ -291,11 +382,11 @@ pub mod tests {
 	// 		None => return,
 	// 	}
 
-	// 	//println!("\n ##### BACKWARDING EFFERENT OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
+	// 	//println!("\n ##### BACKWARDING FEEDBACK OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
 		
 	// 	areas.get(src_area_name).expect(&emsg_src).read_output(
 	// 		self.efferent_tract.output_ganglion(src_area_name, tar_area_name), 
-	// 		map::EFFERENT_OUTPUT,
+	// 		map::EFF_OUT_OLD,
 	// 	);
 	
 	// 	/* TEST */
@@ -303,7 +394,7 @@ pub mod tests {
 		
 	// 	areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
 	// 		self.efferent_tract.input_ganglion(tar_area_name), 
-	// 		map::EFFERENT_INPUT,
+	// 		map::EFF_IN_OLD,
 	// 	);
  // 	}
 

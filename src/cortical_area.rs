@@ -183,6 +183,9 @@ impl CorticalArea {
 
 			let em_pyrs = format!("{}: '{}' is not a valid layer", emsg, ptal_name);
 			let pyrs = pyrs_map.get(ptal_name).expect(&em_pyrs);
+
+			debug_assert!(area_map.proto_layer_map().aff_out_slcs().len() > 0, "CorticalArea::new(): \
+				No afferent output slices found for area: '{}'", area_map.proto_area_map().name);
 			Minicolumns::new(mcols_dims, &area_map, &axns, ssts, pyrs, /*&aux,*/ &ocl_pq)
 		});
 
@@ -194,7 +197,7 @@ impl CorticalArea {
 
 		// <<<<< CHANGE TO LAYER**S**_WITH_FLAG() >>>>>
 		let filters = {
-			//let aff_in_layer = area_map.proto_layer_map().layer_with_flag(map::AFFERENT_INPUT).expect(&emsg);
+			//let aff_in_layer = area_map.proto_layer_map().layer_with_flag(map::AFF_IN_OLD).expect(&emsg);
 			//let base_axn_slc = aff_in_layer.base_slc();
 			let mut filters_vec = Vec::with_capacity(5);
 
@@ -237,9 +240,9 @@ impl CorticalArea {
 		// pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
 			// .set_arg_env_named("aux_ints_1", &aux.ints_0);
 		let mut events_lists = HashMap::new();
-		events_lists.insert(map::AFFERENT_INPUT, EventList::new());		
-		events_lists.insert(map::EFFERENT_INPUT, EventList::new());
-		events_lists.insert(map::AFFERENT_OUTPUT, EventList::new());
+		events_lists.insert(map::AFF_IN_OLD, EventList::new());	
+		events_lists.insert(map::EFF_IN_OLD, EventList::new());
+		events_lists.insert(map::AFF_OUT_OLD, EventList::new());
 		
 
 		let cortical_area = CorticalArea {
@@ -279,14 +282,12 @@ impl CorticalArea {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
 		if !self.disable_ssts {	
-			let aff_input_events = {
-				self.events_lists.get(&map::AFFERENT_INPUT)
-			};
-
+			let aff_input_events = { self.events_lists.get(&map::AFF_IN_OLD) };
 			self.psal().cycle(aff_input_events); 
 		}
 
-		self.aff_input(thal);					
+		// self.aff_input(thal);					
+		self.intake(map::AFF_IN_OLD, thal);
 
 		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.bypass_inhib);
 
@@ -296,55 +297,86 @@ impl CorticalArea {
 		
 		if !self.disable_pyrs {			
 			if !self.disable_learning { self.ptal_mut().learn(); }
-
-			let eff_input_events = {
-				self.events_lists.get(&map::EFFERENT_INPUT)
-			};
-
+			let eff_input_events = { self.events_lists.get(&map::EFF_IN_OLD) };
 			self.ptal().cycle(eff_input_events);			
 		}
 
-		self.eff_input(thal);
+		// self.eff_input(thal);
+		self.intake(map::EFF_IN_OLD, thal);
 
 		if !self.disable_mcols { 
-			let output_events = {
-				self.events_lists.get_mut(&map::AFFERENT_OUTPUT)
-			};
-
+			let output_events = { self.events_lists.get_mut(&map::AFF_OUT_OLD) };
 			self.mcols.output(output_events); 
 		}
 
-		self.output(thal);	
+		self.output(map::AFF_OUT_OLD, thal);
 
 		if !self.disable_regrowth { self.regrow(); }
 	}
 
-	// Afferent input comes from efferent areas.
-	fn aff_input(&mut self, thal: &Thalamus) {
-		for eff_area_name in self.area_map.eff_areas().clone() {
-			self.write_input(
-				thal.ganglion(eff_area_name, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT),
-				map::AFFERENT_INPUT,
-			);
-		}		
-	}
+	// Read input from thalamus and write to axon space.
+	fn intake(&mut self, layer_flags: LayerFlags, thal: &mut Thalamus) {
+		let src_area_names = self.area_map.src_area_names_by_flag(layer_flags);
 
-	// Efferent input comes from afferent areas.
-	fn eff_input(&mut self, thal: &Thalamus) {
-		for aff_area_name in self.area_map.aff_areas().clone() {			
-			self.write_input(				
-				thal.ganglion(aff_area_name, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT), 
-				map::EFFERENT_INPUT,
+		for &(src_area_name, flags) in src_area_names.iter() {
+			// let (area_name, flags) = area_info;
+
+			self.write_input(
+				thal.ganglion(src_area_name, layer_flags.mirror_io()),
+				layer_flags,
 			);
 		}
 	}
 
-	fn output(&self, thal: &mut Thalamus) {
+	// Read output from axon space and write to thalamus.
+	fn output(&self, layer_flags: LayerFlags, thal: &mut Thalamus) {
 		self.read_output(
-			thal.ganglion_mut(self.name, map::AFFERENT_OUTPUT | map::EFFERENT_OUTPUT),
-			map::AFFERENT_OUTPUT, 
+			thal.ganglion_mut(self.name, layer_flags),
+			layer_flags, 
 		);
 	}
+
+
+	// Write afferent input from thalamus to axon space.
+	// Afferent input comes from efferent areas.
+	// fn aff_input(&mut self, thal: &mut Thalamus) {
+	// 	let eff_area_names = self.area_map.src_area_names_by_flag(map::AFF_OUT_OLD);
+
+	// 	// for eff_area_name in self.area_map.eff_areas().clone() {
+	// 	for &area_info in eff_area_names.iter() {
+	// 		let (eff_area_name, flags) = area_info;
+
+	// 		self.write_input(
+	// 			thal.ganglion(eff_area_name, flags),
+	// 			map::AFF_IN_OLD,
+	// 		);
+	// 	}	
+	// }
+
+	// Write efferent input from thalamus to axon space.
+	// Efferent input comes from afferent areas.
+	// fn eff_input(&mut self, thal: &mut Thalamus) {
+	// 	for aff_area_name in self.area_map.aff_areas().clone() {			
+	// 		self.write_input(				
+	// 			thal.ganglion(aff_area_name, map::EFF_OUT_OLD), 
+	// 			map::EFF_IN_OLD,
+	// 		);
+	// 	}
+	// }
+
+	// // Write non-spatial input to axon space.
+	// fn ns_input(&mut self, thal: &mut Thalamus) {
+	// 	for ns_src_area_name in self.area_map.aff_areas().clone() {
+
+	// 		self.write_input(				
+	// 			thal.ganglion(ns_src_area_name, map::EFF_OUT_OLD), 
+	// 			map::EFF_IN_OLD,
+	// 		);
+	// 	}
+
+	// 	panic!("Just for funs (remove me)");
+	// }
+	
 
 	pub fn regrow(&mut self) {
 		if !self.disable_regrowth { 
@@ -361,8 +393,8 @@ impl CorticalArea {
 
 
 	/* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
-	pub fn layer_input_ranges(&self, layer_name: &'static str, den_kind: &DendriteKind) 
-			-> Vec<Range<u32>> 
+	pub fn layer_input_ranges(&self, layer_name: &'static str, den_kind: &DendriteKind
+			) -> Vec<Range<u32>> 
 	{
 		let mut axn_irs: Vec<Range<u32>> = Vec::with_capacity(10);
 		let src_slc_ids = self.area_map.proto_layer_map().src_slc_ids(layer_name, *den_kind);
@@ -376,13 +408,12 @@ impl CorticalArea {
 		axn_irs
 	}
 
-	pub fn write_input(&mut self, events_sdr: (&EventList, &Sdr), layer_flags: LayerFlags) 
-	{
+	pub fn write_input(&mut self, events_sdr: (&EventList, &Sdr), layer_flags: LayerFlags) {
 		let (wait_events, sdr) = events_sdr;
 		let new_events = self.events_lists.get_mut(&layer_flags)
 			.expect("CorticalArea::write_input(): 'events_lists' error.");
 
-		if layer_flags.contains(map::AFFERENT_INPUT) && !self.bypass_filters {
+		if layer_flags.contains(map::AFF_IN_OLD) && !self.bypass_filters {
 			match self.filters {
 				Some(ref mut filters_vec) => {
 					filters_vec[0].write(sdr);
@@ -412,8 +443,7 @@ impl CorticalArea {
 			Some(wait_events), Some(new_events));
 	}	
 
-	pub fn read_output(&self, sdr_events: (&mut Sdr, &mut EventList), layer_flags: LayerFlags) 
-	{
+	pub fn read_output(&self, sdr_events: (&mut Sdr, &mut EventList), layer_flags: LayerFlags) {
 		let wait_events = &self.events_lists.get(&layer_flags)
 			.expect("CorticalArea::read_output(): 'events_lists' error.");
 		let (sdr, new_events) = sdr_events;
@@ -690,11 +720,11 @@ pub mod tests {
 
 	/* AXN_OUTPUT(): NEEDS UPDATING (DEPRICATION?) */
 	// pub fn axn_output_range(&self) -> Range<u32> {
-	// 	self.area_map.axn_range_by_flag(map::AFFERENT_OUTPUT)
+	// 	self.area_map.axn_range_by_flag(map::AFF_OUT_OLD)
 	// }
 
 	// <<<<< TODO: DEPRICATE >>>>>
-	// pub fn protolayer_map(&self) -> &ProtoLayerMap {
+	// pub fn protolayer_map(&self) -> &ProtolayerMap {
 	// 	&self.area_map.proto_layer_map()
 	// }
 
@@ -730,7 +760,7 @@ pub mod tests {
 	// 	// //let start = cmn::axn_idz_2d(axn_aff_out_slc, self.dims.columns(), self.area_map.hrz_demarc());
 	// 	// let idz = self.area_map.axn_idz(axn_aff_out_slc);
 	// 	// (idz, idz + (self.dims.per_slc()))
-	// 	self.area_map.axn_range_by_flag(map::AFFERENT_OUTPUT)
+	// 	self.area_map.axn_range_by_flag(map::AFF_OUT_OLD)
 	// }
 
 
@@ -764,7 +794,7 @@ pub mod tests {
 
 	// 	INPUT_SRC_AREAS():
 	//  <<<<< TODO: DEPRICATE OR WRAP AREA_MAP::INPUT_SRC_AREA_NAMES() >>>>>
-	// 		- REMINDER: AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
+	// 		- REMINDER: FEEDFORWARD INPUT COMES FROM FEEDBACK AREAS, FEEDBACK INPUT COMES FROM FEEDFORWARD AREAS
 	// pub fn input_src_area_names_by_flag(&self, layer_flags: LayerFlags) -> Vec<&'static str> {
 	// 	 // let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
 	// 	 // 	'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
@@ -772,9 +802,9 @@ pub mod tests {
 	// 	// return layer.expect(&emsg).depth();
 
 	// 	// 
-	// 	if layer_flags == map::EFFERENT_INPUT {
+	// 	if layer_flags == map::EFF_IN_OLD {
 	// 		self.area_map.proto_area_map().aff_areas.clone()
-	// 	} else if layer_flags == map::AFFERENT_INPUT {
+	// 	} else if layer_flags == map::AFF_IN_OLD {
 	// 		self.area_map.proto_area_map().eff_areas.clone()
 	// 	} else {
 	// 		panic!("\nCorticalArea::input_src_areas(): Can only be called with an \

@@ -9,7 +9,7 @@ use rand::{ self, /*ThreadRng,*/ Rng };
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQue, WorkSize, Envoy, EventList };
-use proto::{ /*ProtoLayerMap, RegionKind, ProtoAreaMaps,*/ ProtocellKind, Protocell, DendriteKind };
+use proto::{ /*ProtolayerMap, RegionKind, ProtoareaMaps,*/ ProtocellKind, Protocell, DendriteKind };
 // use synapses::{ Synapses };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };

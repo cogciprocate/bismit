@@ -11,7 +11,7 @@
 use cmn::{ self };
 use map::{ AreaMap };
 use ocl::{ self, ProQue, Envoy, EnvoyDims };
-//use proto::{ ProtoLayerMap, RegionKind, ProtoAreaMaps, ProtocellKind, Protocell, DendriteKind };
+//use proto::{ ProtolayerMap, RegionKind, ProtoareaMaps, ProtocellKind, Protocell, DendriteKind };
 //use synapses::{ Synapses };
 //use dendrites::{ Dendrites };
 //use cortical_area:: { Aux };

@@ -1,14 +1,14 @@
 [package]
 name = "bismit"
 version = "0.0.1"
-authors = ["Nick Sanders <github.com/nsan1129>"]
+authors = ["Nick Sanders <github.com/c0gent>"]
 
 [dependencies]
-bitflags = "0.3"
-rand = "0.3"
-num = "0.1"
-libc = "0.1"
-enum_primitive = "0.1"
+bitflags = "*"
+rand = "*"
+num = "*"
+libc = "*"
+enum_primitive = "*"
 #ocl = "0.1"
 
 [dependencies.microcosm]

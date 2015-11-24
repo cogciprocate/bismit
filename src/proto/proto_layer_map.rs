@@ -3,7 +3,7 @@ use std::ops::{ Index, IndexMut,  };
 use std::hash::{ Hasher };
 
 use map::{ self, LayerFlags };
-use super::{ ProtoAreaMap };
+use super::{ ProtoareaMap };
 use super::layer::{ Protolayer, ProtoaxonKind, ProtolayerKind };
 use super::{ ProtocellKind, DendriteKind };
 
@@ -16,7 +16,7 @@ use super::{ ProtocellKind, DendriteKind };
 		- should be instances of some new type which manages their lists
 */
 #[derive(Clone)]
-pub struct ProtoLayerMap {
+pub struct ProtolayerMap {
 	pub name: &'static str,
 	pub kind: RegionKind,
 	layers: HashMap<&'static str, Protolayer>,
@@ -29,9 +29,9 @@ pub struct ProtoLayerMap {
 	hrz_demarc: u8,
 }
 
-impl ProtoLayerMap {
-	pub fn new (region_name: &'static str, kind: RegionKind)  -> ProtoLayerMap {	
-		ProtoLayerMap { 
+impl ProtolayerMap {
+	pub fn new (region_name: &'static str, kind: RegionKind)  -> ProtolayerMap {	
+		ProtolayerMap { 
 			name: region_name,
 			kind: kind,
 			layers: HashMap::new(),
@@ -51,7 +51,7 @@ impl ProtoLayerMap {
 				layer_name: &'static str,
 				flags: LayerFlags,
 				kind: ProtolayerKind,
-			) -> ProtoLayerMap 
+			) -> ProtolayerMap 
 	{
 
 		let next_kind_base_slc_id = match kind {
@@ -59,14 +59,14 @@ impl ProtoLayerMap {
 			ProtolayerKind::Axonal(ref axon_kind) => self.depth_axon_kind(&axon_kind),
 		};
 		
-		let cl = Protolayer {
-			name : layer_name,
-			kind: kind,
-			base_slc_id: 0, 
-			kind_base_slc_id: next_kind_base_slc_id,
-			depth: 0,
-			flags: flags | map::INPUT,
-		};
+		let cl = Protolayer::new(
+			layer_name,
+			kind,
+			0,
+			0,
+			next_kind_base_slc_id,			
+			flags | map::INPUT,
+		);
 
 		self.add(cl);
 		self
@@ -78,21 +78,21 @@ impl ProtoLayerMap {
 				layer_depth: u8,
 				flags: LayerFlags,
 				kind: ProtolayerKind,
-			) -> ProtoLayerMap 
+			) -> ProtolayerMap 
 	{
 		let next_kind_base_slc_id = match kind {
 			ProtolayerKind::Cellular(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
 			ProtolayerKind::Axonal(ref axon_kind) => self.depth_axon_kind(&axon_kind),
 		};
 		
-		let cl = Protolayer {
-			name : layer_name,
-			kind: kind,
-			base_slc_id: 0, 
-			kind_base_slc_id: next_kind_base_slc_id,
-			depth: layer_depth,
-			flags: flags,
-		};
+		let cl = Protolayer::new(
+			layer_name,
+			kind,
+			layer_depth,
+			0, 
+			next_kind_base_slc_id,			
+			flags,
+		);
 
 		self.add(cl);
 		self
@@ -107,7 +107,7 @@ impl ProtoLayerMap {
 			None 			=> ProtocellKind::Nada,
 		};*/
 		if self.frozen {
-			panic!("ProtoLayerMap::add(): Cannot add new layers after region is frozen.");
+			panic!("ProtolayerMap::add(): Cannot add new layers after region is frozen.");
 		}		
 
 		self.layers.insert(layer.name, layer);
@@ -138,7 +138,7 @@ impl ProtoLayerMap {
 						Some(vec) => {
 							
 							layer.kind_base_slc_id = vec.len() as u8;
-							//layer.kind_base_slc_id = std::num::cast(vec.len()).expect("ProtoLayerMap::add()");
+							//layer.kind_base_slc_id = std::num::cast(vec.len()).expect("ProtolayerMap::add()");
 							//println!("{:?} base_slc_id: {}", cell_kind, layer.kind_base_slc_id);
 
 							for i in 0..layer.depth {							 
@@ -182,7 +182,7 @@ impl ProtoLayerMap {
 	// SET_LAYERS_DEPTH(): ASSUMES PROPER FLAG UNIQUENESS CONSTRAINS ALREADY APPLIED
 	pub fn set_layers_depth(&mut self, flags: LayerFlags, depth: u8) {
 		if self.frozen { 
-			panic!("region::ProtoLayerMap::set_layer_depth(): \
+			panic!("region::ProtolayerMap::set_layer_depth(): \
 				Cannot set layer depth after region has been frozen."); 
 		} 
 
@@ -201,15 +201,15 @@ impl ProtoLayerMap {
 	// 		- cel_layer_kind_slc_lists being a vector needs to change asap
 	//
 	// 	[FIXME] TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS 	
-	pub fn freeze(&mut self, protoarea: &ProtoAreaMap) {
+	pub fn freeze(&mut self, protoarea: &ProtoareaMap) {
 		println!("\nPROTOLAYERMAP: Assembling layer map for area '{}'...", protoarea.name);
 
 		if self.frozen {
 			return;
 		} else {			
-			// AFFERENT INPUT COMES FROM EFFERENT AREAS, EFFERENT INPUT COMES FROM AFFERENT AREAS
-			self.set_layers_depth(map::AFFERENT_INPUT, protoarea.eff_areas.len() as u8);
-			self.set_layers_depth(map::EFFERENT_INPUT, protoarea.aff_areas.len() as u8);
+			// FEEDFORWARD INPUT COMES FROM FEEDBACK AREAS, FEEDBACK INPUT COMES FROM FEEDFORWARD AREAS
+			self.set_layers_depth(map::AFF_IN_OLD, protoarea.eff_areas.len() as u8);
+			self.set_layers_depth(map::EFF_IN_OLD, protoarea.aff_areas.len() as u8);
 			self.frozen = true;
 		}		
 
@@ -237,7 +237,7 @@ impl ProtoLayerMap {
 			println!("    Adding Cell Kind: '{:?}', len: {}, kind_base_slc: {}", cell_kind, list.len(), next_base_slc);
 			assert!(list.len() == self.depth_cell_kind(&cell_kind) as usize);
 			next_base_slc += list.len() as u8;
-			//next_base_slc += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::ProtoLayerMap::freeze()");
+			//next_base_slc += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::ProtolayerMap::freeze()");
 		}
 
 		/* (2b) SAVE DEMARCATION BETWEEN VERTICAL (SPATIAL) AND HORIZONTAL ROWS */
@@ -323,7 +323,7 @@ impl ProtoLayerMap {
 	pub fn base_slc_cell_kind(&self, cell_kind: &ProtocellKind) -> u8 {
 		match self.cel_layer_kind_base_slc_ids.get(cell_kind) {
 			Some(base_slc) 	=> base_slc.clone(),
-			None 			=> panic!("ProtoLayerMap::base_slc_cell_king(): Base slc for type not found"),
+			None 			=> panic!("ProtolayerMap::base_slc_cell_king(): Base slc for type not found"),
 		}
 	}
 	
@@ -406,7 +406,7 @@ impl ProtoLayerMap {
 
 		//println!("CKRC: kind: {:?} -> count = {}, count2 = {}", &cell_kind, count, count2);
 
-		assert!(count as usize == count2, "ProtoLayerMap::depth_cell_kind(): mismatch");
+		assert!(count as usize == count2, "ProtolayerMap::depth_cell_kind(): mismatch");
 
 		count
 	}
@@ -432,7 +432,7 @@ impl ProtoLayerMap {
 		};
 
 		assert!(axonal_layer_count as usize == layer_kind_slc_lists_len || !self.frozen, 
-			"ProtoLayerMap::depth_axon_kind(): mismatch");
+			"ProtolayerMap::depth_axon_kind(): mismatch");
 
 		axonal_layer_count
 	}	
@@ -451,7 +451,7 @@ impl ProtoLayerMap {
 
 	pub fn slc_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
 		if !self.frozen { // REPLACE WITH ASSERT (evaluate release build implications first)
-			panic!("ProtoLayerMap must be frozen with .freeze() before slc_ids can be called.");
+			panic!("ProtolayerMap must be frozen with .freeze() before slc_ids can be called.");
 		}
 
 		let mut slc_ids = Vec::new();
@@ -533,7 +533,7 @@ impl ProtoLayerMap {
  		let mut output_slcs: Vec<u8> = Vec::with_capacity(4);
  		
  		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.flags & map::AFFERENT_OUTPUT) == map::AFFERENT_OUTPUT {
+ 			if (layer.flags & map::AFF_OUT_OLD) == map::AFF_OUT_OLD {
  				let v = self.slc_ids(vec![layer.name]);
  				output_slcs.push_all(&v);
  			}
@@ -556,11 +556,13 @@ impl ProtoLayerMap {
  	}
 
 
- 	pub fn layers_with_flag(&self, flag: LayerFlags) -> Vec<&Protolayer> {
- 		let mut layers: Vec<&Protolayer> = Vec::new();
+ 	/// Returns all layers containing 'flags'.
+ 	pub fn layers_with_flags(&self, flags: LayerFlags) -> Vec<&Protolayer> {
+ 		let mut layers: Vec<&Protolayer> = Vec::with_capacity(16);
  		 		
- 		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.flags & flag) == flag {
+ 		for (_, layer) in self.layers.iter() {
+ 			// if (layer.flags & flags) == flags {
+ 			if layer.flags.contains(flags) {
  				layers.push(&layer);
  			}
  		}
@@ -590,19 +592,19 @@ impl ProtoLayerMap {
 	// }
 }
 
-impl<'b> Index<&'b&'static str> for ProtoLayerMap
+impl<'b> Index<&'b&'static str> for ProtolayerMap
 {
     type Output = Protolayer;
 
     fn index<'a>(&'a self, index: &'b&'static str) -> &'a Protolayer {
-        self.layers.get(index).unwrap_or_else(|| panic!("ProtoLayerMap::index(): invalid layer name: '{}'", index))
+        self.layers.get(index).unwrap_or_else(|| panic!("ProtolayerMap::index(): invalid layer name: '{}'", index))
     }
 }
 
-impl<'b> IndexMut<&'b&'static str> for ProtoLayerMap
+impl<'b> IndexMut<&'b&'static str> for ProtolayerMap
 {
     fn index_mut<'a>(&'a mut self, index: &'b&'static str) -> &'a mut Protolayer {
-        self.layers.get_mut(index).unwrap_or_else(|| panic!("[ProtoLayerMap::index(): invalid layer name: '{}'", index))
+        self.layers.get_mut(index).unwrap_or_else(|| panic!("[ProtolayerMap::index(): invalid layer name: '{}'", index))
     }
 }
 
@@ -618,41 +620,41 @@ pub enum RegionKind {
 
 
 
-pub struct ProtoLayerMaps {
-	map: HashMap<&'static str, ProtoLayerMap>,
+pub struct ProtolayerMaps {
+	map: HashMap<&'static str, ProtolayerMap>,
 }
 
-impl ProtoLayerMaps {
-	pub fn new() -> ProtoLayerMaps {
-		ProtoLayerMaps {
+impl ProtolayerMaps {
+	pub fn new() -> ProtolayerMaps {
+		ProtolayerMaps {
 			map: HashMap::new(),
 		}
 	}
 
-	pub fn layer_map(mut self, pr: ProtoLayerMap) -> ProtoLayerMaps {
+	pub fn layer_map(mut self, pr: ProtolayerMap) -> ProtolayerMaps {
 		self.add(pr);
 		self
 	}	
 
-	pub fn add(&mut self, pr: ProtoLayerMap) {
+	pub fn add(&mut self, pr: ProtolayerMap) {
 		self.map.insert(pr.name.clone(), pr);
 	}
 }
 
-impl<'b> Index<&'b str> for ProtoLayerMaps
+impl<'b> Index<&'b str> for ProtolayerMaps
 {
-    type Output = ProtoLayerMap;
+    type Output = ProtolayerMap;
 
-    fn index<'a>(&'a self, region_name: &'b str) -> &'a ProtoLayerMap {
-        self.map.get(region_name).expect(&format!("proto::regions::ProtoLayerMaps::index(): \
+    fn index<'a>(&'a self, region_name: &'b str) -> &'a ProtolayerMap {
+        self.map.get(region_name).expect(&format!("proto::regions::ProtolayerMaps::index(): \
         	Invalid region name: '{}'.", region_name))
     }
 }
 
-impl<'b> IndexMut<&'b str> for ProtoLayerMaps
+impl<'b> IndexMut<&'b str> for ProtolayerMaps
 {
-    fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut ProtoLayerMap {
-        self.map.get_mut(region_name).expect(&format!("proto::regions::ProtoLayerMaps::index_mut(): \
+    fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut ProtolayerMap {
+        self.map.get_mut(region_name).expect(&format!("proto::regions::ProtolayerMaps::index_mut(): \
         	Invalid region name: '{}'.", region_name))
     }
 }
@@ -663,19 +665,19 @@ impl<'b> IndexMut<&'b str> for ProtoLayerMaps
 //impl Copy for RegionKind {}
 
 
-/*pub struct ProtoLayerMap {
+/*pub struct ProtolayerMap {
 	pub layers: HashMap<&'static str, Protolayer>,
 	pub kind: RegionKind,
 }
 
-impl ProtoLayerMap {
-	pub fn new (kind: RegionKind)  -> ProtoLayerMap {
+impl ProtolayerMap {
+	pub fn new (kind: RegionKind)  -> ProtolayerMap {
 		let mut next_slc_id = HashMap::new();
 		next_slc_id.insert(ProtocellKind::Pyramidal, 0);
 		next_slc_id.insert(ProtocellKind::InhibitoryInterneuronNetwork, 0);
 		next_slc_id.insert(ProtocellKind::SpinyStellate, 0);
 	
-		ProtoLayerMap { 
+		ProtolayerMap { 
 			layers: HashMap::new(),
 			kind: kind,
 		}
@@ -779,21 +781,21 @@ impl ProtoLayerMap {
 
 }
 
-impl Index<&'static str> for ProtoLayerMap
+impl Index<&'static str> for ProtolayerMap
 {
     type Output = Protolayer;
 
     fn index<'a>(&'a self, index: &&'static str) -> &'a Protolayer {
-        self.layers.get(index).unwrap_or_else(|| panic!("[ProtoLayerMap::index(): invalid layer name: \"{}\"]", index))
+        self.layers.get(index).unwrap_or_else(|| panic!("[ProtolayerMap::index(): invalid layer name: \"{}\"]", index))
     }
 }
 
-impl IndexMut<&'static str> for ProtoLayerMap
+impl IndexMut<&'static str> for ProtolayerMap
 {
     type Output = Protolayer;
 
     fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut Protolayer {
-        self.layers.get_mut(index).unwrap_or_else(|| panic!("[ProtoLayerMap::index(): invalid layer name: \"{}\"]", index))
+        self.layers.get_mut(index).unwrap_or_else(|| panic!("[ProtolayerMap::index(): invalid layer name: \"{}\"]", index))
     }
 }*/
 
@@ -818,7 +820,7 @@ impl IndexMut<&'static str> for ProtoLayerMap
 			src_slc_ids.push_all(self.kind_slc_ids(src_slc_name).as_slc());
 		}
 
-		//println!("ProtoLayerMap::layer_srcs_slc_ids(): (name:sources:idxs) [{}]:{:?}:{:?}", layer_name, src_lyr_names, src_slc_ids);
+		//println!("ProtolayerMap::layer_srcs_slc_ids(): (name:sources:idxs) [{}]:{:?}:{:?}", layer_name, src_lyr_names, src_slc_ids);
 		
 		src_slc_ids
  	}*/

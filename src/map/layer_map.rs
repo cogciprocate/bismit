@@ -1,119 +1,205 @@
-// use num::{ Num };
-// use std::fmt::{ Display };
-// use std::ops::{ Range };
 use std::collections::{ HashMap };
-//use std::num::ToString;
+use std::ops::{ Range };
+// use std::iter;
 
-// use ocl::{ BuildConfig, BuildOption };
-use proto::{ Protolayer, ProtoAreaMaps };
-use cmn::{ /*self,*/ CorticalDims, SliceDims };
-use map::{ self, LayerFlags };
+use proto::{ Protolayer, ProtoareaMap, ProtoareaMaps, ProtolayerMap, ProtolayerMaps };
+use cmn::{ self, CorticalDims };
+use map::{ self, LayerFlags, SliceDims };
 
+
+#[derive(Clone)]
 pub struct LayerMap {
-	map: HashMap<&'static str, LayerInfo>,
+	area_name: &'static str,
+	index: Vec<LayerInfo>,
+	// names: HashMap<&'static str, usize>,
+	// slices: HashMap<u8, usize>,
+	// flags: HashMap<LayerFlags, Vec<usize>>,
 }
 
 impl LayerMap {
-
-}
-
-pub struct LayerInfo {
-	name: &'static str,
-	slices: Vec<u8>,
-}
-
-#[derive(Clone)]
-// NEEDS RENAME & INTEGRATION WITH / CONVERSION TO LAYERMAP
-// [FIXME] TODO: DEPRICATE
-pub struct InterAreaInfoCache {
-	pub eff_areas: LayerSourceAreas, // eff. areas -> aff. input layer	
-	pub aff_areas: LayerSourceAreas, // aff. areas -> eff. input layer
-	pub aff_in_layer: Option<Protolayer>,
-	pub eff_in_layer: Option<Protolayer>,
-	pub out_layer: Option<Protolayer>,
-}
-
-impl InterAreaInfoCache {
-	pub fn new(
-				area_dims: &CorticalDims,
-				eff_area_names: &Vec<&'static str>, 
-				aff_area_names: &Vec<&'static str>, 
-				aff_in_layer: Option<&Protolayer>, 				
-				eff_in_layer: Option<&Protolayer>,
-				out_layer: Option<&Protolayer>,
-				pamaps: &ProtoAreaMaps,
-			) -> InterAreaInfoCache 
+	pub fn new(pamap: &ProtoareaMap, plmap: &ProtolayerMap, pamaps: &ProtoareaMaps, 
+				plmaps: &ProtolayerMaps) -> LayerMap 
 	{
-		let eff_areas = LayerSourceAreas::new(area_dims, eff_area_names, pamaps);
-		let aff_areas = LayerSourceAreas::new(area_dims, aff_area_names, pamaps);
+		println!("{mt}LAYERMAP::NEW()...", mt = cmn::MT);
 
-		InterAreaInfoCache { 
-			eff_areas: eff_areas, 			
-			aff_areas: aff_areas, 
-			aff_in_layer: clone_rewrap_layer(aff_in_layer), 
-			eff_in_layer: clone_rewrap_layer(eff_in_layer),
-			out_layer: clone_rewrap_layer(out_layer),
+		let mut index = Vec::with_capacity(plmap.layers().len());
+
+		for (pl_name, pl) in plmap.layers().iter() {
+			index.push(LayerInfo::new(pl, pamap, pamaps, plmaps));
 		}
+
+		// println!("{mt}{mt}LAYERMAP::NEW(): index: {:?}", index, mt = cmn::MT);
+
+		// let names = HashMap::with_capacity(index.capacity());
+		// let slices = HashMap::with_capacity(index.capacity());
+		// let flags = HashMap::with_capacity(index.capacity());
+
+		LayerMap { area_name: pamap.name, index: index, /*names: names, slices: slices, flags: flags*/ }
 	}
 
-	pub fn src_area_for_slc(&self, slc_id: u8, flags: LayerFlags) -> Option<&SourceAreaInfo> {
-		let (layer_src_areas, layer_opt) = if flags.contains(map::AFFERENT_INPUT) {
-			// println!("##### AFF -> slc_id: {}, flags: {:?}", slc_id, flags);
-			(&self.eff_areas, &self.aff_in_layer)			
-		} else if flags.contains(map::EFFERENT_INPUT) {			
-			// println!("##### EFF -> slc_id: {}, flags: {:?}", slc_id, flags);
-			(&self.aff_areas, &self.eff_in_layer)
-		} else {
-			// println!("##### NONE -> slc_id: {}, flags: {:?}", slc_id, flags);
-			return None
-		};
+	// [FIXME] Cache results.
+	pub fn src_area_names_by_flag(&self, flags: LayerFlags) -> Vec<(&'static str, LayerFlags)> {
+		let mut names = Vec::with_capacity(8);
 
-		match layer_opt {
-			&Some(ref layer) => {
-				if slc_id >= layer.base_slc_id && slc_id < layer.base_slc_id + layer.depth {
-					assert!(layer.depth as usize == layer_src_areas.len());
-					let layer_sub_idx = slc_id - layer.base_slc_id;					
-					let src_area_info = layer_src_areas.area_info_by_idx(layer_sub_idx);
-					Some(src_area_info)
-				} else {
-					return None;
+		// let comp_flagset = flags; // (flags & !map::INPUT) | map::OUTPUT;
+
+		for layer in self.index.iter() {
+			// println!("\n*** LAYERMAP::SANBF('{}', '{}'):L1: comp_flagset: '{:?}', layer.flags: '{:?}', Match: {}", 
+			// 	self.area_name, layer.name, comp_flagset, layer.flags, layer.flags.contains(comp_flagset));
+
+			if layer.flags.contains(flags) {
+				// println!("*** LAYERMAP::SANBF('{}', '{}'):L2: layer.sources: '{:?}'", 
+				// 	self.area_name, layer.name, layer.sources);
+
+				for source_layer in layer.sources.iter() {
+					// println!("*** LAYERMAP::SANBF('{}', '{}'):L3: comp_flagset: '{:?}', source_layer.flags: '{:?}'", 
+					// 	self.area_name, layer.name, flags, source_layer.flags);
+
+					if source_layer.flags.contains(flags.mirror_io()) {
+						names.push((source_layer.area_name, source_layer.flags));
+						// println!("*** LAYERMAP::SANBF('{}', '{}'): Pushing: {}, {:?}", 
+						// 	self.area_name, layer.name, source_layer.area_name, source_layer.flags);
+					}
+				}				
+			}
+		}
+
+		names
+	}
+}
+
+
+#[derive(Clone, Debug)]
+pub struct LayerInfo {
+	name: &'static str,	
+	flags: LayerFlags,
+	// slices: Vec<u8>,
+	slice_range: Range<u8>,
+	sources: Vec<SourceLayerInfo>,
+	proto: Protolayer,
+}
+
+impl LayerInfo {
+	// [FIXME]: TODO: Clean up and optimize.
+	pub fn new(protolayer: &Protolayer, pamap: &ProtoareaMap, pamaps: &ProtoareaMaps, 
+				plmaps: &ProtolayerMaps) -> LayerInfo {
+		let name = protolayer.name;
+		let flags = protolayer.flags;
+		// let slices = (protolayer.base_slc_id..(protolayer.base_slc_id + protolayer.depth)).collect();
+		let slice_range = protolayer.base_slc_id..(protolayer.base_slc_id + protolayer.depth);
+		let mut sources = Vec::with_capacity(8);
+
+		// println!("{mt}{mt}LAYERINFO::NEW(): layer: {:?}", protolayer, mt = cmn::MT);
+
+		if flags.contains(map::INPUT) {
+			// let mut src_area_names = pamap.aff_areas.clone();
+			// src_area_names.extend(pamap.eff_areas.iter().cloned());
+
+			let mut src_areas = Vec::with_capacity(pamap.aff_areas.len() + pamap.eff_areas.len());
+
+			for area_name in pamap.aff_areas.iter() {
+				src_areas.push((area_name, "aff"));
+			}
+
+			for area_name in pamap.eff_areas.iter() {
+				src_areas.push((area_name, "eff"));
+			}
+
+			// For each potential source area (aff or eff):
+			// - get that area's layers
+			// - get the layers with a complimentary flag ('map::OUTPUT' in this case)
+			//    - other flags identical
+			// - filter out feedback from eff areas and feedforward from aff areas
+			// - push what's left to sources
+			for &(src_area_name, src_area_type) in src_areas.iter() {
+				let layer_map_name = pamaps.maps().get(src_area_name).expect("LayerInfo::new()")
+					.layer_map_name;
+				let src_layer_map = &plmaps[layer_map_name];
+				let src_layers = src_layer_map.layers_with_flags(flags.mirror_io());				
+
+				for src_layer in src_layers.iter() {
+					if src_area_type == "eff" && flags.contains(map::FEEDFORWARD)
+						|| src_area_type == "aff" && flags.contains(map::FEEDBACK)
+					{
+						sources.push(SourceLayerInfo::new(src_area_name, src_layer.flags, 
+							(*src_layer).clone()));
+
+						println!("{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding '{}' source layer: \
+							src_area_name: '{}', src_layer_map.name: '{}', src_layer.name: '{}', \
+							src_layer.flags: '{:?}'", name, src_area_type, src_area_name, src_layer_map.name, 
+							src_layer.name, src_layer.flags, mt = cmn::MT);
+					}
 				}
-			},
-			&None => None,
+
+				// println!("{mt}{mt}{mt}##### src_layers: {:?} :", src_layers, mt = cmn::MT);
+			}
+
+			// println!("{mt}{mt}{mt}###### LayerInfo::new(): area: {}, layer: {}, SOURCE LAYERS: {:?}", 
+			// 	pamap.name, name, sources, mt = cmn::MT);
+		}
+
+		LayerInfo {
+			name: name,
+			flags: protolayer.flags,
+			slice_range: slice_range,
+			sources: sources,
+			proto: protolayer.clone(),
 		}
 	}
 }
 
 
+#[derive(Clone, Debug)]
+pub struct SourceLayerInfo {
+	area_name: &'static str,
+	flags: LayerFlags,
+	proto: Protolayer,
+}
+
+impl SourceLayerInfo {
+	pub fn new(area_name: &'static str, flags: LayerFlags, proto: Protolayer) -> SourceLayerInfo {
+		SourceLayerInfo {
+			area_name: area_name, flags: flags, proto: proto,
+		}
+	}
+}
+
+
+
+
+
+
+
+// [FIXME] TODO: DEPRICATE
 #[derive(Clone)]
 pub struct LayerSourceAreas {
-	map: HashMap<&'static str, SourceAreaInfo>,
-	index: Vec<&'static str>,
+	index: Vec<&'static str>, 						// <-- store in index
+	names: HashMap<&'static str, SourceAreaInfo>, 	// <-- reverse with ^
 	axns_sum: u32,
 }
 
 impl LayerSourceAreas {
-	fn new(area_dims: &CorticalDims, src_area_names: &Vec<&'static str>, pamaps: &ProtoAreaMaps) -> LayerSourceAreas {
-		let mut map = HashMap::with_capacity(src_area_names.len());
+	pub fn new(area_dims: &CorticalDims, src_area_names: &Vec<&'static str>, pamaps: &ProtoareaMaps) -> LayerSourceAreas {
+		let mut names = HashMap::with_capacity(src_area_names.len());
 
 		let mut axns_sum = 0;
 
 		for &src_area_name in src_area_names.iter() {
 			let src_area_dims = pamaps.maps()[src_area_name].dims();
 			axns_sum += src_area_dims.columns();
-			map.insert(src_area_name, SourceAreaInfo::new(area_dims, src_area_name, src_area_dims));
+			names.insert(src_area_name, SourceAreaInfo::new(area_dims, src_area_name, src_area_dims));
 		}
 
 		LayerSourceAreas {
-			map: map,
+			names: names,
 			index: src_area_names.clone(),
 			axns_sum: axns_sum,
 		}
 	}
 
-	fn len(&self) -> usize {
-		assert!(self.map.len() == self.index.len());		
-		self.map.len()
+	pub fn len(&self) -> usize {
+		debug_assert!(self.names.len() == self.index.len());		
+		self.names.len()
 	}
 
 	pub fn axns_sum(&self) -> u32 {
@@ -121,45 +207,39 @@ impl LayerSourceAreas {
 	}
 
 	fn area_dims(&self, area_name: &'static str) -> &SliceDims {
-		let area_info = &self.map[area_name];
+		let area_info = &self.names[area_name];
 		//(area_info.dims.v_size, area_info.dims.u_size)
 		&area_info.dims
 	}
 
-	fn area_info_by_idx(&self, idx: u8) -> &SourceAreaInfo {
+	pub fn area_info_by_idx(&self, idx: u8) -> &SourceAreaInfo {
 		assert!((idx as usize) < self.len());
-		&self.map[self.index[idx as usize]]
+		&self.names[self.index[idx as usize]]
 	}
 }
 
 
 #[derive(Clone)]
-// TODO: DEPRICATE IN FAVOR OF SLICE MAP
-struct SourceAreaInfo {
-	pub name: &'static str,
-	pub dims: SliceDims,
-	// pub v_size: u32,
-	// pub u_size: u32,
+pub struct SourceAreaInfo {
+	name: &'static str,
+	dims: SliceDims,
 }
 
 impl SourceAreaInfo {
-	fn new(area_dims: &CorticalDims, src_area_name: &'static str, src_area_dims: &CorticalDims
+	pub fn new(area_dims: &CorticalDims, src_area_name: &'static str, src_area_dims: &CorticalDims
 		) -> SourceAreaInfo 
 	{
 		let slc_dims = SliceDims::new(area_dims, Some(src_area_dims)).expect("SourceAreaInfo::new()");
-		SourceAreaInfo { name: src_area_name, dims: slc_dims /*v_size: v_size, u_size: u_size*/ }
+		SourceAreaInfo { name: src_area_name, dims: slc_dims }
 	}
 
 	pub fn dims(&self) -> &SliceDims {
 		&self.dims
 	}
-}
 
-
-fn clone_rewrap_layer(pl_ref_opt: Option<&Protolayer>) -> Option<Protolayer> {
-	match pl_ref_opt {
-		Some(pl_ref) => Some(pl_ref.clone()),
-		None => None,
+	pub fn name(&self) -> &'static str {
+		self.name
 	}
 }
+
 
