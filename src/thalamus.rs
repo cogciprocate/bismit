@@ -49,7 +49,7 @@ impl Thalamus {
 		{	
 			let area_map = AreaMap::new(pa, &plmaps, &pamaps);
 
-			let layer_info = area_map.output_layer_info_by_flag();
+			let layer_info = area_map.output_layer_info_by_tags();
 
 			for &(tags, cols) in layer_info.iter() {
 				tract.add_area(area_name, tags, cols as usize);

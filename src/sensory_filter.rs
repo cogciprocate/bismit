@@ -26,7 +26,7 @@ impl SensoryFilter {
 		) -> SensoryFilter 
 	{
 		let layer_flags = map::FF_IN;
-		let base_axn_slc_ids = area_map.axn_base_slc_ids_by_flag(layer_flags);
+		let base_axn_slc_ids = area_map.axn_base_slc_ids_by_tags(layer_flags);
 		assert!(base_axn_slc_ids.len() == 1);
 		let base_axn_slc = base_axn_slc_ids[0];
 

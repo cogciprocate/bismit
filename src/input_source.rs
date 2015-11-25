@@ -32,7 +32,7 @@ impl InputSource {
 
 				( // RETURN TUPLE
 					InputSourceKind::IdxReader(Box::new(ir)), 
-					pamap.aff_areas.clone(), 
+					pamap.aff_areas().clone(), 
 					len
 				)
 			},
@@ -45,13 +45,13 @@ impl InputSource {
 				
 				( // RETURN TUPLE
 					InputSourceKind::IdxReader(Box::new(ir)), 
-					pamap.aff_areas.clone(), 
+					pamap.aff_areas().clone(), 
 					len
 				)
 			},
 
 			&Protoinput::None | &Protoinput::Zeros => (InputSourceKind::None, 
-				pamap.aff_areas.clone(), pamap.dims.columns()),
+				pamap.aff_areas().clone(), pamap.dims.columns()),
 
 			_ => panic!("\nInputSource::new(): Input type not yet supported."),
 		};

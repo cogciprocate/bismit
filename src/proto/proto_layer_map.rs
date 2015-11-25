@@ -153,8 +153,8 @@ impl ProtolayerMap {
 
 	pub fn set_layer_depths(&mut self, pamap: &ProtoareaMap) {
 		// FEEDFORWARD INPUT COMES FROM EFF AREAS, FEEDBACK INPUT COMES FROM AFF AREAS
-		self.set_layer_depth(map::FF_IN, pamap.eff_areas.len() as u8);
-		self.set_layer_depth(map::FB_IN, pamap.aff_areas.len() as u8);
+		self.set_layer_depth(map::FF_IN, pamap.eff_areas().len() as u8);
+		self.set_layer_depth(map::FB_IN, pamap.aff_areas().len() as u8);
 	} 
 
  	// 	PROTOREGION::FREEZE():
@@ -488,7 +488,7 @@ impl ProtolayerMap {
  	}
 
  	pub fn aff_out_slcs(&self) -> Vec<u8> {
- 		let mut output_slcs: Vec<u8> = Vec::with_capacity(4);
+ 		let mut output_slcs: Vec<u8> = Vec::with_capacity(8);
  		
  		for (layer_name, layer) in self.layers.iter() {
  			if (layer.tags() & map::FF_OUT) == map::FF_OUT {

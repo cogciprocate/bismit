@@ -85,8 +85,8 @@ pub struct ProtoareaMap {
 	//pub region_kind: RegionKind,
 	pub input: Protoinput,
 	pub filters: Option<Vec<Protofilter>>,
-	pub aff_areas: Vec<&'static str>,
-	pub eff_areas: Vec<&'static str>,
+	aff_areas: Vec<&'static str>,
+	eff_areas: Vec<&'static str>,
 }
 
 impl ProtoareaMap {
@@ -126,6 +126,14 @@ impl ProtoareaMap {
 
 	pub fn input(&self) -> &Protoinput {
 		&self.input
+	}
+
+	pub fn eff_areas(&self) -> &Vec<&'static str> {
+		&self.eff_areas
+	}
+
+	pub fn aff_areas(&self) -> &Vec<&'static str> {
+		&self.aff_areas
 	}
 }
 

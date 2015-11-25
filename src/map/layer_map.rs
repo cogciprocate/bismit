@@ -1,7 +1,8 @@
 // use std::collections::{ HashMap };
 use std::ops::{ Range };
+use std::slice::{ Iter };
 
-use proto::{ Protolayer, ProtoareaMap, ProtoareaMaps, ProtolayerMap, ProtolayerMaps };
+use proto::{ Protolayer, ProtoareaMap, ProtoareaMaps, ProtolayerMap, ProtolayerMaps, ProtolayerKind, DendriteKind };
 use cmn::{ self, CorticalDims };
 use map::{ self, LayerTags, };
 
@@ -30,15 +31,15 @@ impl LayerMap {
 	}
 
 	// [FIXME] TODO: Cache results.
-	pub fn layer_info_by_flag(&self, tags: LayerTags) -> Vec<&LayerInfo> {
+	pub fn layer_info_by_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
 		self.index.iter().filter(|li| li.tags.contains(tags)).map(|li| li).collect()
 	}
 
 	// [FIXME] TODO: Cache results. Use iterator mapping and filtering.
-	pub fn layer_src_info_by_flag(&self, tags: LayerTags) -> Vec<&SourceLayerInfo> {
+	pub fn layer_src_info_by_tags(&self, tags: LayerTags) -> Vec<&SourceLayerInfo> {
 		let mut src_layers = Vec::with_capacity(8);
 
-		for layer in self.layer_info_by_flag(tags).iter() {
+		for layer in self.layer_info_by_tags(tags).iter() {
 			for src_layer in layer.sources.iter() {
 				debug_assert!(src_layer.tags().contains(tags.mirror_io()));
 				src_layers.push(src_layer);
@@ -48,13 +49,13 @@ impl LayerMap {
 		src_layers
 	}
 
-	pub fn layer_src_area_names_by_flag(&self, tags: LayerTags) -> Vec<&'static str> {
-		self.layer_src_info_by_flag(tags).iter().map(|sli| sli.area_name()).collect()
+	pub fn layer_src_area_names_by_tags(&self, tags: LayerTags) -> Vec<&'static str> {
+		self.layer_src_info_by_tags(tags).iter().map(|sli| sli.area_name()).collect()
 	}
 
 	pub fn slc_src_layer_info(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&SourceLayerInfo> {
 		let mut src_layer_info = Vec::with_capacity(8);
-		let layer_info = self.layer_info_by_flag(layer_tags);
+		let layer_info = self.layer_info_by_tags(layer_tags);
 
 		for lyr in layer_info {			
 			for src_lyr in lyr.src_info() {
@@ -72,8 +73,15 @@ impl LayerMap {
 			None
 		}
 	}
+
+	pub fn iter(&self) -> Iter<map::layer_map::LayerInfo>{
+		self.index.iter()
+	}
 }
 
+
+// [FIXME]: Consolidate terminology and usage between source-layer layers (cellular)
+// and source-area layers (axonal).
 
 #[derive(Clone, Debug)]
 pub struct LayerInfo {
@@ -82,7 +90,7 @@ pub struct LayerInfo {
 	slc_range: Range<u8>,
 	sources: Vec<SourceLayerInfo>,
 	axn_count: u32,
-	proto: Protolayer,
+	protolayer: Protolayer,
 }
 
 impl LayerInfo {
@@ -103,9 +111,9 @@ impl LayerInfo {
 		// If layer is an input layer, add sources:
 		if tags.contains(map::INPUT) {
 			let src_areas: Vec<(&'static str, LayerTags)> = 
-				pamap.aff_areas.iter().map(|&an| (an, map::FEEDBACK | map::SPECIFIC))
-					.chain(pamap.eff_areas.iter().map(|&an| (an, map::FEEDFORWARD | map::SPECIFIC)))
-				.chain(pamap.aff_areas.iter().chain(pamap.eff_areas.iter())
+				pamap.aff_areas().iter().map(|&an| (an, map::FEEDBACK | map::SPECIFIC))
+					.chain(pamap.eff_areas().iter().map(|&an| (an, map::FEEDFORWARD | map::SPECIFIC)))
+				.chain(pamap.aff_areas().iter().chain(pamap.eff_areas().iter())
 					.map(|&an| (an, map::NONSPECIFIC)))
 				.collect();				
 
@@ -169,8 +177,20 @@ impl LayerInfo {
 			slc_range: slc_range,
 			sources: sources,
 			axn_count: axn_count,
-			proto: protolayer.clone(),
+			protolayer: protolayer.clone(),
 		}
+	}
+
+	pub fn src_lyr_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
+		self.protolayer.src_lyr_names(den_type)
+	}
+
+	pub fn name(&self) -> &'static str {
+		self.name
+	}
+
+	pub fn kind(&self) -> ProtolayerKind {
+		self.protolayer.kind()
 	}
 
 	pub fn src_info(&self) -> &Vec<SourceLayerInfo>  {

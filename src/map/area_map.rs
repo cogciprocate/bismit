@@ -1,8 +1,10 @@
 use std::fmt::{ Display };
-use std::ops::{ Range };
+use std::ops::{ Range }; 
+use std::collections::{ BTreeMap };
 
 use ocl::{ BuildConfig, BuildOpt };
-use proto::{ ProtolayerMaps, ProtolayerMap, ProtoareaMaps, ProtoareaMap, RegionKind };
+use proto::{ ProtolayerMaps, ProtolayerMap, ProtoareaMaps, ProtoareaMap, RegionKind, Protofilter,
+	DendriteKind };
 use cmn::{ self, CorticalDims };
 use map::{ self, SliceMap, LayerTags, LayerMap };
 
@@ -16,13 +18,15 @@ pub struct AreaMap {
 	slices: SliceMap,
 	layers: LayerMap,
 	hrz_demarc: u8,
+	eff_areas: Vec<&'static str>,
+	aff_areas: Vec<&'static str>,
 
 	// TODO: Create maps for each aspect which have their own types and are queryable 
 	// into sub-lists of the same type
 	// layers: LayerMap
 	// slices: SliceMap
 	// etc...
-	// other new types: TuftMap/CellMap
+	// other new types: TuftMap/CellMap	
 
 	pamap: ProtoareaMap,
 	plmap: ProtolayerMap,
@@ -35,7 +39,7 @@ impl AreaMap {
 		plmap.freeze(&pamap);
 
 		println!("{mt}AREAMAP::NEW(): area name: {}, eff areas: {:?}, aff areas: {:?}", pamap.name, 
-			pamap.eff_areas, pamap.aff_areas, mt = cmn::MT);
+			pamap.eff_areas(), pamap.aff_areas(), mt = cmn::MT);
 
 		let dims = pamap.dims().clone_with_depth(plmap.depth_total());		
 		let hrz_demarc = plmap.hrz_demarc();
@@ -50,14 +54,12 @@ impl AreaMap {
 			slices: slices,
 			layers: layers,
 			hrz_demarc: hrz_demarc,
+			eff_areas: pamap.eff_areas().clone(),
+			aff_areas: pamap.aff_areas().clone(),
 			pamap: pamap,
 			plmap: plmap,
 		}
-	}
-
-	pub fn slc_src_layer_dims(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&CorticalDims> {
-		self.layers.slc_src_layer_info(slc_id, layer_tags).map(|sli| sli.dims())
-	}
+	}	
 
 	// ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
 	pub fn gen_build_options(&self) -> BuildConfig {
@@ -92,7 +94,51 @@ impl AreaMap {
 		build_options
 	}
 
-	pub fn axn_base_slc_ids_by_flag(&self, layer_tags: LayerTags) -> Vec<u8> {
+	// NEW
+	pub fn layer_name_by_tags(&self, layer_tags: LayerTags) -> &'static str {
+		let layer_info = self.layers.layer_info_by_tags(layer_tags);
+		assert_eq!(layer_info.len(), 1);
+		layer_info[0].name()
+	}
+
+	// NEW - REVAMP
+	pub fn layer_slc_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
+		// self.plmap.slc_ids(layer_names)
+		let mut slc_ids = Vec::new();
+
+		for layer_name in layer_names.iter() {
+			let l = &self.plmap.layers()[layer_name];
+				for i in l.base_slc_id()..(l.base_slc_id() + l.depth()) {
+					slc_ids.push(i);
+				}
+		}
+
+		slc_ids
+	}
+
+	// UPDATE
+	pub fn layer_src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
+		let src_lyr_names = self.plmap.layers()[&layer_name].src_lyr_names(den_type);
+		
+		self.layer_slc_ids(src_lyr_names)
+ 	}
+
+	// UPDATE
+	pub fn aff_out_slcs(&self) -> Vec<u8> {
+		let mut output_slcs: Vec<u8> = Vec::with_capacity(8);
+ 		
+ 		for (layer_name, layer) in self.plmap.layers().iter() {
+ 			if (layer.tags() & map::FF_OUT) == map::FF_OUT {
+ 				let v = self.plmap.slc_ids(vec![layer.name()]);
+ 				output_slcs.push_all(&v);
+ 			}
+ 		}
+
+		output_slcs	
+	}
+
+	// UPDATE - DEPRICATE
+	pub fn axn_base_slc_ids_by_tags(&self, layer_tags: LayerTags) -> Vec<u8> {
 		let layers = self.plmap.layers_with_tags(layer_tags);
 		let mut slc_ids = Vec::with_capacity(layers.len());
 
@@ -103,9 +149,14 @@ impl AreaMap {
 		slc_ids
 	}
 
-	pub fn axn_range_by_flag(&self, layer_tags: LayerTags) -> Range<u32> {				
-		let layers = self.layers.layer_info_by_flag(layer_tags);
-		assert!(layers.len() == 1, "AreaMap::axn_range_by_flag(): Axon range \
+	pub fn slc_map(&self) -> BTreeMap<u8, &'static str> {
+		self.plmap.slc_map()
+	}
+
+	// NEW
+	pub fn axn_range_by_tags(&self, layer_tags: LayerTags) -> Range<u32> {				
+		let layers = self.layers.layer_info_by_tags(layer_tags);
+		assert!(layers.len() == 1, "AreaMap::axn_range_by_tags(): Axon range \
 			can not be calculated for more than one layer at a time. Flags: {:?}",
 			layer_tags);
 
@@ -127,7 +178,7 @@ impl AreaMap {
 	}
 
 	// [TODO] Layer source area system needs rework.
-	pub fn output_layer_info_by_flag(&self) -> Vec<(LayerTags, u32)> {
+	pub fn output_layer_info_by_tags(&self) -> Vec<(LayerTags, u32)> {
 		let layers = self.plmap.layers_with_tags(map::OUTPUT);
 		let mut layer_info = Vec::with_capacity(layers.len());
 		
@@ -138,22 +189,31 @@ impl AreaMap {
 		layer_info
 	}
 
-	pub fn aff_areas(&self) -> &Vec<&'static str> {
-		&self.pamap.aff_areas
+	// NEW
+	pub fn slc_src_layer_dims(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&CorticalDims> {
+		self.layers.slc_src_layer_info(slc_id, layer_tags).map(|sli| sli.dims())
 	}
 
+	// DEPRICATE
+	pub fn aff_areas(&self) -> &Vec<&'static str> {
+		&self.aff_areas
+	}
+
+	// DEPRICATE
 	pub fn eff_areas(&self) -> &Vec<&'static str> {
-		&self.pamap.eff_areas
+		&self.eff_areas
 	}
 
 	pub fn area_name(&self) -> &'static str {
 		self.area_name
 	}
 
+	// DEPRICATE
 	pub fn proto_area_map(&self) -> &ProtoareaMap {
 		&self.pamap
 	}
 
+	// DEPRICATE
 	pub fn proto_layer_map(&self) -> &ProtolayerMap {
 		&self.plmap
 	}
@@ -170,14 +230,24 @@ impl AreaMap {
 		&self.layers
 	}
 
+	// UPDATE - DEPRICATE
+	pub fn filters(&self) -> &Option<Vec<Protofilter>> {
+		&self.pamap.filters
+	}
+
 	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
+	}
+
+	pub fn hrz_demarc(&self) -> u8 {
+		self.hrz_demarc
 	}
 
 	// pub fn lm_name_tmp(&self) -> &'static str {
 	// 	self.plmap.name
 	// }
 
+	// UPDATE - DEPRICATE
 	pub fn lm_kind_tmp(&self) -> &RegionKind {
 		&self.plmap.kind
 	}
