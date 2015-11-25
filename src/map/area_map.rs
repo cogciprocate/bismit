@@ -173,6 +173,10 @@ impl AreaMap {
 	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
+
+	pub fn lm_name_tmp(&self) -> &'static str {
+		self.plmap.name
+	}
 }
 
 

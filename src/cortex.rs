@@ -1,7 +1,7 @@
 use std::collections::{ HashMap };
 use time;
 
-use map::{ AreaMap };
+// use map::{ AreaMap };
 use cortical_area:: { CorticalArea, CorticalAreas };
 use thalamus::{ Thalamus };
 use proto::{ ProtolayerMaps, ProtoareaMaps, Thalamic, };
@@ -10,34 +10,37 @@ use ocl::{ Context };
 pub struct Cortex {
 	// AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
 	pub areas: CorticalAreas,
-	area_maps: HashMap<&'static str, AreaMap>,
+	// area_maps: HashMap<&'static str, AreaMap>,
 	thal: Thalamus,
 }
 
 impl Cortex {
-	pub fn new(proto_layer_maps: ProtolayerMaps, mut proto_area_maps: ProtoareaMaps) -> Cortex {
+	pub fn new(plmaps: ProtolayerMaps, pamaps: ProtoareaMaps) -> Cortex {
 		println!("\nInitializing Cortex... ");
 		let time_start = time::get_time();
 
-		proto_area_maps.freeze();
+		// pamaps.freeze();
 
-		let thal = Thalamus::new(&proto_layer_maps, &proto_area_maps);
+		let thal = Thalamus::new(&plmaps, pamaps);
+
+		let pamaps = thal.area_maps().clone();
+
 		let ocl_context: Context = Context::new(None, None).expect(
 			"CorticalArea::new(): ocl_context creation error");
 
 		let mut areas = HashMap::new();
 		let mut device_idx = 0;		
 
-		for (&area_name, pa) in proto_area_maps.maps().iter().filter(|&(_, pa)| 
-					proto_layer_maps[pa.layer_map_name].kind != Thalamic
-		) {	
+		for (&area_name, pamap) in pamaps.iter().filter(|&(_, pamap)| 
+					plmaps[pamap.lm_name_tmp()].kind != Thalamic)
+		{	
 			areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(), 
 				device_idx, &ocl_context)));
 
 			device_idx += 1;
 		}
 
-		let area_maps = thal.area_maps().clone();	
+		// let area_maps = thal.area_maps().clone();	
 
 		// <<<<< MOVE THIS TIMING STUFF ELSEWHERE AND MAKE A FUNCTION FOR IT >>>>>
 		let time_complete = time::get_time() - time_start;
@@ -47,7 +50,7 @@ impl Cortex {
 
 		Cortex {
 			areas: areas,
-			area_maps: area_maps,
+			// area_maps: area_maps,
 			thal: thal,
 		}
 	}

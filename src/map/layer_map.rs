@@ -97,8 +97,8 @@ impl LayerInfo {
 		let mut base_slc_id = protolayer.base_slc_id;
 		let mut axn_count = 0;
 
-		println!("\n{mt}{mt}### LAYER: {:?}, base_slc_id: {}, slc_range: {:?}\n", 
-			tags, base_slc_id, slc_range, mt = cmn::MT);
+		// println!("\n{mt}{mt}### LAYER: {:?}, base_slc_id: {}, slc_range: {:?}\n", 
+		// 	tags, base_slc_id, slc_range, mt = cmn::MT);
 
 		// If layer is an input layer, add sources:
 		if tags.contains(map::INPUT) {
@@ -109,7 +109,7 @@ impl LayerInfo {
 					.map(|&an| (an, map::NONSPECIFIC)))
 				.collect();				
 
-			println!("\n{mt}{mt}{mt}### SRC_AREAS: {:?}\n", src_areas, mt = cmn::MT);
+			// println!("\n{mt}{mt}{mt}### SRC_AREAS: {:?}\n", src_areas, mt = cmn::MT);
 
 			// For each potential source area (aff or eff):
 			// - get that area's layers
@@ -130,7 +130,7 @@ impl LayerInfo {
 					let src_layer_map = &plmaps[src_pamap.layer_map_name];
 					let src_layers = src_layer_map.layers_with_tags(tags.mirror_io());
 
-						println!("\n{mt}{mt}{mt}{mt}### SRC_LAYERS: {:?}\n", src_layers, mt = cmn::MT);
+						// println!("\n{mt}{mt}{mt}{mt}### SRC_LAYERS: {:?}\n", src_layers, mt = cmn::MT);
 
 					for src_layer in src_layers.iter() {
 						let src_layer_axns = src_pamap.dims().columns()	* src_layer.depth() as u32;
@@ -138,12 +138,12 @@ impl LayerInfo {
 						sources.push(SourceLayerInfo::new(src_area_name, src_pamap.dims(), 
 							src_layer.tags, src_layer_axns, base_slc_id, (*src_layer).clone()));						
 
-						println!("{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding source layer: \
-							src_area_name: '{}', src_area_tags: '{:?}', src_layer_map.name: '{}', \
-							src_layer.name: '{}', base_slc_id: '{}', depth: '{}', \
-							src_layer.tags: '{:?}'", name, src_area_name, src_area_tags, 
-							src_layer_map.name, src_layer.name, base_slc_id, src_layer.depth(), 
-							src_layer.tags, mt = cmn::MT);
+						// println!("{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding source layer: \
+						// 	src_area_name: '{}', src_area_tags: '{:?}', src_layer_map.name: '{}', \
+						// 	src_layer.name: '{}', base_slc_id: '{}', depth: '{}', \
+						// 	src_layer.tags: '{:?}'", name, src_area_name, src_area_tags, 
+						// 	src_layer_map.name, src_layer.name, base_slc_id, src_layer.depth(), 
+						// 	src_layer.tags, mt = cmn::MT);
 
 						base_slc_id += src_layer.depth();
 						axn_count += src_layer_axns;

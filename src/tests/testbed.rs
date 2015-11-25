@@ -161,11 +161,11 @@ pub struct TestBed {
 impl TestBed {
 	pub fn new() -> TestBed {
 		let proto_layer_maps = define_protolayer_maps();
-		let mut proto_area_maps = define_protoareas();
+		let proto_area_maps = define_protoareas();
 
-		proto_area_maps.freeze();
+		// proto_area_maps.freeze();
 
-		let thal = Thalamus::new(&proto_layer_maps, &proto_area_maps);
+		let thal = Thalamus::new(&proto_layer_maps, proto_area_maps);
 		let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
 		let ocl_context = Context::new(None, None).unwrap();
