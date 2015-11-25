@@ -132,7 +132,7 @@ impl AreaMap {
 		let mut layer_info = Vec::with_capacity(layers.len());
 		
 		for &layer in layers.iter() {
-			layer_info.push((layer.tags, self.dims.columns()));
+			layer_info.push((layer.tags(), self.dims.columns()));
 		}
 
 		layer_info

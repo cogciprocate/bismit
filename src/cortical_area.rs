@@ -100,14 +100,14 @@ impl CorticalArea {
 		// BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
 		for (&layer_name, layer) in area_map.proto_layer_map().layers().iter() {
-			match layer.kind {
+			match layer.kind() {
 				Cellular(ref pcell) => {
 					println!("   CORTICALAREA::NEW(): making a(n) {:?} layer: '{}' (depth: {})", 
-						pcell.cell_kind, layer_name, layer.depth);
+						pcell.cell_kind, layer_name, layer.depth());
 
 					match pcell.cell_kind {
 						Pyramidal => {
-							let pyrs_dims = dims.clone_with_depth(layer.depth);
+							let pyrs_dims = dims.clone_with_depth(layer.depth());
 
 							let pyr_lyr = PyramidalLayer::new(
 								layer_name, pyrs_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq);
@@ -116,7 +116,7 @@ impl CorticalArea {
 						},
 
 						SpinyStellate => {							
-							let ssts_map_dims = dims.clone_with_depth(layer.depth);
+							let ssts_map_dims = dims.clone_with_depth(layer.depth());
 							let sst_lyr = SpinyStellateLayer::new(
 								layer_name, ssts_map_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq);
 							ssts_map.insert(layer_name, Box::new(sst_lyr));
@@ -126,7 +126,7 @@ impl CorticalArea {
 					}
 				},
 
-				_ => println!("   CORTICALAREA::NEW(): Axon layer: '{}' (depth: {})", layer_name, layer.depth),
+				_ => println!("   CORTICALAREA::NEW(): Axon layer: '{}' (depth: {})", layer_name, layer.depth()),
 			}
 		}
 
@@ -137,7 +137,7 @@ impl CorticalArea {
 		// BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
 		for (&layer_name, layer) in area_map.proto_layer_map().layers().iter() {
-			match layer.kind {
+			match layer.kind() {
 				Cellular(ref pcell) => {
 					match pcell.cell_kind {
 						Inhibitory => {

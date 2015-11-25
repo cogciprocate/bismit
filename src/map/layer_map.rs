@@ -40,7 +40,7 @@ impl LayerMap {
 
 		for layer in self.layer_info_by_flag(tags).iter() {
 			for src_layer in layer.sources.iter() {
-				debug_assert!(src_layer.tags.contains(tags.mirror_io()));
+				debug_assert!(src_layer.tags().contains(tags.mirror_io()));
 				src_layers.push(src_layer);
 			}
 		}
@@ -89,16 +89,16 @@ impl LayerInfo {
 	// [FIXME]: TODO: Clean up and optimize.
 	pub fn new(protolayer: &Protolayer, pamap: &ProtoareaMap, pamaps: &ProtoareaMaps, 
 				plmaps: &ProtolayerMaps) -> LayerInfo {
-		let name = protolayer.name;
-		let tags = protolayer.tags;
-		let slc_range = protolayer.base_slc_id..(protolayer.base_slc_id + protolayer.depth());
+		let name = protolayer.name();
+		let tags = protolayer.tags();
+		// let slc_range = protolayer.base_slc_id()..(protolayer.base_slc_id() + protolayer.depth());
 		let mut sources = Vec::with_capacity(8);
 
-		let mut base_slc_id = protolayer.base_slc_id;
+		let mut next_base_slc_id = protolayer.base_slc_id();
 		let mut axn_count = 0;
 
-		// println!("\n{mt}{mt}### LAYER: {:?}, base_slc_id: {}, slc_range: {:?}\n", 
-		// 	tags, base_slc_id, slc_range, mt = cmn::MT);
+		// println!("\n{mt}{mt}### LAYER: {:?}, next_base_slc_id: {}, slc_range: {:?}\n", 
+		// 	tags, next_base_slc_id, slc_range, mt = cmn::MT);
 
 		// If layer is an input layer, add sources:
 		if tags.contains(map::INPUT) {
@@ -136,16 +136,16 @@ impl LayerInfo {
 						let src_layer_axns = src_pamap.dims().columns()	* src_layer.depth() as u32;
 
 						sources.push(SourceLayerInfo::new(src_area_name, src_pamap.dims(), 
-							src_layer.tags, src_layer_axns, base_slc_id, (*src_layer).clone()));						
+							src_layer.tags(), src_layer_axns, next_base_slc_id, (*src_layer).clone()));						
 
 						// println!("{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding source layer: \
 						// 	src_area_name: '{}', src_area_tags: '{:?}', src_layer_map.name: '{}', \
-						// 	src_layer.name: '{}', base_slc_id: '{}', depth: '{}', \
+						// 	src_layer.name: '{}', next_base_slc_id: '{}', depth: '{}', \
 						// 	src_layer.tags: '{:?}'", name, src_area_name, src_area_tags, 
-						// 	src_layer_map.name, src_layer.name, base_slc_id, src_layer.depth(), 
+						// 	src_layer_map.name, src_layer.name, next_base_slc_id, src_layer.depth(), 
 						// 	src_layer.tags, mt = cmn::MT);
 
-						base_slc_id += src_layer.depth();
+						next_base_slc_id += src_layer.depth();
 						axn_count += src_layer_axns;
 					}
 				} 
@@ -153,17 +153,19 @@ impl LayerInfo {
 			} 
 
 		} else {
-			base_slc_id += protolayer.depth();
+			next_base_slc_id += protolayer.depth();
 			axn_count += pamap.dims().columns() * protolayer.depth() as u32;
 		}
 
-		assert_eq!(base_slc_id, slc_range.end);
+		let slc_range = protolayer.base_slc_id()..next_base_slc_id;
+
+		// assert_eq!(next_base_slc_id, slc_range.end);
 
 		sources.shrink_to_fit();
 
 		LayerInfo {
 			name: name,
-			tags: protolayer.tags,
+			tags: protolayer.tags(),
 			slc_range: slc_range,
 			sources: sources,
 			axn_count: axn_count,
@@ -225,6 +227,10 @@ impl SourceLayerInfo {
 
 	pub fn axn_count(&self) -> u32 {
 		self.dims().cells()
+	}
+
+	pub fn tags(&self) -> LayerTags {
+		self.tags
 	}
 
 	pub fn dst_slc_range(&self) -> &Range<u8> {

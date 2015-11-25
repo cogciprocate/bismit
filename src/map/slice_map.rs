@@ -35,7 +35,7 @@ impl SliceMap {
 
 		for (&slc_id, &layer_name) in proto_slc_map.iter() {
 			let layer = &plmap.layers()[layer_name];
-			let src_layer_info = layers.slc_src_layer_info(slc_id, layer.tags);
+			let src_layer_info = layers.slc_src_layer_info(slc_id, layer.tags());
 
 			let slc_dims = match src_layer_info {
 				Some(sli) => {

@@ -6,47 +6,23 @@ use self::ProtolayerKind::{ Cellular, Axonal };
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct Protolayer {
-	pub name: &'static str,
-	pub kind: ProtolayerKind,
-	pub depth: u8,
-	pub base_slc_id: u8, 
-	pub kind_base_slc_id: u8,
-	pub tags: LayerTags,
+	name: &'static str,
+	kind: ProtolayerKind,
+	depth: Option<u8>,
+	base_slc_id: u8, 
+	kind_base_slc_id: u8,
+	tags: LayerTags,
 }
 
 impl Protolayer {
-	pub fn new(
-				name: &'static str,
-				kind: ProtolayerKind,
-				depth: u8,			
-				base_slc_id: u8,
-				kind_base_slc_id: u8,
-				tags: LayerTags,				
-			) -> Protolayer
+	pub fn new(name: &'static str, kind: ProtolayerKind, depth: Option<u8>, base_slc_id: u8, 
+				kind_base_slc_id: u8, tags: LayerTags) -> Protolayer
 	{
 		if cfg!(debug) { tags.debug_validate(); }
 		
-		Protolayer {
-			name : name,
-			kind: kind,
-			depth: depth,
-			base_slc_id: base_slc_id, 
-			kind_base_slc_id: kind_base_slc_id,			
-			tags: tags,
-		}
-	}
-
-	pub fn base_slc(&self) -> u8 {
-		self.base_slc_id
-	}
-
-	pub fn depth(&self) -> u8 {
-		self.depth
-	}
-
-	pub fn name(&self) -> &'static str {
-		self.name
-	}
+		Protolayer {name : name, kind: kind, depth: depth, base_slc_id: base_slc_id, 
+			kind_base_slc_id: kind_base_slc_id, tags: tags}
+	}	
 
 	// SRC_LAYER_NAMES(): TODO: DEPRICATE OR RENAME 
 	pub fn src_lyr_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
@@ -74,6 +50,50 @@ impl Protolayer {
 			Some(v) => v,
 			None => Vec::with_capacity(0),
 		}
+	}
+
+	pub fn base_slc(&self) -> u8 {
+		self.base_slc_id
+	}
+
+	pub fn depth(&self) -> u8 {
+		match self.depth {
+			Some(d) => d,
+			// None => panic!("Cannot get layer depth for an axonal protolayer"),
+			None => 0,
+		}
+	}
+
+	pub fn name(&self) -> &'static str {
+		self.name
+	}
+
+	pub fn kind(&self) -> ProtolayerKind {
+		self.kind.clone()
+	}
+
+	pub fn base_slc_id(&self) -> u8 {
+		self.base_slc_id
+	}
+
+	pub fn kind_base_slc_id(&self) -> u8 {
+		self.kind_base_slc_id
+	}
+
+	pub fn tags(&self) -> LayerTags {
+		self.tags
+	}
+
+	pub fn set_depth(&mut self, depth: u8) {
+		self.depth = Some(depth);
+	}
+
+	pub fn set_base_slc_id(&mut self, id: u8) {
+		self.base_slc_id = id;
+	}
+
+	pub fn set_kind_base_slc_id(&mut self, id: u8) {
+		self.kind_base_slc_id = id;
 	}
 }
 

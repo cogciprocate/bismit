@@ -49,7 +49,7 @@ impl ProtolayerMap {
 			) -> ProtolayerMap 
 	{
 		let next_kind_base_slc_id = self.depth_axon_kind(&axon_kind);
-		let layer_depth = if tags.contains(map::OUTPUT) { 1 } else { 0 };
+		let layer_depth = if tags.contains(map::OUTPUT) { Some(1) } else { None };
 		
 		self.add(Protolayer::new(layer_name, Axonal(axon_kind), layer_depth, 0,
 			next_kind_base_slc_id, tags));
@@ -64,7 +64,7 @@ impl ProtolayerMap {
 			ProtolayerKind::Axonal(ref axon_kind) => self.depth_axon_kind(&axon_kind),
 		};
 		
-		self.add(Protolayer::new(layer_name, kind, layer_depth, 0, next_kind_base_slc_id, tags));
+		self.add(Protolayer::new(layer_name, kind, Some(layer_depth), 0, next_kind_base_slc_id, tags));
 		self
 	}
 
@@ -75,12 +75,12 @@ impl ProtolayerMap {
 			panic!("ProtolayerMap::add(): Cannot add new layers after region is frozen.");
 		}
 
-		self.layers.insert(layer.name, layer);
+		self.layers.insert(layer.name(), layer);
 	}
 
 	fn gen_slc_lists(&mut self) {
 		for (layer_name, layer) in self.layers.iter_mut() {
-			match layer.kind {
+			match layer.kind() {
 				ProtolayerKind::Cellular(ref cell) => {
 					let cell_kind = cell.cell_kind.clone();
 
@@ -95,12 +95,12 @@ impl ProtolayerMap {
 
 						Some(vec) => {
 							
-							layer.kind_base_slc_id = vec.len() as u8;
+							layer.set_kind_base_slc_id(vec.len() as u8);
 							//layer.kind_base_slc_id = std::num::cast(vec.len()).expect("ProtolayerMap::add()");
 							//println!("{:?} base_slc_id: {}", cell_kind, layer.kind_base_slc_id);
 
-							for i in 0..layer.depth {							 
-								vec.push(layer.name);
+							for i in 0..layer.depth() {							 
+								vec.push(layer.name());
 								//println!("Adding {} to list of {:?}", layer.name, cell_kind);
 							}
 
@@ -122,10 +122,10 @@ impl ProtolayerMap {
 
 						Some(vec) => {
 							
-							layer.kind_base_slc_id = vec.len() as u8;
+							layer.set_kind_base_slc_id(vec.len() as u8);
 
-							for i in 0..layer.depth {							 
-								vec.push(layer.name);
+							for i in 0..layer.depth() {							 
+								vec.push(layer.name());
 							}
 
 						},
@@ -144,9 +144,9 @@ impl ProtolayerMap {
 		} 
 
 		for (layer_name, mut layer) in self.layers.iter_mut() {
-			if (layer.tags & tags) == tags {
+			if (layer.tags() & tags) == tags {
 				//println!(" ##### SETTING LAYER DEPTH FOR LAYER: '{}' TO: {} #####", layer_name, depth);
-				layer.depth = depth;
+				layer.set_depth(depth);
 			}
 		}
 	}
@@ -221,10 +221,13 @@ impl ProtolayerMap {
 
 		// (4) SET BASE ROW POSITION ON INDIVIDUAL NON-HORIZONTAL LAYERS 
 		for (layer_name, layer) in self.layers.iter_mut() {
-			match &layer.kind {
+			let kind_base = layer.kind_base_slc_id();
 
-				&ProtolayerKind::Cellular(ref protocell) => {
-					layer.base_slc_id = self.cel_layer_kind_base_slc_ids[&protocell.cell_kind] + layer.kind_base_slc_id;
+			match &layer.kind() {
+
+				&ProtolayerKind::Cellular(ref protocell) => {					
+					layer.set_base_slc_id(self.cel_layer_kind_base_slc_ids[&protocell.cell_kind] 
+						+ kind_base);
 					print!("    <{}>: ProtocellKind::{:?} ", layer_name, &protocell.cell_kind);
 				},
 
@@ -233,14 +236,15 @@ impl ProtolayerMap {
 						&ProtoaxonKind::Horizontal => continue,
 
 						_ => {
-							layer.base_slc_id = self.axn_layer_kind_base_slc_ids[axon_kind] + layer.kind_base_slc_id;
+							layer.set_base_slc_id(self.axn_layer_kind_base_slc_ids[axon_kind] 
+								+ kind_base);
 							print!("    <{}>: ProtoaxonKind::{:?} ", layer_name, axon_kind);
 						},
 					}
 				},
 			}
 
-			for i in layer.base_slc_id..(layer.base_slc_id + layer.depth()) {
+			for i in layer.base_slc_id()..(layer.base_slc_id() + layer.depth()) {
 				self.slc_map.insert(i, layer_name);
 				print!("[{}] ", i);
 			}
@@ -249,13 +253,16 @@ impl ProtolayerMap {
 
 		// (5) SET BASE ROW POSITION ON INDIVIDUAL HORIZONTAL LAYERS 
 		for (layer_name, layer) in self.layers.iter_mut() {
-			match &layer.kind {
+			let kind_base = layer.kind_base_slc_id();
+
+			match &layer.kind() {
 				&ProtolayerKind::Cellular(ref protocell) => continue,
 
 				&ProtolayerKind::Axonal(ref axon_kind) => {
 					match axon_kind {
 						&ProtoaxonKind::Horizontal => {
-							layer.base_slc_id = self.axn_layer_kind_base_slc_ids[axon_kind] + layer.kind_base_slc_id;
+							layer.set_base_slc_id(self.axn_layer_kind_base_slc_ids[axon_kind] 
+								+ kind_base);
 							print!("    <{}>: ProtoaxonKind::{:?} ", layer_name, axon_kind);
 						},
 
@@ -264,7 +271,7 @@ impl ProtolayerMap {
 				},
 			}
 
-			for i in layer.base_slc_id..(layer.base_slc_id + layer.depth()) {
+			for i in layer.base_slc_id()..(layer.base_slc_id() + layer.depth()) {
 				self.slc_map.insert(i, layer_name);
 				print!("[{}] ", i);
 			}
@@ -299,10 +306,10 @@ impl ProtolayerMap {
 		let mut axon_slcs = 0u8;
 		
 		for (layer_name, layer) in self.layers.iter() {
-			match layer.kind {
+			match layer.kind() {
 				ProtolayerKind::Axonal(ref axon_kind) => {
 					match axon_kind {
-						&ProtoaxonKind::Spatial => axon_slcs += layer.depth,
+						&ProtoaxonKind::Spatial => axon_slcs += layer.depth(),
 						_	=> (),
 					}
 				},
@@ -317,10 +324,10 @@ impl ProtolayerMap {
 		let mut axon_slcs = 0u8;
 		
 		for (layer_name, layer) in self.layers.iter() {
-			match layer.kind {
+			match layer.kind() {
 				ProtolayerKind::Axonal(ref axon_kind) => {
 					match axon_kind {
-						&ProtoaxonKind::Horizontal => axon_slcs += layer.depth,
+						&ProtoaxonKind::Horizontal => axon_slcs += layer.depth(),
 						_	=> (),
 					}
 				},
@@ -335,9 +342,9 @@ impl ProtolayerMap {
 		let mut cell_slcs = 0u8;
 
 		for (layer_name, layer) in self.layers.iter() {
-			match layer.kind {
+			match layer.kind() {
 				ProtolayerKind::Axonal(_) => (),
-				ProtolayerKind::Cellular(_) => cell_slcs += layer.depth,
+				ProtolayerKind::Cellular(_) => cell_slcs += layer.depth(),
 			}
 		}
 
@@ -348,10 +355,10 @@ impl ProtolayerMap {
 		let mut count = 0u8;
 
 		for (_, layer) in self.layers.iter() {
-			match layer.kind {
+			match layer.kind() {
 				ProtolayerKind::Cellular(ref protocell) => {
 					if &protocell.cell_kind == cell_kind {
-						count += layer.depth;
+						count += layer.depth();
 					} else {
 						//println!("{:?} didn't match {:?}", protocell.cell_kind, cell_kind);
 					}
@@ -376,10 +383,10 @@ impl ProtolayerMap {
 		let mut axonal_layer_count = 0u8;
 
 		for (_, layer) in self.layers.iter() {
-			match layer.kind {
+			match layer.kind() {
 				ProtolayerKind::Axonal(ref ak) => {
 					if ak == axon_kind {
-						axonal_layer_count += layer.depth;
+						axonal_layer_count += layer.depth();
 					}
 				},
 
@@ -415,7 +422,7 @@ impl ProtolayerMap {
 
 		for layer_name in layer_names.iter() {
 			let l = &self.layers[layer_name];
-				for i in l.base_slc_id..(l.base_slc_id + l.depth) {
+				for i in l.base_slc_id()..(l.base_slc_id() + l.depth()) {
 					slc_ids.push(i);
 				}
 		}
@@ -455,7 +462,7 @@ impl ProtolayerMap {
 			let mut valid_src_lyrs: Vec<&'static str> = Vec::with_capacity(potential_tuft_src_lyrs.len());
 
 			for lyr_name in potential_tuft_src_lyrs.drain(..) {
-				if self.layers[lyr_name].depth > 0 {
+				if self.layers[lyr_name].depth() > 0 {
 					valid_src_lyrs.push(lyr_name);
 				}
 			}
@@ -472,7 +479,7 @@ impl ProtolayerMap {
  		let mut input_layer: Option<Protolayer> = None;
  		
  		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.tags & map::SPATIAL_ASSOCIATIVE) == map::SPATIAL_ASSOCIATIVE {
+ 			if (layer.tags() & map::SPATIAL_ASSOCIATIVE) == map::SPATIAL_ASSOCIATIVE {
  				input_layer = Some(layer.clone());
  			}
  		}
@@ -484,8 +491,8 @@ impl ProtolayerMap {
  		let mut output_slcs: Vec<u8> = Vec::with_capacity(4);
  		
  		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.tags & map::FF_OUT) == map::FF_OUT {
- 				let v = self.slc_ids(vec![layer.name]);
+ 			if (layer.tags() & map::FF_OUT) == map::FF_OUT {
+ 				let v = self.slc_ids(vec![layer.name()]);
  				output_slcs.push_all(&v);
  			}
  		}
@@ -498,7 +505,7 @@ impl ProtolayerMap {
  		//let mut input_layers: Vec<&Protolayer>
  		 		
  		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.tags & flag) == flag {
+ 			if (layer.tags() & flag) == flag {
  				return Some(&layer);
  			}
  		}
@@ -512,7 +519,7 @@ impl ProtolayerMap {
  		 		
  		for (_, layer) in self.layers.iter() {
  			// if (layer.tags & tags) == tags {
- 			if layer.tags.contains(tags) {
+ 			if layer.tags().contains(tags) {
  				layers.push(&layer);
  			}
  		}
