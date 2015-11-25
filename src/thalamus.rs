@@ -241,7 +241,7 @@ impl TractAreaCache {
 			Some(idx) => return Some(idx),
 			None => {
 				for i in 0..self.areas.len() {
-					if self.areas[i].layer_tags.contains(layer_tags) 
+					if self.areas[i].layer_tags.meshes(layer_tags) 
 						&& self.areas[i].src_area_name == src_area_name
 					{
 						matching_areas.push(i);

@@ -167,7 +167,7 @@ impl AreaMap {
  		
  		for (layer_name, layer) in self.plmap.layers().iter() {
  			if (layer.tags() & map::FF_OUT) == map::FF_OUT {
- 				let v = self.plmap.slc_ids(vec![layer.name()]);
+ 				let v = self.layer_slc_ids(vec![layer.name()]);
  				output_slcs.push_all(&v);
  			}
  		}
@@ -175,16 +175,28 @@ impl AreaMap {
 		output_slcs	
 	}
 
-	// UPDATE / DEPRICATE
+	// UPDATE / DEPRICATE / MERGE WITH BELOW
 	pub fn axn_base_slc_ids_by_tags(&self, layer_tags: LayerTags) -> Vec<u8> {
-		let layers = self.plmap.layers_with_tags(layer_tags);
+		let layers = self.layers.layer_info(layer_tags);
 		let mut slc_ids = Vec::with_capacity(layers.len());
 
 		for &layer in layers.iter() {
-			slc_ids.push(layer.base_slc());
+			slc_ids.push(layer.slc_range().start);
 		}
 
 		slc_ids
+	}
+
+	// UPDATE / DEPRICATE / MERGE WITH ABOVE
+	pub fn output_layer_info(&self) -> Vec<(LayerTags, u32)> {
+		let layers = self.layers.layer_info(map::OUTPUT);
+		let mut layer_info = Vec::with_capacity(layers.len());		
+		
+		for &layer in layers.iter() {
+			layer_info.push((layer.tags(), self.dims.columns()));
+		}
+
+		layer_info
 	}
 	
 
@@ -229,19 +241,7 @@ impl AreaMap {
 			}, "AreaMap::axn_range(): Axon index mismatch.");
 
 		layer_idz..(layer_idz + layer_len)
-	}
-
-	// [TODO] Layer source area system needs rework.
-	pub fn output_layer_info(&self) -> Vec<(LayerTags, u32)> {
-		let layers = self.plmap.layers_with_tags(map::OUTPUT);
-		let mut layer_info = Vec::with_capacity(layers.len());
-		
-		for &layer in layers.iter() {
-			layer_info.push((layer.tags(), self.dims.columns()));
-		}
-
-		layer_info
-	}
+	}	
 
 	// NEW
 	pub fn slc_src_layer_dims(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&CorticalDims> {

@@ -4,7 +4,7 @@ use std::ops::{ Index, IndexMut,  };
 use std::hash::{ Hasher };
 
 use map::{ self, LayerTags };
-use super::{ ProtoareaMap, Protolayer, ProtoaxonKind, ProtolayerKind, ProtocellKind, DendriteKind, Axonal };
+use super::{ ProtoareaMap, Protolayer, ProtoaxonKind, ProtolayerKind, ProtocellKind, Axonal };
 
 
 // PROTOLAYERMAP (PROTOREGION) {} <<<<< TODO: SPLIT UP, REDESIGN, AND REFACTOR >>>>>
@@ -68,7 +68,6 @@ impl ProtolayerMap {
 		self
 	}
 
-	// PROTOREGION::ADD()
 	// [FIXME]: NEED TO CHECK FOR DUPLICATE LAYERS!	
 	pub fn add(&mut self, layer: Protolayer) {
 		if self.frozen {
@@ -96,7 +95,6 @@ impl ProtolayerMap {
 						Some(vec) => {
 							
 							layer.set_kind_base_slc_id(vec.len() as u8);
-							//layer.kind_base_slc_id = std::num::cast(vec.len()).expect("ProtolayerMap::add()");
 							//println!("{:?} base_slc_id: {}", cell_kind, layer.kind_base_slc_id);
 
 							for i in 0..layer.depth() {							 
@@ -281,19 +279,6 @@ impl ProtolayerMap {
 		// (6) MARVEL AT THE MOST CONVOLUTED FUNCTION EVER 
 		print!("\n");
 	}
-
-
-	// pub fn base_slc(&self, layer_name: &'static str) -> u8 {
-	// 	let ref layer = self.layers[layer_name];
-	// 	layer.base_slc_id
-	// }
-
-	// pub fn base_slc_cell_kind(&self, cell_kind: &ProtocellKind) -> u8 {
-	// 	match self.cel_layer_kind_base_slc_ids.get(cell_kind) {
-	// 		Some(base_slc) 	=> base_slc.clone(),
-	// 		None 			=> panic!("ProtolayerMap::base_slc_cell_king(): Base slc for type not found"),
-	// 	}
-	// }
 	
 
 	// ##### DEPTHS #####
@@ -406,121 +391,18 @@ impl ProtolayerMap {
 	}	
 
 
-	// ##### LAYERS #####
-
-
 	pub fn layers(&self) -> &HashMap<&'static str, Protolayer> {
 		&self.layers
 	}	
-
-	pub fn slc_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
-		if !self.frozen { // REPLACE WITH ASSERT (evaluate release build implications first)
-			panic!("ProtolayerMap must be frozen with .freeze() before slc_ids can be called.");
-		}
-
-		let mut slc_ids = Vec::new();
-
-		for layer_name in layer_names.iter() {
-			let l = &self.layers[layer_name];
-				for i in l.base_slc_id()..(l.base_slc_id() + l.depth()) {
-					slc_ids.push(i);
-				}
-		}
-
-		slc_ids
-	}
-
-	// SRC_SLC_IDS(): Get a merged list of source slice ids for all source layers.
-	// [FIXME] TODO: Merge this with dst_* below.
-	pub fn src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
-		let src_lyr_names = self.layers[&layer_name].src_lyr_names(den_type);
-		
-		self.slc_ids(src_lyr_names)
- 	}
-
-
- 	// DST_SRC_SLC_IDS(): Get a grouped list of source slice ids for each distal dendritic tuft in a layer.
- 	pub fn dst_src_slc_ids(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
- 		let src_tufts = self.dst_src_lyrs_by_tuft(layer_name);
-
- 		let mut dst_src_slc_ids = Vec::with_capacity(src_tufts.len());
-
- 		for tuft in src_tufts {
- 			dst_src_slc_ids.push(self.slc_ids(tuft));
-		}
-
-		dst_src_slc_ids
-	}
-
-	// DST_SRC_LYRS_BY_TUFT(): Get a grouped list of source layer names for each distal dendritic tuft in a layer.
-	pub fn dst_src_lyrs_by_tuft(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
-		let mut potential_tufts = self.layers[layer_name].dst_src_lyrs_by_tuft();
-		let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
-
-		for mut potential_tuft_src_lyrs in potential_tufts.drain(..) {
-			let mut valid_src_lyrs: Vec<&'static str> = Vec::with_capacity(potential_tuft_src_lyrs.len());
-
-			for lyr_name in potential_tuft_src_lyrs.drain(..) {
-				if self.layers[lyr_name].depth() > 0 {
-					valid_src_lyrs.push(lyr_name);
-				}
-			}
-
-			if valid_src_lyrs.len() > 0 {
-				valid_tufts.push(valid_src_lyrs);
-			}
-		}
-
-		valid_tufts		
-	}
-
- 	pub fn psal_layer(&self) -> Option<Protolayer> {
- 		let mut input_layer: Option<Protolayer> = None;
- 		
- 		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.tags() & map::SPATIAL_ASSOCIATIVE) == map::SPATIAL_ASSOCIATIVE {
- 				input_layer = Some(layer.clone());
- 			}
- 		}
-
-		input_layer
- 	}
-
- 	pub fn aff_out_slcs(&self) -> Vec<u8> {
- 		let mut output_slcs: Vec<u8> = Vec::with_capacity(8);
- 		
- 		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.tags() & map::FF_OUT) == map::FF_OUT {
- 				let v = self.slc_ids(vec![layer.name()]);
- 				output_slcs.push_all(&v);
- 			}
- 		}
-
-		output_slcs		
- 	}
-
- 	// TODO: DEPRICATE IN FAVOR OF LAYERS_WITH_FLAG()
- 	pub fn layer_with_flag(&self, flag: LayerTags) -> Option<&Protolayer> {
- 		//let mut input_layers: Vec<&Protolayer>
- 		 		
- 		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.tags() & flag) == flag {
- 				return Some(&layer);
- 			}
- 		}
- 		return None;
- 	}
-
 
  	/// Returns all layers containing 'tags'.
  	pub fn layers_with_tags(&self, tags: LayerTags) -> Vec<&Protolayer> {
  		let mut layers: Vec<&Protolayer> = Vec::with_capacity(16);
  		 		
- 		for (_, layer) in self.layers.iter() {
- 			// if (layer.tags & tags) == tags {
- 			if layer.tags().contains(tags) {
- 				layers.push(&layer);
- 			}
+ 		for (_, layer) in self.layers.iter().filter(|&(_, layer)| 
+ 				layer.tags().meshes(tags))
+ 		{
+ 			layers.push(&layer);
  		}
 
  		layers

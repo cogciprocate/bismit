@@ -81,6 +81,15 @@ impl LayerTags {
 		(self.bits & 0xFFFFFFFF) as u32
 	}
 
+	/// Returns whether or not `self` both contains and equals the unique id of 
+	/// `other`.
+	///
+	/// Useful when comparing tags which must match uids where `self` may be a 
+	/// superset of `other`.
+	pub fn meshes(&self, other: LayerTags) -> bool {
+		self.contains(other) && self.uid() == other.uid()
+	}
+
 	// Presently called from Protolayer::new().
 	pub fn debug_validate(&self) {
 		debug_assert!(!(self.contains(OUTPUT) && self.contains(INPUT)));
