@@ -12,9 +12,9 @@ const CYCLES_PER_FRAME: usize 				= 1;
 
 
 pub fn define_protolayer_maps() -> ProtolayerMaps {
-	let mut proto_layer_maps: ProtolayerMaps = ProtolayerMaps::new();
+	let mut plmaps: ProtolayerMaps = ProtolayerMaps::new();
 
-	proto_layer_maps.add(ProtolayerMap::new("visual", Sensory)
+	plmaps.add(ProtolayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
 		.layer("motor_in", 1, map::DEFAULT, Axonal(Horizontal))
 		//.layer("olfac", 1, map::DEFAULT, Axonal(Horizontal))
@@ -22,19 +22,19 @@ pub fn define_protolayer_maps() -> ProtolayerMaps {
 		.layer("aff_in", 0, map::FF_IN /*| map::INTERAREA*/, Axonal(Spatial))
 		.layer("out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))
 		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
-		.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, 
+		.layer("iv", 1, map::PSAL, 
 			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600, 8)) 
 		.layer("iv_inhib", 0, map::DEFAULT, 
 			Protocell::new_inhibitory(4, "iv"))
-		.layer("iii", 3, map::TEMPORAL_ASSOCIATIVE, 
+		.layer("iii", 3, map::PTAL, 
 			Protocell::new_pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"]))
 	);
 
-	proto_layer_maps.add(ProtolayerMap::new("external", Thalamic)
+	plmaps.add(ProtolayerMap::new("external", Thalamic)
 		.layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
 	);
 
-	proto_layer_maps
+	plmaps
 }
 
 pub fn define_protoareas() -> ProtoareaMaps {
@@ -116,11 +116,11 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 		// .layer("test4", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		// .layer("test5", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
-		.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, 
+		.layer("iv", 1, map::PSAL, 
 			Protocell::new_spiny_stellate(5, vec!["unused"], 1, 8))
 		// .layer("iv_inhib", 0, map::DEFAULT, 
 		// 	Protocell::new_inhibitory(4, "iv"))
-		.layer("iii", 2, map::TEMPORAL_ASSOCIATIVE, 
+		.layer("iii", 2, map::PTAL, 
 			Protocell::new_pyramidal(2, 4, vec!["unused"], 1, 8)
 				.apical(vec!["test1"])
 				.apical(vec!["test2"])
@@ -137,12 +137,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
 	let pamaps = ProtoareaMaps::new()
 		.area(area_name, lmap_name, 32, None, Some(vec!["dummy_area"]))
-
-		// <<<<< VERY IMPORTANT: DO NOT DELETE! >>>>>
-		// [FIXME] THIS EXTERNAL AREA MAY BE CAUSING INDEXING PROBLEMS
 		.area_ext("dummy_area", "dummy_lm", 67, Protoinput::None, None, None)
-
-		// .area_ext("dummy_area", "dummy_lm", 32, 32, Protoinput::None, None, Some(vec![area_name]))
 	;
 
 	Cortex::new(plmaps, pamaps)
@@ -160,12 +155,12 @@ pub struct TestBed {
 
 impl TestBed {
 	pub fn new() -> TestBed {
-		let proto_layer_maps = define_protolayer_maps();
+		let plmaps = define_protolayer_maps();
 		let proto_area_maps = define_protoareas();
 
 		// proto_area_maps.freeze();
 
-		let thal = Thalamus::new(proto_layer_maps, proto_area_maps);
+		let thal = Thalamus::new(plmaps, proto_area_maps);
 		let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
 		let ocl_context = Context::new(None, None).unwrap();

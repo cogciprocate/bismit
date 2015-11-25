@@ -1,8 +1,8 @@
 
 
-pub use self::area_map::{ AreaMap, /*InterAreaInfoCache*/ };
+pub use self::area_map::{ AreaMap };
 pub use self::slice_map::{ SliceMap };
-pub use self::layer_map:: { LayerMap, /*LayerSourceAreas, SourceAreaInfo*/ };
+pub use self::layer_map:: { LayerMap, LayerInfo, SourceLayerInfo };
 pub use self::slice_dims::{ SliceDims };
 
 #[cfg(test)]
@@ -28,18 +28,22 @@ bitflags! {
 		const SPECIFIC 				= 0b0000_0000_0100_0000__0000_0000_0000_0000 << 32,	
 		const NONSPECIFIC			= 0b0000_0000_1000_0000__0000_0000_0000_0000 << 32,	
 
+		const PRIMARY				= 0b0000_0000_0000_0000__0000_0000_0000_0001 << 32,
 		const SPATIAL_ASSOCIATIVE 	= 0b0000_0000_0000_0000__0000_0000_0001_0000 << 32,
-		const TEMPORAL_ASSOCIATIVE 	= 0b0000_0000_0000_0000__0000_0000_0010_0000 << 32,		
+		const TEMPORAL_ASSOCIATIVE 	= 0b0000_0000_0000_0000__0000_0000_0010_0000 << 32,
 		const UNUSED_TESTING		= 0b0000_0000_0000_0000__1000_0000_0000_0000 << 32,
 
 		const FF_IN			= FEEDFORWARD.bits | INPUT.bits | SPATIAL.bits | SPECIFIC.bits,
 		const FF_OUT		= FEEDFORWARD.bits | OUTPUT.bits | SPATIAL.bits | SPECIFIC.bits,
 		const FB_IN			= FEEDBACK.bits | INPUT.bits | SPATIAL.bits | SPECIFIC.bits,
 		const FB_OUT		= FEEDBACK.bits | OUTPUT.bits | SPATIAL.bits | SPECIFIC.bits,
-		// const SP_OUT		= map::SPATIAL | map::OUTPUT | map::SPECIFIC | map::FEEDFORWARD | map::FEEDBACK
 		const FF_FB_OUT		= FEEDBACK.bits | FEEDFORWARD.bits | OUTPUT.bits | SPATIAL.bits | SPECIFIC.bits,
+
 		const NS_IN			= INPUT.bits | HORIZONTAL.bits | NONSPECIFIC.bits,
 		const NS_OUT		= OUTPUT.bits | HORIZONTAL.bits | NONSPECIFIC.bits,
+
+		const PSAL			= PRIMARY.bits | SPATIAL_ASSOCIATIVE.bits, 
+		const PTAL 			= PRIMARY.bits | TEMPORAL_ASSOCIATIVE.bits,
 	}
 }
 

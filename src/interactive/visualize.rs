@@ -23,8 +23,8 @@ const CYCLES_PER_FRAME: usize 				= 1;
 
 /* Eventually move defines to a config file or some such */
 pub fn define_plmaps() -> ProtolayerMaps {
-	const MOTOR: u32 = 555;
-	const OLFAC: u32 = 666;
+	const MOTOR: u32 = 543;
+	const OLFAC: u32 = 654;
 
 	ProtolayerMaps::new()
 		.lm(ProtolayerMap::new("visual", Sensory)
@@ -37,11 +37,11 @@ pub fn define_plmaps() -> ProtolayerMaps {
 			.axn_layer("unused", map::UNUSED_TESTING, Spatial)
 			.layer("iv_inhib", 0, map::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
-			.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, 
+			.layer("iv", 1, map::PSAL, 
 				Protocell::new_spiny_stellate(5, vec!["aff_in"], 700, 8)
 			)
 
-			.layer("iii", 2, map::TEMPORAL_ASSOCIATIVE, 
+			.layer("iii", 2, map::PTAL, 
 				Protocell::new_pyramidal(1, 5, vec!["iii"], 2200, 8)
 					.apical(vec!["eff_in"])
 			)
@@ -452,9 +452,7 @@ pub fn run(autorun_iters: i32) -> bool {
 				
 				let axn_space_len = cortex.area(&area_name).axns.states.vec().len();
 
-				cortex.area_mut(&area_name).render_axon_space();				
-
-				// cmn::render_sdr(&cortex.area(&area_name).axns.states.vec()[128..axn_space_len - 128], None, None, None, &cortex.area(&area_name).proto_layer_map().slc_map(), true, cortex.area(&area_name).dims.columns());
+				cortex.area_mut(&area_name).render_axon_space();
 			}
 
 			i += 1;

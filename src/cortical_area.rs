@@ -307,7 +307,7 @@ impl CorticalArea {
 
 	// Read input from thalamus and write to axon space.
 	fn intake(&mut self, layer_tags: LayerTags, thal: &mut Thalamus) {
-		// let src_layers = self.area_map.layers().layer_src_info_by_tags(layer_tags);
+		// let src_layers = self.area_map.layers().layer_src_info(layer_tags);
 
 		// for &(src_area_name, tags) in src_area_names.iter() {
 		for src_layer in self.area_map.layers().layer_src_area_names_by_tags(layer_tags) {

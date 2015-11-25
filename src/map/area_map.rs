@@ -6,7 +6,7 @@ use ocl::{ BuildConfig, BuildOpt };
 use proto::{ ProtolayerMaps, ProtolayerMap, ProtoareaMaps, ProtoareaMap, RegionKind, Protofilter,
 	DendriteKind };
 use cmn::{ self, CorticalDims };
-use map::{ self, SliceMap, LayerTags, LayerMap };
+use map::{ self, SliceMap, LayerTags, LayerMap, LayerInfo };
 
 // 	AREAMAP { }:
 // 		- Move in functionality from the 'execution phase' side of ProtoareaMap and ProtolayerMap.
@@ -96,12 +96,36 @@ impl AreaMap {
 
 	// NEW
 	pub fn layer_name_by_tags(&self, layer_tags: LayerTags) -> &'static str {
-		let layer_info = self.layers.layer_info_by_tags(layer_tags);
+		let layer_info = self.layers.layer_info(layer_tags);
 		assert_eq!(layer_info.len(), 1);
 		layer_info[0].name()
 	}
 
-	// NEW - REVAMP
+	// UPDATE / DEPRICATE
+	/// Returns a grouped list of source layer names for each distal dendritic tuft in a layer.
+	pub fn layer_dst_srcs(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
+		let mut potential_tufts = self.plmap.layers()[layer_name].dst_src_lyrs_by_tuft();
+		let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
+
+		for mut potential_tuft_src_lyrs in potential_tufts.drain(..) {
+			let mut valid_src_lyrs: Vec<&'static str> = Vec::with_capacity(potential_tuft_src_lyrs.len());
+
+			for lyr_name in potential_tuft_src_lyrs.drain(..) {
+				if self.plmap.layers()[lyr_name].depth() > 0 {
+					valid_src_lyrs.push(lyr_name);
+				}
+			}
+
+			if valid_src_lyrs.len() > 0 {
+				valid_tufts.push(valid_src_lyrs);
+			}
+		}
+
+		valid_tufts		
+	}
+
+	// NEW - UPDATE
+	/// Returns a merged list of slice ids for all source layers.
 	pub fn layer_slc_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
 		// self.plmap.slc_ids(layer_names)
 		let mut slc_ids = Vec::new();
@@ -116,14 +140,28 @@ impl AreaMap {
 		slc_ids
 	}
 
-	// UPDATE
+	// NEW - UPDATE
+	/// Returns a merged list of source slice ids for all source layers.
 	pub fn layer_src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
 		let src_lyr_names = self.plmap.layers()[&layer_name].src_lyr_names(den_type);
 		
 		self.layer_slc_ids(src_lyr_names)
  	}
 
-	// UPDATE
+ 	// NEW - UPDATE
+ 	/// Returns a grouped list of source slice ids for each distal dendritic tuft in a layer.
+ 	pub fn layer_dst_src_slc_ids(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
+ 		let src_tufts = self.layer_dst_srcs(layer_name);
+ 		let mut dst_src_slc_ids = Vec::with_capacity(src_tufts.len());
+
+ 		for tuft in src_tufts {
+ 			dst_src_slc_ids.push(self.layer_slc_ids(tuft));
+		}
+
+		dst_src_slc_ids
+	}
+
+	// NEW - UPDATE / RENAME
 	pub fn aff_out_slcs(&self) -> Vec<u8> {
 		let mut output_slcs: Vec<u8> = Vec::with_capacity(8);
  		
@@ -137,7 +175,7 @@ impl AreaMap {
 		output_slcs	
 	}
 
-	// UPDATE - DEPRICATE
+	// UPDATE / DEPRICATE
 	pub fn axn_base_slc_ids_by_tags(&self, layer_tags: LayerTags) -> Vec<u8> {
 		let layers = self.plmap.layers_with_tags(layer_tags);
 		let mut slc_ids = Vec::with_capacity(layers.len());
@@ -148,14 +186,30 @@ impl AreaMap {
 
 		slc_ids
 	}
+	
 
+	// NEW
+	pub fn psal_layer(&self) -> &LayerInfo {
+		let psal_layer_vec = self.layers.layer_info(map::PSAL);
+		assert_eq!(psal_layer_vec.len(), 1);
+		psal_layer_vec[0]
+ 	}
+
+ 	// NEW
+ 	pub fn ptal_layer(&self) -> &LayerInfo {
+		let ptal_layer_vec = self.layers.layer_info(map::PTAL);
+		assert_eq!(ptal_layer_vec.len(), 1);
+		ptal_layer_vec[0]
+ 	}
+
+ 	// NEW - UPDATE
 	pub fn slc_map(&self) -> BTreeMap<u8, &'static str> {
 		self.plmap.slc_map()
 	}
 
 	// NEW
 	pub fn axn_range_by_tags(&self, layer_tags: LayerTags) -> Range<u32> {				
-		let layers = self.layers.layer_info_by_tags(layer_tags);
+		let layers = self.layers.layer_info(layer_tags);
 		assert!(layers.len() == 1, "AreaMap::axn_range_by_tags(): Axon range \
 			can not be calculated for more than one layer at a time. Flags: {:?}",
 			layer_tags);
@@ -178,7 +232,7 @@ impl AreaMap {
 	}
 
 	// [TODO] Layer source area system needs rework.
-	pub fn output_layer_info_by_tags(&self) -> Vec<(LayerTags, u32)> {
+	pub fn output_layer_info(&self) -> Vec<(LayerTags, u32)> {
 		let layers = self.plmap.layers_with_tags(map::OUTPUT);
 		let mut layer_info = Vec::with_capacity(layers.len());
 		
@@ -209,14 +263,14 @@ impl AreaMap {
 	}
 
 	// DEPRICATE
-	pub fn proto_area_map(&self) -> &ProtoareaMap {
-		&self.pamap
-	}
+	// pub fn proto_area_map(&self) -> &ProtoareaMap {
+	// 	&self.pamap
+	// }
 
 	// DEPRICATE
-	pub fn proto_layer_map(&self) -> &ProtolayerMap {
-		&self.plmap
-	}
+	// pub fn proto_layer_map(&self) -> &ProtolayerMap {
+	// 	&self.plmap
+	// }
 
 	pub fn axn_idz(&self, slc_id: u8) -> u32 {
 		self.slices.idz(slc_id)
@@ -230,7 +284,7 @@ impl AreaMap {
 		&self.layers
 	}
 
-	// UPDATE - DEPRICATE
+	// UPDATE / DEPRICATE
 	pub fn filters(&self) -> &Option<Vec<Protofilter>> {
 		&self.pamap.filters
 	}
@@ -247,7 +301,7 @@ impl AreaMap {
 	// 	self.plmap.name
 	// }
 
-	// UPDATE - DEPRICATE
+	// UPDATE / DEPRICATE
 	pub fn lm_kind_tmp(&self) -> &RegionKind {
 		&self.plmap.kind
 	}

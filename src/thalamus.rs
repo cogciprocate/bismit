@@ -49,7 +49,7 @@ impl Thalamus {
 		{	
 			let area_map = AreaMap::new(pa, &plmaps, &pamaps);
 
-			let layer_info = area_map.output_layer_info_by_tags();
+			let layer_info = area_map.output_layer_info();
 
 			for &(tags, cols) in layer_info.iter() {
 				tract.add_area(area_name, tags, cols as usize);
@@ -380,7 +380,7 @@ pub mod tests {
 	// 	let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
 
 	// 	match areas.get(tar_area_name) {
-	// 		Some(area) => if self.area_maps[tar_area_name].proto_layer_map().kind == Thalamic { return; },
+	// 		Some(area) => if self.area_maps[tar_area_name].plmap().kind == Thalamic { return; },
 	// 		None => return,
 	// 	}
 
@@ -411,7 +411,7 @@ pub mod tests {
 	// 	let area = areas.get(area_name).expect(&emsg);
 
 	// 	//let ref region = self.plmaps[&RegionKind::Sensory];
-	// 	let region = area.proto_layer_maps();
+	// 	let region = area.plmaps();
 	// 	let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
 		
 	// 	for slc in axn_slcs { 

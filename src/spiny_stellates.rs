@@ -1,22 +1,13 @@
 use std::ops;
-// use std::mem;
-use rand::distributions::{ /*Normal, IndependentSample,*/ Range };
-use rand::{ self, /*ThreadRng,*/ Rng };
-// use num::{ self, Integer };
-// use std::default::{ Default };
-// use std::fmt::{ Display };
+use rand::distributions::{ Range };
+use rand::{ self, Rng };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQue, WorkSize, Envoy, EventList };
-use proto::{ /*ProtolayerMap, RegionKind, ProtoareaMaps,*/ ProtocellKind, Protocell, DendriteKind };
-// use synapses::{ Synapses };
+use proto::{ ProtocellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
-// use cortical_area:: { Aux };
-// use iinn:: { InhibitoryInterneuronNetwork };
-// use pyramidals::{ PyramidalLayer };
-// use minicolumns::{ Minicolumns };
 
 
 
@@ -26,101 +17,42 @@ pub struct SpinyStellateLayer {
 	protocell: Protocell,
 	base_axn_slc: u8,
 	lyr_axn_idz: u32,
-	//kern_cycle: ocl::Kernel,
-	//kern_post_inhib: ocl::Kernel,
-	//kern_output: ocl::Kernel,
 	kern_ltp: ocl::Kernel,
 	rng: rand::XorShiftRng,
-	//regrow_counter: usize,	// SLATED FOR REMOVAL
-	//pub states: Envoy<ocl::cl_uchar>,
-	//pub states_raw: Envoy<ocl::cl_uchar>,
-	//pub cels_status: Envoy<ocl::cl_uchar>,
-	//pub best_pyr_den_states: Envoy<ocl::cl_uchar>,
-	//pub iinn: InhibitoryInterneuronNetwork,
-	//pub syns: ColumnSynapses,
 	pub dens: Dendrites,
-	//pub syns: Synapses,
 }
 
-// pyrs: &PyramidalLayer,
 impl SpinyStellateLayer {
 	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, area_map: &AreaMap, 
-				axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue
+				axns: &AxonSpace, ocl_pq: &ProQue
 	) -> SpinyStellateLayer {
-		//let layer = area_map.proto_layer_map().spt_asc_layer().expect("spiny_stellates::SpinyStellateLayer::new()");
-		//let depth: u8 = layer.depth();
-
-		let base_axn_slcs = area_map.proto_layer_map().slc_ids(vec![layer_name]);
+		let base_axn_slcs = area_map.layer_slc_ids(vec![layer_name]);
 		let base_axn_slc = base_axn_slcs[0];
-		//let lyr_axn_idz = cmn::axn_idz_2d(base_axn_slc, dims.columns(), area_map.proto_layer_map().hrz_demarc());
 		let lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
 		let syns_per_tuft_l2: u8 = protocell.syns_per_den_l2 + protocell.dens_per_tuft_l2;
 
-		//let pyr_depth = area_map.proto_layer_map().depth_cell_kind(&ProtocellKind::Pyramidal);
-
-		//let pyr_base_axn_slc = area_map.proto_layer_map().base_slc_cell_kind(&ProtocellKind::Pyramidal); // SHOULD BE SPECIFIC LAYER(S)  
-
-		//let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		//let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		println!("      SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}", base_axn_slc, lyr_axn_idz, dims);
+		println!("{mt}{mt}SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}", 
+			base_axn_slc, lyr_axn_idz, dims, mt = cmn::MT);
 
 		let dens_dims = dims.clone_with_ptl2(protocell.dens_per_tuft_l2 as i8);
-		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Proximal, ProtocellKind::SpinyStellate, area_map, axns, /*aux,*/ ocl_pq);
-
-		//let cels_status = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		//let best_pyr_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl);
-		//let iinn = InhibitoryInterneuronNetwork::new(dims, area_map.proto_layer_map(), &dens.states, ocl);
-
-		/*let syns = Synapses::new(dims, syns_per_tuft_l2, syns_per_tuft_l2, DendriteKind::Proximal, 
-			ProtocellKind::SpinyStellateLayer, area_map.proto_layer_map(), axns, aux, ocl);*/
-
-
-		//assert!(dims.columns() % cmn::MINIMUM_WORKGROUP_SIZE == 0);
-		//let cels_per_tuft: u32 = dims.columns() / cmn::MINIMUM_WORKGROUP_SIZE;
-
-		//let work_size = dims.len() / cmn::AXON_BUF__FER_SIZE as usize;
-
-		//println!("\n##### SPINY_STELLATES: cels_per_tuft: {}, syns_per_tuft_l2: {}, lyr_axn_idz: {} ", cels_per_tuft, syns_per_tuft_l2, lyr_axn_idz);
-
+		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Proximal, 
+			ProtocellKind::SpinyStellate, area_map, axns, ocl_pq);
 		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
 		let cels_per_grp = dims.per_subgrp(grp_count, ocl_pq).expect("SpinyStellateLayer::new()");
-			//.unwrap_or_else(|s: &'static str| panic!(s));
 
 		let kern_ltp = ocl_pq.create_kernel("sst_ltp", 
-			//WorkSize::TwoDims(dims.depth() as usize, cmn::MINIMUM_WORKGROUP_SIZE as usize))
 			WorkSize::TwoDims(dims.tfts_per_cel() as usize, grp_count as usize))
-		//let kern_ltp = ocl.create_kernel("sst_ltp", WorkSize::TwoDims(dims.depth() as usize, iinn.dims.per_slc() as usize))
 			.arg_env(&axns.states)
 			.arg_env(&dens.syns().states)
 			.arg_scl(lyr_axn_idz)
 			.arg_scl(cels_per_grp)
 			.arg_scl(syns_per_tuft_l2)
-			//.arg_scl(cels_per_tuft)
 			.arg_scl_named::<u32>("rnd", None)
-			// .arg_env(&aux.ints_0)
 			// .arg_env_named("aux_ints_0", None)
 			// .arg_env_named("aux_ints_1", None)
 			.arg_env(&dens.syns().strengths)
 		;
-
-
-
-
-		/*let kern_ltp_old = ocl.create_kernel("sst_ltp_old", WorkSize::TwoDims(dims.depth() as usize, 16 as usize)) // ***** FIX
-		//let kern_ltp = ocl.create_kernel("sst_ltp", WorkSize::TwoDims(dims.depth() as usize, iinn.dims.per_slc() as usize))
-			.arg_env(&dens.syns().states)
-			.arg_env(&dens.syns().states)
-			.arg_env(&dens.syns().states)
-			.arg_scl(syns_per_tuft_l2 as u32)
-			.arg_scl_named::<u32>("rnd", None)
-			//.arg_env(&aux.ints_0)
-			.arg_env(&dens.syns().strengths)
-			//.arg_env(&axns.states)
-		;*/
-
-
-		//println!("\n***Test");
 
 		SpinyStellateLayer {
 			layer_name: layer_name,
@@ -128,17 +60,8 @@ impl SpinyStellateLayer {
 			protocell: protocell,
 			base_axn_slc: base_axn_slc,
 			lyr_axn_idz: lyr_axn_idz,
-			//kern_cycle: kern_cycle,
-			//kern_post_inhib: kern_post_inhib,
-			//kern_output: kern_output,
 			kern_ltp: kern_ltp,
 			rng: rand::weak_rng(),
-			//regrow_counter: 0usize,
-			//states_raw: states_raw,
-			//states: states,
-			//cels_status: cels_status,
-			//best_pyr_den_states: best_pyr_den_states,
-			//iinn: iinn,
 			dens: dens,
 		}
 	}
@@ -149,7 +72,6 @@ impl SpinyStellateLayer {
 
 
 	pub fn learn(&mut self) {
-		//print!("[R:{}]", self.rng.gen::<i32>());
 		let rnd = self.rng.gen::<u32>();
 		self.kern_ltp.set_arg_scl_named("rnd", rnd);
 		self.kern_ltp.enqueue(None, None);
@@ -193,19 +115,15 @@ impl SpinyStellateLayer {
 		println!("\ncell.state[{}]: {}", cel_idx, self.dens.states[cel_idx]);
 
 		println!("cell.syns.states[{:?}]: ", cel_syn_range.clone()); 
-		// ocl::fmt::print_vec_simple(&self.dens.syns().states.vec()[cel_syn_range.clone()]);
 		self.dens.syns_mut().states.print(1, None, Some(cel_syn_range.clone()), false);
 
 		println!("cell.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
-		// ocl::fmt::print_vec_simple(&self.dens.syns().strengths.vec()[cel_syn_range.clone()]);
 		self.dens.syns_mut().strengths.print(1, None, Some(cel_syn_range.clone()), false);
 
 		println!("cell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
-		// ocl::fmt::print_vec_simple(&self.dens.syns().src_col_v_offs.vec()[cel_syn_range.clone()]);
 		self.dens.syns_mut().src_col_v_offs.print(1, None, Some(cel_syn_range.clone()), false);
 
 		println!("cell.syns.src_col_u_offs[{:?}]: ", cel_syn_range.clone()); 
-		// ocl::fmt::print_vec_simple(&self.dens.syns().src_col_v_offs.vec()[cel_syn_range.clone()]);
 		self.dens.syns_mut().src_col_u_offs.print(1, None, Some(cel_syn_range.clone()), false);
 	}
 

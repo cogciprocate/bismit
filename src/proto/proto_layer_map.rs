@@ -454,7 +454,6 @@ impl ProtolayerMap {
 
 	// DST_SRC_LYRS_BY_TUFT(): Get a grouped list of source layer names for each distal dendritic tuft in a layer.
 	pub fn dst_src_lyrs_by_tuft(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
-		// [FIXME][DONE?] TODO: RETURN ONLY VALID TUFTS!
 		let mut potential_tufts = self.layers[layer_name].dst_src_lyrs_by_tuft();
 		let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
 
@@ -475,7 +474,7 @@ impl ProtolayerMap {
 		valid_tufts		
 	}
 
- 	pub fn spt_asc_layer(&self) -> Option<Protolayer> {
+ 	pub fn psal_layer(&self) -> Option<Protolayer> {
  		let mut input_layer: Option<Protolayer> = None;
  		
  		for (layer_name, layer) in self.layers.iter() {

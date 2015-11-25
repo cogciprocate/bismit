@@ -38,11 +38,11 @@ impl PyramidalLayer {
 	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, 
 		area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue
 	) -> PyramidalLayer {
-		let base_axn_slcs = area_map.proto_layer_map().slc_ids(vec![layer_name]);
+		let base_axn_slcs = area_map.layer_slc_ids(vec![layer_name]);
 		let base_axn_slc = base_axn_slcs[0];
 		let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);		
 
-		let tfts_per_cel = area_map.proto_layer_map().dst_src_lyrs_by_tuft(layer_name).len() as u32;
+		let tfts_per_cel = area_map.layer_dst_srcs(layer_name).len() as u32;
 
 		let best_dens_per_cel = tfts_per_cel;
 		let dims_best_dens = dims.clone().with_tfts(tfts_per_cel);

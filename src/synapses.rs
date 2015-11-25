@@ -1,11 +1,5 @@
-// use num;
 use rand::{ self, XorShiftRng };
-// use std::mem;
-use rand::distributions::{ /*Normal,*/ IndependentSample, Range };
-// use rand::{ ThreadRng, Rng };
-// use num::{ Integer };
-// use std::default::{ Default };
-// use std::fmt::{ Display };
+use rand::distributions::{ IndependentSample, Range };
 use std::collections::{ BTreeSet };
 
 use cmn::{ self, CorticalDims };
@@ -13,7 +7,6 @@ use map::{ AreaMap };
 use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, EventList };
 use proto::{ ProtocellKind, Protocell, DendriteKind };
 use axon_space::{ AxonSpace };
-// use cortical_area:: { Aux };
 
 #[cfg(test)]
 pub use self::tests::{ SynCoords, SynapsesTest };
@@ -85,7 +78,7 @@ pub struct Synapses {
 	pub src_col_u_offs: Envoy<ocl::cl_char>,
 	pub src_col_v_offs: Envoy<ocl::cl_char>,
 	pub flag_sets: Envoy<ocl::cl_uchar>,
-	//pub slc_pool: Envoy<ocl::cl_uchar>,  // BRING THIS BACK (OPTIMIZATION)
+	// pub slc_pool: Envoy<ocl::cl_uchar>,  // BRING THIS BACK (OPTIMIZATION)
 }
 
 impl Synapses {
@@ -99,7 +92,7 @@ impl Synapses {
 
 		let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, protocell.dens_per_tuft_l2, dims.clone());
 
-		//let slc_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
+		// let slc_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
 		let states = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq.queue());
 		let strengths = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq.queue());
 		let src_slc_ids = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq.queue());
@@ -108,13 +101,14 @@ impl Synapses {
 		let src_col_v_offs = Envoy::<ocl::cl_char>::new(dims, 0, ocl_pq.queue()); 
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, 0, ocl_pq.queue());
 
+		// [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
 		let (src_slc_ids_list, syn_reach) = match den_kind {
 			DendriteKind::Proximal => {
-				(vec![area_map.proto_layer_map().src_slc_ids(layer_name, den_kind)],
+				(vec![area_map.layer_src_slc_ids(layer_name, den_kind)],
 					protocell.den_prx_syn_reach)
 			},
 			DendriteKind::Distal => {
-				(area_map.proto_layer_map().dst_src_slc_ids(layer_name),
+				(area_map.layer_dst_src_slc_ids(layer_name),
 					protocell.den_dst_syn_reach)
 			},
 		};
@@ -169,16 +163,13 @@ impl Synapses {
 			dims: dims,
 			syns_per_den_l2: protocell.syns_per_den_l2,
 			protocell: protocell,
-			//protoregion: protoregion.clone(),
 			src_slc_ids_list: src_slc_ids_list,
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			since_decay: 0,
-			//kern_cycle: kern_cycle,
 			kernels: kernels,
 			src_idx_cache: src_idx_cache,
 			hex_tile_offs: cmn::hex_tile_offs(syn_reach),
-			//kern_regrow: kern_regrow,
 			rng: rand::weak_rng(),
 			states: states,
 			strengths: strengths,
@@ -186,13 +177,13 @@ impl Synapses {
 			src_col_u_offs: src_col_u_offs,
 			src_col_v_offs: src_col_v_offs,
 			flag_sets: flag_sets,
-			//slc_pool: slc_pool,  // BRING THIS BACK
+			// slc_pool: slc_pool,  // BRING THIS BACK
 		};
 
-		//println!("\nHex tile offsets: \n{:?}", syns.hex_tile_offs);
+		// println!("\nHex tile offsets: \n{:?}", syns.hex_tile_offs);
 
 		syns.grow(true);
-		//syns.refresh_slc_pool();
+		// syns.refresh_slc_pool(); // BRING THIS BACK
 
 		syns
 	}
@@ -236,7 +227,6 @@ impl Synapses {
 
 			for syn_idx in syn_idz..syn_idn {
 				if init || (self.strengths[syn_idx] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
-					//syn_idx = i + (src_slc_ids * 
 					self.regrow_syn(syn_idx, &src_slc_id_range, &src_col_offs_range,
 						&strength_init_range, &src_slc_ids, init);
 				}
@@ -372,24 +362,6 @@ impl Synapses {
 		self.src_col_v_offs.set_all_to(0);
 		self.src_col_u_offs.set_all_to(0);
 	}
-
-	/* SRC_SLICE_IDS(): TODO: DEPRICATE */
-	// pub fn src_slc_ids(&self, layer_name: &'static str, layer: &Protolayer) -> Vec<u8> {
-		
-	// 	//println!("\n##### SYNAPSES::SRC_SLICE_IDS({}): {:?}", layer_name, self.src_slc_ids);
-
-	// 	match layer.kind {
-	// 		ProtolayerKind::Cellular(ref cell) => {
-	// 			if cell.cell_kind == self.cell_kind {
-	// 				self.protoregion.src_slc_ids(layer_name, self.den_kind)
-	// 			} else {
-	// 				panic!("Synapse::src_slc_ids(): cell_kind mismatch! ")
-	// 			}
-	// 		},
-
-	// 		_ => panic!("Synapse::src_slc_ids(): ProtolayerKind not Cellular! "),
-	// 	}
-	// }
 }
 
 

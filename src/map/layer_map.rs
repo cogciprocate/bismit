@@ -31,15 +31,15 @@ impl LayerMap {
 	}
 
 	// [FIXME] TODO: Cache results.
-	pub fn layer_info_by_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
+	pub fn layer_info(&self, tags: LayerTags) -> Vec<&LayerInfo> {
 		self.index.iter().filter(|li| li.tags.contains(tags)).map(|li| li).collect()
 	}
 
 	// [FIXME] TODO: Cache results. Use iterator mapping and filtering.
-	pub fn layer_src_info_by_tags(&self, tags: LayerTags) -> Vec<&SourceLayerInfo> {
+	pub fn layer_src_info(&self, tags: LayerTags) -> Vec<&SourceLayerInfo> {
 		let mut src_layers = Vec::with_capacity(8);
 
-		for layer in self.layer_info_by_tags(tags).iter() {
+		for layer in self.layer_info(tags).iter() {
 			for src_layer in layer.sources.iter() {
 				debug_assert!(src_layer.tags().contains(tags.mirror_io()));
 				src_layers.push(src_layer);
@@ -50,12 +50,12 @@ impl LayerMap {
 	}
 
 	pub fn layer_src_area_names_by_tags(&self, tags: LayerTags) -> Vec<&'static str> {
-		self.layer_src_info_by_tags(tags).iter().map(|sli| sli.area_name()).collect()
+		self.layer_src_info(tags).iter().map(|sli| sli.area_name()).collect()
 	}
 
 	pub fn slc_src_layer_info(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&SourceLayerInfo> {
 		let mut src_layer_info = Vec::with_capacity(8);
-		let layer_info = self.layer_info_by_tags(layer_tags);
+		let layer_info = self.layer_info(layer_tags);
 
 		for lyr in layer_info {			
 			for src_lyr in lyr.src_info() {
@@ -72,7 +72,7 @@ impl LayerMap {
 		} else {
 			None
 		}
-	}
+	}	
 
 	pub fn iter(&self) -> Iter<map::layer_map::LayerInfo>{
 		self.index.iter()
