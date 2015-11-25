@@ -23,7 +23,7 @@ pub struct Thalamus {
 }
 
 impl Thalamus {
-	pub fn new(plmaps: &ProtolayerMaps,	mut pamaps: ProtoareaMaps) -> Thalamus {
+	pub fn new(plmaps: ProtolayerMaps,	mut pamaps: ProtoareaMaps) -> Thalamus {
 		pamaps.freeze();
 
 		let area_count = pamaps.maps().len();
@@ -47,7 +47,7 @@ impl Thalamus {
 		for (&area_name, pa) in pamaps.maps().iter()
 			// .filter(|&(_, pa)| plmaps[pa.layer_map_name].kind != Thalamic)
 		{	
-			let area_map = AreaMap::new(pa, plmaps, &pamaps);
+			let area_map = AreaMap::new(pa, &plmaps, &pamaps);
 
 			let layer_info = area_map.output_layer_info_by_flag();
 

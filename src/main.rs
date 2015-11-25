@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_variables, unused_assignments, )]
+#![allow(dead_code, unused_variables, unused_assignments)]
 
 #![feature(vec_push_all, clone_from_slice, drain)]
 extern crate num;

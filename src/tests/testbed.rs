@@ -165,7 +165,7 @@ impl TestBed {
 
 		// proto_area_maps.freeze();
 
-		let thal = Thalamus::new(&proto_layer_maps, proto_area_maps);
+		let thal = Thalamus::new(proto_layer_maps, proto_area_maps);
 		let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
 		let ocl_context = Context::new(None, None).unwrap();

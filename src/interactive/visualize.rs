@@ -23,46 +23,43 @@ const CYCLES_PER_FRAME: usize 				= 1;
 
 /* Eventually move defines to a config file or some such */
 pub fn define_plmaps() -> ProtolayerMaps {
-	let mut plmaps: ProtolayerMaps = ProtolayerMaps::new();
-
 	const MOTOR: u32 = 555;
 	const OLFAC: u32 = 666;
 
-	plmaps.add(ProtolayerMap::new("visual", Sensory)
-		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
-		.input_layer("motor_in", map::NS_IN | LayerTags::with_uid(MOTOR), Axonal(Horizontal))
-		.input_layer("olfac", map::NS_IN | LayerTags::with_uid(OLFAC), Axonal(Horizontal))
-		.input_layer("eff_in", map::FB_IN, Axonal(Spatial))
-		.input_layer("aff_in", map::FF_IN, Axonal(Spatial))
-		.layer("out", 1, map::FF_FB_OUT, Axonal(Spatial))
-		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
-		.layer("iv_inhib", 0, map::DEFAULT, Protocell::new_inhibitory(4, "iv"))
+	ProtolayerMaps::new()
+		.lm(ProtolayerMap::new("visual", Sensory)
+			//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
+			.axn_layer("motor_in", map::NS_IN | LayerTags::with_uid(MOTOR), Horizontal)
+			.axn_layer("olfac", map::NS_IN | LayerTags::with_uid(OLFAC), Horizontal)
+			.axn_layer("eff_in", map::FB_IN, Spatial)
+			.axn_layer("aff_in", map::FF_IN, Spatial)
+			.axn_layer("out", map::FF_FB_OUT, Spatial)
+			.axn_layer("unused", map::UNUSED_TESTING, Spatial)
+			.layer("iv_inhib", 0, map::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
-		.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 700, 8)
+			.layer("iv", 1, map::SPATIAL_ASSOCIATIVE, 
+				Protocell::new_spiny_stellate(5, vec!["aff_in"], 700, 8)
+			)
+
+			.layer("iii", 2, map::TEMPORAL_ASSOCIATIVE, 
+				Protocell::new_pyramidal(1, 5, vec!["iii"], 2200, 8)
+					.apical(vec!["eff_in"])
+			)
 		)
 
-		.layer("iii", 2, map::TEMPORAL_ASSOCIATIVE, 
-			Protocell::new_pyramidal(1, 5, vec!["iii"], 2200, 8)
-				.apical(vec!["eff_in"])
+		.lm(ProtolayerMap::new("v0_layer_map", Thalamic)
+			.layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
 		)
-	);
 
-	plmaps.add(ProtolayerMap::new("v0_layer_map", Thalamic)
-		.layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
-	);
-
-	plmaps.add(ProtolayerMap::new("o0_layer_map", Thalamic)
-		.layer("ganglion", 1, map::NS_OUT | LayerTags::with_uid(OLFAC), Axonal(Horizontal))
-	);
-
-	plmaps
+		.lm(ProtolayerMap::new("o0_layer_map", Thalamic)
+			.layer("ganglion", 1, map::NS_OUT | LayerTags::with_uid(OLFAC), Axonal(Horizontal))
+		)
 }
 
 pub fn define_pamaps() -> ProtoareaMaps {
 	let area_side = 32 as u32;
 
-	let pamaps = ProtoareaMaps::new()		
+	ProtoareaMaps::new()		
 		//let mut ir_labels = IdxReader::new(CorticalDims::new(1, 1, 1, 0, None), "data/train-labels-idx1-ubyte", 1);
 		// .area_ext("u0", "external", area_side, area_side, 
 		// 	Protoinput::IdxReader { 
@@ -123,10 +120,9 @@ pub fn define_pamaps() -> ProtoareaMaps {
 		// .area("aD", "visual", area_side, None, Some(vec!["aC"]))
 		// .area("aE", "visual", area_side, None, Some(vec!["aD"]))
 		// .area("aF", "visual", area_side, None, Some(vec!["aE"]))
-	;
 
-	pamaps
 }
+
 
 
 /* RUN(): Run the interactive testing command line

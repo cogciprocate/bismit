@@ -2,7 +2,7 @@ use std::fmt::{ Display };
 use std::ops::{ Range };
 
 use ocl::{ BuildConfig, BuildOpt };
-use proto::{ ProtolayerMaps, ProtolayerMap, ProtoareaMaps, ProtoareaMap };
+use proto::{ ProtolayerMaps, ProtolayerMap, ProtoareaMaps, ProtoareaMap, RegionKind };
 use cmn::{ self, CorticalDims };
 use map::{ self, SliceMap, LayerTags, LayerMap };
 
@@ -174,8 +174,12 @@ impl AreaMap {
 		&self.dims
 	}
 
-	pub fn lm_name_tmp(&self) -> &'static str {
-		self.plmap.name
+	// pub fn lm_name_tmp(&self) -> &'static str {
+	// 	self.plmap.name
+	// }
+
+	pub fn lm_kind_tmp(&self) -> &RegionKind {
+		&self.plmap.kind
 	}
 }
 

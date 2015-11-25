@@ -1,20 +1,19 @@
+
 use std::collections::{ HashMap, BTreeMap };
 use std::ops::{ Index, IndexMut,  };
 use std::hash::{ Hasher };
 
 use map::{ self, LayerTags };
-use super::{ ProtoareaMap };
-use super::layer::{ Protolayer, ProtoaxonKind, ProtolayerKind };
-use super::{ ProtocellKind, DendriteKind };
+use super::{ ProtoareaMap, Protolayer, ProtoaxonKind, ProtolayerKind, ProtocellKind, DendriteKind, Axonal };
 
 
-/* PROTOLAYERMAP (PROTOREGION) {} <<<<< TODO: SPLIT UP, REDESIGN, AND REFACTOR >>>>>
-	- [incomplete] SEPERATE CONCERNS and consolidate similar data structures - GETTING TOO UNRULY
-		- redesign using a trait that can handle ProtocellKind and ProtoaxonKind both
-			- Also could merge the two and have one or the other dominant
-	- [incomplete] (cel, axn)_layer_kind_slc_lists needs to be redone asap
-		- should be instances of some new type which manages their lists
-*/
+// PROTOLAYERMAP (PROTOREGION) {} <<<<< TODO: SPLIT UP, REDESIGN, AND REFACTOR >>>>>
+// - [incomplete] SEPERATE CONCERNS and consolidate similar data structures - GETTING TOO UNRULY
+// - redesign using a trait that can handle ProtocellKind and ProtoaxonKind both
+//    - Also could merge the two and have one or the other dominant
+// - [incomplete] (cel, axn)_layer_kind_slc_lists needs to be redone asap
+// - should be instances of some new type which manages their lists 
+
 #[derive(Clone)]
 pub struct ProtolayerMap {
 	pub name: &'static str,
@@ -46,78 +45,37 @@ impl ProtolayerMap {
 		}
 	}
 
-	pub fn input_layer(
-				mut self, 
-				layer_name: &'static str,
-				tags: LayerTags,
-				kind: ProtolayerKind,
+	pub fn axn_layer(mut self, layer_name: &'static str, tags: LayerTags, axon_kind: ProtoaxonKind,
 			) -> ProtolayerMap 
 	{
-
-		let next_kind_base_slc_id = match kind {
-			ProtolayerKind::Cellular(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
-			ProtolayerKind::Axonal(ref axon_kind) => self.depth_axon_kind(&axon_kind),
-		};
+		let next_kind_base_slc_id = self.depth_axon_kind(&axon_kind);
+		let layer_depth = if tags.contains(map::OUTPUT) { 1 } else { 0 };
 		
-		let cl = Protolayer::new(
-			layer_name,
-			kind,
-			0,
-			0,
-			next_kind_base_slc_id,			
-			tags | map::INPUT,
-		);
-
-		self.add(cl);
+		self.add(Protolayer::new(layer_name, Axonal(axon_kind), layer_depth, 0,
+			next_kind_base_slc_id, tags));
 		self
 	}
 
-	pub fn layer(
-				mut self, 
-				layer_name: &'static str,
-				layer_depth: u8,
-				tags: LayerTags,
-				kind: ProtolayerKind,
-			) -> ProtolayerMap 
+	pub fn layer(mut self, layer_name: &'static str, layer_depth: u8, tags: LayerTags, 
+			kind: ProtolayerKind) -> ProtolayerMap 
 	{
 		let next_kind_base_slc_id = match kind {
 			ProtolayerKind::Cellular(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
 			ProtolayerKind::Axonal(ref axon_kind) => self.depth_axon_kind(&axon_kind),
 		};
 		
-		let cl = Protolayer::new(
-			layer_name,
-			kind,
-			layer_depth,
-			0, 
-			next_kind_base_slc_id,			
-			tags,
-		);
-
-		self.add(cl);
+		self.add(Protolayer::new(layer_name, kind, layer_depth, 0, next_kind_base_slc_id, tags));
 		self
 	}
 
-	/* PROTOREGION::ADD()
-		- [incomplete] NEED TO CHECK FOR DUPLICATE LAYERS!
-	*/
+	// PROTOREGION::ADD()
+	// [FIXME]: NEED TO CHECK FOR DUPLICATE LAYERS!	
 	pub fn add(&mut self, layer: Protolayer) {
-		/*let ck_tmp = match layer.kind {
-			Some(ref kind) 	=> kind.cell_kind.clone(),
-			None 			=> ProtocellKind::Nada,
-		};*/
 		if self.frozen {
 			panic!("ProtolayerMap::add(): Cannot add new layers after region is frozen.");
-		}		
+		}
 
 		self.layers.insert(layer.name, layer);
-
-		//println!("Looking for cell_kind:{:?}", &ck_tmp);
-
-		/*match self.cel_layer_kind_slc_lists.get(&ck_tmp) {
-			Some(vec) 	=> println!("Found Vector with len: {}",vec.len()),
-			None 		=> println!("Vector NOT FOUND"),
-		};*/
 	}
 
 	fn gen_slc_lists(&mut self) {
@@ -178,7 +136,6 @@ impl ProtolayerMap {
 		}
 	}
 
-
 	// SET_LAYERS_DEPTH(): ASSUMES PROPER FLAG UNIQUENESS CONSTRAINS ALREADY APPLIED
 	pub fn set_layer_depth(&mut self, tags: LayerTags, depth: u8) {
 		if self.frozen { 
@@ -198,9 +155,7 @@ impl ProtolayerMap {
 		// FEEDFORWARD INPUT COMES FROM EFF AREAS, FEEDBACK INPUT COMES FROM AFF AREAS
 		self.set_layer_depth(map::FF_IN, pamap.eff_areas.len() as u8);
 		self.set_layer_depth(map::FB_IN, pamap.aff_areas.len() as u8);
-	}
-
- 
+	} 
 
  	// 	PROTOREGION::FREEZE():
  	// 		- What a mess...
@@ -221,10 +176,10 @@ impl ProtolayerMap {
 
 		self.gen_slc_lists();
 
-		/* (0) START COUNTER FOR ABSOLUTE BASE ROWS */
+		// (0) START COUNTER FOR ABSOLUTE BASE ROWS 
 		let mut next_base_slc = 0u8;
 
-		/* (1) ADD ABSOLUTE BASE_ROW_IDS FOR AXONAL SPATIAL LAYER KINDS */	
+		// (1) ADD ABSOLUTE BASE_ROW_IDS FOR AXONAL SPATIAL LAYER KINDS 	
 		for (axon_kind, list) in &self.axn_layer_kind_slc_lists {
 			match axon_kind {
 				&ProtoaxonKind::Spatial => {
@@ -237,7 +192,7 @@ impl ProtolayerMap {
 			}
 		}
 
-		/* (2) ADD ABSOLUTE BASE_ROW_IDS FOR ALL CELLULAR LAYER KINDS */
+		// (2) ADD ABSOLUTE BASE_ROW_IDS FOR ALL CELLULAR LAYER KINDS 
 		for (cell_kind, list) in &self.cel_layer_kind_slc_lists {
 			self.cel_layer_kind_base_slc_ids.insert(cell_kind.clone(), next_base_slc);
 			println!("    Adding Cell Kind: '{:?}', len: {}, kind_base_slc: {}", cell_kind, list.len(), next_base_slc);
@@ -246,10 +201,10 @@ impl ProtolayerMap {
 			//next_base_slc += std::num::cast::<usize, u8>(list.len()).expect("cortical_region::ProtolayerMap::freeze()");
 		}
 
-		/* (2b) SAVE DEMARCATION BETWEEN VERTICAL (SPATIAL) AND HORIZONTAL ROWS */
+		// (2b) SAVE DEMARCATION BETWEEN VERTICAL (SPATIAL) AND HORIZONTAL ROWS 
 		self.hrz_demarc = next_base_slc;
 
-		/* (3) ADD ABSOLUTE BASE_ROW_IDS FOR AXONAL HORIZONTAL LAYER KINDS */	
+		// (3) ADD ABSOLUTE BASE_ROW_IDS FOR AXONAL HORIZONTAL LAYER KINDS 	
 		for (axon_kind, list) in &self.axn_layer_kind_slc_lists {
 			match axon_kind {
 				&ProtoaxonKind::Horizontal => {
@@ -264,7 +219,7 @@ impl ProtolayerMap {
 
 		print!("\n");
 
-		/* (4) SET BASE ROW POSITION ON INDIVIDUAL NON-HORIZONTAL LAYERS */
+		// (4) SET BASE ROW POSITION ON INDIVIDUAL NON-HORIZONTAL LAYERS 
 		for (layer_name, layer) in self.layers.iter_mut() {
 			match &layer.kind {
 
@@ -292,7 +247,7 @@ impl ProtolayerMap {
 			print!("\n");
 		}
 
-		/* (5) SET BASE ROW POSITION ON INDIVIDUAL HORIZONTAL LAYERS */
+		// (5) SET BASE ROW POSITION ON INDIVIDUAL HORIZONTAL LAYERS 
 		for (layer_name, layer) in self.layers.iter_mut() {
 			match &layer.kind {
 				&ProtolayerKind::Cellular(ref protocell) => continue,
@@ -316,22 +271,22 @@ impl ProtolayerMap {
 			print!("\n");
 		}
 
-		/* (6) MARVEL AT THE MOST CONVOLUTED FUNCTION EVER */
+		// (6) MARVEL AT THE MOST CONVOLUTED FUNCTION EVER 
 		print!("\n");
 	}
 
 
-	pub fn base_slc(&self, layer_name: &'static str) -> u8 {
-		let ref layer = self.layers[layer_name];
-		layer.base_slc_id
-	}
+	// pub fn base_slc(&self, layer_name: &'static str) -> u8 {
+	// 	let ref layer = self.layers[layer_name];
+	// 	layer.base_slc_id
+	// }
 
-	pub fn base_slc_cell_kind(&self, cell_kind: &ProtocellKind) -> u8 {
-		match self.cel_layer_kind_base_slc_ids.get(cell_kind) {
-			Some(base_slc) 	=> base_slc.clone(),
-			None 			=> panic!("ProtolayerMap::base_slc_cell_king(): Base slc for type not found"),
-		}
-	}
+	// pub fn base_slc_cell_kind(&self, cell_kind: &ProtocellKind) -> u8 {
+	// 	match self.cel_layer_kind_base_slc_ids.get(cell_kind) {
+	// 		Some(base_slc) 	=> base_slc.clone(),
+	// 		None 			=> panic!("ProtolayerMap::base_slc_cell_king(): Base slc for type not found"),
+	// 	}
+	// }
 	
 
 	// ##### DEPTHS #####
@@ -451,10 +406,6 @@ impl ProtolayerMap {
 		&self.layers
 	}	
 
-	pub fn slcs_by_layer_name(&self, cell_kind: &ProtocellKind) -> Option<&Vec<&'static str>> {
-		self.cel_layer_kind_slc_lists.get(cell_kind)
-	}
-
 	pub fn slc_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
 		if !self.frozen { // REPLACE WITH ASSERT (evaluate release build implications first)
 			panic!("ProtolayerMap must be frozen with .freeze() before slc_ids can be called.");
@@ -517,12 +468,6 @@ impl ProtolayerMap {
 		valid_tufts		
 	}
 
-
-	// pub fn dst_src_tuft_count(&self, layer_name: &'static str) -> u32 {
-	// 	let mut valid_tufts = Vec<
-	// 	self[&layer_name].dst_src_lyrs_by_tuft()
-	// }	
-
  	pub fn spt_asc_layer(&self) -> Option<Protolayer> {
  		let mut input_layer: Option<Protolayer> = None;
  		
@@ -547,7 +492,6 @@ impl ProtolayerMap {
 
 		output_slcs		
  	}
-
 
  	// TODO: DEPRICATE IN FAVOR OF LAYERS_WITH_FLAG()
  	pub fn layer_with_flag(&self, flag: LayerTags) -> Option<&Protolayer> {
@@ -576,26 +520,13 @@ impl ProtolayerMap {
  		layers
  	}
 
-
  	pub fn slc_map(&self) -> BTreeMap<u8, &'static str> {
  		self.slc_map.clone()
-	}
-
- 	pub fn layer_name(&self, slc_id: u8) -> &'static str {
- 		match self.slc_map.get(&slc_id) {
- 			Some(ln) 	=> ln,
- 			None 		=> "[INVALID LAYER]",
-		}
-
 	}
 
 	pub fn hrz_demarc(&self) -> u8 {
 		self.hrz_demarc
 	}
-
-	// fn layer(&self, layer_name: &'static str) -> Option<&Protolayer> {
-	// 	self.layers.get(layer_name)
-	// }
 }
 
 impl<'b> Index<&'b&'static str> for ProtolayerMap
@@ -621,7 +552,6 @@ pub enum RegionKind {
 	Sensory,
 	Motor,
 	Thalamic,
-	//Thalamic(Box<Protoinput>),
 }
 
 
@@ -637,7 +567,7 @@ impl ProtolayerMaps {
 		}
 	}
 
-	pub fn layer_map(mut self, pr: ProtolayerMap) -> ProtolayerMaps {
+	pub fn lm(mut self, pr: ProtolayerMap) -> ProtolayerMaps {
 		self.add(pr);
 		self
 	}	
@@ -664,186 +594,3 @@ impl<'b> IndexMut<&'b str> for ProtolayerMaps
         	Invalid region name: '{}'.", region_name))
     }
 }
-
-
-
-
-//impl Copy for RegionKind {}
-
-
-/*pub struct ProtolayerMap {
-	pub layers: HashMap<&'static str, Protolayer>,
-	pub kind: RegionKind,
-}
-
-impl ProtolayerMap {
-	pub fn new (kind: RegionKind)  -> ProtolayerMap {
-		let mut next_slc_id = HashMap::new();
-		next_slc_id.insert(ProtocellKind::Pyramidal, 0);
-		next_slc_id.insert(ProtocellKind::InhibitoryInterneuronNetwork, 0);
-		next_slc_id.insert(ProtocellKind::SpinyStellate, 0);
-	
-		ProtolayerMap { 
-			layers: HashMap::new(),
-			kind: kind,
-		}
-	}
-
-	pub fn new_layer(
-					&mut self, 
-					layer_name: &'static str,
-					layer_depth: u8,
-					tags: LayerTags,
-					cell: Option<Protocell>,
-	) {
-		let (noncell_slcs, cell_slcs) = self.depth();
-
-		let next_base_slc_id = self.total_depth();
-
-		let next_kind_base_slc_id = match cell {
-			Some(ref protocell) => self.depth_cell_kind(&protocell.cell_kind),
-			None => noncell_slcs,
-		};
-
-		println!("Protolayer: {}, layer_depth: {}, base_slc_id: {}, kind_base_slc_id: {}", layer_name, layer_depth, next_base_slc_id, next_kind_base_slc_id);
-		
-		let cl = Protolayer {
-			name : layer_name,
-			cell: cell,
-			base_slc_id: next_base_slc_id, 
-			kind_base_slc_id: next_kind_base_slc_id,
-			depth: layer_depth,
-			tags: tags,
-		};
-
-		self.add(cl);
-	}
-
-	pub fn add(&mut self, layer: Protolayer) {
-		self.layers.insert(layer.name, layer);
-	}
-
-	pub fn width() -> u8 {
-		panic!("not implemented");
-	}
-
-	pub fn depth_cell_kind(&self, cell_kind: &ProtocellKind) -> u8 {
-		let mut count = 0u8;
-		for (_, layer) in self.layers.iter() {
-			match layer.cell {
-				Some(ref protocell) => match &protocell.cell_kind {
-					ref cell_kind => count += layer.depth,
-				},
-				None => (),
-			}
-		}
-		count
-	}
-
-	pub fn total_depth(&self) -> u8 {
-		let mut total_depth = 0u8;
-		for (_, layer) in self.layers.iter() {
-			total_depth += layer.depth;
-		}
-		total_depth
-	}
- 
-	pub fn depth(&self) -> (u8, u8) {
-		let mut noncell_slcs = 0u8;
-		let mut cell_slcs = 0u8;
-		
-		for (layer_name, layer) in self.layers.iter() {
-			match layer.cell {
-				None => noncell_slcs += layer.depth,
-				Some(_) => cell_slcs += layer.depth,
-			}
-		}
-		(noncell_slcs, cell_slcs)
-	}
-
-	pub fn slc_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
-		let mut slc_ids = Vec::new();
-		for &layer_name in layer_names.iter() {
-			let l = &self[layer_name];
-				for i in range(l.base_slc_id, l.base_slc_id + l.depth) {
-					slc_ids.push(i);
-				}
-		}
-		slc_ids
-	}
-
-	pub fn src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
-		let src_lyr_names = self[layer_name].src_lyr_names(den_type);
-		
-		self.slc_ids(src_lyr_names)
- 	}
-
- 	pub fn col_input_slc(&self) -> u8 {
- 		for (layer_name, layer) in self.layers.iter() {
-
- 		}
- 		5
- 	}
-
-}
-
-impl Index<&'static str> for ProtolayerMap
-{
-    type Output = Protolayer;
-
-    fn index<'a>(&'a self, index: &&'static str) -> &'a Protolayer {
-        self.layers.get(index).unwrap_or_else(|| panic!("[ProtolayerMap::index(): invalid layer name: \"{}\"]", index))
-    }
-}
-
-impl IndexMut<&'static str> for ProtolayerMap
-{
-    type Output = Protolayer;
-
-    fn index_mut<'a>(&'a mut self, index: &&'static str) -> &'a mut Protolayer {
-        self.layers.get_mut(index).unwrap_or_else(|| panic!("[ProtolayerMap::index(): invalid layer name: \"{}\"]", index))
-    }
-}*/
-
-
-
- 	/*pub fn kind_slc_ids(&self, layer_name: &'static str) -> Vec<u8> {
-
-		let l = &self[layer_name];
-		let mut slc_ids = Vec::new();
-			for i in range(l.base_slc_id, l.base_slc_id + l.depth) {
-				slc_ids.push(i);
-			}
-		return slc_ids;
-	}
-
-	pub fn kind_src_slc_ids(&self, layer_name: &'static str) -> Vec<u8> {
-		let src_lyr_names = self[layer_name].src_lyr_names();
-		
-		let mut src_slc_ids = Vec::new();
-
-		for &src_slc_name in src_lyr_names.iter() {
-			src_slc_ids.push_all(self.kind_slc_ids(src_slc_name).as_slc());
-		}
-
-		//println!("ProtolayerMap::layer_srcs_slc_ids(): (name:sources:idxs) [{}]:{:?}:{:?}", layer_name, src_lyr_names, src_slc_ids);
-		
-		src_slc_ids
- 	}*/
-
-
-/* AxonScope 
-	
-	Integererlaminar(
-		Distal Dendrite Input Protolayers,
-		Proximal Dendrite Input Protolayers,
-		Cell Type
-	)
-
-*/
-
-
-/*fn increment_slc_index(mut cri: u8, by: u8) -> u8 {
-	cri += by;
-	cri
-}*/

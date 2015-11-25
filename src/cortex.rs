@@ -21,7 +21,7 @@ impl Cortex {
 
 		// pamaps.freeze();
 
-		let thal = Thalamus::new(&plmaps, pamaps);
+		let thal = Thalamus::new(plmaps, pamaps);
 
 		let pamaps = thal.area_maps().clone();
 
@@ -31,8 +31,8 @@ impl Cortex {
 		let mut areas = HashMap::new();
 		let mut device_idx = 0;		
 
-		for (&area_name, pamap) in pamaps.iter().filter(|&(_, pamap)| 
-					plmaps[pamap.lm_name_tmp()].kind != Thalamic)
+		for (&area_name, _) in pamaps.iter().filter(|&(_, pamap)| 
+				pamap.lm_kind_tmp() != &Thalamic)
 		{	
 			areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(), 
 				device_idx, &ocl_context)));
