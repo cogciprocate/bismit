@@ -4,7 +4,7 @@ use std::ops::{ Range };
 use ocl::{ BuildConfig, BuildOpt };
 use proto::{ ProtolayerMaps, ProtolayerMap, ProtoareaMaps, ProtoareaMap };
 use cmn::{ self, CorticalDims };
-use map::{ self, SliceMap, LayerFlags, LayerMap };
+use map::{ self, SliceMap, LayerTags, LayerMap };
 
 // 	AREAMAP { }:
 // 		- Move in functionality from the 'execution phase' side of ProtoareaMap and ProtolayerMap.
@@ -55,8 +55,8 @@ impl AreaMap {
 		}
 	}
 
-	pub fn slc_src_layer_dims(&self, slc_id: u8, layer_flags: LayerFlags) -> Option<&CorticalDims> {
-		self.layers.slc_src_layer_info(slc_id, layer_flags).map(|sli| sli.dims())
+	pub fn slc_src_layer_dims(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&CorticalDims> {
+		self.layers.slc_src_layer_info(slc_id, layer_tags).map(|sli| sli.dims())
 	}
 
 	// ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
@@ -92,8 +92,8 @@ impl AreaMap {
 		build_options
 	}
 
-	pub fn axn_base_slc_ids_by_flag(&self, layer_flags: LayerFlags) -> Vec<u8> {
-		let layers = self.plmap.layers_with_flags(layer_flags);
+	pub fn axn_base_slc_ids_by_flag(&self, layer_tags: LayerTags) -> Vec<u8> {
+		let layers = self.plmap.layers_with_tags(layer_tags);
 		let mut slc_ids = Vec::with_capacity(layers.len());
 
 		for &layer in layers.iter() {
@@ -103,11 +103,11 @@ impl AreaMap {
 		slc_ids
 	}
 
-	pub fn axn_range_by_flag(&self, layer_flags: LayerFlags) -> Range<u32> {				
-		let layers = self.layers.layer_info_by_flag(layer_flags);
+	pub fn axn_range_by_flag(&self, layer_tags: LayerTags) -> Range<u32> {				
+		let layers = self.layers.layer_info_by_flag(layer_tags);
 		assert!(layers.len() == 1, "AreaMap::axn_range_by_flag(): Axon range \
 			can not be calculated for more than one layer at a time. Flags: {:?}",
-			layer_flags);
+			layer_tags);
 
 		let layer_idz = self.axn_idz(layers[0].slc_range().start);
 		let layer_len = layers[0].axn_count();
@@ -127,12 +127,12 @@ impl AreaMap {
 	}
 
 	// [TODO] Layer source area system needs rework.
-	pub fn output_layer_info_by_flag(&self) -> Vec<(LayerFlags, u32)> {
-		let layers = self.plmap.layers_with_flags(map::OUTPUT);
+	pub fn output_layer_info_by_flag(&self) -> Vec<(LayerTags, u32)> {
+		let layers = self.plmap.layers_with_tags(map::OUTPUT);
 		let mut layer_info = Vec::with_capacity(layers.len());
 		
 		for &layer in layers.iter() {
-			layer_info.push((layer.flags, self.dims.columns()));
+			layer_info.push((layer.tags, self.dims.columns()));
 		}
 
 		layer_info

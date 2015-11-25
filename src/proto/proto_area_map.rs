@@ -1,19 +1,8 @@
-use std::collections::{ /*self,*/ HashMap };
+use std::collections::{ HashMap };
 
-use proto::{ /*layer, RegionKind,*/ Protofilter, Protoinput };
+use proto::{ Protofilter, Protoinput };
 use cmn::{ self, CorticalDims };
-// use map;
 
-
-// pub trait ProtoareaMapsTrait {
-// 	fn new() -> ProtoareaMaps;
-// 	fn add(&mut self, protoarea: ProtoareaMap);
-// 	fn area(mut self, name: &'static str, width: u32, height: u32, 
-// 		region_kind: &'static str, filters: Option<Vec<Protofilter>>, 
-// 		aff_areas: Option<Vec<&'static str>>,
-// 	) -> ProtoareaMaps;
-// 	fn freeze(&mut self);
-// }
 
 pub struct ProtoareaMaps {
 	maps: HashMap<&'static str, ProtoareaMap>,
@@ -74,43 +63,17 @@ impl <'a>ProtoareaMaps {
 		for (area_name, aff_area_name) in aff_list {
 			let emsg = format!("proto::areas::ProtoareaMaps::freeze(): Area: '{}' not found. ", area_name);
 			self.maps.get_mut(area_name).expect(&emsg).aff_areas.push(aff_area_name);
+			// match self.maps.get_mut(area_name) {
+			// 	Some(area) => area.aff_areas.push(aff_area_name),
+			// 	None => (), // Could panic if we wanted to.
+			// }
 		}
 	}
-
-
-	// OLD -- DEPRICATE
-	// pub fn freeze_old(&mut self) {
-	// 	let mut eff_list: Vec<(&'static str, &'static str)> = Vec::with_capacity(5);
-
-	// 	for (area_name, area) in self.maps.iter() {
-	// 		for aff_area_name in &area.aff_areas {
-	// 			eff_list.push((aff_area_name, area_name));
-	// 		}
-	// 	}
-
-	// 	assert!(eff_list.len() <= cmn::MAX_FEEDBACK_AREAS, "areas::ProtoareaMaps::freeze(): \
-	// 			An area cannot have more than {} efferent areas.", cmn::MAX_FEEDBACK_AREAS);
-
-	// 	for (area_name, eff_area_name) in eff_list {
-	// 		let emsg = format!("proto::areas::ProtoareaMaps::freeze(): Area: '{}' not found. ", area_name);
-	// 		self.maps.get_mut(area_name).expect(&emsg).eff_areas.push(eff_area_name);
-	// 	}
-	// }
 
 	pub fn maps(&self) -> &HashMap<&'static str, ProtoareaMap> {
 		&self.maps
 	}
 }
-
-// impl Iterator for ProtoareaMaps {
-//     type Item = ProtoareaMap;
-
-//     fn next(&self) -> Option<&ProtoareaMap> {
-//     		return self.maps.next();
-//         }
-//         None
-//     }
-// }
 
 
 
@@ -167,3 +130,47 @@ impl ProtoareaMap {
 }
 
 
+
+
+// pub trait ProtoareaMapsTrait {
+// 	fn new() -> ProtoareaMaps;
+// 	fn add(&mut self, protoarea: ProtoareaMap);
+// 	fn area(mut self, name: &'static str, width: u32, height: u32, 
+// 		region_kind: &'static str, filters: Option<Vec<Protofilter>>, 
+// 		aff_areas: Option<Vec<&'static str>>,
+// 	) -> ProtoareaMaps;
+// 	fn freeze(&mut self);
+// }
+
+
+
+// impl Iterator for ProtoareaMaps {
+//     type Item = ProtoareaMap;
+
+//     fn next(&self) -> Option<&ProtoareaMap> {
+//     		return self.maps.next();
+//         }
+//         None
+//     }
+// }
+
+
+
+	// OLD -- DEPRICATE
+	// pub fn freeze_old(&mut self) {
+	// 	let mut eff_list: Vec<(&'static str, &'static str)> = Vec::with_capacity(5);
+
+	// 	for (area_name, area) in self.maps.iter() {
+	// 		for aff_area_name in &area.aff_areas {
+	// 			eff_list.push((aff_area_name, area_name));
+	// 		}
+	// 	}
+
+	// 	assert!(eff_list.len() <= cmn::MAX_FEEDBACK_AREAS, "areas::ProtoareaMaps::freeze(): \
+	// 			An area cannot have more than {} efferent areas.", cmn::MAX_FEEDBACK_AREAS);
+
+	// 	for (area_name, eff_area_name) in eff_list {
+	// 		let emsg = format!("proto::areas::ProtoareaMaps::freeze(): Area: '{}' not found. ", area_name);
+	// 		self.maps.get_mut(area_name).expect(&emsg).eff_areas.push(eff_area_name);
+	// 	}
+	// }

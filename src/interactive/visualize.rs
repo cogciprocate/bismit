@@ -3,7 +3,7 @@ use std::io::{ self, Write };
 use time;
 
 use cmn::{ self, CorticalDims };
-use map::{ self };
+use map::{ self, LayerTags };
 use cortex::{ self, Cortex };
 use encode:: { IdxReader };
 use interactive::{ output_czar };
@@ -21,18 +21,20 @@ pub const PRINT_DETAILS_EVERY: i32			= 10000;
 // pub const COUNTER_RANDOM: bool				= false;
 const CYCLES_PER_FRAME: usize 				= 1;
 
-
 /* Eventually move defines to a config file or some such */
 pub fn define_plmaps() -> ProtolayerMaps {
 	let mut plmaps: ProtolayerMaps = ProtolayerMaps::new();
 
+	const MOTOR: u32 = 555;
+	const OLFAC: u32 = 666;
+
 	plmaps.add(ProtolayerMap::new("visual", Sensory)
 		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
-		.input_layer("motor_in", map::NONSPATIAL | map::INPUT, Axonal(Horizontal))
-		.input_layer("olfac", map::NONSPATIAL | map::INPUT, Axonal(Horizontal))
-		.input_layer("eff_in", map::SPATIAL | map::INPUT | map::FEEDBACK, Axonal(Spatial))
-		.input_layer("aff_in", map::SPATIAL | map::INPUT | map::FEEDFORWARD, Axonal(Spatial))
-		.layer("out", 1, map::SPATIAL | map::OUTPUT | map::FEEDFORWARD | map::FEEDBACK, Axonal(Spatial))
+		.input_layer("motor_in", map::NS_IN | LayerTags::with_uid(MOTOR), Axonal(Horizontal))
+		.input_layer("olfac", map::NS_IN | LayerTags::with_uid(OLFAC), Axonal(Horizontal))
+		.input_layer("eff_in", map::FB_IN, Axonal(Spatial))
+		.input_layer("aff_in", map::FF_IN, Axonal(Spatial))
+		.layer("out", 1, map::FF_FB_OUT, Axonal(Spatial))
 		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("iv_inhib", 0, map::DEFAULT, Protocell::new_inhibitory(4, "iv"))
 
@@ -47,11 +49,11 @@ pub fn define_plmaps() -> ProtolayerMaps {
 	);
 
 	plmaps.add(ProtolayerMap::new("v0_layer_map", Thalamic)
-		.layer("ganglion", 1, map::SPATIAL | map::OUTPUT | map::FEEDFORWARD, Axonal(Spatial))
+		.layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
 	);
 
 	plmaps.add(ProtolayerMap::new("o0_layer_map", Thalamic)
-		.layer("ganglion", 1, map::NONSPATIAL | map::OUTPUT, Axonal(Horizontal))
+		.layer("ganglion", 1, map::NS_OUT | LayerTags::with_uid(OLFAC), Axonal(Horizontal))
 	);
 
 	plmaps
@@ -77,7 +79,7 @@ pub fn define_pamaps() -> ProtoareaMaps {
 		// 	Some(vec!["b1"]),
 		// )
 
-		// .area_ext("o0", "o0_layer_map", 32, Protoinput::Zeros, None, Some(vec!["v1"]))
+		// .area_ext("o0", "o0_layer_map", 32, Protoinput::Zeros, None, None)
 
 		.area_ext("v0", "v0_layer_map", 
 			area_side,

@@ -1,4 +1,4 @@
-use map::{ self, LayerFlags };
+use map::{ LayerTags };
 use proto::{ Protocell, DendriteKind };
 use proto::DendriteKind::{ Distal, Proximal };
 use self::ProtolayerKind::{ Cellular, Axonal };
@@ -11,7 +11,7 @@ pub struct Protolayer {
 	pub depth: u8,
 	pub base_slc_id: u8, 
 	pub kind_base_slc_id: u8,
-	pub flags: LayerFlags,
+	pub tags: LayerTags,
 }
 
 impl Protolayer {
@@ -21,18 +21,18 @@ impl Protolayer {
 				depth: u8,			
 				base_slc_id: u8,
 				kind_base_slc_id: u8,
-				flags: LayerFlags,				
+				tags: LayerTags,				
 			) -> Protolayer
 	{
-		debug_assert!(!(flags.contains(map::OUTPUT) && flags.contains(map::INPUT)));
-
+		if cfg!(debug) { tags.debug_validate(); }
+		
 		Protolayer {
 			name : name,
 			kind: kind,
 			depth: depth,
 			base_slc_id: base_slc_id, 
 			kind_base_slc_id: kind_base_slc_id,			
-			flags: flags,
+			tags: tags,
 		}
 	}
 

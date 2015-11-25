@@ -3,10 +3,11 @@ use std::ops::{ Range };
 
 use proto::{ Protolayer, ProtoareaMap, ProtoareaMaps, ProtolayerMap, ProtolayerMaps };
 use cmn::{ self, CorticalDims };
-use map::{ self, LayerFlags, };
+use map::{ self, LayerTags, };
 
 
 #[derive(Clone)]
+// [FIXME]: TODO: Add caches.
 pub struct LayerMap {
 	area_name: &'static str,
 	index: Vec<LayerInfo>,
@@ -25,21 +26,21 @@ impl LayerMap {
 		}
 
 		// println!("{mt}{mt}LAYERMAP::NEW(): index: {:?}", index, mt = cmn::MT);
-		LayerMap { area_name: pamap.name, index: index, /*names: names, slices: slices, flags: flags*/ }
+		LayerMap { area_name: pamap.name, index: index }
 	}
 
 	// [FIXME] TODO: Cache results.
-	pub fn layer_info_by_flag(&self, flags: LayerFlags) -> Vec<&LayerInfo> {
-		self.index.iter().filter(|li| li.flags.contains(flags)).map(|li| li).collect()
+	pub fn layer_info_by_flag(&self, tags: LayerTags) -> Vec<&LayerInfo> {
+		self.index.iter().filter(|li| li.tags.contains(tags)).map(|li| li).collect()
 	}
 
 	// [FIXME] TODO: Cache results. Use iterator mapping and filtering.
-	pub fn layer_src_info_by_flag(&self, flags: LayerFlags) -> Vec<&SourceLayerInfo> {
+	pub fn layer_src_info_by_flag(&self, tags: LayerTags) -> Vec<&SourceLayerInfo> {
 		let mut src_layers = Vec::with_capacity(8);
 
-		for layer in self.layer_info_by_flag(flags).iter() {
+		for layer in self.layer_info_by_flag(tags).iter() {
 			for src_layer in layer.sources.iter() {
-				debug_assert!(src_layer.flags.contains(flags.mirror_io()));
+				debug_assert!(src_layer.tags.contains(tags.mirror_io()));
 				src_layers.push(src_layer);
 			}
 		}
@@ -47,13 +48,13 @@ impl LayerMap {
 		src_layers
 	}
 
-	pub fn layer_src_area_names_by_flag(&self, flags: LayerFlags) -> Vec<&'static str> {
-		self.layer_src_info_by_flag(flags).iter().map(|sli| sli.area_name()).collect()
+	pub fn layer_src_area_names_by_flag(&self, tags: LayerTags) -> Vec<&'static str> {
+		self.layer_src_info_by_flag(tags).iter().map(|sli| sli.area_name()).collect()
 	}
 
-	pub fn slc_src_layer_info(&self, slc_id: u8, layer_flags: LayerFlags) -> Option<&SourceLayerInfo> {
+	pub fn slc_src_layer_info(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&SourceLayerInfo> {
 		let mut src_layer_info = Vec::with_capacity(8);
-		let layer_info = self.layer_info_by_flag(layer_flags);
+		let layer_info = self.layer_info_by_flag(layer_tags);
 
 		for lyr in layer_info {			
 			for src_lyr in lyr.src_info() {
@@ -77,7 +78,7 @@ impl LayerMap {
 #[derive(Clone, Debug)]
 pub struct LayerInfo {
 	name: &'static str,	
-	flags: LayerFlags,
+	tags: LayerTags,
 	slc_range: Range<u8>,
 	sources: Vec<SourceLayerInfo>,
 	axn_count: u32,
@@ -89,48 +90,66 @@ impl LayerInfo {
 	pub fn new(protolayer: &Protolayer, pamap: &ProtoareaMap, pamaps: &ProtoareaMaps, 
 				plmaps: &ProtolayerMaps) -> LayerInfo {
 		let name = protolayer.name;
-		let flags = protolayer.flags;
-		let slc_range = protolayer.base_slc_id..(protolayer.base_slc_id + protolayer.depth);
+		let tags = protolayer.tags;
+		let slc_range = protolayer.base_slc_id..(protolayer.base_slc_id + protolayer.depth());
 		let mut sources = Vec::with_capacity(8);
 
 		let mut base_slc_id = protolayer.base_slc_id;
 		let mut axn_count = 0;
 
+		println!("\n{mt}{mt}### LAYER: {:?}, base_slc_id: {}, slc_range: {:?}\n", 
+			tags, base_slc_id, slc_range, mt = cmn::MT);
+
 		// If layer is an input layer, add sources:
-		if flags.contains(map::INPUT) {
-			let src_areas: Vec<(&'static str, LayerFlags)> = pamap.aff_areas.iter()
-				.map(|&an| (an, map::FEEDBACK)).chain(pamap.eff_areas.iter()
-					.map(|&an| (an, map::FEEDFORWARD))).collect();
+		if tags.contains(map::INPUT) {
+			let src_areas: Vec<(&'static str, LayerTags)> = 
+				pamap.aff_areas.iter().map(|&an| (an, map::FEEDBACK | map::SPECIFIC))
+					.chain(pamap.eff_areas.iter().map(|&an| (an, map::FEEDFORWARD | map::SPECIFIC)))
+				.chain(pamap.aff_areas.iter().chain(pamap.eff_areas.iter())
+					.map(|&an| (an, map::NONSPECIFIC)))
+				.collect();				
+
+			println!("\n{mt}{mt}{mt}### SRC_AREAS: {:?}\n", src_areas, mt = cmn::MT);
 
 			// For each potential source area (aff or eff):
 			// - get that area's layers
 			// - get the layers with a complimentary flag ('map::OUTPUT' in this case)
-			//    - other flags identical
+			//    - other tags identical
 			// - filter out feedback from eff areas and feedforward from aff areas
 			// - push what's left to sources
-			for (src_area_name, src_area_flow) in src_areas {
+			for (src_area_name, src_area_tags) in src_areas {
 				// Our layer must contain the flow direction flag corresponding with the source area.
-				if flags.contains(src_area_flow) {
+				if tags.contains(src_area_tags) {
 					let src_pamap = pamaps.maps().get(src_area_name).expect("LayerInfo::new()");
+					// let src_pamap = ;
+					// let src_pamap = match pamaps.maps().get(src_area_name) {
+					// 	Some(pm) => pm,
+					// 	None => continue,
+					// };
+
 					let src_layer_map = &plmaps[src_pamap.layer_map_name];
-					let src_layers = src_layer_map.layers_with_flags(flags.mirror_io() | src_area_flow);
+					let src_layers = src_layer_map.layers_with_tags(tags.mirror_io());
+
+						println!("\n{mt}{mt}{mt}{mt}### SRC_LAYERS: {:?}\n", src_layers, mt = cmn::MT);
 
 					for src_layer in src_layers.iter() {
 						let src_layer_axns = src_pamap.dims().columns()	* src_layer.depth() as u32;
 
 						sources.push(SourceLayerInfo::new(src_area_name, src_pamap.dims(), 
-							src_layer.flags, src_layer_axns, base_slc_id, (*src_layer).clone()));
+							src_layer.tags, src_layer_axns, base_slc_id, (*src_layer).clone()));						
+
+						println!("{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding source layer: \
+							src_area_name: '{}', src_area_tags: '{:?}', src_layer_map.name: '{}', \
+							src_layer.name: '{}', base_slc_id: '{}', depth: '{}', \
+							src_layer.tags: '{:?}'", name, src_area_name, src_area_tags, 
+							src_layer_map.name, src_layer.name, base_slc_id, src_layer.depth(), 
+							src_layer.tags, mt = cmn::MT);
 
 						base_slc_id += src_layer.depth();
 						axn_count += src_layer_axns;
-
-						println!("{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding source layer: \
-							src_area_name: '{}', src_area_flow: '{:?}', src_layer_map.name: '{}', \
-							src_layer.name: '{}', src_layer.flags: '{:?}'", name, src_area_name, 
-							src_area_flow, src_layer_map.name, src_layer.name, src_layer.flags, 
-							mt = cmn::MT);
 					}
-				}
+				} 
+				// else if tags.contains(map::NONSPECIFIC) && tags.
 			} 
 
 		} else {
@@ -138,13 +157,13 @@ impl LayerInfo {
 			axn_count += pamap.dims().columns() * protolayer.depth() as u32;
 		}
 
-		assert!(base_slc_id == slc_range.end);
+		assert_eq!(base_slc_id, slc_range.end);
 
 		sources.shrink_to_fit();
 
 		LayerInfo {
 			name: name,
-			flags: protolayer.flags,
+			tags: protolayer.tags,
 			slc_range: slc_range,
 			sources: sources,
 			axn_count: axn_count,
@@ -174,13 +193,13 @@ impl LayerInfo {
 pub struct SourceLayerInfo {
 	area_name: &'static str,
 	dims: CorticalDims,
-	flags: LayerFlags,
+	tags: LayerTags,
 	dst_slc_range: Range<u8>,
 	protolayer: Protolayer,
 }
 
 impl SourceLayerInfo {
-	pub fn new(area_name: &'static str, area_dims: &CorticalDims, flags: LayerFlags, 
+	pub fn new(area_name: &'static str, area_dims: &CorticalDims, tags: LayerTags, 
 				axn_count: u32, dst_slc_idz: u8, protolayer: Protolayer) -> SourceLayerInfo 
 	{
 		let dims = area_dims.clone_with_depth(protolayer.depth());
@@ -190,7 +209,7 @@ impl SourceLayerInfo {
 		SourceLayerInfo {
 			area_name: area_name, 
 			dims: dims,
-			flags: flags, 
+			tags: tags, 
 			dst_slc_range: dst_slc_range,
 			protolayer: protolayer,
 		}

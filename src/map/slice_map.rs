@@ -2,7 +2,7 @@
 use ocl::{ self, EnvoyDims };
 use proto::{ ProtolayerMap, ProtoareaMap };
 use cmn::{ self, CorticalDims, HexTilePlane };
-use map::{ area_map, /*InterAreaInfoCache,*/ SliceDims, LayerMap };
+use map::{ area_map, SliceDims, LayerMap };
 
 
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ pub struct SliceMap {
 
 impl SliceMap {
 	pub fn new(area_dims: &CorticalDims, pamap: &ProtoareaMap, plmap: &ProtolayerMap, 
-					/*ia_cache: &InterAreaInfoCache,*/ layers: &LayerMap,
+				layers: &LayerMap,
 	) -> SliceMap {		
 		let proto_slc_map = plmap.slc_map();
 
@@ -35,12 +35,10 @@ impl SliceMap {
 
 		for (&slc_id, &layer_name) in proto_slc_map.iter() {
 			let layer = &plmap.layers()[layer_name];
-			// let src_area_opt = ia_cache.src_area_for_slc(slc_id, layer.flags);
-			let src_layer_info = layers.slc_src_layer_info(slc_id, layer.flags);
+			let src_layer_info = layers.slc_src_layer_info(slc_id, layer.tags);
 
 			let slc_dims = match src_layer_info {
 				Some(sli) => {
-					// let slc_dims = sli.dims().clone();
 					let slc_dims = SliceDims::new(area_dims, Some(sli.dims()))
 						.expect("SliceMap::new(): Error creating SliceDims.");
 
@@ -51,7 +49,7 @@ impl SliceMap {
 					slc_dims
 				},
 
-				None =>	SliceDims::new(area_dims, None).expect("SliceMap::new()"), // 100%
+				None =>	SliceDims::new(area_dims, None).expect("SliceMap::new()"), // 100% scaling
 			};
 
 			axn_idzs.push(axn_idz_ttl);

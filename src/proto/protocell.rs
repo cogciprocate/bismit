@@ -1,4 +1,4 @@
-//use bitflags;
+//use bittags;
 use proto::layer::ProtolayerKind::{ self, Cellular };
 //use std::option::{ Option };
 
@@ -19,7 +19,7 @@ pub struct Protocell {
 	pub den_prx_syn_reach: i8,
 	pub den_dst_syn_reach: i8,	
 	pub den_thresh_init: Option<u32>,
-	//pub flags: CellFlags,							
+	//pub tags: CellFlags,							
 }
 
 impl Protocell {
@@ -33,7 +33,7 @@ impl Protocell {
 					den_prx_syn_reach: i8,
 					den_dst_syn_reach: i8,
 					thresh: Option<u32>,
-					//flags: CellFlags,
+					//tags: CellFlags,
 	) -> Protocell {
 			// DO SOME CHECKS ON PARAMETERS (certain cell types must/mustn't have certain dendritic segments)
 			// REMOVE FLAGS
@@ -48,7 +48,7 @@ impl Protocell {
 			den_prx_syn_reach: den_prx_syn_reach,
 			den_dst_syn_reach: den_dst_syn_reach,
 			den_thresh_init: thresh,
-			//flags: flags,
+			//tags: tags,
 		}.verify()
 	}
 
@@ -75,7 +75,7 @@ impl Protocell {
 			den_dst_syn_reach: dst_reach,
 			den_thresh_init: Some(thresh),			
 			//den_prx_src_lyrs: Some(vec![prx_src]),
-			//flags: flags,
+			//tags: tags,
 		}.verify())
 	}
 
@@ -93,7 +93,7 @@ impl Protocell {
 			den_prx_syn_reach: prx_reach,
 			den_dst_syn_reach: prx_reach,
 			den_thresh_init: Some(thresh),
-			//flags: flags,
+			//tags: tags,
 		}.verify())
 	}
 
@@ -187,19 +187,19 @@ pub enum CellBlueprint {
 	Pyramidal {
 		dens: u8,
 		syns_per_den: u8,
-		flags: CellFlags,
+		tags: CellFlags,
 	},
 
 	SpinyStellate {
 		dens: u8,
 		syns_per_den: u8,
-		flags: CellFlags,
+		tags: CellFlags,
 	},
 
 	InhibitoryInterneuronNetwork {
 		dens: u8,
 		syns_per_den: u8,
-		flags: CellFlags,
+		tags: CellFlags,
 	},
 }*/
 

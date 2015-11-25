@@ -3,7 +3,7 @@ use std::ops::{ Range };
 use rand;
 
 use cmn::{ self, CorticalDims, Renderer, Sdr, DataCellLayer };
-use map::{ self, AreaMap, LayerFlags };
+use map::{ self, AreaMap, LayerTags };
 use ocl::{ self, ProQue, Context, Envoy, EventList };
 use proto::{  Cellular, Pyramidal, SpinyStellate, Inhibitory,  DendriteKind };
 
@@ -41,7 +41,7 @@ pub struct CorticalArea {
 	counter: usize,
 	rng: rand::XorShiftRng,
 	// thal_gangs: ThalamicGanglions,
-	events_lists: HashMap<LayerFlags, EventList>,
+	events_lists: HashMap<LayerTags, EventList>,
 	pub bypass_inhib: bool,
 	pub bypass_filters: bool,
 	pub disable_pyrs: bool,
@@ -315,25 +315,25 @@ impl CorticalArea {
 	}
 
 	// Read input from thalamus and write to axon space.
-	fn intake(&mut self, layer_flags: LayerFlags, thal: &mut Thalamus) {
-		// let src_layers = self.area_map.layers().layer_src_info_by_flag(layer_flags);
+	fn intake(&mut self, layer_tags: LayerTags, thal: &mut Thalamus) {
+		// let src_layers = self.area_map.layers().layer_src_info_by_flag(layer_tags);
 
-		// for &(src_area_name, flags) in src_area_names.iter() {
-		for src_layer in self.area_map.layers().layer_src_area_names_by_flag(layer_flags) {
-			// let (area_name, flags) = area_info;
+		// for &(src_area_name, tags) in src_area_names.iter() {
+		for src_layer in self.area_map.layers().layer_src_area_names_by_flag(layer_tags) {
+			// let (area_name, tags) = area_info;
 
 			self.write_input(
-				thal.ganglion(src_layer, layer_flags.mirror_io()),
-				layer_flags,
+				thal.ganglion(src_layer, layer_tags.mirror_io()),
+				layer_tags,
 			);
 		}
 	}
 
 	// Read output from axon space and write to thalamus.
-	fn output(&self, layer_flags: LayerFlags, thal: &mut Thalamus) {
+	fn output(&self, layer_tags: LayerTags, thal: &mut Thalamus) {
 		self.read_output(
-			thal.ganglion_mut(self.name, layer_flags),
-			layer_flags, 
+			thal.ganglion_mut(self.name, layer_tags),
+			layer_tags, 
 		);
 	}
 
@@ -367,12 +367,12 @@ impl CorticalArea {
 		axn_irs
 	}
 
-	pub fn write_input(&mut self, events_sdr: (&EventList, &Sdr), layer_flags: LayerFlags) {
+	pub fn write_input(&mut self, events_sdr: (&EventList, &Sdr), layer_tags: LayerTags) {
 		let (wait_events, sdr) = events_sdr;
-		let new_events = self.events_lists.get_mut(&layer_flags)
+		let new_events = self.events_lists.get_mut(&layer_tags)
 			.expect("CorticalArea::write_input(): 'events_lists' error.");
 
-		if layer_flags.contains(map::FF_IN) && !self.bypass_filters {
+		if layer_tags.contains(map::FF_IN) && !self.bypass_filters {
 			match self.filters {
 				Some(ref mut filters_vec) => {
 					filters_vec[0].write(sdr);
@@ -387,13 +387,13 @@ impl CorticalArea {
 			}
 		}
 
-		let axn_range = self.area_map.axn_range_by_flag(layer_flags);
+		let axn_range = self.area_map.axn_range_by_flag(layer_tags);
 		//println!("\nCORTICALAREA::WRITE_INPUT(): axn_range: {:?}", axn_range);
 		debug_assert!(sdr.len() == axn_range.len() as usize, "\n\
 			cortical_area::CorticalArea::write_input(): Sdr/ganglion length is not equal to \
 			the destination axon range. sdr.len(): {} != axn_range.len(): {}, (area: '{}', \
-			layer_flags: '{:?}', range: '{:?}').", sdr.len(), 
-			axn_range.len(), self.name, layer_flags, axn_range);
+			layer_tags: '{:?}', range: '{:?}').", sdr.len(), 
+			axn_range.len(), self.name, layer_tags, axn_range);
 		
 		debug_assert!((axn_range.end - axn_range.start) as usize == sdr.len());
 
@@ -403,15 +403,15 @@ impl CorticalArea {
 			Some(wait_events), Some(new_events));
 	}	
 
-	pub fn read_output(&self, sdr_events: (&mut Sdr, &mut EventList), layer_flags: LayerFlags) {
-		let wait_events = &self.events_lists.get(&layer_flags)
+	pub fn read_output(&self, sdr_events: (&mut Sdr, &mut EventList), layer_tags: LayerTags) {
+		let wait_events = &self.events_lists.get(&layer_tags)
 			.expect("CorticalArea::read_output(): 'events_lists' error.");
 		let (sdr, new_events) = sdr_events;
-		let axn_range = self.area_map.axn_range_by_flag(layer_flags);
+		let axn_range = self.area_map.axn_range_by_flag(layer_tags);
 
 		debug_assert!(sdr.len() == axn_range.len() as usize, format!("\n\
-			cortical_area::CorticalArea::read_output()<area: '{}', flags: '{:?}'>: \
-			sdr.len(): {} != axn_range.len(): {}", self.name, layer_flags, sdr.len(), axn_range.len()));
+			cortical_area::CorticalArea::read_output()<area: '{}', tags: '{:?}'>: \
+			sdr.len(): {} != axn_range.len(): {}", self.name, layer_tags, sdr.len(), axn_range.len()));
 
 		debug_assert!((axn_range.end - axn_range.start) as usize == sdr.len());
 
@@ -527,7 +527,7 @@ pub struct AreaParams {
 }
 
 // pub struct ThalamicGanglions {
-// 	map: HashMap<LayerFlags, GanglionInfo>,
+// 	map: HashMap<LayerTags, GanglionInfo>,
 // }
 
 // pub struct GanglionInfo {
@@ -673,10 +673,10 @@ pub mod tests {
 
 	// 	// for eff_area_name in self.area_map.eff_areas().clone() {
 	// 	for &area_info in eff_area_names.iter() {
-	// 		let (eff_area_name, flags) = area_info;
+	// 		let (eff_area_name, tags) = area_info;
 
 	// 		self.write_input(
-	// 			thal.ganglion(eff_area_name, flags),
+	// 			thal.ganglion(eff_area_name, tags),
 	// 			map::FF_IN,
 	// 		);
 	// 	}	
@@ -784,10 +784,10 @@ pub mod tests {
 	// }
 
 
-	// pub fn axn_range(&self, layer_flags: LayerFlags) -> Range<u32> {
+	// pub fn axn_range(&self, layer_tags: LayerTags) -> Range<u32> {
 	// 	let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
-	// 		'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
-	// 	let layer = self.area_map.proto_layer_map().layer_with_flag(layer_flags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
+	// 		'{:?}' flag not set for any layer in area: '{}'.", layer_tags, self.name);
+	// 	let layer = self.area_map.proto_layer_map().layer_with_flag(layer_tags).expect(&emsg); // CHANGE TO LAYERS_WITH_FLAG()
 	// 	let len = self.dims.columns() * layer.depth as u32;
 	// 	let base_slc = layer.base_slc_id;
 	// 	//let buffer_offset = cmn::axn_idz_2d(base_slc, self.dims.columns(), self.area_map.proto_layer_map().hrz_demarc());
@@ -799,16 +799,16 @@ pub mod tests {
 	// 	INPUT_SRC_AREAS():
 	//  <<<<< TODO: DEPRICATE OR WRAP AREA_MAP::INPUT_SRC_AREA_NAMES() >>>>>
 	// 		- REMINDER: FEEDFORWARD INPUT COMES FROM FEEDBACK AREAS, FEEDBACK INPUT COMES FROM FEEDFORWARD AREAS
-	// pub fn input_layer_src_info_by_flag(&self, layer_flags: LayerFlags) -> Vec<&'static str> {
+	// pub fn input_layer_src_info_by_flag(&self, layer_tags: LayerTags) -> Vec<&'static str> {
 	// 	 // let emsg = format!("\ncortical_area::CorticalArea::axn_range(): \
-	// 	 // 	'{:?}' flag not set for any layer in area: '{}'.", layer_flags, self.name);
-	// 	// let layer = self.area_map.proto_layer_map().layer_with_flag(layer_flags);
+	// 	 // 	'{:?}' flag not set for any layer in area: '{}'.", layer_tags, self.name);
+	// 	// let layer = self.area_map.proto_layer_map().layer_with_flag(layer_tags);
 	// 	// return layer.expect(&emsg).depth();
 
 	// 	// 
-	// 	if layer_flags == map::FB_IN {
+	// 	if layer_tags == map::FB_IN {
 	// 		self.area_map.proto_area_map().aff_areas.clone()
-	// 	} else if layer_flags == map::FF_IN {
+	// 	} else if layer_tags == map::FF_IN {
 	// 		self.area_map.proto_area_map().eff_areas.clone()
 	// 	} else {
 	// 		panic!("\nCorticalArea::input_src_areas(): Can only be called with an \

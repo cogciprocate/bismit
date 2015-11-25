@@ -2,7 +2,7 @@ use std::collections::{ HashMap, BTreeMap };
 use std::ops::{ Index, IndexMut,  };
 use std::hash::{ Hasher };
 
-use map::{ self, LayerFlags };
+use map::{ self, LayerTags };
 use super::{ ProtoareaMap };
 use super::layer::{ Protolayer, ProtoaxonKind, ProtolayerKind };
 use super::{ ProtocellKind, DendriteKind };
@@ -49,7 +49,7 @@ impl ProtolayerMap {
 	pub fn input_layer(
 				mut self, 
 				layer_name: &'static str,
-				flags: LayerFlags,
+				tags: LayerTags,
 				kind: ProtolayerKind,
 			) -> ProtolayerMap 
 	{
@@ -65,7 +65,7 @@ impl ProtolayerMap {
 			0,
 			0,
 			next_kind_base_slc_id,			
-			flags | map::INPUT,
+			tags | map::INPUT,
 		);
 
 		self.add(cl);
@@ -76,7 +76,7 @@ impl ProtolayerMap {
 				mut self, 
 				layer_name: &'static str,
 				layer_depth: u8,
-				flags: LayerFlags,
+				tags: LayerTags,
 				kind: ProtolayerKind,
 			) -> ProtolayerMap 
 	{
@@ -91,7 +91,7 @@ impl ProtolayerMap {
 			layer_depth,
 			0, 
 			next_kind_base_slc_id,			
-			flags,
+			tags,
 		);
 
 		self.add(cl);
@@ -180,36 +180,42 @@ impl ProtolayerMap {
 
 
 	// SET_LAYERS_DEPTH(): ASSUMES PROPER FLAG UNIQUENESS CONSTRAINS ALREADY APPLIED
-	pub fn set_layers_depth(&mut self, flags: LayerFlags, depth: u8) {
+	pub fn set_layer_depth(&mut self, tags: LayerTags, depth: u8) {
 		if self.frozen { 
 			panic!("region::ProtolayerMap::set_layer_depth(): \
 				Cannot set layer depth after region has been frozen."); 
 		} 
 
 		for (layer_name, mut layer) in self.layers.iter_mut() {
-			if (layer.flags & flags) == flags {
+			if (layer.tags & tags) == tags {
 				//println!(" ##### SETTING LAYER DEPTH FOR LAYER: '{}' TO: {} #####", layer_name, depth);
 				layer.depth = depth;
 			}
 		}
 	}
+
+	pub fn set_layer_depths(&mut self, pamap: &ProtoareaMap) {
+		// FEEDFORWARD INPUT COMES FROM EFF AREAS, FEEDBACK INPUT COMES FROM AFF AREAS
+		self.set_layer_depth(map::FF_IN, pamap.eff_areas.len() as u8);
+		self.set_layer_depth(map::FB_IN, pamap.aff_areas.len() as u8);
+	}
+
  
 
  	// 	PROTOREGION::FREEZE():
  	// 		- What a mess...
 	// 		- Need to revamp how axon_types and cell_types are stored before we can do much with it
 	// 		- cel_layer_kind_slc_lists being a vector needs to change asap
+	//		- this probably needs to be handled by the new AreaMap and its ilk
 	//
 	// 	[FIXME] TODO: VERIFY FLAG UNIQUENESS, APPROPRIATENESS 	
-	pub fn freeze(&mut self, protoarea: &ProtoareaMap) {
-		println!("\nPROTOLAYERMAP: Assembling layer map for area '{}'...", protoarea.name);
+	pub fn freeze(&mut self, pamap: &ProtoareaMap) {
+		println!("\nPROTOLAYERMAP: Assembling layer map for area '{}'...", pamap.name);
 
 		if self.frozen {
 			return;
 		} else {			
-			// FEEDFORWARD INPUT COMES FROM FEEDBACK AREAS, FEEDBACK INPUT COMES FROM FEEDFORWARD AREAS
-			self.set_layers_depth(map::FF_IN, protoarea.eff_areas.len() as u8);
-			self.set_layers_depth(map::FB_IN, protoarea.aff_areas.len() as u8);
+			self.set_layer_depths(pamap);
 			self.frozen = true;
 		}		
 
@@ -521,7 +527,7 @@ impl ProtolayerMap {
  		let mut input_layer: Option<Protolayer> = None;
  		
  		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.flags & map::SPATIAL_ASSOCIATIVE) == map::SPATIAL_ASSOCIATIVE {
+ 			if (layer.tags & map::SPATIAL_ASSOCIATIVE) == map::SPATIAL_ASSOCIATIVE {
  				input_layer = Some(layer.clone());
  			}
  		}
@@ -533,7 +539,7 @@ impl ProtolayerMap {
  		let mut output_slcs: Vec<u8> = Vec::with_capacity(4);
  		
  		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.flags & map::FF_OUT) == map::FF_OUT {
+ 			if (layer.tags & map::FF_OUT) == map::FF_OUT {
  				let v = self.slc_ids(vec![layer.name]);
  				output_slcs.push_all(&v);
  			}
@@ -544,11 +550,11 @@ impl ProtolayerMap {
 
 
  	// TODO: DEPRICATE IN FAVOR OF LAYERS_WITH_FLAG()
- 	pub fn layer_with_flag(&self, flag: LayerFlags) -> Option<&Protolayer> {
+ 	pub fn layer_with_flag(&self, flag: LayerTags) -> Option<&Protolayer> {
  		//let mut input_layers: Vec<&Protolayer>
  		 		
  		for (layer_name, layer) in self.layers.iter() {
- 			if (layer.flags & flag) == flag {
+ 			if (layer.tags & flag) == flag {
  				return Some(&layer);
  			}
  		}
@@ -556,13 +562,13 @@ impl ProtolayerMap {
  	}
 
 
- 	/// Returns all layers containing 'flags'.
- 	pub fn layers_with_flags(&self, flags: LayerFlags) -> Vec<&Protolayer> {
+ 	/// Returns all layers containing 'tags'.
+ 	pub fn layers_with_tags(&self, tags: LayerTags) -> Vec<&Protolayer> {
  		let mut layers: Vec<&Protolayer> = Vec::with_capacity(16);
  		 		
  		for (_, layer) in self.layers.iter() {
- 			// if (layer.flags & flags) == flags {
- 			if layer.flags.contains(flags) {
+ 			// if (layer.tags & tags) == tags {
+ 			if layer.tags.contains(tags) {
  				layers.push(&layer);
  			}
  		}
@@ -687,7 +693,7 @@ impl ProtolayerMap {
 					&mut self, 
 					layer_name: &'static str,
 					layer_depth: u8,
-					flags: LayerFlags,
+					tags: LayerTags,
 					cell: Option<Protocell>,
 	) {
 		let (noncell_slcs, cell_slcs) = self.depth();
@@ -707,7 +713,7 @@ impl ProtolayerMap {
 			base_slc_id: next_base_slc_id, 
 			kind_base_slc_id: next_kind_base_slc_id,
 			depth: layer_depth,
-			flags: flags,
+			tags: tags,
 		};
 
 		self.add(cl);

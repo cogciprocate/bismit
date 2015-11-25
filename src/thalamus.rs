@@ -3,7 +3,7 @@ use std::collections::{ HashMap };
 // use std::iter;
 
 use cmn::{ self, Sdr };
-use map::{ self, AreaMap, LayerFlags };
+use map::{ self, AreaMap, LayerTags };
 use ocl::{ self, EventList };
 use cortical_area:: { CorticalAreas };
 use proto::{ ProtoareaMaps, ProtolayerMaps, Thalamic };
@@ -49,8 +49,8 @@ impl Thalamus {
 
 			let layer_info = area_map.output_layer_info_by_flag();
 
-			for &(flags, cols) in layer_info.iter() {
-				tract.add_area(area_name, flags, cols as usize);
+			for &(tags, cols) in layer_info.iter() {
+				tract.add_area(area_name, tags, cols as usize);
 			}
 
 			println!("{}THALAMUS::NEW(): Area: '{}', area info: {:?}.", cmn::MT, area_name, layer_info);
@@ -90,11 +90,11 @@ impl Thalamus {
 	// 	area.write_input(sdr, map::FF_IN);
 	// }
 
-	pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerFlags) -> (&EventList, &Sdr) { 		
+	pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerTags) -> (&EventList, &Sdr) { 		
 		self.tract.ganglion(src_area_name, layer_mask)
 	}
 
-	pub fn ganglion_mut(&mut self, src_area_name: &'static str, layer_mask: LayerFlags) 
+	pub fn ganglion_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
 			-> (&mut Sdr, &mut EventList) 
 	{
 		self.tract.ganglion_mut(src_area_name, layer_mask)
@@ -113,7 +113,7 @@ impl Thalamus {
 pub struct ThalamicTract {
 	ganglion: Vec<ocl::cl_uchar>,
 	// tract_areas: Vec<TractArea>
-	// tract_area_cache: HashMap<(&'static str, LayerFlags), usize>,	
+	// tract_area_cache: HashMap<(&'static str, LayerTags), usize>,	
 	tract_areas: TractAreaCache,
 	ttl_len: usize,
 }
@@ -130,9 +130,9 @@ impl ThalamicTract {
 		}
 	}
 
-	fn add_area(&mut self, src_area_name: &'static str, layer_flags: LayerFlags, len: usize) {
-		self.tract_areas.insert(src_area_name, layer_flags, 
-			TractArea::new(src_area_name, layer_flags, self.ttl_len..(self.ttl_len + len)));
+	fn add_area(&mut self, src_area_name: &'static str, layer_tags: LayerTags, len: usize) {
+		self.tract_areas.insert(src_area_name, layer_tags, 
+			TractArea::new(src_area_name, layer_tags, self.ttl_len..(self.ttl_len + len)));
 		self.ttl_len += len;
 	}
 
@@ -143,16 +143,16 @@ impl ThalamicTract {
 	}
 
 
-	fn ganglion(&mut self, src_area_name: &'static str, layer_flags: LayerFlags) -> (&EventList, &Sdr) {
-		let ta = self.tract_areas.get(src_area_name, layer_flags)
-			.expect(&format!("ThalamicTract::ganglion(): Invalid source area name and/or flags: \
-			'{}', ({:?}).", src_area_name, layer_flags));
+	fn ganglion(&mut self, src_area_name: &'static str, layer_tags: LayerTags) -> (&EventList, &Sdr) {
+		let ta = self.tract_areas.get(src_area_name, layer_tags)
+			.expect(&format!("ThalamicTract::ganglion(): Invalid source area name and/or tags: \
+			'{}', ({:?}).", src_area_name, layer_tags));
 
 		let range = ta.range();
 		let events = ta.events();
 
 		// println!(" ### ThalamicTract::ganglion({}, {:?}): range: {:?}", src_area_name, 
-		// 	 layer_flags, range);
+		// 	 layer_tags, range);
 		debug_assert!(range.end <= self.ganglion.len(), "ThalamicTract::input_ganglion(): \
 			Index range for target area: '{}' exceeds the boundaries of the input tract \
 			(length: {}).", src_area_name, self.ganglion.len());
@@ -160,18 +160,18 @@ impl ThalamicTract {
 		(events, &self.ganglion[range])
 	}
 
-	fn ganglion_mut(&mut self, src_area_name: &'static str, layer_flags: LayerFlags
+	fn ganglion_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags
 			) -> (&mut Sdr, &mut EventList) 
 	{
-		let ta = self.tract_areas.get_mut(src_area_name, layer_flags)
-			.expect(&format!("ThalamicTract::ganglion_mut(): Invalid target area name and/or flags: \
-			('{}', '{:?}').", src_area_name, layer_flags));
+		let ta = self.tract_areas.get_mut(src_area_name, layer_tags)
+			.expect(&format!("ThalamicTract::ganglion_mut(): Invalid target area name and/or tags: \
+			('{}', '{:?}').", src_area_name, layer_tags));
 
 		let range = ta.range();
 		let events = ta.events_mut();
 
 		// println!(" ### ThalamicTract::ganglion_mut({}, {:?}): range: {:?}", src_area_name, 
-		// 	 layer_flags, range);
+		// 	 layer_tags, range);
 		debug_assert!(range.end <= self.ganglion.len(), "ThalamicTract::ganglion_mut(): \
 			Index range for target area: '{}' exceeds the boundaries of the input tract \
 			(length: {}).", src_area_name, self.ganglion.len());
@@ -182,7 +182,7 @@ impl ThalamicTract {
 
 struct TractAreaCache {
 	areas: Vec<TractArea>,
-	index: HashMap<(&'static str, LayerFlags), usize>,
+	index: HashMap<(&'static str, LayerTags), usize>,
 }
 
 impl TractAreaCache {
@@ -193,27 +193,27 @@ impl TractAreaCache {
 		}
 	}
 
-	fn insert(&mut self, src_area_name: &'static str, layer_flags: LayerFlags, tract_area: TractArea)
+	fn insert(&mut self, src_area_name: &'static str, layer_tags: LayerTags, tract_area: TractArea)
 	{
 		self.areas.push(tract_area);
-		let dup_area = self.index.insert((src_area_name, layer_flags), (self.areas.len() - 1));
+		let dup_area = self.index.insert((src_area_name, layer_tags), (self.areas.len() - 1));
 		assert!(dup_area.is_none(), "TractAreaCache::insert(): Cannot add two areas \
-			with the same name and flags.");
+			with the same name and tags.");
 	}
 
-	fn get(&mut self, src_area_name: &'static str, layer_flags: LayerFlags
+	fn get(&mut self, src_area_name: &'static str, layer_tags: LayerTags
 			) -> Option<&TractArea> 
 	{
-		match self.area_search(src_area_name, layer_flags) {
+		match self.area_search(src_area_name, layer_tags) {
 			Some(idx) => self.areas.get(idx),
 			None => None,
 		}
 	}
 
-	fn get_mut(&mut self, src_area_name: &'static str, layer_flags: LayerFlags
+	fn get_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags
 			) -> Option<&mut TractArea> 
 	{
-		match self.area_search(src_area_name, layer_flags) {
+		match self.area_search(src_area_name, layer_tags) {
 			Some(idx) => {
 				// println!("   TAC::get_mut(): idx: {}, areas: {:?}", idx, self.areas);
 				self.areas.get_mut(idx)
@@ -225,11 +225,11 @@ impl TractAreaCache {
 		}
 	}
 
-	fn area_search(&mut self, src_area_name: &'static str, layer_flags: LayerFlags) -> Option<usize> {
-		// let cleared_flags = clear_io_flags(layer_flags);
-		// println!("TractAreaCache::area_search(): Searching for area: {}, flags: {:?}. ALL: {:?}", 
-		// 	src_area_name, layer_flags, self.areas);
-		let area_idx = self.index.get(&(src_area_name, layer_flags)).map(|&idx| idx);
+	fn area_search(&mut self, src_area_name: &'static str, layer_tags: LayerTags) -> Option<usize> {
+		// let cleared_tags = clear_io_tags(layer_tags);
+		// println!("TractAreaCache::area_search(): Searching for area: {}, tags: {:?}. ALL: {:?}", 
+		// 	src_area_name, layer_tags, self.areas);
+		let area_idx = self.index.get(&(src_area_name, layer_tags)).map(|&idx| idx);
 
 		// println!("   area_idx: {:?}", area_idx);
 
@@ -239,7 +239,7 @@ impl TractAreaCache {
 			Some(idx) => return Some(idx),
 			None => {
 				for i in 0..self.areas.len() {
-					if self.areas[i].layer_flags.contains(layer_flags) 
+					if self.areas[i].layer_tags.contains(layer_tags) 
 						&& self.areas[i].src_area_name == src_area_name
 					{
 						matching_areas.push(i);
@@ -249,11 +249,11 @@ impl TractAreaCache {
 				match matching_areas.len() {
 					0 => return None,
 					1 => {
-						self.index.insert((src_area_name, layer_flags), matching_areas[0]);
+						self.index.insert((src_area_name, layer_tags), matching_areas[0]);
 						return Some(matching_areas[0]);
 					},
-					_ => panic!("TractAreaCache::area_search(): Multiple tract areas matching flags: \
-						'{:?}' for area: '{}' found. Please use additional flags to specify tract \
+					_ => panic!("TractAreaCache::area_search(): Multiple tract areas matching tags: \
+						'{:?}' for area: '{}' found. Please use additional tags to specify tract \
 						area more precisely."),
 				}
 			}
@@ -264,16 +264,16 @@ impl TractAreaCache {
 #[derive(Debug)]
 struct TractArea {
 	src_area_name: &'static str,
-	layer_flags: LayerFlags,
+	layer_tags: LayerTags,
 	range: Range<usize>,
 	events: EventList,
 }
 
 impl TractArea {
-	fn new(src_area_name: &'static str, layer_flags: LayerFlags, range: Range<usize>) -> TractArea {
+	fn new(src_area_name: &'static str, layer_tags: LayerTags, range: Range<usize>) -> TractArea {
 		TractArea { 
 			src_area_name: src_area_name,
-			layer_flags: layer_flags,
+			layer_tags: layer_tags,
 			range: range,
 			events: EventList::new(),
 		}
@@ -297,10 +297,10 @@ impl TractArea {
 }
 
 
-// Remove input and output flags and return result.
-// [FIXME]: TODO: Verify flags?
-// fn clear_io_flags(layer_flags: LayerFlags) -> LayerFlags {
-// 	layer_flags & !(map::OUTPUT | map::INPUT)
+// Remove input and output tags and return result.
+// [FIXME]: TODO: Verify tags?
+// fn clear_io_tags(layer_tags: LayerTags) -> LayerTags {
+// 	layer_tags & !(map::OUTPUT | map::INPUT)
 // }
 
 
