@@ -482,9 +482,9 @@ impl CorticalArea {
 
 	pub fn render_axon_space(&mut self) {
 		let axn_states = &self.axns.states.vec()[..];
-		let slc_map = &self.area_map.slc_map();
-		let cols = self.dims.columns();
-		let hrz_demarc = self.area_map.hrz_demarc();
+		// let slc_map = &self.area_map.slc_map();
+		// let cols = self.dims.columns();
+		// let hrz_demarc = self.area_map.hrz_demarc();
 
 		self.renderer.render_axon_space(axn_states, &self.area_map.slices())
 	}

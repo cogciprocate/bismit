@@ -1,6 +1,5 @@
 
 use ocl::{ self, EnvoyDims };
-use proto::{ ProtolayerMap, ProtoareaMap };
 use cmn::{ self, CorticalDims, HexTilePlane };
 use map::{ area_map, SliceDims, LayerMap };
 
@@ -18,23 +17,23 @@ pub struct SliceMap {
 }
 
 impl SliceMap {
-	pub fn new(area_dims: &CorticalDims, pamap: &ProtoareaMap, plmap: &ProtolayerMap, 
-				layers: &LayerMap,
-	) -> SliceMap {		
-		let proto_slc_map = plmap.slc_map();
+	pub fn new(area_dims: &CorticalDims, layers: &LayerMap) -> SliceMap {		
+		let slc_map = layers.slc_map();
+		let depth = layers.depth() as usize;
 
-		let mut axn_idzs = Vec::with_capacity(proto_slc_map.len());
-		let mut layer_names = Vec::with_capacity(proto_slc_map.len());
-		let mut v_scales = Vec::with_capacity(proto_slc_map.len());
-		let mut u_scales = Vec::with_capacity(proto_slc_map.len());
-		let mut v_sizes = Vec::with_capacity(proto_slc_map.len());
-		let mut u_sizes = Vec::with_capacity(proto_slc_map.len());
-		let mut dims = Vec::with_capacity(proto_slc_map.len());
+		debug_assert_eq!(slc_map.len(), depth);
+
+		let mut axn_idzs = Vec::with_capacity(depth);
+		let mut layer_names = Vec::with_capacity(depth);
+		let mut v_scales = Vec::with_capacity(depth);
+		let mut u_scales = Vec::with_capacity(depth);
+		let mut v_sizes = Vec::with_capacity(depth);
+		let mut u_sizes = Vec::with_capacity(depth);
+		let mut dims = Vec::with_capacity(depth);
 
 		let mut axn_idz_ttl = 0u32;
 
-		for (&slc_id, &layer_name) in proto_slc_map.iter() {
-			let layer = &plmap.layers()[layer_name];
+		for (&slc_id, &layer) in slc_map.iter() {
 			let src_layer_info = layers.slc_src_layer_info(slc_id, layer.tags());
 
 			let slc_dims = match src_layer_info {
@@ -43,7 +42,7 @@ impl SliceMap {
 						.expect("SliceMap::new(): Error creating SliceDims.");
 
 					println!("{}SLICEMAP::NEW(): Adding inter-area slice '{}': slc_id: {}, src_area_name: {}, \
-						v_size: {}, u_size: {}.", cmn::MT, layer_name, slc_id, sli.area_name(),
+						v_size: {}, u_size: {}.", cmn::MT, layer.name(), slc_id, sli.area_name(),
 						slc_dims.v_size(), slc_dims.u_size());
 
 					slc_dims
@@ -55,7 +54,7 @@ impl SliceMap {
 			axn_idzs.push(axn_idz_ttl);
 			axn_idz_ttl += slc_dims.columns();
 
-			layer_names.push(layer_name);
+			layer_names.push(layer.name());
 			v_sizes.push(slc_dims.v_size());
 			u_sizes.push(slc_dims.u_size());
 			v_scales.push(slc_dims.v_scale());
@@ -69,6 +68,7 @@ impl SliceMap {
 		assert_eq!(axn_idzs.len(), u_sizes.len());
 		assert_eq!(axn_idzs.len(), v_scales.len());
 		assert_eq!(axn_idzs.len(), u_scales.len());
+		assert_eq!(axn_idzs.len(), depth);
 
 		SliceMap {
 			axn_idzs: axn_idzs,
@@ -191,3 +191,72 @@ pub mod tests {
 		}
 	}
 }
+
+
+
+
+
+
+// pub fn new(area_dims: &CorticalDims, pamap: &ProtoareaMap, plmap: &ProtolayerMap, 
+// 				layers: &LayerMap,
+// 	) -> SliceMap {		
+// 		let proto_slc_map = plmap.slc_map();
+
+// 		let mut axn_idzs = Vec::with_capacity(proto_slc_map.len());
+// 		let mut layer_names = Vec::with_capacity(proto_slc_map.len());
+// 		let mut v_scales = Vec::with_capacity(proto_slc_map.len());
+// 		let mut u_scales = Vec::with_capacity(proto_slc_map.len());
+// 		let mut v_sizes = Vec::with_capacity(proto_slc_map.len());
+// 		let mut u_sizes = Vec::with_capacity(proto_slc_map.len());
+// 		let mut dims = Vec::with_capacity(proto_slc_map.len());
+
+// 		let mut axn_idz_ttl = 0u32;
+
+// 		for (&slc_id, &layer_name) in proto_slc_map.iter() {
+// 			let layer = &plmap.layers()[layer_name];
+// 			let src_layer_info = layers.slc_src_layer_info(slc_id, layer.tags());
+
+// 			let slc_dims = match src_layer_info {
+// 				Some(sli) => {
+// 					let slc_dims = SliceDims::new(area_dims, Some(sli.dims()))
+// 						.expect("SliceMap::new(): Error creating SliceDims.");
+
+// 					println!("{}SLICEMAP::NEW(): Adding inter-area slice '{}': slc_id: {}, src_area_name: {}, \
+// 						v_size: {}, u_size: {}.", cmn::MT, layer_name, slc_id, sli.area_name(),
+// 						slc_dims.v_size(), slc_dims.u_size());
+
+// 					slc_dims
+// 				},
+
+// 				None =>	SliceDims::new(area_dims, None).expect("SliceMap::new()"), // 100% scaling
+// 			};
+
+// 			axn_idzs.push(axn_idz_ttl);
+// 			axn_idz_ttl += slc_dims.columns();
+
+// 			layer_names.push(layer_name);
+// 			v_sizes.push(slc_dims.v_size());
+// 			u_sizes.push(slc_dims.u_size());
+// 			v_scales.push(slc_dims.v_scale());
+// 			u_scales.push(slc_dims.u_scale());			
+// 			dims.push(slc_dims);
+// 		}
+
+// 		assert_eq!(axn_idzs.len(), layer_names.len());
+// 		assert_eq!(axn_idzs.len(), dims.len());
+// 		assert_eq!(axn_idzs.len(), v_sizes.len());
+// 		assert_eq!(axn_idzs.len(), u_sizes.len());
+// 		assert_eq!(axn_idzs.len(), v_scales.len());
+// 		assert_eq!(axn_idzs.len(), u_scales.len());
+
+// 		SliceMap {
+// 			axn_idzs: axn_idzs,
+// 			layer_names: layer_names,
+// 			dims: dims,
+// 			v_sizes: v_sizes,
+// 			u_sizes: u_sizes,	
+// 			v_scales: v_scales,
+// 			u_scales: u_scales,	
+// 			physical_len: axn_idz_ttl,		
+// 		}
+// 	}

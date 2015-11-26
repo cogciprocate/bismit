@@ -21,7 +21,6 @@ pub struct Protocell {
 	pub den_prx_syn_reach: i8,
 	pub den_dst_syn_reach: i8,	
 	pub den_thresh_init: Option<u32>,
-	//pub tags: CellFlags,							
 }
 
 impl Protocell {
@@ -36,10 +35,8 @@ impl Protocell {
 					den_prx_syn_reach: i8,
 					den_dst_syn_reach: i8,
 					thresh: Option<u32>,
-					//tags: CellFlags,
 	) -> Protocell {
 			// DO SOME CHECKS ON PARAMETERS (certain cell types must/mustn't have certain dendritic segments)
-			// REMOVE FLAGS
 
 		Protocell {
 			cell_kind: cell_kind,
@@ -52,12 +49,9 @@ impl Protocell {
 			den_prx_syn_reach: den_prx_syn_reach,
 			den_dst_syn_reach: den_dst_syn_reach,
 			den_thresh_init: thresh,
-			//tags: tags,
 		}.validate()
 	}	
-	/* NEW_PYRAMIDAL(): 
-		- get rid of proximal source (maybe)
-	*/
+
 	pub fn pyramidal(dens_per_tuft_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, 
 				thresh: u32, dst_reach: i8) -> LayerKind 
 	{
@@ -72,8 +66,6 @@ impl Protocell {
 			den_prx_syn_reach: dst_reach,
 			den_dst_syn_reach: dst_reach,
 			den_thresh_init: Some(thresh),			
-			//den_prx_src_lyrs: Some(vec![prx_src]),
-			//tags: tags,
 		}.validate())
 	}
 
@@ -92,7 +84,6 @@ impl Protocell {
 			den_prx_syn_reach: prx_reach,
 			den_dst_syn_reach: prx_reach,
 			den_thresh_init: Some(thresh),
-			//tags: tags,
 		}.validate())
 	}
 
@@ -172,69 +163,11 @@ pub enum DendriteClass {
 	Distal,
 }
 
-//#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+// [FIXME]: Depricate?
 bitflags! {
-	// #[derive(Debug)]
 	flags CellFlags: u32 {
 		const HAPPY 		= 0b00000001,
 		const SAD			= 0b00000010,
 		const NONE			= 0b00000000,
 	}
 }
-
- 
-
-
-
-
-
-
-//pub struct ProtocellPyramidal
-
-
-/*#[derive(PartialEq, Debug, Clone, Hash)]
-pub enum CellPrototype {
-	Pyramidal { 
-		prx_src: &'static str,
-		dst_srcs: Vec<&'static str>,
-	},
-
-	SpinyStellate {
-		prx_srcs: Vec<&'static str>,
-	},
-
-	InhibitoryInterneuronNetwork {
-		prx_srcs: Vec<&'static str>,
-	},
-
-	None,
-}
-
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum CellBlueprint {
-	Pyramidal {
-		dens: u8,
-		syns_per_den: u8,
-		tags: CellFlags,
-	},
-
-	SpinyStellate {
-		dens: u8,
-		syns_per_den: u8,
-		tags: CellFlags,
-	},
-
-	InhibitoryInterneuronNetwork {
-		dens: u8,
-		syns_per_den: u8,
-		tags: CellFlags,
-	},
-}*/
-
-
-/*#[derive(PartialEq, Debug, Clone)]
-pub enum AxonScope {
-	Integererregional,
-	Integererlaminar,
-}*/

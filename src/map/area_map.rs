@@ -1,6 +1,6 @@
 use std::fmt::{ Display };
 use std::ops::{ Range }; 
-use std::collections::{ BTreeMap };
+// use std::collections::{ BTreeMap };
 
 use ocl::{ BuildConfig, BuildOpt };
 use proto::{ ProtolayerMaps, ProtoareaMaps, ProtoareaMap, RegionKind, Protofilter,
@@ -21,6 +21,7 @@ pub struct AreaMap {
 	hrz_demarc: u8,
 	eff_areas: Vec<&'static str>,
 	aff_areas: Vec<&'static str>,
+	filters: Option<Vec<Protofilter>>,
 
 	// TODO: Create maps for each aspect which have their own types and are queryable 
 	// into sub-lists of the same type
@@ -29,34 +30,35 @@ pub struct AreaMap {
 	// etc...
 	// other new types: TuftMap/CellMap	
 
-	pamap: ProtoareaMap,
+	// pamap: ProtoareaMap,
 }
 
 impl AreaMap {
 	pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps,
 			input_sources: &Vec<InputSource>) -> AreaMap 
 	{
-		let pamap = pamap.clone();		
-
-		let layers = LayerMap::new(&pamap, plmaps, pamaps, input_sources);
+		// let pamap = pamap.clone();		
 
 		println!("{mt}AREAMAP::NEW(): area name: {}, eff areas: {:?}, aff areas: {:?}", pamap.name, 
 			pamap.eff_areas(), pamap.aff_areas(), mt = cmn::MT);
 
-		let dims = pamap.dims().clone_with_depth(layers.plmap.depth_total());		
-		let hrz_demarc = layers.plmap.hrz_demarc();
+		let layers = LayerMap::new(pamap, plmaps, pamaps, input_sources);
 
-		let slices = SliceMap::new(&dims, &pamap, &layers.plmap, &layers);
+		let dims = pamap.dims().clone_with_depth(layers.depth());
+
+		let slices = SliceMap::new(&dims, &layers);
 
 		AreaMap {
 			area_name: pamap.name,
 			dims: dims,
 			slices: slices,
 			layers: layers,
-			hrz_demarc: hrz_demarc,
+			// [FIXME]: TEMPORARY:
+			hrz_demarc: 128,
 			eff_areas: pamap.eff_areas().clone(),
 			aff_areas: pamap.aff_areas().clone(),
-			pamap: pamap,
+			filters: pamap.filters.clone(),
+			// pamap: pamap,
 			// plmap: plmap,
 		}
 	}	
@@ -74,7 +76,7 @@ impl AreaMap {
 		;
 
 		// CUSTOM KERNELS
-		match self.pamap.filters {
+		match self.filters {
 			Some(ref protofilters) => {
 				for pf in protofilters.iter() {
 					match pf.cl_file_name() {
@@ -213,12 +215,7 @@ impl AreaMap {
 		let ptal_layer_vec = self.layers.layer_info(map::PTAL);
 		assert_eq!(ptal_layer_vec.len(), 1);
 		ptal_layer_vec[0]
- 	}
-
- 	// NEW - UPDATE
-	pub fn slc_map(&self) -> BTreeMap<u8, &'static str> {
-		self.layers.plmap.slc_map()
-	}
+ 	} 	
 
 	// NEW
 	pub fn axn_range_by_tags(&self, layer_tags: LayerTags) -> Range<u32> {				
@@ -277,16 +274,21 @@ impl AreaMap {
 
 	// UPDATE / DEPRICATE
 	pub fn filters(&self) -> &Option<Vec<Protofilter>> {
-		&self.pamap.filters
+		&self.filters
 	}
 
 	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 
-	pub fn hrz_demarc(&self) -> u8 {
-		self.hrz_demarc
-	}
+	// pub fn hrz_demarc(&self) -> u8 {
+	// 	self.hrz_demarc
+	// }
+
+	// NEW - UPDATE
+	// pub fn slc_map(&self) -> BTreeMap<u8, &LayerInfo> {
+	// 	self.layers.slc_map()
+	// }
 
 	// UPDATE / DEPRICATE
 	pub fn lm_kind_tmp(&self) -> &RegionKind {

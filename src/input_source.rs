@@ -20,6 +20,7 @@ pub struct InputSource {
 impl InputSource {
 	// [FIXME] Multiple output target areas disabled.
 	// [FIXME] Depricate targets? Is knowing targets useful? - Thalamus now handles this.
+	// [FIXME] Determine (or have passed in) the layer depth corresponding to this source.
 	pub fn new(pamap: &ProtoareaMap) -> InputSource {
 		let input = &pamap.input;
 
