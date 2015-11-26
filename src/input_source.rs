@@ -1,6 +1,6 @@
 // use std::iter;
 
-use cmn::{ Sdr };
+use cmn::{ self, Sdr };
 use ocl::{ EventList };
 use proto::{ ProtoareaMap, Protoinput };
 use encode::{ IdxReader };
@@ -9,22 +9,21 @@ pub trait InputGanglion {
 	fn next(&mut self, ganglion: &mut Sdr) -> usize;
 }
 
-
 pub struct InputSource {
 	area_name: &'static str,
 	kind: InputSourceKind,
 	// source: Box<InputGanglion>,
-	targets: Vec<&'static str>,
-	// ganglion: Vec<u8>,
+	// targets: Vec<&'static str>,
+	depth: u8,
 }
 
 impl InputSource {
 	// [FIXME] Multiple output target areas disabled.
+	// [FIXME] Depricate targets? Is knowing targets useful? - Thalamus now handles this.
 	pub fn new(pamap: &ProtoareaMap) -> InputSource {
-		//let emsg = format!("\nInputSource::new(): No input source specified for area: '{}'", pamap.name);
 		let input = &pamap.input;
 
-		let (kind, targets, len) = match input {
+		let (kind, /*targets,*/ len, depth) = match input {
 			&Protoinput::IdxReader { file_name, cyc_per, scale } => {
 				let ir = IdxReader::new(pamap.dims.clone_with_depth(1), file_name, cyc_per, scale);				
 				let len = ir.dims().cells();
@@ -32,8 +31,9 @@ impl InputSource {
 
 				( // RETURN TUPLE
 					InputSourceKind::IdxReader(Box::new(ir)), 
-					pamap.aff_areas().clone(), 
-					len
+					/*pamap.aff_areas().clone(),*/ // DEPRICATE
+					len,
+					cmn::DEFAULT_OUTPUT_LAYER_DEPTH,
 				)
 			},
 
@@ -45,39 +45,36 @@ impl InputSource {
 				
 				( // RETURN TUPLE
 					InputSourceKind::IdxReader(Box::new(ir)), 
-					pamap.aff_areas().clone(), 
-					len
+					/*pamap.aff_areas().clone(),*/ // DEPRICATE
+					len,
+					cmn::DEFAULT_OUTPUT_LAYER_DEPTH,
 				)
 			},
 
 			&Protoinput::None | &Protoinput::Zeros => (InputSourceKind::None, 
-				pamap.aff_areas().clone(), pamap.dims.columns()),
+				/*pamap.aff_areas().clone(),*/ pamap.dims.columns(), 
+				cmn::DEFAULT_OUTPUT_LAYER_DEPTH),
 
 			_ => panic!("\nInputSource::new(): Input type not yet supported."),
 		};
 
 		// [FIXME] Multiple output target areas disabled.
-		assert!(targets.len() == 1, "Output to more or less than one area temporarily disabled. \
-			Please create duplicate external source areas for now. Current source areas for '{}': {:?}.", 
-			pamap.name, targets);
-
-		// let ganglion = iter::repeat(0).take(len as usize).collect();
+		// assert!(targets.len() == 1, "Output to more or less than one area temporarily disabled. \
+		// 	Please create duplicate external source areas for now. Current source areas for '{}': {:?}.", 
+		// 	pamap.name, targets);
 
 		InputSource {
 			area_name: pamap.name,
 			kind: kind,
-			targets: targets,
-			// ganglion: ganglion,			
+			depth: depth,
+			// targets: targets,
 		}
 	}
 
 	// [FIXME] Multiple output target areas disabled.
 	pub fn next(&mut self, ganglion: &mut Sdr, events: &mut EventList) {
-		// This is temp (mult out tar areas):
-		debug_assert!(self.targets.len() == 1);
-		// let dst_area_name = self.targets[0];
-
-		// let mut ganglion = tract.ganglion_mut(self.area_name, map::FF_OUT);
+		// This is temp (mult out tar areas): DEPRICATING: 
+		// debug_assert!(self.targets.len() == 1);
 
 		match self.kind {
 			InputSourceKind::IdxReader(ref mut ig) |
@@ -86,18 +83,14 @@ impl InputSource {
 				
 			_ => (),
 		}
-
-		// for target in self.targets.iter() {
-			// areas.get_mut(target).expect("InputSource::next(): Invalid area name, 'targets' mismatch error.")
-			// 	.write_input(&self.ganglion, map::FF_IN);
-
-			// println!("\n##### INPUTSOURCE::NEXT(): Writing ganglion with len: {} to area: '{}': \n{:?}", 
-			// 	self.ganglion.len(), target, self.ganglion);
-		// }
 	}
 
 	pub fn area_name(&self) -> &'static str {
 		self.area_name
+	}
+
+	pub fn depth(&self) -> u8 {
+		self.depth
 	}
 }
 

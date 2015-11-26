@@ -5,7 +5,7 @@ use rand::{ self, Rng };
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQue, WorkSize, Envoy, EventList };
-use proto::{ ProtocellKind, Protocell, DendriteKind };
+use proto::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
 
@@ -37,7 +37,7 @@ impl SpinyStellateLayer {
 
 		let dens_dims = dims.clone_with_ptl2(protocell.dens_per_tuft_l2 as i8);
 		let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Proximal, 
-			ProtocellKind::SpinyStellate, area_map, axns, ocl_pq);
+			CellKind::SpinyStellate, area_map, axns, ocl_pq);
 		let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
 		let cels_per_grp = dims.per_subgrp(grp_count, ocl_pq).expect("SpinyStellateLayer::new()");
 

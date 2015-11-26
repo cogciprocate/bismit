@@ -5,7 +5,7 @@ use std::collections::{ BTreeSet };
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, EventList };
-use proto::{ ProtocellKind, Protocell, DendriteKind };
+use proto::{ CellKind, Protocell, DendriteKind };
 use axon_space::{ AxonSpace };
 
 #[cfg(test)]
@@ -66,7 +66,7 @@ pub struct Synapses {
 	protocell: Protocell,
 	src_slc_ids_list: Vec<Vec<u8>>,
 	den_kind: DendriteKind,
-	cell_kind: ProtocellKind,
+	cell_kind: CellKind,
 	since_decay: usize,
 	kernels: Vec<Box<ocl::Kernel>>,
 	src_idx_cache: SrcIdxCache,
@@ -83,7 +83,7 @@ pub struct Synapses {
 
 impl Synapses {
 	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, 
-				den_kind: DendriteKind, cell_kind: ProtocellKind, area_map: &AreaMap, 
+				den_kind: DendriteKind, cell_kind: CellKind, area_map: &AreaMap, 
 				axons: &AxonSpace, ocl_pq: &ProQue
 			) -> Synapses 
 	{

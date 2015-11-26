@@ -97,7 +97,7 @@ impl CorticalArea {
 
 		for layer in area_map.layers().iter() {
 			match layer.kind() {
-				Cellular(ref pcell) => {
+				&Cellular(ref pcell) => {
 					println!("   CORTICALAREA::NEW(): making a(n) {:?} layer: '{}' (depth: {})", 
 						pcell.cell_kind, layer.name(), layer.depth());
 
@@ -134,7 +134,7 @@ impl CorticalArea {
 
 		for layer in area_map.layers().iter() {
 			match layer.kind() {
-				Cellular(ref pcell) => {
+				&Cellular(ref pcell) => {
 					match pcell.cell_kind {
 						Inhibitory => {
 							let src_lyr_names = layer.src_lyr_names(DendriteKind::Distal);

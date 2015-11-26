@@ -100,6 +100,8 @@ pub static BGC_LGR: &'static str = "\x1b[47m";
 pub static BGC_DGR: &'static str = "\x1b[100m";
 
 
+pub const DEFAULT_OUTPUT_LAYER_DEPTH: u8 = 1;
+
 // pub const SENSORY_CHORD_WIDTH_LOG2: usize = 5;
 // pub const SENSORY_CHORD_WIDTH: u32 = 1 << SENSORY_CHORD_WIDTH_LOG2;
 // pub const SENSORY_CHORD_HEIGHT_LOG2: usize = 5;

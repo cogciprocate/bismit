@@ -23,11 +23,11 @@ pub fn define_protolayer_maps() -> ProtolayerMaps {
 		.layer("out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))
 		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("iv", 1, map::PSAL, 
-			Protocell::new_spiny_stellate(5, vec!["aff_in"], 600, 8)) 
+			Protocell::spiny_stellate(5, vec!["aff_in"], 600, 8)) 
 		.layer("iv_inhib", 0, map::DEFAULT, 
-			Protocell::new_inhibitory(4, "iv"))
+			Protocell::inhibitory(4, "iv"))
 		.layer("iii", 3, map::PTAL, 
-			Protocell::new_pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"]))
+			Protocell::pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"]))
 	);
 
 	plmaps.add(ProtolayerMap::new("external", Thalamic)
@@ -117,11 +117,11 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 		// .layer("test5", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("iv", 1, map::PSAL, 
-			Protocell::new_spiny_stellate(5, vec!["unused"], 1, 8))
+			Protocell::spiny_stellate(5, vec!["unused"], 1, 8))
 		// .layer("iv_inhib", 0, map::DEFAULT, 
-		// 	Protocell::new_inhibitory(4, "iv"))
+		// 	Protocell::inhibitory(4, "iv"))
 		.layer("iii", 2, map::PTAL, 
-			Protocell::new_pyramidal(2, 4, vec!["unused"], 1, 8)
+			Protocell::pyramidal(2, 4, vec!["unused"], 1, 8)
 				.apical(vec!["test1"])
 				.apical(vec!["test2"])
 				// .apical(vec!["test3"])

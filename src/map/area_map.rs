@@ -3,10 +3,11 @@ use std::ops::{ Range };
 use std::collections::{ BTreeMap };
 
 use ocl::{ BuildConfig, BuildOpt };
-use proto::{ ProtolayerMaps, ProtolayerMap, ProtoareaMaps, ProtoareaMap, RegionKind, Protofilter,
+use proto::{ ProtolayerMaps, ProtoareaMaps, ProtoareaMap, RegionKind, Protofilter,
 	DendriteKind };
 use cmn::{ self, CorticalDims };
 use map::{ self, SliceMap, LayerTags, LayerMap, LayerInfo };
+use input_source::{ InputSource };
 
 // 	AREAMAP { }:
 // 		- Move in functionality from the 'execution phase' side of ProtoareaMap and ProtolayerMap.
@@ -29,24 +30,23 @@ pub struct AreaMap {
 	// other new types: TuftMap/CellMap	
 
 	pamap: ProtoareaMap,
-	plmap: ProtolayerMap,
 }
 
 impl AreaMap {
-	pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps) -> AreaMap {
-		let pamap = pamap.clone();			
-		let mut plmap = plmaps[pamap.layer_map_name].clone();
-		plmap.freeze(&pamap);
+	pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps,
+			input_sources: &Vec<InputSource>) -> AreaMap 
+	{
+		let pamap = pamap.clone();		
+
+		let layers = LayerMap::new(&pamap, plmaps, pamaps, input_sources);
 
 		println!("{mt}AREAMAP::NEW(): area name: {}, eff areas: {:?}, aff areas: {:?}", pamap.name, 
 			pamap.eff_areas(), pamap.aff_areas(), mt = cmn::MT);
 
-		let dims = pamap.dims().clone_with_depth(plmap.depth_total());		
-		let hrz_demarc = plmap.hrz_demarc();
+		let dims = pamap.dims().clone_with_depth(layers.plmap.depth_total());		
+		let hrz_demarc = layers.plmap.hrz_demarc();
 
-		let layers = LayerMap::new(&pamap, &plmap, pamaps, plmaps);
-
-		let slices = SliceMap::new(&dims, &pamap, &plmap, &layers);
+		let slices = SliceMap::new(&dims, &pamap, &layers.plmap, &layers);
 
 		AreaMap {
 			area_name: pamap.name,
@@ -57,7 +57,7 @@ impl AreaMap {
 			eff_areas: pamap.eff_areas().clone(),
 			aff_areas: pamap.aff_areas().clone(),
 			pamap: pamap,
-			plmap: plmap,
+			// plmap: plmap,
 		}
 	}	
 
@@ -104,19 +104,21 @@ impl AreaMap {
 	// UPDATE / DEPRICATE
 	/// Returns a grouped list of source layer names for each distal dendritic tuft in a layer.
 	pub fn layer_dst_srcs(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
-		let mut potential_tufts = self.plmap.layers()[layer_name].dst_src_lyrs_by_tuft();
+		let potential_tufts = self.layers.layer_info_by_name(layer_name).dst_src_lyrs();
+
 		let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
 
-		for mut potential_tuft_src_lyrs in potential_tufts.drain(..) {
-			let mut valid_src_lyrs: Vec<&'static str> = Vec::with_capacity(potential_tuft_src_lyrs.len());
+		for mut potential_tuft_src_lyrs in potential_tufts {
+			let mut valid_src_lyrs = Vec::with_capacity(potential_tuft_src_lyrs.len());
 
 			for lyr_name in potential_tuft_src_lyrs.drain(..) {
-				if self.plmap.layers()[lyr_name].depth() > 0 {
+				if self.layers.layer_info_by_name(lyr_name).depth() > 0 {
 					valid_src_lyrs.push(lyr_name);
 				}
 			}
 
 			if valid_src_lyrs.len() > 0 {
+				valid_src_lyrs.shrink_to_fit();
 				valid_tufts.push(valid_src_lyrs);
 			}
 		}
@@ -127,12 +129,11 @@ impl AreaMap {
 	// NEW - UPDATE
 	/// Returns a merged list of slice ids for all source layers.
 	pub fn layer_slc_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
-		// self.plmap.slc_ids(layer_names)
-		let mut slc_ids = Vec::new();
+		let mut slc_ids = Vec::with_capacity(32);
 
 		for layer_name in layer_names.iter() {
-			let l = &self.plmap.layers()[layer_name];
-				for i in l.base_slc_id()..(l.base_slc_id() + l.depth()) {
+			let l = &self.layers.layer_info_by_name(layer_name);
+				for i in l.slc_range().clone() {
 					slc_ids.push(i);
 				}
 		}
@@ -143,7 +144,7 @@ impl AreaMap {
 	// NEW - UPDATE
 	/// Returns a merged list of source slice ids for all source layers.
 	pub fn layer_src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
-		let src_lyr_names = self.plmap.layers()[&layer_name].src_lyr_names(den_type);
+		let src_lyr_names = self.layers.layer_info_by_name(layer_name).src_lyr_names(den_type);
 		
 		self.layer_slc_ids(src_lyr_names)
  	}
@@ -165,7 +166,7 @@ impl AreaMap {
 	pub fn aff_out_slcs(&self) -> Vec<u8> {
 		let mut output_slcs: Vec<u8> = Vec::with_capacity(8);
  		
- 		for (layer_name, layer) in self.plmap.layers().iter() {
+ 		for layer in self.layers.iter() {
  			if (layer.tags() & map::FF_OUT) == map::FF_OUT {
  				let v = self.layer_slc_ids(vec![layer.name()]);
  				output_slcs.push_all(&v);
@@ -216,7 +217,7 @@ impl AreaMap {
 
  	// NEW - UPDATE
 	pub fn slc_map(&self) -> BTreeMap<u8, &'static str> {
-		self.plmap.slc_map()
+		self.layers.plmap.slc_map()
 	}
 
 	// NEW
@@ -262,16 +263,6 @@ impl AreaMap {
 		self.area_name
 	}
 
-	// DEPRICATE
-	// pub fn proto_area_map(&self) -> &ProtoareaMap {
-	// 	&self.pamap
-	// }
-
-	// DEPRICATE
-	// pub fn proto_layer_map(&self) -> &ProtolayerMap {
-	// 	&self.plmap
-	// }
-
 	pub fn axn_idz(&self, slc_id: u8) -> u32 {
 		self.slices.idz(slc_id)
 	}
@@ -297,13 +288,9 @@ impl AreaMap {
 		self.hrz_demarc
 	}
 
-	// pub fn lm_name_tmp(&self) -> &'static str {
-	// 	self.plmap.name
-	// }
-
 	// UPDATE / DEPRICATE
 	pub fn lm_kind_tmp(&self) -> &RegionKind {
-		&self.plmap.kind
+		&self.layers.region_kind()
 	}
 }
 

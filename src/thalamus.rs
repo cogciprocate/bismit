@@ -47,7 +47,7 @@ impl Thalamus {
 		for (&area_name, pa) in pamaps.maps().iter()
 			// .filter(|&(_, pa)| plmaps[pa.layer_map_name].kind != Thalamic)
 		{	
-			let area_map = AreaMap::new(pa, &plmaps, &pamaps);
+			let area_map = AreaMap::new(pa, &plmaps, &pamaps, &input_sources);
 
 			let layer_info = area_map.output_layer_info();
 

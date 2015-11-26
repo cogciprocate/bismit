@@ -10,7 +10,7 @@
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQue, WorkSize, Envoy, EventList };
-use proto::{ /*ProtolayerMap, RegionKind, ProtoareaMaps,*/ ProtocellKind, Protocell, DendriteKind };
+use proto::{ /*ProtolayerMap, RegionKind, ProtoareaMaps,*/ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axon_space::{ AxonSpace };
 // use cortical_area:: { Aux };
@@ -24,7 +24,7 @@ pub struct Dendrites {
 	//protocell: Protocell,
 	//per_cell_l2: u32,
 	den_kind: DendriteKind,
-	cell_kind: ProtocellKind,
+	cell_kind: CellKind,
 	kern_cycle: ocl::Kernel,
 	pub thresholds: Envoy<ocl::cl_uchar>,
 	pub states_raw: Envoy<ocl::cl_uchar>,
@@ -40,7 +40,7 @@ impl Dendrites {
 					//src_tfts: Vec<Vec<&'static str>>,
 					protocell: Protocell,
 					den_kind: DendriteKind, 
-					cell_kind: ProtocellKind,
+					cell_kind: CellKind,
 					area_map: &AreaMap,
 					axons: &AxonSpace,
 					// aux: &Aux,

@@ -9,12 +9,13 @@ pub use self::proto_layer_map::{ ProtolayerMaps, ProtolayerMap, RegionKind };
 pub use self::proto_area_map::{ ProtoareaMaps, ProtoareaMap };
 
 pub use self::protolayer as layer;
-pub use self::protolayer::{ Protolayer, ProtolayerKind, ProtoaxonKind };
-	pub use self::protolayer::ProtolayerKind::{ Cellular, Axonal };
-	pub use self::protolayer::ProtoaxonKind::{ Spatial, Horizontal };
+pub use self::protolayer::{ Protolayer, LayerKind, AxonKind };
+	pub use self::protolayer::LayerKind::{ Cellular, Axonal };
+	pub use self::protolayer::AxonKind::{ Spatial, Horizontal };
 
-pub use self::protocell::{ ProtocellKind, Protocell, DendriteKind, CellFlags };
-	pub use self::protocell::ProtocellKind::{ Pyramidal, SpinyStellate, Inhibitory };
+pub use self::protocell::{ CellKind, CellClass, Protocell, DendriteKind, CellFlags };
+	pub use self::protocell::CellKind::{ Pyramidal, SpinyStellate, Inhibitory, Complex };
+	pub use self::protocell::CellClass::{ Material, Control };
 
 pub use self::protofilter::{ Protofilter };
 

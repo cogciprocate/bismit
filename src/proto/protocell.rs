@@ -1,6 +1,7 @@
 //use bittags;
-use proto::layer::ProtolayerKind::{ self, Cellular };
+use proto::layer::LayerKind::{ self, Cellular };
 //use std::option::{ Option };
+use cmn;
 
 /* PROTOCELL:
  		Merge srcs to a Vec<Box<Vec<..>>>, A Vec of src vec lists
@@ -13,7 +14,8 @@ pub struct Protocell {
 	pub dens_per_tuft_l2: u8,
 	pub syns_per_den_l2: u8,
 	pub cols_per_cel_l2: u8,
-	pub cell_kind: ProtocellKind,
+	pub cell_kind: CellKind,
+	pub cell_class: CellClass,
 	pub den_prx_src_lyrs: Option<Vec<&'static str>>,	
 	pub den_dst_src_lyrs: Option<Vec<Vec<&'static str>>>,
 	pub den_prx_syn_reach: i8,
@@ -27,7 +29,8 @@ impl Protocell {
 					dens_per_tuft_l2: u8,
 					syns_per_den_l2: u8,
 					cols_per_cel_l2: u8,
-					cell_kind: ProtocellKind,
+					cell_kind: CellKind,
+					cell_class: CellClass,
 					den_dst_src_lyrs: Option<Vec<Vec<&'static str>>>,
 					den_prx_src_lyrs: Option<Vec<&'static str>>,
 					den_prx_syn_reach: i8,
@@ -40,6 +43,7 @@ impl Protocell {
 
 		Protocell {
 			cell_kind: cell_kind,
+			cell_class: cell_class,
 			dens_per_tuft_l2: dens_per_tuft_l2,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
@@ -49,26 +53,20 @@ impl Protocell {
 			den_dst_syn_reach: den_dst_syn_reach,
 			den_thresh_init: thresh,
 			//tags: tags,
-		}.verify()
-	}
-
-	pub fn verify(self) -> Protocell {
-		assert!(self.den_prx_syn_reach >= 0 && self.den_dst_syn_reach >= 0, 
-			"Synapse reach must be between 0..127");
-
-		self
-	}
+		}.validate()
+	}	
 	/* NEW_PYRAMIDAL(): 
 		- get rid of proximal source (maybe)
 	*/
-	pub fn new_pyramidal(dens_per_tuft_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, 
-				thresh: u32, dst_reach: i8) -> ProtolayerKind 
+	pub fn pyramidal(dens_per_tuft_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, 
+				thresh: u32, dst_reach: i8) -> LayerKind 
 	{
 		Cellular(Protocell {
 			dens_per_tuft_l2: dens_per_tuft_l2,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
-			cell_kind: ProtocellKind::Pyramidal,
+			cell_kind: CellKind::Pyramidal,
+			cell_class: CellClass::Material,
 			den_dst_src_lyrs: Some(vec![dst_srcs]),
 			den_prx_src_lyrs: None,
 			den_prx_syn_reach: dst_reach,
@@ -76,59 +74,90 @@ impl Protocell {
 			den_thresh_init: Some(thresh),			
 			//den_prx_src_lyrs: Some(vec![prx_src]),
 			//tags: tags,
-		}.verify())
+		}.validate())
 	}
 
 	// SWITCH TO DISTAL
-	pub fn new_spiny_stellate(syns_per_den_l2: u8, prx_srcs: Vec<&'static str>, thresh: u32,
-				prx_reach: i8) -> ProtolayerKind 
+	pub fn spiny_stellate(syns_per_den_l2: u8, prx_srcs: Vec<&'static str>, thresh: u32,
+				prx_reach: i8) -> LayerKind 
 	{
 		Cellular(Protocell {
 			dens_per_tuft_l2: 0,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
-			cell_kind: ProtocellKind::SpinyStellate,
+			cell_kind: CellKind::SpinyStellate,
+			cell_class: CellClass::Material,
 			den_dst_src_lyrs: None, // Some(vec![dst_srcs]),
 			den_prx_src_lyrs: Some(prx_srcs),
 			den_prx_syn_reach: prx_reach,
 			den_dst_syn_reach: prx_reach,
 			den_thresh_init: Some(thresh),
 			//tags: tags,
-		}.verify())
+		}.validate())
 	}
 
-	pub fn new_inhibitory(cols_per_cel_l2: u8, dst_src: &'static str) -> ProtolayerKind 
+	pub fn inhibitory(cols_per_cel_l2: u8, dst_src: &'static str) -> LayerKind 
 	{
 		Cellular(Protocell {
 			dens_per_tuft_l2: 0,
 			syns_per_den_l2: 0,
 			cols_per_cel_l2: cols_per_cel_l2,
-			cell_kind: ProtocellKind::Inhibitory,
+			cell_kind: CellKind::Inhibitory,
+			cell_class: CellClass::Control,
 			den_dst_src_lyrs: Some(vec![vec![dst_src]]),
 			den_prx_src_lyrs: None,
 			den_prx_syn_reach: 0,
 			den_dst_syn_reach: 0,
 			den_thresh_init: None,
-		}.verify())
+		}.validate())
 	}
 
+	pub fn minicolumn(psal_lyr: &'static str, ptal_lyr: &'static str,) -> LayerKind 
+	{
+		Cellular(Protocell {
+			dens_per_tuft_l2: 0,
+			syns_per_den_l2: 0,
+			cols_per_cel_l2: 0,
+			cell_kind: CellKind::Complex,
+			cell_class: CellClass::Control,
+			den_dst_src_lyrs: Some(vec![vec![psal_lyr],vec![ptal_lyr]]),
+			den_prx_src_lyrs: None,
+			den_prx_syn_reach: 0,
+			den_dst_syn_reach: 0,
+			den_thresh_init: None,
+		}.validate())
+	}
 
-	// pub fn dst_src_lyrs_len(&self) -> u32 {
-	// 	match self.den_dst_src_lyrs {
-	// 		Some(ref dst_srcs) => dst_srcs.len() as u32,
-	// 		None => 0u32,
-	// 	}
-	// }
+	pub fn validate(self) -> Protocell {
+		assert!(self.den_prx_syn_reach >= 0 && self.den_dst_syn_reach >= 0, 
+			"Synapse reach must be between 0..127");
+
+		self
+	}
+
+	pub fn validate_depth(&self, depth: Option<u8>) -> Option<u8> {
+		match self.cell_kind {
+			CellKind::Inhibitory => Some(0),
+			CellKind::Complex => Some(cmn::DEFAULT_OUTPUT_LAYER_DEPTH),
+			_ => depth,
+		}
+	}
 }
 
 
 #[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
-pub enum ProtocellKind {
+pub enum CellKind {
 	Pyramidal,
 	SpinyStellate,
 	//AspinyStellate,
 	Inhibitory,
-	Nada,
+	Complex,
+}
+
+#[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
+pub enum CellClass {
+	Material,
+	Control,
 }
 
 

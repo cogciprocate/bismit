@@ -26,6 +26,7 @@ pub fn define_plmaps() -> ProtolayerMaps {
 	const MOTOR: u32 = 543;
 	const OLFAC: u32 = 654;
 
+	// [FIXME]: TODO: Create '.out_layer(...)'.
 	ProtolayerMaps::new()
 		.lm(ProtolayerMap::new("visual", Sensory)
 			//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
@@ -33,18 +34,17 @@ pub fn define_plmaps() -> ProtolayerMaps {
 			.axn_layer("olfac", map::NS_IN | LayerTags::with_uid(OLFAC), Horizontal)
 			.axn_layer("eff_in", map::FB_IN, Spatial)
 			.axn_layer("aff_in", map::FF_IN, Spatial)
-			.axn_layer("out", map::FF_FB_OUT, Spatial)
+			// .axn_layer("out", map::FF_FB_OUT, Spatial)
 			.axn_layer("unused", map::UNUSED_TESTING, Spatial)
-			.layer("iv_inhib", 0, map::DEFAULT, Protocell::new_inhibitory(4, "iv"))
+			.layer("mcols", 1, map::FF_FB_OUT, Protocell::minicolumn("iv", "iii"))
+			.layer("iv_inhib", 0, map::DEFAULT, Protocell::inhibitory(4, "iv"))
 
 			.layer("iv", 1, map::PSAL, 
-				Protocell::new_spiny_stellate(5, vec!["aff_in"], 700, 8)
-			)
+				Protocell::spiny_stellate(5, vec!["aff_in"], 700, 8))
 
 			.layer("iii", 2, map::PTAL, 
-				Protocell::new_pyramidal(1, 5, vec!["iii"], 2200, 8)
-					.apical(vec!["eff_in"])
-			)
+				Protocell::pyramidal(1, 5, vec!["iii"], 2200, 8)
+					.apical(vec!["eff_in"]))
 		)
 
 		.lm(ProtolayerMap::new("v0_layer_map", Thalamic)
