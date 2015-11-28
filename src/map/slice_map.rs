@@ -179,6 +179,14 @@ impl SliceMap {
 		&self.u_scales
 	}
 
+	pub fn v_mids(&self) -> &Vec<u32> {
+		&self.v_mids
+	}
+
+	pub fn u_mids(&self) -> &Vec<u32> {
+		&self.u_mids
+	}
+
 	pub fn dims(&self) -> &Vec<SliceDims> {
 		&self.dims
 	}

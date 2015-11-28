@@ -27,38 +27,38 @@
  /* bismit.cl: CONVENTIONS
 
 		idx: current index (of a loop, workgroup, queue, etc.)
-			- almost always a physical in-memory address
+		- almost always a physical in-memory address
 
 		idz := index[0], first element, starting element
 
 		idz_parent: first element within the subset of a parent group
-			- ex.: syn_idx := syn_idz_den + syn_id_den
+		- ex.: syn_idx := syn_idz_den + syn_id_den
 
 		idn := index[len]: element after final element, termination point
-			- ex.: for(int i = 0, i < idn, i++)
+		- ex.: for(int i = 0, i < idn, i++)
 
 		idm := index[max] := index[len - 1]: final (valid) element just before idn. idn - 1 = idm.
-			- ex.: for(int i = 0, i <= idm, i++)
+		- ex.: for(int i = 0, i <= idm, i++)
 
 		id: identifier, but not a physical array index
 
 		id_{parent}: identifier within the subset of a parent group
-			- ex.: syn_idx := syn_idz_den + syn_id_den
+		- ex.: syn_idx := syn_idz_den + syn_id_den
 
 		{var_name}_l2 : A scalar representing the log base 2 representation of a value (log2 val).
-			- 'lg' is too vague and 'lb' is seldom used therefore l2 is the convention used for logs.
+		- 'lg' is too vague and 'lb' is seldom used therefore l2 is the convention used for logs.
 
 		{var_name}_l2i : A scalar representing the inverse log base 2 of a value (1 / log2 val).
 
 		Coordinates: 
-			- slc_id : The id of a slice in axon space (or subset therof such as a layer). This is the 'depth' coordinate corresponding to how far from the top of layer 0/1 we would be in a neocortex.
-			- v_id : The 'v' coordinate of a tile (or in this case an axon, cell, etc.) within a slice in hexagonal tile space.
-			- u_id : The 'u' coordinate of a tile in hexagonal tile space.
-			- w_id : The 'w' coordinate of a tile in hexagonal tile space.
+		- slc_id : The id of a slice in axon space (or subset therof such as a layer). This is the 'depth' coordinate corresponding to how far from the top of layer 0/1 we would be in a neocortex.
+		- v_id : The 'v' coordinate of a tile (or in this case an axon, cell, etc.) within a slice in hexagonal tile space.
+		- u_id : The 'u' coordinate of a tile in hexagonal tile space.
+		- w_id : The 'w' coordinate of a tile in hexagonal tile space.
 
-			- Coordinates are oriented (on the unit circle) with 'u' at 30deg, 'v' at 150deg, and 'w' at 270deg. Any references to 'v' are considered to be inverted (negative) when plotting coordinates in real space. In other words a 'v' value of 5 would equal -5 when plotting or mapping to real 2d space. This is simply a convenience ( / necessity?) for indexing in OpenCL.
+		- Coordinates are oriented (on the unit circle) with 'u' at 30deg, 'v' at 150deg, and 'w' at 270deg. Any references to 'v' are considered to be inverted (negative) when plotting coordinates in real space. In other words a 'v' value of 5 would equal -5 when plotting or mapping to real 2d space. This is simply a convenience ( / necessity?) for indexing in OpenCL.
 
-			- 'w' is seldom used because coordinates are stored in 'axial coordinates' which just means that only two of the three coordinates are actually stored / used because the third can be reconstructed from the other two when needed.
+		- 'w' is seldom used because coordinates are stored in 'axial coordinates' which just means that only two of the three coordinates are actually stored / used because the third can be reconstructed from the other two when needed.
 
 
 		vat [tenative]: vatic, fuzzyness, level of predictiveness
@@ -69,14 +69,14 @@
 
 		
 		Kernel variable order guideline: 
-			- __global const* pointers (read-only arrays) first, 
-			- __local, __private scalars, etc. in the middle,
-			- __global non-const pointers (output arrays) last,
+		- __global const* pointers (read-only arrays) first, 
+		- __local, __private scalars, etc. in the middle,
+		- __global non-const pointers (output arrays) last,
 		
 
 		ASSUMPTIONS BEING MADE: (TODO: add assert!s in host)
-			syns_per_tft > 4
-			u_size and v_size (global) are multiples of 8
+		- syns_per_tft > 4
+		- u_size and v_size (global) are multiples of 8
 
 		vloadn(size_t offset, const __constant gentype *p )
 */
@@ -102,6 +102,8 @@ __constant uint axn_slc_v_sizes[AXN_SLC_COUNT] = { AXN_SLC_V_SIZES };
 __constant uint axn_slc_u_sizes[AXN_SLC_COUNT] = { AXN_SLC_U_SIZES };
 __constant uchar axn_slc_v_scales[AXN_SLC_COUNT] = { AXN_SLC_V_SCALES };
 __constant uchar axn_slc_u_scales[AXN_SLC_COUNT] = { AXN_SLC_U_SCALES };
+__constant uchar axn_slc_v_mids[AXN_SLC_COUNT] = { AXN_SLC_V_MIDS };
+__constant uchar axn_slc_u_mids[AXN_SLC_COUNT] = { AXN_SLC_U_MIDS };
 
 
 static inline uint get_axn_idz(uchar slc_id) {
@@ -127,7 +129,6 @@ static inline int4 get_axn_v_size_vec4(uchar4 slc_id) {
 					axn_slc_v_sizes[slc_id.s3]);
 }
 
-
 static inline uint get_axn_u_size(uchar slc_id) {
 	return axn_slc_u_sizes[slc_id];
 }
@@ -151,7 +152,6 @@ static inline int4 get_axn_v_scale_vec4(uchar4 slc_id) {
 					axn_slc_v_scales[slc_id.s3]);
 }
 
-
 static inline uint get_axn_u_scale(uchar slc_id) {
 	return axn_slc_u_scales[slc_id];
 }
@@ -161,6 +161,29 @@ static inline int4 get_axn_u_scale_vec4(uchar4 slc_id) {
 					axn_slc_u_scales[slc_id.s1], 
 					axn_slc_u_scales[slc_id.s2], 
 					axn_slc_u_scales[slc_id.s3]);
+}
+
+
+static inline uint get_axn_v_mid(uchar slc_id) {
+	return axn_slc_v_mids[slc_id];
+}
+
+static inline int4 get_axn_v_mid_vec4(uchar4 slc_id) {
+	return (int4)(	axn_slc_v_mids[slc_id.s0], 
+					axn_slc_v_mids[slc_id.s1], 
+					axn_slc_v_mids[slc_id.s2], 
+					axn_slc_v_mids[slc_id.s3]);
+}
+
+static inline uint get_axn_u_mid(uchar slc_id) {
+	return axn_slc_u_mids[slc_id];
+}
+
+static inline int4 get_axn_u_mid_vec4(uchar4 slc_id) {
+	return (int4)(	axn_slc_u_mids[slc_id.s0], 
+					axn_slc_u_mids[slc_id.s1], 
+					axn_slc_u_mids[slc_id.s2], 
+					axn_slc_u_mids[slc_id.s3]);
 }
 
 
@@ -195,7 +218,7 @@ static inline int rnd_mix(int const rnd_a, int seed) {
 }
 
 static inline uint calc_syn_idz(uint const tuft_id, uint const cel_count, uint const cel_id, 
-				uchar const syns_per_tft_l2) 
+			uchar const syns_per_tft_l2) 
 {
 	uint const syn_tuft_ofs = mul24(tuft_id, cel_count) << syns_per_tft_l2;
 	return syn_tuft_ofs + (cel_id << syns_per_tft_l2);
@@ -233,24 +256,28 @@ static inline int4 coord_is_safe_vec4(int4 const dim_size, int4 const coord_id, 
 =============================================================================*/
 
 // CEL_IDX_3D_UNSAFE(): LINEAR INDEX OF A CELL - NOT ACCURATE FOR AXONS
-static inline uint cel_idx_3d_unsafe(uint slc_id_lyr, uint v_size, uint v_id, uint u_size, uint u_id) {
+static inline uint cel_idx_3d_unsafe(uint slc_id_lyr, uint v_size, uint v_id, uint u_size, 
+			uint u_id) 
+{
 	return mad24(slc_id_lyr, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
 }
 
 // CEL_IDX_3D_UNSAFE_VEC4(): LINEAR INDEX OF A CELL - NOT FOR ACCURATE AXONS
-static inline int4 cel_idx_3d_unsafe_vec4(uchar4 slc_id_lyr_uchar4, int4 v_size, int4 v_id, int4 u_size, int4 u_id) {
+static inline int4 cel_idx_3d_unsafe_vec4(uchar4 slc_id_lyr_uchar4, int4 v_size, int4 v_id, 
+			int4 u_size, int4 u_id) 
+{
 	int4 slc_id_lyr = convert_int4(slc_id_lyr_uchar4);
 	return mad24(slc_id_lyr, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
 }
 
 // 	SAFE_CEL_STATE_3D(): 'Safe' Cell State Resolution
-// 		- If id + ofs are out of cortical bounds, zero is returned
-//			- otherwise resolved state is returned 
-//		- Intended primarily for use by the inhibition-related kernel(s)
+// 	- If id + ofs are out of cortical bounds, zero is returned
+//		- otherwise resolved state is returned 
+//	- Intended primarily for use by the inhibition-related kernel(s)
 static inline uchar cel_state_3d_safe(uchar slc_id_lyr, 
-				uint v_size, uint v_id, char v_ofs, 
-				uint u_size, uint u_id, char u_ofs, 
-				__global uchar const* const cel_states) 
+			uint v_size, uint v_id, char v_ofs, 
+			uint u_size, uint u_id, char u_ofs, 
+			__global uchar const* const cel_states) 
 {
 	int v_ofs_is_safe = coord_is_safe(v_size, v_id, v_ofs);
 	int u_ofs_is_safe = coord_is_safe(u_size, u_id, u_ofs);
@@ -266,66 +293,84 @@ static inline uchar cel_state_3d_safe(uchar slc_id_lyr,
 ================================ AXON INDEXING ================================
 =============================================================================*/
 
-// <<<<< TODO: Define axn_idx_3d_safe which will not require ofs or 'idx_is_safe' reference >>>>>
-
+// <<<<< TODO: 
+// - Define a version of axn_idx_3d_safe which does not require '*_ofs' or 
+//   'idx_is_safe' pointer.
+// - Update axn_idx_3d_unsafe(_*) to re-use function parameter variables rather than
+//   create new ones for _id and _ofs.
+//    - Find out if the compiler may already be doing this.
+// >>>>>
 // AXN_IDX_3D_UNSAFE(): Linear index of an axon
-// 		- Using ints as intermediate variables to be consistent with vectorized version 
-// 			(will only affect invalid indexes)
+// - Using ints as intermediate variables to be consistent with vectorized version 
+//   (will only affect invalid indexes)
 static inline uint axn_idx_3d_unsafe(uchar const slc_id, uint const v_id_unscaled, 
-			char const v_ofs, uint const u_id_unscaled, char const u_ofs, int* const idx_is_safe) 
+			char v_ofs, uint const u_id_unscaled, char u_ofs, int* const idx_is_safe) 
 	{
 	// GET THE DIM SIZES:
 	int const v_size = get_axn_v_size(slc_id);
 	int const u_size = get_axn_u_size(slc_id);
 
-	// 	CALCULATE SCALED INDEX:
-	// 		- Multiply by the pre-defined scale for specified slice then divide by 16.
-	// 		- A scale of 16 = 100%, 8 = 50%, 32 = 200%, etc.
+	// ADD MIDDLE OFFSETS (used for horizontal axons) TO SYNAPSE OFFSET:
+	v_ofs += get_axn_v_mid(slc_id);
+	u_ofs += get_axn_u_mid(slc_id);
+
+	// CALCULATE SCALED INDEX:
+	// - Multiply by the pre-defined scale for specified slice then divide by 16.
+	// - A scale of 16 = 100%, 8 = 50%, 32 = 200%, etc. A scale of 0 is a horizontal slice.
 	int const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale(slc_id)) >> 4);
 	int const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale(slc_id)) >> 4);
 
-	// CALCULATE HORIZONTAL INDEX:
-	int const v_id_hrz = v_size >> 1;
-	int const u_id_hrz = u_size >> 1;	
+	// // CALCULATE HORIZONTAL INDEX:
+	// int const v_id_hrz = v_size >> 1;
+	// int const u_id_hrz = u_size >> 1;	
 
-	// DETERMINE IF THIS IS A HORIZONTAL SLICE:
-	int const idx_is_hrz = slc_id >= HORIZONTAL_AXON_ROW_DEMARCATION;
+	// // DETERMINE IF THIS IS A HORIZONTAL SLICE:
+	// int const idx_is_hrz = slc_id >= HORIZONTAL_AXON_ROW_DEMARCATION;
 
-	// IF SLICE IS HORIZONTAL ASSIGN CORRESPONDING ID AND VICE VERSA:
-	int const v_id = mad24(idx_is_hrz, v_id_hrz, mul24(!idx_is_hrz, v_id_scaled));
-	int const u_id = mad24(idx_is_hrz, u_id_hrz, mul24(!idx_is_hrz, u_id_scaled));
+	// // IF SLICE IS HORIZONTAL ASSIGN CORRESPONDING ID AND VICE VERSA:
+	// int const v_id = mad24(idx_is_hrz, v_id_hrz, mul24(!idx_is_hrz, v_id_scaled));
+	// int const u_id = mad24(idx_is_hrz, u_id_hrz, mul24(!idx_is_hrz, u_id_scaled));
 		
-	// CHECK SAFETY:
-	*idx_is_safe = coord_is_safe(v_size, v_id, v_ofs) & coord_is_safe(u_size, u_id, u_ofs);
+	// CHECK SAFETY (bounds):
+	*idx_is_safe = coord_is_safe(v_size, v_id_scaled, v_ofs) 
+		& coord_is_safe(u_size, u_id_scaled, u_ofs);
 
-	// RETURN the sum of the pre-defined axon offset for the slice and the linear offset within that slice:
-	return get_axn_idz(slc_id) + (uint)(mad24(v_id + v_ofs, u_size, u_id + u_ofs));
+	// RETURN the sum of the following:
+	// - the pre-defined axon offset (the idz) for the slice and
+	// - the linear offset within that slice including, for each of the two axial 
+	//   (hex tile grid) dimensions:
+	//    - the scaled position
+	//    - the synapse offset
+	//    - the previously added middle offset
+	return get_axn_idz(slc_id) + (uint)(mad24(v_id_scaled + v_ofs, u_size, u_id_scaled + u_ofs));
 }
 
 // AXN_IDX_3D_UNSAFE_VEC4(): Linear index of an axon, vec4
 static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id, int4 const v_id_unscaled, 
-		char4 const v_ofs_char4, int4 const u_id_unscaled, char4 const u_ofs_char4, int4* const idx_is_safe)
+			char4 const v_ofs_char4, int4 const u_id_unscaled, char4 const u_ofs_char4, 
+			int4* const idx_is_safe)
 {
-	int4 const v_ofs = convert_int4(v_ofs_char4);
-	int4 const u_ofs = convert_int4(u_ofs_char4);
-
 	int4 const v_size = get_axn_v_size_vec4(slc_id);
 	int4 const u_size = get_axn_u_size_vec4(slc_id);
+
+	int4 const v_ofs = convert_int4(v_ofs_char4) + get_axn_v_mid_vec4(slc_id);
+	int4 const u_ofs = convert_int4(u_ofs_char4) + get_axn_u_mid_vec4(slc_id);
 
 	int4 const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale_vec4(slc_id)) >> 4);
 	int4 const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale_vec4(slc_id)) >> 4);
 
-	int4 const v_id_hrz = v_size >> 1;
-	int4 const u_id_hrz = u_size >> 1;
+	// int4 const v_id_hrz = v_size >> 1;
+	// int4 const u_id_hrz = u_size >> 1;
 
-	int4 const idx_is_hrz = convert_int4(slc_id) >= (int4)HORIZONTAL_AXON_ROW_DEMARCATION;
+	// int4 const idx_is_hrz = convert_int4(slc_id) >= (int4)HORIZONTAL_AXON_ROW_DEMARCATION;
 
-	int4 const v_id = (idx_is_hrz & v_id_hrz) | (~idx_is_hrz & v_id_scaled);
-	int4 const u_id = (idx_is_hrz & u_id_hrz) | (~idx_is_hrz & u_id_scaled);
+	// int4 const v_id = (idx_is_hrz & v_id_hrz) | (~idx_is_hrz & v_id_scaled);
+	// int4 const u_id = (idx_is_hrz & u_id_hrz) | (~idx_is_hrz & u_id_scaled);
 
-	*idx_is_safe = coord_is_safe_vec4(v_size, v_id, v_ofs) & coord_is_safe_vec4(u_size, u_id, u_ofs);
+	*idx_is_safe = coord_is_safe_vec4(v_size, v_id_scaled, v_ofs) 
+		& coord_is_safe_vec4(u_size, u_id_scaled, u_ofs);
 
-	return get_axn_idz_vec4(slc_id) + mad24(v_id + v_ofs, u_size, u_id + u_ofs);
+	return get_axn_idz_vec4(slc_id) + mad24(v_id_scaled + v_ofs, u_size, u_id_scaled + u_ofs);
 }
 
 
@@ -342,7 +387,7 @@ static inline uchar axn_state_3d_safe(uchar slc_id, uint v_id, char v_ofs, uint 
 
 // AXN_STATE_3D_SAFE_VEC4():
 static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_ofs, 
-	int4 u_id, char4 u_ofs, __global uchar const* const axn_states) 
+			int4 u_id, char4 u_ofs, __global uchar const* const axn_states) 
 {
 	int4 idx_is_safe = (int4)0;
 	int4 axn_idx = axn_idx_3d_unsafe_vec4(slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
@@ -372,12 +417,12 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 // 		STDEP set when depression has already been applied (needs to be cleared by trmn)
 // 		STPOT set when potentiation is due to be applied (by trmn)
 static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
-				__global uchar const* const syn_states,
-				uint const syn_idz,	
-				uint const syns_per_den_l2,
-				int const rnd,
-				__global uchar* const syn_flag_sets,
-				__global char* const syn_strengths) 
+			__global uchar const* const syn_states,
+			uint const syn_idz,	
+			uint const syns_per_den_l2,
+			int const rnd,
+			__global uchar* const syn_flag_sets,
+			__global char* const syn_strengths) 
 {
 	uint const n = syn_idz + (1 << syns_per_den_l2);
 
@@ -473,14 +518,14 @@ static inline void lshft_mask(int* mask, int const shft_l2) {
 // 		- Occurs when a cell which had been active becomes inactive.
 // TODO: VECTORIZE
 static inline void tft_syns_trm( 
-				__global uchar const* const syn_states,
-				uint const syn_idz,
-				uint const syns_per_tft_l2,
-				int const rnd,
-				int const lr_l2i, // LEARNING RATE INVERSE LOG BASE 2 (1/L2)
-				__global uchar* const syn_flag_sets,
-				__global int* const aux_ints_0,
-				__global char* const syn_strengths) 
+			__global uchar const* const syn_states,
+			uint const syn_idz,
+			uint const syns_per_tft_l2,
+			int const rnd,
+			int const lr_l2i, // LEARNING RATE INVERSE LOG BASE 2 (1/L2)
+			__global uchar* const syn_flag_sets,
+			__global int* const aux_ints_0,
+			__global char* const syn_strengths) 
 {
 	uint const n = syn_idz + (1 << syns_per_tft_l2);
 
@@ -519,11 +564,11 @@ static inline void tft_syns_trm(
 
 // TODO: VECTORIZE 
 static inline void prx_syns__active__ltp_ltd( 
-				__global uchar const* const syn_states,
-				uint const syn_idz,
-				uint const syns_per_den_l2,
-				int const rnd,
-				__global char* const syn_strengths) 
+			__global uchar const* const syn_states,
+			uint const syn_idz,
+			uint const syns_per_den_l2,
+			int const rnd,
+			__global char* const syn_strengths) 
 {
 	uint const n = syn_idz + (1 << syns_per_den_l2);
 
@@ -592,14 +637,14 @@ __kernel void reference_all_the_things(__private int const for_sanitys_sake) {
 
 // DEN_CYCLE():
 __kernel void den_cycle(
-				__global uchar const* const syn_states,
-				__global char const* const syn_strengths,
-				__private uchar const syns_per_den_l2,
-				__private uint const den_threshold,
-				__global uchar* const den_energies,
-				__global uchar* const den_states_raw,
-				//__global int* const aux_ints_1,
-				__global uchar* const den_states) 
+			__global uchar const* const syn_states,
+			__global char const* const syn_strengths,
+			__private uchar const syns_per_den_l2,
+			__private uint const den_threshold,
+			__global uchar* const den_energies,
+			__global uchar* const den_states_raw,
+			//__global int* const aux_ints_1,
+			__global uchar* const den_states) 
 {
 	uint const den_idx = get_global_id(0);
 	uint const syn_idz = den_idx << syns_per_den_l2;
@@ -653,10 +698,10 @@ __kernel void den_cycle(
 //				- or just prefetch global cache? (comparison needed)
 //			- be vectorized
 __kernel void inhib_simple(
-				__global uchar const* const cel_states,
-				__private uchar const cel_base_axn_slc,
-				// __global int* const aux_ints_1,
-				__global uchar* const axn_states)
+			__global uchar const* const cel_states,
+			__private uchar const cel_base_axn_slc,
+			// __global int* const aux_ints_1,
+			__global uchar* const axn_states)
 {
 	uint const slc_id_lyr = get_global_id(0);
 	uint const v_id = get_global_id(1);
@@ -792,9 +837,9 @@ __kernel void inhib_simple(
 }
 
 __kernel void inhib_passthrough(
-				__global uchar const* const cel_states,
-				__private uchar const cel_base_axn_slc,
-				__global uchar* const axn_states) 
+			__global uchar const* const cel_states,
+			__private uchar const cel_base_axn_slc,
+			__global uchar* const axn_states) 
 {
 	uint const slc_id_lyr = get_global_id(0);
 	uint const v_id = get_global_id(1);
@@ -816,14 +861,14 @@ __kernel void inhib_passthrough(
 
 // SST_LTP_SIMPLE(): Long term potentiation for Spiny Stellate Cells - Completely unoptimized
 __kernel void sst_ltp_simple(
-				__global uchar const* const axn_states,
-				__global uchar const* const syn_states,
-				__private uint const cel_axn_idz,
-				//__private uint const tufts_per_cel,
-				__private uchar const syns_per_tft_l2,
-				__private uint const rnd,
-				// __global int* const aux_ints_0,
-				__global char* const syn_strengths) 
+			__global uchar const* const axn_states,
+			__global uchar const* const syn_states,
+			__private uint const cel_axn_idz,
+			//__private uint const tufts_per_cel,
+			__private uchar const syns_per_tft_l2,
+			__private uint const rnd,
+			// __global int* const aux_ints_0,
+			__global char* const syn_strengths) 
 {
 	uint const tuft_id = get_global_id(0);
 	uint const cel_id = get_global_id(1);
@@ -848,14 +893,14 @@ __kernel void sst_ltp_simple(
 // <<<<< TODO: ADD AN ADDITIONAL DIMENSION [0] FOR SLC_ID TO SUPPORT MULTIPLE SLICE SST LAYERS >>>>>
 // <<<<< NOTE: THIS KERNEL MAY BE FLAWED WHEN USED WITH MULTIPLE TUFTS - SEE PYR_LTP >>>>>
 __kernel void sst_ltp(
-				__global uchar const* const axn_states,
-				__global uchar const* const syn_states,
-				__private uint const cel_lyr_axn_idz,
-				__private uint const cels_per_grp,
-				__private uchar const syns_per_tft_l2,
-				__private uint const rnd,
-				// __global int* const aux_ints_0,
-				__global char* const syn_strengths) 
+			__global uchar const* const axn_states,
+			__global uchar const* const syn_states,
+			__private uint const cel_lyr_axn_idz,
+			__private uint const cels_per_grp,
+			__private uchar const syns_per_tft_l2,
+			__private uint const rnd,
+			// __global int* const aux_ints_0,
+			__global char* const syn_strengths) 
 {
 	uint const tuft_id = get_global_id(0);
 	uint const cel_grp_id = get_global_id(1);
@@ -895,20 +940,20 @@ __kernel void sst_ltp(
 // TODO: TUFTIFY
 // TODO: REMOVE BEST_DEN_IDS AND DEN_STATES AND REPLACE WITH BEST_DEN_STATES (KEEP INDEXING IN MIND)
 __kernel void mcol_activate_pyrs(
-				__global uchar const* const mcol_flag_sets, // COL
-				__global uchar const* const mcol_best_den_states,
-				// __global uchar const* const cel_tft_best_den_ids,
-				__global uchar const* const pyr_best_den_states,
-				// __global uchar const* const den_states,
-				// __global uchar const* const cel_tft_best_den_ids, // ADD ME?
-				__private uint const ssts_axn_idz, 		// Primary spatial associative cell layer (ssts)
-				__private uint const pyrs_axn_idz,	  	// Primary temporal associative cell layer (pyrs)
-				// __private uchar const pyr_axn_slc_base,
-				__private uchar const dens_per_tft_l2,
-				__global uchar* const pyr_flag_sets,
-				__global uchar* const pyr_states,
-				__global int* const aux_ints_0,
-				__global uchar* const axn_states) 
+			__global uchar const* const mcol_flag_sets, // COL
+			__global uchar const* const mcol_best_den_states,
+			// __global uchar const* const cel_tft_best_den_ids,
+			__global uchar const* const pyr_best_den_states,
+			// __global uchar const* const den_states,
+			// __global uchar const* const cel_tft_best_den_ids, // ADD ME?
+			__private uint const ssts_axn_idz, 		// Primary spatial associative cell layer (ssts)
+			__private uint const pyrs_axn_idz,	  	// Primary temporal associative cell layer (pyrs)
+			// __private uchar const pyr_axn_slc_base,
+			__private uchar const dens_per_tft_l2,
+			__global uchar* const pyr_flag_sets,
+			__global uchar* const pyr_states,
+			__global int* const aux_ints_0,
+			__global uchar* const axn_states) 
 {
 	uint const slc_id_lyr = get_global_id(0);
 	uint const v_id = get_global_id(1);
@@ -1123,24 +1168,24 @@ __kernel void mcol_activate_pyrs(
 */
 // <<<<< TODO: FIX: NOT TAKING IN TO ACCOUNT MULTIPLE TUFTS! MAJOR INDEXING PROBLEMS >>>>>
 __kernel void pyrs_ltp(
-				__global uchar const* const axn_states,
-				__global uchar const* const cel_states,
-				__global uchar const* const cel_tft_best_den_ids,
-				__global uchar const* const cel_tft_best_den_states,
-				__global uchar const* const den_states,
-				__global uchar const* const syn_states,
-				__private uint const tfts_per_cel,
-				__private uint const dens_per_tft_l2,
-				__private uint const syns_per_den_l2,
-				__private uint const cels_per_cel_grp,
-				__private uint const axn_idz_cel_lyr,
-				__private int const learning_rate_l2i,
-				__private int const rnd,
-				__global uchar* const syn_flag_sets,
-				__global uchar* const cel_flag_sets,
-				__global int* const aux_ints_0,
-				__global int* const aux_ints_1,
-				__global char* const syn_strengths) 
+			__global uchar const* const axn_states,
+			__global uchar const* const cel_states,
+			__global uchar const* const cel_tft_best_den_ids,
+			__global uchar const* const cel_tft_best_den_states,
+			__global uchar const* const den_states,
+			__global uchar const* const syn_states,
+			__private uint const tfts_per_cel,
+			__private uint const dens_per_tft_l2,
+			__private uint const syns_per_den_l2,
+			__private uint const cels_per_cel_grp,
+			__private uint const axn_idz_cel_lyr,
+			__private int const learning_rate_l2i,
+			__private int const rnd,
+			__global uchar* const syn_flag_sets,
+			__global uchar* const cel_flag_sets,
+			__global int* const aux_ints_0,
+			__global int* const aux_ints_1,
+			__global char* const syn_strengths) 
 {
 	uint const cel_grp_id = get_global_id(0);
 	uint const cel_grp_count = get_global_size(0);
@@ -1227,16 +1272,16 @@ __kernel void pyrs_ltp(
 
 // TODO: Investigate the bizarre glitch with this kernel with the phantom best_dens
 __kernel void pyr_cycle(
-				__global uchar const* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
-				__global uchar const* const den_states,				
-				__private uint const tfts_per_cel,
-				__private uchar const dens_per_tft_l2,				
-				__global uchar* const cel_tft_best_den_ids,
-				__global uchar* const cel_tft_best_den_states,
-				__global uchar* const pyr_best_den_states,
-				__global int* const aux_ints_0,
-				__global int* const aux_ints_1,
-				__global uchar* const pyr_states) 
+			__global uchar const* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
+			__global uchar const* const den_states,				
+			__private uint const tfts_per_cel,
+			__private uchar const dens_per_tft_l2,				
+			__global uchar* const cel_tft_best_den_ids,
+			__global uchar* const cel_tft_best_den_states,
+			__global uchar* const pyr_best_den_states,
+			__global int* const aux_ints_0,
+			__global int* const aux_ints_1,
+			__global uchar* const pyr_states) 
 {
 	uint const cel_idx = get_global_id(0);
 	uint const cel_count = get_global_size(0);
@@ -1319,17 +1364,17 @@ __kernel void pyr_cycle(
 //		- rename coming
 //
 __kernel void mcol_output(
-				__global uchar const* const pyr_states,				
-				// __global uchar const* const cel_tft_best_den_states,
-				__private uint const tfts_per_cel,
-				__private uint const sst_axn_idz,
-				__private uchar const pyr_depth,
-				__private uchar const aff_out_axn_slc,
-				__global uchar* const pyr_best_den_states,
-				__global uchar* const mcol_flag_sets,
-				__global uchar* const mcol_best_den_states,
-				// __global int* const aux_ints_0,
-				__global uchar* const axn_states)
+			__global uchar const* const pyr_states,				
+			// __global uchar const* const cel_tft_best_den_states,
+			__private uint const tfts_per_cel,
+			__private uint const sst_axn_idz,
+			__private uchar const pyr_depth,
+			__private uchar const aff_out_axn_slc,
+			__global uchar* const pyr_best_den_states,
+			__global uchar* const mcol_flag_sets,
+			__global uchar* const mcol_best_den_states,
+			// __global int* const aux_ints_0,
+			__global uchar* const axn_states)
 {
 	// uint const slc_id_lyr = get_global_id(0); // FIXED TO JUST ONE LAYER RIGHT NOW
 	uint const v_id = get_global_id(0);
@@ -1405,3 +1450,65 @@ __kernel void mcol_output(
 ===============================================================================
 =============================================================================*/
 
+
+
+
+// // AXN_IDX_3D_UNSAFE(): Linear index of an axon
+// // 		- Using ints as intermediate variables to be consistent with vectorized version 
+// // 			(will only affect invalid indexes)
+// static inline uint axn_idx_3d_unsafe(uchar const slc_id, uint const v_id_unscaled, 
+// 			char const v_ofs, uint const u_id_unscaled, char const u_ofs, int* const idx_is_safe) 
+// 	{
+// 	// GET THE DIM SIZES:
+// 	int const v_size = get_axn_v_size(slc_id);
+// 	int const u_size = get_axn_u_size(slc_id);
+
+// 	// 	CALCULATE SCALED INDEX:
+// 	// 		- Multiply by the pre-defined scale for specified slice then divide by 16.
+// 	// 		- A scale of 16 = 100%, 8 = 50%, 32 = 200%, etc.
+// 	int const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale(slc_id)) >> 4);
+// 	int const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale(slc_id)) >> 4);
+
+// 	// CALCULATE HORIZONTAL INDEX:
+// 	int const v_id_hrz = v_size >> 1;
+// 	int const u_id_hrz = u_size >> 1;	
+
+// 	// DETERMINE IF THIS IS A HORIZONTAL SLICE:
+// 	int const idx_is_hrz = slc_id >= HORIZONTAL_AXON_ROW_DEMARCATION;
+
+// 	// IF SLICE IS HORIZONTAL ASSIGN CORRESPONDING ID AND VICE VERSA:
+// 	int const v_id = mad24(idx_is_hrz, v_id_hrz, mul24(!idx_is_hrz, v_id_scaled));
+// 	int const u_id = mad24(idx_is_hrz, u_id_hrz, mul24(!idx_is_hrz, u_id_scaled));
+		
+// 	// CHECK SAFETY:
+// 	*idx_is_safe = coord_is_safe(v_size, v_id, v_ofs) & coord_is_safe(u_size, u_id, u_ofs);
+
+// 	// RETURN the sum of the pre-defined axon offset for the slice and the linear offset within that slice:
+// 	return get_axn_idz(slc_id) + (uint)(mad24(v_id + v_ofs, u_size, u_id + u_ofs));
+// }
+
+// // AXN_IDX_3D_UNSAFE_VEC4(): Linear index of an axon, vec4
+// static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id, int4 const v_id_unscaled, 
+// 		char4 const v_ofs_char4, int4 const u_id_unscaled, char4 const u_ofs_char4, int4* const idx_is_safe)
+// {
+// 	int4 const v_ofs = convert_int4(v_ofs_char4);
+// 	int4 const u_ofs = convert_int4(u_ofs_char4);
+
+// 	int4 const v_size = get_axn_v_size_vec4(slc_id);
+// 	int4 const u_size = get_axn_u_size_vec4(slc_id);
+
+// 	int4 const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale_vec4(slc_id)) >> 4);
+// 	int4 const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale_vec4(slc_id)) >> 4);
+
+// 	int4 const v_id_hrz = v_size >> 1;
+// 	int4 const u_id_hrz = u_size >> 1;
+
+// 	int4 const idx_is_hrz = convert_int4(slc_id) >= (int4)HORIZONTAL_AXON_ROW_DEMARCATION;
+
+// 	int4 const v_id = (idx_is_hrz & v_id_hrz) | (~idx_is_hrz & v_id_scaled);
+// 	int4 const u_id = (idx_is_hrz & u_id_hrz) | (~idx_is_hrz & u_id_scaled);
+
+// 	*idx_is_safe = coord_is_safe_vec4(v_size, v_id, v_ofs) & coord_is_safe_vec4(u_size, u_id, u_ofs);
+
+// 	return get_axn_idz_vec4(slc_id) + mad24(v_id + v_ofs, u_size, u_id + u_ofs);
+// }

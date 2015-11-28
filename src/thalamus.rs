@@ -57,7 +57,7 @@ impl Thalamus {
 				tract.add_area(area_name, tags, cols as usize);
 			}
 
-			println!("{mt}{mt}THALAMUS::NEW(): Area: '{}', output layer info: {:?}.", 
+			println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", output layer info: {:?}.", 
 				area_name, layer_info, mt = cmn::MT);
 			assert!(layer_info.len() > 0, "Areas must have at least one afferent or efferent area.");
 

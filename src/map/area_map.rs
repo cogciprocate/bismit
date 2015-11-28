@@ -26,7 +26,7 @@ impl AreaMap {
 	pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps,
 			input_sources: &InputSources) -> AreaMap 
 	{
-		println!("\n{mt}AREAMAP::NEW(): area name: {}, eff areas: {:?}, aff areas: {:?}", pamap.name, 
+		println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name, 
 			pamap.eff_areas(), pamap.aff_areas(), mt = cmn::MT);
 
 		let layers = LayerMap::new(pamap, plmaps, pamaps, input_sources);
@@ -59,6 +59,8 @@ impl AreaMap {
 			.bo(BuildOpt::include_def("AXN_SLC_U_SIZES", literal_list(self.slices.u_sizes())))
 			.bo(BuildOpt::include_def("AXN_SLC_V_SCALES", literal_list(self.slices.v_scales())))
 			.bo(BuildOpt::include_def("AXN_SLC_U_SCALES", literal_list(self.slices.u_scales())))
+			.bo(BuildOpt::include_def("AXN_SLC_V_MIDS", literal_list(self.slices.v_mids())))
+			.bo(BuildOpt::include_def("AXN_SLC_U_MIDS", literal_list(self.slices.u_mids())))
 		;
 
 		// CUSTOM KERNELS

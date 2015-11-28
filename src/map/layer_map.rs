@@ -23,7 +23,7 @@ impl LayerMap {
 	pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps, 
 			input_sources: &InputSources) -> LayerMap 
 	{
-		println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area '{}'...", 
+		println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...", 
 			pamap.name, mt = cmn::MT);
 
 		let plmap = plmaps[pamap.layer_map_name].clone();

@@ -57,7 +57,7 @@ impl CorticalArea {
 
 		let area_name = area_map.area_name();	
 
-		println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: '{}'...", area_name);		
+		println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);		
 
 		
 		let mut ocl_pq: ocl::ProQue = ocl::ProQue::new(&ocl_context, Some(device_idx));
@@ -66,7 +66,7 @@ impl CorticalArea {
 
 		let dims = area_map.dims().clone_with_incr(ocl_pq.get_max_work_group_size());
 
-		println!("{mt}CORTICALAREA::NEW(): Area '{}' details: \
+		println!("{mt}CORTICALAREA::NEW(): Area \"{}\" details: \
 			(u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: {:?}", 
 			area_name, dims.u_size(), dims.v_size(), dims.depth(), area_map.eff_areas(), 
 			area_map.aff_areas(), ocl_pq.queue().device_id(), mt = cmn::MT);

@@ -47,11 +47,11 @@ pub fn define_plmaps() -> ProtolayerMaps {
 					.apical(vec!["eff_in"]))
 		)
 
-		.lm(ProtolayerMap::new("v0_layer_map", Thalamic)
+		.lm(ProtolayerMap::new("v0_lm", Thalamic)
 			.layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
 		)
 
-		.lm(ProtolayerMap::new("o0_layer_map", Thalamic)
+		.lm(ProtolayerMap::new("o0_lm", Thalamic)
 			.layer("ganglion", 1, map::NS_OUT | LayerTags::with_uid(OLFAC), Axonal(Horizontal))
 		)
 }
@@ -87,14 +87,14 @@ pub fn define_pamaps() -> ProtoareaMaps {
 		// 	None,
 		// )
 
-		.area_ext("o0nsp", "o0_layer_map", 24, Protoinput::Zeros, None, None)
+		.area_ext("o0", "o0_lm", 24, Protoinput::Zeros, None, None)
 
 		// .area("o1", "visual", area_side, 
 		// 	None,
 		// 	Some(vec!["o0sp", "o0nsp"]),
 		// )
 
-		.area_ext("v0", "v0_layer_map", area_side,
+		.area_ext("v0", "v0_lm", area_side,
 			Protoinput::IdxReaderLoop { 
 				file_name: "data/train-images-idx3-ubyte", 
 				cyc_per: CYCLES_PER_FRAME, 
@@ -107,7 +107,7 @@ pub fn define_pamaps() -> ProtoareaMaps {
 
 		.area("v1", "visual", area_side, 
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-			Some(vec!["v0", "o0nsp"]),
+			Some(vec!["v0", "o0"]),
 		)
 
 		.area("b1", "visual", area_side,

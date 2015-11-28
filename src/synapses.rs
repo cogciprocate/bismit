@@ -220,7 +220,7 @@ impl Synapses {
 
 			if init && DEBUG_GROW {
 				println!("{mt}{mt}{mt}{mt}{mt}\
-					SYNAPSES::GROW()[INIT]: \"{}\" ({:?}): src_slc_ids: {:?}, \
+					SYNAPSES::GROW()[INIT]: '{}' ({:?}): src_slc_ids: {:?}, \
 					syns_per_layer_tft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind, 
 					src_slc_ids, syns_per_layer_tft, syn_idz, syn_idn, mt = cmn::MT);	
 			}
