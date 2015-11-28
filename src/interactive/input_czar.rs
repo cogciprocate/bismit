@@ -144,7 +144,7 @@ impl InputCzar {
 			},
 
 			InputKind::IdxReader(ref mut ir) => {
-				input_status = ir.next(&mut self.vec_optical[..]);
+				input_status = ir.cycle(&mut self.vec_optical[..]);
 				//input_status = 999;
 			}
 

@@ -1,86 +1,87 @@
 // use std::iter;
+use std::collections::{ HashMap };
 
-use cmn::{ self, Sdr };
+use map::{ self, LayerTags };
+use cmn::{ self, Sdr, CorticalDims };
 use ocl::{ EventList };
-use proto::{ ProtoareaMap, Protoinput };
+use proto::{ ProtoareaMap, Protoinput, ProtolayerMap, Protolayer, AxonKind };
 use encode::{ IdxReader };
 
+pub type InputSources = HashMap<(&'static str, LayerTags), InputSource>;
+
 pub trait InputGanglion {
-	fn next(&mut self, ganglion: &mut Sdr) -> usize;
+	fn cycle(&mut self, ganglion: &mut Sdr) -> usize;
 }
 
 pub struct InputSource {
 	area_name: &'static str,
+	layer_tags: LayerTags,
 	kind: InputSourceKind,
+	layer_name: &'static str,
+	axn_kind: AxonKind,
+	dims: CorticalDims,
 	// source: Box<InputGanglion>,
-	// targets: Vec<&'static str>,
-	depth: u8,
 }
 
 impl InputSource {
-	// [FIXME] Multiple output target areas disabled.
-	// [FIXME] Depricate targets? Is knowing targets useful? - Thalamus now handles this.
 	// [FIXME] Determine (or have passed in) the layer depth corresponding to this source.
-	pub fn new(pamap: &ProtoareaMap) -> InputSource {
+	pub fn new(pamap: &ProtoareaMap, plmap: &ProtolayerMap) -> InputSource {
 		let input = &pamap.input;
 
-		let (kind, /*targets,*/ len, depth) = match input {
-			&Protoinput::IdxReader { file_name, cyc_per, scale } => {
-				let ir = IdxReader::new(pamap.dims.clone_with_depth(1), file_name, cyc_per, scale);				
-				let len = ir.dims().cells();
-				debug_assert!(pamap.dims.columns() == len);
+		let layers: Vec<&Protolayer> = plmap.layers().iter().map(|(_, pl)| pl).collect();
 
-				( // RETURN TUPLE
-					InputSourceKind::IdxReader(Box::new(ir)), 
-					/*pamap.aff_areas().clone(),*/ // DEPRICATE
-					len,
-					cmn::DEFAULT_OUTPUT_LAYER_DEPTH,
-				)
+		assert!(plmap.layers().len() == 1 && layers.len() == 1, "InputSource::new(): External \
+			('Thalamic') areas with layer maps having more (or less) than one layer are not yet \
+			allowed. [area: '{}', layer map: '{}']", pamap.name(), plmap.name());
+
+		let layer_name = layers[0].name();
+		let layer_tags = layers[0].tags();
+		let axn_kind = layers[0].kind().axn_kind().expect("InputSource::new(): InputSource layer \
+			must be 'LayerKind::Axonal(_)'.");
+		let layer_depth = layers[0].depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
+		let dims = pamap.dims.clone_with_depth(layer_depth);
+
+		assert!(layer_tags.contains(map::OUTPUT), "InputSource::new(): External ('Thalamic') areas \
+			must have a single layer with an 'OUTPUT' tag. [area: '{}', layer map: '{}']", 
+			pamap.name(), plmap.name());
+
+		let kind = match input {
+			&Protoinput::IdxReader { file_name, cyc_per, scale } => {
+				let ir = IdxReader::new(dims.clone(), file_name, 
+					cyc_per, scale);				
+				InputSourceKind::IdxReader(Box::new(ir))
 			},
 
 			&Protoinput::IdxReaderLoop { file_name, cyc_per, scale, loop_frames } => {
-				let ir = IdxReader::new(pamap.dims.clone_with_depth(1), file_name, cyc_per, scale)
-					.loop_frames(loop_frames);
-				let len = ir.dims().cells();
-				debug_assert!(pamap.dims.columns() == len);
-				
-				( // RETURN TUPLE
-					InputSourceKind::IdxReader(Box::new(ir)), 
-					/*pamap.aff_areas().clone(),*/ // DEPRICATE
-					len,
-					cmn::DEFAULT_OUTPUT_LAYER_DEPTH,
-				)
+				let ir = IdxReader::new(dims.clone(), file_name, 
+					cyc_per, scale).loop_frames(loop_frames);				
+				InputSourceKind::IdxReader(Box::new(ir))
 			},
 
-			&Protoinput::None | &Protoinput::Zeros => (InputSourceKind::None, 
-				/*pamap.aff_areas().clone(),*/ pamap.dims.columns(), 
-				cmn::DEFAULT_OUTPUT_LAYER_DEPTH),
+			&Protoinput::None | &Protoinput::Zeros => InputSourceKind::None,
 
 			_ => panic!("\nInputSource::new(): Input type not yet supported."),
 		};
 
-		// [FIXME] Multiple output target areas disabled.
-		// assert!(targets.len() == 1, "Output to more or less than one area temporarily disabled. \
-		// 	Please create duplicate external source areas for now. Current source areas for '{}': {:?}.", 
-		// 	pamap.name, targets);
-
 		InputSource {
 			area_name: pamap.name,
+			layer_tags: layer_tags, 
 			kind: kind,
-			depth: depth,
-			// targets: targets,
+			layer_name: layer_name,			
+			axn_kind: axn_kind,
+			dims: dims,			
 		}
 	}
 
 	// [FIXME] Multiple output target areas disabled.
-	pub fn next(&mut self, ganglion: &mut Sdr, events: &mut EventList) {
+	pub fn cycle(&mut self, ganglion: &mut Sdr, events: &mut EventList) {
 		// This is temp (mult out tar areas): DEPRICATING: 
 		// debug_assert!(self.targets.len() == 1);
 
 		match self.kind {
 			InputSourceKind::IdxReader(ref mut ig) |
 			InputSourceKind::Custom(ref mut ig)
-				=> { let _ = ig.next(ganglion); },
+				=> { let _ = ig.cycle(ganglion); },
 				
 			_ => (),
 		}
@@ -90,8 +91,20 @@ impl InputSource {
 		self.area_name
 	}
 
-	pub fn depth(&self) -> u8 {
-		self.depth
+	pub fn tags(&self) -> LayerTags {
+		self.layer_tags
+	}
+
+	pub fn axn_kind(&self) -> AxonKind {
+		self.axn_kind.clone()
+	}
+
+	// pub fn depth(&self) -> u8 {
+	// 	self.depth
+	// }
+
+	pub fn dims(&self) -> &CorticalDims {
+		&self.dims
 	}
 }
 

@@ -31,16 +31,16 @@ pub struct CorticalDims {
 	depth: u8, // in cell-edges (NxMx1)
 	tfts_per_cel: u32, // dendritic tufts per cell
 	per_tft_l2: i8, // divisions per cell-tuft (log2)
-	physical_increment: Option<u32>,
+	incr: Option<u32>,
 }
 
 impl CorticalDims {
-	pub fn new(u_size: u32, v_size: u32, depth: u8, per_tft_l2: i8, physical_increment: Option<u32>) -> CorticalDims {
+	pub fn new(u_size: u32, v_size: u32, depth: u8, per_tft_l2: i8, incr: Option<u32>) -> CorticalDims {
 	//pub fn new(u_size_l2: u8, v_size_l2: u8,	depth: u8, per_tft_l2: i8,) -> CorticalDims {
 		
 		//assert!(super::OPENCL_PREFERRED_VECTOR_MULTIPLE == 4);
 		//println!("\n\n##### v_size: {}, u_size: {}", v_size, u_size);
-		//let physical_increment = resolve_physical_increment(ocl);
+		//let incr = resolve_incr(ocl);
 		//assert!(v_size % 4 == 0, "CorticalDims::new(): Size of dimension 'v' must be a multiple of 4.");
 		//assert!(u_size % 4 == 0, "CorticalDims::new(): Size of dimension 'u' must be a multiple of 4.");
 
@@ -52,7 +52,7 @@ impl CorticalDims {
 			depth: depth,
 			tfts_per_cel: 1,
 			per_tft_l2: per_tft_l2,
-			physical_increment: physical_increment, // <<<<< PENDING RENAME
+			incr: incr, // <<<<< PENDING RENAME
 		}
 	}
 
@@ -79,8 +79,8 @@ impl CorticalDims {
 
 	// PHYSICAL_INCREMENT(): 
 	// 		TODO: improve this description
-	pub fn physical_increment(&self) -> Result<u32, &'static str> {
-		match self.physical_increment {
+	pub fn incr(&self) -> Result<u32, &'static str> {
+		match self.incr {
 			Some(pi) => Ok(pi),
 			None => Err("physical increment not set"),
 		}
@@ -90,8 +90,8 @@ impl CorticalDims {
 	// 		i.e. if cel_phys_incr == 256, syns must have an phys_incr of cel_phys_incr * syns_per_cel
 	//
 	// 		TODO: DEPRICATE
-	// pub fn scaled_physical_increment(&self) -> Result<u32, &'static str> {
-	// 	match self.physical_increment {
+	// pub fn scaled_incr(&self) -> Result<u32, &'static str> {
+	// 	match self.incr {
 	// 		Some(pi) => {
 	// 			let phys_incr = (pi << self.per_tft_l2_left()) * self.tfts_per_cel;
 	// 			Ok(phys_incr)
@@ -167,16 +167,16 @@ impl CorticalDims {
 		CorticalDims { depth: depth, .. *self }
 	}
 
-	pub fn clone_with_physical_increment(&self, physical_increment: usize) -> CorticalDims {
-		CorticalDims { physical_increment: Some(physical_increment as u32), .. *self } 
+	pub fn clone_with_incr(&self, incr: usize) -> CorticalDims {
+		CorticalDims { incr: Some(incr as u32), .. *self } 
 	}
 
-	pub fn set_physical_increment(&mut self, physical_increment: usize) {
-		self.physical_increment = Some(physical_increment as u32);
+	pub fn set_incr(&mut self, incr: usize) {
+		self.incr = Some(incr as u32);
 	}
 
-	pub fn with_physical_increment(mut self, physical_increment: usize) -> CorticalDims {
-		self.set_physical_increment(physical_increment);
+	pub fn with_incr(mut self, incr: usize) -> CorticalDims {
+		self.set_incr(incr);
 		self
 	}
 
@@ -213,7 +213,7 @@ impl EnvoyDims for CorticalDims {
 }
 
 
-// fn resolve_physical_increment(ocl: Option<&ProQue>) -> Option<u32> {
+// fn resolve_incr(ocl: Option<&ProQue>) -> Option<u32> {
 // 	match ocl {
 // 		Some(ocl) => Some(ocl.get_max_work_group_size()),
 // 		None => None,

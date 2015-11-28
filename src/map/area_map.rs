@@ -3,15 +3,13 @@ use std::ops::{ Range };
 // use std::collections::{ BTreeMap };
 
 use ocl::{ BuildConfig, BuildOpt };
-use proto::{ ProtolayerMaps, ProtoareaMaps, ProtoareaMap, RegionKind, Protofilter,
+use proto::{ ProtolayerMaps, ProtoareaMaps, ProtoareaMap, LayerMapKind, Protofilter,
 	DendriteKind };
 use cmn::{ self, CorticalDims };
 use map::{ self, SliceMap, LayerTags, LayerMap, LayerInfo };
-use input_source::{ InputSource };
+use input_source::{ InputSources };
 
-// 	AREAMAP { }:
-// 		- Move in functionality from the 'execution phase' side of ProtoareaMap and ProtolayerMap.
-//		- Leave the 'init phase' stuff to the proto-*s.
+
 #[derive(Clone)]
 pub struct AreaMap {
 	area_name: &'static str,
@@ -22,24 +20,13 @@ pub struct AreaMap {
 	eff_areas: Vec<&'static str>,
 	aff_areas: Vec<&'static str>,
 	filters: Option<Vec<Protofilter>>,
-
-	// TODO: Create maps for each aspect which have their own types and are queryable 
-	// into sub-lists of the same type
-	// layers: LayerMap
-	// slices: SliceMap
-	// etc...
-	// other new types: TuftMap/CellMap	
-
-	// pamap: ProtoareaMap,
 }
 
 impl AreaMap {
 	pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps,
-			input_sources: &Vec<InputSource>) -> AreaMap 
+			input_sources: &InputSources) -> AreaMap 
 	{
-		// let pamap = pamap.clone();		
-
-		println!("{mt}AREAMAP::NEW(): area name: {}, eff areas: {:?}, aff areas: {:?}", pamap.name, 
+		println!("\n{mt}AREAMAP::NEW(): area name: {}, eff areas: {:?}, aff areas: {:?}", pamap.name, 
 			pamap.eff_areas(), pamap.aff_areas(), mt = cmn::MT);
 
 		let layers = LayerMap::new(pamap, plmaps, pamaps, input_sources);
@@ -47,6 +34,7 @@ impl AreaMap {
 		let dims = pamap.dims().clone_with_depth(layers.depth());
 
 		let slices = SliceMap::new(&dims, &layers);
+		slices.print_debug();
 
 		AreaMap {
 			area_name: pamap.name,
@@ -58,8 +46,6 @@ impl AreaMap {
 			eff_areas: pamap.eff_areas().clone(),
 			aff_areas: pamap.aff_areas().clone(),
 			filters: pamap.filters.clone(),
-			// pamap: pamap,
-			// plmap: plmap,
 		}
 	}	
 
@@ -281,17 +267,8 @@ impl AreaMap {
 		&self.dims
 	}
 
-	// pub fn hrz_demarc(&self) -> u8 {
-	// 	self.hrz_demarc
-	// }
-
-	// NEW - UPDATE
-	// pub fn slc_map(&self) -> BTreeMap<u8, &LayerInfo> {
-	// 	self.layers.slc_map()
-	// }
-
 	// UPDATE / DEPRICATE
-	pub fn lm_kind_tmp(&self) -> &RegionKind {
+	pub fn lm_kind_tmp(&self) -> &LayerMapKind {
 		&self.layers.region_kind()
 	}
 }

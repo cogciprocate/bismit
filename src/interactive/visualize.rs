@@ -76,30 +76,41 @@ pub fn define_pamaps() -> ProtoareaMaps {
 		// 	Some(vec!["b1"]),
 		// )
 
-		// .area_ext("o0", "o0_layer_map", 32, Protoinput::Zeros, None, None)
+		// .area_ext("o0sp", "v0_layer_map", area_side,
+		// 	Protoinput::IdxReaderLoop { 
+		// 		file_name: "data/train-images-idx3-ubyte", 
+		// 		cyc_per: CYCLES_PER_FRAME, 
+		// 		scale: 1.3,
+		// 		loop_frames: 31,
+		// 	},
+		// 	None, 
+		// 	None,
+		// )
 
-		.area_ext("v0", "v0_layer_map", 
-			area_side,
+		.area_ext("o0nsp", "o0_layer_map", 24, Protoinput::Zeros, None, None)
 
+		// .area("o1", "visual", area_side, 
+		// 	None,
+		// 	Some(vec!["o0sp", "o0nsp"]),
+		// )
+
+		.area_ext("v0", "v0_layer_map", area_side,
 			Protoinput::IdxReaderLoop { 
 				file_name: "data/train-images-idx3-ubyte", 
 				cyc_per: CYCLES_PER_FRAME, 
 				scale: 1.3,
 				loop_frames: 31,
 			},
-
 			None, 
 			None,
 		)
 
-		.area("v1", "visual", 
-			area_side, 
+		.area("v1", "visual", area_side, 
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-			Some(vec!["v0"]),
+			Some(vec!["v0", "o0nsp"]),
 		)
 
-		.area("b1", "visual", 
-			area_side,
+		.area("b1", "visual", area_side,
 		 	None,		 	
 		 	Some(vec!["v1"]),
 		)
@@ -392,7 +403,7 @@ pub fn run(autorun_iters: i32) -> bool {
 						
 			if !bypass_act {
 				//input_czar.next(&mut cortex);
-				ir_labels.next(&mut ir_labels_vec[..]);
+				ir_labels.cycle(&mut ir_labels_vec[..]);
 				cortex.cycle();
 			}
 
@@ -410,7 +421,7 @@ pub fn run(autorun_iters: i32) -> bool {
 
 			if !bypass_act {
 				//input_czar.next(&mut cortex); // Just increments counter
-				ir_labels.next(&mut ir_labels_vec[..]);
+				ir_labels.cycle(&mut ir_labels_vec[..]);
 				cortex.cycle();
 				input_status.clear();
 				let cur_frame = cur_ttl_iters as usize % 5000;

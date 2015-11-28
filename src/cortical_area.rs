@@ -64,12 +64,12 @@ impl CorticalArea {
 
 		ocl_pq.build(area_map.gen_build_options()).expect("CorticalArea::new(): ocl_pq.build(): error");
 
-		let dims = area_map.dims().clone_with_physical_increment(ocl_pq.get_max_work_group_size());
+		let dims = area_map.dims().clone_with_incr(ocl_pq.get_max_work_group_size());
 
-		println!("{}CORTICALAREA::NEW(): Area '{}' details: \
+		println!("{mt}CORTICALAREA::NEW(): Area '{}' details: \
 			(u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: {:?}", 
-			cmn::MT, area_name, dims.u_size(), dims.v_size(), dims.depth(), 
-			area_map.eff_areas(), area_map.aff_areas(), ocl_pq.queue().device_id());
+			area_name, dims.u_size(), dims.v_size(), dims.depth(), area_map.eff_areas(), 
+			area_map.aff_areas(), ocl_pq.queue().device_id(), mt = cmn::MT);
 
 		let psal_name = area_map.layer_name_by_tags(map::SPATIAL_ASSOCIATIVE);
 		let ptal_name = area_map.layer_name_by_tags(map::TEMPORAL_ASSOCIATIVE);
@@ -98,8 +98,8 @@ impl CorticalArea {
 		for layer in area_map.layers().iter() {
 			match layer.kind() {
 				&Cellular(ref pcell) => {
-					println!("   CORTICALAREA::NEW(): making a(n) {:?} layer: '{}' (depth: {})", 
-						pcell.cell_kind, layer.name(), layer.depth());
+					// println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})", 
+					// 	pcell.cell_kind, layer.name(), layer.depth(), mt = cmn::MT);
 
 					match pcell.cell_kind {
 						Pyramidal => {
@@ -122,7 +122,8 @@ impl CorticalArea {
 					}
 				},
 
-				_ => println!("   CORTICALAREA::NEW(): Axon layer: '{}' (depth: {})", layer.name(), layer.depth()),
+				_ 	=> (),	/*println!("{mt}::NEW(): Axon layer: '{}' (depth: {})", 
+							layer.name(), layer.depth(), mt = cmn::MT),*/
 			}
 		}
 
@@ -145,8 +146,9 @@ impl CorticalArea {
 							let src_layer_depth = src_slc_ids.len() as u8;
 							let src_base_axn_slc = src_slc_ids[0];
 
-							println!("   CORTICALAREA::NEW(): Inhibitory cells: src_lyr_names: \
-								{:?}, src_base_axn_slc: {:?}", src_lyr_names, src_base_axn_slc);
+							// println!("{mt}::NEW(): Inhibitory cells: src_lyr_names: \
+							// 	{:?}, src_base_axn_slc: {:?}", src_lyr_names, src_base_axn_slc,
+							// 	mt = cmn::MT);
 
 							let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
 							let src_soma_env = &ssts_map.get_mut(src_lyr_name).expect(&em1).soma();
@@ -308,13 +310,12 @@ impl CorticalArea {
 	// Read input from thalamus and write to axon space.
 	fn intake(&mut self, layer_tags: LayerTags, thal: &mut Thalamus) {
 		// let src_layers = self.area_map.layers().layer_src_info(layer_tags);
-
+		
 		// for &(src_area_name, tags) in src_area_names.iter() {
 		for src_layer in self.area_map.layers().layer_src_area_names_by_tags(layer_tags) {
-			// let (area_name, tags) = area_info;
-
 			self.write_input(
-				thal.ganglion(src_layer, layer_tags.mirror_io()),
+				thal.ganglion(src_layer, layer_tags.mirror_io())
+					.expect("CorticalArea::output()"),
 				layer_tags,
 			);
 		}
@@ -323,7 +324,8 @@ impl CorticalArea {
 	// Read output from axon space and write to thalamus.
 	fn output(&self, layer_tags: LayerTags, thal: &mut Thalamus) {
 		self.read_output(
-			thal.ganglion_mut(self.name, layer_tags),
+			thal.ganglion_mut(self.name, layer_tags)
+				.expect("CorticalArea::output()"),
 			layer_tags, 
 		);
 	}

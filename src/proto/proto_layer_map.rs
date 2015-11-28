@@ -9,12 +9,12 @@ use super::{ Protolayer, AxonKind, LayerKind, Axonal };
 #[derive(Clone)]
 pub struct ProtolayerMap {
 	pub name: &'static str,
-	pub kind: RegionKind,
+	pub kind: LayerMapKind,
 	layers: HashMap<&'static str, Protolayer>,
 }
 
 impl ProtolayerMap {
-	pub fn new (region_name: &'static str, kind: RegionKind)  -> ProtolayerMap {	
+	pub fn new (region_name: &'static str, kind: LayerMapKind)  -> ProtolayerMap {	
 		ProtolayerMap { 
 			name: region_name,
 			kind: kind,
@@ -22,10 +22,10 @@ impl ProtolayerMap {
 		}
 	}
 
-	pub fn axn_layer(mut self, layer_name: &'static str, tags: LayerTags, axon_kind: AxonKind,
+	pub fn axn_layer(mut self, layer_name: &'static str, tags: LayerTags, axn_kind: AxonKind,
 			) -> ProtolayerMap 
 	{
-		self.add(Protolayer::new(layer_name, Axonal(axon_kind), None, tags));
+		self.add(Protolayer::new(layer_name, Axonal(axn_kind), None, tags));
 		self
 	}
 
@@ -35,7 +35,7 @@ impl ProtolayerMap {
 	{
 		let validated_depth = match kind {
 			LayerKind::Cellular(ref protocell) => protocell.validate_depth(Some(layer_depth)),
-			LayerKind::Axonal(ref axon_kind) => Some(layer_depth),
+			LayerKind::Axonal(ref axn_kind) => Some(layer_depth),
 		};
 		
 		self.add(Protolayer::new(layer_name, kind, validated_depth, tags));
@@ -45,11 +45,7 @@ impl ProtolayerMap {
 	// [FIXME]: NEED TO CHECK FOR DUPLICATE LAYERS!	
 	pub fn add(&mut self, layer: Protolayer) {
 		self.layers.insert(layer.name(), layer);
-	}
-
-	pub fn layers(&self) -> &HashMap<&'static str, Protolayer> {
-		&self.layers
-	}	
+	}		
 
  	/// Returns all layers containing 'tags'.
  	pub fn layers_with_tags(&self, tags: LayerTags) -> Vec<&Protolayer> {
@@ -63,6 +59,18 @@ impl ProtolayerMap {
 
  		layers
  	}
+
+ 	pub fn layers(&self) -> &HashMap<&'static str, Protolayer> {
+		&self.layers
+	}
+
+ 	pub fn name(&self) -> &'static str {
+		self.name
+	}
+
+	pub fn kind(&self) -> &LayerMapKind {
+		&self.kind
+	}
 }
 
 impl<'b> Index<&'b&'static str> for ProtolayerMap
@@ -83,7 +91,7 @@ impl<'b> IndexMut<&'b&'static str> for ProtolayerMap
 
 
 #[derive(PartialEq, Eq, Debug, Clone, Hash)]
-pub enum RegionKind {
+pub enum LayerMapKind {
 	Associational,
 	Sensory,
 	Motor,

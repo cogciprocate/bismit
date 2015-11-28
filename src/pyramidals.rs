@@ -62,9 +62,9 @@ impl PyramidalLayer {
 
 		println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
 			pyr_lyr_axn_idz: {}, tfts_per_cel: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, \
-			best_den_len: {}, dims: {:?},", 
+			best_den_len: {}.", 
 			layer_name, base_axn_slc, pyr_lyr_axn_idz, tfts_per_cel, syns_per_den_l2, dens_per_tft_l2, 
-			tft_best_den_ids.len(), dims, mt = cmn::MT);
+			tft_best_den_ids.len(), mt = cmn::MT);
 
 		let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq);		
 		

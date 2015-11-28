@@ -10,7 +10,7 @@
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQue, WorkSize, Envoy, EventList };
-use proto::{ /*ProtolayerMap, RegionKind, ProtoareaMaps,*/ CellKind, Protocell, DendriteKind };
+use proto::{ /*ProtolayerMap, LayerMapKind, ProtoareaMaps,*/ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axon_space::{ AxonSpace };
 // use cortical_area:: { Aux };
@@ -72,7 +72,7 @@ impl Dendrites {
 		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
 		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl_pq.queue());
 
-		println!("{mt}{mt}{mt}, DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", 
+		println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", 
 			layer_name, dims, states.len(), mt = cmn::MT);
 
 		let syns_dims = dims.clone_with_ptl2((dims.per_tft_l2() + syns_per_den_l2 as i8));

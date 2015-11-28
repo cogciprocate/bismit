@@ -3,8 +3,8 @@
 
 //pub use self::layer_maps::{  };
 
-pub use self::proto_layer_map::{ ProtolayerMaps, ProtolayerMap, RegionKind };
-	pub use self::proto_layer_map::RegionKind::{ Associational, Sensory, Motor, Thalamic }; // SLATED FOR REDESIGN
+pub use self::proto_layer_map::{ ProtolayerMaps, ProtolayerMap, LayerMapKind };
+	pub use self::proto_layer_map::LayerMapKind::{ Associational, Sensory, Motor, Thalamic }; // SLATED FOR REDESIGN
 
 pub use self::proto_area_map::{ ProtoareaMaps, ProtoareaMap };
 

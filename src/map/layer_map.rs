@@ -2,10 +2,10 @@ use std::collections::{ BTreeMap };
 // use std::ops::{ Range };
 use std::slice::{ Iter };
 
-use proto::{ ProtoareaMap, ProtoareaMaps, ProtolayerMaps, RegionKind };
+use proto::{ ProtoareaMap, ProtoareaMaps, ProtolayerMaps, LayerMapKind };
 use cmn::{ self };
 use map::{ LayerTags, LayerInfo, SourceLayerInfo};
-use input_source::{ InputSource };
+use input_source::{ InputSources };
 
 
 #[derive(Clone)]
@@ -15,15 +15,15 @@ pub struct LayerMap {
 	index: Vec<LayerInfo>,
 	// TEMP: Remove or make private.
 	depth: u8,
-	kind: RegionKind,
+	kind: LayerMapKind,
 	// plmap: ProtolayerMap,
 }
 
 impl LayerMap {
 	pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps, 
-			input_sources: &Vec<InputSource>) -> LayerMap 
+			input_sources: &InputSources) -> LayerMap 
 	{
-		println!("\n{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area '{}'...{mt}", 
+		println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area '{}'...", 
 			pamap.name, mt = cmn::MT);
 
 		let plmap = plmaps[pamap.layer_map_name].clone();
@@ -47,19 +47,19 @@ impl LayerMap {
 		let mut slc_map = BTreeMap::new();
 		let mut slc_id_check = 0;
 
-		println!("\n{mt}Creating Slice Map...", mt = cmn::MT);
+		// println!("\n{mt}Creating Slice Map...", mt = cmn::MT);
 
 		for layer in self.index.iter() {
-			println!("{mt}{mt}Processing layer: '{}', slc_range: {:?}", layer.name(), 
-				layer.slc_range(), mt = cmn::MT);
+			// println!("{mt}{mt}Processing layer: '{}', slc_range: {:?}", layer.name(), 
+			// 	layer.slc_range(), mt = cmn::MT);
 
 			for slc_id in layer.slc_range().clone() {
-				println!("{mt}{mt}{mt}Processing slice: '{}'", slc_id, mt = cmn::MT);
+				// println!("{mt}{mt}{mt}Processing slice: '{}'", slc_id, mt = cmn::MT);
 				debug_assert_eq!(slc_id_check, slc_id);
 
 				if slc_map.insert(slc_id, layer).is_some() {
-					panic!("LayerMap::slc_map(): Duplicate slices found in LayerMap: \
-						layer: '{}', slc_id: '{}'.", layer.name(), slc_id);
+					// panic!("LayerMap::slc_map(): Duplicate slices found in LayerMap: \
+					// 	layer: '{}', slc_id: '{}'.", layer.name(), slc_id);
 				}
 
 				slc_id_check = slc_id + 1;
@@ -73,7 +73,7 @@ impl LayerMap {
 
 	// [FIXME] TODO: Cache results (use TractArea cache style).
 	pub fn layer_info(&self, tags: LayerTags) -> Vec<&LayerInfo> {
-		self.index.iter().filter(|li| li.tags().meshes(tags)).map(|li| li).collect()
+		self.index.iter().filter(|li| li.tags().contains(tags)).map(|li| li).collect()
 	}
 
 	// [FIXME] TODO: Create HashMap to index layer names.
@@ -108,8 +108,8 @@ impl LayerMap {
 
 		for lyr in layer_info {			
 			for src_lyr in lyr.sources() {
-				if slc_id >= src_lyr.dst_slc_range().start 
-					&& slc_id < src_lyr.dst_slc_range().end
+				if slc_id >= src_lyr.tar_slc_range().start 
+					&& slc_id < src_lyr.tar_slc_range().end
 				{
 					src_layer_info.push(src_lyr);
 				}
@@ -127,7 +127,7 @@ impl LayerMap {
 		self.index.iter()
 	}
 
-	pub fn region_kind(&self) -> &RegionKind {
+	pub fn region_kind(&self) -> &LayerMapKind {
 		&self.kind
 	}
 

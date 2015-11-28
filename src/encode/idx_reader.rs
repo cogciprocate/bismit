@@ -196,7 +196,6 @@ impl IdxReader {
 		}
 	}
 
-
 	pub fn encode_scalar(&self, source: &Sdr, target: &mut Sdr) {
 		let v_size = self.ganglion_dims.v_size() as usize;
 		let u_size = self.ganglion_dims.u_size() as usize;
@@ -254,7 +253,7 @@ impl IdxReader {
 }
 
 impl InputGanglion for IdxReader {
-	fn next(&mut self, ganglion_frame: &mut Sdr) -> usize {
+	fn cycle(&mut self, ganglion_frame: &mut Sdr) -> usize {
     	assert!(ganglion_frame.len() == self.ganglion_dims.columns() as usize);
     	assert!((self.image_len) <= ganglion_frame.len(), 
     		"Ganglion vector size must be greater than or equal to IDX image size");    	

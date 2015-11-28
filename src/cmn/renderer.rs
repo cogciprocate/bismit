@@ -1,5 +1,6 @@
 use cmn::{ self, CorticalDims, HexTilePlane, Sdr };
 use map::{ SliceMap, SliceDims };
+use proto::{ AxonKind };
 
 //use std::char;
 use std::iter;
@@ -15,13 +16,13 @@ pub struct Renderer {
 
 impl Renderer {
 	pub fn new(area_dims: &CorticalDims) -> Renderer {		
-		let dims = SliceDims::new(area_dims, None).expect("Renderer::new()");
+		let dims = SliceDims::new(area_dims, None, AxonKind::Spatial).expect("Renderer::new()");
 		let sdr_len = (dims.columns()) as usize;
 
-		Renderer { 
-			aff_out_dims: dims,
+		Renderer { 			
 			axn_history: iter::repeat(0).take(sdr_len).collect(),
 			sst_history: iter::repeat(0).take(sdr_len).collect(),
+			aff_out_dims: dims,
 			//slice_map: slice_map.clone(),
 		}
 	}

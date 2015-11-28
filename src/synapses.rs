@@ -122,7 +122,7 @@ impl Synapses {
 		let mut kernels = Vec::with_capacity(src_slc_ids_list.len());
 
 		if DEBUG_NEW { 
-			println!("{mt}{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
+			println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
 				dims: {:?}, phys_len: {}", 
 				den_kind, states.len(), dims, dims.padded_envoy_len(
 					ocl_pq.get_max_work_group_size()), mt = cmn::MT); 

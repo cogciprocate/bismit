@@ -12,6 +12,8 @@ pub struct SliceMap {
 	u_sizes: Vec<u32>,
 	v_scales: Vec<u32>,
 	u_scales: Vec<u32>,
+	v_mids: Vec<u32>,
+	u_mids: Vec<u32>,
 	dims: Vec<SliceDims>,
 	physical_len: u32
 }
@@ -29,46 +31,66 @@ impl SliceMap {
 		let mut u_scales = Vec::with_capacity(depth);
 		let mut v_sizes = Vec::with_capacity(depth);
 		let mut u_sizes = Vec::with_capacity(depth);
+		let mut v_mids = Vec::with_capacity(depth);
+		let mut u_mids = Vec::with_capacity(depth);
 		let mut dims = Vec::with_capacity(depth);
 
 		let mut axn_idz_ttl = 0u32;
+		
 
 		for (&slc_id, &layer) in slc_map.iter() {
-			let src_layer_info = layers.slc_src_layer_info(slc_id, layer.tags());
+			let mut add_slice = |slc_dims: SliceDims| {
+				debug_assert_eq!(slc_id as usize, axn_idzs.len());
 
-			let slc_dims = match src_layer_info {
-				Some(sli) => {
-					let slc_dims = SliceDims::new(area_dims, Some(sli.dims()))
-						.expect("SliceMap::new(): Error creating SliceDims.");
+				axn_idzs.push(axn_idz_ttl);
+				axn_idz_ttl += slc_dims.columns();
 
-					println!("{}SLICEMAP::NEW(): Adding inter-area slice '{}': slc_id: {}, src_area_name: {}, \
-						v_size: {}, u_size: {}.", cmn::MT, layer.name(), slc_id, sli.area_name(),
-						slc_dims.v_size(), slc_dims.u_size());
-
-					slc_dims
-				},
-
-				None =>	SliceDims::new(area_dims, None).expect("SliceMap::new()"), // 100% scaling
+				layer_names.push(layer.name());
+				v_sizes.push(slc_dims.v_size());
+				u_sizes.push(slc_dims.u_size());
+				v_scales.push(slc_dims.v_scale());
+				u_scales.push(slc_dims.u_scale());			
+				v_mids.push(slc_dims.v_mid());
+				u_mids.push(slc_dims.u_mid());	
+				dims.push(slc_dims);
 			};
 
-			axn_idzs.push(axn_idz_ttl);
-			axn_idz_ttl += slc_dims.columns();
+			// let src_layer_info = layers.slc_src_layer_info(slc_id, layer.tags());
 
-			layer_names.push(layer.name());
-			v_sizes.push(slc_dims.v_size());
-			u_sizes.push(slc_dims.u_size());
-			v_scales.push(slc_dims.v_scale());
-			u_scales.push(slc_dims.u_scale());			
-			dims.push(slc_dims);
+			// match src_layer_info {
+			// 	Some(sli) => {
+			// 		add_slice(SliceDims::new(area_dims, Some(sli.dims()), sli.axn_kind())
+			// 			.expect("SliceMap::new(): Error creating SliceDims."));
+			// 	},
+
+			// 	None =>	add_slice(SliceDims::new(area_dims, None, layer.axn_kind())
+			// 		.expect("SliceMap::new()")), // 100% scaling
+			// };
+
+			let src_layers = layer.sources();
+
+			if src_layers.len() > 0 {
+				for sl in src_layers {
+					debug_assert_eq!(layer.axn_kind(), sl.axn_kind());
+
+					add_slice(SliceDims::new(area_dims, Some(sl.dims()), sl.axn_kind())
+						.expect("SliceMap::new(): Error creating SliceDims."));
+				}
+			} else {
+				add_slice(SliceDims::new(area_dims, None, layer.axn_kind())
+					.expect("SliceMap::new()"))
+			}
 		}
 
-		assert_eq!(axn_idzs.len(), layer_names.len());
-		assert_eq!(axn_idzs.len(), dims.len());
-		assert_eq!(axn_idzs.len(), v_sizes.len());
-		assert_eq!(axn_idzs.len(), u_sizes.len());
-		assert_eq!(axn_idzs.len(), v_scales.len());
-		assert_eq!(axn_idzs.len(), u_scales.len());
-		assert_eq!(axn_idzs.len(), depth);
+		debug_assert_eq!(axn_idzs.len(), layer_names.len());
+		debug_assert_eq!(axn_idzs.len(), dims.len());
+		debug_assert_eq!(axn_idzs.len(), v_sizes.len());
+		debug_assert_eq!(axn_idzs.len(), u_sizes.len());
+		debug_assert_eq!(axn_idzs.len(), v_scales.len());
+		debug_assert_eq!(axn_idzs.len(), u_scales.len());
+		debug_assert_eq!(axn_idzs.len(), v_mids.len());
+		debug_assert_eq!(axn_idzs.len(), u_mids.len());
+		debug_assert_eq!(axn_idzs.len(), depth);		
 
 		SliceMap {
 			axn_idzs: axn_idzs,
@@ -78,25 +100,31 @@ impl SliceMap {
 			u_sizes: u_sizes,	
 			v_scales: v_scales,
 			u_scales: u_scales,	
+			v_mids: v_mids,
+			u_mids: u_mids,	
 			physical_len: axn_idz_ttl,		
 		}
 	}
 
 	pub fn print_debug(&self) {
 		println!(
-			"\n{mt}SLICEMAP::PRINT_DEBUG(): Area slices: \
-			\n{mt}{mt}layer_names: {:?}, \
-			\n{mt}{mt}axn_idzs: {:?}(literal: '{}'), \
-			\n{mt}{mt}v_sizes: {:?}(literal: '{}'), \
-			\n{mt}{mt}u_sizes: {:?}(literal: '{}'), \
-			\n{mt}{mt}v_scales: {:?}(literal: '{}'), \
-			\n{mt}{mt}u_scales: {:?}(literal: '{}')", 
+			"{mt}{mt}SLICEMAP::PRINT_DEBUG(): Area slices: \
+			\n{mt}{mt}{mt}layer_names:  {:?}, \
+			\n{mt}{mt}{mt}axn_idzs:     [{}], \
+			\n{mt}{mt}{mt}v_sizes:      [{}], \
+			\n{mt}{mt}{mt}u_sizes:      [{}], \
+			\n{mt}{mt}{mt}v_scales:     [{}], \
+			\n{mt}{mt}{mt}u_scales:     [{}], \
+			\n{mt}{mt}{mt}v_mids:       [{}], \
+			\n{mt}{mt}{mt}u_mids:       [{}]", 
 			self.layer_names, 
-			self.axn_idzs, area_map::literal_list(&self.axn_idzs), 
-			self.v_sizes, area_map::literal_list(&self.v_sizes), 
-			self.u_sizes, area_map::literal_list(&self.u_sizes), 
-			self.v_scales, area_map::literal_list(&self.v_scales), 
-			self.u_scales, area_map::literal_list(&self.u_scales), 
+			area_map::literal_list(&self.axn_idzs), 
+			area_map::literal_list(&self.v_sizes), 
+			area_map::literal_list(&self.u_sizes), 
+			area_map::literal_list(&self.v_scales), 
+			area_map::literal_list(&self.u_scales), 
+			area_map::literal_list(&self.v_mids), 
+			area_map::literal_list(&self.u_mids), 
 			mt = cmn::MT
 		);
 
@@ -194,69 +222,6 @@ pub mod tests {
 
 
 
-
-
-
-// pub fn new(area_dims: &CorticalDims, pamap: &ProtoareaMap, plmap: &ProtolayerMap, 
-// 				layers: &LayerMap,
-// 	) -> SliceMap {		
-// 		let proto_slc_map = plmap.slc_map();
-
-// 		let mut axn_idzs = Vec::with_capacity(proto_slc_map.len());
-// 		let mut layer_names = Vec::with_capacity(proto_slc_map.len());
-// 		let mut v_scales = Vec::with_capacity(proto_slc_map.len());
-// 		let mut u_scales = Vec::with_capacity(proto_slc_map.len());
-// 		let mut v_sizes = Vec::with_capacity(proto_slc_map.len());
-// 		let mut u_sizes = Vec::with_capacity(proto_slc_map.len());
-// 		let mut dims = Vec::with_capacity(proto_slc_map.len());
-
-// 		let mut axn_idz_ttl = 0u32;
-
-// 		for (&slc_id, &layer_name) in proto_slc_map.iter() {
-// 			let layer = &plmap.layers()[layer_name];
-// 			let src_layer_info = layers.slc_src_layer_info(slc_id, layer.tags());
-
-// 			let slc_dims = match src_layer_info {
-// 				Some(sli) => {
-// 					let slc_dims = SliceDims::new(area_dims, Some(sli.dims()))
-// 						.expect("SliceMap::new(): Error creating SliceDims.");
-
-// 					println!("{}SLICEMAP::NEW(): Adding inter-area slice '{}': slc_id: {}, src_area_name: {}, \
-// 						v_size: {}, u_size: {}.", cmn::MT, layer_name, slc_id, sli.area_name(),
-// 						slc_dims.v_size(), slc_dims.u_size());
-
-// 					slc_dims
-// 				},
-
-// 				None =>	SliceDims::new(area_dims, None).expect("SliceMap::new()"), // 100% scaling
-// 			};
-
-// 			axn_idzs.push(axn_idz_ttl);
-// 			axn_idz_ttl += slc_dims.columns();
-
-// 			layer_names.push(layer_name);
-// 			v_sizes.push(slc_dims.v_size());
-// 			u_sizes.push(slc_dims.u_size());
-// 			v_scales.push(slc_dims.v_scale());
-// 			u_scales.push(slc_dims.u_scale());			
-// 			dims.push(slc_dims);
-// 		}
-
-// 		assert_eq!(axn_idzs.len(), layer_names.len());
-// 		assert_eq!(axn_idzs.len(), dims.len());
-// 		assert_eq!(axn_idzs.len(), v_sizes.len());
-// 		assert_eq!(axn_idzs.len(), u_sizes.len());
-// 		assert_eq!(axn_idzs.len(), v_scales.len());
-// 		assert_eq!(axn_idzs.len(), u_scales.len());
-
-// 		SliceMap {
-// 			axn_idzs: axn_idzs,
-// 			layer_names: layer_names,
-// 			dims: dims,
-// 			v_sizes: v_sizes,
-// 			u_sizes: u_sizes,	
-// 			v_scales: v_scales,
-// 			u_scales: u_scales,	
-// 			physical_len: axn_idz_ttl,		
-// 		}
-// 	}
+			// println!("{mt}{mt}SLICEMAP::NEW(): Adding inter-area slice '{}': slc_id: {}, src_area_name: {}, \
+			// 	v_size: {}, u_size: {}.", layer.name(), slc_id, sli.area_name(),
+			// 	slc_dims.v_size(), slc_dims.u_size(), mt = cmn::MT);

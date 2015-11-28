@@ -1,4 +1,5 @@
-use map::{ LayerTags };
+use cmn::{ CmnError };
+use map::{ self, LayerTags };
 use proto::{ Protocell, DendriteKind };
 use proto::DendriteKind::{ Distal, Proximal };
 use self::LayerKind::{ Cellular, Axonal };
@@ -22,7 +23,20 @@ impl Protolayer {
 		
 		Protolayer {name : name, kind: kind, depth: depth, /*base_slc_id: base_slc_id, 
 			kind_base_slc_id: kind_base_slc_id,*/ tags: tags}
-	}	
+	}
+
+	// pub fn set_depth(&mut self, depth: u8) {
+	// 	self.depth = Some(depth);
+	// }
+
+	// [FIXME]: DEPRICATE:
+	// pub fn depth_old_tmp(&self) -> u8 {
+	// 	match self.depth {
+	// 		Some(d) => d,
+	// 		// None => panic!("Cannot get layer depth for an axonal protolayer"),
+	// 		None => 0,
+	// 	}
+	// }
 
 	// SRC_LAYER_NAMES(): TODO: DEPRICATE OR RENAME 
 	pub fn src_lyr_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
@@ -50,22 +64,10 @@ impl Protolayer {
 			Some(v) => v,
 			None => Vec::with_capacity(0),
 		}
-	}
-
-	// pub fn base_slc(&self) -> u8 {
-	// 	self.base_slc_id
-	// }
+	}	
 
 	pub fn depth(&self) -> Option<u8> {
 		self.depth
-	}
-
-	pub fn depth_old_tmp(&self) -> u8 {
-		match self.depth {
-			Some(d) => d,
-			// None => panic!("Cannot get layer depth for an axonal protolayer"),
-			None => 0,
-		}
 	}
 
 	pub fn name(&self) -> &'static str {
@@ -76,35 +78,31 @@ impl Protolayer {
 		&self.kind
 	}
 
-	// pub fn base_slc_id(&self) -> u8 {
-	// 	self.base_slc_id
-	// }
-
-	// pub fn kind_base_slc_id(&self) -> u8 {
-	// 	self.kind_base_slc_id
-	// }
+	pub fn axn_kind(&self) -> Result<AxonKind, CmnError> {
+		match self.kind {
+			Axonal(ak) => Ok(ak.clone()),
+			Cellular(_) => Ok(try!(AxonKind::from_tags(self.tags))),
+		}
+	}
 
 	pub fn tags(&self) -> LayerTags {
 		self.tags
 	}
-
-	pub fn set_depth(&mut self, depth: u8) {
-		self.depth = Some(depth);
-	}
-
-	// pub fn set_base_slc_id(&mut self, id: u8) {
-	// 	self.base_slc_id = id;
-	// }
-
-	// pub fn set_kind_base_slc_id(&mut self, id: u8) {
-	// 	self.kind_base_slc_id = id;
-	// }
 }
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub enum LayerKind {
 	Cellular(Protocell),
 	Axonal(AxonKind),
+}
+
+impl LayerKind {
+	pub fn axn_kind(&self) -> Option<AxonKind> {
+		match self {
+			&Axonal(ak) => Some(ak.clone()),
+			_ => None,
+		}
+	}
 }
 
 impl LayerKind {
@@ -128,4 +126,30 @@ impl LayerKind {
 pub enum AxonKind {
 	Spatial,
 	Horizontal,
+	None,
+}
+
+impl AxonKind {
+	// [FIXME]: Make this a Result with CmnError describing mismatch:
+	pub fn from_tags<'a>(tags: LayerTags) -> Result<AxonKind, CmnError> {
+		if tags.contains(map::SPATIAL) && tags.contains(map::HORIZONTAL) {
+			Err(CmnError::new(format!("Error converting tags to AxonKind, tags must contain \
+				only one of either 'map::SPATIAL' or 'map::HORIZONTAL'. (tags: '{:?}')", tags)))
+		} else if tags.contains(map::SPATIAL) {
+			Ok(AxonKind::Spatial)
+		} else if tags.contains(map::HORIZONTAL) {
+			Ok(AxonKind::Horizontal)
+		} else {
+			// Err(CmnError::new(format!("Unable to determine axon kind from tags: '{:?}'", tags)))
+			Ok(AxonKind::None)
+		}
+	}
+
+	pub fn matches_tags(&self, tags: LayerTags) -> bool {
+		match self {
+			&AxonKind::Spatial => tags.contains(map::SPATIAL),
+			&AxonKind::Horizontal => tags.contains(map::HORIZONTAL),
+			&AxonKind::None => (!tags.contains(map::SPATIAL)) && (!tags.contains(map::HORIZONTAL)),
+		}
+	}
 }

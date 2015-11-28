@@ -82,7 +82,7 @@ pub struct ProtoareaMap {
 	pub name: &'static str,
 	pub layer_map_name: &'static str,
 	pub dims: CorticalDims,	
-	//pub region_kind: RegionKind,
+	//pub region_kind: LayerMapKind,
 	pub input: Protoinput,
 	pub filters: Option<Vec<Protofilter>>,
 	aff_areas: Vec<&'static str>,
@@ -118,6 +118,10 @@ impl ProtoareaMap {
 			aff_areas: Vec::with_capacity(4),
 			eff_areas: eff_areas,
 		}
+	}
+
+	pub fn name(&self) -> &'static str {
+		self.name
 	}
 
 	pub fn dims(&self) -> &CorticalDims {

@@ -19,6 +19,7 @@ pub use self::cortical_dims::{ CorticalDims };
 //pub use self::area_map::{ AreaMap, SliceMap };
 pub use self::data_cell_layer::{ DataCellLayer };
 pub use self::renderer::{ Renderer };
+pub use self::error::{ CmnError };
 //pub use self::prediction::*;
 
 #[cfg(test)]
@@ -32,6 +33,7 @@ pub mod data_cell_layer;
 //mod area_map;
 // mod slice_dims;
 mod renderer;
+mod error;
 //pub mod input_source;
 //mod prediction;
 
@@ -43,6 +45,8 @@ pub trait HexTilePlane {
 }
 
 pub type Sdr = [u8];
+
+pub type CmnResult<T> = Result<T, CmnError>;
 
 
 /*=============================================================================
@@ -100,6 +104,7 @@ pub static BGC_LGR: &'static str = "\x1b[47m";
 pub static BGC_DGR: &'static str = "\x1b[100m";
 
 
+pub const DEFAULT_HORIZONTAL_SLICE_SIDE: u32 = 32;
 pub const DEFAULT_OUTPUT_LAYER_DEPTH: u8 = 1;
 
 // pub const SENSORY_CHORD_WIDTH_LOG2: usize = 5;
