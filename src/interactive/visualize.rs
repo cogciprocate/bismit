@@ -23,15 +23,15 @@ const CYCLES_PER_FRAME: usize 				= 1;
 
 /* Eventually move defines to a config file or some such */
 pub fn define_plmaps() -> ProtolayerMaps {
-	const MOTOR: u32 = 543;
-	const OLFAC: u32 = 654;
+	const MOTOR_UID: u32 = 543;
+	const OLFAC_UID: u32 = 654;
 
 	// [FIXME]: TODO: Create '.out_layer(...)'.
 	ProtolayerMaps::new()
-		.lm(ProtolayerMap::new("visual", Sensory)
+		.lmap(ProtolayerMap::new("visual", Sensory)
 			//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
-			.axn_layer("motor_in", map::NS_IN | LayerTags::with_uid(MOTOR), Horizontal)
-			.axn_layer("olfac", map::NS_IN | LayerTags::with_uid(OLFAC), Horizontal)
+			// .axn_layer("motor_in", map::NS_IN | LayerTags::with_uid(MOTOR), Horizontal)
+			.axn_layer("olfac", map::NS_IN | LayerTags::with_uid(OLFAC_UID), Horizontal)
 			.axn_layer("eff_in", map::FB_IN, Spatial)
 			.axn_layer("aff_in", map::FF_IN, Spatial)
 			// .axn_layer("out", map::FF_FB_OUT, Spatial)
@@ -47,12 +47,12 @@ pub fn define_plmaps() -> ProtolayerMaps {
 					.apical(vec!["eff_in"]))
 		)
 
-		.lm(ProtolayerMap::new("v0_lm", Thalamic)
+		.lmap(ProtolayerMap::new("v0_lm", Thalamic)
 			.layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
 		)
 
-		.lm(ProtolayerMap::new("o0_lm", Thalamic)
-			.layer("ganglion", 1, map::NS_OUT | LayerTags::with_uid(OLFAC), Axonal(Horizontal))
+		.lmap(ProtolayerMap::new("o0_lm", Thalamic)
+			.layer("ganglion", 1, map::NS_OUT | LayerTags::with_uid(OLFAC_UID), Axonal(Horizontal))
 		)
 }
 

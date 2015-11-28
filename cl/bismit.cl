@@ -106,11 +106,11 @@ __constant uchar axn_slc_v_mids[AXN_SLC_COUNT] = { AXN_SLC_V_MIDS };
 __constant uchar axn_slc_u_mids[AXN_SLC_COUNT] = { AXN_SLC_U_MIDS };
 
 
-static inline uint get_axn_idz(uchar slc_id) {
+static inline uint get_axn_idz(uchar const slc_id) {
 	return axn_slc_idzs[slc_id];
 }
 
-static inline int4 get_axn_idz_vec4(uchar4 slc_id) {
+static inline int4 get_axn_idz_vec4(uchar4 const slc_id) {
 	return (int4)(	axn_slc_idzs[slc_id.s0], 
 					axn_slc_idzs[slc_id.s1], 
 					axn_slc_idzs[slc_id.s2], 
@@ -118,22 +118,22 @@ static inline int4 get_axn_idz_vec4(uchar4 slc_id) {
 }
 
 
-static inline uchar get_axn_v_size(uchar slc_id) {
+static inline uchar get_axn_v_size(uchar const slc_id) {
 	return axn_slc_v_sizes[slc_id];
 }
 
-static inline int4 get_axn_v_size_vec4(uchar4 slc_id) {
+static inline int4 get_axn_v_size_vec4(uchar4 const slc_id) {
 	return (int4)(	axn_slc_v_sizes[slc_id.s0], 
 					axn_slc_v_sizes[slc_id.s1], 
 					axn_slc_v_sizes[slc_id.s2], 
 					axn_slc_v_sizes[slc_id.s3]);
 }
 
-static inline uint get_axn_u_size(uchar slc_id) {
+static inline uint get_axn_u_size(uchar const slc_id) {
 	return axn_slc_u_sizes[slc_id];
 }
 
-static inline int4 get_axn_u_size_vec4(uchar4 slc_id) {
+static inline int4 get_axn_u_size_vec4(uchar4 const slc_id) {
 	return (int4)(	axn_slc_u_sizes[slc_id.s0], 
 					axn_slc_u_sizes[slc_id.s1], 
 					axn_slc_u_sizes[slc_id.s2], 
@@ -141,22 +141,22 @@ static inline int4 get_axn_u_size_vec4(uchar4 slc_id) {
 }
 
 
-static inline uint get_axn_v_scale(uchar slc_id) {
+static inline uint get_axn_v_scale(uchar const slc_id) {
 	return axn_slc_v_scales[slc_id];
 }
 
-static inline int4 get_axn_v_scale_vec4(uchar4 slc_id) {
+static inline int4 get_axn_v_scale_vec4(uchar4 const slc_id) {
 	return (int4)(	axn_slc_v_scales[slc_id.s0], 
 					axn_slc_v_scales[slc_id.s1], 
 					axn_slc_v_scales[slc_id.s2], 
 					axn_slc_v_scales[slc_id.s3]);
 }
 
-static inline uint get_axn_u_scale(uchar slc_id) {
+static inline uint get_axn_u_scale(uchar const slc_id) {
 	return axn_slc_u_scales[slc_id];
 }
 
-static inline int4 get_axn_u_scale_vec4(uchar4 slc_id) {
+static inline int4 get_axn_u_scale_vec4(uchar4 const slc_id) {
 	return (int4)(	axn_slc_u_scales[slc_id.s0], 
 					axn_slc_u_scales[slc_id.s1], 
 					axn_slc_u_scales[slc_id.s2], 
@@ -164,22 +164,22 @@ static inline int4 get_axn_u_scale_vec4(uchar4 slc_id) {
 }
 
 
-static inline uint get_axn_v_mid(uchar slc_id) {
+static inline uint get_axn_v_mid(uchar const slc_id) {
 	return axn_slc_v_mids[slc_id];
 }
 
-static inline int4 get_axn_v_mid_vec4(uchar4 slc_id) {
+static inline int4 get_axn_v_mid_vec4(uchar4 const slc_id) {
 	return (int4)(	axn_slc_v_mids[slc_id.s0], 
 					axn_slc_v_mids[slc_id.s1], 
 					axn_slc_v_mids[slc_id.s2], 
 					axn_slc_v_mids[slc_id.s3]);
 }
 
-static inline uint get_axn_u_mid(uchar slc_id) {
+static inline uint get_axn_u_mid(uchar const slc_id) {
 	return axn_slc_u_mids[slc_id];
 }
 
-static inline int4 get_axn_u_mid_vec4(uchar4 slc_id) {
+static inline int4 get_axn_u_mid_vec4(uchar4 const slc_id) {
 	return (int4)(	axn_slc_u_mids[slc_id.s0], 
 					axn_slc_u_mids[slc_id.s1], 
 					axn_slc_u_mids[slc_id.s2], 
@@ -256,15 +256,15 @@ static inline int4 coord_is_safe_vec4(int4 const dim_size, int4 const coord_id, 
 =============================================================================*/
 
 // CEL_IDX_3D_UNSAFE(): LINEAR INDEX OF A CELL - NOT ACCURATE FOR AXONS
-static inline uint cel_idx_3d_unsafe(uint slc_id_lyr, uint v_size, uint v_id, uint u_size, 
-			uint u_id) 
+static inline uint cel_idx_3d_unsafe(uint const slc_id_lyr, uint const v_size, uint const v_id, 
+			uint const u_size, uint const u_id) 
 {
 	return mad24(slc_id_lyr, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
 }
 
 // CEL_IDX_3D_UNSAFE_VEC4(): LINEAR INDEX OF A CELL - NOT FOR ACCURATE AXONS
-static inline int4 cel_idx_3d_unsafe_vec4(uchar4 slc_id_lyr_uchar4, int4 v_size, int4 v_id, 
-			int4 u_size, int4 u_id) 
+static inline int4 cel_idx_3d_unsafe_vec4(uchar4 const slc_id_lyr_uchar4, int4 const v_size, 
+			int4 const v_id, int4 const u_size, int4 const u_id) 
 {
 	int4 slc_id_lyr = convert_int4(slc_id_lyr_uchar4);
 	return mad24(slc_id_lyr, mul24(v_size, u_size), mad24(v_id, u_size, u_id));	
@@ -274,9 +274,9 @@ static inline int4 cel_idx_3d_unsafe_vec4(uchar4 slc_id_lyr_uchar4, int4 v_size,
 // 	- If id + ofs are out of cortical bounds, zero is returned
 //		- otherwise resolved state is returned 
 //	- Intended primarily for use by the inhibition-related kernel(s)
-static inline uchar cel_state_3d_safe(uchar slc_id_lyr, 
-			uint v_size, uint v_id, char v_ofs, 
-			uint u_size, uint u_id, char u_ofs, 
+static inline uchar cel_state_3d_safe(uchar const slc_id_lyr, 
+			uint const v_size, uint const v_id, char const v_ofs, 
+			uint const u_size, uint const u_id, char const u_ofs, 
 			__global uchar const* const cel_states) 
 {
 	int v_ofs_is_safe = coord_is_safe(v_size, v_id, v_ofs);
@@ -304,7 +304,7 @@ static inline uchar cel_state_3d_safe(uchar slc_id_lyr,
 // - Using ints as intermediate variables to be consistent with vectorized version 
 //   (will only affect invalid indexes)
 static inline uint axn_idx_3d_unsafe(uchar const slc_id, uint const v_id_unscaled, 
-			char v_ofs, uint const u_id_unscaled, char u_ofs, int* const idx_is_safe) 
+			char v_ofs, uint const u_id_unscaled, char u_ofs, int* idx_is_safe) 
 	{
 	// GET THE DIM SIZES:
 	int const v_size = get_axn_v_size(slc_id);
@@ -348,7 +348,7 @@ static inline uint axn_idx_3d_unsafe(uchar const slc_id, uint const v_id_unscale
 // AXN_IDX_3D_UNSAFE_VEC4(): Linear index of an axon, vec4
 static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id, int4 const v_id_unscaled, 
 			char4 const v_ofs_char4, int4 const u_id_unscaled, char4 const u_ofs_char4, 
-			int4* const idx_is_safe)
+			int4* idx_is_safe)
 {
 	int4 const v_size = get_axn_v_size_vec4(slc_id);
 	int4 const u_size = get_axn_u_size_vec4(slc_id);
@@ -377,11 +377,11 @@ static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id, int4 const v_id_u
 /*===========================================================================*/
 
 // AXN_STATE_3D_SAFE():
-static inline uchar axn_state_3d_safe(uchar slc_id, uint v_id, char v_ofs, uint u_id, 
-			char u_ofs, __global uchar const* const axn_states) 
+static inline uchar axn_state_3d_safe(uchar const slc_id, uint const v_id, char const v_ofs, 
+			uint const u_id, char const u_ofs, __global uchar const* const axn_states) 
 {
 	int idx_is_safe = 0;
-	uint axn_idx = axn_idx_3d_unsafe(slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
+	uint const axn_idx = axn_idx_3d_unsafe(slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
 	return mul24(idx_is_safe, axn_states[axn_idx]);
 }
 
@@ -390,7 +390,7 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 			int4 u_id, char4 u_ofs, __global uchar const* const axn_states) 
 {
 	int4 idx_is_safe = (int4)0;
-	int4 axn_idx = axn_idx_3d_unsafe_vec4(slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
+	int4 const axn_idx = axn_idx_3d_unsafe_vec4(slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
 
 	return (uchar4)(
 		((uchar)idx_is_safe.s0 & axn_states[axn_idx.s0]),

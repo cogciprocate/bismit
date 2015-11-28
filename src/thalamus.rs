@@ -1,6 +1,5 @@
 use std::ops::{ Range };
 use std::collections::{ HashMap };
-// use std::iter;
 
 use cmn::{ self, Sdr, CmnError };
 use map::{ AreaMap, LayerTags };
@@ -17,7 +16,6 @@ use input_source::{ InputSource, InputSources };
 // 		- output: from layer / area
 pub struct Thalamus {
 	tract: ThalamicTract,
-	// input_sources: Vec<InputSource>,
 	input_sources: InputSources,
 	area_maps: HashMap<&'static str, AreaMap>,
 }
@@ -25,7 +23,6 @@ pub struct Thalamus {
 impl Thalamus {
 	pub fn new(plmaps: ProtolayerMaps,	mut pamaps: ProtoareaMaps) -> Thalamus {
 		pamaps.freeze();
-
 		let area_count = pamaps.maps().len();
 
 		let mut tract = ThalamicTract::new();
@@ -38,17 +35,15 @@ impl Thalamus {
 		for (&area_name, pa) in pamaps.maps().iter().filter(|&(_, pa)| 
 					&plmaps[pa.layer_map_name].kind == &Thalamic) 
 		{			
-			// input_sources.push(InputSource::new(pa, &plmaps[pa.layer_map_name]));
 			let is = InputSource::new(pa, &plmaps[pa.layer_map_name]);
-			input_sources.insert((is.area_name(), is.tags()), is);
+			input_sources.insert((is.area_name(), is.tags()), is).map(|is| panic!("Duplicate \
+				'InputSource' keys: (area: \"{}\", tags: '{:?}')", is.area_name(), is.tags()));
 		}
 
 		/*=============================================================================
 		====================================== ALL ====================================
 		=============================================================================*/
-		for (&area_name, pa) in pamaps.maps().iter()
-			// .filter(|&(_, pa)| plmaps[pa.layer_map_name].kind != Thalamic)
-		{	
+		for (&area_name, pa) in pamaps.maps().iter() {	
 			let area_map = AreaMap::new(pa, &plmaps, &pamaps, &input_sources);
 
 			let layer_info = area_map.output_layer_info();
@@ -81,11 +76,6 @@ impl Thalamus {
 		}		
 	}
 
-	// WRITE_INPUT(): <<<<< TODO: CHECK SIZES AND SCALE WHEN NECESSARY >>>>>
-	// pub fn write_input(&self, sdr: &Sdr, area: &mut CorticalArea) {		
-	// 	area.write_input(sdr, map::FF_IN);
-	// }
-
 	pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerTags
 			) -> Result<(&EventList, &Sdr), CmnError> 
 	{ 		
@@ -110,8 +100,6 @@ impl Thalamus {
 // THALAMICTRACT: A buffer for I/O between areas
 pub struct ThalamicTract {
 	ganglion: Vec<ocl::cl_uchar>,
-	// tract_areas: Vec<TractArea>
-	// tract_area_cache: HashMap<(&'static str, LayerTags), usize>,	
 	tract_areas: TractAreaCache,
 	ttl_len: usize,
 }
@@ -147,15 +135,6 @@ impl ThalamicTract {
 		let ta = try!(self.tract_areas.get(src_area_name, layer_tags));
 		let range = ta.range();
 		let events = ta.events();
-
-		// let (range, events) = {
-		// 	let ta = try!(self.tract_areas.get(src_area_name, layer_tags));
-		// 	(ta.range(), ta.events())
-		// };
-
-		// try!(self.verify_range(&range, src_area_name));
-		// println!(" ### ThalamicTract::ganglion({}, {:?}): range: {:?}", src_area_name, 
-		// 	 layer_tags, range);
 		
 		Ok((events, &self.ganglion[range]))
 	}
@@ -166,15 +145,6 @@ impl ThalamicTract {
 		let ta = try!(self.tract_areas.get_mut(src_area_name, layer_tags));
 		let range = ta.range();
 		let events = ta.events_mut();
-
-		// let (range, events) = {
-		// 	let ta = try!(self.tract_areas.get_mut(src_area_name, layer_tags));
-		// 	(ta.range(), ta.events_mut())
-		// };
-
-		// try!(self.verify_range(&range, src_area_name));
-		// println!(" ### ThalamicTract::ganglion_mut({}, {:?}): range: {:?}", src_area_name, 
-		// 	 layer_tags, range);
 		
 		Ok((&mut self.ganglion[range], events))
 	}
@@ -206,9 +176,10 @@ impl TractAreaCache {
 	fn insert(&mut self, src_area_name: &'static str, layer_tags: LayerTags, tract_area: TractArea)
 	{
 		self.areas.push(tract_area);
-		let dup_area = self.index.insert((src_area_name, layer_tags), (self.areas.len() - 1));
-		assert!(dup_area.is_none(), "TractAreaCache::insert(): Cannot add two areas \
-			with the same name and tags");
+
+		self.index.insert((src_area_name, layer_tags), (self.areas.len() - 1))
+			.map(|is| panic!("Duplicate 'TractAreaCache' keys: (area: \"{}\", tags: '{:?}')", 
+				src_area_name, layer_tags));
 	}
 
 	fn get(&mut self, src_area_name: &'static str, layer_tags: LayerTags
@@ -220,10 +191,6 @@ impl TractAreaCache {
 
 			Err(err) => Err(err),
 		}
-
-		// self.area_search(src_area_name, layer_tags).map(|idx|
-		// 	self.areas.get(idx).ok_or(format!("Index '{}' not found for '{}' \
-		// 	with tags '{:?}'", idx, src_area_name, layer_tags)))
 	}
 
 	fn get_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags
@@ -237,16 +204,11 @@ impl TractAreaCache {
 				Err(err)
 			},
 		}
-
-		// self.area_search(src_area_name, layer_tags).map(|idx|
-		// 	self.areas.get_mut(idx).ok_or(format!("Index '{}' not found for '{}' \
-		// 	with tags '{:?}'", idx, src_area_name, layer_tags)))
 	}
 
 	fn area_search(&mut self, src_area_name: &'static str, layer_tags: LayerTags
 			) -> Result<usize, CmnError> 
 	{
-		// let cleared_tags = clear_io_tags(layer_tags);
 		// println!("TractAreaCache::area_search(): Searching for area: {}, tags: {:?}. ALL: {:?}", 
 		// 	src_area_name, layer_tags, self.areas);
 		let area_idx = self.index.get(&(src_area_name, layer_tags)).map(|&idx| idx);
@@ -276,9 +238,9 @@ impl TractAreaCache {
 						return Ok(matching_areas[0]);
 					},
 
-					_ => Err(CmnError::new(format!("Multiple tract areas found for area: '{}' with tags: '{:?}'. \
-						Please use additional tags to specify tract area more precisely", 
-						src_area_name, layer_tags))),
+					_ => Err(CmnError::new(format!("Multiple tract areas found for area: '{}' \
+						with tags: '{:?}'. Please use additional tags to specify tract area more \
+						precisely", src_area_name, layer_tags))),
 				}
 			}
 		}
@@ -321,125 +283,7 @@ impl TractArea {
 }
 
 
-// Remove input and output tags and return result.
-// [FIXME]: TODO: Verify tags?
-// fn clear_io_tags(layer_tags: LayerTags) -> LayerTags {
-// 	layer_tags & !(map::OUTPUT | map::INPUT)
-// }
-
 #[cfg(test)]
 pub mod tests {
 	
 }
-
-
-
-
-	// pub fn cycle_cortical_ganglions(&mut self, areas: &mut CorticalAreas) {
-	// 	// for (area_name, area) in areas.iter() {
-	// 	// 	for aff_area_name in area.afferent_target_names().iter() {
-	// 	// 		//println!("Forwarding from: '{}' to '{}'", area_name, aff_area_name);
-	// 	// 		self.forward_afferent_output(area_name, aff_area_name, areas);
-	// 	// 	}
-
-	// 	// 	for eff_area_name in area.efferent_target_names().iter() {
-	// 	// 		//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
-	// 	// 		self.backward_efferent_output(area_name, eff_area_name, areas);
-	// 	// 	}
-	// 	// }
-
-	// 	// for (area_name, area_map) in self.area_maps.iter() {
-	// 	// 	for aff_area_name in area_map.aff_areas().iter() {
-	// 	// 		//println!("Forwarding from: '{}' to '{}'", area_name, aff_area_name);
-	// 	// 		self.forward_afferent_output(area_name, aff_area_name, areas);
-	// 	// 	}
-
-	// 	// 	for eff_area_name in area_map.eff_areas().iter() {
-	// 	// 		//println!("Backwarding from: '{}' to '{}'", area_name, eff_area_name);
-	// 	// 		self.backward_efferent_output(area_name, eff_area_name, areas);
-	// 	// 	}
-	// 	// }
-	// }
-
-
-	/*	FORWARD_FF_OUT(): Read afferent output from a cortical area and store it 
-		in our thalamus' cache (the 'tract').
-
-			TODO: RENAME OR BREAK UP
-			TODO: HANDLE MULTIPLE TARGET REGIONS
-	*/
-	// pub fn forward_afferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
-	// 			 areas: &mut CorticalAreas) 
-	// {
-	// 	let emsg = "thalamus::Thalamus::forward_afferent_output(): Area not found: ";
-	// 	let emsg_src = format!("{}'{}' ", emsg, src_area_name);
-	// 	let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
-
-	// 	//println!("\n ##### FORWARDING FEEDFORWARD OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
-
-	// 	//if self.area_maps[
-
-	// 	areas.get(src_area_name).expect(&emsg_src).read_output(
-	// 		self.afferent_tract.output_ganglion(src_area_name, tar_area_name),
-	// 		map::FF_OUT, 
-	// 	);		
-		
-	// 	areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
-	// 		self.afferent_tract.input_ganglion(tar_area_name),
-	// 		map::FF_IN,
-	// 	);
-
-	// }
-
-	// pub fn read_afferent_output(&mut self, src_area_name &str, 
-
-	// BACKWARD_FB_OUT():  Cause an efferent frame to descend
-	// pub fn backward_efferent_output(&mut self, src_area_name: &str, tar_area_name: &str,
-	// 			 areas: &mut CorticalAreas) 
-	// {
-	// 	let emsg = "thalamus::Thalamus::backward_efferent_output(): Area not found: ";
-	// 	let emsg_src = format!("{}'{}' ", emsg, src_area_name);
-	// 	let emsg_tar = format!("{}'{}' ", emsg, tar_area_name);
-
-	// 	match areas.get(tar_area_name) {
-	// 		Some(area) => if self.area_maps[tar_area_name].plmap().kind == Thalamic { return; },
-	// 		None => return,
-	// 	}
-
-	// 	//println!("\n ##### BACKWARDING FEEDBACK OUTPUT from: '{}' to: '{}'", src_area_name, tar_area_name);
-		
-	// 	areas.get(src_area_name).expect(&emsg_src).read_output(
-	// 		self.efferent_tract.output_ganglion(src_area_name, tar_area_name), 
-	// 		map::FB_OUT,
-	// 	);
-	
-	// 	/* TEST */
-	// 	//let test_vec = input_czar::sdr_stripes(512, false, &mut self.efferent_tract[slc_range.clone()]);
-		
-	// 	areas.get_mut(tar_area_name).expect(&emsg_tar).write_input(
-	// 		self.efferent_tract.input_ganglion(tar_area_name), 
-	// 		map::FB_IN,
-	// 	);
- // 	}
-
-	// THALAMUS::WRITE(): USED FOR TESTING PURPOSES
-	// 	<<<<< NEEDS UPDATING TO NEW SYSTEM - CALL AREA.WRITE() >>>>>
-	// 		- Change input param to &CorticalArea			
-	// 	TODO: DEPRICATE
-	// pub fn write(&self, area_name: &str, layer_target: &'static str, 
-	// 			sdr: &Sdr, areas: &HashMap<&'static str, Box<CorticalArea>>,
-	// ) {
-	// 	let emsg = format!("cortex::Cortex::write_vec(): Invalid area name: {}", area_name);
-	// 	let area = areas.get(area_name).expect(&emsg);
-
-	// 	//let ref region = self.plmaps[&LayerMapKind::Sensory];
-	// 	let region = area.plmaps();
-	// 	let axn_slcs: Vec<ocl::cl_uchar> = region.slc_ids(vec!(layer_target));
-		
-	// 	for slc in axn_slcs { 
-	// 		//let buffer_offset = cmn::axn_idz_2d(slc, area.dims.columns(), region.hrz_demarc()) as usize;
-	// 		let buffer_offset = self.area_map.axn_idz(slc);
-	// 		ocl::enqueue_write_buffer(sdr, area.axns.states.buf, area.ocl().queue(), buffer_offset);
-	// 	}
-	// }
-	
