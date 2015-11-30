@@ -15,12 +15,12 @@ pub struct SliceDims {
 }
 
 impl SliceDims {
-	pub fn new(area_dims: &CorticalDims, src_area_dims_opt: Option<&CorticalDims>, 
+	pub fn new(area_dims: &CorticalDims, src_lyr_dims_opt: Option<&CorticalDims>, 
 				axn_kind: AxonKind) -> CmnResult<SliceDims>
 	{
 		match axn_kind {
 			AxonKind::Spatial | AxonKind::None => {
-				match src_area_dims_opt {
+				match src_lyr_dims_opt {
 					Some(src_area_dims) => {
 						let src_scales_res = get_src_scales(src_area_dims, area_dims);
 
@@ -56,8 +56,13 @@ impl SliceDims {
 			},
 
 			AxonKind::Horizontal => {
-				match src_area_dims_opt {
+				match src_lyr_dims_opt {
 					Some(src_area_dims) => {
+						if src_area_dims.v_size() > 252 || src_area_dims.u_size() > 252 { 
+							return Err(CmnError::from("Dimensions size for horizontal layers may \
+								not exceed 252."));
+						}
+
 						Ok(SliceDims { 
 							v_size: src_area_dims.v_size(),
 							u_size: src_area_dims.u_size(),
@@ -70,7 +75,9 @@ impl SliceDims {
 
 					None => {
 						let side = cmn::DEFAULT_HORIZONTAL_SLICE_SIDE;
+						assert!(side <= 255);
 						let mid = side / 2;
+
 						Ok(SliceDims { 
 							v_size: side,
 							u_size: side,
@@ -83,7 +90,15 @@ impl SliceDims {
 				}
 			}
 		}
-	}	
+	}
+
+	pub fn v_size(&self) -> u32 {
+		self.v_size
+	}
+
+	pub fn u_size(&self) -> u32 {
+		self.u_size
+	}
 
 	pub fn v_scale(&self) -> u32 {
 		self.v_scale

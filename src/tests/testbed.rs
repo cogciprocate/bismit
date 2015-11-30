@@ -1,6 +1,7 @@
 use cmn::{ CorticalDims };
 use map;
-use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, Sensory, Thalamic, Protocell, Protofilter, Protoinput };
+use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, Sensory, 
+	Thalamic, Protocell, Protofilter, Protoinput };
 use thalamus::{ Thalamus };
 use ocl::{ Context, ProQue };
 use cortex::{ Cortex };
@@ -18,8 +19,8 @@ pub fn define_protolayer_maps() -> ProtolayerMaps {
 		//.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
 		.layer("motor_in", 1, map::DEFAULT, Axonal(Horizontal))
 		//.layer("olfac", 1, map::DEFAULT, Axonal(Horizontal))
-		.layer("eff_in", 0, map::FB_IN /*| map::INTERAREA*/, Axonal(Spatial))
-		.layer("aff_in", 0, map::FF_IN /*| map::INTERAREA*/, Axonal(Spatial))
+		.layer("eff_in", 0, map::FB_IN, Axonal(Spatial))
+		.layer("aff_in", 0, map::FF_IN, Axonal(Spatial))
 		.layer("out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))
 		.layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
 		.layer("iv", 1, map::PSAL, 
@@ -156,11 +157,11 @@ pub struct TestBed {
 impl TestBed {
 	pub fn new() -> TestBed {
 		let plmaps = define_protolayer_maps();
-		let proto_area_maps = define_protoareas();
+		let protoarea_maps = define_protoareas();
 
-		// proto_area_maps.freeze();
+		// protoarea_maps.freeze();
 
-		let thal = Thalamus::new(plmaps, proto_area_maps);
+		let thal = Thalamus::new(plmaps, protoarea_maps);
 		let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
 		let ocl_context = Context::new(None, None).unwrap();

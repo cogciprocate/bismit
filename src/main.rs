@@ -1,6 +1,8 @@
 #![allow(dead_code, unused_variables, unused_assignments)]
-
 #![feature(vec_push_all, clone_from_slice, drain)]
+
+pub use map::proto;
+
 extern crate num;
 extern crate libc;
 extern crate time;
@@ -28,7 +30,7 @@ mod pyramidals;
 mod spiny_stellates;
 mod cortex;
 mod thalamus;
-mod proto;
+// mod proto;
 //mod energy;
 mod encode;
 mod sensory_filter;

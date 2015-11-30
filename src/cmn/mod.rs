@@ -336,11 +336,13 @@ pub fn cel_idx_3d(depth: u8, slc_id: u8, v_size: u32, v_id: u32, u_size: u32, u_
 
 
 
-pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
-	assert!(radius >= 0);
+pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
+	assert!(radius <= 127);
 
 	let tile_count = (3 * radius as usize) * (radius as usize + 1) + 1;
 	let mut mold = Vec::with_capacity(tile_count);
+
+	let radius: i8 = radius as i8;
 
 	let v_ofs_z = 0 - radius;
 	let v_ofs_n = radius + 1;

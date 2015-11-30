@@ -18,23 +18,23 @@ pub struct Protocell {
 	pub cell_class: CellClass,
 	pub den_prx_src_lyrs: Option<Vec<&'static str>>,	
 	pub den_dst_src_lyrs: Option<Vec<Vec<&'static str>>>,
-	pub den_prx_syn_reach: i8,
-	pub den_dst_syn_reach: i8,	
+	pub den_prx_syn_reach: u8,
+	pub den_dst_syn_reach: u8,	
 	pub den_thresh_init: Option<u32>,
 }
 
 impl Protocell {
 	pub fn new(					
-					dens_per_tuft_l2: u8,
-					syns_per_den_l2: u8,
-					cols_per_cel_l2: u8,
-					cell_kind: CellKind,
-					cell_class: CellClass,
-					den_dst_src_lyrs: Option<Vec<Vec<&'static str>>>,
-					den_prx_src_lyrs: Option<Vec<&'static str>>,
-					den_prx_syn_reach: i8,
-					den_dst_syn_reach: i8,
-					thresh: Option<u32>,
+				dens_per_tuft_l2: u8,
+				syns_per_den_l2: u8,
+				cols_per_cel_l2: u8,
+				cell_kind: CellKind,
+				cell_class: CellClass,
+				den_dst_src_lyrs: Option<Vec<Vec<&'static str>>>,
+				den_prx_src_lyrs: Option<Vec<&'static str>>,
+				den_prx_syn_reach: u8,
+				den_dst_syn_reach: u8,
+				thresh: Option<u32>,
 	) -> Protocell {
 			// DO SOME CHECKS ON PARAMETERS (certain cell types must/mustn't have certain dendritic segments)
 
@@ -53,14 +53,14 @@ impl Protocell {
 	}	
 
 	pub fn pyramidal(dens_per_tuft_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, 
-				thresh: u32, dst_reach: i8) -> LayerKind 
+				thresh: u32, dst_reach: u8) -> LayerKind 
 	{
 		Cellular(Protocell {
 			dens_per_tuft_l2: dens_per_tuft_l2,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
 			cell_kind: CellKind::Pyramidal,
-			cell_class: CellClass::Material,
+			cell_class: CellClass::Data,
 			den_dst_src_lyrs: Some(vec![dst_srcs]),
 			den_prx_src_lyrs: None,
 			den_prx_syn_reach: dst_reach,
@@ -71,14 +71,14 @@ impl Protocell {
 
 	// SWITCH TO DISTAL
 	pub fn spiny_stellate(syns_per_den_l2: u8, prx_srcs: Vec<&'static str>, thresh: u32,
-				prx_reach: i8) -> LayerKind 
+				prx_reach: u8) -> LayerKind 
 	{
 		Cellular(Protocell {
 			dens_per_tuft_l2: 0,
 			syns_per_den_l2: syns_per_den_l2,
 			cols_per_cel_l2: 0,
 			cell_kind: CellKind::SpinyStellate,
-			cell_class: CellClass::Material,
+			cell_class: CellClass::Data,
 			den_dst_src_lyrs: None, // Some(vec![dst_srcs]),
 			den_prx_src_lyrs: Some(prx_srcs),
 			den_prx_syn_reach: prx_reach,
@@ -87,8 +87,7 @@ impl Protocell {
 		}.validate())
 	}
 
-	pub fn inhibitory(cols_per_cel_l2: u8, dst_src: &'static str) -> LayerKind 
-	{
+	pub fn inhibitory(cols_per_cel_l2: u8, dst_src: &'static str) -> LayerKind {
 		Cellular(Protocell {
 			dens_per_tuft_l2: 0,
 			syns_per_den_l2: 0,
@@ -103,8 +102,7 @@ impl Protocell {
 		}.validate())
 	}
 
-	pub fn minicolumn(psal_lyr: &'static str, ptal_lyr: &'static str,) -> LayerKind 
-	{
+	pub fn minicolumn(psal_lyr: &'static str, ptal_lyr: &'static str,) -> LayerKind {
 		Cellular(Protocell {
 			dens_per_tuft_l2: 0,
 			syns_per_den_l2: 0,
@@ -120,7 +118,7 @@ impl Protocell {
 	}
 
 	pub fn validate(self) -> Protocell {
-		assert!(self.den_prx_syn_reach >= 0 && self.den_dst_syn_reach >= 0, 
+		assert!(self.den_prx_syn_reach <= 127 && self.den_dst_syn_reach <= 127, 
 			"Synapse reach must be between 0..127");
 
 		self
@@ -147,7 +145,7 @@ pub enum CellKind {
 
 #[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
 pub enum CellClass {
-	Material,
+	Data,
 	Control,
 }
 

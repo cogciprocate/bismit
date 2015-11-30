@@ -44,7 +44,7 @@ pub fn define_plmaps() -> ProtolayerMaps {
 
 			.layer("iii", 2, map::PTAL, 
 				Protocell::pyramidal(1, 5, vec!["iii"], 2200, 8)
-					.apical(vec!["eff_in"]))
+					.apical(vec!["eff_in", "olfac"]))
 		)
 
 		.lmap(ProtolayerMap::new("v0_lm", Thalamic)

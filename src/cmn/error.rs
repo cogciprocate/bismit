@@ -23,6 +23,12 @@ impl From<String> for CmnError {
     }
 }
 
+impl<'a> From<&'a str> for CmnError {
+    fn from(desc: &'a str) -> CmnError {
+        CmnError::new(String::from(desc))
+    }
+}
+
 impl fmt::Display for CmnError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&self.description)

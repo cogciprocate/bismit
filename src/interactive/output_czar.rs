@@ -111,7 +111,7 @@ pub fn print_sense_and_print(cortex: &mut Cortex, area_name: &str) {
 
 	if true {	
 		print!("\nPYRAMIDAL SYNAPSE SOURCE SLICE IDS: ");
-		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 11, None, None, true);
+		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 10, None, None, true);
 	} else if false {
 		print!("\nPYRAMIDAL SYNAPSE SOURCE SLICE IDS(0 - 1300): ");
 		cortex.area_mut(area_name).ptal_mut().dens_mut().syns_mut().src_slc_ids.print(1 << 1, None, None, true);

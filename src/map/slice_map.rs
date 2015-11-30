@@ -1,13 +1,13 @@
-
 use ocl::{ self, EnvoyDims };
 use cmn::{ self, CorticalDims, HexTilePlane };
-use map::{ area_map, SliceDims, LayerMap };
+use map::{ area_map, SliceDims, LayerMap, AxonKind };
 
 
 #[derive(Debug, Clone)]
 pub struct SliceMap {
 	axn_idzs: Vec<u32>,
 	layer_names: Vec<&'static str>,
+	axn_kinds: Vec<AxonKind>,
 	v_sizes: Vec<u32>,
 	u_sizes: Vec<u32>,
 	v_scales: Vec<u32>,
@@ -27,6 +27,7 @@ impl SliceMap {
 
 		let mut axn_idzs = Vec::with_capacity(depth);
 		let mut layer_names = Vec::with_capacity(depth);
+		let mut axn_kinds = Vec::with_capacity(depth);
 		let mut v_scales = Vec::with_capacity(depth);
 		let mut u_scales = Vec::with_capacity(depth);
 		let mut v_sizes = Vec::with_capacity(depth);
@@ -46,6 +47,7 @@ impl SliceMap {
 				axn_idz_ttl += slc_dims.columns();
 
 				layer_names.push(layer.name());
+				axn_kinds.push(layer.axn_kind());
 				v_sizes.push(slc_dims.v_size());
 				u_sizes.push(slc_dims.u_size());
 				v_scales.push(slc_dims.v_scale());
@@ -83,6 +85,7 @@ impl SliceMap {
 		}
 
 		debug_assert_eq!(axn_idzs.len(), layer_names.len());
+		debug_assert_eq!(axn_idzs.len(), axn_kinds.len());
 		debug_assert_eq!(axn_idzs.len(), dims.len());
 		debug_assert_eq!(axn_idzs.len(), v_sizes.len());
 		debug_assert_eq!(axn_idzs.len(), u_sizes.len());
@@ -95,6 +98,7 @@ impl SliceMap {
 		SliceMap {
 			axn_idzs: axn_idzs,
 			layer_names: layer_names,
+			axn_kinds: axn_kinds,
 			dims: dims,
 			v_sizes: v_sizes,
 			u_sizes: u_sizes,	
@@ -161,6 +165,10 @@ impl SliceMap {
 
 	pub fn layer_names(&self) -> &Vec<&'static str> {
 		&self.layer_names
+	}
+
+	pub fn axn_kinds(&self) -> &Vec<AxonKind> {
+		&self.axn_kinds
 	}
 
 	pub fn v_sizes(&self) -> &Vec<u32> {
