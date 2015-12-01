@@ -1,6 +1,4 @@
 use rand::{ self, XorShiftRng };
-// use rand::distributions::{ /*IndependentSample,*/ Range as RandRange };
-// use std::collections::{ BTreeSet };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap, SrcSlices, SrcIdxCache, SynSrc };
@@ -64,14 +62,13 @@ pub struct Synapses {
 	dims: CorticalDims,
 	syns_per_den_l2: u8,
 	protocell: Protocell,
-	src_slc_ids_by_tft: Vec<Vec<u8>>, // per-tuft
+	src_slc_ids_by_tft: Vec<Vec<u8>>,
 	den_kind: DendriteKind,
 	cell_kind: CellKind,
 	since_decay: usize,
 	kernels: Vec<Box<Kernel>>,
-	src_idx_cache: SrcIdxCache, 	// per-den
+	src_idx_cache: SrcIdxCache,
 	src_slcs: SrcSlices,
-	// hex_tile_offs: Vec<(i8, i8)>, 	// <===>
 	rng: XorShiftRng,
 	pub states: Envoy<cl_uchar>,
 	pub strengths: Envoy<cl_char>,
@@ -175,7 +172,6 @@ impl Synapses {
 			since_decay: 0,
 			kernels: kernels,
 			src_idx_cache: src_idx_cache,
-			// hex_tile_offs: cmn::hex_tile_offs(syn_reach),
 			src_slcs: src_slcs,
 			rng: rand::weak_rng(),
 			states: states,
@@ -186,8 +182,6 @@ impl Synapses {
 			flag_sets: flag_sets,
 			// slc_pool: slc_pool,  // BRING THIS BACK
 		};
-
-		// println!("\nHex tile offsets: \n{:?}", syns.hex_tile_offs);
 
 		syns.grow(true);
 		// syns.refresh_slc_pool(); // BRING THIS BACK
@@ -212,13 +206,6 @@ impl Synapses {
 
 		for src_slc_id_list in &src_slc_ids_by_tft {
 			if src_slc_id_list.len() == 0 { continue; }
-			// [FIXME]: REMOVE? yes.
-			// assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, "Synapses::init(): \
-			// 	Number of source slcs must not exceed number of synapses per cell.");
-
-			// let src_slc_id_range: RandRange<usize> = RandRange::new(0, src_slc_ids.len());
-			// let src_col_offs_range: RandRange<usize> = RandRange::new(0, self.hex_tile_offs.len());
-			// let strength_init_range: RandRange<i8> = RandRange::new(-3, 4);
 
 			let syn_idz = syns_per_layer_tft * src_tft_id as usize;
 			let syn_idn = syn_idz + syns_per_layer_tft as usize;
@@ -232,8 +219,7 @@ impl Synapses {
 
 			for syn_idx in syn_idz..syn_idn {
 				if init || (self.strengths[syn_idx] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
-					self.regrow_syn(syn_idx, /*&src_slc_id_range, &src_col_offs_range,
-						&strength_init_range, &src_slc_ids,*/ src_tft_id, init);
+					self.regrow_syn(syn_idx, src_tft_id, init);
 				}
 			}
 
@@ -252,17 +238,9 @@ impl Synapses {
 	// [FIXME][COMPLETE]: Implement per-slice syn_ranges.
 	fn regrow_syn(&mut self, 
 				syn_idx: usize, 
-				// src_slc_idx_range: &RandRange<usize>, 
-				// src_col_offs_range: &RandRange<usize>,
-				// strength_init_range: &RandRange<i8>,
-				// src_slc_ids: &Vec<u8>,
 				tft_id: usize,
 				init: bool,
-	) {
-		// DEBUG
-			//let mut print_str: String = String::with_capacity(10); 
-			//let mut tmp_str = format!("[({})({})({})=>", self.src_slc_ids_by_tft[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
-			//print_str.push_str(&tmp_str);
+	) {		
 		let syn_span = 2 * cmn::SYNAPSE_REACH as i8;
 
 		loop {
@@ -273,50 +251,20 @@ impl Synapses {
 				strength: 0
 			};
 
-			// let new_slc_id = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
-
-			// self.src_col_v_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].0; 
-			// self.src_col_u_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].1;
-			// let (new_v_ofs, new_u_ofs) = self.src_slcs.gen_offs(tft_id, new_slc_id, &mut self.rng);
-
 			let new_src = self.src_slcs.gen_src(tft_id, &mut self.rng);
-
-			// let new_src = SynSrc { 
-			// 	slc: self.src_slc_ids[syn_idx], 
-			// 	v_ofs: self.src_col_v_offs[syn_idx],
-			// 	u_ofs: self.src_col_u_offs[syn_idx],
-			// };
 
 			self.src_slc_ids[syn_idx] = new_src.slc_id;
 			self.src_col_v_offs[syn_idx] = new_src.v_ofs; 
 			self.src_col_u_offs[syn_idx] = new_src.u_ofs;
 			self.strengths[syn_idx] = new_src.strength;
 
-			// [FIXME] TODO: NEED SOMETHING SIMPLER/FASTER TO INIT STRENGTHS
-			// let syn_str_intensity = 
-			// 	syn_span 
-			// 	- (self.src_col_v_offs[syn_idx].abs()
-			// 		+ self.src_col_u_offs[syn_idx].abs());
-
-			// self.strengths[syn_idx] = syn_str_intensity * strength_init_range.ind_sample(&mut self.rng);			
-
 			if self.src_idx_cache.insert(syn_idx, old_ofs, new_src) {
-				// DEBUG
-				//print_str.push_str("$"); 
+				// DEBUG: print_str.push_str("$"); 
 				break;
 			} else {
-				// DEBUG
-				//print_str.push_str("^"); 
+				// DEBUG: print_str.push_str("^"); 
 			}
 		}
-
-		// DEBUG
-			// tmp_str = format!("=>({})({})({})] ", self.src_slc_ids[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
-			// print_str.push_str(&tmp_str);
-
-			// if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
-			// 	print!("{}", print_str);
-			// }
 	}
 
 	pub fn cycle(&self, wait_events: Option<&EventList>) {

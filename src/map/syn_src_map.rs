@@ -1,11 +1,9 @@
-// use std::fmt;
-use rand::{ /*self,*/ XorShiftRng };
+use rand::{ XorShiftRng };
 use rand::distributions::{ IndependentSample, Range as RandRange };
 use std::collections::{ BTreeMap, BTreeSet };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap, SliceDims, AxonKind };
-// use proto::{ CellKind, Protocell, DendriteKind };
 
 const INTENSITY_REDUCTION_L2: i8 = 3;
 const STR_MIN: i8 = -3;
@@ -20,7 +18,6 @@ pub struct SrcSlices {
 	slc_ids: Vec<Vec<u8>>,
 	slc_id_ranges: Vec<RandRange<usize>>,
 	str_ranges: Vec<RandRange<i8>>,
-	// rng: XorShiftRng,
 }
 
 impl SrcSlices {
@@ -58,8 +55,7 @@ impl SrcSlices {
 			slc_ids: src_slc_ids_by_tft.clone(), str_ranges: str_ranges, }
 	}
 
-	// [FIXME]: TODO: MORE THOROUGH BOUNDS CHECKING. These unchecked array accesses are potentially dangerous.
-	// [FIXME]: TODO: Bounds check ofs against v and u id (will need to figure out how to deconstruct this from the syn_idx or something).
+	// [FIXME]: TODO: Bounds check ofs against v and u id -- will need to figure out how to deconstruct this from the syn_idx or something.
 	pub fn gen_src(&self, tft_id: usize, rng: &mut XorShiftRng) -> SynSrc {
 		debug_assert!(tft_id < self.slc_ids.len() && tft_id < self.tft_slcs.len());
 
