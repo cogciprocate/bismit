@@ -239,8 +239,10 @@ impl IdxReader {
 					let tar_idx = (v_id * u_size) + u_id;
 					let src_idx = (y as usize * x_size) + x as usize;
 
-					target[tar_idx] = source[src_idx];
-					// target[tar_idx] = 1 as u8; // SHOW INPUT SQUARE
+					unsafe { *target.get_unchecked_mut(tar_idx) = *source.get_unchecked(src_idx); }
+
+					// SHOW INPUT SQUARE
+					// target[tar_idx] = 1 as u8;
 				}
 			}
 		}

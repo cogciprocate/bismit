@@ -1,9 +1,9 @@
 use rand::{ self, XorShiftRng };
-use rand::distributions::{ IndependentSample, Range as RandRange };
+// use rand::distributions::{ /*IndependentSample,*/ Range as RandRange };
 // use std::collections::{ BTreeSet };
 
 use cmn::{ self, CorticalDims };
-use map::{ AreaMap, SrcSlices, SrcIdxCache, AxnOfs };
+use map::{ AreaMap, SrcSlices, SrcIdxCache, SynSrc };
 use ocl::{ cl_uchar, cl_char, ProQue, WorkSize, Envoy, OclNum, EventList, Kernel };
 use proto::{ CellKind, Protocell, DendriteKind };
 use axon_space::{ AxonSpace };
@@ -71,7 +71,7 @@ pub struct Synapses {
 	kernels: Vec<Box<Kernel>>,
 	src_idx_cache: SrcIdxCache, 	// per-den
 	src_slcs: SrcSlices,
-	hex_tile_offs: Vec<(i8, i8)>, 	// <===>
+	// hex_tile_offs: Vec<(i8, i8)>, 	// <===>
 	rng: XorShiftRng,
 	pub states: Envoy<cl_uchar>,
 	pub strengths: Envoy<cl_char>,
@@ -104,14 +104,14 @@ impl Synapses {
 		let flag_sets = Envoy::<cl_uchar>::new(dims, 0, ocl_pq.queue());
 
 		// [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
-		let (src_slc_ids_by_tft, syn_reach) = match den_kind {
+		let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {
 			DendriteKind::Proximal => {
 				(vec![area_map.layer_src_slc_ids(layer_name, den_kind)],
-					protocell.den_prx_syn_reach)
+					vec![protocell.den_prx_syn_reach])
 			},
 			DendriteKind::Distal => {
 				(area_map.layer_dst_src_slc_ids(layer_name),
-					protocell.den_dst_syn_reach)
+					protocell.den_dst_syn_reaches.clone())
 			},
 		};
 
@@ -122,7 +122,7 @@ impl Synapses {
 			layer_name, src_slc_ids_by_tft);
 
 		// [FIXME]: Implement src_ranges on a per-tuft basis.
-		let syn_reaches_by_tft: Vec<u8> = src_slc_ids_by_tft.iter().map(|_| syn_reach).collect();
+		// let syn_reaches_by_tft: Vec<u8> = src_slc_ids_by_tft.iter().map(|_| syn_reach).collect();
 		let src_slcs = SrcSlices::new(&src_slc_ids_by_tft, syn_reaches_by_tft, area_map);		
 
 		if DEBUG_NEW { 
@@ -175,7 +175,7 @@ impl Synapses {
 			since_decay: 0,
 			kernels: kernels,
 			src_idx_cache: src_idx_cache,
-			hex_tile_offs: cmn::hex_tile_offs(syn_reach),
+			// hex_tile_offs: cmn::hex_tile_offs(syn_reach),
 			src_slcs: src_slcs,
 			rng: rand::weak_rng(),
 			states: states,
@@ -210,15 +210,15 @@ impl Synapses {
 		let src_slc_ids_by_tft = self.src_slc_ids_by_tft.clone();
 		let mut src_tft_id = 0usize;
 
-		for src_slc_ids in &src_slc_ids_by_tft {
-			if src_slc_ids.len() == 0 { continue; }
-			// [FIXME]: REMOVE?
-			assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, "Synapses::init(): \
-				Number of source slcs must not exceed number of synapses per cell.");
+		for src_slc_id_list in &src_slc_ids_by_tft {
+			if src_slc_id_list.len() == 0 { continue; }
+			// [FIXME]: REMOVE? yes.
+			// assert!(src_slc_ids.len() <= (self.dims.per_cel()) as usize, "Synapses::init(): \
+			// 	Number of source slcs must not exceed number of synapses per cell.");
 
-			let src_slc_id_range: RandRange<usize> = RandRange::new(0, src_slc_ids.len());
-			let src_col_offs_range: RandRange<usize> = RandRange::new(0, self.hex_tile_offs.len());
-			let strength_init_range: RandRange<i8> = RandRange::new(-3, 4);
+			// let src_slc_id_range: RandRange<usize> = RandRange::new(0, src_slc_ids.len());
+			// let src_col_offs_range: RandRange<usize> = RandRange::new(0, self.hex_tile_offs.len());
+			// let strength_init_range: RandRange<i8> = RandRange::new(-3, 4);
 
 			let syn_idz = syns_per_layer_tft * src_tft_id as usize;
 			let syn_idn = syn_idz + syns_per_layer_tft as usize;
@@ -227,13 +227,13 @@ impl Synapses {
 				println!("{mt}{mt}{mt}{mt}{mt}\
 					SYNAPSES::GROW()[INIT]: '{}' ({:?}): src_slc_ids: {:?}, \
 					syns_per_layer_tft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind, 
-					src_slc_ids, syns_per_layer_tft, syn_idz, syn_idn, mt = cmn::MT);	
+					src_slc_id_list, syns_per_layer_tft, syn_idz, syn_idn, mt = cmn::MT);	
 			}
 
 			for syn_idx in syn_idz..syn_idn {
 				if init || (self.strengths[syn_idx] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
-					self.regrow_syn(syn_idx, &src_slc_id_range, &src_col_offs_range,
-						&strength_init_range, &src_slc_ids, src_tft_id, init);
+					self.regrow_syn(syn_idx, /*&src_slc_id_range, &src_col_offs_range,
+						&strength_init_range, &src_slc_ids,*/ src_tft_id, init);
 				}
 			}
 
@@ -246,16 +246,19 @@ impl Synapses {
 		self.src_col_u_offs.write_wait();
 	}
 
+	// [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
+	// - Will need to know u and v coords of host cell or deconstruct from syn_idx.
+	// [FIXME] TODO: Remove synapse index bounds checks (.get_unchecked()...).
+	// [FIXME][COMPLETE]: Implement per-slice syn_ranges.
 	fn regrow_syn(&mut self, 
 				syn_idx: usize, 
-				src_slc_idx_range: &RandRange<usize>, 
-				src_col_offs_range: &RandRange<usize>,
-				strength_init_range: &RandRange<i8>,
-				src_slc_ids_by_tft: &Vec<u8>,
+				// src_slc_idx_range: &RandRange<usize>, 
+				// src_col_offs_range: &RandRange<usize>,
+				// strength_init_range: &RandRange<i8>,
+				// src_slc_ids: &Vec<u8>,
 				tft_id: usize,
 				init: bool,
 	) {
-
 		// DEBUG
 			//let mut print_str: String = String::with_capacity(10); 
 			//let mut tmp_str = format!("[({})({})({})=>", self.src_slc_ids_by_tft[syn_idx], self.src_col_v_offs[syn_idx],  self.strengths[syn_idx]);
@@ -263,42 +266,41 @@ impl Synapses {
 		let syn_span = 2 * cmn::SYNAPSE_REACH as i8;
 
 		loop {
-			let old_ofs = AxnOfs { 
-				slc: self.src_slc_ids[syn_idx], 
+			let old_ofs = SynSrc { 
+				slc_id: self.src_slc_ids[syn_idx], 
 				v_ofs: self.src_col_v_offs[syn_idx],
 				u_ofs: self.src_col_u_offs[syn_idx],
+				strength: 0
 			};
 
-			let slc_id_new = src_slc_ids_by_tft[src_slc_idx_range.ind_sample(&mut self.rng)];
-			self.src_slc_ids[syn_idx] = slc_id_new;
+			// let new_slc_id = src_slc_ids[src_slc_idx_range.ind_sample(&mut self.rng)];
 
 			// self.src_col_v_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].0; 
 			// self.src_col_u_offs[syn_idx] = self.hex_tile_offs[src_col_offs_range.ind_sample(&mut self.rng)].1;
-			let (v_ofs_new, u_ofs_new) = self.src_slcs.gen_offs(tft_id, slc_id_new, &mut self.rng);
+			// let (new_v_ofs, new_u_ofs) = self.src_slcs.gen_offs(tft_id, new_slc_id, &mut self.rng);
 
-			self.src_col_v_offs[syn_idx] = v_ofs_new; 
-			self.src_col_u_offs[syn_idx] = u_ofs_new;
+			let new_src = self.src_slcs.gen_src(tft_id, &mut self.rng);
 
-			let intensity_reduction_l2 = 3;
+			// let new_src = SynSrc { 
+			// 	slc: self.src_slc_ids[syn_idx], 
+			// 	v_ofs: self.src_col_v_offs[syn_idx],
+			// 	u_ofs: self.src_col_u_offs[syn_idx],
+			// };
+
+			self.src_slc_ids[syn_idx] = new_src.slc_id;
+			self.src_col_v_offs[syn_idx] = new_src.v_ofs; 
+			self.src_col_u_offs[syn_idx] = new_src.u_ofs;
+			self.strengths[syn_idx] = new_src.strength;
 
 			// [FIXME] TODO: NEED SOMETHING SIMPLER/FASTER TO INIT STRENGTHS
-			let syn_str_intensity = (syn_span - 
-					(self.src_col_v_offs[syn_idx].abs() + 
-					self.src_col_u_offs[syn_idx].abs())
-				) >> intensity_reduction_l2;
+			// let syn_str_intensity = 
+			// 	syn_span 
+			// 	- (self.src_col_v_offs[syn_idx].abs()
+			// 		+ self.src_col_u_offs[syn_idx].abs());
 
-			self.strengths[syn_idx] = syn_str_intensity * strength_init_range.ind_sample(&mut self.rng);
+			// self.strengths[syn_idx] = syn_str_intensity * strength_init_range.ind_sample(&mut self.rng);			
 
-			let new_ofs = AxnOfs { 
-				slc: self.src_slc_ids[syn_idx], 
-				v_ofs: self.src_col_v_offs[syn_idx],
-				u_ofs: self.src_col_u_offs[syn_idx],
-			};
-
-			// [FIXME] TODO: VERIFY AXON INDEX SAFETY
-			// 	- Will need to know u and v coords of host cell
-
-			if self.src_idx_cache.insert(syn_idx, old_ofs, new_ofs) {
+			if self.src_idx_cache.insert(syn_idx, old_ofs, new_src) {
 				// DEBUG
 				//print_str.push_str("$"); 
 				break;
@@ -370,6 +372,7 @@ impl Synapses {
 		self.src_col_v_offs.set_all_to(0);
 		self.src_col_u_offs.set_all_to(0);
 	}
+
 }
 
 

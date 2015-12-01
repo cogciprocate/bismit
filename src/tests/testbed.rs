@@ -28,7 +28,7 @@ pub fn define_protolayer_maps() -> ProtolayerMaps {
 		.layer("iv_inhib", 0, map::DEFAULT, 
 			Protocell::inhibitory(4, "iv"))
 		.layer("iii", 3, map::PTAL, 
-			Protocell::pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"]))
+			Protocell::pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"], 12))
 	);
 
 	plmaps.add(ProtolayerMap::new("external", Thalamic)
@@ -123,8 +123,8 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 		// 	Protocell::inhibitory(4, "iv"))
 		.layer("iii", 2, map::PTAL, 
 			Protocell::pyramidal(2, 4, vec!["unused"], 1, 8)
-				.apical(vec!["test1"])
-				.apical(vec!["test2"])
+				.apical(vec!["test1"], 12)
+				.apical(vec!["test2"], 11)
 				// .apical(vec!["test3"])
 				// .apical(vec!["test4"])
 				// .apical(vec!["test5"])

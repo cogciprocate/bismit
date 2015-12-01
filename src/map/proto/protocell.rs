@@ -19,7 +19,7 @@ pub struct Protocell {
 	pub den_prx_src_lyrs: Option<Vec<&'static str>>,	
 	pub den_dst_src_lyrs: Option<Vec<Vec<&'static str>>>,
 	pub den_prx_syn_reach: u8,
-	pub den_dst_syn_reach: u8,	
+	pub den_dst_syn_reaches: Vec<u8>,	
 	pub den_thresh_init: Option<u32>,
 }
 
@@ -33,7 +33,7 @@ impl Protocell {
 				den_dst_src_lyrs: Option<Vec<Vec<&'static str>>>,
 				den_prx_src_lyrs: Option<Vec<&'static str>>,
 				den_prx_syn_reach: u8,
-				den_dst_syn_reach: u8,
+				den_dst_syn_reaches: Vec<u8>,
 				thresh: Option<u32>,
 	) -> Protocell {
 			// DO SOME CHECKS ON PARAMETERS (certain cell types must/mustn't have certain dendritic segments)
@@ -47,7 +47,7 @@ impl Protocell {
 			den_dst_src_lyrs: den_dst_src_lyrs,
 			den_prx_src_lyrs: den_prx_src_lyrs,
 			den_prx_syn_reach: den_prx_syn_reach,
-			den_dst_syn_reach: den_dst_syn_reach,
+			den_dst_syn_reaches: den_dst_syn_reaches,
 			den_thresh_init: thresh,
 		}.validate()
 	}	
@@ -64,7 +64,7 @@ impl Protocell {
 			den_dst_src_lyrs: Some(vec![dst_srcs]),
 			den_prx_src_lyrs: None,
 			den_prx_syn_reach: dst_reach,
-			den_dst_syn_reach: dst_reach,
+			den_dst_syn_reaches: vec![dst_reach],
 			den_thresh_init: Some(thresh),			
 		}.validate())
 	}
@@ -82,7 +82,7 @@ impl Protocell {
 			den_dst_src_lyrs: None, // Some(vec![dst_srcs]),
 			den_prx_src_lyrs: Some(prx_srcs),
 			den_prx_syn_reach: prx_reach,
-			den_dst_syn_reach: prx_reach,
+			den_dst_syn_reaches: Vec::new(),
 			den_thresh_init: Some(thresh),
 		}.validate())
 	}
@@ -97,7 +97,7 @@ impl Protocell {
 			den_dst_src_lyrs: Some(vec![vec![dst_src]]),
 			den_prx_src_lyrs: None,
 			den_prx_syn_reach: 0,
-			den_dst_syn_reach: 0,
+			den_dst_syn_reaches: vec![0],
 			den_thresh_init: None,
 		}.validate())
 	}
@@ -112,14 +112,17 @@ impl Protocell {
 			den_dst_src_lyrs: Some(vec![vec![psal_lyr],vec![ptal_lyr]]),
 			den_prx_src_lyrs: None,
 			den_prx_syn_reach: 0,
-			den_dst_syn_reach: 0,
+			den_dst_syn_reaches: vec![0],
 			den_thresh_init: None,
 		}.validate())
 	}
 
 	pub fn validate(self) -> Protocell {
-		assert!(self.den_prx_syn_reach <= 127 && self.den_dst_syn_reach <= 127, 
-			"Synapse reach must be between 0..127");
+		assert!(self.den_prx_syn_reach <= 127, "Synapse reach must be between 0..127");
+
+		for &reach in self.den_dst_syn_reaches.iter() {
+			assert!(reach <= 127, "Synapse reach must be between 0..127");
+		}		
 
 		self
 	}

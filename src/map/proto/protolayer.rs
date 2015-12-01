@@ -106,13 +106,15 @@ impl LayerKind {
 }
 
 impl LayerKind {
-	pub fn apical(mut self, dst_srcs: Vec<&'static str>) -> LayerKind {
+	pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_range: u8) -> LayerKind {
 		match &mut self {
 			&mut LayerKind::Cellular(ref mut pc) => {
 				match pc.den_dst_src_lyrs {
 					Some(ref mut vec) => vec.push(dst_srcs),
 					None => (),
 				}
+
+				pc.den_dst_syn_reaches.push(syn_range);
 			},
 
 			&mut LayerKind::Axonal(_) => (),

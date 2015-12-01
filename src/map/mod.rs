@@ -5,7 +5,7 @@ pub use self::slice_map::{ SliceMap };
 pub use self::layer_map::{ LayerMap };
 pub use self::layer_info::{ LayerInfo, SourceLayerInfo };
 pub use self::slice_dims::{ SliceDims };
-pub use self::syn_src_map::{ SrcSlices, SrcIdxCache, AxnOfs };
+pub use self::syn_src_map::{ SrcSlices, SrcIdxCache, SynSrc };
 
 pub use self::proto::{ AxonKind };
 
