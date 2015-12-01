@@ -192,8 +192,8 @@ impl Synapses {
 
 	fn grow(&mut self, init: bool) {
 		if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
-			println!("RG:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:\
-				(..)(..)(..)]\n", self.den_kind);
+			println!("REGROW:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:\
+				(SLICE)(OFFSET)(STRENGTH)]\n", self.den_kind);
 		}
 
 		self.strengths.read_wait();
@@ -218,7 +218,11 @@ impl Synapses {
 			}
 
 			for syn_idx in syn_idz..syn_idn {
-				if init || (self.strengths[syn_idx] <= cmn::SYNAPSE_STRENGTH_FLOOR) {
+				debug_assert!(syn_idx < self.strengths.len());
+
+				if init || (unsafe { *self.strengths.vec().get_unchecked(syn_idx) }
+						<= cmn::SYNAPSE_STRENGTH_FLOOR) 
+				{
 					self.regrow_syn(syn_idx, src_tft_id, init);
 				}
 			}
@@ -236,33 +240,33 @@ impl Synapses {
 	// - Will need to know u and v coords of host cell or deconstruct from syn_idx.
 	// [FIXME] TODO: Remove synapse index bounds checks (.get_unchecked()...).
 	// [FIXME][COMPLETE]: Implement per-slice syn_ranges.
-	fn regrow_syn(&mut self, 
-				syn_idx: usize, 
-				tft_id: usize,
-				init: bool,
-	) {		
-		let syn_span = 2 * cmn::SYNAPSE_REACH as i8;
+	fn regrow_syn(&mut self, syn_idx: usize, tft_id: usize, init: bool) {		
+		debug_assert!(syn_idx < self.src_slc_ids.len());
+		debug_assert!(syn_idx < self.src_col_v_offs.len());
+		debug_assert!(syn_idx < self.src_col_u_offs.len());
 
 		loop {
-			let old_ofs = SynSrc { 
-				slc_id: self.src_slc_ids[syn_idx], 
-				v_ofs: self.src_col_v_offs[syn_idx],
-				u_ofs: self.src_col_u_offs[syn_idx],
+			let old_src = unsafe { SynSrc { 
+				slc_id: *self.src_slc_ids.vec().get_unchecked(syn_idx), 
+				v_ofs: *self.src_col_v_offs.vec().get_unchecked(syn_idx),
+				u_ofs: *self.src_col_u_offs.vec().get_unchecked(syn_idx),
 				strength: 0
-			};
+			} };
 
 			let new_src = self.src_slcs.gen_src(tft_id, &mut self.rng);
 
-			self.src_slc_ids[syn_idx] = new_src.slc_id;
-			self.src_col_v_offs[syn_idx] = new_src.v_ofs; 
-			self.src_col_u_offs[syn_idx] = new_src.u_ofs;
-			self.strengths[syn_idx] = new_src.strength;
+			if self.src_idx_cache.insert(syn_idx, &old_src, &new_src) {
+				unsafe {
+					*self.src_slc_ids.vec_mut().get_unchecked_mut(syn_idx) = new_src.slc_id;
+					*self.src_col_v_offs.vec_mut().get_unchecked_mut(syn_idx) = new_src.v_ofs; 
+					*self.src_col_u_offs.vec_mut().get_unchecked_mut(syn_idx) = new_src.u_ofs;
+					*self.strengths.vec_mut().get_unchecked_mut(syn_idx) = new_src.strength;
+				}
 
-			if self.src_idx_cache.insert(syn_idx, old_ofs, new_src) {
-				// DEBUG: print_str.push_str("$"); 
+				if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("$"); }
 				break;
 			} else {
-				// DEBUG: print_str.push_str("^"); 
+				if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("^"); }
 			}
 		}
 	}

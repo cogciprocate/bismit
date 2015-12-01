@@ -1,4 +1,4 @@
-use ocl::{ self, ProQue, WorkSize, Envoy, };
+use ocl::{ self, cl_uchar, Kernel, ProQue, WorkSize, Envoy, };
 use cmn::{ self, HexTilePlane, Sdr };
 use axon_space::{ AxonSpace };
 use map::{ self, AreaMap };
@@ -9,8 +9,8 @@ pub struct SensoryFilter {
 	cl_file_name: Option<String>,
 	area_name: &'static str,
 	//dims: CorticalDims,
-	input: Envoy<ocl::cl_uchar>,
-	kern_cycle: ocl::Kernel,
+	input: Envoy<cl_uchar>,
+	kern_cycle: Kernel,
 }
 
 impl SensoryFilter {

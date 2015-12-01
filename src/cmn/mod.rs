@@ -127,7 +127,7 @@ pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXI
 //pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 1);
 
 //pub const LEARNING_ACTIVE: bool = true;
-pub const SYNAPSE_STRENGTH_FLOOR: i8 = -15; 			// DIRECTLY AFFECTS LEARNING RATE
+pub const SYNAPSE_STRENGTH_FLOOR: i8 = -25; 			// DIRECTLY AFFECTS LEARNING RATE
 pub const SYNAPSE_REGROWTH_INTERVAL: usize = 800; 		// DIRECTLY AFFECTS LEARNING RATE
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;	
 pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
@@ -308,7 +308,7 @@ pub fn load_builtin_kernel_files(build_options: &mut BuildConfig) {
 // [FIXME]: TEMPORARY
 pub fn cl_root_path() -> String {
 	// format!("{}/{}", env!("P"), "bismit/cl")
-	"cl".to_string()
+	"/home/nick/projects/bismit/cl".to_string()
 }
 
 

@@ -79,7 +79,7 @@ impl SrcSlices {
 				let (v_ofs, u_ofs) = offs[range.ind_sample(rng)];
 
 				let syn_str_intensity = (
-					slc_info.syn_reach() as i8
+					(slc_info.syn_reach() as i8 * 2)
 					- (v_ofs.abs() + u_ofs.abs())
 					) >> INTENSITY_REDUCTION_L2;
 
@@ -196,15 +196,16 @@ impl SrcIdxCache {
 		}
 	}
 
-	pub fn insert(&mut self, syn_idx: usize, new_ofs: SynSrc, old_ofs: SynSrc) -> bool {
+	pub fn insert(&mut self, syn_idx: usize, old_ofs: &SynSrc, new_ofs: &SynSrc) -> bool {
 		let den_idx = syn_idx >> self.syns_per_den_l2;
+		debug_assert!(den_idx < self.dens.len());
 
-		let new_ofs_key: i32 = self.axn_ofs(&new_ofs);
-		let is_unique: bool = self.dens[den_idx].insert(new_ofs_key);
+		let new_ofs_key: i32 = self.axn_ofs(new_ofs);
+		let is_unique: bool = unsafe { self.dens.get_unchecked_mut(den_idx).insert(new_ofs_key) };
 
 		if is_unique {
-			let old_ofs_key: i32 = self.axn_ofs(&old_ofs);
-			self.dens[den_idx].remove(&old_ofs_key);
+			let old_ofs_key: i32 = self.axn_ofs(old_ofs);
+			unsafe { self.dens.get_unchecked_mut(den_idx).remove(&old_ofs_key) };
 		}
 
 		is_unique

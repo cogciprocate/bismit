@@ -274,37 +274,43 @@ impl CorticalArea {
 	pub fn cycle(&mut self, thal: &mut Thalamus) {
 		let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
+		// self.output(map::FF_OUT, thal);
+
+		self.intake(map::FF_IN, thal);
+
 		if !self.disable_ssts {	
 			let aff_input_events = { self.events_lists.get(&map::FF_IN) };
 			self.psal().cycle(aff_input_events); 
+			// self.psal().cycle(None); 
 		}
 
-		// self.aff_input(thal);					
-		self.intake(map::FF_IN, thal);
+		// self.intake(map::FF_IN, thal);
 
 		self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.bypass_inhib);
 
 		if !self.disable_ssts {	if !self.disable_learning { self.psal_mut().learn(); } }
 
-		if !self.disable_mcols { self.mcols.activate(); }		
-		
+		if !self.disable_mcols { self.mcols.activate(); }
+
+		self.intake(map::FB_IN, thal);
+
 		if !self.disable_pyrs {			
 			if !self.disable_learning { self.ptal_mut().learn(); }
 			let eff_input_events = { self.events_lists.get(&map::FB_IN) };
-			self.ptal().cycle(eff_input_events);			
-		}
+			self.ptal().cycle(eff_input_events);
+			// self.ptal().cycle(None);
+		}		
 
-		// self.eff_input(thal);
-		self.intake(map::FB_IN, thal);
+		// self.intake(map::FB_IN, thal);
 
 		if !self.disable_mcols { 
 			let output_events = { self.events_lists.get_mut(&map::FF_OUT) };
 			self.mcols.output(output_events); 
 		}
 
-		self.output(map::FF_OUT, thal);
-
 		if !self.disable_regrowth { self.regrow(); }
+
+		self.output(map::FF_OUT, thal);
 	}
 
 	// Read input from thalamus and write to axon space.
@@ -362,8 +368,6 @@ impl CorticalArea {
 
 	pub fn write_input(&mut self, events_sdr: (&EventList, &Sdr), layer_tags: LayerTags) {
 		let (wait_events, sdr) = events_sdr;
-		let new_events = self.events_lists.get_mut(&layer_tags)
-			.expect("CorticalArea::write_input(): 'events_lists' error.");
 
 		if layer_tags.contains(map::FF_IN) && !self.bypass_filters {
 			match self.filters {
@@ -390,10 +394,17 @@ impl CorticalArea {
 		
 		debug_assert!((axn_range.end - axn_range.start) as usize == sdr.len());
 
+		let new_events = self.events_lists.get_mut(&layer_tags)
+			.expect("CorticalArea::write_input(): 'events_lists' error.");
+
 		// new_events.wait();
-		new_events.release_all();
+		// new_events.release_all();
+		new_events.clear_completed();	
+
 		self.axns.states.write_direct(sdr, axn_range.start as usize, 
 			Some(wait_events), Some(new_events));
+		// self.axns.states.write_direct(sdr, axn_range.start as usize, 
+		// 	None, Some(new_events));
 	}	
 
 	pub fn read_output(&self, sdr_events: (&mut Sdr, &mut EventList), layer_tags: LayerTags) {
@@ -409,7 +420,8 @@ impl CorticalArea {
 		debug_assert!((axn_range.end - axn_range.start) as usize == sdr.len());
 
 		// new_events.wait();
-		new_events.release_all();
+		// new_events.release_all();
+		new_events.clear_completed();
 		self.axns.states.read_direct(sdr, axn_range.start as usize, 
 			Some(wait_events), Some(new_events));
 	}		

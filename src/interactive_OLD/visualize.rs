@@ -43,8 +43,8 @@ pub fn define_plmaps() -> ProtolayerMaps {
 				Protocell::spiny_stellate(5, vec!["aff_in"], 700, 8))
 
 			.layer("iii", 2, map::PTAL, 
-				Protocell::pyramidal(1, 5, vec!["iii"], 2200, 8)
-					.apical(vec!["eff_in", "olfac"], 16))
+				Protocell::pyramidal(1, 5, vec!["iii"], 800, 10)
+					.apical(vec!["eff_in"/*, "olfac"*/], 12))
 		)
 
 		.lmap(ProtolayerMap::new("v0_lm", Thalamic)
@@ -87,7 +87,7 @@ pub fn define_pamaps() -> ProtoareaMaps {
 		// 	None,
 		// )
 
-		.area_ext("o0", "o0_lm", 24, Protoinput::Zeros, None, None)
+		// .area_ext("o0", "o0_lm", 24, Protoinput::Zeros, None, None)
 
 		// .area("o1", "visual", area_side, 
 		// 	None,
@@ -99,7 +99,7 @@ pub fn define_pamaps() -> ProtoareaMaps {
 				file_name: "data/train-images-idx3-ubyte", 
 				cyc_per: CYCLES_PER_FRAME, 
 				scale: 1.3,
-				loop_frames: 31,
+				loop_frames: 11,
 			},
 			None, 
 			None,
@@ -107,7 +107,7 @@ pub fn define_pamaps() -> ProtoareaMaps {
 
 		.area("v1", "visual", area_side, 
 			Some(vec![Protofilter::new("retina", Some("filters.cl"))]),			
-			Some(vec!["v0", "o0"]),
+			Some(vec!["v0"/*, "o0"*/]),
 		)
 
 		.area("b1", "visual", area_side,
@@ -464,9 +464,15 @@ pub fn run(autorun_iters: i32) -> bool {
 				let axn_space_len = cortex.area(&area_name).axns.states.vec().len();
 
 				cortex.area_mut(&area_name).render_axon_space();
-			}
+			}			
 
 			i += 1;
+
+			if i > 1 {
+				let t = time::get_time() - time_start;
+				printlny!("-> {} cycles @ [> {:02.2} c/s <]", 
+					i, (i as f32 / t.num_milliseconds() as f32) * 1000.0);
+			}
 		}
 
 		if test_iters > 1000 {

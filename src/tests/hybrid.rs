@@ -1,17 +1,11 @@
-// use std::ops::{ Range };
 use std::iter;
-use std::io::{ self, Write, /*Stdout*/ };
-// use std::mem;
-//use rand;
+use std::io::{ self, Write };
 
-use interactive::{ /*self,*/ input_czar, /*InputCzar, InputKind*/ };
-//use proto::*;
-// use synapses::{ Synapses };
+
 use dendrites::{ Dendrites };
 use pyramidals::{ PyramidalLayer };
-use cortex::{ /*self,*/ Cortex };
+use cortex::{ Cortex };
 use cmn::{ self, DataCellLayer, DataCellLayerTest };
-// use ocl::{ self, Envoy };
 
 
 /*	HYBRID TESTS: Tests runnable in either an interactive or automated manner
@@ -23,9 +17,6 @@ use cmn::{ self, DataCellLayer, DataCellLayerTest };
 		- Additional hybrid tests in tests::learning
 */
 
-
-
- 
 
 
 
@@ -44,8 +35,10 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
 	//input_czar::vec_band_512_fill(&mut vec_pyrs);
 	//let pyr_axn_ranges = cortex.area_mut(area_name).layer_input_ranges("iii", cortex.area_mut(area_name).ptal_mut().dens.syns().den_kind());
 	//write_to_axons(axn_range, vec1);
-	let mut vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
-	input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize * 2), true, &mut vec1);
+	let vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
+
+	// BRING BACK?
+	// input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize * 2), true, &mut vec1);
 
 	println!("Primary Spatial Associative Layer...");
 	//let psal_name = cortex.area(area_name).psal().layer_name();
