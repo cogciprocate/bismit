@@ -74,7 +74,7 @@ impl Cortex {
 
 impl Drop for Cortex {
 	fn drop(&mut self) {
-    	print!("Releasing OpenCL components ... ");
+    	print!("Releasing OpenCL components... ");
     	print!("[ Platform ]");
     	print!(" ...complete. \n");
 	}

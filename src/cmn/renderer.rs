@@ -130,8 +130,8 @@ impl Renderer {
 			self.axn_history.clear();
 			self.sst_history.clear();
 
-			self.axn_history.push_all(out_axns);
-			self.sst_history.push_all(sst_axns);
+			self.axn_history.extend_from_slice(out_axns);
+			self.sst_history.extend_from_slice(sst_axns);
 		}
 
 		// for hst_i in 0..self.out_axns.len() {

@@ -159,7 +159,7 @@ impl AreaMap {
  		for layer in self.layers.iter() {
  			if (layer.tags() & map::FF_OUT) == map::FF_OUT {
  				let v = self.layer_slc_ids(vec![layer.name()]);
- 				output_slcs.push_all(&v);
+ 				output_slcs.extend_from_slice(&v);
  			}
  		}
 

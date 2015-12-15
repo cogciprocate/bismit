@@ -1,5 +1,4 @@
 #![allow(dead_code, unused_variables, unused_assignments)]
-#![feature(vec_push_all, drain)]
 
 pub use map::proto;
 
