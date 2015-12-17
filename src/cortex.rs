@@ -38,9 +38,9 @@ impl Cortex {
 
 		// <<<<< MOVE THIS TIMING STUFF ELSEWHERE AND MAKE A FUNCTION FOR IT >>>>>
 		let time_elapsed = time::get_time() - time_start;
-		// let t_sec = time_complete.num_seconds();
-		// let t_ms = time_complete.num_milliseconds() - (t_sec * 1000);
-		println!("\n\n... Cortex initialized in: {:0.2} seconds.", time_elapsed.num_milliseconds() as f32);
+		let t_sec = time_elapsed.num_seconds();
+		let t_ms = time_elapsed.num_milliseconds() - (t_sec * 1000);
+		println!("\n\n... Cortex initialized in: {}.{} seconds.", t_sec, t_ms);
 
 		Cortex {
 			areas: areas,
