@@ -9,7 +9,7 @@ rand = "*"
 num = "*"
 libc = "*"
 enum_primitive = "*"
-#ocl = "0.1"
+#ocl = "0.2"
 
 [dependencies.microcosm]
 git = "https://github.com/cogciprocate/microcosm.git"

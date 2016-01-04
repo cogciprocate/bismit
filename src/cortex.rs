@@ -4,7 +4,7 @@ use time;
 use cortical_area:: { CorticalArea, CorticalAreas };
 use thalamus::{ Thalamus };
 use proto::{ ProtolayerMaps, ProtoareaMaps, Thalamic, };
-use ocl::{ Context };
+use ocl::{ self, Context };
 
 pub struct Cortex {
 	// AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
@@ -21,7 +21,7 @@ impl Cortex {
 
 		let pamaps = thal.area_maps().clone();
 
-		let ocl_context: Context = Context::new(None, None).expect(
+		let ocl_context: Context = Context::new(None, Some(ocl::CL_DEVICE_TYPE_GPU)).expect(
 			"CorticalArea::new(): ocl_context creation error");
 
 		let mut areas = HashMap::new();
