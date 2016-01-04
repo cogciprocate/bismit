@@ -1,5 +1,4 @@
 use std::ops;
-use rand::distributions::{ Range };
 use rand::{ self, Rng };
 
 use cmn::{ self, CorticalDims };

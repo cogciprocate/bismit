@@ -1,6 +1,5 @@
 use std::ops;
-use rand::distributions::{ Range };
-use rand::{ self, /*ThreadRng, Rng*/ };
+use rand::self;
 
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
