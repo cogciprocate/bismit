@@ -494,6 +494,11 @@ impl CorticalArea {
 		self.renderer.render(out_axns, Some(sst_axns), None, input_status, print_summary);
 	}
 
+	pub fn sample_aff_out(&self, buf: &mut [u8]) {
+		debug_assert!(buf.len() == self.mcols.aff_out_axn_range().len());
+		self.axns.states.read_direct(buf, 0, None, None);
+	}
+
 	pub fn render_axon_space(&mut self) {
 		let axn_states = &self.axns.states.vec()[..];
 		// let slc_map = &self.area_map.slc_map();

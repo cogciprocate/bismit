@@ -1,5 +1,5 @@
 use std::ops;
-use rand::self;
+use rand;
 
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
