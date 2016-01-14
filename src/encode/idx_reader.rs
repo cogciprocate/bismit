@@ -10,15 +10,15 @@ use cmn::{ CorticalDims, Sdr };
 use input_source::{ InputGanglion };
 
 
-// const HEX_SIDE: f64 = 0.5f64;
-// //const C1_OFS: f64 = 0f64 * HEX_SIDE;
-// //const C2_OFS: f64 = 0f64 * HEX_SIDE;	
-// //const V_OFS: f64 = 0f64;
-// //const W_OFS: f64 = 0f64;
-// const Y_OFS: f64 = 29f64 * HEX_SIDE;
-// const X_OFS: f64 = 43f64 * HEX_SIDE;
+// const HEX_SIDE: f32 = 0.5f32;
+// //const C1_OFS: f32 = 0f32 * HEX_SIDE;
+// //const C2_OFS: f32 = 0f32 * HEX_SIDE;	
+// //const V_OFS: f32 = 0f32;
+// //const W_OFS: f32 = 0f32;
+// const Y_OFS: f32 = 29f32 * HEX_SIDE;
+// const X_OFS: f32 = 43f32 * HEX_SIDE;
 
-const SQRT_3: f64 = 1.73205080756f64;
+const SQRT_3: f32 = 1.73205080756f32;
 
 
 //	IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned 
@@ -28,7 +28,7 @@ const SQRT_3: f64 = 1.73205080756f64;
 pub struct IdxReader {
 	ganglion_dims: CorticalDims,
 	cycles_per_frame: usize,
-	scale_factor: f64,
+	scale_factor: f32,
 	repeat_counter: usize,
 	frame_counter: usize,
 	frames_count: usize,
@@ -48,7 +48,7 @@ pub struct IdxReader {
 }
 
 impl IdxReader {
-	pub fn new(ganglion_dims: CorticalDims, file_name: &str, cycles_per_frame: usize, scale_factor: f64) -> IdxReader {
+	pub fn new(ganglion_dims: CorticalDims, file_name: &str, cycles_per_frame: usize, scale_factor: f32) -> IdxReader {
 		let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
 		let path = Path::new(&path_string);
 		let display = path.display();
@@ -225,15 +225,15 @@ impl IdxReader {
 		let x_size = self.image_width;
 		let y_size = self.image_height;
 
-		let hex_side = (x_size + y_size) as f64 / 
-			(self.scale_factor * (v_size + u_size) as f64);
+		let hex_side = (x_size + y_size) as f32 / 
+			(self.scale_factor * (v_size + u_size) as f32);
 
 		let (x_ofs, y_ofs) = calc_offs(v_size, u_size, x_size, y_size, hex_side);
 
 		for v_id in 0..v_size  {
 			for u_id in 0..u_size {
-				let (x, y, valid) = coord_hex_to_pixel(v_id as f64, u_id as f64, x_size as f64, 
-					y_size as f64, hex_side, x_ofs, y_ofs);
+				let (x, y, valid) = coord_hex_to_pixel(v_id as f32, u_id as f32, x_size as f32, 
+					y_size as f32, hex_side, x_ofs, y_ofs);
 				
 				if valid {
 					let tar_idx = (v_id * u_size) + u_id;
@@ -284,14 +284,14 @@ impl InputGanglion for IdxReader {
 
 
 // COORD_HEX_TO_PIXEL(): Eventually either move this to GPU or at least use SIMD.
-pub fn coord_hex_to_pixel(v_id: f64, u_id: f64, x_size: f64, y_size: f64, hex_side: f64, 
-			x_ofs: f64, y_ofs: f64, 
-	) -> (f64, f64, bool) 
+pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_side: f32, 
+			x_ofs: f32, y_ofs: f32, 
+	) -> (f32, f32, bool) 
 {
 	let u = u_id;
 	let u_inv = 0.0 - u;
 	let v = v_id;
-	//let v_inv = 0f64 - v;
+	//let v_inv = 0f32 - v;
 	//let w = u_inv + v_inv;
 	let w_inv = v + u;
 	//let s = HEX_SIDE;
@@ -302,14 +302,14 @@ pub fn coord_hex_to_pixel(v_id: f64, u_id: f64, x_size: f64, y_size: f64, hex_si
 	let mut x = w_inv * 1.5 * hex_side;
 	let mut y = (u_inv + (w_inv / 2.0)) * SQRT_3 * hex_side;
 
-	//let mut y = u * 1.5f64 * s;
-	//let mut x = (v_inv + (u / 2f64)) * SQRT_3 * s;
+	//let mut y = u * 1.5f32 * s;
+	//let mut x = (v_inv + (u / 2f32)) * SQRT_3 * s;
 
 	x -= x_ofs;
 	y += y_ofs;	
 	
-	//x = x_size as f64 - x;
-	//y = y_size as f64 - y;
+	//x = x_size as f32 - x;
+	//y = y_size as f32 - y;
 
 	let valid = (y >= 0.0 && y < y_size) && (x >= 0.0 && x < x_size);
 
@@ -325,17 +325,17 @@ struct Margins {
 }
 
 
-fn calc_offs(v_size: usize, u_size: usize, y_size: usize, x_size: usize, hex_side: f64) -> (f64, f64) {
+fn calc_offs(v_size: usize, u_size: usize, y_size: usize, x_size: usize, hex_side: f32) -> (f32, f32) {
 	let v_mid = v_size >> 1;
 	let u_mid = u_size >> 1;
 
-	let (x_ofs_inv, y_ofs_inv, _) = coord_hex_to_pixel(v_mid as f64, u_mid as f64, 
-		x_size as f64, y_size as f64, hex_side, 0.0, 0.0);
+	let (x_ofs_inv, y_ofs_inv, _) = coord_hex_to_pixel(v_mid as f32, u_mid as f32, 
+		x_size as f32, y_size as f32, hex_side, 0.0, 0.0);
 
 	let x_mid = x_size >> 1;
 	let y_mid = y_size >> 1;	
 
-	((x_ofs_inv - x_mid as f64), (y_mid as f64 - y_ofs_inv))
+	((x_ofs_inv - x_mid as f32), (y_mid as f32 - y_ofs_inv))
 }
 
 
@@ -359,14 +359,14 @@ fn calc_offs(v_size: usize, u_size: usize, y_size: usize, x_size: usize, hex_sid
 	//     return Point(x, y)
 
 // pub fn point_pixel_to_hex_incomplete(x_int: usize, y_int: usize) -> (usize, usize) {
-// 	let sqrt3 = 3f64.sqrt();
+// 	let sqrt3 = 3f32.sqrt();
 
-// 	let edge_size = 0.5f64;
-// 	let hex_width = edge_size * 2f64;
-// 	let height = (sqrt3 / 2f64) * hex_width;
+// 	let edge_size = 0.5f32;
+// 	let hex_width = edge_size * 2f32;
+// 	let height = (sqrt3 / 2f32) * hex_width;
 
-// 	let x = (x_int as f64 - edge_size) / hex_width;
-// 	let y = y_int as f64;	
+// 	let x = (x_int as f32 - edge_size) / hex_width;
+// 	let y = y_int as f32;	
 
 // 	(0, 0)
 // }
