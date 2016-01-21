@@ -494,18 +494,27 @@ impl CorticalArea {
 		self.renderer.render(out_axns, Some(sst_axns), None, input_status, print_summary);
 	}
 
-	pub fn sample_aff_out(&self, buf: &mut [u8]) {
-		debug_assert!(buf.len() == self.mcols.aff_out_axn_range().len());
-		self.axns.states.read_direct(buf, 0, None, None);
+	pub fn sample_axn_slc(&self, slc_id: u8, buf: &mut [u8]) {
+		let slc_axn_range = self.area_map.slices().slc_axn_range(slc_id);
+		debug_assert!(buf.len() == slc_axn_range.len());
+		self.axns.states.read_direct(buf, slc_axn_range.start, None, None);
 	}
 
-	pub fn render_axon_space(&mut self) {
-		let axn_states = &self.axns.states.vec()[..];
-		// let slc_map = &self.area_map.slc_map();
-		// let cols = self.dims.columns();
-		// let hrz_demarc = self.area_map.hrz_demarc();
+	// TODO: DEPRICATE
+	pub fn sample_aff_out(&self, buf: &mut [u8]) {
+		let aff_out_range = self.mcols.aff_out_axn_range();
+		debug_assert!(buf.len() == aff_out_range.len());
+		self.axns.states.read_direct(buf, aff_out_range.start, None, None);
+	}
 
-		self.renderer.render_axon_space(axn_states, &self.area_map.slices())
+	pub fn render_axn_space(&mut self) {
+		let axn_states = &self.axns.states.vec()[..];
+		self.renderer.render_axn_space(axn_states, &self.area_map.slices())
+	}
+
+	pub fn sample_axn_space(&self, buf: &mut [u8]) {
+		debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
+		self.axns.states.read_direct(buf, 0, None, None);
 	}
 
 	pub fn area_map(&self) -> &AreaMap {

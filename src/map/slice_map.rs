@@ -1,3 +1,4 @@
+use std::ops::Range;
 use ocl::{ self, EnvoyDims };
 use cmn::{ self, CorticalDims, HexTilePlane };
 use map::{ area_map, SliceDims, LayerMap, AxonKind };
@@ -145,6 +146,11 @@ impl SliceMap {
 
 	pub fn slc_axn_count(&self, slc_id: u8) -> u32 {
 		self.v_sizes[slc_id as usize] * self.u_sizes[slc_id as usize]
+	}
+
+	pub fn slc_axn_range(&self, slc_id: u8) -> Range<usize> {
+		let idz = self.idz(slc_id) as usize;
+		idz..(idz + self.slc_axn_count(slc_id) as usize)
 	}
 
 	pub fn slc_count(&self) -> usize {

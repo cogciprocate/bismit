@@ -1,4 +1,4 @@
-use std::ops;
+use std::ops::Range;
 use rand;
 
 use cmn::{ self, CorticalDims, DataCellLayer };
@@ -128,7 +128,7 @@ impl Minicolumns {
 	}
 
 	// AXN_OUTPUT_RANGE(): USED FOR TESTING / DEBUGGING PURPOSES
-	pub fn aff_out_axn_range(&self) -> ops::Range<usize> {
+	pub fn aff_out_axn_range(&self) -> Range<usize> {
 		self.aff_out_axn_idz as usize..self.aff_out_axn_idz as usize + self.dims.per_slc() as usize
 	}
 }
@@ -136,8 +136,8 @@ impl Minicolumns {
 
 #[cfg(test)]
 pub mod tests {
-	use std::ops::{ Range };
-	use super::{ Minicolumns };
+	use std::ops::Range;
+	use super::Minicolumns;
 
 	pub trait MinicolumnsTest {
 		fn print_range(&mut self, range: Range<usize>);
