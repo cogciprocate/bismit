@@ -40,18 +40,47 @@ impl GanglionMap {
 		}
 	}
 
-	pub fn slc_range(&self) -> Range<u8> {
+	pub fn slc_id_range(&self) -> Range<u8> {
 		0..self.tags.len() as u8
 	}
 
 	// TODO: Make fancy with iterators.
-	pub fn axn_count(&self, slc_range: Range<u8>) -> usize {
+	pub fn axn_count(&self, slc_id_range: Range<u8>) -> usize {
 		let mut count = 0;
 
-		for i in slc_range.clone() {
+		for i in slc_id_range.clone() {
 			count += self.v_sizes[i as usize] * self.u_sizes[i as usize];
 		}
 
 		count as usize
+	}
+
+	// **************** SOURCE OF PROBLEMS *****************:
+	pub fn axn_id_range(&self, slc_id_range: Range<u8>) -> Range<usize> {
+		let start = slc_id_range.start as usize;
+		let end = slc_id_range.end as usize;
+		assert!(start < self.idzs.len());
+		assert!(end <= self.idzs.len());
+
+		// let axn_id_range = unsafe { 
+		// 	let axn_idz_start = *self.idzs.get_unchecked(start) as usize;
+		// 	let axn_idz_end = (*self.idzs.get_unchecked(end)
+		// 		+ (*self.v_sizes.get_unchecked(end) * *self.u_sizes.get_unchecked(end))) as usize;
+		// 	axn_idz_start..axn_idz_end
+		// };
+
+		let axn_id_start = self.idzs[start] as usize;
+		let axn_id_end = self.idzs[end - 1] as usize
+			+ (self.v_sizes[end - 1] as usize * self.u_sizes[end - 1] as usize);
+
+		// (*self.idzs.get_unchecked(end)
+		// 	+ (*self.v_sizes.get_unchecked(end) * *self.u_sizes.get_unchecked(end))) as usize;
+
+		let axn_id_range = axn_id_start..axn_id_end;
+
+		println!("###### GanglionMap::axn_id_range(slc_id_range: {:?}):", slc_id_range);
+		println!("######    axn_id_range: {:?}", axn_id_range);
+
+		axn_id_range
 	}
 }
