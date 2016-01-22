@@ -1,8 +1,7 @@
 use std::ops::Range;
 use ocl::{ self, EnvoyDims };
 use cmn::{ self, CorticalDims, HexTilePlane };
-use map::{ area_map, SliceDims, LayerMap, AxonKind };
-
+use map::{ area_map, SliceDims, LayerMap, AxonKind, GanglionMap };
 
 #[derive(Debug, Clone)]
 pub struct SliceMap {
@@ -151,6 +150,16 @@ impl SliceMap {
 	pub fn slc_axn_range(&self, slc_id: u8) -> Range<usize> {
 		let idz = self.idz(slc_id) as usize;
 		idz..(idz + self.slc_axn_count(slc_id) as usize)
+	}
+
+	pub fn gang_map_range(&self, slc_range: Range<usize>) -> GanglionMap {
+		assert!(slc_range.end <= 255);
+		GanglionMap::new(&self.layer_names[slc_range.clone()], &self.v_sizes[slc_range.clone()], 
+			&self.u_sizes[slc_range.clone()])
+	}
+
+	pub fn gang_map(&self) -> GanglionMap {
+		self.gang_map_range(0..self.axn_idzs.len())
 	}
 
 	pub fn slc_count(&self) -> usize {

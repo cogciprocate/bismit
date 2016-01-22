@@ -3,7 +3,7 @@ use std::ops::{ Range };
 use rand;
 
 use cmn::{ self, CorticalDims, Renderer, Sdr, DataCellLayer };
-use map::{ self, AreaMap, LayerTags };
+use map::{ self, AreaMap, LayerTags, GanglionMap };
 use ocl::{ self, ProQue, Context, Envoy, EventList };
 use proto::{  Cellular, Pyramidal, SpinyStellate, Inhibitory,  DendriteKind };
 
@@ -517,6 +517,10 @@ impl CorticalArea {
 	pub fn sample_axn_space(&self, buf: &mut [u8]) {
 		debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
 		self.axns.states.read_direct(buf, 0, None, None);
+	}
+
+	pub fn axn_gang_map(&self) -> GanglionMap {
+		self.area_map.slices().gang_map()
 	}
 
 	pub fn area_map(&self) -> &AreaMap {

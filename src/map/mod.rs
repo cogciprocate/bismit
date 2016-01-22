@@ -1,13 +1,14 @@
 
 
-pub use self::area_map::{ AreaMap };
-pub use self::slice_map::{ SliceMap };
-pub use self::layer_map::{ LayerMap };
-pub use self::layer_info::{ LayerInfo, SourceLayerInfo };
-pub use self::slice_dims::{ SliceDims };
-pub use self::syn_src_map::{ SrcSlices, SrcIdxCache, SynSrc };
+pub use self::area_map::AreaMap;
+pub use self::slice_map::SliceMap;
+pub use self::layer_map::LayerMap;
+pub use self::layer_info::{LayerInfo, SourceLayerInfo};
+pub use self::slice_dims::SliceDims;
+pub use self::syn_src_map::{SrcSlices, SrcIdxCache, SynSrc};
+pub use self::ganglion_map::GanglionMap;
 
-pub use self::proto::{ AxonKind };
+pub use self::proto::AxonKind;
 
 #[cfg(test)]
 pub use self::area_map::tests::{ AreaMapTest };
@@ -20,6 +21,7 @@ mod layer_info;
 mod slice_map;
 mod slice_dims;
 mod syn_src_map;
+mod ganglion_map;
 
 // [FIXME] TODO: Potentially separate layer concerns from axon 'flavor' into a new bitflag (AxonFlags?).
 // Currently: bits 48 - 63 pertain to axon 'flavor' and are relevant to inter-area axons, 32 - 47 pertain to layer properties relevant to interlaminar axons and cells. 0 - 31 are reserved for unique ids (particularly non-specific group ids).
