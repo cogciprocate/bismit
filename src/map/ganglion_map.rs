@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 #[derive(Debug, Clone)]
 pub struct GanglionMap {	
 	tags: Vec<&'static str>,	
@@ -21,7 +23,7 @@ impl GanglionMap {
 
 		for i in 0..v_sizes.len() {
 			idzs.push(physical_len);
-			
+
 			unsafe {				
 				physical_len += *v_sizes.get_unchecked(i) * *u_sizes.get_unchecked(i);
 			}
@@ -36,5 +38,20 @@ impl GanglionMap {
 			idzs: idzs,
 			physical_len: physical_len,
 		}
+	}
+
+	pub fn slc_range(&self) -> Range<u8> {
+		0..self.tags.len() as u8
+	}
+
+	// TODO: Make fancy with iterators.
+	pub fn axn_count(&self, slc_range: Range<u8>) -> usize {
+		let mut count = 0;
+
+		for i in slc_range.clone() {
+			count += self.v_sizes[i as usize] * self.u_sizes[i as usize];
+		}
+
+		count as usize
 	}
 }

@@ -526,7 +526,6 @@ impl CorticalArea {
 	pub fn area_map(&self) -> &AreaMap {
 		&self.area_map
 	}
-
 }
 
 impl Drop for CorticalArea {

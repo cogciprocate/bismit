@@ -156,6 +156,7 @@ impl AreaMap {
 	pub fn aff_out_slcs(&self) -> Vec<u8> {
 		let mut output_slcs: Vec<u8> = Vec::with_capacity(8);
  		
+ 		// Push all matching slices:
  		for layer in self.layers.iter() {
  			if (layer.tags() & map::FF_OUT) == map::FF_OUT {
  				let v = self.layer_slc_ids(vec![layer.name()]);
@@ -163,7 +164,25 @@ impl AreaMap {
  			}
  		}
 
+ 		output_slcs.shrink_to_fit();
+
+ 		// Ensure that the slice id list contains contiguous slice ids:
+ 		for i in 0..output_slcs.len() {
+ 			if i > 0 {
+ 				unsafe { debug_assert!(*output_slcs.get_unchecked(i - 1) 
+ 					== *output_slcs.get_unchecked(i) - 1); }
+			}
+		}
+
 		output_slcs	
+	}
+
+	// NEW NEW NEW
+	pub fn aff_out_slc_range(&self) -> Range<u8> {
+		let aff_out_slcs = self.aff_out_slcs();
+		let idz = 0;
+		let idn = aff_out_slcs.len() - 1;
+		aff_out_slcs[idz]..(aff_out_slcs[idn] + 1)
 	}
 
 	// UPDATE / DEPRICATE / MERGE WITH BELOW

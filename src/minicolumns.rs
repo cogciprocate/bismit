@@ -42,6 +42,7 @@ impl Minicolumns {
 		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
 
 		// [FIXME]: TEMPORARY?:
+		// [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':
 		assert!(area_map.aff_out_slcs().len() == 1, 
 			"Afferent output slices currently limited to a maximum of 1.");
 
@@ -129,6 +130,7 @@ impl Minicolumns {
 		self.ff_layer_axn_idz
 	}
 
+	// [FIXME]: CONVERT TO A RANGE (area_map.aff_out_slc_range)
 	pub fn aff_out_axn_slc(&self) -> u8 {
 		self.aff_out_axn_slc
 	}
