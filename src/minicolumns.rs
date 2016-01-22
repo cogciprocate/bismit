@@ -41,7 +41,9 @@ impl Minicolumns {
 		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
 		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
 
-		debug_assert!(area_map.aff_out_slcs().len() > 0);
+		// [FIXME]: TEMPORARY?:
+		assert!(area_map.aff_out_slcs().len() == 1, 
+			"Afferent output slices currently limited to a maximum of 1.");
 
 		let aff_out_axn_slc = area_map.aff_out_slcs()[0];
 		let aff_out_axn_idz = area_map.axn_idz(aff_out_axn_slc);
@@ -125,6 +127,10 @@ impl Minicolumns {
 
 	pub fn ff_layer_axn_idz(&self) -> usize {
 		self.ff_layer_axn_idz
+	}
+
+	pub fn aff_out_axn_slc(&self) -> u8 {
+		self.aff_out_axn_slc
 	}
 
 	// AXN_OUTPUT_RANGE(): USED FOR TESTING / DEBUGGING PURPOSES
