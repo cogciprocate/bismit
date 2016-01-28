@@ -1,5 +1,5 @@
 use ocl::{ self, cl_uchar, Kernel, ProQue, WorkSize, Envoy, };
-use cmn::{ self, HexTilePlane, Sdr };
+use cmn::{ HexTilePlane, Sdr };
 use axon_space::{ AxonSpace };
 use map::{ self, AreaMap };
 
@@ -38,7 +38,7 @@ impl SensoryFilter {
 			areas with sensory filters are not yet supported. Please set the depth of any \
 			afferent input layers with filters to 1.");
 
-		let input = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());		
+		let input = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());		
 
 		let kern_cycle = ocl_pq.create_kernel(&filter_name.clone(),
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))

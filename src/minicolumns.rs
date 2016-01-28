@@ -38,8 +38,8 @@ impl Minicolumns {
 
 		println!("{mt}{mt}MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth, mt = cmn::MT);
 
-		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
-		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
+		let flag_sets = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let best_den_states = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
 
 		// [FIXME]: TEMPORARY?:
 		// [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':
@@ -122,8 +122,8 @@ impl Minicolumns {
 	}
 
 	pub fn confab(&mut self) {
-		self.flag_sets.read_wait();
-		self.best_den_states.read_wait();
+		self.flag_sets.fill_vec_wait();
+		self.best_den_states.fill_vec_wait();
 	}
 
 	pub fn ff_layer_axn_idz(&self) -> usize {

@@ -68,9 +68,9 @@ impl Dendrites {
 			),
 		};*/
 
-		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
-		let states_raw = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
-		let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl_pq.queue());
+		let states = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let states_raw = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let energies = Envoy::<ocl::cl_uchar>::with_vec_initialized_to(255, dims, ocl_pq.queue());
 
 		println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", 
 			layer_name, dims, states.len(), mt = cmn::MT);
@@ -99,7 +99,7 @@ impl Dendrites {
 			den_kind: den_kind,
 			cell_kind: cell_kind,
 			kern_cycle: kern_cycle,
-			thresholds: Envoy::<ocl::cl_uchar>::new(dims, 1, ocl_pq.queue()),
+			thresholds: Envoy::<ocl::cl_uchar>::with_vec_initialized_to(1, dims, ocl_pq.queue()),
 			states_raw: states_raw,
 			states: states,
 			energies: energies,
@@ -124,9 +124,9 @@ impl Dendrites {
 	}
 
 	pub fn confab(&mut self) {
-		self.thresholds.read_wait();
-		self.states_raw.read_wait();
-		self.states.read_wait();
+		self.thresholds.fill_vec_wait();
+		self.states_raw.fill_vec_wait();
+		self.states.fill_vec_wait();
 		self.syns.confab();
 	}
 

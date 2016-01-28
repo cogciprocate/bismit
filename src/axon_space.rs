@@ -68,7 +68,7 @@ impl AxonSpace {
 		println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", 
 			area_map.slices().padded_envoy_len(ocl_pq.get_max_work_group_size()), mt = cmn::MT);
 
-		let states = Envoy::<ocl::cl_uchar>::new(area_map.slices(), cmn::STATE_ZERO, ocl_pq.queue());
+		let states = Envoy::<ocl::cl_uchar>::with_vec(area_map.slices(), ocl_pq.queue());
 
 		AxonSpace {
 			//dims: dims,

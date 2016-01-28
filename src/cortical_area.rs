@@ -489,13 +489,13 @@ impl CorticalArea {
 	}
 
 	pub fn render_aff_out(&mut self, input_status: &str, print_summary: bool) {
-		let out_axns = &self.axns.states.vec()[self.mcols.aff_out_axn_range()];
-		let sst_axns = &self.axns.states.vec()[self.psal().axn_range()];
+		let out_axns = &self.axns.states[self.mcols.aff_out_axn_range()];
+		let sst_axns = &self.axns.states[self.psal().axn_range()];
 		self.renderer.render(out_axns, Some(sst_axns), None, input_status, print_summary);
 	}
 
 	pub fn render_axn_space(&mut self) {
-		let axn_states = &self.axns.states.vec()[..];
+		let axn_states = &self.axns.states[..];
 		self.renderer.render_axn_space(axn_states, &self.area_map.slices())
 	}
 
@@ -574,8 +574,8 @@ impl Aux {
 		let int_32_min = -2147483648;
 
 		Aux { 
-			ints_0: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl_pq.queue()),
-			ints_1: Envoy::<ocl::cl_int>::new(dims, int_32_min, ocl_pq.queue()),
+			ints_0: Envoy::<ocl::cl_int>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
+			ints_1: Envoy::<ocl::cl_int>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
 			// chars_0: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			// chars_1: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
 			dims: dims.clone(),
@@ -585,8 +585,12 @@ impl Aux {
 	pub unsafe fn resize(&mut self, new_dims: &CorticalDims) {
 		let int_32_min = -2147483648;
 		self.dims = new_dims.clone();
-		self.ints_0.resize(&self.dims, int_32_min);
-		self.ints_1.resize(&self.dims, int_32_min);
+		
+		self.ints_0.resize(&self.dims);
+		self.ints_0.set_all_to(int_32_min);
+
+		self.ints_1.resize(&self.dims);
+		self.ints_1.set_all_to(int_32_min);
 		// self.chars_0.resize(&self.dims, 0);
 		// self.chars_1.resize(&self.dims, 0);
 	}

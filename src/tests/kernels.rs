@@ -16,11 +16,11 @@ use super::{ TestBed, util };
 pub fn test_axn_idxs(testbed: &TestBed) {
 	let syn_reach = cmn::SYNAPSE_REACH as i8;
 
-	let u_offs = Envoy::<i8>::shuffled(testbed.dims, 0 - syn_reach, syn_reach + 1, &testbed.ocl_pq.queue()); 
-	let v_offs = Envoy::<i8>::shuffled(testbed.dims, 0 - syn_reach, syn_reach + 1, &testbed.ocl_pq.queue());
+	let u_offs = Envoy::<i8>::with_vec_shuffled(0 - syn_reach, syn_reach + 1, testbed.dims, &testbed.ocl_pq.queue()); 
+	let v_offs = Envoy::<i8>::with_vec_shuffled(0 - syn_reach, syn_reach + 1, testbed.dims, &testbed.ocl_pq.queue());
 
-	let mut outs_sc = Envoy::<u32>::new(testbed.dims, 0, &testbed.ocl_pq.queue());
-	let mut outs_v4 = Envoy::<u32>::new(testbed.dims, 0, &testbed.ocl_pq.queue());
+	let mut outs_sc = Envoy::<u32>::with_vec(testbed.dims, &testbed.ocl_pq.queue());
+	let mut outs_v4 = Envoy::<u32>::with_vec(testbed.dims, &testbed.ocl_pq.queue());
 
 	let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl", 
 		WorkSize::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, testbed.dims.u_size() as usize))
@@ -69,7 +69,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 // 	dim_offs.print_simple();
 // 	println!("safe_dim_offs:");
 // 	safe_dim_offs.print_simple();
-// 	//safe_dim_offs.read_wait();
+// 	//safe_dim_offs.fill_vec_wait();
 
 // 	for i in 0..safe_dim_offs.len() {
 // 		let safe_dim_id: i64 = dim_ids[i] as i64 + safe_dim_offs[i] as i64;

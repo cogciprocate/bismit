@@ -91,14 +91,14 @@ impl Synapses {
 		let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, 
 			protocell.dens_per_tuft_l2, dims.clone());
 
-		// let slc_pool = Envoy::new(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-		let states = Envoy::<cl_uchar>::new(dims, 0, ocl_pq.queue());
-		let strengths = Envoy::<cl_char>::new(dims, 0, ocl_pq.queue());
-		let src_slc_ids = Envoy::<cl_uchar>::new(dims, 0, ocl_pq.queue());
+		// let slc_pool = Envoy::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
+		let states = Envoy::<cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let strengths = Envoy::<cl_char>::with_vec(dims, ocl_pq.queue());
+		let src_slc_ids = Envoy::<cl_uchar>::with_vec(dims, ocl_pq.queue());
 
-		let src_col_u_offs = Envoy::<cl_char>::new(dims, 0, ocl_pq.queue());
-		let src_col_v_offs = Envoy::<cl_char>::new(dims, 0, ocl_pq.queue()); 
-		let flag_sets = Envoy::<cl_uchar>::new(dims, 0, ocl_pq.queue());
+		let src_col_u_offs = Envoy::<cl_char>::with_vec(dims, ocl_pq.queue());
+		let src_col_v_offs = Envoy::<cl_char>::with_vec(dims, ocl_pq.queue()); 
+		let flag_sets = Envoy::<cl_uchar>::with_vec(dims, ocl_pq.queue());
 
 		// [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
 		let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {
@@ -196,9 +196,9 @@ impl Synapses {
 				(SLICE)(OFFSET)(STRENGTH)]\n", self.den_kind);
 		}
 
-		self.strengths.read_wait();
-		self.src_slc_ids.read_wait();
-		self.src_col_v_offs.read_wait();
+		self.strengths.fill_vec_wait();
+		self.src_slc_ids.fill_vec_wait();
+		self.src_col_v_offs.fill_vec_wait();
 
 		let syns_per_layer_tft = self.dims.per_slc_per_tft() as usize * self.dims.depth() as usize;
 		let src_slc_ids_by_tft = self.src_slc_ids_by_tft.clone();
@@ -220,8 +220,8 @@ impl Synapses {
 			for syn_idx in syn_idz..syn_idn {
 				debug_assert!(syn_idx < self.strengths.len());
 
-				if init || (unsafe { *self.strengths.vec().get_unchecked(syn_idx) }
-						<= cmn::SYNAPSE_STRENGTH_FLOOR) 
+				if init || (unsafe { *self.strengths
+					.get_unchecked(syn_idx) } <= cmn::SYNAPSE_STRENGTH_FLOOR) 
 				{
 					self.regrow_syn(syn_idx, src_tft_id, init);
 				}
@@ -230,10 +230,10 @@ impl Synapses {
 			src_tft_id += 1;
 		}
 
-		self.strengths.write_wait();
-		self.src_slc_ids.write_wait();
-		self.src_col_v_offs.write_wait();	
-		self.src_col_u_offs.write_wait();
+		self.strengths.flush_vec_wait();
+		self.src_slc_ids.flush_vec_wait();
+		self.src_col_v_offs.flush_vec_wait();	
+		self.src_col_u_offs.flush_vec_wait();
 	}
 
 	// [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
@@ -247,9 +247,9 @@ impl Synapses {
 
 		loop {
 			let old_src = unsafe { SynSrc { 
-				slc_id: *self.src_slc_ids.vec().get_unchecked(syn_idx), 
-				v_ofs: *self.src_col_v_offs.vec().get_unchecked(syn_idx),
-				u_ofs: *self.src_col_u_offs.vec().get_unchecked(syn_idx),
+				slc_id: *self.src_slc_ids.get_unchecked(syn_idx), 
+				v_ofs: *self.src_col_v_offs.get_unchecked(syn_idx),
+				u_ofs: *self.src_col_u_offs.get_unchecked(syn_idx),
 				strength: 0
 			} };
 
@@ -257,10 +257,10 @@ impl Synapses {
 
 			if self.src_idx_cache.insert(syn_idx, &old_src, &new_src) {
 				unsafe {
-					*self.src_slc_ids.vec_mut().get_unchecked_mut(syn_idx) = new_src.slc_id;
-					*self.src_col_v_offs.vec_mut().get_unchecked_mut(syn_idx) = new_src.v_ofs; 
-					*self.src_col_u_offs.vec_mut().get_unchecked_mut(syn_idx) = new_src.u_ofs;
-					*self.strengths.vec_mut().get_unchecked_mut(syn_idx) = new_src.strength;
+					*self.src_slc_ids.get_unchecked_mut(syn_idx) = new_src.slc_id;
+					*self.src_col_v_offs.get_unchecked_mut(syn_idx) = new_src.v_ofs; 
+					*self.src_col_u_offs.get_unchecked_mut(syn_idx) = new_src.u_ofs;
+					*self.strengths.get_unchecked_mut(syn_idx) = new_src.strength;
 				}
 
 				if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("$"); }
@@ -282,10 +282,10 @@ impl Synapses {
 	}
 
 	pub fn confab(&mut self) {
-		self.states.read_wait();
-		self.strengths.read_wait();
-		self.src_slc_ids.read_wait();
-		self.src_col_v_offs.read_wait();
+		self.states.fill_vec_wait();
+		self.strengths.fill_vec_wait();
+		self.src_slc_ids.fill_vec_wait();
+		self.src_col_v_offs.fill_vec_wait();
 	} 
 
 	// Debugging purposes

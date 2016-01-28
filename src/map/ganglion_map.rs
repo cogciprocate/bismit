@@ -78,8 +78,8 @@ impl GanglionMap {
 
 		let axn_id_range = axn_id_start..axn_id_end;
 
-		println!("###### GanglionMap::axn_id_range(slc_id_range: {:?}):", slc_id_range);
-		println!("######    axn_id_range: {:?}", axn_id_range);
+		// println!("###### GanglionMap::axn_id_range(slc_id_range: {:?}):", slc_id_range);
+		// println!("######    axn_id_range: {:?}", axn_id_range);
 
 		axn_id_range
 	}

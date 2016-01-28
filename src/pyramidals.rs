@@ -47,12 +47,12 @@ impl PyramidalLayer {
 		let best_dens_per_cel = tfts_per_cel;
 		let dims_best_dens = dims.clone().with_tfts(tfts_per_cel);
 
-		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
-		let flag_sets = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
-		let best_den_states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
-		let tft_best_den_ids = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl_pq.queue());
-		let tft_best_den_states = Envoy::<ocl::cl_uchar>::new(dims_best_dens, cmn::STATE_ZERO, ocl_pq.queue());		
-		// let energies = Envoy::<ocl::cl_uchar>::new(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
+		let states = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let flag_sets = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let best_den_states = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let tft_best_den_ids = Envoy::<ocl::cl_uchar>::with_vec(dims_best_dens, ocl_pq.queue());
+		let tft_best_den_states = Envoy::<ocl::cl_uchar>::with_vec(dims_best_dens, ocl_pq.queue());		
+		// let energies = Envoy::<ocl::cl_uchar>::with_vec(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
 		let dens_per_tft_l2 = protocell.dens_per_tuft_l2;
 		let syns_per_den_l2 = protocell.syns_per_den_l2;
@@ -173,12 +173,12 @@ impl DataCellLayer for PyramidalLayer {
 	}
 
 	fn confab(&mut self) {
-		self.states.read_wait();
-		self.best_den_states.read_wait();
-		self.tft_best_den_ids.read_wait();
-		self.tft_best_den_states.read_wait();
-		self.flag_sets.read_wait();
-		// self.energies.read_wait(); // <<<<< SLATED FOR REMOVAL
+		self.states.fill_vec_wait();
+		self.best_den_states.fill_vec_wait();
+		self.tft_best_den_ids.fill_vec_wait();
+		self.tft_best_den_states.fill_vec_wait();
+		self.flag_sets.fill_vec_wait();
+		// self.energies.fill_vec_wait(); // <<<<< SLATED FOR REMOVAL
 
 		self.dens_mut().confab();
 	}

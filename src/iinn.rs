@@ -8,7 +8,7 @@
 // use std::default::{ Default };
 // use std::fmt::{ Display };
 
-use cmn::{ self, CorticalDims };
+use cmn::{ CorticalDims };
 use map::{ AreaMap };
 use ocl::{ self, ProQue, WorkSize, Envoy };
 use proto::{ /*ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind,*/ Protocell, /*DendriteKind*/ };
@@ -52,9 +52,9 @@ impl InhibitoryInterneuronNetwork {
 		// let wins = Envoy::<ocl::cl_uchar>::with_padding(dims, 0u8, ocl, padding);
 		// let states = Envoy::<ocl::cl_uchar>::with_padding(dims, cmn::STATE_ZERO, ocl, padding);
 
-		let spi_ids = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
-		let wins = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
-		let states = Envoy::<ocl::cl_uchar>::new(dims, cmn::STATE_ZERO, ocl_pq.queue());
+		let spi_ids = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let wins = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let states = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
 
 
 		let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple",

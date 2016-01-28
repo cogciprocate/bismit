@@ -87,13 +87,13 @@ fn test_pyr_preds(pyrs: &mut PyramidalLayer) {
 	}
 
 	// WRITE THE DENDRITE STATES TO DEVICE
-	pyrs.dens_mut().states.write_wait();
+	pyrs.dens_mut().states.flush_vec_wait();
 
 	// CYCLE THE PYRAMIDAL CELL ONLY, WITHOUT CYCLING IT'S DENS OR SYNS (WHICH WOULD OVERWRITE THE ABOVE)
 	pyrs.cycle_self_only();	
 	
 	// READ THE PYRAMIDAL CELL SOMA STATES (PREDS)
-	pyrs.soma_mut().read_wait();
+	pyrs.soma_mut().fill_vec_wait();
 	//pyrs.dens_mut().states.print_simple();
 	//pyrs.soma_mut().print_simple();
 
