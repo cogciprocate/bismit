@@ -401,9 +401,9 @@ impl CorticalArea {
 		// new_events.release_all();
 		new_events.clear_completed();	
 
-		self.axns.states.write_direct(sdr, axn_range.start as usize, 
+		self.axns.states.write(sdr, axn_range.start as usize, 
 			Some(wait_events), Some(new_events));
-		// self.axns.states.write_direct(sdr, axn_range.start as usize, 
+		// self.axns.states.write(sdr, axn_range.start as usize, 
 		// 	None, Some(new_events));
 	}	
 
@@ -422,7 +422,7 @@ impl CorticalArea {
 		// new_events.wait();
 		// new_events.release_all();
 		new_events.clear_completed();
-		self.axns.states.read_direct(sdr, axn_range.start as usize, 
+		self.axns.states.read(sdr, axn_range.start as usize, 
 			Some(wait_events), Some(new_events));
 	}		
 
@@ -502,7 +502,7 @@ impl CorticalArea {
 	// pub fn sample_aff_out(&self, buf: &mut [u8]) {
 	// 	// let aff_out_range = self.mcols.aff_out_axn_range();
 	// 	// debug_assert!(buf.len() == aff_out_range.len());
-	// 	// self.axns.states.read_direct(buf, aff_out_range.start, None, None);
+	// 	// self.axns.states.read(buf, aff_out_range.start, None, None);
 	// 	let aff_out_slc = self.mcols.aff_out_axn_slc();
 	// 	self.sample_axn_slc(aff_out_slc, buf);
 	// }
@@ -512,12 +512,12 @@ impl CorticalArea {
 		debug_assert!(buf.len() == slc_axn_range.len(), "Sample buffer length ({}) not \
 			equal to slice axon length({}). slc_axn_range: {:?}, slc_id: {}", 
 			buf.len(), slc_axn_range.len(), slc_axn_range, slc_id);
-		self.axns.states.read_direct(buf, slc_axn_range.start, None, None);
+		self.axns.states.read(buf, slc_axn_range.start, None, None);
 	}	
 
 	pub fn sample_axn_space(&self, buf: &mut [u8]) {
 		debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
-		self.axns.states.read_direct(buf, 0, None, None);
+		self.axns.states.read(buf, 0, None, None);
 	}
 
 	pub fn axn_gang_map(&self) -> GanglionMap {

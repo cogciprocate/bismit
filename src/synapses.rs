@@ -374,18 +374,18 @@ pub mod tests {
 		fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize) {
 			let sdr_v = vec![v_ofs];
 			let sdr_u = vec![u_ofs];
-			self.src_col_v_offs.write_direct(&sdr_v[..], idx, None, None);
-			self.src_col_u_offs.write_direct(&sdr_u[..], idx, None, None);
+			self.src_col_v_offs.write(&sdr_v[..], idx, None, None);
+			self.src_col_u_offs.write(&sdr_u[..], idx, None, None);
 		}
 
 		fn set_src_slc(&mut self, src_slc_id: u8, idx: usize) {
 			let sdr = vec![src_slc_id];
-			self.src_slc_ids.write_direct(&sdr[..], idx, None, None);
+			self.src_slc_ids.write(&sdr[..], idx, None, None);
 		}
 
 		fn syn_state(&self, idx: u32) -> u8 {
 			let mut sdr = vec![0u8];
-			self.states.read_direct(&mut sdr[..], idx as usize, None, None);
+			self.states.read(&mut sdr[..], idx as usize, None, None);
 			sdr[0]
 		}
 

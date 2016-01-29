@@ -99,7 +99,7 @@ pub mod tests {
 	impl AxonSpaceTest for AxonSpace {
 		fn axn_state(&self, idx: usize) -> u8 {
 			// let mut sdr = vec![0u8];
-			// self.states.read_direct(&mut sdr, idx);
+			// self.states.read(&mut sdr, idx);
 			// sdr[0]
 
 			self.states.read_idx_direct(idx)
@@ -107,7 +107,7 @@ pub mod tests {
 
 		fn write_to_axon(&mut self, val: u8, idx: u32) {
 			let sdr = vec![val];
-			self.states.write_direct(&sdr, idx as usize, None, None);
+			self.states.write(&sdr, idx as usize, None, None);
 		}
 	}
 
