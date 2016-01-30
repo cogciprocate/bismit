@@ -57,17 +57,6 @@ impl IdxData {
 			;
 		}
 
-		// let image_width = if magic_dims > 1 { dim_sizes[1] } else { 1 };
-		// let image_height = if magic_dims > 2 { dim_sizes[2] } else { 1 };
-
-		// let margins_horiz = ganglion_dims.u_size() as usize - image_width;
-		// let margins_vert = ganglion_dims.v_size() as usize - image_height;
-
-		// let margin_left = margins_horiz / 2;
-  //   	let margin_right = margins_horiz - margin_left;
-  //   	let margin_top = margins_vert / 2;
-  //   	let margin_bottom = margins_vert - margin_top;
-
     	let mut buffer_cap: usize = 1;
 
     	for &size in &dim_sizes {

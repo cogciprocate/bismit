@@ -1,30 +1,12 @@
-// use std::error::Error;
-// use std::fs::File;
-// use std::io::prelude::*;
-// use std::io::BufReader;
-// use std::path::Path;
-// use std::iter;
-// use num::{ Float };
-
 use cmn::{CorticalDims, Sdr};
 use input_source::InputGanglion;
 use super::IdxData;
-
-// const HEX_SIDE: f32 = 0.5f32;
-// //const C1_OFS: f32 = 0f32 * HEX_SIDE;
-// //const C2_OFS: f32 = 0f32 * HEX_SIDE;	
-// //const V_OFS: f32 = 0f32;
-// //const W_OFS: f32 = 0f32;
-// const Y_OFS: f32 = 29f32 * HEX_SIDE;
-// const X_OFS: f32 = 43f32 * HEX_SIDE;
 
 const SQRT_3: f32 = 1.73205080756f32;
 
 
 //	IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned 
 //	bytes (u8) into a ganglion (SDR frame buffer: &Sdr)
-//		- TODO: CONVERT FROM STORING FILE IN MEMORY TO STREAMING FILE (WITH LARGE BUFFER)
-//			- TEST DIFFERENT BUFFERING STRATEGIES (see notes)
 pub struct IdxReader {
 	ganglion_dims: CorticalDims,
 	cycles_per_frame: usize,
@@ -33,92 +15,19 @@ pub struct IdxReader {
 	frame_counter: usize,
 	frames_count: usize,
 	loop_frames: Option<u32>,
-	// image_dim_count: usize,
 	image_width: usize,
 	image_height: usize,	
 	image_len: usize,
-	// ttl_header_len: usize,
-	// margins: Margins, // DEPRICATE
 	idx_data: IdxData,
-	// file_path: String,
-	// file_reader: BufReader<File>,
-	// image_buffer: Vec<u8>,
-	// len_file: usize,
-	// len_image: usize,
-	//dim_sizes: Vec<usize>,
 }
 
 impl IdxReader {
 	pub fn new(ganglion_dims: CorticalDims, file_name: &str, cycles_per_frame: usize, scale_factor: f32) -> IdxReader {
-		// let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
-		// let path = Path::new(&path_string);
-		// let display = path.display();
-
-		// let file = match File::open(&path) {
-		// 	Err(why) => panic!("\ncouldn't open '{}': {}", display, Error::description(&why)),
-		// 	Ok(file) => file,
-		// };
-
-		// let mut reader = BufReader::new(file);
-		// let mut header_magic: Vec<u8> = iter::repeat(0).take(4).collect();
-
-		// match reader.read(&mut header_magic[..]) {
-		//     Err(why) => panic!("\ncouldn't read '{}': {}", display, Error::description(&why)),
-		//     Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", display, header_magic, bytes),
-		// }
-
-		// let magic_data_type = header_magic[2];
-		// let magic_dims = header_magic[3] as usize;
-		// assert!(magic_data_type == 8, format!("IDX file: '{}' does not contain unsigned bytes.", display));
-
-		// let mut header_dim_sizes_bytes: Vec<u8> = iter::repeat(0).take(magic_dims * 4).collect();
-
-		// match reader.read(&mut header_dim_sizes_bytes[..]) {
-		//     Err(why) => panic!("\ncouldn't read '{}': {}", display, Error::description(&why)),
-		//     Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
-		// }
-		
-		// let ttl_header_len = 4 + (magic_dims * 4);
-		// let mut dim_sizes: Vec<usize> = iter::repeat(0).take(magic_dims).collect();
-
-		// for i in 0..magic_dims {
-		// 	let header_ofs = 4 * i;
-		// 	dim_sizes[i] = 
-		// 		(header_dim_sizes_bytes[header_ofs] as usize) << 24 
-		// 		| (header_dim_sizes_bytes[header_ofs + 1] as usize) << 16 
-		// 		| (header_dim_sizes_bytes[header_ofs + 2] as usize) << 8 
-		// 		| (header_dim_sizes_bytes[header_ofs + 3] as usize)
-		// 	;
-		// }
-
 		let idx_data = IdxData::new(file_name);
 		let dim_count = idx_data.dims().len();
 
 		let image_width = if dim_count > 1 { idx_data.dims()[1] } else { 1 };
 		let image_height = if dim_count > 2 { idx_data.dims()[2] } else { 1 };
-
-		// let margins_horiz = ganglion_dims.u_size() as usize - image_width;
-		// let margins_vert = ganglion_dims.v_size() as usize - image_height;
-
-		// let margin_left = margins_horiz / 2;
-  //   	let margin_right = margins_horiz - margin_left;
-  //   	let margin_top = margins_vert / 2;
-  //   	let margin_bottom = margins_vert - margin_top;
-
-    	//let image_buffer: Vec<u8> = iter::repeat(0).take(dim_sizes[1] * dim_sizes[2]).collect();
-  //   	let mut buffer_cap: usize = 1;
-
-  //   	for &size in &dim_sizes {
-  //   		buffer_cap *= size as usize;
-		// }
-
-  //   	let mut image_buffer: Vec<u8> = Vec::with_capacity(buffer_cap);
-    	
-  //   	// TODO: CONVERT TO STREAM
-  //   	match reader.read_to_end(&mut image_buffer) {
-  //   		Err(why) => panic!("\ncouldn't read '{}': {}", &path_string, Error::description(&why)),
-		//     Ok(bytes) => println!("{}: {} bytes read.", display, bytes),
-		// }
 
 		println!("IDXREADER: initialized with dimensions: {:?}", idx_data.dims());
 
@@ -130,23 +39,10 @@ impl IdxReader {
 	    	frame_counter: 0,
 	    	frames_count: idx_data.dims()[0],
 	    	loop_frames: None,
-	    	// image_dim_count: magic_dims,
 	    	image_width: image_width,
 	    	image_height: image_height,	    	
 	    	image_len: image_width * image_height,
 	    	idx_data: idx_data,
-	    	// ttl_header_len: ttl_header_len,
-	    	// margins: Margins { 	// DEPRICATE
-	    	// 	left: margin_left, 
-	    	// 	right: margin_right, 
-	    	// 	top: margin_top,
-	    	// 	bottom: margin_bottom,
-    		// },	    	
-	    	//file: file,
-	    	// file_path: format!("{}", path.display()),
-	    	// file_reader: reader,
-	    	// image_buffer: image_buffer,
-	    	//dim_sizes: dim_sizes,
     	}
     }
 
@@ -158,10 +54,8 @@ impl IdxReader {
 	pub fn get_raw_frame(&self, frame_idx: usize, ganglion_frame: &mut Sdr) -> usize {
 		assert!(ganglion_frame.len() == self.ganglion_dims.columns() as usize);
 		assert!(frame_idx < self.frames_count);
-		//let mut bytes_copied = 0;
 
 		let img_idz = frame_idx * self.image_len;
-		//let img_idn = img_idz + self.image_len;
 
 		for idx in 0..self.image_len {
 			ganglion_frame[idx] = self.idx_data.data()[img_idz + idx];
@@ -296,25 +190,13 @@ pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_si
 	let u = u_id;
 	let u_inv = 0.0 - u;
 	let v = v_id;
-	//let v_inv = 0f32 - v;
-	//let w = u_inv + v_inv;
 	let w_inv = v + u;
-	//let s = HEX_SIDE;
-
-	//let c1 = w_inv - C1_OFS;
-	//let c2 = u_inv - C2_OFS;
 
 	let mut x = w_inv * 1.5 * hex_side;
 	let mut y = (u_inv + (w_inv / 2.0)) * SQRT_3 * hex_side;
 
-	//let mut y = u * 1.5f32 * s;
-	//let mut x = (v_inv + (u / 2f32)) * SQRT_3 * s;
-
 	x -= x_ofs;
-	y += y_ofs;	
-	
-	//x = x_size as f32 - x;
-	//y = y_size as f32 - y;
+	y += y_ofs;
 
 	let valid = (y >= 0.0 && y < y_size) && (x >= 0.0 && x < x_size);
 
@@ -342,61 +224,6 @@ fn calc_offs(v_size: usize, u_size: usize, y_size: usize, x_size: usize, hex_sid
 
 	((x_ofs_inv - x_mid as f32), (y_mid as f32 - y_ofs_inv))
 }
-
-
-
-
-	// pub fn encode_2d_image_crude(&self, source: &Sdr, target: &mut Sdr) {
-	// 	for v in 0..self.image_height {
-	// 		for u in 0..self.image_width {
-	// 			let src_idx = (v * self.image_width as usize) + u;
-	// 			let tar_idx = ((v + self.margins.top as usize) * self.ganglion_dims.u_size() as usize) 
-	// 				+ (u + self.margins.left as usize);
-	// 			target[tar_idx] = source[src_idx];
-	// 		}
-	// 	}
-	// }
-
-
-// function hex_to_pixel(hex):
-	//     x = size * 3/2 * hex.q
-	//     y = size * sqrt(3) * (hex.r + hex.q/2)
-	//     return Point(x, y)
-
-// pub fn point_pixel_to_hex_incomplete(x_int: usize, y_int: usize) -> (usize, usize) {
-// 	let sqrt3 = 3f32.sqrt();
-
-// 	let edge_size = 0.5f32;
-// 	let hex_width = edge_size * 2f32;
-// 	let height = (sqrt3 / 2f32) * hex_width;
-
-// 	let x = (x_int as f32 - edge_size) / hex_width;
-// 	let y = y_int as f32;	
-
-// 	(0, 0)
-// }
-
-
-// public Coord PointToCoord(double x, double z) {
-// 	x = (x - halfHexWidth) / hexWidth;
-
-// 	double t1 = z / hexRadius, t2 = Math.Floor(x + t1);
-// 	double r = Math.Floor((Math.Floor(t1 - x) + t2) / 3); 
-// 	double q = Math.Floor((Math.Floor(2 * x + 1) + t2) / 3) - r;
-
-// 	return new Coord((int) q, (int) r); 
-// }
-
-// function pixel_to_hex(x, y):
-//     q = x * 2/3 / size
-//     r = (-x / 3 + sqrt(3)/3 * y) / size
-//     return hex_round(Hex(q, r))
-
-
-// function hex_to_pixel(hex):
-//     x = size * 3/2 * hex.q
-//     y = size * sqrt(3) * (hex.r + hex.q/2)
-//     return Point(x, y)
 
 
 
