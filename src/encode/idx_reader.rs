@@ -1,14 +1,14 @@
-use std::error::{ Error };
-use std::fs::{ File };
-use std::io::prelude::*;
-use std::io::{ BufReader };
-use std::path::{ Path };
-use std::iter;
+// use std::error::Error;
+// use std::fs::File;
+// use std::io::prelude::*;
+// use std::io::BufReader;
+// use std::path::Path;
+// use std::iter;
 // use num::{ Float };
 
-use cmn::{ CorticalDims, Sdr };
-use input_source::{ InputGanglion };
-
+use cmn::{CorticalDims, Sdr};
+use input_source::InputGanglion;
+use super::IdxData;
 
 // const HEX_SIDE: f32 = 0.5f32;
 // //const C1_OFS: f32 = 0f32 * HEX_SIDE;
@@ -33,15 +33,16 @@ pub struct IdxReader {
 	frame_counter: usize,
 	frames_count: usize,
 	loop_frames: Option<u32>,
-	image_dim_count: usize,
+	// image_dim_count: usize,
 	image_width: usize,
 	image_height: usize,	
 	image_len: usize,
-	ttl_header_len: usize,
-	margins: Margins, // DEPRICATE
-	file_path: String,
-	file_reader: BufReader<File>,
-	image_buffer: Vec<u8>,
+	// ttl_header_len: usize,
+	// margins: Margins, // DEPRICATE
+	idx_data: IdxData,
+	// file_path: String,
+	// file_reader: BufReader<File>,
+	// image_buffer: Vec<u8>,
 	// len_file: usize,
 	// len_image: usize,
 	//dim_sizes: Vec<usize>,
@@ -49,74 +50,77 @@ pub struct IdxReader {
 
 impl IdxReader {
 	pub fn new(ganglion_dims: CorticalDims, file_name: &str, cycles_per_frame: usize, scale_factor: f32) -> IdxReader {
-		let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
-		let path = Path::new(&path_string);
-		let display = path.display();
+		// let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
+		// let path = Path::new(&path_string);
+		// let display = path.display();
 
-		let file = match File::open(&path) {
-			Err(why) => panic!("\ncouldn't open '{}': {}", display, Error::description(&why)),
-			Ok(file) => file,
-		};
+		// let file = match File::open(&path) {
+		// 	Err(why) => panic!("\ncouldn't open '{}': {}", display, Error::description(&why)),
+		// 	Ok(file) => file,
+		// };
 
-		let mut reader = BufReader::new(file);
-		let mut header_magic: Vec<u8> = iter::repeat(0).take(4).collect();
+		// let mut reader = BufReader::new(file);
+		// let mut header_magic: Vec<u8> = iter::repeat(0).take(4).collect();
 
-		match reader.read(&mut header_magic[..]) {
-		    Err(why) => panic!("\ncouldn't read '{}': {}", display, Error::description(&why)),
-		    Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", display, header_magic, bytes),
-		}
+		// match reader.read(&mut header_magic[..]) {
+		//     Err(why) => panic!("\ncouldn't read '{}': {}", display, Error::description(&why)),
+		//     Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", display, header_magic, bytes),
+		// }
 
-		let magic_data_type = header_magic[2];
-		let magic_dims = header_magic[3] as usize;
-		assert!(magic_data_type == 8, format!("IDX file: '{}' does not contain unsigned bytes.", display));
+		// let magic_data_type = header_magic[2];
+		// let magic_dims = header_magic[3] as usize;
+		// assert!(magic_data_type == 8, format!("IDX file: '{}' does not contain unsigned bytes.", display));
 
-		let mut header_dim_sizes_bytes: Vec<u8> = iter::repeat(0).take(magic_dims * 4).collect();
+		// let mut header_dim_sizes_bytes: Vec<u8> = iter::repeat(0).take(magic_dims * 4).collect();
 
-		match reader.read(&mut header_dim_sizes_bytes[..]) {
-		    Err(why) => panic!("\ncouldn't read '{}': {}", display, Error::description(&why)),
-		    Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
-		}
+		// match reader.read(&mut header_dim_sizes_bytes[..]) {
+		//     Err(why) => panic!("\ncouldn't read '{}': {}", display, Error::description(&why)),
+		//     Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
+		// }
 		
-		let ttl_header_len = 4 + (magic_dims * 4);
-		let mut dim_sizes: Vec<usize> = iter::repeat(0).take(magic_dims).collect();
+		// let ttl_header_len = 4 + (magic_dims * 4);
+		// let mut dim_sizes: Vec<usize> = iter::repeat(0).take(magic_dims).collect();
 
-		for i in 0..magic_dims {
-			let header_ofs = 4 * i;
-			dim_sizes[i] = 
-				(header_dim_sizes_bytes[header_ofs] as usize) << 24 
-				| (header_dim_sizes_bytes[header_ofs + 1] as usize) << 16 
-				| (header_dim_sizes_bytes[header_ofs + 2] as usize) << 8 
-				| (header_dim_sizes_bytes[header_ofs + 3] as usize)
-			;
-		}
+		// for i in 0..magic_dims {
+		// 	let header_ofs = 4 * i;
+		// 	dim_sizes[i] = 
+		// 		(header_dim_sizes_bytes[header_ofs] as usize) << 24 
+		// 		| (header_dim_sizes_bytes[header_ofs + 1] as usize) << 16 
+		// 		| (header_dim_sizes_bytes[header_ofs + 2] as usize) << 8 
+		// 		| (header_dim_sizes_bytes[header_ofs + 3] as usize)
+		// 	;
+		// }
 
-		let image_width = if magic_dims > 1 { dim_sizes[1] } else { 1 };
-		let image_height = if magic_dims > 2 { dim_sizes[2] } else { 1 };
+		let idx_data = IdxData::new(file_name);
+		let dim_count = idx_data.dims().len();
 
-		let margins_horiz = ganglion_dims.u_size() as usize - image_width;
-		let margins_vert = ganglion_dims.v_size() as usize - image_height;
+		let image_width = if dim_count > 1 { idx_data.dims()[1] } else { 1 };
+		let image_height = if dim_count > 2 { idx_data.dims()[2] } else { 1 };
 
-		let margin_left = margins_horiz / 2;
-    	let margin_right = margins_horiz - margin_left;
-    	let margin_top = margins_vert / 2;
-    	let margin_bottom = margins_vert - margin_top;
+		// let margins_horiz = ganglion_dims.u_size() as usize - image_width;
+		// let margins_vert = ganglion_dims.v_size() as usize - image_height;
+
+		// let margin_left = margins_horiz / 2;
+  //   	let margin_right = margins_horiz - margin_left;
+  //   	let margin_top = margins_vert / 2;
+  //   	let margin_bottom = margins_vert - margin_top;
 
     	//let image_buffer: Vec<u8> = iter::repeat(0).take(dim_sizes[1] * dim_sizes[2]).collect();
-    	let mut buffer_cap: usize = 1;
+  //   	let mut buffer_cap: usize = 1;
 
-    	for &size in &dim_sizes {
-    		buffer_cap *= size as usize;
-		}
+  //   	for &size in &dim_sizes {
+  //   		buffer_cap *= size as usize;
+		// }
 
-    	let mut image_buffer: Vec<u8> = Vec::with_capacity(buffer_cap);
+  //   	let mut image_buffer: Vec<u8> = Vec::with_capacity(buffer_cap);
     	
-    	// TODO: CONVERT TO STREAM
-    	match reader.read_to_end(&mut image_buffer) {
-    		Err(why) => panic!("\ncouldn't read '{}': {}", &path_string, Error::description(&why)),
-		    Ok(bytes) => println!("{}: {} bytes read.", display, bytes),
-		}
+  //   	// TODO: CONVERT TO STREAM
+  //   	match reader.read_to_end(&mut image_buffer) {
+  //   		Err(why) => panic!("\ncouldn't read '{}': {}", &path_string, Error::description(&why)),
+		//     Ok(bytes) => println!("{}: {} bytes read.", display, bytes),
+		// }
 
-		println!("IDXREADER: initialized with dimensions: {:?}", dim_sizes);
+		println!("IDXREADER: initialized with dimensions: {:?}", idx_data.dims());
 
 	    IdxReader {
 	    	ganglion_dims: ganglion_dims,
@@ -124,23 +128,24 @@ impl IdxReader {
 	    	scale_factor: scale_factor,
 	    	repeat_counter: 0,
 	    	frame_counter: 0,
-	    	frames_count: dim_sizes[0],
+	    	frames_count: idx_data.dims()[0],
 	    	loop_frames: None,
-	    	image_dim_count: magic_dims,
+	    	// image_dim_count: magic_dims,
 	    	image_width: image_width,
 	    	image_height: image_height,	    	
 	    	image_len: image_width * image_height,
-	    	ttl_header_len: ttl_header_len,
-	    	margins: Margins { 	// DEPRICATE
-	    		left: margin_left, 
-	    		right: margin_right, 
-	    		top: margin_top,
-	    		bottom: margin_bottom,
-    		},	    	
+	    	idx_data: idx_data,
+	    	// ttl_header_len: ttl_header_len,
+	    	// margins: Margins { 	// DEPRICATE
+	    	// 	left: margin_left, 
+	    	// 	right: margin_right, 
+	    	// 	top: margin_top,
+	    	// 	bottom: margin_bottom,
+    		// },	    	
 	    	//file: file,
-	    	file_path: format!("{}", path.display()),
-	    	file_reader: reader,
-	    	image_buffer: image_buffer,
+	    	// file_path: format!("{}", path.display()),
+	    	// file_reader: reader,
+	    	// image_buffer: image_buffer,
 	    	//dim_sizes: dim_sizes,
     	}
     }
@@ -159,7 +164,7 @@ impl IdxReader {
 		//let img_idn = img_idz + self.image_len;
 
 		for idx in 0..self.image_len {
-			ganglion_frame[idx] = self.image_buffer[img_idz + idx];
+			ganglion_frame[idx] = self.idx_data.data()[img_idz + idx];
 		}
 
 		return self.image_len;
@@ -169,7 +174,7 @@ impl IdxReader {
 		assert!(frame_idx < self.frames_count);
 		let img_idz = frame_idx * self.image_len;
 
-		return self.image_buffer[img_idz];
+		return self.idx_data.data()[img_idz];
 
 	}
 
@@ -260,19 +265,19 @@ impl InputGanglion for IdxReader {
     	assert!((self.image_len) <= ganglion_frame.len(), 
     		"Ganglion vector size must be greater than or equal to IDX image size");    	
 
-  		//   	match self.file_reader.read(&mut self.image_buffer[..]) {
+  		//   	match self.file_reader.read(&mut self.idx_data.data()[..]) {
 		//     Err(why) => panic!("\ncouldn't read '{}': {}", &self.file_path, Error::description(&why)),
-		//     Ok(bytes) => assert!(bytes == self.image_buffer.len(), "\n bytes read != buffer length"), 
+		//     Ok(bytes) => assert!(bytes == self.idx_data.data().len(), "\n bytes read != buffer length"), 
 		//     	//println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
 		// }
 
 		let img_idz = self.frame_counter * self.image_len;
 		let img_idn = img_idz + self.image_len;
 
-		match self.image_dim_count {
-			3 => self.encode_2d_image(&self.image_buffer[img_idz..img_idn], ganglion_frame),
+		match self.idx_data.dims().len() {
+			3 => self.encode_2d_image(&self.idx_data.data()[img_idz..img_idn], ganglion_frame),
 			2 => panic!("\nOne dimensional (linear) idx images not yet supported."),
-			1 => self.encode_scalar(&self.image_buffer[img_idz..img_idn], ganglion_frame),
+			1 => self.encode_scalar(&self.idx_data.data()[img_idz..img_idn], ganglion_frame),
 			_ => panic!("\nIdx files with more than three or less than one dimension(s) not supported."),
 		}
 
