@@ -5,7 +5,7 @@ use map::{ self, LayerTags };
 use cmn::{ self, Sdr, CorticalDims };
 use ocl::{ EventList };
 use proto::{ ProtoareaMap, Protoinput, ProtolayerMap, Protolayer, AxonKind };
-use encode::{ IdxReader };
+use encode::{ IdxStreamer };
 
 pub type InputSources = HashMap<(&'static str, LayerTags), InputSource>;
 
@@ -46,16 +46,16 @@ impl InputSource {
 			pamap.name(), plmap.name());
 
 		let kind = match input {
-			&Protoinput::IdxReader { file_name, cyc_per, scale } => {
-				let ir = IdxReader::new(dims.clone(), file_name, 
+			&Protoinput::IdxStreamer { file_name, cyc_per, scale } => {
+				let ir = IdxStreamer::new(dims.clone(), file_name, 
 					cyc_per, scale);				
-				InputSourceKind::IdxReader(Box::new(ir))
+				InputSourceKind::IdxStreamer(Box::new(ir))
 			},
 
-			&Protoinput::IdxReaderLoop { file_name, cyc_per, scale, loop_frames } => {
-				let ir = IdxReader::new(dims.clone(), file_name, 
+			&Protoinput::IdxStreamerLoop { file_name, cyc_per, scale, loop_frames } => {
+				let ir = IdxStreamer::new(dims.clone(), file_name, 
 					cyc_per, scale).loop_frames(loop_frames);				
-				InputSourceKind::IdxReader(Box::new(ir))
+				InputSourceKind::IdxStreamer(Box::new(ir))
 			},
 
 			&Protoinput::None | &Protoinput::Zeros => InputSourceKind::None,
@@ -79,7 +79,7 @@ impl InputSource {
 		// debug_assert!(self.targets.len() == 1);
 
 		match self.kind {
-			InputSourceKind::IdxReader(ref mut ig) |
+			InputSourceKind::IdxStreamer(ref mut ig) |
 			InputSourceKind::Custom(ref mut ig)
 				=> { let _ = ig.cycle(ganglion); },
 				
@@ -114,8 +114,8 @@ pub enum InputSourceKind {
 	Stripes { stripe_size: usize, zeros_first: bool },
 	Hexballs { edge_size: usize, invert: bool, fill: bool },
 	Exp1,
-	IdxReader(Box<InputGanglion>),
-	// IdxReaderLoop(Box<InputGanglion>),
+	IdxStreamer(Box<InputGanglion>),
+	// IdxStreamerLoop(Box<InputGanglion>),
 	Custom(Box<InputGanglion>),
 	None,
 }
