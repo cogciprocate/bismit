@@ -2,8 +2,9 @@ use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{/*PathBuf,*/ Path};
 use std::iter;
+// use find_folder::Search;
 
 pub struct IdxData {
 	file_path: String,
@@ -13,15 +14,39 @@ pub struct IdxData {
 }
 
 impl IdxData {
-	pub fn new(file_name: &str) -> IdxData {
-		// let assets = Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
-		// let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");		
-		let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
-		let path = Path::new(&path_string);
-		let display = path.display();
+	/// # Panics
+	/// File::open(), BufReader::read()[x2], BufReader::read_to_end(), Invalid idx file format,
+	///
+	/// [FIXME]: Consolidate error handling and return CmnResult instead of panicing.
+	pub fn new(file_path_str: &str) -> IdxData {
+		// let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
+		let fp_raw = Path::new(file_path_str);
 
-		let file = match File::open(&path) {
-			Err(why) => panic!("\ncouldn't open '{}': {}", display, Error::description(&why)),
+		let file_path = if fp_raw.is_file() {
+			fp_raw
+		} else {
+			// TODO: BRING THIS BACK EVENTUALLY
+			// if fp_raw.is_relative() {
+			// 	let mut file_path = PathBuf::new();
+			// 	let mut fp_iter = fp_raw.iter();
+			// 	// println!("#### FP_COMP.len(): {}", fp_comp.len());
+			// 	let root_folder = fp_iter.next().expect("1").to_str().expect("2");
+			// 	println!("#### ROOT_FOLDER: {:?}", root_folder);
+			// 	let file_root = Search::ParentsThenKids(3, 3).for_folder(root_folder).expect("3");
+			// 	println!("#### FILE_ROOT: {}", file_root.display());
+			// } else {
+			// 	// TODO: SWITCH TO ERR RETURN
+			// 	panic!("IdxData::new(): Invalid file path: '{}'.", fp_raw.display());
+			// }
+			// TEMPORARY:
+			fp_raw
+		};
+
+		// let file_path = PathBuf::from(&file_path_str);
+		let path_display = file_path.display();
+
+		let file = match File::open(&file_path) {
+			Err(why) => panic!("\ncouldn't open '{}': {}", path_display, Error::description(&why)),
 			Ok(file) => file,
 		};
 
@@ -29,19 +54,19 @@ impl IdxData {
 		let mut header_magic: Vec<u8> = iter::repeat(0).take(4).collect();
 
 		match reader.read(&mut header_magic[..]) {
-		    Err(why) => panic!("\ncouldn't read '{}': {}", display, Error::description(&why)),
-		    Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", display, header_magic, bytes),
+		    Err(why) => panic!("\ncouldn't read '{}': {}", path_display, Error::description(&why)),
+		    Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_magic, bytes),
 		}
 
 		let magic_data_type = header_magic[2];
 		let magic_dims = header_magic[3] as usize;
-		assert!(magic_data_type == 8, format!("IDX file: '{}' does not contain unsigned bytes.", display));
+		assert!(magic_data_type == 8, format!("IDX file: '{}' does not contain unsigned bytes.", path_display));
 
 		let mut header_dim_sizes_bytes: Vec<u8> = iter::repeat(0).take(magic_dims * 4).collect();
 
 		match reader.read(&mut header_dim_sizes_bytes[..]) {
-		    Err(why) => panic!("\ncouldn't read '{}': {}", display, Error::description(&why)),
-		    Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
+		    Err(why) => panic!("\ncouldn't read '{}': {}", path_display, Error::description(&why)),
+		    Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_dim_sizes_bytes, bytes),
 		}
 		
 		let ttl_header_len = 4 + (magic_dims * 4);
@@ -67,14 +92,14 @@ impl IdxData {
     	
     	// TODO: CONVERT TO STREAM
     	match reader.read_to_end(&mut idx_buffer) {
-    		Err(why) => panic!("\ncouldn't read '{}': {}", &path_string, Error::description(&why)),
-		    Ok(bytes) => println!("{}: {} bytes read.", display, bytes),
+    		Err(why) => panic!("\ncouldn't read '{}': {}", path_display, Error::description(&why)),
+		    Ok(bytes) => println!("{}: {} bytes read.", path_display, bytes),
 		}
 
 		println!("IDXREADER: initialized with dimensions: {:?}", dim_sizes);
 
 	    IdxData {	    	  	    	
-	    	file_path: format!("{}", path.display()),
+	    	file_path: format!("{}", file_path.display()),
 	    	// file_reader: reader,
 	    	data: idx_buffer,
 	    	dims: dim_sizes, 

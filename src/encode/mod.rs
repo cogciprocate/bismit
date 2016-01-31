@@ -1,7 +1,7 @@
-pub use self::idx_reader::IdxStreamer;
+pub use self::idx_streamer::IdxStreamer;
 pub use self::idx_data::IdxData;
 
-pub mod idx_reader;
+pub mod idx_streamer;
 mod idx_data;
 
 use cmn::Sdr;
@@ -69,8 +69,10 @@ pub fn encode_2d_image(v_size: usize, u_size: usize, x_size: usize, y_size: usiz
 			}
 		}
 	}
-}	
+}
 
+
+// [TODO]: Wire me up, Scotty.
 pub fn encode_scalar() {
 	// for v_id in 0..v_size {
 	// 	for u_id in 0..u_size {

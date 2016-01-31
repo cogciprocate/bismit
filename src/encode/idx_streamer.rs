@@ -1,3 +1,5 @@
+// use std::path::{Path, PathBuf};
+// use find_folder::Search;
 use cmn::{CorticalDims, Sdr};
 use input_source::InputGanglion;
 use super::IdxData;
@@ -21,12 +23,14 @@ pub struct IdxStreamer {
 impl IdxStreamer {
 	/// # Panics
 	/// All sorts of reasons...
-	pub fn new(ganglion_dims: CorticalDims, file_name: &str, cycles_per_frame: usize, scale_factor: f32) -> IdxStreamer {
-		let idx_data = IdxData::new(file_name);
+	pub fn new(ganglion_dims: CorticalDims, file_path_str: &str, cycles_per_frame: usize, 
+				scale_factor: f32) -> IdxStreamer 
+	{
+		let idx_data = IdxData::new(file_path_str);
 		let dim_count = idx_data.dims().len();
 
 		assert!(dim_count <= 3, "IdxStreamer::new(): Cannot handle idx files with more than \
-			three dimensions. [file: '{}']", file_name);
+			three dimensions. [file: '{}']", file_path_str);
 		let image_width = if dim_count > 1 { idx_data.dims()[1] } else { 1 };
 		let image_height = if dim_count > 2 { idx_data.dims()[2] } else { 1 };
 
