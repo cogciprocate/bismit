@@ -1,5 +1,11 @@
 use std::ops::Range;
 
+/// Map of axons within a cortical area.
+///
+/// Generally used when exporting snapshots of axon space for visualization, debugging, etc.
+///
+// FEEL FREE TO RENAME
+//
 #[derive(Debug, Clone)]
 pub struct GanglionMap {	
 	tags: Vec<&'static str>,	
@@ -55,7 +61,6 @@ impl GanglionMap {
 		count as usize
 	}
 
-	// **************** SOURCE OF PROBLEMS *****************:
 	pub fn axn_id_range(&self, slc_id_range: Range<u8>) -> Range<usize> {
 		let start = slc_id_range.start as usize;
 		let end = slc_id_range.end as usize;

@@ -1,4 +1,6 @@
 #![allow(dead_code, unused_variables, unused_assignments)]
+#![allow(unused_features)]
+#![feature(clone_from_slice)]
 
 pub use map::proto;
 

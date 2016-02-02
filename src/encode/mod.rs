@@ -1,8 +1,17 @@
 pub use self::idx_streamer::IdxStreamer;
 pub use self::idx_data::IdxData;
+pub use self::tract_frame::TractFrame;
+pub use self::tract_dims::TractDims;
+pub use self::glyph_buckets::GlyphBuckets;
+pub use self::glyph_sequences::GlyphSequences;
 
 pub mod idx_streamer;
 mod idx_data;
+mod tract;
+mod tract_frame;
+mod tract_dims;
+mod glyph_buckets;
+mod glyph_sequences;
 
 use cmn::Sdr;
 
@@ -46,7 +55,7 @@ pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_si
 
 // ENCODE_2D_IMAGE(): Horribly unoptimized.
 pub fn encode_2d_image(v_size: usize, u_size: usize, x_size: usize, y_size: usize,
-	scale_factor: f32, source: &Sdr, target: &mut Sdr) 
+	scale_factor: f32, source: &[u8], target: &mut Sdr) 
 {
 	let hex_side = (x_size + y_size) as f32 / 
 		(scale_factor * (v_size + u_size) as f32);
@@ -88,4 +97,16 @@ pub fn encode_scalar() {
 	// 		//target[tar_idx] = (x != 0 || y != 0) as u8; // SHOW INPUT SQUARE
 	// 	}
 	// }
+}
+
+
+pub fn print_image(image: &[u8], dims: (usize, usize)) {
+	for y in 0..dims.1 {
+		print!("\n    ");
+		for x in 0..dims.0 {
+			let idx = (y * dims.0) + x;
+			print!("{:2X} ", image[idx]);
+		}
+	}
+	println!("");
 }

@@ -1,24 +1,28 @@
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
-use std::path::{/*PathBuf,*/ Path};
+use std::io::{BufReader, SeekFrom};
+use std::path::{PathBuf, Path};
 use std::iter;
+use std::ops::{Index, IndexMut, Range, RangeTo, RangeFrom, RangeFull};
 // use find_folder::Search;
 
 pub struct IdxData {
-	file_path: String,
-	// file_reader: BufReader<File>,
+	file_path: PathBuf,
+	file_reader: BufReader<File>,
 	data: Vec<u8>,
 	dims: Vec<usize>,
 }
 
 impl IdxData {
+	/// Reads a .idx file all at once into a vector `data` or piece at a time via the
+	/// `.read_item()` function.
+	///
 	/// # Panics
 	/// File::open(), BufReader::read()[x2], BufReader::read_to_end(), Invalid idx file format,
 	///
 	/// [FIXME]: Consolidate error handling and return CmnResult instead of panicing.
-	pub fn new(file_path_str: &str) -> IdxData {
+	pub fn new(file_path_str: &str, stream_mode: bool) -> IdxData {
 		// let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
 		let fp_raw = Path::new(file_path_str);
 
@@ -90,20 +94,61 @@ impl IdxData {
 
     	let mut idx_buffer: Vec<u8> = Vec::with_capacity(buffer_cap);
     	
-    	// TODO: CONVERT TO STREAM
-    	match reader.read_to_end(&mut idx_buffer) {
-    		Err(why) => panic!("\ncouldn't read '{}': {}", path_display, Error::description(&why)),
-		    Ok(bytes) => println!("{}: {} bytes read.", path_display, bytes),
+    	if !stream_mode {
+	    	// TODO: CONVERT TO STREAM
+	    	match reader.read_to_end(&mut idx_buffer) {
+	    		Err(why) => panic!("\ncouldn't read '{}': {}", path_display, Error::description(&why)),
+			    Ok(bytes) => println!("{}: {} bytes read.", path_display, bytes),
+			}
+		}
+
+		let header_len_bytes = header_magic.len() + header_dim_sizes_bytes.len();
+
+		match reader.seek(SeekFrom::Start(header_len_bytes as u64)) {
+    		Err(why) => panic!("\ncouldn't seek to '[{}]': {}", header_len_bytes, 
+    			Error::description(&why)),
+		    Ok(pos) => (),
 		}
 
 		println!("IDXREADER: initialized with dimensions: {:?}", dim_sizes);
 
 	    IdxData {	    	  	    	
-	    	file_path: format!("{}", file_path.display()),
-	    	// file_reader: reader,
+	    	file_path: file_path.to_path_buf(),
+	    	file_reader: reader,
 	    	data: idx_buffer,
 	    	dims: dim_sizes, 
     	}
+	}
+
+	// TODO: RETURN RESULT
+	pub fn read(&mut self, buf: &mut [u8]) {
+		match self.file_reader.read_exact(buf) {
+		    Err(why) => panic!("\ncouldn't read '{}': {}", self.file_path.display(), 
+		    	Error::description(&why)),
+		    Ok(_) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_dim_sizes_bytes, bytes),
+		}
+	}
+
+	// Feels like this probably exists in std somewhere...
+	pub fn read_into_vec(&mut self, bytes_to_read: usize, vec: &mut Vec<u8>) {
+		let prev_len = vec.len();
+		let new_len = prev_len + bytes_to_read;
+
+		vec.reserve(bytes_to_read);
+		debug_assert!(new_len <= vec.capacity());
+		unsafe { vec.set_len(new_len); }
+
+		let idx_range = prev_len..new_len;
+
+		match self.file_reader.read_exact(&mut vec[idx_range]) {
+		    Err(why) => panic!("\ncouldn't read '{}': {}", self.file_path.display(), 
+		    	Error::description(&why)),
+		    Ok(_) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_dim_sizes_bytes, bytes),
+		}
+	}
+
+	pub fn file_path(&self) -> &Path {
+		self.file_path.as_path()
 	}
 
 	pub fn data(&self) -> &[u8] {
@@ -115,6 +160,53 @@ impl IdxData {
 	}
 }
 
+impl Index<usize> for IdxData {
+    type Output = u8;
+    
+    fn index<'a>(&'a self, index: usize) -> &'a u8 {
+        // &self.data[index]
+        &(*self.data)[index]
+    }
+}
+impl IndexMut<usize> for IdxData {
+    fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut u8 {
+    	// &mut self.data[index]
+    	&mut (*self.data)[index]
+    }
+}
+
+impl Index<Range<usize>> for IdxData {
+    type Output = [u8];
+
+    #[inline]
+    fn index(&self, index: Range<usize>) -> &[u8] {
+        Index::index(&*self.data, index)
+    }
+}
+impl Index<RangeTo<usize>> for IdxData {
+    type Output = [u8];
+
+    #[inline]
+    fn index(&self, index: RangeTo<usize>) -> &[u8] {
+        Index::index(&*self.data, index)
+    }
+}
+impl Index<RangeFrom<usize>> for IdxData {
+    type Output = [u8];
+
+    #[inline]
+    fn index(&self, index: RangeFrom<usize>) -> &[u8] {
+        Index::index(&*self.data, index)
+    }
+}
+impl Index<RangeFull> for IdxData {
+    type Output = [u8];
+
+    #[inline]
+    fn index(&self, _index: RangeFull) -> &[u8] {
+        &self.data
+    }
+}
 
 
 // THE IDX FILE FORMAT

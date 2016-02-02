@@ -5,12 +5,24 @@ use map::{ self, LayerTags };
 use cmn::{ self, Sdr, CorticalDims };
 use ocl::{ EventList };
 use proto::{ ProtoareaMap, Protoinput, ProtolayerMap, Protolayer, AxonKind };
-use encode::{ IdxStreamer };
+use encode::{ IdxStreamer, GlyphSequences };
 
 pub type InputSources = HashMap<(&'static str, LayerTags), InputSource>;
 
-pub trait InputGanglion {
+pub trait InputTract {
 	fn cycle(&mut self, ganglion: &mut Sdr) -> usize;
+}
+
+pub enum InputSourceKind {
+	None,
+	World,
+	Stripes { stripe_size: usize, zeros_first: bool },
+	Hexballs { edge_size: usize, invert: bool, fill: bool },
+	Exp1,
+	IdxStreamer(Box<InputTract>),
+	// IdxStreamerLoop(Box<InputTract>),
+	GlyphSequences(Box<GlyphSequences>),
+	Custom(Box<InputTract>),
 }
 
 pub struct InputSource {
@@ -20,7 +32,7 @@ pub struct InputSource {
 	layer_name: &'static str,
 	axn_kind: AxonKind,
 	dims: CorticalDims,
-	// source: Box<InputGanglion>,
+	// source: Box<InputTract>,
 }
 
 impl InputSource {
@@ -51,15 +63,16 @@ impl InputSource {
 					cyc_per, scale);				
 				InputSourceKind::IdxStreamer(Box::new(ir))
 			},
-
 			&Protoinput::IdxStreamerLoop { file_name, cyc_per, scale, loop_frames } => {
 				let ir = IdxStreamer::new(dims.clone(), file_name, 
 					cyc_per, scale).loop_frames(loop_frames);				
 				InputSourceKind::IdxStreamer(Box::new(ir))
 			},
-
+			&Protoinput::GlyphSequences { seq_lens, seq_count, scale } => {
+				let gs = GlyphSequences::new(dims.clone(), seq_lens, seq_count, scale);
+				InputSourceKind::GlyphSequences(Box::new(gs))
+			},
 			&Protoinput::None | &Protoinput::Zeros => InputSourceKind::None,
-
 			_ => panic!("\nInputSource::new(): Input type not yet supported."),
 		};
 
@@ -78,13 +91,14 @@ impl InputSource {
 		// This is temp (mult out tar areas): DEPRICATING: 
 		// debug_assert!(self.targets.len() == 1);
 
-		match self.kind {
+		// '.cycle()' returns a usize (iter or something), not sure what we're going to do with it.
+		let _ = match self.kind {
 			InputSourceKind::IdxStreamer(ref mut ig) |
 			InputSourceKind::Custom(ref mut ig)
-				=> { let _ = ig.cycle(ganglion); },
-				
-			_ => (),
-		}
+				=> { ig.cycle(ganglion) },
+			InputSourceKind::GlyphSequences(ref mut gs) => gs.cycle(ganglion),
+			_ => 0,
+		};
 	}
 
 	pub fn area_name(&self) -> &'static str {
@@ -106,16 +120,4 @@ impl InputSource {
 	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
-}
-
-
-pub enum InputSourceKind {
-	World,
-	Stripes { stripe_size: usize, zeros_first: bool },
-	Hexballs { edge_size: usize, invert: bool, fill: bool },
-	Exp1,
-	IdxStreamer(Box<InputGanglion>),
-	// IdxStreamerLoop(Box<InputGanglion>),
-	Custom(Box<InputGanglion>),
-	None,
 }
