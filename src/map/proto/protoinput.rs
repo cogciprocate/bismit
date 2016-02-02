@@ -12,8 +12,8 @@ pub enum Protoinput {
 	Stripes { stripe_size: usize, zeros_first: bool },
 	Hexballs { edge_size: usize, invert: bool, fill: bool },
 	Zeros,
-	IdxStreamer { file_name: &'static str, cyc_per: usize, scale: f32 },
-	IdxStreamerLoop { file_name: &'static str, cyc_per: usize, scale: f32, loop_frames: u32 },
+	IdxStreamer { file_name: String, cyc_per: usize, scale: f32 },
+	IdxStreamerLoop { file_name: String, cyc_per: usize, scale: f32, loop_frames: u32 },
 	GlyphSequences { seq_lens: usize, seq_count: usize, scale: f32 },
 }
 

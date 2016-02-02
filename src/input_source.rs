@@ -38,7 +38,7 @@ pub struct InputSource {
 impl InputSource {
 	// [FIXME] Determine (or have passed in) the layer depth corresponding to this source.
 	pub fn new(pamap: &ProtoareaMap, plmap: &ProtolayerMap) -> InputSource {
-		let input = &pamap.input;
+		let input = pamap.input.clone();
 
 		let layers: Vec<&Protolayer> = plmap.layers().iter().map(|(_, pl)| pl).collect();
 
@@ -58,21 +58,21 @@ impl InputSource {
 			pamap.name(), plmap.name());
 
 		let kind = match input {
-			&Protoinput::IdxStreamer { file_name, cyc_per, scale } => {
+			Protoinput::IdxStreamer { file_name, cyc_per, scale } => {
 				let ir = IdxStreamer::new(dims.clone(), file_name, 
 					cyc_per, scale);				
 				InputSourceKind::IdxStreamer(Box::new(ir))
 			},
-			&Protoinput::IdxStreamerLoop { file_name, cyc_per, scale, loop_frames } => {
+			Protoinput::IdxStreamerLoop { file_name, cyc_per, scale, loop_frames } => {
 				let ir = IdxStreamer::new(dims.clone(), file_name, 
 					cyc_per, scale).loop_frames(loop_frames);				
 				InputSourceKind::IdxStreamer(Box::new(ir))
 			},
-			&Protoinput::GlyphSequences { seq_lens, seq_count, scale } => {
+			Protoinput::GlyphSequences { seq_lens, seq_count, scale } => {
 				let gs = GlyphSequences::new(dims.clone(), seq_lens, seq_count, scale);
 				InputSourceKind::GlyphSequences(Box::new(gs))
 			},
-			&Protoinput::None | &Protoinput::Zeros => InputSourceKind::None,
+			Protoinput::None | Protoinput::Zeros => InputSourceKind::None,
 			_ => panic!("\nInputSource::new(): Input type not yet supported."),
 		};
 
