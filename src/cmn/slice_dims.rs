@@ -1,6 +1,6 @@
 
 use ocl::{ self, EnvoyDims };
-use cmn::{ self, CorticalDims, HexTilePlane, CmnResult, CmnError };
+use cmn::{ self, ParaHexArray, CorticalDims, CmnResult, CmnError };
 use proto::{ AxonKind };
 
 
@@ -120,12 +120,12 @@ impl SliceDims {
 		self.v_size * self.u_size
 	}
 
-	pub fn depth(&self) -> u8 {
-		1u8
-	}
+	// pub fn depth(&self) -> u8 {
+	// 	1u8
+	// }
 }
 
-impl HexTilePlane for SliceDims {
+impl ParaHexArray for SliceDims {
 	fn v_size(&self) -> u32 {
 		self.v_size
 	}
@@ -134,8 +134,8 @@ impl HexTilePlane for SliceDims {
 		self.u_size
 	}
 
-	fn count(&self) -> u32 {
-		self.columns()
+	fn depth(&self) -> u8 {
+		1u8
 	}
 }
 

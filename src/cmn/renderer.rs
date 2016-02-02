@@ -1,5 +1,5 @@
-use cmn::{ self, CorticalDims, HexTilePlane, Sdr };
-use map::{ SliceMap, SliceDims };
+use cmn::{ self, CorticalDims, SliceDims, ParaHexArray, Sdr };
+use map::{ SliceMap };
 use proto::{ AxonKind };
 
 //use std::char;

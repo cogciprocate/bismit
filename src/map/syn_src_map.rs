@@ -2,8 +2,8 @@ use rand::{ XorShiftRng };
 use rand::distributions::{ IndependentSample, Range as RandRange };
 use std::collections::{ BTreeMap, BTreeSet };
 
-use cmn::{ self, CorticalDims };
-use map::{ AreaMap, SliceDims, AxonKind };
+use cmn::{ self, CorticalDims, SliceDims };
+use map::{ AreaMap, AxonKind };
 
 const INTENSITY_REDUCTION_L2: i8 = 3;
 const STR_MIN: i8 = -3;

@@ -3,7 +3,7 @@ use std::ops::{ Range };
 
 use proto::{ Protolayer, ProtoareaMap, ProtoareaMaps, ProtolayerMaps, LayerKind, DendriteKind, 
 	LayerMapKind, AxonKind };
-use cmn::{ self, CorticalDims };
+use cmn::{ self, ParaHexArray, CorticalDims };
 use map::{ self, LayerTags, };
 use input_source::{ InputSources };
 

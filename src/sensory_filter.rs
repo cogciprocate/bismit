@@ -1,5 +1,5 @@
 use ocl::{ self, cl_uchar, Kernel, ProQue, WorkSize, Envoy, };
-use cmn::{ HexTilePlane, Sdr };
+use cmn::{ ParaHexArray, Sdr };
 use axon_space::{ AxonSpace };
 use map::{ self, AreaMap };
 

@@ -1,4 +1,5 @@
 use ocl::{ EnvoyDims, ProQue };
+use cmn::ParaHexArray;
 
 /*	CorticalDims: Dimensions of a cortical area in units of cells
 		- Used to define both the volume and granularity of a cortical area.
@@ -54,19 +55,7 @@ impl CorticalDims {
 			per_tft_l2: per_tft_l2,
 			incr: incr, // <<<<< PENDING RENAME
 		}
-	}
-
-	pub fn u_size(&self) -> u32 {
-		self.u_size
-	}
-
-	pub fn v_size(&self) -> u32 {
-		self.v_size
-	}
-
-	pub fn depth(&self) -> u8 {
-		self.depth
-	}
+	}	
 
 	// TUFTS_PER_CEL(): Dendrite tufts per cell
 	pub fn tfts_per_cel(&self) -> u32 {
@@ -100,6 +89,18 @@ impl CorticalDims {
 	// 		None => Err("physical increment not set"),
 	// 	}
 	// }
+
+	pub fn u_size(&self) -> u32 {
+		self.u_size
+	}
+
+	pub fn v_size(&self) -> u32 {
+		self.v_size
+	}
+
+	pub fn depth(&self) -> u8 {
+		self.depth
+	}
 
 	// COLUMNS(): 2D Area of a slc measured in cell sides
 	pub fn columns(&self) -> u32 {
@@ -205,6 +206,20 @@ impl CorticalDims {
 }
 
 impl Copy for CorticalDims {}
+
+impl ParaHexArray for CorticalDims {
+	fn u_size(&self) -> u32 {
+		self.u_size
+	}
+
+	fn v_size(&self) -> u32 {
+		self.v_size
+	}
+
+	fn depth(&self) -> u8 {
+		self.depth
+	}
+}
 
 impl EnvoyDims for CorticalDims {
 	fn padded_envoy_len(&self, incr: usize) -> usize {

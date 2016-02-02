@@ -1,15 +1,10 @@
 pub use self::idx_streamer::IdxStreamer;
 pub use self::idx_data::IdxData;
-pub use self::tract_frame::TractFrame;
-pub use self::tract_dims::TractDims;
 pub use self::glyph_buckets::GlyphBuckets;
 pub use self::glyph_sequences::GlyphSequences;
 
 pub mod idx_streamer;
 mod idx_data;
-mod tract;
-mod tract_frame;
-mod tract_dims;
 mod glyph_buckets;
 mod glyph_sequences;
 

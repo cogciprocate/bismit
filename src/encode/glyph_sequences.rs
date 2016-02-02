@@ -1,6 +1,6 @@
 use cmn::{Sdr, CorticalDims};
 use input_source::InputTract;
-use super::GlyphBuckets;
+use encode::GlyphBuckets;
 
 pub struct GlyphSequences {
 	buckets: GlyphBuckets,

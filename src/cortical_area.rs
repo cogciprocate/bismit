@@ -2,7 +2,7 @@ use std::collections::{ HashMap };
 use std::ops::{ Range };
 use rand;
 
-use cmn::{ self, CorticalDims, Renderer, Sdr, DataCellLayer };
+use cmn::{ self, ParaHexArray, CorticalDims, Renderer, Sdr, DataCellLayer };
 use map::{ self, AreaMap, LayerTags, GanglionMap };
 use ocl::{ self, ProQue, Context, Envoy, EventList };
 use proto::{  Cellular, Pyramidal, SpinyStellate, Inhibitory,  DendriteKind };

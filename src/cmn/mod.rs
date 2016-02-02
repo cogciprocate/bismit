@@ -16,11 +16,15 @@ use ocl::{ BuildConfig, OclNum };
 
 // pub use self::cmn::*;
 pub use self::cortical_dims::{ CorticalDims };
+pub use self::slice_dims::SliceDims;
+pub use self::tract_dims::TractDims;
 //pub use self::area_map::{ AreaMap, SliceMap };
 pub use self::data_cell_layer::{ DataCellLayer };
 pub use self::renderer::{ Renderer };
 pub use self::error::{ CmnError };
 //pub use self::prediction::*;
+// pub use self::para_hex_grid::ParaHexArray;
+pub use self::tract_frame::TractFrame;
 
 #[cfg(test)]
 pub use self::data_cell_layer::tests::{ CelCoords, DataCellLayerTest };
@@ -29,6 +33,8 @@ pub use self::data_cell_layer::tests::{ CelCoords, DataCellLayerTest };
 mod macros;
 // mod cmn;
 mod cortical_dims;
+mod slice_dims;
+mod tract_dims;
 pub mod data_cell_layer;
 //mod area_map;
 // mod slice_dims;
@@ -36,13 +42,28 @@ mod renderer;
 mod error;
 //pub mod input_source;
 //mod prediction;
+// mod para_hex_grid;
+mod tract;
+mod tract_frame;
 
 
-pub trait HexTilePlane {
+// pub trait ParaHexArray {
+// 	fn v_size(&self) -> u32;
+// 	fn u_size(&self) -> u32;
+// 	fn count(&self) -> u32;
+// }
+
+/// Types which can be represented as parallelogram-shaped arrays containing 
+/// hexagon-shaped elements.
+pub trait ParaHexArray {
 	fn v_size(&self) -> u32;
 	fn u_size(&self) -> u32;
-	fn count(&self) -> u32;
+	fn depth(&self) -> u8;	
+	fn len(&self) -> u32 {
+		self.v_size() * self.u_size() * self.depth() as u32
+	}
 }
+
 
 pub type Sdr = [u8];
 

@@ -48,7 +48,7 @@ pub fn define_protoareas() -> ProtoareaMaps {
 			area_side, 
 						// area_side / 2, area_side / 2, 
 			Protoinput::IdxStreamer { 
-				file_name: "data/train-images-idx3-ubyte", 
+				file_name: "data/train-images-idx3-ubyte".to_string(), 
 				cyc_per: CYCLES_PER_FRAME, 
 				scale: 1.3,
 			},

@@ -1,7 +1,7 @@
 use std::ops::Range;
 use ocl::{ self, EnvoyDims };
-use cmn::{ self, CorticalDims, HexTilePlane };
-use map::{ area_map, SliceDims, LayerMap, AxonKind, GanglionMap };
+use cmn::{ self, CorticalDims, ParaHexArray, SliceDims };
+use map::{ area_map, LayerMap, AxonKind, GanglionMap };
 
 #[derive(Debug, Clone)]
 pub struct SliceMap {
