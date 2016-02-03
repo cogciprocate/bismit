@@ -10,7 +10,7 @@
 
 use cmn::{ self };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, Envoy, EnvoyDims };
+use ocl::{ self, ProQue, Buffer, BufferDims };
 //use proto::{ ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind, Protocell, DendriteKind };
 //use synapses::{ Synapses };
 //use dendrites::{ Dendrites };
@@ -29,7 +29,7 @@ pub struct AxonSpace {
 	//depth_axn_hrz: u8,
 	//padding: u32,
 	//kern_cycle: ocl::Kernel,
-	pub states: Envoy<ocl::cl_uchar>,
+	pub states: Buffer<ocl::cl_uchar>,
 }
 
 impl AxonSpace {
@@ -66,9 +66,9 @@ impl AxonSpace {
 		//let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
 		
 		println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", 
-			area_map.slices().padded_envoy_len(ocl_pq.get_max_work_group_size()), mt = cmn::MT);
+			area_map.slices().padded_buffer_len(ocl_pq.get_max_work_group_size()), mt = cmn::MT);
 
-		let states = Envoy::<ocl::cl_uchar>::with_vec(area_map.slices(), ocl_pq.queue());
+		let states = Buffer::<ocl::cl_uchar>::with_vec(area_map.slices(), ocl_pq.queue());
 
 		AxonSpace {
 			//dims: dims,
@@ -89,7 +89,7 @@ pub mod tests {
 	use super::{ AxonSpace };
 	use map::{ AreaMap, AreaMapTest };
 	use cmn::{ CelCoords };
-	use ocl::{ EnvoyTest };
+	use ocl::{ BufferTest };
 
 	pub trait AxonSpaceTest {
 		fn axn_state(&self, idx: usize) -> u8;

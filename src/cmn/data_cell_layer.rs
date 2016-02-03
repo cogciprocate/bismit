@@ -1,4 +1,4 @@
-use ocl::{ Envoy, EventList };
+use ocl::{ Buffer, EventList };
 use dendrites::{ Dendrites };
 use cmn::{ /*self,*/ CorticalDims };
 use proto::{ Protocell };
@@ -11,8 +11,8 @@ pub trait DataCellLayer {
 	fn regrow(&mut self);
 	fn cycle(&self, Option<&EventList>);
 	fn confab(&mut self);
-	fn soma(&self) -> &Envoy<u8>;
-	fn soma_mut(&mut self) -> &mut Envoy<u8>;
+	fn soma(&self) -> &Buffer<u8>;
+	fn soma_mut(&mut self) -> &mut Buffer<u8>;
 	fn dims(&self) -> &CorticalDims;
 	fn axn_range(&self) -> (usize, usize);
 	fn base_axn_slc(&self) -> u8;

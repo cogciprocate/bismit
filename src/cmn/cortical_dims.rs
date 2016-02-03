@@ -1,4 +1,4 @@
-use ocl::{ EnvoyDims, ProQue };
+use ocl::{BufferDims, ProQue};
 use cmn::ParaHexArray;
 
 /*	CorticalDims: Dimensions of a cortical area in units of cells
@@ -58,16 +58,19 @@ impl CorticalDims {
 	}	
 
 	// TUFTS_PER_CEL(): Dendrite tufts per cell
+	#[inline]
 	pub fn tfts_per_cel(&self) -> u32 {
 		self.tfts_per_cel
 	}
 
+	#[inline]
 	pub fn per_tft_l2(&self) -> i8 {
 		self.per_tft_l2
 	}
 
 	// PHYSICAL_INCREMENT(): 
 	// 		TODO: improve this description
+	#[inline]
 	pub fn incr(&self) -> Result<u32, &'static str> {
 		match self.incr {
 			Some(pi) => Ok(pi),
@@ -90,33 +93,40 @@ impl CorticalDims {
 	// 	}
 	// }
 
+	#[inline]
 	pub fn u_size(&self) -> u32 {
 		self.u_size
 	}
 
+	#[inline]
 	pub fn v_size(&self) -> u32 {
 		self.v_size
 	}
 
+	#[inline]
 	pub fn depth(&self) -> u8 {
 		self.depth
 	}
 
 	// COLUMNS(): 2D Area of a slc measured in cell sides
+	#[inline]
 	pub fn columns(&self) -> u32 {
 		self.v_size * self.u_size
 	}
 
 	// CELLS(): 3D Volume of area measured in cells
+	#[inline]
 	pub fn cells(&self) -> u32 {
 		self.columns() * self.depth as u32
 	}
 
 	// TUFTS(): 4D Volume of area measured in (dendrite-tuft * cells)
+	#[inline]
 	pub fn cel_tfts(&self) -> u32 {
 		self.cells() * self.tfts_per_cel
 	}
 
+	#[inline]
 	pub fn per_tft_l2_left(&self) -> u32 {
 		if self.per_tft_l2 >= 0 {
 			self.per_tft_l2 as u32
@@ -125,6 +135,7 @@ impl CorticalDims {
 		}
 	}
 
+	#[inline]
 	pub fn per_tft_l2_right(&self) -> u32 {
 		if self.per_tft_l2 < 0 {
 			(0 - self.per_tft_l2) as u32
@@ -133,25 +144,30 @@ impl CorticalDims {
 		}
 	}
 
+	#[inline]
 	pub fn per_cel(&self) -> u32 {
 		len_components(1, self.per_tft_l2, self.tfts_per_cel)
 	}
 
+	#[inline]
 	pub fn per_tft(&self) -> u32 {
 		len_components(1, self.per_tft_l2, 1)
 	}
 
+	#[inline]
 	pub fn per_slc_per_tft(&self) -> u32 {
 		len_components(self.columns(), self.per_tft_l2, 1)
 	}
 
 	// PER_SLICE(): 2D Area of a slc measured in divisions/components/whatever
+	#[inline]
 	pub fn per_slc(&self) -> u32 {
 		len_components(self.columns(), self.per_tft_l2, self.tfts_per_cel)
 	}
 
+	#[inline]
 	pub fn per_subgrp(&self, subgroup_count: u32, ocl_pq: &ProQue) -> Result<u32, &'static str> {
-		let physical_len = self.padded_envoy_len(ocl_pq.get_max_work_group_size()) as u32;
+		let physical_len = self.padded_buffer_len(ocl_pq.get_max_work_group_size()) as u32;
 
 		if physical_len % subgroup_count == 0 {
 			return Ok(physical_len / subgroup_count) 
@@ -160,36 +176,42 @@ impl CorticalDims {
 		}
 	}	
 
+	#[inline]
 	pub fn clone_with_ptl2(&self, per_tft_l2: i8) -> CorticalDims {
 		CorticalDims { per_tft_l2: per_tft_l2, .. *self }
 	}
 
+	#[inline]
 	pub fn clone_with_depth(&self, depth: u8) -> CorticalDims {
 		CorticalDims { depth: depth, .. *self }
 	}
 
+	#[inline]
 	pub fn clone_with_incr(&self, incr: usize) -> CorticalDims {
 		CorticalDims { incr: Some(incr as u32), .. *self } 
 	}
 
+	#[inline]
 	pub fn set_incr(&mut self, incr: usize) {
 		self.incr = Some(incr as u32);
 	}
 
+	#[inline]
 	pub fn with_incr(mut self, incr: usize) -> CorticalDims {
 		self.set_incr(incr);
 		self
 	}
 
+	#[inline]
 	pub fn with_tfts(mut self, tfts_per_cel: u32) -> CorticalDims {
 		self.tfts_per_cel = tfts_per_cel;
 		self
 	}
 
-	/// Length of the envoy required to properly represent this section of cortex.
+	/// Length of the buffer required to properly represent this section of cortex.
 	///
 	///	Rounded based on columns for versatility's sake.
-	pub fn padded_envoy_len(&self, incr: usize) -> usize {
+	pub fn padded_buffer_len(&self, incr: usize) -> usize {
 		let cols = self.columns();
 		// let phys_incr = ocl_pq.get_max_work_group_size();
 
@@ -208,22 +230,26 @@ impl CorticalDims {
 impl Copy for CorticalDims {}
 
 impl ParaHexArray for CorticalDims {
+	#[inline]
 	fn u_size(&self) -> u32 {
 		self.u_size
 	}
 
+	#[inline]
 	fn v_size(&self) -> u32 {
 		self.v_size
 	}
 
+	#[inline]
 	fn depth(&self) -> u8 {
 		self.depth
 	}
 }
 
-impl EnvoyDims for CorticalDims {
-	fn padded_envoy_len(&self, incr: usize) -> usize {
-		self.padded_envoy_len(incr)
+impl BufferDims for CorticalDims {
+	#[inline]
+	fn padded_buffer_len(&self, incr: usize) -> usize {
+		self.padded_buffer_len(incr)
 	}
 }
 
@@ -234,7 +260,7 @@ impl EnvoyDims for CorticalDims {
 // 		None => None,
 // 	}
 // }
-
+#[inline]
 fn len_components(cells: u32, per_tft_l2: i8, tfts_per_cel: u32) -> u32 {
 	//println!("\n\n##### TOTAL_LEN(): cells: {}, pcl2: {}", cells, per_tft_l2);
 	let tufts = cells * tfts_per_cel;

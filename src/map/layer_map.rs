@@ -123,14 +123,17 @@ impl LayerMap {
 		}
 	}
 
+	#[inline]
 	pub fn iter(&self) -> Iter<LayerInfo> {
 		self.index.iter()
 	}
 
+	#[inline]
 	pub fn region_kind(&self) -> &LayerMapKind {
 		&self.kind
 	}
 
+	#[inline]
 	pub fn depth(&self) -> u8 {
 		self.depth
 	}

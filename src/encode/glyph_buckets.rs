@@ -79,18 +79,22 @@ impl GlyphBuckets {
 		}
 	}
 
+	#[inline]
 	pub fn glyph_dims(&self) -> (usize, usize) {
 		self.glyph_dims
 	}
 
+	#[inline]
 	pub fn glyph_len(&self) -> usize {
 		self.glyph_dims.0 * self.glyph_dims.1
 	}
 
+	#[inline]
 	pub fn bucket_count(&self) -> usize {
 		self.buckets.len()
 	}
 
+	#[inline]
 	pub fn next_glyph(&mut self, bucket_id: usize/*, buf: &mut [u8]*/) -> &[u8] {
 		assert!(bucket_id < self.buckets.len(), "GlyphBuckets::next_glyph(): \
 			bucket_id ({}) exceeds bucket count ({}).", bucket_id, self.buckets.len());
@@ -104,6 +108,7 @@ impl GlyphBuckets {
 		&self.buckets[bucket_id][idz..idn]
 	}
 
+	#[inline]
 	fn incr_cursor(&mut self, bucket_id: usize) {
 		self.cursors[bucket_id] += self.glyph_len();
 

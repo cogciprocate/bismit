@@ -42,6 +42,10 @@ impl InputSource {
 
 		let layers: Vec<&Protolayer> = plmap.layers().iter().map(|(_, pl)| pl).collect();
 
+		// To implement multiple layers from a single input source:
+		// - Must pass layer count to the input 'generator' and have it accept a multi-headed
+		//   mutable slice when cycled.
+		// - Set the following assert to .len() == .len() (or remove).
 		assert!(plmap.layers().len() == 1 && layers.len() == 1, "InputSource::new(): External \
 			('Thalamic') areas with layer maps having more (or less) than one layer are not yet \
 			allowed. [area: '{}', layer map: '{}']", pamap.name(), plmap.name());
@@ -59,17 +63,17 @@ impl InputSource {
 
 		let kind = match input {
 			Protoinput::IdxStreamer { file_name, cyc_per, scale } => {
-				let ir = IdxStreamer::new(dims.clone(), file_name, 
+				let ir = IdxStreamer::new(&dims, file_name, 
 					cyc_per, scale);				
 				InputSourceKind::IdxStreamer(Box::new(ir))
 			},
 			Protoinput::IdxStreamerLoop { file_name, cyc_per, scale, loop_frames } => {
-				let ir = IdxStreamer::new(dims.clone(), file_name, 
+				let ir = IdxStreamer::new(&dims, file_name, 
 					cyc_per, scale).loop_frames(loop_frames);				
 				InputSourceKind::IdxStreamer(Box::new(ir))
 			},
 			Protoinput::GlyphSequences { seq_lens, seq_count, scale } => {
-				let gs = GlyphSequences::new(dims.clone(), seq_lens, seq_count, scale);
+				let gs = GlyphSequences::new(&dims, seq_lens, seq_count, scale);
 				InputSourceKind::GlyphSequences(Box::new(gs))
 			},
 			Protoinput::None | Protoinput::Zeros => InputSourceKind::None,
@@ -101,14 +105,17 @@ impl InputSource {
 		};
 	}
 
+	#[inline]
 	pub fn area_name(&self) -> &'static str {
 		self.area_name
 	}
 
+	#[inline]
 	pub fn tags(&self) -> LayerTags {
 		self.layer_tags
 	}
 
+	#[inline]
 	pub fn axn_kind(&self) -> AxonKind {
 		self.axn_kind.clone()
 	}
@@ -117,6 +124,7 @@ impl InputSource {
 	// 	self.depth
 	// }
 
+	#[inline]
 	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}

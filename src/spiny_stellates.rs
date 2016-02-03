@@ -3,7 +3,7 @@ use rand::{ self, Rng };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Envoy, EventList };
+use ocl::{ self, ProQue, WorkSize, Buffer, EventList };
 use proto::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -65,41 +65,50 @@ impl SpinyStellateLayer {
 		}
 	}
 
+	#[inline]
 	pub fn cycle(&self, wait_events: Option<&EventList>) {
 		self.dens.cycle(wait_events);
 	}
 
 
+	#[inline]
 	pub fn learn(&mut self) {
 		let rnd = self.rng.gen::<u32>();
 		self.kern_ltp.set_arg_scl_named("rnd", rnd);
 		self.kern_ltp.enqueue(None, None);
 	}
 
+	#[inline]
 	pub fn regrow(&mut self) {
 		self.dens.regrow();
 	}
 
+	#[inline]
 	pub fn confab(&mut self) {
 		self.dens.confab();
 	} 
 
-	pub fn soma(&self) -> &Envoy<u8> {
+	#[inline]
+	pub fn soma(&self) -> &Buffer<u8> {
 		&self.dens.states
 	}
 
-	pub fn soma_mut(&mut self) -> &mut Envoy<u8> {
+	#[inline]
+	pub fn soma_mut(&mut self) -> &mut Buffer<u8> {
 		&mut self.dens.states
 	}
 
+	#[inline]
 	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}	
 
+	#[inline]
 	pub fn base_axn_slc(&self) -> u8 {
 		self.base_axn_slc
 	}
 
+	#[inline]
 	pub fn layer_name(&self) -> &'static str {
 		self.layer_name
 	}
@@ -126,14 +135,17 @@ impl SpinyStellateLayer {
 		self.dens.syns_mut().src_col_u_offs.print(1, None, Some(cel_syn_range.clone()), false);
 	}
 
+	#[inline]
 	pub fn dens(&self) -> &Dendrites {
 		&self.dens
 	}
 
+	#[inline]
 	pub fn dens_mut(&mut self) -> &mut Dendrites {
 		&mut self.dens
 	}
 
+	#[inline]
 	pub fn axn_range(&self) -> ops::Range<usize> {
 		let ssts_axn_idn = self.lyr_axn_idz + (self.dims.per_slc());
 		self.lyr_axn_idz as usize..ssts_axn_idn as usize

@@ -84,6 +84,7 @@ impl LayerTags {
 		LayerTags { bits: bits }
 	}
 
+	#[inline]
 	pub fn uid(&self) -> u32 {
 		(self.bits & 0xFFFFFFFF) as u32
 	}
@@ -93,6 +94,7 @@ impl LayerTags {
 	///
 	/// Useful when comparing tags which must match uids where `self` may be a 
 	/// superset of `other`.
+	#[inline]
 	pub fn meshes(&self, other: LayerTags) -> bool {
 		self.contains(other) && self.uid() == other.uid()
 	}

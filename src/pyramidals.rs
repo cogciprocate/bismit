@@ -3,7 +3,7 @@ use rand::{ self, XorShiftRng, Rng };
 
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, Kernel, EventList };
+use ocl::{ self, ProQue, WorkSize, Buffer, OclNum, Kernel, EventList };
 use proto::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -25,12 +25,12 @@ pub struct PyramidalLayer {
 	tfts_per_cel: u32,
 	dens_per_tft_l2: u8,
 	syns_per_den_l2: u8,
-	pub states: Envoy<ocl::cl_uchar>,
-	pub flag_sets: Envoy<ocl::cl_uchar>,
-	pub best_den_states: Envoy<ocl::cl_uchar>,
-	pub tft_best_den_ids: Envoy<ocl::cl_uchar>,
-	pub tft_best_den_states: Envoy<ocl::cl_uchar>,
-	// pub energies: Envoy<ocl::cl_uchar>, // <<<<< SLATED FOR REMOVAL
+	pub states: Buffer<ocl::cl_uchar>,
+	pub flag_sets: Buffer<ocl::cl_uchar>,
+	pub best_den_states: Buffer<ocl::cl_uchar>,
+	pub tft_best_den_ids: Buffer<ocl::cl_uchar>,
+	pub tft_best_den_states: Buffer<ocl::cl_uchar>,
+	// pub energies: Buffer<ocl::cl_uchar>, // <<<<< SLATED FOR REMOVAL
 	pub dens: Dendrites,
 }
 
@@ -47,12 +47,12 @@ impl PyramidalLayer {
 		let best_dens_per_cel = tfts_per_cel;
 		let dims_best_dens = dims.clone().with_tfts(tfts_per_cel);
 
-		let states = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-		let flag_sets = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-		let best_den_states = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-		let tft_best_den_ids = Envoy::<ocl::cl_uchar>::with_vec(dims_best_dens, ocl_pq.queue());
-		let tft_best_den_states = Envoy::<ocl::cl_uchar>::with_vec(dims_best_dens, ocl_pq.queue());		
-		// let energies = Envoy::<ocl::cl_uchar>::with_vec(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
+		let states = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let flag_sets = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let best_den_states = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let tft_best_den_ids = Buffer::<ocl::cl_uchar>::with_vec(dims_best_dens, ocl_pq.queue());
+		let tft_best_den_states = Buffer::<ocl::cl_uchar>::with_vec(dims_best_dens, ocl_pq.queue());		
+		// let energies = Buffer::<ocl::cl_uchar>::with_vec(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
 		let dens_per_tft_l2 = protocell.dens_per_tuft_l2;
 		let syns_per_den_l2 = protocell.syns_per_den_l2;
@@ -133,17 +133,19 @@ impl PyramidalLayer {
 	}
 
 	// USED BY AUX
+	#[inline]
 	pub fn kern_ltp(&mut self) -> &mut Kernel {
 		&mut self.kern_ltp
 	}
 
 	// USED BY AUX
+	#[inline]
 	pub fn kern_cycle(&mut self) -> &mut Kernel {
 		&mut self.kern_cycle
 	}
 
 	// <<<<< TODO: DEPRICATE >>>>>
-	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
+	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
 		let using_aux_cycle = true;
 		let using_aux_learning = true;
 
@@ -158,20 +160,24 @@ impl PyramidalLayer {
 }
 
 impl DataCellLayer for PyramidalLayer {
+	#[inline]
 	fn learn(&mut self) {
 		self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>());
 		self.kern_ltp.enqueue(None, None);
 	}
 
+	#[inline]
 	fn regrow(&mut self) {
 		self.dens_mut().regrow();
 	}
 
+	#[inline]
 	fn cycle(&self, wait_events: Option<&EventList>) {
 		self.dens().cycle(wait_events);
 		self.kern_cycle.enqueue(wait_events, None);
 	}
 
+	// [FIXME]: MARKED FOR DEPRICATION
 	fn confab(&mut self) {
 		self.states.fill_vec_wait();
 		self.best_den_states.fill_vec_wait();
@@ -183,44 +189,54 @@ impl DataCellLayer for PyramidalLayer {
 		self.dens_mut().confab();
 	}
 
-	fn soma(&self) -> &Envoy<u8> {
+	#[inline]
+	fn soma(&self) -> &Buffer<u8> {
 		&self.states
 	}
 
-	fn soma_mut(&mut self) -> &mut Envoy<u8> {
+	#[inline]
+	fn soma_mut(&mut self) -> &mut Buffer<u8> {
 		&mut self.states
 	}	
 
+	#[inline]
 	fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 
+	#[inline]
 	fn axn_range(&self) -> (usize, usize) {
 		let ssts_axn_idn = self.pyr_lyr_axn_idz + (self.dims.per_slc());
 
 		(self.pyr_lyr_axn_idz as usize, ssts_axn_idn as usize)
 	}
 
+	#[inline]
 	fn base_axn_slc(&self) -> u8 {
 		self.base_axn_slc
 	}
 
+	#[inline]
 	fn tfts_per_cel(&self) -> u32 {
 		self.tfts_per_cel
 	}
 
+	#[inline]
 	fn layer_name(&self) -> &'static str {
 		self.layer_name
 	}
 
+	#[inline]
 	fn protocell(&self) -> &Protocell {
 		&self.protocell
 	}
 
+	#[inline]
 	fn dens(&self) -> &Dendrites {
 		&self.dens
 	}
 
+	#[inline]
 	fn dens_mut(&mut self) -> &mut Dendrites {
 		&mut self.dens
 	}

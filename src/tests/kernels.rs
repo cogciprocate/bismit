@@ -2,7 +2,7 @@
 use cmn::{ self, /*CorticalDims*/ };
 // use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 // use cortex::{ self, Cortex };
-use ocl::{ Envoy, WorkSize, /*ProQue, EnvoyDims,*/ /*OclNum*/ };
+use ocl::{ Buffer, WorkSize, /*ProQue, BufferDims,*/ /*OclNum*/ };
 // use interactive::{ input_czar, InputCzar, InputKind };
 // use super::hybrid;
 use super::{ TestBed, util };
@@ -16,11 +16,11 @@ use super::{ TestBed, util };
 pub fn test_axn_idxs(testbed: &TestBed) {
 	let syn_reach = cmn::SYNAPSE_REACH as i8;
 
-	let u_offs = Envoy::<i8>::with_vec_shuffled(0 - syn_reach, syn_reach + 1, testbed.dims, &testbed.ocl_pq.queue()); 
-	let v_offs = Envoy::<i8>::with_vec_shuffled(0 - syn_reach, syn_reach + 1, testbed.dims, &testbed.ocl_pq.queue());
+	let u_offs = Buffer::<i8>::with_vec_shuffled(0 - syn_reach, syn_reach + 1, testbed.dims, &testbed.ocl_pq.queue()); 
+	let v_offs = Buffer::<i8>::with_vec_shuffled(0 - syn_reach, syn_reach + 1, testbed.dims, &testbed.ocl_pq.queue());
 
-	let mut outs_sc = Envoy::<u32>::with_vec(testbed.dims, &testbed.ocl_pq.queue());
-	let mut outs_v4 = Envoy::<u32>::with_vec(testbed.dims, &testbed.ocl_pq.queue());
+	let mut outs_sc = Buffer::<u32>::with_vec(testbed.dims, &testbed.ocl_pq.queue());
+	let mut outs_v4 = Buffer::<u32>::with_vec(testbed.dims, &testbed.ocl_pq.queue());
 
 	let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl", 
 		WorkSize::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, testbed.dims.u_size() as usize))
@@ -41,7 +41,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 	kern_sc.enqueue(None, None);
 	kern_v4.enqueue(None, None);
 
-	let failure = util::compare_envoys(&mut outs_sc, &mut outs_v4);
+	let failure = util::compare_buffers(&mut outs_sc, &mut outs_v4);
 
 	if failure { panic!("Vectorized and non-vectorized kernel results are not equal.") };
 }
@@ -49,9 +49,9 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 
 
 // pub fn test_safe_dim_ofs(ocl: &ProQue, dims: CorticalDims) {
-// 	let mut dim_ids = Envoy::<u32>::shuffled(dims, 0, 15, &ocl);
-// 	let mut dim_offs = Envoy::<i8>::shuffled(dims, -16, 15, &ocl);
-// 	let mut safe_dim_offs = Envoy::<i8>::new(dims, 0, &ocl);
+// 	let mut dim_ids = Buffer::<u32>::shuffled(dims, 0, 15, &ocl);
+// 	let mut dim_offs = Buffer::<i8>::shuffled(dims, -16, 15, &ocl);
+// 	let mut safe_dim_offs = Buffer::<i8>::new(dims, 0, &ocl);
 
 // 	let kern_test_safe_dim_ofs = ocl.create_kernel("test_safe_dim_ofs", 
 // 		WorkSize::OneDim(dims.len() as usize))

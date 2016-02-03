@@ -85,6 +85,7 @@ impl AreaMap {
 	}
 
 	// NEW
+	#[inline]
 	pub fn layer_name_by_tags(&self, layer_tags: LayerTags) -> &'static str {
 		let layer_info = self.layers.layer_info(layer_tags);
 		assert_eq!(layer_info.len(), 1);
@@ -178,6 +179,7 @@ impl AreaMap {
 	}
 
 	// NEW NEW NEW
+	#[inline]
 	pub fn aff_out_slc_range(&self) -> Range<u8> {
 		let aff_out_slcs = self.aff_out_slcs();
 		let idz = 0;
@@ -211,6 +213,7 @@ impl AreaMap {
 	
 
 	// NEW
+	#[inline]
 	pub fn psal_layer(&self) -> &LayerInfo {
 		let psal_layer_vec = self.layers.layer_info(map::PSAL);
 		assert_eq!(psal_layer_vec.len(), 1);
@@ -218,6 +221,7 @@ impl AreaMap {
  	}
 
  	// NEW
+ 	#[inline]
  	pub fn ptal_layer(&self) -> &LayerInfo {
 		let ptal_layer_vec = self.layers.layer_info(map::PTAL);
 		assert_eq!(ptal_layer_vec.len(), 1);
@@ -249,46 +253,56 @@ impl AreaMap {
 	}	
 
 	// NEW
+	#[inline]
 	pub fn slc_src_layer_dims(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&CorticalDims> {
 		self.layers.slc_src_layer_info(slc_id, layer_tags).map(|sli| sli.dims())
 	}
 
 	// DEPRICATE
+	#[inline]
 	pub fn aff_areas(&self) -> &Vec<&'static str> {
 		&self.aff_areas
 	}
 
 	// DEPRICATE
+	#[inline]
 	pub fn eff_areas(&self) -> &Vec<&'static str> {
 		&self.eff_areas
 	}
 
+	#[inline]
 	pub fn area_name(&self) -> &'static str {
 		self.area_name
 	}
 
+	#[inline]
 	pub fn axn_idz(&self, slc_id: u8) -> u32 {
 		self.slices.idz(slc_id)
 	}
 
+	#[inline]
 	pub fn slices(&self) -> &SliceMap {
 		&self.slices
 	}
 
+	#[inline]
 	pub fn layers(&self) -> &LayerMap {
 		&self.layers
 	}
 
 	// UPDATE / DEPRICATE
+	#[inline]
 	pub fn filters(&self) -> &Option<Vec<Protofilter>> {
 		&self.filters
 	}
 
+	#[inline]
 	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 
 	// UPDATE / DEPRICATE
+	#[inline]
 	pub fn lm_kind_tmp(&self) -> &LayerMapKind {
 		&self.layers.region_kind()
 	}

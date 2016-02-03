@@ -3,7 +3,7 @@ use rand;
 
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Envoy, OclNum, EventList };
+use ocl::{ self, ProQue, WorkSize, Buffer, OclNum, EventList };
 use axon_space::{ AxonSpace };
 use pyramidals::{ PyramidalLayer };
 use spiny_stellates::{ SpinyStellateLayer };
@@ -20,8 +20,8 @@ pub struct Minicolumns {
 	kern_output: ocl::Kernel,
 	kern_activate: ocl::Kernel,
 	rng: rand::XorShiftRng,
-	pub flag_sets: Envoy<ocl::cl_uchar>,
-	pub best_den_states: Envoy<ocl::cl_uchar>,
+	pub flag_sets: Buffer<ocl::cl_uchar>,
+	pub best_den_states: Buffer<ocl::cl_uchar>,
 }
 
 impl Minicolumns {
@@ -38,8 +38,8 @@ impl Minicolumns {
 
 		println!("{mt}{mt}MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth, mt = cmn::MT);
 
-		let flag_sets = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-		let best_den_states = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let flag_sets = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let best_den_states = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
 
 		// [FIXME]: TEMPORARY?:
 		// [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':
@@ -93,7 +93,7 @@ impl Minicolumns {
 		}
 	}
 
-	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
+	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
 		let activate_using_aux = true;
 		let output_using_aux = false;
 
@@ -106,6 +106,7 @@ impl Minicolumns {
 		}
 	}
 
+	#[inline]
 	pub fn activate(&self) {
 		self.kern_activate.enqueue(None, None);
 	}
@@ -126,11 +127,13 @@ impl Minicolumns {
 		self.best_den_states.fill_vec_wait();
 	}
 
+	#[inline]
 	pub fn ff_layer_axn_idz(&self) -> usize {
 		self.ff_layer_axn_idz
 	}
 
 	// [FIXME]: CONVERT TO A RANGE (area_map.aff_out_slc_range)
+	#[inline]
 	pub fn aff_out_axn_slc(&self) -> u8 {
 		self.aff_out_axn_slc
 	}

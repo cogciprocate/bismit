@@ -147,14 +147,17 @@ impl IdxData {
 		}
 	}
 
+	#[inline]
 	pub fn file_path(&self) -> &Path {
 		self.file_path.as_path()
 	}
 
+	#[inline]
 	pub fn data(&self) -> &[u8] {
 		&self.data[..]
 	}
 
+	#[inline]
 	pub fn dims(&self) -> &[usize] {
 		&self.dims[..]
 	}
@@ -162,13 +165,14 @@ impl IdxData {
 
 impl Index<usize> for IdxData {
     type Output = u8;
-    
+    #[inline]
     fn index<'a>(&'a self, index: usize) -> &'a u8 {
         // &self.data[index]
         &(*self.data)[index]
     }
 }
 impl IndexMut<usize> for IdxData {
+	#[inline]
     fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut u8 {
     	// &mut self.data[index]
     	&mut (*self.data)[index]

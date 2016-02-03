@@ -1,4 +1,4 @@
-use ocl::{ self, cl_uchar, Kernel, ProQue, WorkSize, Envoy, };
+use ocl::{ self, cl_uchar, Kernel, ProQue, WorkSize, Buffer, };
 use cmn::{ ParaHexArray, Sdr };
 use axon_space::{ AxonSpace };
 use map::{ self, AreaMap };
@@ -9,7 +9,7 @@ pub struct SensoryFilter {
 	cl_file_name: Option<String>,
 	area_name: &'static str,
 	//dims: CorticalDims,
-	input: Envoy<cl_uchar>,
+	input: Buffer<cl_uchar>,
 	kern_cycle: Kernel,
 }
 
@@ -38,7 +38,7 @@ impl SensoryFilter {
 			areas with sensory filters are not yet supported. Please set the depth of any \
 			afferent input layers with filters to 1.");
 
-		let input = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());		
+		let input = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());		
 
 		let kern_cycle = ocl_pq.create_kernel(&filter_name.clone(),
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
@@ -58,11 +58,13 @@ impl SensoryFilter {
 		}
 	}
 
+	#[inline]
 	pub fn write(&mut self, sdr: &Sdr) {
 		assert!(sdr.len() <= self.input.len());
 		self.input.write(sdr, 0, None, None);
 	}
 
+	#[inline]
 	pub fn cycle(&self) {
 		//println!("Printing {} for {}:\n", &self.filter_name, self.area_name);
 		self.kern_cycle.enqueue(None, None);

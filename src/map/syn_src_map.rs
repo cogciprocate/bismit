@@ -143,10 +143,12 @@ impl SliceInfo {
 		}
 	}
 
+	#[inline]
 	pub fn slc_off_pool(&self) -> &OfsPool {
 		&self.slc_off_pool
 	}
 
+	#[inline]
 	pub fn syn_reach(&self) -> u8 {
 		self.syn_reach
 	}

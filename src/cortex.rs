@@ -44,11 +44,13 @@ impl Cortex {
 		}
 	}
 	
+	#[inline]
 	pub fn area_mut(&mut self, area_name: &str) -> &mut Box<CorticalArea> {
 		let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
 		self.areas.get_mut(area_name).expect(&emsg)
 	}
 
+	#[inline]
 	pub fn area(&self, area_name: &str) -> &Box<CorticalArea> {
 		let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
 		self.areas.get(area_name).expect(&emsg)
@@ -62,7 +64,7 @@ impl Cortex {
 		}
 	}
 
-
+	#[inline]
 	pub fn valid_area(&self, area_name: &str) -> bool {
 		self.areas.contains_key(area_name)
 	}

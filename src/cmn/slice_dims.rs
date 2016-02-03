@@ -1,5 +1,5 @@
 
-use ocl::{ self, EnvoyDims };
+use ocl::{ self, BufferDims };
 use cmn::{ self, ParaHexArray, CorticalDims, CmnResult, CmnError };
 use proto::{ AxonKind };
 
@@ -92,30 +92,37 @@ impl SliceDims {
 		}
 	}
 
+	#[inline]
 	pub fn v_size(&self) -> u32 {
 		self.v_size
 	}
 
+	#[inline]
 	pub fn u_size(&self) -> u32 {
 		self.u_size
 	}
 
+	#[inline]
 	pub fn v_scale(&self) -> u32 {
 		self.v_scale
 	}
 
+	#[inline]
 	pub fn u_scale(&self) -> u32 {
 		self.u_scale
 	}
 
+	#[inline]
 	pub fn v_mid(&self) -> u32 {
 		self.v_mid
 	}
 
+	#[inline]
 	pub fn u_mid(&self) -> u32 {
 		self.u_mid
 	}
 
+	#[inline]
 	pub fn columns(&self) -> u32 {
 		self.v_size * self.u_size
 	}
@@ -126,27 +133,31 @@ impl SliceDims {
 }
 
 impl ParaHexArray for SliceDims {
+	#[inline]
 	fn v_size(&self) -> u32 {
 		self.v_size
 	}
 
+	#[inline]
 	fn u_size(&self) -> u32 {
 		self.u_size
 	}
 
+	#[inline]
 	fn depth(&self) -> u8 {
 		1u8
 	}
 }
 
-impl EnvoyDims for SliceDims {
-	// [FIXME]: TODO: ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT 
-	fn padded_envoy_len(&self, incr: usize) -> usize {
+impl BufferDims for SliceDims {
+	// [FIXME]: TODO: ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT
+	#[inline]
+	fn padded_buffer_len(&self, incr: usize) -> usize {
 		ocl::padded_len(self.columns() as usize, incr)
 	}
 }
 
-
+#[inline]
 pub fn get_src_scales(src_area_dims: &CorticalDims, tar_area_dims: &CorticalDims,
 		) -> CmnResult<(u32, u32)> 
 {
@@ -184,6 +195,7 @@ pub fn get_src_scales(src_area_dims: &CorticalDims, tar_area_dims: &CorticalDims
 	Ok((v_res, u_res))
 }
 
+#[inline]
 pub fn calc_scale(src_dim: u32, tar_dim: u32) -> CmnResult<u32> {
 	// let scale_incr = if src_dim >= 16 { src_dim / 16 } 
 	// 	else if src_dim > 0 { 1 }

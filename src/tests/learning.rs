@@ -5,7 +5,7 @@ use std::ops::{ Range };
 // use std::mem;
 // use rand;
 
-use ocl::{ EnvoyTest, OclNum };
+use ocl::{ BufferTest, OclNum };
 use proto::{ layer };
 use cortical_area::{ CorticalArea, CorticalAreaTest };
 use map;
@@ -146,7 +146,7 @@ impl LearningTestBed {
 
 			let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
-			// Zero all dendrite and synapse envoys:
+			// Zero all dendrite and synapse buffers:
 			area.ptal_mut().dens_mut().set_all_to_zero(true);
 			area.axns.states.set_all_to(0);
 

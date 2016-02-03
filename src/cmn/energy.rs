@@ -1,9 +1,9 @@
-use ocl::{ Envoy };
+use ocl::{ Buffer };
 
 
 
 pub struct Energy {
-	pub level: Envoy<u8>,
+	pub level: Buffer<u8>,
 }
 
 impl Energy {

@@ -24,7 +24,7 @@ pub use self::renderer::{ Renderer };
 pub use self::error::{ CmnError };
 //pub use self::prediction::*;
 // pub use self::para_hex_grid::ParaHexArray;
-pub use self::tract_frame::TractFrame;
+pub use self::tract_frame::{TractFrame, TractFrameMut};
 
 #[cfg(test)]
 pub use self::data_cell_layer::tests::{ CelCoords, DataCellLayerTest };
@@ -59,6 +59,8 @@ pub trait ParaHexArray {
 	fn v_size(&self) -> u32;
 	fn u_size(&self) -> u32;
 	fn depth(&self) -> u8;	
+	
+	#[inline]
 	fn len(&self) -> u32 {
 		self.v_size() * self.u_size() * self.depth() as u32
 	}

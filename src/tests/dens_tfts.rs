@@ -15,7 +15,7 @@ use dendrites::{ DendritesTest, DenCoords };
 use axon_space::{ /*AxnCoords,*/ AxonSpaceTest };
 // use cortex::{ Cortex };
 use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
-use ocl::{ EnvoyTest };
+use ocl::{ BufferTest };
 use super::{ testbed, util, learning };
 
 
@@ -35,7 +35,7 @@ fn test_cel() {
 	let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
 	let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
-	// Zero all dendrite and synapse envoys:
+	// Zero all dendrite and synapse buffers:
 	area.ptal_mut().dens_mut().set_all_to_zero(true);
 	area.axns.states.set_all_to(0);
 

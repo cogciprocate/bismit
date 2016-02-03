@@ -68,6 +68,7 @@ impl Thalamus {
 	}
 
 	// Multiple source output areas disabled.
+	#[inline]
 	pub fn cycle_external_ganglions(&mut self, areas: &mut CorticalAreas) {
 		for (&(area_name, tags), src) in self.input_sources.iter_mut() {
 			let (ganglion, events) = self.tract.ganglion_mut(src.area_name(), 
@@ -76,22 +77,26 @@ impl Thalamus {
 		}		
 	}
 
+	#[inline]
 	pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerTags
 			) -> Result<(&EventList, &Sdr), CmnError> 
 	{ 		
 		self.tract.ganglion(src_area_name, layer_mask)
 	}
 
+	#[inline]
 	pub fn ganglion_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags
 			) -> Result<(&mut Sdr, &mut EventList), CmnError>
 	{
 		self.tract.ganglion_mut(src_area_name, layer_mask)
 	}
 
+	#[inline]
  	pub fn area_maps(&self) -> &HashMap<&'static str, AreaMap> {
  		&self.area_maps
 	}
 
+	#[inline]
  	pub fn area_map(&self, area_name: &'static str) -> &AreaMap {
  		&self.area_maps[area_name]
 	}
@@ -128,7 +133,7 @@ impl ThalamicTract {
 		self
 	}
 
-
+	#[inline]
 	fn ganglion(&mut self, src_area_name: &'static str, layer_tags: LayerTags
 			) -> Result<(&EventList, &Sdr), CmnError>
 	{
@@ -139,6 +144,7 @@ impl ThalamicTract {
 		Ok((events, &self.ganglion[range]))
 	}
 
+	#[inline]
 	fn ganglion_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags
 			) -> Result<(&mut Sdr, &mut EventList), CmnError>
 	{
@@ -173,6 +179,7 @@ impl TractAreaCache {
 		}
 	}
 
+	#[inline]
 	fn insert(&mut self, src_area_name: &'static str, layer_tags: LayerTags, tract_area: TractArea)
 	{
 		self.areas.push(tract_area);
@@ -182,6 +189,7 @@ impl TractAreaCache {
 				src_area_name, layer_tags));
 	}
 
+	#[inline]
 	fn get(&mut self, src_area_name: &'static str, layer_tags: LayerTags
 			) -> Result<&TractArea, CmnError> 
 	{
@@ -193,6 +201,7 @@ impl TractAreaCache {
 		}
 	}
 
+	#[inline]
 	fn get_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags
 			) -> Result<&mut TractArea, CmnError> 
 	{
@@ -206,6 +215,7 @@ impl TractAreaCache {
 		}
 	}
 
+	#[inline]
 	fn area_search(&mut self, src_area_name: &'static str, layer_tags: LayerTags
 			) -> Result<usize, CmnError> 
 	{
@@ -265,18 +275,22 @@ impl TractArea {
 		}
 	}
 
+	#[inline]
 	fn range(&self) -> Range<usize> {
 		self.range.clone()
 	}
 
+	#[inline]
 	fn len(&self) -> usize {
 		self.range.len()
 	}
 
+	#[inline]
 	fn events(&self) -> &EventList {
 		&self.events
 	}
 
+	#[inline]
 	fn events_mut(&mut self) -> &mut EventList {
 		&mut self.events
 	}

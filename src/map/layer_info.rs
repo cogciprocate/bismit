@@ -192,6 +192,7 @@ impl LayerInfo {
 		}
 	}
 
+	#[inline]
 	pub fn src_lyr_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
 		self.protolayer.src_lyr_names(den_type)
 	}
@@ -208,34 +209,42 @@ impl LayerInfo {
 		}
 	}
 
+	#[inline]
 	pub fn name(&self) -> &'static str {
 		self.name
 	}
 
+	#[inline]
 	pub fn tags(&self) -> LayerTags {
 		self.tags
 	}
 
+	#[inline]
 	pub fn kind(&self) -> &LayerKind {
 		self.protolayer.kind()
 	}
 
+	#[inline]
 	pub fn sources(&self) -> &Vec<SourceLayerInfo>  {
 		&self.sources
 	}
 
+	#[inline]
 	pub fn axn_count(&self) -> u32 {
 		self.axn_count
 	}
 
+	#[inline]
 	pub fn axn_kind(&self) -> AxonKind {
 		self.axn_kind.clone()
 	}
 
+	#[inline]
 	pub fn slc_range(&self) -> &Range<u8> {
 		&self.slc_range
 	}
 
+	#[inline]
 	pub fn depth(&self) -> u8 {
 		self.slc_range.len() as u8
 	}
@@ -257,6 +266,7 @@ pub struct SourceLayerInfo {
 }
 
 impl SourceLayerInfo {
+	#[inline]
 	pub fn new(src_area_name: &'static str, src_layer_dims: &CorticalDims, src_layer_tags: LayerTags, 
 				src_axn_kind: AxonKind, tar_slc_idz: u8) -> SourceLayerInfo 
 	{
@@ -274,26 +284,32 @@ impl SourceLayerInfo {
 		}
 	}
 
+	#[inline]
 	pub fn area_name(&self) -> &'static str {
 		self.area_name
 	}
 
+	#[inline]
 	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 
+	#[inline]
 	pub fn axn_count(&self) -> u32 {
 		self.dims().cells()
 	}
 
+	#[inline]
 	pub fn tags(&self) -> LayerTags {
 		self.tags
 	}
 
+	#[inline]
 	pub fn axn_kind(&self) -> AxonKind {
 		self.axn_kind.clone()
 	}
 
+	#[inline]
 	pub fn tar_slc_range(&self) -> &Range<u8> {
 		&self.tar_slc_range
 	}

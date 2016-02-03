@@ -10,7 +10,7 @@
 
 use cmn::{ CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Envoy };
+use ocl::{ self, ProQue, WorkSize, Buffer };
 use proto::{ /*ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind,*/ Protocell, /*DendriteKind*/ };
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
@@ -32,14 +32,14 @@ pub struct InhibitoryInterneuronNetwork {
 	kern_inhib_simple: ocl::Kernel,
 	kern_inhib_passthrough: ocl::Kernel,
 
-	pub spi_ids: Envoy<ocl::cl_uchar>,
-	pub wins: Envoy<ocl::cl_uchar>,
-	pub states: Envoy<ocl::cl_uchar>,
+	pub spi_ids: Buffer<ocl::cl_uchar>,
+	pub wins: Buffer<ocl::cl_uchar>,
+	pub states: Buffer<ocl::cl_uchar>,
 	
 }
 
 impl InhibitoryInterneuronNetwork {
-	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, area_map: &AreaMap, src_soma: &Envoy<u8>, src_base_axn_slc: u8, axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue) -> InhibitoryInterneuronNetwork {
+	pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, area_map: &AreaMap, src_soma: &Buffer<u8>, src_base_axn_slc: u8, axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue) -> InhibitoryInterneuronNetwork {
 
 		//let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
@@ -48,13 +48,13 @@ impl InhibitoryInterneuronNetwork {
 		//let padding = cmn::ASPINY_SPAN;
 		//let padding = 0;
 
-		// let spi_ids = Envoy::<ocl::cl_uchar>::with_padding(dims, 0u8, ocl, padding);
-		// let wins = Envoy::<ocl::cl_uchar>::with_padding(dims, 0u8, ocl, padding);
-		// let states = Envoy::<ocl::cl_uchar>::with_padding(dims, cmn::STATE_ZERO, ocl, padding);
+		// let spi_ids = Buffer::<ocl::cl_uchar>::with_padding(dims, 0u8, ocl, padding);
+		// let wins = Buffer::<ocl::cl_uchar>::with_padding(dims, 0u8, ocl, padding);
+		// let states = Buffer::<ocl::cl_uchar>::with_padding(dims, cmn::STATE_ZERO, ocl, padding);
 
-		let spi_ids = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-		let wins = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-		let states = Envoy::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let spi_ids = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let wins = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let states = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
 
 
 		let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple",
@@ -93,6 +93,7 @@ impl InhibitoryInterneuronNetwork {
 		}
 	}
 
+	#[inline]
 	pub fn cycle(&mut self, bypass: bool) {
 		// self.kern_cycle_pre.enqueue(None, None); 
 

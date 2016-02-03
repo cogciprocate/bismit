@@ -46,6 +46,7 @@ impl GanglionMap {
 		}
 	}
 
+	#[inline]
 	pub fn slc_id_range(&self) -> Range<u8> {
 		0..self.tags.len() as u8
 	}

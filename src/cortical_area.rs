@@ -4,7 +4,7 @@ use rand;
 
 use cmn::{ self, ParaHexArray, CorticalDims, Renderer, Sdr, DataCellLayer };
 use map::{ self, AreaMap, LayerTags, GanglionMap };
-use ocl::{ self, ProQue, Context, Envoy, EventList };
+use ocl::{ self, ProQue, Context, Buffer, EventList };
 use proto::{  Cellular, Pyramidal, SpinyStellate, Inhibitory,  DendriteKind };
 
 use axon_space::{ AxonSpace };
@@ -426,22 +426,26 @@ impl CorticalArea {
 			Some(wait_events), Some(new_events));
 	}		
 
+	#[inline]
 	pub fn mcols(&self) -> &Box<Minicolumns> {
 		&self.mcols
 	}
 
+	#[inline]
 	pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> {
 		&mut self.mcols
 	}
 
 
 	/* PIL(): Get Primary Spatial Associative Layer (immutable) */
+	#[inline]
 	pub fn psal(&self) -> &Box<SpinyStellateLayer> {
 		let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
 		self.ssts_map.get(self.psal_name).expect(e_string)
 	}
 
 	/* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
+	#[inline]
 	pub fn psal_mut(&mut self) -> &mut Box<SpinyStellateLayer> {
 		let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
 		self.ssts_map.get_mut(self.psal_name).expect(e_string)
@@ -449,41 +453,50 @@ impl CorticalArea {
 
 
 	/* PAL(): Get Primary Temporal Associative Layer (immutable) */
+	#[inline]
 	pub fn ptal(&self) -> &Box<PyramidalLayer> {
 		let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
 		self.pyrs_map.get(self.ptal_name).expect(e_string)
 	}
 
 	/* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
+	#[inline]
 	pub fn ptal_mut(&mut self) -> &mut Box<PyramidalLayer> {
 		let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
 		self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
 	}
 
+	#[inline]
 	pub fn axns(&self) -> &AxonSpace {
 		&self.axns
 	}	
 
+	#[inline]
 	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 
+	#[inline]
 	pub fn psal_name(&self) -> &'static str {
 		self.psal_name
 	}
 
+	#[inline]
 	pub fn ptal_name(&self) -> &'static str {
 		self.ptal_name
 	}
 
+	#[inline]
 	pub fn afferent_target_names(&self) -> &Vec<&'static str> {
 		&self.area_map.aff_areas()
 	}
 
+	#[inline]
 	pub fn efferent_target_names(&self) -> &Vec<&'static str> {
 		&self.area_map.eff_areas()
 	}
 
+	#[inline]
 	pub fn ocl_pq(&self) -> &ProQue {
 		&self.ocl_pq
 	}
@@ -520,10 +533,12 @@ impl CorticalArea {
 		self.axns.states.read(buf, 0, None, None);
 	}
 
+	#[inline]
 	pub fn axn_gang_map(&self) -> GanglionMap {
 		self.area_map.slices().gang_map()
 	}
 
+	#[inline]
 	pub fn area_map(&self) -> &AreaMap {
 		&self.area_map
 	}
@@ -561,10 +576,10 @@ pub struct AreaParams {
 
 pub struct Aux {
 	dims: CorticalDims,
-	pub ints_0: Envoy<ocl::cl_int>,
-	pub ints_1: Envoy<ocl::cl_int>,
-	// pub chars_0: Envoy<ocl::cl_char>,
-	// pub chars_1: Envoy<ocl::cl_char>,
+	pub ints_0: Buffer<ocl::cl_int>,
+	pub ints_1: Buffer<ocl::cl_int>,
+	// pub chars_0: Buffer<ocl::cl_char>,
+	// pub chars_1: Buffer<ocl::cl_char>,
 }
 
 impl Aux {
@@ -574,10 +589,10 @@ impl Aux {
 		let int_32_min = -2147483648;
 
 		Aux { 
-			ints_0: Envoy::<ocl::cl_int>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
-			ints_1: Envoy::<ocl::cl_int>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
-			// chars_0: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
-			// chars_1: Envoy::<ocl::cl_char>::new(dims, 0, ocl),
+			ints_0: Buffer::<ocl::cl_int>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
+			ints_1: Buffer::<ocl::cl_int>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
+			// chars_0: Buffer::<ocl::cl_char>::new(dims, 0, ocl),
+			// chars_1: Buffer::<ocl::cl_char>::new(dims, 0, ocl),
 			dims: dims.clone(),
 		}
 	}

@@ -1,5 +1,5 @@
 use std::ops::Range;
-use ocl::{ self, EnvoyDims };
+use ocl::{ self, BufferDims };
 use cmn::{ self, CorticalDims, ParaHexArray, SliceDims };
 use map::{ area_map, LayerMap, AxonKind, GanglionMap };
 
@@ -135,88 +135,108 @@ impl SliceMap {
 		println!("");
 	}
 
+	#[inline]
 	pub fn idz(&self, slc_id: u8) -> u32 {
 		self.axn_idzs[slc_id as usize]
 	}
 
+	#[inline]
 	pub fn layer_name(&self, slc_id: u8) -> &'static str {
 		self.layer_names[slc_id as usize]
 	}
 
+	#[inline]
 	pub fn slc_axn_count(&self, slc_id: u8) -> u32 {
 		self.v_sizes[slc_id as usize] * self.u_sizes[slc_id as usize]
 	}
 
+	#[inline]
 	pub fn slc_axn_range(&self, slc_id: u8) -> Range<usize> {
 		let idz = self.idz(slc_id) as usize;
 		idz..(idz + self.slc_axn_count(slc_id) as usize)
 	}
 
+	#[inline]
 	pub fn gang_map_range(&self, slc_range: Range<usize>) -> GanglionMap {
 		assert!(slc_range.end <= 255);
 		GanglionMap::new(&self.layer_names[slc_range.clone()], &self.v_sizes[slc_range.clone()], 
 			&self.u_sizes[slc_range.clone()])
 	}
 
+	#[inline]
 	pub fn gang_map(&self) -> GanglionMap {
 		self.gang_map_range(0..self.axn_idzs.len())
 	}
 
+	#[inline]
 	pub fn slc_count(&self) -> usize {
 		self.axn_idzs.len() 
 	}	
 
+	#[inline]
 	pub fn depth(&self) -> u8 {
 		self.axn_idzs.len() as u8
 	}
 
+	#[inline]
 	pub fn axn_count(&self) -> u32 {
 		self.physical_len
 	}
 
+	#[inline]
 	pub fn axn_idzs(&self) -> &Vec<u32> {
 		&self.axn_idzs
 	}
 
+	#[inline]
 	pub fn layer_names(&self) -> &Vec<&'static str> {
 		&self.layer_names
 	}
 
+	#[inline]
 	pub fn axn_kinds(&self) -> &Vec<AxonKind> {
 		&self.axn_kinds
 	}
 
+	#[inline]
 	pub fn v_sizes(&self) -> &Vec<u32> {
 		&self.v_sizes
 	}
 
+	#[inline]
 	pub fn u_sizes(&self) -> &Vec<u32> {
 		&self.u_sizes
 	}
 
+	#[inline]
 	pub fn v_scales(&self) -> &Vec<u32> {
 		&self.v_scales
 	}
 
+	#[inline]
 	pub fn u_scales(&self) -> &Vec<u32> {
 		&self.u_scales
 	}
 
+	#[inline]
 	pub fn v_mids(&self) -> &Vec<u32> {
 		&self.v_mids
 	}
 
+	#[inline]
 	pub fn u_mids(&self) -> &Vec<u32> {
 		&self.u_mids
 	}
 
+	#[inline]
 	pub fn dims(&self) -> &Vec<SliceDims> {
 		&self.dims
 	}
 }
 
-impl EnvoyDims for SliceMap {
-	fn padded_envoy_len(&self, incr: usize) -> usize {
+impl BufferDims for SliceMap {
+	#[inline]
+	fn padded_buffer_len(&self, incr: usize) -> usize {
 		ocl::padded_len(self.axn_count() as usize, incr)
 	}
 }

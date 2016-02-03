@@ -2,7 +2,7 @@ use rand::{ self, XorShiftRng };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap, SrcSlices, SrcIdxCache, SynSrc };
-use ocl::{ cl_uchar, cl_char, ProQue, WorkSize, Envoy, OclNum, EventList, Kernel };
+use ocl::{ cl_uchar, cl_char, ProQue, WorkSize, Buffer, OclNum, EventList, Kernel };
 use proto::{ CellKind, Protocell, DendriteKind };
 use axon_space::{ AxonSpace };
 
@@ -16,7 +16,7 @@ pub use self::tests::{ SynCoords, SynapsesTest };
 // 		- [low priority] Optimization:
 // 			- [Complete] Obviously grow() and it's ilk need a lot of work
 /*
-	Synapse index space (for each of the synapse property Envoys) is first divided by tuft, then slice, then cell, then synapse. This means that even though a cell may have three (or any number of) tufts, and that you would naturally tend to think that synapse space would be first divided by slice, then cell, then tuft, tufts are moved to the front of that list. The reason for this is nuanced but it basically boils down to performance. When a kernel is processing synapses it's best to process tuft-at-a-time as the first order iteration rather than slice or cell-at-a-time because the each tuft inherently shares synapses whos axon sources are going to tend to be similar, making cache performance consistently better. This makes indexing very confusing so there's a definite trade off in complexity (for us poor humans). 
+	Synapse index space (for each of the synapse property Buffers) is first divided by tuft, then slice, then cell, then synapse. This means that even though a cell may have three (or any number of) tufts, and that you would naturally tend to think that synapse space would be first divided by slice, then cell, then tuft, tufts are moved to the front of that list. The reason for this is nuanced but it basically boils down to performance. When a kernel is processing synapses it's best to process tuft-at-a-time as the first order iteration rather than slice or cell-at-a-time because the each tuft inherently shares synapses whos axon sources are going to tend to be similar, making cache performance consistently better. This makes indexing very confusing so there's a definite trade off in complexity (for us poor humans). 
 
 	Calculating a particular synapse index is shown below in syn_idx(). This is (hopefully) the exact same method the kernel uses for addressing: tuft is most significant, followed by slice, then cell, then synapse. Dendrites are not necessary to calculate a synapses index unless you happen only to have a synapses id (address) within a dendrite. Mostly the id within a cell is used and the dendrite is irrelevant, especially on the host side. 
 
@@ -70,13 +70,13 @@ pub struct Synapses {
 	src_idx_cache: SrcIdxCache,
 	src_slcs: SrcSlices,
 	rng: XorShiftRng,
-	pub states: Envoy<cl_uchar>,
-	pub strengths: Envoy<cl_char>,
-	pub src_slc_ids: Envoy<cl_uchar>,
-	pub src_col_u_offs: Envoy<cl_char>,
-	pub src_col_v_offs: Envoy<cl_char>,
-	pub flag_sets: Envoy<cl_uchar>,
-	// pub slc_pool: Envoy<cl_uchar>,  // BRING THIS BACK (OPTIMIZATION)
+	pub states: Buffer<cl_uchar>,
+	pub strengths: Buffer<cl_char>,
+	pub src_slc_ids: Buffer<cl_uchar>,
+	pub src_col_u_offs: Buffer<cl_char>,
+	pub src_col_v_offs: Buffer<cl_char>,
+	pub flag_sets: Buffer<cl_uchar>,
+	// pub slc_pool: Buffer<cl_uchar>,  // BRING THIS BACK (OPTIMIZATION)
 }
 
 impl Synapses {
@@ -91,14 +91,14 @@ impl Synapses {
 		let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, 
 			protocell.dens_per_tuft_l2, dims.clone());
 
-		// let slc_pool = Envoy::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-		let states = Envoy::<cl_uchar>::with_vec(dims, ocl_pq.queue());
-		let strengths = Envoy::<cl_char>::with_vec(dims, ocl_pq.queue());
-		let src_slc_ids = Envoy::<cl_uchar>::with_vec(dims, ocl_pq.queue());
+		// let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
+		let states = Buffer::<cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let strengths = Buffer::<cl_char>::with_vec(dims, ocl_pq.queue());
+		let src_slc_ids = Buffer::<cl_uchar>::with_vec(dims, ocl_pq.queue());
 
-		let src_col_u_offs = Envoy::<cl_char>::with_vec(dims, ocl_pq.queue());
-		let src_col_v_offs = Envoy::<cl_char>::with_vec(dims, ocl_pq.queue()); 
-		let flag_sets = Envoy::<cl_uchar>::with_vec(dims, ocl_pq.queue());
+		let src_col_u_offs = Buffer::<cl_char>::with_vec(dims, ocl_pq.queue());
+		let src_col_v_offs = Buffer::<cl_char>::with_vec(dims, ocl_pq.queue()); 
+		let flag_sets = Buffer::<cl_uchar>::with_vec(dims, ocl_pq.queue());
 
 		// [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
 		let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {
@@ -125,7 +125,7 @@ impl Synapses {
 		if DEBUG_NEW { 
 			println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
 				dims: {:?}, phys_len: {},", 
-				den_kind, states.len(), dims, dims.padded_envoy_len(
+				den_kind, states.len(), dims, dims.padded_buffer_len(
 					ocl_pq.get_max_work_group_size()), mt = cmn::MT); 
 		}
 
@@ -271,12 +271,14 @@ impl Synapses {
 		}
 	}
 
+	#[inline]
 	pub fn cycle(&self, wait_events: Option<&EventList>) {
 		for kern in self.kernels.iter() {
 			kern.enqueue(wait_events, None);
 		}
 	}
 
+	#[inline]
 	pub fn regrow(&mut self) {
 		self.grow(false);
 	}
@@ -289,7 +291,7 @@ impl Synapses {
 	} 
 
 	// Debugging purposes
-	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Envoy<T>) {
+	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
 		let using_aux = false;
 
 		if using_aux {
@@ -299,18 +301,22 @@ impl Synapses {
 		}
 	}
 
+	#[inline]
 	pub fn den_kind(&self) -> DendriteKind {
 		self.den_kind.clone()
 	}
 
+	#[inline]
 	pub fn dims(&self) -> &CorticalDims {
 		&self.dims
 	}
 
+	#[inline]
 	pub fn syns_per_den_l2(&self) -> u8 {
 		self.syns_per_den_l2
 	}
 
+	#[inline]
 	pub fn syns_per_tftsec(&self) -> u32 {
 		let slcs_per_tftsec = self.dims.depth();
 		let cels_per_slc = self.dims.columns();

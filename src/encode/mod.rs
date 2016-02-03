@@ -8,10 +8,11 @@ mod idx_data;
 mod glyph_buckets;
 mod glyph_sequences;
 
-use cmn::Sdr;
+use cmn::{TractFrameMut};
 
 const SQRT_3: f32 = 1.73205080756f32;
 
+#[inline]
 fn calc_offs(v_size: usize, u_size: usize, y_size: usize, x_size: usize, hex_side: f32) -> (f32, f32) {
 	let v_mid = v_size >> 1;
 	let u_mid = u_size >> 1;
@@ -27,6 +28,7 @@ fn calc_offs(v_size: usize, u_size: usize, y_size: usize, x_size: usize, hex_sid
 
 
 // COORD_HEX_TO_PIXEL(): Eventually either move this to GPU or at least use SIMD.
+#[inline]
 pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_side: f32, 
 			x_ofs: f32, y_ofs: f32, 
 	) -> (f32, f32, bool) 
@@ -50,7 +52,7 @@ pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_si
 
 // ENCODE_2D_IMAGE(): Horribly unoptimized.
 pub fn encode_2d_image(v_size: usize, u_size: usize, x_size: usize, y_size: usize,
-	scale_factor: f32, source: &[u8], target: &mut Sdr) 
+	scale_factor: f32, source: &[u8], /*target: &mut Sdr*/mut target: TractFrameMut) 
 {
 	let hex_side = (x_size + y_size) as f32 / 
 		(scale_factor * (v_size + u_size) as f32);
