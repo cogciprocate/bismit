@@ -14,7 +14,7 @@ pub enum Protoinput {
 	Zeros,
 	IdxStreamer { file_name: String, cyc_per: usize, scale: f32 },
 	IdxStreamerLoop { file_name: String, cyc_per: usize, scale: f32, loop_frames: u32 },
-	GlyphSequences { seq_lens: usize, seq_count: usize, scale: f32 },
+	GlyphSequences { seq_lens: (usize, usize), seq_count: usize, scale: f32 },
 }
 
 impl Protoinput {

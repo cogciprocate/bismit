@@ -61,7 +61,7 @@ impl InputSource {
 			must have a single layer with an 'OUTPUT' tag. [area: '{}', layer map: '{}']", 
 			pamap.name(), plmap.name());
 
-		let kind = match input {
+		let kind = match input.clone() {
 			Protoinput::IdxStreamer { file_name, cyc_per, scale } => {
 				let ir = IdxStreamer::new(&dims, file_name, 
 					cyc_per, scale);				
@@ -74,6 +74,7 @@ impl InputSource {
 			},
 			Protoinput::GlyphSequences { seq_lens, seq_count, scale } => {
 				let gs = GlyphSequences::new(&dims, seq_lens, seq_count, scale);
+				// let gs = GlyphSequences::new(&dims, input);
 				InputSourceKind::GlyphSequences(Box::new(gs))
 			},
 			Protoinput::None | Protoinput::Zeros => InputSourceKind::None,

@@ -8,7 +8,7 @@ dependencies = [
  "libc 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "microcosm 0.0.1 (git+https://github.com/cogciprocate/microcosm.git)",
  "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
- "ocl 0.3.0",
+ "ocl 0.4.0",
  "rand 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.34 (git+https://github.com/rust-lang/time.git)",
 ]
@@ -74,7 +74,7 @@ dependencies = [
 
 [[package]]
 name = "ocl"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "enum_primitive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",

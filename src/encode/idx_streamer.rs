@@ -124,10 +124,8 @@ impl IdxStreamer {
 	// ENCODE_2D_IMAGE(): Horribly unoptimized.
 	#[inline]
 	pub fn encode_2d_image(&self, source: &Sdr, target: &mut Sdr) {
-		super::encode_2d_image(self.layer_dims.v_size() as usize, 
-			// self.layer_dims.u_size() as usize, self.image_width, self.image_height,
-			self.layer_dims.u_size() as usize, self.image_dims.0, self.image_dims.0,
-			self.scale_factor, source, TractFrameMut::new(target, &self.layer_dims));
+		super::encode_2d_image(self.image_dims, &self.layer_dims, self.scale_factor,
+			source, TractFrameMut::new(target, &self.layer_dims));
 	}	
 
 	#[inline]

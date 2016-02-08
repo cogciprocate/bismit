@@ -90,7 +90,7 @@ impl GlyphBuckets {
 	}
 
 	#[inline]
-	pub fn bucket_count(&self) -> usize {
+	pub fn count(&self) -> usize {
 		self.buckets.len()
 	}
 

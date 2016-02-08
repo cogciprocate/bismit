@@ -8,7 +8,7 @@ mod idx_data;
 mod glyph_buckets;
 mod glyph_sequences;
 
-use cmn::{TractFrameMut};
+use cmn::{TractFrameMut, ParaHexArray};
 
 const SQRT_3: f32 = 1.73205080756f32;
 
@@ -51,9 +51,11 @@ pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_si
 
 
 // ENCODE_2D_IMAGE(): Horribly unoptimized.
-pub fn encode_2d_image(v_size: usize, u_size: usize, x_size: usize, y_size: usize,
+pub fn encode_2d_image<P: ParaHexArray>(src_dims: (usize, usize), tar_dims: &P,
 	scale_factor: f32, source: &[u8], /*target: &mut Sdr*/mut target: TractFrameMut) 
 {
+	let (x_size, y_size) = (src_dims.0, src_dims.1);
+	let (v_size, u_size) = (tar_dims.v_size() as usize, tar_dims.u_size() as usize);
 	let hex_side = (x_size + y_size) as f32 / 
 		(scale_factor * (v_size + u_size) as f32);
 
