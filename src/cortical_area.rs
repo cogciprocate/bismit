@@ -62,7 +62,8 @@ impl CorticalArea {
 		
 		let mut ocl_pq: ocl::ProQue = ocl::ProQue::new(&ocl_context, Some(device_idx));
 
-		ocl_pq.build(area_map.gen_build_options()).expect("CorticalArea::new(): ocl_pq.build(): error");
+		ocl_pq.build_program(area_map.gen_build_options())
+			.expect("CorticalArea::new(): ocl_pq.build(): error");
 
 		let dims = area_map.dims().clone_with_incr(ocl_pq.get_max_work_group_size());
 
@@ -501,12 +502,14 @@ impl CorticalArea {
 		&self.ocl_pq
 	}
 
+	// TODO: MOVE TO TESTS
 	pub fn render_aff_out(&mut self, input_status: &str, print_summary: bool) {
 		let out_axns = &self.axns.states[self.mcols.aff_out_axn_range()];
 		let sst_axns = &self.axns.states[self.psal().axn_range()];
 		self.renderer.render(out_axns, Some(sst_axns), None, input_status, print_summary);
 	}
 
+	// TODO: MOVE TO TESTS
 	pub fn render_axn_space(&mut self) {
 		let axn_states = &self.axns.states[..];
 		self.renderer.render_axn_space(axn_states, &self.area_map.slices())
@@ -520,6 +523,7 @@ impl CorticalArea {
 	// 	self.sample_axn_slc(aff_out_slc, buf);
 	// }
 
+	#[inline]
 	pub fn sample_axn_slc(&self, slc_id: u8, buf: &mut [u8]) {
 		let slc_axn_range = self.area_map.slices().slc_axn_range(slc_id);
 		debug_assert!(buf.len() == slc_axn_range.len(), "Sample buffer length ({}) not \
@@ -528,6 +532,7 @@ impl CorticalArea {
 		self.axns.states.read(buf, slc_axn_range.start, None, None);
 	}	
 
+	#[inline]
 	pub fn sample_axn_space(&self, buf: &mut [u8]) {
 		debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
 		self.axns.states.read(buf, 0, None, None);
@@ -546,11 +551,10 @@ impl CorticalArea {
 
 impl Drop for CorticalArea {
 	fn drop(&mut self) {
+		// Context being released by Cortex.
     	print!("Releasing OpenCL components for '{}'... ", self.name);
     	self.ocl_pq.release();
     	print!("[ Program ][ Command Queue ]");
-    	// self.ocl_context.release();
-    	// print!("[ Platform ]");
     	print!(" ...complete. \n");
 	}
 }

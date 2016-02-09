@@ -2,7 +2,7 @@ use std::fmt::{ Display };
 use std::ops::{ Range }; 
 // use std::collections::{ BTreeMap };
 
-use ocl::{ BuildConfig, BuildOpt };
+use ocl::{ ProgramBuilder, BuildOpt };
 use proto::{ ProtolayerMaps, ProtoareaMaps, ProtoareaMap, LayerMapKind, Protofilter,
 	DendriteKind };
 use cmn::{ self, CorticalDims };
@@ -50,7 +50,7 @@ impl AreaMap {
 	}	
 
 	// ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
-	pub fn gen_build_options(&self) -> BuildConfig {
+	pub fn gen_build_options(&self) -> ProgramBuilder {
 		let mut build_options = cmn::base_build_options()
 			.cmplr_def("HORIZONTAL_AXON_ROW_DEMARCATION", self.hrz_demarc as i32)
 			.cmplr_def("AXN_SLC_COUNT", self.slices.depth() as i32)
@@ -69,7 +69,7 @@ impl AreaMap {
 				for pf in protofilters.iter() {
 					match pf.cl_file_name() {
 						Some(ref clfn)  => {							
-							build_options.add_kern_file(format!("{}/{}", cmn::cl_root_path(), clfn.clone()))
+							build_options.add_src_file(format!("{}/{}", cmn::cl_root_path(), clfn.clone()))
 						},
 
 						None => (),

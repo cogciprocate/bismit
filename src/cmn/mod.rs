@@ -12,7 +12,7 @@ use std::collections::{ BTreeMap };
 use rand;
 use rand::distributions::{ IndependentSample, Range };
 
-use ocl::{ BuildConfig, OclNum };
+use ocl::{ ProgramBuilder, OclNum };
 
 // pub use self::cmn::*;
 pub use self::cortical_dims::{ CorticalDims };
@@ -276,7 +276,7 @@ pub static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 4] = [
 
 //	BASE_BUILD_OPTIONS():
 // 		-Used by AreaMap.
-pub fn base_build_options() -> BuildConfig {
+pub fn base_build_options() -> ProgramBuilder {
 
 	//assert!(SENSORY_CHORD_COLUMNS % AXON_BUFFER_SIZE == 0);
 	/*assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
@@ -285,7 +285,7 @@ pub fn base_build_options() -> BuildConfig {
 	assert!(DENDRITES_PER_CELL_DISTAL <= 256);
 	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
 
-	let build_options = BuildConfig::new()
+	let build_options = ProgramBuilder::new()
 		.cmplr_opt(CL_BUILD_SWITCHES)
 		// .cmplr_def("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
 		// .cmplr_def("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
@@ -320,9 +320,9 @@ pub fn base_build_options() -> BuildConfig {
 // LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
 //		-Used by AreaMap
 // [FIXME]: TEMPORARY: Gonna need a better way to determine path...
-pub fn load_builtin_kernel_files(build_options: &mut BuildConfig) {
+pub fn load_builtin_kernel_files(build_options: &mut ProgramBuilder) {
 	for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
-		build_options.add_kern_file(
+		build_options.add_src_file(
 			format!("{}/{}", cl_root_path(), BUILTIN_OPENCL_KERNEL_FILE_NAMES[i].to_string())
 		);
 	}

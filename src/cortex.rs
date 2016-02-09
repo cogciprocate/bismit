@@ -10,6 +10,7 @@ pub struct Cortex {
 	// AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
 	pub areas: CorticalAreas,
 	thal: Thalamus,
+	ocl_context: Context,
 }
 
 impl Cortex {
@@ -41,6 +42,7 @@ impl Cortex {
 		Cortex {
 			areas: areas,
 			thal: thal,
+			ocl_context: ocl_context,
 		}
 	}
 	
@@ -73,7 +75,8 @@ impl Cortex {
 impl Drop for Cortex {
 	fn drop(&mut self) {
     	print!("Releasing OpenCL components... ");
-    	print!("[ Platform ]");
+    	print!("[ Context ]");
+    	self.ocl_context.release();
     	print!(" ...complete. \n");
 	}
 }

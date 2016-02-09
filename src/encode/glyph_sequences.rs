@@ -30,8 +30,6 @@ pub struct GlyphSequences {
 	sequences: Vec<Vec<usize>>,
 	buckets: GlyphBuckets,
 	layer_dims: CorticalDims,
-	// seq_lens: (usize, usize),
-	// seq_count: usize,
 	cursor: SeqCursor,
 	scale: f32,
 }
@@ -45,11 +43,6 @@ impl GlyphSequences {
 			invalid. High end must at least be equal to low end: '{:?}'.", seq_lens);
 
 		let buckets = GlyphBuckets::new();		
-
-		// let (seq_lens, seq_count, scale) = match pi {
-		// 	Protoinput::GlyphSequences { seq_lens, seq_count, scale } => (seq_lens, seq_count, scale),
-		// 	_ => panic!("GlyphSequences::new(): Protoinput mismatch: {:?}", pi),
-		// };
 
 		let mut rng = rand::weak_rng();
 		let mut sequences = Vec::with_capacity(seq_count);

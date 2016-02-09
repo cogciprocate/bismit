@@ -1198,6 +1198,10 @@ __kernel void pyrs_ltp(
 	// aux_ints_1[cel_grp_id] = -1 - (rnd_mix(rnd, cel_grp_id) & 0x7F);
 	// aux_ints_1[cel_grp_id] = rnd_mix(rnd, cel_grp_id);
  
+ 	// TODO: (EVALUATE) Make 'cels_per_cel_grp' and 'tfts_per_cel' a constant and unroll loops.
+ 	//    - Will mean making a separate program for each layer of pyramidals.
+ 	//    - Could do more harm than good due to program size bloat.
+ 	//    - Possibly do this for tfts only.
 	for (uint cel_id_cel_grp = 0; cel_id_cel_grp < cels_per_cel_grp; cel_id_cel_grp++) {
 		uint const cel_idx = cel_idz_cel_grp + cel_id_cel_grp;
 		uint const cel_axn_idx = axn_idz_cel_lyr + cel_idx;
@@ -1418,6 +1422,7 @@ __kernel void mcol_output(
 		mcol_pyr_state_max = max(mcol_pyr_state_max, (int)pyr_state);
 	}
 
+	//##### NOTE: Currently overwriting all flags:
 	mcol_flag_sets[col_id] = mul24((mcol_pyr_state_max != 0), MCOL_IS_VATIC_FLAG);
 	mcol_best_den_states[col_id] = mcol_den_state_max;
 	//axn_states[aff_out_axn_idx] = mul24(idx_is_safe, clamp(mcol_pyr_state_max + psa_cel_axn_state, 0, 255)); // N1
