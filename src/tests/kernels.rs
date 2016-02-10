@@ -69,7 +69,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 // 	dim_offs.print_simple();
 // 	println!("safe_dim_offs:");
 // 	safe_dim_offs.print_simple();
-// 	//safe_dim_offs.fill_vec_wait();
+// 	//safe_dim_offs.fill_vec();
 
 // 	for i in 0..safe_dim_offs.len() {
 // 		let safe_dim_id: i64 = dim_ids[i] as i64 + safe_dim_offs[i] as i64;

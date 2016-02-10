@@ -179,12 +179,12 @@ impl DataCellLayer for PyramidalLayer {
 
 	// [FIXME]: MARKED FOR DEPRICATION
 	fn confab(&mut self) {
-		self.states.fill_vec_wait();
-		self.best_den_states.fill_vec_wait();
-		self.tft_best_den_ids.fill_vec_wait();
-		self.tft_best_den_states.fill_vec_wait();
-		self.flag_sets.fill_vec_wait();
-		// self.energies.fill_vec_wait(); // <<<<< SLATED FOR REMOVAL
+		self.states.fill_vec();
+		self.best_den_states.fill_vec();
+		self.tft_best_den_ids.fill_vec();
+		self.tft_best_den_states.fill_vec();
+		self.flag_sets.fill_vec();
+		// self.energies.fill_vec(); // <<<<< SLATED FOR REMOVAL
 
 		self.dens_mut().confab();
 	}

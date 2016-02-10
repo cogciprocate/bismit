@@ -145,7 +145,7 @@ impl InputTract for IdxStreamer {
     	assert!((self.image_len()) <= tract_frame.len(), 
     		"Ganglion vector size must be greater than or equal to IDX image size");    	
 
-  		//   	match self.file_reader.read(&mut self.idx_data.data()[..]) {
+  		//   	match self.file_reader.read_async(&mut self.idx_data.data()[..]) {
 		//     Err(why) => panic!("\ncouldn't read '{}': {}", &self.file_path, Error::description(&why)),
 		//     Ok(bytes) => assert!(bytes == self.idx_data.data().len(), "\n bytes read != buffer length"), 
 		//     	//println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),

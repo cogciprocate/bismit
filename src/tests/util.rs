@@ -77,9 +77,9 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 // 		flag_set_eq: u8, strength_eq: i8) 
 // {
 // 	for syn_idx in syn_range.clone() {
-// 		area.ptal_mut().dens_mut().syns_mut().states.fill_vec_wait();
-// 		area.ptal_mut().dens_mut().syns_mut().flag_sets.fill_vec_wait();
-// 		area.ptal_mut().dens_mut().syns_mut().strengths.fill_vec_wait();
+// 		area.ptal_mut().dens_mut().syns_mut().states.fill_vec();
+// 		area.ptal_mut().dens_mut().syns_mut().flag_sets.fill_vec();
+// 		area.ptal_mut().dens_mut().syns_mut().strengths.fill_vec();
 // 		assert!(area.ptal_mut().dens_mut().syns_mut().states[syn_idx] != state_neq);
 // 		assert!(area.ptal_mut().dens_mut().syns_mut().flag_sets[syn_idx] == flag_set_eq);
 // 		assert!(area.ptal_mut().dens_mut().syns_mut().strengths[syn_idx] == strength_eq);
@@ -136,8 +136,8 @@ pub fn compare_buffers<T: OclNum>(env1: &mut Buffer<T>, env2: &mut Buffer<T>) ->
 	print!("\nVector comparison:\n");	
 	assert!(env1.len() == env2.len());
 
-	env1.fill_vec_wait();
-	env2.fill_vec_wait();
+	env1.fill_vec();
+	env2.fill_vec();
 
 	let mut failure = false;
 
@@ -177,7 +177,7 @@ pub fn eval_others<T: OclNum>(env: &mut Buffer<T>, foc_idx: usize, other_val: T)
 	assert!(idn > 0);
 	assert!(foc_idx < idn);
 
-	env.fill_vec_wait();
+	env.fill_vec();
 
 	if idn <= check_margin * 4 {
 		// CHECK THE WHOLE LIST (except for foc_idx)

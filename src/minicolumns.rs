@@ -123,8 +123,8 @@ impl Minicolumns {
 	}
 
 	pub fn confab(&mut self) {
-		self.flag_sets.fill_vec_wait();
-		self.best_den_states.fill_vec_wait();
+		self.flag_sets.fill_vec();
+		self.best_den_states.fill_vec();
 	}
 
 	#[inline]

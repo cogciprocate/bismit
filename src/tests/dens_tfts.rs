@@ -106,7 +106,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
 			let den_idx = area.ptal().dens().den_idx(tft_id, cel_coords.idx(), den_id_tft);
 
 			// let mut den_state = vec![0];
-			// area.ptal().dens().states.read(&mut den_state[0..1], den_idx as usize);
+			// area.ptal().dens().states.read_async(&mut den_state[0..1], den_idx as usize);
 			let den_state = area.ptal().dens().states.read_idx_direct(den_idx as usize);
 			let cel_state = area.ptal().states.read_idx_direct(cel_coords.idx() as usize);
 
@@ -219,7 +219,7 @@ fn test_dens() {
 
 		// CHECK EACH DENDRITE ON OUR TEST CELL:
 		for den_idx in den_coords.cel_den_range_tftsec() {
-			// area.ptal().dens().states.read(&mut result[..], den_idx as usize); REMOVE
+			// area.ptal().dens().states.read_async(&mut result[..], den_idx as usize); REMOVE
 			// let den_state = result[0]; REMOVE
 			let den_state = area.ptal().dens().states.read_idx_direct(den_idx as usize);
 

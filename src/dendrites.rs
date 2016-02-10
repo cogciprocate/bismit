@@ -125,9 +125,9 @@ impl Dendrites {
 	}
 
 	pub fn confab(&mut self) {
-		self.thresholds.fill_vec_wait();
-		self.states_raw.fill_vec_wait();
-		self.states.fill_vec_wait();
+		self.thresholds.fill_vec();
+		self.states_raw.fill_vec();
+		self.states.fill_vec();
 		self.syns.confab();
 	}
 
@@ -183,7 +183,7 @@ pub mod tests {
 
 		fn den_state_direct(&self, idx: u32) -> u8 {
 			let mut sdr = vec![0u8];
-			self.states.read(&mut sdr[..], idx as usize, None, None);
+			self.states.read_async(&mut sdr[..], idx as usize, None, None);
 			sdr[0]
 		}
 
