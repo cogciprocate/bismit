@@ -66,12 +66,13 @@ impl AreaMap {
         ;
 
         // CUSTOM KERNELS
+        // TODO: Use 'if let's here to clean this up.
         match self.filters {
             Some(ref protofilters) => {
                 for pf in protofilters.iter() {
                     match pf.cl_file_name() {
                         Some(ref clfn)  => {                            
-                            build_options.add_src_file(format!("{}/{}", cmn::cl_root_path(), clfn.clone()))
+                            build_options.src_file(format!("{}/{}", cmn::cl_root_path(), clfn.clone()));
                         },
 
                         None => (),

@@ -321,10 +321,10 @@ pub fn base_build_options() -> ProgramBuilder {
 
 // LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
 //        -Used by AreaMap
-// [FIXME]: TEMPORARY: Gonna need a better way to determine path...
+// [FIXME]: TEMPORARY: determine path non-retardedly...
 pub fn load_builtin_kernel_files(build_options: &mut ProgramBuilder) {
     for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
-        build_options.add_src_file(
+        build_options.src_file(
             format!("{}/{}", cl_root_path(), BUILTIN_OPENCL_KERNEL_FILE_NAMES[i].to_string())
         );
     }
