@@ -2,13 +2,13 @@ use std::error::{ Error };
 use std::fmt;
 
 pub struct CmnError {
-	description: String,
+    description: String,
 }
 
 impl CmnError {
-	pub fn new(desc: String) -> CmnError {
-		CmnError { description: desc }
-	}
+    pub fn new(desc: String) -> CmnError {
+        CmnError { description: desc }
+    }
 }
 
 impl Error for CmnError {
