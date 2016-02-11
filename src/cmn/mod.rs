@@ -285,7 +285,9 @@ pub fn base_build_options() -> ProgramBuilder {
 	assert!(DENDRITES_PER_CELL_DISTAL <= 256);
 	assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
 
-	let build_options = ProgramBuilder::new()
+	let mut build_options = ProgramBuilder::new();
+
+	build_options
 		.cmplr_opt(CL_BUILD_SWITCHES)
 		// .cmplr_def("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
 		// .cmplr_def("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
