@@ -166,7 +166,7 @@ impl TestBed {
 
 		let ocl_context = Context::new(None, None).unwrap();
 		let mut ocl_pq = ProQue::new(&ocl_context, None);
-		ocl_pq.build_program(area_map.gen_build_options()).ok();
+		ocl_pq.build_program(&area_map.gen_build_options()).ok();
 
 		let dims = area_map.dims().clone_with_incr(ocl_pq.max_work_group_size());
 
