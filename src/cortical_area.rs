@@ -62,10 +62,10 @@ impl CorticalArea {
 		
 		let mut ocl_pq: ocl::ProQue = ocl::ProQue::new(&ocl_context, Some(device_idx));
 
-		ocl_pq.build_program(area_map.gen_build_options())
+		ocl_pq.build_program(&area_map.gen_build_options())
 			.expect("CorticalArea::new(): ocl_pq.build(): error");
 
-		let dims = area_map.dims().clone_with_incr(ocl_pq.get_max_work_group_size());
+		let dims = area_map.dims().clone_with_incr(ocl_pq.max_work_group_size());
 
 		println!("{mt}CORTICALAREA::NEW(): Area \"{}\" details: \
 			(u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: {:?}", 
@@ -221,18 +221,18 @@ impl CorticalArea {
 
 
 		// <<<<< TODO: CLEAN THIS UP >>>>>
-		// MAKE ABOVE LIKE BELOW (eliminate set_arg_env_named() everywhere)
-		mcols.set_arg_env_named("aux_ints_0", &aux.ints_0);
-		pyrs_map.get_mut(ptal_name).unwrap().set_arg_env_named("aux_ints_0", &aux.ints_0);		
+		// MAKE ABOVE LIKE BELOW (eliminate set_arg_buf_named() everywhere)
+		mcols.set_arg_buf_named("aux_ints_0", &aux.ints_0);
+		pyrs_map.get_mut(ptal_name).unwrap().set_arg_buf_named("aux_ints_0", &aux.ints_0);		
 		pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
-			.set_arg_env_named("aux_ints_0", &aux.ints_0);
+			.set_arg_buf_named("aux_ints_0", &aux.ints_0);
 
-		// mcols.set_arg_env_named("aux_ints_1", &aux.ints_0);
-		pyrs_map.get_mut(ptal_name).unwrap().kern_ltp().set_arg_env_named("aux_ints_1", &aux.ints_1);
-		pyrs_map.get_mut(ptal_name).unwrap().kern_cycle().set_arg_env_named("aux_ints_1", &aux.ints_1);
+		// mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0);
+		pyrs_map.get_mut(ptal_name).unwrap().kern_ltp().set_arg_buf_named("aux_ints_1", &aux.ints_1);
+		pyrs_map.get_mut(ptal_name).unwrap().kern_cycle().set_arg_buf_named("aux_ints_1", &aux.ints_1);
 
 		// pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
-			// .set_arg_env_named("aux_ints_1", &aux.ints_0);
+			// .set_arg_buf_named("aux_ints_1", &aux.ints_0);
 		let mut events_lists = HashMap::new();
 		events_lists.insert(map::FF_IN, EventList::new());	
 		events_lists.insert(map::FB_IN, EventList::new());

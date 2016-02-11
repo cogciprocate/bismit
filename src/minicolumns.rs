@@ -52,31 +52,31 @@ impl Minicolumns {
 
 		let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs",
 			WorkSize::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
-			.arg_env(&flag_sets)
-			.arg_env(&best_den_states)
-			.arg_env(&pyrs.best_den_states)
+			.arg_buf(&flag_sets)
+			.arg_buf(&best_den_states)
+			.arg_buf(&pyrs.best_den_states)
 			.arg_scl(ff_layer_axn_idz as u32)
 			.arg_scl(pyr_lyr_axn_idz)
 			.arg_scl(pyrs.protocell().dens_per_tuft_l2)
-			.arg_env(&pyrs.flag_sets)
-			.arg_env(&pyrs.states)
-			.arg_env_named::<i32>("aux_ints_0", None)
-			// .arg_env_named::<i32>("aux_ints_1", None)
-			.arg_env(&axons.states)
+			.arg_buf(&pyrs.flag_sets)
+			.arg_buf(&pyrs.states)
+			.arg_buf_named::<i32>("aux_ints_0", None)
+			// .arg_buf_named::<i32>("aux_ints_1", None)
+			.arg_buf(&axons.states)
 		;
 
 
 		let kern_output = ocl_pq.create_kernel("mcol_output", 
 			WorkSize::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
-			.arg_env(&pyrs.soma())
+			.arg_buf(&pyrs.soma())
 			.arg_scl(pyrs.tfts_per_cel())
 			.arg_scl(ff_layer_axn_idz as u32)
 			.arg_scl(pyr_depth)
 			.arg_scl(aff_out_axn_slc)
-			.arg_env(&pyrs.best_den_states)
-			.arg_env(&flag_sets)
-			.arg_env(&best_den_states)
-			.arg_env(&axons.states)
+			.arg_buf(&pyrs.best_den_states)
+			.arg_buf(&flag_sets)
+			.arg_buf(&best_den_states)
+			.arg_buf(&axons.states)
 		;
 
 
@@ -93,16 +93,16 @@ impl Minicolumns {
 		}
 	}
 
-	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
+	pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
 		let activate_using_aux = true;
 		let output_using_aux = false;
 
 		if activate_using_aux {
-			self.kern_activate.set_arg_env_named(name, env);
+			self.kern_activate.set_arg_buf_named(name, env);
 		}
 
 		if output_using_aux {
-			self.kern_output.set_arg_env_named(name, env);
+			self.kern_output.set_arg_buf_named(name, env);
 		}
 	}
 

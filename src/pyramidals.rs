@@ -70,17 +70,17 @@ impl PyramidalLayer {
 		
 		let kern_cycle = ocl_pq.create_kernel("pyr_cycle",
 			WorkSize::OneDim(dims.cells() as usize))
-			.arg_env(&dens.states_raw)
-			.arg_env(&dens.states)
+			.arg_buf(&dens.states_raw)
+			.arg_buf(&dens.states)
 			.arg_scl(tfts_per_cel)
 			.arg_scl(dens_per_tft_l2)
-			//.arg_env(&energies) // <<<<< SLATED FOR REMOVAL
-			.arg_env(&tft_best_den_ids)
-			.arg_env(&tft_best_den_states)
-			.arg_env(&best_den_states)
-			.arg_env_named::<i32>("aux_ints_0", None)
-			.arg_env_named::<i32>("aux_ints_1", None)
-			.arg_env(&states) 
+			//.arg_buf(&energies) // <<<<< SLATED FOR REMOVAL
+			.arg_buf(&tft_best_den_ids)
+			.arg_buf(&tft_best_den_states)
+			.arg_buf(&best_den_states)
+			.arg_buf_named::<i32>("aux_ints_0", None)
+			.arg_buf_named::<i32>("aux_ints_1", None)
+			.arg_buf(&states) 
 		;
 
 		let syns_per_tftsec = dens.syns().syns_per_tftsec();
@@ -90,12 +90,12 @@ impl PyramidalLayer {
 
 		let kern_ltp = ocl_pq.create_kernel("pyrs_ltp", 
 			WorkSize::OneDim(cel_grp_count as usize))
-			.arg_env(&axons.states)
-			.arg_env(&states)
-			.arg_env(&tft_best_den_ids)
-			.arg_env(&tft_best_den_states)
-			.arg_env(&dens.states)
-			.arg_env(&dens.syns().states)
+			.arg_buf(&axons.states)
+			.arg_buf(&states)
+			.arg_buf(&tft_best_den_ids)
+			.arg_buf(&tft_best_den_states)
+			.arg_buf(&dens.states)
+			.arg_buf(&dens.syns().states)
 			.arg_scl(tfts_per_cel as u32)
 			.arg_scl(dens_per_tft_l2 as u32)
 			.arg_scl(syns_per_den_l2 as u32)			
@@ -103,11 +103,11 @@ impl PyramidalLayer {
 			.arg_scl(pyr_lyr_axn_idz)
 			.arg_scl_named::<i32>("lr_l2i", Some(learning_rate_l2i))
 			.arg_scl_named::<i32>("rnd", None)		
-			.arg_env(&dens.syns().flag_sets)
-			.arg_env(&flag_sets)
-			.arg_env_named::<i32>("aux_ints_0", None)
-			.arg_env_named::<i32>("aux_ints_1", None)
-			.arg_env(&dens.syns().strengths)
+			.arg_buf(&dens.syns().flag_sets)
+			.arg_buf(&flag_sets)
+			.arg_buf_named::<i32>("aux_ints_0", None)
+			.arg_buf_named::<i32>("aux_ints_1", None)
+			.arg_buf(&dens.syns().strengths)
 		;		
 
 		PyramidalLayer {
@@ -145,16 +145,16 @@ impl PyramidalLayer {
 	}
 
 	// <<<<< TODO: DEPRICATE >>>>>
-	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
+	pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
 		let using_aux_cycle = true;
 		let using_aux_learning = true;
 
 		if using_aux_cycle {
-			self.kern_cycle.set_arg_env_named(name, env);
+			self.kern_cycle.set_arg_buf_named(name, env);
 		}
 
 		if using_aux_learning {
-			self.kern_ltp.set_arg_env_named(name, env);
+			self.kern_ltp.set_arg_buf_named(name, env);
 		}
 	}
 }
@@ -373,24 +373,24 @@ pub mod tests {
 
 		// let kern_ltp = ocl_pq.create_kernel("pyrs_ltp_unoptd", 
 		// 	WorkSize::ThreeDims(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
-		// 	.arg_env(&axons.states)
-		// 	.arg_env(&states)
-		// 	.arg_env(&best_den_ids)
-		// 	.arg_env(&dens.states)
-		// 	.arg_env(&dens.syns().states)
+		// 	.arg_buf(&axons.states)
+		// 	.arg_buf(&states)
+		// 	.arg_buf(&best_den_ids)
+		// 	.arg_buf(&dens.states)
+		// 	.arg_buf(&dens.syns().states)
 		// 	// .arg_scl(tfts_per_cel as u32)
 		// 	.arg_scl(dens_per_tft_l2 as u32)
 		// 	.arg_scl(syns_per_den_l2 as u32)			
 		// 	.arg_scl(cels_per_grp_kern_ltp)
 		// 	.arg_scl(pyr_lyr_axn_idz)
 		// 	.arg_scl_named::<u32>("rnd", None)		
-		// 	.arg_env(&dens.syns().flag_sets)
-		// 	.arg_env(&flag_sets)
-		// 	//.arg_env(&prev_best_den_ids)
-		// 	.arg_env_named::<i32>("aux_ints_0", None)
-		// 	// .arg_env_named::<i32>("aux_ints_1", None)
-		// 	// .arg_env(&aux.ints_0)
-		// 	// .arg_env(&aux.ints_1)
-		// 	.arg_env(&dens.syns().strengths)
-		// 	//.arg_env(&axons.states)
+		// 	.arg_buf(&dens.syns().flag_sets)
+		// 	.arg_buf(&flag_sets)
+		// 	//.arg_buf(&prev_best_den_ids)
+		// 	.arg_buf_named::<i32>("aux_ints_0", None)
+		// 	// .arg_buf_named::<i32>("aux_ints_1", None)
+		// 	// .arg_buf(&aux.ints_0)
+		// 	// .arg_buf(&aux.ints_1)
+		// 	.arg_buf(&dens.syns().strengths)
+		// 	//.arg_buf(&axons.states)
 		// ;

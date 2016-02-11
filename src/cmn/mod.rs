@@ -53,8 +53,8 @@ mod tract_frame;
 // 	fn count(&self) -> u32;
 // }
 
-/// Types which can be represented as parallelogram-shaped arrays containing 
-/// hexagon-shaped elements.
+/// Types which can be represented as one or several stacked two-dimensional 
+/// parallelogram-shaped array containing hexagon-shaped elements.
 pub trait ParaHexArray {
 	fn v_size(&self) -> u32;
 	fn u_size(&self) -> u32;

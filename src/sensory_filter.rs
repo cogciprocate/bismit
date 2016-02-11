@@ -43,9 +43,9 @@ impl SensoryFilter {
 		let kern_cycle = ocl_pq.create_kernel(&filter_name.clone(),
 			WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
 			.lws(WorkSize::ThreeDims(1, 8, 8 as usize))
-			.arg_env(&input)
+			.arg_buf(&input)
 			.arg_scl(base_axn_slc)
-			.arg_env(&axns.states)
+			.arg_buf(&axns.states)
 		;
 
 		SensoryFilter {

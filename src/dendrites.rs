@@ -81,15 +81,15 @@ impl Dendrites {
 
 
 		let kern_cycle = ocl_pq.create_kernel("den_cycle", WorkSize::OneDim(states.len()))
-			.arg_env(&syns.states)
-			.arg_env(&syns.strengths)
+			.arg_buf(&syns.states)
+			.arg_buf(&syns.strengths)
 			.arg_scl(syns_per_den_l2)
 			.arg_scl(den_threshold)
-			.arg_env(&energies)
-			.arg_env(&states_raw)
-			// .arg_env_named("aux_ints_0", None)
-			// .arg_env_named("aux_ints_1", None)
-			.arg_env(&states)
+			.arg_buf(&energies)
+			.arg_buf(&states_raw)
+			// .arg_buf_named("aux_ints_0", None)
+			// .arg_buf_named("aux_ints_1", None)
+			.arg_buf(&states)
 		;
 
 		

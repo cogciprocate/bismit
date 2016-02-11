@@ -66,7 +66,7 @@ impl AxonSpace {
 		//let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
 		
 		println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", 
-			area_map.slices().padded_buffer_len(ocl_pq.get_max_work_group_size()), mt = cmn::MT);
+			area_map.slices().padded_buffer_len(ocl_pq.max_work_group_size()), mt = cmn::MT);
 
 		let states = Buffer::<ocl::cl_uchar>::with_vec(area_map.slices(), ocl_pq.queue());
 

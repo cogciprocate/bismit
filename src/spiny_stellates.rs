@@ -42,15 +42,15 @@ impl SpinyStellateLayer {
 
 		let kern_ltp = ocl_pq.create_kernel("sst_ltp", 
 			WorkSize::TwoDims(dims.tfts_per_cel() as usize, grp_count as usize))
-			.arg_env(&axns.states)
-			.arg_env(&dens.syns().states)
+			.arg_buf(&axns.states)
+			.arg_buf(&dens.syns().states)
 			.arg_scl(lyr_axn_idz)
 			.arg_scl(cels_per_grp)
 			.arg_scl(syns_per_tuft_l2)
 			.arg_scl_named::<u32>("rnd", None)
-			// .arg_env_named("aux_ints_0", None)
-			// .arg_env_named("aux_ints_1", None)
-			.arg_env(&dens.syns().strengths)
+			// .arg_buf_named("aux_ints_0", None)
+			// .arg_buf_named("aux_ints_1", None)
+			.arg_buf(&dens.syns().strengths)
 		;
 
 		SpinyStellateLayer {

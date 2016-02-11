@@ -24,18 +24,18 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 
 	let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl", 
 		WorkSize::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, testbed.dims.u_size() as usize))
-		.arg_env(&u_offs)		
-		.arg_env(&v_offs)
-		.arg_env(&outs_sc) 
-		//.arg_env(&outs_v4) 
+		.arg_buf(&u_offs)		
+		.arg_buf(&v_offs)
+		.arg_buf(&outs_sc) 
+		//.arg_buf(&outs_v4) 
 	;
 
 	let kern_v4 = testbed.ocl_pq.create_kernel("test_axn_idxs_vec4", 
 		WorkSize::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, (testbed.dims.u_size() / 4) as usize))
-		.arg_env(&u_offs)		
-		.arg_env(&v_offs)
-		//.arg_env(&outs_sc) 
-		.arg_env(&outs_v4) 
+		.arg_buf(&u_offs)		
+		.arg_buf(&v_offs)
+		//.arg_buf(&outs_sc) 
+		.arg_buf(&outs_v4) 
 	;
 
 	kern_sc.enqueue(None, None);
@@ -55,10 +55,10 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 
 // 	let kern_test_safe_dim_ofs = ocl.create_kernel("test_safe_dim_ofs", 
 // 		WorkSize::OneDim(dims.len() as usize))
-// 		.arg_env(&dim_ids)
-// 		.arg_env(&dim_offs)
+// 		.arg_buf(&dim_ids)
+// 		.arg_buf(&dim_offs)
 // 		.arg_scl(dims.u_size())
-// 		.arg_env(&safe_dim_offs) 
+// 		.arg_buf(&safe_dim_offs) 
 // 	;
 
 // 	kern_test_safe_dim_ofs.enqueue(None, None);

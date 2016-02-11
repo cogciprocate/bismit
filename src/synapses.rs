@@ -126,7 +126,7 @@ impl Synapses {
 			println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
 				dims: {:?}, phys_len: {},", 
 				den_kind, states.len(), dims, dims.padded_buffer_len(
-					ocl_pq.get_max_work_group_size()), mt = cmn::MT); 
+					ocl_pq.max_work_group_size()), mt = cmn::MT); 
 		}
 
 		let min_wg_sqrt = 8 as usize;
@@ -147,16 +147,16 @@ impl Synapses {
 					
 					WorkSize::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
 					.lws(WorkSize::TwoDims(min_wg_sqrt, min_wg_sqrt))
-					.arg_env(&axons.states)
-					.arg_env(&src_col_u_offs)
-					.arg_env(&src_col_v_offs)
-					.arg_env(&src_slc_ids)
+					.arg_buf(&axons.states)
+					.arg_buf(&src_col_u_offs)
+					.arg_buf(&src_col_v_offs)
+					.arg_buf(&src_slc_ids)
 					.arg_scl(tft_id as u32 * cel_tfts_per_syntuft)
 					.arg_scl(syns_per_tft_l2)
 					.arg_scl(dims.depth() as u8)
-					// .arg_env_named::<i32>("aux_ints_0", None)
-					// .arg_env_named::<i32>("aux_ints_1", None)
-					.arg_env(&states)
+					// .arg_buf_named::<i32>("aux_ints_0", None)
+					// .arg_buf_named::<i32>("aux_ints_1", None)
+					.arg_buf(&states)
 			))
 		}
 
@@ -291,12 +291,12 @@ impl Synapses {
 	} 
 
 	// Debugging purposes
-	pub fn set_arg_env_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
+	pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
 		let using_aux = false;
 
 		if using_aux {
 			for kernel in self.kernels.iter_mut() {
-				kernel.set_arg_env_named(name, env);
+				kernel.set_arg_buf_named(name, env);
 			}
 		}
 	}
