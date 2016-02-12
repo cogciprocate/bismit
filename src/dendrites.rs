@@ -89,8 +89,7 @@ impl Dendrites {
             .arg_buf(&states_raw)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(&states)
-        ;
+            .arg_buf(&states);
 
         
         Dendrites {

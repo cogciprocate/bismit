@@ -3,7 +3,7 @@ use std::collections::{ HashMap };
 
 use cmn::{ self, Sdr, CmnError };
 use map::{ AreaMap, LayerTags };
-use ocl::{ self, EventList};
+use ocl::{ EventList};
 use cortical_area:: { CorticalAreas };
 use proto::{ ProtoareaMaps, ProtolayerMaps, Thalamic };
 

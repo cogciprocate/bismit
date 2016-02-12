@@ -51,7 +51,8 @@ impl Minicolumns {
         let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
         let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs",
-            WorkDims::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+                WorkDims::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, 
+                    dims.u_size() as usize))
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
             .arg_buf(&pyrs.best_den_states)
@@ -62,12 +63,11 @@ impl Minicolumns {
             .arg_buf(&pyrs.states)
             .arg_buf_named::<i32>("aux_ints_0", None)
             // .arg_buf_named::<i32>("aux_ints_1", None)
-            .arg_buf(&axons.states)
-        ;
+            .arg_buf(&axons.states);
 
 
         let kern_output = ocl_pq.create_kernel("mcol_output", 
-            WorkDims::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
+                WorkDims::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
             .arg_buf(&pyrs.soma())
             .arg_scl(pyrs.tfts_per_cel())
             .arg_scl(ff_layer_axn_idz as u32)
@@ -76,8 +76,7 @@ impl Minicolumns {
             .arg_buf(&pyrs.best_den_states)
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
-            .arg_buf(&axons.states)
-        ;
+            .arg_buf(&axons.states);
 
 
         Minicolumns {

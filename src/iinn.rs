@@ -10,7 +10,7 @@
 
 use cmn::{ CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkDims, Buffer };
+use ocl::{ Kernel, ProQue, WorkDims, Buffer };
 use proto::{ /*ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind,*/ Protocell, /*DendriteKind*/ };
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
@@ -29,8 +29,8 @@ pub struct InhibitoryInterneuronNetwork {
     //kern_cycle_post: ocl::Kernel,
     //kern_post_inhib: ocl::Kernel,
 
-    kern_inhib_simple: ocl::Kernel,
-    kern_inhib_passthrough: ocl::Kernel,
+    kern_inhib_simple: Kernel,
+    kern_inhib_passthrough: Kernel,
 
     pub spi_ids: Buffer<u8>,
     pub wins: Buffer<u8>,
@@ -58,22 +58,22 @@ impl InhibitoryInterneuronNetwork {
 
 
         let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple",
-            WorkDims::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+                WorkDims::ThreeDims(dims.depth() as usize, dims.v_size() as usize, 
+                    dims.u_size() as usize))
             .lws(WorkDims::ThreeDims(1, 8, 8 as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(&axns.states)
-        ;
+            .arg_buf(&axns.states);
 
         let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough",
-            WorkDims::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+                WorkDims::ThreeDims(dims.depth() as usize, dims.v_size() as usize, 
+                    dims.u_size() as usize))
             //.lws(WorkDims::ThreeDims(1, 8, 8 as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)
-            .arg_buf(&axns.states)
-        ;
+            .arg_buf(&axns.states);
 
         InhibitoryInterneuronNetwork {
             layer_name: layer_name,

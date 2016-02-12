@@ -3,7 +3,7 @@ use rand::{ self, Rng };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkDims, Buffer, EventList };
+use ocl::{ Kernel, ProQue, WorkDims, Buffer, EventList };
 use proto::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -16,7 +16,7 @@ pub struct SpinyStellateLayer {
     protocell: Protocell,
     base_axn_slc: u8,
     lyr_axn_idz: u32,
-    kern_ltp: ocl::Kernel,
+    kern_ltp: Kernel,
     rng: rand::XorShiftRng,
     pub dens: Dendrites,
 }
@@ -41,7 +41,7 @@ impl SpinyStellateLayer {
         let cels_per_grp = dims.per_subgrp(grp_count, ocl_pq).expect("SpinyStellateLayer::new()");
 
         let kern_ltp = ocl_pq.create_kernel("sst_ltp", 
-            WorkDims::TwoDims(dims.tfts_per_cel() as usize, grp_count as usize))
+                WorkDims::TwoDims(dims.tfts_per_cel() as usize, grp_count as usize))
             .arg_buf(&axns.states)
             .arg_buf(&dens.syns().states)
             .arg_scl(lyr_axn_idz)
@@ -50,8 +50,7 @@ impl SpinyStellateLayer {
             .arg_scl_named::<u32>("rnd", None)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(&dens.syns().strengths)
-        ;
+            .arg_buf(&dens.syns().strengths);
 
         SpinyStellateLayer {
             layer_name: layer_name,

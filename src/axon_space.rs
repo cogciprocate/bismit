@@ -10,7 +10,7 @@
 
 use cmn::{ self };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, Buffer, BufferDims };
+use ocl::{ ProQue, Buffer, BufferDims };
 //use proto::{ ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind, Protocell, DendriteKind };
 //use synapses::{ Synapses };
 //use dendrites::{ Dendrites };

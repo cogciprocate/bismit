@@ -138,14 +138,13 @@ impl Synapses {
         let mut kernels = Vec::with_capacity(src_slc_ids_by_tft.len());
 
         for tft_id in 0..src_slc_ids_by_tft.len() {
-            kernels.push(Box::new(
+            kernels.push(Box::new({
 
                 // ocl_pq.create_kernel("syns_cycle_layer",
                 // ocl_pq.create_kernel("syns_cycle_vec4_layer",
                 // ocl_pq.create_kernel("syns_cycle_wow_layer",
-                ocl_pq.create_kernel("syns_cycle_wow_vec4_layer", 
-                    
-                    WorkDims::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
+                ocl_pq.create_kernel("syns_cycle_wow_vec4_layer",
+                        WorkDims::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(WorkDims::TwoDims(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(&axons.states)
                     .arg_buf(&src_col_u_offs)
@@ -157,7 +156,7 @@ impl Synapses {
                     // .arg_buf_named::<i32>("aux_ints_0", None)
                     // .arg_buf_named::<i32>("aux_ints_1", None)
                     .arg_buf(&states)
-            ))
+            }))
         }
 
 

@@ -1,4 +1,4 @@
-use ocl::{ self, Kernel, ProQue, WorkDims, Buffer, };
+use ocl::{ Kernel, ProQue, WorkDims, Buffer, };
 use cmn::{ ParaHexArray, Sdr };
 use axon_space::{ AxonSpace };
 use map::{ self, AreaMap };
@@ -41,12 +41,11 @@ impl SensoryFilter {
         let input = Buffer::<u8>::with_vec(dims, ocl_pq.queue());        
 
         let kern_cycle = ocl_pq.create_kernel(&filter_name.clone(),
-            WorkDims::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+                WorkDims::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
             .lws(WorkDims::ThreeDims(1, 8, 8 as usize))
             .arg_buf(&input)
             .arg_scl(base_axn_slc)
-            .arg_buf(&axns.states)
-        ;
+            .arg_buf(&axns.states);
 
         SensoryFilter {
             filter_name: filter_name,

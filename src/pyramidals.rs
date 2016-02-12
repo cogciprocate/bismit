@@ -3,7 +3,7 @@ use rand::{ self, XorShiftRng, Rng };
 
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkDims, Buffer, OclNum, Kernel, EventList };
+use ocl::{ ProQue, WorkDims, Buffer, OclNum, Kernel, EventList };
 use proto::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -69,7 +69,7 @@ impl PyramidalLayer {
         let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq);        
         
         let kern_cycle = ocl_pq.create_kernel("pyr_cycle",
-            WorkDims::OneDim(dims.cells() as usize))
+                WorkDims::OneDim(dims.cells() as usize))
             .arg_buf(&dens.states_raw)
             .arg_buf(&dens.states)
             .arg_scl(tfts_per_cel)
@@ -80,8 +80,7 @@ impl PyramidalLayer {
             .arg_buf(&best_den_states)
             .arg_buf_named::<i32>("aux_ints_0", None)
             .arg_buf_named::<i32>("aux_ints_1", None)
-            .arg_buf(&states) 
-        ;
+            .arg_buf(&states);
 
         let syns_per_tftsec = dens.syns().syns_per_tftsec();
         let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
@@ -107,8 +106,7 @@ impl PyramidalLayer {
             .arg_buf(&flag_sets)
             .arg_buf_named::<i32>("aux_ints_0", None)
             .arg_buf_named::<i32>("aux_ints_1", None)
-            .arg_buf(&dens.syns().strengths)
-        ;        
+            .arg_buf(&dens.syns().strengths);
 
         PyramidalLayer {
             layer_name: layer_name,
