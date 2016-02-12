@@ -3,7 +3,7 @@ use rand;
 
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Buffer, OclNum, EventList };
+use ocl::{ self, ProQue, WorkDims, Buffer, OclNum, EventList };
 use axon_space::{ AxonSpace };
 use pyramidals::{ PyramidalLayer };
 use spiny_stellates::{ SpinyStellateLayer };
@@ -20,8 +20,8 @@ pub struct Minicolumns {
     kern_output: ocl::Kernel,
     kern_activate: ocl::Kernel,
     rng: rand::XorShiftRng,
-    pub flag_sets: Buffer<ocl::cl_uchar>,
-    pub best_den_states: Buffer<ocl::cl_uchar>,
+    pub flag_sets: Buffer<u8>,
+    pub best_den_states: Buffer<u8>,
 }
 
 impl Minicolumns {
@@ -38,8 +38,8 @@ impl Minicolumns {
 
         println!("{mt}{mt}MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth, mt = cmn::MT);
 
-        let flag_sets = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-        let best_den_states = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
+        let flag_sets = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let best_den_states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
 
         // [FIXME]: TEMPORARY?:
         // [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':
@@ -51,7 +51,7 @@ impl Minicolumns {
         let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
         let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs",
-            WorkSize::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+            WorkDims::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
             .arg_buf(&pyrs.best_den_states)
@@ -67,7 +67,7 @@ impl Minicolumns {
 
 
         let kern_output = ocl_pq.create_kernel("mcol_output", 
-            WorkSize::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
+            WorkDims::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
             .arg_buf(&pyrs.soma())
             .arg_scl(pyrs.tfts_per_cel())
             .arg_scl(ff_layer_axn_idz as u32)

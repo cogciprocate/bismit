@@ -1,4 +1,4 @@
-use ocl::{ self, cl_uchar, Kernel, ProQue, WorkSize, Buffer, };
+use ocl::{ self, Kernel, ProQue, WorkDims, Buffer, };
 use cmn::{ ParaHexArray, Sdr };
 use axon_space::{ AxonSpace };
 use map::{ self, AreaMap };
@@ -9,7 +9,7 @@ pub struct SensoryFilter {
     cl_file_name: Option<String>,
     area_name: &'static str,
     //dims: CorticalDims,
-    input: Buffer<cl_uchar>,
+    input: Buffer<u8>,
     kern_cycle: Kernel,
 }
 
@@ -38,11 +38,11 @@ impl SensoryFilter {
             areas with sensory filters are not yet supported. Please set the depth of any \
             afferent input layers with filters to 1.");
 
-        let input = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());        
+        let input = Buffer::<u8>::with_vec(dims, ocl_pq.queue());        
 
         let kern_cycle = ocl_pq.create_kernel(&filter_name.clone(),
-            WorkSize::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
-            .lws(WorkSize::ThreeDims(1, 8, 8 as usize))
+            WorkDims::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+            .lws(WorkDims::ThreeDims(1, 8, 8 as usize))
             .arg_buf(&input)
             .arg_scl(base_axn_slc)
             .arg_buf(&axns.states)

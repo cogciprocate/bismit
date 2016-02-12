@@ -3,7 +3,7 @@
 // use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 use cortex::{ /*self,*/ Cortex };
 // use thalamus::{ Thalamus };
-// use ocl::{ Buffer, WorkSize, Context, ProQue, BufferDims, ProgramBuilder, BuildOption };
+// use ocl::{ Buffer, WorkDims, Context, ProQue, BufferDims, ProgramBuilder, BuildOption };
 // use interactive::{ input_czar, InputCzar, InputKind };
 use super::{ hybrid, kernels, testbed, TestBed };
 

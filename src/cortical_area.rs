@@ -580,10 +580,10 @@ pub struct AreaParams {
 
 pub struct Aux {
     dims: CorticalDims,
-    pub ints_0: Buffer<ocl::cl_int>,
-    pub ints_1: Buffer<ocl::cl_int>,
-    // pub chars_0: Buffer<ocl::cl_char>,
-    // pub chars_1: Buffer<ocl::cl_char>,
+    pub ints_0: Buffer<i32>,
+    pub ints_1: Buffer<i32>,
+    // pub chars_0: Buffer<ocl::i8>,
+    // pub chars_1: Buffer<ocl::i8>,
 }
 
 impl Aux {
@@ -593,10 +593,10 @@ impl Aux {
         let int_32_min = -2147483648;
 
         Aux { 
-            ints_0: Buffer::<ocl::cl_int>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
-            ints_1: Buffer::<ocl::cl_int>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
-            // chars_0: Buffer::<ocl::cl_char>::new(dims, 0, ocl),
-            // chars_1: Buffer::<ocl::cl_char>::new(dims, 0, ocl),
+            ints_0: Buffer::<i32>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
+            ints_1: Buffer::<i32>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
+            // chars_0: Buffer::<ocl::i8>::new(dims, 0, ocl),
+            // chars_1: Buffer::<ocl::i8>::new(dims, 0, ocl),
             dims: dims.clone(),
         }
     }

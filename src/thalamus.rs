@@ -104,7 +104,7 @@ impl Thalamus {
 
 // THALAMICTRACT: A buffer for I/O between areas. Effectively analogous to the internal capsule.
 pub struct ThalamicTract {
-    ganglion: Vec<ocl::cl_uchar>,
+    ganglion: Vec<u8>,
     tract_areas: TractAreaCache,
     ttl_len: usize,
 }

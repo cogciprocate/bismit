@@ -2,7 +2,7 @@
 use cmn::{ self, /*CorticalDims*/ };
 // use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 // use cortex::{ self, Cortex };
-use ocl::{ Buffer, WorkSize, /*ProQue, BufferDims,*/ /*OclNum*/ };
+use ocl::{ Buffer, WorkDims, /*ProQue, BufferDims,*/ /*OclNum*/ };
 // use interactive::{ input_czar, InputCzar, InputKind };
 // use super::hybrid;
 use super::{ TestBed, util };
@@ -23,7 +23,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
     let mut outs_v4 = Buffer::<u32>::with_vec(testbed.dims, &testbed.ocl_pq.queue());
 
     let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl", 
-        WorkSize::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, testbed.dims.u_size() as usize))
+        WorkDims::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, testbed.dims.u_size() as usize))
         .arg_buf(&u_offs)        
         .arg_buf(&v_offs)
         .arg_buf(&outs_sc) 
@@ -31,7 +31,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
     ;
 
     let kern_v4 = testbed.ocl_pq.create_kernel("test_axn_idxs_vec4", 
-        WorkSize::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, (testbed.dims.u_size() / 4) as usize))
+        WorkDims::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, (testbed.dims.u_size() / 4) as usize))
         .arg_buf(&u_offs)        
         .arg_buf(&v_offs)
         //.arg_buf(&outs_sc) 
@@ -54,7 +54,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 //     let mut safe_dim_offs = Buffer::<i8>::new(dims, 0, &ocl);
 
 //     let kern_test_safe_dim_ofs = ocl.create_kernel("test_safe_dim_ofs", 
-//         WorkSize::OneDim(dims.len() as usize))
+//         WorkDims::OneDim(dims.len() as usize))
 //         .arg_buf(&dim_ids)
 //         .arg_buf(&dim_offs)
 //         .arg_scl(dims.u_size())

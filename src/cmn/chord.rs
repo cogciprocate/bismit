@@ -6,7 +6,7 @@ use cmn;
 use ocl;
 
 pub struct Chord {
-    pub chord: BTreeMap<u16, ocl::cl_uchar>,
+    pub chord: BTreeMap<u16, u8>,
     pub width: u32,
     pub height: u32,
 }
@@ -19,7 +19,7 @@ impl Chord {
         }
     }
 
-    pub fn from_vec(vec: &Vec<ocl::cl_uchar>, width: u32, height: u32,) -> Chord {
+    pub fn from_vec(vec: &Vec<u8>, width: u32, height: u32,) -> Chord {
         let mut chord = BTreeMap::new();
 
         let mut i: u16 = 0;
@@ -38,7 +38,7 @@ impl Chord {
         }
     }
 
-    pub fn note_sum(&mut self, addr: u16, val: ocl::cl_uchar) {
+    pub fn note_sum(&mut self, addr: u16, val: u8) {
         match self.chord.insert(addr, val) {
             Some(x) => {
                 let sum_val = if (x / 2) + (val / 2) > 63 {
@@ -53,7 +53,7 @@ impl Chord {
         };
     }
 
-    pub fn note_gt(&mut self, addr: u16, val: ocl::cl_uchar) {
+    pub fn note_gt(&mut self, addr: u16, val: u8) {
         match self.chord.insert(addr, val) {
             Some(x) => {
                 let sum_val = if x > val {
@@ -68,10 +68,10 @@ impl Chord {
         };
     }
 
-    pub fn unfold(&self) -> Vec<ocl::cl_uchar> {
+    pub fn unfold(&self) -> Vec<u8> {
         //let mut vec = Vec::with_capacity(self.width);
-        //let vec: Vec<ocl::cl_uchar> = Vec::with_capacity(self.width as usize);
-        let mut vec: Vec<ocl::cl_uchar> = iter::repeat(cmn::STATE_ZERO).take(self.width as usize).collect();
+        //let vec: Vec<u8> = Vec::with_capacity(self.width as usize);
+        let mut vec: Vec<u8> = iter::repeat(cmn::STATE_ZERO).take(self.width as usize).collect();
         self.unfold_into(&mut vec, 0);
         vec
     }
@@ -84,7 +84,7 @@ impl Chord {
         cuf
     }*/
 
-    pub fn unfold_into(&self, vec: &mut Vec<ocl::cl_uchar>, offset: usize) {
+    pub fn unfold_into(&self, vec: &mut Vec<u8>, offset: usize) {
         //vec.clear();
         assert!(vec.len() >= (self.width as usize + offset));
 
@@ -93,7 +93,7 @@ impl Chord {
         }
     }
 
-    /*pub fn unfold_into(&self, dest_vec: &mut Vec<ocl::cl_uchar>, offset: usize) {
+    /*pub fn unfold_into(&self, dest_vec: &mut Vec<u8>, offset: usize) {
         dest_vec.clear();
         dest_vec.push_all(&self.unfold().notes);        
     }*/
@@ -108,7 +108,7 @@ impl Chord {
 
 /*
 pub struct ChordUnfolded {
-    pub notes: [ocl::cl_uchar; cmn::SENSORY_CHORD_COLUMNS as usize],
+    pub notes: [u8; cmn::SENSORY_CHORD_COLUMNS as usize],
 }
 impl ChordUnfolded {
     pub fn new() -> ChordUnfolded {

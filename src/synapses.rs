@@ -2,7 +2,7 @@ use rand::{ self, XorShiftRng };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap, SrcSlices, SrcIdxCache, SynSrc };
-use ocl::{ cl_uchar, cl_char, ProQue, WorkSize, Buffer, OclNum, EventList, Kernel };
+use ocl::{ ProQue, WorkDims, Buffer, OclNum, EventList, Kernel };
 use proto::{ CellKind, Protocell, DendriteKind };
 use axon_space::{ AxonSpace };
 
@@ -70,13 +70,13 @@ pub struct Synapses {
     src_idx_cache: SrcIdxCache,
     src_slcs: SrcSlices,
     rng: XorShiftRng,
-    pub states: Buffer<cl_uchar>,
-    pub strengths: Buffer<cl_char>,
-    pub src_slc_ids: Buffer<cl_uchar>,
-    pub src_col_u_offs: Buffer<cl_char>,
-    pub src_col_v_offs: Buffer<cl_char>,
-    pub flag_sets: Buffer<cl_uchar>,
-    // pub slc_pool: Buffer<cl_uchar>,  // BRING THIS BACK (OPTIMIZATION)
+    pub states: Buffer<u8>,
+    pub strengths: Buffer<i8>,
+    pub src_slc_ids: Buffer<u8>,
+    pub src_col_u_offs: Buffer<i8>,
+    pub src_col_v_offs: Buffer<i8>,
+    pub flag_sets: Buffer<u8>,
+    // pub slc_pool: Buffer<u8>,  // BRING THIS BACK (OPTIMIZATION)
 }
 
 impl Synapses {
@@ -92,13 +92,13 @@ impl Synapses {
             protocell.dens_per_tuft_l2, dims.clone());
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-        let states = Buffer::<cl_uchar>::with_vec(dims, ocl_pq.queue());
-        let strengths = Buffer::<cl_char>::with_vec(dims, ocl_pq.queue());
-        let src_slc_ids = Buffer::<cl_uchar>::with_vec(dims, ocl_pq.queue());
+        let states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let strengths = Buffer::<i8>::with_vec(dims, ocl_pq.queue());
+        let src_slc_ids = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
 
-        let src_col_u_offs = Buffer::<cl_char>::with_vec(dims, ocl_pq.queue());
-        let src_col_v_offs = Buffer::<cl_char>::with_vec(dims, ocl_pq.queue()); 
-        let flag_sets = Buffer::<cl_uchar>::with_vec(dims, ocl_pq.queue());
+        let src_col_u_offs = Buffer::<i8>::with_vec(dims, ocl_pq.queue());
+        let src_col_v_offs = Buffer::<i8>::with_vec(dims, ocl_pq.queue()); 
+        let flag_sets = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
 
         // [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
         let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {
@@ -145,8 +145,8 @@ impl Synapses {
                 // ocl_pq.create_kernel("syns_cycle_wow_layer",
                 ocl_pq.create_kernel("syns_cycle_wow_vec4_layer", 
                     
-                    WorkSize::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
-                    .lws(WorkSize::TwoDims(min_wg_sqrt, min_wg_sqrt))
+                    WorkDims::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
+                    .lws(WorkDims::TwoDims(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(&axons.states)
                     .arg_buf(&src_col_u_offs)
                     .arg_buf(&src_col_v_offs)

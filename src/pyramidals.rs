@@ -3,7 +3,7 @@ use rand::{ self, XorShiftRng, Rng };
 
 use cmn::{ self, CorticalDims, DataCellLayer };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Buffer, OclNum, Kernel, EventList };
+use ocl::{ self, ProQue, WorkDims, Buffer, OclNum, Kernel, EventList };
 use proto::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -25,12 +25,12 @@ pub struct PyramidalLayer {
     tfts_per_cel: u32,
     dens_per_tft_l2: u8,
     syns_per_den_l2: u8,
-    pub states: Buffer<ocl::cl_uchar>,
-    pub flag_sets: Buffer<ocl::cl_uchar>,
-    pub best_den_states: Buffer<ocl::cl_uchar>,
-    pub tft_best_den_ids: Buffer<ocl::cl_uchar>,
-    pub tft_best_den_states: Buffer<ocl::cl_uchar>,
-    // pub energies: Buffer<ocl::cl_uchar>, // <<<<< SLATED FOR REMOVAL
+    pub states: Buffer<u8>,
+    pub flag_sets: Buffer<u8>,
+    pub best_den_states: Buffer<u8>,
+    pub tft_best_den_ids: Buffer<u8>,
+    pub tft_best_den_states: Buffer<u8>,
+    // pub energies: Buffer<u8>, // <<<<< SLATED FOR REMOVAL
     pub dens: Dendrites,
 }
 
@@ -47,12 +47,12 @@ impl PyramidalLayer {
         let best_dens_per_cel = tfts_per_cel;
         let dims_best_dens = dims.clone().with_tfts(tfts_per_cel);
 
-        let states = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-        let flag_sets = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-        let best_den_states = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-        let tft_best_den_ids = Buffer::<ocl::cl_uchar>::with_vec(dims_best_dens, ocl_pq.queue());
-        let tft_best_den_states = Buffer::<ocl::cl_uchar>::with_vec(dims_best_dens, ocl_pq.queue());        
-        // let energies = Buffer::<ocl::cl_uchar>::with_vec(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
+        let states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let flag_sets = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let best_den_states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let tft_best_den_ids = Buffer::<u8>::with_vec(dims_best_dens, ocl_pq.queue());
+        let tft_best_den_states = Buffer::<u8>::with_vec(dims_best_dens, ocl_pq.queue());        
+        // let energies = Buffer::<u8>::with_vec(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
         let dens_per_tft_l2 = protocell.dens_per_tuft_l2;
         let syns_per_den_l2 = protocell.syns_per_den_l2;
@@ -69,7 +69,7 @@ impl PyramidalLayer {
         let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq);        
         
         let kern_cycle = ocl_pq.create_kernel("pyr_cycle",
-            WorkSize::OneDim(dims.cells() as usize))
+            WorkDims::OneDim(dims.cells() as usize))
             .arg_buf(&dens.states_raw)
             .arg_buf(&dens.states)
             .arg_scl(tfts_per_cel)
@@ -89,7 +89,7 @@ impl PyramidalLayer {
         let learning_rate_l2i = 0i32;
 
         let kern_ltp = ocl_pq.create_kernel("pyrs_ltp", 
-            WorkSize::OneDim(cel_grp_count as usize))
+            WorkDims::OneDim(cel_grp_count as usize))
             .arg_buf(&axons.states)
             .arg_buf(&states)
             .arg_buf(&tft_best_den_ids)
@@ -372,7 +372,7 @@ pub mod tests {
 
 
         // let kern_ltp = ocl_pq.create_kernel("pyrs_ltp_unoptd", 
-        //     WorkSize::ThreeDims(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
+        //     WorkDims::ThreeDims(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
         //     .arg_buf(&axons.states)
         //     .arg_buf(&states)
         //     .arg_buf(&best_den_ids)

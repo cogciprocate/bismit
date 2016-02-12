@@ -3,7 +3,7 @@ use rand::{ self, Rng };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Buffer, EventList };
+use ocl::{ self, ProQue, WorkDims, Buffer, EventList };
 use proto::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -41,7 +41,7 @@ impl SpinyStellateLayer {
         let cels_per_grp = dims.per_subgrp(grp_count, ocl_pq).expect("SpinyStellateLayer::new()");
 
         let kern_ltp = ocl_pq.create_kernel("sst_ltp", 
-            WorkSize::TwoDims(dims.tfts_per_cel() as usize, grp_count as usize))
+            WorkDims::TwoDims(dims.tfts_per_cel() as usize, grp_count as usize))
             .arg_buf(&axns.states)
             .arg_buf(&dens.syns().states)
             .arg_scl(lyr_axn_idz)

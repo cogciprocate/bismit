@@ -29,7 +29,7 @@ pub struct AxonSpace {
     //depth_axn_hrz: u8,
     //padding: u32,
     //kern_cycle: ocl::Kernel,
-    pub states: Buffer<ocl::cl_uchar>,
+    pub states: Buffer<u8>,
 }
 
 impl AxonSpace {
@@ -68,7 +68,7 @@ impl AxonSpace {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", 
             area_map.slices().padded_buffer_len(ocl_pq.max_work_group_size()), mt = cmn::MT);
 
-        let states = Buffer::<ocl::cl_uchar>::with_vec(area_map.slices(), ocl_pq.queue());
+        let states = Buffer::<u8>::with_vec(area_map.slices(), ocl_pq.queue());
 
         AxonSpace {
             //dims: dims,

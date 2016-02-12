@@ -9,7 +9,7 @@
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkSize, Buffer, EventList };
+use ocl::{ self, ProQue, WorkDims, Buffer, EventList };
 use proto::{ /*ProtolayerMap, LayerMapKind, ProtoareaMaps,*/ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axon_space::{ AxonSpace };
@@ -26,10 +26,10 @@ pub struct Dendrites {
     den_kind: DendriteKind,
     cell_kind: CellKind,
     kern_cycle: ocl::Kernel,
-    pub thresholds: Buffer<ocl::cl_uchar>,
-    pub states_raw: Buffer<ocl::cl_uchar>,
-    pub states: Buffer<ocl::cl_uchar>,
-    pub energies: Buffer<ocl::cl_uchar>,
+    pub thresholds: Buffer<u8>,
+    pub states_raw: Buffer<u8>,
+    pub states: Buffer<u8>,
+    pub energies: Buffer<u8>,
     syns: Synapses,
 }
 
@@ -68,9 +68,9 @@ impl Dendrites {
             ),
         };*/
 
-        let states = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-        let states_raw = Buffer::<ocl::cl_uchar>::with_vec(dims, ocl_pq.queue());
-        let energies = Buffer::<ocl::cl_uchar>::with_vec_initialized_to(255, dims, ocl_pq.queue());
+        let states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let states_raw = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let energies = Buffer::<u8>::with_vec_initialized_to(255, dims, ocl_pq.queue());
 
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", 
             layer_name, dims, states.len(), mt = cmn::MT);
@@ -80,7 +80,7 @@ impl Dendrites {
             area_map, axons, /*aux,*/ ocl_pq);
 
 
-        let kern_cycle = ocl_pq.create_kernel("den_cycle", WorkSize::OneDim(states.len()))
+        let kern_cycle = ocl_pq.create_kernel("den_cycle", WorkDims::OneDim(states.len()))
             .arg_buf(&syns.states)
             .arg_buf(&syns.strengths)
             .arg_scl(syns_per_den_l2)
@@ -99,7 +99,7 @@ impl Dendrites {
             den_kind: den_kind,
             cell_kind: cell_kind,
             kern_cycle: kern_cycle,
-            thresholds: Buffer::<ocl::cl_uchar>::with_vec_initialized_to(1, dims, ocl_pq.queue()),
+            thresholds: Buffer::<u8>::with_vec_initialized_to(1, dims, ocl_pq.queue()),
             states_raw: states_raw,
             states: states,
             energies: energies,
