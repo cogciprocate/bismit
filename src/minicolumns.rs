@@ -94,16 +94,17 @@ impl Minicolumns {
         }
     }
 
+    // <<<<< TODO: DEPRICATE >>>>>
     pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
         let activate_using_aux = true;
         let output_using_aux = false;
 
         if activate_using_aux {
-            self.kern_activate.set_arg_buf_named(name, env);
+            self.kern_activate.set_arg_buf_named(name, Some(env));
         }
 
         if output_using_aux {
-            self.kern_output.set_arg_buf_named(name, env);
+            self.kern_output.set_arg_buf_named(name, Some(env));
         }
     }
 

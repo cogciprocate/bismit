@@ -291,12 +291,13 @@ impl Synapses {
     } 
 
     // Debugging purposes
+    // <<<<< TODO: DEPRICATE >>>>>
     pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
         let using_aux = false;
 
         if using_aux {
             for kernel in self.kernels.iter_mut() {
-                kernel.set_arg_buf_named(name, env);
+                kernel.set_arg_buf_named(name, Some(env));
             }
         }
     }

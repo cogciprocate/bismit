@@ -150,11 +150,11 @@ impl PyramidalLayer {
         let using_aux_learning = true;
 
         if using_aux_cycle {
-            self.kern_cycle.set_arg_buf_named(name, env);
+            self.kern_cycle.set_arg_buf_named(name, Some(env));
         }
 
         if using_aux_learning {
-            self.kern_ltp.set_arg_buf_named(name, env);
+            self.kern_ltp.set_arg_buf_named(name, Some(env));
         }
     }
 }

@@ -219,17 +219,16 @@ impl CorticalArea {
 
         let aux = Aux::new(pyrs_map[ptal_name].dens().syns().dims(), &ocl_pq);
 
-
         // <<<<< TODO: CLEAN THIS UP >>>>>
-        // MAKE ABOVE LIKE BELOW (eliminate set_arg_buf_named() everywhere)
+        // MAKE ABOVE LIKE BELOW (eliminate set_arg_buf_named() methods and just call directly on buffer)
         mcols.set_arg_buf_named("aux_ints_0", &aux.ints_0);
-        pyrs_map.get_mut(ptal_name).unwrap().set_arg_buf_named("aux_ints_0", &aux.ints_0);        
+        pyrs_map.get_mut(ptal_name).unwrap().set_arg_buf_named("aux_ints_0", &aux.ints_0);
         pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
             .set_arg_buf_named("aux_ints_0", &aux.ints_0);
 
         // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0);
-        pyrs_map.get_mut(ptal_name).unwrap().kern_ltp().set_arg_buf_named("aux_ints_1", &aux.ints_1);
-        pyrs_map.get_mut(ptal_name).unwrap().kern_cycle().set_arg_buf_named("aux_ints_1", &aux.ints_1);
+        pyrs_map.get_mut(ptal_name).unwrap().kern_ltp().set_arg_buf_named("aux_ints_1", Some(&aux.ints_1));
+        pyrs_map.get_mut(ptal_name).unwrap().kern_cycle().set_arg_buf_named("aux_ints_1", Some(&aux.ints_1));
 
         // pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
             // .set_arg_buf_named("aux_ints_1", &aux.ints_0);
