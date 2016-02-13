@@ -70,6 +70,7 @@ impl PyramidalLayer {
         
         let kern_cycle = ocl_pq.create_kernel("pyr_cycle",
                 WorkDims::OneDim(dims.cells() as usize))
+            .expect("PyramidalLayer::new()")
             .arg_buf(&dens.states_raw)
             .arg_buf(&dens.states)
             .arg_scl(tfts_per_cel)
@@ -88,7 +89,8 @@ impl PyramidalLayer {
         let learning_rate_l2i = 0i32;
 
         let kern_ltp = ocl_pq.create_kernel("pyrs_ltp", 
-            WorkDims::OneDim(cel_grp_count as usize))
+                WorkDims::OneDim(cel_grp_count as usize))
+            .expect("PyramidalLayer::new()")
             .arg_buf(&axons.states)
             .arg_buf(&states)
             .arg_buf(&tft_best_den_ids)
@@ -367,28 +369,3 @@ pub mod tests {
     }
 }
 
-
-
-        // let kern_ltp = ocl_pq.create_kernel("pyrs_ltp_unoptd", 
-        //     WorkDims::ThreeDims(tfts_per_cel as usize, dims.depth() as usize, grp_count as usize))
-        //     .arg_buf(&axons.states)
-        //     .arg_buf(&states)
-        //     .arg_buf(&best_den_ids)
-        //     .arg_buf(&dens.states)
-        //     .arg_buf(&dens.syns().states)
-        //     // .arg_scl(tfts_per_cel as u32)
-        //     .arg_scl(dens_per_tft_l2 as u32)
-        //     .arg_scl(syns_per_den_l2 as u32)            
-        //     .arg_scl(cels_per_grp_kern_ltp)
-        //     .arg_scl(pyr_lyr_axn_idz)
-        //     .arg_scl_named::<u32>("rnd", None)        
-        //     .arg_buf(&dens.syns().flag_sets)
-        //     .arg_buf(&flag_sets)
-        //     //.arg_buf(&prev_best_den_ids)
-        //     .arg_buf_named::<i32>("aux_ints_0", None)
-        //     // .arg_buf_named::<i32>("aux_ints_1", None)
-        //     // .arg_buf(&aux.ints_0)
-        //     // .arg_buf(&aux.ints_1)
-        //     .arg_buf(&dens.syns().strengths)
-        //     //.arg_buf(&axons.states)
-        // ;

@@ -42,6 +42,7 @@ impl SpinyStellateLayer {
 
         let kern_ltp = ocl_pq.create_kernel("sst_ltp", 
                 WorkDims::TwoDims(dims.tfts_per_cel() as usize, grp_count as usize))
+            .expect("SpinyStellateLayer::new()")
             .arg_buf(&axns.states)
             .arg_buf(&dens.syns().states)
             .arg_scl(lyr_axn_idz)

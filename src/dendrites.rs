@@ -81,6 +81,7 @@ impl Dendrites {
 
 
         let kern_cycle = ocl_pq.create_kernel("den_cycle", WorkDims::OneDim(states.len()))
+            .expect("Dendrites::new()")
             .arg_buf(&syns.states)
             .arg_buf(&syns.strengths)
             .arg_scl(syns_per_den_l2)

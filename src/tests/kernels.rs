@@ -24,7 +24,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 
     let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl", 
             WorkDims::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, 
-            testbed.dims.u_size() as usize))
+            testbed.dims.u_size() as usize)).unwrap()
         .arg_buf(&u_offs)        
         .arg_buf(&v_offs)
         .arg_buf(&outs_sc) 
@@ -33,7 +33,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 
     let kern_v4 = testbed.ocl_pq.create_kernel("test_axn_idxs_vec4", 
             WorkDims::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, 
-            (testbed.dims.u_size() / 4) as usize))
+            (testbed.dims.u_size() / 4) as usize)).unwrap()
         .arg_buf(&u_offs)        
         .arg_buf(&v_offs)
         //.arg_buf(&outs_sc) 

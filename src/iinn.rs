@@ -60,6 +60,7 @@ impl InhibitoryInterneuronNetwork {
         let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple",
                 WorkDims::ThreeDims(dims.depth() as usize, dims.v_size() as usize, 
                     dims.u_size() as usize))
+            .expect("InhibitoryInterneuronNetwork::new()")
             .lws(WorkDims::ThreeDims(1, 8, 8 as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)
@@ -70,6 +71,7 @@ impl InhibitoryInterneuronNetwork {
         let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough",
                 WorkDims::ThreeDims(dims.depth() as usize, dims.v_size() as usize, 
                     dims.u_size() as usize))
+            .expect("InhibitoryInterneuronNetwork::new()")
             //.lws(WorkDims::ThreeDims(1, 8, 8 as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)

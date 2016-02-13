@@ -145,6 +145,7 @@ impl Synapses {
                 // ocl_pq.create_kernel("syns_cycle_wow_layer",
                 ocl_pq.create_kernel("syns_cycle_wow_vec4_layer",
                         WorkDims::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
+                    .expect("Synapses::new()")
                     .lws(WorkDims::TwoDims(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(&axons.states)
                     .arg_buf(&src_col_u_offs)

@@ -53,6 +53,7 @@ impl Minicolumns {
         let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs",
                 WorkDims::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, 
                     dims.u_size() as usize))
+            .expect("Minicolumns::new()")
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
             .arg_buf(&pyrs.best_den_states)
@@ -68,6 +69,7 @@ impl Minicolumns {
 
         let kern_output = ocl_pq.create_kernel("mcol_output", 
                 WorkDims::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
+            .expect("Minicolumns::new()")
             .arg_buf(&pyrs.soma())
             .arg_scl(pyrs.tfts_per_cel())
             .arg_scl(ff_layer_axn_idz as u32)
