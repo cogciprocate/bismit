@@ -11,6 +11,7 @@ libc = "*"
 enum_primitive = "*"
 find_folder = "*"
 #ocl = "0.2"
+time = "*"
 
 [dependencies.microcosm]
 git = "https://github.com/cogciprocate/microcosm.git"
@@ -19,8 +20,8 @@ git = "https://github.com/cogciprocate/microcosm.git"
 #git = "https://github.com/cogciprocate/ocl_rust.git"
 path = "/home/nick/projects/ocl"
 
-[dependencies.time]
-git = "https://github.com/rust-lang/time.git"
+#[dependencies.time]
+#git = "https://github.com/rust-lang/time.git"
 
 #[dependencies.bitflags]
 #git = "https://github.com/rust-lang/bitflags.git"
