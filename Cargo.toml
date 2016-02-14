@@ -4,30 +4,24 @@ version = "0.0.1"
 authors = ["Nick Sanders <github.com/c0gent>"]
 
 [dependencies]
-bitflags = "*"
+# bitflags = "*"
 rand = "*"
 num = "*"
 libc = "*"
 enum_primitive = "*"
 find_folder = "*"
-#ocl = "0.2"
+# ocl = "0.2"
 time = "*"
 
 [dependencies.microcosm]
 git = "https://github.com/cogciprocate/microcosm.git"
 
 [dependencies.ocl]
-#git = "https://github.com/cogciprocate/ocl_rust.git"
+# git = "https://github.com/cogciprocate/ocl_rust.git"
 path = "/home/nick/projects/ocl"
 
-#[dependencies.time]
-#git = "https://github.com/rust-lang/time.git"
+# [dependencies.time]
+# git = "https://github.com/rust-lang/time.git"
 
-#[dependencies.bitflags]
-#git = "https://github.com/rust-lang/bitflags.git"
-
-
-# Comment
-
-
-
+[dependencies.bitflags]
+git = "https://github.com/rust-lang-nursery/bitflags.git"

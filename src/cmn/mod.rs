@@ -35,7 +35,6 @@ mod macros;
 mod cortical_dims;
 mod slice_dims;
 mod tract_dims;
-pub mod data_cell_layer;
 //mod area_map;
 // mod slice_dims;
 mod renderer;
@@ -45,6 +44,8 @@ mod error;
 // mod para_hex_grid;
 mod tract;
 mod tract_frame;
+pub mod data_cell_layer;
+// pub mod fmt;
 
 
 // pub trait ParaHexArray {

@@ -21,10 +21,12 @@ mod slice_map;
 mod syn_src_map;
 mod ganglion_map;
 
+
+
 // [FIXME] TODO: Potentially separate layer concerns from axon 'flavor' into a new bitflag (AxonFlags?).
 // Currently: bits 48 - 63 pertain to axon 'flavor' and are relevant to inter-area axons, 32 - 47 pertain to layer properties relevant to interlaminar axons and cells. 0 - 31 are reserved for unique ids (particularly non-specific group ids).
 bitflags! {
-    flags LayerTags: u64 {
+    pub flags LayerTags: u64 {
         const DEFAULT                = 0b0000_0000_0000_0000__0000_0000_0000_0000 << 32,
         const INPUT                    = 0b0000_0000_0000_0001__0000_0000_0000_0000 << 32,
         const OUTPUT                 = 0b0000_0000_0000_0010__0000_0000_0000_0000 << 32,

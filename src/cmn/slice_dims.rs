@@ -153,7 +153,7 @@ impl BufferDims for SliceDims {
     // [FIXME]: TODO: ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT
     #[inline]
     fn padded_buffer_len(&self, incr: usize) -> usize {
-        ocl::padded_len(self.columns() as usize, incr)
+        ocl::util::padded_len(self.columns() as usize, incr)
     }
 }
 

@@ -4,7 +4,7 @@ use rand;
 
 use cmn::{ self, ParaHexArray, CorticalDims, Renderer, Sdr, DataCellLayer };
 use map::{ self, AreaMap, LayerTags, GanglionMap };
-use ocl::{ self, ProQue, Context, Buffer, EventList };
+use ocl::{ self, ProQue, Context, Buffer, EventList, Queue };
 use proto::{  Cellular, Pyramidal, SpinyStellate, Inhibitory,  DendriteKind };
 
 use axon_space::{ AxonSpace };
@@ -70,7 +70,7 @@ impl CorticalArea {
         println!("{mt}CORTICALAREA::NEW(): Area \"{}\" details: \
             (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: {:?}", 
             area_name, dims.u_size(), dims.v_size(), dims.depth(), area_map.eff_areas(), 
-            area_map.aff_areas(), ocl_pq.queue().device_id(), mt = cmn::MT);
+            area_map.aff_areas(), ocl_pq.queue().device_id_obj_raw().as_ptr(), mt = cmn::MT);
 
         let psal_name = area_map.layer_name_by_tags(map::SPATIAL_ASSOCIATIVE);
         let ptal_name = area_map.layer_name_by_tags(map::TEMPORAL_ASSOCIATIVE);
@@ -600,14 +600,14 @@ impl Aux {
         }
     }
 
-    pub unsafe fn resize(&mut self, new_dims: &CorticalDims) {
+    pub unsafe fn resize(&mut self, new_dims: &CorticalDims, ocl_queue: &Queue) {
         let int_32_min = -2147483648;
         self.dims = new_dims.clone();
         
-        self.ints_0.resize(&self.dims);
+        self.ints_0.resize(&self.dims, ocl_queue);
         self.ints_0.set_all_to(int_32_min);
 
-        self.ints_1.resize(&self.dims);
+        self.ints_1.resize(&self.dims, ocl_queue);
         self.ints_1.set_all_to(int_32_min);
         // self.chars_0.resize(&self.dims, 0);
         // self.chars_1.resize(&self.dims, 0);

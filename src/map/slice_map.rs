@@ -237,7 +237,7 @@ impl SliceMap {
 impl BufferDims for SliceMap {
     #[inline]
     fn padded_buffer_len(&self, incr: usize) -> usize {
-        ocl::padded_len(self.axn_count() as usize, incr)
+        ocl::util::padded_len(self.axn_count() as usize, incr)
     }
 }
 

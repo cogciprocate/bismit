@@ -124,15 +124,23 @@ impl SpinyStellateLayer {
 
         println!("cell.syns.states[{:?}]: ", cel_syn_range.clone()); 
         self.dens.syns_mut().states.print(1, None, Some(cel_syn_range.clone()), false);
+        // cmn::fmt::print_slice(&self.dens.syns_mut().states.vec()[..], 1, None, 
+        //     Some(cel_syn_range.clone()), false);
 
         println!("cell.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
         self.dens.syns_mut().strengths.print(1, None, Some(cel_syn_range.clone()), false);
+        // cmn::fmt::print_slice(&self.dens.syns_mut().strengths.vec()[..], 1, None, 
+        //     Some(cel_syn_range.clone()), false);
 
         println!("cell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
         self.dens.syns_mut().src_col_v_offs.print(1, None, Some(cel_syn_range.clone()), false);
+        // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_v_offs.vec()[..], 1, None, 
+            // Some(cel_syn_range.clone()), false);
 
         println!("cell.syns.src_col_u_offs[{:?}]: ", cel_syn_range.clone()); 
         self.dens.syns_mut().src_col_u_offs.print(1, None, Some(cel_syn_range.clone()), false);
+        // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_u_offs.vec()[..], 1, None, 
+        //     Some(cel_syn_range.clone()), false);
     }
 
     #[inline]
