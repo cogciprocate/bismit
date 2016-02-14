@@ -28,7 +28,7 @@ use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
 
 bitflags! {
     // #[derive(Debug)]
-    flags PtalAlcoSwitches: u32 {
+    pub flags PtalAlcoSwitches: u32 {
         const NONE                = 0b00000000,
         const ACTIVATE             = 0b00000001,
         const LEARN                = 0b00000010,
