@@ -28,7 +28,7 @@ use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
 
 bitflags! {
     // #[derive(Debug)]
-    pub flags PtalAlcoSwitches: u32 {
+    flags PtalAlcoSwitches: u32 {
         const NONE                = 0b00000000,
         const ACTIVATE             = 0b00000001,
         const LEARN                = 0b00000010,
@@ -136,8 +136,8 @@ pub fn compare_buffers<T: OclNum>(env1: &mut Buffer<T>, env2: &mut Buffer<T>) ->
     print!("\nVector comparison:\n");    
     assert!(env1.len() == env2.len());
 
-    env1.fill_vec();
-    env2.fill_vec();
+    env1.fill_vec().ok();
+    env2.fill_vec().ok();
 
     let mut failure = false;
 
@@ -177,7 +177,7 @@ pub fn eval_others<T: OclNum>(env: &mut Buffer<T>, foc_idx: usize, other_val: T)
     assert!(idn > 0);
     assert!(foc_idx < idn);
 
-    env.fill_vec();
+    env.fill_vec().ok();
 
     if idn <= check_margin * 4 {
         // CHECK THE WHOLE LIST (except for foc_idx)

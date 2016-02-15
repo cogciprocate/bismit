@@ -179,11 +179,11 @@ impl DataCellLayer for PyramidalLayer {
 
     // [FIXME]: MARKED FOR DEPRICATION
     fn confab(&mut self) {
-        self.states.fill_vec();
-        self.best_den_states.fill_vec();
-        self.tft_best_den_ids.fill_vec();
-        self.tft_best_den_states.fill_vec();
-        self.flag_sets.fill_vec();
+        self.states.fill_vec().ok();
+        self.best_den_states.fill_vec().ok();
+        self.tft_best_den_ids.fill_vec().ok();
+        self.tft_best_den_states.fill_vec().ok();
+        self.flag_sets.fill_vec().ok();
         // self.energies.fill_vec(); // <<<<< SLATED FOR REMOVAL
 
         self.dens_mut().confab();
@@ -356,15 +356,15 @@ pub mod tests {
         }
 
         fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL
-            self.states.set_all_to(0);
-            self.flag_sets.set_all_to(0);
-            self.best_den_states.set_all_to(0);
-            self.tft_best_den_ids.set_all_to(0);
-            self.tft_best_den_states.set_all_to(0);
-            //self.best2_den_ids.set_all_to(0);            // <<<<< SLATED FOR REMOVAL
-            //self.best2_den_states.set_all_to(0);        // <<<<< SLATED FOR REMOVAL
+            self.states.set_all_to(0).ok();
+            self.flag_sets.set_all_to(0).ok();
+            self.best_den_states.set_all_to(0).ok();
+            self.tft_best_den_ids.set_all_to(0).ok();
+            self.tft_best_den_states.set_all_to(0).ok();
+            //self.best2_den_ids.set_all_to(0).ok();            // <<<<< SLATED FOR REMOVAL
+            //self.best2_den_states.set_all_to(0).ok();        // <<<<< SLATED FOR REMOVAL
             
-            // self.energies.set_all_to(0);                // <<<<< SLATED FOR REMOVAL
+            // self.energies.set_all_to(0).ok();                // <<<<< SLATED FOR REMOVAL
         }
     }
 }

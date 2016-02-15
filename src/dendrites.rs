@@ -125,9 +125,9 @@ impl Dendrites {
     }
 
     pub fn confab(&mut self) {
-        self.thresholds.fill_vec();
-        self.states_raw.fill_vec();
-        self.states.fill_vec();
+        self.thresholds.fill_vec().ok();
+        self.states_raw.fill_vec().ok();
+        self.states.fill_vec().ok();
         self.syns.confab();
     }
 
@@ -173,17 +173,17 @@ pub mod tests {
 
     impl DendritesTest for Dendrites {
         fn set_all_to_zero(&mut self, set_syns_zero: bool) {
-            self.thresholds.set_all_to(0);
-            self.states_raw.set_all_to(0);
-            self.states.set_all_to(0);
-            self.energies.set_all_to(0);
+            self.thresholds.set_all_to(0).ok();
+            self.states_raw.set_all_to(0).ok();
+            self.states.set_all_to(0).ok();
+            self.energies.set_all_to(0).ok();
 
             if set_syns_zero { self.syns.set_all_to_zero() };
         }
 
         fn den_state_direct(&self, idx: u32) -> u8 {
             let mut sdr = vec![0u8];
-            self.states.read_async(&mut sdr[..], idx as usize, None, None);
+            self.states.read(&mut sdr[..], idx as usize).ok();
             sdr[0]
         }
 

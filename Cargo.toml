@@ -4,7 +4,7 @@ version = "0.0.1"
 authors = ["Nick Sanders <github.com/c0gent>"]
 
 [dependencies]
-# bitflags = "*"
+bitflags = "*"
 rand = "*"
 num = "*"
 libc = "*"
@@ -23,5 +23,5 @@ path = "/home/nick/projects/ocl"
 # [dependencies.time]
 # git = "https://github.com/rust-lang/time.git"
 
-[dependencies.bitflags]
-git = "https://github.com/rust-lang-nursery/bitflags.git"
+# [dependencies.bitflags]
+# git = "https://github.com/rust-lang-nursery/bitflags.git"

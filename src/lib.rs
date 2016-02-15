@@ -1,8 +1,8 @@
+//! # Bismit: Biologically Inspired Sensory Motor Interface Tool
+
 #![allow(dead_code, unused_variables, unused_assignments)]
 #![allow(unused_features)]
 #![feature(clone_from_slice)]
-
-pub use map::proto;
 
 extern crate num;
 extern crate libc;
@@ -11,34 +11,30 @@ extern crate time;
 extern crate microcosm;
 extern crate ocl;
 extern crate find_folder;
+#[macro_use] extern crate rand;
+#[macro_use] extern crate bitflags;
+#[macro_use] extern crate enum_primitive;
 
-#[macro_use]
-extern crate rand;
-#[macro_use] 
-extern crate bitflags;
-#[macro_use] 
-extern crate enum_primitive;
-
-#[macro_use]
-pub mod cmn;
+#[macro_use] pub mod cmn;
 // mod ocl;
-pub mod cortical_area;
 mod axon_space;
-pub mod dendrites;
 mod synapses;
 mod minicolumns;
 mod iinn;
 mod pyramidals;
-pub mod spiny_stellates;
-pub mod cortex;
 mod thalamus;
 // mod proto;
 //mod energy;
-pub mod encode;
 mod sensory_filter;
-pub mod input_source;
-pub mod map;
 // mod interactive;
 
-#[cfg(test)]
-pub mod tests;
+#[cfg(test)] pub mod tests;
+pub mod spiny_stellates;
+pub mod cortex;
+pub mod input_source;
+pub mod map;
+pub mod encode;
+pub mod dendrites;
+pub mod cortical_area;
+
+pub use map::proto;

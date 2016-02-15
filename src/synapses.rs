@@ -196,9 +196,9 @@ impl Synapses {
                 (SLICE)(OFFSET)(STRENGTH)]\n", self.den_kind);
         }
 
-        self.strengths.fill_vec();
-        self.src_slc_ids.fill_vec();
-        self.src_col_v_offs.fill_vec();
+        self.strengths.fill_vec().ok();
+        self.src_slc_ids.fill_vec().ok();
+        self.src_col_v_offs.fill_vec().ok();
 
         let syns_per_layer_tft = self.dims.per_slc_per_tft() as usize * self.dims.depth() as usize;
         let src_slc_ids_by_tft = self.src_slc_ids_by_tft.clone();
@@ -230,10 +230,10 @@ impl Synapses {
             src_tft_id += 1;
         }
 
-        self.strengths.flush_vec();
-        self.src_slc_ids.flush_vec();
-        self.src_col_v_offs.flush_vec();    
-        self.src_col_u_offs.flush_vec();
+        self.strengths.flush_vec().ok();
+        self.src_slc_ids.flush_vec().ok();
+        self.src_col_v_offs.flush_vec().ok();    
+        self.src_col_u_offs.flush_vec().ok();
     }
 
     // [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
@@ -284,10 +284,10 @@ impl Synapses {
     }
 
     pub fn confab(&mut self) {
-        self.states.fill_vec();
-        self.strengths.fill_vec();
-        self.src_slc_ids.fill_vec();
-        self.src_col_v_offs.fill_vec();
+        self.states.fill_vec().ok();
+        self.strengths.fill_vec().ok();
+        self.src_slc_ids.fill_vec().ok();
+        self.src_col_v_offs.fill_vec().ok();
     } 
 
     // Debugging purposes
@@ -328,8 +328,8 @@ impl Synapses {
 
     // [FIXME] TODO: Depricate me evenutally
     pub fn set_offs_to_zero_temp(&mut self) {
-        self.src_col_v_offs.set_all_to(0);
-        self.src_col_u_offs.set_all_to(0);
+        self.src_col_v_offs.set_all_to(0).ok();
+        self.src_col_u_offs.set_all_to(0).ok();
     }
 
 }
@@ -365,34 +365,34 @@ pub mod tests {
 
     impl SynapsesTest for Synapses {
         fn set_offs_to_zero(&mut self) {
-            self.src_col_v_offs.set_all_to(0);
-            self.src_col_u_offs.set_all_to(0);
+            self.src_col_v_offs.set_all_to(0).ok();
+            self.src_col_u_offs.set_all_to(0).ok();
         }
 
         fn set_all_to_zero(&mut self) {
-            self.states.set_all_to(0);
-            self.strengths.set_all_to(0);
-            self.src_slc_ids.set_all_to(0);
-            self.src_col_u_offs.set_all_to(0);
-            self.src_col_v_offs.set_all_to(0);
-            self.flag_sets.set_all_to(0);
+            self.states.set_all_to(0).ok();
+            self.strengths.set_all_to(0).ok();
+            self.src_slc_ids.set_all_to(0).ok();
+            self.src_col_u_offs.set_all_to(0).ok();
+            self.src_col_v_offs.set_all_to(0).ok();
+            self.flag_sets.set_all_to(0).ok();
         }
 
         fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize) {
             let sdr_v = vec![v_ofs];
             let sdr_u = vec![u_ofs];
-            self.src_col_v_offs.write_async(&sdr_v[..], idx, None, None);
-            self.src_col_u_offs.write_async(&sdr_u[..], idx, None, None);
+            self.src_col_v_offs.write(&sdr_v[..], idx).ok();
+            self.src_col_u_offs.write(&sdr_u[..], idx).ok();
         }
 
         fn set_src_slc(&mut self, src_slc_id: u8, idx: usize) {
             let sdr = vec![src_slc_id];
-            self.src_slc_ids.write_async(&sdr[..], idx, None, None);
+            self.src_slc_ids.write(&sdr[..], idx).ok();
         }
 
         fn syn_state(&self, idx: u32) -> u8 {
             let mut sdr = vec![0u8];
-            self.states.read_async(&mut sdr[..], idx as usize, None, None);
+            self.states.read(&mut sdr[..], idx as usize).ok();
             sdr[0]
         }
 

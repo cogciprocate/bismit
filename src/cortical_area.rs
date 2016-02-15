@@ -288,7 +288,7 @@ impl CorticalArea {
 
         self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.bypass_inhib);
 
-        if !self.disable_ssts {    if !self.disable_learning { self.psal_mut().learn(); } }
+        if !self.disable_ssts { if !self.disable_learning { self.psal_mut().learn(); } }
 
         if !self.disable_mcols { self.mcols.activate(); }
 
@@ -402,7 +402,7 @@ impl CorticalArea {
         new_events.clear_completed();    
 
         self.axns.states.write_async(sdr, axn_range.start as usize, 
-            Some(wait_events), Some(new_events));
+            Some(wait_events), Some(new_events)).ok();
         // self.axns.states.write_async(sdr, axn_range.start as usize, 
         //     None, Some(new_events));
     }    
@@ -422,8 +422,8 @@ impl CorticalArea {
         // new_events.wait();
         // new_events.release_all();
         new_events.clear_completed();
-        self.axns.states.read_async(sdr, axn_range.start as usize, 
-            Some(wait_events), Some(new_events));
+        unsafe { self.axns.states.read_async(sdr, axn_range.start as usize, 
+            Some(wait_events), Some(new_events)).ok(); }
     }        
 
     #[inline]
@@ -528,13 +528,13 @@ impl CorticalArea {
         debug_assert!(buf.len() == slc_axn_range.len(), "Sample buffer length ({}) not \
             equal to slice axon length({}). slc_axn_range: {:?}, slc_id: {}", 
             buf.len(), slc_axn_range.len(), slc_axn_range, slc_id);
-        self.axns.states.read_async(buf, slc_axn_range.start, None, None);
+        self.axns.states.read(buf, slc_axn_range.start).ok();
     }    
 
     #[inline]
     pub fn sample_axn_space(&self, buf: &mut [u8]) {
         debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
-        self.axns.states.read_async(buf, 0, None, None);
+        self.axns.states.read(buf, 0).ok();
     }
 
     #[inline]
@@ -605,10 +605,10 @@ impl Aux {
         self.dims = new_dims.clone();
         
         self.ints_0.resize(&self.dims, ocl_queue);
-        self.ints_0.set_all_to(int_32_min);
+        self.ints_0.set_all_to(int_32_min).ok();
 
         self.ints_1.resize(&self.dims, ocl_queue);
-        self.ints_1.set_all_to(int_32_min);
+        self.ints_1.set_all_to(int_32_min).ok();
         // self.chars_0.resize(&self.dims, 0);
         // self.chars_1.resize(&self.dims, 0);
     }
