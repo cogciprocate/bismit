@@ -68,9 +68,9 @@ impl Dendrites {
             ),
         };*/
 
-        let states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
-        let states_raw = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
-        let energies = Buffer::<u8>::with_vec_initialized_to(255, dims, ocl_pq.queue());
+        let states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
+        let states_raw = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
+        let energies = Buffer::<u8>::with_vec_initialized_to(255, &dims, ocl_pq.queue());
 
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", 
             layer_name, dims, states.len(), mt = cmn::MT);
@@ -99,7 +99,7 @@ impl Dendrites {
             den_kind: den_kind,
             cell_kind: cell_kind,
             kern_cycle: kern_cycle,
-            thresholds: Buffer::<u8>::with_vec_initialized_to(1, dims, ocl_pq.queue()),
+            thresholds: Buffer::<u8>::with_vec_initialized_to(1, &dims, ocl_pq.queue()),
             states_raw: states_raw,
             states: states,
             energies: energies,
@@ -125,9 +125,9 @@ impl Dendrites {
     }
 
     pub fn confab(&mut self) {
-        self.thresholds.fill_vec().ok();
-        self.states_raw.fill_vec().ok();
-        self.states.fill_vec().ok();
+        self.thresholds.fill_vec();
+        self.states_raw.fill_vec();
+        self.states.fill_vec();
         self.syns.confab();
     }
 
@@ -173,17 +173,17 @@ pub mod tests {
 
     impl DendritesTest for Dendrites {
         fn set_all_to_zero(&mut self, set_syns_zero: bool) {
-            self.thresholds.set_all_to(0).ok();
-            self.states_raw.set_all_to(0).ok();
-            self.states.set_all_to(0).ok();
-            self.energies.set_all_to(0).ok();
+            self.thresholds.set_all_to(0).unwrap();
+            self.states_raw.set_all_to(0).unwrap();
+            self.states.set_all_to(0).unwrap();
+            self.energies.set_all_to(0).unwrap();
 
             if set_syns_zero { self.syns.set_all_to_zero() };
         }
 
         fn den_state_direct(&self, idx: u32) -> u8 {
             let mut sdr = vec![0u8];
-            self.states.read(&mut sdr[..], idx as usize).ok();
+            self.states.read(&mut sdr[..], idx as usize).unwrap();
             sdr[0]
         }
 

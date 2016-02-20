@@ -31,7 +31,7 @@ fn calc_offs(v_size: usize, u_size: usize, y_size: usize, x_size: usize, hex_sid
 #[inline]
 pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_side: f32, 
             x_ofs: f32, y_ofs: f32, 
-    ) -> (f32, f32, bool) 
+        ) -> (f32, f32, bool) 
 {
     let u = u_id;
     let u_inv = 0.0 - u;

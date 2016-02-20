@@ -52,9 +52,9 @@ impl InhibitoryInterneuronNetwork {
         // let wins = Buffer::<u8>::with_padding(dims, 0u8, ocl, padding);
         // let states = Buffer::<u8>::with_padding(dims, cmn::STATE_ZERO, ocl, padding);
 
-        let spi_ids = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
-        let wins = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
-        let states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let spi_ids = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
+        let wins = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
+        let states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
 
 
         let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple",

@@ -148,13 +148,13 @@ impl LearningTestBed {
 
             // Zero all dendrite and synapse buffers:
             area.ptal_mut().dens_mut().set_all_to_zero(true);
-            area.axns.states.set_all_to(0).ok();
+            area.axns.states.set_all_to(0).unwrap();
 
             // Set source slice to an unused slice for all synapses:
             let unused_slc_ids = area.area_map().axn_base_slc_ids_by_tags(map::UNUSED_TESTING);
             assert!(unused_slc_ids.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
             let unused_slc_id = unused_slc_ids[0];
-            area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(unused_slc_id).ok();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(unused_slc_id).unwrap();
 
             // Primary spatial layer slice idz (base axon slice):
             let prx_src_slc = area.psal().base_axn_slc();
@@ -224,7 +224,7 @@ impl LearningTestBed {
 
             // Set the sources for the synapses on the second half of our chosen tuft to our preselected nearby axon:
             // <<<<< [FIXME] TODO: IMPLEMENT THIS (for efficiency): >>>>>
-            //         area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range).ok();
+            //         area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range).unwrap();
 
             for syn_idx in focus_syns.clone() {
                 area.ptal_mut().dens_mut().syns_mut().set_src_offs(fake_v_ofs, fake_u_ofs, syn_idx as usize);
@@ -613,7 +613,7 @@ impl LearningTestBed {
 
         // Set everything back up:
         let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
-        area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(self.unused_slc_id).ok();
+        area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(self.unused_slc_id).unwrap();
 
         for syn_idx in self.focus_syns.clone() {
             area.ptal_mut().dens_mut().syns_mut().set_src_offs(self.fake_v_ofs, self.fake_u_ofs, syn_idx as usize);
@@ -632,15 +632,15 @@ impl LearningTestBed {
 
         printlny!("Cleaning up...");
         area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(self.unused_slc_id, 
-            self.syn_coords.syn_idx_range_tft().clone()).ok();
+            self.syn_coords.syn_idx_range_tft().clone()).unwrap();
         area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, 
-            self.syn_coords.syn_idx_range_tft().clone()).ok();
+            self.syn_coords.syn_idx_range_tft().clone()).unwrap();
         area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, 
-            self.syn_coords.syn_idx_range_tft().clone()).ok();
+            self.syn_coords.syn_idx_range_tft().clone()).unwrap();
 
         if zero_strengths {
             area.ptal_mut().dens_mut().syns_mut().strengths.set_range_to(0, 
-                self.syn_coords.syn_idx_range_tft().clone()).ok();
+                self.syn_coords.syn_idx_range_tft().clone()).unwrap();
         }
     }
 }

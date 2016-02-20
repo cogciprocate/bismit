@@ -1,15 +1,15 @@
 use std::ops::Range;
 use rand;
 
-use cmn::{ self, CorticalDims, DataCellLayer };
-use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkDims, Buffer, OclNum, EventList };
-use axon_space::{ AxonSpace };
-use pyramidals::{ PyramidalLayer };
-use spiny_stellates::{ SpinyStellateLayer };
+use cmn::{self, CorticalDims, DataCellLayer};
+use map::{AreaMap};
+use ocl::{self, ProQue, WorkDims, Buffer, OclNum, EventList, Result as OclResult};
+use axon_space::{AxonSpace};
+use pyramidals::{PyramidalLayer};
+use spiny_stellates::{SpinyStellateLayer};
 
 #[cfg(test)]
-pub use self::tests::{ MinicolumnsTest };
+pub use self::tests::{MinicolumnsTest};
 
 
 pub struct Minicolumns {
@@ -38,8 +38,8 @@ impl Minicolumns {
 
         println!("{mt}{mt}MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth, mt = cmn::MT);
 
-        let flag_sets = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
-        let best_den_states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let flag_sets = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
+        let best_den_states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
 
         // [FIXME]: TEMPORARY?:
         // [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':
@@ -95,17 +95,21 @@ impl Minicolumns {
     }
 
     // <<<<< TODO: DEPRICATE >>>>>
-    pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
+    pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) 
+            -> OclResult<()> 
+    {
         let activate_using_aux = true;
         let output_using_aux = false;
 
         if activate_using_aux {
-            self.kern_activate.set_arg_buf_named(name, Some(env));
+            try!(self.kern_activate.set_arg_buf_named(name, Some(env)));
         }
 
         if output_using_aux {
-            self.kern_output.set_arg_buf_named(name, Some(env));
+            try!(self.kern_output.set_arg_buf_named(name, Some(env)));
         }
+
+        Ok(())
     }
 
     #[inline]
@@ -116,7 +120,7 @@ impl Minicolumns {
     pub fn output(&self, new_events: Option<&mut EventList>) {
         match new_events {
             Some(ne) => {
-                ne.release_all();
+                ne.clear_completed().expect("Minicolumns::output");
                 self.kern_output.enqueue(None, Some(ne));
             },
 
@@ -125,8 +129,8 @@ impl Minicolumns {
     }
 
     pub fn confab(&mut self) {
-        self.flag_sets.fill_vec().ok();
-        self.best_den_states.fill_vec().ok();
+        self.flag_sets.fill_vec();
+        self.best_den_states.fill_vec();
     }
 
     #[inline]

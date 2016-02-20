@@ -1,13 +1,13 @@
-use rand::{ self, XorShiftRng };
+use rand::{self, XorShiftRng};
 
-use cmn::{ self, CorticalDims };
-use map::{ AreaMap, SrcSlices, SrcIdxCache, SynSrc };
-use ocl::{ ProQue, WorkDims, Buffer, OclNum, EventList, Kernel };
-use proto::{ CellKind, Protocell, DendriteKind };
-use axon_space::{ AxonSpace };
+use cmn::{self, CorticalDims};
+use map::{AreaMap, SrcSlices, SrcIdxCache, SynSrc};
+use ocl::{ProQue, WorkDims, Buffer, OclNum, EventList, Kernel, Result as OclResult};
+use proto::{CellKind, Protocell, DendriteKind};
+use axon_space::{AxonSpace};
 
 #[cfg(test)]
-pub use self::tests::{ SynCoords, SynapsesTest };
+pub use self::tests::{SynCoords, SynapsesTest};
 
 //    Synapses: Smallest and most numerous unit in the cortex - the soldier at the bottom
 //         - TODO:
@@ -92,13 +92,13 @@ impl Synapses {
             protocell.dens_per_tuft_l2, dims.clone());
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-        let states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
-        let strengths = Buffer::<i8>::with_vec(dims, ocl_pq.queue());
-        let src_slc_ids = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
+        let strengths = Buffer::<i8>::with_vec(&dims, ocl_pq.queue());
+        let src_slc_ids = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
 
-        let src_col_u_offs = Buffer::<i8>::with_vec(dims, ocl_pq.queue());
-        let src_col_v_offs = Buffer::<i8>::with_vec(dims, ocl_pq.queue()); 
-        let flag_sets = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
+        let src_col_u_offs = Buffer::<i8>::with_vec(&dims, ocl_pq.queue());
+        let src_col_v_offs = Buffer::<i8>::with_vec(&dims, ocl_pq.queue()); 
+        let flag_sets = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
 
         // [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
         let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {
@@ -196,9 +196,9 @@ impl Synapses {
                 (SLICE)(OFFSET)(STRENGTH)]\n", self.den_kind);
         }
 
-        self.strengths.fill_vec().ok();
-        self.src_slc_ids.fill_vec().ok();
-        self.src_col_v_offs.fill_vec().ok();
+        self.strengths.fill_vec();
+        self.src_slc_ids.fill_vec();
+        self.src_col_v_offs.fill_vec();
 
         let syns_per_layer_tft = self.dims.per_slc_per_tft() as usize * self.dims.depth() as usize;
         let src_slc_ids_by_tft = self.src_slc_ids_by_tft.clone();
@@ -230,10 +230,10 @@ impl Synapses {
             src_tft_id += 1;
         }
 
-        self.strengths.flush_vec().ok();
-        self.src_slc_ids.flush_vec().ok();
-        self.src_col_v_offs.flush_vec().ok();    
-        self.src_col_u_offs.flush_vec().ok();
+        self.strengths.flush_vec();
+        self.src_slc_ids.flush_vec();
+        self.src_col_v_offs.flush_vec();    
+        self.src_col_u_offs.flush_vec();
     }
 
     // [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
@@ -284,22 +284,26 @@ impl Synapses {
     }
 
     pub fn confab(&mut self) {
-        self.states.fill_vec().ok();
-        self.strengths.fill_vec().ok();
-        self.src_slc_ids.fill_vec().ok();
-        self.src_col_v_offs.fill_vec().ok();
+        self.states.fill_vec();
+        self.strengths.fill_vec();
+        self.src_slc_ids.fill_vec();
+        self.src_col_v_offs.fill_vec();
     } 
 
     // Debugging purposes
     // <<<<< TODO: DEPRICATE >>>>>
-    pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
+    pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) 
+            -> OclResult<()>
+    {
         let using_aux = false;
 
         if using_aux {
             for kernel in self.kernels.iter_mut() {
-                kernel.set_arg_buf_named(name, Some(env));
+                try!(kernel.set_arg_buf_named(name, Some(env)));
             }
         }
+
+        Ok(())
     }
 
     #[inline]
@@ -328,8 +332,8 @@ impl Synapses {
 
     // [FIXME] TODO: Depricate me evenutally
     pub fn set_offs_to_zero_temp(&mut self) {
-        self.src_col_v_offs.set_all_to(0).ok();
-        self.src_col_u_offs.set_all_to(0).ok();
+        self.src_col_v_offs.set_all_to(0).unwrap();
+        self.src_col_u_offs.set_all_to(0).unwrap();
     }
 
 }
@@ -365,34 +369,34 @@ pub mod tests {
 
     impl SynapsesTest for Synapses {
         fn set_offs_to_zero(&mut self) {
-            self.src_col_v_offs.set_all_to(0).ok();
-            self.src_col_u_offs.set_all_to(0).ok();
+            self.src_col_v_offs.set_all_to(0).unwrap();
+            self.src_col_u_offs.set_all_to(0).unwrap();
         }
 
         fn set_all_to_zero(&mut self) {
-            self.states.set_all_to(0).ok();
-            self.strengths.set_all_to(0).ok();
-            self.src_slc_ids.set_all_to(0).ok();
-            self.src_col_u_offs.set_all_to(0).ok();
-            self.src_col_v_offs.set_all_to(0).ok();
-            self.flag_sets.set_all_to(0).ok();
+            self.states.set_all_to(0).unwrap();
+            self.strengths.set_all_to(0).unwrap();
+            self.src_slc_ids.set_all_to(0).unwrap();
+            self.src_col_u_offs.set_all_to(0).unwrap();
+            self.src_col_v_offs.set_all_to(0).unwrap();
+            self.flag_sets.set_all_to(0).unwrap();
         }
 
         fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize) {
             let sdr_v = vec![v_ofs];
             let sdr_u = vec![u_ofs];
-            self.src_col_v_offs.write(&sdr_v[..], idx).ok();
-            self.src_col_u_offs.write(&sdr_u[..], idx).ok();
+            self.src_col_v_offs.write(&sdr_v[..], idx).unwrap();
+            self.src_col_u_offs.write(&sdr_u[..], idx).unwrap();
         }
 
         fn set_src_slc(&mut self, src_slc_id: u8, idx: usize) {
             let sdr = vec![src_slc_id];
-            self.src_slc_ids.write(&sdr[..], idx).ok();
+            self.src_slc_ids.write(&sdr[..], idx).unwrap();
         }
 
         fn syn_state(&self, idx: u32) -> u8 {
             let mut sdr = vec![0u8];
-            self.states.read(&mut sdr[..], idx as usize).ok();
+            self.states.read(&mut sdr[..], idx as usize).unwrap();
             sdr[0]
         }
 

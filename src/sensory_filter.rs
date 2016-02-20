@@ -38,7 +38,7 @@ impl SensoryFilter {
             areas with sensory filters are not yet supported. Please set the depth of any \
             afferent input layers with filters to 1.");
 
-        let input = Buffer::<u8>::with_vec(dims, ocl_pq.queue());        
+        let input = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());        
 
         let kern_cycle = ocl_pq.create_kernel(&filter_name.clone(),
                 WorkDims::ThreeDims(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
@@ -61,7 +61,7 @@ impl SensoryFilter {
     #[inline]
     pub fn write(&mut self, sdr: &Sdr) {
         assert!(sdr.len() <= self.input.len());
-        self.input.write(sdr, 0).ok();
+        self.input.write(sdr, 0).unwrap();
     }
 
     #[inline]

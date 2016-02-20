@@ -712,7 +712,7 @@ pub fn render_sdr_square(
     let mut i_cort_area = 0u8;
 
     println!("");
-    io::stdout().flush().ok();
+    io::stdout().flush().unwrap();
 
     loop {
         if i_line >= vec_out.len() { break }

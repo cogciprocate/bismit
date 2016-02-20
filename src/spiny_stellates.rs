@@ -74,7 +74,7 @@ impl SpinyStellateLayer {
     #[inline]
     pub fn learn(&mut self) {
         let rnd = self.rng.gen::<u32>();
-        self.kern_ltp.set_arg_scl_named("rnd", rnd);
+        self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
         self.kern_ltp.enqueue(None, None);
     }
 

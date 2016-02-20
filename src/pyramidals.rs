@@ -1,12 +1,12 @@
 
-use rand::{ self, XorShiftRng, Rng };
+use rand::{self, XorShiftRng, Rng};
 
-use cmn::{ self, CorticalDims, DataCellLayer };
-use map::{ AreaMap };
-use ocl::{ ProQue, WorkDims, Buffer, OclNum, Kernel, EventList };
-use proto::{ CellKind, Protocell, DendriteKind };
-use dendrites::{ Dendrites };
-use axon_space::{ AxonSpace };
+use cmn::{self, CorticalDims, DataCellLayer};
+use map::{AreaMap};
+use ocl::{ProQue, WorkDims, Buffer, OclNum, Kernel, EventList, Result as OclResult};
+use proto::{CellKind, Protocell, DendriteKind};
+use dendrites::{Dendrites};
+use axon_space::{AxonSpace};
 
 
 /* PyramidalLayer
@@ -47,12 +47,12 @@ impl PyramidalLayer {
         let best_dens_per_cel = tfts_per_cel;
         let dims_best_dens = dims.clone().with_tfts(tfts_per_cel);
 
-        let states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
-        let flag_sets = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
-        let best_den_states = Buffer::<u8>::with_vec(dims, ocl_pq.queue());
-        let tft_best_den_ids = Buffer::<u8>::with_vec(dims_best_dens, ocl_pq.queue());
-        let tft_best_den_states = Buffer::<u8>::with_vec(dims_best_dens, ocl_pq.queue());        
-        // let energies = Buffer::<u8>::with_vec(dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
+        let states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
+        let flag_sets = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
+        let best_den_states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
+        let tft_best_den_ids = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());
+        let tft_best_den_states = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());        
+        // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
         let dens_per_tft_l2 = protocell.dens_per_tuft_l2;
         let syns_per_den_l2 = protocell.syns_per_den_l2;
@@ -145,24 +145,28 @@ impl PyramidalLayer {
     }
 
     // <<<<< TODO: DEPRICATE >>>>>
-    pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) {
+    pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>)
+            -> OclResult<()> 
+    {
         let using_aux_cycle = true;
         let using_aux_learning = true;
 
         if using_aux_cycle {
-            self.kern_cycle.set_arg_buf_named(name, Some(env));
+            try!(self.kern_cycle.set_arg_buf_named(name, Some(env)));
         }
 
         if using_aux_learning {
-            self.kern_ltp.set_arg_buf_named(name, Some(env));
+            try!(self.kern_ltp.set_arg_buf_named(name, Some(env)));
         }
+
+        Ok(())
     }
 }
 
 impl DataCellLayer for PyramidalLayer {
     #[inline]
     fn learn(&mut self) {
-        self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>());
+        self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
         self.kern_ltp.enqueue(None, None);
     }
 
@@ -179,11 +183,11 @@ impl DataCellLayer for PyramidalLayer {
 
     // [FIXME]: MARKED FOR DEPRICATION
     fn confab(&mut self) {
-        self.states.fill_vec().ok();
-        self.best_den_states.fill_vec().ok();
-        self.tft_best_den_ids.fill_vec().ok();
-        self.tft_best_den_states.fill_vec().ok();
-        self.flag_sets.fill_vec().ok();
+        self.states.fill_vec();
+        self.best_den_states.fill_vec();
+        self.tft_best_den_ids.fill_vec();
+        self.tft_best_den_states.fill_vec();
+        self.flag_sets.fill_vec();
         // self.energies.fill_vec(); // <<<<< SLATED FOR REMOVAL
 
         self.dens_mut().confab();
@@ -356,15 +360,15 @@ pub mod tests {
         }
 
         fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL
-            self.states.set_all_to(0).ok();
-            self.flag_sets.set_all_to(0).ok();
-            self.best_den_states.set_all_to(0).ok();
-            self.tft_best_den_ids.set_all_to(0).ok();
-            self.tft_best_den_states.set_all_to(0).ok();
-            //self.best2_den_ids.set_all_to(0).ok();            // <<<<< SLATED FOR REMOVAL
-            //self.best2_den_states.set_all_to(0).ok();        // <<<<< SLATED FOR REMOVAL
+            self.states.set_all_to(0).unwrap();
+            self.flag_sets.set_all_to(0).unwrap();
+            self.best_den_states.set_all_to(0).unwrap();
+            self.tft_best_den_ids.set_all_to(0).unwrap();
+            self.tft_best_den_states.set_all_to(0).unwrap();
+            //self.best2_den_ids.set_all_to(0).unwrap();            // <<<<< SLATED FOR REMOVAL
+            //self.best2_den_states.set_all_to(0).unwrap();        // <<<<< SLATED FOR REMOVAL
             
-            // self.energies.set_all_to(0).ok();                // <<<<< SLATED FOR REMOVAL
+            // self.energies.set_all_to(0).unwrap();                // <<<<< SLATED FOR REMOVAL
         }
     }
 }

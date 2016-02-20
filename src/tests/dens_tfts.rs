@@ -37,14 +37,14 @@ fn test_cel() {
 
     // Zero all dendrite and synapse buffers:
     area.ptal_mut().dens_mut().set_all_to_zero(true);
-    area.axns.states.set_all_to(0).ok();
+    area.axns.states.set_all_to(0).unwrap();
 
     // Set source slice to an unused slice for all synapses:
     let unused_slc_ids = area.area_map().axn_base_slc_ids_by_tags(map::UNUSED_TESTING);
     assert!(unused_slc_ids.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
     let zeroed_slc_id = unused_slc_ids[0];
 
-    area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(zeroed_slc_id).ok();
+    area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(zeroed_slc_id).unwrap();
 
     // 'input' source slice which will be assigned to the synapses being tested:
     // let src_slc_ids = area.area_map().axn_base_slc_ids_by_tags(map::FF_IN);
@@ -90,7 +90,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
 
             // Set source slice to our source slice for our dendrite's synapses only
             area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_slc_id, 
-                den_syn_range.clone()).ok();
+                den_syn_range.clone()).unwrap();
 
             // Write input:
             //area.write_to_axon(128, src_axn_idx);
@@ -137,7 +137,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             //================================= CLEAN UP ==================================
             //=============================================================================
 
-            area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(zeroed_slc_id, den_syn_range).ok();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(zeroed_slc_id, den_syn_range).unwrap();
             area.write_to_axon(0, src_axn_idx);
         }
     }
@@ -164,7 +164,7 @@ fn test_dens() {
 
     // SET SOURCE SLICE TO UNUSED SLICE FOR EVERY SYNAPSE:
     let zeroed_slc_id = area.area_map().axn_base_slc_ids_by_tags(map::UNUSED_TESTING)[0];
-    area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(zeroed_slc_id).ok();
+    area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(zeroed_slc_id).unwrap();
 
     for i in 0..DENS_TEST_ITERATIONS {
 
@@ -174,7 +174,7 @@ fn test_dens() {
 
         // area.ptal_mut().dens_mut().set_all_to_zero(true);
         // area.ptal_mut().dens_mut().syns_mut().set_all_to_zero();
-        // area.axns.states.set_all_to(0).ok();
+        // area.axns.states.set_all_to(0).unwrap();
 
         let cel_coords = area.ptal_mut().rand_cel_coords();
         let den_coords = area.ptal_mut().dens_mut().rand_den_coords(&cel_coords);
@@ -203,7 +203,7 @@ fn test_dens() {
 
         // SET SOURCE SLICE TO AFF IN SLICE FOR OUR CELL'S SYNAPSES ONLY:
         area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_slc_id, 
-            cel_syn_range.clone()).ok();
+            cel_syn_range.clone()).unwrap();
 
         // WRITE INPUT:
         area.activate_axon(src_axn_idx);
@@ -238,7 +238,7 @@ fn test_dens() {
         //================================= CLEAN UP ==================================
         //=============================================================================
 
-        area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(zeroed_slc_id, cel_syn_range).ok();
+        area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(zeroed_slc_id, cel_syn_range).unwrap();
         area.write_to_axon(0, src_axn_idx);
     }
 

@@ -70,7 +70,7 @@ impl CorticalArea {
         println!("{mt}CORTICALAREA::NEW(): Area \"{}\" details: \
             (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: {:?}", 
             area_name, dims.u_size(), dims.v_size(), dims.depth(), area_map.eff_areas(), 
-            area_map.aff_areas(), ocl_pq.queue().device_id_obj_raw().as_ptr(), mt = cmn::MT);
+            area_map.aff_areas(), ocl_pq.queue().device_id_raw(), mt = cmn::MT);
 
         let psal_name = area_map.layer_name_by_tags(map::SPATIAL_ASSOCIATIVE);
         let ptal_name = area_map.layer_name_by_tags(map::TEMPORAL_ASSOCIATIVE);
@@ -221,17 +221,17 @@ impl CorticalArea {
 
         // <<<<< TODO: CLEAN THIS UP >>>>>
         // MAKE ABOVE LIKE BELOW (eliminate set_arg_buf_named() methods and just call directly on buffer)
-        mcols.set_arg_buf_named("aux_ints_0", &aux.ints_0);
-        pyrs_map.get_mut(ptal_name).unwrap().set_arg_buf_named("aux_ints_0", &aux.ints_0);
+        mcols.set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        pyrs_map.get_mut(ptal_name).unwrap().set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
         pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
-            .set_arg_buf_named("aux_ints_0", &aux.ints_0);
+            .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
 
-        // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0);
-        pyrs_map.get_mut(ptal_name).unwrap().kern_ltp().set_arg_buf_named("aux_ints_1", Some(&aux.ints_1));
-        pyrs_map.get_mut(ptal_name).unwrap().kern_cycle().set_arg_buf_named("aux_ints_1", Some(&aux.ints_1));
+        // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
+        pyrs_map.get_mut(ptal_name).unwrap().kern_ltp().set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
+        pyrs_map.get_mut(ptal_name).unwrap().kern_cycle().set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
 
         // pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
-            // .set_arg_buf_named("aux_ints_1", &aux.ints_0);
+            // .set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
         let mut events_lists = HashMap::new();
         events_lists.insert(map::FF_IN, EventList::new());    
         events_lists.insert(map::FB_IN, EventList::new());
@@ -399,10 +399,10 @@ impl CorticalArea {
 
         // new_events.wait();
         // new_events.release_all();
-        new_events.clear_completed();    
+        new_events.clear_completed().expect("CorticalArea::write_input");    
 
         self.axns.states.write_async(sdr, axn_range.start as usize, 
-            Some(wait_events), Some(new_events)).ok();
+            Some(wait_events), Some(new_events)).unwrap();
         // self.axns.states.write_async(sdr, axn_range.start as usize, 
         //     None, Some(new_events));
     }    
@@ -421,9 +421,9 @@ impl CorticalArea {
 
         // new_events.wait();
         // new_events.release_all();
-        new_events.clear_completed();
+        new_events.clear_completed().expect("CorticalArea::write_input");
         unsafe { self.axns.states.read_async(sdr, axn_range.start as usize, 
-            Some(wait_events), Some(new_events)).ok(); }
+            Some(wait_events), Some(new_events)).unwrap(); }
     }        
 
     #[inline]
@@ -528,13 +528,13 @@ impl CorticalArea {
         debug_assert!(buf.len() == slc_axn_range.len(), "Sample buffer length ({}) not \
             equal to slice axon length({}). slc_axn_range: {:?}, slc_id: {}", 
             buf.len(), slc_axn_range.len(), slc_axn_range, slc_id);
-        self.axns.states.read(buf, slc_axn_range.start).ok();
+        self.axns.states.read(buf, slc_axn_range.start).unwrap();
     }    
 
     #[inline]
     pub fn sample_axn_space(&self, buf: &mut [u8]) {
         debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
-        self.axns.states.read(buf, 0).ok();
+        self.axns.states.read(buf, 0).unwrap();
     }
 
     #[inline]
@@ -552,8 +552,9 @@ impl Drop for CorticalArea {
     fn drop(&mut self) {
         // Context being released by Cortex.
         print!("Releasing OpenCL components for '{}'... ", self.name);
-        self.ocl_pq.release();
-        print!("[ Program ][ Command Queue ]");
+        // NOW DONE AUTOMATICALLY:
+        // self.ocl_pq.release();
+        print!("[ Buffers ][ Event Lists ][ Program ][ Command Queue ]");
         print!(" ...complete. \n");
     }
 }
@@ -605,10 +606,10 @@ impl Aux {
         self.dims = new_dims.clone();
         
         self.ints_0.resize(&self.dims, ocl_queue);
-        self.ints_0.set_all_to(int_32_min).ok();
+        self.ints_0.set_all_to(int_32_min).unwrap();
 
         self.ints_1.resize(&self.dims, ocl_queue);
-        self.ints_1.set_all_to(int_32_min).ok();
+        self.ints_1.set_all_to(int_32_min).unwrap();
         // self.chars_0.resize(&self.dims, 0);
         // self.chars_1.resize(&self.dims, 0);
     }

@@ -76,7 +76,8 @@ impl Drop for Cortex {
     fn drop(&mut self) {
         print!("Releasing OpenCL components... ");
         print!("[ Context ]");
-        self.ocl_context.release();
+        // NOW DONE AUTOMATICALLY:
+        // self.ocl_context.release();
         print!(" ...complete. \n");
     }
 }

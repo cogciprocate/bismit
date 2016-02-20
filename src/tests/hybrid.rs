@@ -23,8 +23,8 @@ use cmn::{ self, DataCellLayer, DataCellLayerTest };
 pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
     let emsg = "\ntests::hybrid::test_cycles()";
     
-    /*cortex.area_mut(area_name).psal_mut().dens.syns().src_col_v_offs.set_all_to(0).ok();
-    cortex.area_mut(area_name).ptal_mut().dens.syns().src_col_v_offs.set_all_to(0).ok();
+    /*cortex.area_mut(area_name).psal_mut().dens.syns().src_col_v_offs.set_all_to(0).unwrap();
+    cortex.area_mut(area_name).ptal_mut().dens.syns().src_col_v_offs.set_all_to(0).unwrap();
 
     cortex.area_mut(area_name).psal_mut().dens.cycle();
     cortex.area_mut(area_name).ptal_mut().dens.cycle();*/
@@ -43,13 +43,13 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
     println!("Primary Spatial Associative Layer...");
     //let psal_name = cortex.area(area_name).psal().layer_name();
     //cortex.write_async(area_name, psal_name, &vec1);
-    cortex.area_mut(area_name).psal_mut().soma_mut().write(&vec1, 0).ok();
+    cortex.area_mut(area_name).psal_mut().soma_mut().write(&vec1, 0).unwrap();
     test_syn_and_den_states(&mut cortex.area_mut(area_name).psal_mut().dens_mut());
 
     println!("Primary Temporal Associative Layer...");
     //let ptal_name = cortex.area(area_name).ptal().layer_name();
     //cortex.write_async(area_name, ptal_name, &vec1);
-    cortex.area_mut(area_name).ptal_mut().soma_mut().write(&vec1, 0).ok();
+    cortex.area_mut(area_name).ptal_mut().soma_mut().write(&vec1, 0).unwrap();
     test_syn_and_den_states(&mut cortex.area_mut(area_name).ptal_mut().dens_mut());
     test_pyr_preds(&mut cortex.area_mut(area_name).ptal_mut());
 }
@@ -66,7 +66,7 @@ fn test_pyr_preds(pyrs: &mut PyramidalLayer) {
     let emsg = "\ntests::hybrid::test_pyr_preds()";
 
     io::stdout().flush().unwrap();
-    pyrs.dens_mut().states.set_all_to(0).ok();
+    pyrs.dens_mut().states.set_all_to(0).unwrap();
 
     let dens_per_tuft = pyrs.dens_mut().dims().per_tft() as usize;
     println!("\n##### dens_per_tuft: {}", dens_per_tuft);
@@ -87,13 +87,13 @@ fn test_pyr_preds(pyrs: &mut PyramidalLayer) {
     }
 
     // WRITE THE DENDRITE STATES TO DEVICE
-    pyrs.dens_mut().states.flush_vec().ok();
+    pyrs.dens_mut().states.flush_vec();
 
     // CYCLE THE PYRAMIDAL CELL ONLY, WITHOUT CYCLING IT'S DENS OR SYNS (WHICH WOULD OVERWRITE THE ABOVE)
     pyrs.cycle_self_only();    
     
     // READ THE PYRAMIDAL CELL SOMA STATES (PREDS)
-    pyrs.soma_mut().fill_vec().ok();
+    pyrs.soma_mut().fill_vec();
     //pyrs.dens_mut().states.print_simple();
     //pyrs.soma_mut().print_simple();
 
@@ -115,7 +115,7 @@ fn test_syn_and_den_states(dens: &mut Dendrites) {
     let emsg = "\ntests::hybrid::test_syn_and_den_states()";
 
     io::stdout().flush().unwrap();
-    dens.syns_mut().src_col_v_offs.set_all_to(0).ok();
+    dens.syns_mut().src_col_v_offs.set_all_to(0).unwrap();
     dens.cycle(None);
 
     let syns_per_tuft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
