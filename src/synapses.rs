@@ -2,7 +2,7 @@ use rand::{self, XorShiftRng};
 
 use cmn::{self, CorticalDims};
 use map::{AreaMap, SrcSlices, SrcIdxCache, SynSrc};
-use ocl::{ProQue, WorkDims, Buffer, OclNum, EventList, Kernel, Result as OclResult};
+use ocl::{ProQue, SimpleDims, Buffer, OclNum, EventList, Kernel, Result as OclResult};
 use proto::{CellKind, Protocell, DendriteKind};
 use axon_space::{AxonSpace};
 
@@ -140,13 +140,13 @@ impl Synapses {
         for tft_id in 0..src_slc_ids_by_tft.len() {
             kernels.push(Box::new({
 
-                // ocl_pq.create_kernel("syns_cycle_layer",
-                // ocl_pq.create_kernel("syns_cycle_vec4_layer",
-                // ocl_pq.create_kernel("syns_cycle_wow_layer",
-                ocl_pq.create_kernel("syns_cycle_wow_vec4_layer",
-                        WorkDims::TwoDims(dims.v_size() as usize, (dims.u_size()) as usize))
-                    .expect("Synapses::new()")
-                    .lws(WorkDims::TwoDims(min_wg_sqrt, min_wg_sqrt))
+                // ocl_pq.create_kernel_with_dims("syns_cycle_layer",
+                // ocl_pq.create_kernel_with_dims("syns_cycle_vec4_layer",
+                // ocl_pq.create_kernel_with_dims("syns_cycle_wow_layer",
+                ocl_pq.create_kernel_with_dims("syns_cycle_wow_vec4_layer",
+                        SimpleDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
+                    // .expect("Synapses::new()")
+                    .lws(SimpleDims::Two(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(&axons.states)
                     .arg_buf(&src_col_u_offs)
                     .arg_buf(&src_col_v_offs)
@@ -274,7 +274,7 @@ impl Synapses {
     #[inline]
     pub fn cycle(&self, wait_events: Option<&EventList>) {
         for kern in self.kernels.iter() {
-            kern.enqueue(wait_events, None);
+            kern.enqueue_with_events(wait_events, None);
         }
     }
 

@@ -68,9 +68,9 @@ impl CorticalArea {
         let dims = area_map.dims().clone_with_incr(ocl_pq.max_work_group_size());
 
         println!("{mt}CORTICALAREA::NEW(): Area \"{}\" details: \
-            (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: {:?}", 
+            (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: {{[{}]}}", 
             area_name, dims.u_size(), dims.v_size(), dims.depth(), area_map.eff_areas(), 
-            area_map.aff_areas(), ocl_pq.queue().device_id_raw(), mt = cmn::MT);
+            area_map.aff_areas(), device_idx, mt = cmn::MT);
 
         let psal_name = area_map.layer_name_by_tags(map::SPATIAL_ASSOCIATIVE);
         let ptal_name = area_map.layer_name_by_tags(map::TEMPORAL_ASSOCIATIVE);

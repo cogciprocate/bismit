@@ -3,7 +3,7 @@ use rand::{ self, Rng };
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ Kernel, ProQue, WorkDims, Buffer, EventList };
+use ocl::{ Kernel, ProQue, SimpleDims, Buffer, EventList };
 use proto::{ CellKind, Protocell, DendriteKind };
 use dendrites::{ Dendrites };
 use axon_space::{ AxonSpace };
@@ -40,9 +40,9 @@ impl SpinyStellateLayer {
         let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
         let cels_per_grp = dims.per_subgrp(grp_count, ocl_pq).expect("SpinyStellateLayer::new()");
 
-        let kern_ltp = ocl_pq.create_kernel("sst_ltp", 
-                WorkDims::TwoDims(dims.tfts_per_cel() as usize, grp_count as usize))
-            .expect("SpinyStellateLayer::new()")
+        let kern_ltp = ocl_pq.create_kernel_with_dims("sst_ltp", 
+                SimpleDims::Two(dims.tfts_per_cel() as usize, grp_count as usize))
+            // .expect("SpinyStellateLayer::new()")
             .arg_buf(&axns.states)
             .arg_buf(&dens.syns().states)
             .arg_scl(lyr_axn_idz)
@@ -75,7 +75,7 @@ impl SpinyStellateLayer {
     pub fn learn(&mut self) {
         let rnd = self.rng.gen::<u32>();
         self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
-        self.kern_ltp.enqueue(None, None);
+        self.kern_ltp.enqueue();
     }
 
     #[inline]

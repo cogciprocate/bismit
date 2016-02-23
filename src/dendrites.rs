@@ -9,7 +9,7 @@
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, WorkDims, Buffer, EventList };
+use ocl::{ self, ProQue, SimpleDims, Buffer, EventList };
 use proto::{ /*ProtolayerMap, LayerMapKind, ProtoareaMaps,*/ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axon_space::{ AxonSpace };
@@ -80,8 +80,8 @@ impl Dendrites {
             area_map, axons, /*aux,*/ ocl_pq);
 
 
-        let kern_cycle = ocl_pq.create_kernel("den_cycle", WorkDims::OneDim(states.len()))
-            .expect("Dendrites::new()")
+        let kern_cycle = ocl_pq.create_kernel_with_dims("den_cycle", SimpleDims::One(states.len()))
+            // .expect("Dendrites::new()")
             .arg_buf(&syns.states)
             .arg_buf(&syns.strengths)
             .arg_scl(syns_per_den_l2)
@@ -111,12 +111,12 @@ impl Dendrites {
     pub fn cycle(&self, wait_events: Option<&EventList>) {
         self.syns.cycle(wait_events);
 
-        self.kern_cycle.enqueue(wait_events, None);
+        self.kern_cycle.enqueue_with_events(wait_events, None);
     }
 
     // FOR TESTING PURPOSES
     pub fn cycle_self_only(&self) {
-        self.kern_cycle.enqueue(None, None);
+        self.kern_cycle.enqueue();
     }
 
     #[inline]

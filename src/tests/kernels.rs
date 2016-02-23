@@ -2,7 +2,7 @@
 use cmn::{ self, /*CorticalDims*/ };
 // use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 // use cortex::{ self, Cortex };
-use ocl::{ Buffer, WorkDims, /*ProQue, BufferDims,*/ /*OclNum*/ };
+use ocl::{ Buffer, SimpleDims, /*ProQue, BufferDims,*/ /*OclNum*/ };
 // use interactive::{ input_czar, InputCzar, InputKind };
 // use super::hybrid;
 use super::{ TestBed, util };
@@ -24,26 +24,26 @@ pub fn test_axn_idxs(testbed: &TestBed) {
     let mut outs_sc = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
     let mut outs_v4 = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
 
-    let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl", 
-            WorkDims::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, 
-            testbed.dims.u_size() as usize)).unwrap()
+    let kern_sc = testbed.ocl_pq.create_kernel_with_dims("test_axn_idxs_scl", 
+            SimpleDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, 
+            testbed.dims.u_size() as usize))
         .arg_buf(&u_offs)        
         .arg_buf(&v_offs)
         .arg_buf(&outs_sc) 
         //.arg_buf(&outs_v4) 
     ;
 
-    let kern_v4 = testbed.ocl_pq.create_kernel("test_axn_idxs_vec4", 
-            WorkDims::ThreeDims(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, 
-            (testbed.dims.u_size() / 4) as usize)).unwrap()
+    let kern_v4 = testbed.ocl_pq.create_kernel_with_dims("test_axn_idxs_vec4", 
+            SimpleDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, 
+            (testbed.dims.u_size() / 4) as usize))
         .arg_buf(&u_offs)        
         .arg_buf(&v_offs)
         //.arg_buf(&outs_sc) 
         .arg_buf(&outs_v4) 
     ;
 
-    kern_sc.enqueue(None, None);
-    kern_v4.enqueue(None, None);
+    kern_sc.enqueue();
+    kern_v4.enqueue();
 
     let failure = util::compare_buffers(&mut outs_sc, &mut outs_v4);
 
@@ -57,15 +57,15 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 //     let mut dim_offs = Buffer::<i8>::shuffled(dims, -16, 15, &ocl);
 //     let mut safe_dim_offs = Buffer::<i8>::new(dims, 0, &ocl);
 
-//     let kern_test_safe_dim_ofs = ocl.create_kernel("test_safe_dim_ofs", 
-//         WorkDims::OneDim(dims.len() as usize))
+//     let kern_test_safe_dim_ofs = ocl.create_kernel_with_dims("test_safe_dim_ofs", 
+//         SimpleDims::One(dims.len() as usize))
 //         .arg_buf(&dim_ids)
 //         .arg_buf(&dim_offs)
 //         .arg_scl(dims.u_size())
 //         .arg_buf(&safe_dim_offs) 
 //     ;
 
-//     kern_test_safe_dim_ofs.enqueue(None, None);
+//     kern_test_safe_dim_ofs.enqueue();
 
 //     println!("dim_ids:");
 //     dim_ids.print_simple();

@@ -3,7 +3,7 @@ use rand;
 
 use cmn::{self, CorticalDims, DataCellLayer};
 use map::{AreaMap};
-use ocl::{self, ProQue, WorkDims, Buffer, OclNum, EventList, Result as OclResult};
+use ocl::{self, ProQue, SimpleDims, Buffer, OclNum, EventList, Result as OclResult};
 use axon_space::{AxonSpace};
 use pyramidals::{PyramidalLayer};
 use spiny_stellates::{SpinyStellateLayer};
@@ -50,10 +50,10 @@ impl Minicolumns {
         let aff_out_axn_idz = area_map.axn_idz(aff_out_axn_slc);
         let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
-        let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs",
-                WorkDims::ThreeDims(pyrs.dims().depth() as usize, dims.v_size() as usize, 
+        let kern_activate = ocl_pq.create_kernel_with_dims("mcol_activate_pyrs",
+                SimpleDims::Three(pyrs.dims().depth() as usize, dims.v_size() as usize, 
                     dims.u_size() as usize))
-            .expect("Minicolumns::new()")
+            // .expect("Minicolumns::new()")
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
             .arg_buf(&pyrs.best_den_states)
@@ -67,9 +67,9 @@ impl Minicolumns {
             .arg_buf(&axons.states);
 
 
-        let kern_output = ocl_pq.create_kernel("mcol_output", 
-                WorkDims::TwoDims(dims.v_size() as usize, dims.u_size() as usize))
-            .expect("Minicolumns::new()")
+        let kern_output = ocl_pq.create_kernel_with_dims("mcol_output", 
+                SimpleDims::Two(dims.v_size() as usize, dims.u_size() as usize))
+            // .expect("Minicolumns::new()")
             .arg_buf(&pyrs.soma())
             .arg_scl(pyrs.tfts_per_cel())
             .arg_scl(ff_layer_axn_idz as u32)
@@ -114,17 +114,17 @@ impl Minicolumns {
 
     #[inline]
     pub fn activate(&self) {
-        self.kern_activate.enqueue(None, None);
+        self.kern_activate.enqueue();
     }
 
     pub fn output(&self, new_events: Option<&mut EventList>) {
         match new_events {
             Some(ne) => {
                 ne.clear_completed().expect("Minicolumns::output");
-                self.kern_output.enqueue(None, Some(ne));
+                self.kern_output.enqueue_with_events(None, Some(ne));
             },
 
-            None => self.kern_output.enqueue(None, None),
+            None => self.kern_output.enqueue(),
         }
     }
 

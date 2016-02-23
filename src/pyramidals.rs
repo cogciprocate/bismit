@@ -3,7 +3,7 @@ use rand::{self, XorShiftRng, Rng};
 
 use cmn::{self, CorticalDims, DataCellLayer};
 use map::{AreaMap};
-use ocl::{ProQue, WorkDims, Buffer, OclNum, Kernel, EventList, Result as OclResult};
+use ocl::{ProQue, SimpleDims, Buffer, OclNum, Kernel, EventList, Result as OclResult};
 use proto::{CellKind, Protocell, DendriteKind};
 use dendrites::{Dendrites};
 use axon_space::{AxonSpace};
@@ -68,9 +68,9 @@ impl PyramidalLayer {
 
         let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq);        
         
-        let kern_cycle = ocl_pq.create_kernel("pyr_cycle",
-                WorkDims::OneDim(dims.cells() as usize))
-            .expect("PyramidalLayer::new()")
+        let kern_cycle = ocl_pq.create_kernel_with_dims("pyr_cycle",
+                SimpleDims::One(dims.cells() as usize))
+            // .expect("PyramidalLayer::new()")
             .arg_buf(&dens.states_raw)
             .arg_buf(&dens.states)
             .arg_scl(tfts_per_cel)
@@ -88,9 +88,9 @@ impl PyramidalLayer {
         let cels_per_cel_grp = dims.per_subgrp(cel_grp_count, ocl_pq).expect("PyramidalLayer::new()");
         let learning_rate_l2i = 0i32;
 
-        let kern_ltp = ocl_pq.create_kernel("pyrs_ltp", 
-                WorkDims::OneDim(cel_grp_count as usize))
-            .expect("PyramidalLayer::new()")
+        let kern_ltp = ocl_pq.create_kernel_with_dims("pyrs_ltp", 
+                SimpleDims::One(cel_grp_count as usize))
+            // .expect("PyramidalLayer::new()")
             .arg_buf(&axons.states)
             .arg_buf(&states)
             .arg_buf(&tft_best_den_ids)
@@ -167,7 +167,7 @@ impl DataCellLayer for PyramidalLayer {
     #[inline]
     fn learn(&mut self) {
         self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
-        self.kern_ltp.enqueue(None, None);
+        self.kern_ltp.enqueue();
     }
 
     #[inline]
@@ -178,7 +178,7 @@ impl DataCellLayer for PyramidalLayer {
     #[inline]
     fn cycle(&self, wait_events: Option<&EventList>) {
         self.dens().cycle(wait_events);
-        self.kern_cycle.enqueue(wait_events, None);
+        self.kern_cycle.enqueue_with_events(wait_events, None);
     }
 
     // [FIXME]: MARKED FOR DEPRICATION
@@ -260,7 +260,7 @@ pub mod tests {
     impl DataCellLayerTest for PyramidalLayer {
         // CYCLE_SELF_ONLY(): USED BY TESTS
         fn cycle_self_only(&self) {
-            self.kern_cycle.enqueue(None, None);
+            self.kern_cycle.enqueue();
         }
 
         fn print_cel(&mut self, cel_idx: usize) {
