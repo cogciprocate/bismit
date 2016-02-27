@@ -111,7 +111,7 @@ impl Dendrites {
     pub fn cycle(&self, wait_events: Option<&EventList>) {
         self.syns.cycle(wait_events);
 
-        self.kern_cycle.enqueue_with_events(wait_events, None);
+        self.kern_cycle.enqueue_with(None, wait_events, None).expect("bismit::Dendrites::cycle");
     }
 
     // FOR TESTING PURPOSES

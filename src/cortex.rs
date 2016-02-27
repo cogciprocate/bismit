@@ -19,7 +19,7 @@ impl Cortex {
         let time_start = time::get_time();
         let thal = Thalamus::new(plmaps, pamaps);
         let pamaps = thal.area_maps().clone();
-        let ocl_context: Context = Context::new(None, Some(ocl::core::DEVICE_TYPE_GPU)).expect(
+        let ocl_context: Context = Context::new_by_index_and_type(None, Some(ocl::core::DEVICE_TYPE_GPU)).expect(
             "CorticalArea::new(): ocl_context creation error");
         let mut areas = HashMap::new();
         let mut device_idx = 0;        

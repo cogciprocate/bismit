@@ -401,9 +401,9 @@ impl CorticalArea {
         // new_events.release_all();
         new_events.clear_completed().expect("CorticalArea::write_input");    
 
-        self.axns.states.write_async(sdr, axn_range.start as usize, 
+        self.axns.states.enqueue_write(sdr, axn_range.start as usize, false,
             Some(wait_events), Some(new_events)).unwrap();
-        // self.axns.states.write_async(sdr, axn_range.start as usize, 
+        // self.axns.states.enqueue_write(sdr, axn_range.start as usize, 
         //     None, Some(new_events));
     }    
 
@@ -422,7 +422,7 @@ impl CorticalArea {
         // new_events.wait();
         // new_events.release_all();
         new_events.clear_completed().expect("CorticalArea::write_input");
-        unsafe { self.axns.states.read_async(sdr, axn_range.start as usize, 
+        unsafe { self.axns.states.enqueue_read(sdr, axn_range.start as usize, false,
             Some(wait_events), Some(new_events)).unwrap(); }
     }        
 
@@ -517,7 +517,7 @@ impl CorticalArea {
     // pub fn sample_aff_out(&self, buf: &mut [u8]) {
     //     // let aff_out_range = self.mcols.aff_out_axn_range();
     //     // debug_assert!(buf.len() == aff_out_range.len());
-    //     // self.axns.states.read_async(buf, aff_out_range.start, None, None);
+    //     // self.axns.states.enqueue_read(buf, aff_out_range.start, None, None);
     //     let aff_out_slc = self.mcols.aff_out_axn_slc();
     //     self.sample_axn_slc(aff_out_slc, buf);
     // }

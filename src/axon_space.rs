@@ -99,7 +99,7 @@ pub mod tests {
     impl AxonSpaceTest for AxonSpace {
         fn axn_state(&self, idx: usize) -> u8 {
             // let mut sdr = vec![0u8];
-            // self.states.read_async(&mut sdr, idx);
+            // self.states.enqueue_read(&mut sdr, idx);
             // sdr[0]
 
             self.states.read_idx_direct(idx)

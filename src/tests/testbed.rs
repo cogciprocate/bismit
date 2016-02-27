@@ -164,7 +164,7 @@ impl TestBed {
         let thal = Thalamus::new(plmaps, protoarea_maps);
         let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
-        let ocl_context = Context::new(None, None).unwrap();
+        let ocl_context = Context::new_by_index_and_type(None, None).unwrap();
         let mut ocl_pq = ProQue::new(&ocl_context, None);
         ocl_pq.build_program(&area_map.gen_build_options()).unwrap();
 
