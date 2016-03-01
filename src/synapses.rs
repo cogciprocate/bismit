@@ -274,7 +274,8 @@ impl Synapses {
     #[inline]
     pub fn cycle(&self, wait_events: Option<&EventList>) {
         for kern in self.kernels.iter() {
-            kern.enqueue_events(wait_events, None).expect("bismit::Synapses::cycle");
+            // kern.enqueue_events(wait_events, None).expect("bismit::Synapses::cycle");
+            kern.cmd().wait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
         }
     }
 

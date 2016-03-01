@@ -164,9 +164,12 @@ impl TestBed {
         let thal = Thalamus::new(plmaps, protoarea_maps);
         let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
-        let ocl_context = Context::new_by_index_and_type(None, None).unwrap();
+        // let ocl_context = Context::new_by_index_and_type(None, None).unwrap();
         // let mut ocl_pq = ProQue::new(&ocl_context, None);
         // ocl_pq.build_program(&area_map.gen_build_options()).unwrap();
+
+        let ocl_context: Context = Context::builder()
+            .build().expect("CorticalArea::new(): ocl_context creation error");
 
         let ocl_pq = ProQue::builder()
             .context(ocl_context.clone())

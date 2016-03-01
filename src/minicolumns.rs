@@ -121,7 +121,10 @@ impl Minicolumns {
         match new_events {
             Some(ne) => {
                 ne.clear_completed().expect("Minicolumns::output");
-                self.kern_output.enqueue_events(None, Some(ne))
+                // self.kern_output.enqueue_events(None, Some(ne))
+                //     .expect("bismit::Minicolumns::output");
+
+                self.kern_output.cmd().dest(ne).enq()
                     .expect("bismit::Minicolumns::output");
             },
 
