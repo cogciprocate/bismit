@@ -68,9 +68,9 @@ impl PyramidalLayer {
 
         let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq);        
         
-        let kern_cycle = ocl_pq.create_kernel_with_dims("pyr_cycle",
-                SimpleDims::One(dims.cells() as usize))
+        let kern_cycle = ocl_pq.create_kernel("pyr_cycle")
             // .expect("PyramidalLayer::new()")
+            .gws(SimpleDims::One(dims.cells() as usize))
             .arg_buf(&dens.states_raw)
             .arg_buf(&dens.states)
             .arg_scl(tfts_per_cel)
@@ -88,9 +88,9 @@ impl PyramidalLayer {
         let cels_per_cel_grp = dims.per_subgrp(cel_grp_count, ocl_pq).expect("PyramidalLayer::new()");
         let learning_rate_l2i = 0i32;
 
-        let kern_ltp = ocl_pq.create_kernel_with_dims("pyrs_ltp", 
-                SimpleDims::One(cel_grp_count as usize))
+        let kern_ltp = ocl_pq.create_kernel("pyrs_ltp")
             // .expect("PyramidalLayer::new()")
+            .gws(SimpleDims::One(cel_grp_count as usize))
             .arg_buf(&axons.states)
             .arg_buf(&states)
             .arg_buf(&tft_best_den_ids)
@@ -178,7 +178,7 @@ impl DataCellLayer for PyramidalLayer {
     #[inline]
     fn cycle(&self, wait_events: Option<&EventList>) {
         self.dens().cycle(wait_events);
-        self.kern_cycle.enqueue_with(None, wait_events, None)
+        self.kern_cycle.enqueue_events(wait_events, None)
             .expect("bismit::PyramidalLayer::cycle");
     }
 

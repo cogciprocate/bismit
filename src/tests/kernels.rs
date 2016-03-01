@@ -24,8 +24,8 @@ pub fn test_axn_idxs(testbed: &TestBed) {
     let mut outs_sc = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
     let mut outs_v4 = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
 
-    let kern_sc = testbed.ocl_pq.create_kernel_with_dims("test_axn_idxs_scl", 
-            SimpleDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, 
+    let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl")
+        .gws(SimpleDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,
             testbed.dims.u_size() as usize))
         .arg_buf(&u_offs)        
         .arg_buf(&v_offs)
@@ -33,8 +33,8 @@ pub fn test_axn_idxs(testbed: &TestBed) {
         //.arg_buf(&outs_v4) 
     ;
 
-    let kern_v4 = testbed.ocl_pq.create_kernel_with_dims("test_axn_idxs_vec4", 
-            SimpleDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, 
+    let kern_v4 = testbed.ocl_pq.create_kernel("test_axn_idxs_vec4")
+        .gws(SimpleDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, 
             (testbed.dims.u_size() / 4) as usize))
         .arg_buf(&u_offs)        
         .arg_buf(&v_offs)

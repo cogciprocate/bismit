@@ -80,8 +80,9 @@ impl Dendrites {
             area_map, axons, /*aux,*/ ocl_pq);
 
 
-        let kern_cycle = ocl_pq.create_kernel_with_dims("den_cycle", SimpleDims::One(states.len()))
+        let kern_cycle = ocl_pq.create_kernel("den_cycle")
             // .expect("Dendrites::new()")
+            .gws(SimpleDims::One(states.len()))
             .arg_buf(&syns.states)
             .arg_buf(&syns.strengths)
             .arg_scl(syns_per_den_l2)
@@ -111,7 +112,7 @@ impl Dendrites {
     pub fn cycle(&self, wait_events: Option<&EventList>) {
         self.syns.cycle(wait_events);
 
-        self.kern_cycle.enqueue_with(None, wait_events, None).expect("bismit::Dendrites::cycle");
+        self.kern_cycle.enqueue_events(wait_events, None).expect("bismit::Dendrites::cycle");
     }
 
     // FOR TESTING PURPOSES

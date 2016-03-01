@@ -40,9 +40,9 @@ impl SpinyStellateLayer {
         let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
         let cels_per_grp = dims.per_subgrp(grp_count, ocl_pq).expect("SpinyStellateLayer::new()");
 
-        let kern_ltp = ocl_pq.create_kernel_with_dims("sst_ltp", 
-                SimpleDims::Two(dims.tfts_per_cel() as usize, grp_count as usize))
+        let kern_ltp = ocl_pq.create_kernel("sst_ltp")
             // .expect("SpinyStellateLayer::new()")
+            .gws(SimpleDims::Two(dims.tfts_per_cel() as usize, grp_count as usize))
             .arg_buf(&axns.states)
             .arg_buf(&dens.syns().states)
             .arg_scl(lyr_axn_idz)

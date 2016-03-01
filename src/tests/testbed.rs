@@ -1,10 +1,10 @@
-use cmn::{ CorticalDims };
+use cmn::CorticalDims;
 use map;
-use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, Sensory, 
-    Thalamic, Protocell, Protofilter, Protoinput };
-use thalamus::{ Thalamus };
-use ocl::{ Context, ProQue };
-use cortex::{ Cortex };
+use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, Sensory, 
+    Thalamic, Protocell, Protofilter, Protoinput};
+use thalamus::Thalamus;
+use ocl::{Context, ProQue};
+use cortex::Cortex;
 
 
 pub static PRIMARY_AREA_NAME: &'static str     = "v1";
@@ -165,8 +165,14 @@ impl TestBed {
         let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
         let ocl_context = Context::new_by_index_and_type(None, None).unwrap();
-        let mut ocl_pq = ProQue::new(&ocl_context, None);
-        ocl_pq.build_program(&area_map.gen_build_options()).unwrap();
+        // let mut ocl_pq = ProQue::new(&ocl_context, None);
+        // ocl_pq.build_program(&area_map.gen_build_options()).unwrap();
+
+        let ocl_pq = ProQue::builder()
+            .context(ocl_context.clone())
+            .prog_bldr(area_map.gen_build_options())
+            .build().expect("Testbed::new(): ocl_pq.build()");
+
 
         let dims = area_map.dims().clone_with_incr(ocl_pq.max_work_group_size());
 

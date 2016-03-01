@@ -1,26 +1,24 @@
-use std::collections::{ HashMap };
-use std::ops::{ Range };
+use std::collections::HashMap;
+use std::ops::Range;
 use rand;
 
-use cmn::{ self, ParaHexArray, CorticalDims, Renderer, Sdr, DataCellLayer };
-use map::{ self, AreaMap, LayerTags, GanglionMap };
-use ocl::{ self, ProQue, Context, Buffer, EventList, Queue };
-use proto::{  Cellular, Pyramidal, SpinyStellate, Inhibitory,  DendriteKind };
+use cmn::{self, ParaHexArray, CorticalDims, Renderer, Sdr, DataCellLayer};
+use map::{self, AreaMap, LayerTags, GanglionMap};
+use ocl::{ProQue, Context, Buffer, EventList, Queue};
+use proto::{Cellular, Pyramidal, SpinyStellate, Inhibitory, DendriteKind};
 
-use axon_space::{ AxonSpace };
-use minicolumns::{ Minicolumns };
-use iinn::{ InhibitoryInterneuronNetwork };
-use pyramidals::{ PyramidalLayer };
-use spiny_stellates::{ SpinyStellateLayer };
-use sensory_filter::{ SensoryFilter };
-use thalamus::{ Thalamus };
+use axon_space::AxonSpace;
+use minicolumns::Minicolumns;
+use iinn::InhibitoryInterneuronNetwork;
+use pyramidals::PyramidalLayer;
+use spiny_stellates::SpinyStellateLayer;
+use sensory_filter::SensoryFilter;
+use thalamus::Thalamus;
 
 #[cfg(test)]
 pub use self::tests::{ CorticalAreaTest };
 
-
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
-
 
 pub struct CorticalArea {
     pub name: &'static str,
@@ -60,10 +58,16 @@ impl CorticalArea {
         println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);        
 
         
-        let mut ocl_pq: ocl::ProQue = ocl::ProQue::new(&ocl_context, Some(device_idx));
+        // let mut ocl_pq: ocl::ProQue = ocl::ProQue::new(&ocl_context, Some(device_idx));
 
-        ocl_pq.build_program(&area_map.gen_build_options())
-            .expect("CorticalArea::new(): ocl_pq.build(): error");
+        // ocl_pq.build_program(&area_map.gen_build_options())
+        //     .expect("CorticalArea::new(): ocl_pq.build(): error");
+
+        let ocl_pq = ProQue::builder()
+            .device_idx(device_idx)
+            .context(ocl_context.clone())
+            .prog_bldr(area_map.gen_build_options())
+            .build().expect("CorticalArea::new(): ocl_pq.build(): error");
 
         let dims = area_map.dims().clone_with_incr(ocl_pq.max_work_group_size());
 
@@ -401,7 +405,7 @@ impl CorticalArea {
         // new_events.release_all();
         new_events.clear_completed().expect("CorticalArea::write_input");    
 
-        self.axns.states.enqueue_write(sdr, axn_range.start as usize, false,
+        self.axns.states.enqueue_write(None, false, axn_range.start as usize, sdr, 
             Some(wait_events), Some(new_events)).unwrap();
         // self.axns.states.enqueue_write(sdr, axn_range.start as usize, 
         //     None, Some(new_events));
@@ -422,7 +426,7 @@ impl CorticalArea {
         // new_events.wait();
         // new_events.release_all();
         new_events.clear_completed().expect("CorticalArea::write_input");
-        unsafe { self.axns.states.enqueue_read(sdr, axn_range.start as usize, false,
+        unsafe { self.axns.states.enqueue_read(None, false, axn_range.start as usize, sdr,
             Some(wait_events), Some(new_events)).unwrap(); }
     }        
 

@@ -57,10 +57,10 @@ impl InhibitoryInterneuronNetwork {
         let states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
 
 
-        let kern_inhib_simple = ocl_pq.create_kernel_with_dims("inhib_simple",
-                SimpleDims::Three(dims.depth() as usize, dims.v_size() as usize, 
-                    dims.u_size() as usize))
+        let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple")
             // .expect("InhibitoryInterneuronNetwork::new()")
+            .gws(SimpleDims::Three(dims.depth() as usize, dims.v_size() as usize, 
+                dims.u_size() as usize))
             .lws(SimpleDims::Three(1, 8, 8 as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)
@@ -68,11 +68,11 @@ impl InhibitoryInterneuronNetwork {
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(&axns.states);
 
-        let kern_inhib_passthrough = ocl_pq.create_kernel_with_dims("inhib_passthrough",
-                SimpleDims::Three(dims.depth() as usize, dims.v_size() as usize, 
-                    dims.u_size() as usize))
+        let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough")
             // .expect("InhibitoryInterneuronNetwork::new()")
             //.lws(SimpleDims::Three(1, 8, 8 as usize))
+            .gws(SimpleDims::Three(dims.depth() as usize, dims.v_size() as usize, 
+                dims.u_size() as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)
             .arg_buf(&axns.states);

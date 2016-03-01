@@ -166,7 +166,7 @@ pub enum DendriteClass {
 
 // [FIXME]: Depricate?
 bitflags! {
-    flags CellFlags: u32 {
+    pub flags CellFlags: u32 {
         const HAPPY         = 0b00000001,
         const SAD            = 0b00000010,
         const NONE            = 0b00000000,

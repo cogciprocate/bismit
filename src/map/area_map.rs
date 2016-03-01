@@ -51,9 +51,7 @@ impl AreaMap {
 
     // ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
     pub fn gen_build_options(&self) -> ProgramBuilder {
-        let mut build_options = cmn::base_build_options();
-
-        build_options
+        let mut build_options = cmn::base_build_options()
             .cmplr_def("HORIZONTAL_AXON_ROW_DEMARCATION", self.hrz_demarc as i32)
             .cmplr_def("AXN_SLC_COUNT", self.slices.depth() as i32)
             .bo(BuildOpt::include_def("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
@@ -72,7 +70,8 @@ impl AreaMap {
                 for pf in protofilters.iter() {
                     match pf.cl_file_name() {
                         Some(ref clfn)  => {                            
-                            build_options.src_file(format!("{}/{}", cmn::cl_root_path(), clfn.clone()));
+                            build_options = build_options.src_file(
+                                format!("{}/{}", cmn::cl_root_path(), clfn.clone()));
                         },
 
                         None => (),
@@ -82,9 +81,7 @@ impl AreaMap {
             None => (),
         };
 
-        cmn::load_builtin_kernel_files(&mut build_options);
-
-        build_options
+        cmn::load_builtin_kernel_files(build_options)
     }
 
     // NEW

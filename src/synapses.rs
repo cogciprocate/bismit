@@ -143,9 +143,9 @@ impl Synapses {
                 // ocl_pq.create_kernel_with_dims("syns_cycle_layer",
                 // ocl_pq.create_kernel_with_dims("syns_cycle_vec4_layer",
                 // ocl_pq.create_kernel_with_dims("syns_cycle_wow_layer",
-                ocl_pq.create_kernel_with_dims("syns_cycle_wow_vec4_layer",
-                        SimpleDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
+                ocl_pq.create_kernel("syns_cycle_wow_vec4_layer")
                     // .expect("Synapses::new()")
+                    .gws(SimpleDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SimpleDims::Two(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(&axons.states)
                     .arg_buf(&src_col_u_offs)
@@ -274,7 +274,7 @@ impl Synapses {
     #[inline]
     pub fn cycle(&self, wait_events: Option<&EventList>) {
         for kern in self.kernels.iter() {
-            kern.enqueue_with(None, wait_events, None).expect("bismit::Synapses::cycle");
+            kern.enqueue_events(wait_events, None).expect("bismit::Synapses::cycle");
         }
     }
 

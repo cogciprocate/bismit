@@ -286,9 +286,7 @@ pub fn base_build_options() -> ProgramBuilder {
     assert!(DENDRITES_PER_CELL_DISTAL <= 256);
     assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
 
-    let mut build_options = ProgramBuilder::new();
-
-    build_options
+    ProgramBuilder::new()
         .cmplr_opt(CL_BUILD_SWITCHES)
         // .cmplr_def("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
         // .cmplr_def("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
@@ -315,20 +313,19 @@ pub fn base_build_options() -> ProgramBuilder {
         .cmplr_def("SYN_STPOT_FLAG", SYN_STPOT_FLAG as i32)
         .cmplr_def("SYN_STDEP_FLAG", SYN_STDEP_FLAG as i32)
         .cmplr_def("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
-    ;
-
-    build_options
 }
 
 // LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
 //        -Used by AreaMap
 // [FIXME]: TEMPORARY: determine path non-retardedly...
-pub fn load_builtin_kernel_files(build_options: &mut ProgramBuilder) {
+pub fn load_builtin_kernel_files(mut build_options: ProgramBuilder) -> ProgramBuilder {
     for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
-        build_options.src_file(
+        build_options = build_options.src_file(
             format!("{}/{}", cl_root_path(), BUILTIN_OPENCL_KERNEL_FILE_NAMES[i].to_string())
         );
     }
+
+    build_options
 }
 
 // [FIXME]: TEMPORARY

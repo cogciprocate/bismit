@@ -50,10 +50,10 @@ impl Minicolumns {
         let aff_out_axn_idz = area_map.axn_idz(aff_out_axn_slc);
         let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
-        let kern_activate = ocl_pq.create_kernel_with_dims("mcol_activate_pyrs",
-                SimpleDims::Three(pyrs.dims().depth() as usize, dims.v_size() as usize, 
-                    dims.u_size() as usize))
+        let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs")
             // .expect("Minicolumns::new()")
+            .gws(SimpleDims::Three(pyrs.dims().depth() as usize, dims.v_size() as usize,
+                dims.u_size() as usize))
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
             .arg_buf(&pyrs.best_den_states)
@@ -67,9 +67,9 @@ impl Minicolumns {
             .arg_buf(&axons.states);
 
 
-        let kern_output = ocl_pq.create_kernel_with_dims("mcol_output", 
-                SimpleDims::Two(dims.v_size() as usize, dims.u_size() as usize))
+        let kern_output = ocl_pq.create_kernel("mcol_output")
             // .expect("Minicolumns::new()")
+            .gws(SimpleDims::Two(dims.v_size() as usize, dims.u_size() as usize))
             .arg_buf(&pyrs.soma())
             .arg_scl(pyrs.tfts_per_cel())
             .arg_scl(ff_layer_axn_idz as u32)
@@ -121,7 +121,7 @@ impl Minicolumns {
         match new_events {
             Some(ne) => {
                 ne.clear_completed().expect("Minicolumns::output");
-                self.kern_output.enqueue_with(None, None, Some(ne))
+                self.kern_output.enqueue_events(None, Some(ne))
                     .expect("bismit::Minicolumns::output");
             },
 

@@ -40,9 +40,9 @@ impl SensoryFilter {
 
         let input = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());        
 
-        let kern_cycle = ocl_pq.create_kernel_with_dims(&filter_name.clone(),
-                SimpleDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+        let kern_cycle = ocl_pq.create_kernel(&filter_name.clone())
             // .expect("SensoryFilter::new()")
+            .gws(SimpleDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
             .lws(SimpleDims::Three(1, 8, 8 as usize))
             .arg_buf(&input)
             .arg_scl(base_axn_slc)
