@@ -112,7 +112,7 @@ impl Dendrites {
     pub fn cycle(&self, wait_events: Option<&EventList>) {
         self.syns.cycle(wait_events);
         // self.kern_cycle.enqueue_events(wait_events, None).expect("bismit::Dendrites::cycle");
-        self.kern_cycle.cmd().wait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
+        self.kern_cycle.cmd().ewait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
     }
 
     // FOR TESTING PURPOSES
@@ -184,7 +184,7 @@ pub mod tests {
 
         fn den_state_direct(&self, idx: u32) -> u8 {
             let mut sdr = vec![0u8];
-            self.states.read(&mut sdr[..], idx as usize).unwrap();
+            self.states.read(idx as usize, &mut sdr[..]).unwrap();
             sdr[0]
         }
 

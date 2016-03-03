@@ -22,7 +22,7 @@ impl Cortex {
         // let ocl_context: Context = Context::new_by_index_and_type(None, Some(ocl::core::DEVICE_TYPE_GPU)).expect(
         //     "CorticalArea::new(): ocl_context creation error");
         let ocl_context: Context = Context::builder()
-            .devices(DeviceSpecifier::TypeFlags(ocl::DEVICE_TYPE_GPU))
+            .devices(DeviceSpecifier::TypeFlags(ocl::flags::DEVICE_TYPE_GPU))
             .build().expect("CorticalArea::new(): ocl_context creation error");
         let mut areas = HashMap::new();
         let mut device_idx = 0;        

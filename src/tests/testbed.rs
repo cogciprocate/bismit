@@ -177,7 +177,7 @@ impl TestBed {
             .build().expect("Testbed::new(): ocl_pq.build()");
 
 
-        let dims = area_map.dims().clone_with_incr(ocl_pq.max_work_group_size());
+        let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size());
 
         TestBed {
             ocl_context: ocl_context,

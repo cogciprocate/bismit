@@ -43,13 +43,13 @@ pub fn test_cycles(cortex: &mut Cortex, area_name: &str) {
     println!("Primary Spatial Associative Layer...");
     //let psal_name = cortex.area(area_name).psal().layer_name();
     //cortex.enqueue_write(area_name, psal_name, &vec1);
-    cortex.area_mut(area_name).psal_mut().soma_mut().write(&vec1, 0).unwrap();
+    cortex.area_mut(area_name).psal_mut().soma_mut().write(0, &vec1).unwrap();
     test_syn_and_den_states(&mut cortex.area_mut(area_name).psal_mut().dens_mut());
 
     println!("Primary Temporal Associative Layer...");
     //let ptal_name = cortex.area(area_name).ptal().layer_name();
     //cortex.enqueue_write(area_name, ptal_name, &vec1);
-    cortex.area_mut(area_name).ptal_mut().soma_mut().write(&vec1, 0).unwrap();
+    cortex.area_mut(area_name).ptal_mut().soma_mut().write(0, &vec1).unwrap();
     test_syn_and_den_states(&mut cortex.area_mut(area_name).ptal_mut().dens_mut());
     test_pyr_preds(&mut cortex.area_mut(area_name).ptal_mut());
 }

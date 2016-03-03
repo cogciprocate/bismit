@@ -61,7 +61,7 @@ impl SensoryFilter {
     #[inline]
     pub fn write(&mut self, sdr: &Sdr) {
         assert!(sdr.len() <= self.input.len());
-        self.input.write(sdr, 0).unwrap();
+        self.input.write(0, sdr).unwrap();
     }
 
     #[inline]

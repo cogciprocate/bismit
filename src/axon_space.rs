@@ -66,7 +66,7 @@ impl AxonSpace {
         //let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
         
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", 
-            area_map.slices().padded_buffer_len(ocl_pq.max_work_group_size()), mt = cmn::MT);
+            area_map.slices().padded_buffer_len(ocl_pq.max_wg_size()), mt = cmn::MT);
 
         let states = Buffer::<u8>::with_vec(area_map.slices(), ocl_pq.queue());
 
@@ -107,7 +107,7 @@ pub mod tests {
 
         fn write_to_axon(&mut self, val: u8, idx: u32) {
             let sdr = vec![val];
-            self.states.write(&sdr, idx as usize).unwrap();
+            self.states.write(idx as usize, &sdr).unwrap();
         }
     }
 

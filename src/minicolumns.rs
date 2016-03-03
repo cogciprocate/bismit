@@ -124,7 +124,7 @@ impl Minicolumns {
                 // self.kern_output.enqueue_events(None, Some(ne))
                 //     .expect("bismit::Minicolumns::output");
 
-                self.kern_output.cmd().dest(ne).enq()
+                self.kern_output.cmd().enew(ne).enq()
                     .expect("bismit::Minicolumns::output");
             },
 

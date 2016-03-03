@@ -167,7 +167,7 @@ impl CorticalDims {
 
     #[inline]
     pub fn per_subgrp(&self, subgroup_count: u32, ocl_pq: &ProQue) -> Result<u32, &'static str> {
-        let physical_len = self.padded_buffer_len(ocl_pq.max_work_group_size()) as u32;
+        let physical_len = self.padded_buffer_len(ocl_pq.max_wg_size()) as u32;
 
         if physical_len % subgroup_count == 0 {
             return Ok(physical_len / subgroup_count) 
@@ -213,7 +213,7 @@ impl CorticalDims {
     ///    Rounded based on columns for versatility's sake.
     pub fn padded_buffer_len(&self, incr: usize) -> usize {
         let cols = self.columns();
-        // let phys_incr = ocl_pq.max_work_group_size();
+        // let phys_incr = ocl_pq.max_wg_size();
 
         let len_mod = cols % incr as u32;
 
@@ -256,7 +256,7 @@ impl BufferDims for CorticalDims {
 
 // fn resolve_incr(ocl: Option<&ProQue>) -> Option<u32> {
 //     match ocl {
-//         Some(ocl) => Some(ocl.max_work_group_size()),
+//         Some(ocl) => Some(ocl.max_wg_size()),
 //         None => None,
 //     }
 // }

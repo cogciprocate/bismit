@@ -126,7 +126,7 @@ impl Synapses {
             println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
                 dims: {:?}, phys_len: {},", 
                 den_kind, states.len(), dims, dims.padded_buffer_len(
-                    ocl_pq.max_work_group_size()), mt = cmn::MT); 
+                    ocl_pq.max_wg_size()), mt = cmn::MT); 
         }
 
         let min_wg_sqrt = 8 as usize;
@@ -275,7 +275,7 @@ impl Synapses {
     pub fn cycle(&self, wait_events: Option<&EventList>) {
         for kern in self.kernels.iter() {
             // kern.enqueue_events(wait_events, None).expect("bismit::Synapses::cycle");
-            kern.cmd().wait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
+            kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
         }
     }
 
@@ -386,18 +386,18 @@ pub mod tests {
         fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize) {
             let sdr_v = vec![v_ofs];
             let sdr_u = vec![u_ofs];
-            self.src_col_v_offs.write(&sdr_v[..], idx).unwrap();
-            self.src_col_u_offs.write(&sdr_u[..], idx).unwrap();
+            self.src_col_v_offs.write(idx, &sdr_v[..]).unwrap();
+            self.src_col_u_offs.write(idx, &sdr_u[..]).unwrap();
         }
 
         fn set_src_slc(&mut self, src_slc_id: u8, idx: usize) {
             let sdr = vec![src_slc_id];
-            self.src_slc_ids.write(&sdr[..], idx).unwrap();
+            self.src_slc_ids.write(idx, &sdr[..]).unwrap();
         }
 
         fn syn_state(&self, idx: u32) -> u8 {
             let mut sdr = vec![0u8];
-            self.states.read(&mut sdr[..], idx as usize).unwrap();
+            self.states.read(idx as usize, &mut sdr[..]).unwrap();
             sdr[0]
         }
 

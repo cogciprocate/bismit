@@ -180,7 +180,7 @@ impl DataCellLayer for PyramidalLayer {
         self.dens().cycle(wait_events);
         // self.kern_cycle.enqueue_events(wait_events, None)
         //     .expect("bismit::PyramidalLayer::cycle");
-        self.kern_cycle.cmd().wait_opt(wait_events).enq().expect("bismit::PyramidalLayer::cycle");
+        self.kern_cycle.cmd().ewait_opt(wait_events).enq().expect("bismit::PyramidalLayer::cycle");
     }
 
     // [FIXME]: MARKED FOR DEPRICATION

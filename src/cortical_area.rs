@@ -69,7 +69,7 @@ impl CorticalArea {
             .prog_bldr(area_map.gen_build_options())
             .build().expect("CorticalArea::new(): ocl_pq.build(): error");
 
-        let dims = area_map.dims().clone_with_incr(ocl_pq.max_work_group_size());
+        let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size());
 
         println!("{mt}CORTICALAREA::NEW(): Area \"{}\" details: \
             (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: {{[{}]}}", 
@@ -532,13 +532,13 @@ impl CorticalArea {
         debug_assert!(buf.len() == slc_axn_range.len(), "Sample buffer length ({}) not \
             equal to slice axon length({}). slc_axn_range: {:?}, slc_id: {}", 
             buf.len(), slc_axn_range.len(), slc_axn_range, slc_id);
-        self.axns.states.read(buf, slc_axn_range.start).unwrap();
+        self.axns.states.read(slc_axn_range.start, buf).unwrap();
     }    
 
     #[inline]
     pub fn sample_axn_space(&self, buf: &mut [u8]) {
         debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
-        self.axns.states.read(buf, 0).unwrap();
+        self.axns.states.read(0, buf).unwrap();
     }
 
     #[inline]
