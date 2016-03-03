@@ -2,7 +2,7 @@ use rand::{self, XorShiftRng};
 
 use cmn::{self, CorticalDims};
 use map::{AreaMap, SrcSlices, SrcIdxCache, SynSrc};
-use ocl::{ProQue, SimpleDims, Buffer, OclNum, EventList, Kernel, Result as OclResult};
+use ocl::{ProQue, SpatialDims, Buffer, OclNum, EventList, Kernel, Result as OclResult};
 use proto::{CellKind, Protocell, DendriteKind};
 use axon_space::{AxonSpace};
 
@@ -145,8 +145,8 @@ impl Synapses {
                 // ocl_pq.create_kernel_with_dims("syns_cycle_wow_layer",
                 ocl_pq.create_kernel("syns_cycle_wow_vec4_layer")
                     // .expect("Synapses::new()")
-                    .gws(SimpleDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
-                    .lws(SimpleDims::Two(min_wg_sqrt, min_wg_sqrt))
+                    .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
+                    .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(&axons.states)
                     .arg_buf(&src_col_u_offs)
                     .arg_buf(&src_col_v_offs)

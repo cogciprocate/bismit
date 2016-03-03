@@ -3,7 +3,7 @@ use rand;
 
 use cmn::{self, CorticalDims, DataCellLayer};
 use map::{AreaMap};
-use ocl::{self, ProQue, SimpleDims, Buffer, OclNum, EventList, Result as OclResult};
+use ocl::{self, ProQue, SpatialDims, Buffer, OclNum, EventList, Result as OclResult};
 use axon_space::{AxonSpace};
 use pyramidals::{PyramidalLayer};
 use spiny_stellates::{SpinyStellateLayer};
@@ -52,7 +52,7 @@ impl Minicolumns {
 
         let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs")
             // .expect("Minicolumns::new()")
-            .gws(SimpleDims::Three(pyrs.dims().depth() as usize, dims.v_size() as usize,
+            .gws(SpatialDims::Three(pyrs.dims().depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
@@ -69,7 +69,7 @@ impl Minicolumns {
 
         let kern_output = ocl_pq.create_kernel("mcol_output")
             // .expect("Minicolumns::new()")
-            .gws(SimpleDims::Two(dims.v_size() as usize, dims.u_size() as usize))
+            .gws(SpatialDims::Two(dims.v_size() as usize, dims.u_size() as usize))
             .arg_buf(&pyrs.soma())
             .arg_scl(pyrs.tfts_per_cel())
             .arg_scl(ff_layer_axn_idz as u32)

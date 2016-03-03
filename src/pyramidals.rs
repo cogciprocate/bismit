@@ -3,7 +3,7 @@ use rand::{self, XorShiftRng, Rng};
 
 use cmn::{self, CorticalDims, DataCellLayer};
 use map::{AreaMap};
-use ocl::{ProQue, SimpleDims, Buffer, OclNum, Kernel, EventList, Result as OclResult};
+use ocl::{ProQue, SpatialDims, Buffer, OclNum, Kernel, EventList, Result as OclResult};
 use proto::{CellKind, Protocell, DendriteKind};
 use dendrites::{Dendrites};
 use axon_space::{AxonSpace};
@@ -70,7 +70,7 @@ impl PyramidalLayer {
         
         let kern_cycle = ocl_pq.create_kernel("pyr_cycle")
             // .expect("PyramidalLayer::new()")
-            .gws(SimpleDims::One(dims.cells() as usize))
+            .gws(SpatialDims::One(dims.cells() as usize))
             .arg_buf(&dens.states_raw)
             .arg_buf(&dens.states)
             .arg_scl(tfts_per_cel)
@@ -90,7 +90,7 @@ impl PyramidalLayer {
 
         let kern_ltp = ocl_pq.create_kernel("pyrs_ltp")
             // .expect("PyramidalLayer::new()")
-            .gws(SimpleDims::One(cel_grp_count as usize))
+            .gws(SpatialDims::One(cel_grp_count as usize))
             .arg_buf(&axons.states)
             .arg_buf(&states)
             .arg_buf(&tft_best_den_ids)

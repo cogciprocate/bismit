@@ -9,7 +9,7 @@
 
 use cmn::{ self, CorticalDims };
 use map::{ AreaMap };
-use ocl::{ self, ProQue, SimpleDims, Buffer, EventList };
+use ocl::{ self, ProQue, SpatialDims, Buffer, EventList };
 use proto::{ /*ProtolayerMap, LayerMapKind, ProtoareaMaps,*/ CellKind, Protocell, DendriteKind };
 use synapses::{ Synapses };
 use axon_space::{ AxonSpace };
@@ -82,7 +82,7 @@ impl Dendrites {
 
         let kern_cycle = ocl_pq.create_kernel("den_cycle")
             // .expect("Dendrites::new()")
-            .gws(SimpleDims::One(states.len()))
+            .gws(SpatialDims::One(states.len()))
             .arg_buf(&syns.states)
             .arg_buf(&syns.strengths)
             .arg_scl(syns_per_den_l2)

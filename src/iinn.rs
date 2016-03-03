@@ -10,7 +10,7 @@
 
 use cmn::{ CorticalDims };
 use map::{ AreaMap };
-use ocl::{ Kernel, ProQue, SimpleDims, Buffer };
+use ocl::{ Kernel, ProQue, SpatialDims, Buffer };
 use proto::{ /*ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind,*/ Protocell, /*DendriteKind*/ };
 // use synapses::{ Synapses };
 // use dendrites::{ Dendrites };
@@ -59,9 +59,9 @@ impl InhibitoryInterneuronNetwork {
 
         let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple")
             // .expect("InhibitoryInterneuronNetwork::new()")
-            .gws(SimpleDims::Three(dims.depth() as usize, dims.v_size() as usize, 
+            .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, 
                 dims.u_size() as usize))
-            .lws(SimpleDims::Three(1, 8, 8 as usize))
+            .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)
             // .arg_buf_named("aux_ints_0", None)
@@ -70,8 +70,8 @@ impl InhibitoryInterneuronNetwork {
 
         let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough")
             // .expect("InhibitoryInterneuronNetwork::new()")
-            //.lws(SimpleDims::Three(1, 8, 8 as usize))
-            .gws(SimpleDims::Three(dims.depth() as usize, dims.v_size() as usize, 
+            //.lws(SpatialDims::Three(1, 8, 8 as usize))
+            .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, 
                 dims.u_size() as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)
