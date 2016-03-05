@@ -1,7 +1,8 @@
 use std::ops::Range;
-use ocl::{ self, BufferDims };
-use cmn::{ self, CorticalDims, ParaHexArray, SliceDims };
-use map::{ area_map, LayerMap, AxonKind, GanglionMap };
+use ocl::{self, Result as OclResult};
+use ocl::traits::MemDims;
+use cmn::{self, CorticalDims, ParaHexArray, SliceDims};
+use map::{area_map, LayerMap, AxonKind, GanglionMap};
 
 #[derive(Debug, Clone)]
 pub struct SliceMap {
@@ -234,10 +235,10 @@ impl SliceMap {
     }
 }
 
-impl BufferDims for SliceMap {
+impl MemDims for SliceMap {
     #[inline]
-    fn padded_buffer_len(&self, incr: usize) -> usize {
-        ocl::util::padded_len(self.axn_count() as usize, incr)
+    fn padded_buffer_len(&self, incr: usize) -> OclResult<usize> {
+        Ok(ocl::util::padded_len(self.axn_count() as usize, incr))
     }
 }
 

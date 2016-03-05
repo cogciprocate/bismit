@@ -8,7 +8,7 @@ use std::ops::{ Range };
 // use proto::*;
 
 
-use ocl::{ /*self,*/ Buffer, BufferTest, /*SpatialDims,*/ /*ProQue, BufferDims,*/ OclNum };
+use ocl::{ /*self,*/ Buffer, BufferTest, /*SpatialDims,*/ /*ProQue, MemDims,*/ OclNum };
 // use super::{ TestBed };
 use cortical_area::{ CorticalArea, CorticalAreaTest };
 // use map::{ AreaMapTest };

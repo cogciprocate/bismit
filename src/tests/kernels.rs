@@ -2,7 +2,7 @@
 use cmn::{ self, /*CorticalDims*/ };
 // use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 // use cortex::{ self, Cortex };
-use ocl::{ Buffer, SpatialDims, /*ProQue, BufferDims,*/ /*OclNum*/ };
+use ocl::{ Buffer, SpatialDims, /*ProQue, MemDims,*/ /*OclNum*/ };
 // use interactive::{ input_czar, InputCzar, InputKind };
 // use super::hybrid;
 use super::{ TestBed, util };

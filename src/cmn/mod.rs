@@ -12,7 +12,8 @@ use std::collections::{ BTreeMap };
 use rand;
 use rand::distributions::{ IndependentSample, Range };
 
-use ocl::{ ProgramBuilder, OclNum };
+use ocl::OclNum;
+use ocl::builders::ProgramBuilder;
 
 // pub use self::cmn::*;
 pub use self::cortical_dims::{ CorticalDims };

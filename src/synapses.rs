@@ -126,7 +126,7 @@ impl Synapses {
             println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
                 dims: {:?}, phys_len: {},", 
                 den_kind, states.len(), dims, dims.padded_buffer_len(
-                    ocl_pq.max_wg_size()), mt = cmn::MT); 
+                    ocl_pq.max_wg_size()).expect("bismit::Synapses"), mt = cmn::MT); 
         }
 
         let min_wg_sqrt = 8 as usize;

@@ -10,7 +10,8 @@
 
 use cmn::{ self };
 use map::{ AreaMap };
-use ocl::{ ProQue, Buffer, BufferDims };
+use ocl::{ProQue, Buffer};
+use ocl::traits::MemDims;
 //use proto::{ ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind, Protocell, DendriteKind };
 //use synapses::{ Synapses };
 //use dendrites::{ Dendrites };
@@ -66,7 +67,9 @@ impl AxonSpace {
         //let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
         
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", 
-            area_map.slices().padded_buffer_len(ocl_pq.max_wg_size()), mt = cmn::MT);
+            area_map.slices().padded_buffer_len(ocl_pq.max_wg_size()).expect("bismit::AxonSpace::new():
+                Error converting area_map.slices().")
+            , mt = cmn::MT);
 
         let states = Buffer::<u8>::with_vec(area_map.slices(), ocl_pq.queue());
 

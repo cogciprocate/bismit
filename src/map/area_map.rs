@@ -1,13 +1,13 @@
-use std::fmt::{ Display };
-use std::ops::{ Range }; 
+use std::fmt::Display;
+use std::ops::Range; 
 // use std::collections::{ BTreeMap };
 
-use ocl::{ ProgramBuilder, BuildOpt };
-use proto::{ ProtolayerMaps, ProtoareaMaps, ProtoareaMap, LayerMapKind, Protofilter,
-    DendriteKind };
-use cmn::{ self, CorticalDims };
-use map::{ self, SliceMap, LayerTags, LayerMap, LayerInfo };
-use input_source::{ InputSources };
+use ocl::builders::{BuildOpt, ProgramBuilder};
+use proto::{ProtolayerMaps, ProtoareaMaps, ProtoareaMap, LayerMapKind, Protofilter,
+    DendriteKind};
+use cmn::{self, CorticalDims};
+use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo};
+use input_source::InputSources;
 
 
 #[derive(Clone)]
