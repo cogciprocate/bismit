@@ -10,7 +10,7 @@ pub trait DataCellLayer {
     fn learn(&mut self);
     fn regrow(&mut self);
     fn cycle(&self, Option<&EventList>);
-    fn confab(&mut self);
+    // fn confab(&mut self);
     fn soma(&self) -> &Buffer<u8>;
     fn soma_mut(&mut self) -> &mut Buffer<u8>;
     fn dims(&self) -> &CorticalDims;

@@ -156,6 +156,10 @@ impl MemDims for SliceDims {
     fn padded_buffer_len(&self, incr: usize) -> OclResult<usize> {
         Ok(ocl::util::padded_len(self.columns() as usize, incr))
     }
+
+    fn to_size(&self) -> [usize; 3] {
+        [1, self.v_size as usize, self.u_size as usize]
+    }
 }
 
 #[inline]

@@ -80,13 +80,14 @@ impl SpinyStellateLayer {
 
     #[inline]
     pub fn regrow(&mut self) {
-        self.dens.regrow();
+        // self.dens.regrow();
+        panic!("SpinyStellates::regrow(): reimplement me!");
     }
 
-    #[inline]
-    pub fn confab(&mut self) {
-        self.dens.confab();
-    } 
+    // #[inline]
+    // pub fn confab(&mut self) {
+    //     self.dens.confab();
+    // } 
 
     #[inline]
     pub fn soma(&self) -> &Buffer<u8> {
@@ -113,35 +114,35 @@ impl SpinyStellateLayer {
         self.layer_name
     }
 
-    pub fn print_cel(&mut self, cel_idx: usize) {
-        let emsg = "SpinyStellateLayer::print()";
+    // pub fn print_cel(&mut self, cel_idx: usize) {
+    //     let emsg = "SpinyStellateLayer::print()";
 
-        let cel_syn_idz = (cel_idx << self.dens.syns().dims().per_tft_l2_left()) as usize;
-        let per_cel = self.dens.syns().dims().per_cel() as usize;
-        let cel_syn_range = cel_syn_idz..(cel_syn_idz + per_cel);
+    //     let cel_syn_idz = (cel_idx << self.dens.syns().dims().per_tft_l2_left()) as usize;
+    //     let per_cel = self.dens.syns().dims().per_cel() as usize;
+    //     let cel_syn_range = cel_syn_idz..(cel_syn_idz + per_cel);
 
-        println!("\ncell.state[{}]: {}", cel_idx, self.dens.states[cel_idx]);
+    //     println!("\ncell.state[{}]: {}", cel_idx, self.dens.states[cel_idx]);
 
-        println!("cell.syns.states[{:?}]: ", cel_syn_range.clone()); 
-        self.dens.syns_mut().states.print(1, None, Some(cel_syn_range.clone()), false);
-        // cmn::fmt::print_slice(&self.dens.syns_mut().states.vec()[..], 1, None, 
-        //     Some(cel_syn_range.clone()), false);
+    //     println!("cell.syns.states[{:?}]: ", cel_syn_range.clone()); 
+    //     self.dens.syns_mut().states.print(1, None, Some(cel_syn_range.clone()), false);
+    //     // cmn::fmt::print_slice(&self.dens.syns_mut().states.vec()[..], 1, None, 
+    //     //     Some(cel_syn_range.clone()), false);
 
-        println!("cell.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
-        self.dens.syns_mut().strengths.print(1, None, Some(cel_syn_range.clone()), false);
-        // cmn::fmt::print_slice(&self.dens.syns_mut().strengths.vec()[..], 1, None, 
-        //     Some(cel_syn_range.clone()), false);
+    //     println!("cell.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
+    //     self.dens.syns_mut().strengths.print(1, None, Some(cel_syn_range.clone()), false);
+    //     // cmn::fmt::print_slice(&self.dens.syns_mut().strengths.vec()[..], 1, None, 
+    //     //     Some(cel_syn_range.clone()), false);
 
-        println!("cell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
-        self.dens.syns_mut().src_col_v_offs.print(1, None, Some(cel_syn_range.clone()), false);
-        // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_v_offs.vec()[..], 1, None, 
-            // Some(cel_syn_range.clone()), false);
+    //     println!("cell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
+    //     self.dens.syns_mut().src_col_v_offs.print(1, None, Some(cel_syn_range.clone()), false);
+    //     // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_v_offs.vec()[..], 1, None, 
+    //         // Some(cel_syn_range.clone()), false);
 
-        println!("cell.syns.src_col_u_offs[{:?}]: ", cel_syn_range.clone()); 
-        self.dens.syns_mut().src_col_u_offs.print(1, None, Some(cel_syn_range.clone()), false);
-        // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_u_offs.vec()[..], 1, None, 
-        //     Some(cel_syn_range.clone()), false);
-    }
+    //     println!("cell.syns.src_col_u_offs[{:?}]: ", cel_syn_range.clone()); 
+    //     self.dens.syns_mut().src_col_u_offs.print(1, None, Some(cel_syn_range.clone()), false);
+    //     // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_u_offs.vec()[..], 1, None, 
+    //     //     Some(cel_syn_range.clone()), false);
+    // }
 
     #[inline]
     pub fn dens(&self) -> &Dendrites {

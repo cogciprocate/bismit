@@ -68,9 +68,13 @@ impl Dendrites {
             ),
         };*/
 
-        let states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
-        let states_raw = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
-        let energies = Buffer::<u8>::with_vec_initialized_to(255, &dims, ocl_pq.queue());
+        let states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let states_raw = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        // let energies = Buffer::<u8>::with_vec_initialized_to(255, &dims, ocl_pq.queue());
+        let energies = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        energies.cmd().fill(&[255]).enq().unwrap();
+        let thresholds = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        energies.cmd().fill(&[1]).enq().unwrap();
 
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", 
             layer_name, dims, states.len(), mt = cmn::MT);
@@ -100,7 +104,7 @@ impl Dendrites {
             den_kind: den_kind,
             cell_kind: cell_kind,
             kern_cycle: kern_cycle,
-            thresholds: Buffer::<u8>::with_vec_initialized_to(1, &dims, ocl_pq.queue()),
+            thresholds: thresholds,
             states_raw: states_raw,
             states: states,
             energies: energies,
@@ -120,17 +124,17 @@ impl Dendrites {
         self.kern_cycle.enqueue();
     }
 
-    #[inline]
-    pub fn regrow(&mut self) {
-        self.syns.regrow();
-    }
+    // #[inline]
+    // pub fn regrow(&mut self) {
+    //     self.syns.regrow();
+    // }
 
-    pub fn confab(&mut self) {
-        self.thresholds.fill_vec();
-        self.states_raw.fill_vec();
-        self.states.fill_vec();
-        self.syns.confab();
-    }
+    // pub fn confab(&mut self) {
+    //     self.thresholds.fill_vec();
+    //     self.states_raw.fill_vec();
+    //     self.states.fill_vec();
+    //     self.syns.confab();
+    // }
 
     #[inline]
     pub fn dims(&self) -> &CorticalDims {

@@ -15,15 +15,15 @@ use super::{ hybrid, kernels, testbed, TestBed };
 
 
 #[test]
-fn test_cortex() {
+fn cortex() {
     let mut cortex = Cortex::new(testbed::define_protolayer_maps(), testbed::define_protoareas());
-    hybrid::test_cycles(&mut cortex, testbed::PRIMARY_AREA_NAME);
+    hybrid::cycles(&mut cortex, testbed::PRIMARY_AREA_NAME);
 }
 
 
 #[test]
-fn test_kernels() {
+fn kernels() {
     let testbed = TestBed::new();
-    kernels::test_axn_idxs(&testbed);
+    kernels::axn_idxs(&testbed);
 }
 

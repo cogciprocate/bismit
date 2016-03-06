@@ -12,8 +12,8 @@ use std::collections::{ BTreeMap };
 use rand;
 use rand::distributions::{ IndependentSample, Range };
 
-use ocl::OclNum;
-use ocl::builders::ProgramBuilder;
+use ocl::traits::OclPrm;
+use ocl::build::ProgramBuilder;
 
 // pub use self::cmn::*;
 pub use self::cortical_dims::{ CorticalDims };
@@ -386,12 +386,12 @@ pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
 }
 
 
-// pub fn print_vec_simple<T: OclNum>(vec: &[T]) {
+// pub fn print_vec_simple<T: OclPrm>(vec: &[T]) {
 //     print_vec(vec, 1, None, None, true);
 // }
 
 
-// pub fn print_vec<T: OclNum>(
+// pub fn print_vec<T: OclPrm>(
 //             vec: &[T], 
 //             every: usize, 
 //             val_range: Option<(T, T)>, 
@@ -533,7 +533,7 @@ pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
 //         ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 // }
 
-// pub fn shuffled_vec<T: OclNum>(size: usize, min_val: T, max_val: T) -> Vec<T> {
+// pub fn shuffled_vec<T: OclPrm>(size: usize, min_val: T, max_val: T) -> Vec<T> {
 
 //     //println!("min_val: {}, max_val: {}", min_val, max_val);
 
@@ -570,7 +570,7 @@ pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
 // }
 
 // // Fisher-Yates
-// pub fn shuffle_vec<T: OclNum>(vec: &mut Vec<T>) {
+// pub fn shuffle_vec<T: OclPrm>(vec: &mut Vec<T>) {
 //     let len = vec.len();
 //     let mut rng = rand::weak_rng();
 
@@ -589,7 +589,7 @@ pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
 
     sp_fctr_log2: sparsity factor (log2)
 */
-pub fn sparse_vec<T: OclNum>(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
+pub fn sparse_vec<T: OclPrm>(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
     let mut vec: Vec<T> = iter::repeat(min_val).cycle().take(size).collect();
 
     let len = vec.len();
@@ -611,7 +611,7 @@ pub fn sparse_vec<T: OclNum>(size: usize, min_val: T, max_val: T, sp_fctr_log2: 
     vec
 }
 
-// pub fn dup_check<T: OclNum>(in_vec: &mut Vec<T>) -> (usize, usize) {
+// pub fn dup_check<T: OclPrm>(in_vec: &mut Vec<T>) -> (usize, usize) {
     
 
 //     let mut vec = in_vec.clone();
@@ -930,12 +930,10 @@ pub fn wrap_idx(idx: usize, len: usize) -> usize {
 
 #[cfg(test)]
 pub mod tests {
-
     use super::*;
 
-
     // #[test]
-    // fn test_axn_idz_2d() {
+    // fn axn_idz_2d() {
     //     assert!(axn_idz_2d(1, 1024, 4) == 1024u32 + AXON_MARGIN_SIZE as u32);
     //     assert!(axn_idz_2d(5, 1024, 4) == 4096u32 + SYNAPSE_SPAN_RHOMBAL_AREA + AXON_MARGIN_SIZE as u32);
     //     assert!(axn_idz_2d(15, 1024, 4) == 4096u32 + (11 * SYNAPSE_SPAN_RHOMBAL_AREA) + AXON_MARGIN_SIZE as u32);

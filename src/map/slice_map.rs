@@ -240,6 +240,11 @@ impl MemDims for SliceMap {
     fn padded_buffer_len(&self, incr: usize) -> OclResult<usize> {
         Ok(ocl::util::padded_len(self.axn_count() as usize, incr))
     }
+
+    fn to_size(&self) -> [usize; 3] {
+        // self.dims.to_size().expect("bismit::SliceMap::to_size")
+        [self.axn_count() as usize, 0, 0]
+    }
 }
 
 

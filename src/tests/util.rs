@@ -8,7 +8,8 @@ use std::ops::{ Range };
 // use proto::*;
 
 
-use ocl::{ /*self,*/ Buffer, BufferTest, /*SpatialDims,*/ /*ProQue, MemDims,*/ OclNum };
+use ocl::Buffer;
+use ocl::traits::OclPrm;
 // use super::{ TestBed };
 use cortical_area::{ CorticalArea, CorticalAreaTest };
 // use map::{ AreaMapTest };
@@ -87,7 +88,7 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 // }
 
 
-// pub fn assert_neq_range<T: OclNum>(env: &Buffer<T>, idx_range: Range<usize>, val_neq: T) -> bool {
+// pub fn assert_neq_range<T: OclPrm>(env: &Buffer<T>, idx_range: Range<usize>, val_neq: T) -> bool {
 //     for idx in idx_range {
 //         if env.read_idx_direct(idx) == val_neq { return false };
 //     }
@@ -95,7 +96,7 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 //     true
 // }
 
-// pub fn assert_eq_range<T: OclNum>(env: &Buffer<T>, idx_range: Range<usize>, val_eq: T) -> bool {
+// pub fn assert_eq_range<T: OclPrm>(env: &Buffer<T>, idx_range: Range<usize>, val_eq: T) -> bool {
 //     for idx in idx_range.clone() {
 //         if env.read_idx_direct(idx) != val_eq { return false };
 //     }
@@ -106,7 +107,7 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 // ASSERT_RANGE():
 //         - [FIXME] TODO: Use env.read_direct and read the entire range at once into a Vec.
 //        - [FIXME] TODO: See if using an iterator (map?) function would be more idiomatic.
-pub fn eval_range<T: OclNum, F>(env: &Buffer<T>, idx_range: Range<usize>, comp: F) -> bool 
+pub fn eval_range<T: OclPrm, F>(env: &Buffer<T>, idx_range: Range<usize>, comp: F) -> bool 
     where F : Fn(T) -> bool
 {
     for idx in idx_range.clone() {
@@ -132,7 +133,7 @@ pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
 // }
 
 
-pub fn compare_buffers<T: OclNum>(env1: &mut Buffer<T>, env2: &mut Buffer<T>) -> bool {    
+pub fn compare_buffers<T: OclPrm>(env1: &mut Buffer<T>, env2: &mut Buffer<T>) -> bool {    
     print!("\nVector comparison:\n");    
     assert!(env1.len() == env2.len());
 
@@ -163,7 +164,7 @@ pub fn compare_buffers<T: OclNum>(env1: &mut Buffer<T>, env2: &mut Buffer<T>) ->
 // TEST_NEARBY(): Ensure that elements near a focal index are equal to a particular value.
 //        - idz and idm (first and last elements) are also checked along with their nearby elements
 // <<<<< [FIXME] TODO: THIS FUNCTION NEEDS SERIOUS STREAMLINING & OPTIMIZATION >>>>>
-pub fn eval_others<T: OclNum>(env: &mut Buffer<T>, foc_idx: usize, other_val: T) {    // -> Result<(), &'static str>    
+pub fn eval_others<T: OclPrm>(env: &mut Buffer<T>, foc_idx: usize, other_val: T) {    // -> Result<(), &'static str>    
     // let mut checklist = Vec::new();
     let check_margin = 384;
 
@@ -224,7 +225,7 @@ pub fn eval_others<T: OclNum>(env: &mut Buffer<T>, foc_idx: usize, other_val: T)
 
 
 #[test]
-fn test_eval_others_UNIMPLEMENTED() {
+fn eval_others_UNIMPLEMENTED() {
 
 }
 

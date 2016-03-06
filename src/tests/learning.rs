@@ -5,7 +5,8 @@ use std::ops::{Range};
 // use std::mem;
 // use rand;
 
-use ocl::{BufferTest, OclNum};
+// use ocl::{BufferTest, OclPrm};
+use ocl::traits::OclPrm;
 use proto::{layer};
 use cortical_area::{CorticalArea, CorticalAreaTest};
 use map;
@@ -87,7 +88,7 @@ const PRINT_FINAL_ITER_ONLY: bool = true;
 */
 
 #[test]
-fn test_dst_den_learning() {
+fn dst_den_learning() {
     let mut ltb = LearningTestBed::new();
     // 180 -> +-64 (slow), +-96 (fast)
     // 360 -> +-96 (slow), +-119 (fast)
@@ -305,7 +306,7 @@ impl LearningTestBed {
             - Randomizing or having irregular groupings of active synapses on a dendrite (using a list of ranges).
     
     */
-    fn test_on_off(&mut self, on_focus_iters: usize, off_focus_iters: usize) {
+    fn on_off(&mut self, on_focus_iters: usize, off_focus_iters: usize) {
         for i in 0..on_focus_iters {
             let final_iter = i == (on_focus_iters - 1);
             let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)

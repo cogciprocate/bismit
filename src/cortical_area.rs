@@ -4,7 +4,7 @@ use rand;
 
 use cmn::{self, ParaHexArray, CorticalDims, Renderer, Sdr, DataCellLayer};
 use map::{self, AreaMap, LayerTags, GanglionMap};
-use ocl::{ProQue, Context, Buffer, EventList, Queue};
+use ocl::{ProQue, Context, Buffer, EventList};
 use proto::{Cellular, Pyramidal, SpinyStellate, Inhibitory, DendriteKind};
 
 use axon_space::AxonSpace;
@@ -298,7 +298,7 @@ impl CorticalArea {
 
         self.intake(map::FB_IN, thal);
 
-        if !self.disable_pyrs {            
+        if !self.disable_pyrs {    
             if !self.disable_learning { self.ptal_mut().learn(); }
             let eff_input_events = { self.events_lists.get(&map::FB_IN) };
             self.ptal().cycle(eff_input_events);
@@ -312,7 +312,7 @@ impl CorticalArea {
             self.mcols.output(output_events); 
         }
 
-        if !self.disable_regrowth { self.regrow(); }
+        // if !self.disable_regrowth { self.regrow(); }
 
         self.output(map::FF_OUT, thal);
     }
@@ -405,10 +405,12 @@ impl CorticalArea {
         // new_events.release_all();
         new_events.clear_completed().expect("CorticalArea::write_input");    
 
-        self.axns.states.enqueue_write(None, false, axn_range.start as usize, sdr, 
-            Some(wait_events), Some(new_events)).unwrap();
+        // self.axns.states.enqueue_write(None, false, axn_range.start as usize, sdr, 
+        //     Some(wait_events), Some(new_events)).unwrap();
         // self.axns.states.enqueue_write(sdr, axn_range.start as usize, 
         //     None, Some(new_events));
+        self.axns.states.cmd().write(sdr).offset(axn_range.start as usize).block(false)
+            .ewait(wait_events).enew(new_events).enq().unwrap();
     }    
 
     pub fn read_output(&self, sdr_events: (&mut Sdr, &mut EventList), layer_tags: LayerTags) {
@@ -426,8 +428,10 @@ impl CorticalArea {
         // new_events.wait();
         // new_events.release_all();
         new_events.clear_completed().expect("CorticalArea::write_input");
-        unsafe { self.axns.states.enqueue_read(None, false, axn_range.start as usize, sdr,
-            Some(wait_events), Some(new_events)).unwrap(); }
+        // unsafe { self.axns.states.enqueue_read(None, false, axn_range.start as usize, sdr,
+        //     Some(wait_events), Some(new_events)).unwrap(); }
+        unsafe { self.axns.states.cmd().read_async(sdr).offset(axn_range.start as usize).block(false)
+            .ewait(wait_events).enew(new_events).enq().unwrap(); }
     }        
 
     #[inline]
@@ -505,18 +509,18 @@ impl CorticalArea {
         &self.ocl_pq
     }
 
-    // TODO: MOVE TO TESTS
-    pub fn render_aff_out(&mut self, input_status: &str, print_summary: bool) {
-        let out_axns = &self.axns.states[self.mcols.aff_out_axn_range()];
-        let sst_axns = &self.axns.states[self.psal().axn_range()];
-        self.renderer.render(out_axns, Some(sst_axns), None, input_status, print_summary);
-    }
+    // // TODO: MOVE TO TESTS
+    // pub fn render_aff_out(&mut self, input_status: &str, print_summary: bool) {
+    //     let out_axns = &self.axns.states[self.mcols.aff_out_axn_range()];
+    //     let sst_axns = &self.axns.states[self.psal().axn_range()];
+    //     self.renderer.render(out_axns, Some(sst_axns), None, input_status, print_summary);
+    // }
 
-    // TODO: MOVE TO TESTS
-    pub fn render_axn_space(&mut self) {
-        let axn_states = &self.axns.states[..];
-        self.renderer.render_axn_space(axn_states, &self.area_map.slices())
-    }
+    // // TODO: MOVE TO TESTS
+    // pub fn render_axn_space(&mut self) {
+    //     let axn_states = &self.axns.states[..];
+    //     self.renderer.render_axn_space(axn_states, &self.area_map.slices())
+    // }
 
     // pub fn sample_aff_out(&self, buf: &mut [u8]) {
     //     // let aff_out_range = self.mcols.aff_out_axn_range();
@@ -532,13 +536,14 @@ impl CorticalArea {
         debug_assert!(buf.len() == slc_axn_range.len(), "Sample buffer length ({}) not \
             equal to slice axon length({}). slc_axn_range: {:?}, slc_id: {}", 
             buf.len(), slc_axn_range.len(), slc_axn_range, slc_id);
-        self.axns.states.read(slc_axn_range.start, buf).unwrap();
+        // self.axns.states.read(slc_axn_range.start, buf).unwrap();
+        self.axns.states.cmd().read(buf).offset(slc_axn_range.start).enq().unwrap();
     }    
 
     #[inline]
     pub fn sample_axn_space(&self, buf: &mut [u8]) {
         debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
-        self.axns.states.read(0, buf).unwrap();
+        self.axns.states.read(buf);
     }
 
     #[inline]
@@ -581,6 +586,7 @@ pub struct AreaParams {
 //     axn_range: Range<usize>,
 // }
 
+const INT_32_MIN: i32 = -2147483648;
 
 pub struct Aux {
     dims: CorticalDims,
@@ -594,29 +600,36 @@ impl Aux {
     pub fn new(dims: &CorticalDims, ocl_pq: &ProQue) -> Aux {
         //let dims_multiplier: u32 = 512;
         //dims.columns() *= 512;
-        let int_32_min = -2147483648;
+        let int_32_min = INT_32_MIN;
+
+        let ints_0 = Buffer::<i32>::newer_new(ocl_pq.queue(), None, dims, None).unwrap();
+        ints_0.cmd().fill(&[int_32_min]).enq().unwrap();
+        let ints_1 = Buffer::<i32>::newer_new(ocl_pq.queue(), None, dims, None).unwrap();
+        ints_1.cmd().fill(&[int_32_min]).enq().unwrap();
 
         Aux { 
-            ints_0: Buffer::<i32>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
-            ints_1: Buffer::<i32>::with_vec_initialized_to(int_32_min, dims, ocl_pq.queue()),
+            ints_0: ints_0,
+            ints_1: ints_1,
             // chars_0: Buffer::<ocl::i8>::new(dims, 0, ocl),
             // chars_1: Buffer::<ocl::i8>::new(dims, 0, ocl),
             dims: dims.clone(),
         }
     }
 
-    pub unsafe fn resize(&mut self, new_dims: &CorticalDims, ocl_queue: &Queue) {
-        let int_32_min = -2147483648;
-        self.dims = new_dims.clone();
+    // pub unsafe fn resize(&mut self, new_dims: &CorticalDims, ocl_queue: &Queue) {
+    //     let int_32_min = -INT_32_MIN;
+    //     self.dims = new_dims.clone();
         
-        self.ints_0.resize(&self.dims, ocl_queue);
-        self.ints_0.set_all_to(int_32_min).unwrap();
+    //     self.ints_0.resize(&self.dims, ocl_queue);
+    //     // self.ints_0.set_all_to(int_32_min).unwrap();
+    //     self.ints_0.cmd().fill(&[int_32_min]).enq().unwrap();
 
-        self.ints_1.resize(&self.dims, ocl_queue);
-        self.ints_1.set_all_to(int_32_min).unwrap();
-        // self.chars_0.resize(&self.dims, 0);
-        // self.chars_1.resize(&self.dims, 0);
-    }
+    //     self.ints_1.resize(&self.dims, ocl_queue);
+    //     // self.ints_1.set_all_to(int_32_min).unwrap();
+    //     self.ints_1.cmd().fill(&[int_32_min]).enq().unwrap();
+    //     // self.chars_0.resize(&self.dims, 0);
+    //     // self.chars_1.resize(&self.dims, 0);
+    // }
 }
 
 

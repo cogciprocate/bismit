@@ -254,6 +254,9 @@ impl MemDims for CorticalDims {
     fn padded_buffer_len(&self, incr: usize) -> OclResult<usize> {
         self.padded_buffer_len(incr)
     }
+    fn to_size(&self) -> [usize; 3] {
+        [self.depth as usize, self.v_size as usize, self.u_size as usize]
+    }
 }
 
 
@@ -300,7 +303,7 @@ fn len_components(cells: u32, per_tft_l2: i8, tfts_per_cel: u32) -> u32 {
 //     use super::*;
 
 //     #[test]
-//     fn test_len() {
+//     fn len() {
 
 //         // Actually test the damn thing...
 

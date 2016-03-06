@@ -15,7 +15,7 @@ use dendrites::{ DendritesTest, DenCoords };
 use axon_space::{ /*AxnCoords,*/ AxonSpaceTest };
 // use cortex::{ Cortex };
 use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
-use ocl::{ BufferTest };
+// use ocl::{ BufferTest };
 use super::{ testbed, util, learning };
 
 
@@ -31,7 +31,7 @@ const CELS_TEST_ITERATIONS: usize = 1; //50;
         Test that input on each dendridic tuft is reaching the cell soma.
 */
 #[test]
-fn test_cel() {
+fn cel() {
     let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
     let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
@@ -155,7 +155,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
 
 
 #[test]
-fn test_dens() {
+fn dens() {
     let mut cortex = testbed::fresh_cortex();
     let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 

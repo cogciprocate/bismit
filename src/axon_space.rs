@@ -71,7 +71,8 @@ impl AxonSpace {
                 Error converting area_map.slices().")
             , mt = cmn::MT);
 
-        let states = Buffer::<u8>::with_vec(area_map.slices(), ocl_pq.queue());
+        // let states = Buffer::<u8>::with_vec(area_map.slices(), ocl_pq.queue());
+        let states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, area_map.slices(), None).unwrap();
 
         AxonSpace {
             //dims: dims,
@@ -92,7 +93,7 @@ pub mod tests {
     use super::{ AxonSpace };
     use map::{ AreaMap, AreaMapTest };
     use cmn::{ CelCoords };
-    use ocl::{ BufferTest };
+    // use ocl::{ BufferTest };
 
     pub trait AxonSpaceTest {
         fn axn_state(&self, idx: usize) -> u8;

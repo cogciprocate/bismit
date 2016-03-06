@@ -3,7 +3,8 @@ use rand::{self, XorShiftRng, Rng};
 
 use cmn::{self, CorticalDims, DataCellLayer};
 use map::{AreaMap};
-use ocl::{ProQue, SpatialDims, Buffer, OclNum, Kernel, EventList, Result as OclResult};
+use ocl::{ProQue, SpatialDims, Buffer, Kernel, EventList, Result as OclResult};
+use ocl::traits::OclPrm;
 use proto::{CellKind, Protocell, DendriteKind};
 use dendrites::{Dendrites};
 use axon_space::{AxonSpace};
@@ -47,11 +48,13 @@ impl PyramidalLayer {
         let best_dens_per_cel = tfts_per_cel;
         let dims_best_dens = dims.clone().with_tfts(tfts_per_cel);
 
-        let states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
-        let flag_sets = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
-        let best_den_states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
-        let tft_best_den_ids = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());
-        let tft_best_den_states = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());        
+        let states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let flag_sets = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let best_den_states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        // let tft_best_den_ids = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());
+        let tft_best_den_ids = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims_best_dens, None).unwrap();
+        // let tft_best_den_states = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());        
+        let tft_best_den_states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims_best_dens, None).unwrap();
         // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
         let dens_per_tft_l2 = protocell.dens_per_tuft_l2;
@@ -145,7 +148,7 @@ impl PyramidalLayer {
     }
 
     // <<<<< TODO: DEPRICATE >>>>>
-    pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>)
+    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
             -> OclResult<()> 
     {
         let using_aux_cycle = true;
@@ -172,7 +175,9 @@ impl DataCellLayer for PyramidalLayer {
 
     #[inline]
     fn regrow(&mut self) {
-        self.dens_mut().regrow();
+        // [FIXME]
+        // self.dens_mut().regrow();
+        panic!("Pyramidals::regrow(): reimplement me!");
     }
 
     #[inline]
@@ -183,17 +188,17 @@ impl DataCellLayer for PyramidalLayer {
         self.kern_cycle.cmd().ewait_opt(wait_events).enq().expect("bismit::PyramidalLayer::cycle");
     }
 
-    // [FIXME]: MARKED FOR DEPRICATION
-    fn confab(&mut self) {
-        self.states.fill_vec();
-        self.best_den_states.fill_vec();
-        self.tft_best_den_ids.fill_vec();
-        self.tft_best_den_states.fill_vec();
-        self.flag_sets.fill_vec();
-        // self.energies.fill_vec(); // <<<<< SLATED FOR REMOVAL
+    // // [FIXME]: MARKED FOR DEPRICATION
+    // fn confab(&mut self) {
+    //     self.states.fill_vec();
+    //     self.best_den_states.fill_vec();
+    //     self.tft_best_den_ids.fill_vec();
+    //     self.tft_best_den_states.fill_vec();
+    //     self.flag_sets.fill_vec();
+    //     // self.energies.fill_vec(); // <<<<< SLATED FOR REMOVAL
 
-        self.dens_mut().confab();
-    }
+    //     self.dens_mut().confab();
+    // }
 
     #[inline]
     fn soma(&self) -> &Buffer<u8> {

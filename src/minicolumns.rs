@@ -3,7 +3,8 @@ use rand;
 
 use cmn::{self, CorticalDims, DataCellLayer};
 use map::{AreaMap};
-use ocl::{self, ProQue, SpatialDims, Buffer, OclNum, EventList, Result as OclResult};
+use ocl::{self, ProQue, SpatialDims, Buffer, EventList, Result as OclResult};
+use ocl::traits::OclPrm;
 use axon_space::{AxonSpace};
 use pyramidals::{PyramidalLayer};
 use spiny_stellates::{SpinyStellateLayer};
@@ -38,8 +39,8 @@ impl Minicolumns {
 
         println!("{mt}{mt}MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth, mt = cmn::MT);
 
-        let flag_sets = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
-        let best_den_states = Buffer::<u8>::with_vec(&dims, ocl_pq.queue());
+        let flag_sets = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let best_den_states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
 
         // [FIXME]: TEMPORARY?:
         // [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':
@@ -95,7 +96,7 @@ impl Minicolumns {
     }
 
     // <<<<< TODO: DEPRICATE >>>>>
-    pub fn set_arg_buf_named<T: OclNum>(&mut self, name: &'static str, env: &Buffer<T>) 
+    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>) 
             -> OclResult<()> 
     {
         let activate_using_aux = true;
@@ -132,10 +133,10 @@ impl Minicolumns {
         }
     }
 
-    pub fn confab(&mut self) {
-        self.flag_sets.fill_vec();
-        self.best_den_states.fill_vec();
-    }
+    // pub fn confab(&mut self) {
+    //     self.flag_sets.fill_vec();
+    //     self.best_den_states.fill_vec();
+    // }
 
     #[inline]
     pub fn ff_layer_axn_idz(&self) -> usize {

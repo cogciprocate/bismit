@@ -93,7 +93,7 @@ impl InputTract for GlyphSequences {
 
 mod tests {
     #[test]
-    fn test_glyph_sequences() {
+    fn glyph_sequences() {
         use encode::GlyphSequences;
         use cmn::CorticalDims;
 

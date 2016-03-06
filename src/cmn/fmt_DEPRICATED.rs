@@ -3,7 +3,7 @@
 // //! Primarily meant for debugging purposes.
 // use std::ops::Range;
 
-// use ocl::OclNum;
+// use ocl::OclPrm;
 // // MT: Mini-tab: 4 spaces ('mini' compared to the huge tab on certain terminals)
 // pub static MT: &'static str = "    "; 
 
@@ -36,7 +36,7 @@
 // #[allow(unused_assignments, unused_variables)]
 // /// [UNSTABLE]: MAY BE REMOVED AT ANY TIME
 // /// Prints a vector to stdout. Used for debugging.
-// pub fn print_slice<T: OclNum>(
+// pub fn print_slice<T: OclPrm>(
 //             vec: &[T], 
 //             every: usize, 
 //             val_range: Option<(T, T)>, 
@@ -173,12 +173,12 @@
 // }
 
 
-// pub fn print_simple<T: OclNum>(slice: &[T]) {
+// pub fn print_simple<T: OclPrm>(slice: &[T]) {
 //     print_slice(slice, 1, None, None, true);
 // }
 
 
 
-// pub fn print_val_range<T: OclNum>(slice: &[T], every: usize, val_range: Option<(T, T)>) {
+// pub fn print_val_range<T: OclPrm>(slice: &[T], every: usize, val_range: Option<(T, T)>) {
 //     print_slice(slice, every, val_range, None, true);
 // }

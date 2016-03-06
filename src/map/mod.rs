@@ -116,7 +116,7 @@ impl LayerTags {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_layer_tags() {
+    fn layer_tags() {
         assert!(super::INPUT.mirror_io() == super::OUTPUT);
         assert!(super::OUTPUT.mirror_io() == super::INPUT);
     }

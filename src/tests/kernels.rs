@@ -2,7 +2,7 @@
 use cmn::{ self, /*CorticalDims*/ };
 // use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
 // use cortex::{ self, Cortex };
-use ocl::{ Buffer, SpatialDims, /*ProQue, MemDims,*/ /*OclNum*/ };
+use ocl::{ Buffer, SpatialDims, /*ProQue, MemDims,*/ /*OclPrm*/ };
 // use interactive::{ input_czar, InputCzar, InputKind };
 // use super::hybrid;
 use super::{ TestBed, util };
@@ -13,7 +13,7 @@ use super::{ TestBed, util };
 //        - VECTORIZED AND NON-VECTORIZED INDEX RESOLUTION FUNCTIONS RETURN THE SAME RESULTS
 //         - KERNEL CALCULATED AXON INDEXES FALL WITHIN THE CORRECT RANGE (ON THE APPROPRIATE SLICE)
 //         - 
-pub fn test_axn_idxs(testbed: &TestBed) {
+pub fn axn_idxs(testbed: &TestBed) {
     let syn_reach = cmn::SYNAPSE_REACH as i8;
 
     let u_offs = Buffer::<i8>::with_vec_shuffled((0 - syn_reach, syn_reach + 1), 
@@ -52,7 +52,7 @@ pub fn test_axn_idxs(testbed: &TestBed) {
 
 
 
-// pub fn test_safe_dim_ofs(ocl: &ProQue, dims: CorticalDims) {
+// pub fn safe_dim_ofs(ocl: &ProQue, dims: CorticalDims) {
 //     let mut dim_ids = Buffer::<u32>::shuffled(dims, 0, 15, &ocl);
 //     let mut dim_offs = Buffer::<i8>::shuffled(dims, -16, 15, &ocl);
 //     let mut safe_dim_offs = Buffer::<i8>::new(dims, 0, &ocl);
