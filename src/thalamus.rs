@@ -1,13 +1,13 @@
-use std::ops::{ Range };
-use std::collections::{ HashMap };
+use std::ops::{Range};
+use std::collections::{HashMap};
 
-use cmn::{ self, Sdr, CmnError };
-use map::{ AreaMap, LayerTags };
+use cmn::{self, Sdr, CmnError};
+use map::{AreaMap, LayerTags};
 use ocl::{ EventList};
 use cortical_area:: { CorticalAreas };
-use proto::{ ProtoareaMaps, ProtolayerMaps, Thalamic };
+use proto::{ProtoareaMaps, ProtolayerMaps, Thalamic};
 
-use input_source::{ InputSource, InputSources };
+use input_source::{InputSource, InputSources};
 
 
 //    THALAMUS:
@@ -23,7 +23,7 @@ pub struct Thalamus {
 impl Thalamus {
     pub fn new(plmaps: ProtolayerMaps,    mut pamaps: ProtoareaMaps) -> Thalamus {
         pamaps.freeze();
-        let area_count = pamaps.maps().len();
+        // let area_count = pamaps.maps().len();
 
         let mut tract = ThalamicTract::new();
         let mut input_sources = HashMap::new();
@@ -32,7 +32,7 @@ impl Thalamus {
         /*=============================================================================
         =================================== THALAMIC ==================================
         =============================================================================*/
-        for (&area_name, pa) in pamaps.maps().iter().filter(|&(_, pa)| 
+        for (&_, pa) in pamaps.maps().iter().filter(|&(_, pa)| 
                     &plmaps[pa.layer_map_name].kind == &Thalamic) 
         {            
             let is = InputSource::new(pa, &plmaps[pa.layer_map_name]);
@@ -69,8 +69,8 @@ impl Thalamus {
 
     // Multiple source output areas disabled.
     #[inline]
-    pub fn cycle_external_ganglions(&mut self, areas: &mut CorticalAreas) {
-        for (&(area_name, tags), src) in self.input_sources.iter_mut() {
+    pub fn cycle_external_ganglions(&mut self, _: &mut CorticalAreas) {
+        for (&(_, _), src) in self.input_sources.iter_mut() {
             let (ganglion, events) = self.tract.ganglion_mut(src.area_name(), 
                 src.tags()).expect("Thalamus::cycle_external_ganglions()");
             src.cycle(ganglion, events);
@@ -185,7 +185,7 @@ impl TractAreaCache {
         self.areas.push(tract_area);
 
         self.index.insert((src_area_name, layer_tags), (self.areas.len() - 1))
-            .map(|is| panic!("Duplicate 'TractAreaCache' keys: (area: \"{}\", tags: '{:?}')", 
+            .map(|_| panic!("Duplicate 'TractAreaCache' keys: (area: \"{}\", tags: '{:?}')", 
                 src_area_name, layer_tags));
     }
 
@@ -275,22 +275,19 @@ impl TractArea {
         }
     }
 
-    #[inline]
     fn range(&self) -> Range<usize> {
         self.range.clone()
     }
 
-    #[inline]
+    #[allow(dead_code)]
     fn len(&self) -> usize {
         self.range.len()
     }
 
-    #[inline]
     fn events(&self) -> &EventList {
         &self.events
     }
 
-    #[inline]
     fn events_mut(&mut self) -> &mut EventList {
         &mut self.events
     }

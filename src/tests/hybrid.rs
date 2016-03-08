@@ -1,12 +1,12 @@
 use std::iter;
-use std::io::{ self, Write };
+use std::io::{self, Write};
 
 
-use dendrites::{ Dendrites };
-use pyramidals::{ PyramidalLayer };
-use cortex::{ Cortex };
-use cmn::{ self, DataCellLayer, DataCellLayerTest };
-
+use dendrites::{Dendrites};
+use pyramidals::{PyramidalLayer};
+use cortex::{Cortex};
+use cmn::{self, DataCellLayer, DataCellLayerTest};
+use tests::util;
 
 /*    HYBRID TESTS: Tests runnable in either an interactive or automated manner
         Useful for:
@@ -21,10 +21,10 @@ use cmn::{ self, DataCellLayer, DataCellLayerTest };
 
 
 pub fn cycles(cortex: &mut Cortex, area_name: &str) {
-    let emsg = "\ntests::hybrid::test_cycles()";
+    // let emsg = "\ntests::hybrid::test_cycles()";
     
-    /*cortex.area_mut(area_name).psal_mut().dens.syns().src_col_v_offs.set_all_to(0).unwrap();
-    cortex.area_mut(area_name).ptal_mut().dens.syns().src_col_v_offs.set_all_to(0).unwrap();
+    /*cortex.area_mut(area_name).psal_mut().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+    cortex.area_mut(area_name).ptal_mut().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
 
     cortex.area_mut(area_name).psal_mut().dens.cycle();
     cortex.area_mut(area_name).ptal_mut().dens.cycle();*/
@@ -43,30 +43,30 @@ pub fn cycles(cortex: &mut Cortex, area_name: &str) {
     println!("Primary Spatial Associative Layer...");
     //let psal_name = cortex.area(area_name).psal().layer_name();
     //cortex.enqueue_write(area_name, psal_name, &vec1);
-    cortex.area_mut(area_name).psal_mut().soma_mut().write(0, &vec1).unwrap();
+    cortex.area_mut(area_name).psal_mut().soma().cmd().write(&vec1).offset(0).enq().unwrap();
     syn_and_den_states(&mut cortex.area_mut(area_name).psal_mut().dens_mut());
 
     println!("Primary Temporal Associative Layer...");
     //let ptal_name = cortex.area(area_name).ptal().layer_name();
     //cortex.enqueue_write(area_name, ptal_name, &vec1);
-    cortex.area_mut(area_name).ptal_mut().soma_mut().write(0, &vec1).unwrap();
+    cortex.area_mut(area_name).ptal_mut().soma().cmd().write(&vec1).offset(0).enq().unwrap();
     syn_and_den_states(&mut cortex.area_mut(area_name).ptal_mut().dens_mut());
     pyr_preds(&mut cortex.area_mut(area_name).ptal_mut());
 }
 
 
-fn inhib(cortex: &mut Cortex) {
+// fn inhib(cortex: &mut Cortex) {
 
-}
+// }
  
 
 // TEST PYRAMIDAL CELLS 'PREDICTIVENESS' AKA: SOMA STATES
 // <<<<< TODO: NEEDS MASSIVE UPDATES TO PRETTY MUCH EVERY ASPECT >>>>>
 fn pyr_preds(pyrs: &mut PyramidalLayer) {
-    let emsg = "\ntests::hybrid::test_pyr_preds()";
+    // let emsg = "\ntests::hybrid::test_pyr_preds()";
 
     io::stdout().flush().unwrap();
-    pyrs.dens_mut().states.set_all_to(0).unwrap();
+    pyrs.dens_mut().states().cmd().fill(&[0], None).enq().unwrap();
 
     let dens_per_tuft = pyrs.dens_mut().dims().per_tft() as usize;
     println!("\n##### dens_per_tuft: {}", dens_per_tuft);
@@ -74,26 +74,37 @@ fn pyr_preds(pyrs: &mut PyramidalLayer) {
     let pyrs_len = pyrs.soma().len() as usize;
     let den_tuft_len = pyrs_len * dens_per_tuft;
 
+    // for i in 0..dens_per_tuft {
+    //     pyrs.dens_mut().states[i] = 255;
+    // }
+    
+    // let last_cel_den_idz =  den_tuft_len - dens_per_tuft;
+
+    // for i in last_cel_den_idz..den_tuft_len {
+    //     pyrs.dens_mut().states[i] = 255;
+    // }
+
+    // // WRITE THE DENDRITE STATES TO DEVICE
+    // pyrs.dens_mut().states.flush_vec();
+
     // WRITE 255 TO THE DENDRITES CORRESPONDING TO THE FIRST AND LAST CELL
     // FOR THE FIRST TUFT ONLY
-    for i in 0..dens_per_tuft {
-        pyrs.dens_mut().states[i] = 255;
-    }
-    
+    pyrs.dens_mut().states().cmd().fill(&[255], Some(dens_per_tuft)).offset(0).enq().unwrap();
+
     let last_cel_den_idz =  den_tuft_len - dens_per_tuft;
 
-    for i in last_cel_den_idz..den_tuft_len {
-        pyrs.dens_mut().states[i] = 255;
-    }
+    println!("\n\nDEBUG: pyrs.dens_mut().states().len(): {}\n", pyrs.dens_mut().states().len());
 
-    // WRITE THE DENDRITE STATES TO DEVICE
-    pyrs.dens_mut().states.flush_vec();
+    pyrs.dens_mut().states().cmd().fill(&[255], Some(den_tuft_len - last_cel_den_idz))
+        .offset(last_cel_den_idz).enq().unwrap();
 
     // CYCLE THE PYRAMIDAL CELL ONLY, WITHOUT CYCLING IT'S DENS OR SYNS (WHICH WOULD OVERWRITE THE ABOVE)
     pyrs.cycle_self_only();    
     
     // READ THE PYRAMIDAL CELL SOMA STATES (PREDS)
-    pyrs.soma_mut().fill_vec();
+    // pyrs.soma_mut().fill_vec();
+    let mut soma_vec = vec![0u8; pyrs.soma().len()];
+    pyrs.soma().cmd().read(&mut soma_vec).enq().unwrap();
     //pyrs.dens_mut().states.print_simple();
     //pyrs.soma_mut().print_simple();
 
@@ -101,9 +112,9 @@ fn pyr_preds(pyrs: &mut PyramidalLayer) {
     for idx in 0..pyrs_len {
         //print!("([{}]:{})", i, pyrs.soma()[i]);
         if idx == 0 || idx == (pyrs_len - 1) {
-            assert!(pyrs.soma()[idx] > 0);
+            assert!(soma_vec[idx] > 0);
         } else {
-            assert!(pyrs.soma()[idx] == 0);
+            assert!(soma_vec[idx] == 0);
         }
     }
 
@@ -112,10 +123,10 @@ fn pyr_preds(pyrs: &mut PyramidalLayer) {
 
 
 fn syn_and_den_states(dens: &mut Dendrites) {
-    let emsg = "\ntests::hybrid::test_syn_and_den_states()";
+    // let emsg = "\ntests::hybrid::test_syn_and_den_states()";
 
     io::stdout().flush().unwrap();
-    dens.syns_mut().src_col_v_offs.set_all_to(0).unwrap();
+    dens.syns_mut().src_col_v_offs().cmd().fill(&[0], None).enq().unwrap();
     dens.cycle(None);
 
     let syns_per_tuft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
@@ -129,10 +140,14 @@ fn syn_and_den_states(dens: &mut Dendrites) {
     //println!("Threshold: {}", actv_group_thresh);
 
     let mut cel_idz: usize = 0;
-    let mut syn_states_ttl: usize = 0;
-    let mut den_states_ttl: usize = 0;
+    let mut syn_states_ttl: usize;
+    let mut den_states_ttl: usize;
 
-    dens.confab();
+    // dens.confab();
+
+    let vec_dens_states = util::fill_new_vec(dens.states());
+    let vec_syns_states = util::fill_new_vec(dens.syns().states());
+
 
     let mut test_failed: bool = false;
 
@@ -147,14 +162,25 @@ fn syn_and_den_states(dens: &mut Dendrites) {
         let syn_idz = cel_idz << syns_per_tuft_l2;
         let den_idz = cel_idz << dens_per_tuft_l2;
 
-        println!("\nsyn_idz: {}, syns_per_tuft: {}, syns_per_group: {}", syn_idz, 1 << syns_per_tuft_l2, syns_per_group);
+
+        println!("\nDEBUG: syn_idz: {}, syns_per_tuft: {}, syns_per_group: {}", 
+            syn_idz, 1 << syns_per_tuft_l2, syns_per_group);
+
+        println!("DEBUG: dens.states().len(): {}, dens.syns().states().len(): {}", 
+            dens.states().len(), dens.syns().states().len());
+
+        println!("DEBUG: vec_dens_states.len(): {}, vec_syns_states.len(): {}", 
+            vec_dens_states.len(), vec_syns_states.len());
+
+        print!("\n");
+
 
         for syn_idx in syn_idz..(syn_idz + syns_per_group) {
-            syn_states_ttl += (dens.syns().states[syn_idx] >> 7) as usize;
+            syn_states_ttl += (vec_syns_states[syn_idx] >> 7) as usize;
         }
 
         for den_idx in den_idz..(den_idz + dens_per_group) {
-            den_states_ttl += (dens.states[den_idx]) as usize;
+            den_states_ttl += (vec_dens_states[den_idx]) as usize;
         }
 
         if (cel_idz & 512) == 0 {

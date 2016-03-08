@@ -1,9 +1,9 @@
-use std::collections::{ HashMap };
-use std::ops::{ Index, IndexMut,  };
-use std::hash::{ Hasher };
+use std::collections::{HashMap};
+use std::ops::{Index, IndexMut, };
+use std::hash::{Hasher};
 
-use map::{ LayerTags };
-use super::{ Protolayer, AxonKind, LayerKind, Axonal };
+use map::{LayerTags};
+use super::{Protolayer, AxonKind, LayerKind, Axonal};
 
 
 #[derive(Clone)]
@@ -35,7 +35,7 @@ impl ProtolayerMap {
     {
         let validated_depth = match kind {
             LayerKind::Cellular(ref protocell) => protocell.validate_depth(Some(layer_depth)),
-            LayerKind::Axonal(ref axn_kind) => Some(layer_depth),
+            LayerKind::Axonal(_) => Some(layer_depth),
         };
         
         self.add(Protolayer::new(layer_name, kind, validated_depth, tags));

@@ -1,5 +1,6 @@
-use ocl::{ProQue, Result as OclResult};
-use ocl::traits::MemDims;
+// use std::convert::Into;
+use ocl::{ProQue};
+use ocl::traits::MemLen;
 use cmn::ParaHexArray;
 
 /*    CorticalDims: Dimensions of a cortical area in units of cells
@@ -169,8 +170,7 @@ impl CorticalDims {
     #[inline]
     /// [FIXME]: Return a proper result type, wrap the OclError from `::padded_buffer_len`.
     pub fn per_subgrp(&self, subgroup_count: u32, ocl_pq: &ProQue) -> Result<u32, &'static str> {
-        let physical_len = try!(self.padded_buffer_len(ocl_pq.max_wg_size()).map_err(|_|
-                "bismit::CorticalDims::per_subgrp(): [FIX THIS ERROR MESSAGE].")) as u32;
+        let physical_len = self.to_len_padded(ocl_pq.max_wg_size()) as u32;
 
         if physical_len % subgroup_count == 0 {
             return Ok(physical_len / subgroup_count) 
@@ -211,21 +211,26 @@ impl CorticalDims {
         self
     }
 
+    pub fn to_len(&self) -> usize {
+        len_components(self.v_size * self.u_size * self.depth as u32, 
+            self.per_tft_l2, self.tfts_per_cel) as usize
+    }
+
     /// Length of the buffer required to properly represent this section of cortex.
     ///
     ///    Rounded based on columns for versatility's sake.
-    pub fn padded_buffer_len(&self, incr: usize) -> OclResult<usize> {
+    pub fn to_len_padded(&self, incr: usize) -> usize {
         let cols = self.columns();
         // let phys_incr = ocl_pq.max_wg_size();
 
         let len_mod = cols % incr as u32;
 
         if len_mod == 0 {
-            Ok(len_components(cols * self.depth as u32, self.per_tft_l2, self.tfts_per_cel) as usize)
+            self.to_len()
         } else {
             let pad = incr as u32 - len_mod;
             debug_assert_eq!((cols + pad) % incr as u32, 0);
-            Ok(len_components((cols + pad) * self.depth as u32, self.per_tft_l2, self.tfts_per_cel) as usize)
+            len_components((cols + pad) * self.depth as u32, self.per_tft_l2, self.tfts_per_cel) as usize
         }
     }
 }
@@ -249,15 +254,27 @@ impl ParaHexArray for CorticalDims {
     }
 }
 
-impl MemDims for CorticalDims {
-    #[inline]
-    fn padded_buffer_len(&self, incr: usize) -> OclResult<usize> {
-        self.padded_buffer_len(incr)
+impl MemLen for CorticalDims {
+    fn to_len(&self) -> usize {
+        self.to_len()
     }
-    fn to_size(&self) -> [usize; 3] {
-        [self.depth as usize, self.v_size as usize, self.u_size as usize]
+
+    fn to_len_padded(&self, incr: usize) -> usize {
+        self.to_len_padded(incr) as usize
+    }
+
+    fn to_lens(&self) -> [usize; 3] {
+        // [self.depth as usize, self.v_size as usize, self.u_size as usize]
+        [self.to_len(), 1, 1]
     }
 }
+
+// DO NOT IMPLEMENT THIS:
+// impl Into<SpatialDims> for CorticalDims {
+//     fn into(self) -> SpatialDims {
+//         SpatialDims::Three(self.depth as usize, self.v_size as usize, self.u_size as usize)
+//     }
+// }
 
 
 // fn resolve_incr(ocl: Option<&ProQue>) -> Option<u32> {

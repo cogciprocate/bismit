@@ -2,25 +2,25 @@
 //use num;
 //use rand;
 //use std::mem;
-//use rand::distributions::{ Normal, IndependentSample, Range };
-//use rand::{ ThreadRng };
-//use num::{ Integer };
-//use std::default::{ Default };
-//use std::fmt::{ Display };
+//use rand::distributions::{Normal, IndependentSample, Range};
+//use rand::{ThreadRng};
+//use num::{Integer};
+//use std::default::{Default};
+//use std::fmt::{Display};
 
-use cmn::{ self };
-use map::{ AreaMap };
+use cmn::{self};
+use map::{AreaMap};
 use ocl::{ProQue, Buffer};
-use ocl::traits::MemDims;
-//use proto::{ ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind, Protocell, DendriteKind };
-//use synapses::{ Synapses };
-//use dendrites::{ Dendrites };
+use ocl::traits::MemLen;
+//use proto::{ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind, Protocell, DendriteKind};
+//use synapses::{Synapses};
+//use dendrites::{Dendrites};
 //use cortical_area:: { Aux };
-//use iinn::{ InhibitoryInterneuronNetwork };
-//use minicolumns::{ Minicolumns };
+//use iinn::{InhibitoryInterneuronNetwork};
+//use minicolumns::{Minicolumns};
 
 #[cfg(test)]
-pub use self::tests::{ AxonSpaceTest, AxnCoords };
+pub use self::tests::{AxonSpaceTest, AxnCoords};
 
 
 pub struct AxonSpace {
@@ -67,9 +67,7 @@ impl AxonSpace {
         //let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
         
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", 
-            area_map.slices().padded_buffer_len(ocl_pq.max_wg_size()).expect("bismit::AxonSpace::new():
-                Error converting area_map.slices().")
-            , mt = cmn::MT);
+            area_map.slices().to_len_padded(ocl_pq.max_wg_size()), mt = cmn::MT);
 
         // let states = Buffer::<u8>::with_vec(area_map.slices(), ocl_pq.queue());
         let states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, area_map.slices(), None).unwrap();
@@ -90,10 +88,11 @@ impl AxonSpace {
 
 #[cfg(test)]
 pub mod tests {
-    use super::{ AxonSpace };
-    use map::{ AreaMap, AreaMapTest };
-    use cmn::{ CelCoords };
-    // use ocl::{ BufferTest };
+    #![allow(dead_code)]
+    use super::{AxonSpace};
+    use map::{AreaMap, AreaMapTest};
+    use cmn::{CelCoords};
+    // use ocl::{BufferTest};
 
     pub trait AxonSpaceTest {
         fn axn_state(&self, idx: usize) -> u8;
@@ -102,16 +101,16 @@ pub mod tests {
 
     impl AxonSpaceTest for AxonSpace {
         fn axn_state(&self, idx: usize) -> u8 {
-            // let mut sdr = vec![0u8];
-            // self.states.enqueue_read(&mut sdr, idx);
-            // sdr[0]
+            let mut sdr = vec![0u8];
+            self.states.cmd().read(&mut sdr).offset(idx).enq().unwrap();
+            sdr[0]
 
-            self.states.read_idx_direct(idx)
+            // self.states.read_idx_direct(idx)
         }
 
         fn write_to_axon(&mut self, val: u8, idx: u32) {
             let sdr = vec![val];
-            self.states.write(idx as usize, &sdr).unwrap();
+            self.states.cmd().write(&sdr).offset(idx as usize).enq().unwrap();
         }
     }
 

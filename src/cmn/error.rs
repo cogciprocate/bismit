@@ -1,4 +1,4 @@
-use std::error::{ Error };
+use std::error::{Error};
 use std::fmt;
 
 pub struct CmnError {
@@ -42,7 +42,7 @@ impl fmt::Debug for CmnError {
 }
 
 
-// use std::error::{ Error };
+// use std::error::{Error};
 // use std::fmt;
 
 // pub struct CmnErrorTest<'a> {

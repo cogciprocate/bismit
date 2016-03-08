@@ -16,6 +16,10 @@ impl<'a> TractFrame<'a> {
     pub unsafe fn get_unchecked(&self, idx: usize) -> *const u8 {
         self.frame.get_unchecked(idx)
     }
+
+    pub fn dims(&self) -> &TractDims {
+        &self.dims
+    }
 }
 
 
@@ -38,5 +42,9 @@ impl<'a> TractFrameMut<'a> {
     #[inline]
     pub unsafe fn get_unchecked_mut(&mut self, idx: usize) -> *mut u8 {
         self.frame.get_unchecked_mut(idx)
+    }
+
+    pub fn dims(&self) -> &TractDims {
+        &self.dims
     }
 }

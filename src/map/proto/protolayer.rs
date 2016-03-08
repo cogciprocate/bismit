@@ -1,8 +1,8 @@
-use cmn::{ CmnError };
-use map::{ self, LayerTags };
-use proto::{ Protocell, DendriteKind };
-use proto::DendriteKind::{ Distal, Proximal };
-use self::LayerKind::{ Cellular, Axonal };
+use cmn::{CmnError};
+use map::{self, LayerTags};
+use proto::{Protocell, DendriteKind};
+use proto::DendriteKind::{Distal, Proximal};
+use self::LayerKind::{Cellular, Axonal};
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]

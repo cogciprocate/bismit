@@ -1,10 +1,10 @@
-use cmn::{ self, CorticalDims, SliceDims, ParaHexArray, Sdr };
-use map::{ SliceMap };
-use proto::{ AxonKind };
+use cmn::{self, CorticalDims, SliceDims, ParaHexArray, Sdr};
+use map::{SliceMap};
+use proto::{AxonKind};
 
 //use std::char;
 use std::iter;
-//use std::collections::{ BTreeMap };
+//use std::collections::{BTreeMap};
 
 pub struct Renderer {
     //dims: CorticalDims,
@@ -73,7 +73,7 @@ impl Renderer {
                 let sdr_cmpd = (sdr_val >> 4) | (((sdr_val & 0x0F) != 0) as u8);
                 //let sdr_cmpd = sdr_val;
 
-                let axn_active = out_axns[sdr_idx] != 0;
+                // let axn_active = out_axns[sdr_idx] != 0;
                 let sst_active = sst_axns[sdr_idx] != 0;
                 let prediction = out_axns[sdr_idx] != sst_axns[sdr_idx];
                 let new_prediction = prediction && (!sst_active); // RENAME (it's not necessarily a new pred)

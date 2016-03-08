@@ -1,11 +1,11 @@
-use std::collections::{ BTreeMap };
-// use std::ops::{ Range };
-use std::slice::{ Iter };
+use std::collections::{BTreeMap};
+// use std::ops::{Range};
+use std::slice::{Iter};
 
-use proto::{ ProtoareaMap, ProtoareaMaps, ProtolayerMaps, LayerMapKind };
-use cmn::{ self };
+use proto::{ProtoareaMap, ProtoareaMaps, ProtolayerMaps, LayerMapKind};
+use cmn::{self};
 use map::{ LayerTags, LayerInfo, SourceLayerInfo};
-use input_source::{ InputSources };
+use input_source::{InputSources};
 
 
 #[derive(Clone)]
@@ -32,7 +32,7 @@ impl LayerMap {
         let mut index = Vec::with_capacity(plmap.layers().len());
         let mut slc_total = 0u8;
 
-        for (pl_name, pl) in plmap.layers().iter() {
+        for (_, pl) in plmap.layers().iter() {
             index.push(LayerInfo::new(pl, pamap, pamaps, plmaps, input_sources, &mut slc_total));
         }
 

@@ -2,20 +2,20 @@
 // use std::ops;
 // use rand;
 // use std::mem;
-// use rand::distributions::{ Normal, IndependentSample, Range };
-// use rand::{ ThreadRng };
-// use num::{ Integer };
-// use std::default::{ Default };
-// use std::fmt::{ Display };
+// use rand::distributions::{Normal, IndependentSample, Range};
+// use rand::{ThreadRng};
+// use num::{Integer};
+// use std::default::{Default};
+// use std::fmt::{Display};
 
-use cmn::{ CorticalDims };
-use map::{ AreaMap };
-use ocl::{ Kernel, ProQue, SpatialDims, Buffer };
-use proto::{ /*ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind,*/ Protocell, /*DendriteKind*/ };
-// use synapses::{ Synapses };
-// use dendrites::{ Dendrites };
-use axon_space::{ AxonSpace };
-// use minicolumns::{ Minicolumns };
+use cmn::{CorticalDims};
+use map::{AreaMap};
+use ocl::{Kernel, ProQue, SpatialDims, Buffer};
+use proto::{/*ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind,*/ Protocell, /*DendriteKind*/};
+// use synapses::{Synapses};
+// use dendrites::{Dendrites};
+use axon_space::{AxonSpace};
+// use minicolumns::{Minicolumns};
 // use cortical_area:: { Aux };
 
 
@@ -23,7 +23,7 @@ use axon_space::{ AxonSpace };
 pub struct InhibitoryInterneuronNetwork {
     layer_name: &'static str,
     pub dims: CorticalDims,
-    protocell: Protocell,
+    // protocell: Protocell,
     //kern_cycle_pre: ocl::Kernel,
     //kern_cycle_wins: ocl::Kernel,
     //kern_cycle_post: ocl::Kernel,
@@ -39,7 +39,7 @@ pub struct InhibitoryInterneuronNetwork {
 }
 
 impl InhibitoryInterneuronNetwork {
-    pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, area_map: &AreaMap, src_soma: &Buffer<u8>, src_base_axn_slc: u8, axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue) -> InhibitoryInterneuronNetwork {
+    pub fn new(layer_name: &'static str, dims: CorticalDims, _: Protocell, _: &AreaMap, src_soma: &Buffer<u8>, src_base_axn_slc: u8, axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue) -> InhibitoryInterneuronNetwork {
 
         //let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
@@ -80,7 +80,7 @@ impl InhibitoryInterneuronNetwork {
         InhibitoryInterneuronNetwork {
             layer_name: layer_name,
             dims: dims,
-            protocell: protocell,
+            // protocell: protocell,
             //kern_cycle_pre: kern_cycle_pre,
             //kern_cycle_wins: kern_cycle_wins,
             //kern_cycle_post: kern_cycle_post,
@@ -111,6 +111,10 @@ impl InhibitoryInterneuronNetwork {
         } else {
             self.kern_inhib_simple.enqueue();
         }
+    }
+
+    pub fn layer_name(&self) -> &'static str {
+        self.layer_name
     }
 
 }

@@ -1,16 +1,16 @@
-use std::collections::{ HashMap };
+use std::collections::{HashMap};
 use time;
 
-use cortical_area:: { CorticalArea, CorticalAreas };
-use thalamus::{ Thalamus };
-use proto::{ ProtolayerMaps, ProtoareaMaps, Thalamic, };
+use cortical_area::{CorticalArea, CorticalAreas};
+use thalamus::{Thalamus};
+use proto::{ProtolayerMaps, ProtoareaMaps, Thalamic};
 use ocl::{self, Context, Device};
 
 pub struct Cortex {
     // AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
     pub areas: CorticalAreas,
     thal: Thalamus,
-    ocl_context: Context,
+    // ocl_context: Context,
 }
 
 impl Cortex {
@@ -45,7 +45,7 @@ impl Cortex {
         Cortex {
             areas: areas,
             thal: thal,
-            ocl_context: ocl_context,
+            // ocl_context: ocl_context,
         }
     }
     
@@ -64,7 +64,7 @@ impl Cortex {
     pub fn cycle(&mut self) {
         self.thal.cycle_external_ganglions(&mut self.areas);
 
-        for (area_name, area) in self.areas.iter_mut() {
+        for (_, area) in self.areas.iter_mut() {
             area.cycle(&mut self.thal);
         }
     }

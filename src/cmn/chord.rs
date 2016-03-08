@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 //use std::option::Option; 
-use std::fmt::{ Formatter, Error };
+use std::fmt::{Formatter, Error};
 use std::iter;
 use cmn;
 use ocl;

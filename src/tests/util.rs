@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
-use std::ops::{ Range };
+use std::ops::{Range};
 // use std::iter;
-// use std::io::{ Write };
+// use std::io::{Write};
 // use std::mem;
 // use rand;
 
@@ -10,16 +10,16 @@ use std::ops::{ Range };
 
 use ocl::Buffer;
 use ocl::traits::OclPrm;
-// use super::{ TestBed };
-use cortical_area::{ CorticalArea, CorticalAreaTest };
-// use map::{ AreaMapTest };
-use synapses::{ SynapsesTest };
-use minicolumns::{ MinicolumnsTest };
-// use dendrites::{ DendritesTest, /*DenCoords*/ };
-// use axon_space::{ /*AxnCoords,*/ AxonSpaceTest };
-// use cortex::{ Cortex };
-use cmn::{ self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest };
-// use super::{ testbed };
+// use super::{TestBed};
+use cortical_area::CorticalArea;
+// use map::{AreaMapTest};
+// use synapses::{SynapsesTest};
+// use minicolumns::{MinicolumnsTest};
+// use dendrites::{DendritesTest, /*DenCoords*/};
+// use axon_space::{/*AxnCoords,*/ AxonSpaceTest};
+// use cortex::{Cortex};
+use cmn::{self, /*CelCoords,*/ DataCellLayer};
+// use super::{testbed};
 
 /*=============================================================================
 ===============================================================================
@@ -108,42 +108,60 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 //         - [FIXME] TODO: Use env.read_direct and read the entire range at once into a Vec.
 //        - [FIXME] TODO: See if using an iterator (map?) function would be more idiomatic.
 pub fn eval_range<T: OclPrm, F>(env: &Buffer<T>, idx_range: Range<usize>, comp: F) -> bool 
-    where F : Fn(T) -> bool
+    where F: Fn(T) -> bool
 {
     for idx in idx_range.clone() {
-        if !comp(env.read_idx_direct(idx)) { return false };
+        if !comp(read_idx_direct(idx, env)) { return false };
     }
 
     true
 }
 
-
-pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
-    //println!("\n - Confirm 1A - Activate");
-    println!("{}", desc);    
-    area.ptal_mut().print_all(true);
-    // area.ptal_mut().dens_mut().syns_mut().print_all();
-    area.print_aux();
-    area.mcols_mut().print_all();
-    area.print_axns();
+pub fn read_idx_direct<T: OclPrm>(idx: usize, buf: &Buffer<T>) -> T {
+    let mut val: [T; 1] = [Default::default()];
+    buf.cmd().read(&mut val).offset(idx).enq().unwrap();
+    val[0]
 }
+
+pub fn fill_vec<T: OclPrm>(buf: &Buffer<T>, vec: &mut Vec<T>) {
+    buf.cmd().read(vec).enq().unwrap();
+}
+
+pub fn fill_new_vec<T: OclPrm>(buf: &Buffer<T>) -> Vec<T> {
+    let mut vec = vec![Default::default(); buf.len()];
+    fill_vec(buf, &mut vec);
+    vec
+}
+
+
+// pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
+//     //println!("\n - Confirm 1A - Activate");
+//     println!("{}", desc);    
+//     area.ptal_mut().print_all(true);
+//     // area.ptal_mut().dens_mut().syns_mut().print_all();
+//     area.print_aux();
+//     area.mcols_mut().print_all();
+//     area.print_axns();
+// }
 
 // pub fn print_range(range: Range<usize>) -> String {
 //     format!("{}..{}", range.start, range.end)
 // }
 
 
-pub fn compare_buffers<T: OclPrm>(env1: &mut Buffer<T>, env2: &mut Buffer<T>) -> bool {    
+pub fn compare_buffers<T: OclPrm>(env1: &Buffer<T>, env2: &Buffer<T>) -> bool {    
     print!("\nVector comparison:\n");    
     assert!(env1.len() == env2.len());
 
-    env1.fill_vec();
-    env2.fill_vec();
+    // env1.fill_vec();
+    let vec1 = fill_new_vec(env1);
+    // env2.fill_vec();
+    let vec2 = fill_new_vec(env2);
 
     let mut failure = false;
 
-    for i in 0..env1.len() {
-        let (e1_val, e2_val) = (env1[i], env2[i]);
+    for i in 0..vec1.len() {
+        let (e1_val, e2_val) = (vec1[i], vec2[i]);
 
         if e1_val != e2_val {
             failure = true;
@@ -164,21 +182,22 @@ pub fn compare_buffers<T: OclPrm>(env1: &mut Buffer<T>, env2: &mut Buffer<T>) ->
 // TEST_NEARBY(): Ensure that elements near a focal index are equal to a particular value.
 //        - idz and idm (first and last elements) are also checked along with their nearby elements
 // <<<<< [FIXME] TODO: THIS FUNCTION NEEDS SERIOUS STREAMLINING & OPTIMIZATION >>>>>
-pub fn eval_others<T: OclPrm>(env: &mut Buffer<T>, foc_idx: usize, other_val: T) {    // -> Result<(), &'static str>    
+pub fn eval_others<T: OclPrm>(env: &Buffer<T>, foc_idx: usize, other_val: T) {    // -> Result<(), &'static str>    
     // let mut checklist = Vec::new();
     let check_margin = 384;
 
     // assert!(env[foc_idx] == foc_val);
 
     // index[0]
-    let idz = 0;
+    // let idz = 0;
     // index[n]
     let idn = env.len();
 
     assert!(idn > 0);
     assert!(foc_idx < idn);
 
-    env.fill_vec();
+    // env.fill_vec();
+    let vec = fill_new_vec(env);
 
     if idn <= check_margin * 4 {
         // CHECK THE WHOLE LIST (except for foc_idx)
@@ -215,7 +234,7 @@ pub fn eval_others<T: OclPrm>(env: &mut Buffer<T>, foc_idx: usize, other_val: T)
         for i in iter {
             // debug_assert!(i != foc_idx);
             // checklist.push(i);
-            assert_eq!(env[i], other_val);
+            assert_eq!(vec[i], other_val);
         }
 
         // println!("\n##### checklist: {:?} len: {}", checklist, checklist.len());

@@ -1,6 +1,6 @@
 use std::ops::Range;
-use ocl::{self, Result as OclResult};
-use ocl::traits::MemDims;
+use ocl;
+use ocl::traits::MemLen;
 use cmn::{self, CorticalDims, ParaHexArray, SliceDims};
 use map::{area_map, LayerMap, AxonKind, GanglionMap};
 
@@ -235,23 +235,27 @@ impl SliceMap {
     }
 }
 
-impl MemDims for SliceMap {
+impl MemLen for SliceMap {
     #[inline]
-    fn padded_buffer_len(&self, incr: usize) -> OclResult<usize> {
-        Ok(ocl::util::padded_len(self.axn_count() as usize, incr))
+    fn to_len(&self) -> usize {
+        self.axn_count() as usize
     }
 
-    fn to_size(&self) -> [usize; 3] {
-        // self.dims.to_size().expect("bismit::SliceMap::to_size")
-        [self.axn_count() as usize, 0, 0]
+    fn to_len_padded(&self, incr: usize) -> usize {
+        ocl::util::padded_len(self.axn_count() as usize, incr)
+    }
+
+    fn to_lens(&self) -> [usize; 3] {
+        // self.dims.to_lens().expect("bismit::SliceMap::to_size")
+        [self.axn_count() as usize, 1, 1]
     }
 }
 
 
 #[cfg(test)]
 pub mod tests {
-    use std::fmt::{ Display, Formatter, Result as FmtResult };
-    use super::{ SliceMap };
+    use std::fmt::{Display, Formatter, Result as FmtResult};
+    use super::{SliceMap};
 
     pub trait SliceMapTest {
         fn print(&self);

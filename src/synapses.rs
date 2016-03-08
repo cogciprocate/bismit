@@ -1,7 +1,7 @@
 use rand::{self, XorShiftRng};
 
 use cmn::{self, CorticalDims};
-use map::{AreaMap, SrcSlices, SrcIdxCache};
+use map::{AreaMap, SrcSlices, SrcIdxCache, SynSrc};
 use ocl::{ProQue, SpatialDims, Buffer, EventList, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use proto::{CellKind, Protocell, DendriteKind};
@@ -62,31 +62,34 @@ pub struct Synapses {
     layer_name: &'static str,
     dims: CorticalDims,
     syns_per_den_l2: u8,
-    protocell: Protocell,
+    // protocell: Protocell,
     src_slc_ids_by_tft: Vec<Vec<u8>>,
     den_kind: DendriteKind,
-    cell_kind: CellKind,
-    since_decay: usize,
+    // cell_kind: CellKind,
+    // since_decay: usize,
     kernels: Vec<Box<Kernel>>,
     src_idx_cache: SrcIdxCache,
     src_slcs: SrcSlices,
     rng: XorShiftRng,
-    pub states: Buffer<u8>,
-    pub strengths: Buffer<i8>,
-    pub src_slc_ids: Buffer<u8>,
-    pub src_col_u_offs: Buffer<i8>,
-    pub src_col_v_offs: Buffer<i8>,
-    pub flag_sets: Buffer<u8>,
-    vec_strengths: Vec<u8>,
+    states: Buffer<u8>,
+
+    strengths: Buffer<i8>,
+    src_slc_ids: Buffer<u8>,
+    src_col_u_offs: Buffer<i8>,
+    src_col_v_offs: Buffer<i8>,
+
+    flag_sets: Buffer<u8>,
+
+    vec_strengths: Vec<i8>,
     vec_src_slc_ids: Vec<u8>,
-    vec_src_col_u_offs: Vec<u8>,
-    vec_src_col_v_offs: Vec<u8>,
+    vec_src_col_u_offs: Vec<i8>,
+    vec_src_col_v_offs: Vec<i8>,
     // pub slc_pool: Buffer<u8>,  // BRING THIS BACK (OPTIMIZATION)
 }
 
 impl Synapses {
     pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, 
-                den_kind: DendriteKind, cell_kind: CellKind, area_map: &AreaMap, 
+                den_kind: DendriteKind, _: CellKind, area_map: &AreaMap, 
                 axons: &AxonSpace, ocl_pq: &ProQue
             ) -> Synapses 
     {
@@ -96,7 +99,8 @@ impl Synapses {
         let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, 
             protocell.dens_per_tuft_l2, dims.clone());
 
-        // let buf_len = dims.padded_buffer_len(ocl_pq.max_wg_size()).expect("bismit::Synapses");
+        // Padded length of our vectors.
+        let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
         let states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
@@ -166,16 +170,22 @@ impl Synapses {
             }))
         }
 
+        // These are for learning (to avoid allocating it every time).
+        let vec_strengths = vec![0; buf_len];
+        let vec_src_slc_ids = vec![0; buf_len];
+        let vec_src_col_u_offs = vec![0; buf_len];
+        let vec_src_col_v_offs = vec![0; buf_len];
 
+        // MAKE ME MUTABALE AGAIN ASSHOLE!
         let mut syns = Synapses {
             layer_name: layer_name,
             dims: dims,
             syns_per_den_l2: protocell.syns_per_den_l2,
-            protocell: protocell,
+            // protocell: protocell,
             src_slc_ids_by_tft: src_slc_ids_by_tft,
             den_kind: den_kind,
-            cell_kind: cell_kind,
-            since_decay: 0,
+            // cell_kind: cell_kind,
+            // since_decay: 0,
             kernels: kernels,
             src_idx_cache: src_idx_cache,
             src_slcs: src_slcs,
@@ -186,6 +196,10 @@ impl Synapses {
             src_col_u_offs: src_col_u_offs,
             src_col_v_offs: src_col_v_offs,
             flag_sets: flag_sets,
+            vec_strengths: vec_strengths,
+            vec_src_slc_ids: vec_src_slc_ids,
+            vec_src_col_u_offs: vec_src_col_u_offs,
+            vec_src_col_v_offs: vec_src_col_v_offs,
             // slc_pool: slc_pool,  // BRING THIS BACK
         };
 
@@ -196,18 +210,23 @@ impl Synapses {
     }
 
 
+    // [FIXME]: THIS IS A PERFORMANCE NIGHTMARE. SET UP AN EVENTLIST.
+    // BREAK THIS DOWN INTO PEICES. PROCESS A BIT AT A TIME.
     fn grow(&mut self, init: bool) {
         if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
             println!("REGROW:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:\
                 (SLICE)(OFFSET)(STRENGTH)]\n", self.den_kind);
         }
 
-        self.strengths.fill_vec();
-        self.src_slc_ids.fill_vec();
-        self.src_col_v_offs.fill_vec();
-        self.src_col_u_offs.fill_vec();
-
-
+        // Fill our vectors with fresh data;
+        // self.strengths.fill_vec();
+        // self.src_slc_ids.fill_vec();
+        // self.src_col_v_offs.fill_vec();
+        // self.src_col_u_offs.fill_vec();
+        self.strengths.cmd().read(&mut self.vec_strengths).enq().unwrap();
+        self.src_slc_ids.cmd().read(&mut self.vec_src_slc_ids).enq().unwrap();
+        self.src_col_v_offs.cmd().read(&mut self.vec_src_col_v_offs).enq().unwrap();
+        self.src_col_u_offs.cmd().read(&mut self.vec_src_col_u_offs).enq().unwrap();
 
         let syns_per_layer_tft = self.dims.per_slc_per_tft() as usize * self.dims.depth() as usize;
         let src_slc_ids_by_tft = self.src_slc_ids_by_tft.clone();
@@ -227,58 +246,62 @@ impl Synapses {
             }
 
             for syn_idx in syn_idz..syn_idn {
-                debug_assert!(syn_idx < self.strengths.len());
+                debug_assert!(syn_idx < self.vec_strengths.len());
 
-                if init || (unsafe { *self.strengths
+                if init || (unsafe { *self.vec_strengths
                     .get_unchecked(syn_idx) } <= cmn::SYNAPSE_STRENGTH_FLOOR) 
                 {
-                    // self.regrow_syn(syn_idx, src_tft_id, init);
+                    self.regrow_syn(syn_idx, src_tft_id, init);
                 }
             }
 
             src_tft_id += 1;
         }
 
-        self.strengths.flush_vec();
-        self.src_slc_ids.flush_vec();
-        self.src_col_v_offs.flush_vec();    
-        self.src_col_u_offs.flush_vec();
+        // self.strengths.flush_vec();
+        // self.src_slc_ids.flush_vec();
+        // self.src_col_v_offs.flush_vec();    
+        // self.src_col_u_offs.flush_vec();
+        self.strengths.cmd().write(&self.vec_strengths).enq().unwrap();
+        self.src_slc_ids.cmd().write(&self.vec_src_slc_ids).enq().unwrap();
+        self.src_col_v_offs.cmd().write(&self.vec_src_col_v_offs).enq().unwrap();
+        self.src_col_u_offs.cmd().write(&self.vec_src_col_u_offs).enq().unwrap();
     }
 
-    // // [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
-    // // - Will need to know u and v coords of host cell or deconstruct from syn_idx.
-    // // [FIXME] TODO: Remove synapse index bounds checks (.get_unchecked()...).
-    // // [FIXME][COMPLETE]: Implement per-slice syn_ranges.
-    // fn regrow_syn(&mut self, syn_idx: usize, tft_id: usize, init: bool) {        
-    //     debug_assert!(syn_idx < self.src_slc_ids.len());
-    //     debug_assert!(syn_idx < self.src_col_v_offs.len());
-    //     debug_assert!(syn_idx < self.src_col_u_offs.len());
+    // [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
+    // - Will need to know u and v coords of host cell or deconstruct from syn_idx.
+    // [FIXME] TODO: Remove synapse index bounds checks (.get_unchecked()...).
+    // [FIXME][COMPLETE]: Implement per-slice syn_ranges.
+    fn regrow_syn(&mut self, syn_idx: usize, tft_id: usize, _: bool) {        
+        debug_assert!(syn_idx < self.src_slc_ids.len());
+        debug_assert!(syn_idx < self.src_col_v_offs.len());
+        debug_assert!(syn_idx < self.src_col_u_offs.len());
 
-    //     loop {
-    //         let old_src = unsafe { SynSrc { 
-    //             slc_id: *self.src_slc_ids.get_unchecked(syn_idx), 
-    //             v_ofs: *self.src_col_v_offs.get_unchecked(syn_idx),
-    //             u_ofs: *self.src_col_u_offs.get_unchecked(syn_idx),
-    //             strength: 0
-    //         } };
+        loop {
+            let old_src = unsafe { SynSrc { 
+                slc_id: *self.vec_src_slc_ids.get_unchecked(syn_idx), 
+                v_ofs: *self.vec_src_col_v_offs.get_unchecked(syn_idx),
+                u_ofs: *self.vec_src_col_u_offs.get_unchecked(syn_idx),
+                strength: 0
+            } };
 
-    //         let new_src = self.src_slcs.gen_src(tft_id, &mut self.rng);
+            let new_src = self.src_slcs.gen_src(tft_id, &mut self.rng);
 
-    //         if self.src_idx_cache.insert(syn_idx, &old_src, &new_src) {
-    //             unsafe {
-    //                 *self.src_slc_ids.get_unchecked_mut(syn_idx) = new_src.slc_id;
-    //                 *self.src_col_v_offs.get_unchecked_mut(syn_idx) = new_src.v_ofs; 
-    //                 *self.src_col_u_offs.get_unchecked_mut(syn_idx) = new_src.u_ofs;
-    //                 *self.strengths.get_unchecked_mut(syn_idx) = new_src.strength;
-    //             }
+            if self.src_idx_cache.insert(syn_idx, &old_src, &new_src) {
+                unsafe {
+                    *self.vec_src_slc_ids.get_unchecked_mut(syn_idx) = new_src.slc_id;
+                    *self.vec_src_col_v_offs.get_unchecked_mut(syn_idx) = new_src.v_ofs; 
+                    *self.vec_src_col_u_offs.get_unchecked_mut(syn_idx) = new_src.u_ofs;
+                    *self.vec_strengths.get_unchecked_mut(syn_idx) = new_src.strength;
+                }
 
-    //             if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("$"); }
-    //             break;
-    //         } else {
-    //             if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("^"); }
-    //         }
-    //     }
-    // }
+                if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("$"); }
+                break;
+            } else {
+                if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("^"); }
+            }
+        }
+    }
 
     #[inline]
     pub fn cycle(&self, wait_events: Option<&EventList>) {
@@ -288,10 +311,10 @@ impl Synapses {
         }
     }
 
-    // #[inline]
-    // pub fn regrow(&mut self) {
-    //     self.grow(false);
-    // }
+    #[inline]
+    pub fn regrow(&mut self) {
+        self.grow(false);
+    }
 
     // pub fn confab(&mut self) {
     //     self.states.fill_vec();
@@ -326,6 +349,31 @@ impl Synapses {
         &self.dims
     }
 
+    pub fn states(&self) -> &Buffer<u8> {
+        &self.states
+    }
+
+    pub fn strengths(&self) -> &Buffer<i8> {
+        &self.strengths
+    }
+
+    pub fn src_slc_ids(&self) -> &Buffer<u8> {
+        &self.src_slc_ids
+    }
+
+    pub fn src_col_u_offs(&self) -> &Buffer<i8> {
+        &self.src_col_v_offs
+    }
+
+    pub fn src_col_v_offs(&self) -> &Buffer<i8> {
+        &self.src_col_v_offs
+    }
+
+    pub fn flag_sets(&self) -> &Buffer<u8> {
+        &self.flag_sets
+    }
+
+
     #[inline]
     pub fn syns_per_den_l2(&self) -> u8 {
         self.syns_per_den_l2
@@ -342,8 +390,8 @@ impl Synapses {
 
     // // [FIXME] TODO: Depricate me evenutally
     // pub fn set_offs_to_zero_temp(&mut self) {
-    //     self.src_col_v_offs.set_all_to(0).unwrap();
-    //     self.src_col_u_offs.set_all_to(0).unwrap();
+    //     self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+    //     self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
     // }
 
 }
@@ -352,16 +400,16 @@ impl Synapses {
 
 #[cfg(test)]
 pub mod tests {
-    #![allow(non_snake_case)]
-    use std::ops::{ Range };
-    use std::fmt::{ Display, Formatter, Result as FmtResult };
-    use rand::{ XorShiftRng };
-    use rand::distributions::{ IndependentSample, Range as RandRange };
+    #![allow(non_snake_case, dead_code)]
+    use std::ops::{Range};
+    use std::fmt::{Display, Formatter, Result as FmtResult};
+    use rand::{XorShiftRng};
+    use rand::distributions::{IndependentSample, Range as RandRange};
 
-    use cmn::{ CelCoords };
-    use cmn::{ CorticalDims };
-    use dendrites::{ self };
-    use super::{ Synapses };
+    use cmn::{CelCoords};
+    use cmn::{CorticalDims};
+    use dendrites::{self};
+    use super::{Synapses};
 
     const PRINT_DEBUG_INFO: bool = false;
 
@@ -372,41 +420,51 @@ pub mod tests {
         fn set_src_slc(&mut self, src_slc_id: u8, idx: usize);
         fn syn_state(&self, idx: u32) -> u8;
         fn rand_syn_coords(&mut self, cel_coords: &CelCoords) -> SynCoords;
-        fn print_range(&mut self, range: Range<usize>);
-        fn print_all(&mut self);
+        // fn print_range(&mut self, range: Range<usize>);
+        // fn print_all(&mut self);
         fn rng(&mut self) -> &mut XorShiftRng;    
     }
 
     impl SynapsesTest for Synapses {
         fn set_offs_to_zero(&mut self) {
-            self.src_col_v_offs.set_all_to(0).unwrap();
-            self.src_col_u_offs.set_all_to(0).unwrap();
+            // self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+            self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+            // self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
+            self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
         }
 
         fn set_all_to_zero(&mut self) {
-            self.states.set_all_to(0).unwrap();
-            self.strengths.set_all_to(0).unwrap();
-            self.src_slc_ids.set_all_to(0).unwrap();
-            self.src_col_u_offs.set_all_to(0).unwrap();
-            self.src_col_v_offs.set_all_to(0).unwrap();
-            self.flag_sets.set_all_to(0).unwrap();
+            // self.states.cmd().fill(&[0], None).enq().unwrap();
+            // self.strengths.cmd().fill(&[0], None).enq().unwrap();
+            // self.src_slc_ids.cmd().fill(&[0], None).enq().unwrap();
+            // self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
+            // self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+            // self.flag_sets.cmd().fill(&[0], None).enq().unwrap();
+            self.states.cmd().fill(&[0], None).enq().unwrap();
+            self.strengths.cmd().fill(&[0], None).enq().unwrap();
+            self.src_slc_ids.cmd().fill(&[0], None).enq().unwrap();
+            self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
+            self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+            self.flag_sets.cmd().fill(&[0], None).enq().unwrap();
         }
 
         fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize) {
             let sdr_v = vec![v_ofs];
             let sdr_u = vec![u_ofs];
-            self.src_col_v_offs.write(idx, &sdr_v[..]).unwrap();
-            self.src_col_u_offs.write(idx, &sdr_u[..]).unwrap();
+            self.src_col_v_offs.cmd().write(&sdr_v[..]).offset(idx as usize).enq().unwrap();
+            self.src_col_u_offs.cmd().write(&sdr_u[..]).offset(idx as usize).enq().unwrap();
         }
 
         fn set_src_slc(&mut self, src_slc_id: u8, idx: usize) {
             let sdr = vec![src_slc_id];
-            self.src_slc_ids.write(idx, &sdr[..]).unwrap();
+            // self.src_slc_ids.write(idx, &sdr[..]).unwrap();
+            self.src_slc_ids.cmd().write(&sdr[..]).offset(idx as usize).enq().unwrap();
         }
 
         fn syn_state(&self, idx: u32) -> u8 {
             let mut sdr = vec![0u8];
-            self.states.read(idx as usize, &mut sdr[..]).unwrap();
+            // self.states.read(idx as usize, &mut sdr[..]).unwrap();
+            self.states.cmd().read(&mut sdr[..]).offset(idx as usize).enq().unwrap();
             sdr[0]
         }
 
@@ -422,36 +480,36 @@ pub mod tests {
             SynCoords::new(tft_id, den_id_tft, syn_id_den, cel_coords)
         }
 
-        fn print_range(&mut self, range: Range<usize>) {
-            print!("syns.states: ");
-            self.states.print(1 << 0, Some((0, 255)), 
-                Some(range.clone()), false);
+        // fn print_range(&mut self, range: Range<usize>) {
+        //     print!("syns.states: ");
+        //     self.states.print(1 << 0, Some((0, 255)), 
+        //         Some(range.clone()), false);
 
-            print!("syns.flag_sets: ");
-            self.flag_sets.print(1 << 0, Some((0, 255)), 
-                Some(range.clone()), false);
+        //     print!("syns.flag_sets: ");
+        //     self.flag_sets.print(1 << 0, Some((0, 255)), 
+        //         Some(range.clone()), false);
 
-            print!("syns.strengths: ");
-            self.strengths.print(1 << 0, Some((-128, 127)), 
-                Some(range.clone()), false);
+        //     print!("syns.strengths: ");
+        //     self.strengths.print(1 << 0, Some((-128, 127)), 
+        //         Some(range.clone()), false);
 
-            // print!("syns.src_slc_ids: ");
-            // self.src_slc_ids.print(1 << 0, Some((0, 255)), 
-            //     Some(range.clone()), false);
+        //     // print!("syns.src_slc_ids: ");
+        //     // self.src_slc_ids.print(1 << 0, Some((0, 255)), 
+        //     //     Some(range.clone()), false);
 
-            // print!("syns.src_col_v_offs: ");
-            // self.src_col_v_offs.print(1 << 0, Some((-128, 127)), 
-            //     Some(range.clone()), false);
+        //     // print!("syns.src_col_v_offs: ");
+        //     // self.src_col_v_offs.print(1 << 0, Some((-128, 127)), 
+        //     //     Some(range.clone()), false);
             
-            // print!("syns.src_col_u_offs: ");
-            // self.src_col_v_offs.print(1 << 0, Some((-128, 127)), 
-            //     Some(range.clone()), false);
-        }
+        //     // print!("syns.src_col_u_offs: ");
+        //     // self.src_col_v_offs.print(1 << 0, Some((-128, 127)), 
+        //     //     Some(range.clone()), false);
+        // }
 
-        fn print_all(&mut self) {
-            let range = 0..self.states.len();
-            self.print_range(range);
-        }
+        // fn print_all(&mut self) {
+        //     let range = 0..self.states.len();
+        //     self.print_range(range);
+        // }
 
         fn rng(&mut self) -> &mut XorShiftRng {
             &mut self.rng

@@ -1,11 +1,11 @@
 // use std::iter;
-use std::collections::{ HashMap };
+use std::collections::{HashMap};
 
-use map::{ self, LayerTags };
-use cmn::{ self, Sdr, CorticalDims };
-use ocl::{ EventList };
-use proto::{ ProtoareaMap, Protoinput, ProtolayerMap, Protolayer, AxonKind };
-use encode::{ IdxStreamer, GlyphSequences };
+use map::{self, LayerTags};
+use cmn::{self, Sdr, CorticalDims};
+use ocl::{EventList};
+use proto::{ProtoareaMap, Protoinput, ProtolayerMap, Protolayer, AxonKind};
+use encode::{IdxStreamer, GlyphSequences};
 
 pub type InputSources = HashMap<(&'static str, LayerTags), InputSource>;
 
@@ -92,7 +92,7 @@ impl InputSource {
     }
 
     // [FIXME] Multiple output target areas disabled.
-    pub fn cycle(&mut self, ganglion: &mut Sdr, events: &mut EventList) {
+    pub fn cycle(&mut self, ganglion: &mut Sdr, _: &mut EventList) {
         // This is temp (mult out tar areas): DEPRICATING: 
         // debug_assert!(self.targets.len() == 1);
 
@@ -106,26 +106,26 @@ impl InputSource {
         };
     }
 
-    #[inline]
     pub fn area_name(&self) -> &'static str {
         self.area_name
     }
 
-    #[inline]
     pub fn tags(&self) -> LayerTags {
         self.layer_tags
     }
 
-    #[inline]
     pub fn axn_kind(&self) -> AxonKind {
         self.axn_kind.clone()
+    }
+
+    pub fn layer_name(&self) -> &'static str {
+        self.layer_name
     }
 
     // pub fn depth(&self) -> u8 {
     //     self.depth
     // }
 
-    #[inline]
     pub fn dims(&self) -> &CorticalDims {
         &self.dims
     }

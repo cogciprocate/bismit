@@ -1,9 +1,9 @@
-use rand::{ XorShiftRng };
-use rand::distributions::{ IndependentSample, Range as RandRange };
-use std::collections::{ BTreeMap, BTreeSet };
+use rand::{XorShiftRng};
+use rand::distributions::{IndependentSample, Range as RandRange};
+use std::collections::{BTreeMap, BTreeSet};
 
-use cmn::{ self, CorticalDims, SliceDims };
-use map::{ AreaMap, AxonKind };
+use cmn::{self, CorticalDims, SliceDims};
+use map::{AreaMap, AxonKind};
 
 const INTENSITY_REDUCTION_L2: i8 = 3;
 const STR_MIN: i8 = -3;
@@ -98,7 +98,7 @@ impl SrcSlices {
 }
 
 
-
+#[allow(dead_code)]
 pub struct SliceInfo {
     slc_off_pool: OfsPool,
     v_size: u32,
@@ -143,14 +143,23 @@ impl SliceInfo {
         }
     }
 
-    #[inline]
+    #[allow(dead_code)]
     pub fn slc_off_pool(&self) -> &OfsPool {
         &self.slc_off_pool
     }
 
-    #[inline]
     pub fn syn_reach(&self) -> u8 {
         self.syn_reach
+    }
+
+    #[allow(dead_code)]
+    pub fn v_size(&self) -> u32 {
+        self.v_size
+    }
+
+    #[allow(dead_code)]
+    pub fn u_size(&self) -> u32 {
+        self.u_size
     }
 }
 
@@ -172,7 +181,7 @@ pub enum OfsPool {
 // }
 
 
-
+#[allow(dead_code)]
 pub struct SrcIdxCache {
     syns_per_den_l2: u8,
     dens_per_tft_l2: u8,
@@ -186,7 +195,7 @@ impl SrcIdxCache {
         let area_dens = (dens_per_tft * dims.cel_tfts()) as usize;
         let mut dens = Vec::with_capacity(dens_per_tft as usize);
 
-        for i in 0..area_dens {    dens.push(Box::new(BTreeSet::new())); }
+        for _ in 0..area_dens { dens.push(Box::new(BTreeSet::new())); }
 
         //println!("##### CREATING SRCIDXCACHE WITH: dens: {}", dens.len());
 

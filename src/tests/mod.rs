@@ -1,5 +1,5 @@
 
-//pub use self::renderer::{ Renderer };
+//pub use self::renderer::{Renderer};
 
 //pub mod interactive;
 //pub mod autorun;
@@ -9,7 +9,7 @@
 //mod motor_state;
 //mod renderer;
 
-pub use self::testbed::{ TestBed };
+pub use self::testbed::{TestBed};
 pub mod hybrid;
 pub mod testbed;
 pub mod kernels;

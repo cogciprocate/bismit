@@ -1,5 +1,5 @@
-use std::io::{ BufReader };
-use std::fs::{ File };
+use std::io::{BufReader};
+use std::fs::{File};
 use std;
 
 pub const INPUT_READ_OFFSET: u16= 0u16;

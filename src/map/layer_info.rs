@@ -1,11 +1,11 @@
-use std::ops::{ Range };
-// use std::slice::{ Iter };
+use std::ops::{Range};
+// use std::slice::{Iter};
 
-use proto::{ Protolayer, ProtoareaMap, ProtoareaMaps, ProtolayerMaps, LayerKind, DendriteKind, 
-    LayerMapKind, AxonKind };
-use cmn::{ self, ParaHexArray, CorticalDims };
-use map::{ self, LayerTags, };
-use input_source::{ InputSources };
+use proto::{Protolayer, ProtoareaMap, ProtoareaMaps, ProtolayerMaps, LayerKind, DendriteKind, 
+    LayerMapKind, AxonKind};
+use cmn::{self, ParaHexArray, CorticalDims};
+use map::{self, LayerTags,};
+use input_source::{InputSources};
 
 // const CELLULAR_AXON_KIND: AxonKind = AxonKind::Spatial;
 
@@ -67,7 +67,7 @@ impl LayerInfo {
             // - filter out feedback from eff areas and feedforward from aff areas
             // - push what's left to sources
             // Our layer must contain the flow direction flag corresponding with the source area.
-            for (src_area_name, src_area_tags) in src_area_combos.into_iter()
+            for (src_area_name, _) in src_area_combos.into_iter()
                     .filter(|&(_, sat)|  tags.contains(sat))
             {                
                 let src_pamap = pamaps.maps().get(src_area_name).expect("LayerInfo::new()");

@@ -176,7 +176,6 @@ impl TestBed {
             .prog_bldr(area_map.gen_build_options())
             .build().expect("Testbed::new(): ocl_pq.build()");
 
-
         let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size());
 
         TestBed {

@@ -113,11 +113,13 @@ impl IdxStreamer {
     }
 
     #[inline]
+    #[allow(unused_variables)]
     pub fn encode_scalar(&self, source: &Sdr, target: &mut Sdr) {
         let v_size = self.layer_dims.v_size() as usize;
         let u_size = self.layer_dims.u_size() as usize;
         // [FIXME]: NOT HOOKED UP
         super::encode_scalar();
+        unimplemented!();
     }
 
 

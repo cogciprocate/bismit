@@ -1,8 +1,8 @@
 
-use ocl::{ self, Result as OclResult };
-use ocl::traits::MemDims;
-use cmn::{ self, ParaHexArray, CorticalDims, CmnResult, CmnError };
-use proto::{ AxonKind };
+use ocl;
+use ocl::traits::MemLen;
+use cmn::{self, ParaHexArray, CorticalDims, CmnResult, CmnError};
+use proto::{AxonKind};
 
 
 #[derive(Clone, Debug)]
@@ -150,14 +150,18 @@ impl ParaHexArray for SliceDims {
     }
 }
 
-impl MemDims for SliceDims {
+impl MemLen for SliceDims {
     // [FIXME]: TODO: ROUND CORTICAL_LEN() UP TO THE NEXT PHYSICAL_INCREMENT
     #[inline]
-    fn padded_buffer_len(&self, incr: usize) -> OclResult<usize> {
-        Ok(ocl::util::padded_len(self.columns() as usize, incr))
+    fn to_len(&self) -> usize {
+        self.columns() as usize
     }
 
-    fn to_size(&self) -> [usize; 3] {
+    fn to_len_padded(&self, incr: usize) -> usize {
+        ocl::util::padded_len(self.columns() as usize, incr)
+    }
+
+    fn to_lens(&self) -> [usize; 3] {
         [1, self.v_size as usize, self.u_size as usize]
     }
 }

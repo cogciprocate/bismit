@@ -10,7 +10,7 @@ pub use self::ganglion_map::GanglionMap;
 pub use self::proto::AxonKind;
 
 #[cfg(test)]
-pub use self::area_map::tests::{ AreaMapTest };
+pub use self::area_map::tests::{AreaMapTest};
 
 
 pub mod area_map;

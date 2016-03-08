@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use std::ops::Range; 
-// use std::collections::{ BTreeMap };
+// use std::collections::{BTreeMap};
 
 use ocl::build::{BuildOpt, ProgramBuilder};
 use proto::{ProtolayerMaps, ProtoareaMaps, ProtoareaMap, LayerMapKind, Protofilter,
@@ -71,7 +71,7 @@ impl AreaMap {
                     match pf.cl_file_name() {
                         Some(ref clfn)  => {                            
                             build_options = build_options.src_file(
-                                format!("{}/{}", cmn::cl_root_path(), clfn.clone()));
+                                cmn::cl_root_path().join(clfn.clone()));
                         },
 
                         None => (),
@@ -328,8 +328,8 @@ pub fn literal_list<T: Display>(vec: &Vec<T>) -> String {
 
 #[cfg(test)]
 pub mod tests {
-    use std::fmt::{ Display, Formatter, Result as FmtResult };
-    use super::{ AreaMap };
+    use std::fmt::{Display, Formatter, Result as FmtResult};
+    use super::{AreaMap};
 
     pub trait AreaMapTest {
         fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8) 

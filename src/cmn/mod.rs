@@ -3,32 +3,33 @@
     - Some of it will be eventually moved to other modules
     - Some of it may remain and be renamed to utils or some such
 */
-use num::{ ToPrimitive, FromPrimitive };
-use std::default::{ Default }; 
-use std::iter::{ self };
-use std::cmp::{ self };
-use std::io::{ self, Write };
-use std::collections::{ BTreeMap };
+use num::{ToPrimitive, FromPrimitive};
+use std::default::{Default}; 
+use std::iter::{self};
+use std::cmp::{self};
+use std::io::{self, Write};
+use std::collections::{BTreeMap};
+use std::path::PathBuf;
 use rand;
-use rand::distributions::{ IndependentSample, Range };
+use rand::distributions::{IndependentSample, Range};
 
 use ocl::traits::OclPrm;
 use ocl::build::ProgramBuilder;
 
 // pub use self::cmn::*;
-pub use self::cortical_dims::{ CorticalDims };
+pub use self::cortical_dims::{CorticalDims};
 pub use self::slice_dims::SliceDims;
 pub use self::tract_dims::TractDims;
-//pub use self::area_map::{ AreaMap, SliceMap };
-pub use self::data_cell_layer::{ DataCellLayer };
-pub use self::renderer::{ Renderer };
-pub use self::error::{ CmnError };
+//pub use self::area_map::{AreaMap, SliceMap};
+pub use self::data_cell_layer::{DataCellLayer};
+pub use self::renderer::{Renderer};
+pub use self::error::{CmnError};
 //pub use self::prediction::*;
 // pub use self::para_hex_grid::ParaHexArray;
 pub use self::tract_frame::{TractFrame, TractFrameMut};
 
 #[cfg(test)]
-pub use self::data_cell_layer::tests::{ CelCoords, DataCellLayerTest };
+pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
 
 #[macro_use]
 mod macros;
@@ -322,17 +323,16 @@ pub fn base_build_options() -> ProgramBuilder {
 pub fn load_builtin_kernel_files(mut build_options: ProgramBuilder) -> ProgramBuilder {
     for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
         build_options = build_options.src_file(
-            format!("{}/{}", cl_root_path(), BUILTIN_OPENCL_KERNEL_FILE_NAMES[i].to_string())
-        );
+            cl_root_path().join(BUILTIN_OPENCL_KERNEL_FILE_NAMES[i]));
     }
 
     build_options
 }
 
 // [FIXME]: TEMPORARY
-pub fn cl_root_path() -> String {
+pub fn cl_root_path() -> PathBuf {
     // format!("{}/{}", env!("P"), "bismit/cl")
-    "/home/nick/projects/bismit/cl".to_string()
+    PathBuf::from("/home/nick/projects/bismit/cl")
 }
 
 
@@ -706,7 +706,7 @@ pub fn render_sdr_square(
     let mut out_line: String = String::with_capacity(line_character_width);
     let mut i_line = 0usize;
     let mut i_global = 0usize;
-    let mut i_pattern = 0usize; // DEPRICATE
+    // let mut i_pattern = 0usize; // DEPRICATE
     let mut i_cort_area = 0u8;
 
     println!("");
@@ -792,9 +792,9 @@ pub fn render_sdr_square(
 
                 println!("\n[{}: {}]", slc_id, slc_name);
                 i_cort_area += 1;
-                i_pattern = 0; // DEPRICATE
+                // i_pattern = 0; // DEPRICATE
             } else {
-                i_pattern += 1; // DEPRICATE
+                // i_pattern += 1; // DEPRICATE
             }
             
             println!("{}", out_line);
@@ -847,7 +847,7 @@ pub fn new_pred(
             out: u8, 
             ff: u8, 
 ) -> bool {
-    let out_active = out != 0;
+    // let out_active = out != 0;
     let ff_active = ff != 0;
     let pred = out != ff;
     let new_pred = pred && (!ff_active);
@@ -888,7 +888,7 @@ pub fn gen_fract_sdr(seed: u8, len: usize) -> Vec<u8> {
     let n = 1 + ((len >> 5) as f64).sqrt() as usize;
 
     for i in 0..n {
-        for j in 0..(n - i) {
+        for _ in 0..(n - i) {
             vec[idx] = 1;
             idx = wrap_idx(idx + 1, len)
         }

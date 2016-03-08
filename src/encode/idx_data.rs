@@ -59,7 +59,7 @@ impl IdxData {
 
         match reader.read(&mut header_magic[..]) {
             Err(why) => panic!("\ncouldn't read '{}': {}", path_display, Error::description(&why)),
-            Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_magic, bytes),
+            Ok(_) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_magic, bytes),
         }
 
         let magic_data_type = header_magic[2];
@@ -70,10 +70,10 @@ impl IdxData {
 
         match reader.read(&mut header_dim_sizes_bytes[..]) {
             Err(why) => panic!("\ncouldn't read '{}': {}", path_display, Error::description(&why)),
-            Ok(bytes) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_dim_sizes_bytes, bytes),
+            Ok(_) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_dim_sizes_bytes, bytes),
         }
         
-        let ttl_header_len = 4 + (magic_dims * 4);
+        // let ttl_header_len = 4 + (magic_dims * 4);
         let mut dim_sizes: Vec<usize> = iter::repeat(0).take(magic_dims).collect();
 
         for i in 0..magic_dims {
@@ -107,7 +107,7 @@ impl IdxData {
         match reader.seek(SeekFrom::Start(header_len_bytes as u64)) {
             Err(why) => panic!("\ncouldn't seek to '[{}]': {}", header_len_bytes, 
                 Error::description(&why)),
-            Ok(pos) => (),
+            Ok(_) => (),
         }
 
         println!("IDXREADER: initialized with dimensions: {:?}", dim_sizes);

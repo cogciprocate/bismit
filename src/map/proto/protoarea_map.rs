@@ -1,7 +1,7 @@
-use std::collections::{ HashMap };
+use std::collections::{HashMap};
 
-use proto::{ Protofilter, Protoinput };
-use cmn::{ self, CorticalDims };
+use proto::{Protofilter, Protoinput};
+use cmn::{self, CorticalDims};
 
 
 pub struct ProtoareaMaps {

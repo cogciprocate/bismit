@@ -1,16 +1,15 @@
-use ocl::{ Buffer, EventList };
-use dendrites::{ Dendrites };
-use cmn::{ /*self,*/ CorticalDims };
-use proto::{ Protocell };
+use ocl::{Buffer, EventList};
+use dendrites::{Dendrites};
+use cmn::{/*self,*/ CorticalDims};
+use proto::{Protocell};
 
 // #[cfg(test)]
-// pub use self::tests::{ DataCellLayerTest };
+// pub use self::tests::{DataCellLayerTest};
 
 pub trait DataCellLayer {
     fn learn(&mut self);
     fn regrow(&mut self);
     fn cycle(&self, Option<&EventList>);
-    // fn confab(&mut self);
     fn soma(&self) -> &Buffer<u8>;
     fn soma_mut(&mut self) -> &mut Buffer<u8>;
     fn dims(&self) -> &CorticalDims;
@@ -26,24 +25,25 @@ pub trait DataCellLayer {
 
 #[cfg(test)]
 pub mod tests {
-    use std::ops::{ Range };
-    use rand::{ XorShiftRng };
-    // use rand::distributions::{ IndependentSample, Range };
+    // use std::ops::{Range};
+    use rand::{XorShiftRng};
+    // use rand::distributions::{IndependentSample, Range};
 
-    // use super::{ DataCellLayer };
-    use map::{ AreaMap, AreaMapTest };
-    use cmn::{ self, CorticalDims };
-    use std::fmt::{ Display, Formatter, Result };
+    // use super::{DataCellLayer};
+    use map::{AreaMap, AreaMapTest};
+    use cmn::{self, CorticalDims};
+    use std::fmt::{Display, Formatter, Result};
 
     pub trait DataCellLayerTest {
         fn cycle_self_only(&self);
-        fn print_cel(&mut self, cel_idx: usize);
-        fn print_range(&mut self, range: Range<usize>, print_syns: bool);
-        fn print_all(&mut self, print_syns: bool);
+        // fn print_cel(&mut self, cel_idx: usize);
+        // fn print_range(&mut self, range: Range<usize>, print_syns: bool);
+        // fn print_all(&mut self, print_syns: bool);
         fn rng(&mut self) -> &mut XorShiftRng;
         fn rand_cel_coords(&mut self) -> CelCoords;
         fn cel_idx(&self, slc_id: u8, v_id: u32, u_id: u32)-> u32;
         fn set_all_to_zero(&mut self);
+        // fn confab(&mut self);
     }
 
 

@@ -1,7 +1,7 @@
 #![allow(non_snake_case, unused_imports)]
 use std::ops::{Range};
 // use std::iter;
-// use std::io::{ Write };
+// use std::io::{Write};
 // use std::mem;
 // use rand;
 
@@ -105,7 +105,7 @@ fn dst_den_learning() {
 }
 
 
-
+#[allow(dead_code)]
 pub struct LearningTestBed {
     unused_slc_id: u8,
     prx_src_slc: u8, 
@@ -129,6 +129,7 @@ pub struct LearningTestBed {
 
 impl LearningTestBed {
     fn new() -> LearningTestBed {
+        assert!(!PRINT_DEBUG_INFO, "Printing debug info (or anything else) is currently disabled.");
         let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
 
         let (unused_slc_id,
@@ -149,13 +150,13 @@ impl LearningTestBed {
 
             // Zero all dendrite and synapse buffers:
             area.ptal_mut().dens_mut().set_all_to_zero(true);
-            area.axns.states.set_all_to(0).unwrap();
+            area.axns.states.cmd().fill(&[0], None).enq().unwrap();
 
             // Set source slice to an unused slice for all synapses:
             let unused_slc_ids = area.area_map().axn_base_slc_ids_by_tags(map::UNUSED_TESTING);
             assert!(unused_slc_ids.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
             let unused_slc_id = unused_slc_ids[0];
-            area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(unused_slc_id).unwrap();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(&[unused_slc_id], None).enq().unwrap();
 
             // Primary spatial layer slice idz (base axon slice):
             let prx_src_slc = area.psal().base_axn_slc();
@@ -221,7 +222,7 @@ impl LearningTestBed {
                     
 
             // The synapse count for our cell's entire layer (all slices, cells, and tufts):
-            let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states.len();
+            // let syn_range_all = 0..area.ptal_mut().dens_mut().syns_mut().states().len();
 
             // Set the sources for the synapses on the second half of our chosen tuft to our preselected nearby axon:
             // <<<<< [FIXME] TODO: IMPLEMENT THIS (for efficiency): >>>>>
@@ -258,7 +259,10 @@ impl LearningTestBed {
                 mt = cmn::MT);
             
             // This and every other util::print_all() is very expensive:
-            if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm Init - "); }
+            if PRINT_DEBUG_INFO { 
+                // util::print_all(area, "\n - Confirm Init - "); 
+                unimplemented!();
+            }
 
             (unused_slc_id,
             prx_src_slc, 
@@ -306,7 +310,7 @@ impl LearningTestBed {
             - Randomizing or having irregular groupings of active synapses on a dendrite (using a list of ranges).
     
     */
-    fn on_off(&mut self, on_focus_iters: usize, off_focus_iters: usize) {
+    fn test_on_off(&mut self, on_focus_iters: usize, off_focus_iters: usize) {
         for i in 0..on_focus_iters {
             let final_iter = i == (on_focus_iters - 1);
             let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
@@ -320,7 +324,7 @@ impl LearningTestBed {
             let final_iter = i == (off_focus_iters - 1);
             let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
                 && PRINT_DEBUG_INFO;
-            self.learning_iter(i, true, print_debug);            
+            self.learning_iter(i, true, print_debug);
         }
 
         self.clean_up(true);
@@ -332,11 +336,11 @@ impl LearningTestBed {
     // [FIXME] TODO: Add awareness of the current averages of both the on and off-focus synapses from the previous run in order to make sure that the synapse strengths are moving in the correct direction.
     fn learning_iter(&mut self, i: usize, flipped: bool, print_debug: bool) {
         let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
-        let syn_idx = self.syn_coords.idx();
+        // let syn_idx = self.syn_coords.idx();
         let den_idx = self.syn_coords.den_idx();
         let tft_idx = self.syn_coords.tft_idx();
         let cel_idx = self.syn_coords.cel_coords.idx();
-        let col_id = self.syn_coords.cel_coords.col_id();        
+        // let col_id = self.syn_coords.cel_coords.col_id();        
 
         let flpd_str = if flipped { "FLP" } else { "ORG" };
 
@@ -357,20 +361,30 @@ impl LearningTestBed {
 
         util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
 
-        if print_debug { util::print_all(area, "\n - Confirm 0 - "); print!("\n");}
+        if print_debug { 
+            // util::print_all(area, "\n - Confirm 0 - "); print!("\n");
+            unimplemented!();
+        }
 
-        assert!(util::eval_range(&area.ptal().dens().syns().states, self.focus_syns.clone(), 
+        assert!(util::eval_range(&area.ptal().dens().syns().states(), self.focus_syns.clone(), 
             | x | x != 0), "Synapses in range '{}..{}' are not active.", 
             self.focus_syns.start, self.focus_syns.end );
 
-        assert!(area.ptal().dens().states_raw.read_idx_direct(den_idx as usize) != 0, 
-            "Dendrite '{}' is not active.", den_idx);
+        // assert!(area.ptal().dens().states_raw.read_idx_direct(den_idx as usize) != 0, 
+        //     "Dendrite '{}' is not active.", den_idx);
+        assert!(util::read_idx_direct(den_idx as usize, area.ptal().dens().states_raw()) != 0, 
+            "Dendrite '{}' is not active. This could be because learning is disabled.", den_idx);
+        
         // println!();
-        assert!(area.ptal().best_den_states.read_idx_direct(cel_idx as usize) != 0);
+        // assert!(area.ptal().best_den_states.read_idx_direct(cel_idx as usize) != 0);
+        assert!(util::read_idx_direct(cel_idx as usize, area.ptal().best_den_states()) != 0);
         // println!("Cell best dendrite state is correct.");
-        assert!(area.ptal().tft_best_den_ids.read_idx_direct(tft_idx as usize) as u32 
-            == self.syn_coords.den_id_tft);
-        assert!(area.ptal().tft_best_den_states.read_idx_direct(tft_idx as usize) != 0);
+        // assert!(area.ptal().tft_best_den_ids.read_idx_direct(tft_idx as usize) as u32 
+        //     == self.syn_coords.den_id_tft);
+        assert!(util::read_idx_direct(tft_idx as usize, area.ptal().tft_best_den_ids()) as u32 == 
+            self.syn_coords.den_id_tft);
+        // assert!(area.ptal().tft_best_den_states().read_idx_direct(tft_idx as usize) != 0);
+        assert!(util::read_idx_direct(tft_idx as usize, area.ptal().tft_best_den_states()) != 0);
 
         // Evaluate minicolumn activity:
         // [FIXME] TODO: SHOULD ONLY BE ACTIVE WHEN STRS >= 0:
@@ -396,19 +410,25 @@ impl LearningTestBed {
         if print_debug {
             println!("\n ====================== {}[{}] 1: Premonition ====================== ", flpd_str, i);
             println!("       ====================== {}[{}] 1A ====================== \n", flpd_str, i);
+            unimplemented!();
         }
 
         util::ptal_alco(area, ACTIVATE, print_debug);
 
         if print_debug { 
-            util::print_all(area, "\n - Confirm 1A - ");
-            print!("\n");
+            // util::print_all(area, "\n - Confirm 1A - ");
+            // print!("\n");
+            unimplemented!();
         }        
 
         // Ensure our cell is flagged best in (mini) column:
         // [FIXME] TODO: REENABLE BELOW!
-        assert!(area.ptal().flag_sets.read_idx_direct(self.syn_coords.cel_coords.idx() as usize) 
-            & cmn::CEL_BEST_IN_COL_FLAG == cmn::CEL_BEST_IN_COL_FLAG);
+        // assert!(area.ptal().flag_sets.read_idx_direct(self.syn_coords.cel_coords.idx() as usize) 
+        //     & cmn::CEL_BEST_IN_COL_FLAG == cmn::CEL_BEST_IN_COL_FLAG);
+
+        assert!(util::read_idx_direct(tft_idx as usize, area.ptal().tft_best_den_ids()) as u32 == 
+            self.syn_coords.den_id_tft);
+
         // println!("Our cell is correctly flagged best in column.");
 
         // FLAGS: [pyr: 64], [syns: 0's], [mcol: 1];
@@ -422,8 +442,9 @@ impl LearningTestBed {
         util::ptal_alco(area, LEARN, print_debug);
 
         if print_debug { 
-            util::print_all(area, "\n - Confirm 1B - "); 
-            print!("\n");
+            // util::print_all(area, "\n - Confirm 1B - "); 
+            // print!("\n");
+            unimplemented!();
         }        
 
         // <<<<< TODO: Ensure our cells synapses have not learned anything: >>>>>
@@ -440,8 +461,9 @@ impl LearningTestBed {
         util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
 
         if print_debug { 
-            util::print_all(area, "\n - Confirm 1C - ");
-            print!("\n");
+            // util::print_all(area, "\n - Confirm 1C - ");
+            // print!("\n");
+            unimplemented!();
         }
 
         // FLAGS: [pyr: 80], [syns: 0's], [mcol: 1]; (unchanged)
@@ -465,8 +487,9 @@ impl LearningTestBed {
         util::ptal_alco(area, ACTIVATE, print_debug);
 
         if print_debug { 
-            util::print_all(area, "\n - Confirm 2A - ");
-            print!("\n");
+            // util::print_all(area, "\n - Confirm 2A - ");
+            // print!("\n");
+            unimplemented!();
         }
 
         // ##### ADD ME: assert!(THE PYRAMIDAL OUTPUT AXON (NOT SOMA) IS ACTIVE)
@@ -487,8 +510,9 @@ impl LearningTestBed {
         util::ptal_alco(area, LEARN, print_debug);
 
         if print_debug { 
-            util::print_all(area, "\n - Confirm 2B - ");
-            print!("\n");
+            // util::print_all(area, "\n - Confirm 2B - ");
+            // print!("\n");
+            unimplemented!();
         }
 
         // <<<<< [FIXME] TODO: assert!(chosen-half of syns are STPOT, others are STDEP) >>>>>
@@ -504,8 +528,9 @@ impl LearningTestBed {
         // util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
 
         if print_debug { 
-            util::print_all(area, "\n - Confirm 2C - ");
-            print!("\n");
+            // util::print_all(area, "\n - Confirm 2C - ");
+            // print!("\n");
+            unimplemented!();
         }
 
         // FLAGS: [pyr: 208], [syns: 1's & 2's], [mcol: 1]; (unchanged)
@@ -525,8 +550,9 @@ impl LearningTestBed {
         }
 
         if print_debug { 
-            util::print_all(area, "\n - Confirm 3 - "); 
-            print!("\n");
+            // util::print_all(area, "\n - Confirm 3 - "); 
+            // print!("\n");
+            unimplemented!();
         }
 
         // FLAGS: [pyr: 208], [syns: 1's & 2's], [mcol: 1]; (unchanged)
@@ -544,9 +570,12 @@ impl LearningTestBed {
         util::ptal_alco(area, CYCLE, print_debug);
         // util::ptal_alco(area, ACTIVATE, print_debug);
 
-        if print_debug { util::print_all(area, "\n - Confirm 3 - "); print!("\n");}
+        if print_debug { 
+            // util::print_all(area, "\n - Confirm 3 - "); print!("\n");
+            unimplemented!();
+        }
 
-        assert!(util::eval_range(&area.ptal().dens().syns().flag_sets, self.focus_syns.clone(), 
+        assert!(util::eval_range(&area.ptal().dens().syns().flag_sets(), self.focus_syns.clone(), 
             | x | x == cmn::SYN_STPOT_FLAG ));
 
         // [FIXME] TODO: Check that off-focus synapses are STDEP
@@ -573,8 +602,9 @@ impl LearningTestBed {
         util::ptal_alco(area, ACTIVATE | LEARN | OUTPUT, print_debug);
 
         if print_debug { 
-            util::print_all(area, "\n - Confirm 3 - "); 
-            print!("\n");
+            // util::print_all(area, "\n - Confirm 3 - "); 
+            // print!("\n");
+            unimplemented!();
         }
 
         // [FIXME] TODO: Need a more sophisticated test that tracks the current syn strengths:
@@ -614,7 +644,7 @@ impl LearningTestBed {
 
         // Set everything back up:
         let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
-        area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_all_to(self.unused_slc_id).unwrap();
+        area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(&[self.unused_slc_id], None).enq().unwrap();
 
         for syn_idx in self.focus_syns.clone() {
             area.ptal_mut().dens_mut().syns_mut().set_src_offs(self.fake_v_ofs, self.fake_u_ofs, syn_idx as usize);
@@ -632,16 +662,31 @@ impl LearningTestBed {
         let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
         printlny!("Cleaning up...");
-        area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(self.unused_slc_id, 
-            self.syn_coords.syn_idx_range_tft().clone()).unwrap();
-        area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, 
-            self.syn_coords.syn_idx_range_tft().clone()).unwrap();
-        area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, 
-            self.syn_coords.syn_idx_range_tft().clone()).unwrap();
+        // area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(self.unused_slc_id, 
+        //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
+        area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd()
+            .fill(&[self.unused_slc_id], Some(self.syn_coords.syn_idx_range_tft().len()))
+            .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
+
+        // area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, 
+        //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
+        area.ptal_mut().dens_mut().syns_mut().src_col_v_offs().cmd()
+            .fill(&[0], Some(self.syn_coords.syn_idx_range_tft().len()))
+            .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
+
+        // area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, 
+        //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
+        area.ptal_mut().dens_mut().syns_mut().src_col_u_offs().cmd()
+            .fill(&[0], Some(self.syn_coords.syn_idx_range_tft().len()))
+            .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
+
 
         if zero_strengths {
-            area.ptal_mut().dens_mut().syns_mut().strengths.set_range_to(0, 
-                self.syn_coords.syn_idx_range_tft().clone()).unwrap();
+            // area.ptal_mut().dens_mut().syns_mut().strengths.set_range_to(0, 
+            //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
+            area.ptal_mut().dens_mut().syns_mut().strengths().cmd()
+            .fill(&[0], Some(self.syn_coords.syn_idx_range_tft().len()))
+            .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
         }
     }
 }

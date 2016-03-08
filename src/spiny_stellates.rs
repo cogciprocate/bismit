@@ -1,19 +1,19 @@
 use std::ops;
-use rand::{ self, Rng };
+use rand::{self, Rng};
 
-use cmn::{ self, CorticalDims };
-use map::{ AreaMap };
-use ocl::{ Kernel, ProQue, SpatialDims, Buffer, EventList };
-use proto::{ CellKind, Protocell, DendriteKind };
-use dendrites::{ Dendrites };
-use axon_space::{ AxonSpace };
+use cmn::{self, CorticalDims};
+use map::{AreaMap};
+use ocl::{Kernel, ProQue, SpatialDims, Buffer, EventList};
+use proto::{CellKind, Protocell, DendriteKind};
+use dendrites::{Dendrites};
+use axon_space::{AxonSpace};
 
 
 
 pub struct SpinyStellateLayer {
     layer_name: &'static str,
     dims: CorticalDims,
-    protocell: Protocell,
+    // protocell: Protocell,
     base_axn_slc: u8,
     lyr_axn_idz: u32,
     kern_ltp: Kernel,
@@ -44,19 +44,19 @@ impl SpinyStellateLayer {
             // .expect("SpinyStellateLayer::new()")
             .gws(SpatialDims::Two(dims.tfts_per_cel() as usize, grp_count as usize))
             .arg_buf(&axns.states)
-            .arg_buf(&dens.syns().states)
+            .arg_buf(dens.syns().states())
             .arg_scl(lyr_axn_idz)
             .arg_scl(cels_per_grp)
             .arg_scl(syns_per_tuft_l2)
             .arg_scl_named::<u32>("rnd", None)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(&dens.syns().strengths);
+            .arg_buf(dens.syns().strengths());
 
         SpinyStellateLayer {
             layer_name: layer_name,
             dims: dims,
-            protocell: protocell,
+            // protocell: protocell,
             base_axn_slc: base_axn_slc,
             lyr_axn_idz: lyr_axn_idz,
             kern_ltp: kern_ltp,
@@ -80,8 +80,7 @@ impl SpinyStellateLayer {
 
     #[inline]
     pub fn regrow(&mut self) {
-        // self.dens.regrow();
-        panic!("SpinyStellates::regrow(): reimplement me!");
+        self.dens.regrow();
     }
 
     // #[inline]
@@ -91,13 +90,13 @@ impl SpinyStellateLayer {
 
     #[inline]
     pub fn soma(&self) -> &Buffer<u8> {
-        &self.dens.states
+        self.dens.states()
     }
 
-    #[inline]
-    pub fn soma_mut(&mut self) -> &mut Buffer<u8> {
-        &mut self.dens.states
-    }
+    // #[inline]
+    // pub fn soma_mut(&mut self) -> &mut Buffer<u8> {
+    //     &mut self.dens.states
+    // }
 
     #[inline]
     pub fn dims(&self) -> &CorticalDims {

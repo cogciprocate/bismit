@@ -99,7 +99,7 @@ mod tests {
 
         let dims = CorticalDims::new(32, 32, 1, 0, None);
 
-        for i in 0..20 {
+        for i in 0..6 {
             let seq_lens = (i, (i * 2) + 11);
             let seq_count = 79 - i;
 

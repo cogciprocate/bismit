@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Range;
-use rand;
 
-use cmn::{self, ParaHexArray, CorticalDims, Renderer, Sdr, DataCellLayer};
+use cmn::{self, ParaHexArray, CorticalDims, Sdr, DataCellLayer};
 use map::{self, AreaMap, LayerTags, GanglionMap};
 use ocl::{ProQue, Context, Buffer, EventList};
 use proto::{Cellular, Pyramidal, SpinyStellate, Inhibitory, DendriteKind};
@@ -16,7 +15,7 @@ use sensory_filter::SensoryFilter;
 use thalamus::Thalamus;
 
 #[cfg(test)]
-pub use self::tests::{ CorticalAreaTest };
+pub use self::tests::{CorticalAreaTest};
 
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 
@@ -35,9 +34,9 @@ pub struct CorticalArea {
     pub aux: Aux,
     ocl_pq: ProQue,
     // ocl_context: Context,
-    renderer: Renderer,
+    // renderer: Renderer,
     counter: usize,
-    rng: rand::XorShiftRng,
+    // rng: rand::XorShiftRng,
     // thal_gangs: ThalamicGanglions,
     events_lists: HashMap<LayerTags, EventList>,
     pub bypass_inhib: bool,
@@ -52,16 +51,9 @@ pub struct CorticalArea {
 impl CorticalArea {
     pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context) -> CorticalArea {
         let emsg = "cortical_area::CorticalArea::new()";
-
-        let area_name = area_map.area_name();    
+        let area_name = area_map.area_name();
 
         println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);        
-
-        
-        // let mut ocl_pq: ocl::ProQue = ocl::ProQue::new(&ocl_context, Some(device_idx));
-
-        // ocl_pq.build_program(&area_map.gen_build_options())
-        //     .expect("CorticalArea::new(): ocl_pq.build(): error");
 
         let ocl_pq = ProQue::builder()
             .device_idx(device_idx)
@@ -79,7 +71,6 @@ impl CorticalArea {
         let psal_name = area_map.layer_name_by_tags(map::SPATIAL_ASSOCIATIVE);
         let ptal_name = area_map.layer_name_by_tags(map::TEMPORAL_ASSOCIATIVE);
         
-
             /* <<<<< BRING BACK UPDATED VERSIONS OF BELOW >>>>> */
         //assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
         //assert!(SYNAPSES_PER_DENDRITE_DISTAL_LOG2 >= 2);
@@ -122,11 +113,9 @@ impl CorticalArea {
                                 layer.name(), ssts_map_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq);
                             ssts_map.insert(layer.name(), Box::new(sst_lyr));
                         },
-
                         _ => (),
                     }
                 },
-
                 _     => (),    /*println!("{mt}::NEW(): Axon layer: '{}' (depth: {})", 
                             layer.name(), layer.depth(), mt = cmn::MT),*/
             }
@@ -166,11 +155,9 @@ impl CorticalArea {
                             iinns.insert(layer.name(), Box::new(iinn_lyr));
 
                         },
-
                         _ => (),
                     }
                 },
-
                 _ => (),
             }
         }
@@ -219,7 +206,7 @@ impl CorticalArea {
             }
         };
 
-        let renderer = Renderer::new(&dims);
+        // let renderer = Renderer::new(&dims);
 
         let aux = Aux::new(pyrs_map[ptal_name].dens().syns().dims(), &ocl_pq);
 
@@ -257,9 +244,9 @@ impl CorticalArea {
             aux: aux,
             ocl_pq: ocl_pq,
             // ocl_context: ocl_context,
-            renderer: renderer,
+            // renderer: renderer,
             counter: 0,
-            rng: rand::weak_rng(),            
+            // rng: rand::weak_rng(),            
             events_lists: events_lists,
             bypass_inhib: false,
             bypass_filters: false,
@@ -278,17 +265,12 @@ impl CorticalArea {
     pub fn cycle(&mut self, thal: &mut Thalamus) {
         let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
-        // self.output(map::FF_OUT, thal);
-
         self.intake(map::FF_IN, thal);
 
         if !self.disable_ssts {    
             let aff_input_events = { self.events_lists.get(&map::FF_IN) };
             self.psal().cycle(aff_input_events); 
-            // self.psal().cycle(None); 
         }
-
-        // self.intake(map::FF_IN, thal);
 
         self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.bypass_inhib);
 
@@ -302,17 +284,14 @@ impl CorticalArea {
             if !self.disable_learning { self.ptal_mut().learn(); }
             let eff_input_events = { self.events_lists.get(&map::FB_IN) };
             self.ptal().cycle(eff_input_events);
-            // self.ptal().cycle(None);
         }        
-
-        // self.intake(map::FB_IN, thal);
 
         if !self.disable_mcols { 
             let output_events = { self.events_lists.get_mut(&map::FF_OUT) };
             self.mcols.output(output_events); 
         }
 
-        // if !self.disable_regrowth { self.regrow(); }
+        if !self.disable_regrowth { self.regrow(); }
 
         self.output(map::FF_OUT, thal);
     }
@@ -434,77 +413,61 @@ impl CorticalArea {
             .ewait(wait_events).enew(new_events).enq().unwrap(); }
     }        
 
-    #[inline]
     pub fn mcols(&self) -> &Box<Minicolumns> {
         &self.mcols
     }
 
-    #[inline]
     pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> {
         &mut self.mcols
     }
 
-
     /* PIL(): Get Primary Spatial Associative Layer (immutable) */
-    #[inline]
     pub fn psal(&self) -> &Box<SpinyStellateLayer> {
         let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
         self.ssts_map.get(self.psal_name).expect(e_string)
     }
 
     /* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
-    #[inline]
     pub fn psal_mut(&mut self) -> &mut Box<SpinyStellateLayer> {
         let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
         self.ssts_map.get_mut(self.psal_name).expect(e_string)
     }
 
-
     /* PAL(): Get Primary Temporal Associative Layer (immutable) */
-    #[inline]
     pub fn ptal(&self) -> &Box<PyramidalLayer> {
         let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
         self.pyrs_map.get(self.ptal_name).expect(e_string)
     }
 
     /* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
-    #[inline]
     pub fn ptal_mut(&mut self) -> &mut Box<PyramidalLayer> {
         let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
         self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
     }
-
-    #[inline]
+    
     pub fn axns(&self) -> &AxonSpace {
         &self.axns
-    }    
-
-    #[inline]
+    }
+    
     pub fn dims(&self) -> &CorticalDims {
         &self.dims
     }
-
-    #[inline]
+    
     pub fn psal_name(&self) -> &'static str {
         self.psal_name
     }
-
-    #[inline]
+    
     pub fn ptal_name(&self) -> &'static str {
         self.ptal_name
     }
 
-    #[inline]
     pub fn afferent_target_names(&self) -> &Vec<&'static str> {
         &self.area_map.aff_areas()
-    }
-
-    #[inline]
+    }    
     pub fn efferent_target_names(&self) -> &Vec<&'static str> {
         &self.area_map.eff_areas()
     }
 
-    #[inline]
     pub fn ocl_pq(&self) -> &ProQue {
         &self.ocl_pq
     }
@@ -522,15 +485,14 @@ impl CorticalArea {
     //     self.renderer.render_axn_space(axn_states, &self.area_map.slices())
     // }
 
-    // pub fn sample_aff_out(&self, buf: &mut [u8]) {
-    //     // let aff_out_range = self.mcols.aff_out_axn_range();
-    //     // debug_assert!(buf.len() == aff_out_range.len());
-    //     // self.axns.states.enqueue_read(buf, aff_out_range.start, None, None);
-    //     let aff_out_slc = self.mcols.aff_out_axn_slc();
-    //     self.sample_axn_slc(aff_out_slc, buf);
-    // }
+    pub fn sample_aff_out(&self, buf: &mut [u8]) {
+        // let aff_out_range = self.mcols.aff_out_axn_range();
+        // debug_assert!(buf.len() == aff_out_range.len());
+        // self.axns.states.enqueue_read(buf, aff_out_range.start, None, None);
+        let aff_out_slc = self.mcols.aff_out_axn_slc();
+        self.sample_axn_slc(aff_out_slc, buf);
+    }
 
-    #[inline]
     pub fn sample_axn_slc(&self, slc_id: u8, buf: &mut [u8]) {
         let slc_axn_range = self.area_map.slices().slc_axn_range(slc_id);
         debug_assert!(buf.len() == slc_axn_range.len(), "Sample buffer length ({}) not \
@@ -540,18 +502,15 @@ impl CorticalArea {
         self.axns.states.cmd().read(buf).offset(slc_axn_range.start).enq().unwrap();
     }    
 
-    #[inline]
     pub fn sample_axn_space(&self, buf: &mut [u8]) {
         debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
         self.axns.states.read(buf);
     }
 
-    #[inline]
     pub fn axn_gang_map(&self) -> GanglionMap {
         self.area_map.slices().gang_map()
     }
 
-    #[inline]
     pub fn area_map(&self) -> &AreaMap {
         &self.area_map
     }
@@ -559,7 +518,6 @@ impl CorticalArea {
 
 impl Drop for CorticalArea {
     fn drop(&mut self) {
-        // Context being released by Cortex.
         print!("Releasing OpenCL components for '{}'... ", self.name);
         // NOW DONE AUTOMATICALLY:
         // self.ocl_pq.release();
@@ -568,7 +526,7 @@ impl Drop for CorticalArea {
     }
 }
 
-
+#[allow(dead_code)]
 pub struct AreaParams {
     den_per_cel_distal_l2: u8,
     syn_per_den_distal_l2: u8,
@@ -589,7 +547,7 @@ pub struct AreaParams {
 const INT_32_MIN: i32 = -2147483648;
 
 pub struct Aux {
-    dims: CorticalDims,
+    // dims: CorticalDims,
     pub ints_0: Buffer<i32>,
     pub ints_1: Buffer<i32>,
     // pub chars_0: Buffer<ocl::i8>,
@@ -603,16 +561,16 @@ impl Aux {
         let int_32_min = INT_32_MIN;
 
         let ints_0 = Buffer::<i32>::newer_new(ocl_pq.queue(), None, dims, None).unwrap();
-        ints_0.cmd().fill(&[int_32_min]).enq().unwrap();
+        ints_0.cmd().fill(&[int_32_min], None).enq().unwrap();
         let ints_1 = Buffer::<i32>::newer_new(ocl_pq.queue(), None, dims, None).unwrap();
-        ints_1.cmd().fill(&[int_32_min]).enq().unwrap();
+        ints_1.cmd().fill(&[int_32_min], None).enq().unwrap();
 
         Aux { 
             ints_0: ints_0,
             ints_1: ints_1,
             // chars_0: Buffer::<ocl::i8>::new(dims, 0, ocl),
             // chars_1: Buffer::<ocl::i8>::new(dims, 0, ocl),
-            dims: dims.clone(),
+            // dims: dims.clone(),
         }
     }
 
@@ -621,12 +579,12 @@ impl Aux {
     //     self.dims = new_dims.clone();
         
     //     self.ints_0.resize(&self.dims, ocl_queue);
-    //     // self.ints_0.set_all_to(int_32_min).unwrap();
-    //     self.ints_0.cmd().fill(&[int_32_min]).enq().unwrap();
+    //     // self.ints_0.cmd().fill([int_32_min]).enq().unwrap();
+    //     self.ints_0.cmd().fill(&[int_32_min], None).enq().unwrap();
 
     //     self.ints_1.resize(&self.dims, ocl_queue);
-    //     // self.ints_1.set_all_to(int_32_min).unwrap();
-    //     self.ints_1.cmd().fill(&[int_32_min]).enq().unwrap();
+    //     // self.ints_1.cmd().fill([int_32_min]).enq().unwrap();
+    //     self.ints_1.cmd().fill(&[int_32_min], None).enq().unwrap();
     //     // self.chars_0.resize(&self.dims, 0);
     //     // self.chars_1.resize(&self.dims, 0);
     // }
@@ -637,12 +595,13 @@ impl Aux {
 
 #[cfg(test)]
 pub mod tests {
-    use rand::distributions::{ IndependentSample, Range as RandRange };
+    use rand;
+    use rand::distributions::{IndependentSample, Range as RandRange};
 
     use super::*;
-    use axon_space::{ AxonSpaceTest };
-    use cmn::{ CelCoords };
-    use map::{ AreaMapTest };
+    use axon_space::{AxonSpaceTest};
+    use cmn::{CelCoords};
+    use map::{AreaMapTest};
 
     pub trait CorticalAreaTest {
         fn axn_state(&self, idx: usize) -> u8;
@@ -650,8 +609,8 @@ pub mod tests {
         fn read_from_axon(&self, idx: u32) -> u8;
         fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8
             ) -> (i8, i8, u32, u32);
-        fn print_aux(&mut self);
-        fn print_axns(&mut self);
+        // fn print_aux(&mut self);
+        // fn print_axns(&mut self);
         fn activate_axon(&mut self, idx: u32);
         fn deactivate_axon(&mut self, idx: u32);
     }
@@ -673,9 +632,11 @@ pub mod tests {
             let v_ofs_range = RandRange::new(-8i8, 9);
             let u_ofs_range = RandRange::new(-8i8, 9);
 
-            for i in 0..50 {
-                let v_ofs = v_ofs_range.ind_sample(&mut self.rng);
-                let u_ofs = u_ofs_range.ind_sample(&mut self.rng);
+            let mut rng = rand::weak_rng();
+
+            for _ in 0..50 {
+                let v_ofs = v_ofs_range.ind_sample(&mut rng);
+                let u_ofs = u_ofs_range.ind_sample(&mut rng);
 
                 if v_ofs | u_ofs == 0 {
                     continue;
@@ -698,24 +659,25 @@ pub mod tests {
             panic!("SynCoords::rand_safe_src_axn_offs(): Error finding valid offset pair.");
         }
 
-        fn print_aux(&mut self) {
-            print!("aux.ints_0: ");
-            let view_radius = 1 << 24;
-            self.aux.ints_0.print((1 << 0) as usize, 
-                Some((0 - view_radius, view_radius)), None, true);
+        // fn print_aux(&mut self) {
+        //     print!("aux.ints_0: ");
+        //     let view_radius = 1 << 24;
+        //     self.aux.ints_0.print((1 << 0) as usize, 
+        //         Some((0 - view_radius, view_radius)), None, true);
             
-            print!("aux.ints_1: ");
-            self.aux.ints_1.print((1 << 0) as usize, 
-                Some((0 - view_radius, view_radius)), None, true);
-        }
+        //     print!("aux.ints_1: ");
+        //     self.aux.ints_1.print((1 << 0) as usize, 
+        //         Some((0 - view_radius, view_radius)), None, true);
+        // }
 
-        fn print_axns(&mut self) {
-            print!("axns: ");
-            self.axns.states.print(1 << 0, Some((1, 255)), None, false);
-        }
+        // fn print_axns(&mut self) {
+        //     print!("axns: ");
+        //     self.axns.states.print(1 << 0, Some((1, 255)), None, false);
+        // }
 
         fn activate_axon(&mut self, idx: u32) {
-            let val = RandRange::new(1, 255).ind_sample(&mut self.rng);
+            let mut rng = rand::weak_rng();
+            let val = RandRange::new(1, 255).ind_sample(&mut rng);
             self.axns.write_to_axon(val, idx);
         }
 

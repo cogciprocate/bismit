@@ -1,8 +1,9 @@
-use ocl::{ Kernel, ProQue, SpatialDims, Buffer, };
-use cmn::{ ParaHexArray, Sdr };
-use axon_space::{ AxonSpace };
-use map::{ self, AreaMap };
+#![allow(dead_code)]
 
+use ocl::{Kernel, ProQue, SpatialDims, Buffer,};
+use cmn::{ParaHexArray, Sdr};
+use axon_space::{AxonSpace};
+use map::{self, AreaMap};
 
 pub struct SensoryFilter {
     filter_name: String,

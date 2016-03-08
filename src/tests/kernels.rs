@@ -1,11 +1,11 @@
 
-use cmn::{ self, /*CorticalDims*/ };
-// use proto::{ ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput };
-// use cortex::{ self, Cortex };
-use ocl::{ Buffer, SpatialDims, /*ProQue, MemDims,*/ /*OclPrm*/ };
-// use interactive::{ input_czar, InputCzar, InputKind };
+use cmn::{self, /*CorticalDims*/};
+// use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput};
+// use cortex::{self, Cortex};
+use ocl::{self, Buffer, SpatialDims};
+// use interactive::{input_czar, InputCzar, InputKind};
 // use super::hybrid;
-use super::{ TestBed, util };
+use super::{TestBed, util};
  
 
 
@@ -14,15 +14,34 @@ use super::{ TestBed, util };
 //         - KERNEL CALCULATED AXON INDEXES FALL WITHIN THE CORRECT RANGE (ON THE APPROPRIATE SLICE)
 //         - 
 pub fn axn_idxs(testbed: &TestBed) {
+    // let u_offs = Buffer::<i8>::with_vec_shuffled((0 - syn_reach, syn_reach + 1), 
+    //     &testbed.dims, &testbed.ocl_pq.queue()); 
+    // let v_offs = Buffer::<i8>::with_vec_shuffled((0 - syn_reach, syn_reach + 1), 
+    //     &testbed.dims, &testbed.ocl_pq.queue());
+
+
+    // let vec_init = util::scrambled_vec(INIT_VAL_RANGE, ocl_pq.dims().to_len().unwrap());
+    // let buffer_init = Buffer::newer_new(ocl_pq.queue(), Some(core::MEM_READ_WRITE | 
+    //     core::MEM_COPY_HOST_PTR), ocl_pq.dims().clone(), Some(&vec_init)).unwrap();
+
     let syn_reach = cmn::SYNAPSE_REACH as i8;
+    let syn_range = (0 - syn_reach, syn_reach + 1);
 
-    let u_offs = Buffer::<i8>::with_vec_shuffled((0 - syn_reach, syn_reach + 1), 
-        &testbed.dims, &testbed.ocl_pq.queue()); 
-    let v_offs = Buffer::<i8>::with_vec_shuffled((0 - syn_reach, syn_reach + 1), 
-        &testbed.dims, &testbed.ocl_pq.queue());
+    let vec_init = ocl::util::shuffled_vec(syn_range, testbed.dims.to_len());
+    let u_offs = Buffer::newer_new(testbed.ocl_pq.queue(), Some(ocl::flags::MEM_READ_WRITE | 
+        ocl::flags::MEM_COPY_HOST_PTR), testbed.dims.clone(), Some(&vec_init)).unwrap();
 
-    let mut outs_sc = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
-    let mut outs_v4 = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
+    let vec_init = ocl::util::shuffled_vec(syn_range, testbed.dims.to_len());
+    let v_offs = Buffer::newer_new(testbed.ocl_pq.queue(), Some(ocl::flags::MEM_READ_WRITE | 
+        ocl::flags::MEM_COPY_HOST_PTR), testbed.dims.clone(), Some(&vec_init)).unwrap();
+
+    // let mut outs_sc = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
+    // let mut outs_v4 = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
+
+    let outs_sc = Buffer::<u32>::newer_new(testbed.ocl_pq.queue(), None, 
+        testbed.dims.clone(), None).unwrap();
+    let outs_v4 = Buffer::<u32>::newer_new(testbed.ocl_pq.queue(), None, 
+        testbed.dims.clone(), None).unwrap();
 
     let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl")
         .gws(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,
@@ -45,7 +64,7 @@ pub fn axn_idxs(testbed: &TestBed) {
     kern_sc.enqueue();
     kern_v4.enqueue();
 
-    let failure = util::compare_buffers(&mut outs_sc, &mut outs_v4);
+    let failure = util::compare_buffers(&outs_sc, &outs_v4);
 
     if failure { panic!("Vectorized and non-vectorized kernel results are not equal.") };
 }

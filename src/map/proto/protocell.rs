@@ -1,6 +1,6 @@
 //use bittags;
-use proto::layer::LayerKind::{ self, Cellular };
-//use std::option::{ Option };
+use proto::layer::LayerKind::{self, Cellular};
+//use std::option::{Option};
 use cmn;
 
 /* PROTOCELL:
@@ -27,7 +27,7 @@ impl Protocell {
     pub fn new(                    
                 dens_per_tuft_l2: u8,
                 syns_per_den_l2: u8,
-                cols_per_cel_l2: u8,
+                // cols_per_cel_l2: u8,
                 cell_kind: CellKind,
                 cell_class: CellClass,
                 den_dst_src_lyrs: Option<Vec<Vec<&'static str>>>,
@@ -159,16 +159,8 @@ pub enum DendriteKind {
     Distal, 
 }
 
+#[allow(dead_code)]
 pub enum DendriteClass {
     Apical,
     Distal,
-}
-
-// [FIXME]: Depricate?
-bitflags! {
-    pub flags CellFlags: u32 {
-        const HAPPY         = 0b00000001,
-        const SAD            = 0b00000010,
-        const NONE            = 0b00000000,
-    }
 }
