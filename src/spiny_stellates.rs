@@ -75,7 +75,7 @@ impl SpinyStellateLayer {
     pub fn learn(&mut self) {
         let rnd = self.rng.gen::<u32>();
         self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
-        self.kern_ltp.enqueue();
+        self.kern_ltp.enq().expect("[FIXME]: HANDLE ME!");
     }
 
     #[inline]

@@ -120,7 +120,7 @@ impl Dendrites {
 
     // FOR TESTING PURPOSES
     pub fn cycle_self_only(&self) {
-        self.kern_cycle.enqueue();
+        self.kern_cycle.enq().expect("[FIXME]: HANDLE ME!");
     }
 
     pub fn regrow(&mut self) {

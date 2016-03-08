@@ -115,7 +115,7 @@ impl Minicolumns {
 
     #[inline]
     pub fn activate(&self) {
-        self.kern_activate.enqueue();
+        self.kern_activate.enq().expect("[FIXME]: HANDLE ME!");
     }
 
     pub fn output(&self, new_events: Option<&mut EventList>) {
@@ -129,7 +129,7 @@ impl Minicolumns {
                     .expect("bismit::Minicolumns::output");
             },
 
-            None => self.kern_output.enqueue(),
+            None => self.kern_output.enq().expect("[FIXME]: HANDLE ME!"),
         }
     }
 

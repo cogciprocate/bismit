@@ -100,7 +100,7 @@ impl Synapses {
             protocell.dens_per_tuft_l2, dims.clone());
 
         // Padded length of our vectors.
-        let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
+        // let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
         let states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
@@ -136,9 +136,10 @@ impl Synapses {
         if DEBUG_NEW { 
             println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
                 dims: {:?}, phys_len: {},", 
-                den_kind, states.len(), dims, buf_len, mt = cmn::MT); 
+                den_kind, states.len(), dims, strengths.len(), mt = cmn::MT); 
         }
 
+        // TODO: USE KERNEL TO ASCERTAIN THE OPTIMAL WORKGROUP SIZE INCREMENT.
         let min_wg_sqrt = 8 as usize;
         assert_eq!((min_wg_sqrt * min_wg_sqrt), cmn::OPENCL_MINIMUM_WORKGROUP_SIZE as usize);
 
@@ -170,11 +171,15 @@ impl Synapses {
             }))
         }
 
+        debug_assert!(strengths.len() == src_slc_ids.len() &&
+            strengths.len() == src_col_v_offs.len() &&
+            strengths.len() == src_col_u_offs.len());
+
         // These are for learning (to avoid allocating it every time).
-        let vec_strengths = vec![0; buf_len];
-        let vec_src_slc_ids = vec![0; buf_len];
-        let vec_src_col_u_offs = vec![0; buf_len];
-        let vec_src_col_v_offs = vec![0; buf_len];
+        let vec_strengths = vec![0; strengths.len()];
+        let vec_src_slc_ids = vec![0; src_slc_ids.len()];
+        let vec_src_col_u_offs = vec![0; src_col_u_offs.len()];
+        let vec_src_col_v_offs = vec![0; src_col_v_offs.len()];
 
         // MAKE ME MUTABALE AGAIN ASSHOLE!
         let mut syns = Synapses {

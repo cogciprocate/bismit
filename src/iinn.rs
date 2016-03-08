@@ -97,19 +97,19 @@ impl InhibitoryInterneuronNetwork {
 
     #[inline]
     pub fn cycle(&mut self, bypass: bool) {
-        // self.kern_cycle_pre.enqueue(); 
+        // self.kern_cycle_pre.enq().expect("[FIXME]: HANDLE ME!"); 
 
 
         // for i in 0..1 { // <<<<< (was 0..8)
-        //      self.kern_cycle_wins.enqueue(); 
+        //      self.kern_cycle_wins.enq().expect("[FIXME]: HANDLE ME!"); 
         // }
 
-        // self.kern_cycle_post.enqueue();
-        // self.kern_post_inhib.enqueue();
+        // self.kern_cycle_post.enq().expect("[FIXME]: HANDLE ME!");
+        // self.kern_post_inhib.enq().expect("[FIXME]: HANDLE ME!");
         if bypass {
-            self.kern_inhib_passthrough.enqueue();
+            self.kern_inhib_passthrough.enq().expect("[FIXME]: HANDLE ME!");
         } else {
-            self.kern_inhib_simple.enqueue();
+            self.kern_inhib_simple.enq().expect("[FIXME]: HANDLE ME!");
         }
     }
 

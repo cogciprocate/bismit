@@ -61,8 +61,8 @@ pub fn axn_idxs(testbed: &TestBed) {
         .arg_buf(&outs_v4) 
     ;
 
-    kern_sc.enqueue();
-    kern_v4.enqueue();
+    kern_sc.enq().expect("[FIXME]: HANDLE ME!");
+    kern_v4.enq().expect("[FIXME]: HANDLE ME!");
 
     let failure = util::compare_buffers(&outs_sc, &outs_v4);
 
@@ -84,7 +84,7 @@ pub fn axn_idxs(testbed: &TestBed) {
 //         .arg_buf(&safe_dim_offs) 
 //     ;
 
-//     kern_test_safe_dim_ofs.enqueue();
+//     kern_test_safe_dim_ofs.enq().expect("[FIXME]: HANDLE ME!");
 
 //     println!("dim_ids:");
 //     dim_ids.print_simple();

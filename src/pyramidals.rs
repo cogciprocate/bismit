@@ -198,7 +198,7 @@ impl DataCellLayer for PyramidalLayer {
     #[inline]
     fn learn(&mut self) {
         self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
-        self.kern_ltp.enqueue();
+        self.kern_ltp.enq().expect("[FIXME]: HANDLE ME!");
     }
 
     #[inline]
@@ -282,7 +282,7 @@ pub mod tests {
     impl DataCellLayerTest for PyramidalLayer {
         // CYCLE_SELF_ONLY(): USED BY TESTS
         fn cycle_self_only(&self) {
-            self.kern_cycle.enqueue();
+            self.kern_cycle.enq().expect("[FIXME]: HANDLE ME!");
         }
 
         // fn print_cel(&mut self, cel_idx: usize) {

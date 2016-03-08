@@ -504,7 +504,7 @@ impl CorticalArea {
 
     pub fn sample_axn_space(&self, buf: &mut [u8]) {
         debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
-        self.axns.states.read(buf);
+        self.axns.states.read(buf).enq().expect("[FIXME]: HANDLE ME!");
     }
 
     pub fn axn_gang_map(&self) -> GanglionMap {
