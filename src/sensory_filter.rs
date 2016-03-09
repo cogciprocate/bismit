@@ -39,9 +39,9 @@ impl SensoryFilter {
             areas with sensory filters are not yet supported. Please set the depth of any \
             afferent input layers with filters to 1.");
 
-        let input = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();        
+        let input = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();        
 
-        let kern_cycle = ocl_pq.create_kernel(&filter_name.clone())
+        let kern_cycle = ocl_pq.create_kernel(&filter_name.clone()).expect("[FIXME]: HANDLE ME")
             // .expect("SensoryFilter::new()")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))

@@ -39,8 +39,8 @@ impl Minicolumns {
 
         println!("{mt}{mt}MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth, mt = cmn::MT);
 
-        let flag_sets = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let best_den_states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let best_den_states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
 
         // [FIXME]: TEMPORARY?:
         // [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':
@@ -51,7 +51,7 @@ impl Minicolumns {
         let aff_out_axn_idz = area_map.axn_idz(aff_out_axn_slc);
         let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
-        let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs")
+        let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs").expect("[FIXME]: HANDLE ME")
             // .expect("Minicolumns::new()")
             .gws(SpatialDims::Three(pyrs.dims().depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
@@ -68,7 +68,7 @@ impl Minicolumns {
             .arg_buf(&axons.states);
 
 
-        let kern_output = ocl_pq.create_kernel("mcol_output")
+        let kern_output = ocl_pq.create_kernel("mcol_output").expect("[FIXME]: HANDLE ME")
             // .expect("Minicolumns::new()")
             .gws(SpatialDims::Two(dims.v_size() as usize, dims.u_size() as usize))
             .arg_buf(&pyrs.soma())

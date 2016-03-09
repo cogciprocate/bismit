@@ -21,29 +21,29 @@ pub fn axn_idxs(testbed: &TestBed) {
 
 
     // let vec_init = util::scrambled_vec(INIT_VAL_RANGE, ocl_pq.dims().to_len().unwrap());
-    // let buffer_init = Buffer::newer_new(ocl_pq.queue(), Some(core::MEM_READ_WRITE | 
+    // let buffer_init = Buffer::new(ocl_pq.queue(), Some(core::MEM_READ_WRITE | 
     //     core::MEM_COPY_HOST_PTR), ocl_pq.dims().clone(), Some(&vec_init)).unwrap();
 
     let syn_reach = cmn::SYNAPSE_REACH as i8;
     let syn_range = (0 - syn_reach, syn_reach + 1);
 
     let vec_init = ocl::util::shuffled_vec(syn_range, testbed.dims.to_len());
-    let u_offs = Buffer::newer_new(testbed.ocl_pq.queue(), Some(ocl::flags::MEM_READ_WRITE | 
+    let u_offs = Buffer::new(testbed.ocl_pq.queue(), Some(ocl::flags::MEM_READ_WRITE | 
         ocl::flags::MEM_COPY_HOST_PTR), testbed.dims.clone(), Some(&vec_init)).unwrap();
 
     let vec_init = ocl::util::shuffled_vec(syn_range, testbed.dims.to_len());
-    let v_offs = Buffer::newer_new(testbed.ocl_pq.queue(), Some(ocl::flags::MEM_READ_WRITE | 
+    let v_offs = Buffer::new(testbed.ocl_pq.queue(), Some(ocl::flags::MEM_READ_WRITE | 
         ocl::flags::MEM_COPY_HOST_PTR), testbed.dims.clone(), Some(&vec_init)).unwrap();
 
     // let mut outs_sc = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
     // let mut outs_v4 = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
 
-    let outs_sc = Buffer::<u32>::newer_new(testbed.ocl_pq.queue(), None, 
+    let outs_sc = Buffer::<u32>::new(testbed.ocl_pq.queue(), None, 
         testbed.dims.clone(), None).unwrap();
-    let outs_v4 = Buffer::<u32>::newer_new(testbed.ocl_pq.queue(), None, 
+    let outs_v4 = Buffer::<u32>::new(testbed.ocl_pq.queue(), None, 
         testbed.dims.clone(), None).unwrap();
 
-    let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl")
+    let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl").expect("[FIXME]: HANDLE ME")
         .gws(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,
             testbed.dims.u_size() as usize))
         .arg_buf(&u_offs)        
@@ -52,7 +52,7 @@ pub fn axn_idxs(testbed: &TestBed) {
         //.arg_buf(&outs_v4) 
     ;
 
-    let kern_v4 = testbed.ocl_pq.create_kernel("test_axn_idxs_vec4")
+    let kern_v4 = testbed.ocl_pq.create_kernel("test_axn_idxs_vec4").expect("[FIXME]: HANDLE ME")
         .gws(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize, 
             (testbed.dims.u_size() / 4) as usize))
         .arg_buf(&u_offs)        

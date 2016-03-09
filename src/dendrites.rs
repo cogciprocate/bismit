@@ -68,12 +68,12 @@ impl Dendrites {
             ),
         };*/
 
-        let states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let states_raw = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let states_raw = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
         // let energies = Buffer::<u8>::with_vec_initialized_to(255, &dims, ocl_pq.queue());
-        let energies = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let energies = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
         energies.cmd().fill(&[255], None).enq().unwrap();
-        let thresholds = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let thresholds = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
         energies.cmd().fill(&[1], None).enq().unwrap();
 
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", 
@@ -84,7 +84,7 @@ impl Dendrites {
             area_map, axons, /*aux,*/ ocl_pq);
 
 
-        let kern_cycle = ocl_pq.create_kernel("den_cycle")
+        let kern_cycle = ocl_pq.create_kernel("den_cycle").expect("[FIXME]: HANDLE ME")
             // .expect("Dendrites::new()")
             .gws(SpatialDims::One(states.len()))
             .arg_buf(syns.states())

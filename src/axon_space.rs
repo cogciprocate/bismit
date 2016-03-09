@@ -70,7 +70,7 @@ impl AxonSpace {
             area_map.slices().to_len_padded(ocl_pq.max_wg_size()), mt = cmn::MT);
 
         // let states = Buffer::<u8>::with_vec(area_map.slices(), ocl_pq.queue());
-        let states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, area_map.slices(), None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue(), None, area_map.slices(), None).unwrap();
 
         AxonSpace {
             //dims: dims,

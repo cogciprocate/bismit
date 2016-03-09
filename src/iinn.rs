@@ -52,12 +52,12 @@ impl InhibitoryInterneuronNetwork {
         // let wins = Buffer::<u8>::with_padding(dims, 0u8, ocl, padding);
         // let states = Buffer::<u8>::with_padding(dims, cmn::STATE_ZERO, ocl, padding);
 
-        let spi_ids = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let wins = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let states = Buffer::<u8>::newer_new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let spi_ids = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let wins = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
 
 
-        let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple")
+        let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple").expect("[FIXME]: HANDLE ME")
             // .expect("InhibitoryInterneuronNetwork::new()")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, 
                 dims.u_size() as usize))
@@ -68,7 +68,7 @@ impl InhibitoryInterneuronNetwork {
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(&axns.states);
 
-        let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough")
+        let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough").expect("[FIXME]: HANDLE ME")
             // .expect("InhibitoryInterneuronNetwork::new()")
             //.lws(SpatialDims::Three(1, 8, 8 as usize))
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, 
