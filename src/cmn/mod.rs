@@ -24,7 +24,7 @@ use std::collections::{BTreeMap};
 use std::path::PathBuf;
 use rand;
 use rand::distributions::{IndependentSample, Range};
-use find_folder::Search;
+// use find_folder::Search;
 use ocl::traits::OclPrm;
 use ocl::build::ProgramBuilder;
 
@@ -318,9 +318,9 @@ pub fn load_builtin_kernel_files(mut build_options: ProgramBuilder) -> ProgramBu
 
 // [FIXME]: TEMPORARY
 pub fn cl_root_path() -> PathBuf {
-    // PathBuf::from("/home/nick/projects/bismit/cl")
-    Search::ParentsThenKids(3, 3).for_folder("cl")
-        .expect("bismit::cmn::cl_root_path()")
+    PathBuf::from("/home/nick/projects/bismit/cl")
+    // Search::ParentsThenKids(3, 3).for_folder("cl")
+    //     .expect("bismit::cmn::cl_root_path()")
 }
 
 
