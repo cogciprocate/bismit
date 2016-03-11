@@ -3,6 +3,18 @@
     - Some of it will be eventually moved to other modules
     - Some of it may remain and be renamed to utils or some such
 */
+
+
+#[macro_use] mod macros;
+mod cortical_dims;
+mod slice_dims;
+mod tract_dims;
+mod renderer;
+mod error;
+mod tract;
+mod tract_frame;
+pub mod data_cell_layer;
+
 use num::{ToPrimitive, FromPrimitive};
 use std::default::{Default}; 
 use std::iter::{self};
@@ -12,43 +24,18 @@ use std::collections::{BTreeMap};
 use std::path::PathBuf;
 use rand;
 use rand::distributions::{IndependentSample, Range};
-
+use find_folder::Search;
 use ocl::traits::OclPrm;
 use ocl::build::ProgramBuilder;
 
-// pub use self::cmn::*;
 pub use self::cortical_dims::{CorticalDims};
 pub use self::slice_dims::SliceDims;
 pub use self::tract_dims::TractDims;
-//pub use self::area_map::{AreaMap, SliceMap};
 pub use self::data_cell_layer::{DataCellLayer};
 pub use self::renderer::{Renderer};
 pub use self::error::{CmnError};
-//pub use self::prediction::*;
-// pub use self::para_hex_grid::ParaHexArray;
 pub use self::tract_frame::{TractFrame, TractFrameMut};
-
-#[cfg(test)]
-pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
-
-#[macro_use]
-mod macros;
-// mod cmn;
-mod cortical_dims;
-mod slice_dims;
-mod tract_dims;
-//mod area_map;
-// mod slice_dims;
-mod renderer;
-mod error;
-//pub mod input_source;
-//mod prediction;
-// mod para_hex_grid;
-mod tract;
-mod tract_frame;
-pub mod data_cell_layer;
-// pub mod fmt;
-
+#[cfg(test)] pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
 
 // pub trait ParaHexArray {
 //     fn v_size(&self) -> u32;
@@ -331,8 +318,9 @@ pub fn load_builtin_kernel_files(mut build_options: ProgramBuilder) -> ProgramBu
 
 // [FIXME]: TEMPORARY
 pub fn cl_root_path() -> PathBuf {
-    // format!("{}/{}", env!("P"), "bismit/cl")
-    PathBuf::from("/home/nick/projects/bismit/cl")
+    // PathBuf::from("/home/nick/projects/bismit/cl")
+    Search::ParentsThenKids(3, 3).for_folder("cl")
+        .expect("bismit::cmn::cl_root_path()")
 }
 
 

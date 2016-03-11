@@ -1,26 +1,21 @@
+//! Mapping
 
+mod layer_map;
+mod layer_info;
+mod slice_map;
+mod syn_src_map;
+mod slice_tract_map;
+pub mod area_map;
+pub mod proto;
 
 pub use self::area_map::AreaMap;
 pub use self::slice_map::SliceMap;
 pub use self::layer_map::LayerMap;
 pub use self::layer_info::{LayerInfo, SourceLayerInfo};
 pub use self::syn_src_map::{SrcSlices, SrcIdxCache, SynSrc};
-pub use self::ganglion_map::GanglionMap;
-
+pub use self::slice_tract_map::SliceTractMap;
 pub use self::proto::AxonKind;
-
-#[cfg(test)]
-pub use self::area_map::tests::{AreaMapTest};
-
-
-pub mod area_map;
-pub mod proto;
-mod layer_map;
-mod layer_info;
-mod slice_map;
-mod syn_src_map;
-mod ganglion_map;
-
+#[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
 
 
 // [FIXME] TODO: Potentially separate layer concerns from axon 'flavor' into a new bitflag (AxonFlags?).

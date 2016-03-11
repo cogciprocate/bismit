@@ -2,7 +2,7 @@ use std::ops::Range;
 use ocl;
 use ocl::traits::MemLen;
 use cmn::{self, CorticalDims, ParaHexArray, SliceDims};
-use map::{area_map, LayerMap, AxonKind, GanglionMap};
+use map::{area_map, LayerMap, AxonKind, SliceTractMap};
 
 #[derive(Debug, Clone)]
 pub struct SliceMap {
@@ -158,15 +158,15 @@ impl SliceMap {
     }
 
     #[inline]
-    pub fn gang_map_range(&self, slc_range: Range<usize>) -> GanglionMap {
+    pub fn tract_map_range(&self, slc_range: Range<usize>) -> SliceTractMap {
         assert!(slc_range.end <= 255);
-        GanglionMap::new(&self.layer_names[slc_range.clone()], &self.v_sizes[slc_range.clone()], 
+        SliceTractMap::new(&self.layer_names[slc_range.clone()], &self.v_sizes[slc_range.clone()], 
             &self.u_sizes[slc_range.clone()])
     }
 
     #[inline]
-    pub fn gang_map(&self) -> GanglionMap {
-        self.gang_map_range(0..self.axn_idzs.len())
+    pub fn tract_map(&self) -> SliceTractMap {
+        self.tract_map_range(0..self.axn_idzs.len())
     }
 
     #[inline]

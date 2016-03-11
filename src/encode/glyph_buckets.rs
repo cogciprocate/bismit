@@ -1,4 +1,5 @@
 use std::iter;
+use find_folder::Search;
 use super::IdxData;
 
 const PRINT_DEBUG: bool = false;
@@ -13,8 +14,12 @@ pub struct GlyphBuckets {
 impl GlyphBuckets {
     pub fn new() -> GlyphBuckets {
         let bucket_count = 10;
-        let labels = IdxData::new("data/train-labels-idx1-ubyte", false);
-        let mut images = IdxData::new("data/train-images-idx3-ubyte", true);
+        let label_file = Search::ParentsThenKids(3, 3).for_folder("data").unwrap()
+            .join("train-labels-idx1-ubyte");
+        let image_file = Search::ParentsThenKids(3, 3).for_folder("data").unwrap()
+            .join("train-images-idx3-ubyte");
+        let labels = IdxData::new(label_file, false);
+        let mut images = IdxData::new(image_file, true);
 
         assert!(images.dims().len() == 3, "GlyphBuckets::new(): Source idx file must have three \
             dimensions.");

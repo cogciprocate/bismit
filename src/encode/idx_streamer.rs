@@ -1,4 +1,4 @@
-// use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 // use find_folder::Search;
 use cmn::{CorticalDims, Sdr, TractFrameMut};
 use input_source::InputTract;
@@ -27,11 +27,12 @@ impl IdxStreamer {
     pub fn new(layer_dims: &CorticalDims, file_path_string: String, cycles_per_frame: usize, 
                 scale_factor: f32) -> IdxStreamer 
     {
-        let idx_data = IdxData::new(&file_path_string, false);
+        let file_path = PathBuf::from(file_path_string.clone());
+        let idx_data = IdxData::new(file_path, false);
         let dim_count = idx_data.dims().len();
 
         assert!(dim_count <= 3, "IdxStreamer::new(): Cannot handle idx files with more than \
-            three dimensions. [file: '{}']", &file_path_string);
+            three dimensions. [file: '{}']", file_path_string);
         // let image_width = if dim_count > 1 { idx_data.dims()[1] } else { 1 };
         // let image_height = if dim_count > 2 { idx_data.dims()[2] } else { 1 };
 

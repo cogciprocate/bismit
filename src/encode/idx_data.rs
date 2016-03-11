@@ -22,31 +22,7 @@ impl IdxData {
     /// File::open(), BufReader::read()[x2], BufReader::read_to_end(), Invalid idx file format,
     ///
     /// [FIXME]: Consolidate error handling and return CmnResult instead of panicing.
-    pub fn new(file_path_str: &str, stream_mode: bool) -> IdxData {
-        // let path_string = format!("{}/{}/{}", env!("P"), "bismit", file_name);
-        let fp_raw = Path::new(file_path_str);
-
-        let file_path = if fp_raw.is_file() {
-            fp_raw
-        } else {
-            // TODO: BRING THIS BACK EVENTUALLY
-            // if fp_raw.is_relative() {
-            //     let mut file_path = PathBuf::new();
-            //     let mut fp_iter = fp_raw.iter();
-            //     // println!("#### FP_COMP.len(): {}", fp_comp.len());
-            //     let root_folder = fp_iter.next().expect("1").to_str().expect("2");
-            //     println!("#### ROOT_FOLDER: {:?}", root_folder);
-            //     let file_root = Search::ParentsThenKids(3, 3).for_folder(root_folder).expect("3");
-            //     println!("#### FILE_ROOT: {}", file_root.display());
-            // } else {
-            //     // TODO: SWITCH TO ERR RETURN
-            //     panic!("IdxData::new(): Invalid file path: '{}'.", fp_raw.display());
-            // }
-            // TEMPORARY:
-            fp_raw
-        };
-
-        // let file_path = PathBuf::from(&file_path_str);
+    pub fn new(file_path: PathBuf, stream_mode: bool) -> IdxData {
         let path_display = file_path.display();
 
         let file = match File::open(&file_path) {

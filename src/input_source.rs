@@ -10,7 +10,7 @@ use encode::{IdxStreamer, GlyphSequences};
 pub type InputSources = HashMap<(&'static str, LayerTags), InputSource>;
 
 pub trait InputTract {
-    fn cycle(&mut self, ganglion: &mut Sdr) -> usize;
+    fn cycle(&mut self, tract: &mut Sdr) -> usize;
 }
 
 pub enum InputSourceKind {
@@ -92,7 +92,7 @@ impl InputSource {
     }
 
     // [FIXME] Multiple output target areas disabled.
-    pub fn cycle(&mut self, ganglion: &mut Sdr, _: &mut EventList) {
+    pub fn cycle(&mut self, tract: &mut Sdr, _: &mut EventList) {
         // This is temp (mult out tar areas): DEPRICATING: 
         // debug_assert!(self.targets.len() == 1);
 
@@ -100,8 +100,8 @@ impl InputSource {
         let _ = match self.kind {
             InputSourceKind::IdxStreamer(ref mut ig) |
             InputSourceKind::Custom(ref mut ig)
-                => { ig.cycle(ganglion) },
-            InputSourceKind::GlyphSequences(ref mut gs) => gs.cycle(ganglion),
+                => { ig.cycle(tract) },
+            InputSourceKind::GlyphSequences(ref mut gs) => gs.cycle(tract),
             _ => 0,
         };
     }

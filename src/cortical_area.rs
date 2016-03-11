@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 
 use cmn::{self, ParaHexArray, CorticalDims, Sdr, DataCellLayer};
-use map::{self, AreaMap, LayerTags, GanglionMap};
+use map::{self, AreaMap, LayerTags, SliceTractMap};
 use ocl::{ProQue, Context, Buffer, EventList};
 use proto::{Cellular, Pyramidal, SpinyStellate, Inhibitory, DendriteKind};
 
@@ -56,7 +56,7 @@ impl CorticalArea {
         println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);        
 
         let ocl_pq = ProQue::builder()
-            .device_idx(device_idx)
+            .device(device_idx)
             .context(ocl_context.clone())
             .prog_bldr(area_map.gen_build_options())
             .build().expect("CorticalArea::new(): ocl_pq.build(): error");
@@ -507,8 +507,8 @@ impl CorticalArea {
         self.axns.states.read(buf).enq().expect("[FIXME]: HANDLE ME!");
     }
 
-    pub fn axn_gang_map(&self) -> GanglionMap {
-        self.area_map.slices().gang_map()
+    pub fn axn_tract_map(&self) -> SliceTractMap {
+        self.area_map.slices().tract_map()
     }
 
     pub fn area_map(&self) -> &AreaMap {

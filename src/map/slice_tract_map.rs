@@ -7,7 +7,7 @@ use std::ops::Range;
 // FEEL FREE TO RENAME
 //
 #[derive(Debug, Clone)]
-pub struct GanglionMap {    
+pub struct SliceTractMap {    
     tags: Vec<&'static str>,    
     v_sizes: Vec<u32>,
     u_sizes: Vec<u32>,
@@ -15,12 +15,12 @@ pub struct GanglionMap {
     physical_len: u32,
 }
 
-impl GanglionMap {
+impl SliceTractMap {
     pub fn new(
                 tags: &[&'static str],
                 v_sizes: &[u32],
                 u_sizes: &[u32]) 
-            -> GanglionMap 
+            -> SliceTractMap 
     {
         assert!(tags.len() == v_sizes.len());
         assert!(tags.len() == u_sizes.len());
@@ -37,7 +37,7 @@ impl GanglionMap {
 
         debug_assert!(tags.len() == idzs.len());
 
-        GanglionMap {
+        SliceTractMap {
             tags: tags.to_vec(),            
             v_sizes: v_sizes.to_vec(),
             u_sizes: u_sizes.to_vec(),
@@ -46,9 +46,13 @@ impl GanglionMap {
         }
     }
 
-    #[inline]
     pub fn slc_id_range(&self) -> Range<u8> {
         0..self.tags.len() as u8
+    }
+
+    pub fn slc_dims(&self, slc_id: u8) -> (u32, u32) {
+        assert!((slc_id as usize) < self.v_sizes.len(), "Slice id out of range.");
+        (self.v_sizes[slc_id as usize], self.u_sizes[slc_id as usize])
     }
 
     // TODO: Make fancy with iterators.
@@ -84,7 +88,7 @@ impl GanglionMap {
 
         let axn_id_range = axn_id_start..axn_id_end;
 
-        // println!("###### GanglionMap::axn_id_range(slc_id_range: {:?}):", slc_id_range);
+        // println!("###### SliceTractMap::axn_id_range(slc_id_range: {:?}):", slc_id_range);
         // println!("######    axn_id_range: {:?}", axn_id_range);
 
         axn_id_range
