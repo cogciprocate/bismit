@@ -25,7 +25,7 @@ impl Cortex {
             .devices(Device::specifier().type_flags(ocl::flags::DEVICE_TYPE_GPU))
             .build().expect("CorticalArea::new(): ocl_context creation error");
         let mut areas = HashMap::new();
-        let mut device_idx = 0;        
+        let mut device_idx = 1;
 
         for (&area_name, _) in pamaps.iter().filter(|&(_, pamap)| 
                 pamap.lm_kind_tmp() != &Thalamic)

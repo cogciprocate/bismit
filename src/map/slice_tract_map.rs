@@ -86,11 +86,6 @@ impl SliceTractMap {
         // (*self.idzs.get_unchecked(end)
         //     + (*self.v_sizes.get_unchecked(end) * *self.u_sizes.get_unchecked(end))) as usize;
 
-        let axn_id_range = axn_id_start..axn_id_end;
-
-        // println!("###### SliceTractMap::axn_id_range(slc_id_range: {:?}):", slc_id_range);
-        // println!("######    axn_id_range: {:?}", axn_id_range);
-
-        axn_id_range
+        axn_id_start..axn_id_end
     }
 }

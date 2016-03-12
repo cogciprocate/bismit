@@ -3,7 +3,7 @@ use std::ops::Range;
 
 use cmn::{self, ParaHexArray, CorticalDims, Sdr, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
-use ocl::{ProQue, Context, Buffer, EventList};
+use ocl::{ProQue, Context, Buffer, EventList, Event};
 use proto::{Cellular, Pyramidal, SpinyStellate, Inhibitory, DendriteKind};
 
 use axon_space::AxonSpace;
@@ -64,7 +64,7 @@ impl CorticalArea {
         let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size());
 
         println!("{mt}CORTICALAREA::NEW(): Area \"{}\" details: \
-            (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: {{[{}]}}", 
+            (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: [{}]", 
             area_name, dims.u_size(), dims.v_size(), dims.depth(), area_map.eff_areas(), 
             area_map.aff_areas(), device_idx, mt = cmn::MT);
 
@@ -493,18 +493,36 @@ impl CorticalArea {
         self.sample_axn_slc(aff_out_slc, buf);
     }
 
-    pub fn sample_axn_slc(&self, slc_id: u8, buf: &mut [u8]) {
-        let slc_axn_range = self.area_map.slices().slc_axn_range(slc_id);
-        debug_assert!(buf.len() == slc_axn_range.len(), "Sample buffer length ({}) not \
-            equal to slice axon length({}). slc_axn_range: {:?}, slc_id: {}", 
-            buf.len(), slc_axn_range.len(), slc_axn_range, slc_id);
-        // self.axns.states.read(slc_axn_range.start, buf).unwrap();
-        self.axns.states.cmd().read(buf).offset(slc_axn_range.start).enq().unwrap();
+    pub fn sample_axn_slc(&self, slc_id: u8, buf: &mut [u8]) -> Event {
+        let axn_range = self.area_map.slices().axn_range(slc_id);
+        debug_assert!(buf.len() == axn_range.len(), "Sample buffer length ({}) not \
+            equal to slice axon length({}). axn_range: {:?}, slc_id: {}", 
+            buf.len(), axn_range.len(), axn_range, slc_id);
+        // self.axns.states.read(axn_range.start, buf).unwrap();
+        let mut event = Event::empty();
+        self.axns.states.cmd().read(buf).offset(axn_range.start).enew(&mut event).enq().unwrap();
+        event
     }    
 
-    pub fn sample_axn_space(&self, buf: &mut [u8]) {
+    pub fn sample_axn_slc_range(&self, slc_range: Range<u8>, buf: &mut [u8]) -> Event {
+        let axn_range_start = self.area_map.slices().axn_range(slc_range.start).start;
+        let axn_range_end = self.area_map.slices().axn_range(slc_range.end - 1).end;
+        let axn_range = axn_range_start..axn_range_end;
+
+        debug_assert!(buf.len() == axn_range.len(), "Sample buffer length ({}) not \
+            equal to slice axon length({}). axn_range: {:?}, slc_range: {:?}", 
+            buf.len(), axn_range.len(), axn_range, slc_range);
+        // self.axns.states.read(axn_range.start, buf).unwrap();
+        let mut event = Event::empty();
+        self.axns.states.cmd().read(buf).offset(axn_range.start).enew(&mut event).enq().unwrap();
+        event
+    }   
+
+    pub fn sample_axn_space(&self, buf: &mut [u8]) -> Event {
         debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
-        self.axns.states.read(buf).enq().expect("[FIXME]: HANDLE ME!");
+        let mut event = Event::empty();
+        self.axns.states.read(buf).enew(&mut event).enq().expect("[FIXME]: HANDLE ME!");
+        event
     }
 
     pub fn axn_tract_map(&self) -> SliceTractMap {

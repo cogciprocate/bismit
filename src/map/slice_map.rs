@@ -152,7 +152,7 @@ impl SliceMap {
     }
 
     #[inline]
-    pub fn slc_axn_range(&self, slc_id: u8) -> Range<usize> {
+    pub fn axn_range(&self, slc_id: u8) -> Range<usize> {
         let idz = self.idz(slc_id) as usize;
         idz..(idz + self.slc_axn_count(slc_id) as usize)
     }

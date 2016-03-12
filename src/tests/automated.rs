@@ -4,7 +4,7 @@
 use cortex::{/*self,*/ Cortex};
 // use thalamus::{Thalamus};
 // use ocl::{Buffer, SpatialDims, Context, ProQue, MemLen, ProgramBuilder, BuildOption};
-// use interactive::{input_czar, InputCzar, InputKind};
+// use cycle::{input_czar, InputCzar, InputKind};
 use super::{hybrid, kernels, testbed, TestBed};
 
 

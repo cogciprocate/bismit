@@ -38,3 +38,4 @@ pub mod dendrites;
 pub mod cortical_area;
 
 pub use map::proto;
+pub use ocl::Event as OclEvent;
