@@ -4,12 +4,12 @@ version = "0.0.1"
 authors = ["Nick Sanders <github.com/c0gent>"]
 
 [dependencies]
-bitflags = "*"
+bitflags = "0.5"
 rand = "*"
 num = "*"
 libc = "*"
 enum_primitive = "*"
-find_folder = "*"
+find_folder = "0.3"
 # ocl = "0.2"
 time = "*"
 
