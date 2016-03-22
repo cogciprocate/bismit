@@ -14,10 +14,10 @@ pub struct GlyphBuckets {
 impl GlyphBuckets {
     pub fn new() -> GlyphBuckets {
         let bucket_count = 10;
-        let label_file = Search::ParentsThenKids(3, 3).for_folder("data").unwrap()
-            .join("train-labels-idx1-ubyte");
-        let image_file = Search::ParentsThenKids(3, 3).for_folder("data").unwrap()
-            .join("train-images-idx3-ubyte");
+        let label_file = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
+            .expect("GlyphBuckets::new(): 'label_file'").join("train-labels-idx1-ubyte");
+        let image_file = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
+            .expect("GlyphBuckets::new(): 'image_file'").join("train-images-idx3-ubyte");
         let labels = IdxData::new(label_file, false);
         let mut images = IdxData::new(image_file, true);
 
