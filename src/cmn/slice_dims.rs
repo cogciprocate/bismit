@@ -214,15 +214,15 @@ pub fn calc_scale(src_dim: u32, tar_dim: u32) -> CmnResult<u32> {
     let tar_dim = (tar_dim as usize) * 1024;
 
     let scale_incr = match tar_dim {
-        0 => return Err(CmnError::new("Target area dimension cannot be zero.".to_string())),
+        0 => return Err(CmnError::new("Target area dimension cannot be zero.".to_owned())),
         1...15 => 1,
         _ => tar_dim / 16,
     };
 
     return match src_dim / scale_incr {
-        0 => return Err(CmnError::new("Source area dimension cannot be zero.".to_string())),
+        0 => return Err(CmnError::new("Source area dimension cannot be zero.".to_owned())),
         s @ 1...255 => Ok(s as u32),
         _ => return Err(CmnError::new("Source area cannot have a dimension more than 16 times \
-            target area dimension.".to_string())),
+            target area dimension.".to_owned())),
     }
 }
