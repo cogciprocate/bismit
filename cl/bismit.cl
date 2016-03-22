@@ -1386,7 +1386,7 @@ __kernel void mcol_output(
     uint const v_size = get_global_size(0);
     uint const u_size = get_global_size(1);
 
-    uint const cel_count = mul24(pyr_depth, mul24(v_size, u_size));
+    uint const cel_count = mul24((uint)pyr_depth, mul24(v_size, u_size));
 
     int idx_is_safe = 0;
     uint const aff_out_axn_idx = axn_idx_3d_unsafe(aff_out_axn_slc, v_id, 0, u_id, 0, &idx_is_safe);
