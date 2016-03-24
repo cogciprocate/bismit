@@ -211,7 +211,7 @@ impl DataCellLayer for PyramidalLayer {
 
     #[inline]
     fn cycle(&self, wait_events: Option<&EventList>) {
-        if PRINT_DEBUG { println!("Pyrs: Cycling dens..."); }
+        if PRINT_DEBUG { printlny!("Pyrs: Cycling dens..."); }
         self.dens().cycle(wait_events);
         // self.kern_cycle.enqueue_events(wait_events, None)
         //     .expect("bismit::PyramidalLayer::cycle");
