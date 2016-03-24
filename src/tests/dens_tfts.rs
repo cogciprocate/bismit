@@ -21,7 +21,7 @@ use super::{testbed, util, learning};
 
 const DENS_TEST_ITERATIONS: usize = 500;
 const CELS_TEST_ITERATIONS: usize = 1; //50;
-
+const PRINT_DETAILS: bool = false;
 
 
 
@@ -209,10 +209,12 @@ fn dens() {
                     0, cel_coords.u_id, 0).unwrap();
 
         // PRINT SOME DEBUG INFO IN CASE OF FAILURE:
-        print!("\n");
-        println!("{}", cel_coords);
-        println!("{}", den_coords);
-        println!("Axon Info: src_slc_id: {}, src_axn_idx: {}", src_slc_id, src_axn_idx);
+        if PRINT_DETAILS {
+            print!("\n");
+            println!("{}", cel_coords);
+            println!("{}", den_coords);
+            println!("Axon Info: src_slc_id: {}, src_axn_idx: {}", src_slc_id, src_axn_idx);
+        }
 
         //=============================================================================
         //========================= ACTIVATE AXON AND CYCLE ===========================
@@ -248,10 +250,12 @@ fn dens() {
 
             let den_state = util::read_idx_direct(den_idx as usize, area.ptal().dens().states());
 
-            print!("\n");
-            println!("dens.state[{}]: '{}'", den_coords.idx, den_state);
-            // print_all(area, " - Dens - ");
-            // print!("\n");
+            if PRINT_DETAILS {
+                print!("\n");
+                println!("dens.state[{}]: '{}'", den_coords.idx, den_state);
+                // print_all(area, " - Dens - ");
+                // print!("\n");
+            }
 
             // ENSURE THAT THE DENDRITE IS ACTIVE:
             assert!(den_state != 0, "Error: dendrite not activated on test cell.");

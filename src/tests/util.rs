@@ -21,6 +21,8 @@ use cortical_area::CorticalArea;
 use cmn::{self, /*CelCoords,*/ DataCellLayer};
 // use super::{testbed};
 
+const PRINT_DETAILS: bool = false;
+
 /*=============================================================================
 ===============================================================================
 =================================== UTILITY ===================================
@@ -149,8 +151,8 @@ pub fn fill_new_vec<T: OclPrm>(buf: &Buffer<T>) -> Vec<T> {
 // }
 
 
-pub fn compare_buffers<T: OclPrm>(env1: &Buffer<T>, env2: &Buffer<T>) -> bool {    
-    print!("\nVector comparison:\n");    
+pub fn compare_buffers<T: OclPrm>(env1: &Buffer<T>, env2: &Buffer<T>) -> bool {
+    if PRINT_DETAILS { print!("\nVector comparison:\n"); }
     assert!(env1.len() == env2.len());
 
     // env1.fill_vec();
@@ -165,15 +167,15 @@ pub fn compare_buffers<T: OclPrm>(env1: &Buffer<T>, env2: &Buffer<T>) -> bool {
 
         if e1_val != e2_val {
             failure = true;
-            print!("{}", cmn::C_RED);
+            if PRINT_DETAILS { print!("{}", cmn::C_RED); }
         } else {
-            print!("{}", cmn::C_DEFAULT);
+            if PRINT_DETAILS { print!("{}", cmn::C_DEFAULT); }
         }
 
-        print!("[n:{}, v4:{}]{}", e1_val, e2_val, cmn::C_DEFAULT);
+        if PRINT_DETAILS { print!("[n:{}, v4:{}]{}", e1_val, e2_val, cmn::C_DEFAULT); }
     }
 
-    print!("\n");
+    if PRINT_DETAILS { print!("\n"); }
 
     failure
 }
