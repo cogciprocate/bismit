@@ -56,7 +56,7 @@ pub use self::tests::{SynCoords, SynapsesTest};
 const DEBUG_NEW: bool = true;
 const DEBUG_GROW: bool = true;
 const DEBUG_REGROW_DETAIL: bool = false;
-const PRINT_KERN_DEBUG: bool = true;
+const DEBUG_KERN: bool = true;
 
 
 pub struct Synapses {
@@ -312,7 +312,7 @@ impl Synapses {
     #[inline]
     pub fn cycle(&self, wait_events: Option<&EventList>) {
         for kern in self.kernels.iter() {
-            if PRINT_KERN_DEBUG { printlny!("Syns: Enqueuing kernel: '{}'...", kern.name()); }
+            if DEBUG_KERN { printlny!("Syns: Enqueuing kernel: '{}'...", kern.name()); }
             // kern.enqueue_events(wait_events, None).expect("bismit::Synapses::cycle");
             kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
         }
