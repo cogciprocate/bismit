@@ -21,8 +21,9 @@ impl Cortex {
         let pamaps = thal.area_maps().clone();
         // let ocl_context: Context = Context::new_by_index_and_type(None, Some(ocl::core::DEVICE_TYPE_GPU)).expect(
         //     "CorticalArea::new(): ocl_context creation error");
-        let platforms = Platform::list();
-        let platform = platforms[platforms.len() - 1];
+        // let platforms = Platform::list();
+        // let platform = platforms[platforms.len() - 1];
+        let platform = ocl::core::default_platform().expect("Cortex::new()");
         let device_type = ocl::core::default_device_type().expect("Cortex::new()");
         let ocl_context: Context = Context::builder()
             .platform(platform)
