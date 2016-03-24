@@ -1,5 +1,5 @@
-use std::path::PathBuf;
-// use find_folder::Search;
+// use std::path::PathBuf;
+use find_folder::Search;
 use cmn::{CorticalDims, Sdr, TractFrameMut};
 use input_source::InputTract;
 use super::IdxData;
@@ -27,7 +27,9 @@ impl IdxStreamer {
     pub fn new(layer_dims: &CorticalDims, file_path_string: String, cycles_per_frame: usize, 
                 scale_factor: f32) -> IdxStreamer 
     {
-        let file_path = PathBuf::from(file_path_string.clone());
+        let file_path = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
+            .expect("IdxStreamer::new()").join(&file_path_string);
+        // let file_path = PathBuf::from(file_path_string.clone());
         let idx_data = IdxData::new(file_path, false);
         let dim_count = idx_data.dims().len();
 
