@@ -17,7 +17,7 @@ time = "*"
 git = "https://github.com/cogciprocate/microcosm.git"
 
 [dependencies.ocl]
-git = "https://github.com/cogciprocate/ocl_rust.git"
+git = "https://github.com/cogciprocate/ocl.git"
 # path = "/home/nick/projects/ocl"
 
 # [dependencies.time]
