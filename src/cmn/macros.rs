@@ -6,6 +6,13 @@
 //     )
 // }
 
+macro_rules! printy {
+    // ($fmt:expr) => ( print!(concat!("\x1b[93m", $fmt, "\x1b[0m", "\n")) );
+    // ($fmt:expr, $($arg:tt)*) => ( print!(concat!("\x1b[93m", $fmt, "\x1b[0m", "\n"), $($arg)*) );
+    ($fmt:expr) => ( print!(yellowify!($fmt)) );
+    ($fmt:expr, $($arg:tt)*) => ( print!(yellowify!($fmt), $($arg)*) );
+}
+
 macro_rules! printlny {
     // ($fmt:expr) => ( print!(concat!("\x1b[93m", $fmt, "\x1b[0m", "\n")) );
     // ($fmt:expr, $($arg:tt)*) => ( print!(concat!("\x1b[93m", $fmt, "\x1b[0m", "\n"), $($arg)*) );

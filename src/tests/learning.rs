@@ -1,9 +1,11 @@
 #![allow(non_snake_case, unused_imports)]
 use std::ops::{Range};
 // use std::iter;
-// use std::io::{Write};
+use std::io::{self, Write};
 // use std::mem;
 // use rand;
+use std::thread;
+use std::time::Duration;
 
 // use ocl::{BufferTest, OclPrm};
 use ocl::traits::OclPrm;
@@ -22,7 +24,7 @@ use super::util::{NONE, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL};
 // const LEARNING_ITERS_PER_CELL: usize = 2;
 const LEARNING_CONTINUATION_ITERS: usize = 3;
 
-const PRINT_DEBUG_INFO: bool = false;
+const PRINT_DEBUG_INFO: bool = true;
 const PRINT_FINAL_ITER_ONLY: bool = true;
 
 //=============================================================================
@@ -89,11 +91,15 @@ const PRINT_FINAL_ITER_ONLY: bool = true;
 
 #[test]
 fn dst_den_learning() {
+    // assert!(!PRINT_DEBUG_INFO, "Printing debug info (or anything else) is currently disabled.");
     let mut ltb = LearningTestBed::new();
     // 180 -> +-64 (slow), +-96 (fast)
     // 360 -> +-96 (slow), +-119 (fast)
-    let on_focus_iters = 360;
-    let off_focus_iters = 360;
+    // let on_focus_iters = 360;
+    // let off_focus_iters = 360;
+    let on_focus_iters = 1;
+    let off_focus_iters = 1;
+    printlny!("\nRunning test_on_off()...");
     ltb.test_on_off(on_focus_iters, off_focus_iters);
 
     // let on_focus_iters = 180;
@@ -129,7 +135,6 @@ pub struct LearningTestBed {
 
 impl LearningTestBed {
     fn new() -> LearningTestBed {
-        assert!(!PRINT_DEBUG_INFO, "Printing debug info (or anything else) is currently disabled.");
         let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
 
         let (unused_slc_id,
@@ -261,7 +266,7 @@ impl LearningTestBed {
             // This and every other util::print_all() is very expensive:
             if PRINT_DEBUG_INFO { 
                 // util::print_all(area, "\n - Confirm Init - "); 
-                unimplemented!();
+                // unimplemented!();
             }
 
             (unused_slc_id,
@@ -311,23 +316,33 @@ impl LearningTestBed {
     
     */
     fn test_on_off(&mut self, on_focus_iters: usize, off_focus_iters: usize) {
+        printy!("\non_focus_iters: ");
         for i in 0..on_focus_iters {
+            print!(" {}", i);
+            io::stdout().flush().unwrap();
+
             let final_iter = i == (on_focus_iters - 1);
             let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
                 && PRINT_DEBUG_INFO;
             self.learning_iter(i, false, print_debug);            
         }
 
+        printlny!("\n\nFlipping focus syns...");
         self.flip_focus_syns();        
 
+        printy!("\noff_focus_iters: ");
         for i in 0..off_focus_iters {
+            print!(" {}", i);
+            io::stdout().flush().unwrap();
             let final_iter = i == (off_focus_iters - 1);
             let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
                 && PRINT_DEBUG_INFO;
             self.learning_iter(i, true, print_debug);
         }
 
+        printlny!("\n\nComplete.");
         self.clean_up(true);
+        print!("\n");
     }
 
     
@@ -363,7 +378,7 @@ impl LearningTestBed {
 
         if print_debug { 
             // util::print_all(area, "\n - Confirm 0 - "); print!("\n");
-            unimplemented!();
+            // unimplemented!();
         }
 
         assert!(util::eval_range(&area.ptal().dens().syns().states(), self.focus_syns.clone(), 
@@ -404,13 +419,16 @@ impl LearningTestBed {
 
         // FLAGS: [pyr: 0], [syns: 0's], [mcol: 0];
 
+        if print_debug { println!("Sleeping..."); }
+        thread::sleep(Duration::from_millis(1000));
+
         //=============================================================================
         //==================================== 1A =====================================
         //=============================================================================
         if print_debug {
             println!("\n ====================== {}[{}] 1: Premonition ====================== ", flpd_str, i);
             println!("       ====================== {}[{}] 1A ====================== \n", flpd_str, i);
-            unimplemented!();
+            // unimplemented!();
         }
 
         util::ptal_alco(area, ACTIVATE, print_debug);
@@ -418,7 +436,7 @@ impl LearningTestBed {
         if print_debug { 
             // util::print_all(area, "\n - Confirm 1A - ");
             // print!("\n");
-            unimplemented!();
+            // unimplemented!();
         }        
 
         // Ensure our cell is flagged best in (mini) column:
@@ -433,23 +451,35 @@ impl LearningTestBed {
 
         // FLAGS: [pyr: 64], [syns: 0's], [mcol: 1];
 
+        if print_debug { println!("Sleeping..."); }
+        thread::sleep(Duration::from_millis(1000));
+
         //=============================================================================
         //============================= 1B ===================================
         //=============================================================================
         if print_debug { println!(
             "\n ====================== {}[{}] 1B ====================== \n", flpd_str, i); }
 
-        util::ptal_alco(area, LEARN, print_debug);
+        if print_debug { println!("Finishing queue..."); } 
+        area.ocl_pq().queue().finish();
+
+        // util::ptal_alco(area, LEARN, print_debug);
+
+        if print_debug { println!("Finishing queue..."); } 
+        area.ocl_pq().queue().finish();
 
         if print_debug { 
             // util::print_all(area, "\n - Confirm 1B - "); 
             // print!("\n");
-            unimplemented!();
+            // unimplemented!();
         }        
 
         // <<<<< TODO: Ensure our cells synapses have not learned anything: >>>>>
 
         // FLAGS: [pyr: 80], [syns: 0's], [mcol: 1]; (pyr changed)
+
+        if print_debug { println!("Sleeping..."); }
+        thread::sleep(Duration::from_millis(1000));
 
         //=============================================================================
         //=============================== 1C ===================================
@@ -463,10 +493,13 @@ impl LearningTestBed {
         if print_debug { 
             // util::print_all(area, "\n - Confirm 1C - ");
             // print!("\n");
-            unimplemented!();
+            // unimplemented!();
         }
 
         // FLAGS: [pyr: 80], [syns: 0's], [mcol: 1]; (unchanged)
+
+        if print_debug { println!("Sleeping..."); }
+        thread::sleep(Duration::from_millis(1000));
 
         //=============================================================================
         //=============================== 2A ===================================
@@ -489,7 +522,7 @@ impl LearningTestBed {
         if print_debug { 
             // util::print_all(area, "\n - Confirm 2A - ");
             // print!("\n");
-            unimplemented!();
+            // unimplemented!();
         }
 
         // ##### ADD ME: assert!(THE PYRAMIDAL OUTPUT AXON (NOT SOMA) IS ACTIVE)
@@ -512,7 +545,7 @@ impl LearningTestBed {
         if print_debug { 
             // util::print_all(area, "\n - Confirm 2B - ");
             // print!("\n");
-            unimplemented!();
+            // unimplemented!();
         }
 
         // <<<<< [FIXME] TODO: assert!(chosen-half of syns are STPOT, others are STDEP) >>>>>
@@ -530,7 +563,7 @@ impl LearningTestBed {
         if print_debug { 
             // util::print_all(area, "\n - Confirm 2C - ");
             // print!("\n");
-            unimplemented!();
+            // unimplemented!();
         }
 
         // FLAGS: [pyr: 208], [syns: 1's & 2's], [mcol: 1]; (unchanged)
@@ -552,7 +585,7 @@ impl LearningTestBed {
         if print_debug { 
             // util::print_all(area, "\n - Confirm 3 - "); 
             // print!("\n");
-            unimplemented!();
+            // unimplemented!();
         }
 
         // FLAGS: [pyr: 208], [syns: 1's & 2's], [mcol: 1]; (unchanged)
@@ -572,7 +605,7 @@ impl LearningTestBed {
 
         if print_debug { 
             // util::print_all(area, "\n - Confirm 3 - "); print!("\n");
-            unimplemented!();
+            // unimplemented!();
         }
 
         assert!(util::eval_range(&area.ptal().dens().syns().flag_sets(), self.focus_syns.clone(), 
@@ -604,7 +637,7 @@ impl LearningTestBed {
         if print_debug { 
             // util::print_all(area, "\n - Confirm 3 - "); 
             // print!("\n");
-            unimplemented!();
+            // unimplemented!();
         }
 
         // [FIXME] TODO: Need a more sophisticated test that tracks the current syn strengths:
@@ -657,7 +690,7 @@ impl LearningTestBed {
         //=============================================================================
         //=============================== CLEAN UP ===================================
         //=============================================================================
-        println!("\n ====================== Clean-up ====================== \n");
+        if PRINT_DEBUG_INFO { println!("\n ====================== Clean-up ====================== \n"); }
 
         let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 

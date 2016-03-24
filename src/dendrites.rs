@@ -18,6 +18,8 @@ use axon_space::{AxonSpace};
 #[cfg(test)]
 pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
+const PRINT_DEBUG: bool = true;
+
 pub struct Dendrites {
     layer_name: &'static str,
     dims: CorticalDims,
@@ -113,8 +115,10 @@ impl Dendrites {
     }
 
     pub fn cycle(&self, wait_events: Option<&EventList>) {
+        if PRINT_DEBUG { println!("Dens: Cycling syns..."); }
         self.syns.cycle(wait_events);
         // self.kern_cycle.enqueue_events(wait_events, None).expect("bismit::Dendrites::cycle");
+        if PRINT_DEBUG { println!("Dens: Cycling kern_cycle..."); }
         self.kern_cycle.cmd().ewait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
     }
 

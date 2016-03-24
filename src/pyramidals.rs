@@ -9,7 +9,7 @@ use proto::{CellKind, Protocell, DendriteKind};
 use dendrites::{Dendrites};
 use axon_space::{AxonSpace};
 
-
+const PRINT_DEBUG: bool = true;
 /* PyramidalLayer
     flag_sets: 0b10000000 (0x80) -> previously active
 
@@ -197,7 +197,9 @@ impl PyramidalLayer {
 impl DataCellLayer for PyramidalLayer {
     #[inline]
     fn learn(&mut self) {
+        if PRINT_DEBUG { printlny!("Pyrs: Setting scalar to a random value..."); }
         self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
+        if PRINT_DEBUG { printlny!("Pyrs: Enqueuing kern_ltp..."); }
         self.kern_ltp.enq().expect("[FIXME]: HANDLE ME!");
     }
 
@@ -209,9 +211,11 @@ impl DataCellLayer for PyramidalLayer {
 
     #[inline]
     fn cycle(&self, wait_events: Option<&EventList>) {
+        if PRINT_DEBUG { println!("Pyrs: Cycling dens..."); }
         self.dens().cycle(wait_events);
         // self.kern_cycle.enqueue_events(wait_events, None)
         //     .expect("bismit::PyramidalLayer::cycle");
+        if PRINT_DEBUG { printlny!("Pyrs: Enqueuing kern_cycle..."); }
         self.kern_cycle.cmd().ewait_opt(wait_events).enq().expect("bismit::PyramidalLayer::cycle");
     }
 
