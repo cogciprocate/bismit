@@ -19,15 +19,12 @@ impl Cortex {
         let time_start = time::get_time();
         let thal = Thalamus::new(plmaps, pamaps);
         let pamaps = thal.area_maps().clone();
-        // let ocl_context: Context = Context::new_by_index_and_type(None, Some(ocl::core::DEVICE_TYPE_GPU)).expect(
-        //     "CorticalArea::new(): ocl_context creation error");
         // let platforms = Platform::list();
         // let platform = platforms[platforms.len() - 1];
-        let platform = ocl::core::default_platform().expect("Cortex::new()");
+        let platform = Platform::new(ocl::core::default_platform().expect("Cortex::new()"));
         let device_type = ocl::core::default_device_type().expect("Cortex::new()");
         let ocl_context: Context = Context::builder()
             .platform(platform)
-            // .devices(Device::specifier().type_flags(ocl::flags::DEVICE_TYPE_GPU))
             .devices(Device::specifier().type_flags(device_type))
             .build().expect("CorticalArea::new(): ocl_context creation error");
         let mut areas = HashMap::new();
