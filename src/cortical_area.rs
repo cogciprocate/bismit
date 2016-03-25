@@ -14,7 +14,8 @@ use spiny_stellates::SpinyStellateLayer;
 use sensory_filter::SensoryFilter;
 use thalamus::Thalamus;
 
-const KERNEL_DEBUG_MODE: bool = true;
+// [NOTE]: Does not work on windows:
+const KERNEL_DEBUG_MODE: bool = false;
 
 #[cfg(test)]
 pub use self::tests::{CorticalAreaTest};

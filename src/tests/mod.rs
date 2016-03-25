@@ -13,8 +13,8 @@ pub mod testbed;
 pub mod util;
 pub mod hybrid;
 pub mod kernels;
-mod dens_tfts;
 pub mod learning;
+mod dens_tfts;
 mod automated;
 
 pub use self::testbed::{TestBed};
