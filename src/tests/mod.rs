@@ -9,14 +9,15 @@
 //mod motor_state;
 //mod renderer;
 
-pub use self::testbed::{TestBed};
-pub mod hybrid;
 pub mod testbed;
-pub mod kernels;
 pub mod util;
-mod dens_tfts;
+// pub mod hybrid;
+// pub mod kernels;
+// mod dens_tfts;
 pub mod learning;
-mod automated;
+// mod automated;
+
+pub use self::testbed::{TestBed};
 
 pub static PASS_STR: &'static str = "\x1b[1;32mpass\x1b[0m";
 

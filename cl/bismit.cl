@@ -51,14 +51,25 @@
         {var_name}_l2i : A scalar representing the inverse log base 2 of a value (1 / log2 val).
 
         Coordinates: 
-        - slc_id : The id of a slice in axon space (or subset therof such as a layer). This is the 'depth' coordinate corresponding to how far from the top of layer 0/1 we would be in a neocortex.
-        - v_id : The 'v' coordinate of a tile (or in this case an axon, cell, etc.) within a slice in hexagonal tile space.
+        - slc_id : The id of a slice in axon space (or subset therof such as a
+          layer). This is the 'depth' coordinate corresponding to how far from
+          the top of layer 0/1 we would be in a neocortex.
+        - v_id : The 'v' coordinate of a tile (or in this case an axon, cell,
+          etc.) within a slice in hexagonal tile space.
         - u_id : The 'u' coordinate of a tile in hexagonal tile space.
         - w_id : The 'w' coordinate of a tile in hexagonal tile space.
 
-        - Coordinates are oriented (on the unit circle) with 'u' at 30deg, 'v' at 150deg, and 'w' at 270deg. Any references to 'v' are considered to be inverted (negative) when plotting coordinates in real space. In other words a 'v' value of 5 would equal -5 when plotting or mapping to real 2d space. This is simply a convenience ( / necessity?) for indexing in OpenCL.
+        - Coordinates are oriented (on the unit circle) with 'u' at 30deg, 'v'
+          at 150deg, and 'w' at 270deg. Any references to 'v' are considered
+          to be inverted (negative) when plotting coordinates in real space.
+          In other words a 'v' value of 5 would equal -5 when plotting or
+          mapping to real 2d space. This is simply a convenience ( /
+          necessity?) for indexing in OpenCL.
 
-        - 'w' is seldom used because coordinates are stored in 'axial coordinates' which just means that only two of the three coordinates are actually stored / used because the third can be reconstructed from the other two when needed.
+        - 'w' is seldom used because coordinates are stored in 'axial
+          coordinates' which just means that only two of the three coordinates
+          are actually stored / used because the third can be reconstructed
+          from the other two when needed.
 
 
         vat [tenative]: vatic, fuzzyness, level of predictiveness
@@ -411,8 +422,11 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 // DST_DEN_SYNS_LEARN_INIT(): 
 //         - Occurs when a cell is active.
 //         - Applies to a single dendrite on that cell.
-//             - Must only be called with a syn_idz of the best (most active) dendrite on an active tuft on an active cell. 
-//         - Is intended to handle both crystalization (predictions becoming or staying true) or anomalies (situations where no cell in the column had predicted the column's spatial input).
+//             - Must only be called with a syn_idz of the best (most active)
+//               dendrite on an active tuft on an active cell.
+//         - Is intended to handle both crystalization (predictions becoming
+//           or staying true) or anomalies (situations where no cell in the
+//           column had predicted the column's spatial input).
 //
 //         STDEP set when depression has already been applied (needs to be cleared by trmn)
 //         STPOT set when potentiation is due to be applied (by trmn)
@@ -517,6 +531,7 @@ static inline void lshft_mask(int* mask, int const shft_l2) {
 // DST_TFT_SYNS_LEARN_TRMN(): Learning termination for a tuft:
 //         - Occurs when a cell which had been active becomes inactive.
 // TODO: VECTORIZE
+// +18
 static inline void tft_syns_trm( 
             __global uchar const* const syn_states,
             uint const syn_idz,
@@ -797,7 +812,8 @@ __kernel void inhib_simple(
                 || ((v_id == 20) && (u_id == 20)) 
                 || ((v_id == 30) && (u_id == 30))
                 || ((v_id == 40) && (u_id == 40))) {
-                uint unsafe_target_axn_idx = axn_idx_3d_safe(slc_id_lyr + cel_base_axn_slc, v_size, v_id, v_ofs, u_size, u_id, u_ofs);
+                uint unsafe_target_axn_idx = axn_idx_3d_safe(slc_id_lyr + 
+                cel_base_axn_slc, v_size, v_id, v_ofs, u_size, u_id, u_ofs);
 
                 //aux_ints_1[dumb_iter] = cel_state_3d_safe(slc_id_lyr, 
                 //    v_size, v_id, v_ofs, u_size, u_id, u_ofs, cel_states);
@@ -823,7 +839,8 @@ __kernel void inhib_simple(
             //     }
 
             //     // if (cel_idx == 384) {
-            //     //     //aux_ints_1[axn_idx_3d_safe(slc_id_lyr + cel_base_axn_slc, v_size, v_id, v_ofs, u_size, u_id, u_ofs)] = distance;
+            //     //     // aux_ints_1[axn_idx_3d_safe(slc_id_lyr + cel_base_axn_slc, v_size, 
+            //     //     // v_id, v_ofs, u_size, u_id, u_ofs)] = distance;
             //     //     aux_ints_1[520 + dumb_iter] 
             //     //         //= cel_influence;
             //     //         = distance + 100;
@@ -930,12 +947,16 @@ __kernel void sst_ltp(
 
 
 // MCOL_ACTIVATE_PYRS(): Activate the axon of the pyramidal cell with the most active dendrite (on any tuft).
-//      - If every dendrite on every tuft of every pyramidal cell in the entire column is inactive (below threshold):
+//      - If every dendrite on every tuft of every pyramidal cell in the
+//        entire column is inactive (below threshold):
 //            - Activate the axon of every pyramidal cell in the column.
 //
 //        In addition (for learning purposes):
-//            - Keep track of whether or not predictions (pyramidal states) for any pyramidal cell in the column have come true (crystallized).
-//             - Determine whether or not an unpredicted (anomalous) activity has occurred.
+//            - Keep track of whether or not predictions (pyramidal states)
+//              for any pyramidal cell in the column have come true
+//              (crystallized).
+//             - Determine whether or not an unpredicted (anomalous) activity
+//               has occurred.
 //
 // TODO: TUFTIFY
 // TODO: REMOVE BEST_DEN_IDS AND DEN_STATES AND REPLACE WITH BEST_DEN_STATES (KEEP INDEXING IN MIND)
@@ -1026,146 +1047,175 @@ __kernel void mcol_activate_pyrs(
 
 
 
-// PYRS_LTP(): Pyramidal long term potentiation and depression - adjusting synapse strengths
-/*
+// PYRS_LTP(): Pyramidal long term potentiation and depression - adjusting
+//
 
-    First, to clarify:
-        - The term 'vatic' is meant to mean predictive or in a state of expectance. May be referred to (incorrectly) as fuzzy or 'fuz'. A few other (depricated) terms might be thrown around due to much renaming but basically if a pyramidal soma is active, that cell is vatic.
-        - the term 'concrete' is meant to mean that the cell has an active axon and therefore has not been inhibited by anything else (e.g. the most likely culprits, pyramidals within the same layer and column, our cells colleagues).
+// First, to clarify:
+//     - The term 'vatic' is meant to mean predictive or in a state of
+//       expectance. May be referred to (incorrectly) as fuzzy or 'fuz'. A
+//       few other (depricated) terms might be thrown around due to much
+//       renaming but basically if a pyramidal soma is active, that cell is
+//       vatic.
+//     - the term 'concrete' is meant to mean that the cell has an active
+//       axon and therefore has not been inhibited by anything else (e.g. the
+//       most likely culprits, pyramidals within the same layer and column,
+//       our cells colleagues).
 
-    The learning process is as follows:
-        - For each pyramidal cell:
-            - If the cell is concrete AND {the cell *was* previously vatic OR it *is* the best in the column}:
-                - For each tuft on that cell:
-                    - If tuft is active (i.e. has a best dendrite state != 0):
-                        - Cause 'Learning Initiation' to take place on that most active dendrite (see below).
-            - If the cell's axon is not concrete but was previously (flag_set & CEL_PREV_CONCRETE_FLAG):
-                - 'Terminate' each tuft.                
+// The learning process is as follows:
+//     - For each pyramidal cell:
+//         - If the cell is concrete AND {the cell *was* previously vatic OR
+//           it *is* the best in the column}:
+//             - For each tuft on that cell:
+//                 - If tuft is active (i.e. has a best dendrite state != 0):
+//                     - Cause 'Learning Initiation' to take place on that
+//                       most active dendrite (see below).
+//         - If the cell's axon is not concrete but was previously (flag_set
+//           & CEL_PREV_CONCRETE_FLAG):
+//             - 'Terminate' each tuft.                
 
-    Learning Initiation:
-        - 
-
-
-
-
-    - TODO:
-        - [incomplete] Vectorize (should be highly vectorizable)
-        - reducing branching will be tough with this one
-        - [in progress] Tests (check that flag_set and prev_best_den_id are robustly maintained)
-
-
-        - if pyr_prev_concrete 
-            - if pyr_concrete
-            - if pyr_state
-
-        - if pyr_prev_pred
-            - if pyr_concrete
-            - if pyr_state
-
-    - Misc Notes:
-
-        - SYN(    -> STPOT) WHEN: (SYN_STATE > 0) AND (CEL_TANGIBLE) AND (CEL_BEST_IN_COLUMN)
-                            OR: (SYN_STATE > 0) AND (CEL_TANGIBLE) AND (CEL_PREV_PRED)
-
-        - MAINTAIN STPOT STATE AS LONG AS: (SYN_STATE > 0) AND (CEL_ACTIVE)
-
-        - SYN(STPOT -> LTP) ONLY WHEN: ((CEL_ACTIVE -> 0)) SAME TIME AS (SYN_STATE -> 0)
+// Learning Initiation:
+//     - 
 
 
-    INDEXING EXAMPLE: <<<<< TODO: UPDATE TO CORRECT DENDRITE INDEXING >>>>>
-
-        Let's imagine we have an area in the cortex with the following properties:
-
-            COL_COUNT (column count for area): 1024
-
-        This area has a layer of pyramidal cells (such as layer iii) with:
-
-            DEPTH / CELS_PER_COL (cells per column, aka. layer depth): 3
-            TFTS_PER_CEL (tufts per cell): 2
-            DENS_PER_TFT (dendrites per tuft): 4
-            SYNS_PER_DEN (synapses per dendrite): 32
-
-        So we have a layer 3 cells deep, each layer containing 1024 cells. We can also think of it as 1024 columns, each with three cells. Each of the cells in a column share the same spatial input axon. That is, cells are activated (in the previous kernel) based on the same spatial input axon.
-
-        A few things to keep in mind when indexing axons, cells, dendrites, and synapses: 
-            - The axons will correspond to the cell indexes 1:1, just with a different idz (starting index).
-            - Synapses and dendrites is where things are trickier. Synapse (and dendrite) space (within the syn_states[] array) is primarily divided by tuft, unintuitively. For an explanation and more information see 'synapses.rs'.
-                - First let's calculate our den_idx:
-                    den_idx := 
-
-                    { INCOMPLETE - LOOK AT DENDRITE INDEXING }
-
-                    { THE FOLLOWING IS OUT OF DATE }
-
-                - Synapse indexes will first need to be calculated using the dendrite index, i.e.:
-                    syn_id_tuft := den_idx * syns_per_den (or equivalantly: den_idx << syns_per_den_l2).
-                - Next they will be added to the tuft offset:
-                    - syns_per_tft_space := syns_per_den * dens_per_tft * cels_per_col * col_count
-                        - (note that tufts per cell is not factored in here)
-                    - syn_idz_tuft := tuft_id * syns_per_tft_space
-                    - syn_idx := syn_idz_tuft + syn_id_tuft
 
 
-        So, here's an example breakdown of how this all plays out:
-            - Notation: OBJ[id_parent]:[idx_physical] 
-                 - More plainly: 'object [ id within parent object ]:[ global (physical) index ]'
-            
-            -----------------------
+// - TODO:
+//     - [incomplete] Vectorize (should be highly vectorizable)
+//     - reducing branching will be tough with this one
+//     - [in progress] Tests (check that flag_set and prev_best_den_id are robustly maintained)
 
-            CEL[0]:[0] (COL[0])
-                TFT[0]
-                    DEN[0]:[0]
-                        SYN[0]:[0], SYN[1]:[1], ..., SYN[31]:[31]
-                    DEN[1]:[1]
-                        SYN[0]:[32], SYN[1]:[33], ..., SYN[31]:[68]
-                    ...    
-                    DEN[3]:[3]
-                        SYN[0]:[96], SYN[1]:[97], ..., SYN[31]:[127]
-                TFT[1]
-                    DEN[0]:[XXX] <<<<< UPDATE ME! >>>>>
-                        SYN[0]:[393216], SYN[1]:[393217], ..., SYN[31]:[393247]
-                    ...    
-                    DEN[3]:[XXX] <<<<< UPDATE ME! >>>>>
-                        SYN[0]:[393312], SYN[1]:[393313], ..., SYN[31]:[393343]
-            CEL[1]:1 (COL[0])
-                TFT[0]
-                    DEN[0]:[8]
-                        SYN[0]:[0], SYN[1]:[1], ..., SYN[31]:[31]
-                    ...    
-                    DEN[3][11]
-                        SYN[0]:[96], SYN[1]:[97], ..., SYN[31]:[127]
-                TFT[1]
-                    DEN[0][XXX] <<<<< UPDATE ME! >>>>>
-                        SYN[0]:[393216], SYN[1]:[393217], ..., SYN[31]:[393247]
-                    ...    
-            CEL[2]:[2] (COL[0])
-                ...
-            CEL[3]:[3] (COL[1])
-                ...
-            CEL[5]:[5] (COL[1])
-                ...
-            CEL[6]:[6] (COL[2])
-                ...
-            ...
-            CEL[3071]:[3071] (COL[1023])
-                ...
 
-            -----------------------
+//     - if pyr_prev_concrete 
+//         - if pyr_concrete
+//         - if pyr_state
+
+//     - if pyr_prev_pred
+//         - if pyr_concrete
+//         - if pyr_state
+
+// - Misc Notes:
+
+//     - SYN(    -> STPOT) WHEN: (SYN_STATE > 0) AND (CEL_TANGIBLE) AND (CEL_BEST_IN_COLUMN)
+//                         OR: (SYN_STATE > 0) AND (CEL_TANGIBLE) AND (CEL_PREV_PRED)
+
+//     - MAINTAIN STPOT STATE AS LONG AS: (SYN_STATE > 0) AND (CEL_ACTIVE)
+
+//     - SYN(STPOT -> LTP) ONLY WHEN: ((CEL_ACTIVE -> 0)) SAME TIME AS (SYN_STATE -> 0)
+
+
+// INDEXING EXAMPLE: <<<<< TODO: UPDATE TO CORRECT DENDRITE INDEXING >>>>>
+
+//     Let's imagine we have an area in the cortex with the following properties:
+
+//         COL_COUNT (column count for area): 1024
+
+//     This area has a layer of pyramidal cells (such as layer iii) with:
+
+//         DEPTH / CELS_PER_COL (cells per column, aka. layer depth): 3
+//         TFTS_PER_CEL (tufts per cell): 2
+//         DENS_PER_TFT (dendrites per tuft): 4
+//         SYNS_PER_DEN (synapses per dendrite): 32
+
+//     So we have a layer 3 cells deep, each layer containing 1024 cells. We
+//     can also think of it as 1024 columns, each with three cells. Each of
+//     the cells in a column share the same spatial input axon. That is,
+//     cells are activated (in the previous kernel) based on the same spatial
+//     input axon.
+
+//     A few things to keep in mind when indexing axons, cells, dendrites, and synapses: 
+//         - The axons will correspond to the cell indexes 1:1, just with a
+//           different idz (starting index).
+//         - Synapses and dendrites is where things are trickier. Synapse
+//           (and dendrite) space (within the syn_states[] array) is
+//           primarily divided by tuft, unintuitively. For an explanation and
+//           more information see 'synapses.rs'.
+//             - First let's calculate our den_idx:
+//                 den_idx := 
+
+//                 { INCOMPLETE - LOOK AT DENDRITE INDEXING }
+
+//                 { THE FOLLOWING IS OUT OF DATE }
+
+//             - Synapse indexes will first need to be calculated using the
+//               dendrite index, i.e.: syn_id_tuft := den_idx * syns_per_den
+//               (or equivalantly: den_idx << syns_per_den_l2).
+//             - Next they will be added to the tuft offset:
+//                 - syns_per_tft_space := syns_per_den * dens_per_tft * cels_per_col * col_count
+//                     - (note that tufts per cell is not factored in here)
+//                 - syn_idz_tuft := tuft_id * syns_per_tft_space
+//                 - syn_idx := syn_idz_tuft + syn_id_tuft
+
+
+//     So, here's an example breakdown of how this all plays out:
+//         - Notation: OBJ[id_parent]:[idx_physical] 
+//              - More plainly: 'object [ id within parent object ]:[ global (physical) index ]'
         
-        Given that indexing structure, the following kernel structure appears to be the best balance of performance and simplicity:
+//         -----------------------
 
-            Kernel: WorkSize: OneDim(cell groups **) - Iterate through cell groups
-                - Loop: cells - Iterate through cells within each group.
-                    - Loop: tufts - Iterate through cell tufts.
-                        - Function call: dendrites - For each tuft, if work needs to be done, pick the most active or previously active dendrite(s) then call a function is called which will ->
-                          Loop: synapses - Iterate through dendrite synapses.
-                            - STPOT, LTP, and LTD take place on synapses within this the smallest loop.
+//         CEL[0]:[0] (COL[0])
+//             TFT[0]
+//                 DEN[0]:[0]
+//                     SYN[0]:[0], SYN[1]:[1], ..., SYN[31]:[31]
+//                 DEN[1]:[1]
+//                     SYN[0]:[32], SYN[1]:[33], ..., SYN[31]:[68]
+//                 ...    
+//                 DEN[3]:[3]
+//                     SYN[0]:[96], SYN[1]:[97], ..., SYN[31]:[127]
+//             TFT[1]
+//                 DEN[0]:[XXX] <<<<< UPDATE ME! >>>>>
+//                     SYN[0]:[393216], SYN[1]:[393217], ..., SYN[31]:[393247]
+//                 ...    
+//                 DEN[3]:[XXX] <<<<< UPDATE ME! >>>>>
+//                     SYN[0]:[393312], SYN[1]:[393313], ..., SYN[31]:[393343]
+//         CEL[1]:1 (COL[0])
+//             TFT[0]
+//                 DEN[0]:[8]
+//                     SYN[0]:[0], SYN[1]:[1], ..., SYN[31]:[31]
+//                 ...    
+//                 DEN[3][11]
+//                     SYN[0]:[96], SYN[1]:[97], ..., SYN[31]:[127]
+//             TFT[1]
+//                 DEN[0][XXX] <<<<< UPDATE ME! >>>>>
+//                     SYN[0]:[393216], SYN[1]:[393217], ..., SYN[31]:[393247]
+//                 ...    
+//         CEL[2]:[2] (COL[0])
+//             ...
+//         CEL[3]:[3] (COL[1])
+//             ...
+//         CEL[5]:[5] (COL[1])
+//             ...
+//         CEL[6]:[6] (COL[2])
+//             ...
+//         ...
+//         CEL[3071]:[3071] (COL[1023])
+//             ...
+
+//         -----------------------
+    
+//     Given that indexing structure, the following kernel structure appears
+//     to be the best balance of performance and simplicity:
+
+//         Kernel: WorkSize: OneDim(cell groups **) - Iterate through cell groups
+//             - Loop: cells - Iterate through cells within each group.
+//                 - Loop: tufts - Iterate through cell tufts.
+//                     - Function call: dendrites - For each tuft, if work
+//                       needs to be done, pick the most active or previously
+//                       active dendrite(s) then call a function is called
+//                       which will -> Loop: synapses - Iterate through
+//                       dendrite synapses.
+//                         - STPOT, LTP, and LTD take place on synapses
+//                           within this the smallest loop.
 
 
 
-        ** Note: Cell groups are divisions of the cell space for the layer into groups of arbitrary size. Cell groups are used in lieu of individual cells as the primary work dimension because during any given cycle. Most cells will need no work done on its synapses, therefore most work items would be idle. By bundling a group of cells into each work item, all threads can keep busy.
+//     Note: Cell groups are divisions of the cell space for the layer
+//        into groups of arbitrary size. Cell groups are used in lieu of
+//        individual cells as the primary work dimension because during any
+//        given cycle. Most cells will need no work done on its synapses,
+//        therefore most work items would be idle. By bundling a group of
+//        cells into each work item, all threads can keep busy.
 
-*/
+
 // <<<<< TODO: FIX: NOT TAKING IN TO ACCOUNT MULTIPLE TUFTS! MAJOR INDEXING PROBLEMS >>>>>
 __kernel void pyrs_ltp(
             __global uchar const* const axn_states,
@@ -1243,8 +1293,10 @@ __kernel void pyrs_ltp(
                         // aux_ints_1[cel_tft_idx] = 11;
                     }
 
-                    // } else if (cel_best_in_col) { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
-                    // //} else { // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+                    // } else if (cel_best_in_col) { 
+                    // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
+                    // //} else { 
+                    // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
                     //     dst_syns__active__stpot_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
                     //         syn_flag_sets, syn_strengths);
 

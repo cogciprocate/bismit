@@ -24,7 +24,7 @@ use super::util::{NONE, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL};
 // const LEARNING_ITERS_PER_CELL: usize = 2;
 const LEARNING_CONTINUATION_ITERS: usize = 3;
 
-const PRINT_DEBUG_INFO: bool = true;
+const PRINT_DEBUG_INFO: bool = false;
 const PRINT_FINAL_ITER_ONLY: bool = true;
 
 //=============================================================================
@@ -95,10 +95,10 @@ fn dst_den_learning() {
     let mut ltb = LearningTestBed::new();
     // 180 -> +-64 (slow), +-96 (fast)
     // 360 -> +-96 (slow), +-119 (fast)
-    // let on_focus_iters = 360;
-    // let off_focus_iters = 360;
-    let on_focus_iters = 1;
-    let off_focus_iters = 1;
+    let on_focus_iters = 360;
+    let off_focus_iters = 360;
+    // let on_focus_iters = 1;
+    // let off_focus_iters = 1;
     printlny!("\nRunning test_on_off()...");
     ltb.test_on_off(on_focus_iters, off_focus_iters);
 
@@ -316,10 +316,12 @@ impl LearningTestBed {
     
     */
     fn test_on_off(&mut self, on_focus_iters: usize, off_focus_iters: usize) {
-        printy!("\non_focus_iters: ");
+        // printy!("\non_focus_iters: ");
+
         for i in 0..on_focus_iters {
-            print!(" {}", i);
-            io::stdout().flush().unwrap();
+            // [DEBUG]: Prints a number for each iter
+            // print!(" {}", i);
+            // io::stdout().flush().unwrap();
 
             let final_iter = i == (on_focus_iters - 1);
             let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
@@ -327,13 +329,15 @@ impl LearningTestBed {
             self.learning_iter(i, false, print_debug);            
         }
 
-        printlny!("\n\nFlipping focus syns...");
+        // printlny!("\n\nFlipping focus syns...");
         self.flip_focus_syns();        
 
         printy!("\noff_focus_iters: ");
         for i in 0..off_focus_iters {
-            print!(" {}", i);
-            io::stdout().flush().unwrap();
+            // [DEBUG]: Prints a number for each iter
+            // print!(" {}", i);
+            // io::stdout().flush().unwrap();
+
             let final_iter = i == (off_focus_iters - 1);
             let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
                 && PRINT_DEBUG_INFO;
@@ -378,7 +382,7 @@ impl LearningTestBed {
 
         if print_debug { 
             // util::print_all(area, "\n - Confirm 0 - "); print!("\n");
-            // unimplemented!();
+            unimplemented!();
         }
 
         assert!(util::eval_range(&area.ptal().dens().syns().states(), self.focus_syns.clone(), 
@@ -419,9 +423,6 @@ impl LearningTestBed {
 
         // FLAGS: [pyr: 0], [syns: 0's], [mcol: 0];
 
-        if print_debug { println!("Sleeping..."); }
-        thread::sleep(Duration::from_millis(1000));
-
         //=============================================================================
         //==================================== 1A =====================================
         //=============================================================================
@@ -451,9 +452,6 @@ impl LearningTestBed {
 
         // FLAGS: [pyr: 64], [syns: 0's], [mcol: 1];
 
-        if print_debug { println!("Sleeping..."); }
-        thread::sleep(Duration::from_millis(1000));
-
         //=============================================================================
         //============================= 1B ===================================
         //=============================================================================
@@ -478,9 +476,6 @@ impl LearningTestBed {
 
         // FLAGS: [pyr: 80], [syns: 0's], [mcol: 1]; (pyr changed)
 
-        if print_debug { println!("Sleeping..."); }
-        thread::sleep(Duration::from_millis(1000));
-
         //=============================================================================
         //=============================== 1C ===================================
         //=============================================================================
@@ -497,9 +492,6 @@ impl LearningTestBed {
         }
 
         // FLAGS: [pyr: 80], [syns: 0's], [mcol: 1]; (unchanged)
-
-        if print_debug { println!("Sleeping..."); }
-        thread::sleep(Duration::from_millis(1000));
 
         //=============================================================================
         //=============================== 2A ===================================

@@ -56,7 +56,7 @@ pub use self::tests::{SynCoords, SynapsesTest};
 const DEBUG_NEW: bool = true;
 const DEBUG_GROW: bool = true;
 const DEBUG_REGROW_DETAIL: bool = false;
-const DEBUG_KERN: bool = true;
+const DEBUG_KERN: bool = false;
 
 
 pub struct Synapses {
@@ -136,8 +136,8 @@ impl Synapses {
 
         if DEBUG_NEW { 
             println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
-                dims: {:?}, phys_len: {},", 
-                den_kind, states.len(), dims, strengths.len(), mt = cmn::MT); 
+                phys_len: {}, \n{mt}{mt}{mt}{mt}{mt}dims: {:?}, ", 
+                den_kind, states.len(), strengths.len(), dims, mt = cmn::MT); 
         }
 
         // TODO: USE KERNEL TO ASCERTAIN THE OPTIMAL WORKGROUP SIZE INCREMENT.
@@ -155,7 +155,7 @@ impl Synapses {
                 // ocl_pq.create_kernel_with_dims("syns_cycle_layer",
                 // ocl_pq.create_kernel_with_dims("syns_cycle_vec4_layer",
                 // ocl_pq.create_kernel_with_dims("syns_cycle_wow_layer",
-                ocl_pq.create_kernel("syns_cycle_wow_vec4_layer").expect("[FIXME]: HANDLE ME")
+                ocl_pq.create_kernel("syns_cycle_wow_vec4_layer").expect("Synapses::new")
                     // .expect("Synapses::new()")
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))

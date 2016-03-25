@@ -38,7 +38,7 @@ impl SpinyStellateLayer {
         let dens = Dendrites::new(layer_name, dens_dims, protocell.clone(), DendriteKind::Proximal, 
             CellKind::SpinyStellate, area_map, axns, ocl_pq);
         let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-        let cels_per_grp = dims.per_subgrp(grp_count, ocl_pq).expect("SpinyStellateLayer::new()");
+        let cels_per_grp = dims.per_subgrp(grp_count).expect("SpinyStellateLayer::new()");
 
         let kern_ltp = ocl_pq.create_kernel("sst_ltp").expect("[FIXME]: HANDLE ME")
             // .expect("SpinyStellateLayer::new()")

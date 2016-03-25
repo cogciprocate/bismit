@@ -1,25 +1,10 @@
 #![allow(non_snake_case)]
 use std::ops::{Range};
-// use std::iter;
-// use std::io::{Write};
-// use std::mem;
-// use rand;
-
-// use proto::*;
-
 
 use ocl::Buffer;
 use ocl::traits::OclPrm;
-// use super::{TestBed};
 use cortical_area::CorticalArea;
-// use map::{AreaMapTest};
-// use synapses::{SynapsesTest};
-// use minicolumns::{MinicolumnsTest};
-// use dendrites::{DendritesTest, /*DenCoords*/};
-// use axon_space::{/*AxnCoords,*/ AxonSpaceTest};
-// use cortex::{Cortex};
-use cmn::{self, /*CelCoords,*/ DataCellLayer};
-// use super::{testbed};
+use cmn::{self, DataCellLayer};
 
 const PRINT_DETAILS: bool = false;
 

@@ -18,7 +18,7 @@ use axon_space::{AxonSpace};
 #[cfg(test)]
 pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
-const PRINT_DEBUG: bool = true;
+const PRINT_DEBUG: bool = false;
 
 pub struct Dendrites {
     layer_name: &'static str,

@@ -14,6 +14,8 @@ use spiny_stellates::SpinyStellateLayer;
 use sensory_filter::SensoryFilter;
 use thalamus::Thalamus;
 
+const KERNEL_DEBUG_MODE: bool = true;
+
 #[cfg(test)]
 pub use self::tests::{CorticalAreaTest};
 
@@ -53,12 +55,22 @@ impl CorticalArea {
         let emsg = "cortical_area::CorticalArea::new()";
         let area_name = area_map.area_name();
 
-        println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);        
+        println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);
+
+        // Optionally pass `-g` and `-s {cl path}` flags to compiler:
+        let build_options = if KERNEL_DEBUG_MODE {
+            area_map.gen_build_options()
+                .cmplr_opt(format!("-g -s {}", cmn::cl_root_path().join("bismit.cl").to_str()
+                    .expect("CorticalArea::new"))
+                )
+        } else {
+            area_map.gen_build_options()
+        };
 
         let ocl_pq = ProQue::builder()
             .device(device_idx)
             .context(ocl_context.clone())
-            .prog_bldr(area_map.gen_build_options())
+            .prog_bldr(build_options)
             .build().expect("CorticalArea::new(): ocl_pq.build(): error");
 
         let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size());

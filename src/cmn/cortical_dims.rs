@@ -1,5 +1,5 @@
 // use std::convert::Into;
-use ocl::{ProQue};
+// use ocl::{ProQue};
 use ocl::traits::MemLen;
 use cmn::ParaHexArray;
 
@@ -169,8 +169,12 @@ impl CorticalDims {
 
     #[inline]
     /// [FIXME]: Return a proper result type, wrap the OclError from `::padded_buffer_len`.
-    pub fn per_subgrp(&self, subgroup_count: u32, ocl_pq: &ProQue) -> Result<u32, &'static str> {
-        let physical_len = self.to_len_padded(ocl_pq.max_wg_size()) as u32;
+    pub fn per_subgrp(&self, subgroup_count: u32) -> Result<u32, &'static str> {
+        // let physical_len = self.to_len_padded(ocl_pq.max_wg_size()) as u32;
+        let physical_len = self.to_len() as u32;
+
+        // println!("\nCORTICAL_DIMS: per_subgrp: max_wg_size: {}, physical_len: {}", 
+        //     ocl_pq.max_wg_size(), physical_len);
 
         if physical_len % subgroup_count == 0 {
             return Ok(physical_len / subgroup_count) 

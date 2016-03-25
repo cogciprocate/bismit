@@ -9,7 +9,7 @@ use proto::{CellKind, Protocell, DendriteKind};
 use dendrites::{Dendrites};
 use axon_space::{AxonSpace};
 
-const PRINT_DEBUG: bool = true;
+const PRINT_DEBUG: bool = false;
 /* PyramidalLayer
     flag_sets: 0b10000000 (0x80) -> previously active
 
@@ -46,15 +46,15 @@ impl PyramidalLayer {
         let tfts_per_cel = area_map.layer_dst_srcs(layer_name).len() as u32;
 
         // let best_dens_per_cel = tfts_per_cel;
-        let dims_best_dens = dims.clone().with_tfts(tfts_per_cel);
+        let dims_tft_best_den = dims.clone().with_tfts(tfts_per_cel);
 
         let states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
         let flag_sets = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
         let best_den_states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
         // let tft_best_den_ids = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());
-        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue(), None, &dims_best_dens, None).unwrap();
+        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue(), None, &dims_tft_best_den, None).unwrap();
         // let tft_best_den_states = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());        
-        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims_best_dens, None).unwrap();
+        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims_tft_best_den, None).unwrap();
         // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
         let dens_per_tft_l2 = protocell.dens_per_tuft_l2;
@@ -65,11 +65,12 @@ impl PyramidalLayer {
 
         println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
             pyr_lyr_axn_idz: {}, tfts_per_cel: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, \
-            best_den_len: {}.", 
+            len: {}, tft_best_den_len: {}, \n{mt}{mt}{mt}dims: {:?}.", 
             layer_name, base_axn_slc, pyr_lyr_axn_idz, tfts_per_cel, syns_per_den_l2, dens_per_tft_l2, 
-            tft_best_den_ids.len(), mt = cmn::MT);
+            states.len(), tft_best_den_ids.len(), dims, mt = cmn::MT);
 
-        let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq);        
+        let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, 
+            CellKind::Pyramidal, area_map, axons, ocl_pq);        
         
         let kern_cycle = ocl_pq.create_kernel("pyr_cycle").expect("[FIXME]: HANDLE ME")
             // .expect("PyramidalLayer::new()")
@@ -87,11 +88,15 @@ impl PyramidalLayer {
             .arg_buf(&states);
 
         // let syns_per_tftsec = dens.syns().syns_per_tftsec();
-        let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-        let cels_per_cel_grp = dims.per_subgrp(cel_grp_count, ocl_pq).expect("PyramidalLayer::new()");
+        // let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
+        let cel_grp_count = 128;
+        let cels_per_cel_grp = dims.per_subgrp(cel_grp_count).expect("PyramidalLayer::new()");
         let learning_rate_l2i = 0i32;
 
-        let kern_ltp = ocl_pq.create_kernel("pyrs_ltp").expect("[FIXME]: HANDLE ME")
+        println!("\nPYRAMIDAL: pyrs_ltp: cel_grp_count: {}, cels_per_cel_grp: {}\n", 
+            cel_grp_count, cels_per_cel_grp);
+
+        let kern_ltp = ocl_pq.create_kernel("pyrs_ltp").expect("PyramidalLayer::new()")
             // .expect("PyramidalLayer::new()")
             .gws(SpatialDims::One(cel_grp_count as usize))
             .arg_buf(&axons.states)
@@ -198,13 +203,14 @@ impl DataCellLayer for PyramidalLayer {
     #[inline]
     fn learn(&mut self) {
         if PRINT_DEBUG { printlny!("Pyrs: Setting scalar to a random value..."); }
-        self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
+        self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>()).expect("PyramidalLayer::learn()");
         if PRINT_DEBUG { printlny!("Pyrs: Enqueuing kern_ltp..."); }
-        self.kern_ltp.enq().expect("[FIXME]: HANDLE ME!");
+        self.kern_ltp.enq().expect("PyramidalLayer::learn()");
     }
 
     #[inline]
     fn regrow(&mut self) {
+        if PRINT_DEBUG { printlny!("Pyrs: Regrowing dens..."); }
         self.dens_mut().regrow();
         // panic!("Pyramidals::regrow(): reimplement me!");
     }
