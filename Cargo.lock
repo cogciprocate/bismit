@@ -66,7 +66,7 @@ dependencies = [
 [[package]]
 name = "ocl"
 version = "0.8.0"
-source = "git+https://github.com/cogciprocate/ocl.git#9b2dc97b2ddc87e8f0e20ee9aa6b0b78a719b321"
+source = "git+https://github.com/cogciprocate/ocl.git#d0fc92ee8e6d91ca9d942667d204d4e758d37018"
 dependencies = [
  "bitflags 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "enum_primitive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
