@@ -253,16 +253,38 @@ pub const SYN_CONCRETE_FLAG: u8                = 0b00001000;
 
 //pub static BUILTIN_OPENCL_KERNEL_FILE_NAME: &'static str = "bismit.cl";
 //pub static BUILTIN_FILTERS_CL_FILE_NAME: &'static str = "filters.cl";
-static CL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
+static OPENCL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
 
+// // BUILTIN_OPENCL_KERNEL_FILE_NAMES: Loaded in reverse order.
+// pub static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 4] = [
+//     "tests.cl", 
+//     "filters.cl", 
+//     "syns.cl", 
+//     "bismit.cl",
+// ];
 
 // BUILTIN_OPENCL_KERNEL_FILE_NAMES: Loaded in reverse order.
-pub static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 4] = [
-    "tests.cl", 
-    "filters.cl", 
-    "syns.cl", 
-    "bismit.cl",
+pub static BUILTIN_OPENCL_PROGRAM_SOURCE: [&'static str; 4] = [
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/bismit.cl")),
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/syns.cl")), 
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/filters.cl")), 
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/tests.cl")),
 ];
+
+// LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
+//        -Used by AreaMap
+// [FIXME]: TEMPORARY: determine path non-retardedly...
+pub fn load_builtin_kernel_source(mut build_options: ProgramBuilder) -> ProgramBuilder {
+    // for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
+    //     build_options = build_options.src_file(
+    //         cl_root_path().join(BUILTIN_OPENCL_KERNEL_FILE_NAMES[i]));
+    // }
+    for i in 0..BUILTIN_OPENCL_PROGRAM_SOURCE.len() {
+        build_options = build_options.src(BUILTIN_OPENCL_PROGRAM_SOURCE[i]);
+    }
+
+    build_options
+}
 
 //    BASE_BUILD_OPTIONS():
 //         -Used by AreaMap.
@@ -276,7 +298,7 @@ pub fn base_build_options() -> ProgramBuilder {
     assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
 
     ProgramBuilder::new()
-        .cmplr_opt(CL_BUILD_SWITCHES)
+        .cmplr_opt(OPENCL_BUILD_SWITCHES)
         // .cmplr_def("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
         // .cmplr_def("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
         // .cmplr_def("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
@@ -304,24 +326,13 @@ pub fn base_build_options() -> ProgramBuilder {
         .cmplr_def("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
 }
 
-// LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
-//        -Used by AreaMap
-// [FIXME]: TEMPORARY: determine path non-retardedly...
-pub fn load_builtin_kernel_files(mut build_options: ProgramBuilder) -> ProgramBuilder {
-    for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
-        build_options = build_options.src_file(
-            cl_root_path().join(BUILTIN_OPENCL_KERNEL_FILE_NAMES[i]));
-    }
 
-    build_options
-}
-
-// [FIXME]: TEMPORARY
-pub fn cl_root_path() -> PathBuf {
-    // PathBuf::from("/home/nick/projects/bismit/cl")
-    Search::ParentsThenKids(3, 3).for_folder("cl")
-        .expect("bismit::cmn::cl_root_path()")
-}
+// // [FIXME]: TEMPORARY
+// pub fn cl_root_path() -> PathBuf {
+//     // PathBuf::from("/home/nick/projects/bismit/cl")
+//     Search::ParentsThenKids(3, 3).for_folder("cl")
+//         .expect("bismit::cmn::cl_root_path()")
+// }
 
 
 

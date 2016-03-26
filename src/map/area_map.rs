@@ -63,17 +63,14 @@ impl AreaMap {
             .bo(BuildOpt::include_def("AXN_SLC_U_MIDS", literal_list(self.slices.u_mids())))
         ;
 
-        // CUSTOM KERNELS
-        // TODO: Use 'if let's here to clean this up.
+        // Custom filter kernels
         match self.filters {
             Some(ref protofilters) => {
                 for pf in protofilters.iter() {
                     match pf.cl_file_name() {
                         Some(ref clfn)  => {                            
-                            build_options = build_options.src_file(
-                                cmn::cl_root_path().join(clfn.clone()));
+                            build_options = build_options.src_file(clfn.clone());
                         },
-
                         None => (),
                     }
                 }
@@ -81,7 +78,7 @@ impl AreaMap {
             None => (),
         };
 
-        cmn::load_builtin_kernel_files(build_options)
+        cmn::load_builtin_kernel_source(build_options)
     }
 
     // NEW

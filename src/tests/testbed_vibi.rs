@@ -44,7 +44,7 @@ pub fn define_pamaps() -> ProtoareaMaps {
         )
 
         .area("v1", "visual", AREA_SIDE, 
-            Some(vec![Protofilter::new("retina", Some("filters.cl"))]),            
+            Some(vec![Protofilter::new("retina", None)]),            
             Some(vec!["v0"/*, "o0"*/]),
         )
 

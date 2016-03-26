@@ -63,7 +63,7 @@ pub fn define_protoareas() -> ProtoareaMaps {
             // area_side / 2, area_side / 2,
             // 128, 128,
 
-            Some(vec![Protofilter::new("retina", Some("filters.cl"))]),            
+            Some(vec![Protofilter::new("retina", None)]),            
 
             Some(vec!["v0"]),
         )
@@ -159,14 +159,8 @@ impl TestBed {
         let plmaps = define_protolayer_maps();
         let protoarea_maps = define_protoareas();
 
-        // protoarea_maps.freeze();
-
         let thal = Thalamus::new(plmaps, protoarea_maps);
         let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
-
-        // let ocl_context = Context::new_by_index_and_type(None, None).unwrap();
-        // let mut ocl_pq = ProQue::new(&ocl_context, None);
-        // ocl_pq.build_program(&area_map.gen_build_options()).unwrap();
 
         let ocl_context: Context = Context::builder()
             .build().expect("CorticalArea::new(): ocl_context creation error");
@@ -190,8 +184,6 @@ impl TestBed {
 impl Drop for TestBed {
     fn drop(&mut self) {
         print!("Releasing OpenCL components for test bed... ");
-        // self.ocl_pq.release();
-        // self.ocl_context.release();
         print!(" ...complete. \n");
     }
 }
