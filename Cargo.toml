@@ -17,8 +17,10 @@ time = "*"
 git = "https://github.com/cogciprocate/microcosm.git"
 
 [dependencies.ocl]
-# path = "/home/nick/projects/ocl"
-git = "https://github.com/cogciprocate/ocl.git"
+path = "/home/nick/projects/ocl"
+# git = "https://github.com/cogciprocate/ocl.git"
+# features = ["kernel_debug_sleep", "kernel_debug_print"]
+features = ["kernel_debug_print"]
 
 # [dependencies.time]
 # git = "https://github.com/rust-lang/time.git"
