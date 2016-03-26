@@ -394,7 +394,7 @@ static inline uchar axn_state_3d_safe(uchar const slc_id, uint const v_id, char 
 {
     int idx_is_safe = 0;
     uint const axn_idx = axn_idx_3d_unsafe(slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
-    return mul24(idx_is_safe, axn_states[axn_idx]);
+    return mul24(idx_is_safe, axn_states[mul24((uint)idx_is_safe, axn_idx)]);
 }
 
 // AXN_STATE_3D_SAFE_VEC4():
@@ -405,10 +405,10 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
     int4 const axn_idx = axn_idx_3d_unsafe_vec4(slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
 
     return (uchar4)(
-        ((uchar)idx_is_safe.s0 & axn_states[axn_idx.s0]),
-        ((uchar)idx_is_safe.s1 & axn_states[axn_idx.s1]),
-        ((uchar)idx_is_safe.s2 & axn_states[axn_idx.s2]),
-        ((uchar)idx_is_safe.s3 & axn_states[axn_idx.s3]));
+        ((uchar)idx_is_safe.s0 & axn_states[idx_is_safe.s0 & axn_idx.s0]),
+        ((uchar)idx_is_safe.s1 & axn_states[idx_is_safe.s1 & axn_idx.s1]),
+        ((uchar)idx_is_safe.s2 & axn_states[idx_is_safe.s2 & axn_idx.s2]),
+        ((uchar)idx_is_safe.s3 & axn_states[idx_is_safe.s3 & axn_idx.s3]));
 
 }
 

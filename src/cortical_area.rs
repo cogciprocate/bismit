@@ -15,7 +15,7 @@ use sensory_filter::SensoryFilter;
 use thalamus::Thalamus;
 
 // Intel/Linux debug mode:
-const KERNEL_DEBUG_MODE: bool = false;
+const KERNEL_DEBUG_MODE: bool = true;
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -60,8 +60,8 @@ impl CorticalArea {
         // Optionally pass `-g` and `-s {cl path}` flags to compiler:
         let build_options = if KERNEL_DEBUG_MODE && cfg!(target_os = "linux") {
             // [TODO]: Add something to identify the platform vendor and match:
-            let debug_opts = format!("-g -s {}", cmn::cl_root_path().join("bismit.cl").to_str()
-                .expect("CorticalArea::new"));
+            // let debug_opts = format!("-g -s {}", cmn::cl_root_path().join("bismit.cl").to_str()
+            let debug_opts = "-g";
 
             area_map.gen_build_options().cmplr_opt(debug_opts)
         } else {

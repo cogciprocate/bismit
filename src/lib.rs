@@ -7,8 +7,7 @@
 extern crate num;
 extern crate libc;
 extern crate time;
-//extern crate yaml_rust;
-extern crate microcosm;
+// extern crate microcosm;
 extern crate ocl;
 extern crate find_folder;
 #[macro_use] extern crate rand;

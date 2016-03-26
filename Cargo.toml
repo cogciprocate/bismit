@@ -13,8 +13,8 @@ find_folder = "0.3"
 # ocl = "0.2"
 time = "*"
 
-[dependencies.microcosm]
-git = "https://github.com/cogciprocate/microcosm.git"
+# [dependencies.microcosm]
+# git = "https://github.com/cogciprocate/microcosm.git"
 
 [dependencies.ocl]
 # path = "/home/nick/projects/ocl"
