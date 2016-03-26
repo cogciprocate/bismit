@@ -4,6 +4,9 @@
 *.rlib
 *.dll
 
+# Config
+/.cargo
+
 # Executables
 *.exe
 
