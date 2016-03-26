@@ -285,6 +285,7 @@ static inline int4 cel_idx_3d_unsafe_vec4(uchar4 const slc_id_lyr_uchar4, int4 c
 //     - If id + ofs are out of cortical bounds, zero is returned
 //        - otherwise resolved state is returned 
 //    - Intended primarily for use by the inhibition-related kernel(s)
+// +8
 static inline uchar cel_state_3d_safe(uchar const slc_id_lyr, 
             uint const v_size, uint const v_id, char const v_ofs, 
             uint const u_size, uint const u_id, char const u_ofs, 
@@ -296,7 +297,7 @@ static inline uchar cel_state_3d_safe(uchar const slc_id_lyr,
 
     uint cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, (int)v_id + v_ofs, u_size, (int)u_id + u_ofs);
 
-    return mul24(cel_idx_is_safe, cel_states[cel_idx]);
+    return mul24(cel_idx_is_safe, cel_states[mul24((uint)cel_idx_is_safe, cel_idx)]);
 }
 
 
@@ -531,7 +532,7 @@ static inline void lshft_mask(int* mask, int const shft_l2) {
 // DST_TFT_SYNS_LEARN_TRMN(): Learning termination for a tuft:
 //         - Occurs when a cell which had been active becomes inactive.
 // TODO: VECTORIZE
-// +18
+// +8
 static inline void tft_syns_trm( 
             __global uchar const* const syn_states,
             uint const syn_idz,

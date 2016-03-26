@@ -14,7 +14,7 @@ use spiny_stellates::SpinyStellateLayer;
 use sensory_filter::SensoryFilter;
 use thalamus::Thalamus;
 
-// [NOTE]: Does not work on windows:
+// [NOTE]: Intel/Linux debug mode:
 const KERNEL_DEBUG_MODE: bool = false;
 
 #[cfg(test)]
@@ -60,10 +60,10 @@ impl CorticalArea {
 
         // Optionally pass `-g` and `-s {cl path}` flags to compiler:
         let build_options = if KERNEL_DEBUG_MODE {
-            area_map.gen_build_options()
-                .cmplr_opt(format!("-g -s {}", cmn::cl_root_path().join("bismit.cl").to_str()
-                    .expect("CorticalArea::new"))
-                )
+            let debug_opts = format!("-g -s {}", cmn::cl_root_path().join("bismit.cl").to_str()
+                .expect("CorticalArea::new"));
+
+            area_map.gen_build_options().cmplr_opt(debug_opts)
         } else {
             area_map.gen_build_options()
         };
@@ -77,9 +77,11 @@ impl CorticalArea {
         let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size());
 
         println!("{mt}CORTICALAREA::NEW(): Area \"{}\" details: \
-            (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, device: [{}]", 
+            (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, \n\
+            {mt}{mt}device_idx: [{}], device.name(): {}, device.vendor(): {}", 
             area_name, dims.u_size(), dims.v_size(), dims.depth(), area_map.eff_areas(), 
-            area_map.aff_areas(), device_idx, mt = cmn::MT);
+            area_map.aff_areas(), device_idx, ocl_pq.device().name().trim(), 
+            ocl_pq.device().vendor().trim(), mt = cmn::MT);
 
         let psal_name = area_map.layer_name_by_tags(map::SPATIAL_ASSOCIATIVE);
         let ptal_name = area_map.layer_name_by_tags(map::TEMPORAL_ASSOCIATIVE);
