@@ -34,7 +34,7 @@ pub fn define_plmaps() -> ProtolayerMaps {
 
 
 pub fn define_pamaps() -> ProtoareaMaps {
-    const AREA_SIDE: u32 = 64;
+    const AREA_SIDE: u32 = 16;
 
     ProtoareaMaps::new()        
         .area_ext("v0", "v0_lm", AREA_SIDE,
@@ -48,7 +48,7 @@ pub fn define_pamaps() -> ProtoareaMaps {
             Some(vec!["v0"/*, "o0"*/]),
         )
 
-        .area("b1", "visual", AREA_SIDE, None, Some(vec!["v1"]))
+        // .area("b1", "visual", AREA_SIDE, None, Some(vec!["v1"]))
 
         // .area("a1", "visual", AREA_SIDE, None, Some(vec!["b1"]))
         // .area("a2", "visual", AREA_SIDE, None, Some(vec!["a1"]))

@@ -14,11 +14,10 @@ use spiny_stellates::SpinyStellateLayer;
 use sensory_filter::SensoryFilter;
 use thalamus::Thalamus;
 
-// [NOTE]: Intel/Linux debug mode:
+// Intel/Linux debug mode:
 const KERNEL_DEBUG_MODE: bool = false;
 
-#[cfg(test)]
-pub use self::tests::{CorticalAreaTest};
+#[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 
@@ -59,7 +58,8 @@ impl CorticalArea {
         println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);
 
         // Optionally pass `-g` and `-s {cl path}` flags to compiler:
-        let build_options = if KERNEL_DEBUG_MODE {
+        let build_options = if KERNEL_DEBUG_MODE && cfg!(target_os = "linux") {
+            // [TODO]: Add something to identify the platform vendor and match:
             let debug_opts = format!("-g -s {}", cmn::cl_root_path().join("bismit.cl").to_str()
                 .expect("CorticalArea::new"));
 

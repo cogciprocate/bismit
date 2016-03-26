@@ -151,12 +151,11 @@ impl Synapses {
 
         for tft_id in 0..src_slc_ids_by_tft.len() {
             kernels.push(Box::new({
-
-                // ocl_pq.create_kernel_with_dims("syns_cycle_layer",
-                // ocl_pq.create_kernel_with_dims("syns_cycle_vec4_layer",
-                // ocl_pq.create_kernel_with_dims("syns_cycle_wow_layer",
-                ocl_pq.create_kernel("syns_cycle_wow_vec4_layer").expect("Synapses::new")
-                    // .expect("Synapses::new()")
+                ocl_pq.create_kernel("syns_cycle_layer")
+                // ocl_pq.create_kernel("syns_cycle_vec4_layer")
+                // ocl_pq.create_kernel("syns_cycle_wow_layer")
+                // ocl_pq.create_kernel("syns_cycle_wow_vec4_layer")
+                    .expect("Synapses::new()")
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(&axons.states)
@@ -182,7 +181,6 @@ impl Synapses {
         let vec_src_col_u_offs = vec![0; src_col_u_offs.len()];
         let vec_src_col_v_offs = vec![0; src_col_v_offs.len()];
 
-        // MAKE ME MUTABALE AGAIN ASSHOLE!
         let mut syns = Synapses {
             layer_name: layer_name,
             dims: dims,
