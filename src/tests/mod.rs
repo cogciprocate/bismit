@@ -9,13 +9,15 @@
 //mod motor_state;
 //mod renderer;
 
+mod dens_tfts;
+mod automated;
+mod cycle;
 pub mod testbed;
+pub mod testbed_vibi;
 pub mod util;
 pub mod hybrid;
 pub mod kernels;
 pub mod learning;
-mod dens_tfts;
-mod automated;
 
 pub use self::testbed::{TestBed};
 
