@@ -21,12 +21,12 @@ use std::iter::{self};
 use std::cmp::{self};
 use std::io::{self, Write};
 use std::collections::{BTreeMap};
-use std::path::PathBuf;
+// use std::path::PathBuf;
 use rand;
 use rand::distributions::{IndependentSample, Range};
-use find_folder::Search;
+// use find_folder::Search;
 use ocl::traits::OclPrm;
-use ocl::build::ProgramBuilder;
+use ocl::builders::ProgramBuilder;
 
 pub use self::cortical_dims::{CorticalDims};
 pub use self::slice_dims::SliceDims;

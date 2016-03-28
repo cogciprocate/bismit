@@ -10,7 +10,6 @@ pub struct Cortex {
     // AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
     pub areas: CorticalAreas,
     thal: Thalamus,
-    // ocl_context: Context,
 }
 
 impl Cortex {
@@ -19,8 +18,6 @@ impl Cortex {
         let time_start = time::get_time();
         let thal = Thalamus::new(plmaps, pamaps);
         let pamaps = thal.area_maps().clone();
-        // let platforms = Platform::list();
-        // let platform = platforms[platforms.len() - 1];
         let platform = Platform::new(ocl::core::default_platform().expect("Cortex::new()"));
         let device_type = ocl::core::default_device_type().expect("Cortex::new()");
         println!("Cortex::new(): device_type: {:?}", device_type);
@@ -41,40 +38,32 @@ impl Cortex {
             device_idx += 1;
         }    
 
-        // <<<<< MOVE THIS TIMING STUFF ELSEWHERE AND MAKE A FUNCTION FOR IT >>>>>
-        let time_elapsed = time::get_time() - time_start;
-        let t_sec = time_elapsed.num_seconds();
-        let t_ms = time_elapsed.num_milliseconds() - (t_sec * 1000);
-        println!("\n\n... Cortex initialized in: {}.{} seconds.", t_sec, t_ms);
+        print_startup_time(time_start);
 
         Cortex {
             areas: areas,
             thal: thal,
-            // ocl_context: ocl_context,
         }
     }
     
-    #[inline]
     pub fn area_mut(&mut self, area_name: &str) -> &mut Box<CorticalArea> {
         let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
         self.areas.get_mut(area_name).expect(&emsg)
     }
 
-    #[inline]
     pub fn area(&self, area_name: &str) -> &Box<CorticalArea> {
         let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
         self.areas.get(area_name).expect(&emsg)
     }
 
     pub fn cycle(&mut self) {
-        self.thal.cycle_external_ganglions(&mut self.areas);
+        self.thal.cycle_external_tracts(&mut self.areas);
 
         for (_, area) in self.areas.iter_mut() {
             area.cycle(&mut self.thal);
         }
     }
 
-    #[inline]
     pub fn valid_area(&self, area_name: &str) -> bool {
         self.areas.contains_key(area_name)
     }
@@ -84,8 +73,15 @@ impl Drop for Cortex {
     fn drop(&mut self) {
         print!("Releasing OpenCL components... ");
         print!("[ Context ]");
-        // NOW DONE AUTOMATICALLY:
-        // self.ocl_context.release();
         print!(" ...complete. \n");
     }
+}
+
+
+// Prints the time it took to start up.
+fn print_startup_time(time_start: time::Timespec) {
+    let time_elapsed = time::get_time() - time_start;
+    let t_sec = time_elapsed.num_seconds();
+    let t_ms = time_elapsed.num_milliseconds() - (t_sec * 1000);
+    println!("\n\n... Cortex initialized in: {}.{} seconds.", t_sec, t_ms);
 }

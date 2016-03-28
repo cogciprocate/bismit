@@ -928,7 +928,7 @@ impl LearningTestBed {
 //         print!("\n");
 
 //         // <<<<< TODO: assert!(chosen-half of syns are +1, others are -1) >>>>>
-//         // CURRENTLY: indexes are a mess
+//         // CURRENTLY: indices are a mess
 
 //         //=============================================================================
 //         //=================================== 2C ===================================

@@ -313,9 +313,6 @@ impl CorticalArea {
 
     // Read input from thalamus and write to axon space.
     fn intake(&mut self, layer_tags: LayerTags, thal: &mut Thalamus) {
-        // let src_layers = self.area_map.layers().layer_src_info(layer_tags);
-        
-        // for &(src_area_name, tags) in src_area_names.iter() {
         for src_layer in self.area_map.layers().layer_src_area_names_by_tags(layer_tags) {
             self.write_input(
                 thal.ganglion(src_layer, layer_tags.mirror_io())
@@ -345,12 +342,11 @@ impl CorticalArea {
                 self.counter += 1;
             }
         }
-    }
-
+    } 
 
     /* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
-    pub fn layer_input_ranges(&self, layer_name: &'static str, den_kind: &DendriteKind
-            ) -> Vec<Range<u32>> 
+    pub fn layer_input_ranges(&self, layer_name: &'static str, den_kind: &DendriteKind) 
+            -> Vec<Range<u32>>
     {
         let mut axn_irs: Vec<Range<u32>> = Vec::with_capacity(10);
         let src_slc_ids = self.area_map.layer_src_slc_ids(layer_name, *den_kind);

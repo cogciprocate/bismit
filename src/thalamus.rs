@@ -69,24 +69,24 @@ impl Thalamus {
 
     // Multiple source output areas disabled.
     #[inline]
-    pub fn cycle_external_ganglions(&mut self, _: &mut CorticalAreas) {
+    pub fn cycle_external_tracts(&mut self, _: &mut CorticalAreas) {
         for (&(_, _), src) in self.input_sources.iter_mut() {
             let (ganglion, events) = self.tract.ganglion_mut(src.area_name(), 
-                src.tags()).expect("Thalamus::cycle_external_ganglions()");
+                src.tags()).expect("Thalamus::cycle_external_tracts()");
             src.cycle(ganglion, events);
         }        
     }
 
     #[inline]
-    pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerTags
-            ) -> Result<(&EventList, &Sdr), CmnError> 
+    pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
+            -> Result<(&EventList, &Sdr), CmnError>
     {         
         self.tract.ganglion(src_area_name, layer_mask)
     }
 
     #[inline]
-    pub fn ganglion_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags
-            ) -> Result<(&mut Sdr, &mut EventList), CmnError>
+    pub fn ganglion_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
+            -> Result<(&mut Sdr, &mut EventList), CmnError>
     {
         self.tract.ganglion_mut(src_area_name, layer_mask)
     }

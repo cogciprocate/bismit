@@ -7,7 +7,7 @@ dependencies = [
  "find_folder 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)",
- "ocl 0.8.0 (git+https://github.com/cogciprocate/ocl.git)",
+ "ocl 0.9.0 (git+https://github.com/cogciprocate/ocl.git)",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -55,8 +55,8 @@ dependencies = [
 
 [[package]]
 name = "ocl"
-version = "0.8.0"
-source = "git+https://github.com/cogciprocate/ocl.git#c8c30d83188b482a3effb58fc991c23804d898db"
+version = "0.9.0"
+source = "git+https://github.com/cogciprocate/ocl.git#d2591453ca46c908cadd3b08e205de2b70d048c9"
 dependencies = [
  "bitflags 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "enum_primitive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",

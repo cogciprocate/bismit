@@ -2,7 +2,7 @@ use std::fmt::Display;
 use std::ops::Range; 
 // use std::collections::{BTreeMap};
 
-use ocl::build::{BuildOpt, ProgramBuilder};
+use ocl::builders::{BuildOpt, ProgramBuilder};
 use proto::{ProtolayerMaps, ProtoareaMaps, ProtoareaMap, LayerMapKind, Protofilter,
     DendriteKind};
 use cmn::{self, CorticalDims};
