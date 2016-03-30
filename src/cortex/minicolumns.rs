@@ -5,9 +5,7 @@ use cmn::{self, CorticalDims, DataCellLayer};
 use map::{AreaMap};
 use ocl::{self, ProQue, SpatialDims, Buffer, EventList, Result as OclResult};
 use ocl::traits::OclPrm;
-use axon_space::{AxonSpace};
-use pyramidals::{PyramidalLayer};
-use spiny_stellates::{SpinyStellateLayer};
+use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer};
 
 // #[cfg(test)]
 // pub use self::tests::{MinicolumnsTest};

@@ -1,22 +1,8 @@
-#![allow(non_snake_case, unused_imports)]
-// use std::ops::{Range};
-// use std::iter;
-// use std::io::{Write};
-// use std::mem;
-// use rand;
-
-use proto::*;
-
-// use ocl;
-use cortical_area::{CorticalArea, CorticalAreaTest};
+use cortex::{CorticalArea, CorticalAreaTest};
 use map::{self, AreaMapTest};
-use synapses::{SynapsesTest};
-use dendrites::{DendritesTest, DenCoords};
-use axon_space::{/*AxnCoords,*/ AxonSpaceTest};
-// use cortex::{Cortex};
-use cmn::{self, /*CelCoords,*/ DataCellLayer, DataCellLayerTest};
-// use ocl::{BufferTest};
-use super::{testbed, util, learning};
+use cortex::{SynapsesTest, DendritesTest, DenCoords, AxonSpaceTest};
+use cmn::{self, DataCellLayer, DataCellLayerTest};
+use super::{testbed, util};
 
 
 const DENS_TEST_ITERATIONS: usize = 500;

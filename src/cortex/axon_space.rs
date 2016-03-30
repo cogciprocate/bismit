@@ -1,26 +1,9 @@
-//use std;
-//use num;
-//use rand;
-//use std::mem;
-//use rand::distributions::{Normal, IndependentSample, Range};
-//use rand::{ThreadRng};
-//use num::{Integer};
-//use std::default::{Default};
-//use std::fmt::{Display};
-
 use cmn::{self};
 use map::{AreaMap};
 use ocl::{ProQue, Buffer};
 use ocl::traits::MemLen;
-//use proto::{ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind, Protocell, DendriteKind};
-//use synapses::{Synapses};
-//use dendrites::{Dendrites};
-//use cortical_area:: { Aux };
-//use iinn::{InhibitoryInterneuronNetwork};
-//use minicolumns::{Minicolumns};
 
-#[cfg(test)]
-pub use self::tests::{AxonSpaceTest, AxnCoords};
+#[cfg(test)] pub use self::tests::{AxonSpaceTest, AxnCoords};
 
 
 pub struct AxonSpace {

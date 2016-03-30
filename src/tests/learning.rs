@@ -1,24 +1,11 @@
-#![allow(non_snake_case, unused_imports)]
-use std::ops::{Range};
-// use std::iter;
-use std::io::{self, Write};
-// use std::mem;
-// use rand;
-use std::thread;
-use std::time::Duration;
+use std::ops::Range;
 
-// use ocl::{BufferTest, OclPrm};
-use ocl::traits::OclPrm;
-use proto::{layer};
-use cortical_area::{CorticalArea, CorticalAreaTest};
+use cortex::{Cortex, CorticalAreaTest, SynapsesTest, SynCoords, DendritesTest, 
+    AxonSpaceTest};
 use map;
-use synapses::{SynapsesTest, SynCoords};
-use dendrites::{DendritesTest};
-use axon_space::{AxonSpaceTest};
-use cortex::{Cortex};
-use cmn::{self, CelCoords, DataCellLayer, DataCellLayerTest};
-use super::{util, testbed};
-use super::util::{NONE, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL};
+use cmn::{self, DataCellLayer, DataCellLayerTest};
+use super::testbed;
+use super::util::{self, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL};
 
 // const LEARNING_TEST_ITERATIONS: usize = 5; //50;
 // const LEARNING_ITERS_PER_CELL: usize = 2;

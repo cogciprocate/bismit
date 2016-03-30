@@ -2,7 +2,7 @@
 
 use ocl::{Kernel, ProQue, SpatialDims, Buffer,};
 use cmn::{ParaHexArray, Sdr};
-use axon_space::{AxonSpace};
+use cortex::AxonSpace;
 use map::{self, AreaMap};
 
 pub struct SensoryFilter {

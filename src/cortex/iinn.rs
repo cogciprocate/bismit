@@ -11,12 +11,8 @@
 use cmn::{CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer};
-use proto::{/*ProtolayerMap, LayerMapKind, ProtoareaMaps, CellKind,*/ Protocell, /*DendriteKind*/};
-// use synapses::{Synapses};
-// use dendrites::{Dendrites};
-use axon_space::{AxonSpace};
-// use minicolumns::{Minicolumns};
-// use cortical_area:: { Aux };
+use proto::Protocell;
+use cortex::AxonSpace;
 
 
 

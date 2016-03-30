@@ -1,22 +1,9 @@
-// use num;
-// use rand;
-// use std::mem;
-// use rand::{ThreadRng};
-// use num::{Integer};
-// use std::default::{Default};
-// use std::fmt::{Display};
-// use std::ops::{Range};
-
 use cmn::{self, CorticalDims};
 use map::{AreaMap};
 use ocl::{self, ProQue, SpatialDims, Buffer, EventList};
-use proto::{/*ProtolayerMap, LayerMapKind, ProtoareaMaps,*/ CellKind, Protocell, DendriteKind};
-use synapses::{Synapses};
-use axon_space::{AxonSpace};
-// use cortical_area:: { Aux };
-
-#[cfg(test)]
-pub use self::tests::{DenCoords, DendritesTest, den_idx};
+use proto::{CellKind, Protocell, DendriteKind};
+use cortex::{AxonSpace, Synapses};
+#[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
 const PRINT_DEBUG: bool = false;
 
@@ -184,7 +171,7 @@ pub mod tests {
     use super::{Dendrites};
     use cmn::{CelCoords};
     use cmn::{CorticalDims};
-    use synapses::{SynapsesTest};
+    use cortex::{SynapsesTest};
     use tests;
 
     pub trait DendritesTest {
@@ -286,6 +273,7 @@ pub mod tests {
             syn_idz_den..(syn_idz_den + syns_per_den)
         }
 
+        #[allow(dead_code)]
         pub fn dims(&self) -> &CorticalDims {
             &self.layer_dims
         }

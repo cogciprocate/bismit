@@ -1,5 +1,5 @@
 use ocl::{Buffer, EventList};
-use dendrites::{Dendrites};
+use cortex::Dendrites;
 use cmn::{/*self,*/ CorticalDims};
 use proto::{Protocell};
 

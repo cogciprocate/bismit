@@ -5,14 +5,11 @@ use cmn::{self, ParaHexArray, CorticalDims, Sdr, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
 use ocl::{ProQue, Context, Buffer, EventList, Event};
 use proto::{Cellular, Pyramidal, SpinyStellate, Inhibitory, DendriteKind};
-
-use axon_space::AxonSpace;
-use minicolumns::Minicolumns;
-use iinn::InhibitoryInterneuronNetwork;
-use pyramidals::PyramidalLayer;
-use spiny_stellates::SpinyStellateLayer;
 use sensory_filter::SensoryFilter;
 use thalamus::Thalamus;
+
+use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer, 
+    SpinyStellateLayer};
 
 // Intel/Linux debug mode:
 const KERNEL_DEBUG_MODE: bool = true;
@@ -628,7 +625,7 @@ pub mod tests {
     use rand::distributions::{IndependentSample, Range as RandRange};
 
     use super::*;
-    use axon_space::{AxonSpaceTest};
+    use cortex::{AxonSpaceTest};
     use cmn::{CelCoords};
     use map::{AreaMapTest};
 

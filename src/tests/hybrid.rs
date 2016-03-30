@@ -2,9 +2,7 @@ use std::iter;
 use std::io::{self, Write};
 
 
-use dendrites::{Dendrites};
-use pyramidals::{PyramidalLayer};
-use cortex::{Cortex};
+use cortex::{Cortex, Dendrites, PyramidalLayer};
 use cmn::{self, DataCellLayer, DataCellLayerTest};
 use tests::util;
 

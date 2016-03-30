@@ -5,7 +5,7 @@ use map::{AreaMap, SrcSlices, SrcIdxCache, SynSrc};
 use ocl::{ProQue, SpatialDims, Buffer, EventList, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use proto::{CellKind, Protocell, DendriteKind};
-use axon_space::{AxonSpace};
+use cortex::AxonSpace;
 
 #[cfg(test)]
 pub use self::tests::{SynCoords, SynapsesTest};
@@ -413,7 +413,7 @@ pub mod tests {
 
     use cmn::{CelCoords};
     use cmn::{CorticalDims};
-    use dendrites::{self};
+    use super::super::dendrites::{self};
     use super::{Synapses};
 
     const PRINT_DEBUG_INFO: bool = false;

@@ -3,7 +3,7 @@ use std::ops::{Range};
 
 use ocl::Buffer;
 use ocl::traits::OclPrm;
-use cortical_area::CorticalArea;
+use cortex::CorticalArea;
 use cmn::{self, DataCellLayer};
 
 const PRINT_DETAILS: bool = false;

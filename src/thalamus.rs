@@ -3,8 +3,8 @@ use std::collections::{HashMap};
 
 use cmn::{self, Sdr, CmnError};
 use map::{AreaMap, LayerTags};
-use ocl::{ EventList};
-use cortical_area:: { CorticalAreas };
+use ocl::EventList;
+use cortex::CorticalAreas;
 use proto::{ProtoareaMaps, ProtolayerMaps, Thalamic};
 
 use input_source::{InputSource, InputSources};
