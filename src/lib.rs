@@ -26,6 +26,6 @@ pub use ocl::Event as OclEvent;
 
 pub use self::cortex::{ Cortex, CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer, 
 	SpinyStellateLayer, Dendrites };
-pub use self::external_source::ExternalSourceTract;
+pub use self::external_source::{ExternalSourceTract, ExternalSourceKind};
 pub use self::map::SliceTractMap;
 pub use self::tyro::Tyro;

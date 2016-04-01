@@ -1,12 +1,12 @@
+mod idx_data;
+mod glyph_buckets;
+mod glyph_sequences;
+pub mod idx_streamer;
+
 pub use self::idx_streamer::IdxStreamer;
 pub use self::idx_data::IdxData;
 pub use self::glyph_buckets::GlyphBuckets;
 pub use self::glyph_sequences::GlyphSequences;
-
-pub mod idx_streamer;
-mod idx_data;
-mod glyph_buckets;
-mod glyph_sequences;
 
 use cmn::{TractFrameMut, ParaHexArray};
 

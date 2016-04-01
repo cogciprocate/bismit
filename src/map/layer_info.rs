@@ -27,7 +27,7 @@ impl LayerInfo {
     // [FIXME]: TODO: Clean up and optimize.
     // [FIXME]: TODO: Return result and get rid of panics, et al.
     pub fn new(protolayer: &Protolayer, pamap: &ProtoareaMap, pamaps: &ProtoareaMaps, 
-                plmaps: &ProtolayerMaps, input_sources: &HashMap<String, ExternalSource>, 
+                plmaps: &ProtolayerMaps, input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>, 
                 slc_total: &mut u8) -> LayerInfo 
     {
         let protolayer = protolayer.clone();
@@ -105,7 +105,7 @@ impl LayerInfo {
 
                     let (src_layer_dims, src_layer_axn_kind) = match src_layer_map.kind() {
                         &LayerMapKind::Thalamic => {
-                            let in_src = input_sources.get(src_area_name)
+                            let &(ref in_src, _) = input_sources.get(src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                     '{}'", src_area_name));
                             let in_src_layer = in_src.layer(src_layer.tags());

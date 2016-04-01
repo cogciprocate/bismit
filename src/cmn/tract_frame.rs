@@ -10,7 +10,9 @@ pub struct TractFrame<'a> {
 impl<'a> TractFrame<'a> {
     #[inline]
     pub fn new<D: Into<TractDims>>(frame: &'a [u8], dims: D) -> TractFrame<'a> {
-        TractFrame { frame: frame, dims: dims.into() }
+        let dims = dims.into();
+        assert_eq!(dims.to_len(), frame.len());
+        TractFrame { frame: frame, dims: dims }
     }
 
     #[inline]
@@ -40,7 +42,9 @@ pub struct TractFrameMut<'a> {
 impl<'a> TractFrameMut<'a> {
     #[inline]
     pub fn new<D: Into<TractDims>>(frame: &'a mut [u8], dims: D) -> TractFrameMut<'a> {
-        TractFrameMut { frame: frame, dims: dims.into() }
+        let dims = dims.into();
+        assert_eq!(dims.to_len(), frame.len());
+        TractFrameMut { frame: frame, dims: dims }
     }
 
     #[inline]

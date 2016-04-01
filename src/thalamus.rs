@@ -1,24 +1,28 @@
 //! [FIXME]: Every single hash lookup requires a heap allocation (`String`).
-//! - Revamp hashing with strings as a key. Options:
-//!     - Convert area names to indexes (preferred). Use a table stored
-//!       somewhere to look up names for display.
-//!     - Precompute hash.
-//!     - Store strings in a separate vector (stored in cortex) and put a
-//!       reference in the key.
-//!         - Will need some sort of global lookup system. Bleh.
-//!     - Thing of something that sucks less.
+//! This is obviously very wasteful and is temporary until one of the
+//! following can be implemented:
+//! - Convert area names to indexes (preferred). Use a table stored
+//!     somewhere to look up names for display.
+//!     - Use a hashmap to resolve area ids to area names in the event of an
+//!       error. Store this hashmap both on `TractAreaCache`. Each
+//!       `CorticalArea` will, of course, also have a copy of its own area id.
+//!     - Possibly have `ProtoareaMaps` initially create the id list.
+//! - Precompute hash.
+//! - Store strings in a separate vector (stored in cortex) and put a
+//!   reference in the key.
+//!     - Will need some sort of global lookup system. Bleh.
+//! - Think of something else (but top opt looks good).
 //! 
 //!
 
 use std::ops::Range;
 use std::collections::HashMap;
 
-use cmn::{self, Sdr, CmnError};
+use cmn::{self, CmnError};
 use map::{AreaMap, LayerTags};
 use ocl::EventList;
 use cortex::CorticalAreas;
 use proto::{ProtoareaMaps, ProtolayerMaps, Thalamic};
-
 use external_source::ExternalSource;
 
 
@@ -28,7 +32,7 @@ use external_source::ExternalSource;
 //         - output: from layer / area
 pub struct Thalamus {
     tract: ThalamicTract,
-    input_sources: HashMap<String, ExternalSource>,
+    input_sources: HashMap<String, (ExternalSource, Vec<LayerTags>)>,
     area_maps: HashMap<&'static str, AreaMap>,
 }
 
@@ -39,8 +43,8 @@ impl Thalamus {
         // let area_count = pamaps.maps().len();
 
         let mut tract = ThalamicTract::new();
-        let mut input_sources = HashMap::new();
-        let mut area_maps = HashMap::new();
+        let mut input_sources = HashMap::with_capacity(pamaps.maps().len());
+        let mut area_maps = HashMap::with_capacity(pamaps.maps().len());
 
         /*=============================================================================
         ============================ THALAMIC (INPUT) AREAS ===========================
@@ -48,10 +52,12 @@ impl Thalamus {
         for (&_, pa) in pamaps.maps().iter().filter(|&(_, pa)| 
                     &plmaps[pa.layer_map_name].kind == &Thalamic) 
         {
-            let is = ExternalSource::new(pa, &plmaps[pa.layer_map_name]);
-            input_sources.insert(is.area_name().to_owned(), is).map(|is| panic!("Duplicate \
-                'ExternalSource' keys: [\"{}\"]. Only one external (thalamic) input \
-                source per area is allowed.", is.area_name()));
+            let es = ExternalSource::new(pa, &plmaps[pa.layer_map_name]);
+            let tags = es.layer_tags();
+            input_sources.insert(es.area_name().to_owned(), (es, tags))
+                .map(|es_tup| panic!("Duplicate 'ExternalSource' keys: [\"{}\"]. \
+                    Only one external (thalamic) input source per area is allowed.", 
+                    es_tup.0.area_name()));
         }
 
         /*=============================================================================
@@ -83,11 +89,12 @@ impl Thalamus {
 
     // Multiple source output areas disabled.
     pub fn cycle_external_tracts(&mut self, _: &mut CorticalAreas) {
-        for (area_name, src) in self.input_sources.iter_mut() {
-            for (_, src_layer) in src.layers().iter_mut() {
-                // let (ganglion, events) = self.tract.frame_mut()
+        for (area_name, &mut (ref mut src_area, ref tags_list)) in self.input_sources.iter_mut() {
+            for ((_, src_layer), tags) in src_area.layers().iter_mut().zip(tags_list.iter()) {
+                // let (tract_frame, events) = self.tract.frame_mut(
+                //     &(area_name.to_owned(), src_layer.tags()))
                 //     .expect("Thalamus::cycle_external_tracts()");
-                // src_layer.next(ganglion, events);
+                // src_layer.read_into(src_layer.tags(), tract_frame, events);
             }
         }        
     }

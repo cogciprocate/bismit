@@ -17,7 +17,9 @@ use encode::{IdxStreamer, GlyphSequences};
 /// for the moment.
 ///
 pub trait ExternalSourceTract {
-    fn next(&mut self, layer_idx: usize, tract_frame: &mut TractFrameMut) -> [usize; 3];
+    fn read_into(&mut self, tags: LayerTags, layer_idx: usize, tract_frame: &mut TractFrameMut) 
+        -> [usize; 3];
+    fn cycle_next(&mut self);
 }
 
 #[allow(unused_variables)]
@@ -42,21 +44,6 @@ pub struct ExternalSourceLayer {
 }
 
 impl ExternalSourceLayer {
-    // [FIXME] Multiple output target areas disabled.
-    pub fn next(&mut self, tract: &mut [u8], _: &mut EventList) {
-        // // This is temp (mult out tar areas): DEPRICATING: 
-        // debug_assert!(self.targets.len() == 1);
-
-        // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
-        // let _ = match self.src_kind {
-        //     ExternalSourceKind::IdxStreamer(ref mut ig) |
-        //     ExternalSourceKind::Custom(ref mut ig)
-        //         => { ig.next(0, tract) },
-        //     ExternalSourceKind::GlyphSequences(ref mut gs) => gs.next(0, tract),
-        //     _ => [0; 3],
-        // };
-    }
-
     pub fn set_dims(&mut self, dims: Option<CorticalDims>) {
         self.dims = dims;
     }
@@ -85,7 +72,7 @@ impl ExternalSourceLayer {
 // - Must pass layer count to the input 'generator' and have it accept a
 //   multi-headed mutable slice when cycled.
 pub struct ExternalSource {
-    area_name: &'static str,
+    area_name: String,
     src_kind: ExternalSourceKind,
     // layers: HashMap<LayerTags, ExternalSourceLayer, BuildHasherDefault<XxHash>>,
     layers: HashMap<LayerTags, ExternalSourceLayer>,
@@ -162,7 +149,7 @@ impl ExternalSource {
         };
 
         ExternalSource {
-            area_name: pamap.name,
+            area_name: pamap.name.to_owned(),
             layers: layers,
             // layer_tags: layer_tags, 
             src_kind: src_kind,
@@ -172,19 +159,43 @@ impl ExternalSource {
         }
     }
 
+    /// Reads input data into a tract.
+    pub fn read_into(&mut self, tags: LayerTags, tract: &mut [u8], _: &mut EventList) {
+        // // This is temp (mult out tar areas): DEPRICATING: 
+        // debug_assert!(self.targets.len() == 1);
+
+        let mut tf = TractFrameMut::new(tract, self.layers[&tags].dims().unwrap());
+
+        // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
+        let _ = match self.src_kind {
+            ExternalSourceKind::IdxStreamer(ref mut es) | ExternalSourceKind::Custom(ref mut es) => {
+                es.read_into(tags, 0, &mut tf) 
+            },
+            ExternalSourceKind::GlyphSequences(ref mut gs) => {
+                gs.read_into(tags, 0, &mut tf)
+            },
+            _ => [0; 3],
+        };
+    }
+
     pub fn layers(&mut self) -> &mut HashMap<LayerTags, ExternalSourceLayer> {
         &mut self.layers
     }
-
-    // pub fn layers_iter_mut<'a>(&'a mut self) -> IterMut<'a, LayerTags, ExternalSourceLayer> {
-    //     self.layers.iter_mut()
-    // }
 
     pub fn layer(&self, tags: LayerTags) -> &ExternalSourceLayer {
         self.layers.get(&tags).expect(&format!("ExternalSource::layer(): Invalid tags: {:?}", tags))
     }
 
-    pub fn area_name(&self) -> &'static str {
-        self.area_name
+    pub fn layer_tags(&self) -> Vec<LayerTags> {
+        let mut tags = Vec::with_capacity(self.layers.len());
+
+        for (_, layer) in self.layers.iter() {
+            tags.push(layer.tags());
+        }
+        tags
+    }
+
+    pub fn area_name<'a>(&'a self) -> &'a str {
+        &self.area_name
     }
 }

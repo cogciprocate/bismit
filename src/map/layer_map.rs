@@ -19,7 +19,7 @@ pub struct LayerMap {
 
 impl LayerMap {
     pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps, 
-            input_sources: &HashMap<String, ExternalSource>) -> LayerMap 
+            input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>) -> LayerMap 
     {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...", 
             pamap.name, mt = cmn::MT);

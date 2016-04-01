@@ -94,8 +94,9 @@ impl GlyphSequences {
 }
 
 impl ExternalSourceTract for GlyphSequences {
-    #[inline]
-    fn next(&mut self, layer_idx: usize, tract_frame: &mut TractFrameMut) -> [usize; 3] {
+    fn read_into(&mut self, tags: LayerTags, layer_idx: usize, tract_frame: &mut TractFrameMut) 
+            -> [usize; 3]
+    {
         let glyph_dims = self.buckets.glyph_dims();
         let (next_seq_idx, next_glyph_id) = self.cursor.next(&self.sequences);
         let glyph: &[u8] = self.buckets.next_glyph(next_glyph_id);
@@ -110,6 +111,10 @@ impl ExternalSourceTract for GlyphSequences {
             glyph, tract_frame);
 
         [next_glyph_id, next_seq_idx, 0]
+    }
+
+    fn cycle_next(&mut self) {
+        
     }
 }
 

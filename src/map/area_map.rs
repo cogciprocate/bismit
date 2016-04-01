@@ -25,7 +25,7 @@ pub struct AreaMap {
 
 impl AreaMap {
     pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps,
-            input_sources: &HashMap<String, ExternalSource>) -> AreaMap 
+            input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>) -> AreaMap 
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name, 
             pamap.eff_areas(), pamap.aff_areas(), mt = cmn::MT);

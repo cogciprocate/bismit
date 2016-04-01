@@ -1,6 +1,7 @@
 // use std::path::PathBuf;
 use find_folder::Search;
 use cmn::{CorticalDims, Sdr, TractFrameMut};
+use map::LayerTags;
 use external_source::ExternalSourceTract;
 use super::IdxData;
 
@@ -145,7 +146,9 @@ impl IdxStreamer {
 }
 
 impl ExternalSourceTract for IdxStreamer {
-    fn next(&mut self, layer_idx: usize, tract_frame: &mut TractFrameMut) -> [usize; 3] {
+    fn read_into(&mut self, tags: LayerTags, layer_idx: usize, tract_frame: &mut TractFrameMut) 
+            -> [usize; 3] 
+    {
         assert!(tract_frame.dims() == &self.layer_dims);
         assert!((self.image_len()) <= tract_frame.dims().to_len(), 
             "Ganglion vector size must be greater than or equal to IDX image size");        
@@ -161,7 +164,7 @@ impl ExternalSourceTract for IdxStreamer {
 
         match self.idx_data.dims().len() {
             3 => self.encode_2d_image(&self.idx_data.data()[img_idz..img_idn], tract_frame),
-            2 => panic!("\nOne dimensional (linear) idx images not yet supported."),
+            2 => panic!("\nOne dimensional (linear) idx images not yet supported (trival to add)."),
             1 => self.encode_scalar(&self.idx_data.data()[img_idz..img_idn], tract_frame),
             _ => panic!("\nIdx files with more than three or less than one dimension(s) not supported."),
         }
@@ -169,6 +172,10 @@ impl ExternalSourceTract for IdxStreamer {
         let prev_frame = self.frame_counter;
         self.increment_frame();
         [prev_frame, 0, 0]
+    }
+
+    fn cycle_next(&mut self) {
+        
     }
 }
 
