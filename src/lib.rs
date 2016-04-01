@@ -14,10 +14,10 @@ extern crate twox_hash;
 mod thalamus;
 mod sensory_filter;
 mod external_source;
-mod map;
 mod encode;
 mod cortex;
 mod tyro;
+pub mod map;
 
 #[cfg(test)] pub mod tests;
 
@@ -27,5 +27,5 @@ pub use ocl::Event as OclEvent;
 pub use self::cortex::{ Cortex, CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer, 
 	SpinyStellateLayer, Dendrites };
 pub use self::external_source::{ExternalSourceTract, ExternalSourceKind};
-pub use self::map::SliceTractMap;
+pub use self::map::{SliceTractMap, LayerTags};
 pub use self::tyro::Tyro;

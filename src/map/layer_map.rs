@@ -70,7 +70,7 @@ impl LayerMap {
     }
 
     // [FIXME] TODO: Cache results (use TractArea cache style).
-    pub fn layer_info(&self, tags: LayerTags) -> Vec<&LayerInfo> {
+    pub fn layer_info_by_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
         self.index.iter().filter(|li| li.tags().contains(tags)).map(|li| li).collect()
     }
 
@@ -86,7 +86,7 @@ impl LayerMap {
     pub fn layer_src_info(&self, tags: LayerTags) -> Vec<&SourceLayerInfo> {
         let mut src_layers = Vec::with_capacity(8);
 
-        for layer in self.layer_info(tags).iter() {
+        for layer in self.layer_info_by_tags(tags).iter() {
             for src_layer in layer.sources().iter() {
                 debug_assert!(src_layer.tags().meshes(tags.mirror_io()));
                 src_layers.push(src_layer);
@@ -102,7 +102,7 @@ impl LayerMap {
 
     pub fn slc_src_layer_info(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&SourceLayerInfo> {
         let mut src_layer_info = Vec::with_capacity(8);
-        let layer_info = self.layer_info(layer_tags);
+        let layer_info = self.layer_info_by_tags(layer_tags);
 
         for lyr in layer_info {            
             for src_lyr in lyr.sources() {

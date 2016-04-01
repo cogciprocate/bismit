@@ -63,13 +63,12 @@ impl IdxStreamer {
         }
     }
 
-    #[inline]
     pub fn loop_frames(mut self, frames_to_loop: u32) -> IdxStreamer {
         self.loop_frames = Some(frames_to_loop);
         self
     }    
 
-    #[inline]
+    #[allow(dead_code)]
     pub fn get_raw_frame(&self, frame_idx: usize, tract_frame: &mut Sdr) -> usize {
         assert!(tract_frame.len() == self.layer_dims.columns() as usize);
         assert!(frame_idx < self.frames_count);
@@ -83,7 +82,7 @@ impl IdxStreamer {
         return self.image_len();
     }
 
-    #[inline]
+    #[allow(dead_code)]
     pub fn get_first_byte(&self, frame_idx: usize) -> u8 {
         assert!(frame_idx < self.frames_count);
         let img_idz = frame_idx * self.image_len();
@@ -92,7 +91,6 @@ impl IdxStreamer {
 
     }
 
-    #[inline]
     fn increment_frame(&mut self) {        
         self.repeat_counter += 1;
 
@@ -126,27 +124,24 @@ impl IdxStreamer {
         unimplemented!();
     }
 
-
     // ENCODE_2D_IMAGE(): Horribly unoptimized.
-    #[inline]
     pub fn encode_2d_image(&self, source: &Sdr, target: &mut Sdr) {
         super::encode_2d_image(self.image_dims, &self.layer_dims, self.scale_factor,
             source, &mut TractFrameMut::new(target, &self.layer_dims));
     }    
 
-    #[inline]
     pub fn image_len(&self) -> usize {
         self.image_dims.0 * self.image_dims.1
     }
 
-    #[inline]
+    #[allow(dead_code)]
     pub fn dims(&self) -> &CorticalDims {
         &self.layer_dims
     }
 }
 
 impl ExternalSourceTract for IdxStreamer {
-    fn read_into(&mut self, tags: LayerTags, layer_idx: usize, tract_frame: &mut TractFrameMut) 
+    fn read_into(&mut self, _: LayerTags, tract_frame: &mut TractFrameMut) 
             -> [usize; 3] 
     {
         assert!(tract_frame.dims() == &self.layer_dims);
@@ -170,12 +165,11 @@ impl ExternalSourceTract for IdxStreamer {
         }
 
         let prev_frame = self.frame_counter;
-        self.increment_frame();
         [prev_frame, 0, 0]
     }
 
     fn cycle_next(&mut self) {
-        
+        self.increment_frame();
     }
 }
 

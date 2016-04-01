@@ -96,14 +96,14 @@ impl IdxData {
         }
     }
 
-    // TODO: RETURN RESULT
-    pub fn read(&mut self, buf: &mut [u8]) {
-        match self.file_reader.read_exact(buf) {
-            Err(why) => panic!("\ncouldn't read '{}': {}", self.file_path.display(), 
-                Error::description(&why)),
-            Ok(_) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_dim_sizes_bytes, bytes),
-        }
-    }
+    // // TODO: RETURN RESULT
+    // pub fn read(&mut self, buf: &mut [u8]) {
+    //     match self.file_reader.read_exact(buf) {
+    //         Err(why) => panic!("\ncouldn't read '{}': {}", self.file_path.display(), 
+    //             Error::description(&why)),
+    //         Ok(_) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_dim_sizes_bytes, bytes),
+    //     }
+    // }
 
     // Feels like this probably exists in std somewhere...
     pub fn read_into_vec(&mut self, bytes_to_read: usize, vec: &mut Vec<u8>) {

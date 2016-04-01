@@ -9,7 +9,7 @@ use ocl::{EventList};
 use proto::{ProtoareaMap, Protoinput, ProtolayerMap, Protolayer, AxonKind};
 use encode::{IdxStreamer, GlyphSequences};
 
-// pub type HashMap<String, ExternalSource> = HashMap<String, ExternalSource>;
+// pub type ExternalSourceMap = HashMap<String, ExternalSource>;
 
 /// A highway for input.
 ///
@@ -17,7 +17,7 @@ use encode::{IdxStreamer, GlyphSequences};
 /// for the moment.
 ///
 pub trait ExternalSourceTract {
-    fn read_into(&mut self, tags: LayerTags, layer_idx: usize, tract_frame: &mut TractFrameMut) 
+    fn read_into(&mut self, tags: LayerTags, tract_frame: &mut TractFrameMut) 
         -> [usize; 3];
     fn cycle_next(&mut self);
 }
@@ -164,15 +164,22 @@ impl ExternalSource {
         // // This is temp (mult out tar areas): DEPRICATING: 
         // debug_assert!(self.targets.len() == 1);
 
-        let mut tf = TractFrameMut::new(tract, self.layers[&tags].dims().unwrap());
+        let dims = self.layers[&tags].dims().expect(&format!("Dimensions don't exist for \
+            external input area: \"{}\", tags: '{:?}' ", self.area_name, tags));
+
+        debug_assert!(dims.to_len() == tract.len(), "Dimensional mismatch for external input \
+            area: \"{}\", tags: '{:?}', layer dims: {:?}, tract len: {}", self.area_name, tags,
+            dims, tract.len());
+
+        let mut tf = TractFrameMut::new(tract, dims);
 
         // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
         let _ = match self.src_kind {
             ExternalSourceKind::IdxStreamer(ref mut es) | ExternalSourceKind::Custom(ref mut es) => {
-                es.read_into(tags, 0, &mut tf) 
+                es.read_into(tags, &mut tf) 
             },
             ExternalSourceKind::GlyphSequences(ref mut gs) => {
-                gs.read_into(tags, 0, &mut tf)
+                gs.read_into(tags, &mut tf)
             },
             _ => [0; 3],
         };

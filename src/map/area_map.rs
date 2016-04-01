@@ -85,7 +85,7 @@ impl AreaMap {
     // NEW
     #[inline]
     pub fn layer_name_by_tags(&self, layer_tags: LayerTags) -> &'static str {
-        let layer_info = self.layers.layer_info(layer_tags);
+        let layer_info = self.layers.layer_info_by_tags(layer_tags);
         assert_eq!(layer_info.len(), 1);
         layer_info[0].name()
     }
@@ -185,9 +185,9 @@ impl AreaMap {
         aff_out_slcs[idz]..(aff_out_slcs[idn] + 1)
     }
 
-    // UPDATE / DEPRICATE / MERGE WITH BELOW
+    // [TODO]: UPDATE / DEPRICATE / MERGE WITH BELOW:
     pub fn axn_base_slc_ids_by_tags(&self, layer_tags: LayerTags) -> Vec<u8> {
-        let layers = self.layers.layer_info(layer_tags);
+        let layers = self.layers.layer_info_by_tags(layer_tags);
         let mut slc_ids = Vec::with_capacity(layers.len());
 
         for &layer in layers.iter() {
@@ -197,23 +197,28 @@ impl AreaMap {
         slc_ids
     }
 
-    // UPDATE / DEPRICATE / MERGE WITH ABOVE
-    pub fn output_layer_info(&self) -> Vec<(LayerTags, u32)> {
-        let layers = self.layers.layer_info(map::OUTPUT);
-        let mut layer_info = Vec::with_capacity(layers.len());
+    // // UPDATE / DEPRICATE / MERGE WITH ABOVE
+    // pub fn output_layer_info(&self) -> Vec<(LayerTags, u32)> {
+    //     let layers = self.layers.layer_info(map::OUTPUT);
+    //     let mut layer_info = Vec::with_capacity(layers.len());
         
-        for &layer in layers.iter() {
-            layer_info.push((layer.tags(), self.dims.columns()));
-        }
+    //     for &layer in layers.iter() {
+    //         layer_info.push((layer.tags(), self.dims.columns()));
+    //     }
 
-        layer_info
+    //     layer_info
+    // }
+
+    // [TODO]: UPDATE / DEPRICATE / MERGE WITH ABOVE (axn_base_slc_ids_by_tags):
+    pub fn output_layer_info(&self) -> Vec<&LayerInfo> {
+        self.layers.layer_info_by_tags(map::OUTPUT)
     }
     
 
     // NEW
     #[inline]
     pub fn psal_layer(&self) -> &LayerInfo {
-        let psal_layer_vec = self.layers.layer_info(map::PSAL);
+        let psal_layer_vec = self.layers.layer_info_by_tags(map::PSAL);
         assert_eq!(psal_layer_vec.len(), 1);
         psal_layer_vec[0]
      }
@@ -221,14 +226,14 @@ impl AreaMap {
      // NEW
      #[inline]
      pub fn ptal_layer(&self) -> &LayerInfo {
-        let ptal_layer_vec = self.layers.layer_info(map::PTAL);
+        let ptal_layer_vec = self.layers.layer_info_by_tags(map::PTAL);
         assert_eq!(ptal_layer_vec.len(), 1);
         ptal_layer_vec[0]
      }     
 
     // NEW
     pub fn axn_range_by_tags(&self, layer_tags: LayerTags) -> Range<u32> {                
-        let layers = self.layers.layer_info(layer_tags);
+        let layers = self.layers.layer_info_by_tags(layer_tags);
         assert!(layers.len() == 1, "AreaMap::axn_range_by_tags(): Axon range \
             can not be calculated for more than one layer at a time. Flags: {:?}",
             layer_tags);

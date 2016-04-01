@@ -19,7 +19,7 @@ use std::ops::Range;
 use std::collections::HashMap;
 
 use cmn::{self, CmnError};
-use map::{AreaMap, LayerTags};
+use map::{self, AreaMap, LayerTags};
 use ocl::EventList;
 use cortex::CorticalAreas;
 use proto::{ProtoareaMaps, ProtolayerMaps, Thalamic};
@@ -63,18 +63,26 @@ impl Thalamus {
         /*=============================================================================
         =================================== ALL AREAS =================================
         =============================================================================*/
-        for (&area_name, pa) in pamaps.maps().iter() {    
-            let area_map = AreaMap::new(pa, &plmaps, &pamaps, &input_sources);
+        for (&area_name, pamap) in pamaps.maps().iter() {    
+            let area_map = AreaMap::new(pamap, &plmaps, &pamaps, &input_sources);
+            
+            {
+                let output_layers = area_map.layers().layer_info_by_tags(map::OUTPUT);
 
-            let layer_info = area_map.output_layer_info();
-
-            for &(tags, cols) in layer_info.iter() {
-                // NEED DIMS
-                tract.add_area(area_name.to_owned(), tags, cols as usize);
+                for layer in output_layers.iter() {
+                    // NEED DIMS
+                    // let dims = if tags.contains(map::SPATIAL) {
+                    //     pamap.dims.clone_with_depth(layer_depth)
+                    // } else {
+                    //     debug_assert!(tags.contains(map::HORIZONTAL));
+                    //     None
+                    // };
+                    tract.add_area(area_name.to_owned(), layer.tags(), pamap.dims().columns() as usize);
+                }
+                println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", output layer info: {:?}.", 
+                    area_name, output_layers, mt = cmn::MT);
+                assert!(output_layers.len() > 0, "Areas must have at least one afferent or efferent area.");
             }
-            println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", output layer info: {:?}.", 
-                area_name, layer_info, mt = cmn::MT);
-            assert!(layer_info.len() > 0, "Areas must have at least one afferent or efferent area.");
 
             area_maps.insert(area_name, area_map);    
             
@@ -90,11 +98,17 @@ impl Thalamus {
     // Multiple source output areas disabled.
     pub fn cycle_external_tracts(&mut self, _: &mut CorticalAreas) {
         for (area_name, &mut (ref mut src_area, ref tags_list)) in self.input_sources.iter_mut() {
-            for ((_, src_layer), tags) in src_area.layers().iter_mut().zip(tags_list.iter()) {
-                // let (tract_frame, events) = self.tract.frame_mut(
-                //     &(area_name.to_owned(), src_layer.tags()))
-                //     .expect("Thalamus::cycle_external_tracts()");
-                // src_layer.read_into(src_layer.tags(), tract_frame, events);
+            // for (_, src_layer) in src_area.layers().iter_mut() {
+            //     let (tract_frame, events) = self.tract.frame_mut(
+            //         &(area_name.to_owned(), src_layer.tags()))
+            //         .expect("Thalamus::cycle_external_tracts()");
+            //     src_layer.read_into(src_layer.tags(), tract_frame, events);
+            // }
+
+            for &tags in tags_list.iter() {
+                let (tract_frame, events) = self.tract.frame_mut(&(area_name.to_owned(), tags))
+                    .expect("Thalamus::cycle_external_tracts()");
+                src_area.read_into(tags, tract_frame, events);
             }
         }        
     }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use rand::distributions::{IndependentSample, Range};
 use rand;
 use cmn::{CorticalDims, TractFrameMut};
-use map::LayerTags;
+use map::{self, LayerTags};
 use external_source::{ExternalSourceTract, ExternalSourceLayer};
 use encode::GlyphBuckets;
 use proto::AxonKind;
@@ -94,21 +94,29 @@ impl GlyphSequences {
 }
 
 impl ExternalSourceTract for GlyphSequences {
-    fn read_into(&mut self, tags: LayerTags, layer_idx: usize, tract_frame: &mut TractFrameMut) 
+    fn read_into(&mut self, tags: LayerTags, tract_frame: &mut TractFrameMut) 
             -> [usize; 3]
     {
         let glyph_dims = self.buckets.glyph_dims();
         let (next_seq_idx, next_glyph_id) = self.cursor.next(&self.sequences);
         let glyph: &[u8] = self.buckets.next_glyph(next_glyph_id);
 
-        assert!(&self.spt_layer_dims == tract_frame.dims());
-        assert!(self.spt_layer_dims.u_size() as usize == glyph_dims.0);
-        assert!(self.spt_layer_dims.v_size() as usize == glyph_dims.1);
-
-        // let tract_frame = TractFrameMut::new(sdr, &self.layer_dims);
-
-        super::encode_2d_image(glyph_dims, &self.spt_layer_dims, self.scale,
-            glyph, tract_frame);
+        if tags.meshes(map::FF_OUT) {
+            assert!(&self.spt_layer_dims == tract_frame.dims());
+            assert_eq!(self.spt_layer_dims.u_size() as usize, glyph_dims.0);
+            assert_eq!(self.spt_layer_dims.v_size() as usize, glyph_dims.1);            
+            super::encode_2d_image(glyph_dims, &self.hrz_layer_dims, self.scale,
+                glyph, tract_frame);
+        } else if tags.meshes(map::NS_OUT) {
+            assert!(&self.hrz_layer_dims == tract_frame.dims());
+            assert_eq!(self.hrz_layer_dims.u_size() as usize, glyph_dims.0);
+            assert_eq!(self.hrz_layer_dims.v_size() as usize, glyph_dims.1);
+            // ENCODE THE HRZ BUSINESS
+            // super::encode_2d_image(glyph_dims, &self.spt_layer_dims, self.scale,
+            //     glyph, tract_frame);
+        } else {
+            panic!("GlyphSequences::read_into(): Invalid tags: '{:?}'.", tags);
+        }
 
         [next_glyph_id, next_seq_idx, 0]
     }
