@@ -312,7 +312,7 @@ impl CorticalArea {
     fn intake(&mut self, layer_tags: LayerTags, thal: &mut Thalamus) {
         for src_layer in self.area_map.layers().layer_src_area_names_by_tags(layer_tags) {
             self.write_input(
-                thal.ganglion(src_layer, layer_tags.mirror_io())
+                thal.tract_frame(src_layer, layer_tags.mirror_io())
                     .expect("CorticalArea::output()"),
                 layer_tags,
             );
@@ -322,7 +322,7 @@ impl CorticalArea {
     // Read output from axon space and write to thalamus.
     fn output(&self, layer_tags: LayerTags, thal: &mut Thalamus) {
         self.read_output(
-            thal.ganglion_mut(self.name, layer_tags)
+            thal.tract_frame_mut(self.name, layer_tags)
                 .expect("CorticalArea::output()"),
             layer_tags, 
         );

@@ -43,7 +43,7 @@ pub struct ExternalSourceLayer {
 
 impl ExternalSourceLayer {
     // [FIXME] Multiple output target areas disabled.
-    pub fn next(&mut self, tract: &mut TractFrameMut, _: &mut EventList) {
+    pub fn next(&mut self, tract: &mut [u8], _: &mut EventList) {
         // // This is temp (mult out tar areas): DEPRICATING: 
         // debug_assert!(self.targets.len() == 1);
 

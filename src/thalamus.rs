@@ -1,7 +1,7 @@
 use std::ops::Range;
 use std::collections::HashMap;
 
-use cmn::{self, Sdr, CmnError, TractFrame, TractFrameMut};
+use cmn::{self, Sdr, CmnError};
 use map::{AreaMap, LayerTags};
 use ocl::EventList;
 use cortex::CorticalAreas;
@@ -81,28 +81,28 @@ impl Thalamus {
         }        
     }
 
-    // [DEPRICATED] in favor of `::tract_frame`
-    pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
-            -> Result<(&EventList, &Sdr), CmnError>
-    {         
-        self.tract.ganglion(src_area_name, layer_mask)
-    }
+    // // [DEPRICATED] in favor of `::tract_frame`
+    // pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
+    //         -> Result<(&EventList, &Sdr), CmnError>
+    // {         
+    //     self.tract.ganglion(src_area_name, layer_mask)
+    // }
 
     pub fn tract_frame(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
-            -> Result<(&EventList, &TractFrame), CmnError>
+            -> Result<(&EventList, &[u8]), CmnError>
     {         
         self.tract.frame(src_area_name, layer_mask)
     }
 
-    // [DEPRICATED] in favor of `::tract_frame_mut`
-    pub fn ganglion_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
-            -> Result<(&mut Sdr, &mut EventList), CmnError>
-    {
-        self.tract.ganglion_mut(src_area_name, layer_mask)
-    }
+    // // [DEPRICATED] in favor of `::tract_frame_mut`
+    // pub fn ganglion_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
+    //         -> Result<(&mut Sdr, &mut EventList), CmnError>
+    // {
+    //     self.tract.ganglion_mut(src_area_name, layer_mask)
+    // }
 
     pub fn tract_frame_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
-            -> Result<(&mut TractFrameMut, &mut EventList), CmnError>
+            -> Result<(&mut [u8], &mut EventList), CmnError>
     {         
         self.tract.frame_mut(src_area_name, layer_mask)
     }
@@ -147,8 +147,18 @@ impl ThalamicTract {
         self
     }
 
-    fn ganglion(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
-            -> Result<(&EventList, &Sdr), CmnError>
+    // fn ganglion(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
+    //         -> Result<(&EventList, &Sdr), CmnError>
+    // {
+    //     let ta = try!(self.tract_areas.get(src_area_name, layer_tags));
+    //     let range = ta.range();
+    //     let events = ta.events();
+        
+    //     Ok((events, &self.ganglion[range]))
+    // }
+
+    fn frame(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
+            -> Result<(&EventList, &[u8]), CmnError>
     {
         let ta = try!(self.tract_areas.get(src_area_name, layer_tags));
         let range = ta.range();
@@ -157,36 +167,24 @@ impl ThalamicTract {
         Ok((events, &self.ganglion[range]))
     }
 
-    fn frame(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
-            -> Result<(&EventList, &TractFrame), CmnError>
-    {
-        let ta = try!(self.tract_areas.get(src_area_name, layer_tags));
-        let range = ta.range();
-        let events = ta.events();
+    // fn ganglion_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
+    //         -> Result<(&mut Sdr, &mut EventList), CmnError>
+    // {
+    //     let ta = try!(self.tract_areas.get_mut(src_area_name, layer_tags));
+    //     let range = ta.range();
+    //     let events = ta.events_mut();
         
-        // Ok((events, &self.ganglion[range]))
-        unimplemented!();
-    }
+    //     Ok((&mut self.ganglion[range], events))
+    // }
 
-    fn ganglion_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
-            -> Result<(&mut Sdr, &mut EventList), CmnError>
+    fn frame_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
+            -> Result<(&mut [u8], &mut EventList), CmnError>
     {
         let ta = try!(self.tract_areas.get_mut(src_area_name, layer_tags));
         let range = ta.range();
         let events = ta.events_mut();
         
         Ok((&mut self.ganglion[range], events))
-    }
-
-    fn frame_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
-            -> Result<(&mut TractFrameMut, &mut EventList), CmnError>
-    {
-        let ta = try!(self.tract_areas.get_mut(src_area_name, layer_tags));
-        let range = ta.range();
-        let events = ta.events_mut();
-        
-        // Ok((&mut self.ganglion[range], events))
-        unimplemented!();
     }
 
     // fn verify_range(&self, range: &Range<usize>, area_name: &'static str) -> Result<(), CmnError> {
