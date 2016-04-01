@@ -1,27 +1,31 @@
+use std::collections::HashMap;
 use rand::distributions::{IndependentSample, Range};
 use rand;
-use cmn::{Sdr, CorticalDims, TractFrameMut};
-use input_source::InputTract;
+use cmn::{CorticalDims, TractFrameMut};
+use map::LayerTags;
+use external_source::{ExternalSourceTract, ExternalSourceLayer};
 use encode::GlyphBuckets;
+use proto::AxonKind;
 // use map::proto::Protoinput;
 
 pub struct SeqCursor {
-    seq: usize,
-    gly: usize,
+    seq_idx: usize,
+    gly_idx: usize,
 }
 
 impl SeqCursor {
-    fn next(&mut self, sequences: &Vec<Vec<usize>>) -> usize {
-        let next_glyph_id = sequences[self.seq][self.gly];
-        self.gly += 1;
+    fn next(&mut self, sequences: &Vec<Vec<usize>>) -> (usize, usize) {
+        let next_seq_idx = self.seq_idx;
+        let next_glyph_id = sequences[self.seq_idx][self.gly_idx];
+        self.gly_idx += 1;
 
-        if self.gly >= sequences[self.seq].len() { 
-            self.gly = 0;
-            self.seq += 1;
-            if self.seq >= sequences.len() { self.seq = 0; }
+        if self.gly_idx >= sequences[self.seq_idx].len() { 
+            self.gly_idx = 0;
+            self.seq_idx += 1;
+            if self.seq_idx >= sequences.len() { self.seq_idx = 0; }
         }
 
-        next_glyph_id
+        (next_seq_idx, next_glyph_id)
     }
 }
 
@@ -29,21 +33,34 @@ impl SeqCursor {
 pub struct GlyphSequences {
     sequences: Vec<Vec<usize>>,
     buckets: GlyphBuckets,
-    layer_dims: CorticalDims,
+    spt_layer_dims: CorticalDims,
+    hrz_layer_dims: CorticalDims,
     cursor: SeqCursor,
     scale: f32,
 }
 
 impl GlyphSequences {
     #[inline]
-    pub fn new(layer_dims: &CorticalDims, seq_lens: (usize, usize), seq_count: usize, 
-                scale: f32) -> GlyphSequences 
+    pub fn new(layers: &mut HashMap<LayerTags, ExternalSourceLayer>, seq_lens: (usize, usize), 
+                seq_count: usize, scale: f32, hrz_dims: (u32, u32)) -> GlyphSequences
     {
         assert!(seq_lens.1 >= seq_lens.0, "GlyphSequences::new(): Sequence length range ('seq_lens') \
             invalid. High end must at least be equal to low end: '{:?}'.", seq_lens);
+        assert_eq!(layers.len(), 2);
 
-        let buckets = GlyphBuckets::new();        
+        let mut spt_layer_dims: Option<CorticalDims> = None;
+        let mut hrz_layer_dims: Option<CorticalDims> = None;
 
+        for (_, layer) in layers.iter_mut() {
+            if layer.axn_kind() == AxonKind::Horizontal {
+                hrz_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1, 0, None));
+                layer.set_dims(hrz_layer_dims.clone());
+            } else if layer.axn_kind() == AxonKind::Spatial {
+                spt_layer_dims = layer.dims().cloned();
+            }
+        }
+
+        let buckets = GlyphBuckets::new();
         let mut rng = rand::weak_rng();
         let mut sequences = Vec::with_capacity(seq_count);
 
@@ -63,8 +80,10 @@ impl GlyphSequences {
         GlyphSequences { 
             sequences: sequences,
             buckets: buckets,
-            layer_dims: layer_dims.clone(),
-            cursor: SeqCursor { seq: 0, gly: 0 },
+            // layer_dims: [layer_dims.clone(), layer_dims.clone()],
+            spt_layer_dims: spt_layer_dims.expect("GlyphSequences::new(): Spatial dims not set."),
+            hrz_layer_dims: hrz_layer_dims.expect("GlyphSequences::new(): Horizontal dims not set."),
+            cursor: SeqCursor { seq_idx: 0, gly_idx: 0 },
             scale: scale,
         }
     }
@@ -74,28 +93,35 @@ impl GlyphSequences {
     }
 }
 
-impl InputTract for GlyphSequences {
+impl ExternalSourceTract for GlyphSequences {
     #[inline]
-    fn cycle(&mut self, sdr: &mut Sdr) -> usize {
+    fn next(&mut self, layer_idx: usize, tract_frame: &mut TractFrameMut) -> [usize; 3] {
         let glyph_dims = self.buckets.glyph_dims();
-        let next_glyph_id = self.cursor.next(&self.sequences);
+        let (next_seq_idx, next_glyph_id) = self.cursor.next(&self.sequences);
         let glyph: &[u8] = self.buckets.next_glyph(next_glyph_id);
 
-        let tract_frame = TractFrameMut::new(sdr, &self.layer_dims);
+        assert!(&self.spt_layer_dims == tract_frame.dims());
+        assert!(self.spt_layer_dims.u_size() as usize == glyph_dims.0);
+        assert!(self.spt_layer_dims.v_size() as usize == glyph_dims.1);
 
-        super::encode_2d_image(glyph_dims, &self.layer_dims, self.scale,
+        // let tract_frame = TractFrameMut::new(sdr, &self.layer_dims);
+
+        super::encode_2d_image(glyph_dims, &self.spt_layer_dims, self.scale,
             glyph, tract_frame);
 
-        0
+        [next_glyph_id, next_seq_idx, 0]
     }
 }
 
 
 mod tests {
     #[test]
-    fn glyph_sequences() {
+    fn glyph_sequences_FIXME() {
+        use std::collections::HashMap;
         use encode::GlyphSequences;
         use cmn::CorticalDims;
+        use map::LayerTags;
+        use external_source::ExternalSourceLayer;
 
         let dims = CorticalDims::new(32, 32, 1, 0, None);
 
@@ -103,14 +129,21 @@ mod tests {
             let seq_lens = (i, (i * 2) + 11);
             let seq_count = 79 - i;
 
-            let gss = GlyphSequences::new(&dims, seq_lens, seq_count, 1.0);
+            // [FIXME]: Bring the rest of this back:
 
-            assert!(gss.sequences.len() == seq_count);
+            // let extern_src_lyr = ExternalSourceLayer::
 
-            for seq in gss.sequences() {
-                assert!(seq.len() >= seq_lens.0);
-                assert!(seq.len() <= seq_lens.1);
-            }
+            // // &mut dims
+            // let area_map: HashMap<LayerTags, ExternalSourceLayer> = HashMap::with_capacity(2);
+
+            // let gss = GlyphSequences::new(&mut area_map, seq_lens, seq_count, 1.0, (16, 16));
+
+            // assert!(gss.sequences.len() == seq_count);
+
+            // for seq in gss.sequences() {
+            //     assert!(seq.len() >= seq_lens.0);
+            //     assert!(seq.len() <= seq_lens.1);
+            // }
         }        
     }
 }

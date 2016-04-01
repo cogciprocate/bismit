@@ -14,7 +14,7 @@ pub use self::layer_map::LayerMap;
 pub use self::layer_info::{LayerInfo, SourceLayerInfo};
 pub use self::syn_src_map::{SrcSlices, SrcIdxCache, SynSrc};
 pub use self::slice_tract_map::SliceTractMap;
-pub use self::proto::AxonKind;
+pub use self::proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMap, ProtoareaMaps, AxonKind};
 #[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
 
 
@@ -52,11 +52,11 @@ bitflags! {
 }
 
 impl LayerTags {
-    // [FIXME]: Consider: Return result instead of asserts?
     pub fn with_uid(uid: u32) -> LayerTags {
         LayerTags { bits: uid as u64 }
     }
 
+    // [FIXME]: Consider: Return result instead of asserts?
     pub fn mirror_io(&self) -> LayerTags {
         // debug_assert!(!(self.contains(INPUT) && self.contains(OUTPUT)),
         //     "LayerTags::mirror_io(): LayerTags input / output cannot be flipped if the bitfield \
@@ -96,7 +96,7 @@ impl LayerTags {
         self.contains(other) && self.uid() == other.uid()
     }
 
-    // Presently called from Protolayer::new().
+    // Presently called from Protolayer::new() on a debug build.
     pub fn debug_validate(&self) {
         debug_assert!(!(self.contains(OUTPUT) && self.contains(INPUT)));
         debug_assert!((self.contains(FEEDBACK) || self.contains(FEEDFORWARD)) 

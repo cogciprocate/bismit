@@ -1,7 +1,7 @@
 // use std::convert::Into;
 // use ocl::{ProQue};
 use ocl::traits::MemLen;
-use cmn::ParaHexArray;
+use cmn::{ParaHexArray, TractDims};
 
 /*    CorticalDims: Dimensions of a cortical area in units of cells
         - Used to define both the volume and granularity of a cortical area.
@@ -25,7 +25,7 @@ use cmn::ParaHexArray;
         The 4th parameter, per_cel_l2, is basically components or divisions per cell and can also be thought of as a 4th dimension. It can be positive or negative reflecting whether or not it's bigger or smaller than a cell and it's stored inverted. Don't think too hard about it.
 */
 
-#[derive(PartialEq, Debug, Clone, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CorticalDims {
     //u_size_l2: u8, // in cell-edges (log base 2) (WxHxD: 1x1xN)
     //v_size_l2: u8, // in cell-edges (log2) (1x1xN)
@@ -296,6 +296,14 @@ fn len_components(cells: u32, per_tft_l2: i8, tfts_per_cel: u32) -> u32 {
         tufts << per_tft_l2
     } else {
         tufts >> (0 - per_tft_l2)
+    }
+}
+
+impl PartialEq<TractDims> for CorticalDims {
+    fn eq(&self, other: &TractDims) -> bool {
+        self.v_size == other.v_size() && 
+            self.u_size == other.u_size() &&
+            self.depth() == other.depth()
     }
 }
 

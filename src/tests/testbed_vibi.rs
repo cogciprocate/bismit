@@ -4,11 +4,11 @@ use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horiz
     Sensory, Thalamic, Protocell, Protofilter, Protoinput};
 
 pub fn define_plmaps() -> ProtolayerMaps {
-    const OLFAC_UID: u32 = 654;
+    const MOTOR_UID: u32 = 654;
 
     ProtolayerMaps::new()
         .lmap(ProtolayerMap::new("visual", Sensory)
-            .axn_layer("olfac", map::NS_IN | LayerTags::with_uid(OLFAC_UID), Horizontal)
+            .axn_layer("motor_ctx", map::NS_IN | LayerTags::with_uid(MOTOR_UID), Horizontal)
             .axn_layer("eff_in", map::FB_IN, Spatial)
             .axn_layer("aff_in", map::FF_IN, Spatial)
             .axn_layer("unused", map::UNUSED_TESTING, Spatial)
@@ -24,21 +24,22 @@ pub fn define_plmaps() -> ProtolayerMaps {
         )
 
         .lmap(ProtolayerMap::new("v0_lm", Thalamic)
-            .layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
+            .layer("spatial", 1, map::FF_OUT, Axonal(Spatial))
+            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::with_uid(MOTOR_UID), Axonal(Horizontal))
         )
 
-        .lmap(ProtolayerMap::new("o0_lm", Thalamic)
-            .layer("ganglion", 1, map::NS_OUT | LayerTags::with_uid(OLFAC_UID), Axonal(Horizontal))
-        )
+        // .lmap(ProtolayerMap::new("o0_lm", Thalamic)
+        //     .layer("ganglion", 1, map::NS_OUT | LayerTags::with_uid(OLFAC_UID), Axonal(Horizontal))
+        // )
 }
 
 
 pub fn define_pamaps() -> ProtoareaMaps {
-    const AREA_SIDE: u32 = 16;
+    const AREA_SIDE: u32 = 32;
 
     ProtoareaMaps::new()        
         .area_ext("v0", "v0_lm", AREA_SIDE,
-            Protoinput::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4 },
+            Protoinput::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) },
             None, 
             None,
         )

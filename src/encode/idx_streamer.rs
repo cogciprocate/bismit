@@ -1,7 +1,7 @@
 // use std::path::PathBuf;
 use find_folder::Search;
 use cmn::{CorticalDims, Sdr, TractFrameMut};
-use input_source::InputTract;
+use external_source::ExternalSourceTract;
 use super::IdxData;
 
 //    IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned 
@@ -24,7 +24,7 @@ pub struct IdxStreamer {
 impl IdxStreamer {
     /// # Panics
     /// All sorts of reasons...
-    pub fn new(layer_dims: &CorticalDims, file_path_string: String, cycles_per_frame: usize, 
+    pub fn new(layer_dims: CorticalDims, file_path_string: String, cycles_per_frame: usize, 
                 scale_factor: f32) -> IdxStreamer 
     {
         let file_path = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
@@ -46,7 +46,7 @@ impl IdxStreamer {
         println!("IDXREADER: initialized with dimensions: {:?}", idx_data.dims());
 
         IdxStreamer {
-            layer_dims: layer_dims.clone(),
+            layer_dims: layer_dims,
             cycles_per_frame: cycles_per_frame,
             scale_factor: scale_factor,
             repeat_counter: 0,
@@ -130,7 +130,7 @@ impl IdxStreamer {
     #[inline]
     pub fn encode_2d_image(&self, source: &Sdr, target: &mut Sdr) {
         super::encode_2d_image(self.image_dims, &self.layer_dims, self.scale_factor,
-            source, TractFrameMut::new(target, &self.layer_dims));
+            source, &mut TractFrameMut::new(target, &self.layer_dims));
     }    
 
     #[inline]
@@ -144,10 +144,10 @@ impl IdxStreamer {
     }
 }
 
-impl InputTract for IdxStreamer {
-    fn cycle(&mut self, tract_frame: &mut Sdr) -> usize {
-        assert!(tract_frame.len() == self.layer_dims.columns() as usize);
-        assert!((self.image_len()) <= tract_frame.len(), 
+impl ExternalSourceTract for IdxStreamer {
+    fn next(&mut self, layer_idx: usize, tract_frame: &mut TractFrameMut) -> [usize; 3] {
+        assert!(tract_frame.dims() == &self.layer_dims);
+        assert!((self.image_len()) <= tract_frame.dims().to_len(), 
             "Ganglion vector size must be greater than or equal to IDX image size");        
 
           //       match self.file_reader.enqueue_read(&mut self.idx_data.data()[..]) {
@@ -168,7 +168,7 @@ impl InputTract for IdxStreamer {
 
         let prev_frame = self.frame_counter;
         self.increment_frame();
-        return prev_frame;
+        [prev_frame, 0, 0]
     }
 }
 

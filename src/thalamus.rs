@@ -1,13 +1,13 @@
-use std::ops::{Range};
-use std::collections::{HashMap};
+use std::ops::Range;
+use std::collections::HashMap;
 
-use cmn::{self, Sdr, CmnError};
+use cmn::{self, Sdr, CmnError, TractFrame, TractFrameMut};
 use map::{AreaMap, LayerTags};
 use ocl::EventList;
 use cortex::CorticalAreas;
 use proto::{ProtoareaMaps, ProtolayerMaps, Thalamic};
 
-use input_source::{InputSource, InputSources};
+use external_source::ExternalSource;
 
 
 //    THALAMUS:
@@ -16,13 +16,14 @@ use input_source::{InputSource, InputSources};
 //         - output: from layer / area
 pub struct Thalamus {
     tract: ThalamicTract,
-    input_sources: InputSources,
+    input_sources: HashMap<String, ExternalSource>,
     area_maps: HashMap<&'static str, AreaMap>,
 }
 
 impl Thalamus {
-    pub fn new(plmaps: ProtolayerMaps,    mut pamaps: ProtoareaMaps) -> Thalamus {
+    pub fn new(plmaps: ProtolayerMaps, mut pamaps: ProtoareaMaps) -> Thalamus {
         pamaps.freeze();
+        let pamaps = pamaps;
         // let area_count = pamaps.maps().len();
 
         let mut tract = ThalamicTract::new();
@@ -30,18 +31,19 @@ impl Thalamus {
         let mut area_maps = HashMap::new();
 
         /*=============================================================================
-        =================================== THALAMIC ==================================
+        ============================ THALAMIC (INPUT) AREAS ===========================
         =============================================================================*/
         for (&_, pa) in pamaps.maps().iter().filter(|&(_, pa)| 
                     &plmaps[pa.layer_map_name].kind == &Thalamic) 
-        {            
-            let is = InputSource::new(pa, &plmaps[pa.layer_map_name]);
-            input_sources.insert((is.area_name(), is.tags()), is).map(|is| panic!("Duplicate \
-                'InputSource' keys: (area: \"{}\", tags: '{:?}')", is.area_name(), is.tags()));
+        {
+            let is = ExternalSource::new(pa, &plmaps[pa.layer_map_name]);
+            input_sources.insert(is.area_name().to_owned(), is).map(|is| panic!("Duplicate \
+                'ExternalSource' keys: [\"{}\"]. Only one external (thalamic) input \
+                source per area is allowed.", is.area_name()));
         }
 
         /*=============================================================================
-        ====================================== ALL ====================================
+        =================================== ALL AREAS =================================
         =============================================================================*/
         for (&area_name, pa) in pamaps.maps().iter() {    
             let area_map = AreaMap::new(pa, &plmaps, &pamaps, &input_sources);
@@ -49,6 +51,7 @@ impl Thalamus {
             let layer_info = area_map.output_layer_info();
 
             for &(tags, cols) in layer_info.iter() {
+                // NEED DIMS
                 tract.add_area(area_name, tags, cols as usize);
             }
 
@@ -68,35 +71,46 @@ impl Thalamus {
     }
 
     // Multiple source output areas disabled.
-    #[inline]
     pub fn cycle_external_tracts(&mut self, _: &mut CorticalAreas) {
-        for (&(_, _), src) in self.input_sources.iter_mut() {
-            let (ganglion, events) = self.tract.ganglion_mut(src.area_name(), 
-                src.tags()).expect("Thalamus::cycle_external_tracts()");
-            src.cycle(ganglion, events);
+        for (_, src) in self.input_sources.iter_mut() {
+            // for (_, src_layer) in src.layers.iter_mut() {
+            //     let (ganglion, events) = self.tract.tract_frame_mut(src.area_name(), 
+            //         src_layer.tags()).expect("Thalamus::cycle_external_tracts()");
+            //     src_layer.next(ganglion, events);
+            // }
         }        
     }
 
-    #[inline]
+    // [DEPRICATED] in favor of `::tract_frame`
     pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
             -> Result<(&EventList, &Sdr), CmnError>
     {         
         self.tract.ganglion(src_area_name, layer_mask)
     }
 
-    #[inline]
+    pub fn tract_frame(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
+            -> Result<(&EventList, &TractFrame), CmnError>
+    {         
+        self.tract.frame(src_area_name, layer_mask)
+    }
+
+    // [DEPRICATED] in favor of `::tract_frame_mut`
     pub fn ganglion_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
             -> Result<(&mut Sdr, &mut EventList), CmnError>
     {
         self.tract.ganglion_mut(src_area_name, layer_mask)
     }
 
-    #[inline]
+    pub fn tract_frame_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
+            -> Result<(&mut TractFrameMut, &mut EventList), CmnError>
+    {         
+        self.tract.frame_mut(src_area_name, layer_mask)
+    }
+
      pub fn area_maps(&self) -> &HashMap<&'static str, AreaMap> {
          &self.area_maps
     }
 
-    #[inline]
      pub fn area_map(&self, area_name: &'static str) -> &AreaMap {
          &self.area_maps[area_name]
     }
@@ -133,9 +147,8 @@ impl ThalamicTract {
         self
     }
 
-    #[inline]
-    fn ganglion(&mut self, src_area_name: &'static str, layer_tags: LayerTags
-            ) -> Result<(&EventList, &Sdr), CmnError>
+    fn ganglion(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
+            -> Result<(&EventList, &Sdr), CmnError>
     {
         let ta = try!(self.tract_areas.get(src_area_name, layer_tags));
         let range = ta.range();
@@ -144,15 +157,36 @@ impl ThalamicTract {
         Ok((events, &self.ganglion[range]))
     }
 
-    #[inline]
-    fn ganglion_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags
-            ) -> Result<(&mut Sdr, &mut EventList), CmnError>
+    fn frame(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
+            -> Result<(&EventList, &TractFrame), CmnError>
+    {
+        let ta = try!(self.tract_areas.get(src_area_name, layer_tags));
+        let range = ta.range();
+        let events = ta.events();
+        
+        // Ok((events, &self.ganglion[range]))
+        unimplemented!();
+    }
+
+    fn ganglion_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
+            -> Result<(&mut Sdr, &mut EventList), CmnError>
     {
         let ta = try!(self.tract_areas.get_mut(src_area_name, layer_tags));
         let range = ta.range();
         let events = ta.events_mut();
         
         Ok((&mut self.ganglion[range], events))
+    }
+
+    fn frame_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
+            -> Result<(&mut TractFrameMut, &mut EventList), CmnError>
+    {
+        let ta = try!(self.tract_areas.get_mut(src_area_name, layer_tags));
+        let range = ta.range();
+        let events = ta.events_mut();
+        
+        // Ok((&mut self.ganglion[range], events))
+        unimplemented!();
     }
 
     // fn verify_range(&self, range: &Range<usize>, area_name: &'static str) -> Result<(), CmnError> {
@@ -179,7 +213,6 @@ impl TractAreaCache {
         }
     }
 
-    #[inline]
     fn insert(&mut self, src_area_name: &'static str, layer_tags: LayerTags, tract_area: TractArea)
     {
         self.areas.push(tract_area);
@@ -189,7 +222,6 @@ impl TractAreaCache {
                 src_area_name, layer_tags));
     }
 
-    #[inline]
     fn get(&mut self, src_area_name: &'static str, layer_tags: LayerTags
             ) -> Result<&TractArea, CmnError> 
     {
@@ -201,7 +233,6 @@ impl TractAreaCache {
         }
     }
 
-    #[inline]
     fn get_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags
             ) -> Result<&mut TractArea, CmnError> 
     {
@@ -215,7 +246,6 @@ impl TractAreaCache {
         }
     }
 
-    #[inline]
     fn area_search(&mut self, src_area_name: &'static str, layer_tags: LayerTags
             ) -> Result<usize, CmnError> 
     {

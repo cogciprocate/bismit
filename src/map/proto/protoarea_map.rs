@@ -16,7 +16,8 @@ impl <'a>ProtoareaMaps {
     fn add(&mut self, protoarea: ProtoareaMap) {
         let name = protoarea.name;
         //let dims = protoarea.dims;
-        self.maps.insert(name, protoarea);
+        self.maps.insert(name, protoarea)
+            .map(|_| panic!("ProtoareaMap::add(): Duplicate areas: (area: \"{}\")", name));
     }
 
     pub fn area_ext(mut self, 
@@ -28,8 +29,8 @@ impl <'a>ProtoareaMaps {
                 eff_areas_opt: Option<Vec<&'static str>>,
             ) -> ProtoareaMaps 
     {
-        self.add(ProtoareaMap::new(name, layer_map_name, side, protoinput, 
-            filters, eff_areas_opt));
+        self.add(ProtoareaMap::new(name, layer_map_name, side, filters, eff_areas_opt)
+            .input(protoinput));
 
         self
     }
@@ -42,7 +43,7 @@ impl <'a>ProtoareaMaps {
                 eff_areas_opt: Option<Vec<&'static str>>,
             ) -> ProtoareaMaps 
     {
-        self.add(ProtoareaMap::new(name, layer_map_name, side, Protoinput::None, filters, eff_areas_opt));
+        self.add(ProtoareaMap::new(name, layer_map_name, side, filters, eff_areas_opt));
         self
     }
 
@@ -76,7 +77,6 @@ impl <'a>ProtoareaMaps {
 }
 
 
-
 #[derive(PartialEq, Debug, Clone)]
 pub struct ProtoareaMap {
     pub name: &'static str,
@@ -84,6 +84,7 @@ pub struct ProtoareaMap {
     pub dims: CorticalDims,    
     //pub region_kind: LayerMapKind,
     pub input: Protoinput,
+    // inputs: Vec<Protoinput>,
     pub filters: Option<Vec<Protofilter>>,
     aff_areas: Vec<&'static str>,
     eff_areas: Vec<&'static str>,
@@ -94,7 +95,7 @@ impl ProtoareaMap {
                 name: &'static str, 
                 layer_map_name: &'static str,
                 side: u32,
-                input: Protoinput,
+                // input: Protoinput,
                 filters: Option<Vec<Protofilter>>,
                 eff_areas_opt: Option<Vec<&'static str>>,
             ) -> ProtoareaMap 
@@ -111,13 +112,17 @@ impl ProtoareaMap {
             name: name,
             layer_map_name: layer_map_name,
             dims: CorticalDims::new(side, side, 0, 0, None),
-            //dims: CorticalDims::new(width_l2, height_l2, 0, 0),
             //region_kind: region_kind,
-            input: input,
+            input: Protoinput::None,
             filters: filters,
             aff_areas: Vec::with_capacity(4),
             eff_areas: eff_areas,
         }
+    }
+
+    pub fn input(mut self, input: Protoinput) -> ProtoareaMap {
+        self.input = input;
+        self
     }
 
     pub fn name(&self) -> &'static str {
@@ -128,7 +133,7 @@ impl ProtoareaMap {
         &self.dims
     }
 
-    pub fn input(&self) -> &Protoinput {
+    pub fn get_input(&self) -> &Protoinput {
         &self.input
     }
 
@@ -141,48 +146,3 @@ impl ProtoareaMap {
     }
 }
 
-
-
-
-// pub trait ProtoareaMapsTrait {
-//     fn new() -> ProtoareaMaps;
-//     fn add(&mut self, protoarea: ProtoareaMap);
-//     fn area(mut self, name: &'static str, width: u32, height: u32, 
-//         region_kind: &'static str, filters: Option<Vec<Protofilter>>, 
-//         aff_areas: Option<Vec<&'static str>>,
-//     ) -> ProtoareaMaps;
-//     fn freeze(&mut self);
-// }
-
-
-
-// impl Iterator for ProtoareaMaps {
-//     type Item = ProtoareaMap;
-
-//     fn next(&self) -> Option<&ProtoareaMap> {
-//             return self.maps.next();
-//         }
-//         None
-//     }
-// }
-
-
-
-    // OLD -- DEPRICATE
-    // pub fn freeze_old(&mut self) {
-    //     let mut eff_list: Vec<(&'static str, &'static str)> = Vec::with_capacity(5);
-
-    //     for (area_name, area) in self.maps.iter() {
-    //         for aff_area_name in &area.aff_areas {
-    //             eff_list.push((aff_area_name, area_name));
-    //         }
-    //     }
-
-    //     assert!(eff_list.len() <= cmn::MAX_FEEDBACK_AREAS, "areas::ProtoareaMaps::freeze(): \
-    //             An area cannot have more than {} efferent areas.", cmn::MAX_FEEDBACK_AREAS);
-
-    //     for (area_name, eff_area_name) in eff_list {
-    //         let emsg = format!("proto::areas::ProtoareaMaps::freeze(): Area: '{}' not found. ", area_name);
-    //         self.maps.get_mut(area_name).expect(&emsg).eff_areas.push(eff_area_name);
-    //     }
-    // }

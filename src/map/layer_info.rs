@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ops::{Range};
 // use std::slice::{Iter};
 
@@ -5,7 +6,7 @@ use proto::{Protolayer, ProtoareaMap, ProtoareaMaps, ProtolayerMaps, LayerKind, 
     LayerMapKind, AxonKind};
 use cmn::{self, ParaHexArray, CorticalDims};
 use map::{self, LayerTags,};
-use input_source::{InputSources};
+use external_source::ExternalSource;
 
 // const CELLULAR_AXON_KIND: AxonKind = AxonKind::Spatial;
 
@@ -26,7 +27,8 @@ impl LayerInfo {
     // [FIXME]: TODO: Clean up and optimize.
     // [FIXME]: TODO: Return result and get rid of panics, et al.
     pub fn new(protolayer: &Protolayer, pamap: &ProtoareaMap, pamaps: &ProtoareaMaps, 
-                plmaps: &ProtolayerMaps, input_sources: &InputSources, slc_total: &mut u8) -> LayerInfo 
+                plmaps: &ProtolayerMaps, input_sources: &HashMap<String, ExternalSource>, 
+                slc_total: &mut u8) -> LayerInfo 
     {
         let protolayer = protolayer.clone();
         let name = protolayer.name();
@@ -103,12 +105,17 @@ impl LayerInfo {
 
                     let (src_layer_dims, src_layer_axn_kind) = match src_layer_map.kind() {
                         &LayerMapKind::Thalamic => {
-                            let is = input_sources.get(&(src_area_name, src_layer.tags()))
+                            let in_src = input_sources.get(src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
-                                    ('{}', '{:?}')", src_area_name, src_layer.tags()));
-                            (is.dims().clone(), is.axn_kind())
+                                    '{}'", src_area_name));
+                            let in_src_layer = in_src.layer(src_layer.tags());
+                            let in_src_layer_dims = in_src_layer.dims().expect(
+                                &format!("LayerInfo::new(): External source layer dims for layer \
+                                    '{}' in area '{}' is not set.", in_src_layer.name(), 
+                                    src_area_name)
+                                ).clone();
+                            (in_src_layer_dims, in_src_layer.axn_kind())
                         },
-
                         _ => {
                             let depth = src_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
@@ -134,7 +141,7 @@ impl LayerInfo {
                     src_layer_debug.push(format!("{mt}{mt}{mt}{mt}<{}>[\"{}\"]: {:?} | {:?}", src_layer.name(), 
                         src_area_name, tar_slc_range, src_layer.tags(), mt = cmn::MT));
 
-                    sources.push(SourceLayerInfo::new(src_area_name, &src_layer_dims, 
+                    sources.push(SourceLayerInfo::new(src_area_name, src_layer_dims.clone(), 
                         src_layer.tags(), src_layer_axn_kind, next_slc_idz));                        
 
                     // println!("{mt}{mt}{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding source layer: \
@@ -250,7 +257,7 @@ impl LayerInfo {
     }
 }
 
-// fn input_source_from_area(input_sources: &Vec<InputSource>, area_name: &'static str) {
+// fn input_source_from_area(input_sources: &Vec<ExternalSource>, area_name: &'static str) {
 //     let matching_sources = input_sources.iter().filter
 // }
 
@@ -267,7 +274,7 @@ pub struct SourceLayerInfo {
 
 impl SourceLayerInfo {
     #[inline]
-    pub fn new(src_area_name: &'static str, src_layer_dims: &CorticalDims, src_layer_tags: LayerTags, 
+    pub fn new(src_area_name: &'static str, src_layer_dims: CorticalDims, src_layer_tags: LayerTags, 
                 src_axn_kind: AxonKind, tar_slc_idz: u8) -> SourceLayerInfo 
     {
         // let dims = area_dims.clone_with_depth(depth);
@@ -276,7 +283,7 @@ impl SourceLayerInfo {
 
         SourceLayerInfo {
             area_name: src_area_name, 
-            dims: src_layer_dims.clone(),
+            dims: src_layer_dims,
             tags: src_layer_tags, 
             axn_kind: src_axn_kind,
             // depth: depth,

@@ -1,5 +1,6 @@
 use std::fmt::Display;
 use std::ops::Range; 
+use std::collections::HashMap;
 // use std::collections::{BTreeMap};
 
 use ocl::builders::{BuildOpt, ProgramBuilder};
@@ -7,7 +8,7 @@ use proto::{ProtolayerMaps, ProtoareaMaps, ProtoareaMap, LayerMapKind, Protofilt
     DendriteKind};
 use cmn::{self, CorticalDims};
 use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo};
-use input_source::InputSources;
+use external_source::ExternalSource;
 
 
 #[derive(Clone)]
@@ -24,7 +25,7 @@ pub struct AreaMap {
 
 impl AreaMap {
     pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps,
-            input_sources: &InputSources) -> AreaMap 
+            input_sources: &HashMap<String, ExternalSource>) -> AreaMap 
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name, 
             pamap.eff_areas(), pamap.aff_areas(), mt = cmn::MT);
@@ -199,7 +200,7 @@ impl AreaMap {
     // UPDATE / DEPRICATE / MERGE WITH ABOVE
     pub fn output_layer_info(&self) -> Vec<(LayerTags, u32)> {
         let layers = self.layers.layer_info(map::OUTPUT);
-        let mut layer_info = Vec::with_capacity(layers.len());        
+        let mut layer_info = Vec::with_capacity(layers.len());
         
         for &layer in layers.iter() {
             layer_info.push((layer.tags(), self.dims.columns()));

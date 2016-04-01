@@ -39,7 +39,6 @@ impl SliceMap {
 
         let mut axn_idz_ttl = 0u32;
         
-
         for (&slc_id, &layer) in slc_map.iter() {
             let mut add_slice = |slc_dims: SliceDims| {
                 debug_assert_eq!(slc_id as usize, axn_idzs.len());

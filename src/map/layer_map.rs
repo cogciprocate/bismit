@@ -1,11 +1,11 @@
-use std::collections::{BTreeMap};
+use std::collections::{BTreeMap, HashMap};
 // use std::ops::{Range};
 use std::slice::{Iter};
 
 use proto::{ProtoareaMap, ProtoareaMaps, ProtolayerMaps, LayerMapKind};
 use cmn::{self};
-use map::{ LayerTags, LayerInfo, SourceLayerInfo};
-use input_source::{InputSources};
+use map::{LayerTags, LayerInfo, SourceLayerInfo};
+use external_source::ExternalSource;
 
 
 #[derive(Clone)]
@@ -13,15 +13,13 @@ use input_source::{InputSources};
 pub struct LayerMap {
     area_name: &'static str,
     index: Vec<LayerInfo>,
-    // TEMP: Remove or make private.
     depth: u8,
     kind: LayerMapKind,
-    // plmap: ProtolayerMap,
 }
 
 impl LayerMap {
     pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps, 
-            input_sources: &InputSources) -> LayerMap 
+            input_sources: &HashMap<String, ExternalSource>) -> LayerMap 
     {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...", 
             pamap.name, mt = cmn::MT);

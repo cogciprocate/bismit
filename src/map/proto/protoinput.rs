@@ -14,7 +14,7 @@ pub enum Protoinput {
     Zeros,
     IdxStreamer { file_name: String, cyc_per: usize, scale: f32 },
     IdxStreamerLoop { file_name: String, cyc_per: usize, scale: f32, loop_frames: u32 },
-    GlyphSequences { seq_lens: (usize, usize), seq_count: usize, scale: f32 },
+    GlyphSequences { seq_lens: (usize, usize), seq_count: usize, scale: f32, hrz_dims: (u32, u32) },
 }
 
 impl Protoinput {
@@ -27,5 +27,12 @@ impl Protoinput {
 
     pub fn is_none(&self) -> bool {
         !self.is_some()
+    }
+
+    pub fn layer_count(&self) -> usize {
+        match self {
+            &Protoinput::GlyphSequences { .. } => 2,
+            _ => 1,
+        }
     }
 }

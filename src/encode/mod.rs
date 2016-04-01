@@ -52,7 +52,7 @@ pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_si
 
 // ENCODE_2D_IMAGE(): Horribly unoptimized.
 pub fn encode_2d_image<P: ParaHexArray>(src_dims: (usize, usize), tar_dims: &P,
-    scale_factor: f32, source: &[u8], /*target: &mut Sdr*/mut target: TractFrameMut) 
+    scale_factor: f32, source: &[u8], /*target: &mut Sdr*/mut target: &mut TractFrameMut) 
 {
     let (x_size, y_size) = (src_dims.0, src_dims.1);
     let (v_size, u_size) = (tar_dims.v_size() as usize, tar_dims.u_size() as usize);

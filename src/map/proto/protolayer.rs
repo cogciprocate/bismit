@@ -132,7 +132,6 @@ pub enum AxonKind {
 }
 
 impl AxonKind {
-    // [FIXME]: Make this a Result with CmnError describing mismatch:
     pub fn from_tags<'a>(tags: LayerTags) -> Result<AxonKind, CmnError> {
         if tags.contains(map::SPATIAL) && tags.contains(map::HORIZONTAL) {
             Err(CmnError::new(format!("Error converting tags to AxonKind, tags must contain \

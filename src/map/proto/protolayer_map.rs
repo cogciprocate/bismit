@@ -14,7 +14,7 @@ pub struct ProtolayerMap {
 }
 
 impl ProtolayerMap {
-    pub fn new (region_name: &'static str, kind: LayerMapKind)  -> ProtolayerMap {    
+    pub fn new (region_name: &'static str, kind: LayerMapKind) -> ProtolayerMap {    
         ProtolayerMap { 
             name: region_name,
             kind: kind,
@@ -22,8 +22,8 @@ impl ProtolayerMap {
         }
     }
 
-    pub fn axn_layer(mut self, layer_name: &'static str, tags: LayerTags, axn_kind: AxonKind,
-            ) -> ProtolayerMap 
+    pub fn axn_layer(mut self, layer_name: &'static str, tags: LayerTags, axn_kind: AxonKind) 
+            -> ProtolayerMap
     {
         self.add(Protolayer::new(layer_name, Axonal(axn_kind), None, tags));
         self
@@ -42,13 +42,16 @@ impl ProtolayerMap {
         self
     }
 
-    // [FIXME]: NEED TO CHECK FOR DUPLICATE LAYERS!    
+    // [FIXME][DONE]: NEED TO CHECK FOR DUPLICATE LAYERS!    
     pub fn add(&mut self, layer: Protolayer) {
-        self.layers.insert(layer.name(), layer);
+        let layer_name = layer.name();
+        self.layers.insert(layer.name(), layer)
+            .map(|_| panic!("ProtolayerMap::layer(): Duplicate layers: \
+                (layer: \"{}\")", layer_name));
     }        
 
      /// Returns all layers containing 'tags'.
-     pub fn layers_with_tags(&self, tags: LayerTags) -> Vec<&Protolayer> {
+    pub fn layers_with_tags(&self, tags: LayerTags) -> Vec<&Protolayer> {
          let mut layers: Vec<&Protolayer> = Vec::with_capacity(16);
                   
          for (_, layer) in self.layers.iter().filter(|&(_, layer)| 

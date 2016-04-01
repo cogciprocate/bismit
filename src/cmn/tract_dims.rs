@@ -1,6 +1,7 @@
 use std::convert::From;
-use cmn::ParaHexArray;
+use cmn::{ParaHexArray, CorticalDims};
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct TractDims {
     v_size: u32,
     u_size: u32,
@@ -10,6 +11,10 @@ impl TractDims {
     #[inline]
     pub fn new(v_size: u32, u_size: u32) -> TractDims {
         TractDims { v_size: v_size, u_size: u_size }
+    }
+
+    pub fn to_len(&self) -> usize {
+        (self.v_size * self.u_size) as usize
     }
 }
 
@@ -50,3 +55,17 @@ impl<'c, P: ParaHexArray> From<&'c P> for TractDims {
         TractDims { v_size: dims.v_size(), u_size: dims.u_size() }
     }
 }
+
+impl PartialEq<CorticalDims> for TractDims {
+    fn eq(&self, other: &CorticalDims) -> bool {
+        self.v_size == other.v_size() && 
+            self.u_size == other.u_size() &&
+            self.depth() == other.depth()
+    }
+}
+
+// impl PartialEq<TractDims> for TractDims {
+//     fn eq(&self, other: &TractDims) -> bool {
+//         self.v_size == other.v_size() && self.u_size == other.u_size()
+//     }
+// }

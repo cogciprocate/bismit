@@ -1,3 +1,4 @@
+use std::ops::{Deref, DerefMut};
 use super::TractDims;
 
 /// A view of a terminal of a tract at an instant in time.
@@ -19,6 +20,14 @@ impl<'a> TractFrame<'a> {
 
     pub fn dims(&self) -> &TractDims {
         &self.dims
+    }
+}
+
+impl<'a> Deref for TractFrame<'a> {
+    type Target = [u8];
+
+    fn deref<'b>(&'b self) -> &'b [u8] {
+        self.frame
     }
 }
 
@@ -46,5 +55,19 @@ impl<'a> TractFrameMut<'a> {
 
     pub fn dims(&self) -> &TractDims {
         &self.dims
+    }
+}
+
+impl<'a> Deref for TractFrameMut<'a> {
+    type Target = [u8];
+
+    fn deref<'b>(&'b self) -> &'b [u8] {
+        self.frame
+    }
+}
+
+impl<'a> DerefMut for TractFrameMut<'a> {
+    fn deref_mut<'b>(&'b mut self) -> &'b mut [u8] {
+        self.frame
     }
 }
