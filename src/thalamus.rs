@@ -1,3 +1,15 @@
+//! [FIXME]: Every single hash lookup requires a heap allocation (`String`).
+//! - Revamp hashing with strings as a key. Options:
+//!     - Convert area names to indexes (preferred). Use a table stored
+//!       somewhere to look up names for display.
+//!     - Precompute hash.
+//!     - Store strings in a separate vector (stored in cortex) and put a
+//!       reference in the key.
+//!         - Will need some sort of global lookup system. Bleh.
+//!     - Thing of something that sucks less.
+//! 
+//!
+
 use std::ops::Range;
 use std::collections::HashMap;
 
@@ -52,9 +64,8 @@ impl Thalamus {
 
             for &(tags, cols) in layer_info.iter() {
                 // NEED DIMS
-                tract.add_area(area_name, tags, cols as usize);
+                tract.add_area(area_name.to_owned(), tags, cols as usize);
             }
-
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", output layer info: {:?}.", 
                 area_name, layer_info, mt = cmn::MT);
             assert!(layer_info.len() > 0, "Areas must have at least one afferent or efferent area.");
@@ -72,39 +83,25 @@ impl Thalamus {
 
     // Multiple source output areas disabled.
     pub fn cycle_external_tracts(&mut self, _: &mut CorticalAreas) {
-        for (_, src) in self.input_sources.iter_mut() {
-            // for (_, src_layer) in src.layers.iter_mut() {
-            //     let (ganglion, events) = self.tract.tract_frame_mut(src.area_name(), 
-            //         src_layer.tags()).expect("Thalamus::cycle_external_tracts()");
-            //     src_layer.next(ganglion, events);
-            // }
+        for (area_name, src) in self.input_sources.iter_mut() {
+            for (_, src_layer) in src.layers().iter_mut() {
+                // let (ganglion, events) = self.tract.frame_mut()
+                //     .expect("Thalamus::cycle_external_tracts()");
+                // src_layer.next(ganglion, events);
+            }
         }        
     }
 
-    // // [DEPRICATED] in favor of `::tract_frame`
-    // pub fn ganglion(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
-    //         -> Result<(&EventList, &Sdr), CmnError>
-    // {         
-    //     self.tract.ganglion(src_area_name, layer_mask)
-    // }
-
-    pub fn tract_frame(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
+    pub fn tract_frame(&mut self, key: &(String, LayerTags)) 
             -> Result<(&EventList, &[u8]), CmnError>
     {         
-        self.tract.frame(src_area_name, layer_mask)
+        self.tract.frame(key)
     }
 
-    // // [DEPRICATED] in favor of `::tract_frame_mut`
-    // pub fn ganglion_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
-    //         -> Result<(&mut Sdr, &mut EventList), CmnError>
-    // {
-    //     self.tract.ganglion_mut(src_area_name, layer_mask)
-    // }
-
-    pub fn tract_frame_mut(&mut self, src_area_name: &'static str, layer_mask: LayerTags) 
+    pub fn tract_frame_mut(&mut self, key: &(String, LayerTags)) 
             -> Result<(&mut [u8], &mut EventList), CmnError>
     {         
-        self.tract.frame_mut(src_area_name, layer_mask)
+        self.tract.frame_mut(key)
     }
 
      pub fn area_maps(&self) -> &HashMap<&'static str, AreaMap> {
@@ -135,8 +132,8 @@ impl ThalamicTract {
         }
     }
 
-    fn add_area(&mut self, src_area_name: &'static str, layer_tags: LayerTags, len: usize) {
-        self.tract_areas.insert(src_area_name, layer_tags, 
+    fn add_area(&mut self, src_area_name: String, layer_tags: LayerTags, len: usize) {
+        self.tract_areas.insert(src_area_name.clone(), layer_tags, 
             TractArea::new(src_area_name, layer_tags, self.ttl_len..(self.ttl_len + len)));
         self.ttl_len += len;
     }
@@ -147,40 +144,21 @@ impl ThalamicTract {
         self
     }
 
-    // fn ganglion(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
-    //         -> Result<(&EventList, &Sdr), CmnError>
-    // {
-    //     let ta = try!(self.tract_areas.get(src_area_name, layer_tags));
-    //     let range = ta.range();
-    //     let events = ta.events();
-        
-    //     Ok((events, &self.ganglion[range]))
-    // }
-
-    fn frame(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
+    // fn frame(&mut self, src_area_name: &str, layer_tags: LayerTags) 
+    fn frame(&mut self, key: &(String, LayerTags)) 
             -> Result<(&EventList, &[u8]), CmnError>
     {
-        let ta = try!(self.tract_areas.get(src_area_name, layer_tags));
+        let ta = try!(self.tract_areas.get(key));
         let range = ta.range();
         let events = ta.events();
         
         Ok((events, &self.ganglion[range]))
     }
 
-    // fn ganglion_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
-    //         -> Result<(&mut Sdr, &mut EventList), CmnError>
-    // {
-    //     let ta = try!(self.tract_areas.get_mut(src_area_name, layer_tags));
-    //     let range = ta.range();
-    //     let events = ta.events_mut();
-        
-    //     Ok((&mut self.ganglion[range], events))
-    // }
-
-    fn frame_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags) 
+    fn frame_mut(&mut self, key: &(String, LayerTags)) 
             -> Result<(&mut [u8], &mut EventList), CmnError>
     {
-        let ta = try!(self.tract_areas.get_mut(src_area_name, layer_tags));
+        let ta = try!(self.tract_areas.get_mut(key));
         let range = ta.range();
         let events = ta.events_mut();
         
@@ -198,9 +176,11 @@ impl ThalamicTract {
     // }
 }
 
+
+// [FIXME]: REPLACE STRING HASH KEY. SEE TOP OF FILE.
 struct TractAreaCache {
     areas: Vec<TractArea>,
-    index: HashMap<(&'static str, LayerTags), usize>,
+    index: HashMap<(String, LayerTags), usize>,
 }
 
 impl TractAreaCache {
@@ -211,32 +191,33 @@ impl TractAreaCache {
         }
     }
 
-    fn insert(&mut self, src_area_name: &'static str, layer_tags: LayerTags, tract_area: TractArea)
+    fn insert(&mut self, src_area_name: String, layer_tags: LayerTags, tract_area: TractArea)
     {
         self.areas.push(tract_area);
 
-        self.index.insert((src_area_name, layer_tags), (self.areas.len() - 1))
+        self.index.insert((src_area_name.clone(), layer_tags), (self.areas.len() - 1))
             .map(|_| panic!("Duplicate 'TractAreaCache' keys: (area: \"{}\", tags: '{:?}')", 
                 src_area_name, layer_tags));
     }
 
-    fn get(&mut self, src_area_name: &'static str, layer_tags: LayerTags
-            ) -> Result<&TractArea, CmnError> 
+    fn get(&mut self, key: &(String, LayerTags)) 
+            -> Result<&TractArea, CmnError>
     {
-        match self.area_search(src_area_name, layer_tags) {
+        match self.area_search(key) {
             Ok(idx) => self.areas.get(idx).ok_or(CmnError::new(format!("Index '{}' not found for '{}' \
-                with tags '{:?}'", idx, src_area_name, layer_tags))),
+                with tags '{:?}'", idx, key.0, key.1))),
 
             Err(err) => Err(err),
         }
     }
 
-    fn get_mut(&mut self, src_area_name: &'static str, layer_tags: LayerTags
-            ) -> Result<&mut TractArea, CmnError> 
+    // fn get_mut(&mut self, src_area_name: &str, layer_tags: LayerTags
+    fn get_mut(&mut self, key: &(String, LayerTags))
+            -> Result<&mut TractArea, CmnError>
     {
-        match self.area_search(src_area_name, layer_tags) {
+        match self.area_search(key) {
             Ok(idx) => self.areas.get_mut(idx).ok_or(CmnError::new(format!("Index '{}' not \
-                found for '{}' with tags '{:?}'", idx, src_area_name, layer_tags))),
+                found for '{}' with tags '{:?}'", idx, key.0, key.1))),
 
             Err(err) => {
                 Err(err)
@@ -244,12 +225,13 @@ impl TractAreaCache {
         }
     }
 
-    fn area_search(&mut self, src_area_name: &'static str, layer_tags: LayerTags
-            ) -> Result<usize, CmnError> 
+    // fn area_search(&mut self, src_area_name: &str, layer_tags: LayerTags) 
+    fn area_search(&mut self, key: &(String, LayerTags)) 
+            -> Result<usize, CmnError>
     {
         // println!("TractAreaCache::area_search(): Searching for area: {}, tags: {:?}. ALL: {:?}", 
         //     src_area_name, layer_tags, self.areas);
-        let area_idx = self.index.get(&(src_area_name, layer_tags)).map(|&idx| idx);
+        let area_idx = self.index.get(key).map(|&idx| idx);
 
         // println!("   area_idx: {:?}", area_idx);
 
@@ -260,25 +242,23 @@ impl TractAreaCache {
 
             None => {
                 for i in 0..self.areas.len() {
-                    if self.areas[i].layer_tags.meshes(layer_tags) 
-                        && self.areas[i].src_area_name == src_area_name
+                    if self.areas[i].layer_tags.meshes(key.1) 
+                        && self.areas[i].src_area_name == key.0
                     {
                         matching_areas.push(i);
                     }
                 }
 
                 match matching_areas.len() {
-                    0 => return Err(CmnError::new(format!("No areas found with name: '{}' and tags: '{:?}'",
-                        src_area_name, layer_tags))),
-
+                    0 => return Err(CmnError::new(format!("No areas found with name: '{}' \
+                        and tags: '{:?}'", key.0, key.1))),
                     1 => {
-                        self.index.insert((src_area_name, layer_tags), matching_areas[0]);
+                        self.index.insert((key.0.clone(), key.1), matching_areas[0]);
                         return Ok(matching_areas[0]);
                     },
-
                     _ => Err(CmnError::new(format!("Multiple tract areas found for area: '{}' \
                         with tags: '{:?}'. Please use additional tags to specify tract area more \
-                        precisely", src_area_name, layer_tags))),
+                        precisely", key.0, key.1))),
                 }
             }
         }
@@ -287,14 +267,14 @@ impl TractAreaCache {
 
 #[derive(Debug)]
 struct TractArea {
-    src_area_name: &'static str,
+    src_area_name: String,
     layer_tags: LayerTags,
     range: Range<usize>,
     events: EventList,
 }
 
 impl TractArea {
-    fn new(src_area_name: &'static str, layer_tags: LayerTags, range: Range<usize>) -> TractArea {
+    fn new(src_area_name: String, layer_tags: LayerTags, range: Range<usize>) -> TractArea {
         TractArea { 
             src_area_name: src_area_name,
             layer_tags: layer_tags,
