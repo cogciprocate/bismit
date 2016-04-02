@@ -29,3 +29,5 @@ pub use self::cortex::{ Cortex, CorticalArea, AxonSpace, Synapses, Minicolumns, 
 pub use self::external_source::{ExternalSourceTract, ExternalSourceKind};
 pub use self::map::{SliceTractMap, LayerTags};
 pub use self::tyro::Tyro;
+
+pub use self::encode::GlyphBuckets;

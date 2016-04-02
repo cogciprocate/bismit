@@ -25,20 +25,22 @@ impl LayerMap {
             pamap.name, mt = cmn::MT);
 
         let plmap = plmaps[pamap.layer_map_name].clone();
+        let plmap_kind = plmap.kind.clone();
         // plmap.freeze(&pamap);
 
         let mut index = Vec::with_capacity(plmap.layers().len());
         let mut slc_total = 0u8;
 
         for (_, pl) in plmap.layers().iter() {
-            index.push(LayerInfo::new(pl, pamap, pamaps, plmaps, input_sources, &mut slc_total));
+            index.push(LayerInfo::new(pl, plmap_kind.clone(), pamap, pamaps, plmaps, 
+                input_sources, &mut slc_total));
         }
 
         // assert_eq!(slc_total as usize, plmap.slc_map().len());
 
         // println!("{mt}{mt}LAYERMAP::NEW(): index: {:?}, plmap.slc_map(): {:?}", 
         //     index, plmap.slc_map(), mt = cmn::MT);
-        LayerMap { area_name: pamap.name, index: index, depth: slc_total, kind: plmap.kind }
+        LayerMap { area_name: pamap.name, index: index, depth: slc_total, kind: plmap_kind }
     }
 
     pub fn slc_map(&self) -> BTreeMap<u8, &LayerInfo> {
@@ -56,8 +58,8 @@ impl LayerMap {
                 debug_assert_eq!(slc_id_check, slc_id);
 
                 if slc_map.insert(slc_id, layer).is_some() {
-                    // panic!("LayerMap::slc_map(): Duplicate slices found in LayerMap: \
-                    //     layer: '{}', slc_id: '{}'.", layer.name(), slc_id);
+                    panic!("LayerMap::slc_map(): Duplicate slices found in LayerMap: \
+                        layer: '{}', slc_id: '{}'.", layer.name(), slc_id);
                 }
 
                 slc_id_check = slc_id + 1;

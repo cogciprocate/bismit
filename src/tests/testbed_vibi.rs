@@ -1,13 +1,13 @@
 use cortex::{Cortex};
 use map::{self, LayerTags};
 use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, 
-    Sensory, Thalamic, Protocell, Protofilter, Protoinput};
+    Cortical, Thalamic, Protocell, Protofilter, Protoinput};
 
 pub fn define_plmaps() -> ProtolayerMaps {
     const MOTOR_UID: u32 = 654;
 
     ProtolayerMaps::new()
-        .lmap(ProtolayerMap::new("visual", Sensory)
+        .lmap(ProtolayerMap::new("visual", Cortical)
             .axn_layer("motor_ctx", map::NS_IN | LayerTags::with_uid(MOTOR_UID), Horizontal)
             .axn_layer("eff_in", map::FB_IN, Spatial)
             .axn_layer("aff_in", map::FF_IN, Spatial)

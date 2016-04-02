@@ -65,19 +65,17 @@ impl Thalamus {
         =============================================================================*/
         for (&area_name, pamap) in pamaps.maps().iter() {    
             let area_map = AreaMap::new(pamap, &plmaps, &pamaps, &input_sources);
-            
+
             {
                 let output_layers = area_map.layers().layer_info_by_tags(map::OUTPUT);
 
                 for layer in output_layers.iter() {
-                    // NEED DIMS
-                    // let dims = if tags.contains(map::SPATIAL) {
-                    //     pamap.dims.clone_with_depth(layer_depth)
-                    // } else {
-                    //     debug_assert!(tags.contains(map::HORIZONTAL));
-                    //     None
-                    // };
-                    tract.add_area(area_name.to_owned(), layer.tags(), pamap.dims().columns() as usize);
+                    let layer_dims = match layer.irregular_layer_dims() {
+                        Some(dims) => dims,
+                        None => pamap.dims(),
+                    };
+
+                    tract.add_area(area_name.to_owned(), layer.tags(), layer_dims.columns() as usize);
                 }
                 println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", output layer info: {:?}.", 
                     area_name, output_layers, mt = cmn::MT);

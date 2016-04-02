@@ -6,6 +6,16 @@ use map::{LayerTags};
 use super::{Protolayer, AxonKind, LayerKind, Axonal};
 
 
+#[derive(PartialEq, Eq, Debug, Clone, Hash)]
+pub enum LayerMapKind {
+    // Associational,
+    // Sensory,
+    // Motor,
+    Cortical,
+    Thalamic,
+}
+
+
 #[derive(Clone)]
 pub struct ProtolayerMap {
     pub name: &'static str,
@@ -93,14 +103,7 @@ impl<'b> IndexMut<&'b&'static str> for ProtolayerMap
 }
 
 
-#[derive(PartialEq, Eq, Debug, Clone, Hash)]
-pub enum LayerMapKind {
-    Associational,
-    Sensory,
-    Motor,
-    Thalamic,
-}
-
+/// A map of `ProtolayerMap`s indexed by layer map name.
 pub struct ProtolayerMaps {
     map: HashMap<&'static str, ProtolayerMap>,
 }
@@ -128,7 +131,7 @@ impl<'b> Index<&'b str> for ProtolayerMaps
 
     fn index<'a>(&'a self, region_name: &'b str) -> &'a ProtolayerMap {
         self.map.get(region_name).expect(&format!("proto::regions::ProtolayerMaps::index(): \
-            Invalid region name: '{}'.", region_name))
+            Invalid layer map name: '{}'.", region_name))
     }
 }
 
@@ -136,6 +139,6 @@ impl<'b> IndexMut<&'b str> for ProtolayerMaps
 {
     fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut ProtolayerMap {
         self.map.get_mut(region_name).expect(&format!("proto::regions::ProtolayerMaps::index_mut(): \
-            Invalid region name: '{}'.", region_name))
+            Invalid layer map name: '{}'.", region_name))
     }
 }

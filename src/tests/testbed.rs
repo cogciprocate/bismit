@@ -1,6 +1,6 @@
 use cmn::CorticalDims;
 use map;
-use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, Sensory, 
+use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, Cortical, 
     Thalamic, Protocell, Protofilter, Protoinput};
 use thalamus::Thalamus;
 use ocl::{Context, ProQue};
@@ -15,7 +15,7 @@ const CYCLES_PER_FRAME: usize                 = 1;
 pub fn define_protolayer_maps() -> ProtolayerMaps {
     let mut plmaps: ProtolayerMaps = ProtolayerMaps::new();
 
-    plmaps.add(ProtolayerMap::new("visual", Sensory)
+    plmaps.add(ProtolayerMap::new("visual", Cortical)
         //.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
         .layer("motor_in", 1, map::DEFAULT, Axonal(Horizontal))
         //.layer("olfac", 1, map::DEFAULT, Axonal(Horizontal))
@@ -106,7 +106,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
     let mut plmaps = ProtolayerMaps::new();
 
-    plmaps.add(ProtolayerMap::new(lmap_name, Sensory)
+    plmaps.add(ProtolayerMap::new(lmap_name, Cortical)
         .layer("eff_in", 0, map::FB_IN, Axonal(Spatial))
         .layer("aff_in", 0, map::FF_IN, Axonal(Spatial))
         .layer("out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))

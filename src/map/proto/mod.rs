@@ -4,7 +4,7 @@
 //pub use self::layer_maps::{  };
 
 pub use self::protolayer_map::{ProtolayerMaps, ProtolayerMap, LayerMapKind};
-    pub use self::protolayer_map::LayerMapKind::{Associational, Sensory, Motor, Thalamic}; // SLATED FOR REDESIGN
+    pub use self::protolayer_map::LayerMapKind::{Cortical, Thalamic}; // SLATED FOR REDESIGN
 
 pub use self::protoarea_map::{ProtoareaMaps, ProtoareaMap};
 

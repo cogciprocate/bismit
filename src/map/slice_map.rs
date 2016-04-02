@@ -57,30 +57,31 @@ impl SliceMap {
                 dims.push(slc_dims);
             };
 
-            // let src_layer_info = layers.slc_src_layer_info(slc_id, layer.tags());
+            let layer_sources = layer.sources();
 
-            // match src_layer_info {
-            //     Some(sli) => {
-            //         add_slice(SliceDims::new(area_dims, Some(sli.dims()), sli.axn_kind())
-            //             .expect("SliceMap::new(): Error creating SliceDims."));
-            //     },
+            if layer_sources.len() > 0 {
+                for layer_source in layer_sources {
+                    debug_assert_eq!(layer.axn_kind(), layer_source.axn_kind());
 
-            //     None =>    add_slice(SliceDims::new(area_dims, None, layer.axn_kind())
-            //         .expect("SliceMap::new()")), // 100% scaling
-            // };
-
-            let src_layers = layer.sources();
-
-            if src_layers.len() > 0 {
-                for sl in src_layers {
-                    debug_assert_eq!(layer.axn_kind(), sl.axn_kind());
-
-                    add_slice(SliceDims::new(area_dims, Some(sl.dims()), sl.axn_kind())
+                    add_slice(SliceDims::new(area_dims, Some(layer_source.dims()), 
+                        layer_source.axn_kind())
                         .expect("SliceMap::new(): Error creating SliceDims."));
                 }
             } else {
-                add_slice(SliceDims::new(area_dims, None, layer.axn_kind())
-                    .expect("SliceMap::new()"))
+                match layer.irregular_layer_dims() {
+                    Some(dims) => {
+                        println!("SLICEMAP::NEW(): Adding irregular layer dims: {:?} \
+                            for layer: {}", dims, layer.name());
+                        add_slice(SliceDims::new(dims, None, layer.axn_kind())
+                            .expect("SliceMap::new()"))
+                    },
+                    None => {
+                        println!("SLICEMAP::NEW(): Boring area layer dims: {:?} \
+                            for layer: {}", area_dims, layer.name());
+                        add_slice(SliceDims::new(area_dims, None, layer.axn_kind())
+                        .expect("SliceMap::new()"))
+                    },
+                }
             }
         }
 

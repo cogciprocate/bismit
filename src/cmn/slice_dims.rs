@@ -1,7 +1,7 @@
 
 use ocl;
 use ocl::traits::MemLen;
-use cmn::{self, ParaHexArray, CorticalDims, CmnResult, CmnError};
+use cmn::{ParaHexArray, CorticalDims, CmnResult, CmnError};
 use proto::{AxonKind};
 
 
@@ -59,7 +59,10 @@ impl SliceDims {
             AxonKind::Horizontal => {
                 match src_lyr_dims_opt {
                     Some(src_area_dims) => {
-                        if src_area_dims.v_size() > 252 || src_area_dims.u_size() > 252 { 
+                        if src_area_dims.v_size() > 252 || src_area_dims.u_size() > 252 {
+                            // [NOTE]: Can't remember why I set this to 252
+                            // but I doubt there's a good reason why it can't
+                            // be 255.
                             return Err(CmnError::from("Dimensions size for horizontal layers may \
                                 not exceed 252."));
                         }
@@ -75,17 +78,17 @@ impl SliceDims {
                     },
 
                     None => {
-                        let side = cmn::DEFAULT_HORIZONTAL_SLICE_SIDE;
-                        assert!(side <= 255);
-                        let mid = side / 2;
+                        // let side = cmn::DEFAULT_HORIZONTAL_SLICE_SIDE;
+                        // assert!(side <= 255);
+                        // let mid = side / 2;
 
                         Ok(SliceDims { 
-                            v_size: side,
-                            u_size: side,
+                            v_size: area_dims.v_size(),
+                            u_size: area_dims.u_size(),
                             v_scale: 0,
                             u_scale: 0,
-                            v_mid: mid,
-                            u_mid: mid,
+                            v_mid: area_dims.v_size() / 2,
+                            u_mid: area_dims.u_size() / 2,
                         })
                     }
                 }

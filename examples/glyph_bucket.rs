@@ -2,7 +2,7 @@
 extern crate bismit;
 
 // use std::iter;
-use bismit::encode::GlyphBuckets;
+use bismit::GlyphBuckets;
 
 fn main() {
     let mut gb = GlyphBuckets::new();

@@ -101,21 +101,18 @@ impl ExternalSourceTract for GlyphSequences {
         let (next_seq_idx, next_glyph_id) = self.cursor.next(&self.sequences);
         let glyph: &[u8] = self.buckets.next_glyph(next_glyph_id);
 
-        if tags.meshes(map::FF_OUT) {
-            assert!(&self.spt_layer_dims == tract_frame.dims());
-            assert_eq!(self.spt_layer_dims.u_size() as usize, glyph_dims.0);
-            assert_eq!(self.spt_layer_dims.v_size() as usize, glyph_dims.1);            
+        if tags.contains(map::FF_OUT) {
+            assert!(&self.spt_layer_dims == tract_frame.dims());           
             super::encode_2d_image(glyph_dims, &self.hrz_layer_dims, self.scale,
                 glyph, tract_frame);
-        } else if tags.meshes(map::NS_OUT) {
+        } else if tags.contains(map::NS_OUT) {
             assert!(&self.hrz_layer_dims == tract_frame.dims());
-            assert_eq!(self.hrz_layer_dims.u_size() as usize, glyph_dims.0);
-            assert_eq!(self.hrz_layer_dims.v_size() as usize, glyph_dims.1);
             // ENCODE THE HRZ BUSINESS
             // super::encode_2d_image(glyph_dims, &self.spt_layer_dims, self.scale,
             //     glyph, tract_frame);
         } else {
-            panic!("GlyphSequences::read_into(): Invalid tags: '{:?}'.", tags);
+            panic!("GlyphSequences::read_into(): Invalid tags: tags: '{:?}' must mesh with {:?}", 
+                tags, map::NS_OUT);
         }
 
         [next_glyph_id, next_seq_idx, 0]

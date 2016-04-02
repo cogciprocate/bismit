@@ -18,15 +18,17 @@ pub struct LayerInfo {
     tags: LayerTags,
     slc_range: Range<u8>,
     sources: Vec<SourceLayerInfo>,
-    axn_count: u32,
+    layer_map_kind: LayerMapKind,
     axn_kind: AxonKind,
     protolayer: Protolayer,
+    axn_count: u32,
+    irregular_layer_dims: Option<CorticalDims>,
 }
 
 impl LayerInfo {
     // [FIXME]: TODO: Clean up and optimize.
     // [FIXME]: TODO: Return result and get rid of panics, et al.
-    pub fn new(protolayer: &Protolayer, pamap: &ProtoareaMap, pamaps: &ProtoareaMaps, 
+    pub fn new(protolayer: &Protolayer, plmap_kind: LayerMapKind, pamap: &ProtoareaMap, pamaps: &ProtoareaMaps, 
                 plmaps: &ProtolayerMaps, input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>, 
                 slc_total: &mut u8) -> LayerInfo 
     {
@@ -40,6 +42,7 @@ impl LayerInfo {
         let mut next_slc_idz = *slc_total;
         let mut axn_count = 0;
 
+        let mut irregular_layer_dims: Option<CorticalDims> = None;
         let mut src_layer_debug: Vec<String> = Vec::new();
 
         // println!("\n{mt}{mt}### LAYER: {:?}, next_slc_idz: {}, slc_range: {:?}\n", 
@@ -111,7 +114,7 @@ impl LayerInfo {
                             let in_src_layer = in_src.layer(src_layer.tags());
                             let in_src_layer_dims = in_src_layer.dims().expect(
                                 &format!("LayerInfo::new(): External source layer dims for layer \
-                                    '{}' in area '{}' is not set.", in_src_layer.name(), 
+                                    '{}' in area '{}' are not set.", in_src_layer.name(), 
                                     src_area_name)
                                 ).clone();
                             (in_src_layer_dims, in_src_layer.axn_kind())
@@ -159,8 +162,55 @@ impl LayerInfo {
                 }
             } 
         } else {
-            // <<<<< DEPTH STUFF >>>>>
-            // let output_layer_depth = if tags.contains(map::OUTPUT) { Some(1) } else { None };
+            // [NOTE]: This is a non-output layer.
+
+            // // If this is a thalamic layer AND is horizontal (non-spatial), we
+            // // need to use the dimensions set by the `ExternalSource` area
+            // // instead of the dimensions of the area.
+            // let columns = match protolayer.kind() {
+            //     &LayerKind::Axonal(axn_kind) => match axn_kind {
+            //         AxonKind::Horizontal => match plmap_kind {
+            //             LayerMapKind::Thalamic => {
+            //                 // If this is thalamic, the OUTPUT flags should be set.
+            //                 assert!(tags.contains(map::OUTPUT));
+            //                 let &(ref in_src, _) = input_sources.get(pamap.name())
+            //                     .expect(&format!("LayerInfo::new(): Invalid input source key: \
+            //                         '{}'", pamap.name()));
+            //                 let in_src_layer = in_src.layer(tags);
+            //                 let in_src_layer_dims = in_src_layer.dims().expect(&format!(
+            //                     "LayerInfo::new(): External source layer dims for layer \
+            //                     '{}' in area '{}' are not set.", in_src_layer.name(), 
+            //                     pamap.name()));
+            //                 in_src_layer_dims.columns()
+            //             },
+            //             _ => pamap.dims().columns(),
+            //         },
+            //         AxonKind::Spatial => pamap.dims().columns(),
+            //         AxonKind::None => panic!("LayerInfo::new()"),
+            //     },
+            //     _ => pamap.dims().columns(),
+            // };
+
+            // If this is a thalamic layer we need to use the dimensions set
+            // by the `ExternalSource` area instead of the dimensions of the
+            // area. Thalamic output layers have irregular layer sizes.
+            let columns = match plmap_kind {
+                LayerMapKind::Thalamic => {
+                    // If this is thalamic, the OUTPUT flags should be set.
+                    assert!(tags.contains(map::OUTPUT));
+                    let &(ref in_src, _) = input_sources.get(pamap.name())
+                        .expect(&format!("LayerInfo::new(): Invalid input source key: \
+                            '{}'", pamap.name()));
+                    let in_src_layer = in_src.layer(tags);
+                    let in_src_layer_dims = in_src_layer.dims().expect(&format!(
+                        "LayerInfo::new(): External source layer dims for layer \
+                        '{}' in area '{}' are not set.", in_src_layer.name(), 
+                        pamap.name()));
+                    irregular_layer_dims = Some(in_src_layer_dims.clone());
+                    in_src_layer_dims.columns()
+                },
+                LayerMapKind::Cortical => pamap.dims().columns(),
+            };
 
             // [FIXME]: Get rid of the map::OUTPUT check and just default to 0.
             let layer_depth = match protolayer.depth() {
@@ -174,7 +224,7 @@ impl LayerInfo {
             // }
 
             next_slc_idz += layer_depth;
-            axn_count += pamap.dims().columns() * layer_depth as u32;
+            axn_count += columns * layer_depth as u32;
         }
 
         let slc_range = *slc_total..next_slc_idz;
@@ -188,14 +238,33 @@ impl LayerInfo {
             println!("{}", &dbg_string);
         }
 
+        if let Some(ref irr_dims) = irregular_layer_dims {
+            debug_assert!(irr_dims.to_len() == axn_count as usize);
+        }
+
         LayerInfo {
             name: name,
             tags: tags,
             slc_range: slc_range,
             sources: sources,
-            axn_count: axn_count,
+            layer_map_kind: plmap_kind,
             axn_kind: axn_kind,
             protolayer: protolayer,
+            axn_count: axn_count,
+            irregular_layer_dims: irregular_layer_dims,
+        }
+    }
+
+    pub fn irregular_layer_dims(&self) -> Option<&CorticalDims> {
+        self.irregular_layer_dims.as_ref()
+    }
+
+    pub fn thalamic_horizontal_axon_count(&self) -> Option<u32> {
+        if self.layer_map_kind == LayerMapKind::Thalamic && self.axn_kind == AxonKind::Horizontal {
+            debug_assert!(self.tags.contains(map::NS_OUT));
+            Some(self.axn_count)
+        } else {
+            None
         }
     }
 
