@@ -70,14 +70,14 @@ impl SliceMap {
             } else {
                 match layer.irregular_layer_dims() {
                     Some(dims) => {
-                        println!("SLICEMAP::NEW(): Adding irregular layer dims: {:?} \
-                            for layer: {}", dims, layer.name());
+                        // println!("SLICEMAP::NEW(): Adding irregular layer dims: {:?} \
+                        //     for layer: {}", dims, layer.name());
                         add_slice(SliceDims::new(dims, None, layer.axn_kind())
                             .expect("SliceMap::new()"))
                     },
                     None => {
-                        println!("SLICEMAP::NEW(): Boring area layer dims: {:?} \
-                            for layer: {}", area_dims, layer.name());
+                        // println!("SLICEMAP::NEW(): Boring area layer dims: {:?} \
+                        //     for layer: {}", area_dims, layer.name());
                         add_slice(SliceDims::new(area_dims, None, layer.axn_kind())
                         .expect("SliceMap::new()"))
                     },

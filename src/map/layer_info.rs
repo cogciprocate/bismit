@@ -148,8 +148,8 @@ impl LayerInfo {
                     };
 
                     let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth());
-                    src_layer_debug.push(format!("{mt}{mt}{mt}{mt}<{}>[\"{}\"]: {:?} | {:?}", src_layer.name(), 
-                        src_area_name, tar_slc_range, src_layer.tags(), mt = cmn::MT));
+                    src_layer_debug.push(format!("{mt}{mt}{mt}{mt}<{}>: {:?}: area: [\"{}\"], tags: {}", src_layer.name(), 
+                        tar_slc_range, src_area_name, src_layer.tags(), mt = cmn::MT));
 
                     sources.push(SourceLayerInfo::new(src_area_name, src_layer_dims.clone(), 
                         src_layer.tags(), src_layer_axn_kind, next_slc_idz));                        
@@ -208,7 +208,7 @@ impl LayerInfo {
         *slc_total = next_slc_idz;        
         sources.shrink_to_fit();
 
-        println!("{mt}{mt}{mt}<{}>: {:?} | {:?}", name, slc_range, tags, mt = cmn::MT);
+        println!("{mt}{mt}{mt}<{}>: {:?}: {}", name, slc_range, tags, mt = cmn::MT);
 
         for dbg_string in src_layer_debug {
             println!("{}", &dbg_string);
@@ -244,7 +244,6 @@ impl LayerInfo {
         }
     }
 
-    #[inline]
     pub fn src_lyr_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
         self.protolayer.src_lyr_names(den_type)
     }
@@ -261,42 +260,38 @@ impl LayerInfo {
         }
     }
 
-    #[inline]
     pub fn name(&self) -> &'static str {
         self.name
     }
 
-    #[inline]
     pub fn tags(&self) -> LayerTags {
         self.tags
     }
 
-    #[inline]
     pub fn kind(&self) -> &LayerKind {
         self.protolayer.kind()
     }
 
-    #[inline]
     pub fn sources(&self) -> &Vec<SourceLayerInfo>  {
         &self.sources
     }
 
-    #[inline]
     pub fn axn_count(&self) -> u32 {
         self.axn_count
     }
 
-    #[inline]
     pub fn axn_kind(&self) -> AxonKind {
         self.axn_kind.clone()
+    } 
+
+    pub fn layer_map_kind(&self) -> LayerMapKind {
+        self.layer_map_kind.clone()
     }
 
-    #[inline]
     pub fn slc_range(&self) -> &Range<u8> {
         &self.slc_range
     }
 
-    #[inline]
     pub fn depth(&self) -> u8 {
         self.slc_range.len() as u8
     }

@@ -92,8 +92,8 @@ impl PyramidalLayer {
         let cels_per_cel_grp = dims.per_subgrp(cel_grp_count).expect("PyramidalLayer::new()");
         let learning_rate_l2i = 0i32;
 
-        println!("\nPYRAMIDAL: pyrs_ltp: cel_grp_count: {}, cels_per_cel_grp: {}\n", 
-            cel_grp_count, cels_per_cel_grp);
+        // println!("\nPYRAMIDAL: pyrs_ltp: cel_grp_count: {}, cels_per_cel_grp: {}\n", 
+        //     cel_grp_count, cels_per_cel_grp);
 
         let kern_ltp = ocl_pq.create_kernel("pyrs_ltp").expect("PyramidalLayer::new()")
             // .expect("PyramidalLayer::new()")

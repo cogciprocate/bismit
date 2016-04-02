@@ -20,12 +20,12 @@ impl Cortex {
         let pamaps = thal.area_maps().clone();
         let platform = Platform::new(ocl::core::default_platform().expect("Cortex::new()"));
         let device_type = ocl::core::default_device_type().expect("Cortex::new()");
-        println!("Cortex::new(): device_type: {:?}", device_type);
+        // println!("Cortex::new(): device_type: {:?}", device_type);
         let ocl_context: Context = Context::builder()
             .platform(platform)
             .devices(Device::specifier().type_flags(device_type))
             .build().expect("CorticalArea::new(): ocl_context creation error");
-        println!("Cortex::new(): ocl_context.devices(): {:?}", ocl_context.devices());
+        // println!("Cortex::new(): ocl_context.devices(): {:?}", ocl_context.devices());
         let mut areas = HashMap::new();
         let mut device_idx = 1;
 

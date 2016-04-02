@@ -66,8 +66,10 @@ impl Thalamus {
         for (&area_name, pamap) in pamaps.maps().iter() {    
             let area_map = AreaMap::new(pamap, &plmaps, &pamaps, &input_sources);
 
+            println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ", area_name, mt = cmn::MT);
+
             {
-                let output_layers = area_map.layers().layer_info_by_tags(map::OUTPUT);
+                let output_layers = area_map.layers().layer_info_containing_tags(map::OUTPUT);
 
                 for layer in output_layers.iter() {
                     // If the layer is thalamic is will have an irregular size
@@ -77,10 +79,14 @@ impl Thalamus {
                         None => pamap.dims(),
                     };
 
+                    println!("{mt}{mt}{mt}'{}': tags: {}, slc_range: {:?}, map_kind: {:?}, \
+                        axn_kind: {:?}", layer.name(), layer.tags(), layer.slc_range(),
+                        layer.layer_map_kind(), layer.axn_kind(), mt = cmn::MT);
+                    println!("{mt}{mt}{mt}{mt}sources: {:?}", layer.sources(), mt = cmn::MT);
+
                     tract.add_area(area_name.to_owned(), layer.tags(), layer_dims.columns() as usize);
                 }
-                println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", output layer info: {:?}.", 
-                    area_name, output_layers, mt = cmn::MT);
+                
                 assert!(output_layers.len() > 0, "Areas must have at least one afferent or efferent area.");
             }
 
@@ -98,13 +104,6 @@ impl Thalamus {
     // Multiple source output areas disabled.
     pub fn cycle_external_tracts(&mut self, _: &mut CorticalAreas) {
         for (area_name, &mut (ref mut src_area, ref layer_tags_list)) in self.input_sources.iter_mut() {
-            // for (_, src_layer) in src_area.layers().iter_mut() {
-            //     let (tract_frame, events) = self.tract.frame_mut(
-            //         &(area_name.to_owned(), src_layer.tags()))
-            //         .expect("Thalamus::cycle_external_tracts()");
-            //     src_layer.read_into(src_layer.tags(), tract_frame, events);
-            // }
-
             for &layer_tags in layer_tags_list.iter() {
                 let (tract_frame, events) = self.tract.frame_mut(&(area_name.to_owned(), layer_tags))
                     .expect("Thalamus::cycle_external_tracts()");

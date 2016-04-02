@@ -85,7 +85,7 @@ impl AreaMap {
     // NEW
     #[inline]
     pub fn layer_name_by_tags(&self, layer_tags: LayerTags) -> &'static str {
-        let layer_info = self.layers.layer_info_by_tags(layer_tags);
+        let layer_info = self.layers.layer_info_containing_tags(layer_tags);
         assert_eq!(layer_info.len(), 1);
         layer_info[0].name()
     }
@@ -177,7 +177,7 @@ impl AreaMap {
     }
 
     // NEW NEW NEW
-    #[inline]
+    /// Returns the slice range of the afferent output axon slices (FF_OUT).
     pub fn aff_out_slc_range(&self) -> Range<u8> {
         let aff_out_slcs = self.aff_out_slcs();
         let idz = 0;
@@ -187,7 +187,7 @@ impl AreaMap {
 
     // [TODO]: UPDATE / DEPRICATE / MERGE WITH BELOW:
     pub fn axn_base_slc_ids_by_tags(&self, layer_tags: LayerTags) -> Vec<u8> {
-        let layers = self.layers.layer_info_by_tags(layer_tags);
+        let layers = self.layers.layer_info_containing_tags(layer_tags);
         let mut slc_ids = Vec::with_capacity(layers.len());
 
         for &layer in layers.iter() {
@@ -211,14 +211,14 @@ impl AreaMap {
 
     // [TODO]: UPDATE / DEPRICATE / MERGE WITH ABOVE (axn_base_slc_ids_by_tags):
     pub fn output_layer_info(&self) -> Vec<&LayerInfo> {
-        self.layers.layer_info_by_tags(map::OUTPUT)
+        self.layers.layer_info_containing_tags(map::OUTPUT)
     }
     
 
     // NEW
     #[inline]
     pub fn psal_layer(&self) -> &LayerInfo {
-        let psal_layer_vec = self.layers.layer_info_by_tags(map::PSAL);
+        let psal_layer_vec = self.layers.layer_info_containing_tags(map::PSAL);
         assert_eq!(psal_layer_vec.len(), 1);
         psal_layer_vec[0]
      }
@@ -226,14 +226,14 @@ impl AreaMap {
      // NEW
      #[inline]
      pub fn ptal_layer(&self) -> &LayerInfo {
-        let ptal_layer_vec = self.layers.layer_info_by_tags(map::PTAL);
+        let ptal_layer_vec = self.layers.layer_info_containing_tags(map::PTAL);
         assert_eq!(ptal_layer_vec.len(), 1);
         ptal_layer_vec[0]
      }     
 
     // NEW
     pub fn axn_range_by_tags(&self, layer_tags: LayerTags) -> Range<u32> {                
-        let layers = self.layers.layer_info_by_tags(layer_tags);
+        let layers = self.layers.layer_info_containing_tags(layer_tags);
         assert!(layers.len() == 1, "AreaMap::axn_range_by_tags(): Axon range \
             can not be calculated for more than one layer at a time. Flags: {:?}",
             layer_tags);

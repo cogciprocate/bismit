@@ -5,10 +5,12 @@ use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horiz
 
 pub fn define_plmaps() -> ProtolayerMaps {
     const MOTOR_UID: u32 = 654;
+    // const ROSE_UID: u32 = 435;
 
     ProtolayerMaps::new()
-        .lmap(ProtolayerMap::new("visual", Cortical)
+        .lmap(ProtolayerMap::new("v1_lm", Cortical)
             .axn_layer("motor_ctx", map::NS_IN | LayerTags::with_uid(MOTOR_UID), Horizontal)
+            // .axn_layer("rose_ctx", map::NS_IN | LayerTags::with_uid(ROSE_UID), Horizontal)
             .axn_layer("eff_in", map::FB_IN, Spatial)
             .axn_layer("aff_in", map::FF_IN, Spatial)
             .axn_layer("unused", map::UNUSED_TESTING, Spatial)
@@ -22,12 +24,14 @@ pub fn define_plmaps() -> ProtolayerMaps {
                 Protocell::pyramidal(1, 4, vec!["iii"], 800, 10)
                     .apical(vec!["eff_in"/*, "olfac"*/], 12))
         )
-
         .lmap(ProtolayerMap::new("v0_lm", Thalamic)
             .layer("spatial", 1, map::FF_OUT, Axonal(Spatial))
             .layer("horiz_ns", 1, map::NS_OUT | LayerTags::with_uid(MOTOR_UID), Axonal(Horizontal))
         )
-
+        // .lmap(ProtolayerMap::new("v00_lm", Thalamic)
+        //     .layer("spatial", 1, map::FF_OUT, Axonal(Spatial))
+        //     .layer("horiz_ns", 1, map::NS_OUT | LayerTags::with_uid(ROSE_UID), Axonal(Horizontal))
+        // )
         // .lmap(ProtolayerMap::new("o0_lm", Thalamic)
         //     .layer("ganglion", 1, map::NS_OUT | LayerTags::with_uid(OLFAC_UID), Axonal(Horizontal))
         // )
@@ -43,10 +47,14 @@ pub fn define_pamaps() -> ProtoareaMaps {
             None, 
             None,
         )
-
-        .area("v1", "visual", AREA_SIDE, 
+        // .area_ext("v00", "v00_lm", AREA_SIDE,
+        //     Protoinput::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) },
+        //     None, 
+        //     None,
+        // )
+        .area("v1", "v1_lm", AREA_SIDE, 
             Some(vec![Protofilter::new("retina", None)]),            
-            Some(vec!["v0"/*, "o0"*/]),
+            Some(vec!["v0"]),
         )
 
         // .area("b1", "visual", AREA_SIDE, None, Some(vec!["v1"]))

@@ -13,6 +13,7 @@ use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLaye
 
 // Intel/Linux debug mode:
 const KERNEL_DEBUG_MODE: bool = true;
+// const DEBUG_PRINT: bool = false;
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -238,7 +239,9 @@ impl CorticalArea {
         let mut events_lists = HashMap::new();
         events_lists.insert(map::FF_IN, EventList::new());    
         events_lists.insert(map::FB_IN, EventList::new());
+        events_lists.insert(map::NS_IN, EventList::new());
         events_lists.insert(map::FF_OUT, EventList::new());
+        events_lists.insert(map::NS_OUT, EventList::new());
         
 
         let cortical_area = CorticalArea {
@@ -278,6 +281,7 @@ impl CorticalArea {
         let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
         self.intake(map::FF_IN, thal);
+        self.intake(map::NS_IN, thal);
 
         if !self.disable_ssts {    
             let aff_input_events = { self.events_lists.get(&map::FF_IN) };
@@ -308,12 +312,33 @@ impl CorticalArea {
         self.output(map::FF_OUT, thal);
     }
 
-    // Read input from thalamus and write to axon space.
+    /// Read input from thalamus and write to axon space. 
+    ///
+    /// [FIXME]: Wire up layer unique ids so that a list of `LayerTags`
+    /// potentially containing uids can be generated from any given tag set
+    /// (FF_IN, NS_OUT, etc.).
+    ///
+    /// [FIXME]: Currently cloning each list of keys (with strings inside).
+    /// This is bad on a couple of levels. Generate a list of keys upon
+    /// creation for each category of layer tags THEN convert the `(String,
+    /// LayerTags)` keys into `(usize, LayerTags)`.
+    /// 
     fn intake(&mut self, layer_tags: LayerTags, thal: &mut Thalamus) {
-        for src_layer_name in self.area_map.layers().layer_src_area_names_by_tags(layer_tags) {
+        // let layers = self.area_map.layers().layer_src_area_names_containing_tags(layer_tags);
+        let layer_src_tract_keys = self.area_map.layers()
+            .layer_src_tract_keys_containing_tags(layer_tags).clone();
+
+        if false && layer_src_tract_keys.len() > 0 {
+            println!("CORTICAL_AREA::INTAKE(): layer_src_tract_keys: ({}, {})", 
+                layer_src_tract_keys[0].0, layer_src_tract_keys[0].1);
+        }
+
+        assert!(layer_src_tract_keys.len() <= 1, "[TEMPORARY]: Cortical areas containing multiple \
+            layers containing the same combination of any of IN/OUT tags are not yet implemented.");
+
+        for key in layer_src_tract_keys {
             self.write_input(
-                thal.tract_frame(&(src_layer_name.to_owned(), layer_tags.mirror_io()))
-                    .expect("CorticalArea::output()"),
+                thal.tract_frame(&key).expect("CorticalArea::intake()"),
                 layer_tags,
             );
         }
