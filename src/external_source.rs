@@ -91,7 +91,8 @@ impl ExternalSource {
         let p_layers: Vec<&Protolayer> = plmap.layers().iter().map(|(_, pl)| pl).collect();
 
         assert!(pamap.get_input().layer_count() == p_layers.len(), "ExternalSource::new(): \
-            Inputs for 'Protoarea' must equal layers in 'ProtolayerMap'.");
+            Inputs for 'Protoarea' ({}) must equal layers in 'ProtolayerMap' ({}).",
+            pamap.get_input().layer_count(), p_layers.len());
 
         // let mut layers = HashMap::with_capacity_and_hasher(4, BuildHasherDefault::default());
         let mut layers = HashMap::with_capacity(4);
@@ -129,7 +130,7 @@ impl ExternalSource {
         }
 
         let src_kind = match pamap.get_input().clone() {
-            Protoinput::IdxStreamerLoop { file_name, cyc_per, scale, loop_frames } => {
+            Protoinput::IdxStreamer { file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
                 let mut is = IdxStreamer::new(layers[&layer_tags_list[0]].dims()
                     .expect("ExternalSource::new(): Layer dims not set properly.").clone(), 
@@ -145,7 +146,7 @@ impl ExternalSource {
                 ExternalSourceKind::GlyphSequences(Box::new(gs))
             },
             Protoinput::None | Protoinput::Zeros => ExternalSourceKind::None,
-            _ => panic!("\nExternalSource::new(): Input type not yet supported."),
+            pi @ _ => panic!("\nExternalSource::new(): Input type: '{:?}' not yet supported.", pi),
         };
 
         ExternalSource {

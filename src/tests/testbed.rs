@@ -51,6 +51,7 @@ pub fn define_protoareas() -> ProtoareaMaps {
                 file_name: "train-images-idx3-ubyte".to_owned(), 
                 cyc_per: CYCLES_PER_FRAME, 
                 scale: 1.3,
+                loop_frames: 1,
             },
 
             None, 

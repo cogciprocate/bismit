@@ -70,6 +70,8 @@ impl Thalamus {
                 let output_layers = area_map.layers().layer_info_by_tags(map::OUTPUT);
 
                 for layer in output_layers.iter() {
+                    // If the layer is thalamic is will have an irregular size
+                    // which will need to be reflected on its tract size.
                     let layer_dims = match layer.irregular_layer_dims() {
                         Some(dims) => dims,
                         None => pamap.dims(),

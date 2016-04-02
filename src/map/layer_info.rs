@@ -9,6 +9,7 @@ use map::{self, LayerTags,};
 use external_source::ExternalSource;
 
 // const CELLULAR_AXON_KIND: AxonKind = AxonKind::Spatial;
+const DEBUG_PRINT: bool = false;
 
 // [FIXME]: Consolidate terminology and usage between source-layer layers (cellular)
 // and source-area layers (axonal).
@@ -45,8 +46,10 @@ impl LayerInfo {
         let mut irregular_layer_dims: Option<CorticalDims> = None;
         let mut src_layer_debug: Vec<String> = Vec::new();
 
-        // println!("\n{mt}{mt}### LAYER: {:?}, next_slc_idz: {}, slc_range: {:?}\n", 
-        //     tags, next_slc_idz, slc_range, mt = cmn::MT);
+        if DEBUG_PRINT {
+            println!("\n{mt}{mt}### LAYER: {:?}, next_slc_idz: {}, slc_total: {:?}\n", 
+                tags, next_slc_idz, slc_total, mt = cmn::MT);
+        }
 
         // If layer is an input layer, add sources:
         if tags.contains(map::INPUT) {
@@ -63,7 +66,9 @@ impl LayerInfo {
                     .map(|&an| (an, map::NONSPECIFIC)))
                 .collect();                
 
-            // println!("\n{mt}{mt}{mt}### SRC_AREAS: {:?}\n", src_area_combos, mt = cmn::MT);
+            if DEBUG_PRINT {
+                println!("\n{mt}{mt}{mt}### SRC_AREAS: {:?}\n", src_area_combos, mt = cmn::MT);
+            }
 
             // For each potential source area (aff or eff):
             // - get that area's layers
@@ -85,7 +90,9 @@ impl LayerInfo {
                 let src_layer_map = &plmaps[src_pamap.layer_map_name];
                 let src_layers = src_layer_map.layers_with_tags(tags.mirror_io());
 
-                // println!("\n{mt}{mt}{mt}{mt}### SRC_LAYERS: {:?}\n", src_layers, mt = cmn::MT);
+                if DEBUG_PRINT {
+                    println!("\n{mt}{mt}{mt}{mt}### SRC_LAYERS: {:?}\n", src_layers, mt = cmn::MT);
+                }
 
                 for src_layer in src_layers.iter() {
 
@@ -147,12 +154,14 @@ impl LayerInfo {
                     sources.push(SourceLayerInfo::new(src_area_name, src_layer_dims.clone(), 
                         src_layer.tags(), src_layer_axn_kind, next_slc_idz));                        
 
-                    // println!("{mt}{mt}{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding source layer: \
-                    //     src_area_name: '{}', src_area_tags: '{:?}', src_layer_map.name: '{}', \
-                    //     src_layer.name: '{}', next_slc_idz: '{}', depth: '{}', \
-                    //     src_layer.tags: '{:?}'", name, src_area_name, src_area_tags, 
-                    //     src_layer_map.name, src_layer.name(), next_slc_idz, src_layer.depth(), 
-                    //     src_layer.tags(), mt = cmn::MT);
+                    if DEBUG_PRINT {
+                        println!("{mt}{mt}{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding source layer: \
+                            src_area_name: '{}', src_layer.tags: '{:?}', src_layer_map.name: '{}', \
+                            src_layer.name: '{}', next_slc_idz: '{}', depth: '{:?}', \
+                            src_layer.tags: '{:?}'", name, src_area_name, src_layer.tags(), 
+                            src_layer_map.name, src_layer.name(), next_slc_idz, src_layer.depth(), 
+                            src_layer.tags(), mt = cmn::MT);
+                    }
 
                     // For (legacy) comparison purposes:
                     // protolayer.set_depth(src_layer_depth);
@@ -163,33 +172,6 @@ impl LayerInfo {
             } 
         } else {
             // [NOTE]: This is a non-output layer.
-
-            // // If this is a thalamic layer AND is horizontal (non-spatial), we
-            // // need to use the dimensions set by the `ExternalSource` area
-            // // instead of the dimensions of the area.
-            // let columns = match protolayer.kind() {
-            //     &LayerKind::Axonal(axn_kind) => match axn_kind {
-            //         AxonKind::Horizontal => match plmap_kind {
-            //             LayerMapKind::Thalamic => {
-            //                 // If this is thalamic, the OUTPUT flags should be set.
-            //                 assert!(tags.contains(map::OUTPUT));
-            //                 let &(ref in_src, _) = input_sources.get(pamap.name())
-            //                     .expect(&format!("LayerInfo::new(): Invalid input source key: \
-            //                         '{}'", pamap.name()));
-            //                 let in_src_layer = in_src.layer(tags);
-            //                 let in_src_layer_dims = in_src_layer.dims().expect(&format!(
-            //                     "LayerInfo::new(): External source layer dims for layer \
-            //                     '{}' in area '{}' are not set.", in_src_layer.name(), 
-            //                     pamap.name()));
-            //                 in_src_layer_dims.columns()
-            //             },
-            //             _ => pamap.dims().columns(),
-            //         },
-            //         AxonKind::Spatial => pamap.dims().columns(),
-            //         AxonKind::None => panic!("LayerInfo::new()"),
-            //     },
-            //     _ => pamap.dims().columns(),
-            // };
 
             // If this is a thalamic layer we need to use the dimensions set
             // by the `ExternalSource` area instead of the dimensions of the
@@ -218,18 +200,12 @@ impl LayerInfo {
                 None => if tags.contains(map::OUTPUT) { cmn::DEFAULT_OUTPUT_LAYER_DEPTH } else { 0 },
             };
 
-
-            // if protolayer.axn_kind().unwrap() == AxonKind::None {
-            //     assert!(layer_depth == 0);
-            // }
-
             next_slc_idz += layer_depth;
             axn_count += columns * layer_depth as u32;
         }
 
         let slc_range = *slc_total..next_slc_idz;
         *slc_total = next_slc_idz;        
-        // assert_eq!(next_slc_idz, slc_range.end);
         sources.shrink_to_fit();
 
         println!("{mt}{mt}{mt}<{}>: {:?} | {:?}", name, slc_range, tags, mt = cmn::MT);
