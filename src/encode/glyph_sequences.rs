@@ -51,12 +51,14 @@ impl GlyphSequences {
         let mut spt_layer_dims: Option<CorticalDims> = None;
         let mut hrz_layer_dims: Option<CorticalDims> = None;
 
-        for (_, layer) in layers.iter_mut() {
-            if layer.axn_kind() == AxonKind::Horizontal {
+        for (tags, layer) in layers.iter_mut() {
+            if layer.axn_kind() == AxonKind::Spatial {
+                assert!(tags.contains(map::FF_OUT));
+                spt_layer_dims = layer.dims().cloned();
+            } else if layer.axn_kind() == AxonKind::Horizontal {                
+                assert!(tags.contains(map::NS_OUT));
                 hrz_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1, 0, None));
                 layer.set_dims(hrz_layer_dims.clone());
-            } else if layer.axn_kind() == AxonKind::Spatial {
-                spt_layer_dims = layer.dims().cloned();
             }
         }
 
@@ -103,12 +105,12 @@ impl ExternalSourceTract for GlyphSequences {
 
         if tags.contains(map::FF_OUT) {
             assert!(&self.spt_layer_dims == tract_frame.dims());           
-            super::encode_2d_image(glyph_dims, &self.hrz_layer_dims, self.scale,
+            super::encode_2d_image(glyph_dims, &self.spt_layer_dims, self.scale,
                 glyph, tract_frame);
         } else if tags.contains(map::NS_OUT) {
             assert!(&self.hrz_layer_dims == tract_frame.dims());
             // ENCODE THE HRZ BUSINESS
-            // super::encode_2d_image(glyph_dims, &self.spt_layer_dims, self.scale,
+            // super::encode_2d_image(glyph_dims, &self.hrz_layer_dims, self.scale,
             //     glyph, tract_frame);
         } else {
             panic!("GlyphSequences::read_into(): Invalid tags: tags: '{:?}' must mesh with {:?}", 
