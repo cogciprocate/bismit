@@ -30,7 +30,6 @@ pub enum ExternalSourceKind {
     Hexballs { edge_size: usize, invert: bool, fill: bool },
     Exp1,
     IdxStreamer(Box<ExternalSourceTract>),
-    // IdxStreamerLoop(Box<InputTract>),
     GlyphSequences(Box<GlyphSequences>),
     Custom(Box<ExternalSourceTract>),
 }
@@ -76,18 +75,11 @@ pub struct ExternalSource {
     src_kind: ExternalSourceKind,
     // layers: HashMap<LayerTags, ExternalSourceLayer, BuildHasherDefault<XxHash>>,
     layers: HashMap<LayerTags, ExternalSourceLayer>,
-    // layer_tags: LayerTags,
-    // kind: ExternalSourceKind,
-    // layer_name: &'static str,
-    // axn_kind: AxonKind,
-    // dims: CorticalDims,
-    // source: Box<InputTract>,
 }
 
 impl ExternalSource {
     // [FIXME] Determine (or have passed in) the layer depth corresponding to this source.
     pub fn new(pamap: &ProtoareaMap, plmap: &ProtolayerMap) -> ExternalSource {
-        // let p_inputs: Vec<Protoinput> = pamap.inputs().to_owned();
         let p_layers: Vec<&Protolayer> = plmap.layers().iter().map(|(_, pl)| pl).collect();
 
         assert!(pamap.get_input().layer_count() == p_layers.len(), "ExternalSource::new(): \
@@ -152,19 +144,12 @@ impl ExternalSource {
         ExternalSource {
             area_name: pamap.name.to_owned(),
             layers: layers,
-            // layer_tags: layer_tags, 
-            src_kind: src_kind,
-            // layer_name: layer_name,            
-            // axn_kind: axn_kind,
-            // dims: dims,            
+            src_kind: src_kind,           
         }
     }
 
     /// Reads input data into a tract.
     pub fn read_into(&mut self, tags: LayerTags, tract: &mut [u8], _: &mut EventList) {
-        // // This is temp (mult out tar areas): DEPRICATING: 
-        // debug_assert!(self.targets.len() == 1);
-
         let dims = self.layers[&tags].dims().expect(&format!("Dimensions don't exist for \
             external input area: \"{}\", tags: '{:?}' ", self.area_name, tags));
 
@@ -177,13 +162,25 @@ impl ExternalSource {
         // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
         let _ = match self.src_kind {
             ExternalSourceKind::IdxStreamer(ref mut es) | ExternalSourceKind::Custom(ref mut es) => {
-                es.read_into(tags, &mut tf) 
+                es.read_into(tags, &mut tf)
             },
             ExternalSourceKind::GlyphSequences(ref mut gs) => {
                 gs.read_into(tags, &mut tf)
             },
             _ => [0; 3],
         };
+    }
+
+    pub fn cycle_next(&mut self) {
+        match self.src_kind {
+            ExternalSourceKind::IdxStreamer(ref mut es) | ExternalSourceKind::Custom(ref mut es) => {
+                es.cycle_next()
+            },
+            ExternalSourceKind::GlyphSequences(ref mut gs) => {
+                gs.cycle_next()
+            },
+            _ => (),
+        }
     }
 
     pub fn layers(&mut self) -> &mut HashMap<LayerTags, ExternalSourceLayer> {

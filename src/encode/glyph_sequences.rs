@@ -6,41 +6,69 @@ use map::{self, LayerTags};
 use external_source::{ExternalSourceTract, ExternalSourceLayer};
 use encode::GlyphBuckets;
 use proto::AxonKind;
-// use map::proto::Protoinput;
 
-pub struct SeqCursor {
+
+/// The cursor containing the current position of the glyph sequence.
+pub struct SeqReader {
+    sequences: Vec<Vec<usize>>,
     seq_idx: usize,
     gly_idx: usize,
 }
 
-impl SeqCursor {
-    fn next(&mut self, sequences: &Vec<Vec<usize>>) -> (usize, usize) {
-        let next_seq_idx = self.seq_idx;
-        let next_glyph_id = sequences[self.seq_idx][self.gly_idx];
+impl SeqReader {
+    fn new(sequences: Vec<Vec<usize>>) -> SeqReader {
+         SeqReader { sequences: sequences, seq_idx: 0, gly_idx: 0 }
+    }
+
+    fn get(&self) -> (usize, usize) {
+        (self.seq_idx, self.sequences[self.seq_idx][self.gly_idx])
+    }
+
+    fn advance(&mut self) {
         self.gly_idx += 1;
 
-        if self.gly_idx >= sequences[self.seq_idx].len() { 
+        if self.gly_idx >= self.sequences[self.seq_idx].len() { 
             self.gly_idx = 0;
             self.seq_idx += 1;
-            if self.seq_idx >= sequences.len() { self.seq_idx = 0; }
+            if self.seq_idx >= self.sequences.len() { self.seq_idx = 0; }
         }
-
-        (next_seq_idx, next_glyph_id)
     }
+
+    // fn next(&mut self, sequences: &Vec<Vec<usize>>) -> (usize, usize) {
+    //     // let next_seq_idx = self.seq_idx;
+    //     // let next_glyph_id = sequences[self.seq_idx][self.gly_idx];
+    //     // self.gly_idx += 1;
+
+    //     // if self.gly_idx >= sequences[self.seq_idx].len() { 
+    //     //     self.gly_idx = 0;
+    //     //     self.seq_idx += 1;
+    //     //     if self.seq_idx >= sequences.len() { self.seq_idx = 0; }
+    //     // }
+
+    //     // (next_seq_idx, next_glyph_id)
+
+    //     let next = (self.seq_idx, sequences[self.seq_idx][self.gly_idx]);
+    //     self.advance(sequences);
+    //     next
+    // }
 }
 
 
+/// Sequences of 2D colorless images.
+///
+/// The sequences vary in length and number specified by `seq_lens` and
+/// `seq_count` respectively.
+///
 pub struct GlyphSequences {
-    sequences: Vec<Vec<usize>>,
+    // sequences: Vec<Vec<usize>>,
     buckets: GlyphBuckets,
     spt_layer_dims: CorticalDims,
     hrz_layer_dims: CorticalDims,
-    cursor: SeqCursor,
+    cursor: SeqReader,
     scale: f32,
 }
 
 impl GlyphSequences {
-    #[inline]
     pub fn new(layers: &mut HashMap<LayerTags, ExternalSourceLayer>, seq_lens: (usize, usize), 
                 seq_count: usize, scale: f32, hrz_dims: (u32, u32)) -> GlyphSequences
     {
@@ -80,18 +108,18 @@ impl GlyphSequences {
         }
 
         GlyphSequences { 
-            sequences: sequences,
+            // sequences: sequences,
             buckets: buckets,
             // layer_dims: [layer_dims.clone(), layer_dims.clone()],
             spt_layer_dims: spt_layer_dims.expect("GlyphSequences::new(): Spatial dims not set."),
             hrz_layer_dims: hrz_layer_dims.expect("GlyphSequences::new(): Horizontal dims not set."),
-            cursor: SeqCursor { seq_idx: 0, gly_idx: 0 },
+            cursor: SeqReader::new(sequences),
             scale: scale,
         }
     }
 
     pub fn sequences(&self) -> &Vec<Vec<usize>> {
-        &self.sequences
+        &self.cursor.sequences
     }
 }
 
@@ -100,7 +128,7 @@ impl ExternalSourceTract for GlyphSequences {
             -> [usize; 3]
     {
         let glyph_dims = self.buckets.glyph_dims();
-        let (next_seq_idx, next_glyph_id) = self.cursor.next(&self.sequences);
+        let (next_seq_idx, next_glyph_id) = self.cursor.get();
         let glyph: &[u8] = self.buckets.next_glyph(next_glyph_id);
 
         if tags.contains(map::FF_OUT) {
@@ -109,11 +137,14 @@ impl ExternalSourceTract for GlyphSequences {
                 glyph, tract_frame);
         } else if tags.contains(map::NS_OUT) {
             assert!(&self.hrz_layer_dims == tract_frame.dims());
-            // ENCODE THE HRZ BUSINESS
+            // [TODO]: ENCODE THE HRZ BUSINESS
             // super::encode_2d_image(glyph_dims, &self.hrz_layer_dims, self.scale,
             //     glyph, tract_frame);
+            for idx in 0..tract_frame.dims().to_len() {
+                unsafe { *tract_frame.get_unchecked_mut(idx) = (idx & 0xFF) as u8; }
+            }
         } else {
-            panic!("GlyphSequences::read_into(): Invalid tags: tags: '{:?}' must mesh with {:?}", 
+            panic!("GlyphSequences::read_into(): Invalid tags: tags: '{:?}' must contain {:?}", 
                 tags, map::NS_OUT);
         }
 
@@ -121,41 +152,38 @@ impl ExternalSourceTract for GlyphSequences {
     }
 
     fn cycle_next(&mut self) {
-        
+        self.cursor.advance();
     }
 }
 
 
 mod tests {
-    #[test]
-    fn glyph_sequences_FIXME() {
-        use std::collections::HashMap;
-        use encode::GlyphSequences;
-        use cmn::CorticalDims;
-        use map::LayerTags;
-        use external_source::ExternalSourceLayer;
+    // #[test]
+    // /// Huge pain in the ass to re-implement this test now that a hashmap of
+    // /// `ExternalSourceLayer`s is req'd.
+    // fn glyph_sequences_FIXME() {
+    //     use std::collections::HashMap;
+    //     use encode::GlyphSequences;
+    //     use cmn::CorticalDims;
+    //     use map::LayerTags;
+    //     use external_source::ExternalSourceLayer;
 
-        let dims = CorticalDims::new(32, 32, 1, 0, None);
+    //     let dims = CorticalDims::new(32, 32, 1, 0, None);
 
-        for i in 0..6 {
-            let seq_lens = (i, (i * 2) + 11);
-            let seq_count = 79 - i;
+    //     for i in 0..6 {
+    //         let seq_lens = (i, (i * 2) + 11);
+    //         let seq_count = 79 - i;
 
-            // [FIXME]: Bring the rest of this back:
+    //         let mut layers: HashMap<LayerTags, ExternalSourceLayer> = HashMap::with_capacity(2);
 
-            // let extern_src_lyr = ExternalSourceLayer::
+    //         let gss = GlyphSequences::new(&mut area_map, seq_lens, seq_count, 1.0, (16, 16));
 
-            // // &mut dims
-            // let area_map: HashMap<LayerTags, ExternalSourceLayer> = HashMap::with_capacity(2);
+    //         assert!(gss.sequences.len() == seq_count);
 
-            // let gss = GlyphSequences::new(&mut area_map, seq_lens, seq_count, 1.0, (16, 16));
-
-            // assert!(gss.sequences.len() == seq_count);
-
-            // for seq in gss.sequences() {
-            //     assert!(seq.len() >= seq_lens.0);
-            //     assert!(seq.len() <= seq_lens.1);
-            // }
-        }        
-    }
+    //         for seq in gss.sequences() {
+    //             assert!(seq.len() >= seq_lens.0);
+    //             assert!(seq.len() <= seq_lens.1);
+    //         }
+    //     }        
+    // }
 }

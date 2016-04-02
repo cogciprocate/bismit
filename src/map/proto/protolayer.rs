@@ -124,6 +124,9 @@ impl LayerKind {
     }
 }
 
+/// [NOTE]: This enum is redundantly represented as a bitflag in `LayerTags`
+/// and may (should) eventually be removed.
+///
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Copy)]
 pub enum AxonKind {
     Spatial,

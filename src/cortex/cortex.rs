@@ -56,6 +56,10 @@ impl Cortex {
         self.areas.get(area_name).expect(&emsg)
     }
 
+    pub fn areas(&self) -> &CorticalAreas {
+        &self.areas
+    }
+
     pub fn cycle(&mut self) {
         self.thal.cycle_external_tracts(&mut self.areas);
 

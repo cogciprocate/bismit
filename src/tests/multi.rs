@@ -8,5 +8,9 @@ fn multi_layer_input() {
 
 	for _ in 0..cycle_iters {
 		cortex.cycle();
+
+		for area in cortex.areas().iter() {
+			
+		}
 	}
 }
