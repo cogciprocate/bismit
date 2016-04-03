@@ -82,7 +82,6 @@ impl Thalamus {
                     println!("{mt}{mt}{mt}'{}': tags: {}, slc_range: {:?}, map_kind: {:?}, \
                         axn_kind: {:?}", layer.name(), layer.tags(), layer.slc_range(),
                         layer.layer_map_kind(), layer.axn_kind(), mt = cmn::MT);
-                    println!("{mt}{mt}{mt}{mt}sources: {:?}", layer.sources(), mt = cmn::MT);
 
                     tract.add_area(area_name.to_owned(), layer.tags(), layer_dims.columns() as usize);
                 }

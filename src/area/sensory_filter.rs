@@ -24,16 +24,29 @@ impl SensoryFilter {
                 axns: &AxonSpace,
                 //base_axn_slc: u8,
                 ocl_pq: &ProQue, 
-        ) -> SensoryFilter 
+            ) -> SensoryFilter 
     {
         let layer_flags = map::FF_IN;
-        let base_axn_slc_ids = area_map.axn_base_slc_ids_by_tags(layer_flags);
-        assert!(base_axn_slc_ids.len() == 1);
-        let base_axn_slc = base_axn_slc_ids[0];
+        // [NOTE]: Combine this with the call to `::slc_src_layer_dims` below:
+        // let axn_slc_ranges = area_map.layers().layers_containing_tags_slc_range(layer_flags);
+        // assert!(axn_slc_ranges.len() == 1);
+        // assert!(axn_slc_ranges[0].len() == 1);
+        // let axn_slc_range = axn_slc_ranges[0].clone();
 
-        let dims = area_map.slc_src_layer_dims(base_axn_slc, layer_flags).expect(&format!(
-            "SensoryFilter::new(): No source slice layer with base axon slice: '{}' and \
-            flags: '{:?}' found.", base_axn_slc, layer_flags));
+        // let dims = area_map.slc_src_layer_dims(axn_slc_range.start, layer_flags).expect(&format!(
+        //     "SensoryFilter::new(): No source slice layer with axon slice range: '{:?}' and \
+        //     flags: '{:?}' found.", axn_slc_range, layer_flags));
+
+
+        let layers = area_map.layers().layers_containing_tags(layer_flags);
+        assert!(layers.len() == 1);
+        let layer = layers[0];
+        let axn_slc_range = layer.slc_range().expect("SensoryFilter::new(): \
+            Invalid slice range.").clone();
+
+        assert!(layers[0].sources().len() == 1);
+        let ref src_layer = layers[0].sources()[0];
+        let dims = src_layer.dims();
         
         assert!(dims.depth() == 1, "\nAfferent input layer depths of more than one for cortical \
             areas with sensory filters are not yet supported. Please set the depth of any \
@@ -46,7 +59,7 @@ impl SensoryFilter {
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(&input)
-            .arg_scl(base_axn_slc)
+            .arg_scl(axn_slc_range.start)
             .arg_buf(&axns.states);
 
         SensoryFilter {

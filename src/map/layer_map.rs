@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
+use std::ops::Range;
 // use std::ops::{Range};
 use std::slice::{Iter};
 
@@ -33,8 +34,10 @@ impl LayerMap {
         let mut slc_total = 0u8;
 
         for (_, pl) in plmap.layers().iter() {
-            index.push(LayerInfo::new(pl, plmap_kind.clone(), pamap, pamaps, plmaps, 
-                input_sources, &mut slc_total));
+            let new_layer = LayerInfo::new(pl, plmap_kind.clone(), pamap, pamaps, plmaps, 
+                input_sources, slc_total);
+            slc_total += new_layer.depth();
+            index.push(new_layer);
         }
 
         // assert_eq!(slc_total as usize, plmap.slc_map().len());
@@ -61,22 +64,26 @@ impl LayerMap {
                 //     layer.slc_range(), mt = cmn::MT);
             }
 
-            for slc_id in layer.slc_range().clone() {
-                if DEBUG_PRINT {
-                    // println!("{mt}{mt}{mt}Processing slice: '{}'", slc_id, mt = cmn::MT);
-                }
-                debug_assert_eq!(slc_id_check, slc_id);
+            if layer.slc_range().is_some() {
+                for slc_id in layer.slc_range().unwrap().clone() {
+                    if DEBUG_PRINT {
+                        // println!("{mt}{mt}{mt}Processing slice: '{}'", slc_id, mt = cmn::MT);
+                    }
+                    debug_assert_eq!(slc_id_check, slc_id);
 
-                if slc_map.insert(slc_id, layer).is_some() {
-                    panic!("LayerMap::slc_map(): Duplicate slices found in LayerMap: \
-                        layer: '{}', slc_id: '{}'.", layer.name(), slc_id);
-                }
+                    if slc_map.insert(slc_id, layer).is_some() {
+                        panic!("LayerMap::slc_map(): Duplicate slices found in LayerMap: \
+                            layer: '{}', slc_id: '{}'.", layer.name(), slc_id);
+                    }
 
-                slc_id_check = slc_id + 1;
+                    slc_id_check = slc_id + 1;
+                }
             }
         }
 
-        print!("\n");
+        if DEBUG_PRINT {
+            // print!("\n");
+        }
 
         slc_map
     }
@@ -90,12 +97,12 @@ impl LayerMap {
         self.index.iter().filter(|li| li.tags().contains(tags)).map(|li| li).collect()
     }
 
-    // [FIXME] TODO: Create HashMap to index layer names.
-    pub fn layer_info_by_name(&self, name: &'static str) -> &LayerInfo {
-        let layers: Vec<&LayerInfo> = self.index.iter().filter(|li| li.name() == name)
-            .map(|li| li).collect();
-        debug_assert_eq!(layers.len(), 1);
-        layers[0]
+    /// Returns the slice range associated with matching layers.
+    pub fn layers_containing_tags_slc_range(&self, layer_tags: LayerTags) -> Vec<Range<u8>> {
+        self.layers_containing_tags(layer_tags).iter()
+            .filter(|l| l.slc_range().is_some())
+            .map(|l| l.slc_range().unwrap().clone())
+            .collect()
     }
 
     // [FIXME] TODO: Cache results. Use iterator mapping and filtering.
@@ -138,17 +145,29 @@ impl LayerMap {
         ).collect()
     }
 
+    // [FIXME] TODO: Create HashMap to index layer names.
+    pub fn layer_info_by_name(&self, name: &'static str) -> &LayerInfo {
+        let layers: Vec<&LayerInfo> = self.index.iter().filter(|li| li.name() == name)
+            .map(|li| li).collect();
+        debug_assert_eq!(layers.len(), 1);
+        layers[0]
+    }
 
+ 
+    /// [FIXME]: REMOVE/REDESIGN THIS: More than one layer can have the same
+    /// slice id.
     pub fn slc_src_layer_info(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&SourceLayerInfo> {
         let mut src_layer_info = Vec::with_capacity(8);
         let layer_info = self.layers_containing_tags(layer_tags);
 
-        for lyr in layer_info {            
-            for src_lyr in lyr.sources() {
-                if slc_id >= src_lyr.tar_slc_range().start 
-                    && slc_id < src_lyr.tar_slc_range().end
-                {
-                    src_layer_info.push(src_lyr);
+        for lyr in layer_info {
+            if lyr.depth() > 0 {
+                for src_lyr in lyr.sources() {
+                    if slc_id >= src_lyr.tar_slc_range().start 
+                        && slc_id < src_lyr.tar_slc_range().end
+                    {
+                        src_layer_info.push(src_lyr);
+                    }
                 }
             }
         }

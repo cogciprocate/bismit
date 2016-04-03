@@ -17,7 +17,7 @@ const DEBUG_PRINT: bool = false;
 pub struct LayerInfo {
     name: &'static str,    
     tags: LayerTags,
-    slc_range: Range<u8>,
+    slc_range: Option<Range<u8>>,
     sources: Vec<SourceLayerInfo>,
     layer_map_kind: LayerMapKind,
     axn_kind: AxonKind,
@@ -27,11 +27,12 @@ pub struct LayerInfo {
 }
 
 impl LayerInfo {
-    // [FIXME]: TODO: Clean up and optimize.
-    // [FIXME]: TODO: Return result and get rid of panics, et al.
+    /// [FIXME]: TODO: Break up, refactor, and optimize.
+    /// [FIXME]: TODO: Create an error type enum just for map::Layer****.
+    /// [FIXME]: TODO: Return result and get rid of panics, et al.
     pub fn new(protolayer: &Protolayer, plmap_kind: LayerMapKind, pamap: &ProtoareaMap, pamaps: &ProtoareaMaps, 
                 plmaps: &ProtolayerMaps, input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>, 
-                slc_total: &mut u8) -> LayerInfo 
+                slc_total: u8) -> LayerInfo 
     {
         let protolayer = protolayer.clone();
         let name = protolayer.name();
@@ -40,25 +41,31 @@ impl LayerInfo {
         // let slc_range = protolayer.slc_idz()..(protolayer.slc_idz() + protolayer.depth());
         let mut sources = Vec::with_capacity(8);
 
-        let mut next_slc_idz = *slc_total;
+        let mut next_slc_idz = slc_total;
         let mut axn_count = 0;
 
         let mut irregular_layer_dims: Option<CorticalDims> = None;
         let mut src_layer_debug: Vec<String> = Vec::new();
 
         if DEBUG_PRINT {
-            println!("\n{mt}{mt}### LAYER: {:?}, next_slc_idz: {}, slc_total: {:?}\n", 
-                tags, next_slc_idz, slc_total, mt = cmn::MT);
+            src_layer_debug.push(format!("{mt}{mt}{mt}### LAYER: {:?}, next_slc_idz: {}, slc_total: {:?}", 
+                tags, next_slc_idz, slc_total, mt = cmn::MT));
         }
 
         // If layer is an input layer, add sources:
         if tags.contains(map::INPUT) {
+            // Make sure this layer is axonal (cellular layers must not also
+            // be input layers):
             match protolayer.kind() {
                 &LayerKind::Axonal(_) => (),
                 _ => panic!("Error assembling LayerInfo for '{}'. Layers containing \
                     'map::INPUT' must be 'AxonKind::Axonal'.", name),
             }
 
+            // Assemble a list of layers, each given by an (area name, layer
+            // tags) combo which are either specific (not necessarily spatial)
+            // and either feed-forward or feedback, or non-specific. This
+            // should cover the gamut for the input layers of an area.
             let src_area_combos: Vec<(&'static str, LayerTags)> = 
                 pamap.aff_areas().iter().map(|&an| (an, map::FEEDBACK | map::SPECIFIC))
                     .chain(pamap.eff_areas().iter().map(|&an| (an, map::FEEDFORWARD | map::SPECIFIC)))
@@ -67,31 +74,39 @@ impl LayerInfo {
                 .collect();                
 
             if DEBUG_PRINT {
-                println!("\n{mt}{mt}{mt}### SRC_AREAS: {:?}\n", src_area_combos, mt = cmn::MT);
+                src_layer_debug.push(format!("{mt}{mt}{mt}{mt}### SRC_AREAS: {:?}", 
+                    src_area_combos, mt = cmn::MT));
             }
 
+            // Assemble a list of sources for each input layer:
+            //
             // For each potential source area (aff or eff):
             // - get that area's layers
             // - get the layers with a complimentary flag ('map::OUTPUT' in this case)
             //    - other tags identical
             // - filter out feedback from eff areas and feedforward from aff areas
             // - push what's left to sources
-            // Our layer must contain the flow direction flag corresponding with the source area.
+            //
+            // Our layer must contain the flow direction flag corresponding
+            // with the source area.
+            //
             for (src_area_name, _) in src_area_combos.into_iter()
-                    .filter(|&(_, sat)|  tags.contains(sat))
-            {                
+                    .filter(|&(_, src_layer_tag)| tags.contains(src_layer_tag))
+            {
+                // Get the source area map (proto):
                 let src_pamap = pamaps.maps().get(src_area_name).expect("LayerInfo::new()");
-                // let src_pamap = ;
-                // let src_pamap = match pamaps.maps().get(src_area_name) {
-                //     Some(pm) => pm,
-                //     None => continue,
-                // };
 
+                // Get the source layer map associated with this protoarea:
                 let src_layer_map = &plmaps[src_pamap.layer_map_name];
+
+                // Get a list of layers with tags which are an i/o mirror
+                // (input -> output, output -> input) of the tags for this
+                // layer within this source area.
                 let src_layers = src_layer_map.layers_with_tags(tags.mirror_io());
 
                 if DEBUG_PRINT {
-                    println!("\n{mt}{mt}{mt}{mt}### SRC_LAYERS: {:?}\n", src_layers, mt = cmn::MT);
+                    src_layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}### SRC_PROTOLAYERS: {:?}", 
+                        src_layers, mt = cmn::MT));
                 }
 
                 for src_layer in src_layers.iter() {
@@ -114,6 +129,9 @@ impl LayerInfo {
                     // let src_layer_depth =                     
 
                     let (src_layer_dims, src_layer_axn_kind) = match src_layer_map.kind() {
+                        // If the source layer is thalamic, we will be relying
+                        // on the `ExternalSource` associated with it to
+                        // provide its dimensions.
                         &LayerMapKind::Thalamic => {
                             let &(ref in_src, _) = input_sources.get(src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
@@ -126,7 +144,10 @@ impl LayerInfo {
                                 ).clone();
                             (in_src_layer_dims, in_src_layer.axn_kind())
                         },
-                        _ => {
+                        // If the source layer is cortical, we will give the
+                        // layer dimensions depending on the source layer's
+                        // size.
+                        &LayerMapKind::Cortical => {
                             let depth = src_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
                             let src_axn_kind = match src_layer.kind() {
@@ -148,20 +169,21 @@ impl LayerInfo {
                     };
 
                     let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth());
-                    src_layer_debug.push(format!("{mt}{mt}{mt}{mt}<{}>: {:?}: area: [\"{}\"], tags: {}", src_layer.name(), 
-                        tar_slc_range, src_area_name, src_layer.tags(), mt = cmn::MT));
 
                     sources.push(SourceLayerInfo::new(src_area_name, src_layer_dims.clone(), 
                         src_layer.tags(), src_layer_axn_kind, next_slc_idz));                        
 
                     if DEBUG_PRINT {
-                        println!("{mt}{mt}{mt}{mt}LAYERINFO::NEW(layer: '{}'): Adding source layer: \
-                            src_area_name: '{}', src_layer.tags: '{:?}', src_layer_map.name: '{}', \
-                            src_layer.name: '{}', next_slc_idz: '{}', depth: '{:?}', \
-                            src_layer.tags: '{:?}'", name, src_area_name, src_layer.tags(), 
-                            src_layer_map.name, src_layer.name(), next_slc_idz, src_layer.depth(), 
-                            src_layer.tags(), mt = cmn::MT);
+                        src_layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}{mt}### SOURCE_LAYER_INFO:\
+                            (layer: '{}'): Adding source layer: \
+                            src_area_name: '{}', src_layer.tags: '{}', src_layer_map.name: '{}', \
+                            src_layer.name: '{}', next_slc_idz: '{}', depth: '{:?}'", 
+                            name, src_area_name, src_layer.tags(), src_layer_map.name, 
+                            src_layer.name(), next_slc_idz, src_layer.depth(), mt = cmn::MT));
                     }
+
+                    src_layer_debug.push(format!("{mt}{mt}{mt}{mt}<{}>: {:?}: area: [\"{}\"], tags: {}", src_layer.name(), 
+                        tar_slc_range, src_area_name, src_layer.tags(), mt = cmn::MT));
 
                     // For (legacy) comparison purposes:
                     // protolayer.set_depth(src_layer_depth);
@@ -171,7 +193,8 @@ impl LayerInfo {
                 }
             } 
         } else {
-            // [NOTE]: This is a non-output layer.
+            // [NOTE]: This is a non-input layer.
+            debug_assert!(!tags.contains(map::INPUT));            
 
             // If this is a thalamic layer we need to use the dimensions set
             // by the `ExternalSource` area instead of the dimensions of the
@@ -204,14 +227,16 @@ impl LayerInfo {
             axn_count += columns * layer_depth as u32;
         }
 
-        let slc_range = *slc_total..next_slc_idz;
-        *slc_total = next_slc_idz;        
+        let ttl_slc_range = slc_total..next_slc_idz;
+        let slc_range = if ttl_slc_range.len() > 0 { Some(ttl_slc_range) } else { None };
         sources.shrink_to_fit();
 
         println!("{mt}{mt}{mt}<{}>: {:?}: {}", name, slc_range, tags, mt = cmn::MT);
 
-        for dbg_string in src_layer_debug {
-            println!("{}", &dbg_string);
+        if DEBUG_PRINT {
+            for dbg_string in src_layer_debug {
+                println!("{}", &dbg_string);
+            }
         }
 
         if let Some(ref irr_dims) = irregular_layer_dims {
@@ -272,7 +297,7 @@ impl LayerInfo {
         self.protolayer.kind()
     }
 
-    pub fn sources(&self) -> &Vec<SourceLayerInfo>  {
+    pub fn sources(&self) -> &[SourceLayerInfo]  {
         &self.sources
     }
 
@@ -288,12 +313,15 @@ impl LayerInfo {
         self.layer_map_kind.clone()
     }
 
-    pub fn slc_range(&self) -> &Range<u8> {
-        &self.slc_range
+    pub fn slc_range(&self) -> Option<&Range<u8>> {
+        self.slc_range.as_ref()
     }
 
     pub fn depth(&self) -> u8 {
-        self.slc_range.len() as u8
+        match self.slc_range {
+            Some(ref r) => r.len() as u8,
+            None => 0,
+        }
     }
 }
 

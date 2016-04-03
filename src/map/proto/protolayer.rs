@@ -6,6 +6,75 @@ use self::LayerKind::{Cellular, Axonal};
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
+pub enum LayerKind {
+    Cellular(Protocell),
+    Axonal(AxonKind),
+}
+
+impl LayerKind {
+    pub fn axn_kind(&self) -> Option<AxonKind> {
+        match self {
+            &Axonal(ak) => Some(ak.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_range: u8) -> LayerKind {
+        match &mut self {
+            &mut LayerKind::Cellular(ref mut pc) => {
+                match pc.den_dst_src_lyrs {
+                    Some(ref mut vec) => vec.push(dst_srcs),
+                    None => (),
+                }
+
+                pc.den_dst_syn_reaches.push(syn_range);
+            },
+
+            &mut LayerKind::Axonal(_) => (),
+        };
+        
+        self
+    }
+}
+
+
+/// [NOTE]: This enum is redundantly represented as a bitflag in `LayerTags`
+/// and may eventually be removed pending evaluation.
+///
+#[derive(PartialEq, Debug, Clone, Eq, Hash, Copy)]
+pub enum AxonKind {
+    Spatial,
+    Horizontal,
+    None,
+}
+
+impl AxonKind {
+    pub fn from_tags<'a>(tags: LayerTags) -> Result<AxonKind, CmnError> {
+        if tags.contains(map::SPATIAL) && tags.contains(map::HORIZONTAL) {
+            Err(CmnError::new(format!("Error converting tags to AxonKind, tags must contain \
+                only one of either 'map::SPATIAL' or 'map::HORIZONTAL'. (tags: '{:?}')", tags)))
+        } else if tags.contains(map::SPATIAL) {
+            Ok(AxonKind::Spatial)
+        } else if tags.contains(map::HORIZONTAL) {
+            Ok(AxonKind::Horizontal)
+        } else {
+            // Err(CmnError::new(format!("Unable to determine axon kind from tags: '{:?}'", tags)))
+            Ok(AxonKind::None)
+        }
+    }
+
+    pub fn matches_tags(&self, tags: LayerTags) -> bool {
+        match self {
+            &AxonKind::Spatial => tags.contains(map::SPATIAL),
+            &AxonKind::Horizontal => tags.contains(map::HORIZONTAL),
+            &AxonKind::None => (!tags.contains(map::SPATIAL)) && (!tags.contains(map::HORIZONTAL)),
+        }
+    }
+}
+
+
+
+#[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct Protolayer {
     name: &'static str,
     kind: LayerKind,
@@ -87,73 +156,5 @@ impl Protolayer {
 
     pub fn tags(&self) -> LayerTags {
         self.tags
-    }
-}
-
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
-pub enum LayerKind {
-    Cellular(Protocell),
-    Axonal(AxonKind),
-}
-
-impl LayerKind {
-    pub fn axn_kind(&self) -> Option<AxonKind> {
-        match self {
-            &Axonal(ak) => Some(ak.clone()),
-            _ => None,
-        }
-    }
-}
-
-impl LayerKind {
-    pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_range: u8) -> LayerKind {
-        match &mut self {
-            &mut LayerKind::Cellular(ref mut pc) => {
-                match pc.den_dst_src_lyrs {
-                    Some(ref mut vec) => vec.push(dst_srcs),
-                    None => (),
-                }
-
-                pc.den_dst_syn_reaches.push(syn_range);
-            },
-
-            &mut LayerKind::Axonal(_) => (),
-        };
-        
-        self
-    }
-}
-
-/// [NOTE]: This enum is redundantly represented as a bitflag in `LayerTags`
-/// and may (should) eventually be removed.
-///
-#[derive(PartialEq, Debug, Clone, Eq, Hash, Copy)]
-pub enum AxonKind {
-    Spatial,
-    Horizontal,
-    None,
-}
-
-impl AxonKind {
-    pub fn from_tags<'a>(tags: LayerTags) -> Result<AxonKind, CmnError> {
-        if tags.contains(map::SPATIAL) && tags.contains(map::HORIZONTAL) {
-            Err(CmnError::new(format!("Error converting tags to AxonKind, tags must contain \
-                only one of either 'map::SPATIAL' or 'map::HORIZONTAL'. (tags: '{:?}')", tags)))
-        } else if tags.contains(map::SPATIAL) {
-            Ok(AxonKind::Spatial)
-        } else if tags.contains(map::HORIZONTAL) {
-            Ok(AxonKind::Horizontal)
-        } else {
-            // Err(CmnError::new(format!("Unable to determine axon kind from tags: '{:?}'", tags)))
-            Ok(AxonKind::None)
-        }
-    }
-
-    pub fn matches_tags(&self, tags: LayerTags) -> bool {
-        match self {
-            &AxonKind::Spatial => tags.contains(map::SPATIAL),
-            &AxonKind::Horizontal => tags.contains(map::HORIZONTAL),
-            &AxonKind::None => (!tags.contains(map::SPATIAL)) && (!tags.contains(map::HORIZONTAL)),
-        }
     }
 }
