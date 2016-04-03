@@ -69,7 +69,7 @@ impl Thalamus {
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ", area_name, mt = cmn::MT);
 
             {
-                let output_layers = area_map.layers().layer_info_containing_tags(map::OUTPUT);
+                let output_layers = area_map.layers().layers_containing_tags(map::OUTPUT);
 
                 for layer in output_layers.iter() {
                     // If the layer is thalamic is will have an irregular size

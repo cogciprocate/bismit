@@ -5,12 +5,12 @@ use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horiz
 
 pub fn define_plmaps() -> ProtolayerMaps {
     const MOTOR_UID: u32 = 654;
-    // const ROSE_UID: u32 = 435;
+    const ROSE_UID: u32 = 435;
 
     ProtolayerMaps::new()
         .lmap(ProtolayerMap::new("v1_lm", Cortical)
             .axn_layer("motor_ctx", map::NS_IN | LayerTags::with_uid(MOTOR_UID), Horizontal)
-            // .axn_layer("rose_ctx", map::NS_IN | LayerTags::with_uid(ROSE_UID), Horizontal)
+            .axn_layer("rose_ctx", map::NS_IN | LayerTags::with_uid(ROSE_UID), Horizontal)
             .axn_layer("eff_in", map::FB_IN, Spatial)
             .axn_layer("aff_in", map::FF_IN, Spatial)
             .axn_layer("unused", map::UNUSED_TESTING, Spatial)

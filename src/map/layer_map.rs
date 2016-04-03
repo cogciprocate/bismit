@@ -82,7 +82,7 @@ impl LayerMap {
     }
 
     // [FIXME] TODO: Cache results (use TractArea cache style).
-    pub fn layer_info_containing_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
+    pub fn layers_containing_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
         self.index.iter().filter(|li| li.tags().contains(tags)).map(|li| li).collect()
     }
 
@@ -95,10 +95,10 @@ impl LayerMap {
     }
 
     // [FIXME] TODO: Cache results. Use iterator mapping and filtering.
-    pub fn layer_src_info_containing_tags(&self, tags: LayerTags) -> Vec<&SourceLayerInfo> {
+    pub fn layers_containing_tags_src_layers(&self, tags: LayerTags) -> Vec<&SourceLayerInfo> {
         let mut src_layers = Vec::with_capacity(8);
 
-        for layer in self.layer_info_containing_tags(tags).iter() {
+        for layer in self.layers_containing_tags(tags).iter() {
             for src_layer in layer.sources().iter() {
                 if DEBUG_PRINT {
                     println!("LAYER_MAP::LAYER_SRC_INFO(): Comparing: 'src_layer.tags()', \
@@ -114,22 +114,22 @@ impl LayerMap {
     }
 
     /// Returns a list of source area names for a given layer.
-    pub fn layer_src_area_names_containing_tags(&self, tags: LayerTags) -> Vec<&'static str> {
-        self.layer_src_info_containing_tags(tags).iter().map(|sli| sli.area_name()).collect()
+    pub fn layers_containing_tags_src_area_names(&self, tags: LayerTags) -> Vec<&'static str> {
+        self.layers_containing_tags_src_layers(tags).iter().map(|sli| sli.area_name()).collect()
     }
 
     /// Returns a list of the (area name, layer tags) tuple necessary to
     /// access thalamic tracts.
-    pub fn layer_src_tract_keys_containing_tags(&self, tags: LayerTags) -> Vec<(String, LayerTags)> {
+    pub fn layers_containing_tags_src_tract_keys(&self, tags: LayerTags) -> Vec<(String, LayerTags)> {
         if DEBUG_PRINT {
             print!("LAYER_SRC_AREA_NAMES_CONTAINING_TAGS: tags: ");
-            for sli in self.layer_src_info_containing_tags(tags).iter() {
+            for sli in self.layers_containing_tags_src_layers(tags).iter() {
                 print!("{}", sli.tags());
             }
             print!("\n");
         }
 
-        self.layer_src_info_containing_tags(tags).iter().map(|sli| 
+        self.layers_containing_tags_src_layers(tags).iter().map(|sli| 
             (sli.area_name().to_owned(), sli.tags())
         ).collect()
     }
@@ -137,7 +137,7 @@ impl LayerMap {
 
     pub fn slc_src_layer_info(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&SourceLayerInfo> {
         let mut src_layer_info = Vec::with_capacity(8);
-        let layer_info = self.layer_info_containing_tags(layer_tags);
+        let layer_info = self.layers_containing_tags(layer_tags);
 
         for lyr in layer_info {            
             for src_lyr in lyr.sources() {

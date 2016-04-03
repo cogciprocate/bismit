@@ -11,14 +11,95 @@ use thalamus::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer, 
     SpinyStellateLayer};
 
-// Intel/Linux debug mode:
+#[cfg(test)] pub use self::tests::{CorticalAreaTest};
+
+// GDB debug mode:
 const KERNEL_DEBUG_MODE: bool = true;
 // const DEBUG_PRINT: bool = false;
 
-#[cfg(test)] pub use self::tests::{CorticalAreaTest};
-
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 
+
+/// Information needed to read from and write to the thalamus for a layer
+/// uniquely identified by `tags`.
+///
+// [TODO]: Convert to usize (no option):
+pub struct IoLayerInfo {
+    events: EventList,
+    src_area_name: String,
+    tags: LayerTags,
+}
+
+impl IoLayerInfo {
+    pub fn new(src_area_name: String, tags: LayerTags) -> IoLayerInfo {
+        IoLayerInfo { events: EventList::new(), src_area_name: src_area_name, tags: tags }
+    }
+}
+
+
+/// A collection of all of the information needed to read from and write to
+/// i/o layers via the thalamus.
+///
+pub struct IoLayerInfoCache {
+    groups: HashMap<LayerTags, Vec<IoLayerInfo>>,
+}
+
+impl IoLayerInfoCache {
+    pub fn new(area_name: String, area_map: &AreaMap) -> IoLayerInfoCache {
+        let group_tags_list: [LayerTags; 6] = [
+            map::FF_IN, map::FB_IN, map::NS_IN, 
+            map::FF_OUT, map::FB_OUT, map::NS_OUT
+        ];
+
+        let mut groups = HashMap::with_capacity(6);
+
+        // groups.insert(map::FF_IN, Vec::with_capacity(2));    
+        // groups.insert(map::FB_IN, Vec::with_capacity(2));
+        // groups.insert(map::NS_IN, Vec::with_capacity(2));
+        // groups.insert(map::FF_OUT, Vec::with_capacity(2));
+        // groups.insert(map::FB_OUT, Vec::with_capacity(2));
+        // groups.insert(map::NS_OUT, Vec::with_capacity(2));
+
+        // for (&group_tags, ref mut group_list) in groups.iter_mut() {
+        //     let layer_src_tract_keys = area_map.layers()
+        //         .layers_containing_tags_src_tract_keys(group_tags).clone();
+        // }        
+
+        for &group_tags in group_tags_list.iter() {
+            let mut layers = if group_tags.contains(map::OUTPUT) {
+                let layers_info = area_map.layers().layers_containing_tags(group_tags);
+                let mut group_layers = Vec::<IoLayerInfo>::with_capacity(layers_info.len());
+
+                for layer_info in layers_info {
+                    let io_layer = IoLayerInfo::new(area_name.clone(), layer_info.tags());
+                    group_layers.push(io_layer);
+                }
+                group_layers
+            } else {
+                debug_assert!(group_tags.contains(map::INPUT));
+                let layers_src_info = area_map.layers()
+                    .layers_containing_tags_src_layers(group_tags);
+                let mut group_layers = Vec::<IoLayerInfo>::with_capacity(layers_src_info.len());
+
+                for layer_src_info in layers_src_info.iter() {
+                    let io_layer = IoLayerInfo::new(layer_src_info.area_name().to_owned(),
+                        layer_src_info.tags());
+                    group_layers.push(io_layer);
+                }
+                group_layers
+            };
+
+            groups.insert(group_tags, layers);
+        }
+
+        IoLayerInfoCache {
+            groups: groups,
+        }
+    }
+}
+
+
+/// An area of the cortex.
 pub struct CorticalArea {
     pub name: &'static str,
     pub dims: CorticalDims,
@@ -39,6 +120,7 @@ pub struct CorticalArea {
     // rng: rand::XorShiftRng,
     // thal_gangs: ThalamicGanglions,
     events_lists: HashMap<LayerTags, EventList>,
+    io_info: IoLayerInfoCache,
     pub bypass_inhib: bool,
     pub bypass_filters: bool,
     pub disable_pyrs: bool,
@@ -242,6 +324,8 @@ impl CorticalArea {
         events_lists.insert(map::NS_IN, EventList::new());
         events_lists.insert(map::FF_OUT, EventList::new());
         events_lists.insert(map::NS_OUT, EventList::new());
+
+        let io_info = IoLayerInfoCache::new(area_name.to_owned(), &area_map);
         
 
         let cortical_area = CorticalArea {
@@ -263,6 +347,7 @@ impl CorticalArea {
             counter: 0,
             // rng: rand::weak_rng(),            
             events_lists: events_lists,
+            io_info: io_info,
             bypass_inhib: false,
             bypass_filters: false,
             disable_pyrs: false,
@@ -324,9 +409,9 @@ impl CorticalArea {
     /// LayerTags)` keys into `(usize, LayerTags)`.
     /// 
     fn intake(&mut self, layer_tags: LayerTags, thal: &mut Thalamus) {
-        // let layers = self.area_map.layers().layer_src_area_names_containing_tags(layer_tags);
+        // let layers = self.area_map.layers().layers_containing_tags_src_area_names(layer_tags);
         let layer_src_tract_keys = self.area_map.layers()
-            .layer_src_tract_keys_containing_tags(layer_tags).clone();
+            .layers_containing_tags_src_tract_keys(layer_tags).clone();
 
         if false && layer_src_tract_keys.len() > 0 {
             println!("CORTICAL_AREA::INTAKE(): layer_src_tract_keys: ({}, {})", 
@@ -351,35 +436,6 @@ impl CorticalArea {
                 .expect("CorticalArea::output()"),
             layer_tags, 
         );
-    }
-
-    pub fn regrow(&mut self) {
-        if !self.disable_regrowth { 
-            if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
-                //print!("$");
-                self.ssts_map.get_mut(self.psal_name).expect("cortical_area.rs").regrow();
-                self.ptal_mut().regrow();
-                self.counter = 0;
-            } else {
-                self.counter += 1;
-            }
-        }
-    } 
-
-    /* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
-    pub fn layer_input_ranges(&self, layer_name: &'static str, den_kind: &DendriteKind) 
-            -> Vec<Range<u32>>
-    {
-        let mut axn_irs: Vec<Range<u32>> = Vec::with_capacity(10);
-        let src_slc_ids = self.area_map.layer_src_slc_ids(layer_name, *den_kind);
-
-        for ssid in src_slc_ids {
-            let idz = self.area_map.axn_idz(ssid);
-             let idn = idz + self.dims.columns();
-            axn_irs.push(idz..idn);
-        }
-
-        axn_irs
     }
 
     pub fn write_input(&mut self, events_sdr: (&EventList, &Sdr), layer_tags: LayerTags) {
@@ -444,7 +500,36 @@ impl CorticalArea {
         //     Some(wait_events), Some(new_events)).unwrap(); }
         unsafe { self.axns.states.cmd().read_async(sdr).offset(axn_range.start as usize).block(false)
             .ewait(wait_events).enew(new_events).enq().unwrap(); }
-    }        
+    }
+
+    pub fn regrow(&mut self) {
+        if !self.disable_regrowth { 
+            if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
+                //print!("$");
+                self.ssts_map.get_mut(self.psal_name).expect("cortical_area.rs").regrow();
+                self.ptal_mut().regrow();
+                self.counter = 0;
+            } else {
+                self.counter += 1;
+            }
+        }
+    } 
+
+    /* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
+    pub fn layer_input_ranges(&self, layer_name: &'static str, den_kind: &DendriteKind) 
+            -> Vec<Range<u32>>
+    {
+        let mut axn_irs: Vec<Range<u32>> = Vec::with_capacity(10);
+        let src_slc_ids = self.area_map.layer_src_slc_ids(layer_name, *den_kind);
+
+        for ssid in src_slc_ids {
+            let idz = self.area_map.axn_idz(ssid);
+             let idn = idz + self.dims.columns();
+            axn_irs.push(idz..idn);
+        }
+
+        axn_irs
+    } 
 
     pub fn mcols(&self) -> &Box<Minicolumns> {
         &self.mcols
