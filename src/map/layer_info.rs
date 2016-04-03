@@ -45,10 +45,11 @@ impl LayerInfo {
         let mut axn_count = 0;
 
         let mut irregular_layer_dims: Option<CorticalDims> = None;
+        let mut layer_debug: Vec<String> = Vec::new();
         let mut src_layer_debug: Vec<String> = Vec::new();
 
         if DEBUG_PRINT {
-            src_layer_debug.push(format!("{mt}{mt}{mt}### LAYER: {:?}, next_slc_idz: {}, slc_total: {:?}", 
+            layer_debug.push(format!("{mt}{mt}{mt}### LAYER: {:?}, next_slc_idz: {}, slc_total: {:?}", 
                 tags, next_slc_idz, slc_total, mt = cmn::MT));
         }
 
@@ -74,7 +75,7 @@ impl LayerInfo {
                 .collect();                
 
             if DEBUG_PRINT {
-                src_layer_debug.push(format!("{mt}{mt}{mt}{mt}### SRC_AREAS: {:?}", 
+                layer_debug.push(format!("{mt}{mt}{mt}{mt}### SRC_AREAS: {:?}", 
                     src_area_combos, mt = cmn::MT));
             }
 
@@ -105,7 +106,7 @@ impl LayerInfo {
                 let src_layers = src_layer_map.layers_with_tags(tags.mirror_io());
 
                 if DEBUG_PRINT {
-                    src_layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}### SRC_PROTOLAYERS: {:?}", 
+                    layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}### SRC_PROTOLAYERS: {:?}", 
                         src_layers, mt = cmn::MT));
                 }
 
@@ -174,7 +175,7 @@ impl LayerInfo {
                         src_layer.tags(), src_layer_axn_kind, next_slc_idz));                        
 
                     if DEBUG_PRINT {
-                        src_layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}{mt}### SOURCE_LAYER_INFO:\
+                        layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}{mt}### SOURCE_LAYER_INFO:\
                             (layer: '{}'): Adding source layer: \
                             src_area_name: '{}', src_layer.tags: '{}', src_layer_map.name: '{}', \
                             src_layer.name: '{}', next_slc_idz: '{}', depth: '{:?}'", 
@@ -194,7 +195,7 @@ impl LayerInfo {
             } 
         } else {
             // [NOTE]: This is a non-input layer.
-            debug_assert!(!tags.contains(map::INPUT));            
+            debug_assert!(!tags.contains(map::INPUT));
 
             // If this is a thalamic layer we need to use the dimensions set
             // by the `ExternalSource` area instead of the dimensions of the
@@ -233,8 +234,14 @@ impl LayerInfo {
 
         println!("{mt}{mt}{mt}<{}>: {:?}: {}", name, slc_range, tags, mt = cmn::MT);
 
+        // Print only the source layer info string:
+        for dbg_string in src_layer_debug {
+            println!("{}", &dbg_string);
+        }
+
         if DEBUG_PRINT {
-            for dbg_string in src_layer_debug {
+            // Print all of the other debug strings:
+            for dbg_string in layer_debug {
                 println!("{}", &dbg_string);
             }
         }

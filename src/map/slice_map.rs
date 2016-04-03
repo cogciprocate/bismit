@@ -4,6 +4,8 @@ use ocl::traits::MemLen;
 use cmn::{self, CorticalDims, ParaHexArray, SliceDims};
 use map::{area_map, LayerMap, AxonKind, SliceTractMap};
 
+const DEBUG_PRINT: bool = false;
+
 #[derive(Debug, Clone)]
 pub struct SliceMap {
     axn_idzs: Vec<u32>,
@@ -38,10 +40,14 @@ impl SliceMap {
         let mut dims = Vec::with_capacity(depth);
 
         let mut axn_idz_ttl = 0u32;
+        // For checking purposes:
+        let mut slc_id_ttl = 0u8;
         
         for (&slc_id, &layer) in slc_map.iter() {
             let mut add_slice = |slc_dims: SliceDims| {
-                debug_assert_eq!(slc_id as usize, axn_idzs.len());
+                assert!(slc_id as usize == axn_idzs.len(), "SliceMap::new(): \
+                    slice_id of the slice currently being added: '{}' must be equal to the \
+                    number of slices already added: '{}'", slc_id, axn_idzs.len());
 
                 axn_idzs.push(axn_idz_ttl);
                 axn_idz_ttl += slc_dims.columns();
@@ -51,35 +57,56 @@ impl SliceMap {
                 v_sizes.push(slc_dims.v_size());
                 u_sizes.push(slc_dims.u_size());
                 v_scales.push(slc_dims.v_scale());
-                u_scales.push(slc_dims.u_scale());            
+                u_scales.push(slc_dims.u_scale());
                 v_mids.push(slc_dims.v_mid());
-                u_mids.push(slc_dims.u_mid());    
+                u_mids.push(slc_dims.u_mid());
                 dims.push(slc_dims);
             };
 
             let layer_sources = layer.sources();
 
             if layer_sources.len() > 0 {
+                // This loop must succeed in adding a new slice only once.
                 for layer_source in layer_sources {
-                    debug_assert_eq!(layer.axn_kind(), layer_source.axn_kind());
+                    // Only add a slice to the final slice map if current
+                    // slc_id is within the source layer's target slice range
+                    if slc_id >= layer_source.tar_slc_range().start 
+                        && slc_id < layer_source.tar_slc_range().end 
+                    {
+                        debug_assert!(slc_id == slc_id_ttl);
+                        debug_assert_eq!(layer.axn_kind(), layer_source.axn_kind());
 
-                    add_slice(SliceDims::new(area_dims, Some(layer_source.dims()), 
-                        layer_source.axn_kind())
-                        .expect("SliceMap::new(): Error creating SliceDims."));
+                        if DEBUG_PRINT {
+                            println!("SLICEMAP::NEW(): Using source layer dims: {:?} \
+                                for layer: {} in area: {}", layer_source.dims(), 
+                                layer.name(), layer_source.area_name());
+                        }
+                        slc_id_ttl += 1;
+                        add_slice(SliceDims::new(area_dims, Some(layer_source.dims()), 
+                            layer_source.axn_kind())
+                            .expect("SliceMap::new(): Error creating SliceDims."));
+                    }
                 }
             } else {
+                debug_assert!(slc_id == slc_id_ttl);
                 match layer.irregular_layer_dims() {
                     Some(dims) => {
-                        // println!("SLICEMAP::NEW(): Adding irregular layer dims: {:?} \
-                        //     for layer: {}", dims, layer.name());
+                        if DEBUG_PRINT {
+                            println!("SLICEMAP::NEW(): Adding irregular layer dims: {:?} \
+                                for layer: {}", dims, layer.name());
+                        }
+                        slc_id_ttl += 1;
                         add_slice(SliceDims::new(dims, None, layer.axn_kind())
                             .expect("SliceMap::new()"))
                     },
                     None => {
-                        // println!("SLICEMAP::NEW(): Boring area layer dims: {:?} \
-                        //     for layer: {}", area_dims, layer.name());
+                        if DEBUG_PRINT {
+                            println!("SLICEMAP::NEW(): Boring area layer dims: {:?} \
+                                for layer: {}", area_dims, layer.name());
+                        }
+                        slc_id_ttl += 1;
                         add_slice(SliceDims::new(area_dims, None, layer.axn_kind())
-                        .expect("SliceMap::new()"))
+                            .expect("SliceMap::new()"))
                     },
                 }
             }
@@ -94,7 +121,8 @@ impl SliceMap {
         debug_assert_eq!(axn_idzs.len(), u_scales.len());
         debug_assert_eq!(axn_idzs.len(), v_mids.len());
         debug_assert_eq!(axn_idzs.len(), u_mids.len());
-        debug_assert_eq!(axn_idzs.len(), depth);        
+        debug_assert_eq!(axn_idzs.len(), depth);
+        debug_assert_eq!(axn_idzs.len(), slc_id_ttl as usize);
 
         SliceMap {
             axn_idzs: axn_idzs,

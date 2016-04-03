@@ -42,17 +42,22 @@ impl LayerMap {
 
         // assert_eq!(slc_total as usize, plmap.slc_map().len());
 
+        print!("\n");
+
+        let lm = LayerMap { area_name: pamap.name, index: index, depth: slc_total, kind: plmap_kind };
+
         if DEBUG_PRINT {
             // println!("{mt}{mt}LAYERMAP::NEW(): index: {:?}, plmap.slc_map(): {:?}", 
             //     index, plmap.slc_map(), mt = cmn::MT);
+            println!("{:#?}", lm.slc_map());
         }
 
-        LayerMap { area_name: pamap.name, index: index, depth: slc_total, kind: plmap_kind }
+        lm
     }
 
     pub fn slc_map(&self) -> BTreeMap<u8, &LayerInfo> {
         let mut slc_map = BTreeMap::new();
-        let mut slc_id_check = 0;
+        let mut slc_id_count = 0;
 
         if DEBUG_PRINT {
             // println!("\n{mt}Creating Slice Map...", mt = cmn::MT);
@@ -69,14 +74,14 @@ impl LayerMap {
                     if DEBUG_PRINT {
                         // println!("{mt}{mt}{mt}Processing slice: '{}'", slc_id, mt = cmn::MT);
                     }
-                    debug_assert_eq!(slc_id_check, slc_id);
+                    debug_assert_eq!(slc_id_count, slc_id);
 
                     if slc_map.insert(slc_id, layer).is_some() {
                         panic!("LayerMap::slc_map(): Duplicate slices found in LayerMap: \
                             layer: '{}', slc_id: '{}'.", layer.name(), slc_id);
                     }
 
-                    slc_id_check = slc_id + 1;
+                    slc_id_count = slc_id + 1;
                 }
             }
         }

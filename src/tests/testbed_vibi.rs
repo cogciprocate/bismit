@@ -9,8 +9,8 @@ pub fn define_plmaps() -> ProtolayerMaps {
 
     ProtolayerMaps::new()
         .lmap(ProtolayerMap::new("cortical_lm", Cortical)
-            .axn_layer("motor_ctx", map::NS_IN | LayerTags::with_uid(MOTOR_UID), Horizontal)
-            .axn_layer("rose_ctx", map::NS_IN | LayerTags::with_uid(ROSE_UID), Horizontal)
+            .axn_layer("motor_ctx", map::NS_IN | LayerTags::uid(MOTOR_UID), Horizontal)
+            .axn_layer("rose_ctx", map::NS_IN | LayerTags::uid(ROSE_UID), Horizontal)
             .axn_layer("eff_in", map::FB_IN, Spatial)
             .axn_layer("aff_in", map::FF_IN, Spatial)
             .axn_layer("unused", map::UNUSED_TESTING, Spatial)
@@ -26,14 +26,14 @@ pub fn define_plmaps() -> ProtolayerMaps {
         )
         .lmap(ProtolayerMap::new("gly_seq_lm", Thalamic)
             .layer("spatial", 1, map::FF_OUT, Axonal(Spatial))
-            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::with_uid(MOTOR_UID), Axonal(Horizontal))
+            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(MOTOR_UID), Axonal(Horizontal))
         )
         .lmap(ProtolayerMap::new("gly_seq_rose_lm", Thalamic)
-            .layer("spatial", 1, map::FF_OUT, Axonal(Spatial))
-            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::with_uid(ROSE_UID), Axonal(Horizontal))
+            .layer("spatial", 1, map::FF_OUT | LayerTags::uid(9999) , Axonal(Spatial))
+            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(ROSE_UID), Axonal(Horizontal))
         )
         // .lmap(ProtolayerMap::new("o0_lm", Thalamic)
-        //     .layer("ganglion", 1, map::NS_OUT | LayerTags::with_uid(OLFAC_UID), Axonal(Horizontal))
+        //     .layer("ganglion", 1, map::NS_OUT | LayerTags::uid(OLFAC_UID), Axonal(Horizontal))
         // )
 }
 
@@ -54,7 +54,7 @@ pub fn define_pamaps() -> ProtoareaMaps {
         )
         .area("v1", "cortical_lm", AREA_SIDE, 
             Some(vec![Protofilter::new("retina", None)]),            
-            Some(vec!["v0"/*, "v00"*/]),
+            Some(vec!["v0", "v00"]),
         )
 
         // .area("b1", "visual", AREA_SIDE, None, Some(vec!["v1"]))

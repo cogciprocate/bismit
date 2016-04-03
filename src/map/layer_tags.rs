@@ -38,7 +38,7 @@ bitflags! {
 }
 
 impl LayerTags {
-    pub fn with_uid(uid: u32) -> LayerTags {
+    pub fn uid(uid: u32) -> LayerTags {
         LayerTags { bits: uid as u64 }
     }
 
@@ -62,7 +62,7 @@ impl LayerTags {
         LayerTags { bits: bits }
     }
 
-    pub fn uid(&self) -> u32 {
+    pub fn get_uid(&self) -> u32 {
         (self.bits & 0xFFFFFFFF) as u32
     }
 
@@ -72,7 +72,7 @@ impl LayerTags {
     /// Useful when comparing tags which must match uids where `self` may be a 
     /// superset of `other`.
     pub fn meshes(&self, other: LayerTags) -> bool {
-        self.contains(other) && self.uid() == other.uid()
+        self.contains(other) && self.get_uid() == other.get_uid()
     }
 
     // Presently called from Protolayer::new() on a debug build.
@@ -80,18 +80,18 @@ impl LayerTags {
         debug_assert!(!(self.contains(OUTPUT) && self.contains(INPUT)));
         debug_assert!((self.contains(FEEDBACK) || self.contains(FEEDFORWARD)) 
             == self.contains(SPECIFIC));
-        debug_assert!(self.contains(NONSPECIFIC) == (self.uid() != 0));
+        debug_assert!(self.contains(NONSPECIFIC) == (self.get_uid() != 0));
         debug_assert!((self.contains(INPUT) || self.contains(OUTPUT))
             == (self.contains(SPECIFIC) || self.contains(NONSPECIFIC)));
     }
 
     pub fn debug_print_compare(&self, other: LayerTags) {
-        println!("self : {{ {} }}, self.uid() : {}, \n\
-            other: {{ {} }}, other.uid(): {}", 
-            self, self.uid(), other, other.uid());
+        println!("self : {{ {} }}, self.get_uid() : {}, \n\
+            other: {{ {} }}, other.get_uid(): {}", 
+            self, self.get_uid(), other, other.get_uid());
         println!("    CONTAINS: {}, UID_MATCH: {}, MESHES: {}
             ", self.contains(other), 
-            self.uid() == other.uid(),
+            self.get_uid() == other.get_uid(),
             self.meshes(other));
     }
 }
@@ -108,6 +108,6 @@ mod tests {
 
 impl fmt::Display for LayerTags {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{{ {:?} | uid: {} }}", self, self.uid())
+        write!(f, "{{ {:?} | uid: {} }}", self, self.get_uid())
     }
 }
