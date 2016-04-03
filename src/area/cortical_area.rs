@@ -24,14 +24,23 @@ pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 // [TODO]: Convert to usize (no option):
 #[derive(Debug)]
 pub struct IoLayerInfo {
+    tract_key: (String, LayerTags),
+    axn_range: Range<u32>,
     events: EventList,
-    src_area_name: String,
-    tags: LayerTags,
 }
 
 impl IoLayerInfo {
-    pub fn new(src_area_name: String, tags: LayerTags) -> IoLayerInfo {
-        IoLayerInfo { events: EventList::new(), src_area_name: src_area_name, tags: tags }
+    pub fn new(src_area_name: String, tags: LayerTags, axn_range: Range<u32>) -> IoLayerInfo {
+        IoLayerInfo { 
+            tract_key: (src_area_name, tags), 
+            events: EventList::new(), 
+            axn_range: axn_range 
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn area_name<'a>(&'a self) -> &'a str {
+        &self.tract_key.0
     }
 }
 
@@ -51,34 +60,71 @@ impl IoLayerInfoCache {
             map::FF_OUT, map::FB_OUT, map::NS_OUT
         ];
 
-        let mut groups = HashMap::with_capacity(6);  
+        let mut groups = HashMap::with_capacity(group_tags_list.len());  
 
         for &group_tags in group_tags_list.iter() {
-            let layers = if group_tags.contains(map::OUTPUT) {
-                let layers_info = area_map.layers().layers_containing_tags(group_tags);
-                let mut group_layers = Vec::<IoLayerInfo>::with_capacity(layers_info.len());
+            // let layers = if group_tags.contains(map::OUTPUT) {
+            //     let layers_info = area_map.layers().layers_containing_tags(group_tags);
+            //     let mut group_layers = Vec::<IoLayerInfo>::with_capacity(layers_info.len());
 
-                for layer_info in layers_info {
-                    let io_layer = IoLayerInfo::new(area_name.clone(), layer_info.tags());
-                    group_layers.push(io_layer);
-                }
-                group_layers
+            //     for layer_info in layers_info {
+            //         let axn_range = area_map.axn_range_meshing_tags(layer_info.tags());
+            //         let io_layer = IoLayerInfo::new(area_name.clone(), layer_info.tags(), 
+            //             axn_range);
+            //         group_layers.push(io_layer);
+            //     }
+            //     group_layers
+            // } else {
+            //     debug_assert!(group_tags.contains(map::INPUT));
+            //     let layers_src_info = area_map.layers()
+            //         .layers_containing_tags_src_layers(group_tags);
+            //     let mut group_layers = Vec::<IoLayerInfo>::with_capacity(layers_src_info.len());
+
+            //     for layer_src_info in layers_src_info.iter() {
+            //         let axn_range = area_map.axn_range_meshing_tags(layer_src_info.tags());
+            //         let io_layer = IoLayerInfo::new(layer_src_info.area_name().to_owned(),
+            //             layer_src_info.tags(), axn_range);
+            //         group_layers.push(io_layer);
+            //     }
+            //     group_layers
+            // };
+
+            // If the layer is an output layer, consult the layer info
+            // directly. If an input layer, consult the layer source info for
+            // that layer. Either way, construct a tuple of '(area_name,
+            // layer_tags)' which can be used to construct a key to access the
+            // correct thalamic tract.
+            let layers_keys: Vec<(String, LayerTags)> = if group_tags.contains(map::OUTPUT) {
+                area_map.layers().layers_containing_tags(group_tags).iter()
+                    .map(|li| (area_name.clone(), li.tags()))
+                    .collect()
             } else {
                 debug_assert!(group_tags.contains(map::INPUT));
-                let layers_src_info = area_map.layers()
-                    .layers_containing_tags_src_layers(group_tags);
-                let mut group_layers = Vec::<IoLayerInfo>::with_capacity(layers_src_info.len());
-
-                for layer_src_info in layers_src_info.iter() {
-                    let io_layer = IoLayerInfo::new(layer_src_info.area_name().to_owned(),
-                        layer_src_info.tags());
-                    group_layers.push(io_layer);
-                }
-                group_layers
+                area_map.layers().layers_containing_tags_src_layers(group_tags).iter()
+                    .map(|sli| (sli.area_name().to_owned(), sli.tags().mirror_io()))
+                    .collect()
             };
 
-            groups.insert(group_tags, layers);
+            if layers_keys.len() == 0 { continue; }
+
+            let mut group_layers = Vec::<IoLayerInfo>::with_capacity(layers_keys.len());
+
+            for (layer_area_name, layer_tags) in layers_keys.into_iter() {
+                let axn_range = match area_map.axn_range_meshing_tags(layer_tags) {
+                    Some(axn_range) => axn_range,
+                    None => panic!("IoLayerInfoCache::new(): Internal consistency error: \
+                        tags: {}.", layer_tags),
+                };
+
+                let io_layer = IoLayerInfo::new(layer_area_name,
+                    layer_tags, axn_range);
+                group_layers.push(io_layer);
+            }
+
+            groups.insert(group_tags, group_layers);
         }
+
+        groups.shrink_to_fit();
 
         IoLayerInfoCache {
             groups: groups,
@@ -387,6 +433,68 @@ impl CorticalArea {
         self.output(map::FF_OUT, thal);
     }
 
+    // /// Read input from thalamus and write to axon space. 
+    // ///
+    // /// [FIXME]: Wire up layer unique ids so that a list of `LayerTags`
+    // /// potentially containing uids can be generated from any given tag set
+    // /// (FF_IN, NS_OUT, etc.).
+    // ///
+    // /// [FIXME]: Currently cloning each list of keys (with strings inside).
+    // /// This is bad on a couple of levels. Generate a list of keys upon
+    // /// creation for each category of layer tags THEN convert the `(String,
+    // /// LayerTags)` keys into `(usize, LayerTags)`.
+    // /// 
+    // fn intake(&mut self, layer_tags: LayerTags, thal: &mut Thalamus) {
+    //     // let layer_src_tract_keys = self.area_map.layers()
+    //     //     .layers_containing_tags_src_tract_keys(layer_tags);
+
+    //     let layer_src_tract_keys = self.area_map.layers()
+    //         .layers_containing_tags_src_layers(layer_tags);
+
+    //     // // [DEBUG]:
+    //     // if false && layer_src_tract_keys.len() > 0 {
+    //     //     println!("CORTICAL_AREA::INTAKE(): layer_src_tract_keys: ({}, {})", 
+    //     //         layer_src_tract_keys[0].0, layer_src_tract_keys[0].1);
+    //     // }
+
+    //     assert!(layer_src_tract_keys.len() <= 1, "[TEMPORARY]: Cortical areas containing multiple \
+    //         layers containing the same combination of any of IN/OUT tags are not yet implemented.");
+
+    //     // for key in layer_src_tract_keys {
+    //     for src_layer in layer_src_tract_keys {
+    //         // let (wait_events, sdr) = thal.tract_frame(&key).expect("CorticalArea::intake()");
+    //         let key = (src_layer.area_name().to_owned(), src_layer.tags());
+    //         let (wait_events, sdr) = thal.tract_frame(&key).expect("CorticalArea::intake()");
+
+    //         if layer_tags.contains(map::FF_IN) && self.filters.is_some() && !self.bypass_filters {
+    //             let filters_vec = self.filters.as_ref().unwrap();
+    //             filters_vec[0].write(sdr);
+
+    //             for fltr in filters_vec.iter() {
+    //                 fltr.cycle();
+    //             }
+    //         } else {
+    //             let axn_range = self.area_map.axn_range_meshing_tags(layer_tags).expect("intake");
+    //             debug_assert!(sdr.len() == axn_range.len() as usize, "\n\
+    //                 cortical_area::CorticalArea::write_input(): Sdr/ganglion length is not equal to \
+    //                 the destination axon range. sdr.len(): {} != axn_range.len(): {}, (area: '{}', \
+    //                 layer_tags: '{:?}', range: '{:?}').", sdr.len(), 
+    //                 axn_range.len(), self.name, layer_tags, axn_range);
+                
+    //             debug_assert!((axn_range.end - axn_range.start) as usize == sdr.len());
+
+    //             let new_events = self.events_lists.get_mut(&layer_tags)
+    //                 .expect("CorticalArea::write_input(): 'events_lists' error.");
+
+    //             new_events.clear_completed().expect("CorticalArea::write_input");    
+
+    //             self.axns.states.cmd().write(sdr).offset(axn_range.start as usize).block(false)
+    //                 .ewait(wait_events).enew(new_events).enq().unwrap();
+    //         }
+    //     }
+    // }
+
+
     /// Read input from thalamus and write to axon space. 
     ///
     /// [FIXME]: Wire up layer unique ids so that a list of `LayerTags`
@@ -399,18 +507,25 @@ impl CorticalArea {
     /// LayerTags)` keys into `(usize, LayerTags)`.
     /// 
     fn intake(&mut self, layer_tags: LayerTags, thal: &mut Thalamus) {
-        let layer_src_tract_keys = self.area_map.layers()
-            .layers_containing_tags_src_tract_keys(layer_tags);
+        // let layer_src_tract_keys = self.area_map.layers()
+        //     .layers_containing_tags_src_tract_keys(layer_tags);
 
-        if false && layer_src_tract_keys.len() > 0 {
-            println!("CORTICAL_AREA::INTAKE(): layer_src_tract_keys: ({}, {})", 
-                layer_src_tract_keys[0].0, layer_src_tract_keys[0].1);
-        }
+        let layer_src_tract_keys = self.area_map.layers()
+            .layers_containing_tags_src_layers(layer_tags);
+
+        // // [DEBUG]:
+        // if false && layer_src_tract_keys.len() > 0 {
+        //     println!("CORTICAL_AREA::INTAKE(): layer_src_tract_keys: ({}, {})", 
+        //         layer_src_tract_keys[0].0, layer_src_tract_keys[0].1);
+        // }
 
         assert!(layer_src_tract_keys.len() <= 1, "[TEMPORARY]: Cortical areas containing multiple \
             layers containing the same combination of any of IN/OUT tags are not yet implemented.");
 
-        for key in layer_src_tract_keys {
+        // for key in layer_src_tract_keys {
+        for src_layer in layer_src_tract_keys {
+            // let (wait_events, sdr) = thal.tract_frame(&key).expect("CorticalArea::intake()");
+            let key = (src_layer.area_name().to_owned(), src_layer.tags());
             let (wait_events, sdr) = thal.tract_frame(&key).expect("CorticalArea::intake()");
 
             if layer_tags.contains(map::FF_IN) && self.filters.is_some() && !self.bypass_filters {
@@ -421,7 +536,8 @@ impl CorticalArea {
                     fltr.cycle();
                 }
             } else {
-                let axn_range = self.area_map.axn_range_by_tags(layer_tags);
+                let axn_range = self.area_map.axn_range_containing_tags(layer_tags)
+                    .expect(&format!("INTAKE: tags: {}", layer_tags));
                 debug_assert!(sdr.len() == axn_range.len() as usize, "\n\
                     cortical_area::CorticalArea::write_input(): Sdr/ganglion length is not equal to \
                     the destination axon range. sdr.len(): {} != axn_range.len(): {}, (area: '{}', \
@@ -468,7 +584,7 @@ impl CorticalArea {
     //         }
     //     }
 
-    //     let axn_range = self.area_map.axn_range_by_tags(layer_tags);
+    //     let axn_range = self.area_map.axn_range_meshing_tags(layer_tags);
     //     //println!("\nCORTICALAREA::WRITE_INPUT(): axn_range: {:?}", axn_range);
     //     debug_assert!(sdr.len() == axn_range.len() as usize, "\n\
     //         cortical_area::CorticalArea::write_input(): Sdr/ganglion length is not equal to \
@@ -497,7 +613,8 @@ impl CorticalArea {
         let wait_events = &self.events_lists.get(&layer_tags)
             .expect("CorticalArea::read_output(): 'events_lists' error.");
         let (sdr, new_events) = sdr_events;
-        let axn_range = self.area_map.axn_range_by_tags(layer_tags);
+        let axn_range = self.area_map.axn_range_meshing_tags(layer_tags)
+            .expect("CorticalArea::read_output()");
 
         debug_assert!(sdr.len() == axn_range.len() as usize, format!("\n\
             cortical_area::CorticalArea::read_output()<area: '{}', tags: '{:?}'>: \

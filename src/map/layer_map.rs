@@ -81,6 +81,10 @@ impl LayerMap {
         slc_map
     }
 
+    pub fn layers_meshing_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
+        self.index.iter().filter(|li| li.tags().meshes(tags)).map(|li| li).collect()
+    }
+
     // [FIXME] TODO: Cache results (use TractArea cache style).
     pub fn layers_containing_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
         self.index.iter().filter(|li| li.tags().contains(tags)).map(|li| li).collect()

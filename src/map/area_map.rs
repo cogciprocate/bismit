@@ -83,9 +83,8 @@ impl AreaMap {
     }
 
     // NEW
-    #[inline]
     pub fn layer_name_by_tags(&self, layer_tags: LayerTags) -> &'static str {
-        let layer_info = self.layers.layers_containing_tags(layer_tags);
+        let layer_info = self.layers.layers_meshing_tags(layer_tags);
         assert_eq!(layer_info.len(), 1);
         layer_info[0].name()
     }
@@ -216,7 +215,6 @@ impl AreaMap {
     
 
     // NEW
-    #[inline]
     pub fn psal_layer(&self) -> &LayerInfo {
         let psal_layer_vec = self.layers.layers_containing_tags(map::PSAL);
         assert_eq!(psal_layer_vec.len(), 1);
@@ -232,80 +230,102 @@ impl AreaMap {
      }     
 
     // NEW
-    pub fn axn_range_by_tags(&self, layer_tags: LayerTags) -> Range<u32> {                
+    pub fn axn_range_meshing_tags(&self, layer_tags: LayerTags) -> Option<Range<u32>> { 
+        let layers = self.layers.layers_meshing_tags(layer_tags);
+
+        if layers.len() == 1 {
+            let layer_idz = self.axn_idz(layers[0].slc_range().start);
+            let layer_len = layers[0].axn_count();
+
+            debug_assert!({
+                    let slc_idm = layers[0].slc_range().start + layers[0].depth() - 1;
+                    let slc_len = self.slices.slc_axn_count(slc_idm);
+                    let axn_idz = self.axn_idz(slc_idm);
+                    let axn_idn = axn_idz + slc_len;
+                    // println!("\n\n# (layer_idz, layer_len) = ({}, {}), axn_idn = {}, \
+                    //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n", 
+                    //     layer_idz, layer_len, axn_idn, slc_len, axn_idz, layers[0]);
+                    (layer_idz + layer_len) == axn_idn
+                }, "AreaMap::axn_range(): Axon index mismatch.");
+
+            Some(layer_idz..(layer_idz + layer_len))
+        } else if layers.len() == 0 {
+            None
+        } else {
+            panic!("AreaMap::axn_range_meshing_tags(): Internal error. Multiple layers matching \
+                flags: '{}' found.", layer_tags);
+        }
+    }    
+
+    // [TEMPORARY] - REMOVE ME ASAP
+    pub fn axn_range_containing_tags(&self, layer_tags: LayerTags) -> Option<Range<u32>> { 
         let layers = self.layers.layers_containing_tags(layer_tags);
-        assert!(layers.len() == 1, "AreaMap::axn_range_by_tags(): Axon range \
-            can not be calculated for more than one layer at a time. Flags: {:?}",
-            layer_tags);
 
-        let layer_idz = self.axn_idz(layers[0].slc_range().start);
-        let layer_len = layers[0].axn_count();
+        if layers.len() == 1 {
+            let layer_idz = self.axn_idz(layers[0].slc_range().start);
+            let layer_len = layers[0].axn_count();
 
-        debug_assert!({
-                let slc_idm = layers[0].slc_range().start + layers[0].depth() - 1;
-                let slc_len = self.slices.slc_axn_count(slc_idm);
-                let axn_idz = self.axn_idz(slc_idm);
-                let axn_idn = axn_idz + slc_len;
-                // println!("\n\n# (layer_idz, layer_len) = ({}, {}), axn_idn = {}, \
-                //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n", 
-                //     layer_idz, layer_len, axn_idn, slc_len, axn_idz, layers[0]);
-                (layer_idz + layer_len) == axn_idn
-            }, "AreaMap::axn_range(): Axon index mismatch.");
+            debug_assert!({
+                    let slc_idm = layers[0].slc_range().start + layers[0].depth() - 1;
+                    let slc_len = self.slices.slc_axn_count(slc_idm);
+                    let axn_idz = self.axn_idz(slc_idm);
+                    let axn_idn = axn_idz + slc_len;
+                    // println!("\n\n# (layer_idz, layer_len) = ({}, {}), axn_idn = {}, \
+                    //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n", 
+                    //     layer_idz, layer_len, axn_idn, slc_len, axn_idz, layers[0]);
+                    (layer_idz + layer_len) == axn_idn
+                }, "AreaMap::axn_range(): Axon index mismatch.");
 
-        layer_idz..(layer_idz + layer_len)
+            Some(layer_idz..(layer_idz + layer_len))
+        } else if layers.len() == 0 {
+            None
+        } else {
+            panic!("AreaMap::axn_range_meshing_tags(): Internal error. Multiple layers matching \
+                flags: '{}' found.", layer_tags);
+        }
     }    
 
     // NEW
-    #[inline]
     pub fn slc_src_layer_dims(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&CorticalDims> {
         self.layers.slc_src_layer_info(slc_id, layer_tags).map(|sli| sli.dims())
     }
 
     // DEPRICATE
-    #[inline]
     pub fn aff_areas(&self) -> &Vec<&'static str> {
         &self.aff_areas
     }
 
     // DEPRICATE
-    #[inline]
     pub fn eff_areas(&self) -> &Vec<&'static str> {
         &self.eff_areas
     }
 
-    #[inline]
     pub fn area_name(&self) -> &'static str {
         self.area_name
     }
 
-    #[inline]
     pub fn axn_idz(&self, slc_id: u8) -> u32 {
         self.slices.idz(slc_id)
     }
 
-    #[inline]
     pub fn slices(&self) -> &SliceMap {
         &self.slices
     }
 
-    #[inline]
     pub fn layers(&self) -> &LayerMap {
         &self.layers
     }
 
     // UPDATE / DEPRICATE
-    #[inline]
     pub fn filters(&self) -> &Option<Vec<Protofilter>> {
         &self.filters
     }
 
-    #[inline]
     pub fn dims(&self) -> &CorticalDims {
         &self.dims
     }
 
     // UPDATE / DEPRICATE
-    #[inline]
     pub fn lm_kind_tmp(&self) -> &LayerMapKind {
         &self.layers.region_kind()
     }
