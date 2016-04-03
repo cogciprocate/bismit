@@ -26,7 +26,7 @@ impl SensoryFilter {
                 ocl_pq: &ProQue, 
             ) -> SensoryFilter 
     {
-        let layer_flags = map::FF_IN;
+        let layer_tags = map::FF_IN;
         // [NOTE]: Combine this with the call to `::slc_src_layer_dims` below:
         // let axn_slc_ranges = area_map.layers().layers_containing_tags_slc_range(layer_flags);
         // assert!(axn_slc_ranges.len() == 1);
@@ -38,13 +38,16 @@ impl SensoryFilter {
         //     flags: '{:?}' found.", axn_slc_range, layer_flags));
 
 
-        let layers = area_map.layers().layers_containing_tags(layer_flags);
-        assert!(layers.len() == 1);
+        let layers = area_map.layers().layers_containing_tags(layer_tags);
+        assert!(layers.len() == 1, "\n\nERROR: SensoryFilter::new(): Found multiple layers \
+            containing the same tags: \n{}\n Layers: \n{:#?}\n", layer_tags, layers);
         let layer = layers[0];
         let axn_slc_range = layer.slc_range().expect("SensoryFilter::new(): \
             Invalid slice range.").clone();
 
-        assert!(layers[0].sources().len() == 1);
+        assert!(layers[0].sources().len() == 1, "\n\nERROR: SensoryFilter::new(): Multiple \
+            source areas found for the feed-forward input layer with tags: \n\n{}\n\n\
+            Source layers: \n{:#?}\n\n", layer_tags, layers);
         let ref src_layer = layers[0].sources()[0];
         let dims = src_layer.dims();
         
