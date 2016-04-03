@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use cmn::{self, CmnError};
 use map::{self, AreaMap, LayerTags};
 use ocl::EventList;
-use cortex::CorticalAreas;
+use area::CorticalAreas;
 use proto::{ProtoareaMaps, ProtolayerMaps, Thalamic};
 use external_source::ExternalSource;
 

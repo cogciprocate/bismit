@@ -1,7 +1,7 @@
 use std::collections::{HashMap};
 use time;
 
-use super::{CorticalArea, CorticalAreas};
+use area::{CorticalArea, CorticalAreas};
 use thalamus::{Thalamus};
 use proto::{ProtolayerMaps, ProtoareaMaps, Thalamic};
 use ocl::{self, Platform, Context, Device};

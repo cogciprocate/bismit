@@ -1,7 +1,7 @@
 #![allow(unused_variables, unused_mut)]
 
 use tests::testbed_vibi;
-// use cortex::{Cortex};
+// use cortex::Cortex;
 const ITERS: i32 = 10000;
 
 #[test]

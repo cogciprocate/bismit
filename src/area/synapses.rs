@@ -5,7 +5,7 @@ use map::{AreaMap, SrcSlices, SrcIdxCache, SynSrc};
 use ocl::{ProQue, SpatialDims, Buffer, EventList, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use proto::{CellKind, Protocell, DendriteKind};
-use cortex::AxonSpace;
+use area::AxonSpace;
 
 #[cfg(test)]
 pub use self::tests::{SynCoords, SynapsesTest};

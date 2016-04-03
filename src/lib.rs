@@ -12,10 +12,10 @@ extern crate twox_hash;
 
 #[macro_use] pub mod cmn;
 mod thalamus;
-mod sensory_filter;
 mod external_source;
 mod encode;
 mod cortex;
+mod area;
 mod tyro;
 pub mod map;
 
@@ -24,8 +24,9 @@ pub mod map;
 pub use map::proto;
 pub use ocl::Event as OclEvent;
 
-pub use self::cortex::{ Cortex, CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer, 
-	SpinyStellateLayer, Dendrites };
+pub use self::cortex::Cortex;
+pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer, 
+	SpinyStellateLayer, Dendrites};
 pub use self::external_source::{ExternalSourceTract, ExternalSourceKind};
 pub use self::map::{SliceTractMap, LayerTags};
 pub use self::tyro::Tyro;

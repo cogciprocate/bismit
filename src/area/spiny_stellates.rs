@@ -5,7 +5,7 @@ use cmn::{self, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, EventList};
 use proto::{CellKind, Protocell, DendriteKind};
-use cortex::{Dendrites, AxonSpace};
+use area::{Dendrites, AxonSpace};
 
 
 pub struct SpinyStellateLayer {

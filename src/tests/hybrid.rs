@@ -1,8 +1,8 @@
 use std::iter;
 use std::io::{self, Write};
 
-
-use cortex::{Cortex, Dendrites, PyramidalLayer};
+use cortex::Cortex;
+use area::{Dendrites, PyramidalLayer};
 use cmn::{self, DataCellLayer, DataCellLayerTest};
 use tests::util;
 

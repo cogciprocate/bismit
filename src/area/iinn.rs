@@ -12,7 +12,7 @@ use cmn::{CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer};
 use proto::Protocell;
-use cortex::AxonSpace;
+use area::AxonSpace;
 
 
 

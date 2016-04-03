@@ -2,7 +2,7 @@ use cmn::{self, CorticalDims};
 use map::{AreaMap};
 use ocl::{self, ProQue, SpatialDims, Buffer, EventList};
 use proto::{CellKind, Protocell, DendriteKind};
-use cortex::{AxonSpace, Synapses};
+use area::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
 const PRINT_DEBUG: bool = false;
@@ -171,7 +171,7 @@ pub mod tests {
     use super::{Dendrites};
     use cmn::{CelCoords};
     use cmn::{CorticalDims};
-    use cortex::{SynapsesTest};
+    use area::{SynapsesTest};
     use tests;
 
     pub trait DendritesTest {

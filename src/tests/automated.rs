@@ -1,10 +1,5 @@
 
-// use cmn::{self, CorticalDims};
-// use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput};
-use cortex::{/*self,*/ Cortex};
-// use thalamus::{Thalamus};
-// use ocl::{Buffer, SpatialDims, Context, ProQue, MemLen, ProgramBuilder, BuildOption};
-// use cycle::{input_czar, InputCzar, InputKind};
+use cortex::Cortex;
 use super::{hybrid, kernels, testbed, TestBed};
 
 
