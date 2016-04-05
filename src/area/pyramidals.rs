@@ -183,8 +183,8 @@ impl PyramidalLayer {
     pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
             -> OclResult<()> 
     {
-        let using_aux_cycle = true;
-        let using_aux_learning = true;
+        let using_aux_cycle = false;
+        let using_aux_learning = false;
 
         if using_aux_cycle {
             try!(self.kern_cycle.set_arg_buf_named(name, Some(env)));

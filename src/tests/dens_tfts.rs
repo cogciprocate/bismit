@@ -23,7 +23,7 @@ fn cel() {
 
     // Zero all dendrite and synapse buffers:
     area.ptal_mut().dens_mut().set_all_to_zero(true);
-    area.axns.states.cmd().fill(&[0], None).enq().unwrap();
+    area.axns().states.cmd().fill(&[0], None).enq().unwrap();
 
     // Set source slice to an unused slice for all synapses:
     let unused_slc_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::UNUSED_TESTING);

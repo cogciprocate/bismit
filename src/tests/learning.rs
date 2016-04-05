@@ -83,8 +83,8 @@ fn dst_den_learning() {
     let mut ltb = LearningTestBed::new();
     // 180 -> +-64 (slow), +-96 (fast)
     // 360 -> +-96 (slow), +-119 (fast)
-    let on_focus_iters = 360;
-    let off_focus_iters = 360;
+    let on_focus_iters = 180;
+    let off_focus_iters = 180;
     // let on_focus_iters = 1;
     // let off_focus_iters = 1;
     printlny!("\nRunning test_on_off()...");
@@ -143,7 +143,7 @@ impl LearningTestBed {
 
             // Zero all dendrite and synapse buffers:
             area.ptal_mut().dens_mut().set_all_to_zero(true);
-            area.axns.states.cmd().fill(&[0], None).enq().unwrap();
+            area.axns().states.cmd().fill(&[0], None).enq().unwrap();
 
             // Set source slice to an unused slice for all synapses:
             let unused_slc_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::UNUSED_TESTING);

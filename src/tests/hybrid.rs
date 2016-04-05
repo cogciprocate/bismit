@@ -33,7 +33,7 @@ pub fn cycles(cortex: &mut Cortex, area_name: &str) {
     //input_czar::vec_band_512_fill(&mut vec_pyrs);
     //let pyr_axn_ranges = cortex.area_mut(area_name).layer_input_ranges("iii", cortex.area_mut(area_name).ptal_mut().dens.syns().den_kind());
     //write_to_axons(axn_range, vec1);
-    let vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims.columns() as usize).collect();
+    let vec1: Vec<u8> = iter::repeat(0).take(cortex.area_mut(area_name).dims().columns() as usize).collect();
 
     // BRING BACK?
     // input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize * 2), true, &mut vec1);

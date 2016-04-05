@@ -150,18 +150,18 @@ impl IoLayerInfoCache {
 
 /// An area of the cortex.
 pub struct CorticalArea {
-    pub name: &'static str,
-    pub dims: CorticalDims,
+    name: &'static str,
+    dims: CorticalDims,
     area_map: AreaMap,
-    pub axns: AxonSpace,
-    pub mcols: Box<Minicolumns>,
-    pub pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,        // MAKE ME PRIVATE -- FIX tests::hybrid
-    pub ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,    // MAKE ME PRIVATE -- FIX tests::hybrid
-    pub iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,    // MAKE ME PRIVATE -- FIX tests::hybrid
-    pub filters: Option<Vec<Box<SensoryFilter>>>,
+    axns: AxonSpace,
+    mcols: Box<Minicolumns>,
+    pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,        // MAKE ME PRIVATE -- FIX tests::hybrid
+    ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,    // MAKE ME PRIVATE -- FIX tests::hybrid
+    iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,    // MAKE ME PRIVATE -- FIX tests::hybrid
+    filters: Option<Vec<Box<SensoryFilter>>>,
     ptal_name: &'static str,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
     psal_name: &'static str,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
-    pub aux: Aux,
+    // aux: Aux,
     ocl_pq: ProQue,
     // ocl_context: Context,
     // renderer: Renderer,
@@ -391,7 +391,7 @@ impl CorticalArea {
             ssts_map: ssts_map,
             iinns: iinns,
             filters: filters,
-            aux: aux,
+            // aux: aux,
             ocl_pq: ocl_pq,
             // ocl_context: ocl_context,
             // renderer: renderer,
