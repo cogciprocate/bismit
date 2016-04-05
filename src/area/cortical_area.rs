@@ -60,7 +60,10 @@ impl IoLayerInfo {
 
 /// A group of `IoLayerInfo` structs sharing a common set of `LayerTags`.
 #[derive(Debug)]
-pub struct IoLayerInfoGroup(Vec<IoLayerInfo>, EventList);
+pub struct IoLayerInfoGroup {
+    layers: Vec<IoLayerInfo>, 
+    events: EventList,
+}
 
 impl IoLayerInfoGroup {
     pub fn new(area_map: &AreaMap, group_tags: LayerTags, tract_keys: Vec<(String, LayerTags)>)
@@ -86,10 +89,10 @@ impl IoLayerInfoGroup {
             layers.push(io_layer);
         }
 
-        IoLayerInfoGroup(
-            layers,
-            EventList::new(),
-        )
+        IoLayerInfoGroup {
+            layers: layers,
+            events: EventList::new(),
+        }
     }
 }
 
@@ -150,12 +153,12 @@ impl IoLayerInfoCache {
     }
 
     pub fn group_events(&self, group_tags: LayerTags) -> Option<&EventList> {
-        self.groups.get(&group_tags).map(|lg| &lg.1)
+        self.groups.get(&group_tags).map(|lg| &lg.events)
     }
 
     #[allow(dead_code)]
     pub fn group_events_mut(&mut self, group_tags: LayerTags) -> Option<&mut EventList> {
-        self.groups.get_mut(&group_tags).map(|lg| &mut lg.1)
+        self.groups.get_mut(&group_tags).map(|lg| &mut lg.events)
     }
 }
 
@@ -475,7 +478,7 @@ impl CorticalArea {
     /// LayerTags)` keys into `(usize, LayerTags)`.
     /// 
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) {
-        if let Some(&mut IoLayerInfoGroup(ref mut src_layers, ref mut new_events)) = 
+        if let Some(&mut IoLayerInfoGroup { layers: ref mut src_layers, events: ref mut new_events }) = 
                 self.io_info.group_mut(group_tags) 
         {
             // for src_layer in &mut src_grp.layers {
@@ -512,7 +515,7 @@ impl CorticalArea {
 
     // Read output from axon space and write to thalamus.
     fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) {
-        if let Some(&IoLayerInfoGroup(ref src_layers, ref wait_events)) = 
+        if let Some(&IoLayerInfoGroup { layers: ref src_layers, events: ref wait_events }) = 
                 self.io_info.group(group_tags) 
         {
             for src_layer in src_layers.iter() {
