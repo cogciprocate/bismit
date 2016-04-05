@@ -61,8 +61,7 @@ impl IoLayerInfo {
 /// A group of `IoLayerInfo` structs sharing a common set of `LayerTags`.
 #[derive(Debug)]
 pub struct IoLayerInfoGroup {
-    layers: Vec<IoLayerInfo>, 
-    events: EventList,
+    layers: Vec<IoLayerInfo>,
 }
 
 impl IoLayerInfoGroup {
@@ -91,8 +90,15 @@ impl IoLayerInfoGroup {
 
         IoLayerInfoGroup {
             layers: layers,
-            events: EventList::new(),
         }
+    }
+
+    pub fn layers(&self) -> &[IoLayerInfo] {
+        self.layers.as_slice()
+    }
+
+    pub fn layers_mut(&mut self) -> &mut [IoLayerInfo] {
+        self.layers.as_mut_slice()
     }
 }
 
@@ -101,7 +107,7 @@ impl IoLayerInfoGroup {
 /// i/o layers via the thalamus.
 #[derive(Debug)]
 pub struct IoLayerInfoCache {
-    groups: HashMap<LayerTags, IoLayerInfoGroup>,
+    groups: HashMap<LayerTags, (IoLayerInfoGroup, EventList)>,
 }
 
 impl IoLayerInfoCache {
@@ -133,7 +139,7 @@ impl IoLayerInfoCache {
             if tract_keys.len() != 0 { 
                 let io_lyr_grp = IoLayerInfoGroup::new(area_map, group_tags, 
                     tract_keys);
-                groups.insert(group_tags, io_lyr_grp);
+                groups.insert(group_tags, (io_lyr_grp, EventList::new()));
             }
         }
 
@@ -144,21 +150,34 @@ impl IoLayerInfoCache {
         }
     }
 
-    pub fn group(&self, group_tags: LayerTags) -> Option<&IoLayerInfoGroup> {
+    pub fn group(&self, group_tags: LayerTags) -> Option<(&[IoLayerInfo], &EventList)> {
         self.groups.get(&group_tags)
+            .map(|&(ref lg, ref events)| (lg.layers(), events))
     }
 
-    pub fn group_mut(&mut self, group_tags: LayerTags) -> Option<&mut IoLayerInfoGroup> {
+    pub fn group_mut(&mut self, group_tags: LayerTags) -> Option<(&mut [IoLayerInfo], &mut EventList)> {
         self.groups.get_mut(&group_tags)
+            .map(|&mut (ref mut lg, ref mut events)| (lg.layers_mut(), events))
     }
 
+    #[allow(dead_code)]
+    pub fn group_info(&self, group_tags: LayerTags) -> Option<&[IoLayerInfo]> {
+        self.groups.get(&group_tags).map(|&(ref lg, _)| lg.layers())
+    }
+
+    #[allow(dead_code)]
+    pub fn group_info_mut(&mut self, group_tags: LayerTags) -> Option<&mut [IoLayerInfo]> {
+        self.groups.get_mut(&group_tags).map(|&mut (ref mut lg, _)| lg.layers_mut())
+    }
+
+    #[allow(dead_code)]
     pub fn group_events(&self, group_tags: LayerTags) -> Option<&EventList> {
-        self.groups.get(&group_tags).map(|lg| &lg.events)
+        self.groups.get(&group_tags).map(|&(_, ref events)| events)
     }
 
     #[allow(dead_code)]
     pub fn group_events_mut(&mut self, group_tags: LayerTags) -> Option<&mut EventList> {
-        self.groups.get_mut(&group_tags).map(|lg| &mut lg.events)
+        self.groups.get_mut(&group_tags).map(|&mut (_, ref mut events)| events)
     }
 }
 
@@ -478,9 +497,7 @@ impl CorticalArea {
     /// LayerTags)` keys into `(usize, LayerTags)`.
     /// 
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) {
-        if let Some(&mut IoLayerInfoGroup { layers: ref mut src_layers, events: ref mut new_events }) = 
-                self.io_info.group_mut(group_tags) 
-        {
+        if let Some((src_layers, new_events)) = self.io_info.group_mut(group_tags) {
             // for src_layer in &mut src_grp.layers {
             for src_layer in src_layers.iter_mut() {
                 let (wait_events, sdr) = thal.tract_frame(src_layer.key())
@@ -515,9 +532,7 @@ impl CorticalArea {
 
     // Read output from axon space and write to thalamus.
     fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) {
-        if let Some(&IoLayerInfoGroup { layers: ref src_layers, events: ref wait_events }) = 
-                self.io_info.group(group_tags) 
-        {
+        if let Some((src_layers, wait_events)) = self.io_info.group(group_tags) {
             for src_layer in src_layers.iter() {
                 let (sdr, new_events) = thal.tract_frame_mut(src_layer.key())
                     .expect("CorticalArea::output()");            
