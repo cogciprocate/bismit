@@ -3,7 +3,8 @@ use rand::{self, Rng};
 
 use cmn::{self, CorticalDims};
 use map::{AreaMap};
-use ocl::{Kernel, ProQue, SpatialDims, Buffer, EventList};
+use ocl::{Kernel, ProQue, SpatialDims, Buffer};
+use ocl::core::ClWaitList;
 use proto::{CellKind, Protocell, DendriteKind};
 use area::{Dendrites, AxonSpace};
 
@@ -64,7 +65,7 @@ impl SpinyStellateLayer {
     }
 
     #[inline]
-    pub fn cycle(&self, wait_events: Option<&EventList>) {
+    pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
         self.dens.cycle(wait_events);
     }
 

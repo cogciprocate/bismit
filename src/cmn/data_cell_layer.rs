@@ -1,4 +1,5 @@
-use ocl::{Buffer, EventList};
+use ocl::Buffer;
+use ocl::core::ClWaitList;
 use area::Dendrites;
 use cmn::{/*self,*/ CorticalDims};
 use proto::{Protocell};
@@ -9,7 +10,7 @@ use proto::{Protocell};
 pub trait DataCellLayer {
     fn learn(&mut self);
     fn regrow(&mut self);
-    fn cycle(&self, Option<&EventList>);
+    fn cycle(&self, Option<&ClWaitList>);
     fn soma(&self) -> &Buffer<u8>;
     fn soma_mut(&mut self) -> &mut Buffer<u8>;
     fn dims(&self) -> &CorticalDims;

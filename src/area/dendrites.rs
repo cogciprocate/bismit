@@ -1,6 +1,7 @@
 use cmn::{self, CorticalDims};
 use map::{AreaMap};
-use ocl::{self, ProQue, SpatialDims, Buffer, EventList};
+use ocl::{self, ProQue, SpatialDims, Buffer};
+use ocl::core::ClWaitList;
 use proto::{CellKind, Protocell, DendriteKind};
 use area::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
@@ -101,7 +102,7 @@ impl Dendrites {
         }
     }
 
-    pub fn cycle(&self, wait_events: Option<&EventList>) {
+    pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
         if PRINT_DEBUG { println!("Dens: Cycling syns..."); }
         self.syns.cycle(wait_events);
         // self.kern_cycle.enqueue_events(wait_events, None).expect("bismit::Dendrites::cycle");

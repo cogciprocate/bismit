@@ -5,6 +5,7 @@ use std::borrow::Borrow;
 use cmn::{self, ParaHexArray, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
 use ocl::{ProQue, Context, Buffer, EventList, Event};
+use ocl::core::ClWaitList;
 use proto::{Cellular, Pyramidal, SpinyStellate, Inhibitory, DendriteKind};
 use thalamus::Thalamus;
 use area::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer, 
@@ -457,7 +458,7 @@ impl CorticalArea {
 
         if !self.disable_ssts {    
             // let aff_input_events = { self.events_lists.get(&map::FF_IN) };
-            let aff_input_events = { self.io_info.group_events(map::FF_IN) };
+            let aff_input_events = { self.io_info.group_events(map::FF_IN).map(|wl| wl as &ClWaitList) };
             self.psal().cycle(aff_input_events); 
         }
 
@@ -471,7 +472,7 @@ impl CorticalArea {
 
         if !self.disable_pyrs {    
             if !self.disable_learning { self.ptal_mut().learn(); }
-            let eff_input_events = { self.events_lists.get(&map::FB_IN) };
+            let eff_input_events = { self.events_lists.get(&map::FB_IN).map(|wl| wl as &ClWaitList) };
             self.ptal().cycle(eff_input_events);
         }        
 
@@ -498,7 +499,8 @@ impl CorticalArea {
     /// 
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) {
         if let Some((src_layers, new_events)) = self.io_info.group_mut(group_tags) {
-            // for src_layer in &mut src_grp.layers {
+            new_events.clear_completed().expect("CorticalArea::write_input");
+
             for src_layer in src_layers.iter_mut() {
                 let (wait_events, sdr) = thal.tract_frame(src_layer.key())
                     .expect("CorticalArea::intake()");
@@ -507,10 +509,10 @@ impl CorticalArea {
                         && !self.bypass_filters 
                 {
                     let filters_vec = self.filters.as_ref().unwrap();
-                    filters_vec[0].write(sdr);
+                    let mut fltr_event = filters_vec[0].write(sdr, wait_events);
 
                     for fltr in filters_vec.iter() {
-                        fltr.cycle();
+                        fltr_event = fltr.cycle(&fltr_event);
                     }
                 } else {
                     let axn_range = src_layer.axn_range();
@@ -519,9 +521,6 @@ impl CorticalArea {
                         equal to the destination axon range. sdr.len(): {} != axn_range.len(): \
                         {}, (area: '{}', layer_tags: '{}', range: '{:?}').", sdr.len(),
                         axn_range.len(), self.name, src_layer.tags(), axn_range);                
-
-                    // let new_events = &mut src_grp.events;
-                    new_events.clear_completed().expect("CorticalArea::write_input");
 
                     self.axns.states.cmd().write(sdr).offset(axn_range.start as usize)
                         .block(false).ewait(wait_events).enew(new_events).enq().unwrap();
@@ -535,16 +534,17 @@ impl CorticalArea {
         if let Some((src_layers, wait_events)) = self.io_info.group(group_tags) {
             for src_layer in src_layers.iter() {
                 let (sdr, new_events) = thal.tract_frame_mut(src_layer.key())
-                    .expect("CorticalArea::output()");            
+                    .expect("CorticalArea::output()");
+
+                new_events.clear_completed().expect("CorticalArea::write_input");
                 let axn_range = src_layer.axn_range();
 
                 assert!(sdr.len() == axn_range.len() as usize, 
                     "CorticalArea::output(): Sdr/ganglion length must be \
                     equal to the source axon range. sdr.len(): {} != axn_range.len(): \
                     {}, (area: '{}', layer_tags: '{}', range: '{:?}').", sdr.len(),
-                    axn_range.len(), self.name, src_layer.tags(), axn_range);  
-
-                new_events.clear_completed().expect("CorticalArea::write_input");
+                    axn_range.len(), self.name, src_layer.tags(), axn_range);
+                
                 // let wait_events = &src_grp.events;
 
                 unsafe { self.axns.states.cmd().read_async(sdr).offset(axn_range.start as usize)

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use ocl::{Kernel, ProQue, SpatialDims, Buffer,};
+use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event, EventList};
 use cmn::{ParaHexArray, Sdr};
 use area::AxonSpace;
 use map::{self, AreaMap};
@@ -75,13 +75,19 @@ impl SensoryFilter {
         }
     }
 
-    pub fn write(&self, sdr: &Sdr) {
+    pub fn write(&self, sdr: &Sdr, wait_list: &EventList) -> Event {
         assert!(sdr.len() <= self.input.len());
-        self.input.write(sdr).enq().expect("[FIXME]: HANDLE ME!");
+        let mut fltr_event = Event::empty();
+        self.input.write(sdr).ewait(wait_list).enew(&mut fltr_event).enq()
+            .expect("SensoryFilter::write()");
+        fltr_event
     }
 
-    pub fn cycle(&self) {
+    pub fn cycle(&self, wait_event: &Event) -> Event {
         //println!("Printing {} for {}:\n", &self.filter_name, self.area_name);
-        self.kern_cycle.enq().expect("[FIXME]: HANDLE ME!");
+        let mut fltr_event = Event::empty();
+        self.kern_cycle.cmd().ewait(wait_event).enew(&mut fltr_event).enq()
+            .expect("SensoryFilter::cycle()");
+        fltr_event
     }
 }

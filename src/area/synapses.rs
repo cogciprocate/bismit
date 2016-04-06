@@ -2,8 +2,9 @@ use rand::{self, XorShiftRng};
 
 use cmn::{self, CorticalDims};
 use map::{AreaMap, SrcSlices, SrcIdxCache, SynSrc};
-use ocl::{ProQue, SpatialDims, Buffer, EventList, Kernel, Result as OclResult};
+use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
+use ocl::core::ClWaitList;
 use proto::{CellKind, Protocell, DendriteKind};
 use area::AxonSpace;
 
@@ -308,7 +309,7 @@ impl Synapses {
     }
 
     #[inline]
-    pub fn cycle(&self, wait_events: Option<&EventList>) {
+    pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
         for kern in self.kernels.iter() {
             if DEBUG_KERN { printlny!("Syns: Enqueuing kernel: '{}'...", kern.name()); }
             // kern.enqueue_events(wait_events, None).expect("bismit::Synapses::cycle");

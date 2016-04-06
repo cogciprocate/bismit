@@ -3,8 +3,9 @@ use rand::{self, XorShiftRng, Rng};
 
 use cmn::{self, CorticalDims, DataCellLayer};
 use map::{AreaMap};
-use ocl::{ProQue, SpatialDims, Buffer, Kernel, EventList, Result as OclResult};
+use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
+use ocl::core::ClWaitList;
 use proto::{CellKind, Protocell, DendriteKind};
 use area::{Dendrites, AxonSpace};
 
@@ -215,7 +216,7 @@ impl DataCellLayer for PyramidalLayer {
     }
 
     #[inline]
-    fn cycle(&self, wait_events: Option<&EventList>) {
+    fn cycle(&self, wait_events: Option<&ClWaitList>) {
         if PRINT_DEBUG { printlny!("Pyrs: Cycling dens..."); }
         self.dens().cycle(wait_events);
         // self.kern_cycle.enqueue_events(wait_events, None)
