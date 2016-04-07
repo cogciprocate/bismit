@@ -141,7 +141,7 @@ impl IdxStreamer {
 }
 
 impl ExternalSourceTract for IdxStreamer {
-    fn read_into(&mut self, _: LayerTags, tract_frame: &mut TractFrameMut) 
+    fn read_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) 
             -> [usize; 3] 
     {
         assert!(tract_frame.dims() == &self.layer_dims);

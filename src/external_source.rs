@@ -17,7 +17,7 @@ use encode::{IdxStreamer, GlyphSequences};
 /// for the moment.
 ///
 pub trait ExternalSourceTract {
-    fn read_into(&mut self, tags: LayerTags, tract_frame: &mut TractFrameMut) 
+    fn read_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) 
         -> [usize; 3];
     fn cycle_next(&mut self);
 }
@@ -162,10 +162,10 @@ impl ExternalSource {
         // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
         let _ = match self.src_kind {
             ExternalSourceKind::IdxStreamer(ref mut es) | ExternalSourceKind::Custom(ref mut es) => {
-                es.read_into(tags, &mut tf)
+                es.read_into(&mut tf, tags)
             },
             ExternalSourceKind::GlyphSequences(ref mut gs) => {
-                gs.read_into(tags, &mut tf)
+                gs.read_into(&mut tf, tags)
             },
             _ => [0; 3],
         };

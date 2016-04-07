@@ -203,7 +203,7 @@ pub struct CorticalArea {
     counter: usize,
     // rng: rand::XorShiftRng,
     // thal_gangs: ThalamicGanglions,
-    events_lists: HashMap<LayerTags, EventList>,
+    // events_lists: HashMap<LayerTags, EventList>,
     io_info: IoLayerInfoCache,
     pub bypass_inhib: bool,
     pub bypass_filters: bool,
@@ -405,12 +405,12 @@ impl CorticalArea {
 
         // pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
             // .set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
-        let mut events_lists = HashMap::new();
-        events_lists.insert(map::FF_IN, EventList::new());    
-        events_lists.insert(map::FB_IN, EventList::new());
-        events_lists.insert(map::NS_IN, EventList::new());
-        events_lists.insert(map::FF_OUT, EventList::new());
-        events_lists.insert(map::NS_OUT, EventList::new());
+        // let mut events_lists = HashMap::new();
+        // events_lists.insert(map::FF_IN, EventList::new());    
+        // events_lists.insert(map::FB_IN, EventList::new());
+        // events_lists.insert(map::NS_IN, EventList::new());
+        // events_lists.insert(map::FF_OUT, EventList::new());
+        // events_lists.insert(map::NS_OUT, EventList::new());
 
         let io_info = IoLayerInfoCache::new(area_name.to_owned(), &area_map);
 
@@ -435,7 +435,7 @@ impl CorticalArea {
             // renderer: renderer,
             counter: 0,
             // rng: rand::weak_rng(),            
-            events_lists: events_lists,
+            // events_lists: events_lists,
             io_info: io_info,
             bypass_inhib: false,
             bypass_filters: false,
@@ -472,12 +472,12 @@ impl CorticalArea {
 
         if !self.disable_pyrs {    
             if !self.disable_learning { self.ptal_mut().learn(); }
-            let eff_input_events = { self.events_lists.get(&map::FB_IN).map(|wl| wl as &ClWaitList) };
+            let eff_input_events = { self.io_info.group_events(map::FB_IN).map(|wl| wl as &ClWaitList) };
             self.ptal().cycle(eff_input_events);
         }        
 
         if !self.disable_mcols { 
-            let output_events = { self.events_lists.get_mut(&map::FF_OUT) };
+            let output_events = { self.io_info.group_events_mut(map::FF_OUT) };
             self.mcols.output(output_events); 
         }
 
@@ -488,14 +488,11 @@ impl CorticalArea {
 
     /// Read input from thalamus and write to axon space. 
     ///
-    /// [FIXME]: Wire up layer unique ids so that a list of `LayerTags`
-    /// potentially containing uids can be generated from any given tag set
-    /// (FF_IN, NS_OUT, etc.).
-    ///
     /// [FIXME]: Currently cloning each list of keys (with strings inside).
     /// This is bad on a couple of levels. Generate a list of keys upon
     /// creation for each category of layer tags THEN convert the `(String,
-    /// LayerTags)` keys into `(usize, LayerTags)`.
+    /// LayerTags)` keys into `(usize, LayerTags)`. [UPDATE]: Need now only
+    /// convert the strings to ints.
     /// 
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) {
         if let Some((src_layers, new_events)) = self.io_info.group_mut(group_tags) {

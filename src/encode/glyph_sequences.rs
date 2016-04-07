@@ -33,24 +33,12 @@ impl SeqReader {
             if self.seq_idx >= self.sequences.len() { self.seq_idx = 0; }
         }
     }
+}
 
-    // fn next(&mut self, sequences: &Vec<Vec<usize>>) -> (usize, usize) {
-    //     // let next_seq_idx = self.seq_idx;
-    //     // let next_glyph_id = sequences[self.seq_idx][self.gly_idx];
-    //     // self.gly_idx += 1;
 
-    //     // if self.gly_idx >= sequences[self.seq_idx].len() { 
-    //     //     self.gly_idx = 0;
-    //     //     self.seq_idx += 1;
-    //     //     if self.seq_idx >= sequences.len() { self.seq_idx = 0; }
-    //     // }
-
-    //     // (next_seq_idx, next_glyph_id)
-
-    //     let next = (self.seq_idx, sequences[self.seq_idx][self.gly_idx]);
-    //     self.advance(sequences);
-    //     next
-    // }
+pub struct CoordEncoder2d {
+    sizes: (i32, i32),
+    
 }
 
 
@@ -124,7 +112,7 @@ impl GlyphSequences {
 }
 
 impl ExternalSourceTract for GlyphSequences {
-    fn read_into(&mut self, tags: LayerTags, tract_frame: &mut TractFrameMut) 
+    fn read_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) 
             -> [usize; 3]
     {
         let glyph_dims = self.buckets.glyph_dims();
