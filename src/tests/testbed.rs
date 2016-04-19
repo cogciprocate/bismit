@@ -1,7 +1,7 @@
 use cmn::CorticalDims;
 use map;
-use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, Cortical, 
-    Thalamic, Protocell, Protofilter, Protoinput};
+use map::{LayerMapScheme, LayerMapSchemeList, AreaSchemeList, Axonal, Spatial, Horizontal, Cortical, 
+    Thalamic, CellScheme, FilterScheme, InputScheme};
 use thalamus::Thalamus;
 use ocl::{Context, ProQue};
 use cortex::Cortex;
@@ -12,10 +12,10 @@ pub static INHIB_LAYER_NAME: &'static str     = "iv_inhib";
 const CYCLES_PER_FRAME: usize                 = 1;
 
 
-pub fn define_protolayer_maps() -> ProtolayerMaps {
-    let mut plmaps: ProtolayerMaps = ProtolayerMaps::new();
+pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
+    let mut plmaps: LayerMapSchemeList = LayerMapSchemeList::new();
 
-    plmaps.add(ProtolayerMap::new("visual", Cortical)
+    plmaps.add(LayerMapScheme::new("visual", Cortical)
         //.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
         .layer("motor_in", 1, map::DEFAULT, Axonal(Horizontal))
         //.layer("olfac", 1, map::DEFAULT, Axonal(Horizontal))
@@ -24,30 +24,30 @@ pub fn define_protolayer_maps() -> ProtolayerMaps {
         .layer("out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))
         .layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
         .layer("iv", 1, map::PSAL, 
-            Protocell::spiny_stellate(5, vec!["aff_in"], 600, 8)) 
+            CellScheme::spiny_stellate(5, vec!["aff_in"], 600, 8)) 
         .layer("iv_inhib", 0, map::DEFAULT, 
-            Protocell::inhibitory(4, "iv"))
+            CellScheme::inhibitory(4, "iv"))
         .layer("iii", 3, map::PTAL, 
-            Protocell::pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"], 12))
+            CellScheme::pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"], 12))
     );
 
-    plmaps.add(ProtolayerMap::new("external", Thalamic)
+    plmaps.add(LayerMapScheme::new("external", Thalamic)
         .layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
     );
 
     plmaps
 }
 
-pub fn define_protoareas() -> ProtoareaMaps {
+pub fn define_protoareas() -> AreaSchemeList {
     let area_side = 32 as u32;
 
-    let protoareas = ProtoareaMaps::new()        
+    let protoareas = AreaSchemeList::new()        
 
         .area_ext("v0", "external", 
             // area_side * 2, area_side * 2,
             area_side, 
                         // area_side / 2, area_side / 2, 
-            Protoinput::IdxStreamer { 
+            InputScheme::IdxStreamer { 
                 file_name: "train-images-idx3-ubyte".to_owned(), 
                 cyc_per: CYCLES_PER_FRAME, 
                 scale: 1.3,
@@ -64,7 +64,7 @@ pub fn define_protoareas() -> ProtoareaMaps {
             // area_side / 2, area_side / 2,
             // 128, 128,
 
-            Some(vec![Protofilter::new("retina", None)]),            
+            Some(vec![FilterScheme::new("retina", None)]),            
 
             Some(vec!["v0"]),
         )
@@ -90,7 +90,7 @@ pub fn define_protoareas() -> ProtoareaMaps {
 
 // FRESH_CORTEX(): Mmmm... Yummy.
 pub fn fresh_cortex() -> Cortex {
-    Cortex::new(define_protolayer_maps(), define_protoareas())
+    Cortex::new(define_layer_scheme_maps(), define_protoareas())
 }
 
 
@@ -105,9 +105,9 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
     let area_name = PRIMARY_AREA_NAME;
     let lmap_name = "lm_test";
 
-    let mut plmaps = ProtolayerMaps::new();
+    let mut plmaps = LayerMapSchemeList::new();
 
-    plmaps.add(ProtolayerMap::new(lmap_name, Cortical)
+    plmaps.add(LayerMapScheme::new(lmap_name, Cortical)
         .layer("eff_in", 0, map::FB_IN, Axonal(Spatial))
         .layer("aff_in", 0, map::FF_IN, Axonal(Spatial))
         .layer("out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))
@@ -119,11 +119,11 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         // .layer("test5", 1, map::UNUSED_TESTING, Axonal(Spatial))
         .layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
         .layer("iv", 1, map::PSAL, 
-            Protocell::spiny_stellate(5, vec!["unused"], 1, 8))
+            CellScheme::spiny_stellate(5, vec!["unused"], 1, 8))
         // .layer("iv_inhib", 0, map::DEFAULT, 
-        //     Protocell::inhibitory(4, "iv"))
+        //     CellScheme::inhibitory(4, "iv"))
         .layer("iii", 2, map::PTAL, 
-            Protocell::pyramidal(2, 4, vec!["unused"], 1, 8)
+            CellScheme::pyramidal(2, 4, vec!["unused"], 1, 8)
                 .apical(vec!["test1"], 12)
                 .apical(vec!["test2"], 11)
                 // .apical(vec!["test3"])
@@ -133,13 +133,13 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
     );
 
-    plmaps.add(ProtolayerMap::new("dummy_lm", Thalamic)
+    plmaps.add(LayerMapScheme::new("dummy_lm", Thalamic)
         .layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
     );
 
-    let pamaps = ProtoareaMaps::new()
+    let pamaps = AreaSchemeList::new()
         .area(area_name, lmap_name, 32, None, Some(vec!["dummy_area"]))
-        .area_ext("dummy_area", "dummy_lm", 67, Protoinput::None, None, None)
+        .area_ext("dummy_area", "dummy_lm", 67, InputScheme::None, None, None)
     ;
 
     Cortex::new(plmaps, pamaps)
@@ -157,10 +157,10 @@ pub struct TestBed {
 
 impl TestBed {
     pub fn new() -> TestBed {
-        let plmaps = define_protolayer_maps();
-        let protoarea_maps = define_protoareas();
+        let plmaps = define_layer_scheme_maps();
+        let area_schemes = define_protoareas();
 
-        let thal = Thalamus::new(plmaps, protoarea_maps);
+        let thal = Thalamus::new(plmaps, area_schemes);
         let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
         let ocl_context: Context = Context::builder()

@@ -3,7 +3,7 @@ use time;
 
 use area::{CorticalArea, CorticalAreas};
 use thalamus::{Thalamus};
-use proto::{ProtolayerMaps, ProtoareaMaps, Thalamic};
+use map::{LayerMapSchemeList, AreaSchemeList, AxonKind};
 use ocl::{self, Platform, Context, Device};
 
 pub struct Cortex {
@@ -13,7 +13,7 @@ pub struct Cortex {
 }
 
 impl Cortex {
-    pub fn new(plmaps: ProtolayerMaps, pamaps: ProtoareaMaps) -> Cortex {
+    pub fn new(plmaps: LayerMapSchemeList, pamaps: AreaSchemeList) -> Cortex {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
         let thal = Thalamus::new(plmaps, pamaps);
@@ -30,7 +30,7 @@ impl Cortex {
         let mut device_idx = 1;
 
         for (&area_name, _) in pamaps.iter().filter(|&(_, pamap)| 
-                pamap.lm_kind_tmp() != &Thalamic)
+                pamap.lm_kind_tmp() != &AxonKind::Thalamic)
         {    
             areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(), 
                 device_idx, &ocl_context)));

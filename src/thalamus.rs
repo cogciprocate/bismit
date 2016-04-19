@@ -6,7 +6,7 @@
 //!     - Use a hashmap to resolve area ids to area names in the event of an
 //!       error. Store this hashmap both on `TractAreaCache`. Each
 //!       `CorticalArea` will, of course, also have a copy of its own area id.
-//!     - Possibly have `ProtoareaMaps` initially create the id list.
+//!     - Possibly have `AreaSchemeList` initially create the id list.
 //! - Precompute hash.
 //! - Store strings in a separate vector (stored in cortex) and put a
 //!   reference in the key.
@@ -22,7 +22,7 @@ use cmn::{self, CmnError};
 use map::{self, AreaMap, LayerTags};
 use ocl::EventList;
 use area::CorticalAreas;
-use proto::{ProtoareaMaps, ProtolayerMaps, Thalamic};
+use map::{AreaSchemeList, LayerMapSchemeList, AxonKind};
 use external_source::ExternalSource;
 
 
@@ -37,7 +37,7 @@ pub struct Thalamus {
 }
 
 impl Thalamus {
-    pub fn new(plmaps: ProtolayerMaps, mut pamaps: ProtoareaMaps) -> Thalamus {
+    pub fn new(plmaps: LayerMapSchemeList, mut pamaps: AreaSchemeList) -> Thalamus {
         pamaps.freeze();
         let pamaps = pamaps;
         // let area_count = pamaps.maps().len();
@@ -50,7 +50,7 @@ impl Thalamus {
         ============================ THALAMIC (INPUT) AREAS ===========================
         =============================================================================*/
         for (&_, pa) in pamaps.maps().iter().filter(|&(_, pa)| 
-                    &plmaps[pa.layer_map_name].kind == &Thalamic) 
+                    &plmaps[pa.layer_map_name].kind == &AxonKind::Thalamic) 
         {
             let es = ExternalSource::new(pa, &plmaps[pa.layer_map_name]);
             let tags = es.layer_tags();

@@ -75,7 +75,7 @@ impl LayerTags {
         self.contains(other) && self.get_uid() == other.get_uid()
     }
 
-    // Presently called from Protolayer::new() on a debug build.
+    // Presently called from LayerScheme::new() on a debug build.
     pub fn debug_validate(&self) {
         debug_assert!(!(self.contains(OUTPUT) && self.contains(INPUT)));
         debug_assert!((self.contains(FEEDBACK) || self.contains(FEEDFORWARD)) 

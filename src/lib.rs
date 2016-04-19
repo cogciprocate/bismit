@@ -16,12 +16,11 @@ mod external_source;
 mod encode;
 mod cortex;
 mod area;
-mod tyro;
-pub mod map;
+mod map;
 
 #[cfg(test)] pub mod tests;
 
-pub use map::proto;
+// pub use map::scheme;
 pub use ocl::Event as OclEvent;
 
 pub use self::cortex::Cortex;
@@ -29,6 +28,6 @@ pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryI
 	SpinyStellateLayer, Dendrites};
 pub use self::external_source::{ExternalSourceTract, ExternalSourceKind};
 pub use self::map::{SliceTractMap, LayerTags};
-pub use self::tyro::Tyro;
+pub use self::cmn::TractDims;
 
 pub use self::encode::GlyphBuckets;

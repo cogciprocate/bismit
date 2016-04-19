@@ -6,7 +6,7 @@ use cmn::{self, ParaHexArray, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
 use ocl::{ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
-use proto::{Cellular, Pyramidal, SpinyStellate, Inhibitory, DendriteKind};
+use map::{DendriteKind, LayerKind, CellKind};
 use thalamus::Thalamus;
 use area::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer, 
     SpinyStellateLayer, SensoryFilter};
@@ -272,12 +272,12 @@ impl CorticalArea {
 
         for layer in area_map.layers().iter() {
             match layer.kind() {
-                &Cellular(ref pcell) => {
+                &LayerKind::Cellular(ref pcell) => {
                     println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})", 
                         pcell.cell_kind, layer.name(), layer.depth(), mt = cmn::MT);
 
                     match pcell.cell_kind {
-                        Pyramidal => {
+                        CellKind::Pyramidal => {
                             let pyrs_dims = dims.clone_with_depth(layer.depth());
 
                             let pyr_lyr = PyramidalLayer::new(
@@ -286,7 +286,7 @@ impl CorticalArea {
                             pyrs_map.insert(layer.name(), Box::new(pyr_lyr));
                         },
 
-                        SpinyStellate => {                            
+                        CellKind::SpinyStellate => {                            
                             let ssts_map_dims = dims.clone_with_depth(layer.depth());
                             let sst_lyr = SpinyStellateLayer::new(
                                 layer.name(), ssts_map_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq);
@@ -308,7 +308,7 @@ impl CorticalArea {
 
         for layer in area_map.layers().iter() {
             match layer.kind() {
-                &Cellular(ref pcell) => {
+                &LayerKind::Cellular(ref pcell) => {
                     match pcell.cell_kind {
                         Inhibitory => {
                             let src_lyr_names = layer.src_lyr_names(DendriteKind::Distal);
@@ -369,8 +369,8 @@ impl CorticalArea {
             let mut filters_vec = Vec::with_capacity(5);
 
             match area_map.filters() {
-                &Some(ref protofilters) => {
-                    for pf in protofilters.iter() {
+                &Some(ref filter_schemes) => {
+                    for pf in filter_schemes.iter() {
                         filters_vec.push(Box::new(SensoryFilter::new(
                             pf.filter_name(), 
                             pf.cl_file_name(), 

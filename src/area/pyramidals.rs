@@ -6,7 +6,7 @@ use map::{AreaMap};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
-use proto::{CellKind, Protocell, DendriteKind};
+use map::{CellKind, CellScheme, DendriteKind};
 use area::{Dendrites, AxonSpace};
 
 const PRINT_DEBUG: bool = false;
@@ -17,7 +17,7 @@ const PRINT_DEBUG: bool = false;
 pub struct PyramidalLayer {
     layer_name: &'static str,
     dims: CorticalDims,
-    protocell: Protocell,
+    cell_scheme: CellScheme,
     kern_ltp: Kernel,
     kern_cycle: Kernel,
     base_axn_slc: u8,
@@ -36,7 +36,7 @@ pub struct PyramidalLayer {
 }
 
 impl PyramidalLayer {
-    pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, 
+    pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme, 
         area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue
     ) -> PyramidalLayer {
         let base_axn_slcs = area_map.layer_slc_ids(vec![layer_name]);
@@ -57,8 +57,8 @@ impl PyramidalLayer {
         let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims_tft_best_den, None).unwrap();
         // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
-        let dens_per_tft_l2 = protocell.dens_per_tuft_l2;
-        let syns_per_den_l2 = protocell.syns_per_den_l2;
+        let dens_per_tft_l2 = cell_scheme.dens_per_tuft_l2;
+        let syns_per_den_l2 = cell_scheme.syns_per_den_l2;
         // let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
 
         let dims_dens = dims.clone_with_ptl2(dens_per_tft_l2 as i8).with_tfts(tfts_per_cel);
@@ -69,7 +69,7 @@ impl PyramidalLayer {
             layer_name, base_axn_slc, pyr_lyr_axn_idz, tfts_per_cel, syns_per_den_l2, dens_per_tft_l2, 
             states.len(), tft_best_den_ids.len(), dims, mt = cmn::MT);
 
-        let dens = Dendrites::new(layer_name, dims_dens, protocell.clone(), DendriteKind::Distal, 
+        let dens = Dendrites::new(layer_name, dims_dens, cell_scheme.clone(), DendriteKind::Distal, 
             CellKind::Pyramidal, area_map, axons, ocl_pq);        
         
         let kern_cycle = ocl_pq.create_kernel("pyr_cycle").expect("[FIXME]: HANDLE ME")
@@ -121,7 +121,7 @@ impl PyramidalLayer {
         PyramidalLayer {
             layer_name: layer_name,
             dims: dims,
-            protocell: protocell,
+            cell_scheme: cell_scheme,
             kern_ltp: kern_ltp,
             kern_cycle: kern_cycle,
             base_axn_slc: base_axn_slc,
@@ -263,8 +263,8 @@ impl DataCellLayer for PyramidalLayer {
     }
 
     #[inline]
-    fn protocell(&self) -> &Protocell {
-        &self.protocell
+    fn cell_scheme(&self) -> &CellScheme {
+        &self.cell_scheme
     }
 
     #[inline]

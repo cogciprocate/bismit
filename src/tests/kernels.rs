@@ -1,6 +1,6 @@
 
 use cmn::{self, /*CorticalDims*/};
-// use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, ProtoareaMap, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, Protocell, Protofilter, Protoinput};
+// use map::{LayerMapScheme, LayerMapSchemeList, AreaSchemeList, AreaScheme, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, CellScheme, FilterScheme, InputScheme};
 // use area::{self, Cortex};
 use ocl::{self, Buffer, SpatialDims};
 // use cycle::{input_czar, InputCzar, InputKind};

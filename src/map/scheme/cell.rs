@@ -1,5 +1,6 @@
 //use bittags;
-use proto::layer::LayerKind::{self, Cellular};
+use map::LayerKind::{self, Cellular};
+use map::{CellKind, CellClass, DendriteKind};
 //use std::option::{Option};
 use cmn;
 
@@ -10,7 +11,7 @@ use cmn;
             defining what it's source type is
 */
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
-pub struct Protocell {
+pub struct CellScheme {
     pub dens_per_tuft_l2: u8,
     pub syns_per_den_l2: u8,
     pub cols_per_cel_l2: u8,
@@ -23,7 +24,7 @@ pub struct Protocell {
     pub den_thresh_init: Option<u32>,
 }
 
-impl Protocell {
+impl CellScheme {
     pub fn new(                    
                 dens_per_tuft_l2: u8,
                 syns_per_den_l2: u8,
@@ -35,10 +36,10 @@ impl Protocell {
                 den_prx_syn_reach: u8,
                 den_dst_syn_reaches: Vec<u8>,
                 thresh: Option<u32>,
-    ) -> Protocell {
+    ) -> CellScheme {
             // DO SOME CHECKS ON PARAMETERS (certain cell types must/mustn't have certain dendritic segments)
 
-        Protocell {
+        CellScheme {
             cell_kind: cell_kind,
             cell_class: cell_class,
             dens_per_tuft_l2: dens_per_tuft_l2,
@@ -55,7 +56,7 @@ impl Protocell {
     pub fn pyramidal(dens_per_tuft_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, 
                 thresh: u32, dst_reach: u8) -> LayerKind 
     {
-        Cellular(Protocell {
+        Cellular(CellScheme {
             dens_per_tuft_l2: dens_per_tuft_l2,
             syns_per_den_l2: syns_per_den_l2,
             cols_per_cel_l2: 0,
@@ -73,7 +74,7 @@ impl Protocell {
     pub fn spiny_stellate(syns_per_den_l2: u8, prx_srcs: Vec<&'static str>, thresh: u32,
                 prx_reach: u8) -> LayerKind 
     {
-        Cellular(Protocell {
+        Cellular(CellScheme {
             dens_per_tuft_l2: 0,
             syns_per_den_l2: syns_per_den_l2,
             cols_per_cel_l2: 0,
@@ -88,7 +89,7 @@ impl Protocell {
     }
 
     pub fn inhibitory(cols_per_cel_l2: u8, dst_src: &'static str) -> LayerKind {
-        Cellular(Protocell {
+        Cellular(CellScheme {
             dens_per_tuft_l2: 0,
             syns_per_den_l2: 0,
             cols_per_cel_l2: cols_per_cel_l2,
@@ -103,7 +104,7 @@ impl Protocell {
     }
 
     pub fn minicolumn(psal_lyr: &'static str, ptal_lyr: &'static str,) -> LayerKind {
-        Cellular(Protocell {
+        Cellular(CellScheme {
             dens_per_tuft_l2: 0,
             syns_per_den_l2: 0,
             cols_per_cel_l2: 0,
@@ -117,7 +118,7 @@ impl Protocell {
         }.validate())
     }
 
-    pub fn validate(self) -> Protocell {
+    pub fn validate(self) -> CellScheme {
         assert!(self.den_prx_syn_reach <= 127, "Synapse reach must be between 0..127");
 
         for &reach in self.den_dst_syn_reaches.iter() {
@@ -134,33 +135,4 @@ impl Protocell {
             _ => depth,
         }
     }
-}
-
-
-#[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
-pub enum CellKind {
-    Pyramidal,
-    SpinyStellate,
-    //AspinyStellate,
-    Inhibitory,
-    Complex,
-}
-
-#[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
-pub enum CellClass {
-    Data,
-    Control,
-}
-
-
-#[derive(Copy, PartialEq, Debug, Clone)]
-pub enum DendriteKind {
-    Proximal,
-    Distal, 
-}
-
-#[allow(dead_code)]
-pub enum DendriteClass {
-    Apical,
-    Distal,
 }

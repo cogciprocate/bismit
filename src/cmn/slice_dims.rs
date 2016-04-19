@@ -2,7 +2,7 @@
 use ocl;
 use ocl::traits::MemLen;
 use cmn::{ParaHexArray, CorticalDims, CmnResult, CmnError};
-use proto::{AxonKind};
+use map::{AxonKind};
 
 
 #[derive(Clone, Debug)]

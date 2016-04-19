@@ -5,7 +5,7 @@ use map::{AreaMap, SrcSlices, SrcIdxCache, SynSrc};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
-use proto::{CellKind, Protocell, DendriteKind};
+use map::{CellKind, CellScheme, DendriteKind};
 use area::AxonSpace;
 
 #[cfg(test)]
@@ -64,7 +64,7 @@ pub struct Synapses {
     layer_name: &'static str,
     dims: CorticalDims,
     syns_per_den_l2: u8,
-    // protocell: Protocell,
+    // cell_scheme: CellScheme,
     src_slc_ids_by_tft: Vec<Vec<u8>>,
     den_kind: DendriteKind,
     // cell_kind: CellKind,
@@ -90,16 +90,16 @@ pub struct Synapses {
 }
 
 impl Synapses {
-    pub fn new(layer_name: &'static str, dims: CorticalDims, protocell: Protocell, 
+    pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme, 
                 den_kind: DendriteKind, _: CellKind, area_map: &AreaMap, 
                 axons: &AxonSpace, ocl_pq: &ProQue
             ) -> Synapses 
     {
-        let syns_per_tft_l2: u8 = protocell.dens_per_tuft_l2 + protocell.syns_per_den_l2;
+        let syns_per_tft_l2: u8 = cell_scheme.dens_per_tuft_l2 + cell_scheme.syns_per_den_l2;
         assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
 
-        let src_idx_cache = SrcIdxCache::new(protocell.syns_per_den_l2, 
-            protocell.dens_per_tuft_l2, dims.clone());
+        let src_idx_cache = SrcIdxCache::new(cell_scheme.syns_per_den_l2, 
+            cell_scheme.dens_per_tuft_l2, dims.clone());
 
         // Padded length of our vectors.
         // let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
@@ -117,11 +117,11 @@ impl Synapses {
         let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {
             DendriteKind::Proximal => {
                 (vec![area_map.layer_src_slc_ids(layer_name, den_kind)],
-                    vec![protocell.den_prx_syn_reach])
+                    vec![cell_scheme.den_prx_syn_reach])
             },
             DendriteKind::Distal => {
                 (area_map.layer_dst_src_slc_ids(layer_name),
-                    protocell.den_dst_syn_reaches.clone())
+                    cell_scheme.den_dst_syn_reaches.clone())
             },
         };
 
@@ -185,8 +185,8 @@ impl Synapses {
         let mut syns = Synapses {
             layer_name: layer_name,
             dims: dims,
-            syns_per_den_l2: protocell.syns_per_den_l2,
-            // protocell: protocell,
+            syns_per_den_l2: cell_scheme.syns_per_den_l2,
+            // cell_scheme: cell_scheme,
             src_slc_ids_by_tft: src_slc_ids_by_tft,
             den_kind: den_kind,
             // cell_kind: cell_kind,

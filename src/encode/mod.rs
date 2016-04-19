@@ -1,14 +1,18 @@
+#![allow(dead_code, unused_variables, unused_mut)]
+
 mod idx_data;
 mod glyph_buckets;
 mod glyph_sequences;
 pub mod idx_streamer;
+
+use std::ops::Range;
 
 pub use self::idx_streamer::IdxStreamer;
 pub use self::idx_data::IdxData;
 pub use self::glyph_buckets::GlyphBuckets;
 pub use self::glyph_sequences::GlyphSequences;
 
-use cmn::{TractFrameMut, ParaHexArray};
+use cmn::{TractFrameMut, TractDims, ParaHexArray};
 
 const SQRT_3: f32 = 1.73205080756f32;
 
@@ -50,7 +54,7 @@ pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_si
 
 // ENCODE_2D_IMAGE(): Horribly unoptimized.
 pub fn encode_2d_image<P: ParaHexArray>(src_dims: (usize, usize), tar_dims: &P,
-    scale_factor: f32, source: &[u8], /*target: &mut Sdr*/mut target: &mut TractFrameMut) 
+    scale_factor: f32, source: &[u8], mut target: &mut TractFrameMut) 
 {
     let (x_size, y_size) = (src_dims.0, src_dims.1);
     let (v_size, u_size) = (tar_dims.v_size() as usize, tar_dims.u_size() as usize);
@@ -78,8 +82,65 @@ pub fn encode_2d_image<P: ParaHexArray>(src_dims: (usize, usize), tar_dims: &P,
 }
 
 
+pub struct ScalarEncoder2d {
+    tract_dims: TractDims,
+    range: Range<usize>,
+}
+
+impl ScalarEncoder2d {
+    pub fn new(tract_dims: TractDims, range: Range<usize>) -> ScalarEncoder2d {
+        ScalarEncoder2d { 
+            tract_dims: tract_dims, 
+            range: range,
+        }
+    } 
+
+    pub fn encode(val: usize, mut target: &mut TractFrameMut) {
+        
+    }
+}
+
+
+#[allow(dead_code)]
+pub struct CoordEncoder2d {
+    tract_dims: TractDims,
+    coord_ranges: (usize, usize),
+    coord_size: (usize, usize),
+}
+
+impl CoordEncoder2d {
+    pub fn new(tract_dims: TractDims, coord_ranges: (usize, usize)) -> CoordEncoder2d {
+        let coord_size = (
+            (tract_dims.u_size() as usize / coord_ranges.0) + 1,
+            (tract_dims.v_size() as usize / coord_ranges.1) + 1,
+        );
+
+        CoordEncoder2d { 
+            tract_dims: tract_dims, 
+            coord_ranges: coord_ranges,
+            coord_size: coord_size,
+        }
+    } 
+
+    pub fn encode(coord: (u32, u32), mut target: &mut TractFrameMut) {
+        
+    }
+}
+
+
+// pub struct CoordEncoder1d {
+//     size: i32,
+// }
+
+// impl CoordEncoder1d {
+//     pub fn new(size: i32) -> CoordEncoder1d {
+//         CoordEncoder1d { size: size }
+//     }
+// }
+
+
 // [TODO]: Wire me up, Scotty.
-pub fn encode_scalar() {
+// pub fn encode_scalar() {
     // for v_id in 0..v_size {
     //     for u_id in 0..u_size {
     //         let (x, y, valid) = coord_hex_to_pixel(v_size, v_id, u_size, u_id, 
@@ -94,7 +155,7 @@ pub fn encode_scalar() {
     //         //target[tar_idx] = (x != 0 || y != 0) as u8; // SHOW INPUT SQUARE
     //     }
     // }
-}
+// }
 
 
 /// Encode a scalar value as a 

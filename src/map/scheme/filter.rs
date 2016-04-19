@@ -1,19 +1,19 @@
 
 #[derive(PartialEq, Debug, Clone, Eq)]
-pub struct Protofilter {
+pub struct FilterScheme {
     filter_name: String,
     cl_file_name: Option<String>,
 }
 
-impl Protofilter {
-    pub fn new(filter_name: &str, cl_file_name: Option<&str>) -> Protofilter {
+impl FilterScheme {
+    pub fn new(filter_name: &str, cl_file_name: Option<&str>) -> FilterScheme {
 
         let clfn_opt = match cl_file_name {
             Some(ref clfn) => Some(clfn.to_string()),
             None => None,
         };
 
-        Protofilter {
+        FilterScheme {
             filter_name: filter_name.to_string(),
             cl_file_name: clfn_opt,
         }

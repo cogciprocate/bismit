@@ -5,7 +5,7 @@ use cmn::{CorticalDims, TractFrameMut};
 use map::{self, LayerTags};
 use external_source::{ExternalSourceTract, ExternalSourceLayer};
 use encode::GlyphBuckets;
-use proto::AxonKind;
+use map::AxonKind;
 
 
 /// The cursor containing the current position of the glyph sequence.
@@ -35,11 +35,6 @@ impl SeqReader {
     }
 }
 
-
-pub struct CoordEncoder2d {
-    sizes: (i32, i32),
-    
-}
 
 
 /// Sequences of 2D colorless images.

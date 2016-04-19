@@ -1,6 +1,6 @@
 use cmn::{self, CorticalDims, SliceDims, ParaHexArray, Sdr};
 use map::{SliceMap};
-use proto::{AxonKind};
+use map::{AxonKind};
 
 //use std::char;
 use std::iter;

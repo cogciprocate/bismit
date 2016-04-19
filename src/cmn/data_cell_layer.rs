@@ -2,7 +2,7 @@ use ocl::Buffer;
 use ocl::core::ClWaitList;
 use area::Dendrites;
 use cmn::{/*self,*/ CorticalDims};
-use proto::{Protocell};
+use map::{CellScheme};
 
 // #[cfg(test)]
 // pub use self::tests::{DataCellLayerTest};
@@ -18,7 +18,7 @@ pub trait DataCellLayer {
     fn base_axn_slc(&self) -> u8;
     fn tfts_per_cel(&self) -> u32;
     fn layer_name(&self) -> &'static str;    
-    fn protocell(&self) -> &Protocell;
+    fn cell_scheme(&self) -> &CellScheme;
     fn dens(&self) -> &Dendrites;
     fn dens_mut(&mut self) -> &mut Dendrites;
 }

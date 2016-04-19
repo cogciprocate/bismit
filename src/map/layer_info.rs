@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::{Range};
 // use std::slice::{Iter};
 
-use proto::{Protolayer, ProtoareaMap, ProtoareaMaps, ProtolayerMaps, LayerKind, DendriteKind, 
+use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind, DendriteKind, 
     LayerMapKind, AxonKind};
 use cmn::{self, ParaHexArray, CorticalDims};
 use map::{self, LayerTags,};
@@ -21,7 +21,7 @@ pub struct LayerInfo {
     sources: Vec<SourceLayerInfo>,
     layer_map_kind: LayerMapKind,
     axn_kind: AxonKind,
-    protolayer: Protolayer,
+    layer_scheme: LayerScheme,
     axn_count: u32,
     irregular_layer_dims: Option<CorticalDims>,
 }
@@ -30,15 +30,15 @@ impl LayerInfo {
     /// [FIXME]: TODO: Break up, refactor, and optimize.
     /// [FIXME]: TODO: Create an error type enum just for map::Layer****.
     /// [FIXME]: TODO: Return result and get rid of panics, et al.
-    pub fn new(protolayer: &Protolayer, plmap_kind: LayerMapKind, pamap: &ProtoareaMap, pamaps: &ProtoareaMaps, 
-                plmaps: &ProtolayerMaps, input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>, 
+    pub fn new(layer_scheme: &LayerScheme, plmap_kind: LayerMapKind, pamap: &AreaScheme, pamaps: &AreaSchemeList, 
+                plmaps: &LayerMapSchemeList, input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>, 
                 slc_total: u8) -> LayerInfo 
     {
-        let protolayer = protolayer.clone();
-        let name = protolayer.name();
-        let tags = protolayer.tags();
-        let axn_kind = protolayer.axn_kind().expect("LayerInfo::new()");
-        // let slc_range = protolayer.slc_idz()..(protolayer.slc_idz() + protolayer.depth());
+        let layer_scheme = layer_scheme.clone();
+        let name = layer_scheme.name();
+        let tags = layer_scheme.tags();
+        let axn_kind = layer_scheme.axn_kind().expect("LayerInfo::new()");
+        // let slc_range = layer_scheme.slc_idz()..(layer_scheme.slc_idz() + layer_scheme.depth());
         let mut sources = Vec::with_capacity(8);
 
         let mut next_slc_idz = slc_total;
@@ -57,7 +57,7 @@ impl LayerInfo {
         if tags.contains(map::INPUT) {
             // Make sure this layer is axonal (cellular layers must not also
             // be input layers):
-            match protolayer.kind() {
+            match layer_scheme.kind() {
                 &LayerKind::Axonal(_) => (),
                 _ => panic!("Error assembling LayerInfo for '{}'. Layers containing \
                     'map::INPUT' must be 'AxonKind::Axonal'.", name),
@@ -115,7 +115,7 @@ impl LayerInfo {
                     ////////////
                     //
                     // NOTE: Finish finding input_source depth (scan for matching area name)
-                    // if input_source with matching area name is not found, use the protolayer depth
+                    // if input_source with matching area name is not found, use the layer_scheme depth
                     // 
                     // ALSO:                        
                     //
@@ -187,7 +187,7 @@ impl LayerInfo {
                         tar_slc_range, src_area_name, src_layer.tags(), mt = cmn::MT));
 
                     // For (legacy) comparison purposes:
-                    // protolayer.set_depth(src_layer_depth);
+                    // layer_scheme.set_depth(src_layer_depth);
 
                     next_slc_idz += src_layer_dims.depth();
                     axn_count += src_layer_dims.cells();
@@ -219,7 +219,7 @@ impl LayerInfo {
             };
 
             // [FIXME]: Get rid of the map::OUTPUT check and just default to 0.
-            let layer_depth = match protolayer.depth() {
+            let layer_depth = match layer_scheme.depth() {
                 Some(d) => d,
                 None => if tags.contains(map::OUTPUT) { cmn::DEFAULT_OUTPUT_LAYER_DEPTH } else { 0 },
             };
@@ -257,7 +257,7 @@ impl LayerInfo {
             sources: sources,
             layer_map_kind: plmap_kind,
             axn_kind: axn_kind,
-            protolayer: protolayer,
+            layer_scheme: layer_scheme,
             axn_count: axn_count,
             irregular_layer_dims: irregular_layer_dims,
         }
@@ -277,12 +277,12 @@ impl LayerInfo {
     }
 
     pub fn src_lyr_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
-        self.protolayer.src_lyr_names(den_type)
+        self.layer_scheme.src_lyr_names(den_type)
     }
 
     pub fn dst_src_lyrs(&self) -> Vec<Vec<&'static str>> {
-        let layers_by_tuft = match self.protolayer.kind() {
-            &LayerKind::Cellular(ref protocell) => protocell.den_dst_src_lyrs.clone(),
+        let layers_by_tuft = match self.layer_scheme.kind() {
+            &LayerKind::Cellular(ref cell_scheme) => cell_scheme.den_dst_src_lyrs.clone(),
             _ => None,
         };
 
@@ -301,7 +301,7 @@ impl LayerInfo {
     }
 
     pub fn kind(&self) -> &LayerKind {
-        self.protolayer.kind()
+        self.layer_scheme.kind()
     }
 
     pub fn sources(&self) -> &[SourceLayerInfo]  {

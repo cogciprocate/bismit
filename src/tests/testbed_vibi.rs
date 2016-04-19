@@ -1,59 +1,59 @@
 use cortex::Cortex;
 use map::{self, LayerTags};
-use proto::{ProtolayerMap, ProtolayerMaps, ProtoareaMaps, Axonal, Spatial, Horizontal, 
-    Cortical, Thalamic, Protocell, Protofilter, Protoinput};
+use map::{LayerMapScheme, LayerMapSchemeList, AreaSchemeList, Axonal, Spatial, Horizontal, 
+    Cortical, Thalamic, CellScheme, FilterScheme, InputScheme};
 
-pub fn define_plmaps() -> ProtolayerMaps {
+pub fn define_plmaps() -> LayerMapSchemeList {
     const MOTOR_UID: u32 = 654;
     const ROSE_UID: u32 = 435;
 
-    ProtolayerMaps::new()
-        .lmap(ProtolayerMap::new("cortical_lm", Cortical)
+    LayerMapSchemeList::new()
+        .lmap(LayerMapScheme::new("cortical_lm", Cortical)
             .axn_layer("motor_ctx", map::NS_IN | LayerTags::uid(MOTOR_UID), Horizontal)
             .axn_layer("rose_ctx", map::NS_IN | LayerTags::uid(ROSE_UID), Horizontal)
             .axn_layer("eff_in", map::FB_IN, Spatial)
             .axn_layer("aff_in", map::FF_IN, Spatial)
             .axn_layer("unused", map::UNUSED_TESTING, Spatial)
-            .layer("mcols", 1, map::FF_FB_OUT, Protocell::minicolumn("iv", "iii"))
-            .layer("iv_inhib", 0, map::DEFAULT, Protocell::inhibitory(4, "iv"))
+            .layer("mcols", 1, map::FF_FB_OUT, CellScheme::minicolumn("iv", "iii"))
+            .layer("iv_inhib", 0, map::DEFAULT, CellScheme::inhibitory(4, "iv"))
 
             .layer("iv", 1, map::PSAL, 
-                Protocell::spiny_stellate(4, vec!["aff_in"], 400, 8))
+                CellScheme::spiny_stellate(4, vec!["aff_in"], 400, 8))
 
             .layer("iii", 2, map::PTAL, 
-                Protocell::pyramidal(1, 4, vec!["iii"], 800, 10)
+                CellScheme::pyramidal(1, 4, vec!["iii"], 800, 10)
                     .apical(vec!["eff_in"/*, "olfac"*/], 12))
         )
-        .lmap(ProtolayerMap::new("gly_seq_lm", Thalamic)
+        .lmap(LayerMapScheme::new("gly_seq_lm", Thalamic)
             .layer("spatial", 1, map::FF_OUT, Axonal(Spatial))
             .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(MOTOR_UID), Axonal(Horizontal))
         )
-        .lmap(ProtolayerMap::new("gly_seq_rose_lm", Thalamic)
+        .lmap(LayerMapScheme::new("gly_seq_rose_lm", Thalamic)
             .layer("spatial", 1, map::FF_OUT | LayerTags::uid(9999) , Axonal(Spatial))
             .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(ROSE_UID), Axonal(Horizontal))
         )
-        // .lmap(ProtolayerMap::new("o0_lm", Thalamic)
+        // .lmap(LayerMapScheme::new("o0_lm", Thalamic)
         //     .layer("ganglion", 1, map::NS_OUT | LayerTags::uid(OLFAC_UID), Axonal(Horizontal))
         // )
 }
 
 
-pub fn define_pamaps() -> ProtoareaMaps {
+pub fn define_pamaps() -> AreaSchemeList {
     const AREA_SIDE: u32 = 32;
 
-    ProtoareaMaps::new()        
+    AreaSchemeList::new()        
         .area_ext("v0", "gly_seq_lm", AREA_SIDE,
-            Protoinput::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) },
+            InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) },
             None, 
             None,
         )
         .area_ext("v00", "gly_seq_rose_lm", AREA_SIDE,
-            Protoinput::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) },
+            InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) },
             None, 
             None,
         )
         .area("v1", "cortical_lm", AREA_SIDE, 
-            Some(vec![Protofilter::new("retina", None)]),            
+            Some(vec![FilterScheme::new("retina", None)]),            
             Some(vec!["v0", "v00"]),
         )
 

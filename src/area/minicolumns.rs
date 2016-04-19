@@ -58,7 +58,7 @@ impl Minicolumns {
             .arg_buf(&pyrs.best_den_states())
             .arg_scl(ff_layer_axn_idz as u32)
             .arg_scl(pyr_lyr_axn_idz)
-            .arg_scl(pyrs.protocell().dens_per_tuft_l2)
+            .arg_scl(pyrs.cell_scheme().dens_per_tuft_l2)
             .arg_buf(&pyrs.flag_sets())
             .arg_buf(&pyrs.states())
             .arg_buf_named::<i32>("aux_ints_0", None)

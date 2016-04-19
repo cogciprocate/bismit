@@ -11,7 +11,7 @@
 use cmn::{CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer};
-use proto::Protocell;
+use map::CellScheme;
 use area::AxonSpace;
 
 
@@ -19,7 +19,7 @@ use area::AxonSpace;
 pub struct InhibitoryInterneuronNetwork {
     layer_name: &'static str,
     pub dims: CorticalDims,
-    // protocell: Protocell,
+    // cell_scheme: CellScheme,
     //kern_cycle_pre: ocl::Kernel,
     //kern_cycle_wins: ocl::Kernel,
     //kern_cycle_post: ocl::Kernel,
@@ -35,7 +35,7 @@ pub struct InhibitoryInterneuronNetwork {
 }
 
 impl InhibitoryInterneuronNetwork {
-    pub fn new(layer_name: &'static str, dims: CorticalDims, _: Protocell, _: &AreaMap, src_soma: &Buffer<u8>, src_base_axn_slc: u8, axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue) -> InhibitoryInterneuronNetwork {
+    pub fn new(layer_name: &'static str, dims: CorticalDims, _: CellScheme, _: &AreaMap, src_soma: &Buffer<u8>, src_base_axn_slc: u8, axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue) -> InhibitoryInterneuronNetwork {
 
         //let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
 
@@ -76,7 +76,7 @@ impl InhibitoryInterneuronNetwork {
         InhibitoryInterneuronNetwork {
             layer_name: layer_name,
             dims: dims,
-            // protocell: protocell,
+            // cell_scheme: cell_scheme,
             //kern_cycle_pre: kern_cycle_pre,
             //kern_cycle_wins: kern_cycle_wins,
             //kern_cycle_post: kern_cycle_post,

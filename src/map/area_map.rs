@@ -4,7 +4,7 @@ use std::collections::HashMap;
 // use std::collections::{BTreeMap};
 
 use ocl::builders::{BuildOpt, ProgramBuilder};
-use proto::{ProtolayerMaps, ProtoareaMaps, ProtoareaMap, LayerMapKind, Protofilter,
+use map::{LayerMapSchemeList, AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme,
     DendriteKind};
 use cmn::{self, CorticalDims};
 use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo};
@@ -20,11 +20,11 @@ pub struct AreaMap {
     hrz_demarc: u8,
     eff_areas: Vec<&'static str>,
     aff_areas: Vec<&'static str>,
-    filters: Option<Vec<Protofilter>>,
+    filters: Option<Vec<FilterScheme>>,
 }
 
 impl AreaMap {
-    pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps,
+    pub fn new(pamap: &AreaScheme, plmaps: &LayerMapSchemeList, pamaps: &AreaSchemeList,
             input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>) -> AreaMap 
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name, 
@@ -66,8 +66,8 @@ impl AreaMap {
 
         // Custom filter kernels
         match self.filters {
-            Some(ref protofilters) => {
-                for pf in protofilters.iter() {
+            Some(ref filter_schemes) => {
+                for pf in filter_schemes.iter() {
                     match pf.cl_file_name() {
                         Some(ref clfn)  => {                            
                             build_options = build_options.src_file(clfn.clone());
@@ -331,7 +331,7 @@ impl AreaMap {
     }
 
     // UPDATE / DEPRICATE
-    pub fn filters(&self) -> &Option<Vec<Protofilter>> {
+    pub fn filters(&self) -> &Option<Vec<FilterScheme>> {
         &self.filters
     }
 

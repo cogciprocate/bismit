@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use map::{self, LayerTags};
 use cmn::{self, CorticalDims, TractFrameMut};
 use ocl::{EventList};
-use proto::{ProtoareaMap, Protoinput, ProtolayerMap, Protolayer, AxonKind};
+use map::{AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonKind};
 use encode::{IdxStreamer, GlyphSequences};
 
 // pub type ExternalSourceMap = HashMap<String, ExternalSource>;
@@ -79,11 +79,11 @@ pub struct ExternalSource {
 
 impl ExternalSource {
     // [FIXME] Determine (or have passed in) the layer depth corresponding to this source.
-    pub fn new(pamap: &ProtoareaMap, plmap: &ProtolayerMap) -> ExternalSource {
-        let p_layers: Vec<&Protolayer> = plmap.layers().iter().map(|(_, pl)| pl).collect();
+    pub fn new(pamap: &AreaScheme, plmap: &LayerMapScheme) -> ExternalSource {
+        let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|(_, pl)| pl).collect();
 
         assert!(pamap.get_input().layer_count() == p_layers.len(), "ExternalSource::new(): \
-            Inputs for 'Protoarea' ({}) must equal layers in 'ProtolayerMap' ({}).",
+            Inputs for 'Protoarea' ({}) must equal layers in 'LayerMapScheme' ({}).",
             pamap.get_input().layer_count(), p_layers.len());
 
         // let mut layers = HashMap::with_capacity_and_hasher(4, BuildHasherDefault::default());
@@ -122,7 +122,7 @@ impl ExternalSource {
         }
 
         let src_kind = match pamap.get_input().clone() {
-            Protoinput::IdxStreamer { file_name, cyc_per, scale, loop_frames } => {
+            InputScheme::IdxStreamer { file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
                 let mut is = IdxStreamer::new(layers[&layer_tags_list[0]].dims()
                     .expect("ExternalSource::new(): Layer dims not set properly.").clone(), 
@@ -133,11 +133,11 @@ impl ExternalSource {
                 }
                 ExternalSourceKind::IdxStreamer(Box::new(is))
             },
-            Protoinput::GlyphSequences { seq_lens, seq_count, scale, hrz_dims } => {
+            InputScheme::GlyphSequences { seq_lens, seq_count, scale, hrz_dims } => {
                 let gs = GlyphSequences::new(&mut layers, seq_lens, seq_count, scale, hrz_dims);
                 ExternalSourceKind::GlyphSequences(Box::new(gs))
             },
-            Protoinput::None | Protoinput::Zeros => ExternalSourceKind::None,
+            InputScheme::None | InputScheme::Zeros => ExternalSourceKind::None,
             pi @ _ => panic!("\nExternalSource::new(): Input type: '{:?}' not yet supported.", pi),
         };
 

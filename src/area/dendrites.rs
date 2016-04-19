@@ -2,7 +2,7 @@ use cmn::{self, CorticalDims};
 use map::{AreaMap};
 use ocl::{self, ProQue, SpatialDims, Buffer};
 use ocl::core::ClWaitList;
-use proto::{CellKind, Protocell, DendriteKind};
+use map::{CellKind, CellScheme, DendriteKind};
 use area::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
@@ -11,7 +11,7 @@ const PRINT_DEBUG: bool = false;
 pub struct Dendrites {
     layer_name: &'static str,
     dims: CorticalDims,
-    //protocell: Protocell,
+    //cell_scheme: CellScheme,
     //per_cell_l2: u32,
     // den_kind: DendriteKind,
     // cell_kind: CellKind,
@@ -28,7 +28,7 @@ impl Dendrites {
                     layer_name: &'static str,
                     dims: CorticalDims,
                     //src_tfts: Vec<Vec<&'static str>>,
-                    protocell: Protocell,
+                    cell_scheme: CellScheme,
                     den_kind: DendriteKind, 
                     cell_kind: CellKind,
                     area_map: &AreaMap,
@@ -38,21 +38,21 @@ impl Dendrites {
     ) -> Dendrites {
         //println!("\n### Test D1 ###");
         //let width_dens = dims.width << per_cell_l2;
-        assert!(dims.per_tft_l2() as u8 == protocell.dens_per_tuft_l2);
+        assert!(dims.per_tft_l2() as u8 == cell_scheme.dens_per_tuft_l2);
 
         //let dims = cel_dims.clone_with_ptl2(per_cell_l2);
 
-        let syns_per_den_l2 = protocell.syns_per_den_l2;
-        let den_threshold = protocell.den_thresh_init.unwrap_or(1);
+        let syns_per_den_l2 = cell_scheme.syns_per_den_l2;
+        let den_threshold = cell_scheme.den_thresh_init.unwrap_or(1);
 
         /*let (den_threshold, den_kernel) = match den_kind {
             DendriteKind::Distal => (
-                protocell.den_thresh_init.unwrap_or(1),
+                cell_scheme.den_thresh_init.unwrap_or(1),
                 //cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, 
                 "den_cycle"
             ),
             DendriteKind::Proximal => (
-                protocell.den_thresh_init.unwrap_or(1),
+                cell_scheme.den_thresh_init.unwrap_or(1),
                 //cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, 
                 
             ),
@@ -70,7 +70,7 @@ impl Dendrites {
             layer_name, dims, states.len(), mt = cmn::MT);
 
         let syns_dims = dims.clone_with_ptl2((dims.per_tft_l2() + syns_per_den_l2 as i8));
-        let syns = Synapses::new(layer_name, syns_dims, protocell.clone(), den_kind, cell_kind, 
+        let syns = Synapses::new(layer_name, syns_dims, cell_scheme.clone(), den_kind, cell_kind, 
             area_map, axons, /*aux,*/ ocl_pq);
 
 

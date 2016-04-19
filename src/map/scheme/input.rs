@@ -5,7 +5,7 @@
 // }
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum Protoinput {
+pub enum InputScheme {
     None,
     // Custom(Box<ProtoInputTract>),
     World,
@@ -17,10 +17,10 @@ pub enum Protoinput {
     GlyphSequences { seq_lens: (usize, usize), seq_count: usize, scale: f32, hrz_dims: (u32, u32) },
 }
 
-impl Protoinput {
+impl InputScheme {
     pub fn is_some(&self) -> bool {
         match self {
-            &Protoinput::None => false,
+            &InputScheme::None => false,
             _ => true,
         }
     }
@@ -31,7 +31,7 @@ impl Protoinput {
 
     pub fn layer_count(&self) -> usize {
         match self {
-            &Protoinput::GlyphSequences { .. } => 2,
+            &InputScheme::GlyphSequences { .. } => 2,
             _ => 1,
         }
     }

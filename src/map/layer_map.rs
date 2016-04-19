@@ -3,7 +3,7 @@ use std::ops::Range;
 // use std::ops::{Range};
 use std::slice::{Iter};
 
-use proto::{ProtoareaMap, ProtoareaMaps, ProtolayerMaps, LayerMapKind};
+use map::{AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapKind};
 use cmn::{self};
 use map::{LayerTags, LayerInfo, SourceLayerInfo};
 use external_source::ExternalSource;
@@ -20,7 +20,7 @@ pub struct LayerMap {
 }
 
 impl LayerMap {
-    pub fn new(pamap: &ProtoareaMap, plmaps: &ProtolayerMaps, pamaps: &ProtoareaMaps, 
+    pub fn new(pamap: &AreaScheme, plmaps: &LayerMapSchemeList, pamaps: &AreaSchemeList, 
             input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>) -> LayerMap 
     {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...", 
