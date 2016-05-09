@@ -1,7 +1,5 @@
 use cmn::{CmnError};
-use map::{self, LayerTags, LayerKind, AxonKind};
-use map::{CellScheme, DendriteKind};
-use map::DendriteKind::{Distal, Proximal};
+use map::{LayerTags, LayerKind, AxonKind, DendriteKind};
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
@@ -31,8 +29,8 @@ impl LayerScheme {
     pub fn src_lyr_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
         let layer_names = match self.kind {
             LayerKind::Cellular(ref cell_scheme) => match den_type {
-                Distal => Some(cell_scheme.den_dst_src_lyrs.clone().unwrap()[0].clone()),
-                Proximal => cell_scheme.den_prx_src_lyrs.clone(),
+                DendriteKind::Distal => Some(cell_scheme.den_dst_src_lyrs.clone().unwrap()[0].clone()),
+                DendriteKind::Proximal => cell_scheme.den_prx_src_lyrs.clone(),
             },
             _ => panic!(format!("LayerScheme '{}' is not 'Cellular'.", self.name)),
         };
@@ -69,8 +67,8 @@ impl LayerScheme {
 
     pub fn axn_kind(&self) -> Result<AxonKind, CmnError> {
         match self.kind {
-            Axonal(ak) => Ok(ak.clone()),
-            Cellular(_) => Ok(try!(AxonKind::from_tags(self.tags))),
+            LayerKind::Axonal(ak) => Ok(ak.clone()),
+            LayerKind::Cellular(_) => Ok(try!(AxonKind::from_tags(self.tags))),
         }
     }
 

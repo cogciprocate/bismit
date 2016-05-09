@@ -19,10 +19,10 @@ use std::ops::Range;
 use std::collections::HashMap;
 
 use cmn::{self, CmnError};
-use map::{self, AreaMap, LayerTags};
+use map::{self, AreaMap, LayerTags, LayerMapKind};
 use ocl::EventList;
 use area::CorticalAreas;
-use map::{AreaSchemeList, LayerMapSchemeList, AxonKind};
+use map::{AreaSchemeList, LayerMapSchemeList};
 use external_source::ExternalSource;
 
 
@@ -50,7 +50,7 @@ impl Thalamus {
         ============================ THALAMIC (INPUT) AREAS ===========================
         =============================================================================*/
         for (&_, pa) in pamaps.maps().iter().filter(|&(_, pa)| 
-                    &plmaps[pa.layer_map_name].kind == &AxonKind::Thalamic) 
+                    &plmaps[pa.layer_map_name].kind == &LayerMapKind::Thalamic) 
         {
             let es = ExternalSource::new(pa, &plmaps[pa.layer_map_name]);
             let tags = es.layer_tags();

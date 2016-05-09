@@ -1,19 +1,18 @@
 use cortex::Cortex;
-use map::{self, LayerTags};
-use map::{LayerMapScheme, LayerMapSchemeList, AreaSchemeList, Axonal, Spatial, Horizontal, 
-    Cortical, Thalamic, CellScheme, FilterScheme, InputScheme};
+use map::{self, LayerTags, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaSchemeList, 
+    CellScheme, FilterScheme, InputScheme, AxonKind, LayerKind};
 
 pub fn define_plmaps() -> LayerMapSchemeList {
     const MOTOR_UID: u32 = 654;
     const ROSE_UID: u32 = 435;
 
     LayerMapSchemeList::new()
-        .lmap(LayerMapScheme::new("cortical_lm", Cortical)
-            .axn_layer("motor_ctx", map::NS_IN | LayerTags::uid(MOTOR_UID), Horizontal)
-            .axn_layer("rose_ctx", map::NS_IN | LayerTags::uid(ROSE_UID), Horizontal)
-            .axn_layer("eff_in", map::FB_IN, Spatial)
-            .axn_layer("aff_in", map::FF_IN, Spatial)
-            .axn_layer("unused", map::UNUSED_TESTING, Spatial)
+        .lmap(LayerMapScheme::new("cortical_lm", LayerMapKind::Cortical)
+            .axn_layer("motor_ctx", map::NS_IN | LayerTags::uid(MOTOR_UID), AxonKind::Horizontal)
+            .axn_layer("rose_ctx", map::NS_IN | LayerTags::uid(ROSE_UID), AxonKind::Horizontal)
+            .axn_layer("eff_in", map::FB_IN, AxonKind::Spatial)
+            .axn_layer("aff_in", map::FF_IN, AxonKind::Spatial)
+            .axn_layer("unused", map::UNUSED_TESTING, AxonKind::Spatial)
             .layer("mcols", 1, map::FF_FB_OUT, CellScheme::minicolumn("iv", "iii"))
             .layer("iv_inhib", 0, map::DEFAULT, CellScheme::inhibitory(4, "iv"))
 
@@ -24,16 +23,16 @@ pub fn define_plmaps() -> LayerMapSchemeList {
                 CellScheme::pyramidal(1, 4, vec!["iii"], 800, 10)
                     .apical(vec!["eff_in"/*, "olfac"*/], 12))
         )
-        .lmap(LayerMapScheme::new("gly_seq_lm", Thalamic)
-            .layer("spatial", 1, map::FF_OUT, Axonal(Spatial))
-            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(MOTOR_UID), Axonal(Horizontal))
+        .lmap(LayerMapScheme::new("gly_seq_lm", LayerMapKind::Thalamic)
+            .layer("spatial", 1, map::FF_OUT, LayerKind::Axonal(AxonKind::Spatial))
+            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(MOTOR_UID), LayerKind::Axonal(AxonKind::Horizontal))
         )
-        .lmap(LayerMapScheme::new("gly_seq_rose_lm", Thalamic)
-            .layer("spatial", 1, map::FF_OUT | LayerTags::uid(9999) , Axonal(Spatial))
-            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(ROSE_UID), Axonal(Horizontal))
+        .lmap(LayerMapScheme::new("gly_seq_rose_lm", LayerMapKind::Thalamic)
+            .layer("spatial", 1, map::FF_OUT | LayerTags::uid(9999) , LayerKind::Axonal(AxonKind::Spatial))
+            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(ROSE_UID), LayerKind::Axonal(AxonKind::Horizontal))
         )
         // .lmap(LayerMapScheme::new("o0_lm", Thalamic)
-        //     .layer("ganglion", 1, map::NS_OUT | LayerTags::uid(OLFAC_UID), Axonal(Horizontal))
+        //     .layer("ganglion", 1, map::NS_OUT | LayerTags::uid(OLFAC_UID), LayerKind::Axonal(Horizontal))
         // )
 }
 

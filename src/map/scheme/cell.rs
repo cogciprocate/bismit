@@ -1,6 +1,6 @@
 //use bittags;
-use map::LayerKind::{self, Cellular};
-use map::{CellKind, CellClass, DendriteKind};
+// use map::LayerKind::{self, Cellular};
+use map::{CellKind, CellClass, LayerKind};
 //use std::option::{Option};
 use cmn;
 
@@ -56,7 +56,7 @@ impl CellScheme {
     pub fn pyramidal(dens_per_tuft_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>, 
                 thresh: u32, dst_reach: u8) -> LayerKind 
     {
-        Cellular(CellScheme {
+        LayerKind::Cellular(CellScheme {
             dens_per_tuft_l2: dens_per_tuft_l2,
             syns_per_den_l2: syns_per_den_l2,
             cols_per_cel_l2: 0,
@@ -74,7 +74,7 @@ impl CellScheme {
     pub fn spiny_stellate(syns_per_den_l2: u8, prx_srcs: Vec<&'static str>, thresh: u32,
                 prx_reach: u8) -> LayerKind 
     {
-        Cellular(CellScheme {
+        LayerKind::Cellular(CellScheme {
             dens_per_tuft_l2: 0,
             syns_per_den_l2: syns_per_den_l2,
             cols_per_cel_l2: 0,
@@ -89,7 +89,7 @@ impl CellScheme {
     }
 
     pub fn inhibitory(cols_per_cel_l2: u8, dst_src: &'static str) -> LayerKind {
-        Cellular(CellScheme {
+        LayerKind::Cellular(CellScheme {
             dens_per_tuft_l2: 0,
             syns_per_den_l2: 0,
             cols_per_cel_l2: cols_per_cel_l2,
@@ -104,7 +104,7 @@ impl CellScheme {
     }
 
     pub fn minicolumn(psal_lyr: &'static str, ptal_lyr: &'static str,) -> LayerKind {
-        Cellular(CellScheme {
+        LayerKind::Cellular(CellScheme {
             dens_per_tuft_l2: 0,
             syns_per_den_l2: 0,
             cols_per_cel_l2: 0,

@@ -1,6 +1,6 @@
 use std::collections::{HashMap};
 use std::ops::{Index, IndexMut, };
-use std::hash::{Hasher};
+// use std::hash::{Hasher};
 
 use map::{LayerTags, LayerMapKind, LayerScheme, AxonKind, LayerKind};
 
@@ -66,7 +66,7 @@ impl LayerMapScheme {
     pub fn axn_layer(mut self, layer_name: &'static str, tags: LayerTags, axn_kind: AxonKind) 
             -> LayerMapScheme
     {
-        self.add(LayerScheme::new(layer_name, Axonal(axn_kind), None, tags));
+        self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, tags));
         self
     }
 

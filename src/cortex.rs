@@ -3,7 +3,7 @@ use time;
 
 use area::{CorticalArea, CorticalAreas};
 use thalamus::{Thalamus};
-use map::{LayerMapSchemeList, AreaSchemeList, AxonKind};
+use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use ocl::{self, Platform, Context, Device};
 
 pub struct Cortex {
@@ -30,7 +30,7 @@ impl Cortex {
         let mut device_idx = 1;
 
         for (&area_name, _) in pamaps.iter().filter(|&(_, pamap)| 
-                pamap.lm_kind_tmp() != &AxonKind::Thalamic)
+                pamap.lm_kind_tmp() != &LayerMapKind::Thalamic)
         {    
             areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(), 
                 device_idx, &ocl_context)));

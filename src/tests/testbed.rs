@@ -1,7 +1,7 @@
 use cmn::CorticalDims;
 use map;
-use map::{LayerMapScheme, LayerMapSchemeList, AreaSchemeList, Axonal, Spatial, Horizontal, Cortical, 
-    Thalamic, CellScheme, FilterScheme, InputScheme};
+use map::{LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaSchemeList, CellScheme, FilterScheme, 
+    InputScheme, AxonKind, LayerKind};
 use thalamus::Thalamus;
 use ocl::{Context, ProQue};
 use cortex::Cortex;
@@ -15,14 +15,14 @@ const CYCLES_PER_FRAME: usize                 = 1;
 pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
     let mut plmaps: LayerMapSchemeList = LayerMapSchemeList::new();
 
-    plmaps.add(LayerMapScheme::new("visual", Cortical)
-        //.layer("test_noise", 1, map::DEFAULT, Axonal(Spatial))
-        .layer("motor_in", 1, map::DEFAULT, Axonal(Horizontal))
-        //.layer("olfac", 1, map::DEFAULT, Axonal(Horizontal))
-        .layer("eff_in", 0, map::FB_IN, Axonal(Spatial))
-        .layer("aff_in", 0, map::FF_IN, Axonal(Spatial))
-        .layer("out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))
-        .layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
+    plmaps.add(LayerMapScheme::new("visual", LayerMapKind::Cortical)
+        //.layer("test_noise", 1, map::DEFAULT, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("motor_in", 1, map::DEFAULT, LayerKind::Axonal(AxonKind::Horizontal))
+        //.layer("olfac", 1, map::DEFAULT, LayerKind::Axonal(Horizontal))
+        .layer("eff_in", 0, map::FB_IN, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("aff_in", 0, map::FF_IN, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("out", 1, map::FF_OUT | map::FB_OUT, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("unused", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
         .layer("iv", 1, map::PSAL, 
             CellScheme::spiny_stellate(5, vec!["aff_in"], 600, 8)) 
         .layer("iv_inhib", 0, map::DEFAULT, 
@@ -31,8 +31,8 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
             CellScheme::pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"], 12))
     );
 
-    plmaps.add(LayerMapScheme::new("external", Thalamic)
-        .layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
+    plmaps.add(LayerMapScheme::new("external", LayerMapKind::Thalamic)
+        .layer("ganglion", 1, map::FF_OUT, LayerKind::Axonal(AxonKind::Spatial))
     );
 
     plmaps
@@ -107,17 +107,17 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
     let mut plmaps = LayerMapSchemeList::new();
 
-    plmaps.add(LayerMapScheme::new(lmap_name, Cortical)
-        .layer("eff_in", 0, map::FB_IN, Axonal(Spatial))
-        .layer("aff_in", 0, map::FF_IN, Axonal(Spatial))
-        .layer("out", 1, map::FF_OUT | map::FB_OUT, Axonal(Spatial))
-        .layer("test0", 1, map::DEFAULT, Axonal(Spatial))
-        .layer("test1", 1, map::UNUSED_TESTING, Axonal(Spatial))
-        .layer("test2", 1, map::UNUSED_TESTING, Axonal(Spatial))
-        .layer("test3", 1, map::UNUSED_TESTING, Axonal(Spatial))
-        // .layer("test4", 1, map::UNUSED_TESTING, Axonal(Spatial))
-        // .layer("test5", 1, map::UNUSED_TESTING, Axonal(Spatial))
-        .layer("unused", 1, map::UNUSED_TESTING, Axonal(Spatial))
+    plmaps.add(LayerMapScheme::new(lmap_name, LayerMapKind::Cortical)
+        .layer("eff_in", 0, map::FB_IN, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("aff_in", 0, map::FF_IN, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("out", 1, map::FF_OUT | map::FB_OUT, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("test0", 1, map::DEFAULT, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("test1", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("test2", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("test3", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
+        // .layer("test4", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
+        // .layer("test5", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
+        .layer("unused", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
         .layer("iv", 1, map::PSAL, 
             CellScheme::spiny_stellate(5, vec!["unused"], 1, 8))
         // .layer("iv_inhib", 0, map::DEFAULT, 
@@ -133,8 +133,8 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
     );
 
-    plmaps.add(LayerMapScheme::new("dummy_lm", Thalamic)
-        .layer("ganglion", 1, map::FF_OUT, Axonal(Spatial))
+    plmaps.add(LayerMapScheme::new("dummy_lm", LayerMapKind::Thalamic)
+        .layer("ganglion", 1, map::FF_OUT, LayerKind::Axonal(AxonKind::Spatial))
     );
 
     let pamaps = AreaSchemeList::new()

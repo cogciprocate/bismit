@@ -9,6 +9,8 @@ mod layer_tags;
 mod area_map;
 mod scheme;
 
+use cmn::CmnError;
+
 pub use self::area_map::AreaMap;
 pub use self::slice_map::SliceMap;
 pub use self::layer_map::LayerMap;
@@ -110,7 +112,7 @@ pub enum LayerKind {
 impl LayerKind {
     pub fn axn_kind(&self) -> Option<AxonKind> {
         match self {
-            &Axonal(ak) => Some(ak.clone()),
+            &LayerKind::Axonal(ak) => Some(ak.clone()),
             _ => None,
         }
     }

@@ -310,7 +310,7 @@ impl CorticalArea {
             match layer.kind() {
                 &LayerKind::Cellular(ref pcell) => {
                     match pcell.cell_kind {
-                        Inhibitory => {
+                        CellKind::Inhibitory => {
                             let src_lyr_names = layer.src_lyr_names(DendriteKind::Distal);
                             assert!(src_lyr_names.len() == 1);
 
