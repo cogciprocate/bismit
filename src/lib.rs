@@ -11,12 +11,13 @@ extern crate twox_hash;
 #[macro_use] extern crate enum_primitive;
 
 #[macro_use] pub mod cmn;
+pub mod map;
+
 mod thalamus;
 mod external_source;
 mod encode;
 mod cortex;
 mod area;
-mod map;
 
 #[cfg(test)] pub mod tests;
 
@@ -27,7 +28,7 @@ pub use self::cortex::Cortex;
 pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer, 
 	SpinyStellateLayer, Dendrites};
 pub use self::external_source::{ExternalSourceTract, ExternalSourceKind};
-pub use self::map::{SliceTractMap, LayerTags};
+// pub use self::map::{SliceTractMap, LayerTags};
 pub use self::cmn::TractDims;
 
 pub use self::encode::GlyphBuckets;

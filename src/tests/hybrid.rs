@@ -64,7 +64,7 @@ fn pyr_preds(pyrs: &mut PyramidalLayer) {
     // let emsg = "\ntests::hybrid::test_pyr_preds()";
 
     io::stdout().flush().unwrap();
-    pyrs.dens_mut().states().cmd().fill(&[0], None).enq().unwrap();
+    pyrs.dens_mut().states().cmd().fill(0, None).enq().unwrap();
 
     let dens_per_tuft = pyrs.dens_mut().dims().per_tft() as usize;
     println!("\n##### dens_per_tuft: {}", dens_per_tuft);
@@ -87,13 +87,13 @@ fn pyr_preds(pyrs: &mut PyramidalLayer) {
 
     // WRITE 255 TO THE DENDRITES CORRESPONDING TO THE FIRST AND LAST CELL
     // FOR THE FIRST TUFT ONLY
-    pyrs.dens_mut().states().cmd().fill(&[255], Some(dens_per_tuft)).offset(0).enq().unwrap();
+    pyrs.dens_mut().states().cmd().fill(255, Some(dens_per_tuft)).offset(0).enq().unwrap();
 
     let last_cel_den_idz =  den_tuft_len - dens_per_tuft;
 
     println!("\n\nDEBUG: pyrs.dens_mut().states().len(): {}\n", pyrs.dens_mut().states().len());
 
-    pyrs.dens_mut().states().cmd().fill(&[255], Some(den_tuft_len - last_cel_den_idz))
+    pyrs.dens_mut().states().cmd().fill(255, Some(den_tuft_len - last_cel_den_idz))
         .offset(last_cel_den_idz).enq().unwrap();
 
     // CYCLE THE PYRAMIDAL CELL ONLY, WITHOUT CYCLING IT'S DENS OR SYNS (WHICH WOULD OVERWRITE THE ABOVE)
@@ -124,7 +124,7 @@ fn syn_and_den_states(dens: &mut Dendrites) {
     // let emsg = "\ntests::hybrid::test_syn_and_den_states()";
 
     io::stdout().flush().unwrap();
-    dens.syns_mut().src_col_v_offs().cmd().fill(&[0], None).enq().unwrap();
+    dens.syns_mut().src_col_v_offs().cmd().fill(0, None).enq().unwrap();
     dens.cycle(None);
 
     let syns_per_tuft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;

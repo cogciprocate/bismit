@@ -2,7 +2,7 @@
 use std::ops::{Range};
 
 use ocl::Buffer;
-use ocl::traits::OclPrm;
+use ocl::traits::{OclPrm, OclScl};
 use area::CorticalArea;
 use cmn::{self, DataCellLayer};
 
@@ -136,7 +136,7 @@ pub fn fill_new_vec<T: OclPrm>(buf: &Buffer<T>) -> Vec<T> {
 // }
 
 
-pub fn compare_buffers<T: OclPrm>(env1: &Buffer<T>, env2: &Buffer<T>) -> bool {
+pub fn compare_buffers<T: OclScl>(env1: &Buffer<T>, env2: &Buffer<T>) -> bool {
     if PRINT_DETAILS { print!("\nVector comparison:\n"); }
     assert!(env1.len() == env2.len());
 
@@ -169,7 +169,7 @@ pub fn compare_buffers<T: OclPrm>(env1: &Buffer<T>, env2: &Buffer<T>) -> bool {
 // TEST_NEARBY(): Ensure that elements near a focal index are equal to a particular value.
 //        - idz and idm (first and last elements) are also checked along with their nearby elements
 // <<<<< [FIXME] TODO: THIS FUNCTION NEEDS SERIOUS STREAMLINING & OPTIMIZATION >>>>>
-pub fn eval_others<T: OclPrm>(env: &Buffer<T>, foc_idx: usize, other_val: T) {    // -> Result<(), &'static str>    
+pub fn eval_others<T: OclScl>(env: &Buffer<T>, foc_idx: usize, other_val: T) {    // -> Result<(), &'static str>    
     // let mut checklist = Vec::new();
     let check_margin = 384;
 

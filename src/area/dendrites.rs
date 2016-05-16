@@ -62,9 +62,9 @@ impl Dendrites {
         let states_raw = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
         // let energies = Buffer::<u8>::with_vec_initialized_to(255, &dims, ocl_pq.queue());
         let energies = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        energies.cmd().fill(&[255], None).enq().unwrap();
+        energies.cmd().fill(255, None).enq().unwrap();
         let thresholds = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        energies.cmd().fill(&[1], None).enq().unwrap();
+        energies.cmd().fill(1, None).enq().unwrap();
 
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", 
             layer_name, dims, states.len(), mt = cmn::MT);
@@ -186,10 +186,10 @@ pub mod tests {
 
     impl DendritesTest for Dendrites {
         fn set_all_to_zero(&mut self, set_syns_zero: bool) {
-            self.thresholds.cmd().fill(&[0], None).enq().unwrap();
-            self.states_raw.cmd().fill(&[0], None).enq().unwrap();
-            self.states.cmd().fill(&[0], None).enq().unwrap();
-            self.energies.cmd().fill(&[0], None).enq().unwrap();
+            self.thresholds.cmd().fill(0, None).enq().unwrap();
+            self.states_raw.cmd().fill(0, None).enq().unwrap();
+            self.states.cmd().fill(0, None).enq().unwrap();
+            self.energies.cmd().fill(0, None).enq().unwrap();
 
             if set_syns_zero { self.syns.set_all_to_zero() };
         }

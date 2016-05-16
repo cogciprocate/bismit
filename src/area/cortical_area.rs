@@ -752,9 +752,9 @@ impl Aux {
         let int_32_min = INT_32_MIN;
 
         let ints_0 = Buffer::<i32>::new(ocl_pq.queue(), None, dims, None).unwrap();
-        ints_0.cmd().fill(&[int_32_min], None).enq().unwrap();
+        ints_0.cmd().fill(int_32_min, None).enq().unwrap();
         let ints_1 = Buffer::<i32>::new(ocl_pq.queue(), None, dims, None).unwrap();
-        ints_1.cmd().fill(&[int_32_min], None).enq().unwrap();
+        ints_1.cmd().fill(int_32_min, None).enq().unwrap();
 
         Aux { 
             ints_0: ints_0,

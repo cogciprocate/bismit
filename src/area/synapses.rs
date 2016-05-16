@@ -434,9 +434,9 @@ pub mod tests {
     impl SynapsesTest for Synapses {
         fn set_offs_to_zero(&mut self) {
             // self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
-            self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+            self.src_col_v_offs.cmd().fill(0, None).enq().unwrap();
             // self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
-            self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
+            self.src_col_u_offs.cmd().fill(0, None).enq().unwrap();
         }
 
         fn set_all_to_zero(&mut self) {
@@ -446,12 +446,12 @@ pub mod tests {
             // self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
             // self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
             // self.flag_sets.cmd().fill(&[0], None).enq().unwrap();
-            self.states.cmd().fill(&[0], None).enq().unwrap();
-            self.strengths.cmd().fill(&[0], None).enq().unwrap();
-            self.src_slc_ids.cmd().fill(&[0], None).enq().unwrap();
-            self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
-            self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
-            self.flag_sets.cmd().fill(&[0], None).enq().unwrap();
+            self.states.cmd().fill(0, None).enq().unwrap();
+            self.strengths.cmd().fill(0, None).enq().unwrap();
+            self.src_slc_ids.cmd().fill(0, None).enq().unwrap();
+            self.src_col_u_offs.cmd().fill(0, None).enq().unwrap();
+            self.src_col_v_offs.cmd().fill(0, None).enq().unwrap();
+            self.flag_sets.cmd().fill(0, None).enq().unwrap();
         }
 
         fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize) {

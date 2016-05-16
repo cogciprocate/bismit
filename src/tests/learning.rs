@@ -143,13 +143,13 @@ impl LearningTestBed {
 
             // Zero all dendrite and synapse buffers:
             area.ptal_mut().dens_mut().set_all_to_zero(true);
-            area.axns().states.cmd().fill(&[0], None).enq().unwrap();
+            area.axns().states.cmd().fill(0, None).enq().unwrap();
 
             // Set source slice to an unused slice for all synapses:
             let unused_slc_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::UNUSED_TESTING);
             assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
             let unused_slc_id = unused_slc_ranges[0].start;
-            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(&[unused_slc_id], None).enq().unwrap();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(unused_slc_id, None).enq().unwrap();
 
             // Primary spatial layer slice idz (base axon slice):
             let prx_src_slc = area.psal().base_axn_slc();
@@ -657,7 +657,7 @@ impl LearningTestBed {
 
         // Set everything back up:
         let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
-        area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(&[self.unused_slc_id], None).enq().unwrap();
+        area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(self.unused_slc_id, None).enq().unwrap();
 
         for syn_idx in self.focus_syns.clone() {
             area.ptal_mut().dens_mut().syns_mut().set_src_offs(self.fake_v_ofs, self.fake_u_ofs, syn_idx as usize);
@@ -678,19 +678,19 @@ impl LearningTestBed {
         // area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(self.unused_slc_id, 
         //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
         area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd()
-            .fill(&[self.unused_slc_id], Some(self.syn_coords.syn_idx_range_tft().len()))
+            .fill(self.unused_slc_id, Some(self.syn_coords.syn_idx_range_tft().len()))
             .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
 
         // area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, 
         //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
         area.ptal_mut().dens_mut().syns_mut().src_col_v_offs().cmd()
-            .fill(&[0], Some(self.syn_coords.syn_idx_range_tft().len()))
+            .fill(0, Some(self.syn_coords.syn_idx_range_tft().len()))
             .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
 
         // area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, 
         //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
         area.ptal_mut().dens_mut().syns_mut().src_col_u_offs().cmd()
-            .fill(&[0], Some(self.syn_coords.syn_idx_range_tft().len()))
+            .fill(0, Some(self.syn_coords.syn_idx_range_tft().len()))
             .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
 
 
@@ -698,7 +698,7 @@ impl LearningTestBed {
             // area.ptal_mut().dens_mut().syns_mut().strengths.set_range_to(0, 
             //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
             area.ptal_mut().dens_mut().syns_mut().strengths().cmd()
-            .fill(&[0], Some(self.syn_coords.syn_idx_range_tft().len()))
+            .fill(0, Some(self.syn_coords.syn_idx_range_tft().len()))
             .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
         }
     }

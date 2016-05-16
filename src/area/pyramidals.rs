@@ -392,11 +392,11 @@ pub mod tests {
         }
 
         fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL
-            self.states.cmd().fill(&[0], None).enq().unwrap();
-            self.flag_sets.cmd().fill(&[0], None).enq().unwrap();
-            self.best_den_states.cmd().fill(&[0], None).enq().unwrap();
-            self.tft_best_den_ids.cmd().fill(&[0], None).enq().unwrap();
-            self.tft_best_den_states.cmd().fill(&[0], None).enq().unwrap();
+            self.states.cmd().fill(0, None).enq().unwrap();
+            self.flag_sets.cmd().fill(0, None).enq().unwrap();
+            self.best_den_states.cmd().fill(0, None).enq().unwrap();
+            self.tft_best_den_ids.cmd().fill(0, None).enq().unwrap();
+            self.tft_best_den_states.cmd().fill(0, None).enq().unwrap();
             //self.best2_den_ids.cmd().fill(&[0], None).enq().unwrap();            // <<<<< SLATED FOR REMOVAL
             //self.best2_den_states.cmd().fill(&[0], None).enq().unwrap();        // <<<<< SLATED FOR REMOVAL
             

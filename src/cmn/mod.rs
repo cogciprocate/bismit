@@ -25,7 +25,7 @@ use std::collections::{BTreeMap};
 use rand;
 use rand::distributions::{IndependentSample, Range};
 // use find_folder::Search;
-use ocl::traits::OclPrm;
+use ocl::traits::OclScl;
 use ocl::builders::ProgramBuilder;
 
 pub use self::cortical_dims::{CorticalDims};
@@ -588,7 +588,7 @@ pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
 
     sp_fctr_log2: sparsity factor (log2)
 */
-pub fn sparse_vec<T: OclPrm>(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
+pub fn sparse_vec<T: OclScl>(size: usize, min_val: T, max_val: T, sp_fctr_log2: usize) -> Vec<T> {
     let mut vec: Vec<T> = iter::repeat(min_val).cycle().take(size).collect();
 
     let len = vec.len();
