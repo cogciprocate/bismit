@@ -1,7 +1,7 @@
 use std::ops::Range;
 use ocl;
 use ocl::traits::MemLen;
-use cmn::{self, CorticalDims, ParaHexArray, SliceDims};
+use cmn::{self, CorticalDims, SliceDims};
 use map::{area_map, LayerMap, AxonKind, SliceTractMap};
 
 const DEBUG_PRINT: bool = false;

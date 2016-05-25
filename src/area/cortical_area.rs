@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
 
-use cmn::{self, ParaHexArray, CorticalDims, DataCellLayer};
+use cmn::{self, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
 use ocl::{ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;

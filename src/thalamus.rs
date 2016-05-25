@@ -26,6 +26,17 @@ use map::{AreaSchemeList, LayerMapSchemeList};
 use external_source::ExternalSource;
 
 
+/// Specifies whether or not the frame buffer for a source exists within the
+/// thalamic tract or an external source itself.
+///
+/// `External` is used when the source implements a special buffering strategy
+/// such as double-buffering.
+enum FrameBuffer<'t> {
+    Tract(&'t mut [u8]),
+    External,
+}
+
+
 //    THALAMUS:
 //    - Input/Output is from a CorticalArea's point of view
 //         - input: to layer / area
@@ -111,6 +122,7 @@ impl Thalamus {
             src_area.cycle_next();
         }        
     }
+    
 
     pub fn tract_frame(&mut self, key: &(String, LayerTags)) 
             -> Result<(&EventList, &[u8]), CmnError>
@@ -132,6 +144,7 @@ impl Thalamus {
          &self.area_maps[area_name]
     }
 }
+
 
 // THALAMICTRACT: A buffer for I/O between areas. Effectively analogous to the internal capsule.
 pub struct ThalamicTract {
@@ -220,9 +233,7 @@ impl TractAreaCache {
                 src_area_name, layer_tags));
     }
 
-    fn get(&mut self, key: &(String, LayerTags)) 
-            -> Result<&TractArea, CmnError>
-    {
+    fn get(&mut self, key: &(String, LayerTags)) -> Result<&TractArea, CmnError> {
         match self.area_search(key) {
             Ok(idx) => self.areas.get(idx).ok_or(CmnError::new(format!("Index '{}' not found for '{}' \
                 with tags '{:?}'", idx, key.0, key.1))),
@@ -232,9 +243,7 @@ impl TractAreaCache {
     }
 
     // fn get_mut(&mut self, src_area_name: &str, layer_tags: LayerTags
-    fn get_mut(&mut self, key: &(String, LayerTags))
-            -> Result<&mut TractArea, CmnError>
-    {
+    fn get_mut(&mut self, key: &(String, LayerTags)) -> Result<&mut TractArea, CmnError> {
         match self.area_search(key) {
             Ok(idx) => self.areas.get_mut(idx).ok_or(CmnError::new(format!("Index '{}' not \
                 found for '{}' with tags '{:?}'", idx, key.0, key.1))),
@@ -246,9 +255,7 @@ impl TractAreaCache {
     }
 
     // fn area_search(&mut self, src_area_name: &str, layer_tags: LayerTags) 
-    fn area_search(&mut self, key: &(String, LayerTags)) 
-            -> Result<usize, CmnError>
-    {
+    fn area_search(&mut self, key: &(String, LayerTags)) -> Result<usize, CmnError> {
         // println!("TractAreaCache::area_search(): Searching for area: {}, tags: {:?}. ALL: {:?}", 
         //     src_area_name, layer_tags, self.areas);
         let area_idx = self.index.get(key).map(|&idx| idx);

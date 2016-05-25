@@ -15,7 +15,7 @@ mod tract;
 mod tract_frame;
 pub mod data_cell_layer;
 
-use num::{ToPrimitive, FromPrimitive};
+use num::{FromPrimitive};
 use std::default::{Default}; 
 use std::iter::{self};
 use std::cmp::{self};

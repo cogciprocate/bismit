@@ -4,7 +4,7 @@ use std::ops::{Range};
 
 use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind, DendriteKind, 
     LayerMapKind, AxonKind};
-use cmn::{self, ParaHexArray, CorticalDims};
+use cmn::{self, CorticalDims};
 use map::{self, LayerTags,};
 use external_source::ExternalSource;
 

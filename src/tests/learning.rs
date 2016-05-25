@@ -1,8 +1,7 @@
 use std::ops::Range;
 
 use cortex::Cortex;
-use area::{CorticalAreaTest, SynapsesTest, SynCoords, DendritesTest, 
-    AxonSpaceTest};
+use area::{CorticalAreaTest, SynapsesTest, SynCoords, DendritesTest};
 use map;
 use cmn::{self, DataCellLayer, DataCellLayerTest};
 use super::testbed;

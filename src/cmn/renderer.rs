@@ -1,4 +1,4 @@
-use cmn::{self, CorticalDims, SliceDims, ParaHexArray, Sdr};
+use cmn::{self, CorticalDims, SliceDims, Sdr};
 use map::{SliceMap};
 use map::{AxonKind};
 

@@ -1,6 +1,6 @@
 use area::{CorticalArea, CorticalAreaTest};
 use map::{self, AreaMapTest};
-use area::{SynapsesTest, DendritesTest, DenCoords, AxonSpaceTest};
+use area::{DendritesTest, DenCoords};
 use cmn::{self, DataCellLayer, DataCellLayerTest};
 use super::{testbed, util};
 

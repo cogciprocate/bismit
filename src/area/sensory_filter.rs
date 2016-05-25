@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event, EventList};
-use cmn::{ParaHexArray, Sdr};
+use cmn::{Sdr};
 use area::AxonSpace;
 use map::{self, AreaMap};
 

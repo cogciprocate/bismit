@@ -286,7 +286,7 @@ pub mod tests {
     use rand::distributions::{IndependentSample, Range as RandRange};
 
     use cmn::{self, DataCellLayer, DataCellLayerTest, CelCoords};
-    use area::{PyramidalLayer, SynapsesTest};
+    use area::{PyramidalLayer};
 
     impl DataCellLayerTest for PyramidalLayer {
         // CYCLE_SELF_ONLY(): USED BY TESTS
