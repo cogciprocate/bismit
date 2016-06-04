@@ -17,7 +17,7 @@ use encode::{IdxStreamer, GlyphSequences};
 /// for the moment.
 ///
 pub trait ExternalSourceTract {
-    fn read_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) 
+    fn read_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags)
         -> [usize; 3];
     fn cycle_next(&mut self);
 }
@@ -37,7 +37,7 @@ pub enum ExternalSourceKind {
 
 pub struct ExternalSourceLayer {
     layer_name: &'static str,
-    layer_tags: LayerTags,    
+    layer_tags: LayerTags,
     axn_kind: AxonKind,
     dims: Option<CorticalDims>,
 }
@@ -105,13 +105,13 @@ impl ExternalSource {
                 assert_eq!(axn_kind, AxonKind::Horizontal);
                 None
             };
-            
+
 
             assert!(layer_tags.contains(map::OUTPUT), "ExternalSource::new(): External ('Thalamic') areas \
-                must have a single layer with an 'OUTPUT' tag. [area: '{}', layer map: '{}']", 
-                pamap.name(), plmap.name());     
+                must have a single layer with an 'OUTPUT' tag. [area: '{}', layer map: '{}']",
+                pamap.name(), plmap.name());
 
-            layer_tags_list.push(layer_tags);       
+            layer_tags_list.push(layer_tags);
 
             layers.insert(layer_tags ,ExternalSourceLayer {
                 layer_name: layer_name,
@@ -125,7 +125,7 @@ impl ExternalSource {
             InputScheme::IdxStreamer { file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
                 let mut is = IdxStreamer::new(layers[&layer_tags_list[0]].dims()
-                    .expect("ExternalSource::new(): Layer dims not set properly.").clone(), 
+                    .expect("ExternalSource::new(): Layer dims not set properly.").clone(),
                     file_name, cyc_per, scale);
 
                 if loop_frames > 0 {
@@ -144,31 +144,38 @@ impl ExternalSource {
         ExternalSource {
             area_name: pamap.name.to_owned(),
             layers: layers,
-            src_kind: src_kind,           
+            src_kind: src_kind,
         }
     }
 
     /// Reads input data into a tract.
-    pub fn read_into(&mut self, tags: LayerTags, tract: &mut [u8], _: &mut EventList) {
+    ///
+    /// Should return promptly... data should already be staged.
+    // pub fn read_into(&mut self, tags: LayerTags, tract: &mut [u8], _: &mut EventList) {
+    pub fn read_into(&mut self, tags: LayerTags, mut tract_frame: TractFrameMut, _: &mut EventList) {
         let dims = self.layers[&tags].dims().expect(&format!("Dimensions don't exist for \
             external input area: \"{}\", tags: '{:?}' ", self.area_name, tags));
 
-        debug_assert!(dims.to_len() == tract.len(), "Dimensional mismatch for external input \
-            area: \"{}\", tags: '{:?}', layer dims: {:?}, tract len: {}", self.area_name, tags,
-            dims, tract.len());
+        debug_assert!(dims == tract_frame.dims(), "Dimensional mismatch for external input \
+            area: \"{}\", tags: '{:?}', layer dims: {:?}, tract dims: {:?}", self.area_name, tags,
+            dims, tract_frame.dims());
 
-        let mut tf = TractFrameMut::new(tract, dims);
+        // let mut tf = TractFrameMut::new(tract, dims);
 
         // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
         let _ = match self.src_kind {
             ExternalSourceKind::IdxStreamer(ref mut es) | ExternalSourceKind::Custom(ref mut es) => {
-                es.read_into(&mut tf, tags)
+                es.read_into(&mut tract_frame, tags)
             },
             ExternalSourceKind::GlyphSequences(ref mut gs) => {
-                gs.read_into(&mut tf, tags)
+                gs.read_into(&mut tract_frame, tags)
             },
             _ => [0; 3],
         };
+    }
+
+    pub fn frame<'f>(&'f self) -> Option<&'f mut [u8]> {
+        None
     }
 
     pub fn cycle_next(&mut self) {

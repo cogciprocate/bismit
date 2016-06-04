@@ -20,6 +20,10 @@ impl<'a> TractFrame<'a> {
         self.frame.get_unchecked(idx)
     }
 
+    pub fn frame(&self) -> &[u8] {
+        self.frame
+    }
+
     pub fn dims(&self) -> &TractDims {
         &self.dims
     }
@@ -43,7 +47,7 @@ impl<'a> TractFrameMut<'a> {
     #[inline]
     pub fn new<D: Into<TractDims>>(frame: &'a mut [u8], dims: D) -> TractFrameMut<'a> {
         let dims = dims.into();
-        assert_eq!(dims.to_len(), frame.len());
+        assert_eq!(frame.len(), dims.to_len());
         TractFrameMut { frame: frame, dims: dims }
     }
 
@@ -55,6 +59,14 @@ impl<'a> TractFrameMut<'a> {
     #[inline]
     pub unsafe fn get_unchecked_mut(&mut self, idx: usize) -> *mut u8 {
         self.frame.get_unchecked_mut(idx)
+    }
+
+    pub fn frame(&self) -> &[u8] {
+        self.frame
+    }
+
+    pub fn frame_mut(&mut self) -> &mut [u8] {
+        self.frame
     }
 
     pub fn dims(&self) -> &TractDims {
