@@ -5,6 +5,7 @@ use super::IdxData;
 const PRINT_DEBUG: bool = false;
 const PRINT_EVERY: usize = 10000;
 
+#[derive(Debug)]
 pub struct GlyphBuckets {
     buckets: Vec<Vec<u8>>,
     cursors: Vec<usize>,
@@ -25,7 +26,7 @@ impl GlyphBuckets {
             dimensions.");
 
         assert!(images.dims()[0] == labels.dims()[0], "GlyphBuckets::new(): The images file \
-            ('{}') must contain the same number of elements as the labels file ('{}').", 
+            ('{}') must contain the same number of elements as the labels file ('{}').",
             images.file_path().display(), labels.file_path().display());
 
         let image_count = images.dims()[0];
@@ -43,7 +44,7 @@ impl GlyphBuckets {
                 label ({}) exceeds bucket count ({}).", label, bucket_count);
 
             // let img_idz = i * image_len;
-            // let img_idn = img_idz + image_len;            
+            // let img_idn = img_idz + image_len;
 
             // let image: &[u8] = &images[img_idz..img_idn];
             // buckets[label as usize].extend_from_slice(image);
@@ -56,9 +57,9 @@ impl GlyphBuckets {
             // unsafe { bucket.set_len(prev_len + image_len); }
             images.read_into_vec(image_len, &mut bucket);
 
-            if PRINT_DEBUG && i % PRINT_EVERY == 0 { 
+            if PRINT_DEBUG && i % PRINT_EVERY == 0 {
             // if i >= 10000 && i < 10010 {
-                println!("\nimage[{}]: bucket.len(): {}, bucket.capacity(): {}, label: {}", 
+                println!("\nimage[{}]: bucket.len(): {}, bucket.capacity(): {}, label: {}",
                     i, bucket.len(), bucket.capacity(), label);
 
                 let new_img_range = (bucket.len() - image_len)..bucket.len();
@@ -66,12 +67,12 @@ impl GlyphBuckets {
             }
         }
 
-        if PRINT_DEBUG { println!("\nLoaded {} images into buckets as follows {{capacity(len)}}: ", 
+        if PRINT_DEBUG { println!("\nLoaded {} images into buckets as follows {{capacity(len)}}: ",
                 image_count); }
 
         for i in 0..buckets.len() {
             buckets[i].shrink_to_fit();
-            if PRINT_DEBUG { println!("bucket[{}]: {}({})", 
+            if PRINT_DEBUG { println!("bucket[{}]: {}({})",
                 i, buckets[i].capacity(), buckets[i].len()); }
         }
 
@@ -109,7 +110,7 @@ impl GlyphBuckets {
         let idn = idz + self.glyph_len();
         // buf.clone_from_slice(&self.buckets[bucket_id][idz..idn]);
         self.incr_cursor(bucket_id);
-        
+
         &self.buckets[bucket_id][idz..idn]
     }
 
@@ -123,7 +124,7 @@ impl GlyphBuckets {
         } else if self.cursors[bucket_id] > self.buckets[bucket_id].len() {
             panic!("GlyphBuckets::incr_cursor(): Bucket length inconsistency while \
                 resetting cursor for bucket: {}. {{ cursor: {}, bucket length: {}, \
-                glyph length: {} }}", bucket_id, self.cursors[bucket_id], 
+                glyph length: {} }}", bucket_id, self.cursors[bucket_id],
                 self.buckets[bucket_id].len(), self.glyph_len());
         }
     }

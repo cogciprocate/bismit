@@ -1,13 +1,14 @@
 // use std::iter;
 use std::collections::HashMap;
+use std::fmt::Debug;
 // use std::collections::hash_map::IterMut;
 // use std::hash::BuildHasherDefault;
 // use twox_hash::XxHash;
 use map::{self, LayerTags};
-use cmn::{self, CorticalDims, TractFrameMut};
+use cmn::{self, CorticalDims, TractFrameMut, CmnResult, CmnError};
 use ocl::{EventList};
 use map::{AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonKind};
-use encode::{IdxStreamer, GlyphSequences};
+use encode::{IdxStreamer, GlyphSequences, SensoryTract};
 
 // pub type ExternalSourceMap = HashMap<String, ExternalSource>;
 
@@ -16,13 +17,14 @@ use encode::{IdxStreamer, GlyphSequences};
 /// Returns a 3-array because I didn't want to bother with generics or enums
 /// for the moment.
 ///
-pub trait ExternalSourceTract {
-    fn read_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags)
+pub trait ExternalSourceTract: Debug {
+    fn write_into(&mut self, frame: &mut TractFrameMut, tags: LayerTags)
         -> [usize; 3];
     fn cycle_next(&mut self);
 }
 
 #[allow(unused_variables)]
+#[derive(Debug)]
 pub enum ExternalSourceKind {
     None,
     World,
@@ -31,6 +33,7 @@ pub enum ExternalSourceKind {
     Exp1,
     IdxStreamer(Box<ExternalSourceTract>),
     GlyphSequences(Box<GlyphSequences>),
+    SensoryTract(Box<SensoryTract>),
     Custom(Box<ExternalSourceTract>),
 }
 
@@ -106,14 +109,13 @@ impl ExternalSource {
                 None
             };
 
-
             assert!(layer_tags.contains(map::OUTPUT), "ExternalSource::new(): External ('Thalamic') areas \
-                must have a single layer with an 'OUTPUT' tag. [area: '{}', layer map: '{}']",
+                must have a layer or layers with an 'OUTPUT' tag. [area: '{}', layer map: '{}']",
                 pamap.name(), plmap.name());
 
             layer_tags_list.push(layer_tags);
 
-            layers.insert(layer_tags ,ExternalSourceLayer {
+            layers.insert(layer_tags, ExternalSourceLayer {
                 layer_name: layer_name,
                 layer_tags: layer_tags,
                 axn_kind: axn_kind,
@@ -137,6 +139,12 @@ impl ExternalSource {
                 let gs = GlyphSequences::new(&mut layers, seq_lens, seq_count, scale, hrz_dims);
                 ExternalSourceKind::GlyphSequences(Box::new(gs))
             },
+            InputScheme::SensoryTract => {
+                assert_eq!(layers.len(), 1);
+                let st = SensoryTract::new(layers[&layer_tags_list[0]].dims()
+                    .expect("ExternalSource::new(): Layer dims not set properly."));
+                ExternalSourceKind::SensoryTract(Box::new(st))
+            },
             InputScheme::None | InputScheme::Zeros => ExternalSourceKind::None,
             pi @ _ => panic!("\nExternalSource::new(): Input type: '{:?}' not yet supported.", pi),
         };
@@ -148,43 +156,58 @@ impl ExternalSource {
         }
     }
 
-    /// Reads input data into a tract.
+    /// Writes input data into a tract.
     ///
-    /// Should return promptly... data should already be staged.
-    // pub fn read_into(&mut self, tags: LayerTags, tract: &mut [u8], _: &mut EventList) {
-    pub fn read_into(&mut self, tags: LayerTags, mut tract_frame: TractFrameMut, _: &mut EventList) {
+    /// **Should** return promptly... data should already be staged.
+    pub fn write_into(&mut self, tags: LayerTags, mut frame: TractFrameMut, _: &mut EventList) {
         let dims = self.layers[&tags].dims().expect(&format!("Dimensions don't exist for \
             external input area: \"{}\", tags: '{:?}' ", self.area_name, tags));
 
-        debug_assert!(dims == tract_frame.dims(), "Dimensional mismatch for external input \
+        debug_assert!(dims == frame.dims(), "Dimensional mismatch for external input \
             area: \"{}\", tags: '{:?}', layer dims: {:?}, tract dims: {:?}", self.area_name, tags,
-            dims, tract_frame.dims());
-
-        // let mut tf = TractFrameMut::new(tract, dims);
+            dims, frame.dims());
 
         // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
         let _ = match self.src_kind {
             ExternalSourceKind::IdxStreamer(ref mut es) | ExternalSourceKind::Custom(ref mut es) => {
-                es.read_into(&mut tract_frame, tags)
+                es.write_into(&mut frame, tags)
             },
-            ExternalSourceKind::GlyphSequences(ref mut gs) => {
-                gs.read_into(&mut tract_frame, tags)
+            ExternalSourceKind::GlyphSequences(ref mut es) => {
+                es.write_into(&mut frame, tags)
+            },
+            ExternalSourceKind::SensoryTract(ref mut es) => {
+                es.write_into(&mut frame, tags)
             },
             _ => [0; 3],
         };
     }
 
-    pub fn frame<'f>(&'f self) -> Option<&'f mut [u8]> {
-        None
+    // pub fn frame<'f>(&'f self) -> Option<&'f mut [u8]> {
+    //     None
+    // }
+
+    /// Returns a tract frame of an external source buffer, if available.
+    pub fn buf_mut(&mut self) -> CmnResult<TractFrameMut> {
+        match self.src_kind {
+            ExternalSourceKind::SensoryTract(ref mut es) => {
+                Ok(es.tract_mut())
+            },
+            _ => Err(CmnError::new(format!("ExternalSource::tract_mut(): No tract available for the source \
+                kind: {:?}.", self.src_kind))),
+        }
     }
 
     pub fn cycle_next(&mut self) {
         match self.src_kind {
-            ExternalSourceKind::IdxStreamer(ref mut es) | ExternalSourceKind::Custom(ref mut es) => {
+            ExternalSourceKind::IdxStreamer(ref mut es)
+            | ExternalSourceKind::Custom(ref mut es) => {
                 es.cycle_next()
             },
-            ExternalSourceKind::GlyphSequences(ref mut gs) => {
-                gs.cycle_next()
+            ExternalSourceKind::GlyphSequences(ref mut es) => {
+                es.cycle_next()
+            },
+            ExternalSourceKind::SensoryTract(ref mut es) => {
+                es.cycle_next()
             },
             _ => (),
         }

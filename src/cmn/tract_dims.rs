@@ -61,9 +61,28 @@ impl<'c, P: ParaHexArray> From<&'c P> for TractDims {
     }
 }
 
+// default impl<P: ParaHexArray> From<P> for TractDims {
+//     fn from(dims: P) -> TractDims {
+//         TractDims { v_size: dims.v_size(), u_size: dims.u_size() }
+//     }
+// }
+
+// impl From<TractDims> for TractDims {
+//     fn from(dims: TractDims) -> TractDims {
+//         // TractDims { v_size: dims.v_size(), u_size: dims.u_size() }
+//         dims
+//     }
+// }
+
+impl From<CorticalDims> for TractDims {
+    fn from(cd: CorticalDims) -> TractDims {
+        TractDims { v_size: cd.v_size(), u_size: cd.u_size() }
+    }
+}
+
 impl PartialEq<CorticalDims> for TractDims {
     fn eq(&self, other: &CorticalDims) -> bool {
-        self.v_size == other.v_size() && 
+        self.v_size == other.v_size() &&
             self.u_size == other.u_size() &&
             self.depth() == other.depth()
     }

@@ -1,10 +1,11 @@
 use std::collections::{HashMap};
 use time;
 
+use ocl::{self, Platform, Context, Device};
 use area::{CorticalArea, CorticalAreas};
 use thalamus::{Thalamus};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
-use ocl::{self, Platform, Context, Device};
+use cmn::{TractFrameMut, CmnResult};
 
 pub struct Cortex {
     // AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
@@ -29,14 +30,14 @@ impl Cortex {
         let mut areas = HashMap::new();
         let mut device_idx = 1;
 
-        for (&area_name, _) in pamaps.iter().filter(|&(_, pamap)| 
+        for (&area_name, _) in pamaps.iter().filter(|&(_, pamap)|
                 pamap.lm_kind_tmp() != &LayerMapKind::Thalamic)
-        {    
-            areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(), 
+        {
+            areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(),
                 device_idx, &ocl_context)));
 
             device_idx += 1;
-        }    
+        }
 
         print_startup_time(time_start);
 
@@ -45,7 +46,7 @@ impl Cortex {
             thal: thal,
         }
     }
-    
+
     pub fn area_mut(&mut self, area_name: &str) -> &mut Box<CorticalArea> {
         let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
         self.areas.get_mut(area_name).expect(&emsg)
@@ -70,6 +71,10 @@ impl Cortex {
 
     pub fn valid_area(&self, area_name: &str) -> bool {
         self.areas.contains_key(area_name)
+    }
+
+    pub fn external_tract_mut(&mut self, tract_name: String) -> CmnResult<TractFrameMut> {
+        self.thal.external_tract_mut(tract_name)
     }
 }
 

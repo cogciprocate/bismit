@@ -17,8 +17,9 @@
 
 use std::ops::Range;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 
-use cmn::{self, CmnError, TractDims, TractFrame, TractFrameMut, CorticalDims};
+use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims};
 use map::{self, AreaMap, LayerTags, LayerMapKind};
 use ocl::EventList;
 use area::CorticalAreas;
@@ -159,7 +160,6 @@ impl TractAreaCache {
 
         match area_idx {
             Some(idx) => return Ok(idx),
-
             None => {
                 for i in 0..self.areas.len() {
                     if self.areas[i].layer_tags.meshes(key.1)
@@ -247,6 +247,7 @@ impl TractArea {
 //         - output: from layer / area
 pub struct Thalamus {
     tract: ThalamicTract,
+    // [TODO]: Redesign this with something other than `String` key (use a separate vec & hashmap).
     external_sources: HashMap<String, (ExternalSource, Vec<LayerTags>)>,
     area_maps: HashMap<&'static str, AreaMap>,
 }
@@ -326,19 +327,19 @@ impl Thalamus {
                 //     FrameBufferKind::Internal(frame) => src_area.read_into(layer_tags, frame, events),
                 //     FrameBufferKind::External => (),
                 // }
-                src_area.read_into(layer_tags, tract_frame, events)
+                src_area.write_into(layer_tags, tract_frame, events)
             }
             src_area.cycle_next();
         }
     }
 
-    pub fn tract_frame<'t>(&'t mut self, key: &(String, LayerTags))
+    pub fn tract<'t>(&'t mut self, key: &(String, LayerTags))
             -> Result<(&EventList, TractFrame<'t>), CmnError>
     {
         self.tract.frame(key)
     }
 
-    pub fn tract_frame_mut<'t>(&'t mut self, key: &(String, LayerTags))
+    pub fn tract_mut<'t>(&'t mut self, key: &(String, LayerTags))
             -> Result<(TractFrameMut<'t>, &mut EventList), CmnError>
     {
         self.tract.frame_mut(key)
@@ -350,6 +351,16 @@ impl Thalamus {
 
      pub fn area_map(&self, area_name: &'static str) -> &AreaMap {
          &self.area_maps[area_name]
+    }
+
+    pub fn external_tract_mut(&mut self, tract_name: String) -> CmnResult<TractFrameMut> {
+        match self.external_sources.entry(tract_name.clone()) {
+            Entry::Occupied(entry) => {
+                entry.into_mut().0.buf_mut()
+            },
+            Entry::Vacant(_) => Err(CmnError::new(format!("Thalamus::external_tract_mut(): \
+                No external tract found named: '{}'.", tract_name))),
+        }
     }
 }
 

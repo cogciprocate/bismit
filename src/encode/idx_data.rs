@@ -7,6 +7,7 @@ use std::iter;
 use std::ops::{Index, IndexMut, Range, RangeTo, RangeFrom, RangeFull};
 // use find_folder::Search;
 
+#[derive(Debug)]
 pub struct IdxData {
     file_path: PathBuf,
     file_reader: BufReader<File>,
@@ -48,16 +49,16 @@ impl IdxData {
             Err(why) => panic!("\ncouldn't read '{}': {}", path_display, Error::description(&why)),
             Ok(_) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_dim_sizes_bytes, bytes),
         }
-        
+
         // let ttl_header_len = 4 + (magic_dims * 4);
         let mut dim_sizes: Vec<usize> = iter::repeat(0).take(magic_dims).collect();
 
         for i in 0..magic_dims {
             let header_ofs = 4 * i;
-            dim_sizes[i] = 
-                (header_dim_sizes_bytes[header_ofs] as usize) << 24 
-                | (header_dim_sizes_bytes[header_ofs + 1] as usize) << 16 
-                | (header_dim_sizes_bytes[header_ofs + 2] as usize) << 8 
+            dim_sizes[i] =
+                (header_dim_sizes_bytes[header_ofs] as usize) << 24
+                | (header_dim_sizes_bytes[header_ofs + 1] as usize) << 16
+                | (header_dim_sizes_bytes[header_ofs + 2] as usize) << 8
                 | (header_dim_sizes_bytes[header_ofs + 3] as usize)
             ;
         }
@@ -69,7 +70,7 @@ impl IdxData {
         }
 
         let mut idx_buffer: Vec<u8> = Vec::with_capacity(buffer_cap);
-        
+
         if !stream_mode {
             // TODO: CONVERT TO STREAM
             match reader.read_to_end(&mut idx_buffer) {
@@ -81,25 +82,25 @@ impl IdxData {
         let header_len_bytes = header_magic.len() + header_dim_sizes_bytes.len();
 
         match reader.seek(SeekFrom::Start(header_len_bytes as u64)) {
-            Err(why) => panic!("\ncouldn't seek to '[{}]': {}", header_len_bytes, 
+            Err(why) => panic!("\ncouldn't seek to '[{}]': {}", header_len_bytes,
                 Error::description(&why)),
             Ok(_) => (),
         }
 
         println!("IDXREADER: initialized with dimensions: {:?}", dim_sizes);
 
-        IdxData {                          
+        IdxData {
             file_path: file_path.to_path_buf(),
             file_reader: reader,
             data: idx_buffer,
-            dims: dim_sizes, 
+            dims: dim_sizes,
         }
     }
 
     // // TODO: RETURN RESULT
     // pub fn read(&mut self, buf: &mut [u8]) {
     //     match self.file_reader.read_exact(buf) {
-    //         Err(why) => panic!("\ncouldn't read '{}': {}", self.file_path.display(), 
+    //         Err(why) => panic!("\ncouldn't read '{}': {}", self.file_path.display(),
     //             Error::description(&why)),
     //         Ok(_) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_dim_sizes_bytes, bytes),
     //     }
@@ -117,7 +118,7 @@ impl IdxData {
         let idx_range = prev_len..new_len;
 
         match self.file_reader.read_exact(&mut vec[idx_range]) {
-            Err(why) => panic!("\ncouldn't read '{}': {}", self.file_path.display(), 
+            Err(why) => panic!("\ncouldn't read '{}': {}", self.file_path.display(),
                 Error::description(&why)),
             Ok(_) => (), //println!("{} contains:\n{:?}\n{} bytes read.", path_display, header_dim_sizes_bytes, bytes),
         }
@@ -194,29 +195,29 @@ impl Index<RangeFull> for IdxData {
 // the IDX file format is a simple format for vectors and multidimensional matrices of various numerical types.
 // The basic format is
 
-// magic number 
-// size in dimension 0 
-// size in dimension 1 
-// size in dimension 2 
-// ..... 
-// size in dimension N 
+// magic number
+// size in dimension 0
+// size in dimension 1
+// size in dimension 2
+// .....
+// size in dimension N
 // data
 
 // The magic number is an integer (MSB first). The first 2 bytes are always 0.
 
-// The third byte codes the type of the data: 
-// 0x08: unsigned byte 
-// 0x09: signed byte 
-// 0x0B: short (2 bytes) 
-// 0x0C: int (4 bytes) 
-// 0x0D: float (4 bytes) 
+// The third byte codes the type of the data:
+// 0x08: unsigned byte
+// 0x09: signed byte
+// 0x0B: short (2 bytes)
+// 0x0C: int (4 bytes)
+// 0x0D: float (4 bytes)
 // 0x0E: double (8 bytes)
 
 // The 4-th byte codes the number of dimensions of the vector/matrix: 1 for vectors, 2 for matrices....
 
 // The sizes in each dimension are 4-byte integers (MSB first, high endian, like in most non-Intel processors).
 
-// The data is stored like in a C array, i.e. the index in the last dimension changes the fastest. 
-  
+// The data is stored like in a C array, i.e. the index in the last dimension changes the fastest.
+
 // Happy hacking.
 

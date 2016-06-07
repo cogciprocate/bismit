@@ -3,6 +3,7 @@
 mod idx_data;
 mod glyph_buckets;
 mod glyph_sequences;
+mod sensory_tract;
 pub mod idx_streamer;
 
 use std::ops::Range;
@@ -11,6 +12,7 @@ pub use self::idx_streamer::IdxStreamer;
 pub use self::idx_data::IdxData;
 pub use self::glyph_buckets::GlyphBuckets;
 pub use self::glyph_sequences::GlyphSequences;
+pub use self::sensory_tract::SensoryTract;
 
 use cmn::{TractFrameMut, TractDims, ParaHexArray};
 
@@ -20,20 +22,20 @@ fn calc_offs(v_size: usize, u_size: usize, y_size: usize, x_size: usize, hex_sid
     let v_mid = v_size >> 1;
     let u_mid = u_size >> 1;
 
-    let (x_ofs_inv, y_ofs_inv, _) = coord_hex_to_pixel(v_mid as f32, u_mid as f32, 
+    let (x_ofs_inv, y_ofs_inv, _) = coord_hex_to_pixel(v_mid as f32, u_mid as f32,
         x_size as f32, y_size as f32, hex_side, 0.0, 0.0);
 
     let x_mid = x_size >> 1;
-    let y_mid = y_size >> 1;    
+    let y_mid = y_size >> 1;
 
     ((x_ofs_inv - x_mid as f32), (y_mid as f32 - y_ofs_inv))
 }
 
 
 // COORD_HEX_TO_PIXEL(): Eventually either move this to GPU or at least use SIMD.
-pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_side: f32, 
-            x_ofs: f32, y_ofs: f32, 
-        ) -> (f32, f32, bool) 
+pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_side: f32,
+            x_ofs: f32, y_ofs: f32,
+        ) -> (f32, f32, bool)
 {
     let u = u_id;
     let u_inv = 0.0 - u;
@@ -54,20 +56,20 @@ pub fn coord_hex_to_pixel(v_id: f32, u_id: f32, x_size: f32, y_size: f32, hex_si
 
 // ENCODE_2D_IMAGE(): Horribly unoptimized.
 pub fn encode_2d_image<P: ParaHexArray>(src_dims: (usize, usize), tar_dims: &P,
-    scale_factor: f32, source: &[u8], mut target: &mut TractFrameMut) 
+    scale_factor: f32, source: &[u8], mut target: &mut TractFrameMut)
 {
     let (x_size, y_size) = (src_dims.0, src_dims.1);
     let (v_size, u_size) = (tar_dims.v_size() as usize, tar_dims.u_size() as usize);
-    let hex_side = (x_size + y_size) as f32 / 
+    let hex_side = (x_size + y_size) as f32 /
         (scale_factor * (v_size + u_size) as f32);
 
     let (x_ofs, y_ofs) = calc_offs(v_size, u_size, x_size, y_size, hex_side);
 
     for v_id in 0..v_size  {
         for u_id in 0..u_size {
-            let (x, y, valid) = coord_hex_to_pixel(v_id as f32, u_id as f32, x_size as f32, 
+            let (x, y, valid) = coord_hex_to_pixel(v_id as f32, u_id as f32, x_size as f32,
                 y_size as f32, hex_side, x_ofs, y_ofs);
-            
+
             if valid {
                 let tar_idx = (v_id * u_size) + u_id;
                 let src_idx = (y as usize * x_size) + x as usize;
@@ -89,14 +91,14 @@ pub struct ScalarEncoder2d {
 
 impl ScalarEncoder2d {
     pub fn new(tract_dims: TractDims, range: Range<usize>) -> ScalarEncoder2d {
-        ScalarEncoder2d { 
-            tract_dims: tract_dims, 
+        ScalarEncoder2d {
+            tract_dims: tract_dims,
             range: range,
         }
-    } 
+    }
 
     pub fn encode(val: usize, mut target: &mut TractFrameMut) {
-        
+
     }
 }
 
@@ -115,15 +117,15 @@ impl CoordEncoder2d {
             (tract_dims.v_size() as usize / coord_ranges.1) + 1,
         );
 
-        CoordEncoder2d { 
-            tract_dims: tract_dims, 
+        CoordEncoder2d {
+            tract_dims: tract_dims,
             coord_ranges: coord_ranges,
             coord_size: coord_size,
         }
-    } 
+    }
 
     pub fn encode(coord: (u32, u32), mut target: &mut TractFrameMut) {
-        
+
     }
 }
 
@@ -143,14 +145,14 @@ impl CoordEncoder2d {
 // pub fn encode_scalar() {
     // for v_id in 0..v_size {
     //     for u_id in 0..u_size {
-    //         let (x, y, valid) = coord_hex_to_pixel(v_size, v_id, u_size, u_id, 
+    //         let (x, y, valid) = coord_hex_to_pixel(v_size, v_id, u_size, u_id,
     //             self.image_height as usize, self.image_width as usize);
-            
+
     //         if valid {
     //             let tar_idx = (v_id * u_size) + u_id;
     //             let src_idx = (y * self.image_width as usize) + x;
 
-    //             target[tar_idx] = source[src_idx]; 
+    //             target[tar_idx] = source[src_idx];
     //         }
     //         //target[tar_idx] = (x != 0 || y != 0) as u8; // SHOW INPUT SQUARE
     //     }
@@ -158,9 +160,9 @@ impl CoordEncoder2d {
 // }
 
 
-/// Encode a scalar value as a 
+/// Encode a scalar value as a
 pub fn encode_scalar() {
-    
+
 }
 
 

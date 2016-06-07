@@ -5,8 +5,9 @@ use map::LayerTags;
 use external_source::ExternalSourceTract;
 use super::IdxData;
 
-//    IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned 
+//    IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned
 //    bytes (u8) into a ganglion (SDR frame buffer: &Sdr)
+#[derive(Debug)]
 pub struct IdxStreamer {
     layer_dims: CorticalDims,
     cycles_per_frame: usize,
@@ -25,8 +26,8 @@ pub struct IdxStreamer {
 impl IdxStreamer {
     /// # Panics
     /// All sorts of reasons...
-    pub fn new(layer_dims: CorticalDims, file_path_string: String, cycles_per_frame: usize, 
-                scale_factor: f32) -> IdxStreamer 
+    pub fn new(layer_dims: CorticalDims, file_path_string: String, cycles_per_frame: usize,
+                scale_factor: f32) -> IdxStreamer
     {
         let file_path = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
             .expect("IdxStreamer::new()").join(&file_path_string);
@@ -55,7 +56,7 @@ impl IdxStreamer {
             frames_count: idx_data.dims()[0],
             loop_frames: None,
             // image_width: image_width,
-            // image_height: image_height,            
+            // image_height: image_height,
             image_dims: image_dims,
             // image_len: image_width * image_height,
             // image_len: image_len,
@@ -66,7 +67,7 @@ impl IdxStreamer {
     pub fn loop_frames(mut self, frames_to_loop: u32) -> IdxStreamer {
         self.loop_frames = Some(frames_to_loop);
         self
-    }    
+    }
 
     #[allow(dead_code)]
     pub fn get_raw_frame(&self, frame_idx: usize, tract_frame: &mut Sdr) -> usize {
@@ -91,7 +92,7 @@ impl IdxStreamer {
 
     }
 
-    fn increment_frame(&mut self) {        
+    fn increment_frame(&mut self) {
         self.repeat_counter += 1;
 
         if self.repeat_counter >= self.cycles_per_frame {
@@ -128,7 +129,7 @@ impl IdxStreamer {
     pub fn encode_2d_image(&self, source: &Sdr, target: &mut Sdr) {
         super::encode_2d_image(self.image_dims, &self.layer_dims, self.scale_factor,
             source, &mut TractFrameMut::new(target, &self.layer_dims));
-    }    
+    }
 
     pub fn image_len(&self) -> usize {
         self.image_dims.0 * self.image_dims.1
@@ -141,16 +142,16 @@ impl IdxStreamer {
 }
 
 impl ExternalSourceTract for IdxStreamer {
-    fn read_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) 
-            -> [usize; 3] 
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags)
+            -> [usize; 3]
     {
         assert!(tract_frame.dims() == &self.layer_dims);
-        assert!((self.image_len()) <= tract_frame.dims().to_len(), 
-            "Ganglion vector size must be greater than or equal to IDX image size");        
+        assert!((self.image_len()) <= tract_frame.dims().to_len(),
+            "Ganglion vector size must be greater than or equal to IDX image size");
 
           //       match self.file_reader.enqueue_read(&mut self.idx_data.data()[..]) {
         //     Err(why) => panic!("\ncouldn't read '{}': {}", &self.file_path, Error::description(&why)),
-        //     Ok(bytes) => assert!(bytes == self.idx_data.data().len(), "\n bytes read != buffer length"), 
+        //     Ok(bytes) => assert!(bytes == self.idx_data.data().len(), "\n bytes read != buffer length"),
         //         //println!("{} contains:\n{:?}\n{} bytes read.", display, header_dim_sizes_bytes, bytes),
         // }
 

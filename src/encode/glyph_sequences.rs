@@ -9,6 +9,7 @@ use map::AxonKind;
 
 
 /// The cursor containing the current position of the glyph sequence.
+#[derive(Debug)]
 pub struct SeqReader {
     sequences: Vec<Vec<usize>>,
     seq_idx: usize,
@@ -27,7 +28,7 @@ impl SeqReader {
     fn advance(&mut self) {
         self.gly_idx += 1;
 
-        if self.gly_idx >= self.sequences[self.seq_idx].len() { 
+        if self.gly_idx >= self.sequences[self.seq_idx].len() {
             self.gly_idx = 0;
             self.seq_idx += 1;
             if self.seq_idx >= self.sequences.len() { self.seq_idx = 0; }
@@ -42,6 +43,7 @@ impl SeqReader {
 /// The sequences vary in length and number specified by `seq_lens` and
 /// `seq_count` respectively.
 ///
+#[derive(Debug)]
 pub struct GlyphSequences {
     // sequences: Vec<Vec<usize>>,
     buckets: GlyphBuckets,
@@ -52,7 +54,7 @@ pub struct GlyphSequences {
 }
 
 impl GlyphSequences {
-    pub fn new(layers: &mut HashMap<LayerTags, ExternalSourceLayer>, seq_lens: (usize, usize), 
+    pub fn new(layers: &mut HashMap<LayerTags, ExternalSourceLayer>, seq_lens: (usize, usize),
                 seq_count: usize, scale: f32, hrz_dims: (u32, u32)) -> GlyphSequences
     {
         assert!(seq_lens.1 >= seq_lens.0, "GlyphSequences::new(): Sequence length range ('seq_lens') \
@@ -66,7 +68,7 @@ impl GlyphSequences {
             if layer.axn_kind() == AxonKind::Spatial {
                 assert!(tags.contains(map::FF_OUT));
                 spt_layer_dims = layer.dims().cloned();
-            } else if layer.axn_kind() == AxonKind::Horizontal {                
+            } else if layer.axn_kind() == AxonKind::Horizontal {
                 assert!(tags.contains(map::NS_OUT));
                 hrz_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1, 0, None));
                 layer.set_dims(hrz_layer_dims.clone());
@@ -90,7 +92,7 @@ impl GlyphSequences {
             sequences.push(seq);
         }
 
-        GlyphSequences { 
+        GlyphSequences {
             // sequences: sequences,
             buckets: buckets,
             // layer_dims: [layer_dims.clone(), layer_dims.clone()],
@@ -107,7 +109,7 @@ impl GlyphSequences {
 }
 
 impl ExternalSourceTract for GlyphSequences {
-    fn read_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) 
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags)
             -> [usize; 3]
     {
         let glyph_dims = self.buckets.glyph_dims();
@@ -115,7 +117,7 @@ impl ExternalSourceTract for GlyphSequences {
         let glyph: &[u8] = self.buckets.next_glyph(next_glyph_id);
 
         if tags.contains(map::FF_OUT) {
-            assert!(&self.spt_layer_dims == tract_frame.dims());           
+            assert!(&self.spt_layer_dims == tract_frame.dims());
             super::encode_2d_image(glyph_dims, &self.spt_layer_dims, self.scale,
                 glyph, tract_frame);
         } else if tags.contains(map::NS_OUT) {
@@ -127,7 +129,7 @@ impl ExternalSourceTract for GlyphSequences {
                 unsafe { *tract_frame.get_unchecked_mut(idx) = (idx & 0xFF) as u8; }
             }
         } else {
-            panic!("GlyphSequences::read_into(): Invalid tags: tags: '{:?}' must contain {:?}", 
+            panic!("GlyphSequences::write_into(): Invalid tags: tags: '{:?}' must contain {:?}",
                 tags, map::NS_OUT);
         }
 
@@ -167,6 +169,6 @@ mod tests {
     //             assert!(seq.len() >= seq_lens.0);
     //             assert!(seq.len() <= seq_lens.1);
     //         }
-    //     }        
+    //     }
     // }
 }

@@ -15,12 +15,13 @@ pub enum InputScheme {
     IdxStreamer { file_name: String, cyc_per: usize, scale: f32, loop_frames: u32 },
     // IdxStreamerLoop { file_name: String, cyc_per: usize, scale: f32, loop_frames: u32 },
     GlyphSequences { seq_lens: (usize, usize), seq_count: usize, scale: f32, hrz_dims: (u32, u32) },
+    SensoryTract,
 }
 
 impl InputScheme {
     pub fn is_some(&self) -> bool {
-        match self {
-            &InputScheme::None => false,
+        match *self {
+            InputScheme::None => false,
             _ => true,
         }
     }
@@ -30,8 +31,9 @@ impl InputScheme {
     }
 
     pub fn layer_count(&self) -> usize {
-        match self {
-            &InputScheme::GlyphSequences { .. } => 2,
+        match *self {
+            InputScheme::GlyphSequences { .. } => 2,
+            // InputScheme::SensoryTract { ref dims, .. } => dims.len(),
             _ => 1,
         }
     }

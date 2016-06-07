@@ -499,7 +499,7 @@ impl CorticalArea {
             new_events.clear_completed().expect("CorticalArea::write_input");
 
             for src_layer in src_layers.iter_mut() {
-                let (wait_events, sdr) = thal.tract_frame(src_layer.key())
+                let (wait_events, sdr) = thal.tract(src_layer.key())
                     .expect("CorticalArea::intake()");
 
                 if group_tags.contains(map::FF_IN) && self.filters.is_some()
@@ -530,7 +530,7 @@ impl CorticalArea {
     fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) {
         if let Some((src_layers, wait_events)) = self.io_info.group(group_tags) {
             for src_layer in src_layers.iter() {
-                let (mut sdr, new_events) = thal.tract_frame_mut(src_layer.key())
+                let (mut sdr, new_events) = thal.tract_mut(src_layer.key())
                     .expect("CorticalArea::output()");
 
                 new_events.clear_completed().expect("CorticalArea::write_input");

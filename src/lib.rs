@@ -1,5 +1,7 @@
 //! # Bismit: Biologically Inspired Sensory Motor Interface Tool
 
+// #![feature(specialization)]
+
 extern crate num;
 extern crate libc;
 extern crate time;
@@ -25,7 +27,7 @@ mod area;
 pub use ocl::Event as OclEvent;
 
 pub use self::cortex::Cortex;
-pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer, 
+pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
 	SpinyStellateLayer, Dendrites};
 pub use self::external_source::{ExternalSourceTract, ExternalSourceKind};
 // pub use self::map::{SliceTractMap, LayerTags};
