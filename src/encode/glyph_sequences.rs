@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use rand::distributions::{IndependentSample, Range};
 use rand;
 use cmn::{CorticalDims, TractFrameMut};
@@ -55,7 +56,8 @@ pub struct GlyphSequences {
 
 impl GlyphSequences {
     pub fn new(layers: &mut HashMap<LayerTags, ExternalSourceLayer>, seq_lens: (usize, usize),
-                seq_count: usize, scale: f32, hrz_dims: (u32, u32)) -> GlyphSequences
+                seq_count: usize, scale: f32, hrz_dims: (u32, u32), label_file: PathBuf,
+                image_file: PathBuf) -> GlyphSequences
     {
         assert!(seq_lens.1 >= seq_lens.0, "GlyphSequences::new(): Sequence length range ('seq_lens') \
             invalid. High end must at least be equal to low end: '{:?}'.", seq_lens);
@@ -75,7 +77,7 @@ impl GlyphSequences {
             }
         }
 
-        let buckets = GlyphBuckets::new();
+        let buckets = GlyphBuckets::new(label_file, image_file);
         let mut rng = rand::weak_rng();
         let mut sequences = Vec::with_capacity(seq_count);
 

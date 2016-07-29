@@ -4,6 +4,7 @@ use std::fmt::Debug;
 // use std::collections::hash_map::IterMut;
 // use std::hash::BuildHasherDefault;
 // use twox_hash::XxHash;
+use find_folder::Search;
 use map::{self, LayerTags};
 use cmn::{self, CorticalDims, TractFrameMut, CmnResult, CmnError};
 use ocl::{EventList};
@@ -136,7 +137,14 @@ impl ExternalSource {
                 ExternalSourceKind::IdxStreamer(Box::new(is))
             },
             InputScheme::GlyphSequences { seq_lens, seq_count, scale, hrz_dims } => {
-                let gs = GlyphSequences::new(&mut layers, seq_lens, seq_count, scale, hrz_dims);
+                let label_file = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
+                    .expect("ExternalSource::new(): 'label file folder (tmp_data)'")
+                    .join("train-labels-idx1-ubyte");
+                let image_file = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
+                    .expect("ExternalSource::new(): 'image file folder (tmp_data)'")
+                    .join("train-images-idx3-ubyte");
+                let gs = GlyphSequences::new(&mut layers, seq_lens, seq_count, scale, hrz_dims,
+                    label_file, image_file);
                 ExternalSourceKind::GlyphSequences(Box::new(gs))
             },
             InputScheme::SensoryTract => {
