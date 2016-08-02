@@ -79,6 +79,7 @@ pub struct ExternalSource {
     src_kind: ExternalSourceKind,
     // layers: HashMap<LayerTags, ExternalSourceLayer, BuildHasherDefault<XxHash>>,
     layers: HashMap<LayerTags, ExternalSourceLayer>,
+
 }
 
 impl ExternalSource {
@@ -87,7 +88,7 @@ impl ExternalSource {
         let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|(_, pl)| pl).collect();
 
         assert!(pamap.get_input().layer_count() == p_layers.len(), "ExternalSource::new(): \
-            Inputs for 'Protoarea' ({}) must equal layers in 'LayerMapScheme' ({}).",
+            Inputs for 'AreaScheme' ({}) must equal layers in 'LayerMapScheme' ({}).",
             pamap.get_input().layer_count(), p_layers.len());
 
         // let mut layers = HashMap::with_capacity_and_hasher(4, BuildHasherDefault::default());
@@ -154,7 +155,7 @@ impl ExternalSource {
                 ExternalSourceKind::SensoryTract(Box::new(st))
             },
             InputScheme::None | InputScheme::Zeros => ExternalSourceKind::None,
-            pi @ _ => panic!("\nExternalSource::new(): Input type: '{:?}' not yet supported.", pi),
+            is @ _ => panic!("\nExternalSource::new(): Input type: '{:?}' not yet supported.", is),
         };
 
         ExternalSource {
