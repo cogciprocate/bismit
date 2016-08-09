@@ -3,6 +3,26 @@ name = "bismit"
 version = "0.0.1"
 authors = ["Nick Sanders <github.com/c0gent>"]
 
+# [dependencies.microcosm]
+# git = "https://github.com/cogciprocate/microcosm.git"
+
+# [dependencies.time]
+# git = "https://github.com/rust-lang/time.git"
+
+# [dependencies.bitflags]
+# git = "https://github.com/rust-lang-nursery/bitflags.git"
+
+[dependencies.ocl]
+# path = "/home/nick/projects/ocl"
+git = "https://github.com/cogciprocate/ocl.git"
+branch = "remove_core_ffi"
+# features = ["kernel_debug_sleep", "kernel_debug_print"]
+# features = ["kernel_debug_print"]
+
+[replace]
+"cl-sys:0.1.0" = { git = 'https://github.com/cogciprocate/cl-sys' }
+"ocl-core:0.1.0" = { git = "https://github.com/cogciprocate/ocl-core" }
+
 [dependencies]
 bitflags = "0.5"
 rand = "*"
@@ -14,18 +34,3 @@ find_folder = "0.3"
 time = "*"
 twox-hash = "*"
 
-# [dependencies.microcosm]
-# git = "https://github.com/cogciprocate/microcosm.git"
-
-[dependencies.ocl]
-path = "/home/nick/projects/ocl"
-# git = "https://github.com/cogciprocate/ocl.git"
-# branch = "remove_core_ffi"
-# features = ["kernel_debug_sleep", "kernel_debug_print"]
-# features = ["kernel_debug_print"]
-
-# [dependencies.time]
-# git = "https://github.com/rust-lang/time.git"
-
-# [dependencies.bitflags]
-# git = "https://github.com/rust-lang-nursery/bitflags.git"

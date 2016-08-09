@@ -4,16 +4,15 @@ mod idx_data;
 mod glyph_buckets;
 mod glyph_sequences;
 mod sensory_tract;
+mod scalar;
 pub mod idx_streamer;
 
 use std::ops::Range;
-
 pub use self::idx_streamer::IdxStreamer;
 pub use self::idx_data::IdxData;
 pub use self::glyph_buckets::GlyphBuckets;
 pub use self::glyph_sequences::GlyphSequences;
 pub use self::sensory_tract::SensoryTract;
-
 use cmn::{TractFrameMut, TractDims, ParaHexArray};
 
 const SQRT_3: f32 = 1.73205080756f32;

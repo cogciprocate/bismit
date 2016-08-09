@@ -11,12 +11,11 @@ mod slice_dims;
 mod tract_dims;
 mod renderer;
 mod error;
-mod tract;
 mod tract_frame;
 pub mod data_cell_layer;
 
 use num::{FromPrimitive};
-use std::default::{Default}; 
+use std::default::{Default};
 use std::iter::{self};
 use std::cmp::{self};
 use std::io::{self, Write};
@@ -43,13 +42,13 @@ pub use self::tract_frame::{TractFrame, TractFrameMut};
 //     fn count(&self) -> u32;
 // }
 
-/// Types which can be represented as one or several stacked two-dimensional 
+/// Types which can be represented as one or several stacked two-dimensional
 /// parallelogram-shaped array containing hexagon-shaped elements.
 pub trait ParaHexArray {
     fn v_size(&self) -> u32;
     fn u_size(&self) -> u32;
-    fn depth(&self) -> u8;    
-    
+    fn depth(&self) -> u8;
+
     #[inline]
     fn len(&self) -> u32 {
         self.v_size() * self.u_size() * self.depth() as u32
@@ -88,7 +87,7 @@ pub type CmnResult<T> = Result<T, CmnError>;
 
 
 // MT: Mini-tab: 4 spaces ('mini' compared to the huge tab on certain terminals)
-pub static MT: &'static str = "    "; 
+pub static MT: &'static str = "    ";
 
 pub static C_DEFAULT: &'static str = "\x1b[0m";
 pub static C_UNDER: &'static str = "\x1b[1m";
@@ -123,9 +122,9 @@ pub const DEFAULT_OUTPUT_LAYER_DEPTH: u8 = 1;
 // pub const SENSORY_CHORD_WIDTH_LOG2: usize = 5;
 // pub const SENSORY_CHORD_WIDTH: u32 = 1 << SENSORY_CHORD_WIDTH_LOG2;
 // pub const SENSORY_CHORD_HEIGHT_LOG2: usize = 5;
-// pub const SENSORY_CHORD_HEIGHT: u32 = 1 << SENSORY_CHORD_HEIGHT_LOG2; 
+// pub const SENSORY_CHORD_HEIGHT: u32 = 1 << SENSORY_CHORD_HEIGHT_LOG2;
 // pub const SENSORY_CHORD_COLUMNS_LOG2: usize = SENSORY_CHORD_WIDTH_LOG2 + SENSORY_CHORD_HEIGHT_LOG2;
-// pub const SENSORY_CHORD_COLUMNS: u32 = 1 << SENSORY_CHORD_COLUMNS_LOG2; 
+// pub const SENSORY_CHORD_COLUMNS: u32 = 1 << SENSORY_CHORD_COLUMNS_LOG2;
 
 /*pub const DENDRITES_PER_CELL_DISTAL_LOG2: u8 = 1;
 pub const DENDRITES_PER_CELL_DISTAL: u32 = 1 << DENDRITES_PER_CELL_DISTAL_LOG2 as u32;
@@ -142,7 +141,7 @@ pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXI
 //pub const LEARNING_ACTIVE: bool = true;
 pub const SYNAPSE_STRENGTH_FLOOR: i8 = -25;             // DIRECTLY AFFECTS LEARNING RATE
 pub const SYNAPSE_REGROWTH_INTERVAL: usize = 800;         // DIRECTLY AFFECTS LEARNING RATE
-pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;    
+pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;
 pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
 pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
 
@@ -217,7 +216,7 @@ pub const STATE_ZERO: u8 = 0;
 
 pub const OPENCL_PREFERRED_VECTOR_MULTIPLE: u32 = 4;
 pub const OPENCL_PREFERRED_WORKGROUP_SIZE: u32 = 256;
-pub const OPENCL_MINIMUM_WORKGROUP_SIZE: u32 = 64;    
+pub const OPENCL_MINIMUM_WORKGROUP_SIZE: u32 = 64;
 pub const SYNAPSES_WORKGROUP_SIZE: u32 = OPENCL_PREFERRED_WORKGROUP_SIZE;
 //pub const AXONS_WORKGROUP_SIZE: u32 = OPENCL_PREFERRED_WORKGROUP_SIZE;
 
@@ -257,17 +256,17 @@ static OPENCL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-rela
 
 // // BUILTIN_OPENCL_KERNEL_FILE_NAMES: Loaded in reverse order.
 // pub static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 4] = [
-//     "tests.cl", 
-//     "filters.cl", 
-//     "syns.cl", 
+//     "tests.cl",
+//     "filters.cl",
+//     "syns.cl",
 //     "bismit.cl",
 // ];
 
 // BUILTIN_OPENCL_KERNEL_FILE_NAMES: Loaded in reverse order.
 pub static BUILTIN_OPENCL_PROGRAM_SOURCE: [&'static str; 4] = [
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/bismit.cl")),
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/syns.cl")), 
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/filters.cl")), 
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/syns.cl")),
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/filters.cl")),
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/tests.cl")),
 ];
 
@@ -391,11 +390,11 @@ pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
 
 
 // pub fn print_vec<T: OclPrm>(
-//             vec: &[T], 
-//             every: usize, 
-//             val_range: Option<(T, T)>, 
+//             vec: &[T],
+//             every: usize,
+//             val_range: Option<(T, T)>,
 //             idx_range: Option<(usize, usize)>,
-//             show_zeros: bool, 
+//             show_zeros: bool,
 // ) {
 
 
@@ -481,7 +480,7 @@ pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
 
 //                 within_val_range = true;
 //             }
-//         } 
+//         }
 
 //         if within_idx_range && within_val_range {
 //             sum += vec[i].to_i64().expect("ocl::fmt::print_vec(): vec[i]");
@@ -528,7 +527,7 @@ pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
 
 
 //     println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),\
-//         ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prntd:{}){cd} ", 
+//         ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prntd:{}){cd} ",
 //         ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
 // }
 
@@ -561,7 +560,7 @@ pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
 
 //     /*let mut vec: Vec<T> = iter::range_inclusive::<T>(min_val, max_val).cycle().take(size).collect();*/
 
-    
+
 //     shuffle_vec(&mut vec);
 
 //     vec
@@ -611,7 +610,7 @@ pub fn sparse_vec<T: OclScl>(size: usize, min_val: T, max_val: T, sp_fctr_log2: 
 }
 
 // pub fn dup_check<T: OclPrm>(in_vec: &mut Vec<T>) -> (usize, usize) {
-    
+
 
 //     let mut vec = in_vec.clone();
 
@@ -660,9 +659,9 @@ pub fn log2(n: u32) -> u32 {
 
 // RENDER_SDR_SQUARE(): Show SDR in a square grid -- DEPRICATE (hex version in tests/renderer)
 pub fn render_sdr_square(
-            vec_out: &Sdr, 
-            vec_ff_opt: Option<&Sdr>, 
-            vec_out_prev_opt: Option<&Sdr>, 
+            vec_out: &Sdr,
+            vec_ff_opt: Option<&Sdr>,
+            vec_out_prev_opt: Option<&Sdr>,
             vec_ff_prev_opt: Option<&Sdr>,
             slc_map: &BTreeMap<u8, &'static str>,
             print: bool,
@@ -688,7 +687,7 @@ pub fn render_sdr_square(
     assert!(vec_ff.len() == vec_out.len(), "cmn::render_sdr(): vec_ff.len() != vec_out.len(), Input vectors must be of equal length.");
     assert!(vec_out.len() == vec_out_prev.len(), "cmn::render_sdr(): vec_out.len() != vec_out_prev.len(), Input vectors must be of equal length.");
     assert!(vec_out.len() == vec_ff_prev.len(), "cmn::render_sdr(): vec_out.len() != vec_ff_prev.len(), Input vectors must be of equal length.");
-    
+
 
     let mut active_cols = 0usize;
     let mut failed_preds = 0usize;
@@ -729,7 +728,7 @@ pub fn render_sdr_square(
                 active_cols += 1;
             }
 
-            if new_prediction { 
+            if new_prediction {
                 new_preds += 1;
             }
 
@@ -771,7 +770,7 @@ pub fn render_sdr_square(
                     } else {
                         out_line.push_str("--");
                     }
-                } 
+                }
 
                 out_line.push_str(C_DEFAULT);
                 out_line.push_str(BGC_DEFAULT);
@@ -795,7 +794,7 @@ pub fn render_sdr_square(
             } else {
                 // i_pattern += 1; // DEPRICATE
             }
-            
+
             println!("{}", out_line);
         }
 
@@ -814,7 +813,7 @@ pub fn render_sdr_square(
 
     if print {
         if vec_out_prev_opt.is_some() {
-            println!("\nprev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, cols active:{}, ttl active:{}, new_preds:{}", 
+            println!("\nprev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, cols active:{}, ttl active:{}, new_preds:{}",
                 preds_total, corr_preds, failed_preds, pred_accy, anomalies, active_cols, ttl_active, new_preds,);
         }
     }
@@ -824,10 +823,10 @@ pub fn render_sdr_square(
 
 
 pub fn corr_pred(
-            out: u8, 
-            ff: u8, 
-            prev_out: u8, 
-            prev_ff: u8, 
+            out: u8,
+            ff: u8,
+            prev_out: u8,
+            prev_ff: u8,
 ) -> Option<bool> {
     let prev_new_pred = new_pred(prev_out, prev_ff);
     let curr_new_pred = new_pred(out, ff);
@@ -843,8 +842,8 @@ pub fn corr_pred(
 
 
 pub fn new_pred(
-            out: u8, 
-            ff: u8, 
+            out: u8,
+            ff: u8,
 ) -> bool {
     // let out_active = out != 0;
     let ff_active = ff != 0;
@@ -856,9 +855,9 @@ pub fn new_pred(
 
 
 /*fn pred_accy<T: Integer + Display + Default + NumCast + Copy + FromPrimitive + ToPrimitive + UpperHex>(
-            vec_out: &[T], 
-            vec_ff: &[T], 
-            prev_vec: &[T], 
+            vec_out: &[T],
+            vec_ff: &[T],
+            prev_vec: &[T],
 ) -> f32 {
     assert!(vec_out.len() == vec_ff.len() && vec_out.len() == prev_vec.len());
 
@@ -875,7 +874,7 @@ pub fn new_pred(
 
 
 /* GEN_FRACT_SDR(): Generate simple SDR from integer seed
-    - FUTURE IMPROVEMENTS: 
+    - FUTURE IMPROVEMENTS:
         - Once the Rust API for wrapping integers is sorted out, use one of those instead of wrap_idx.
         - Create and store sdr as a "chord" or whatever else becomes the preferred SDR storage container
 
