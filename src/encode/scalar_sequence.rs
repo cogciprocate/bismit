@@ -1,30 +1,36 @@
 //! Mostly for testing purposes.
 
+use std::fmt::Debug;
+use std::ops::AddAssign;
+use num::{Num, NumCast};
 use external_source::{ExternalSourceTract, TractFrameMut, LayerTags};
 
 #[derive(Clone, Debug)]
-pub struct ScalarSequence {
-    range: (f32, f32),
-    next: f32,
-    incr: f32,
+pub struct ScalarSequence<T> {
+    range: (T, T),
+    next: T,
+    incr: T,
 }
 
-impl ScalarSequence {
-    pub fn new() -> ScalarSequence {
+impl<T> ScalarSequence<T> where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {
+    pub fn new(range: (T, T), incr: T) -> ScalarSequence<T> {
+        let next = range.0;
+
         ScalarSequence {
-            range: (0.0, 30000.0),
-            next: 0.0,
-            incr: 1.0,
+            range: range,
+            incr: incr,
+            next: next,
         }
     }
 
     pub fn increment_frame(&mut self) {
         self.next += self.incr;
-        if self.next >= self.range.1 { self.next = 0.0; }
+        if self.next >= self.range.1 { self.next = self.range.0; }
     }
 }
 
-impl ExternalSourceTract for ScalarSequence {
+impl<T> ExternalSourceTract for ScalarSequence<T>
+            where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) -> [usize; 3] {
         super::encode_scalar(self.next, self.range, tract_frame);
 

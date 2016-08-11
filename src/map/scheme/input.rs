@@ -18,7 +18,7 @@ pub enum InputScheme {
     SensoryTract,
 
     // Possibly remove me eventually:
-    ScalarSequence,
+    ScalarSequence { range: (f32, f32), incr: f32 },
 }
 
 impl InputScheme {

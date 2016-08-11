@@ -155,8 +155,8 @@ impl ExternalSource {
                     .expect("ExternalSource::new(): Layer dims not set properly."));
                 ExternalSourceKind::SensoryTract(Box::new(st))
             },
-            InputScheme::ScalarSequence => {
-                ExternalSourceKind::Custom(Box::new(ScalarSequence::new()))
+            InputScheme::ScalarSequence { range, incr } => {
+                ExternalSourceKind::Custom(Box::new(ScalarSequence::new(range, incr)))
             }
             InputScheme::None | InputScheme::Zeros => ExternalSourceKind::None,
             is @ _ => panic!("\nExternalSource::new(): Input type: '{:?}' not yet supported.", is),
