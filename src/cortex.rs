@@ -8,7 +8,8 @@ use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use cmn::{TractFrameMut, CmnResult};
 
 pub struct Cortex {
-    // AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable stuff" struct to pass to it
+    // AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable
+    // stuff" struct to pass to it. [DONE]
     pub areas: CorticalAreas,
     thal: Thalamus,
 }
@@ -20,8 +21,8 @@ impl Cortex {
         let time_start = time::get_time();
         let thal = Thalamus::new(plmaps, pamaps);
         let pamaps = thal.area_maps().clone();
-        let platform = Platform::new(ocl::core::default_platform().expect("Cortex::new()"));
-        let device_type = ocl::core::default_device_type().expect("Cortex::new()");
+        let platform = Platform::new(ocl::core::default_platform().unwrap());
+        let device_type = ocl::core::default_device_type().unwrap();
         // println!("Cortex::new(): device_type: {:?}", device_type);
         let ocl_context: Context = Context::builder()
             .platform(platform)

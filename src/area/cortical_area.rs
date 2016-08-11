@@ -14,7 +14,7 @@ use area::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
 // GDB debug mode:
-const KERNEL_DEBUG_MODE: bool = false;
+const KERNEL_DEBUG_MODE: bool = true;
 // const DEBUG_PRINT: bool = false;
 
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
@@ -473,7 +473,6 @@ impl CorticalArea {
         self.intake(map::NS_IN, thal);
 
         if !self.settings.disable_ssts {
-            // let aff_input_events = { self.events_lists.get(&map::FF_IN) };
             let aff_input_events = { self.io_info.group_events(map::FF_IN).map(|wl| wl as &ClWaitList) };
             self.psal().cycle(aff_input_events);
         }
