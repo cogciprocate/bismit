@@ -28,7 +28,7 @@ pub use ocl::Event as OclEvent;
 
 pub use self::cortex::Cortex;
 pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
-	SpinyStellateLayer, Dendrites};
+	SpinyStellateLayer, Dendrites, CorticalAreaSettings};
 pub use self::external_source::{ExternalSourceTract, ExternalSourceKind};
 pub use self::map::{LayerMapSchemeList, AreaSchemeList};
 pub use self::cmn::TractDims;

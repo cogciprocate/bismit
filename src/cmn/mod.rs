@@ -1,8 +1,8 @@
-/* src/cmn: Common: extra stuff I haven't found a better home for yet
-    - Much of it is temporary
-    - Some of it will be eventually moved to other modules
-    - Some of it may remain and be renamed to utils or some such
-*/
+//! Extra stuff I haven't found a better home for yet.
+//!
+//! - Much of it is temporary
+//! - Some of it will be eventually moved to other modules
+//! - Some of it may remain and be renamed to utils or some such
 
 
 #[macro_use] mod macros;
@@ -20,10 +20,8 @@ use std::iter::{self};
 use std::cmp::{self};
 use std::io::{self, Write};
 use std::collections::{BTreeMap};
-// use std::path::PathBuf;
 use rand;
 use rand::distributions::{IndependentSample, Range};
-// use find_folder::Search;
 use ocl::traits::OclScl;
 use ocl::builders::ProgramBuilder;
 

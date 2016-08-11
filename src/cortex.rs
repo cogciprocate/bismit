@@ -2,7 +2,7 @@ use std::collections::{HashMap};
 use time;
 
 use ocl::{self, Platform, Context, Device};
-use area::{CorticalArea, CorticalAreas};
+use area::{CorticalArea, CorticalAreas, CorticalAreaSettings};
 use thalamus::{Thalamus};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use cmn::{TractFrameMut, CmnResult};
@@ -14,7 +14,8 @@ pub struct Cortex {
 }
 
 impl Cortex {
-    pub fn new(plmaps: LayerMapSchemeList, pamaps: AreaSchemeList) -> Cortex {
+    pub fn new(plmaps: LayerMapSchemeList, pamaps: AreaSchemeList,
+                    ca_settings: Option<CorticalAreaSettings>) -> Cortex {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
         let thal = Thalamus::new(plmaps, pamaps);
@@ -34,7 +35,7 @@ impl Cortex {
                 pamap.lm_kind_tmp() != &LayerMapKind::Thalamic)
         {
             areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(),
-                device_idx, &ocl_context)));
+                device_idx, &ocl_context, ca_settings.clone())));
 
             device_idx += 1;
         }

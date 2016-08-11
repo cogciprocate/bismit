@@ -5,11 +5,12 @@ use std::fmt::Debug;
 // use std::hash::BuildHasherDefault;
 // use twox_hash::XxHash;
 use find_folder::Search;
-use map::{self, LayerTags};
-use cmn::{self, CorticalDims, TractFrameMut, CmnResult, CmnError};
+use cmn::{self, CorticalDims, CmnResult, CmnError};
 use ocl::{EventList};
-use map::{AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonKind};
-use encode::{IdxStreamer, GlyphSequences, SensoryTract};
+use map::{self, AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonKind};
+use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence};
+pub use cmn::TractFrameMut;
+pub use map::LayerTags;
 
 // pub type ExternalSourceMap = HashMap<String, ExternalSource>;
 
@@ -154,6 +155,9 @@ impl ExternalSource {
                     .expect("ExternalSource::new(): Layer dims not set properly."));
                 ExternalSourceKind::SensoryTract(Box::new(st))
             },
+            InputScheme::ScalarSequence => {
+                ExternalSourceKind::Custom(Box::new(ScalarSequence::new()))
+            }
             InputScheme::None | InputScheme::Zeros => ExternalSourceKind::None,
             is @ _ => panic!("\nExternalSource::new(): Input type: '{:?}' not yet supported.", is),
         };
@@ -178,7 +182,8 @@ impl ExternalSource {
 
         // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
         let _ = match self.src_kind {
-            ExternalSourceKind::IdxStreamer(ref mut es) | ExternalSourceKind::Custom(ref mut es) => {
+            ExternalSourceKind::IdxStreamer(ref mut es) |
+            ExternalSourceKind::Custom(ref mut es) => {
                 es.write_into(&mut frame, tags)
             },
             ExternalSourceKind::GlyphSequences(ref mut es) => {

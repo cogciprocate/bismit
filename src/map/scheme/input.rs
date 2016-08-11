@@ -16,6 +16,9 @@ pub enum InputScheme {
     // IdxStreamerLoop { file_name: String, cyc_per: usize, scale: f32, loop_frames: u32 },
     GlyphSequences { seq_lens: (usize, usize), seq_count: usize, scale: f32, hrz_dims: (u32, u32) },
     SensoryTract,
+
+    // Possibly remove me eventually:
+    ScalarSequence,
 }
 
 impl InputScheme {

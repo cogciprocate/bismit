@@ -1,5 +1,5 @@
 use cortex::Cortex;
-use map::{self, LayerTags, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaSchemeList, 
+use map::{self, LayerTags, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaSchemeList,
     CellScheme, FilterScheme, InputScheme, AxonKind, LayerKind};
 
 pub fn define_plmaps() -> LayerMapSchemeList {
@@ -16,10 +16,10 @@ pub fn define_plmaps() -> LayerMapSchemeList {
             .layer("mcols", 1, map::FF_FB_OUT, CellScheme::minicolumn("iv", "iii"))
             .layer("iv_inhib", 0, map::DEFAULT, CellScheme::inhibitory(4, "iv"))
 
-            .layer("iv", 1, map::PSAL, 
+            .layer("iv", 1, map::PSAL,
                 CellScheme::spiny_stellate(4, vec!["aff_in"], 400, 8))
 
-            .layer("iii", 2, map::PTAL, 
+            .layer("iii", 2, map::PTAL,
                 CellScheme::pyramidal(1, 4, vec!["iii"], 800, 10)
                     .apical(vec!["eff_in"/*, "olfac"*/], 12))
         )
@@ -40,19 +40,19 @@ pub fn define_plmaps() -> LayerMapSchemeList {
 pub fn define_pamaps() -> AreaSchemeList {
     const AREA_SIDE: u32 = 32;
 
-    AreaSchemeList::new()        
+    AreaSchemeList::new()
         .area_ext("v0", "gly_seq_lm", AREA_SIDE,
             InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) },
-            None, 
+            None,
             None,
         )
         .area_ext("v00", "gly_seq_rose_lm", AREA_SIDE,
             InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) },
-            None, 
+            None,
             None,
         )
-        .area("v1", "cortical_lm", AREA_SIDE, 
-            Some(vec![FilterScheme::new("retina", None)]),            
+        .area("v1", "cortical_lm", AREA_SIDE,
+            Some(vec![FilterScheme::new("retina", None)]),
             Some(vec!["v0", "v00"]),
         )
 
@@ -94,7 +94,7 @@ pub fn disable_stuff(cortex: &mut Cortex) {
 
 
 pub fn new_cortex() -> Cortex {
-    let mut cortex = Cortex::new(define_plmaps(), define_pamaps());
+    let mut cortex = Cortex::new(define_plmaps(), define_pamaps(), None);
     disable_stuff(&mut cortex);
     cortex
 }

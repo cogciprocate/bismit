@@ -182,6 +182,32 @@ impl IoLayerInfoCache {
     }
 }
 
+/// Cortical area settings.
+#[derive(Debug, Clone)]
+pub struct CorticalAreaSettings {
+    pub bypass_inhib: bool,
+    pub bypass_filters: bool,
+    pub disable_pyrs: bool,
+    pub disable_ssts: bool,
+    pub disable_mcols: bool,
+    pub disable_regrowth: bool,
+    pub disable_learning: bool,
+}
+
+impl CorticalAreaSettings {
+    pub fn new() -> CorticalAreaSettings {
+        CorticalAreaSettings {
+            bypass_inhib: false,
+            bypass_filters: false,
+            disable_pyrs: false,
+            disable_ssts: false,
+            disable_mcols: false,
+            disable_regrowth: false,
+            disable_learning: false,
+        }
+    }
+}
+
 
 /// An area of the cortex.
 pub struct CorticalArea {
@@ -205,17 +231,12 @@ pub struct CorticalArea {
     // thal_gangs: ThalamicGanglions,
     // events_lists: HashMap<LayerTags, EventList>,
     io_info: IoLayerInfoCache,
-    pub bypass_inhib: bool,
-    pub bypass_filters: bool,
-    pub disable_pyrs: bool,
-    pub disable_ssts: bool,
-    pub disable_mcols: bool,
-    pub disable_regrowth: bool,
-    pub disable_learning: bool,
+    settings: CorticalAreaSettings,
 }
 
 impl CorticalArea {
-    pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context) -> CorticalArea {
+    pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context,
+                    settings: Option<CorticalAreaSettings>) -> CorticalArea {
         let emsg = "cortical_area::CorticalArea::new()";
         let area_name = area_map.area_name();
 
@@ -414,8 +435,9 @@ impl CorticalArea {
 
         let io_info = IoLayerInfoCache::new(area_name.to_owned(), &area_map);
 
-        println!("    CORTICAL_AREA::NEW(): IO_INFO: {:?}", io_info);
+        println!("    CORTICAL_AREA::NEW(): IO_INFO: {:?}, Settings: {:?}", io_info, settings);
 
+        let settings = settings.unwrap_or(CorticalAreaSettings::new());
 
         let cortical_area = CorticalArea {
             name: area_name,
@@ -437,13 +459,7 @@ impl CorticalArea {
             // rng: rand::weak_rng(),
             // events_lists: events_lists,
             io_info: io_info,
-            bypass_inhib: false,
-            bypass_filters: false,
-            disable_pyrs: false,
-            disable_ssts: false,
-            disable_mcols: false,
-            disable_regrowth: false,
-            disable_learning: false,
+            settings: settings,
         };
 
         cortical_area
@@ -456,32 +472,32 @@ impl CorticalArea {
         self.intake(map::FF_IN, thal);
         self.intake(map::NS_IN, thal);
 
-        if !self.disable_ssts {
+        if !self.settings.disable_ssts {
             // let aff_input_events = { self.events_lists.get(&map::FF_IN) };
             let aff_input_events = { self.io_info.group_events(map::FF_IN).map(|wl| wl as &ClWaitList) };
             self.psal().cycle(aff_input_events);
         }
 
-        self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.bypass_inhib);
+        self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.settings.bypass_inhib);
 
-        if !self.disable_ssts { if !self.disable_learning { self.psal_mut().learn(); } }
+        if !self.settings.disable_ssts { if !self.settings.disable_learning { self.psal_mut().learn(); } }
 
-        if !self.disable_mcols { self.mcols.activate(); }
+        if !self.settings.disable_mcols { self.mcols.activate(); }
 
         self.intake(map::FB_IN, thal);
 
-        if !self.disable_pyrs {
-            if !self.disable_learning { self.ptal_mut().learn(); }
+        if !self.settings.disable_pyrs {
+            if !self.settings.disable_learning { self.ptal_mut().learn(); }
             let eff_input_events = { self.io_info.group_events(map::FB_IN).map(|wl| wl as &ClWaitList) };
             self.ptal().cycle(eff_input_events);
         }
 
-        if !self.disable_mcols {
+        if !self.settings.disable_mcols {
             let output_events = { self.io_info.group_events_mut(map::FF_OUT) };
             self.mcols.output(output_events);
         }
 
-        if !self.disable_regrowth { self.regrow(); }
+        if !self.settings.disable_regrowth { self.regrow(); }
 
         self.output(map::FF_OUT, thal);
     }
@@ -503,7 +519,7 @@ impl CorticalArea {
                     .expect("CorticalArea::intake()");
 
                 if group_tags.contains(map::FF_IN) && self.filters.is_some()
-                        && !self.bypass_filters
+                        && !self.settings.bypass_filters
                 {
                     let filters_vec = self.filters.as_ref().unwrap();
                     let mut fltr_event = filters_vec[0].write(sdr.frame(), wait_events);
@@ -575,7 +591,7 @@ impl CorticalArea {
     // }
 
     pub fn regrow(&mut self) {
-        if !self.disable_regrowth {
+        if !self.settings.disable_regrowth {
             if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
                 //print!("$");
                 self.ssts_map.get_mut(self.psal_name).expect("cortical_area.rs").regrow();

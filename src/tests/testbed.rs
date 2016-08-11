@@ -1,6 +1,6 @@
 use cmn::CorticalDims;
 use map;
-use map::{LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaSchemeList, CellScheme, FilterScheme, 
+use map::{LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaSchemeList, CellScheme, FilterScheme,
     InputScheme, AxonKind, LayerKind};
 use thalamus::Thalamus;
 use ocl::{Context, ProQue};
@@ -23,11 +23,11 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
         .layer("aff_in", 0, map::FF_IN, LayerKind::Axonal(AxonKind::Spatial))
         .layer("out", 1, map::FF_OUT | map::FB_OUT, LayerKind::Axonal(AxonKind::Spatial))
         .layer("unused", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
-        .layer("iv", 1, map::PSAL, 
-            CellScheme::spiny_stellate(5, vec!["aff_in"], 600, 8)) 
-        .layer("iv_inhib", 0, map::DEFAULT, 
+        .layer("iv", 1, map::PSAL,
+            CellScheme::spiny_stellate(5, vec!["aff_in"], 600, 8))
+        .layer("iv_inhib", 0, map::DEFAULT,
             CellScheme::inhibitory(4, "iv"))
-        .layer("iii", 3, map::PTAL, 
+        .layer("iii", 3, map::PTAL,
             CellScheme::pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"], 12))
     );
 
@@ -41,36 +41,36 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
 pub fn define_protoareas() -> AreaSchemeList {
     let area_side = 32 as u32;
 
-    let protoareas = AreaSchemeList::new()        
+    let protoareas = AreaSchemeList::new()
 
-        .area_ext("v0", "external", 
+        .area_ext("v0", "external",
             // area_side * 2, area_side * 2,
-            area_side, 
-                        // area_side / 2, area_side / 2, 
-            InputScheme::IdxStreamer { 
-                file_name: "train-images-idx3-ubyte".to_owned(), 
-                cyc_per: CYCLES_PER_FRAME, 
+            area_side,
+                        // area_side / 2, area_side / 2,
+            InputScheme::IdxStreamer {
+                file_name: "train-images-idx3-ubyte".to_owned(),
+                cyc_per: CYCLES_PER_FRAME,
                 scale: 1.3,
                 loop_frames: 1,
             },
 
-            None, 
+            None,
             None,
         )
 
-        .area("v1", "visual", 
+        .area("v1", "visual",
             // area_side * 2, area_side * 2,
-            area_side, 
+            area_side,
             // area_side / 2, area_side / 2,
             // 128, 128,
 
-            Some(vec![FilterScheme::new("retina", None)]),            
+            Some(vec![FilterScheme::new("retina", None)]),
 
             Some(vec!["v0"]),
         )
 
-        // .area("b1", "visual", 
-        //     // area_side * 2, area_side * 2,            
+        // .area("b1", "visual",
+        //     // area_side * 2, area_side * 2,
         //     area_side, area_side,
         //     //32, 32,
         //     //256, 256,
@@ -90,7 +90,7 @@ pub fn define_protoareas() -> AreaSchemeList {
 
 // FRESH_CORTEX(): Mmmm... Yummy.
 pub fn fresh_cortex() -> Cortex {
-    Cortex::new(define_layer_scheme_maps(), define_protoareas())
+    Cortex::new(define_layer_scheme_maps(), define_protoareas(), None)
 }
 
 
@@ -118,11 +118,11 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         // .layer("test4", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
         // .layer("test5", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
         .layer("unused", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonKind::Spatial))
-        .layer("iv", 1, map::PSAL, 
+        .layer("iv", 1, map::PSAL,
             CellScheme::spiny_stellate(5, vec!["unused"], 1, 8))
-        // .layer("iv_inhib", 0, map::DEFAULT, 
+        // .layer("iv_inhib", 0, map::DEFAULT,
         //     CellScheme::inhibitory(4, "iv"))
-        .layer("iii", 2, map::PTAL, 
+        .layer("iii", 2, map::PTAL,
             CellScheme::pyramidal(2, 4, vec!["unused"], 1, 8)
                 .apical(vec!["test1"], 12)
                 .apical(vec!["test2"], 11)
@@ -142,7 +142,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         .area_ext("dummy_area", "dummy_lm", 67, InputScheme::None, None, None)
     ;
 
-    Cortex::new(plmaps, pamaps)
+    Cortex::new(plmaps, pamaps, None)
 }
 
 

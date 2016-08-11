@@ -1,19 +1,26 @@
 #![allow(dead_code, unused_variables, unused_mut)]
 
+
+
 mod idx_data;
 mod glyph_buckets;
 mod glyph_sequences;
 mod sensory_tract;
 mod scalar;
+mod scalar_sequence;
 pub mod idx_streamer;
 
-use std::ops::Range;
+use std::cmp;
+use num::{Num, NumCast};
+use cmn::{TractFrameMut, ParaHexArray};
+use rand;
+use rand::distributions::{Range, IndependentSample};
 pub use self::idx_streamer::IdxStreamer;
 pub use self::idx_data::IdxData;
 pub use self::glyph_buckets::GlyphBuckets;
 pub use self::glyph_sequences::GlyphSequences;
 pub use self::sensory_tract::SensoryTract;
-use cmn::{TractFrameMut, TractDims, ParaHexArray};
+pub use self::scalar_sequence::ScalarSequence;
 
 const SQRT_3: f32 = 1.73205080756f32;
 
@@ -83,88 +90,6 @@ pub fn encode_2d_image<P: ParaHexArray>(src_dims: (usize, usize), tar_dims: &P,
 }
 
 
-pub struct ScalarEncoder2d {
-    tract_dims: TractDims,
-    range: Range<usize>,
-}
-
-impl ScalarEncoder2d {
-    pub fn new(tract_dims: TractDims, range: Range<usize>) -> ScalarEncoder2d {
-        ScalarEncoder2d {
-            tract_dims: tract_dims,
-            range: range,
-        }
-    }
-
-    pub fn encode(val: usize, mut target: &mut TractFrameMut) {
-
-    }
-}
-
-
-#[allow(dead_code)]
-pub struct CoordEncoder2d {
-    tract_dims: TractDims,
-    coord_ranges: (usize, usize),
-    coord_size: (usize, usize),
-}
-
-impl CoordEncoder2d {
-    pub fn new(tract_dims: TractDims, coord_ranges: (usize, usize)) -> CoordEncoder2d {
-        let coord_size = (
-            (tract_dims.u_size() as usize / coord_ranges.0) + 1,
-            (tract_dims.v_size() as usize / coord_ranges.1) + 1,
-        );
-
-        CoordEncoder2d {
-            tract_dims: tract_dims,
-            coord_ranges: coord_ranges,
-            coord_size: coord_size,
-        }
-    }
-
-    pub fn encode(coord: (u32, u32), mut target: &mut TractFrameMut) {
-
-    }
-}
-
-
-// pub struct CoordEncoder1d {
-//     size: i32,
-// }
-
-// impl CoordEncoder1d {
-//     pub fn new(size: i32) -> CoordEncoder1d {
-//         CoordEncoder1d { size: size }
-//     }
-// }
-
-
-// [TODO]: Wire me up, Scotty.
-// pub fn encode_scalar() {
-    // for v_id in 0..v_size {
-    //     for u_id in 0..u_size {
-    //         let (x, y, valid) = coord_hex_to_pixel(v_size, v_id, u_size, u_id,
-    //             self.image_height as usize, self.image_width as usize);
-
-    //         if valid {
-    //             let tar_idx = (v_id * u_size) + u_id;
-    //             let src_idx = (y * self.image_width as usize) + x;
-
-    //             target[tar_idx] = source[src_idx];
-    //         }
-    //         //target[tar_idx] = (x != 0 || y != 0) as u8; // SHOW INPUT SQUARE
-    //     }
-    // }
-// }
-
-
-/// Encode a scalar value as a
-pub fn encode_scalar() {
-
-}
-
-
 pub fn print_image(image: &[u8], dims: (usize, usize)) {
     for y in 0..dims.1 {
         print!("\n    ");
@@ -175,3 +100,165 @@ pub fn print_image(image: &[u8], dims: (usize, usize)) {
     }
     println!("");
 }
+
+
+
+/// Encode a scalar as a hexagon somewhere along the border of the tract frame
+/// (cyclical).
+///
+/// [TODO]: Migrate this into a type impl which stores calculated
+/// intermediates.
+///
+pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
+            where T: Num + NumCast + PartialOrd {
+    assert!(val >= val_range.0 && val <= val_range.1);
+    let v_size = tract.dims().v_size() as i32;
+    let u_size = tract.dims().u_size() as i32;
+    assert!(v_size >= 8 && u_size >= 8, "encode::encode_scalar(): Tract frame too small. Side \
+        lengths must each be greater than 8.");
+
+    // [NOTE]: To fill to roughly 1.5% density, activate roughly 1/8 of either
+    // v_size or usize or 1/16 of v_size + usize.
+    //
+    // [UPDATE: This is not accurate at small scales]
+    //
+    //
+    // [NOTE]: Side length = radius + 1;
+    let radius = (v_size + u_size) / 32;
+    let extra_margin = radius + 1;
+    let margin = radius + extra_margin + 1;
+
+    // Length of the 'track' running along each margin:
+    let track_len_v = v_size - (margin * 2) - 1;
+    let track_len_u = u_size - (margin * 2) - 1;
+
+    let val = val.to_f32().unwrap();
+    // Quadrant, clockwise starting with 0 -> upper left:
+    let quad_size_val = val_range.1.to_f32().unwrap() / 4.0;
+    let quadrant = (val / quad_size_val).floor();
+    debug_assert!(quadrant < 5.0);
+    // val % quad_size_val:
+    let quad_pos_val = val - (quad_size_val * quadrant);
+    debug_assert!((quad_pos_val - (val % quad_size_val)).abs() < 0.00001);
+
+    #[derive(Debug)]
+    struct Center {
+        v: i32,
+        u: i32,
+    }
+
+    #[inline]
+    fn val_to_tract(quad_pos_val: f32, quad_size_val: f32, quad_size_tract: i32) -> i32 {
+        let quad_pos_tract = (quad_pos_val / quad_size_val) * (quad_size_tract as f32);
+        debug_assert!(quad_pos_tract >= 0.0 && (quad_pos_tract as i32) < quad_size_tract);
+        quad_pos_tract as i32
+    }
+
+    // Center 'pixel' of the final rendered hexagon:
+    let center = if quadrant < 1.0 {
+        Center {
+            v: margin,
+            u: val_to_tract(quad_pos_val, quad_size_val, track_len_u) + margin,
+        }
+    } else if quadrant < 2.0 {
+        Center {
+            v: val_to_tract(quad_pos_val, quad_size_val, track_len_v) + margin,
+            u: u_size - margin - 1,
+        }
+    } else if quadrant < 3.0 {
+        Center {
+            v: v_size - margin - 1,
+            u: u_size - (val_to_tract(quad_pos_val, quad_size_val, track_len_u) + margin) - 1,
+        }
+    } else {
+        Center {
+            v: v_size - (val_to_tract(quad_pos_val, quad_size_val, track_len_v) + margin) - 1,
+            u: margin,
+        }
+    };
+
+    print!("\n");
+    println!("val: {}, quad_size_val: {}, quadrant: {}, v_size: {}, u_size: {}",
+        val, quad_size_val, quadrant, v_size, u_size);
+    println!("quad_pos_val: {}, val % quad_size_val: {}", quad_pos_val, val % quad_size_val);
+    println!("{:?}", center);
+
+    // Save some inverses just to avoid repeated calculation:
+    let radius_neg = 0 - radius;
+
+    let mut rng = rand::weak_rng();
+    let r_range = Range::<u8>::new(196, 255);
+
+    // Clear tract frame:
+    for e in tract.frame_mut().iter_mut() {
+        *e = 0;
+    }
+
+    // Notation reminder:
+    // * '_z': zero (idx[0])
+    // * '_m': max (idx[len - 1])
+    // * '_n': number of elements, length (idx[len])
+    let v_z = radius_neg;
+    let v_m = radius;
+    let v_n = v_m + 1;
+
+    for v in v_z..v_n {
+        let v_neg = 0 - v;
+        let u_z = cmp::max(radius_neg, v_neg + radius_neg);
+        let u_m = cmp::min(radius, v_neg + radius);
+        let u_n = u_m + 1;
+
+        for u in u_z..u_n {
+            let idx = (((v + center.v) * u_size) + u + center.u) as usize;
+            unsafe {
+                *tract.get_unchecked_mut(idx) = r_range.ind_sample(&mut rng);
+                // *tract.get_unchecked_mut(idx) = 255;
+            }
+        }
+    }
+}
+
+
+// for v_ofs in v_ofs_z..v_ofs_n {
+//     let v_ofs_inv = 0 - v_ofs;
+//     let u_ofs_z = cmp::max(0 - edge_size, v_ofs_inv - edge_size);
+//     let u_ofs_n = cmp::min(edge_size, v_ofs_inv + edge_size) + 1;
+//     //print!("[v_ofs:{}]", v_ofs);
+
+//     for u_ofs in u_ofs_z..u_ofs_n {
+//         let cell_write: bool = if fill_hex {
+//             true
+//         } else if v_ofs.abs() == edge_size || u_ofs.abs() == edge_size || (v_ofs + u_ofs).abs() == edge_size {
+//             true
+//         } else {
+//             false
+//         };
+
+//         let (col_id, valid) = gimme_a_valid_col_id(dims, v_id + v_ofs, u_id + u_ofs);
+
+//         if cell_write && valid {
+//             vec[col_id] = on & rng.gen::<u8>();
+//         }
+//         //print!("{} ", gimme_a_valid_col_id(dims, v_id + v_ofs, u_id + u_ofs));
+//     }
+
+// }
+
+
+// int const radius_pos = INHIB_RADIUS;
+// int const radius_neg = 0 - radius_pos;
+
+// for (int v_ofs = radius_neg; v_ofs <= radius_pos; v_ofs++) {
+//     int v_neg = 0 - v_ofs;
+//     int u_z = max(radius_neg, v_neg - radius_pos);
+//     int u_m = min(radius_pos, v_neg + radius_pos);
+
+//     for (int u_ofs = u_z; u_ofs <= u_m; u_ofs++) {
+
+//         uchar neighbor_state
+//             = cel_state_3d_safe(slc_id_lyr, v_size, v_id, v_ofs, u_size, u_id, u_ofs, cel_states);    // ORIGINAL
+//         //uchar neighbor_state = cel_states[
+//         //cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id + v_ofs, u_size, u_id + u_ofs)]; // DEBUG
+
+
+//         int distance = (abs(v_ofs) + abs(u_ofs) + abs(w_ofs(v_ofs, u_ofs)))    >> 1;

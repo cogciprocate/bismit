@@ -121,7 +121,8 @@ impl IdxStreamer {
         let v_size = self.layer_dims.v_size() as usize;
         let u_size = self.layer_dims.u_size() as usize;
         // [FIXME]: NOT HOOKED UP
-        super::encode_scalar();
+        let mut tf = TractFrameMut::new(target, (v_size, u_size));
+        super::encode_scalar(0, (0, 0), &mut tf);
         unimplemented!();
     }
 
