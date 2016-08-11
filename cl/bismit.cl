@@ -129,7 +129,7 @@ static inline int4 get_axn_idz_vec4(uchar4 const slc_id) {
 }
 
 
-static inline uchar get_axn_v_size(uchar const slc_id) {
+static inline uint get_axn_v_size(uchar const slc_id) {
     return axn_slc_v_sizes[slc_id];
 }
 
