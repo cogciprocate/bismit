@@ -358,8 +358,10 @@ impl Thalamus {
             Entry::Occupied(entry) => {
                 entry.into_mut().0.buf_mut()
             },
-            Entry::Vacant(_) => Err(CmnError::new(format!("Thalamus::external_tract_mut(): \
-                No external tract found named: '{}'.", tract_name))),
+            Entry::Vacant(_) => {
+                Err(CmnError::new(format!("Thalamus::external_tract_mut(): \
+                    No external tract found named: '{}'.", tract_name)))
+            },
         }
     }
 }

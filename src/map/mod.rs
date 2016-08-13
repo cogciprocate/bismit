@@ -17,10 +17,10 @@ pub use self::layer_map::LayerMap;
 pub use self::layer_info::{LayerInfo, SourceLayerInfo};
 pub use self::syn_src_map::{SrcSlices, SrcIdxCache, SynSrc};
 pub use self::slice_tract_map::SliceTractMap;
-pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme, 
+pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
 	LayerScheme, FilterScheme, InputScheme};
-pub use self::layer_tags::{LayerTags, DEFAULT, INPUT, OUTPUT, SPATIAL, HORIZONTAL, FEEDFORWARD, 
-    FEEDBACK, SPECIFIC, NONSPECIFIC, PRIMARY, SPATIAL_ASSOCIATIVE, TEMPORAL_ASSOCIATIVE, 
+pub use self::layer_tags::{LayerTags, DEFAULT, INPUT, OUTPUT, SPATIAL, HORIZONTAL, FEEDFORWARD,
+    FEEDBACK, SPECIFIC, NONSPECIFIC, PRIMARY, SPATIAL_ASSOCIATIVE, TEMPORAL_ASSOCIATIVE,
     UNUSED_TESTING, FF_IN, FF_OUT, FB_IN, FB_OUT, FF_FB_OUT, NS_IN, NS_OUT, PSAL, PTAL};
 #[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
 
@@ -46,7 +46,7 @@ pub enum CellClass {
 #[derive(Copy, PartialEq, Debug, Clone)]
 pub enum DendriteKind {
     Proximal,
-    Distal, 
+    Distal,
 }
 
 
@@ -117,7 +117,7 @@ impl LayerKind {
         }
     }
 
-    pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_range: u8) -> LayerKind {
+    pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_reach: u8) -> LayerKind {
         match &mut self {
             &mut LayerKind::Cellular(ref mut pc) => {
                 match pc.den_dst_src_lyrs {
@@ -125,12 +125,12 @@ impl LayerKind {
                     None => (),
                 }
 
-                pc.den_dst_syn_reaches.push(syn_range);
+                pc.den_dst_syn_reaches.push(syn_reach);
             },
 
             &mut LayerKind::Axonal(_) => (),
         };
-        
+
         self
     }
 }
