@@ -177,7 +177,14 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
         }
     };
 
-    // // [DEBUG]:
+    // [DEBUG]:
+    // let track_len_ttl = (track_len_v + track_len_u) * 2;
+    // let val_range_ttl = quad_size_val * 4.0;
+    // let val_per_track = val_range_ttl / track_len_ttl as f32;
+    // print!("\n");
+    // println!("Total track length: {} (v: {}, u: {})",
+    //     track_len_ttl, track_len_v, track_len_u);
+    // println!("Val/Track: {}", val_per_track);
     // print!("\n");
     // println!("val: {}, quad_size_val: {}, quadrant: {}, v_size: {}, u_size: {}",
     //     val, quad_size_val, quadrant, v_size, u_size);
@@ -188,7 +195,7 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
     let radius_neg = 0 - radius;
 
     let mut rng = rand::weak_rng();
-    let r_range = Range::<u8>::new(196, 255);
+    let r_range = Range::<u8>::new(64, 128);
 
     // Clear tract frame:
     for e in tract.frame_mut().iter_mut() {

@@ -5,7 +5,8 @@ use ocl::{self, Platform, Context, Device};
 use area::{CorticalArea, CorticalAreas, CorticalAreaSettings};
 use thalamus::{Thalamus};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
-use cmn::{TractFrameMut, CmnResult};
+use cmn::{CmnResult};
+use external_source::ExternalInputFrame;
 
 pub struct Cortex {
     // AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable
@@ -75,8 +76,8 @@ impl Cortex {
         self.areas.contains_key(area_name)
     }
 
-    pub fn external_tract_mut(&mut self, tract_name: String) -> CmnResult<TractFrameMut> {
-        self.thal.external_tract_mut(tract_name)
+    pub fn input_tract_mut(&mut self, tract_name: String) -> CmnResult<ExternalInputFrame> {
+        self.thal.ext_frame_mut(tract_name)
     }
 }
 

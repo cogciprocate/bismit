@@ -1,6 +1,6 @@
 use cmn::{TractFrameMut, TractDims};
 use map::LayerTags;
-use external_source::ExternalSourceTract;
+use external_source::{ExternalSourceTract, ExternalInputFrame};
 
 #[derive(Debug)]
 pub struct SensoryTract {
@@ -22,8 +22,8 @@ impl SensoryTract {
         }
     }
 
-    pub fn tract_mut(&mut self) -> TractFrameMut {
-        TractFrameMut::new(&mut self.buf[..], self.dims.clone())
+    pub fn ext_frame_mut(&mut self) -> ExternalInputFrame {
+        ExternalInputFrame::Tract(TractFrameMut::new(&mut self.buf[..], self.dims.clone()))
     }
 }
 

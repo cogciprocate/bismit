@@ -12,7 +12,12 @@ use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence};
 pub use cmn::TractFrameMut;
 pub use map::LayerTags;
 
-// pub type ExternalSourceMap = HashMap<String, ExternalSource>;
+
+pub enum ExternalInputFrame<'a> {
+    Tract(TractFrameMut<'a>),
+    Float64(&'a [f64]),
+}
+
 
 /// A highway for input.
 ///
@@ -33,10 +38,10 @@ pub enum ExternalSourceKind {
     Stripes { stripe_size: usize, zeros_first: bool },
     Hexballs { edge_size: usize, invert: bool, fill: bool },
     Exp1,
-    IdxStreamer(Box<ExternalSourceTract>),
+    // IdxStreamer(Box<ExternalSourceTract>),
     GlyphSequences(Box<GlyphSequences>),
     SensoryTract(Box<SensoryTract>),
-    Custom(Box<ExternalSourceTract>),
+    Other(Box<ExternalSourceTract>),
 }
 
 
@@ -136,7 +141,7 @@ impl ExternalSource {
                 if loop_frames > 0 {
                     is = is.loop_frames(loop_frames);
                 }
-                ExternalSourceKind::IdxStreamer(Box::new(is))
+                ExternalSourceKind::Other(Box::new(is))
             },
             InputScheme::GlyphSequences { seq_lens, seq_count, scale, hrz_dims } => {
                 let label_file = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
@@ -156,7 +161,7 @@ impl ExternalSource {
                 ExternalSourceKind::SensoryTract(Box::new(st))
             },
             InputScheme::ScalarSequence { range, incr } => {
-                ExternalSourceKind::Custom(Box::new(ScalarSequence::new(range, incr)))
+                ExternalSourceKind::Other(Box::new(ScalarSequence::new(range, incr)))
             }
             InputScheme::None | InputScheme::Zeros => ExternalSourceKind::None,
             is @ _ => panic!("\nExternalSource::new(): Input type: '{:?}' not yet supported.", is),
@@ -182,8 +187,8 @@ impl ExternalSource {
 
         // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
         let _ = match self.src_kind {
-            ExternalSourceKind::IdxStreamer(ref mut es) |
-            ExternalSourceKind::Custom(ref mut es) => {
+            // ExternalSourceKind::IdxStreamer(ref mut es) |
+            ExternalSourceKind::Other(ref mut es) => {
                 es.write_into(&mut frame, tags)
             },
             ExternalSourceKind::GlyphSequences(ref mut es) => {
@@ -201,10 +206,10 @@ impl ExternalSource {
     // }
 
     /// Returns a tract frame of an external source buffer, if available.
-    pub fn buf_mut(&mut self) -> CmnResult<TractFrameMut> {
+    pub fn ext_frame_mut(&mut self) -> CmnResult<ExternalInputFrame> {
         match self.src_kind {
             ExternalSourceKind::SensoryTract(ref mut es) => {
-                Ok(es.tract_mut())
+                Ok(es.ext_frame_mut())
             },
             _ => Err(CmnError::new(format!("ExternalSource::tract_mut(): No tract available for the source \
                 kind: {:?}.", self.src_kind))),
@@ -213,8 +218,8 @@ impl ExternalSource {
 
     pub fn cycle_next(&mut self) {
         match self.src_kind {
-            ExternalSourceKind::IdxStreamer(ref mut es)
-            | ExternalSourceKind::Custom(ref mut es) => {
+            // ExternalSourceKind::IdxStreamer(ref mut es) |
+            ExternalSourceKind::Other(ref mut es) => {
                 es.cycle_next()
             },
             ExternalSourceKind::GlyphSequences(ref mut es) => {

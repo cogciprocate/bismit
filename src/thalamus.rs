@@ -24,7 +24,7 @@ use map::{self, AreaMap, LayerTags, LayerMapKind};
 use ocl::EventList;
 use area::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList};
-use external_source::ExternalSource;
+use external_source::{ExternalSource, ExternalInputFrame};
 
 
 // /// Specifies whether or not the frame buffer for a source exists within the
@@ -353,14 +353,14 @@ impl Thalamus {
          &self.area_maps[area_name]
     }
 
-    pub fn external_tract_mut(&mut self, tract_name: String) -> CmnResult<TractFrameMut> {
+    pub fn ext_frame_mut(&mut self, tract_name: String) -> CmnResult<ExternalInputFrame> {
         match self.external_sources.entry(tract_name.clone()) {
             Entry::Occupied(entry) => {
-                entry.into_mut().0.buf_mut()
+                entry.into_mut().0.ext_frame_mut()
             },
             Entry::Vacant(_) => {
-                Err(CmnError::new(format!("Thalamus::external_tract_mut(): \
-                    No external tract found named: '{}'.", tract_name)))
+                CmnError::err(format!("Thalamus::external_tract_mut(): \
+                    No external tract found named: '{}'.", tract_name))
             },
         }
     }

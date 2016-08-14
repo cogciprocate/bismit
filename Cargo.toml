@@ -33,4 +33,5 @@ find_folder = "0.3"
 # ocl = "0.2"
 time = "*"
 twox-hash = "*"
+colorify = "*"
 
