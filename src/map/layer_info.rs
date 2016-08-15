@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::ops::{Range};
 // use std::slice::{Iter};
 
-use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind, DendriteKind, 
+use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind, DendriteKind,
     LayerMapKind, AxonKind};
 use cmn::{self, CorticalDims};
 use map::{self, LayerTags,};
-use external_source::ExternalSource;
+use thalamus::ExternalSource;
 
 // const CELLULAR_AXON_KIND: AxonKind = AxonKind::Spatial;
 const DEBUG_PRINT: bool = false;
@@ -15,7 +15,7 @@ const DEBUG_PRINT: bool = false;
 // and source-area layers (axonal).
 #[derive(Clone, Debug)]
 pub struct LayerInfo {
-    name: &'static str,    
+    name: &'static str,
     tags: LayerTags,
     slc_range: Option<Range<u8>>,
     sources: Vec<SourceLayerInfo>,
@@ -30,9 +30,9 @@ impl LayerInfo {
     /// [FIXME]: TODO: Break up, refactor, and optimize.
     /// [FIXME]: TODO: Create an error type enum just for map::Layer****.
     /// [FIXME]: TODO: Return result and get rid of panics, et al.
-    pub fn new(layer_scheme: &LayerScheme, plmap_kind: LayerMapKind, pamap: &AreaScheme, pamaps: &AreaSchemeList, 
-                plmaps: &LayerMapSchemeList, input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>, 
-                slc_total: u8) -> LayerInfo 
+    pub fn new(layer_scheme: &LayerScheme, plmap_kind: LayerMapKind, pamap: &AreaScheme, pamaps: &AreaSchemeList,
+                plmaps: &LayerMapSchemeList, input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>,
+                slc_total: u8) -> LayerInfo
     {
         let layer_scheme = layer_scheme.clone();
         let name = layer_scheme.name();
@@ -49,7 +49,7 @@ impl LayerInfo {
         let mut src_layer_debug: Vec<String> = Vec::new();
 
         if DEBUG_PRINT {
-            layer_debug.push(format!("{mt}{mt}{mt}### LAYER: {:?}, next_slc_idz: {}, slc_total: {:?}", 
+            layer_debug.push(format!("{mt}{mt}{mt}### LAYER: {:?}, next_slc_idz: {}, slc_total: {:?}",
                 tags, next_slc_idz, slc_total, mt = cmn::MT));
         }
 
@@ -67,15 +67,15 @@ impl LayerInfo {
             // tags) combo which are either specific (not necessarily spatial)
             // and either feed-forward or feedback, or non-specific. This
             // should cover the gamut for the input layers of an area.
-            let src_area_combos: Vec<(&'static str, LayerTags)> = 
+            let src_area_combos: Vec<(&'static str, LayerTags)> =
                 pamap.aff_areas().iter().map(|&an| (an, map::FEEDBACK | map::SPECIFIC))
                     .chain(pamap.eff_areas().iter().map(|&an| (an, map::FEEDFORWARD | map::SPECIFIC)))
                 .chain(pamap.aff_areas().iter().chain(pamap.eff_areas().iter())
                     .map(|&an| (an, map::NONSPECIFIC)))
-                .collect();                
+                .collect();
 
             if DEBUG_PRINT {
-                layer_debug.push(format!("{mt}{mt}{mt}{mt}### SRC_AREAS: {:?}", 
+                layer_debug.push(format!("{mt}{mt}{mt}{mt}### SRC_AREAS: {:?}",
                     src_area_combos, mt = cmn::MT));
             }
 
@@ -106,7 +106,7 @@ impl LayerInfo {
                 let src_layers = src_layer_map.layers_with_tags(tags.mirror_io());
 
                 if DEBUG_PRINT {
-                    layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}### SRC_PROTOLAYERS: {:?}", 
+                    layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}### SRC_PROTOLAYERS: {:?}",
                         src_layers, mt = cmn::MT));
                 }
 
@@ -116,8 +116,8 @@ impl LayerInfo {
                     //
                     // NOTE: Finish finding input_source depth (scan for matching area name)
                     // if input_source with matching area name is not found, use the layer_scheme depth
-                    // 
-                    // ALSO:                        
+                    //
+                    // ALSO:
                     //
                     // - [FIXME] Determine depths for input sources!
                     //
@@ -127,7 +127,7 @@ impl LayerInfo {
                     // [FIXME] Determine depths for input sources
                     // let src_layer_depth = cmn::DEFAULT_OUTPUT_LAYER_DEPTH;
                     // let is_area = input_source_with_area(input_sources, src_area_name);
-                    // let src_layer_depth =                     
+                    // let src_layer_depth =
 
                     let (src_layer_dims, src_layer_axn_kind) = match src_layer_map.kind() {
                         // If the source layer is thalamic, we will be relying
@@ -140,7 +140,7 @@ impl LayerInfo {
                             let in_src_layer = in_src.layer(src_layer.tags());
                             let in_src_layer_dims = in_src_layer.dims().expect(
                                 &format!("LayerInfo::new(): External source layer dims for layer \
-                                    '{}' in area '{}' are not set.", in_src_layer.name(), 
+                                    '{}' in area '{}' are not set.", in_src_layer.name(),
                                     src_area_name)
                                 ).clone();
                             (in_src_layer_dims, in_src_layer.axn_kind())
@@ -171,19 +171,19 @@ impl LayerInfo {
 
                     let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth());
 
-                    sources.push(SourceLayerInfo::new(src_area_name, src_layer_dims.clone(), 
-                        src_layer.tags(), src_layer_axn_kind, next_slc_idz));                        
+                    sources.push(SourceLayerInfo::new(src_area_name, src_layer_dims.clone(),
+                        src_layer.tags(), src_layer_axn_kind, next_slc_idz));
 
                     if DEBUG_PRINT {
                         layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}{mt}### SOURCE_LAYER_INFO:\
                             (layer: '{}'): Adding source layer: \
                             src_area_name: '{}', src_layer.tags: '{}', src_layer_map.name: '{}', \
-                            src_layer.name: '{}', next_slc_idz: '{}', depth: '{:?}'", 
-                            name, src_area_name, src_layer.tags(), src_layer_map.name, 
+                            src_layer.name: '{}', next_slc_idz: '{}', depth: '{:?}'",
+                            name, src_area_name, src_layer.tags(), src_layer_map.name,
                             src_layer.name(), next_slc_idz, src_layer.depth(), mt = cmn::MT));
                     }
 
-                    src_layer_debug.push(format!("{mt}{mt}{mt}{mt}<{}>: {:?}: area: [\"{}\"], tags: {}", src_layer.name(), 
+                    src_layer_debug.push(format!("{mt}{mt}{mt}{mt}<{}>: {:?}: area: [\"{}\"], tags: {}", src_layer.name(),
                         tar_slc_range, src_area_name, src_layer.tags(), mt = cmn::MT));
 
                     // For (legacy) comparison purposes:
@@ -192,7 +192,7 @@ impl LayerInfo {
                     next_slc_idz += src_layer_dims.depth();
                     axn_count += src_layer_dims.cells();
                 }
-            } 
+            }
         } else {
             // [NOTE]: This is a non-input layer.
             debug_assert!(!tags.contains(map::INPUT));
@@ -210,7 +210,7 @@ impl LayerInfo {
                     let in_src_layer = in_src.layer(tags);
                     let in_src_layer_dims = in_src_layer.dims().expect(&format!(
                         "LayerInfo::new(): External source layer dims for layer \
-                        '{}' in area '{}' are not set.", in_src_layer.name(), 
+                        '{}' in area '{}' are not set.", in_src_layer.name(),
                         pamap.name()));
                     irregular_layer_dims = Some(in_src_layer_dims.clone());
                     in_src_layer_dims.columns()
@@ -314,7 +314,7 @@ impl LayerInfo {
 
     pub fn axn_kind(&self) -> AxonKind {
         self.axn_kind.clone()
-    } 
+    }
 
     pub fn layer_map_kind(&self) -> LayerMapKind {
         self.layer_map_kind.clone()
@@ -349,17 +349,17 @@ pub struct SourceLayerInfo {
 
 impl SourceLayerInfo {
     #[inline]
-    pub fn new(src_area_name: &'static str, src_layer_dims: CorticalDims, src_layer_tags: LayerTags, 
-                src_axn_kind: AxonKind, tar_slc_idz: u8) -> SourceLayerInfo 
+    pub fn new(src_area_name: &'static str, src_layer_dims: CorticalDims, src_layer_tags: LayerTags,
+                src_axn_kind: AxonKind, tar_slc_idz: u8) -> SourceLayerInfo
     {
         // let dims = area_dims.clone_with_depth(depth);
         let tar_slc_range = tar_slc_idz..(tar_slc_idz + src_layer_dims.depth());
         // debug_assert_eq!(src_layer_dims.cells(), axn_count);
 
         SourceLayerInfo {
-            area_name: src_area_name, 
+            area_name: src_area_name,
             dims: src_layer_dims,
-            tags: src_layer_tags, 
+            tags: src_layer_tags,
             axn_kind: src_axn_kind,
             // depth: depth,
             tar_slc_range: tar_slc_range,

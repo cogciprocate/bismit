@@ -6,7 +6,7 @@ use std::slice::{Iter};
 use map::{AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapKind};
 use cmn::{self};
 use map::{LayerTags, LayerInfo, SourceLayerInfo};
-use external_source::ExternalSource;
+use thalamus::ExternalSource;
 
 const DEBUG_PRINT: bool = false;
 
@@ -20,10 +20,10 @@ pub struct LayerMap {
 }
 
 impl LayerMap {
-    pub fn new(pamap: &AreaScheme, plmaps: &LayerMapSchemeList, pamaps: &AreaSchemeList, 
-            input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>) -> LayerMap 
+    pub fn new(pamap: &AreaScheme, plmaps: &LayerMapSchemeList, pamaps: &AreaSchemeList,
+            input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>) -> LayerMap
     {
-        println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...", 
+        println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...",
             pamap.name, mt = cmn::MT);
 
         let plmap = plmaps[pamap.layer_map_name].clone();
@@ -34,7 +34,7 @@ impl LayerMap {
         let mut slc_total = 0u8;
 
         for (_, pl) in plmap.layers().iter() {
-            let new_layer = LayerInfo::new(pl, plmap_kind.clone(), pamap, pamaps, plmaps, 
+            let new_layer = LayerInfo::new(pl, plmap_kind.clone(), pamap, pamaps, plmaps,
                 input_sources, slc_total);
             slc_total += new_layer.depth();
             index.push(new_layer);
@@ -47,7 +47,7 @@ impl LayerMap {
         let lm = LayerMap { area_name: pamap.name, index: index, depth: slc_total, kind: plmap_kind };
 
         if DEBUG_PRINT {
-            // println!("{mt}{mt}LAYERMAP::NEW(): index: {:?}, plmap.slc_map(): {:?}", 
+            // println!("{mt}{mt}LAYERMAP::NEW(): index: {:?}, plmap.slc_map(): {:?}",
             //     index, plmap.slc_map(), mt = cmn::MT);
             println!("{:#?}", lm.slc_map());
         }
@@ -65,7 +65,7 @@ impl LayerMap {
 
         for layer in self.index.iter() {
             if DEBUG_PRINT {
-                // println!("{mt}{mt}Processing layer: '{}', slc_range: {:?}", layer.name(), 
+                // println!("{mt}{mt}Processing layer: '{}', slc_range: {:?}", layer.name(),
                 //     layer.slc_range(), mt = cmn::MT);
             }
 
@@ -145,7 +145,7 @@ impl LayerMap {
             print!("\n");
         }
 
-        self.layers_containing_tags_src_layers(tags).iter().map(|sli| 
+        self.layers_containing_tags_src_layers(tags).iter().map(|sli|
             (sli.area_name().to_owned(), sli.tags())
         ).collect()
     }
@@ -158,7 +158,7 @@ impl LayerMap {
         layers[0]
     }
 
- 
+
     /// [FIXME]: REMOVE/REDESIGN THIS: More than one layer can have the same
     /// slice id.
     pub fn slc_src_layer_info(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&SourceLayerInfo> {
@@ -168,7 +168,7 @@ impl LayerMap {
         for lyr in layer_info {
             if lyr.depth() > 0 {
                 for src_lyr in lyr.sources() {
-                    if slc_id >= src_lyr.tar_slc_range().start 
+                    if slc_id >= src_lyr.tar_slc_range().start
                         && slc_id < src_lyr.tar_slc_range().end
                     {
                         src_layer_info.push(src_lyr);

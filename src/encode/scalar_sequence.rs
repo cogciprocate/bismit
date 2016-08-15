@@ -3,7 +3,7 @@
 use std::fmt::Debug;
 use std::ops::AddAssign;
 use num::{Num, NumCast};
-use external_source::{ExternalSourceTract, TractFrameMut, LayerTags};
+use thalamus::{ExternalSourceTract, TractFrameMut, LayerTags};
 
 #[derive(Clone, Debug)]
 pub struct ScalarSequence<T> {

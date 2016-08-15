@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use std::ops::Range; 
+use std::ops::Range;
 use std::collections::HashMap;
 // use std::collections::{BTreeMap};
 
@@ -8,7 +8,7 @@ use map::{LayerMapSchemeList, AreaSchemeList, AreaScheme, LayerMapKind, FilterSc
     DendriteKind};
 use cmn::{self, CorticalDims};
 use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo};
-use external_source::ExternalSource;
+use thalamus::ExternalSource;
 
 
 #[derive(Clone)]
@@ -25,9 +25,9 @@ pub struct AreaMap {
 
 impl AreaMap {
     pub fn new(pamap: &AreaScheme, plmaps: &LayerMapSchemeList, pamaps: &AreaSchemeList,
-            input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>) -> AreaMap 
+            input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>) -> AreaMap
     {
-        println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name, 
+        println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name,
             pamap.eff_areas(), pamap.aff_areas(), mt = cmn::MT);
 
         let layers = LayerMap::new(pamap, plmaps, pamaps, input_sources);
@@ -48,7 +48,7 @@ impl AreaMap {
             aff_areas: pamap.aff_areas().clone(),
             filters: pamap.filters.clone(),
         }
-    }    
+    }
 
     // ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
     pub fn gen_build_options(&self) -> ProgramBuilder {
@@ -69,7 +69,7 @@ impl AreaMap {
             Some(ref filter_schemes) => {
                 for pf in filter_schemes.iter() {
                     match pf.cl_file_name() {
-                        Some(ref clfn)  => {                            
+                        Some(ref clfn)  => {
                             build_options = build_options.src_file(clfn.clone());
                         },
                         None => (),
@@ -111,7 +111,7 @@ impl AreaMap {
             }
         }
 
-        valid_tufts        
+        valid_tufts
     }
 
     // NEW - UPDATE
@@ -136,7 +136,7 @@ impl AreaMap {
     /// Returns a merged list of source slice ids for all source layers.
     pub fn layer_src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
         let src_lyr_names = self.layers.layer_info_by_name(layer_name).src_lyr_names(den_type);
-        
+
         self.layer_slc_ids(src_lyr_names)
      }
 
@@ -156,7 +156,7 @@ impl AreaMap {
     // NEW - UPDATE / RENAME
     pub fn aff_out_slcs(&self) -> Vec<u8> {
         let mut output_slcs: Vec<u8> = Vec::with_capacity(8);
-         
+
          // Push all matching slices:
          for layer in self.layers.iter() {
              if (layer.tags() & map::FF_OUT) == map::FF_OUT {
@@ -170,12 +170,12 @@ impl AreaMap {
          // Ensure that the slice id list contains contiguous slice ids:
          for i in 0..output_slcs.len() {
              if i > 0 {
-                 unsafe { debug_assert!(*output_slcs.get_unchecked(i - 1) 
+                 unsafe { debug_assert!(*output_slcs.get_unchecked(i - 1)
                      == *output_slcs.get_unchecked(i) - 1); }
             }
         }
 
-        output_slcs    
+        output_slcs
     }
 
     // NEW NEW NEW
@@ -207,7 +207,7 @@ impl AreaMap {
     // pub fn output_layer_info(&self) -> Vec<(LayerTags, u32)> {
     //     let layers = self.layers.layer_info(map::OUTPUT);
     //     let mut layer_info = Vec::with_capacity(layers.len());
-        
+
     //     for &layer in layers.iter() {
     //         layer_info.push((layer.tags(), self.dims.columns()));
     //     }
@@ -219,7 +219,7 @@ impl AreaMap {
     // pub fn output_layer_info(&self) -> Vec<&LayerInfo> {
     //     self.layers.layers_containing_tags(map::OUTPUT)
     // }
-    
+
 
     // NEW
     pub fn psal_layer(&self) -> &LayerInfo {
@@ -234,10 +234,10 @@ impl AreaMap {
         let ptal_layer_vec = self.layers.layers_containing_tags(map::PTAL);
         assert_eq!(ptal_layer_vec.len(), 1);
         ptal_layer_vec[0]
-     }     
+     }
 
     // NEW
-    pub fn axn_range_meshing_tags(&self, layer_tags: LayerTags) -> Option<Range<u32>> { 
+    pub fn axn_range_meshing_tags(&self, layer_tags: LayerTags) -> Option<Range<u32>> {
         let layers = self.layers.layers_meshing_tags(layer_tags);
 
         if layers.len() == 1 {
@@ -254,7 +254,7 @@ impl AreaMap {
                         let axn_idz = self.axn_idz(slc_idm);
                         let axn_idn = axn_idz + slc_len;
                         // println!("\n\n# (layer_idz, layer_len) = ({}, {}), axn_idn = {}, \
-                        //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n", 
+                        //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n",
                         //     layer_idz, layer_len, axn_idn, slc_len, axn_idz, layers[0]);
                         (layer_idz + layer_len) == axn_idn
                     }, "AreaMap::axn_range(): Axon index mismatch.");
@@ -269,10 +269,10 @@ impl AreaMap {
             panic!("AreaMap::axn_range_meshing_tags(): Internal error. Multiple layers matching \
                 flags: '{}' found: {:?}.", layer_tags, layers);
         }
-    }    
+    }
 
     // // [TEMPORARY] - REMOVE ME ASAP
-    // pub fn axn_range_containing_tags(&self, layer_tags: LayerTags) -> Option<Range<u32>> { 
+    // pub fn axn_range_containing_tags(&self, layer_tags: LayerTags) -> Option<Range<u32>> {
     //     let layers = self.layers.layers_containing_tags(layer_tags);
 
     //     if layers.len() == 1 {
@@ -285,7 +285,7 @@ impl AreaMap {
     //                 let axn_idz = self.axn_idz(slc_idm);
     //                 let axn_idn = axn_idz + slc_len;
     //                 // println!("\n\n# (layer_idz, layer_len) = ({}, {}), axn_idn = {}, \
-    //                 //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n", 
+    //                 //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n",
     //                 //     layer_idz, layer_len, axn_idn, slc_len, axn_idz, layers[0]);
     //                 (layer_idz + layer_len) == axn_idn
     //             }, "AreaMap::axn_range(): Axon index mismatch.");
@@ -297,7 +297,7 @@ impl AreaMap {
     //         panic!("AreaMap::axn_range_meshing_tags(): Internal error. Multiple layers matching \
     //             flags: '{}' found.", layer_tags);
     //     }
-    // }    
+    // }
 
     // NEW
     pub fn slc_src_layer_dims(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&CorticalDims> {
@@ -349,7 +349,7 @@ impl AreaMap {
 pub fn literal_list<T: Display>(vec: &Vec<T>) -> String {
     let mut literal = String::with_capacity((vec.len() * 5) + 20);
 
-    let mut i = 0u32;    
+    let mut i = 0u32;
     for ele in vec.iter() {
         if i != 0 {
             literal.push_str(", ");
@@ -369,7 +369,7 @@ pub mod tests {
     use super::{AreaMap};
 
     pub trait AreaMapTest {
-        fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8) 
+        fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8)
                 -> Result<u32, &'static str>;
         fn axn_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
                 -> Result<u32, &'static str>;
@@ -380,7 +380,7 @@ pub mod tests {
                  Basically all we're doing is scaling up or down the v and u coordinates based on a predetermined scaling factor. The scaling factor only applies when a foreign cortical area is a source for the axon's slice AND is a different size than the local cortical area. The scale factor is based on the relative size of the two areas. Most of the time the scaling factor is 1:1 (scale factor of 16). The algorithm below for calculating an axon index is the same as the one in the kernel and gives precisely the same results.
         */
         fn axn_idx(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
-                -> Result<u32, &'static str> 
+                -> Result<u32, &'static str>
         {
             let v_scale = self.slices.v_scales()[slc_id as usize];
             let u_scale = self.slices.u_scales()[slc_id as usize];
@@ -400,7 +400,7 @@ pub mod tests {
         }
 
         fn axn_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
-                -> Result<u32, &'static str> 
+                -> Result<u32, &'static str>
         {
             let v_scale = self.slices.v_scales()[slc_id as usize];
             let u_scale = self.slices.u_scales()[slc_id as usize];
@@ -428,11 +428,11 @@ pub mod tests {
         }
     }
 
-    pub fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: i8, 
+    pub fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: i8,
             u_size: u32, u_id: u32, u_ofs: i8
-        ) -> bool 
+        ) -> bool
     {
-        (slc_id < slc_count) && coord_is_safe(v_size, v_id, v_ofs) 
+        (slc_id < slc_count) && coord_is_safe(v_size, v_id, v_ofs)
             && coord_is_safe(u_size, u_id, u_ofs)
     }
 

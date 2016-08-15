@@ -9,8 +9,8 @@ use cmn::{self, CorticalDims, CmnResult, CmnError};
 use ocl::{EventList};
 use map::{self, AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonKind};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence};
-pub use cmn::TractFrameMut;
-pub use map::LayerTags;
+use cmn::TractFrameMut;
+use map::LayerTags;
 
 
 pub enum ExternalInputFrame<'a> {

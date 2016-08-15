@@ -24,7 +24,7 @@ use map::{self, AreaMap, LayerTags, LayerMapKind};
 use ocl::EventList;
 use area::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList};
-use external_source::{ExternalSource, ExternalInputFrame};
+use thalamus::{ExternalSource, ExternalInputFrame};
 
 
 // /// Specifies whether or not the frame buffer for a source exists within the

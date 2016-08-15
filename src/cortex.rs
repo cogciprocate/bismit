@@ -6,7 +6,7 @@ use area::{CorticalArea, CorticalAreas, CorticalAreaSettings};
 use thalamus::{Thalamus};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use cmn::{CmnResult};
-use external_source::ExternalInputFrame;
+use thalamus::ExternalInputFrame;
 
 pub struct Cortex {
     // AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable

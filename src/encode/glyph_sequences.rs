@@ -4,7 +4,7 @@ use rand::distributions::{IndependentSample, Range};
 use rand;
 use cmn::{CorticalDims, TractFrameMut};
 use map::{self, LayerTags};
-use external_source::{ExternalSourceTract, ExternalSourceLayer};
+use thalamus::{ExternalSourceTract, ExternalSourceLayer};
 use encode::GlyphBuckets;
 use map::AxonKind;
 
@@ -153,7 +153,7 @@ mod tests {
     //     use encode::GlyphSequences;
     //     use cmn::CorticalDims;
     //     use map::LayerTags;
-    //     use external_source::ExternalSourceLayer;
+    //     use thalamus::ExternalSourceLayer;
 
     //     let dims = CorticalDims::new(32, 32, 1, 0, None);
 

@@ -40,29 +40,29 @@ bitflags! {
 pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: bool) {
 
     if switches.contains(ACTIVATE) {
-        if print { printlny!("Activating..."); }
+        if print { printlnc!(yellow: "Activating..."); }
         area.mcols().activate();
     }
 
     if switches.contains(LEARN) {
-        if print { printlny!("Learning..."); }
+        if print { printlnc!(yellow: "Learning..."); }
         area.ptal_mut().learn();
     }
 
     if switches.contains(CYCLE) {
-        if print { printlny!("Cycling..."); }
+        if print { printlnc!(yellow: "Cycling..."); }
         area.ptal_mut().cycle(None);
     }
 
     if switches.contains(OUTPUT) {
-        if print { printlny!("Outputting..."); }
+        if print { printlnc!(yellow: "Outputting..."); }
         area.mcols().output(None);
     }
 }
 
 
-// pub fn confirm_syns(area: &mut CorticalArea, syn_range: &Range<usize>, state_neq: u8, 
-//         flag_set_eq: u8, strength_eq: i8) 
+// pub fn confirm_syns(area: &mut CorticalArea, syn_range: &Range<usize>, state_neq: u8,
+//         flag_set_eq: u8, strength_eq: i8)
 // {
 //     for syn_idx in syn_range.clone() {
 //         area.ptal_mut().dens_mut().syns_mut().states.fill_vec();
@@ -94,7 +94,7 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 // ASSERT_RANGE():
 //         - [FIXME] TODO: Use env.read_direct and read the entire range at once into a Vec.
 //        - [FIXME] TODO: See if using an iterator (map?) function would be more idiomatic.
-pub fn eval_range<T: OclPrm, F>(env: &Buffer<T>, idx_range: Range<usize>, comp: F) -> bool 
+pub fn eval_range<T: OclPrm, F>(env: &Buffer<T>, idx_range: Range<usize>, comp: F) -> bool
     where F: Fn(T) -> bool
 {
     for idx in idx_range.clone() {
@@ -123,7 +123,7 @@ pub fn fill_new_vec<T: OclPrm>(buf: &Buffer<T>) -> Vec<T> {
 
 // pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
 //     //println!("\n - Confirm 1A - Activate");
-//     println!("{}", desc);    
+//     println!("{}", desc);
 //     area.ptal_mut().print_all(true);
 //     // area.ptal_mut().dens_mut().syns_mut().print_all();
 //     area.print_aux();
@@ -169,7 +169,7 @@ pub fn compare_buffers<T: OclScl>(env1: &Buffer<T>, env2: &Buffer<T>) -> bool {
 // TEST_NEARBY(): Ensure that elements near a focal index are equal to a particular value.
 //        - idz and idm (first and last elements) are also checked along with their nearby elements
 // <<<<< [FIXME] TODO: THIS FUNCTION NEEDS SERIOUS STREAMLINING & OPTIMIZATION >>>>>
-pub fn eval_others<T: OclScl>(env: &Buffer<T>, foc_idx: usize, other_val: T) {    // -> Result<(), &'static str>    
+pub fn eval_others<T: OclScl>(env: &Buffer<T>, foc_idx: usize, other_val: T) {    // -> Result<(), &'static str>
     // let mut checklist = Vec::new();
     let check_margin = 384;
 
@@ -202,7 +202,7 @@ pub fn eval_others<T: OclScl>(env: &Buffer<T>, foc_idx: usize, other_val: T) {  
             start_mrg
         } else {
             foc_idx
-        };        
+        };
 
         let foc_idx_r = if foc_idx < end_mrg_2 {
             foc_idx + check_margin

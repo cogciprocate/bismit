@@ -1,6 +1,6 @@
 use cmn::{TractFrameMut, TractDims};
 use map::LayerTags;
-use external_source::{ExternalSourceTract, ExternalInputFrame};
+use thalamus::{ExternalSourceTract, ExternalInputFrame};
 
 #[derive(Debug)]
 pub struct SensoryTract {

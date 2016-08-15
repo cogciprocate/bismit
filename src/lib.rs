@@ -11,11 +11,10 @@ extern crate twox_hash;
 #[macro_use] extern crate enum_primitive;
 #[macro_use] extern crate colorify;
 
-mod thalamus;
-mod external_source;
-mod encode;
 mod cortex;
+mod thalamus;
 mod area;
+mod encode;
 pub mod flywheel;
 pub mod map;
 #[macro_use] pub mod cmn;
@@ -25,10 +24,11 @@ pub mod map;
 pub use ocl::Event as OclEvent;
 
 pub use self::cortex::Cortex;
+pub use self::thalamus::{ExternalSourceTract, ExternalSourceKind};
 pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork,
     PyramidalLayer, SpinyStellateLayer, Dendrites, CorticalAreaSettings};
-pub use self::external_source::{ExternalSourceTract, ExternalSourceKind};
 pub use self::map::{LayerMapSchemeList, AreaSchemeList};
 pub use self::cmn::TractDims;
-
 pub use self::encode::GlyphBuckets;
+// pub use self::thalamus::thalamus;
+// pub use self::thalamus::external_source;
