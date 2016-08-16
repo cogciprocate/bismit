@@ -22,7 +22,6 @@ pub mod map;
 #[cfg(test)] pub mod tests;
 
 pub use ocl::Event as OclEvent;
-
 pub use self::cortex::Cortex;
 pub use self::thalamus::{ExternalSourceTract, ExternalSourceKind};
 pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork,
