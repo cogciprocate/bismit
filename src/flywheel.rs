@@ -234,9 +234,7 @@ impl Flywheel {
                         }
                     }
                     Err(e) => match e {
-                        TryRecvError::Empty => {
-                            break;
-                        },
+                        TryRecvError::Empty => break,
                         TryRecvError::Disconnected => panic!("Flywheel::fulfill_requests(): \
                             Sender disconnected."),
                     },
@@ -256,7 +254,7 @@ impl Flywheel {
         // println!("Cycle loop started...");
 
         loop {
-            if self.status.cur_cycle >= (self.cycle_iters_max) { break; }
+            if self.status.cur_cycle >= self.cycle_iters_max { break; }
 
             self.cortex.cycle();
 
@@ -265,9 +263,6 @@ impl Flywheel {
 
             // // DEBUG:
             // println!("self.status.cur_cycle: {}", self.status.cur_cycle);
-
-            // Process pending requests:
-            self.fulfill_requests();
 
             // Respond to any commands:
             match self.command_rx.try_recv() {
@@ -282,6 +277,9 @@ impl Flywheel {
                         Sender disconnected."),
                 },
             }
+
+            // Process pending requests:
+            self.fulfill_requests();
         }
 
         Command::None
