@@ -1,6 +1,6 @@
 use std::ops::Range;
 // use std::io::{self, Write};
-use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::{Sender, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 // use std::str::{FromStr};
 use time::{self, Timespec, Duration};
@@ -8,37 +8,55 @@ use time::{self, Timespec, Duration};
 use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings};
 use ::map::SliceTractMap;
 
-
-/// Cycle control commands.
 #[derive(Clone, Debug)]
-pub enum CyCtl {
-    None,
-    Iterate(u32),
-    Sample(Range<u8>, Arc<Mutex<Vec<u8>>>),
-    // RequestCurrentAreaInfo,
-    RequestCurrentIter,
-    // ViewAllSlices(bool),
-    // ViewBufferDebug(bool),
-    Stop,
-    Exit,
+pub enum Obs {
+    Float64 { p: usize, len: usize }
 }
 
-
-/// Cycle result responses.
 #[derive(Clone, Debug)]
-pub enum CyRes {
-    // None,
-    CurrentIter(u32),
-    Status(Box<Status>),
-    // AreaInfo(Box<AreaInfo>),
+pub enum Motor {
+    Action
 }
-
 
 #[derive(Clone, Debug)]
 pub struct AreaInfo {
     pub name: String,
     pub aff_out_slc_range: Range<u8>,
     pub tract_map: SliceTractMap,
+}
+
+
+/// Imperative cycle control commands.
+#[derive(Clone, Debug)]
+pub enum Command {
+    None,
+    Iterate(u32),
+    Stop,
+    Exit,
+}
+
+
+// Requests for and submissions of data.
+#[derive(Clone, Debug)]
+pub enum Request {
+    CurrentIter,
+    Status,
+    AreaInfo,
+    Sample(Range<u8>, Arc<Mutex<Vec<u8>>>),
+    // Input(Obs),
+    // GetAction,
+}
+
+
+/// Cycle result responses.
+#[derive(Clone, Debug)]
+pub enum Response {
+    CurrentIter(u32),
+    Status(Box<Status>),
+    Ready,
+    Motor(Motor),
+    AreaInfo(Box<AreaInfo>),
+    SampleProgress(Option<OclEvent>),
 }
 
 
@@ -102,7 +120,6 @@ impl Status {
 }
 
 
-
 pub enum LoopAction {
     None,
     Break,
@@ -111,118 +128,188 @@ pub enum LoopAction {
 
 
 pub struct Flywheel {
-    control_rx: Receiver<CyCtl>,
-    result_tx: Sender<CyRes>,
+    command_rx: Receiver<Command>,
+    req_res_pairs: Vec<(Receiver<Request>, Sender<Response>)>,
     cortex: Cortex,
-    cycle_iters: u32,
+    cycle_iters_max: u32,
     area_name: String,
     status: Status,
 }
 
 impl Flywheel {
-    pub fn new(control_rx: Receiver<CyCtl>, result_tx: Sender<CyRes>,
-                lm_schemes: LayerMapSchemeList, a_schemes: AreaSchemeList,
-                ca_settings: Option<CorticalAreaSettings>) -> Flywheel {
-        let cortex = Cortex::new(lm_schemes, a_schemes, ca_settings);
+    pub fn new(cortex: Cortex, command_rx: Receiver<Command>) -> Flywheel {
+        // TODO: Remove (find some other way to set current area):
         let area_name = "v1".to_owned();
 
         Flywheel {
-            control_rx: control_rx,
-            result_tx: result_tx,
+            command_rx: command_rx,
+            req_res_pairs: Vec::with_capacity(16),
             cortex: cortex,
-            cycle_iters: 1,
+            cycle_iters_max: 1,
             area_name: area_name,
             status: Status::new(),
         }
     }
 
+    pub fn from_blueprint(
+                command_rx: Receiver<Command>,
+                lm_schemes: LayerMapSchemeList,
+                a_schemes: AreaSchemeList,
+                ca_settings: Option<CorticalAreaSettings>
+            ) -> Flywheel {
+        let cortex = Cortex::new(lm_schemes, a_schemes, ca_settings);
+
+        Flywheel::new(cortex, command_rx)
+    }
+
+    pub fn add_req_res_pair(&mut self, req_rx: Receiver<Request>, res_tx: Sender<Response>) {
+        self.req_res_pairs.push((req_rx, res_tx));
+    }
+
     pub fn spin(&mut self) {
         loop {
-            match self.control_rx.recv() {
-                Ok(cyctl) => match cyctl {
-                    CyCtl::Iterate(i) => self.cycle_iters = i,
-                    CyCtl::Exit => break,
-                    CyCtl::Sample(range, buf) => {
-                        self.refresh_hex_grid_buf(range, buf);
-                        continue;
-                    },
-                    // CyCtl::RequestCurrentAreaInfo => {
-                    //     result_tx.send(CyRes::AreaInfo(Box::new(AreaInfo {
-                    //         name: self.area_name.to_string(),
-                    //         aff_out_slc_range: self.cortex.area(&self.area_name).area_map().aff_out_slc_range(),
-                    //         tract_map: self.cortex.area(self.area_name).axn_tract_map(),
-                    //     }))).expect("Error sending area info.");
-                    //     continue;
-                    // },
-                    _ => continue,
-                },
+            self.fulfill_requests();
 
-                Err(e) => panic!("run(): control_rx.recv(): '{:?}'", e),
+            // // DEBUG:
+            // println!("Waiting on command...");
+
+            match self.command_rx.recv() {
+                Ok(cmd) => match cmd {
+                    Command::Iterate(i) => self.cycle_iters_max = i,
+                    Command::Exit => break,
+                    Command::Stop => continue,
+                    Command::None => continue,
+                },
+                Err(e) => panic!("{}", e),
             }
 
-            self.status.cur_start_time = Some(time::get_time());
             self.status.cur_cycle = 0;
+            self.status.cur_start_time = Some(time::get_time());
+            self.broadcast_status();
 
-            // Send a Status with updated time:
-            self.result_tx.send(CyRes::Status(Box::new(self.status.clone()))).ok();
+            // // DEBUG:
+            // println!("Starting cycle loop with {} iters...", self.cycle_iters_max);
 
             // Run primary loop and check for exit response:
             match self.cycle_loop() {
-                CyCtl::Exit => break,
+                Command::Exit => break,
                 _ => (),
             }
 
             self.status.prev_cycles += self.status.cur_cycle;
             self.status.prev_elapsed = self.status.prev_elapsed + self.status.cur_elapsed();
+
+            // // DEBUG:
+            // println!("{} cycle loops (prev: {}) complete...", self.status.cur_cycle,
+            //     self.status.prev_cycles);
+
             self.status.cur_cycle = 0;
             self.status.cur_start_time = None;
-            self.result_tx.send(CyRes::Status(Box::new(self.status.clone()))).ok();
+            // self.response_tx.send(Response::Status(Box::new(self.status.clone()))).ok();
+            self.broadcast_status();
+
+            // // DEBUG:
+            // println!("Cycle loop complete, prev_cycles: {}...", self.status.prev_cycles);
         }
     }
 
-    fn cycle_loop(&mut self) -> CyCtl {
+    fn fulfill_requests(&self) {
+        for &(ref req_rx, ref res_tx) in self.req_res_pairs.iter() {
+            loop {
+                match req_rx.try_recv() {
+                    Ok(r) => {
+                        match r {
+                            Request::Sample(range, buf) => {
+                                res_tx.send(Response::SampleProgress(self.refresh_buf(range, buf))).unwrap();
+                            },
+                            Request::AreaInfo => {
+                                self.send_area_info(res_tx);
+                            },
+                            Request::Status => {
+                                res_tx.send(Response::Status(Box::new(self.status.clone()))).unwrap();
+                            }
+                            Request::CurrentIter => {
+                                res_tx.send(Response::CurrentIter(self.status.cur_cycle)).unwrap();
+                            },
+                        }
+                    }
+                    Err(e) => match e {
+                        TryRecvError::Empty => {
+                            break;
+                        },
+                        TryRecvError::Disconnected => panic!("Flywheel::fulfill_requests(): \
+                            Sender disconnected."),
+                    },
+                }
+            }
+        }
+    }
+
+    fn broadcast_status(&self) {
+        for &(_, ref res_tx) in self.req_res_pairs.iter() {
+            res_tx.send(Response::Status(Box::new(self.status.clone()))).unwrap();
+        }
+    }
+
+    fn cycle_loop(&mut self) -> Command {
+        // // DEBUG:
+        // println!("Cycle loop started...");
+
         loop {
-            if self.status.cur_cycle >= (self.cycle_iters - 1) { break; }
+            if self.status.cur_cycle >= (self.cycle_iters_max) { break; }
 
             self.cortex.cycle();
 
             // Update current cycle:
             self.status.cur_cycle += 1;
 
-            // Respond to any requests:
-            // Not sure why we're incrementing `cur_cycle` a second time.
-            if let Ok(c) = self.control_rx.try_recv() {
-                match c {
-                    CyCtl::RequestCurrentIter => {
-                        self.result_tx.send(CyRes::CurrentIter(self.status.cur_cycle + 1)).unwrap()
-                    },
-                    // If a new sample has been requested, fulfill it:
-                    CyCtl::Sample(range, buf) => {
-                        self.refresh_hex_grid_buf(range, buf);
-                    },
-                    CyCtl::Stop => {
-                        return CyCtl::Stop;
-                    },
+            // // DEBUG:
+            // println!("self.status.cur_cycle: {}", self.status.cur_cycle);
+
+            // Process pending requests:
+            self.fulfill_requests();
+
+            // Respond to any commands:
+            match self.command_rx.try_recv() {
+                Ok(c) => match c {
+                    Command::None => (),
+                    Command::Stop => return Command::Stop,
                     _ => return c,
-                }
+                },
+                Err(e) => match e {
+                    TryRecvError::Empty => (),
+                    TryRecvError::Disconnected => panic!("Flywheel::cycle_loop(): \
+                        Sender disconnected."),
+                },
             }
         }
 
-        CyCtl::None
+        Command::None
     }
 
-
-    fn refresh_hex_grid_buf(&self, slc_range: Range<u8>, buf: Arc<Mutex<Vec<u8>>>)
+    fn refresh_buf(&self, slc_range: Range<u8>, buf: Arc<Mutex<Vec<u8>>>)
                 -> Option<OclEvent> {
+        // // DEBUG:
+        // println!("Refreshing buffer...");
+
         let axn_range = self.cortex.area(&self.area_name).axn_tract_map().axn_id_range(slc_range.clone());
 
         // match buf.try_lock() {
         match buf.lock() {
-            // Ok(ref mut b) => self.cortex.area(&self.area_name).sample_aff_out(&mut b[range]),
             Ok(ref mut b) => Some(self.cortex.area(&self.area_name)
                 .sample_axn_slc_range(slc_range, &mut b[axn_range])),
             Err(_) => None,
         }
+    }
+
+    fn send_area_info(&self, res_tx: &Sender<Response>) {
+        res_tx.send(Response::AreaInfo(Box::new(
+            AreaInfo {
+                name: self.area_name.to_string(),
+                aff_out_slc_range: self.cortex.area(&self.area_name).area_map().aff_out_slc_range(),
+                tract_map: self.cortex.area(&self.area_name).axn_tract_map(),
+            }
+        ))).expect("Error sending area info.")
     }
 }
 
