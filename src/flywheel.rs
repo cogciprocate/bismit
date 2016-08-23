@@ -1,22 +1,32 @@
 use std::ops::Range;
-// use std::io::{self, Write};
-use std::sync::mpsc::{Sender, Receiver, TryRecvError};
+use std::sync::mpsc::{Sender, SyncSender, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
-// use std::str::{FromStr};
 use time::{self, Timespec, Duration};
-
 use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings};
 use ::map::SliceTractMap;
+
 
 #[derive(Clone, Debug)]
 pub enum Obs {
     Float64 { p: usize, len: usize }
 }
 
+
 #[derive(Clone, Debug)]
-pub enum Motor {
-    Action
+pub enum SensoryFrame {
+    F32Array16([f32; 16]),
+    // TODO: Convert this into a `usize` referring to a previously stored
+    // arc-mutex reference avoiding the need to create a new reference for
+    // each frame:
+    Tract(Arc<Mutex<Vec<u8>>>),
 }
+
+
+#[derive(Clone, Debug)]
+pub enum MotorFrame {
+    Action,
+}
+
 
 #[derive(Clone, Debug)]
 pub struct AreaInfo {
@@ -54,7 +64,7 @@ pub enum Response {
     CurrentIter(u32),
     Status(Box<Status>),
     Ready,
-    Motor(Motor),
+    Motor(MotorFrame),
     AreaInfo(Box<AreaInfo>),
     SampleProgress(Option<OclEvent>),
 }
@@ -130,6 +140,9 @@ pub enum LoopAction {
 pub struct Flywheel {
     command_rx: Receiver<Command>,
     req_res_pairs: Vec<(Receiver<Request>, Sender<Response>)>,
+    // sen_mot_pairs: Vec<(Receiver<SensoryFrame>, Sender<MotorFrame>)>,
+    sensory_rxs: Vec<(Receiver<SensoryFrame>, usize)>,
+    motor_txs: Vec<SyncSender<MotorFrame>>,
     cortex: Cortex,
     cycle_iters_max: u32,
     area_name: String,
@@ -144,6 +157,8 @@ impl Flywheel {
         Flywheel {
             command_rx: command_rx,
             req_res_pairs: Vec::with_capacity(16),
+            sensory_rxs: Vec::with_capacity(8),
+            motor_txs: Vec::with_capacity(8),
             cortex: cortex,
             cycle_iters_max: 1,
             area_name: area_name,
@@ -166,6 +181,19 @@ impl Flywheel {
         self.req_res_pairs.push((req_rx, res_tx));
     }
 
+    // pub fn add_sen_mot_pair(&mut self, sen_rx: Receiver<SensoryFrame>, mot_tx: Sender<MotorFrame>) {
+    //     self.sen_mot_pairs.push((sen_rx, mot_tx));
+    // }
+
+    pub fn add_sensory_rx(&mut self, sensory_rx: Receiver<SensoryFrame>, pathway_name: String) {
+        let pathway_idx = self.cortex.ext_pathway_idx(&pathway_name).unwrap();
+        self.sensory_rxs.push((sensory_rx, pathway_idx));
+    }
+
+    pub fn add_motor_tx(&mut self, motor_tx: SyncSender<MotorFrame>) {
+        self.motor_txs.push(motor_tx);
+    }
+
     pub fn spin(&mut self) {
         loop {
             self.fulfill_requests();
@@ -176,9 +204,9 @@ impl Flywheel {
             match self.command_rx.recv() {
                 Ok(cmd) => match cmd {
                     Command::Iterate(i) => self.cycle_iters_max = i,
+                    // Command::Spin => self.cycle_iters_max = 0,
                     Command::Exit => break,
-                    Command::Stop => continue,
-                    Command::None => continue,
+                    _ => continue,
                 },
                 Err(e) => panic!("{}", e),
             }
@@ -213,6 +241,46 @@ impl Flywheel {
         }
     }
 
+    fn cycle_loop(&mut self) -> Command {
+        // // DEBUG:
+        // println!("Cycle loop started...");
+
+        loop {
+            if (self.cycle_iters_max != 0) && (self.status.cur_cycle >= self.cycle_iters_max) { break; }
+
+            self.intake_sensory_frames();
+
+            self.cortex.cycle();
+
+            // Update current cycle:
+            self.status.cur_cycle += 1;
+
+            // // DEBUG:
+            // println!("self.status.cur_cycle: {}", self.status.cur_cycle);
+
+            // Respond to any commands:
+            match self.command_rx.try_recv() {
+                Ok(c) => match c {
+                    Command::None => (),
+                    Command::Stop => return Command::Stop,
+                    _ => return c,
+                },
+                Err(e) => match e {
+                    TryRecvError::Empty => (),
+                    TryRecvError::Disconnected => panic!("Flywheel::cycle_loop(): \
+                        Sender disconnected."),
+                },
+            }
+
+            self.output_motor_frames();
+
+            // Process pending requests:
+            self.fulfill_requests();
+        }
+
+        Command::None
+    }
+
     fn fulfill_requests(&self) {
         for &(ref req_rx, ref res_tx) in self.req_res_pairs.iter() {
             loop {
@@ -243,46 +311,52 @@ impl Flywheel {
         }
     }
 
+    fn intake_sensory_frames(&self) {
+        // // DEBUG:
+        // println!("Intaking sensory frames...");
+
+        for &(ref sen_rx, pathway_idx) in self.sensory_rxs.iter() {
+            match sen_rx.try_recv() {
+                Ok(s) => {
+                    match s {
+                        SensoryFrame::F32Array16(arr) => {
+                            println!("Intaking sensory frame [pathway id: {}]: {:?}",
+                                pathway_idx, arr);
+
+                        },
+                        SensoryFrame::Tract(_) => unimplemented!(),
+                    }
+                }
+                Err(e) => match e {
+                    TryRecvError::Empty => (),
+                    TryRecvError::Disconnected => panic!("Flywheel::fulfill_io(): \
+                        Sensory sender disconnected."),
+                },
+            }
+        }
+    }
+
+    fn output_motor_frames(&self) {
+        // for ref mot_tx in self.motor_txs.iter() {
+        //     match mot_tx.try_recv() {
+        //         Ok(r) => {
+        //             match r {
+
+        //             }
+        //         }
+        //         Err(e) => match e {
+        //             TryRecvError::Empty => (),
+        //             TryRecvError::Disconnected => panic!("Flywheel::fulfill_io(): \
+        //                 Sender disconnected."),
+        //         },
+        //     }
+        // }
+    }
+
     fn broadcast_status(&self) {
         for &(_, ref res_tx) in self.req_res_pairs.iter() {
             res_tx.send(Response::Status(Box::new(self.status.clone()))).unwrap();
         }
-    }
-
-    fn cycle_loop(&mut self) -> Command {
-        // // DEBUG:
-        // println!("Cycle loop started...");
-
-        loop {
-            if self.status.cur_cycle >= self.cycle_iters_max { break; }
-
-            self.cortex.cycle();
-
-            // Update current cycle:
-            self.status.cur_cycle += 1;
-
-            // // DEBUG:
-            // println!("self.status.cur_cycle: {}", self.status.cur_cycle);
-
-            // Respond to any commands:
-            match self.command_rx.try_recv() {
-                Ok(c) => match c {
-                    Command::None => (),
-                    Command::Stop => return Command::Stop,
-                    _ => return c,
-                },
-                Err(e) => match e {
-                    TryRecvError::Empty => (),
-                    TryRecvError::Disconnected => panic!("Flywheel::cycle_loop(): \
-                        Sender disconnected."),
-                },
-            }
-
-            // Process pending requests:
-            self.fulfill_requests();
-        }
-
-        Command::None
     }
 
     fn refresh_buf(&self, slc_range: Range<u8>, buf: Arc<Mutex<Vec<u8>>>)

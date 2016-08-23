@@ -23,11 +23,11 @@ pub mod map;
 
 pub use ocl::Event as OclEvent;
 pub use self::cortex::Cortex;
-pub use self::thalamus::{ExternalSourceTract, ExternalSourceKind};
+pub use self::thalamus::{ExternalPathwayTract, ExternalPathwayKind};
 pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork,
     PyramidalLayer, SpinyStellateLayer, Dendrites, CorticalAreaSettings};
 pub use self::map::{LayerMapSchemeList, AreaSchemeList};
-pub use self::cmn::TractDims;
+pub use self::cmn::{TractDims, TypeId};
 pub use self::encode::GlyphBuckets;
 // pub use self::thalamus::thalamus;
-// pub use self::thalamus::external_source;
+// pub use self::thalamus::external_pathway;

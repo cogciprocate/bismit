@@ -2,7 +2,7 @@
 use find_folder::Search;
 use cmn::{CorticalDims, Sdr, TractFrameMut};
 use map::LayerTags;
-use thalamus::ExternalSourceTract;
+use thalamus::ExternalPathwayTract;
 use super::IdxData;
 
 //    IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned
@@ -142,7 +142,7 @@ impl IdxStreamer {
     }
 }
 
-impl ExternalSourceTract for IdxStreamer {
+impl ExternalPathwayTract for IdxStreamer {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags)
             -> [usize; 3]
     {

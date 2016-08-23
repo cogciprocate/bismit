@@ -3,7 +3,7 @@
 use std::fmt::Debug;
 use std::ops::AddAssign;
 use num::{Num, NumCast};
-use thalamus::{ExternalSourceTract, TractFrameMut, LayerTags};
+use thalamus::{ExternalPathwayTract, TractFrameMut, LayerTags};
 
 #[derive(Clone, Debug)]
 pub struct ScalarEncoder<T> {
@@ -18,7 +18,7 @@ impl<T> ScalarEncoder<T> where T: Num + NumCast + PartialOrd + Debug + Clone + A
     }
 }
 
-impl<T> ExternalSourceTract for ScalarEncoder<T>
+impl<T> ExternalPathwayTract for ScalarEncoder<T>
             where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) -> [usize; 3] {
         super::encode_scalar(Default::default(), self.range, tract_frame);

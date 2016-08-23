@@ -1,12 +1,12 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap};
 use std::ops::Range;
 // use std::ops::{Range};
 use std::slice::{Iter};
 
 use map::{AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapKind};
-use cmn::{self};
+use cmn::{self, MapStore};
 use map::{LayerTags, LayerInfo, SourceLayerInfo};
-use thalamus::ExternalSource;
+use thalamus::ExternalPathway;
 
 const DEBUG_PRINT: bool = false;
 
@@ -21,7 +21,7 @@ pub struct LayerMap {
 
 impl LayerMap {
     pub fn new(pamap: &AreaScheme, plmaps: &LayerMapSchemeList, pamaps: &AreaSchemeList,
-            input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>) -> LayerMap
+            input_sources: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> LayerMap
     {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...",
             pamap.name, mt = cmn::MT);

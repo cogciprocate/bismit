@@ -19,12 +19,12 @@ use std::ops::Range;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims};
+use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
 use map::{self, AreaMap, LayerTags, LayerMapKind};
 use ocl::EventList;
 use area::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList};
-use thalamus::{ExternalSource, ExternalInputFrame};
+use thalamus::{ExternalPathway, ExternalPathwayFrame};
 
 
 // /// Specifies whether or not the frame buffer for a source exists within the
@@ -248,7 +248,8 @@ impl TractArea {
 pub struct Thalamus {
     tract: ThalamicTract,
     // [TODO]: Redesign this with something other than `String` key (use a separate vec & hashmap).
-    external_sources: HashMap<String, (ExternalSource, Vec<LayerTags>)>,
+    // external_pathways: HashMap<String, (ExternalPathway, Vec<LayerTags>)>,
+    external_pathways: MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
     area_maps: HashMap<&'static str, AreaMap>,
 }
 
@@ -259,7 +260,8 @@ impl Thalamus {
         // let area_count = pamaps.maps().len();
 
         let mut tract = ThalamicTract::new();
-        let mut external_sources = HashMap::with_capacity(pamaps.maps().len());
+        // let mut external_pathways = HashMap::with_capacity(pamaps.maps().len());
+        let mut external_pathways = MapStore::with_capacity(pamaps.maps().len());
         let mut area_maps = HashMap::with_capacity(pamaps.maps().len());
 
         /*=============================================================================
@@ -268,10 +270,10 @@ impl Thalamus {
         for (&_, pa) in pamaps.maps().iter().filter(|&(_, pa)|
                     &plmaps[pa.layer_map_name].kind == &LayerMapKind::Thalamic)
         {
-            let es = ExternalSource::new(pa, &plmaps[pa.layer_map_name]);
+            let es = ExternalPathway::new(pa, &plmaps[pa.layer_map_name]);
             let tags = es.layer_tags();
-            external_sources.insert(es.area_name().to_owned(), (es, tags))
-                .map(|es_tup| panic!("Duplicate 'ExternalSource' keys: [\"{}\"]. \
+            external_pathways.insert(es.area_name().to_owned(), (es, tags))
+                .map(|es_tup| panic!("Duplicate 'ExternalPathway' keys: [\"{}\"]. \
                     Only one external (thalamic) input source per area is allowed.",
                     es_tup.0.area_name()));
         }
@@ -280,7 +282,7 @@ impl Thalamus {
         =================================== ALL AREAS =================================
         =============================================================================*/
         for (&area_name, pamap) in pamaps.maps().iter() {
-            let area_map = AreaMap::new(pamap, &plmaps, &pamaps, &external_sources);
+            let area_map = AreaMap::new(pamap, &plmaps, &pamaps, &external_pathways);
 
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ", area_name, mt = cmn::MT);
 
@@ -311,16 +313,17 @@ impl Thalamus {
 
         Thalamus {
             tract: tract.init(),
-            external_sources: external_sources,
+            external_pathways: external_pathways,
             area_maps: area_maps,
         }
     }
 
     // Multiple source output areas disabled.
     pub fn cycle_external_tracts(&mut self, _: &mut CorticalAreas) {
-        for (area_name, &mut (ref mut src_area, ref layer_tags_list)) in self.external_sources.iter_mut() {
+        // for (area_name, &mut (ref mut src_area, ref layer_tags_list)) in self.external_pathways.iter_mut() {
+        for &mut (ref mut src_area, ref layer_tags_list) in self.external_pathways.values_mut().iter_mut() {
             for &layer_tags in layer_tags_list.iter() {
-                let (tract_frame, events) = self.tract.frame_mut(&(area_name.to_owned(), layer_tags))
+                let (tract_frame, events) = self.tract.frame_mut(&(src_area.area_name().to_owned(), layer_tags))
                     .expect("Thalamus::cycle_external_tracts()");
 
                 // match tract_frame {
@@ -353,16 +356,23 @@ impl Thalamus {
          &self.area_maps[area_name]
     }
 
-    pub fn ext_frame_mut(&mut self, tract_name: String) -> CmnResult<ExternalInputFrame> {
-        match self.external_sources.entry(tract_name.clone()) {
+    pub fn ext_pathway_idx(&mut self, pathway_name: &String) -> CmnResult<usize> {
+        match self.external_pathways.indices_mut().entry(pathway_name.clone()) {
             Entry::Occupied(entry) => {
-                entry.into_mut().0.ext_frame_mut()
+                Ok(*entry.get())
             },
             Entry::Vacant(_) => {
-                CmnError::err(format!("Thalamus::external_tract_mut(): \
-                    No external tract found named: '{}'.", tract_name))
+                CmnError::err(format!("Thalamus::ext_pathway_idx(): \
+                    No external pathway found named: '{}'.", pathway_name))
             },
         }
+    }
+
+    pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
+        let pathway = try!(self.external_pathways.by_index_mut(pathway_idx).ok_or(
+            CmnError::new(format!("Thalamus::ext_pathway(): Invalid pathway index: '{}'.",
+            pathway_idx))));
+        pathway.0.ext_frame_mut()
     }
 }
 

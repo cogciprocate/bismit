@@ -6,7 +6,7 @@ use area::{CorticalArea, CorticalAreas, CorticalAreaSettings};
 use thalamus::{Thalamus};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use cmn::{CmnResult};
-use thalamus::ExternalInputFrame;
+use thalamus::ExternalPathwayFrame;
 
 pub struct Cortex {
     // AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable
@@ -76,12 +76,18 @@ impl Cortex {
         self.areas.contains_key(area_name)
     }
 
-    pub fn input_tract_mut(&mut self, tract_name: String) -> CmnResult<ExternalInputFrame> {
-        self.thal.ext_frame_mut(tract_name)
+    pub fn ext_pathway_idx(&mut self, pathway_name: &String) -> CmnResult<usize> {
+        self.thal.ext_pathway_idx(pathway_name)
+    }
+
+    pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
+        self.thal.ext_pathway(pathway_idx)
     }
 }
 
 impl Drop for Cortex {
+    /// Just for informational purposes. The context will have 'dropped'
+    /// (refcount == 0) when `self.areas` is dropped.
     fn drop(&mut self) {
         print!("Releasing OpenCL components... ");
         print!("[ Context ]");

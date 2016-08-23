@@ -12,14 +12,18 @@ mod tract_dims;
 mod renderer;
 mod error;
 mod tract_frame;
+mod map_store;
 pub mod data_cell_layer;
 
-use num::{FromPrimitive};
 use std::default::{Default};
 use std::iter::{self};
 use std::cmp::{self};
 use std::io::{self, Write};
 use std::collections::{BTreeMap};
+use std::fmt::Debug;
+use std::ops::AddAssign;
+use num::{FromPrimitive};
+use num::{Num, NumCast};
 use rand;
 use rand::distributions::{IndependentSample, Range};
 use ocl::traits::OclScl;
@@ -33,12 +37,27 @@ pub use self::renderer::{Renderer};
 pub use self::error::{CmnError};
 pub use self::tract_frame::{TractFrame, TractFrameMut};
 #[cfg(test)] pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
+pub use self::map_store::MapStore;
 
 // pub trait ParaHexArray {
 //     fn v_size(&self) -> u32;
 //     fn u_size(&self) -> u32;
 //     fn count(&self) -> u32;
 // }
+
+/// Type codes (synchronize with codes in 'cycle.py').
+enum_from_primitive! {
+    #[derive(Debug, PartialEq, Clone)]
+    pub enum TypeId {
+        Float32 = 0,
+        Float64 = 1,
+        Int32   = 2,
+        Int64   = 3,
+    }
+}
+
+pub trait ScalarEncodable: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {}
+impl<T> ScalarEncodable for T where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {}
 
 /// Types which can be represented as one or several stacked two-dimensional
 /// parallelogram-shaped array containing hexagon-shaped elements.

@@ -1,12 +1,12 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
 use std::ops::{Range};
 // use std::slice::{Iter};
 
 use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind, DendriteKind,
     LayerMapKind, AxonKind};
-use cmn::{self, CorticalDims};
+use cmn::{self, CorticalDims, MapStore};
 use map::{self, LayerTags,};
-use thalamus::ExternalSource;
+use thalamus::ExternalPathway;
 
 // const CELLULAR_AXON_KIND: AxonKind = AxonKind::Spatial;
 const DEBUG_PRINT: bool = false;
@@ -31,7 +31,7 @@ impl LayerInfo {
     /// [FIXME]: TODO: Create an error type enum just for map::Layer****.
     /// [FIXME]: TODO: Return result and get rid of panics, et al.
     pub fn new(layer_scheme: &LayerScheme, plmap_kind: LayerMapKind, pamap: &AreaScheme, pamaps: &AreaSchemeList,
-                plmaps: &LayerMapSchemeList, input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>,
+                plmaps: &LayerMapSchemeList, input_sources: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
                 slc_total: u8) -> LayerInfo
     {
         let layer_scheme = layer_scheme.clone();
@@ -131,10 +131,11 @@ impl LayerInfo {
 
                     let (src_layer_dims, src_layer_axn_kind) = match src_layer_map.kind() {
                         // If the source layer is thalamic, we will be relying
-                        // on the `ExternalSource` associated with it to
+                        // on the `ExternalPathway` associated with it to
                         // provide its dimensions.
                         &LayerMapKind::Thalamic => {
-                            let &(ref in_src, _) = input_sources.get(src_area_name)
+                            let src_area_name = src_area_name.to_owned();
+                            let &(ref in_src, _) = input_sources.by_key(&src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                     '{}'", src_area_name));
                             let in_src_layer = in_src.layer(src_layer.tags());
@@ -198,13 +199,14 @@ impl LayerInfo {
             debug_assert!(!tags.contains(map::INPUT));
 
             // If this is a thalamic layer we need to use the dimensions set
-            // by the `ExternalSource` area instead of the dimensions of the
+            // by the `ExternalPathway` area instead of the dimensions of the
             // area. Thalamic output layers have irregular layer sizes.
             let columns = match plmap_kind {
                 LayerMapKind::Thalamic => {
                     // If this is thalamic, the OUTPUT flags should be set.
                     assert!(tags.contains(map::OUTPUT));
-                    let &(ref in_src, _) = input_sources.get(pamap.name())
+                    let pamap_name = pamap.name().to_owned();
+                    let &(ref in_src, _) = input_sources.by_key(&pamap_name)
                         .expect(&format!("LayerInfo::new(): Invalid input source key: \
                             '{}'", pamap.name()));
                     let in_src_layer = in_src.layer(tags);
@@ -332,7 +334,7 @@ impl LayerInfo {
     }
 }
 
-// fn input_source_from_area(input_sources: &Vec<ExternalSource>, area_name: &'static str) {
+// fn input_source_from_area(input_sources: &Vec<ExternalPathway>, area_name: &'static str) {
 //     let matching_sources = input_sources.iter().filter
 // }
 

@@ -1,14 +1,14 @@
 use std::fmt::Display;
 use std::ops::Range;
-use std::collections::HashMap;
+// use std::collections::HashMap;
 // use std::collections::{BTreeMap};
 
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use map::{LayerMapSchemeList, AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme,
     DendriteKind};
-use cmn::{self, CorticalDims};
+use cmn::{self, CorticalDims, MapStore};
 use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo};
-use thalamus::ExternalSource;
+use thalamus::ExternalPathway;
 
 
 #[derive(Clone)]
@@ -25,7 +25,7 @@ pub struct AreaMap {
 
 impl AreaMap {
     pub fn new(pamap: &AreaScheme, plmaps: &LayerMapSchemeList, pamaps: &AreaSchemeList,
-            input_sources: &HashMap<String, (ExternalSource, Vec<LayerTags>)>) -> AreaMap
+            input_sources: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> AreaMap
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name,
             pamap.eff_areas(), pamap.aff_areas(), mt = cmn::MT);

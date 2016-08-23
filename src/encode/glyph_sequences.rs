@@ -4,7 +4,7 @@ use rand::distributions::{IndependentSample, Range};
 use rand;
 use cmn::{CorticalDims, TractFrameMut};
 use map::{self, LayerTags};
-use thalamus::{ExternalSourceTract, ExternalSourceLayer};
+use thalamus::{ExternalPathwayTract, ExternalPathwayLayer};
 use encode::GlyphBuckets;
 use map::AxonKind;
 
@@ -55,7 +55,7 @@ pub struct GlyphSequences {
 }
 
 impl GlyphSequences {
-    pub fn new(layers: &mut HashMap<LayerTags, ExternalSourceLayer>, seq_lens: (usize, usize),
+    pub fn new(layers: &mut HashMap<LayerTags, ExternalPathwayLayer>, seq_lens: (usize, usize),
                 seq_count: usize, scale: f32, hrz_dims: (u32, u32), label_file: PathBuf,
                 image_file: PathBuf) -> GlyphSequences
     {
@@ -110,7 +110,7 @@ impl GlyphSequences {
     }
 }
 
-impl ExternalSourceTract for GlyphSequences {
+impl ExternalPathwayTract for GlyphSequences {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags)
             -> [usize; 3]
     {
@@ -147,13 +147,13 @@ impl ExternalSourceTract for GlyphSequences {
 mod tests {
     // #[test]
     // /// Huge pain in the ass to re-implement this test now that a hashmap of
-    // /// `ExternalSourceLayer`s is req'd.
+    // /// `ExternalPathwayLayer`s is req'd.
     // fn glyph_sequences_FIXME() {
     //     use std::collections::HashMap;
     //     use encode::GlyphSequences;
     //     use cmn::CorticalDims;
     //     use map::LayerTags;
-    //     use thalamus::ExternalSourceLayer;
+    //     use thalamus::ExternalPathwayLayer;
 
     //     let dims = CorticalDims::new(32, 32, 1, 0, None);
 
@@ -161,7 +161,7 @@ mod tests {
     //         let seq_lens = (i, (i * 2) + 11);
     //         let seq_count = 79 - i;
 
-    //         let mut layers: HashMap<LayerTags, ExternalSourceLayer> = HashMap::with_capacity(2);
+    //         let mut layers: HashMap<LayerTags, ExternalPathwayLayer> = HashMap::with_capacity(2);
 
     //         let gss = GlyphSequences::new(&mut area_map, seq_lens, seq_count, 1.0, (16, 16));
 

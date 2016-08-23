@@ -1,6 +1,6 @@
 use cmn::{TractFrameMut, TractDims};
 use map::LayerTags;
-use thalamus::{ExternalSourceTract, ExternalInputFrame};
+use thalamus::{ExternalPathwayTract, ExternalPathwayFrame};
 
 #[derive(Debug)]
 pub struct SensoryTract {
@@ -22,12 +22,12 @@ impl SensoryTract {
         }
     }
 
-    pub fn ext_frame_mut(&mut self) -> ExternalInputFrame {
-        ExternalInputFrame::Tract(TractFrameMut::new(&mut self.buf[..], self.dims.clone()))
+    pub fn ext_frame_mut(&mut self) -> ExternalPathwayFrame {
+        ExternalPathwayFrame::Tract(TractFrameMut::new(&mut self.buf[..], self.dims.clone()))
     }
 }
 
-impl ExternalSourceTract for SensoryTract {
+impl ExternalPathwayTract for SensoryTract {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) -> [usize; 3] {
         assert!(tract_frame.dims() == &self.dims);
         tract_frame.frame_mut().clone_from_slice(&self.buf[..]);

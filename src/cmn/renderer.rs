@@ -15,11 +15,11 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(area_dims: &CorticalDims) -> Renderer {        
+    pub fn new(area_dims: &CorticalDims) -> Renderer {
         let dims = SliceDims::new(area_dims, None, AxonKind::Spatial).expect("Renderer::new()");
         let sdr_len = (dims.columns()) as usize;
 
-        Renderer {             
+        Renderer {
             axn_history: iter::repeat(0).take(sdr_len).collect(),
             sst_history: iter::repeat(0).take(sdr_len).collect(),
             aff_out_dims: dims,
@@ -28,9 +28,9 @@ impl Renderer {
     }
 
     // DRAW(): v_size-row-v, u_size-col-u
-    // TODO: NEED TO MAKE SST_AXNS OPTIONAL 
-    pub fn render(&mut self, out_axns: &Sdr, sst_axns_opt: Option<&Sdr>, dims_opt: Option<&SliceDims>, 
-                input_status: &str, print_summary: bool) 
+    // TODO: NEED TO MAKE SST_AXNS OPTIONAL
+    pub fn render(&mut self, out_axns: &Sdr, sst_axns_opt: Option<&Sdr>, dims_opt: Option<&SliceDims>,
+                input_status: &str, print_summary: bool)
     {
         let dims = match dims_opt {
             Some(dims) => dims,
@@ -65,7 +65,7 @@ impl Renderer {
         for v in 0..v_size {
             //let v = (v_size - 1) - v_mirror;
             print!("{}", margin);
-            
+
             for u in 0..u_size {
                 //let u = (u_size - 1) - u_mirror;
                 let sdr_idx = ((v * u_size) + u) as usize;
@@ -150,20 +150,20 @@ impl Renderer {
 
         if print_summary {
             println!("prev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, \
-                new preds:{}, ssts active:{}, axns active:{}, input status:{}", 
-                preds_total, corr_preds, failed_preds, pred_accy, 
+                new preds:{}, ssts active:{}, axns active:{}, input status:{}",
+                preds_total, corr_preds, failed_preds, pred_accy,
                 anomalies, new_preds, active_ssts, active_axns, input_status,
             );
         }
     }
 
     pub fn render_axn_space(&mut self, axn_space: &Sdr, slices: &SliceMap) {
-        for slc_id in 0..slices.depth() {            
+        for slc_id in 0..slices.depth() {
             //let axn_idz = cmn::axn_idz_2d(slc_id, col_count, hrz_demarc) as usize;
             let slc_dims = &slices.dims()[slc_id as usize];
             let axn_idz = slices.idz(slc_id) as usize;
-            let axn_idn = axn_idz + slc_dims.columns() as usize;        
-            let layer_name = slices.layer_name(slc_id);            
+            let axn_idn = axn_idz + slc_dims.columns() as usize;
+            let layer_name = slices.layer_name(slc_id);
 
             print!("Axon slice '{}': slc_id: {}, axn_idz: {}", layer_name, slc_id, axn_idz);
 
@@ -174,9 +174,9 @@ impl Renderer {
 
 /*
 pub fn render_sdr(
-            vec_out: &Sdr, 
-            vec_ff_opt: Option<&Sdr>, 
-            vec_out_prev_opt: Option<&Sdr>, 
+            vec_out: &Sdr,
+            vec_ff_opt: Option<&Sdr>,
+            vec_out_prev_opt: Option<&Sdr>,
             vec_ff_prev_opt: Option<&Sdr>,
             slc_map: &BTreeMap<u8, &'static str>,
             print: bool,
@@ -202,7 +202,7 @@ pub fn render_sdr(
     assert!(vec_ff.len() == vec_out.len(), "cmn::render_sdr(): vec_ff.len() != vec_out.len(), Input vectors must be of equal length.");
     assert!(vec_out.len() == vec_out_prev.len(), "cmn::render_sdr(): vec_out.len() != vec_out_prev.len(), Input vectors must be of equal length.");
     assert!(vec_out.len() == vec_ff_prev.len(), "cmn::render_sdr(): vec_out.len() != vec_ff_prev.len(), Input vectors must be of equal length.");
-    
+
 
     let mut active_cols = 0usize;
     let mut failed_preds = 0usize;
@@ -243,7 +243,7 @@ pub fn render_sdr(
                 active_cols += 1;
             }
 
-            if new_prediction { 
+            if new_prediction {
                 new_preds += 1;
             }
 
@@ -285,7 +285,7 @@ pub fn render_sdr(
                     } else {
                         out_line.push_str("--");
                     }
-                } 
+                }
 
                 out_line.push_str(C_DEFAULT);
                 out_line.push_str(BGC_DEFAULT);
@@ -309,7 +309,7 @@ pub fn render_sdr(
             } else {
                 i_pattern += 1; // DEPRICATE
             }
-            
+
             println!("{}", out_line);
         }
 
@@ -328,7 +328,7 @@ pub fn render_sdr(
 
     if print {
         if vec_out_prev_opt.is_some() {
-            println!("\nprev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, cols active:{}, ttl active:{}, new_preds:{}", 
+            println!("\nprev preds:{} (correct:{}, incorrect:{}, accuracy:{:.1}%), anomalies:{}, cols active:{}, ttl active:{}, new_preds:{}",
                 preds_total, corr_preds, failed_preds, pred_accy, anomalies, active_cols, ttl_active, new_preds,);
         }
     }
