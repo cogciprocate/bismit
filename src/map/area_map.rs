@@ -92,7 +92,10 @@ impl AreaMap {
     // UPDATE / DEPRICATE
     /// Returns a grouped list of source layer names for each distal dendritic tuft in a layer.
     pub fn layer_dst_srcs(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
-        let potential_tufts = self.layers.layer_info_by_name(layer_name).dst_src_lyrs();
+        let potential_tufts = match self.layers.layer_info_by_name(layer_name) {
+            Some(li) => li.dst_src_lyrs(),
+            None => panic!("AreaMap::layer_dst_srcs(): No layer named '{}' found.", layer_name),
+        };
 
         let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
 
@@ -100,7 +103,13 @@ impl AreaMap {
             let mut valid_src_lyrs = Vec::with_capacity(potential_tuft_src_lyrs.len());
 
             for lyr_name in potential_tuft_src_lyrs.drain(..) {
-                if self.layers.layer_info_by_name(lyr_name).depth() > 0 {
+                let li = match self.layers.layer_info_by_name(lyr_name) {
+                    Some(li) => li,
+                    None => panic!("AreaMap::layer_dst_srcs(): No layer named '{}' found.",
+                        layer_name),
+                };
+
+                if li.depth() > 0 {
                     valid_src_lyrs.push(lyr_name);
                 }
             }
@@ -120,9 +129,13 @@ impl AreaMap {
         let mut slc_ids = Vec::with_capacity(32);
 
         for layer_name in layer_names.iter() {
-            let l = &self.layers.layer_info_by_name(layer_name);
+            let li = match self.layers.layer_info_by_name(layer_name) {
+                Some(li) => li,
+                None => panic!("AreaMap::layer_slc_ids(): No layer named '{}' found.",
+                    layer_name),
+            };
 
-            if let Some(slc_range) = l.slc_range() {
+            if let Some(slc_range) = li.slc_range() {
                 for i in slc_range.clone() {
                     slc_ids.push(i);
                 }
@@ -135,8 +148,13 @@ impl AreaMap {
     // NEW - UPDATE
     /// Returns a merged list of source slice ids for all source layers.
     pub fn layer_src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
-        let src_lyr_names = self.layers.layer_info_by_name(layer_name).src_lyr_names(den_type);
+        let li = match self.layers.layer_info_by_name(layer_name) {
+            Some(li) => li,
+            None => panic!("AreaMap::layer_src_slc_ids(): No layer named '{}' found.",
+                layer_name),
+        };
 
+        let src_lyr_names = li.src_lyr_names(den_type);
         self.layer_slc_ids(src_lyr_names)
      }
 

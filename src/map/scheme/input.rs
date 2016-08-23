@@ -19,6 +19,7 @@ pub enum InputScheme {
 
     // Possibly remove me eventually:
     ScalarSequence { range: (f32, f32), incr: f32 },
+    ReversoScalarSequence { range: (f32, f32), incr: f32 },
     VectorEncoder { ranges: Vec<(f32, f32)> },
 }
 
@@ -37,6 +38,8 @@ impl InputScheme {
     pub fn layer_count(&self) -> usize {
         match *self {
             InputScheme::GlyphSequences { .. } => 2,
+            InputScheme::ReversoScalarSequence { .. } => 2,
+            InputScheme::VectorEncoder { ref ranges } => ranges.len(),
             // InputScheme::SensoryTract { ref dims, .. } => dims.len(),
             _ => 1,
         }

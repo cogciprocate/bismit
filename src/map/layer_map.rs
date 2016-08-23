@@ -151,11 +151,12 @@ impl LayerMap {
     }
 
     // [FIXME] TODO: Create HashMap to index layer names.
-    pub fn layer_info_by_name(&self, name: &'static str) -> &LayerInfo {
+    pub fn layer_info_by_name(&self, name: &'static str) -> Option<&LayerInfo> {
         let layers: Vec<&LayerInfo> = self.index.iter().filter(|li| li.name() == name)
             .map(|li| li).collect();
-        debug_assert_eq!(layers.len(), 1);
-        layers[0]
+        assert!(layers.len() <= 1, format!("Multiple ({}) layers match the name: {}",
+            layers.len(), name));
+        layers.get(0).map(|&li| li)
     }
 
 

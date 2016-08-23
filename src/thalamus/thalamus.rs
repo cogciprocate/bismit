@@ -322,6 +322,7 @@ impl Thalamus {
     pub fn cycle_external_pathways(&mut self, _: &mut CorticalAreas) {
         // for (area_name, &mut (ref mut src_area, ref layer_tags_list)) in self.external_pathways.iter_mut() {
         for &mut (ref mut src_area, ref layer_tags_list) in self.external_pathways.values_mut().iter_mut() {
+            src_area.cycle_next();
             for &layer_tags in layer_tags_list.iter() {
                 let (tract_frame, events) = self.tract.frame_mut(&(src_area.area_name().to_owned(), layer_tags))
                     .expect("Thalamus::cycle_external_pathways()");
@@ -332,7 +333,6 @@ impl Thalamus {
                 // }
                 src_area.write_into(layer_tags, tract_frame, events)
             }
-            src_area.cycle_next();
         }
     }
 

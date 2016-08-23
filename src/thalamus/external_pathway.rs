@@ -94,8 +94,9 @@ impl ExternalPathway {
         let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|(_, pl)| pl).collect();
 
         assert!(pamap.get_input().layer_count() == p_layers.len(), "ExternalPathway::new(): \
-            Inputs for 'AreaScheme' ({}) must equal layers in 'LayerMapScheme' ({}).",
-            pamap.get_input().layer_count(), p_layers.len());
+            Inputs for 'AreaScheme' ({}) must equal layers in 'LayerMapScheme' ({}). Ensure \
+            `InputScheme::layer_count()` is set correctly for {:?}",
+            pamap.get_input().layer_count(), p_layers.len(), pamap.get_input());
 
         // let mut layers = HashMap::with_capacity_and_hasher(4, BuildHasherDefault::default());
         let mut layers = HashMap::with_capacity(4);
@@ -161,6 +162,9 @@ impl ExternalPathway {
                 ExternalPathwayKind::SensoryTract(Box::new(st))
             },
             InputScheme::ScalarSequence { range, incr } => {
+                ExternalPathwayKind::Other(Box::new(ScalarSequence::new(range, incr)))
+            },
+            InputScheme::ReversoScalarSequence { range, incr } => {
                 ExternalPathwayKind::Other(Box::new(ScalarSequence::new(range, incr)))
             },
             InputScheme::VectorEncoder { ranges } => {
