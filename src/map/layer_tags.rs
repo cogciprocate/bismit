@@ -16,9 +16,9 @@ bitflags! {
         const SPATIAL = 0b0000_0000_0000_0100__0000_0000_0000_0000 << 32,
         const HORIZONTAL = 0b0000_0000_0000_1000__0000_0000_0000_0000 << 32,
         const FEEDFORWARD = 0b0000_0000_0001_0000__0000_0000_0000_0000 << 32,
-        const FEEDBACK = 0b0000_0000_0010_0000__0000_0000_0000_0000 << 32,    
-        const SPECIFIC = 0b0000_0000_0100_0000__0000_0000_0000_0000 << 32,    
-        const NONSPECIFIC = 0b0000_0000_1000_0000__0000_0000_0000_0000 << 32,    
+        const FEEDBACK = 0b0000_0000_0010_0000__0000_0000_0000_0000 << 32,
+        const SPECIFIC = 0b0000_0000_0100_0000__0000_0000_0000_0000 << 32,
+        const NONSPECIFIC = 0b0000_0000_1000_0000__0000_0000_0000_0000 << 32,
 
         const PRIMARY = 0b0000_0000_0000_0000__0000_0000_0000_0001 << 32,
         const SPATIAL_ASSOCIATIVE = 0b0000_0000_0000_0000__0000_0000_0001_0000 << 32,
@@ -34,7 +34,7 @@ bitflags! {
         const NS_IN = INPUT.bits | HORIZONTAL.bits | NONSPECIFIC.bits,
         const NS_OUT = OUTPUT.bits | HORIZONTAL.bits | NONSPECIFIC.bits,
 
-        const PSAL = PRIMARY.bits | SPATIAL_ASSOCIATIVE.bits, 
+        const PSAL = PRIMARY.bits | SPATIAL_ASSOCIATIVE.bits,
         const PTAL = PRIMARY.bits | TEMPORAL_ASSOCIATIVE.bits,
     }
 }
@@ -68,10 +68,10 @@ impl LayerTags {
         (self.bits & 0xFFFFFFFF) as u32
     }
 
-    /// Returns whether or not `self` both contains and equals the unique id of 
+    /// Returns whether or not `self` both contains and equals the unique id of
     /// `other`.
     ///
-    /// Useful when comparing tags which must match uids where `self` may be a 
+    /// Useful when comparing tags which must match uids where `self` may be a
     /// superset of `other`.
     pub fn meshes(&self, other: LayerTags) -> bool {
         self.contains(other) && self.get_uid() == other.get_uid()
@@ -80,7 +80,7 @@ impl LayerTags {
     // Presently called from LayerScheme::new() on a debug build.
     pub fn debug_validate(&self) {
         debug_assert!(!(self.contains(OUTPUT) && self.contains(INPUT)));
-        debug_assert!((self.contains(FEEDBACK) || self.contains(FEEDFORWARD)) 
+        debug_assert!((self.contains(FEEDBACK) || self.contains(FEEDFORWARD))
             == self.contains(SPECIFIC));
         debug_assert!(self.contains(NONSPECIFIC) == (self.get_uid() != 0));
         debug_assert!((self.contains(INPUT) || self.contains(OUTPUT))
@@ -89,10 +89,10 @@ impl LayerTags {
 
     pub fn debug_print_compare(&self, other: LayerTags) {
         println!("self : {{ {} }}, self.get_uid() : {}, \n\
-            other: {{ {} }}, other.get_uid(): {}", 
+            other: {{ {} }}, other.get_uid(): {}",
             self, self.get_uid(), other, other.get_uid());
         println!("    CONTAINS: {}, UID_MATCH: {}, MESHES: {}
-            ", self.contains(other), 
+            ", self.contains(other),
             self.get_uid() == other.get_uid(),
             self.meshes(other));
     }

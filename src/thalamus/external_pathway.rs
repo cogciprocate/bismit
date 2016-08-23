@@ -8,7 +8,8 @@ use find_folder::Search;
 use cmn::{self, CorticalDims, CmnResult, CmnError};
 use ocl::{EventList};
 use map::{self, AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonKind};
-use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, VectorEncoder};
+use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
+    VectorEncoder};
 use cmn::TractFrameMut;
 use map::LayerTags;
 
@@ -85,7 +86,6 @@ pub struct ExternalPathway {
     src_kind: ExternalPathwayKind,
     // layers: HashMap<LayerTags, ExternalPathwayLayer, BuildHasherDefault<XxHash>>,
     layers: HashMap<LayerTags, ExternalPathwayLayer>,
-
 }
 
 impl ExternalPathway {
@@ -165,7 +165,9 @@ impl ExternalPathway {
                 ExternalPathwayKind::Other(Box::new(ScalarSequence::new(range, incr)))
             },
             InputScheme::ReversoScalarSequence { range, incr } => {
-                ExternalPathwayKind::Other(Box::new(ScalarSequence::new(range, incr)))
+                // let layer_tags: Vec<_> = layers.iter().map(|(t, _)| t.clone()).collect();
+                ExternalPathwayKind::Other(Box::new(
+                    ReversoScalarSequence::new(range, incr, &layer_tags_list)))
             },
             InputScheme::VectorEncoder { ranges } => {
                 ExternalPathwayKind::Other(Box::new(VectorEncoder::new(ranges)))

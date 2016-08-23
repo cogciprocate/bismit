@@ -123,14 +123,15 @@ impl TractAreaCache {
         self.areas.push(tract_area);
 
         self.index.insert((src_area_name.clone(), layer_tags), (self.areas.len() - 1))
-            .map(|_| panic!("Duplicate 'TractAreaCache' keys: (area: \"{}\", tags: '{:?}')",
-                src_area_name, layer_tags));
+            .map(|_| panic!("TractAreaCache::insert(): Multiple i/o layers using the same layer \
+                tags and id found. I/O layers with the same tags must have unique ids. \
+                (area: \"{}\", tags: {})", src_area_name, layer_tags));
     }
 
     fn get(&mut self, key: &(String, LayerTags)) -> Result<&TractArea, CmnError> {
         match self.area_search(key) {
             Ok(idx) => self.areas.get(idx).ok_or(CmnError::new(format!("Index '{}' not found for '{}' \
-                with tags '{:?}'", idx, key.0, key.1))),
+                with tags {}", idx, key.0, key.1))),
 
             Err(err) => Err(err),
         }
@@ -140,7 +141,7 @@ impl TractAreaCache {
     fn get_mut(&mut self, key: &(String, LayerTags)) -> Result<&mut TractArea, CmnError> {
         match self.area_search(key) {
             Ok(idx) => self.areas.get_mut(idx).ok_or(CmnError::new(format!("Index '{}' not \
-                found for '{}' with tags '{:?}'", idx, key.0, key.1))),
+                found for '{}' with tags {}", idx, key.0, key.1))),
 
             Err(err) => {
                 Err(err)

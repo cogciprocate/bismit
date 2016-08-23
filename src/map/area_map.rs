@@ -284,8 +284,8 @@ impl AreaMap {
         } else if layers.len() == 0 {
             None
         } else {
-            panic!("AreaMap::axn_range_meshing_tags(): Internal error. Multiple layers matching \
-                flags: '{}' found: {:?}.", layer_tags, layers);
+            panic!("AreaMap::axn_range_meshing_tags(): Multiple layers matching \
+                flags: '{}' for area: '{}'. Layers: {:?}", layer_tags, self.area_name, layers);
         }
     }
 

@@ -181,7 +181,7 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
         }
     };
 
-    // [DEBUG]:
+    // [DEBUG (Track granularity)]:
     // let track_len_ttl = (track_len_v + track_len_u) * 2;
     // let val_range_ttl = quad_size_val * 4.0;
     // let val_per_track = val_range_ttl / track_len_ttl as f32;
