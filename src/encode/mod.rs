@@ -8,6 +8,7 @@ mod glyph_sequences;
 mod sensory_tract;
 mod scalar;
 mod scalar_sequence;
+mod vector_encoder;
 pub mod idx_streamer;
 
 use std::cmp;
@@ -21,6 +22,7 @@ pub use self::glyph_buckets::GlyphBuckets;
 pub use self::glyph_sequences::GlyphSequences;
 pub use self::sensory_tract::SensoryTract;
 pub use self::scalar_sequence::ScalarSequence;
+pub use self::vector_encoder::VectorEncoder;
 
 const SQRT_3: f32 = 1.73205080756f32;
 

@@ -19,6 +19,7 @@ pub enum InputScheme {
 
     // Possibly remove me eventually:
     ScalarSequence { range: (f32, f32), incr: f32 },
+    VectorEncoder { ranges: Vec<(f32, f32)> },
 }
 
 impl InputScheme {

@@ -319,12 +319,12 @@ impl Thalamus {
     }
 
     // Multiple source output areas disabled.
-    pub fn cycle_external_tracts(&mut self, _: &mut CorticalAreas) {
+    pub fn cycle_external_pathways(&mut self, _: &mut CorticalAreas) {
         // for (area_name, &mut (ref mut src_area, ref layer_tags_list)) in self.external_pathways.iter_mut() {
         for &mut (ref mut src_area, ref layer_tags_list) in self.external_pathways.values_mut().iter_mut() {
             for &layer_tags in layer_tags_list.iter() {
                 let (tract_frame, events) = self.tract.frame_mut(&(src_area.area_name().to_owned(), layer_tags))
-                    .expect("Thalamus::cycle_external_tracts()");
+                    .expect("Thalamus::cycle_external_pathways()");
 
                 // match tract_frame {
                 //     FrameBufferKind::Internal(frame) => src_area.read_into(layer_tags, frame, events),

@@ -8,7 +8,7 @@ use find_folder::Search;
 use cmn::{self, CorticalDims, CmnResult, CmnError};
 use ocl::{EventList};
 use map::{self, AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonKind};
-use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence};
+use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, VectorEncoder};
 use cmn::TractFrameMut;
 use map::LayerTags;
 
@@ -162,7 +162,10 @@ impl ExternalPathway {
             },
             InputScheme::ScalarSequence { range, incr } => {
                 ExternalPathwayKind::Other(Box::new(ScalarSequence::new(range, incr)))
-            }
+            },
+            InputScheme::VectorEncoder { ranges } => {
+                ExternalPathwayKind::Other(Box::new(VectorEncoder::new(ranges)))
+            },
             InputScheme::None | InputScheme::Zeros => ExternalPathwayKind::None,
             is @ _ => panic!("\nExternalPathway::new(): Input type: '{:?}' not yet supported.", is),
         };

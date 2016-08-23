@@ -65,7 +65,7 @@ impl Cortex {
     }
 
     pub fn cycle(&mut self) {
-        self.thal.cycle_external_tracts(&mut self.areas);
+        self.thal.cycle_external_pathways(&mut self.areas);
 
         for (_, area) in self.areas.iter_mut() {
             area.cycle(&mut self.thal);

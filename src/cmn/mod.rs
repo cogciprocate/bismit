@@ -56,8 +56,10 @@ enum_from_primitive! {
     }
 }
 
-pub trait ScalarEncodable: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {}
-impl<T> ScalarEncodable for T where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {}
+pub trait ScalarEncodable: Num + NumCast + PartialOrd + Debug + Clone + AddAssign +
+    Copy + Default {}
+impl<T> ScalarEncodable for T where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign +
+    Copy + Default {}
 
 /// Types which can be represented as one or several stacked two-dimensional
 /// parallelogram-shaped array containing hexagon-shaped elements.
