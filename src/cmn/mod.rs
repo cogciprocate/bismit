@@ -20,10 +20,10 @@ use std::iter::{self};
 use std::cmp::{self};
 use std::io::{self, Write};
 use std::collections::{BTreeMap};
-use std::fmt::Debug;
-use std::ops::AddAssign;
+// use std::fmt::Debug;
+// use std::ops::AddAssign;
 use num::{FromPrimitive};
-use num::{Num, NumCast};
+// use num::{Num, NumCast};
 use rand;
 use rand::distributions::{IndependentSample, Range};
 use ocl::traits::OclScl;
@@ -55,12 +55,6 @@ enum_from_primitive! {
         Int64   = 3,
     }
 }
-
-pub trait ScalarEncodable: Num + NumCast + PartialOrd + Debug + Clone + AddAssign +
-    Copy + Default {}
-impl<T> ScalarEncodable for T where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign +
-    Copy + Default {}
-
 /// Types which can be represented as one or several stacked two-dimensional
 /// parallelogram-shaped array containing hexagon-shaped elements.
 pub trait ParaHexArray {

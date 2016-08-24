@@ -1,4 +1,5 @@
 use std::ops::Range;
+use std::fmt;
 
 /// Map of axons within a cortical area.
 ///
@@ -7,8 +8,8 @@ use std::ops::Range;
 // FEEL FREE TO RENAME
 //
 #[derive(Debug, Clone)]
-pub struct SliceTractMap {    
-    tags: Vec<&'static str>,    
+pub struct SliceTractMap {
+    tags: Vec<&'static str>,
     v_sizes: Vec<u32>,
     u_sizes: Vec<u32>,
     idzs: Vec<u32>,
@@ -19,8 +20,8 @@ impl SliceTractMap {
     pub fn new(
                 tags: &[&'static str],
                 v_sizes: &[u32],
-                u_sizes: &[u32]) 
-            -> SliceTractMap 
+                u_sizes: &[u32])
+            -> SliceTractMap
     {
         assert!(tags.len() == v_sizes.len());
         assert!(tags.len() == u_sizes.len());
@@ -30,7 +31,7 @@ impl SliceTractMap {
         for i in 0..v_sizes.len() {
             idzs.push(physical_len);
 
-            unsafe {                
+            unsafe {
                 physical_len += *v_sizes.get_unchecked(i) * *u_sizes.get_unchecked(i);
             }
         }
@@ -38,7 +39,7 @@ impl SliceTractMap {
         debug_assert!(tags.len() == idzs.len());
 
         SliceTractMap {
-            tags: tags.to_vec(),            
+            tags: tags.to_vec(),
             v_sizes: v_sizes.to_vec(),
             u_sizes: u_sizes.to_vec(),
             idzs: idzs,
@@ -72,7 +73,7 @@ impl SliceTractMap {
         assert!(start < self.idzs.len());
         assert!(end <= self.idzs.len());
 
-        // let axn_id_range = unsafe { 
+        // let axn_id_range = unsafe {
         //     let axn_idz_start = *self.idzs.get_unchecked(start) as usize;
         //     let axn_idz_end = (*self.idzs.get_unchecked(end)
         //         + (*self.v_sizes.get_unchecked(end) * *self.u_sizes.get_unchecked(end))) as usize;
@@ -87,5 +88,11 @@ impl SliceTractMap {
         //     + (*self.v_sizes.get_unchecked(end) * *self.u_sizes.get_unchecked(end))) as usize;
 
         axn_id_start..axn_id_end
+    }
+}
+
+impl fmt::Display for SliceTractMap {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.tags)
     }
 }

@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use time::{self, Timespec, Duration};
 use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings};
 use ::map::SliceTractMap;
+use thalamus::ExternalPathwayFrame;
 
 
 #[derive(Clone, Debug)]
@@ -67,6 +68,7 @@ pub enum Response {
     Motor(MotorFrame),
     AreaInfo(Box<AreaInfo>),
     SampleProgress(Option<OclEvent>),
+    Exiting,
 }
 
 
@@ -239,6 +241,12 @@ impl Flywheel {
             // // DEBUG:
             // println!("Cycle loop complete, prev_cycles: {}...", self.status.prev_cycles);
         }
+
+        // Broadcast an `Exiting` to everyone.
+        for &(_, ref res_tx) in self.req_res_pairs.iter() {
+            // Handle this?
+            res_tx.send(Response::Exiting).ok();
+        }
     }
 
     fn cycle_loop(&mut self) -> Command {
@@ -311,7 +319,9 @@ impl Flywheel {
         }
     }
 
-    fn intake_sensory_frames(&self) {
+    // [NOTE]: Incoming array values beyond the length of destination slice will
+    // be silently ignored.
+    fn intake_sensory_frames(&mut self) {
         // // DEBUG:
         // println!("Intaking sensory frames...");
 
@@ -320,9 +330,21 @@ impl Flywheel {
                 Ok(s) => {
                     match s {
                         SensoryFrame::F32Array16(arr) => {
-                            println!("Intaking sensory frame [pathway id: {}]: {:?}",
-                                pathway_idx, arr);
+                            // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
+                            //     pathway_idx, arr);
 
+                            let pathway = match self.cortex.ext_pathway(pathway_idx) {
+                                Ok(pr) => match pr {
+                                    ExternalPathwayFrame::F32Slice(s) => s,
+                                    f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
+                                        ExternalPathwayFrame variant: {:?}", f)),
+                                },
+                                Err(e) => panic!("{}", e),
+                            };
+
+                            for (i, dst) in pathway.iter_mut().enumerate() {
+                                *dst = arr[i];
+                            }
                         },
                         SensoryFrame::Tract(_) => unimplemented!(),
                     }
@@ -385,4 +407,11 @@ impl Flywheel {
     }
 }
 
+// impl Drop for Flywheel {
+//     fn drop(&mut self) {
+//         for &(_, ref res_tx) in self.req_res_pairs.iter() {
+//             res_tx.send(Response::Exiting).unwrap();
+//         }
+//     }
+// }
 

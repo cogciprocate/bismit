@@ -255,7 +255,7 @@ pub struct Thalamus {
 }
 
 impl Thalamus {
-    pub fn new(plmaps: LayerMapSchemeList, mut pamaps: AreaSchemeList) -> Thalamus {
+    pub fn new(plmaps: LayerMapSchemeList, mut pamaps: AreaSchemeList) -> CmnResult<Thalamus> {
         pamaps.freeze();
         let pamaps = pamaps;
         // let area_count = pamaps.maps().len();
@@ -271,7 +271,7 @@ impl Thalamus {
         for (&_, pa) in pamaps.maps().iter().filter(|&(_, pa)|
                     &plmaps[pa.layer_map_name].kind == &LayerMapKind::Thalamic)
         {
-            let es = ExternalPathway::new(pa, &plmaps[pa.layer_map_name]);
+            let es = try!(ExternalPathway::new(pa, &plmaps[pa.layer_map_name]));
             let tags = es.layer_tags();
             external_pathways.insert(es.area_name().to_owned(), (es, tags))
                 .map(|es_tup| panic!("Duplicate 'ExternalPathway' keys: [\"{}\"]. \
@@ -312,11 +312,11 @@ impl Thalamus {
 
         }
 
-        Thalamus {
+        Ok(Thalamus {
             tract: tract.init(),
             external_pathways: external_pathways,
             area_maps: area_maps,
-        }
+        })
     }
 
     // Multiple source output areas disabled.

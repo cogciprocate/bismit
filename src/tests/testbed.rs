@@ -160,7 +160,7 @@ impl TestBed {
         let plmaps = define_layer_scheme_maps();
         let area_schemes = define_protoareas();
 
-        let thal = Thalamus::new(plmaps, area_schemes);
+        let thal = Thalamus::new(plmaps, area_schemes).unwrap();
         let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
         let ocl_context: Context = Context::builder()

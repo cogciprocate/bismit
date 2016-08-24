@@ -14,9 +14,10 @@ use cmn::TractFrameMut;
 use map::LayerTags;
 
 
+#[derive(Debug)]
 pub enum ExternalPathwayFrame<'a> {
     Tract(TractFrameMut<'a>),
-    F32Slice16(&'a mut [f32]),
+    F32Slice(&'a mut [f32]),
 }
 
 
@@ -42,6 +43,7 @@ pub enum ExternalPathwayKind {
     // IdxStreamer(Box<ExternalPathwayTract>),
     GlyphSequences(Box<GlyphSequences>),
     SensoryTract(Box<SensoryTract>),
+    VectorEncoder(Box<VectorEncoder>),
     Other(Box<ExternalPathwayTract>),
 }
 
@@ -90,7 +92,7 @@ pub struct ExternalPathway {
 
 impl ExternalPathway {
     // [FIXME] Determine (or have passed in) the layer depth corresponding to this source.
-    pub fn new(pamap: &AreaScheme, plmap: &LayerMapScheme) -> ExternalPathway {
+    pub fn new(pamap: &AreaScheme, plmap: &LayerMapScheme) -> CmnResult<ExternalPathway> {
         let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|(_, pl)| pl).collect();
 
         assert!(pamap.get_input().layer_count() == p_layers.len(), "ExternalPathway::new(): \
@@ -101,6 +103,7 @@ impl ExternalPathway {
         // let mut layers = HashMap::with_capacity_and_hasher(4, BuildHasherDefault::default());
         let mut layers = HashMap::with_capacity(4);
         let mut layer_tags_list = Vec::with_capacity(4);
+        let mut layer_dims_list = Vec::with_capacity(4);
 
         for p_layer in p_layers.into_iter() {
             let layer_name = p_layer.name();
@@ -123,6 +126,7 @@ impl ExternalPathway {
                 pamap.name(), plmap.name());
 
             layer_tags_list.push(layer_tags);
+            layer_dims_list.push(dims.clone());
 
             layers.insert(layer_tags, ExternalPathwayLayer {
                 layer_name: layer_name,
@@ -162,7 +166,12 @@ impl ExternalPathway {
                 ExternalPathwayKind::SensoryTract(Box::new(st))
             },
             InputScheme::ScalarSequence { range, incr } => {
-                ExternalPathwayKind::Other(Box::new(ScalarSequence::new(range, incr)))
+                let tract_dims = {
+                    assert!(layer_dims_list.len() == 1);
+                    layer_dims_list[0].unwrap().into()
+                };
+
+                ExternalPathwayKind::Other(Box::new(ScalarSequence::new(range, incr, &tract_dims)))
             },
             InputScheme::ReversoScalarSequence { range, incr } => {
                 // let layer_tags: Vec<_> = layers.iter().map(|(t, _)| t.clone()).collect();
@@ -170,17 +179,21 @@ impl ExternalPathway {
                     ReversoScalarSequence::new(range, incr, &layer_tags_list)))
             },
             InputScheme::VectorEncoder { ranges } => {
-                ExternalPathwayKind::Other(Box::new(VectorEncoder::new(ranges)))
+                let tract_dims: Vec<_> = layer_dims_list.iter().map(|d| d.unwrap().into()).collect();
+
+                ExternalPathwayKind::VectorEncoder(Box::new(try!(
+                    VectorEncoder::new(ranges, &layer_tags_list, &tract_dims)
+                )))
             },
             InputScheme::None | InputScheme::Zeros => ExternalPathwayKind::None,
             is @ _ => panic!("\nExternalPathway::new(): Input type: '{:?}' not yet supported.", is),
         };
 
-        ExternalPathway {
+        Ok(ExternalPathway {
             area_name: pamap.name.to_owned(),
             layers: layers,
             src_kind: src_kind,
-        }
+        })
     }
 
     /// Writes input data into a tract.
@@ -206,6 +219,9 @@ impl ExternalPathway {
             ExternalPathwayKind::SensoryTract(ref mut es) => {
                 es.write_into(&mut frame, tags)
             },
+            ExternalPathwayKind::VectorEncoder(ref mut es) => {
+                es.write_into(&mut frame, tags)
+            },
             _ => [0; 3],
         };
     }
@@ -220,7 +236,10 @@ impl ExternalPathway {
             ExternalPathwayKind::SensoryTract(ref mut es) => {
                 Ok(es.ext_frame_mut())
             },
-            _ => Err(CmnError::new(format!("ExternalPathway::tract_mut(): No tract available for the source \
+            ExternalPathwayKind::VectorEncoder(ref mut es) => {
+                Ok(es.ext_frame_mut())
+            },
+            _ => Err(CmnError::new(format!("ExternalPathway::ext_frame_Mut(): No tract available for the source \
                 kind: {:?}.", self.src_kind))),
         }
     }

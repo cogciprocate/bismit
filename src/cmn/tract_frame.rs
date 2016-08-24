@@ -2,6 +2,7 @@ use std::ops::{Deref, DerefMut};
 use super::TractDims;
 
 /// A view of a terminal of a tract at an instant in time.
+#[derive(Debug)]
 pub struct TractFrame<'a> {
     frame: &'a [u8],
     dims: TractDims,
@@ -38,6 +39,7 @@ impl<'a> Deref for TractFrame<'a> {
 }
 
 
+#[derive(Debug)]
 pub struct TractFrameMut<'a> {
     frame: &'a mut [u8],
     dims: TractDims,

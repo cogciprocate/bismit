@@ -20,7 +20,7 @@ impl Cortex {
                     ca_settings: Option<CorticalAreaSettings>) -> Cortex {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
-        let thal = Thalamus::new(plmaps, pamaps);
+        let thal = Thalamus::new(plmaps, pamaps).unwrap();
         let pamaps = thal.area_maps().clone();
         let platform = Platform::new(ocl::core::default_platform().unwrap());
         let device_type = ocl::core::default_device_type().unwrap();

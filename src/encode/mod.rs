@@ -10,9 +10,12 @@ mod scalar;
 mod scalar_sequence;
 mod reverso_scalar_sequence;
 mod vector_encoder;
+mod scalar_glyph_writer;
 pub mod idx_streamer;
 
 use std::cmp;
+use std::ops::AddAssign;
+use std::fmt::{Debug, Display};
 use num::{Num, NumCast};
 use cmn::{TractFrameMut, ParaHexArray};
 use rand;
@@ -25,8 +28,17 @@ pub use self::sensory_tract::SensoryTract;
 pub use self::scalar_sequence::ScalarSequence;
 pub use self::reverso_scalar_sequence::ReversoScalarSequence;
 pub use self::vector_encoder::VectorEncoder;
+pub use self::scalar_glyph_writer::ScalarGlyphWriter;
 
 const SQRT_3: f32 = 1.73205080756f32;
+
+
+pub trait ScalarEncodable: Num + NumCast + PartialOrd + Debug + Display + Clone +
+    AddAssign + Copy + Default {}
+impl<T> ScalarEncodable for T where T: Num + NumCast + PartialOrd + Debug + Display + Clone +
+    AddAssign + Copy + Default {}
+
+
 
 fn calc_offs(v_size: usize, u_size: usize, y_size: usize, x_size: usize, hex_side: f32) -> (f32, f32) {
     let v_mid = v_size >> 1;
@@ -114,8 +126,9 @@ pub fn print_image(image: &[u8], dims: (usize, usize)) {
 /// intermediates.
 ///
 pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
-            where T: Num + NumCast + PartialOrd {
-    assert!(val >= val_range.0 && val <= val_range.1);
+            where T: ScalarEncodable {
+    assert!(val >= val_range.0 && val <= val_range.1, "Unable to encode scalar value: '{}'. The \
+        value is outside of the allowed range: {:?}.", val, val_range);
     let v_size = tract.dims().v_size() as i32;
     let u_size = tract.dims().u_size() as i32;
     assert!(v_size >= 8 && u_size >= 8, "encode::encode_scalar(): Tract frame too small. Side \
@@ -143,7 +156,9 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
     debug_assert!(quadrant < 5.0);
     // val % quad_size_val:
     let quad_pos_val = val - (quad_size_val * quadrant);
-    debug_assert!((quad_pos_val - (val % quad_size_val)).abs() < 0.00001);
+    debug_assert!((quad_pos_val - (val % quad_size_val).abs()) < 0.00001,
+        format!("quad_pos_val: {}, (val % quad_size_val).abs(): {}", quad_pos_val,
+        (val % quad_size_val).abs()));
 
     #[derive(Debug)]
     struct Center {
@@ -158,7 +173,7 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
         quad_pos_tract as i32
     }
 
-    // Center 'pixel' of the final rendered hexagon:
+    // Center 'tile' of the final rendered hexagon:
     let center = if quadrant < 1.0 {
         Center {
             v: margin,

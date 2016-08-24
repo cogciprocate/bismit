@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use std::ops::AddAssign;
 use num::{Num, NumCast};
 use thalamus::{ExternalPathwayTract, TractFrameMut, LayerTags};
+use encode::ScalarEncodable;
 // use map::LayerTags;
 
 #[derive(Clone, Debug)]
@@ -35,7 +36,7 @@ impl<T> ReversoScalarSequence<T> where T: Num + NumCast + PartialOrd + Debug + C
 }
 
 impl<T> ExternalPathwayTract for ReversoScalarSequence<T>
-            where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {
+            where T: ScalarEncodable {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) -> [usize; 3] {
         let l_idx = self.layer_tags.iter().position(|&t| t == tags)
             .expect(&format!("ReversoScalarSequence::write_into(): No layers matching tags: {}", tags));

@@ -1,25 +1,28 @@
 //! Mostly for testing purposes.
 
-use std::fmt::Debug;
-use std::ops::AddAssign;
-use num::{Num, NumCast};
+use cmn::TractDims;
 use thalamus::{ExternalPathwayTract, TractFrameMut, LayerTags};
+use encode::{ScalarEncodable, ScalarGlyphWriter};
 
 #[derive(Clone, Debug)]
 pub struct ScalarSequence<T> {
     range: (T, T),
     next: T,
     incr: T,
+    writer: ScalarGlyphWriter<T>,
 }
 
-impl<T> ScalarSequence<T> where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {
-    pub fn new(range: (T, T), incr: T) -> ScalarSequence<T> {
+impl<T> ScalarSequence<T> where T: ScalarEncodable {
+    pub fn new(range: (T, T), incr: T, tract_dims: &TractDims) -> ScalarSequence<T> {
         let next = range.0;
+
+        let writer = ScalarGlyphWriter::new(range.clone(), tract_dims);
 
         ScalarSequence {
             range: range,
             incr: incr,
             next: next,
+            writer: writer,
         }
     }
 
@@ -30,9 +33,10 @@ impl<T> ScalarSequence<T> where T: Num + NumCast + PartialOrd + Debug + Clone + 
 }
 
 impl<T> ExternalPathwayTract for ScalarSequence<T>
-            where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {
+            where T: ScalarEncodable {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) -> [usize; 3] {
-        super::encode_scalar(self.next, self.range, tract_frame);
+        // super::encode_scalar(self.next, self.range, tract_frame);
+        self.writer.encode(self.next, tract_frame);
 
         Default::default()
     }
