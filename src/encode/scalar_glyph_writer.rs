@@ -130,7 +130,7 @@ impl<T: ScalarEncodable> ScalarGlyphWriter<T> {
             *e = 0;
         }
 
-        // Notation reminder:
+        // Notation:
         // * '_z': zero (idx[0])
         // * '_m': max (idx[len - 1])
         // * '_n': number of elements, length (idx[len])

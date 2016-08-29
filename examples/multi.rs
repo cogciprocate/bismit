@@ -9,7 +9,7 @@ use bismit::map::{self, LayerTags, LayerMapKind, LayerMapScheme, LayerMapSchemeL
     AreaSchemeList, CellScheme, FilterScheme, InputScheme, AxonKind, LayerKind};
 
 fn main() {
-    let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), None);
+    let _ = Cortex::new(define_lm_schemes(), define_a_schemes(), None);
 
 
 }
