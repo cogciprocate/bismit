@@ -27,14 +27,13 @@ pub enum ExternalPathwayFrame<'a> {
 /// for the moment.
 ///
 pub trait ExternalPathwayTract: Debug {
-    fn write_into(&mut self, frame: &mut TractFrameMut, tags: LayerTags)
-        -> [usize; 3];
+    fn write_into(&mut self, frame: &mut TractFrameMut, tags: LayerTags);
     fn cycle_next(&mut self);
 }
 
 #[allow(unused_variables)]
 #[derive(Debug)]
-pub enum ExternalPathwayKind {
+pub enum ExternalPathwayEncoder {
     None,
     World,
     Stripes { stripe_size: usize, zeros_first: bool },
@@ -85,7 +84,7 @@ impl ExternalPathwayLayer {
 //   multi-headed mutable slice when cycled.
 pub struct ExternalPathway {
     area_name: String,
-    src_kind: ExternalPathwayKind,
+    src_kind: ExternalPathwayEncoder,
     // layers: HashMap<LayerTags, ExternalPathwayLayer, BuildHasherDefault<XxHash>>,
     layers: HashMap<LayerTags, ExternalPathwayLayer>,
 }
@@ -146,7 +145,7 @@ impl ExternalPathway {
                 if loop_frames > 0 {
                     is = is.loop_frames(loop_frames);
                 }
-                ExternalPathwayKind::Other(Box::new(is))
+                ExternalPathwayEncoder::Other(Box::new(is))
             },
             InputScheme::GlyphSequences { seq_lens, seq_count, scale, hrz_dims } => {
                 let label_file = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
@@ -157,13 +156,13 @@ impl ExternalPathway {
                     .join("train-images-idx3-ubyte");
                 let gs = GlyphSequences::new(&mut layers, seq_lens, seq_count, scale, hrz_dims,
                     label_file, image_file);
-                ExternalPathwayKind::GlyphSequences(Box::new(gs))
+                ExternalPathwayEncoder::GlyphSequences(Box::new(gs))
             },
             InputScheme::SensoryTract => {
                 assert_eq!(layers.len(), 1);
                 let st = SensoryTract::new(layers[&layer_tags_list[0]].dims()
                     .expect("ExternalPathway::new(): Layer dims not set properly."));
-                ExternalPathwayKind::SensoryTract(Box::new(st))
+                ExternalPathwayEncoder::SensoryTract(Box::new(st))
             },
             InputScheme::ScalarSequence { range, incr } => {
                 let tract_dims = {
@@ -171,21 +170,21 @@ impl ExternalPathway {
                     layer_dims_list[0].unwrap().into()
                 };
 
-                ExternalPathwayKind::Other(Box::new(ScalarSequence::new(range, incr, &tract_dims)))
+                ExternalPathwayEncoder::Other(Box::new(ScalarSequence::new(range, incr, &tract_dims)))
             },
             InputScheme::ReversoScalarSequence { range, incr } => {
                 // let layer_tags: Vec<_> = layers.iter().map(|(t, _)| t.clone()).collect();
-                ExternalPathwayKind::Other(Box::new(
+                ExternalPathwayEncoder::Other(Box::new(
                     ReversoScalarSequence::new(range, incr, &layer_tags_list)))
             },
             InputScheme::VectorEncoder { ranges } => {
                 let tract_dims: Vec<_> = layer_dims_list.iter().map(|d| d.unwrap().into()).collect();
 
-                ExternalPathwayKind::VectorEncoder(Box::new(try!(
+                ExternalPathwayEncoder::VectorEncoder(Box::new(try!(
                     VectorEncoder::new(ranges, &layer_tags_list, &tract_dims)
                 )))
             },
-            InputScheme::None | InputScheme::Zeros => ExternalPathwayKind::None,
+            InputScheme::None | InputScheme::Zeros => ExternalPathwayEncoder::None,
             is @ _ => panic!("\nExternalPathway::new(): Input type: '{:?}' not yet supported.", is),
         };
 
@@ -208,22 +207,22 @@ impl ExternalPathway {
             dims, frame.dims());
 
         // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
-        let _ = match self.src_kind {
-            // ExternalPathwayKind::IdxStreamer(ref mut es) |
-            ExternalPathwayKind::Other(ref mut es) => {
+        match self.src_kind {
+            // ExternalPathwayEncoder::IdxStreamer(ref mut es) |
+            ExternalPathwayEncoder::Other(ref mut es) => {
                 es.write_into(&mut frame, tags)
             },
-            ExternalPathwayKind::GlyphSequences(ref mut es) => {
+            ExternalPathwayEncoder::GlyphSequences(ref mut es) => {
                 es.write_into(&mut frame, tags)
             },
-            ExternalPathwayKind::SensoryTract(ref mut es) => {
+            ExternalPathwayEncoder::SensoryTract(ref mut es) => {
                 es.write_into(&mut frame, tags)
             },
-            ExternalPathwayKind::VectorEncoder(ref mut es) => {
+            ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
                 es.write_into(&mut frame, tags)
             },
-            _ => [0; 3],
-        };
+            _ => (),
+        }
     }
 
     // pub fn frame<'f>(&'f self) -> Option<&'f mut [u8]> {
@@ -233,10 +232,10 @@ impl ExternalPathway {
     /// Returns a tract frame of an external source buffer, if available.
     pub fn ext_frame_mut(&mut self) -> CmnResult<ExternalPathwayFrame> {
         match self.src_kind {
-            ExternalPathwayKind::SensoryTract(ref mut es) => {
+            ExternalPathwayEncoder::SensoryTract(ref mut es) => {
                 Ok(es.ext_frame_mut())
             },
-            ExternalPathwayKind::VectorEncoder(ref mut es) => {
+            ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
                 Ok(es.ext_frame_mut())
             },
             _ => Err(CmnError::new(format!("ExternalPathway::ext_frame_Mut(): No tract available for the source \
@@ -246,14 +245,14 @@ impl ExternalPathway {
 
     pub fn cycle_next(&mut self) {
         match self.src_kind {
-            // ExternalPathwayKind::IdxStreamer(ref mut es) |
-            ExternalPathwayKind::Other(ref mut es) => {
+            // ExternalPathwayEncoder::IdxStreamer(ref mut es) |
+            ExternalPathwayEncoder::Other(ref mut es) => {
                 es.cycle_next()
             },
-            ExternalPathwayKind::GlyphSequences(ref mut es) => {
+            ExternalPathwayEncoder::GlyphSequences(ref mut es) => {
                 es.cycle_next()
             },
-            ExternalPathwayKind::SensoryTract(ref mut es) => {
+            ExternalPathwayEncoder::SensoryTract(ref mut es) => {
                 es.cycle_next()
             },
             _ => (),

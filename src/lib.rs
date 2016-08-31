@@ -23,7 +23,7 @@ pub mod map;
 
 pub use ocl::Event as OclEvent;
 pub use self::cortex::Cortex;
-pub use self::thalamus::{ExternalPathwayTract, ExternalPathwayKind};
+pub use self::thalamus::{ExternalPathwayTract, ExternalPathwayEncoder};
 pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork,
     PyramidalLayer, SpinyStellateLayer, Dendrites, CorticalAreaSettings};
 pub use self::map::{LayerMapSchemeList, AreaSchemeList};

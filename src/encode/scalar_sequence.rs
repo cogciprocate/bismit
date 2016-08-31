@@ -34,11 +34,11 @@ impl<T> ScalarSequence<T> where T: ScalarEncodable {
 
 impl<T> ExternalPathwayTract for ScalarSequence<T>
             where T: ScalarEncodable {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) -> [usize; 3] {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) {
         // super::encode_scalar(self.next, self.range, tract_frame);
         self.writer.encode(self.next, tract_frame);
 
-        Default::default()
+        // Default::default()
     }
 
     fn cycle_next(&mut self) {

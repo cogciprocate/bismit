@@ -369,11 +369,17 @@ impl Thalamus {
         }
     }
 
-    pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
+    pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<&mut ExternalPathway> {
         let pathway = try!(self.external_pathways.by_index_mut(pathway_idx).ok_or(
-            CmnError::new(format!("Thalamus::ext_pathway(): Invalid pathway index: '{}'.",
+            CmnError::new(format!("Thalamus::ext_pathway_frame(): Invalid pathway index: '{}'.",
             pathway_idx))));
-        pathway.0.ext_frame_mut()
+
+        Ok(&mut pathway.0)
+    }
+
+    pub fn ext_pathway_frame(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
+        let pathway = try!(self.ext_pathway(pathway_idx));
+        pathway.ext_frame_mut()
     }
 }
 

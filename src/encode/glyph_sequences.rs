@@ -111,9 +111,7 @@ impl GlyphSequences {
 }
 
 impl ExternalPathwayTract for GlyphSequences {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags)
-            -> [usize; 3]
-    {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) {
         let glyph_dims = self.buckets.glyph_dims();
         let (next_seq_idx, next_glyph_id) = self.cursor.get();
         let glyph: &[u8] = self.buckets.next_glyph(next_glyph_id);
@@ -135,7 +133,7 @@ impl ExternalPathwayTract for GlyphSequences {
                 tags, map::NS_OUT);
         }
 
-        [next_glyph_id, next_seq_idx, 0]
+        // [next_glyph_id, next_seq_idx, 0]
     }
 
     fn cycle_next(&mut self) {

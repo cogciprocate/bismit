@@ -37,7 +37,7 @@ impl<T> ReversoScalarSequence<T> where T: Num + NumCast + PartialOrd + Debug + C
 
 impl<T> ExternalPathwayTract for ReversoScalarSequence<T>
             where T: ScalarEncodable {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) -> [usize; 3] {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) {
         let l_idx = self.layer_tags.iter().position(|&t| t == tags)
             .expect(&format!("ReversoScalarSequence::write_into(): No layers matching tags: {}", tags));
 
@@ -49,7 +49,7 @@ impl<T> ExternalPathwayTract for ReversoScalarSequence<T>
             panic!("ReversoScalarSequence::write_into(): Too many layers!");
         }
 
-        Default::default()
+        // Default::default()
     }
 
     fn cycle_next(&mut self) {

@@ -6,7 +6,6 @@ use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSetting
 use ::map::SliceTractMap;
 use thalamus::ExternalPathwayFrame;
 
-
 #[derive(Clone, Debug)]
 pub enum Obs {
     Float64 { p: usize, len: usize }
@@ -333,7 +332,7 @@ impl Flywheel {
                             // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
                             //     pathway_idx, arr);
 
-                            let pathway = match self.cortex.ext_pathway(pathway_idx) {
+                            let pathway = match self.cortex.ext_pathway_frame(pathway_idx) {
                                 Ok(pr) => match pr {
                                     ExternalPathwayFrame::F32Slice(s) => s,
                                     f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \

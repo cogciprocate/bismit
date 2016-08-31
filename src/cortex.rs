@@ -6,12 +6,12 @@ use area::{CorticalArea, CorticalAreas, CorticalAreaSettings};
 use thalamus::{Thalamus};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use cmn::{CmnResult};
-use thalamus::ExternalPathwayFrame;
+use thalamus::{ExternalPathway, ExternalPathwayFrame};
 
 pub struct Cortex {
     // AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable
     // stuff" struct to pass to it. [DONE]
-    pub areas: CorticalAreas,
+    areas: CorticalAreas,
     thal: Thalamus,
 }
 
@@ -80,8 +80,12 @@ impl Cortex {
         self.thal.ext_pathway_idx(pathway_name)
     }
 
-    pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
+    pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<&mut ExternalPathway> {
         self.thal.ext_pathway(pathway_idx)
+    }
+
+    pub fn ext_pathway_frame(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
+        self.thal.ext_pathway_frame(pathway_idx)
     }
 }
 

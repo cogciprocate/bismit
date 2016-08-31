@@ -77,19 +77,19 @@ pub fn define_pamaps() -> AreaSchemeList {
 }
 
 #[allow(unused_variables)]
-pub fn disable_stuff(cortex: &mut Cortex) {
-    for (_, area) in &mut cortex.areas {
-        // area.psal_mut().dens_mut().syns_mut().set_offs_to_zero_temp();
-        // area.bypass_inhib = true;
-        // area.bypass_filters = true;
-        // area.disable_pyrs = true;
+pub fn disable_stuff(_: &mut Cortex) {
+    // for (_, area) in &mut cortex.areas {
+    //     // area.psal_mut().dens_mut().syns_mut().set_offs_to_zero_temp();
+    //     // area.bypass_inhib = true;
+    //     // area.bypass_filters = true;
+    //     // area.disable_pyrs = true;
 
-        // area.disable_ssts = true;
-        // area.disable_mcols = true;
+    //     // area.disable_ssts = true;
+    //     // area.disable_mcols = true;
 
-        // area.disable_learning = true;
-        // area.disable_regrowth = true;
-    }
+    //     // area.disable_learning = true;
+    //     // area.disable_regrowth = true;
+    // }
 }
 
 

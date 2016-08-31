@@ -143,9 +143,7 @@ impl IdxStreamer {
 }
 
 impl ExternalPathwayTract for IdxStreamer {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags)
-            -> [usize; 3]
-    {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) {
         assert!(tract_frame.dims() == &self.layer_dims);
         assert!((self.image_len()) <= tract_frame.dims().to_len(),
             "Ganglion vector size must be greater than or equal to IDX image size");
@@ -167,7 +165,7 @@ impl ExternalPathwayTract for IdxStreamer {
         }
 
         let prev_frame = self.frame_counter;
-        [prev_frame, 0, 0]
+        // [prev_frame, 0, 0]
     }
 
     fn cycle_next(&mut self) {
