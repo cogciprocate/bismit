@@ -84,7 +84,7 @@ impl ExternalPathwayLayer {
 //   multi-headed mutable slice when cycled.
 pub struct ExternalPathway {
     area_name: String,
-    src_kind: ExternalPathwayEncoder,
+    encoder: ExternalPathwayEncoder,
     // layers: HashMap<LayerTags, ExternalPathwayLayer, BuildHasherDefault<XxHash>>,
     layers: HashMap<LayerTags, ExternalPathwayLayer>,
 }
@@ -135,7 +135,7 @@ impl ExternalPathway {
             });
         }
 
-        let src_kind = match pamap.get_input().clone() {
+        let encoder = match pamap.get_input().clone() {
             InputScheme::IdxStreamer { file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
                 let mut is = IdxStreamer::new(layers[&layer_tags_list[0]].dims()
@@ -191,7 +191,7 @@ impl ExternalPathway {
         Ok(ExternalPathway {
             area_name: pamap.name.to_owned(),
             layers: layers,
-            src_kind: src_kind,
+            encoder: encoder,
         })
     }
 
@@ -207,7 +207,7 @@ impl ExternalPathway {
             dims, frame.dims());
 
         // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
-        match self.src_kind {
+        match self.encoder {
             // ExternalPathwayEncoder::IdxStreamer(ref mut es) |
             ExternalPathwayEncoder::Other(ref mut es) => {
                 es.write_into(&mut frame, tags)
@@ -231,7 +231,7 @@ impl ExternalPathway {
 
     /// Returns a tract frame of an external source buffer, if available.
     pub fn ext_frame_mut(&mut self) -> CmnResult<ExternalPathwayFrame> {
-        match self.src_kind {
+        match self.encoder {
             ExternalPathwayEncoder::SensoryTract(ref mut es) => {
                 Ok(es.ext_frame_mut())
             },
@@ -239,12 +239,12 @@ impl ExternalPathway {
                 Ok(es.ext_frame_mut())
             },
             _ => Err(CmnError::new(format!("ExternalPathway::ext_frame_Mut(): No tract available for the source \
-                kind: {:?}.", self.src_kind))),
+                kind: {:?}.", self.encoder))),
         }
     }
 
     pub fn cycle_next(&mut self) {
-        match self.src_kind {
+        match self.encoder {
             // ExternalPathwayEncoder::IdxStreamer(ref mut es) |
             ExternalPathwayEncoder::Other(ref mut es) => {
                 es.cycle_next()
@@ -278,5 +278,9 @@ impl ExternalPathway {
 
     pub fn area_name<'a>(&'a self) -> &'a str {
         &self.area_name
+    }
+
+    pub fn encoder(&mut self) -> &mut ExternalPathwayEncoder {
+        &mut self.encoder
     }
 }

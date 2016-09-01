@@ -9,8 +9,6 @@ use cmn::{CmnResult};
 use thalamus::{ExternalPathway, ExternalPathwayFrame};
 
 pub struct Cortex {
-    // AREAS: CURRENTLY PUBLIC FOR DEBUG/TESTING PURPOSES - need a "disable
-    // stuff" struct to pass to it. [DONE]
     areas: CorticalAreas,
     thal: Thalamus,
 }
@@ -90,8 +88,8 @@ impl Cortex {
 }
 
 impl Drop for Cortex {
-    /// Just for informational purposes. The context will have 'dropped'
-    /// (refcount == 0) when `self.areas` is dropped.
+    /// Just for informational purposes. The context will have "dropped"
+    /// (ref count --> 0) when `self.areas` is dropped.
     fn drop(&mut self) {
         print!("Releasing OpenCL components... ");
         print!("[ Context ]");

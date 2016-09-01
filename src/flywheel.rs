@@ -2,9 +2,17 @@ use std::ops::Range;
 use std::sync::mpsc::{Sender, SyncSender, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 use time::{self, Timespec, Duration};
+use cmn::{CmnResult};
 use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings};
 use ::map::SliceTractMap;
-use thalamus::ExternalPathwayFrame;
+use thalamus::{ExternalPathwayEncoder, ExternalPathwayFrame};
+
+
+#[derive(Clone, Debug)]
+pub enum PathwayConfig {
+    EncoderRanges(Arc<Mutex<Vec<(f32, f32)>>>),
+}
+
 
 #[derive(Clone, Debug)]
 pub enum Obs {
@@ -12,13 +20,18 @@ pub enum Obs {
 }
 
 
+// [NOTE]: Remove this or re-use it to be the one-time designator for an
+// arc-mutex. Really no need to have a separate sensory frame unless sensory
+// data is highly sporadic.
+//
 #[derive(Clone, Debug)]
 pub enum SensoryFrame {
     F32Array16([f32; 16]),
     // TODO: Convert this into a `usize` referring to a previously stored
     // arc-mutex reference avoiding the need to create a new reference for
-    // each frame:
+    // each frame (OR REDESIGN - SEE ABOVE):
     Tract(Arc<Mutex<Vec<u8>>>),
+    PathwayConfig(PathwayConfig),
 }
 
 
@@ -255,7 +268,7 @@ impl Flywheel {
         loop {
             if (self.cycle_iters_max != 0) && (self.status.cur_cycle >= self.cycle_iters_max) { break; }
 
-            self.intake_sensory_frames();
+            self.intake_sensory_frames().unwrap();
 
             self.cortex.cycle();
 
@@ -320,7 +333,7 @@ impl Flywheel {
 
     // [NOTE]: Incoming array values beyond the length of destination slice will
     // be silently ignored.
-    fn intake_sensory_frames(&mut self) {
+    fn intake_sensory_frames(&mut self) -> CmnResult<()> {
         // // DEBUG:
         // println!("Intaking sensory frames...");
 
@@ -332,17 +345,24 @@ impl Flywheel {
                             // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
                             //     pathway_idx, arr);
 
-                            let pathway = match self.cortex.ext_pathway_frame(pathway_idx) {
-                                Ok(pr) => match pr {
-                                    ExternalPathwayFrame::F32Slice(s) => s,
-                                    f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
-                                        ExternalPathwayFrame variant: {:?}", f)),
-                                },
-                                Err(e) => panic!("{}", e),
+                            let pathway = match try!(self.cortex.ext_pathway_frame(pathway_idx)) {
+                                ExternalPathwayFrame::F32Slice(s) => s,
+                                f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
+                                    ExternalPathwayFrame variant: {:?}", f)),
                             };
 
                             for (i, dst) in pathway.iter_mut().enumerate() {
                                 *dst = arr[i];
+                            }
+                        },
+                        SensoryFrame::PathwayConfig(pc) => match pc {
+                            PathwayConfig::EncoderRanges(am_r) => {
+                                match try!(self.cortex.ext_pathway(pathway_idx)).encoder() {
+                                    &mut ExternalPathwayEncoder::VectorEncoder(ref mut v) => {
+                                        try!(v.set_ranges(&am_r.lock().unwrap()[..]));
+                                    }
+                                    _ => unimplemented!(),
+                                }
                             }
                         },
                         SensoryFrame::Tract(_) => unimplemented!(),
@@ -355,6 +375,8 @@ impl Flywheel {
                 },
             }
         }
+
+        Ok(())
     }
 
     fn output_motor_frames(&self) {
