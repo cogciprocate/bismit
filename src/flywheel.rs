@@ -210,6 +210,7 @@ impl Flywheel {
 
     pub fn spin(&mut self) {
         loop {
+            self.intake_sensory_frames().unwrap();
             self.fulfill_requests();
 
             // // DEBUG:
@@ -338,41 +339,43 @@ impl Flywheel {
         // println!("Intaking sensory frames...");
 
         for &(ref sen_rx, pathway_idx) in self.sensory_rxs.iter() {
-            match sen_rx.try_recv() {
-                Ok(s) => {
-                    match s {
-                        SensoryFrame::F32Array16(arr) => {
-                            // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
-                            //     pathway_idx, arr);
+            loop {
+                match sen_rx.try_recv() {
+                    Ok(s) => {
+                        match s {
+                            SensoryFrame::F32Array16(arr) => {
+                                // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
+                                //     pathway_idx, arr);
 
-                            let pathway = match try!(self.cortex.ext_pathway_frame(pathway_idx)) {
-                                ExternalPathwayFrame::F32Slice(s) => s,
-                                f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
-                                    ExternalPathwayFrame variant: {:?}", f)),
-                            };
+                                let pathway = match try!(self.cortex.ext_pathway_frame(pathway_idx)) {
+                                    ExternalPathwayFrame::F32Slice(s) => s,
+                                    f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
+                                        ExternalPathwayFrame variant: {:?}", f)),
+                                };
 
-                            for (i, dst) in pathway.iter_mut().enumerate() {
-                                *dst = arr[i];
-                            }
-                        },
-                        SensoryFrame::PathwayConfig(pc) => match pc {
-                            PathwayConfig::EncoderRanges(am_r) => {
-                                match try!(self.cortex.ext_pathway(pathway_idx)).encoder() {
-                                    &mut ExternalPathwayEncoder::VectorEncoder(ref mut v) => {
-                                        try!(v.set_ranges(&am_r.lock().unwrap()[..]));
-                                    }
-                                    _ => unimplemented!(),
+                                for (i, dst) in pathway.iter_mut().enumerate() {
+                                    *dst = arr[i];
                                 }
-                            }
-                        },
-                        SensoryFrame::Tract(_) => unimplemented!(),
+                            },
+                            SensoryFrame::PathwayConfig(pc) => match pc {
+                                PathwayConfig::EncoderRanges(r_am) => {
+                                    match try!(self.cortex.ext_pathway(pathway_idx)).encoder() {
+                                        &mut ExternalPathwayEncoder::VectorEncoder(ref mut v) => {
+                                            try!(v.set_ranges(&r_am.lock().unwrap()[..]));
+                                        }
+                                        _ => unimplemented!(),
+                                    }
+                                }
+                            },
+                            SensoryFrame::Tract(_) => unimplemented!(),
+                        }
                     }
+                    Err(e) => match e {
+                        TryRecvError::Empty => break,
+                        TryRecvError::Disconnected => panic!("Flywheel::fulfill_io(): \
+                            Sensory sender disconnected."),
+                    },
                 }
-                Err(e) => match e {
-                    TryRecvError::Empty => (),
-                    TryRecvError::Disconnected => panic!("Flywheel::fulfill_io(): \
-                        Sensory sender disconnected."),
-                },
             }
         }
 

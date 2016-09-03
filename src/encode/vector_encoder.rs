@@ -9,6 +9,7 @@ pub struct VectorEncoder {
     ranges: Vec<(f32, f32)>,
     values: Vec<f32>,
     layer_tags: Vec<LayerTags>,
+    tract_dims: Vec<TractDims>,
     writers: Vec<ScalarGlyphWriter<f32>>,
 }
 
@@ -24,9 +25,7 @@ impl VectorEncoder {
         let mut writers = Vec::with_capacity(ranges.len());
 
         for (r, ref td) in ranges.iter().zip(tract_dims) {
-            let writer = ScalarGlyphWriter::new(r.clone(), td);
-
-            writers.push(writer);
+            writers.push(ScalarGlyphWriter::new(r.clone(), td));
         }
 
         // ScalarGlyphWriter::new(range.clone(), tract_dims);
@@ -35,6 +34,7 @@ impl VectorEncoder {
             ranges: ranges,
             values: vec![Default::default(); layers.len()],
             layer_tags: Vec::from(layers),
+            tract_dims: Vec::from(tract_dims),
             writers: writers,
         })
     }
@@ -43,15 +43,32 @@ impl VectorEncoder {
         ExternalPathwayFrame::F32Slice(&mut self.values[..])
     }
 
+    /// Resets the ranges and number of scalars this encoder will encode.
     pub fn set_ranges(&mut self, new_ranges: &[(f32, f32)]) -> CmnResult<()> {
-        if new_ranges.len() != self.ranges.len() {
-            return CmnError::err(format!("VectorEncoder::set_ranges(): Incorrect number of ranges
-                provided ('{}'/'{}').", new_ranges.len(), self.ranges.len()));
+        // if new_ranges.len() != self.ranges.len() {
+        //     return CmnError::err(format!("VectorEncoder::set_ranges(): Incorrect number of ranges
+        //         provided ('{}'/'{}').", new_ranges.len(), self.ranges.len()));
+        // }
+        if new_ranges.len() > self.tract_dims.len() {
+            return CmnError::err(format!("VectorEncoder::set_ranges(): Too many ranges
+                provided ('{}'/'{}').", new_ranges.len(), self.tract_dims.len()));
         }
 
-        for (sr, nr) in self.ranges.iter_mut().zip(new_ranges.iter()) {
-            *sr = *nr;
+        self.ranges.clear();
+
+        for nr in new_ranges.iter() {
+            self.ranges.push(*nr);
         }
+
+        self.writers.clear();
+
+        for (r, td) in self.ranges.iter().zip(self.tract_dims.iter()) {
+            self.writers.push(ScalarGlyphWriter::new(r.clone(), td));
+        }
+
+        self.values = vec![0.0; self.ranges.len()];
+
+        // println!("VectorEncoder::set_ranges(): Ranges now set to: {:?}", self.ranges);
 
         Ok(())
     }
@@ -64,7 +81,10 @@ impl ExternalPathwayTract for VectorEncoder {
 
         // println!("Vector encoder: encoding value: {}...", self.values[l_idx]);
         // super::encode_scalar(self.values[l_idx], self.ranges[l_idx], tract_frame);
-        self.writers[l_idx].encode(self.values[l_idx], tract_frame);
+        match self.writers.get(l_idx) {
+            Some(w) => w.encode(self.values[l_idx], tract_frame),
+            None => (),
+        }
 
         // Default::default()
     }
