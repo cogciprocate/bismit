@@ -60,9 +60,10 @@ impl ThalamicTract {
     fn add_area(&mut self, src_area_name: String, layer_tags: LayerTags, layer_dims: &CorticalDims) {
         let tract_dims: TractDims = layer_dims.into();
         let len = tract_dims.to_len();
-        self.tract_areas.insert(src_area_name.clone(), layer_tags,
-            TractArea::new(src_area_name, layer_tags, self.ttl_len..(self.ttl_len + len),
-            tract_dims));
+        let new_area = TractArea::new(src_area_name.clone(), layer_tags,
+            self.ttl_len..(self.ttl_len + len), tract_dims);
+
+        self.tract_areas.insert(src_area_name, layer_tags, new_area);
         self.ttl_len += len;
     }
 
