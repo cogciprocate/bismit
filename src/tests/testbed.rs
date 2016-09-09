@@ -7,9 +7,9 @@ use ocl::{Context, ProQue};
 use cortex::Cortex;
 
 
-pub static PRIMARY_AREA_NAME: &'static str     = "v1";
-pub static INHIB_LAYER_NAME: &'static str     = "iv_inhib";
-const CYCLES_PER_FRAME: usize                 = 1;
+pub static PRIMARY_AREA_NAME: &'static str = "v1";
+pub static INHIB_LAYER_NAME: &'static str = "iv_inhib";
+const CYCLES_PER_FRAME: usize = 1;
 
 
 pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
@@ -171,7 +171,7 @@ impl TestBed {
             .prog_bldr(area_map.gen_build_options())
             .build().expect("Testbed::new(): ocl_pq.build()");
 
-        let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size());
+        let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size().unwrap());
 
         TestBed {
             ocl_context: ocl_context,

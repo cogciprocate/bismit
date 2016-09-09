@@ -22,15 +22,15 @@ impl AxonSpace {
         //let depth_cellular = region.depth_cellular();
         //let depth_axn_hrz = region.depth_axonal_horizontal();
         //let depth_total = region.depth_total(); // NOT THE TRUE AXON DEPTH
-        
-        //let mut hrz_axn_slcs = 0u8;        
+
+        //let mut hrz_axn_slcs = 0u8;
 
         // <<<<< REDO THIS TO FIT INTO: MIN(V_SIZE, U_SIZE) * MIN(V_SIZE, U_SIZE)
-        // if depth_axn_hrz > 0 { 
+        // if depth_axn_hrz > 0 {
         //     let syn_span_lin_l2 = (cmn::SYNAPSE_REACH_GEO_LOG2 + 1) << 1;
-        //     let hrz_frames_per_slc: u32 = (area_dims.columns() >> syn_span_lin_l2) as u8; 
+        //     let hrz_frames_per_slc: u32 = (area_dims.columns() >> syn_span_lin_l2) as u8;
 
-        //     assert!(hrz_frames_per_slc > 0, 
+        //     assert!(hrz_frames_per_slc > 0,
         //         "Synapse span must be equal or less than cortical area width");
 
         //     hrz_axn_slcs += depth_axn_hrz as u32 / hrz_frames_per_slc;
@@ -48,9 +48,9 @@ impl AxonSpace {
         //let dims = area_dims.clone_with_depth(physical_depth);
 
         //let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
-        
-        println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}", 
-            area_map.slices().to_len_padded(ocl_pq.max_wg_size()), mt = cmn::MT);
+
+        println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
+            area_map.slices().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
 
         // let states = Buffer::<u8>::with_vec(area_map.slices(), ocl_pq.queue());
         let states = Buffer::<u8>::new(ocl_pq.queue(), None, area_map.slices(), None).unwrap();
@@ -99,14 +99,14 @@ pub mod tests {
 
     pub struct AxnCoords {
         idx: u32,
-        slc_id: u8, 
-        v_id: u32, 
+        slc_id: u8,
+        v_id: u32,
         u_id: u32,
     }
 
     impl AxnCoords {
         pub fn new(slc_id: u8, v_id: u32, u_id: u32, area_map: &AreaMap
-            ) -> Result<AxnCoords, &'static str> 
+            ) -> Result<AxnCoords, &'static str>
         {
             match area_map.axn_idx(slc_id, v_id, 0, u_id, 0) {
                 Ok(idx) => Ok(AxnCoords { idx: idx, slc_id: slc_id, v_id: v_id, u_id: u_id }),
@@ -124,5 +124,5 @@ pub mod tests {
         pub fn idx(&self) -> u32 {
             self.idx
         }
-    }    
+    }
 }

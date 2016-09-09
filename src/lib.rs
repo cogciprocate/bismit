@@ -12,7 +12,8 @@ extern crate twox_hash;
 #[macro_use] extern crate colorify;
 
 mod cortex;
-mod thalamus;
+mod subcortex;
+// mod thalamus;
 mod area;
 mod encode;
 pub mod flywheel;
@@ -23,7 +24,7 @@ pub mod map;
 
 pub use ocl::Event as OclEvent;
 pub use self::cortex::Cortex;
-pub use self::thalamus::{ExternalPathwayTract, ExternalPathwayEncoder};
+pub use self::subcortex::thalamus::{self, ExternalPathwayTract, ExternalPathwayEncoder};
 pub use self::area::{CorticalArea, AxonSpace, Synapses, Minicolumns, InhibitoryInterneuronNetwork,
     PyramidalLayer, SpinyStellateLayer, Dendrites, CorticalAreaSettings};
 pub use self::map::{LayerMapSchemeList, AreaSchemeList};

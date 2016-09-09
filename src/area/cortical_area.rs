@@ -259,7 +259,7 @@ impl CorticalArea {
             .prog_bldr(build_options)
             .build().expect("CorticalArea::new(): ocl_pq.build(): error");
 
-        let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size());
+        let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size().unwrap());
 
         println!("{mt}CORTICALAREA::NEW(): Area \"{}\" details: \
             (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, \n\
