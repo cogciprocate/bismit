@@ -3,7 +3,7 @@ use map::{AreaMap};
 use ocl::{self, ProQue, SpatialDims, Buffer};
 use ocl::core::ClWaitList;
 use map::{CellKind, CellScheme, DendriteKind};
-use area::{AxonSpace, Synapses};
+use cortex::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
 const PRINT_DEBUG: bool = false;
@@ -29,7 +29,7 @@ impl Dendrites {
                     dims: CorticalDims,
                     //src_tfts: Vec<Vec<&'static str>>,
                     cell_scheme: CellScheme,
-                    den_kind: DendriteKind, 
+                    den_kind: DendriteKind,
                     cell_kind: CellKind,
                     area_map: &AreaMap,
                     axons: &AxonSpace,
@@ -48,13 +48,13 @@ impl Dendrites {
         /*let (den_threshold, den_kernel) = match den_kind {
             DendriteKind::Distal => (
                 cell_scheme.den_thresh_init.unwrap_or(1),
-                //cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2, 
+                //cmn::SYNAPSES_PER_DENDRITE_DISTAL_LOG2,
                 "den_cycle"
             ),
             DendriteKind::Proximal => (
                 cell_scheme.den_thresh_init.unwrap_or(1),
-                //cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2, 
-                
+                //cmn::SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2,
+
             ),
         };*/
 
@@ -66,11 +66,11 @@ impl Dendrites {
         let thresholds = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
         energies.cmd().fill(1, None).enq().unwrap();
 
-        println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}", 
+        println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}",
             layer_name, dims, states.len(), mt = cmn::MT);
 
         let syns_dims = dims.clone_with_ptl2((dims.per_tft_l2() + syns_per_den_l2 as i8));
-        let syns = Synapses::new(layer_name, syns_dims, cell_scheme.clone(), den_kind, cell_kind, 
+        let syns = Synapses::new(layer_name, syns_dims, cell_scheme.clone(), den_kind, cell_kind,
             area_map, axons, /*aux,*/ ocl_pq);
 
 
@@ -87,7 +87,7 @@ impl Dendrites {
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(&states);
 
-        
+
         Dendrites {
             layer_name: layer_name,
             dims: dims,
@@ -172,7 +172,7 @@ pub mod tests {
     use super::{Dendrites};
     use cmn::{CelCoords};
     use cmn::{CorticalDims};
-    use area::{SynapsesTest};
+    use cortex::{SynapsesTest};
     use tests;
 
     pub trait DendritesTest {
@@ -205,7 +205,7 @@ pub mod tests {
             let tft_id_range = RandRange::new(0, self.dims.tfts_per_cel());
             let den_id_cel_range = RandRange::new(0, self.dims.per_tft());
 
-            let tft_id = tft_id_range.ind_sample(self.syns.rng()); 
+            let tft_id = tft_id_range.ind_sample(self.syns.rng());
             let den_id_cel = den_id_cel_range.ind_sample(self.syns.rng());
 
             DenCoords::new(tft_id, den_id_cel, cel_coords, &self.dims)
@@ -222,45 +222,45 @@ pub mod tests {
         fn den_id_range(&self) -> Range<u32> {
             0..self.dims.per_tft()
         }
-        
+
     }
 
     // <<<<< TODO: NEEDS UPDATING TO MATCH / INTEGRATE WITH SYN_COORDS >>>>>
     #[derive(Debug, Clone)]
     pub struct DenCoords {
-        pub idx: u32,    
+        pub idx: u32,
         pub tft_id: u32,
-        pub den_id_tft: u32,    
+        pub den_id_tft: u32,
         pub cel_coords: CelCoords,
         pub layer_dims: CorticalDims, // Potentially move / remove dims
     }
 
     impl DenCoords {
-        pub fn new(tft_id: u32, den_id_tft: u32, cel_coords: &CelCoords, 
+        pub fn new(tft_id: u32, den_id_tft: u32, cel_coords: &CelCoords,
                     layer_dims: &CorticalDims
-            ) -> DenCoords 
+            ) -> DenCoords
         {
             let den_idx = den_idx(&layer_dims, tft_id, cel_coords.idx, den_id_tft);
 
-            DenCoords { 
-                idx: den_idx, 
+            DenCoords {
+                idx: den_idx,
                 tft_id: tft_id,
-                den_id_tft: den_id_tft,                 
+                den_id_tft: den_id_tft,
                 cel_coords: cel_coords.clone(),
                 layer_dims: layer_dims.clone(),
             }
         }
 
         pub fn cel_den_range_tftsec(&self) -> Range<usize> {
-            let den_idz_cel_tft = den_idx(&self.layer_dims, self.tft_id, 
+            let den_idz_cel_tft = den_idx(&self.layer_dims, self.tft_id,
                 self.cel_coords.idx, 0) as usize;
-            let dens_per_cel_tft = self.layer_dims.per_tft() as usize;            
+            let dens_per_cel_tft = self.layer_dims.per_tft() as usize;
 
             den_idz_cel_tft..(den_idz_cel_tft + dens_per_cel_tft)
         }
 
-        pub fn syn_idx_range_tft(&self, syns_per_den_l2: u8) -> Range<usize> {            
-            let syn_idz_cel_tft = (den_idx(&self.layer_dims, self.tft_id, 
+        pub fn syn_idx_range_tft(&self, syns_per_den_l2: u8) -> Range<usize> {
+            let syn_idz_cel_tft = (den_idx(&self.layer_dims, self.tft_id,
                 self.cel_coords.idx, 0) as usize) << syns_per_den_l2 as usize;
             let syns_per_cel_tft = (self.layer_dims.per_tft() as usize) << syns_per_den_l2 as usize;
 
@@ -282,7 +282,7 @@ pub mod tests {
 
     impl Display for DenCoords {
         fn fmt(&self, fmtr: &mut Formatter) -> Result {
-            write!(fmtr, "DenCoords {{ idx: {}, tft_id: {}, den_id_tft: {} }}", 
+            write!(fmtr, "DenCoords {{ idx: {}, tft_id: {}, den_id_tft: {} }}",
                 self.idx, self.tft_id, self.den_id_tft)
         }
     }
@@ -293,7 +293,7 @@ pub mod tests {
     //         - Synapse index space heirarchy:  | Tuft - Slice - Cell - Dendrite - Synapse |
     //         - 'cel_idx' already has slice built in to its value
     pub fn den_idx(layer_dims: &CorticalDims, tft_id: u32, cel_idx: u32, den_id_tft: u32) -> u32 {
-        //  NOTE: 'layer_dims' expresses dimensions from the perspective of the 
+        //  NOTE: 'layer_dims' expresses dimensions from the perspective of the
         //  | Slice - Cell - Tuft - Dendrite - Synapse | heirarchy which is why the function
         //  names seem confusing (see explanation at top of synapses.rs).
 

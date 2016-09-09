@@ -2,7 +2,7 @@
 
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event, EventList};
 use cmn::{Sdr};
-use area::AxonSpace;
+use cortex::AxonSpace;
 use map::{self, AreaMap};
 
 pub struct SensoryFilter {
@@ -16,15 +16,15 @@ pub struct SensoryFilter {
 
 impl SensoryFilter {
     pub fn new(
-                filter_name: String, 
-                cl_file_name: Option<String>, 
+                filter_name: String,
+                cl_file_name: Option<String>,
                 area_map: &AreaMap,
                 //area_name: &'static str,
-                //dims: CorticalDims, 
+                //dims: CorticalDims,
                 axns: &AxonSpace,
                 //base_axn_slc: u8,
-                ocl_pq: &ProQue, 
-            ) -> SensoryFilter 
+                ocl_pq: &ProQue,
+            ) -> SensoryFilter
     {
         let layer_tags = map::FF_IN;
         // [NOTE]: Combine this with the call to `::slc_src_layer_dims` below:
@@ -50,12 +50,12 @@ impl SensoryFilter {
             Source layers: \n{:#?}\n\n", layer_tags, layers);
         let ref src_layer = layers[0].sources()[0];
         let dims = src_layer.dims();
-        
+
         assert!(dims.depth() == 1, "\nAfferent input layer depths of more than one for cortical \
             areas with sensory filters are not yet supported. Please set the depth of any \
             afferent input layers with filters to 1.");
 
-        let input = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();        
+        let input = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
 
         let kern_cycle = ocl_pq.create_kernel(&filter_name.clone()).expect("[FIXME]: HANDLE ME")
             // .expect("SensoryFilter::new()")

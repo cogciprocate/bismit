@@ -8,7 +8,7 @@ use ocl::{ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
 use map::{DendriteKind, LayerKind, CellKind};
 use thalamus::Thalamus;
-use area::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
+use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, SensoryFilter};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
@@ -829,7 +829,7 @@ pub mod tests {
     use rand::distributions::{IndependentSample, Range as RandRange};
 
     use super::*;
-    use area::{AxonSpaceTest};
+    use cortex::{AxonSpaceTest};
     use cmn::{CelCoords};
     use map::{AreaMapTest};
 

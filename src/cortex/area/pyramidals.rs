@@ -7,7 +7,7 @@ use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
 use map::{CellKind, CellScheme, DendriteKind};
-use area::{Dendrites, AxonSpace};
+use cortex::{Dendrites, AxonSpace};
 
 const PRINT_DEBUG: bool = false;
 /* PyramidalLayer
@@ -286,7 +286,7 @@ pub mod tests {
     use rand::distributions::{IndependentSample, Range as RandRange};
 
     use cmn::{self, DataCellLayer, DataCellLayerTest, CelCoords};
-    use area::{PyramidalLayer};
+    use cortex::{PyramidalLayer};
 
     impl DataCellLayerTest for PyramidalLayer {
         // CYCLE_SELF_ONLY(): USED BY TESTS

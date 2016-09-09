@@ -2,7 +2,7 @@ use std::collections::{HashMap};
 use time;
 
 use ocl::{self, Platform, Context, Device};
-use area::{CorticalArea, CorticalAreas, CorticalAreaSettings};
+use cortex::{CorticalArea, CorticalAreas, CorticalAreaSettings};
 use thalamus::{Thalamus};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use cmn::{CmnResult};

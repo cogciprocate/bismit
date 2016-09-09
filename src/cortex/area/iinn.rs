@@ -12,7 +12,7 @@ use cmn::{CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer};
 use map::CellScheme;
-use area::AxonSpace;
+use cortex::AxonSpace;
 
 
 
@@ -31,7 +31,7 @@ pub struct InhibitoryInterneuronNetwork {
     pub spi_ids: Buffer<u8>,
     pub wins: Buffer<u8>,
     pub states: Buffer<u8>,
-    
+
 }
 
 impl InhibitoryInterneuronNetwork {
@@ -55,7 +55,7 @@ impl InhibitoryInterneuronNetwork {
 
         let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple").expect("[FIXME]: HANDLE ME")
             // .expect("InhibitoryInterneuronNetwork::new()")
-            .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, 
+            .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(&src_soma)
@@ -67,7 +67,7 @@ impl InhibitoryInterneuronNetwork {
         let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough").expect("[FIXME]: HANDLE ME")
             // .expect("InhibitoryInterneuronNetwork::new()")
             //.lws(SpatialDims::Three(1, 8, 8 as usize))
-            .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, 
+            .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)
@@ -93,11 +93,11 @@ impl InhibitoryInterneuronNetwork {
 
     #[inline]
     pub fn cycle(&mut self, bypass: bool) {
-        // self.kern_cycle_pre.enq().expect("[FIXME]: HANDLE ME!"); 
+        // self.kern_cycle_pre.enq().expect("[FIXME]: HANDLE ME!");
 
 
         // for i in 0..1 { // <<<<< (was 0..8)
-        //      self.kern_cycle_wins.enq().expect("[FIXME]: HANDLE ME!"); 
+        //      self.kern_cycle_wins.enq().expect("[FIXME]: HANDLE ME!");
         // }
 
         // self.kern_cycle_post.enq().expect("[FIXME]: HANDLE ME!");

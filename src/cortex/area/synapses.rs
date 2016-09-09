@@ -6,7 +6,7 @@ use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
 use map::{CellKind, CellScheme, DendriteKind};
-use area::AxonSpace;
+use cortex::AxonSpace;
 
 #[cfg(test)]
 pub use self::tests::{SynCoords, SynapsesTest};

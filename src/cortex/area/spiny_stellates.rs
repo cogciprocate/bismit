@@ -6,7 +6,7 @@ use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer};
 use ocl::core::ClWaitList;
 use map::{CellKind, CellScheme, DendriteKind};
-use area::{Dendrites, AxonSpace};
+use cortex::{Dendrites, AxonSpace};
 
 
 pub struct SpinyStellateLayer {
@@ -21,7 +21,7 @@ pub struct SpinyStellateLayer {
 }
 
 impl SpinyStellateLayer {
-    pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme, area_map: &AreaMap, 
+    pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme, area_map: &AreaMap,
                 axns: &AxonSpace, ocl_pq: &ProQue
     ) -> SpinyStellateLayer {
         let base_axn_slcs = area_map.layer_slc_ids(vec![layer_name]);
@@ -30,11 +30,11 @@ impl SpinyStellateLayer {
 
         let syns_per_tuft_l2: u8 = cell_scheme.syns_per_den_l2 + cell_scheme.dens_per_tuft_l2;
 
-        println!("{mt}{mt}SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}", 
+        println!("{mt}{mt}SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}",
             base_axn_slc, lyr_axn_idz, dims, mt = cmn::MT);
 
         let dens_dims = dims.clone_with_ptl2(cell_scheme.dens_per_tuft_l2 as i8);
-        let dens = Dendrites::new(layer_name, dens_dims, cell_scheme.clone(), DendriteKind::Proximal, 
+        let dens = Dendrites::new(layer_name, dens_dims, cell_scheme.clone(), DendriteKind::Proximal,
             CellKind::SpinyStellate, area_map, axns, ocl_pq);
         let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
         let cels_per_grp = dims.per_subgrp(grp_count).expect("SpinyStellateLayer::new()");
@@ -85,7 +85,7 @@ impl SpinyStellateLayer {
     // #[inline]
     // pub fn confab(&mut self) {
     //     self.dens.confab();
-    // } 
+    // }
 
     #[inline]
     pub fn soma(&self) -> &Buffer<u8> {
@@ -100,7 +100,7 @@ impl SpinyStellateLayer {
     #[inline]
     pub fn dims(&self) -> &CorticalDims {
         &self.dims
-    }    
+    }
 
     #[inline]
     pub fn base_axn_slc(&self) -> u8 {
@@ -121,24 +121,24 @@ impl SpinyStellateLayer {
 
     //     println!("\ncell.state[{}]: {}", cel_idx, self.dens.states[cel_idx]);
 
-    //     println!("cell.syns.states[{:?}]: ", cel_syn_range.clone()); 
+    //     println!("cell.syns.states[{:?}]: ", cel_syn_range.clone());
     //     self.dens.syns_mut().states.print(1, None, Some(cel_syn_range.clone()), false);
-    //     // cmn::fmt::print_slice(&self.dens.syns_mut().states.vec()[..], 1, None, 
+    //     // cmn::fmt::print_slice(&self.dens.syns_mut().states.vec()[..], 1, None,
     //     //     Some(cel_syn_range.clone()), false);
 
-    //     println!("cell.syns.strengths[{:?}]: ", cel_syn_range.clone()); 
+    //     println!("cell.syns.strengths[{:?}]: ", cel_syn_range.clone());
     //     self.dens.syns_mut().strengths.print(1, None, Some(cel_syn_range.clone()), false);
-    //     // cmn::fmt::print_slice(&self.dens.syns_mut().strengths.vec()[..], 1, None, 
+    //     // cmn::fmt::print_slice(&self.dens.syns_mut().strengths.vec()[..], 1, None,
     //     //     Some(cel_syn_range.clone()), false);
 
-    //     println!("cell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone()); 
+    //     println!("cell.syns.src_col_v_offs[{:?}]: ", cel_syn_range.clone());
     //     self.dens.syns_mut().src_col_v_offs.print(1, None, Some(cel_syn_range.clone()), false);
-    //     // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_v_offs.vec()[..], 1, None, 
+    //     // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_v_offs.vec()[..], 1, None,
     //         // Some(cel_syn_range.clone()), false);
 
-    //     println!("cell.syns.src_col_u_offs[{:?}]: ", cel_syn_range.clone()); 
+    //     println!("cell.syns.src_col_u_offs[{:?}]: ", cel_syn_range.clone());
     //     self.dens.syns_mut().src_col_u_offs.print(1, None, Some(cel_syn_range.clone()), false);
-    //     // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_u_offs.vec()[..], 1, None, 
+    //     // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_u_offs.vec()[..], 1, None,
     //     //     Some(cel_syn_range.clone()), false);
     // }
 

@@ -22,7 +22,7 @@ use std::collections::hash_map::Entry;
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
 use map::{self, AreaMap, LayerTags, LayerMapKind};
 use ocl::EventList;
-use area::CorticalAreas;
+use cortex::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList};
 use thalamus::{ExternalPathway, ExternalPathwayFrame};
 

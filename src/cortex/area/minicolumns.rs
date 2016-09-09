@@ -5,7 +5,7 @@ use cmn::{self, CorticalDims, DataCellLayer};
 use map::{AreaMap};
 use ocl::{self, ProQue, SpatialDims, Buffer, EventList, Result as OclResult};
 use ocl::traits::OclPrm;
-use area::{AxonSpace, PyramidalLayer, SpinyStellateLayer};
+use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer};
 
 // #[cfg(test)]
 // pub use self::tests::{MinicolumnsTest};
@@ -24,9 +24,9 @@ pub struct Minicolumns {
 }
 
 impl Minicolumns {
-    pub fn new(dims: CorticalDims, area_map: &AreaMap, axons: &AxonSpace, 
+    pub fn new(dims: CorticalDims, area_map: &AreaMap, axons: &AxonSpace,
                 ssts: &SpinyStellateLayer, pyrs: &PyramidalLayer, ocl_pq: &ProQue
-            ) -> Minicolumns 
+            ) -> Minicolumns
     {
         assert!(dims.depth() == 1);
         assert!(dims.v_size() == pyrs.dims().v_size() && dims.u_size() == pyrs.dims().u_size());
@@ -42,7 +42,7 @@ impl Minicolumns {
 
         // [FIXME]: TEMPORARY?:
         // [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':
-        assert!(area_map.aff_out_slcs().len() == 1, 
+        assert!(area_map.aff_out_slcs().len() == 1,
             "Afferent output slices currently limited to a maximum of 1.");
 
         let aff_out_axn_slc = area_map.aff_out_slcs()[0];
@@ -94,8 +94,8 @@ impl Minicolumns {
     }
 
     // <<<<< TODO: DEPRICATE >>>>>
-    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>) 
-            -> OclResult<()> 
+    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
+            -> OclResult<()>
     {
         let activate_using_aux = true;
         let output_using_aux = false;
@@ -167,11 +167,11 @@ impl Minicolumns {
 //     impl MinicolumnsTest for Minicolumns {
 //         fn print_range(&mut self, range: Range<usize>) {
 //             print!("mcols.flag_sets: ");
-//             self.flag_sets.print(1 << 0, Some((0, 255)), 
+//             self.flag_sets.print(1 << 0, Some((0, 255)),
 //                 Some(range.clone()), false);
 
 //             print!("mcols.best_den_states: ");
-//             self.best_den_states.print(1 << 0, Some((0, 255)), 
+//             self.best_den_states.print(1 << 0, Some((0, 255)),
 //                 Some(range.clone()), false);
 //         }
 

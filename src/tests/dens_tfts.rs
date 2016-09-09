@@ -1,6 +1,5 @@
-use area::{CorticalArea, CorticalAreaTest};
+use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, DenCoords};
 use map::{self, AreaMapTest};
-use area::{DendritesTest, DenCoords};
 use cmn::{self, DataCellLayer, DataCellLayerTest};
 use super::{testbed, util};
 
@@ -69,7 +68,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             let den_syn_range = den_coords.syn_range(area.ptal().dens().syns().syns_per_den_l2());
 
             // Axon index corresponding to our cell and source slice:
-            let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id, 
+            let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id,
                 0, cel_coords.u_id, 0).unwrap();
 
             //=============================================================================
@@ -77,7 +76,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             //=============================================================================
 
             // Set source slice to our source slice for our dendrite's synapses only
-            // area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_slc_id, 
+            // area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_slc_id,
             //     den_syn_range.clone()).unwrap();
 
             let fill_size = den_syn_range.end - den_syn_range.start;
@@ -89,12 +88,12 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             area.activate_axon(src_axn_idx);
 
             // Cycle entire cell:
-            area.ptal_mut().cycle(None);    
+            area.ptal_mut().cycle(None);
 
             //=============================================================================
             //================================= EVALUATE ==================================
             //=============================================================================
-                
+
             let den_idx = area.ptal().dens().den_idx(tft_id, cel_coords.idx(), den_id_tft);
 
             let mut den_state = vec![0];
@@ -114,7 +113,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
                 println!("\niter: {}", iter);
                 println!("{}", cel_coords);
                 println!("{}", den_coords);
-                println!("Axon Info: zeroed_slc_id: {}, src_slc_id: {}, src_axn_idx: {}", 
+                println!("Axon Info: zeroed_slc_id: {}, src_slc_id: {}, src_axn_idx: {}",
                     zeroed_slc_id, src_slc_id, src_axn_idx);
                 println!("dens.state[{}]: '{}'", den_idx, den_state);
                 print!("Synapse src_slc_ids: ");
@@ -194,7 +193,7 @@ fn dens() {
         let src_slc_id = src_slc_ids[0].start;
 
         // GET THE AXON INDEX CORRESPONDING TO OUR CELL AND SOURCE SLICE:
-        let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id, 
+        let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id,
                     0, cel_coords.u_id, 0).unwrap();
 
         // PRINT SOME DEBUG INFO IN CASE OF FAILURE:
@@ -210,7 +209,7 @@ fn dens() {
         //=============================================================================
 
         // SET SOURCE SLICE TO AFF IN SLICE FOR OUR CELL'S SYNAPSES ONLY:
-        // area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_slc_id, 
+        // area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_slc_id,
         //     cel_syn_range.clone()).unwrap();
 
 
@@ -223,7 +222,7 @@ fn dens() {
         area.activate_axon(src_axn_idx);
 
         // CYCLE SYNS AND DENS:
-        area.ptal_mut().dens_mut().cycle(None);    
+        area.ptal_mut().dens_mut().cycle(None);
 
         //=============================================================================
         //================================= EVALUATE ==================================

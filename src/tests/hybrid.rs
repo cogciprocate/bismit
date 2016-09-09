@@ -2,7 +2,7 @@ use std::iter;
 use std::io::{self, Write};
 
 use cortex::Cortex;
-use area::{Dendrites, PyramidalLayer};
+use cortex::{Dendrites, PyramidalLayer};
 use cmn::{self, DataCellLayer, DataCellLayerTest};
 use tests::util;
 
@@ -20,7 +20,7 @@ use tests::util;
 
 pub fn cycles(cortex: &mut Cortex, area_name: &str) {
     // let emsg = "\ntests::hybrid::test_cycles()";
-    
+
     /*cortex.area_mut(area_name).psal_mut().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
     cortex.area_mut(area_name).ptal_mut().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
 
@@ -56,7 +56,7 @@ pub fn cycles(cortex: &mut Cortex, area_name: &str) {
 // fn inhib(cortex: &mut Cortex) {
 
 // }
- 
+
 
 // TEST PYRAMIDAL CELLS 'PREDICTIVENESS' AKA: SOMA STATES
 // <<<<< TODO: NEEDS MASSIVE UPDATES TO PRETTY MUCH EVERY ASPECT >>>>>
@@ -68,14 +68,14 @@ fn pyr_preds(pyrs: &mut PyramidalLayer) {
 
     let dens_per_tuft = pyrs.dens_mut().dims().per_tft() as usize;
     println!("\n##### dens_per_tuft: {}", dens_per_tuft);
-    //let dens_len = pyrs.dens_mut().states.len() as usize;    
+    //let dens_len = pyrs.dens_mut().states.len() as usize;
     let pyrs_len = pyrs.soma().len() as usize;
     let den_tuft_len = pyrs_len * dens_per_tuft;
 
     // for i in 0..dens_per_tuft {
     //     pyrs.dens_mut().states[i] = 255;
     // }
-    
+
     // let last_cel_den_idz =  den_tuft_len - dens_per_tuft;
 
     // for i in last_cel_den_idz..den_tuft_len {
@@ -97,8 +97,8 @@ fn pyr_preds(pyrs: &mut PyramidalLayer) {
         .offset(last_cel_den_idz).enq().unwrap();
 
     // CYCLE THE PYRAMIDAL CELL ONLY, WITHOUT CYCLING IT'S DENS OR SYNS (WHICH WOULD OVERWRITE THE ABOVE)
-    pyrs.cycle_self_only();    
-    
+    pyrs.cycle_self_only();
+
     // READ THE PYRAMIDAL CELL SOMA STATES (PREDS)
     // pyrs.soma_mut().fill_vec();
     let mut soma_vec = vec![0u8; pyrs.soma().len()];
@@ -161,13 +161,13 @@ fn syn_and_den_states(dens: &mut Dendrites) {
         let den_idz = cel_idz << dens_per_tuft_l2;
 
 
-        println!("\nDEBUG: syn_idz: {}, syns_per_tuft: {}, syns_per_group: {}", 
+        println!("\nDEBUG: syn_idz: {}, syns_per_tuft: {}, syns_per_group: {}",
             syn_idz, 1 << syns_per_tuft_l2, syns_per_group);
 
-        println!("DEBUG: dens.states().len(): {}, dens.syns().states().len(): {}", 
+        println!("DEBUG: dens.states().len(): {}, dens.syns().states().len(): {}",
             dens.states().len(), dens.syns().states().len());
 
-        println!("DEBUG: vec_dens_states.len(): {}, vec_syns_states.len(): {}", 
+        println!("DEBUG: vec_dens_states.len(): {}, vec_syns_states.len(): {}",
             vec_dens_states.len(), vec_syns_states.len());
 
         print!("\n");
