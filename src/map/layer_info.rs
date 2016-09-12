@@ -68,9 +68,9 @@ impl LayerInfo {
             // and either feed-forward or feedback, or non-specific. This
             // should cover the gamut for the input layers of an area.
             let src_area_combos: Vec<(&'static str, LayerTags)> =
-                pamap.aff_areas().iter().map(|&an| (an, map::FEEDBACK | map::SPECIFIC))
-                    .chain(pamap.eff_areas().iter().map(|&an| (an, map::FEEDFORWARD | map::SPECIFIC)))
-                .chain(pamap.aff_areas().iter().chain(pamap.eff_areas().iter())
+                pamap.get_aff_areas().iter().map(|&an| (an, map::FEEDBACK | map::SPECIFIC))
+                    .chain(pamap.get_eff_areas().iter().map(|&an| (an, map::FEEDFORWARD | map::SPECIFIC)))
+                .chain(pamap.get_aff_areas().iter().chain(pamap.get_eff_areas().iter())
                     .map(|&an| (an, map::NONSPECIFIC)))
                 .collect();
 
@@ -133,7 +133,7 @@ impl LayerInfo {
                         // If the source layer is thalamic, we will be relying
                         // on the `ExternalPathway` associated with it to
                         // provide its dimensions.
-                        &LayerMapKind::Thalamic => {
+                        &LayerMapKind::Subcortical => {
                             let src_area_name = src_area_name.to_owned();
                             let &(ref in_src, _) = input_sources.by_key(&src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
@@ -202,7 +202,7 @@ impl LayerInfo {
             // by the `ExternalPathway` area instead of the dimensions of the
             // area. Thalamic output layers have irregular layer sizes.
             let columns = match plmap_kind {
-                LayerMapKind::Thalamic => {
+                LayerMapKind::Subcortical => {
                     // If this is thalamic, the OUTPUT flags should be set.
                     assert!(tags.contains(map::OUTPUT));
                     let pamap_name = pamap.name().to_owned();
@@ -270,7 +270,7 @@ impl LayerInfo {
     }
 
     pub fn thalamic_horizontal_axon_count(&self) -> Option<u32> {
-        if self.layer_map_kind == LayerMapKind::Thalamic && self.axn_kind == AxonKind::Horizontal {
+        if self.layer_map_kind == LayerMapKind::Subcortical && self.axn_kind == AxonKind::Horizontal {
             debug_assert!(self.tags.contains(map::NS_OUT));
             Some(self.axn_count)
         } else {

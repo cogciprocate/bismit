@@ -6,7 +6,7 @@ extern crate bismit;
 
 use bismit::{Cortex, CorticalAreaSettings};
 use bismit::map::{self, LayerTags, LayerMapKind, LayerMapScheme, LayerMapSchemeList,
-    AreaSchemeList, CellScheme, FilterScheme, InputScheme, AxonKind, LayerKind};
+    AreaScheme, AreaSchemeList, CellScheme, FilterScheme, InputScheme, AxonKind, LayerKind};
 
 fn main() {
     let _ = Cortex::new(define_lm_schemes(), define_a_schemes(), None);
@@ -38,8 +38,13 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                     // .apical(vec!["eff_in"/*, "olfac"*/], 18)
                 )
         )
-        .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Thalamic)
+        .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
             .layer("external", 3, map::FF_OUT, LayerKind::Axonal(AxonKind::Spatial))
+            // .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(MOTOR_UID),
+            //     LayerKind::Axonal(AxonKind::Horizontal))
+        )
+        .lmap(LayerMapScheme::new("motor_gen", LayerMapKind::Subcortical)
+            .layer("whatever", 1, map::OUTPUT, LayerKind::Axonal(AxonKind::Spatial))
             // .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(MOTOR_UID),
             //     LayerKind::Axonal(AxonKind::Horizontal))
         )
@@ -52,29 +57,16 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
 
 fn define_a_schemes() -> AreaSchemeList {
-    // const CYCLES_PER_FRAME: usize = 1;
-    // const HZS: u32 = 16;
-    const ENCODE_SIZE: u32 = 64; // had been used for GlyphSequences
-    // const ENCODE_SIZE: u32 = 24; // for SensoryTract
+    const ENCODE_SIZE: u32 = 32;
     const AREA_SIDE: u32 = 48;
 
     AreaSchemeList::new()
-        .area_ext("v0", "v0_lm", ENCODE_SIZE,
-            // InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) },
-            InputScheme::ScalarSequence { range: (0.0, 172.0), incr: 1.0 },
-            None,
-            None,
+        .add_area(AreaScheme::new("m0", "motor_gen", AREA_SIDE))
+        .add_area(AreaScheme::new("v0", "v0_lm", ENCODE_SIZE)
+            .input(InputScheme::ScalarSequence { range: (0.0, 172.0), incr: 1.0 })
         )
-        // .area_ext("v0b", "v0b_lm", ENCODE_SIZE,
-        //     InputScheme::SensoryTract,
-        //     None,
-        //     None,
-        // )
-        .area("v1", "visual", AREA_SIDE,
-            // Some(vec![FilterScheme::new("retina", None)]),
-            None,
-            Some(vec!["v0"]),
-            // Some(vec!["v0b"]),
+        .add_area(AreaScheme::new("v1", "visual", AREA_SIDE)
+            .eff_areas(vec!["v0", "m0"])
         )
 }
 
@@ -84,14 +76,6 @@ fn define_a_schemes() -> AreaSchemeList {
 #[allow(unused_mut)]
 pub fn ca_settings() -> CorticalAreaSettings {
     let mut settings = CorticalAreaSettings::new();
-
-    // settings.bypass_inhib = true;
-    // settings.bypass_filters = true;
-    // settings.disable_pyrs = true;
-    // settings.disable_ssts = true;
-    // settings.disable_mcols = true;
-    // settings.disable_regrowth = true;
-    // settings.disable_learning = true;
 
     settings
 }

@@ -31,7 +31,7 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
             CellScheme::pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"], 12))
     );
 
-    plmaps.add(LayerMapScheme::new("external", LayerMapKind::Thalamic)
+    plmaps.add(LayerMapScheme::new("external", LayerMapKind::Subcortical)
         .layer("ganglion", 1, map::FF_OUT, LayerKind::Axonal(AxonKind::Spatial))
     );
 
@@ -133,7 +133,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
     );
 
-    plmaps.add(LayerMapScheme::new("dummy_lm", LayerMapKind::Thalamic)
+    plmaps.add(LayerMapScheme::new("dummy_lm", LayerMapKind::Subcortical)
         .layer("ganglion", 1, map::FF_OUT, LayerKind::Axonal(AxonKind::Spatial))
     );
 

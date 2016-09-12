@@ -7,6 +7,7 @@
 //!       error. Store this hashmap both on `TractAreaCache`. Each
 //!       `CorticalArea` will, of course, also have a copy of its own area id.
 //!     - Possibly have `AreaSchemeList` initially create the id list.
+//!     - [UPDATE]: Use the new `cmn::MapStore`.
 //! - Precompute hash.
 //! - Store strings in a separate vector (stored in cortex) and put a
 //!   reference in the key.
@@ -270,7 +271,7 @@ impl Thalamus {
         ============================ THALAMIC (INPUT) AREAS ===========================
         =============================================================================*/
         for (&_, pa) in pamaps.maps().iter().filter(|&(_, pa)|
-                    &plmaps[pa.layer_map_name].kind == &LayerMapKind::Thalamic)
+                    &plmaps[pa.layer_map_name].kind == &LayerMapKind::Subcortical)
         {
             let es = try!(ExternalPathway::new(pa, &plmaps[pa.layer_map_name]));
             let tags = es.layer_tags();
@@ -325,6 +326,7 @@ impl Thalamus {
         // for (area_name, &mut (ref mut src_area, ref layer_tags_list)) in self.external_pathways.iter_mut() {
         for &mut (ref mut src_area, ref layer_tags_list) in self.external_pathways.values_mut().iter_mut() {
             src_area.cycle_next();
+
             for &layer_tags in layer_tags_list.iter() {
                 let (tract_frame, events) = self.tract.frame_mut(&(src_area.area_name().to_owned(), layer_tags))
                     .expect("Thalamus::cycle_external_pathways()");

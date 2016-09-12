@@ -32,7 +32,7 @@ impl Cortex {
         let mut device_idx = 1;
 
         for (&area_name, _) in pamaps.iter().filter(|&(_, pamap)|
-                pamap.lm_kind_tmp() != &LayerMapKind::Thalamic)
+                pamap.lm_kind_tmp() != &LayerMapKind::Subcortical)
         {
             areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(),
                 device_idx, &ocl_context, ca_settings.clone())));

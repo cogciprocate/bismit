@@ -28,7 +28,7 @@ impl AreaMap {
             input_sources: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> AreaMap
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name,
-            pamap.eff_areas(), pamap.aff_areas(), mt = cmn::MT);
+            pamap.get_eff_areas(), pamap.get_aff_areas(), mt = cmn::MT);
 
         let layers = LayerMap::new(pamap, plmaps, pamaps, input_sources);
 
@@ -44,8 +44,8 @@ impl AreaMap {
             layers: layers,
             // [FIXME]: TEMPORARY:
             hrz_demarc: 128,
-            eff_areas: pamap.eff_areas().clone(),
-            aff_areas: pamap.aff_areas().clone(),
+            eff_areas: pamap.get_eff_areas().clone(),
+            aff_areas: pamap.get_aff_areas().clone(),
             filters: pamap.filters.clone(),
         }
     }

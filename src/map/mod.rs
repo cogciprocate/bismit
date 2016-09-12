@@ -63,7 +63,7 @@ pub enum LayerMapKind {
     // Sensory,
     // Motor,
     Cortical,
-    Thalamic,
+    Subcortical,
 }
 
 
