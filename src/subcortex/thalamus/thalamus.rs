@@ -58,7 +58,9 @@ impl ThalamicTract {
         }
     }
 
-    fn add_area(&mut self, src_area_name: String, layer_tags: LayerTags, layer_dims: &CorticalDims) {
+    fn add_area(&mut self, src_area_name: String, layer_tags: LayerTags, layer_dims: CorticalDims) {
+        // println!("###### ThalamicTract::new(): Adding tract for area: {}, tags: {}, layer_dims: {:?}",
+        //     src_area_name, layer_tags, layer_dims);
         let tract_dims: TractDims = layer_dims.into();
         let len = tract_dims.to_len();
         let new_area = TractArea::new(src_area_name.clone(), layer_tags,
@@ -210,7 +212,7 @@ struct TractArea {
 impl TractArea {
     fn new(src_area_name: String, layer_tags: LayerTags, range: Range<usize>,
                 dims: TractDims) -> TractArea {
-        println!("###### TractArea::new(): Adding area with: range: {:?}, dims: {:?}", &range, &dims);
+        // println!("###### TractArea::new(): Adding area with: range: {:?}, dims: {:?}", &range, &dims);
         assert!(range.len() == dims.to_len());
         TractArea {
             src_area_name: src_area_name,
@@ -293,11 +295,13 @@ impl Thalamus {
                 let output_layers = area_map.layers().layers_containing_tags(map::OUTPUT);
 
                 for layer in output_layers.iter() {
+                    // println!("###### Thalamus::new(): Processing layer {}.", layer.name());
+
                     // If the layer is thalamic is will have an irregular size
                     // which will need to be reflected on its tract size.
                     let layer_dims = match layer.irregular_layer_dims() {
-                        Some(dims) => dims,
-                        None => pamap.dims(),
+                        Some(dims) => dims.clone(),
+                        None => pamap.dims().clone_with_depth(layer.depth()),
                     };
 
                     println!("{mt}{mt}{mt}'{}': tags: {}, slc_range: {:?}, map_kind: {:?}, \

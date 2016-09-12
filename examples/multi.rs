@@ -10,8 +10,6 @@ use bismit::map::{self, LayerTags, LayerMapKind, LayerMapScheme, LayerMapSchemeL
 
 fn main() {
     let _ = Cortex::new(define_lm_schemes(), define_a_schemes(), None);
-
-
 }
 
 fn define_lm_schemes() -> LayerMapSchemeList {
@@ -25,7 +23,6 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             // .axn_layer("olfac", map::NS_IN | LayerTags::with_uid(OLFAC_UID), Horizontal)
             // .axn_layer("eff_in", map::FB_IN, AxonKind::Spatial)
             .axn_layer("aff_in", map::FF_IN, AxonKind::Spatial)
-            // .axn_layer("out", map::FF_FB_OUT, Spatial)
             .axn_layer("unused", map::UNUSED_TESTING, AxonKind::Spatial)
             .layer("mcols", 1, map::FF_FB_OUT, CellScheme::minicolumn("iv", "iii"))
             .layer("iv_inhib", 0, map::DEFAULT, CellScheme::inhibitory(4, "iv"))
@@ -44,7 +41,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             //     LayerKind::Axonal(AxonKind::Horizontal))
         )
         .lmap(LayerMapScheme::new("motor_gen", LayerMapKind::Subcortical)
-            .layer("whatever", 1, map::OUTPUT, LayerKind::Axonal(AxonKind::Spatial))
+            .layer("whatever", 1, map::FF_OUT, LayerKind::Axonal(AxonKind::Spatial))
             // .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(MOTOR_UID),
             //     LayerKind::Axonal(AxonKind::Horizontal))
         )

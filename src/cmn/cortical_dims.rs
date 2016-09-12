@@ -11,15 +11,15 @@ use cmn::{ParaHexArray, TractDims};
         <<<<< THIS DESCRIPTION IS WAY OUT OF DATE >>>>>
         <<<<< TODO: ADD INFORMATION ABOUT TUFTS (OUR 5TH DIMENSION?) >>>>>
 
-        Stored in log base 2 as a constraint (for simplicity and computational efficiency in OpenCL kernels). 
+        Stored in log base 2 as a constraint (for simplicity and computational efficiency in OpenCL kernels).
 
         Cells are hexagonal prisms
 
-        Dimensions are in the context of bismit where: 
+        Dimensions are in the context of bismit where:
             - Column is 1 x 1 x N (a rod)
             - Slice (unfortunately coincident with rust terminology) has dimensions N x M x 1 (a plane)
             - Row has no meaning
-        
+
         So, u_size * v_size determines number of columns
 
         The 4th parameter, per_cel_l2, is basically components or divisions per cell and can also be thought of as a 4th dimension. It can be positive or negative reflecting whether or not it's bigger or smaller than a cell and it's stored inverted. Don't think too hard about it.
@@ -40,14 +40,14 @@ pub struct CorticalDims {
 impl CorticalDims {
     pub fn new(u_size: u32, v_size: u32, depth: u8, per_tft_l2: i8, incr: Option<u32>) -> CorticalDims {
     //pub fn new(u_size_l2: u8, v_size_l2: u8,    depth: u8, per_tft_l2: i8,) -> CorticalDims {
-        
+
         //assert!(super::OPENCL_PREFERRED_VECTOR_MULTIPLE == 4);
         //println!("\n\n##### v_size: {}, u_size: {}", v_size, u_size);
         //let incr = resolve_incr(ocl);
         //assert!(v_size % 4 == 0, "CorticalDims::new(): Size of dimension 'v' must be a multiple of 4.");
         //assert!(u_size % 4 == 0, "CorticalDims::new(): Size of dimension 'u' must be a multiple of 4.");
 
-        CorticalDims { 
+        CorticalDims {
             u_size: u_size,
             v_size: v_size,
             /*u_size_l2: u_size_l2,
@@ -57,7 +57,7 @@ impl CorticalDims {
             per_tft_l2: per_tft_l2,
             incr: incr, // <<<<< PENDING RENAME
         }
-    }    
+    }
 
     // TUFTS_PER_CEL(): Dendrite tufts per cell
     #[inline]
@@ -70,7 +70,7 @@ impl CorticalDims {
         self.per_tft_l2
     }
 
-    // PHYSICAL_INCREMENT(): 
+    // PHYSICAL_INCREMENT():
     //         TODO: improve this description
     #[inline]
     pub fn incr(&self) -> Result<u32, &'static str> {
@@ -173,15 +173,15 @@ impl CorticalDims {
         // let physical_len = self.to_len_padded(ocl_pq.max_wg_size()) as u32;
         let physical_len = self.to_len() as u32;
 
-        // println!("\nCORTICAL_DIMS: per_subgrp: max_wg_size: {}, physical_len: {}", 
+        // println!("\nCORTICAL_DIMS: per_subgrp: max_wg_size: {}, physical_len: {}",
         //     ocl_pq.max_wg_size(), physical_len);
 
         if physical_len % subgroup_count == 0 {
-            return Ok(physical_len / subgroup_count) 
+            return Ok(physical_len / subgroup_count)
         } else {
             return Err("Invalid subgroup size.");
         }
-    }    
+    }
 
     #[inline]
     pub fn clone_with_ptl2(&self, per_tft_l2: i8) -> CorticalDims {
@@ -195,7 +195,7 @@ impl CorticalDims {
 
     #[inline]
     pub fn clone_with_incr(&self, incr: usize) -> CorticalDims {
-        CorticalDims { incr: Some(incr as u32), .. *self } 
+        CorticalDims { incr: Some(incr as u32), .. *self }
     }
 
     #[inline]
@@ -216,7 +216,7 @@ impl CorticalDims {
     }
 
     pub fn to_len(&self) -> usize {
-        len_components(self.v_size * self.u_size * self.depth as u32, 
+        len_components(self.v_size * self.u_size * self.depth as u32,
             self.per_tft_l2, self.tfts_per_cel) as usize
     }
 
@@ -273,6 +273,15 @@ impl MemLen for CorticalDims {
     }
 }
 
+impl PartialEq<TractDims> for CorticalDims {
+    fn eq(&self, other: &TractDims) -> bool {
+        self.v_size == other.v_size() &&
+            self.u_size == other.u_size() &&
+            self.depth() == other.depth()
+    }
+}
+
+
 // DO NOT IMPLEMENT THIS:
 // impl Into<SpatialDims> for CorticalDims {
 //     fn into(self) -> SpatialDims {
@@ -298,16 +307,6 @@ fn len_components(cells: u32, per_tft_l2: i8, tfts_per_cel: u32) -> u32 {
         tufts >> (0 - per_tft_l2)
     }
 }
-
-impl PartialEq<TractDims> for CorticalDims {
-    fn eq(&self, other: &TractDims) -> bool {
-        self.v_size == other.v_size() && 
-            self.u_size == other.u_size() &&
-            self.depth() == other.depth()
-    }
-}
-
-
 
 
     /*pub fn u_size_l2(&self) -> u8 {
@@ -350,4 +349,4 @@ impl PartialEq<TractDims> for CorticalDims {
     /* CORTICAL_LEN(): 'VIRTUAL' CORTEX SIZE, NOT TO BE CONFUSED WITH THE PHYSICAL IN-MEMORY SIZE */
     /*fn cortical_len(&self) -> u32 {
         len_components(self.cells(), self.per_tuft_l2)
-    }*/    
+    }*/

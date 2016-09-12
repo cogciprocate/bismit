@@ -4,6 +4,9 @@ use cmn::{CmnError, CmnResult, TractDims};
 use thalamus::{ExternalPathwayTract, ExternalPathwayFrame, TractFrameMut, LayerTags};
 use encode::{ScalarGlyphWriter};
 
+// [TODO]: Convert into a multi-layer/multi-slice system. Plumbing should be in place.
+//
+//
 #[derive(Clone, Debug)]
 pub struct VectorEncoder {
     ranges: Vec<(f32, f32)>,
