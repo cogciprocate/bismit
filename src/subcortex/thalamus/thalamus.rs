@@ -28,17 +28,6 @@ use map::{AreaSchemeList, LayerMapSchemeList};
 use thalamus::{ExternalPathway, ExternalPathwayFrame};
 
 
-// /// Specifies whether or not the frame buffer for a source exists within the
-// /// thalamic tract or an external source itself.
-// ///
-// /// `External` is used when the source implements a special buffering strategy
-// /// such as double-buffering.
-// enum FrameBufferKind<'t> {
-//     Internal(&'t mut [u8]),
-//     External,
-// }
-
-
 // THALAMICTRACT: A buffer for I/O between areas. Effectively analogous to the internal capsule.
 pub struct ThalamicTract {
     ganglion: Vec<u8>,
@@ -141,7 +130,6 @@ impl TractAreaCache {
         }
     }
 
-    // fn get_mut(&mut self, src_area_name: &str, layer_tags: LayerTags
     fn get_mut(&mut self, key: &(String, LayerTags)) -> Result<&mut TractArea, CmnError> {
         match self.area_search(key) {
             Ok(idx) => self.areas.get_mut(idx).ok_or(CmnError::new(format!("Index '{}' not \
@@ -153,12 +141,10 @@ impl TractAreaCache {
         }
     }
 
-    // fn area_search(&mut self, src_area_name: &str, layer_tags: LayerTags)
     fn area_search(&mut self, key: &(String, LayerTags)) -> Result<usize, CmnError> {
         // println!("TractAreaCache::area_search(): Searching for area: {}, tags: {:?}. ALL: {:?}",
         //     src_area_name, layer_tags, self.areas);
         let area_idx = self.index.get(key).map(|&idx| idx);
-
         // println!("   area_idx: {:?}", area_idx);
 
         let mut matching_areas: Vec<usize> = Vec::with_capacity(4);
@@ -227,11 +213,6 @@ impl TractArea {
         &self.range
     }
 
-    // #[allow(dead_code)]
-    // fn len(&self) -> usize {
-    //     self.range.len()
-    // }
-
     fn dims(&self) -> &TractDims {
         &self.dims
     }
@@ -262,10 +243,7 @@ impl Thalamus {
     pub fn new(plmaps: LayerMapSchemeList, mut pamaps: AreaSchemeList) -> CmnResult<Thalamus> {
         pamaps.freeze();
         let pamaps = pamaps;
-        // let area_count = pamaps.maps().len();
-
         let mut tract = ThalamicTract::new();
-        // let mut external_pathways = HashMap::with_capacity(pamaps.maps().len());
         let mut external_pathways = MapStore::with_capacity(pamaps.maps().len());
         let mut area_maps = HashMap::with_capacity(pamaps.maps().len());
 

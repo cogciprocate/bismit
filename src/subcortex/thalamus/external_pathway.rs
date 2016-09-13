@@ -21,6 +21,13 @@ pub enum ExternalPathwayFrame<'a> {
 }
 
 
+// #[derive(Debug)]
+// pub enum PathwayDirection {
+//     Afferent,
+//     Efferent,
+// }
+
+
 /// A highway for input.
 ///
 /// Returns a 3-array because I didn't want to bother with generics or enums
@@ -30,6 +37,7 @@ pub trait ExternalPathwayTract: Debug {
     fn write_into(&mut self, frame: &mut TractFrameMut, tags: LayerTags);
     fn cycle_next(&mut self);
 }
+
 
 #[allow(unused_variables)]
 #[derive(Debug)]
@@ -85,6 +93,7 @@ impl ExternalPathwayLayer {
 pub struct ExternalPathway {
     area_name: String,
     encoder: ExternalPathwayEncoder,
+    // direction: ExternalPathwayDirection,
     // layers: HashMap<LayerTags, ExternalPathwayLayer, BuildHasherDefault<XxHash>>,
     layers: HashMap<LayerTags, ExternalPathwayLayer>,
 }

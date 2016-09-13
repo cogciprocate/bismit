@@ -24,6 +24,7 @@ pub use self::subcortex::thalamus::{self, ExternalPathwayTract, ExternalPathwayE
 pub use self::cortex::{Cortex, CorticalArea, CorticalAreas, AxonSpace, Synapses, Minicolumns,
     InhibitoryInterneuronNetwork, PyramidalLayer, SpinyStellateLayer, Dendrites,
     CorticalAreaSettings};
+pub use self::subcortex::{Subcortex, SubcorticalArea, TestScArea};
 pub use self::map::{LayerMapSchemeList, AreaSchemeList};
 pub use self::cmn::{TractDims, TypeId};
 pub use self::encode::GlyphBuckets;

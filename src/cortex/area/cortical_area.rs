@@ -511,7 +511,7 @@ impl CorticalArea {
     ///
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) {
         if let Some((src_layers, new_events)) = self.io_info.group_mut(group_tags) {
-            new_events.clear_completed().expect("CorticalArea::write_input");
+            new_events.clear_completed().expect("CorticalArea::intake()");
 
             for src_layer in src_layers.iter_mut() {
                 let (wait_events, sdr) = thal.tract(src_layer.key())
@@ -548,7 +548,7 @@ impl CorticalArea {
                 let (mut sdr, new_events) = thal.tract_mut(src_layer.key())
                     .expect("CorticalArea::output()");
 
-                new_events.clear_completed().expect("CorticalArea::write_input");
+                new_events.clear_completed().expect("CorticalArea::output()");
                 let axn_range = src_layer.axn_range();
 
                 assert!(sdr.dims().to_len() == axn_range.len() as usize,
