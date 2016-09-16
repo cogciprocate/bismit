@@ -4,12 +4,15 @@
 
 extern crate bismit;
 
-use bismit::{Cortex, CorticalAreaSettings};
+use bismit::{Cortex, Subcortex, CorticalAreaSettings};
 use bismit::map::{self, LayerTags, LayerMapKind, LayerMapScheme, LayerMapSchemeList,
     AreaScheme, AreaSchemeList, CellScheme, FilterScheme, InputScheme, AxonKind, LayerKind};
 
+use bismit::{TestScNucleus};
+
 fn main() {
-    let _ = Cortex::new(define_lm_schemes(), define_a_schemes(), None);
+    let _ = Cortex::new(define_lm_schemes(), define_a_schemes(), None)
+        .sub(Subcortex::new().nucleus(Box::new(TestScNucleus::new("m0"))));
 }
 
 fn define_lm_schemes() -> LayerMapSchemeList {

@@ -48,13 +48,13 @@ impl PyramidalLayer {
         // let best_dens_per_cel = tfts_per_cel;
         let dims_tft_best_den = dims.clone().with_tfts(tfts_per_cel);
 
-        let states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let best_den_states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
         // let tft_best_den_ids = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());
-        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue(), None, &dims_tft_best_den, None).unwrap();
+        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims_tft_best_den, None).unwrap();
         // let tft_best_den_states = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());
-        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims_tft_best_den, None).unwrap();
+        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims_tft_best_den, None).unwrap();
         // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
         let dens_per_tft_l2 = cell_scheme.dens_per_tuft_l2;

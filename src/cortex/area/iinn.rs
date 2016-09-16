@@ -48,9 +48,9 @@ impl InhibitoryInterneuronNetwork {
         // let wins = Buffer::<u8>::with_padding(dims, 0u8, ocl, padding);
         // let states = Buffer::<u8>::with_padding(dims, cmn::STATE_ZERO, ocl, padding);
 
-        let spi_ids = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let wins = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
 
 
         let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple").expect("[FIXME]: HANDLE ME")

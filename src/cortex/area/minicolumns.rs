@@ -37,8 +37,8 @@ impl Minicolumns {
 
         println!("{mt}{mt}MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth, mt = cmn::MT);
 
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let best_den_states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
 
         // [FIXME]: TEMPORARY?:
         // [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':

@@ -105,13 +105,13 @@ impl Synapses {
         // let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-        let states = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let strengths = Buffer::<i8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
 
-        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
 
         // [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
         let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {

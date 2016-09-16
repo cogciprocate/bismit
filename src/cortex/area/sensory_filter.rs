@@ -55,7 +55,7 @@ impl SensoryFilter {
             areas with sensory filters are not yet supported. Please set the depth of any \
             afferent input layers with filters to 1.");
 
-        let input = Buffer::<u8>::new(ocl_pq.queue(), None, &dims, None).unwrap();
+        let input = Buffer::<u8>::new(ocl_pq.queue().clone(), None, dims, None).unwrap();
 
         let kern_cycle = ocl_pq.create_kernel(&filter_name.clone()).expect("[FIXME]: HANDLE ME")
             // .expect("SensoryFilter::new()")

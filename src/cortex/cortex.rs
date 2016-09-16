@@ -7,10 +7,12 @@ use thalamus::{Thalamus};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use cmn::{CmnResult};
 use thalamus::{ExternalPathway, ExternalPathwayFrame};
+use subcortex::Subcortex;
 
 pub struct Cortex {
     areas: CorticalAreas,
     thal: Thalamus,
+    sub: Option<Subcortex>,
 }
 
 impl Cortex {
@@ -45,7 +47,13 @@ impl Cortex {
         Cortex {
             areas: areas,
             thal: thal,
+            sub: None,
         }
+    }
+
+    pub fn sub(mut self, sub: Subcortex) -> Cortex {
+        self.sub = Some(sub);
+        self
     }
 
     pub fn area_mut(&mut self, area_name: &str) -> &mut Box<CorticalArea> {
@@ -70,9 +78,9 @@ impl Cortex {
         }
     }
 
-    pub fn valid_area(&self, area_name: &str) -> bool {
-        self.areas.contains_key(area_name)
-    }
+    // pub fn is_valid_area(&self, area_name: &str) -> bool {
+    //     self.areas.contains_key(area_name)
+    // }
 
     pub fn ext_pathway_idx(&mut self, pathway_name: &String) -> CmnResult<usize> {
         self.thal.ext_pathway_idx(pathway_name)

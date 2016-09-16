@@ -1,5 +1,6 @@
 // use std::convert::Into;
 // use ocl::{ProQue};
+use ocl::SpatialDims;
 use ocl::traits::MemLen;
 use cmn::{ParaHexArray, TractDims};
 
@@ -280,6 +281,24 @@ impl PartialEq<TractDims> for CorticalDims {
             self.depth() == other.depth()
     }
 }
+
+impl Into<SpatialDims> for CorticalDims {
+    fn into(self) -> SpatialDims {
+        self.to_lens().into()
+    }
+}
+
+impl<'a> Into<SpatialDims> for &'a CorticalDims {
+    fn into(self) -> SpatialDims {
+        self.to_lens().into()
+    }
+}
+
+// impl Into<SpatialDims> for  {
+//     fn into(self) -> SpatialDims {
+//         self.to_lens().into()
+//     }
+// }
 
 
 // DO NOT IMPLEMENT THIS:

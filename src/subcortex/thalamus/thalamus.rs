@@ -1,3 +1,16 @@
+//! A central relay and processing (encoding) station for all I/O between
+//! cortical areas and nuclei of all types.
+//!
+//! Serves roles roughly analogous to those of the thalamus, internal capsule,
+//! and any other cortico-cortical, cortico-subcortical, and
+//! subcortico-cortical (including basal, thalamic, and spinal) axon tracts.
+//! These roles may be refactored, reconfigured, or reassigned in the future.
+//!
+//! All storage is currently located in host memory but will eventually be a
+//! hybrid host-device storage system, keeping data as close as possible to
+//! it's destinations (whether those be host or device side).
+//!
+//!
 //! [FIXME]: Every single hash lookup requires a heap allocation (`String`).
 //! This is obviously very wasteful and is temporary until one of the
 //! following can be implemented:

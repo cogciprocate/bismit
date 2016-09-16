@@ -1,5 +1,5 @@
 use std::ops::Range;
-use ocl;
+use ocl::{self, SpatialDims};
 use ocl::traits::MemLen;
 use cmn::{self, CorticalDims, SliceDims};
 use map::{area_map, LayerMap, AxonKind, SliceTractMap};
@@ -22,7 +22,7 @@ pub struct SliceMap {
 }
 
 impl SliceMap {
-    pub fn new(area_dims: &CorticalDims, layers: &LayerMap) -> SliceMap {        
+    pub fn new(area_dims: &CorticalDims, layers: &LayerMap) -> SliceMap {
         let slc_map = layers.slc_map();
         let depth = layers.depth() as usize;
 
@@ -42,7 +42,7 @@ impl SliceMap {
         let mut axn_idz_ttl = 0u32;
         // For checking purposes:
         let mut slc_id_ttl = 0u8;
-        
+
         for (&slc_id, &layer) in slc_map.iter() {
             let mut add_slice = |slc_dims: SliceDims| {
                 assert!(slc_id as usize == axn_idzs.len(), "SliceMap::new(): \
@@ -70,19 +70,19 @@ impl SliceMap {
                 for layer_source in layer_sources {
                     // Only add a slice to the final slice map if current
                     // slc_id is within the source layer's target slice range
-                    if slc_id >= layer_source.tar_slc_range().start 
-                        && slc_id < layer_source.tar_slc_range().end 
+                    if slc_id >= layer_source.tar_slc_range().start
+                        && slc_id < layer_source.tar_slc_range().end
                     {
                         debug_assert!(slc_id == slc_id_ttl);
                         debug_assert_eq!(layer.axn_kind(), layer_source.axn_kind());
 
                         if DEBUG_PRINT {
                             println!("SLICEMAP::NEW(): Using source layer dims: {:?} \
-                                for layer: {} in area: {}", layer_source.dims(), 
+                                for layer: {} in area: {}", layer_source.dims(),
                                 layer.name(), layer_source.area_name());
                         }
                         slc_id_ttl += 1;
-                        add_slice(SliceDims::new(area_dims, Some(layer_source.dims()), 
+                        add_slice(SliceDims::new(area_dims, Some(layer_source.dims()),
                             layer_source.axn_kind())
                             .expect("SliceMap::new(): Error creating SliceDims."));
                     }
@@ -130,12 +130,12 @@ impl SliceMap {
             axn_kinds: axn_kinds,
             dims: dims,
             v_sizes: v_sizes,
-            u_sizes: u_sizes,    
+            u_sizes: u_sizes,
             v_scales: v_scales,
-            u_scales: u_scales,    
+            u_scales: u_scales,
             v_mids: v_mids,
-            u_mids: u_mids,    
-            physical_len: axn_idz_ttl,        
+            u_mids: u_mids,
+            physical_len: axn_idz_ttl,
         }
     }
 
@@ -149,15 +149,15 @@ impl SliceMap {
             \n{mt}{mt}{mt}v_scales:     [{}], \
             \n{mt}{mt}{mt}u_scales:     [{}], \
             \n{mt}{mt}{mt}v_mids:       [{}], \
-            \n{mt}{mt}{mt}u_mids:       [{}]", 
-            self.layer_names, 
-            area_map::literal_list(&self.axn_idzs), 
-            area_map::literal_list(&self.v_sizes), 
-            area_map::literal_list(&self.u_sizes), 
-            area_map::literal_list(&self.v_scales), 
-            area_map::literal_list(&self.u_scales), 
-            area_map::literal_list(&self.v_mids), 
-            area_map::literal_list(&self.u_mids), 
+            \n{mt}{mt}{mt}u_mids:       [{}]",
+            self.layer_names,
+            area_map::literal_list(&self.axn_idzs),
+            area_map::literal_list(&self.v_sizes),
+            area_map::literal_list(&self.u_sizes),
+            area_map::literal_list(&self.v_scales),
+            area_map::literal_list(&self.u_scales),
+            area_map::literal_list(&self.v_mids),
+            area_map::literal_list(&self.u_mids),
             mt = cmn::MT
         );
 
@@ -188,7 +188,7 @@ impl SliceMap {
     #[inline]
     pub fn tract_map_range(&self, slc_range: Range<usize>) -> SliceTractMap {
         assert!(slc_range.end <= 255);
-        SliceTractMap::new(&self.layer_names[slc_range.clone()], &self.v_sizes[slc_range.clone()], 
+        SliceTractMap::new(&self.layer_names[slc_range.clone()], &self.v_sizes[slc_range.clone()],
             &self.u_sizes[slc_range.clone()])
     }
 
@@ -199,8 +199,8 @@ impl SliceMap {
 
     #[inline]
     pub fn slc_count(&self) -> usize {
-        self.axn_idzs.len() 
-    }    
+        self.axn_idzs.len()
+    }
 
     #[inline]
     pub fn depth(&self) -> u8 {
@@ -279,6 +279,18 @@ impl MemLen for SliceMap {
     }
 }
 
+impl Into<SpatialDims> for SliceMap {
+    fn into(self) -> SpatialDims {
+        self.to_lens().into()
+    }
+}
+
+impl<'a> Into<SpatialDims> for &'a SliceMap {
+    fn into(self) -> SpatialDims {
+        self.to_lens().into()
+    }
+}
+
 
 #[cfg(test)]
 pub mod tests {
@@ -300,7 +312,7 @@ pub mod tests {
             let mut output = String::with_capacity(30 * self.slc_count());
 
             for i in 0..self.slc_count() {
-                output.push_str(&format!("[{}: '{}', {}]", i, self.layer_names()[i], 
+                output.push_str(&format!("[{}: '{}', {}]", i, self.layer_names()[i],
                     self.axn_idzs()[i]));
             }
 

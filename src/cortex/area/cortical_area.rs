@@ -435,7 +435,7 @@ impl CorticalArea {
 
         let io_info = IoLayerInfoCache::new(area_name.to_owned(), &area_map);
 
-        println!("    CORTICAL_AREA::NEW(): IO_INFO: {:?}, Settings: {:?}", io_info, settings);
+        println!("{mt}::NEW(): IO_INFO: {:?}, Settings: {:?}", io_info, settings, mt = cmn::MT);
 
         let settings = settings.unwrap_or(CorticalAreaSettings::new());
 
@@ -712,8 +712,7 @@ impl CorticalArea {
     // }
 
     pub fn sample_axn_slc_range<R: Borrow<Range<u8>>>(&self, slc_range: R, buf: &mut [u8])
-            -> Event
-    {
+                -> Event {
         let slc_range = slc_range.borrow();
         assert!(slc_range.len() > 0, "CorticalArea::sample_axn_slc_range(): \
             Invalid slice range: '{:?}'. Slice range length must be at least one.", slc_range);
@@ -790,9 +789,9 @@ impl Aux {
         //dims.columns() *= 512;
         let int_32_min = INT_32_MIN;
 
-        let ints_0 = Buffer::<i32>::new(ocl_pq.queue(), None, dims, None).unwrap();
+        let ints_0 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, dims, None).unwrap();
         ints_0.cmd().fill(int_32_min, None).enq().unwrap();
-        let ints_1 = Buffer::<i32>::new(ocl_pq.queue(), None, dims, None).unwrap();
+        let ints_1 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, dims, None).unwrap();
         ints_1.cmd().fill(int_32_min, None).enq().unwrap();
 
         Aux {
