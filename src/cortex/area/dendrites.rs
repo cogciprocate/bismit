@@ -1,4 +1,4 @@
-use cmn::{self, CorticalDims};
+use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{self, ProQue, SpatialDims, Buffer};
 use ocl::core::ClWaitList;
@@ -35,7 +35,7 @@ impl Dendrites {
                     axons: &AxonSpace,
                     // aux: &Aux,
                     ocl_pq: &ProQue
-    ) -> Dendrites {
+    ) -> CmnResult<Dendrites> {
         //println!("\n### Test D1 ###");
         //let width_dens = dims.width << per_cell_l2;
         assert!(dims.per_tft_l2() as u8 == cell_scheme.dens_per_tuft_l2);
@@ -70,8 +70,8 @@ impl Dendrites {
             layer_name, dims, states.len(), mt = cmn::MT);
 
         let syns_dims = dims.clone_with_ptl2((dims.per_tft_l2() + syns_per_den_l2 as i8));
-        let syns = Synapses::new(layer_name, syns_dims, cell_scheme.clone(), den_kind, cell_kind,
-            area_map, axons, /*aux,*/ ocl_pq);
+        let syns = try!(Synapses::new(layer_name, syns_dims, cell_scheme.clone(), den_kind, cell_kind,
+            area_map, axons, /*aux,*/ ocl_pq));
 
 
         let kern_cycle = ocl_pq.create_kernel("den_cycle").expect("[FIXME]: HANDLE ME")
@@ -88,7 +88,7 @@ impl Dendrites {
             .arg_buf(&states);
 
 
-        Dendrites {
+        Ok(Dendrites {
             layer_name: layer_name,
             dims: dims,
             // den_kind: den_kind,
@@ -99,7 +99,7 @@ impl Dendrites {
             states: states,
             energies: energies,
             syns: syns,
-        }
+        })
     }
 
     pub fn cycle(&self, wait_events: Option<&ClWaitList>) {

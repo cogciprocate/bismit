@@ -1,7 +1,7 @@
 
 use rand::{self, XorShiftRng, Rng};
 
-use cmn::{self, CorticalDims, DataCellLayer};
+use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
 use map::{AreaMap};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
@@ -38,7 +38,7 @@ pub struct PyramidalLayer {
 impl PyramidalLayer {
     pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme,
         area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue
-    ) -> PyramidalLayer {
+    ) -> CmnResult<PyramidalLayer> {
         let base_axn_slcs = area_map.layer_slc_ids(vec![layer_name]);
         let base_axn_slc = base_axn_slcs[0];
         let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);
@@ -69,8 +69,8 @@ impl PyramidalLayer {
             layer_name, base_axn_slc, pyr_lyr_axn_idz, tfts_per_cel, syns_per_den_l2, dens_per_tft_l2,
             states.len(), tft_best_den_ids.len(), dims, mt = cmn::MT);
 
-        let dens = Dendrites::new(layer_name, dims_dens, cell_scheme.clone(), DendriteKind::Distal,
-            CellKind::Pyramidal, area_map, axons, ocl_pq);
+        let dens = try!(Dendrites::new(layer_name, dims_dens, cell_scheme.clone(), DendriteKind::Distal,
+            CellKind::Pyramidal, area_map, axons, ocl_pq));
 
         let kern_cycle = ocl_pq.create_kernel("pyr_cycle").expect("[FIXME]: HANDLE ME")
             // .expect("PyramidalLayer::new()")
@@ -118,7 +118,7 @@ impl PyramidalLayer {
             .arg_buf_named::<i32>("aux_ints_1", None)
             .arg_buf(dens.syns().strengths());
 
-        PyramidalLayer {
+        Ok(PyramidalLayer {
             layer_name: layer_name,
             dims: dims,
             cell_scheme: cell_scheme,
@@ -137,7 +137,7 @@ impl PyramidalLayer {
             tft_best_den_states: tft_best_den_states,
             // energies: energies, // <<<<< SLATED FOR REMOVAL
             dens: dens,
-        }
+        })
     }
 
     // USED BY AUX

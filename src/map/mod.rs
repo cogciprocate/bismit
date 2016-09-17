@@ -117,7 +117,7 @@ impl LayerKind {
         }
     }
 
-    pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_reach: u8) -> LayerKind {
+    pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_reach: i8) -> LayerKind {
         match &mut self {
             &mut LayerKind::Cellular(ref mut pc) => {
                 match pc.den_dst_src_lyrs {

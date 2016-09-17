@@ -1,7 +1,7 @@
 
 use ocl;
 use ocl::traits::MemLen;
-use cmn::{ParaHexArray, CorticalDims, CmnResult, CmnError};
+use cmn::{self, ParaHexArray, CorticalDims, CmnResult, CmnError};
 use map::{AxonKind};
 
 
@@ -16,7 +16,7 @@ pub struct SliceDims {
 }
 
 impl SliceDims {
-    pub fn new(area_dims: &CorticalDims, src_lyr_dims_opt: Option<&CorticalDims>, 
+    pub fn new(area_dims: &CorticalDims, src_lyr_dims_opt: Option<&CorticalDims>,
                 axn_kind: AxonKind) -> CmnResult<SliceDims>
     {
         match axn_kind {
@@ -29,7 +29,7 @@ impl SliceDims {
                             Ok(ss) => {
                                 let (v_scale, u_scale) = ss;
 
-                                Ok(SliceDims { 
+                                Ok(SliceDims {
                                     v_size: src_area_dims.v_size(),
                                     u_size: src_area_dims.u_size(),
                                     v_scale: v_scale,
@@ -44,7 +44,7 @@ impl SliceDims {
                     },
 
                     None => {
-                        Ok(SliceDims { 
+                        Ok(SliceDims {
                             v_size: area_dims.v_size(),
                             u_size: area_dims.u_size(),
                             v_scale: 16,
@@ -59,15 +59,16 @@ impl SliceDims {
             AxonKind::Horizontal => {
                 match src_lyr_dims_opt {
                     Some(src_area_dims) => {
-                        if src_area_dims.v_size() > 252 || src_area_dims.u_size() > 252 {
+                        if src_area_dims.v_size() > cmn::MAX_HRZ_DIM_SIZE ||
+                                    src_area_dims.u_size() > cmn::MAX_HRZ_DIM_SIZE {
                             // [NOTE]: Can't remember why I set this to 252
                             // but I doubt there's a good reason why it can't
-                            // be 255.
-                            return Err(CmnError::from("Dimensions size for horizontal layers may \
-                                not exceed 252."));
+                            // be 255. [UPDATE]: Now set to 255, should be cool.
+                            return Err(CmnError::from(format!("Dimensions size for horizontal layers may \
+                                not exceed {}.", cmn::MAX_HRZ_DIM_SIZE)));
                         }
 
-                        Ok(SliceDims { 
+                        Ok(SliceDims {
                             v_size: src_area_dims.v_size(),
                             u_size: src_area_dims.u_size(),
                             v_scale: 0,
@@ -82,7 +83,7 @@ impl SliceDims {
                         // assert!(side <= 255);
                         // let mid = side / 2;
 
-                        Ok(SliceDims { 
+                        Ok(SliceDims {
                             v_size: area_dims.v_size(),
                             u_size: area_dims.u_size(),
                             v_scale: 0,
@@ -93,6 +94,31 @@ impl SliceDims {
                     }
                 }
             }
+        }
+    }
+
+    /// Scales `idxs` (v, u) by the appropriate amount for this slice. This is
+    /// precisely the same calculation done within a kernel for indexing.
+    ///
+    /// [OPEN QUESTION]: What will we do about out of range offsets?
+    /// * continue to panic
+    /// * clamp to min/max (-128, 127)
+    /// * sparsify synapse source addresses (put gaps but maintain relative reach)
+    ///
+    pub fn scale_offs(&self, offs: (i8, i8)) -> CmnResult<(i8, i8)> {
+        let sc_l2 = cmn::SLC_SCL_COEFF_L2;
+        let v_off = (offs.0 as i32 * self.v_scale as i32) >> sc_l2;
+        let u_off = (offs.1 as i32 * self.u_scale as i32) >> sc_l2;
+        let r_min = cmn::SYNAPSE_REACH_MIN as i32;
+        let r_max = cmn::SYNAPSE_REACH_MAX as i32;
+
+        if v_off < r_min || v_off > r_max || u_off < r_min || u_off > r_max {
+            CmnError::err(format!("Offsets ({}, {}) out of range for source layer \
+                [scales: ({}, {}), results: ({}, {})]. [DEV NOTE]: THIS MAY BE BETTER \
+                IF IT CLAMPS TO MAX. See 'SliceDims::scale_offs' doc for more.",
+                offs.0, offs.1, self.v_scale, self.u_scale, v_off, u_off))
+        } else {
+            Ok((v_off as i8, u_off as i8))
         }
     }
 
@@ -171,7 +197,7 @@ impl MemLen for SliceDims {
 
 #[inline]
 pub fn get_src_scales(src_area_dims: &CorticalDims, tar_area_dims: &CorticalDims,
-        ) -> CmnResult<(u32, u32)> 
+        ) -> CmnResult<(u32, u32)>
 {
     // let v_res = calc_scale(src_area_dims.v_size(), tar_area_dims.v_size());
     // let u_res = calc_scale(src_area_dims.u_size(), tar_area_dims.u_size());
@@ -194,32 +220,28 @@ pub fn get_src_scales(src_area_dims: &CorticalDims, tar_area_dims: &CorticalDims
     //     Ok((v_res.unwrap(), u_res.unwrap()))
     // }
 
-    let v_res = match calc_scale(src_area_dims.v_size(), tar_area_dims.v_size()) {
-        Ok(vr) => vr,
-        Err(err) => return Err(err),
-    };
-
-    let u_res = match calc_scale(src_area_dims.u_size(), tar_area_dims.u_size()) {
-        Ok(vr) => vr,
-        Err(err) => return Err(err),
-    };
+    let v_res = try!(calc_scale(src_area_dims.v_size(), tar_area_dims.v_size()));
+    let u_res = try!(calc_scale(src_area_dims.u_size(), tar_area_dims.u_size()));
 
     Ok((v_res, u_res))
 }
 
 #[inline]
 pub fn calc_scale(src_dim: u32, tar_dim: u32) -> CmnResult<u32> {
-    // let scale_incr = if src_dim >= 16 { src_dim / 16 } 
+    // let scale_incr = if src_dim >= 16 { src_dim / 16 }
     //     else if src_dim > 0 { 1 }
     //     else { panic!("area_map::calc_scale(): Source dimension cannot be zero.") };
 
-    let src_dim = (src_dim as usize) * 1024;
-    let tar_dim = (tar_dim as usize) * 1024;
+    let arbitrary_coeff = 1024;
+    const SRC_SCL_COEFF_M1: usize = cmn::SLC_SCL_COEFF - 1;
+
+    let src_dim = (src_dim as usize) * arbitrary_coeff;
+    let tar_dim = (tar_dim as usize) * arbitrary_coeff;
 
     let scale_incr = match tar_dim {
         0 => return Err(CmnError::new("Target area dimension cannot be zero.".to_owned())),
-        1...15 => 1,
-        _ => tar_dim / 16,
+        1...SRC_SCL_COEFF_M1 => 1,
+        _ => tar_dim / cmn::SLC_SCL_COEFF,
     };
 
     return match src_dim / scale_incr {
@@ -227,5 +249,14 @@ pub fn calc_scale(src_dim: u32, tar_dim: u32) -> CmnResult<u32> {
         s @ 1...255 => Ok(s as u32),
         _ => return Err(CmnError::new("Source area cannot have a dimension more than 16 times \
             target area dimension.".to_owned())),
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn slc_dim_scl_offs_unimplemented() {
+
     }
 }

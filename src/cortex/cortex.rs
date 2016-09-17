@@ -36,8 +36,11 @@ impl Cortex {
         for (&area_name, _) in pamaps.iter().filter(|&(_, pamap)|
                 pamap.lm_kind_tmp() != &LayerMapKind::Subcortical)
         {
-            areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(),
-                device_idx, &ocl_context, ca_settings.clone())));
+            areas.insert(area_name, Box::new(
+                // [TODO]: convert unwrap to try (change Cortex sig):
+                CorticalArea::new(thal.area_map(area_name).clone(),
+                device_idx, &ocl_context, ca_settings.clone()).unwrap()
+                ));
 
             device_idx += 1;
         }

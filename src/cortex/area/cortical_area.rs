@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
 
-use cmn::{self, CorticalDims, DataCellLayer};
+use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
 use ocl::{ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
@@ -236,7 +236,7 @@ pub struct CorticalArea {
 
 impl CorticalArea {
     pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context,
-                    settings: Option<CorticalAreaSettings>) -> CorticalArea {
+                    settings: Option<CorticalAreaSettings>) -> CmnResult<CorticalArea> {
         let emsg = "cortical_area::CorticalArea::new()";
         let area_name = area_map.area_name();
 
@@ -301,16 +301,16 @@ impl CorticalArea {
                         CellKind::Pyramidal => {
                             let pyrs_dims = dims.clone_with_depth(layer.depth());
 
-                            let pyr_lyr = PyramidalLayer::new(
-                                layer.name(), pyrs_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq);
+                            let pyr_lyr = try!(PyramidalLayer::new(layer.name(), pyrs_dims,
+                                pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq));
 
                             pyrs_map.insert(layer.name(), Box::new(pyr_lyr));
                         },
 
                         CellKind::SpinyStellate => {
                             let ssts_map_dims = dims.clone_with_depth(layer.depth());
-                            let sst_lyr = SpinyStellateLayer::new(
-                                layer.name(), ssts_map_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq);
+                            let sst_lyr = try!(SpinyStellateLayer::new(layer.name(),
+                                ssts_map_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq));
                             ssts_map.insert(layer.name(), Box::new(sst_lyr));
                         },
                         _ => (),
@@ -462,7 +462,7 @@ impl CorticalArea {
             settings: settings,
         };
 
-        cortical_area
+        Ok(cortical_area)
     }
 
     // CYCLE(): <<<<< TODO: ISOLATE LEARNING INTO SEPARATE THREAD >>>>>

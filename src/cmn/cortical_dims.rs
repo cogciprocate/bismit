@@ -1,37 +1,39 @@
-// use std::convert::Into;
-// use ocl::{ProQue};
 use ocl::SpatialDims;
 use ocl::traits::MemLen;
 use cmn::{ParaHexArray, TractDims};
 
-/*    CorticalDims: Dimensions of a cortical area in units of cells
-        - Used to define both the volume and granularity of a cortical area.
-        - Also contains extra information such as opencl kernel workgroup size
+// # CorticalDims: Dimensions of a cortical area in units of cells
+// - Used to define both the volume and granularity of a cortical area.
+// - Also contains extra information such as opencl kernel workgroup size
+//
+//
+// <<<<< THIS DESCRIPTION IS WAY OUT OF DATE >>>>>
+// <<<<< TODO: ADD INFORMATION ABOUT TUFTS (OUR 5TH DIMENSION?) >>>>>
+//
+// Stored in log base 2 as a constraint (for simplicity and computational
+// efficiency within OpenCL kernels).
+//
+// Cells are hexagonal prisms
+//
+// Dimensions are in the context of bismit where:
+//     - Column is 1 x 1 x N (a rod)
+//     - Slice (unfortunately coincident with rust terminology) has
+//       dimensions N x M x 1 (a plane)
+//     - Row has no meaning
+//
+// So, v_size * u_size determines number of columns
+//
+// The 4th parameter, per_cel_l2, is basically components or divisions
+// per cell and can also be thought of as a 4th dimension. It can be
+// positive or negative reflecting whether or not it's bigger or smaller
+// than a cell and it's stored inverted. Don't think too hard about it.
 
-
-        <<<<< THIS DESCRIPTION IS WAY OUT OF DATE >>>>>
-        <<<<< TODO: ADD INFORMATION ABOUT TUFTS (OUR 5TH DIMENSION?) >>>>>
-
-        Stored in log base 2 as a constraint (for simplicity and computational efficiency in OpenCL kernels).
-
-        Cells are hexagonal prisms
-
-        Dimensions are in the context of bismit where:
-            - Column is 1 x 1 x N (a rod)
-            - Slice (unfortunately coincident with rust terminology) has dimensions N x M x 1 (a plane)
-            - Row has no meaning
-
-        So, u_size * v_size determines number of columns
-
-        The 4th parameter, per_cel_l2, is basically components or divisions per cell and can also be thought of as a 4th dimension. It can be positive or negative reflecting whether or not it's bigger or smaller than a cell and it's stored inverted. Don't think too hard about it.
-*/
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Dimensions for a cortical, area, layer, slice, or other subdivison thereof.
 pub struct CorticalDims {
-    //u_size_l2: u8, // in cell-edges (log base 2) (WxHxD: 1x1xN)
-    //v_size_l2: u8, // in cell-edges (log2) (1x1xN)
-    u_size: u32,
-    v_size: u32,
+    v_size: u32, // in cell-edges (log2) (HxWxD: 1x1xN)
+    u_size: u32, // in cell-edges (log2) (HxWxD: 1x1xN)
     depth: u8, // in cell-edges (NxMx1)
     tfts_per_cel: u32, // dendritic tufts per cell
     per_tft_l2: i8, // divisions per cell-tuft (log2)
@@ -39,9 +41,7 @@ pub struct CorticalDims {
 }
 
 impl CorticalDims {
-    pub fn new(u_size: u32, v_size: u32, depth: u8, per_tft_l2: i8, incr: Option<u32>) -> CorticalDims {
-    //pub fn new(u_size_l2: u8, v_size_l2: u8,    depth: u8, per_tft_l2: i8,) -> CorticalDims {
-
+    pub fn new(v_size: u32, u_size: u32, depth: u8, per_tft_l2: i8, incr: Option<u32>) -> CorticalDims {
         //assert!(super::OPENCL_PREFERRED_VECTOR_MULTIPLE == 4);
         //println!("\n\n##### v_size: {}, u_size: {}", v_size, u_size);
         //let incr = resolve_incr(ocl);
@@ -49,8 +49,8 @@ impl CorticalDims {
         //assert!(u_size % 4 == 0, "CorticalDims::new(): Size of dimension 'u' must be a multiple of 4.");
 
         CorticalDims {
-            u_size: u_size,
             v_size: v_size,
+            u_size: u_size,
             /*u_size_l2: u_size_l2,
             v_size_l2: v_size_l2,*/
             depth: depth,
@@ -97,13 +97,13 @@ impl CorticalDims {
     // }
 
     #[inline]
-    pub fn u_size(&self) -> u32 {
-        self.u_size
+    pub fn v_size(&self) -> u32 {
+        self.v_size
     }
 
     #[inline]
-    pub fn v_size(&self) -> u32 {
-        self.v_size
+    pub fn u_size(&self) -> u32 {
+        self.u_size
     }
 
     #[inline]
@@ -244,13 +244,13 @@ impl Copy for CorticalDims {}
 
 impl ParaHexArray for CorticalDims {
     #[inline]
-    fn u_size(&self) -> u32 {
-        self.u_size
+    fn v_size(&self) -> u32 {
+        self.v_size
     }
 
     #[inline]
-    fn v_size(&self) -> u32 {
-        self.v_size
+    fn u_size(&self) -> u32 {
+        self.u_size
     }
 
     #[inline]
@@ -269,7 +269,6 @@ impl MemLen for CorticalDims {
     }
 
     fn to_lens(&self) -> [usize; 3] {
-        // [self.depth as usize, self.v_size as usize, self.u_size as usize]
         [self.to_len(), 1, 1]
     }
 }
@@ -294,14 +293,7 @@ impl<'a> Into<SpatialDims> for &'a CorticalDims {
     }
 }
 
-// impl Into<SpatialDims> for  {
-//     fn into(self) -> SpatialDims {
-//         self.to_lens().into()
-//     }
-// }
-
-
-// DO NOT IMPLEMENT THIS:
+// [KEEPME]: DO NOT IMPLEMENT THIS:
 // impl Into<SpatialDims> for CorticalDims {
 //     fn into(self) -> SpatialDims {
 //         SpatialDims::Three(self.depth as usize, self.v_size as usize, self.u_size as usize)

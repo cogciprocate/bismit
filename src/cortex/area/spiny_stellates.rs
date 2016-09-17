@@ -1,7 +1,7 @@
 use std::ops;
 use rand::{self, Rng};
 
-use cmn::{self, CorticalDims};
+use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer};
 use ocl::core::ClWaitList;
@@ -23,7 +23,7 @@ pub struct SpinyStellateLayer {
 impl SpinyStellateLayer {
     pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme, area_map: &AreaMap,
                 axns: &AxonSpace, ocl_pq: &ProQue
-    ) -> SpinyStellateLayer {
+    ) -> CmnResult<SpinyStellateLayer> {
         let base_axn_slcs = area_map.layer_slc_ids(vec![layer_name]);
         let base_axn_slc = base_axn_slcs[0];
         let lyr_axn_idz = area_map.axn_idz(base_axn_slc);
@@ -34,8 +34,8 @@ impl SpinyStellateLayer {
             base_axn_slc, lyr_axn_idz, dims, mt = cmn::MT);
 
         let dens_dims = dims.clone_with_ptl2(cell_scheme.dens_per_tuft_l2 as i8);
-        let dens = Dendrites::new(layer_name, dens_dims, cell_scheme.clone(), DendriteKind::Proximal,
-            CellKind::SpinyStellate, area_map, axns, ocl_pq);
+        let dens = try!(Dendrites::new(layer_name, dens_dims, cell_scheme.clone(), DendriteKind::Proximal,
+            CellKind::SpinyStellate, area_map, axns, ocl_pq));
         let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
         let cels_per_grp = dims.per_subgrp(grp_count).expect("SpinyStellateLayer::new()");
 
@@ -52,7 +52,7 @@ impl SpinyStellateLayer {
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(dens.syns().strengths());
 
-        SpinyStellateLayer {
+        Ok(SpinyStellateLayer {
             layer_name: layer_name,
             dims: dims,
             // cell_scheme: cell_scheme,
@@ -61,7 +61,7 @@ impl SpinyStellateLayer {
             kern_ltp: kern_ltp,
             rng: rand::weak_rng(),
             dens: dens,
-        }
+        })
     }
 
     #[inline]

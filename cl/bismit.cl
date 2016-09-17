@@ -329,8 +329,8 @@ static inline uint axn_idx_3d_unsafe(uchar const slc_id, uint const v_id_unscale
     // CALCULATE SCALED INDEX:
     // - Multiply by the pre-defined scale for specified slice then divide by 16.
     // - A scale of 16 = 100%, 8 = 50%, 32 = 200%, etc. A scale of 0 is a horizontal slice.
-    int const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale(slc_id)) >> 4);
-    int const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale(slc_id)) >> 4);
+    int const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale(slc_id)) >> SLC_SCL_COEFF_L2);
+    int const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale(slc_id)) >> SLC_SCL_COEFF_L2);
 
     // // CALCULATE HORIZONTAL INDEX:
     // int const v_id_hrz = v_size >> 1;
@@ -368,8 +368,8 @@ static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id, int4 const v_id_u
     int4 const v_ofs = convert_int4(v_ofs_char4) + get_axn_v_mid_vec4(slc_id);
     int4 const u_ofs = convert_int4(u_ofs_char4) + get_axn_u_mid_vec4(slc_id);
 
-    int4 const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale_vec4(slc_id)) >> 4);
-    int4 const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale_vec4(slc_id)) >> 4);
+    int4 const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale_vec4(slc_id)) >> SLC_SCL_COEFF_L2);
+    int4 const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale_vec4(slc_id)) >> SLC_SCL_COEFF_L2);
 
     // int4 const v_id_hrz = v_size >> 1;
     // int4 const u_id_hrz = u_size >> 1;

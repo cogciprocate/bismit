@@ -152,11 +152,20 @@ pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXI
 //pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 1);
 
 //pub const LEARNING_ACTIVE: bool = true;
+pub const SYNAPSE_REACH_MAX: i8 = 127;
+pub const SYNAPSE_REACH_MIN: i8 = -127;
 pub const SYNAPSE_STRENGTH_FLOOR: i8 = -25;             // DIRECTLY AFFECTS LEARNING RATE
 pub const SYNAPSE_REGROWTH_INTERVAL: usize = 800;         // DIRECTLY AFFECTS LEARNING RATE
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;
 pub const DST_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
 pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
+pub const MAX_HRZ_DIM_SIZE: u32 = 255;
+
+// Scaling coefficient. Higher values create more potential precision.
+// 16 (2^4: 1 << 4) seems like plenty.
+pub const SLC_SCL_COEFF_L2: i32 = 4;
+pub const SLC_SCL_COEFF: usize = 1 << SLC_SCL_COEFF_L2 as usize;
+
 
 //pub const CORTICAL_SEGMENTS_TOTAL: usize = 1;
 //pub const SENSORY_SEGMENTS_TOTAL: usize = 1;
@@ -170,7 +179,7 @@ pub const PRX_SYNAPSE_STRENGTH_DEFAULT: i8 = 0;
 // pub const AXON_MAR__GIN_SIZE: u32 = (1 << (((SYNAPSE_REACH_GEO_LOG2 + 1) << 1) - 1));    // ((AXON_BUFFER_SIZE ^ 2) / 2)
 // pub const AXON_BUF__FER_SIZE: u32 = (1 << ((SYNAPSE_REACH_GEO_LOG2 + 1) << 1));    // (AXON_BUFFER_SIZE ^ 2)
 
-pub const SYNAPSE_REACH: u32 = 8;
+pub const SYNAPSE_REACH: u32 = 8; // UNUSED?
 pub const SYNAPSE_SPAN: u32 = SYNAPSE_REACH * 2; // TESTING PURPOSES
 pub const SYNAPSE_SPAN_RHOMBAL_AREA: u32 = SYNAPSE_SPAN * SYNAPSE_SPAN; // TESTING PURPOSES
 //pub const SYNAPSE_REACH_CELLS: u32 = (3 * (SYNAPSE_REACH * SYNAPSE_REACH)) + (3 * SYNAPSE_REACH) + 1;
@@ -371,8 +380,8 @@ pub fn cel_idx_3d(depth: u8, slc_id: u8, v_size: u32, v_id: u32, u_size: u32, u_
 
 
 
-pub fn hex_tile_offs(radius: u8) -> Vec<(i8, i8)> {
-    assert!(radius <= 127);
+pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
+    assert!(radius >= 0);
 
     let tile_count = (3 * radius as usize) * (radius as usize + 1) + 1;
     let mut mold = Vec::with_capacity(tile_count);
