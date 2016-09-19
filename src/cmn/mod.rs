@@ -15,6 +15,7 @@ mod tract_frame;
 mod map_store;
 pub mod data_cell_layer;
 
+use std;
 use std::default::{Default};
 use std::iter::{self};
 use std::cmp::{self};
@@ -191,8 +192,8 @@ pub const SYNAPSES_PER_DENDRITE_PROXIMAL: u32 = 1 << SYNAPSES_PER_DENDRITE_PROXI
 //pub const DENDRITE_INITIAL_THRESHOLD_DISTAL: u32 = (128 * 1);
 
 //pub const LEARNING_ACTIVE: bool = true;
-pub const SYNAPSE_REACH_MAX: i8 = 127;
-pub const SYNAPSE_REACH_MIN: i8 = -127;
+pub const SYNAPSE_REACH_MAX: i8 = std::i8::MAX;
+pub const SYNAPSE_REACH_MIN: i8 = std::i8::MIN + 1;
 pub const SYNAPSE_STRENGTH_FLOOR: i8 = -25;             // DIRECTLY AFFECTS LEARNING RATE
 pub const SYNAPSE_REGROWTH_INTERVAL: usize = 800;         // DIRECTLY AFFECTS LEARNING RATE
 pub const SYNAPSE_STRENGTH_INITIAL_DEVIATION: i8 = 5;

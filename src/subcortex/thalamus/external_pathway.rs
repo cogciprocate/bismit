@@ -232,6 +232,9 @@ impl ExternalPathway {
             ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
                 es.write_into(&mut frame, tags)
             },
+            ExternalPathwayEncoder::OtherUnspecified => {
+                panic!("ExternalPathway::write_into: Custom pathway not specified.")
+            },
             _ => (),
         }
     }
@@ -249,6 +252,9 @@ impl ExternalPathway {
             ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
                 Ok(es.ext_frame_mut())
             },
+            ExternalPathwayEncoder::OtherUnspecified => {
+                panic!("ExternalPathway::write_into: Custom pathway not specified.")
+            },
             _ => Err(CmnError::new(format!("ExternalPathway::ext_frame_Mut(): No tract available for the source \
                 kind: {:?}.", self.encoder))),
         }
@@ -265,6 +271,9 @@ impl ExternalPathway {
             },
             ExternalPathwayEncoder::SensoryTract(ref mut es) => {
                 es.cycle_next()
+            },
+            ExternalPathwayEncoder::OtherUnspecified => {
+                panic!("ExternalPathway::write_into: Custom pathway not specified.")
             },
             _ => (),
         }
