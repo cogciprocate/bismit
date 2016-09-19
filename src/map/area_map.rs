@@ -404,8 +404,11 @@ pub mod tests {
             let v_scale = self.slices.v_scales()[slc_id as usize];
             let u_scale = self.slices.u_scales()[slc_id as usize];
 
-            let v_id_scaled = (v_id_unscaled * v_scale) / 16;
-            let u_id_scaled = (u_id_unscaled * u_scale) / 16;
+            // let v_id_scaled = (v_id_unscaled * v_scale) >> cmn::SLC_SCL_COEFF_L2;
+            // let u_id_scaled = (u_id_unscaled * u_scale) >> cmn::SLC_SCL_COEFF_L2;
+
+            let v_id_scaled = cmn::scale(v_id_unscaled, v_scale);
+            let u_id_scaled = cmn::scale(u_id_unscaled, u_scale);
 
             let slc_count = self.slices().depth();
             let v_size = self.slices.v_sizes()[slc_id as usize];
@@ -424,8 +427,11 @@ pub mod tests {
             let v_scale = self.slices.v_scales()[slc_id as usize];
             let u_scale = self.slices.u_scales()[slc_id as usize];
 
-            let v_id_scaled = (v_id_unscaled * v_scale) / 16;
-            let u_id_scaled = (u_id_unscaled * u_scale) / 16;
+            // let v_id_scaled = (v_id_unscaled * v_scale) >> cmn::SLC_SCL_COEFF_L2;
+            // let u_id_scaled = (u_id_unscaled * u_scale) >> cmn::SLC_SCL_COEFF_L2;
+
+            let v_id_scaled = cmn::scale(v_id_unscaled, v_scale);
+            let u_id_scaled = cmn::scale(u_id_unscaled, u_scale);
 
             let v_size = self.slices.v_sizes()[slc_id as usize];
             let u_size = self.slices.u_sizes()[slc_id as usize];

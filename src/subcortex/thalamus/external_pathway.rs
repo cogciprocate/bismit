@@ -52,6 +52,7 @@ pub enum ExternalPathwayEncoder {
     SensoryTract(Box<SensoryTract>),
     VectorEncoder(Box<VectorEncoder>),
     Other(Box<ExternalPathwayTract>),
+    OtherUnspecified,
 }
 
 
@@ -87,7 +88,7 @@ impl ExternalPathwayLayer {
 
 /// An input source.
 ///
-// [NOTE]: To implement multiple layers from a single input source:
+// [NOTE (out of date)]: To implement multiple layers from a single input source:
 // - Must pass layer count to the input 'generator' and have it accept a
 //   multi-headed mutable slice when cycled.
 pub struct ExternalPathway {
@@ -144,12 +145,12 @@ impl ExternalPathway {
             });
         }
 
-        let encoder = match pamap.get_input().clone() {
-            InputScheme::IdxStreamer { file_name, cyc_per, scale, loop_frames } => {
+        let encoder = match *pamap.get_input() {
+            InputScheme::IdxStreamer { ref file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
                 let mut is = IdxStreamer::new(layers[&layer_tags_list[0]].dims()
                     .expect("ExternalPathway::new(): Layer dims not set properly.").clone(),
-                    file_name, cyc_per, scale);
+                    file_name.clone(), cyc_per, scale);
 
                 if loop_frames > 0 {
                     is = is.loop_frames(loop_frames);
@@ -186,15 +187,16 @@ impl ExternalPathway {
                 ExternalPathwayEncoder::Other(Box::new(
                     ReversoScalarSequence::new(range, incr, &layer_tags_list)))
             },
-            InputScheme::VectorEncoder { ranges } => {
+            InputScheme::VectorEncoder { ref ranges } => {
                 let tract_dims: Vec<_> = layer_dims_list.iter().map(|d| d.unwrap().into()).collect();
 
                 ExternalPathwayEncoder::VectorEncoder(Box::new(try!(
-                    VectorEncoder::new(ranges, &layer_tags_list, &tract_dims)
+                    VectorEncoder::new(ranges.clone(), &layer_tags_list, &tract_dims)
                 )))
             },
+            InputScheme::Custom => ExternalPathwayEncoder::OtherUnspecified,
             InputScheme::None | InputScheme::Zeros => ExternalPathwayEncoder::None,
-            is @ _ => panic!("\nExternalPathway::new(): Input type: '{:?}' not yet supported.", is),
+            ref is @ _ => panic!("\nExternalPathway::new(): Input type: '{:?}' not yet supported.", is),
         };
 
         Ok(ExternalPathway {
@@ -291,5 +293,17 @@ impl ExternalPathway {
 
     pub fn encoder(&mut self) -> &mut ExternalPathwayEncoder {
         &mut self.encoder
+    }
+
+    // Specify a custom encoder tract. Input scheme must have been configured
+    // `InputScheme::Custom` in `AreaScheme`.
+    pub fn specify_encoder(&mut self, tract: Box<ExternalPathwayTract>) -> CmnResult<()> {
+        match self.encoder {
+            ExternalPathwayEncoder::OtherUnspecified => (),
+            _ => return CmnError::err("ExternalPathway::specify_encoder(): Encoder already specified."),
+        }
+
+        self.encoder = ExternalPathwayEncoder::Other(tract);
+        Ok(())
     }
 }

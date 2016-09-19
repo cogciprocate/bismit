@@ -22,7 +22,7 @@ use std::io::{self, Write};
 use std::collections::{BTreeMap};
 // use std::fmt::Debug;
 // use std::ops::AddAssign;
-use num::{FromPrimitive};
+use num::{FromPrimitive, };
 // use num::{Num, NumCast};
 use rand;
 use rand::distributions::{IndependentSample, Range};
@@ -38,6 +38,7 @@ pub use self::error::{CmnError};
 pub use self::tract_frame::{TractFrame, TractFrameMut};
 #[cfg(test)] pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
 pub use self::map_store::MapStore;
+pub use self::slice_dims::{calc_scale, scale};
 
 // pub trait ParaHexArray {
 //     fn v_size(&self) -> u32;
@@ -55,6 +56,8 @@ enum_from_primitive! {
         Int64   = 3,
     }
 }
+
+
 /// Types which can be represented as one or several stacked two-dimensional
 /// parallelogram-shaped array containing hexagon-shaped elements.
 pub trait ParaHexArray {
@@ -69,9 +72,45 @@ pub trait ParaHexArray {
 }
 
 
+//###### REENABLE WHEN SPECIALIZATION LANDS: ########
+    // pub struct ParaHexArraySliceSize {
+    //     v_size: u32,
+    //     u_size: u32,
+    // }
+
+    // impl<T> From<T> for ParaHexArraySliceSize where T: ToPrimitive {
+    //     default fn from(size: T) -> ParaHexArraySliceSize {
+    //         ParaHexArraySliceSize {
+    //             v_size: size.to_u32().unwrap(),
+    //             u_size: size.to_u32().unwrap(),
+    //         }
+    //     }
+    // }
+
+    // impl<T> From<(T, T)> for ParaHexArraySliceSize where T: ToPrimitive {
+    //     fn from(sizes: (T, T)) -> ParaHexArraySliceSize {
+    //         ParaHexArraySliceSize {
+    //             v_size: sizes.0.to_u32().unwrap(),
+    //             u_size: sizes.1.to_u32().unwrap(),
+    //         }
+    //     }
+    // }
+
+    // impl<T> From<[T; 2]> for ParaHexArraySliceSize where T: ToPrimitive {
+    //     fn from(sizes: [T; 2]) -> ParaHexArraySliceSize {
+    //         ParaHexArraySliceSize {
+    //             v_size: sizes[0].to_u32().unwrap(),
+    //             u_size: sizes[1].to_u32().unwrap(),
+    //         }
+    //     }
+    // }
+
+
 pub type Sdr = [u8];
 
+
 pub type CmnResult<T> = Result<T, CmnError>;
+
 
 
 /*=============================================================================
@@ -379,7 +418,7 @@ pub fn cel_idx_3d(depth: u8, slc_id: u8, v_size: u32, v_id: u32, u_size: u32, u_
 }
 
 
-
+// List of offsets to form a hexagon-shaped pattern of tiles.
 pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
     assert!(radius >= 0);
 
@@ -405,205 +444,32 @@ pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
     mold
 }
 
+// List of offsets to form a hexagon-shaped pattern of tiles.
+pub fn hex_tile_offs_scaled(radius: i8) -> Vec<(i8, i8)> {
+    assert!(radius >= 0);
 
-// pub fn print_vec_simple<T: OclPrm>(vec: &[T]) {
-//     print_vec(vec, 1, None, None, true);
-// }
+    let tile_count = (3 * radius as usize) * (radius as usize + 1) + 1;
+    let mut mold = Vec::with_capacity(tile_count);
 
+    let radius: i8 = radius as i8;
 
-// pub fn print_vec<T: OclPrm>(
-//             vec: &[T],
-//             every: usize,
-//             val_range: Option<(T, T)>,
-//             idx_range: Option<(usize, usize)>,
-//             show_zeros: bool,
-// ) {
+    let v_ofs_z = 0 - radius;
+    let v_ofs_n = radius + 1;
 
+    for v_ofs in v_ofs_z..v_ofs_n {
+        let v_ofs_inv = 0 - v_ofs;
+        let u_ofs_z = cmp::max(0 - radius, v_ofs_inv - radius);
+        let u_ofs_n = cmp::min(radius, v_ofs_inv + radius) + 1;
+        //print!("[v_ofs:{}]", v_ofs);
 
-//     /*let val_range = match val_range {
-//         Some(x) => x,
-//         _ => 0,
-//     }*/
-//     let (ir_start, ir_end) = match idx_range {
-//         Some(ir)    => ir,
-//         None        => (0usize, 0usize),
-//     };
+        for u_ofs in u_ofs_z..u_ofs_n {
+            mold.push((v_ofs, u_ofs));
+        }
+    }
 
-//     let (vr_start, vr_end) = match val_range {
-//         Some(vr)    => vr,
-//         None        => (Default::default(), Default::default()),
-//     };
+    mold
+}
 
-//     let mut ttl_nz = 0usize;
-//     let mut ttl_ir = 0usize;
-//     let mut within_idx_range = true;
-//     let mut within_val_range = true;
-//     let mut hi: T = vr_start;
-//     let mut lo: T = vr_end;
-//     let mut sum: i64 = 0;
-//     let mut ttl_prntd: usize = 0;
-//     let len = vec.len();
-
-
-//     let mut color: &'static str = C_DEFAULT;
-//     let mut prnt: bool = false;
-
-//     print!("{cdgr}[{cg}{}{cdgr}/{}", vec.len(), every, cg = C_GRN, cdgr = C_DGR);
-
-//     if val_range.is_some() {
-//         print!(";[{},{}]", vr_start, vr_end);
-//     }
-
-//     if idx_range.is_some() {
-//                  // DUPLICATE
-//         print!(";[{},{}]", ir_start, ir_end);
-//     }
-//     print!("]:{cd} ", cd = C_DEFAULT,);
-
-
-//         /* Yes, this clusterfuck needs rewriting someday */
-//     for i in 0..vec.len() {
-
-//         prnt = false;
-
-//         if every != 0 {
-//             if i % every == 0 {
-//                 prnt = true;
-//             } else {
-//                 prnt = false;
-//             }
-//         }
-
-//         if idx_range.is_some() {
-//             let ir = idx_range.as_ref().expect("cmn.rs");
-
-//             if i < ir_start || i >= ir_end {
-//                 prnt = false;
-//                 within_idx_range = false;
-//             } else {
-//                 within_idx_range = true;
-//             }
-//         } else {
-//             within_idx_range = true;
-//         }
-
-//         if val_range.is_some() {
-//             if vec[i] < vr_start || vec[i] >= vr_end {
-//                 prnt = false;
-//                 within_val_range = false;
-//             } else {
-//                 if within_idx_range {
-//                     if vec[i] == Default::default() {
-//                         ttl_ir += 1;
-//                     } else {
-//                         ttl_ir += 1;
-//                     }
-//                 }
-
-//                 within_val_range = true;
-//             }
-//         }
-
-//         if within_idx_range && within_val_range {
-//             sum += vec[i].to_i64().expect("ocl::fmt::print_vec(): vec[i]");
-
-//             if vec[i] > hi { hi = vec[i] };
-
-//             if vec[i] < lo { lo = vec[i] };
-
-//             if vec[i] != Default::default() {
-//                 ttl_nz += 1usize;
-//                 color = C_ORA;
-//             } else {
-//                 if show_zeros {
-//                     color = C_DEFAULT;
-//                 } else {
-//                     prnt = false;
-//                 }
-//             }
-//         }
-
-//         if prnt {
-//             print!("{cg}[{cd}{}{cg}:{cc}{}{cg}]{cd}", i, vec[i], cc = color, cd = C_DEFAULT, cg = C_DGR);
-//             ttl_prntd += 1;
-//         }
-//     }
-
-//     let mut anz: f32 = 0f32;
-//     let mut nz_pct: f32 = 0f32;
-
-//     let mut ir_pct: f32 = 0f32;
-//     let mut avg_ir: f32 = 0f32;
-
-//     if ttl_nz > 0 {
-//         anz = sum as f32 / ttl_nz as f32;
-//         nz_pct = (ttl_nz as f32 / len as f32) * 100f32;
-//         //print!("[ttl_nz: {}, nz_pct: {:.0}%, len: {}]", ttl_nz, nz_pct, len);
-//     }
-
-//     if ttl_ir > 0 {
-//         avg_ir = sum as f32 / ttl_ir as f32;
-//         ir_pct = (ttl_ir as f32 / len as f32) * 100f32;
-//         //print!("[ttl_nz: {}, nz_pct: {:.0}%, len: {}]", ttl_nz, nz_pct, len);
-//     }
-
-
-//     println!("{cdgr}:(nz:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),\
-//         ir:{clbl}{}{cdgr}({clbl}{:.2}%{cdgr}),hi:{},lo:{},anz:{:.2},prntd:{}){cd} ",
-//         ttl_nz, nz_pct, ttl_ir, ir_pct, hi, lo, anz, ttl_prntd, cd = C_DEFAULT, clbl = C_LBL, cdgr = C_DGR);
-// }
-
-// pub fn shuffled_vec<T: OclPrm>(size: usize, min_val: T, max_val: T) -> Vec<T> {
-
-//     //println!("min_val: {}, max_val: {}", min_val, max_val);
-
-//     //let min: i64 = num::cast(min_val).expect("cmn::shuffled_vec(), min");
-//     //let max: i64 = num::cast::<T, i64>(max_val).expect("cmn::shuffled_vec(), max") + 1is;
-//     //let size: usize = num::cast(max_val - min_val).expect("cmn::shuffled_vec(), size");
-//     //let size: usize = num::from_int(max - min).expect("cmn::shuffled_vec(), size");
-
-//     //assert!(max - min > 0, "Vector size must be greater than zero.");
-//     let mut vec: Vec<T> = Vec::with_capacity(size);
-
-//     assert!(size > 0, "\ncmn::shuffled_vec(): Vector size must be greater than zero.");
-//     assert!(min_val < max_val, "\ncmn::shuffled_vec(): Minimum value must be less than maximum.");
-
-//     let min = min_val.to_i64().expect("\ncmn::shuffled_vec(), min");
-//     let max = max_val.to_i64().expect("\ncmn::shuffled_vec(), max") + 1;
-
-//     let mut range = (min..max).cycle();
-
-//     for i in (0..size) {
-//         vec.push(FromPrimitive::from_i64(range.next().expect("\ncmn::shuffled_vec(), range")).expect("\ncmn::shuffled_vec(), from_usize"));
-//     }
-
-//     //let mut vec: Vec<T> = (min..max).cycle().take(size).collect();
-
-
-//     /*let mut vec: Vec<T> = iter::range_inclusive::<T>(min_val, max_val).cycle().take(size).collect();*/
-
-
-//     shuffle_vec(&mut vec);
-
-//     vec
-
-// }
-
-// // Fisher-Yates
-// pub fn shuffle_vec<T: OclPrm>(vec: &mut Vec<T>) {
-//     let len = vec.len();
-//     let mut rng = rand::weak_rng();
-
-//     let mut ridx: usize;
-//     let mut tmp: T;
-
-//     for i in 0..len {
-//         ridx = distributions::Range::new(i, len).ind_sample(&mut rng);
-//         tmp = vec[i];
-//         vec[i] = vec[ridx];
-//         vec[ridx] = tmp;
-//     }
-// }
 
 /* SPARSE_VEC():
 
@@ -630,45 +496,6 @@ pub fn sparse_vec<T: OclScl>(size: usize, min_val: T, max_val: T, sp_fctr_log2: 
 
     vec
 }
-
-// pub fn dup_check<T: OclPrm>(in_vec: &mut Vec<T>) -> (usize, usize) {
-
-
-//     let mut vec = in_vec.clone();
-
-//     vec.sort();
-
-
-//     let mut dups = 0usize;
-//     let mut unis = 0usize;
-//     let mut prev_val = vec[vec.len() - 1];
-
-//     for x in vec.iter() {
-//         if prev_val == *x {
-//             dups += 1;
-//             //print!{"[{}]", *x};
-//         } else {
-//             unis += 1;
-//         }
-//         prev_val = *x;
-//     }
-
-//     println!("len: {}, dups: {}, unis: {}", vec.len(), dups, unis);
-//     (dups, unis)
-// }
-
-
-/*pub fn log2(n: u32) -> u32 {
-    let mut t = n;
-    t = t | t >> 1;
-    t = t | t >> 2;
-    t = t | t >> 4;
-    t = t | t >> 8;
-    t = t | t >> 16;
-    assert!((t - (t >> 1)).trailing_zeros() == t.trailing_zeros());
-
-    (t - (t >> 1)).trailing_zeros()
-}*/
 
 
 pub fn log2(n: u32) -> u32 {

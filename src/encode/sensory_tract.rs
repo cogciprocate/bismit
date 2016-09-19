@@ -2,7 +2,7 @@ use cmn::{TractFrameMut, TractDims};
 use map::LayerTags;
 use thalamus::{ExternalPathwayTract, ExternalPathwayFrame};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SensoryTract {
     buf: Vec<u8>,
     dims: TractDims,

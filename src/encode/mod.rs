@@ -11,6 +11,7 @@ mod scalar_sequence;
 mod reverso_scalar_sequence;
 mod vector_encoder;
 mod scalar_glyph_writer;
+mod hex_mold_test;
 pub mod idx_streamer;
 
 use std::cmp;
@@ -29,6 +30,7 @@ pub use self::scalar_sequence::ScalarSequence;
 pub use self::reverso_scalar_sequence::ReversoScalarSequence;
 pub use self::vector_encoder::VectorEncoder;
 pub use self::scalar_glyph_writer::ScalarGlyphWriter;
+pub use self::hex_mold_test::HexMoldTest;
 
 const SQRT_3: f32 = 1.73205080756f32;
 
@@ -246,46 +248,78 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
 }
 
 
-// for v_ofs in v_ofs_z..v_ofs_n {
-//     let v_ofs_inv = 0 - v_ofs;
-//     let u_ofs_z = cmp::max(0 - edge_size, v_ofs_inv - edge_size);
-//     let u_ofs_n = cmp::min(edge_size, v_ofs_inv + edge_size) + 1;
-//     //print!("[v_ofs:{}]", v_ofs);
 
-//     for u_ofs in u_ofs_z..u_ofs_n {
-//         let cell_write: bool = if fill_hex {
-//             true
-//         } else if v_ofs.abs() == edge_size || u_ofs.abs() == edge_size || (v_ofs + u_ofs).abs() == edge_size {
-//             true
-//         } else {
-//             false
-//         };
+// List of offsets to form a hexagon-shaped pattern of tiles.
+pub fn encode_hex_mold_scaled(radius: i8, scales: [u32; 2], center: [u32; 2], tract: &mut TractFrameMut) {
+    use cmn;
+    assert!(radius > 0);
 
-//         let (col_id, valid) = gimme_a_valid_col_id(dims, v_id + v_ofs, u_id + u_ofs);
+    fn scale(val: i8, scl: u32) -> i8 {
+        cmn::scale(val as i32, scl) as i8
+    }
 
-//         if cell_write && valid {
-//             vec[col_id] = on & rng.gen::<u8>();
-//         }
-//         //print!("{} ", gimme_a_valid_col_id(dims, v_id + v_ofs, u_id + u_ofs));
-//     }
+    fn scl_inv_scl(val: i8, scl_to_inv: u32, scl: u32) -> i8 {
+        ((val as i32 * (scl as i32 * 1024)) / (scl_to_inv as i32 * 1024)) as i8
+    }
+    // fn scl_inv_scl(val: i8, scl_to_inv: u32, scl: u32) -> i8 {
+    //     // ((val as i32 * (scl as i32 * 1024)) / (scl_to_inv as i32 * 1024)) as i8
+    //     ((val as i32 * scl as i32) / scl_to_inv as i32) as i8
+    // }
 
-// }
+    let radius_max = cmp::max(cmn::scale(radius as i32, scales[0]), cmn::scale(radius as i32, scales[1]));
+    assert!(radius_max <= 1 << 7);
+    let tile_count = (3 * radius_max as usize) * (radius_max as usize + 1) + 1;
+    let mut mold = Vec::with_capacity(tile_count);
 
+    let rad_v = scale(radius, scales[0]);
+    let rad_u = scale(radius, scales[1]);
+    // Use the full version in case scale coeffs exceed the range of an i8 (very plausable).
+    // let scl_v_to_u = scl_inv_scl( scales[1], scales[0] as i32) as u32;
+    // let scl_u_v = cmn::scale(scales[1] as i32, scales[0]) as u32;
 
-// int const radius_pos = INHIB_RADIUS;
-// int const radius_neg = 0 - radius_pos;
+    let v_ofs_z = 0 - rad_v;
+    let v_ofs_n = rad_v + 1;
 
-// for (int v_ofs = radius_neg; v_ofs <= radius_pos; v_ofs++) {
-//     int v_neg = 0 - v_ofs;
-//     int u_z = max(radius_neg, v_neg - radius_pos);
-//     int u_m = min(radius_pos, v_neg + radius_pos);
+    for v_ofs in v_ofs_z..v_ofs_n {
+        let v_ofs_inv = 0 - v_ofs;
 
-//     for (int u_ofs = u_z; u_ofs <= u_m; u_ofs++) {
+        let u_ofs_z = scl_inv_scl(
+            cmp::max(0 - rad_v, v_ofs_inv - rad_v),
+            scales[0],
+            scales[1],
+        );
+        let u_ofs_n = scl_inv_scl(
+            cmp::min(rad_v, v_ofs_inv + rad_v),
+            scales[0],
+            scales[1],
+        ) + 1;
 
-//         uchar neighbor_state
-//             = cel_state_3d_safe(slc_id_lyr, v_size, v_id, v_ofs, u_size, u_id, u_ofs, cel_states);    // ORIGINAL
-//         //uchar neighbor_state = cel_states[
-//         //cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id + v_ofs, u_size, u_id + u_ofs)]; // DEBUG
+        // let u_ofs_z = scale(
+        //     cmp::max(0 - rad_v, v_ofs_inv - rad_v),
+        //     scales[1],
+        // );
+        // let u_ofs_n = scale(
+        //     cmp::min(rad_v, v_ofs_inv + rad_v),
+        //     scales[1],
+        // ) + 1;
 
+        // print!("[v_ofs:{}]", v_ofs);
 
-//         int distance = (abs(v_ofs) + abs(u_ofs) + abs(w_ofs(v_ofs, u_ofs)))    >> 1;
+        for u_ofs in u_ofs_z..u_ofs_n {
+            mold.push((v_ofs, u_ofs));
+        }
+    }
+
+    for ofs in mold.into_iter() {
+        let idx = (((ofs.0 as i32 + center[0] as i32) * tract.dims().u_size() as i32) +
+            ofs.1 as i32 + center[1] as i32) as usize;
+        // unsafe { *tract.get_unchecked_mut(idx) = 128; }
+        // Make sure this isn't a duplicate tile (ensures the mold doesn't have redundancies):
+        // assert!(*tract.get(idx).unwrap() == 0);
+        *tract.get_mut(idx).unwrap() = 128;
+    }
+
+    // mold.shrink_to_fit()
+    // mold
+}
+

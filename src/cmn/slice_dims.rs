@@ -252,6 +252,10 @@ pub fn calc_scale(src_dim: u32, tar_dim: u32) -> CmnResult<u32> {
     }
 }
 
+pub fn scale(id: i32, scl: u32) -> i32 {
+    (id * scl as i32) >> cmn::SLC_SCL_COEFF_L2
+}
+
 
 #[cfg(test)]
 mod tests {

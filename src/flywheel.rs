@@ -181,10 +181,10 @@ impl Flywheel {
     }
 
     pub fn from_blueprint(
-                command_rx: Receiver<Command>,
                 lm_schemes: LayerMapSchemeList,
                 a_schemes: AreaSchemeList,
-                ca_settings: Option<CorticalAreaSettings>
+                ca_settings: Option<CorticalAreaSettings>,
+                command_rx: Receiver<Command>,
             ) -> Flywheel {
         let cortex = Cortex::new(lm_schemes, a_schemes, ca_settings);
 
@@ -200,7 +200,7 @@ impl Flywheel {
     // }
 
     pub fn add_sensory_rx(&mut self, sensory_rx: Receiver<SensoryFrame>, pathway_name: String) {
-        let pathway_idx = self.cortex.ext_pathway_idx(&pathway_name).unwrap();
+        let pathway_idx = self.cortex.thal_mut().ext_pathway_idx(&pathway_name).unwrap();
         self.sensory_rxs.push((sensory_rx, pathway_idx));
     }
 
@@ -347,7 +347,7 @@ impl Flywheel {
                                 // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
                                 //     pathway_idx, arr);
 
-                                let pathway = match try!(self.cortex.ext_pathway_frame(pathway_idx)) {
+                                let pathway = match try!(self.cortex.thal_mut().ext_pathway_frame(pathway_idx)) {
                                     ExternalPathwayFrame::F32Slice(s) => s,
                                     f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
                                         ExternalPathwayFrame variant: {:?}", f)),
@@ -359,7 +359,7 @@ impl Flywheel {
                             },
                             SensoryFrame::PathwayConfig(pc) => match pc {
                                 PathwayConfig::EncoderRanges(r_am) => {
-                                    match try!(self.cortex.ext_pathway(pathway_idx)).encoder() {
+                                    match try!(self.cortex.thal_mut().ext_pathway(pathway_idx)).encoder() {
                                         &mut ExternalPathwayEncoder::VectorEncoder(ref mut v) => {
                                             try!(v.set_ranges(&r_am.lock().unwrap()[..]));
                                         }

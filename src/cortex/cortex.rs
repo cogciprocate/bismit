@@ -5,8 +5,8 @@ use ocl::{self, Platform, Context, Device};
 use cortex::{CorticalArea, CorticalAreas, CorticalAreaSettings};
 use thalamus::{Thalamus};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
-use cmn::{CmnResult};
-use thalamus::{ExternalPathway, ExternalPathwayFrame};
+// use cmn::{CmnResult};
+// use thalamus::{ExternalPathway, ExternalPathwayFrame};
 use subcortex::Subcortex;
 
 pub struct Cortex {
@@ -85,16 +85,24 @@ impl Cortex {
     //     self.areas.contains_key(area_name)
     // }
 
-    pub fn ext_pathway_idx(&mut self, pathway_name: &String) -> CmnResult<usize> {
-        self.thal.ext_pathway_idx(pathway_name)
+    // pub fn ext_pathway_idx(&mut self, pathway_name: &String) -> CmnResult<usize> {
+    //     self.thal.ext_pathway_idx(pathway_name)
+    // }
+
+    // pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<&mut ExternalPathway> {
+    //     self.thal.ext_pathway(pathway_idx)
+    // }
+
+    // pub fn ext_pathway_frame(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
+    //     self.thal.ext_pathway_frame(pathway_idx)
+    // }
+
+    pub fn thal_mut(&mut self) -> &mut Thalamus {
+        &mut self.thal
     }
 
-    pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<&mut ExternalPathway> {
-        self.thal.ext_pathway(pathway_idx)
-    }
-
-    pub fn ext_pathway_frame(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
-        self.thal.ext_pathway_frame(pathway_idx)
+    pub fn thal(&self) -> &Thalamus {
+        &self.thal
     }
 }
 

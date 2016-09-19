@@ -1,13 +1,8 @@
-// use input_source::InputTract;
-
-// pub trait ProtoInputTract {
-//     fn create() -> Box<InputTract>;
-// }
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum InputScheme {
     None,
-    // Custom(Box<ProtoInputTract>),
+    Custom,
     World,
     Stripes { stripe_size: usize, zeros_first: bool },
     Hexballs { edge_size: usize, invert: bool, fill: bool },

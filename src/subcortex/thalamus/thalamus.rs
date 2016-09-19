@@ -31,7 +31,7 @@
 
 use std::ops::Range;
 use std::collections::HashMap;
-use std::collections::hash_map::Entry;
+// use std::collections::hash_map::Entry;
 
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
 use map::{self, AreaMap, LayerTags, LayerMapKind};
@@ -355,15 +355,20 @@ impl Thalamus {
          &self.area_maps[area_name]
     }
 
-    pub fn ext_pathway_idx(&mut self, pathway_name: &String) -> CmnResult<usize> {
-        match self.external_pathways.indices_mut().entry(pathway_name.clone()) {
-            Entry::Occupied(entry) => {
-                Ok(*entry.get())
-            },
-            Entry::Vacant(_) => {
-                CmnError::err(format!("Thalamus::ext_pathway_idx(): \
-                    No external pathway found named: '{}'.", pathway_name))
-            },
+    pub fn ext_pathway_idx(&self, pathway_name: &String) -> CmnResult<usize> {
+        // match self.external_pathways.indices().entry(pathway_name.clone()) {
+        //     Entry::Occupied(entry) => {
+        //         Ok(*entry.get())
+        //     },
+        //     Entry::Vacant(_) => {
+        //         CmnError::err(format!("Thalamus::ext_pathway_idx(): \
+        //             No external pathway found named: '{}'.", pathway_name))
+        //     },
+        // }
+        match self.external_pathways.indices().get(pathway_name) {
+            Some(&idx) => Ok(idx),
+            None => CmnError::err(format!("Thalamus::ext_pathway_idx(): \
+                No external pathway found named: '{}'.", pathway_name)),
         }
     }
 

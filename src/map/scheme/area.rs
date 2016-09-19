@@ -20,21 +20,22 @@ impl <'a>AreaSchemeList {
             .map(|_| panic!("AreaScheme::add(): Duplicate areas: (area: \"{}\")", name));
     }
 
+    // [TODO]: RENAME TO `::area`
     pub fn add_area(mut self, protoarea: AreaScheme) -> AreaSchemeList {
         self.add(protoarea);
         self
     }
 
-    pub fn area_ext(mut self,
+    // [TODO]: DEPRICATE
+    pub fn area(mut self,
                 name: &'static str,
                 layer_map_name: &'static str,
                 side: u32,
-                input_scheme: InputScheme,
                 filters_opt: Option<Vec<FilterScheme>>,
                 eff_areas_opt: Option<Vec<&'static str>>,
             ) -> AreaSchemeList
     {
-        let mut new_area = AreaScheme::new(name, layer_map_name, side).input(input_scheme);
+        let mut new_area = AreaScheme::new(name, layer_map_name, side);
 
         if let Some(filters) = filters_opt {
             new_area.set_filters(filters);
@@ -48,15 +49,17 @@ impl <'a>AreaSchemeList {
         self
     }
 
-    pub fn area(mut self,
+    // [TODO]: DEPRICATE
+    pub fn area_ext(mut self,
                 name: &'static str,
                 layer_map_name: &'static str,
                 side: u32,
+                input_scheme: InputScheme,
                 filters_opt: Option<Vec<FilterScheme>>,
                 eff_areas_opt: Option<Vec<&'static str>>,
             ) -> AreaSchemeList
     {
-        let mut new_area = AreaScheme::new(name, layer_map_name, side);
+        let mut new_area = AreaScheme::new(name, layer_map_name, side).input(input_scheme);
 
         if let Some(filters) = filters_opt {
             new_area.set_filters(filters);
@@ -117,25 +120,47 @@ impl AreaScheme {
     pub fn new(
                 name: &'static str,
                 layer_map_name: &'static str,
-                side: u32,
+                dim: u32,
                 // input: InputScheme,
                 // filters: Option<Vec<FilterScheme>>,
                 // eff_areas_opt: Option<Vec<&'static str>>,
             ) -> AreaScheme
     {
-        // [FIXME] TODO: This is out of date. Need to instead verify that 'side' is > CellScheme::den_*_syn_reach.
-        assert!(side >= cmn::SYNAPSE_REACH * 2);
+        // [FIXME] TODO: This is out of date. Need to instead verify that
+        // 'side' is > CellScheme::den_*_syn_reach. This must be done when
+        // assembling the final map.
+        //
+        // assert!(side >= cmn::SYNAPSE_REACH * 2);
 
         // let eff_areas = match eff_areas_opt {
         //     Some(ea) => ea,
         //     None => Vec::with_capacity(0),
         // };
 
+        AreaScheme::irregular(name, layer_map_name, [dim, dim])
+
+        // AreaScheme {
+        //     name: name,
+        //     layer_map_name: layer_map_name,
+        //     dims: CorticalDims::new(side, side, 0, 0, None),
+        //     //region_kind: region_kind,
+        //     input: InputScheme::None,
+        //     filters: None,
+        //     aff_areas: Vec::with_capacity(4),
+        //     eff_areas: Vec::with_capacity(0),
+        // }
+    }
+
+    pub fn irregular(
+                name: &'static str,
+                layer_map_name: &'static str,
+                dims: [u32; 2],
+            ) -> AreaScheme
+    {
         AreaScheme {
             name: name,
             layer_map_name: layer_map_name,
-            dims: CorticalDims::new(side, side, 0, 0, None),
-            //region_kind: region_kind,
+            dims: CorticalDims::new(dims[0], dims[1], 0, 0, None),
             input: InputScheme::None,
             filters: None,
             aff_areas: Vec::with_capacity(4),

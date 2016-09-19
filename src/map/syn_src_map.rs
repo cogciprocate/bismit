@@ -59,6 +59,8 @@ impl SliceInfo {
             &AxonKind::Spatial | &AxonKind::None => {
                 let mut hex_tile_offs = cmn::hex_tile_offs(syn_reach);
 
+                // println!("###### SliceInfo::new: hex_tile_offs.len(): {}", hex_tile_offs.len());
+
                 // Scale each potential offset value according to the source slice:
                 for offs in hex_tile_offs.iter_mut() {
                     *offs = try!(slc_dims.scale_offs(*offs));
