@@ -226,6 +226,12 @@ pub fn get_src_scales(src_area_dims: &CorticalDims, tar_area_dims: &CorticalDims
     Ok((v_res, u_res))
 }
 
+
+// [TODO]: Create extra version of `::calc_scale` which accepts an additional
+// precision (log2) parameter and returns it's scale adjusted accordingly.
+//
+// [TODO]: Move me up to `cmn`.
+//
 #[inline]
 pub fn calc_scale(src_dim: u32, tar_dim: u32) -> CmnResult<u32> {
     // let scale_incr = if src_dim >= 16 { src_dim / 16 }

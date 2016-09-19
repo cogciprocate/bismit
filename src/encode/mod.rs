@@ -258,11 +258,14 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
 // '..._n' suffix := index[len]: element after final element, termination
 // point, number of elements (ex.: for(int i = 0, i < idn, i++))
 //
+// [TODO]: Create extra version of `::calc_scale` which accepts an additional
+// precision (log2) parameter and returns it's scale adjusted accordingly.
+//
 #[warn(dead_code, unused_variables, unused_mut)]
 // pub fn encode_hex_mold_scaled(radius: i8, scales: [u32; 2], center: [u32; 2], tract: &mut TractFrameMut) {
 pub fn encode_hex_mold_scaled(radius: i8, src_dims: [u32; 2], dst_dims: [u32; 2], dst_mid: [u32; 2],
                 tract_frame: &mut TractFrameMut) {
-    // // TEMPORARY:
+    // // TEMPORARY ([TODO]: Investigate):
     // for val in tract_frame.iter() {
     //     debug_assert!(*val == 0);
     // }

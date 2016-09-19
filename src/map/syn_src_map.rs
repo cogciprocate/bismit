@@ -62,9 +62,9 @@ impl SliceInfo {
                 // println!("###### SliceInfo::new: hex_tile_offs.len(): {}", hex_tile_offs.len());
 
                 // Scale each potential offset value according to the source slice:
-                for offs in hex_tile_offs.iter_mut() {
-                    *offs = try!(slc_dims.scale_offs(*offs));
-                }
+                // for offs in hex_tile_offs.iter_mut() {
+                //     *offs = try!(slc_dims.scale_offs(*offs));
+                // }
 
                 let len = hex_tile_offs.len();
 
@@ -247,4 +247,6 @@ impl SrcIdxCache {
         + axn_ofs.u_ofs as i32
     }
 }
+
+
 
