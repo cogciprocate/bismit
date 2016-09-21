@@ -24,13 +24,16 @@ path = "/home/nick/projects/ocl"
 
 [dependencies]
 # ocl = "*"
-bitflags = "0.5"
+bitflags = "*"
 rand = "*"
 num = "*"
 libc = "*"
 enum_primitive = "*"
-find_folder = "0.3"
+find_folder = "*"
 time = "*"
 twox-hash = "*"
 colorify = "*"
 
+
+[replace]
+"ocl-core:0.2.3" = { git = "https://github.com/cogciprocate/ocl-core" }

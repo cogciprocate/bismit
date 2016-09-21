@@ -133,7 +133,8 @@ impl Synapses {
 
         // [FIXME]: Implement src_ranges on a per-tuft basis.
         // let syn_reaches_by_tft: Vec<u8> = src_slc_ids_by_tft.iter().map(|_| syn_reach).collect();
-        let src_slcs = try!(SrcSlices::new(&src_slc_ids_by_tft, syn_reaches_by_tft, area_map));
+        let src_slcs = try!(SrcSlices::new(&src_slc_ids_by_tft, syn_reaches_by_tft,
+            1 << cell_scheme.syns_per_den_l2, area_map));
 
         if DEBUG_NEW {
             println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
@@ -216,7 +217,7 @@ impl Synapses {
 
 
     // [FIXME]: THIS IS A PERFORMANCE NIGHTMARE. SET UP AN EVENTLIST.
-    // BREAK THIS DOWN INTO PEICES. PROCESS A BIT AT A TIME.
+    // BREAK THIS DOWN INTO PIECES. PROCESS SMALLER CHUNKS MORE FREQUENTLY.
     fn grow(&mut self, init: bool) {
         if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
             println!("REGROW:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:\

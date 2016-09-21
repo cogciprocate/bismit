@@ -33,8 +33,8 @@ impl ExternalPathwayTract for HexMoldTest {
             cmn::calc_scale(tract_frame.dims().u_size(), self.src_dims.1).unwrap()];
 
         let src_dims = [self.src_dims.0, self.src_dims.1];
-        let dst_dims = [tract_frame.dims().v_size(), tract_frame.dims().u_size()];
-        let dst_mid = [tract_frame.dims().v_size() / 2, tract_frame.dims().u_size() / 2];
+        // let dst_dims = [tract_frame.dims().v_size(), tract_frame.dims().u_size()];
+        // let dst_mid = [tract_frame.dims().v_size() / 2, tract_frame.dims().u_size() / 2];
 
         // let radii = [cmn::scale(self.radius as i32, scales[0]),
         //     cmn::scale(self.radius as i32, scales[1])];
@@ -43,7 +43,7 @@ impl ExternalPathwayTract for HexMoldTest {
 
 
         // encode::encode_hex_mold_scaled(self.radius, scales, mid, tract_frame);
-        encode::encode_hex_mold_scaled(self.radius, src_dims, dst_dims, dst_mid, tract_frame);
+        encode::encode_hex_mold_scaled(self.radius, src_dims, tract_frame);
     }
 
     fn cycle_next(&mut self) {

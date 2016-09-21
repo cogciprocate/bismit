@@ -384,6 +384,7 @@ pub fn literal_list<T: Display>(vec: &Vec<T>) -> String {
 
 #[cfg(test)]
 pub mod tests {
+    use cmn;
     use std::fmt::{Display, Formatter, Result as FmtResult};
     use super::{AreaMap};
 
@@ -407,15 +408,17 @@ pub mod tests {
             // let v_id_scaled = (v_id_unscaled * v_scale) >> cmn::SLC_SCL_COEFF_L2;
             // let u_id_scaled = (u_id_unscaled * u_scale) >> cmn::SLC_SCL_COEFF_L2;
 
-            let v_id_scaled = cmn::scale(v_id_unscaled, v_scale);
-            let u_id_scaled = cmn::scale(u_id_unscaled, u_scale);
+            let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
+            let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
 
             let slc_count = self.slices().depth();
             let v_size = self.slices.v_sizes()[slc_id as usize];
             let u_size = self.slices.u_sizes()[slc_id as usize];
 
-            if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled, v_ofs, u_size, u_id_scaled, u_ofs) {
-                Ok(axn_idx_unsafe(self.axn_idz(slc_id), v_id_scaled, v_ofs, u_size, u_id_scaled, u_ofs))
+            if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
+                    u_size, u_id_scaled as u32, u_ofs) {
+                Ok(axn_idx_unsafe(self.axn_idz(slc_id), v_id_scaled as u32, v_ofs,
+                    u_size, u_id_scaled as u32, u_ofs))
             } else {
                 Err("Axon coordinates invalid.")
             }
@@ -430,16 +433,18 @@ pub mod tests {
             // let v_id_scaled = (v_id_unscaled * v_scale) >> cmn::SLC_SCL_COEFF_L2;
             // let u_id_scaled = (u_id_unscaled * u_scale) >> cmn::SLC_SCL_COEFF_L2;
 
-            let v_id_scaled = cmn::scale(v_id_unscaled, v_scale);
-            let u_id_scaled = cmn::scale(u_id_unscaled, u_scale);
+            let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
+            let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
 
             let v_size = self.slices.v_sizes()[slc_id as usize];
             let u_size = self.slices.u_sizes()[slc_id as usize];
 
             // Make sure v and u are safe (give fake slice info to coords_are_safe()):
-            if coords_are_safe(1, 0, v_size, v_id_scaled, v_ofs, u_size, u_id_scaled, u_ofs) {
+            if coords_are_safe(1, 0, v_size, v_id_scaled as u32, v_ofs,
+                    u_size, u_id_scaled as u32, u_ofs) {
                 // Give a fake, zero idz (since this is a column id we're returning):
-                Ok(axn_idx_unsafe(0, v_id_scaled, v_ofs, u_size, u_id_scaled, u_ofs))
+                Ok(axn_idx_unsafe(0, v_id_scaled as u32, v_ofs,
+                    u_size, u_id_scaled as u32, u_ofs))
             } else {
                 Err("Axon coordinates invalid.")
             }

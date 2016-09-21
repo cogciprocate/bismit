@@ -15,7 +15,7 @@ pub use self::area_map::AreaMap;
 pub use self::slice_map::SliceMap;
 pub use self::layer_map::LayerMap;
 pub use self::layer_info::{LayerInfo, SourceLayerInfo};
-pub use self::syn_src_map::{SrcSlices, SrcIdxCache, SynSrc};
+pub use self::syn_src_map::{SrcSlices, SrcIdxCache, SynSrc, gen_syn_offs};
 pub use self::slice_tract_map::SliceTractMap;
 pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
 	LayerScheme, FilterScheme, InputScheme};

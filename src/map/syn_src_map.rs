@@ -1,13 +1,130 @@
 use rand::{XorShiftRng};
 use rand::distributions::{IndependentSample, Range as RandRange};
 use std::collections::{BTreeMap, BTreeSet};
+use std::cmp;
 
-use cmn::{self, CmnResult, CorticalDims, SliceDims};
+use cmn::{self, CmnError, CmnResult, CorticalDims, SliceDims};
 use map::{AreaMap, AxonKind};
 
 const INTENSITY_REDUCTION_L2: i8 = 3;
 const STR_MIN: i8 = -3;
 const STR_MAX: i8 = 4;
+
+
+
+/// List of offsets to form a hexagon-shaped pattern of tiles.
+///
+/// `..._dims` contain [v, u] values respectively.
+///
+/// '..._z' suffix := index[0], first element, starting element
+///
+/// '..._n' suffix := index[len]: element after final element, termination
+/// point, number of elements (ex.: for(int i = 0, i < idn, i++))
+///
+/// [TODO]: Create extra version of `::calc_scale` which accepts an additional
+/// precision (log2) parameter and returns it's scale adjusted accordingly.
+///
+#[warn(dead_code, unused_variables, unused_mut)]
+// pub fn encode_hex_mold_scaled(radius: i8, scales: [u32; 2], center: [u32; 2], tract: &mut TractFrameMut) {
+pub fn gen_syn_offs(radius: i8, scales: [u32; 2]) -> CmnResult<Vec<(i8, i8)>> {
+    // // TEMPORARY ([TODO]: Investigate):
+    // for val in tract_frame.iter() {
+    //     debug_assert!(*val == 0);
+    // }
+
+    // Extra precision used in scale calculations:
+    const EXTRA_PRECISION_L2: u32 = 3;
+    // Redeclarations for brevity:
+    const RAD_MAX: i32 = cmn::SYNAPSE_REACH_MAX as i32;
+    const RAD_MIN: i32 = cmn::SYNAPSE_REACH_MIN as i32;
+
+    assert!(radius > 0);
+
+    // let dst_dims = [tract_frame.dims().v_size(), tract_frame.dims().u_size()];
+    // assert!(dst_dims[0] == tract_frame.dims().v_size() && dst_dims[1] == tract_frame.dims().u_size());
+
+    // Scale factor needed to translate from the destination slice to the
+    // source slice. Effectively an inverse scale factor when viewed from the
+    // perspective of the destination slice.
+    // let scales = [cmn::calc_scale(dst_dims[0], src_dims[0]).unwrap(),
+    //     cmn::calc_scale(dst_dims[1], src_dims[1]).unwrap()];
+
+    // println!("###### scales: {:?}", scales);
+
+    // Scales a value:
+    #[inline]
+    fn scl(val: i32, scl: u32) -> i32 {
+        (cmn::scale(val as i32, scl) as i32)
+    }
+
+    // Scales a value both inversely by `scl_inv` and directly by `scl`.
+    #[inline]
+    fn scl_inv_scl(val: i32, scl_inv: u32, scl: u32) -> i32 {
+        ((val as i32 * ((scl as i32) << EXTRA_PRECISION_L2)) /
+            ((scl_inv as i32) << EXTRA_PRECISION_L2))
+    }
+
+    let radius_max_scaled = cmp::max(cmn::scale(radius as i32, scales[0]), cmn::scale(radius as i32, scales[1]));
+    assert!(radius_max_scaled <= RAD_MAX);
+
+    // Maximum number of possible results:
+    let tile_count = (3 * radius_max_scaled as usize) * (radius_max_scaled as usize + 1) + 1;
+
+    // The eventual result:
+    let mut offs_list = Vec::with_capacity(tile_count);
+
+    // The radius scaled in the 'v' dimension:
+    let v_rad = scl(radius as i32, scales[0]);
+    // let rad_u = cmn::scale(radius as i32, scales[1]);
+
+    // '-v_rad' (additive inverse of 'v' radius), stored for efficiency's sake:
+    let v_rad_inv = 0 - v_rad;
+    let v_ofs_z = v_rad_inv;
+    let v_ofs_n = v_rad + 1;
+
+    for v_ofs in v_ofs_z..v_ofs_n {
+        // '-v_ofs' (additive inverse of 'v_ofs'), stored for efficiency's sake:
+        let v_ofs_inv = 0 - v_ofs;
+
+        // Find the 'u' minimum (zero) for this 'v':
+        // * Determine the greater of either the absolute minimum possible 'v'
+        //   value or the additive inverse of the current 'v' ('-v_ofs') minus
+        //   the radius of 'v' ('v_rad').
+        // * Scale that value first by the inverse of the 'v' scale then by
+        //   the 'u' scale:
+        let u_ofs_z = scl_inv_scl(
+            cmp::max(v_rad_inv, v_ofs_inv + v_rad_inv),
+            scales[0],
+            scales[1],
+        );
+
+        // Find the 'u' maximum for this 'v':
+        // * Determine the lesser of either the minimum 'v' radius or the 'v'
+        //   radius minus the inverse of the current 'v' (performed in
+        //   reversed order using the previously stored 'v_ofs_inv').
+        // * Scale that value first by the inverse of the 'v' scale then by
+        //   the 'u' scale (same as above):
+        let u_ofs_n = scl_inv_scl(
+            cmp::min(v_rad, v_ofs_inv + v_rad),
+            scales[0],
+            scales[1],
+        ) + 1;
+
+        // Loop through the calculated range of 'u's and push the tuple to the
+        // result Vec:
+        for u_ofs in u_ofs_z..u_ofs_n {
+            if !(v_ofs <= RAD_MAX && v_ofs >= RAD_MIN &&
+                u_ofs <= RAD_MAX && u_ofs >= RAD_MIN) {
+                return CmnError::err("cmn::hex_tile_offs_skewed: Calculated \
+                    offsets are outside valid radius range: (v_ofs: {}, u_ofs: {}).");
+            }
+            offs_list.push((v_ofs as i8, u_ofs as i8));
+        }
+    }
+
+    offs_list.shrink_to_fit();
+    Ok(offs_list)
+}
 
 
 /// Pool of potential synapse values.
@@ -29,7 +146,7 @@ pub struct SynSrc {
 /// Parameters describing a slice.
 ///
 #[allow(dead_code)]
-pub struct SliceInfo {
+pub struct SrcSliceInfo {
     slc_off_pool: OfsPool,
     v_size: u32,
     u_size: u32,
@@ -37,19 +154,27 @@ pub struct SliceInfo {
     scaled_syn_reaches: (i8, i8),
 }
 
-impl SliceInfo {
-    pub fn new(axn_kind: &AxonKind, slc_dims: &SliceDims, syn_reach: i8) -> CmnResult<SliceInfo> {
+impl SrcSliceInfo {
+    #[allow(unused_mut)]
+    pub fn new(axn_kind: &AxonKind, src_slc_dims: &SliceDims, syn_reach: i8, den_syn_count: u32)
+                    -> CmnResult<SrcSliceInfo> {
         let slc_off_pool = match axn_kind {
             &AxonKind::Horizontal => {
-                // Already checked within SliceDims.
-                debug_assert!(slc_dims.v_size() <= cmn::MAX_HRZ_DIM_SIZE);
-                debug_assert!(slc_dims.u_size() <= cmn::MAX_HRZ_DIM_SIZE);
+                // Already checked within `SliceDims` (keep here though).
+                debug_assert!(src_slc_dims.v_size() <= cmn::MAX_HRZ_DIM_SIZE);
+                debug_assert!(src_slc_dims.u_size() <= cmn::MAX_HRZ_DIM_SIZE);
 
-                // [FIXME] Tweak how the middle and ranges are calc'd!
-                // Adjust SliceDims if necessary.
+                let poss_syn_offs_val_count = src_slc_dims.v_size() * src_slc_dims.u_size();
 
-                let v_reach = (slc_dims.v_size() / 2) as i8;
-                let u_reach = (slc_dims.u_size() / 2) as i8;
+                if poss_syn_offs_val_count < den_syn_count {
+                    return Err(format!("Not enough possible synapse values ({}) for the number of \
+                        synapses on each dendrite ({}) for this slice. Decrease number of synapses \
+                        or increase synapse reach.", poss_syn_offs_val_count,
+                        den_syn_count).into());
+                }
+
+                let v_reach = (src_slc_dims.v_size() / 2) as i8;
+                let u_reach = (src_slc_dims.u_size() / 2) as i8;
 
                 OfsPool::Horizontal((
                     RandRange::new(0 - v_reach, v_reach + 1),
@@ -57,14 +182,17 @@ impl SliceInfo {
             },
 
             &AxonKind::Spatial | &AxonKind::None => {
-                let mut hex_tile_offs = cmn::hex_tile_offs(syn_reach);
+                let mut hex_tile_offs = try!(gen_syn_offs(syn_reach,
+                    [src_slc_dims.v_scale(), src_slc_dims.u_scale()]));
 
-                // println!("###### SliceInfo::new: hex_tile_offs.len(): {}", hex_tile_offs.len());
+                if (hex_tile_offs.len() as u32) < den_syn_count {
+                    return Err(format!("Not enough possible synapse values ({}) for the number of \
+                        synapses on each dendrite ({}) for this slice. Decrease number of synapses \
+                        or increase synapse reach.", hex_tile_offs.len(),
+                        den_syn_count).into());
+                }
 
-                // Scale each potential offset value according to the source slice:
-                // for offs in hex_tile_offs.iter_mut() {
-                //     *offs = try!(slc_dims.scale_offs(*offs));
-                // }
+                // println!("###### SrcSliceInfo::new: hex_tile_offs.len(): {}", hex_tile_offs.len());
 
                 let len = hex_tile_offs.len();
 
@@ -74,12 +202,12 @@ impl SliceInfo {
             },
         };
 
-        let scaled_syn_reaches = try!(slc_dims.scale_offs((syn_reach, syn_reach)));
+        let scaled_syn_reaches = try!(src_slc_dims.scale_offs((syn_reach, syn_reach)));
 
-        Ok(SliceInfo {
+        Ok(SrcSliceInfo {
             slc_off_pool: slc_off_pool,
-            v_size: slc_dims.v_size(),
-            u_size: slc_dims.u_size(),
+            v_size: src_slc_dims.v_size(),
+            u_size: src_slc_dims.u_size(),
             syn_reach: syn_reach,
             scaled_syn_reaches: scaled_syn_reaches,
         })
@@ -111,16 +239,15 @@ impl SliceInfo {
 ///
 /// Used to calculate a valid source axon index during synapse growth or regrowth.
 pub struct SrcSlices {
-    tft_slcs: Vec<BTreeMap<u8, SliceInfo>>,
+    tft_slcs: Vec<BTreeMap<u8, SrcSliceInfo>>,
     slc_ids: Vec<Vec<u8>>,
     slc_id_ranges: Vec<RandRange<usize>>,
     str_ranges: Vec<RandRange<i8>>,
 }
 
 impl SrcSlices {
-    pub fn new(src_slc_ids_by_tft: &Vec<Vec<u8>>, syn_reaches_by_tft: Vec<i8>, area_map: &AreaMap
-            ) -> CmnResult<SrcSlices>
-    {
+    pub fn new(src_slc_ids_by_tft: &Vec<Vec<u8>>, syn_reaches_by_tft: Vec<i8>, den_syn_count: u32,
+                area_map: &AreaMap) -> CmnResult<SrcSlices> {
         let mut tft_slcs = Vec::with_capacity(src_slc_ids_by_tft.len());
         let mut slc_id_ranges = Vec::with_capacity(tft_slcs.len());
         let mut str_ranges = Vec::with_capacity(tft_slcs.len());
@@ -137,11 +264,14 @@ impl SrcSlices {
             for &slc_id in src_slc_ids {
                 let axn_kind = area_map.slices().axn_kinds().get(slc_id as usize)
                     .expect("SrcSlices::new(): {{2}}");
-                let dims = area_map.slices().dims().get(slc_id as usize)
+
+                let src_slc_dims = area_map.slices().dims().get(slc_id as usize)
                     .expect("SrcSlices::new(): {{3}}");
 
-                slcs.insert(slc_id, try!(SliceInfo::new(axn_kind, dims, syn_reaches)))
-                    .map(|_| panic!("SrcSlices::new(): {{4}}"));
+                slcs.insert(slc_id, try!(
+                        SrcSliceInfo::new(axn_kind, src_slc_dims, syn_reaches, den_syn_count)
+                    )).map(|_| panic!("SrcSlices::new(): {{4}}")
+                );
             }
 
             tft_slcs.push(slcs);

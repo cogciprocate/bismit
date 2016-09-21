@@ -263,104 +263,20 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
 //
 #[warn(dead_code, unused_variables, unused_mut)]
 // pub fn encode_hex_mold_scaled(radius: i8, scales: [u32; 2], center: [u32; 2], tract: &mut TractFrameMut) {
-pub fn encode_hex_mold_scaled(radius: i8, src_dims: [u32; 2], dst_dims: [u32; 2], dst_mid: [u32; 2],
-                tract_frame: &mut TractFrameMut) {
-    // // TEMPORARY ([TODO]: Investigate):
-    // for val in tract_frame.iter() {
-    //     debug_assert!(*val == 0);
-    // }
+pub fn encode_hex_mold_scaled(radius: i8, src_dims: [u32; 2], tract_frame: &mut TractFrameMut) {
+    use map;
 
-    // Extra precision used in scale calculations:
-    const EXTRA_PRECISION_L2: u32 = 3;
-    // Redeclarations for brevity:
-    const RAD_MAX: i32 = cmn::SYNAPSE_REACH_MAX as i32;
-    const RAD_MIN: i32 = cmn::SYNAPSE_REACH_MIN as i32;
-
-    assert!(radius > 0);
-
-    // let dst_dims = [tract_frame.dims().v_size(), tract_frame.dims().u_size()];
-    assert!(dst_dims[0] == tract_frame.dims().v_size() && dst_dims[1] == tract_frame.dims().u_size());
-
-    // Scale factor needed to translate from the destination slice to the
-    // source slice. Effectively an inverse scale factor when viewed from the
-    // perspective of the destination slice.
+    let dst_dims = [tract_frame.dims().v_size(), tract_frame.dims().u_size()];
     let scales = [cmn::calc_scale(dst_dims[0], src_dims[0]).unwrap(),
         cmn::calc_scale(dst_dims[1], src_dims[1]).unwrap()];
 
-    // println!("###### scales: {:?}", scales);
+    let mold = map::gen_syn_offs(radius, scales).unwrap();
 
-    // Scales a value:
-    #[inline]
-    fn scale(val: i32, scl: u32) -> i32 {
-        (cmn::scale(val as i32, scl) as i32)
-    }
-
-    // Scales a value both inversely by `scl_inv` and directly by `scl`.
-    #[inline]
-    fn scl_inv_scl(val: i32, scl_inv: u32, scl: u32) -> i32 {
-        ((val as i32 * ((scl as i32) << EXTRA_PRECISION_L2)) /
-            ((scl_inv as i32) << EXTRA_PRECISION_L2))
-    }
-
-    let radius_max_scaled = cmp::max(cmn::scale(radius as i32, scales[0]), cmn::scale(radius as i32, scales[1]));
-    assert!(radius_max_scaled <= RAD_MAX);
-
-    // Maximum number of possible results:
-    let tile_count = (3 * radius_max_scaled as usize) * (radius_max_scaled as usize + 1) + 1;
-
-    // The eventual result:
-    let mut mold = Vec::with_capacity(tile_count);
-
-    // The radius scaled in the 'v' dimension:
-    let v_rad = scale(radius as i32, scales[0]);
-    // let rad_u = scale(radius as i32, scales[1]);
-
-    // '-v_rad' (additive inverse of 'v' radius), stored for efficiency's sake:
-    let v_rad_inv = 0 - v_rad;
-    let v_ofs_z = v_rad_inv;
-    let v_ofs_n = v_rad + 1;
-
-    for v_ofs in v_ofs_z..v_ofs_n {
-        // '-v_ofs' (additive inverse of 'v_ofs'), stored for efficiency's sake:
-        let v_ofs_inv = 0 - v_ofs;
-
-        // Find the 'u' minimum (zero) for this 'v':
-        // * Determine the greater of either the absolute minimum possible 'v'
-        //   value or the additive inverse of the current 'v' ('-v_ofs') minus
-        //   the radius of 'v' ('v_rad').
-        // * Scale that value first by the inverse of the 'v' scale then by
-        //   the 'u' scale:
-        let u_ofs_z = scl_inv_scl(
-            cmp::max(v_rad_inv, v_ofs_inv + v_rad_inv),
-            scales[0],
-            scales[1],
-        );
-
-        // Find the 'u' maximum for this 'v':
-        // * Determine the lesser of either the minimum 'v' radius or the 'v'
-        //   radius minus the inverse of the current 'v' (performed in
-        //   reversed order using the previously stored 'v_ofs_inv').
-        // * Scale that value first by the inverse of the 'v' scale then by
-        //   the 'u' scale (same as above):
-        let u_ofs_n = scl_inv_scl(
-            cmp::min(v_rad, v_ofs_inv + v_rad),
-            scales[0],
-            scales[1],
-        ) + 1;
-
-        // Loop through the calculated range of 'u's and push the tuple to the
-        // result Vec:
-        for u_ofs in u_ofs_z..u_ofs_n {
-            debug_assert!(v_ofs <= RAD_MAX && v_ofs >= RAD_MIN &&
-                u_ofs <= RAD_MAX && u_ofs >= RAD_MIN);
-            mold.push((v_ofs, u_ofs));
-        }
-    }
+    let dst_mid = [tract_frame.dims().v_size() / 2, tract_frame.dims().u_size() / 2];
 
     for ofs in mold.into_iter() {
-        // println!("###### ofs.0: {}, dst_mid[0]: {}, ")
-        let idx = (((ofs.0 + dst_mid[0] as i32) * tract_frame.dims().u_size() as i32) +
-            ofs.1 + dst_mid[1] as i32) as usize;
+        let idx = (((ofs.0 as i32 + dst_mid[0] as i32) * tract_frame.dims().u_size() as i32) +
+            ofs.1 as i32 + dst_mid[1] as i32) as usize;
 
         // Make sure this isn't a duplicate tile (ensures the mold doesn't have redundancies):
         // debug_assert!(*tract.get(idx).unwrap() == 0, "Destination index out of bounds: {}/{}",
@@ -371,11 +287,9 @@ pub fn encode_hex_mold_scaled(radius: i8, src_dims: [u32; 2], dst_dims: [u32; 2]
         //     Some(&val) => assert!(val == 0, "Destination index duplicate found."),
         //     None => panic!("Destination index out of bounds: {}/{}", idx, tract_frame.len()),
         // }
-        // unsafe { *tract_frame.get_unchecked_mut(idx) = 1; }
-        *tract_frame.get_mut(idx).unwrap() = 1;
-    }
 
-    // mold.shrink_to_fit()
-    // mold
+        unsafe { *tract_frame.get_unchecked_mut(idx) = 1; }
+        // *tract_frame.get_mut(idx).unwrap() = 1;
+    }
 }
 
