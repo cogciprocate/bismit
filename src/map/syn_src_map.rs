@@ -123,6 +123,7 @@ pub fn gen_syn_offs(radius: i8, scales: [u32; 2]) -> CmnResult<Vec<(i8, i8)>> {
     }
 
     offs_list.shrink_to_fit();
+    if cfg!(debug) { try!(offs_list_is_balanced(&offs_list)) }
     Ok(offs_list)
 }
 
@@ -379,4 +380,19 @@ impl SrcIdxCache {
 }
 
 
+/// Tests to ensure a list of synapse source offsets has a balanced set.
+pub fn offs_list_is_balanced(syn_offs: &Vec<(i8, i8)>) -> CmnResult<()> {
+    use std::collections::HashMap;
 
+    // let mut
+
+    Ok(())
+}
+
+// #[cfg(test)]
+// mod tests {
+//     use cmn::{CmnResult};
+//     pub fn offs_list_is_balanced(syn_offs: &Vec<(i8, i8)>) -> CmnResult<()> {
+//         Ok(())
+//     }
+// }
