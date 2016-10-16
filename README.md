@@ -16,7 +16,6 @@ Bismit deals with the interactions of the following structures of the neocortex:
                      - Dendrite
                         - Synapse
 
-Using 
 
 Bismit is written in Rust and OpenCL C and is in an unstable pre-alpha stage. Full basic sensory functionality is complete. Motor control and use case development are underway. See the [vibi project](https://github.com/cogciprocate/vibi) (currently in early development) for an OpenGL based visualization frontend.
 
