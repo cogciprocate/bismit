@@ -207,10 +207,10 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
     //     track_len_ttl, track_len_v, track_len_u);
     // println!("Val/Track: {}", val_per_track);
     // print!("\n");
-    println!("val: {}, quad_size_val: {}, quadrant: {}, v_size: {}, u_size: {}",
-        val, quad_size_val, quadrant, v_size, u_size);
-    println!("quad_pos_val: {}, val % quad_size_val: {}", quad_pos_val, val % quad_size_val);
-    println!("{:?}", center);
+    // println!("val: {}, quad_size_val: {}, quadrant: {}, v_size: {}, u_size: {}",
+    //     val, quad_size_val, quadrant, v_size, u_size);
+    // println!("quad_pos_val: {}, val % quad_size_val: {}", quad_pos_val, val % quad_size_val);
+    // println!("{:?}", center);
 
     // Save some inverses just to avoid repeated calculation:
     let radius_neg = 0 - radius;

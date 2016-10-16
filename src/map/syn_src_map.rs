@@ -382,9 +382,17 @@ impl SrcIdxCache {
 
 /// Tests to ensure a list of synapse source offsets has a balanced set.
 pub fn offs_list_is_balanced(syn_offs: &Vec<(i8, i8)>) -> CmnResult<()> {
-    use std::collections::HashMap;
+    // use std::collections::HashMap;
 
     // let mut
+    let mut ttls = (0usize, 0usize);
+
+    for off in syn_offs {
+        ttls.0 += off.0 as usize;
+        ttls.1 += off.1 as usize;
+    }
+
+    if ttls.0 != 0 || ttls.1 != 0 { return Err("Synapse offset list imbalanced.".into()); }
 
     Ok(())
 }
