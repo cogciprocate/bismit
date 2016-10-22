@@ -168,10 +168,11 @@ impl SrcSliceInfo {
                 let poss_syn_offs_val_count = src_slc_dims.v_size() * src_slc_dims.u_size();
 
                 if poss_syn_offs_val_count < den_syn_count {
-                    return Err(format!("Not enough possible synapse values ({}) for the number of \
-                        synapses on each dendrite ({}) for this slice. Decrease number of synapses \
-                        or increase synapse reach.", poss_syn_offs_val_count,
-                        den_syn_count).into());
+                    return Err(format!("The cells of this slice do not have enough possible \
+                        synapse source offset values ({}/{}) to avoid duplicate source values \
+                        due to the relative sizes of the source and destination slices. \
+                        Decrease the number of synapses or increase synapse reach.",
+                        poss_syn_offs_val_count, den_syn_count).into());
                 }
 
                 let v_reach = (src_slc_dims.v_size() / 2) as i8;
@@ -187,10 +188,11 @@ impl SrcSliceInfo {
                     [src_slc_dims.v_scale(), src_slc_dims.u_scale()]));
 
                 if (hex_tile_offs.len() as u32) < den_syn_count {
-                    return Err(format!("Not enough possible synapse values ({}) for the number of \
-                        synapses on each dendrite ({}) for this slice. Decrease number of synapses \
-                        or increase synapse reach.", hex_tile_offs.len(),
-                        den_syn_count).into());
+                    return Err(format!("The cells of this slice do not have enough possible \
+                        synapse source offset values ({}/{}) to avoid duplicate source values \
+                        due to the relative sizes of the source and destination slices. \
+                        Decrease the number of synapses or increase synapse reach.",
+                        hex_tile_offs.len(), den_syn_count).into());
                 }
 
                 // println!("###### SrcSliceInfo::new: hex_tile_offs.len(): {}", hex_tile_offs.len());

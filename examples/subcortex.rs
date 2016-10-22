@@ -31,10 +31,10 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer("iv_inhib", 0, map::DEFAULT, CellScheme::inhibitory(4, "iv"))
 
             .layer("iv", 1, map::PSAL,
-                CellScheme::spiny_stellate(6, vec!["aff_in"], 400, 14))
+                CellScheme::spiny_stellate(7, vec!["aff_in"], 400, 10))
 
             .layer("iii", 2, map::PTAL,
-                CellScheme::pyramidal(1, 5, vec!["iii"], 500, 20)
+                CellScheme::pyramidal(3, 6, vec!["iii"], 500, 12)
                     // .apical(vec!["eff_in"/*, "olfac"*/], 18)
                 )
         )
