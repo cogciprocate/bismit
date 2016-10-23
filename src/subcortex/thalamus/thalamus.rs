@@ -277,8 +277,8 @@ impl Thalamus {
         /*=============================================================================
         =================================== ALL AREAS =================================
         =============================================================================*/
-        for (&area_name, pamap) in area_sl.maps().iter() {
-            let area_map = AreaMap::new(pamap, &layer_map_sl, &area_sl, &external_pathways);
+        for (&area_name, area_s) in area_sl.maps().iter() {
+            let area_map = AreaMap::new(area_s, &layer_map_sl, &area_sl, &external_pathways);
 
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ", area_name, mt = cmn::MT);
 
@@ -292,7 +292,7 @@ impl Thalamus {
                     // which will need to be reflected on its tract size.
                     let layer_dims = match layer.irregular_layer_dims() {
                         Some(dims) => dims.clone(),
-                        None => pamap.dims().clone_with_depth(layer.depth()),
+                        None => area_s.dims().clone_with_depth(layer.depth()),
                     };
 
                     println!("{mt}{mt}{mt}'{}': tags: {}, slc_range: {:?}, map_kind: {:?}, \

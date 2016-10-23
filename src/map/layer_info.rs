@@ -31,7 +31,7 @@ impl LayerInfo {
     /// [FIXME]: TODO: Create an error type enum just for map::Layer****.
     /// [FIXME]: TODO: Return result and get rid of panics, et al.
     pub fn new(layer_scheme: &LayerScheme, plmap_kind: LayerMapKind, pamap: &AreaScheme, area_sl: &AreaSchemeList,
-                layer_map_sl: &LayerMapSchemeList, input_sources: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
+                layer_map_sl: &LayerMapSchemeList, ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
                 slc_total: u8) -> LayerInfo
     {
         let layer_scheme = layer_scheme.clone();
@@ -126,7 +126,7 @@ impl LayerInfo {
 
                     // [FIXME] Determine depths for input sources
                     // let src_layer_depth = cmn::DEFAULT_OUTPUT_LAYER_DEPTH;
-                    // let is_area = input_source_with_area(input_sources, src_area_name);
+                    // let is_area = input_source_with_area(ext_paths, src_area_name);
                     // let src_layer_depth =
 
                     let (src_layer_dims, src_layer_axn_kind) = match src_layer_map.kind() {
@@ -135,7 +135,7 @@ impl LayerInfo {
                         // provide its dimensions.
                         &LayerMapKind::Subcortical => {
                             let src_area_name = src_area_name.to_owned();
-                            let &(ref in_src, _) = input_sources.by_key(&src_area_name)
+                            let &(ref in_src, _) = ext_paths.by_key(&src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                     '{}'", src_area_name));
                             let in_src_layer = in_src.layer(src_layer.tags());
@@ -206,7 +206,7 @@ impl LayerInfo {
                     // If this is thalamic, the OUTPUT flags should be set.
                     assert!(tags.contains(map::OUTPUT));
                     let pamap_name = pamap.name().to_owned();
-                    let &(ref in_src, _) = input_sources.by_key(&pamap_name)
+                    let &(ref in_src, _) = ext_paths.by_key(&pamap_name)
                         .expect(&format!("LayerInfo::new(): Invalid input source key: \
                             '{}'", pamap.name()));
                     let in_src_layer = in_src.layer(tags);
@@ -334,8 +334,8 @@ impl LayerInfo {
     }
 }
 
-// fn input_source_from_area(input_sources: &Vec<ExternalPathway>, area_name: &'static str) {
-//     let matching_sources = input_sources.iter().filter
+// fn input_source_from_area(ext_paths: &Vec<ExternalPathway>, area_name: &'static str) {
+//     let matching_sources = ext_paths.iter().filter
 // }
 
 
