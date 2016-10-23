@@ -13,6 +13,7 @@ extern crate twox_hash;
 #[macro_use] extern crate enum_primitive;
 #[macro_use] extern crate colorify;
 
+
 mod cortex;
 mod subcortex;
 pub mod encode;
@@ -28,6 +29,6 @@ pub use self::cortex::{Cortex, CorticalArea, CorticalAreas, AxonSpace, Synapses,
 pub use self::subcortex::{Subcortex, SubcorticalNucleus, TestScNucleus};
 pub use self::subcortex::thalamus::{self, ExternalPathwayTract, ExternalPathwayEncoder};
 pub use self::flywheel::Flywheel;
-pub use self::map::{LayerMapSchemeList, AreaSchemeList};
+pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap};
 pub use self::cmn::{TractDims, TypeId};
 pub use self::encode::GlyphBuckets;

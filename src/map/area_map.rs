@@ -24,13 +24,13 @@ pub struct AreaMap {
 }
 
 impl AreaMap {
-    pub fn new(pamap: &AreaScheme, plmaps: &LayerMapSchemeList, pamaps: &AreaSchemeList,
+    pub fn new(pamap: &AreaScheme, layer_map_sl: &LayerMapSchemeList, area_sl: &AreaSchemeList,
             input_sources: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> AreaMap
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name,
             pamap.get_eff_areas(), pamap.get_aff_areas(), mt = cmn::MT);
 
-        let layers = LayerMap::new(pamap, plmaps, pamaps, input_sources);
+        let layers = LayerMap::new(pamap, layer_map_sl, area_sl, input_sources);
 
         let dims = pamap.dims().clone_with_depth(layers.depth());
 

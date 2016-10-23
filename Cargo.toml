@@ -12,11 +12,11 @@ authors = ["Nick Sanders <github.com/c0gent>"]
 # [dependencies.bitflags]
 # git = "https://github.com/rust-lang-nursery/bitflags.git"
 
-[dependencies.ocl]
-path = "/home/nick/projects/ocl"
+# [dependencies.ocl]
+# path = "/home/nick/projects/ocl"
 # git = "https://github.com/cogciprocate/ocl.git"
 # features = ["kernel_debug_sleep", "kernel_debug_print"]
-# features = ["kernel_debug_print"]
+# features = ["kernel_debug_print"]	
 
 # [replace]
 # "cl-sys:0.1.0" = { git = 'https://github.com/cogciprocate/cl-sys' }
@@ -24,6 +24,8 @@ path = "/home/nick/projects/ocl"
 
 [dependencies]
 # ocl = "*"
+# ocl = { path = "/home/nick/projects/ocl", version = "0.11" }
+ocl = { path = "/home/nick/projects/ocl" }
 bitflags = "*"
 rand = "*"
 num = "*"
@@ -34,6 +36,5 @@ time = "*"
 twox-hash = "*"
 colorify = "*"
 
+# [dev-dependencies]
 
-[replace]
-"ocl-core:0.2.3" = { git = "https://github.com/cogciprocate/ocl-core" }

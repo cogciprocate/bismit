@@ -253,20 +253,20 @@ pub struct Thalamus {
 }
 
 impl Thalamus {
-    pub fn new(plmaps: LayerMapSchemeList, mut pamaps: AreaSchemeList) -> CmnResult<Thalamus> {
-        pamaps.freeze();
-        let pamaps = pamaps;
+    pub fn new(layer_map_sl: LayerMapSchemeList, mut area_sl: AreaSchemeList) -> CmnResult<Thalamus> {
+        area_sl.freeze();
+        let area_sl = area_sl;
         let mut tract = ThalamicTract::new();
-        let mut external_pathways = MapStore::with_capacity(pamaps.maps().len());
-        let mut area_maps = HashMap::with_capacity(pamaps.maps().len());
+        let mut external_pathways = MapStore::with_capacity(area_sl.maps().len());
+        let mut area_maps = HashMap::with_capacity(area_sl.maps().len());
 
         /*=============================================================================
         ============================ THALAMIC (INPUT) AREAS ===========================
         =============================================================================*/
-        for (&_, pa) in pamaps.maps().iter().filter(|&(_, pa)|
-                    &plmaps[pa.layer_map_name].kind == &LayerMapKind::Subcortical)
+        for (&_, pa) in area_sl.maps().iter().filter(|&(_, pa)|
+                    &layer_map_sl[pa.layer_map_name].kind == &LayerMapKind::Subcortical)
         {
-            let es = try!(ExternalPathway::new(pa, &plmaps[pa.layer_map_name]));
+            let es = try!(ExternalPathway::new(pa, &layer_map_sl[pa.layer_map_name]));
             let tags = es.layer_tags();
             external_pathways.insert(es.area_name().to_owned(), (es, tags))
                 .map(|es_tup| panic!("Duplicate 'ExternalPathway' keys: [\"{}\"]. \
@@ -277,8 +277,8 @@ impl Thalamus {
         /*=============================================================================
         =================================== ALL AREAS =================================
         =============================================================================*/
-        for (&area_name, pamap) in pamaps.maps().iter() {
-            let area_map = AreaMap::new(pamap, &plmaps, &pamaps, &external_pathways);
+        for (&area_name, pamap) in area_sl.maps().iter() {
+            let area_map = AreaMap::new(pamap, &layer_map_sl, &area_sl, &external_pathways);
 
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ", area_name, mt = cmn::MT);
 

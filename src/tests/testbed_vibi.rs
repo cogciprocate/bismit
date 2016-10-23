@@ -2,7 +2,7 @@ use cortex::Cortex;
 use map::{self, LayerTags, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaSchemeList,
     CellScheme, FilterScheme, InputScheme, AxonKind, LayerKind};
 
-pub fn define_plmaps() -> LayerMapSchemeList {
+pub fn define_layer_map_sl() -> LayerMapSchemeList {
     const MOTOR_UID: u32 = 654;
     const ROSE_UID: u32 = 435;
 
@@ -37,7 +37,7 @@ pub fn define_plmaps() -> LayerMapSchemeList {
 }
 
 
-pub fn define_pamaps() -> AreaSchemeList {
+pub fn define_area_sl() -> AreaSchemeList {
     const AREA_SIDE: u32 = 32;
 
     AreaSchemeList::new()
@@ -94,7 +94,7 @@ pub fn disable_stuff(_: &mut Cortex) {
 
 
 pub fn new_cortex() -> Cortex {
-    let mut cortex = Cortex::new(define_plmaps(), define_pamaps(), None);
+    let mut cortex = Cortex::new(define_layer_map_sl(), define_area_sl(), None);
     disable_stuff(&mut cortex);
     cortex
 }

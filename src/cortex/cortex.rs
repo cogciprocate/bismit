@@ -16,12 +16,12 @@ pub struct Cortex {
 }
 
 impl Cortex {
-    pub fn new(plmaps: LayerMapSchemeList, pamaps: AreaSchemeList,
+    pub fn new(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList,
                     ca_settings: Option<CorticalAreaSettings>) -> Cortex {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
-        let thal = Thalamus::new(plmaps, pamaps).unwrap();
-        let pamaps = thal.area_maps().clone();
+        let thal = Thalamus::new(layer_map_sl, area_sl).unwrap();
+        let area_sl = thal.area_maps().clone();
         let platform = Platform::new(ocl::core::default_platform().unwrap());
         let device_type = ocl::core::default_device_type().unwrap();
         // println!("Cortex::new(): device_type: {:?}", device_type);
@@ -33,7 +33,7 @@ impl Cortex {
         let mut areas = HashMap::new();
         let mut device_idx = 1;
 
-        for (&area_name, _) in pamaps.iter().filter(|&(_, pamap)|
+        for (&area_name, _) in area_sl.iter().filter(|&(_, pamap)|
                 pamap.lm_kind_tmp() != &LayerMapKind::Subcortical)
         {
             areas.insert(area_name, Box::new(

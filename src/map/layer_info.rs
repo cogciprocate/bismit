@@ -30,8 +30,8 @@ impl LayerInfo {
     /// [FIXME]: TODO: Break up, refactor, and optimize.
     /// [FIXME]: TODO: Create an error type enum just for map::Layer****.
     /// [FIXME]: TODO: Return result and get rid of panics, et al.
-    pub fn new(layer_scheme: &LayerScheme, plmap_kind: LayerMapKind, pamap: &AreaScheme, pamaps: &AreaSchemeList,
-                plmaps: &LayerMapSchemeList, input_sources: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
+    pub fn new(layer_scheme: &LayerScheme, plmap_kind: LayerMapKind, pamap: &AreaScheme, area_sl: &AreaSchemeList,
+                layer_map_sl: &LayerMapSchemeList, input_sources: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
                 slc_total: u8) -> LayerInfo
     {
         let layer_scheme = layer_scheme.clone();
@@ -95,10 +95,10 @@ impl LayerInfo {
                     .filter(|&(_, src_layer_tag)| tags.contains(src_layer_tag))
             {
                 // Get the source area map (proto):
-                let src_pamap = pamaps.maps().get(src_area_name).expect("LayerInfo::new()");
+                let src_pamap = area_sl.maps().get(src_area_name).expect("LayerInfo::new()");
 
                 // Get the source layer map associated with this protoarea:
-                let src_layer_map = &plmaps[src_pamap.layer_map_name];
+                let src_layer_map = &layer_map_sl[src_pamap.layer_map_name];
 
                 // Get a list of layers with tags which are an i/o mirror
                 // (input -> output, output -> input) of the tags for this

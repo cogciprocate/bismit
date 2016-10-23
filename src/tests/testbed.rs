@@ -13,9 +13,9 @@ const CYCLES_PER_FRAME: usize = 1;
 
 
 pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
-    let mut plmaps: LayerMapSchemeList = LayerMapSchemeList::new();
+    let mut layer_map_sl: LayerMapSchemeList = LayerMapSchemeList::new();
 
-    plmaps.add(LayerMapScheme::new("visual", LayerMapKind::Cortical)
+    layer_map_sl.add(LayerMapScheme::new("visual", LayerMapKind::Cortical)
         //.layer("test_noise", 1, map::DEFAULT, LayerKind::Axonal(AxonKind::Spatial))
         .layer("motor_in", 1, map::DEFAULT, LayerKind::Axonal(AxonKind::Horizontal))
         //.layer("olfac", 1, map::DEFAULT, LayerKind::Axonal(Horizontal))
@@ -31,11 +31,11 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
             CellScheme::pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"], 12))
     );
 
-    plmaps.add(LayerMapScheme::new("external", LayerMapKind::Subcortical)
+    layer_map_sl.add(LayerMapScheme::new("external", LayerMapKind::Subcortical)
         .layer("ganglion", 1, map::FF_OUT, LayerKind::Axonal(AxonKind::Spatial))
     );
 
-    plmaps
+    layer_map_sl
 }
 
 pub fn define_protoareas() -> AreaSchemeList {
@@ -105,9 +105,9 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
     let area_name = PRIMARY_AREA_NAME;
     let lmap_name = "lm_test";
 
-    let mut plmaps = LayerMapSchemeList::new();
+    let mut layer_map_sl = LayerMapSchemeList::new();
 
-    plmaps.add(LayerMapScheme::new(lmap_name, LayerMapKind::Cortical)
+    layer_map_sl.add(LayerMapScheme::new(lmap_name, LayerMapKind::Cortical)
         .layer("eff_in", 0, map::FB_IN, LayerKind::Axonal(AxonKind::Spatial))
         .layer("aff_in", 0, map::FF_IN, LayerKind::Axonal(AxonKind::Spatial))
         .layer("out", 1, map::FF_OUT | map::FB_OUT, LayerKind::Axonal(AxonKind::Spatial))
@@ -133,16 +133,16 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
     );
 
-    plmaps.add(LayerMapScheme::new("dummy_lm", LayerMapKind::Subcortical)
+    layer_map_sl.add(LayerMapScheme::new("dummy_lm", LayerMapKind::Subcortical)
         .layer("ganglion", 1, map::FF_OUT, LayerKind::Axonal(AxonKind::Spatial))
     );
 
-    let pamaps = AreaSchemeList::new()
+    let area_sl = AreaSchemeList::new()
         .area(area_name, lmap_name, 32, None, Some(vec!["dummy_area"]))
         .area_ext("dummy_area", "dummy_lm", 67, InputScheme::None, None, None)
     ;
 
-    Cortex::new(plmaps, pamaps, None)
+    Cortex::new(layer_map_sl, area_sl, None)
 }
 
 
@@ -157,10 +157,10 @@ pub struct TestBed {
 
 impl TestBed {
     pub fn new() -> TestBed {
-        let plmaps = define_layer_scheme_maps();
+        let layer_map_sl = define_layer_scheme_maps();
         let area_schemes = define_protoareas();
 
-        let thal = Thalamus::new(plmaps, area_schemes).unwrap();
+        let thal = Thalamus::new(layer_map_sl, area_schemes).unwrap();
         let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
         let ocl_context: Context = Context::builder()

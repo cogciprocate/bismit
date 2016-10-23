@@ -20,13 +20,12 @@ pub struct LayerMap {
 }
 
 impl LayerMap {
-    pub fn new(pamap: &AreaScheme, plmaps: &LayerMapSchemeList, pamaps: &AreaSchemeList,
-            input_sources: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> LayerMap
-    {
+    pub fn new(pamap: &AreaScheme, layer_map_sl: &LayerMapSchemeList, area_sl: &AreaSchemeList,
+                    input_sources: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> LayerMap {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...",
             pamap.name, mt = cmn::MT);
 
-        let plmap = plmaps[pamap.layer_map_name].clone();
+        let plmap = layer_map_sl[pamap.layer_map_name].clone();
         let plmap_kind = plmap.kind.clone();
         // plmap.freeze(&pamap);
 
@@ -34,7 +33,7 @@ impl LayerMap {
         let mut slc_total = 0u8;
 
         for (_, pl) in plmap.layers().iter() {
-            let new_layer = LayerInfo::new(pl, plmap_kind.clone(), pamap, pamaps, plmaps,
+            let new_layer = LayerInfo::new(pl, plmap_kind.clone(), pamap, area_sl, layer_map_sl,
                 input_sources, slc_total);
             slc_total += new_layer.depth();
             index.push(new_layer);
