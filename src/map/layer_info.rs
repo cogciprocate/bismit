@@ -1,6 +1,4 @@
-// use std::collections::HashMap;
 use std::ops::{Range};
-// use std::slice::{Iter};
 
 use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind, DendriteKind,
     LayerMapKind, AxonKind};
@@ -8,7 +6,6 @@ use cmn::{self, CorticalDims, MapStore};
 use map::{self, LayerTags,};
 use thalamus::ExternalPathway;
 
-// const CELLULAR_AXON_KIND: AxonKind = AxonKind::Spatial;
 const DEBUG_PRINT: bool = false;
 
 // [FIXME]: Consolidate terminology and usage between source-layer layers (cellular)
@@ -30,10 +27,10 @@ impl LayerInfo {
     /// [FIXME]: TODO: Break up, refactor, and optimize.
     /// [FIXME]: TODO: Create an error type enum just for map::Layer****.
     /// [FIXME]: TODO: Return result and get rid of panics, et al.
-    pub fn new(layer_scheme: &LayerScheme, plmap_kind: LayerMapKind, pamap: &AreaScheme, area_sl: &AreaSchemeList,
-                layer_map_sl: &LayerMapSchemeList, ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
-                slc_total: u8) -> LayerInfo
-    {
+    pub fn new(layer_scheme: &LayerScheme, plmap_kind: LayerMapKind, pamap: &AreaScheme,
+                    area_sl: &AreaSchemeList, layer_map_sl: &LayerMapSchemeList,
+                    ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
+                    slc_total: u8) -> LayerInfo {
         let layer_scheme = layer_scheme.clone();
         let name = layer_scheme.name();
         let tags = layer_scheme.tags();
@@ -119,18 +116,18 @@ impl LayerInfo {
                     //
                     // ALSO:
                     //
-                    // - [FIXME] Determine depths for input sources!
+                    // - [FIXME]: Determine depths for input sources!
                     //
                     //
                     ////////////
 
-                    // [FIXME] Determine depths for input sources
+                    // [FIXME]: Determine depths for input sources
                     // let src_layer_depth = cmn::DEFAULT_OUTPUT_LAYER_DEPTH;
                     // let is_area = input_source_with_area(ext_paths, src_area_name);
                     // let src_layer_depth =
 
                     let (src_layer_dims, src_layer_axn_kind) = match src_layer_map.kind() {
-                        // If the source layer is thalamic, we will be relying
+                        // If the source layer is subcortical, we will be relying
                         // on the `ExternalPathway` associated with it to
                         // provide its dimensions.
                         &LayerMapKind::Subcortical => {

@@ -16,6 +16,7 @@ extern crate twox_hash;
 
 mod cortex;
 mod subcortex;
+mod tract_terminal;
 pub mod encode;
 pub mod flywheel;
 pub mod map;
@@ -30,5 +31,5 @@ pub use self::subcortex::{Subcortex, SubcorticalNucleus, TestScNucleus};
 pub use self::subcortex::thalamus::{self, ExternalPathwayTract, ExternalPathwayEncoder};
 pub use self::flywheel::Flywheel;
 pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap};
-pub use self::cmn::{TractDims, TypeId};
+pub use self::cmn::{TractDims, TypeId, CmnError, CmnResult};
 pub use self::encode::GlyphBuckets;

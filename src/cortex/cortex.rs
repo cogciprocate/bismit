@@ -81,22 +81,6 @@ impl Cortex {
         }
     }
 
-    // pub fn is_valid_area(&self, area_name: &str) -> bool {
-    //     self.areas.contains_key(area_name)
-    // }
-
-    // pub fn ext_pathway_idx(&mut self, pathway_name: &String) -> CmnResult<usize> {
-    //     self.thal.ext_pathway_idx(pathway_name)
-    // }
-
-    // pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<&mut ExternalPathway> {
-    //     self.thal.ext_pathway(pathway_idx)
-    // }
-
-    // pub fn ext_pathway_frame(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
-    //     self.thal.ext_pathway_frame(pathway_idx)
-    // }
-
     pub fn thal_mut(&mut self) -> &mut Thalamus {
         &mut self.thal
     }

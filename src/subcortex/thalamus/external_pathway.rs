@@ -194,7 +194,9 @@ impl ExternalPathway {
                     VectorEncoder::new(ranges.clone(), &layer_tags_list, &tract_dims)
                 )))
             },
-            InputScheme::Custom => ExternalPathwayEncoder::OtherUnspecified,
+            InputScheme::Custom { .. } => {
+                ExternalPathwayEncoder::OtherUnspecified
+            },
             InputScheme::None | InputScheme::Zeros => ExternalPathwayEncoder::None,
             ref is @ _ => panic!("\nExternalPathway::new(): Input type: '{:?}' not yet supported.", is),
         };

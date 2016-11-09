@@ -1,5 +1,6 @@
 use std::error::{Error};
 use std::fmt;
+use ocl::Error as OclError;
 use cmn::CmnResult;
 
 
@@ -16,6 +17,7 @@ use cmn::CmnResult;
 pub enum CmnError {
     Unknown,
     String(String),
+    OclError(OclError),
 }
 
 impl CmnError {
@@ -68,6 +70,12 @@ impl From<String> for CmnError {
 impl<'a> From<&'a str> for CmnError {
     fn from(desc: &'a str) -> CmnError {
         CmnError::new(String::from(desc))
+    }
+}
+
+impl From<OclError> for CmnError {
+    fn from(e: OclError) -> CmnError {
+        CmnError::OclError(e)
     }
 }
 

@@ -514,27 +514,27 @@ impl CorticalArea {
             new_events.clear_completed().expect("CorticalArea::intake()");
 
             for src_layer in src_layers.iter_mut() {
-                let (wait_events, sdr) = thal.tract(src_layer.key())
+                let (wait_events, tract) = thal.tract(src_layer.key())
                     .expect("CorticalArea::intake()");
 
                 if group_tags.contains(map::FF_IN) && self.filters.is_some()
                         && !self.settings.bypass_filters
                 {
                     let filters_vec = self.filters.as_ref().unwrap();
-                    let mut fltr_event = filters_vec[0].write(sdr.frame(), wait_events);
+                    let mut fltr_event = filters_vec[0].write(tract.frame(), wait_events);
 
                     for fltr in filters_vec.iter() {
                         fltr_event = fltr.cycle(&fltr_event);
                     }
                 } else {
                     let axn_range = src_layer.axn_range();
-                    assert!(sdr.len() == axn_range.len() as usize,
+                    assert!(tract.len() == axn_range.len() as usize,
                         "CorticalArea::intake(): Sdr/ganglion length must be \
-                        equal to the destination axon range. sdr.len(): {} != axn_range.len(): \
-                        {}, (area: '{}', layer_tags: '{}', range: '{:?}').", sdr.len(),
+                        equal to the destination axon range. tract.len(): {} != axn_range.len(): \
+                        {}, (area: '{}', layer_tags: '{}', range: '{:?}').", tract.len(),
                         axn_range.len(), self.name, src_layer.tags(), axn_range);
 
-                    self.axns.states.cmd().write(sdr.frame()).offset(axn_range.start as usize)
+                    self.axns.states.cmd().write(tract.frame()).offset(axn_range.start as usize)
                         .block(false).ewait(wait_events).enew(new_events).enq().unwrap();
                 }
             }
@@ -545,21 +545,21 @@ impl CorticalArea {
     fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) {
         if let Some((src_layers, wait_events)) = self.io_info.group(group_tags) {
             for src_layer in src_layers.iter() {
-                let (mut sdr, new_events) = thal.tract_mut(src_layer.key())
+                let (mut tract, new_events) = thal.tract_mut(src_layer.key())
                     .expect("CorticalArea::output()");
 
                 new_events.clear_completed().expect("CorticalArea::output()");
                 let axn_range = src_layer.axn_range();
 
-                assert!(sdr.dims().to_len() == axn_range.len() as usize,
+                assert!(tract.dims().to_len() == axn_range.len() as usize,
                     "CorticalArea::output(): Sdr/ganglion length must be \
-                    equal to the source axon range. sdr.len(): {} != axn_range.len(): \
-                    {}, (area: '{}', layer_tags: '{}', range: '{:?}').", sdr.len(),
+                    equal to the source axon range. tract.len(): {} != axn_range.len(): \
+                    {}, (area: '{}', layer_tags: '{}', range: '{:?}').", tract.len(),
                     axn_range.len(), self.name, src_layer.tags(), axn_range);
 
                 // let wait_events = &src_grp.events;
 
-                unsafe { self.axns.states.cmd().read_async(sdr.frame_mut()).offset(axn_range.start as usize)
+                unsafe { self.axns.states.cmd().read_async(tract.frame_mut()).offset(axn_range.start as usize)
                     .block(false).ewait(wait_events).enew(new_events).enq().unwrap(); }
             }
         }
@@ -569,21 +569,21 @@ impl CorticalArea {
     // fn output_SDR_RANGE(&self, group_tags: LayerTags, thal: &mut Thalamus) {
     //     if let Some((src_layers, wait_events)) = self.io_info.group(group_tags) {
     //         for src_layer in src_layers.iter() {
-    //             let (sdr, new_events) = thal.tract_frame_mut(src_layer.key())
+    //             let (tract, new_events) = thal.tract_frame_mut(src_layer.key())
     //                 .expect("CorticalArea::output()");
 
     //             new_events.clear_completed().expect("CorticalArea::write_input");
     //             let axn_range = src_layer.axn_range();
 
-    //             assert!(sdr.len() == axn_range.len() as usize,
+    //             assert!(tract.len() == axn_range.len() as usize,
     //                 "CorticalArea::output(): Sdr/ganglion length must be \
-    //                 equal to the source axon range. sdr.len(): {} != axn_range.len(): \
-    //                 {}, (area: '{}', layer_tags: '{}', range: '{:?}').", sdr.len(),
+    //                 equal to the source axon range. tract.len(): {} != axn_range.len(): \
+    //                 {}, (area: '{}', layer_tags: '{}', range: '{:?}').", tract.len(),
     //                 axn_range.len(), self.name, src_layer.tags(), axn_range);
 
     //             // let wait_events = &src_grp.events;
 
-    //             unsafe { self.axns.states.cmd().read_async(sdr).offset(axn_range.start as usize)
+    //             unsafe { self.axns.states.cmd().read_async(tract).offset(axn_range.start as usize)
     //                 .block(false).ewait(wait_events).enew(new_events).enq().unwrap(); }
     //         }
     //     }

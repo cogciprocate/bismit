@@ -121,9 +121,6 @@ impl AreaScheme {
                 name: &'static str,
                 layer_map_name: &'static str,
                 dim: u32,
-                // input: InputScheme,
-                // filters: Option<Vec<FilterScheme>>,
-                // eff_areas_opt: Option<Vec<&'static str>>,
             ) -> AreaScheme
     {
         // [FIXME] TODO: This is out of date. Need to instead verify that
@@ -132,31 +129,14 @@ impl AreaScheme {
         //
         // assert!(side >= cmn::SYNAPSE_REACH * 2);
 
-        // let eff_areas = match eff_areas_opt {
-        //     Some(ea) => ea,
-        //     None => Vec::with_capacity(0),
-        // };
-
         AreaScheme::irregular(name, layer_map_name, [dim, dim])
-
-        // AreaScheme {
-        //     name: name,
-        //     layer_map_name: layer_map_name,
-        //     dims: CorticalDims::new(side, side, 0, 0, None),
-        //     //region_kind: region_kind,
-        //     input: InputScheme::None,
-        //     filters: None,
-        //     aff_areas: Vec::with_capacity(4),
-        //     eff_areas: Vec::with_capacity(0),
-        // }
     }
 
     pub fn irregular(
-                name: &'static str,
-                layer_map_name: &'static str,
-                dims: [u32; 2],
-            ) -> AreaScheme
-    {
+                    name: &'static str,
+                    layer_map_name: &'static str,
+                    dims: [u32; 2],
+                ) -> AreaScheme {
         AreaScheme {
             name: name,
             layer_map_name: layer_map_name,

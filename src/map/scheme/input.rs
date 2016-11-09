@@ -2,7 +2,7 @@
 #[derive(PartialEq, Debug, Clone)]
 pub enum InputScheme {
     None,
-    Custom,
+    Custom { layer_count: usize },
     World,
     Stripes { stripe_size: usize, zeros_first: bool },
     Hexballs { edge_size: usize, invert: bool, fill: bool },
@@ -35,6 +35,7 @@ impl InputScheme {
             InputScheme::GlyphSequences { .. } => 2,
             InputScheme::ReversoScalarSequence { .. } => 2,
             InputScheme::VectorEncoder { ref ranges } => ranges.len(),
+            InputScheme::Custom { layer_count } => layer_count,
             // InputScheme::SensoryTract { ref dims, .. } => dims.len(),
             _ => 1,
         }
