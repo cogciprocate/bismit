@@ -10,6 +10,7 @@ use map::{DendriteKind, LayerKind, CellKind};
 use thalamus::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, SensoryFilter};
+use tract_terminal::{TractTerminalOclBuffer};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -514,7 +515,7 @@ impl CorticalArea {
             new_events.clear_completed().expect("CorticalArea::intake()");
 
             for src_layer in src_layers.iter_mut() {
-                let (wait_events, tract) = thal.tract(src_layer.key())
+                let (wait_events, tract) = thal.tract_frame(src_layer.key())
                     .expect("CorticalArea::intake()");
 
                 if group_tags.contains(map::FF_IN) && self.filters.is_some()
@@ -545,22 +546,37 @@ impl CorticalArea {
     fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) {
         if let Some((src_layers, wait_events)) = self.io_info.group(group_tags) {
             for src_layer in src_layers.iter() {
-                let (mut tract, new_events) = thal.tract_mut(src_layer.key())
+                // let (mut terminal, new_events) = thal.tract_frame_mut(src_layer.key())
+                //     .expect("CorticalArea::output()");
+
+                let mut terminal = thal.tract_terminal(src_layer.key())
                     .expect("CorticalArea::output()");
 
-                new_events.clear_completed().expect("CorticalArea::output()");
+                // new_events.clear_completed().expect("CorticalArea::output()");
+
+                // if let &mut Some(ref mut events) = terminal.events() {
+                //     events.clear_completed().expect("CorticalArea::output()");
+                // }
+
+                terminal.clear_completed_events().expect("CorticalArea::output()");
+
                 let axn_range = src_layer.axn_range();
 
-                assert!(tract.dims().to_len() == axn_range.len() as usize,
+                assert!(terminal.dims().to_len() == axn_range.len() as usize,
                     "CorticalArea::output(): Sdr/ganglion length must be \
-                    equal to the source axon range. tract.len(): {} != axn_range.len(): \
-                    {}, (area: '{}', layer_tags: '{}', range: '{:?}').", tract.len(),
+                    equal to the source axon range. terminal.len(): {} != axn_range.len(): \
+                    {}, (area: '{}', layer_tags: '{}', range: '{:?}').", terminal.dims().to_len(),
                     axn_range.len(), self.name, src_layer.tags(), axn_range);
 
                 // let wait_events = &src_grp.events;
 
-                unsafe { self.axns.states.cmd().read_async(tract.frame_mut()).offset(axn_range.start as usize)
-                    .block(false).ewait(wait_events).enew(new_events).enq().unwrap(); }
+                // unsafe { self.axns.states.cmd().read_async(terminal.frame_mut()).offset(axn_range.start as usize)
+                //     .block(false).ewait(wait_events).enew(new_events).enq().unwrap(); }
+
+                let tt_buf = TractTerminalOclBuffer::new(&self.axns.states,
+                    axn_range.start as usize, terminal.dims().clone(), None);
+
+                terminal.copy_from_ocl_buffer(tt_buf, Some(wait_events)).unwrap();
             }
         }
     }

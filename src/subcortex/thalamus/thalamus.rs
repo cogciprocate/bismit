@@ -39,76 +39,60 @@ use ocl::EventList;
 use cortex::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList};
 use thalamus::{ExternalPathway, ExternalPathwayFrame};
+use tract_terminal::{TractTerminalSlice};
 
 
-// THALAMICTRACT: A buffer for I/O between areas. Effectively analogous to the internal capsule.
-pub struct ThalamicTract {
-    ganglion: Vec<u8>,
-    tract_areas: TractAreaCache,
-    ttl_len: usize,
+
+// /// Specifies whether or not the frame buffer for a source exists within the
+// /// thalamic tract or an external source itself.
+// #[derive(Debug)]
+// enum TractAreaKind {
+//     Internal,
+//     External,
+// }
+
+
+
+#[derive(Debug)]
+struct TractArea {
+    src_area_name: String,
+    layer_tags: LayerTags,
+    range: Range<usize>,
+    events: EventList,
+    dims: TractDims,
 }
 
-impl ThalamicTract {
-    fn new() -> ThalamicTract {
-        let ganglion = Vec::with_capacity(0);
-        let tract_areas = TractAreaCache::new();
-
-        ThalamicTract {
-            ganglion: ganglion,
-            tract_areas: tract_areas,
-            ttl_len: 0,
+impl TractArea {
+    fn new(src_area_name: String, layer_tags: LayerTags, range: Range<usize>,
+                dims: TractDims) -> TractArea {
+        // println!("###### TractArea::new(): Adding area with: range: {:?}, dims: {:?}", &range, &dims);
+        assert!(range.len() == dims.to_len());
+        TractArea {
+            src_area_name: src_area_name,
+            layer_tags: layer_tags,
+            range: range,
+            events: EventList::new(),
+            dims: dims,
         }
     }
 
-    fn add_area(&mut self, src_area_name: String, layer_tags: LayerTags, layer_dims: CorticalDims) {
-        // println!("###### ThalamicTract::new(): Adding tract for area: {}, tags: {}, layer_dims: {:?}",
-        //     src_area_name, layer_tags, layer_dims);
-        let tract_dims: TractDims = layer_dims.into();
-        let len = tract_dims.to_len();
-        let new_area = TractArea::new(src_area_name.clone(), layer_tags,
-            self.ttl_len..(self.ttl_len + len), tract_dims);
-
-        self.tract_areas.insert(src_area_name, layer_tags, new_area);
-        self.ttl_len += len;
+    fn range(&self) -> &Range<usize> {
+        &self.range
     }
 
-    fn init(mut self) -> ThalamicTract {
-        self.ganglion.resize(self.ttl_len, 0);
-        // println!("{}THALAMICTRACT::INIT(): tract_areas: {:?}", cmn::MT, self.tract_areas);
-        self
+    fn dims(&self) -> &TractDims {
+        &self.dims
     }
 
-    // fn frame(&mut self, src_area_name: &str, layer_tags: LayerTags)
-    fn frame<'t>(&'t mut self, key: &(String, LayerTags))
-                -> Result<(&EventList, TractFrame<'t>), CmnError> {
-        let ta = try!(self.tract_areas.get(key));
-        let range = ta.range().clone();
-        let tract = TractFrame::new(&self.ganglion[range], ta.dims());
-        let events = ta.events();
-
-        Ok((events, tract))
+    fn events(&self) -> &EventList {
+        &self.events
     }
 
-    fn frame_mut<'t>(&'t mut self, key: &(String, LayerTags))
-                -> Result<(TractFrameMut<'t>, &mut EventList), CmnError> {
-        let ta = try!(self.tract_areas.get_mut(key));
-        let range = ta.range().clone();
-        let tract = TractFrameMut::new(&mut self.ganglion[range], ta.dims());
-        let events = ta.events_mut();
-
-        Ok((tract, events))
+    fn events_mut(&mut self) -> &mut EventList {
+        &mut self.events
     }
-
-    // fn verify_range(&self, range: &Range<usize>, area_name: &'static str) -> Result<(), CmnError> {
-    //     if range.end > self.ganglion.len() {
-    //         Err(CmnError::new(format!("ThalamicTract::ganglion_mut(): Index range for target area: '{}' \
-    //             exceeds the boundaries of the input tract (length: {})", area_name,
-    //             self.ganglion.len())))
-    //     } else {
-    //         Ok(())
-    //     }
-    // }
 }
+
 
 
 // [FIXME]: REPLACE STRING HASH KEY. SEE TOP OF FILE.
@@ -190,60 +174,98 @@ impl TractAreaCache {
 }
 
 
-// /// Specifies whether or not the frame buffer for a source exists within the
-// /// thalamic tract or an external source itself.
-// #[derive(Debug)]
-// enum TractAreaKind {
-//     Internal,
-//     External,
-// }
 
-
-#[derive(Debug)]
-struct TractArea {
-    src_area_name: String,
-    layer_tags: LayerTags,
-    range: Range<usize>,
-    events: EventList,
-    dims: TractDims,
+// THALAMICTRACT: A buffer for I/O between areas. Effectively analogous to the internal capsule.
+pub struct ThalamicTract {
+    ganglion: Vec<u8>,
+    tract_areas: TractAreaCache,
+    ttl_len: usize,
 }
 
-impl TractArea {
-    fn new(src_area_name: String, layer_tags: LayerTags, range: Range<usize>,
-                dims: TractDims) -> TractArea {
-        // println!("###### TractArea::new(): Adding area with: range: {:?}, dims: {:?}", &range, &dims);
-        assert!(range.len() == dims.to_len());
-        TractArea {
-            src_area_name: src_area_name,
-            layer_tags: layer_tags,
-            range: range,
-            events: EventList::new(),
-            dims: dims,
+impl ThalamicTract {
+    fn new() -> ThalamicTract {
+        let ganglion = Vec::with_capacity(0);
+        let tract_areas = TractAreaCache::new();
+
+        ThalamicTract {
+            ganglion: ganglion,
+            tract_areas: tract_areas,
+            ttl_len: 0,
         }
     }
 
-    fn range(&self) -> &Range<usize> {
-        &self.range
+    fn add_area(&mut self, src_area_name: String, layer_tags: LayerTags, layer_dims: CorticalDims) {
+        // println!("###### ThalamicTract::new(): Adding tract for area: {}, tags: {}, layer_dims: {:?}",
+        //     src_area_name, layer_tags, layer_dims);
+        let tract_dims: TractDims = layer_dims.into();
+        let len = tract_dims.to_len();
+        let new_area = TractArea::new(src_area_name.clone(), layer_tags,
+            self.ttl_len..(self.ttl_len + len), tract_dims);
+
+        self.tract_areas.insert(src_area_name, layer_tags, new_area);
+        self.ttl_len += len;
     }
 
-    fn dims(&self) -> &TractDims {
-        &self.dims
+    fn init(mut self) -> ThalamicTract {
+        self.ganglion.resize(self.ttl_len, 0);
+        // println!("{}THALAMICTRACT::INIT(): tract_areas: {:?}", cmn::MT, self.tract_areas);
+        self
     }
 
-    fn events(&self) -> &EventList {
-        &self.events
+    // fn frame(&mut self, src_area_name: &str, layer_tags: LayerTags)
+    fn frame<'t>(&'t mut self, key: &(String, LayerTags))
+            -> Result<(&EventList, TractFrame<'t>), CmnError>
+    {
+        let ta = try!(self.tract_areas.get(key));
+        let range = ta.range().clone();
+        let tract = TractFrame::new(&self.ganglion[range], ta.dims());
+        let events = ta.events();
+
+        Ok((events, tract))
     }
 
-    fn events_mut(&mut self) -> &mut EventList {
-        &mut self.events
+    fn frame_mut<'t>(&'t mut self, key: &(String, LayerTags))
+            -> Result<(TractFrameMut<'t>, &mut EventList), CmnError>
+    {
+        let ta = try!(self.tract_areas.get_mut(key));
+        let range = ta.range().clone();
+        let tract = TractFrameMut::new(&mut self.ganglion[range], ta.dims());
+        let events = ta.events_mut();
+
+        Ok((tract, events))
     }
+
+    fn terminal<'t>(&'t mut self, key: &(String, LayerTags))
+            -> Result<(TractTerminalSlice<'t>), CmnError>
+    {
+        let ta = try!(self.tract_areas.get_mut(key));
+        let range = ta.range().clone();
+        // let tract = TractFrameMut::new(&mut self.ganglion[range], ta.dims());
+        let dims = ta.dims().clone();
+        let events = ta.events_mut();
+        let terminal = TractTerminalSlice::new(&mut self.ganglion[range], dims, Some(events));
+        // let events = ta.events_mut();
+
+        Ok((terminal))
+    }
+
+    // fn verify_range(&self, range: &Range<usize>, area_name: &'static str) -> Result<(), CmnError> {
+    //     if range.end > self.ganglion.len() {
+    //         Err(CmnError::new(format!("ThalamicTract::ganglion_mut(): Index range for target area: '{}' \
+    //             exceeds the boundaries of the input tract (length: {})", area_name,
+    //             self.ganglion.len())))
+    //     } else {
+    //         Ok(())
+    //     }
+    // }
 }
 
 
-//    THALAMUS:
-//    - Input/Output is from a CorticalArea's point of view
-//         - input: to layer / area
-//         - output: from layer / area
+
+// THALAMUS:
+// - Input/Output is from a CorticalArea's point of view
+//   - input: to layer / area
+//   - output: from layer / area
 pub struct Thalamus {
     tract: ThalamicTract,
     // [TODO]: Redesign this with something other than `String` key (use a separate vec & hashmap).
@@ -335,16 +357,22 @@ impl Thalamus {
         }
     }
 
-    pub fn tract<'t>(&'t mut self, key: &(String, LayerTags))
+    pub fn tract_frame<'t>(&'t mut self, key: &(String, LayerTags))
             -> Result<(&EventList, TractFrame<'t>), CmnError>
     {
         self.tract.frame(key)
     }
 
-    pub fn tract_mut<'t>(&'t mut self, key: &(String, LayerTags))
+    pub fn tract_frame_mut<'t>(&'t mut self, key: &(String, LayerTags))
             -> Result<(TractFrameMut<'t>, &mut EventList), CmnError>
     {
         self.tract.frame_mut(key)
+    }
+
+    pub fn tract_terminal<'t>(&'t mut self, key: &(String, LayerTags))
+            -> Result<(TractTerminalSlice<'t>), CmnError>
+    {
+        self.tract.terminal(key)
     }
 
      pub fn area_maps(&self) -> &HashMap<&'static str, AreaMap> {
