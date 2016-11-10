@@ -4,7 +4,7 @@
 
 // use std::ops::Range;
 // use std::ops::Deref;
-use ocl::core::{ClWaitList, /*ClEventPtrNew*/};
+use ocl::core::{self, ClWaitList, ClEventPtrNew};
 use ocl::{Buffer, EventList, Event};
 use ::{TractDims, CmnResult};
 
@@ -64,6 +64,37 @@ impl<'b> TractTerminalOclBuffer<'b> {
     //         .enq().map_err(|e| e.into()) }
     // }
 
+    pub fn copy_from_ocl_buffer<'e>(&mut self, mut tt_buf: TractTerminalOclBuffer,
+        wait_events: Option<&'e EventList>) -> CmnResult<()>
+    {
+        // let evl = match self.events {
+        //     Some(ref mut evl) => {
+        //         let wlp = (*evl) as *mut EventList as *mut _ as *mut ClEventPtrNew;
+        //         &mut (*wlp) as &mut ClEventPtrNew
+        //     },
+        //     None =>
+        // }
+        let mut en = Event::empty();
+
+        try!(tt_buf.buf().cmd().copy(self.buf, self.offset, self.dims.to_len())
+            .offset(tt_buf.offset)
+            .ewait_opt(wait_events.map(|e| e as &ClWaitList))
+            .enew_opt(if self.events.is_some() { Some(&mut en as &mut ClEventPtrNew) } else { None })
+            .enq());
+
+        if let Some(ref mut evl) = self.events {
+            evl.push(en);
+        }
+        // try!(check_len(self.mem_len, len, offset));
+        // core::enqueue_copy_buffer::<u8>(self.buf.default_queue(),
+        //         self.buf.core_as_ref(), tt_buf.buf().core_as_ref(),
+        //         tt_buf.offset(), self.offset, tt_buf.dims().to_len(),
+        //         wait_events.map(|e| e as &ClWaitList),
+        //         self.events.map(|e| e as &mut ClEventPtrNew))
+        //     .map_err(|e| e.into())
+        Ok(())
+    }
+
     pub fn buf(&mut self) -> &'b Buffer<u8> {
         self.buf
     }
@@ -107,53 +138,30 @@ impl<'b> TractTerminalSlice<'b> {
     pub fn copy_from_ocl_buffer<'e>(&mut self, mut tt_buf: TractTerminalOclBuffer,
             wait_events: Option<&'e EventList>) -> CmnResult<()>
     {
-        // let mut enew = match self.events {
-        //     Some(_) => Some(Event::empty()),
-        //     None => None,
-        // };
+        // .enew_opt(if self.events.is_some() { Some(&mut en as &mut ClEventPtrNew) } else { None })
 
-        if let Some(ref mut evl) = self.events {
-            let mut en = Event::empty();
+        // if let Some(ref mut evl) = self.events {
+        let mut en = Event::empty();
 
-            unsafe {
-                try!(tt_buf.buf().cmd().read_async(self.slice)
-                    .offset(tt_buf.offset())
-                    .ewait_opt(wait_events.map(|e| e as &ClWaitList))
-                    .enew(&mut en)
-                    .enq());
-            }
-
-            evl.push(en);
-        } else {
-            unsafe {
-                try!(tt_buf.buf().cmd().read_async(self.slice)
-                    .offset(tt_buf.offset())
-                    .ewait_opt(wait_events.map(|e| e as &ClWaitList))
-                    .enq());
-            }
+        unsafe {
+            try!(tt_buf.buf().cmd().read_async(self.slice)
+                .offset(tt_buf.offset())
+                .ewait_opt(wait_events.map(|e| e as &ClWaitList))
+                // .enew(&mut en)
+                .enew_opt(if self.events.is_some() { Some(&mut en as &mut ClEventPtrNew) } else { None })
+                .enq());
         }
 
-        // match enew.take() {
-        //     Some(mut en) => {
-        //         unsafe {
-        //             tt_buf.buf().cmd().read_async(self.slice)
-        //                 .offset(tt_buf.offset())
-        //                 .ewait_opt(wait_events.map(|e| e as &ClWaitList))
-        //                 .enew(&mut en).enq().ok();
-        //         }
-
-        //         if let Some(ref mut evl) = self.events {
-        //             evl.push(en);
-        //         }
-        //     },
-        //     None => {
-        //         unsafe {
-        //             tt_buf.buf().cmd().read_async(self.slice)
-        //                 .offset(tt_buf.offset())
-        //                 .ewait_opt(wait_events.map(|e| e as &ClWaitList))
-        //                 .enq().ok();
-        //         }
-        //     },
+        if let Some(ref mut evl) = self.events {
+            evl.push(en);
+        }
+        // } else {
+        //     unsafe {
+        //         try!(tt_buf.buf().cmd().read_async(self.slice)
+        //             .offset(tt_buf.offset())
+        //             .ewait_opt(wait_events.map(|e| e as &ClWaitList))
+        //             .enq());
+        //     }
         // }
 
         Ok(())
