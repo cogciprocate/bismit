@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
 
-use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
+use cmn::{self, /*CmnError,*/ CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
 use ocl::{ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
@@ -10,7 +10,7 @@ use map::{DendriteKind, LayerKind, CellKind};
 use thalamus::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, SensoryFilter};
-use tract_terminal::{TractTerminalOclBuffer};
+use tract_terminal::{OclBufferSource, /*OclBufferTarget*/};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -499,7 +499,7 @@ impl CorticalArea {
 
         if !self.settings.disable_regrowth { self.regrow(); }
 
-        self.output(map::FF_OUT, thal);
+        self.output(map::FF_OUT, thal).unwrap();
     }
 
     /// Read input from thalamus and write to axon space.
@@ -543,14 +543,13 @@ impl CorticalArea {
     }
 
     // Read output from axon space and write to thalamus.
-    fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) {
+    fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
         if let Some((src_layers, wait_events)) = self.io_info.group(group_tags) {
             for src_layer in src_layers.iter() {
                 // let (mut terminal, new_events) = thal.tract_frame_mut(src_layer.key())
                 //     .expect("CorticalArea::output()");
 
-                let mut terminal = thal.tract_terminal(src_layer.key())
-                    .expect("CorticalArea::output()");
+                let mut target = try!(thal.tract_terminal_target(src_layer.key()));
 
                 // new_events.clear_completed().expect("CorticalArea::output()");
 
@@ -558,27 +557,46 @@ impl CorticalArea {
                 //     events.clear_completed().expect("CorticalArea::output()");
                 // }
 
-                terminal.clear_completed_events().expect("CorticalArea::output()");
+                // [NOTE]: Now clearing within tract terminals (on receiving list side):
+                // terminal.clear_completed_events().expect("CorticalArea::output()");
 
-                let axn_range = src_layer.axn_range();
+                // let axn_range = src_layer.axn_range();
 
-                assert!(terminal.dims().to_len() == axn_range.len() as usize,
-                    "CorticalArea::output(): Sdr/ganglion length must be \
-                    equal to the source axon range. terminal.len(): {} != axn_range.len(): \
-                    {}, (area: '{}', layer_tags: '{}', range: '{:?}').", terminal.dims().to_len(),
-                    axn_range.len(), self.name, src_layer.tags(), axn_range);
+                // assert!(target.dims().to_len() == axn_range.len() as usize,
+                //     "CorticalArea::output(): Sdr/ganglion length must be \
+                //     equal to the source axon range. target.len(): {} != axn_range.len(): \
+                //     {}, (area: '{}', layer_tags: '{}', range: '{:?}').", target.dims().to_len(),
+                //     axn_range.len(), self.name, src_layer.tags(), axn_range);
 
                 // let wait_events = &src_grp.events;
 
                 // unsafe { self.axns.states.cmd().read_async(terminal.frame_mut()).offset(axn_range.start as usize)
                 //     .block(false).ewait(wait_events).enew(new_events).enq().unwrap(); }
 
-                let tt_buf = TractTerminalOclBuffer::new(&self.axns.states,
-                    axn_range.start as usize, terminal.dims().clone(), None);
+                let source = try!(OclBufferSource::new(&self.axns.states, src_layer.axn_range(),
+                    target.dims().clone(), Some(wait_events)).map_err(|mut err| {
+                        err.prepend(&format!("CorticalArea::output(): \
+                        Target tract length must be equal to the source axon range length \
+                        (area: '{}', layer_tags: '{}'): ", self.name, src_layer.tags())); err
+                    })
+                );
 
-                terminal.copy_from_ocl_buffer(tt_buf, Some(wait_events)).unwrap();
+                // let source = match source_res {
+                //     Ok(source) => source,
+                //     Err(err) => {
+                //         err.prepend(format!("CorticalArea::output(): \
+                //         Target tract length must be equal to the source axon range length. \
+                //         (area: '{}', layer_tags: '{}'): ", self.name, src_layer.tags()));
+
+                //         return Err(err);
+                //     }
+                // };
+
+                target.copy_from_ocl_buffer(source).unwrap();
             }
         }
+
+        Ok(())
     }
 
     // // Read output from axon space and write to thalamus.

@@ -1,5 +1,6 @@
 use std::error::{Error};
 use std::fmt;
+// use std::ops::Deref;
 use ocl::Error as OclError;
 use cmn::CmnResult;
 
@@ -34,9 +35,9 @@ impl CmnError {
 
     /// If this is a `String` variant, concatenate `txt` to the front of the
     /// contained string. Otherwise, do nothing at all.
-    pub fn prepend<'s, S: AsRef<&'s str>>(&'s mut self, txt: S) {
+    pub fn prepend<'s, /*S: Deref<Target=str>*/>(&'s mut self, txt: &'s str) {
         if let &mut CmnError::String(ref mut string) = self {
-            string.reserve_exact(txt.as_ref().len());
+            string.reserve_exact(txt.len());
             let old_string_copy = string.clone();
             string.clear();
             string.push_str(txt.as_ref());

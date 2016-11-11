@@ -39,7 +39,7 @@ use ocl::EventList;
 use cortex::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList};
 use thalamus::{ExternalPathway, ExternalPathwayFrame};
-use tract_terminal::{TractTerminalSlice};
+use tract_terminal::{VecBufferTarget};
 
 
 
@@ -235,18 +235,18 @@ impl ThalamicTract {
         Ok((tract, events))
     }
 
-    fn terminal<'t>(&'t mut self, key: &(String, LayerTags))
-            -> Result<(TractTerminalSlice<'t>), CmnError>
+    fn terminal_target<'t>(&'t mut self, key: &(String, LayerTags))
+            -> CmnResult<(VecBufferTarget<'t>)>
     {
         let ta = try!(self.tract_areas.get_mut(key));
         let range = ta.range().clone();
         // let tract = TractFrameMut::new(&mut self.ganglion[range], ta.dims());
         let dims = ta.dims().clone();
         let events = ta.events_mut();
-        let terminal = TractTerminalSlice::new(&mut self.ganglion[range], dims, Some(events));
+        let terminal = VecBufferTarget::new(&mut self.ganglion[range], dims, Some(events));
         // let events = ta.events_mut();
 
-        Ok((terminal))
+        terminal
     }
 
     // fn verify_range(&self, range: &Range<usize>, area_name: &'static str) -> Result<(), CmnError> {
@@ -369,10 +369,10 @@ impl Thalamus {
         self.tract.frame_mut(key)
     }
 
-    pub fn tract_terminal<'t>(&'t mut self, key: &(String, LayerTags))
-            -> Result<(TractTerminalSlice<'t>), CmnError>
+    pub fn tract_terminal_target<'t>(&'t mut self, key: &(String, LayerTags))
+            -> CmnResult<(VecBufferTarget<'t>)>
     {
-        self.tract.terminal(key)
+        self.tract.terminal_target(key)
     }
 
      pub fn area_maps(&self) -> &HashMap<&'static str, AreaMap> {
