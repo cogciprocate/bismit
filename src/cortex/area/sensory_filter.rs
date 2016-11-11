@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event, EventList};
-use cmn::{Sdr};
+use cmn::{/*Sdr,*/ CmnResult};
 use cortex::AxonSpace;
 use map::{self, AreaMap};
+use tract_terminal::{SliceBufferSource, OclBufferTarget};
 
 pub struct SensoryFilter {
     filter_name: String,
@@ -75,12 +76,29 @@ impl SensoryFilter {
         }
     }
 
-    pub fn write(&self, sdr: &Sdr, wait_list: &EventList) -> Event {
-        assert!(sdr.len() <= self.input.len());
-        let mut fltr_event = Event::empty();
-        self.input.write(sdr).ewait(wait_list).enew(&mut fltr_event).enq()
-            .expect("SensoryFilter::write()");
-        fltr_event
+    // pub fn write(&self, sdr: &Sdr, wait_list: &EventList) -> Event {
+    //     assert!(sdr.len() <= self.input.len());
+    //     let mut fltr_event = Event::empty();
+    //     self.input.write(sdr).ewait(wait_list).enew(&mut fltr_event).enq()
+    //         .expect("SensoryFilter::write()");
+    //     fltr_event
+    // }
+
+    pub fn write(&self, source: SliceBufferSource) -> CmnResult<Event> {
+        assert!(source.dims().to_len() <= self.input.len());
+
+        // let mut fltr_event = Event::empty();
+        let mut events = EventList::new();
+
+        // self.input.write(sdr).ewait(wait_list).enew(&mut fltr_event).enq()
+        //     .expect("SensoryFilter::write()");
+        {
+            let mut target = OclBufferTarget::new(&self.input, 0..0, source.dims().clone(), Some(&mut events))?;
+            target.copy_from_slice_buffer(source)?;
+        }
+
+        debug_assert_eq!(events.len(), 1);
+        Ok(events.pop().unwrap_or(Event::empty()))
     }
 
     pub fn cycle(&self, wait_event: &Event) -> Event {

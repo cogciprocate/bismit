@@ -39,7 +39,7 @@ use ocl::EventList;
 use cortex::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList};
 use thalamus::{ExternalPathway, ExternalPathwayFrame};
-use tract_terminal::{VecBufferTarget};
+use tract_terminal::{SliceBufferTarget, SliceBufferSource};
 
 
 
@@ -118,6 +118,7 @@ impl TractAreaCache {
                 (area: \"{}\", tags: {})", src_area_name, layer_tags));
     }
 
+    // [NOTE]: Must be `&mut self` because searching saves cache info.
     fn get(&mut self, key: &(String, LayerTags)) -> Result<&TractArea, CmnError> {
         match self.area_search(key) {
             Ok(idx) => self.areas.get(idx).ok_or(CmnError::new(format!("Index '{}' not found for '{}' \
@@ -138,6 +139,7 @@ impl TractAreaCache {
         }
     }
 
+    // [NOTE]: Must be `&mut self` because searching saves cache info.
     fn area_search(&mut self, key: &(String, LayerTags)) -> Result<usize, CmnError> {
         // println!("TractAreaCache::area_search(): Searching for area: {}, tags: {:?}. ALL: {:?}",
         //     src_area_name, layer_tags, self.areas);
@@ -235,15 +237,28 @@ impl ThalamicTract {
         Ok((tract, events))
     }
 
+    fn terminal_source<'t>(&'t mut self, key: &(String, LayerTags))
+            -> CmnResult<(SliceBufferSource<'t>)>
+    {
+        let ta = try!(self.tract_areas.get(key));
+        let range = ta.range().clone();
+        let dims = ta.dims().clone();
+        // let tract = TractFrame::new(&self.ganglion[range], ta.dims());
+        let events = ta.events();
+        let terminal = SliceBufferSource::new(&self.ganglion[range], dims, Some(events));
+
+        terminal
+    }
+
     fn terminal_target<'t>(&'t mut self, key: &(String, LayerTags))
-            -> CmnResult<(VecBufferTarget<'t>)>
+            -> CmnResult<(SliceBufferTarget<'t>)>
     {
         let ta = try!(self.tract_areas.get_mut(key));
         let range = ta.range().clone();
         // let tract = TractFrameMut::new(&mut self.ganglion[range], ta.dims());
         let dims = ta.dims().clone();
         let events = ta.events_mut();
-        let terminal = VecBufferTarget::new(&mut self.ganglion[range], dims, Some(events));
+        let terminal = SliceBufferTarget::new(&mut self.ganglion[range], dims, Some(events));
         // let events = ta.events_mut();
 
         terminal
@@ -370,9 +385,15 @@ impl Thalamus {
     }
 
     pub fn tract_terminal_target<'t>(&'t mut self, key: &(String, LayerTags))
-            -> CmnResult<(VecBufferTarget<'t>)>
+            -> CmnResult<(SliceBufferTarget<'t>)>
     {
         self.tract.terminal_target(key)
+    }
+
+    pub fn tract_terminal_source<'t>(&'t mut self, key: &(String, LayerTags))
+            -> CmnResult<(SliceBufferSource<'t>)>
+    {
+        self.tract.terminal_source(key)
     }
 
      pub fn area_maps(&self) -> &HashMap<&'static str, AreaMap> {

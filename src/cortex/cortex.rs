@@ -77,7 +77,7 @@ impl Cortex {
         self.thal.cycle_external_pathways(&mut self.areas);
 
         for (_, area) in self.areas.iter_mut() {
-            area.cycle(&mut self.thal);
+            area.cycle(&mut self.thal).unwrap();
         }
     }
 

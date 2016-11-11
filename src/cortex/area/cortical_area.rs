@@ -10,7 +10,7 @@ use map::{DendriteKind, LayerKind, CellKind};
 use thalamus::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, SensoryFilter};
-use tract_terminal::{OclBufferSource, /*OclBufferTarget*/};
+use tract_terminal::{OclBufferSource, OclBufferTarget};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -467,11 +467,11 @@ impl CorticalArea {
     }
 
     // CYCLE(): <<<<< TODO: ISOLATE LEARNING INTO SEPARATE THREAD >>>>>
-    pub fn cycle(&mut self, thal: &mut Thalamus) {
+    pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
         let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
-        self.intake(map::FF_IN, thal);
-        self.intake(map::NS_IN, thal);
+        self.intake(map::FF_IN, thal)?;
+        self.intake(map::NS_IN, thal)?;
 
         if !self.settings.disable_ssts {
             let aff_input_events = { self.io_info.group_events(map::FF_IN).map(|wl| wl as &ClWaitList) };
@@ -484,7 +484,7 @@ impl CorticalArea {
 
         if !self.settings.disable_mcols { self.mcols.activate(); }
 
-        self.intake(map::FB_IN, thal);
+        self.intake(map::FB_IN, thal)?;
 
         if !self.settings.disable_pyrs {
             if !self.settings.disable_learning { self.ptal_mut().learn(); }
@@ -499,7 +499,9 @@ impl CorticalArea {
 
         if !self.settings.disable_regrowth { self.regrow(); }
 
-        self.output(map::FF_OUT, thal).unwrap();
+        self.output(map::FF_OUT, thal)?;
+
+        Ok(())
     }
 
     /// Read input from thalamus and write to axon space.
@@ -510,118 +512,75 @@ impl CorticalArea {
     /// LayerTags)` keys into `(usize, LayerTags)`. [UPDATE]: Need now only
     /// convert the strings to ints.
     ///
-    fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) {
-        if let Some((src_layers, new_events)) = self.io_info.group_mut(group_tags) {
-            new_events.clear_completed().expect("CorticalArea::intake()");
+    fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
+        if let Some((src_layers, mut new_events)) = self.io_info.group_mut(group_tags) {
+            // new_events.clear_completed().expect("CorticalArea::intake()");
 
             for src_layer in src_layers.iter_mut() {
-                let (wait_events, tract) = thal.tract_frame(src_layer.key())
-                    .expect("CorticalArea::intake()");
+                // let (wait_events, tract) = thal.tract_frame(src_layer.key())
+                //     .expect("CorticalArea::intake()");
+                let source = thal.tract_terminal_source(src_layer.key())?;
 
                 if group_tags.contains(map::FF_IN) && self.filters.is_some()
                         && !self.settings.bypass_filters
                 {
                     let filters_vec = self.filters.as_ref().unwrap();
-                    let mut fltr_event = filters_vec[0].write(tract.frame(), wait_events);
+                    // let mut fltr_event = filters_vec[0].write(tract.frame(), wait_events);
+                    let mut fltr_event = filters_vec[0].write(source)?;
 
                     for fltr in filters_vec.iter() {
                         fltr_event = fltr.cycle(&fltr_event);
                     }
                 } else {
                     let axn_range = src_layer.axn_range();
-                    assert!(tract.len() == axn_range.len() as usize,
-                        "CorticalArea::intake(): Sdr/ganglion length must be \
-                        equal to the destination axon range. tract.len(): {} != axn_range.len(): \
-                        {}, (area: '{}', layer_tags: '{}', range: '{:?}').", tract.len(),
-                        axn_range.len(), self.name, src_layer.tags(), axn_range);
+                    // assert!(tract.len() == axn_range.len() as usize,
 
-                    self.axns.states.cmd().write(tract.frame()).offset(axn_range.start as usize)
-                        .block(false).ewait(wait_events).enew(new_events).enq().unwrap();
+                    // // [TODO]: This check should be ok to remove now (accomplished by
+                    // // `OclBufferTarget::new`):
+                    // assert!(source.dims().to_len() == axn_range.len() as usize,
+                    //     "CorticalArea::intake(): Sdr/ganglion length must be \
+                    //     equal to the destination axon range. tract.len(): {} != axn_range.len(): \
+                    //     {}, (area: '{}', layer_tags: '{}', range: '{:?}').", source.dims().to_len(),
+                    //     axn_range.len(), self.name, src_layer.tags(), axn_range);
+
+                    // self.axns.states.cmd().write(tract.frame()).offset(axn_range.start as usize)
+                    //     .block(false).ewait(wait_events).enew(new_events).enq().unwrap();
+                    let area_name = self.name;
+
+                    let mut target = OclBufferTarget::new(&self.axns.states, axn_range,
+                            source.dims().clone(), Some(&mut new_events))
+                        .map_err(|mut err| {
+                            err.prepend(&format!("CorticalArea::intake():: \
+                            Source tract length must be equal to the target axon range length \
+                            (area: '{}', layer_tags: '{}'): ", area_name, src_layer.tags())); err
+                        })?;
+
+                    target.copy_from_slice_buffer(source)?;
                 }
             }
         }
+        Ok(())
     }
 
     // Read output from axon space and write to thalamus.
     fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
         if let Some((src_layers, wait_events)) = self.io_info.group(group_tags) {
             for src_layer in src_layers.iter() {
-                // let (mut terminal, new_events) = thal.tract_frame_mut(src_layer.key())
-                //     .expect("CorticalArea::output()");
+                let mut target = thal.tract_terminal_target(src_layer.key())?;
 
-                let mut target = try!(thal.tract_terminal_target(src_layer.key()));
-
-                // new_events.clear_completed().expect("CorticalArea::output()");
-
-                // if let &mut Some(ref mut events) = terminal.events() {
-                //     events.clear_completed().expect("CorticalArea::output()");
-                // }
-
-                // [NOTE]: Now clearing within tract terminals (on receiving list side):
-                // terminal.clear_completed_events().expect("CorticalArea::output()");
-
-                // let axn_range = src_layer.axn_range();
-
-                // assert!(target.dims().to_len() == axn_range.len() as usize,
-                //     "CorticalArea::output(): Sdr/ganglion length must be \
-                //     equal to the source axon range. target.len(): {} != axn_range.len(): \
-                //     {}, (area: '{}', layer_tags: '{}', range: '{:?}').", target.dims().to_len(),
-                //     axn_range.len(), self.name, src_layer.tags(), axn_range);
-
-                // let wait_events = &src_grp.events;
-
-                // unsafe { self.axns.states.cmd().read_async(terminal.frame_mut()).offset(axn_range.start as usize)
-                //     .block(false).ewait(wait_events).enew(new_events).enq().unwrap(); }
-
-                let source = try!(OclBufferSource::new(&self.axns.states, src_layer.axn_range(),
-                    target.dims().clone(), Some(wait_events)).map_err(|mut err| {
+                let source = OclBufferSource::new(&self.axns.states, src_layer.axn_range(),
+                        target.dims().clone(), Some(wait_events))
+                    .map_err(|mut err| {
                         err.prepend(&format!("CorticalArea::output(): \
                         Target tract length must be equal to the source axon range length \
                         (area: '{}', layer_tags: '{}'): ", self.name, src_layer.tags())); err
-                    })
-                );
+                    })?;
 
-                // let source = match source_res {
-                //     Ok(source) => source,
-                //     Err(err) => {
-                //         err.prepend(format!("CorticalArea::output(): \
-                //         Target tract length must be equal to the source axon range length. \
-                //         (area: '{}', layer_tags: '{}'): ", self.name, src_layer.tags()));
-
-                //         return Err(err);
-                //     }
-                // };
-
-                target.copy_from_ocl_buffer(source).unwrap();
+                target.copy_from_ocl_buffer(source)?;
             }
         }
-
         Ok(())
     }
-
-    // // Read output from axon space and write to thalamus.
-    // fn output_SDR_RANGE(&self, group_tags: LayerTags, thal: &mut Thalamus) {
-    //     if let Some((src_layers, wait_events)) = self.io_info.group(group_tags) {
-    //         for src_layer in src_layers.iter() {
-    //             let (tract, new_events) = thal.tract_frame_mut(src_layer.key())
-    //                 .expect("CorticalArea::output()");
-
-    //             new_events.clear_completed().expect("CorticalArea::write_input");
-    //             let axn_range = src_layer.axn_range();
-
-    //             assert!(tract.len() == axn_range.len() as usize,
-    //                 "CorticalArea::output(): Sdr/ganglion length must be \
-    //                 equal to the source axon range. tract.len(): {} != axn_range.len(): \
-    //                 {}, (area: '{}', layer_tags: '{}', range: '{:?}').", tract.len(),
-    //                 axn_range.len(), self.name, src_layer.tags(), axn_range);
-
-    //             // let wait_events = &src_grp.events;
-
-    //             unsafe { self.axns.states.cmd().read_async(tract).offset(axn_range.start as usize)
-    //                 .block(false).ewait(wait_events).enew(new_events).enq().unwrap(); }
-    //         }
-    //     }
-    // }
 
     pub fn regrow(&mut self) {
         if !self.settings.disable_regrowth {
