@@ -220,7 +220,8 @@ pub struct CorticalArea {
     pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,        // MAKE ME PRIVATE -- FIX tests::hybrid
     ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,    // MAKE ME PRIVATE -- FIX tests::hybrid
     iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,    // MAKE ME PRIVATE -- FIX tests::hybrid
-    filters: Option<Vec<Box<SensoryFilter>>>,
+    // filters: Option<Vec<Box<SensoryFilter>>>,
+    filter_chains: Vec<Vec<Box<SensoryFilter>>>,
     ptal_name: &'static str,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
     psal_name: &'static str,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
     // aux: Aux,
@@ -387,23 +388,27 @@ impl CorticalArea {
         // BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
         // <<<<< CHANGE TO LAYER**S**_WITH_FLAG() >>>>>
-        let filters = {
-            let mut filters_vec = Vec::with_capacity(5);
-
+        let filter_chains = {
             match area_map.filters() {
                 &Some(ref filter_schemes) => {
+                    let mut filter_chains = Vec::with_capacity(8);
+
+                    let mut layer_filters = Vec::with_capacity(5);
+
                     for pf in filter_schemes.iter() {
-                        filters_vec.push(Box::new(SensoryFilter::new(
-                            pf.filter_name(),
-                            pf.cl_file_name(),
-                            &area_map,
-                            &axns,
-                            &ocl_pq
-                        )));
+                        layer_filters.push(Box::new(SensoryFilter::new(
+                                pf.filter_name(),
+                                pf.cl_file_name(),
+                                &area_map,
+                                &axns,
+                                &ocl_pq
+                            )));
                     }
-                    Some(filters_vec)
+
+                    filter_chains.push(layer_filters);
+                    filter_chains
                 },
-                &None => None,
+                &None => Vec::with_capacity(0),
             }
         };
 
@@ -451,7 +456,7 @@ impl CorticalArea {
             pyrs_map: pyrs_map,
             ssts_map: ssts_map,
             iinns: iinns,
-            filters: filters,
+            filter_chains: filter_chains,
             // aux: aux,
             ocl_pq: ocl_pq,
             // ocl_context: ocl_context,
@@ -514,48 +519,33 @@ impl CorticalArea {
     ///
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
         if let Some((src_layers, mut new_events)) = self.io_info.group_mut(group_tags) {
-            // new_events.clear_completed().expect("CorticalArea::intake()");
 
             for src_layer in src_layers.iter_mut() {
-                // let (wait_events, tract) = thal.tract_frame(src_layer.key())
-                //     .expect("CorticalArea::intake()");
                 let source = thal.tract_terminal_source(src_layer.key())?;
 
-                if group_tags.contains(map::FF_IN) && self.filters.is_some()
+                if group_tags.contains(map::FF_IN) && !self.filter_chains.is_empty()
                         && !self.settings.bypass_filters
                 {
-                    let filters_vec = self.filters.as_ref().unwrap();
-                    // let mut fltr_event = filters_vec[0].write(tract.frame(), wait_events);
-                    let mut fltr_event = filters_vec[0].write(source)?;
+                    // for ref mut filter_chain in self.filter_chains.iter_mut() {
+                    let ref mut filter_chain = self.filter_chains[0];
+                    // let layer_filters = filter_chain.as_ref().unwrap();
+                    // let mut fltr_event = layer_filters[0].write(tract.frame(), wait_events);
+                    let mut filter_event = filter_chain[0].write(source)?;
 
-                    for fltr in filters_vec.iter() {
-                        fltr_event = fltr.cycle(&fltr_event);
+                    for filter in filter_chain.iter() {
+                        filter_event = filter.cycle(&filter_event);
                     }
                 } else {
                     let axn_range = src_layer.axn_range();
-                    // assert!(tract.len() == axn_range.len() as usize,
-
-                    // // [TODO]: This check should be ok to remove now (accomplished by
-                    // // `OclBufferTarget::new`):
-                    // assert!(source.dims().to_len() == axn_range.len() as usize,
-                    //     "CorticalArea::intake(): Sdr/ganglion length must be \
-                    //     equal to the destination axon range. tract.len(): {} != axn_range.len(): \
-                    //     {}, (area: '{}', layer_tags: '{}', range: '{:?}').", source.dims().to_len(),
-                    //     axn_range.len(), self.name, src_layer.tags(), axn_range);
-
-                    // self.axns.states.cmd().write(tract.frame()).offset(axn_range.start as usize)
-                    //     .block(false).ewait(wait_events).enew(new_events).enq().unwrap();
                     let area_name = self.name;
 
-                    let mut target = OclBufferTarget::new(&self.axns.states, axn_range,
-                            source.dims().clone(), Some(&mut new_events))
+                    OclBufferTarget::new(&self.axns.states, axn_range, source.dims().clone(),
+                            Some(&mut new_events))
                         .map_err(|mut err| {
                             err.prepend(&format!("CorticalArea::intake():: \
                             Source tract length must be equal to the target axon range length \
-                            (area: '{}', layer_tags: '{}'): ", area_name, src_layer.tags())); err
-                        })?;
-
-                    target.copy_from_slice_buffer(source)?;
+                            (area: '{}', layer_tags: '{}'): ", area_name, src_layer.tags())); err})?
+                        .copy_from_slice_buffer(source)?;
                 }
             }
         }

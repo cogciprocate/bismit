@@ -28,16 +28,6 @@ impl SensoryFilter {
             ) -> SensoryFilter
     {
         let layer_tags = map::FF_IN;
-        // [NOTE]: Combine this with the call to `::slc_src_layer_dims` below:
-        // let axn_slc_ranges = area_map.layers().layers_containing_tags_slc_range(layer_flags);
-        // assert!(axn_slc_ranges.len() == 1);
-        // assert!(axn_slc_ranges[0].len() == 1);
-        // let axn_slc_range = axn_slc_ranges[0].clone();
-
-        // let dims = area_map.slc_src_layer_dims(axn_slc_range.start, layer_flags).expect(&format!(
-        //     "SensoryFilter::new(): No source slice layer with axon slice range: '{:?}' and \
-        //     flags: '{:?}' found.", axn_slc_range, layer_flags));
-
 
         let layers = area_map.layers().layers_containing_tags(layer_tags);
         assert!(layers.len() == 1, "\n\nERROR: SensoryFilter::new(): Found multiple layers \
@@ -85,17 +75,11 @@ impl SensoryFilter {
     // }
 
     pub fn write(&self, source: SliceBufferSource) -> CmnResult<Event> {
-        assert!(source.dims().to_len() <= self.input.len());
-
-        // let mut fltr_event = Event::empty();
         let mut events = EventList::new();
 
-        // self.input.write(sdr).ewait(wait_list).enew(&mut fltr_event).enq()
-        //     .expect("SensoryFilter::write()");
-        {
-            let mut target = OclBufferTarget::new(&self.input, 0..0, source.dims().clone(), Some(&mut events))?;
-            target.copy_from_slice_buffer(source)?;
-        }
+        OclBufferTarget::new(&self.input, 0..self.input.len() as u32, source.dims().clone(),
+                Some(&mut events))?
+            .copy_from_slice_buffer(source)?;
 
         debug_assert_eq!(events.len(), 1);
         Ok(events.pop().unwrap_or(Event::empty()))
