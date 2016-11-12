@@ -3,12 +3,13 @@
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event, EventList};
 use cmn::{/*Sdr,*/ CmnResult};
 use cortex::AxonSpace;
-use map::{self, AreaMap};
+use map::{/*self,*/ AreaMap, LayerTags};
 use tract_terminal::{SliceBufferSource, OclBufferTarget};
 
 pub struct SensoryFilter {
     filter_name: String,
     cl_file_name: Option<String>,
+    layer_tags: LayerTags,
     area_name: &'static str,
     //dims: CorticalDims,
     input: Buffer<u8>,
@@ -19,6 +20,7 @@ impl SensoryFilter {
     pub fn new(
                 filter_name: String,
                 cl_file_name: Option<String>,
+                layer_tags: LayerTags,
                 area_map: &AreaMap,
                 //area_name: &'static str,
                 //dims: CorticalDims,
@@ -27,16 +29,17 @@ impl SensoryFilter {
                 ocl_pq: &ProQue,
             ) -> SensoryFilter
     {
-        let layer_tags = map::FF_IN;
+        // let layer_tags = map::FF_IN;
 
-        let layers = area_map.layers().layers_containing_tags(layer_tags);
+        let layers = area_map.layers().layers_meshing_tags(layer_tags);
         assert!(layers.len() == 1, "\n\nERROR: SensoryFilter::new(): Found multiple layers \
-            containing the same tags: \n{}\n Layers: \n{:#?}\n", layer_tags, layers);
+            meshing with the same tags: \n{}\n Layers: \n{:#?}\n", layer_tags, layers);
         let layer = layers[0];
-        let axn_slc_range = layer.slc_range().expect("SensoryFilter::new(): \
-            Invalid slice range.").clone();
+        let axn_slc_range = layer.slc_range().expect(&format!("\n\nERROR: SensoryFilter::new(): \
+            No slice range for layer with tags: {}. The source layer is not properly connected \
+            to this area. Check the area efferent inputs list.", layer_tags)).clone();
 
-        assert!(layers[0].sources().len() == 1, "\n\nERROR: SensoryFilter::new(): Multiple \
+        assert!(layer.sources().len() == 1, "\n\nERROR: SensoryFilter::new(): Multiple \
             source areas found for the feed-forward input layer with tags: \n\n{}\n\n\
             Source layers: \n{:#?}\n\n", layer_tags, layers);
         let ref src_layer = layers[0].sources()[0];
@@ -59,6 +62,7 @@ impl SensoryFilter {
         SensoryFilter {
             filter_name: filter_name,
             cl_file_name: cl_file_name,
+            layer_tags: layer_tags,
             area_name: area_map.area_name(),
             //dims: dims,
             input: input,
@@ -92,4 +96,6 @@ impl SensoryFilter {
             .expect("SensoryFilter::cycle()");
         fltr_event
     }
+
+    pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
 }

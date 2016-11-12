@@ -1,3 +1,4 @@
+use std::fmt;
 use std::ops::{Range};
 
 use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind, DendriteKind,
@@ -10,7 +11,7 @@ const DEBUG_PRINT: bool = false;
 
 // [FIXME]: Consolidate terminology and usage between source-layer layers (cellular)
 // and source-area layers (axonal).
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct LayerInfo {
     name: &'static str,
     tags: LayerTags,
@@ -328,6 +329,28 @@ impl LayerInfo {
             Some(ref r) => r.len() as u8,
             None => 0,
         }
+    }
+}
+
+impl fmt::Display for LayerInfo {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_fmt(format_args!("{:#?}", self))
+    }
+}
+
+impl fmt::Debug for LayerInfo {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("Foo")
+            .field("name", &self.name)
+            .field("tags", &self.tags.to_string())
+            .field("slc_range", &self.slc_range)
+            .field("sources", &self.sources)
+            .field("layer_map_kind", &self.layer_map_kind)
+            .field("axn_kind", &self.axn_kind)
+            .field("layer_scheme", &self.layer_scheme)
+            .field("axn_count", &self.axn_count)
+            .field("irregular_layer_dims", &self.irregular_layer_dims)
+            .finish()
     }
 }
 

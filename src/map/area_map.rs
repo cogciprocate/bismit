@@ -20,7 +20,7 @@ pub struct AreaMap {
     hrz_demarc: u8,
     eff_areas: Vec<&'static str>,
     aff_areas: Vec<&'static str>,
-    filters: Option<Vec<FilterScheme>>,
+    filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>
 }
 
 impl AreaMap {
@@ -46,7 +46,7 @@ impl AreaMap {
             hrz_demarc: 128,
             eff_areas: pamap.get_eff_areas().clone(),
             aff_areas: pamap.get_aff_areas().clone(),
-            filters: pamap.filters.clone(),
+            filter_chains: pamap.filter_chains.clone(),
         }
     }
 
@@ -66,19 +66,16 @@ impl AreaMap {
         ;
 
         // Custom filter kernels
-        match self.filters {
-            Some(ref filter_schemes) => {
-                for pf in filter_schemes.iter() {
-                    match pf.cl_file_name() {
-                        Some(ref clfn)  => {
-                            build_options = build_options.src_file(clfn.clone());
-                        },
-                        None => (),
-                    }
+        for &(_, ref filter_chain) in self.filter_chains.iter() {
+            for pf in filter_chain.iter() {
+                match pf.cl_file_name() {
+                    Some(ref clfn)  => {
+                        build_options = build_options.src_file(clfn.clone());
+                    },
+                    None => (),
                 }
-            },
-            None => (),
-        };
+            }
+        }
 
         cmn::load_builtin_kernel_source(build_options)
     }
@@ -260,10 +257,10 @@ impl AreaMap {
         let layers = self.layers.layers_meshing_tags(layer_tags);
 
         if layers.len() == 1 {
-            let layer = layers[0];
+            // let layer = layers[0];
 
-            if layer.slc_range().is_some() {
-                let base_slc_id = layers[0].slc_range().unwrap().start;
+            if let Some(layer_slc_range) = layers[0].slc_range() {
+                let base_slc_id = layer_slc_range.start;
                 let layer_idz = self.axn_idz(base_slc_id);
                 let layer_len = layers[0].axn_count();
 
@@ -272,6 +269,7 @@ impl AreaMap {
                         let slc_len = self.slices.slc_axn_count(slc_idm);
                         let axn_idz = self.axn_idz(slc_idm);
                         let axn_idn = axn_idz + slc_len;
+                        // [DEBUG]:
                         // println!("\n\n# (layer_idz, layer_len) = ({}, {}), axn_idn = {}, \
                         //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n",
                         //     layer_idz, layer_len, axn_idn, slc_len, axn_idz, layers[0]);
@@ -350,8 +348,8 @@ impl AreaMap {
     }
 
     // UPDATE / DEPRICATE
-    pub fn filters(&self) -> &Option<Vec<FilterScheme>> {
-        &self.filters
+    pub fn filter_chains(&self) -> &Vec<(LayerTags, Vec<FilterScheme>)> {
+        &self.filter_chains
     }
 
     pub fn dims(&self) -> &CorticalDims {

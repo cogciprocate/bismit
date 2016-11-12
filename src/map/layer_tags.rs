@@ -98,6 +98,13 @@ impl LayerTags {
     }
 }
 
+impl fmt::Display for LayerTags {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{{ {:?} | uid: {} }}", self, self.get_uid())
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -105,11 +112,5 @@ mod tests {
     fn layer_tags() {
         assert!(super::INPUT.mirror_io() == super::OUTPUT);
         assert!(super::OUTPUT.mirror_io() == super::INPUT);
-    }
-}
-
-impl fmt::Display for LayerTags {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{{ {:?} | uid: {} }}", self, self.get_uid())
     }
 }

@@ -1,6 +1,6 @@
 use std::collections::{HashMap};
 
-use map::{FilterScheme, InputScheme};
+use map::{FilterScheme, InputScheme, LayerTags};
 use cmn::{self, CorticalDims};
 
 
@@ -21,57 +21,57 @@ impl <'a>AreaSchemeList {
     }
 
     // [TODO]: RENAME TO `::area`
-    pub fn add_area(mut self, protoarea: AreaScheme) -> AreaSchemeList {
+    pub fn area(mut self, protoarea: AreaScheme) -> AreaSchemeList {
         self.add(protoarea);
         self
     }
 
-    // [TODO]: DEPRICATE
-    pub fn area(mut self,
-                name: &'static str,
-                layer_map_name: &'static str,
-                side: u32,
-                filters_opt: Option<Vec<FilterScheme>>,
-                eff_areas_opt: Option<Vec<&'static str>>,
-            ) -> AreaSchemeList
-    {
-        let mut new_area = AreaScheme::new(name, layer_map_name, side);
+    // // [TODO]: DEPRICATE
+    // pub fn area(mut self,
+    //             name: &'static str,
+    //             layer_map_name: &'static str,
+    //             side: u32,
+    //             filter_chain_opt: Option<(LayerTags, Vec<FilterScheme>)>,
+    //             eff_areas_opt: Option<Vec<&'static str>>,
+    //         ) -> AreaSchemeList
+    // {
+    //     let mut new_area = AreaScheme::new(name, layer_map_name, side);
 
-        if let Some(filters) = filters_opt {
-            new_area.set_filters(filters);
-        }
+    //     if let Some((tags, filter_chain)) = filter_chain_opt {
+    //         new_area.set_filter_chain(tags, filter_chain);
+    //     }
 
-        if let Some(eff_areas) = eff_areas_opt {
-            new_area.set_eff_areas(eff_areas);
-        }
+    //     if let Some(eff_areas) = eff_areas_opt {
+    //         new_area.set_eff_areas(eff_areas);
+    //     }
 
-        self.add(new_area);
-        self
-    }
+    //     self.add(new_area);
+    //     self
+    // }
 
-    // [TODO]: DEPRICATE
-    pub fn area_ext(mut self,
-                name: &'static str,
-                layer_map_name: &'static str,
-                side: u32,
-                input_scheme: InputScheme,
-                filters_opt: Option<Vec<FilterScheme>>,
-                eff_areas_opt: Option<Vec<&'static str>>,
-            ) -> AreaSchemeList
-    {
-        let mut new_area = AreaScheme::new(name, layer_map_name, side).input(input_scheme);
+    // // [TODO]: DEPRICATE
+    // pub fn area_ext(mut self,
+    //             name: &'static str,
+    //             layer_map_name: &'static str,
+    //             side: u32,
+    //             input_scheme: InputScheme,
+    //             filter_chain_opt: Option<(LayerTags, Vec<FilterScheme>)>,
+    //             eff_areas_opt: Option<Vec<&'static str>>,
+    //         ) -> AreaSchemeList
+    // {
+    //     let mut new_area = AreaScheme::new(name, layer_map_name, side).input(input_scheme);
 
-        if let Some(filters) = filters_opt {
-            new_area.set_filters(filters);
-        }
+    //     if let Some((tags, filter_chain)) = filter_chain_opt {
+    //         new_area.set_filter_chain(tags, filter_chain);
+    //     }
 
-        if let Some(eff_areas) = eff_areas_opt {
-            new_area.set_eff_areas(eff_areas);
-        }
+    //     if let Some(eff_areas) = eff_areas_opt {
+    //         new_area.set_eff_areas(eff_areas);
+    //     }
 
-        self.add(new_area);
-        self
-    }
+    //     self.add(new_area);
+    //     self
+    // }
 
 
     //     FREEZE(): CURRENTLY NO CHECKS TO MAKE SURE THIS HAS BEEN CALLED! -
@@ -111,7 +111,7 @@ pub struct AreaScheme {
     //pub region_kind: LayerMapKind,
     pub input: InputScheme,
     // inputs: Vec<InputScheme>,
-    pub filters: Option<Vec<FilterScheme>>,
+    pub filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>,
     aff_areas: Vec<&'static str>,
     eff_areas: Vec<&'static str>,
 }
@@ -142,7 +142,7 @@ impl AreaScheme {
             layer_map_name: layer_map_name,
             dims: CorticalDims::new(dims[0], dims[1], 0, 0, None),
             input: InputScheme::None,
-            filters: None,
+            filter_chains: Vec::with_capacity(4),
             aff_areas: Vec::with_capacity(4),
             eff_areas: Vec::with_capacity(0),
         }
@@ -153,8 +153,8 @@ impl AreaScheme {
         self
     }
 
-    pub fn filters(mut self, filters: Vec<FilterScheme>) -> AreaScheme {
-        self.filters = Some(filters);
+    pub fn filter_chain(mut self, tags: LayerTags, filter_chain: Vec<FilterScheme>) -> AreaScheme {
+        self.filter_chains.push((tags, filter_chain));
         self
     }
 
@@ -163,8 +163,8 @@ impl AreaScheme {
         self
     }
 
-    pub fn set_filters(&mut self, filters: Vec<FilterScheme>) {
-        self.filters = Some(filters);
+    pub fn set_filter_chain(&mut self, tags: LayerTags, filter_chain: Vec<FilterScheme>) {
+        self.filter_chains.push((tags, filter_chain));
     }
 
     pub fn set_eff_areas(&mut self, eff_areas: Vec<&'static str>) {
