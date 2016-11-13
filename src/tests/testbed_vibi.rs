@@ -1,6 +1,6 @@
 use cortex::Cortex;
-use map::{self, LayerTags, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaSchemeList,
-    CellScheme, FilterScheme, InputScheme, AxonKind, LayerKind};
+use map::{self, LayerTags, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme,
+    AreaSchemeList, CellScheme, FilterScheme, InputScheme, AxonKind, LayerKind};
 
 pub fn define_layer_map_sl() -> LayerMapSchemeList {
     const MOTOR_UID: u32 = 654;
@@ -41,19 +41,29 @@ pub fn define_area_sl() -> AreaSchemeList {
     const AREA_SIDE: u32 = 32;
 
     AreaSchemeList::new()
-        .area_ext("v0", "gly_seq_lm", AREA_SIDE,
-            InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) },
-            None,
-            None,
+        // .area_ext("v0", "gly_seq_lm", AREA_SIDE,
+        //     InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) },
+        //     None,
+        //     None,
+        // )
+        // .area_ext("v00", "gly_seq_rose_lm", AREA_SIDE,
+        //     InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) },
+        //     None,
+        //     None,
+        // )
+        // .area("v1", "cortical_lm", AREA_SIDE,
+        //     Some(vec![FilterScheme::new("retina", None)]),
+        //     Some(vec!["v0", "v00"]),
+        // )
+        .area(AreaScheme::new("v0", "gly_seq_lm", AREA_SIDE)
+            .input(InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) })
         )
-        .area_ext("v00", "gly_seq_rose_lm", AREA_SIDE,
-            InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) },
-            None,
-            None,
+        .area(AreaScheme::new("v00", "gly_seq_rose_lm", AREA_SIDE)
+            .input(InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) })
         )
-        .area("v1", "cortical_lm", AREA_SIDE,
-            Some(vec![FilterScheme::new("retina", None)]),
-            Some(vec!["v0", "v00"]),
+        .area(AreaScheme::new("v1", "cortical_lm", AREA_SIDE,)
+            .eff_areas(vec!["v0", "v00"])
+            .filter_chain(map::FF_IN, vec![FilterScheme::new("retina", None)]),
         )
 
         // .area("b1", "visual", AREA_SIDE, None, Some(vec!["v1"]))

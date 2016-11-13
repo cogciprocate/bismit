@@ -61,11 +61,11 @@ fn define_a_schemes() -> AreaSchemeList {
     const AREA_SIDE: u32 = 48;
 
     AreaSchemeList::new()
-        .add_area(AreaScheme::new("m0", "motor_gen", AREA_SIDE))
-        .add_area(AreaScheme::new("v0", "v0_lm", ENCODE_SIZE)
+        .area(AreaScheme::new("m0", "motor_gen", AREA_SIDE))
+        .area(AreaScheme::new("v0", "v0_lm", ENCODE_SIZE)
             .input(InputScheme::ScalarSequence { range: (0.0, 172.0), incr: 1.0 })
         )
-        .add_area(AreaScheme::new("v1", "visual", AREA_SIDE)
+        .area(AreaScheme::new("v1", "visual", AREA_SIDE)
             .eff_areas(vec!["v0", "m0"])
         )
 }

@@ -1,7 +1,7 @@
 use cmn::CorticalDims;
 use map;
-use map::{LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaSchemeList, CellScheme, FilterScheme,
-    InputScheme, AxonKind, LayerKind};
+use map::{LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme, AreaSchemeList,
+    CellScheme, FilterScheme, InputScheme, AxonKind, LayerKind};
 use thalamus::Thalamus;
 use ocl::{Context, ProQue};
 use cortex::Cortex;
@@ -43,31 +43,45 @@ pub fn define_protoareas() -> AreaSchemeList {
 
     let protoareas = AreaSchemeList::new()
 
-        .area_ext("v0", "external",
-            // area_side * 2, area_side * 2,
-            area_side,
-                        // area_side / 2, area_side / 2,
-            InputScheme::IdxStreamer {
+        // .area_ext("v0", "external",
+        //     // area_side * 2, area_side * 2,
+        //     area_side,
+        //                 // area_side / 2, area_side / 2,
+        //     InputScheme::IdxStreamer {
+        //         file_name: "train-images-idx3-ubyte".to_owned(),
+        //         cyc_per: CYCLES_PER_FRAME,
+        //         scale: 1.3,
+        //         loop_frames: 1,
+        //     },
+
+        //     None,
+        //     None,
+        // )
+
+        // .area("v1", "visual",
+        //     // area_side * 2, area_side * 2,
+        //     area_side,
+        //     // area_side / 2, area_side / 2,
+        //     // 128, 128,
+
+        //     Some(vec![FilterScheme::new("retina", None)]),
+
+        //     Some(vec!["v0"]),
+        // )
+
+        .area(AreaScheme::new("v0", "external", area_side)
+            .input(InputScheme::IdxStreamer {
                 file_name: "train-images-idx3-ubyte".to_owned(),
                 cyc_per: CYCLES_PER_FRAME,
                 scale: 1.3,
                 loop_frames: 1,
-            },
-
-            None,
-            None,
+            })
+        )
+        .area(AreaScheme::new("v1", "visual", area_side)
+            .eff_areas(vec!["v0"])
+            .filter_chain(map::FF_IN, vec![FilterScheme::new("retina", None)]),
         )
 
-        .area("v1", "visual",
-            // area_side * 2, area_side * 2,
-            area_side,
-            // area_side / 2, area_side / 2,
-            // 128, 128,
-
-            Some(vec![FilterScheme::new("retina", None)]),
-
-            Some(vec!["v0"]),
-        )
 
         // .area("b1", "visual",
         //     // area_side * 2, area_side * 2,
@@ -138,8 +152,14 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
     );
 
     let area_sl = AreaSchemeList::new()
-        .area(area_name, lmap_name, 32, None, Some(vec!["dummy_area"]))
-        .area_ext("dummy_area", "dummy_lm", 67, InputScheme::None, None, None)
+        // .area(area_name, lmap_name, 32, None, Some(vec!["dummy_area"]))
+        // .area_ext("dummy_area", "dummy_lm", 67, InputScheme::None, None, None)
+        .area(AreaScheme::new(area_name, lmap_name, 32)
+            .eff_areas(vec!["dummy_area"])
+        )
+        .area(AreaScheme::new("dummy_area", "dummy_lm", 67)
+            .input(InputScheme::None)
+        )
     ;
 
     Cortex::new(layer_map_sl, area_sl, None)
