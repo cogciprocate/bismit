@@ -24,29 +24,32 @@ pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 /// Information needed to read from and write to the thalamus for a layer
 /// uniquely identified by `tags`.
 ///
+/// `filter_key` is a tuple containing both the filter chain id and the filter
+/// layer id used when searching for the correct filter for an input source.
+///
 /// [TODO]: Convert area_name to a numeric id:
 ///
 #[derive(Debug)]
 pub struct IoLayerInfo {
     tract_key: (String, LayerTags),
     axn_range: Range<u32>,
-    filter_chain_id: Option<usize>,
+    filter_key: Option<(usize, usize)>,
 }
 
 impl IoLayerInfo {
     pub fn new(src_area_name: String, tags: LayerTags, axn_range: Range<u32>,
-            filter_chain_id: Option<usize>) -> IoLayerInfo
+            filter_key: Option<(usize, usize)>) -> IoLayerInfo
     {
         IoLayerInfo {
             tract_key: (src_area_name, tags),
             axn_range: axn_range,
-            filter_chain_id: filter_chain_id,
+            filter_key: filter_key,
         }
     }
 
     #[inline] pub fn key(&self) -> &(String, LayerTags) { &self.tract_key }
     #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
-    #[allow(dead_code)] #[inline] pub fn filter_chain_id(&self) -> &Option<usize> { &self.filter_chain_id }
+    #[inline] pub fn filter_key(&self) -> &Option<(usize, usize)>{ &self.filter_key }
     #[allow(dead_code)] #[inline] pub fn area_name<'a>(&'a self) -> &'a str { &self.tract_key.0 }
     #[inline] pub fn tags<'a>(&'a self) -> LayerTags { self.tract_key.1 }
 }
@@ -60,33 +63,55 @@ pub struct IoLayerInfoGroup {
 }
 
 impl IoLayerInfoGroup {
-    pub fn new( area_map: &AreaMap, group_tags: LayerTags,
-                tract_keys: Vec<(String, LayerTags, Option<(&'static str, Range<u8>)>)>,
-                filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>
-            ) -> IoLayerInfoGroup
+    pub fn new(area_map: &AreaMap, group_tags: LayerTags,
+            tract_keys: Vec<(String, LayerTags, Option<(&'static str, Range<u8>)>)>,
+            filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>) -> IoLayerInfoGroup
     {
         // Create a container for our i/o layer(s):
         let mut layers = Vec::<IoLayerInfo>::with_capacity(tract_keys.len());
 
-        for (layer_area_name, src_lyr_tags, src_lyr_key) in tract_keys.into_iter() {
-            let (local_layer_tags, filter_chain_id) = if group_tags.contains(map::OUTPUT) {
-                (src_lyr_tags, None)
+        for (lyr_area_name, lyr_tags, src_lyr_key) in tract_keys.into_iter() {
+            let (local_layer_tags, filter_key) = if group_tags.contains(map::OUTPUT) {
+                (lyr_tags, None)
             } else {
                 // For input layers, revert tags back to this area's
                 // perspective (they are flipped by `IoLayerInfoCache::new`
                 // because they are the list of tags from all source layers
                 // for input layers):
-                let local_layer_tags = src_lyr_tags.mirror_io();
+                let local_layer_tags = lyr_tags.mirror_io();
 
                 // Determine the filter chain id:
                 let filter_chain_id = filter_chains.iter().position(|&(tags, _)| {
                     tags.meshes(local_layer_tags)
                 });
 
-                // // [DEBUG]:
-                // println!("###### I/O LAYER ({}) FILTER_CHAIN_ID: '{:?}'", src_lyr_tags, filter_chain_id);
+                // let filter_key: Option<(usize, usize)> = match filter_chain_id {
+                //     Some(chain_id) => {
+                //         // let (_, ref filter_chain) = filter_chains[chain_id];
+                //         // filter_chain.first().map(|fc| Some(fc.lyr_id(&lyr_area_name)))
+                //         filter_chains[chain_id].1.first().and_then(|fc|
+                //             fc.lyr_id(&lyr_area_name).map(|lid| (chain_id, lid)))
+                //     },
+                //     None => None,
+                // };
 
-                (local_layer_tags, filter_chain_id)
+                // let filter_layer_id = filter_chain_id.map(|cid| filter_chains[cid].1.first()
+                //         .map(|fc| Some(fc.lyr_id(&lyr_area_name))));
+                // let filter_key = filter_layer_id.and_then(|flid|)
+                // .map(|flid| (filter_chain_id, flid));
+
+
+                // If there is a filter chain id, find the filter layer id
+                // corresponding to the current remote layer area name then
+                // return both as a tuple to be used later when accessing the
+                // filter.
+                let filter_key = filter_chain_id.and_then(|fcid|
+                    filter_chains[fcid].1.first().and_then(|fc|
+                        fc.lyr_id(&lyr_area_name).map(|lid| (fcid, lid))));
+
+                // // [DEBUG]:
+                // println!("###### I/O LAYER ({}) FILTER_CHAIN_ID: '{:?}'", lyr_tags, filter_chain_id);
+                (local_layer_tags, filter_key)
             };
 
             let axn_range = match area_map.axn_range_meshing_tags(local_layer_tags, src_lyr_key) {
@@ -95,8 +120,8 @@ impl IoLayerInfoGroup {
                     tags: {}.", local_layer_tags),
             };
 
-            let io_layer = IoLayerInfo::new(layer_area_name, src_lyr_tags, axn_range,
-                filter_chain_id);
+            let io_layer = IoLayerInfo::new(lyr_area_name, lyr_tags, axn_range,
+                filter_key);
             layers.push(io_layer);
         }
 
@@ -137,8 +162,8 @@ impl IoLayerInfoCache {
             // If the layer is an output layer, consult the layer info
             // directly. If an input layer, consult the layer source info for
             // that layer. Either way, construct a tuple of '(area_name,
-            // layer_tags)' which can be used to construct a key to access the
-            // correct thalamic tract:
+            // src_lyr_tags, src_lyr_key)' which can be used to construct a
+            // key to access the correct thalamic tract:
             let tract_keys: Vec<(String, LayerTags, Option<(&'static str, Range<u8>)>)> =
                 if group_tags.contains(map::OUTPUT) {
                     area_map.layers().layers_containing_tags(group_tags).iter()
@@ -420,8 +445,8 @@ impl CorticalArea {
                         &ocl_pq));
                 }
 
-                println!("###### ADDING FILTER CHAIN: tags: {}", tags);
-
+                // [DEBUG]:
+                // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
                 filter_chains.push((tags, layer_filters));
             }
 
@@ -539,18 +564,15 @@ impl CorticalArea {
                 let source = thal.tract_terminal_source(src_lyr.key())?;
 
                 if group_tags.contains(map::FF_IN) && !self.filter_chains.is_empty()
-                        && !self.settings.bypass_filters && src_lyr.filter_chain_id.is_some()
+                        && !self.settings.bypass_filters && src_lyr.filter_key.is_some()
                 {
-                    if let &Some(filter_chain_id) = src_lyr.filter_chain_id() {
-                        let src_area_name = src_lyr.area_name();
-                        // for ref mut filter_chain in self.filter_chains.iter_mut() {
+                    if let &Some((filter_chain_id, filter_lyr_id)) = src_lyr.filter_key() {
+                        // let src_area_name = src_lyr.area_name();
                         let (_, ref mut filter_chain) = self.filter_chains[filter_chain_id];
-                        // let layer_filters = filter_chain.as_ref().unwrap();
-                        // let mut fltr_event = layer_filters[0].write(tract.frame(), wait_events);
-                        let mut filter_event = filter_chain[0].write(source, src_area_name)?;
+                        let mut filter_event = filter_chain[0].write(source, filter_lyr_id)?;
 
                         for filter in filter_chain.iter() {
-                            filter_event = filter.cycle(&filter_event, src_area_name);
+                            filter_event = filter.cycle(&filter_event, filter_lyr_id);
                         }
                     } else {
                         unreachable!();

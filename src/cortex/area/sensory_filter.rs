@@ -3,10 +3,10 @@
 // use std::hash::{Hash, BuildHasherDefault};
 use std::collections::HashMap;
 // use twox_hash::XxHash;
-use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event, /*EventList*/};
-use cmn::{/*Sdr,*/ CmnResult};
+use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
+use cmn::{CmnResult};
 use cortex::AxonSpace;
-use map::{/*self,*/ AreaMap, LayerTags};
+use map::{AreaMap, LayerTags};
 use tract_terminal::{SliceBufferSource, OclBufferTarget};
 
 pub struct SensoryFilter {
@@ -14,10 +14,6 @@ pub struct SensoryFilter {
     cl_file_name: Option<String>,
     layer_tags: LayerTags,
     area_name: &'static str,
-    //dims: CorticalDims,
-    // input: Buffer<u8>,
-    // kern_cycle: Kernel,
-
     src_area_map: HashMap<&'static str, usize>,
     input_buffers: Vec<Buffer<u8>>,
     cycle_kernels: Vec<Kernel>,
@@ -29,15 +25,12 @@ impl SensoryFilter {
                 cl_file_name: Option<String>,
                 layer_tags: LayerTags,
                 area_map: &AreaMap,
-                //area_name: &'static str,
-                //dims: CorticalDims,
                 axns: &AxonSpace,
-                //base_axn_slc: u8,
                 ocl_pq: &ProQue,
             ) -> SensoryFilter
     {
         let layers = area_map.layers().layers_meshing_tags(layer_tags);
-        assert!(layers.len() == 1, "\n\nERROR: SensoryFilter::new(): Multiple (or no) layers \
+        assert!(layers.len() == 1, "\n\nERROR: SensoryFilter::new(): Multiple (or zero) layers \
             with the same layer tags found. Please refine filter tags to select only a single \
             layer. \nArea: {}\n{}\nLayers: \n{:#?}\n\n",
             area_map.area_name(), layer_tags, layers);
@@ -70,7 +63,6 @@ impl SensoryFilter {
             let input = Buffer::<u8>::new(ocl_pq.queue().clone(), None, dims, None).unwrap();
 
             let kern_cycle = ocl_pq.create_kernel(&filter_name.clone()).expect("[FIXME]: HANDLE ME")
-                // .expect("SensoryFilter::new()")
                 .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
                 .lws(SpatialDims::Three(1, 8, 8 as usize))
                 .arg_buf(&input)
@@ -88,44 +80,29 @@ impl SensoryFilter {
             cl_file_name: cl_file_name,
             layer_tags: layer_tags,
             area_name: area_map.area_name(),
-            //dims: dims,
-            // input: input,
-            // kern_cycle: kern_cycle,
-
             src_area_map: src_area_map,
             input_buffers: input_buffers,
             cycle_kernels: cycle_kernels,
         }
     }
 
-    // pub fn write(&self, sdr: &Sdr, wait_list: &EventList) -> Event {
-    //     assert!(sdr.len() <= self.input.len());
-    //     let mut fltr_event = Event::empty();
-    //     self.input.write(sdr).ewait(wait_list).enew(&mut fltr_event).enq()
-    //         .expect("SensoryFilter::write()");
-    //     fltr_event
-    // }
-
-    pub fn write(&self, source: SliceBufferSource, src_area_name: &str) -> CmnResult<Event> {
-        // let mut events = EventList::new();
-        let filter_id = self.src_area_map[src_area_name];
-
-        Ok(OclBufferTarget::new(&self.input_buffers[filter_id],
-                0..self.input_buffers[filter_id].len() as u32, source.dims().clone(), None, true)?
+    pub fn write(&self, source: SliceBufferSource, lyr_id: usize) -> CmnResult<Event> {
+        Ok(OclBufferTarget::new(&self.input_buffers[lyr_id],
+                0..self.input_buffers[lyr_id].len() as u32, source.dims().clone(), None, true)?
             .copy_from_slice_buffer(source)?.event().unwrap_or(Event::empty()))
-
-        // debug_assert_eq!(events.len(), 1);
-        // Ok(events.pop().unwrap_or(Event::empty()))
     }
 
-    pub fn cycle(&self, wait_event: &Event, src_area_name: &str) -> Event {
+    pub fn cycle(&self, wait_event: &Event, lyr_id: usize) -> Event {
         //println!("Printing {} for {}:\n", &self.filter_name, self.area_name);
-        let filter_id = self.src_area_map[src_area_name];
 
         let mut fltr_event = Event::empty();
-        self.cycle_kernels[filter_id].cmd().ewait(wait_event).enew(&mut fltr_event).enq()
+        self.cycle_kernels[lyr_id].cmd().ewait(wait_event).enew(&mut fltr_event).enq()
             .expect("SensoryFilter::cycle()");
         fltr_event
+    }
+
+    pub fn lyr_id(&self, src_area_name: &str) -> Option<usize> {
+        self.src_area_map.get(src_area_name).map(|&id| id)
     }
 
     pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
