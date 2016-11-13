@@ -95,8 +95,8 @@ pub struct ExternalPathway {
     area_name: String,
     encoder: ExternalPathwayEncoder,
     // direction: ExternalPathwayDirection,
-    // layers: HashMap<LayerTags, ExternalPathwayLayer, BuildHasherDefault<XxHash>>,
     layers: HashMap<LayerTags, ExternalPathwayLayer>,
+    // layers: HashMap<LayerTags, ExternalPathwayLayer, BuildHasherDefault<XxHash>>,
 }
 
 impl ExternalPathway {

@@ -258,7 +258,7 @@ impl ThalamicTract {
         // let tract = TractFrameMut::new(&mut self.ganglion[range], ta.dims());
         let dims = ta.dims().clone();
         let events = ta.events_mut();
-        let terminal = SliceBufferTarget::new(&mut self.ganglion[range], dims, Some(events));
+        let terminal = SliceBufferTarget::new(&mut self.ganglion[range], dims, Some(events), false);
         // let events = ta.events_mut();
 
         terminal

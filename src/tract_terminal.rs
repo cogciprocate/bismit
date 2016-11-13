@@ -71,14 +71,16 @@ pub struct OclBufferTarget<'b> {
     offset: usize,
     dims: TractDims,
     events: Option<&'b mut EventList>,
+    event: Option<Event>,
 }
 
 impl<'b> OclBufferTarget<'b> {
     pub fn new(buf: &'b Buffer<u8>, offset: Range<u32>, dims: TractDims,
-            mut events: Option<&'b mut EventList>) -> CmnResult<Self>
+            mut events: Option<&'b mut EventList>, store_event: bool) -> CmnResult<Self>
     {
         // [TODO]: Ensure buffer is sufficient size to handle offset range.
         // ~ debug_assert_eq!(buf.len(), dims.to_len());
+        let event = if store_event { Some(Event::empty()) } else { None };
 
         if dims.to_len() != offset.len() as usize {
             return Err(format!(" dims.to_len(): {} != offset.len(): \
@@ -94,27 +96,42 @@ impl<'b> OclBufferTarget<'b> {
             dims: dims,
             offset: offset.start as usize,
             events: events,
+            event: event,
         })
     }
 
-    pub fn copy_from_ocl_buffer<'e>(&mut self, source: OclBufferSource) -> CmnResult<()> {
-        let mut en = Event::empty();
+    pub fn copy_from_ocl_buffer(&'b mut self, source: OclBufferSource)
+            -> CmnResult<&'b mut OclBufferTarget>
+    {
+        // let mut ev = match self.event {
+        //     Some(ev) => ev,
+        //     None => Event::empty(),
+        // };
+
+        let mut ev = Event::empty();
 
         source.buf().cmd().copy(self.buf, self.offset, self.dims.to_len())
             .offset(source.offset)
-            .ewait_opt(source.events().map(|e| e as &ClWaitList))
-            .enew_opt(if self.events.is_some() { Some(&mut en as &mut ClEventPtrNew) } else { None })
+            .ewait_opt(source.events().map(|evl| evl as &ClWaitList))
+            .enew_opt(if self.events.is_some() || self.event.is_some()
+                { Some(&mut ev as &mut ClEventPtrNew) } else { None })
             .enq()?;
 
         if let Some(ref mut evl) = self.events {
-            evl.push(en);
+            evl.push(ev.clone());
         }
 
-        Ok(())
+        if self.event.is_some() {
+            self.event = Some(ev);
+        }
+
+        Ok(self)
     }
 
-    pub fn copy_from_slice_buffer<'e>(&mut self, source: SliceBufferSource) -> CmnResult<()> {
-        let mut en = Event::empty();
+    pub fn copy_from_slice_buffer(&'b mut self, source: SliceBufferSource)
+            -> CmnResult<&'b mut OclBufferTarget>
+    {
+        let mut ev = Event::empty();
 
         // self.axns.states.cmd().write(tract.frame()).offset(axn_range.start as usize)
         //     .block(false).ewait(wait_events).enew(new_events).enq().unwrap();
@@ -122,20 +139,26 @@ impl<'b> OclBufferTarget<'b> {
             .offset(self.offset)
             .block(false)
             .ewait_opt(source.events().map(|e| e as &ClWaitList))
-            .enew_opt(if self.events.is_some() { Some(&mut en as &mut ClEventPtrNew) } else { None })
+            .enew_opt(if self.events.is_some() || self.event.is_some()
+                { Some(&mut ev as &mut ClEventPtrNew) } else { None })
             .enq()?;
 
         if let Some(ref mut evl) = self.events {
-            evl.push(en);
+            evl.push(ev.clone());
         }
 
-        Ok(())
+        if self.event.is_some() {
+            self.event = Some(ev);
+        }
+
+        Ok(self)
     }
 
     #[inline] pub fn buf(&mut self) -> &'b Buffer<u8> { self.buf }
     #[inline] pub fn offset(&self) -> usize { self.offset }
     #[inline] pub fn dims(&self) -> &TractDims { &self.dims }
     #[inline] pub fn events(&mut self) -> &mut Option<&'b mut EventList> { &mut self.events }
+    #[inline] pub fn event(&self) -> Option<Event> { self.event.clone() }
 }
 
 
@@ -170,13 +193,15 @@ pub struct SliceBufferTarget<'b> {
     slice: &'b mut [u8],
     dims: TractDims,
     events: Option<&'b mut EventList>,
+    event: Option<Event>,
 }
 
 impl<'b> SliceBufferTarget<'b> {
-    pub fn new(slice: &'b mut [u8], dims: TractDims, mut events: Option<&'b mut EventList>)
-            -> CmnResult<Self>
+    pub fn new(slice: &'b mut [u8], dims: TractDims, mut events: Option<&'b mut EventList>,
+            store_event: bool) -> CmnResult<Self>
     {
         // debug_assert_eq!(slice.len(), dims.to_len());
+        let event = if store_event { Some(Event::empty()) } else { None };
 
         if let Some(ref mut events) = events {
             events.clear_completed()?
@@ -186,25 +211,33 @@ impl<'b> SliceBufferTarget<'b> {
             slice: slice,
             dims: dims,
             events: events,
+            event: event,
         })
     }
 
-    pub fn copy_from_ocl_buffer<'e>(&mut self, source: OclBufferSource) -> CmnResult<()> {
-        let mut en = Event::empty();
+    pub fn copy_from_ocl_buffer(&'b mut self, source: OclBufferSource)
+            -> CmnResult<&'b mut SliceBufferTarget>
+    {
+        let mut ev = Event::empty();
 
         unsafe {
             source.buf().cmd().read_async(self.slice)
                 .offset(source.offset())
                 .ewait_opt(source.events().map(|e| e as &ClWaitList))
-                .enew_opt(if self.events.is_some() { Some(&mut en as &mut ClEventPtrNew) } else { None })
+                .enew_opt(if self.events.is_some() || self.event.is_some()
+                    { Some(&mut ev as &mut ClEventPtrNew) } else { None })
                 .enq()?;
         }
 
         if let Some(ref mut evl) = self.events {
-            evl.push(en);
+            evl.push(ev.clone());
         }
 
-        Ok(())
+        if self.event.is_some() {
+            self.event = Some(ev);
+        }
+
+        Ok(self)
     }
 
     #[inline] pub fn slice(&mut self) -> &mut [u8] { self.slice }

@@ -1,9 +1,10 @@
 
 // use std::clone::Clone;
 use std::fmt::Debug;
-use std::hash::Hash;
+use std::hash::{Hash, /*BuildHasherDefault*/};
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
+// use twox_hash::XxHash;
 
 
 /// A store of data indexable by usize or key.

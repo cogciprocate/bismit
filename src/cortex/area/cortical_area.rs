@@ -68,15 +68,15 @@ impl IoLayerInfoGroup {
         // Create a container for our i/o layer(s):
         let mut layers = Vec::<IoLayerInfo>::with_capacity(tract_keys.len());
 
-        for (layer_area_name, src_layer_tags, src_lyr_key) in tract_keys.into_iter() {
+        for (layer_area_name, src_lyr_tags, src_lyr_key) in tract_keys.into_iter() {
             let (local_layer_tags, filter_chain_id) = if group_tags.contains(map::OUTPUT) {
-                (src_layer_tags, None)
+                (src_lyr_tags, None)
             } else {
                 // For input layers, revert tags back to this area's
                 // perspective (they are flipped by `IoLayerInfoCache::new`
                 // because they are the list of tags from all source layers
                 // for input layers):
-                let local_layer_tags = src_layer_tags.mirror_io();
+                let local_layer_tags = src_lyr_tags.mirror_io();
 
                 // Determine the filter chain id:
                 let filter_chain_id = filter_chains.iter().position(|&(tags, _)| {
@@ -84,7 +84,7 @@ impl IoLayerInfoGroup {
                 });
 
                 // // [DEBUG]:
-                // println!("###### I/O LAYER ({}) FILTER_CHAIN_ID: '{:?}'", src_layer_tags, filter_chain_id);
+                // println!("###### I/O LAYER ({}) FILTER_CHAIN_ID: '{:?}'", src_lyr_tags, filter_chain_id);
 
                 (local_layer_tags, filter_chain_id)
             };
@@ -95,7 +95,7 @@ impl IoLayerInfoGroup {
                     tags: {}.", local_layer_tags),
             };
 
-            let io_layer = IoLayerInfo::new(layer_area_name, src_layer_tags, axn_range,
+            let io_layer = IoLayerInfo::new(layer_area_name, src_lyr_tags, axn_range,
                 filter_chain_id);
             layers.push(io_layer);
         }
@@ -145,7 +145,7 @@ impl IoLayerInfoCache {
                         .map(|li| (area_name.clone(), li.tags(), None)).collect()
                 } else {
                     debug_assert!(group_tags.contains(map::INPUT));
-                    area_map.layers().layers_containing_tags_src_layers(group_tags).iter()
+                    area_map.layers().layers_containing_tags_src_lyrs(group_tags).iter()
                         .map(|sli| (
                                 sli.area_name().to_owned(),
                                 sli.tags(),
@@ -356,7 +356,7 @@ impl CorticalArea {
 
                             let src_lyr_name = src_lyr_names[0];
                             let src_slc_ids = area_map.layer_slc_ids(vec![src_lyr_name]);
-                            let src_layer_depth = src_slc_ids.len() as u8;
+                            let src_lyr_depth = src_slc_ids.len() as u8;
                             let src_base_axn_slc = src_slc_ids[0];
 
                             // println!("{mt}::NEW(): Inhibitory cells: src_lyr_names: \
@@ -366,7 +366,7 @@ impl CorticalArea {
                             let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
                             let src_soma_env = &ssts_map.get_mut(src_lyr_name).expect(&em1).soma();
 
-                            let iinns_dims = dims.clone_with_depth(src_layer_depth);
+                            let iinns_dims = dims.clone_with_depth(src_lyr_depth);
                             let iinn_lyr = InhibitoryInterneuronNetwork::new(layer.name(), iinns_dims,
                                 pcell.clone(), &area_map, src_soma_env,
                                 src_base_axn_slc, &axns, /*&aux,*/ &ocl_pq);
@@ -404,11 +404,9 @@ impl CorticalArea {
         =============================================================================*/
         // BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
-        // <<<<< CHANGE TO LAYER**S**_WITH_FLAG() >>>>>
         let filter_chains = {
             let mut filter_chains = Vec::with_capacity(4);
 
-            // match area_map.filter_chains() {
             for &(tags, ref chain_scheme) in area_map.filter_chains() {
                 let mut layer_filters = Vec::with_capacity(4);
 
@@ -536,37 +534,37 @@ impl CorticalArea {
     /// convert the strings to ints.
     ///
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
-        if let Some((src_layers, mut new_events)) = self.io_info.group_mut(group_tags) {
-
-            for src_layer in src_layers.iter_mut() {
-                let source = thal.tract_terminal_source(src_layer.key())?;
+        if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(group_tags) {
+            for src_lyr in src_lyrs.iter_mut() {
+                let source = thal.tract_terminal_source(src_lyr.key())?;
 
                 if group_tags.contains(map::FF_IN) && !self.filter_chains.is_empty()
-                        && !self.settings.bypass_filters && src_layer.filter_chain_id.is_some()
+                        && !self.settings.bypass_filters && src_lyr.filter_chain_id.is_some()
                 {
-                    if let &Some(filter_chain_id) = src_layer.filter_chain_id() {
+                    if let &Some(filter_chain_id) = src_lyr.filter_chain_id() {
+                        let src_area_name = src_lyr.area_name();
                         // for ref mut filter_chain in self.filter_chains.iter_mut() {
                         let (_, ref mut filter_chain) = self.filter_chains[filter_chain_id];
                         // let layer_filters = filter_chain.as_ref().unwrap();
                         // let mut fltr_event = layer_filters[0].write(tract.frame(), wait_events);
-                        let mut filter_event = filter_chain[0].write(source)?;
+                        let mut filter_event = filter_chain[0].write(source, src_area_name)?;
 
                         for filter in filter_chain.iter() {
-                            filter_event = filter.cycle(&filter_event);
+                            filter_event = filter.cycle(&filter_event, src_area_name);
                         }
                     } else {
                         unreachable!();
                     }
                 } else {
-                    let axn_range = src_layer.axn_range();
+                    let axn_range = src_lyr.axn_range();
                     let area_name = self.name;
 
                     OclBufferTarget::new(&self.axns.states, axn_range, source.dims().clone(),
-                            Some(&mut new_events))
+                            Some(&mut new_events), false)
                         .map_err(|mut err| {
                             err.prepend(&format!("CorticalArea::intake():: \
                             Source tract length must be equal to the target axon range length \
-                            (area: '{}', layer_tags: '{}'): ", area_name, src_layer.tags())); err})?
+                            (area: '{}', layer_tags: '{}'): ", area_name, src_lyr.tags())); err})?
                         .copy_from_slice_buffer(source)?;
                 }
             }
@@ -576,16 +574,16 @@ impl CorticalArea {
 
     // Read output from axon space and write to thalamus.
     fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
-        if let Some((src_layers, wait_events)) = self.io_info.group(group_tags) {
-            for src_layer in src_layers.iter() {
-                let mut target = thal.tract_terminal_target(src_layer.key())?;
+        if let Some((src_lyrs, wait_events)) = self.io_info.group(group_tags) {
+            for src_lyr in src_lyrs.iter() {
+                let mut target = thal.tract_terminal_target(src_lyr.key())?;
 
-                let source = OclBufferSource::new(&self.axns.states, src_layer.axn_range(),
+                let source = OclBufferSource::new(&self.axns.states, src_lyr.axn_range(),
                         target.dims().clone(), Some(wait_events))
                     .map_err(|mut err| {
                         err.prepend(&format!("CorticalArea::output(): \
                         Target tract length must be equal to the source axon range length \
-                        (area: '{}', layer_tags: '{}'): ", self.name, src_layer.tags())); err
+                        (area: '{}', layer_tags: '{}'): ", self.name, src_lyr.tags())); err
                     })?;
 
                 target.copy_from_ocl_buffer(source)?;

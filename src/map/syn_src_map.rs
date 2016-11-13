@@ -261,6 +261,9 @@ impl SrcSlices {
             let mut slcs = BTreeMap::new();
             let syn_reaches = *syn_reaches_by_tft.get(tft_id).expect("SrcSlices::new(): {{1}}");
 
+            assert!(src_slc_ids.len() > 0, "SrcSlices::new(): No source slices found for \
+                a layer in area: \"{}\".", area_map.area_name());
+
             slc_id_ranges.push(RandRange::new(0, src_slc_ids.len()));
             str_ranges.push(RandRange::new(STR_MIN, STR_MAX));
 
