@@ -20,7 +20,7 @@ pub struct LayerInfo {
     layer_map_kind: LayerMapKind,
     axn_kind: AxonKind,
     layer_scheme: LayerScheme,
-    axn_count: u32,
+    ttl_axn_count: u32,
     irregular_layer_dims: Option<CorticalDims>,
 }
 
@@ -40,7 +40,7 @@ impl LayerInfo {
         let mut sources = Vec::with_capacity(8);
 
         let mut next_slc_idz = slc_total;
-        let mut axn_count = 0;
+        let mut ttl_axn_count = 0;
 
         let mut irregular_layer_dims: Option<CorticalDims> = None;
         let mut layer_debug: Vec<String> = Vec::new();
@@ -171,9 +171,13 @@ impl LayerInfo {
                     // layer_scheme.set_depth(src_layer_depth);
 
                     next_slc_idz += src_layer_dims.depth();
-                    axn_count += src_layer_dims.cells();
+                    ttl_axn_count += src_layer_dims.cells();
                 }
             }
+
+            // [TODO]: Double check that the total source layer axon count
+            // (sources[_].axn_count()) matches up.
+
         } else {
             // [NOTE]: This is a non-input layer.
             debug_assert!(!tags.contains(map::INPUT));
@@ -183,7 +187,7 @@ impl LayerInfo {
             // the area. Thalamic output layers have irregular layer sizes.
             let columns = match plmap_kind {
                 LayerMapKind::Subcortical => {
-                    // If this is subcortical (previously thalamic), the
+                    // If this is subcortical (previously, thalamic), the
                     // OUTPUT flags should be set.
                     assert!(tags.contains(map::OUTPUT));
                     let pamap_name = pamap.name().to_owned();
@@ -208,7 +212,7 @@ impl LayerInfo {
             };
 
             next_slc_idz += layer_depth;
-            axn_count += columns * layer_depth as u32;
+            ttl_axn_count += columns * layer_depth as u32;
         }
 
         let ttl_slc_range = slc_total..next_slc_idz;
@@ -230,7 +234,7 @@ impl LayerInfo {
         }
 
         if let Some(ref irr_dims) = irregular_layer_dims {
-            debug_assert!(irr_dims.to_len() == axn_count as usize);
+            debug_assert!(irr_dims.to_len() == ttl_axn_count as usize);
         }
 
         LayerInfo {
@@ -241,9 +245,16 @@ impl LayerInfo {
             layer_map_kind: plmap_kind,
             axn_kind: axn_kind,
             layer_scheme: layer_scheme,
-            axn_count: axn_count,
+            ttl_axn_count: ttl_axn_count,
             irregular_layer_dims: irregular_layer_dims,
         }
+    }
+
+    pub fn src_lyr(&self, area_name: &'static str, tar_slc_range: Range<u8>)
+            -> Option<&SourceLayerInfo>
+    {
+        self.sources.iter().find(|sli| sli.area_name == area_name &&
+            sli.tar_slc_range == tar_slc_range)
     }
 
     pub fn irregular_layer_dims(&self) -> Option<&CorticalDims> {
@@ -253,7 +264,7 @@ impl LayerInfo {
     pub fn thalamic_horizontal_axon_count(&self) -> Option<u32> {
         if self.layer_map_kind == LayerMapKind::Subcortical && self.axn_kind == AxonKind::Horizontal {
             debug_assert!(self.tags.contains(map::NS_OUT));
-            Some(self.axn_count)
+            Some(self.ttl_axn_count)
         } else {
             None
         }
@@ -286,7 +297,7 @@ impl LayerInfo {
     #[inline] pub fn tags(&self) -> LayerTags { self.tags }
     #[inline] pub fn kind(&self) -> &LayerKind { self.layer_scheme.kind() }
     #[inline] pub fn sources(&self) -> &[SourceLayerInfo]  { &self.sources }
-    #[inline] pub fn axn_count(&self) -> u32 { self.axn_count }
+    #[inline] pub fn ttl_axn_count(&self) -> u32 { self.ttl_axn_count }
     #[inline] pub fn axn_kind(&self) -> AxonKind { self.axn_kind.clone() }
     #[inline] pub fn layer_map_kind(&self) -> LayerMapKind { self.layer_map_kind.clone() }
     #[inline] pub fn slc_range(&self) -> Option<&Range<u8>> { self.slc_range.as_ref() }
@@ -308,7 +319,7 @@ impl fmt::Debug for LayerInfo {
             .field("layer_map_kind", &self.layer_map_kind)
             .field("axn_kind", &self.axn_kind)
             .field("layer_scheme", &self.layer_scheme)
-            .field("axn_count", &self.axn_count)
+            .field("ttl_axn_count", &self.ttl_axn_count)
             .field("irregular_layer_dims", &self.irregular_layer_dims)
             .finish()
     }
@@ -322,6 +333,7 @@ pub struct SourceLayerInfo {
     dims: CorticalDims,
     tags: LayerTags,
     axn_kind: AxonKind,
+    // Absolute target slice range (not level-relative):
     tar_slc_range: Range<u8>,
 }
 

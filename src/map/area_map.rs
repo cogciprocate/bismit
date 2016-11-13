@@ -252,31 +252,73 @@ impl AreaMap {
         ptal_layer_vec[0]
      }
 
+    /// Returns the axon range for a single layer with tags meshing with
+    /// `layer_tags`.
+    ///
+    /// `src_lyr_sub_slcs` optionally specifies a particular range of sub
+    /// slices mapping to a specific source layer (source `area_name` is
+    /// required for redundant verification).
+    ///
     // NEW
-    pub fn axn_range_meshing_tags(&self, layer_tags: LayerTags) -> Option<Range<u32>> {
+    pub fn axn_range_meshing_tags(&self, layer_tags: LayerTags,
+                src_lyr_sub_slcs: Option<(&'static str, Range<u8>)>) -> Option<Range<u32>>
+    {
         let layers = self.layers.layers_meshing_tags(layer_tags);
 
         if layers.len() == 1 {
-            // let layer = layers[0];
+            let layer = layers[0];
 
-            if let Some(layer_slc_range) = layers[0].slc_range() {
-                let base_slc_id = layer_slc_range.start;
-                let layer_idz = self.axn_idz(base_slc_id);
-                let layer_len = layers[0].axn_count();
+            if let Some(lyr_slc_range) = layer.slc_range() {
+                match src_lyr_sub_slcs {
+                    // Sub-slices of Layer:
+                    Some((area_name, slc_range)) => {
+                        match layer.src_lyr(area_name, slc_range) {
+                            Some(src_lyr) => {
+                                let src_base_slc_id = src_lyr.tar_slc_range().start;
+                                let src_lyr_idz = self.axn_idz(src_base_slc_id);
+                                let src_lyr_len = src_lyr.axn_count();
 
-                debug_assert!({
-                        let slc_idm = base_slc_id + layers[0].depth() - 1;
-                        let slc_len = self.slices.slc_axn_count(slc_idm);
-                        let axn_idz = self.axn_idz(slc_idm);
-                        let axn_idn = axn_idz + slc_len;
-                        // [DEBUG]:
-                        // println!("\n\n# (layer_idz, layer_len) = ({}, {}), axn_idn = {}, \
-                        //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n",
-                        //     layer_idz, layer_len, axn_idn, slc_len, axn_idz, layers[0]);
-                        (layer_idz + layer_len) == axn_idn
-                    }, "AreaMap::axn_range(): Axon index mismatch.");
+                                // [TODO]: ADDME: self.verify_axn_range()
+                                debug_assert!({
+                                        let slc_idm = src_base_slc_id + src_lyr.dims().depth() - 1;
+                                        let slc_len = self.slices.slc_axn_count(slc_idm);
+                                        let axn_idz = self.axn_idz(slc_idm);
+                                        let axn_idn = axn_idz + slc_len;
+                                        // // [DEBUG]:
+                                        // println!("\n\n# (lyr_idz, lyr_len) = ({}, {}), axn_idn = {}, \
+                                        //     slc_len = {}, axn_idz = {}, \n# layer: {:#?}\n",
+                                        //     src_lyr_idz, src_lyr_len, axn_idn, slc_len, axn_idz, layer);
+                                        (src_lyr_idz + src_lyr_len) == axn_idn
+                                    }, "AreaMap::axn_range(): Axon index mismatch.");
 
-                Some(layer_idz..(layer_idz + layer_len))
+                                Some(src_lyr_idz..(src_lyr_idz + src_lyr_len))
+                            },
+                            None => None,
+                        }
+                    },
+                    // Entire Layer:
+                    None => {
+                        let base_slc_id = lyr_slc_range.start;
+                        let lyr_idz = self.axn_idz(base_slc_id);
+
+                        let lyr_len = layer.ttl_axn_count();
+
+                        // [TODO]: ADDME: self.verify_axn_range()
+                        debug_assert!({
+                                let slc_idm = base_slc_id + layer.depth() - 1;
+                                let slc_len = self.slices.slc_axn_count(slc_idm);
+                                let axn_idz = self.axn_idz(slc_idm);
+                                let axn_idn = axn_idz + slc_len;
+                                // [DEBUG]:
+                                // println!("\n\n# (lyr_idz, lyr_len) = ({}, {}), axn_idn = {}, \
+                                //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n",
+                                //     lyr_idz, lyr_len, axn_idn, slc_len, axn_idz, layer);
+                                (lyr_idz + lyr_len) == axn_idn
+                            }, "AreaMap::axn_range(): Axon index mismatch.");
+
+                        Some(lyr_idz..(lyr_idz + lyr_len))
+                    },
+                }
             } else {
                 None
             }

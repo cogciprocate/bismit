@@ -61,14 +61,14 @@ pub struct IoLayerInfoGroup {
 
 impl IoLayerInfoGroup {
     pub fn new( area_map: &AreaMap, group_tags: LayerTags,
-                tract_keys: Vec<(String, LayerTags)>,
+                tract_keys: Vec<(String, LayerTags, Option<(&'static str, Range<u8>)>)>,
                 filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>
             ) -> IoLayerInfoGroup
     {
         // Create a container for our i/o layer(s):
         let mut layers = Vec::<IoLayerInfo>::with_capacity(tract_keys.len());
 
-        for (layer_area_name, src_layer_tags) in tract_keys.into_iter() {
+        for (layer_area_name, src_layer_tags, src_lyr_key) in tract_keys.into_iter() {
             let (local_layer_tags, filter_chain_id) = if group_tags.contains(map::OUTPUT) {
                 (src_layer_tags, None)
             } else {
@@ -83,12 +83,13 @@ impl IoLayerInfoGroup {
                     tags.meshes(local_layer_tags)
                 });
 
-                println!("###### FILTER_CHAIN_ID ({}): {:?}", src_layer_tags, filter_chain_id);
+                // // [DEBUG]:
+                // println!("###### I/O LAYER ({}) FILTER_CHAIN_ID: '{:?}'", src_layer_tags, filter_chain_id);
 
                 (local_layer_tags, filter_chain_id)
             };
 
-            let axn_range = match area_map.axn_range_meshing_tags(local_layer_tags) {
+            let axn_range = match area_map.axn_range_meshing_tags(local_layer_tags, src_lyr_key) {
                 Some(axn_range) => axn_range,
                 None => panic!("IoLayerInfoCache::new(): Internal consistency error: \
                     tags: {}.", local_layer_tags),
@@ -123,8 +124,7 @@ pub struct IoLayerInfoCache {
 
 impl IoLayerInfoCache {
     pub fn new(area_name: String, area_map: &AreaMap,
-        filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>)
-            -> IoLayerInfoCache
+                filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>, ) -> IoLayerInfoCache
     {
         let group_tags_list: [LayerTags; 6] = [
             map::FF_IN, map::FB_IN, map::NS_IN,
@@ -139,14 +139,18 @@ impl IoLayerInfoCache {
             // that layer. Either way, construct a tuple of '(area_name,
             // layer_tags)' which can be used to construct a key to access the
             // correct thalamic tract:
-            let tract_keys: Vec<(String, LayerTags)> =
+            let tract_keys: Vec<(String, LayerTags, Option<(&'static str, Range<u8>)>)> =
                 if group_tags.contains(map::OUTPUT) {
                     area_map.layers().layers_containing_tags(group_tags).iter()
-                        .map(|li| (area_name.clone(), li.tags())).collect()
+                        .map(|li| (area_name.clone(), li.tags(), None)).collect()
                 } else {
                     debug_assert!(group_tags.contains(map::INPUT));
                     area_map.layers().layers_containing_tags_src_layers(group_tags).iter()
-                        .map(|sli| (sli.area_name().to_owned(), sli.tags())).collect()
+                        .map(|sli| (
+                                sli.area_name().to_owned(),
+                                sli.tags(),
+                                Some((sli.area_name(), sli.tar_slc_range().clone())),
+                            )).collect()
                 };
 
             // If there was nothing in the area map for this group's tags,
@@ -230,9 +234,9 @@ pub struct CorticalArea {
     area_map: AreaMap,
     axns: AxonSpace,
     mcols: Box<Minicolumns>,
-    pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,        // MAKE ME PRIVATE -- FIX tests::hybrid
-    ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,    // MAKE ME PRIVATE -- FIX tests::hybrid
-    iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,    // MAKE ME PRIVATE -- FIX tests::hybrid
+    pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,
+    ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,
+    iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
     // filters: Option<Vec<Box<SensoryFilter>>>,
     filter_chains: Vec<(LayerTags, Vec<SensoryFilter>)>,
     ptal_name: &'static str,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
