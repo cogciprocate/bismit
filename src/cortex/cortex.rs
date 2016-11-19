@@ -20,8 +20,6 @@ impl Cortex {
                     ca_settings: Option<CorticalAreaSettings>) -> Cortex {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
-        let thal = Thalamus::new(layer_map_sl, area_sl).unwrap();
-        let area_sl = thal.area_maps().clone();
         let platform = Platform::new(ocl::core::default_platform().unwrap());
         let device_type = ocl::core::default_device_type().unwrap();
         // println!("Cortex::new(): device_type: {:?}", device_type);
@@ -30,18 +28,17 @@ impl Cortex {
             .devices(Device::specifier().type_flags(device_type))
             .build().expect("CorticalArea::new(): ocl_context creation error");
         // println!("Cortex::new(): ocl_context.devices(): {:?}", ocl_context.devices());
+        let thal = Thalamus::new(layer_map_sl, area_sl, &ocl_context).unwrap();
+        let area_sl = thal.area_maps().clone();
         let mut areas = HashMap::new();
         let mut device_idx = 1;
 
         for (&area_name, _) in area_sl.iter().filter(|&(_, pamap)|
                 pamap.lm_kind_tmp() != &LayerMapKind::Subcortical)
         {
-            areas.insert(area_name, Box::new(
-                // [TODO]: convert unwrap to try (change Cortex sig):
-                CorticalArea::new(thal.area_map(area_name).clone(),
-                device_idx, &ocl_context, ca_settings.clone()).unwrap()
-                ));
-
+            // [TODO]: convert unwrap to try (change Cortex sig):
+            areas.insert(area_name, Box::new(CorticalArea::new(thal.area_map(area_name).clone(),
+                    device_idx, &ocl_context, ca_settings.clone()).unwrap()));
             device_idx += 1;
         }
 

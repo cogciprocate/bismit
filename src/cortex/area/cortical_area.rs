@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 
 use cmn::{self, /*CmnError,*/ CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
-use ocl::{ProQue, Context, Buffer, EventList, Event};
+use ocl::{Device, ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
 use map::{DendriteKind, LayerKind, CellKind};
 use thalamus::Thalamus;
@@ -84,22 +84,6 @@ impl IoLayerInfoGroup {
                 let filter_chain_id = filter_chains.iter().position(|&(tags, _)| {
                     tags.meshes(local_layer_tags)
                 });
-
-                // let filter_key: Option<(usize, usize)> = match filter_chain_id {
-                //     Some(chain_id) => {
-                //         // let (_, ref filter_chain) = filter_chains[chain_id];
-                //         // filter_chain.first().map(|fc| Some(fc.lyr_id(&lyr_area_name)))
-                //         filter_chains[chain_id].1.first().and_then(|fc|
-                //             fc.lyr_id(&lyr_area_name).map(|lid| (chain_id, lid)))
-                //     },
-                //     None => None,
-                // };
-
-                // let filter_layer_id = filter_chain_id.map(|cid| filter_chains[cid].1.first()
-                //         .map(|fc| Some(fc.lyr_id(&lyr_area_name))));
-                // let filter_key = filter_layer_id.and_then(|flid|)
-                // .map(|flid| (filter_chain_id, flid));
-
 
                 // If there is a filter chain id, find the filter layer id
                 // corresponding to the current remote layer area name then
@@ -643,14 +627,6 @@ impl CorticalArea {
         axn_irs
     }
 
-    pub fn mcols(&self) -> &Box<Minicolumns> {
-        &self.mcols
-    }
-
-    pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> {
-        &mut self.mcols
-    }
-
     /* PIL(): Get Primary Spatial Associative Layer (immutable) */
     pub fn psal(&self) -> &Box<SpinyStellateLayer> {
         let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
@@ -673,33 +649,6 @@ impl CorticalArea {
     pub fn ptal_mut(&mut self) -> &mut Box<PyramidalLayer> {
         let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
         self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
-    }
-
-    pub fn axns(&self) -> &AxonSpace {
-        &self.axns
-    }
-
-    pub fn dims(&self) -> &CorticalDims {
-        &self.dims
-    }
-
-    pub fn psal_name(&self) -> &'static str {
-        self.psal_name
-    }
-
-    pub fn ptal_name(&self) -> &'static str {
-        self.ptal_name
-    }
-
-    pub fn afferent_target_names(&self) -> &Vec<&'static str> {
-        &self.area_map.aff_areas()
-    }
-    pub fn efferent_target_names(&self) -> &Vec<&'static str> {
-        &self.area_map.eff_areas()
-    }
-
-    pub fn ocl_pq(&self) -> &ProQue {
-        &self.ocl_pq
     }
 
     // // TODO: MOVE TO TESTS
@@ -761,13 +710,18 @@ impl CorticalArea {
         event
     }
 
-    pub fn axn_tract_map(&self) -> SliceTractMap {
-        self.area_map.slices().tract_map()
-    }
-
-    pub fn area_map(&self) -> &AreaMap {
-        &self.area_map
-    }
+    pub fn mcols(&self) -> &Box<Minicolumns> { &self.mcols }
+    pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> { &mut self.mcols }
+    pub fn axns(&self) -> &AxonSpace { &self.axns }
+    pub fn dims(&self) -> &CorticalDims { &self.dims }
+    pub fn psal_name(&self) -> &'static str { self.psal_name }
+    pub fn ptal_name(&self) -> &'static str { self.ptal_name }
+    pub fn afferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.aff_areas() }
+    pub fn efferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.eff_areas() }
+    pub fn ocl_pq(&self) -> &ProQue { &self.ocl_pq }
+    pub fn device(&self) -> &Device { &self.ocl_pq.queue().device() }
+    pub fn axn_tract_map(&self) -> SliceTractMap { self.area_map.slices().tract_map() }
+    pub fn area_map(&self) -> &AreaMap { &self.area_map }
 }
 
 impl Drop for CorticalArea {

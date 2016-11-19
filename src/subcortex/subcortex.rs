@@ -1,5 +1,7 @@
 use subcortex::Thalamus;
 
+// [NOTES]:
+//
 // VentralLateralNucleus -- Inputs from the basal nuclei which includes the
 // substantia nigra and the globus pallidus (via the thalamic fasciculus). It
 // also has inputs from the cerebellum (dentate nucleus, via the

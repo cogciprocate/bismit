@@ -20,59 +20,10 @@ impl <'a>AreaSchemeList {
             .map(|_| panic!("AreaScheme::add(): Duplicate areas: (area: \"{}\")", name));
     }
 
-    // [TODO]: RENAME TO `::area`
     pub fn area(mut self, protoarea: AreaScheme) -> AreaSchemeList {
         self.add(protoarea);
         self
     }
-
-    // // [TODO]: DEPRICATE
-    // pub fn area(mut self,
-    //             name: &'static str,
-    //             layer_map_name: &'static str,
-    //             side: u32,
-    //             filter_chain_opt: Option<(LayerTags, Vec<FilterScheme>)>,
-    //             eff_areas_opt: Option<Vec<&'static str>>,
-    //         ) -> AreaSchemeList
-    // {
-    //     let mut new_area = AreaScheme::new(name, layer_map_name, side);
-
-    //     if let Some((tags, filter_chain)) = filter_chain_opt {
-    //         new_area.set_filter_chain(tags, filter_chain);
-    //     }
-
-    //     if let Some(eff_areas) = eff_areas_opt {
-    //         new_area.set_eff_areas(eff_areas);
-    //     }
-
-    //     self.add(new_area);
-    //     self
-    // }
-
-    // // [TODO]: DEPRICATE
-    // pub fn area_ext(mut self,
-    //             name: &'static str,
-    //             layer_map_name: &'static str,
-    //             side: u32,
-    //             input_scheme: InputScheme,
-    //             filter_chain_opt: Option<(LayerTags, Vec<FilterScheme>)>,
-    //             eff_areas_opt: Option<Vec<&'static str>>,
-    //         ) -> AreaSchemeList
-    // {
-    //     let mut new_area = AreaScheme::new(name, layer_map_name, side).input(input_scheme);
-
-    //     if let Some((tags, filter_chain)) = filter_chain_opt {
-    //         new_area.set_filter_chain(tags, filter_chain);
-    //     }
-
-    //     if let Some(eff_areas) = eff_areas_opt {
-    //         new_area.set_eff_areas(eff_areas);
-    //     }
-
-    //     self.add(new_area);
-    //     self
-    // }
-
 
     //     FREEZE(): CURRENTLY NO CHECKS TO MAKE SURE THIS HAS BEEN CALLED! -
     pub fn freeze(&mut self) {
@@ -90,16 +41,10 @@ impl <'a>AreaSchemeList {
         for (area_name, aff_area_name) in aff_list {
             let emsg = format!("map::areas::AreaSchemeList::freeze(): Area: '{}' not found. ", area_name);
             self.maps.get_mut(area_name).expect(&emsg).aff_areas.push(aff_area_name);
-            // match self.maps.get_mut(area_name) {
-            //     Some(area) => area.aff_areas.push(aff_area_name),
-            //     None => (), // Could panic if we wanted to.
-            // }
         }
     }
 
-    pub fn maps(&self) -> &HashMap<&'static str, AreaScheme> {
-        &self.maps
-    }
+    #[inline] pub fn maps(&self) -> &HashMap<&'static str, AreaScheme> { &self.maps }
 }
 
 
@@ -171,24 +116,10 @@ impl AreaScheme {
         self.eff_areas = eff_areas;
     }
 
-    pub fn name(&self) -> &'static str {
-        self.name
-    }
-
-    pub fn dims(&self) -> &CorticalDims {
-        &self.dims
-    }
-
-    pub fn get_input(&self) -> &InputScheme {
-        &self.input
-    }
-
-    pub fn get_eff_areas(&self) -> &Vec<&'static str> {
-        &self.eff_areas
-    }
-
-    pub fn get_aff_areas(&self) -> &Vec<&'static str> {
-        &self.aff_areas
-    }
+    #[inline] pub fn name(&self) -> &'static str { self.name }
+    #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] pub fn get_input(&self) -> &InputScheme { &self.input }
+    #[inline] pub fn get_eff_areas(&self) -> &Vec<&'static str> { &self.eff_areas }
+    #[inline] pub fn get_aff_areas(&self) -> &Vec<&'static str> { &self.aff_areas }
 }
 
