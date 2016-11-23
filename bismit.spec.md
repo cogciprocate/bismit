@@ -15,7 +15,9 @@ Executor / Execution Context / Functional Context
 - Layer 6 (tall and short) is the key layer involved in this process.
 - The Claustrum is likely a key structure involved in coordinating and
   broadcasting execution context information
- 
+- The nRT (and L6-short) is related to and intertwined with this system (and
+  may have been a precursor system) but seems to focus on a different aspect
+  (particularly timing-sync and sleep/power saving).
 
 === Learning for pyramidal cell synapses (prediction oriented synapses) ===
     
