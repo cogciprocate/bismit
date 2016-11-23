@@ -1,3 +1,21 @@
+Executor / Execution Context / Functional Context
+=================================================
+
+- Represents the current desire
+- Maps to an unconscious thought or thread
+- Many, many run in parallel in a 'tangled tree' shaped heirarchy and compete
+  for precedence
+- Roughly maps to our abstract concept of a theory, frame of mind,
+  perspective, approach, etc.
+- Also related to our more pragmatic concept of a decision, course of action,
+  prescription, game plan, etc.
+- Handles the high level switching context necessary to carry out a sequence
+  of actions given a certain stimulus
+
+- Layer 6 (tall and short) is the key layer involved in this process.
+- The Claustrum is likely a key structure involved in coordinating and
+  broadcasting execution context information
+ 
 
 === Learning for pyramidal cell synapses (prediction oriented synapses) ===
     
