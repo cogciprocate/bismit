@@ -1,3 +1,8 @@
+## Layer 5 TODO
+- Wire up an output decoder (`Arm`)
+- Implement random firing algorithm
+    - Include dynamically adjustable frequency and add init val param to `LayerMapScheme`
+- 
 
 
 ## Executor / Execution Context / Functional Context
