@@ -165,6 +165,10 @@ impl SrcSliceInfo {
                 debug_assert!(src_slc_dims.v_size() <= cmn::MAX_HRZ_DIM_SIZE);
                 debug_assert!(src_slc_dims.u_size() <= cmn::MAX_HRZ_DIM_SIZE);
 
+                if src_slc_dims.v_size() & 0x01 != 0 || src_slc_dims.v_size() & 0x01 != 0 {
+                    return Err("Horizontal slices must have u and v sizes evenly divisible by 2.".into());
+                }
+
                 let poss_syn_offs_val_count = src_slc_dims.v_size() * src_slc_dims.u_size();
 
                 if poss_syn_offs_val_count < den_syn_count {
@@ -184,8 +188,8 @@ impl SrcSliceInfo {
             },
 
             &AxonKind::Spatial | &AxonKind::None => {
-                let mut hex_tile_offs = try!(gen_syn_offs(syn_reach,
-                    [src_slc_dims.v_scale(), src_slc_dims.u_scale()]));
+                let mut hex_tile_offs = gen_syn_offs(syn_reach,
+                    [src_slc_dims.v_scale(), src_slc_dims.u_scale()])?;
 
                 if (hex_tile_offs.len() as u32) < den_syn_count {
                     return Err(format!("The cells of this slice do not have enough possible \
@@ -274,10 +278,11 @@ impl SrcSlices {
                 let src_slc_dims = area_map.slices().dims().get(slc_id as usize)
                     .expect("SrcSlices::new(): {{3}}");
 
-                slcs.insert(slc_id, try!(
-                        SrcSliceInfo::new(axn_kind, src_slc_dims, syn_reaches, den_syn_count)
-                    )).map(|_| panic!("SrcSlices::new(): {{4}}")
-                );
+                let src_slc_info = SrcSliceInfo::new(axn_kind, src_slc_dims, syn_reaches, den_syn_count)
+                    .map_err(|err| err.prepend(&format!("SrcSlices::new(): Source slice error \
+                        (area: {}, slice: {}): ", area_map.area_name(), slc_id)))?;
+
+                slcs.insert(slc_id, src_slc_info);
             }
 
             tft_slcs.push(slcs);

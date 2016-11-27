@@ -567,10 +567,10 @@ impl CorticalArea {
 
                     OclBufferTarget::new(&self.axns.states, axn_range, source.dims().clone(),
                             Some(&mut new_events), false)
-                        .map_err(|mut err| {
+                        .map_err(|err|
                             err.prepend(&format!("CorticalArea::intake():: \
                             Source tract length must be equal to the target axon range length \
-                            (area: '{}', layer_tags: '{}'): ", area_name, src_lyr.tags())); err})?
+                            (area: '{}', layer_tags: '{}'): ", area_name, src_lyr.tags())))?
                         .copy_from_slice_buffer(source)?;
                 }
             }
@@ -586,11 +586,10 @@ impl CorticalArea {
 
                 let source = OclBufferSource::new(&self.axns.states, src_lyr.axn_range(),
                         target.dims().clone(), Some(wait_events))
-                    .map_err(|mut err| {
-                        err.prepend(&format!("CorticalArea::output(): \
+                    .map_err(|err| err.prepend(&format!("CorticalArea::output(): \
                         Target tract length must be equal to the source axon range length \
-                        (area: '{}', layer_tags: '{}'): ", self.name, src_lyr.tags())); err
-                    })?;
+                        (area: '{}', layer_tags: '{}'): ", self.name, src_lyr.tags()))
+                    )?;
 
                 target.copy_from_ocl_buffer(source)?;
             }

@@ -83,11 +83,12 @@ impl AreaMap {
     // NEW
     pub fn layer_name_by_tags(&self, layer_tags: LayerTags) -> &'static str {
         let layer_info = self.layers.layers_meshing_tags(layer_tags);
-        assert_eq!(layer_info.len(), 1);
+        assert!(layer_info.len() == 1, "AreaMap::layer_name_by_tags(): No layer tags matching: {} \
+            for area: \"{}\" found", layer_tags, self.area_name);
         layer_info[0].name()
     }
 
-    // UPDATE / DEPRICATE
+    // UPDATE / CONSOLIDATE / DEPRICATE
     /// Returns a grouped list of source layer names for each distal dendritic tuft in a layer.
     pub fn layer_dst_srcs(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
         let potential_tufts = match self.layers.layer_info_by_name(layer_name) {
@@ -121,7 +122,7 @@ impl AreaMap {
         valid_tufts
     }
 
-    // NEW - UPDATE
+    // NEW - UPDATE / CONSOLIDATE
     /// Returns a merged list of slice ids for all source layers.
     pub fn layer_slc_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
         let mut slc_ids = Vec::with_capacity(32);
@@ -143,7 +144,7 @@ impl AreaMap {
         slc_ids
     }
 
-    // NEW - UPDATE
+    // NEW - UPDATE / CONSOLIDATE
     /// Returns a merged list of source slice ids for all source layers.
     pub fn layer_src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
         let li = match self.layers.layer_info_by_name(layer_name) {
@@ -156,7 +157,7 @@ impl AreaMap {
         self.layer_slc_ids(src_lyr_names)
      }
 
-     // NEW - UPDATE
+     // NEW - UPDATE / CONSOLIDATE
      /// Returns a grouped list of source slice ids for each distal dendritic tuft in a layer.
      pub fn layer_dst_src_slc_ids(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
          let src_tufts = self.layer_dst_srcs(layer_name);
@@ -202,40 +203,6 @@ impl AreaMap {
         let idn = aff_out_slcs.len() - 1;
         aff_out_slcs[idz]..(aff_out_slcs[idn] + 1)
     }
-
-    // /// Returns the base slc_ids.
-    // pub fn axn_base_slc_ids_by_tags(&self, layer_tags: LayerTags) -> Vec<u8> {
-    //     // let layers = self.layers.layers_containing_tags(layer_tags);
-    //     // let mut slc_ids = Vec::with_capacity(layers.len());
-
-    //     // for &layer in layers.iter() {
-    //     //     slc_ids.push(layer.slc_range().start);
-    //     // }
-
-    //     // slc_ids
-    //     self.layers.layers_containing_tags(layer_tags).iter()
-    //         // .filter(|l| l.slc_range().len() > 0)
-    //         .map(|l| l.slc_range().start)
-    //         .collect()
-    // }
-
-    // // UPDATE / DEPRICATE / MERGE WITH ABOVE
-    // pub fn output_layer_info(&self) -> Vec<(LayerTags, u32)> {
-    //     let layers = self.layers.layer_info(map::OUTPUT);
-    //     let mut layer_info = Vec::with_capacity(layers.len());
-
-    //     for &layer in layers.iter() {
-    //         layer_info.push((layer.tags(), self.dims.columns()));
-    //     }
-
-    //     layer_info
-    // }
-
-    // // [TODO]: UPDATE / DEPRICATE / MERGE WITH ABOVE (axn_base_slc_ids_by_tags):
-    // pub fn output_layer_info(&self) -> Vec<&LayerInfo> {
-    //     self.layers.layers_containing_tags(map::OUTPUT)
-    // }
-
 
     // NEW
     pub fn psal_layer(&self) -> &LayerInfo {

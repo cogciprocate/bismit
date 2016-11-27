@@ -164,9 +164,9 @@ pub struct Flywheel {
 }
 
 impl Flywheel {
-    pub fn new(cortex: Cortex, command_rx: Receiver<Command>) -> Flywheel {
-        // TODO: Remove (find some other way to set current area):
-        let area_name = "v1".to_owned();
+    // TODO: Find some other way to set current area.
+    pub fn new(cortex: Cortex, command_rx: Receiver<Command>, area_name: String) -> Flywheel {
+        // let area_name = "v1".to_owned();
 
         Flywheel {
             command_rx: command_rx,
@@ -185,10 +185,11 @@ impl Flywheel {
                 a_schemes: AreaSchemeList,
                 ca_settings: Option<CorticalAreaSettings>,
                 command_rx: Receiver<Command>,
+                area_name: String,
             ) -> Flywheel {
         let cortex = Cortex::new(lm_schemes, a_schemes, ca_settings);
 
-        Flywheel::new(cortex, command_rx)
+        Flywheel::new(cortex, command_rx, area_name)
     }
 
     pub fn add_req_res_pair(&mut self, req_rx: Receiver<Request>, res_tx: Sender<Response>) {

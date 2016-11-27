@@ -21,7 +21,7 @@ pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchem
 	LayerScheme, FilterScheme, InputScheme};
 pub use self::layer_tags::{LayerTags, DEFAULT, INPUT, OUTPUT, SPATIAL, HORIZONTAL, FEEDFORWARD,
     FEEDBACK, SPECIFIC, NONSPECIFIC, PRIMARY, SPATIAL_ASSOCIATIVE, TEMPORAL_ASSOCIATIVE,
-    UNUSED_TESTING, FF_IN, FF_OUT, FB_IN, FB_OUT, FF_FB_OUT, NS_IN, NS_OUT, PSAL, PTAL};
+    UNUSED_TESTING, FF_IN, FF_OUT, FB_IN, FB_OUT, FF_FB_OUT, NS_IN, NS_OUT, PSAL, PTAL, PMEL};
 #[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
 
 
@@ -119,13 +119,13 @@ impl LayerKind {
 
     pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_reach: i8) -> LayerKind {
         match &mut self {
-            &mut LayerKind::Cellular(ref mut pc) => {
-                match pc.den_dst_src_lyrs {
-                    Some(ref mut vec) => vec.push(dst_srcs),
+            &mut LayerKind::Cellular(ref mut cs) => {
+                match cs.den_dst_src_lyrs {
+                    Some(ref mut ddsl) => ddsl.push(dst_srcs),
                     None => (),
                 }
 
-                pc.den_dst_syn_reaches.push(syn_reach);
+                cs.den_dst_syn_reaches.push(syn_reach);
             },
 
             &mut LayerKind::Axonal(_) => (),

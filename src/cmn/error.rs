@@ -35,14 +35,18 @@ impl CmnError {
 
     /// If this is a `String` variant, concatenate `txt` to the front of the
     /// contained string. Otherwise, do nothing at all.
-    pub fn prepend<'s>(&'s mut self, txt: &'s str) {
-        if let &mut CmnError::String(ref mut string) = self {
+    pub fn prepend(mut self, txt: &str) -> CmnError {
+        if let CmnError::String(ref mut string) = self {
             string.reserve_exact(txt.len());
             let old_string_copy = string.clone();
             string.clear();
             string.push_str(txt.as_ref());
             string.push_str(&old_string_copy);
+        } else {
+            panic!("Cannot prepend to a non-string error.");
         }
+
+        self
     }
 }
 

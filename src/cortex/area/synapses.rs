@@ -11,18 +11,37 @@ use cortex::AxonSpace;
 #[cfg(test)]
 pub use self::tests::{SynCoords, SynapsesTest};
 
-//    Synapses: Smallest and most numerous unit in the cortex - the soldier at the bottom
+//    Synapses: Smallest and most numerous unit in the cortex - the soldier at
+//    the bottom
 //         - TODO:
 //         - [high priority] Testing:
-//             - [INCOMPLETE] Check for uniqueness and correct distribution frequency among src_slcs and cols
+//             - [INCOMPLETE] Check for uniqueness and correct distribution
+//               frequency among src_slcs and cols
 //         - [low priority] Optimization:
 //             - [Complete] Obviously grow() and it's ilk need a lot of work
 /*
-    Synapse index space (for each of the synapse property Buffers) is first divided by tuft, then slice, then cell, then synapse. This means that even though a cell may have three (or any number of) tufts, and that you would naturally tend to think that synapse space would be first divided by slice, then cell, then tuft, tufts are moved to the front of that list. The reason for this is nuanced but it basically boils down to performance. When a kernel is processing synapses it's best to process tuft-at-a-time as the first order iteration rather than slice or cell-at-a-time because the each tuft inherently shares synapses whos axon sources are going to tend to be similar, making cache performance consistently better. This makes indexing very confusing so there's a definite trade off in complexity (for us poor humans).
+    Synapse index space (for each of the synapse property Buffers) is first
+    divided by tuft, then slice, then cell, then synapse. This means that even
+    though a cell may have three (or any number of) tufts, and you would
+    naturally tend to think that synapse space would be first divided by
+    slice, then cell, then tuft, tufts are moved to the front of that list.
+    The reason for this is nuanced but it basically boils down to performance.
+    When a kernel is processing synapses it's best to process tuft-at-a-time
+    as the first order iteration rather than slice or cell-at-a-time because
+    the each tuft inherently shares synapses whos axon sources are going to
+    tend to be similar, making cache performance consistently better. This
+    makes indexing very confusing so there's a definite trade off in
+    complexity (for us poor humans).
 
-    Calculating a particular synapse index is shown below in syn_idx(). This is (hopefully) the exact same method the kernel uses for addressing: tuft is most significant, followed by slice, then cell, then synapse. Dendrites are not necessary to calculate a synapses index unless you happen only to have a synapses id (address) within a dendrite. Mostly the id within a cell is used and the dendrite is irrelevant, especially on the host side.
+    Calculating a particular synapse index is shown below in syn_idx(). This
+    is (hopefully) the exact same method the kernel uses for addressing: tuft
+    is most significant, followed by slice, then cell, then synapse. Dendrites
+    are not necessary to calculate a synapses index unless you happen only to
+    have a synapses id (address) within a dendrite. Mostly the id within a
+    cell is used and the dendrite is irrelevant, especially on the host side.
 
-    Synapse space breakdown (m := n - 1, n being the number of elements in any particular segment):
+    Synapse space breakdown (m := n - 1, n being the number of elements in any
+    particular segment):
         - Tuft[0]
             - Slice[0]
                 - Cell[0]
@@ -49,7 +68,8 @@ pub use self::tests::{SynCoords, SynapsesTest};
                     - Dendrite
                         -Synapse
 
-     ... **for indexing purposes** tufts are parent to slices, which are parent to cells (then dendrites, then synapses).
+     ... **for indexing purposes** tufts are parent to slices, which are
+     parent to cells (then dendrites, then synapses).
 
 */
 
@@ -92,7 +112,7 @@ pub struct Synapses {
 impl Synapses {
     pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme,
                 den_kind: DendriteKind, _: CellKind, area_map: &AreaMap,
-                axons: &AxonSpace, ocl_pq: &ProQue
+                axons: &AxonSpace, ocl_pq: &ProQue,
             ) -> CmnResult<Synapses>
     {
         let syns_per_tft_l2: u8 = cell_scheme.dens_per_tuft_l2 + cell_scheme.syns_per_den_l2;
@@ -133,8 +153,8 @@ impl Synapses {
 
         // [FIXME]: Implement src_ranges on a per-tuft basis.
         // let syn_reaches_by_tft: Vec<u8> = src_slc_ids_by_tft.iter().map(|_| syn_reach).collect();
-        let src_slcs = try!(SrcSlices::new(&src_slc_ids_by_tft, syn_reaches_by_tft,
-            1 << cell_scheme.syns_per_den_l2, area_map));
+        let src_slcs = SrcSlices::new(&src_slc_ids_by_tft, syn_reaches_by_tft,
+            1 << cell_scheme.syns_per_den_l2, area_map)?;
 
         if DEBUG_NEW {
             println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
