@@ -156,7 +156,6 @@ pub struct SrcSliceInfo {
 }
 
 impl SrcSliceInfo {
-    #[allow(unused_mut)]
     pub fn new(axn_kind: &AxonKind, src_slc_dims: &SliceDims, syn_reach: i8, den_syn_count: u32)
                     -> CmnResult<SrcSliceInfo> {
         let slc_off_pool = match axn_kind {
@@ -167,6 +166,11 @@ impl SrcSliceInfo {
 
                 if src_slc_dims.v_size() & 0x01 != 0 || src_slc_dims.v_size() & 0x01 != 0 {
                     return Err("Horizontal slices must have u and v sizes evenly divisible by 2.".into());
+                }
+
+                if syn_reach != 0 {
+                    return Err("The reach of a synapse with non-spatial (horizontal) sources \
+                        must be zero (0).".into());
                 }
 
                 let poss_syn_offs_val_count = src_slc_dims.v_size() * src_slc_dims.u_size();
@@ -188,7 +192,7 @@ impl SrcSliceInfo {
             },
 
             &AxonKind::Spatial | &AxonKind::None => {
-                let mut hex_tile_offs = gen_syn_offs(syn_reach,
+                let hex_tile_offs = gen_syn_offs(syn_reach,
                     [src_slc_dims.v_scale(), src_slc_dims.u_scale()])?;
 
                 if (hex_tile_offs.len() as u32) < den_syn_count {

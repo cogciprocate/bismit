@@ -7,7 +7,7 @@ pub struct LayerScheme {
     name: &'static str,
     kind: LayerKind,
     depth: Option<u8>,
-    // base_slc_id: u8, 
+    // base_slc_id: u8,
     // kind_base_slc_id: u8,
     tags: LayerTags,
 }
@@ -16,7 +16,7 @@ impl LayerScheme {
     pub fn new(name: &'static str, kind: LayerKind, depth: Option<u8>, tags: LayerTags) -> LayerScheme
     {
         if cfg!(debug) { tags.debug_validate(); }
-        
+
         LayerScheme {name : name, kind: kind, depth: depth, tags: tags}
     }
 
@@ -25,7 +25,7 @@ impl LayerScheme {
     // }
 
 
-    // SRC_LAYER_NAMES(): TODO: DEPRICATE OR RENAME 
+    // SRC_LAYER_NAMES(): TODO: DEPRICATE OR RENAME
     pub fn src_lyr_names(&self, den_type: DendriteKind) -> Vec<&'static str> {
         let layer_names = match self.kind {
             LayerKind::Cellular(ref cell_scheme) => match den_type {
@@ -51,7 +51,7 @@ impl LayerScheme {
             Some(v) => v,
             None => Vec::with_capacity(0),
         }
-    }    
+    }
 
     pub fn depth(&self) -> Option<u8> {
         self.depth
@@ -68,7 +68,8 @@ impl LayerScheme {
     pub fn axn_kind(&self) -> Result<AxonKind, CmnError> {
         match self.kind {
             LayerKind::Axonal(ak) => Ok(ak.clone()),
-            LayerKind::Cellular(_) => Ok(try!(AxonKind::from_tags(self.tags))),
+            LayerKind::Cellular(_) => Ok(AxonKind::Spatial),
+                // Ok(try!(AxonKind::from_tags(self.tags))),
         }
     }
 

@@ -121,13 +121,19 @@ impl ExternalPathway {
                 must be 'LayerKind::Axonal(_)'.");
             let layer_depth = p_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
-            let dims = if layer_tags.contains(map::SPATIAL) {
-                assert_eq!(axn_kind, AxonKind::Spatial);
-                Some(pamap.dims.clone_with_depth(layer_depth))
-            } else {
-                assert!(layer_tags.contains(map::HORIZONTAL));
-                assert_eq!(axn_kind, AxonKind::Horizontal);
-                None
+            // let dims = if layer_tags.contains(map::SPATIAL) {
+            //     assert_eq!(axn_kind, AxonKind::Spatial);
+            //     Some(pamap.dims.clone_with_depth(layer_depth))
+            // } else {
+            //     assert!(layer_tags.contains(map::HORIZONTAL));
+            //     assert_eq!(axn_kind, AxonKind::Horizontal);
+            //     None
+            // };
+
+            let dims = match axn_kind {
+                AxonKind::Spatial => Some(pamap.dims.clone_with_depth(layer_depth)),
+                AxonKind::Horizontal => None,
+                AxonKind::None => None,
             };
 
             assert!(layer_tags.contains(map::OUTPUT), "ExternalPathway::new(): External ('Thalamic') areas \

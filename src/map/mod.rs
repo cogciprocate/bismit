@@ -9,7 +9,7 @@ mod layer_tags;
 mod area_map;
 mod scheme;
 
-use cmn::CmnError;
+// use cmn::CmnError;
 
 pub use self::area_map::AreaMap;
 pub use self::slice_map::SliceMap;
@@ -19,7 +19,7 @@ pub use self::syn_src_map::{SrcSlices, SrcIdxCache, SynSrc, gen_syn_offs};
 pub use self::slice_tract_map::SliceTractMap;
 pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
 	LayerScheme, FilterScheme, InputScheme};
-pub use self::layer_tags::{LayerTags, DEFAULT, INPUT, OUTPUT, SPATIAL, HORIZONTAL, FEEDFORWARD,
+pub use self::layer_tags::{LayerTags, DEFAULT, INPUT, OUTPUT, /*SPATIAL,*/ /*HORIZONTAL,*/ FEEDFORWARD,
     FEEDBACK, SPECIFIC, NONSPECIFIC, PRIMARY, SPATIAL_ASSOCIATIVE, TEMPORAL_ASSOCIATIVE,
     UNUSED_TESTING, FF_IN, FF_OUT, FB_IN, FB_OUT, FF_FB_OUT, NS_IN, NS_OUT, PSAL, PTAL, PMEL};
 #[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
@@ -68,7 +68,8 @@ pub enum LayerMapKind {
 
 
 /// [NOTE]: This enum is redundantly represented as a bitflag in `LayerTags`
-/// and may eventually be removed pending evaluation.
+/// and may eventually be removed pending evaluation. [UPDATE]: Nevermind.
+/// Layer tags representing this removed.
 ///
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Copy)]
 pub enum AxonKind {
@@ -77,29 +78,29 @@ pub enum AxonKind {
     None,
 }
 
-impl AxonKind {
-    pub fn from_tags<'a>(tags: LayerTags) -> Result<AxonKind, CmnError> {
-        if tags.contains(SPATIAL) && tags.contains(HORIZONTAL) {
-            Err(CmnError::new(format!("Error converting tags to AxonKind, tags must contain \
-                only one of either 'SPATIAL' or 'HORIZONTAL'. (tags: '{:?}')", tags)))
-        } else if tags.contains(SPATIAL) {
-            Ok(AxonKind::Spatial)
-        } else if tags.contains(HORIZONTAL) {
-            Ok(AxonKind::Horizontal)
-        } else {
-            // Err(CmnError::new(format!("Unable to determine axon kind from tags: '{:?}'", tags)))
-            Ok(AxonKind::None)
-        }
-    }
+// impl AxonKind {
+//     pub fn from_tags<'a>(tags: LayerTags) -> Result<AxonKind, CmnError> {
+//         if tags.contains(SPATIAL) && tags.contains(HORIZONTAL) {
+//             Err(CmnError::new(format!("Error converting tags to AxonKind, tags must contain \
+//                 only one of either 'SPATIAL' or 'HORIZONTAL'. (tags: '{:?}')", tags)))
+//         } else if tags.contains(SPATIAL) {
+//             Ok(AxonKind::Spatial)
+//         } else if tags.contains(HORIZONTAL) {
+//             Ok(AxonKind::Horizontal)
+//         } else {
+//             // Err(CmnError::new(format!("Unable to determine axon kind from tags: '{:?}'", tags)))
+//             Ok(AxonKind::None)
+//         }
+//     }
 
-    pub fn matches_tags(&self, tags: LayerTags) -> bool {
-        match self {
-            &AxonKind::Spatial => tags.contains(SPATIAL),
-            &AxonKind::Horizontal => tags.contains(HORIZONTAL),
-            &AxonKind::None => (!tags.contains(SPATIAL)) && (!tags.contains(HORIZONTAL)),
-        }
-    }
-}
+//     pub fn matches_tags(&self, tags: LayerTags) -> bool {
+//         match self {
+//             &AxonKind::Spatial => tags.contains(SPATIAL),
+//             &AxonKind::Horizontal => tags.contains(HORIZONTAL),
+//             &AxonKind::None => (!tags.contains(SPATIAL)) && (!tags.contains(HORIZONTAL)),
+//         }
+//     }
+// }
 
 
 

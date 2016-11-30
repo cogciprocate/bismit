@@ -180,11 +180,11 @@ impl TestBed {
         let layer_map_sl = define_layer_scheme_maps();
         let area_schemes = define_protoareas();
 
-        let thal = Thalamus::new(layer_map_sl, area_schemes).unwrap();
-        let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
-
         let ocl_context: Context = Context::builder()
             .build().expect("CorticalArea::new(): ocl_context creation error");
+
+        let thal = Thalamus::new(layer_map_sl, area_schemes, &ocl_context).unwrap();
+        let area_map = thal.area_map(PRIMARY_AREA_NAME).clone();
 
         let ocl_pq = ProQue::builder()
             .context(ocl_context.clone())

@@ -135,14 +135,15 @@ impl LayerInfo {
                             let src_axn_kind = match src_layer.kind() {
                                 &LayerKind::Axonal(ref ak) => {
                                     // [FIXME]: Make this a Result:
-                                    assert!(ak.matches_tags(src_layer.tags()), "Incompatable layer \
-                                        tags for layer: {:?}", src_layer);
+                                    // assert!(ak.matches_tags(src_layer.tags()), "Incompatable layer \
+                                    //     tags for layer: {:?}", src_layer);
 
                                     ak.clone()
                                 },
 
-                                &LayerKind::Cellular(_) => AxonKind::from_tags(src_layer.tags())
-                                    .expect("LayerInfo::new(): Error determining axon kind"),
+                                &LayerKind::Cellular(_) => AxonKind::Spatial
+                                    //     AxonKind::from_tags(src_layer.tags())
+                                    // .expect("LayerInfo::new(): Error determining axon kind"),
                                 // _ => panic!("LayerInfo::new(): Unknown LayerKind."),
                             };
 
