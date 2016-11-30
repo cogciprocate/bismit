@@ -98,7 +98,7 @@ impl IoLayerInfoGroup {
                 (local_layer_tags, filter_key)
             };
 
-            let axn_range = match area_map.axn_range_meshing_tags(local_layer_tags, src_lyr_key) {
+            let axn_range = match area_map.axn_range_meshing_tags_either_way(local_layer_tags, src_lyr_key) {
                 Some(axn_range) => axn_range,
                 None => panic!("IoLayerInfoCache::new(): Internal consistency error: \
                     tags: {}.", local_layer_tags),
@@ -296,8 +296,10 @@ impl CorticalArea {
             area_map.aff_areas(), device_idx, ocl_pq.device().name().trim(),
             ocl_pq.device().vendor().trim(), mt = cmn::MT);
 
-        let psal_name = area_map.layer_name_by_tags(map::SPATIAL_ASSOCIATIVE);
-        let ptal_name = area_map.layer_name_by_tags(map::TEMPORAL_ASSOCIATIVE);
+        // let psal_name = area_map.layer_name_by_tags(map::SPATIAL_ASSOCIATIVE);
+        let psal_name = area_map.layers().layers_containing_tags(map::SPATIAL_ASSOCIATIVE)[0].name();
+        // let ptal_name = area_map.layer_name_by_tags(map::TEMPORAL_ASSOCIATIVE);
+        let ptal_name = area_map.layers().layers_containing_tags(map::TEMPORAL_ASSOCIATIVE)[0].name();
 
             /* <<<<< BRING BACK UPDATED VERSIONS OF BELOW >>>>> */
         //assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);

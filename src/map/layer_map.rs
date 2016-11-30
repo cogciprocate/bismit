@@ -96,6 +96,10 @@ impl LayerMap {
         self.index.iter().filter(|li| li.tags().meshes(tags)).map(|li| li).collect()
     }
 
+    pub fn layers_meshing_tags_either_way(&self, tags: LayerTags) -> Vec<&LayerInfo> {
+        self.index.iter().filter(|li| li.tags().meshes_either_way(tags)).map(|li| li).collect()
+    }
+
     // [FIXME] TODO: Cache results (use TractArea cache style).
     pub fn layers_containing_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
         self.index.iter().filter(|li| li.tags().contains(tags)).map(|li| li).collect()

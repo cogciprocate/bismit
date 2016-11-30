@@ -83,8 +83,8 @@ impl AreaMap {
     // NEW
     pub fn layer_name_by_tags(&self, layer_tags: LayerTags) -> &'static str {
         let layer_info = self.layers.layers_meshing_tags(layer_tags);
-        assert!(layer_info.len() == 1, "AreaMap::layer_name_by_tags(): No layer tags matching: {} \
-            for area: \"{}\" found", layer_tags, self.area_name);
+        assert!(layer_info.len() == 1, "AreaMap::layer_name_by_tags(): ({}) \
+            tags matching: {} for area: \"{}\" found", layer_info.len(), layer_tags, self.area_name);
         layer_info[0].name()
     }
 
@@ -227,10 +227,10 @@ impl AreaMap {
     /// required for redundant verification).
     ///
     // NEW
-    pub fn axn_range_meshing_tags(&self, layer_tags: LayerTags,
+    pub fn axn_range_meshing_tags_either_way(&self, layer_tags: LayerTags,
                 src_lyr_sub_slcs: Option<(&'static str, Range<u8>)>) -> Option<Range<u32>>
     {
-        let layers = self.layers.layers_meshing_tags(layer_tags);
+        let layers = self.layers.layers_meshing_tags_either_way(layer_tags);
 
         if layers.len() == 1 {
             let layer = layers[0];
@@ -293,7 +293,8 @@ impl AreaMap {
             None
         } else {
             panic!("AreaMap::axn_range_meshing_tags(): Multiple layers matching \
-                flags: '{}' for area: '{}'. Layers: {:?}", layer_tags, self.area_name, layers);
+                flags: '{}' for area: '{}'. \n\nLayers: \n{:#?}", layer_tags,
+                self.area_name, layers);
         }
     }
 

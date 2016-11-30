@@ -79,6 +79,17 @@ impl LayerTags {
         self.contains(other) && self.get_uid() == other.get_uid()
     }
 
+    /// Returns whether or not `self` both contains and equals the unique id of
+    /// `other`.
+    ///
+    /// Useful when comparing tags which must match uids where `self` may be a
+    /// superset of `other`.
+    pub fn meshes_either_way(&self, other: LayerTags) -> bool {
+        (self.contains(other) || other.contains(*self)) &&
+            (*self != DEFAULT && other != DEFAULT) &&
+            self.get_uid() == other.get_uid()
+    }
+
     // Presently called from LayerScheme::new() on a debug build.
     pub fn debug_validate(&self) {
         debug_assert!(!(self.contains(OUTPUT) && self.contains(INPUT)));
