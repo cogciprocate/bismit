@@ -74,7 +74,22 @@ impl SliceMap {
                         && slc_id < layer_source.tar_slc_range().end
                     {
                         debug_assert!(slc_id == slc_id_ttl);
-                        debug_assert_eq!(layer.axn_kind(), layer_source.axn_kind());
+                        // debug_assert_eq!(layer.axn_kind(), layer_source.axn_kind());
+
+                        if layer.axn_kind() != layer_source.axn_kind() {
+                            // Ensure that we are going from Spatial -> Horizontal:
+                            if layer_source.axn_kind() == AxonKind::Spatial &&
+                                    layer.axn_kind() == AxonKind::Horizontal
+                            {
+                                assert!(layer_source.dims().v_size() <= 254 &&
+                                    layer_source.dims().u_size() <= 254,
+                                    "SliceMap::new(): Horizontal layer sources must have dimensions \
+                                    less than or equal to 254v x 254u.");
+                            } else {
+                                panic!("SliceMap::new(): Layers may only convert from \
+                                    Spatial -> Horizontal");
+                            }
+                        }
 
                         if DEBUG_PRINT {
                             println!("SLICEMAP::NEW(): Using source layer dims: {:?} \
@@ -83,7 +98,7 @@ impl SliceMap {
                         }
                         slc_id_ttl += 1;
                         add_slice(SliceDims::new(area_dims, Some(layer_source.dims()),
-                            layer_source.axn_kind())
+                            layer.axn_kind())
                             .expect("SliceMap::new(): Error creating SliceDims."));
                     }
                 }

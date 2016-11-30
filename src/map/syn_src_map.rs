@@ -168,10 +168,10 @@ impl SrcSliceInfo {
                     return Err("Horizontal slices must have u and v sizes evenly divisible by 2.".into());
                 }
 
-                if syn_reach != 0 {
-                    return Err("The reach of a synapse with non-spatial (horizontal) sources \
-                        must be zero (0).".into());
-                }
+                // if syn_reach != 0 {
+                //     return Err("The reach of a synapse with non-spatial (horizontal) sources \
+                //         must be zero (0).".into());
+                // }
 
                 let poss_syn_offs_val_count = src_slc_dims.v_size() * src_slc_dims.u_size();
 
