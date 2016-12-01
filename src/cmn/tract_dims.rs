@@ -9,18 +9,6 @@ pub struct TractDims {
 }
 
 impl TractDims {
-    pub fn v_size(&self) -> u32 {
-        self.v_size
-    }
-
-    pub fn u_size(&self) -> u32 {
-        self.u_size
-    }
-
-    pub fn depth(&self) -> u8 {
-        self.depth
-    }
-
     pub fn new(v_size: u32, u_size: u32, depth: u8) -> TractDims {
         TractDims { v_size: v_size, u_size: u_size, depth: depth }
     }
@@ -28,6 +16,10 @@ impl TractDims {
     pub fn to_len(&self) -> usize {
         (self.v_size * self.u_size * self.depth as u32) as usize
     }
+
+    pub fn v_size(&self) -> u32 { self.v_size }
+    pub fn u_size(&self) -> u32 { self.u_size }
+    pub fn depth(&self) -> u8 { self.depth }
 }
 
 impl ParaHexArray for TractDims {

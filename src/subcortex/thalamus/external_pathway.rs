@@ -9,7 +9,7 @@ use cmn::{self, CorticalDims, CmnResult, CmnError};
 use ocl::{EventList};
 use map::{self, AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonKind};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
-    VectorEncoder};
+    VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
 use map::LayerTags;
 
@@ -187,6 +187,14 @@ impl ExternalPathway {
                 };
 
                 ExternalPathwayEncoder::Other(Box::new(ScalarSequence::new(range, incr, &tract_dims)))
+            },
+            InputScheme::ScalarSdrGradiant { range, way_span, incr } => {
+                let tract_dims = {
+                    assert!(layer_dims_list.len() == 1);
+                    layer_dims_list[0].unwrap().into()
+                };
+
+                ExternalPathwayEncoder::Other(Box::new(ScalarSdrGradiant::new(range, way_span, incr, &tract_dims)))
             },
             InputScheme::ReversoScalarSequence { range, incr } => {
                 // let layer_tags: Vec<_> = layers.iter().map(|(t, _)| t.clone()).collect();

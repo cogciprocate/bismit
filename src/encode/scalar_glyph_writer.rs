@@ -1,7 +1,7 @@
 
 use std::cmp;
-use rand;
-use rand::distributions::{Range, IndependentSample};
+// use rand;
+// use rand::distributions::{Range, IndependentSample};
 use cmn::{TractFrameMut, TractDims};
 use encode::ScalarEncodable;
 
@@ -120,10 +120,10 @@ impl<T: ScalarEncodable> ScalarGlyphWriter<T> {
             }
         };
 
-        // Set up an RNG for no particular reason:
-        let mut rng = rand::weak_rng();
-        let r_base = (val_pct * 128.0f32) as u8;
-        let r_range = Range::<u8>::new(r_base, r_base + 64);
+        // // Set up an RNG for no particular reason:
+        // let mut rng = rand::weak_rng();
+        // let r_base = (val_pct * 128.0f32) as u8;
+        // let r_range = Range::<u8>::new(r_base, r_base + 64);
 
         // Clear tract frame:
         for e in tract.frame_mut().iter_mut() {
@@ -152,8 +152,8 @@ impl<T: ScalarEncodable> ScalarGlyphWriter<T> {
                 let idx = (((v + center.v as i32) * u_size) + u + center.u as i32) as usize;
 
                 unsafe {
-                    *tract.get_unchecked_mut(idx) = r_range.ind_sample(&mut rng);
-                    // *tract.get_unchecked_mut(idx) = 255;
+                    // *tract.get_unchecked_mut(idx) = r_range.ind_sample(&mut rng);
+                    *tract.get_unchecked_mut(idx) = 127;
                 }
             }
         }

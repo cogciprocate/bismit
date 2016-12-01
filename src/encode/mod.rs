@@ -12,6 +12,8 @@ mod reverso_scalar_sequence;
 mod vector_encoder;
 mod scalar_glyph_writer;
 mod hex_mold_test;
+mod scalar_sdr_writer;
+mod scalar_sdr_gradiant;
 pub mod idx_streamer;
 
 use std::cmp;
@@ -31,6 +33,8 @@ pub use self::reverso_scalar_sequence::ReversoScalarSequence;
 pub use self::vector_encoder::VectorEncoder;
 pub use self::scalar_glyph_writer::ScalarGlyphWriter;
 pub use self::hex_mold_test::HexMoldTest;
+pub use self::scalar_sdr_writer::ScalarSdrWriter;
+pub use self::scalar_sdr_gradiant::ScalarSdrGradiant;
 
 const SQRT_3: f32 = 1.73205080756f32;
 

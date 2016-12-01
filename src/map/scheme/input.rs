@@ -16,6 +16,7 @@ pub enum InputScheme {
     ScalarSequence { range: (f32, f32), incr: f32 },
     ReversoScalarSequence { range: (f32, f32), incr: f32 },
     VectorEncoder { ranges: Vec<(f32, f32)> },
+    ScalarSdrGradiant { range: (f32, f32), way_span: f32, incr: f32 },
 }
 
 impl InputScheme {
