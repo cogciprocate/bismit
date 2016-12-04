@@ -7,6 +7,9 @@ use encode::ScalarEncodable;
 
 type TractIdx = usize;
 
+// Fraction of SDR columns to activate (1 / SPARSITY):
+const SPARSITY: usize = 48;
+
 
 #[derive(Debug, Clone)]
 pub struct ScalarSdrWriter<T> {
@@ -32,9 +35,9 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         let val_range = (val_range.0.to_f32().unwrap(), val_range.1.to_f32().unwrap());
         let val_span = val_range.1 - val_range.0;
         let way_count = (val_span / way_span.to_f32().unwrap()).ceil() as usize + 1;
-        println!("########## way_count: {}", way_count);
+        // println!("########## way_count: {}", way_count);
         let sdr_len = tract_dims.to_len();
-        let sdr_active_count = sdr_len / 32;
+        let sdr_active_count = sdr_len / SPARSITY;
 
         let mut waypoints = Vec::with_capacity(way_count);
 
@@ -66,16 +69,16 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         }
 
         let val = val_orig.to_f32().unwrap();
-        println!("\nval: {}", val);
+        // println!("\nval: {}", val);
 
         // Determine nearest two waypoints:
         let val_ofs = val - self.val_range.0;
         let way_0_f32 = (val_ofs / self.way_span).floor();
-        println!("way_0_f32: {}", way_0_f32);
+        // println!("way_0_f32: {}", way_0_f32);
         let way_0 = way_0_f32 as usize;
-        println!("way_0: {}", way_0);
+        // println!("way_0: {}", way_0);
         let way_1 = way_0 + 1;
-        println!("way_1: {}", way_1);
+        // println!("way_1: {}", way_1);
         debug_assert!(way_0 < self.waypoints.len());
         debug_assert!(way_1 < self.waypoints.len());
 
@@ -84,8 +87,8 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         let pos_ratio = (val_ofs - way_0_f32) / self.way_span;
         let pos_idx = ((self.sdr_active_count as f32) * pos_ratio) as usize;
 
-        println!("sdr_active_count: {}, pos_ratio: {}, pos_idx: {}",
-            self.sdr_active_count, pos_ratio, pos_idx);
+        // println!("sdr_active_count: {}, pos_ratio: {}, pos_idx: {}",
+        //     self.sdr_active_count, pos_ratio, pos_idx);
 
         debug_assert!(self.sdr_active_count - pos_idx > 0);
         let way_0_contrib = pos_idx;

@@ -2,6 +2,62 @@
 
 use std::fmt::{self, Formatter};
 
+// # Tags
+//
+// (From DOI: http://dx.doi.org/10.1016/j.neuron.2015.11.002)
+//
+// - L5CC (L5A): Tlx3-Cre PL56 (intratelencephalic)(thin tuft)(70mum^2)(RS - soma)
+//   - eGFP+ Tlx3-Cre+ neurons in V1 project their axons densely and
+//     predominantly to adjacent visual cortical areas such as V2L, V2ML, and
+//     V2MM, as well as further cortical regions including other sensory
+//     cortices, frontal cortices, and the contralateral visual cortex
+//     (Figures 1A, 1B, and S1A–S1C). This suggests that Tlx3-Cre selectively
+//     labels L5 CC PNs.
+// - L5SC (L5B): Glt25d2-Cre NF107 (pyramidal tract)(thick tuft)(124mum^2)(Intrinsicly BS - soma)
+//   - In contrast, eGFP+ axons from Glt25d2-Cre+ neurons in V1 do not project
+//     to other cortical areas (Figures 1A and 1B). Instead, their axons enter
+//     white matter and travel to target subcortical structures including the
+//     superior colliculus, lateral posterior (LP) and lateral dorsal (LD)
+//     nuclei of thalamus, pons, and ipsilateral striatum (Figures 1B and
+//     S1D–S1O). These axonal projections suggest Glt25d2-Cre selectively
+//     labels L5 CS PNs. We also labeled L5 CS PNs in V1 by injecting
+//     retrogradely infecting Cav2-Cre virus into the superior colliculus and
+//     AAV-FLEX-eGFP into V1. L5 neurons labeled by Cre expression in the
+//     Glt25d2- Cre mouse line and those labeled following Cav2-Cre injection
+//     to superior colliculus exhibit similar cell body locations and axon
+//     target profiles (Figures 1A and 1B). We conclude that although
+//     Glt25d2-Cre+ neurons are sparse, they are a representative sample of CS
+//     neurons.
+// - L5CC-NS (NEW) (non-striatal): Efr3a-Cre NO108 (64mum^2)(RS - soma)
+//   - Notably, Efr3a-Cre+ L5 V1 neurons lack projections to known axonal
+//     targets of L5 CC and CS neurons such as superior colliculus, thalamus,
+//     brainstem, and striatum (Figure 1B). Efr3a-Cre+ neurons do project to
+//     other adjacent cortical areas, a target they share in common with L5 CC
+//     neurons. Dense eGFP+ labeled long distance axons are also found in
+//     known layer 6 neuron targets, including the dorsal lateral geniculate
+//     nucleus (dLGN), and LD and LP of thalamus (Figures 1B and S1J–S1O). In
+//     LP, a shared target region of L5 and 6 neurons, axon terminals of
+//     Efr3a-Cre+ neurons are thin and small type I morphology, distinct from
+//     the thick and large type II morphology of Glt25d2-Cre+ neurons (Figures
+//     S1P and S1Q) (Li et al., 2003). The presence of labeled neurons in both
+//     L5 and 6 of Efr3a-Cre mice makes it less straightforward to study the
+//     projections of L5 Efr3a-Cre+ neurons in isolation. However, several
+//     lines of evidence detailed below indicate that L5 Efr3aCre+ neurons do
+//     not project to the thalamus and that they include both local pyramids
+//     (not projecting out of V1) and projection neurons. Since the only
+//     targets of Efr3a-Cre+ neurons that are known to receive input from L5
+//     rather than L6 are adjacent cortical areas (see above), L5 Efr3a-Cre+
+//     neurons must include CC projection neurons and might therefore
+//     represent a subgroup of CC neurons. Despite the fact that both L5
+//     Efr3a-Cre+ neurons and Tlx3-Cre+ CC cells share a common extrinsic
+//     target (adjacent cortical areas), they are clearly distinct and
+//     non-overlapping groups. In addition to differences in projections to
+//     striatum, as described in further detail below, the morphology and
+//     intrinsic physiology of L5 Efr3a-Cre+ neurons further distinguish them
+//     from Tlx3-Cre+ CC cells
+//
+//
+
 
 // [TODO]: Potentially separate layer concerns from axon 'flavor' into a new
 // bitflag (AxonFlags?). Currently: bits 48 - 63 pertain to axon 'flavor' and

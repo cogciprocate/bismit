@@ -336,7 +336,7 @@ impl Thalamus {
                 for layer in output_layers.iter() {
                     // println!("###### Thalamus::new(): Processing layer {}.", layer.name());
 
-                    // If the layer is thalamic is will have an irregular size
+                    // If the layer is thalamic it will have an irregular size
                     // which will need to be reflected on its tract size.
                     let layer_dims = match layer.irregular_layer_dims() {
                         Some(dims) => dims.clone(),
