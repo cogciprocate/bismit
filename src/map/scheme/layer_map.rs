@@ -2,7 +2,7 @@ use std::collections::{HashMap};
 use std::ops::{Index, IndexMut, };
 // use std::hash::{Hasher};
 
-use map::{LayerTags, LayerMapKind, LayerScheme, AxonKind, LayerKind};
+use map::{LayerTags, LayerMapKind, LayerScheme, AxonTopology, LayerKind, AxonDomain};
 
 
 /// A map of `LayerMapScheme`s indexed by layer map name.
@@ -20,7 +20,7 @@ impl LayerMapSchemeList {
     pub fn lmap(mut self, pr: LayerMapScheme) -> LayerMapSchemeList {
         self.add(pr);
         self
-    }    
+    }
 
     pub fn add(&mut self, pr: LayerMapScheme) {
         self.map.insert(pr.name.clone(), pr);
@@ -55,48 +55,58 @@ pub struct LayerMapScheme {
 }
 
 impl LayerMapScheme {
-    pub fn new (region_name: &'static str, kind: LayerMapKind) -> LayerMapScheme {    
-        LayerMapScheme { 
+    pub fn new (region_name: &'static str, kind: LayerMapKind) -> LayerMapScheme {
+        LayerMapScheme {
             name: region_name,
             kind: kind,
             layers: HashMap::new(),
         }
     }
 
-    pub fn axn_layer(mut self, layer_name: &'static str, tags: LayerTags, axn_kind: AxonKind) 
-            -> LayerMapScheme
+    // <A: Into<AxonTags>>
+    pub fn input_layer(mut self, layer_name: &'static str, layer_tags: LayerTags,
+            axn_domain: AxonDomain, axn_kind: AxonTopology) -> LayerMapScheme
     {
-        self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, tags));
+        self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
+            axn_domain));
+        self
+    }
+
+    pub fn axn_layer(mut self, layer_name: &'static str, layer_tags: LayerTags,
+            axn_domain: AxonDomain, axn_kind: AxonTopology) -> LayerMapScheme
+    {
+        self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
+            axn_domain));
         self
     }
 
     // [FIXME]: TODO: Change axonal default depth to 'None' so that input source or layer map can set.
-    pub fn layer(mut self, layer_name: &'static str, layer_depth: u8, tags: LayerTags, 
-            kind: LayerKind) -> LayerMapScheme 
+    pub fn layer(mut self, layer_name: &'static str, layer_depth: u8, layer_tags: LayerTags,
+            axn_domain: AxonDomain, kind: LayerKind) -> LayerMapScheme
     {
         let validated_depth = match kind {
             LayerKind::Cellular(ref cell_scheme) => cell_scheme.validate_depth(Some(layer_depth)),
             LayerKind::Axonal(_) => Some(layer_depth),
         };
-        
-        self.add(LayerScheme::new(layer_name, kind, validated_depth, tags));
+
+        self.add(LayerScheme::new(layer_name, kind, validated_depth, layer_tags, axn_domain));
         self
     }
 
-    // [FIXME][DONE]: NEED TO CHECK FOR DUPLICATE LAYERS!    
+    // [FIXME][DONE]: NEED TO CHECK FOR DUPLICATE LAYERS!
     pub fn add(&mut self, layer: LayerScheme) {
         let layer_name = layer.name();
         self.layers.insert(layer.name(), layer)
             .map(|_| panic!("LayerMapScheme::layer(): Duplicate layers: \
                 (layer: \"{}\")", layer_name));
-    }        
+    }
 
      /// Returns all layers containing 'tags'.
-    pub fn layers_with_tags(&self, tags: LayerTags) -> Vec<&LayerScheme> {
+    pub fn layers_with_tags(&self, layer_tags: LayerTags) -> Vec<&LayerScheme> {
          let mut layers: Vec<&LayerScheme> = Vec::with_capacity(16);
-                  
-         for (_, layer) in self.layers.iter().filter(|&(_, layer)| 
-                 layer.tags().meshes(tags))
+
+         for (_, layer) in self.layers.iter().filter(|&(_, layer)|
+                 layer.layer_tags().meshes(layer_tags))
          {
              layers.push(&layer);
          }

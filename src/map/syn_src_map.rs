@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::cmp;
 
 use cmn::{self, CmnError, CmnResult, CorticalDims, SliceDims};
-use map::{AreaMap, AxonKind};
+use map::{AreaMap, AxonTopology};
 
 const INTENSITY_REDUCTION_L2: i8 = 3;
 const STR_MIN: i8 = -3;
@@ -156,10 +156,10 @@ pub struct SrcSliceInfo {
 }
 
 impl SrcSliceInfo {
-    pub fn new(axn_kind: &AxonKind, src_slc_dims: &SliceDims, syn_reach: i8, den_syn_count: u32)
+    pub fn new(axn_kind: &AxonTopology, src_slc_dims: &SliceDims, syn_reach: i8, den_syn_count: u32)
                     -> CmnResult<SrcSliceInfo> {
         let slc_off_pool = match axn_kind {
-            &AxonKind::Horizontal => {
+            &AxonTopology::Horizontal => {
                 // Already checked within `SliceDims` (keep here though).
                 debug_assert!(src_slc_dims.v_size() <= cmn::MAX_HRZ_DIM_SIZE);
                 debug_assert!(src_slc_dims.u_size() <= cmn::MAX_HRZ_DIM_SIZE);
@@ -191,7 +191,7 @@ impl SrcSliceInfo {
                     RandRange::new(0 - u_reach, u_reach + 1), ))
             },
 
-            &AxonKind::Spatial | &AxonKind::None => {
+            &AxonTopology::Spatial | &AxonTopology::None => {
                 let hex_tile_offs = gen_syn_offs(syn_reach,
                     [src_slc_dims.v_scale(), src_slc_dims.u_scale()])?;
 

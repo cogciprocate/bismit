@@ -1,8 +1,10 @@
 //use bittags;
 // use map::LayerKind::{self, Cellular};
-use map::{CellKind, CellClass, LayerKind};
+use map::{CellKind, CellClass, LayerKind, DendriteClass};
 //use std::option::{Option};
 use cmn;
+
+// TODO: UNIFY DENDRITE STORAGE INTO A VEC OF `Dendrites` containing all the relevants.
 
 /* PROTOCELL:
          Merge srcs to a Vec<Box<Vec<..>>>, A Vec of src vec lists

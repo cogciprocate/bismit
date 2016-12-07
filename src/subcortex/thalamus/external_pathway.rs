@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use find_folder::Search;
 use cmn::{self, CorticalDims, CmnResult, CmnError};
 use ocl::{EventList};
-use map::{self, AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonKind};
+use map::{self, AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonTopology};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
@@ -59,7 +59,7 @@ pub enum ExternalPathwayEncoder {
 pub struct ExternalPathwayLayer {
     layer_name: &'static str,
     layer_tags: LayerTags,
-    axn_kind: AxonKind,
+    axn_kind: AxonTopology,
     dims: Option<CorticalDims>,
 }
 
@@ -76,7 +76,7 @@ impl ExternalPathwayLayer {
         self.layer_tags
     }
 
-    pub fn axn_kind(&self) -> AxonKind {
+    pub fn axn_kind(&self) -> AxonTopology {
         self.axn_kind.clone()
     }
 
@@ -116,24 +116,24 @@ impl ExternalPathway {
 
         for p_layer in p_layers.into_iter() {
             let layer_name = p_layer.name();
-            let layer_tags = p_layer.tags();
+            let layer_tags = p_layer.layer_tags();
             let axn_kind = p_layer.kind().axn_kind().expect("ExternalPathway::new(): ExternalPathway layer \
                 must be 'LayerKind::Axonal(_)'.");
             let layer_depth = p_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
             // let dims = if layer_tags.contains(map::SPATIAL) {
-            //     assert_eq!(axn_kind, AxonKind::Spatial);
+            //     assert_eq!(axn_kind, AxonTopology::Spatial);
             //     Some(pamap.dims.clone_with_depth(layer_depth))
             // } else {
             //     assert!(layer_tags.contains(map::HORIZONTAL));
-            //     assert_eq!(axn_kind, AxonKind::Horizontal);
+            //     assert_eq!(axn_kind, AxonTopology::Horizontal);
             //     None
             // };
 
             let dims = match axn_kind {
-                AxonKind::Spatial => Some(pamap.dims.clone_with_depth(layer_depth)),
-                AxonKind::Horizontal => None,
-                AxonKind::None => None,
+                AxonTopology::Spatial => Some(pamap.dims.clone_with_depth(layer_depth)),
+                AxonTopology::Horizontal => None,
+                AxonTopology::None => None,
             };
 
             assert!(layer_tags.contains(map::OUTPUT), "ExternalPathway::new(): External ('Thalamic') areas \

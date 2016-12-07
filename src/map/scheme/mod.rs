@@ -18,7 +18,7 @@ pub use self::area::{AreaSchemeList, AreaScheme};
 
 pub use self::layer::{LayerScheme};
     // pub use self::layer_map::LayerKind::{Cellular, Axonal};
-    // pub use self::layer_map::AxonKind::{Spatial, Horizontal};
+    // pub use self::layer_map::AxonTopology::{Spatial, Horizontal};
 
 pub use self::cell::{CellScheme};
     // pub use self::cell::CellKind::{Pyramidal, SpinyStellate, Inhibitory, Complex};

@@ -20,6 +20,7 @@ pub struct AreaMap {
     hrz_demarc: u8,
     eff_areas: Vec<&'static str>,
     aff_areas: Vec<&'static str>,
+    assoc_areas: Vec<&'static str>,
     filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>
 }
 
@@ -46,6 +47,7 @@ impl AreaMap {
             hrz_demarc: 128,
             eff_areas: pamap.get_eff_areas().clone(),
             aff_areas: pamap.get_aff_areas().clone(),
+            assoc_areas: pamap.get_other_areas().clone(),
             filter_chains: pamap.filter_chains.clone(),
         }
     }

@@ -13,7 +13,8 @@ use std::fmt::{self, Formatter};
 //     cortices, frontal cortices, and the contralateral visual cortex
 //     (Figures 1A, 1B, and S1A–S1C). This suggests that Tlx3-Cre selectively
 //     labels L5 CC PNs.
-// - L5SC (L5B): Glt25d2-Cre NF107 (pyramidal tract)(thick tuft)(124mum^2)(Intrinsicly BS - soma)
+//
+// - L5CS (L5B): Glt25d2-Cre NF107 (pyramidal tract)(thick tuft)(124mum^2)(Intrinsicly BS - soma)
 //   - In contrast, eGFP+ axons from Glt25d2-Cre+ neurons in V1 do not project
 //     to other cortical areas (Figures 1A and 1B). Instead, their axons enter
 //     white matter and travel to target subcortical structures including the
@@ -28,6 +29,7 @@ use std::fmt::{self, Formatter};
 //     target profiles (Figures 1A and 1B). We conclude that although
 //     Glt25d2-Cre+ neurons are sparse, they are a representative sample of CS
 //     neurons.
+//
 // - L5CC-NS (NEW) (non-striatal): Efr3a-Cre NO108 (64mum^2)(RS - soma)
 //   - Notably, Efr3a-Cre+ L5 V1 neurons lack projections to known axonal
 //     targets of L5 CC and CS neurons such as superior colliculus, thalamus,
@@ -136,10 +138,10 @@ impl LayerTags {
     }
 
     /// Returns whether or not `self` both contains and equals the unique id of
-    /// `other`.
+    /// `other` or the other way around.
     ///
     /// Useful when comparing tags which must match uids where `self` may be a
-    /// superset of `other`.
+    /// superset of `other` or `other` a superset of `self`.
     pub fn meshes_either_way(&self, other: LayerTags) -> bool {
         (self.contains(other) || other.contains(*self)) &&
             (*self != DEFAULT && other != DEFAULT) &&

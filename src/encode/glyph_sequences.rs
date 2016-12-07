@@ -6,7 +6,7 @@ use cmn::{CorticalDims, TractFrameMut};
 use map::{self, LayerTags};
 use thalamus::{ExternalPathwayTract, ExternalPathwayLayer};
 use encode::GlyphBuckets;
-use map::AxonKind;
+use map::AxonTopology;
 
 
 /// The cursor containing the current position of the glyph sequence.
@@ -67,10 +67,10 @@ impl GlyphSequences {
         let mut hrz_layer_dims: Option<CorticalDims> = None;
 
         for (tags, layer) in layers.iter_mut() {
-            if layer.axn_kind() == AxonKind::Spatial {
+            if layer.axn_kind() == AxonTopology::Spatial {
                 assert!(tags.contains(map::FF_OUT));
                 spt_layer_dims = layer.dims().cloned();
-            } else if layer.axn_kind() == AxonKind::Horizontal {
+            } else if layer.axn_kind() == AxonTopology::Horizontal {
                 assert!(tags.contains(map::NS_OUT));
                 hrz_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1, 0, None));
                 layer.set_dims(hrz_layer_dims.clone());

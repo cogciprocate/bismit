@@ -1,6 +1,6 @@
 use cmn::{self, CorticalDims, SliceDims, Sdr};
 use map::{SliceMap};
-use map::{AxonKind};
+use map::{AxonTopology};
 
 //use std::char;
 use std::iter;
@@ -16,7 +16,7 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new(area_dims: &CorticalDims) -> Renderer {
-        let dims = SliceDims::new(area_dims, None, AxonKind::Spatial).expect("Renderer::new()");
+        let dims = SliceDims::new(area_dims, None, AxonTopology::Spatial).expect("Renderer::new()");
         let sdr_len = (dims.columns()) as usize;
 
         Renderer {

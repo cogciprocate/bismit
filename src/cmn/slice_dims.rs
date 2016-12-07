@@ -2,7 +2,7 @@
 use ocl;
 use ocl::traits::MemLen;
 use cmn::{self, ParaHexArray, CorticalDims, CmnResult, CmnError};
-use map::{AxonKind};
+use map::{AxonTopology};
 
 
 #[derive(Clone, Debug)]
@@ -17,10 +17,10 @@ pub struct SliceDims {
 
 impl SliceDims {
     pub fn new(area_dims: &CorticalDims, src_lyr_dims_opt: Option<&CorticalDims>,
-                axn_kind: AxonKind) -> CmnResult<SliceDims>
+                axn_kind: AxonTopology) -> CmnResult<SliceDims>
     {
         match axn_kind {
-            AxonKind::Spatial | AxonKind::None => {
+            AxonTopology::Spatial | AxonTopology::None => {
                 match src_lyr_dims_opt {
                     Some(src_area_dims) => {
                         let src_scales_res = get_src_scales(src_area_dims, area_dims);
@@ -56,7 +56,7 @@ impl SliceDims {
                 }
             },
 
-            AxonKind::Horizontal => {
+            AxonTopology::Horizontal => {
                 match src_lyr_dims_opt {
                     Some(src_area_dims) => {
                         if src_area_dims.v_size() > cmn::MAX_HRZ_DIM_SIZE ||

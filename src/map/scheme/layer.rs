@@ -1,5 +1,5 @@
 use cmn::{CmnError};
-use map::{LayerTags, LayerKind, AxonKind, DendriteKind};
+use map::{LayerTags, LayerKind, AxonTopology, DendriteKind, AxonDomain};
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
@@ -9,15 +9,24 @@ pub struct LayerScheme {
     depth: Option<u8>,
     // base_slc_id: u8,
     // kind_base_slc_id: u8,
-    tags: LayerTags,
+    layer_tags: LayerTags,
+    axn_domain: AxonDomain,
+    // axon_tags: AxonTags,
 }
 
 impl LayerScheme {
-    pub fn new(name: &'static str, kind: LayerKind, depth: Option<u8>, tags: LayerTags) -> LayerScheme
+    pub fn new(name: &'static str, kind: LayerKind, depth: Option<u8>, layer_tags: LayerTags,
+            axn_domain: AxonDomain) -> LayerScheme
     {
-        if cfg!(debug) { tags.debug_validate(); }
+        if cfg!(debug) { layer_tags.debug_validate(); }
 
-        LayerScheme {name : name, kind: kind, depth: depth, tags: tags}
+        LayerScheme {
+            name: name,
+            kind: kind,
+            depth: depth,
+            layer_tags: layer_tags,
+            axn_domain: axn_domain,
+        }
     }
 
     // pub fn set_depth(&mut self, depth: u8) {
@@ -65,15 +74,15 @@ impl LayerScheme {
         &self.kind
     }
 
-    pub fn axn_kind(&self) -> Result<AxonKind, CmnError> {
+    pub fn axn_kind(&self) -> Result<AxonTopology, CmnError> {
         match self.kind {
             LayerKind::Axonal(ak) => Ok(ak.clone()),
-            LayerKind::Cellular(_) => Ok(AxonKind::Spatial),
-                // Ok(try!(AxonKind::from_tags(self.tags))),
+            LayerKind::Cellular(_) => Ok(AxonTopology::Spatial),
+                // Ok(try!(AxonTopology::from_tags(self.tags))),
         }
     }
 
-    pub fn tags(&self) -> LayerTags {
-        self.tags
+    pub fn layer_tags(&self) -> LayerTags {
+        self.layer_tags
     }
 }

@@ -4,6 +4,92 @@ use map::{FilterScheme, InputScheme, LayerTags};
 use cmn::{self, CorticalDims};
 
 
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct AreaScheme {
+    pub name: &'static str,
+    pub layer_map_name: &'static str,
+    pub dims: CorticalDims,
+    //pub region_kind: LayerMapKind,
+    pub input: InputScheme,
+    // inputs: Vec<InputScheme>,
+    pub filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>,
+    aff_areas: Vec<&'static str>,
+    eff_areas: Vec<&'static str>,
+    other_areas: Vec<&'static str>,
+}
+
+impl AreaScheme {
+    pub fn new(
+                name: &'static str,
+                layer_map_name: &'static str,
+                dim: u32,
+            ) -> AreaScheme
+    {
+        // [FIXME] TODO: This is out of date. Need to instead verify that
+        // 'side' is > CellScheme::den_*_syn_reach. This must be done when
+        // assembling the final map.
+        //
+        // assert!(side >= cmn::SYNAPSE_REACH * 2);
+
+        AreaScheme::irregular(name, layer_map_name, [dim, dim])
+    }
+
+    pub fn irregular(
+                    name: &'static str,
+                    layer_map_name: &'static str,
+                    dims: [u32; 2],
+                ) -> AreaScheme {
+        AreaScheme {
+            name: name,
+            layer_map_name: layer_map_name,
+            dims: CorticalDims::new(dims[0], dims[1], 0, 0, None),
+            input: InputScheme::None,
+            filter_chains: Vec::with_capacity(4),
+            aff_areas: Vec::with_capacity(4),
+            eff_areas: Vec::with_capacity(0),
+            other_areas: Vec::with_capacity(0),
+        }
+    }
+
+    pub fn input(mut self, input: InputScheme) -> AreaScheme {
+        self.input = input;
+        self
+    }
+
+    pub fn filter_chain(mut self, tags: LayerTags, filter_chain: Vec<FilterScheme>) -> AreaScheme {
+        self.filter_chains.push((tags, filter_chain));
+        self
+    }
+
+    pub fn eff_areas(mut self, eff_areas: Vec<&'static str>) -> AreaScheme {
+        self.eff_areas = eff_areas;
+        self
+    }
+
+    pub fn other_areas(mut self, areas: Vec<&'static str>) -> AreaScheme {
+        self.other_areas = areas;
+        self
+    }
+
+    pub fn set_filter_chain(&mut self, tags: LayerTags, filter_chain: Vec<FilterScheme>) {
+        self.filter_chains.push((tags, filter_chain));
+    }
+
+    pub fn set_eff_areas(&mut self, eff_areas: Vec<&'static str>) {
+        self.eff_areas = eff_areas;
+    }
+
+    #[inline] pub fn name(&self) -> &'static str { self.name }
+    #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] pub fn get_input(&self) -> &InputScheme { &self.input }
+    #[inline] pub fn get_eff_areas(&self) -> &Vec<&'static str> { &self.eff_areas }
+    #[inline] pub fn get_aff_areas(&self) -> &Vec<&'static str> { &self.aff_areas }
+    #[inline] pub fn get_other_areas(&self) -> &Vec<&'static str> { &self.other_areas }
+}
+
+
+
 pub struct AreaSchemeList {
     maps: HashMap<&'static str, AreaScheme>,
 }
@@ -46,80 +132,3 @@ impl <'a>AreaSchemeList {
 
     #[inline] pub fn maps(&self) -> &HashMap<&'static str, AreaScheme> { &self.maps }
 }
-
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct AreaScheme {
-    pub name: &'static str,
-    pub layer_map_name: &'static str,
-    pub dims: CorticalDims,
-    //pub region_kind: LayerMapKind,
-    pub input: InputScheme,
-    // inputs: Vec<InputScheme>,
-    pub filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>,
-    aff_areas: Vec<&'static str>,
-    eff_areas: Vec<&'static str>,
-}
-
-impl AreaScheme {
-    pub fn new(
-                name: &'static str,
-                layer_map_name: &'static str,
-                dim: u32,
-            ) -> AreaScheme
-    {
-        // [FIXME] TODO: This is out of date. Need to instead verify that
-        // 'side' is > CellScheme::den_*_syn_reach. This must be done when
-        // assembling the final map.
-        //
-        // assert!(side >= cmn::SYNAPSE_REACH * 2);
-
-        AreaScheme::irregular(name, layer_map_name, [dim, dim])
-    }
-
-    pub fn irregular(
-                    name: &'static str,
-                    layer_map_name: &'static str,
-                    dims: [u32; 2],
-                ) -> AreaScheme {
-        AreaScheme {
-            name: name,
-            layer_map_name: layer_map_name,
-            dims: CorticalDims::new(dims[0], dims[1], 0, 0, None),
-            input: InputScheme::None,
-            filter_chains: Vec::with_capacity(4),
-            aff_areas: Vec::with_capacity(4),
-            eff_areas: Vec::with_capacity(0),
-        }
-    }
-
-    pub fn input(mut self, input: InputScheme) -> AreaScheme {
-        self.input = input;
-        self
-    }
-
-    pub fn filter_chain(mut self, tags: LayerTags, filter_chain: Vec<FilterScheme>) -> AreaScheme {
-        self.filter_chains.push((tags, filter_chain));
-        self
-    }
-
-    pub fn eff_areas(mut self, eff_areas: Vec<&'static str>) -> AreaScheme {
-        self.eff_areas = eff_areas;
-        self
-    }
-
-    pub fn set_filter_chain(&mut self, tags: LayerTags, filter_chain: Vec<FilterScheme>) {
-        self.filter_chains.push((tags, filter_chain));
-    }
-
-    pub fn set_eff_areas(&mut self, eff_areas: Vec<&'static str>) {
-        self.eff_areas = eff_areas;
-    }
-
-    #[inline] pub fn name(&self) -> &'static str { self.name }
-    #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] pub fn get_input(&self) -> &InputScheme { &self.input }
-    #[inline] pub fn get_eff_areas(&self) -> &Vec<&'static str> { &self.eff_areas }
-    #[inline] pub fn get_aff_areas(&self) -> &Vec<&'static str> { &self.aff_areas }
-}
-

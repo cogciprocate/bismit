@@ -2,7 +2,7 @@ use std::ops::Range;
 use ocl::{self, SpatialDims};
 use ocl::traits::MemLen;
 use cmn::{self, CorticalDims, SliceDims};
-use map::{area_map, LayerMap, AxonKind, SliceTractMap};
+use map::{area_map, LayerMap, AxonTopology, SliceTractMap};
 
 const DEBUG_PRINT: bool = false;
 
@@ -10,7 +10,7 @@ const DEBUG_PRINT: bool = false;
 pub struct SliceMap {
     axn_idzs: Vec<u32>,
     layer_names: Vec<&'static str>,
-    axn_kinds: Vec<AxonKind>,
+    axn_kinds: Vec<AxonTopology>,
     v_sizes: Vec<u32>,
     u_sizes: Vec<u32>,
     v_scales: Vec<u32>,
@@ -78,8 +78,8 @@ impl SliceMap {
 
                         if layer.axn_kind() != layer_source.axn_kind() {
                             // Ensure that we are going from Spatial -> Horizontal:
-                            if layer_source.axn_kind() == AxonKind::Spatial &&
-                                    layer.axn_kind() == AxonKind::Horizontal
+                            if layer_source.axn_kind() == AxonTopology::Spatial &&
+                                    layer.axn_kind() == AxonTopology::Horizontal
                             {
                                 assert!(layer_source.dims().v_size() <= 254 &&
                                     layer_source.dims().u_size() <= 254,
@@ -217,7 +217,7 @@ impl SliceMap {
     #[inline] pub fn axn_count(&self) -> u32 { self.physical_len }
     #[inline] pub fn axn_idzs(&self) -> &Vec<u32> { &self.axn_idzs }
     #[inline] pub fn layer_names(&self) -> &Vec<&'static str> { &self.layer_names }
-    #[inline] pub fn axn_kinds(&self) -> &Vec<AxonKind> { &self.axn_kinds }
+    #[inline] pub fn axn_kinds(&self) -> &Vec<AxonTopology> { &self.axn_kinds }
     #[inline] pub fn v_sizes(&self) -> &Vec<u32> { &self.v_sizes }
     #[inline] pub fn u_sizes(&self) -> &Vec<u32> { &self.u_sizes }
     #[inline] pub fn v_scales(&self) -> &Vec<u32> { &self.v_scales }

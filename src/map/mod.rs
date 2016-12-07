@@ -8,6 +8,7 @@ mod slice_tract_map;
 mod layer_tags;
 mod area_map;
 mod scheme;
+mod axon_tags;
 
 // use cmn::CmnError;
 
@@ -22,6 +23,7 @@ pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchem
 pub use self::layer_tags::{LayerTags, DEFAULT, INPUT, OUTPUT, /*SPATIAL,*/ /*HORIZONTAL,*/ FEEDFORWARD,
     FEEDBACK, SPECIFIC, NONSPECIFIC, PRIMARY, SPATIAL_ASSOCIATIVE, TEMPORAL_ASSOCIATIVE,
     UNUSED_TESTING, FF_IN, FF_OUT, FB_IN, FB_OUT, FF_FB_OUT, NS_IN, NS_OUT, PSAL, PTAL, PMEL};
+pub use self::axon_tags::{AxonTags, AxonTag, L5CC, L5CS, L5CC_NS};
 #[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
 
 
@@ -53,7 +55,7 @@ pub enum DendriteKind {
 #[allow(dead_code)]
 pub enum DendriteClass {
     Apical,
-    Distal,
+    Basal,
 }
 
 
@@ -67,51 +69,60 @@ pub enum LayerMapKind {
 }
 
 
+#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+pub enum LayerKind {
+    Cellular(CellScheme),
+    Axonal(AxonTopology),
+}
+
+
+#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+pub enum AxonDomain {
+    Input(Vec<AxonTags>),
+    Output(AxonTags),
+    Local,
+}
+
+
 /// [NOTE]: This enum is redundantly represented as a bitflag in `LayerTags`
-/// and may eventually be removed pending evaluation. [UPDATE]: Nevermind.
-/// Layer tags representing this removed.
+/// and may eventually be removed pending evaluation. [UPDATE]: Nevermind:
+/// layer tags representing this removed.
 ///
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Copy)]
-pub enum AxonKind {
+pub enum AxonTopology {
     Spatial,
     Horizontal,
     None,
 }
 
-// impl AxonKind {
-//     pub fn from_tags<'a>(tags: LayerTags) -> Result<AxonKind, CmnError> {
+// impl AxonTopology {
+//     pub fn from_tags<'a>(tags: LayerTags) -> Result<AxonTopology, CmnError> {
 //         if tags.contains(SPATIAL) && tags.contains(HORIZONTAL) {
-//             Err(CmnError::new(format!("Error converting tags to AxonKind, tags must contain \
+//             Err(CmnError::new(format!("Error converting tags to AxonTopology, tags must contain \
 //                 only one of either 'SPATIAL' or 'HORIZONTAL'. (tags: '{:?}')", tags)))
 //         } else if tags.contains(SPATIAL) {
-//             Ok(AxonKind::Spatial)
+//             Ok(AxonTopology::Spatial)
 //         } else if tags.contains(HORIZONTAL) {
-//             Ok(AxonKind::Horizontal)
+//             Ok(AxonTopology::Horizontal)
 //         } else {
 //             // Err(CmnError::new(format!("Unable to determine axon kind from tags: '{:?}'", tags)))
-//             Ok(AxonKind::None)
+//             Ok(AxonTopology::None)
 //         }
 //     }
 
 //     pub fn matches_tags(&self, tags: LayerTags) -> bool {
 //         match self {
-//             &AxonKind::Spatial => tags.contains(SPATIAL),
-//             &AxonKind::Horizontal => tags.contains(HORIZONTAL),
-//             &AxonKind::None => (!tags.contains(SPATIAL)) && (!tags.contains(HORIZONTAL)),
+//             &AxonTopology::Spatial => tags.contains(SPATIAL),
+//             &AxonTopology::Horizontal => tags.contains(HORIZONTAL),
+//             &AxonTopology::None => (!tags.contains(SPATIAL)) && (!tags.contains(HORIZONTAL)),
 //         }
 //     }
 // }
 
 
 
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
-pub enum LayerKind {
-    Cellular(CellScheme),
-    Axonal(AxonKind),
-}
-
 impl LayerKind {
-    pub fn axn_kind(&self) -> Option<AxonKind> {
+    pub fn axn_kind(&self) -> Option<AxonTopology> {
         match self {
             &LayerKind::Axonal(ak) => Some(ak.clone()),
             _ => None,
