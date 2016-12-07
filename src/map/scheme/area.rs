@@ -1,5 +1,4 @@
 use std::collections::{HashMap};
-
 use map::{FilterScheme, InputScheme, LayerTags};
 use cmn::{self, CorticalDims};
 
