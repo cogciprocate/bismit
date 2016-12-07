@@ -66,11 +66,15 @@ impl LayerInfo {
             // and either feed-forward or feedback, or non-specific. This
             // should cover the gamut for the input layers of an area.
             let src_area_combos: Vec<(&'static str, LayerTags)> =
-                pamap.get_aff_areas().iter().map(|&an| (an, map::FEEDBACK | map::SPECIFIC))
-                    .chain(pamap.get_eff_areas().iter().map(|&an| (an, map::FEEDFORWARD | map::SPECIFIC)))
-                .chain(pamap.get_aff_areas().iter().chain(pamap.get_eff_areas().iter())
-                    .map(|&an| (an, map::NONSPECIFIC)))
-                .collect();
+                pamap.get_aff_areas().iter()
+                        .map(|&an| (an, map::FEEDBACK | map::SPECIFIC))
+                    .chain(pamap.get_eff_areas().iter()
+                        .map(|&an| (an, map::FEEDFORWARD | map::SPECIFIC)))
+                    .chain(pamap.get_aff_areas().iter()
+                        .chain(pamap.get_eff_areas().iter())
+                        .map(|&an| (an, map::NONSPECIFIC)))
+                    .filter(|&(_, src_layer_tag)| tags.contains(src_layer_tag))
+                    .collect();
 
             if DEBUG_PRINT {
                 layer_debug.push(format!("{mt}{mt}{mt}{mt}### SRC_AREAS: {:?}",
@@ -90,7 +94,7 @@ impl LayerInfo {
             // with the source area.
             //
             for (src_area_name, _) in src_area_combos.into_iter()
-                    .filter(|&(_, src_layer_tag)| tags.contains(src_layer_tag))
+                    // .filter(|&(_, src_layer_tag)| tags.contains(src_layer_tag))
             {
                 // Get the source area map (proto):
                 let src_pamap = area_sl.maps().get(src_area_name).expect("LayerInfo::new()");
