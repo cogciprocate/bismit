@@ -23,7 +23,8 @@ pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchem
 pub use self::layer_tags::{LayerTags, DEFAULT, INPUT, OUTPUT, /*SPATIAL,*/ /*HORIZONTAL,*/ FEEDFORWARD,
     FEEDBACK, SPECIFIC, NONSPECIFIC, PRIMARY, SPATIAL_ASSOCIATIVE, TEMPORAL_ASSOCIATIVE,
     UNUSED_TESTING, FF_IN, FF_OUT, FB_IN, FB_OUT, FF_FB_OUT, NS_IN, NS_OUT, PSAL, PTAL, PMEL};
-pub use self::axon_tags::{AxonTags, AxonTag, L5CC, L5CS, L5CC_NS};
+// FIXME: IMPORT MANUALLY:
+pub use self::axon_tags::*;
 #[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
 
 
@@ -77,12 +78,27 @@ pub enum LayerKind {
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
+pub enum InputTrack {
+    Afferent,
+    Efferent,
+    Other,
+}
+
+
+#[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub enum AxonDomain {
-    Input(Vec<AxonTags>),
+    Input(Vec<(InputTrack, AxonTags)>),
     Output(AxonTags),
     Local,
 }
 
+impl AxonDomain {
+    pub fn input(slice: &[(InputTrack, &[AxonTag])]) -> AxonDomain {
+        AxonDomain::Input(slice.into_iter()
+            .map(|&(ref it, ats)| (it.clone(), ats.into()))
+            .collect())
+    }
+}
 
 /// [NOTE]: This enum is redundantly represented as a bitflag in `LayerTags`
 /// and may eventually be removed pending evaluation. [UPDATE]: Nevermind:
