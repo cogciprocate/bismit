@@ -12,9 +12,10 @@ use std::ops::{Index, IndexMut};
 ///
 /// Values cannot be removed.
 ///
-/// This needs a better name :/
+/// This might need a better name :/
 ///
-pub struct MapStore<K, V> {
+#[derive(Debug, Clone)]
+pub struct MapStore<K, V> where K: Eq + Hash {
     values: Vec<V>,
     indices: HashMap<K, usize>,
 }

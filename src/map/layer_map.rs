@@ -14,40 +14,42 @@ const DEBUG_PRINT: bool = false;
 // [FIXME]: TODO: Add caches.
 pub struct LayerMap {
     area_name: &'static str,
-    index: Vec<LayerInfo>,
+    layers: Vec<LayerInfo>,
     depth: u8,
     kind: LayerMapKind,
 }
 
 impl LayerMap {
-    pub fn new(pamap: &AreaScheme, layer_map_sl: &LayerMapSchemeList, area_sl: &AreaSchemeList,
+    pub fn new(area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList, area_sl: &AreaSchemeList,
                     ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> LayerMap {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...",
-            pamap.name, mt = cmn::MT);
+            area_sch.name, mt = cmn::MT);
 
-        let plmap = layer_map_sl[pamap.layer_map_name].clone();
-        let plmap_kind = plmap.kind.clone();
-        // plmap.freeze(&pamap);
+        let lm_scheme = layer_map_sl[area_sch.layer_map_name].clone();
+        // let lm_scheme_kind = lm_scheme.kind().clone();
+        // lm_scheme.freeze(&area_sch);
 
-        let mut index = Vec::with_capacity(plmap.layers().len());
+        let mut layers = Vec::with_capacity(lm_scheme.layers().len());
         let mut slc_total = 0u8;
 
-        for (_, pl) in plmap.layers().iter() {
-            let new_layer = LayerInfo::new(pl, plmap_kind.clone(), pamap, area_sl, layer_map_sl,
-                ext_paths, slc_total);
+        for (layer_id, pl) in lm_scheme.layers().iter().enumerate() {
+            let new_layer = LayerInfo::new(layer_id, pl, lm_scheme.kind().clone(), area_sch,
+                area_sl, layer_map_sl, ext_paths, slc_total);
             slc_total += new_layer.depth();
-            index.push(new_layer);
+            layers.push(new_layer);
+            assert!(layers[layer_id].layer_id() == layer_id);
         }
 
-        // assert_eq!(slc_total as usize, plmap.slc_map().len());
+        // assert_eq!(slc_total as usize, lm_scheme.slc_map().len());
 
         print!("\n");
 
-        let lm = LayerMap { area_name: pamap.name, index: index, depth: slc_total, kind: plmap_kind };
+        let lm = LayerMap { area_name: area_sch.name, layers: layers, depth: slc_total,
+            kind: lm_scheme.kind().clone() };
 
         if DEBUG_PRINT {
-            // println!("{mt}{mt}LAYERMAP::NEW(): index: {:?}, plmap.slc_map(): {:?}",
-            //     index, plmap.slc_map(), mt = cmn::MT);
+            // println!("{mt}{mt}LAYERMAP::NEW(): layers: {:?}, lm_scheme.slc_map(): {:?}",
+            //     layers, lm_scheme.slc_map(), mt = cmn::MT);
             println!("{:#?}", lm.slc_map());
         }
 
@@ -62,7 +64,7 @@ impl LayerMap {
             // println!("\n{mt}Creating Slice Map...", mt = cmn::MT);
         }
 
-        for layer in self.index.iter() {
+        for layer in self.layers.iter() {
             if DEBUG_PRINT {
                 // println!("{mt}{mt}Processing layer: '{}', slc_range: {:?}", layer.name(),
                 //     layer.slc_range(), mt = cmn::MT);
@@ -93,16 +95,16 @@ impl LayerMap {
     }
 
     pub fn layers_meshing_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
-        self.index.iter().filter(|li| li.layer_tags().meshes(tags)).map(|li| li).collect()
+        self.layers.iter().filter(|li| li.layer_tags().meshes(tags)).map(|li| li).collect()
     }
 
     pub fn layers_meshing_tags_either_way(&self, tags: LayerTags) -> Vec<&LayerInfo> {
-        self.index.iter().filter(|li| li.layer_tags().meshes_either_way(tags)).map(|li| li).collect()
+        self.layers.iter().filter(|li| li.layer_tags().meshes_either_way(tags)).map(|li| li).collect()
     }
 
     // [FIXME] TODO: Cache results (use TractArea cache style).
     pub fn layers_containing_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
-        self.index.iter().filter(|li| li.layer_tags().contains(tags)).map(|li| li).collect()
+        self.layers.iter().filter(|li| li.layer_tags().contains(tags)).map(|li| li).collect()
     }
 
     /// Returns the slice range associated with matching layers.
@@ -155,7 +157,7 @@ impl LayerMap {
 
     // [FIXME] TODO: Create HashMap to index layer names.
     pub fn layer_info_by_name(&self, name: &'static str) -> Option<&LayerInfo> {
-        let layers: Vec<&LayerInfo> = self.index.iter().filter(|li| li.name() == name)
+        let layers: Vec<&LayerInfo> = self.layers.iter().filter(|li| li.name() == name)
             .map(|li| li).collect();
         assert!(layers.len() <= 1, format!("Multiple ({}) layers match the name: {}",
             layers.len(), name));
@@ -190,7 +192,7 @@ impl LayerMap {
 
     #[inline]
     pub fn iter(&self) -> Iter<LayerInfo> {
-        self.index.iter()
+        self.layers.iter()
     }
 
     #[inline]

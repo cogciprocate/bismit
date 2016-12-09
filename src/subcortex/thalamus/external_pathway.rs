@@ -102,7 +102,7 @@ pub struct ExternalPathway {
 impl ExternalPathway {
     // [FIXME] Determine (or have passed in) the layer depth corresponding to this source.
     pub fn new(pamap: &AreaScheme, plmap: &LayerMapScheme) -> CmnResult<ExternalPathway> {
-        let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|(_, pl)| pl).collect();
+        let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|pl| pl).collect();
 
         assert!(pamap.get_input().layer_count() == p_layers.len(), "ExternalPathway::new(): \
             Inputs for 'AreaScheme' ({}) must equal layers in 'LayerMapScheme' ({}). Ensure \

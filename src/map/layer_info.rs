@@ -13,6 +13,7 @@ const DEBUG_PRINT: bool = false;
 // and source-area layers (axonal).
 #[derive(Clone)]
 pub struct LayerInfo {
+    layer_id: usize,
     name: &'static str,
     layer_tags: LayerTags,
     slc_range: Option<Range<u8>>,
@@ -28,10 +29,12 @@ impl LayerInfo {
     /// [FIXME]: TODO: Break up, refactor, and optimize.
     /// [FIXME]: TODO: Create an error type enum just for map::Layer****.
     /// [FIXME]: TODO: Return result and get rid of panics, et al.
-    pub fn new(layer_scheme: &LayerScheme, plmap_kind: LayerMapKind, area_sch: &AreaScheme,
-                area_sch_list: &AreaSchemeList, layer_map_sch_list: &LayerMapSchemeList,
-                ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
-                slc_total: u8) -> LayerInfo {
+    pub fn new(layer_id: usize, layer_scheme: &LayerScheme, plmap_kind: LayerMapKind,
+            area_sch: &AreaScheme, area_sch_list: &AreaSchemeList,
+            layer_map_sch_list: &LayerMapSchemeList,
+            ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>, slc_total: u8)
+            -> LayerInfo
+    {
         let layer_scheme = layer_scheme.clone();
         let name = layer_scheme.name();
         let layer_tags = layer_scheme.layer_tags();
@@ -167,7 +170,7 @@ impl LayerInfo {
                                 (layer: '{}'): Adding source layer: \
                                 src_area_name: '{}', src_layer.tags: '{}', src_lyr_map_sch.name: '{}', \
                                 src_layer.name: '{}', tar_slc_range: '{:?}', depth: '{:?}'",
-                                name, src_area_name, src_layer.layer_tags(), src_lyr_map_sch.name,
+                                name, src_area_name, src_layer.layer_tags(), src_lyr_map_sch.name(),
                                 src_layer.name(), tar_slc_range, src_layer.depth(), mt = cmn::MT));
                         }
 
@@ -220,176 +223,6 @@ impl LayerInfo {
             }
         }
 
-        // // If layer is an input layer, add sources:
-        // if layer_tags.contains(map::INPUT) {
-        //     // Make sure this layer is axonal (cellular layers must not also
-        //     // be input layers):
-        //     match layer_scheme.kind() {
-        //         &LayerKind::Axonal(_) => (),
-        //         _ => panic!("Error assembling LayerInfo for '{}'. Layers containing \
-        //             'map::INPUT' must be 'AxonTopology::Axonal'.", name),
-        //     }
-
-        //     // Assemble a list of layers, each given by an (area name, layer
-        //     // tags) tuple which are either specific (not necessarily spatial)
-        //     // and either feed-forward or feedback, or non-specific. This
-        //     // should cover the gamut for the input layers of an area.
-        //     let src_area_combos: Vec<(&'static str, LayerTags)> =
-        //         area_sch.get_aff_areas().iter()
-        //                 .map(|&an| (an, map::FEEDBACK | map::SPECIFIC))
-        //             .chain(area_sch.get_eff_areas().iter()
-        //                 .map(|&an| (an, map::FEEDFORWARD | map::SPECIFIC)))
-        //             .chain(area_sch.get_aff_areas().iter()
-        //                 .chain(area_sch.get_eff_areas().iter())
-        //                 .map(|&an| (an, map::NONSPECIFIC)))
-        //             .filter(|&(_, src_layer_tag)| layer_tags.contains(src_layer_tag))
-        //             .collect();
-
-
-        //     if DEBUG_PRINT {
-        //         layer_debug.push(format!("{mt}{mt}{mt}{mt}### SRC_AREAS: {:?}",
-        //             src_area_combos, mt = cmn::MT));
-        //     }
-
-        //     // Assemble a list of sources for each input layer:
-        //     //
-        //     // For each potential source area (aff or eff):
-        //     // - get that area's layers
-        //     // - get the layers with a complimentary flag ('map::OUTPUT' in this case)
-        //     //    - other layer_tags identical
-        //     // - filter out feedback from eff areas and feedforward from aff areas
-        //     // - push what's left to sources
-        //     //
-        //     // Our layer must contain the flow direction flag corresponding
-        //     // with the source area.
-        //     //
-        //     for (src_area_name, _) in src_area_combos.into_iter()
-        //             // .filter(|&(_, src_layer_tag)| layer_tags.contains(src_layer_tag))
-        //     {
-        //         // Get the source area map (proto):
-        //         let src_area_sch = area_sch_list.maps().get(src_area_name).expect("LayerInfo::new()");
-
-        //         // Get the source layer map associated with this protoarea:
-        //         let src_lyr_map_sch = &layer_map_sch_list[src_area_sch.layer_map_name];
-
-        //         // Get a list of layers with layer_tags which are an i/o mirror
-        //         // (input -> output, output -> input) of the layer_tags for this
-        //         // layer within this source area.
-        //         let src_layers = src_lyr_map_sch.layers_with_tags(layer_tags.mirror_io());
-
-        //         if DEBUG_PRINT {
-        //             layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}### SRC_PROTOLAYERS: {:?}",
-        //                 src_layers, mt = cmn::MT));
-        //         }
-
-        //         for src_layer in src_layers.iter() {
-        //             let (src_layer_dims, src_layer_axn_kind) = match src_lyr_map_sch.kind() {
-        //                 // If the source layer is subcortical, we will be relying
-        //                 // on the `ExternalPathway` associated with it to
-        //                 // provide its dimensions.
-        //                 &LayerMapKind::Subcortical => {
-        //                     let src_area_name = src_area_name.to_owned();
-        //                     let &(ref in_src, _) = ext_paths.by_key(&src_area_name)
-        //                         .expect(&format!("LayerInfo::new(): Invalid input source key: \
-        //                             '{}'", src_area_name));
-        //                     let in_src_layer = in_src.layer(src_layer.layer_tags());
-        //                     let in_src_layer_dims = in_src_layer.dims().expect(
-        //                         &format!("LayerInfo::new(): External source layer dims for layer \
-        //                             '{}' in area '{}' are not set.", in_src_layer.name(),
-        //                             src_area_name)
-        //                         ).clone();
-        //                     (in_src_layer_dims, in_src_layer.axn_kind())
-        //                 },
-        //                 // If the source layer is cortical, we will give the
-        //                 // layer dimensions depending on the source layer's
-        //                 // size.
-        //                 &LayerMapKind::Cortical => {
-        //                     let depth = src_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
-
-        //                     let src_axn_kind = match src_layer.kind() {
-        //                         &LayerKind::Axonal(ref ak) => {
-        //                             // [FIXME]: Make this a Result:
-        //                             // assert!(ak.matches_tags(src_layer.tags()), "Incompatable layer \
-        //                             //     tags for layer: {:?}", src_layer);
-
-        //                             ak.clone()
-        //                         },
-
-        //                         &LayerKind::Cellular(_) => AxonTopology::Spatial
-        //                             //     AxonTopology::from_tags(src_layer.tags())
-        //                             // .expect("LayerInfo::new(): Error determining axon kind"),
-        //                         // _ => panic!("LayerInfo::new(): Unknown LayerKind."),
-        //                     };
-
-        //                     (src_area_sch.dims().clone_with_depth(depth), src_axn_kind)
-        //                 },
-        //             };
-
-        //             let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth());
-
-        //             sources.push(SourceLayerInfo::new(src_area_name, src_layer_dims.clone(),
-        //                 src_layer.layer_tags(), src_layer_axn_kind, tar_slc_range.clone()));
-
-        //             if DEBUG_PRINT {
-        //                 layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}{mt}### SOURCE_LAYER_INFO:\
-        //                     (layer: '{}'): Adding source layer: \
-        //                     src_area_name: '{}', src_layer.tags: '{}', src_lyr_map_sch.name: '{}', \
-        //                     src_layer.name: '{}', tar_slc_range: '{:?}', depth: '{:?}'",
-        //                     name, src_area_name, src_layer.layer_tags(), src_lyr_map_sch.name,
-        //                     src_layer.name(), tar_slc_range, src_layer.depth(), mt = cmn::MT));
-        //             }
-
-        //             src_layer_debug.push(format!("{mt}{mt}{mt}{mt}<{}>: {:?}: area: [\"{}\"], tags: {}",
-        //                 src_layer.name(), tar_slc_range, src_area_name, src_layer.layer_tags(), mt = cmn::MT));
-
-        //             // For (legacy) comparison purposes:
-        //             // layer_scheme.set_depth(src_layer_depth);
-
-        //             next_slc_idz += src_layer_dims.depth();
-        //             ttl_axn_count += src_layer_dims.cells();
-        //         }
-        //     }
-
-        //     // [TODO]: Double check that the total source layer axon count
-        //     // (sources[_].axn_count()) matches up.
-
-        // } else {
-        //     // [NOTE]: This is a non-input layer.
-        //     debug_assert!(!layer_tags.contains(map::INPUT));
-
-        //     // If this is a subcortical layer we need to use the dimensions
-        //     // set by the `ExternalPathway` area instead of the dimensions of
-        //     // the area. Thalamic output layers have irregular layer sizes.
-        //     let columns = match plmap_kind {
-        //         LayerMapKind::Subcortical => {
-        //             // If this is subcortical (previously, thalamic), the
-        //             // OUTPUT flags should be set.
-        //             assert!(layer_tags.contains(map::OUTPUT));
-        //             let area_sch_name = area_sch.name().to_owned();
-        //             let &(ref in_src, _) = ext_paths.by_key(&area_sch_name)
-        //                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
-        //                     '{}'", area_sch.name()));
-        //             let in_src_layer = in_src.layer(layer_tags);
-        //             let in_src_layer_dims = in_src_layer.dims().expect(&format!(
-        //                 "LayerInfo::new(): External source layer dims for layer \
-        //                 '{}' in area '{}' are not set.", in_src_layer.name(),
-        //                 area_sch.name()));
-        //             irregular_layer_dims = Some(in_src_layer_dims.clone());
-        //             in_src_layer_dims.columns()
-        //         },
-        //         LayerMapKind::Cortical => area_sch.dims().columns(),
-        //     };
-
-        //     // [FIXME]: Get rid of the map::OUTPUT check and just default to 0.
-        //     let layer_depth = match layer_scheme.depth() {
-        //         Some(d) => d,
-        //         None => if layer_tags.contains(map::OUTPUT) { cmn::DEFAULT_OUTPUT_LAYER_DEPTH } else { 0 },
-        //     };
-
-        //     next_slc_idz += layer_depth;
-        //     ttl_axn_count += columns * layer_depth as u32;
-        // }
-
         let ttl_slc_range = slc_total..next_slc_idz;
         let slc_range = if ttl_slc_range.len() > 0 { Some(ttl_slc_range) } else { None };
         sources.shrink_to_fit();
@@ -413,6 +246,7 @@ impl LayerInfo {
         }
 
         LayerInfo {
+            layer_id: layer_id,
             name: name,
             layer_tags: layer_tags,
             slc_range: slc_range,
@@ -468,6 +302,7 @@ impl LayerInfo {
         }
     }
 
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn name(&self) -> &'static str { self.name }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn kind(&self) -> &LayerKind { self.layer_scheme.kind() }

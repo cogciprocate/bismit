@@ -26,32 +26,32 @@ pub struct AreaMap {
 }
 
 impl AreaMap {
-    pub fn new(area_id: usize, pamap: &AreaScheme, layer_map_sl: &LayerMapSchemeList,
+    pub fn new(area_id: usize, area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList,
             area_sl: &AreaSchemeList, ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>)
             -> AreaMap
     {
-        println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name,
-            pamap.get_eff_areas(), pamap.get_aff_areas(), mt = cmn::MT);
+        println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", area_sch.name,
+            area_sch.get_eff_areas(), area_sch.get_aff_areas(), mt = cmn::MT);
 
-        let layers = LayerMap::new(pamap, layer_map_sl, area_sl, ext_paths);
+        let layers = LayerMap::new(area_sch, layer_map_sl, area_sl, ext_paths);
 
-        let dims = pamap.dims().clone_with_depth(layers.depth());
+        let dims = area_sch.dims().clone_with_depth(layers.depth());
 
         let slices = SliceMap::new(&dims, &layers);
         slices.print_debug();
 
         AreaMap {
             area_id: area_id,
-            area_name: pamap.name,
+            area_name: area_sch.name,
             dims: dims,
             slices: slices,
             layers: layers,
             // [FIXME]: TEMPORARY:
             hrz_demarc: 128,
-            eff_areas: pamap.get_eff_areas().clone(),
-            aff_areas: pamap.get_aff_areas().clone(),
-            assoc_areas: pamap.get_other_areas().clone(),
-            filter_chains: pamap.filter_chains.clone(),
+            eff_areas: area_sch.get_eff_areas().clone(),
+            aff_areas: area_sch.get_aff_areas().clone(),
+            assoc_areas: area_sch.get_other_areas().clone(),
+            filter_chains: area_sch.filter_chains.clone(),
         }
     }
 

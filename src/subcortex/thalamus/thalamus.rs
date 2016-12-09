@@ -314,7 +314,7 @@ impl Thalamus {
         ============================ THALAMIC (INPUT) AREAS ===========================
         =============================================================================*/
         for pa in area_sl.areas().iter().filter(|pa|
-                    &layer_map_sl[pa.layer_map_name].kind == &LayerMapKind::Subcortical)
+                    layer_map_sl[pa.layer_map_name].kind() == &LayerMapKind::Subcortical)
         {
             let es = try!(ExternalPathway::new(pa, &layer_map_sl[pa.layer_map_name]));
             let tags = es.layer_tags();
@@ -357,7 +357,7 @@ impl Thalamus {
             }
 
             area_maps.insert(area_s.name().to_owned(), area_map);
-            debug_assert!(area_maps[area_id].area_id() == area_id);
+            assert!(area_maps[area_id].area_id() == area_id);
         }
 
         Ok(Thalamus {
