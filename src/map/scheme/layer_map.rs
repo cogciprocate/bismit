@@ -5,47 +5,6 @@ use std::ops::{Index, IndexMut, };
 use map::{LayerTags, LayerMapKind, LayerScheme, AxonTopology, LayerKind, AxonDomain};
 
 
-/// A map of `LayerMapScheme`s indexed by layer map name.
-pub struct LayerMapSchemeList {
-    map: HashMap<&'static str, LayerMapScheme>,
-}
-
-impl LayerMapSchemeList {
-    pub fn new() -> LayerMapSchemeList {
-        LayerMapSchemeList {
-            map: HashMap::new(),
-        }
-    }
-
-    pub fn lmap(mut self, pr: LayerMapScheme) -> LayerMapSchemeList {
-        self.add(pr);
-        self
-    }
-
-    pub fn add(&mut self, pr: LayerMapScheme) {
-        self.map.insert(pr.name.clone(), pr);
-    }
-}
-
-impl<'b> Index<&'b str> for LayerMapSchemeList
-{
-    type Output = LayerMapScheme;
-
-    fn index<'a>(&'a self, region_name: &'b str) -> &'a LayerMapScheme {
-        self.map.get(region_name).expect(&format!("map::regions::LayerMapSchemeList::index(): \
-            Invalid layer map name: '{}'.", region_name))
-    }
-}
-
-impl<'b> IndexMut<&'b str> for LayerMapSchemeList
-{
-    fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut LayerMapScheme {
-        self.map.get_mut(region_name).expect(&format!("map::regions::LayerMapSchemeList::index_mut(): \
-            Invalid layer map name: '{}'.", region_name))
-    }
-}
-
-
 
 #[derive(Clone)]
 pub struct LayerMapScheme {
@@ -142,3 +101,46 @@ impl<'b> IndexMut<&'b&'static str> for LayerMapScheme
         self.layers.get_mut(index).unwrap_or_else(|| panic!("[LayerMapScheme::index(): invalid layer name: '{}'", index))
     }
 }
+
+
+
+/// A map of `LayerMapScheme`s indexed by layer map name.
+pub struct LayerMapSchemeList {
+    map: HashMap<&'static str, LayerMapScheme>,
+}
+
+impl LayerMapSchemeList {
+    pub fn new() -> LayerMapSchemeList {
+        LayerMapSchemeList {
+            map: HashMap::new(),
+        }
+    }
+
+    pub fn lmap(mut self, pr: LayerMapScheme) -> LayerMapSchemeList {
+        self.add(pr);
+        self
+    }
+
+    pub fn add(&mut self, pr: LayerMapScheme) {
+        self.map.insert(pr.name.clone(), pr);
+    }
+}
+
+impl<'b> Index<&'b str> for LayerMapSchemeList
+{
+    type Output = LayerMapScheme;
+
+    fn index<'a>(&'a self, region_name: &'b str) -> &'a LayerMapScheme {
+        self.map.get(region_name).expect(&format!("map::regions::LayerMapSchemeList::index(): \
+            Invalid layer map name: '{}'.", region_name))
+    }
+}
+
+impl<'b> IndexMut<&'b str> for LayerMapSchemeList
+{
+    fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut LayerMapScheme {
+        self.map.get_mut(region_name).expect(&format!("map::regions::LayerMapSchemeList::index_mut(): \
+            Invalid layer map name: '{}'.", region_name))
+    }
+}
+

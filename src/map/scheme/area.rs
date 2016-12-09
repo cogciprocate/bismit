@@ -1,6 +1,6 @@
-use std::collections::{HashMap};
+// use std::collections::{HashMap};
 use map::{FilterScheme, InputScheme, LayerTags};
-use cmn::{self, CorticalDims};
+use cmn::{self, CorticalDims, MapStore};
 
 
 
@@ -90,33 +90,37 @@ impl AreaScheme {
 
 
 pub struct AreaSchemeList {
-    maps: HashMap<&'static str, AreaScheme>,
+    // maps: HashMap<&'static str, AreaScheme>,
+    areas: MapStore<&'static str, AreaScheme>,
+    frozen: bool,
 }
 
 impl <'a>AreaSchemeList {
     pub fn new() -> AreaSchemeList {
-        AreaSchemeList { maps: HashMap::new() }
+        // AreaSchemeList { maps: HashMap::new(), frozen: false }
+        AreaSchemeList { areas: MapStore::new(), frozen: false }
     }
 
     fn add(&mut self, protoarea: AreaScheme) {
+        if self.frozen { panic!("AreaSchemeList is frozen."); }
         let name = protoarea.name;
         //let dims = protoarea.dims;
-        self.maps.insert(name, protoarea)
+        self.areas.insert(name, protoarea)
             .map(|_| panic!("AreaScheme::add(): Duplicate areas: (area: \"{}\")", name));
     }
 
     pub fn area(mut self, protoarea: AreaScheme) -> AreaSchemeList {
+        if self.frozen { panic!("AreaSchemeList is frozen."); }
         self.add(protoarea);
         self
     }
 
-    //     FREEZE(): CURRENTLY NO CHECKS TO MAKE SURE THIS HAS BEEN CALLED! -
     pub fn freeze(&mut self) {
         let mut aff_list: Vec<(&'static str, &'static str)> = Vec::with_capacity(5);
 
-        for (area_name, area) in self.maps.iter() {
+        for area in self.areas.values().iter() {
             for eff_area_name in &area.eff_areas {
-                aff_list.push((eff_area_name, area_name));
+                aff_list.push((eff_area_name, area.name()));
             }
         }
 
@@ -125,9 +129,17 @@ impl <'a>AreaSchemeList {
 
         for (area_name, aff_area_name) in aff_list {
             let emsg = format!("map::areas::AreaSchemeList::freeze(): Area: '{}' not found. ", area_name);
-            self.maps.get_mut(area_name).expect(&emsg).aff_areas.push(aff_area_name);
+            self.areas.by_key_mut(&area_name).expect(&emsg).aff_areas.push(aff_area_name);
         }
+
+        self.areas.shrink_to_fit();
+        self.frozen = true;
     }
 
-    #[inline] pub fn maps(&self) -> &HashMap<&'static str, AreaScheme> { &self.maps }
+    pub fn get_area_by_key(&self, area_name: &'static str) -> Option<&AreaScheme> {
+        self.areas.by_key(&area_name)
+    }
+
+    // #[inline] pub fn maps(&self) -> &HashMap<&'static str, AreaScheme> { &self.areas }
+    #[inline] pub fn areas(&self) -> &[AreaScheme] { &self.areas.values() }
 }

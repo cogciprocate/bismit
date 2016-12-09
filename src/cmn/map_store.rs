@@ -1,5 +1,6 @@
 
 // use std::clone::Clone;
+use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::hash::{Hash, /*BuildHasherDefault*/};
 use std::collections::HashMap;
@@ -40,48 +41,42 @@ impl<K, V> MapStore<K, V> where K: Eq + Hash + Debug {
             .map(move |idx| &self.values[idx])
     }
 
-    pub fn index_of(&self, key: &K) -> Option<usize> {
+    pub fn index_of<Q: ?Sized>(&self, key: &Q) -> Option<usize>
+            where K: Borrow<Q>, Q: Hash + Eq
+    {
         self.indices.get(key).map(|&idx| idx)
     }
 
-    pub fn by_key(&self, key: &K) -> Option<&V> {
+    pub fn by_key<Q: ?Sized>(&self, key: &Q) -> Option<&V>
+            where K: Borrow<Q>, Q: Hash + Eq
+    {
         match self.index_of(key) {
             Some(idx) => self.values.get(idx),
             None => None,
         }
     }
 
-    pub fn by_key_mut(&mut self, key: &K) -> Option<&mut V> {
+    pub fn by_key_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut V>
+            where K: Borrow<Q>, Q: Hash + Eq
+    {
         match self.index_of(key) {
             Some(idx) => self.values.get_mut(idx),
             None => None,
         }
     }
 
-    #[inline]
-    pub fn by_index<'a>(&'a self, idx: usize) -> Option<&'a V> {
-        self.values.get(idx)
+    #[inline] pub fn shrink_to_fit(&mut self) {
+        self.values.shrink_to_fit();
+        self.indices.shrink_to_fit();
     }
 
-    #[inline]
-    pub fn by_index_mut<'a>(&'a mut self, idx: usize) -> Option<&'a mut V> {
-        self.values.get_mut(idx)
-    }
-
-    #[inline]
-    pub fn indices(&self) -> &HashMap<K, usize> {
-        &self.indices
-    }
-
-    #[inline]
-    pub fn indices_mut(&mut self) -> &mut HashMap<K, usize> {
-        &mut self.indices
-    }
-
-    #[inline]
-    pub fn values_mut(&mut self) -> &mut [V] {
-        &mut self.values[..]
-    }
+    #[inline] pub fn by_index<'a>(&'a self, idx: usize) -> Option<&'a V> { self.values.get(idx) }
+    #[inline] pub fn by_index_mut<'a>(&'a mut self, idx: usize)
+        -> Option<&'a mut V> { self.values.get_mut(idx) }
+    #[inline] pub fn indices(&self) -> &HashMap<K, usize> { &self.indices }
+    // #[inline] pub fn indices_mut(&mut self) -> &mut HashMap<K, usize> { &mut self.indices }
+    #[inline] pub fn values(&self) -> &[V] { self.values.as_slice() }
+    #[inline] pub fn values_mut(&mut self) -> &mut [V] { self.values.as_mut_slice() }
 }
 
 impl<K, V> Index<usize> for MapStore<K, V> where K: Eq + Hash + Debug {

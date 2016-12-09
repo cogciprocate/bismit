@@ -13,6 +13,7 @@ use thalamus::ExternalPathway;
 
 #[derive(Clone)]
 pub struct AreaMap {
+    area_id: usize,
     area_name: &'static str,
     dims: CorticalDims,
     slices: SliceMap,
@@ -25,8 +26,9 @@ pub struct AreaMap {
 }
 
 impl AreaMap {
-    pub fn new(pamap: &AreaScheme, layer_map_sl: &LayerMapSchemeList, area_sl: &AreaSchemeList,
-            ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> AreaMap
+    pub fn new(area_id: usize, pamap: &AreaScheme, layer_map_sl: &LayerMapSchemeList,
+            area_sl: &AreaSchemeList, ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>)
+            -> AreaMap
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", pamap.name,
             pamap.get_eff_areas(), pamap.get_aff_areas(), mt = cmn::MT);
@@ -39,6 +41,7 @@ impl AreaMap {
         slices.print_debug();
 
         AreaMap {
+            area_id: area_id,
             area_name: pamap.name,
             dims: dims,
             slices: slices,
@@ -343,35 +346,22 @@ impl AreaMap {
         &self.eff_areas
     }
 
-    pub fn area_name(&self) -> &'static str {
-        self.area_name
-    }
-
-    pub fn axn_idz(&self, slc_id: u8) -> u32 {
-        self.slices.idz(slc_id)
-    }
-
-    pub fn slices(&self) -> &SliceMap {
-        &self.slices
-    }
-
-    pub fn layers(&self) -> &LayerMap {
-        &self.layers
-    }
-
     // UPDATE / DEPRICATE
     pub fn filter_chains(&self) -> &Vec<(LayerTags, Vec<FilterScheme>)> {
         &self.filter_chains
-    }
-
-    pub fn dims(&self) -> &CorticalDims {
-        &self.dims
     }
 
     // UPDATE / DEPRICATE
     pub fn lm_kind_tmp(&self) -> &LayerMapKind {
         &self.layers.region_kind()
     }
+
+    pub fn area_id(&self) -> usize { self.area_id }
+    pub fn area_name(&self) -> &'static str { self.area_name }
+    pub fn axn_idz(&self, slc_id: u8) -> u32 { self.slices.idz(slc_id) }
+    pub fn slices(&self) -> &SliceMap { &self.slices }
+    pub fn layers(&self) -> &LayerMap { &self.layers }
+    pub fn dims(&self) -> &CorticalDims { &self.dims }
 }
 
 

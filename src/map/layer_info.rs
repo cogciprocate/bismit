@@ -99,7 +99,7 @@ impl LayerInfo {
                         // .filter(|&(_, src_layer_tag)| layer_tags.contains(src_layer_tag))
                 {
                     // Get the source area map (proto):
-                    let src_area_sch = area_sch_list.maps().get(src_area_name).expect("LayerInfo::new()");
+                    let src_area_sch = area_sch_list.get_area_by_key(src_area_name).expect("LayerInfo::new()");
 
                     // Get the source layer map associated with this protoarea:
                     let src_lyr_map_sch = &layer_map_sch_list[src_area_sch.layer_map_name];

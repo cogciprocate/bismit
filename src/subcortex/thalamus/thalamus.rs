@@ -146,12 +146,12 @@ impl TractAreaCache {
     fn area_search(&mut self, key: &(String, LayerTags)) -> Result<usize, CmnError> {
         // println!("TractAreaCache::area_search(): Searching for area: {}, tags: {:?}. ALL: {:?}",
         //     src_area_name, layer_tags, self.areas);
-        let area_idx = self.index.get(key).map(|&idx| idx);
-        // println!("   area_idx: {:?}", area_idx);
+        let area_id = self.index.get(key).map(|&idx| idx);
+        // println!("   area_id: {:?}", area_id);
 
         let mut matching_areas: Vec<usize> = Vec::with_capacity(4);
 
-        match area_idx {
+        match area_id {
             Some(idx) => return Ok(idx),
             None => {
                 for i in 0..self.areas.len() {
@@ -292,7 +292,8 @@ pub struct Thalamus {
     // [TODO]: Redesign this with something other than `String` key (use a separate vec & hashmap).
     // external_pathways: HashMap<String, (ExternalPathway, Vec<LayerTags>)>,
     external_pathways: MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
-    area_maps: HashMap<&'static str, AreaMap>,
+    // area_maps: HashMap<&'static str, AreaMap>,
+    area_maps: MapStore<String, AreaMap>,
 }
 
 impl Thalamus {
@@ -305,13 +306,14 @@ impl Thalamus {
         area_sl.freeze();
         let area_sl = area_sl;
         let mut tract = ThalamicTract::new();
-        let mut external_pathways = MapStore::with_capacity(area_sl.maps().len());
-        let mut area_maps = HashMap::with_capacity(area_sl.maps().len());
+        let mut external_pathways = MapStore::with_capacity(area_sl.areas().len());
+        // let mut area_maps = HashMap::with_capacity(area_sl.areas().len());
+        let mut area_maps = MapStore::with_capacity(area_sl.areas().len());
 
         /*=============================================================================
         ============================ THALAMIC (INPUT) AREAS ===========================
         =============================================================================*/
-        for (&_, pa) in area_sl.maps().iter().filter(|&(_, pa)|
+        for pa in area_sl.areas().iter().filter(|pa|
                     &layer_map_sl[pa.layer_map_name].kind == &LayerMapKind::Subcortical)
         {
             let es = try!(ExternalPathway::new(pa, &layer_map_sl[pa.layer_map_name]));
@@ -325,10 +327,11 @@ impl Thalamus {
         /*=============================================================================
         =================================== ALL AREAS =================================
         =============================================================================*/
-        for (&area_name, area_s) in area_sl.maps().iter() {
-            let area_map = AreaMap::new(area_s, &layer_map_sl, &area_sl, &external_pathways);
+        for (area_id, area_s) in area_sl.areas().iter().enumerate() {
+            let area_map = AreaMap::new(area_id, area_s, &layer_map_sl, &area_sl, &external_pathways);
 
-            println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ", area_name, mt = cmn::MT);
+            println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ",
+                area_s.name(), mt = cmn::MT);
 
             {
                 let output_layers = area_map.layers().layers_containing_tags(map::OUTPUT);
@@ -347,14 +350,14 @@ impl Thalamus {
                         axn_kind: {:?}", layer.name(), layer.layer_tags(), layer.slc_range(),
                         layer.layer_map_kind(), layer.axn_kind(), mt = cmn::MT);
 
-                    tract.add_area(area_name.to_owned(), layer.layer_tags(), layer_dims);
+                    tract.add_area(area_s.name().to_owned(), layer.layer_tags(), layer_dims);
                 }
 
                 assert!(output_layers.len() > 0, "Areas must have at least one afferent or efferent area.");
             }
 
-            area_maps.insert(area_name, area_map);
-
+            area_maps.insert(area_s.name().to_owned(), area_map);
+            debug_assert!(area_maps[area_id].area_id() == area_id);
         }
 
         Ok(Thalamus {
@@ -407,12 +410,17 @@ impl Thalamus {
         self.tract.terminal_source(key)
     }
 
-     pub fn area_maps(&self) -> &HashMap<&'static str, AreaMap> {
-         &self.area_maps
+    // pub fn area_maps(&self) -> &MapStore<String, AreaMap> {
+    pub fn area_maps(&self) -> &[AreaMap] {
+         &self.area_maps.values()
     }
 
-     pub fn area_map(&self, area_name: &'static str) -> &AreaMap {
-         &self.area_maps[area_name]
+    pub fn area_map(&self, area_id: usize) -> Option<&AreaMap> {
+        self.area_maps.by_index(area_id)
+    }
+
+    pub fn area_map_by_name(&self, area_name: &str) -> Option<&AreaMap> {
+        self.area_maps.by_key(area_name)
     }
 
     pub fn ext_pathway_idx(&self, pathway_name: &String) -> CmnResult<usize> {
