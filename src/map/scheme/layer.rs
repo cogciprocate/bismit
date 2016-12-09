@@ -10,13 +10,13 @@ pub struct LayerScheme {
     // base_slc_id: u8,
     // kind_base_slc_id: u8,
     layer_tags: LayerTags,
-    axn_domain: AxonDomain,
+    axon_domain: AxonDomain,
     // axon_tags: AxonTags,
 }
 
 impl LayerScheme {
     pub fn new(name: &'static str, kind: LayerKind, depth: Option<u8>, layer_tags: LayerTags,
-            axn_domain: AxonDomain) -> LayerScheme
+            axon_domain: AxonDomain) -> LayerScheme
     {
         if cfg!(debug) { layer_tags.debug_validate(); }
 
@@ -25,7 +25,7 @@ impl LayerScheme {
             kind: kind,
             depth: depth,
             layer_tags: layer_tags,
-            axn_domain: axn_domain,
+            axon_domain: axon_domain,
         }
     }
 
@@ -62,18 +62,6 @@ impl LayerScheme {
         }
     }
 
-    pub fn depth(&self) -> Option<u8> {
-        self.depth
-    }
-
-    pub fn name(&self) -> &'static str {
-        self.name
-    }
-
-    pub fn kind(&self) -> &LayerKind {
-        &self.kind
-    }
-
     pub fn axn_kind(&self) -> Result<AxonTopology, CmnError> {
         match self.kind {
             LayerKind::Axonal(ak) => Ok(ak.clone()),
@@ -82,7 +70,9 @@ impl LayerScheme {
         }
     }
 
-    pub fn layer_tags(&self) -> LayerTags {
-        self.layer_tags
-    }
+    pub fn depth(&self) -> Option<u8> { self.depth }
+    pub fn name(&self) -> &'static str { self.name }
+    pub fn kind(&self) -> &LayerKind { &self.kind }
+    pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
+    pub fn axon_domain(&self) -> &AxonDomain { &self.axon_domain }
 }

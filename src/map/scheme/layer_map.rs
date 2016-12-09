@@ -72,13 +72,13 @@ impl LayerMapScheme {
         self
     }
 
-    pub fn axn_layer(mut self, layer_name: &'static str, layer_tags: LayerTags,
-            axn_domain: AxonDomain, axn_kind: AxonTopology) -> LayerMapScheme
-    {
-        self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
-            axn_domain));
-        self
-    }
+    // pub fn axn_layer(mut self, layer_name: &'static str, layer_tags: LayerTags,
+    //         axn_domain: AxonDomain, axn_kind: AxonTopology) -> LayerMapScheme
+    // {
+    //     self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
+    //         axn_domain));
+    //     self
+    // }
 
     // [FIXME]: TODO: Change axonal default depth to 'None' so that input source or layer map can set.
     pub fn layer(mut self, layer_name: &'static str, layer_depth: u8, layer_tags: LayerTags,

@@ -98,6 +98,10 @@ impl AxonDomain {
             .map(|&(ref it, ats)| (it.clone(), ats.into()))
             .collect())
     }
+
+    pub fn output(ats: &[AxonTag]) -> AxonDomain {
+        AxonDomain::Output(ats.into())
+    }
 }
 
 /// [NOTE]: This enum is redundantly represented as a bitflag in `LayerTags`

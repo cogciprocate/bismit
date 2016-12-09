@@ -178,7 +178,7 @@ impl AreaMap {
 
          // Push all matching slices:
          for layer in self.layers.iter() {
-             if (layer.tags() & map::FF_OUT) == map::FF_OUT {
+             if (layer.layer_tags() & map::FF_OUT) == map::FF_OUT {
                  let v = self.layer_slc_ids(vec![layer.name()]);
                  output_slcs.extend_from_slice(&v);
              }

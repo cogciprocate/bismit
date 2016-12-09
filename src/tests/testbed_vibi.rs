@@ -1,20 +1,31 @@
 use cortex::Cortex;
 use map::{self, LayerTags, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme,
-    AreaSchemeList, CellScheme, FilterScheme, InputScheme, AxonTopology, LayerKind, AxonDomain};
+    AreaSchemeList, CellScheme, FilterScheme, InputScheme, AxonTopology, LayerKind, AxonDomain,
+    AxonTag, InputTrack};
 
 pub fn define_layer_map_sl() -> LayerMapSchemeList {
     const MOTOR_UID: u32 = 654;
     const ROSE_UID: u32 = 435;
 
+    let motor_tag = AxonTag::unique();
+    let rose_tag = AxonTag::unique();
+    let unused_tag = AxonTag::unique();
+
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("cortical_lm", LayerMapKind::Cortical)
-            .axn_layer("motor_ctx", map::NS_IN | LayerTags::uid(MOTOR_UID), AxonDomain::Local,
+            .input_layer("motor_ctx", map::NS_IN | LayerTags::uid(MOTOR_UID),
+                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, motor_tag]), ]),
                 AxonTopology::Horizontal)
-            .axn_layer("rose_ctx", map::NS_IN | LayerTags::uid(ROSE_UID), AxonDomain::Local,
+            .input_layer("rose_ctx", map::NS_IN | LayerTags::uid(ROSE_UID),
+                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, rose_tag]), ]),
                 AxonTopology::Horizontal)
-            .axn_layer("eff_in", map::FB_IN, AxonDomain::Local, AxonTopology::Spatial)
-            .axn_layer("aff_in", map::FF_IN, AxonDomain::Local, AxonTopology::Spatial)
-            .axn_layer("unused", map::UNUSED_TESTING, AxonDomain::Local, AxonTopology::Spatial)
+            .input_layer("eff_in", map::FB_IN,
+                AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP]), ]),
+                AxonTopology::Spatial)
+            .input_layer("aff_in", map::FF_IN,
+                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP]), ]),
+                AxonTopology::Spatial)
+            .input_layer("unused", map::UNUSED_TESTING, AxonDomain::Local, AxonTopology::Spatial)
             .layer("mcols", 1, map::FF_FB_OUT, AxonDomain::Local, CellScheme::minicolumn("iv", "iii"))
             .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhibitory(4, "iv"))
 
@@ -26,14 +37,19 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
                     .apical(vec!["eff_in"/*, "olfac"*/], 12))
         )
         .lmap(LayerMapScheme::new("gly_seq_lm", LayerMapKind::Subcortical)
-            .layer("spatial", 1, map::FF_OUT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
-            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(MOTOR_UID), AxonDomain::Local,
+            .layer("spatial", 1, map::FF_OUT,
+                AxonDomain::output(&[map::THAL_SP]),
+                LayerKind::Axonal(AxonTopology::Spatial))
+            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(MOTOR_UID),
+                AxonDomain::output(&[map::THAL_SP, motor_tag]),
                 LayerKind::Axonal(AxonTopology::Horizontal))
         )
         .lmap(LayerMapScheme::new("gly_seq_rose_lm", LayerMapKind::Subcortical)
-            .layer("spatial", 1, map::FF_OUT | LayerTags::uid(9999) , AxonDomain::Local,
+            .layer("spatial", 1, map::FF_OUT | LayerTags::uid(9999),
+                AxonDomain::output(&[map::THAL_SP, unused_tag]),
                 LayerKind::Axonal(AxonTopology::Spatial))
-            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(ROSE_UID), AxonDomain::Local,
+            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(ROSE_UID),
+                AxonDomain::output(&[map::THAL_SP, rose_tag]),
                 LayerKind::Axonal(AxonTopology::Horizontal))
         )
         // .lmap(LayerMapScheme::new("o0_lm", Thalamic)

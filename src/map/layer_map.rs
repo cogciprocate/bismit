@@ -93,16 +93,16 @@ impl LayerMap {
     }
 
     pub fn layers_meshing_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
-        self.index.iter().filter(|li| li.tags().meshes(tags)).map(|li| li).collect()
+        self.index.iter().filter(|li| li.layer_tags().meshes(tags)).map(|li| li).collect()
     }
 
     pub fn layers_meshing_tags_either_way(&self, tags: LayerTags) -> Vec<&LayerInfo> {
-        self.index.iter().filter(|li| li.tags().meshes_either_way(tags)).map(|li| li).collect()
+        self.index.iter().filter(|li| li.layer_tags().meshes_either_way(tags)).map(|li| li).collect()
     }
 
     // [FIXME] TODO: Cache results (use TractArea cache style).
     pub fn layers_containing_tags(&self, tags: LayerTags) -> Vec<&LayerInfo> {
-        self.index.iter().filter(|li| li.tags().contains(tags)).map(|li| li).collect()
+        self.index.iter().filter(|li| li.layer_tags().contains(tags)).map(|li| li).collect()
     }
 
     /// Returns the slice range associated with matching layers.
@@ -122,9 +122,9 @@ impl LayerMap {
                 if DEBUG_PRINT {
                     println!("LAYER_MAP::LAYER_SRC_INFO(): Comparing: 'src_layer.tags()', \
                         'tags.mirror_io()'.");
-                    src_layer.tags().debug_print_compare(tags.mirror_io());
+                    src_layer.layer_tags().debug_print_compare(tags.mirror_io());
                 }
-                debug_assert!(src_layer.tags().contains(tags.mirror_io()));
+                debug_assert!(src_layer.layer_tags().contains(tags.mirror_io()));
                 src_layers.push(src_layer);
             }
         }
@@ -143,13 +143,13 @@ impl LayerMap {
         if DEBUG_PRINT {
             print!("LAYER_SRC_AREA_NAMES_CONTAINING_TAGS: tags: ");
             for sli in self.layers_containing_tags_src_lyrs(tags).iter() {
-                print!("{}", sli.tags());
+                print!("{}", sli.layer_tags());
             }
             print!("\n");
         }
 
         self.layers_containing_tags_src_lyrs(tags).iter().map(|sli|
-            (sli.area_name().to_owned(), sli.tags())
+            (sli.area_name().to_owned(), sli.layer_tags())
         ).collect()
     }
 

@@ -151,13 +151,13 @@ impl IoLayerInfoCache {
             let tract_keys: Vec<(String, LayerTags, Option<(&'static str, Range<u8>)>)> =
                 if group_tags.contains(map::OUTPUT) {
                     area_map.layers().layers_containing_tags(group_tags).iter()
-                        .map(|li| (area_name.clone(), li.tags(), None)).collect()
+                        .map(|li| (area_name.clone(), li.layer_tags(), None)).collect()
                 } else {
                     debug_assert!(group_tags.contains(map::INPUT));
                     area_map.layers().layers_containing_tags_src_lyrs(group_tags).iter()
                         .map(|sli| (
                                 sli.area_name().to_owned(),
-                                sli.tags(),
+                                sli.layer_tags(),
                                 Some((sli.area_name(), sli.tar_slc_range().clone())),
                             )).collect()
                 };

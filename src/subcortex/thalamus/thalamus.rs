@@ -344,10 +344,10 @@ impl Thalamus {
                     };
 
                     println!("{mt}{mt}{mt}'{}': tags: {}, slc_range: {:?}, map_kind: {:?}, \
-                        axn_kind: {:?}", layer.name(), layer.tags(), layer.slc_range(),
+                        axn_kind: {:?}", layer.name(), layer.layer_tags(), layer.slc_range(),
                         layer.layer_map_kind(), layer.axn_kind(), mt = cmn::MT);
 
-                    tract.add_area(area_name.to_owned(), layer.tags(), layer_dims);
+                    tract.add_area(area_name.to_owned(), layer.layer_tags(), layer_dims);
                 }
 
                 assert!(output_layers.len() > 0, "Areas must have at least one afferent or efferent area.");
