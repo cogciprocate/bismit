@@ -2,7 +2,7 @@ use std::fmt;
 use std::ops::{Range};
 
 use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind,
-    DendriteKind, LayerMapKind, AxonTopology, AxonDomain, InputTrack};
+    DendriteKind, LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack};
 use cmn::{self, CorticalDims, MapStore};
 use map::{self, LayerTags,};
 use thalamus::ExternalPathway;
@@ -73,13 +73,21 @@ impl LayerInfo {
                 let mut matching_source_layers = Vec::with_capacity(16);
 
                 for &(ref track, ref axon_tags) in filters.iter() {
-                    let areas = match *track {
-                        InputTrack::Afferent => area_sch.get_eff_areas(),
-                        InputTrack::Efferent => area_sch.get_aff_areas(),
-                        InputTrack::Other => area_sch.get_other_areas(),
+                    let areas: Vec<(&str, Option<Vec<(AxonTags, AxonTags)>>)> = match *track {
+                        InputTrack::Afferent => {
+                            area_sch.get_eff_areas().iter()
+                                .map(|&an| (an, None)).collect()
+                        },
+                        InputTrack::Efferent => {
+                            area_sch.get_aff_areas().iter()
+                                .map(|&an| (an, None)).collect()
+                        },
+                        InputTrack::Other => {
+                            area_sch.get_other_areas().clone()
+                        },
                     };
 
-                    for area_name in areas {
+                    for (area_name, axon_tag_masqs) in areas {
                         // Get the source area map scheme:
                         let src_area_sch = area_sch_list.get_area_by_key(area_name)
                             .expect("LayerInfo::new()");
@@ -88,7 +96,27 @@ impl LayerInfo {
                         let src_lyr_map_sch = &layer_map_sch_list[src_area_sch.layer_map_name()];
 
                         // Get a list of output layers with matching axon tags for this filter:
-                        let src_layers = src_lyr_map_sch.output_layers_with_axon_tags(axon_tags);
+                        let mut src_layers = Vec::with_capacity(8);
+
+                        match axon_tag_masqs {
+                            Some(masqs) => {
+                                for (orig, repl) in masqs {
+                                    // If the replacement tag of a masquerade matches
+                                    // the current filter's axon tag, use the original
+                                    // tag to search for matching source layers. This
+                                    // is just performing the masquerade in reverse
+                                    // order with the same effect.
+                                    if repl == *axon_tags {
+                                        src_layers.extend(src_lyr_map_sch
+                                            .output_layers_with_axon_tags(&orig));
+                                    }
+                                }
+                            },
+                            None => {
+                                src_layers.extend(src_lyr_map_sch
+                                    .output_layers_with_axon_tags(axon_tags));
+                            }
+                        }
 
                         // Add the matching source layers to our list of sources:
                         matching_source_layers.extend(

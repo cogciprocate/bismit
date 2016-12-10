@@ -1,5 +1,4 @@
-// use std::collections::{HashMap};
-use map::{FilterScheme, InputScheme, LayerTags};
+use map::{FilterScheme, InputScheme, LayerTags, AxonTags, AxonTag};
 use cmn::{self, CorticalDims, MapStore};
 
 
@@ -10,22 +9,16 @@ pub struct AreaScheme {
     name: &'static str,
     layer_map_name: &'static str,
     dims: CorticalDims,
-    //pub region_kind: LayerMapKind,
     input: InputScheme,
-    // inputs: Vec<InputScheme>,
     filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>,
     aff_areas: Vec<&'static str>,
     eff_areas: Vec<&'static str>,
-    other_areas: Vec<&'static str>,
+    // (area name, list of optional axon tag masquerades (original, replacement))):
+    other_areas: Vec<(&'static str, Option<Vec<(AxonTags, AxonTags)>>)>
 }
 
 impl AreaScheme {
-    pub fn new(
-                name: &'static str,
-                layer_map_name: &'static str,
-                dim: u32,
-            ) -> AreaScheme
-    {
+    pub fn new(name: &'static str, layer_map_name: &'static str, dim: u32) -> AreaScheme {
         // [FIXME] TODO: This is out of date. Need to instead verify that
         // 'side' is > CellScheme::den_*_syn_reach. This must be done when
         // assembling the final map.
@@ -35,11 +28,8 @@ impl AreaScheme {
         AreaScheme::irregular(name, layer_map_name, [dim, dim])
     }
 
-    pub fn irregular(
-                    name: &'static str,
-                    layer_map_name: &'static str,
-                    dims: [u32; 2],
-                ) -> AreaScheme {
+    pub fn irregular(name: &'static str, layer_map_name: &'static str, dims: [u32; 2])
+            -> AreaScheme {
         AreaScheme {
             area_id: None,
             name: name,
@@ -68,8 +58,17 @@ impl AreaScheme {
         self
     }
 
-    pub fn other_areas(mut self, areas: Vec<&'static str>) -> AreaScheme {
-        self.other_areas = areas;
+    pub fn other_area(mut self, area_name: &'static str, new_tags: Option<&[(&[AxonTag], &[AxonTag])]>)
+            -> AreaScheme {
+        let new_tags_owned = new_tags.map(|nt| {
+            nt.into_iter()
+            .map(|&(ats0, ats1)| (ats0.into(), ats1.into()))
+            .collect()
+        });
+
+        println!("####### OTHER_AREA: {:?}", new_tags_owned);
+
+        self.other_areas.push((area_name, new_tags_owned));
         self
     }
 
@@ -86,23 +85,25 @@ impl AreaScheme {
     #[inline] pub fn layer_map_name(&self) -> &'static str { self.layer_map_name }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn get_input(&self) -> &InputScheme { &self.input }
-    #[inline] pub fn filter_chains(&self) -> &Vec<(LayerTags, Vec<FilterScheme>)> { &self.filter_chains }
+    #[inline] pub fn filter_chains(&self) -> &Vec<(LayerTags, Vec<FilterScheme>)> {
+        &self.filter_chains
+    }
     #[inline] pub fn get_eff_areas(&self) -> &Vec<&'static str> { &self.eff_areas }
     #[inline] pub fn get_aff_areas(&self) -> &Vec<&'static str> { &self.aff_areas }
-    #[inline] pub fn get_other_areas(&self) -> &Vec<&'static str> { &self.other_areas }
+    #[inline] pub fn get_other_areas(&self) -> &Vec<(&'static str, Option<Vec<(AxonTags, AxonTags)>>)> {
+        &self.other_areas
+    }
 }
 
 
 
 pub struct AreaSchemeList {
-    // maps: HashMap<&'static str, AreaScheme>,
     areas: MapStore<&'static str, AreaScheme>,
     frozen: bool,
 }
 
 impl <'a>AreaSchemeList {
     pub fn new() -> AreaSchemeList {
-        // AreaSchemeList { maps: HashMap::new(), frozen: false }
         AreaSchemeList { areas: MapStore::new(), frozen: false }
     }
 
@@ -110,7 +111,6 @@ impl <'a>AreaSchemeList {
         if self.frozen { panic!("AreaSchemeList is frozen."); }
         let name = protoarea.name;
         protoarea.area_id = Some(self.areas.len());
-        //let dims = protoarea.dims;
         self.areas.insert(name, protoarea)
             .map(|_| panic!("AreaScheme::add(): Duplicate areas: (area: \"{}\")", name));
     }
@@ -147,6 +147,5 @@ impl <'a>AreaSchemeList {
         self.areas.by_key(&area_name)
     }
 
-    // #[inline] pub fn maps(&self) -> &HashMap<&'static str, AreaScheme> { &self.areas }
     #[inline] pub fn areas(&self) -> &[AreaScheme] { &self.areas.values() }
 }

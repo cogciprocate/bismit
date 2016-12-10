@@ -5,7 +5,7 @@ use std::ops::Range;
 
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use map::{LayerMapSchemeList, AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme,
-    DendriteKind};
+    DendriteKind, AxonTags};
 use cmn::{self, CorticalDims, MapStore};
 use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo};
 use thalamus::ExternalPathway;
@@ -21,7 +21,7 @@ pub struct AreaMap {
     // hrz_demarc: u8,
     eff_areas: Vec<&'static str>,
     aff_areas: Vec<&'static str>,
-    assoc_areas: Vec<&'static str>,
+    other_areas: Vec<(&'static str, Option<Vec<(AxonTags, AxonTags)>>)>,
     filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>
 }
 
@@ -50,7 +50,7 @@ impl AreaMap {
             // hrz_demarc: 128,
             eff_areas: area_sch.get_eff_areas().clone(),
             aff_areas: area_sch.get_aff_areas().clone(),
-            assoc_areas: area_sch.get_other_areas().clone(),
+            other_areas: area_sch.get_other_areas().clone(),
             filter_chains: area_sch.filter_chains().clone(),
         }
     }
