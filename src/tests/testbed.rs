@@ -17,12 +17,12 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
 
     layer_map_sl.add(LayerMapScheme::new("visual", LayerMapKind::Cortical)
         //.layer("test_noise", 1, map::DEFAULT, LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("motor_in", 1, map::DEFAULT,
+        .layer("motor_in", 1, map::FB_IN,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_NSP]), ]),
             LayerKind::Axonal(AxonTopology::Horizontal))
         //.layer("olfac", 1, map::DEFAULT, LayerKind::Axonal(Horizontal))
         .layer("eff_in", 0, map::FB_IN,
-            AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP]), ]),
+            AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
         .layer("aff_in", 0, map::FF_IN,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP]), ]),

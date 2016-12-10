@@ -726,6 +726,7 @@ impl CorticalArea {
     pub fn device(&self) -> &Device { &self.ocl_pq.queue().device() }
     pub fn axn_tract_map(&self) -> SliceTractMap { self.area_map.slices().tract_map() }
     pub fn area_map(&self) -> &AreaMap { &self.area_map }
+    pub fn area_id(&self) -> usize { self.area_id }
 }
 
 impl Drop for CorticalArea {
