@@ -23,17 +23,18 @@ impl LayerMap {
     pub fn new(area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList, area_sl: &AreaSchemeList,
                     ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> LayerMap {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...",
-            area_sch.name, mt = cmn::MT);
+            area_sch.name(), mt = cmn::MT);
 
-        let lm_scheme = layer_map_sl[area_sch.layer_map_name].clone();
+        let lm_scheme = layer_map_sl[area_sch.layer_map_name()].clone();
         // let lm_scheme_kind = lm_scheme.kind().clone();
         // lm_scheme.freeze(&area_sch);
 
         let mut layers = Vec::with_capacity(lm_scheme.layers().len());
         let mut slc_total = 0u8;
 
-        for (layer_id, pl) in lm_scheme.layers().iter().enumerate() {
-            let new_layer = LayerInfo::new(layer_id, pl, lm_scheme.kind().clone(), area_sch,
+        for (layer_id, lm) in lm_scheme.layers().iter().enumerate() {
+            assert!(lm.layer_id() == layer_id);
+            let new_layer = LayerInfo::new(layer_id, lm, lm_scheme.kind().clone(), area_sch,
                 area_sl, layer_map_sl, ext_paths, slc_total);
             slc_total += new_layer.depth();
             layers.push(new_layer);
@@ -44,7 +45,7 @@ impl LayerMap {
 
         print!("\n");
 
-        let lm = LayerMap { area_name: area_sch.name, layers: layers, depth: slc_total,
+        let lm = LayerMap { area_name: area_sch.name(), layers: layers, depth: slc_total,
             kind: lm_scheme.kind().clone() };
 
         if DEBUG_PRINT {
@@ -134,14 +135,14 @@ impl LayerMap {
         src_layers
     }
 
-    /// Returns a list of source area names for a given layer.
-    pub fn layers_containing_tags_src_area_names(&self, tags: LayerTags) -> Vec<&'static str> {
-        self.layers_containing_tags_src_lyrs(tags).iter().map(|sli| sli.area_name()).collect()
+    /// Returns a list of source area ids for a given layer.
+    pub fn layers_containing_tags_src_area_names(&self, tags: LayerTags) -> Vec<usize> {
+        self.layers_containing_tags_src_lyrs(tags).iter().map(|sli| sli.area_id()).collect()
     }
 
     /// Returns a list of the (area name, layer tags) tuple necessary to
     /// access thalamic tracts.
-    pub fn layers_containing_tags_src_tract_keys(&self, tags: LayerTags) -> Vec<(String, LayerTags)> {
+    pub fn layers_containing_tags_src_tract_keys(&self, tags: LayerTags) -> Vec<(usize, LayerTags)> {
         if DEBUG_PRINT {
             print!("LAYER_SRC_AREA_NAMES_CONTAINING_TAGS: tags: ");
             for sli in self.layers_containing_tags_src_lyrs(tags).iter() {
@@ -151,7 +152,7 @@ impl LayerMap {
         }
 
         self.layers_containing_tags_src_lyrs(tags).iter().map(|sli|
-            (sli.area_name().to_owned(), sli.layer_tags())
+            (sli.area_id(), sli.layer_tags())
         ).collect()
     }
 

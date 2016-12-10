@@ -18,7 +18,7 @@ pub struct AreaMap {
     dims: CorticalDims,
     slices: SliceMap,
     layers: LayerMap,
-    hrz_demarc: u8,
+    // hrz_demarc: u8,
     eff_areas: Vec<&'static str>,
     aff_areas: Vec<&'static str>,
     assoc_areas: Vec<&'static str>,
@@ -30,7 +30,7 @@ impl AreaMap {
             area_sl: &AreaSchemeList, ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>)
             -> AreaMap
     {
-        println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", area_sch.name,
+        println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", area_sch.name(),
             area_sch.get_eff_areas(), area_sch.get_aff_areas(), mt = cmn::MT);
 
         let layers = LayerMap::new(area_sch, layer_map_sl, area_sl, ext_paths);
@@ -42,23 +42,23 @@ impl AreaMap {
 
         AreaMap {
             area_id: area_id,
-            area_name: area_sch.name,
+            area_name: area_sch.name(),
             dims: dims,
             slices: slices,
             layers: layers,
             // [FIXME]: TEMPORARY:
-            hrz_demarc: 128,
+            // hrz_demarc: 128,
             eff_areas: area_sch.get_eff_areas().clone(),
             aff_areas: area_sch.get_aff_areas().clone(),
             assoc_areas: area_sch.get_other_areas().clone(),
-            filter_chains: area_sch.filter_chains.clone(),
+            filter_chains: area_sch.filter_chains().clone(),
         }
     }
 
     // ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
     pub fn gen_build_options(&self) -> ProgramBuilder {
         let mut build_options = cmn::base_build_options()
-            .cmplr_def("HORIZONTAL_AXON_ROW_DEMARCATION", self.hrz_demarc as i32)
+            // .cmplr_def("HORIZONTAL_AXON_ROW_DEMARCATION", self.hrz_demarc as i32)
             .cmplr_def("AXN_SLC_COUNT", self.slices.depth() as i32)
             .cmplr_def("SLC_SCL_COEFF_L2", cmn::SLC_SCL_COEFF_L2)
             .bo(BuildOpt::include_def("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
@@ -233,7 +233,7 @@ impl AreaMap {
     ///
     // NEW
     pub fn axn_range_meshing_tags_either_way(&self, layer_tags: LayerTags,
-                src_lyr_sub_slcs: Option<(&'static str, Range<u8>)>) -> Option<Range<u32>>
+                src_lyr_sub_slcs: Option<(usize, Range<u8>)>) -> Option<Range<u32>>
     {
         let layers = self.layers.layers_meshing_tags_either_way(layer_tags);
 
@@ -243,8 +243,8 @@ impl AreaMap {
             if let Some(lyr_slc_range) = layer.slc_range() {
                 match src_lyr_sub_slcs {
                     // Sub-slices of Layer:
-                    Some((area_name, slc_range)) => {
-                        match layer.src_lyr(area_name, slc_range) {
+                    Some((area_id, slc_range)) => {
+                        match layer.src_lyr(area_id, slc_range) {
                             Some(src_lyr) => {
                                 let src_base_slc_id = src_lyr.tar_slc_range().start;
                                 let src_lyr_idz = self.axn_idz(src_base_slc_id);

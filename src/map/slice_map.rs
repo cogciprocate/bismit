@@ -94,7 +94,7 @@ impl SliceMap {
                         if DEBUG_PRINT {
                             println!("SLICEMAP::NEW(): Using source layer dims: {:?} \
                                 for layer: {} in area: {}", layer_source.dims(),
-                                layer.name(), layer_source.area_name());
+                                layer.name(), layer_source.area_id());
                         }
                         slc_id_ttl += 1;
                         add_slice(SliceDims::new(area_dims, Some(layer_source.dims()),

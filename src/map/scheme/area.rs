@@ -6,13 +6,14 @@ use cmn::{self, CorticalDims, MapStore};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct AreaScheme {
-    pub name: &'static str,
-    pub layer_map_name: &'static str,
-    pub dims: CorticalDims,
+    area_id: Option<usize>,
+    name: &'static str,
+    layer_map_name: &'static str,
+    dims: CorticalDims,
     //pub region_kind: LayerMapKind,
-    pub input: InputScheme,
+    input: InputScheme,
     // inputs: Vec<InputScheme>,
-    pub filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>,
+    filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>,
     aff_areas: Vec<&'static str>,
     eff_areas: Vec<&'static str>,
     other_areas: Vec<&'static str>,
@@ -40,6 +41,7 @@ impl AreaScheme {
                     dims: [u32; 2],
                 ) -> AreaScheme {
         AreaScheme {
+            area_id: None,
             name: name,
             layer_map_name: layer_map_name,
             dims: CorticalDims::new(dims[0], dims[1], 0, 0, None),
@@ -79,9 +81,12 @@ impl AreaScheme {
         self.eff_areas = eff_areas;
     }
 
+    #[inline] pub fn area_id(&self) -> usize { self.area_id.expect("Area ID not set!") }
     #[inline] pub fn name(&self) -> &'static str { self.name }
+    #[inline] pub fn layer_map_name(&self) -> &'static str { self.layer_map_name }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn get_input(&self) -> &InputScheme { &self.input }
+    #[inline] pub fn filter_chains(&self) -> &Vec<(LayerTags, Vec<FilterScheme>)> { &self.filter_chains }
     #[inline] pub fn get_eff_areas(&self) -> &Vec<&'static str> { &self.eff_areas }
     #[inline] pub fn get_aff_areas(&self) -> &Vec<&'static str> { &self.aff_areas }
     #[inline] pub fn get_other_areas(&self) -> &Vec<&'static str> { &self.other_areas }
@@ -101,16 +106,16 @@ impl <'a>AreaSchemeList {
         AreaSchemeList { areas: MapStore::new(), frozen: false }
     }
 
-    fn add(&mut self, protoarea: AreaScheme) {
+    fn add(&mut self, mut protoarea: AreaScheme) {
         if self.frozen { panic!("AreaSchemeList is frozen."); }
         let name = protoarea.name;
+        protoarea.area_id = Some(self.areas.len());
         //let dims = protoarea.dims;
         self.areas.insert(name, protoarea)
             .map(|_| panic!("AreaScheme::add(): Duplicate areas: (area: \"{}\")", name));
     }
 
     pub fn area(mut self, protoarea: AreaScheme) -> AreaSchemeList {
-        if self.frozen { panic!("AreaSchemeList is frozen."); }
         self.add(protoarea);
         self
     }
@@ -118,7 +123,9 @@ impl <'a>AreaSchemeList {
     pub fn freeze(&mut self) {
         let mut aff_list: Vec<(&'static str, &'static str)> = Vec::with_capacity(5);
 
-        for area in self.areas.values().iter() {
+        for (area_id, area) in self.areas.values().iter().enumerate() {
+            assert!(area.area_id() == area_id);
+
             for eff_area_name in &area.eff_areas {
                 aff_list.push((eff_area_name, area.name()));
             }

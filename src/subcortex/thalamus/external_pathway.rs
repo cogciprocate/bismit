@@ -92,6 +92,7 @@ impl ExternalPathwayLayer {
 // - Must pass layer count to the input 'generator' and have it accept a
 //   multi-headed mutable slice when cycled.
 pub struct ExternalPathway {
+    area_id: usize,
     area_name: String,
     encoder: ExternalPathwayEncoder,
     // direction: ExternalPathwayDirection,
@@ -131,7 +132,7 @@ impl ExternalPathway {
             // };
 
             let dims = match axn_kind {
-                AxonTopology::Spatial => Some(pamap.dims.clone_with_depth(layer_depth)),
+                AxonTopology::Spatial => Some(pamap.dims().clone_with_depth(layer_depth)),
                 AxonTopology::Horizontal => None,
                 AxonTopology::None => None,
             };
@@ -216,7 +217,8 @@ impl ExternalPathway {
         };
 
         Ok(ExternalPathway {
-            area_name: pamap.name.to_owned(),
+            area_id: pamap.area_id(),
+            area_name: pamap.name().to_owned(),
             layers: layers,
             encoder: encoder,
         })
@@ -312,14 +314,6 @@ impl ExternalPathway {
         tags
     }
 
-    pub fn area_name<'a>(&'a self) -> &'a str {
-        &self.area_name
-    }
-
-    pub fn encoder(&mut self) -> &mut ExternalPathwayEncoder {
-        &mut self.encoder
-    }
-
     // Specify a custom encoder tract. Input scheme must have been configured
     // `InputScheme::Custom` in `AreaScheme`.
     pub fn specify_encoder(&mut self, tract: Box<ExternalPathwayTract>) -> CmnResult<()> {
@@ -331,4 +325,8 @@ impl ExternalPathway {
         self.encoder = ExternalPathwayEncoder::Other(tract);
         Ok(())
     }
+
+    pub fn area_id(&self) -> usize { self.area_id }
+    pub fn area_name<'a>(&'a self) -> &'a str { &self.area_name }
+    pub fn encoder(&mut self) -> &mut ExternalPathwayEncoder { &mut self.encoder }
 }

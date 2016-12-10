@@ -71,6 +71,11 @@ impl<K, V> MapStore<K, V> where K: Eq + Hash + Debug {
         self.indices.shrink_to_fit();
     }
 
+    #[inline] pub fn len(&self) -> usize {
+        debug_assert!(self.values.len() == self.indices.len());
+        self.values.len()
+    }
+
     #[inline] pub fn by_index<'a>(&'a self, idx: usize) -> Option<&'a V> { self.values.get(idx) }
     #[inline] pub fn by_index_mut<'a>(&'a mut self, idx: usize)
         -> Option<&'a mut V> { self.values.get_mut(idx) }

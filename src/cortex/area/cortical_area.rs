@@ -31,26 +31,26 @@ pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 ///
 #[derive(Debug)]
 pub struct IoLayerInfo {
-    tract_key: (String, LayerTags),
+    tract_key: (usize, LayerTags),
     axn_range: Range<u32>,
     filter_key: Option<(usize, usize)>,
 }
 
 impl IoLayerInfo {
-    pub fn new(src_area_name: String, tags: LayerTags, axn_range: Range<u32>,
+    pub fn new(src_area_id: usize, tags: LayerTags, axn_range: Range<u32>,
             filter_key: Option<(usize, usize)>) -> IoLayerInfo
     {
         IoLayerInfo {
-            tract_key: (src_area_name, tags),
+            tract_key: (src_area_id, tags),
             axn_range: axn_range,
             filter_key: filter_key,
         }
     }
 
-    #[inline] pub fn key(&self) -> &(String, LayerTags) { &self.tract_key }
+    #[inline] pub fn key(&self) -> &(usize, LayerTags) { &self.tract_key }
     #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
     #[inline] pub fn filter_key(&self) -> &Option<(usize, usize)>{ &self.filter_key }
-    #[allow(dead_code)] #[inline] pub fn area_name<'a>(&'a self) -> &'a str { &self.tract_key.0 }
+    #[allow(dead_code)] #[inline] pub fn area_id(& self) -> usize { self.tract_key.0 }
     #[inline] pub fn tags<'a>(&'a self) -> LayerTags { self.tract_key.1 }
 }
 
@@ -64,13 +64,13 @@ pub struct IoLayerInfoGroup {
 
 impl IoLayerInfoGroup {
     pub fn new(area_map: &AreaMap, group_tags: LayerTags,
-            tract_keys: Vec<(String, LayerTags, Option<(&'static str, Range<u8>)>)>,
+            tract_keys: Vec<(usize, LayerTags, Option<(usize, Range<u8>)>)>,
             filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>) -> IoLayerInfoGroup
     {
         // Create a container for our i/o layer(s):
         let mut layers = Vec::<IoLayerInfo>::with_capacity(tract_keys.len());
 
-        for (lyr_area_name, lyr_tags, src_lyr_key) in tract_keys.into_iter() {
+        for (lyr_area_id, lyr_tags, src_lyr_key) in tract_keys.into_iter() {
             let (local_layer_tags, filter_key) = if group_tags.contains(map::OUTPUT) {
                 (lyr_tags, None)
             } else {
@@ -91,7 +91,7 @@ impl IoLayerInfoGroup {
                 // filter.
                 let filter_key = filter_chain_id.and_then(|fcid|
                     filter_chains[fcid].1.first().and_then(|fc|
-                        fc.lyr_id(&lyr_area_name).map(|lid| (fcid, lid))));
+                        fc.lyr_id(lyr_area_id).map(|lid| (fcid, lid))));
 
                 // // [DEBUG]:
                 // println!("###### I/O LAYER ({}) FILTER_CHAIN_ID: '{:?}'", lyr_tags, filter_chain_id);
@@ -104,7 +104,7 @@ impl IoLayerInfoGroup {
                     tags: {}.", local_layer_tags),
             };
 
-            let io_layer = IoLayerInfo::new(lyr_area_name, lyr_tags, axn_range,
+            let io_layer = IoLayerInfo::new(lyr_area_id, lyr_tags, axn_range,
                 filter_key);
             layers.push(io_layer);
         }
@@ -132,8 +132,8 @@ pub struct IoLayerInfoCache {
 }
 
 impl IoLayerInfoCache {
-    pub fn new(area_name: String, area_map: &AreaMap,
-                filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>, ) -> IoLayerInfoCache
+    pub fn new(area_id: usize, area_map: &AreaMap,
+                filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>) -> IoLayerInfoCache
     {
         let group_tags_list: [LayerTags; 6] = [
             map::FF_IN, map::FB_IN, map::NS_IN,
@@ -148,17 +148,17 @@ impl IoLayerInfoCache {
             // that layer. Either way, construct a tuple of '(area_name,
             // src_lyr_tags, src_lyr_key)' which can be used to construct a
             // key to access the correct thalamic tract:
-            let tract_keys: Vec<(String, LayerTags, Option<(&'static str, Range<u8>)>)> =
+            let tract_keys: Vec<(usize, LayerTags, Option<(usize, Range<u8>)>)> =
                 if group_tags.contains(map::OUTPUT) {
                     area_map.layers().layers_containing_tags(group_tags).iter()
-                        .map(|li| (area_name.clone(), li.layer_tags(), None)).collect()
+                        .map(|li| (area_id, li.layer_tags(), None)).collect()
                 } else {
                     debug_assert!(group_tags.contains(map::INPUT));
                     area_map.layers().layers_containing_tags_src_lyrs(group_tags).iter()
                         .map(|sli| (
-                                sli.area_name().to_owned(),
+                                sli.area_id(),
                                 sli.layer_tags(),
-                                Some((sli.area_name(), sli.tar_slc_range().clone())),
+                                Some((sli.area_id(), sli.tar_slc_range().clone())),
                             )).collect()
                 };
 
@@ -238,6 +238,7 @@ impl CorticalAreaSettings {
 
 /// An area of the cortex.
 pub struct CorticalArea {
+    area_id: usize,
     name: &'static str,
     dims: CorticalDims,
     area_map: AreaMap,
@@ -266,6 +267,7 @@ impl CorticalArea {
     pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context,
                     settings: Option<CorticalAreaSettings>) -> CmnResult<CorticalArea> {
         let emsg = "cortical_area::CorticalArea::new()";
+        let area_id = area_map.area_id();
         let area_name = area_map.area_name();
 
         println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);
@@ -466,13 +468,14 @@ impl CorticalArea {
         // events_lists.insert(map::FF_OUT, EventList::new());
         // events_lists.insert(map::NS_OUT, EventList::new());
 
-        let io_info = IoLayerInfoCache::new(area_name.to_owned(), &area_map, &filter_chains);
+        let io_info = IoLayerInfoCache::new(area_id, &area_map, &filter_chains);
 
         println!("{mt}::NEW(): IO_INFO: {:?}, Settings: {:?}", io_info, settings, mt = cmn::MT);
 
         let settings = settings.unwrap_or(CorticalAreaSettings::new());
 
         let cortical_area = CorticalArea {
+            area_id: area_id,
             name: area_name,
             dims: dims,
             area_map: area_map,

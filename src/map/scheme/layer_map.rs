@@ -2,7 +2,7 @@ use std::collections::{HashMap};
 use std::ops::{Index, IndexMut, };
 // use std::hash::{Hasher};
 use cmn::MapStore;
-use map::{LayerTags, LayerMapKind, LayerScheme, AxonTopology, LayerKind, AxonDomain};
+use map::{LayerTags, LayerMapKind, LayerScheme, AxonTopology, LayerKind, AxonDomain, AxonTags};
 
 
 
@@ -52,26 +52,44 @@ impl LayerMapScheme {
         self
     }
 
-    // [FIXME][DONE]: NEED TO CHECK FOR DUPLICATE LAYERS!
-    pub fn add(&mut self, layer: LayerScheme) {
+    pub fn add(&mut self, mut layer: LayerScheme) {
         let layer_name = layer.name();
+        layer.set_layer_id(self.layers.len());
         self.layers.insert(layer.name(), layer)
-            .map(|_| panic!("LayerMapScheme::layer(): Duplicate layers: \
-                (layer: \"{}\")", layer_name));
+            .map(|_| panic!("LayerMapScheme::layer(): Duplicate layer names: \
+                (layer: \"{}\").", layer_name));
     }
 
-     /// Returns all layers containing 'tags'.
-    pub fn layers_with_tags(&self, layer_tags: LayerTags) -> Vec<&LayerScheme> {
-         let mut layers: Vec<&LayerScheme> = Vec::with_capacity(16);
+    /// Returns all layers containing 'tags'.
+    pub fn layers_with_layer_tags(&self, layer_tags: LayerTags) -> Vec<&LayerScheme> {
+        let mut layers: Vec<&LayerScheme> = Vec::with_capacity(16);
 
-         for layer in self.layers.values().iter().filter(|layer|
-                 layer.layer_tags().meshes(layer_tags))
-         {
-             layers.push(&layer);
-         }
+        for layer in self.layers.values().iter().filter(|layer|
+             layer.layer_tags().meshes(layer_tags))
+        {
+         layers.push(&layer);
+        }
 
-         layers
-     }
+        layers
+    }
+
+    /// Returns all input layers containing 'tags'.
+    pub fn output_layers_with_axon_tags(&self, search_tags: &AxonTags) -> Vec<&LayerScheme> {
+        let mut layers: Vec<&LayerScheme> = Vec::with_capacity(16);
+
+        for layer in self.layers.values().iter() {
+            match *layer.axon_domain() {
+                AxonDomain::Output(ref at) => {
+                    if at == search_tags {
+                        layers.push(&layer);
+                    }
+                },
+                _ => (),
+            }
+        }
+
+        layers
+    }
 
      pub fn layers(&self) -> &[LayerScheme] {
         self.layers.values()

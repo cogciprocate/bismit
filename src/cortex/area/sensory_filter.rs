@@ -14,7 +14,7 @@ pub struct SensoryFilter {
     cl_file_name: Option<String>,
     layer_tags: LayerTags,
     area_name: &'static str,
-    src_area_map: HashMap<&'static str, usize>,
+    src_area_map: HashMap<usize, usize>,
     input_buffers: Vec<Buffer<u8>>,
     cycle_kernels: Vec<Kernel>,
 }
@@ -70,7 +70,7 @@ impl SensoryFilter {
                 .arg_buf(&axns.states);
 
             debug_assert_eq!(input_buffers.len(), cycle_kernels.len());
-            src_area_map.insert(src_lyr.area_name(), input_buffers.len());
+            src_area_map.insert(src_lyr.area_id(), input_buffers.len());
             input_buffers.push(input);
             cycle_kernels.push(kern_cycle);
         }
@@ -101,8 +101,8 @@ impl SensoryFilter {
         fltr_event
     }
 
-    pub fn lyr_id(&self, src_area_name: &str) -> Option<usize> {
-        self.src_area_map.get(src_area_name).map(|&id| id)
+    pub fn lyr_id(&self, src_area_id: usize) -> Option<usize> {
+        self.src_area_map.get(&src_area_id).cloned()
     }
 
     pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
