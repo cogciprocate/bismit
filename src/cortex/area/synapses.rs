@@ -236,8 +236,12 @@ impl Synapses {
     }
 
 
-    // [FIXME]: THIS IS A PERFORMANCE NIGHTMARE. SET UP AN EVENTLIST.
-    // BREAK THIS DOWN INTO PIECES. PROCESS SMALLER CHUNKS MORE FREQUENTLY.
+    // [FIXME]: THIS IS A PERFORMANCE NIGHTMARE (since we have to stop the
+    // world to do it).
+    // - SET UP AN EVENTLIST.
+    // - BREAK THIS DOWN INTO PIECES.
+    // - PROCESS SMALLER CHUNKS MORE FREQUENTLY.
+    //
     fn grow(&mut self, init: bool) {
         if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
             println!("REGROW:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:\
@@ -245,10 +249,6 @@ impl Synapses {
         }
 
         // Fill our vectors with fresh data;
-        // self.strengths.fill_vec();
-        // self.src_slc_ids.fill_vec();
-        // self.src_col_v_offs.fill_vec();
-        // self.src_col_u_offs.fill_vec();
         self.strengths.cmd().read(&mut self.vec_strengths).enq().unwrap();
         self.src_slc_ids.cmd().read(&mut self.vec_src_slc_ids).enq().unwrap();
         self.src_col_v_offs.cmd().read(&mut self.vec_src_col_v_offs).enq().unwrap();
@@ -284,10 +284,6 @@ impl Synapses {
             src_tft_id += 1;
         }
 
-        // self.strengths.flush_vec();
-        // self.src_slc_ids.flush_vec();
-        // self.src_col_v_offs.flush_vec();
-        // self.src_col_u_offs.flush_vec();
         self.strengths.cmd().write(&self.vec_strengths).enq().unwrap();
         self.src_slc_ids.cmd().write(&self.vec_src_slc_ids).enq().unwrap();
         self.src_col_v_offs.cmd().write(&self.vec_src_col_v_offs).enq().unwrap();
@@ -296,8 +292,6 @@ impl Synapses {
 
     // [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
     // - Will need to know u and v coords of host cell or deconstruct from syn_idx.
-    // [FIXME] TODO: Remove synapse index bounds checks (.get_unchecked()...).
-    // [FIXME][COMPLETE]: Implement per-slice syn_ranges.
     fn regrow_syn(&mut self, syn_idx: usize, tft_id: usize, _: bool) {
         debug_assert!(syn_idx < self.src_slc_ids.len());
         debug_assert!(syn_idx < self.src_col_v_offs.len());
@@ -333,7 +327,6 @@ impl Synapses {
     pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
         for kern in self.kernels.iter() {
             if DEBUG_KERN { printlnc!(yellow: "Syns: Enqueuing kernel: '{}'...", kern.name()); }
-            // kern.enqueue_events(wait_events, None).expect("bismit::Synapses::cycle");
             kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
         }
     }

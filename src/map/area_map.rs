@@ -151,14 +151,14 @@ impl AreaMap {
 
     // NEW - UPDATE / CONSOLIDATE
     /// Returns a merged list of source slice ids for all source layers.
-    pub fn layer_src_slc_ids(&self, layer_name: &'static str, den_type: DendriteKind) -> Vec<u8> {
+    pub fn layer_src_slc_ids(&self, layer_name: &'static str, den_kind: DendriteKind) -> Vec<u8> {
         let li = match self.layers.layer_info_by_name(layer_name) {
             Some(li) => li,
             None => panic!("AreaMap::layer_src_slc_ids(): No layer named '{}' found.",
                 layer_name),
         };
 
-        let src_lyr_names = li.src_lyr_names(den_type);
+        let src_lyr_names = li.src_lyr_names(den_kind);
         self.layer_slc_ids(src_lyr_names)
      }
 

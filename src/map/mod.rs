@@ -28,6 +28,25 @@ pub use self::axon_tags::*;
 #[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
 
 
+/// An absolute location and unique identifier of a layer.
+//
+// [TODO]: Add a 'system' or 'node' id to represent the machine within a network.
+//
+#[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
+pub struct LayerAddress {
+    layer_id: usize,
+    area_id: usize,
+}
+
+impl LayerAddress {
+    pub fn new(layer_id: usize, area_id: usize) -> LayerAddress {
+        LayerAddress { layer_id: layer_id, area_id: area_id }
+    }
+
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
+    #[inline] pub fn area_id(&self) -> usize { self.area_id }
+}
+
 
 #[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
 pub enum CellKind {

@@ -38,7 +38,7 @@ impl LayerMap {
                 area_sl, layer_map_sl, ext_paths, slc_total);
             slc_total += new_layer.depth();
             layers.push(new_layer);
-            assert!(layers[layer_id].layer_id() == layer_id);
+            assert!(layers[layer_id].layer_addr().layer_id() == layer_id);
         }
 
         // assert_eq!(slc_total as usize, lm_scheme.slc_map().len());

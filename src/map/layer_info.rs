@@ -2,7 +2,7 @@ use std::fmt;
 use std::ops::{Range};
 
 use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind,
-    DendriteKind, LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack};
+    DendriteKind, LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack, LayerAddress};
 use cmn::{self, CorticalDims, MapStore};
 use map::{self, LayerTags,};
 use thalamus::ExternalPathway;
@@ -13,7 +13,7 @@ const DEBUG_PRINT: bool = false;
 // and source-area layers (axonal).
 #[derive(Clone)]
 pub struct LayerInfo {
-    layer_id: usize,
+    layer_addr: LayerAddress,
     name: &'static str,
     layer_tags: LayerTags,
     axon_domain: AxonDomain,
@@ -174,8 +174,9 @@ impl LayerInfo {
 
                     let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth());
 
-                    sources.push(SourceLayerInfo::new(src_area_id, src_layer_dims.clone(),
-                        src_layer.layer_tags(), src_layer_axn_kind, tar_slc_range.clone()));
+                    sources.push(SourceLayerInfo::new(src_layer.layer_id(), src_area_id,
+                        src_layer_dims.clone(), src_layer.layer_tags(), src_layer_axn_kind,
+                        tar_slc_range.clone()));
 
                     if DEBUG_PRINT {
                         layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}{mt}### SOURCE_LAYER_INFO:\
@@ -253,7 +254,7 @@ impl LayerInfo {
         }
 
         LayerInfo {
-            layer_id: layer_id,
+            layer_addr: LayerAddress::new(layer_id, area_sch.area_id()),
             name: name,
             layer_tags: layer_tags,
             axon_domain: axon_domain,
@@ -270,7 +271,7 @@ impl LayerInfo {
     pub fn src_lyr(&self, area_id: usize, tar_slc_range: Range<u8>)
             -> Option<&SourceLayerInfo>
     {
-        self.sources.iter().find(|sli| sli.area_id == area_id &&
+        self.sources.iter().find(|sli| sli.area_id() == area_id &&
             sli.tar_slc_range == tar_slc_range)
     }
 
@@ -310,7 +311,8 @@ impl LayerInfo {
         }
     }
 
-    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
+    // #[inline] pub fn layer_id(&self) -> usize { self.layer_addr.layer_id() }
+    #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn name(&self) -> &'static str { self.name }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn kind(&self) -> &LayerKind { self.layer_scheme.kind() }
@@ -347,7 +349,8 @@ impl fmt::Debug for LayerInfo {
 
 #[derive(Clone)]
 pub struct SourceLayerInfo {
-    area_id: usize,
+    layer_addr: LayerAddress,
+    // area_id: usize,
     dims: CorticalDims,
     layer_tags: LayerTags,
     axn_kind: AxonTopology,
@@ -357,14 +360,16 @@ pub struct SourceLayerInfo {
 
 impl SourceLayerInfo {
     #[inline]
-    pub fn new(src_area_id: usize, src_layer_dims: CorticalDims, src_layer_tags: LayerTags,
-                src_axn_kind: AxonTopology, tar_slc_range: Range<u8>) -> SourceLayerInfo
+    pub fn new(src_layer_id: usize, src_area_id: usize, src_layer_dims: CorticalDims,
+            src_layer_tags: LayerTags, src_axn_kind: AxonTopology, tar_slc_range: Range<u8>)
+            -> SourceLayerInfo
     {
         assert!(tar_slc_range.len() == src_layer_dims.depth() as usize);
 
         SourceLayerInfo {
+            layer_addr: LayerAddress::new(src_layer_id, src_area_id),
             // area_name: src_area_name,
-            area_id: src_area_id,
+            // area_id: src_area_id,
             dims: src_layer_dims,
             layer_tags: src_layer_tags,
             axn_kind: src_axn_kind,
@@ -373,7 +378,8 @@ impl SourceLayerInfo {
     }
 
     // #[inline] pub fn area_name<'a>(&'a self) -> &'a str { self.area_name.as_str() }
-    #[inline] pub fn area_id<'a>(&'a self) -> usize { self.area_id }
+    #[inline] pub fn area_id<'a>(&'a self) -> usize { self.layer_addr.area_id() }
+    #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn axn_count(&self) -> u32 { self.dims().cells() }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
@@ -384,7 +390,8 @@ impl SourceLayerInfo {
 impl fmt::Debug for SourceLayerInfo {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("LayerInfo")
-            .field("area_id", &self.area_id)
+            // .field("area_id", &self.area_id)
+            .field("layer_addr", &self.layer_addr)
             .field("dims", &self.dims)
             .field("layer_tags", &self.layer_tags.to_string())
             .field("axn_kind", &self.axn_kind)

@@ -133,7 +133,7 @@ pub struct IoLayerInfoCache {
 
 impl IoLayerInfoCache {
     pub fn new(area_id: usize, area_map: &AreaMap,
-                filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>) -> IoLayerInfoCache
+            filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>) -> IoLayerInfoCache
     {
         let group_tags_list: [LayerTags; 6] = [
             map::FF_IN, map::FB_IN, map::NS_IN,
@@ -540,13 +540,6 @@ impl CorticalArea {
     }
 
     /// Read input from thalamus and write to axon space.
-    ///
-    /// [FIXME]: Currently cloning each list of keys (with strings inside).
-    /// This is bad on a couple of levels. Generate a list of keys upon
-    /// creation for each category of layer tags THEN convert the `(String,
-    /// LayerTags)` keys into `(usize, LayerTags)`. [UPDATE]: Need now only
-    /// convert the strings to ints.
-    ///
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
         if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(group_tags) {
             for src_lyr in src_lyrs.iter_mut() {
@@ -615,21 +608,21 @@ impl CorticalArea {
         }
     }
 
-    /* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
-    pub fn layer_input_ranges(&self, layer_name: &'static str, den_kind: &DendriteKind)
-            -> Vec<Range<u32>>
-    {
-        let mut axn_irs: Vec<Range<u32>> = Vec::with_capacity(10);
-        let src_slc_ids = self.area_map.layer_src_slc_ids(layer_name, *den_kind);
+    // /* LAYER_INPUT_RANGES(): NEEDS UPDATE / REMOVAL */
+    // pub fn layer_input_ranges(&self, layer_name: &'static str, den_kind: &DendriteKind)
+    //         -> Vec<Range<u32>>
+    // {
+    //     let mut axn_irs: Vec<Range<u32>> = Vec::with_capacity(10);
+    //     let src_slc_ids = self.area_map.layer_src_slc_ids(layer_name, *den_kind);
 
-        for ssid in src_slc_ids {
-            let idz = self.area_map.axn_idz(ssid);
-             let idn = idz + self.dims.columns();
-            axn_irs.push(idz..idn);
-        }
+    //     for ssid in src_slc_ids {
+    //         let idz = self.area_map.axn_idz(ssid);
+    //          let idn = idz + self.dims.columns();
+    //         axn_irs.push(idz..idn);
+    //     }
 
-        axn_irs
-    }
+    //     axn_irs
+    // }
 
     /* PIL(): Get Primary Spatial Associative Layer (immutable) */
     pub fn psal(&self) -> &Box<SpinyStellateLayer> {

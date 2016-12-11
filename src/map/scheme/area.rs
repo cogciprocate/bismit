@@ -29,7 +29,8 @@ impl AreaScheme {
     }
 
     pub fn irregular(name: &'static str, layer_map_name: &'static str, dims: [u32; 2])
-            -> AreaScheme {
+            -> AreaScheme
+    {
         AreaScheme {
             area_id: None,
             name: name,
@@ -58,15 +59,14 @@ impl AreaScheme {
         self
     }
 
-    pub fn other_area(mut self, area_name: &'static str, new_tags: Option<&[(&[AxonTag], &[AxonTag])]>)
-            -> AreaScheme {
+    pub fn other_area(mut self, area_name: &'static str,
+            new_tags: Option<&[(&[AxonTag], &[AxonTag])]>) -> AreaScheme
+    {
         let new_tags_owned = new_tags.map(|nt| {
             nt.into_iter()
             .map(|&(ats0, ats1)| (ats0.into(), ats1.into()))
             .collect()
         });
-
-        println!("####### OTHER_AREA: {:?}", new_tags_owned);
 
         self.other_areas.push((area_name, new_tags_owned));
         self

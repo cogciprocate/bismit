@@ -219,8 +219,7 @@ impl DataCellLayer for PyramidalLayer {
     fn cycle(&self, wait_events: Option<&ClWaitList>) {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
         self.dens().cycle(wait_events);
-        // self.kern_cycle.enqueue_events(wait_events, None)
-        //     .expect("bismit::PyramidalLayer::cycle");
+
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing kern_cycle..."); }
         self.kern_cycle.cmd().ewait_opt(wait_events).enq().expect("bismit::PyramidalLayer::cycle");
     }
