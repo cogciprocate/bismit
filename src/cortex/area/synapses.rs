@@ -134,18 +134,26 @@ impl Synapses {
             // Padded length of our vectors.
             // let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
 
-            // [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
-            let syn_reaches_by_tft = match den_kind {
-                DendriteKind::Proximal => {
-                    src_slc_ids_by_tft.push(area_map.syn_src_slc_ids(layer_name, den_kind));
-                    vec![cell_scheme.den_prx_syn_reach]
-                },
-                DendriteKind::Distal => {
-                    // [FIXME]: THIS ISN'T RIGHT (redesign `::layer_dst_src_slc_ids`):
-                    src_slc_ids_by_tft.extend(area_map.layer_dst_src_slc_ids(layer_name));
-                    cell_scheme.den_dst_syn_reaches.clone()
-                },
-            };
+            // // [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
+            // let syn_reaches_by_tft = match den_kind {
+            //     DendriteKind::Proximal => {
+            //         src_slc_ids_by_tft.push(area_map.syn_src_slc_ids(layer_name, den_kind));
+            //         vec![cell_scheme.den_prx_syn_reach]
+            //     },
+            //     DendriteKind::Distal => {
+            //         // [FIXME]: THIS ISN'T RIGHT (redesign `::layer_dst_src_slc_ids`):
+            //         src_slc_ids_by_tft.extend(area_map.layer_dst_src_slc_ids(layer_name));
+            //         cell_scheme.den_dst_syn_reaches.clone()
+            //     },
+            // };
+
+            let mut syn_reaches_by_tft = Vec::with_capacity(tft_scheme.src_lyrs().len());
+
+            for tft_src_lyr in tft_scheme.src_lyrs().iter() {
+                src_slc_ids_by_tft.push(area_map.syn_src_slc_ids(tft_src_lyr.name(),
+                    tft_scheme.den_kind().clone()));
+
+            }
 
 
 
@@ -185,15 +193,15 @@ impl Synapses {
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(&axons.states)
-                    .arg_buf_named("src_col_u_offs", &src_col_u_offs)
-                    .arg_buf_named("src_col_v_offs", &src_col_v_offs)
-                    .arg_buf_named("src_slc_ids", &src_slc_ids)
+                    .arg_buf_named("src_col_u_offs", None)
+                    .arg_buf_named("src_col_v_offs", None)
+                    .arg_buf_named("src_slc_ids", None)
                     .arg_scl(tft_id as u32 * celtfts_per_syntuft)
                     .arg_scl(syns_per_tft_l2)
                     .arg_scl(dims.depth() as u8)
                     // .arg_buf_named::<i32>("aux_ints_0", None)
                     // .arg_buf_named::<i32>("aux_ints_1", None)
-                    .arg_buf_named("states", &states)
+                    .arg_buf_named("states", None)
             }));
         }
 
@@ -213,6 +221,13 @@ impl Synapses {
         let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
         let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
         let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+
+        // Loop through and add these to each tufts kernel:
+        // .arg_buf_named("src_col_u_offs", &src_col_u_offs)
+        // .arg_buf_named("src_col_v_offs", &src_col_v_offs)
+        // .arg_buf_named("src_slc_ids", &src_slc_ids)
+        // .arg_buf_named("states", &states)
+
 
         // let mut kernels = Vec::with_capacity(src_slc_ids_by_tft.len());
 

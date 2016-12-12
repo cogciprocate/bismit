@@ -178,9 +178,9 @@ impl CorticalDims {
         //     ocl_pq.max_wg_size(), physical_len);
 
         if physical_len % subgroup_count == 0 {
-            return Ok(physical_len / subgroup_count)
+            Ok(physical_len / subgroup_count)
         } else {
-            return Err("Invalid subgroup size.");
+            Err("Invalid subgroup size.")
         }
     }
 
@@ -223,7 +223,7 @@ impl CorticalDims {
 
     /// Length of the buffer required to properly represent this section of cortex.
     ///
-    ///    Rounded based on columns for versatility's sake.
+    /// Rounded based on columns for versatility's sake.
     pub fn to_len_padded(&self, incr: usize) -> usize {
         let cols = self.columns();
         // let phys_incr = ocl_pq.max_wg_size();

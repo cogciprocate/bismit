@@ -19,7 +19,7 @@ pub use self::layer_info::{LayerInfo, SourceLayerInfo};
 pub use self::syn_src_map::{SynSrcSlices, SynSrcIdxCache, SynSrc, gen_syn_offs};
 pub use self::slice_tract_map::SliceTractMap;
 pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
-	LayerScheme, FilterScheme, InputScheme};
+	LayerScheme, FilterScheme, InputScheme, TuftSourceLayer, TuftScheme};
 pub use self::layer_tags::{LayerTags, DEFAULT, INPUT, OUTPUT, /*SPATIAL,*/ /*HORIZONTAL,*/ FEEDFORWARD,
     FEEDBACK, SPECIFIC, NONSPECIFIC, PRIMARY, SPATIAL_ASSOCIATIVE, TEMPORAL_ASSOCIATIVE,
     UNUSED_TESTING, FF_IN, FF_OUT, FB_IN, FB_OUT, FF_FB_OUT, NS_IN, NS_OUT, PSAL, PTAL, PMEL};
@@ -114,21 +114,32 @@ impl LayerKind {
         }
     }
 
-    pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_reach: i8) -> LayerKind {
+    pub fn apical<'a>(mut self, src_lyrs: &[(&'a str, i8)], dens_per_tuft_l2: u8,
+                syns_per_den_l2: u8, thresh_init: u32) -> LayerKind
+    {
         match &mut self {
             &mut LayerKind::Cellular(ref mut cs) => {
-                match cs.den_dst_src_lyrs {
-                    Some(ref mut ddsl) => ddsl.push(dst_srcs),
-                    None => (),
-                }
+                // match cs.den_dst_src_lyrs {
+                //     Some(ref mut ddsl) => ddsl.push(dst_srcs),
+                //     None => (),
+                // }
+                // cs.den_dst_syn_reaches.push(syn_reach);
+                let src_lyrs_vec = src_lyrs.into_iter().map(|&sl| sl.into()).collect();
 
-                cs.den_dst_syn_reaches.push(syn_reach);
+                let tft_scheme = TuftScheme {
+                    den_class: DendriteClass::Apical,
+                    den_kind: DendriteKind::Distal,
+                    dens_per_tuft_l2: 0,
+                    syns_per_den_l2: syns_per_den_l2,
+                    src_lyrs: src_lyrs_vec,
+                    thresh_init: Some(thresh_init),
+                };
+
+                cs.add_tft(tft_scheme);
             },
 
-            &mut LayerKind::Axonal(_) => (),
+            &mut LayerKind::Axonal(_) => panic!("::apical(): Axonal layers do not have dendrites."),
         };
-
-        self
     }
 }
 
