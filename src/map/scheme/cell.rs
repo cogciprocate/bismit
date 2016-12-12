@@ -1,6 +1,6 @@
 //use bittags;
 // use map::LayerKind::{self, Cellular};
-use map::{CellKind, CellClass, LayerKind, DendriteClass, DendriteKind};
+use map::{CellKind, CellClass, LayerKind, DendriteClass, DendriteKind, InhibitoryCellKind};
 //use std::option::{Option};
 use cmn;
 
@@ -19,9 +19,11 @@ impl DenSrcLyr {
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
-pub struct DendriteScheme {
+pub struct TuftScheme {
     class: DendriteClass,
     kind: DendriteKind,
+    dens_per_tuft_l2: u8,
+    syns_per_den_l2: u8,
     src_lyrs: Vec<DenSrcLyr>,
     thresh_init: Option<u32>,
 }
@@ -34,17 +36,17 @@ pub struct DendriteScheme {
 */
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct CellScheme {
-    pub dens_per_tuft_l2: u8,
-    pub syns_per_den_l2: u8,
-    pub cols_per_cel_l2: u8,
-    pub cell_kind: CellKind,
-    pub cell_class: CellClass,
+    // pub dens_per_tuft_l2: u8,
+    // pub syns_per_den_l2: u8,
+    cols_per_cel_l2: u8,
+    cell_kind: CellKind,
+    cell_class: CellClass,
     // pub den_prx_src_lyrs: Option<Vec<&'static str>>,
     // pub den_dst_src_lyrs: Option<Vec<(Vec<&'static str>, DendriteClass)>>,
     // pub den_prx_syn_reach: i8,
     // pub den_dst_syn_reaches: Vec<i8>,
     // pub den_thresh_init: Option<u32>,
-    pub den_schemes: Vec<DendriteScheme>,
+    tft_schemes: Vec<TuftScheme>,
 }
 
 impl CellScheme {
@@ -59,7 +61,7 @@ impl CellScheme {
             den_prx_syn_reach: i8,
             den_dst_syn_reaches: Vec<i8>,
             thresh: Option<u32>,
-            den_schemes: Vec<DendriteScheme>,
+            tft_schemes: Vec<TuftScheme>,
             ) -> CellScheme
     {
 
@@ -67,32 +69,32 @@ impl CellScheme {
         CellScheme {
             cell_kind: cell_kind,
             cell_class: cell_class,
-            dens_per_tuft_l2: dens_per_tuft_l2,
-            syns_per_den_l2: syns_per_den_l2,
+            // dens_per_tuft_l2: dens_per_tuft_l2,
+            // syns_per_den_l2: syns_per_den_l2,
             cols_per_cel_l2: 0,
             // den_dst_src_lyrs: den_dst_src_lyrs,
             // den_prx_src_lyrs: den_prx_src_lyrs,
             // den_prx_syn_reach: den_prx_syn_reach,
             // den_dst_syn_reaches: den_dst_syn_reaches,
             // den_thresh_init: thresh,
-            den_schemes: den_schemes,
+            tft_schemes: tft_schemes,
         }.validate()
     }
 
     pub fn pyramidal(dens_per_tuft_l2: u8, syns_per_den_l2: u8, dst_srcs: Vec<&'static str>,
             thresh: u32, dst_reach: i8) -> LayerKind
     {
-        let den_scheme = DendriteScheme {
+        let tft_scheme = TuftScheme {
             class: DendriteClass::Basal,
             kind: DendriteKind::Distal,
+            dens_per_tuft_l2: dens_per_tuft_l2,
+            syns_per_den_l2: syns_per_den_l2,
             src_lyrs: dst_srcs.iter().map(|&lyr_name|
                 DenSrcLyr::new(lyr_name.to_owned(), dst_reach)).collect(),
             thresh_init: Some(thresh),
         };
 
         LayerKind::Cellular(CellScheme {
-            dens_per_tuft_l2: dens_per_tuft_l2,
-            syns_per_den_l2: syns_per_den_l2,
             cols_per_cel_l2: 0,
             cell_kind: CellKind::Pyramidal,
             cell_class: CellClass::Data,
@@ -101,7 +103,7 @@ impl CellScheme {
             // den_prx_syn_reach: dst_reach,
             // den_dst_syn_reaches: vec![dst_reach],
             // den_thresh_init: Some(thresh),
-            den_schemes: vec![den_scheme]
+            tft_schemes: vec![tft_scheme]
         }.validate())
     }
 
@@ -109,17 +111,17 @@ impl CellScheme {
     pub fn spiny_stellate(syns_per_den_l2: u8, prx_srcs: Vec<&'static str>, thresh: u32,
             prx_reach: i8) -> LayerKind
     {
-        let den_scheme = DendriteScheme {
+        let tft_scheme = TuftScheme {
             class: DendriteClass::Basal,
             kind: DendriteKind::Proximal,
+            dens_per_tuft_l2: 0,
+            syns_per_den_l2: syns_per_den_l2,
             src_lyrs: prx_srcs.iter().map(|&lyr_name|
                 DenSrcLyr::new(lyr_name.to_owned(), prx_reach)).collect(),
             thresh_init: Some(thresh),
         };
 
         LayerKind::Cellular(CellScheme {
-            dens_per_tuft_l2: 0,
-            syns_per_den_l2: syns_per_den_l2,
             cols_per_cel_l2: 0,
             cell_kind: CellKind::SpinyStellate,
             cell_class: CellClass::Data,
@@ -128,23 +130,23 @@ impl CellScheme {
             // den_prx_syn_reach: prx_reach,
             // den_dst_syn_reaches: Vec::new(),
             // den_thresh_init: Some(thresh),
-            den_schemes: vec![den_scheme],
+            tft_schemes: vec![tft_scheme],
         }.validate())
     }
 
     pub fn inhibitory(cols_per_cel_l2: u8, dst_src: &'static str) -> LayerKind {
-        let den_scheme = DendriteScheme {
+        let tft_scheme = TuftScheme {
             class: DendriteClass::Basal,
             kind: DendriteKind::Other,
+            dens_per_tuft_l2: 0,
+            syns_per_den_l2: 0,
             src_lyrs: vec![DenSrcLyr::new(dst_src.to_owned(), 0)],
             thresh_init: None,
         };
 
         LayerKind::Cellular(CellScheme {
-            dens_per_tuft_l2: 0,
-            syns_per_den_l2: 0,
             cols_per_cel_l2: cols_per_cel_l2,
-            cell_kind: CellKind::Inhibitory,
+            cell_kind: CellKind::Inhibitory(InhibitoryCellKind::BasketSurround),
             cell_class: CellClass::Control,
             // [FIXME]: Create a better place to store this source information for control cells:
             // den_dst_src_lyrs: Some(vec![(vec![dst_src], DendriteClass::Basal)]),
@@ -152,22 +154,22 @@ impl CellScheme {
             // den_prx_syn_reach: 0,
             // den_dst_syn_reaches: vec![0],
             // den_thresh_init: None,
-            den_schemes: vec![den_scheme],
+            tft_schemes: vec![tft_scheme],
         }.validate())
     }
 
     pub fn minicolumn(psal_lyr: &'static str, ptal_lyr: &'static str,) -> LayerKind {
-        let den_scheme = DendriteScheme {
+        let tft_scheme = TuftScheme {
             class: DendriteClass::Basal,
             kind: DendriteKind::Other,
+            dens_per_tuft_l2: 0,
+            syns_per_den_l2: 0,
             src_lyrs: vec![DenSrcLyr::new(psal_lyr.to_owned(), 0),
                 DenSrcLyr::new(ptal_lyr.to_owned(), 0)],
             thresh_init: None,
         };
 
         LayerKind::Cellular(CellScheme {
-            dens_per_tuft_l2: 0,
-            syns_per_den_l2: 0,
             cols_per_cel_l2: 0,
             cell_kind: CellKind::Complex,
             cell_class: CellClass::Control,
@@ -178,7 +180,7 @@ impl CellScheme {
             // den_prx_syn_reach: 0,
             // den_dst_syn_reaches: vec![0],
             // den_thresh_init: None,
-            den_schemes: vec![den_scheme],
+            tft_schemes: vec![tft_scheme],
         }.validate())
     }
 
@@ -189,8 +191,8 @@ impl CellScheme {
         //     assert!(reach >= 0, "Synapse reach must be between 0..127");
         // }
 
-        for den_scheme in self.den_schemes.iter() {
-            for src_lyr in den_scheme.src_lyrs.iter() {
+        for tft_scheme in self.tft_schemes.iter() {
+            for src_lyr in tft_scheme.src_lyrs.iter() {
                 assert!(src_lyr.syn_reach >= 0);
             }
         }
@@ -200,9 +202,16 @@ impl CellScheme {
 
     pub fn validate_depth(&self, depth: Option<u8>) -> Option<u8> {
         match self.cell_kind {
-            CellKind::Inhibitory => Some(0),
+            CellKind::Inhibitory(_) => Some(0),
             CellKind::Complex => Some(cmn::DEFAULT_OUTPUT_LAYER_DEPTH),
             _ => depth,
         }
     }
+
+    #[inline] pub fn cols_per_cel_l2(&self) -> u8 { self.cols_per_cel_l2 }
+    #[inline] pub fn cell_kind(&self) -> CellKind { self.cell_kind }
+    #[inline] pub fn cell_class(&self) -> CellClass { self.cell_class }
+    #[inline] pub fn tft_schemes(&self) -> &[TuftScheme] { self.tft_schemes.as_slice() }
+
+    #[inline] pub fn tft_count(&self) -> usize { self.tft_schemes.len() }
 }

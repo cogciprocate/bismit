@@ -28,6 +28,7 @@ pub use self::axon_tags::*;
 #[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
 
 
+
 /// An absolute location and unique identifier of a layer.
 //
 // [TODO]: Add a 'system' or 'node' id to represent the machine within a network.
@@ -49,23 +50,31 @@ impl LayerAddress {
 
 
 #[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
+pub enum InhibitoryCellKind {
+    BasketSurround,
+    //AspinyStellate,
+}
+
+
+#[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub enum CellKind {
     Pyramidal,
     SpinyStellate,
-    //AspinyStellate,
-    Inhibitory,
+    Inhibitory(InhibitoryCellKind),
     Complex,
 }
 
 
-#[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
+// Roughly whether or not a cell is excitatory or inhibitory.
+//
+#[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub enum CellClass {
     Data,
     Control,
 }
 
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum DendriteKind {
     Proximal,
     Distal,

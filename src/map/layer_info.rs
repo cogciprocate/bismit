@@ -296,6 +296,7 @@ impl LayerInfo {
     pub fn dst_src_lyrs(&self) -> Vec<(Vec<&'static str>, DendriteClass)> {
         let layers_by_tuft = match self.layer_scheme.kind() {
             &LayerKind::Cellular(ref cell_scheme) => cell_scheme.den_dst_src_lyrs.clone(),
+
             _ => None,
         };
 

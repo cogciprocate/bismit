@@ -110,69 +110,62 @@ pub struct Synapses {
 
 impl Synapses {
     pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme,
-                den_kind: DendriteKind, _: CellKind, area_map: &AreaMap,
-                axons: &AxonSpace, ocl_pq: &ProQue,
+            den_kind: DendriteKind, _: CellKind, area_map: &AreaMap, axons: &AxonSpace,
+            ocl_pq: &ProQue,
             ) -> CmnResult<Synapses>
     {
-        let syns_per_tft_l2: u8 = cell_scheme.dens_per_tuft_l2 + cell_scheme.syns_per_den_l2;
-        assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
+        let tft_count = cell_scheme.tft_count();
+        let mut kernels = Vec::with_capacity(tft_count);
 
-        let src_idx_cache = SrcIdxCache::new(cell_scheme.syns_per_den_l2,
-            cell_scheme.dens_per_tuft_l2, dims.clone());
+        for tft_id in 0..tft_count {
+            let syns_per_tft_l2: u8 = cell_scheme.dens_per_tuft_l2 + cell_scheme.syns_per_den_l2;
+            assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
 
-        // Padded length of our vectors.
-        // let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
+            let src_idx_cache = SrcIdxCache::new(cell_scheme.syns_per_den_l2,
+                cell_scheme.dens_per_tuft_l2, dims.clone());
 
-        // [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
-        let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {
-            DendriteKind::Proximal => {
-                (vec![area_map.syn_src_slc_ids(layer_name, den_kind)],
-                    vec![cell_scheme.den_prx_syn_reach])
-            },
-            DendriteKind::Distal => {
-                (area_map.layer_dst_src_slc_ids(layer_name),
-                    cell_scheme.den_dst_syn_reaches.clone())
-            },
-        };
+            // Padded length of our vectors.
+            // let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
 
-        assert!(src_slc_ids_by_tft.len() == dims.tfts_per_cel() as usize,
-            "Synapses::new(): Error creating synapses: layer '{}' has one or more invalid \
-            source layers defined. If a source layer is an afferent or efferent input, please \
-            ensure that the source area for that the layer exists. (src_slc_ids_by_tft: {:?})",
-            layer_name, src_slc_ids_by_tft);
+            // [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
+            let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {
+                DendriteKind::Proximal => {
+                    (vec![area_map.syn_src_slc_ids(layer_name, den_kind)],
+                        vec![cell_scheme.den_prx_syn_reach])
+                },
+                DendriteKind::Distal => {
+                    (area_map.layer_dst_src_slc_ids(layer_name),
+                        cell_scheme.den_dst_syn_reaches.clone())
+                },
+            };
 
-        // [FIXME]: Implement src_ranges on a per-tuft basis.
-        // let syn_reaches_by_tft: Vec<u8> = src_slc_ids_by_tft.iter().map(|_| syn_reach).collect();
-        let src_slcs = SrcSlices::new(&src_slc_ids_by_tft, syn_reaches_by_tft,
-            1 << cell_scheme.syns_per_den_l2, area_map)?;
+            assert!(src_slc_ids_by_tft.len() == dims.tfts_per_cel() as usize,
+                "Synapses::new(): Error creating synapses: layer '{}' has one or more invalid \
+                source layers defined. If a source layer is an afferent or efferent input, please \
+                ensure that the source area for that the layer exists. (src_slc_ids_by_tft: {:?})",
+                layer_name, src_slc_ids_by_tft);
 
-        if DEBUG_NEW {
-            println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {},\n\
-                {mt}{mt}{mt}{mt}{mt}dims: {:?}, ",
-                den_kind, dims.to_len(), mt = cmn::MT);
-        }
+            // [FIXME]: Implement src_ranges on a per-tuft basis.
+            // let syn_reaches_by_tft: Vec<u8> = src_slc_ids_by_tft.iter().map(|_| syn_reach).collect();
+            let src_slcs = SrcSlices::new(&src_slc_ids_by_tft, syn_reaches_by_tft,
+                1 << cell_scheme.syns_per_den_l2, area_map)?;
 
-        // [TODO]: Use kernel to ascertain the optimal workgroup size increment.
-        let min_wg_sqrt = 8 as usize;
-        assert_eq!((min_wg_sqrt * min_wg_sqrt), cmn::OPENCL_MINIMUM_WORKGROUP_SIZE as usize);
+            if DEBUG_NEW {
+                println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {},\n\
+                    {mt}{mt}{mt}{mt}{mt}dims: {:?}, ",
+                    den_kind, dims.to_len(), mt = cmn::MT);
+            }
 
-        // The number of cell-tufts in a syn-tuft-group-thingy. Obviously this
-        // is a bit confusing. Better naming needed. See module notes above
-        // for details.
-        let celtfts_per_syntuft = dims.cells();
+            // [TODO]: Use kernel to ascertain the optimal workgroup size increment.
+            let min_wg_sqrt = 8 as usize;
+            assert_eq!((min_wg_sqrt * min_wg_sqrt), cmn::OPENCL_MINIMUM_WORKGROUP_SIZE as usize);
 
-        // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+            // The number of cell-tufts in a syn-tuft-group-thingy. Obviously this
+            // is a bit confusing. Better naming needed. See module notes above
+            // for details.
+            let celtfts_per_syntuft = dims.cells();
 
-        let mut kernels = Vec::with_capacity(src_slc_ids_by_tft.len());
 
-        for tft_id in 0..src_slc_ids_by_tft.len() {
             kernels.push(Box::new({
                 // ocl_pq.create_kernel("syns_cycle_layer")
                 // ocl_pq.create_kernel("syns_cycle_vec4_layer")
@@ -191,8 +184,41 @@ impl Synapses {
                     // .arg_buf_named::<i32>("aux_ints_0", None)
                     // .arg_buf_named::<i32>("aux_ints_1", None)
                     .arg_buf(&states)
-            }))
+            }));
         }
+
+
+        // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+
+        // let mut kernels = Vec::with_capacity(src_slc_ids_by_tft.len());
+
+        // for tft_id in 0..src_slc_ids_by_tft.len() {
+        //     kernels.push(Box::new({
+        //         // ocl_pq.create_kernel("syns_cycle_layer")
+        //         // ocl_pq.create_kernel("syns_cycle_vec4_layer")
+        //         // ocl_pq.create_kernel("syns_cycle_wow_layer")
+        //         ocl_pq.create_kernel("syns_cycle_wow_vec4_layer")
+        //             .expect("Synapses::new()")
+        //             .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
+        //             .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
+        //             .arg_buf(&axons.states)
+        //             .arg_buf(&src_col_u_offs)
+        //             .arg_buf(&src_col_v_offs)
+        //             .arg_buf(&src_slc_ids)
+        //             .arg_scl(tft_id as u32 * celtfts_per_syntuft)
+        //             .arg_scl(syns_per_tft_l2)
+        //             .arg_scl(dims.depth() as u8)
+        //             // .arg_buf_named::<i32>("aux_ints_0", None)
+        //             // .arg_buf_named::<i32>("aux_ints_1", None)
+        //             .arg_buf(&states)
+        //     }))
+        // }
 
         debug_assert!(strengths.len() == src_slc_ids.len() &&
             strengths.len() == src_col_v_offs.len() &&

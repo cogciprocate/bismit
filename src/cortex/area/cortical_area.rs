@@ -327,9 +327,9 @@ impl CorticalArea {
             match layer.kind() {
                 &LayerKind::Cellular(ref pcell) => {
                     println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
-                        pcell.cell_kind, layer.name(), layer.depth(), mt = cmn::MT);
+                        pcell.cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
 
-                    match pcell.cell_kind {
+                    match pcell.cell_kind() {
                         CellKind::Pyramidal => {
                             let pyrs_dims = dims.clone_with_depth(layer.depth());
 
@@ -362,8 +362,8 @@ impl CorticalArea {
         for layer in area_map.layers().iter() {
             match layer.kind() {
                 &LayerKind::Cellular(ref pcell) => {
-                    match pcell.cell_kind {
-                        CellKind::Inhibitory => {
+                    match pcell.cell_kind() {
+                        CellKind::Inhibitory(_) => {
                             let src_lyr_names = layer.src_lyr_names(DendriteKind::Distal);
                             assert!(src_lyr_names.len() == 1);
 
