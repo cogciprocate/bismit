@@ -32,7 +32,7 @@ pub use self::axon_tags::*;
 //
 // [TODO]: Add a 'system' or 'node' id to represent the machine within a network.
 //
-#[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct LayerAddress {
     layer_id: usize,
     area_id: usize,
@@ -65,17 +65,19 @@ pub enum CellClass {
 }
 
 
-#[derive(Copy, PartialEq, Debug, Clone)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum DendriteKind {
     Proximal,
     Distal,
+    Other,
 }
 
 
-#[allow(dead_code)]
+#[derive(PartialEq, Eq, Debug, Clone, Hash)]
 pub enum DendriteClass {
     Apical,
     Basal,
+    Other,
 }
 
 
@@ -93,6 +95,32 @@ pub enum LayerMapKind {
 pub enum LayerKind {
     Cellular(CellScheme),
     Axonal(AxonTopology),
+}
+
+impl LayerKind {
+    pub fn axn_kind(&self) -> Option<AxonTopology> {
+        match self {
+            &LayerKind::Axonal(ak) => Some(ak.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_reach: i8) -> LayerKind {
+        match &mut self {
+            &mut LayerKind::Cellular(ref mut cs) => {
+                match cs.den_dst_src_lyrs {
+                    Some(ref mut ddsl) => ddsl.push(dst_srcs),
+                    None => (),
+                }
+
+                cs.den_dst_syn_reaches.push(syn_reach);
+            },
+
+            &mut LayerKind::Axonal(_) => (),
+        };
+
+        self
+    }
 }
 
 
@@ -157,32 +185,4 @@ pub enum AxonTopology {
 //         }
 //     }
 // }
-
-
-
-impl LayerKind {
-    pub fn axn_kind(&self) -> Option<AxonTopology> {
-        match self {
-            &LayerKind::Axonal(ak) => Some(ak.clone()),
-            _ => None,
-        }
-    }
-
-    pub fn apical(mut self, dst_srcs: Vec<&'static str>, syn_reach: i8) -> LayerKind {
-        match &mut self {
-            &mut LayerKind::Cellular(ref mut cs) => {
-                match cs.den_dst_src_lyrs {
-                    Some(ref mut ddsl) => ddsl.push(dst_srcs),
-                    None => (),
-                }
-
-                cs.den_dst_syn_reaches.push(syn_reach);
-            },
-
-            &mut LayerKind::Axonal(_) => (),
-        };
-
-        self
-    }
-}
 

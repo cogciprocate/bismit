@@ -104,9 +104,9 @@ impl AreaMap {
         let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
 
         for mut potential_tuft_src_lyrs in potential_tufts {
-            let mut valid_src_lyrs = Vec::with_capacity(potential_tuft_src_lyrs.len());
+            let mut valid_src_lyrs = Vec::with_capacity(potential_tuft_src_lyrs.0.len());
 
-            for lyr_name in potential_tuft_src_lyrs.drain(..) {
+            for lyr_name in potential_tuft_src_lyrs.0.drain(..) {
                 let li = match self.layers.layer_info_by_name(lyr_name) {
                     Some(li) => li,
                     None => panic!("AreaMap::layer_dst_srcs(): No layer named '{}' found.",
@@ -151,7 +151,7 @@ impl AreaMap {
 
     // NEW - UPDATE / CONSOLIDATE
     /// Returns a merged list of source slice ids for all source layers.
-    pub fn layer_src_slc_ids(&self, layer_name: &'static str, den_kind: DendriteKind) -> Vec<u8> {
+    pub fn syn_src_slc_ids(&self, layer_name: &'static str, den_kind: DendriteKind) -> Vec<u8> {
         let li = match self.layers.layer_info_by_name(layer_name) {
             Some(li) => li,
             None => panic!("AreaMap::layer_src_slc_ids(): No layer named '{}' found.",

@@ -2,7 +2,8 @@ use std::fmt;
 use std::ops::{Range};
 
 use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind,
-    DendriteKind, LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack, LayerAddress};
+    DendriteKind, LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack, LayerAddress,
+    DendriteClass};
 use cmn::{self, CorticalDims, MapStore};
 use map::{self, LayerTags,};
 use thalamus::ExternalPathway;
@@ -292,7 +293,7 @@ impl LayerInfo {
         self.layer_scheme.src_lyr_names(den_type)
     }
 
-    pub fn dst_src_lyrs(&self) -> Vec<Vec<&'static str>> {
+    pub fn dst_src_lyrs(&self) -> Vec<(Vec<&'static str>, DendriteClass)> {
         let layers_by_tuft = match self.layer_scheme.kind() {
             &LayerKind::Cellular(ref cell_scheme) => cell_scheme.den_dst_src_lyrs.clone(),
             _ => None,

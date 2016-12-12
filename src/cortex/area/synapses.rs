@@ -1,3 +1,65 @@
+//! Synapses: The smallest and most numerous unit in the cortex -- the soldier
+//! at the bottom.
+//!
+//! #### [TODO]:
+//! - [high priority] Testing:
+//!   - [INCOMPLETE] Check for uniqueness and correct distribution frequency
+//!     among src_slcs and cols
+//! - [low priority] Optimization:
+//!   - [Complete] Obviously grow() and it's ilk need a lot of work
+//!
+//! Synapse index space (for each of the synapse property Buffers) is first
+//! divided by tuft, then slice, then cell, then synapse. This means that even
+//! though a cell may have three (or any number of) tufts, and you would
+//! naturally tend to think that synapse space would be first divided by
+//! slice, then cell, then tuft, tufts are moved to the front of that list.
+//! The reason for this is nuanced but it basically boils down to performance.
+//! When a kernel is processing synapses it's best to process tuft-at-a-time
+//! as the first order iteration rather than slice or cell-at-a-time because
+//! the each tuft inherently shares synapses whos axon sources are going to
+//! tend to be similar, making cache performance consistently better. This
+//! makes indexing very confusing so there's a definite trade off in
+//! complexity (for us poor humans).
+//!
+//! Calculating a particular synapse index is shown below in syn_idx(). This
+//! is (hopefully) the exact same method the kernel uses for addressing: tuft
+//! is most significant, followed by slice, then cell, then synapse. Dendrites
+//! are not necessary to calculate a synapses index unless you happen only to
+//! have a synapses id (address) within a dendrite. Mostly the id within a
+//! cell is used and the dendrite is irrelevant, especially on the host side.
+//!
+//! Synapse space breakdown (m := n - 1, n being the number of elements in any
+//! particular segment):
+//!     - Tuft[0]
+//!         - Slice[0]
+//!             - Cell[0]
+//!                 - Synapse[0]
+//!                 ...
+//!                 - Synapse[m]
+//!             ...
+//!             - Cell[m]
+//!                 ...
+//!         - Slice[1]
+//!              ...
+//!         ...
+//!         - Slice[m]
+//!              ...
+//!     ...
+//!     - Tuft[m]
+//!         ...
+//!
+//! So even though tufts are, conceptually, children (sub-components) of a cell...
+//! +-->
+//! |    - Slice
+//! |        - Cell
+//! +--------<    - Tuft
+//!                 - Dendrite
+//!                     -Synapse
+//!
+//!  ... **for indexing purposes** tufts are parent to slices, which are
+//!  parent to cells (then dendrites, then synapses).
+
+
 use rand::{self, XorShiftRng};
 
 use cmn::{self, CmnResult, CorticalDims};
@@ -10,69 +72,6 @@ use cortex::AxonSpace;
 
 #[cfg(test)]
 pub use self::tests::{SynCoords, SynapsesTest};
-
-//    Synapses: Smallest and most numerous unit in the cortex - the soldier at
-//    the bottom
-//         - TODO:
-//         - [high priority] Testing:
-//             - [INCOMPLETE] Check for uniqueness and correct distribution
-//               frequency among src_slcs and cols
-//         - [low priority] Optimization:
-//             - [Complete] Obviously grow() and it's ilk need a lot of work
-/*
-    Synapse index space (for each of the synapse property Buffers) is first
-    divided by tuft, then slice, then cell, then synapse. This means that even
-    though a cell may have three (or any number of) tufts, and you would
-    naturally tend to think that synapse space would be first divided by
-    slice, then cell, then tuft, tufts are moved to the front of that list.
-    The reason for this is nuanced but it basically boils down to performance.
-    When a kernel is processing synapses it's best to process tuft-at-a-time
-    as the first order iteration rather than slice or cell-at-a-time because
-    the each tuft inherently shares synapses whos axon sources are going to
-    tend to be similar, making cache performance consistently better. This
-    makes indexing very confusing so there's a definite trade off in
-    complexity (for us poor humans).
-
-    Calculating a particular synapse index is shown below in syn_idx(). This
-    is (hopefully) the exact same method the kernel uses for addressing: tuft
-    is most significant, followed by slice, then cell, then synapse. Dendrites
-    are not necessary to calculate a synapses index unless you happen only to
-    have a synapses id (address) within a dendrite. Mostly the id within a
-    cell is used and the dendrite is irrelevant, especially on the host side.
-
-    Synapse space breakdown (m := n - 1, n being the number of elements in any
-    particular segment):
-        - Tuft[0]
-            - Slice[0]
-                - Cell[0]
-                    - Synapse[0]
-                    ...
-                    - Synapse[m]
-                ...
-                - Cell[m]
-                    ...
-            - Slice[1]
-                 ...
-            ...
-            - Slice[m]
-                 ...
-        ...
-        - Tuft[m]
-            ...
-
-    So even though tufts are, conceptually, children (sub-components) of a cell...
-    +-->
-    |    - Slice
-    |        - Cell
-    +--------<    - Tuft
-                    - Dendrite
-                        -Synapse
-
-     ... **for indexing purposes** tufts are parent to slices, which are
-     parent to cells (then dendrites, then synapses).
-
-*/
-
 
 const DEBUG_NEW: bool = true;
 const DEBUG_GROW: bool = true;
@@ -124,19 +123,10 @@ impl Synapses {
         // Padded length of our vectors.
         // let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
 
-        // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-
-        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-
         // [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
         let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {
             DendriteKind::Proximal => {
-                (vec![area_map.layer_src_slc_ids(layer_name, den_kind)],
+                (vec![area_map.syn_src_slc_ids(layer_name, den_kind)],
                     vec![cell_scheme.den_prx_syn_reach])
             },
             DendriteKind::Distal => {
@@ -157,17 +147,28 @@ impl Synapses {
             1 << cell_scheme.syns_per_den_l2, area_map)?;
 
         if DEBUG_NEW {
-            println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {}, \
-                phys_len: {}, \n{mt}{mt}{mt}{mt}{mt}dims: {:?}, ",
-                den_kind, states.len(), strengths.len(), dims, mt = cmn::MT);
+            println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {},\n\
+                {mt}{mt}{mt}{mt}{mt}dims: {:?}, ",
+                den_kind, dims.to_len(), mt = cmn::MT);
         }
 
-        // TODO: USE KERNEL TO ASCERTAIN THE OPTIMAL WORKGROUP SIZE INCREMENT.
+        // [TODO]: Use kernel to ascertain the optimal workgroup size increment.
         let min_wg_sqrt = 8 as usize;
         assert_eq!((min_wg_sqrt * min_wg_sqrt), cmn::OPENCL_MINIMUM_WORKGROUP_SIZE as usize);
 
-        // OBVIOUSLY THIS NAME IS CONFUSING: See above for explanation.
-        let cel_tfts_per_syntuft = dims.cells();
+        // The number of cell-tufts in a syn-tuft-group-thingy. Obviously this
+        // is a bit confusing. Better naming needed. See module notes above
+        // for details.
+        let celtfts_per_syntuft = dims.cells();
+
+        // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
 
         let mut kernels = Vec::with_capacity(src_slc_ids_by_tft.len());
 
@@ -184,7 +185,7 @@ impl Synapses {
                     .arg_buf(&src_col_u_offs)
                     .arg_buf(&src_col_v_offs)
                     .arg_buf(&src_slc_ids)
-                    .arg_scl(tft_id as u32 * cel_tfts_per_syntuft)
+                    .arg_scl(tft_id as u32 * celtfts_per_syntuft)
                     .arg_scl(syns_per_tft_l2)
                     .arg_scl(dims.depth() as u8)
                     // .arg_buf_named::<i32>("aux_ints_0", None)
