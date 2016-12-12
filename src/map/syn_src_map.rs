@@ -24,7 +24,7 @@ const STR_MAX: i8 = 4;
 /// [TODO]: Create extra version of `::calc_scale` which accepts an additional
 /// precision (log2) parameter and returns it's scale adjusted accordingly.
 ///
-#[warn(dead_code, unused_variables, unused_mut)]
+// #[warn(dead_code, unused_variables, unused_mut)]
 // pub fn encode_hex_mold_scaled(radius: i8, scales: [u32; 2], center: [u32; 2], tract: &mut TractFrameMut) {
 pub fn gen_syn_offs(radius: i8, scales: [u32; 2]) -> CmnResult<Vec<(i8, i8)>> {
     // // TEMPORARY ([TODO]: Investigate):
@@ -147,7 +147,7 @@ pub struct SynSrc {
 /// Parameters describing a slice.
 ///
 #[allow(dead_code)]
-pub struct SrcSliceInfo {
+pub struct SynSrcSliceInfo {
     slc_off_pool: OfsPool,
     v_size: u32,
     u_size: u32,
@@ -155,9 +155,9 @@ pub struct SrcSliceInfo {
     scaled_syn_reaches: (i8, i8),
 }
 
-impl SrcSliceInfo {
+impl SynSrcSliceInfo {
     pub fn new(axn_kind: &AxonTopology, src_slc_dims: &SliceDims, syn_reach: i8, den_syn_count: u32)
-                    -> CmnResult<SrcSliceInfo> {
+                    -> CmnResult<SynSrcSliceInfo> {
         let slc_off_pool = match axn_kind {
             &AxonTopology::Horizontal => {
                 // Already checked within `SliceDims` (keep here though).
@@ -203,7 +203,7 @@ impl SrcSliceInfo {
                         hex_tile_offs.len(), den_syn_count).into());
                 }
 
-                // println!("###### SrcSliceInfo::new: hex_tile_offs.len(): {}", hex_tile_offs.len());
+                // println!("###### SynSrcSliceInfo::new: hex_tile_offs.len(): {}", hex_tile_offs.len());
 
                 let len = hex_tile_offs.len();
 
@@ -215,7 +215,7 @@ impl SrcSliceInfo {
 
         let scaled_syn_reaches = try!(src_slc_dims.scale_offs((syn_reach, syn_reach)));
 
-        Ok(SrcSliceInfo {
+        Ok(SynSrcSliceInfo {
             slc_off_pool: slc_off_pool,
             v_size: src_slc_dims.v_size(),
             u_size: src_slc_dims.u_size(),
@@ -249,16 +249,16 @@ impl SrcSliceInfo {
 /// each tuft.
 ///
 /// Used to calculate a valid source axon index during synapse growth or regrowth.
-pub struct SrcSlices {
-    tft_slcs: Vec<BTreeMap<u8, SrcSliceInfo>>,
+pub struct SynSrcSlices {
+    tft_slcs: Vec<BTreeMap<u8, SynSrcSliceInfo>>,
     slc_ids: Vec<Vec<u8>>,
     slc_id_ranges: Vec<RandRange<usize>>,
     str_ranges: Vec<RandRange<i8>>,
 }
 
-impl SrcSlices {
+impl SynSrcSlices {
     pub fn new(src_slc_ids_by_tft: &Vec<Vec<u8>>, syn_reaches_by_tft: Vec<i8>, den_syn_count: u32,
-                area_map: &AreaMap) -> CmnResult<SrcSlices> {
+                area_map: &AreaMap) -> CmnResult<SynSrcSlices> {
         let mut tft_slcs = Vec::with_capacity(src_slc_ids_by_tft.len());
         let mut slc_id_ranges = Vec::with_capacity(tft_slcs.len());
         let mut str_ranges = Vec::with_capacity(tft_slcs.len());
@@ -267,9 +267,9 @@ impl SrcSlices {
 
         for src_slc_ids in src_slc_ids_by_tft.iter() {
             let mut slcs = BTreeMap::new();
-            let syn_reaches = *syn_reaches_by_tft.get(tft_id).expect("SrcSlices::new(): {{1}}");
+            let syn_reaches = *syn_reaches_by_tft.get(tft_id).expect("SynSrcSlices::new(): {{1}}");
 
-            assert!(src_slc_ids.len() > 0, "SrcSlices::new(): No source slices found for \
+            assert!(src_slc_ids.len() > 0, "SynSrcSlices::new(): No source slices found for \
                 a layer in area: \"{}\".", area_map.area_name());
 
             slc_id_ranges.push(RandRange::new(0, src_slc_ids.len()));
@@ -277,13 +277,13 @@ impl SrcSlices {
 
             for &slc_id in src_slc_ids {
                 let axn_kind = area_map.slices().axn_kinds().get(slc_id as usize)
-                    .expect("SrcSlices::new(): {{2}}");
+                    .expect("SynSrcSlices::new(): {{2}}");
 
                 let src_slc_dims = area_map.slices().dims().get(slc_id as usize)
-                    .expect("SrcSlices::new(): {{3}}");
+                    .expect("SynSrcSlices::new(): {{3}}");
 
-                let src_slc_info = SrcSliceInfo::new(axn_kind, src_slc_dims, syn_reaches, den_syn_count)
-                    .map_err(|err| err.prepend(&format!("SrcSlices::new(): Source slice error \
+                let src_slc_info = SynSrcSliceInfo::new(axn_kind, src_slc_dims, syn_reaches, den_syn_count)
+                    .map_err(|err| err.prepend(&format!("SynSrcSlices::new(): Source slice error \
                         (area: {}, slice: {}): ", area_map.area_name(), slc_id)))?;
 
                 slcs.insert(slc_id, src_slc_info);
@@ -293,7 +293,7 @@ impl SrcSlices {
             tft_id += 1;
         }
 
-        Ok(SrcSlices { tft_slcs: tft_slcs, slc_id_ranges: slc_id_ranges,
+        Ok(SynSrcSlices { tft_slcs: tft_slcs, slc_id_ranges: slc_id_ranges,
             slc_ids: src_slc_ids_by_tft.clone(), str_ranges: str_ranges, })
     }
 
@@ -310,7 +310,7 @@ impl SrcSlices {
             self.slc_id_ranges.get_unchecked(tft_id).ind_sample(rng)) };
 
         let slc_info = unsafe { &self.tft_slcs.get_unchecked(tft_id)
-            .get(&slc_id).expect("SrcSlices::gen_offs(): Internal error: invalid slc_id.") };
+            .get(&slc_id).expect("SynSrcSlices::gen_offs(): Internal error: invalid slc_id.") };
 
         match slc_info.slc_off_pool {
             OfsPool::Horizontal((ref v_rr, ref u_rr)) => {
@@ -346,15 +346,15 @@ impl SrcSlices {
 
 
 #[allow(dead_code)]
-pub struct SrcIdxCache {
+pub struct SynSrcIdxCache {
     syns_per_den_l2: u8,
     dens_per_tft_l2: u8,
     dims: CorticalDims,
     dens: Vec<Box<BTreeSet<i32>>>,
 }
 
-impl SrcIdxCache {
-    pub fn new(syns_per_den_l2: u8, dens_per_tft_l2: u8, dims: CorticalDims) -> SrcIdxCache {
+impl SynSrcIdxCache {
+    pub fn new(syns_per_den_l2: u8, dens_per_tft_l2: u8, dims: CorticalDims) -> SynSrcIdxCache {
         let dens_per_tft = 1 << dens_per_tft_l2 as u32;
         let area_dens = (dens_per_tft * dims.cel_tfts()) as usize;
         let mut dens = Vec::with_capacity(dens_per_tft as usize);
@@ -363,7 +363,7 @@ impl SrcIdxCache {
 
         //println!("##### CREATING SRCIDXCACHE WITH: dens: {}", dens.len());
 
-        SrcIdxCache {
+        SynSrcIdxCache {
             syns_per_den_l2: syns_per_den_l2,
             dens_per_tft_l2: dens_per_tft_l2,
             dims: dims,

@@ -63,7 +63,7 @@
 use rand::{self, XorShiftRng};
 
 use cmn::{self, CmnResult, CorticalDims};
-use map::{AreaMap, SrcSlices, SrcIdxCache, SynSrc};
+use map::{AreaMap, SynSrcSlices, SynSrcIdxCache, SynSrc};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
@@ -82,15 +82,17 @@ const DEBUG_KERN: bool = false;
 pub struct Synapses {
     layer_name: &'static str,
     dims: CorticalDims,
-    syns_per_den_l2: u8,
+    // syns_per_den_l2: u8,
     // cell_scheme: CellScheme,
     src_slc_ids_by_tft: Vec<Vec<u8>>,
     den_kind: DendriteKind,
     // cell_kind: CellKind,
     // since_decay: usize,
     kernels: Vec<Box<Kernel>>,
-    src_idx_cache: SrcIdxCache,
-    src_slcs: SrcSlices,
+    // [NOTE]: Ensure that this needs to be balkanized (could it be unified?):
+    src_idx_caches_by_tft: Vec<SynSrcIdxCache>,
+    // [NOTE]: Ensure that this needs to be balkanized (could it be unified?):
+    src_slices_by_tft: Vec<SynSrcSlices>,
     rng: XorShiftRng,
     states: Buffer<u8>,
 
@@ -116,28 +118,36 @@ impl Synapses {
     {
         let tft_count = cell_scheme.tft_count();
         let mut kernels = Vec::with_capacity(tft_count);
+        let mut src_slc_ids_by_tft = Vec::with_capacity(tft_count);
+        let mut src_idx_caches_by_tft = Vec::with_capacity(tft_count);
+        let mut src_slices_by_tft = Vec::with_capacity(tft_count);
 
-        for tft_id in 0..tft_count {
-            let syns_per_tft_l2: u8 = cell_scheme.dens_per_tuft_l2 + cell_scheme.syns_per_den_l2;
+        // for tft_id in 0..tft_count {
+        for tft_scheme in cell_scheme.tft_schemes() {
+            let syns_per_tft_l2: u8 = tft_scheme.dens_per_tuft_l2() + tft_scheme.syns_per_den_l2();
             assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
 
-            let src_idx_cache = SrcIdxCache::new(cell_scheme.syns_per_den_l2,
-                cell_scheme.dens_per_tuft_l2, dims.clone());
+            // [FIXME]: Needs redesign:
+            src_idx_caches_by_tft.push(SynSrcIdxCache::new(tft_scheme.syns_per_den_l2(),
+                tft_scheme.dens_per_tuft_l2(), dims.clone()));
 
             // Padded length of our vectors.
             // let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
 
             // [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
-            let (src_slc_ids_by_tft, syn_reaches_by_tft) = match den_kind {
+            let syn_reaches_by_tft = match den_kind {
                 DendriteKind::Proximal => {
-                    (vec![area_map.syn_src_slc_ids(layer_name, den_kind)],
-                        vec![cell_scheme.den_prx_syn_reach])
+                    src_slc_ids_by_tft.push(area_map.syn_src_slc_ids(layer_name, den_kind));
+                    vec![cell_scheme.den_prx_syn_reach]
                 },
                 DendriteKind::Distal => {
-                    (area_map.layer_dst_src_slc_ids(layer_name),
-                        cell_scheme.den_dst_syn_reaches.clone())
+                    // [FIXME]: THIS ISN'T RIGHT (redesign `::layer_dst_src_slc_ids`):
+                    src_slc_ids_by_tft.extend(area_map.layer_dst_src_slc_ids(layer_name));
+                    cell_scheme.den_dst_syn_reaches.clone()
                 },
             };
+
+
 
             assert!(src_slc_ids_by_tft.len() == dims.tfts_per_cel() as usize,
                 "Synapses::new(): Error creating synapses: layer '{}' has one or more invalid \
@@ -146,9 +156,9 @@ impl Synapses {
                 layer_name, src_slc_ids_by_tft);
 
             // [FIXME]: Implement src_ranges on a per-tuft basis.
-            // let syn_reaches_by_tft: Vec<u8> = src_slc_ids_by_tft.iter().map(|_| syn_reach).collect();
-            let src_slcs = SrcSlices::new(&src_slc_ids_by_tft, syn_reaches_by_tft,
-                1 << cell_scheme.syns_per_den_l2, area_map)?;
+            // [FIXME]: Needs redesign:
+            src_slices_by_tft.push(SynSrcSlices::new(&src_slc_ids_by_tft, syn_reaches_by_tft,
+                1 << tft_scheme.syns_per_den_l2(), area_map)?);
 
             if DEBUG_NEW {
                 println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {},\n\
@@ -175,18 +185,26 @@ impl Synapses {
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(&axons.states)
-                    .arg_buf(&src_col_u_offs)
-                    .arg_buf(&src_col_v_offs)
-                    .arg_buf(&src_slc_ids)
+                    .arg_buf_named("src_col_u_offs", &src_col_u_offs)
+                    .arg_buf_named("src_col_v_offs", &src_col_v_offs)
+                    .arg_buf_named("src_slc_ids", &src_slc_ids)
                     .arg_scl(tft_id as u32 * celtfts_per_syntuft)
                     .arg_scl(syns_per_tft_l2)
                     .arg_scl(dims.depth() as u8)
                     // .arg_buf_named::<i32>("aux_ints_0", None)
                     // .arg_buf_named::<i32>("aux_ints_1", None)
-                    .arg_buf(&states)
+                    .arg_buf_named("states", &states)
             }));
         }
 
+        // [NOTE]: Either:
+        // * Loop through all tufts and sum up the number of synapses on each
+        //   tuft to determine the size of the buffers (the total number of
+        //   synapses) before looping through all of the rest (creating
+        //   kernels, etc.). or ...
+        // * Loop through kernels first, use named kernel args, then loop
+        //   again using the determined synapse totals to create the buffers.
+        //
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
@@ -233,15 +251,15 @@ impl Synapses {
         let mut syns = Synapses {
             layer_name: layer_name,
             dims: dims,
-            syns_per_den_l2: cell_scheme.syns_per_den_l2,
+            // syns_per_den_l2: cell_scheme.syns_per_den_l2,
             // cell_scheme: cell_scheme,
             src_slc_ids_by_tft: src_slc_ids_by_tft,
             den_kind: den_kind,
             // cell_kind: cell_kind,
             // since_decay: 0,
             kernels: kernels,
-            src_idx_cache: src_idx_cache,
-            src_slcs: src_slcs,
+            src_idx_caches_by_tft: src_idx_caches_by_tft,
+            src_slices_by_tft: src_slices_by_tft,
             rng: rand::weak_rng(),
             states: states,
             strengths: strengths,

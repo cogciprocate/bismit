@@ -6,15 +6,18 @@ use cmn;
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
-pub struct DenSrcLyr {
+pub struct TuftSourceLayer {
     name: String,
     syn_reach: i8,
 }
 
-impl DenSrcLyr {
-    pub fn new(name: String, syn_reach: i8) -> DenSrcLyr {
-        DenSrcLyr { name: name, syn_reach: syn_reach }
+impl TuftSourceLayer {
+    pub fn new(name: String, syn_reach: i8) -> TuftSourceLayer {
+        TuftSourceLayer { name: name, syn_reach: syn_reach }
     }
+
+    #[inline] pub fn name(&self) -> &str { self.name.as_str() }
+    #[inline] pub fn syn_reach(&self) -> i8 { self.syn_reach }
 }
 
 
@@ -24,8 +27,30 @@ pub struct TuftScheme {
     kind: DendriteKind,
     dens_per_tuft_l2: u8,
     syns_per_den_l2: u8,
-    src_lyrs: Vec<DenSrcLyr>,
+    src_lyrs: Vec<TuftSourceLayer>,
     thresh_init: Option<u32>,
+}
+
+impl TuftScheme {
+    pub fn new(class: DendriteClass, kind: DendriteKind, dens_per_tuft_l2: u8, syns_per_den_l2: u8,
+            src_lyrs: Vec<TuftSourceLayer>, thresh_init: Option<u32>) -> TuftScheme
+    {
+        TuftScheme {
+            class: class,
+            kind: kind,
+            dens_per_tuft_l2: dens_per_tuft_l2,
+            syns_per_den_l2: syns_per_den_l2,
+            src_lyrs: src_lyrs,
+            thresh_init: thresh_init,
+        }
+    }
+
+    #[inline] pub fn class(&self) -> &DendriteClass { &self.class }
+    #[inline] pub fn kind(&self) -> &DendriteKind { &self.kind }
+    #[inline] pub fn dens_per_tuft_l2(&self) -> u8 { self.dens_per_tuft_l2 }
+    #[inline] pub fn syns_per_den_l2(&self) -> u8 { self.syns_per_den_l2 }
+    #[inline] pub fn src_lyrs(&self) -> &[TuftSourceLayer] { self.src_lyrs.as_slice() }
+    #[inline] pub fn thresh_init(&self) -> &Option<u32> { &self.thresh_init }
 }
 
 /* PROTOCELL:
@@ -90,7 +115,7 @@ impl CellScheme {
             dens_per_tuft_l2: dens_per_tuft_l2,
             syns_per_den_l2: syns_per_den_l2,
             src_lyrs: dst_srcs.iter().map(|&lyr_name|
-                DenSrcLyr::new(lyr_name.to_owned(), dst_reach)).collect(),
+                TuftSourceLayer::new(lyr_name.to_owned(), dst_reach)).collect(),
             thresh_init: Some(thresh),
         };
 
@@ -117,7 +142,7 @@ impl CellScheme {
             dens_per_tuft_l2: 0,
             syns_per_den_l2: syns_per_den_l2,
             src_lyrs: prx_srcs.iter().map(|&lyr_name|
-                DenSrcLyr::new(lyr_name.to_owned(), prx_reach)).collect(),
+                TuftSourceLayer::new(lyr_name.to_owned(), prx_reach)).collect(),
             thresh_init: Some(thresh),
         };
 
@@ -140,7 +165,7 @@ impl CellScheme {
             kind: DendriteKind::Other,
             dens_per_tuft_l2: 0,
             syns_per_den_l2: 0,
-            src_lyrs: vec![DenSrcLyr::new(dst_src.to_owned(), 0)],
+            src_lyrs: vec![TuftSourceLayer::new(dst_src.to_owned(), 0)],
             thresh_init: None,
         };
 
@@ -164,8 +189,8 @@ impl CellScheme {
             kind: DendriteKind::Other,
             dens_per_tuft_l2: 0,
             syns_per_den_l2: 0,
-            src_lyrs: vec![DenSrcLyr::new(psal_lyr.to_owned(), 0),
-                DenSrcLyr::new(ptal_lyr.to_owned(), 0)],
+            src_lyrs: vec![TuftSourceLayer::new(psal_lyr.to_owned(), 0),
+                TuftSourceLayer::new(ptal_lyr.to_owned(), 0)],
             thresh_init: None,
         };
 
