@@ -108,6 +108,9 @@ pub struct Synapses {
     vec_src_col_u_offs: Vec<i8>,
     vec_src_col_v_offs: Vec<i8>,
     // pub slc_pool: Buffer<u8>,  // BRING THIS BACK (OPTIMIZATION)
+
+    syn_idzs_by_tft: Vec<usize>,
+    syn_counts_by_tft: Vec<usize>,
 }
 
 impl Synapses {
@@ -121,8 +124,11 @@ impl Synapses {
         let mut src_slc_ids_by_tft = Vec::with_capacity(tft_count);
         let mut src_idx_caches_by_tft = Vec::with_capacity(tft_count);
         let mut src_slices_by_tft = Vec::with_capacity(tft_count);
-        let mut tft_syn_counts = Vec::with_capacity(tft_count);
-        let mut tft_syn_count_ttl = 0u32;
+        let mut syn_counts_by_tft = Vec::with_capacity(tft_count);
+        let mut syn_idzs_by_tft = Vec::with_capacity(tft_count);
+        let mut tft_syn_count_ttl = 0usize;
+
+        debug_assert!(cell_scheme.tft_schemes().len() == tft_count);
 
         // for tft_id in 0..tft_count {
         for tft_scheme in cell_scheme.tft_schemes() {
@@ -205,8 +211,12 @@ impl Synapses {
                     .arg_buf_named("states", None::<&Buffer<u8>>)
             }));
 
-            tft_syn_counts.push(dims.cells() << syns_per_tft_l2);
-            tft_syn_count_ttl += dims.cells() << syns_per_tft_l2;
+            let tft_syn_idz = tft_syn_count_ttl;
+            let tft_syn_count = (dims.cells() as usize) << syns_per_tft_l2;
+
+            syn_idzs_by_tft.push(tft_syn_idz);
+            syn_counts_by_tft.push(tft_syn_count);
+            tft_syn_count_ttl += tft_syn_count;
         }
 
         // [NOTE]: Either:
@@ -291,6 +301,9 @@ impl Synapses {
             vec_src_col_u_offs: vec_src_col_u_offs,
             vec_src_col_v_offs: vec_src_col_v_offs,
             // slc_pool: slc_pool,  // BRING THIS BACK
+
+            syn_counts_by_tft: syn_counts_by_tft,
+            syn_idzs_by_tft: syn_idzs_by_tft,
         };
 
         syns.grow(true);
@@ -318,21 +331,27 @@ impl Synapses {
         self.src_col_v_offs.cmd().read(&mut self.vec_src_col_v_offs).enq().unwrap();
         self.src_col_u_offs.cmd().read(&mut self.vec_src_col_u_offs).enq().unwrap();
 
-        let syns_per_layer_tft = self.dims.per_slc_per_tft() as usize * self.dims.depth() as usize;
+        // let syns_per_layer_tft = self.dims.per_slc_per_tft() as usize * self.dims.depth() as usize;
         let src_slc_ids_by_tft = self.src_slc_ids_by_tft.clone();
         let mut src_tft_id = 0usize;
 
-        for src_slc_id_list in &src_slc_ids_by_tft {
+        debug_assert!(self.src_slc_ids_by_tft.len() == self.syn_counts_by_tft.len());
+        debug_assert!(self.src_slc_ids_by_tft.len() == self.syn_idzs_by_tft.len());
+
+        for (tft_id, src_slc_id_list) in src_slc_ids_by_tft.iter().enumerate() {
             if src_slc_id_list.len() == 0 { continue; }
 
-            let syn_idz = syns_per_layer_tft * src_tft_id as usize;
-            let syn_idn = syn_idz + syns_per_layer_tft as usize;
+            // syn_counts_by_tft
+            // let syn_idz = syns_per_layer_tft * src_tft_id as usize;
+            let syn_idz = *self.syn_idzs_by_tft.get_unchecked(tft_id);
+            let syn_idn = syn_idz + *self.syn_counts_by_tft.get_unchecked(tft_id);
 
             if DEBUG_GROW && init {
                 println!("{mt}{mt}{mt}{mt}{mt}\
                     SYNAPSES::GROW()[INIT]: '{}' ({:?}): src_slc_ids: {:?}, \
                     syns_per_layer_tft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind,
-                    src_slc_id_list, syns_per_layer_tft, syn_idz, syn_idn, mt = cmn::MT);
+                    src_slc_id_list,  *self.syn_counts_by_tft.get_unchecked(tft_id),
+                    syn_idz, syn_idn, mt = cmn::MT);
             }
 
             for syn_idx in syn_idz..syn_idn {
@@ -360,6 +379,8 @@ impl Synapses {
         debug_assert!(syn_idx < self.src_slc_ids.len());
         debug_assert!(syn_idx < self.src_col_v_offs.len());
         debug_assert!(syn_idx < self.src_col_u_offs.len());
+        debug_assert!(self.src_idx_caches_by_tft.len() == tft_id);
+        debug_assert!(self.src_slices_by_tft.len() == tft_id);
 
         loop {
             let old_src = unsafe { SynSrc {
@@ -369,9 +390,11 @@ impl Synapses {
                 strength: 0
             } };
 
-            let new_src = self.src_slcs.gen_src(tft_id, &mut self.rng);
+            let new_src = self.src_slices_by_tft.get_unchecked(tft_id)
+                .gen_src(tft_id, &mut self.rng);
 
-            if self.src_idx_cache.insert(syn_idx, &old_src, &new_src) {
+            if self.src_idx_caches_by_tft.get_unchecked(tft_id)
+                .insert(syn_idx, &old_src, &new_src) {
                 unsafe {
                     *self.vec_src_slc_ids.get_unchecked_mut(syn_idx) = new_src.slc_id;
                     *self.vec_src_col_v_offs.get_unchecked_mut(syn_idx) = new_src.v_ofs;
@@ -458,19 +481,19 @@ impl Synapses {
     }
 
 
-    #[inline]
-    pub fn syns_per_den_l2(&self) -> u8 {
-        self.syns_per_den_l2
-    }
+    // #[inline]
+    // pub fn syns_per_den_l2(&self) -> u8 {
+    //     self.syns_per_den_l2
+    // }
 
-    #[inline]
-    pub fn syns_per_tftsec(&self) -> u32 {
-        let slcs_per_tftsec = self.dims.depth();
-        let cels_per_slc = self.dims.columns();
-        let syns_per_cel_tft = self.dims.per_tft();
+    // #[inline]
+    // pub fn syns_per_tftsec(&self) -> u32 {
+    //     let slcs_per_tftsec = self.dims.depth();
+    //     let cels_per_slc = self.dims.columns();
+    //     let syns_per_cel_tft = self.dims.per_tft();
 
-        slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft
-    }
+    //     slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft
+    // }
 
     // // [FIXME] TODO: Depricate me evenutally
     // pub fn set_offs_to_zero_temp(&mut self) {
