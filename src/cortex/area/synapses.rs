@@ -121,11 +121,13 @@ impl Synapses {
         let mut src_slc_ids_by_tft = Vec::with_capacity(tft_count);
         let mut src_idx_caches_by_tft = Vec::with_capacity(tft_count);
         let mut src_slices_by_tft = Vec::with_capacity(tft_count);
+        let mut tft_syn_counts = Vec::with_capacity(tft_count);
+        let mut tft_syn_count_ttl = 0u32;
 
         // for tft_id in 0..tft_count {
         for tft_scheme in cell_scheme.tft_schemes() {
             let syns_per_tft_l2: u8 = tft_scheme.dens_per_tuft_l2() + tft_scheme.syns_per_den_l2();
-            assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
+            // assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
 
             // [FIXME]: Needs redesign:
             src_idx_caches_by_tft.push(SynSrcIdxCache::new(tft_scheme.syns_per_den_l2(),
@@ -155,9 +157,8 @@ impl Synapses {
 
             }
 
-
-
-            assert!(src_slc_ids_by_tft.len() == dims.tfts_per_cel() as usize,
+            // assert!(src_slc_ids_by_tft.len() == dims.tfts_per_cel() as usize,
+            assert!(src_slc_ids_by_tft.len() == tft_count,
                 "Synapses::new(): Error creating synapses: layer '{}' has one or more invalid \
                 source layers defined. If a source layer is an afferent or efferent input, please \
                 ensure that the source area for that the layer exists. (src_slc_ids_by_tft: {:?})",
@@ -178,31 +179,34 @@ impl Synapses {
             let min_wg_sqrt = 8 as usize;
             assert_eq!((min_wg_sqrt * min_wg_sqrt), cmn::OPENCL_MINIMUM_WORKGROUP_SIZE as usize);
 
-            // The number of cell-tufts in a syn-tuft-group-thingy. Obviously this
-            // is a bit confusing. Better naming needed. See module notes above
-            // for details.
-            let celtfts_per_syntuft = dims.cells();
-
+            // // The number of cell-tufts in a syn-tuft-group-thingy. Obviously this
+            // // is a bit confusing. Better naming needed. See module notes above
+            // // for details.
+            // let cels_per_syntuft = dims.cells();
 
             kernels.push(Box::new({
-                // ocl_pq.create_kernel("syns_cycle_layer")
+                ocl_pq.create_kernel("syns_cycle_tft")
                 // ocl_pq.create_kernel("syns_cycle_vec4_layer")
                 // ocl_pq.create_kernel("syns_cycle_wow_layer")
-                ocl_pq.create_kernel("syns_cycle_wow_vec4_layer")
+                // ocl_pq.create_kernel("syns_cycle_wow_vec4_layer")
                     .expect("Synapses::new()")
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(&axons.states)
-                    .arg_buf_named("src_col_u_offs", None)
-                    .arg_buf_named("src_col_v_offs", None)
-                    .arg_buf_named("src_slc_ids", None)
-                    .arg_scl(tft_id as u32 * celtfts_per_syntuft)
+                    .arg_buf_named("src_col_u_offs", None::<&Buffer<u8>>)
+                    .arg_buf_named("src_col_v_offs", None::<&Buffer<u8>>)
+                    .arg_buf_named("src_slc_ids", None::<&Buffer<u8>>)
+                    // .arg_scl(tft_id as u32 * cels_per_syntuft)
+                    .arg_scl(tft_syn_count_ttl as u32)
                     .arg_scl(syns_per_tft_l2)
                     .arg_scl(dims.depth() as u8)
                     // .arg_buf_named::<i32>("aux_ints_0", None)
                     // .arg_buf_named::<i32>("aux_ints_1", None)
-                    .arg_buf_named("states", None)
+                    .arg_buf_named("states", None::<&Buffer<u8>>)
             }));
+
+            tft_syn_counts.push(dims.cells() << syns_per_tft_l2);
+            tft_syn_count_ttl += dims.cells() << syns_per_tft_l2;
         }
 
         // [NOTE]: Either:

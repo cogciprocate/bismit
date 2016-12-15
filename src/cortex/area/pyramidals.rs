@@ -37,8 +37,8 @@ pub struct PyramidalLayer {
 
 impl PyramidalLayer {
     pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme,
-        area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue
-    ) -> CmnResult<PyramidalLayer> {
+            area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue) -> CmnResult<PyramidalLayer>
+    {
         let base_axn_slcs = area_map.layer_slc_ids(vec![layer_name]);
         let base_axn_slc = base_axn_slcs[0];
         let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);

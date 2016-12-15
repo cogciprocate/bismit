@@ -9,13 +9,59 @@ static inline uchar4 syn_fire_vec4(uchar4 const axn_state) {
         | (axn_state >> (uchar4)(SYNAPSE_AXON_BIAS_LOG2));
 }
 
-// SYNS_CYCLE_SIMPLE(): Simple synapse cycling without workgroup optimization or vectorization, layer-at-once
-__kernel void syns_cycle_layer(
+
+// // SYNS_CYCLE_SIMPLE(): Simple synapse cycling without workgroup optimization or vectorization, layer-at-once
+// __kernel void syns_cycle_layer_original_2016-Dec-12(
+//                 __global uchar const* const axn_states,
+//                 __global char const* const syn_src_col_u_offs,
+//                 __global char const* const syn_src_col_v_offs,
+//                 __global uchar const* const syn_src_slc_ids,
+//                 __private uint const cel_idz_syntuft,
+//                 __private uchar const syns_per_tuft_l2,
+//                 __private uchar const layer_depth,
+//                 // __global int* const aux_ints_0,
+//                 __global uchar* const syn_states) 
+// {
+//     uint const v_id = get_global_id(0);
+//     uint const u_id = get_global_id(1);
+
+//     uint const v_size = get_global_size(0);
+//     uint const u_size = get_global_size(1);
+
+//     for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
+//         uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) 
+//             + cel_idz_syntuft) << syns_per_tuft_l2;
+//         uint const syn_idn = syn_idz + (1 << syns_per_tuft_l2);
+
+//         for (uint syn_idx = syn_idz; syn_idx < syn_idn; syn_idx++) {
+//             uchar const src_slc_id = syn_src_slc_ids[syn_idx];
+//             char const v_ofs = syn_src_col_v_offs[syn_idx];
+//             char const u_ofs = syn_src_col_u_offs[syn_idx];
+
+//             uchar axn_state = axn_state_3d_safe(src_slc_id, v_id, v_ofs, u_id, u_ofs, axn_states);
+
+//             // DEBUG STUFF:
+//             // if (src_slc_id != 0) {
+//             // // if (v_id == 5 && u_id == 5) {
+//             //     int idx_is_safe = 0;
+//             //     aux_ints_0[syn_idx] = axn_idx_3d_unsafe(src_slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
+//             // }
+        
+//             syn_states[syn_idx] = syn_fire(axn_state);
+//         }
+//     }
+// }
+
+
+
+// Process synapses for a tuft assuming irregular tuft sizes.
+__kernel void syns_cycle_tft(
                 __global uchar const* const axn_states,
                 __global char const* const syn_src_col_u_offs,
                 __global char const* const syn_src_col_v_offs,
                 __global uchar const* const syn_src_slc_ids,
-                __private uint const cel_idz_syntuft,
+                // __private uint const cel_idz_syntuft,
+                __private uint const syn_idz_tft,
                 __private uchar const syns_per_tuft_l2,
                 __private uchar const layer_depth,
                 // __global int* const aux_ints_0,
@@ -23,12 +69,16 @@ __kernel void syns_cycle_layer(
 {
     uint const v_id = get_global_id(0);
     uint const u_id = get_global_id(1);
-
     uint const v_size = get_global_size(0);
     uint const u_size = get_global_size(1);
 
     for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
-        uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz_syntuft) << syns_per_tuft_l2;
+        // uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) 
+        //     + cel_idz_syntuft) << syns_per_tuft_l2;
+
+        uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
+            << syns_per_tuft_l2) + syn_idz_tft;
+
         uint const syn_idn = syn_idz + (1 << syns_per_tuft_l2);
 
         for (uint syn_idx = syn_idz; syn_idx < syn_idn; syn_idx++) {
@@ -52,13 +102,57 @@ __kernel void syns_cycle_layer(
 
 
 
+// // SYNS_CYCLE_SIMPLE_VEC4(): Simple synapse cycling with vectorization, layer-at-once
+// __kernel void syns_cycle_vec4_layer(
+//                 __global uchar const* const axn_states,
+//                 __global char4 const* const syn_src_col_u_offs,
+//                 __global char4 const* const syn_src_col_v_offs,
+//                 __global uchar4 const* const syn_src_slc_ids,
+//                 __private uint const cel_idz_syntuft,
+//                 __private uchar const syns_per_tuft_l2,
+//                 __private uchar const layer_depth,
+//                 // __global int* const aux_ints_0,
+//                 __global uchar4* const syn_states) 
+// {
+//     uint const v_id = get_global_id(0);
+//     uint const u_id = get_global_id(1);
+//     uint const v_size = get_global_size(0);
+//     uint const u_size = get_global_size(1);
+
+//     for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
+//         // DIVIDED BY 4 BECAUSE VECTORS
+//         uint const syn4_idz = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) 
+//             + cel_idz_syntuft) << (syns_per_tuft_l2 - 2));
+//         // DIVIDED BY 4 BECAUSE VECTORS
+//         uint const syn4_idn = syn4_idz + (1 << (syns_per_tuft_l2 - 2)); 
+
+//         for (uint syn4_idx = syn4_idz; syn4_idx < syn4_idn; syn4_idx++) {
+//             uchar4 const src_slc_id = syn_src_slc_ids[syn4_idx];
+//             char4 const v_ofs = syn_src_col_v_offs[syn4_idx];
+//             char4 const u_ofs = syn_src_col_u_offs[syn4_idx];
+
+//             uchar4 const axn_state = axn_state_3d_safe_vec4(
+//                 src_slc_id,
+//                 (int4)(int)v_id,
+//                 v_ofs, 
+//                 (int4)(int)u_id, 
+//                 u_ofs, 
+//                 axn_states);
+
+//             syn_states[syn4_idx] = syn_fire_vec4(axn_state);
+//         }
+//     }
+// }
+
+
 // SYNS_CYCLE_SIMPLE_VEC4(): Simple synapse cycling with vectorization, layer-at-once
-__kernel void syns_cycle_vec4_layer(
+__kernel void syns_cycle_vec4_tft(
                 __global uchar const* const axn_states,
                 __global char4 const* const syn_src_col_u_offs,
                 __global char4 const* const syn_src_col_v_offs,
                 __global uchar4 const* const syn_src_slc_ids,
-                __private uint const cel_idz_syntuft,
+                // __private uint const cel_idz_syntuft,
+                __private uint const syn_idz_tft,
                 __private uchar const syns_per_tuft_l2,
                 __private uchar const layer_depth,
                 // __global int* const aux_ints_0,
@@ -66,15 +160,18 @@ __kernel void syns_cycle_vec4_layer(
 {
     uint const v_id = get_global_id(0);
     uint const u_id = get_global_id(1);
-
     uint const v_size = get_global_size(0);
     uint const u_size = get_global_size(1);
 
     for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
-        // DIVIDED BY 4 BECAUSE VECTORS
-        uint const syn4_idz = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz_syntuft) 
-            << (syns_per_tuft_l2 - 2)); 
-        // DIVIDED BY 4 BECAUSE VECTORS
+        // // DIVIDED BY 4 BECAUSE VECTORS:
+        // uint const syn4_idz = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) 
+        //     + cel_idz_syntuft) << (syns_per_tuft_l2 - 2));
+        // DIVIDED BY 4 BECAUSE VECTORS:
+        uint const syn4_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
+            << (syns_per_tuft_l2 - 2)) + syn_idz_tft;
+
+        // DIVIDED BY 4 BECAUSE VECTORS:
         uint const syn4_idn = syn4_idz + (1 << (syns_per_tuft_l2 - 2)); 
 
         for (uint syn4_idx = syn4_idz; syn4_idx < syn4_idn; syn4_idx++) {
@@ -197,6 +294,7 @@ __kernel void syns_cycle_wow_layer(
 }
 
 
+
 // SYNS_CYCLE_WG_OPT_VEC4(): Cycle synapses with workgroup optimized writes and vectorization, layer optimized
 //         See above for annotated version.
 __kernel void syns_cycle_wow_vec4_layer(
@@ -269,7 +367,7 @@ __kernel void syns_cycle_wow_vec4_layer(
         uint const u_id = u_idz_wg + u_id_wg_crnt;
 
         for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
-            uint syn4_idx = (((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz_syntuft) 
+            uint syn4_idx = (((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz_syntuft)
                 << syns_per_tuft_l2) >> 2) + cur_syn4_ofs; // VEC4'D IDX
 
             char4 const v_ofs = syn_src_col_v_offs[syn4_idx];
