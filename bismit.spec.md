@@ -1,3 +1,8 @@
+## The Pyramidal Cell is the Universal ANDer
+
+Pyramidal cells are the fundamental basic processing unit for all complex logic in the brain. They are all one needs to describe mathematics, object detection, music, etc. By signaling coincidence between both known basal and known apical patterns, they act as a trainable AND gate which can be wired to signal on any conceivable combination of patterns. The output from the axon can be used directly as motor signal or combined with other layers to represent any other arbitrary signal or sequence of signals.
+
+
 ## Layer 5 TODO
 - Wire up an output decoder (`Arm`)
 - Implement random firing algorithm
