@@ -55,7 +55,7 @@ static inline uchar4 syn_fire_vec4(uchar4 const axn_state) {
 
 
 // Process synapses for a tuft assuming irregular tuft sizes.
-__kernel void syns_cycle_tft(
+__kernel void tft_cycle_syns(
                 __global uchar const* const axn_states,
                 __global char const* const syn_src_col_u_offs,
                 __global char const* const syn_src_col_v_offs,
@@ -75,7 +75,6 @@ __kernel void syns_cycle_tft(
     for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
         // uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) 
         //     + cel_idz_syntuft) << syns_per_tuft_l2;
-
         uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
             << syns_per_tuft_l2) + syn_idz_tft;
 
@@ -146,7 +145,7 @@ __kernel void syns_cycle_tft(
 
 
 // SYNS_CYCLE_SIMPLE_VEC4(): Simple synapse cycling with vectorization, layer-at-once
-__kernel void syns_cycle_vec4_tft(
+__kernel void tft_cycle_syns_vec4(
                 __global uchar const* const axn_states,
                 __global char4 const* const syn_src_col_u_offs,
                 __global char4 const* const syn_src_col_v_offs,
@@ -195,7 +194,7 @@ __kernel void syns_cycle_vec4_tft(
 
 
 //SYNS_CYCLE_WG_OPT(): Cycle synapses with workgroup optimized writes, layer optimized
-__kernel void syns_cycle_wow_layer(
+__kernel void layer_cycle_syns_wow(
                 __global uchar const* const axn_states,
                 __global char const* const syn_src_col_u_offs,
                 __global char const* const syn_src_col_v_offs,
@@ -297,7 +296,7 @@ __kernel void syns_cycle_wow_layer(
 
 // SYNS_CYCLE_WG_OPT_VEC4(): Cycle synapses with workgroup optimized writes and vectorization, layer optimized
 //         See above for annotated version.
-__kernel void syns_cycle_wow_vec4_layer(
+__kernel void layer_cycle_syns_wow_vec4(
                 __global uchar const* const axn_states,
                 __global char4 const* const syn_src_col_u_offs,
                 __global char4 const* const syn_src_col_v_offs,

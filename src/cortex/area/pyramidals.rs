@@ -39,6 +39,8 @@ impl PyramidalLayer {
     pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme,
             area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue) -> CmnResult<PyramidalLayer>
     {
+        let tft_count = cell_scheme.tft_count();
+
         let base_axn_slcs = area_map.layer_slc_ids(vec![layer_name]);
         let base_axn_slc = base_axn_slcs[0];
         let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);
@@ -46,7 +48,11 @@ impl PyramidalLayer {
         let tfts_per_cel = area_map.layer_dst_srcs(layer_name).len() as u32;
 
         // let best_dens_per_cel = tfts_per_cel;
+
+
+
         let dims_tft_best_den = dims.clone().with_tfts(tfts_per_cel);
+
 
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
         let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
@@ -241,9 +247,8 @@ impl DataCellLayer for PyramidalLayer {
 
     #[inline]
     fn axn_range(&self) -> (usize, usize) {
-        let ssts_axn_idn = self.pyr_lyr_axn_idz + (self.dims.per_slc());
-
-        (self.pyr_lyr_axn_idz as usize, ssts_axn_idn as usize)
+        let axn_idn = self.pyr_lyr_axn_idz + (self.dims.columns());
+        (self.pyr_lyr_axn_idz as usize, axn_idn as usize)
     }
 
     #[inline]

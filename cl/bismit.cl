@@ -652,7 +652,7 @@ __kernel void reference_all_the_things(__private int const for_sanitys_sake) {
 
 
 // DEN_CYCLE():
-__kernel void den_cycle(
+__kernel void den_cycle_DEPRICATE(
             __global uchar const* const syn_states,
             __global char const* const syn_strengths,
             __private uchar const syns_per_den_l2,
@@ -663,6 +663,58 @@ __kernel void den_cycle(
             __global uchar* const den_states) 
 {
     uint const den_idx = get_global_id(0);
+    uint const syn_idz = den_idx << syns_per_den_l2;
+
+    // uchar den_energy = den_energies[den_idx];
+
+    int syn_sum = 0;
+    int syn_sum_raw = 0;
+
+    int const syn_idn = (1 << syns_per_den_l2);
+
+    for (int syn_id = 0; syn_id < syn_idn; syn_id += 1) {
+        char syn_strength = syn_strengths[syn_idz + syn_id];
+        uchar syn_state = syn_states[syn_idz + syn_id]; 
+        syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
+        syn_sum_raw += syn_state;
+    }
+    
+    syn_sum = mul24((syn_sum > den_threshold), syn_sum);
+
+    // if (syn_sum != 0) {
+    //     if (den_energy >= ENERGY_LEVEL_MIN) {
+    //         den_energy -= ENERGY_LEVEL_MIN;
+    //     } else {
+    //         den_energy += ENERGY_REGEN_AMOUNT;
+    //         syn_sum = 0;
+    //     }
+    // } else {
+    //     if (den_energy < ENERGY_LEVEL_MAX) {
+    //         den_energy += ENERGY_REGEN_AMOUNT;
+    //     }
+    // }
+
+    int den_reduction = syns_per_den_l2 - 1;
+
+    den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255); 
+    den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255); 
+}
+
+
+
+// Cycles dendrites.
+__kernel void den_cycle_tft(
+            __global uchar const* const syn_states,
+            __global char const* const syn_strengths,
+            __private uint const tft_den_idz,
+            __private uchar const syns_per_den_l2,
+            __private uint const den_threshold,
+            __global uchar* const den_energies,
+            __global uchar* const den_states_raw,
+            //__global int* const aux_ints_1,
+            __global uchar* const den_states) 
+{
+    uint const den_idx = get_global_id(0) + tft_den_idz;
     uint const syn_idz = den_idx << syns_per_den_l2;
 
     // uchar den_energy = den_energies[den_idx];
@@ -971,7 +1023,7 @@ __kernel void mcol_activate_pyrs(
             __private uint const ssts_axn_idz,         // Primary spatial associative cell layer (ssts)
             __private uint const pyrs_axn_idz,          // Primary temporal associative cell layer (pyrs)
             // __private uchar const pyr_axn_slc_base,
-            __private uchar const dens_per_tft_l2,
+            // __private uchar const dens_per_tft_l2,
             __global uchar* const pyr_flag_sets,
             __global uchar* const pyr_states,
             __global int* const aux_ints_0,
@@ -1326,8 +1378,6 @@ __kernel void pyrs_ltp(
 }
 
 
-
-// TODO: Investigate the bizarre glitch with this kernel with the phantom best_dens
 __kernel void pyr_cycle(
             __global uchar const* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
             __global uchar const* const den_states,                

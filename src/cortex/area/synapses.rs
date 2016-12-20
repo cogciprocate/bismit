@@ -120,13 +120,14 @@ impl Synapses {
             ) -> CmnResult<Synapses>
     {
         let tft_count = cell_scheme.tft_count();
+
         let mut kernels = Vec::with_capacity(tft_count);
         let mut src_slc_ids_by_tft = Vec::with_capacity(tft_count);
         let mut src_idx_caches_by_tft = Vec::with_capacity(tft_count);
         let mut src_slices_by_tft = Vec::with_capacity(tft_count);
-        let mut syn_counts_by_tft = Vec::with_capacity(tft_count);
         let mut syn_idzs_by_tft = Vec::with_capacity(tft_count);
-        let mut tft_syn_count_ttl = 0usize;
+        let mut syn_counts_by_tft = Vec::with_capacity(tft_count);
+        let mut syn_count_ttl = 0usize;
 
         debug_assert!(cell_scheme.tft_schemes().len() == tft_count);
 
@@ -191,10 +192,10 @@ impl Synapses {
             // let cels_per_syntuft = dims.cells();
 
             kernels.push(Box::new({
-                ocl_pq.create_kernel("syns_cycle_tft")
-                // ocl_pq.create_kernel("syns_cycle_vec4_layer")
-                // ocl_pq.create_kernel("syns_cycle_wow_layer")
-                // ocl_pq.create_kernel("syns_cycle_wow_vec4_layer")
+                ocl_pq.create_kernel("tft_cycle_syns")
+                // ocl_pq.create_kernel("tft_cycle_syns_vec4")
+                // ocl_pq.create_kernel("layer_cycle_syns_wow")
+                // ocl_pq.create_kernel("layer_cycle_syns_wow_vec4")
                     .expect("Synapses::new()")
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
@@ -203,7 +204,7 @@ impl Synapses {
                     .arg_buf_named("src_col_v_offs", None::<&Buffer<u8>>)
                     .arg_buf_named("src_slc_ids", None::<&Buffer<u8>>)
                     // .arg_scl(tft_id as u32 * cels_per_syntuft)
-                    .arg_scl(tft_syn_count_ttl as u32)
+                    .arg_scl(syn_count_ttl as u32)
                     .arg_scl(syns_per_tft_l2)
                     .arg_scl(dims.depth() as u8)
                     // .arg_buf_named::<i32>("aux_ints_0", None)
@@ -211,61 +212,32 @@ impl Synapses {
                     .arg_buf_named("states", None::<&Buffer<u8>>)
             }));
 
-            let tft_syn_idz = tft_syn_count_ttl;
+            let tft_syn_idz = syn_count_ttl;
             let tft_syn_count = (dims.cells() as usize) << syns_per_tft_l2;
 
             syn_idzs_by_tft.push(tft_syn_idz);
             syn_counts_by_tft.push(tft_syn_count);
-            tft_syn_count_ttl += tft_syn_count;
+            syn_count_ttl += tft_syn_count;
         }
 
-        // [NOTE]: Either:
-        // * Loop through all tufts and sum up the number of synapses on each
-        //   tuft to determine the size of the buffers (the total number of
-        //   synapses) before looping through all of the rest (creating
-        //   kernels, etc.). or ...
         // * Loop through kernels first, use named kernel args, then loop
         //   again using the determined synapse totals to create the buffers.
-        //
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-
-        // Loop through and add these to each tufts kernel:
-        // .arg_buf_named("src_col_u_offs", &src_col_u_offs)
-        // .arg_buf_named("src_col_v_offs", &src_col_v_offs)
-        // .arg_buf_named("src_slc_ids", &src_slc_ids)
-        // .arg_buf_named("states", &states)
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
+        let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
+        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
+        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
+        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
 
 
-        // let mut kernels = Vec::with_capacity(src_slc_ids_by_tft.len());
-
-        // for tft_id in 0..src_slc_ids_by_tft.len() {
-        //     kernels.push(Box::new({
-        //         // ocl_pq.create_kernel("syns_cycle_layer")
-        //         // ocl_pq.create_kernel("syns_cycle_vec4_layer")
-        //         // ocl_pq.create_kernel("syns_cycle_wow_layer")
-        //         ocl_pq.create_kernel("syns_cycle_wow_vec4_layer")
-        //             .expect("Synapses::new()")
-        //             .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
-        //             .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
-        //             .arg_buf(&axons.states)
-        //             .arg_buf(&src_col_u_offs)
-        //             .arg_buf(&src_col_v_offs)
-        //             .arg_buf(&src_slc_ids)
-        //             .arg_scl(tft_id as u32 * celtfts_per_syntuft)
-        //             .arg_scl(syns_per_tft_l2)
-        //             .arg_scl(dims.depth() as u8)
-        //             // .arg_buf_named::<i32>("aux_ints_0", None)
-        //             // .arg_buf_named::<i32>("aux_ints_1", None)
-        //             .arg_buf(&states)
-        //     }))
-        // }
+        for kernel in kernels.iter_mut() {
+            kernel.set_arg_buf_named("src_col_u_offs", Some(&src_col_u_offs))?;
+            kernel.set_arg_buf_named("src_col_v_offs", Some(&src_col_v_offs))?;
+            kernel.set_arg_buf_named("src_slc_ids", Some(&src_slc_ids))?;
+            kernel.set_arg_buf_named("states", Some(&states))?;
+        }
 
         debug_assert!(strengths.len() == src_slc_ids.len() &&
             strengths.len() == src_col_v_offs.len() &&
