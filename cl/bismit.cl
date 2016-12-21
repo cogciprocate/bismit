@@ -241,12 +241,12 @@ static inline uint calc_syn_idz(uint const tuft_id, uint const cel_count, uint c
 //     return mad24(cel_idx, tfts_per_cel, tft_id);
 // }
 
-// GET_CEL_TFT_IDX(): Uses same indexing principle as dendrites and synapses (see synapses.rs)
-static inline uint calc_cel_tft_idx(uint const cel_count, uint const cel_idx, 
-            uint const tfts_per_cel, uint const tft_id)
-{
-    return  mad24(tft_id, cel_count, cel_idx);
-}
+// // GET_CEL_TFT_IDX(): Uses same indexing principle as dendrites and synapses (see synapses.rs)
+// static inline uint calc_cel_tft_idx(uint const cel_count, uint const cel_idx, 
+//             uint const tfts_per_cel, uint const tft_id)
+// {
+//     return  mad24(tft_id, cel_count, cel_idx);
+// }
 
 // COORD_IS_SAFE(): Bounds check for a single dimension of a cellular coordinate
 static inline int coord_is_safe(int const dim_size, int const coord_id, int const coord_ofs) {
@@ -1269,17 +1269,22 @@ __kernel void mcol_activate_pyrs(
 //        cells into each work item, all threads can keep busy.
 
 
-// <<<<< TODO: FIX: NOT TAKING IN TO ACCOUNT MULTIPLE TUFTS! MAJOR INDEXING PROBLEMS >>>>>
-__kernel void pyrs_ltp(
+__kernel void pyr_tft_ltp(
             __global uchar const* const axn_states,
             __global uchar const* const cel_states,
-            __global uchar const* const cel_tft_best_den_ids,
-            __global uchar const* const cel_tft_best_den_states,
+            __global uchar const* const tft_cel_best_den_ids,
+            __global uchar const* const tft_cel_best_den_states,
             __global uchar const* const den_states,
             __global uchar const* const syn_states,
-            __private uint const tfts_per_cel,
+
+            __private uint const tft_cel_idz, // 0th tuft-cell index
+            __private uint const tft_den_idz, // 0th tuft-dendrite index
+            __private uint const tft_syn_idz, // 0th tuft-synapse index
+
+            // __private uint const tfts_per_cel,
             __private uint const dens_per_tft_l2,
             __private uint const syns_per_den_l2,
+            __private uint const syns_per_tft_l2,
             __private uint const cels_per_cel_grp,
             __private uint const axn_idz_cel_lyr,
             __private int const learning_rate_l2i,
@@ -1293,21 +1298,18 @@ __kernel void pyrs_ltp(
     uint const cel_grp_id = get_global_id(0);
     uint const cel_grp_count = get_global_size(0);
     uint const cel_count = mul24(cel_grp_count, cels_per_cel_grp);
+    // Index of the 0th cell in the cell group:
     uint const cel_idz_cel_grp = mul24(cel_grp_id, cels_per_cel_grp);
-
-    // TODO: MOVE THIS INVERSE LEARNING RATE TO HOST:
-    // int const learning_rate_l2i = 0;
-
-    // aux_ints_1[cel_grp_id] = -1 - (rnd_mix(rnd, cel_grp_id) & 0x7F);
-    // aux_ints_1[cel_grp_id] = rnd_mix(rnd, cel_grp_id);
+    // uint const syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
+    // uint const cel_idz_cel_grp = mad24(cel_grp_id, cels_per_cel_grp, tft_cel_idz);
  
-     // TODO: (EVALUATE) Make 'cels_per_cel_grp' and 'tfts_per_cel' a constant and unroll loops.
-     //    - Will mean making a separate program for each layer of pyramidals.
-     //    - Could do more harm than good due to program size bloat.
-     //    - Possibly do this for tfts only.
     for (uint cel_id_cel_grp = 0; cel_id_cel_grp < cels_per_cel_grp; cel_id_cel_grp++) {
+        // Current cell:
         uint const cel_idx = cel_idz_cel_grp + cel_id_cel_grp;
+        // Current cell's axon:
         uint const cel_axn_idx = axn_idz_cel_lyr + cel_idx;
+        // Current tuft-cell:
+        uint const tft_cel_idx = cel_idx + tft_cel_idz;
 
         uchar cel_flag_set = cel_flag_sets[cel_idx];
 
@@ -1316,59 +1318,57 @@ __kernel void pyrs_ltp(
         int const cel_prev_concrete = (cel_flag_set & (CEL_PREV_CONCRETE_FLAG)) == (CEL_PREV_CONCRETE_FLAG);
         int const cel_prev_vatic = (cel_flag_set & (CEL_PREV_VATIC_FLAG)) == (CEL_PREV_VATIC_FLAG);
         int const cel_best_in_col = (cel_flag_set & (CEL_BEST_IN_COL_FLAG)) == (CEL_BEST_IN_COL_FLAG);
+        int const tft_is_active = tft_cel_best_den_states[tft_cel_idx] != 0;
 
-        for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
-            // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
-            uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
-            uint const den_idz_tft = cel_tft_idx << dens_per_tft_l2;
+        // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
+        // uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
 
-            uchar const den_id_tft_best = cel_tft_best_den_ids[cel_tft_idx];            
+        // // Index of the 0th dendrite within the current tuft-cell:
+        // uint const den_idz_tft = (cel_idx << dens_per_tft_l2) + tft_den_idz;
 
-            uint const syn_idz_tft = den_idz_tft << syns_per_den_l2;
-            uint const syn_idz_best_den_tft = (den_idz_tft + den_id_tft_best) << syns_per_den_l2;
+        // Index of the 0th synapse within the current tuft-cell:
+        uint const syn_idz_tft = (cel_idx << syns_per_tft_l2) + tft_syn_idz;        
 
-            int const tuft_is_active = cel_tft_best_den_states[cel_tft_idx] != 0;
+        if (cel_is_concrete) {
+            if (tft_is_active) {
+                // ID of the Best dendrite within the current tuft-cell:
+                uchar const best_den_id_tft = tft_cel_best_den_ids[tft_cel_idx];
 
-            if (cel_is_concrete) {                
+                // uint const syn_idz_best_den_tft = (den_idz_tft + best_den_id_tft) << syns_per_den_l2;
+                uint const syn_idz_best_den_tft = (best_den_id_tft << syns_per_den_l2) + syn_idz_tft;
 
-                if (tuft_is_active) {
-                    // aux_ints_0[cel_tft_idx] = cel_prev_vatic;
-                    // aux_ints_1[cel_tft_idx] = cel_best_in_col;
+                // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN
+                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+                if (cel_prev_vatic | cel_best_in_col) { 
+                    // aux_ints_1[cel_tft_idx] = 10;                    
+                    dst_syns__active__stpot_stdep(syn_states, syn_idz_best_den_tft, 
+                        syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
 
-
-                    // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN
-                    // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-                    if (cel_prev_vatic | cel_best_in_col) { 
-                        // aux_ints_1[cel_tft_idx] = 10;                    
-                        dst_syns__active__stpot_stdep(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
-                            syn_flag_sets, syn_strengths);
-
-                        // aux_ints_1[cel_tft_idx] = 11;
-                    }
-
-                    // } else if (cel_best_in_col) { 
-                    // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
-                    // //} else { 
-                    // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-                    //     dst_syns__active__stpot_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
-                    //         syn_flag_sets, syn_strengths);
-
-                    //     // aux_ints_1[cel_tft_idx] = 12;
-                    // }
+                    // aux_ints_1[cel_tft_idx] = 11;
                 }
 
-                // TODO: Could be moved into above if block
-                cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
+                // } else if (cel_best_in_col) { 
+                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN 
+                // //} else { 
+                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+                //     dst_syns__active__stpot_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd, 
+                //         syn_flag_sets, syn_strengths);
 
-            } else if (cel_prev_concrete) {
-                tft_syns_trm(syn_states, syn_idz_tft, syns_per_den_l2 + dens_per_tft_l2, rnd, 
-                    learning_rate_l2i, syn_flag_sets, aux_ints_0, syn_strengths);
-
-                // aux_ints_1[cel_tft_idx] = 20;
-
-                cel_flag_set &= ~CEL_PREV_CONCRETE_FLAG;
+                //     // aux_ints_1[cel_tft_idx] = 12;
+                // }
             }
+
+            // TODO: Could be moved into above if block
+            cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
+        } else if (cel_prev_concrete) {
+            tft_syns_trm(syn_states, syn_idz_tft, syns_per_tft_l2, rnd, 
+                learning_rate_l2i, syn_flag_sets, aux_ints_0, syn_strengths);
+
+            // aux_ints_1[cel_tft_idx] = 20;
+
+            cel_flag_set &= ~CEL_PREV_CONCRETE_FLAG;
         }
+
 
         cel_flag_set &= ~CEL_PREV_VATIC_FLAG;
         cel_flag_set |= mul24(cel_is_vatic, CEL_PREV_VATIC_FLAG);
@@ -1378,77 +1378,85 @@ __kernel void pyrs_ltp(
 }
 
 
-__kernel void pyr_cycle(
+__kernel void pyr_tft_cycle(
             __global uchar const* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
             __global uchar const* const den_states,                
-            __private uint const tfts_per_cel,
-            __private uchar const dens_per_tft_l2,                
-            __global uchar* const cel_tft_best_den_ids,
-            __global uchar* const cel_tft_best_den_states,
-            __global uchar* const pyr_best_den_states,
+            // __private uint const tfts_per_cel,
+            __private uchar const tft_cel_idz, // Could be made GWO
+            __private uchar const tft_den_idz,
+            __private uchar const dens_per_tft_l2,
+            __global uchar* const tft_cel_best_den_ids,
+            __global uchar* const tft_cel_best_den_states_raw,
+            __global uchar* const tft_cel_best_den_states,
+            // __global uchar* const pyr_best_den_states,
             __global int* const aux_ints_0,
-            __global int* const aux_ints_1,
-            __global uchar* const pyr_states) 
+            __global int* const aux_ints_1)
+            // __global uchar* const pyr_states) 
 {
-    uint const cel_idx = get_global_id(0);
-    uint const cel_count = get_global_size(0);
+    uint const tft_cel_id = get_global_id(0);
+    // uint const cel_count = get_global_size(0);
 
-    uint pyr_state = 0;
-    uint pyr_best_den_state = 0;
+    // uint pyr_state = 0;
+    // uint pyr_best_den_state = 0;
 
-    for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
-        uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
-        uint const den_idz_tft = cel_tft_idx << dens_per_tft_l2;
-        // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
+    // for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
 
-        // Used for activation and ultimately learning:
-        uint best_den_id = 0;
-        // Used for activation and ultimately learning:
-        uint best_den_state_raw = 0;
-        // Used for pyr_state and pyr_best_den_state:
-        uint best_den_state = 0;
- 
-        for (uint den_id_tft = 0; den_id_tft < (1 << dens_per_tft_l2); den_id_tft++) {
-            uint const den_idx = den_idz_tft + den_id_tft;
+    // uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
+    uint const tft_cel_idx = tft_cel_idz + tft_cel_id;
+    // uint const tft_den_idz = den;
+    // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
 
-            uint const den_state_raw = den_states_raw[den_idx];
-            uint const den_state = den_states[den_idx];
+    // Used for activation and ultimately learning:
+    uint best_den_id = 0;
+    // Used for activation and ultimately learning:
+    uint best_den_state_raw = 0;
+    // Used for pyr_state and pyr_best_den_state:
+    uint best_den_state = 0;
 
-            int const den_state_bigger_raw = (den_state_raw > best_den_state_raw);
-            int const den_state_bigger = (den_state > best_den_state);
+    for (uint den_id_tft = 0; den_id_tft < (1 << dens_per_tft_l2); den_id_tft++) {
+        uint const den_idx = tft_den_idz + den_id_tft;
 
-            best_den_id = mad24((uint)den_state_bigger_raw, den_id_tft,
-                mul24((uint)!den_state_bigger_raw, best_den_id));
+        uint const den_state_raw = den_states_raw[den_idx];
+        uint const den_state = den_states[den_idx];
 
-            best_den_state_raw = mad24((uint)den_state_bigger_raw, den_state_raw, 
-                mul24((uint)!den_state_bigger_raw, best_den_state_raw));            
+        int const den_state_bigger_raw = (den_state_raw > best_den_state_raw);
+        int const den_state_bigger = (den_state > best_den_state);
 
-            best_den_state = mad24((uint)den_state_bigger, den_state, 
-                mul24((uint)!den_state_bigger, best_den_state));
+        best_den_id = mad24((uint)den_state_bigger_raw, den_id_tft,
+            mul24((uint)!den_state_bigger_raw, best_den_id));
 
-            // if (den_state > 0) {
-            //     aux_ints_0[den_idx] = cel_idx;
-            // }
-        }
+        best_den_state_raw = mad24((uint)den_state_bigger_raw, den_state_raw, 
+            mul24((uint)!den_state_bigger_raw, best_den_state_raw));            
 
-        cel_tft_best_den_ids[cel_tft_idx] = best_den_id;
-        cel_tft_best_den_states[cel_tft_idx] = best_den_state_raw;
+        best_den_state = mad24((uint)den_state_bigger, den_state, 
+            mul24((uint)!den_state_bigger, best_den_state));
 
-        pyr_best_den_state = max(pyr_best_den_state, best_den_state_raw);
-
-        // TODO: Might need a more sophisticated algorithm with a non-linear rate to determine pyr_state:
-        pyr_state = max(pyr_state, best_den_state);
-        // pyr_state += best_den_state;
-
-        // if (best_den_state > 0) {
-        //     aux_ints_0[cel_tft_idx] = pyr_state;
+        // if (den_state > 0) {
+        //     aux_ints_0[den_idx] = cel_idx;
         // }
     }
 
-    pyr_best_den_states[cel_idx] = pyr_best_den_state;
+    tft_cel_best_den_ids[tft_cel_idx] = best_den_id;
+    tft_cel_best_den_states_raw[tft_cel_idx] = best_den_state_raw;
+    tft_cel_best_den_states[tft_cel_idx] = best_den_state;
+
+    // uint pyr_best_den_state = max(pyr_best_den_state, best_den_state_raw);
+
+    // [TODO][EDIT: Probably not]: Might need a more sophisticated algorithm
+    // with a non-linear rate to determine pyr_state:
+    // uint pyr_state = max(pyr_state, best_den_state);
+    // pyr_state += best_den_state;
+
+    // if (best_den_state > 0) {
+    //     aux_ints_0[cel_tft_idx] = pyr_state;
+    // }
+
+    // }
+
+    // pyr_best_den_states[cel_idx] = pyr_best_den_state;
     
-    // TODO: pyr_state: (see above)
-    pyr_states[cel_idx] = clamp(pyr_state, (uint)0, (uint)255);
+    // // TODO: pyr_state: (see above)
+    // pyr_states[cel_idx] = clamp(pyr_state, (uint)0, (uint)255);
 
     // WTF?
     // uchar pyr_state_bizarre = pyr_states[cel_idx];
@@ -1463,6 +1471,37 @@ __kernel void pyr_cycle(
     // if (pyr_state_crazy != 0) {
     //     aux_ints_1[cel_idx] = pyr_states[cel_idx];
     // }
+
+}
+
+
+__kernel void pyr_cycle(
+    __global uchar* const cel_tft_cel_best_den_ids,
+    __global uchar* const cel_tft_cel_best_den_states_raw,
+    __global uchar* const cel_tft_cel_best_den_states,
+    __global uchar* const pyr_states) 
+{
+    //
+    // [TODO]: CYCLE THROUGH TUFTS
+    //
+
+    uint pyr_best_den_state = max(pyr_best_den_state, best_den_state_raw);
+
+    // [TODO][EDIT: Probably not]: Might need a more sophisticated algorithm
+    // with a non-linear rate to determine pyr_state:
+    uint pyr_state = max(pyr_state, best_den_state);
+    // pyr_state += best_den_state;
+
+    // if (best_den_state > 0) {
+    //     aux_ints_0[cel_tft_idx] = pyr_state;
+    // }
+
+    // }
+
+    pyr_best_den_states[cel_idx] = pyr_best_den_state;
+    
+    // TODO: pyr_state: (see above)
+    pyr_states[cel_idx] = clamp(pyr_state, (uint)0, (uint)255);
 
 }
 

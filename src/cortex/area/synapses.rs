@@ -109,8 +109,8 @@ pub struct Synapses {
     vec_src_col_v_offs: Vec<i8>,
     // pub slc_pool: Buffer<u8>,  // BRING THIS BACK (OPTIMIZATION)
 
-    syn_idzs_by_tft: Vec<usize>,
-    syn_counts_by_tft: Vec<usize>,
+    syn_idzs_by_tft: Vec<u32>,
+    syn_counts_by_tft: Vec<u32>,
 }
 
 impl Synapses {
@@ -127,7 +127,7 @@ impl Synapses {
         let mut src_slices_by_tft = Vec::with_capacity(tft_count);
         let mut syn_idzs_by_tft = Vec::with_capacity(tft_count);
         let mut syn_counts_by_tft = Vec::with_capacity(tft_count);
-        let mut syn_count_ttl = 0usize;
+        let mut syn_count_ttl = 0u32;
 
         debug_assert!(cell_scheme.tft_schemes().len() == tft_count);
 
@@ -191,6 +191,13 @@ impl Synapses {
             // // for details.
             // let cels_per_syntuft = dims.cells();
 
+            let tft_syn_idz = syn_count_ttl;
+            let tft_syn_count = dims.cells() << syns_per_tft_l2;
+            syn_count_ttl += tft_syn_count;
+
+            syn_idzs_by_tft.push(tft_syn_idz);
+            syn_counts_by_tft.push(tft_syn_count);
+
             kernels.push(Box::new({
                 ocl_pq.create_kernel("tft_cycle_syns")
                 // ocl_pq.create_kernel("tft_cycle_syns_vec4")
@@ -204,20 +211,13 @@ impl Synapses {
                     .arg_buf_named("src_col_v_offs", None::<&Buffer<u8>>)
                     .arg_buf_named("src_slc_ids", None::<&Buffer<u8>>)
                     // .arg_scl(tft_id as u32 * cels_per_syntuft)
-                    .arg_scl(syn_count_ttl as u32)
+                    .arg_scl(syn_count_ttl)
                     .arg_scl(syns_per_tft_l2)
                     .arg_scl(dims.depth() as u8)
                     // .arg_buf_named::<i32>("aux_ints_0", None)
                     // .arg_buf_named::<i32>("aux_ints_1", None)
                     .arg_buf_named("states", None::<&Buffer<u8>>)
             }));
-
-            let tft_syn_idz = syn_count_ttl;
-            let tft_syn_count = (dims.cells() as usize) << syns_per_tft_l2;
-
-            syn_idzs_by_tft.push(tft_syn_idz);
-            syn_counts_by_tft.push(tft_syn_count);
-            syn_count_ttl += tft_syn_count;
         }
 
         // * Loop through kernels first, use named kernel args, then loop
@@ -276,6 +276,7 @@ impl Synapses {
 
             syn_counts_by_tft: syn_counts_by_tft,
             syn_idzs_by_tft: syn_idzs_by_tft,
+
         };
 
         syns.grow(true);
@@ -418,40 +419,15 @@ impl Synapses {
         Ok(())
     }
 
-    #[inline]
-    pub fn den_kind(&self) -> DendriteKind {
-        self.den_kind.clone()
-    }
-
-    #[inline]
-    pub fn dims(&self) -> &CorticalDims {
-        &self.dims
-    }
-
-    pub fn states(&self) -> &Buffer<u8> {
-        &self.states
-    }
-
-    pub fn strengths(&self) -> &Buffer<i8> {
-        &self.strengths
-    }
-
-    pub fn src_slc_ids(&self) -> &Buffer<u8> {
-        &self.src_slc_ids
-    }
-
-    pub fn src_col_u_offs(&self) -> &Buffer<i8> {
-        &self.src_col_v_offs
-    }
-
-    pub fn src_col_v_offs(&self) -> &Buffer<i8> {
-        &self.src_col_v_offs
-    }
-
-    pub fn flag_sets(&self) -> &Buffer<u8> {
-        &self.flag_sets
-    }
-
+    #[inline] pub fn den_kind(&self) -> DendriteKind { self.den_kind.clone() }
+    #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
+    #[inline] pub fn strengths(&self) -> &Buffer<i8> { &self.strengths }
+    #[inline] pub fn src_slc_ids(&self) -> &Buffer<u8> { &self.src_slc_ids }
+    #[inline] pub fn src_col_u_offs(&self) -> &Buffer<i8> { &self.src_col_v_offs }
+    #[inline] pub fn src_col_v_offs(&self) -> &Buffer<i8> { &self.src_col_v_offs }
+    #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
+    #[inline] pub fn count(&self) -> u32 { self.states.len() as u32 }
 
     // #[inline]
     // pub fn syns_per_den_l2(&self) -> u8 {

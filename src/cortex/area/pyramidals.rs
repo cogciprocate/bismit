@@ -17,19 +17,22 @@ const PRINT_DEBUG: bool = false;
 pub struct PyramidalLayer {
     layer_name: &'static str,
     dims: CorticalDims,
+    tft_count: usize,
     cell_scheme: CellScheme,
-    kern_ltp: Kernel,
-    kern_cycle: Kernel,
+    ltp_kernels: Vec<Kernel>,
+    cycle_kernels: Vec<Kernel>,
     base_axn_slc: u8,
     pyr_lyr_axn_idz: u32,
     rng: XorShiftRng,
-    tfts_per_cel: u32,
-    dens_per_tft_l2: u8,
-    syns_per_den_l2: u8,
+    // tfts_per_cel: u32,
+    // dens_per_tft_l2: u8,
+    // syns_per_den_l2: u8,
+
     states: Buffer<u8>,
     flag_sets: Buffer<u8>,
     best_den_states: Buffer<u8>,
     tft_best_den_ids: Buffer<u8>,
+    tft_best_den_states_raw: Buffer<u8>,
     tft_best_den_states: Buffer<u8>,
     // energies: Buffer<u8>, // <<<<< SLATED FOR REMOVAL
     pub dens: Dendrites,
@@ -39,152 +42,159 @@ impl PyramidalLayer {
     pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme,
             area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue) -> CmnResult<PyramidalLayer>
     {
-        let tft_count = cell_scheme.tft_count();
-
-        let base_axn_slcs = area_map.layer_slc_ids(vec![layer_name]);
-        let base_axn_slc = base_axn_slcs[0];
+        let base_axn_slc = area_map.layer_slc_ids(vec![layer_name])[0];
         let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
-        let tfts_per_cel = area_map.layer_dst_srcs(layer_name).len() as u32;
+        // let tfts_per_cel = area_map.layer_dst_srcs(layer_name).len() as u32;
+        let tft_count = cell_scheme.tft_count();
+        assert!(area_map.layer_dst_srcs(layer_name).len() == tft_count);
 
         // let best_dens_per_cel = tfts_per_cel;
+        // let dims_tft_best_den = dims.clone().with_tfts(tft_count);
 
+        let cel_count = dims.to_len();
+        let tft_best_den_len = cel_count * tft_count;
 
-
-        let dims_tft_best_den = dims.clone().with_tfts(tfts_per_cel);
-
-
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
+        let best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
         // let tft_best_den_ids = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());
-        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims_tft_best_den, None).unwrap();
+        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [tft_best_den_len], None).unwrap();
         // let tft_best_den_states = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());
-        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims_tft_best_den, None).unwrap();
+        let tft_best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [tft_best_den_len], None).unwrap();
+        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [tft_best_den_len], None).unwrap();
         // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
-        let dens_per_tft_l2 = cell_scheme.dens_per_tuft_l2;
-        let syns_per_den_l2 = cell_scheme.syns_per_den_l2;
-        // let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
-
-        let dims_dens = dims.clone_with_ptl2(dens_per_tft_l2 as i8).with_tfts(tfts_per_cel);
+        // let dens_per_tft_l2 = cell_scheme.dens_per_tuft_l2;
+        // let syns_per_den_l2 = cell_scheme.syns_per_den_l2;
+        // let dims_dens = dims.clone_with_ptl2(dens_per_tft_l2 as i8).with_tfts(tfts_per_cel);
 
         println!("{mt}{mt}PYRAMIDALS::NEW(): layer: '{}' base_axn_slc: {}, \
-            pyr_lyr_axn_idz: {}, tfts_per_cel: {}, syns_per_den_l2: {}, dens_per_tft_l2: {}, \
+            pyr_lyr_axn_idz: {}, tfts_count: {}, \
             len: {}, tft_best_den_len: {}, \n{mt}{mt}{mt}dims: {:?}.",
-            layer_name, base_axn_slc, pyr_lyr_axn_idz, tfts_per_cel, syns_per_den_l2, dens_per_tft_l2,
+            layer_name, base_axn_slc, pyr_lyr_axn_idz, tft_count,
             states.len(), tft_best_den_ids.len(), dims, mt = cmn::MT);
 
-        let dens = try!(Dendrites::new(layer_name, dims_dens, cell_scheme.clone(), DendriteKind::Distal,
+        let dens = try!(Dendrites::new(layer_name, dims, cell_scheme.clone(), DendriteKind::Distal,
             CellKind::Pyramidal, area_map, axons, ocl_pq));
 
-        let kern_cycle = ocl_pq.create_kernel("pyr_cycle").expect("[FIXME]: HANDLE ME")
-            // .expect("PyramidalLayer::new()")
-            .gws(SpatialDims::One(dims.cells() as usize))
-            .arg_buf(dens.states_raw())
-            .arg_buf(dens.states())
-            .arg_scl(tfts_per_cel)
-            .arg_scl(dens_per_tft_l2)
-            //.arg_buf(&energies) // <<<<< SLATED FOR REMOVAL
-            .arg_buf(&tft_best_den_ids)
-            .arg_buf(&tft_best_den_states)
-            .arg_buf(&best_den_states)
-            .arg_buf_named::<i32>("aux_ints_0", None)
-            .arg_buf_named::<i32>("aux_ints_1", None)
-            .arg_buf(&states);
+        let mut ltp_kernels = Vec::with_capacity(tft_count);
+        let mut cycle_kernels = Vec::with_capacity(tft_count);
+        let mut den_count_ttl = 0u32;
+        let mut syn_count_ttl = 0u32;
 
-        // let syns_per_tftsec = dens.syns().syns_per_tftsec();
-        // let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-        let cel_grp_count = 128;
-        let cels_per_cel_grp = dims.per_subgrp(cel_grp_count).expect("PyramidalLayer::new()");
-        let learning_rate_l2i = 0i32;
+        for (tft_id, tft_scheme) in cell_scheme.tft_schemes().iter().enumerate() {
+            let dens_per_tft_l2 = tft_scheme.dens_per_tuft_l2();
+            let syns_per_den_l2 = tft_scheme.syns_per_den_l2();
+            let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
+            let tft_cel_idz = tft_id as u32 * dims.cells();
 
-        // println!("\nPYRAMIDAL: pyrs_ltp: cel_grp_count: {}, cels_per_cel_grp: {}\n",
-        //     cel_grp_count, cels_per_cel_grp);
+            // Dendrites:
+            let tft_den_idz = den_count_ttl;
+            let tft_den_count = dims.cells() << dens_per_tft_l2;
+            den_count_ttl += tft_den_count;
 
-        let kern_ltp = ocl_pq.create_kernel("pyrs_ltp").expect("PyramidalLayer::new()")
-            // .expect("PyramidalLayer::new()")
-            .gws(SpatialDims::One(cel_grp_count as usize))
-            .arg_buf(&axons.states)
-            .arg_buf(&states)
-            .arg_buf(&tft_best_den_ids)
-            .arg_buf(&tft_best_den_states)
-            .arg_buf(dens.states())
-            .arg_buf(dens.syns().states())
-            .arg_scl(tfts_per_cel as u32)
-            .arg_scl(dens_per_tft_l2 as u32)
-            .arg_scl(syns_per_den_l2 as u32)
-            .arg_scl(cels_per_cel_grp)
-            .arg_scl(pyr_lyr_axn_idz)
-            .arg_scl_named::<i32>("lr_l2i", Some(learning_rate_l2i))
-            .arg_scl_named::<i32>("rnd", None)
-            .arg_buf(dens.syns().flag_sets())
-            .arg_buf(&flag_sets)
-            .arg_buf_named::<i32>("aux_ints_0", None)
-            .arg_buf_named::<i32>("aux_ints_1", None)
-            .arg_buf(dens.syns().strengths());
+            // Synapses:
+            let tft_syn_idz = syn_count_ttl;
+            let tft_syn_count = dims.cells() << syns_per_tft_l2;
+            syn_count_ttl += tft_syn_count;
+
+            cycle_kernels.push(ocl_pq.create_kernel("pyr_tft_cycle").expect("[FIXME]: HANDLE ME")
+                // .expect("PyramidalLayer::new()")
+                .gws(SpatialDims::One(dims.cells() as usize))
+                // .gwo(SpatialDims::One(tft_cel_idz))
+                .arg_buf(dens.states_raw())
+                .arg_buf(dens.states())
+                // .arg_scl(tfts_per_cel)
+                .arg_scl(tft_cel_idz)
+                .arg_scl(tft_den_idz)
+                .arg_scl(dens_per_tft_l2)
+                //.arg_buf(&energies) // <<<<< SLATED FOR REMOVAL
+                .arg_buf(&tft_best_den_ids)
+                .arg_buf(&tft_best_den_states_raw)
+                .arg_buf(&tft_best_den_states)
+                .arg_buf(&best_den_states)
+                .arg_buf_named::<i32>("aux_ints_0", None)
+                .arg_buf_named::<i32>("aux_ints_1", None)
+                .arg_buf(&states)
+            );
+
+            // let syns_per_tftsec = dens.syns().syns_per_tftsec();
+            // let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
+            let cel_grp_count = 128;
+            let cels_per_cel_grp = dims.per_subgrp(cel_grp_count).expect("PyramidalLayer::new()");
+            let learning_rate_l2i = 0i32;
+
+            // println!("\nPYRAMIDAL: pyrs_ltp: cel_grp_count: {}, cels_per_cel_grp: {}\n",
+            //     cel_grp_count, cels_per_cel_grp);
+
+            ltp_kernels.push(ocl_pq.create_kernel("pyr_tft_ltp").expect("PyramidalLayer::new()")
+                // .expect("PyramidalLayer::new()")
+                .gws(SpatialDims::One(cel_grp_count as usize))
+                .arg_buf(&axons.states)
+                .arg_buf(&states)
+                .arg_buf(&tft_best_den_ids)
+                .arg_buf(&tft_best_den_states)
+                .arg_buf(dens.states())
+                .arg_buf(dens.syns().states())
+                // .arg_scl(tfts_per_cel as u32)
+                .arg_scl(tft_cel_idz)
+                .arg_scl(tft_den_idz)
+                .arg_scl(tft_syn_idz)
+                .arg_scl(dens_per_tft_l2 as u32)
+                .arg_scl(syns_per_den_l2 as u32)
+                .arg_scl(syns_per_tft_l2 as u32)
+                .arg_scl(cels_per_cel_grp)
+                .arg_scl(pyr_lyr_axn_idz)
+                .arg_scl_named::<i32>("lr_l2i", Some(learning_rate_l2i))
+                .arg_scl_named::<i32>("rnd", None)
+                .arg_buf(dens.syns().flag_sets())
+                .arg_buf(&flag_sets)
+                .arg_buf_named::<i32>("aux_ints_0", None)
+                .arg_buf_named::<i32>("aux_ints_1", None)
+                .arg_buf(dens.syns().strengths())
+            );
+        }
+
+        assert!(den_count_ttl == dens.count());
+        assert!(syn_count_ttl == dens.syns().count());
+        // let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
+
+
 
         Ok(PyramidalLayer {
             layer_name: layer_name,
             dims: dims,
+            tft_count: tft_count,
             cell_scheme: cell_scheme,
-            kern_ltp: kern_ltp,
-            kern_cycle: kern_cycle,
+            // kern_ltp: kern_ltp,
+            ltp_kernels: ltp_kernels,
+            // kern_cycle: kern_cycle,
+            cycle_kernels: cycle_kernels,
             base_axn_slc: base_axn_slc,
             pyr_lyr_axn_idz: pyr_lyr_axn_idz,
             rng: rand::weak_rng(),
-            tfts_per_cel: tfts_per_cel,
-            dens_per_tft_l2: dens_per_tft_l2,
-            syns_per_den_l2: syns_per_den_l2,
+            // tfts_per_cel: tfts_per_cel,
+            // dens_per_tft_l2: dens_per_tft_l2,
+            // syns_per_den_l2: syns_per_den_l2,
             states: states,
             flag_sets: flag_sets,
             best_den_states: best_den_states,
             tft_best_den_ids: tft_best_den_ids,
+            tft_best_den_states_raw: tft_best_den_states_raw,
             tft_best_den_states: tft_best_den_states,
             // energies: energies, // <<<<< SLATED FOR REMOVAL
             dens: dens,
         })
     }
 
-    // USED BY AUX
-    #[inline]
-    pub fn kern_ltp(&mut self) -> &mut Kernel {
-        &mut self.kern_ltp
-    }
+    // pub fn dens_per_tft_l2(&self) -> u8 {
+    //     self.dens_per_tft_l2
+    // }
 
-    // USED BY AUX
-    #[inline]
-    pub fn kern_cycle(&mut self) -> &mut Kernel {
-        &mut self.kern_cycle
-    }
-
-    pub fn dens_per_tft_l2(&self) -> u8 {
-        self.dens_per_tft_l2
-    }
-
-    pub fn syns_per_den_l2(&self) -> u8 {
-        self.syns_per_den_l2
-    }
-
-    pub fn states(&self) -> &Buffer<u8> {
-        &self.states
-    }
-
-    pub fn flag_sets(&self) -> &Buffer<u8> {
-        &self.flag_sets
-    }
-
-    pub fn best_den_states(&self) -> &Buffer<u8> {
-        &self.best_den_states
-    }
-
-    pub fn tft_best_den_ids(&self) -> &Buffer<u8> {
-        &self.tft_best_den_ids
-    }
-
-    pub fn tft_best_den_states(&self) -> &Buffer<u8> {
-        &self.tft_best_den_states
-    }
+    // pub fn syns_per_den_l2(&self) -> u8 {
+    //     self.syns_per_den_l2
+    // }
 
     // <<<<< TODO: DEPRICATE >>>>>
     pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
@@ -203,6 +213,17 @@ impl PyramidalLayer {
 
         Ok(())
     }
+
+    // USED BY AUX
+    #[inline] pub fn kern_ltp(&mut self) -> &mut Kernel { &mut self.kern_ltp }
+    // USED BY AUX
+    #[inline] pub fn kern_cycle(&mut self) -> &mut Kernel { &mut self.kern_cycle }
+
+    #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
+    #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
+    #[inline] pub fn best_den_states(&self) -> &Buffer<u8> { &self.best_den_states }
+    #[inline] pub fn tft_best_den_ids(&self) -> &Buffer<u8> { &self.tft_best_den_ids }
+    #[inline] pub fn tft_best_den_states(&self) -> &Buffer<u8> { &self.tft_best_den_states }
 }
 
 impl DataCellLayer for PyramidalLayer {

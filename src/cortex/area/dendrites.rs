@@ -38,11 +38,11 @@ impl Dendrites {
         let mut den_idzs_by_tft = Vec::with_capacity(tft_count);
         let mut den_counts_by_tft = Vec::with_capacity(tft_count);
         // let mut syns_per_den_l2_by_tft = Vec::with_capacity(tft_count);
-        let mut den_count_ttl = 0usize;
+        let mut den_count_ttl = 0u32;
 
         for tft_scheme in cell_scheme.tft_schemes() {
             let tft_den_idz = den_count_ttl;
-            let tft_den_count = (dims.cells() as usize) << tft_scheme.dens_per_tuft_l2();
+            let tft_den_count = dims.cells()<< tft_scheme.dens_per_tuft_l2();
 
             den_idzs_by_tft.push(tft_den_idz);
             den_counts_by_tft.push(tft_den_count);
@@ -73,7 +73,7 @@ impl Dendrites {
                 .gws(SpatialDims::One(states.len()))
                 .arg_buf(syns.states())
                 .arg_buf(syns.strengths())
-                .arg_scl(tft_den_idz as u32)
+                .arg_scl(tft_den_idz)
                 .arg_scl(syns_per_den_l2)
                 .arg_scl(den_threshold)
                 .arg_buf(&energies)
@@ -134,14 +134,15 @@ impl Dendrites {
         self.syns.regrow();
     }
 
-    pub fn thresholds(&self) -> &Buffer<u8> { &self.thresholds }
-    pub fn states_raw(&self) -> &Buffer<u8> { &self.states_raw }
-    pub fn states(&self) -> &Buffer<u8> { &self.states }
-    pub fn energies(&self) -> &Buffer<u8> { &self.energies }
-    pub fn dims(&self) -> &CorticalDims { &self.dims }
-    pub fn syns(&self) -> &Synapses { &self.syns }
-    pub fn syns_mut(&mut self) -> &mut Synapses { &mut self.syns }
-    pub fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] pub fn thresholds(&self) -> &Buffer<u8> { &self.thresholds }
+    #[inline] pub fn states_raw(&self) -> &Buffer<u8> { &self.states_raw }
+    #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
+    #[inline] pub fn energies(&self) -> &Buffer<u8> { &self.energies }
+    #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] pub fn syns(&self) -> &Synapses { &self.syns }
+    #[inline] pub fn syns_mut(&mut self) -> &mut Synapses { &mut self.syns }
+    #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] pub fn count(&self) -> u32 { self.states.len() as u32 }
 }
 
 
