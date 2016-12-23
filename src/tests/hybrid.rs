@@ -128,10 +128,10 @@ fn syn_and_den_states(dens: &mut Dendrites) {
     dens.cycle(None);
 
     let syns_per_tuft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
-    let dens_per_tuft_l2: usize = dens.dims().per_tft_l2_left() as usize;
+    let dens_per_tft_l2: usize = dens.dims().per_tft_l2_left() as usize;
     let cels_per_group: usize = cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize;
     let syns_per_group: usize = cels_per_group << syns_per_tuft_l2;
-    let dens_per_group: usize = cels_per_group << dens_per_tuft_l2;
+    let dens_per_group: usize = cels_per_group << dens_per_tft_l2;
     let actv_group_thresh = syns_per_group / 4;
     //let den_actv_group_thresh = dens_per_group;
 
@@ -158,7 +158,7 @@ fn syn_and_den_states(dens: &mut Dendrites) {
         den_states_ttl = 0;
 
         let syn_idz = cel_idz << syns_per_tuft_l2;
-        let den_idz = cel_idz << dens_per_tuft_l2;
+        let den_idz = cel_idz << dens_per_tft_l2;
 
 
         println!("\nDEBUG: syn_idz: {}, syns_per_tuft: {}, syns_per_group: {}",

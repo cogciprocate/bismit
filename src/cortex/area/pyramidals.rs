@@ -16,6 +16,7 @@ const PRINT_DEBUG: bool = false;
 */
 pub struct PyramidalLayer {
     layer_name: &'static str,
+    layer_id: usize,
     dims: CorticalDims,
     tft_count: usize,
     cell_scheme: CellScheme,
@@ -39,15 +40,16 @@ pub struct PyramidalLayer {
 }
 
 impl PyramidalLayer {
-    pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme,
+    pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
             area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue) -> CmnResult<PyramidalLayer>
     {
-        let base_axn_slc = area_map.layer_slc_ids(vec![layer_name])[0];
+        // [FIXME]: Convert to layer_id:
+        let base_axn_slc = area_map.layer_slc_ids(&[layer_name.to_owned()])[0];
         let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
         // let tfts_per_cel = area_map.layer_dst_srcs(layer_name).len() as u32;
         let tft_count = cell_scheme.tft_count();
-        assert!(area_map.layer_dst_srcs(layer_name).len() == tft_count);
+        // assert!(area_map.layer_dst_srcs(layer_name).len() == tft_count);
 
         // let best_dens_per_cel = tfts_per_cel;
         // let dims_tft_best_den = dims.clone().with_tfts(tft_count);
@@ -65,7 +67,7 @@ impl PyramidalLayer {
         let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [tft_best_den_len], None).unwrap();
         // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
-        // let dens_per_tft_l2 = cell_scheme.dens_per_tuft_l2;
+        // let dens_per_tft_l2 = cell_scheme.dens_per_tft_l2;
         // let syns_per_den_l2 = cell_scheme.syns_per_den_l2;
         // let dims_dens = dims.clone_with_ptl2(dens_per_tft_l2 as i8).with_tfts(tfts_per_cel);
 
@@ -75,7 +77,7 @@ impl PyramidalLayer {
             layer_name, base_axn_slc, pyr_lyr_axn_idz, tft_count,
             states.len(), tft_best_den_ids.len(), dims, mt = cmn::MT);
 
-        let dens = try!(Dendrites::new(layer_name, dims, cell_scheme.clone(), DendriteKind::Distal,
+        let dens = try!(Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(), DendriteKind::Distal,
             CellKind::Pyramidal, area_map, axons, ocl_pq));
 
         let mut ltp_kernels = Vec::with_capacity(tft_count);
@@ -84,7 +86,7 @@ impl PyramidalLayer {
         let mut syn_count_ttl = 0u32;
 
         for (tft_id, tft_scheme) in cell_scheme.tft_schemes().iter().enumerate() {
-            let dens_per_tft_l2 = tft_scheme.dens_per_tuft_l2();
+            let dens_per_tft_l2 = tft_scheme.dens_per_tft_l2();
             let syns_per_den_l2 = tft_scheme.syns_per_den_l2();
             let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
             let tft_cel_idz = tft_id as u32 * dims.cells();
@@ -164,6 +166,7 @@ impl PyramidalLayer {
 
         Ok(PyramidalLayer {
             layer_name: layer_name,
+            layer_id: layer_id,
             dims: dims,
             tft_count: tft_count,
             cell_scheme: cell_scheme,
@@ -203,22 +206,25 @@ impl PyramidalLayer {
         let using_aux_cycle = false;
         let using_aux_learning = false;
 
-        if using_aux_cycle {
-            try!(self.kern_cycle.set_arg_buf_named(name, Some(env)));
-        }
+        for (cycle_kern, ltp_kern) in self.cycle_kernels.iter_mut().zip(self.ltp_kernels.iter_mut()) {
+            if using_aux_cycle {
+                try!(cycle_kern.set_arg_buf_named(name, Some(env)));
+            }
 
-        if using_aux_learning {
-            try!(self.kern_ltp.set_arg_buf_named(name, Some(env)));
+            if using_aux_learning {
+                try!(ltp_kern.set_arg_buf_named(name, Some(env)));
+            }
         }
 
         Ok(())
     }
 
-    // USED BY AUX
-    #[inline] pub fn kern_ltp(&mut self) -> &mut Kernel { &mut self.kern_ltp }
-    // USED BY AUX
-    #[inline] pub fn kern_cycle(&mut self) -> &mut Kernel { &mut self.kern_cycle }
+    // // USED BY AUX
+    // #[inline] pub fn kern_ltp(&mut self) -> &mut Kernel { &mut self.kern_ltp }
+    // // USED BY AUX
+    // #[inline] pub fn kern_cycle(&mut self) -> &mut Kernel { &mut self.kern_cycle }
 
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
     #[inline] pub fn best_den_states(&self) -> &Buffer<u8> { &self.best_den_states }
@@ -229,10 +235,12 @@ impl PyramidalLayer {
 impl DataCellLayer for PyramidalLayer {
     #[inline]
     fn learn(&mut self) {
-        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Setting scalar to a random value..."); }
-        self.kern_ltp.set_arg_scl_named("rnd", self.rng.gen::<i32>()).expect("PyramidalLayer::learn()");
-        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing kern_ltp..."); }
-        self.kern_ltp.enq().expect("PyramidalLayer::learn()");
+        for ltp_kernel in self.ltp_kernels.iter_mut() {
+            if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Setting scalar to a random value..."); }
+            ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>()).expect("PyramidalLayer::learn()");
+            if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing kern_ltp..."); }
+            ltp_kernel.enq().expect("PyramidalLayer::learn()");
+        }
     }
 
     #[inline]
@@ -247,23 +255,10 @@ impl DataCellLayer for PyramidalLayer {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
         self.dens().cycle(wait_events);
 
-        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing kern_cycle..."); }
-        self.kern_cycle.cmd().ewait_opt(wait_events).enq().expect("bismit::PyramidalLayer::cycle");
-    }
-
-    #[inline]
-    fn soma(&self) -> &Buffer<u8> {
-        &self.states
-    }
-
-    #[inline]
-    fn soma_mut(&mut self) -> &mut Buffer<u8> {
-        &mut self.states
-    }
-
-    #[inline]
-    fn dims(&self) -> &CorticalDims {
-        &self.dims
+        for cycle_kernel in self.cycle_kernels.iter() {
+            if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing kern_cycle..."); }
+            cycle_kernel.cmd().ewait_opt(wait_events).enq().expect("bismit::PyramidalLayer::cycle");
+        }
     }
 
     #[inline]
@@ -272,35 +267,15 @@ impl DataCellLayer for PyramidalLayer {
         (self.pyr_lyr_axn_idz as usize, axn_idn as usize)
     }
 
-    #[inline]
-    fn base_axn_slc(&self) -> u8 {
-        self.base_axn_slc
-    }
-
-    #[inline]
-    fn tfts_per_cel(&self) -> u32 {
-        self.tfts_per_cel
-    }
-
-    #[inline]
-    fn layer_name(&self) -> &'static str {
-        self.layer_name
-    }
-
-    #[inline]
-    fn cell_scheme(&self) -> &CellScheme {
-        &self.cell_scheme
-    }
-
-    #[inline]
-    fn dens(&self) -> &Dendrites {
-        &self.dens
-    }
-
-    #[inline]
-    fn dens_mut(&mut self) -> &mut Dendrites {
-        &mut self.dens
-    }
+    #[inline] fn soma(&self) -> &Buffer<u8> { &self.states }
+    #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { &mut self.states }
+    #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] fn base_axn_slc(&self) -> u8 { self.base_axn_slc }
+    #[inline] fn tft_count(&self) -> usize { self.tft_count }
+    #[inline] fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] fn cell_scheme(&self) -> &CellScheme { &self.cell_scheme }
+    #[inline] fn dens(&self) -> &Dendrites { &self.dens }
+    #[inline] fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }
 }
 
 

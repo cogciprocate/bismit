@@ -6,7 +6,7 @@ use cmn::{self, /*CmnError,*/ CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
 use ocl::{Device, ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
-use map::{DendriteKind, LayerKind, CellKind};
+use map::{/*DendriteKind,*/ LayerKind, CellKind, InhibitoryCellKind};
 use thalamus::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, SensoryFilter};
@@ -325,24 +325,24 @@ impl CorticalArea {
 
         for layer in area_map.layers().iter() {
             match layer.kind() {
-                &LayerKind::Cellular(ref pcell) => {
+                &LayerKind::Cellular(ref cell_scheme) => {
                     println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
-                        pcell.cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
+                        cell_scheme.cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
 
-                    match pcell.cell_kind() {
+                    match *cell_scheme.cell_kind() {
                         CellKind::Pyramidal => {
                             let pyrs_dims = dims.clone_with_depth(layer.depth());
 
-                            let pyr_lyr = try!(PyramidalLayer::new(layer.name(), pyrs_dims,
-                                pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq));
+                            let pyr_lyr = try!(PyramidalLayer::new(layer.name(), layer.layer_id(),
+                                pyrs_dims, cell_scheme.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq));
 
                             pyrs_map.insert(layer.name(), Box::new(pyr_lyr));
                         },
 
                         CellKind::SpinyStellate => {
                             let ssts_map_dims = dims.clone_with_depth(layer.depth());
-                            let sst_lyr = try!(SpinyStellateLayer::new(layer.name(),
-                                ssts_map_dims, pcell.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq));
+                            let sst_lyr = try!(SpinyStellateLayer::new(layer.name(), layer.layer_id(),
+                                ssts_map_dims, cell_scheme.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq));
                             ssts_map.insert(layer.name(), Box::new(sst_lyr));
                         },
                         _ => (),
@@ -360,37 +360,47 @@ impl CorticalArea {
         // BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
         for layer in area_map.layers().iter() {
-            match layer.kind() {
-                &LayerKind::Cellular(ref pcell) => {
-                    match pcell.cell_kind() {
-                        CellKind::Inhibitory(_) => {
-                            let src_lyr_names = layer.src_lyr_names(DendriteKind::Distal);
-                            assert!(src_lyr_names.len() == 1);
+            // match layer.kind() {
+            //     &LayerKind::Cellular(ref layer_kind) => {
 
-                            let src_lyr_name = src_lyr_names[0];
-                            let src_slc_ids = area_map.layer_slc_ids(vec![src_lyr_name]);
+            if let LayerKind::Cellular(ref layer_kind) = *layer.kind() {
+                if let CellKind::Inhibitory(ref inh_cell_kind) = *layer_kind.cell_kind() {
+                // match layer_kind.cell_kind() {
+                //     CellKind::Inhibitory(ref inh_cell_kind) => {
+                        // let src_lyr_names = layer.src_lyr_names(DendriteKind::Distal);
+                        // assert!(src_lyr_names.len() == 1);
+                        // let src_lyr_name = src_lyr_names[0];
+
+                        // let src_slc_ids = area_map.layer_slc_ids(vec![src_lyr_name]);
+                        // let src_lyr_depth = src_slc_ids.len() as u8;
+                        // let src_base_axn_slc = src_slc_ids[0];
+
+                        // println!("{mt}::NEW(): Inhibitory cells: src_lyr_names: \
+                        //     {:?}, src_base_axn_slc: {:?}", src_lyr_names, src_base_axn_slc,
+                        //     mt = cmn::MT);
+
+                    match *inh_cell_kind {
+                        InhibitoryCellKind::BasketSurround { lyr_name: ref src_lyr_name, field_radius: _ } => {
+                            let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
+                            let src_soma_env = &ssts_map.get_mut(src_lyr_name.as_str()).expect(&em1).soma();
+
+                            let src_slc_ids = area_map.layer_slc_ids(&[src_lyr_name.clone()]);
                             let src_lyr_depth = src_slc_ids.len() as u8;
                             let src_base_axn_slc = src_slc_ids[0];
 
-                            // println!("{mt}::NEW(): Inhibitory cells: src_lyr_names: \
-                            //     {:?}, src_base_axn_slc: {:?}", src_lyr_names, src_base_axn_slc,
-                            //     mt = cmn::MT);
-
-                            let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
-                            let src_soma_env = &ssts_map.get_mut(src_lyr_name).expect(&em1).soma();
-
                             let iinns_dims = dims.clone_with_depth(src_lyr_depth);
                             let iinn_lyr = InhibitoryInterneuronNetwork::new(layer.name(), iinns_dims,
-                                pcell.clone(), &area_map, src_soma_env,
+                                layer_kind.clone(), &area_map, src_soma_env,
                                 src_base_axn_slc, &axns, /*&aux,*/ &ocl_pq);
 
                             iinns.insert(layer.name(), Box::new(iinn_lyr));
-
                         },
-                        _ => (),
                     }
-                },
-                _ => (),
+                    //     },
+                    //     _ => (),
+                }
+                // },
+                // _ => (),
             }
         }
 
@@ -447,26 +457,18 @@ impl CorticalArea {
 
         // <<<<< TODO: CLEAN THIS UP >>>>>
         // MAKE ABOVE LIKE BELOW (eliminate set_arg_buf_named() methods and just call directly on buffer)
-        mcols.set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        pyrs_map.get_mut(ptal_name).unwrap()
-            .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
-            .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-
-        // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
-        pyrs_map.get_mut(ptal_name).unwrap().kern_ltp()
-            .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
-        pyrs_map.get_mut(ptal_name).unwrap().kern_cycle()
-            .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
-
+        // mcols.set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        // pyrs_map.get_mut(ptal_name).unwrap()
+        //     .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
         // pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
-            // .set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
-        // let mut events_lists = HashMap::new();
-        // events_lists.insert(map::FF_IN, EventList::new());
-        // events_lists.insert(map::FB_IN, EventList::new());
-        // events_lists.insert(map::NS_IN, EventList::new());
-        // events_lists.insert(map::FF_OUT, EventList::new());
-        // events_lists.insert(map::NS_OUT, EventList::new());
+        //     .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+
+        // // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
+        // pyrs_map.get_mut(ptal_name).unwrap().kern_ltp()
+
+        //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
+        // pyrs_map.get_mut(ptal_name).unwrap().kern_cycle()
+        //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
 
         let io_info = IoLayerInfoCache::new(area_id, &area_map, &filter_chains);
 

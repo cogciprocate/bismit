@@ -3,7 +3,7 @@
 mod layer_map;
 mod layer_info;
 mod slice_map;
-mod syn_src_map;
+mod syn_src;
 mod slice_tract_map;
 mod layer_tags;
 mod area_map;
@@ -16,7 +16,7 @@ pub use self::area_map::AreaMap;
 pub use self::slice_map::SliceMap;
 pub use self::layer_map::LayerMap;
 pub use self::layer_info::{LayerInfo, SourceLayerInfo};
-pub use self::syn_src_map::{SynSrcSlices, SynSrcIdxCache, SynSrc, gen_syn_offs};
+pub use self::syn_src::{SynSrcSlices, SynSrcIdxCache, SynSrc, gen_syn_offs};
 pub use self::slice_tract_map::SliceTractMap;
 pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
 	LayerScheme, FilterScheme, InputScheme, TuftSourceLayer, TuftScheme};
@@ -49,9 +49,9 @@ impl LayerAddress {
 }
 
 
-#[derive(Copy, PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub enum InhibitoryCellKind {
-    BasketSurround,
+    BasketSurround { lyr_name: String, field_radius: u8  },
     //AspinyStellate,
 }
 
@@ -114,7 +114,7 @@ impl LayerKind {
         }
     }
 
-    pub fn apical<'a>(mut self, src_lyrs: &[(&'a str, i8)], dens_per_tuft_l2: u8,
+    pub fn apical<'a>(mut self, src_lyrs: &[(&'a str, i8)], dens_per_tft_l2: u8,
                 syns_per_den_l2: u8, thresh_init: u32) -> LayerKind
     {
         match &mut self {
@@ -125,21 +125,18 @@ impl LayerKind {
                 // }
                 // cs.den_dst_syn_reaches.push(syn_reach);
                 let src_lyrs_vec = src_lyrs.into_iter().map(|&sl| sl.into()).collect();
+                // let tft_id = cs.tft_schemes().len();
 
-                let tft_scheme = TuftScheme {
-                    den_class: DendriteClass::Apical,
-                    den_kind: DendriteKind::Distal,
-                    dens_per_tuft_l2: 0,
-                    syns_per_den_l2: syns_per_den_l2,
-                    src_lyrs: src_lyrs_vec,
-                    thresh_init: Some(thresh_init),
-                };
+                let tft_scheme = TuftScheme::new(DendriteClass::Apical, DendriteKind::Distal,
+                    dens_per_tft_l2, syns_per_den_l2, src_lyrs_vec, Some(thresh_init));
 
                 cs.add_tft(tft_scheme);
             },
 
             &mut LayerKind::Axonal(_) => panic!("::apical(): Axonal layers do not have dendrites."),
-        };
+        }
+
+        self
     }
 }
 

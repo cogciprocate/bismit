@@ -1,11 +1,11 @@
 use std::fmt::Display;
-use std::ops::Range;
+use std::ops::{Range, Deref};
 // use std::collections::HashMap;
 // use std::collections::{BTreeMap};
 
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use map::{LayerMapSchemeList, AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme,
-    DendriteKind, AxonTags};
+    /*DendriteKind,*/ AxonTags};
 use cmn::{self, CorticalDims, MapStore};
 use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo};
 use thalamus::ExternalPathway;
@@ -46,8 +46,6 @@ impl AreaMap {
             dims: dims,
             slices: slices,
             layers: layers,
-            // [FIXME]: TEMPORARY:
-            // hrz_demarc: 128,
             eff_areas: area_sch.get_eff_areas().clone(),
             aff_areas: area_sch.get_aff_areas().clone(),
             other_areas: area_sch.get_other_areas().clone(),
@@ -93,50 +91,52 @@ impl AreaMap {
         layer_info[0].name()
     }
 
-    // UPDATE / CONSOLIDATE / DEPRICATE
-    /// Returns a grouped list of source layer names for each distal dendritic tuft in a layer.
-    pub fn layer_dst_srcs(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
-        let potential_tufts = match self.layers.layer_info_by_name(layer_name) {
-            Some(li) => li.dst_src_lyrs(),
-            None => panic!("AreaMap::layer_dst_srcs(): No layer named '{}' found.", layer_name),
-        };
+    // // UPDATE / CONSOLIDATE / DEPRICATE
+    // /// Returns a grouped list of source layer names for each distal dendritic tuft in a layer.
+    // pub fn layer_dst_srcs(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
+    //     let potential_tufts = match self.layers.layer_info_by_name(layer_name) {
+    //         Some(li) => li.dst_src_lyrs(),
+    //         None => panic!("AreaMap::layer_dst_srcs(): No layer named '{}' found.", layer_name),
+    //     };
 
-        let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
+    //     let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
 
-        for mut potential_tuft_src_lyrs in potential_tufts {
-            let mut valid_src_lyrs = Vec::with_capacity(potential_tuft_src_lyrs.0.len());
+    //     for mut potential_tuft_src_lyrs in potential_tufts {
+    //         let mut valid_src_lyrs = Vec::with_capacity(potential_tuft_src_lyrs.0.len());
 
-            for lyr_name in potential_tuft_src_lyrs.0.drain(..) {
-                let li = match self.layers.layer_info_by_name(lyr_name) {
-                    Some(li) => li,
-                    None => panic!("AreaMap::layer_dst_srcs(): No layer named '{}' found.",
-                        layer_name),
-                };
+    //         for lyr_name in potential_tuft_src_lyrs.0.drain(..) {
+    //             let li = match self.layers.layer_info_by_name(lyr_name) {
+    //                 Some(li) => li,
+    //                 None => panic!("AreaMap::layer_dst_srcs(): No layer named '{}' found.",
+    //                     layer_name),
+    //             };
 
-                if li.depth() > 0 {
-                    valid_src_lyrs.push(lyr_name);
-                }
-            }
+    //             if li.depth() > 0 {
+    //                 valid_src_lyrs.push(lyr_name);
+    //             }
+    //         }
 
-            if valid_src_lyrs.len() > 0 {
-                valid_src_lyrs.shrink_to_fit();
-                valid_tufts.push(valid_src_lyrs);
-            }
-        }
+    //         if valid_src_lyrs.len() > 0 {
+    //             valid_src_lyrs.shrink_to_fit();
+    //             valid_tufts.push(valid_src_lyrs);
+    //         }
+    //     }
 
-        valid_tufts
-    }
+    //     valid_tufts
+    // }
 
     // NEW - UPDATE / CONSOLIDATE
     /// Returns a merged list of slice ids for all source layers.
-    pub fn layer_slc_ids(&self, layer_names: Vec<&'static str>) -> Vec<u8> {
+    //
+    // [FIXME]: CONVERT TO layer_id.
+    pub fn layer_slc_ids<S: Deref<Target=str> + Display>(&self, layer_names: &[S]) -> Vec<u8> {
         let mut slc_ids = Vec::with_capacity(32);
 
         for layer_name in layer_names.iter() {
-            let li = match self.layers.layer_info_by_name(layer_name) {
+            let li = match self.layers.layer_info_by_name(layer_name.clone()) {
                 Some(li) => li,
                 None => panic!("AreaMap::layer_slc_ids(): No layer named '{}' found.",
-                    layer_name),
+                    &layer_name),
             };
 
             if let Some(slc_range) = li.slc_range() {
@@ -149,31 +149,53 @@ impl AreaMap {
         slc_ids
     }
 
-    // NEW - UPDATE / CONSOLIDATE
-    /// Returns a merged list of source slice ids for all source layers.
-    pub fn syn_src_slc_ids(&self, layer_name: &'static str, den_kind: DendriteKind) -> Vec<u8> {
-        let li = match self.layers.layer_info_by_name(layer_name) {
-            Some(li) => li,
-            None => panic!("AreaMap::layer_src_slc_ids(): No layer named '{}' found.",
-                layer_name),
-        };
+    // /// Returns a merged list of source slice ids for all source layers.
+    // pub fn syn_src_slc_ids(&self, layer_name: &'static str, den_kind: DendriteKind) -> Vec<u8> {
+    //     let li = match self.layers.layer_info_by_name(layer_name.to_owned()) {
+    //         Some(li) => li,
+    //         None => panic!("AreaMap::layer_src_slc_ids(): No layer named '{}' found.",
+    //             layer_name),
+    //     };
 
-        let src_lyr_names = li.src_lyr_names(den_kind);
-        self.layer_slc_ids(src_lyr_names)
-     }
+    //     let src_lyr_names = li.src_lyr_names(den_kind);
+    //     self.layer_slc_ids(src_lyr_names)
 
-     // NEW - UPDATE / CONSOLIDATE
-     /// Returns a grouped list of source slice ids for each distal dendritic tuft in a layer.
-     pub fn layer_dst_src_slc_ids(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
-         let src_tufts = self.layer_dst_srcs(layer_name);
-         let mut dst_src_slc_ids = Vec::with_capacity(src_tufts.len());
+    //     Vec::with_capacity(0)
+    // }
 
-         for tuft in src_tufts {
-             dst_src_slc_ids.push(self.layer_slc_ids(tuft));
+    /// Returns a list of tuples of (source slice id, synapse reach) for a
+    /// tuft of a cellular layer.
+    pub fn cel_src_slc_id_rchs(&self, lyr_id: usize, tft_id: usize) -> Vec<(u8, i8)> {
+        let li = self.layers.layer_info(lyr_id)
+            .expect(&format!("AreaMap::layer_src_slc_ids(): No layer with id: '{}' found.",
+                lyr_id));
+
+        let mut id_rchs = Vec::with_capacity(32);
+        let src_lyrs = li.cel_tft_src_lyrs(tft_id);
+
+        for src_lyr in src_lyrs.iter() {
+            let src_slc_ids = self.layer_slc_ids(&[src_lyr.name()]);
+
+            for id in src_slc_ids {
+                id_rchs.push((id, src_lyr.syn_reach()))
+            }
         }
 
-        dst_src_slc_ids
+        id_rchs
     }
+
+    //  // NEW - UPDATE / CONSOLIDATE
+    //  /// Returns a grouped list of source slice ids for each distal dendritic tuft in a layer.
+    //  pub fn layer_dst_src_slc_ids(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
+    //      let src_tufts = self.layer_dst_srcs(layer_name);
+    //      let mut dst_src_slc_ids = Vec::with_capacity(src_tufts.len());
+
+    //      for tuft in src_tufts {
+    //          dst_src_slc_ids.push(self.layer_slc_ids(tuft));
+    //     }
+
+    //     dst_src_slc_ids
+    // }
 
     // NEW - UPDATE / RENAME
     pub fn aff_out_slcs(&self) -> Vec<u8> {
@@ -182,7 +204,7 @@ impl AreaMap {
          // Push all matching slices:
          for layer in self.layers.iter() {
              if (layer.layer_tags() & map::FF_OUT) == map::FF_OUT {
-                 let v = self.layer_slc_ids(vec![layer.name()]);
+                 let v = self.layer_slc_ids(&[layer.name().to_owned()]);
                  output_slcs.extend_from_slice(&v);
              }
          }

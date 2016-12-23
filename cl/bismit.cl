@@ -1512,7 +1512,7 @@ __kernel void pyr_cycle(
 __kernel void mcol_output(
             __global uchar const* const pyr_states,                
             // __global uchar const* const cel_tft_best_den_states,
-            __private uint const tfts_per_cel,
+            // __private uint const tfts_per_cel,
             __private uint const sst_axn_idz,
             __private uchar const pyr_depth,
             __private uchar const aff_out_axn_slc,

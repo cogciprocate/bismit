@@ -81,18 +81,18 @@ const DEBUG_KERN: bool = false;
 
 pub struct Synapses {
     layer_name: &'static str,
+    layer_id: usize,
     dims: CorticalDims,
     // syns_per_den_l2: u8,
     // cell_scheme: CellScheme,
-    src_slc_ids_by_tft: Vec<Vec<u8>>,
+    // src_slc_ids_by_tft: Vec<Vec<u8>>,
     den_kind: DendriteKind,
     // cell_kind: CellKind,
     // since_decay: usize,
     kernels: Vec<Box<Kernel>>,
-    // [NOTE]: Ensure that this needs to be balkanized (could it be unified?):
     src_idx_caches_by_tft: Vec<SynSrcIdxCache>,
-    // [NOTE]: Ensure that this needs to be balkanized (could it be unified?):
-    src_slices_by_tft: Vec<SynSrcSlices>,
+    // src_slices_by_tft: Vec<SynSrcSlices>,
+    syn_src_slices: SynSrcSlices,
     rng: XorShiftRng,
     states: Buffer<u8>,
 
@@ -114,7 +114,7 @@ pub struct Synapses {
 }
 
 impl Synapses {
-    pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme,
+    pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
             den_kind: DendriteKind, _: CellKind, area_map: &AreaMap, axons: &AxonSpace,
             ocl_pq: &ProQue,
             ) -> CmnResult<Synapses>
@@ -122,9 +122,9 @@ impl Synapses {
         let tft_count = cell_scheme.tft_count();
 
         let mut kernels = Vec::with_capacity(tft_count);
-        let mut src_slc_ids_by_tft = Vec::with_capacity(tft_count);
+        // let mut src_slc_ids_by_tft = Vec::with_capacity(tft_count);
         let mut src_idx_caches_by_tft = Vec::with_capacity(tft_count);
-        let mut src_slices_by_tft = Vec::with_capacity(tft_count);
+        // let mut src_slices_by_tft = Vec::with_capacity(tft_count);
         let mut syn_idzs_by_tft = Vec::with_capacity(tft_count);
         let mut syn_counts_by_tft = Vec::with_capacity(tft_count);
         let mut syn_count_ttl = 0u32;
@@ -133,12 +133,12 @@ impl Synapses {
 
         // for tft_id in 0..tft_count {
         for tft_scheme in cell_scheme.tft_schemes() {
-            let syns_per_tft_l2: u8 = tft_scheme.dens_per_tuft_l2() + tft_scheme.syns_per_den_l2();
+            let syns_per_tft_l2: u8 = tft_scheme.dens_per_tft_l2() + tft_scheme.syns_per_den_l2();
             // assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
 
             // [FIXME]: Needs redesign:
             src_idx_caches_by_tft.push(SynSrcIdxCache::new(tft_scheme.syns_per_den_l2(),
-                tft_scheme.dens_per_tuft_l2(), dims.clone()));
+                tft_scheme.dens_per_tft_l2(), dims.clone()));
 
             // Padded length of our vectors.
             // let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
@@ -156,25 +156,18 @@ impl Synapses {
             //     },
             // };
 
-            let mut syn_reaches_by_tft = Vec::with_capacity(tft_scheme.src_lyrs().len());
 
-            for tft_src_lyr in tft_scheme.src_lyrs().iter() {
-                src_slc_ids_by_tft.push(area_map.syn_src_slc_ids(tft_src_lyr.name(),
-                    tft_scheme.den_kind().clone()));
-
-            }
-
-            // assert!(src_slc_ids_by_tft.len() == dims.tfts_per_cel() as usize,
-            assert!(src_slc_ids_by_tft.len() == tft_count,
-                "Synapses::new(): Error creating synapses: layer '{}' has one or more invalid \
-                source layers defined. If a source layer is an afferent or efferent input, please \
-                ensure that the source area for that the layer exists. (src_slc_ids_by_tft: {:?})",
-                layer_name, src_slc_ids_by_tft);
+            //##
 
             // [FIXME]: Implement src_ranges on a per-tuft basis.
             // [FIXME]: Needs redesign:
-            src_slices_by_tft.push(SynSrcSlices::new(&src_slc_ids_by_tft, syn_reaches_by_tft,
-                1 << tft_scheme.syns_per_den_l2(), area_map)?);
+            // src_slices_by_tft.push(SynSrcSlices::new(&src_slc_ids_by_tft, tft_syn_reaches,
+            //     1 << tft_scheme.syns_per_den_l2(), area_map)?);
+
+
+
+
+            //##
 
             if DEBUG_NEW {
                 println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {},\n\
@@ -220,6 +213,8 @@ impl Synapses {
             }));
         }
 
+        let syn_src_slices = SynSrcSlices::new(layer_id, cell_scheme.tft_schemes(), area_map)?;
+
         // * Loop through kernels first, use named kernel args, then loop
         //   again using the determined synapse totals to create the buffers.
 
@@ -251,16 +246,18 @@ impl Synapses {
 
         let mut syns = Synapses {
             layer_name: layer_name,
+            layer_id: layer_id,
             dims: dims,
             // syns_per_den_l2: cell_scheme.syns_per_den_l2,
             // cell_scheme: cell_scheme,
-            src_slc_ids_by_tft: src_slc_ids_by_tft,
+            // src_slc_ids_by_tft: src_slc_ids_by_tft,
             den_kind: den_kind,
             // cell_kind: cell_kind,
             // since_decay: 0,
             kernels: kernels,
             src_idx_caches_by_tft: src_idx_caches_by_tft,
-            src_slices_by_tft: src_slices_by_tft,
+            // src_slices_by_tft: src_slices_by_tft,
+            syn_src_slices: syn_src_slices,
             rng: rand::weak_rng(),
             states: states,
             strengths: strengths,
@@ -283,104 +280,6 @@ impl Synapses {
         // syns.refresh_slc_pool(); // BRING THIS BACK
 
         Ok(syns)
-    }
-
-
-    // [FIXME]: THIS IS A PERFORMANCE NIGHTMARE (since we have to stop the
-    // world to do it).
-    // - SET UP AN EVENTLIST.
-    // - BREAK THIS DOWN INTO PIECES.
-    // - PROCESS SMALLER CHUNKS MORE FREQUENTLY.
-    //
-    fn grow(&mut self, init: bool) {
-        if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
-            println!("REGROW:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:\
-                (SLICE)(OFFSET)(STRENGTH)]\n", self.den_kind);
-        }
-
-        // Fill our vectors with fresh data;
-        self.strengths.cmd().read(&mut self.vec_strengths).enq().unwrap();
-        self.src_slc_ids.cmd().read(&mut self.vec_src_slc_ids).enq().unwrap();
-        self.src_col_v_offs.cmd().read(&mut self.vec_src_col_v_offs).enq().unwrap();
-        self.src_col_u_offs.cmd().read(&mut self.vec_src_col_u_offs).enq().unwrap();
-
-        // let syns_per_layer_tft = self.dims.per_slc_per_tft() as usize * self.dims.depth() as usize;
-        let src_slc_ids_by_tft = self.src_slc_ids_by_tft.clone();
-        let mut src_tft_id = 0usize;
-
-        debug_assert!(self.src_slc_ids_by_tft.len() == self.syn_counts_by_tft.len());
-        debug_assert!(self.src_slc_ids_by_tft.len() == self.syn_idzs_by_tft.len());
-
-        for (tft_id, src_slc_id_list) in src_slc_ids_by_tft.iter().enumerate() {
-            if src_slc_id_list.len() == 0 { continue; }
-
-            // syn_counts_by_tft
-            // let syn_idz = syns_per_layer_tft * src_tft_id as usize;
-            let syn_idz = *self.syn_idzs_by_tft.get_unchecked(tft_id);
-            let syn_idn = syn_idz + *self.syn_counts_by_tft.get_unchecked(tft_id);
-
-            if DEBUG_GROW && init {
-                println!("{mt}{mt}{mt}{mt}{mt}\
-                    SYNAPSES::GROW()[INIT]: '{}' ({:?}): src_slc_ids: {:?}, \
-                    syns_per_layer_tft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind,
-                    src_slc_id_list,  *self.syn_counts_by_tft.get_unchecked(tft_id),
-                    syn_idz, syn_idn, mt = cmn::MT);
-            }
-
-            for syn_idx in syn_idz..syn_idn {
-                debug_assert!(syn_idx < self.vec_strengths.len());
-
-                if init || (unsafe { *self.vec_strengths
-                    .get_unchecked(syn_idx) } <= cmn::SYNAPSE_STRENGTH_FLOOR)
-                {
-                    self.regrow_syn(syn_idx, src_tft_id, init);
-                }
-            }
-
-            src_tft_id += 1;
-        }
-
-        self.strengths.cmd().write(&self.vec_strengths).enq().unwrap();
-        self.src_slc_ids.cmd().write(&self.vec_src_slc_ids).enq().unwrap();
-        self.src_col_v_offs.cmd().write(&self.vec_src_col_v_offs).enq().unwrap();
-        self.src_col_u_offs.cmd().write(&self.vec_src_col_u_offs).enq().unwrap();
-    }
-
-    // [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
-    // - Will need to know u and v coords of host cell or deconstruct from syn_idx.
-    fn regrow_syn(&mut self, syn_idx: usize, tft_id: usize, _: bool) {
-        debug_assert!(syn_idx < self.src_slc_ids.len());
-        debug_assert!(syn_idx < self.src_col_v_offs.len());
-        debug_assert!(syn_idx < self.src_col_u_offs.len());
-        debug_assert!(self.src_idx_caches_by_tft.len() == tft_id);
-        debug_assert!(self.src_slices_by_tft.len() == tft_id);
-
-        loop {
-            let old_src = unsafe { SynSrc {
-                slc_id: *self.vec_src_slc_ids.get_unchecked(syn_idx),
-                v_ofs: *self.vec_src_col_v_offs.get_unchecked(syn_idx),
-                u_ofs: *self.vec_src_col_u_offs.get_unchecked(syn_idx),
-                strength: 0
-            } };
-
-            let new_src = self.src_slices_by_tft.get_unchecked(tft_id)
-                .gen_src(tft_id, &mut self.rng);
-
-            if self.src_idx_caches_by_tft.get_unchecked(tft_id)
-                .insert(syn_idx, &old_src, &new_src) {
-                unsafe {
-                    *self.vec_src_slc_ids.get_unchecked_mut(syn_idx) = new_src.slc_id;
-                    *self.vec_src_col_v_offs.get_unchecked_mut(syn_idx) = new_src.v_ofs;
-                    *self.vec_src_col_u_offs.get_unchecked_mut(syn_idx) = new_src.u_ofs;
-                    *self.vec_strengths.get_unchecked_mut(syn_idx) = new_src.strength;
-                }
-
-                if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("$"); }
-                break;
-            } else {
-                if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("^"); }
-            }
-        }
     }
 
     #[inline]
@@ -419,6 +318,7 @@ impl Synapses {
         Ok(())
     }
 
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn den_kind(&self) -> DendriteKind { self.den_kind.clone() }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
@@ -428,6 +328,107 @@ impl Synapses {
     #[inline] pub fn src_col_v_offs(&self) -> &Buffer<i8> { &self.src_col_v_offs }
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
     #[inline] pub fn count(&self) -> u32 { self.states.len() as u32 }
+
+    // [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
+    // - Will need to know u and v coords of host cell or deconstruct from syn_idx.
+    fn regrow_syn(&mut self, syn_idx: usize, tft_id: usize, _: bool) {
+        debug_assert!(syn_idx < self.src_slc_ids.len());
+        debug_assert!(syn_idx < self.src_col_v_offs.len());
+        debug_assert!(syn_idx < self.src_col_u_offs.len());
+        debug_assert!(self.src_idx_caches_by_tft.len() == tft_id);
+        // debug_assert!(self.src_slices_by_tft.len() == tft_id);
+
+        loop {
+            let old_src = unsafe { SynSrc {
+                slc_id: *self.vec_src_slc_ids.get_unchecked(syn_idx),
+                v_ofs: *self.vec_src_col_v_offs.get_unchecked(syn_idx),
+                u_ofs: *self.vec_src_col_u_offs.get_unchecked(syn_idx),
+                strength: 0
+            } };
+
+            let new_src = self.syn_src_slices.gen_src(tft_id, &mut self.rng);
+
+            let insert_success = unsafe {
+                self.src_idx_caches_by_tft.get_unchecked_mut(tft_id)
+                    .insert(syn_idx, &old_src, &new_src)
+            };
+
+            if insert_success {
+                unsafe {
+                    *self.vec_src_slc_ids.get_unchecked_mut(syn_idx) = new_src.slc_id;
+                    *self.vec_src_col_v_offs.get_unchecked_mut(syn_idx) = new_src.v_ofs;
+                    *self.vec_src_col_u_offs.get_unchecked_mut(syn_idx) = new_src.u_ofs;
+                    *self.vec_strengths.get_unchecked_mut(syn_idx) = new_src.strength;
+                }
+
+                if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("$"); }
+                break;
+            } else {
+                if DEBUG_GROW && DEBUG_REGROW_DETAIL { print!("^"); }
+            }
+        }
+    }
+
+    // [FIXME]: THIS IS A PERFORMANCE NIGHTMARE (since we have to stop the
+    // world to do it).
+    // - SET UP AN EVENTLIST.
+    // - BREAK THIS DOWN INTO PIECES.
+    // - PROCESS SMALLER CHUNKS MORE FREQUENTLY.
+    //
+    fn grow(&mut self, init: bool) {
+        if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
+            println!("REGROW:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:\
+                (SLICE)(OFFSET)(STRENGTH)]\n", self.den_kind);
+        }
+
+        // Fill our vectors with fresh data;
+        self.strengths.cmd().read(&mut self.vec_strengths).enq().unwrap();
+        self.src_slc_ids.cmd().read(&mut self.vec_src_slc_ids).enq().unwrap();
+        self.src_col_v_offs.cmd().read(&mut self.vec_src_col_v_offs).enq().unwrap();
+        self.src_col_u_offs.cmd().read(&mut self.vec_src_col_u_offs).enq().unwrap();
+
+        // let syns_per_layer_tft = self.dims.per_slc_per_tft() as usize * self.dims.depth() as usize;
+        // let src_slc_ids_by_tft = self.src_slc_ids_by_tft.clone();
+        // let src_slc_counts_by_tft = self.syn_src_slices.src_slc_counts_by_tft();
+        // let mut src_tft_id = 0usize;
+        let tft_count = self.syn_idzs_by_tft.len();
+        debug_assert!(tft_count == self.syn_counts_by_tft.len());
+
+        for tft_id in 0..tft_count {
+            // if src_slc_count == 0 { unreachable!(); }
+
+            // syn_counts_by_tft
+            // let syn_idz = syns_per_layer_tft * src_tft_id as usize;
+            let syn_idz = unsafe { *self.syn_idzs_by_tft.get_unchecked(tft_id) as usize };
+            let syn_idn = unsafe { syn_idz + *self.syn_counts_by_tft.get_unchecked(tft_id) as usize };
+
+            if DEBUG_GROW && init {
+                println!("{mt}{mt}{mt}{mt}{mt}\
+                    SYNAPSES::GROW()[INIT]: '{}' ({:?}): src_slc_id_rchs: {:?}, \
+                    syns_per_layer_tft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind,
+                    self.syn_src_slices.src_slc_id_rchs_by_tft(),
+                    unsafe { *self.syn_counts_by_tft.get_unchecked(tft_id) },
+                    syn_idz, syn_idn, mt = cmn::MT);
+            }
+
+            for syn_idx in syn_idz..syn_idn {
+                debug_assert!(syn_idx < self.vec_strengths.len());
+
+                if init || (unsafe { *self.vec_strengths
+                    .get_unchecked(syn_idx) } <= cmn::SYNAPSE_STRENGTH_FLOOR)
+                {
+                    self.regrow_syn(syn_idx, tft_id, init);
+                }
+            }
+
+            // src_tft_id += 1;
+        }
+
+        self.strengths.cmd().write(&self.vec_strengths).enq().unwrap();
+        self.src_slc_ids.cmd().write(&self.vec_src_slc_ids).enq().unwrap();
+        self.src_col_v_offs.cmd().write(&self.vec_src_col_v_offs).enq().unwrap();
+        self.src_col_u_offs.cmd().write(&self.vec_src_col_u_offs).enq().unwrap();
+    }
 
     // #[inline]
     // pub fn syns_per_den_l2(&self) -> u8 {

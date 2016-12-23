@@ -4,12 +4,12 @@
 
 use std::iter::FromIterator;
 use std::collections::BTreeSet;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 const UID_IDZ: u64 = 1 << 16;
 const UID_IDN: u64 = 1 << 31;
 const PRESET_IDZ: u64 = 1 << 31;
-const PRESET_IDN: u64 = 1 << 32;
+// const PRESET_IDN: u64 = 1 << 32;
 
 pub const THAL_SP:      AxonTag = AxonTag(PRESET_IDZ + 0x010);
 pub const THAL_NSP:     AxonTag = AxonTag(PRESET_IDZ + 0x011);
@@ -21,11 +21,12 @@ pub const L5CC:         AxonTag = AxonTag(PRESET_IDZ + 0x500);
 pub const L5CS:         AxonTag = AxonTag(PRESET_IDZ + 0x501);
 pub const L5CC_NS:      AxonTag = AxonTag(PRESET_IDZ + 0x502);
 
-static NEXT_UID: AtomicU64 = AtomicU64::new(UID_IDZ);
+// static NEXT_UID: AtomicUsize = AtomicUsize::new(UID_IDZ as usize);
+static NEXT_UID: AtomicUsize = ATOMIC_USIZE_INIT;
 
 
-fn uid() -> u16 {
-    let uid = NEXT_UID.fetch_add(1, Ordering::SeqCst);
+fn uid() -> u64 {
+    let uid = UID_IDZ + NEXT_UID.fetch_add(1, Ordering::SeqCst) as u64;
 
     // Leave as an if statement (rather than assert) in case we later want to
     // return a Result or something.
@@ -35,7 +36,7 @@ fn uid() -> u16 {
     }
 
     // unsafe { next_uid += 1; }
-    uid as u16
+    uid
 }
 
 /// Markers to identify axons.
@@ -57,7 +58,7 @@ impl AxonTag {
     pub fn custom(id: u16) -> AxonTag { AxonTag(id as u64) }
 
     pub fn unique() -> AxonTag {
-        AxonTag(uid() as u64)
+        AxonTag(uid())
     }
 }
 

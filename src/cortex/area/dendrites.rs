@@ -1,6 +1,6 @@
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
-use ocl::{self, ProQue, SpatialDims, Buffer, Kernel};
+use ocl::{ProQue, SpatialDims, Buffer, Kernel};
 use ocl::core::ClWaitList;
 use map::{CellKind, CellScheme, DendriteKind};
 use cortex::{AxonSpace, Synapses};
@@ -10,6 +10,7 @@ const PRINT_DEBUG: bool = false;
 
 pub struct Dendrites {
     layer_name: &'static str,
+    layer_id: usize,
     dims: CorticalDims,
     // kern_cycle: ocl::Kernel,
     kernels: Vec<Kernel>,
@@ -23,6 +24,7 @@ pub struct Dendrites {
 impl Dendrites {
     pub fn new(
             layer_name: &'static str,
+            layer_id: usize,
             dims: CorticalDims,
             cell_scheme: CellScheme,
             den_kind: DendriteKind,
@@ -42,7 +44,7 @@ impl Dendrites {
 
         for tft_scheme in cell_scheme.tft_schemes() {
             let tft_den_idz = den_count_ttl;
-            let tft_den_count = dims.cells()<< tft_scheme.dens_per_tuft_l2();
+            let tft_den_count = dims.cells()<< tft_scheme.dens_per_tft_l2();
 
             den_idzs_by_tft.push(tft_den_idz);
             den_counts_by_tft.push(tft_den_count);
@@ -62,7 +64,7 @@ impl Dendrites {
         // let syns_dims = dims.clone_with_ptl2((dims.per_tft_l2() + syns_per_den_l2 as i8));
         // let syns = try!(Synapses::new(layer_name, syns_dims, cell_scheme.clone(), den_kind, cell_kind,
         //     area_map, axons, /*aux,*/ ocl_pq));
-        let syns = try!(Synapses::new(layer_name, dims, cell_scheme.clone(), den_kind, cell_kind,
+        let syns = try!(Synapses::new(layer_name, layer_id, dims, cell_scheme.clone(), den_kind, cell_kind,
             area_map, axons, /*aux,*/ ocl_pq));
 
         for (tft_scheme, &tft_den_idz) in cell_scheme.tft_schemes().iter().zip(den_idzs_by_tft.iter()) {
@@ -102,6 +104,7 @@ impl Dendrites {
 
         Ok(Dendrites {
             layer_name: layer_name,
+            layer_id: layer_id,
             dims: dims,
             // kern_cycle: kern_cycle,
             kernels: kernels,
@@ -134,6 +137,7 @@ impl Dendrites {
         self.syns.regrow();
     }
 
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn thresholds(&self) -> &Buffer<u8> { &self.thresholds }
     #[inline] pub fn states_raw(&self) -> &Buffer<u8> { &self.states_raw }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }

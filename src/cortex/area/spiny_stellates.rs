@@ -21,27 +21,32 @@ pub struct SpinyStellateLayer {
 }
 
 impl SpinyStellateLayer {
-    pub fn new(layer_name: &'static str, dims: CorticalDims, cell_scheme: CellScheme, area_map: &AreaMap,
-                axns: &AxonSpace, ocl_pq: &ProQue
+    pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
+            area_map: &AreaMap, axns: &AxonSpace, ocl_pq: &ProQue
     ) -> CmnResult<SpinyStellateLayer> {
-        let base_axn_slcs = area_map.layer_slc_ids(vec![layer_name]);
+        let base_axn_slcs = area_map.layer_slc_ids(&[layer_name.to_owned()]);
         let base_axn_slc = base_axn_slcs[0];
         let lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
-        let syns_per_tuft_l2: u8 = cell_scheme.syns_per_den_l2 + cell_scheme.dens_per_tuft_l2;
+        let tft_count = cell_scheme.tft_schemes().len();
+        // Redesign kernel before changing the 1 tuft limitation:
+        assert![tft_count == 1];
+        let tft_scheme = &cell_scheme.tft_schemes()[0];
+
+        let syns_per_tuft_l2: u8 = tft_scheme.syns_per_den_l2() + tft_scheme.dens_per_tft_l2();
 
         println!("{mt}{mt}SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}",
             base_axn_slc, lyr_axn_idz, dims, mt = cmn::MT);
 
-        let dens_dims = dims.clone_with_ptl2(cell_scheme.dens_per_tuft_l2 as i8);
-        let dens = try!(Dendrites::new(layer_name, dens_dims, cell_scheme.clone(), DendriteKind::Proximal,
-            CellKind::SpinyStellate, area_map, axns, ocl_pq));
+        // let dens_dims = dims.clone_with_ptl2(cell_scheme.dens_per_tft_l2 as i8);
+        let dens = try!(Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(),
+            DendriteKind::Proximal, CellKind::SpinyStellate, area_map, axns, ocl_pq));
         let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
         let cels_per_grp = dims.per_subgrp(grp_count).expect("SpinyStellateLayer::new()");
 
         let kern_ltp = ocl_pq.create_kernel("sst_ltp").expect("[FIXME]: HANDLE ME")
             // .expect("SpinyStellateLayer::new()")
-            .gws(SpatialDims::Two(dims.tfts_per_cel() as usize, grp_count as usize))
+            .gws(SpatialDims::Two(tft_count, grp_count as usize))
             .arg_buf(&axns.states)
             .arg_buf(dens.syns().states())
             .arg_scl(lyr_axn_idz)
@@ -154,7 +159,7 @@ impl SpinyStellateLayer {
 
     #[inline]
     pub fn axn_range(&self) -> ops::Range<usize> {
-        let ssts_axn_idn = self.lyr_axn_idz + (self.dims.per_slc());
+        let ssts_axn_idn = self.lyr_axn_idz + (self.dims.cells());
         self.lyr_axn_idz as usize..ssts_axn_idn as usize
     }
 }
