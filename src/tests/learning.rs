@@ -191,14 +191,14 @@ impl LearningTestBed {
             // A random dendrite id on the cell tuft:
             let syn_idx_range_den = syn_coords.syn_idx_range_den();
             // The synapse range for the entire tuft in which our random synapse resides:
-            let syn_idx_range_tft = syn_coords.syn_idx_range_tft();
+            let syn_idx_range_cel_tft = syn_coords.syn_idx_range_cel_tft();
 
             // The first half of the synapses on our tuft:
-            // let syn_idx_range_tft_first_half = syn_idx_range_tft.start..(syn_idx_range_tft.start + syn_idx_range_tft.len() / 2);
+            // let syn_idx_range_cel_tft_first_half = syn_idx_range_cel_tft.start..(syn_idx_range_cel_tft.start + syn_idx_range_cel_tft.len() / 2);
 
             // The second half of the synapses on our tuft:
-            // let syn_idx_range_tft_second_half = (syn_idx_range_tft.start + syn_idx_range_tft.len() / 2)
-            //     ..(syn_idx_range_tft.start + syn_idx_range_tft.len());
+            // let syn_idx_range_cel_tft_second_half = (syn_idx_range_cel_tft.start + syn_idx_range_cel_tft.len() / 2)
+            //     ..(syn_idx_range_cel_tft.start + syn_idx_range_cel_tft.len());
 
             // The first half of the synapses on our tuft:
             let syn_idx_range_den_first_half = syn_idx_range_den.start..(syn_idx_range_den.start
@@ -234,7 +234,7 @@ impl LearningTestBed {
                 {mt}[col_out]: aff_out_axn_idx (aff_out_slc: {}, col_id: {}): {}, \n\n\
                 \
                 {mt}fake_v_ofs: {}, fake_u_ofs: {}, \n\
-                {mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_tft: {:?}, \n\
+                {mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_cel_tft: {:?}, \n\
                 {mt}syn_active_range (2nd half): {:?}, \n\
                 {mt}syn_coords: {}",
 
@@ -244,7 +244,7 @@ impl LearningTestBed {
                 aff_out_slc, cel_coords.col_id(), aff_out_axn_idx,
 
                 fake_v_ofs, fake_u_ofs,
-                fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_tft,
+                fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_cel_tft,
                 focus_syns,
                 syn_coords,
                 mt = cmn::MT);
@@ -674,30 +674,30 @@ impl LearningTestBed {
 
         printlnc!(yellow: "Cleaning up...");
         // area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(self.unused_slc_id,
-        //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
+        //     self.syn_coords.syn_idx_range_cel_tft().clone()).unwrap();
         area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd()
-            .fill(self.unused_slc_id, Some(self.syn_coords.syn_idx_range_tft().len()))
-            .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
+            .fill(self.unused_slc_id, Some(self.syn_coords.syn_idx_range_cel_tft().len()))
+            .offset(self.syn_coords.syn_idx_range_cel_tft().start).enq().unwrap();
 
         // area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0,
-        //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
+        //     self.syn_coords.syn_idx_range_cel_tft().clone()).unwrap();
         area.ptal_mut().dens_mut().syns_mut().src_col_v_offs().cmd()
-            .fill(0, Some(self.syn_coords.syn_idx_range_tft().len()))
-            .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
+            .fill(0, Some(self.syn_coords.syn_idx_range_cel_tft().len()))
+            .offset(self.syn_coords.syn_idx_range_cel_tft().start).enq().unwrap();
 
         // area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0,
-        //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
+        //     self.syn_coords.syn_idx_range_cel_tft().clone()).unwrap();
         area.ptal_mut().dens_mut().syns_mut().src_col_u_offs().cmd()
-            .fill(0, Some(self.syn_coords.syn_idx_range_tft().len()))
-            .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
+            .fill(0, Some(self.syn_coords.syn_idx_range_cel_tft().len()))
+            .offset(self.syn_coords.syn_idx_range_cel_tft().start).enq().unwrap();
 
 
         if zero_strengths {
             // area.ptal_mut().dens_mut().syns_mut().strengths.set_range_to(0,
-            //     self.syn_coords.syn_idx_range_tft().clone()).unwrap();
+            //     self.syn_coords.syn_idx_range_cel_tft().clone()).unwrap();
             area.ptal_mut().dens_mut().syns_mut().strengths().cmd()
-            .fill(0, Some(self.syn_coords.syn_idx_range_tft().len()))
-            .offset(self.syn_coords.syn_idx_range_tft().start).enq().unwrap();
+            .fill(0, Some(self.syn_coords.syn_idx_range_cel_tft().len()))
+            .offset(self.syn_coords.syn_idx_range_cel_tft().start).enq().unwrap();
         }
     }
 }
@@ -736,14 +736,14 @@ impl LearningTestBed {
 //     // A random dendrite id on the cell tuft:
 //     let syn_idx_range_den = syn_coords.syn_idx_range_den();
 //     // The synapse range for the entire tuft in which our random synapse resides:
-//     let syn_idx_range_tft = syn_coords.syn_idx_range_tft();
+//     let syn_idx_range_cel_tft = syn_coords.syn_idx_range_cel_tft();
 
 //     // The first half of the synapses on our tuft:
-//     // let syn_idx_range_tft_first_half = syn_idx_range_tft.start..(syn_idx_range_tft.start + syn_idx_range_tft.len() / 2);
+//     // let syn_idx_range_cel_tft_first_half = syn_idx_range_cel_tft.start..(syn_idx_range_cel_tft.start + syn_idx_range_cel_tft.len() / 2);
 
 //     // The second half of the synapses on our tuft:
-//     // let syn_idx_range_tft_second_half = (syn_idx_range_tft.start + syn_idx_range_tft.len() / 2)
-//     //     ..(syn_idx_range_tft.start + syn_idx_range_tft.len());
+//     // let syn_idx_range_cel_tft_second_half = (syn_idx_range_cel_tft.start + syn_idx_range_cel_tft.len() / 2)
+//     //     ..(syn_idx_range_cel_tft.start + syn_idx_range_cel_tft.len());
 
 //     // The first half of the synapses on our tuft:
 //     // let syn_idx_range_den_first_half = syn_idx_range_den.start..(syn_idx_range_den.start + syn_idx_range_den.len() / 2);
@@ -787,7 +787,7 @@ impl LearningTestBed {
 //             {mt}[col_out]: aff_out_axn_idx (aff_out_slc: {}, col_id: {}): {}, \n\n\
 //             \
 //             {mt}fake_v_ofs: {}, fake_u_ofs: {}, \n\
-//             {mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_tft: {:?}, \n\
+//             {mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_cel_tft: {:?}, \n\
 //             {mt}syn_active_range (2nd half): {:?}, \n\
 //             {mt}syn_coords: {}",
 
@@ -797,7 +797,7 @@ impl LearningTestBed {
 //             aff_out_slc, cel_coords.col_id(), aff_out_axn_idx,
 
 //             fake_v_ofs, fake_u_ofs,
-//             fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_tft,
+//             fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_cel_tft,
 //             focus_syns,
 //             syn_coords,
 //             mt = cmn::MT);
@@ -909,7 +909,7 @@ impl LearningTestBed {
 //         util::ptal_alco(area, LEARN, PRINT_DEBUG_INFO);
 
 //         if PRINT_DEBUG_INFO { util::print_all(area, "\n - Confirm 2B - "); }
-//         // util::confirm_syns(area, &syn_idx_range_tft_first_half, 0, 0, 0);
+//         // util::confirm_syns(area, &syn_idx_range_cel_tft_first_half, 0, 0, 0);
 
 //         print!("\n");
 
@@ -989,9 +989,9 @@ impl LearningTestBed {
 //     println!("\n ========================== Clean-up ========================== \n");
 
 //     printlnc!(yellow: "Cleaning up...");
-//     area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, syn_idx_range_tft.clone());
-//     area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, syn_idx_range_tft.clone());
-//     area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, syn_idx_range_tft.clone());
+//     area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, syn_idx_range_cel_tft.clone());
+//     area.ptal_mut().dens_mut().syns_mut().src_col_v_offs.set_range_to(0, syn_idx_range_cel_tft.clone());
+//     area.ptal_mut().dens_mut().syns_mut().src_col_u_offs.set_range_to(0, syn_idx_range_cel_tft.clone());
 
 //     print!("\n");
 //     panic!(" -- DEBUGGING -- ");

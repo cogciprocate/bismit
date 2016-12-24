@@ -12,9 +12,9 @@ const PRINT_DETAILS: bool = false;
 
 
 // TEST_CEL_TUFTS():
-/*
-        Test that input on each dendridic tuft is reaching the cell soma.
-*/
+//
+// Test that input on each dendridic tuft is reaching the cell soma.
+//
 #[test]
 fn cel() {
     let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
@@ -187,7 +187,7 @@ fn dens() {
         // let den_dims = den_coords.dims().clone();
 
         // GET SOURCE SLICE TO USE TO SIMULATE INPUT:
-        let cel_syn_range = den_coords.syn_idx_range_tft(area.ptal().dens().syns().syns_per_den_l2());
+        let cel_syn_range = den_coords.syn_idx_range_cel_tft(area.ptal().dens().syns().syns_per_den_l2());
         let src_slc_ids = area.area_map().layers().layers_containing_tags_slc_range(map::FF_IN);
         assert!(src_slc_ids.len() == 1);
         let src_slc_id = src_slc_ids[0].start;

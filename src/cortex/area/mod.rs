@@ -11,7 +11,7 @@ mod sensory_filter;
 
 pub use self::cortical_area::{CorticalArea, CorticalAreas, CorticalAreaSettings};
 pub use self::axon_space::AxonSpace;
-pub use self::synapses::Synapses;
+pub use self::synapses::{Synapses, TuftDims};
 pub use self::minicolumns::Minicolumns;
 pub use self::iinn::InhibitoryInterneuronNetwork;
 pub use self::pyramidals::PyramidalLayer;

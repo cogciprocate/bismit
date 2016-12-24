@@ -8,7 +8,7 @@
 //! - [low priority] Optimization:
 //!   - [Complete] Obviously grow() and it's ilk need a lot of work
 //!
-//! Synapse index space (for each of the synapse property Buffers) is first
+//! Synapse index space (for each of the synapse property buffers) is first
 //! divided by tuft, then slice, then cell, then synapse. This means that even
 //! though a cell may have three (or any number of) tufts, and you would
 //! naturally tend to think that synapse space would be first divided by
@@ -16,23 +16,23 @@
 //! The reason for this is nuanced but it basically boils down to performance.
 //! When a kernel is processing synapses it's best to process tuft-at-a-time
 //! as the first order iteration rather than slice or cell-at-a-time because
-//! the each tuft inherently shares synapses whos axon sources are going to
+//! the each tuft inherently shares synapses whose axon sources are going to
 //! tend to be similar, making cache performance consistently better. This
 //! makes indexing very confusing so there's a definite trade off in
 //! complexity (for us poor humans).
 //!
 //! Calculating a particular synapse index is shown below in syn_idx(). This
-//! is (hopefully) the exact same method the kernel uses for addressing: tuft
-//! is most significant, followed by slice, then cell, then synapse. Dendrites
-//! are not necessary to calculate a synapses index unless you happen only to
-//! have a synapses id (address) within a dendrite. Mostly the id within a
-//! cell is used and the dendrite is irrelevant, especially on the host side.
+//! is the exact same method the kernel uses for addressing: tuft is most
+//! significant, followed by slice, then cell, then synapse. Dendrites are not
+//! necessary to calculate a synapses index unless you happen only to have a
+//! synapses id (address) within a dendrite. Mostly the id within a cell is
+//! used and the dendrite is irrelevant, especially on the host side.
 //!
 //! Synapse space breakdown (m := n - 1, n being the number of elements in any
 //! particular segment):
 //!     - Tuft[0]
-//!         - Slice[0]
-//!             - Cell[0]
+//!         - Slice[0]               }-+_
+//!             - Column[0] (v, w)   }---Cell
 //!                 - Synapse[0]
 //!                 ...
 //!                 - Synapse[m]
@@ -58,6 +58,7 @@
 //!
 //!  ... **for indexing purposes** tufts are parent to slices, which are
 //!  parent to cells (then dendrites, then synapses).
+//!
 
 
 use rand::{self, XorShiftRng};
@@ -77,6 +78,21 @@ const DEBUG_NEW: bool = true;
 const DEBUG_GROW: bool = true;
 const DEBUG_REGROW_DETAIL: bool = false;
 const DEBUG_KERN: bool = false;
+
+#[derive(Clone, Debug)]
+pub struct TuftDims {
+    dens_per_tft_l2: u8,
+    syns_per_den_l2: u8,
+}
+
+impl TuftDims {
+    pub fn new(dens_per_tft_l2: u8, syns_per_den_l2: u8) -> TuftDims {
+        TuftDims { dens_per_tft_l2: dens_per_tft_l2, syns_per_den_l2: syns_per_den_l2 }
+    }
+
+    #[inline] pub fn dens_per_tft_l2(&self) -> u8 { self.dens_per_tft_l2 }
+    #[inline] pub fn syns_per_den_l2(&self) -> u8 { self.syns_per_den_l2 }
+}
 
 
 pub struct Synapses {
@@ -111,6 +127,7 @@ pub struct Synapses {
 
     syn_idzs_by_tft: Vec<u32>,
     syn_counts_by_tft: Vec<u32>,
+    tft_dims_by_tft: Vec<TuftDims>,
 }
 
 impl Synapses {
@@ -127,6 +144,7 @@ impl Synapses {
         // let mut src_slices_by_tft = Vec::with_capacity(tft_count);
         let mut syn_idzs_by_tft = Vec::with_capacity(tft_count);
         let mut syn_counts_by_tft = Vec::with_capacity(tft_count);
+        let mut tft_dims_by_tft = Vec::with_capacity(tft_count);
         let mut syn_count_ttl = 0u32;
 
         debug_assert!(cell_scheme.tft_schemes().len() == tft_count);
@@ -134,40 +152,6 @@ impl Synapses {
         // for tft_id in 0..tft_count {
         for tft_scheme in cell_scheme.tft_schemes() {
             let syns_per_tft_l2: u8 = tft_scheme.dens_per_tft_l2() + tft_scheme.syns_per_den_l2();
-            // assert!(dims.per_tft_l2() as u8 == syns_per_tft_l2);
-
-            // [FIXME]: Needs redesign:
-            src_idx_caches_by_tft.push(SynSrcIdxCache::new(tft_scheme.syns_per_den_l2(),
-                tft_scheme.dens_per_tft_l2(), dims.clone()));
-
-            // Padded length of our vectors.
-            // let buf_len = dims.to_len_padded(ocl_pq.max_wg_size());
-
-            // // [FIXME]: TODO: Integrate src_slc_ids for any type of dendrite.
-            // let syn_reaches_by_tft = match den_kind {
-            //     DendriteKind::Proximal => {
-            //         src_slc_ids_by_tft.push(area_map.syn_src_slc_ids(layer_name, den_kind));
-            //         vec![cell_scheme.den_prx_syn_reach]
-            //     },
-            //     DendriteKind::Distal => {
-            //         // [FIXME]: THIS ISN'T RIGHT (redesign `::layer_dst_src_slc_ids`):
-            //         src_slc_ids_by_tft.extend(area_map.layer_dst_src_slc_ids(layer_name));
-            //         cell_scheme.den_dst_syn_reaches.clone()
-            //     },
-            // };
-
-
-            //##
-
-            // [FIXME]: Implement src_ranges on a per-tuft basis.
-            // [FIXME]: Needs redesign:
-            // src_slices_by_tft.push(SynSrcSlices::new(&src_slc_ids_by_tft, tft_syn_reaches,
-            //     1 << tft_scheme.syns_per_den_l2(), area_map)?);
-
-
-
-
-            //##
 
             if DEBUG_NEW {
                 println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {},\n\
@@ -190,6 +174,12 @@ impl Synapses {
 
             syn_idzs_by_tft.push(tft_syn_idz);
             syn_counts_by_tft.push(tft_syn_count);
+
+            tft_dims_by_tft.push(TuftDims::new(tft_scheme.dens_per_tft_l2(),
+                tft_scheme.syns_per_den_l2()));
+
+            src_idx_caches_by_tft.push(SynSrcIdxCache::new(tft_scheme.syns_per_den_l2(),
+                tft_scheme.dens_per_tft_l2(), dims.clone()));
 
             kernels.push(Box::new({
                 ocl_pq.create_kernel("tft_cycle_syns")
@@ -273,6 +263,7 @@ impl Synapses {
 
             syn_counts_by_tft: syn_counts_by_tft,
             syn_idzs_by_tft: syn_idzs_by_tft,
+            tft_dims_by_tft: tft_dims_by_tft,
 
         };
 
@@ -328,6 +319,9 @@ impl Synapses {
     #[inline] pub fn src_col_v_offs(&self) -> &Buffer<i8> { &self.src_col_v_offs }
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
     #[inline] pub fn count(&self) -> u32 { self.states.len() as u32 }
+    #[inline] pub fn tft_count(&self) -> usize { self.src_idx_caches_by_tft.len() }
+    #[inline] pub fn tft_dims_by_tft(&self) -> &[TuftDims] { self.tft_dims_by_tft.as_slice() }
+
 
     // [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
     // - Will need to know u and v coords of host cell or deconstruct from syn_idx.
@@ -444,7 +438,7 @@ impl Synapses {
     //     slcs_per_tftsec as u32 * cels_per_slc * syns_per_cel_tft
     // }
 
-    // // [FIXME] TODO: Depricate me evenutally
+    // // [FIXME] TODO: Deprecate me eventually
     // pub fn set_offs_to_zero_temp(&mut self) {
     //     self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
     //     self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
@@ -465,7 +459,7 @@ pub mod tests {
     use cmn::{CelCoords};
     use cmn::{CorticalDims};
     use super::super::dendrites::{self};
-    use super::{Synapses};
+    use super::{Synapses, TuftDims};
 
     const PRINT_DEBUG_INFO: bool = false;
 
@@ -475,7 +469,7 @@ pub mod tests {
         fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize);
         fn set_src_slc(&mut self, src_slc_id: u8, idx: usize);
         fn syn_state(&self, idx: u32) -> u8;
-        fn rand_syn_coords(&mut self, cel_coords: &CelCoords) -> SynCoords;
+        fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords;
         // fn print_range(&mut self, range: Range<usize>);
         // fn print_all(&mut self);
         fn rng(&mut self) -> &mut XorShiftRng;
@@ -524,16 +518,23 @@ pub mod tests {
             sdr[0]
         }
 
-        fn rand_syn_coords(&mut self, cel_coords: &CelCoords) -> SynCoords {
-            let tft_id_range = RandRange::new(0, cel_coords.tfts_per_cel);
-            let den_id_tft_range = RandRange::new(0, 1 << (cel_coords.dens_per_tft_l2 as u32));
-            let syn_id_den_range = RandRange::new(0, 1 << (cel_coords.syns_per_den_l2 as u32));
+        fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords {
+            let tft_id_range = RandRange::new(0, self.tft_count());
+            let tft_id = tft_id_range.ind_sample(self.rng());
 
-            let tft_id = tft_id_range.ind_sample(&mut self.rng);
+            let tft_syn_idz = self.syn_idzs_by_tft[tft_id];
+            let tft_dims = self.tft_dims_by_tft[tft_id].clone();
+
+            let dens_per_tft = 1 << (self.tft_dims_by_tft()[tft_id].dens_per_tft_l2() as u32);
+            let den_id_tft_range = RandRange::new(0, dens_per_tft);
+            let syns_per_den = 1 << (self.tft_dims_by_tft()[tft_id].syns_per_den_l2() as u32);
+            let syn_id_den_range = RandRange::new(0, syns_per_den);
+
             let den_id_tft = den_id_tft_range.ind_sample(&mut self.rng);
             let syn_id_den = syn_id_den_range.ind_sample(&mut self.rng);
 
-            SynCoords::new(tft_id, den_id_tft, syn_id_den, cel_coords)
+            SynCoords::new(cel_coords, tft_id as u32, tft_syn_idz, tft_dims,
+                den_id_tft, syn_id_den)
         }
 
         // fn print_range(&mut self, range: Range<usize>) {
@@ -576,77 +577,91 @@ pub mod tests {
     #[derive(Debug, Clone)]
     pub struct SynCoords {
         pub idx: u32,
+        pub cel_coords: CelCoords,
         pub tft_id: u32,
+        pub tft_syn_idz: u32,
+        pub tft_dims: TuftDims,
         pub den_id_tft: u32,
         pub syn_id_den: u32,
-        pub cel_coords: CelCoords,
-        // pub layer_dims: CorticalDims,
     }
 
     impl SynCoords {
-        pub fn new(tft_id: u32, den_id_tft: u32, syn_id_den: u32, cel_coords: &CelCoords,
-                    // layer_dims: &CorticalDims
-            ) -> SynCoords
+        pub fn new(cel_coords: CelCoords, tft_id: u32, tft_syn_idz: u32, tft_dims: TuftDims,
+                den_id_tft: u32, syn_id_den: u32) -> SynCoords
         {
             // let syns_per_tft = 1 << (cel_coords.dens_per_tft_l2 as u32
             //     + cel_coords.syns_per_den_l2 as u32);
 
             // 'tft_count' is synonymous with 'tfts_per_cel':
-            let tft_count = cel_coords.tfts_per_cel;
-            let syns_per_den = 1 << (cel_coords.syns_per_den_l2 as u32);
-            let dens_per_tft = 1 << (cel_coords.dens_per_tft_l2 as u32);
+            // let tft_count = cel_coords.tfts_per_cel;
+            // let syns_per_den = 1 << (cel_coords.syns_per_den_l2 as u32);
+            // let dens_per_tft = 1 << (cel_coords.dens_per_tft_l2 as u32);
+            // let dens_per_tft = 1 << (self.tft_dims_by_tft()[tft_id].dens_per_tft_l2() as u32);
+            // let syns_per_den = 1 << (self.tft_dims_by_tft()[tft_id].syns_per_den_l2() as u32);
 
-            let syn_idx = syn_idx(&cel_coords.layer_dims, tft_count, dens_per_tft,
-                syns_per_den, tft_id, cel_coords.idx, den_id_tft, syn_id_den);
+            let syn_idx = syn_idx(&cel_coords.lyr_dims, cel_coords.slc_id_lyr, cel_coords.v_id,
+                cel_coords.u_id, tft_syn_idz, &tft_dims, den_id_tft, syn_id_den);
 
             SynCoords {
                 idx: syn_idx,
+                cel_coords: cel_coords,
                 tft_id: tft_id,
+                tft_syn_idz: tft_syn_idz,
+                tft_dims: tft_dims,
                 den_id_tft: den_id_tft,
                 syn_id_den: syn_id_den,
-                cel_coords: cel_coords.clone(),
-                // layer_dims: layer_dims.clone(),
             }
         }
 
-        pub fn syn_idx_range_tft(&self) -> Range<usize> {
-            let tft_count = self.cel_coords.tfts_per_cel;
-            let syns_per_den = 1 << (self.cel_coords.syns_per_den_l2 as u32);
-            let dens_per_tft = 1 << (self.cel_coords.dens_per_tft_l2 as u32);
+        /// Returns the synapse index range for the entire cell-tuft to which
+        /// this synapse belongs.
+        pub fn syn_idx_range_cel_tft(&self) -> Range<usize> {
+            let dens_per_celtft = 1 << (self.tft_dims.dens_per_tft_l2 as u32);
+            let syns_per_den = 1 << (self.tft_dims.syns_per_den_l2 as u32);
 
             // Get the idz for the synapse on this tuft with: den_id_tft = 0, syn_id_den = 0:
-            let syn_idz_cel_tft = syn_idx(&self.cel_coords.layer_dims, tft_count, dens_per_tft,
-                syns_per_den, self.tft_id, self.cel_coords.idx, 0, 0) as usize;
-
-            let syns_per_tft = syns_per_den * dens_per_tft;
-
-            syn_idz_cel_tft..(syn_idz_cel_tft + syns_per_tft as usize)
+            let syn_idz = self.tft_syn_idz as usize;
+            let syns_per_celtft = syns_per_den * dens_per_celtft;
+            // syn_idz_cel_tft..(syn_idz_cel_tft + syns_per_tft as usize)
+            syn_idz..(syn_idz + syns_per_celtft as usize)
         }
 
+        /// Returns the synapse index range for the dendrite to which this
+        /// synapse belongs.
         pub fn syn_idx_range_den(&self) -> Range<usize> {
-            let tft_count = self.cel_coords.tfts_per_cel;
-            let syns_per_den = 1 << (self.cel_coords.syns_per_den_l2 as u32);
-            let dens_per_tft = 1 << (self.cel_coords.dens_per_tft_l2 as u32);
+            // let tft_count = self.cel_coords.tfts_per_cel;
+            // let syns_per_den = 1 << (self.cel_coords.syns_per_den_l2 as u32);
+            // let dens_per_tft = 1 << (self.cel_coords.dens_per_tft_l2 as u32);
+
+            // let dens_per_tft = 1 << (self.tft_dims.dens_per_tft_l2 as u32);
+            let syns_per_den = 1 << (self.tft_dims.syns_per_den_l2 as u32);
 
             // Get the idz for the synapse on this dendrite with: syn_id_den = 0:
-            let syn_idz_den = syn_idx(&self.cel_coords.layer_dims, tft_count, dens_per_tft,
-                syns_per_den, self.tft_id, self.cel_coords.idx, self.den_id_tft, 0) as usize;
+            // let syn_idz_den = syn_idx(&self.cel_coords.layer_dims, tft_count, dens_per_tft,
+            //     syns_per_den, self.tft_id, self.cel_coords.idx, self.den_id_tft, 0) as usize;
+            let syn_idz_den = syn_idx(&self.cel_coords.lyr_dims, self.cel_coords.slc_id_lyr,
+                self.cel_coords.v_id, self.cel_coords.u_id, self.tft_syn_idz, &self.tft_dims,
+                self.den_id_tft, 0) as usize;
+
 
             syn_idz_den..(syn_idz_den + syns_per_den as usize)
         }
 
-        // [FIXME] TODO: MOVE THIS TO DEN_COORDS & INTEGRATE
-        pub fn tft_idx(&self) -> u32 {
-            (self.tft_id * self.cel_coords.layer_dims.cells()) + self.cel_coords.idx
-        }
+        // // [FIXME] TODO: MOVE THIS TO DEN_COORDS & INTEGRATE
+        // pub fn tft_idx(&self) -> u32 {
+        //     (self.tft_id * self.cel_coords.layer_dims.cells()) + self.cel_coords.idx
+        // }
 
-        pub fn den_idx(&self) -> u32 {
-            let den_dims = self.cel_coords.layer_dims
-                .clone_with_ptl2(self.cel_coords.dens_per_tft_l2 as i8)
-                .with_tfts(self.cel_coords.tfts_per_cel);
+        // pub fn den_idx(&self) -> u32 {
+        //     let den_dims = self.cel_coords.layer_dims;
+        //         // .clone_with_ptl2(self.cel_coords.dens_per_tft_l2 as i8)
+        //         // .with_tfts(self.cel_coords.tfts_per_cel);
+        //     let dens_per_tft_l2 = self.cel_coords.dens_per_tft_l2;
+        //     let tfts_per_cel = self.cel_coords.tfts_per_cel;
 
-            dendrites::den_idx(&den_dims, self.tft_id, self.cel_coords.idx, self.den_id_tft)
-        }
+        //     dendrites::den_idx(&den_dims, dens_per_tft_l2, tfts_per_cel,
+        //         self.tft_id, self.cel_coords.idx, self.den_id_tft)
+        // }
 
         pub fn idx(&self) -> u32 {
             self.idx
@@ -668,58 +683,147 @@ pub mod tests {
 
 
     // SYN_IDX(): FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
-    //         - Synapse index space heirarchy:  | Tuft - Slice - Cell - Dendrite - Synapse |
+    //         - Synapse index space hierarchy:  | Tuft - Slice - Cell - Dendrite - Synapse |
     //         - 'cel_idx' already has slice built in to its value
     //         - 'tft_count' is synonymous with 'tfts_per_cel'
-    //         - X_cel_tft is synonymous with X_tft but is verbosely described for clarity
-    pub fn syn_idx(cel_layer_dims: &CorticalDims, tft_count: u32, dens_per_cel_tft: u32, syns_per_den: u32,
-                    tft_id: u32, cel_idx: u32, den_id_cel_tft: u32, syn_id_den: u32) -> u32
+    //
+    pub fn syn_idx(
+            lyr_dims: &CorticalDims,
+            // cel_idx: u32,
+            slc_id_lyr: u8,
+            v_id: u32,
+            u_id: u32,
+            // tft_count: u32,
+            // tft_id: u32,
+            // dens_per_tft: u32,
+            // syns_per_den: u32,
+            tft_syn_idz: u32,
+            tft_dims: &TuftDims,
+            den_id_celtft: u32,
+            syn_id_den: u32,
+        ) -> u32
     {
-        //  NOTE: 'cel_layer_dims' expresses dimensions from the perspective of the
-        //  | Slice - Cell - Tuft - Dendrite - Synapse | heirarchy which is why the function
+        //  NOTE: 'lyr_dims' expresses dimensions from the perspective of the
+        //  | Slice - Cell - Tuft - Dendrite - Synapse | hierarchy which is why the function
         //  names (and other variable names) seem confusing (see explanation at top of file).
 
-        let slcs_per_tftsec = cel_layer_dims.depth() as u32;
-        let cels_per_slc = cel_layer_dims.columns();
+        let dens_per_celtft = 1 << (tft_dims.dens_per_tft_l2 as u32);
+        let syns_per_den = 1 << (tft_dims.syns_per_den_l2 as u32);
 
-        assert!(tft_id < tft_count);
-        assert!(cel_idx < slcs_per_tftsec * cels_per_slc);
-        assert!(den_id_cel_tft < dens_per_cel_tft);
-        assert!(syn_id_den < syns_per_den);
+        let syns_per_slc = lyr_dims.columns() * dens_per_celtft * syns_per_den;
+        let tftslc_syn_idz = slc_id_lyr as u32 * syns_per_slc;
+
+        let syn_idx_tftslc = (dens_per_celtft * den_id_celtft) + syn_id_den;
+        let syn_idx_tft = tftslc_syn_idz + syn_idx_tftslc;
+
+        let syn_idx_lyr = tft_syn_idz + syn_idx_tft;
+
+        syn_idx_lyr
 
 
-        let syns_per_tftsec = slcs_per_tftsec * cels_per_slc * dens_per_cel_tft * syns_per_den;
-        let syn_idz_tftsec = tft_id * syns_per_tftsec;
-        // 'cel_idx' includes slc_id, v_id, and u_id:
-        let syn_idz_tft_slc_cel = cel_idx * dens_per_cel_tft * syns_per_den;
-        let syn_id_cel_tft = (den_id_cel_tft * syns_per_den) + syn_id_den;
 
-        let syn_idx = syn_idz_tftsec + syn_idz_tft_slc_cel + syn_id_cel_tft;
+        // let dens_per_cel_tft
 
-        if PRINT_DEBUG_INFO {
-            println!("\n#####\n\n\
-                tft_count: {} \n\
-                slcs_per_tftsec: {} \n\
-                cels_per_slc: {}\n\
-                syns_per_den: {}\n\
-                \n\
-                cel_idx: {},\n\
-                tft_id: {},\n\
-                den_id_tft: {}, \n\
-                syn_id_den: {}, \n\
-                \n\
-                syn_idz_tftsec: {},\n\
-                syn_idz_tft_slc_cel: {},\n\
-                syn_idx: {},\n\
-                \n\
-                #####",
-                tft_count, slcs_per_tftsec, cels_per_slc, syns_per_den,
-                cel_idx, tft_id, den_id_cel_tft, syn_id_den,
-                syn_idz_tftsec, syn_idz_tft_slc_cel, syn_idx,
-            );
-        }
 
-        syn_idx
+
+
+        // let slcs_per_tftsec = cel_layer_dims.depth() as u32;
+        // let cels_per_slc = cel_layer_dims.columns();
+
+        // assert!(tft_id < tft_count);
+        // assert!(cel_idx < slcs_per_tftsec * cels_per_slc);
+        // assert!(den_id_tft < dens_per_tft);
+        // assert!(syn_id_den < syns_per_den);
+
+
+        // let syns_per_tftsec = slcs_per_tftsec * cels_per_slc * dens_per_tft * syns_per_den;
+        // let syn_idz_tftsec = tft_id * syns_per_tftsec;
+        // // 'cel_idx' includes slc_id, v_id, and u_id:
+        // let syn_idz_tft_slc_cel = cel_idx * dens_per_tft * syns_per_den;
+        // let syn_id_tft = (den_id_tft * syns_per_den) + syn_id_den;
+
+        // let syn_idx = syn_idz_tftsec + syn_idz_tft_slc_cel + syn_id_tft;
+
+        // if PRINT_DEBUG_INFO {
+        //     println!("\n#####\n\n\
+        //         tft_count: {} \n\
+        //         slcs_per_tftsec: {} \n\
+        //         cels_per_slc: {}\n\
+        //         syns_per_den: {}\n\
+        //         \n\
+        //         cel_idx: {},\n\
+        //         tft_id: {},\n\
+        //         den_id_tft: {}, \n\
+        //         syn_id_den: {}, \n\
+        //         \n\
+        //         syn_idz_tftsec: {},\n\
+        //         syn_idz_tft_slc_cel: {},\n\
+        //         syn_idx: {},\n\
+        //         \n\
+        //         #####",
+        //         tft_count, slcs_per_tftsec, cels_per_slc, syns_per_den,
+        //         cel_idx, tft_id, den_id_tft, syn_id_den,
+        //         syn_idz_tftsec, syn_idz_tft_slc_cel, syn_idx,
+        //     );
+        // }
+
+        // syn_idx
     }
+
+
+    // // SYN_IDX(): FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
+    // //         - Synapse index space hierarchy:  | Tuft - Slice - Cell - Dendrite - Synapse |
+    // //         - 'cel_idx' already has slice built in to its value
+    // //         - 'tft_count' is synonymous with 'tfts_per_cel'
+    // //         - X_cel_tft is synonymous with X_tft but is verbosely described for clarity
+    // pub fn syn_idx_old(cel_layer_dims: &CorticalDims, tft_count: u32, dens_per_cel_tft: u32, syns_per_den: u32,
+    //                 tft_id: u32, cel_idx: u32, den_id_cel_tft: u32, syn_id_den: u32) -> u32
+    // {
+    //     //  NOTE: 'cel_layer_dims' expresses dimensions from the perspective of the
+    //     //  | Slice - Cell - Tuft - Dendrite - Synapse | hierarchy which is why the function
+    //     //  names (and other variable names) seem confusing (see explanation at top of file).
+
+    //     let slcs_per_tftsec = cel_layer_dims.depth() as u32;
+    //     let cels_per_slc = cel_layer_dims.columns();
+
+    //     assert!(tft_id < tft_count);
+    //     assert!(cel_idx < slcs_per_tftsec * cels_per_slc);
+    //     assert!(den_id_cel_tft < dens_per_cel_tft);
+    //     assert!(syn_id_den < syns_per_den);
+
+
+    //     let syns_per_tftsec = slcs_per_tftsec * cels_per_slc * dens_per_cel_tft * syns_per_den;
+    //     let syn_idz_tftsec = tft_id * syns_per_tftsec;
+    //     // 'cel_idx' includes slc_id, v_id, and u_id:
+    //     let syn_idz_tft_slc_cel = cel_idx * dens_per_cel_tft * syns_per_den;
+    //     let syn_id_cel_tft = (den_id_cel_tft * syns_per_den) + syn_id_den;
+
+    //     let syn_idx = syn_idz_tftsec + syn_idz_tft_slc_cel + syn_id_cel_tft;
+
+    //     if PRINT_DEBUG_INFO {
+    //         println!("\n#####\n\n\
+    //             tft_count: {} \n\
+    //             slcs_per_tftsec: {} \n\
+    //             cels_per_slc: {}\n\
+    //             syns_per_den: {}\n\
+    //             \n\
+    //             cel_idx: {},\n\
+    //             tft_id: {},\n\
+    //             den_id_tft: {}, \n\
+    //             syn_id_den: {}, \n\
+    //             \n\
+    //             syn_idz_tftsec: {},\n\
+    //             syn_idz_tft_slc_cel: {},\n\
+    //             syn_idx: {},\n\
+    //             \n\
+    //             #####",
+    //             tft_count, slcs_per_tftsec, cels_per_slc, syns_per_den,
+    //             cel_idx, tft_id, den_id_cel_tft, syn_id_den,
+    //             syn_idz_tftsec, syn_idz_tft_slc_cel, syn_idx,
+    //         );
+    //     }
+
+    //     syn_idx
+    // }
 }
 

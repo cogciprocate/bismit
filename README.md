@@ -1,6 +1,6 @@
 ## Bismit
 
-##### Biologically inspired sensory motor inference toolkit
+##### Biologically Inspired Sensory Motor Inference Toolkit
 
 Bismit is one of the first members of the next paradigm of cortical learning
 libraries. Going beyond simple Bayesian neural networks and incorporating

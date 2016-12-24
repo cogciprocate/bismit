@@ -291,7 +291,9 @@ pub mod tests {
     impl DataCellLayerTest for PyramidalLayer {
         // CYCLE_SELF_ONLY(): USED BY TESTS
         fn cycle_self_only(&self) {
-            self.kern_cycle.enq().expect("[FIXME]: HANDLE ME!");
+            for cycle_kern in self.cycle_kernels.iter() {
+                cycle_kern.enq().expect("[FIXME]: HANDLE ME!");
+            }
         }
 
         // fn print_cel(&mut self, cel_idx: usize) {
@@ -383,12 +385,13 @@ pub mod tests {
             let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
 
             CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims(),
-                self.tfts_per_cel, self.dens_per_tft_l2(), self.syns_per_den_l2())
+                /*self.tft_count, self.dens_per_tft_l2(), self.syns_per_den_l2()*/)
         }
 
 
-        fn cel_idx(&self, slc_id: u8, v_id: u32, u_id: u32)-> u32 {
-            cmn::cel_idx_3d(self.dims().depth(), slc_id, self.dims().v_size(), v_id, self.dims().u_size(), u_id)
+        fn cel_idx(&self, slc_id_lyr: u8, v_id: u32, u_id: u32)-> u32 {
+            cmn::cel_idx_3d(self.dims().depth(), slc_id_lyr, self.dims().v_size(), v_id,
+                self.dims().u_size(), u_id)
         }
 
         fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL

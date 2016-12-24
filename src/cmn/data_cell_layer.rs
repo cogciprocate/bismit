@@ -55,16 +55,16 @@ pub mod tests {
         pub axn_slc_id: u8,
         pub v_id: u32,
         pub u_id: u32,
-        pub layer_dims: CorticalDims,
-        pub tfts_per_cel: u32,
-        pub dens_per_tft_l2: u8,
-        pub syns_per_den_l2: u8,
+        pub lyr_dims: CorticalDims,
+        // pub tfts_per_cel: u32,
+        // pub dens_per_tft_l2: u8,
+        // pub syns_per_den_l2: u8,
     }
 
     impl CelCoords {
         pub fn new(axn_slc_id: u8, slc_id_lyr: u8, v_id: u32, u_id: u32,
-                    dims: &CorticalDims, tfts_per_cel: u32, dens_per_tft_l2: u8,
-                    syns_per_den_l2: u8) -> CelCoords
+                    dims: &CorticalDims, /*tfts_per_cel: u32, dens_per_tft_l2: u8,
+                    syns_per_den_l2: u8*/) -> CelCoords
         {
             let idx = cmn::cel_idx_3d(dims.depth(), slc_id_lyr, dims.v_size(),
                 v_id, dims.u_size(), u_id);
@@ -75,10 +75,10 @@ pub mod tests {
                 axn_slc_id: axn_slc_id,
                 v_id: v_id,
                 u_id: u_id,
-                layer_dims: dims.clone(),
-                tfts_per_cel: tfts_per_cel,
-                dens_per_tft_l2: dens_per_tft_l2,
-                syns_per_den_l2: syns_per_den_l2,
+                lyr_dims: dims.clone(),
+                // tfts_per_cel: tfts_per_cel,
+                // dens_per_tft_l2: dens_per_tft_l2,
+                // syns_per_den_l2: syns_per_den_l2,
             }
         }
 
@@ -88,8 +88,8 @@ pub mod tests {
 
         pub fn col_id(&self) -> u32 {
             // Fake a slice id of 0 with a slice depth of 1 and ignore our actual depth and id:
-            cmn::cel_idx_3d(1, 0, self.layer_dims.v_size(), self.v_id,
-                self.layer_dims.u_size(), self.u_id)
+            cmn::cel_idx_3d(1, 0, self.lyr_dims.v_size(), self.v_id,
+                self.lyr_dims.u_size(), self.u_id)
         }
 
         pub fn cel_axn_idx(&self, area_map: &AreaMap) -> u32 {
