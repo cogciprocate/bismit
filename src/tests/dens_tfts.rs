@@ -60,12 +60,17 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
     // For each tuft on that cell:
     for tft_id in area.ptal().dens().tft_id_range() {
         // And for each dendrite:
-        for den_id_tft in area.ptal().dens().den_id_range() {
+        for den_id_tft in area.ptal().dens().den_id_range(tft_id) {
+            let tft_den_idz = area.ptal().dens().den_idzs_by_tft()[tft_id];
+            let tft_dims = area.ptal().dens().syns().tft_dims_by_tft()[tft_id].clone();
 
-            let den_coords = DenCoords::new(tft_id, den_id_tft, &cel_coords, area.ptal().dens().dims());
+            let den_coords = DenCoords::new(cel_coords.clone(), tft_id, tft_den_idz,
+                tft_dims.clone(), den_id_tft);
+
+            let tft_syn_idz = area.ptal().dens().syns().syn_idzs_by_tft()[tft_id];
 
             // Get synapse range corresponding to our dendrite:
-            let den_syn_range = den_coords.syn_range(area.ptal().dens().syns().syns_per_den_l2());
+            let den_syn_range = den_coords.syn_range_den(tft_id, tft_syn_idz);
 
             // Axon index corresponding to our cell and source slice:
             let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id,
@@ -94,7 +99,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             //================================= EVALUATE ==================================
             //=============================================================================
 
-            let den_idx = area.ptal().dens().den_idx(tft_id, cel_coords.idx(), den_id_tft);
+            let den_idx = area.ptal().dens().den_idx(&cel_coords, tft_den_idz, &tft_dims, den_id_tft);
 
             let mut den_state = vec![0];
             let mut cel_state = vec![0];
@@ -182,12 +187,12 @@ fn dens() {
         // area.axns.states.cmd().fill(&[0], None).enq().unwrap();
 
         let cel_coords = area.ptal_mut().rand_cel_coords();
-        let den_coords = area.ptal_mut().dens_mut().rand_den_coords(&cel_coords);
+        let den_coords = area.ptal_mut().dens_mut().rand_den_coords(cel_coords.clone());
 
-        // let den_dims = den_coords.dims().clone();
+        let tft_syn_idz = area.ptal().dens().syns().syn_idzs_by_tft()[den_coords.tft_id];
 
         // GET SOURCE SLICE TO USE TO SIMULATE INPUT:
-        let cel_syn_range = den_coords.syn_idx_range_cel_tft(area.ptal().dens().syns().syns_per_den_l2());
+        let cel_syn_range = den_coords.syn_idx_range_celtft(den_coords.tft_id, tft_syn_idz);
         let src_slc_ids = area.area_map().layers().layers_containing_tags_slc_range(map::FF_IN);
         assert!(src_slc_ids.len() == 1);
         let src_slc_id = src_slc_ids[0].start;
@@ -231,7 +236,7 @@ fn dens() {
         // let mut result = vec![0]; REMOVE
 
         // CHECK EACH DENDRITE ON OUR TEST CELL:
-        for den_idx in den_coords.cel_den_range_tftsec() {
+        for den_idx in den_coords.den_idx_range_celtft() {
             // area.ptal().dens().states.enqueue_read(&mut result[..], den_idx as usize); REMOVE
             // let den_state = result[0]; REMOVE
             // let den_state = area.ptal().dens().states.read_idx_direct(den_idx as usize);

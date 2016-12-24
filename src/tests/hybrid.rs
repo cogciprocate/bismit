@@ -60,32 +60,23 @@ pub fn cycles(cortex: &mut Cortex, area_name: &str) {
 
 // TEST PYRAMIDAL CELLS 'PREDICTIVENESS' AKA: SOMA STATES
 // <<<<< TODO: NEEDS MASSIVE UPDATES TO PRETTY MUCH EVERY ASPECT >>>>>
+// [TODO]: Check every tuft.
 fn pyr_preds(pyrs: &mut PyramidalLayer) {
     // let emsg = "\ntests::hybrid::test_pyr_preds()";
 
     io::stdout().flush().unwrap();
     pyrs.dens_mut().states().cmd().fill(0, None).enq().unwrap();
 
-    let dens_per_tuft = pyrs.dens_mut().dims().per_tft() as usize;
+    // Currently looking at the first tuft only:
+    let tft_id = 0;
+    let dens_per_tuft = 1 << pyrs.dens().syns().tft_dims_by_tft()[tft_id].dens_per_tft_l2();
+
     println!("\n##### dens_per_tuft: {}", dens_per_tuft);
     //let dens_len = pyrs.dens_mut().states.len() as usize;
     let pyrs_len = pyrs.soma().len() as usize;
     let den_tuft_len = pyrs_len * dens_per_tuft;
 
-    // for i in 0..dens_per_tuft {
-    //     pyrs.dens_mut().states[i] = 255;
-    // }
-
-    // let last_cel_den_idz =  den_tuft_len - dens_per_tuft;
-
-    // for i in last_cel_den_idz..den_tuft_len {
-    //     pyrs.dens_mut().states[i] = 255;
-    // }
-
-    // // WRITE THE DENDRITE STATES TO DEVICE
-    // pyrs.dens_mut().states.flush_vec();
-
-    // WRITE 255 TO THE DENDRITES CORRESPONDING TO THE FIRST AND LAST CELL
+    // WRITE `255` TO THE DENDRITES CORRESPONDING TO THE FIRST AND LAST CELL
     // FOR THE FIRST TUFT ONLY
     pyrs.dens_mut().states().cmd().fill(255, Some(dens_per_tuft)).offset(0).enq().unwrap();
 
@@ -127,10 +118,15 @@ fn syn_and_den_states(dens: &mut Dendrites) {
     dens.syns_mut().src_col_v_offs().cmd().fill(0, None).enq().unwrap();
     dens.cycle(None);
 
-    let syns_per_tuft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
-    let dens_per_tft_l2: usize = dens.dims().per_tft_l2_left() as usize;
+    // let syns_per_tuft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
+    // let dens_per_tft_l2: usize = dens.dims().per_tft_l2_left() as usize;
+    let tft_id = 0;
+    let syns_per_den_l2 = dens.syns().tft_dims_by_tft()[tft_id].syns_per_den_l2();
+    let dens_per_tft_l2 = dens.syns().tft_dims_by_tft()[tft_id].dens_per_tft_l2();
+    let syns_per_tft_l2 = syns_per_den_l2 + dens_per_tft_l2;
+
     let cels_per_group: usize = cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize;
-    let syns_per_group: usize = cels_per_group << syns_per_tuft_l2;
+    let syns_per_group: usize = cels_per_group << syns_per_tft_l2;
     let dens_per_group: usize = cels_per_group << dens_per_tft_l2;
     let actv_group_thresh = syns_per_group / 4;
     //let den_actv_group_thresh = dens_per_group;
@@ -157,12 +153,12 @@ fn syn_and_den_states(dens: &mut Dendrites) {
         syn_states_ttl = 0;
         den_states_ttl = 0;
 
-        let syn_idz = cel_idz << syns_per_tuft_l2;
+        let syn_idz = cel_idz << syns_per_tft_l2;
         let den_idz = cel_idz << dens_per_tft_l2;
 
 
         println!("\nDEBUG: syn_idz: {}, syns_per_tuft: {}, syns_per_group: {}",
-            syn_idz, 1 << syns_per_tuft_l2, syns_per_group);
+            syn_idz, 1 << syns_per_tft_l2, syns_per_group);
 
         println!("DEBUG: dens.states().len(): {}, dens.syns().states().len(): {}",
             dens.states().len(), dens.syns().states().len());

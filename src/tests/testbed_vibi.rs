@@ -29,12 +29,21 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
             .layer("mcols", 1, map::FF_FB_OUT, AxonDomain::Local, CellScheme::minicolumn("iv", "iii"))
             .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhibitory(4, "iv"))
 
+            // .layer("iv", 1, map::PSAL, AxonDomain::Local,
+            //     CellScheme::spiny_stellate(4, vec!["aff_in"], 400, 8))
+
+            // .layer("iii", 2, map::PTAL, AxonDomain::Local,
+            //     CellScheme::pyramidal(1, 4, vec!["iii"], 800, 10)
+            //         .apical(vec!["eff_in"/*, "olfac"*/], 12))
+
             .layer("iv", 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(4, vec!["aff_in"], 400, 8))
+                CellScheme::spiny_stellate(&[("aff_in", 8)], 4, 400)
+            )
 
             .layer("iii", 2, map::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(1, 4, vec!["iii"], 800, 10)
-                    .apical(vec!["eff_in"/*, "olfac"*/], 12))
+                CellScheme::pyramidal(&[("iii", 10)], 1, 4, 800)
+                    .apical(&[("eff_in", 12)], 1, 4, 800)
+            )
         )
         .lmap(LayerMapScheme::new("gly_seq_lm", LayerMapKind::Subcortical)
             .layer("spatial", 1, map::FF_OUT,

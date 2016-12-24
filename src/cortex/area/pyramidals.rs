@@ -384,14 +384,18 @@ pub mod tests {
 
             let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
 
-            CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims(),
-                /*self.tft_count, self.dens_per_tft_l2(), self.syns_per_den_l2()*/)
+            CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
+                //self.tft_count, self.dens_per_tft_l2(), self.syns_per_den_l2()
         }
 
 
         fn cel_idx(&self, slc_id_lyr: u8, v_id: u32, u_id: u32)-> u32 {
             cmn::cel_idx_3d(self.dims().depth(), slc_id_lyr, self.dims().v_size(), v_id,
                 self.dims().u_size(), u_id)
+        }
+
+        fn celtft_idx(&self, tft_id: usize, cel_coords: &CelCoords) -> u32 {
+            (tft_id as u32 * self.dims.cells()) + cel_coords.idx
         }
 
         fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL

@@ -20,6 +20,6 @@ pub use self::dendrites::Dendrites;
 pub use self::sensory_filter::SensoryFilter;
 
 #[cfg(test)] pub use self::cortical_area::CorticalAreaTest;
-#[cfg(test)] pub use self::synapses::{SynCoords, SynapsesTest};
+#[cfg(test)] pub use self::synapses::{SynCoords, SynapsesTest, syn_idx};
 #[cfg(test)] pub use self::axon_space::{AxonSpaceTest, AxnCoords};
 #[cfg(test)] pub use self::dendrites::{DenCoords, DendritesTest, den_idx};

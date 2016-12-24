@@ -6,4 +6,4 @@ pub use self::area::{CorticalArea, CorticalAreas, AxonSpace, Synapses, Minicolum
     InhibitoryInterneuronNetwork, PyramidalLayer, SpinyStellateLayer, Dendrites,
     CorticalAreaSettings, SensoryFilter, TuftDims};
 #[cfg(test)] pub use self::area::{CorticalAreaTest, SynCoords, SynapsesTest,
-    AxonSpaceTest, AxnCoords, DenCoords, DendritesTest, den_idx};
+    AxonSpaceTest, AxnCoords, DenCoords, DendritesTest, den_idx, syn_idx};

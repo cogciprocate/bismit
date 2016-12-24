@@ -43,6 +43,7 @@ pub mod tests {
         fn rng(&mut self) -> &mut XorShiftRng;
         fn rand_cel_coords(&mut self) -> CelCoords;
         fn cel_idx(&self, slc_id: u8, v_id: u32, u_id: u32)-> u32;
+        fn celtft_idx(&self, tft_id: usize, cel_coords: &CelCoords) -> u32;
         fn set_all_to_zero(&mut self);
         // fn confab(&mut self);
     }
@@ -63,11 +64,12 @@ pub mod tests {
 
     impl CelCoords {
         pub fn new(axn_slc_id: u8, slc_id_lyr: u8, v_id: u32, u_id: u32,
-                    dims: &CorticalDims, /*tfts_per_cel: u32, dens_per_tft_l2: u8,
+                    lyr_dims: CorticalDims, /*tfts_per_cel: u32, dens_per_tft_l2: u8,
                     syns_per_den_l2: u8*/) -> CelCoords
         {
-            let idx = cmn::cel_idx_3d(dims.depth(), slc_id_lyr, dims.v_size(),
-                v_id, dims.u_size(), u_id);
+            let idx = cmn::cel_idx_3d(lyr_dims.depth(), slc_id_lyr, lyr_dims.v_size(),
+                v_id, lyr_dims.u_size(), u_id);
+
 
             CelCoords {
                 idx: idx,
@@ -75,7 +77,7 @@ pub mod tests {
                 axn_slc_id: axn_slc_id,
                 v_id: v_id,
                 u_id: u_id,
-                lyr_dims: dims.clone(),
+                lyr_dims: lyr_dims,
                 // tfts_per_cel: tfts_per_cel,
                 // dens_per_tft_l2: dens_per_tft_l2,
                 // syns_per_den_l2: syns_per_den_l2,
@@ -103,4 +105,65 @@ pub mod tests {
                 self.idx, self.slc_id_lyr, self.axn_slc_id, self.v_id, self.u_id)
         }
     }
+
+
+    // #[derive(Debug, Clone)]
+    // pub struct TftCoords {
+    //     pub idx: u32,
+    //     pub tft_id: usize,
+    //     pub slc_id_lyr: u8,
+    //     pub axn_slc_id: u8,
+    //     pub v_id: u32,
+    //     pub u_id: u32,
+    //     pub lyr_dims: CorticalDims,
+    //     // pub tfts_per_cel: u32,
+    //     // pub dens_per_tft_l2: u8,
+    //     // pub syns_per_den_l2: u8,
+    // }
+
+    // impl TftCoords {
+    //     pub fn new(tft_id: usize, axn_slc_id: u8, slc_id_lyr: u8, v_id: u32, u_id: u32,
+    //                 lyr_dims: CorticalDims, /*tfts_per_cel: u32, dens_per_tft_l2: u8,
+    //                 syns_per_den_l2: u8*/) -> TftCoords
+    //     {
+    //         let idx_tft = cmn::cel_idx_3d(dims.depth(), slc_id_lyr, dims.v_size(),
+    //             v_id, dims.u_size(), u_id);
+
+    //         let idx = ((tft_id as u32) * dims.cells()) + idx_tft;
+
+    //         TftCoords {
+    //             idx: idx,
+    //             tft_id: tft_id,
+    //             slc_id_lyr: slc_id_lyr,
+    //             axn_slc_id: axn_slc_id,
+    //             v_id: v_id,
+    //             u_id: u_id,
+    //             lyr_dims: dims,
+    //             // tfts_per_cel: tfts_per_cel,
+    //             // dens_per_tft_l2: dens_per_tft_l2,
+    //             // syns_per_den_l2: syns_per_den_l2,
+    //         }
+    //     }
+
+    //     pub fn idx(&self) -> u32 {
+    //         self.idx
+    //     }
+
+    //     pub fn col_id(&self) -> u32 {
+    //         // Fake a slice id of 0 with a slice depth of 1 and ignore our actual depth and id:
+    //         cmn::cel_idx_3d(1, 0, self.lyr_dims.v_size(), self.v_id,
+    //             self.lyr_dims.u_size(), self.u_id)
+    //     }
+
+    //     pub fn cel_axn_idx(&self, area_map: &AreaMap) -> u32 {
+    //         area_map.axn_idx(self.axn_slc_id, self.v_id, 0, self.u_id, 0).unwrap()
+    //     }
+    // }
+
+    // impl Display for TftCoords {
+    //     fn fmt(&self, fmtr: &mut Formatter) -> Result {
+    //         write!(fmtr, "TftCoords {{ idx: {}, slc_id_lyr: {}, axn_slc_id: {}, v_id: {}, u_id: {} }}",
+    //             self.idx, self.slc_id_lyr, self.axn_slc_id, self.v_id, self.u_id)
+    //     }
+    // }
 }

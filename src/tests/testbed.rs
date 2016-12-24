@@ -29,12 +29,16 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
             LayerKind::Axonal(AxonTopology::Spatial))
         .layer("out", 1, map::FF_OUT | map::FB_OUT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
         .layer("unused", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+
         .layer("iv", 1, map::PSAL, AxonDomain::Local,
-            CellScheme::spiny_stellate(5, vec!["aff_in"], 600, 8))
+            CellScheme::spiny_stellate(&[("aff_in", 8)], 5, 400))
+
         .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local,
             CellScheme::inhibitory(4, "iv"))
+
         .layer("iii", 3, map::PTAL, AxonDomain::Local,
-            CellScheme::pyramidal(2, 4, vec!["iii"], 1200, 8).apical(vec!["eff_in"], 12))
+                CellScheme::pyramidal(&[("iii", 8)], 2, 4, 1200)
+                    .apical(&[("eff_in", 12)], 1, 5, 500))
     );
 
     layer_map_sl.add(LayerMapScheme::new("external", LayerMapKind::Subcortical)
@@ -144,17 +148,30 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         // .layer("test4", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonTopology::Spatial))
         // .layer("test5", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonTopology::Spatial))
         .layer("unused", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+
+        // .layer("iv", 1, map::PSAL, AxonDomain::Local,
+        //     CellScheme::spiny_stellate(5, vec!["unused"], 1, 8))
+        // // .layer("iv_inhib", 0, map::DEFAULT,
+        // //     CellScheme::inhibitory(4, "iv"))
+        // .layer("iii", 2, map::PTAL, AxonDomain::Local,
+        //     CellScheme::pyramidal(2, 4, vec!["unused"], 1, 8)
+        //         .apical(vec!["test1"], 12)
+        //         .apical(vec!["test2"], 11)
+        //         // .apical(vec!["test3"])
+        //         // .apical(vec!["test4"])
+        //         // .apical(vec!["test5"])
+        // )
+
         .layer("iv", 1, map::PSAL, AxonDomain::Local,
-            CellScheme::spiny_stellate(5, vec!["unused"], 1, 8))
-        // .layer("iv_inhib", 0, map::DEFAULT,
-        //     CellScheme::inhibitory(4, "iv"))
-        .layer("iii", 2, map::PTAL, AxonDomain::Local,
-            CellScheme::pyramidal(2, 4, vec!["unused"], 1, 8)
-                .apical(vec!["test1"], 12)
-                .apical(vec!["test2"], 11)
-                // .apical(vec!["test3"])
-                // .apical(vec!["test4"])
-                // .apical(vec!["test5"])
+            CellScheme::spiny_stellate(&[("unused", 8)], 5, 100))
+
+        .layer("iii", 3, map::PTAL, AxonDomain::Local,
+            CellScheme::pyramidal(&[("unused", 8)], 2, 4, 100)
+                .apical(&[("test1", 12)], 2, 4, 500)
+                .apical(&[("test2", 12)], 2, 4, 500)
+                .apical(&[("test3", 12)], 2, 4, 500)
+                .apical(&[("test4", 12)], 2, 4, 500)
+                .apical(&[("test5", 12)], 2, 4, 500)
         )
 
     );
