@@ -14,7 +14,6 @@ use cmn::CmnResult;
 /// The `String` variant may eventually be removed. Many more variants and
 /// sub-types will be added as time goes on and things stabilize.
 ///
-#[derive(Debug)]
 pub enum CmnError {
     Unknown,
     String(String),
@@ -35,9 +34,9 @@ impl CmnError {
 
     /// If this is a `String` variant, concatenate `txt` to the front of the
     /// contained string. Otherwise, do nothing at all.
-    pub fn prepend(mut self, txt: &str) -> CmnError {
+    pub fn prepend<S: AsRef<str>>(mut self, txt: S) -> CmnError {
         if let CmnError::String(ref mut string) = self {
-            string.reserve_exact(txt.len());
+            string.reserve_exact(txt.as_ref().len());
             let old_string_copy = string.clone();
             string.clear();
             string.push_str(txt.as_ref());
@@ -85,6 +84,12 @@ impl From<OclError> for CmnError {
 }
 
 impl fmt::Display for CmnError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.description())
+    }
+}
+
+impl fmt::Debug for CmnError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(self.description())
     }

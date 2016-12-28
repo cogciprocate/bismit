@@ -138,12 +138,12 @@ dependencies = [
  "enum_primitive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "ocl-core 0.3.1",
+ "ocl-core 0.3.2",
 ]
 
 [[package]]
 name = "ocl-core"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "bitflags 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cl-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -55,7 +55,7 @@ impl Minicolumns {
                 dims.u_size() as usize))
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
-            .arg_buf(&pyrs.best_den_states())
+            .arg_buf(&pyrs.tft_best_den_states())
             .arg_scl(ff_layer_axn_idz as u32)
             .arg_scl(pyr_lyr_axn_idz)
             // .arg_scl(pyrs.cell_scheme().dens_per_tft_l2)
@@ -74,7 +74,7 @@ impl Minicolumns {
             .arg_scl(ff_layer_axn_idz as u32)
             .arg_scl(pyr_depth)
             .arg_scl(aff_out_axn_slc)
-            .arg_buf(&pyrs.best_den_states())
+            .arg_buf(&pyrs.tft_best_den_states())
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
             .arg_buf(&axons.states);

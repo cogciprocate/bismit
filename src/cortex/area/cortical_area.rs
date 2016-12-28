@@ -251,7 +251,7 @@ pub struct CorticalArea {
     filter_chains: Vec<(LayerTags, Vec<SensoryFilter>)>,
     ptal_name: &'static str,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
     psal_name: &'static str,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
-    // aux: Aux,
+    aux: Aux,
     ocl_pq: ProQue,
     // ocl_context: Context,
     // renderer: Renderer,
@@ -408,7 +408,7 @@ impl CorticalArea {
         let mcols_dims = dims.clone_with_depth(1);
 
         // <<<<< EVENTUALLY ADD TO CONTROL CELLS (+PROTOCONTROLCELLS) >>>>>
-        let mut mcols = Box::new({
+        let mcols = Box::new({
             //let em_ssts = emsg.to_string() + ": ssts - em2";
             let em_ssts = format!("{}: '{}' is not a valid layer", emsg, psal_name);
             let ssts = ssts_map.get(psal_name).expect(&em_ssts);
@@ -453,17 +453,26 @@ impl CorticalArea {
 
         // let renderer = Renderer::new(&dims);
 
-        let aux = Aux::new(pyrs_map[ptal_name].dens().syns().dims(), &ocl_pq);
+        let aux = Aux::new(pyrs_map[ptal_name].dens().syns().len(), &ocl_pq);
 
         // <<<<< TODO: CLEAN THIS UP >>>>>
         // MAKE ABOVE LIKE BELOW (eliminate set_arg_buf_named() methods and just call directly on buffer)
         // mcols.set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        // pyrs_map.get_mut(ptal_name).unwrap()
-        //     .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        // pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
-        //     .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        pyrs_map.get_mut(ptal_name).unwrap()
+            .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        pyrs_map.get_mut(ptal_name).unwrap()
+            .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
 
-        // // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
+        // pyrs_map.get_mut(ptal_name).unwrap().dens_mut()
+        //     .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        // pyrs_map.get_mut(ptal_name).unwrap().dens_mut()
+        //     .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
+
+        pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
+            .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
+            .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
+        // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
         // pyrs_map.get_mut(ptal_name).unwrap().kern_ltp()
 
         //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
@@ -489,7 +498,7 @@ impl CorticalArea {
             ssts_map: ssts_map,
             iinns: iinns,
             filter_chains: filter_chains,
-            // aux: aux,
+            aux: aux,
             ocl_pq: ocl_pq,
             // ocl_context: ocl_context,
             // renderer: renderer,
@@ -722,6 +731,7 @@ impl CorticalArea {
     pub fn axn_tract_map(&self) -> SliceTractMap { self.area_map.slices().tract_map() }
     pub fn area_map(&self) -> &AreaMap { &self.area_map }
     pub fn area_id(&self) -> usize { self.area_id }
+    pub fn aux(&self) -> &Aux { &self.aux }
 }
 
 impl Drop for CorticalArea {
@@ -734,23 +744,9 @@ impl Drop for CorticalArea {
     }
 }
 
-// #[allow(dead_code)]
-// pub struct AreaParams {
-//     den_per_cel_distal_l2: u8,
-//     syn_per_den_distal_l2: u8,
 
-//     den_per_cel_proximal: u8,
-//     syn_per_den_proximal: u8,
-// }
 
-// pub struct ThalamicGanglions {
-//     map: HashMap<LayerTags, GanglionInfo>,
-// }
-
-// pub struct GanglionInfo {
-//     tract_range: Range<usize>,
-//     axn_range: Range<usize>,
-// }
+////////////// [TODO]: BRING BACK
 
 const INT_32_MIN: i32 = -2147483648;
 
@@ -763,14 +759,14 @@ pub struct Aux {
 }
 
 impl Aux {
-    pub fn new(dims: &CorticalDims, ocl_pq: &ProQue) -> Aux {
+    pub fn new(ptal_syn_len: usize, ocl_pq: &ProQue) -> Aux {
         //let dims_multiplier: u32 = 512;
         //dims.columns() *= 512;
         let int_32_min = INT_32_MIN;
 
-        let ints_0 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, dims, None).unwrap();
+        let ints_0 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, [ptal_syn_len * 4], None).unwrap();
         ints_0.cmd().fill(int_32_min, None).enq().unwrap();
-        let ints_1 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, dims, None).unwrap();
+        let ints_1 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, [ptal_syn_len * 4], None).unwrap();
         ints_1.cmd().fill(int_32_min, None).enq().unwrap();
 
         Aux {
@@ -798,7 +794,7 @@ impl Aux {
     // }
 }
 
-
+//////////////////////
 
 
 #[cfg(test)]
@@ -817,8 +813,8 @@ pub mod tests {
         fn read_from_axon(&self, idx: u32) -> u8;
         fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8
             ) -> (i8, i8, u32, u32);
-        // fn print_aux(&mut self);
-        // fn print_axns(&mut self);
+        fn print_aux(&mut self);
+        fn print_axns(&mut self);
         fn activate_axon(&mut self, idx: u32);
         fn deactivate_axon(&mut self, idx: u32);
     }
@@ -867,25 +863,38 @@ pub mod tests {
             panic!("SynCoords::rand_safe_src_axn_offs(): Error finding valid offset pair.");
         }
 
-        // fn print_aux(&mut self) {
-        //     print!("aux.ints_0: ");
-        //     let view_radius = 1 << 24;
-        //     self.aux.ints_0.print((1 << 0) as usize,
-        //         Some((0 - view_radius, view_radius)), None, true);
+        fn print_aux(&mut self) {
+            use ocl::util;
 
-        //     print!("aux.ints_1: ");
-        //     self.aux.ints_1.print((1 << 0) as usize,
-        //         Some((0 - view_radius, view_radius)), None, true);
-        // }
+            let mut vec = vec![0; self.aux.ints_0.len()];
 
-        // fn print_axns(&mut self) {
-        //     print!("axns: ");
-        //     self.axns.states.print(1 << 0, Some((1, 255)), None, false);
-        // }
+            print!("aux.ints_0: ");
+            let view_radius = 1 << 24;
+            // self.aux.ints_0.print((1 << 0) as usize,
+            //     Some((0 - view_radius, view_radius)), None, true);
+            self.aux.ints_0.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, Some((0 - view_radius, view_radius)), None, false);
+
+            print!("aux.ints_1: ");
+            // self.aux.ints_1.print((1 << 0) as usize,
+            //     Some((0 - view_radius, view_radius)), None, true);
+            self.aux.ints_1.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, Some((0 - view_radius, view_radius)), None, false);
+        }
+
+        fn print_axns(&mut self) {
+            use ocl::util;
+
+            let mut vec = vec![0; self.axns.states.len()];
+
+            print!("axns: ");
+            self.axns.states.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, None, None, false);
+        }
 
         fn activate_axon(&mut self, idx: u32) {
             let mut rng = rand::weak_rng();
-            let val = RandRange::new(1, 255).ind_sample(&mut rng);
+            let val = RandRange::new(200, 255).ind_sample(&mut rng);
             self.axns.write_to_axon(val, idx);
         }
 

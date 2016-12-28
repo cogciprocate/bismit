@@ -3,6 +3,7 @@ use rand::distributions::{IndependentSample, Range as RandRange};
 use std::collections::{BTreeMap, BTreeSet};
 use std::cmp;
 
+use cortex::TuftDims;
 use cmn::{self, CmnError, CmnResult, CorticalDims, SliceDims};
 use map::{AreaMap, AxonTopology, TuftScheme};
 
@@ -135,42 +136,48 @@ pub fn gen_syn_offs(radius: i8, scales: [u32; 2]) -> CmnResult<Vec<(i8, i8)>> {
 ///
 #[allow(dead_code)]
 pub struct SynSrcIdxCache {
-    syns_per_den_l2: u8,
-    dens_per_tft_l2: u8,
+    tft_syn_idz: usize,
+    tft_dims: TuftDims,
     dims: CorticalDims,
     dens: Vec<BTreeSet<i32>>,
 }
 
 impl SynSrcIdxCache {
-    pub fn new(syns_per_den_l2: u8, dens_per_tft_l2: u8, dims: CorticalDims) -> SynSrcIdxCache {
-        let dens_per_tft = 1 << dens_per_tft_l2 as u32;
+    pub fn new(tft_syn_idz: usize, tft_dims: TuftDims, dims: CorticalDims) -> SynSrcIdxCache {
+        let dens_per_tft = 1 << (tft_dims.dens_per_tft_l2() as usize);
         // let area_dens = (dens_per_tft * dims.cel_tfts()) as usize;
-        let mut dens = Vec::with_capacity(dens_per_tft as usize);
+        let tft_den_count = dens_per_tft * dims.cells() as usize;
+        let mut dens = Vec::with_capacity(tft_den_count);
 
-        for _ in 0..dens_per_tft {
+        for _ in 0..tft_den_count {
             dens.push(BTreeSet::new());
         }
 
         //println!("##### CREATING SRCIDXCACHE WITH: dens: {}", dens.len());
 
         SynSrcIdxCache {
-            syns_per_den_l2: syns_per_den_l2,
-            dens_per_tft_l2: dens_per_tft_l2,
+            tft_syn_idz: tft_syn_idz,
+            // syns_per_den_l2: syns_per_den_l2,
+            // dens_per_tft_l2: dens_per_tft_l2,
+            tft_dims: tft_dims,
             dims: dims,
             dens: dens,
         }
     }
 
     pub fn insert(&mut self, syn_idx: usize, old_ofs: &SynSrc, new_ofs: &SynSrc) -> bool {
-        let den_idx = syn_idx >> self.syns_per_den_l2;
-        debug_assert!(den_idx < self.dens.len());
+        let syn_id_tft = syn_idx - self.tft_syn_idz;
+        let den_id_tft = syn_id_tft >> self.tft_dims.syns_per_den_l2();
+
+        debug_assert!(den_id_tft < self.dens.len(), format!("den_id_tft: '{}' ![<] \
+            self.dens.len(): '{}', (syn_id_tft: '{}')", den_id_tft, self.dens.len(), syn_id_tft));
 
         let new_ofs_key: i32 = self.axn_ofs(new_ofs);
-        let is_unique: bool = unsafe { self.dens.get_unchecked_mut(den_idx).insert(new_ofs_key) };
+        let is_unique: bool = unsafe { self.dens.get_unchecked_mut(den_id_tft).insert(new_ofs_key) };
 
         if is_unique {
             let old_ofs_key: i32 = self.axn_ofs(old_ofs);
-            unsafe { self.dens.get_unchecked_mut(den_idx).remove(&old_ofs_key) };
+            unsafe { self.dens.get_unchecked_mut(den_id_tft).remove(&old_ofs_key) };
         }
 
         is_unique
@@ -340,7 +347,8 @@ impl SynSrcSlices {
             assert!(src_slc_count > 0,
                 "Synapses::new(): Synapse source resolution error. Layer: '{}', tuft: '{}' \
                 has no source layers defined. If a source layer is an input layer, please \
-                ensure that the source area for that the layer exists.",
+                ensure that the source area for that the layer exists. [FIXME: Resolve layer \
+                and tuft ids into names]",
                 lyr_id, tft_id);
 
             let mut slcs = BTreeMap::new();

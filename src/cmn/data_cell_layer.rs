@@ -26,7 +26,7 @@ pub trait DataCellLayer {
 
 #[cfg(test)]
 pub mod tests {
-    // use std::ops::{Range};
+    use std::ops::{Range};
     use rand::{XorShiftRng};
     // use rand::distributions::{IndependentSample, Range};
 
@@ -39,7 +39,9 @@ pub mod tests {
         fn cycle_self_only(&self);
         // fn print_cel(&mut self, cel_idx: usize);
         // fn print_range(&mut self, range: Range<usize>, print_syns: bool);
+        fn print_range(&self, idx_range: Option<Range<usize>>);
         // fn print_all(&mut self, print_syns: bool);
+        fn print_all(&self, /*print_children: bool*/);
         fn rng(&mut self) -> &mut XorShiftRng;
         fn rand_cel_coords(&mut self) -> CelCoords;
         fn cel_idx(&self, slc_id: u8, v_id: u32, u_id: u32)-> u32;

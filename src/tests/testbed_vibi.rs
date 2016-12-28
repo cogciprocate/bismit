@@ -42,7 +42,7 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
 
             .layer("iii", 2, map::PTAL, AxonDomain::Local,
                 CellScheme::pyramidal(&[("iii", 10)], 1, 4, 800)
-                    .apical(&[("eff_in", 12)], 1, 4, 800)
+                    // .apical(&[("eff_in", 12)], 1, 4, 800)
             )
         )
         .lmap(LayerMapScheme::new("gly_seq_lm", LayerMapKind::Subcortical)

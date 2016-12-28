@@ -1,4 +1,4 @@
-use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, DenCoords};
+use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, DenCoords, SynapsesTest};
 use map::{self, AreaMapTest};
 use cmn::{self, DataCellLayer, DataCellLayerTest};
 use super::{testbed, util};
@@ -16,7 +16,7 @@ const PRINT_DETAILS: bool = false;
 // Test that input on each dendridic tuft is reaching the cell soma.
 //
 #[test]
-fn cel() {
+fn cycle_random_pyrs() {
     let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
     let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
@@ -43,7 +43,7 @@ fn cel() {
 
     // DEBUG: Print slice map and synapse dims:
     println!("\nDEBUG INFO: \n{mt}{}, \n{mt}synapse dims: {:?}",
-        area.area_map(), area.ptal().dens().syns().dims(), mt = cmn::MT);
+        area.area_map(), area.ptal().dens().syns().lyr_dims(), mt = cmn::MT);
 
     // Run tests:
     for i in 0..CELS_TEST_ITERATIONS {
@@ -53,6 +53,8 @@ fn cel() {
 }
 
 
+// Attempt to ensure that every cell in a layer is properly excited by axons
+// within its space.
 fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, iter: usize) {
     // Get a random cell:
     let cel_coords = area.ptal_mut().rand_cel_coords();
@@ -60,7 +62,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
     // For each tuft on that cell:
     for tft_id in area.ptal().dens().tft_id_range() {
         // And for each dendrite:
-        for den_id_tft in area.ptal().dens().den_id_range(tft_id) {
+        for den_id_tft in area.ptal().dens().den_id_range_celtft(tft_id) {
             let tft_den_idz = area.ptal().dens().den_idzs_by_tft()[tft_id];
             let tft_dims = area.ptal().dens().syns().tft_dims_by_tft()[tft_id].clone();
 
@@ -70,7 +72,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             let tft_syn_idz = area.ptal().dens().syns().syn_idzs_by_tft()[tft_id];
 
             // Get synapse range corresponding to our dendrite:
-            let den_syn_range = den_coords.syn_range_den(tft_id, tft_syn_idz);
+            let den_syn_range = den_coords.syn_idx_range_den(tft_id, tft_syn_idz);
 
             // Axon index corresponding to our cell and source slice:
             let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id,
@@ -121,14 +123,19 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
                 println!("Axon Info: zeroed_slc_id: {}, src_slc_id: {}, src_axn_idx: {}",
                     zeroed_slc_id, src_slc_id, src_axn_idx);
                 println!("dens.state[{}]: '{}'", den_idx, den_state);
-                print!("Synapse src_slc_ids: ");
+                // print!("Synapse src_slc_ids: ");
                 // area.ptal_mut().dens_mut().syns_mut().src_slc_ids
                 //     .print(1, None, Some(den_syn_range.clone()), true);
                 // util::print_all(area, " -- TEST_CEL_TUFTS() -- ");
                 print!("\n");
+                area.ptal().dens().syns().print_all();
+                area.ptal().dens().print_all();
+                area.ptal().print_all();
+                area.print_aux();
 
                 // Scream like a little girl:
-                panic!("Error: dendrite not activated on test cell.");
+                panic!("Error: dendrite (den_idx: {}) not activated on test cell (cel_idx: {}).",
+                    den_idx, cel_coords.idx);
             }
 
             // Make sure neighbors, etc. are inactive
@@ -163,7 +170,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
 
 
 #[test]
-fn dens() {
+fn cycle_random_dens() {
     let mut cortex = testbed::fresh_cortex();
     let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
@@ -175,6 +182,20 @@ fn dens() {
         .layers_containing_tags_slc_range(map::UNUSED_TESTING)[0].clone();
     let zeroed_slc_id = zeroed_slc_range.start;
     area.ptal().dens().syns().src_slc_ids().cmd().fill(zeroed_slc_id, None).enq().unwrap();
+
+    // ////// SANITY CHECK:
+    // ////// DEBUG: 2016-Dec-24
+    //     // Print src_slc_ids:
+    //     area.ptal().dens().syns().print_src_slc_ids();
+
+    //     let lyr_syn_count = area.ptal().dens().syns().states().len();
+    //     area.ptal().dens().syns().states().cmd().fill(99, Some(5)).offset(lyr_syn_count - 5).enq().unwrap();
+    //     area.ptal().dens().syns().states().cmd().fill(99, Some(5)).enq().unwrap();
+    //     area.ptal().dens().syns().print_all();
+
+    //     // Re-zero all syn states:
+    //     area.ptal().dens().syns().states().cmd().fill(0, None).enq().unwrap();
+    // //////
 
     for _ in 0..DENS_TEST_ITERATIONS {
 
@@ -206,6 +227,7 @@ fn dens() {
             print!("\n");
             println!("{}", cel_coords);
             println!("{}", den_coords);
+            println!("Cell Synapse Range: {:?}", cel_syn_range);
             println!("Axon Info: src_slc_id: {}, src_axn_idx: {}", src_slc_id, src_axn_idx);
         }
 
@@ -228,6 +250,13 @@ fn dens() {
 
         // CYCLE SYNS AND DENS:
         area.ptal_mut().dens_mut().cycle(None);
+
+        // ////// DEBUG: 2016-Dec-24
+        //     area.print_axns();
+        //     area.ptal().dens().syns().print_all();
+        //     area.ptal().dens().print_all();
+        //     area.print_aux();
+        // //////
 
         //=============================================================================
         //================================= EVALUATE ==================================

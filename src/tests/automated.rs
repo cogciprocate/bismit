@@ -1,3 +1,5 @@
+//! Automated (`cargo test`) versions of tests which can be also be from a
+//! non-test build.
 
 use cortex::Cortex;
 use super::{hybrid, kernels, testbed, TestBed};

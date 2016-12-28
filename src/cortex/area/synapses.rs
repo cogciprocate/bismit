@@ -151,12 +151,18 @@ impl Synapses {
 
         // for tft_id in 0..tft_count {
         for tft_scheme in cell_scheme.tft_schemes() {
+            let tft_dims = TuftDims::new(tft_scheme.dens_per_tft_l2(),
+                tft_scheme.syns_per_den_l2());
+
             let syns_per_tft_l2: u8 = tft_scheme.dens_per_tft_l2() + tft_scheme.syns_per_den_l2();
 
+
             if DEBUG_NEW {
-                println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): kind: {:?}, len: {},\n\
-                    {mt}{mt}{mt}{mt}{mt}dims: {:?}, ",
-                    den_kind, dims.to_len(), mt = cmn::MT);
+                println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): Tuft: kind: {:?}, len: {},\n\
+                    {mt}{mt}{mt}{mt}{mt}dims: {:?} \n\
+                    {mt}{mt}{mt}{mt}{mt}dens_per_tft_l2: {}, syns_per_den_l2: {}",
+                    den_kind, dims.to_len(), &dims, tft_scheme.dens_per_tft_l2(),
+                    tft_scheme.syns_per_den_l2(), mt = cmn::MT);
             }
 
             // [TODO]: Use kernel to ascertain the optimal workgroup size increment.
@@ -175,11 +181,10 @@ impl Synapses {
             syn_idzs_by_tft.push(tft_syn_idz);
             syn_counts_by_tft.push(tft_syn_count);
 
-            tft_dims_by_tft.push(TuftDims::new(tft_scheme.dens_per_tft_l2(),
-                tft_scheme.syns_per_den_l2()));
+            tft_dims_by_tft.push(tft_dims.clone());
 
-            src_idx_caches_by_tft.push(SynSrcIdxCache::new(tft_scheme.syns_per_den_l2(),
-                tft_scheme.dens_per_tft_l2(), dims.clone()));
+            src_idx_caches_by_tft.push(SynSrcIdxCache::new(tft_syn_idz as usize,
+                tft_dims, dims.clone()));
 
             kernels.push(Box::new({
                 ocl_pq.create_kernel("tft_cycle_syns")
@@ -194,11 +199,11 @@ impl Synapses {
                     .arg_buf_named("src_col_v_offs", None::<&Buffer<u8>>)
                     .arg_buf_named("src_slc_ids", None::<&Buffer<u8>>)
                     // .arg_scl(tft_id as u32 * cels_per_syntuft)
-                    .arg_scl(syn_count_ttl)
+                    .arg_scl(tft_syn_idz)
                     .arg_scl(syns_per_tft_l2)
                     .arg_scl(dims.depth() as u8)
-                    // .arg_buf_named::<i32>("aux_ints_0", None)
-                    // .arg_buf_named::<i32>("aux_ints_1", None)
+                    .arg_buf_named::<i32>("aux_ints_0", None)
+                    .arg_buf_named::<i32>("aux_ints_1", None)
                     .arg_buf_named("states", None::<&Buffer<u8>>)
             }));
         }
@@ -295,23 +300,24 @@ impl Synapses {
 
     // Debugging purposes
     // <<<<< TODO: DEPRICATE >>>>>
-    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
+    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, buf: &Buffer<T>)
             -> OclResult<()>
     {
-        let using_aux = false;
+        let using_aux = true;
 
         if using_aux {
             for kernel in self.kernels.iter_mut() {
-                try!(kernel.set_arg_buf_named(name, Some(env)));
+                try!(kernel.set_arg_buf_named(name, Some(buf)));
             }
         }
 
         Ok(())
     }
 
+    #[inline] pub fn len(&self) -> usize { self.states.len() }
     #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn den_kind(&self) -> DendriteKind { self.den_kind.clone() }
-    #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] pub fn lyr_dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn strengths(&self) -> &Buffer<i8> { &self.strengths }
     #[inline] pub fn src_slc_ids(&self) -> &Buffer<u8> { &self.src_slc_ids }
@@ -330,8 +336,7 @@ impl Synapses {
         debug_assert!(syn_idx < self.src_slc_ids.len());
         debug_assert!(syn_idx < self.src_col_v_offs.len());
         debug_assert!(syn_idx < self.src_col_u_offs.len());
-        debug_assert!(self.src_idx_caches_by_tft.len() == tft_id);
-        // debug_assert!(self.src_slices_by_tft.len() == tft_id);
+        debug_assert!(tft_id < self.src_idx_caches_by_tft.len());
 
         loop {
             let old_src = unsafe { SynSrc {
@@ -456,7 +461,7 @@ pub mod tests {
     use std::fmt::{Display, Formatter, Result as FmtResult};
     use rand::{XorShiftRng};
     use rand::distributions::{IndependentSample, Range as RandRange};
-
+    use ocl::util;
     use cmn::{CelCoords, CorticalDims};
     use super::super::dendrites::{self};
     use super::{Synapses, TuftDims};
@@ -470,8 +475,9 @@ pub mod tests {
         fn set_src_slc(&mut self, src_slc_id: u8, idx: usize);
         fn syn_state(&self, idx: u32) -> u8;
         fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords;
-        // fn print_range(&mut self, range: Range<usize>);
-        // fn print_all(&mut self);
+        fn print_src_slc_ids(&self);
+        fn print_range(&self, range: Option<Range<usize>>);
+        fn print_all(&self);
         fn rng(&mut self) -> &mut XorShiftRng;
     }
 
@@ -537,36 +543,56 @@ pub mod tests {
                 den_id_celtft, syn_id_den)
         }
 
-        // fn print_range(&mut self, range: Range<usize>) {
-        //     print!("syns.states: ");
-        //     self.states.print(1 << 0, Some((0, 255)),
-        //         Some(range.clone()), false);
+        fn print_src_slc_ids(&self) {
+            let mut vec = vec![0; self.states.len()];
 
-        //     print!("syns.flag_sets: ");
-        //     self.flag_sets.print(1 << 0, Some((0, 255)),
-        //         Some(range.clone()), false);
+            print!("syns.src_slc_ids: ");
+            self.src_slc_ids.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 6, None, None, false);
+        }
 
-        //     print!("syns.strengths: ");
-        //     self.strengths.print(1 << 0, Some((-128, 127)),
-        //         Some(range.clone()), false);
+        /// Prints a range of each of the synapse property buffers.
+        ///
+        //
+        ////// Ocl print function signature:
+        //
+        // ocl::util::print_slice<T: OclScl>(vec: &[T], every: usize, val_range: Option<(T, T)>,
+        // idx_range: Option<Range<usize>>, show_zeros: bool)
+        //
+        fn print_range(&self, idx_range: Option<Range<usize>>) {
+            let mut vec = vec![0; self.states.len()];
 
-        //     // print!("syns.src_slc_ids: ");
-        //     // self.src_slc_ids.print(1 << 0, Some((0, 255)),
-        //     //     Some(range.clone()), false);
+            print!("syns.states: ");
+            // self.states.print(1 << 0, Some((0, 255)),
+            //     Some(range.clone()), false);
+            self.states.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
-        //     // print!("syns.src_col_v_offs: ");
-        //     // self.src_col_v_offs.print(1 << 0, Some((-128, 127)),
-        //     //     Some(range.clone()), false);
+            // print!("syns.flag_sets: ");
+            // self.flag_sets.print(1 << 0, Some((0, 255)),
+            //     Some(range.clone()), false);
 
-        //     // print!("syns.src_col_u_offs: ");
-        //     // self.src_col_v_offs.print(1 << 0, Some((-128, 127)),
-        //     //     Some(range.clone()), false);
-        // }
+            // print!("syns.strengths: ");
+            // self.strengths.print(1 << 0, Some((-128, 127)),
+            //     Some(range.clone()), false);
 
-        // fn print_all(&mut self) {
-        //     let range = 0..self.states.len();
-        //     self.print_range(range);
-        // }
+            // print!("syns.src_slc_ids: ");
+            // self.src_slc_ids.print(1 << 0, Some((0, 255)),
+            //     Some(range.clone()), false);
+
+            // print!("syns.src_col_v_offs: ");
+            // self.src_col_v_offs.print(1 << 0, Some((-128, 127)),
+            //     Some(range.clone()), false);
+
+            // print!("syns.src_col_u_offs: ");
+            // self.src_col_v_offs.print(1 << 0, Some((-128, 127)),
+            //     Some(range.clone()), false);
+        }
+
+        fn print_all(&self) {
+            // let range = 0..self.states.len();
+            self.print_range(None);
+        }
 
         fn rng(&mut self) -> &mut XorShiftRng {
             &mut self.rng
@@ -738,60 +764,27 @@ pub mod tests {
         syn_id_tftslc + tftslc_syn_idz
     }
 
+    #[test]
+    fn syn_idx_range_den() {
+        use tests::testbed;
+        use cortex::DenCoords;
+        use cmn::{DataCellLayer, DataCellLayerTest};
 
-    // // SYN_IDX(): FOR TESTING/DEBUGGING AND A LITTLE DOCUMENTATION
-    // //         - Synapse index space hierarchy:  | Tuft - Slice - Cell - Dendrite - Synapse |
-    // //         - 'cel_idx' already has slice built in to its value
-    // //         - 'tft_count' is synonymous with 'tfts_per_cel'
-    // //         - X_cel_tft is synonymous with X_tft but is verbosely described for clarity
-    // pub fn syn_idx_old(cel_layer_dims: &CorticalDims, tft_count: u32, dens_per_cel_tft: u32, syns_per_den: u32,
-    //                 tft_id: u32, cel_idx: u32, den_id_cel_tft: u32, syn_id_den: u32) -> u32
-    // {
-    //     //  NOTE: 'cel_layer_dims' expresses dimensions from the perspective of the
-    //     //  | Slice - Cell - Tuft - Dendrite - Synapse | hierarchy which is why the function
-    //     //  names (and other variable names) seem confusing (see explanation at top of file).
+        let mut cortex = testbed::fresh_cortex();
+        let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
-    //     let slcs_per_tftsec = cel_layer_dims.depth() as u32;
-    //     let cels_per_slc = cel_layer_dims.columns();
+        // Choose a random synapse:
+        let cel_coords = area.ptal_mut().rand_cel_coords();
+        let syn_coords = area.ptal_mut().dens_mut().syns_mut().rand_syn_coords(cel_coords.clone());
 
-    //     assert!(tft_id < tft_count);
-    //     assert!(cel_idx < slcs_per_tftsec * cels_per_slc);
-    //     assert!(den_id_cel_tft < dens_per_cel_tft);
-    //     assert!(syn_id_den < syns_per_den);
+        let tft_den_idz = area.ptal().dens().den_idzs_by_tft()[syn_coords.tft_id];
 
+        let den_coords = DenCoords::new(syn_coords.cel_coords.clone(), syn_coords.tft_id,
+            tft_den_idz, syn_coords.tft_dims.clone(), syn_coords.den_id_celtft);
 
-    //     let syns_per_tftsec = slcs_per_tftsec * cels_per_slc * dens_per_cel_tft * syns_per_den;
-    //     let syn_idz_tftsec = tft_id * syns_per_tftsec;
-    //     // 'cel_idx' includes slc_id, v_id, and u_id:
-    //     let syn_idz_tft_slc_cel = cel_idx * dens_per_cel_tft * syns_per_den;
-    //     let syn_id_cel_tft = (den_id_cel_tft * syns_per_den) + syn_id_den;
-
-    //     let syn_idx = syn_idz_tftsec + syn_idz_tft_slc_cel + syn_id_cel_tft;
-
-    //     if PRINT_DEBUG_INFO {
-    //         println!("\n#####\n\n\
-    //             tft_count: {} \n\
-    //             slcs_per_tftsec: {} \n\
-    //             cels_per_slc: {}\n\
-    //             syns_per_den: {}\n\
-    //             \n\
-    //             cel_idx: {},\n\
-    //             tft_id: {},\n\
-    //             den_id_tft: {}, \n\
-    //             syn_id_den: {}, \n\
-    //             \n\
-    //             syn_idz_tftsec: {},\n\
-    //             syn_idz_tft_slc_cel: {},\n\
-    //             syn_idx: {},\n\
-    //             \n\
-    //             #####",
-    //             tft_count, slcs_per_tftsec, cels_per_slc, syns_per_den,
-    //             cel_idx, tft_id, den_id_cel_tft, syn_id_den,
-    //             syn_idz_tftsec, syn_idz_tft_slc_cel, syn_idx,
-    //         );
-    //     }
-
-    //     syn_idx
-    // }
+        // Ensure the two synapse ranges match:
+        assert!(syn_coords.syn_idx_range_den() == den_coords.syn_idx_range_den(syn_coords.tft_id,
+            syn_coords.tft_syn_idz));
+    }
 }
 

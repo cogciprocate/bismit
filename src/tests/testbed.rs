@@ -31,14 +31,17 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
         .layer("unused", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
 
         .layer("iv", 1, map::PSAL, AxonDomain::Local,
-            CellScheme::spiny_stellate(&[("aff_in", 8)], 5, 400))
+            CellScheme::spiny_stellate(&[("aff_in", 8)], 5, 400)
+        )
 
         .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local,
-            CellScheme::inhibitory(4, "iv"))
+            CellScheme::inhibitory(4, "iv")
+        )
 
         .layer("iii", 3, map::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 8)], 2, 4, 1200)
-                    .apical(&[("eff_in", 12)], 1, 5, 500))
+                CellScheme::pyramidal(&[("iii", 8)], 2, 3, 1200)
+                    // .apical(&[("eff_in", 12)], 1, 5, 500)
+        )
     );
 
     layer_map_sl.add(LayerMapScheme::new("external", LayerMapKind::Subcortical)
@@ -51,7 +54,7 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
 }
 
 pub fn define_protoareas() -> AreaSchemeList {
-    let area_side = 32 as u32;
+    let area_side = 24 as u32;
 
     let protoareas = AreaSchemeList::new()
 
@@ -145,8 +148,8 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         .layer("test1", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
         .layer("test2", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
         .layer("test3", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
-        // .layer("test4", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonTopology::Spatial))
-        // .layer("test5", 1, map::UNUSED_TESTING, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer("test4", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer("test5", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
         .layer("unused", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
 
         // .layer("iv", 1, map::PSAL, AxonDomain::Local,

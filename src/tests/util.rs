@@ -3,8 +3,8 @@ use std::ops::{Range};
 
 use ocl::Buffer;
 use ocl::traits::{OclPrm, OclScl};
-use cortex::CorticalArea;
-use cmn::{self, DataCellLayer};
+use cortex::{CorticalArea, CorticalAreaTest, SynapsesTest};
+use cmn::{self, DataCellLayer, DataCellLayerTest};
 
 const PRINT_DETAILS: bool = false;
 
@@ -121,15 +121,16 @@ pub fn fill_new_vec<T: OclPrm>(buf: &Buffer<T>) -> Vec<T> {
 }
 
 
-// pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
-//     //println!("\n - Confirm 1A - Activate");
-//     println!("{}", desc);
-//     area.ptal_mut().print_all(true);
-//     // area.ptal_mut().dens_mut().syns_mut().print_all();
-//     area.print_aux();
-//     area.mcols_mut().print_all();
-//     area.print_axns();
-// }
+pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
+    //println!("\n - Confirm 1A - Activate");
+    println!("{}", desc);
+    area.ptal_mut().print_all();
+    area.ptal_mut().dens_mut().syns_mut().print_all();
+    area.print_aux();
+    // [FIXME]: BRING BACK:
+    // area.mcols_mut().print_all();
+    area.print_axns();
+}
 
 // pub fn print_range(range: Range<usize>) -> String {
 //     format!("{}..{}", range.start, range.end)

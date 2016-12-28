@@ -6,7 +6,7 @@ use map::{CellKind, CellScheme, DendriteKind};
 use cortex::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
-const PRINT_DEBUG: bool = false;
+const DEBUG_KERN: bool = false;
 
 pub struct Dendrites {
     layer_name: &'static str,
@@ -36,7 +36,8 @@ impl Dendrites {
             axons: &AxonSpace,
             // aux: &Aux,
             ocl_pq: &ProQue,
-    ) -> CmnResult<Dendrites> {
+        ) -> CmnResult<Dendrites>
+    {
         let tft_count = cell_scheme.tft_count();
 
         let mut kernels = Vec::with_capacity(tft_count);
@@ -68,17 +69,24 @@ impl Dendrites {
         // let syns = try!(Synapses::new(layer_name, syns_dims, cell_scheme.clone(), den_kind, cell_kind,
         //     area_map, axons, /*aux,*/ ocl_pq));
         let syns = try!(Synapses::new(layer_name, layer_id, dims, cell_scheme.clone(), den_kind, cell_kind,
-            area_map, axons, /*aux,*/ ocl_pq));
+            area_map, axons, ocl_pq));
 
-        for (tft_scheme, &tft_den_idz) in cell_scheme.tft_schemes().iter().zip(den_idzs_by_tft.iter()) {
+        for (tft_id, (tft_scheme, &tft_den_idz)) in cell_scheme.tft_schemes().iter()
+                .zip(den_idzs_by_tft.iter()).enumerate()
+        {
             let syns_per_den_l2 = tft_scheme.syns_per_den_l2();
             let den_threshold = tft_scheme.thresh_init().unwrap_or(cmn::DENDRITE_DEFAULT_INITIAL_THRESHOLD);
+
+            assert!(tft_id == tft_scheme.tft_id());
+
+            let tft_syn_idz = syns.syn_idzs_by_tft()[tft_scheme.tft_id()];
 
             kernels.push(ocl_pq.create_kernel("den_cycle_tft").expect("[FIXME]: HANDLE ME")
                 .gws(SpatialDims::One(states.len()))
                 .arg_buf(syns.states())
                 .arg_buf(syns.strengths())
                 .arg_scl(tft_den_idz)
+                .arg_scl(tft_syn_idz)
                 .arg_scl(syns_per_den_l2)
                 .arg_scl(den_threshold)
                 .arg_buf(&energies)
@@ -122,11 +130,11 @@ impl Dendrites {
     }
 
     pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
-        if PRINT_DEBUG { println!("Dens: Cycling syns..."); }
+        if DEBUG_KERN { println!("Dens: Cycling syns..."); }
         self.syns.cycle(wait_events);
         // self.kern_cycle.enqueue_events(wait_events, None).expect("bismit::Dendrites::cycle");
         for kern in self.kernels.iter() {
-            if PRINT_DEBUG { println!("Dens: Cycling kern_cycle..."); }
+            if DEBUG_KERN { println!("Dens: Cycling kern_cycle..."); }
             kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
         }
     }
@@ -165,6 +173,7 @@ pub mod tests {
     use std::ops::{Range};
     use std::fmt::{Display, Formatter, Result};
     use rand::distributions::{IndependentSample, Range as RandRange};
+    use ocl::util;
     use tests;
     use cmn::{CelCoords, CorticalDims};
     use cortex::{SynapsesTest, TuftDims, syn_idx};
@@ -177,7 +186,9 @@ pub mod tests {
         fn den_idx(&self, cel_coords: &CelCoords, tft_den_idz: u32,
             tft_dims: &TuftDims, den_id_celtft: u32) -> u32;
         fn tft_id_range(&self) -> Range<usize>;
-        fn den_id_range(&self, tft_id: usize) -> Range<u32>;
+        fn den_id_range_celtft(&self, tft_id: usize) -> Range<u32>;
+        fn print_range(&self, idx_range: Option<Range<usize>>);
+        fn print_all(&self);
     }
 
     impl DendritesTest for Dendrites {
@@ -204,9 +215,10 @@ pub mod tests {
             let tft_den_idz = self.den_idzs_by_tft[tft_id];
             let tft_dims = self.syns.tft_dims_by_tft()[tft_id].clone();
 
-            let dens_per_tft = 1 << self.den_id_range(tft_id).end;
-            let den_id_cel_range = RandRange::new(0, dens_per_tft);
-            let den_id_celtft = den_id_cel_range.ind_sample(self.syns.rng());
+            // let dens_per_tft = self.den_id_range_celtft(tft_id).end;
+            let dens_per_tft = 1 << tft_dims.dens_per_tft_l2();
+            let den_id_range_celtft = RandRange::new(0, dens_per_tft);
+            let den_id_celtft = den_id_range_celtft.ind_sample(self.syns.rng());
 
             DenCoords::new(cel_coords, tft_id, tft_den_idz, tft_dims, den_id_celtft)
         }
@@ -222,9 +234,26 @@ pub mod tests {
             0..(self.tft_count())
         }
 
-        fn den_id_range(&self, tft_id: usize) -> Range<u32> {
+        fn den_id_range_celtft(&self, tft_id: usize) -> Range<u32> {
             let dens_per_tft = 1 << self.syns().tft_dims_by_tft()[tft_id].dens_per_tft_l2();
             0..dens_per_tft
+        }
+
+        fn print_range(&self, idx_range: Option<Range<usize>>) {
+            let mut vec = vec![0; self.states.len()];
+
+            print!("dens.states_raw: ");
+            self.states_raw.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
+
+            print!("dens.states: ");
+            self.states.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
+        }
+
+        fn print_all(&self) {
+            // let range = 0..self.states.len();
+            self.print_range(None);
         }
 
     }
@@ -293,21 +322,25 @@ pub mod tests {
         }
 
         // The synapse index range for this dendrite:
-        pub fn syn_range_den(&self, tft_id: usize, tft_syn_idz: u32) -> Range<usize> {
+        pub fn syn_idx_range_den(&self, tft_id: usize, tft_syn_idz: u32) -> Range<usize> {
             // let syn_idz_den = (self.idx << syns_per_den_l2) as usize;
             // let syns_per_den = (1 << syns_per_den_l2) as usize;
             // syn_idz_den..(syn_idz_den + syns_per_den)
 
             assert!(tft_id == self.tft_id);
 
-            let syn_idz_celtft = syn_idx(&self.cel_coords.lyr_dims, self.cel_coords.slc_id_lyr,
+            // let syn_idz_celtft = syn_idx(&self.cel_coords.lyr_dims, self.cel_coords.slc_id_lyr,
+            //     self.cel_coords.v_id, self.cel_coords.u_id, tft_syn_idz,
+            //     &self.tft_dims, self.den_id_celtft, 0) as usize;
+            let syn_idz_den = syn_idx(&self.cel_coords.lyr_dims, self.cel_coords.slc_id_lyr,
                 self.cel_coords.v_id, self.cel_coords.u_id, tft_syn_idz,
                 &self.tft_dims, self.den_id_celtft, 0) as usize;
 
-            let syns_per_celtft = 1 << (self.tft_dims.dens_per_tft_l2() as u32 +
-                self.tft_dims.syns_per_den_l2() as u32);
+            // let syns_per_celtft = 1 << (self.tft_dims.dens_per_tft_l2() as u32 +
+            //     self.tft_dims.syns_per_den_l2() as u32);
+            let syns_per_den = 1 << (self.tft_dims.syns_per_den_l2() as u32);
 
-            syn_idz_celtft..(syn_idz_celtft + syns_per_celtft)
+            syn_idz_den..(syn_idz_den + syns_per_den)
         }
 
         #[allow(dead_code)]

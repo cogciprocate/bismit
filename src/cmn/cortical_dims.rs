@@ -1,6 +1,6 @@
 use ocl::SpatialDims;
 use ocl::traits::MemLen;
-use cmn::{ParaHexArray, TractDims};
+use cmn::{ParaHexArray, TractDims, CmnResult};
 
 // # CorticalDims: Dimensions of a cortical area in units of cells
 // - Used to define both the volume and granularity of a cortical area.
@@ -74,10 +74,10 @@ impl CorticalDims {
     // PHYSICAL_INCREMENT():
     //         TODO: improve this description
     #[inline]
-    pub fn incr(&self) -> Result<u32, &'static str> {
+    pub fn incr(&self) -> CmnResult<u32> {
         match self.incr {
             Some(pi) => Ok(pi),
-            None => Err("physical increment not set"),
+            None => Err("CorticalDims::incr: Physical increment not set.".into()),
         }
     }
 
@@ -170,7 +170,7 @@ impl CorticalDims {
 
     #[inline]
     /// [FIXME]: Return a proper result type, wrap the OclError from `::padded_buffer_len`.
-    pub fn per_subgrp(&self, subgroup_count: u32) -> Result<u32, &'static str> {
+    pub fn per_subgrp(&self, subgroup_count: u32) -> CmnResult<u32> {
         // let physical_len = self.to_len_padded(ocl_pq.max_wg_size()) as u32;
         let physical_len = self.to_len() as u32;
 
@@ -180,7 +180,8 @@ impl CorticalDims {
         if physical_len % subgroup_count == 0 {
             Ok(physical_len / subgroup_count)
         } else {
-            Err("Invalid subgroup size.")
+            Err(format!("Invalid subgroup size: {} % {} = {}", physical_len, subgroup_count,
+                physical_len % subgroup_count).into())
         }
     }
 
@@ -219,7 +220,8 @@ impl CorticalDims {
     pub fn to_len(&self) -> usize {
         // len_components(self.v_size * self.u_size * self.depth as u32,
         //     self.per_tft_l2, self.tfts_per_cel) as usize
-        (self.v_size * self.u_size * self.depth as u32) as usize
+        // (self.v_size * self.u_size * self.depth as u32) as usize
+        self.cells() as usize
     }
 
     /// Length of the buffer required to properly represent this section of cortex.
