@@ -148,10 +148,10 @@ impl Dendrites {
         // self.kern_cycle.enqueue_events(wait_events, None).expect("bismit::Dendrites::cycle");
         for kern in self.kernels.iter() {
             if DEBUG_KERN { println!("Dens: Cycling kern_cycle..."); }
+
             kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
 
-            // [DEBUG]: TEMPORARY:
-            kern.default_queue().finish();
+            if DEBUG_KERN { kern.default_queue().finish(); }
         }
     }
 

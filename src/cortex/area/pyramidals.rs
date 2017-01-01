@@ -271,7 +271,7 @@ impl DataCellLayer for PyramidalLayer {
         self.dens().cycle(wait_events);
 
         // [DEBUG]: TEMPORARY:
-        self.pyr_cycle_kernel.default_queue().finish();
+        if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().finish(); }
 
         for (tft_id, tft_cycle_kernel) in self.pyr_tft_cycle_kernels.iter()
                 .enumerate()
@@ -281,7 +281,7 @@ impl DataCellLayer for PyramidalLayer {
                 .expect("bismit::PyramidalLayer::tft_cycle");
 
             // [DEBUG]: TEMPORARY:
-            tft_cycle_kernel.default_queue().finish();
+            if PRINT_DEBUG { tft_cycle_kernel.default_queue().finish(); }
         }
 
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell somas..."); }
@@ -289,7 +289,7 @@ impl DataCellLayer for PyramidalLayer {
                 .expect("bismit::PyramidalLayer::cycle");
 
         // [DEBUG]: TEMPORARY:
-        self.pyr_cycle_kernel.default_queue().finish();
+        if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().finish(); }
     }
 
     #[inline]

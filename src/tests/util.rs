@@ -36,39 +36,43 @@ bitflags! {
 //     area.mcols().output();
 // }
 
-// ACTIVATE, LEARN, CYCLE, & OUTPUT
+/// ACTIVATE, LEARN, CYCLE, & OUTPUT
+///
+/// If `print` is true, will print a message and finish the queue before and
+/// after each kernel.
+///
 // pub fn ptal_alco(area: &mut CorticalArea, activ: bool, learn: bool, cycle: bool, output: bool) {
 pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: bool) {
 
-    area.mcols().kern_activate().default_queue().finish();
+    if print { area.mcols().kern_activate().default_queue().finish(); }
 
     if switches.contains(ACTIVATE) {
         if print { printlnc!(yellow: "Activating..."); }
         area.mcols().activate();
     }
 
-    area.mcols().kern_activate().default_queue().finish();
+    if print { area.mcols().kern_activate().default_queue().finish(); }
 
     if switches.contains(LEARN) {
         if print { printlnc!(yellow: "Learning..."); }
         area.ptal_mut().learn();
     }
 
-    area.mcols().kern_activate().default_queue().finish();
+    if print { area.mcols().kern_activate().default_queue().finish(); }
 
     if switches.contains(CYCLE) {
         if print { printlnc!(yellow: "Cycling..."); }
         area.ptal_mut().cycle(None);
     }
 
-    area.mcols().kern_activate().default_queue().finish();
+    if print { area.mcols().kern_activate().default_queue().finish(); }
 
     if switches.contains(OUTPUT) {
         if print { printlnc!(yellow: "Outputting..."); }
         area.mcols().output(None);
     }
 
-    area.mcols().kern_activate().default_queue().finish();
+    if print { area.mcols().kern_activate().default_queue().finish(); }
 }
 
 

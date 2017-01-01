@@ -282,10 +282,10 @@ impl Synapses {
     pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
         for kern in self.kernels.iter() {
             if DEBUG_KERN { printlnc!(yellow: "Syns: Enqueuing kernel: '{}'...", kern.name()); }
+
             kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
 
-            // [DEBUG]: TEMPORARY:
-            kern.default_queue().finish();
+            if DEBUG_KERN { kern.default_queue().finish(); }
         }
     }
 
