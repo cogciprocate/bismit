@@ -3,14 +3,9 @@ use map::{self, AreaMapTest};
 use cmn::{self, DataCellLayer, DataCellLayerTest};
 use super::{testbed, util};
 
-
 const DENS_TEST_ITERATIONS: usize = 500;
-// const CELS_TEST_ITERATIONS: usize = 1; //50;
-const CELS_TEST_ITERATIONS: usize = 50; //50;
+const CELS_TEST_ITERATIONS: usize = 50;
 const PRINT_DETAILS: bool = false;
-
-
-
 
 // TEST_CEL_TUFTS():
 //
@@ -52,6 +47,8 @@ fn cycle_random_pyrs() {
         // learning::_test_pyr_learning(area, zeroed_slc_id, prx_src_slc_id, unused_slc_ids[1], i);
     }
 }
+
+
 
 
 // Attempt to ensure that every cell in a layer is properly excited by axons
@@ -164,8 +161,6 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
     // print!("\n");
     // panic!(" -- DEBUGGING -- ");
 }
-
-
 
 
 

@@ -716,8 +716,6 @@ __kernel void den_cycle_tft(
             __global int* const aux_ints_1,
             __global uchar* const den_states) 
 {
-
-    // uint const den_idx = get_global_id(0) + tft_den_idz;
     uint const den_id_lyrtft = get_global_id(0);
     uint const syn_idz_den = (den_id_lyrtft << syns_per_den_l2) + tft_syn_idz;
     uint const syn_idn_den = syn_idz_den + (1 << syns_per_den_l2);
@@ -738,10 +736,8 @@ __kernel void den_cycle_tft(
 
     uint const den_idx = den_id_lyrtft + tft_den_idz;
 
-    ////// DEBUG: RESTORE ME:
-        den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255); 
-        den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255); 
-    //////
+    den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255); 
+    den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255); 
 }
 
 

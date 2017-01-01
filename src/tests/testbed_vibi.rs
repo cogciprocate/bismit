@@ -1,8 +1,15 @@
+//! A complex but (linearly) small set of layer and area maps.
+///
+/// Must be usable for cycling 10k+ times in less than a minute on limited
+/// hardware (CPU, etc.).
+///
+
 use cortex::Cortex;
 use map::{self, LayerTags, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme,
     AreaSchemeList, CellScheme, FilterScheme, InputScheme, AxonTopology, LayerKind, AxonDomain,
     AxonTag, InputTrack};
 
+/// A complex but (linearly) small set of layer maps.
 pub fn define_layer_map_sl() -> LayerMapSchemeList {
     const MOTOR_UID: u32 = 654;
     const ROSE_UID: u32 = 435;
@@ -37,11 +44,11 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
             //         .apical(vec!["eff_in"/*, "olfac"*/], 12))
 
             .layer("iv", 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 8)], 4, 400)
+                CellScheme::spiny_stellate(&[("aff_in", 8)], 4, 300)
             )
 
             .layer("iii", 2, map::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 10)], 1, 4, 800)
+                CellScheme::pyramidal(&[("iii", 10)], 1, 3, 300)
                     // .apical(&[("eff_in", 12)], 1, 4, 800)
             )
         )
@@ -67,8 +74,9 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
 }
 
 
+/// A complex but (linearly) small set of area maps.
 pub fn define_area_sl() -> AreaSchemeList {
-    const AREA_SIDE: u32 = 32;
+    const AREA_SIDE: u32 = 16;
 
     AreaSchemeList::new()
         // .area_ext("v0", "gly_seq_lm", AREA_SIDE,

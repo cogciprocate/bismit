@@ -21,8 +21,6 @@ const PRINT_FINAL_ITER_ONLY: bool = false;
 //=============================================================================
 
 
-
-
 // TEST_DST_DEN_LEARNING():
 // Set up conditions in which a synapse should learn and its neighbors should not.
 /*
@@ -299,7 +297,7 @@ impl LearningTestBed {
 
     */
     fn test_on_off(&mut self, on_focus_iters: usize, off_focus_iters: usize) {
-        printy!("\n###### on_focus_iters: ######");
+        printlny!("\n###### on_focus_iters: ######");
 
         for i in 0..on_focus_iters {
             // // [DEBUG]: Prints a number for each iter
@@ -550,10 +548,6 @@ impl LearningTestBed {
             print!("\n");
             // unimplemented!();
         }
-
-
-        ////// DEBUG:
-            panic!("See 'calc_syn_idz_OLD()' in 'bismit.cl'. It is calculating indexes incorrectly.");
 
         // Check that all synapses within the `focus_syns` range have the
         // potentiation flag (`SYN_STPOT_FLAG`):
