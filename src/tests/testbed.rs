@@ -31,7 +31,7 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
         .layer("unused", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
 
         .layer("iv", 1, map::PSAL, AxonDomain::Local,
-            CellScheme::spiny_stellate(&[("aff_in", 8)], 5, 400)
+            CellScheme::spiny_stellate(&[("aff_in", 8, 1)], 5, 400)
         )
 
         .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local,
@@ -39,8 +39,8 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
         )
 
         .layer("iii", 3, map::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 8)], 2, 3, 1200)
-                    .apical(&[("iii", 3)], 1, 5, 500)
+                CellScheme::pyramidal(&[("iii", 8, 1)], 2, 3, 1200)
+                    .apical(&[("iii", 3, 1)], 1, 5, 500)
         )
     );
 
@@ -167,15 +167,15 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         // )
 
         .layer("iv", 1, map::PSAL, AxonDomain::Local,
-            CellScheme::spiny_stellate(&[("unused", 8)], 4, 100))
+            CellScheme::spiny_stellate(&[("unused", 8, 1)], 4, 100))
 
         .layer("iii", 3, map::PTAL, AxonDomain::Local,
-            CellScheme::pyramidal(&[("unused", 8)], 2, 3, 100)
-                .apical(&[("test1", 7)], 2, 3, 500)
-                .apical(&[("test2", 6)], 2, 3, 500)
-                .apical(&[("test3", 5)], 2, 3, 500)
-                .apical(&[("test4", 4)], 2, 3, 500)
-                .apical(&[("test5", 3)], 2, 3, 500)
+            CellScheme::pyramidal(&[("unused", 8, 1)], 2, 3, 100)
+                .apical(&[("test1", 7, 1)], 2, 3, 500)
+                .apical(&[("test2", 6, 1)], 2, 3, 500)
+                .apical(&[("test3", 5, 1)], 2, 3, 500)
+                .apical(&[("test4", 4, 1)], 2, 3, 500)
+                .apical(&[("test5", 3, 1)], 2, 3, 500)
         )
 
     );

@@ -44,11 +44,11 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
             //         .apical(vec!["eff_in"/*, "olfac"*/], 12))
 
             .layer("iv", 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 8)], 4, 300)
+                CellScheme::spiny_stellate(&[("aff_in", 8, 1)], 4, 300)
             )
 
             .layer("iii", 2, map::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 10)], 1, 3, 300)
+                CellScheme::pyramidal(&[("iii", 10, 1)], 1, 3, 300)
                     // .apical(&[("eff_in", 12)], 1, 4, 800)
             )
         )

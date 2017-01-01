@@ -114,7 +114,7 @@ impl LayerKind {
         }
     }
 
-    pub fn apical<'a>(mut self, src_lyrs: &[(&'a str, i8)], dens_per_tft_l2: u8,
+    pub fn apical<'a>(mut self, src_lyrs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8,
                 syns_per_den_l2: u8, thresh_init: u32) -> LayerKind
     {
         match &mut self {

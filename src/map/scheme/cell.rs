@@ -9,20 +9,29 @@ use cmn;
 pub struct TuftSourceLayer {
     name: String,
     syn_reach: i8,
+    prevalence: u8,
 }
 
 impl TuftSourceLayer {
-    pub fn new(name: String, syn_reach: i8) -> TuftSourceLayer {
-        TuftSourceLayer { name: name, syn_reach: syn_reach }
+    pub fn new(name: String, syn_reach: i8, prevalence: u8) -> TuftSourceLayer {
+        assert!(prevalence > 0, "Tuft source layer definitions must have a prevalence \
+            of at least one. {{ Layer: name: {}, reach: {} }}", name, syn_reach);
+
+        TuftSourceLayer {
+            name: name,
+            syn_reach: syn_reach,
+            prevalence: prevalence,
+        }
     }
 
     #[inline] pub fn name(&self) -> &str { self.name.as_str() }
     #[inline] pub fn syn_reach(&self) -> i8 { self.syn_reach }
+    #[inline] pub fn prevalence(&self) -> u8 { self.prevalence }
 }
 
-impl<'a> From<(&'a str, i8)> for TuftSourceLayer {
-    fn from(tup: (&'a str, i8)) -> TuftSourceLayer {
-        TuftSourceLayer::new(tup.0.to_owned(), tup.1)
+impl<'a> From<(&'a str, i8, u8)> for TuftSourceLayer {
+    fn from(tup: (&'a str, i8, u8)) -> TuftSourceLayer {
+        TuftSourceLayer::new(tup.0.to_owned(), tup.1, tup.2)
     }
 }
 
@@ -121,7 +130,7 @@ impl CellScheme {
         }.validate()
     }
 
-    pub fn pyramidal<'a>(dst_srcs: &[(&'a str, i8)], dens_per_tft_l2: u8, syns_per_den_l2: u8,
+    pub fn pyramidal<'a>(dst_srcs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8, syns_per_den_l2: u8,
             thresh: u32) -> LayerKind
     {
         let src_lyrs_vec = dst_srcs.into_iter().map(|&sl| sl.into()).collect();
@@ -143,7 +152,7 @@ impl CellScheme {
     }
 
     // SWITCH TO DISTAL
-    pub fn spiny_stellate<'a>(prx_srcs: &[(&'a str, i8)], syns_per_den_l2: u8, thresh: u32,
+    pub fn spiny_stellate<'a>(prx_srcs: &[(&'a str, i8, u8)], syns_per_den_l2: u8, thresh: u32,
             ) -> LayerKind
     {
         let src_lyrs_vec = prx_srcs.into_iter().map(|&sl| sl.into()).collect();
@@ -165,8 +174,6 @@ impl CellScheme {
     }
 
     pub fn inhibitory(cols_per_cel_l2: u8, src: &str) -> LayerKind {
-        // let tft_scheme = TuftScheme::new(DendriteClass::Basal, DendriteKind::Other,
-        //     0, 0, vec![TuftSourceLayer::new(dst_src.to_owned(), 0)], None);
 
         LayerKind::Cellular(CellScheme {
             // cols_per_cel_l2: cols_per_cel_l2,
@@ -189,8 +196,8 @@ impl CellScheme {
 
     pub fn minicolumn(psal_lyr: &'static str, ptal_lyr: &'static str,) -> LayerKind {
         let tft_scheme = TuftScheme::new(DendriteClass::Basal, DendriteKind::Other, 0, 0,
-            vec![TuftSourceLayer::new(psal_lyr.to_owned(), 0),
-            TuftSourceLayer::new(ptal_lyr.to_owned(), 0)], None).and_tft_id(0);
+            vec![TuftSourceLayer::new(psal_lyr.to_owned(), 0, 1),
+            TuftSourceLayer::new(ptal_lyr.to_owned(), 0, 1)], None).and_tft_id(0);
 
         LayerKind::Cellular(CellScheme {
             // cols_per_cel_l2: 0,
