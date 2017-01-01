@@ -7,8 +7,8 @@ use ocl::{self, ProQue, SpatialDims, Buffer, EventList, Result as OclResult};
 use ocl::traits::OclPrm;
 use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer};
 
-// #[cfg(test)]
-// pub use self::tests::{MinicolumnsTest};
+#[cfg(test)]
+pub use self::tests::{MinicolumnsTest};
 
 
 pub struct Minicolumns {
@@ -151,34 +151,47 @@ impl Minicolumns {
     pub fn aff_out_axn_range(&self) -> Range<usize> {
         self.aff_out_axn_idz as usize..self.aff_out_axn_idz as usize + self.dims.columns() as usize
     }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        assert!(self.dims.to_len() == self.flag_sets.len());
+        assert!(self.flag_sets.len() == self.best_den_states.len());
+        self.flag_sets.len()
+    }
+
+    #[inline]
+    pub fn kern_activate(&self) -> &ocl::Kernel { &self.kern_activate }
+    pub fn kern_output(&self) -> &ocl::Kernel { &self.kern_output }
 }
 
 
-// #[cfg(test)]
-// pub mod tests {
-//     use std::ops::Range;
-//     use super::Minicolumns;
+#[cfg(test)]
+pub mod tests {
+    use std::ops::Range;
+    use ocl::util;
+    use super::Minicolumns;
 
-//     pub trait MinicolumnsTest {
-//         fn print_range(&mut self, range: Range<usize>);
-//         fn print_all(&mut self);
-//     }
+    pub trait MinicolumnsTest {
+        fn print_range(&self, range: Option<Range<usize>>);
+        fn print_all(&self);
+    }
 
-//     impl MinicolumnsTest for Minicolumns {
-//         fn print_range(&mut self, range: Range<usize>) {
-//             print!("mcols.flag_sets: ");
-//             self.flag_sets.print(1 << 0, Some((0, 255)),
-//                 Some(range.clone()), false);
+    impl MinicolumnsTest for Minicolumns {
+        fn print_range(&self, idx_range: Option<Range<usize>>) {
+            let mut vec = vec![0; self.len()];
 
-//             print!("mcols.best_den_states: ");
-//             self.best_den_states.print(1 << 0, Some((0, 255)),
-//                 Some(range.clone()), false);
-//         }
+            print!("mcols.flag_sets: ");
+            self.flag_sets.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
-//         fn print_all(&mut self) {
-//             let range = 0..self.flag_sets.len();
-//             self.print_range(range);
-//         }
-//     }
+            print!("mcols.best_den_states: ");
+            self.best_den_states.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
+        }
 
-// }
+        fn print_all(&self) {
+            self.print_range(None);
+        }
+    }
+
+}

@@ -25,6 +25,8 @@ impl LayerMap {
                     ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> LayerMap {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...",
             area_sch.name(), mt = cmn::MT);
+        println!("{mt}{mt}{mt}[Layer ID] <Layer Name>: Option(Slice Range): {{ Layer Tags }}",
+            mt = cmn::MT);
 
         let lm_scheme = layer_map_sl[area_sch.layer_map_name()].clone();
         // let lm_scheme_kind = lm_scheme.kind().clone();

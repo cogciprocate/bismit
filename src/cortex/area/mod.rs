@@ -23,3 +23,4 @@ pub use self::sensory_filter::SensoryFilter;
 #[cfg(test)] pub use self::synapses::{SynCoords, SynapsesTest, syn_idx};
 #[cfg(test)] pub use self::axon_space::{AxonSpaceTest, AxnCoords};
 #[cfg(test)] pub use self::dendrites::{DenCoords, DendritesTest, den_idx};
+#[cfg(test)] pub use self::minicolumns::MinicolumnsTest;

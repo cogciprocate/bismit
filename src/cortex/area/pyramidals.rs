@@ -243,6 +243,7 @@ impl PyramidalLayer {
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
     // #[inline] pub fn pyr_states(&self) -> &Buffer<u8> { &self.pyr_states }
     #[inline] pub fn tft_best_den_ids(&self) -> &Buffer<u8> { &self.tft_best_den_ids }
+    #[inline] pub fn tft_best_den_states_raw(&self) -> &Buffer<u8> { &self.tft_best_den_states_raw }
     #[inline] pub fn tft_best_den_states(&self) -> &Buffer<u8> { &self.tft_best_den_states }
 }
 
@@ -269,16 +270,26 @@ impl DataCellLayer for PyramidalLayer {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
         self.dens().cycle(wait_events);
 
+        // [DEBUG]: TEMPORARY:
+        self.pyr_cycle_kernel.default_queue().finish();
+
         for (tft_id, tft_cycle_kernel) in self.pyr_tft_cycle_kernels.iter()
                 .enumerate()
         {
             if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing cycle kernels for tft: {}...", tft_id); }
             tft_cycle_kernel.cmd().ewait_opt(wait_events).enq()
                 .expect("bismit::PyramidalLayer::tft_cycle");
+
+            // [DEBUG]: TEMPORARY:
+            tft_cycle_kernel.default_queue().finish();
         }
 
+        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell somas..."); }
         self.pyr_cycle_kernel.cmd().ewait_opt(wait_events).enq()
                 .expect("bismit::PyramidalLayer::cycle");
+
+        // [DEBUG]: TEMPORARY:
+        self.pyr_cycle_kernel.default_queue().finish();
     }
 
     #[inline]
@@ -435,13 +446,23 @@ pub mod tests {
             let u_range = RandRange::new(0, self.dims().u_size());
 
             let slc_id_lyr = slc_range.ind_sample(self.rng());
-            let u_id = u_range.ind_sample(self.rng());
             let v_id = v_range.ind_sample(self.rng());
+            let u_id = u_range.ind_sample(self.rng());
 
             let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
 
             CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
                 //self.tft_count, self.dens_per_tft_l2(), self.syns_per_den_l2()
+        }
+
+        fn last_cel_coords(&self) -> CelCoords {
+            let slc_id_lyr = self.dims().depth() - 1;
+            let v_id = self.dims().v_size() - 1;
+            let u_id = self.dims().u_size() - 1;
+
+            let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
+
+            CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
         }
 
 

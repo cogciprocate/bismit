@@ -5,7 +5,8 @@ use super::{testbed, util};
 
 
 const DENS_TEST_ITERATIONS: usize = 500;
-const CELS_TEST_ITERATIONS: usize = 1; //50;
+// const CELS_TEST_ITERATIONS: usize = 1; //50;
+const CELS_TEST_ITERATIONS: usize = 50; //50;
 const PRINT_DETAILS: bool = false;
 
 
@@ -171,7 +172,8 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
 
 #[test]
 fn cycle_random_dens() {
-    let mut cortex = testbed::fresh_cortex();
+    // let mut cortex = testbed::fresh_cortex();
+    let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
     let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
 
     // area.ptal_mut().dens_mut().syns_mut().set_all_to_zero();
@@ -197,7 +199,7 @@ fn cycle_random_dens() {
     //     area.ptal().dens().syns().states().cmd().fill(0, None).enq().unwrap();
     // //////
 
-    for _ in 0..DENS_TEST_ITERATIONS {
+    for test_iter in 0..DENS_TEST_ITERATIONS {
 
         //=============================================================================
         //=================================== INIT ====================================
@@ -207,7 +209,15 @@ fn cycle_random_dens() {
         // area.ptal_mut().dens_mut().syns_mut().set_all_to_zero();
         // area.axns.states.cmd().fill(&[0], None).enq().unwrap();
 
-        let cel_coords = area.ptal_mut().rand_cel_coords();
+        // Check the very last coordinate first just to do a bit of a segfault
+        // check (really only works when running on an OpenCL platform which
+        // uses host memory). After that, choose cell coordinates at random.
+        let cel_coords = if test_iter == 0 {
+            area.ptal_mut().last_cel_coords()
+        } else {
+            area.ptal_mut().rand_cel_coords()
+        };
+
         let den_coords = area.ptal_mut().dens_mut().rand_den_coords(cel_coords.clone());
 
         let tft_syn_idz = area.ptal().dens().syns().syn_idzs_by_tft()[den_coords.tft_id];

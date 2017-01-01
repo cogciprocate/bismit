@@ -236,7 +236,7 @@ impl LayerInfo {
         let slc_range = if ttl_slc_range.len() > 0 { Some(ttl_slc_range) } else { None };
         sources.shrink_to_fit();
 
-        println!("{mt}{mt}{mt}<{}>: {:?}: {}", name, slc_range, layer_tags, mt = cmn::MT);
+        println!("{mt}{mt}{mt}[{}] <{}>: {:?}: {}", layer_id, name, slc_range, layer_tags, mt = cmn::MT);
 
         // Print only the source layer info string:
         for dbg_string in src_layer_debug {

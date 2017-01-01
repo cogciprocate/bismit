@@ -4,8 +4,8 @@ use cortex::Dendrites;
 use cmn::{/*self,*/ CorticalDims};
 use map::{CellScheme};
 
-// #[cfg(test)]
-// pub use self::tests::{DataCellLayerTest};
+#[cfg(test)]
+pub use self::tests::{DataCellLayerTest, CelCoords};
 
 pub trait DataCellLayer {
     fn learn(&mut self);
@@ -44,6 +44,7 @@ pub mod tests {
         fn print_all(&self, /*print_children: bool*/);
         fn rng(&mut self) -> &mut XorShiftRng;
         fn rand_cel_coords(&mut self) -> CelCoords;
+        fn last_cel_coords(&self) -> CelCoords;
         fn cel_idx(&self, slc_id: u8, v_id: u32, u_id: u32)-> u32;
         fn celtft_idx(&self, tft_id: usize, cel_coords: &CelCoords) -> u32;
         fn set_all_to_zero(&mut self);

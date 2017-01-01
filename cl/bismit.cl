@@ -228,7 +228,8 @@ static inline int rnd_mix(int const rnd_a, int seed) {
     return seed;
 }
 
-static inline uint calc_syn_idz(uint const tuft_id, uint const cel_count, uint const cel_id, 
+// [NOTE]: Pre-variable-tuft size (2016-Dec-31).
+static inline uint calc_syn_idz_OLD(uint const tuft_id, uint const cel_count, uint const cel_id, 
             uchar const syns_per_tft_l2) 
 {
     uint const syn_tuft_ofs = mul24(tuft_id, cel_count) << syns_per_tft_l2;
@@ -701,7 +702,6 @@ __kernel void den_cycle_DEPRICATE(
 }
 
 
-
 // Cycles dendrites.
 __kernel void den_cycle_tft(
             __global uchar const* const syn_states,
@@ -712,45 +712,36 @@ __kernel void den_cycle_tft(
             __private uint const den_threshold,
             __global uchar* const den_energies,
             __global uchar* const den_states_raw,
-            //__global int* const aux_ints_1,
+            __global int* const aux_ints_0,
+            __global int* const aux_ints_1,
             __global uchar* const den_states) 
 {
-    uint const den_idx = get_global_id(0) + tft_den_idz;
-    uint const syn_idz = den_idx << syns_per_den_l2;
 
-    // uchar den_energy = den_energies[den_idx];
+    // uint const den_idx = get_global_id(0) + tft_den_idz;
+    uint const den_id_lyrtft = get_global_id(0);
+    uint const syn_idz_den = (den_id_lyrtft << syns_per_den_l2) + tft_syn_idz;
+    uint const syn_idn_den = syn_idz_den + (1 << syns_per_den_l2);
 
     int syn_sum = 0;
     int syn_sum_raw = 0;
 
-    int const syn_idn = (1 << syns_per_den_l2);
-
-    for (int syn_id = 0; syn_id < syn_idn; syn_id += 1) {
-        char syn_strength = syn_strengths[syn_idz + syn_id];
-        uchar syn_state = syn_states[syn_idz + syn_id]; 
+    for (uint syn_idx = syn_idz_den; syn_idx < syn_idn_den; syn_idx++) {
+        char syn_strength = syn_strengths[syn_idx];
+        uchar syn_state = syn_states[syn_idx];
         syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum); 
         syn_sum_raw += syn_state;
     }
     
     syn_sum = mul24((syn_sum > den_threshold), syn_sum);
 
-    // if (syn_sum != 0) {
-    //     if (den_energy >= ENERGY_LEVEL_MIN) {
-    //         den_energy -= ENERGY_LEVEL_MIN;
-    //     } else {
-    //         den_energy += ENERGY_REGEN_AMOUNT;
-    //         syn_sum = 0;
-    //     }
-    // } else {
-    //     if (den_energy < ENERGY_LEVEL_MAX) {
-    //         den_energy += ENERGY_REGEN_AMOUNT;
-    //     }
-    // }
-
     int den_reduction = syns_per_den_l2 - 1;
 
-    den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255); 
-    den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255); 
+    uint const den_idx = den_id_lyrtft + tft_den_idz;
+
+    ////// DEBUG: RESTORE ME:
+        den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255); 
+        den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255); 
+    //////
 }
 
 
@@ -954,7 +945,7 @@ __kernel void sst_ltp_simple(
     // END TESTING    
 
     if (axn_state) {
-        uint const syn_idz = calc_syn_idz(tuft_id, cel_count, cel_id, syns_per_tft_l2);
+        uint const syn_idz = calc_syn_idz_OLD(tuft_id, cel_count, cel_id, syns_per_tft_l2);
         prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tft_l2, rnd, syn_strengths);
     }
 }
@@ -992,7 +983,7 @@ __kernel void sst_ltp(
         uint const axn_state = axn_states[cel_axn_idx];
 
         if (axn_state) {            
-            uint const syn_idz = calc_syn_idz(tuft_id, cel_count, cel_idx, syns_per_tft_l2);
+            uint const syn_idz = calc_syn_idz_OLD(tuft_id, cel_count, cel_idx, syns_per_tft_l2);
             prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tft_l2, rnd, syn_strengths);
         }
     }
@@ -1286,6 +1277,7 @@ __kernel void pyr_tft_ltp(
             __private uint const dens_per_tft_l2,
             __private uint const syns_per_den_l2,
             __private uint const syns_per_tft_l2,
+
             __private uint const cels_per_cel_grp,
             __private uint const axn_idz_cel_lyr,
             __private int const learning_rate_l2i,
@@ -1294,7 +1286,7 @@ __kernel void pyr_tft_ltp(
             __global uchar* const cel_flag_sets,
             __global int* const aux_ints_0,
             __global int* const aux_ints_1,
-            __global char* const syn_strengths) 
+            __global char* const syn_strengths)
 {
     uint const cel_grp_id = get_global_id(0);
     uint const cel_grp_count = get_global_size(0);

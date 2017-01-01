@@ -1,6 +1,7 @@
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel};
+use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
 use map::{CellKind, CellScheme, DendriteKind};
 use cortex::{AxonSpace, Synapses};
@@ -48,15 +49,22 @@ impl Dendrites {
 
         for tft_scheme in cell_scheme.tft_schemes() {
             let tft_den_idz = den_count_ttl;
-            let tft_den_count = dims.cells()<< tft_scheme.dens_per_tft_l2();
-
             den_idzs_by_tft.push(tft_den_idz);
+
+            let tft_den_count = dims.cells() << tft_scheme.dens_per_tft_l2();
             den_counts_by_tft.push(tft_den_count);
+
             den_count_ttl += tft_den_count;
+
+            // // [DEBUG]:
+            // println!("###########  DENDRITE: tft_den_idz: {}", tft_den_idz);
+            // println!("###########  DENDRITE: tft_den_count: {}", tft_den_count);
+            // println!("###########  DENDRITE: den_count_ttl: {}", den_count_ttl);
+            // println!("");
         }
 
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None).unwrap();
         let states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None).unwrap();
         let energies = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None).unwrap();
         let thresholds = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None).unwrap();
         // energies.cmd().fill(255, None).enq().unwrap();
@@ -65,14 +73,13 @@ impl Dendrites {
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}",
             layer_name, dims, states.len(), mt = cmn::MT);
 
-        // let syns_dims = dims.clone_with_ptl2((dims.per_tft_l2() + syns_per_den_l2 as i8));
-        // let syns = try!(Synapses::new(layer_name, syns_dims, cell_scheme.clone(), den_kind, cell_kind,
-        //     area_map, axons, /*aux,*/ ocl_pq));
-        let syns = try!(Synapses::new(layer_name, layer_id, dims, cell_scheme.clone(), den_kind, cell_kind,
-            area_map, axons, ocl_pq));
+        let syns = Synapses::new(layer_name, layer_id, dims, cell_scheme.clone(), den_kind, cell_kind,
+            area_map, axons, ocl_pq)?;
 
-        for (tft_id, (tft_scheme, &tft_den_idz)) in cell_scheme.tft_schemes().iter()
-                .zip(den_idzs_by_tft.iter()).enumerate()
+        for (tft_id, ((tft_scheme, &tft_den_idz), &tft_den_count)) in cell_scheme.tft_schemes().iter()
+                .zip(den_idzs_by_tft.iter())
+                .zip(den_counts_by_tft.iter())
+                .enumerate()
         {
             let syns_per_den_l2 = tft_scheme.syns_per_den_l2();
             let den_threshold = tft_scheme.thresh_init().unwrap_or(cmn::DENDRITE_DEFAULT_INITIAL_THRESHOLD);
@@ -81,8 +88,14 @@ impl Dendrites {
 
             let tft_syn_idz = syns.syn_idzs_by_tft()[tft_scheme.tft_id()];
 
+            // [DEBUG]:
+            println!("{mt}{mt}{mt}{mt}{mt}DENDRITE TUFT: \
+                tft_id: {}, tft_den_idz: {}, tft_syn_idz: {}, tft_scheme: {:?}",
+                tft_id, tft_den_idz, tft_syn_idz, tft_scheme, mt = cmn::MT);
+
+
             kernels.push(ocl_pq.create_kernel("den_cycle_tft").expect("[FIXME]: HANDLE ME")
-                .gws(SpatialDims::One(states.len()))
+                .gws(SpatialDims::One(tft_den_count as usize))
                 .arg_buf(syns.states())
                 .arg_buf(syns.strengths())
                 .arg_scl(tft_den_idz)
@@ -91,8 +104,8 @@ impl Dendrites {
                 .arg_scl(den_threshold)
                 .arg_buf(&energies)
                 .arg_buf(&states_raw)
-                // .arg_buf_named("aux_ints_0", None)
-                // .arg_buf_named("aux_ints_1", None)
+                .arg_buf_named::<i32>("aux_ints_0", None)
+                .arg_buf_named::<i32>("aux_ints_1", None)
                 .arg_buf(&states)
             );
 
@@ -136,6 +149,9 @@ impl Dendrites {
         for kern in self.kernels.iter() {
             if DEBUG_KERN { println!("Dens: Cycling kern_cycle..."); }
             kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
+
+            // [DEBUG]: TEMPORARY:
+            kern.default_queue().finish();
         }
     }
 
@@ -148,6 +164,21 @@ impl Dendrites {
 
     pub fn regrow(&mut self) {
         self.syns.regrow();
+    }
+
+    // Debugging purposes
+    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, buf: &Buffer<T>)
+            -> CmnResult<()>
+    {
+        let using_aux = true;
+
+        if using_aux {
+            for kernel in self.kernels.iter_mut() {
+                kernel.set_arg_buf_named(name, Some(buf))?;
+            }
+        }
+
+        Ok(())
     }
 
     #[inline] pub fn layer_id(&self) -> usize { self.layer_id }

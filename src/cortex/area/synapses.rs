@@ -283,6 +283,9 @@ impl Synapses {
         for kern in self.kernels.iter() {
             if DEBUG_KERN { printlnc!(yellow: "Syns: Enqueuing kernel: '{}'...", kern.name()); }
             kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
+
+            // [DEBUG]: TEMPORARY:
+            kern.default_queue().finish();
         }
     }
 
@@ -321,8 +324,8 @@ impl Synapses {
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn strengths(&self) -> &Buffer<i8> { &self.strengths }
     #[inline] pub fn src_slc_ids(&self) -> &Buffer<u8> { &self.src_slc_ids }
-    #[inline] pub fn src_col_u_offs(&self) -> &Buffer<i8> { &self.src_col_v_offs }
     #[inline] pub fn src_col_v_offs(&self) -> &Buffer<i8> { &self.src_col_v_offs }
+    #[inline] pub fn src_col_u_offs(&self) -> &Buffer<i8> { &self.src_col_u_offs }
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
     #[inline] pub fn count(&self) -> u32 { self.states.len() as u32 }
     #[inline] pub fn tft_count(&self) -> usize { self.src_idx_caches_by_tft.len() }
@@ -475,7 +478,7 @@ pub mod tests {
         fn set_src_slc(&mut self, src_slc_id: u8, idx: usize);
         fn syn_state(&self, idx: u32) -> u8;
         fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords;
-        fn print_src_slc_ids(&self);
+        fn print_src_slc_ids(&self, idx_range: Option<Range<usize>>);
         fn print_range(&self, range: Option<Range<usize>>);
         fn print_all(&self);
         fn rng(&mut self) -> &mut XorShiftRng;
@@ -543,12 +546,14 @@ pub mod tests {
                 den_id_celtft, syn_id_den)
         }
 
-        fn print_src_slc_ids(&self) {
+        fn print_src_slc_ids(&self, idx_range: Option<Range<usize>>) {
             let mut vec = vec![0; self.states.len()];
+
+            let interval = if idx_range.is_some() { 1 << 0 } else { 1 << 8 };
 
             print!("syns.src_slc_ids: ");
             self.src_slc_ids.read(&mut vec).enq().unwrap();
-            util::print_slice(&vec, 1 << 6, None, None, false);
+            util::print_slice(&vec, interval, None, idx_range, false);
         }
 
         /// Prints a range of each of the synapse property buffers.
@@ -563,30 +568,30 @@ pub mod tests {
             let mut vec = vec![0; self.states.len()];
 
             print!("syns.states: ");
-            // self.states.print(1 << 0, Some((0, 255)),
-            //     Some(range.clone()), false);
             self.states.read(&mut vec).enq().unwrap();
             util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
-            // print!("syns.flag_sets: ");
-            // self.flag_sets.print(1 << 0, Some((0, 255)),
-            //     Some(range.clone()), false);
-
-            // print!("syns.strengths: ");
-            // self.strengths.print(1 << 0, Some((-128, 127)),
-            //     Some(range.clone()), false);
+            print!("syns.flag_sets: ");
+            self.flag_sets.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
             // print!("syns.src_slc_ids: ");
-            // self.src_slc_ids.print(1 << 0, Some((0, 255)),
-            //     Some(range.clone()), false);
+            // self.src_slc_ids.read(&mut vec).enq().unwrap();
+            // util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
-            // print!("syns.src_col_v_offs: ");
-            // self.src_col_v_offs.print(1 << 0, Some((-128, 127)),
-            //     Some(range.clone()), false);
+            let mut vec = vec![0i8; self.states.len()];
 
-            // print!("syns.src_col_u_offs: ");
-            // self.src_col_v_offs.print(1 << 0, Some((-128, 127)),
-            //     Some(range.clone()), false);
+            print!("syns.strengths: ");
+            self.strengths.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
+
+            print!("syns.src_col_v_offs: ");
+            self.src_col_v_offs.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
+
+            print!("syns.src_col_u_offs: ");
+            self.src_col_u_offs.read(&mut vec).enq().unwrap();
+            util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
         }
 
         fn print_all(&self) {
@@ -644,12 +649,17 @@ pub mod tests {
         pub fn syn_idx_range_celtft(&self) -> Range<usize> {
             let dens_per_celtft = 1 << (self.tft_dims.dens_per_tft_l2 as u32);
             let syns_per_den = 1 << (self.tft_dims.syns_per_den_l2 as u32);
-
-            // Get the idz for the synapse on this tuft with: den_id_celtft = 0, syn_id_den = 0:
-            let syn_idz = self.tft_syn_idz as usize;
             let syns_per_celtft = syns_per_den * dens_per_celtft;
+
+            // Get the idz for the synapse on this cell-tuft with:
+            // den_id_celtft = 0, syn_id_den = 0:
+            // let syn_idz = self.tft_syn_idz as usize;
+            let syn_idz_celtft = syn_idx(&self.cel_coords.lyr_dims, self.cel_coords.slc_id_lyr,
+                self.cel_coords.v_id, self.cel_coords.u_id, self.tft_syn_idz, &self.tft_dims,
+                0, 0) as usize;
+
             // syn_idz_cel_tft..(syn_idz_cel_tft + syns_per_tft as usize)
-            syn_idz..(syn_idz + syns_per_celtft as usize)
+            syn_idz_celtft..(syn_idz_celtft + syns_per_celtft as usize)
         }
 
         /// Returns the synapse index range for the dendrite to which this
@@ -668,7 +678,6 @@ pub mod tests {
             let syn_idz_den = syn_idx(&self.cel_coords.lyr_dims, self.cel_coords.slc_id_lyr,
                 self.cel_coords.v_id, self.cel_coords.u_id, self.tft_syn_idz, &self.tft_dims,
                 self.den_id_celtft, 0) as usize;
-
 
             syn_idz_den..(syn_idz_den + syns_per_den as usize)
         }

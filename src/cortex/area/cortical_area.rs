@@ -463,10 +463,10 @@ impl CorticalArea {
         pyrs_map.get_mut(ptal_name).unwrap()
             .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
 
-        // pyrs_map.get_mut(ptal_name).unwrap().dens_mut()
-        //     .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        // pyrs_map.get_mut(ptal_name).unwrap().dens_mut()
-        //     .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
+        pyrs_map.get_mut(ptal_name).unwrap().dens_mut()
+            .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        pyrs_map.get_mut(ptal_name).unwrap().dens_mut()
+            .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
 
         pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
             .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();

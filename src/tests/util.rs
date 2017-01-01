@@ -1,9 +1,10 @@
 #![allow(non_snake_case)]
 use std::ops::{Range};
+// use std::fmt::Display;
 
 use ocl::Buffer;
 use ocl::traits::{OclPrm, OclScl};
-use cortex::{CorticalArea, CorticalAreaTest, SynapsesTest};
+use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, SynapsesTest, MinicolumnsTest};
 use cmn::{self, DataCellLayer, DataCellLayerTest};
 
 const PRINT_DETAILS: bool = false;
@@ -39,25 +40,35 @@ bitflags! {
 // pub fn ptal_alco(area: &mut CorticalArea, activ: bool, learn: bool, cycle: bool, output: bool) {
 pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: bool) {
 
+    area.mcols().kern_activate().default_queue().finish();
+
     if switches.contains(ACTIVATE) {
         if print { printlnc!(yellow: "Activating..."); }
         area.mcols().activate();
     }
+
+    area.mcols().kern_activate().default_queue().finish();
 
     if switches.contains(LEARN) {
         if print { printlnc!(yellow: "Learning..."); }
         area.ptal_mut().learn();
     }
 
+    area.mcols().kern_activate().default_queue().finish();
+
     if switches.contains(CYCLE) {
         if print { printlnc!(yellow: "Cycling..."); }
         area.ptal_mut().cycle(None);
     }
 
+    area.mcols().kern_activate().default_queue().finish();
+
     if switches.contains(OUTPUT) {
         if print { printlnc!(yellow: "Outputting..."); }
         area.mcols().output(None);
     }
+
+    area.mcols().kern_activate().default_queue().finish();
 }
 
 
@@ -92,13 +103,21 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 // }
 
 // ASSERT_RANGE():
-//         - [FIXME] TODO: Use env.read_direct and read the entire range at once into a Vec.
-//        - [FIXME] TODO: See if using an iterator (map?) function would be more idiomatic.
-pub fn eval_range<T: OclPrm, F>(env: &Buffer<T>, idx_range: Range<usize>, comp: F) -> bool
-    where F: Fn(T) -> bool
+// - [FIXME] TODO: Use env.read_direct and read the entire range at once into a Vec.
+// - [FIXME] TODO: See if using an iterator (map?) function would be more idiomatic.
+pub fn eval_range<T: OclPrm, F>(idx_range: Range<usize>, buf: &Buffer<T>, comparison: F) -> bool
+    where F: Fn(T)-> bool
 {
-    for idx in idx_range.clone() {
-        if !comp(read_idx_direct(idx, env)) { return false };
+    let vec = read_idx_range_direct(idx_range.clone(), buf);
+
+    for (idx, val) in vec.into_iter().enumerate() {
+        // let val = read_idx_direct(idx, env);
+
+        if !comparison(val) {
+            println!("util::eval_range: The element at index: '{}' \
+                has failed the provided comparison argument.", idx);
+            return false
+        };
     }
 
     true
@@ -108,6 +127,12 @@ pub fn read_idx_direct<T: OclPrm>(idx: usize, buf: &Buffer<T>) -> T {
     let mut val: [T; 1] = [Default::default()];
     buf.cmd().read(&mut val).offset(idx).enq().unwrap();
     val[0]
+}
+
+pub fn read_idx_range_direct<T: OclPrm>(idx_range: Range<usize>, buf: &Buffer<T>) -> Vec<T> {
+    let mut vec = vec![Default::default(); idx_range.len()];
+    buf.cmd().read(&mut vec).offset(idx_range.start).enq().unwrap();
+    vec
 }
 
 pub fn fill_vec<T: OclPrm>(buf: &Buffer<T>, vec: &mut Vec<T>) {
@@ -124,12 +149,23 @@ pub fn fill_new_vec<T: OclPrm>(buf: &Buffer<T>) -> Vec<T> {
 pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
     //println!("\n - Confirm 1A - Activate");
     println!("{}", desc);
-    area.ptal_mut().print_all();
-    area.ptal_mut().dens_mut().syns_mut().print_all();
-    area.print_aux();
-    // [FIXME]: BRING BACK:
-    // area.mcols_mut().print_all();
     area.print_axns();
+    area.ptal().dens().syns().print_all();
+    area.ptal().dens().print_all();
+    area.ptal().print_all();
+    area.mcols().print_all();
+    area.print_aux();
+}
+
+pub fn print_all_syn_range(range: Range<usize>, area: &mut CorticalArea, desc: &'static str) {
+    println!("{}", desc);
+    area.print_axns();
+    area.ptal().dens().syns().print_range(Some(range));
+    area.ptal().dens().print_all();
+    area.ptal().print_all();
+    area.mcols().print_all();
+    area.print_aux();
+    unimplemented!();
 }
 
 // pub fn print_range(range: Range<usize>) -> String {

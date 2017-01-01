@@ -1,3 +1,4 @@
+// use std::io;
 use std::ops::Range;
 
 use cortex::{Cortex, CorticalAreaTest, SynapsesTest, SynCoords, DendritesTest};
@@ -10,7 +11,7 @@ use super::util::{self, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL};
 // const LEARNING_ITERS_PER_CELL: usize = 2;
 const LEARNING_CONTINUATION_ITERS: usize = 3;
 
-const PRINT_DEBUG_INFO: bool = true;
+const PRINT_DEBUG_INFO: bool = false;
 const PRINT_FINAL_ITER_ONLY: bool = false;
 
 //=============================================================================
@@ -81,8 +82,8 @@ fn dst_den_learning() {
     let mut ltb = LearningTestBed::new();
     // 180 -> +-64 (slow), +-96 (fast)
     // 360 -> +-96 (slow), +-119 (fast)
-    let on_focus_iters = 180;
-    let off_focus_iters = 180;
+    let on_focus_iters = 8;
+    let off_focus_iters = 8;
     // let on_focus_iters = 1;
     // let off_focus_iters = 1;
     printlnc!(yellow: "\nRunning test_on_off()...");
@@ -191,14 +192,10 @@ impl LearningTestBed {
             // A random dendrite id on the cell tuft:
             let syn_idx_range_den = syn_coords.syn_idx_range_den();
             // The synapse range for the entire tuft in which our random synapse resides:
-            let syn_idx_range_cel_tft = syn_coords.syn_idx_range_celtft();
+            let syn_idx_range_celtft = syn_coords.syn_idx_range_celtft();
 
-            // The first half of the synapses on our tuft:
-            // let syn_idx_range_cel_tft_first_half = syn_idx_range_cel_tft.start..(syn_idx_range_cel_tft.start + syn_idx_range_cel_tft.len() / 2);
-
-            // The second half of the synapses on our tuft:
-            // let syn_idx_range_cel_tft_second_half = (syn_idx_range_cel_tft.start + syn_idx_range_cel_tft.len() / 2)
-            //     ..(syn_idx_range_cel_tft.start + syn_idx_range_cel_tft.len());
+            assert!(syn_idx_range_den.start >= syn_idx_range_celtft.start &&
+                syn_idx_range_den.end <= syn_idx_range_celtft.end);
 
             // The first half of the synapses on our tuft:
             let syn_idx_range_den_first_half = syn_idx_range_den.start..(syn_idx_range_den.start
@@ -219,6 +216,7 @@ impl LearningTestBed {
             // <<<<< [FIXME] TODO: IMPLEMENT THIS (for efficiency): >>>>>
             //         area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range).unwrap();
 
+            // [TODO]: Reimplement using fill:
             for syn_idx in focus_syns.clone() {
                 area.ptal_mut().dens_mut().syns_mut().set_src_offs(fake_v_ofs, fake_u_ofs, syn_idx as usize);
                 area.ptal_mut().dens_mut().syns_mut().set_src_slc(fake_neighbor_slc, syn_idx as usize);
@@ -234,7 +232,7 @@ impl LearningTestBed {
                 {mt}[col_out]: aff_out_axn_idx (aff_out_slc: {}, col_id: {}): {}, \n\n\
                 \
                 {mt}fake_v_ofs: {}, fake_u_ofs: {}, \n\
-                {mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_cel_tft: {:?}, \n\
+                {mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_celtft: {:?}, \n\
                 {mt}syn_active_range (2nd half): {:?}, \n\
                 {mt}syn_coords: {}",
 
@@ -244,15 +242,14 @@ impl LearningTestBed {
                 aff_out_slc, cel_coords.col_id(), aff_out_axn_idx,
 
                 fake_v_ofs, fake_u_ofs,
-                fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_cel_tft,
+                fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_celtft,
                 focus_syns,
                 syn_coords,
                 mt = cmn::MT);
 
             // This and every other util::print_all() is very expensive:
             if PRINT_DEBUG_INFO {
-                // util::print_all(area, "\n - Confirm Init - ");
-                // unimplemented!();
+                util::print_all(area, "\n - Confirm Init - ");
             }
 
             (unused_slc_id,
@@ -305,17 +302,14 @@ impl LearningTestBed {
         printy!("\n###### on_focus_iters: ######");
 
         for i in 0..on_focus_iters {
-            // [DEBUG]: Prints a number for each iter
+            // // [DEBUG]: Prints a number for each iter
             // print!(" {}", i);
-            // io::stdout().flush().unwrap();
+            // std::sio::stdout().flush().unwrap();
 
             let final_iter = i == (on_focus_iters - 1);
 
-            ////// DEBUG: [FIXME]: RESTORE ME:
-            // let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
-            //     && PRINT_DEBUG_INFO;
-            let print_debug = false;
-            //////
+            let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
+                && PRINT_DEBUG_INFO;
 
             self.learning_iter(i, false, print_debug);
         }
@@ -323,21 +317,27 @@ impl LearningTestBed {
         printlnc!(yellow: "\n\nFlipping focus syns...");
         self.flip_focus_syns();
 
-        printy!("\n######off_focus_iters: ######");
+        printlny!("\n######off_focus_iters: ######");
 
         for i in 0..off_focus_iters {
-            // [DEBUG]: Prints a number for each iter
+            // // [DEBUG]: Prints a number for each iter
             // print!(" {}", i);
-            // io::stdout().flush().unwrap();
+            // std::io::stdout().flush().unwrap();
 
             let final_iter = i == (off_focus_iters - 1);
+
             let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
                 && PRINT_DEBUG_INFO;
+
+            // ////// [DEBUG]: REMOVE ME:
+            // let print_debug = true;
+            // //////
+
             self.learning_iter(i, true, print_debug);
         }
 
         printlnc!(yellow: "\n\nComplete.");
-        self.clean_up(true);
+        self.clean_up(true, true);
         print!("\n");
     }
 
@@ -366,6 +366,13 @@ impl LearningTestBed {
 
         let flpd_str = if flipped { "FLP" } else { "ORG" };
 
+        if print_debug {
+            area.ptal().dens().syns().print_src_slc_ids(Some(self.syn_coords.syn_idx_range_den()));
+            util::print_all(area, "\n - Pre-init - ");
+            print!("\n");
+            // unimplemented!();
+        }
+
         //=============================================================================
         //===================================== 0 =====================================
         //=============================================================================
@@ -386,21 +393,22 @@ impl LearningTestBed {
         util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
 
         if print_debug {
-            // util::print_all(area, "\n - Confirm 0 - "); print!("\n");
+            util::print_all(area, "\n - Confirm 0 - ");
+            print!("\n");
             // unimplemented!();
         }
 
-        assert!(util::eval_range(&area.ptal().dens().syns().states(), self.focus_syns.clone(),
+        assert!(util::eval_range(self.focus_syns.clone(), &area.ptal().dens().syns().states(),
             |x| x != 0), "Synapses in range '{}..{}' are not active.",
             self.focus_syns.start, self.focus_syns.end );
 
         assert!(util::read_idx_direct(den_idx as usize, area.ptal().dens().states_raw()) != 0,
             "Dendrite '{}' is not active. This could be because learning is disabled.", den_idx);
 
-        // Ensure that we have a non-zero best dendrite ID for the cell-tuft:
-        assert!(util::read_idx_direct(celtft_idx as usize, area.ptal().tft_best_den_states()) != 0);
+        // // Ensure that we have a non-zero raw best dendrite state for the cell-tuft:
+        // assert!(util::read_idx_direct(celtft_idx as usize, area.ptal().tft_best_den_states_raw()) != 0);
 
-        // Ensure that we have a the correct best dendrite ID:
+        // Ensure that we have the correct best dendrite ID:
         assert!(util::read_idx_direct(celtft_idx as usize, area.ptal().tft_best_den_ids()) as u32 ==
             self.syn_coords.den_id_celtft);
 
@@ -438,8 +446,8 @@ impl LearningTestBed {
         util::ptal_alco(area, ACTIVATE, print_debug);
 
         if print_debug {
-            // util::print_all(area, "\n - Confirm 1A - ");
-            // print!("\n");
+            util::print_all(area, "\n - Confirm 1A - ");
+            print!("\n");
             // unimplemented!();
         }
 
@@ -470,8 +478,8 @@ impl LearningTestBed {
         area.ocl_pq().queue().finish();
 
         if print_debug {
-            // util::print_all(area, "\n - Confirm 1B - ");
-            // print!("\n");
+            util::print_all(area, "\n - Confirm 1B - ");
+            print!("\n");
             // unimplemented!();
         }
 
@@ -489,8 +497,8 @@ impl LearningTestBed {
         util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
 
         if print_debug {
-            // util::print_all(area, "\n - Confirm 1C - ");
-            // print!("\n");
+            util::print_all(area, "\n - Confirm 1C - ");
+            print!("\n");
             // unimplemented!();
         }
 
@@ -515,8 +523,8 @@ impl LearningTestBed {
         util::ptal_alco(area, ACTIVATE, print_debug);
 
         if print_debug {
-            // util::print_all(area, "\n - Confirm 2A - ");
-            // print!("\n");
+            util::print_all(area, "\n - Confirm 2A - ");
+            print!("\n");
             // unimplemented!();
         }
 
@@ -538,14 +546,29 @@ impl LearningTestBed {
         util::ptal_alco(area, LEARN, print_debug);
 
         if print_debug {
-            // util::print_all(area, "\n - Confirm 2B - ");
-            // print!("\n");
+            util::print_all(area, "\n - Confirm 2B - ");
+            print!("\n");
             // unimplemented!();
         }
 
-        // <<<<< [FIXME] TODO: assert!(chosen-half of syns are STPOT, others are STDEP) >>>>>
 
-        // FLAGS: [pyr: 208], [syns: 1's & 2's], [mcol: 1]; (pyr and syns changed)
+        ////// DEBUG:
+            panic!("See 'calc_syn_idz_OLD()' in 'bismit.cl'. It is calculating indexes incorrectly.");
+
+        // Check that all synapses within the `focus_syns` range have the
+        // potentiation flag (`SYN_STPOT_FLAG`):
+        assert!(util::eval_range(self.focus_syns.clone(), &area.ptal().dens().syns().flag_sets(),
+            |x| x == cmn::SYN_STPOT_FLAG ), "tests::learning::learning_iter: \
+            'On-focus' synapse flags are not properly set to potentiation.");
+
+        // Check that all synapses within the `off_focus_syns` range have the
+        // depression flag (`SYN_STDEP_FLAG`):
+        assert!(util::eval_range(self.off_focus_syns.clone(), &area.ptal().dens().syns().flag_sets(),
+            |x| x == cmn::SYN_STDEP_FLAG ), "tests::learning::learning_iter: \
+            'Off-focus' synapse flags are not properly set to depression.");
+
+        // [FIXME]: Check for flags: [pyr: 208], [syns: 1's & 2's], [mcol: 1]; (pyr and syns changed)
+
 
         //=============================================================================
         //=============================== 2C ===================================
@@ -556,8 +579,8 @@ impl LearningTestBed {
         // util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
 
         if print_debug {
-            // util::print_all(area, "\n - Confirm 2C - ");
-            // print!("\n");
+            util::print_all(area, "\n - Confirm 2C - ");
+            print!("\n");
             // unimplemented!();
         }
 
@@ -571,7 +594,8 @@ impl LearningTestBed {
 
         // ACTIVATE, LEARN, CYCLE, & OUTPUT multiple times without touching inputs:
 
-        if print_debug {  printlnc!(yellow: "Performing complete cycle(A|L|C|O) {} times...", LEARNING_CONTINUATION_ITERS); }
+        if print_debug { printlnc!(yellow: "Performing complete cycle(A|L|C|O) {} times...",
+            LEARNING_CONTINUATION_ITERS); }
 
         for _ in 0..LEARNING_CONTINUATION_ITERS {
             util::ptal_alco(area, ALL, false);
@@ -587,7 +611,7 @@ impl LearningTestBed {
         //=============================================================================
         //=============================== 4 ===================================
         //=============================================================================
-        if print_debug {  println!(
+        if print_debug { println!(
             "\n ====================== {}[{}] 4: Deactivation ====================== ", flpd_str, i); }
 
         // ZERO PTAL SYNAPSE SOURCE AXON
@@ -598,11 +622,15 @@ impl LearningTestBed {
         // util::ptal_alco(area, ACTIVATE, print_debug);
 
         if print_debug {
-            util::print_all(area, "\n - Confirm 3 - "); print!("\n");
+            util::print_all(area, "\n - Confirm 4 - ");
+            print!("\n");
         }
 
-        assert!(util::eval_range(&area.ptal().dens().syns().flag_sets(), self.focus_syns.clone(),
-            |x| x == cmn::SYN_STPOT_FLAG ));
+        // Double-check that all synapses within the `focus_syns` range have the
+        // potentiation flag (`SYN_STPOT_FLAG`):
+        assert!(util::eval_range(self.focus_syns.clone(), &area.ptal().dens().syns().flag_sets(),
+            |x| x == cmn::SYN_STPOT_FLAG ), "tests::learning::learning_iter: \
+            Synapse flags are not properly set to potentiation.");
 
         // [FIXME] TODO: Check that off-focus synapses are STDEP
         // [FIXME] TODO: Check that synapses are correctly inactive
@@ -628,8 +656,8 @@ impl LearningTestBed {
         util::ptal_alco(area, ACTIVATE | LEARN | OUTPUT, print_debug);
 
         if print_debug {
-            // util::print_all(area, "\n - Confirm 3 - ");
-            // print!("\n");
+            util::print_all(area, "\n - Confirm 5 - ");
+            print!("\n");
             // unimplemented!();
         }
 
@@ -649,7 +677,7 @@ impl LearningTestBed {
 
     fn flip_focus_syns(&mut self) {
         // Zero the existing src slcs and offs for our dendrite:
-        self.clean_up(false);
+        self.clean_up(false, true);
 
         // Make sure our ranges are valid:
         //
@@ -672,8 +700,10 @@ impl LearningTestBed {
 
         // Set everything back up:
         let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
-        area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(self.unused_slc_id, None).enq().unwrap();
+        // area.ptal_mut().dens_mut().syns_mut().src_slc_ids()
+        //    .cmd().fill(self.unused_slc_id, None).enq().unwrap();
 
+        // [TODO]: Reimplement using fill:
         for syn_idx in self.focus_syns.clone() {
             area.ptal_mut().dens_mut().syns_mut().set_src_offs(self.fake_v_ofs, self.fake_u_ofs, syn_idx as usize);
             area.ptal_mut().dens_mut().syns_mut().set_src_slc(self.fake_neighbor_slc, syn_idx as usize);
@@ -681,7 +711,8 @@ impl LearningTestBed {
     }
 
 
-    fn clean_up(&mut self, zero_strengths: bool) {
+    // Wipes every synapse on the entire cell-tuft;
+    fn clean_up(&mut self, zero_strengths: bool, zero_flag_sets: bool) {
         //=============================================================================
         //=============================== CLEAN UP ===================================
         //=============================================================================
@@ -707,6 +738,18 @@ impl LearningTestBed {
             area.ptal_mut().dens_mut().syns_mut().strengths().cmd()
             .fill(0, Some(self.syn_coords.syn_idx_range_celtft().len()))
             .offset(self.syn_coords.syn_idx_range_celtft().start).enq().unwrap();
+        }
+
+        if zero_flag_sets {
+            area.ptal_mut().dens_mut().syns_mut().flag_sets().cmd()
+            .fill(0, Some(self.syn_coords.syn_idx_range_celtft().len()))
+            .offset(self.syn_coords.syn_idx_range_celtft().start).enq().unwrap();
+        }
+
+        if PRINT_DEBUG_INFO {
+            util::print_all(area, "\n - Post-clean-up - ");
+            print!("\n");
+            // unimplemented!();
         }
     }
 }
