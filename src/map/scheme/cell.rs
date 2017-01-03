@@ -5,6 +5,14 @@ use map::{CellKind, CellClass, LayerKind, DendriteClass, DendriteKind, Inhibitor
 use cmn;
 
 
+/// A source layer.
+///
+/// `prevalence` is a simple weight or factor applied to each layer during
+/// learning. If one source layer has a `prevalance` of `5` and all other
+/// source layers for a tuft have a `prevalance` of `1`, the source layer with
+/// the `5` will be five times more likely to form a synapse during
+/// regrowth/growth.
+///
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct TuftSourceLayer {
     name: String,

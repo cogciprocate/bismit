@@ -187,10 +187,10 @@ impl Synapses {
                 tft_dims, dims.clone()));
 
             kernels.push(Box::new({
-                ocl_pq.create_kernel("tft_cycle_syns")
+                // ocl_pq.create_kernel("tft_cycle_syns")
                 // ocl_pq.create_kernel("tft_cycle_syns_vec4")
                 // ocl_pq.create_kernel("layer_cycle_syns_wow")
-                // ocl_pq.create_kernel("layer_cycle_syns_wow_vec4")
+                ocl_pq.create_kernel("layer_cycle_syns_wow_vec4")
                     .expect("Synapses::new()")
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
