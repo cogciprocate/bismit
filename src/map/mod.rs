@@ -48,6 +48,12 @@ impl LayerAddress {
     #[inline] pub fn area_id(&self) -> usize { self.area_id }
 }
 
+impl From<(usize, usize)> for LayerAddress {
+    fn from(tup: (usize, usize)) -> LayerAddress {
+        LayerAddress::new(tup.0, tup.1)
+    }
+}
+
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub enum InhibitoryCellKind {
