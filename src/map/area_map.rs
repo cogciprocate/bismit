@@ -165,19 +165,28 @@ impl AreaMap {
 
     /// Returns a list of tuples of (source slice id, synapse reach) for a
     /// tuft of a cellular layer.
-    pub fn cel_src_slc_id_rchs(&self, lyr_id: usize, tft_id: usize) -> Vec<(u8, i8)> {
+    ///
+    /// If `use_prevalance` is true, repeats the (id, reach) tuple as
+    /// specified by the `TuftSourceLayer` prevalance parameter.
+    ///
+    pub fn cel_src_slc_id_rchs(&self, lyr_id: usize, tft_id: usize, use_prevalance: bool)
+            -> Vec<(u8, i8)>
+    {
         let li = self.layers.layer_info(lyr_id)
             .expect(&format!("AreaMap::layer_src_slc_ids(): No layer with id: '{}' found.",
                 lyr_id));
 
         let mut id_rchs = Vec::with_capacity(32);
-        let src_lyrs = li.cel_tft_src_lyrs(tft_id);
+        let tft_src_lyrs = li.cel_tft_src_lyrs(tft_id);
 
-        for src_lyr in src_lyrs.iter() {
+        for src_lyr in tft_src_lyrs.iter() {
             let src_slc_ids = self.layer_slc_ids(&[src_lyr.name()]);
+            let prevalence = if use_prevalance { src_lyr.prevalence() } else { 1 };
 
-            for id in src_slc_ids {
-                id_rchs.push((id, src_lyr.syn_reach()))
+            for _ in 0..prevalence {
+                for &id in src_slc_ids.iter() {
+                    id_rchs.push((id, src_lyr.syn_reach()))
+                }
             }
         }
 

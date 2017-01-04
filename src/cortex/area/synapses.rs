@@ -409,7 +409,7 @@ impl Synapses {
                 println!("{mt}{mt}{mt}{mt}{mt}\
                     SYNAPSES::GROW()[INIT]: '{}' ({:?}): src_slc_id_rchs: {:?}, \
                     syns_per_layer_tft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind,
-                    self.syn_src_slices.src_slc_id_rchs_by_tft(),
+                    self.syn_src_slices.src_slc_id_pools_by_tft(),
                     unsafe { *self.syn_counts_by_tft.get_unchecked(tft_id) },
                     syn_idz, syn_idn, mt = cmn::MT);
             }
