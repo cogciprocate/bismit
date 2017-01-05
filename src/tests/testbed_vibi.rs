@@ -26,17 +26,17 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
                 AxonTopology::Horizontal
             )
             .input_layer("rose_ctx", map::NS_IN | LayerTags::uid(ROSE_UID as u32),
-                AxonDomain::input(&[(InputTrack::Afferent,
+                AxonDomain::input(&[(InputTrack::Other,
                     &GlyphSequences::val_lyr_tags() | &AxonTag::custom(ROSE_UID).into()
                 )]),
                 AxonTopology::Horizontal
             )
             .input_layer("eff_in", map::FB_IN,
-                AxonDomain::input(&[(InputTrack::Efferent, [map::THAL_SP]), ]),
+                AxonDomain::input(&[(InputTrack::Efferent, [map::THAL_SP])]),
                 AxonTopology::Spatial
             )
             .input_layer("aff_in", map::FF_IN,
-                AxonDomain::input(&[(InputTrack::Afferent, GlyphSequences::img_lyr_tags()), ]),
+                AxonDomain::input(&[(InputTrack::Afferent, GlyphSequences::img_lyr_tags())]),
                 AxonTopology::Spatial
             )
             .input_layer("unused", map::UNUSED_TESTING, AxonDomain::Local, AxonTopology::Spatial)
@@ -68,10 +68,10 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
                 LayerKind::Axonal(AxonTopology::Horizontal))
         )
         .lmap(LayerMapScheme::new("gly_seq_rose_lm", LayerMapKind::Subcortical)
-            .layer("spatial", 1, map::FF_OUT,
+            .layer("spatial_rose", 1, map::FF_OUT,
                 AxonDomain::output(GlyphSequences::img_lyr_tags()),
                 LayerKind::Axonal(AxonTopology::Spatial))
-            .layer("horiz_ns", 1, map::NS_OUT | LayerTags::uid(ROSE_UID as u32),
+            .layer("horiz_ns_rose", 1, map::NS_OUT | LayerTags::uid(ROSE_UID as u32),
                 AxonDomain::output(GlyphSequences::val_lyr_tags()),
                 LayerKind::Axonal(AxonTopology::Horizontal))
         )

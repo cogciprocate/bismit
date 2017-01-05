@@ -98,9 +98,10 @@ impl ExternalPathway {
         let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|pl| pl).collect();
 
         assert!(pamap.get_input().layer_count() == p_layers.len(), "ExternalPathway::new(): \
-            Inputs for 'AreaScheme' ({}) must equal layers in 'LayerMapScheme' ({}). Ensure \
-            `InputScheme::layer_count()` is set correctly for {:?}",
-            pamap.get_input().layer_count(), p_layers.len(), pamap.get_input());
+            Inputs for the area scheme, \"{}\" ({}), must equal the layers in the layer map \
+            scheme, '{}' ({}). Ensure `InputScheme::layer_count()` is set correctly for {:?}",
+            pamap.name(), pamap.get_input().layer_count(), plmap.name(), p_layers.len(),
+            pamap.get_input());
 
         // let mut layers = HashMap::with_capacity_and_hasher(4, BuildHasherDefault::default());
         let mut layers = HashMap::with_capacity(4);

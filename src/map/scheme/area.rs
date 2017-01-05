@@ -59,9 +59,9 @@ impl AreaScheme {
         self
     }
 
-    pub fn other_area<A>(mut self, area_name: &'static str, new_tags: Option<&[(A, A)]>)
+    pub fn other_area(mut self, area_name: &'static str, new_tags: Option<&[(AxonTags, AxonTags)]>)
             -> AreaScheme
-            where A: Into<AxonTags> + Clone
+            // where A: Into<AxonTags> + Clone
     {
         let new_tags_owned = new_tags.map(|nt| {
             nt.into_iter()

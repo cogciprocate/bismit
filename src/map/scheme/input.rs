@@ -33,6 +33,7 @@ impl InputScheme {
 
     pub fn layer_count(&self) -> usize {
         match *self {
+            // InputScheme::None => 0,
             InputScheme::GlyphSequences { .. } => 2,
             InputScheme::ReversoScalarSequence { .. } => 2,
             InputScheme::VectorEncoder { ref ranges } => ranges.len(),
