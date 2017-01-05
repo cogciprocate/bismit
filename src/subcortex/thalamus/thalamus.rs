@@ -29,15 +29,15 @@
 //!
 //!
 
-#![allow(dead_code, unused_imports)]
+// #![allow(dead_code, unused_imports)]
 
 use std::ops::Range;
 use std::collections::HashMap;
 // use std::collections::hash_map::Entry;
 
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
-use map::{self, AreaMap, LayerTags, LayerMapKind, LayerAddress};
-use ocl::{Context, EventList, Buffer};
+use map::{self, AreaMap, LayerMapKind, LayerAddress};
+use ocl::{Context, EventList};
 use cortex::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList};
 use thalamus::{ExternalPathway, ExternalPathwayFrame};
@@ -48,6 +48,7 @@ use tract_terminal::{SliceBufferTarget, SliceBufferSource};
 /// Specifies whether or not the frame buffer for a source exists within the
 /// thalamic tract or an external source itself.
 #[derive(Debug)]
+#[allow(dead_code)]
 enum TractAreaBufferKind {
     Ocl,
     Vec,

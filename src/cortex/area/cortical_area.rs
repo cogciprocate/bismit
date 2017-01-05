@@ -22,12 +22,10 @@ pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 
 
 /// Information needed to read from and write to the thalamus for a layer
-/// uniquely identified by `tags`.
+/// uniquely identified by `addr`.
 ///
 /// `filter_key` is a tuple containing both the filter chain id and the filter
 /// layer id used when searching for the correct filter for an input source.
-///
-/// [TODO]: Convert area_name to a numeric id:
 ///
 #[derive(Debug)]
 pub struct IoLayerInfo {
@@ -134,10 +132,11 @@ impl IoLayerInfoCache {
     pub fn new(area_map: &AreaMap, filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>)
             -> IoLayerInfoCache
     {
-        let group_tags_list: [LayerTags; 6] = [
-            map::FF_IN, map::FB_IN, map::NS_IN,
-            map::FF_OUT, map::FB_OUT, map::NS_OUT
-        ];
+        // let group_tags_list: [LayerTags; 6] = [
+        //     map::FF_IN, map::FB_IN, map::NS_IN,
+        //     map::FF_OUT, map::FB_OUT, map::NS_OUT
+        // ];
+        let group_tags_list = [map::INPUT, map::OUTPUT];
 
         let mut groups = HashMap::with_capacity(group_tags_list.len());
 
@@ -518,11 +517,13 @@ impl CorticalArea {
     pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
         let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
-        self.intake(map::FF_IN, thal)?;
-        self.intake(map::NS_IN, thal)?;
+        // self.intake(map::FF_IN, thal)?;
+        // self.intake(map::NS_IN, thal)?;
+        self.intake(map::INPUT, thal)?;
 
         if !self.settings.disable_ssts {
-            let aff_input_events = { self.io_info.group_events(map::FF_IN).map(|wl| wl as &ClWaitList) };
+            // let aff_input_events = { self.io_info.group_events(map::FF_IN).map(|wl| wl as &ClWaitList) };
+            let aff_input_events = { self.io_info.group_events(map::INPUT).map(|wl| wl as &ClWaitList) };
             self.psal().cycle(aff_input_events);
         }
 
@@ -532,22 +533,25 @@ impl CorticalArea {
 
         if !self.settings.disable_mcols { self.mcols.activate(); }
 
-        self.intake(map::FB_IN, thal)?;
+        // self.intake(map::FB_IN, thal)?;
 
         if !self.settings.disable_pyrs {
             if !self.settings.disable_learning { self.ptal_mut().learn(); }
-            let eff_input_events = { self.io_info.group_events(map::FB_IN).map(|wl| wl as &ClWaitList) };
+            // let eff_input_events = { self.io_info.group_events(map::FB_IN).map(|wl| wl as &ClWaitList) };
+            let eff_input_events = { self.io_info.group_events(map::INPUT).map(|wl| wl as &ClWaitList) };
             self.ptal().cycle(eff_input_events);
         }
 
         if !self.settings.disable_mcols {
-            let output_events = { self.io_info.group_events_mut(map::FF_OUT) };
+            // let output_events = { self.io_info.group_events_mut(map::FF_OUT) };
+            let output_events = { self.io_info.group_events_mut(map::OUTPUT) };
             self.mcols.output(output_events);
         }
 
         if !self.settings.disable_regrowth { self.regrow(); }
 
-        self.output(map::FF_OUT, thal)?;
+        // self.output(map::FF_OUT, thal)?;
+        self.output(map::OUTPUT, thal)?;
 
         Ok(())
     }
@@ -559,7 +563,8 @@ impl CorticalArea {
                 let source = thal.tract_terminal_source(src_lyr.addr())?;
 
 
-                if group_tags.contains(map::FF_IN) && !self.filter_chains.is_empty()
+                // if group_tags.contains(map::FF_IN) && !self.filter_chains.is_empty()
+                if group_tags.contains(map::INPUT) && !self.filter_chains.is_empty()
                         && !self.settings.bypass_filters && src_lyr.filter_key.is_some()
                 {
                     if let &Some((filter_chain_id, filter_lyr_id)) = src_lyr.filter_key() {
