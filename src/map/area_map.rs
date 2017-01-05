@@ -275,7 +275,7 @@ impl AreaMap {
                 match src_lyr_sub_slcs {
                     // Sub-slices of Layer:
                     Some((area_id, slc_range)) => {
-                        match layer.src_lyr(area_id, slc_range) {
+                        match layer.src_lyr_old(area_id, slc_range) {
                             Some(src_lyr) => {
                                 let src_base_slc_id = src_lyr.tar_slc_range().start;
                                 let src_lyr_idz = self.axn_idz(src_base_slc_id);
@@ -334,33 +334,63 @@ impl AreaMap {
         }
     }
 
-    // // [TEMPORARY] - REMOVE ME ASAP
-    // pub fn axn_range_containing_tags(&self, layer_tags: LayerTags) -> Option<Range<u32>> {
-    //     let layers = self.layers.layers_containing_tags(layer_tags);
+    /// Returns the axon index range for a layer, or optionally a subset of
+    /// that range pertaining to a specific source layer, if the layer exists.
+    ///
+    pub fn lyr_axn_range(&self, lyr_addr: &LayerAddress, src_lyr_addr: Option<&LayerAddress>)
+            -> Option<Range<u32>>
+    {
+        assert!(lyr_addr.area_id() == self.area_id(), "AreaMap::lyr_axn_range: \
+            The layer address area id provided ({}) does not match this area's id ({}).",
+            lyr_addr.area_id(), self.area_id());
 
-    //     if layers.len() == 1 {
-    //         let layer_idz = self.axn_idz(layers[0].slc_range().start);
-    //         let layer_len = layers[0].axn_count();
+        if let Some(ref li) = self.layers.layer_info(lyr_addr.layer_id()) {
+            if let Some(sl_addr) = src_lyr_addr {
+                if let Some(sli) = li.src_lyr(sl_addr) {
+                    let src_base_slc_id = sli.tar_slc_range().start;
+                    let src_lyr_axn_idz = self.axn_idz(src_base_slc_id);
+                    let src_lyr_axn_len = sli.axn_count();
+                    let src_lyr_axn_range = src_lyr_axn_idz..(src_lyr_axn_idz + src_lyr_axn_len);
 
-    //         debug_assert!({
-    //                 let slc_idm = layers[0].slc_range().start + layers[0].depth() - 1;
-    //                 let slc_len = self.slices.slc_axn_count(slc_idm);
-    //                 let axn_idz = self.axn_idz(slc_idm);
-    //                 let axn_idn = axn_idz + slc_len;
-    //                 // println!("\n\n# (layer_idz, layer_len) = ({}, {}), axn_idn = {}, \
-    //                 //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n",
-    //                 //     layer_idz, layer_len, axn_idn, slc_len, axn_idz, layers[0]);
-    //                 (layer_idz + layer_len) == axn_idn
-    //             }, "AreaMap::axn_range(): Axon index mismatch.");
+                    debug_assert!(self.verify_axn_range(src_lyr_axn_range.clone(),
+                        src_base_slc_id, li.depth()), "AreaMap::lyr_axn_range: \
+                        Axon index range mismatch.");
 
-    //         Some(layer_idz..(layer_idz + layer_len))
-    //     } else if layers.len() == 0 {
-    //         None
-    //     } else {
-    //         panic!("AreaMap::axn_range_meshing_tags(): Internal error. Multiple layers matching \
-    //             flags: '{}' found.", layer_tags);
-    //     }
-    // }
+                    Some(src_lyr_axn_range)
+                } else {
+                    None
+                }
+            } else if let Some(lyr_slc_range) = li.slc_range() {
+                let base_slc_id = lyr_slc_range.start;
+                let lyr_axn_idz = self.axn_idz(base_slc_id);
+                let lyr_axn_len = li.ttl_axn_count();
+                let lyr_axn_range = lyr_axn_idz..(lyr_axn_idz + lyr_axn_len);
+
+                debug_assert!(self.verify_axn_range(lyr_axn_range.clone(),
+                    base_slc_id, li.depth()), "AreaMap::lyr_axn_range: \
+                    Axon index range mismatch.");
+
+                Some(lyr_axn_range)
+
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn verify_axn_range(&self, axn_range: Range<u32>, base_slc_id: u8, depth: u8) -> bool {
+        let slc_idm = base_slc_id + depth - 1;
+        let slc_len = self.slices.slc_axn_count(slc_idm);
+        let axn_idz = self.axn_idz(slc_idm);
+        let axn_idn = axn_idz + slc_len;
+        // [DEBUG]:
+        // println!("\n\n# (lyr_idz, lyr_len) = ({}, {}), axn_idn = {}, \
+        //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n",
+        //     lyr_idz, lyr_len, axn_idn, slc_len, axn_idz, layer);
+        axn_range.start == axn_idz && axn_range.end == axn_idn
+    }
 
     // NEW
     pub fn slc_src_layer_dims(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&CorticalDims> {

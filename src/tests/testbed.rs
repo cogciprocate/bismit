@@ -138,6 +138,9 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
     let mut layer_map_sl = LayerMapSchemeList::new();
 
     layer_map_sl.add(LayerMapScheme::new(lmap_name, LayerMapKind::Cortical)
+        .layer("extra_in", 0, map::FF_IN,
+            AxonDomain::input(&[(InputTrack::Other, &[map::THAL_NSP]), ]),
+            LayerKind::Axonal(AxonTopology::Horizontal))
         .layer("eff_in", 0, map::FB_IN,
             AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))

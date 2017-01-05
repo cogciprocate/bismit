@@ -78,7 +78,7 @@ impl LayerMapScheme {
         let mut layers: Vec<&LayerScheme> = Vec::with_capacity(16);
 
         for layer in self.layers.values().iter() {
-            match *layer.axon_domain() {
+            match *layer.axn_domain() {
                 AxonDomain::Output(ref at) => {
                     if at == search_tags {
                         layers.push(&layer);

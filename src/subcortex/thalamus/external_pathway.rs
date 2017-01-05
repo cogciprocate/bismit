@@ -127,7 +127,7 @@ impl ExternalPathway {
             // assert!(p_layer.axon_domain().is_output(), "ExternalPathway::new(): External areas \
             //     must currently be output layers. [area: '{}', layer: '{}']", pamap.name(), plmap.name());
 
-            let lyr_axn_tags = match *p_layer.axon_domain() {
+            let lyr_axn_tags = match *p_layer.axn_domain() {
                 AxonDomain::Output(ref axn_tags) => axn_tags.clone(),
                 _ => return Err(format!("ExternalPathway::new(): External areas \
                     must currently be output layers. [area: '{}', layer: '{}']", pamap.name(),

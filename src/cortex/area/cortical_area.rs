@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
-
 use cmn::{self, /*CmnError,*/ CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
 use ocl::{Device, ProQue, Context, Buffer, EventList, Event};
@@ -29,23 +28,23 @@ pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 ///
 #[derive(Debug)]
 pub struct IoLayerInfo {
-    addr: LayerAddress,
+    key: LayerAddress,
     axn_range: Range<u32>,
     filter_key: Option<(usize, usize)>,
 }
 
 impl IoLayerInfo {
-    pub fn new(src_lyr_addr: LayerAddress, axn_range: Range<u32>,
+    pub fn new(src_lyr_key: LayerAddress, axn_range: Range<u32>,
             filter_key: Option<(usize, usize)>) -> IoLayerInfo
     {
         IoLayerInfo {
-            addr: src_lyr_addr,
+            key: src_lyr_key,
             axn_range: axn_range,
             filter_key: filter_key,
         }
     }
 
-    #[inline] pub fn addr(&self) -> &LayerAddress { &self.addr }
+    #[inline] pub fn key(&self) -> &LayerAddress { &self.key }
     #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
     #[inline] pub fn filter_key(&self) -> &Option<(usize, usize)>{ &self.filter_key }
     // #[allow(dead_code)] #[inline] pub fn area_id(& self) -> usize { self.tract_key.0 }
@@ -62,47 +61,61 @@ pub struct IoLayerInfoGroup {
 
 impl IoLayerInfoGroup {
     pub fn new(area_map: &AreaMap, group_tags: LayerTags,
-            tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)>,
+            // tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)>,
+            tract_keys: Vec<(LayerAddress, Option<LayerAddress>)>,
             filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>) -> IoLayerInfoGroup
     {
         // Create a container for our i/o layer(s):
         let mut layers = Vec::<IoLayerInfo>::with_capacity(tract_keys.len());
 
-        for (lyr_addr, lyr_tags, src_lyr_key) in tract_keys.into_iter() {
-            let (local_layer_tags, filter_key) = if group_tags.contains(map::OUTPUT) {
-                (lyr_tags, None)
+        // for (lyr_addr, lyr_tags, src_lyr_key) in tract_keys.into_iter() {
+        for (lyr_addr, src_lyr_addr) in tract_keys.into_iter() {
+            // let (local_layer_tags, filter_key) = if group_tags.contains(map::OUTPUT) {
+            let (tract_key, filter_key) = if group_tags.contains(map::OUTPUT) {
+                // (lyr_tags, None)
+                let key = lyr_addr.clone();
+                (key, None)
             } else {
-                // For input layers, revert tags back to this area's
-                // perspective (they are flipped by `IoLayerInfoCache::new`
-                // because they are the list of tags from all source layers
-                // for input layers):
-                let local_layer_tags = lyr_tags.mirror_io();
+                // // For input layers, revert tags back to this area's
+                // // perspective (they are flipped by `IoLayerInfoCache::new`
+                // // because they are the list of tags from all source layers
+                // // for input layers):
+                // let local_layer_tags = lyr_tags.mirror_io();
 
-                // Determine the filter chain id:
-                let filter_chain_id = filter_chains.iter().position(|&(tags, _)| {
-                    tags.meshes(local_layer_tags)
-                });
+                // // [RESTORE ME]:
+                // // Determine the filter chain id:
+                // let filter_chain_id = filter_chains.iter().position(|&(tags, _)| {
+                //     tags.meshes(local_layer_tags)
+                // });
 
-                // If there is a filter chain id, find the filter layer id
-                // corresponding to the current remote layer area name then
-                // return both as a tuple to be used later when accessing the
-                // filter.
-                let filter_key = filter_chain_id.and_then(|fcid|
-                    filter_chains[fcid].1.first().and_then(|fc|
-                        fc.lyr_id(lyr_addr.area_id()).map(|lid| (fcid, lid))));
+                // // [RESTORE ME]:
+                // // If there is a filter chain id, find the filter layer id
+                // // corresponding to the current remote layer area name then
+                // // return both as a tuple to be used later when accessing the
+                // // filter.
+                // let filter_key = filter_chain_id.and_then(|fcid|
+                //     filter_chains[fcid].1.first().and_then(|fc|
+                //         fc.lyr_id(lyr_addr.area_id()).map(|lid| (fcid, lid))));
+                let filter_key = None;
 
                 // // [DEBUG]:
                 // println!("###### I/O LAYER ({}) FILTER_CHAIN_ID: '{:?}'", lyr_tags, filter_chain_id);
-                (local_layer_tags, filter_key)
+                // (local_layer_tags, filter_key)
+                let key = src_lyr_addr.clone().expect("IoLayerInfoCache::new(): Internal consistency \
+                    error. Source layer address for an output layer is empty.");
+                (key, filter_key)
             };
 
-            let axn_range = match area_map.axn_range_meshing_tags_either_way(local_layer_tags, src_lyr_key) {
-                Some(axn_range) => axn_range,
-                None => panic!("IoLayerInfoCache::new(): Internal consistency error: \
-                    tags: {}.", local_layer_tags),
-            };
+            // let axn_range = match area_map.axn_range_meshing_tags_either_way(local_layer_tags, src_lyr_key) {
+            //     Some(axn_range) => axn_range,
+            //     None => panic!("IoLayerInfoCache::new(): Internal consistency error: \
+            //         tags: {}.", local_layer_tags),
+            // };
+            let axn_range = area_map.lyr_axn_range(&lyr_addr, src_lyr_addr.as_ref()).expect(
+                &format!("IoLayerInfoCache::new(): Internal consistency error: \
+                    lyr_addr: {:?}, src_lyr_addr: {:?}.", &lyr_addr, src_lyr_addr));
 
-            let io_layer = IoLayerInfo::new(lyr_addr, axn_range, filter_key);
+            let io_layer = IoLayerInfo::new(tract_key, axn_range, filter_key);
             layers.push(io_layer);
         }
 
@@ -146,21 +159,45 @@ impl IoLayerInfoCache {
             // that layer. Either way, construct a tuple of '(area_name,
             // src_lyr_tags, src_lyr_key)' which can be used to construct a
             // key to access the correct thalamic tract:
-            let tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)> =
+            // let tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)> =
+            let tract_keys: Vec<(LayerAddress, Option<LayerAddress>)> =
                 if group_tags.contains(map::OUTPUT) {
-                    area_map.layers().layers_containing_tags(group_tags).iter()
+                    // area_map.layers().layers_containing_tags(group_tags).iter()
+                    //     .map(|li| {
+                    //         let lyr_addr = LayerAddress::new(li.layer_id(), area_map.area_id());
+                    //         (lyr_addr, li.layer_tags(), None)
+                    //     }).collect()
+                    area_map.layers().iter()
+                        .filter(|li| li.axn_domain().is_output())
                         .map(|li| {
                             let lyr_addr = LayerAddress::new(li.layer_id(), area_map.area_id());
-                            (lyr_addr, li.layer_tags(), None)
+                            // (lyr_addr, li.layer_tags(), None)
+                            (lyr_addr, None)
                         }).collect()
                 } else {
                     debug_assert!(group_tags.contains(map::INPUT));
-                    area_map.layers().layers_containing_tags_src_lyrs(group_tags).iter()
-                        .map(|sli| (
-                                sli.layer_addr().clone(),
-                                sli.layer_tags(),
-                                Some((sli.area_id(), sli.tar_slc_range().clone())),
-                            )).collect()
+
+                    // area_map.layers().layers_containing_tags_src_lyrs(group_tags).iter()
+                    //     .map(|sli| (
+                    //         sli.layer_addr().clone(),
+                    //         sli.layer_tags(),
+                    //         Some((sli.area_id(), sli.tar_slc_range().clone())),
+                    //     )).collect()
+
+                    // [NOTE]: Iterator flat mapping `sli` doesn't easily work
+                    // because it needs `li` to build its `LayerAddress`:
+                    let mut tract_keys = Vec::with_capacity(16);
+
+                    for li in area_map.layers().iter() {
+                        if li.axn_domain().is_input() {
+                            for sli in li.sources().iter() {
+                                let lyr_addr = LayerAddress::new(li.layer_id(), area_map.area_id());
+                                tract_keys.push((lyr_addr, Some(sli.layer_addr().clone())));
+                            }
+                        }
+                    }
+                    tract_keys.shrink_to_fit();
+                    tract_keys
                 };
 
             // If there was nothing in the area map for this group's tags,
@@ -560,7 +597,7 @@ impl CorticalArea {
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
         if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(group_tags) {
             for src_lyr in src_lyrs.iter_mut() {
-                let source = thal.tract_terminal_source(src_lyr.addr())?;
+                let source = thal.tract_terminal_source(src_lyr.key())?;
 
 
                 // if group_tags.contains(map::FF_IN) && !self.filter_chains.is_empty()
@@ -587,7 +624,7 @@ impl CorticalArea {
                         .map_err(|err|
                             err.prepend(&format!("CorticalArea::intake():: \
                             Source tract length must be equal to the target axon range length \
-                            (area: '{}', layer_addr: '{:?}'): ", area_name, src_lyr.addr())))?
+                            (area: '{}', layer_addr: '{:?}'): ", area_name, src_lyr.key())))?
                         .copy_from_slice_buffer(source)?;
                 }
             }
@@ -599,13 +636,13 @@ impl CorticalArea {
     fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
         if let Some((src_lyrs, wait_events)) = self.io_info.group(group_tags) {
             for src_lyr in src_lyrs.iter() {
-                let mut target = thal.tract_terminal_target(src_lyr.addr())?;
+                let mut target = thal.tract_terminal_target(src_lyr.key())?;
 
                 let source = OclBufferSource::new(&self.axns.states, src_lyr.axn_range(),
                         target.dims().clone(), Some(wait_events))
                     .map_err(|err| err.prepend(&format!("CorticalArea::output(): \
                         Target tract length must be equal to the source axon range length \
-                        (area: '{}', layer_addr: '{:?}'): ", self.name, src_lyr.addr()))
+                        (area: '{}', layer_addr: '{:?}'): ", self.name, src_lyr.key()))
                     )?;
 
                 target.copy_from_ocl_buffer(source)?;

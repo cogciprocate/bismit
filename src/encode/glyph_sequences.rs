@@ -90,11 +90,11 @@ impl GlyphSequences {
             //     layer.set_dims(val_layer_dims.clone());
             // }
 
-            if *layer.axn_tags() == GlyphSequences::img_lyr_tags() {
+            if layer.axn_tags().is_superset(&GlyphSequences::img_lyr_tags()) {
                 // assert!(tags.contains(map::FF_OUT));
                 img_layer_dims = layer.dims().cloned();
                 img_layer_addr = Some(addr.clone());
-            } else if *layer.axn_tags() == GlyphSequences::val_lyr_tags() {
+            } else if layer.axn_tags().is_superset(&GlyphSequences::val_lyr_tags()) {
                 // assert!(tags.contains(map::NS_OUT));
                 val_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1, /*0,*/ None));
                 layer.set_dims(val_layer_dims.clone());

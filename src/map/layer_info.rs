@@ -38,7 +38,7 @@ impl LayerInfo {
         let layer_scheme = layer_scheme.clone();
         let name = layer_scheme.name();
         let layer_tags = layer_scheme.layer_tags();
-        let axon_domain = layer_scheme.axon_domain().clone();
+        let axon_domain = layer_scheme.axn_domain().clone();
         let axn_topology = layer_scheme.axn_topology();
         // let slc_range = layer_scheme.slc_idz()..(layer_scheme.slc_idz() + layer_scheme.depth());
         let mut sources = Vec::with_capacity(8);
@@ -194,9 +194,9 @@ impl LayerInfo {
                     next_slc_idz += src_layer_dims.depth();
                     ttl_axn_count += src_layer_dims.cells();
                 }
-                // [TODO]: Double check that the total source layer axon count
-                // (sources[_].axn_count()) matches up.
 
+                // Double check that the total source layer axon count matches up:
+                assert!(sources.iter().map(|sli| sli.dims().cells()).sum::<u32>() == ttl_axn_count);
             },
             AxonDomain::Output(/*ref axon_tags*/ _) => {
                 // If this is a subcortical layer we need to use the dimensions
@@ -270,11 +270,15 @@ impl LayerInfo {
         }
     }
 
-    pub fn src_lyr(&self, area_id: usize, tar_slc_range: Range<u8>)
+    pub fn src_lyr_old(&self, area_id: usize, tar_slc_range: Range<u8>)
             -> Option<&SourceLayerInfo>
     {
         self.sources.iter().find(|sli| sli.area_id() == area_id &&
             sli.tar_slc_range == tar_slc_range)
+    }
+
+    pub fn src_lyr(&self, src_layer_addr: &LayerAddress) -> Option<&SourceLayerInfo> {
+        self.sources.iter().find(|sli| sli.layer_addr() == src_layer_addr)
     }
 
     pub fn irregular_layer_dims(&self) -> Option<&CorticalDims> {
@@ -328,6 +332,7 @@ impl LayerInfo {
     #[inline] pub fn name(&self) -> &'static str { self.name }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn kind(&self) -> &LayerKind { self.layer_scheme.kind() }
+    #[inline] pub fn axn_domain(&self) -> &AxonDomain { self.layer_scheme.axn_domain() }
     #[inline] pub fn sources(&self) -> &[SourceLayerInfo]  { &self.sources }
     #[inline] pub fn ttl_axn_count(&self) -> u32 { self.ttl_axn_count }
     #[inline] pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }

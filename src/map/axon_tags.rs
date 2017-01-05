@@ -87,6 +87,10 @@ impl AxonTags {
     pub fn new(tags: &[AxonTag]) -> AxonTags {
         AxonTags { tags: BTreeSet::from_iter(tags.into_iter().cloned()) }
     }
+
+    pub fn is_superset(&self, other: &AxonTags) -> bool {
+        self.tags.is_superset(&other.tags)
+    }
 }
 
 impl<'a, 'b> BitOr<&'b AxonTags> for &'a AxonTags {
