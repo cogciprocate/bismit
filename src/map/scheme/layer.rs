@@ -1,5 +1,5 @@
-use cmn::{CmnError};
-use map::{LayerTags, LayerKind, AxonTopology, /*DendriteKind,*/ AxonDomain};
+// use cmn::{CmnError};
+use map::{LayerTags, LayerKind, AxonTopology, AxonDomain};
 
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
@@ -64,12 +64,13 @@ impl LayerScheme {
     //     }
     // }
 
-    pub fn axn_kind(&self) -> Result<AxonTopology, CmnError> {
-        match self.kind {
-            LayerKind::Axonal(ak) => Ok(ak.clone()),
-            LayerKind::Cellular(_) => Ok(AxonTopology::Spatial),
-                // Ok(try!(AxonTopology::from_tags(self.tags))),
-        }
+    pub fn axn_topology(&self) -> AxonTopology {
+        // match self.kind {
+        //     LayerKind::Axonal(ak) => Ok(ak.clone()),
+        //     LayerKind::Cellular(_) => Ok(AxonTopology::Spatial),
+        //         // Ok(try!(AxonTopology::from_tags(self.tags))),
+        // }
+        self.kind.axn_topology()
     }
 
     pub fn set_layer_id(&mut self, layer_id: usize) { self.layer_id = Some(layer_id) }

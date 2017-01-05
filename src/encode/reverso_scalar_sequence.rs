@@ -4,20 +4,21 @@
 use std::fmt::Debug;
 use std::ops::AddAssign;
 use num::{Num, NumCast};
-use thalamus::{ExternalPathwayTract, TractFrameMut, LayerTags};
+use thalamus::{ExternalPathwayTract, TractFrameMut};
 use encode::ScalarEncodable;
-// use map::LayerTags;
+use map::LayerAddress;
 
 #[derive(Clone, Debug)]
 pub struct ReversoScalarSequence<T> {
     range: (T, T),
     next: T,
     incr: T,
-    layer_tags: Vec<LayerTags>,
+    // layer_tags: Vec<LayerTags>,
+    layer_addrs: Vec<LayerAddress>,
 }
 
 impl<T> ReversoScalarSequence<T> where T: Num + NumCast + PartialOrd + Debug + Clone + AddAssign + Copy {
-    pub fn new(range: (T, T), incr: T, layers: &[LayerTags])
+    pub fn new(range: (T, T), incr: T, layer_addrs: &[LayerAddress])
                 -> ReversoScalarSequence<T> {
         let next = range.0;
 
@@ -25,7 +26,7 @@ impl<T> ReversoScalarSequence<T> where T: Num + NumCast + PartialOrd + Debug + C
             range: range,
             incr: incr,
             next: next,
-            layer_tags: Vec::from(layers),
+            layer_addrs: Vec::from(layer_addrs),
         }
     }
 
@@ -37,9 +38,9 @@ impl<T> ReversoScalarSequence<T> where T: Num + NumCast + PartialOrd + Debug + C
 
 impl<T> ExternalPathwayTract for ReversoScalarSequence<T>
             where T: ScalarEncodable {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) {
-        let l_idx = self.layer_tags.iter().position(|&t| t == tags)
-            .expect(&format!("ReversoScalarSequence::write_into(): No layers matching tags: {}", tags));
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: &LayerAddress) {
+        let l_idx = self.layer_addrs.iter().position(|t| t == addr)
+            .expect(&format!("ReversoScalarSequence::write_into(): No layers with address: {:?}", addr));
 
         if l_idx == 0 {
             super::encode_scalar(self.next, self.range, tract_frame);

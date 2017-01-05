@@ -10,7 +10,7 @@ const DEBUG_PRINT: bool = false;
 pub struct SliceMap {
     axn_idzs: Vec<u32>,
     layer_names: Vec<&'static str>,
-    axn_kinds: Vec<AxonTopology>,
+    axn_topologies: Vec<AxonTopology>,
     v_sizes: Vec<u32>,
     u_sizes: Vec<u32>,
     v_scales: Vec<u32>,
@@ -30,7 +30,7 @@ impl SliceMap {
 
         let mut axn_idzs = Vec::with_capacity(depth);
         let mut layer_names = Vec::with_capacity(depth);
-        let mut axn_kinds = Vec::with_capacity(depth);
+        let mut axn_topologies = Vec::with_capacity(depth);
         let mut v_scales = Vec::with_capacity(depth);
         let mut u_scales = Vec::with_capacity(depth);
         let mut v_sizes = Vec::with_capacity(depth);
@@ -53,7 +53,7 @@ impl SliceMap {
                 axn_idz_ttl += slc_dims.columns();
 
                 layer_names.push(layer.name());
-                axn_kinds.push(layer.axn_kind());
+                axn_topologies.push(layer.axn_topology());
                 v_sizes.push(slc_dims.v_size());
                 u_sizes.push(slc_dims.u_size());
                 v_scales.push(slc_dims.v_scale());
@@ -76,10 +76,10 @@ impl SliceMap {
                         debug_assert!(slc_id == slc_id_ttl);
                         // debug_assert_eq!(layer.axn_kind(), layer_source.axn_kind());
 
-                        if layer.axn_kind() != layer_source.axn_kind() {
+                        if layer.axn_topology() != layer_source.axn_topology() {
                             // Ensure that we are going from Spatial -> Horizontal:
-                            if layer_source.axn_kind() == AxonTopology::Spatial &&
-                                    layer.axn_kind() == AxonTopology::Horizontal
+                            if layer_source.axn_topology() == AxonTopology::Spatial &&
+                                    layer.axn_topology() == AxonTopology::Horizontal
                             {
                                 assert!(layer_source.dims().v_size() <= 254 &&
                                     layer_source.dims().u_size() <= 254,
@@ -98,7 +98,7 @@ impl SliceMap {
                         }
                         slc_id_ttl += 1;
                         add_slice(SliceDims::new(area_dims, Some(layer_source.dims()),
-                            layer.axn_kind())
+                            layer.axn_topology())
                             .expect("SliceMap::new(): Error creating SliceDims."));
                     }
                 }
@@ -111,7 +111,7 @@ impl SliceMap {
                                 for layer: {}", dims, layer.name());
                         }
                         slc_id_ttl += 1;
-                        add_slice(SliceDims::new(dims, None, layer.axn_kind())
+                        add_slice(SliceDims::new(dims, None, layer.axn_topology())
                             .expect("SliceMap::new()"))
                     },
                     None => {
@@ -120,7 +120,7 @@ impl SliceMap {
                                 for layer: {}", area_dims, layer.name());
                         }
                         slc_id_ttl += 1;
-                        add_slice(SliceDims::new(area_dims, None, layer.axn_kind())
+                        add_slice(SliceDims::new(area_dims, None, layer.axn_topology())
                             .expect("SliceMap::new()"))
                     },
                 }
@@ -128,7 +128,7 @@ impl SliceMap {
         }
 
         debug_assert_eq!(axn_idzs.len(), layer_names.len());
-        debug_assert_eq!(axn_idzs.len(), axn_kinds.len());
+        debug_assert_eq!(axn_idzs.len(), axn_topologies.len());
         debug_assert_eq!(axn_idzs.len(), dims.len());
         debug_assert_eq!(axn_idzs.len(), v_sizes.len());
         debug_assert_eq!(axn_idzs.len(), u_sizes.len());
@@ -142,7 +142,7 @@ impl SliceMap {
         SliceMap {
             axn_idzs: axn_idzs,
             layer_names: layer_names,
-            axn_kinds: axn_kinds,
+            axn_topologies: axn_topologies,
             dims: dims,
             v_sizes: v_sizes,
             u_sizes: u_sizes,
@@ -217,7 +217,7 @@ impl SliceMap {
     #[inline] pub fn axn_count(&self) -> u32 { self.physical_len }
     #[inline] pub fn axn_idzs(&self) -> &Vec<u32> { &self.axn_idzs }
     #[inline] pub fn layer_names(&self) -> &Vec<&'static str> { &self.layer_names }
-    #[inline] pub fn axn_kinds(&self) -> &Vec<AxonTopology> { &self.axn_kinds }
+    #[inline] pub fn axn_topologies(&self) -> &Vec<AxonTopology> { &self.axn_topologies }
     #[inline] pub fn v_sizes(&self) -> &Vec<u32> { &self.v_sizes }
     #[inline] pub fn u_sizes(&self) -> &Vec<u32> { &self.u_sizes }
     #[inline] pub fn v_scales(&self) -> &Vec<u32> { &self.v_scales }

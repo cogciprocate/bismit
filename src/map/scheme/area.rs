@@ -1,4 +1,4 @@
-use map::{FilterScheme, InputScheme, LayerTags, AxonTags, AxonTag};
+use map::{FilterScheme, InputScheme, LayerTags, AxonTags, /*AxonTag*/};
 use cmn::{self, CorticalDims, MapStore};
 
 
@@ -59,13 +59,17 @@ impl AreaScheme {
         self
     }
 
-    pub fn other_area(mut self, area_name: &'static str,
-            new_tags: Option<&[(&[AxonTag], &[AxonTag])]>) -> AreaScheme
+    pub fn other_area<A>(mut self, area_name: &'static str, new_tags: Option<&[(A, A)]>)
+            -> AreaScheme
+            where A: Into<AxonTags> + Clone
     {
         let new_tags_owned = new_tags.map(|nt| {
             nt.into_iter()
-            .map(|&(ats0, ats1)| (ats0.into(), ats1.into()))
-            .collect()
+                .map(|masq| {
+                    let (orig, repl) = masq.clone();
+                    (orig.into(), repl.into())
+                })
+                .collect()
         });
 
         self.other_areas.push((area_name, new_tags_owned));

@@ -1,7 +1,8 @@
 
 // use cmn::ScalarEncodable;
 use cmn::{CmnError, CmnResult, TractDims};
-use thalamus::{ExternalPathwayTract, ExternalPathwayFrame, TractFrameMut, LayerTags};
+use map::LayerAddress;
+use thalamus::{ExternalPathwayTract, ExternalPathwayFrame, TractFrameMut};
 use encode::{ScalarGlyphWriter};
 
 // [TODO]: Convert into a multi-layer/multi-slice system. Plumbing should be in place.
@@ -11,18 +12,19 @@ use encode::{ScalarGlyphWriter};
 pub struct VectorEncoder {
     ranges: Vec<(f32, f32)>,
     values: Vec<f32>,
-    layer_tags: Vec<LayerTags>,
+    // layer_tags: Vec<LayerTags>,
+    layer_addrs: Vec<LayerAddress>,
     tract_dims: Vec<TractDims>,
     writers: Vec<ScalarGlyphWriter<f32>>,
 }
 
 impl VectorEncoder {
-    pub fn new(ranges: Vec<(f32, f32)>, layers: &[LayerTags], tract_dims: &[TractDims])
+    pub fn new(ranges: Vec<(f32, f32)>, layer_addrs: &[LayerAddress], tract_dims: &[TractDims])
                 -> CmnResult<VectorEncoder> {
-        if ranges.len() != layers.len() || ranges.len() != tract_dims.len() {
+        if ranges.len() != layer_addrs.len() || ranges.len() != tract_dims.len() {
             return CmnError::err(format!("VectorEncoder::new(): Range list length ('{}'), \
                 layer count ('{}'), and/or tract count ('{}') are not equal.", ranges.len(),
-                layers.len(), tract_dims.len()));
+                layer_addrs.len(), tract_dims.len()));
         }
 
         let mut writers = Vec::with_capacity(ranges.len());
@@ -35,8 +37,8 @@ impl VectorEncoder {
 
         Ok(VectorEncoder {
             ranges: ranges,
-            values: vec![Default::default(); layers.len()],
-            layer_tags: Vec::from(layers),
+            values: vec![Default::default(); layer_addrs.len()],
+            layer_addrs: Vec::from(layer_addrs),
             tract_dims: Vec::from(tract_dims),
             writers: writers,
         })
@@ -78,9 +80,9 @@ impl VectorEncoder {
 }
 
 impl ExternalPathwayTract for VectorEncoder {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) {
-        let l_idx = self.layer_tags.iter().position(|&t| t == tags)
-            .expect(&format!("VectorEncoder::write_into(): No layers matching tags: {}", tags));
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: &LayerAddress) {
+        let l_idx = self.layer_addrs.iter().position(|t| t == addr)
+            .expect(&format!("VectorEncoder::write_into(): No layers with address: {:?}", addr));
 
         // println!("Vector encoder: encoding value: {}...", self.values[l_idx]);
         // super::encode_scalar(self.values[l_idx], self.ranges[l_idx], tract_frame);

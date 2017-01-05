@@ -7,7 +7,7 @@ use ocl::builders::{BuildOpt, ProgramBuilder};
 use map::{LayerMapSchemeList, AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme,
     /*DendriteKind,*/ AxonTags};
 use cmn::{self, CorticalDims, MapStore};
-use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo};
+use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress};
 use thalamus::ExternalPathway;
 
 
@@ -27,7 +27,7 @@ pub struct AreaMap {
 
 impl AreaMap {
     pub fn new(area_id: usize, area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList,
-            area_sl: &AreaSchemeList, ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>)
+            area_sl: &AreaSchemeList, ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerAddress>)>)
             -> AreaMap
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", area_sch.name(),
@@ -259,7 +259,7 @@ impl AreaMap {
     /// `layer_tags`.
     ///
     /// `src_lyr_sub_slcs` optionally specifies a particular range of sub
-    /// slices mapping to a specific source layer (source `area_name` is
+    /// slices mapping to a specific source layer (source `area_id` is
     /// required for redundant verification).
     ///
     // NEW

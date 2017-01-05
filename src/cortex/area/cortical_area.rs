@@ -6,7 +6,7 @@ use cmn::{self, /*CmnError,*/ CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap};
 use ocl::{Device, ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
-use map::{/*DendriteKind,*/ LayerKind, CellKind, InhibitoryCellKind};
+use map::{/*DendriteKind,*/ LayerKind, CellKind, InhibitoryCellKind, LayerAddress};
 use thalamus::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, SensoryFilter};
@@ -31,27 +31,27 @@ pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 ///
 #[derive(Debug)]
 pub struct IoLayerInfo {
-    tract_key: (usize, LayerTags),
+    addr: LayerAddress,
     axn_range: Range<u32>,
     filter_key: Option<(usize, usize)>,
 }
 
 impl IoLayerInfo {
-    pub fn new(src_area_id: usize, tags: LayerTags, axn_range: Range<u32>,
+    pub fn new(src_lyr_addr: LayerAddress, axn_range: Range<u32>,
             filter_key: Option<(usize, usize)>) -> IoLayerInfo
     {
         IoLayerInfo {
-            tract_key: (src_area_id, tags),
+            addr: src_lyr_addr,
             axn_range: axn_range,
             filter_key: filter_key,
         }
     }
 
-    #[inline] pub fn key(&self) -> &(usize, LayerTags) { &self.tract_key }
+    #[inline] pub fn addr(&self) -> &LayerAddress { &self.addr }
     #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
     #[inline] pub fn filter_key(&self) -> &Option<(usize, usize)>{ &self.filter_key }
-    #[allow(dead_code)] #[inline] pub fn area_id(& self) -> usize { self.tract_key.0 }
-    #[inline] pub fn tags<'a>(&'a self) -> LayerTags { self.tract_key.1 }
+    // #[allow(dead_code)] #[inline] pub fn area_id(& self) -> usize { self.tract_key.0 }
+    // #[inline] pub fn tags<'a>(&'a self) -> LayerTags { self.tract_key.1 }
 }
 
 
@@ -64,13 +64,13 @@ pub struct IoLayerInfoGroup {
 
 impl IoLayerInfoGroup {
     pub fn new(area_map: &AreaMap, group_tags: LayerTags,
-            tract_keys: Vec<(usize, LayerTags, Option<(usize, Range<u8>)>)>,
+            tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)>,
             filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>) -> IoLayerInfoGroup
     {
         // Create a container for our i/o layer(s):
         let mut layers = Vec::<IoLayerInfo>::with_capacity(tract_keys.len());
 
-        for (lyr_area_id, lyr_tags, src_lyr_key) in tract_keys.into_iter() {
+        for (lyr_addr, lyr_tags, src_lyr_key) in tract_keys.into_iter() {
             let (local_layer_tags, filter_key) = if group_tags.contains(map::OUTPUT) {
                 (lyr_tags, None)
             } else {
@@ -91,7 +91,7 @@ impl IoLayerInfoGroup {
                 // filter.
                 let filter_key = filter_chain_id.and_then(|fcid|
                     filter_chains[fcid].1.first().and_then(|fc|
-                        fc.lyr_id(lyr_area_id).map(|lid| (fcid, lid))));
+                        fc.lyr_id(lyr_addr.area_id()).map(|lid| (fcid, lid))));
 
                 // // [DEBUG]:
                 // println!("###### I/O LAYER ({}) FILTER_CHAIN_ID: '{:?}'", lyr_tags, filter_chain_id);
@@ -104,8 +104,7 @@ impl IoLayerInfoGroup {
                     tags: {}.", local_layer_tags),
             };
 
-            let io_layer = IoLayerInfo::new(lyr_area_id, lyr_tags, axn_range,
-                filter_key);
+            let io_layer = IoLayerInfo::new(lyr_addr, axn_range, filter_key);
             layers.push(io_layer);
         }
 
@@ -132,8 +131,8 @@ pub struct IoLayerInfoCache {
 }
 
 impl IoLayerInfoCache {
-    pub fn new(area_id: usize, area_map: &AreaMap,
-            filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>) -> IoLayerInfoCache
+    pub fn new(area_map: &AreaMap, filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>)
+            -> IoLayerInfoCache
     {
         let group_tags_list: [LayerTags; 6] = [
             map::FF_IN, map::FB_IN, map::NS_IN,
@@ -148,15 +147,18 @@ impl IoLayerInfoCache {
             // that layer. Either way, construct a tuple of '(area_name,
             // src_lyr_tags, src_lyr_key)' which can be used to construct a
             // key to access the correct thalamic tract:
-            let tract_keys: Vec<(usize, LayerTags, Option<(usize, Range<u8>)>)> =
+            let tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)> =
                 if group_tags.contains(map::OUTPUT) {
                     area_map.layers().layers_containing_tags(group_tags).iter()
-                        .map(|li| (area_id, li.layer_tags(), None)).collect()
+                        .map(|li| {
+                            let lyr_addr = LayerAddress::new(li.layer_id(), area_map.area_id());
+                            (lyr_addr, li.layer_tags(), None)
+                        }).collect()
                 } else {
                     debug_assert!(group_tags.contains(map::INPUT));
                     area_map.layers().layers_containing_tags_src_lyrs(group_tags).iter()
                         .map(|sli| (
-                                sli.area_id(),
+                                sli.layer_addr().clone(),
                                 sli.layer_tags(),
                                 Some((sli.area_id(), sli.tar_slc_range().clone())),
                             )).collect()
@@ -479,7 +481,7 @@ impl CorticalArea {
         // pyrs_map.get_mut(ptal_name).unwrap().kern_cycle()
         //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
 
-        let io_info = IoLayerInfoCache::new(area_id, &area_map, &filter_chains);
+        let io_info = IoLayerInfoCache::new(&area_map, &filter_chains);
 
         println!("{mt}::NEW(): IO_INFO: {:?}, Settings: {:?}", io_info, settings, mt = cmn::MT);
 
@@ -554,7 +556,8 @@ impl CorticalArea {
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
         if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(group_tags) {
             for src_lyr in src_lyrs.iter_mut() {
-                let source = thal.tract_terminal_source(src_lyr.key())?;
+                let source = thal.tract_terminal_source(src_lyr.addr())?;
+
 
                 if group_tags.contains(map::FF_IN) && !self.filter_chains.is_empty()
                         && !self.settings.bypass_filters && src_lyr.filter_key.is_some()
@@ -579,7 +582,7 @@ impl CorticalArea {
                         .map_err(|err|
                             err.prepend(&format!("CorticalArea::intake():: \
                             Source tract length must be equal to the target axon range length \
-                            (area: '{}', layer_tags: '{}'): ", area_name, src_lyr.tags())))?
+                            (area: '{}', layer_addr: '{:?}'): ", area_name, src_lyr.addr())))?
                         .copy_from_slice_buffer(source)?;
                 }
             }
@@ -591,13 +594,13 @@ impl CorticalArea {
     fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
         if let Some((src_lyrs, wait_events)) = self.io_info.group(group_tags) {
             for src_lyr in src_lyrs.iter() {
-                let mut target = thal.tract_terminal_target(src_lyr.key())?;
+                let mut target = thal.tract_terminal_target(src_lyr.addr())?;
 
                 let source = OclBufferSource::new(&self.axns.states, src_lyr.axn_range(),
                         target.dims().clone(), Some(wait_events))
                     .map_err(|err| err.prepend(&format!("CorticalArea::output(): \
                         Target tract length must be equal to the source axon range length \
-                        (area: '{}', layer_tags: '{}'): ", self.name, src_lyr.tags()))
+                        (area: '{}', layer_addr: '{:?}'): ", self.name, src_lyr.addr()))
                     )?;
 
                 target.copy_from_ocl_buffer(source)?;

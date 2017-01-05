@@ -11,7 +11,6 @@ mod scheme;
 mod axon_tags;
 
 // use cmn::CmnError;
-
 pub use self::area_map::AreaMap;
 pub use self::slice_map::SliceMap;
 pub use self::layer_map::LayerMap;
@@ -113,10 +112,10 @@ pub enum LayerKind {
 }
 
 impl LayerKind {
-    pub fn axn_kind(&self) -> Option<AxonTopology> {
-        match self {
-            &LayerKind::Axonal(ak) => Some(ak.clone()),
-            _ => None,
+    pub fn axn_topology(&self) -> AxonTopology {
+        match *self {
+            LayerKind::Axonal(ak) => ak.clone(),
+            LayerKind::Cellular(_) => AxonTopology::Spatial,
         }
     }
 
@@ -163,14 +162,31 @@ pub enum AxonDomain {
 }
 
 impl AxonDomain {
-    pub fn input(slice: &[(InputTrack, &[AxonTag])]) -> AxonDomain {
+    pub fn input<A: Into<AxonTags> + Clone>(slice: &[(InputTrack, A)]) -> AxonDomain {
         AxonDomain::Input(slice.into_iter()
-            .map(|&(ref it, ats)| (it.clone(), ats.into()))
+            .map(|s| {
+                let (it, at) = s.clone();
+                (it, at.into())
+            })
             .collect())
     }
 
-    pub fn output(ats: &[AxonTag]) -> AxonDomain {
+    pub fn output<A: Into<AxonTags>>(ats: A) -> AxonDomain {
         AxonDomain::Output(ats.into())
+    }
+
+    pub fn is_output(&self) -> bool {
+        match *self {
+            AxonDomain::Output(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_input(&self) -> bool {
+        match *self {
+            AxonDomain::Input(_) => true,
+            _ => false,
+        }
     }
 }
 

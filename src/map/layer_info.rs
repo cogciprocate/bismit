@@ -1,11 +1,10 @@
 use std::fmt;
 use std::ops::{Range};
 
-use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind,
+use map::{self, LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerKind,
     /*DendriteKind,*/ LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack, LayerAddress,
-    /*DendriteClass,*/ TuftSourceLayer};
+    /*DendriteClass,*/ TuftSourceLayer, LayerTags};
 use cmn::{self, CorticalDims, MapStore};
-use map::{self, LayerTags,};
 use thalamus::ExternalPathway;
 
 const DEBUG_PRINT: bool = false;
@@ -21,7 +20,7 @@ pub struct LayerInfo {
     slc_range: Option<Range<u8>>,
     sources: Vec<SourceLayerInfo>,
     layer_map_kind: LayerMapKind,
-    axn_kind: AxonTopology,
+    axn_topology: AxonTopology,
     layer_scheme: LayerScheme,
     ttl_axn_count: u32,
     irregular_layer_dims: Option<CorticalDims>,
@@ -33,14 +32,14 @@ impl LayerInfo {
     pub fn new(layer_id: usize, layer_scheme: &LayerScheme, plmap_kind: LayerMapKind,
             area_sch: &AreaScheme, area_sch_list: &AreaSchemeList,
             layer_map_sch_list: &LayerMapSchemeList,
-            ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>, slc_total: u8)
+            ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerAddress>)>, slc_total: u8)
             -> LayerInfo
     {
         let layer_scheme = layer_scheme.clone();
         let name = layer_scheme.name();
         let layer_tags = layer_scheme.layer_tags();
         let axon_domain = layer_scheme.axon_domain().clone();
-        let axn_kind = layer_scheme.axn_kind().expect("LayerInfo::new()");
+        let axn_topology = layer_scheme.axn_topology();
         // let slc_range = layer_scheme.slc_idz()..(layer_scheme.slc_idz() + layer_scheme.depth());
         let mut sources = Vec::with_capacity(8);
 
@@ -129,23 +128,24 @@ impl LayerInfo {
                 for (src_layer, src_lyr_map_sch, src_area_sch) in matching_source_layers.into_iter() {
                     let src_area_name = src_area_sch.name();
                     let src_area_id = src_area_sch.area_id();
+                    let src_lyr_addr = LayerAddress::new(src_layer.layer_id(), src_area_id);
 
-                    let (src_layer_dims, src_layer_axn_kind) = match src_lyr_map_sch.kind() {
+                    let (src_layer_dims, src_layer_axn_topology) = match src_lyr_map_sch.kind() {
                         // If the source layer is subcortical, we will be relying
                         // on the `ExternalPathway` associated with it to
                         // provide its dimensions.
                         &LayerMapKind::Subcortical => {
                             // let src_area_name = src_area_sch.name().to_owned();
-                            let &(ref in_src, _) = ext_paths.by_key(src_area_name)
+                            let &(ref ext_src, _) = ext_paths.by_key(src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                     '{}'", src_area_name));
-                            let in_src_layer = in_src.layer(src_layer.layer_tags());
-                            let in_src_layer_dims = in_src_layer.dims().expect(
+                            let ext_src_layer = ext_src.layer(src_lyr_addr.clone());
+                            let ext_src_layer_dims = ext_src_layer.dims().expect(
                                 &format!("LayerInfo::new(): External source layer dims for layer \
-                                    '{}' in area '{}' are not set.", in_src_layer.name(),
+                                    '{}' in area '{}' are not set.", ext_src_layer.name(),
                                     src_area_name)
                                 ).clone();
-                            (in_src_layer_dims, in_src_layer.axn_kind())
+                            (ext_src_layer_dims, ext_src_layer.axn_topology())
                         },
                         // If the source layer is cortical, we will give the
                         // layer dimensions depending on the source layer's
@@ -153,7 +153,7 @@ impl LayerInfo {
                         &LayerMapKind::Cortical => {
                             let depth = src_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
-                            let src_axn_kind = match src_layer.kind() {
+                            let src_axn_topology = match src_layer.kind() {
                                 &LayerKind::Axonal(ref ak) => {
                                     // [FIXME]: Make this a Result:
                                     // assert!(ak.matches_tags(src_layer.tags()), "Incompatable layer \
@@ -168,15 +168,15 @@ impl LayerInfo {
                                 // _ => panic!("LayerInfo::new(): Unknown LayerKind."),
                             };
 
-                            (src_area_sch.dims().clone_with_depth(depth), src_axn_kind)
+                            (src_area_sch.dims().clone_with_depth(depth), src_axn_topology)
 
                         },
                     };
 
                     let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth());
 
-                    sources.push(SourceLayerInfo::new(src_layer.layer_id(), src_area_id,
-                        src_layer_dims.clone(), src_layer.layer_tags(), src_layer_axn_kind,
+                    sources.push(SourceLayerInfo::new(src_lyr_addr,
+                        src_layer_dims.clone(), src_layer.layer_tags(), src_layer_axn_topology,
                         tar_slc_range.clone()));
 
                     if DEBUG_PRINT {
@@ -205,16 +205,17 @@ impl LayerInfo {
                 let columns = match plmap_kind {
                     LayerMapKind::Subcortical => {
                         let area_sch_name = area_sch.name().to_owned();
-                        let &(ref in_src, _) = ext_paths.by_key(&area_sch_name)
+                        let &(ref ext_src, _) = ext_paths.by_key(&area_sch_name)
                             .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                 '{}'", area_sch.name()));
-                        let in_src_layer = in_src.layer(layer_tags);
-                        let in_src_layer_dims = in_src_layer.dims().expect(&format!(
+                        let ext_src_lyr_addr = LayerAddress::new(layer_id, area_sch.area_id());
+                        let ext_src_layer = ext_src.layer(ext_src_lyr_addr);
+                        let ext_src_layer_dims = ext_src_layer.dims().expect(&format!(
                             "LayerInfo::new(): External source layer dims for layer \
-                            '{}' in area '{}' are not set.", in_src_layer.name(),
+                            '{}' in area '{}' are not set.", ext_src_layer.name(),
                             area_sch.name()));
-                        irregular_layer_dims = Some(in_src_layer_dims.clone());
-                        in_src_layer_dims.columns()
+                        irregular_layer_dims = Some(ext_src_layer_dims.clone());
+                        ext_src_layer_dims.columns()
                     },
                     LayerMapKind::Cortical => area_sch.dims().columns(),
                 };
@@ -262,7 +263,7 @@ impl LayerInfo {
             slc_range: slc_range,
             sources: sources,
             layer_map_kind: plmap_kind,
-            axn_kind: axn_kind,
+            axn_topology: axn_topology,
             layer_scheme: layer_scheme,
             ttl_axn_count: ttl_axn_count,
             irregular_layer_dims: irregular_layer_dims,
@@ -281,7 +282,7 @@ impl LayerInfo {
     }
 
     pub fn thalamic_horizontal_axon_count(&self) -> Option<u32> {
-        if self.layer_map_kind == LayerMapKind::Subcortical && self.axn_kind == AxonTopology::Horizontal {
+        if self.layer_map_kind == LayerMapKind::Subcortical && self.axn_topology == AxonTopology::Horizontal {
             debug_assert!(self.layer_tags.contains(map::NS_OUT));
             Some(self.ttl_axn_count)
         } else {
@@ -329,7 +330,7 @@ impl LayerInfo {
     #[inline] pub fn kind(&self) -> &LayerKind { self.layer_scheme.kind() }
     #[inline] pub fn sources(&self) -> &[SourceLayerInfo]  { &self.sources }
     #[inline] pub fn ttl_axn_count(&self) -> u32 { self.ttl_axn_count }
-    #[inline] pub fn axn_kind(&self) -> AxonTopology { self.axn_kind.clone() }
+    #[inline] pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
     #[inline] pub fn layer_map_kind(&self) -> LayerMapKind { self.layer_map_kind.clone() }
     #[inline] pub fn slc_range(&self) -> Option<&Range<u8>> { self.slc_range.as_ref() }
 }
@@ -348,7 +349,7 @@ impl fmt::Debug for LayerInfo {
             .field("slc_range", &self.slc_range)
             .field("sources", &self.sources)
             .field("layer_map_kind", &self.layer_map_kind)
-            .field("axn_kind", &self.axn_kind)
+            .field("axn_topology", &self.axn_topology)
             .field("layer_scheme", &self.layer_scheme)
             .field("ttl_axn_count", &self.ttl_axn_count)
             .field("irregular_layer_dims", &self.irregular_layer_dims)
@@ -364,26 +365,26 @@ pub struct SourceLayerInfo {
     // area_id: usize,
     dims: CorticalDims,
     layer_tags: LayerTags,
-    axn_kind: AxonTopology,
+    axn_topology: AxonTopology,
     // Absolute target slice range (not level-relative):
     tar_slc_range: Range<u8>,
 }
 
 impl SourceLayerInfo {
     #[inline]
-    pub fn new(src_layer_id: usize, src_area_id: usize, src_layer_dims: CorticalDims,
-            src_layer_tags: LayerTags, src_axn_kind: AxonTopology, tar_slc_range: Range<u8>)
+    pub fn new(src_lyr_addr: LayerAddress, src_layer_dims: CorticalDims,
+            src_layer_tags: LayerTags, src_axn_topology: AxonTopology, tar_slc_range: Range<u8>)
             -> SourceLayerInfo
     {
         assert!(tar_slc_range.len() == src_layer_dims.depth() as usize);
 
         SourceLayerInfo {
-            layer_addr: LayerAddress::new(src_layer_id, src_area_id),
+            layer_addr: src_lyr_addr,
             // area_name: src_area_name,
             // area_id: src_area_id,
             dims: src_layer_dims,
             layer_tags: src_layer_tags,
-            axn_kind: src_axn_kind,
+            axn_topology: src_axn_topology,
             tar_slc_range: tar_slc_range,
         }
     }
@@ -394,7 +395,7 @@ impl SourceLayerInfo {
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn axn_count(&self) -> u32 { self.dims().cells() }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
-    #[inline] pub fn axn_kind(&self) -> AxonTopology { self.axn_kind.clone() }
+    #[inline] pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
     #[inline] pub fn tar_slc_range(&self) -> &Range<u8> { &self.tar_slc_range }
 }
 
@@ -405,7 +406,7 @@ impl fmt::Debug for SourceLayerInfo {
             .field("layer_addr", &self.layer_addr)
             .field("dims", &self.dims)
             .field("layer_tags", &self.layer_tags.to_string())
-            .field("axn_kind", &self.axn_kind)
+            .field("axn_topology", &self.axn_topology)
             .field("tar_slc_range", &self.tar_slc_range)
             .finish()
     }

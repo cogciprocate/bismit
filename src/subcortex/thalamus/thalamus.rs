@@ -118,7 +118,7 @@ impl TractAreaCache {
     fn insert(&mut self, src_lyr_addr: LayerAddress, tract_area: TractArea) {
         self.tract_areas.push(tract_area);
 
-        self.index.insert(src_lyr_addr, (self.tract_areas.len() - 1))
+        self.index.insert(src_lyr_addr.clone(), (self.tract_areas.len() - 1))
             .map(|_| panic!("TractAreaCache::insert(): Multiple i/o layers using the same layer \
                 tags and id found. I/O layers with the same tags must have unique ids. \
                 (layer address: {:?})", src_lyr_addr));
@@ -296,7 +296,8 @@ pub struct Thalamus {
     tract: ThalamicTract,
     // [TODO]: Redesign this with something other than `String` key (use a separate vec & hashmap).
     // external_pathways: HashMap<String, (ExternalPathway, Vec<LayerTags>)>,
-    external_pathways: MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
+    // external_pathways: MapStore<String, (ExternalPathway, Vec<LayerTags>)>,
+    external_pathways: MapStore<String, (ExternalPathway, Vec<LayerAddress>)>,
     // area_maps: HashMap<&'static str, AreaMap>,
     area_maps: MapStore<String, AreaMap>,
 }
@@ -322,8 +323,9 @@ impl Thalamus {
                     layer_map_sl[pa.layer_map_name()].kind() == &LayerMapKind::Subcortical)
         {
             let es = try!(ExternalPathway::new(pa, &layer_map_sl[pa.layer_map_name()]));
-            let tags = es.layer_tags();
-            external_pathways.insert(es.area_name().to_owned(), (es, tags))
+            // let tags = es.layer_tags();
+            let addrs = es.layer_addrs();
+            external_pathways.insert(es.area_name().to_owned(), (es, addrs))
                 .map(|es_tup| panic!("Duplicate 'ExternalPathway' keys: [\"{}\"]. \
                     Only one external (thalamic) input source per area is allowed.",
                     es_tup.0.area_name()));
@@ -354,7 +356,7 @@ impl Thalamus {
 
                     println!("{mt}{mt}{mt}'{}': tags: {}, slc_range: {:?}, map_kind: {:?}, \
                         axn_kind: {:?}", layer.name(), layer.layer_tags(), layer.slc_range(),
-                        layer.layer_map_kind(), layer.axn_kind(), mt = cmn::MT);
+                        layer.layer_map_kind(), layer.axn_topology(), mt = cmn::MT);
 
                     tract.add_area((layer.layer_id(), area_s.area_id()).into(),
                         layer_dims);
@@ -377,19 +379,18 @@ impl Thalamus {
     // Multiple source output areas disabled.
     pub fn cycle_external_pathways(&mut self, _: &mut CorticalAreas) {
         // for (area_name, &mut (ref mut src_area, ref layer_tags_list)) in self.external_pathways.iter_mut() {
-        for &mut (ref mut src_area, ref layer_tags_list) in self.external_pathways.values_mut().iter_mut() {
+        for &mut (ref mut src_area, ref layer_addr_list) in self.external_pathways.values_mut().iter_mut() {
             src_area.cycle_next();
 
-            for &layer_tags in layer_tags_list.iter() {
-                let (tract_frame, events) = self.tract.frame_mut(
-                    &(src_area.area_id(), layer_tags))
+            for layer_addr in layer_addr_list.iter() {
+                let (tract_frame, events) = self.tract.frame_mut(layer_addr)
                     .expect("Thalamus::cycle_external_pathways()");
 
                 // match tract_frame {
                 //     FrameBufferKind::Internal(frame) => src_area.read_into(layer_tags, frame, events),
                 //     FrameBufferKind::External => (),
                 // }
-                src_area.write_into(layer_tags, tract_frame, events)
+                src_area.write_into(layer_addr, tract_frame, events)
             }
         }
     }

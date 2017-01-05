@@ -7,11 +7,12 @@ use std::fmt::Debug;
 use find_folder::Search;
 use cmn::{self, CorticalDims, CmnResult, CmnError};
 use ocl::{EventList};
-use map::{self, AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonTopology};
+use map::{AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
+    AxonDomain, AxonTags};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
-use map::LayerTags;
+// use map::LayerTags;
 
 
 #[derive(Debug)]
@@ -30,11 +31,8 @@ pub enum ExternalPathwayFrame<'a> {
 
 /// A highway for input.
 ///
-/// Returns a 3-array because I didn't want to bother with generics or enums
-/// for the moment.
-///
 pub trait ExternalPathwayTract: Debug {
-    fn write_into(&mut self, frame: &mut TractFrameMut, tags: LayerTags);
+    fn write_into(&mut self, frame: &mut TractFrameMut, addr: &LayerAddress);
     fn cycle_next(&mut self);
 }
 
@@ -57,9 +55,11 @@ pub enum ExternalPathwayEncoder {
 
 
 pub struct ExternalPathwayLayer {
-    layer_name: &'static str,
-    layer_tags: LayerTags,
-    axn_kind: AxonTopology,
+    name: &'static str,
+    // layer_tags: LayerTags,
+    addr: LayerAddress,
+    axn_tags: AxonTags,
+    axn_topology: AxonTopology,
     dims: Option<CorticalDims>,
 }
 
@@ -68,21 +68,12 @@ impl ExternalPathwayLayer {
         self.dims = dims;
     }
 
-    pub fn name(&self) -> &'static str {
-        self.layer_name
-    }
-
-    pub fn tags(&self) -> LayerTags {
-        self.layer_tags
-    }
-
-    pub fn axn_kind(&self) -> AxonTopology {
-        self.axn_kind.clone()
-    }
-
-    pub fn dims(&self) -> Option<&CorticalDims> {
-        self.dims.as_ref()
-    }
+    pub fn name(&self) -> &'static str { self.name }
+    // pub fn tags(&self) -> LayerTags { self.layer_tags }
+    pub fn addr(&self) -> &LayerAddress { &self.addr }
+    pub fn axn_tags(&self) -> &AxonTags { &self.axn_tags }
+    pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
+    pub fn dims(&self) -> Option<&CorticalDims> { self.dims.as_ref() }
 }
 
 
@@ -96,8 +87,9 @@ pub struct ExternalPathway {
     area_name: String,
     encoder: ExternalPathwayEncoder,
     // direction: ExternalPathwayDirection,
-    layers: HashMap<LayerTags, ExternalPathwayLayer>,
+    // layers: HashMap<LayerTags, ExternalPathwayLayer>,
     // layers: HashMap<LayerTags, ExternalPathwayLayer, BuildHasherDefault<XxHash>>,
+    layers: HashMap<LayerAddress, ExternalPathwayLayer>,
 }
 
 impl ExternalPathway {
@@ -112,42 +104,46 @@ impl ExternalPathway {
 
         // let mut layers = HashMap::with_capacity_and_hasher(4, BuildHasherDefault::default());
         let mut layers = HashMap::with_capacity(4);
-        let mut layer_tags_list = Vec::with_capacity(4);
-        let mut layer_dims_list = Vec::with_capacity(4);
+        let mut lyr_addr_list = Vec::with_capacity(4);
+        let mut lyr_dims_list = Vec::with_capacity(4);
+        let mut lyr_axn_tags_list = Vec::with_capacity(4);
 
         for p_layer in p_layers.into_iter() {
-            let layer_name = p_layer.name();
-            let layer_tags = p_layer.layer_tags();
-            let axn_kind = p_layer.kind().axn_kind().expect("ExternalPathway::new(): ExternalPathway layer \
-                must be 'LayerKind::Axonal(_)'.");
-            let layer_depth = p_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
+            let lyr_name = p_layer.name();
+            let lyr_addr = LayerAddress::new(p_layer.layer_id(), pamap.area_id());
+            let axn_topology = p_layer.kind().axn_topology();
+            let lyr_depth = p_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
-            // let dims = if layer_tags.contains(map::SPATIAL) {
-            //     assert_eq!(axn_kind, AxonTopology::Spatial);
-            //     Some(pamap.dims.clone_with_depth(layer_depth))
-            // } else {
-            //     assert!(layer_tags.contains(map::HORIZONTAL));
-            //     assert_eq!(axn_kind, AxonTopology::Horizontal);
-            //     None
-            // };
-
-            let dims = match axn_kind {
-                AxonTopology::Spatial => Some(pamap.dims().clone_with_depth(layer_depth)),
+            let dims = match axn_topology {
+                AxonTopology::Spatial => Some(pamap.dims().clone_with_depth(lyr_depth)),
                 AxonTopology::Horizontal => None,
                 AxonTopology::None => None,
             };
 
-            assert!(layer_tags.contains(map::OUTPUT), "ExternalPathway::new(): External ('Thalamic') areas \
-                must have a layer or layers with an 'OUTPUT' tag. [area: '{}', layer map: '{}']",
-                pamap.name(), plmap.name());
+            // assert!(layer_tags.contains(map::OUTPUT), "ExternalPathway::new(): External ('Thalamic') areas \
+            //     must have a layer or layers with an 'OUTPUT' tag. [area: '{}', layer map: '{}']",
+            //     pamap.name(), plmap.name());
+            // assert!(p_layer.axon_domain().is_output(), "ExternalPathway::new(): External areas \
+            //     must currently be output layers. [area: '{}', layer: '{}']", pamap.name(), plmap.name());
 
-            layer_tags_list.push(layer_tags);
-            layer_dims_list.push(dims.clone());
+            let lyr_axn_tags = match *p_layer.axon_domain() {
+                AxonDomain::Output(ref axn_tags) => axn_tags.clone(),
+                _ => return Err(format!("ExternalPathway::new(): External areas \
+                    must currently be output layers. [area: '{}', layer: '{}']", pamap.name(),
+                    plmap.name()).into()),
+            };
 
-            layers.insert(layer_tags, ExternalPathwayLayer {
-                layer_name: layer_name,
-                layer_tags: layer_tags,
-                axn_kind: axn_kind,
+            // layer_tags_list.push(layer_tags);
+            lyr_addr_list.push(lyr_addr.clone());
+            lyr_dims_list.push(dims.clone());
+            lyr_axn_tags_list.push(lyr_axn_tags.clone());
+
+            layers.insert(lyr_addr.clone(), ExternalPathwayLayer {
+                name: lyr_name,
+                // layer_tags: layer_tags,
+                addr: lyr_addr,
+                axn_tags: lyr_axn_tags,
+                axn_topology: axn_topology,
                 dims: dims,
             });
         }
@@ -155,7 +151,7 @@ impl ExternalPathway {
         let encoder = match *pamap.get_input() {
             InputScheme::IdxStreamer { ref file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
-                let mut is = IdxStreamer::new(layers[&layer_tags_list[0]].dims()
+                let mut is = IdxStreamer::new(layers[&lyr_addr_list[0]].dims()
                     .expect("ExternalPathway::new(): Layer dims not set properly.").clone(),
                     file_name.clone(), cyc_per, scale);
 
@@ -177,22 +173,22 @@ impl ExternalPathway {
             },
             InputScheme::SensoryTract => {
                 assert_eq!(layers.len(), 1);
-                let st = SensoryTract::new(layers[&layer_tags_list[0]].dims()
+                let st = SensoryTract::new(layers[&lyr_addr_list[0]].dims()
                     .expect("ExternalPathway::new(): Layer dims not set properly."));
                 ExternalPathwayEncoder::SensoryTract(Box::new(st))
             },
             InputScheme::ScalarSequence { range, incr } => {
                 let tract_dims = {
-                    assert!(layer_dims_list.len() == 1);
-                    layer_dims_list[0].unwrap().into()
+                    assert!(lyr_dims_list.len() == 1);
+                    lyr_dims_list[0].unwrap().into()
                 };
 
                 ExternalPathwayEncoder::Other(Box::new(ScalarSequence::new(range, incr, &tract_dims)))
             },
             InputScheme::ScalarSdrGradiant { range, way_span, incr } => {
                 let tract_dims = {
-                    assert!(layer_dims_list.len() == 1);
-                    layer_dims_list[0].unwrap().into()
+                    assert!(lyr_dims_list.len() == 1);
+                    lyr_dims_list[0].unwrap().into()
                 };
 
                 ExternalPathwayEncoder::Other(Box::new(ScalarSdrGradiant::new(range, way_span, incr, &tract_dims)))
@@ -200,13 +196,13 @@ impl ExternalPathway {
             InputScheme::ReversoScalarSequence { range, incr } => {
                 // let layer_tags: Vec<_> = layers.iter().map(|(t, _)| t.clone()).collect();
                 ExternalPathwayEncoder::Other(Box::new(
-                    ReversoScalarSequence::new(range, incr, &layer_tags_list)))
+                    ReversoScalarSequence::new(range, incr, &lyr_addr_list)))
             },
             InputScheme::VectorEncoder { ref ranges } => {
-                let tract_dims: Vec<_> = layer_dims_list.iter().map(|d| d.unwrap().into()).collect();
+                let tract_dims: Vec<_> = lyr_dims_list.iter().map(|d| d.unwrap().into()).collect();
 
                 ExternalPathwayEncoder::VectorEncoder(Box::new(try!(
-                    VectorEncoder::new(ranges.clone(), &layer_tags_list, &tract_dims)
+                    VectorEncoder::new(ranges.clone(), &lyr_addr_list, &tract_dims)
                 )))
             },
             InputScheme::Custom { .. } => {
@@ -227,28 +223,27 @@ impl ExternalPathway {
     /// Writes input data into a tract.
     ///
     /// **Should** return promptly... data should already be staged.
-    pub fn write_into(&mut self, tags: LayerTags, mut frame: TractFrameMut, _: &mut EventList) {
-        let dims = self.layers[&tags].dims().expect(&format!("Dimensions don't exist for \
-            external input area: \"{}\", tags: '{:?}' ", self.area_name, tags));
+    pub fn write_into(&mut self, addr: &LayerAddress, mut frame: TractFrameMut, _: &mut EventList) {
+        let dims = self.layers[addr].dims().expect(&format!("Dimensions don't exist for \
+            external input area: \"{}\", addr: '{:?}' ", self.area_name, addr));
 
         debug_assert!(dims == frame.dims(), "Dimensional mismatch for external input \
-            area: \"{}\", tags: '{:?}', layer dims: {:?}, tract dims: {:?}", self.area_name, tags,
+            area: \"{}\", addr: '{:?}', layer dims: {:?}, tract dims: {:?}", self.area_name, addr,
             dims, frame.dims());
 
-        // '.cycle()' returns a [usize; 3], not sure what we're going to do with it.
         match self.encoder {
             // ExternalPathwayEncoder::IdxStreamer(ref mut es) |
             ExternalPathwayEncoder::Other(ref mut es) => {
-                es.write_into(&mut frame, tags)
+                es.write_into(&mut frame, addr)
             },
             ExternalPathwayEncoder::GlyphSequences(ref mut es) => {
-                es.write_into(&mut frame, tags)
+                es.write_into(&mut frame, addr)
             },
             ExternalPathwayEncoder::SensoryTract(ref mut es) => {
-                es.write_into(&mut frame, tags)
+                es.write_into(&mut frame, addr)
             },
             ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
-                es.write_into(&mut frame, tags)
+                es.write_into(&mut frame, addr)
             },
             ExternalPathwayEncoder::OtherUnspecified => {
                 panic!("ExternalPathway::write_into: Custom pathway not specified.")
@@ -297,21 +292,25 @@ impl ExternalPathway {
         }
     }
 
-    pub fn layers(&mut self) -> &mut HashMap<LayerTags, ExternalPathwayLayer> {
+    pub fn layers(&mut self) -> &mut HashMap<LayerAddress, ExternalPathwayLayer> {
         &mut self.layers
     }
 
-    pub fn layer(&self, tags: LayerTags) -> &ExternalPathwayLayer {
-        self.layers.get(&tags).expect(&format!("ExternalPathway::layer(): Invalid tags: {:?}", tags))
+    pub fn layer(&self, addr: LayerAddress) -> &ExternalPathwayLayer {
+        self.layers.get(&addr).expect(&format!("ExternalPathway::layer(): Invalid addr: {:?}", addr))
     }
 
-    pub fn layer_tags(&self) -> Vec<LayerTags> {
-        let mut tags = Vec::with_capacity(self.layers.len());
+    // pub fn layer_tags(&self) -> Vec<LayerTags> {
+    //     let mut tags = Vec::with_capacity(self.layers.len());
 
-        for (_, layer) in self.layers.iter() {
-            tags.push(layer.tags());
-        }
-        tags
+    //     for (_, layer) in self.layers.iter() {
+    //         tags.push(layer.tags());
+    //     }
+    //     tags
+    // }
+
+    pub fn layer_addrs(&self) -> Vec<LayerAddress> {
+        self.layers.iter().map(|(_, layer)| layer.addr().clone()).collect()
     }
 
     // Specify a custom encoder tract. Input scheme must have been configured

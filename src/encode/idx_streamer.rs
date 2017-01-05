@@ -1,7 +1,7 @@
 // use std::path::PathBuf;
 use find_folder::Search;
 use cmn::{CorticalDims, Sdr, TractFrameMut};
-use map::LayerTags;
+use map::LayerAddress;
 use thalamus::ExternalPathwayTract;
 use super::IdxData;
 
@@ -143,7 +143,7 @@ impl IdxStreamer {
 }
 
 impl ExternalPathwayTract for IdxStreamer {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: &LayerAddress) {
         assert!(tract_frame.dims() == &self.layer_dims);
         assert!((self.image_len()) <= tract_frame.dims().to_len(),
             "Ganglion vector size must be greater than or equal to IDX image size");

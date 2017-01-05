@@ -1,5 +1,5 @@
 use cmn::{TractFrameMut, TractDims};
-use map::LayerTags;
+use map::LayerAddress;
 use thalamus::{ExternalPathwayTract, ExternalPathwayFrame};
 
 #[derive(Debug, Clone)]
@@ -28,7 +28,7 @@ impl SensoryTract {
 }
 
 impl ExternalPathwayTract for SensoryTract {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerTags) {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: &LayerAddress) {
         assert!(tract_frame.dims() == &self.dims);
         tract_frame.frame_mut().clone_from_slice(&self.buf[..]);
         // [0, 0, 0]

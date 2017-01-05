@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use rand::distributions::{IndependentSample, Range};
 use rand;
 use cmn::{CorticalDims, TractFrameMut};
-use map::{self, LayerTags};
+use map::{self, LayerAddress, AxonTags};
 use thalamus::{ExternalPathwayTract, ExternalPathwayLayer};
 use encode::GlyphBuckets;
-use map::AxonTopology;
+// use map::AxonTopology;
 
 
 /// The cursor containing the current position of the glyph sequence.
@@ -48,14 +48,26 @@ impl SeqReader {
 pub struct GlyphSequences {
     // sequences: Vec<Vec<usize>>,
     buckets: GlyphBuckets,
-    spt_layer_dims: CorticalDims,
-    hrz_layer_dims: CorticalDims,
+    img_layer_dims: CorticalDims,
+    img_layer_addr: LayerAddress,
+    val_layer_dims: CorticalDims,
+    val_layer_addr: LayerAddress,
     cursor: SeqReader,
     scale: f32,
 }
 
 impl GlyphSequences {
-    pub fn new(layers: &mut HashMap<LayerTags, ExternalPathwayLayer>, seq_lens: (usize, usize),
+    pub fn img_lyr_tags() -> AxonTags {
+        // (&[map::EXT, map::GLY_SEQ_IMG]).into()
+        AxonTags::new(&[map::EXT, map::GLY_SEQ_IMG])
+    }
+
+    pub fn val_lyr_tags() -> AxonTags {
+        // (&[map::EXT, map::GLY_SEQ_VAL]).into()
+        AxonTags::new(&[map::EXT, map::GLY_SEQ_VAL])
+    }
+
+    pub fn new(layers: &mut HashMap<LayerAddress, ExternalPathwayLayer>, seq_lens: (usize, usize),
                 seq_count: usize, scale: f32, hrz_dims: (u32, u32), label_file: PathBuf,
                 image_file: PathBuf) -> GlyphSequences
     {
@@ -63,18 +75,32 @@ impl GlyphSequences {
             invalid. High end must at least be equal to low end: '{:?}'.", seq_lens);
         assert_eq!(layers.len(), 2);
 
-        let mut spt_layer_dims: Option<CorticalDims> = None;
-        let mut hrz_layer_dims: Option<CorticalDims> = None;
+        let mut img_layer_dims: Option<CorticalDims> = None;
+        let mut img_layer_addr: Option<LayerAddress> = None;
+        let mut val_layer_dims: Option<CorticalDims> = None;
+        let mut val_layer_addr: Option<LayerAddress> = None;
 
-        for (tags, layer) in layers.iter_mut() {
-            if layer.axn_kind() == AxonTopology::Spatial {
-                assert!(tags.contains(map::FF_OUT));
-                spt_layer_dims = layer.dims().cloned();
-            } else if layer.axn_kind() == AxonTopology::Horizontal {
-                assert!(tags.contains(map::NS_OUT));
-                hrz_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1, /*0,*/ None));
-                layer.set_dims(hrz_layer_dims.clone());
+        for (addr, layer) in layers.iter_mut() {
+            // if layer.axn_kind() == AxonTopology::Spatial {
+            //     assert!(tags.contains(map::FF_OUT));
+            //     img_layer_dims = layer.dims().cloned();
+            // } else if layer.axn_kind() == AxonTopology::Horizontal {
+            //     assert!(tags.contains(map::NS_OUT));
+            //     val_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1, /*0,*/ None));
+            //     layer.set_dims(val_layer_dims.clone());
+            // }
+
+            if *layer.axn_tags() == GlyphSequences::img_lyr_tags() {
+                // assert!(tags.contains(map::FF_OUT));
+                img_layer_dims = layer.dims().cloned();
+                img_layer_addr = Some(addr.clone());
+            } else if *layer.axn_tags() == GlyphSequences::val_lyr_tags() {
+                // assert!(tags.contains(map::NS_OUT));
+                val_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1, /*0,*/ None));
+                layer.set_dims(val_layer_dims.clone());
+                val_layer_addr = Some(addr.clone());
             }
+
         }
 
         let buckets = GlyphBuckets::new(label_file, image_file);
@@ -98,8 +124,10 @@ impl GlyphSequences {
             // sequences: sequences,
             buckets: buckets,
             // layer_dims: [layer_dims.clone(), layer_dims.clone()],
-            spt_layer_dims: spt_layer_dims.expect("GlyphSequences::new(): Spatial dims not set."),
-            hrz_layer_dims: hrz_layer_dims.expect("GlyphSequences::new(): Horizontal dims not set."),
+            img_layer_dims: img_layer_dims.expect("GlyphSequences::new(): Spatial dims not set."),
+            img_layer_addr: img_layer_addr.expect("GlyphSequences::new(): Spatial layer address not set."),
+            val_layer_dims: val_layer_dims.expect("GlyphSequences::new(): Horizontal dims not set."),
+            val_layer_addr: val_layer_addr.expect("GlyphSequences::new(): Horizontal layer address not set."),
             cursor: SeqReader::new(sequences),
             scale: scale,
         }
@@ -111,26 +139,25 @@ impl GlyphSequences {
 }
 
 impl ExternalPathwayTract for GlyphSequences {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, tags: LayerTags) {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: &LayerAddress) {
         let glyph_dims = self.buckets.glyph_dims();
         let (next_seq_idx, next_glyph_id) = self.cursor.get();
         let glyph: &[u8] = self.buckets.next_glyph(next_glyph_id);
 
-        if tags.contains(map::FF_OUT) {
-            assert!(&self.spt_layer_dims == tract_frame.dims());
-            super::encode_2d_image(glyph_dims, &self.spt_layer_dims, self.scale,
+        if *addr == self.img_layer_addr {
+            assert!(&self.img_layer_dims == tract_frame.dims());
+            super::encode_2d_image(glyph_dims, &self.img_layer_dims, self.scale,
                 glyph, tract_frame);
-        } else if tags.contains(map::NS_OUT) {
-            assert!(&self.hrz_layer_dims == tract_frame.dims());
+        } else if *addr == self.val_layer_addr {
+            assert!(&self.val_layer_dims == tract_frame.dims());
             // [TODO]: ENCODE THE HRZ BUSINESS
-            // super::encode_2d_image(glyph_dims, &self.hrz_layer_dims, self.scale,
+            // super::encode_2d_image(glyph_dims, &self.val_layer_dims, self.scale,
             //     glyph, tract_frame);
             for idx in 0..tract_frame.dims().to_len() {
                 unsafe { *tract_frame.get_unchecked_mut(idx) = (idx & 0xFF) as u8; }
             }
         } else {
-            panic!("GlyphSequences::write_into(): Invalid tags: tags: '{:?}' must contain {:?}",
-                tags, map::NS_OUT);
+            panic!("GlyphSequences::write_into(): Layer address not found: '{:?}'.", addr);
         }
 
         // [next_glyph_id, next_seq_idx, 0]

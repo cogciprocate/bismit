@@ -5,7 +5,7 @@ use std::slice::{Iter};
 
 use map::{AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapKind};
 use cmn::{self, MapStore};
-use map::{LayerTags, LayerInfo, SourceLayerInfo};
+use map::{LayerTags, LayerInfo, SourceLayerInfo, LayerAddress};
 use thalamus::ExternalPathway;
 
 const DEBUG_PRINT: bool = false;
@@ -22,7 +22,7 @@ pub struct LayerMap {
 
 impl LayerMap {
     pub fn new(area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList, area_sl: &AreaSchemeList,
-                    ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerTags>)>) -> LayerMap {
+                    ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerAddress>)>) -> LayerMap {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...",
             area_sch.name(), mt = cmn::MT);
         println!("{mt}{mt}{mt}[Layer ID] <Layer Name>: Option(Slice Range): {{ Layer Tags }}",
