@@ -14,7 +14,7 @@ use tract_terminal::{OclBufferSource, OclBufferTarget};
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
 // GDB debug mode:
-const KERNEL_DEBUG_MODE: bool = true;
+const KERNEL_DEBUG_MODE: bool = false;
 // const DEBUG_PRINT: bool = false;
 
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
@@ -47,8 +47,6 @@ impl IoLayerInfo {
     #[inline] pub fn key(&self) -> &LayerAddress { &self.key }
     #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
     #[inline] pub fn filter_key(&self) -> &Option<(usize, usize)>{ &self.filter_key }
-    // #[allow(dead_code)] #[inline] pub fn area_id(& self) -> usize { self.tract_key.0 }
-    // #[inline] pub fn tags<'a>(&'a self) -> LayerTags { self.tract_key.1 }
 }
 
 
@@ -106,11 +104,6 @@ impl IoLayerInfoGroup {
                 (key, filter_key)
             };
 
-            // let axn_range = match area_map.axn_range_meshing_tags_either_way(local_layer_tags, src_lyr_key) {
-            //     Some(axn_range) => axn_range,
-            //     None => panic!("IoLayerInfoCache::new(): Internal consistency error: \
-            //         tags: {}.", local_layer_tags),
-            // };
             let axn_range = area_map.lyr_axn_range(&lyr_addr, src_lyr_addr.as_ref()).expect(
                 &format!("IoLayerInfoCache::new(): Internal consistency error: \
                     lyr_addr: {:?}, src_lyr_addr: {:?}.", &lyr_addr, src_lyr_addr));
@@ -145,10 +138,6 @@ impl IoLayerInfoCache {
     pub fn new(area_map: &AreaMap, filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>)
             -> IoLayerInfoCache
     {
-        // let group_tags_list: [LayerTags; 6] = [
-        //     map::FF_IN, map::FB_IN, map::NS_IN,
-        //     map::FF_OUT, map::FB_OUT, map::NS_OUT
-        // ];
         let group_tags_list = [map::INPUT, map::OUTPUT];
 
         let mut groups = HashMap::with_capacity(group_tags_list.len());
@@ -162,27 +151,14 @@ impl IoLayerInfoCache {
             // let tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)> =
             let tract_keys: Vec<(LayerAddress, Option<LayerAddress>)> =
                 if group_tags.contains(map::OUTPUT) {
-                    // area_map.layers().layers_containing_tags(group_tags).iter()
-                    //     .map(|li| {
-                    //         let lyr_addr = LayerAddress::new(li.layer_id(), area_map.area_id());
-                    //         (lyr_addr, li.layer_tags(), None)
-                    //     }).collect()
                     area_map.layers().iter()
                         .filter(|li| li.axn_domain().is_output())
                         .map(|li| {
                             let lyr_addr = LayerAddress::new(li.layer_id(), area_map.area_id());
-                            // (lyr_addr, li.layer_tags(), None)
                             (lyr_addr, None)
                         }).collect()
                 } else {
                     debug_assert!(group_tags.contains(map::INPUT));
-
-                    // area_map.layers().layers_containing_tags_src_lyrs(group_tags).iter()
-                    //     .map(|sli| (
-                    //         sli.layer_addr().clone(),
-                    //         sli.layer_tags(),
-                    //         Some((sli.area_id(), sli.tar_slc_range().clone())),
-                    //     )).collect()
 
                     // [NOTE]: Iterator flat mapping `sli` doesn't easily work
                     // because it needs `li` to build its `LayerAddress`:
@@ -313,9 +289,8 @@ impl CorticalArea {
         // Optionally pass `-g` and `-s {cl path}` flags to compiler:
         let build_options = if KERNEL_DEBUG_MODE && cfg!(target_os = "linux") {
             // [TODO]: Add something to identify the platform vendor and match:
-            // let debug_opts = format!("-g -s {}", cmn::cl_root_path().join("bismit.cl").to_str()
+            // let debug_opts = format!("-g -s {}", cmn::cl_root_path().join("bismit.cl").to_str());
             let debug_opts = "-g";
-
             area_map.gen_build_options().cmplr_opt(debug_opts)
         } else {
             area_map.gen_build_options()
@@ -359,7 +334,7 @@ impl CorticalArea {
         /*=============================================================================
         ================================== DATA CELLS =================================
         =============================================================================*/
-        // BREAK OFF THIS CODE INTO NEW STRUCT DEF
+        // [TODO]: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
         for layer in area_map.layers().iter() {
             match layer.kind() {
@@ -395,7 +370,7 @@ impl CorticalArea {
         /*=============================================================================
         ================================ CONTROL CELLS ================================
         =============================================================================*/
-        // BREAK OFF THIS CODE INTO NEW STRUCT DEF
+        // [TODO]: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
         for layer in area_map.layers().iter() {
             // match layer.kind() {
@@ -463,7 +438,7 @@ impl CorticalArea {
         /*=============================================================================
         =================================== FILTERS ===================================
         =============================================================================*/
-        // BREAK OFF THIS CODE INTO NEW STRUCT DEF
+        // [TODO]: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
         let filter_chains = {
             let mut filter_chains = Vec::with_capacity(4);
@@ -483,9 +458,10 @@ impl CorticalArea {
 
                 // [DEBUG]:
                 // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
+                layer_filters.shrink_to_fit();
                 filter_chains.push((tags, layer_filters));
             }
-
+            filter_chains.shrink_to_fit();
             filter_chains
         };
 

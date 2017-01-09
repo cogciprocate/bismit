@@ -84,19 +84,24 @@ impl AreaScheme {
         self.eff_areas = eff_areas;
     }
 
+    #[inline]
+    pub fn get_other_areas(&self) -> &Vec<(&'static str, Option<Vec<(AxonTags, AxonTags)>>)> {
+        &self.other_areas
+    }
+
+    #[inline]
+    pub fn filter_chains(&self) -> &Vec<(LayerTags, Vec<FilterScheme>)> {
+        &self.filter_chains
+    }
+
     #[inline] pub fn area_id(&self) -> usize { self.area_id.expect("Area ID not set!") }
     #[inline] pub fn name(&self) -> &'static str { self.name }
     #[inline] pub fn layer_map_name(&self) -> &'static str { self.layer_map_name }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn get_input(&self) -> &InputScheme { &self.input }
-    #[inline] pub fn filter_chains(&self) -> &Vec<(LayerTags, Vec<FilterScheme>)> {
-        &self.filter_chains
-    }
     #[inline] pub fn get_eff_areas(&self) -> &Vec<&'static str> { &self.eff_areas }
     #[inline] pub fn get_aff_areas(&self) -> &Vec<&'static str> { &self.aff_areas }
-    #[inline] pub fn get_other_areas(&self) -> &Vec<(&'static str, Option<Vec<(AxonTags, AxonTags)>>)> {
-        &self.other_areas
-    }
+
 }
 
 

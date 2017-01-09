@@ -8,6 +8,7 @@ use ::map::SliceTractMap;
 use thalamus::{ExternalPathwayEncoder, ExternalPathwayFrame};
 
 
+
 #[derive(Clone, Debug)]
 pub enum PathwayConfig {
     EncoderRanges(Arc<Mutex<Vec<(f32, f32)>>>),
