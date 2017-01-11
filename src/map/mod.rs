@@ -206,9 +206,9 @@ impl AxonDomain {
     }
 }
 
-/// [NOTE]: This enum is redundantly represented as a bitflag in `LayerTags`
-/// and may eventually be removed pending evaluation. [UPDATE]: Nevermind:
-/// layer tags representing this removed.
+/// [NOTE]: Axon topology is largely ignored for output layers but is
+/// currently stored within `SourceLayerInfo` anyway. [TODO]: Figure out what
+/// to do with it.
 ///
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]
 pub enum AxonTopology {

@@ -6,14 +6,14 @@ use std::collections::HashMap;
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
 use cmn::{CmnResult};
 use cortex::AxonSpace;
-use map::{AreaMap, AxonTags};
+use map::{AreaMap, AxonTags, LayerInfo};
 use tract_terminal::{SliceBufferSource, OclBufferTarget};
 
 pub struct SensoryFilter {
     filter_name: String,
     cl_file_name: Option<String>,
     axn_tags: AxonTags,
-    area_name: &'static str,
+    // area_name: &'static str,
     src_area_map: HashMap<usize, usize>,
     input_buffers: Vec<Buffer<u8>>,
     cycle_kernels: Vec<Kernel>,
@@ -24,17 +24,18 @@ impl SensoryFilter {
                 filter_name: String,
                 cl_file_name: Option<String>,
                 axn_tags: AxonTags,
-                area_map: &AreaMap,
+                // area_map: &AreaMap,
+                layer_info: &LayerInfo,
                 axns: &AxonSpace,
                 ocl_pq: &ProQue,
             ) -> SensoryFilter
     {
-        let layers = area_map.layers().layers_meshing_tags(layer_tags);
-        assert!(layers.len() == 1, "\n\nERROR: SensoryFilter::new(): Multiple (or zero) layers \
-            with the same layer tags found. Please refine filter tags to select only a single \
-            layer. \nArea: {}\n{}\nLayers: \n{:#?}\n\n",
-            area_map.area_name(), layer_tags, layers);
-        let layer = layers[0];
+        // let layers = area_map.layers().layers_meshing_tags(layer_tags);
+        // assert!(layers.len() == 1, "\n\nERROR: SensoryFilter::new(): Multiple (or zero) layers \
+        //     with the same layer tags found. Please refine filter tags to select only a single \
+        //     layer. \nArea: {}\n{}\nLayers: \n{:#?}\n\n",
+        //     area_map.area_name(), layer_tags, layers);
+        // let layer = layers[0];
 
         // let axn_slc_range = layer.slc_range().expect(&format!("\n\nERROR: SensoryFilter::new(): \
         //     No slice range found for layer with tags: {}. The source layer is not properly \
@@ -79,7 +80,7 @@ impl SensoryFilter {
             filter_name: filter_name,
             cl_file_name: cl_file_name,
             axn_tags: axn_tags,
-            area_name: area_map.area_name(),
+            // area_name: area_map.area_name(),
             src_area_map: src_area_map,
             input_buffers: input_buffers,
             cycle_kernels: cycle_kernels,
@@ -101,7 +102,7 @@ impl SensoryFilter {
         fltr_event
     }
 
-    pub fn lyr_id(&self, src_area_id: usize) -> Option<usize> {
+    pub fn input_lyr_id(&self, src_area_id: usize) -> Option<usize> {
         self.src_area_map.get(&src_area_id).cloned()
     }
 

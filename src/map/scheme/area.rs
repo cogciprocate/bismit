@@ -1,4 +1,4 @@
-use map::{FilterScheme, InputScheme, LayerTags, AxonTags, /*AxonTag*/};
+use map::{FilterScheme, InputScheme, LayerTags, AxonTags, InputTrack};
 use cmn::{self, CorticalDims, MapStore};
 
 
@@ -11,7 +11,7 @@ pub struct AreaScheme {
     dims: CorticalDims,
     input: InputScheme,
     // filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>,
-    filter_chains: Vec<(AxonTags, Vec<FilterScheme>)>,
+    filter_chains: Vec<(InputTrack, AxonTags, Vec<FilterScheme>)>,
     aff_areas: Vec<&'static str>,
     eff_areas: Vec<&'static str>,
     // (area name, list of optional axon tag masquerades (original, replacement))):
@@ -55,8 +55,10 @@ impl AreaScheme {
     //     self
     // }
 
-    pub fn filter_chain(mut self, tags: AxonTags, filter_chain: Vec<FilterScheme>) -> AreaScheme {
-        self.filter_chains.push((tags, filter_chain));
+    pub fn filter_chain<A: Into<AxonTags>>(mut self, input_track: InputTrack, axn_tags: A,
+            filter_chain: &[FilterScheme]) -> AreaScheme
+    {
+        self.add_filter_chain(input_track, axn_tags, filter_chain.into());
         self
     }
 
@@ -86,8 +88,10 @@ impl AreaScheme {
     //     self.filter_chains.push((tags, filter_chain));
     // }
 
-    pub fn set_filter_chain(&mut self, tags: AxonTags, filter_chain: Vec<FilterScheme>) {
-        self.filter_chains.push((tags, filter_chain));
+    pub fn add_filter_chain<A: Into<AxonTags>>(&mut self, input_track: InputTrack, axn_tags: A,
+            filter_chain: Vec<FilterScheme>)
+    {
+        self.filter_chains.push((input_track, axn_tags.into(), filter_chain.into()));
     }
 
     pub fn set_eff_areas(&mut self, eff_areas: Vec<&'static str>) {
@@ -105,7 +109,7 @@ impl AreaScheme {
     // }
 
     #[inline]
-    pub fn filter_chains(&self) -> &Vec<(AxonTags, Vec<FilterScheme>)> {
+    pub fn filter_chains(&self) -> &Vec<(InputTrack, AxonTags, Vec<FilterScheme>)> {
         &self.filter_chains
     }
 

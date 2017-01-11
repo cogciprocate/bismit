@@ -7,7 +7,7 @@ use ocl::builders::{BuildOpt, ProgramBuilder};
 use cmn::{self, CorticalDims, MapStore, CmnResult};
 use thalamus::ExternalPathway;
 use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapSchemeList,
-    AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme, AxonTags};
+    AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme, AxonTags, InputTrack};
 
 
 #[derive(Clone)]
@@ -22,7 +22,7 @@ pub struct AreaMap {
     aff_areas: Vec<&'static str>,
     other_areas: Vec<(&'static str, Option<Vec<(AxonTags, AxonTags)>>)>,
     // filter_chain_schemes: Vec<(LayerTags, Vec<FilterScheme>)>
-    filter_chain_schemes: Vec<(AxonTags, Vec<FilterScheme>)>,
+    filter_chain_schemes: Vec<(InputTrack, AxonTags, Vec<FilterScheme>)>,
 }
 
 impl AreaMap {
@@ -69,7 +69,7 @@ impl AreaMap {
         ;
 
         // Custom filter kernels
-        for &(_, ref filter_chain) in self.filter_chain_schemes.iter() {
+        for &(_, _, ref filter_chain) in self.filter_chain_schemes.iter() {
             for pf in filter_chain.iter() {
                 match pf.cl_file_name() {
                     Some(ref clfn)  => {
@@ -408,7 +408,7 @@ impl AreaMap {
     }
 
     // UPDATE / DEPRICATE
-    pub fn filter_chain_schemes(&self) -> &Vec<(AxonTags, Vec<FilterScheme>)> {
+    pub fn filter_chain_schemes(&self) -> &[(InputTrack, AxonTags, Vec<FilterScheme>)] {
         &self.filter_chain_schemes
     }
 

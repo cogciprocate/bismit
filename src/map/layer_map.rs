@@ -229,6 +229,19 @@ impl LayerMap {
         self.layers.by_key(name)
     }
 
+    pub fn layer_info_by_domain(&self, domain: &AxonDomain) -> Option<&LayerInfo> {
+        let matching_layers: Vec<&LayerInfo> = self.layers.values().iter()
+            .filter(|li| li.axn_domain() == domain)
+            .collect();
+
+        match matching_layers.len() {
+            0 => None,
+            1 => Some(matching_layers[0]),
+            _ => panic!("Internal error: Duplicate axon domains found within the layer map for \
+                area: \"{}\".", self.area_name),
+        }
+    }
+
 
     /// [FIXME]: REMOVE/REDESIGN THIS: More than one layer can have the same
     /// slice id.

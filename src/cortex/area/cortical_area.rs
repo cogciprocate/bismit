@@ -429,30 +429,38 @@ impl CorticalArea {
         =============================================================================*/
         // [TODO]: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
-        let filter_chains = {
-            let mut filter_chains = Vec::with_capacity(4);
+        let mut filter_chains = Vec::with_capacity(4);
 
-            for &(tags, ref chain_scheme) in area_map.filter_chain_schemes() {
-                let mut layer_filters = Vec::with_capacity(4);
+        for &(track, tags, ref chain_scheme) in area_map.filter_chain_schemes() {
+            let filter_axn_domain = AxonDomain::input();
 
-                for pf in chain_scheme.iter() {
-                    layer_filters.push(SensoryFilter::new(
-                        pf.filter_name(),
-                        pf.cl_file_name(),
-                        tags,
-                        &area_map,
-                        &axns,
-                        &ocl_pq));
-                }
+            let layer = area_map.layers().layer_info_by_domain(&filter_axn_domain)
+                .expect("Unable to find a layer within the area map matching the axon domain \
+                    ({:?}) specified by the filter chain scheme: '{:?}'.", );
+            let mut layer_filters = Vec::with_capacity(4);
 
-                // [DEBUG]:
-                // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
-                layer_filters.shrink_to_fit();
-                filter_chains.push((tags, layer_filters));
+            for pf in chain_scheme.iter() {
+                layer_filters.push(SensoryFilter::new(
+                    pf.filter_name(),
+                    pf.cl_file_name(),
+                    tags,
+                    layer,
+                    &axns,
+                    &ocl_pq));
             }
-            filter_chains.shrink_to_fit();
-            filter_chains
-        };
+
+            // [DEBUG]:
+            // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
+            layer_filters.shrink_to_fit();
+            filter_chains.push((tags, layer_filters));
+        }
+
+        filter_chains.shrink_to_fit();
+
+
+        /*=============================================================================
+        ===================================== AUX =====================================
+        =============================================================================*/
 
         // let renderer = Renderer::new(&dims);
 
