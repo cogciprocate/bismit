@@ -337,7 +337,7 @@ impl Thalamus {
         =============================================================================*/
         for (area_id, area_s) in area_sl.areas().iter().enumerate() {
             assert!(area_s.area_id() == area_id);
-            let area_map = AreaMap::new(area_id, area_s, &layer_map_sl, &area_sl, &external_pathways);
+            let area_map = AreaMap::new(area_id, area_s, &layer_map_sl, &area_sl, &external_pathways)?;
 
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ",
                 area_s.name(), mt = cmn::MT);

@@ -131,7 +131,7 @@ fn define_a_schemes() -> AreaSchemeList {
             .eff_areas(vec!["v0"])
             // .other_area("v0", Some(&[(&[map::THAL_SP], &[map::L2])]))
             .other_area("v0", None)
-            // .filter_chain(map::FF_IN | LayerTags::uid(U0), vec![FilterScheme::new("retina", None)])
+            .filter_chain(map::FF_IN | LayerTags::uid(U0), vec![FilterScheme::new("retina", None)])
             // .filter_chain(map::FF_IN | LayerTags::uid(U1), vec![FilterScheme::new("retina", None)])
         )
         // .area(AreaScheme::new("m1", "m1_lm", AREA_SIDE)

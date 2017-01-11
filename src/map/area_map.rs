@@ -4,11 +4,10 @@ use std::ops::{Range, Deref};
 // use std::collections::{BTreeMap};
 
 use ocl::builders::{BuildOpt, ProgramBuilder};
-use map::{LayerMapSchemeList, AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme,
-    /*DendriteKind,*/ AxonTags};
-use cmn::{self, CorticalDims, MapStore};
-use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress};
+use cmn::{self, CorticalDims, MapStore, CmnResult};
 use thalamus::ExternalPathway;
+use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapSchemeList,
+    AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme, AxonTags};
 
 
 #[derive(Clone)]
@@ -22,25 +21,26 @@ pub struct AreaMap {
     eff_areas: Vec<&'static str>,
     aff_areas: Vec<&'static str>,
     other_areas: Vec<(&'static str, Option<Vec<(AxonTags, AxonTags)>>)>,
-    filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>
+    // filter_chain_schemes: Vec<(LayerTags, Vec<FilterScheme>)>
+    filter_chain_schemes: Vec<(AxonTags, Vec<FilterScheme>)>,
 }
 
 impl AreaMap {
     pub fn new(area_id: usize, area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList,
             area_sl: &AreaSchemeList, ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerAddress>)>)
-            -> AreaMap
+            -> CmnResult<AreaMap>
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", area_sch.name(),
             area_sch.get_eff_areas(), area_sch.get_aff_areas(), mt = cmn::MT);
 
-        let layers = LayerMap::new(area_sch, layer_map_sl, area_sl, ext_paths);
+        let layers = LayerMap::new(area_sch, layer_map_sl, area_sl, ext_paths)?;
 
         let dims = area_sch.dims().clone_with_depth(layers.depth());
 
         let slices = SliceMap::new(&dims, &layers);
         slices.print_debug();
 
-        AreaMap {
+        Ok(AreaMap {
             area_id: area_id,
             area_name: area_sch.name(),
             dims: dims,
@@ -49,8 +49,8 @@ impl AreaMap {
             eff_areas: area_sch.get_eff_areas().clone(),
             aff_areas: area_sch.get_aff_areas().clone(),
             other_areas: area_sch.get_other_areas().clone(),
-            filter_chains: area_sch.filter_chains().clone(),
-        }
+            filter_chain_schemes: area_sch.filter_chains().clone(),
+        })
     }
 
     // ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
@@ -69,7 +69,7 @@ impl AreaMap {
         ;
 
         // Custom filter kernels
-        for &(_, ref filter_chain) in self.filter_chains.iter() {
+        for &(_, ref filter_chain) in self.filter_chain_schemes.iter() {
             for pf in filter_chain.iter() {
                 match pf.cl_file_name() {
                     Some(ref clfn)  => {
@@ -408,8 +408,8 @@ impl AreaMap {
     }
 
     // UPDATE / DEPRICATE
-    pub fn filter_chains(&self) -> &Vec<(LayerTags, Vec<FilterScheme>)> {
-        &self.filter_chains
+    pub fn filter_chain_schemes(&self) -> &Vec<(AxonTags, Vec<FilterScheme>)> {
+        &self.filter_chain_schemes
     }
 
     // UPDATE / DEPRICATE

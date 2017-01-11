@@ -10,7 +10,8 @@ pub struct AreaScheme {
     layer_map_name: &'static str,
     dims: CorticalDims,
     input: InputScheme,
-    filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>,
+    // filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>,
+    filter_chains: Vec<(AxonTags, Vec<FilterScheme>)>,
     aff_areas: Vec<&'static str>,
     eff_areas: Vec<&'static str>,
     // (area name, list of optional axon tag masquerades (original, replacement))):
@@ -49,7 +50,12 @@ impl AreaScheme {
         self
     }
 
-    pub fn filter_chain(mut self, tags: LayerTags, filter_chain: Vec<FilterScheme>) -> AreaScheme {
+    // pub fn filter_chain(mut self, tags: LayerTags, filter_chain: Vec<FilterScheme>) -> AreaScheme {
+    //     self.filter_chains.push((tags, filter_chain));
+    //     self
+    // }
+
+    pub fn filter_chain(mut self, tags: AxonTags, filter_chain: Vec<FilterScheme>) -> AreaScheme {
         self.filter_chains.push((tags, filter_chain));
         self
     }
@@ -76,7 +82,11 @@ impl AreaScheme {
         self
     }
 
-    pub fn set_filter_chain(&mut self, tags: LayerTags, filter_chain: Vec<FilterScheme>) {
+    // pub fn set_filter_chain(&mut self, tags: LayerTags, filter_chain: Vec<FilterScheme>) {
+    //     self.filter_chains.push((tags, filter_chain));
+    // }
+
+    pub fn set_filter_chain(&mut self, tags: AxonTags, filter_chain: Vec<FilterScheme>) {
         self.filter_chains.push((tags, filter_chain));
     }
 
@@ -89,8 +99,13 @@ impl AreaScheme {
         &self.other_areas
     }
 
+    // #[inline]
+    // pub fn filter_chains(&self) -> &Vec<(LayerTags, Vec<FilterScheme>)> {
+    //     &self.filter_chains
+    // }
+
     #[inline]
-    pub fn filter_chains(&self) -> &Vec<(LayerTags, Vec<FilterScheme>)> {
+    pub fn filter_chains(&self) -> &Vec<(AxonTags, Vec<FilterScheme>)> {
         &self.filter_chains
     }
 

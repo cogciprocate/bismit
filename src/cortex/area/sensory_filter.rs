@@ -6,13 +6,13 @@ use std::collections::HashMap;
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
 use cmn::{CmnResult};
 use cortex::AxonSpace;
-use map::{AreaMap, LayerTags};
+use map::{AreaMap, AxonTags};
 use tract_terminal::{SliceBufferSource, OclBufferTarget};
 
 pub struct SensoryFilter {
     filter_name: String,
     cl_file_name: Option<String>,
-    layer_tags: LayerTags,
+    axn_tags: AxonTags,
     area_name: &'static str,
     src_area_map: HashMap<usize, usize>,
     input_buffers: Vec<Buffer<u8>>,
@@ -23,7 +23,7 @@ impl SensoryFilter {
     pub fn new(
                 filter_name: String,
                 cl_file_name: Option<String>,
-                layer_tags: LayerTags,
+                axn_tags: AxonTags,
                 area_map: &AreaMap,
                 axns: &AxonSpace,
                 ocl_pq: &ProQue,
@@ -78,7 +78,7 @@ impl SensoryFilter {
         SensoryFilter {
             filter_name: filter_name,
             cl_file_name: cl_file_name,
-            layer_tags: layer_tags,
+            axn_tags: axn_tags,
             area_name: area_map.area_name(),
             src_area_map: src_area_map,
             input_buffers: input_buffers,
@@ -105,5 +105,5 @@ impl SensoryFilter {
         self.src_area_map.get(&src_area_id).cloned()
     }
 
-    pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
+    pub fn axn_tags(&self) -> &AxonTags { &self.axn_tags }
 }

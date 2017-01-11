@@ -32,7 +32,7 @@ pub use self::axon_tags::*;
 //
 // [TODO]: Add a 'system' or 'node' id to represent the machine within a network.
 //
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LayerAddress {
     layer_id: usize,
     area_id: usize,
@@ -54,14 +54,14 @@ impl From<(usize, usize)> for LayerAddress {
 }
 
 
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum InhibitoryCellKind {
     BasketSurround { lyr_name: String, field_radius: u8  },
     //AspinyStellate,
 }
 
 
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum CellKind {
     Pyramidal,
     SpinyStellate,
@@ -72,7 +72,7 @@ pub enum CellKind {
 
 // Roughly whether or not a cell is excitatory or inhibitory.
 //
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum CellClass {
     Data,
     Control,
@@ -87,7 +87,7 @@ pub enum DendriteKind {
 }
 
 
-#[derive(PartialEq, Eq, Debug, Clone, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum DendriteClass {
     Apical,
     Basal,
@@ -95,7 +95,7 @@ pub enum DendriteClass {
 }
 
 
-#[derive(PartialEq, Eq, Debug, Clone, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum LayerMapKind {
     // Associational,
     // Sensory,
@@ -105,7 +105,7 @@ pub enum LayerMapKind {
 }
 
 
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum LayerKind {
     Cellular(CellScheme),
     Axonal(AxonTopology),
@@ -146,7 +146,7 @@ impl LayerKind {
 }
 
 
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum InputTrack {
     Afferent,
     Efferent,
@@ -154,7 +154,15 @@ pub enum InputTrack {
 }
 
 
-#[derive(PartialEq, Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum AxonDomainRoute {
+    Input,
+    Output,
+    Local,
+}
+
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum AxonDomain {
     Input(Vec<(InputTrack, AxonTags)>),
     Output(AxonTags),
@@ -188,13 +196,21 @@ impl AxonDomain {
             _ => false,
         }
     }
+
+    pub fn route(&self) -> AxonDomainRoute {
+        match *self {
+            AxonDomain::Input(_) => AxonDomainRoute::Input,
+            AxonDomain::Output(_) => AxonDomainRoute::Output,
+            AxonDomain::Local => AxonDomainRoute::Local,
+        }
+    }
 }
 
 /// [NOTE]: This enum is redundantly represented as a bitflag in `LayerTags`
 /// and may eventually be removed pending evaluation. [UPDATE]: Nevermind:
 /// layer tags representing this removed.
 ///
-#[derive(PartialEq, Debug, Clone, Eq, Hash, Copy)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]
 pub enum AxonTopology {
     Spatial,
     Horizontal,

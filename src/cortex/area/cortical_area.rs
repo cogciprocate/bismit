@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
 use cmn::{self, /*CmnError,*/ CmnResult, CorticalDims, DataCellLayer};
-use map::{self, AreaMap, LayerTags, SliceTractMap};
+use map::{self, AreaMap, LayerTags, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
+    LayerAddress, AxonTags};
 use ocl::{Device, ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
-use map::{/*DendriteKind,*/ LayerKind, CellKind, InhibitoryCellKind, LayerAddress};
 use thalamus::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, SensoryFilter};
@@ -61,7 +61,7 @@ impl IoLayerInfoGroup {
     pub fn new(area_map: &AreaMap, group_tags: LayerTags,
             // tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)>,
             tract_keys: Vec<(LayerAddress, Option<LayerAddress>)>,
-            filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>) -> IoLayerInfoGroup
+            filter_chains: &Vec<(AxonTags, Vec<SensoryFilter>)>) -> IoLayerInfoGroup
     {
         // Create a container for our i/o layer(s):
         let mut layers = Vec::<IoLayerInfo>::with_capacity(tract_keys.len());
@@ -117,13 +117,8 @@ impl IoLayerInfoGroup {
         }
     }
 
-    pub fn layers(&self) -> &[IoLayerInfo] {
-        self.layers.as_slice()
-    }
-
-    pub fn layers_mut(&mut self) -> &mut [IoLayerInfo] {
-        self.layers.as_mut_slice()
-    }
+    #[inline] pub fn layers(&self) -> &[IoLayerInfo] { self.layers.as_slice() }
+    #[inline] pub fn layers_mut(&mut self) -> &mut [IoLayerInfo] { self.layers.as_mut_slice() }
 }
 
 
@@ -135,7 +130,7 @@ pub struct IoLayerInfoCache {
 }
 
 impl IoLayerInfoCache {
-    pub fn new(area_map: &AreaMap, filter_chains: &Vec<(LayerTags, Vec<SensoryFilter>)>)
+    pub fn new(area_map: &AreaMap, filter_chains: &Vec<(AxonTags, Vec<SensoryFilter>)>)
             -> IoLayerInfoCache
     {
         let group_tags_list = [map::INPUT, map::OUTPUT];
@@ -261,18 +256,12 @@ pub struct CorticalArea {
     pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,
     ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,
     iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
-    // filters: Option<Vec<Box<SensoryFilter>>>,
-    filter_chains: Vec<(LayerTags, Vec<SensoryFilter>)>,
+    filter_chains: Vec<(AxonTags, Vec<SensoryFilter>)>,
     ptal_name: &'static str,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
     psal_name: &'static str,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
     aux: Aux,
     ocl_pq: ProQue,
-    // ocl_context: Context,
-    // renderer: Renderer,
     counter: usize,
-    // rng: rand::XorShiftRng,
-    // thal_gangs: ThalamicGanglions,
-    // events_lists: HashMap<LayerTags, EventList>,
     io_info: IoLayerInfoCache,
     settings: CorticalAreaSettings,
 }
@@ -443,7 +432,7 @@ impl CorticalArea {
         let filter_chains = {
             let mut filter_chains = Vec::with_capacity(4);
 
-            for &(tags, ref chain_scheme) in area_map.filter_chains() {
+            for &(tags, ref chain_scheme) in area_map.filter_chain_schemes() {
                 let mut layer_filters = Vec::with_capacity(4);
 
                 for pf in chain_scheme.iter() {
@@ -514,11 +503,7 @@ impl CorticalArea {
             filter_chains: filter_chains,
             aux: aux,
             ocl_pq: ocl_pq,
-            // ocl_context: ocl_context,
-            // renderer: renderer,
             counter: 0,
-            // rng: rand::weak_rng(),
-            // events_lists: events_lists,
             io_info: io_info,
             settings: settings,
         };

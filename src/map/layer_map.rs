@@ -1,14 +1,61 @@
-use std::collections::{BTreeMap};
+use std::collections::{BTreeMap, HashSet};
 use std::ops::{Range};
 // use std::ops::{Range};
 use std::slice::{Iter};
 
-use map::{AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapKind};
-use cmn::{self, MapStore};
+use map::{AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapKind, AxonDomainRoute,
+    InputTrack, AxonTags, AxonDomain};
+use cmn::{self, MapStore, CmnError, CmnResult};
 use map::{LayerTags, LayerInfo, SourceLayerInfo, LayerAddress};
 use thalamus::ExternalPathway;
 
 const DEBUG_PRINT: bool = false;
+
+
+struct AxonDomainCache {
+    cache: HashSet<(AxonDomainRoute, Option<InputTrack>, AxonTags)>,
+}
+
+impl AxonDomainCache {
+    pub fn new() -> AxonDomainCache {
+        AxonDomainCache { cache: HashSet::with_capacity(64) }
+    }
+
+    pub fn add(&mut self, domain: &AxonDomain) -> CmnResult<()> {
+        match *domain {
+            AxonDomain::Input(ref subdomains) => {
+                for &(ref input_track, ref axn_tags) in subdomains {
+                    if !self.cache.insert((AxonDomainRoute::Input, Some(input_track.clone()), axn_tags.clone())) {
+                        return Err(format!("Two input layers within the same layer map have the same axon \
+                            input track ({:?}) and tags ({:?}).", input_track, axn_tags).into())
+                    }
+                }
+            },
+            AxonDomain::Output(ref axn_tags) => {
+                if !self.cache.insert((AxonDomainRoute::Output, None, axn_tags.clone())) {
+                    return Err(format!("Two output layers within the same layer map have the same axon \
+                        domain: '{:?}'.", domain).into())
+                }
+            },
+            AxonDomain::Local => (),
+        }
+
+        Ok(())
+    }
+}
+
+
+// fn verify_unique_axn_domain(layer: &LayerInfo, layers: &MapStore<String, LayerInfo>) -> CmnResult<()> {
+//     for list_lyr in layers.values().iter() {
+//         if layer.axn_domain() != list_lyr.axn_domain() {
+//             return Err(format!("Two layers within the same layer map have the same axon domain (tags). \
+//                 \nLayer 1: {:?} \nLayer 2: {:?}", layer, list_lyr).into())
+//         }
+//     }
+
+//     Ok(())
+// }
+
 
 #[derive(Clone)]
 // [FIXME]: TODO: Add caches.
@@ -22,7 +69,8 @@ pub struct LayerMap {
 
 impl LayerMap {
     pub fn new(area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList, area_sl: &AreaSchemeList,
-                    ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerAddress>)>) -> LayerMap {
+                ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerAddress>)>) -> CmnResult<LayerMap>
+    {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...",
             area_sch.name(), mt = cmn::MT);
         println!("{mt}{mt}{mt}[Layer ID] <Layer Name>: Option(Slice Range): {{ Layer Tags }}",
@@ -34,11 +82,16 @@ impl LayerMap {
 
         let mut layers = MapStore::with_capacity(lm_scheme.layers().len());
         let mut slc_total = 0u8;
+        let mut domain_cache = AxonDomainCache::new();
 
         for (layer_id, ls) in lm_scheme.layers().iter().enumerate() {
             assert!(ls.layer_id() == layer_id);
             let new_layer = LayerInfo::new(layer_id, ls, lm_scheme.kind().clone(), area_sch,
                 area_sl, layer_map_sl, ext_paths, slc_total);
+
+            // Check for duplicate input or output domains:
+            domain_cache.add(new_layer.axn_domain())?;
+
             slc_total += new_layer.depth();
             layers.insert(ls.name().to_owned(), new_layer);
             assert!(layers[layer_id].layer_addr().layer_id() == layer_id);
@@ -57,7 +110,7 @@ impl LayerMap {
             println!("{:#?}", lm.slc_map());
         }
 
-        lm
+        Ok(lm)
     }
 
     pub fn slc_map(&self) -> BTreeMap<u8, &LayerInfo> {
@@ -217,4 +270,3 @@ impl LayerMap {
         self.depth
     }
 }
-
