@@ -23,8 +23,9 @@ impl LayerMapScheme {
     }
 
     // <A: Into<AxonTags>>
-    pub fn input_layer(mut self, layer_name: &'static str, layer_tags: LayerTags,
-            axn_domain: AxonDomain, axn_kind: AxonTopology) -> LayerMapScheme
+    pub fn input_layer<D>(mut self, layer_name: &'static str, layer_tags: LayerTags,
+            axn_domain: D, axn_kind: AxonTopology) -> LayerMapScheme
+            where D: Into<AxonDomain>
     {
         self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
             axn_domain));
@@ -40,8 +41,9 @@ impl LayerMapScheme {
     // }
 
     // [FIXME]: TODO: Change axonal default depth to 'None' so that input source or layer map can set.
-    pub fn layer(mut self, layer_name: &'static str, layer_depth: u8, layer_tags: LayerTags,
-            axn_domain: AxonDomain, kind: LayerKind) -> LayerMapScheme
+    pub fn layer<D>(mut self, layer_name: &'static str, layer_depth: u8, layer_tags: LayerTags,
+            axn_domain: D, kind: LayerKind) -> LayerMapScheme
+            where D: Into<AxonDomain>
     {
         let validated_depth = match kind {
             LayerKind::Cellular(ref cell_scheme) => cell_scheme.validate_depth(Some(layer_depth)),
@@ -73,14 +75,16 @@ impl LayerMapScheme {
         layers
     }
 
-    /// Returns all input layers containing 'tags'.
+    /// Returns all output layers containing 'tags'.
     pub fn output_layers_with_axon_tags(&self, search_tags: &AxonTags) -> Vec<&LayerScheme> {
         let mut layers: Vec<&LayerScheme> = Vec::with_capacity(16);
 
         for layer in self.layers.values().iter() {
             match *layer.axn_domain() {
                 AxonDomain::Output(ref at) => {
-                    if at == search_tags {
+                    debug_assert!(at.is_output());
+
+                    if at.tags() == search_tags {
                         layers.push(&layer);
                     }
                 },

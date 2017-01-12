@@ -19,13 +19,11 @@ pub use self::syn_src::{SynSrcSlices, SynSrcIdxCache, SynSrc, gen_syn_offs};
 pub use self::slice_tract_map::SliceTractMap;
 pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
 	LayerScheme, FilterScheme, InputScheme, TuftSourceLayer, TuftScheme};
-pub use self::layer_tags::{LayerTags, DEFAULT, INPUT, OUTPUT, /*SPATIAL,*/ /*HORIZONTAL,*/ FEEDFORWARD,
-    FEEDBACK, SPECIFIC, NONSPECIFIC, PRIMARY, SPATIAL_ASSOCIATIVE, TEMPORAL_ASSOCIATIVE,
-    UNUSED_TESTING, FF_IN, FF_OUT, FB_IN, FB_OUT, FF_FB_OUT, NS_IN, NS_OUT, PSAL, PTAL, PMEL};
+pub use self::layer_tags::{LayerTags, DEFAULT, PRIMARY, SPATIAL_ASSOCIATIVE, TEMPORAL_ASSOCIATIVE,
+    UNUSED_TESTING, PSAL, PTAL, PMEL};
 // FIXME: IMPORT MANUALLY:
 pub use self::axon_tags::*;
 #[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
-
 
 
 /// An absolute location and unique identifier of a layer.
@@ -179,36 +177,98 @@ pub enum AxonDomainRoute {
 
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct AxonSignature {
+    track: Option<InputTrack>,
+    tags: AxonTags,
+}
+
+impl AxonSignature {
+    pub fn new<A: Into<AxonTags>>(track: Option<InputTrack>, tags: A) -> AxonSignature {
+        AxonSignature { track: track, tags: tags.into() }
+    }
+
+    pub fn is_output(&self) -> bool {
+        self.track.is_none()
+    }
+
+    pub fn is_input(&self) -> bool {
+        self.track.is_some()
+    }
+
+    #[inline] pub fn track(&self) -> Option<&InputTrack> { self.track.as_ref() }
+    #[inline] pub fn tags(&self) -> &AxonTags { &self.tags }
+}
+
+impl<'a, A> From<(&'a InputTrack, A)> for AxonSignature where A: Into<AxonTags> {
+    fn from(tup: (&InputTrack, A)) -> AxonSignature {
+        AxonSignature::new(Some(tup.0.clone()), tup.1)
+    }
+}
+
+impl<A> From<(Option<InputTrack>, A)> for AxonSignature where A: Into<AxonTags> {
+    fn from(tup: (Option<InputTrack>, A)) -> AxonSignature {
+        AxonSignature::new(tup.0, tup.1)
+    }
+}
+
+impl<A> From<(InputTrack, A)> for AxonSignature where A: Into<AxonTags> {
+    fn from(tup: (InputTrack, A)) -> AxonSignature {
+        AxonSignature::new(Some(tup.0), tup.1)
+    }
+}
+
+impl<A> From<A> for AxonSignature where A: Into<AxonTags> {
+    fn from(tags: A) -> AxonSignature {
+        AxonSignature::new(None, tags)
+    }
+}
+
+
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum AxonDomain {
-    Input(Vec<(InputTrack, AxonTags)>),
-    Output(AxonTags),
+    // Input(Vec<(InputTrack, AxonTags)>),
+    Input(Vec<AxonSignature>),
+    Output(AxonSignature),
     Local,
 }
 
 impl AxonDomain {
-    pub fn input<A: Into<AxonTags> + Clone>(slice: &[(InputTrack, A)]) -> AxonDomain {
-        AxonDomain::Input(slice.into_iter()
-            .map(|s| {
-                let (it, at) = s.clone();
-                (it, at.into())
-            })
-            .collect())
+    // pub fn input<A: Into<AxonTags> + Clone>(sigs: &[(InputTrack, A)]) -> AxonDomain {
+    //     AxonDomain::Input(sigs.into_iter()
+    //         .map(|s| {
+    //             // let (it, at) = s.clone();
+    //             // (it, at.into())
+    //             s.clone().into()
+
+    //         })
+    //         .collect())
+    // }
+
+    pub fn input<S: Into<AxonSignature> + Clone>(sigs: &[S]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
     }
 
-    pub fn output<A: Into<AxonTags>>(ats: A) -> AxonDomain {
-        AxonDomain::Output(ats.into())
-    }
-
-    pub fn is_output(&self) -> bool {
-        match *self {
-            AxonDomain::Output(_) => true,
-            _ => false,
-        }
+    pub fn output<S: Into<AxonSignature>>(sig: S) -> AxonDomain {
+        AxonDomain::Output(sig.into())
     }
 
     pub fn is_input(&self) -> bool {
         match *self {
-            AxonDomain::Input(_) => true,
+            AxonDomain::Input(ref sigs) => {
+                for sig in sigs { debug_assert!(sig.is_input()); }
+                true
+            },
+            _ => false,
+        }
+    }
+
+    pub fn is_output(&self) -> bool {
+        match *self {
+            AxonDomain::Output(ref sig) => {
+                debug_assert!(sig.is_output());
+                true
+            },
             _ => false,
         }
     }
@@ -221,6 +281,24 @@ impl AxonDomain {
         }
     }
 }
+
+impl<'a, S> From<&'a [S]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: &'a [S]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+// impl<'a, A> From<&'a [(InputTrack, A)]> for AxonDomain where A: Into<AxonTags> + Clone {
+//     fn from(sigs: &'a [(InputTrack, A)]) -> AxonDomain {
+//         AxonDomain::input(sigs)
+//     }
+// }
+
+// impl<A> From<A> for AxonDomain where A: Into<AxonTags> {
+//     fn from(tags: A) -> AxonDomain {
+//         AxonDomain::output(tags)
+//     }
+// }
 
 
 

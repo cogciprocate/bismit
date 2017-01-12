@@ -1,10 +1,8 @@
 use std::collections::{BTreeMap, HashSet};
 use std::ops::{Range};
-// use std::ops::{Range};
 use std::slice::{Iter};
-
 use map::{AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapKind, AxonDomainRoute,
-    InputTrack, AxonTags, AxonDomain};
+    AxonDomain, AxonSignature};
 use cmn::{self, MapStore, CmnResult};
 use map::{LayerTags, LayerInfo, SourceLayerInfo, LayerAddress};
 use thalamus::ExternalPathway;
@@ -12,8 +10,10 @@ use thalamus::ExternalPathway;
 const DEBUG_PRINT: bool = false;
 
 
+/// Stores unique fingerprints for each interconnecting layer or sub-layer.
+///
 struct AxonDomainCache {
-    cache: HashSet<(AxonDomainRoute, Option<InputTrack>, AxonTags)>,
+    cache: HashSet<(AxonDomainRoute, AxonSignature)>,
 }
 
 impl AxonDomainCache {
@@ -21,18 +21,24 @@ impl AxonDomainCache {
         AxonDomainCache { cache: HashSet::with_capacity(64) }
     }
 
+    /// Adds the unique fingerprint[s] for the layer or sub-layers defined
+    /// within `domain` to the cache and returns an error if a duplicate is
+    /// found.
+    ///
     pub fn add(&mut self, domain: &AxonDomain) -> CmnResult<()> {
         match *domain {
-            AxonDomain::Input(ref subdomains) => {
-                for &(ref input_track, ref axn_tags) in subdomains {
-                    if !self.cache.insert((AxonDomainRoute::Input, Some(input_track.clone()), axn_tags.clone())) {
+            AxonDomain::Input(ref sigs) => {
+                for sig in sigs {
+                    debug_assert!(sig.is_input());
+                    if !self.cache.insert((AxonDomainRoute::Input, sig.clone())) {
                         return Err(format!("Two input layers within the same layer map have the same axon \
-                            input track ({:?}) and tags ({:?}).", input_track, axn_tags).into())
+                            signature ({:?}).", sig).into())
                     }
                 }
             },
-            AxonDomain::Output(ref axn_tags) => {
-                if !self.cache.insert((AxonDomainRoute::Output, None, axn_tags.clone())) {
+            AxonDomain::Output(ref sig) => {
+                debug_assert!(sig.is_output());
+                if !self.cache.insert((AxonDomainRoute::Output, sig.clone())) {
                     return Err(format!("Two output layers within the same layer map have the same axon \
                         domain: '{:?}'.", domain).into())
                 }
@@ -45,23 +51,9 @@ impl AxonDomainCache {
 }
 
 
-// fn verify_unique_axn_domain(layer: &LayerInfo, layers: &MapStore<String, LayerInfo>) -> CmnResult<()> {
-//     for list_lyr in layers.values().iter() {
-//         if layer.axn_domain() != list_lyr.axn_domain() {
-//             return Err(format!("Two layers within the same layer map have the same axon domain (tags). \
-//                 \nLayer 1: {:?} \nLayer 2: {:?}", layer, list_lyr).into())
-//         }
-//     }
-
-//     Ok(())
-// }
-
-
 #[derive(Clone)]
-// [FIXME]: TODO: Add caches.
 pub struct LayerMap {
     area_name: &'static str,
-    // layers: Vec<LayerInfo>,
     area_id: usize,
     layers: MapStore<String, LayerInfo>,
     depth: u8,
@@ -76,10 +68,9 @@ impl LayerMap {
             area_sch.name(), mt = cmn::MT);
         println!("{mt}{mt}{mt}[Layer ID] <Layer Name>: Option(Slice Range): {{ Layer Tags }}",
             mt = cmn::MT);
+        print!("\n");
 
         let lm_scheme = layer_map_sl[area_sch.layer_map_name()].clone();
-        // let lm_scheme_kind = lm_scheme.kind().clone();
-        // lm_scheme.freeze(&area_sch);
 
         let mut layers = MapStore::with_capacity(lm_scheme.layers().len());
         let mut slc_total = 0u8;
@@ -98,10 +89,6 @@ impl LayerMap {
             assert!(layers[layer_id].layer_addr().layer_id() == layer_id);
         }
 
-        // assert_eq!(slc_total as usize, lm_scheme.slc_map().len());
-
-        print!("\n");
-
         let lm = LayerMap {
             area_name: area_sch.name(),
             area_id: area_sch.area_id(),
@@ -109,12 +96,6 @@ impl LayerMap {
             depth: slc_total,
             kind: lm_scheme.kind().clone()
         };
-
-        if DEBUG_PRINT {
-            // println!("{mt}{mt}LAYERMAP::NEW(): layers: {:?}, lm_scheme.slc_map(): {:?}",
-            //     layers, lm_scheme.slc_map(), mt = cmn::MT);
-            println!("{:#?}", lm.slc_map());
-        }
 
         Ok(lm)
     }
@@ -170,7 +151,7 @@ impl LayerMap {
         self.layers.values().iter().filter(|li| li.layer_tags().contains(tags)).map(|li| li).collect()
     }
 
-    /// Returns the slice range associated with matching layers.
+    /// Returns the slice ranges associated with matching layers.
     pub fn layers_containing_tags_slc_range(&self, layer_tags: LayerTags) -> Vec<Range<u8>> {
         self.layers_containing_tags(layer_tags).iter()
             .filter(|l| l.slc_range().is_some())
@@ -184,12 +165,6 @@ impl LayerMap {
 
         for layer in self.layers_containing_tags(tags).iter() {
             for src_layer in layer.sources().iter() {
-                if DEBUG_PRINT {
-                    println!("LAYER_MAP::LAYER_SRC_INFO(): Comparing: 'src_layer.tags()', \
-                        'tags.mirror_io()'.");
-                    src_layer.layer_tags().debug_print_compare(tags.mirror_io());
-                }
-                debug_assert!(src_layer.layer_tags().contains(tags.mirror_io()));
                 src_layers.push(src_layer);
             }
         }
@@ -218,15 +193,6 @@ impl LayerMap {
         ).collect()
     }
 
-    // // [FIXME] TODO: Create HashMap to index layer names.
-    // pub fn layer_info_by_name(&self, name: String) -> Option<&LayerInfo> {
-    //     let layers: Vec<&LayerInfo> = self.layers.iter().filter(|li| li.name() == name)
-    //         .map(|li| li).collect();
-    //     assert!(layers.len() <= 1, format!("Multiple ({}) layers match the name: {}",
-    //         layers.len(), name));
-    //     layers.get(0).map(|&li| li)
-    // }
-
     pub fn layer_info(&self, lyr_id: usize) -> Option<&LayerInfo> {
         self.layers.by_index(lyr_id)
     }
@@ -239,31 +205,33 @@ impl LayerMap {
     ///
     /// Include `track_opt` for input layers.
     ///
-    pub fn lyr_matching_track_and_tags(&self, track_opt: Option<&InputTrack>, tags: &AxonTags)
-            -> Option<(&LayerInfo)>
-    {
+    //
+    // [TODO]: Create a map of track/tags -> layer_id instead of this lookup.
+    //
+    // pub fn layer_info_by_tags(&self, track_opt: Option<&InputTrack>, tags: &AxonTags)
+    pub fn layer_info_by_sig(&self, sig: &AxonSignature) -> Option<(&LayerInfo)> {
         let mut matching_layers = Vec::with_capacity(1);
 
         for lyr_info in self.layers.values().iter() {
             match *lyr_info.axn_domain() {
-                AxonDomain::Input(ref src_filters) => {
+                AxonDomain::Input(ref filter_sigs) => {
                     // If `track_opt` is not defined, caller is requesting an output layer.
-                    let track = match track_opt {
-                        Some(it) => it,
-                        None => continue,
-                    };
+                    // let track = match sig.track() {
+                    //     Some(it) => it,
+                    //     None => continue,
+                    // };
+                    if sig.is_output() { continue }
 
-                    for &(ref lyr_info_track, ref lyr_info_tags) in src_filters {
-                        if lyr_info_track == track && lyr_info_tags == tags {
+                    for filter_sig in filter_sigs {
+                        if filter_sig == sig {
                             matching_layers.push(lyr_info);
                         }
                     }
                 },
-                AxonDomain::Output(ref lyr_info_tags) => {
-                    // If `track_opt` is defined, caller is requesting an input layer.
-                    if track_opt.is_some() { continue }
+                AxonDomain::Output(ref lyr_info_sig) => {
+                    if sig.is_input() { continue }
 
-                    if lyr_info_tags == tags {
+                    if lyr_info_sig == sig {
                         matching_layers.push(lyr_info);
                     }
                 }
@@ -274,26 +242,28 @@ impl LayerMap {
         match matching_layers.len() {
             0 => None,
             1 => {
-                if track_opt.is_some() {
+                if sig.track().is_some() {
                     debug_assert!(matching_layers[0].layer_addr() ==
-                        self.src_lyr_matching_track_and_tags(track_opt.unwrap(), tags).unwrap().1.layer_addr());
+                        self.src_layer_info_by_sig(sig).unwrap().1.layer_addr());
                 }
 
                 Some(matching_layers[0])
             },
-            _ => panic!("Internal error: Duplicate axon track/tags ({:?}, {:?}) found within the \
-                layer map for area: \"{}\".", track_opt, tags, self.area_name),
+            _ => panic!("Internal error: Duplicate axon signatures ({:?}) found within the \
+                layer map for area: \"{}\".", sig, self.area_name),
         }
     }
 
-    pub fn src_lyr_matching_track_and_tags(&self, track: &InputTrack, tags: &AxonTags)
+    // pub fn src_layer_info_by_sig(&self, track: &InputTrack, tags: &AxonTags)
+    pub fn src_layer_info_by_sig(&self, sig: &AxonSignature)
             -> Option<(&SourceLayerInfo, &LayerInfo)>
     {
         let mut matching_layers = Vec::with_capacity(1);
 
         for lyr_info in self.layers.values().iter() {
             for src_lyr_info in lyr_info.sources().iter() {
-                if src_lyr_info.input_track() == track && src_lyr_info.axn_tags() == tags {
+                // if src_lyr_info.input_track() == sig.track && src_lyr_info.axn_tags() == tags {
+                if src_lyr_info.input_sig() == sig {
                     matching_layers.push((src_lyr_info, lyr_info))
                 }
             }
@@ -302,24 +272,10 @@ impl LayerMap {
         match matching_layers.len() {
             0 => None,
             1 => Some(matching_layers[0]),
-            _ => panic!("Internal error: Duplicate axon track/tags ({:?}, {:?}) found within the \
-                layer map for area: \"{}\".", track, tags, self.area_name),
+            _ => panic!("Internal error: Duplicate axon signatures ({:?}) found within the \
+                layer map for area: \"{}\".", sig, self.area_name),
         }
     }
-
-    // pub fn layer_info_by_domain(&self, domain: &AxonDomain) -> Option<&LayerInfo> {
-    //     let matching_layers: Vec<&LayerInfo> = self.layers.values().iter()
-    //         .filter(|li| li.axn_domain() == domain)
-    //         .collect();
-
-    //     match matching_layers.len() {
-    //         0 => None,
-    //         1 => Some(matching_layers[0]),
-    //         _ => panic!("Internal error: Duplicate axon domains found within the layer map for \
-    //             area: \"{}\".", self.area_name),
-    //     }
-    // }
-
 
     /// [FIXME]: REMOVE/REDESIGN THIS: More than one layer can have the same
     /// slice id.
@@ -346,18 +302,7 @@ impl LayerMap {
         }
     }
 
-    #[inline]
-    pub fn iter(&self) -> Iter<LayerInfo> {
-        self.layers.values().iter()
-    }
-
-    #[inline]
-    pub fn region_kind(&self) -> &LayerMapKind {
-        &self.kind
-    }
-
-    #[inline]
-    pub fn depth(&self) -> u8 {
-        self.depth
-    }
+    #[inline] pub fn iter(&self) -> Iter<LayerInfo> { self.layers.values().iter() }
+    #[inline] pub fn region_kind(&self) -> &LayerMapKind { &self.kind }
+    #[inline] pub fn depth(&self) -> u8 { self.depth }
 }

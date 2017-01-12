@@ -12,10 +12,11 @@ pub struct LayerScheme {
 }
 
 impl LayerScheme {
-    pub fn new(name: &'static str, kind: LayerKind, depth: Option<u8>, layer_tags: LayerTags,
-            axn_domain: AxonDomain) -> LayerScheme
+    pub fn new<D>(name: &'static str, kind: LayerKind, depth: Option<u8>, layer_tags: LayerTags,
+            axn_domain: D) -> LayerScheme
+            where D: Into<AxonDomain>
     {
-        if cfg!(debug) { layer_tags.debug_validate(); }
+        // if cfg!(debug) { layer_tags.debug_validate(); }
 
         LayerScheme {
             layer_id: None,
@@ -23,7 +24,7 @@ impl LayerScheme {
             kind: kind,
             depth: depth,
             layer_tags: layer_tags,
-            axn_domain: axn_domain,
+            axn_domain: axn_domain.into(),
         }
     }
 

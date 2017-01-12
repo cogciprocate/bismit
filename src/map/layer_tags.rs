@@ -69,8 +69,8 @@ use std::fmt::{self, Formatter};
 bitflags! {
     pub flags LayerTags: u64 {
         const DEFAULT = 0b0000_0000_0000_0000__0000_0000_0000_0000 << 32,
-        // const INPUT = 0b0000_0000_0000_0001__0000_0000_0000_0000 << 32,
-        // const OUTPUT = 0b0000_0000_0000_0010__0000_0000_0000_0000 << 32,
+        const INPUT = 0b0000_0000_0000_0001__0000_0000_0000_0000 << 32,
+        const OUTPUT = 0b0000_0000_0000_0010__0000_0000_0000_0000 << 32,
         // const SPATIAL = 0b0000_0000_0000_0100__0000_0000_0000_0000 << 32,
         // const HORIZONTAL = 0b0000_0000_0000_1000__0000_0000_0000_0000 << 32,
         // const FEEDFORWARD = 0b0000_0000_0001_0000__0000_0000_0000_0000 << 32,
@@ -102,6 +102,10 @@ bitflags! {
 impl LayerTags {
     pub fn uid(uid: u32) -> LayerTags {
         LayerTags { bits: uid as u64 }
+    }
+
+    pub fn from_u64(val: u64) -> LayerTags {
+        LayerTags { bits: val }
     }
 
     // pub fn mirror_io(&self) -> LayerTags {
@@ -181,7 +185,7 @@ impl fmt::Display for LayerTags {
 mod tests {
     #[test]
     fn layer_tags() {
-        assert!(super::INPUT.mirror_io() == super::OUTPUT);
-        assert!(super::OUTPUT.mirror_io() == super::INPUT);
+        // assert!(super::INPUT.mirror_io() == super::OUTPUT);
+        // assert!(super::OUTPUT.mirror_io() == super::INPUT);
     }
 }

@@ -36,7 +36,7 @@ use std::collections::HashMap;
 // use std::collections::hash_map::Entry;
 
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
-use map::{self, AreaMap, LayerMapKind, LayerAddress};
+use map::{AreaMap, LayerMapKind, LayerAddress};
 use ocl::{Context, EventList};
 use cortex::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList};
@@ -343,7 +343,9 @@ impl Thalamus {
                 area_s.name(), mt = cmn::MT);
 
             {
-                let output_layers = area_map.layers().layers_containing_tags(map::OUTPUT);
+                // let output_layers = area_map.layers().layers_containing_tags();
+                let output_layers = area_map.layers().iter()
+                    .filter(|li| li.axn_domain().is_output()).collect::<Vec<_>>();
 
                 for layer in output_layers.iter() {
                     // println!("###### Thalamus::new(): Processing layer {}.", layer.name());
@@ -363,7 +365,7 @@ impl Thalamus {
                         layer_dims);
                 }
 
-                assert!(output_layers.len() > 0, "Areas must have at least one afferent or efferent area.");
+                assert!(output_layers.len() > 0, "Areas must have at least one output layer.");
             }
 
             area_maps.insert(area_s.name().to_owned(), area_map);

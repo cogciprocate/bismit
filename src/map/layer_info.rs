@@ -1,9 +1,9 @@
 use std::fmt;
 use std::ops::{Range};
 
-use map::{self, LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapScheme,
+use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapScheme,
     LayerKind, LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack, LayerAddress,
-    TuftSourceLayer, LayerTags};
+    TuftSourceLayer, LayerTags, AxonSignature};
 use cmn::{self, CorticalDims, MapStore};
 use thalamus::ExternalPathway;
 
@@ -16,13 +16,17 @@ const DEBUG_PRINT: bool = false;
 // with matching criteria (InputTrack and AxonTags) into a
 // unified list.
 fn matching_source_layers<'a>(area_sch: &'a AreaScheme, area_sch_list: &'a AreaSchemeList,
-        layer_map_sch_list: &'a LayerMapSchemeList, input_filters: &'a Vec<(InputTrack, AxonTags)>)
-        -> Vec<(&'a LayerScheme, InputTrack, AxonTags, Option<AxonTags>, &'a LayerMapScheme, &'a AreaScheme)>
+        layer_map_sch_list: &'a LayerMapSchemeList, input_filters: &'a Vec<AxonSignature>)
+        -> Vec<(&'a LayerScheme, AxonSignature, Option<AxonTags>, &'a LayerMapScheme, &'a AreaScheme)>
 {
     let mut matching_source_layers = Vec::with_capacity(16);
 
-    for &(ref track, ref axon_tags) in input_filters.iter() {
-        let candidate_areas: Vec<(&str, Option<Vec<(AxonTags, AxonTags)>>)> = match *track {
+    // for &(ref track, ref axon_tags) in input_filters.iter() {
+    for filter_sig in input_filters.iter() {
+        debug_assert!(filter_sig.is_input());
+        let candidate_areas: Vec<(&str, Option<Vec<(AxonTags, AxonTags)>>)> =
+                match *filter_sig.track().unwrap()
+        {
             InputTrack::Afferent => {
                 area_sch.get_eff_areas().iter()
                     .map(|&an| (an, None)).collect()
@@ -45,52 +49,42 @@ fn matching_source_layers<'a>(area_sch: &'a AreaScheme, area_sch_list: &'a AreaS
             let src_lyr_map_sch = &layer_map_sch_list[src_area_sch.layer_map_name()];
 
             // Make a list of output layers with matching axon tags for this filter:
-            let mut src_layers: Vec<(&LayerScheme, InputTrack, AxonTags, Option<AxonTags>)> = Vec::with_capacity(8);
+            let mut src_layers: Vec<(&LayerScheme, AxonSignature, Option<AxonTags>)> = Vec::with_capacity(8);
 
             match axon_tag_masqs {
                 Some(masqs) => {
                     for (orig, repl) in masqs {
-                        // If the replacement tag of a masquerade matches
-                        // the current filter's axon tag, use the original
-                        // tag to search for matching source layers. This
-                        // is just performing the masquerade in reverse
-                        // order with the same effect.
-                        if repl == *axon_tags {
-                            // src_layers.extend(src_lyr_map_sch.output_layers_with_axon_tags(&orig));
-
+                        // If the replacement tag of a masquerade matches the
+                        // current filter's axon tag, use the original tag to
+                        // search for matching source layers. This is just
+                        // performing the masquerade in reverse order with the
+                        // same effect.
+                        if repl == *filter_sig.tags() {
                             let matching_lyrs = src_lyr_map_sch.output_layers_with_axon_tags(&orig);
 
                             for matching_lyr in matching_lyrs.into_iter() {
-                                src_layers.push((matching_lyr, track.clone(), orig.clone(), Some(repl.clone())));
+                                src_layers.push((
+                                    matching_lyr,
+                                    (filter_sig.track().unwrap().clone(), repl.clone()).into(),
+                                    Some(orig.clone())
+                                ));
                             }
-
-
                         }
                     }
                 },
                 None => {
-                    // src_layers.extend(src_lyr_map_sch
-                    //     .output_layers_with_axon_tags(axon_tags));
-
-                    let matching_lyrs = src_lyr_map_sch.output_layers_with_axon_tags(axon_tags);
+                    let matching_lyrs = src_lyr_map_sch.output_layers_with_axon_tags(filter_sig.tags());
 
                     for matching_lyr in matching_lyrs.into_iter() {
-                        src_layers.push((matching_lyr, track.clone(), axon_tags.clone(), None));
+                        src_layers.push((matching_lyr, filter_sig.clone(), None));
                     }
                 }
             }
 
-            // // Add the matching source layers to our list of sources:
-            // matching_source_layers.extend(
-            //     src_layers.into_iter().map(|(ls, track, orig_tags, masq_repl_tags)|
-            //         (ls, track.clone(), masq, src_lyr_map_sch, src_area_sch)
-            //     )
-            // );
-
             // Add the matching source layers to our list of sources:
-            for (matching_lyr, input_track, orig_axn_tags, masq_repl_axn_tags) in src_layers.into_iter() {
-                matching_source_layers.push((matching_lyr, input_track, orig_axn_tags,
-                    masq_repl_axn_tags, src_lyr_map_sch, src_area_sch));
+            for (matching_lyr, sig, masq_orig_axn_tags) in src_layers.into_iter() {
+                matching_source_layers.push((matching_lyr, sig, masq_orig_axn_tags,
+                    src_lyr_map_sch, src_area_sch));
             }
         }
     }
@@ -131,7 +125,6 @@ impl LayerInfo {
         let layer_tags = layer_scheme.layer_tags();
         let axon_domain = layer_scheme.axn_domain().clone();
         let axn_topology = layer_scheme.axn_topology();
-        // let slc_range = layer_scheme.slc_idz()..(layer_scheme.slc_idz() + layer_scheme.depth());
         let mut sources: Vec<SourceLayerInfo> = Vec::with_capacity(8);
 
         let mut next_slc_idz = slc_total;
@@ -156,80 +149,16 @@ impl LayerInfo {
                         must be 'AxonTopology::Axonal'.", name),
                 }
 
-
-                /////// [REMOVE]:
-                // // Assemble a list of source layers for this input layer:
-                // //
-                // // For each source area (aff, eff, or other) Store the layers
-                // // with matching criteria (InputTrack and AxonTags) into a
-                // // unified list.
-                // let mut matching_source_layers: Vec<(&LayerScheme, &LayerMapScheme, &AreaScheme)> =
-                //     Vec::with_capacity(16);
-
-                // for &(ref track, ref axon_tags) in input_filters.iter() {
-                //     let candidate_areas: Vec<(&str, Option<Vec<(AxonTags, AxonTags)>>)> = match *track {
-                //         InputTrack::Afferent => {
-                //             area_sch.get_eff_areas().iter()
-                //                 .map(|&an| (an, None)).collect()
-                //         },
-                //         InputTrack::Efferent => {
-                //             area_sch.get_aff_areas().iter()
-                //                 .map(|&an| (an, None)).collect()
-                //         },
-                //         InputTrack::Other => {
-                //             area_sch.get_other_areas().clone()
-                //         },
-                //     };
-
-                //     for (area_name, axon_tag_masqs) in candidate_areas {
-                //         // Get the source area map scheme:
-                //         let src_area_sch = area_sch_list.get_area_by_key(area_name)
-                //             .expect("LayerInfo::new()");
-
-                //         // Get the source layer map scheme associated with the source area:
-                //         let src_lyr_map_sch = &layer_map_sch_list[src_area_sch.layer_map_name()];
-
-                //         // Make a list of output layers with matching axon tags for this filter:
-                //         let mut src_layers: Vec<(&LayerScheme, Option<AxonTags>)> = Vec::with_capacity(8);
-
-                //         match axon_tag_masqs {
-                //             Some(masqs) => {
-                //                 for (orig, repl) in masqs {
-                //                     // If the replacement tag of a masquerade matches
-                //                     // the current filter's axon tag, use the original
-                //                     // tag to search for matching source layers. This
-                //                     // is just performing the masquerade in reverse
-                //                     // order with the same effect.
-                //                     if repl == *axon_tags {
-                //                         src_layers.extend(src_lyr_map_sch
-                //                             .output_layers_with_axon_tags(&orig));
-                //                     }
-                //                 }
-                //             },
-                //             None => {
-                //                 src_layers.extend(src_lyr_map_sch
-                //                     .output_layers_with_axon_tags(axon_tags));
-                //             }
-                //         }
-
-                //         // Add the matching source layers to our list of sources:
-                //         matching_source_layers.extend(
-                //             src_layers.into_iter().map(|(ls, masq)| (ls, track.clone(),
-                //                 masq, src_lyr_map_sch, src_area_sch)));
-                //     }
-                // }
-                /////// [END REMOVE]
-
                 // Assemble a list of source layers for this input layer:
                 let matching_source_layers = matching_source_layers(area_sch, area_sch_list,
                     layer_map_sch_list, input_filters);
 
                 // Create a `SourceLayerInfo` for each matching layer:
-                // for (src_layer, src_lyr_map_sch, src_area_sch) in matching_source_layers.into_iter() {
-
-                for (src_layer, input_track, orig_axn_tags, masq_repl_axn_tags,
+                for (src_layer, sig, masq_orig_axn_tags,
                         src_lyr_map_sch, src_area_sch) in matching_source_layers.into_iter()
                 {
+                    // let input_track = sig.track().unwrap();
+                    // let orig_axn_tags = sig.tags();
                     let src_area_name = src_area_sch.name();
                     let src_area_id = src_area_sch.area_id();
                     let src_lyr_addr = LayerAddress::new(src_layer.layer_id(), src_area_id);
@@ -239,7 +168,6 @@ impl LayerInfo {
                         // on the `ExternalPathway` associated with it to
                         // provide its dimensions.
                         &LayerMapKind::Subcortical => {
-                            // let src_area_name = src_area_sch.name().to_owned();
                             let &(ref ext_src, _) = ext_paths.by_key(src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                     '{}'", src_area_name));
@@ -258,18 +186,8 @@ impl LayerInfo {
                             let depth = src_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
                             let src_axn_topology = match src_layer.kind() {
-                                &LayerKind::Axonal(ref ak) => {
-                                    // [FIXME]: Make this a Result:
-                                    // assert!(ak.matches_tags(src_layer.tags()), "Incompatable layer \
-                                    //     tags for layer: {:?}", src_layer);
-
-                                    ak.clone()
-                                },
-
+                                &LayerKind::Axonal(ref ak) => ak.clone(),
                                 &LayerKind::Cellular(_) => AxonTopology::Spatial
-                                    //     AxonTopology::from_tags(src_layer.tags())
-                                    // .expect("LayerInfo::new(): Error determining axon kind"),
-                                // _ => panic!("LayerInfo::new(): Unknown LayerKind."),
                             };
 
                             (src_area_sch.dims().clone_with_depth(depth), src_axn_topology)
@@ -281,8 +199,7 @@ impl LayerInfo {
 
                     sources.push(SourceLayerInfo::new(src_lyr_addr,
                         src_layer_dims.clone(), src_layer.layer_tags(), src_layer_axn_topology,
-                        input_track, orig_axn_tags, masq_repl_axn_tags,
-                        tar_slc_range.clone()));
+                        sig, masq_orig_axn_tags, tar_slc_range.clone()));
 
                     if DEBUG_PRINT {
                         layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}{mt}### SOURCE_LAYER_INFO:\
@@ -390,14 +307,15 @@ impl LayerInfo {
         self.irregular_layer_dims.as_ref()
     }
 
-    pub fn thalamic_horizontal_axon_count(&self) -> Option<u32> {
-        if self.layer_map_kind == LayerMapKind::Subcortical && self.axn_topology == AxonTopology::Horizontal {
-            debug_assert!(self.layer_tags.contains(map::NS_OUT));
-            Some(self.ttl_axn_count)
-        } else {
-            None
-        }
-    }
+    // [REMOVE]:
+    // pub fn thalamic_horizontal_axon_count(&self) -> Option<u32> {
+    //     if self.layer_map_kind == LayerMapKind::Subcortical && self.axn_topology == AxonTopology::Horizontal {
+    //         debug_assert!(self.layer_tags.contains(map::NS_OUT));
+    //         Some(self.ttl_axn_count)
+    //     } else {
+    //         None
+    //     }
+    // }
 
     pub fn cel_tft_src_lyrs(&self, tft_id: usize) -> &[TuftSourceLayer] {
         match *self.layer_scheme.kind() {
@@ -411,19 +329,6 @@ impl LayerInfo {
         }
     }
 
-    // pub fn dst_src_lyrs(&self) -> Vec<(Vec<&'static str>, DendriteClass)> {
-    //     let layers_by_tuft = match self.layer_scheme.kind() {
-    //         &LayerKind::Cellular(ref cell_scheme) => cell_scheme.den_dst_src_lyrs.clone(),
-
-    //         _ => None,
-    //     };
-
-    //     match layers_by_tuft {
-    //         Some(v) => v,
-    //         None => Vec::with_capacity(0),
-    //     }
-    // }
-
     pub fn depth(&self) -> u8 {
         match self.slc_range {
             Some(ref r) => r.len() as u8,
@@ -431,13 +336,14 @@ impl LayerInfo {
         }
     }
 
-    // #[inline] pub fn layer_id(&self) -> usize { self.layer_addr.layer_id() }
     #[inline] pub fn layer_addr(&self) -> &LayerAddress { &self.layer_addr }
     #[inline] pub fn layer_id(&self) -> usize { self.layer_addr.layer_id() }
     #[inline] pub fn name(&self) -> &'static str { self.name }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn kind(&self) -> &LayerKind { self.layer_scheme.kind() }
     #[inline] pub fn axn_domain(&self) -> &AxonDomain { self.layer_scheme.axn_domain() }
+    #[inline] pub fn is_input(&self) -> bool { self.layer_scheme.axn_domain().is_input() }
+    #[inline] pub fn is_output(&self) -> bool { self.layer_scheme.axn_domain().is_output() }
     #[inline] pub fn sources(&self) -> &[SourceLayerInfo]  { &self.sources }
     #[inline] pub fn ttl_axn_count(&self) -> u32 { self.ttl_axn_count }
     #[inline] pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
@@ -475,9 +381,8 @@ pub struct SourceLayerInfo {
     dims: CorticalDims,
     layer_tags: LayerTags,
     axn_topology: AxonTopology,
-    input_track: InputTrack,
-    axn_tags: AxonTags,
-    masq_repl_axn_tags: Option<AxonTags>,
+    input_sig: AxonSignature,
+    masq_orig_axn_tags: Option<AxonTags>,
     // Absolute target slice range (not level-relative):
     tar_slc_range: Range<u8>,
 }
@@ -485,10 +390,11 @@ pub struct SourceLayerInfo {
 impl SourceLayerInfo {
     #[inline]
     pub fn new(src_lyr_addr: LayerAddress, src_layer_dims: CorticalDims, src_layer_tags: LayerTags,
-            src_axn_topology: AxonTopology, input_track: InputTrack, axn_tags: AxonTags,
-            masq_repl_axn_tags: Option<AxonTags>, tar_slc_range: Range<u8>)
+            src_axn_topology: AxonTopology, input_sig: AxonSignature,
+            masq_orig_axn_tags: Option<AxonTags>, tar_slc_range: Range<u8>)
             -> SourceLayerInfo
     {
+        assert!(input_sig.is_input());
         assert!(tar_slc_range.len() == src_layer_dims.depth() as usize);
 
         SourceLayerInfo {
@@ -496,37 +402,34 @@ impl SourceLayerInfo {
             dims: src_layer_dims,
             layer_tags: src_layer_tags,
             axn_topology: src_axn_topology,
-            input_track: input_track,
-            axn_tags: axn_tags,
-            masq_repl_axn_tags: masq_repl_axn_tags,
+            input_sig: input_sig,
+            masq_orig_axn_tags: masq_orig_axn_tags,
             tar_slc_range: tar_slc_range,
         }
     }
 
-    // #[inline] pub fn area_name<'a>(&'a self) -> &'a str { self.area_name.as_str() }
     #[inline] pub fn area_id<'a>(&'a self) -> usize { self.layer_addr.area_id() }
     #[inline] pub fn layer_addr(&self) -> &LayerAddress { &self.layer_addr }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn axn_count(&self) -> u32 { self.dims().cells() }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
-    #[inline] pub fn input_track(&self) -> &InputTrack { &self.input_track }
-    #[inline] pub fn axn_tags(&self) -> &AxonTags { &self.axn_tags }
-    #[inline] pub fn masq_repl_axn_tags(&self) -> Option<&AxonTags> { self.masq_repl_axn_tags.as_ref() }
+    #[inline] pub fn input_track(&self) -> &InputTrack { &self.input_sig.track().as_ref().unwrap() }
+    #[inline] pub fn axn_tags(&self) -> &AxonTags { &self.input_sig.tags() }
+    #[inline] pub fn input_sig(&self) -> &AxonSignature { &self.input_sig }
+    #[inline] pub fn masq_orig_axn_tags(&self) -> Option<&AxonTags> { self.masq_orig_axn_tags.as_ref() }
     #[inline] pub fn tar_slc_range(&self) -> &Range<u8> { &self.tar_slc_range }
 }
 
 impl fmt::Debug for SourceLayerInfo {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("LayerInfo")
-            // .field("area_id", &self.area_id)
             .field("layer_addr", &self.layer_addr)
             .field("dims", &self.dims)
             .field("layer_tags", &self.layer_tags.to_string())
             .field("axn_topology", &self.axn_topology)
-            .field("input_track", &self.input_track)
-            .field("axn_tags", &self.axn_tags)
-            .field("masq_repl_axn_tags", &self.masq_repl_axn_tags)
+            .field("input_sig", &self.input_sig)
+            .field("masq_orig_axn_tags", &self.masq_orig_axn_tags)
             .field("tar_slc_range", &self.tar_slc_range)
             .finish()
     }

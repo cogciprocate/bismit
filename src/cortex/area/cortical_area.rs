@@ -15,6 +15,8 @@ use tract_terminal::{OclBufferSource, OclBufferTarget};
 
 // GDB debug mode:
 const KERNEL_DEBUG_MODE: bool = false;
+const INPUT: u64 = 0b0000_0000_0000_0001__0000_0000_0000_0000 << 32;
+const OUTPUT: u64 = 0b0000_0000_0000_0010__0000_0000_0000_0000 << 32;
 
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 
@@ -66,7 +68,7 @@ impl IoLayerInfoGroup {
         let mut layers = Vec::<IoLayerInfo>::with_capacity(tract_keys.len());
 
         for (lyr_addr, src_lyr_addr) in tract_keys.into_iter() {
-            let (tract_key, filter_chain_idx) = if group_tags.contains(map::OUTPUT) {
+            let (tract_key, filter_chain_idx) = if group_tags.contains(LayerTags::from_u64(OUTPUT)) {
                 (lyr_addr.clone(), None)
             } else {
                 let src_lyr_addr = src_lyr_addr.clone().expect("IoLayerInfoCache::new(): Internal consistency \
@@ -111,7 +113,7 @@ impl IoLayerInfoCache {
     pub fn new(area_map: &AreaMap, filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>)
             -> IoLayerInfoCache
     {
-        let group_tags_list = [map::INPUT, map::OUTPUT];
+        let group_tags_list = [LayerTags::from_u64(INPUT), LayerTags::from_u64(OUTPUT)];
 
         let mut groups = HashMap::with_capacity(group_tags_list.len());
 
@@ -123,7 +125,7 @@ impl IoLayerInfoCache {
             // key to access the correct thalamic tract:
             // let tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)> =
             let tract_keys: Vec<(LayerAddress, Option<LayerAddress>)> =
-                if group_tags.contains(map::OUTPUT) {
+                if group_tags.contains(LayerTags::from_u64(OUTPUT)) {
                     area_map.layers().iter()
                         .filter(|li| li.axn_domain().is_output())
                         .map(|li| {
@@ -131,7 +133,7 @@ impl IoLayerInfoCache {
                             (lyr_addr, None)
                         }).collect()
                 } else {
-                    debug_assert!(group_tags.contains(map::INPUT));
+                    debug_assert!(group_tags.contains(LayerTags::from_u64(INPUT)));
 
                     // [NOTE]: Iterator flat mapping `sli` doesn't easily work
                     // because it needs `li` to build its `LayerAddress`:
@@ -386,7 +388,8 @@ impl CorticalArea {
         let mut filter_chains = Vec::with_capacity(4);
 
         for &(ref track, ref tags, ref chain_scheme) in area_map.filter_chain_schemes() {
-            let (src_layer, _) = area_map.layers().src_lyr_matching_track_and_tags(track, tags)
+            let (src_layer, _) = area_map.layers().src_layer_info_by_sig(&(track, tags).into())
+
                 .expect("Unable to find a layer within the area map matching the axon domain \
                     ({:?}) specified by the filter chain scheme: '{:?}'.", );
 
@@ -474,10 +477,11 @@ impl CorticalArea {
     pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
         let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
-        self.intake(map::INPUT, thal)?;
+        self.intake(LayerTags::from_u64(INPUT), thal)?;
 
         if !self.settings.disable_ssts {
-            let aff_input_events = { self.io_info.group_events(map::INPUT).map(|wl| wl as &ClWaitList) };
+            let aff_input_events = { self.io_info.group_events(LayerTags::from_u64(INPUT))
+                .map(|wl| wl as &ClWaitList) };
             self.psal().cycle(aff_input_events);
         }
 
@@ -489,18 +493,19 @@ impl CorticalArea {
 
         if !self.settings.disable_pyrs {
             if !self.settings.disable_learning { self.ptal_mut().learn(); }
-            let eff_input_events = { self.io_info.group_events(map::INPUT).map(|wl| wl as &ClWaitList) };
+            let eff_input_events = { self.io_info.group_events(LayerTags::from_u64(INPUT))
+                .map(|wl| wl as &ClWaitList) };
             self.ptal().cycle(eff_input_events);
         }
 
         if !self.settings.disable_mcols {
-            let output_events = { self.io_info.group_events_mut(map::OUTPUT) };
+            let output_events = { self.io_info.group_events_mut(LayerTags::from_u64(OUTPUT)) };
             self.mcols.output(output_events);
         }
 
         if !self.settings.disable_regrowth { self.regrow(); }
 
-        self.output(map::OUTPUT, thal)?;
+        self.output(LayerTags::from_u64(OUTPUT), thal)?;
 
         Ok(())
     }
@@ -511,7 +516,7 @@ impl CorticalArea {
             for src_lyr in src_lyrs.iter_mut() {
                 let tract_source = thal.tract_terminal_source(src_lyr.key())?;
 
-                if group_tags.contains(map::INPUT) && !self.filter_chains.is_empty()
+                if group_tags.contains(LayerTags::from_u64(INPUT)) && !self.filter_chains.is_empty()
                         && !self.settings.bypass_filters && src_lyr.filter_chain_idx.is_some()
                 {
                     if let &Some(filter_chain_idx) = src_lyr.filter_chain_idx() {

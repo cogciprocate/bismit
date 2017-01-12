@@ -13,7 +13,7 @@ use super::{hybrid, kernels, testbed, TestBed};
 
 #[test]
 fn cortex() {
-    let mut cortex = Cortex::new(testbed::define_layer_scheme_maps(),
+    let mut cortex = Cortex::new(testbed::define_layer_map_schemes(),
         testbed::define_protoareas(), None);
     hybrid::cycles(&mut cortex, testbed::PRIMARY_AREA_NAME);
 }

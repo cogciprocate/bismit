@@ -12,23 +12,24 @@ pub static INHIB_LAYER_NAME: &'static str = "iv_inhib";
 const CYCLES_PER_FRAME: usize = 1;
 
 
-pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
+pub fn define_layer_map_schemes() -> LayerMapSchemeList {
     let mut layer_map_sl: LayerMapSchemeList = LayerMapSchemeList::new();
 
     layer_map_sl.add(LayerMapScheme::new("visual", LayerMapKind::Cortical)
         //.layer("test_noise", 1, map::DEFAULT, LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("motor_in", 1, map::FB_IN,
+        .layer("motor_in", 1, map::DEFAULT,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_NSP]), ]),
             LayerKind::Axonal(AxonTopology::Horizontal))
         //.layer("olfac", 1, map::DEFAULT, LayerKind::Axonal(Horizontal))
-        .layer("eff_in", 0, map::FB_IN,
+        .layer("eff_in", 0, map::DEFAULT,
             AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("aff_in", 0, map::FF_IN,
+        .layer("aff_in", 0, map::DEFAULT,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("out", 1, map::FF_OUT | map::FB_OUT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("unused", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer("out", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+            LayerKind::Axonal(AxonTopology::Spatial))
+        .layer("unused", 1, map::DEFAULT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
 
         .layer("iv", 1, map::PSAL, AxonDomain::Local,
             CellScheme::spiny_stellate(&[("aff_in", 8, 1)], 5, 400)
@@ -45,7 +46,7 @@ pub fn define_layer_scheme_maps() -> LayerMapSchemeList {
     );
 
     layer_map_sl.add(LayerMapScheme::new("external", LayerMapKind::Subcortical)
-        .layer("ganglion", 1, map::FF_OUT,
+        .layer("ganglion", 1, map::DEFAULT,
             AxonDomain::output(&[map::THAL_SP]),
             LayerKind::Axonal(AxonTopology::Spatial))
     );
@@ -119,7 +120,7 @@ pub fn define_protoareas() -> AreaSchemeList {
 
 // FRESH_CORTEX(): Mmmm... Yummy.
 pub fn fresh_cortex() -> Cortex {
-    Cortex::new(define_layer_scheme_maps(), define_protoareas(), None)
+    Cortex::new(define_layer_map_schemes(), define_protoareas(), None)
 }
 
 
@@ -138,16 +139,17 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
     let mut layer_map_sl = LayerMapSchemeList::new();
 
     layer_map_sl.add(LayerMapScheme::new(lmap_name, LayerMapKind::Cortical)
-        .layer("extra_in", 0, map::FF_IN,
+        .layer("extra_in", 0, map::DEFAULT,
             AxonDomain::input(&[(InputTrack::Other, &[map::THAL_NSP]), ]),
             LayerKind::Axonal(AxonTopology::Horizontal))
-        .layer("eff_in", 0, map::FB_IN,
+        .layer("eff_in", 0, map::DEFAULT,
             AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("aff_in", 0, map::FF_IN,
+        .layer("aff_in", 0, map::DEFAULT,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("out", 1, map::FF_OUT | map::FB_OUT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer("out", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+            LayerKind::Axonal(AxonTopology::Spatial))
         .layer("test0", 1, map::DEFAULT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
         .layer("test1", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
         .layer("test2", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
@@ -184,7 +186,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
     );
 
     layer_map_sl.add(LayerMapScheme::new("dummy_lm", LayerMapKind::Subcortical)
-        .layer("ganglion", 1, map::FF_OUT,
+        .layer("ganglion", 1, map::DEFAULT,
             AxonDomain::output(&[map::THAL_SP]),
             LayerKind::Axonal(AxonTopology::Spatial))
     );
@@ -215,7 +217,7 @@ pub struct TestBed {
 
 impl TestBed {
     pub fn new() -> TestBed {
-        let layer_map_sl = define_layer_scheme_maps();
+        let layer_map_sl = define_layer_map_schemes();
         let area_schemes = define_protoareas();
 
         let ocl_context: Context = Context::builder()

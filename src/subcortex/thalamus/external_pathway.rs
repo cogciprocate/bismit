@@ -8,7 +8,7 @@ use find_folder::Search;
 use cmn::{self, CorticalDims, CmnResult, CmnError};
 use ocl::{EventList};
 use map::{AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
-    AxonDomain, AxonTags};
+    AxonDomain, AxonTags, AxonSignature};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
@@ -58,7 +58,8 @@ pub struct ExternalPathwayLayer {
     name: &'static str,
     // layer_tags: LayerTags,
     addr: LayerAddress,
-    axn_tags: AxonTags,
+    // axn_tags: AxonTags,
+    axn_sig: AxonSignature,
     axn_topology: AxonTopology,
     dims: Option<CorticalDims>,
 }
@@ -71,7 +72,8 @@ impl ExternalPathwayLayer {
     pub fn name(&self) -> &'static str { self.name }
     // pub fn tags(&self) -> LayerTags { self.layer_tags }
     pub fn addr(&self) -> &LayerAddress { &self.addr }
-    pub fn axn_tags(&self) -> &AxonTags { &self.axn_tags }
+    pub fn axn_sig(&self) -> &AxonSignature { &self.axn_sig }
+    pub fn axn_tags(&self) -> &AxonTags { &self.axn_sig.tags() }
     pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
     pub fn dims(&self) -> Option<&CorticalDims> { self.dims.as_ref() }
 }
@@ -107,7 +109,7 @@ impl ExternalPathway {
         let mut layers = HashMap::with_capacity(4);
         let mut lyr_addr_list = Vec::with_capacity(4);
         let mut lyr_dims_list = Vec::with_capacity(4);
-        let mut lyr_axn_tags_list = Vec::with_capacity(4);
+        let mut lyr_axn_sigs_list = Vec::with_capacity(4);
 
         for p_layer in p_layers.into_iter() {
             let lyr_name = p_layer.name();
@@ -127,8 +129,8 @@ impl ExternalPathway {
             // assert!(p_layer.axon_domain().is_output(), "ExternalPathway::new(): External areas \
             //     must currently be output layers. [area: '{}', layer: '{}']", pamap.name(), plmap.name());
 
-            let lyr_axn_tags = match *p_layer.axn_domain() {
-                AxonDomain::Output(ref axn_tags) => axn_tags.clone(),
+            let lyr_axn_sig = match *p_layer.axn_domain() {
+                AxonDomain::Output(ref axn_sig) => axn_sig.clone(),
                 _ => return Err(format!("ExternalPathway::new(): External areas \
                     must currently be output layers. [area: '{}', layer: '{}']", pamap.name(),
                     plmap.name()).into()),
@@ -137,13 +139,13 @@ impl ExternalPathway {
             // layer_tags_list.push(layer_tags);
             lyr_addr_list.push(lyr_addr.clone());
             lyr_dims_list.push(dims.clone());
-            lyr_axn_tags_list.push(lyr_axn_tags.clone());
+            lyr_axn_sigs_list.push(lyr_axn_sig.clone());
 
             layers.insert(lyr_addr.clone(), ExternalPathwayLayer {
                 name: lyr_name,
                 // layer_tags: layer_tags,
                 addr: lyr_addr,
-                axn_tags: lyr_axn_tags,
+                axn_sig: lyr_axn_sig,
                 axn_topology: axn_topology,
                 dims: dims,
             });

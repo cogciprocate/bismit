@@ -156,9 +156,14 @@ impl LearningTestBed {
                 area.area_map(), area.ptal().dens().syns().lyr_dims(), mt = cmn::MT);
 
             // Afferent output slice id:
-            let aff_out_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::FF_OUT);
-            assert!(aff_out_ranges.len() == 1);
-            let aff_out_slc = aff_out_ranges[0].start;
+            // [FIXME]: ASSIGN SPECIAL TAGS TO THIS LAYER:
+            let aff_out_slc_ranges = area.area_map().layers().iter()
+                .filter(|li| li.axn_domain().is_output() && li.slc_range().is_some())
+                .map(|li| li.slc_range().unwrap().clone())
+                .collect::<Vec<_>>();
+
+            assert!(aff_out_slc_ranges.len() == 1);
+            let aff_out_slc = aff_out_slc_ranges[0].start;
 
             // Get a random cell and a random synapse on that cell:
             let cel_coords = area.ptal_mut().rand_cel_coords();

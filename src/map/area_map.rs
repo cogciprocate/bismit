@@ -1,8 +1,5 @@
 use std::fmt::Display;
 use std::ops::{Range, Deref};
-// use std::collections::HashMap;
-// use std::collections::{BTreeMap};
-
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use cmn::{self, CorticalDims, MapStore, CmnResult};
 use thalamus::ExternalPathway;
@@ -17,11 +14,9 @@ pub struct AreaMap {
     dims: CorticalDims,
     slices: SliceMap,
     layers: LayerMap,
-    // hrz_demarc: u8,
     eff_areas: Vec<&'static str>,
     aff_areas: Vec<&'static str>,
     other_areas: Vec<(&'static str, Option<Vec<(AxonTags, AxonTags)>>)>,
-    // filter_chain_schemes: Vec<(LayerTags, Vec<FilterScheme>)>
     filter_chain_schemes: Vec<(InputTrack, AxonTags, Vec<FilterScheme>)>,
 }
 
@@ -56,7 +51,6 @@ impl AreaMap {
     // ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
     pub fn gen_build_options(&self) -> ProgramBuilder {
         let mut build_options = cmn::base_build_options()
-            // .cmplr_def("HORIZONTAL_AXON_ROW_DEMARCATION", self.hrz_demarc as i32)
             .cmplr_def("AXN_SLC_COUNT", self.slices.depth() as i32)
             .cmplr_def("SLC_SCL_COEFF_L2", cmn::SLC_SCL_COEFF_L2)
             .bo(BuildOpt::include_def("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
@@ -91,40 +85,6 @@ impl AreaMap {
         layer_info[0].name()
     }
 
-    // // UPDATE / CONSOLIDATE / DEPRICATE
-    // /// Returns a grouped list of source layer names for each distal dendritic tuft in a layer.
-    // pub fn layer_dst_srcs(&self, layer_name: &'static str) -> Vec<Vec<&'static str>> {
-    //     let potential_tufts = match self.layers.layer_info_by_name(layer_name) {
-    //         Some(li) => li.dst_src_lyrs(),
-    //         None => panic!("AreaMap::layer_dst_srcs(): No layer named '{}' found.", layer_name),
-    //     };
-
-    //     let mut valid_tufts: Vec<Vec<&'static str>> = Vec::with_capacity(potential_tufts.len());
-
-    //     for mut potential_tuft_src_lyrs in potential_tufts {
-    //         let mut valid_src_lyrs = Vec::with_capacity(potential_tuft_src_lyrs.0.len());
-
-    //         for lyr_name in potential_tuft_src_lyrs.0.drain(..) {
-    //             let li = match self.layers.layer_info_by_name(lyr_name) {
-    //                 Some(li) => li,
-    //                 None => panic!("AreaMap::layer_dst_srcs(): No layer named '{}' found.",
-    //                     layer_name),
-    //             };
-
-    //             if li.depth() > 0 {
-    //                 valid_src_lyrs.push(lyr_name);
-    //             }
-    //         }
-
-    //         if valid_src_lyrs.len() > 0 {
-    //             valid_src_lyrs.shrink_to_fit();
-    //             valid_tufts.push(valid_src_lyrs);
-    //         }
-    //     }
-
-    //     valid_tufts
-    // }
-
     // NEW - UPDATE / CONSOLIDATE
     /// Returns a merged list of slice ids for all source layers.
     //
@@ -148,20 +108,6 @@ impl AreaMap {
 
         slc_ids
     }
-
-    // /// Returns a merged list of source slice ids for all source layers.
-    // pub fn syn_src_slc_ids(&self, layer_name: &'static str, den_kind: DendriteKind) -> Vec<u8> {
-    //     let li = match self.layers.layer_info_by_name(layer_name.to_owned()) {
-    //         Some(li) => li,
-    //         None => panic!("AreaMap::layer_src_slc_ids(): No layer named '{}' found.",
-    //             layer_name),
-    //     };
-
-    //     let src_lyr_names = li.src_lyr_names(den_kind);
-    //     self.layer_slc_ids(src_lyr_names)
-
-    //     Vec::with_capacity(0)
-    // }
 
     /// Returns a list of tuples of (source slice id, synapse reach) for a
     /// tuft of a cellular layer.
@@ -193,28 +139,16 @@ impl AreaMap {
         id_rchs
     }
 
-    //  // NEW - UPDATE / CONSOLIDATE
-    //  /// Returns a grouped list of source slice ids for each distal dendritic tuft in a layer.
-    //  pub fn layer_dst_src_slc_ids(&self, layer_name: &'static str) -> Vec<Vec<u8>> {
-    //      let src_tufts = self.layer_dst_srcs(layer_name);
-    //      let mut dst_src_slc_ids = Vec::with_capacity(src_tufts.len());
-
-    //      for tuft in src_tufts {
-    //          dst_src_slc_ids.push(self.layer_slc_ids(tuft));
-    //     }
-
-    //     dst_src_slc_ids
-    // }
-
     // NEW - UPDATE / RENAME
     pub fn aff_out_slcs(&self) -> Vec<u8> {
         let mut output_slcs: Vec<u8> = Vec::with_capacity(8);
 
          // Push all matching slices:
          for layer in self.layers.iter() {
-             if (layer.layer_tags() & map::FF_OUT) == map::FF_OUT {
-                 let v = self.layer_slc_ids(&[layer.name().to_owned()]);
-                 output_slcs.extend_from_slice(&v);
+             // if (layer.layer_tags() & map::FF_OUT) == map::FF_OUT {
+            if layer.axn_domain().is_output() {
+                let v = self.layer_slc_ids(&[layer.name().to_owned()]);
+                output_slcs.extend_from_slice(&v);
              }
          }
 
@@ -262,7 +196,8 @@ impl AreaMap {
     /// slices mapping to a specific source layer (source `area_id` is
     /// required for redundant verification).
     ///
-    // NEW
+    /// [DEPRICATED]
+    ///
     pub fn axn_range_meshing_tags_either_way(&self, layer_tags: LayerTags,
                 src_lyr_sub_slcs: Option<(usize, Range<u8>)>) -> Option<Range<u32>>
     {
@@ -407,7 +342,7 @@ impl AreaMap {
         &self.eff_areas
     }
 
-    // UPDATE / DEPRICATE
+
     pub fn filter_chain_schemes(&self) -> &[(InputTrack, AxonTags, Vec<FilterScheme>)] {
         &self.filter_chain_schemes
     }
@@ -457,17 +392,24 @@ pub mod tests {
     }
 
     impl AreaMapTest for AreaMap {
-        /* AXN_IDX(): Some documentation for this can be found in bismit.cl
-                 Basically all we're doing is scaling up or down the v and u coordinates based on a predetermined scaling factor. The scaling factor only applies when a foreign cortical area is a source for the axon's slice AND is a different size than the local cortical area. The scale factor is based on the relative size of the two areas. Most of the time the scaling factor is 1:1 (scale factor of 16). The algorithm below for calculating an axon index is the same as the one in the kernel and gives precisely the same results.
-        */
+         /// AXN_IDX(): Some documentation for this can be found in `bismit.cl`.
+         ///
+         ///         Basically all we're doing is scaling up or down the v and
+         ///         u coordinates based on a predetermined scaling factor. The
+         ///         scaling factor only applies when a foreign cortical or
+         ///         sub-cortical area is a source for the axon's slice AND is
+         ///         a different size than the local cortical area. The scale
+         ///         factor is based on the relative size of the two areas.
+         ///         Most of the time the scaling factor is 1:1 (scale factor
+         ///         of 16). The algorithm below for calculating an axon index
+         ///         is the same as the one in the kernel and gives precisely
+         ///         the same results.
+         ///
         fn axn_idx(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
                 -> Result<u32, &'static str>
         {
             let v_scale = self.slices.v_scales()[slc_id as usize];
             let u_scale = self.slices.u_scales()[slc_id as usize];
-
-            // let v_id_scaled = (v_id_unscaled * v_scale) >> cmn::SLC_SCL_COEFF_L2;
-            // let u_id_scaled = (u_id_unscaled * u_scale) >> cmn::SLC_SCL_COEFF_L2;
 
             let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
             let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
@@ -490,9 +432,6 @@ pub mod tests {
         {
             let v_scale = self.slices.v_scales()[slc_id as usize];
             let u_scale = self.slices.u_scales()[slc_id as usize];
-
-            // let v_id_scaled = (v_id_unscaled * v_scale) >> cmn::SLC_SCL_COEFF_L2;
-            // let u_id_scaled = (u_id_unscaled * u_scale) >> cmn::SLC_SCL_COEFF_L2;
 
             let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
             let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);

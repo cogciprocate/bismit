@@ -110,6 +110,12 @@ impl<'a, 'b> BitOr<&'b AxonTags> for &'a AxonTags {
 //     }
 // }
 
+impl<'a> From<&'a AxonTags> for AxonTags {
+    fn from(tag_ref: &'a AxonTags) -> AxonTags {
+        AxonTags { tags: tag_ref.tags.clone() }
+    }
+}
+
 impl<'a> From<&'a [AxonTag]> for AxonTags {
     fn from(tag_list: &'a [AxonTag]) -> AxonTags {
         AxonTags { tags: BTreeSet::from_iter(tag_list.into_iter().cloned()) }
