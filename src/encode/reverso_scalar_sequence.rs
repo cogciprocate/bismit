@@ -1,6 +1,5 @@
 //! Mostly for testing purposes.
 
-// use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::AddAssign;
 use num::{Num, NumCast};
@@ -13,7 +12,6 @@ pub struct ReversoScalarSequence<T> {
     range: (T, T),
     next: T,
     incr: T,
-    // layer_tags: Vec<LayerTags>,
     layer_addrs: Vec<LayerAddress>,
 }
 
@@ -50,8 +48,6 @@ impl<T> ExternalPathwayTract for ReversoScalarSequence<T>
         } else {
             panic!("ReversoScalarSequence::write_into(): Too many layers!");
         }
-
-        // Default::default()
     }
 
     fn cycle_next(&mut self) {

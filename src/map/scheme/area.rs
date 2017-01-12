@@ -10,7 +10,6 @@ pub struct AreaScheme {
     layer_map_name: &'static str,
     dims: CorticalDims,
     input: InputScheme,
-    // filter_chains: Vec<(LayerTags, Vec<FilterScheme>)>,
     filter_chains: Vec<(InputTrack, AxonTags, Vec<FilterScheme>)>,
     aff_areas: Vec<&'static str>,
     eff_areas: Vec<&'static str>,
@@ -20,12 +19,6 @@ pub struct AreaScheme {
 
 impl AreaScheme {
     pub fn new(name: &'static str, layer_map_name: &'static str, dim: u32) -> AreaScheme {
-        // [FIXME] TODO: This is out of date. Need to instead verify that
-        // 'side' is > CellScheme::den_*_syn_reach. This must be done when
-        // assembling the final map.
-        //
-        // assert!(side >= cmn::SYNAPSE_REACH * 2);
-
         AreaScheme::irregular(name, layer_map_name, [dim, dim])
     }
 

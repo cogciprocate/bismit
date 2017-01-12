@@ -12,7 +12,6 @@ use encode::{ScalarGlyphWriter};
 pub struct VectorEncoder {
     ranges: Vec<(f32, f32)>,
     values: Vec<f32>,
-    // layer_tags: Vec<LayerTags>,
     layer_addrs: Vec<LayerAddress>,
     tract_dims: Vec<TractDims>,
     writers: Vec<ScalarGlyphWriter<f32>>,
@@ -33,8 +32,6 @@ impl VectorEncoder {
             writers.push(ScalarGlyphWriter::new(r.clone(), td));
         }
 
-        // ScalarGlyphWriter::new(range.clone(), tract_dims);
-
         Ok(VectorEncoder {
             ranges: ranges,
             values: vec![Default::default(); layer_addrs.len()],
@@ -50,10 +47,6 @@ impl VectorEncoder {
 
     /// Resets the ranges and number of scalars this encoder will encode.
     pub fn set_ranges(&mut self, new_ranges: &[(f32, f32)]) -> CmnResult<()> {
-        // if new_ranges.len() != self.ranges.len() {
-        //     return CmnError::err(format!("VectorEncoder::set_ranges(): Incorrect number of ranges
-        //         provided ('{}'/'{}').", new_ranges.len(), self.ranges.len()));
-        // }
         if new_ranges.len() > self.tract_dims.len() {
             return CmnError::err(format!("VectorEncoder::set_ranges(): Too many ranges
                 provided ('{}'/'{}').", new_ranges.len(), self.tract_dims.len()));
@@ -73,6 +66,7 @@ impl VectorEncoder {
 
         self.values = vec![0.0; self.ranges.len()];
 
+        // // [DEBUG]:
         // println!("VectorEncoder::set_ranges(): Ranges now set to: {:?}", self.ranges);
 
         Ok(())
@@ -84,14 +78,13 @@ impl ExternalPathwayTract for VectorEncoder {
         let l_idx = self.layer_addrs.iter().position(|t| t == addr)
             .expect(&format!("VectorEncoder::write_into(): No layers with address: {:?}", addr));
 
+        // // [DEBUG]:
         // println!("Vector encoder: encoding value: {}...", self.values[l_idx]);
-        // super::encode_scalar(self.values[l_idx], self.ranges[l_idx], tract_frame);
+
         match self.writers.get(l_idx) {
             Some(w) => w.encode(self.values[l_idx], tract_frame),
             None => (),
         }
-
-        // Default::default()
     }
 
     fn cycle_next(&mut self) {
