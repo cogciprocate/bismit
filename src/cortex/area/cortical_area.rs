@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::borrow::Borrow;
 use cmn::{self, /*CmnError,*/ CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
-    LayerAddress, AxonTags};
+    LayerAddress};
 use ocl::{Device, ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
 use thalamus::Thalamus;
@@ -30,23 +30,28 @@ pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 pub struct IoLayerInfo {
     key: LayerAddress,
     axn_range: Range<u32>,
-    filter_key: Option<(usize, usize)>,
+    // filter_key: Option<(usize, usize)>,
+    filter_chain_idx: Option<usize>,
 }
 
 impl IoLayerInfo {
     pub fn new(src_lyr_key: LayerAddress, axn_range: Range<u32>,
-            filter_key: Option<(usize, usize)>) -> IoLayerInfo
+            // filter_key: Option<(usize, usize)>
+            filter_chain_idx: Option<usize>,
+            ) -> IoLayerInfo
     {
         IoLayerInfo {
             key: src_lyr_key,
             axn_range: axn_range,
-            filter_key: filter_key,
+            // filter_key: filter_key,
+            filter_chain_idx: filter_chain_idx,
         }
     }
 
     #[inline] pub fn key(&self) -> &LayerAddress { &self.key }
     #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
-    #[inline] pub fn filter_key(&self) -> &Option<(usize, usize)>{ &self.filter_key }
+    // #[inline] pub fn filter_key(&self) -> &Option<(usize, usize)>{ &self.filter_key }
+    #[inline] pub fn filter_chain_idx(&self) -> &Option<usize>{ &self.filter_chain_idx }
 }
 
 
@@ -61,7 +66,7 @@ impl IoLayerInfoGroup {
     pub fn new(area_map: &AreaMap, group_tags: LayerTags,
             // tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)>,
             tract_keys: Vec<(LayerAddress, Option<LayerAddress>)>,
-            filter_chains: &Vec<(AxonTags, Vec<SensoryFilter>)>) -> IoLayerInfoGroup
+            filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>) -> IoLayerInfoGroup
     {
         // Create a container for our i/o layer(s):
         let mut layers = Vec::<IoLayerInfo>::with_capacity(tract_keys.len());
@@ -69,11 +74,14 @@ impl IoLayerInfoGroup {
         // for (lyr_addr, lyr_tags, src_lyr_key) in tract_keys.into_iter() {
         for (lyr_addr, src_lyr_addr) in tract_keys.into_iter() {
             // let (local_layer_tags, filter_key) = if group_tags.contains(map::OUTPUT) {
-            let (tract_key, filter_key) = if group_tags.contains(map::OUTPUT) {
+            // let (tract_key, filter_key) = if group_tags.contains(map::OUTPUT) {
+            let (tract_key, filter_chain_idx) = if group_tags.contains(map::OUTPUT) {
                 // (lyr_tags, None)
-                let key = lyr_addr.clone();
-                (key, None)
+                (lyr_addr.clone(), None)
             } else {
+                let src_lyr_addr = src_lyr_addr.clone().expect("IoLayerInfoCache::new(): Internal consistency \
+                    error. Source layer address for an input layer is empty.");
+
                 // // For input layers, revert tags back to this area's
                 // // perspective (they are flipped by `IoLayerInfoCache::new`
                 // // because they are the list of tags from all source layers
@@ -86,6 +94,13 @@ impl IoLayerInfoGroup {
                 //     tags.meshes(local_layer_tags)
                 // });
 
+                // Determine the filter chain id:
+                let filter_chain_idx = filter_chains.iter().position(
+                    |&(ref addr, _)| {
+                        src_lyr_addr == *addr
+                    }
+                );
+
                 // // [RESTORE ME]:
                 // // If there is a filter chain id, find the filter layer id
                 // // corresponding to the current remote layer area name then
@@ -94,21 +109,20 @@ impl IoLayerInfoGroup {
                 // let filter_key = filter_chain_id.and_then(|fcid|
                 //     filter_chains[fcid].1.first().and_then(|fc|
                 //         fc.lyr_id(lyr_addr.area_id()).map(|lid| (fcid, lid))));
-                let filter_key = None;
+
+                // let filter_key = None;
 
                 // // [DEBUG]:
                 // println!("###### I/O LAYER ({}) FILTER_CHAIN_ID: '{:?}'", lyr_tags, filter_chain_id);
                 // (local_layer_tags, filter_key)
-                let key = src_lyr_addr.clone().expect("IoLayerInfoCache::new(): Internal consistency \
-                    error. Source layer address for an output layer is empty.");
-                (key, filter_key)
+                (src_lyr_addr, filter_chain_idx)
             };
 
             let axn_range = area_map.lyr_axn_range(&lyr_addr, src_lyr_addr.as_ref()).expect(
                 &format!("IoLayerInfoCache::new(): Internal consistency error: \
                     lyr_addr: {:?}, src_lyr_addr: {:?}.", &lyr_addr, src_lyr_addr));
 
-            let io_layer = IoLayerInfo::new(tract_key, axn_range, filter_key);
+            let io_layer = IoLayerInfo::new(tract_key, axn_range, filter_chain_idx);
             layers.push(io_layer);
         }
 
@@ -130,7 +144,7 @@ pub struct IoLayerInfoCache {
 }
 
 impl IoLayerInfoCache {
-    pub fn new(area_map: &AreaMap, filter_chains: &Vec<(AxonTags, Vec<SensoryFilter>)>)
+    pub fn new(area_map: &AreaMap, filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>)
             -> IoLayerInfoCache
     {
         let group_tags_list = [map::INPUT, map::OUTPUT];
@@ -256,7 +270,7 @@ pub struct CorticalArea {
     pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,
     ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,
     iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
-    filter_chains: Vec<(AxonTags, Vec<SensoryFilter>)>,
+    filter_chains: Vec<(LayerAddress, Vec<SensoryFilter>)>,
     ptal_name: &'static str,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
     psal_name: &'static str,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
     aux: Aux,
@@ -431,28 +445,33 @@ impl CorticalArea {
 
         let mut filter_chains = Vec::with_capacity(4);
 
-        for &(track, tags, ref chain_scheme) in area_map.filter_chain_schemes() {
-            let filter_axn_domain = AxonDomain::input();
+        for &(ref track, ref tags, ref chain_scheme) in area_map.filter_chain_schemes() {
+            // let layer = area_map.layers().layer_info_by_domain(&filter_axn_domain)
+            //     .expect("Unable to find a layer within the area map matching the axon domain \
+            //         ({:?}) specified by the filter chain scheme: '{:?}'.", );
 
-            let layer = area_map.layers().layer_info_by_domain(&filter_axn_domain)
+            let (src_layer, _) = area_map.layers().src_lyr_matching_track_and_tags(track, tags)
                 .expect("Unable to find a layer within the area map matching the axon domain \
                     ({:?}) specified by the filter chain scheme: '{:?}'.", );
+
             let mut layer_filters = Vec::with_capacity(4);
 
             for pf in chain_scheme.iter() {
                 layer_filters.push(SensoryFilter::new(
                     pf.filter_name(),
                     pf.cl_file_name(),
-                    tags,
-                    layer,
+                    // tags,
+                    // layer,
+                    src_layer,
                     &axns,
-                    &ocl_pq));
+                    &ocl_pq)
+                );
             }
 
             // [DEBUG]:
             // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
             layer_filters.shrink_to_fit();
-            filter_chains.push((tags, layer_filters));
+            filter_chains.push((src_layer.layer_addr().clone(), layer_filters));
         }
 
         filter_chains.shrink_to_fit();
@@ -566,20 +585,23 @@ impl CorticalArea {
     fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
         if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(group_tags) {
             for src_lyr in src_lyrs.iter_mut() {
-                let source = thal.tract_terminal_source(src_lyr.key())?;
-
+                let tract_source = thal.tract_terminal_source(src_lyr.key())?;
 
                 // if group_tags.contains(map::FF_IN) && !self.filter_chains.is_empty()
                 if group_tags.contains(map::INPUT) && !self.filter_chains.is_empty()
-                        && !self.settings.bypass_filters && src_lyr.filter_key.is_some()
+                        // && !self.settings.bypass_filters && src_lyr.filter_key.is_some()
+                        && !self.settings.bypass_filters && src_lyr.filter_chain_idx.is_some()
                 {
-                    if let &Some((filter_chain_id, filter_lyr_id)) = src_lyr.filter_key() {
+                    // if let &Some((filter_chain_id, filter_lyr_id)) = src_lyr.filter_key() {
+                    if let &Some(filter_chain_idx) = src_lyr.filter_chain_idx() {
                         // let src_area_name = src_lyr.area_name();
-                        let (_, ref mut filter_chain) = self.filter_chains[filter_chain_id];
-                        let mut filter_event = filter_chain[0].write(source, filter_lyr_id)?;
+                        let (_, ref mut filter_chain) = self.filter_chains[filter_chain_idx];
+                        // let mut filter_event = filter_chain[0].write(source, filter_lyr_id)?;
+                        let mut filter_event = filter_chain[0].write(tract_source)?;
 
                         for filter in filter_chain.iter() {
-                            filter_event = filter.cycle(&filter_event, filter_lyr_id);
+                            // filter_event = filter.cycle(&filter_event, filter_lyr_id);
+                            filter_event = filter.cycle(&filter_event);
                         }
                     } else {
                         unreachable!();
@@ -588,13 +610,13 @@ impl CorticalArea {
                     let axn_range = src_lyr.axn_range();
                     let area_name = self.name;
 
-                    OclBufferTarget::new(&self.axns.states, axn_range, source.dims().clone(),
+                    OclBufferTarget::new(&self.axns.states, axn_range, tract_source.dims().clone(),
                             Some(&mut new_events), false)
                         .map_err(|err|
                             err.prepend(&format!("CorticalArea::intake():: \
                             Source tract length must be equal to the target axon range length \
                             (area: '{}', layer_addr: '{:?}'): ", area_name, src_lyr.key())))?
-                        .copy_from_slice_buffer(source)?;
+                        .copy_from_slice_buffer(tract_source)?;
                 }
             }
         }

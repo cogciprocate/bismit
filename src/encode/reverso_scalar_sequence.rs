@@ -21,12 +21,13 @@ impl<T> ReversoScalarSequence<T> where T: Num + NumCast + PartialOrd + Debug + C
     pub fn new(range: (T, T), incr: T, layer_addrs: &[LayerAddress])
                 -> ReversoScalarSequence<T> {
         let next = range.0;
+        let layer_addrs = layer_addrs.into_iter().cloned().collect();
 
         ReversoScalarSequence {
             range: range,
             incr: incr,
             next: next,
-            layer_addrs: Vec::from(layer_addrs),
+            layer_addrs: layer_addrs,
         }
     }
 

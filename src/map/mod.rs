@@ -105,6 +105,10 @@ pub enum LayerMapKind {
 }
 
 
+// [TODO]: Figure out whether or not to keep `AxonTopology` here since only
+// input layer topology matters and since cellular layers are assigned
+// `AxonTopology::Spatial`.
+//
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum LayerKind {
     Cellular(CellScheme),
@@ -143,6 +147,18 @@ impl LayerKind {
 
         self
     }
+}
+
+
+/// [NOTE]: Axon topology is largely ignored for output layers but is
+/// currently stored within `SourceLayerInfo` anyway. [TODO]: Figure out what
+/// to do with `LayerKind::Axonal(_)` in the output case.
+///
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]
+pub enum AxonTopology {
+    Spatial,
+    Horizontal,
+    None,
 }
 
 
@@ -206,16 +222,7 @@ impl AxonDomain {
     }
 }
 
-/// [NOTE]: Axon topology is largely ignored for output layers but is
-/// currently stored within `SourceLayerInfo` anyway. [TODO]: Figure out what
-/// to do with it.
-///
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]
-pub enum AxonTopology {
-    Spatial,
-    Horizontal,
-    None,
-}
+
 
 // impl AxonTopology {
 //     pub fn from_tags<'a>(tags: LayerTags) -> Result<AxonTopology, CmnError> {

@@ -6,7 +6,7 @@
 
 use cortex::Cortex;
 use map::{self, LayerTags, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme,
-    AreaSchemeList, CellScheme, FilterScheme, InputScheme, AxonTopology, LayerKind, AxonDomain,
+    AreaSchemeList, CellScheme, InputScheme, AxonTopology, LayerKind, AxonDomain,
     AxonTag, InputTrack};
 use encode::GlyphSequences;
 
@@ -112,7 +112,8 @@ pub fn define_area_sl() -> AreaSchemeList {
                 &[(GlyphSequences::val_lyr_tags(),
                     &GlyphSequences::val_lyr_tags() | &AxonTag::custom(ROSE_UID).into())]
             ))
-            .filter_chain(map::FF_IN, vec![FilterScheme::new("retina", None)]),
+            // .filter_chain(map::FF_IN, vec![FilterScheme::new("retina", None)]),
+            .filter_chain(InputTrack::Afferent, GlyphSequences::img_lyr_tags(), &[("retina", None)]),
         )
 
         // .area("b1", "visual", AREA_SIDE, None, Some(vec!["v1"]))

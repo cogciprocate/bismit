@@ -221,7 +221,7 @@ impl LayerInfo {
                 /////// [END REMOVE]
 
                 // Assemble a list of source layers for this input layer:
-                let mut matching_source_layers = matching_source_layers(area_sch, area_sch_list,
+                let matching_source_layers = matching_source_layers(area_sch, area_sch_list,
                     layer_map_sch_list, input_filters);
 
                 // Create a `SourceLayerInfo` for each matching layer:
@@ -510,7 +510,7 @@ impl SourceLayerInfo {
     #[inline] pub fn axn_count(&self) -> u32 { self.dims().cells() }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
-    #[inline] pub fn input_track(&self) -> InputTrack { self.input_track.clone() }
+    #[inline] pub fn input_track(&self) -> &InputTrack { &self.input_track }
     #[inline] pub fn axn_tags(&self) -> &AxonTags { &self.axn_tags }
     #[inline] pub fn masq_repl_axn_tags(&self) -> Option<&AxonTags> { self.masq_repl_axn_tags.as_ref() }
     #[inline] pub fn tar_slc_range(&self) -> &Range<u8> { &self.tar_slc_range }

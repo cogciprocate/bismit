@@ -1,4 +1,4 @@
-use map::{FilterScheme, InputScheme, LayerTags, AxonTags, InputTrack};
+use map::{FilterScheme, InputScheme, AxonTags, InputTrack};
 use cmn::{self, CorticalDims, MapStore};
 
 
@@ -55,10 +55,18 @@ impl AreaScheme {
     //     self
     // }
 
-    pub fn filter_chain<A: Into<AxonTags>>(mut self, input_track: InputTrack, axn_tags: A,
-            filter_chain: &[FilterScheme]) -> AreaScheme
+    pub fn filter_chain<A, F>(mut self, input_track: InputTrack, axn_tags: A,
+            filter_chain: &[F]) -> AreaScheme
+            where A: Into<AxonTags>, F: Into<FilterScheme> + Clone
     {
-        self.add_filter_chain(input_track, axn_tags, filter_chain.into());
+        // let filter_chain = filter_chain.into_iter().map(move |f| f.into()).collect();
+        let mut filter_chain_vec: Vec<FilterScheme> = Vec::with_capacity(filter_chain.len());
+
+        for f in filter_chain.into_iter() {
+            filter_chain_vec.push(f.clone().into());
+        }
+
+        self.add_filter_chain(input_track, axn_tags, filter_chain_vec);
         self
     }
 

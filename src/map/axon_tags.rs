@@ -101,6 +101,15 @@ impl<'a, 'b> BitOr<&'b AxonTags> for &'a AxonTags {
     }
 }
 
+// impl<'a, F> From<&'a F> for FilterScheme
+//     where F: Into<FilterScheme>
+// {
+//     fn from(fs: &F) -> FilterScheme {
+//         // FilterScheme::new(tup.0, tup.1)
+//         fs.into()
+//     }
+// }
+
 impl<'a> From<&'a [AxonTag]> for AxonTags {
     fn from(tag_list: &'a [AxonTag]) -> AxonTags {
         AxonTags { tags: BTreeSet::from_iter(tag_list.into_iter().cloned()) }

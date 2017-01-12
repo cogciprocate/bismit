@@ -12,8 +12,8 @@ use vibi::bismit::map::{self, LayerTags, LayerMapKind, LayerMapScheme, LayerMapS
 use vibi::bismit::encode::{ReversoScalarSequence, HexMoldTest};
 
 // const MOTOR_UID: u32 = 101;
-const U1: u32 = U0 + 1;
-const U0: u32 = 1000;
+const U0: u16 = 1000;
+const U1: u16 = U0 + 1;
 
 fn main() {
     use std::thread;
@@ -27,14 +27,21 @@ fn main() {
         let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()))
             .sub(Subcortex::new().nucleus(Box::new(TestScNucleus::new("m0"))));
 
-        let ia_idx = cortex.thal().ext_pathway_idx(&"v0".to_owned()).unwrap();
-        cortex.thal_mut().ext_pathway(ia_idx).unwrap().specify_encoder(Box::new(
-                HexMoldTest::new(32, (24, 24))
-                // InputScheme::ReversoScalarSequence { range: (0.0, 76.0), incr: 1.0 }
-                // ReversoScalarSequence::new((0.0, 76.0), 1.0, &[
-                //     map::FF_OUT | LayerTags::uid(U0),
-                //     map::FF_OUT | LayerTags::uid(U1)])
-            )).unwrap();
+        let ep_idx = cortex.thal().ext_pathway_idx(&"v0".to_owned()).unwrap();
+        let ep_area_id = cortex.thal().area_map_by_name("v0").unwrap().area_id();
+
+        let lyr0_addr = cortex.thal().area_map(ep_area_id).expect("A").layers()
+            .lyr_matching_track_and_tags(None, &[map::THAL_SP, AxonTag::custom(U0)].into())
+                .expect("B").layer_addr().clone();
+
+        let lyr1_addr = cortex.thal().area_map(ep_area_id).unwrap().layers()
+            .lyr_matching_track_and_tags(None, &[map::THAL_SP, AxonTag::custom(U1)].into())
+                .unwrap().layer_addr().clone();
+
+        cortex.thal_mut().ext_pathway(ep_idx).unwrap().specify_encoder(Box::new(
+            // HexMoldTest::new(6, [48, 48])
+            ReversoScalarSequence::new((0.0, 76.0), 1.0, &[lyr0_addr, lyr1_addr])
+        )).unwrap();
 
         // let mut flywheel = Flywheel::from_blueprint(define_lm_schemes(),
         //     define_a_schemes(), None, command_rx);
@@ -51,54 +58,56 @@ fn main() {
     if let Err(e) = th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
 }
 
+
 fn define_lm_schemes() -> LayerMapSchemeList {
     // const OLFAC_UID: u32 = 102;
-    let at0 = AxonTag::unique();
-    let at1 = AxonTag::unique();
+    // let at0 = AxonTag::custom(U0);
+    // let at1 = AxonTag::custom(U1);
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("v1_lm", LayerMapKind::Cortical)
-            .input_layer("eff_in", map::FB_IN | LayerTags::uid(U0),
+            .input_layer("eff_in", map::FB_IN | LayerTags::uid(U0 as u32),
                 AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP])]),
                 AxonTopology::Spatial
             )
-            .input_layer("aff_in_0", map::FF_IN | LayerTags::uid(U0),
-                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
+            .input_layer("aff_in_0", map::FF_IN | LayerTags::uid(U0 as u32),
+                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U0)])]),
                 AxonTopology::Spatial
             )
-            .input_layer("aff_in_1", map::FF_IN | LayerTags::uid(U1),
-                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at1])]),
+            .input_layer("aff_in_1", map::FF_IN | LayerTags::uid(U1 as u32),
+                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U1)])]),
                 AxonTopology::Spatial
             )
             .layer("mcols", 1, map::FF_FB_OUT, AxonDomain::Local, CellScheme::minicolumn("iv", "iii"))
             .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhibitory(4, "iv"))
 
             .layer("iv", 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in_0", 14, 1), ("aff_in_1", 14, 1)], 6, 600)
+                CellScheme::spiny_stellate(&[("aff_in_0", 14, 1), ("aff_in_1", 14, 1)], 6, 300)
             )
 
             .layer("iii", 2, map::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 20, 1)], 1, 5, 500)
+                CellScheme::pyramidal(&[("iii", 20, 1)], 1, 5, 300)
                     // .apical(&[("eff_in", 22)], 1, 5, 500)
             )
 
-            .layer("v", 1, map::PMEL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 20, 4), ("v", 20, 1)], 1, 5, 500)
-                    // .apical(vec!["eff_in"/*, "olfac"*/], 18)
-            )
+            // .layer("v", 1, map::PMEL, AxonDomain::Local,
+            //     CellScheme::pyramidal(&[("iii", 20, 4), ("v", 20, 1)], 1, 5, 500)
+            //         // .apical(vec!["eff_in"/*, "olfac"*/], 18)
+            // )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer("external_0", 1, map::FF_OUT | LayerTags::uid(U0),
-                AxonDomain::output(&[map::THAL_SP, at0]),
+            .layer("external_0", 1, map::FF_OUT | LayerTags::uid(U0 as u32),
+                AxonDomain::output(&[map::THAL_SP, AxonTag::custom(U0)]),
                 LayerKind::Axonal(AxonTopology::Spatial))
-            .layer("external_1", 1, map::FF_OUT | LayerTags::uid(U1),
-                AxonDomain::output(&[map::THAL_SP, at1]),
+            .layer("external_1", 1, map::FF_OUT | LayerTags::uid(U1 as u32),
+                AxonDomain::output(&[map::THAL_SP, AxonTag::custom(U1)]),
                 LayerKind::Axonal(AxonTopology::Spatial))
         )
 }
 
 
 fn define_a_schemes() -> AreaSchemeList {
+    // let at0 = AxonTag::custom(U0);
     // ENCODE_SIZE: 64 --> range: (0.0, 172.0)
     // ENCODE_SIZE: 32 --> range: (0.0, 76.0)
     const ENCODE_SIZE: u32 = 48; // had been used for GlyphSequences
@@ -133,8 +142,8 @@ fn define_a_schemes() -> AreaSchemeList {
             .other_area("v0", None)
             // .filter_chain(map::FF_IN | LayerTags::uid(U0), vec![FilterScheme::new("retina", None)])
             // .filter_chain(map::FF_IN | LayerTags::uid(U1), vec![FilterScheme::new("retina", None)])
-            .filter_chain(InputTrack::Afferent, &[map::THAL_SP, at0],
-                &[("retina", None)].into())
+            .filter_chain(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U0)], &[("retina", None)])
+            .filter_chain(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U1)], &[("retina", None)])
         )
         // .area(AreaScheme::new("m1", "m1_lm", AREA_SIDE)
         //     .eff_areas(vec!["v1", "v0"])

@@ -1,7 +1,7 @@
 use cmn::CorticalDims;
 use map;
 use map::{LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme, AreaSchemeList,
-    CellScheme, FilterScheme, InputScheme, AxonTopology, LayerKind, AxonDomain, InputTrack};
+    CellScheme, InputScheme, AxonTopology, LayerKind, AxonDomain, InputTrack};
 use thalamus::Thalamus;
 use ocl::{Context, ProQue};
 use cortex::Cortex;
@@ -94,7 +94,7 @@ pub fn define_protoareas() -> AreaSchemeList {
         )
         .area(AreaScheme::new("v1", "visual", area_side)
             .eff_areas(vec!["v0"])
-            .filter_chain(map::FF_IN, vec![FilterScheme::new("retina", None)]),
+            .filter_chain(InputTrack::Afferent, &[map::THAL_SP], &[("retina", None)]),
         )
 
 

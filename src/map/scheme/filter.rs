@@ -30,3 +30,15 @@ impl FilterScheme {
         }
     }
 }
+
+impl<'a> From<(&'a str, Option<&'a str>)> for FilterScheme {
+    fn from(tup: (&'a str, Option<&'a str>)) -> FilterScheme {
+        FilterScheme::new(tup.0, tup.1)
+    }
+}
+
+impl<'a,> From<&'a (&'a str, Option<&'a str>)> for FilterScheme {
+    fn from(tup_ref: &'a (&'a str, Option<&'a str>)) -> FilterScheme {
+        FilterScheme::new(tup_ref.0, tup_ref.1)
+    }
+}

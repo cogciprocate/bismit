@@ -1,4 +1,4 @@
-use cmn;
+// use cmn;
 use map::LayerAddress;
 use thalamus::{ExternalPathwayTract, TractFrameMut};
 use encode;
@@ -7,12 +7,12 @@ use encode;
 #[derive(Debug, Clone)]
 pub struct HexMoldTest {
     radius: i8,
-    src_dims: (u32, u32),
+    src_dims: [u32; 2],
     // src_dims:
 }
 
 impl HexMoldTest {
-    pub fn new(radius: i8, src_dims: (u32, u32)) -> HexMoldTest {
+    pub fn new(radius: i8, src_dims: [u32; 2]) -> HexMoldTest {
         assert!(radius >= 0);
 
         HexMoldTest {
@@ -30,10 +30,10 @@ impl ExternalPathwayTract for HexMoldTest {
         //     format!("Radius too big for it's britches (radius: {}, dims: {:?})",
         //         self.radius, tract_frame.dims()));
 
-        let scales = [cmn::calc_scale(tract_frame.dims().v_size(), self.src_dims.0).unwrap(),
-            cmn::calc_scale(tract_frame.dims().u_size(), self.src_dims.1).unwrap()];
+        // let scales = [cmn::calc_scale(tract_frame.dims().v_size(), self.src_dims[0]).unwrap(),
+        //     cmn::calc_scale(tract_frame.dims().u_size(), self.src_dims[1]).unwrap()];
 
-        let src_dims = [self.src_dims.0, self.src_dims.1];
+        // let src_dims = [self.src_dims.0, self.src_dims.1];
         // let dst_dims = [tract_frame.dims().v_size(), tract_frame.dims().u_size()];
         // let dst_mid = [tract_frame.dims().v_size() / 2, tract_frame.dims().u_size() / 2];
 
@@ -44,7 +44,7 @@ impl ExternalPathwayTract for HexMoldTest {
 
 
         // encode::encode_hex_mold_scaled(self.radius, scales, mid, tract_frame);
-        encode::encode_hex_mold_scaled(self.radius, src_dims, tract_frame);
+        encode::encode_hex_mold_scaled(self.radius, self.src_dims, tract_frame);
     }
 
     fn cycle_next(&mut self) {
