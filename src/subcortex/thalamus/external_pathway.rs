@@ -1,9 +1,5 @@
-// use std::iter;
 use std::collections::HashMap;
 use std::fmt::Debug;
-// use std::collections::hash_map::IterMut;
-// use std::hash::BuildHasherDefault;
-// use twox_hash::XxHash;
 use find_folder::Search;
 use cmn::{self, CorticalDims, CmnResult, CmnError};
 use ocl::{EventList};
@@ -12,7 +8,6 @@ use map::{AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonTopology, La
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
-// use map::LayerTags;
 
 
 #[derive(Debug)]
@@ -20,13 +15,6 @@ pub enum ExternalPathwayFrame<'a> {
     Tract(TractFrameMut<'a>),
     F32Slice(&'a mut [f32]),
 }
-
-
-// #[derive(Debug)]
-// pub enum PathwayDirection {
-//     Afferent,
-//     Efferent,
-// }
 
 
 /// A highway for input.
@@ -45,7 +33,6 @@ pub enum ExternalPathwayEncoder {
     Stripes { stripe_size: usize, zeros_first: bool },
     Hexballs { edge_size: usize, invert: bool, fill: bool },
     Exp1,
-    // IdxStreamer(Box<ExternalPathwayTract>),
     GlyphSequences(Box<GlyphSequences>),
     SensoryTract(Box<SensoryTract>),
     VectorEncoder(Box<VectorEncoder>),
@@ -56,9 +43,7 @@ pub enum ExternalPathwayEncoder {
 
 pub struct ExternalPathwayLayer {
     name: &'static str,
-    // layer_tags: LayerTags,
     addr: LayerAddress,
-    // axn_tags: AxonTags,
     axn_sig: AxonSignature,
     axn_topology: AxonTopology,
     dims: Option<CorticalDims>,
@@ -70,7 +55,6 @@ impl ExternalPathwayLayer {
     }
 
     pub fn name(&self) -> &'static str { self.name }
-    // pub fn tags(&self) -> LayerTags { self.layer_tags }
     pub fn addr(&self) -> &LayerAddress { &self.addr }
     pub fn axn_sig(&self) -> &AxonSignature { &self.axn_sig }
     pub fn axn_tags(&self) -> &AxonTags { &self.axn_sig.tags() }
@@ -88,14 +72,11 @@ pub struct ExternalPathway {
     area_id: usize,
     area_name: String,
     encoder: ExternalPathwayEncoder,
-    // direction: ExternalPathwayDirection,
-    // layers: HashMap<LayerTags, ExternalPathwayLayer>,
-    // layers: HashMap<LayerTags, ExternalPathwayLayer, BuildHasherDefault<XxHash>>,
     layers: HashMap<LayerAddress, ExternalPathwayLayer>,
 }
 
 impl ExternalPathway {
-    // [FIXME] Determine (or have passed in) the layer depth corresponding to this source.
+    // [FIXME]: Determine (or have passed in) the layer depth corresponding to this source.
     pub fn new(pamap: &AreaScheme, plmap: &LayerMapScheme) -> CmnResult<ExternalPathway> {
         let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|pl| pl).collect();
 
@@ -105,7 +86,6 @@ impl ExternalPathway {
             pamap.name(), pamap.get_input().layer_count(), plmap.name(), p_layers.len(),
             pamap.get_input());
 
-        // let mut layers = HashMap::with_capacity_and_hasher(4, BuildHasherDefault::default());
         let mut layers = HashMap::with_capacity(4);
         let mut lyr_addr_list = Vec::with_capacity(4);
         let mut lyr_dims_list = Vec::with_capacity(4);
@@ -123,6 +103,7 @@ impl ExternalPathway {
                 AxonTopology::None => None,
             };
 
+            ////// [FIXME]: Determine if either of these checks is still necessary or relevant:
             // assert!(layer_tags.contains(map::OUTPUT), "ExternalPathway::new(): External ('Thalamic') areas \
             //     must have a layer or layers with an 'OUTPUT' tag. [area: '{}', layer map: '{}']",
             //     pamap.name(), plmap.name());
@@ -136,14 +117,12 @@ impl ExternalPathway {
                     plmap.name()).into()),
             };
 
-            // layer_tags_list.push(layer_tags);
             lyr_addr_list.push(lyr_addr.clone());
             lyr_dims_list.push(dims.clone());
             lyr_axn_sigs_list.push(lyr_axn_sig.clone());
 
             layers.insert(lyr_addr.clone(), ExternalPathwayLayer {
                 name: lyr_name,
-                // layer_tags: layer_tags,
                 addr: lyr_addr,
                 axn_sig: lyr_axn_sig,
                 axn_topology: axn_topology,
@@ -197,7 +176,6 @@ impl ExternalPathway {
                 ExternalPathwayEncoder::Other(Box::new(ScalarSdrGradiant::new(range, way_span, incr, &tract_dims)))
             },
             InputScheme::ReversoScalarSequence { range, incr } => {
-                // let layer_tags: Vec<_> = layers.iter().map(|(t, _)| t.clone()).collect();
                 ExternalPathwayEncoder::Other(Box::new(
                     ReversoScalarSequence::new(range, incr, &lyr_addr_list)))
             },
@@ -225,7 +203,8 @@ impl ExternalPathway {
 
     /// Writes input data into a tract.
     ///
-    /// **Should** return promptly... data should already be staged.
+    /// **Should** return promptly... data should already be staged ([TODO]: Process
+    /// in a separate thread).
     pub fn write_into(&mut self, addr: &LayerAddress, mut frame: TractFrameMut, _: &mut EventList) {
         let dims = self.layers[addr].dims().expect(&format!("Dimensions don't exist for \
             external input area: \"{}\", addr: '{:?}' ", self.area_name, addr));
@@ -235,7 +214,6 @@ impl ExternalPathway {
             dims, frame.dims());
 
         match self.encoder {
-            // ExternalPathwayEncoder::IdxStreamer(ref mut es) |
             ExternalPathwayEncoder::Other(ref mut es) => {
                 es.write_into(&mut frame, addr)
             },
@@ -254,10 +232,6 @@ impl ExternalPathway {
             _ => (),
         }
     }
-
-    // pub fn frame<'f>(&'f self) -> Option<&'f mut [u8]> {
-    //     None
-    // }
 
     /// Returns a tract frame of an external source buffer, if available.
     pub fn ext_frame_mut(&mut self) -> CmnResult<ExternalPathwayFrame> {
@@ -278,7 +252,6 @@ impl ExternalPathway {
 
     pub fn cycle_next(&mut self) {
         match self.encoder {
-            // ExternalPathwayEncoder::IdxStreamer(ref mut es) |
             ExternalPathwayEncoder::Other(ref mut es) => {
                 es.cycle_next()
             },
@@ -302,15 +275,6 @@ impl ExternalPathway {
     pub fn layer(&self, addr: LayerAddress) -> &ExternalPathwayLayer {
         self.layers.get(&addr).expect(&format!("ExternalPathway::layer(): Invalid addr: {:?}", addr))
     }
-
-    // pub fn layer_tags(&self) -> Vec<LayerTags> {
-    //     let mut tags = Vec::with_capacity(self.layers.len());
-
-    //     for (_, layer) in self.layers.iter() {
-    //         tags.push(layer.tags());
-    //     }
-    //     tags
-    // }
 
     pub fn layer_addrs(&self) -> Vec<LayerAddress> {
         self.layers.iter().map(|(_, layer)| layer.addr().clone()).collect()

@@ -10,7 +10,6 @@ mod area_map;
 mod scheme;
 mod axon_tags;
 
-// use cmn::CmnError;
 pub use self::area_map::AreaMap;
 pub use self::slice_map::SliceMap;
 pub use self::layer_map::LayerMap;
@@ -126,13 +125,7 @@ impl LayerKind {
     {
         match &mut self {
             &mut LayerKind::Cellular(ref mut cs) => {
-                // match cs.den_dst_src_lyrs {
-                //     Some(ref mut ddsl) => ddsl.push(dst_srcs),
-                //     None => (),
-                // }
-                // cs.den_dst_syn_reaches.push(syn_reach);
                 let src_lyrs_vec = src_lyrs.into_iter().map(|&sl| sl.into()).collect();
-                // let tft_id = cs.tft_schemes().len();
 
                 let tft_scheme = TuftScheme::new(DendriteClass::Apical, DendriteKind::Distal,
                     dens_per_tft_l2, syns_per_den_l2, src_lyrs_vec, Some(thresh_init));
@@ -227,24 +220,12 @@ impl<A> From<A> for AxonSignature where A: Into<AxonTags> {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum AxonDomain {
-    // Input(Vec<(InputTrack, AxonTags)>),
     Input(Vec<AxonSignature>),
     Output(AxonSignature),
     Local,
 }
 
 impl AxonDomain {
-    // pub fn input<A: Into<AxonTags> + Clone>(sigs: &[(InputTrack, A)]) -> AxonDomain {
-    //     AxonDomain::Input(sigs.into_iter()
-    //         .map(|s| {
-    //             // let (it, at) = s.clone();
-    //             // (it, at.into())
-    //             s.clone().into()
-
-    //         })
-    //         .collect())
-    // }
-
     pub fn input<S: Into<AxonSignature> + Clone>(sigs: &[S]) -> AxonDomain {
         AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
     }
@@ -347,43 +328,3 @@ impl<'a, S> From<[S; 5]> for AxonDomain where S: Into<AxonSignature> + Clone {
         AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
     }
 }
-
-
-// impl<'a, A> From<&'a [(InputTrack, A)]> for AxonDomain where A: Into<AxonTags> + Clone {
-//     fn from(sigs: &'a [(InputTrack, A)]) -> AxonDomain {
-//         AxonDomain::input(sigs)
-//     }
-// }
-
-// impl<A> From<A> for AxonDomain where A: Into<AxonTags> {
-//     fn from(tags: A) -> AxonDomain {
-//         AxonDomain::output(tags)
-//     }
-// }
-
-
-
-// impl AxonTopology {
-//     pub fn from_tags<'a>(tags: LayerTags) -> Result<AxonTopology, CmnError> {
-//         if tags.contains(SPATIAL) && tags.contains(HORIZONTAL) {
-//             Err(CmnError::new(format!("Error converting tags to AxonTopology, tags must contain \
-//                 only one of either 'SPATIAL' or 'HORIZONTAL'. (tags: '{:?}')", tags)))
-//         } else if tags.contains(SPATIAL) {
-//             Ok(AxonTopology::Spatial)
-//         } else if tags.contains(HORIZONTAL) {
-//             Ok(AxonTopology::Horizontal)
-//         } else {
-//             // Err(CmnError::new(format!("Unable to determine axon kind from tags: '{:?}'", tags)))
-//             Ok(AxonTopology::None)
-//         }
-//     }
-
-//     pub fn matches_tags(&self, tags: LayerTags) -> bool {
-//         match self {
-//             &AxonTopology::Spatial => tags.contains(SPATIAL),
-//             &AxonTopology::Horizontal => tags.contains(HORIZONTAL),
-//             &AxonTopology::None => (!tags.contains(SPATIAL)) && (!tags.contains(HORIZONTAL)),
-//         }
-//     }
-// }
-

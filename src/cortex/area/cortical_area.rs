@@ -367,7 +367,6 @@ impl CorticalArea {
 
         // <<<<< EVENTUALLY ADD TO CONTROL CELLS (+PROTOCONTROLCELLS) >>>>>
         let mcols = Box::new({
-            //let em_ssts = emsg.to_string() + ": ssts - em2";
             let em_ssts = format!("{}: '{}' is not a valid layer", emsg, psal_name);
             let ssts = ssts_map.get(psal_name).expect(&em_ssts);
 
