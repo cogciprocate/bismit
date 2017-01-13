@@ -219,14 +219,12 @@ fn cycle_random_dens() {
 
         // GET SOURCE SLICE TO USE TO SIMULATE INPUT:
         let cel_syn_range = den_coords.syn_idx_range_celtft(den_coords.tft_id, tft_syn_idz);
-        // let src_slc_ids = area.area_map().layers().layers_containing_tags_slc_range(map::FF_IN);
 
         // [FIXME]: ASSIGN SPECIAL TAGS TO THIS LAYER:
         let src_slc_ranges = area.area_map().layers().iter()
             .filter(|li| li.axn_domain().is_input() && li.slc_range().is_some())
             .map(|li| li.slc_range().unwrap().clone())
             .collect::<Vec<_>>();
-
 
         assert!(src_slc_ranges.len() == 1);
         let src_slc_id = src_slc_ranges[0].start;

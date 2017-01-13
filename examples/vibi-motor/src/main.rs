@@ -31,11 +31,11 @@ fn main() {
         let ep_area_id = cortex.thal().area_map_by_name("v0").unwrap().area_id();
 
         let lyr0_addr = cortex.thal().area_map(ep_area_id).expect("A").layers()
-            .lyr_matching_track_and_tags(None, &[map::THAL_SP, AxonTag::custom(U0)].into())
+            .layer_info_by_sig(&(None, &[map::THAL_SP, AxonTag::custom(U0)]).into())
                 .expect("B").layer_addr().clone();
 
         let lyr1_addr = cortex.thal().area_map(ep_area_id).unwrap().layers()
-            .lyr_matching_track_and_tags(None, &[map::THAL_SP, AxonTag::custom(U1)].into())
+            .layer_info_by_sig(&(None, &[map::THAL_SP, AxonTag::custom(U1)]).into())
                 .unwrap().layer_addr().clone();
 
         cortex.thal_mut().ext_pathway(ep_idx).unwrap().specify_encoder(Box::new(
@@ -66,22 +66,19 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("v1_lm", LayerMapKind::Cortical)
-            .input_layer("eff_in", map::FB_IN | LayerTags::uid(U0 as u32),
-                // AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP])]),
+            .input_layer("eff_in", map::DEFAULT,
                 &[(InputTrack::Efferent, &[map::THAL_SP])],
                 AxonTopology::Spatial
             )
-            .input_layer("aff_in_0", map::FF_IN | LayerTags::uid(U0 as u32),
-                // AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U0)])]),
+            .input_layer("aff_in_0", map::DEFAULT,
                 &[(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U0)])],
                 AxonTopology::Spatial
             )
-            .input_layer("aff_in_1", map::FF_IN | LayerTags::uid(U1 as u32),
-                // AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U1)])]),
+            .input_layer("aff_in_1", map::DEFAULT,
                 &[(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U1)])],
                 AxonTopology::Spatial
             )
-            .layer("mcols", 1, map::FF_FB_OUT, AxonDomain::output(&[map::THAL_SP]),
+            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
                 CellScheme::minicolumn("iv", "iii"))
             .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhibitory(4, "iv"))
 
@@ -100,10 +97,10 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             // )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer("external_0", 1, map::FF_OUT | LayerTags::uid(U0 as u32),
+            .layer("external_0", 1, map::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, AxonTag::custom(U0)]),
                 LayerKind::Axonal(AxonTopology::Spatial))
-            .layer("external_1", 1, map::FF_OUT | LayerTags::uid(U1 as u32),
+            .layer("external_1", 1, map::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, AxonTag::custom(U1)]),
                 LayerKind::Axonal(AxonTopology::Spatial))
         )

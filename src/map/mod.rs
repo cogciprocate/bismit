@@ -288,6 +288,67 @@ impl<'a, S> From<&'a [S]> for AxonDomain where S: Into<AxonSignature> + Clone {
     }
 }
 
+impl<'a, S> From<&'a [S; 1]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: &'a [S; 1]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+impl<'a, S> From<&'a [S; 2]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: &'a [S; 2]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+impl<'a, S> From<&'a [S; 3]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: &'a [S; 3]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+impl<'a, S> From<&'a [S; 4]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: &'a [S; 4]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+impl<'a, S> From<&'a [S; 5]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: &'a [S; 5]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+impl<'a, S> From<[S; 1]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: [S; 1]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+impl<'a, S> From<[S; 2]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: [S; 2]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+impl<'a, S> From<[S; 3]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: [S; 3]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+impl<'a, S> From<[S; 4]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: [S; 4]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+impl<'a, S> From<[S; 5]> for AxonDomain where S: Into<AxonSignature> + Clone {
+    fn from(sigs: [S; 5]) -> AxonDomain {
+        AxonDomain::Input(sigs.into_iter().map(|s| s.clone().into()).collect())
+    }
+}
+
+
 // impl<'a, A> From<&'a [(InputTrack, A)]> for AxonDomain where A: Into<AxonTags> + Clone {
 //     fn from(sigs: &'a [(InputTrack, A)]) -> AxonDomain {
 //         AxonDomain::input(sigs)
