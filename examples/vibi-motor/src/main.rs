@@ -24,24 +24,23 @@ fn main() {
     let (response_tx, response_rx) = mpsc::channel();
 
     let th_flywheel = thread::Builder::new().name("flywheel".to_string()).spawn(move || {
-        let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()))
+        let cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()))
             .sub(Subcortex::new().nucleus(Box::new(TestScNucleus::new("m0"))));
 
-        let ep_idx = cortex.thal().ext_pathway_idx(&"v0".to_owned()).unwrap();
-        let ep_area_id = cortex.thal().area_map_by_name("v0").unwrap().area_id();
-
-        let lyr0_addr = cortex.thal().area_map(ep_area_id).expect("A").layers()
-            .layer_info_by_sig(&(None, &[map::THAL_SP, AxonTag::custom(U0)]).into())
-                .expect("B").layer_addr().clone();
-
-        let lyr1_addr = cortex.thal().area_map(ep_area_id).unwrap().layers()
-            .layer_info_by_sig(&(None, &[map::THAL_SP, AxonTag::custom(U1)]).into())
-                .unwrap().layer_addr().clone();
-
-        cortex.thal_mut().ext_pathway(ep_idx).unwrap().specify_encoder(Box::new(
-            // HexMoldTest::new(6, [48, 48])
-            ReversoScalarSequence::new((0.0, 76.0), 1.0, &[lyr0_addr, lyr1_addr])
-        )).unwrap();
+        /////// [DO NOT REMOVE]: Sets up a custom external pathway:
+        // let ep_idx = cortex.thal().ext_pathway_idx(&"v0".to_owned()).unwrap();
+        // let ep_area_id = cortex.thal().area_map_by_name("v0").unwrap().area_id();
+        // let lyr0_addr = cortex.thal().area_map(ep_area_id).expect("A").layers()
+        //     .layer_info_by_sig(&(None, &[map::THAL_SP, AxonTag::custom(U0)]).into())
+        //         .expect("B").layer_addr().clone();
+        // let lyr1_addr = cortex.thal().area_map(ep_area_id).unwrap().layers()
+        //     .layer_info_by_sig(&(None, &[map::THAL_SP, AxonTag::custom(U1)]).into())
+        //         .unwrap().layer_addr().clone();
+        // cortex.thal_mut().ext_pathway(ep_idx).unwrap().specify_encoder(Box::new(
+        //     // HexMoldTest::new(6, [48, 48])
+        //     ReversoScalarSequence::new((0.0, 76.0), 1.0, &[lyr0_addr, lyr1_addr])
+        // )).unwrap();
+        ///////
 
         // let mut flywheel = Flywheel::from_blueprint(define_lm_schemes(),
         //     define_a_schemes(), None, command_rx);
@@ -100,9 +99,9 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer("external_0", 1, map::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, AxonTag::custom(U0)]),
                 LayerKind::Axonal(AxonTopology::Spatial))
-            .layer("external_1", 1, map::DEFAULT,
-                AxonDomain::output(&[map::THAL_SP, AxonTag::custom(U1)]),
-                LayerKind::Axonal(AxonTopology::Spatial))
+            // .layer("external_1", 1, map::DEFAULT,
+            //     AxonDomain::output(&[map::THAL_SP, AxonTag::custom(U1)]),
+            //     LayerKind::Axonal(AxonTopology::Spatial))
         )
 }
 
@@ -135,7 +134,8 @@ fn define_a_schemes() -> AreaSchemeList {
         //     // Some(vec!["v0b"]),
         // )
         .area(AreaScheme::new("v0", "v0_lm", ENCODE_SIZE)
-            .input(InputScheme::Custom { layer_count: 2 })
+            // .input(InputScheme::Custom { layer_count: 2 })
+            .input(InputScheme::ScalarSdrGradiant { range: (-8.0, 8.0), way_span: 4.0, incr: 0.1 })
         )
         .area(AreaScheme::new("v1", "v1_lm", AREA_SIDE)
             .eff_areas(vec!["v0"])
@@ -143,8 +143,8 @@ fn define_a_schemes() -> AreaSchemeList {
             .other_area("v0", None)
             // .filter_chain(map::FF_IN | LayerTags::uid(U0), vec![FilterScheme::new("retina", None)])
             // .filter_chain(map::FF_IN | LayerTags::uid(U1), vec![FilterScheme::new("retina", None)])
-            .filter_chain(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U0)], &[("retina", None)])
-            .filter_chain(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U1)], &[("retina", None)])
+            // .filter_chain(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U0)], &[("retina", None)])
+            // .filter_chain(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U1)], &[("retina", None)])
         )
         // .area(AreaScheme::new("m1", "m1_lm", AREA_SIDE)
         //     .eff_areas(vec!["v1", "v0"])

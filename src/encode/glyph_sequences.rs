@@ -141,7 +141,7 @@ impl GlyphSequences {
 impl ExternalPathwayTract for GlyphSequences {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: &LayerAddress) {
         let glyph_dims = self.buckets.glyph_dims();
-        let (next_seq_idx, next_glyph_id) = self.cursor.get();
+        let (_, next_glyph_id) = self.cursor.get();
         let glyph: &[u8] = self.buckets.next_glyph(next_glyph_id);
 
         if *addr == self.img_layer_addr {

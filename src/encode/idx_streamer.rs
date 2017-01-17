@@ -164,7 +164,7 @@ impl ExternalPathwayTract for IdxStreamer {
             _ => panic!("\nIdx files with more than three or less than one dimension(s) not supported."),
         }
 
-        let prev_frame = self.frame_counter;
+        // let prev_frame = self.frame_counter;
         // [prev_frame, 0, 0]
     }
 

@@ -1,12 +1,16 @@
 use std::ops::Range;
 use cmn::{TractDims, TractFrameMut};
 
+// [FIXME]: UNUSED
+#[allow(dead_code)]
 pub struct ScalarEncoder2d {
     tract_dims: TractDims,
     range: Range<usize>,
 }
 
 impl ScalarEncoder2d {
+    // [FIXME]: UNUSED
+    #[allow(dead_code)]
     pub fn new(tract_dims: TractDims, range: Range<usize>) -> ScalarEncoder2d {
         ScalarEncoder2d {
             tract_dims: tract_dims,
@@ -14,12 +18,15 @@ impl ScalarEncoder2d {
         }
     }
 
+    // [FIXME]: UNUSED
+    #[allow(dead_code, unused_variables)]
     pub fn encode(val: usize, target: &mut TractFrameMut) {
 
     }
 }
 
 
+// [FIXME]: UNUSED
 #[allow(dead_code)]
 pub struct CoordEncoder2d {
     tract_dims: TractDims,
@@ -28,6 +35,8 @@ pub struct CoordEncoder2d {
 }
 
 impl CoordEncoder2d {
+    // [FIXME]: UNUSED
+    #[allow(dead_code)]
     pub fn new(tract_dims: TractDims, coord_ranges: (usize, usize)) -> CoordEncoder2d {
         let blip_size = (
             (tract_dims.u_size() as usize / coord_ranges.0) + 1,
@@ -41,6 +50,8 @@ impl CoordEncoder2d {
         }
     }
 
+    // [FIXME]: UNUSED
+    #[allow(dead_code, unused_variables)]
     pub fn encode(coord: (u32, u32), target: &mut TractFrameMut) {
 
     }

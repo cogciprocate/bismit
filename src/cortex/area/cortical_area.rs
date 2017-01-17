@@ -388,9 +388,9 @@ impl CorticalArea {
 
         for &(ref track, ref tags, ref chain_scheme) in area_map.filter_chain_schemes() {
             let (src_layer, _) = area_map.layers().src_layer_info_by_sig(&(track, tags).into())
-
-                .expect("Unable to find a layer within the area map matching the axon domain \
-                    ({:?}) specified by the filter chain scheme: '{:?}'.", );
+                .expect(&format!("Unable to find a layer within the area map matching the axon \
+                    domain (track: '{:?}', tags: '{:?}') specified by the filter chain scheme: '{:?}'.",
+                    track, tags, chain_scheme));
 
             let mut layer_filters = Vec::with_capacity(4);
 

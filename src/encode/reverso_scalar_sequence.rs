@@ -7,6 +7,11 @@ use thalamus::{ExternalPathwayTract, TractFrameMut};
 use encode::ScalarEncodable;
 use map::LayerAddress;
 
+
+// enum ScalarEncoder {
+
+// }
+
 #[derive(Clone, Debug)]
 pub struct ReversoScalarSequence<T> {
     range: (T, T),
