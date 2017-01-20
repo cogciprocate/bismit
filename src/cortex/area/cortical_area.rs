@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::borrow::Borrow;
 use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, LayerTags, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
-    LayerAddress};
+    LayerAddress, ExecutionGraph};
 use ocl::{Device, ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
 use thalamus::Thalamus;
@@ -244,9 +244,16 @@ pub struct CorticalArea {
     counter: usize,
     io_info: IoLayerInfoCache,
     settings: CorticalAreaSettings,
+    exe_graph: ExecutionGraph,
 }
 
 impl CorticalArea {
+    /// Creates a new cortical area.
+    ///
+    //
+    // [TODO]: Break this function up a bit. Probably break the major sections
+    // out into new types.
+    //
     pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context,
                     settings: Option<CorticalAreaSettings>) -> CmnResult<CorticalArea> {
         let emsg = "cortical_area::CorticalArea::new()";
@@ -291,12 +298,13 @@ impl CorticalArea {
         //assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);
         //assert!(depth_cellular > 0, "cortical_area::CorticalArea::new(): Region has no cellular layers.");
 
-        let axns = AxonSpace::new(&area_map, &ocl_pq);
-
         let mut pyrs_map = HashMap::new();
         let mut ssts_map = HashMap::new();
         let mut iinns = HashMap::new();
 
+        let mut exe_graph = ExecutionGraph::new();
+
+        let axns = AxonSpace::new(&area_map, &ocl_pq);
 
         /*=============================================================================
         ================================== DATA CELLS =================================
@@ -314,15 +322,19 @@ impl CorticalArea {
                             let pyrs_dims = dims.clone_with_depth(layer.depth());
 
                             let pyr_lyr = try!(PyramidalLayer::new(layer.name(), layer.layer_id(),
-                                pyrs_dims, cell_scheme.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq));
+                                pyrs_dims, cell_scheme.clone(), &area_map, &axns, &ocl_pq,
+                                &mut exe_graph));
 
                             pyrs_map.insert(layer.name(), Box::new(pyr_lyr));
                         },
 
                         CellKind::SpinyStellate => {
                             let ssts_map_dims = dims.clone_with_depth(layer.depth());
+
                             let sst_lyr = try!(SpinyStellateLayer::new(layer.name(), layer.layer_id(),
-                                ssts_map_dims, cell_scheme.clone(), &area_map, &axns, /*&aux,*/ &ocl_pq));
+                                ssts_map_dims, cell_scheme.clone(), &area_map, &axns, &ocl_pq,
+                                &mut exe_graph));
+
                             ssts_map.insert(layer.name(), Box::new(sst_lyr));
                         },
                         _ => (),
@@ -331,7 +343,6 @@ impl CorticalArea {
                 _     => (),
             }
         }
-
 
         /*=============================================================================
         ================================ CONTROL CELLS ================================
@@ -378,7 +389,6 @@ impl CorticalArea {
             Minicolumns::new(mcols_dims, &area_map, &axns, ssts, pyrs, /*&aux,*/ &ocl_pq)
         });
 
-
         /*=============================================================================
         =================================== FILTERS ===================================
         =============================================================================*/
@@ -411,7 +421,6 @@ impl CorticalArea {
         }
 
         filter_chains.shrink_to_fit();
-
 
         /*=============================================================================
         ===================================== AUX =====================================
@@ -467,12 +476,16 @@ impl CorticalArea {
             counter: 0,
             io_info: io_info,
             settings: settings,
+            exe_graph: exe_graph,
         };
 
         Ok(cortical_area)
     }
 
-    // CYCLE(): <<<<< TODO: ISOLATE LEARNING INTO SEPARATE THREAD >>>>>
+    /// Cycles the area: running kernels, intaking, and outputting.
+    ///
+    //
+    // [TODO]: ISOLATE LEARNING INTO SEPARATE THREAD
     pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
         let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
@@ -486,7 +499,7 @@ impl CorticalArea {
 
         self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.settings.bypass_inhib);
 
-        if !self.settings.disable_ssts { if !self.settings.disable_learning { self.psal_mut().learn(); } }
+        if !self.settings.disable_ssts && !self.settings.disable_learning { self.psal_mut().learn(); }
 
         if !self.settings.disable_mcols { self.mcols.activate(); }
 
@@ -632,20 +645,21 @@ impl CorticalArea {
         event
     }
 
-    pub fn mcols(&self) -> &Box<Minicolumns> { &self.mcols }
-    pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> { &mut self.mcols }
-    pub fn axns(&self) -> &AxonSpace { &self.axns }
-    pub fn dims(&self) -> &CorticalDims { &self.dims }
-    pub fn psal_name(&self) -> &'static str { self.psal_name }
-    pub fn ptal_name(&self) -> &'static str { self.ptal_name }
-    pub fn afferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.aff_areas() }
-    pub fn efferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.eff_areas() }
-    pub fn ocl_pq(&self) -> &ProQue { &self.ocl_pq }
-    pub fn device(&self) -> &Device { &self.ocl_pq.queue().device() }
-    pub fn axn_tract_map(&self) -> SliceTractMap { self.area_map.slices().tract_map() }
-    pub fn area_map(&self) -> &AreaMap { &self.area_map }
-    pub fn area_id(&self) -> usize { self.area_id }
-    pub fn aux(&self) -> &Aux { &self.aux }
+    #[inline] pub fn mcols(&self) -> &Box<Minicolumns> { &self.mcols }
+    #[inline] pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> { &mut self.mcols }
+    #[inline] pub fn axns(&self) -> &AxonSpace { &self.axns }
+    #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] pub fn psal_name(&self) -> &'static str { self.psal_name }
+    #[inline] pub fn ptal_name(&self) -> &'static str { self.ptal_name }
+    #[inline] pub fn afferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.aff_areas() }
+    #[inline] pub fn efferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.eff_areas() }
+    #[inline] pub fn ocl_pq(&self) -> &ProQue { &self.ocl_pq }
+    #[inline] pub fn device(&self) -> &Device { &self.ocl_pq.queue().device() }
+    #[inline] pub fn axn_tract_map(&self) -> SliceTractMap { self.area_map.slices().tract_map() }
+    #[inline] pub fn area_map(&self) -> &AreaMap { &self.area_map }
+    #[inline] pub fn area_id(&self) -> usize { self.area_id }
+    #[inline] pub fn aux(&self) -> &Aux { &self.aux }
+    #[inline] pub fn exe_graph_mut(&mut self) -> &mut ExecutionGraph { &mut self.exe_graph }
 }
 
 impl Drop for CorticalArea {

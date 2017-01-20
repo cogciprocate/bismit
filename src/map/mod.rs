@@ -9,6 +9,7 @@ mod layer_tags;
 mod area_map;
 mod scheme;
 mod axon_tags;
+mod execution;
 
 pub use self::area_map::AreaMap;
 pub use self::slice_map::SliceMap;
@@ -20,9 +21,19 @@ pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchem
 	LayerScheme, FilterScheme, InputScheme, TuftSourceLayer, TuftScheme};
 pub use self::layer_tags::{LayerTags, DEFAULT, PRIMARY, SPATIAL_ASSOCIATIVE, TEMPORAL_ASSOCIATIVE,
     UNUSED_TESTING, PSAL, PTAL, PMEL};
-// FIXME: IMPORT MANUALLY:
+
+
+/////// FIXME: IMPORT MANUALLY:
+// pub use self::execution::{ExecutionGraphError, ExecutionCommandKind, ExecutionGraph};
+pub use self::execution::*;
+///////
+
+/////// FIXME: IMPORT MANUALLY:
 pub use self::axon_tags::*;
+///////
+
 #[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
+
 
 
 /// An absolute location and unique identifier of a layer.

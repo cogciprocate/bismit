@@ -3,6 +3,7 @@
 #![allow(unused_imports)]
 
 extern crate vibi;
+#[macro_use] extern crate lazy_static;
 
 use vibi::window;
 use vibi::bismit::{Cortex, CorticalAreaSettings, Subcortex, Flywheel, TestScNucleus};
@@ -12,8 +13,13 @@ use vibi::bismit::map::{self, LayerTags, LayerMapKind, LayerMapScheme, LayerMapS
 use vibi::bismit::encode::{ReversoScalarSequence, HexMoldTest};
 
 // const MOTOR_UID: u32 = 101;
-const U0: u16 = 1000;
-const U1: u16 = U0 + 1;
+// const U0: u16 = 1000;
+// const U1: u16 = U0 + 1;
+
+lazy_static! {
+    static ref AT0: AxonTag = AxonTag::unique();
+    static ref AT1: AxonTag = AxonTag::unique();
+}
 
 fn main() {
     use std::thread;
@@ -57,7 +63,6 @@ fn main() {
     if let Err(e) = th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
 }
 
-
 fn define_lm_schemes() -> LayerMapSchemeList {
     // const OLFAC_UID: u32 = 102;
     // let at0 = AxonTag::custom(U0);
@@ -70,11 +75,13 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 AxonTopology::Spatial
             )
             .input_layer("aff_in_0", map::DEFAULT,
-                &[(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U0)])],
+                // &[(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U0)])],
+                &[(InputTrack::Afferent, &[map::THAL_SP, *AT0])],
                 AxonTopology::Spatial
             )
             .input_layer("aff_in_1", map::DEFAULT,
-                &[(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U1)])],
+                // &[(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U1)])],
+                &[(InputTrack::Afferent, &[map::THAL_SP, *AT1])],
                 AxonTopology::Spatial
             )
             .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
@@ -97,7 +104,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
             .layer("external_0", 1, map::DEFAULT,
-                AxonDomain::output(&[map::THAL_SP, AxonTag::custom(U0)]),
+                AxonDomain::output(&[map::THAL_SP, *AT0]),
                 LayerKind::Axonal(AxonTopology::Spatial))
             // .layer("external_1", 1, map::DEFAULT,
             //     AxonDomain::output(&[map::THAL_SP, AxonTag::custom(U1)]),

@@ -31,5 +31,5 @@ pub use self::subcortex::{Subcortex, SubcorticalNucleus, TestScNucleus};
 pub use self::subcortex::thalamus::{self, ExternalPathwayTract, ExternalPathwayEncoder};
 pub use self::flywheel::Flywheel;
 pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap};
-pub use self::cmn::{TractDims, TypeId, CmnError, CmnResult};
+pub use self::cmn::{util, TractDims, TypeId, CmnError as Error, CmnResult as Result};
 pub use self::encode::GlyphBuckets;

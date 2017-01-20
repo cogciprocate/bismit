@@ -3,7 +3,7 @@ use map::{AreaMap};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
-use map::{CellKind, CellScheme, DendriteKind};
+use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph};
 use cortex::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
@@ -37,6 +37,7 @@ impl Dendrites {
             axons: &AxonSpace,
             // aux: &Aux,
             ocl_pq: &ProQue,
+            exe_graph: &mut ExecutionGraph,
         ) -> CmnResult<Dendrites>
     {
         let tft_count = cell_scheme.tft_count();
@@ -74,7 +75,7 @@ impl Dendrites {
             layer_name, dims, states.len(), mt = cmn::MT);
 
         let syns = Synapses::new(layer_name, layer_id, dims, cell_scheme.clone(), den_kind, cell_kind,
-            area_map, axons, ocl_pq)?;
+            area_map, axons, ocl_pq, exe_graph)?;
 
         for (tft_id, ((tft_scheme, &tft_den_idz), &tft_den_count)) in cell_scheme.tft_schemes().iter()
                 .zip(den_idzs_by_tft.iter())

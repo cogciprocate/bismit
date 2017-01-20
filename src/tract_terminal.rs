@@ -5,7 +5,7 @@
 use std::ops::Range;
 use ocl::core::{ClWaitList, ClEventPtrNew};
 use ocl::{Buffer, EventList, Event};
-use ::{TractDims, CmnResult};
+use ::{TractDims, Result as CmnResult};
 
 
 trait CopyFrom {

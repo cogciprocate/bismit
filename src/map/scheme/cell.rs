@@ -81,6 +81,7 @@ impl TuftScheme {
     #[inline] pub fn den_kind(&self) -> &DendriteKind { &self.den_kind }
     #[inline] pub fn dens_per_tft_l2(&self) -> u8 { self.dens_per_tft_l2 }
     #[inline] pub fn syns_per_den_l2(&self) -> u8 { self.syns_per_den_l2 }
+    #[inline] pub fn syns_per_tft_l2(&self) -> u8 { self.dens_per_tft_l2 + self.syns_per_den_l2 }
     #[inline] pub fn src_lyrs(&self) -> &[TuftSourceLayer] { self.src_lyrs.as_slice() }
     #[inline] pub fn thresh_init(&self) -> &Option<u32> { &self.thresh_init }
 }

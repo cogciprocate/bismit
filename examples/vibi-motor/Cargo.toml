@@ -5,3 +5,4 @@ authors = ["Nick Sanders <nsan1129@gmail.com>"]
 
 [dependencies]
 vibi = { path = "/home/nick/src/github.com/cogciprocate/vibi" }
+lazy_static = "*"

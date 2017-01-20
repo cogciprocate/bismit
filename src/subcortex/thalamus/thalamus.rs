@@ -11,23 +11,7 @@
 //! it's destinations (whether those be host or device side).
 //!
 //!
-//! [FIXME]: [COMPLETE] Every single hash lookup requires a heap allocation
-//! (`String`). This is obviously very wasteful and is temporary until one of
-//! the following can be implemented:
-//! - Convert area names to indexes (preferred). Use a table stored
-//!     somewhere to look up names for display.
-//!     - Use a hashmap to resolve area ids to area names in the event of an
-//!       error. Store this hashmap both on `TractAreaCache`. Each
-//!       `CorticalArea` will, of course, also have a copy of its own area id.
-//!     - Possibly have `AreaSchemeList` initially create the id list.
-//!     - [UPDATE]: Use the new `cmn::MapStore`.
-//! - Precompute hash.
-//! - Store strings in a separate vector (stored in cortex) and put a
-//!   reference in the key.
-//!     - Will need some sort of global lookup system. Bleh.
-//! - Think of something else (but top opt looks good).
-//!
-//!
+
 
 // #![allow(dead_code, unused_imports)]
 
@@ -37,7 +21,7 @@ use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, Corti
 use map::{AreaMap, LayerMapKind, LayerAddress};
 use ocl::{Context, EventList};
 use cortex::CorticalAreas;
-use map::{AreaSchemeList, LayerMapSchemeList};
+use map::{AreaSchemeList, LayerMapSchemeList, /*ExecutionGraph*/};
 use thalamus::{ExternalPathway, ExternalPathwayFrame};
 use tract_terminal::{SliceBufferTarget, SliceBufferSource};
 

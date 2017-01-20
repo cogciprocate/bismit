@@ -4,11 +4,10 @@
 use rand::{self, XorShiftRng, Rng};
 
 use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
-use map::{AreaMap};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
-use map::{CellKind, CellScheme, DendriteKind};
+use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph};
 use cortex::{Dendrites, AxonSpace};
 
 const PRINT_DEBUG: bool = false;
@@ -42,7 +41,8 @@ pub struct PyramidalLayer {
 
 impl PyramidalLayer {
     pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
-            area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue) -> CmnResult<PyramidalLayer>
+            area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
+            -> CmnResult<PyramidalLayer>
     {
         // [FIXME]: Convert to layer_id:
         let base_axn_slc = area_map.layer_slc_ids(&[layer_name.to_owned()])[0];
@@ -75,7 +75,7 @@ impl PyramidalLayer {
             states.len(), tft_best_den_ids.len(), dims, mt = cmn::MT);
 
         let dens = Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(),
-            DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq)?;
+            DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq, exe_graph)?;
 
         let mut pyr_tft_ltp_kernels = Vec::with_capacity(tft_count);
         let mut pyr_tft_cycle_kernels = Vec::with_capacity(tft_count);
@@ -168,8 +168,6 @@ impl PyramidalLayer {
         assert!(den_count_ttl == dens.count());
         assert!(syn_count_ttl == dens.syns().count());
         // let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
-
-
 
         Ok(PyramidalLayer {
             layer_name: layer_name,

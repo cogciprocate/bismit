@@ -2,7 +2,7 @@
 //!
 //! - Much of it is temporary
 //! - Some of it will be eventually moved to other modules
-//! - Some of it may remain and be renamed to utils or some such
+//! - Some of it may be moved to util
 
 
 #[macro_use] mod macros;
@@ -13,6 +13,8 @@ mod renderer;
 mod error;
 mod tract_frame;
 mod map_store;
+pub mod util;
+// mod warden;
 pub mod data_cell_layer;
 
 use std;
@@ -40,6 +42,8 @@ pub use self::tract_frame::{TractFrame, TractFrameMut};
 #[cfg(test)] pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
 pub use self::map_store::MapStore;
 pub use self::slice_dims::{calc_scale, scale};
+// pub use self::warden::{Requisite, KernelWarden, ReadWarden, WriteWarden};
+// pub use self::requisite::Requisite;
 
 // pub trait ParaHexArray {
 //     fn v_size(&self) -> u32;

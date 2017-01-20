@@ -3,6 +3,7 @@ use std::fmt;
 // use std::ops::Deref;
 use ocl::Error as OclError;
 use cmn::CmnResult;
+use map::ExecutionGraphError;
 
 
 /// An enum containing either a `String` or one of several other error types.
@@ -18,6 +19,7 @@ pub enum CmnError {
     Unknown,
     String(String),
     OclError(OclError),
+    ExecutionGraphError(ExecutionGraphError),
 }
 
 impl CmnError {
@@ -52,18 +54,19 @@ impl CmnError {
 impl Error for CmnError {
     fn description(&self) -> &str {
         match *self {
-            CmnError::String(ref desc) => desc,
+            CmnError::String(ref msg) => msg,
+            CmnError::ExecutionGraphError(ref err) => err.description(),
             _ => unimplemented!(),
         }
     }
 }
 
-impl Into<String> for CmnError {
-    fn into(self) -> String {
-        use std::error::Error;
-        self.description().to_string()
-    }
-}
+// impl Into<String> for CmnError {
+//     fn into(self) -> String {
+//         use std::error::Error;
+//         self.description().to_string()
+//     }
+// }
 
 impl From<String> for CmnError {
     fn from(desc: String) -> CmnError {
@@ -83,14 +86,26 @@ impl From<OclError> for CmnError {
     }
 }
 
+impl From<ExecutionGraphError> for CmnError {
+    fn from(e: ExecutionGraphError) -> CmnError {
+        CmnError::ExecutionGraphError(e)
+    }
+}
+
 impl fmt::Display for CmnError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(self.description())
+        match *self {
+            CmnError::String(ref msg) => f.write_str(msg),
+            CmnError::ExecutionGraphError(ref err) => {
+                write!(f, "ExecutionGraph error: ").and(fmt::Display::fmt(err, f))
+            },
+            _ => unimplemented!(),
+        }
     }
 }
 
 impl fmt::Debug for CmnError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(self.description())
+        fmt::Display::fmt(self, f)
     }
 }
