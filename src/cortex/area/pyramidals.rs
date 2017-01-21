@@ -1,5 +1,4 @@
 // [FIXME]: REMOVE:
-#![allow(dead_code)]
 
 use rand::{self, XorShiftRng, Rng};
 
@@ -7,7 +6,7 @@ use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
-use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph};
+use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use cortex::{Dendrites, AxonSpace};
 
 const PRINT_DEBUG: bool = false;
@@ -21,22 +20,21 @@ pub struct PyramidalLayer {
     cell_scheme: CellScheme,
     pyr_tft_ltp_kernels: Vec<Kernel>,
     pyr_tft_cycle_kernels: Vec<Kernel>,
-    // pyr_cycle_kernels: Vec<Kernel>,
     pyr_cycle_kernel: Kernel,
     base_axn_slc: u8,
     pyr_lyr_axn_idz: u32,
     rng: XorShiftRng,
-    // tfts_per_cel: u32,
-    // dens_per_tft_l2: u8,
-    // syns_per_den_l2: u8,
     states: Buffer<u8>,
     flag_sets: Buffer<u8>,
-    // pyr_states: Buffer<u8>,
     tft_best_den_ids: Buffer<u8>,
     tft_best_den_states_raw: Buffer<u8>,
     tft_best_den_states: Buffer<u8>,
     // energies: Buffer<u8>, // <<<<< SLATED FOR REMOVAL
     pub dens: Dendrites,
+
+    tft_cycle_exe_cmd_idxs: Vec<usize>,
+    tft_ltp_exe_cmd_idxs: Vec<usize>,
+    cycle_exe_cmd_idx: usize,
 }
 
 impl PyramidalLayer {
@@ -44,8 +42,10 @@ impl PyramidalLayer {
             area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
             -> CmnResult<PyramidalLayer>
     {
+        let area_id = area_map.area_id();
         // [FIXME]: Convert to layer_id:
-        let base_axn_slc = area_map.layer_slc_ids(&[layer_name.to_owned()])[0];
+        let pyr_lyr_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
+        let base_axn_slc = pyr_lyr_slc_ids[0];
         let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
         // let tfts_per_cel = area_map.layer_dst_srcs(layer_name).len() as u32;
@@ -60,10 +60,7 @@ impl PyramidalLayer {
 
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
         let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
-        // let pyr_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
-        // let tft_best_den_ids = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());
         let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None).unwrap();
-        // let tft_best_den_states = Buffer::<u8>::with_vec(&dims_best_dens, ocl_pq.queue());
         let tft_best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None).unwrap();
         let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None).unwrap();
         // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
@@ -79,7 +76,8 @@ impl PyramidalLayer {
 
         let mut pyr_tft_ltp_kernels = Vec::with_capacity(tft_count);
         let mut pyr_tft_cycle_kernels = Vec::with_capacity(tft_count);
-        // let mut pyr_cycle_kernels = Vec::with_capacity(dims.cells() as usize);
+        let mut tft_cycle_exe_cmd_idxs = Vec::with_capacity(tft_count);
+        let mut tft_ltp_exe_cmd_idxs = Vec::with_capacity(tft_count);
         let mut den_count_ttl = 0u32;
         let mut syn_count_ttl = 0u32;
 
@@ -120,6 +118,18 @@ impl PyramidalLayer {
                 // .arg_buf(&states)
             );
 
+            tft_cycle_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                vec![
+                    CorticalBuffer::data_den_tft(dens.states_raw(), area_id, layer_id, tft_id),
+                    CorticalBuffer::data_den_tft(dens.states(), area_id, layer_id, tft_id)
+                ],
+                vec![
+                    CorticalBuffer::data_soma_tft(&tft_best_den_ids, area_id, layer_id, tft_id),
+                    CorticalBuffer::data_soma_tft(&tft_best_den_states_raw, area_id, layer_id, tft_id),
+                    CorticalBuffer::data_soma_tft(&tft_best_den_states, area_id, layer_id, tft_id),
+                ]
+            )));
+
             // let syns_per_tftsec = dens.syns().syns_per_tftsec();
             // let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
             let cel_grp_count = 64;
@@ -152,6 +162,26 @@ impl PyramidalLayer {
                 .arg_buf_named::<i32>("aux_ints_1", None)
                 .arg_buf(dens.syns().strengths())
             );
+
+            let mut tft_ltp_cmd_srcs: Vec<CorticalBuffer> = pyr_lyr_slc_ids.iter()
+                .map(|&slc_id|
+                    CorticalBuffer::axon_slice(&axons.states, area_id, slc_id))
+                .collect();
+
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&states, area_id, layer_id));
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_ids, area_id, layer_id, tft_id));
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states, area_id, layer_id, tft_id));
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_den_tft(dens.states(), area_id, layer_id, tft_id));
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), area_id, layer_id, tft_id));
+
+            tft_ltp_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                tft_ltp_cmd_srcs,
+                vec![
+                    CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), area_id, layer_id, tft_id),
+                    CorticalBuffer::data_soma_tft(&flag_sets, area_id, layer_id, tft_id),
+                    CorticalBuffer::data_syn_tft(dens.syns().strengths(), area_id, layer_id, tft_id),
+                ]
+            )));
         }
 
         let pyr_cycle_kernel = ocl_pq.create_kernel("pyr_cycle")?
@@ -165,9 +195,21 @@ impl PyramidalLayer {
             .arg_buf_named::<i32>("aux_ints_1", None)
         ;
 
+        let mut cycle_cmd_srcs: Vec<CorticalBuffer> = Vec::with_capacity(3 * tft_count);
+
+        for tft_id in 0..tft_count {
+            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_ids, area_id, layer_id, tft_id));
+            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states_raw, area_id, layer_id, tft_id));
+            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states, area_id, layer_id, tft_id));
+        }
+
+        let cycle_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+            cycle_cmd_srcs,
+            vec![CorticalBuffer::data_soma_lyr(&states, area_id, layer_id)]
+        ));
+
         assert!(den_count_ttl == dens.count());
         assert!(syn_count_ttl == dens.syns().count());
-        // let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
 
         Ok(PyramidalLayer {
             layer_name: layer_name,
@@ -175,25 +217,22 @@ impl PyramidalLayer {
             dims: dims,
             tft_count: tft_count,
             cell_scheme: cell_scheme,
-            // kern_ltp: kern_ltp,
             pyr_tft_ltp_kernels: pyr_tft_ltp_kernels,
-            // kern_cycle: kern_cycle,
             pyr_tft_cycle_kernels: pyr_tft_cycle_kernels,
             pyr_cycle_kernel: pyr_cycle_kernel,
             base_axn_slc: base_axn_slc,
             pyr_lyr_axn_idz: pyr_lyr_axn_idz,
             rng: rand::weak_rng(),
-            // tfts_per_cel: tfts_per_cel,
-            // dens_per_tft_l2: dens_per_tft_l2,
-            // syns_per_den_l2: syns_per_den_l2,
             states: states,
             flag_sets: flag_sets,
-            // pyr_states: pyr_states,
             tft_best_den_ids: tft_best_den_ids,
             tft_best_den_states_raw: tft_best_den_states_raw,
             tft_best_den_states: tft_best_den_states,
             // energies: energies, // <<<<< SLATED FOR REMOVAL
             dens: dens,
+            tft_cycle_exe_cmd_idxs: tft_cycle_exe_cmd_idxs,
+            tft_ltp_exe_cmd_idxs: tft_ltp_exe_cmd_idxs,
+            cycle_exe_cmd_idx: cycle_exe_cmd_idx,
         })
     }
 

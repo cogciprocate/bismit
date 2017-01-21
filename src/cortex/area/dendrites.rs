@@ -1,9 +1,8 @@
-use cmn::{self, CmnResult, CorticalDims};
-use map::{AreaMap};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
-use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph};
+use cmn::{self, CmnResult, CorticalDims};
+use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use cortex::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
@@ -13,16 +12,15 @@ pub struct Dendrites {
     layer_name: &'static str,
     layer_id: usize,
     dims: CorticalDims,
-    // kern_cycle: ocl::Kernel,
     kernels: Vec<Kernel>,
     thresholds: Buffer<u8>,
     states_raw: Buffer<u8>,
     states: Buffer<u8>,
     energies: Buffer<u8>,
     syns: Synapses,
-
     den_idzs_by_tft: Vec<u32>,
     den_counts_by_tft: Vec<u32>,
+    exe_cmd_idxs: Vec<usize>,
 }
 
 impl Dendrites {
@@ -35,17 +33,17 @@ impl Dendrites {
             cell_kind: CellKind,
             area_map: &AreaMap,
             axons: &AxonSpace,
-            // aux: &Aux,
             ocl_pq: &ProQue,
             exe_graph: &mut ExecutionGraph,
         ) -> CmnResult<Dendrites>
     {
         let tft_count = cell_scheme.tft_count();
+        let area_id = area_map.area_id();
 
         let mut kernels = Vec::with_capacity(tft_count);
         let mut den_idzs_by_tft = Vec::with_capacity(tft_count);
         let mut den_counts_by_tft = Vec::with_capacity(tft_count);
-        // let mut syns_per_den_l2_by_tft = Vec::with_capacity(tft_count);
+        let mut exe_cmd_idxs = Vec::with_capacity(tft_count);
         let mut den_count_ttl = 0u32;
 
         for tft_scheme in cell_scheme.tft_schemes() {
@@ -110,28 +108,23 @@ impl Dendrites {
                 .arg_buf(&states)
             );
 
+            exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                vec![
+                    CorticalBuffer::data_syn_tft(syns.states(), area_id, layer_id, tft_id),
+                    CorticalBuffer::data_syn_tft(syns.strengths(), area_id, layer_id, tft_id)
+                ],
+                vec![
+                    CorticalBuffer::data_den_tft(&energies, area_id, layer_id, tft_id),
+                    CorticalBuffer::data_den_tft(&states_raw, area_id, layer_id, tft_id),
+                    CorticalBuffer::data_den_tft(&states, area_id, layer_id, tft_id),
+                ]
+            )));
         }
-
-        // let syns_per_den_l2 = cell_scheme.syns_per_den_l2();
-        // let den_threshold = cell_scheme.den_thresh_init().unwrap_or(1);
-
-        // let kern_cycle = ocl_pq.create_kernel("den_cycle").expect("[FIXME]: HANDLE ME")
-        //     .gws(SpatialDims::One(states.len()))
-        //     .arg_buf(syns.states())
-        //     .arg_buf(syns.strengths())
-        //     .arg_scl(syns_per_den_l2)
-        //     .arg_scl(den_threshold)
-        //     .arg_buf(&energies)
-        //     .arg_buf(&states_raw)
-        //     // .arg_buf_named("aux_ints_0", None)
-        //     // .arg_buf_named("aux_ints_1", None)
-        //     .arg_buf(&states);
 
         Ok(Dendrites {
             layer_name: layer_name,
             layer_id: layer_id,
             dims: dims,
-            // kern_cycle: kern_cycle,
             kernels: kernels,
             thresholds: thresholds,
             states_raw: states_raw,
@@ -140,6 +133,7 @@ impl Dendrites {
             syns: syns,
             den_idzs_by_tft: den_idzs_by_tft,
             den_counts_by_tft: den_counts_by_tft,
+            exe_cmd_idxs: exe_cmd_idxs,
         })
     }
 

@@ -1,4 +1,5 @@
 // use std::ops::Range;
+use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use ocl::{Event, Buffer, OclPrm};
@@ -40,11 +41,12 @@ impl fmt::Debug for ExecutionGraphError {
 
 
 /// A block of memory within the Cortex.
-#[derive(Debug)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum CorticalBuffer {
     AxonSlice { buffer_id: u64, area_id: usize, slice_id: u8 },
     DataCellSynapseTuft { buffer_id: u64, area_id: usize, layer_id: usize, tuft_id: usize, },
     DataCellDendriteTuft { buffer_id: u64, area_id: usize, layer_id: usize, tuft_id: usize },
+    DataCellSomaTuft { buffer_id: u64, area_id: usize, layer_id: usize, tuft_id: usize },
     DataCellSomaLayer { buffer_id: u64, area_id: usize, layer_id: usize, },
     ControlCellSomaLayer { buffer_id: u64, area_id: usize, layer_id: usize },
 }
@@ -68,12 +70,44 @@ impl CorticalBuffer {
             tuft_id: tuft_id,
         }
     }
+
+    pub fn data_den_tft<T: OclPrm>(buf: &Buffer<T>, area_id: usize, layer_id: usize, tuft_id: usize)
+            -> CorticalBuffer
+    {
+        CorticalBuffer::DataCellDendriteTuft {
+            buffer_id: util::buffer_uid(buf),
+            area_id: area_id,
+            layer_id: layer_id,
+            tuft_id: tuft_id,
+        }
+    }
+
+    pub fn data_soma_tft<T: OclPrm>(buf: &Buffer<T>, area_id: usize, layer_id: usize, tuft_id: usize)
+            -> CorticalBuffer
+    {
+        CorticalBuffer::DataCellSomaTuft {
+            buffer_id: util::buffer_uid(buf),
+            area_id: area_id,
+            layer_id: layer_id,
+            tuft_id: tuft_id,
+        }
+    }
+
+    pub fn data_soma_lyr<T: OclPrm>(buf: &Buffer<T>, area_id: usize, layer_id: usize)
+            -> CorticalBuffer
+    {
+        CorticalBuffer::DataCellSomaLayer {
+            buffer_id: util::buffer_uid(buf),
+            area_id: area_id,
+            layer_id: layer_id,
+        }
+    }
 }
 
 
 
 /// A block of memory outside of the Cortex.
-#[derive(Debug)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SubcorticalBuffer {
     SourceLayer { area_id: usize, layer_id: usize },
     // SubCorticalLayerSource { area_id: usize, layer_id: usize },
@@ -81,7 +115,7 @@ pub enum SubcorticalBuffer {
 
 
 /// A block of local or device memory.
-#[derive(Debug)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum MemoryBlock {
     CorticalBuffer(CorticalBuffer),
     SubcorticalBuffer(SubcorticalBuffer),
@@ -89,29 +123,53 @@ pub enum MemoryBlock {
 
 
 /// An execution command kind.
-#[derive(Debug)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ExecutionCommandDetails {
     CorticalKernel { sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer> },
     CorticalRead { source: CorticalBuffer, target: SubcorticalBuffer },
     CorticalWrite { source: SubcorticalBuffer, target: CorticalBuffer },
     SubcorticalCopy { source: MemoryBlock, target: MemoryBlock },
-    SubGraph,
+    SubGraph { sources: Vec<MemoryBlock>, targets: Vec<MemoryBlock> },
+}
+
+impl ExecutionCommandDetails {
+    fn sources(&self) -> Vec<MemoryBlock> {
+        match *self {
+            ExecutionCommandDetails::CorticalKernel { ref sources, .. } => {
+                sources.iter().map(|src| MemoryBlock::CorticalBuffer(src.clone())).collect()
+            },
+            ExecutionCommandDetails::CorticalRead { ref source, .. } => Vec::with_capacity(0),
+            ExecutionCommandDetails::CorticalWrite { ref source, .. } => Vec::with_capacity(0),
+            ExecutionCommandDetails::SubcorticalCopy { ref source, .. } => Vec::with_capacity(0),
+            ExecutionCommandDetails::SubGraph { .. } => Vec::with_capacity(0),
+        }
+    }
+
+    fn targets(&self) -> Vec<MemoryBlock> {
+        match *self {
+            ExecutionCommandDetails::CorticalKernel { ref targets, ..  } => {
+                targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
+            },
+            ExecutionCommandDetails::CorticalRead { ref target, ..  } => Vec::with_capacity(0),
+            ExecutionCommandDetails::CorticalWrite { ref target, ..  } => Vec::with_capacity(0),
+            ExecutionCommandDetails::SubcorticalCopy { ref target, ..  } => Vec::with_capacity(0),
+            ExecutionCommandDetails::SubGraph { .. } => Vec::with_capacity(0),
+        }
+    }
 }
 
 
 /// A memory accessing command.
 ///
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExecutionCommand {
-    kind: ExecutionCommandDetails,
+    details: ExecutionCommandDetails,
     event: Option<Event>,
-    // sources: Vec<MemoryBlock>,
-    // targets: Vec<MemoryBlock>,
 }
 
 impl ExecutionCommand {
-    pub fn new(kind: ExecutionCommandDetails) -> ExecutionCommand {
-        ExecutionCommand { kind: kind, event: None }
+    pub fn new(details: ExecutionCommandDetails) -> ExecutionCommand {
+        ExecutionCommand { details: details, event: None }
     }
 
     pub fn cortical_kernel(sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer>)
@@ -137,6 +195,8 @@ impl ExecutionCommand {
     //     ExecutionCommand::new(ExecutionCommandDetails::ThalamicCopy)
     // }
 
+    #[inline] pub fn sources(&self) -> Vec<MemoryBlock> { self.details.sources() }
+    #[inline] pub fn targets(&self) -> Vec<MemoryBlock> { self.details.targets() }
     #[inline] pub fn event(&self) -> Option<&Event> { self.event.as_ref() }
 }
 
@@ -173,24 +233,64 @@ impl ExecutionGraph {
     //             (cmd_idx: {}).", cmd_idx)))
     // }
 
-    /// Registers a command as requisite to another.
-    pub fn register_requisite(&mut self, cmd_idx: usize, req_cmd_idx: usize) -> CmnResult<()> {
-        let req_idxs = self.requisites.get_mut(cmd_idx)
-            // .ok_or(CmnError::new(format!("ExecutionGraph::register_requisite: Invalid command index \
-            //     (cmd_idx: {}).", cmd_idx)))?;
-            .ok_or(CmnError::from(ExecutionGraphError::InvalidCommandIndex(cmd_idx)))?;
+    // /// Registers a command as requisite to another.
+    // pub fn register_requisite(&mut self, cmd_idx: usize, req_cmd_idx: usize) -> CmnResult<()> {
+    //     let req_idxs = self.requisites.get_mut(cmd_idx)
+    //         // .ok_or(CmnError::new(format!("ExecutionGraph::register_requisite: Invalid command index \
+    //         //     (cmd_idx: {}).", cmd_idx)))?;
+    //         .ok_or(CmnError::from(ExecutionGraphError::InvalidCommandIndex(cmd_idx)))?;
 
-        // Ensure the requisite command index is within bounds and isn't the
-        // same as the command index:
-        if req_cmd_idx >= req_idxs.len() || cmd_idx == req_cmd_idx {
-            // return CmnError::err(format!("ExecutionGraph::register_requisite: Invalid requisite command index \
-            //     (req_cmd_idx: {}).", req_cmd_idx));
-            return Err(CmnError::from(ExecutionGraphError::InvalidRequisiteCommandIndex(
-                req_cmd_idx, cmd_idx)));
+    //     // Ensure the requisite command index is within bounds and isn't the
+    //     // same as the command index:
+    //     if req_cmd_idx >= req_idxs.len() || cmd_idx == req_cmd_idx {
+    //         // return CmnError::err(format!("ExecutionGraph::register_requisite: Invalid requisite command index \
+    //         //     (req_cmd_idx: {}).", req_cmd_idx));
+    //         return Err(CmnError::from(ExecutionGraphError::InvalidRequisiteCommandIndex(
+    //             req_cmd_idx, cmd_idx)));
+    //     }
+
+    //     Ok(req_idxs.push(req_cmd_idx))
+    // }
+
+    /// Returns a memory block map by adding every command which reads from
+    /// and every command that writes to each memory block.
+    fn readers_and_writers_by_mem_block(&self) -> HashMap<MemoryBlock, (Vec<usize>, Vec<usize>)> {
+        let mut mem_blocks = HashMap::with_capacity(self.commands.len() * 16);
+
+        for (cmd_idx, cmd) in self.commands.iter().enumerate() {
+            for cmd_src in cmd.sources().into_iter() {
+                let & mut(_, ref mut readers) = mem_blocks.entry(cmd_src)
+                    .or_insert((Vec::with_capacity(16), Vec::with_capacity(16)));
+
+                readers.push(cmd_idx);
+            }
+
+            for cmd_tar in cmd.targets().into_iter() {
+                let & mut(ref mut writers, _) = mem_blocks.entry(cmd_tar)
+                    .or_insert((Vec::with_capacity(16), Vec::with_capacity(16)));
+
+                writers.push(cmd_idx);
+            }
         }
 
-        Ok(req_idxs.push(req_cmd_idx))
+        mem_blocks
     }
+
+
+    /// Populates the list of requisite commands for each command.
+    pub fn populate_requisites(&mut self) {
+        let mem_blocks = self.readers_and_writers_by_mem_block();
+
+        for cmd in self.commands.iter() {
+            for cmd_src in cmd.sources().into_iter() {
+            }
+
+            for cmd_tar in cmd.targets().into_iter() {
+
+            }
+        }
+    }
+
 
     /// Returns the list of requisite events for a command.
     pub fn get_req_events(&self, cmd_idx: usize) -> CmnResult<Vec<Event>> {

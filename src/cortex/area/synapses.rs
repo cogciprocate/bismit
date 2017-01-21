@@ -121,6 +121,8 @@ pub struct Synapses {
     syn_idzs_by_tft: Vec<u32>,
     syn_counts_by_tft: Vec<u32>,
     tft_dims_by_tft: Vec<TuftDims>,
+
+    exe_cmd_idxs: Vec<usize>,
 }
 
 impl Synapses {
@@ -132,12 +134,14 @@ impl Synapses {
         let syn_src_slices = SynSrcSlices::new(layer_id, cell_scheme.tft_schemes(), area_map)?;
 
         let tft_count = cell_scheme.tft_count();
+        let area_id = area_map.area_id();
 
         let mut kernels = Vec::with_capacity(tft_count);
         let mut src_idx_caches_by_tft = Vec::with_capacity(tft_count);
         let mut syn_idzs_by_tft = Vec::with_capacity(tft_count);
         let mut syn_counts_by_tft = Vec::with_capacity(tft_count);
         let mut tft_dims_by_tft = Vec::with_capacity(tft_count);
+        let mut exe_cmd_idxs = Vec::with_capacity(tft_count);
         let mut syn_count_ttl = 0u32;
 
         debug_assert!(cell_scheme.tft_schemes().len() == tft_count);
@@ -212,20 +216,18 @@ impl Synapses {
                     .arg_buf(&states)
             }));
 
-            let area_id = area_map.area_id();
-
             let mut cmd_srcs: Vec<CorticalBuffer> = syn_src_slices.src_slc_ids_by_tft(tft_id)
                 .unwrap().iter().map(|&slc_id|
-                    CorticalBuffer::axon_slice(&axons.states, area_map.area_id(), slc_id))
+                    CorticalBuffer::axon_slice(&axons.states, area_id, slc_id))
                 .collect();
 
             cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_u_offs, area_id, layer_id, tft_id));
             cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_v_offs, area_id, layer_id, tft_id));
             cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_slc_ids, area_id, layer_id, tft_id));
 
-            exe_graph.add_command(ExecutionCommand::cortical_kernel(cmd_srcs,
+            exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(cmd_srcs,
                 vec![CorticalBuffer::data_syn_tft(&states, area_id, layer_id, tft_id)]
-            ));
+            )));
 
             // exe_graph.register_requisite(0, 0)?;
         }
@@ -258,7 +260,7 @@ impl Synapses {
             syn_counts_by_tft: syn_counts_by_tft,
             syn_idzs_by_tft: syn_idzs_by_tft,
             tft_dims_by_tft: tft_dims_by_tft,
-
+            exe_cmd_idxs: exe_cmd_idxs,
         };
 
         syns.grow(true);
