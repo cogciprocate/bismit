@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_variables)]
+
 // use std::ops::Range;
 use std::collections::HashMap;
 use std::error;
@@ -258,15 +260,15 @@ impl ExecutionGraph {
         let mut mem_blocks = HashMap::with_capacity(self.commands.len() * 16);
 
         for (cmd_idx, cmd) in self.commands.iter().enumerate() {
-            for cmd_src in cmd.sources().into_iter() {
-                let & mut(_, ref mut readers) = mem_blocks.entry(cmd_src)
+            for cmd_src_block in cmd.sources().into_iter() {
+                let & mut(_, ref mut readers) = mem_blocks.entry(cmd_src_block)
                     .or_insert((Vec::with_capacity(16), Vec::with_capacity(16)));
 
                 readers.push(cmd_idx);
             }
 
-            for cmd_tar in cmd.targets().into_iter() {
-                let & mut(ref mut writers, _) = mem_blocks.entry(cmd_tar)
+            for cmd_tar_block in cmd.targets().into_iter() {
+                let & mut(ref mut writers, _) = mem_blocks.entry(cmd_tar_block)
                     .or_insert((Vec::with_capacity(16), Vec::with_capacity(16)));
 
                 writers.push(cmd_idx);
@@ -282,10 +284,11 @@ impl ExecutionGraph {
         let mem_blocks = self.readers_and_writers_by_mem_block();
 
         for cmd in self.commands.iter() {
-            for cmd_src in cmd.sources().into_iter() {
+            for cmd_src_block in cmd.sources().into_iter() {
+                let (ref src_block_writers, _) = mem_blocks[&cmd_src_block];
             }
 
-            for cmd_tar in cmd.targets().into_iter() {
+            for cmd_tar_block in cmd.targets().into_iter() {
 
             }
         }
