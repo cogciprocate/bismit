@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
 use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
-use map::{self, AreaMap, LayerTags, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
-    LayerAddress, ExecutionGraph};
+use map::{self, AreaMap, /*LayerTags,*/ SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
+    LayerAddress, ExecutionGraph, AxonDomainRoute};
 use ocl::{Device, ProQue, Context, Buffer, EventList, Event};
 use ocl::core::ClWaitList;
 use thalamus::Thalamus;
@@ -60,7 +60,9 @@ pub struct IoLayerInfoGroup {
 }
 
 impl IoLayerInfoGroup {
-    pub fn new(area_map: &AreaMap, group_tags: LayerTags,
+    pub fn new(area_map: &AreaMap,
+            // group_tags: LayerTags,
+            group_route: AxonDomainRoute,
             tract_keys: Vec<(LayerAddress, Option<LayerAddress>)>,
             filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>) -> IoLayerInfoGroup
     {
@@ -68,7 +70,8 @@ impl IoLayerInfoGroup {
         let mut layers = Vec::<IoLayerInfo>::with_capacity(tract_keys.len());
 
         for (lyr_addr, src_lyr_addr) in tract_keys.into_iter() {
-            let (tract_key, filter_chain_idx) = if group_tags.contains(LayerTags::from_u64(OUTPUT)) {
+            // let (tract_key, filter_chain_idx) = if group_tags.contains(LayerTags::from_u64(OUTPUT)) {
+            let (tract_key, filter_chain_idx) = if let AxonDomainRoute::Output = group_route {
                 (lyr_addr.clone(), None)
             } else {
                 let src_lyr_addr = src_lyr_addr.clone().expect("IoLayerInfoCache::new(): Internal consistency \
@@ -102,22 +105,28 @@ impl IoLayerInfoGroup {
 }
 
 
+// AxonDomainRoute
+
+
 /// A collection of all of the information needed to read from and write to
 /// i/o layers via the thalamus.
 #[derive(Debug)]
 pub struct IoLayerInfoCache {
-    groups: HashMap<LayerTags, (IoLayerInfoGroup, EventList)>,
+    // groups: HashMap<LayerTags, (IoLayerInfoGroup, EventList)>,
+    groups: HashMap<AxonDomainRoute, (IoLayerInfoGroup, EventList)>,
 }
 
 impl IoLayerInfoCache {
     pub fn new(area_map: &AreaMap, filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>)
             -> IoLayerInfoCache
     {
-        let group_tags_list = [LayerTags::from_u64(INPUT), LayerTags::from_u64(OUTPUT)];
+        // let group_tags_list = [LayerTags::from_u64(INPUT), LayerTags::from_u64(OUTPUT)];
+        let group_route_list = [AxonDomainRoute::Input, AxonDomainRoute::Output];
 
-        let mut groups = HashMap::with_capacity(group_tags_list.len());
+        let mut groups = HashMap::with_capacity(group_route_list.len());
 
-        for &group_tags in group_tags_list.iter() {
+        // for &group_tags in group_tags_list.iter() {
+        for group_route in group_route_list.into_iter() {
             // If the layer is an output layer, consult the layer info
             // directly. If an input layer, consult the layer source info for
             // that layer. Either way, construct a tuple of '(area_name,
@@ -125,7 +134,8 @@ impl IoLayerInfoCache {
             // key to access the correct thalamic tract:
             // let tract_keys: Vec<(LayerAddress, LayerTags, Option<(usize, Range<u8>)>)> =
             let tract_keys: Vec<(LayerAddress, Option<LayerAddress>)> =
-                if group_tags.contains(LayerTags::from_u64(OUTPUT)) {
+                // if group_tags.contains(LayerTags::from_u64(OUTPUT)) {
+                if let AxonDomainRoute::Output = *group_route {
                     area_map.layers().iter()
                         .filter(|li| li.axn_domain().is_output())
                         .map(|li| {
@@ -133,7 +143,7 @@ impl IoLayerInfoCache {
                             (lyr_addr, None)
                         }).collect()
                 } else {
-                    debug_assert!(group_tags.contains(LayerTags::from_u64(INPUT)));
+                    // debug_assert!(group_tags.contains(LayerTags::from_u64(INPUT)));
 
                     // [NOTE]: Iterator flat mapping `sli` doesn't easily work
                     // because it needs `li` to build its `LayerAddress`:
@@ -154,9 +164,9 @@ impl IoLayerInfoCache {
             // If there was nothing in the area map for this group's tags,
             // continue to the next set of tags in the `group_tags_list`:
             if tract_keys.len() != 0 {
-                let io_lyr_grp = IoLayerInfoGroup::new(area_map, group_tags,
+                let io_lyr_grp = IoLayerInfoGroup::new(area_map, group_route.clone(),
                     tract_keys, filter_chains);
-                groups.insert(group_tags, (io_lyr_grp, EventList::new()));
+                groups.insert(group_route.clone(), (io_lyr_grp, EventList::new()));
             }
         }
 
@@ -167,34 +177,64 @@ impl IoLayerInfoCache {
         }
     }
 
-    pub fn group(&self, group_tags: LayerTags) -> Option<(&[IoLayerInfo], &EventList)> {
-        self.groups.get(&group_tags)
+    // pub fn group(&self, group_tags: LayerTags) -> Option<(&[IoLayerInfo], &EventList)> {
+    //     self.groups.get(&group_tags)
+    //         .map(|&(ref lg, ref events)| (lg.layers(), events))
+    // }
+
+    // pub fn group_mut(&mut self, group_tags: LayerTags) -> Option<(&mut [IoLayerInfo], &mut EventList)> {
+    //     self.groups.get_mut(&group_tags)
+    //         .map(|&mut (ref mut lg, ref mut events)| (lg.layers_mut(), events))
+    // }
+
+    // #[allow(dead_code)]
+    // pub fn group_info(&self, group_tags: LayerTags) -> Option<&[IoLayerInfo]> {
+    //     self.groups.get(&group_tags).map(|&(ref lg, _)| lg.layers())
+    // }
+
+    // #[allow(dead_code)]
+    // pub fn group_info_mut(&mut self, group_tags: LayerTags) -> Option<&mut [IoLayerInfo]> {
+    //     self.groups.get_mut(&group_tags).map(|&mut (ref mut lg, _)| lg.layers_mut())
+    // }
+
+    // #[allow(dead_code)]
+    // pub fn group_events(&self, group_tags: LayerTags) -> Option<&EventList> {
+    //     self.groups.get(&group_tags).map(|&(_, ref events)| events)
+    // }
+
+    // #[allow(dead_code)]
+    // pub fn group_events_mut(&mut self, group_tags: LayerTags) -> Option<&mut EventList> {
+    //     self.groups.get_mut(&group_tags).map(|&mut (_, ref mut events)| events)
+    // }
+
+    pub fn group(&self, group_route: AxonDomainRoute) -> Option<(&[IoLayerInfo], &EventList)> {
+        self.groups.get(&group_route)
             .map(|&(ref lg, ref events)| (lg.layers(), events))
     }
 
-    pub fn group_mut(&mut self, group_tags: LayerTags) -> Option<(&mut [IoLayerInfo], &mut EventList)> {
-        self.groups.get_mut(&group_tags)
+    pub fn group_mut(&mut self, group_route: AxonDomainRoute) -> Option<(&mut [IoLayerInfo], &mut EventList)> {
+        self.groups.get_mut(&group_route)
             .map(|&mut (ref mut lg, ref mut events)| (lg.layers_mut(), events))
     }
 
     #[allow(dead_code)]
-    pub fn group_info(&self, group_tags: LayerTags) -> Option<&[IoLayerInfo]> {
-        self.groups.get(&group_tags).map(|&(ref lg, _)| lg.layers())
+    pub fn group_info(&self, group_route: AxonDomainRoute) -> Option<&[IoLayerInfo]> {
+        self.groups.get(&group_route).map(|&(ref lg, _)| lg.layers())
     }
 
     #[allow(dead_code)]
-    pub fn group_info_mut(&mut self, group_tags: LayerTags) -> Option<&mut [IoLayerInfo]> {
-        self.groups.get_mut(&group_tags).map(|&mut (ref mut lg, _)| lg.layers_mut())
+    pub fn group_info_mut(&mut self, group_route: AxonDomainRoute) -> Option<&mut [IoLayerInfo]> {
+        self.groups.get_mut(&group_route).map(|&mut (ref mut lg, _)| lg.layers_mut())
     }
 
     #[allow(dead_code)]
-    pub fn group_events(&self, group_tags: LayerTags) -> Option<&EventList> {
-        self.groups.get(&group_tags).map(|&(_, ref events)| events)
+    pub fn group_events(&self, group_route: AxonDomainRoute) -> Option<&EventList> {
+        self.groups.get(&group_route).map(|&(_, ref events)| events)
     }
 
     #[allow(dead_code)]
-    pub fn group_events_mut(&mut self, group_tags: LayerTags) -> Option<&mut EventList> {
-        self.groups.get_mut(&group_tags).map(|&mut (_, ref mut events)| events)
+    pub fn group_events_mut(&mut self, group_route: AxonDomainRoute) -> Option<&mut EventList> {
+        self.groups.get_mut(&group_route).map(|&mut (_, ref mut events)| events)
     }
 }
 
@@ -489,10 +529,12 @@ impl CorticalArea {
     pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
         let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
 
-        self.intake(LayerTags::from_u64(INPUT), thal)?;
+        // self.intake(LayerTags::from_u64(INPUT), thal)?;
+        self.intake(AxonDomainRoute::Input, thal)?;
 
         if !self.settings.disable_ssts {
-            let aff_input_events = { self.io_info.group_events(LayerTags::from_u64(INPUT))
+            // let aff_input_events = { self.io_info.group_events(LayerTags::from_u64(INPUT))
+            let aff_input_events = { self.io_info.group_events(AxonDomainRoute::Input)
                 .map(|wl| wl as &ClWaitList) };
             self.psal().cycle(aff_input_events);
         }
@@ -505,30 +547,35 @@ impl CorticalArea {
 
         if !self.settings.disable_pyrs {
             if !self.settings.disable_learning { self.ptal_mut().learn(); }
-            let eff_input_events = { self.io_info.group_events(LayerTags::from_u64(INPUT))
+            // let eff_input_events = { self.io_info.group_events(LayerTags::from_u64(INPUT))
+            let eff_input_events = { self.io_info.group_events(AxonDomainRoute::Input)
                 .map(|wl| wl as &ClWaitList) };
             self.ptal().cycle(eff_input_events);
         }
 
         if !self.settings.disable_mcols {
-            let output_events = { self.io_info.group_events_mut(LayerTags::from_u64(OUTPUT)) };
+            // let output_events = { self.io_info.group_events_mut(LayerTags::from_u64(OUTPUT)) };
+            let output_events = { self.io_info.group_events_mut(AxonDomainRoute::Output) };
             self.mcols.output(output_events);
         }
 
         if !self.settings.disable_regrowth { self.regrow(); }
 
-        self.output(LayerTags::from_u64(OUTPUT), thal)?;
+        self.output(AxonDomainRoute::Output, thal)?;
 
         Ok(())
     }
 
-    /// Read input from thalamus and write to axon space.
-    fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
-        if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(group_tags) {
+    /// Reads input from thalamus and writes to axon space.
+    // fn intake(&mut self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
+    fn intake(&mut self, group_route: AxonDomainRoute, thal: &mut Thalamus) -> CmnResult<()> {
+        // if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(group_tags) {
+        if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(group_route.clone()) {
             for src_lyr in src_lyrs.iter_mut() {
                 let tract_source = thal.tract_terminal_source(src_lyr.key())?;
 
-                if group_tags.contains(LayerTags::from_u64(INPUT)) && !self.filter_chains.is_empty()
+                // if group_tags.contains(LayerTags::from_u64(INPUT)) && !self.filter_chains.is_empty()
+                if AxonDomainRoute::Input == group_route && !self.filter_chains.is_empty()
                         && !self.settings.bypass_filters && src_lyr.filter_chain_idx.is_some()
                 {
                     if let &Some(filter_chain_idx) = src_lyr.filter_chain_idx() {
@@ -558,9 +605,11 @@ impl CorticalArea {
         Ok(())
     }
 
-    // Read output from axon space and write to thalamus.
-    fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
-        if let Some((src_lyrs, wait_events)) = self.io_info.group(group_tags) {
+    /// Reads output from axon space and writes to thalamus.
+    // fn output(&self, group_tags: LayerTags, thal: &mut Thalamus) -> CmnResult<()> {
+    fn output(&self, group_route: AxonDomainRoute, thal: &mut Thalamus) -> CmnResult<()> {
+        // if let Some((src_lyrs, wait_events)) = self.io_info.group(group_tags) {
+        if let Some((src_lyrs, wait_events)) = self.io_info.group(group_route) {
             for src_lyr in src_lyrs.iter() {
                 let mut target = thal.tract_terminal_target(src_lyr.key())?;
 
