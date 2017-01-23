@@ -6,7 +6,8 @@ use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
-use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand, CorticalBuffer};
+use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
+    CorticalBuffer, LayerAddress};
 use cortex::{Dendrites, AxonSpace};
 
 const PRINT_DEBUG: bool = false;
@@ -42,7 +43,7 @@ impl PyramidalLayer {
             area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
             -> CmnResult<PyramidalLayer>
     {
-        let area_id = area_map.area_id();
+        let layer_addr = LayerAddress::new(layer_id, area_map.area_id());
         // [FIXME]: Convert to layer_id:
         let pyr_lyr_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
         let base_axn_slc = pyr_lyr_slc_ids[0];
@@ -120,13 +121,13 @@ impl PyramidalLayer {
 
             tft_cycle_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
                 vec![
-                    CorticalBuffer::data_den_tft(dens.states_raw(), area_id, layer_id, tft_id),
-                    CorticalBuffer::data_den_tft(dens.states(), area_id, layer_id, tft_id)
+                    CorticalBuffer::data_den_tft(dens.states_raw(), layer_addr, tft_id),
+                    CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id)
                 ],
                 vec![
-                    CorticalBuffer::data_soma_tft(&tft_best_den_ids, area_id, layer_id, tft_id),
-                    CorticalBuffer::data_soma_tft(&tft_best_den_states_raw, area_id, layer_id, tft_id),
-                    CorticalBuffer::data_soma_tft(&tft_best_den_states, area_id, layer_id, tft_id),
+                    CorticalBuffer::data_soma_tft(&tft_best_den_ids, layer_addr, tft_id),
+                    CorticalBuffer::data_soma_tft(&tft_best_den_states_raw, layer_addr, tft_id),
+                    CorticalBuffer::data_soma_tft(&tft_best_den_states, layer_addr, tft_id),
                 ]
             )));
 
@@ -165,21 +166,21 @@ impl PyramidalLayer {
 
             let mut tft_ltp_cmd_srcs: Vec<CorticalBuffer> = pyr_lyr_slc_ids.iter()
                 .map(|&slc_id|
-                    CorticalBuffer::axon_slice(&axons.states, area_id, slc_id))
+                    CorticalBuffer::axon_slice(&axons.states, layer_addr, slc_id))
                 .collect();
 
-            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&states, area_id, layer_id));
-            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_ids, area_id, layer_id, tft_id));
-            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states, area_id, layer_id, tft_id));
-            tft_ltp_cmd_srcs.push(CorticalBuffer::data_den_tft(dens.states(), area_id, layer_id, tft_id));
-            tft_ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), area_id, layer_id, tft_id));
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&states, layer_addr));
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_ids, layer_addr, tft_id));
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states, layer_addr, tft_id));
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id));
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, tft_id));
 
             tft_ltp_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
                 tft_ltp_cmd_srcs,
                 vec![
-                    CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), area_id, layer_id, tft_id),
-                    CorticalBuffer::data_soma_tft(&flag_sets, area_id, layer_id, tft_id),
-                    CorticalBuffer::data_syn_tft(dens.syns().strengths(), area_id, layer_id, tft_id),
+                    CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), layer_addr, tft_id),
+                    CorticalBuffer::data_soma_tft(&flag_sets, layer_addr, tft_id),
+                    CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, tft_id),
                 ]
             )));
         }
@@ -198,14 +199,14 @@ impl PyramidalLayer {
         let mut cycle_cmd_srcs: Vec<CorticalBuffer> = Vec::with_capacity(3 * tft_count);
 
         for tft_id in 0..tft_count {
-            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_ids, area_id, layer_id, tft_id));
-            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states_raw, area_id, layer_id, tft_id));
-            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states, area_id, layer_id, tft_id));
+            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_ids, layer_addr, tft_id));
+            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states_raw, layer_addr, tft_id));
+            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states, layer_addr, tft_id));
         }
 
         let cycle_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
             cycle_cmd_srcs,
-            vec![CorticalBuffer::data_soma_lyr(&states, area_id, layer_id)]
+            vec![CorticalBuffer::data_soma_lyr(&states, layer_addr)]
         ));
 
         assert!(den_count_ttl == dens.count());

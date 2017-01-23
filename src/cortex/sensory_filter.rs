@@ -144,5 +144,7 @@ impl SensoryFilter {
         &self.src_layer_addr
     }
 
+    pub fn filter_name(&self) -> &str { self.filter_name.as_str() }
+    pub fn cl_file_name(&self) -> Option<&str> { self.cl_file_name.as_ref().map(|clfn| clfn.as_str()) }
     // pub fn axn_tags(&self) -> &AxonTags { &self.axn_tags }
 }

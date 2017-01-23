@@ -2,7 +2,8 @@ use ocl::{ProQue, SpatialDims, Buffer, Kernel};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
 use cmn::{self, CmnResult, CorticalDims};
-use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand, CorticalBuffer};
+use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
+    CorticalBuffer, LayerAddress};
 use cortex::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
@@ -35,10 +36,10 @@ impl Dendrites {
             axons: &AxonSpace,
             ocl_pq: &ProQue,
             exe_graph: &mut ExecutionGraph,
-        ) -> CmnResult<Dendrites>
+            ) -> CmnResult<Dendrites>
     {
         let tft_count = cell_scheme.tft_count();
-        let area_id = area_map.area_id();
+        let layer_addr = LayerAddress::new(layer_id, area_map.area_id());
 
         let mut kernels = Vec::with_capacity(tft_count);
         let mut den_idzs_by_tft = Vec::with_capacity(tft_count);
@@ -110,13 +111,13 @@ impl Dendrites {
 
             exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
                 vec![
-                    CorticalBuffer::data_syn_tft(syns.states(), area_id, layer_id, tft_id),
-                    CorticalBuffer::data_syn_tft(syns.strengths(), area_id, layer_id, tft_id)
+                    CorticalBuffer::data_syn_tft(syns.states(), layer_addr, tft_id),
+                    CorticalBuffer::data_syn_tft(syns.strengths(), layer_addr, tft_id)
                 ],
                 vec![
-                    CorticalBuffer::data_den_tft(&energies, area_id, layer_id, tft_id),
-                    CorticalBuffer::data_den_tft(&states_raw, area_id, layer_id, tft_id),
-                    CorticalBuffer::data_den_tft(&states, area_id, layer_id, tft_id),
+                    CorticalBuffer::data_den_tft(&energies, layer_addr, tft_id),
+                    CorticalBuffer::data_den_tft(&states_raw, layer_addr, tft_id),
+                    CorticalBuffer::data_den_tft(&states, layer_addr, tft_id),
                 ]
             )));
         }

@@ -3,54 +3,49 @@ use std::ops::Range;
 use ocl::{ProQue, Buffer, EventList};
 use ocl::traits::MemLen;
 use cmn::{self, CmnResult};
-use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute,};
+use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute, ExecutionCommand, CorticalBuffer,
+    ThalamicTract};
 use thalamus::Thalamus;
 use tract_terminal::{OclBufferSource, OclBufferTarget};
 use cortex::{SensoryFilter};
-
-
 #[cfg(test)] pub use self::tests::{AxonSpaceTest, AxnCoords};
 
 
-
-// pub enum IoExeCmd {
-//     Read(usize),
-//     Write(usize),
-// }
+#[derive(Debug)]
+pub enum IoExeCmd {
+    Read(usize),
+    Write(usize),
+}
 
 
 /// Information needed to read from and write to the thalamus for a layer
-/// uniquely identified by `addr`.
-///
-/// `filter_key` is a tuple containing both the filter chain id and the filter
-/// layer id used when searching for the correct filter for an input source.
+/// uniquely identified by `key`.
 ///
 #[derive(Debug)]
 pub struct IoInfo {
     key: LayerAddress,
     axn_range: Range<u32>,
     filter_chain_idx: Option<usize>,
-    // exe_cmd: IoExeCmd,
+    exe_cmd: IoExeCmd,
 }
 
 impl IoInfo {
     pub fn new(src_lyr_key: LayerAddress, axn_range: Range<u32>,
-            filter_chain_idx: Option<usize>, /*exe_cmd: IoExeCmd*/) -> IoInfo
+            filter_chain_idx: Option<usize>, exe_cmd: IoExeCmd) -> IoInfo
     {
         IoInfo {
             key: src_lyr_key,
             axn_range: axn_range,
             filter_chain_idx: filter_chain_idx,
-            // exe_cmd: exe_cmd,
+            exe_cmd: exe_cmd,
         }
     }
 
     #[inline] pub fn key(&self) -> &LayerAddress { &self.key }
     #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
     #[inline] pub fn filter_chain_idx(&self) -> &Option<usize> { &self.filter_chain_idx }
-    // #[inline] pub fn exe_cmd(&self) -> &IoExeCmd { &self.exe_cmd }
+    #[inline] pub fn exe_cmd(&self) -> &IoExeCmd { &self.exe_cmd }
 }
-
 
 
 /// A group of `IoInfo` structs sharing a common set of `LayerTags`.
@@ -67,14 +62,40 @@ impl IoInfoGroup {
             tract_keys: Vec<(LayerAddress, Option<LayerAddress>)>,
             filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>,
             exe_graph: &mut ExecutionGraph,
+            axn_states: &Buffer<u8>,
             ) -> IoInfoGroup
     {
         // Create a container for our i/o layer(s):
         let mut layers = Vec::<IoInfo>::with_capacity(tract_keys.len());
 
         for (lyr_addr, src_lyr_addr) in tract_keys.into_iter() {
-            let (tract_key, filter_chain_idx) = if let AxonDomainRoute::Output = group_route {
-                (lyr_addr.clone(), None)
+            let (tract_key, filter_chain_idx, io_cmd) = if let AxonDomainRoute::Output = group_route {
+
+                // let lyr_slc_range = area_map.layers()
+                //     .layer_info(lyr_addr.layer_id()).expect("IoInfoCache::new(): \
+                //         Internal consistency error. Source layer address is invalid.")
+                //     .slc_range().expect("IoInfoCache::new(): \
+                //         Internal consistency error. Source layer has no slices.");
+
+                // let mut srcs: Vec<CorticalBuffer> = Vec::with_capacity(lyr_slc_range.len());
+                // let mut tars: Vec<SubcorticalBuffer> = Vec::with_capacity(lyr_slc_range.len());
+
+                // for slc_id in lyr_slc_range.start..lyr_slc_range.end {
+                //     srcs.push(CorticalBuffer::axon_slice(axn_states, area_map.area_id(), slc_id));
+                //     tars.push(SubcorticalBuffer::axon_slice(area_map.area_id(), slc_id));
+                // }
+
+                // let exe_cmd = ExecutionCommand::cortical_read(srcs, tars);
+
+                // Create a read I/O execution command:
+                let exe_cmd = ExecutionCommand::corticothalamic_read(
+                    CorticalBuffer::axon_layer(axn_states, lyr_addr),
+                    ThalamicTract::layer(lyr_addr, None)
+                );
+
+                let io_cmd = IoExeCmd::Read(exe_graph.add_command(exe_cmd));
+
+                (lyr_addr, None, io_cmd)
             } else {
                 let src_lyr_addr = src_lyr_addr.clone().expect("IoInfoCache::new(): \
                     Internal consistency error. Source layer address for an input layer is empty.");
@@ -86,14 +107,36 @@ impl IoInfoGroup {
                     }
                 );
 
-                (src_lyr_addr, filter_chain_idx)
+                // // Create a write I/O execution command:
+                let src_lyr_sub_slc_range = area_map.layers()
+                    .layer_info(lyr_addr.layer_id()).expect("IoInfoCache::new(): \
+                        Internal consistency error. Source layer address is invalid.")
+                    .src_lyr_sub_slc_range(&src_lyr_addr).expect("IoInfoCache::new(): \
+                        Internal consistency error. Source layer address not found within layer.");
+
+                // let mut srcs: Vec<CorticalBuffer> = Vec::with_capacity(lyr_slc_range.len());
+                // let mut tars: Vec<SubcorticalBuffer> = Vec::with_capacity(lyr_slc_range.len());
+
+                // for slc_id in lyr_slc_range.start..lyr_slc_range.end {
+                //     srcs.push(CorticalBuffer::axon_slice(axn_states, area_map.area_id(), slc_id));
+                //     tars.push(SubcorticalBuffer::axon_slice(area_map.area_id(), slc_id));
+                // }
+
+                let exe_cmd = ExecutionCommand::thalamocortical_write(
+                    ThalamicTract::layer(src_lyr_addr, None),
+                    CorticalBuffer::axon_layer_sub_slice(axn_states, lyr_addr, src_lyr_sub_slc_range)
+                );
+
+                let io_cmd = IoExeCmd::Write(exe_graph.add_command(exe_cmd));
+
+                (src_lyr_addr, filter_chain_idx, io_cmd)
             };
 
             let axn_range = area_map.lyr_axn_range(&lyr_addr, src_lyr_addr.as_ref()).expect(
                 &format!("IoInfoCache::new(): Internal consistency error: \
                     lyr_addr: {:?}, src_lyr_addr: {:?}.", &lyr_addr, src_lyr_addr));
 
-            let io_layer = IoInfo::new(tract_key, axn_range, filter_chain_idx);
+            let io_layer = IoInfo::new(tract_key, axn_range, filter_chain_idx, io_cmd);
             layers.push(io_layer);
         }
 
@@ -117,7 +160,7 @@ pub struct IoInfoCache {
 
 impl IoInfoCache {
     pub fn new(area_map: &AreaMap, filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>,
-        exe_graph: &mut ExecutionGraph) -> IoInfoCache
+        exe_graph: &mut ExecutionGraph, axn_states: &Buffer<u8>) -> IoInfoCache
     {
         let group_route_list = [AxonDomainRoute::Input, AxonDomainRoute::Output];
 
@@ -159,7 +202,7 @@ impl IoInfoCache {
             // continue to the next set of tags in the `group_tags_list`:
             if tract_keys.len() != 0 {
                 let io_lyr_grp = IoInfoGroup::new(area_map, group_route.clone(),
-                    tract_keys, filter_chains, exe_graph);
+                    tract_keys, filter_chains, exe_graph, axn_states);
                 groups.insert(group_route.clone(), (io_lyr_grp, EventList::new()));
             }
         }
@@ -255,7 +298,7 @@ impl AxonSpace {
         ===================================== I/O =====================================
         =============================================================================*/
 
-        let io_info = IoInfoCache::new(&area_map, &filter_chains, exe_graph);
+        let io_info = IoInfoCache::new(&area_map, &filter_chains, exe_graph, &states);
 
         AxonSpace {
             area_id: area_map.area_id(),
@@ -321,6 +364,7 @@ impl AxonSpace {
         Ok(())
     }
 
+    pub fn area_id(&self) -> usize { self.area_id }
     pub fn filter_chains(&self) -> &[(LayerAddress, Vec<SensoryFilter>)] { self.filter_chains.as_slice() }
     pub fn filter_chains_mut(&mut self) -> &mut [(LayerAddress, Vec<SensoryFilter>)] {
         self.filter_chains.as_mut_slice() }
@@ -332,6 +376,7 @@ impl AxonSpace {
 
 #[cfg(test)]
 pub mod tests {
+    #![allow(dead_code)]
     use super::{AxonSpace};
     use map::{AreaMap, AreaMapTest};
     use cmn::{CelCoords};

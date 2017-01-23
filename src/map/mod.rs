@@ -40,7 +40,7 @@ pub use self::axon_tags::*;
 //
 // [TODO]: Add a 'system' or 'node' id to represent the machine within a network.
 //
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct LayerAddress {
     layer_id: usize,
     area_id: usize,

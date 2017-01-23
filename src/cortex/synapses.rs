@@ -64,7 +64,7 @@
 use rand::{self, XorShiftRng};
 
 use cmn::{self, CmnResult, CorticalDims};
-use map::{AreaMap, SynSrcSlices, SynSrcIdxCache, SynSrc};
+use map::{AreaMap, SynSrcSlices, SynSrcIdxCache, SynSrc, LayerAddress};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
 use ocl::traits::OclPrm;
 use ocl::core::ClWaitList;
@@ -134,7 +134,7 @@ impl Synapses {
         let syn_src_slices = SynSrcSlices::new(layer_id, cell_scheme.tft_schemes(), area_map)?;
 
         let tft_count = cell_scheme.tft_count();
-        let area_id = area_map.area_id();
+        let layer_addr = LayerAddress::new(layer_id, area_map.area_id());
 
         let mut kernels = Vec::with_capacity(tft_count);
         let mut src_idx_caches_by_tft = Vec::with_capacity(tft_count);
@@ -218,15 +218,15 @@ impl Synapses {
 
             let mut cmd_srcs: Vec<CorticalBuffer> = syn_src_slices.src_slc_ids_by_tft(tft_id)
                 .unwrap().iter().map(|&slc_id|
-                    CorticalBuffer::axon_slice(&axons.states, area_id, slc_id))
+                    CorticalBuffer::axon_slice(&axons.states, layer_addr.clone(), slc_id))
                 .collect();
 
-            cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_u_offs, area_id, layer_id, tft_id));
-            cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_v_offs, area_id, layer_id, tft_id));
-            cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_slc_ids, area_id, layer_id, tft_id));
+            cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_u_offs, layer_addr.clone(), tft_id));
+            cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_v_offs, layer_addr, tft_id));
+            cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_slc_ids, layer_addr, tft_id));
 
             exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(cmd_srcs,
-                vec![CorticalBuffer::data_syn_tft(&states, area_id, layer_id, tft_id)]
+                vec![CorticalBuffer::data_syn_tft(&states, layer_addr, tft_id)]
             )));
 
             // exe_graph.register_requisite(0, 0)?;

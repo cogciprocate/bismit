@@ -18,8 +18,6 @@ const KERNEL_DEBUG_MODE: bool = false;
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 
 
-
-
 /// Cortical area settings.
 #[derive(Debug, Clone)]
 pub struct CorticalAreaSettings {
@@ -45,7 +43,6 @@ impl CorticalAreaSettings {
         }
     }
 }
-
 
 
 /// An area of the cortex.
@@ -127,47 +124,6 @@ impl CorticalArea {
         let mut ssts_map = HashMap::new();
         let mut iinns = HashMap::new();
         let axns = AxonSpace::new(&area_map, &ocl_pq, &mut exe_graph);
-
-
-        // /*=============================================================================
-        // =================================== FILTERS ===================================
-        // =============================================================================*/
-        // // [TODO]: BREAK OFF THIS CODE INTO NEW STRUCT DEF
-
-        // let mut filter_chains = Vec::with_capacity(4);
-
-        // for &(ref track, ref tags, ref chain_scheme) in area_map.filter_chain_schemes() {
-        //     let (src_layer, _) = area_map.layers().src_layer_info_by_sig(&(track, tags).into())
-        //         .expect(&format!("Unable to find a layer within the area map matching the axon \
-        //             domain (track: '{:?}', tags: '{:?}') specified by the filter chain scheme: '{:?}'.",
-        //             track, tags, chain_scheme));
-
-        //     let mut layer_filters = Vec::with_capacity(4);
-
-        //     for pf in chain_scheme.iter() {
-        //         layer_filters.push(SensoryFilter::new(
-        //             pf.filter_name(),
-        //             pf.cl_file_name(),
-        //             src_layer,
-        //             &axns,
-        //             &ocl_pq)
-        //         );
-        //     }
-
-        //     // [DEBUG]:
-        //     // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
-        //     layer_filters.shrink_to_fit();
-        //     filter_chains.push((src_layer.layer_addr().clone(), layer_filters));
-        // }
-
-        // filter_chains.shrink_to_fit();
-
-        // /*=============================================================================
-        // ===================================== I/O =====================================
-        // =============================================================================*/
-
-        // let io_info = IoLayerInfoCache::new(&area_map, &filter_chains, &mut exe_graph);
-
 
         /*=============================================================================
         ================================== DATA CELLS =================================
@@ -370,63 +326,7 @@ impl CorticalArea {
         Ok(())
     }
 
-
-    // /// Reads input from thalamus and writes to axon space.
-    // fn intake(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
-    //     if let Some((src_lyrs, mut new_events)) = self.axns.io_info_mut().group_mut(AxonDomainRoute::Input) {
-    //         for src_lyr in src_lyrs.iter_mut() {
-    //             let tract_source = thal.tract_terminal_source(src_lyr.key())?;
-
-    //             if !self.axns.filter_chains().is_empty() && !self.settings.bypass_filters &&
-    //                     src_lyr.filter_chain_idx().is_some()
-    //             {
-    //                 if let &Some(filter_chain_idx) = src_lyr.filter_chain_idx() {
-    //                     let (_, ref mut filter_chain) = self.axns.filter_chains()[filter_chain_idx];
-    //                     let mut filter_event = filter_chain[0].write(tract_source)?;
-
-    //                     for filter in filter_chain.iter() {
-    //                         filter_event = filter.cycle(&filter_event);
-    //                     }
-    //                 } else {
-    //                     unreachable!();
-    //                 }
-    //             } else {
-    //                 let axn_range = src_lyr.axn_range();
-    //                 let area_name = self.name;
-
-    //                 OclBufferTarget::new(&self.axns.states, axn_range, tract_source.dims().clone(),
-    //                         Some(&mut new_events), false)
-    //                     .map_err(|err|
-    //                         err.prepend(&format!("CorticalArea::intake():: \
-    //                         Source tract length must be equal to the target axon range length \
-    //                         (area: '{}', layer_addr: '{:?}'): ", area_name, src_lyr.key())))?
-    //                     .copy_from_slice_buffer(tract_source)?;
-    //             }
-    //         }
-    //     }
-    //     Ok(())
-    // }
-
-    // /// Reads output from axon space and writes to thalamus.
-    // fn output(&self, thal: &mut Thalamus) -> CmnResult<()> {
-    //     if let Some((src_lyrs, wait_events)) = self.axns.io_info().group(AxonDomainRoute::Output) {
-    //         for src_lyr in src_lyrs.iter() {
-    //             let mut target = thal.tract_terminal_target(src_lyr.key())?;
-
-    //             let source = OclBufferSource::new(&self.axns.states, src_lyr.axn_range(),
-    //                     target.dims().clone(), Some(wait_events))
-    //                 .map_err(|err| err.prepend(&format!("CorticalArea::output(): \
-    //                     Target tract length must be equal to the source axon range length \
-    //                     (area: '{}', layer_addr: '{:?}'): ", self.name, src_lyr.key()))
-    //                 )?;
-
-    //             target.copy_from_ocl_buffer(source)?;
-    //         }
-    //     }
-    //     Ok(())
-    // }
-
-
+    /// Attaches synapses which are below strength threshold to new axons.
     pub fn regrow(&mut self) {
         if !self.settings.disable_regrowth {
             if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
@@ -522,9 +422,6 @@ impl Drop for CorticalArea {
     }
 }
 
-
-
-////////////// [TODO]: BRING BACK
 
 const INT_32_MIN: i32 = -2147483648;
 

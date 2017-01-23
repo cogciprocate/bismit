@@ -197,9 +197,9 @@ impl LayerInfo {
 
                     let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth());
 
-                    sources.push(SourceLayerInfo::new(src_lyr_addr,
-                        src_layer_dims.clone(), src_layer.layer_tags(), src_layer_axn_topology,
-                        sig, masq_orig_axn_tags, tar_slc_range.clone()));
+                    sources.push(SourceLayerInfo::new(src_lyr_addr, src_layer_dims.clone(),
+                        src_layer.layer_tags(), src_layer_axn_topology, sig, masq_orig_axn_tags,
+                        tar_slc_range.clone(), ));
 
                     if DEBUG_PRINT {
                         layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}{mt}### SOURCE_LAYER_INFO:\
@@ -303,6 +303,19 @@ impl LayerInfo {
         self.sources.iter().find(|sli| sli.layer_addr() == src_layer_addr)
     }
 
+    pub fn src_lyr_sub_slc_range(&self, src_layer_addr: &LayerAddress) -> Option<Range<u8>> {
+        let lyr_slc_range = match self.slc_range {
+            Some(ref slc_range) => slc_range,
+            None => return None,
+        };
+
+        self.sources.iter().find(|sli| sli.layer_addr() == src_layer_addr)
+            .map(|sli| {
+                let src_lyr_slc_ofs = sli.tar_slc_range().start - lyr_slc_range.start;
+                src_lyr_slc_ofs..(src_lyr_slc_ofs + sli.tar_slc_range().len() as u8)
+            })
+    }
+
     pub fn irregular_layer_dims(&self) -> Option<&CorticalDims> {
         self.irregular_layer_dims.as_ref()
     }
@@ -383,6 +396,7 @@ pub struct SourceLayerInfo {
     axn_topology: AxonTopology,
     input_sig: AxonSignature,
     masq_orig_axn_tags: Option<AxonTags>,
+    // src_slc_range: Range<u8>,
     // Absolute target slice range (not level-relative):
     tar_slc_range: Range<u8>,
 }
@@ -391,8 +405,8 @@ impl SourceLayerInfo {
     #[inline]
     pub fn new(src_lyr_addr: LayerAddress, src_layer_dims: CorticalDims, src_layer_tags: LayerTags,
             src_axn_topology: AxonTopology, input_sig: AxonSignature,
-            masq_orig_axn_tags: Option<AxonTags>, tar_slc_range: Range<u8>)
-            -> SourceLayerInfo
+            masq_orig_axn_tags: Option<AxonTags>, /*src_slc_range: Range<u8>,*/
+            tar_slc_range: Range<u8>) -> SourceLayerInfo
     {
         assert!(input_sig.is_input());
         assert!(tar_slc_range.len() == src_layer_dims.depth() as usize);
@@ -404,6 +418,7 @@ impl SourceLayerInfo {
             axn_topology: src_axn_topology,
             input_sig: input_sig,
             masq_orig_axn_tags: masq_orig_axn_tags,
+            // src_slc_range: src_slc_range,
             tar_slc_range: tar_slc_range,
         }
     }
