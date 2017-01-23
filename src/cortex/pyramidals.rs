@@ -236,6 +236,22 @@ impl PyramidalLayer {
         })
     }
 
+    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        self.dens.set_exe_order(exe_graph)?;
+
+        for cmd_idx in self.tft_ltp_exe_cmd_idxs.iter() {
+            exe_graph.order_next(*cmd_idx)?;
+        }
+
+        for cmd_idx in self.tft_cycle_exe_cmd_idxs.iter() {
+            exe_graph.order_next(*cmd_idx)?;
+        }
+
+        exe_graph.order_next(self.cycle_exe_cmd_idx)?;
+
+        Ok(())
+    }
+
     // pub fn dens_per_tft_l2(&self) -> u8 {
     //     self.dens_per_tft_l2
     // }

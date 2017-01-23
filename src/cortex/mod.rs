@@ -23,8 +23,8 @@ pub use self::spiny_stellates::SpinyStellateLayer;
 pub use self::dendrites::Dendrites;
 pub use self::sensory_filter::SensoryFilter;
 
-#[cfg(test)] pub use self::area::{CorticalAreaTest, SynCoords, SynapsesTest,
-    AxonSpaceTest, AxnCoords, DenCoords, DendritesTest, MinicolumnsTest, den_idx, syn_idx};
+// #[cfg(test)] pub use self::area::{CorticalAreaTest, SynCoords, SynapsesTest,
+//     AxonSpaceTest, AxnCoords, DenCoords, DendritesTest, MinicolumnsTest, den_idx, syn_idx};
 #[cfg(test)] pub use self::cortical_area::CorticalAreaTest;
 #[cfg(test)] pub use self::synapses::{SynCoords, SynapsesTest, syn_idx};
 #[cfg(test)] pub use self::axon_space::{AxonSpaceTest, AxnCoords};

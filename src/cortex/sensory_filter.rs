@@ -1,11 +1,9 @@
-#![allow(dead_code)]
-
 // use std::hash::{Hash, BuildHasherDefault};
 // use std::collections::HashMap;
 // use twox_hash::XxHash;
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
 use cmn::{CmnResult};
-use cortex::AxonSpace;
+// use cortex::AxonSpace;
 use map::{LayerAddress, SourceLayerInfo};
 use tract_terminal::{SliceBufferSource, OclBufferTarget};
 
@@ -31,7 +29,7 @@ impl SensoryFilter {
                 // area_map: &AreaMap,
                 // layer_info: &LayerInfo,
                 src_lyr_info: &SourceLayerInfo,
-                axns: &AxonSpace,
+                axn_states: &Buffer<u8>,
                 ocl_pq: &ProQue,
             ) -> SensoryFilter
     {
@@ -91,7 +89,7 @@ impl SensoryFilter {
             .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(&input_buffer)
             .arg_scl(slc_range.start)
-            .arg_buf(&axns.states);
+            .arg_buf(axn_states);
 
         SensoryFilter {
             filter_name: filter_name,

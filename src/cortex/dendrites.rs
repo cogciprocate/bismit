@@ -137,6 +137,15 @@ impl Dendrites {
         })
     }
 
+    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        self.syns.set_exe_order(exe_graph)?;
+
+        for cmd_idx in self.exe_cmd_idxs.iter() {
+            exe_graph.order_next(*cmd_idx)?;
+        }
+        Ok(())
+    }
+
     pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
         if DEBUG_KERN { println!("Dens: Cycling syns..."); }
         self.syns.cycle(wait_events);

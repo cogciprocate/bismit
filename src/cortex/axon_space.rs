@@ -1,81 +1,340 @@
-use cmn::{self};
-use map::{AreaMap};
-use ocl::{ProQue, Buffer};
+use std::collections::HashMap;
+use std::ops::Range;
+use ocl::{ProQue, Buffer, EventList};
 use ocl::traits::MemLen;
+use cmn::{self, CmnResult};
+use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute,};
+use thalamus::Thalamus;
+use tract_terminal::{OclBufferSource, OclBufferTarget};
+use cortex::{SensoryFilter};
+
 
 #[cfg(test)] pub use self::tests::{AxonSpaceTest, AxnCoords};
 
 
+
+// pub enum IoExeCmd {
+//     Read(usize),
+//     Write(usize),
+// }
+
+
+/// Information needed to read from and write to the thalamus for a layer
+/// uniquely identified by `addr`.
+///
+/// `filter_key` is a tuple containing both the filter chain id and the filter
+/// layer id used when searching for the correct filter for an input source.
+///
+#[derive(Debug)]
+pub struct IoInfo {
+    key: LayerAddress,
+    axn_range: Range<u32>,
+    filter_chain_idx: Option<usize>,
+    // exe_cmd: IoExeCmd,
+}
+
+impl IoInfo {
+    pub fn new(src_lyr_key: LayerAddress, axn_range: Range<u32>,
+            filter_chain_idx: Option<usize>, /*exe_cmd: IoExeCmd*/) -> IoInfo
+    {
+        IoInfo {
+            key: src_lyr_key,
+            axn_range: axn_range,
+            filter_chain_idx: filter_chain_idx,
+            // exe_cmd: exe_cmd,
+        }
+    }
+
+    #[inline] pub fn key(&self) -> &LayerAddress { &self.key }
+    #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
+    #[inline] pub fn filter_chain_idx(&self) -> &Option<usize> { &self.filter_chain_idx }
+    // #[inline] pub fn exe_cmd(&self) -> &IoExeCmd { &self.exe_cmd }
+}
+
+
+
+/// A group of `IoInfo` structs sharing a common set of `LayerTags`.
+///
+#[derive(Debug)]
+pub struct IoInfoGroup {
+    layers: Vec<IoInfo>,
+}
+
+impl IoInfoGroup {
+    pub fn new(area_map: &AreaMap,
+            // group_tags: LayerTags,
+            group_route: AxonDomainRoute,
+            tract_keys: Vec<(LayerAddress, Option<LayerAddress>)>,
+            filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>,
+            exe_graph: &mut ExecutionGraph,
+            ) -> IoInfoGroup
+    {
+        // Create a container for our i/o layer(s):
+        let mut layers = Vec::<IoInfo>::with_capacity(tract_keys.len());
+
+        for (lyr_addr, src_lyr_addr) in tract_keys.into_iter() {
+            let (tract_key, filter_chain_idx) = if let AxonDomainRoute::Output = group_route {
+                (lyr_addr.clone(), None)
+            } else {
+                let src_lyr_addr = src_lyr_addr.clone().expect("IoInfoCache::new(): \
+                    Internal consistency error. Source layer address for an input layer is empty.");
+
+                // Determine the filter chain id:
+                let filter_chain_idx = filter_chains.iter().position(
+                    |&(ref addr, _)| {
+                        src_lyr_addr == *addr
+                    }
+                );
+
+                (src_lyr_addr, filter_chain_idx)
+            };
+
+            let axn_range = area_map.lyr_axn_range(&lyr_addr, src_lyr_addr.as_ref()).expect(
+                &format!("IoInfoCache::new(): Internal consistency error: \
+                    lyr_addr: {:?}, src_lyr_addr: {:?}.", &lyr_addr, src_lyr_addr));
+
+            let io_layer = IoInfo::new(tract_key, axn_range, filter_chain_idx);
+            layers.push(io_layer);
+        }
+
+        IoInfoGroup {
+            layers: layers,
+        }
+    }
+
+    #[inline] pub fn layers(&self) -> &[IoInfo] { self.layers.as_slice() }
+    #[inline] pub fn layers_mut(&mut self) -> &mut [IoInfo] { self.layers.as_mut_slice() }
+}
+
+
+
+/// A collection of all of the information needed to read from and write to
+/// i/o layers via the thalamus.
+#[derive(Debug)]
+pub struct IoInfoCache {
+    groups: HashMap<AxonDomainRoute, (IoInfoGroup, EventList)>,
+}
+
+impl IoInfoCache {
+    pub fn new(area_map: &AreaMap, filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>,
+        exe_graph: &mut ExecutionGraph) -> IoInfoCache
+    {
+        let group_route_list = [AxonDomainRoute::Input, AxonDomainRoute::Output];
+
+        let mut groups = HashMap::with_capacity(group_route_list.len());
+
+        // for &group_tags in group_tags_list.iter() {
+        for group_route in group_route_list.into_iter() {
+            // If the layer is an output layer, consult the layer info
+            // directly. If an input layer, consult the layer source info for
+            // that layer. Either way, construct a tuple of '(area_name,
+            // src_lyr_tags, src_lyr_key)' which can be used to construct a
+            // key to access the correct thalamic tract:
+            let tract_keys: Vec<(LayerAddress, Option<LayerAddress>)> =
+                if let AxonDomainRoute::Output = *group_route {
+                    area_map.layers().iter()
+                        .filter(|li| li.axn_domain().is_output())
+                        .map(|li| {
+                            let lyr_addr = LayerAddress::new(li.layer_id(), area_map.area_id());
+                            (lyr_addr, None)
+                        }).collect()
+                } else {
+                    // [NOTE]: Iterator flat mapping `sli` doesn't easily work
+                    // because it needs `li` to build its `LayerAddress`:
+                    let mut tract_keys = Vec::with_capacity(16);
+
+                    for li in area_map.layers().iter() {
+                        if li.axn_domain().is_input() {
+                            for sli in li.sources().iter() {
+                                let lyr_addr = LayerAddress::new(li.layer_id(), area_map.area_id());
+                                tract_keys.push((lyr_addr, Some(sli.layer_addr().clone())));
+                            }
+                        }
+                    }
+                    tract_keys.shrink_to_fit();
+                    tract_keys
+                };
+
+            // If there was nothing in the area map for this group's tags,
+            // continue to the next set of tags in the `group_tags_list`:
+            if tract_keys.len() != 0 {
+                let io_lyr_grp = IoInfoGroup::new(area_map, group_route.clone(),
+                    tract_keys, filter_chains, exe_graph);
+                groups.insert(group_route.clone(), (io_lyr_grp, EventList::new()));
+            }
+        }
+
+        groups.shrink_to_fit();
+
+        IoInfoCache {
+            groups: groups,
+        }
+    }
+
+    pub fn group(&self, group_route: AxonDomainRoute) -> Option<(&[IoInfo], &EventList)> {
+        self.groups.get(&group_route)
+            .map(|&(ref lg, ref events)| (lg.layers(), events))
+    }
+
+    pub fn group_mut(&mut self, group_route: AxonDomainRoute) -> Option<(&mut [IoInfo], &mut EventList)> {
+        self.groups.get_mut(&group_route)
+            .map(|&mut (ref mut lg, ref mut events)| (lg.layers_mut(), events))
+    }
+
+    #[allow(dead_code)]
+    pub fn group_info(&self, group_route: AxonDomainRoute) -> Option<&[IoInfo]> {
+        self.groups.get(&group_route).map(|&(ref lg, _)| lg.layers())
+    }
+
+    #[allow(dead_code)]
+    pub fn group_info_mut(&mut self, group_route: AxonDomainRoute) -> Option<&mut [IoInfo]> {
+        self.groups.get_mut(&group_route).map(|&mut (ref mut lg, _)| lg.layers_mut())
+    }
+
+    #[allow(dead_code)]
+    pub fn group_events(&self, group_route: AxonDomainRoute) -> Option<&EventList> {
+        self.groups.get(&group_route).map(|&(_, ref events)| events)
+    }
+
+    #[allow(dead_code)]
+    pub fn group_events_mut(&mut self, group_route: AxonDomainRoute) -> Option<&mut EventList> {
+        self.groups.get_mut(&group_route).map(|&mut (_, ref mut events)| events)
+    }
+}
+
+
+
 pub struct AxonSpace {
-    //dims: CorticalDims,
-    //depth_axn_sptl: u8,
-    //depth_cellular: u8,
-    //depth_axn_hrz: u8,
-    //padding: u32,
-    //kern_cycle: ocl::Kernel,
+    area_id: usize,
+    area_name: &'static str,
     pub states: Buffer<u8>,
+    filter_chains: Vec<(LayerAddress, Vec<SensoryFilter>)>,
+    io_info: IoInfoCache,
 }
 
 impl AxonSpace {
-    pub fn new(area_map: &AreaMap, ocl_pq: &ProQue) -> AxonSpace {
-        //let depth_axn_sptl = region.depth_axonal_spatial();
-        //let depth_cellular = region.depth_cellular();
-        //let depth_axn_hrz = region.depth_axonal_horizontal();
-        //let depth_total = region.depth_total(); // NOT THE TRUE AXON DEPTH
-
-        //let mut hrz_axn_slcs = 0u8;
-
-        // <<<<< REDO THIS TO FIT INTO: MIN(V_SIZE, U_SIZE) * MIN(V_SIZE, U_SIZE)
-        // if depth_axn_hrz > 0 {
-        //     let syn_span_lin_l2 = (cmn::SYNAPSE_REACH_GEO_LOG2 + 1) << 1;
-        //     let hrz_frames_per_slc: u32 = (area_dims.columns() >> syn_span_lin_l2) as u8;
-
-        //     assert!(hrz_frames_per_slc > 0,
-        //         "Synapse span must be equal or less than cortical area width");
-
-        //     hrz_axn_slcs += depth_axn_hrz as u32 / hrz_frames_per_slc;
-
-        //     if (depth_axn_hrz % hrz_frames_per_slc) != 0 {
-        //         hrz_axn_slcs += 1;
-        //     }
-
-        //     //println!("      AXONS::NEW(): columns: {}, syn_span: {}, depth_axn_hrz: {}, hrz_frames_per_slc: {}, hrz_axon_slcs: {}", area_dims.columns(), 1 << syn_span_lin_l2, depth_axn_hrz, hrz_frames_per_slc, hrz_axn_slcs);
-        // }
-
-        //hrz_axn_slcs = 1; // TEMPORARY (until above is fixed)
-        //let physical_depth = depth_cellular + depth_axn_sptl + hrz_axn_slcs;
-
-        //let dims = area_dims.clone_with_depth(physical_depth);
-
-        //let padding: u32 = cmn::AXON_MARGIN_SIZE * 2;
-
+    pub fn new(area_map: &AreaMap, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph) -> AxonSpace {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
             area_map.slices().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
 
-        // let states = Buffer::<u8>::with_vec(area_map.slices(), ocl_pq.queue());
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, area_map.slices(), None).unwrap();
 
+        /*=============================================================================
+        =================================== FILTERS ===================================
+        =============================================================================*/
+
+        let mut filter_chains = Vec::with_capacity(4);
+
+        for &(ref track, ref tags, ref chain_scheme) in area_map.filter_chain_schemes() {
+            let (src_layer, _) = area_map.layers().src_layer_info_by_sig(&(track, tags).into())
+                .expect(&format!("Unable to find a layer within the area map matching the axon \
+                    domain (track: '{:?}', tags: '{:?}') specified by the filter chain scheme: '{:?}'.",
+                    track, tags, chain_scheme));
+
+            let mut layer_filters = Vec::with_capacity(4);
+
+            for pf in chain_scheme.iter() {
+                layer_filters.push(SensoryFilter::new(
+                    pf.filter_name(),
+                    pf.cl_file_name(),
+                    src_layer,
+                    &states,
+                    &ocl_pq)
+                );
+            }
+
+            // [DEBUG]:
+            // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
+            layer_filters.shrink_to_fit();
+            filter_chains.push((src_layer.layer_addr().clone(), layer_filters));
+        }
+
+        filter_chains.shrink_to_fit();
+
+        /*=============================================================================
+        ===================================== I/O =====================================
+        =============================================================================*/
+
+        let io_info = IoInfoCache::new(&area_map, &filter_chains, exe_graph);
+
         AxonSpace {
-            //dims: dims,
-            //depth_axn_sptl: depth_axn_sptl,
-            //depth_cellular: depth_cellular,
-            //depth_axn_hrz: depth_axn_hrz,
-            //padding: padding,
-            //kern_cycle: kern_cycle,
+            area_id: area_map.area_id(),
+            area_name: area_map.area_name(),
             states: states,
+            filter_chains: filter_chains,
+            io_info: io_info,
         }
     }
+
+    /// Reads input from thalamus and writes to axon space.
+    pub fn intake(&mut self, thal: &mut Thalamus, bypass_filters: bool) -> CmnResult<()> {
+        if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {
+            for src_lyr in src_lyrs.iter_mut() {
+                let tract_source = thal.tract_terminal_source(src_lyr.key())?;
+
+                if !self.filter_chains.is_empty() && !bypass_filters &&
+                        src_lyr.filter_chain_idx().is_some()
+                {
+                    if let &Some(filter_chain_idx) = src_lyr.filter_chain_idx() {
+                        let (_, ref mut filter_chain) = self.filter_chains[filter_chain_idx];
+                        let mut filter_event = filter_chain[0].write(tract_source)?;
+
+                        for filter in filter_chain.iter() {
+                            filter_event = filter.cycle(&filter_event);
+                        }
+                    } else {
+                        unreachable!();
+                    }
+                } else {
+                    let axn_range = src_lyr.axn_range();
+                    let area_name = self.area_name;
+
+                    OclBufferTarget::new(&self.states, axn_range, tract_source.dims().clone(),
+                            Some(&mut new_events), false)
+                        .map_err(|err|
+                            err.prepend(&format!("CorticalArea::intake():: \
+                            Source tract length must be equal to the target axon range length \
+                            (area: '{}', layer_addr: '{:?}'): ", area_name, src_lyr.key())))?
+                        .copy_from_slice_buffer(tract_source)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Reads output from axon space and writes to thalamus.
+    pub fn output(&self, thal: &mut Thalamus) -> CmnResult<()> {
+        if let Some((src_lyrs, wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
+            for src_lyr in src_lyrs.iter() {
+                let mut target = thal.tract_terminal_target(src_lyr.key())?;
+
+                let source = OclBufferSource::new(&self.states, src_lyr.axn_range(),
+                        target.dims().clone(), Some(wait_events))
+                    .map_err(|err| err.prepend(&format!("CorticalArea::output(): \
+                        Target tract length must be equal to the source axon range length \
+                        (area: '{}', layer_addr: '{:?}'): ", self.area_name, src_lyr.key()))
+                    )?;
+
+                target.copy_from_ocl_buffer(source)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn filter_chains(&self) -> &[(LayerAddress, Vec<SensoryFilter>)] { self.filter_chains.as_slice() }
+    pub fn filter_chains_mut(&mut self) -> &mut [(LayerAddress, Vec<SensoryFilter>)] {
+        self.filter_chains.as_mut_slice() }
+    pub fn io_info(&self) -> &IoInfoCache { &self.io_info }
+    pub fn io_info_mut(&mut self) -> &mut IoInfoCache { &mut self.io_info }
 }
 
 
 
 #[cfg(test)]
 pub mod tests {
-    #![allow(dead_code)]
     use super::{AxonSpace};
     use map::{AreaMap, AreaMapTest};
     use cmn::{CelCoords};
-    // use ocl::{BufferTest};
 
     pub trait AxonSpaceTest {
         fn axn_state(&self, idx: usize) -> u8;
@@ -87,8 +346,6 @@ pub mod tests {
             let mut sdr = vec![0u8];
             self.states.cmd().read(&mut sdr).offset(idx).enq().unwrap();
             sdr[0]
-
-            // self.states.read_idx_direct(idx)
         }
 
         fn write_to_axon(&mut self, val: u8, idx: u32) {

@@ -5,10 +5,11 @@ use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use ocl::{Event, Buffer, OclPrm};
-use cmn::{util, CmnError, CmnResult};
+use cmn::{util, /*CmnError,*/ /*CmnResult*/};
 
 pub enum ExecutionGraphError {
     InvalidCommandIndex(usize),
+    OrderInvalidCommandIndex(usize),
     InvalidRequisiteCommandIndex(usize, usize),
 }
 
@@ -16,6 +17,7 @@ impl error::Error for ExecutionGraphError {
     fn description(&self) -> &str {
         match *self {
             ExecutionGraphError::InvalidCommandIndex(_) => "Invalid command index.",
+            ExecutionGraphError::OrderInvalidCommandIndex(_) => "Invalid command index.",
             ExecutionGraphError::InvalidRequisiteCommandIndex(..) => "Invalid command index.",
         }
     }
@@ -26,6 +28,10 @@ impl fmt::Display for ExecutionGraphError {
         match *self {
             ExecutionGraphError::InvalidCommandIndex(cmd_idx) => {
                 f.write_fmt(format_args!("Invalid command index (cmd_idx: {}).", cmd_idx))
+            },
+            ExecutionGraphError::OrderInvalidCommandIndex(cmd_idx) => {
+                f.write_fmt(format_args!("Invalid command index while setting order \
+                    (cmd_idx: {}).", cmd_idx))
             },
             ExecutionGraphError::InvalidRequisiteCommandIndex(req_cmd_idx, cmd_idx) => {
                 f.write_fmt(format_args!("Invalid requisite command index (req_cmd_idx: {}, \
@@ -167,11 +173,16 @@ impl ExecutionCommandDetails {
 pub struct ExecutionCommand {
     details: ExecutionCommandDetails,
     event: Option<Event>,
+    order_idx: Option<usize>,
 }
 
 impl ExecutionCommand {
     pub fn new(details: ExecutionCommandDetails) -> ExecutionCommand {
-        ExecutionCommand { details: details, event: None }
+        ExecutionCommand {
+            details: details,
+            event: None,
+            order_idx: None,
+        }
     }
 
     pub fn cortical_kernel(sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer>)
@@ -185,9 +196,10 @@ impl ExecutionCommand {
         )
     }
 
-    // pub fn cortical_read() -> ExecutionCommand {
-    //     ExecutionCommand::new(ExecutionCommandDetails::CorticalRead)
-    // }
+    pub fn cortical_read(source: CorticalBuffer, target: SubcorticalBuffer) -> ExecutionCommand {
+        ExecutionCommand::new(ExecutionCommandDetails::CorticalRead {
+            source: source, target: target })
+    }
 
     // pub fn cortical_write() -> ExecutionCommand {
     //     ExecutionCommand::new(ExecutionCommandDetails::CorticalWrite)
@@ -196,6 +208,10 @@ impl ExecutionCommand {
     // pub fn local_copy() -> ExecutionCommand {
     //     ExecutionCommand::new(ExecutionCommandDetails::ThalamicCopy)
     // }
+
+    pub fn set_order_idx(&mut self, order_idx: usize) {
+        self.order_idx = Some(order_idx);
+    }
 
     #[inline] pub fn sources(&self) -> Vec<MemoryBlock> { self.details.sources() }
     #[inline] pub fn targets(&self) -> Vec<MemoryBlock> { self.details.targets() }
@@ -210,6 +226,7 @@ pub struct ExecutionGraph {
     commands: Vec<ExecutionCommand>,
     requisites: Vec<Vec<usize>>,
     locked: bool,
+    next_order_idx: usize,
 }
 
 impl ExecutionGraph {
@@ -218,29 +235,41 @@ impl ExecutionGraph {
         ExecutionGraph {
             commands: Vec::with_capacity(256),
             requisites: Vec::with_capacity(256),
+            next_order_idx: 0,
             locked: false,
         }
     }
 
     /// Adds a new command.
     pub fn add_command(&mut self, command: ExecutionCommand) -> usize {
+        let cmd_idx = self.commands.len();
         self.commands.push(command);
         self.requisites.push(Vec::with_capacity(16));
-        self.commands.len()
+        cmd_idx
     }
 
-    // fn req_cmds_mut(&mut self, cmd_idx: usize) -> CmnResult<&mut Vec<usize>> {
+    pub fn order_next(&mut self, cmd_idx: usize) -> Result<usize, ExecutionGraphError> {
+        let cmd = self.commands.get_mut(cmd_idx)
+            .ok_or(ExecutionGraphError::OrderInvalidCommandIndex(cmd_idx))?;
+
+        let order_idx = self.next_order_idx;
+        cmd.set_order_idx(order_idx);
+        self.next_order_idx += 1;
+        Ok(order_idx)
+    }
+
+    // fn req_cmds_mut(&mut self, cmd_idx: usize) -> Result<&mut Vec<usize>, ExecutionGraphError>{
     //     self.requisites.get_mut(cmd_idx)
     //         .ok_or(CmnError::new(format!("ExecutionGraph::register_requisite: Invalid command index \
     //             (cmd_idx: {}).", cmd_idx)))
     // }
 
     // /// Registers a command as requisite to another.
-    // pub fn register_requisite(&mut self, cmd_idx: usize, req_cmd_idx: usize) -> CmnResult<()> {
+    // pub fn register_requisite(&mut self, cmd_idx: usize, req_cmd_idx: usize) -> Result<(), ExecutionGraphError> {
     //     let req_idxs = self.requisites.get_mut(cmd_idx)
     //         // .ok_or(CmnError::new(format!("ExecutionGraph::register_requisite: Invalid command index \
     //         //     (cmd_idx: {}).", cmd_idx)))?;
-    //         .ok_or(CmnError::from(ExecutionGraphError::InvalidCommandIndex(cmd_idx)))?;
+    //         .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
 
     //     // Ensure the requisite command index is within bounds and isn't the
     //     // same as the command index:
@@ -296,9 +325,9 @@ impl ExecutionGraph {
 
 
     /// Returns the list of requisite events for a command.
-    pub fn get_req_events(&self, cmd_idx: usize) -> CmnResult<Vec<Event>> {
+    pub fn get_req_events(&self, cmd_idx: usize) -> Result<Vec<Event>, ExecutionGraphError> {
         let req_idxs = self.requisites.get(cmd_idx)
-            .ok_or(CmnError::from(ExecutionGraphError::InvalidCommandIndex(cmd_idx)))?;
+            .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
 
         let mut events = Vec::with_capacity(req_idxs.len());
 

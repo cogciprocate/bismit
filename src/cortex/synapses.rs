@@ -268,6 +268,13 @@ impl Synapses {
         Ok(syns)
     }
 
+    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        for cmd_idx in self.exe_cmd_idxs.iter() {
+            exe_graph.order_next(*cmd_idx)?;
+        }
+        Ok(())
+    }
+
     #[inline]
     pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
         for kern in self.kernels.iter() {
