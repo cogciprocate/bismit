@@ -309,6 +309,36 @@ impl AxonSpace {
         }
     }
 
+    pub fn set_exe_order_input(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        let (io_info_grp, _) = self.io_info.group(AxonDomainRoute::Input).unwrap();
+
+        for io_info in io_info_grp {
+            match *io_info.exe_cmd() {
+                IoExeCmd::Write(cmd_idx) => {
+                    exe_graph.order_next(cmd_idx)?;
+                },
+                _ => panic!("AxonSpace::set_exe_order_input: Internal error."),
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn set_exe_order_output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        let (io_info_grp, _) = self.io_info.group(AxonDomainRoute::Output).unwrap();
+
+        for io_info in io_info_grp {
+            match *io_info.exe_cmd() {
+                IoExeCmd::Read(cmd_idx) => {
+                    exe_graph.order_next(cmd_idx)?;
+                },
+                _ => panic!("AxonSpace::set_exe_order_output: Internal error."),
+            }
+        }
+
+        Ok(())
+    }
+
     /// Reads input from thalamus and writes to axon space.
     pub fn intake(&mut self, thal: &mut Thalamus, bypass_filters: bool) -> CmnResult<()> {
         if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {

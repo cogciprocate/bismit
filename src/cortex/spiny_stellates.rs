@@ -5,7 +5,8 @@ use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer};
 use ocl::core::ClWaitList;
-use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph};
+use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
+    CorticalBuffer, LayerAddress};
 use cortex::{Dendrites, AxonSpace};
 
 
@@ -18,12 +19,14 @@ pub struct SpinyStellateLayer {
     kern_ltp: Kernel,
     rng: rand::XorShiftRng,
     pub dens: Dendrites,
+    ltp_exe_cmd_idx: usize,
 }
 
 impl SpinyStellateLayer {
     pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
-            area_map: &AreaMap, axns: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph,
+            area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph,
     ) -> CmnResult<SpinyStellateLayer> {
+        let layer_addr = LayerAddress::new(layer_id, area_map.area_id());
         let base_axn_slcs = area_map.layer_slc_ids(&[layer_name.to_owned()]);
         let base_axn_slc = base_axn_slcs[0];
         let lyr_axn_idz = area_map.axn_idz(base_axn_slc);
@@ -31,7 +34,8 @@ impl SpinyStellateLayer {
         let tft_count = cell_scheme.tft_schemes().len();
         // Redesign kernel before changing the 1 tuft limitation:
         assert![tft_count == 1];
-        let tft_scheme = &cell_scheme.tft_schemes()[0];
+        let sst_tft_id = 0;
+        let tft_scheme = &cell_scheme.tft_schemes()[sst_tft_id];
 
         let syns_per_tuft_l2: u8 = tft_scheme.syns_per_den_l2() + tft_scheme.dens_per_tft_l2();
 
@@ -40,14 +44,14 @@ impl SpinyStellateLayer {
 
         // let dens_dims = dims.clone_with_ptl2(cell_scheme.dens_per_tft_l2 as i8);
         let dens = try!(Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(),
-            DendriteKind::Proximal, CellKind::SpinyStellate, area_map, axns, ocl_pq, exe_graph));
+            DendriteKind::Proximal, CellKind::SpinyStellate, area_map, axons, ocl_pq, exe_graph));
         let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
         let cels_per_grp = dims.per_subgrp(grp_count).expect("SpinyStellateLayer::new()");
 
         let kern_ltp = ocl_pq.create_kernel("sst_ltp").expect("[FIXME]: HANDLE ME")
             // .expect("SpinyStellateLayer::new()")
             .gws(SpatialDims::Two(tft_count, grp_count as usize))
-            .arg_buf(&axns.states)
+            .arg_buf(&axons.states)
             .arg_buf(dens.syns().states())
             .arg_scl(lyr_axn_idz)
             .arg_scl(cels_per_grp)
@@ -56,6 +60,19 @@ impl SpinyStellateLayer {
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(dens.syns().strengths());
+
+        // Set up execution command:
+        let mut ltp_cmd_srcs: Vec<CorticalBuffer> = base_axn_slcs.iter()
+            .map(|&slc_id|
+                CorticalBuffer::axon_slice(&axons.states, layer_addr, slc_id))
+            .collect();
+
+        ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, sst_tft_id));
+
+        let ltp_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+            ltp_cmd_srcs,
+            vec![CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, sst_tft_id)]
+        ));
 
         Ok(SpinyStellateLayer {
             layer_name: layer_name,
@@ -66,7 +83,14 @@ impl SpinyStellateLayer {
             kern_ltp: kern_ltp,
             rng: rand::weak_rng(),
             dens: dens,
+            ltp_exe_cmd_idx: ltp_exe_cmd_idx,
         })
+    }
+
+    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        exe_graph.order_next(self.ltp_exe_cmd_idx)?;
+
+        Ok(())
     }
 
     #[inline]

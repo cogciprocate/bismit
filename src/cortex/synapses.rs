@@ -269,8 +269,9 @@ impl Synapses {
     }
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        for cmd_idx in self.exe_cmd_idxs.iter() {
-            exe_graph.order_next(*cmd_idx)?;
+        for &cmd_idx in self.exe_cmd_idxs.iter() {
+            println!("##### Ordering synapse cmd_idx: {}", cmd_idx);
+            exe_graph.order_next(cmd_idx)?;
         }
         Ok(())
     }

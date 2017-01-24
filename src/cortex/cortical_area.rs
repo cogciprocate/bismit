@@ -238,10 +238,10 @@ impl CorticalArea {
         //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
 
         /*=============================================================================
-        ===============================================================================
+        ============================= EXECUTION ORDERING ==============================
         =============================================================================*/
 
-        ////// SET INTAKE ORDERING
+        axns.set_exe_order_input(&mut exe_graph)?;
 
         for (_, pyr) in pyrs_map.iter() {
             pyr.set_exe_order(&mut exe_graph)?;
@@ -255,10 +255,11 @@ impl CorticalArea {
 
         // }
 
-        ////// SET OUTPUT ORDERING
+        axns.set_exe_order_output(&mut exe_graph)?;
 
 
         println!("{mt}::NEW(): IO_INFO: {:?}, Settings: {:?}", axns.io_info(), settings, mt = cmn::MT);
+        println!("{mt}::NEW(): EXE_GRAPH: {:#?}", exe_graph, mt = cmn::MT);
 
         let settings = settings.unwrap_or(CorticalAreaSettings::new());
 

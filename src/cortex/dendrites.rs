@@ -142,6 +142,7 @@ impl Dendrites {
         self.syns.set_exe_order(exe_graph)?;
 
         for cmd_idx in self.exe_cmd_idxs.iter() {
+            println!("##### Ordering dendrite cmd_idx: {}", cmd_idx);
             exe_graph.order_next(*cmd_idx)?;
         }
         Ok(())
