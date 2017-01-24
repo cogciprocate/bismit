@@ -355,21 +355,31 @@ impl ExecutionGraph {
     ///
     fn readers_and_writers_by_mem_block(&self) -> MemBlockRws {
         let mut mem_block_rws = HashMap::with_capacity(self.commands.len() * 16);
+        println!("\n##### Readers and Writers by Memory Block:");
+        println!("#####");
 
         for (cmd_idx, cmd) in self.commands.iter().enumerate() {
+            println!("##### Command [{}]:", cmd_idx);
+
             for cmd_src_block in cmd.sources().into_iter() {
-                let & mut(_, ref mut readers) = mem_block_rws.entry(cmd_src_block)
+                let & mut(_, ref mut readers) = mem_block_rws.entry(cmd_src_block.clone())
                     .or_insert((Vec::with_capacity(16), Vec::with_capacity(16)));
 
                 readers.push(cmd_idx);
+
+                println!("#####     Source Block [{}]: {:?}", readers.len() - 1, cmd_src_block);
             }
 
             for cmd_tar_block in cmd.targets().into_iter() {
-                let & mut(ref mut writers, _) = mem_block_rws.entry(cmd_tar_block)
+                let & mut(ref mut writers, _) = mem_block_rws.entry(cmd_tar_block.clone())
                     .or_insert((Vec::with_capacity(16), Vec::with_capacity(16)));
 
                 writers.push(cmd_idx);
+
+                println!("#####     Target Block [{}]: {:?}", writers.len() - 1, cmd_tar_block);
             }
+
+            // println!("##### Command [{}]: Sources: {:?}, Targets: {:?}", cmd_idx, cmd.sources(), cmd.targets());
         }
 
         mem_block_rws.shrink_to_fit();
@@ -384,7 +394,7 @@ impl ExecutionGraph {
         for cmd_src_block in self.commands[cmd_idx].sources().iter() {
             let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().1;
 
-            for &writer_cmd_idx in block_writers.iter().filter(|&&wci| wci != cmd_idx) {
+            for &writer_cmd_idx in block_writers.iter()/*.filter(|&&wci| wci != cmd_idx)*/ {
                 let cmd_order_idx = self.commands[writer_cmd_idx].order_idx().expect(
                     "ExecutionGraph::preceeding_writers: Command order index not set.");
 
@@ -392,7 +402,7 @@ impl ExecutionGraph {
             }
         }
 
-        println!("##### Command [{}]: Preceeding Writers: {:?}", cmd_idx, pre_writers);
+        // println!("##### Command [{}]: Preceeding Writers: {:?}", cmd_idx, pre_writers);
         pre_writers
     }
 
@@ -404,7 +414,7 @@ impl ExecutionGraph {
         for cmd_src_block in self.commands[cmd_idx].targets().iter() {
             let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().0;
 
-            for &reader_cmd_idx in block_readers.iter().filter(|&&rci| rci != cmd_idx) {
+            for &reader_cmd_idx in block_readers.iter()/*.filter(|&&rci| rci != cmd_idx)*/ {
                 let cmd_order_idx = self.commands[reader_cmd_idx].order_idx().expect(
                     "ExecutionGraph::preceeding_writers: Command order index not set.");
 
@@ -412,7 +422,7 @@ impl ExecutionGraph {
             }
         }
 
-        println!("##### Command [{}]: Following Readers: {:?}", cmd_idx, fol_readers);
+        // println!("##### Command [{}]: Following Readers: {:?}", cmd_idx, fol_readers);
         fol_readers
     }
 
@@ -420,14 +430,21 @@ impl ExecutionGraph {
     pub fn populate_requisites(&mut self) {
         let mem_block_rws = self.readers_and_writers_by_mem_block();
 
+        // println!("\n########## Memory Block Reader/Writers: {:#?}\n", mem_block_rws);
+
+        println!("\n##### Preceeding Writers and Following Readers:");
+        println!("#####");
+
         for (cmd_idx, cmd) in self.commands.iter().enumerate() {
-            self.preceding_writers(cmd_idx, &mem_block_rws);
+            let pre_writers = self.preceding_writers(cmd_idx, &mem_block_rws);
+            println!("##### Command [{}]: Preceeding Writers: {:?}", cmd_idx, pre_writers);
 
             // for cmd_src_block in cmd.sources().into_iter() {
             //     let (ref src_block_writers, _) = mem_block_rws[&cmd_src_block];
             // }
 
-            self.following_readers(cmd_idx, &mem_block_rws);
+            let fol_readers = self.following_readers(cmd_idx, &mem_block_rws);
+            println!("##### Command [{}]: Following Readers: {:?}", cmd_idx, fol_readers);
 
             // for cmd_tar_block in cmd.targets().into_iter() {
 

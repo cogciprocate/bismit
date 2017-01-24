@@ -93,7 +93,7 @@ impl ExternalPathway {
 
         for p_layer in p_layers.into_iter() {
             let lyr_name = p_layer.name();
-            let lyr_addr = LayerAddress::new(p_layer.layer_id(), pamap.area_id());
+            let lyr_addr = LayerAddress::new(pamap.area_id(), p_layer.layer_id());
             let axn_topology = p_layer.kind().axn_topology();
             let lyr_depth = p_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 

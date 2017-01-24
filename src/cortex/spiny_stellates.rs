@@ -26,7 +26,7 @@ impl SpinyStellateLayer {
     pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
             area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph,
     ) -> CmnResult<SpinyStellateLayer> {
-        let layer_addr = LayerAddress::new(layer_id, area_map.area_id());
+        let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
         let base_axn_slcs = area_map.layer_slc_ids(&[layer_name.to_owned()]);
         let base_axn_slc = base_axn_slcs[0];
         let lyr_axn_idz = area_map.axn_idz(base_axn_slc);

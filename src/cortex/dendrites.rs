@@ -39,7 +39,7 @@ impl Dendrites {
             ) -> CmnResult<Dendrites>
     {
         let tft_count = cell_scheme.tft_count();
-        let layer_addr = LayerAddress::new(layer_id, area_map.area_id());
+        let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
         let mut kernels = Vec::with_capacity(tft_count);
         let mut den_idzs_by_tft = Vec::with_capacity(tft_count);

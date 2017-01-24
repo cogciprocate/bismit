@@ -161,7 +161,7 @@ impl LayerInfo {
                     // let orig_axn_tags = sig.tags();
                     let src_area_name = src_area_sch.name();
                     let src_area_id = src_area_sch.area_id();
-                    let src_lyr_addr = LayerAddress::new(src_layer.layer_id(), src_area_id);
+                    let src_lyr_addr = LayerAddress::new(src_area_id, src_layer.layer_id());
 
                     let (src_layer_dims, src_layer_axn_topology) = match src_lyr_map_sch.kind() {
                         // If the source layer is subcortical, we will be relying
@@ -230,7 +230,7 @@ impl LayerInfo {
                         let &(ref ext_src, _) = ext_paths.by_key(&area_sch_name)
                             .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                 '{}'", area_sch.name()));
-                        let ext_src_lyr_addr = LayerAddress::new(layer_id, area_sch.area_id());
+                        let ext_src_lyr_addr = LayerAddress::new(area_sch.area_id(), layer_id);
                         let ext_src_layer = ext_src.layer(ext_src_lyr_addr);
                         let ext_src_layer_dims = ext_src_layer.dims().expect(&format!(
                             "LayerInfo::new(): External source layer dims for layer \
@@ -278,7 +278,7 @@ impl LayerInfo {
         }
 
         LayerInfo {
-            layer_addr: LayerAddress::new(layer_id, area_sch.area_id()),
+            layer_addr: LayerAddress::new(area_sch.area_id(), layer_id),
             name: name,
             layer_tags: layer_tags,
             axon_domain: axon_domain,

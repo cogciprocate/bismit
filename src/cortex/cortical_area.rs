@@ -257,16 +257,20 @@ impl CorticalArea {
 
         axns.set_exe_order_output(&mut exe_graph)?;
 
-        exe_graph.populate_requisites();
+        // exe_graph.populate_requisites();
 
         /*=============================================================================
         ===============================================================================
         =============================================================================*/
 
         println!("{mt}::NEW(): IO_INFO: {:?}, Settings: {:?}", axns.io_info(), settings, mt = cmn::MT);
-        println!("{mt}::NEW(): EXE_GRAPH: {:#?}", exe_graph, mt = cmn::MT);
+        // println!("{mt}::NEW(): EXE_GRAPH: {:#?}", exe_graph, mt = cmn::MT);
 
         let settings = settings.unwrap_or(CorticalAreaSettings::new());
+
+        // [TODO]: Move back up.
+            exe_graph.populate_requisites();
+        //
 
         let cortical_area = CorticalArea {
             area_id: area_id,

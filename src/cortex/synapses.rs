@@ -134,7 +134,7 @@ impl Synapses {
         let syn_src_slices = SynSrcSlices::new(layer_id, cell_scheme.tft_schemes(), area_map)?;
 
         let tft_count = cell_scheme.tft_count();
-        let layer_addr = LayerAddress::new(layer_id, area_map.area_id());
+        let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
         let mut kernels = Vec::with_capacity(tft_count);
         let mut src_idx_caches_by_tft = Vec::with_capacity(tft_count);

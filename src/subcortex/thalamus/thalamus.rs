@@ -304,7 +304,7 @@ impl Thalamus {
                         axn_kind: {:?}", layer.name(), layer.layer_tags(), layer.slc_range(),
                         layer.layer_map_kind(), layer.axn_topology(), mt = cmn::MT);
 
-                    tract.add_area((layer.layer_id(), area_s.area_id()).into(),
+                    tract.add_area(LayerAddress::new(area_s.area_id(), layer.layer_id()),
                         layer_dims);
                 }
 

@@ -193,7 +193,7 @@ impl IoInfoCache {
                     area_map.layers().iter()
                         .filter(|li| li.axn_domain().is_output())
                         .map(|li| {
-                            let lyr_addr = LayerAddress::new(li.layer_id(), area_map.area_id());
+                            let lyr_addr = LayerAddress::new(area_map.area_id(), li.layer_id());
                             (lyr_addr, None)
                         }).collect()
                 } else {
@@ -203,7 +203,7 @@ impl IoInfoCache {
 
                     for li in area_map.layers().iter() {
                         if li.axn_domain().is_input() {
-                            let lyr_addr = LayerAddress::new(li.layer_id(), area_map.area_id());
+                            let lyr_addr = LayerAddress::new(area_map.area_id(), li.layer_id());
 
                             for sli in li.sources().iter() {
                                 tract_keys.push((lyr_addr, Some(sli.layer_addr().clone())));

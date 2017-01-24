@@ -43,7 +43,7 @@ impl PyramidalLayer {
             area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
             -> CmnResult<PyramidalLayer>
     {
-        let layer_addr = LayerAddress::new(layer_id, area_map.area_id());
+        let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
         // [FIXME]: Convert to layer_id:
         let pyr_lyr_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
         let base_axn_slc = pyr_lyr_slc_ids[0];

@@ -42,24 +42,24 @@ pub use self::axon_tags::*;
 //
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct LayerAddress {
-    layer_id: usize,
     area_id: usize,
+    layer_id: usize,
 }
 
 impl LayerAddress {
-    pub fn new(layer_id: usize, area_id: usize) -> LayerAddress {
-        LayerAddress { layer_id: layer_id, area_id: area_id }
+    pub fn new(area_id: usize, layer_id: usize) -> LayerAddress {
+        LayerAddress { area_id: area_id, layer_id: layer_id }
     }
 
-    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn area_id(&self) -> usize { self.area_id }
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
 }
 
-impl From<(usize, usize)> for LayerAddress {
-    fn from(tup: (usize, usize)) -> LayerAddress {
-        LayerAddress::new(tup.0, tup.1)
-    }
-}
+// impl From<(usize, usize)> for LayerAddress {
+//     fn from(tup: (usize, usize)) -> LayerAddress {
+//         LayerAddress::new(tup.0, tup.1)
+//     }
+// }
 
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

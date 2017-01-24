@@ -2,7 +2,7 @@ use cmn::CorticalDims;
 use map;
 use map::{LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme, AreaSchemeList,
     CellScheme, InputScheme, AxonTopology, LayerKind, AxonDomain, InputTrack};
-use thalamus::Thalamus;
+use ::Thalamus;
 use ocl::{Context, ProQue};
 use cortex::Cortex;
 
