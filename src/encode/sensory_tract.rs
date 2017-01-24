@@ -1,6 +1,6 @@
 use cmn::{TractFrameMut, TractDims};
 use map::LayerAddress;
-use thalamus::{ExternalPathwayTract, ExternalPathwayFrame};
+use ::{ExternalPathwayTract, ExternalPathwayFrame};
 
 #[derive(Debug, Clone)]
 pub struct SensoryTract {

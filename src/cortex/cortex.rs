@@ -3,7 +3,7 @@ use time;
 
 use ocl::{self, Platform, Context, Device};
 use cortex::{CorticalArea, CorticalAreas, CorticalAreaSettings};
-use thalamus::{Thalamus};
+use ::{Thalamus};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 // use cmn::{CmnResult};
 // use thalamus::{ExternalPathway, ExternalPathwayFrame};
@@ -37,7 +37,7 @@ impl Cortex {
                 area_map.lm_kind_tmp() != &LayerMapKind::Subcortical)
         {
             areas.insert(area_map.area_name(), Box::new(CorticalArea::new(area_map.clone(),
-                    device_idx, &ocl_context, ca_settings.clone()).unwrap()));
+                    device_idx, &ocl_context, ca_settings.clone(), &thal).unwrap()));
             device_idx += 1;
         }
 

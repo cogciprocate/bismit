@@ -1,6 +1,6 @@
-// use cmn;
+use cmn::TractFrameMut;
 use map::LayerAddress;
-use thalamus::{ExternalPathwayTract, TractFrameMut};
+use ::{ExternalPathwayTract};
 use encode;
 
 

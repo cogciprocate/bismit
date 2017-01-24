@@ -6,7 +6,7 @@ use ocl::core::ClWaitList;
 use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
     ExecutionGraph, AxonDomainRoute,};
-use thalamus::Thalamus;
+use ::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer};
 
@@ -75,7 +75,7 @@ impl CorticalArea {
     // out into new types.
     //
     pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context,
-                    settings: Option<CorticalAreaSettings>) -> CmnResult<CorticalArea> {
+                    settings: Option<CorticalAreaSettings>, thal: &Thalamus) -> CmnResult<CorticalArea> {
         let emsg = "cortical_area::CorticalArea::new()";
         let area_id = area_map.area_id();
         let area_name = area_map.area_name();
@@ -123,7 +123,7 @@ impl CorticalArea {
         let mut pyrs_map = HashMap::new();
         let mut ssts_map = HashMap::new();
         let mut iinns = HashMap::new();
-        let axns = AxonSpace::new(&area_map, &ocl_pq, &mut exe_graph);
+        let axns = AxonSpace::new(&area_map, &ocl_pq, &mut exe_graph, thal);
 
         /*=============================================================================
         ================================== DATA CELLS =================================
@@ -238,18 +238,18 @@ impl CorticalArea {
         //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
 
         /*=============================================================================
-        ============================= EXECUTION ORDERING ==============================
+        =================== EXECUTION ORDERING & GRAPH POPULATION =====================
         =============================================================================*/
 
         axns.set_exe_order_input(&mut exe_graph)?;
 
-        for (_, pyr) in pyrs_map.iter() {
+        for pyr in pyrs_map.values() {
             pyr.set_exe_order(&mut exe_graph)?;
         }
 
-        // for sst in ssts_map.iter() {
-
-        // }
+        for sst in ssts_map.values() {
+            sst.set_exe_order(&mut exe_graph)?;
+        }
 
         // for iinn in iinns.iter() {
 
@@ -257,6 +257,11 @@ impl CorticalArea {
 
         axns.set_exe_order_output(&mut exe_graph)?;
 
+        exe_graph.populate_requisites();
+
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
 
         println!("{mt}::NEW(): IO_INFO: {:?}, Settings: {:?}", axns.io_info(), settings, mt = cmn::MT);
         println!("{mt}::NEW(): EXE_GRAPH: {:#?}", exe_graph, mt = cmn::MT);

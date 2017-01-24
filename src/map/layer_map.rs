@@ -5,7 +5,7 @@ use map::{AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapKind, AxonDoma
     AxonDomain, AxonSignature};
 use cmn::{self, MapStore, CmnResult};
 use map::{LayerTags, LayerInfo, SourceLayerInfo, LayerAddress};
-use thalamus::ExternalPathway;
+use ::ExternalPathway;
 
 const DEBUG_PRINT: bool = false;
 

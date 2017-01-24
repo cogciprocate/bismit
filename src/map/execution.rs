@@ -1,12 +1,14 @@
 #![allow(dead_code, unused_variables)]
 
 use std::ops::Range;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::error;
 use std::fmt;
 use ocl::{Event, Buffer, OclPrm};
 use map::LayerAddress;
 use cmn::{util, /*CmnError,*/ /*CmnResult*/};
+
+type ExeGrResult<T> = Result<T, ExecutionGraphError>;
 
 pub enum ExecutionGraphError {
     InvalidCommandIndex(usize),
@@ -52,8 +54,8 @@ impl fmt::Debug for ExecutionGraphError {
 /// A block of memory within the Cortex.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum CorticalBuffer {
-    AxonLayer { buffer_id: u64, layer_addr: LayerAddress },
-    AxonLayerSubSlice { buffer_id: u64, layer_addr: LayerAddress, sub_slc_range: Range<u8> },
+    // AxonLayer { buffer_id: u64, layer_addr: LayerAddress },
+    // AxonLayerSubSlice { buffer_id: u64, layer_addr: LayerAddress, sub_slc_range: Range<u8> },
     AxonSlice { buffer_id: u64, layer_addr: LayerAddress, slc_id: u8 },
     DataCellSynapseTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize, },
     DataCellDendriteTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize },
@@ -63,22 +65,22 @@ pub enum CorticalBuffer {
 }
 
 impl CorticalBuffer {
-    pub fn axon_layer<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress) -> CorticalBuffer {
-        CorticalBuffer::AxonLayer {
-            buffer_id: util::buffer_uid(buf),
-            layer_addr: layer_addr,
-        }
-    }
+    // pub fn axon_layer<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress) -> CorticalBuffer {
+    //     CorticalBuffer::AxonLayer {
+    //         buffer_id: util::buffer_uid(buf),
+    //         layer_addr: layer_addr,
+    //     }
+    // }
 
-    pub fn axon_layer_sub_slice<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress,
-            sub_slc_range: Range<u8>) -> CorticalBuffer
-    {
-        CorticalBuffer::AxonLayerSubSlice {
-            buffer_id: util::buffer_uid(buf),
-            layer_addr: layer_addr,
-            sub_slc_range: sub_slc_range,
-        }
-    }
+    // pub fn axon_layer_sub_slice<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress,
+    //         sub_slc_range: Range<u8>) -> CorticalBuffer
+    // {
+    //     CorticalBuffer::AxonLayerSubSlice {
+    //         buffer_id: util::buffer_uid(buf),
+    //         layer_addr: layer_addr,
+    //         sub_slc_range: sub_slc_range,
+    //     }
+    // }
 
     pub fn axon_slice<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress, slc_id: u8)
             -> CorticalBuffer
@@ -151,15 +153,15 @@ impl SubcorticalBuffer {
 /// A block of the thalamic tract.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ThalamicTract {
-    Layer { layer_addr: LayerAddress, sub_slc_range: Option<Range<u8>> },
+    Slice { src_layer_addr: LayerAddress, slc_id: u8 },
     // SubCorticalLayerSource { area_id: usize, layer_id: usize },
 }
 
 impl ThalamicTract {
-    pub fn layer(layer_addr: LayerAddress, sub_slc_range: Option<Range<u8>>) -> ThalamicTract {
-        ThalamicTract::Layer {
-            layer_addr: layer_addr,
-            sub_slc_range: sub_slc_range,
+    pub fn axon_slice(src_layer_addr: LayerAddress, slc_id: u8) -> ThalamicTract {
+        ThalamicTract::Slice {
+            src_layer_addr: src_layer_addr,
+            slc_id: slc_id,
         }
     }
 }
@@ -178,8 +180,8 @@ pub enum MemoryBlock {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ExecutionCommandDetails {
     CorticalKernel { sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer> },
-    CorticothalamicRead { source: CorticalBuffer, target: ThalamicTract },
-    ThalamocorticalWrite { source: ThalamicTract, target: CorticalBuffer },
+    CorticothalamicRead { sources: Vec<CorticalBuffer>, targets: Vec<ThalamicTract> },
+    ThalamocorticalWrite { sources: Vec<ThalamicTract>, targets: Vec<CorticalBuffer> },
     SubcorticalCopy { source: MemoryBlock, target: MemoryBlock },
     SubGraph { sources: Vec<MemoryBlock>, target: Vec<MemoryBlock> },
 }
@@ -190,13 +192,13 @@ impl ExecutionCommandDetails {
             ExecutionCommandDetails::CorticalKernel { ref sources, .. } => {
                 sources.iter().map(|src| MemoryBlock::CorticalBuffer(src.clone())).collect()
             },
-            ExecutionCommandDetails::CorticothalamicRead { ref source, .. } => {
-                // sources.iter().map(|src| MemoryBlock::CorticalBuffer(src.clone())).collect()
-                vec![MemoryBlock::CorticalBuffer(source.clone())]
+            ExecutionCommandDetails::CorticothalamicRead { ref sources, .. } => {
+                sources.iter().map(|src| MemoryBlock::CorticalBuffer(src.clone())).collect()
+                // vec![MemoryBlock::CorticalBuffer(source.clone())]
             },
-            ExecutionCommandDetails::ThalamocorticalWrite { ref source, .. } => {
-                // sources.iter().map(|src| MemoryBlock::SubcorticalBuffer(src.clone())).collect()
-                vec![MemoryBlock::ThalamicTract(source.clone())]
+            ExecutionCommandDetails::ThalamocorticalWrite { ref sources, .. } => {
+                sources.iter().map(|src| MemoryBlock::ThalamicTract(src.clone())).collect()
+                // vec![MemoryBlock::ThalamicTract(source.clone())]
             },
             ExecutionCommandDetails::SubcorticalCopy { ref source, .. } => vec![source.clone()],
             ExecutionCommandDetails::SubGraph { .. } => unimplemented!(),
@@ -208,13 +210,13 @@ impl ExecutionCommandDetails {
             ExecutionCommandDetails::CorticalKernel { ref targets, ..  } => {
                 targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
             },
-            ExecutionCommandDetails::CorticothalamicRead { ref target, ..  } => {
-                // targets.iter().map(|tar| MemoryBlock::SubcorticalBuffer(tar.clone())).collect()
-                vec![MemoryBlock::ThalamicTract(target.clone())]
+            ExecutionCommandDetails::CorticothalamicRead { ref targets, ..  } => {
+                targets.iter().map(|tar| MemoryBlock::ThalamicTract(tar.clone())).collect()
+                // vec![MemoryBlock::ThalamicTract(target.clone())]
             },
-            ExecutionCommandDetails::ThalamocorticalWrite { ref target, ..  } => {
-                // targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
-                vec![MemoryBlock::CorticalBuffer(target.clone())]
+            ExecutionCommandDetails::ThalamocorticalWrite { ref targets, ..  } => {
+                targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
+                // vec![MemoryBlock::CorticalBuffer(target.clone())]
             },
             ExecutionCommandDetails::SubcorticalCopy { ref target, ..  } => vec![target.clone()],
             ExecutionCommandDetails::SubGraph { .. } => unimplemented!(),
@@ -252,14 +254,14 @@ impl ExecutionCommand {
         )
     }
 
-    pub fn corticothalamic_read(source: CorticalBuffer, target: ThalamicTract) -> ExecutionCommand {
+    pub fn corticothalamic_read(sources: Vec<CorticalBuffer>, targets: Vec<ThalamicTract>) -> ExecutionCommand {
         ExecutionCommand::new(ExecutionCommandDetails::CorticothalamicRead {
-            source: source, target: target })
+            sources: sources, targets: targets })
     }
 
-    pub fn thalamocortical_write(source: ThalamicTract, target: CorticalBuffer) -> ExecutionCommand {
+    pub fn thalamocortical_write(sources: Vec<ThalamicTract>, targets: Vec<CorticalBuffer>) -> ExecutionCommand {
         ExecutionCommand::new(ExecutionCommandDetails::ThalamocorticalWrite {
-            source: source, target: target })
+            sources: sources, targets: targets })
     }
 
     // pub fn local_copy() -> ExecutionCommand {
@@ -273,7 +275,11 @@ impl ExecutionCommand {
     #[inline] pub fn sources(&self) -> Vec<MemoryBlock> { self.details.sources() }
     #[inline] pub fn targets(&self) -> Vec<MemoryBlock> { self.details.targets() }
     #[inline] pub fn event(&self) -> Option<&Event> { self.event.as_ref() }
+    #[inline] pub fn order_idx(&self) -> Option<usize> { self.order_idx.clone() }
 }
+
+
+type MemBlockRws = HashMap<MemoryBlock, (Vec<usize>, Vec<usize>)>;
 
 
 /// A graph of memory accessing commands.
@@ -305,7 +311,7 @@ impl ExecutionGraph {
         cmd_idx
     }
 
-    pub fn order_next(&mut self, cmd_idx: usize) -> Result<usize, ExecutionGraphError> {
+    pub fn order_next(&mut self, cmd_idx: usize) -> ExeGrResult<usize> {
         let cmd = self.commands.get_mut(cmd_idx)
             .ok_or(ExecutionGraphError::OrderInvalidCommandIndex(cmd_idx))?;
 
@@ -314,6 +320,7 @@ impl ExecutionGraph {
         self.next_order_idx += 1;
         Ok(order_idx)
     }
+
 
     // fn req_cmds_mut(&mut self, cmd_idx: usize) -> Result<&mut Vec<usize>, ExecutionGraphError>{
     //     self.requisites.get_mut(cmd_idx)
@@ -340,49 +347,96 @@ impl ExecutionGraph {
     //     Ok(req_idxs.push(req_cmd_idx))
     // }
 
-    /// Returns a memory block map by adding every command which reads from
-    /// and every command that writes to each memory block.
-    fn readers_and_writers_by_mem_block(&self) -> HashMap<MemoryBlock, (Vec<usize>, Vec<usize>)> {
-        let mut mem_blocks = HashMap::with_capacity(self.commands.len() * 16);
+
+    /// Returns a memory block map which contains every command that reads
+    /// from and every command that writes to each memory block.
+    ///
+    /// { MemBlockRws = HashMap<MemoryBlock, (Vec<usize>, Vec<usize>)> }
+    ///
+    fn readers_and_writers_by_mem_block(&self) -> MemBlockRws {
+        let mut mem_block_rws = HashMap::with_capacity(self.commands.len() * 16);
 
         for (cmd_idx, cmd) in self.commands.iter().enumerate() {
             for cmd_src_block in cmd.sources().into_iter() {
-                let & mut(_, ref mut readers) = mem_blocks.entry(cmd_src_block)
+                let & mut(_, ref mut readers) = mem_block_rws.entry(cmd_src_block)
                     .or_insert((Vec::with_capacity(16), Vec::with_capacity(16)));
 
                 readers.push(cmd_idx);
             }
 
             for cmd_tar_block in cmd.targets().into_iter() {
-                let & mut(ref mut writers, _) = mem_blocks.entry(cmd_tar_block)
+                let & mut(ref mut writers, _) = mem_block_rws.entry(cmd_tar_block)
                     .or_insert((Vec::with_capacity(16), Vec::with_capacity(16)));
 
                 writers.push(cmd_idx);
             }
         }
 
-        mem_blocks
+        mem_block_rws.shrink_to_fit();
+        mem_block_rws
     }
 
+    /// Returns a list of commands which both precede a command and which
+    /// write to a block of memory which is read from by that command.
+    fn preceding_writers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRws) -> BTreeMap<usize, usize> {
+        let mut pre_writers = BTreeMap::new();
+
+        for cmd_src_block in self.commands[cmd_idx].sources().iter() {
+            let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().1;
+
+            for &writer_cmd_idx in block_writers.iter().filter(|&&wci| wci != cmd_idx) {
+                let cmd_order_idx = self.commands[writer_cmd_idx].order_idx().expect(
+                    "ExecutionGraph::preceeding_writers: Command order index not set.");
+
+                pre_writers.insert(cmd_order_idx, writer_cmd_idx);
+            }
+        }
+
+        println!("##### Command [{}]: Preceeding Writers: {:?}", cmd_idx, pre_writers);
+        pre_writers
+    }
+
+    /// Returns a list of commands which both follow a command and which read
+    /// from a block of memory which is written to by that command.
+    fn following_readers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRws) -> BTreeMap<usize, usize> {
+        let mut fol_readers = BTreeMap::new();
+
+        for cmd_src_block in self.commands[cmd_idx].targets().iter() {
+            let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().0;
+
+            for &reader_cmd_idx in block_readers.iter().filter(|&&rci| rci != cmd_idx) {
+                let cmd_order_idx = self.commands[reader_cmd_idx].order_idx().expect(
+                    "ExecutionGraph::preceeding_writers: Command order index not set.");
+
+                fol_readers.insert(cmd_order_idx, reader_cmd_idx);
+            }
+        }
+
+        println!("##### Command [{}]: Following Readers: {:?}", cmd_idx, fol_readers);
+        fol_readers
+    }
 
     /// Populates the list of requisite commands for each command.
     pub fn populate_requisites(&mut self) {
-        let mem_blocks = self.readers_and_writers_by_mem_block();
+        let mem_block_rws = self.readers_and_writers_by_mem_block();
 
-        for cmd in self.commands.iter() {
-            for cmd_src_block in cmd.sources().into_iter() {
-                let (ref src_block_writers, _) = mem_blocks[&cmd_src_block];
-            }
+        for (cmd_idx, cmd) in self.commands.iter().enumerate() {
+            self.preceding_writers(cmd_idx, &mem_block_rws);
 
-            for cmd_tar_block in cmd.targets().into_iter() {
+            // for cmd_src_block in cmd.sources().into_iter() {
+            //     let (ref src_block_writers, _) = mem_block_rws[&cmd_src_block];
+            // }
 
-            }
+            self.following_readers(cmd_idx, &mem_block_rws);
+
+            // for cmd_tar_block in cmd.targets().into_iter() {
+
+            // }
         }
     }
 
-
     /// Returns the list of requisite events for a command.
-    pub fn get_req_events(&self, cmd_idx: usize) -> Result<Vec<Event>, ExecutionGraphError> {
+    pub fn get_req_events(&self, cmd_idx: usize) -> ExeGrResult<Vec<Event>> {
         let req_idxs = self.requisites.get(cmd_idx)
             .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
 

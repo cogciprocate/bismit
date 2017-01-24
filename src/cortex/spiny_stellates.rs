@@ -88,8 +88,8 @@ impl SpinyStellateLayer {
     }
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        self.dens.set_exe_order(exe_graph)?;
         exe_graph.order_next(self.ltp_exe_cmd_idx)?;
-
         Ok(())
     }
 

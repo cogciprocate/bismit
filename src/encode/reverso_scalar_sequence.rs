@@ -3,7 +3,8 @@
 use std::fmt::Debug;
 use std::ops::AddAssign;
 use num::{Num, NumCast};
-use thalamus::{ExternalPathwayTract, TractFrameMut};
+use cmn::TractFrameMut;
+use ::{ExternalPathwayTract};
 use encode::ScalarEncodable;
 use map::LayerAddress;
 

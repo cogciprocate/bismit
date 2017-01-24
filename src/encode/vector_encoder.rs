@@ -1,8 +1,8 @@
 
 // use cmn::ScalarEncodable;
-use cmn::{CmnError, CmnResult, TractDims};
+use cmn::{CmnError, CmnResult, TractDims, TractFrameMut};
 use map::LayerAddress;
-use thalamus::{ExternalPathwayTract, ExternalPathwayFrame, TractFrameMut};
+use ::{ExternalPathwayTract, ExternalPathwayFrame};
 use encode::{ScalarGlyphWriter};
 
 // [TODO]: Convert into a multi-layer/multi-slice system. Plumbing should be in place.

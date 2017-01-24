@@ -2,7 +2,7 @@
 use find_folder::Search;
 use cmn::{CorticalDims, Sdr, TractFrameMut};
 use map::LayerAddress;
-use thalamus::ExternalPathwayTract;
+use ::ExternalPathwayTract;
 use super::IdxData;
 
 //    IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned

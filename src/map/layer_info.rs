@@ -5,7 +5,7 @@ use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapS
     LayerKind, LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack, LayerAddress,
     TuftSourceLayer, LayerTags, AxonSignature};
 use cmn::{self, CorticalDims, MapStore};
-use thalamus::ExternalPathway;
+use ::ExternalPathway;
 
 const DEBUG_PRINT: bool = false;
 
@@ -303,18 +303,18 @@ impl LayerInfo {
         self.sources.iter().find(|sli| sli.layer_addr() == src_layer_addr)
     }
 
-    pub fn src_lyr_sub_slc_range(&self, src_layer_addr: &LayerAddress) -> Option<Range<u8>> {
-        let lyr_slc_range = match self.slc_range {
-            Some(ref slc_range) => slc_range,
-            None => return None,
-        };
+    // pub fn src_lyr_sub_slc_range(&self, src_layer_addr: &LayerAddress) -> Option<Range<u8>> {
+    //     let lyr_slc_range = match self.slc_range {
+    //         Some(ref slc_range) => slc_range,
+    //         None => return None,
+    //     };
 
-        self.sources.iter().find(|sli| sli.layer_addr() == src_layer_addr)
-            .map(|sli| {
-                let src_lyr_slc_ofs = sli.tar_slc_range().start - lyr_slc_range.start;
-                src_lyr_slc_ofs..(src_lyr_slc_ofs + sli.tar_slc_range().len() as u8)
-            })
-    }
+    //     self.sources.iter().find(|sli| sli.layer_addr() == src_layer_addr)
+    //         .map(|sli| {
+    //             let src_lyr_slc_ofs = sli.tar_slc_range().start - lyr_slc_range.start;
+    //             src_lyr_slc_ofs..(src_lyr_slc_ofs + sli.tar_slc_range().len() as u8)
+    //         })
+    // }
 
     pub fn irregular_layer_dims(&self) -> Option<&CorticalDims> {
         self.irregular_layer_dims.as_ref()

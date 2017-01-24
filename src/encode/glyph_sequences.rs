@@ -4,7 +4,7 @@ use rand::distributions::{IndependentSample, Range};
 use rand;
 use cmn::{CorticalDims, TractFrameMut};
 use map::{self, LayerAddress, AxonTags};
-use thalamus::{ExternalPathwayTract, ExternalPathwayLayer};
+use ::{ExternalPathwayTract, ExternalPathwayLayer};
 use encode::GlyphBuckets;
 // use map::AxonTopology;
 

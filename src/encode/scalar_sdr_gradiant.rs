@@ -1,8 +1,8 @@
 //! Mostly for testing purposes.
 
-use cmn::TractDims;
+use cmn::{TractDims, TractFrameMut};
 use map::LayerAddress;
-use thalamus::{ExternalPathwayTract, TractFrameMut};
+use ::{ExternalPathwayTract};
 use encode::{ScalarEncodable, ScalarSdrWriter};
 
 #[derive(Clone, Debug)]

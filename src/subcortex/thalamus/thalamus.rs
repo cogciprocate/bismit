@@ -22,7 +22,7 @@ use map::{AreaMap, LayerMapKind, LayerAddress};
 use ocl::{Context, EventList};
 use cortex::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList, /*ExecutionGraph*/};
-use thalamus::{ExternalPathway, ExternalPathwayFrame};
+use ::{ExternalPathway, ExternalPathwayFrame};
 use tract_terminal::{SliceBufferTarget, SliceBufferSource};
 
 

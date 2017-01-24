@@ -5,7 +5,7 @@ use time::{self, Timespec, Duration};
 use cmn::{CmnResult};
 use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings};
 use ::map::SliceTractMap;
-use thalamus::{ExternalPathwayEncoder, ExternalPathwayFrame};
+use ::{ExternalPathwayEncoder, ExternalPathwayFrame};
 
 
 

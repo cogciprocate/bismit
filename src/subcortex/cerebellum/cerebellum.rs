@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use ocl::Context;
-use ::{CorticalArea, AreaMap};
+use ::{CorticalArea, AreaMap, Thalamus};
 
 pub struct Cerebellum {
     cortex: CorticalArea,
@@ -12,9 +12,9 @@ pub struct Cerebellum {
 }
 
 impl Cerebellum {
-    pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context) -> Cerebellum {
+    pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context, thal: &Thalamus) -> Cerebellum {
         Cerebellum {
-            cortex: CorticalArea::new(area_map, device_idx, ocl_context, None).unwrap(),
+            cortex: CorticalArea::new(area_map, device_idx, ocl_context, None, thal).unwrap(),
             inverso: true,
         }
     }

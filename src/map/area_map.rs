@@ -2,7 +2,7 @@ use std::fmt::Display;
 use std::ops::{Range, Deref};
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use cmn::{self, CorticalDims, MapStore, CmnResult};
-use thalamus::ExternalPathway;
+use ::ExternalPathway;
 use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapSchemeList,
     AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme, AxonTags, InputTrack};
 
@@ -357,6 +357,7 @@ impl AreaMap {
     pub fn axn_idz(&self, slc_id: u8) -> u32 { self.slices.idz(slc_id) }
     pub fn slices(&self) -> &SliceMap { &self.slices }
     pub fn layers(&self) -> &LayerMap { &self.layers }
+    pub fn layer(&self, layer_id: usize) -> Option<&LayerInfo> { self.layers.layer_info(layer_id) }
     pub fn dims(&self) -> &CorticalDims { &self.dims }
 }
 
