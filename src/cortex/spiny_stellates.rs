@@ -64,7 +64,7 @@ impl SpinyStellateLayer {
         // Set up execution command:
         let mut ltp_cmd_srcs: Vec<CorticalBuffer> = base_axn_slcs.iter()
             .map(|&slc_id|
-                CorticalBuffer::axon_slice(&axons.states, layer_addr, slc_id))
+                CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), slc_id))
             .collect();
 
         ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, sst_tft_id));
@@ -72,7 +72,7 @@ impl SpinyStellateLayer {
         let ltp_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
             ltp_cmd_srcs,
             vec![CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, sst_tft_id)]
-        ));
+        ))?;
 
         Ok(SpinyStellateLayer {
             layer_name: layer_name,

@@ -82,8 +82,8 @@ impl IoInfoGroup {
                 let mut tars: Vec<ThalamicTract> = Vec::with_capacity(lyr_slc_id_range.len());
 
                 for slc_id in lyr_slc_id_range.start..lyr_slc_id_range.end {
-                    srcs.push(CorticalBuffer::axon_slice(axn_states, lyr_addr, slc_id));
-                    tars.push(ThalamicTract::axon_slice(lyr_addr, slc_id));
+                    srcs.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id));
+                    tars.push(ThalamicTract::axon_slice(lyr_addr.area_id(), slc_id));
                 }
 
                 let exe_cmd = ExecutionCommand::corticothalamic_read(srcs, tars);
@@ -94,7 +94,7 @@ impl IoInfoGroup {
                 //     ThalamicTract::layer(lyr_addr, None)
                 // );
 
-                let io_cmd = IoExeCmd::Read(exe_graph.add_command(exe_cmd));
+                let io_cmd = IoExeCmd::Read(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"));
 
                 (lyr_addr, None, io_cmd)
             } else {
@@ -121,7 +121,7 @@ impl IoInfoGroup {
                 let mut write_cmd_srcs: Vec<ThalamicTract> = Vec::with_capacity(src_lyr_slc_id_range.len());
 
                 for slc_id in src_lyr_slc_id_range.start..src_lyr_slc_id_range.end {
-                    write_cmd_srcs.push(ThalamicTract::axon_slice(src_lyr_addr, slc_id));
+                    write_cmd_srcs.push(ThalamicTract::axon_slice(src_lyr_addr.area_id(), slc_id));
                 }
 
                 // Get target layer absolute slice id range:
@@ -136,13 +136,13 @@ impl IoInfoGroup {
                 let mut write_cmd_tars: Vec<CorticalBuffer> = Vec::with_capacity(tar_lyr_slc_id_range.len());
 
                 for slc_id in tar_lyr_slc_id_range.start..tar_lyr_slc_id_range.end {
-                    write_cmd_tars.push(CorticalBuffer::axon_slice(axn_states, lyr_addr, slc_id))
+                    write_cmd_tars.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id))
                 }
 
 
                 let exe_cmd = ExecutionCommand::thalamocortical_write(write_cmd_srcs, write_cmd_tars);
 
-                let io_cmd = IoExeCmd::Write(exe_graph.add_command(exe_cmd));
+                let io_cmd = IoExeCmd::Write(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"));
 
                 (src_lyr_addr, filter_chain_idx, io_cmd)
             };

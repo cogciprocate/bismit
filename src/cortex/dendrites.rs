@@ -119,7 +119,7 @@ impl Dendrites {
                     CorticalBuffer::data_den_tft(&states_raw, layer_addr, tft_id),
                     CorticalBuffer::data_den_tft(&states, layer_addr, tft_id),
                 ]
-            )));
+            ))?);
         }
 
         Ok(Dendrites {

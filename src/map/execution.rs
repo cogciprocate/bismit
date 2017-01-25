@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_variables)]
 
-use std::ops::Range;
+// use std::ops::Range;
 use std::collections::{HashMap, BTreeMap};
 use std::error;
 use std::fmt;
@@ -14,6 +14,8 @@ pub enum ExecutionGraphError {
     InvalidCommandIndex(usize),
     OrderInvalidCommandIndex(usize),
     InvalidRequisiteCommandIndex(usize, usize),
+    Locked,
+    Unlocked,
 }
 
 impl error::Error for ExecutionGraphError {
@@ -22,6 +24,8 @@ impl error::Error for ExecutionGraphError {
             ExecutionGraphError::InvalidCommandIndex(_) => "Invalid command index.",
             ExecutionGraphError::OrderInvalidCommandIndex(_) => "Invalid command index.",
             ExecutionGraphError::InvalidRequisiteCommandIndex(..) => "Invalid command index.",
+            ExecutionGraphError::Locked => "Graph locked.",
+            ExecutionGraphError::Unlocked => "Graph unlocked.",
         }
     }
 }
@@ -40,6 +44,12 @@ impl fmt::Display for ExecutionGraphError {
                 f.write_fmt(format_args!("Invalid requisite command index (req_cmd_idx: {}, \
                     cmd_idx: {}).", req_cmd_idx, cmd_idx))
             },
+            ExecutionGraphError::Locked => {
+                f.write_str("Execution graph is locked.")
+            }
+            ExecutionGraphError::Unlocked => {
+                f.write_str("Execution graph is unlocked. Lock using '::populate_requisites'")
+            }
         }
     }
 }
@@ -56,7 +66,7 @@ impl fmt::Debug for ExecutionGraphError {
 pub enum CorticalBuffer {
     // AxonLayer { buffer_id: u64, layer_addr: LayerAddress },
     // AxonLayerSubSlice { buffer_id: u64, layer_addr: LayerAddress, sub_slc_range: Range<u8> },
-    AxonSlice { buffer_id: u64, layer_addr: LayerAddress, slc_id: u8 },
+    AxonSlice { buffer_id: u64, area_id: usize, slc_id: u8 },
     DataCellSynapseTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize, },
     DataCellDendriteTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize },
     DataCellSomaTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize },
@@ -82,12 +92,12 @@ impl CorticalBuffer {
     //     }
     // }
 
-    pub fn axon_slice<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress, slc_id: u8)
+    pub fn axon_slice<T: OclPrm>(buf: &Buffer<T>, area_id: usize, slc_id: u8)
             -> CorticalBuffer
     {
         CorticalBuffer::AxonSlice {
             buffer_id: util::buffer_uid(buf),
-            layer_addr: layer_addr,
+            area_id: area_id,
             slc_id: slc_id,
         }
     }
@@ -136,15 +146,15 @@ impl CorticalBuffer {
 /// A block of memory outside of the Cortex.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SubcorticalBuffer {
-    AxonSlice { layer_addr: LayerAddress, sub_slc_range: Option<Range<u8>> },
+    AxonSlice { area_id: usize, slc_id: u8 },
     // SubCorticalLayerSource { area_id: usize, layer_id: usize },
 }
 
 impl SubcorticalBuffer {
-    pub fn axon_slice(layer_addr: LayerAddress, sub_slc_range: Option<Range<u8>>) -> SubcorticalBuffer {
+    pub fn axon_slice(area_id: usize, slc_id: u8) -> SubcorticalBuffer {
         SubcorticalBuffer::AxonSlice {
-            layer_addr: layer_addr,
-            sub_slc_range: sub_slc_range,
+            area_id: area_id,
+            slc_id: slc_id,
         }
     }
 }
@@ -153,14 +163,14 @@ impl SubcorticalBuffer {
 /// A block of the thalamic tract.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ThalamicTract {
-    Slice { src_layer_addr: LayerAddress, slc_id: u8 },
+    Slice { area_id: usize, slc_id: u8 },
     // SubCorticalLayerSource { area_id: usize, layer_id: usize },
 }
 
 impl ThalamicTract {
-    pub fn axon_slice(src_layer_addr: LayerAddress, slc_id: u8) -> ThalamicTract {
+    pub fn axon_slice(area_id: usize, slc_id: u8) -> ThalamicTract {
         ThalamicTract::Slice {
-            src_layer_addr: src_layer_addr,
+            area_id: area_id,
             slc_id: slc_id,
         }
     }
@@ -278,8 +288,23 @@ impl ExecutionCommand {
     #[inline] pub fn order_idx(&self) -> Option<usize> { self.order_idx.clone() }
 }
 
+struct MemBlockRwCmdIdxs {
+    writers: Vec<usize>,
+    readers: Vec<usize>,
+}
 
-type MemBlockRws = HashMap<MemoryBlock, (Vec<usize>, Vec<usize>)>;
+impl MemBlockRwCmdIdxs {
+    fn new() -> MemBlockRwCmdIdxs {
+        MemBlockRwCmdIdxs { writers: Vec::with_capacity(16), readers: Vec::with_capacity(16) }
+    }
+
+    fn shrink_to_fit(&mut self) {
+        self.writers.shrink_to_fit();
+        self.readers.shrink_to_fit();
+    }
+}
+
+type MemBlockRwsMap = HashMap<MemoryBlock, MemBlockRwCmdIdxs>;
 
 
 /// A graph of memory accessing commands.
@@ -288,6 +313,7 @@ type MemBlockRws = HashMap<MemoryBlock, (Vec<usize>, Vec<usize>)>;
 pub struct ExecutionGraph {
     commands: Vec<ExecutionCommand>,
     requisites: Vec<Vec<usize>>,
+    order: BTreeMap<usize, usize>,
     locked: bool,
     next_order_idx: usize,
 }
@@ -298,35 +324,42 @@ impl ExecutionGraph {
         ExecutionGraph {
             commands: Vec::with_capacity(256),
             requisites: Vec::with_capacity(256),
+            order: BTreeMap::new(),
             next_order_idx: 0,
             locked: false,
         }
     }
 
     /// Adds a new command.
-    pub fn add_command(&mut self, command: ExecutionCommand) -> usize {
+    pub fn add_command(&mut self, command: ExecutionCommand) -> ExeGrResult<usize> {
+        if self.locked { return Err(ExecutionGraphError::Locked); }
+
         let cmd_idx = self.commands.len();
         self.commands.push(command);
         self.requisites.push(Vec::with_capacity(16));
-        cmd_idx
+        Ok(cmd_idx)
     }
 
     pub fn order_next(&mut self, cmd_idx: usize) -> ExeGrResult<usize> {
+        if self.locked { return Err(ExecutionGraphError::Locked); }
+
         let cmd = self.commands.get_mut(cmd_idx)
             .ok_or(ExecutionGraphError::OrderInvalidCommandIndex(cmd_idx))?;
 
         let order_idx = self.next_order_idx;
         cmd.set_order_idx(order_idx);
+        self.order.insert(order_idx, cmd_idx);
         self.next_order_idx += 1;
         Ok(order_idx)
     }
 
 
-    // fn req_cmds_mut(&mut self, cmd_idx: usize) -> Result<&mut Vec<usize>, ExecutionGraphError>{
+    // fn req_cmds_mut(&mut self, cmd_idx: usize) -> Result<&mut Vec<usize>, ExecutionGraphError> {
     //     self.requisites.get_mut(cmd_idx)
     //         .ok_or(CmnError::new(format!("ExecutionGraph::register_requisite: Invalid command index \
     //             (cmd_idx: {}).", cmd_idx)))
     // }
+
 
     // /// Registers a command as requisite to another.
     // pub fn register_requisite(&mut self, cmd_idx: usize, req_cmd_idx: usize) -> Result<(), ExecutionGraphError> {
@@ -351,9 +384,9 @@ impl ExecutionGraph {
     /// Returns a memory block map which contains every command that reads
     /// from and every command that writes to each memory block.
     ///
-    /// { MemBlockRws = HashMap<MemoryBlock, (Vec<usize>, Vec<usize>)> }
+    /// { MemBlockRwsMap = HashMap<MemoryBlock, (Vec<usize>, Vec<usize>)> }
     ///
-    fn readers_and_writers_by_mem_block(&self) -> MemBlockRws {
+    fn readers_and_writers_by_mem_block(&self) -> MemBlockRwsMap {
         let mut mem_block_rws = HashMap::with_capacity(self.commands.len() * 16);
         println!("\n##### Readers and Writers by Memory Block:");
         println!("#####");
@@ -362,24 +395,26 @@ impl ExecutionGraph {
             println!("##### Command [{}]:", cmd_idx);
 
             for cmd_src_block in cmd.sources().into_iter() {
-                let & mut(_, ref mut readers) = mem_block_rws.entry(cmd_src_block.clone())
-                    .or_insert((Vec::with_capacity(16), Vec::with_capacity(16)));
+                let rw_cmd_idxs = mem_block_rws.entry(cmd_src_block.clone())
+                    .or_insert(MemBlockRwCmdIdxs::new());
 
-                readers.push(cmd_idx);
-
-                println!("#####     Source Block [{}]: {:?}", readers.len() - 1, cmd_src_block);
+                rw_cmd_idxs.readers.push(cmd_idx);
+                println!("#####     Source Block [{}]: {:?}", rw_cmd_idxs.readers.len() - 1, cmd_src_block);
             }
+
+            println!("#####");
 
             for cmd_tar_block in cmd.targets().into_iter() {
-                let & mut(ref mut writers, _) = mem_block_rws.entry(cmd_tar_block.clone())
-                    .or_insert((Vec::with_capacity(16), Vec::with_capacity(16)));
+                let rw_cmd_idxs = mem_block_rws.entry(cmd_tar_block.clone())
+                    .or_insert(MemBlockRwCmdIdxs::new());
 
-                writers.push(cmd_idx);
-
-                println!("#####     Target Block [{}]: {:?}", writers.len() - 1, cmd_tar_block);
+                rw_cmd_idxs.writers.push(cmd_idx);
+                println!("#####     Target Block [{}]: {:?}", rw_cmd_idxs.writers.len() - 1, cmd_tar_block);
             }
 
-            // println!("##### Command [{}]: Sources: {:?}, Targets: {:?}", cmd_idx, cmd.sources(), cmd.targets());
+            println!("#####");
+            println!("#####     Totals: Sources: {}, Targets: {}", cmd.sources().len(), cmd.targets().len());
+            println!("#####");
         }
 
         mem_block_rws.shrink_to_fit();
@@ -388,13 +423,23 @@ impl ExecutionGraph {
 
     /// Returns a list of commands which both precede a command and which
     /// write to a block of memory which is read from by that command.
-    fn preceding_writers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRws) -> BTreeMap<usize, usize> {
+    ///
+    /// [TODO]: Remove redundant, 'superseded', entries.
+    ///
+    fn preceding_writers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRwsMap) -> BTreeMap<usize, usize> {
         let mut pre_writers = BTreeMap::new();
 
-        for cmd_src_block in self.commands[cmd_idx].sources().iter() {
-            let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().1;
+        for (cmd_src_block_idx, cmd_src_block) in self.commands[cmd_idx].sources().iter().enumerate() {
+            let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().writers;
 
-            for &writer_cmd_idx in block_writers.iter()/*.filter(|&&wci| wci != cmd_idx)*/ {
+            // TEMP:
+                let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().readers;
+            //
+
+            // println!("##### Command [{}]: Source Block [{}]: Writers: {:?}, Readers: {:?}", cmd_idx,
+            //     cmd_src_block_idx, block_writers, block_readers);
+
+            for &writer_cmd_idx in block_writers.iter() {
                 let cmd_order_idx = self.commands[writer_cmd_idx].order_idx().expect(
                     "ExecutionGraph::preceeding_writers: Command order index not set.");
 
@@ -402,19 +447,31 @@ impl ExecutionGraph {
             }
         }
 
-        // println!("##### Command [{}]: Preceeding Writers: {:?}", cmd_idx, pre_writers);
+        let cmd_order_idx = self.commands[cmd_idx].order_idx().unwrap();
+        println!("##### Command [{}: {}]: Preceeding Writers: {:?}", cmd_order_idx, cmd_idx, pre_writers);
+        // println!("#####");
         pre_writers
     }
 
     /// Returns a list of commands which both follow a command and which read
     /// from a block of memory which is written to by that command.
-    fn following_readers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRws) -> BTreeMap<usize, usize> {
+    ///
+    /// [TODO]: Remove redundant, 'superseded', entries
+    ///
+    fn following_readers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRwsMap) -> BTreeMap<usize, usize> {
         let mut fol_readers = BTreeMap::new();
 
-        for cmd_src_block in self.commands[cmd_idx].targets().iter() {
-            let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().0;
+        for (cmd_tar_block_idx, cmd_tar_block) in self.commands[cmd_idx].targets().iter().enumerate() {
+            // TEMP:
+                let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_tar_block).unwrap().writers;
+            //
 
-            for &reader_cmd_idx in block_readers.iter()/*.filter(|&&rci| rci != cmd_idx)*/ {
+            let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_tar_block).unwrap().readers;
+
+                // println!("##### Command [{}]: Target Block [{}]: Writers: {:?}, Readers: {:?},", cmd_idx,
+                //     cmd_tar_block_idx, block_writers, block_readers);
+
+            for &reader_cmd_idx in block_readers.iter() {
                 let cmd_order_idx = self.commands[reader_cmd_idx].order_idx().expect(
                     "ExecutionGraph::preceeding_writers: Command order index not set.");
 
@@ -422,12 +479,17 @@ impl ExecutionGraph {
             }
         }
 
-        // println!("##### Command [{}]: Following Readers: {:?}", cmd_idx, fol_readers);
+        let cmd_order_idx = self.commands[cmd_idx].order_idx().unwrap();
+        println!("##### Command [{}: {}]: Following Readers: {:?}", cmd_order_idx, cmd_idx, fol_readers);
+        // println!("#####");
         fol_readers
     }
 
     /// Populates the list of requisite commands for each command.
     pub fn populate_requisites(&mut self) {
+        assert!(self.commands.len() == self.requisites.len() &&
+            self.commands.len() == self.order.len());
+
         let mem_block_rws = self.readers_and_writers_by_mem_block();
 
         // println!("\n########## Memory Block Reader/Writers: {:#?}\n", mem_block_rws);
@@ -435,25 +497,32 @@ impl ExecutionGraph {
         println!("\n##### Preceeding Writers and Following Readers:");
         println!("#####");
 
-        for (cmd_idx, cmd) in self.commands.iter().enumerate() {
+        for (_, &cmd_idx) in self.order.iter() {
+            // println!("##### Command [{}]: ", cmd_idx);
+
             let pre_writers = self.preceding_writers(cmd_idx, &mem_block_rws);
-            println!("##### Command [{}]: Preceeding Writers: {:?}", cmd_idx, pre_writers);
+            // println!("##### Command [{}]: Preceeding Writers: {:?}", cmd_idx, pre_writers);
 
             // for cmd_src_block in cmd.sources().into_iter() {
             //     let (ref src_block_writers, _) = mem_block_rws[&cmd_src_block];
             // }
 
             let fol_readers = self.following_readers(cmd_idx, &mem_block_rws);
-            println!("##### Command [{}]: Following Readers: {:?}", cmd_idx, fol_readers);
+            // println!("##### Command [{}]: Following Readers: {:?}", cmd_idx, fol_readers);
 
             // for cmd_tar_block in cmd.targets().into_iter() {
 
             // }
+            println!("#####");
         }
+
+        self.locked = true;
     }
 
     /// Returns the list of requisite events for a command.
     pub fn get_req_events(&self, cmd_idx: usize) -> ExeGrResult<Vec<Event>> {
+        if !self.locked { return Err(ExecutionGraphError::Unlocked); }
+
         let req_idxs = self.requisites.get(cmd_idx)
             .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
 

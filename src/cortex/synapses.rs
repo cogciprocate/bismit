@@ -218,7 +218,7 @@ impl Synapses {
 
             let mut cmd_srcs: Vec<CorticalBuffer> = syn_src_slices.src_slc_ids_by_tft(tft_id)
                 .unwrap().iter().map(|&slc_id|
-                    CorticalBuffer::axon_slice(&axons.states, layer_addr.clone(), slc_id))
+                    CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), slc_id))
                 .collect();
 
             cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_u_offs, layer_addr.clone(), tft_id));
@@ -227,7 +227,7 @@ impl Synapses {
 
             exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(cmd_srcs,
                 vec![CorticalBuffer::data_syn_tft(&states, layer_addr, tft_id)]
-            )));
+            ))?);
 
             // exe_graph.register_requisite(0, 0)?;
         }

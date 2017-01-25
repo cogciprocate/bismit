@@ -129,7 +129,7 @@ impl PyramidalLayer {
                     CorticalBuffer::data_soma_tft(&tft_best_den_states_raw, layer_addr, tft_id),
                     CorticalBuffer::data_soma_tft(&tft_best_den_states, layer_addr, tft_id),
                 ]
-            )));
+            ))?);
 
             // let syns_per_tftsec = dens.syns().syns_per_tftsec();
             // let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
@@ -166,7 +166,7 @@ impl PyramidalLayer {
 
             let mut tft_ltp_cmd_srcs: Vec<CorticalBuffer> = pyr_lyr_slc_ids.iter()
                 .map(|&slc_id|
-                    CorticalBuffer::axon_slice(&axons.states, layer_addr, slc_id))
+                    CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), slc_id))
                 .collect();
 
             tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&states, layer_addr));
@@ -182,7 +182,7 @@ impl PyramidalLayer {
                     CorticalBuffer::data_soma_tft(&flag_sets, layer_addr, tft_id),
                     CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, tft_id),
                 ]
-            )));
+            ))?);
         }
 
         let pyr_cycle_kernel = ocl_pq.create_kernel("pyr_cycle")?
@@ -207,7 +207,7 @@ impl PyramidalLayer {
         let cycle_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
             cycle_cmd_srcs,
             vec![CorticalBuffer::data_soma_lyr(&states, layer_addr)]
-        ));
+        ))?;
 
         assert!(den_count_ttl == dens.count());
         assert!(syn_count_ttl == dens.syns().count());
