@@ -5,7 +5,7 @@ use std::num::Wrapping;
 use std::collections::{HashMap, BTreeMap};
 use std::error;
 use std::fmt;
-use ocl::{Event, EventList, Buffer, OclPrm, Error as OclError};
+use ocl::{Event, Buffer, OclPrm, Error as OclError};
 use ocl::core::Event as EventCore;
 use ocl::ffi::cl_event;
 use map::LayerAddress;
@@ -92,7 +92,7 @@ pub enum CorticalBuffer {
     DataCellDendriteTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize },
     DataCellSomaTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize },
     DataCellSomaLayer { buffer_id: u64, layer_addr: LayerAddress },
-    ControlCellSomaLayer { buffer_id: u64, area_id: usize, layer_id: usize },
+    ControlCellSomaLayer { buffer_id: u64, layer_addr: LayerAddress },
 }
 
 impl CorticalBuffer {
@@ -154,6 +154,15 @@ impl CorticalBuffer {
     }
 
     pub fn data_soma_lyr<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress)
+            -> CorticalBuffer
+    {
+        CorticalBuffer::DataCellSomaLayer {
+            buffer_id: util::buffer_uid(buf),
+            layer_addr: layer_addr,
+        }
+    }
+
+    pub fn control_soma_lyr<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress)
             -> CorticalBuffer
     {
         CorticalBuffer::DataCellSomaLayer {
@@ -259,18 +268,11 @@ impl ExecutionCommandDetails {
 /// A memory accessing command.
 ///
 //
-// [TODO]: Consider storing a `cl_event` instead of an `ocl::Event`:
-// ```
-//     *event.core_as_ref()
-//         .expect(&format!("ExecutionGraph::get_req_events: Empty 'ocl::Event' \
-//            found for command [{}]", req_idx))
-//         .as_ptr_ref()
-// ```
 //
 #[derive(Debug, Clone)]
 pub struct ExecutionCommand {
     details: ExecutionCommandDetails,
-    event: Option<Event>,
+    event: Option<EventCore>,
     event_cycle_id: usize,
     order_idx: Option<usize>,
 }
@@ -316,7 +318,7 @@ impl ExecutionCommand {
 
     #[inline] pub fn sources(&self) -> Vec<MemoryBlock> { self.details.sources() }
     #[inline] pub fn targets(&self) -> Vec<MemoryBlock> { self.details.targets() }
-    #[inline] pub fn event(&self) -> Option<&Event> { self.event.as_ref() }
+    #[inline] pub fn event(&self) -> Option<&EventCore> { self.event.as_ref() }
     #[inline] pub fn order_idx(&self) -> Option<usize> { self.order_idx.clone() }
 }
 
@@ -456,9 +458,9 @@ impl ExecutionGraph {
         for (cmd_src_block_idx, cmd_src_block) in self.commands[cmd_idx].sources().iter().enumerate() {
             let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().writers;
 
-            // TEMP:
-                let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().readers;
-            //
+            // // TEMP:
+            //     let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().readers;
+            // //
 
             // println!("##### Command [{}]: Source Block [{}]: Writers: {:?}, Readers: {:?}", cmd_idx,
             //     cmd_src_block_idx, block_writers, block_readers);
@@ -486,9 +488,9 @@ impl ExecutionGraph {
         let mut fol_readers = BTreeMap::new();
 
         for (cmd_tar_block_idx, cmd_tar_block) in self.commands[cmd_idx].targets().iter().enumerate() {
-            // TEMP:
-                let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_tar_block).unwrap().writers;
-            //
+            // // TEMP:
+            //     let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_tar_block).unwrap().writers;
+            // //
 
             let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_tar_block).unwrap().readers;
 
@@ -598,10 +600,12 @@ impl ExecutionGraph {
             if let Some(event) = cmd.event() {
                 unsafe {
                     self.requisite_cmd_events.get_unchecked_mut(cmd_idx).push(
-                        *event.core_as_ref()
-                            .expect(&format!("ExecutionGraph::get_req_events: Empty 'ocl::Event' \
-                                found for command [{}]", req_idx))
-                            .as_ptr_ref()
+                        // *event
+                        //     .core_as_ref()
+                        //     .expect(&format!("ExecutionGraph::get_req_events: Empty 'ocl::Event' \
+                        //         found for command [{}]", req_idx))
+                        //     .as_ptr_ref()
+                        *event.as_ptr_ref()
                     );
                 }
             }

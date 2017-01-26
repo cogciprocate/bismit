@@ -1,15 +1,5 @@
-// use num;
-// use std::ops;
-// use rand;
-// use std::mem;
-// use rand::distributions::{Normal, IndependentSample, Range};
-// use rand::{ThreadRng};
-// use num::{Integer};
-// use std::default::{Default};
-// use std::fmt::{Display};
-
-use cmn::{CorticalDims};
-use map::{AreaMap};
+use cmn::{CorticalDims, CmnResult};
+use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer};
 use map::CellScheme;
 use cortex::AxonSpace;
@@ -18,15 +8,12 @@ use cortex::AxonSpace;
 
 pub struct InhibitoryInterneuronNetwork {
     layer_name: &'static str,
+    layer_id: usize,
     pub dims: CorticalDims,
-    // cell_scheme: CellScheme,
-    //kern_cycle_pre: ocl::Kernel,
-    //kern_cycle_wins: ocl::Kernel,
-    //kern_cycle_post: ocl::Kernel,
-    //kern_post_inhib: ocl::Kernel,
 
     kern_inhib_simple: Kernel,
     kern_inhib_passthrough: Kernel,
+    exe_cmd_idx: usize,
 
     pub spi_ids: Buffer<u8>,
     pub wins: Buffer<u8>,
@@ -35,26 +22,20 @@ pub struct InhibitoryInterneuronNetwork {
 }
 
 impl InhibitoryInterneuronNetwork {
-    pub fn new(layer_name: &'static str, dims: CorticalDims, _: CellScheme, _: &AreaMap, src_soma: &Buffer<u8>, src_base_axn_slc: u8, axns: &AxonSpace, /*aux: &Aux,*/ ocl_pq: &ProQue) -> InhibitoryInterneuronNetwork {
-
-        //let dims.width = col_dims.width >> cmn::ASPINY_SPAN_LOG2;
-
-        //let dims = col_dims;
-
-        //let padding = cmn::ASPINY_SPAN;
-        //let padding = 0;
-
-        // let spi_ids = Buffer::<u8>::with_padding(dims, 0u8, ocl, padding);
-        // let wins = Buffer::<u8>::with_padding(dims, 0u8, ocl, padding);
-        // let states = Buffer::<u8>::with_padding(dims, cmn::STATE_ZERO, ocl, padding);
+    pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
+            area_map: &AreaMap, src_soma: &Buffer<u8>, src_layer_id: usize, src_base_axn_slc: u8,
+            src_layer_tft_count: usize, axns: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
+        -> CmnResult<InhibitoryInterneuronNetwork>
+    {
+        // let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
         let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
         let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
 
-
-        let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple").expect("[FIXME]: HANDLE ME")
-            // .expect("InhibitoryInterneuronNetwork::new()")
+        // Simple (active) kernel:
+        let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple")
+            .expect("InhibitoryInterneuronNetwork::new()")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
@@ -64,44 +45,55 @@ impl InhibitoryInterneuronNetwork {
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(&axns.states);
 
-        let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough").expect("[FIXME]: HANDLE ME")
-            // .expect("InhibitoryInterneuronNetwork::new()")
-            //.lws(SpatialDims::Three(1, 8, 8 as usize))
+        // Passthrough kernel:
+        let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough")
+            .expect("InhibitoryInterneuronNetwork::new()")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)
             .arg_buf(&axns.states);
 
-        InhibitoryInterneuronNetwork {
+
+        let exe_cmd_srcs = (0..src_layer_tft_count)
+            .map(|src_tft_id| CorticalBuffer::data_den_tft(&src_soma,
+                LayerAddress::new(area_map.area_id(), src_layer_id), src_tft_id))
+            .collect();
+
+        // Set up execution command:
+        let exe_cmd_tars = (src_base_axn_slc..src_base_axn_slc + dims.depth())
+            .map(|slc_id| CorticalBuffer::axon_slice(&axns.states, area_map.area_id(), slc_id))
+            .collect();
+
+        let exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+            exe_cmd_srcs,
+            exe_cmd_tars,
+        ))?;
+
+
+        Ok(InhibitoryInterneuronNetwork {
             layer_name: layer_name,
+            layer_id: layer_id,
             dims: dims,
-            // cell_scheme: cell_scheme,
-            //kern_cycle_pre: kern_cycle_pre,
-            //kern_cycle_wins: kern_cycle_wins,
-            //kern_cycle_post: kern_cycle_post,
-            //kern_post_inhib: kern_post_inhib,
 
             kern_inhib_simple: kern_inhib_simple,
             kern_inhib_passthrough: kern_inhib_passthrough,
+            exe_cmd_idx: exe_cmd_idx,
 
             spi_ids: spi_ids,
             wins: wins,
             states: states,
-        }
+        })
+    }
+
+    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        exe_graph.order_next(self.exe_cmd_idx)?;
+
+        Ok(())
     }
 
     #[inline]
     pub fn cycle(&mut self, bypass: bool) {
-        // self.kern_cycle_pre.enq().expect("[FIXME]: HANDLE ME!");
-
-
-        // for i in 0..1 { // <<<<< (was 0..8)
-        //      self.kern_cycle_wins.enq().expect("[FIXME]: HANDLE ME!");
-        // }
-
-        // self.kern_cycle_post.enq().expect("[FIXME]: HANDLE ME!");
-        // self.kern_post_inhib.enq().expect("[FIXME]: HANDLE ME!");
         if bypass {
             self.kern_inhib_passthrough.enq().expect("[FIXME]: HANDLE ME!");
         } else {
@@ -109,8 +101,7 @@ impl InhibitoryInterneuronNetwork {
         }
     }
 
-    pub fn layer_name(&self) -> &'static str {
-        self.layer_name
-    }
+    #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
 
 }

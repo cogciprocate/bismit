@@ -15,17 +15,20 @@ const PRINT_DEBUG: bool = false;
 
 pub struct PyramidalLayer {
     layer_name: &'static str,
-    layer_id: usize,
+    // layer_id: usize,
+    layer_addr: LayerAddress,
     dims: CorticalDims,
     tft_count: usize,
     cell_scheme: CellScheme,
     pyr_tft_ltp_kernels: Vec<Kernel>,
     pyr_tft_cycle_kernels: Vec<Kernel>,
     pyr_cycle_kernel: Kernel,
-    base_axn_slc: u8,
+    axn_slc_ids: Vec<u8>,
+    // base_axn_slc: u8,
     pyr_lyr_axn_idz: u32,
     rng: XorShiftRng,
     states: Buffer<u8>,
+    best_den_states_raw: Buffer<u8>,
     flag_sets: Buffer<u8>,
     tft_best_den_ids: Buffer<u8>,
     tft_best_den_states_raw: Buffer<u8>,
@@ -45,8 +48,8 @@ impl PyramidalLayer {
     {
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
         // [FIXME]: Convert to layer_id:
-        let pyr_lyr_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
-        let base_axn_slc = pyr_lyr_slc_ids[0];
+        let axn_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
+        let base_axn_slc = axn_slc_ids[0];
         let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
         // let tfts_per_cel = area_map.layer_dst_srcs(layer_name).len() as u32;
@@ -60,6 +63,7 @@ impl PyramidalLayer {
         let celtft_count = cel_count * tft_count;
 
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
+        let best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
         let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
         let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None).unwrap();
         let tft_best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None).unwrap();
@@ -143,7 +147,7 @@ impl PyramidalLayer {
                 .arg_buf(&axons.states)
                 .arg_buf(&states)
                 .arg_buf(&tft_best_den_ids)
-                .arg_buf(&tft_best_den_states)
+                .arg_buf(&tft_best_den_states_raw)
                 .arg_buf(dens.states())
                 .arg_buf(dens.syns().states())
                 // .arg_scl(tfts_per_cel as u32)
@@ -164,14 +168,14 @@ impl PyramidalLayer {
                 .arg_buf(dens.syns().strengths())
             );
 
-            let mut tft_ltp_cmd_srcs: Vec<CorticalBuffer> = pyr_lyr_slc_ids.iter()
+            let mut tft_ltp_cmd_srcs: Vec<CorticalBuffer> = axn_slc_ids.iter()
                 .map(|&slc_id|
                     CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), slc_id))
                 .collect();
 
             tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&states, layer_addr));
             tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_ids, layer_addr, tft_id));
-            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states, layer_addr, tft_id));
+            tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states_raw, layer_addr, tft_id));
             tft_ltp_cmd_srcs.push(CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id));
             tft_ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, tft_id));
 
@@ -191,6 +195,7 @@ impl PyramidalLayer {
             .arg_buf(&tft_best_den_states_raw)
             .arg_buf(&tft_best_den_states)
             .arg_scl(tft_count as u32)
+            .arg_buf(&best_den_states_raw)
             .arg_buf(&states)
             .arg_buf_named::<i32>("aux_ints_0", None)
             .arg_buf_named::<i32>("aux_ints_1", None)
@@ -206,7 +211,10 @@ impl PyramidalLayer {
 
         let cycle_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
             cycle_cmd_srcs,
-            vec![CorticalBuffer::data_soma_lyr(&states, layer_addr)]
+            vec![
+                CorticalBuffer::data_soma_lyr(&states, layer_addr),
+                CorticalBuffer::data_soma_lyr(&best_den_states_raw, layer_addr),
+            ]
         ))?;
 
         assert!(den_count_ttl == dens.count());
@@ -214,17 +222,20 @@ impl PyramidalLayer {
 
         Ok(PyramidalLayer {
             layer_name: layer_name,
-            layer_id: layer_id,
+            // layer_id: layer_id,
+            layer_addr: layer_addr,
             dims: dims,
             tft_count: tft_count,
             cell_scheme: cell_scheme,
             pyr_tft_ltp_kernels: pyr_tft_ltp_kernels,
             pyr_tft_cycle_kernels: pyr_tft_cycle_kernels,
             pyr_cycle_kernel: pyr_cycle_kernel,
-            base_axn_slc: base_axn_slc,
+            axn_slc_ids: axn_slc_ids,
+            // base_axn_slc: base_axn_slc,
             pyr_lyr_axn_idz: pyr_lyr_axn_idz,
             rng: rand::weak_rng(),
             states: states,
+            best_den_states_raw: best_den_states_raw,
             flag_sets: flag_sets,
             tft_best_den_ids: tft_best_den_ids,
             tft_best_den_states_raw: tft_best_den_states_raw,
@@ -292,10 +303,11 @@ impl PyramidalLayer {
     // // USED BY AUX
     // #[inline] pub fn kern_cycle(&mut self) -> &mut Kernel { &mut self.kern_cycle }
 
-    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_addr.layer_id() }
+    #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
+    #[inline] pub fn best_den_states_raw(&self) -> &Buffer<u8> { &self.best_den_states_raw }
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
-    // #[inline] pub fn pyr_states(&self) -> &Buffer<u8> { &self.pyr_states }
     #[inline] pub fn tft_best_den_ids(&self) -> &Buffer<u8> { &self.tft_best_den_ids }
     #[inline] pub fn tft_best_den_states_raw(&self) -> &Buffer<u8> { &self.tft_best_den_states_raw }
     #[inline] pub fn tft_best_den_states(&self) -> &Buffer<u8> { &self.tft_best_den_states }
@@ -355,7 +367,8 @@ impl DataCellLayer for PyramidalLayer {
     #[inline] fn soma(&self) -> &Buffer<u8> { &self.states }
     #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { &mut self.states }
     #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] fn base_axn_slc(&self) -> u8 { self.base_axn_slc }
+    #[inline] fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
+    #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
     #[inline] fn tft_count(&self) -> usize { self.tft_count }
     #[inline] fn layer_name(&self) -> &'static str { self.layer_name }
     #[inline] fn cell_scheme(&self) -> &CellScheme { &self.cell_scheme }

@@ -1,8 +1,8 @@
 use std::ops::Range;
 // use rand;
 
-use cmn::{self, CorticalDims, DataCellLayer};
-use map::{AreaMap};
+use cmn::{self, CorticalDims, DataCellLayer, CmnResult};
+use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{self, ProQue, SpatialDims, Buffer, EventList, Result as OclResult};
 use ocl::traits::OclPrm;
 use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer};
@@ -12,24 +12,37 @@ pub use self::tests::{MinicolumnsTest};
 
 
 pub struct Minicolumns {
+    layer_id: usize,
     dims: CorticalDims,
-    aff_out_axn_slc: u8,
-    aff_out_axn_idz: u32,
+    axn_slc_id: u8,
+    lyr_axn_idz: u32,
     ff_layer_axn_idz: usize,
-    kern_output: ocl::Kernel,
     kern_activate: ocl::Kernel,
+    activate_exe_cmd_idx: usize,
+    kern_output: ocl::Kernel,
+    output_exe_cmd_idx: usize,
+
     // rng: rand::XorShiftRng,
     pub flag_sets: Buffer<u8>,
     pub best_den_states: Buffer<u8>,
 }
 
 impl Minicolumns {
-    pub fn new(dims: CorticalDims, area_map: &AreaMap, axons: &AxonSpace,
-                ssts: &SpinyStellateLayer, pyrs: &PyramidalLayer, ocl_pq: &ProQue
-            ) -> Minicolumns
+    pub fn new(layer_id: usize, dims: CorticalDims, area_map: &AreaMap, axons: &AxonSpace,
+                ssts: &SpinyStellateLayer, pyrs: &PyramidalLayer, ocl_pq: &ProQue,
+                exe_graph: &mut ExecutionGraph,
+            ) -> CmnResult<Minicolumns>
     {
         assert!(dims.depth() == 1);
+        let mcol_axn_slc_range = area_map.layer(layer_id).unwrap().slc_range().unwrap();
+        assert!(mcol_axn_slc_range.len() == 1);
+        assert!(ssts.dims().depth() == 1, "Minicolumns cannot yet handle spiny stellate layers \
+            with depth greater than 1.");
+        assert!(ssts.dims().depth() as usize == ssts.axn_slc_ids().len());
+        let sst_axn_slc_id = ssts.axn_slc_ids()[0];
         assert!(dims.v_size() == pyrs.dims().v_size() && dims.u_size() == pyrs.dims().u_size());
+
+        let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
         // UPDATE ME TO AREA_MAP SETUP
         let ff_layer_axn_idz = ssts.axn_range().start;
@@ -45,59 +58,107 @@ impl Minicolumns {
         assert!(area_map.aff_out_slcs().len() == 1,
             "Afferent output slices currently limited to a maximum of 1.");
 
-        let aff_out_axn_slc = area_map.aff_out_slcs()[0];
-        let aff_out_axn_idz = area_map.axn_idz(aff_out_axn_slc);
+        // let aff_out_axn_slc = area_map.aff_out_slcs()[0];
+        let mcol_axn_slc_id = mcol_axn_slc_range.start;
+        let mcol_lyr_axn_idz = area_map.axn_idz(mcol_axn_slc_id);
         let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
-        let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs").expect("[FIXME]: HANDLE ME")
-            // .expect("Minicolumns::new()")
+        // Activation kernel:
+        let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs")
+            .expect("Minicolumns::new()")
             .gws(SpatialDims::Three(pyrs.dims().depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
-            .arg_buf(&pyrs.tft_best_den_states())
+            .arg_buf(&pyrs.best_den_states_raw())
+            .arg_buf(&pyrs.states())
             .arg_scl(ff_layer_axn_idz as u32)
             .arg_scl(pyr_lyr_axn_idz)
             // .arg_scl(pyrs.cell_scheme().dens_per_tft_l2)
             .arg_buf(&pyrs.flag_sets())
-            .arg_buf(&pyrs.states())
-            .arg_buf_named::<i32>("aux_ints_0", None)
+            // .arg_buf_named::<i32>("aux_ints_0", None)
             // .arg_buf_named::<i32>("aux_ints_1", None)
             .arg_buf(&axons.states);
 
+        // Activation execution command:
+        let activate_cmd_srcs = vec![
+            CorticalBuffer::control_soma_lyr(&flag_sets, layer_addr),
+            CorticalBuffer::control_soma_lyr(&best_den_states, layer_addr),
+            CorticalBuffer::data_soma_lyr(&pyrs.best_den_states_raw(), pyrs.layer_addr()),
+            CorticalBuffer::data_soma_lyr(&pyrs.states(), pyrs.layer_addr()),
+            CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), sst_axn_slc_id),
+        ];
 
-        let kern_output = ocl_pq.create_kernel("mcol_output").expect("[FIXME]: HANDLE ME")
-            // .expect("Minicolumns::new()")
+        let mut activate_cmd_tars = pyrs.axn_slc_ids().iter()
+            .map(|&pyr_slc_id| CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(),
+                pyr_slc_id))
+            .collect::<Vec<_>>();
+
+        activate_cmd_tars.push(CorticalBuffer::data_soma_lyr(&pyrs.flag_sets(), pyrs.layer_addr()));
+
+        let activate_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+            activate_cmd_srcs, activate_cmd_tars))?;
+
+        // Output kernel:
+        let kern_output = ocl_pq.create_kernel("mcol_output")
+            .expect("Minicolumns::new()")
             .gws(SpatialDims::Two(dims.v_size() as usize, dims.u_size() as usize))
+            .arg_buf(&pyrs.best_den_states_raw())
             .arg_buf(&pyrs.soma())
             // .arg_scl(pyrs.tfts_per_cel())
             .arg_scl(ff_layer_axn_idz as u32)
             .arg_scl(pyr_depth)
-            .arg_scl(aff_out_axn_slc)
-            .arg_buf(&pyrs.tft_best_den_states())
+            .arg_scl(mcol_axn_slc_id)
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
             .arg_buf(&axons.states);
 
+        // Output execution command:
+        let output_cmd_srcs = vec![
+            CorticalBuffer::data_soma_lyr(&pyrs.best_den_states_raw(), pyrs.layer_addr()),
+            CorticalBuffer::data_soma_lyr(&pyrs.soma(), pyrs.layer_addr()),
+        ];
 
-        Minicolumns {
+        let mut output_cmd_tars = vec![
+            CorticalBuffer::control_soma_lyr(&flag_sets, layer_addr),
+            CorticalBuffer::control_soma_lyr(&best_den_states, layer_addr),
+            CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), mcol_axn_slc_id),
+        ];
+
+        let output_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+            output_cmd_srcs, output_cmd_tars))?;
+
+        Ok(Minicolumns {
+            layer_id: layer_id,
             dims: dims,
-            aff_out_axn_slc: aff_out_axn_slc,
-            aff_out_axn_idz: aff_out_axn_idz,
+            axn_slc_id: mcol_axn_slc_id,
+            lyr_axn_idz: mcol_lyr_axn_idz,
             ff_layer_axn_idz: ff_layer_axn_idz,
-            kern_output: kern_output,
             kern_activate: kern_activate,
+            activate_exe_cmd_idx: activate_exe_cmd_idx,
+            kern_output: kern_output,
+            output_exe_cmd_idx: output_exe_cmd_idx,
             // rng: rand::weak_rng(),
             flag_sets: flag_sets,
             best_den_states: best_den_states,
-        }
+        })
+    }
+
+    pub fn set_exe_order_activate(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        exe_graph.order_next(self.activate_exe_cmd_idx)?;
+        Ok(())
+    }
+
+    pub fn set_exe_order_output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        exe_graph.order_next(self.output_exe_cmd_idx)?;
+        Ok(())
     }
 
     // <<<<< TODO: DEPRICATE >>>>>
     pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
             -> OclResult<()>
     {
-        let activate_using_aux = true;
+        let activate_using_aux = false;
         let output_using_aux = false;
 
         if activate_using_aux {
@@ -143,13 +204,13 @@ impl Minicolumns {
 
     // [FIXME]: CONVERT TO A RANGE (area_map.aff_out_slc_range)
     #[inline]
-    pub fn aff_out_axn_slc(&self) -> u8 {
-        self.aff_out_axn_slc
+    pub fn axn_slc_id(&self) -> u8 {
+        self.axn_slc_id
     }
 
     // AXN_OUTPUT_RANGE(): USED FOR TESTING / DEBUGGING PURPOSES
     pub fn aff_out_axn_range(&self) -> Range<usize> {
-        self.aff_out_axn_idz as usize..self.aff_out_axn_idz as usize + self.dims.columns() as usize
+        self.lyr_axn_idz as usize..self.lyr_axn_idz as usize + self.dims.columns() as usize
     }
 
     #[inline]
@@ -159,9 +220,9 @@ impl Minicolumns {
         self.flag_sets.len()
     }
 
-    #[inline]
-    pub fn kern_activate(&self) -> &ocl::Kernel { &self.kern_activate }
-    pub fn kern_output(&self) -> &ocl::Kernel { &self.kern_output }
+    #[inline] pub fn kern_activate(&self) -> &ocl::Kernel { &self.kern_activate }
+    #[inline] pub fn kern_output(&self) -> &ocl::Kernel { &self.kern_output }
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
 }
 
 

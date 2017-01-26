@@ -179,15 +179,15 @@ impl AreaMap {
         let psal_layer_vec = self.layers.layers_containing_tags(map::PSAL);
         assert_eq!(psal_layer_vec.len(), 1);
         psal_layer_vec[0]
-     }
+    }
 
-     // NEW
-     #[inline]
-     pub fn ptal_layer(&self) -> &LayerInfo {
+    // NEW
+    #[inline]
+    pub fn ptal_layer(&self) -> &LayerInfo {
         let ptal_layer_vec = self.layers.layers_containing_tags(map::PTAL);
         assert_eq!(ptal_layer_vec.len(), 1);
         ptal_layer_vec[0]
-     }
+    }
 
     /// Returns the axon range for a single layer with tags meshing with
     /// `layer_tags`.

@@ -1010,16 +1010,16 @@ __kernel void mcol_activate_pyrs(
             __global uchar const* const mcol_flag_sets, // COL
             __global uchar const* const mcol_best_den_states,
             // __global uchar const* const cel_tft_best_den_ids,
-            __global uchar const* const pyr_best_den_states,
+            __global uchar const* const pyr_best_den_states_raw,
+            __global uchar const* const pyr_states,
             // __global uchar const* const den_states,
             // __global uchar const* const cel_tft_best_den_ids, // ADD ME?
             __private uint const ssts_axn_idz,         // Primary spatial associative cell layer (ssts)
             __private uint const pyrs_axn_idz,          // Primary temporal associative cell layer (pyrs)
             // __private uchar const pyr_axn_slc_base,
             // __private uchar const dens_per_tft_l2,
-            __global uchar* const pyr_flag_sets,
-            __global uchar* const pyr_states,
-            __global int* const aux_ints_0,
+            __global uchar* const pyr_flag_sets,            
+            // __global int* const aux_ints_0,
             __global uchar* const axn_states) 
 {
     uint const slc_id_lyr = get_global_id(0);
@@ -1029,12 +1029,11 @@ __kernel void mcol_activate_pyrs(
     uint const u_size = get_global_size(2);
 
     // uint const cel_idx = get_global_id(0);
-
+    uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
     uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
     // int idx_is_safe = 0;
     // uint const pyr_axn_idx = axn_idx_3d_unsafe(pyr_axn_slc_base + slc_id_lyr, v_id, 0, u_id, 0, &idx_is_safe);
-    uint const pyr_axn_idx = pyrs_axn_idz + cel_idx;
-    uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
+    uint const pyr_axn_idx = pyrs_axn_idz + cel_idx;    
 
     // ******************
 
@@ -1042,7 +1041,7 @@ __kernel void mcol_activate_pyrs(
     // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
     // uint const den_ofs = cel_idx << dens_per_tft_l2;                    // OLD
     // uint const best_den_idx = den_ofs + pyr_best_den_ids[cel_idx];     // OLD
-    uchar const best_den_state = pyr_best_den_states[cel_idx];
+    uchar const best_den_state = pyr_best_den_states_raw[cel_idx];
 
     uchar const mcol_best_col_den_state = mcol_best_den_states[col_id];
     uchar const psa_cel_axn_state = axn_states[ssts_axn_idz + col_id];
@@ -1266,7 +1265,7 @@ __kernel void pyr_tft_ltp(
             __global uchar const* const axn_states,
             __global uchar const* const cel_states,
             __global uchar const* const tft_cel_best_den_ids,
-            __global uchar const* const tft_cel_best_den_states,
+            __global uchar const* const tft_cel_best_den_states_raw,
             __global uchar const* const den_states,
             __global uchar const* const syn_states,
 
@@ -1312,7 +1311,7 @@ __kernel void pyr_tft_ltp(
         int const cel_prev_concrete = (cel_flag_set & (CEL_PREV_CONCRETE_FLAG)) == (CEL_PREV_CONCRETE_FLAG);
         int const cel_prev_vatic = (cel_flag_set & (CEL_PREV_VATIC_FLAG)) == (CEL_PREV_VATIC_FLAG);
         int const cel_best_in_col = (cel_flag_set & (CEL_BEST_IN_COL_FLAG)) == (CEL_BEST_IN_COL_FLAG);
-        int const tft_is_active = tft_cel_best_den_states[tft_cel_idx] != 0;
+        int const tft_is_active = tft_cel_best_den_states_raw[tft_cel_idx] != 0;
 
         // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
         // uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
@@ -1453,6 +1452,7 @@ __kernel void pyr_cycle(
             __global uchar const* const celtft_best_den_states_raw,
             __global uchar const* const celtft_best_den_states,
             __private uint const tft_count,
+            __global uchar* const pyr_best_den_states_raw,
             __global uchar* const pyr_states,
             __global int* const aux_ints_0,
             __global int* const aux_ints_1)
@@ -1461,6 +1461,7 @@ __kernel void pyr_cycle(
     uint const cel_count = get_global_size(0);
     // uint const celtft_idx = mul24(cel_idx, tft_count);
 
+    uchar pyr_best_den_state_raw = 0;
     uchar pyr_state = 0;
 
     for (uint tft_id = 0; tft_id < tft_count; tft_id++) {
@@ -1468,7 +1469,7 @@ __kernel void pyr_cycle(
 
         uchar pyr_best_den_state_raw = celtft_best_den_states_raw[celtft_idx];
         uchar pyr_best_den_state = celtft_best_den_states[celtft_idx];
-        pyr_state = max(pyr_state, pyr_best_den_state_raw);
+        pyr_best_den_state_raw = max(pyr_state, pyr_best_den_state_raw);
         pyr_state = max(pyr_state, pyr_best_den_state);
 
         // if (cel_idx == 199) {
@@ -1480,6 +1481,7 @@ __kernel void pyr_cycle(
     }
 
     // aux_ints_1[cel_idx] = pyr_state;
+    pyr_best_den_states_raw[cel_idx] = pyr_best_den_state_raw;
     pyr_states[cel_idx] = pyr_state;
 }
 
@@ -1488,13 +1490,13 @@ __kernel void pyr_cycle(
 //        - rename coming
 //
 __kernel void mcol_output(
+            __global uchar const* const pyr_best_den_states,
             __global uchar const* const pyr_states,                
             // __global uchar const* const cel_tft_best_den_states,
             // __private uint const tfts_per_cel,
             __private uint const sst_axn_idz,
             __private uchar const pyr_depth,
-            __private uchar const aff_out_axn_slc,
-            __global uchar* const pyr_best_den_states,
+            __private uchar const aff_out_axn_slc,            
             __global uchar* const mcol_flag_sets,
             __global uchar* const mcol_best_den_states,
             // __global int* const aux_ints_0,

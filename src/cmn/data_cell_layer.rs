@@ -15,6 +15,7 @@ pub trait DataCellLayer {
     fn soma_mut(&mut self) -> &mut Buffer<u8>;
     fn dims(&self) -> &CorticalDims;
     fn axn_range(&self) -> (usize, usize);
+    fn axn_slc_ids(&self) -> &[u8];
     fn base_axn_slc(&self) -> u8;
     fn tft_count(&self) -> usize;
     fn layer_name(&self) -> &'static str;

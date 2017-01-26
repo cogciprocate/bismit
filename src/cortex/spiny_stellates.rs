@@ -10,11 +10,16 @@ use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
 use cortex::{Dendrites, AxonSpace};
 
 
+const TUFT_COUNT: usize = 1;
+
+
 pub struct SpinyStellateLayer {
     layer_name: &'static str,
+    layer_id: usize,
     dims: CorticalDims,
     // cell_scheme: CellScheme,
-    base_axn_slc: u8,
+    axn_slc_ids: Vec<u8>,
+    // base_axn_slc: u8,
     lyr_axn_idz: u32,
     kern_ltp: Kernel,
     rng: rand::XorShiftRng,
@@ -27,13 +32,13 @@ impl SpinyStellateLayer {
             area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph,
     ) -> CmnResult<SpinyStellateLayer> {
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
-        let base_axn_slcs = area_map.layer_slc_ids(&[layer_name.to_owned()]);
-        let base_axn_slc = base_axn_slcs[0];
+        let axn_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
+        let base_axn_slc = axn_slc_ids[0];
         let lyr_axn_idz = area_map.axn_idz(base_axn_slc);
 
         let tft_count = cell_scheme.tft_schemes().len();
         // Redesign kernel before changing the 1 tuft limitation:
-        assert![tft_count == 1];
+        assert![tft_count == TUFT_COUNT];
         let sst_tft_id = 0;
         let tft_scheme = &cell_scheme.tft_schemes()[sst_tft_id];
 
@@ -62,7 +67,7 @@ impl SpinyStellateLayer {
             .arg_buf(dens.syns().strengths());
 
         // Set up execution command:
-        let mut ltp_cmd_srcs: Vec<CorticalBuffer> = base_axn_slcs.iter()
+        let mut ltp_cmd_srcs: Vec<CorticalBuffer> = axn_slc_ids.iter()
             .map(|&slc_id|
                 CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), slc_id))
             .collect();
@@ -76,9 +81,11 @@ impl SpinyStellateLayer {
 
         Ok(SpinyStellateLayer {
             layer_name: layer_name,
+            layer_id: layer_id,
             dims: dims,
             // cell_scheme: cell_scheme,
-            base_axn_slc: base_axn_slc,
+            axn_slc_ids: axn_slc_ids,
+            // base_axn_slc: base_axn_slc,
             lyr_axn_idz: lyr_axn_idz,
             kern_ltp: kern_ltp,
             rng: rand::weak_rng(),
@@ -106,40 +113,28 @@ impl SpinyStellateLayer {
         self.kern_ltp.enq().expect("[FIXME]: HANDLE ME!");
     }
 
-    #[inline]
-    pub fn regrow(&mut self) {
+    #[inline] pub fn regrow(&mut self) {
         self.dens.regrow();
     }
 
-    // #[inline]
-    // pub fn confab(&mut self) {
-    //     self.dens.confab();
-    // }
-
     #[inline]
-    pub fn soma(&self) -> &Buffer<u8> {
-        self.dens.states()
+    pub fn axn_range(&self) -> ops::Range<usize> {
+        let ssts_axn_idn = self.lyr_axn_idz + (self.dims.cells());
+        self.lyr_axn_idz as usize..ssts_axn_idn as usize
     }
 
-    // #[inline]
-    // pub fn soma_mut(&mut self) -> &mut Buffer<u8> {
-    //     &mut self.dens.states
-    // }
+    #[inline] pub fn soma(&self) -> &Buffer<u8> { self.dens.states() }
+    #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] pub fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
+    #[inline] pub fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
+    #[inline] pub fn tft_count(&self) -> usize { TUFT_COUNT }
+    #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
+    #[inline] pub fn dens(&self) -> &Dendrites { &self.dens }
+    #[inline] pub fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }
+}
 
-    #[inline]
-    pub fn dims(&self) -> &CorticalDims {
-        &self.dims
-    }
 
-    #[inline]
-    pub fn base_axn_slc(&self) -> u8 {
-        self.base_axn_slc
-    }
-
-    #[inline]
-    pub fn layer_name(&self) -> &'static str {
-        self.layer_name
-    }
 
     // pub fn print_cel(&mut self, cel_idx: usize) {
     //     let emsg = "SpinyStellateLayer::print()";
@@ -170,20 +165,3 @@ impl SpinyStellateLayer {
     //     // cmn::fmt::print_slice(&self.dens.syns_mut().src_col_u_offs.vec()[..], 1, None,
     //     //     Some(cel_syn_range.clone()), false);
     // }
-
-    #[inline]
-    pub fn dens(&self) -> &Dendrites {
-        &self.dens
-    }
-
-    #[inline]
-    pub fn dens_mut(&mut self) -> &mut Dendrites {
-        &mut self.dens
-    }
-
-    #[inline]
-    pub fn axn_range(&self) -> ops::Range<usize> {
-        let ssts_axn_idn = self.lyr_axn_idz + (self.dims.cells());
-        self.lyr_axn_idz as usize..ssts_axn_idn as usize
-    }
-}

@@ -56,13 +56,11 @@ pub struct CorticalArea {
     pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,
     ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,
     iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
-    // filter_chains: Vec<(LayerAddress, Vec<SensoryFilter>)>,
     ptal_name: &'static str,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
     psal_name: &'static str,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
     aux: Aux,
     ocl_pq: ProQue,
     counter: usize,
-    // io_info: IoLayerInfoCache,
     settings: CorticalAreaSettings,
     exe_graph: ExecutionGraph,
 }
@@ -110,6 +108,8 @@ impl CorticalArea {
         let psal_name = area_map.layers().layers_containing_tags(map::SPATIAL_ASSOCIATIVE)[0].name();
         let ptal_name = area_map.layers().layers_containing_tags(map::TEMPORAL_ASSOCIATIVE)[0].name();
 
+        let settings = settings.unwrap_or(CorticalAreaSettings::new());
+
         /*=============================================================================
         =============================== EXECUTION GRAPH ===============================
         =============================================================================*/
@@ -123,7 +123,9 @@ impl CorticalArea {
         let mut pyrs_map = HashMap::new();
         let mut ssts_map = HashMap::new();
         let mut iinns = HashMap::new();
+        let mut mcols = None;
         let axns = AxonSpace::new(&area_map, &ocl_pq, &mut exe_graph, thal);
+        // println!("{mt}::NEW(): IO_INFO: {:#?}, Settings: {:#?}", axns.io_info(), settings, mt = cmn::MT);
 
         /*=============================================================================
         ================================== DATA CELLS =================================
@@ -146,7 +148,6 @@ impl CorticalArea {
 
                             pyrs_map.insert(layer.name(), Box::new(pyr_lyr));
                         },
-
                         CellKind::SpinyStellate => {
                             let ssts_map_dims = dims.clone_with_depth(layer.depth());
 
@@ -163,6 +164,7 @@ impl CorticalArea {
             }
         }
 
+
         /*=============================================================================
         ================================ CONTROL CELLS ================================
         =============================================================================*/
@@ -174,16 +176,19 @@ impl CorticalArea {
                     match *inh_cell_kind {
                         InhibitoryCellKind::BasketSurround { lyr_name: ref src_lyr_name, field_radius: _ } => {
                             let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
-                            let src_soma_env = &ssts_map.get_mut(src_lyr_name.as_str()).expect(&em1).soma();
+                            let src_soma = &ssts_map.get_mut(src_lyr_name.as_str()).expect(&em1);
+                            let src_soma_buf = src_soma.soma();
 
                             let src_slc_ids = area_map.layer_slc_ids(&[src_lyr_name.clone()]);
                             let src_lyr_depth = src_slc_ids.len() as u8;
                             let src_base_axn_slc = src_slc_ids[0];
 
                             let iinns_dims = dims.clone_with_depth(src_lyr_depth);
-                            let iinn_lyr = InhibitoryInterneuronNetwork::new(layer.name(), iinns_dims,
-                                layer_kind.clone(), &area_map, src_soma_env,
-                                src_base_axn_slc, &axns, &ocl_pq);
+                            let iinn_lyr = InhibitoryInterneuronNetwork::new(layer.name(),
+                                layer.layer_id(), iinns_dims, layer_kind.clone(),
+                                &area_map, src_soma_buf, src_soma.layer_id(), src_base_axn_slc,
+                                src_soma.tft_count(),
+                                &axns, &ocl_pq, &mut exe_graph)?;
 
                             iinns.insert(layer.name(), Box::new(iinn_lyr));
                         },
@@ -192,20 +197,53 @@ impl CorticalArea {
             }
         }
 
-        let mcols_dims = dims.clone_with_depth(1);
+        for layer in area_map.layers().iter() {
+            match layer.kind() {
+                &LayerKind::Cellular(ref cell_scheme) => {
+                    println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
+                        cell_scheme.cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
 
-        // <<<<< EVENTUALLY ADD TO CONTROL CELLS (+PROTOCONTROLCELLS) >>>>>
-        let mcols = Box::new({
-            let em_ssts = format!("{}: '{}' is not a valid layer", emsg, psal_name);
-            let ssts = ssts_map.get(psal_name).expect(&em_ssts);
+                    match *cell_scheme.cell_kind() {
+                        CellKind::Complex => {
+                            let mcols_dims = dims.clone_with_depth(1);
 
-            let em_pyrs = format!("{}: '{}' is not a valid layer", emsg, ptal_name);
-            let pyrs = pyrs_map.get(ptal_name).expect(&em_pyrs);
+                            mcols = Some(Box::new({
+                                let ssts = ssts_map.get(psal_name)
+                                    .expect(&format!("{}: '{}' is not a valid layer", emsg, psal_name));
 
-            debug_assert!(area_map.aff_out_slcs().len() > 0, "CorticalArea::new(): \
-                No afferent output slices found for area: '{}'", area_name);
-            Minicolumns::new(mcols_dims, &area_map, &axns, ssts, pyrs, /*&aux,*/ &ocl_pq)
-        });
+                                let pyrs = pyrs_map.get(ptal_name)
+                                    .expect(&format!("{}: '{}' is not a valid layer", emsg, ptal_name));
+
+                                let layer_id = layer.layer_id();
+
+                                debug_assert!(area_map.aff_out_slcs().len() > 0, "CorticalArea::new(): \
+                                    No afferent output slices found for area: '{}'", area_name);
+                                Minicolumns::new(layer_id, mcols_dims, &area_map, &axns, ssts, pyrs,
+                                    &ocl_pq, &mut exe_graph)?
+                            }));
+                        },
+                        _ => (),
+                    }
+                },
+                _ => (),
+            }
+        }
+
+        // let mcols_dims = dims.clone_with_depth(1);
+
+        // // <<<<< EVENTUALLY ADD TO CONTROL CELLS (+PROTOCONTROLCELLS) >>>>>
+        // let mcols = Box::new({
+        //     let em_ssts = format!("{}: '{}' is not a valid layer", emsg, psal_name);
+        //     let ssts = ssts_map.get(psal_name).expect(&em_ssts);
+
+        //     let em_pyrs = format!("{}: '{}' is not a valid layer", emsg, ptal_name);
+        //     let pyrs = pyrs_map.get(ptal_name).expect(&em_pyrs);
+
+        //     debug_assert!(area_map.aff_out_slcs().len() > 0, "CorticalArea::new(): \
+        //         No afferent output slices found for area: '{}'", area_name);
+        //     Minicolumns::new(mcols_dims, &area_map, &axns, ssts, pyrs, /*&aux,*/ &ocl_pq,
+        //         &mut exe_graph)?
+        // });
 
         /*=============================================================================
         ===================================== AUX =====================================
@@ -241,19 +279,24 @@ impl CorticalArea {
         =================== EXECUTION ORDERING & GRAPH POPULATION =====================
         =============================================================================*/
 
-        axns.set_exe_order_input(&mut exe_graph)?;
 
-        for pyr in pyrs_map.values() {
-            pyr.set_exe_order(&mut exe_graph)?;
-        }
+        axns.set_exe_order_input(&mut exe_graph)?;
 
         for sst in ssts_map.values() {
             sst.set_exe_order(&mut exe_graph)?;
         }
 
-        // for iinn in iinns.iter() {
+        mcols.as_mut().unwrap().set_exe_order_activate(&mut exe_graph)?;
 
-        // }
+        for iinn in iinns.values() {
+            iinn.set_exe_order(&mut exe_graph)?;
+        }
+
+        for pyr in pyrs_map.values() {
+            pyr.set_exe_order(&mut exe_graph)?;
+        }
+
+        mcols.as_mut().unwrap().set_exe_order_output(&mut exe_graph)?;
 
         axns.set_exe_order_output(&mut exe_graph)?;
 
@@ -263,10 +306,8 @@ impl CorticalArea {
         ===============================================================================
         =============================================================================*/
 
-        println!("{mt}::NEW(): IO_INFO: {:?}, Settings: {:?}", axns.io_info(), settings, mt = cmn::MT);
-        // println!("{mt}::NEW(): EXE_GRAPH: {:#?}", exe_graph, mt = cmn::MT);
 
-        let settings = settings.unwrap_or(CorticalAreaSettings::new());
+        // println!("{mt}::NEW(): EXE_GRAPH: {:#?}", exe_graph, mt = cmn::MT);
 
         // [TODO]: Move back up.
             exe_graph.populate_requisites();
@@ -280,15 +321,13 @@ impl CorticalArea {
             ptal_name: ptal_name,
             psal_name: psal_name,
             axns: axns,
-            mcols: mcols,
+            mcols: mcols.unwrap(),
             pyrs_map: pyrs_map,
             ssts_map: ssts_map,
             iinns: iinns,
-            // filter_chains: filter_chains,
             aux: aux,
             ocl_pq: ocl_pq,
             counter: 0,
-            // io_info: io_info,
             settings: settings,
             exe_graph: exe_graph,
         };
@@ -377,7 +416,7 @@ impl CorticalArea {
     /// [FIXME]: Currnently assuming aff out slice is == 1. Ascertain the
     /// slice range correctly by consulting area_map.layers().
     pub fn sample_aff_out(&self, buf: &mut [u8]) {
-        let aff_out_slc = self.mcols.aff_out_axn_slc();
+        let aff_out_slc = self.mcols.axn_slc_id();
         self.sample_axn_slc_range(aff_out_slc..(aff_out_slc + 1), buf);
     }
 
