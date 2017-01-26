@@ -3,6 +3,9 @@ name = "example_vibi-motor"
 version = "0.0.1"
 authors = ["Nick Sanders <nsan1129@gmail.com>"]
 
+[replace]
+"ocl-core:0.3.2" = { git = "https://github.com/cogciprocate/ocl-core" }
+
 [dependencies]
 vibi = { path = "/home/nick/src/github.com/cogciprocate/vibi" }
 lazy_static = "*"

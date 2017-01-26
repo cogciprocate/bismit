@@ -22,6 +22,9 @@ authors = ["Nick Sanders <github.com/c0gent>"]
 # "cl-sys:0.1.0" = { git = 'https://github.com/cogciprocate/cl-sys' }
 # "ocl-core:0.1.0" = { git = "https://github.com/cogciprocate/ocl-core" }
 
+[replace]
+"ocl-core:0.3.2" = { git = "https://github.com/cogciprocate/ocl-core" }
+
 [dependencies]
 # ocl = "*"
 # ocl = { path = "/home/nick/projects/ocl", version = "0.11" }
