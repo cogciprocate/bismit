@@ -140,6 +140,9 @@ impl LayerInfo {
         }
 
         match axon_domain {
+            /*=============================================================================
+            ===============================================================================
+            =============================================================================*/
             AxonDomain::Input(ref input_filters) => {
                 // Make sure this layer is axonal (cellular layers must not also
                 // be input layers):
@@ -162,6 +165,10 @@ impl LayerInfo {
                     let src_area_name = src_area_sch.name();
                     let src_area_id = src_area_sch.area_id();
                     let src_lyr_addr = LayerAddress::new(src_area_id, src_layer.layer_id());
+
+                    /*=============================================================================
+                    ===============================================================================
+                    =============================================================================*/
 
                     let (src_layer_dims, src_layer_axn_topology) = match src_lyr_map_sch.kind() {
                         // If the source layer is subcortical, we will be relying
@@ -195,6 +202,10 @@ impl LayerInfo {
                         },
                     };
 
+                    /*=============================================================================
+                    ===============================================================================
+                    =============================================================================*/
+
                     let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth());
 
                     sources.push(SourceLayerInfo::new(src_lyr_addr, src_layer_dims.clone(),
@@ -220,7 +231,11 @@ impl LayerInfo {
                 // Double check that the total source layer axon count matches up:
                 assert!(sources.iter().map(|sli| sli.dims().cells()).sum::<u32>() == ttl_axn_count);
             },
+            /*=============================================================================
+            ===============================================================================
+            =============================================================================*/
             AxonDomain::Output(/*ref axon_tags*/ _) => {
+
                 // If this is a subcortical layer we need to use the dimensions
                 // set by the `ExternalPathway` area instead of the dimensions of
                 // the area. Thalamic output layers have irregular layer sizes.
@@ -247,6 +262,9 @@ impl LayerInfo {
                 next_slc_idz += layer_depth;
                 ttl_axn_count += columns * layer_depth as u32;
             },
+            /*=============================================================================
+            ===============================================================================
+            =============================================================================*/
             AxonDomain::Local => {
                 let columns = area_sch.dims().columns();
                 let layer_depth = layer_scheme.depth().unwrap_or(0);

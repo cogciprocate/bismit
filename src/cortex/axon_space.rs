@@ -71,6 +71,9 @@ impl IoInfoGroup {
 
         for (lyr_addr, src_lyr_addr) in tract_keys.into_iter() {
             let (tract_key, filter_chain_idx, io_cmd) = if let AxonDomainRoute::Output = group_route {
+                /*=============================================================================
+                ==================================== OUTPUT ===================================
+                =============================================================================*/
 
                 let lyr_slc_id_range = area_map.layers()
                     .layer_info(lyr_addr.layer_id()).expect("IoInfoCache::new(): \
@@ -98,6 +101,10 @@ impl IoInfoGroup {
 
                 (lyr_addr, None, io_cmd)
             } else {
+                /*=============================================================================
+                ==================================== INPUT ====================================
+                =============================================================================*/
+
                 let src_lyr_addr = src_lyr_addr.clone().expect("IoInfoCache::new(): \
                     Internal consistency error. Source layer address for an input layer is empty.");
 
@@ -139,13 +146,16 @@ impl IoInfoGroup {
                     write_cmd_tars.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id))
                 }
 
-
                 let exe_cmd = ExecutionCommand::thalamocortical_write(write_cmd_srcs, write_cmd_tars);
 
                 let io_cmd = IoExeCmd::Write(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"));
 
                 (src_lyr_addr, filter_chain_idx, io_cmd)
             };
+
+            /*=============================================================================
+            ===============================================================================
+            =============================================================================*/
 
             let axn_range = area_map.lyr_axn_range(&lyr_addr, src_lyr_addr.as_ref()).expect(
                 &format!("IoInfoCache::new(): Internal consistency error: \
@@ -287,27 +297,45 @@ impl AxonSpace {
         let mut filter_chains = Vec::with_capacity(4);
 
         for &(ref track, ref tags, ref chain_scheme) in area_map.filter_chain_schemes() {
-            let (src_layer, _) = area_map.layers().src_layer_info_by_sig(&(track, tags).into())
+            let (src_lyr_info, _) = area_map.layers().src_layer_info_by_sig(&(track, tags).into())
                 .expect(&format!("Unable to find a layer within the area map matching the axon \
                     domain (track: '{:?}', tags: '{:?}') specified by the filter chain scheme: '{:?}'.",
                     track, tags, chain_scheme));
 
-            let mut layer_filters = Vec::with_capacity(4);
+            let mut layer_filters_rev: Vec<SensoryFilter> = Vec::with_capacity(4);
 
-            for pf in chain_scheme.iter() {
-                layer_filters.push(SensoryFilter::new(
-                    pf.filter_name(),
-                    pf.cl_file_name(),
-                    src_layer,
-                    &states,
-                    &ocl_pq)
-                );
+            for (i, pf) in chain_scheme.iter().rev().enumerate() {
+                let filter_idx = chain_scheme.len() - 1 - i;
+                // let output_slc_idz = src_lyr_info.tar_slc_range().start;
+
+                let filter = {
+                    let (output_buffer, output_slc_idz) = if filter_idx == chain_scheme.len() - 1 {
+                        debug_assert!(i == 0);
+                        (&states, src_lyr_info.tar_slc_range().start)
+                    } else {
+                        debug_assert!(i > 0);
+                        (layer_filters_rev[i - 1].input_buffer(), 0)
+                    };
+
+                    SensoryFilter::new(
+                        filter_idx,
+                        pf.filter_name(),
+                        pf.cl_file_name(),
+                        // src_layer,
+                        src_lyr_info.dims(),
+                        output_buffer,
+                        output_slc_idz,
+                        &ocl_pq)
+                };
+
+                layer_filters_rev.push(filter);
             }
 
             // [DEBUG]:
             // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
-            layer_filters.shrink_to_fit();
-            filter_chains.push((src_layer.layer_addr().clone(), layer_filters));
+            // layer_filters.shrink_to_fit();
+            let layer_filters = layer_filters_rev.into_iter().rev().collect();
+            filter_chains.push((src_lyr_info.layer_addr().clone(), layer_filters));
         }
 
         filter_chains.shrink_to_fit();

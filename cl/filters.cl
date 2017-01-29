@@ -1,4 +1,4 @@
-// FILTERS.CL: Experimental and very badly optimized.
+// FILTERS.CL: Experimental and very poorly optimized.
 
 
 #define INHIB_SMALL_CELL_RADIUS         3
@@ -9,7 +9,7 @@ static inline int get_neighbors_avg(uchar const slc_id_lyr, uint const v_size, u
             uint const u_size, uint const u_id, __global uchar const* const cel_states, 
             uint const cel_idx, int const radius)
 {
-    int const radius_pos = radius; // (4:61), (7:XXX), (9:271)
+    int const radius_pos = radius; // (4:61), (7:xxx), (9:271)
     int const radius_neg = 0 - radius_pos;
 
     //int const center_state = cel_states[cel_idx];
@@ -50,7 +50,7 @@ __kernel void retina(
 
     int const center_state = cel_states[cel_idx];
 
-    // int const radius_pos = 4; // (4:61), (7:XXX), (9:271)
+    // int const radius_pos = 4; // (4:61), (7:xxx), (9:271)
     // int const radius_neg = 0 - radius_pos;
 
     // int const center_state = cel_states[cel_idx];

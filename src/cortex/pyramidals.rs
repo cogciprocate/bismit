@@ -86,6 +86,10 @@ impl PyramidalLayer {
         let mut den_count_ttl = 0u32;
         let mut syn_count_ttl = 0u32;
 
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
+
         for (tft_id, tft_scheme) in cell_scheme.tft_schemes().iter().enumerate() {
             let dens_per_tft_l2 = tft_scheme.dens_per_tft_l2();
             let syns_per_den_l2 = tft_scheme.syns_per_den_l2();
@@ -101,6 +105,10 @@ impl PyramidalLayer {
             let tft_syn_idz = syn_count_ttl;
             let tft_syn_count = dims.cells() << syns_per_tft_l2;
             syn_count_ttl += tft_syn_count;
+
+            /*=============================================================================
+            ===============================================================================
+            =============================================================================*/
 
             pyr_tft_cycle_kernels.push(ocl_pq.create_kernel("pyr_tft_cycle")?
                 // .expect("PyramidalLayer::new()")
@@ -134,6 +142,11 @@ impl PyramidalLayer {
                     CorticalBuffer::data_soma_tft(&tft_best_den_states, layer_addr, tft_id),
                 ]
             ))?);
+
+
+            /*=============================================================================
+            ===============================================================================
+            =============================================================================*/
 
             // let syns_per_tftsec = dens.syns().syns_per_tftsec();
             // let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
@@ -189,6 +202,10 @@ impl PyramidalLayer {
             ))?);
         }
 
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
+
         let pyr_cycle_kernel = ocl_pq.create_kernel("pyr_cycle")?
             .gws(SpatialDims::One(cel_count))
             .arg_buf(&tft_best_den_ids)
@@ -216,6 +233,10 @@ impl PyramidalLayer {
                 CorticalBuffer::data_soma_lyr(&best_den_states_raw, layer_addr),
             ]
         ))?;
+
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
 
         assert!(den_count_ttl == dens.count());
         assert!(syn_count_ttl == dens.syns().count());

@@ -146,6 +146,10 @@ impl Synapses {
 
         debug_assert!(cell_scheme.tft_schemes().len() == tft_count);
 
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
+
         for tft_scheme in cell_scheme.tft_schemes() {
             let syns_per_tft_l2 = tft_scheme.syns_per_tft_l2();
 
@@ -173,6 +177,9 @@ impl Synapses {
             }
         }
 
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
@@ -186,6 +193,10 @@ impl Synapses {
             strengths.len() == src_col_v_offs.len() &&
             strengths.len() == src_col_u_offs.len());
 
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
+
         for (tft_id, (tft_scheme, &tft_syn_idz)) in cell_scheme.tft_schemes().iter()
                 .zip(syn_idzs_by_tft.iter())
                 .enumerate()
@@ -195,6 +206,10 @@ impl Synapses {
             // [TODO]: Use kernel to ascertain the optimal workgroup size increment.
             let min_wg_sqrt = 8 as usize;
             assert_eq!((min_wg_sqrt * min_wg_sqrt), cmn::OPENCL_MINIMUM_WORKGROUP_SIZE as usize);
+
+            /*=============================================================================
+            ===============================================================================
+            =============================================================================*/
 
             kernels.push(Box::new({
                 // ocl_pq.create_kernel("tft_cycle_syns")
@@ -231,6 +246,10 @@ impl Synapses {
 
             // exe_graph.register_requisite(0, 0)?;
         }
+
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
 
         // These are for learning (to avoid allocating it every time).
         let vec_strengths = vec![0; strengths.len()];

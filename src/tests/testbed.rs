@@ -27,8 +27,12 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
         .layer("aff_in", 0, map::DEFAULT,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("out", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-            LayerKind::Axonal(AxonTopology::Spatial))
+
+        // .layer("out", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+        //     LayerKind::Axonal(AxonTopology::Spatial))
+        .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+                CellScheme::minicolumn("iv", "iii"))
+
         .layer("unused", 1, map::DEFAULT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
 
         .layer("iv", 1, map::PSAL, AxonDomain::Local,
@@ -148,8 +152,10 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         .layer("aff_in", 0, map::DEFAULT,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("out", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-            LayerKind::Axonal(AxonTopology::Spatial))
+        // .layer("out", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+        //     LayerKind::Axonal(AxonTopology::Spatial))
+        .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+                CellScheme::minicolumn("iv", "iii"))
         .layer("test0", 1, map::DEFAULT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
         .layer("test1", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
         .layer("test2", 1, map::UNUSED_TESTING, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))

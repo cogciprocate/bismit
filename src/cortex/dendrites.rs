@@ -76,6 +76,10 @@ impl Dendrites {
         let syns = Synapses::new(layer_name, layer_id, dims, cell_scheme.clone(), den_kind, cell_kind,
             area_map, axons, ocl_pq, exe_graph)?;
 
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
+
         for (tft_id, ((tft_scheme, &tft_den_idz), &tft_den_count)) in cell_scheme.tft_schemes().iter()
                 .zip(den_idzs_by_tft.iter())
                 .zip(den_counts_by_tft.iter())
@@ -93,6 +97,9 @@ impl Dendrites {
                 tft_id: {}, tft_den_idz: {}, tft_syn_idz: {}, tft_scheme: {:?}",
                 tft_id, tft_den_idz, tft_syn_idz, tft_scheme, mt = cmn::MT);
 
+            /*=============================================================================
+            ===============================================================================
+            =============================================================================*/
 
             kernels.push(ocl_pq.create_kernel("den_cycle_tft").expect("[FIXME]: HANDLE ME")
                 .gws(SpatialDims::One(tft_den_count as usize))
@@ -121,6 +128,10 @@ impl Dendrites {
                 ]
             ))?);
         }
+
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
 
         Ok(Dendrites {
             layer_name: layer_name,

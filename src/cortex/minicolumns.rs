@@ -63,6 +63,10 @@ impl Minicolumns {
         let mcol_lyr_axn_idz = area_map.axn_idz(mcol_axn_slc_id);
         let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
 
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
+
         // Activation kernel:
         let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs")
             .expect("Minicolumns::new()")
@@ -99,6 +103,10 @@ impl Minicolumns {
         let activate_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
             activate_cmd_srcs, activate_cmd_tars))?;
 
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
+
         // Output kernel:
         let kern_output = ocl_pq.create_kernel("mcol_output")
             .expect("Minicolumns::new()")
@@ -127,6 +135,10 @@ impl Minicolumns {
 
         let output_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
             output_cmd_srcs, output_cmd_tars))?;
+
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
 
         Ok(Minicolumns {
             layer_id: layer_id,

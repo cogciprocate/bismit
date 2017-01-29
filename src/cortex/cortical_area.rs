@@ -72,6 +72,10 @@ impl CorticalArea {
     // [TODO]: Break this function up a bit. Probably break the major sections
     // out into new types.
     //
+    // The only use for `thal` is currently within `axon_space` for the
+    // purpose of getting precise slice ids for layers in other areas for use
+    // by the execution graph system.
+    //
     pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context,
                     settings: Option<CorticalAreaSettings>, thal: &Thalamus) -> CmnResult<CorticalArea> {
         let emsg = "cortical_area::CorticalArea::new()";
