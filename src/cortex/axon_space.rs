@@ -283,7 +283,7 @@ pub struct AxonSpace {
 
 impl AxonSpace {
     pub fn new(area_map: &AreaMap, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph,
-            thal: &Thalamus) -> AxonSpace
+            thal: &Thalamus) -> CmnResult<AxonSpace>
     {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
             area_map.slices().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
@@ -304,28 +304,56 @@ impl AxonSpace {
 
             let mut layer_filters_rev: Vec<SensoryFilter> = Vec::with_capacity(4);
 
+            // Create in reverse order so we can link each kernel to the next
+            // filter in the chain:
             for (i, pf) in chain_scheme.iter().rev().enumerate() {
                 let filter_idx = chain_scheme.len() - 1 - i;
-                // let output_slc_idz = src_lyr_info.tar_slc_range().start;
 
                 let filter = {
-                    let (output_buffer, output_slc_idz) = if filter_idx == chain_scheme.len() - 1 {
+                    let filter_is_last = filter_idx == chain_scheme.len() - 1;
+
+                    let (output_buffer, output_slc_range) = if filter_is_last {
                         debug_assert!(i == 0);
-                        (&states, src_lyr_info.tar_slc_range().start)
+                        (&states,
+                            src_lyr_info.tar_slc_range().clone())
                     } else {
                         debug_assert!(i > 0);
-                        (layer_filters_rev[i - 1].input_buffer(), 0)
+                        (layer_filters_rev[i - 1].input_buffer(),
+                            0..(src_lyr_info.tar_slc_range().len() as u8))
+                    };
+
+                    let filter_is_first = filter_idx == 0;
+
+                    let src_tract_info = if filter_is_first {
+                        let src_lyr_addr = src_lyr_info.layer_addr();
+                        // Get source layer absolute slice id range:
+                        let src_lyr_slc_id_range = thal.area_map(src_lyr_addr.area_id())
+                            .and_then(|area| area.layer(src_lyr_addr.layer_id()))
+                                .expect(&format!("AxonSpace::new(): Unable to find source layer \
+                                    ({:?}) for filter chain ({:?})", src_lyr_addr, chain_scheme))
+                            .slc_range()
+                                .expect(&format!("AxonSpace::new(): Source layer ({:?}) for \
+                                    filter chain ({:?}) has no slices (depth of zero).",
+                                    src_lyr_addr, chain_scheme))
+                            .clone();
+
+                        Some((src_lyr_addr.area_id(), src_lyr_slc_id_range))
+                    } else {
+                        None
                     };
 
                     SensoryFilter::new(
+                        area_map.area_id(),
                         filter_idx,
+                        chain_scheme.len(),
                         pf.filter_name(),
                         pf.cl_file_name(),
-                        // src_layer,
+                        src_tract_info,
                         src_lyr_info.dims(),
                         output_buffer,
-                        output_slc_idz,
-                        &ocl_pq)
+                        output_slc_range,
+                        &ocl_pq,
+                        exe_graph)?
                 };
 
                 layer_filters_rev.push(filter);
@@ -333,7 +361,6 @@ impl AxonSpace {
 
             // [DEBUG]:
             // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
-            // layer_filters.shrink_to_fit();
             let layer_filters = layer_filters_rev.into_iter().rev().collect();
             filter_chains.push((src_lyr_info.layer_addr().clone(), layer_filters));
         }
@@ -346,13 +373,13 @@ impl AxonSpace {
 
         let io_info = IoInfoCache::new(&area_map, &filter_chains, exe_graph, &states, thal);
 
-        AxonSpace {
+        Ok(AxonSpace {
             area_id: area_map.area_id(),
             area_name: area_map.area_name(),
             states: states,
             filter_chains: filter_chains,
             io_info: io_info,
-        }
+        })
     }
 
     pub fn set_exe_order_input(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
@@ -360,10 +387,19 @@ impl AxonSpace {
 
         for io_info in io_info_grp {
             match *io_info.exe_cmd() {
-                IoExeCmd::Write(cmd_idx) => {
-                    exe_graph.order_next(cmd_idx)?;
-                },
-                _ => panic!("AxonSpace::set_exe_order_input: Internal error."),
+                IoExeCmd::Write(cmd_idx) => { exe_graph.order_next(cmd_idx)?; },
+                _ => panic!("AxonSpace::set_exe_order_input: Internal error [0]."),
+            }
+
+            if let &Some(filter_chain_idx) = io_info.filter_chain_idx() {
+                for filter in self.filter_chains[filter_chain_idx].1.iter() {
+                    filter.set_exe_order_cycle(exe_graph)?;
+                }
+
+                match self.filter_chains[filter_chain_idx].1.first() {
+                    Some(last_filter) => last_filter.set_exe_order_write(exe_graph)?,
+                    None => panic!("AxonSpace::set_exe_order_input: Internal error [1]."),
+                }
             }
         }
 

@@ -127,7 +127,7 @@ impl Minicolumns {
             CorticalBuffer::data_soma_lyr(&pyrs.soma(), pyrs.layer_addr()),
         ];
 
-        let mut output_cmd_tars = vec![
+        let output_cmd_tars = vec![
             CorticalBuffer::control_soma_lyr(&flag_sets, layer_addr),
             CorticalBuffer::control_soma_lyr(&best_den_states, layer_addr),
             CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), mcol_axn_slc_id),

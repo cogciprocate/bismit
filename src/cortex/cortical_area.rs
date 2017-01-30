@@ -128,7 +128,7 @@ impl CorticalArea {
         let mut ssts_map = HashMap::new();
         let mut iinns = HashMap::new();
         let mut mcols = None;
-        let axns = AxonSpace::new(&area_map, &ocl_pq, &mut exe_graph, thal);
+        let axns = AxonSpace::new(&area_map, &ocl_pq, &mut exe_graph, thal)?;
         // println!("{mt}::NEW(): IO_INFO: {:#?}, Settings: {:#?}", axns.io_info(), settings, mt = cmn::MT);
 
         /*=============================================================================
@@ -233,6 +233,8 @@ impl CorticalArea {
             }
         }
 
+        let mut mcols = mcols.expect("CorticalArea::new(): No Minicolumn layer found!");
+
         // let mcols_dims = dims.clone_with_depth(1);
 
         // // <<<<< EVENTUALLY ADD TO CONTROL CELLS (+PROTOCONTROLCELLS) >>>>>
@@ -290,7 +292,7 @@ impl CorticalArea {
             sst.set_exe_order(&mut exe_graph)?;
         }
 
-        mcols.as_mut().unwrap().set_exe_order_activate(&mut exe_graph)?;
+        mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
 
         for iinn in iinns.values() {
             iinn.set_exe_order(&mut exe_graph)?;
@@ -300,7 +302,7 @@ impl CorticalArea {
             pyr.set_exe_order(&mut exe_graph)?;
         }
 
-        mcols.as_mut().unwrap().set_exe_order_output(&mut exe_graph)?;
+        mcols.as_mut().set_exe_order_output(&mut exe_graph)?;
 
         axns.set_exe_order_output(&mut exe_graph)?;
 
@@ -325,7 +327,7 @@ impl CorticalArea {
             ptal_name: ptal_name,
             psal_name: psal_name,
             axns: axns,
-            mcols: mcols.unwrap(),
+            mcols: mcols,
             pyrs_map: pyrs_map,
             ssts_map: ssts_map,
             iinns: iinns,

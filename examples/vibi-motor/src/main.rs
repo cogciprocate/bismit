@@ -106,9 +106,9 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer("external_0", 1, map::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, *AT0]),
                 LayerKind::Axonal(AxonTopology::Spatial))
-            // .layer("external_1", 1, map::DEFAULT,
-            //     AxonDomain::output(&[map::THAL_SP, AxonTag::custom(U1)]),
-            //     LayerKind::Axonal(AxonTopology::Spatial))
+            .layer("external_1", 1, map::DEFAULT,
+                AxonDomain::output(&[map::THAL_SP, *AT1]),
+                LayerKind::Axonal(AxonTopology::Spatial))
         )
 }
 
@@ -142,16 +142,15 @@ fn define_a_schemes() -> AreaSchemeList {
         // )
         .area(AreaScheme::new("v0", "v0_lm", ENCODE_SIZE)
             // .input(InputScheme::Custom { layer_count: 2 })
-            .input(InputScheme::ScalarSdrGradiant { range: (-8.0, 8.0), way_span: 4.0, incr: 0.1 })
+            // .input(InputScheme::ScalarSdrGradiant { range: (-8.0, 8.0), way_span: 4.0, incr: 0.1 })
+            .input(InputScheme::ReversoScalarSequence { range: (0.0, 76.0), incr: 1.0 })
         )
         .area(AreaScheme::new("v1", "v1_lm", AREA_SIDE)
             .eff_areas(vec!["v0"])
             // .other_area("v0", Some(&[(&[map::THAL_SP], &[map::L2])]))
             .other_area("v0", None)
-            // .filter_chain(map::FF_IN | LayerTags::uid(U0), vec![FilterScheme::new("retina", None)])
-            // .filter_chain(map::FF_IN | LayerTags::uid(U1), vec![FilterScheme::new("retina", None)])
-            // .filter_chain(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U0)], &[("retina", None)])
-            // .filter_chain(InputTrack::Afferent, &[map::THAL_SP, AxonTag::custom(U1)], &[("retina", None)])
+            .filter_chain(InputTrack::Afferent, &[map::THAL_SP, *AT0], &[("retina", None), ("retina", None), ("retina", None)])
+            .filter_chain(InputTrack::Afferent, &[map::THAL_SP, *AT1], &[("retina", None)])
         )
         // .area(AreaScheme::new("m1", "m1_lm", AREA_SIDE)
         //     .eff_areas(vec!["v1", "v0"])

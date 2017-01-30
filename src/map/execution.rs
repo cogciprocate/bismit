@@ -88,6 +88,7 @@ pub enum CorticalBuffer {
     // AxonLayer { buffer_id: u64, layer_addr: LayerAddress },
     // AxonLayerSubSlice { buffer_id: u64, layer_addr: LayerAddress, sub_slc_range: Range<u8> },
     AxonSlice { buffer_id: u64, area_id: usize, slc_id: u8 },
+    AxonInputFilter { buffer_id: u64 },
     DataCellSynapseTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize, },
     DataCellDendriteTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize },
     DataCellSomaTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize },
@@ -120,6 +121,12 @@ impl CorticalBuffer {
             buffer_id: util::buffer_uid(buf),
             area_id: area_id,
             slc_id: slc_id,
+        }
+    }
+
+    pub fn axon_input_filter<T: OclPrm>(buf: &Buffer<T>) -> CorticalBuffer {
+        CorticalBuffer::AxonInputFilter {
+            buffer_id: util::buffer_uid(buf),
         }
     }
 
@@ -222,6 +229,7 @@ pub enum ExecutionCommandDetails {
     CorticalKernel { sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer> },
     CorticothalamicRead { sources: Vec<CorticalBuffer>, targets: Vec<ThalamicTract> },
     ThalamocorticalWrite { sources: Vec<ThalamicTract>, targets: Vec<CorticalBuffer> },
+    // InputFilterWrite { sources: Vec<ThalamicTract>, target: CorticalBuffer },
     SubcorticalCopy { source: MemoryBlock, target: MemoryBlock },
     SubGraph { sources: Vec<MemoryBlock>, target: Vec<MemoryBlock> },
 }
@@ -240,6 +248,10 @@ impl ExecutionCommandDetails {
                 sources.iter().map(|src| MemoryBlock::ThalamicTract(src.clone())).collect()
                 // vec![MemoryBlock::ThalamicTract(source.clone())]
             },
+            // ExecutionCommandDetails::InputFilterWrite { ref sources, .. } => {
+            //     // vec![MemoryBlock::CorticalBuffer(source.clone())]
+            //     sources.iter().map(|src| MemoryBlock::ThalamicTract(src.clone())).collect()
+            // },
             ExecutionCommandDetails::SubcorticalCopy { ref source, .. } => vec![source.clone()],
             ExecutionCommandDetails::SubGraph { .. } => unimplemented!(),
         }
@@ -258,6 +270,10 @@ impl ExecutionCommandDetails {
                 targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
                 // vec![MemoryBlock::CorticalBuffer(target.clone())]
             },
+            // ExecutionCommandDetails::InputFilterWrite { ref target, ..  } => {
+            //     vec![MemoryBlock::CorticalBuffer(targets.clone())]
+            //     // targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
+            // },
             ExecutionCommandDetails::SubcorticalCopy { ref target, ..  } => vec![target.clone()],
             ExecutionCommandDetails::SubGraph { .. } => unimplemented!(),
         }
@@ -298,15 +314,27 @@ impl ExecutionCommand {
         )
     }
 
-    pub fn corticothalamic_read(sources: Vec<CorticalBuffer>, targets: Vec<ThalamicTract>) -> ExecutionCommand {
+    pub fn corticothalamic_read(sources: Vec<CorticalBuffer>, targets: Vec<ThalamicTract>)
+            -> ExecutionCommand
+    {
         ExecutionCommand::new(ExecutionCommandDetails::CorticothalamicRead {
-            sources: sources, targets: targets })
+            sources: sources, targets: targets
+        })
     }
 
-    pub fn thalamocortical_write(sources: Vec<ThalamicTract>, targets: Vec<CorticalBuffer>) -> ExecutionCommand {
+    pub fn thalamocortical_write(sources: Vec<ThalamicTract>, targets: Vec<CorticalBuffer>)
+            -> ExecutionCommand
+    {
         ExecutionCommand::new(ExecutionCommandDetails::ThalamocorticalWrite {
-            sources: sources, targets: targets })
+            sources: sources, targets: targets
+        })
     }
+
+    // pub fn input_filter_write(source: CorticalBuffer, targets: Vec<CorticalBuffer>) -> ExecutionCommand {
+    //     ExecutionCommand::new(ExecutionCommandDetails::InputFilterWrite {
+    //         source: source, targets: targets
+    //     })
+    // }
 
     // pub fn local_copy() -> ExecutionCommand {
     //     ExecutionCommand::new(ExecutionCommandDetails::ThalamicCopy)
@@ -533,7 +561,9 @@ impl ExecutionGraph {
     /// Populates the list of requisite commands for each command.
     ///
     pub fn populate_requisites(&mut self) {
-        assert!(self.commands.len() == self.order.len());
+        assert!(self.commands.len() == self.order.len(), "ExecutionGraph::populate_requisites \
+            Not all commands have had their order properly set ({}/{}). Call '::order_next' to \
+            include commands in the execution order.", self.order.len(), self.commands.len());
 
         let mem_block_rws = self.readers_and_writers_by_mem_block();
 
