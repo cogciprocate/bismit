@@ -15,6 +15,13 @@ use cortex::{SensoryFilter};
 pub enum IoExeCmd {
     Read(usize),
     Write(usize),
+    FilteredWrite(usize),
+}
+
+impl IoExeCmd {
+    pub fn is_filtered_write(&self) -> bool {
+        if let IoExeCmd::FilteredWrite(_) = *self { true } else { false }
+    }
 }
 
 
@@ -25,25 +32,32 @@ pub enum IoExeCmd {
 pub struct IoInfo {
     key: LayerAddress,
     axn_range: Range<u32>,
-    filter_chain_idx: Option<usize>,
+    // filter_chain_idx: Option<usize>,
     exe_cmd: IoExeCmd,
 }
 
 impl IoInfo {
     pub fn new(src_lyr_key: LayerAddress, axn_range: Range<u32>,
-            filter_chain_idx: Option<usize>, exe_cmd: IoExeCmd) -> IoInfo
+            /*filter_chain_idx: Option<usize>,*/ exe_cmd: IoExeCmd) -> IoInfo
     {
         IoInfo {
             key: src_lyr_key,
             axn_range: axn_range,
-            filter_chain_idx: filter_chain_idx,
+            // filter_chain_idx: filter_chain_idx,
             exe_cmd: exe_cmd,
+        }
+    }
+
+    #[inline]
+    pub fn filter_chain_idx(&self) -> Option<usize> {
+        match self.exe_cmd {
+            IoExeCmd::FilteredWrite(filter_chain_idx) => Some(filter_chain_idx),
+            _ => None,
         }
     }
 
     #[inline] pub fn key(&self) -> &LayerAddress { &self.key }
     #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
-    #[inline] pub fn filter_chain_idx(&self) -> &Option<usize> { &self.filter_chain_idx }
     #[inline] pub fn exe_cmd(&self) -> &IoExeCmd { &self.exe_cmd }
 }
 
@@ -70,7 +84,7 @@ impl IoInfoGroup {
         let mut layers = Vec::<IoInfo>::with_capacity(tract_keys.len());
 
         for (lyr_addr, src_lyr_addr) in tract_keys.into_iter() {
-            let (tract_key, filter_chain_idx, io_cmd) = if let AxonDomainRoute::Output = group_route {
+            let (tract_key, /*filter_chain_idx,*/ io_cmd) = if let AxonDomainRoute::Output = group_route {
                 /*=============================================================================
                 ==================================== OUTPUT ===================================
                 =============================================================================*/
@@ -99,7 +113,7 @@ impl IoInfoGroup {
 
                 let io_cmd = IoExeCmd::Read(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"));
 
-                (lyr_addr, None, io_cmd)
+                (lyr_addr, /*None,*/ io_cmd)
             } else {
                 /*=============================================================================
                 ==================================== INPUT ====================================
@@ -148,9 +162,12 @@ impl IoInfoGroup {
 
                 let exe_cmd = ExecutionCommand::thalamocortical_write(write_cmd_srcs, write_cmd_tars);
 
-                let io_cmd = IoExeCmd::Write(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"));
+                let io_cmd = match filter_chain_idx {
+                    Some(idx) => IoExeCmd::FilteredWrite(idx),
+                    None => IoExeCmd::Write(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new")),
+                };
 
-                (src_lyr_addr, filter_chain_idx, io_cmd)
+                (src_lyr_addr, /*filter_chain_idx,*/ io_cmd)
             };
 
             /*=============================================================================
@@ -161,7 +178,7 @@ impl IoInfoGroup {
                 &format!("IoInfoCache::new(): Internal consistency error: \
                     lyr_addr: {:?}, src_lyr_addr: {:?}.", &lyr_addr, src_lyr_addr));
 
-            let io_layer = IoInfo::new(tract_key, axn_range, filter_chain_idx, io_cmd);
+            let io_layer = IoInfo::new(tract_key, axn_range, /*filter_chain_idx,*/ io_cmd);
             layers.push(io_layer);
         }
 
@@ -385,20 +402,35 @@ impl AxonSpace {
     pub fn set_exe_order_input(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let (io_info_grp, _) = self.io_info.group(AxonDomainRoute::Input).unwrap();
 
-        for io_info in io_info_grp {
-            match *io_info.exe_cmd() {
-                IoExeCmd::Write(cmd_idx) => { exe_graph.order_next(cmd_idx)?; },
+        for io_lyr in io_info_grp {
+            match *io_lyr.exe_cmd() {
+                IoExeCmd::Write(cmd_idx) => {
+                    // if let &Some(filter_chain_idx) = io_info.filter_chain_idx() {
+                    //     match self.filter_chains[filter_chain_idx].1.first() {
+                    //         Some(last_filter) => last_filter.set_exe_order_write(exe_graph)?,
+                    //         // None => panic!("AxonSpace::set_exe_order_input: Internal error [1]."),
+                    //         None => exe_graph.order_next(cmd_idx)?,
+                    //     };
+                    // }
+                    exe_graph.order_next(cmd_idx)?;
+                },
+                IoExeCmd::FilteredWrite(filter_chain_idx) => {
+                    // match self.filter_chains[filter_chain_idx].1.first() {
+                    //     Some(last_filter) => last_filter.set_exe_order_write(exe_graph)?,
+                    //     // None => panic!("AxonSpace::set_exe_order_input: Internal error [1]."),
+                    //     None => exe_graph.order_next(cmd_idx)?,
+                    // };
+                    if let Some(last_filter) = self.filter_chains[filter_chain_idx].1.first() {
+                        last_filter.set_exe_order_write(exe_graph)?;
+                    }
+                }
                 _ => panic!("AxonSpace::set_exe_order_input: Internal error [0]."),
             }
 
-            if let &Some(filter_chain_idx) = io_info.filter_chain_idx() {
+            // if let &Some(filter_chain_idx) = io_info.filter_chain_idx() {
+            if let IoExeCmd::FilteredWrite(filter_chain_idx) = *io_lyr.exe_cmd() {
                 for filter in self.filter_chains[filter_chain_idx].1.iter() {
                     filter.set_exe_order_cycle(exe_graph)?;
-                }
-
-                match self.filter_chains[filter_chain_idx].1.first() {
-                    Some(last_filter) => last_filter.set_exe_order_write(exe_graph)?,
-                    None => panic!("AxonSpace::set_exe_order_input: Internal error [1]."),
                 }
             }
         }
@@ -409,8 +441,8 @@ impl AxonSpace {
     pub fn set_exe_order_output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let (io_info_grp, _) = self.io_info.group(AxonDomainRoute::Output).unwrap();
 
-        for io_info in io_info_grp {
-            match *io_info.exe_cmd() {
+        for io_lyr in io_info_grp {
+            match *io_lyr.exe_cmd() {
                 IoExeCmd::Read(cmd_idx) => {
                     exe_graph.order_next(cmd_idx)?;
                 },
@@ -423,25 +455,34 @@ impl AxonSpace {
 
     /// Reads input from thalamus and writes to axon space.
     pub fn intake(&mut self, thal: &mut Thalamus, bypass_filters: bool) -> CmnResult<()> {
-        if let Some((src_lyrs, mut new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {
-            for src_lyr in src_lyrs.iter_mut() {
-                let tract_source = thal.tract_terminal_source(src_lyr.key())?;
+        if let Some((io_lyrs, mut new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {
+            for io_lyr in io_lyrs.iter_mut() {
+                let tract_source = thal.tract_terminal_source(io_lyr.key())?;
 
-                if !self.filter_chains.is_empty() && !bypass_filters &&
-                        src_lyr.filter_chain_idx().is_some()
-                {
-                    if let &Some(filter_chain_idx) = src_lyr.filter_chain_idx() {
-                        let (_, ref mut filter_chain) = self.filter_chains[filter_chain_idx];
-                        let mut filter_event = filter_chain[0].write(tract_source)?;
+                // if !self.filter_chains.is_empty() && !bypass_filters
+                //     && io_lyr.filter_chain_idx().is_some()
+                // {
+                //     if let &Some(filter_chain_idx) = io_lyr.filter_chain_idx() {
+                //         let (_, ref mut filter_chain) = self.filter_chains[filter_chain_idx];
+                //         let mut filter_event = filter_chain[0].write(tract_source)?;
 
-                        for filter in filter_chain.iter() {
-                            filter_event = filter.cycle(&filter_event);
-                        }
-                    } else {
-                        unreachable!();
+                //         for filter in filter_chain.iter() {
+                //             filter_event = filter.cycle(&filter_event);
+                //         }
+                //     } else {
+                //         unreachable!();
+                //     }
+
+                if !bypass_filters && io_lyr.exe_cmd().is_filtered_write() {
+                    let filter_chain_idx = io_lyr.filter_chain_idx().unwrap();
+                    let (_, ref mut filter_chain) = self.filter_chains[filter_chain_idx];
+                    let mut filter_event = filter_chain[0].write(tract_source)?;
+
+                    for filter in filter_chain.iter() {
+                        filter_event = filter.cycle(&filter_event);
                     }
                 } else {
-                    let axn_range = src_lyr.axn_range();
+                    let axn_range = io_lyr.axn_range();
                     let area_name = self.area_name;
 
                     OclBufferTarget::new(&self.states, axn_range, tract_source.dims().clone(),
@@ -449,7 +490,7 @@ impl AxonSpace {
                         .map_err(|err|
                             err.prepend(&format!("CorticalArea::intake():: \
                             Source tract length must be equal to the target axon range length \
-                            (area: '{}', layer_addr: '{:?}'): ", area_name, src_lyr.key())))?
+                            (area: '{}', layer_addr: '{:?}'): ", area_name, io_lyr.key())))?
                         .copy_from_slice_buffer(tract_source)?;
                 }
             }
@@ -459,15 +500,15 @@ impl AxonSpace {
 
     /// Reads output from axon space and writes to thalamus.
     pub fn output(&self, thal: &mut Thalamus) -> CmnResult<()> {
-        if let Some((src_lyrs, wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
-            for src_lyr in src_lyrs.iter() {
-                let mut target = thal.tract_terminal_target(src_lyr.key())?;
+        if let Some((io_lyrs, wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
+            for io_lyr in io_lyrs.iter() {
+                let mut target = thal.tract_terminal_target(io_lyr.key())?;
 
-                let source = OclBufferSource::new(&self.states, src_lyr.axn_range(),
+                let source = OclBufferSource::new(&self.states, io_lyr.axn_range(),
                         target.dims().clone(), Some(wait_events))
                     .map_err(|err| err.prepend(&format!("CorticalArea::output(): \
                         Target tract length must be equal to the source axon range length \
-                        (area: '{}', layer_addr: '{:?}'): ", self.area_name, src_lyr.key()))
+                        (area: '{}', layer_addr: '{:?}'): ", self.area_name, io_lyr.key()))
                     )?;
 
                 target.copy_from_ocl_buffer(source)?;

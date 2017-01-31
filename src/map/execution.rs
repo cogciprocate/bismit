@@ -448,26 +448,31 @@ impl ExecutionGraph {
         for (cmd_idx, cmd) in self.commands.iter().enumerate() {
             println!("##### Command [{}]:", cmd_idx);
 
+            println!("#####     [Sources:]");
+
             for cmd_src_block in cmd.sources().into_iter() {
                 let rw_cmd_idxs = mem_block_rws.entry(cmd_src_block.clone())
                     .or_insert(MemBlockRwCmdIdxs::new());
 
                 rw_cmd_idxs.readers.push(cmd_idx);
-                println!("#####     Source Block [{}]: {:?}", rw_cmd_idxs.readers.len() - 1, cmd_src_block);
+                // println!("#####     Source Block [{}]: {:?}", rw_cmd_idxs.readers.len() - 1, cmd_src_block);
+                println!("#####     [{}]: {:?}", rw_cmd_idxs.readers.len() - 1, cmd_src_block);
             }
 
-            println!("#####");
+            // println!("#####");
+            println!("#####     [Targets:]");
 
             for cmd_tar_block in cmd.targets().into_iter() {
                 let rw_cmd_idxs = mem_block_rws.entry(cmd_tar_block.clone())
                     .or_insert(MemBlockRwCmdIdxs::new());
 
                 rw_cmd_idxs.writers.push(cmd_idx);
-                println!("#####     Target Block [{}]: {:?}", rw_cmd_idxs.writers.len() - 1, cmd_tar_block);
+                // println!("#####     Target Block [{}]: {:?}", rw_cmd_idxs.writers.len() - 1, cmd_tar_block);
+                println!("#####     [{}]: {:?}", rw_cmd_idxs.writers.len() - 1, cmd_tar_block);
             }
 
-            println!("#####");
-            println!("#####     Totals: Sources: {}, Targets: {}", cmd.sources().len(), cmd.targets().len());
+            // println!("#####");
+            // println!("#####         Totals: Sources: {}, Targets: {}", cmd.sources().len(), cmd.targets().len());
             println!("#####");
         }
 
@@ -594,9 +599,9 @@ impl ExecutionGraph {
             debug_assert!(self.requisite_cmd_idxs[cmd_idx].len() ==
                 self.requisite_cmd_precedence[cmd_idx].len());
 
-            println!("##### [{}: {}]: Requisites: {:?}:{:?}",
-                cmd_order, cmd_idx, self.requisite_cmd_idxs[cmd_idx],
-                self.requisite_cmd_precedence[cmd_idx]);
+            // println!("##### [{}: {}]: Requisites: {:?}:{:?}",
+            //     cmd_order, cmd_idx, self.requisite_cmd_idxs[cmd_idx],
+            //     self.requisite_cmd_precedence[cmd_idx]);
             println!("#####");
         }
 

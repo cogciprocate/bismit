@@ -105,15 +105,13 @@ impl SensoryFilter {
         })
     }
 
-    pub fn set_exe_order_cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        exe_graph.order_next(self.exe_cmd_idx_cycle)?;
-        Ok(())
+    pub fn set_exe_order_cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<usize> {
+        Ok(exe_graph.order_next(self.exe_cmd_idx_cycle)?)
     }
 
-    pub fn set_exe_order_write(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        exe_graph.order_next(self.exe_cmd_idx_write.ok_or(CmnError::new(
-            "SensoryFilter::set_exe_order_write: Write command not created for this filter."))?)?;
-        Ok(())
+    pub fn set_exe_order_write(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<usize> {
+        Ok(exe_graph.order_next(self.exe_cmd_idx_write.ok_or(CmnError::new(
+            "SensoryFilter::set_exe_order_write: Write command not created for this filter."))?)?)
     }
 
     pub fn write(&self, source: SliceBufferSource) -> CmnResult<Event> {
