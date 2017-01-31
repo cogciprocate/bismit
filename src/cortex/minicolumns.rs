@@ -1,6 +1,5 @@
 use std::ops::Range;
 // use rand;
-
 use cmn::{self, CorticalDims, DataCellLayer, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{self, ProQue, SpatialDims, Buffer, EventList, Result as OclResult};
@@ -21,7 +20,6 @@ pub struct Minicolumns {
     activate_exe_cmd_idx: usize,
     kern_output: ocl::Kernel,
     output_exe_cmd_idx: usize,
-
     // rng: rand::XorShiftRng,
     pub flag_sets: Buffer<u8>,
     pub best_den_states: Buffer<u8>,

@@ -32,18 +32,14 @@ impl IoExeCmd {
 pub struct IoInfo {
     key: LayerAddress,
     axn_range: Range<u32>,
-    // filter_chain_idx: Option<usize>,
     exe_cmd: IoExeCmd,
 }
 
 impl IoInfo {
-    pub fn new(src_lyr_key: LayerAddress, axn_range: Range<u32>,
-            /*filter_chain_idx: Option<usize>,*/ exe_cmd: IoExeCmd) -> IoInfo
-    {
+    pub fn new(src_lyr_key: LayerAddress, axn_range: Range<u32>, exe_cmd: IoExeCmd) -> IoInfo {
         IoInfo {
             key: src_lyr_key,
             axn_range: axn_range,
-            // filter_chain_idx: filter_chain_idx,
             exe_cmd: exe_cmd,
         }
     }
@@ -71,7 +67,6 @@ pub struct IoInfoGroup {
 
 impl IoInfoGroup {
     pub fn new(area_map: &AreaMap,
-            // group_tags: LayerTags,
             group_route: AxonDomainRoute,
             tract_keys: Vec<(LayerAddress, Option<LayerAddress>)>,
             filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>,
@@ -84,7 +79,7 @@ impl IoInfoGroup {
         let mut layers = Vec::<IoInfo>::with_capacity(tract_keys.len());
 
         for (lyr_addr, src_lyr_addr) in tract_keys.into_iter() {
-            let (tract_key, /*filter_chain_idx,*/ io_cmd) = if let AxonDomainRoute::Output = group_route {
+            let (tract_key, io_cmd) = if let AxonDomainRoute::Output = group_route {
                 /*=============================================================================
                 ==================================== OUTPUT ===================================
                 =============================================================================*/
@@ -104,16 +99,9 @@ impl IoInfoGroup {
                 }
 
                 let exe_cmd = ExecutionCommand::corticothalamic_read(srcs, tars);
-
-                // // Create a read I/O execution command:
-                // let exe_cmd = ExecutionCommand::corticothalamic_read(
-                //     CorticalBuffer::axon_layer(axn_states, lyr_addr),
-                //     ThalamicTract::layer(lyr_addr, None)
-                // );
-
                 let io_cmd = IoExeCmd::Read(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"));
 
-                (lyr_addr, /*None,*/ io_cmd)
+                (lyr_addr, io_cmd)
             } else {
                 /*=============================================================================
                 ==================================== INPUT ====================================
@@ -129,45 +117,49 @@ impl IoInfoGroup {
                     }
                 );
 
-                // Get source layer absolute slice id range:
-                let src_lyr_slc_id_range = thal.area_map(src_lyr_addr.area_id())
-                    .and_then(|area| area.layer(src_lyr_addr.layer_id()))
-                    .expect(&format!("IoInfoCache::new(): Unable to find source layer ({:?}) \
-                        for i/o layer ({:?})", src_lyr_addr, lyr_addr))
-                    .slc_range()
-                    .expect(&format!("IoInfoCache::new(): Source layer ({:?}) for i/o layer ({:?}) \
-                        has no slices (depth of zero).", src_lyr_addr, lyr_addr));
+                // If this is a filtered input layer, the first filter within
+                // the filter chain will take care of the write command.
+                // Otherwise, create one.
+                let io_cmd = if let Some(idx) = filter_chain_idx {
+                    IoExeCmd::FilteredWrite(idx)
+                } else {
+                    // Get source layer absolute slice id range:
+                    let src_lyr_slc_id_range = thal.area_map(src_lyr_addr.area_id())
+                        .and_then(|area| area.layer(src_lyr_addr.layer_id()))
+                        .expect(&format!("IoInfoCache::new(): Unable to find source layer ({:?}) \
+                            for i/o layer ({:?})", src_lyr_addr, lyr_addr))
+                        .slc_range()
+                        .expect(&format!("IoInfoCache::new(): Source layer ({:?}) for i/o layer ({:?}) \
+                            has no slices (depth of zero).", src_lyr_addr, lyr_addr));
 
-                // Set write command source blocks:
-                let mut write_cmd_srcs: Vec<ThalamicTract> = Vec::with_capacity(src_lyr_slc_id_range.len());
+                    // Set write command source blocks:
+                    let mut write_cmd_srcs: Vec<ThalamicTract> = Vec::with_capacity(src_lyr_slc_id_range.len());
 
-                for slc_id in src_lyr_slc_id_range.start..src_lyr_slc_id_range.end {
-                    write_cmd_srcs.push(ThalamicTract::axon_slice(src_lyr_addr.area_id(), slc_id));
-                }
+                    for slc_id in src_lyr_slc_id_range.start..src_lyr_slc_id_range.end {
+                        write_cmd_srcs.push(ThalamicTract::axon_slice(src_lyr_addr.area_id(), slc_id));
+                    }
 
-                // Get target layer absolute slice id range:
-                let tar_lyr_slc_id_range = area_map.layers()
-                    .layer_info(lyr_addr.layer_id()).expect("IoInfoCache::new(): \
-                        Internal consistency error. Target layer address is invalid.")
-                    .src_lyr(&src_lyr_addr).expect("IoInfoCache::new(): \
-                        Internal consistency error. Target layer address not found within layer.")
-                    .tar_slc_range();
+                    // Get target layer absolute slice id range:
+                    let tar_lyr_slc_id_range = area_map.layers()
+                        .layer_info(lyr_addr.layer_id()).expect("IoInfoCache::new(): \
+                            Internal consistency error. Target layer address is invalid.")
+                        .src_lyr(&src_lyr_addr).expect("IoInfoCache::new(): \
+                            Internal consistency error. Target layer address not found within layer.")
+                        .tar_slc_range();
 
-                // Set write command target blocks:
-                let mut write_cmd_tars: Vec<CorticalBuffer> = Vec::with_capacity(tar_lyr_slc_id_range.len());
+                    // Set write command target blocks:
+                    let mut write_cmd_tars: Vec<CorticalBuffer> = Vec::with_capacity(tar_lyr_slc_id_range.len());
 
-                for slc_id in tar_lyr_slc_id_range.start..tar_lyr_slc_id_range.end {
-                    write_cmd_tars.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id))
-                }
+                    for slc_id in tar_lyr_slc_id_range.start..tar_lyr_slc_id_range.end {
+                        write_cmd_tars.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id))
+                    }
 
-                let exe_cmd = ExecutionCommand::thalamocortical_write(write_cmd_srcs, write_cmd_tars);
+                    let exe_cmd = ExecutionCommand::thalamocortical_write(write_cmd_srcs, write_cmd_tars);
 
-                let io_cmd = match filter_chain_idx {
-                    Some(idx) => IoExeCmd::FilteredWrite(idx),
-                    None => IoExeCmd::Write(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new")),
+                    IoExeCmd::Write(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"))
                 };
 
-                (src_lyr_addr, /*filter_chain_idx,*/ io_cmd)
+                (src_lyr_addr, io_cmd)
             };
 
             /*=============================================================================
@@ -178,7 +170,7 @@ impl IoInfoGroup {
                 &format!("IoInfoCache::new(): Internal consistency error: \
                     lyr_addr: {:?}, src_lyr_addr: {:?}.", &lyr_addr, src_lyr_addr));
 
-            let io_layer = IoInfo::new(tract_key, axn_range, /*filter_chain_idx,*/ io_cmd);
+            let io_layer = IoInfo::new(tract_key, axn_range, io_cmd);
             layers.push(io_layer);
         }
 
@@ -343,6 +335,7 @@ impl AxonSpace {
 
                     let src_tract_info = if filter_is_first {
                         let src_lyr_addr = src_lyr_info.layer_addr();
+
                         // Get source layer absolute slice id range:
                         let src_lyr_slc_id_range = thal.area_map(src_lyr_addr.area_id())
                             .and_then(|area| area.layer(src_lyr_addr.layer_id()))
@@ -405,21 +398,9 @@ impl AxonSpace {
         for io_lyr in io_info_grp {
             match *io_lyr.exe_cmd() {
                 IoExeCmd::Write(cmd_idx) => {
-                    // if let &Some(filter_chain_idx) = io_info.filter_chain_idx() {
-                    //     match self.filter_chains[filter_chain_idx].1.first() {
-                    //         Some(last_filter) => last_filter.set_exe_order_write(exe_graph)?,
-                    //         // None => panic!("AxonSpace::set_exe_order_input: Internal error [1]."),
-                    //         None => exe_graph.order_next(cmd_idx)?,
-                    //     };
-                    // }
                     exe_graph.order_next(cmd_idx)?;
                 },
                 IoExeCmd::FilteredWrite(filter_chain_idx) => {
-                    // match self.filter_chains[filter_chain_idx].1.first() {
-                    //     Some(last_filter) => last_filter.set_exe_order_write(exe_graph)?,
-                    //     // None => panic!("AxonSpace::set_exe_order_input: Internal error [1]."),
-                    //     None => exe_graph.order_next(cmd_idx)?,
-                    // };
                     if let Some(last_filter) = self.filter_chains[filter_chain_idx].1.first() {
                         last_filter.set_exe_order_write(exe_graph)?;
                     }
@@ -427,7 +408,6 @@ impl AxonSpace {
                 _ => panic!("AxonSpace::set_exe_order_input: Internal error [0]."),
             }
 
-            // if let &Some(filter_chain_idx) = io_info.filter_chain_idx() {
             if let IoExeCmd::FilteredWrite(filter_chain_idx) = *io_lyr.exe_cmd() {
                 for filter in self.filter_chains[filter_chain_idx].1.iter() {
                     filter.set_exe_order_cycle(exe_graph)?;
@@ -458,20 +438,6 @@ impl AxonSpace {
         if let Some((io_lyrs, mut new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {
             for io_lyr in io_lyrs.iter_mut() {
                 let tract_source = thal.tract_terminal_source(io_lyr.key())?;
-
-                // if !self.filter_chains.is_empty() && !bypass_filters
-                //     && io_lyr.filter_chain_idx().is_some()
-                // {
-                //     if let &Some(filter_chain_idx) = io_lyr.filter_chain_idx() {
-                //         let (_, ref mut filter_chain) = self.filter_chains[filter_chain_idx];
-                //         let mut filter_event = filter_chain[0].write(tract_source)?;
-
-                //         for filter in filter_chain.iter() {
-                //             filter_event = filter.cycle(&filter_event);
-                //         }
-                //     } else {
-                //         unreachable!();
-                //     }
 
                 if !bypass_filters && io_lyr.exe_cmd().is_filtered_write() {
                     let filter_chain_idx = io_lyr.filter_chain_idx().unwrap();

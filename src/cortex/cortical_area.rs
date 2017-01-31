@@ -303,21 +303,13 @@ impl CorticalArea {
         }
 
         mcols.as_mut().set_exe_order_output(&mut exe_graph)?;
-
         axns.set_exe_order_output(&mut exe_graph)?;
 
-        // exe_graph.populate_requisites();
+        exe_graph.populate_requisites();
 
         /*=============================================================================
         ===============================================================================
         =============================================================================*/
-
-
-        // println!("{mt}::NEW(): EXE_GRAPH: {:#?}", exe_graph, mt = cmn::MT);
-
-        // [TODO]: Move back up.
-            exe_graph.populate_requisites();
-        //
 
         let cortical_area = CorticalArea {
             area_id: area_id,

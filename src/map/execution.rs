@@ -1,6 +1,5 @@
 #![allow(dead_code, unused_variables)]
 
-// use std::ops::Range;
 use std::num::Wrapping;
 use std::collections::{HashMap, BTreeMap};
 use std::error;
@@ -9,7 +8,7 @@ use ocl::{Event, Buffer, OclPrm, Error as OclError};
 use ocl::core::Event as EventCore;
 use ocl::ffi::cl_event;
 use map::LayerAddress;
-use cmn::{util, /*CmnError,*/ /*CmnResult*/};
+use cmn::{util};
 
 type ExeGrResult<T> = Result<T, ExecutionGraphError>;
 
