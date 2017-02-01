@@ -171,7 +171,7 @@ impl CorticalBuffer {
     pub fn control_soma_lyr<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress)
             -> CorticalBuffer
     {
-        CorticalBuffer::DataCellSomaLayer {
+        CorticalBuffer::ControlCellSomaLayer {
             buffer_id: util::buffer_uid(buf),
             layer_addr: layer_addr,
         }
@@ -341,6 +341,10 @@ impl ExecutionCommand {
 
     pub fn set_order_idx(&mut self, order_idx: usize) {
         self.order_idx = Some(order_idx);
+    }
+
+    pub fn set_event(&mut self, event: Option<EventCore>) {
+        self.event = event;
     }
 
     #[inline] pub fn sources(&self) -> Vec<MemoryBlock> { self.details.sources() }
@@ -652,8 +656,29 @@ impl ExecutionGraph {
     pub fn set_cmd_event(&mut self, cmd_idx: usize, event: Event) -> ExeGrResult<()> {
         if !self.locked { return Err(ExecutionGraphError::Unlocked); }
 
+        let cmd = self.commands.get_mut(cmd_idx)
+            .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
+
+        if self.next_order_idx != cmd.order_idx().unwrap() {
+            return Err(ExecutionGraphError::EventsRequestOutOfOrder(cmd_idx));
+        }
+
+        cmd.set_event(event.core_as_ref().cloned());
+
+        if (self.next_order_idx + 1) == self.order.len() {
+            self.next_order_idx = 0;
+        } else {
+            self.next_order_idx += 1;
+        }
+
         Ok(())
     }
+
+    pub fn _RESET(&mut self) {
+        self.next_order_idx = 0;
+    }
+
+    // #[inline] pub fn command_count(&self) -> usize { self.order.len() }
 }
 
 

@@ -2,7 +2,7 @@ use std::ops::Range;
 // use rand;
 use cmn::{self, CorticalDims, DataCellLayer, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
-use ocl::{self, ProQue, SpatialDims, Buffer, EventList, Result as OclResult};
+use ocl::{self, ProQue, SpatialDims, Buffer, /*EventList,*/ Result as OclResult, Event};
 use ocl::traits::OclPrm;
 use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer};
 
@@ -183,24 +183,46 @@ impl Minicolumns {
     }
 
     #[inline]
-    pub fn activate(&self) {
-        self.kern_activate.enq().expect("[FIXME]: HANDLE ME!");
+    pub fn activate(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        let mut event = Event::empty();
+        self.kern_activate.cmd().ewait(&exe_graph.get_req_events(self.activate_exe_cmd_idx)?).enew(&mut event).enq()?;
+        exe_graph.set_cmd_event(self.activate_exe_cmd_idx, event)?;
+        Ok(())
     }
 
-    pub fn output(&self, new_events: Option<&mut EventList>) {
-        match new_events {
-            Some(ne) => {
-                ne.clear_completed().expect("Minicolumns::output");
-                // self.kern_output.enqueue_events(None, Some(ne))
-                //     .expect("bismit::Minicolumns::output");
+    // pub fn output(&self, new_events: Option<&mut EventList>) {
+    //     match new_events {
+    //         Some(ne) => {
+    //             ne.clear_completed().expect("Minicolumns::output");
+    //             // self.kern_output.enqueue_events(None, Some(ne))
+    //             //     .expect("bismit::Minicolumns::output");
 
-                self.kern_output.cmd().enew(ne).enq()
-                    .expect("bismit::Minicolumns::output");
-            },
+    //             self.kern_output.cmd().enew(ne).enq()
+    //                 .expect("bismit::Minicolumns::output");
+    //         },
 
-            None => self.kern_output.enq().expect("[FIXME]: HANDLE ME!"),
-        }
+    //         None => self.kern_output.enq().expect("[FIXME]: HANDLE ME!"),
+    //     }
+    // }
+    pub fn output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        // match new_events {
+        //     Some(ne) => {
+        //         ne.clear_completed().expect("Minicolumns::output");
+        //         // self.kern_output.enqueue_events(None, Some(ne))
+        //         //     .expect("bismit::Minicolumns::output");
+
+        //         self.kern_output.cmd().enew(ne).enq()
+        //             .expect("bismit::Minicolumns::output");
+        //     },
+
+        //     None => self.kern_output.enq().expect("[FIXME]: HANDLE ME!"),
+        // }
+        let mut event = Event::empty();
+        self.kern_output.cmd().ewait(&exe_graph.get_req_events(self.output_exe_cmd_idx)?).enew(&mut event).enq()?;
+        exe_graph.set_cmd_event(self.output_exe_cmd_idx, event)?;
+        Ok(())
     }
+
 
     // pub fn confab(&mut self) {
     //     self.flag_sets.fill_vec();

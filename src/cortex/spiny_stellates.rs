@@ -3,8 +3,8 @@ use rand::{self, Rng};
 
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
-use ocl::{Kernel, ProQue, SpatialDims, Buffer};
-use ocl::core::ClWaitList;
+use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
+// use ocl::core::ClWaitList;
 use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress};
 use cortex::{Dendrites, AxonSpace};
@@ -102,23 +102,31 @@ impl SpinyStellateLayer {
         })
     }
 
-    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn set_exe_order_cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         self.dens.set_exe_order(exe_graph)?;
+        Ok(())
+    }
+
+    pub fn set_exe_order_learn(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         exe_graph.order_next(self.ltp_exe_cmd_idx)?;
         Ok(())
     }
 
     #[inline]
-    pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
-        self.dens.cycle(wait_events);
+    pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        self.dens.cycle(exe_graph)
     }
 
 
     #[inline]
-    pub fn learn(&mut self) {
+    pub fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let rnd = self.rng.gen::<u32>();
         self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
-        self.kern_ltp.enq().expect("[FIXME]: HANDLE ME!");
+
+        let mut event = Event::empty();
+        self.kern_ltp.cmd().ewait(&exe_graph.get_req_events(self.ltp_exe_cmd_idx)?).enew(&mut event).enq()?;
+        exe_graph.set_cmd_event(self.ltp_exe_cmd_idx, event)?;
+        Ok(())
     }
 
     #[inline] pub fn regrow(&mut self) {

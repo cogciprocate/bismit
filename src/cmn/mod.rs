@@ -37,7 +37,7 @@ pub use self::slice_dims::SliceDims;
 pub use self::tract_dims::TractDims;
 pub use self::data_cell_layer::{DataCellLayer};
 pub use self::renderer::{Renderer};
-pub use self::error::{CmnError};
+pub use self::error::{CmnError, CmnResult};
 pub use self::tract_frame::{TractFrame, TractFrameMut};
 #[cfg(test)] pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
 pub use self::map_store::MapStore;
@@ -112,9 +112,6 @@ pub trait ParaHexArray {
 
 
 pub type Sdr = [u8];
-
-
-pub type CmnResult<T> = Result<T, CmnError>;
 
 
 

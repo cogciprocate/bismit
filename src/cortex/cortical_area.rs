@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
 use ocl::{Device, ProQue, Context, Buffer, Event};
-use ocl::core::ClWaitList;
-use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
+// use ocl::core::ClWaitList;
+use cmn::{self, CmnError, CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
-    ExecutionGraph, AxonDomainRoute,};
+    ExecutionGraph, /*AxonDomainRoute,*/};
 use ::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer};
@@ -285,24 +285,36 @@ impl CorticalArea {
         =================== EXECUTION ORDERING & GRAPH POPULATION =====================
         =============================================================================*/
 
+        // (1.) Axon Intake:
+        axns.set_exe_order_intake(&mut exe_graph)?;
 
-        axns.set_exe_order_input(&mut exe_graph)?;
-
+        // (2.) SSTs Cycle:
         for sst in ssts_map.values() {
-            sst.set_exe_order(&mut exe_graph)?;
+            sst.set_exe_order_cycle(&mut exe_graph)?;
         }
 
-        mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
-
+        // (3.) IINNs Cycle:
         for iinn in iinns.values() {
             iinn.set_exe_order(&mut exe_graph)?;
         }
 
+        // (4.) SSTs Learn:
+        for sst in ssts_map.values() {
+            sst.set_exe_order_learn(&mut exe_graph)?;
+        }
+
+        // (5.) MCOLSs Activate:
+        mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
+
+        // (6.) PYRs Learn & Cycle:
         for pyr in pyrs_map.values() {
             pyr.set_exe_order(&mut exe_graph)?;
         }
 
+        // (7.) MCOLs Output:
         mcols.as_mut().set_exe_order_output(&mut exe_graph)?;
+
+        // (9.) Axon Output:
         axns.set_exe_order_output(&mut exe_graph)?;
 
         exe_graph.populate_requisites();
@@ -338,37 +350,66 @@ impl CorticalArea {
     //
     // [TODO]: ISOLATE LEARNING INTO SEPARATE THREAD
     pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
-        let emsg = format!("cortical_area::CorticalArea::cycle(): Invalid layer.");
+        //////
+        ////// [REMOVE ME]: TEMPORARY:
+            // self.exe_graph._RESET();
+        //////
+        //////
 
-        self.axns.intake(thal, self.settings.bypass_filters)?;
 
+//      &exe_graph.get_req_events(cmd_idx)?
+
+        // (1.) Axon Intake:
+        self.axns.intake(thal, &mut self.exe_graph, self.settings.bypass_filters)?;
+
+        // (2.) SSTs Cycle:
         if !self.settings.disable_ssts {
-            let aff_input_events = { self.axns.io_info().group_events(AxonDomainRoute::Input)
-                .map(|wl| wl as &ClWaitList) };
-            self.psal().cycle(aff_input_events);
+            // let aff_input_events = { self.axns.io_info().group_events(AxonDomainRoute::Input)
+            //     .map(|wl| wl as &ClWaitList) };
+            // self.psal().cycle(aff_input_events);
+            // self.psal().cycle(&mut self.exe_graph);
+            self.ssts_map[self.psal_name].cycle(&mut self.exe_graph)?;
         }
 
-        self.iinns.get_mut("iv_inhib").expect(&emsg).cycle(self.settings.bypass_inhib);
+        // (3.) IINNs Cycle:
+        self.iinns.get_mut("iv_inhib")
+            .ok_or(CmnError::new("cortical_area::CorticalArea::cycle(): Invalid layer."))?
+            .cycle(&mut self.exe_graph, self.settings.bypass_inhib)?;
 
-        if !self.settings.disable_ssts && !self.settings.disable_learning { self.psal_mut().learn(); }
+        // (4.) SSTs Learn:
+        if !self.settings.disable_ssts && !self.settings.disable_learning {
+            self.ssts_map.get_mut(self.psal_name).ok_or("CorticalArea::cycle: PSAL (ssts) not found.")?
+                .learn(&mut self.exe_graph)?;
+        }
 
-        if !self.settings.disable_mcols { self.mcols.activate(); }
+        // (5.) MCOLSs Activate:
+        if !self.settings.disable_mcols { self.mcols.activate(&mut self.exe_graph)?; }
 
+        // (6.) PYRs Learn & Cycle:
         if !self.settings.disable_pyrs {
-            if !self.settings.disable_learning { self.ptal_mut().learn(); }
-            let eff_input_events = { self.axns.io_info().group_events(AxonDomainRoute::Input)
-                .map(|wl| wl as &ClWaitList) };
-            self.ptal().cycle(eff_input_events);
+            if !self.settings.disable_learning {
+                self.pyrs_map.get_mut(self.ptal_name).ok_or("CorticalArea::cycle: PTAL (pyrs) not found.")?
+                    .learn(&mut self.exe_graph)?;
+            }
+            // let eff_input_events = { self.axns.io_info().group_events(AxonDomainRoute::Input)
+            //     .map(|wl| wl as &ClWaitList) };
+            // self.ptal().cycle(eff_input_events);
+            // self.ptal().cycle(&mut self.exe_graph);
+            self.pyrs_map[self.ptal_name].cycle(&mut self.exe_graph)?;
         }
 
+        // (7.) MCOLs Output:
         if !self.settings.disable_mcols {
-            let output_events = { self.axns.io_info_mut().group_events_mut(AxonDomainRoute::Output) };
-            self.mcols.output(output_events);
+            // let output_events = { self.axns.io_info_mut().group_events_mut(AxonDomainRoute::Output) };
+            // self.mcols.output(output_events);
+            self.mcols.output(&mut self.exe_graph)?;
         }
 
+        // (8.) Regrow:
         if !self.settings.disable_regrowth { self.regrow(); }
 
-        self.axns.output(thal)?;
+        // (9.) Axon Output:
+        self.axns.output(thal, &mut self.exe_graph)?;
 
         Ok(())
     }

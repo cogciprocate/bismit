@@ -1,6 +1,6 @@
 use cmn::{CorticalDims, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
-use ocl::{Kernel, ProQue, SpatialDims, Buffer};
+use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
 use map::CellScheme;
 use cortex::AxonSpace;
 
@@ -88,17 +88,28 @@ impl InhibitoryInterneuronNetwork {
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         exe_graph.order_next(self.exe_cmd_idx)?;
-
         Ok(())
     }
 
     #[inline]
-    pub fn cycle(&mut self, bypass: bool) {
+    pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, bypass: bool) -> CmnResult<()> {
+        let mut event = Event::empty();
+
         if bypass {
-            self.kern_inhib_passthrough.enq().expect("[FIXME]: HANDLE ME!");
+            self.kern_inhib_passthrough.cmd()
+                .ewait(&exe_graph.get_req_events(self.exe_cmd_idx)?)
+                .enew(&mut event)
+                .enq()?;
         } else {
-            self.kern_inhib_simple.enq().expect("[FIXME]: HANDLE ME!");
+            self.kern_inhib_simple.cmd()
+                .ewait(&exe_graph.get_req_events(self.exe_cmd_idx)?)
+                .enew(&mut event)
+                .enq()?;
         }
+
+        exe_graph.set_cmd_event(self.exe_cmd_idx, event)?;
+
+        Ok(())
     }
 
     #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }

@@ -1,6 +1,6 @@
-use ocl::{ProQue, SpatialDims, Buffer, Kernel};
+use ocl::{ProQue, SpatialDims, Buffer, Kernel, Event};
 use ocl::traits::OclPrm;
-use ocl::core::ClWaitList;
+// use ocl::core::ClWaitList;
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress};
@@ -159,17 +159,34 @@ impl Dendrites {
         Ok(())
     }
 
-    pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
+    // pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
+    //     if DEBUG_KERN { println!("Dens: Cycling syns..."); }
+    //     self.syns.cycle(wait_events);
+
+    //     for kern in self.kernels.iter() {
+    //         if DEBUG_KERN { println!("Dens: Cycling kern_cycle..."); }
+
+    //         kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
+
+    //         if DEBUG_KERN { kern.default_queue().finish(); }
+    //     }
+    // }
+
+    pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if DEBUG_KERN { println!("Dens: Cycling syns..."); }
-        self.syns.cycle(wait_events);
-        // self.kern_cycle.enqueue_events(wait_events, None).expect("bismit::Dendrites::cycle");
-        for kern in self.kernels.iter() {
+        self.syns.cycle(exe_graph)?;
+
+        for (kern, &cmd_idx) in self.kernels.iter().zip(self.exe_cmd_idxs.iter()) {
             if DEBUG_KERN { println!("Dens: Cycling kern_cycle..."); }
 
-            kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
+            let mut event = Event::empty();
+            kern.cmd().ewait(&exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            exe_graph.set_cmd_event(cmd_idx, event)?;
 
             if DEBUG_KERN { kern.default_queue().finish(); }
         }
+
+        Ok(())
     }
 
     // FOR TESTING PURPOSES

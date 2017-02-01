@@ -392,7 +392,7 @@ impl AxonSpace {
         })
     }
 
-    pub fn set_exe_order_input(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn set_exe_order_intake(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let (io_info_grp, _) = self.io_info.group(AxonDomainRoute::Input).unwrap();
 
         for io_lyr in io_info_grp {
@@ -405,7 +405,7 @@ impl AxonSpace {
                         last_filter.set_exe_order_write(exe_graph)?;
                     }
                 }
-                _ => panic!("AxonSpace::set_exe_order_input: Internal error [0]."),
+                _ => panic!("AxonSpace::set_exe_order_intake: Internal error [0]."),
             }
 
             if let IoExeCmd::FilteredWrite(filter_chain_idx) = *io_lyr.exe_cmd() {
@@ -434,30 +434,43 @@ impl AxonSpace {
     }
 
     /// Reads input from thalamus and writes to axon space.
-    pub fn intake(&mut self, thal: &mut Thalamus, bypass_filters: bool) -> CmnResult<()> {
+    ///
+    // [TODO]: Store thal tract index instead of using (LayerAddress) key.
+    //
+    pub fn intake(&mut self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph,
+            bypass_filters: bool) -> CmnResult<()>
+    {
         if let Some((io_lyrs, mut new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {
             for io_lyr in io_lyrs.iter_mut() {
                 let tract_source = thal.tract_terminal_source(io_lyr.key())?;
 
                 if !bypass_filters && io_lyr.exe_cmd().is_filtered_write() {
                     let filter_chain_idx = io_lyr.filter_chain_idx().unwrap();
-                    let (_, ref mut filter_chain) = self.filter_chains[filter_chain_idx];
-                    let mut filter_event = filter_chain[0].write(tract_source)?;
+                    let filter_chain = &mut self.filter_chains[filter_chain_idx].1;
+                    // let mut filter_event = filter_chain[0].write(tract_source)?;
+                    filter_chain[0].write(tract_source, exe_graph)?;
 
                     for filter in filter_chain.iter() {
-                        filter_event = filter.cycle(&filter_event);
+                        filter.cycle(exe_graph)?;
                     }
                 } else {
                     let axn_range = io_lyr.axn_range();
                     let area_name = self.area_name;
 
-                    OclBufferTarget::new(&self.states, axn_range, tract_source.dims().clone(),
-                            Some(&mut new_events), false)
-                        .map_err(|err|
-                            err.prepend(&format!("CorticalArea::intake():: \
-                            Source tract length must be equal to the target axon range length \
-                            (area: '{}', layer_addr: '{:?}'): ", area_name, io_lyr.key())))?
-                        .copy_from_slice_buffer(tract_source)?;
+                    if let &IoExeCmd::Write(cmd_idx) = io_lyr.exe_cmd() {
+                        let event = OclBufferTarget::new(&self.states, axn_range, tract_source.dims().clone(),
+                                Some(&mut new_events), false)
+                            .map_err(|err|
+                                err.prepend(&format!("CorticalArea::intake():: \
+                                Source tract length must be equal to the target axon range length \
+                                (area: '{}', layer_addr: '{:?}'): ", area_name, io_lyr.key())))?
+                            // .copy_from_slice_buffer(tract_source)?;
+                            .copy_from_slice_buffer_v2(tract_source, Some(&exe_graph.get_req_events(cmd_idx)?))?;
+
+                        exe_graph.set_cmd_event(cmd_idx, event)?;
+                    } else {
+                        panic!("CorticalArea::intake():: Invalid 'IoExeCmd' type: {:?}", io_lyr.exe_cmd());
+                    }
                 }
             }
         }
@@ -465,19 +478,29 @@ impl AxonSpace {
     }
 
     /// Reads output from axon space and writes to thalamus.
-    pub fn output(&self, thal: &mut Thalamus) -> CmnResult<()> {
+    ///
+    // [TODO]: Store thal tract index instead of using (LayerAddress) key.
+    //
+    pub fn output(&self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if let Some((io_lyrs, wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
             for io_lyr in io_lyrs.iter() {
-                let mut target = thal.tract_terminal_target(io_lyr.key())?;
+                if let &IoExeCmd::Read(cmd_idx) = io_lyr.exe_cmd() {
+                    let mut target = thal.tract_terminal_target(io_lyr.key())?;
 
-                let source = OclBufferSource::new(&self.states, io_lyr.axn_range(),
-                        target.dims().clone(), Some(wait_events))
-                    .map_err(|err| err.prepend(&format!("CorticalArea::output(): \
-                        Target tract length must be equal to the source axon range length \
-                        (area: '{}', layer_addr: '{:?}'): ", self.area_name, io_lyr.key()))
-                    )?;
+                    let source = OclBufferSource::new(&self.states, io_lyr.axn_range(),
+                            target.dims().clone(), Some(wait_events))
+                        .map_err(|err| err.prepend(&format!("CorticalArea::output(): \
+                            Target tract length must be equal to the source axon range length \
+                            (area: '{}', layer_addr: '{:?}'): ", self.area_name, io_lyr.key()))
+                        )?;
 
-                target.copy_from_ocl_buffer(source)?;
+                    let event = target.copy_from_ocl_buffer_v2(source,
+                        Some(&exe_graph.get_req_events(cmd_idx)?))?;
+
+                    exe_graph.set_cmd_event(cmd_idx, event)?;
+                } else {
+                    panic!("CorticalArea::output():: Invalid 'IoExeCmd' type: {:?}", io_lyr.exe_cmd());
+                }
             }
         }
         Ok(())

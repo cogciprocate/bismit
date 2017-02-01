@@ -1,9 +1,23 @@
 use std::error::{Error};
 use std::fmt;
 // use std::ops::Deref;
-use ocl::Error as OclError;
-use cmn::CmnResult;
+use ocl::{Error as OclError, Result as OclResult};
+// use cmn::CmnResult;
 use map::ExecutionGraphError;
+
+
+pub type CmnResult<T> = Result<T, CmnError>;
+
+// [NOTE]: Implement this someday:
+//
+// impl<T> From<Result<T, OclError>> for Result<T, CmnError> {
+//     fn from(result: Result<T, OclError>) -> Result<T, CmnError> {
+//         match result {
+//             Ok(value) => Ok(value),
+//             Err(err) => Err(err.into()),
+//         }
+//     }
+// }
 
 
 /// An enum containing either a `String` or one of several other error types.
@@ -48,6 +62,13 @@ impl CmnError {
         }
 
         self
+    }
+
+    pub fn from_ocl_result<T>(result: OclResult<T>) -> CmnResult<T> {
+        match result {
+            Ok(value) => Ok(value),
+            Err(err) => Err(err.into()),
+        }
     }
 }
 

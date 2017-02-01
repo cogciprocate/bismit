@@ -93,17 +93,39 @@ impl SensoryFilter {
             "SensoryFilter::set_exe_order_write: Write command not created for this filter."))?)?)
     }
 
-    pub fn write(&self, source: SliceBufferSource) -> CmnResult<Event> {
-        Ok(OclBufferTarget::new(&self.input_buffer,
-                0..self.input_buffer.len() as u32, source.dims().clone(), None, true)?
-            .copy_from_slice_buffer(source)?.event().unwrap_or(Event::empty()))
+    pub fn write(&self, source: SliceBufferSource, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        let cmd_idx = self.exe_cmd_idx_write.ok_or(CmnError::new(
+            "SensoryFilter::write: Write command not created for this filter."))?;
+        let range = 0..self.input_buffer.len() as u32;
+
+        // let wait_list = exe_graph.get_req_events(cmd_idx)?;
+
+        // Ok(OclBufferTarget::new(&self.input_buffer, range, source.dims().clone(), None, true)?
+        //     .copy_from_slice_buffer(source)?
+        //     .event().unwrap_or(Event::empty())
+        // )
+        let event = OclBufferTarget::new(&self.input_buffer, range, source.dims().clone(), None, false)?
+            .copy_from_slice_buffer_v2(source, Some(&exe_graph.get_req_events(cmd_idx)?))?;
+
+        exe_graph.set_cmd_event(cmd_idx, event)?;
+        Ok(())
     }
 
-    pub fn cycle(&self, wait_event: &Event) -> Event {
-        let mut fltr_event = Event::empty();
-        self.cycle_kernel.cmd().ewait(wait_event).enew(&mut fltr_event).enq()
-            .expect("SensoryFilter::cycle()");
-        fltr_event
+    // pub fn cycle(&self, wait_event: &Event) -> Event {
+    //     let mut fltr_event = Event::empty();
+    //     self.cycle_kernel.cmd().ewait(wait_event).enew(&mut fltr_event).enq()
+    //         .expect("SensoryFilter::cycle()");
+    //     fltr_event
+    // }
+    pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        // let wait_list = exe_graph.get_req_events(self.exe_cmd_idx_cycle)?;
+        let mut event = Event::empty();
+
+        self.cycle_kernel.cmd().ewait(&exe_graph.get_req_events(self.exe_cmd_idx_cycle)?)
+            .enew(&mut event).enq()?;
+
+        exe_graph.set_cmd_event(self.exe_cmd_idx_cycle, event)?;
+        Ok(())
     }
 
     pub fn filter_name(&self) -> &str { self.filter_name.as_str() }

@@ -65,9 +65,9 @@ use rand::{self, XorShiftRng};
 
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap, SynSrcSlices, SynSrcIdxCache, SynSrc, LayerAddress};
-use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
+use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
-use ocl::core::ClWaitList;
+// use ocl::core::ClWaitList;
 use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use cortex::AxonSpace;
 
@@ -295,15 +295,30 @@ impl Synapses {
         Ok(())
     }
 
-    #[inline]
-    pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
-        for kern in self.kernels.iter() {
+    // #[inline]
+    // pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
+    //     for kern in self.kernels.iter() {
+    //         if DEBUG_KERN { printlnc!(yellow: "Syns: Enqueuing kernel: '{}'...", kern.name()); }
+
+    //         kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
+
+    //         if DEBUG_KERN { kern.default_queue().finish(); }
+    //     }
+    // }
+
+    pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        // for kern in self.kernels.iter() {
+        for (kern, &cmd_idx) in self.kernels.iter().zip(self.exe_cmd_idxs.iter()) {
             if DEBUG_KERN { printlnc!(yellow: "Syns: Enqueuing kernel: '{}'...", kern.name()); }
 
-            kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
+            let mut event = Event::empty();
+            kern.cmd().ewait(&exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            exe_graph.set_cmd_event(cmd_idx, event)?;
 
             if DEBUG_KERN { kern.default_queue().finish(); }
         }
+
+        Ok(())
     }
 
     #[inline]

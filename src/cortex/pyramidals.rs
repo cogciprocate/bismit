@@ -3,14 +3,14 @@
 use rand::{self, XorShiftRng, Rng};
 
 use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
-use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult};
+use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
-use ocl::core::ClWaitList;
+// use ocl::core::ClWaitList;
 use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress};
 use cortex::{Dendrites, AxonSpace};
 
-const PRINT_DEBUG: bool = false;
+const PRINT_DEBUG: bool = true;
 
 
 pub struct PyramidalLayer {
@@ -270,11 +270,11 @@ impl PyramidalLayer {
     }
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        self.dens.set_exe_order(exe_graph)?;
-
         for &cmd_idx in self.tft_ltp_exe_cmd_idxs.iter() {
             exe_graph.order_next(cmd_idx)?;
         }
+
+        self.dens.set_exe_order(exe_graph)?;
 
         for &cmd_idx in self.tft_cycle_exe_cmd_idxs.iter() {
             exe_graph.order_next(cmd_idx)?;
@@ -336,13 +336,22 @@ impl PyramidalLayer {
 
 impl DataCellLayer for PyramidalLayer {
     #[inline]
-    fn learn(&mut self) {
-        for ltp_kernel in self.pyr_tft_ltp_kernels.iter_mut() {
+    fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult <()> {
+        for (ltp_kernel, &cmd_idx) in self.pyr_tft_ltp_kernels.iter_mut()
+                .zip(self.tft_ltp_exe_cmd_idxs.iter())
+        {
             if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Setting scalar to a random value..."); }
+
             ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>()).expect("PyramidalLayer::learn()");
+
             if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing kern_ltp..."); }
-            ltp_kernel.enq().expect("PyramidalLayer::learn()");
+
+            let mut event = Event::empty();
+            ltp_kernel.cmd().ewait(&exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            exe_graph.set_cmd_event(cmd_idx, event)?;
         }
+
+        Ok(())
     }
 
     #[inline]
@@ -352,31 +361,74 @@ impl DataCellLayer for PyramidalLayer {
         // panic!("Pyramidals::regrow(): reimplement me!");
     }
 
-    #[inline]
-    fn cycle(&self, wait_events: Option<&ClWaitList>) {
+    // #[inline]
+    // fn cycle(&self, wait_events: Option<&ClWaitList>) {
+    //     if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
+    //     self.dens().cycle(wait_events);
+
+    //     // [DEBUG]: TEMPORARY:
+    //     if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().finish(); }
+
+    //     for (tft_id, tft_cycle_kernel) in self.pyr_tft_cycle_kernels.iter()
+    //             .enumerate()
+    //     {
+    //         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing cycle kernels for tft: {}...", tft_id); }
+    //         tft_cycle_kernel.cmd().ewait_opt(wait_events).enq()
+    //             .expect("bismit::PyramidalLayer::tft_cycle");
+
+    //         // [DEBUG]: TEMPORARY:
+    //         if PRINT_DEBUG { tft_cycle_kernel.default_queue().finish(); }
+    //     }
+
+    //     if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell somas..."); }
+    //     self.pyr_cycle_kernel.cmd().ewait_opt(wait_events).enq()
+    //             .expect("bismit::PyramidalLayer::cycle");
+
+    //     // [DEBUG]: TEMPORARY:
+    //     if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().finish(); }
+    // }
+
+
+
+    // tft_cycle_exe_cmd_idxs: tft_cycle_exe_cmd_idxs,
+    // tft_ltp_exe_cmd_idxs: tft_ltp_exe_cmd_idxs,
+    // cycle_exe_cmd_idx: cycle_exe_cmd_idx,
+
+    // &exe_graph.get_req_events(cmd_idx)?
+
+    fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
-        self.dens().cycle(wait_events);
+        self.dens().cycle(exe_graph)?;
 
         // [DEBUG]: TEMPORARY:
         if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().finish(); }
 
-        for (tft_id, tft_cycle_kernel) in self.pyr_tft_cycle_kernels.iter()
-                .enumerate()
+        for (tft_id, (tft_cycle_kernel, &cmd_idx)) in self.pyr_tft_cycle_kernels.iter()
+                .zip(self.tft_cycle_exe_cmd_idxs.iter()).enumerate()
         {
             if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing cycle kernels for tft: {}...", tft_id); }
-            tft_cycle_kernel.cmd().ewait_opt(wait_events).enq()
-                .expect("bismit::PyramidalLayer::tft_cycle");
+
+            let mut event = Event::empty();
+            tft_cycle_kernel.cmd().ewait(&exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            exe_graph.set_cmd_event(cmd_idx, event)?;
 
             // [DEBUG]: TEMPORARY:
             if PRINT_DEBUG { tft_cycle_kernel.default_queue().finish(); }
         }
 
-        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell somas..."); }
-        self.pyr_cycle_kernel.cmd().ewait_opt(wait_events).enq()
-                .expect("bismit::PyramidalLayer::cycle");
+        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell soma..."); }
+
+        let mut event = Event::empty();
+
+        self.pyr_cycle_kernel.cmd().ewait(&exe_graph.get_req_events(self.cycle_exe_cmd_idx)?)
+            .enew(&mut event).enq()?;
+
+        exe_graph.set_cmd_event(self.cycle_exe_cmd_idx, event)?;
 
         // [DEBUG]: TEMPORARY:
         if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().finish(); }
+
+        Ok(())
     }
 
     #[inline]

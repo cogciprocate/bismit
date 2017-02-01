@@ -6,6 +6,7 @@ use std::ops::Range;
 use ocl::core::{ClWaitList, ClEventPtrNew};
 use ocl::{Buffer, EventList, Event};
 use ::{TractDims, Result as CmnResult};
+// use map::ExecutionGraph;
 
 
 trait CopyFrom {
@@ -64,6 +65,7 @@ impl<'b> OclBufferSource<'b> {
 }
 
 
+// Option<&'b ClWaitList>
 
 /// An OpenCL buffer backed target.
 pub struct OclBufferTarget<'b> {
@@ -154,6 +156,33 @@ impl<'b> OclBufferTarget<'b> {
         Ok(self)
     }
 
+    pub fn copy_from_slice_buffer_v2(&'b mut self, source: SliceBufferSource, wait_list: Option<&ClWaitList>)
+            -> CmnResult<Event>
+    {
+        let mut ev = Event::empty();
+
+        // self.axns.states.cmd().write(tract.frame()).offset(axn_range.start as usize)
+        //     .block(false).ewait(wait_events).enew(new_events).enq().unwrap();
+        self.buf().write(source.slice())
+            .offset(self.offset)
+            .block(false)
+            // .ewait_opt(source.events().map(|e| e as &ClWaitList))
+            .ewait_opt(wait_list)
+            .enew_opt(if self.events.is_some() || self.event.is_some()
+                { Some(&mut ev as &mut ClEventPtrNew) } else { None })
+            .enq()?;
+
+        // if let Some(ref mut evl) = self.events {
+        //     evl.push(ev.clone());
+        // }
+
+        // if self.event.is_some() {
+        //     self.event = Some(ev);
+        // }
+
+        Ok(ev)
+    }
+
     #[inline] pub fn buf(&mut self) -> &'b Buffer<u8> { self.buf }
     #[inline] pub fn offset(&self) -> usize { self.offset }
     #[inline] pub fn dims(&self) -> &TractDims { &self.dims }
@@ -238,6 +267,31 @@ impl<'b> SliceBufferTarget<'b> {
         }
 
         Ok(self)
+    }
+
+    pub fn copy_from_ocl_buffer_v2(&'b mut self, source: OclBufferSource, wait_list: Option<&ClWaitList>)
+            -> CmnResult<Event>
+    {
+        let mut ev = Event::empty();
+
+        unsafe {
+            source.buf().cmd().read_async(self.slice)
+                .offset(source.offset())
+                // .ewait_opt(source.events().map(|e| e as &ClWaitList))
+                .ewait_opt(wait_list)
+                .enew(&mut ev as &mut ClEventPtrNew)
+                .enq()?;
+        }
+
+        // if let Some(ref mut evl) = self.events {
+        //     evl.push(ev.clone());
+        // }
+
+        // if self.event.is_some() {
+        //     self.event = Some(ev);
+        // }
+
+        Ok(ev)
     }
 
     #[inline] pub fn slice(&mut self) -> &mut [u8] { self.slice }
