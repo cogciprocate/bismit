@@ -10,7 +10,7 @@ use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, Execution
     CorticalBuffer, LayerAddress};
 use cortex::{Dendrites, AxonSpace};
 
-const PRINT_DEBUG: bool = true;
+const PRINT_DEBUG: bool = false;
 
 
 pub struct PyramidalLayer {
@@ -157,7 +157,7 @@ impl PyramidalLayer {
             pyr_tft_ltp_kernels.push(ocl_pq.create_kernel("pyr_tft_ltp")?
                 // .expect("PyramidalLayer::new()")
                 .gws(SpatialDims::One(cel_grp_count as usize))
-                .arg_buf(&axons.states)
+                .arg_buf(&axons.states())
                 .arg_buf(&states)
                 .arg_buf(&tft_best_den_ids)
                 .arg_buf(&tft_best_den_states_raw)
@@ -183,7 +183,7 @@ impl PyramidalLayer {
 
             let mut tft_ltp_cmd_srcs: Vec<CorticalBuffer> = axn_slc_ids.iter()
                 .map(|&slc_id|
-                    CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), slc_id))
+                    CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
                 .collect();
 
             tft_ltp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&states, layer_addr));
@@ -453,21 +453,40 @@ impl DataCellLayer for PyramidalLayer {
 #[cfg(test)]
 pub mod tests {
     use std::ops::{Range};
-    use rand::{XorShiftRng};
+    use rand::{XorShiftRng, Rng};
     use rand::distributions::{IndependentSample, Range as RandRange};
     use ocl::util;
     use cmn::{self, DataCellLayer, DataCellLayerTest, CelCoords};
     use cortex::{PyramidalLayer};
 
     impl DataCellLayerTest for PyramidalLayer {
-        // CYCLE_SELF_ONLY(): USED BY TESTS
-        fn cycle_self_only(&self) {
+        fn cycle_solo(&self) {
+            self.pyr_cycle_kernel.default_queue().finish();
+
             for cycle_kern in self.pyr_tft_cycle_kernels.iter() {
-                cycle_kern.enq().expect("PyramidalLayer::cycle_self_only: pyr_tft_cycle_kernels");
+                cycle_kern.default_queue().finish();
+                cycle_kern.cmd().enq().expect("PyramidalLayer::cycle_self_only: pyr_tft_cycle_kernels");
+                cycle_kern.default_queue().finish();
             }
 
-            self.pyr_cycle_kernel.enq()
+            self.pyr_cycle_kernel.cmd().enq()
                 .expect("PyramidalLayer::cycle_self_only: pyr_cycle_kernel");
+
+            self.pyr_cycle_kernel.default_queue().finish();
+        }
+
+        fn learn_solo(&mut self) {
+            for ltp_kernel in self.pyr_tft_ltp_kernels.iter_mut() {
+                ltp_kernel.default_queue().finish();
+
+                ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
+                    .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [0]");
+
+                ltp_kernel.cmd().enq()
+                    .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [1]");
+
+                ltp_kernel.default_queue().finish();
+            }
         }
 
         // fn print_cel(&mut self, cel_idx: usize) {
@@ -616,6 +635,12 @@ pub mod tests {
         }
 
         fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL
+            self.states.default_queue().finish();
+            self.flag_sets.default_queue().finish();
+            self.tft_best_den_ids.default_queue().finish();
+            self.tft_best_den_states.default_queue().finish();
+            self.tft_best_den_states_raw.default_queue().finish();
+
             self.states.cmd().fill(0, None).enq().unwrap();
             self.flag_sets.cmd().fill(0, None).enq().unwrap();
             self.tft_best_den_ids.cmd().fill(0, None).enq().unwrap();
@@ -625,6 +650,12 @@ pub mod tests {
             //self.best2_den_states.cmd().fill(&[0], None).enq().unwrap();        // <<<<< SLATED FOR REMOVAL
 
             // self.energies.cmd().fill(&[0], None).enq().unwrap();                // <<<<< SLATED FOR REMOVAL
+
+            self.states.default_queue().finish();
+            self.flag_sets.default_queue().finish();
+            self.tft_best_den_ids.default_queue().finish();
+            self.tft_best_den_states.default_queue().finish();
+            self.tft_best_den_states_raw.default_queue().finish();
         }
 
         // fn confab(&mut self) {

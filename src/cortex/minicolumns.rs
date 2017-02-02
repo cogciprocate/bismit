@@ -80,7 +80,7 @@ impl Minicolumns {
             .arg_buf(&pyrs.flag_sets())
             // .arg_buf_named::<i32>("aux_ints_0", None)
             // .arg_buf_named::<i32>("aux_ints_1", None)
-            .arg_buf(&axons.states);
+            .arg_buf(&axons.states());
 
         // Activation execution command:
         let activate_cmd_srcs = vec![
@@ -88,11 +88,11 @@ impl Minicolumns {
             CorticalBuffer::control_soma_lyr(&best_den_states, layer_addr),
             CorticalBuffer::data_soma_lyr(&pyrs.best_den_states_raw(), pyrs.layer_addr()),
             CorticalBuffer::data_soma_lyr(&pyrs.states(), pyrs.layer_addr()),
-            CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), sst_axn_slc_id),
+            CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), sst_axn_slc_id),
         ];
 
         let mut activate_cmd_tars = pyrs.axn_slc_ids().iter()
-            .map(|&pyr_slc_id| CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(),
+            .map(|&pyr_slc_id| CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(),
                 pyr_slc_id))
             .collect::<Vec<_>>();
 
@@ -117,7 +117,7 @@ impl Minicolumns {
             .arg_scl(mcol_axn_slc_id)
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
-            .arg_buf(&axons.states);
+            .arg_buf(&axons.states());
 
         // Output execution command:
         let output_cmd_srcs = vec![
@@ -128,7 +128,7 @@ impl Minicolumns {
         let output_cmd_tars = vec![
             CorticalBuffer::control_soma_lyr(&flag_sets, layer_addr),
             CorticalBuffer::control_soma_lyr(&best_den_states, layer_addr),
-            CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), mcol_axn_slc_id),
+            CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), mcol_axn_slc_id),
         ];
 
         let output_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
@@ -190,33 +190,7 @@ impl Minicolumns {
         Ok(())
     }
 
-    // pub fn output(&self, new_events: Option<&mut EventList>) {
-    //     match new_events {
-    //         Some(ne) => {
-    //             ne.clear_completed().expect("Minicolumns::output");
-    //             // self.kern_output.enqueue_events(None, Some(ne))
-    //             //     .expect("bismit::Minicolumns::output");
-
-    //             self.kern_output.cmd().enew(ne).enq()
-    //                 .expect("bismit::Minicolumns::output");
-    //         },
-
-    //         None => self.kern_output.enq().expect("[FIXME]: HANDLE ME!"),
-    //     }
-    // }
     pub fn output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        // match new_events {
-        //     Some(ne) => {
-        //         ne.clear_completed().expect("Minicolumns::output");
-        //         // self.kern_output.enqueue_events(None, Some(ne))
-        //         //     .expect("bismit::Minicolumns::output");
-
-        //         self.kern_output.cmd().enew(ne).enq()
-        //             .expect("bismit::Minicolumns::output");
-        //     },
-
-        //     None => self.kern_output.enq().expect("[FIXME]: HANDLE ME!"),
-        // }
         let mut event = Event::empty();
         self.kern_output.cmd().ewait(&exe_graph.get_req_events(self.output_exe_cmd_idx)?).enew(&mut event).enq()?;
         exe_graph.set_cmd_event(self.output_exe_cmd_idx, event)?;
@@ -265,11 +239,25 @@ pub mod tests {
     use super::Minicolumns;
 
     pub trait MinicolumnsTest {
+        fn activate_solo(&self);
+        fn output_solo(&self);
         fn print_range(&self, range: Option<Range<usize>>);
         fn print_all(&self);
     }
 
     impl MinicolumnsTest for Minicolumns {
+        fn activate_solo(&self) {
+            self.kern_activate.default_queue().finish();
+            self.kern_activate.cmd().enq().expect("MinicolumnsTest::activate_solo");
+            self.kern_activate.default_queue().finish();
+        }
+
+        fn output_solo(&self) {
+            self.kern_output.default_queue().finish();
+            self.kern_output.cmd().enq().expect("MinicolumnsTest::output_solo");
+            self.kern_output.default_queue().finish();
+        }
+
         fn print_range(&self, idx_range: Option<Range<usize>>) {
             let mut vec = vec![0; self.len()];
 

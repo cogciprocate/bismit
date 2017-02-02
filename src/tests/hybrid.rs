@@ -1,8 +1,7 @@
 use std::iter;
 use std::io::{self, Write};
 
-use cortex::Cortex;
-use cortex::{Dendrites, PyramidalLayer};
+use cortex::{Cortex, CorticalAreaTest, Dendrites, PyramidalLayer, DendritesTest, SynapsesTest};
 use cmn::{self, DataCellLayer, DataCellLayerTest};
 use tests::util;
 
@@ -65,7 +64,9 @@ fn pyr_preds(pyrs: &mut PyramidalLayer) {
     // let emsg = "\ntests::hybrid::test_pyr_preds()";
 
     io::stdout().flush().unwrap();
+    pyrs.dens_mut().states().default_queue().finish();
     pyrs.dens_mut().states().cmd().fill(0, None).enq().unwrap();
+    pyrs.dens_mut().states().default_queue().finish();
 
     // Currently looking at the first tuft only:
     let tft_id = 0;
@@ -78,17 +79,23 @@ fn pyr_preds(pyrs: &mut PyramidalLayer) {
 
     // WRITE `255` TO THE DENDRITES CORRESPONDING TO THE FIRST AND LAST CELL
     // FOR THE FIRST TUFT ONLY
+    pyrs.dens_mut().states().default_queue().finish();
     pyrs.dens_mut().states().cmd().fill(255, Some(dens_per_tuft)).offset(0).enq().unwrap();
+    pyrs.dens_mut().states().default_queue().finish();
 
     let last_cel_den_idz =  den_tuft_len - dens_per_tuft;
 
     println!("\n\nDEBUG: pyrs.dens_mut().states().len(): {}\n", pyrs.dens_mut().states().len());
 
+    pyrs.dens_mut().states().default_queue().finish();
     pyrs.dens_mut().states().cmd().fill(255, Some(den_tuft_len - last_cel_den_idz))
         .offset(last_cel_den_idz).enq().unwrap();
+    pyrs.dens_mut().states().default_queue().finish();
 
     // CYCLE THE PYRAMIDAL CELL ONLY, WITHOUT CYCLING IT'S DENS OR SYNS (WHICH WOULD OVERWRITE THE ABOVE)
-    pyrs.cycle_self_only();
+    pyrs.cycle_solo();
+
+    pyrs.soma().default_queue().finish();
 
     // READ THE PYRAMIDAL CELL SOMA STATES (PREDS)
     // pyrs.soma_mut().fill_vec();
@@ -115,8 +122,13 @@ fn syn_and_den_states(dens: &mut Dendrites) {
     // let emsg = "\ntests::hybrid::test_syn_and_den_states()";
 
     io::stdout().flush().unwrap();
+    dens.syns_mut().src_col_v_offs().default_queue().finish();
     dens.syns_mut().src_col_v_offs().cmd().fill(0, None).enq().unwrap();
-    dens.cycle(None);
+    dens.syns_mut().src_col_v_offs().default_queue().finish();
+
+    dens.syns().cycle_solo();
+    dens.cycle_solo();
+    dens.states().default_queue().finish();
 
     // let syns_per_tuft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
     // let dens_per_tft_l2: usize = dens.dims().per_tft_l2_left() as usize;

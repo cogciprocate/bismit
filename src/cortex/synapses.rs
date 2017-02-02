@@ -219,7 +219,7 @@ impl Synapses {
                     .expect("Synapses::new()")
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
-                    .arg_buf(&axons.states)
+                    .arg_buf(&axons.states())
                     .arg_buf(&src_col_u_offs)
                     .arg_buf(&src_col_v_offs)
                     .arg_buf(&src_slc_ids)
@@ -233,7 +233,7 @@ impl Synapses {
 
             let mut cmd_srcs: Vec<CorticalBuffer> = syn_src_slices.src_slc_ids_by_tft(tft_id)
                 .unwrap().iter().map(|&slc_id|
-                    CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), slc_id))
+                    CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
                 .collect();
 
             cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_u_offs, layer_addr.clone(), tft_id));
@@ -461,7 +461,8 @@ pub mod tests {
     use rand::distributions::{IndependentSample, Range as RandRange};
     use ocl::util;
     use cmn::{CelCoords, CorticalDims};
-    use super::super::dendrites::{self};
+    // use super::super::dendrites::{self};
+    use cortex::{dendrites, CorticalAreaTest};
     use super::{Synapses, TuftDims};
 
     const PRINT_DEBUG_INFO: bool = false;
@@ -473,6 +474,7 @@ pub mod tests {
         fn set_src_slc(&mut self, src_slc_id: u8, idx: usize);
         fn syn_state(&self, idx: u32) -> u8;
         fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords;
+        fn cycle_solo(&self);
         fn print_src_slc_ids(&self, idx_range: Option<Range<usize>>);
         fn print_range(&self, range: Option<Range<usize>>);
         fn print_all(&self);
@@ -481,19 +483,37 @@ pub mod tests {
 
     impl SynapsesTest for Synapses {
         fn set_offs_to_zero(&mut self) {
-            // self.src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+            self.src_col_v_offs.default_queue().finish();
+            self.src_col_u_offs.default_queue().finish();
+
             self.src_col_v_offs.cmd().fill(0, None).enq().unwrap();
-            // self.src_col_u_offs.cmd().fill(&[0], None).enq().unwrap();
             self.src_col_u_offs.cmd().fill(0, None).enq().unwrap();
+
+            self.src_col_v_offs.default_queue().finish();
+            self.src_col_u_offs.default_queue().finish();
         }
 
         fn set_all_to_zero(&mut self) {
+            self.states.default_queue().finish();
+            self.strengths.default_queue().finish();
+            self.src_slc_ids.default_queue().finish();
+            self.src_col_u_offs.default_queue().finish();
+            self.src_col_v_offs.default_queue().finish();
+            self.flag_sets.default_queue().finish();
+
             self.states.cmd().fill(0, None).enq().unwrap();
             self.strengths.cmd().fill(0, None).enq().unwrap();
             self.src_slc_ids.cmd().fill(0, None).enq().unwrap();
             self.src_col_u_offs.cmd().fill(0, None).enq().unwrap();
             self.src_col_v_offs.cmd().fill(0, None).enq().unwrap();
             self.flag_sets.cmd().fill(0, None).enq().unwrap();
+
+            self.states.default_queue().finish();
+            self.strengths.default_queue().finish();
+            self.src_slc_ids.default_queue().finish();
+            self.src_col_u_offs.default_queue().finish();
+            self.src_col_v_offs.default_queue().finish();
+            self.flag_sets.default_queue().finish();
         }
 
         fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize) {
@@ -531,6 +551,14 @@ pub mod tests {
 
             SynCoords::new(cel_coords, tft_id, tft_syn_idz, tft_dims,
                 den_id_celtft, syn_id_den)
+        }
+
+        fn cycle_solo(&self) {
+            for kern in self.kernels.iter() {
+                kern.default_queue().finish();
+                kern.cmd().enq().expect("SynapsesTest::cycle_solo");
+                kern.default_queue().finish();
+            }
         }
 
         fn print_src_slc_ids(&self, idx_range: Option<Range<usize>>) {

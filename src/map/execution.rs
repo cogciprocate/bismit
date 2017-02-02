@@ -10,6 +10,8 @@ use ocl::ffi::cl_event;
 use map::LayerAddress;
 use cmn::{util};
 
+const PRINT_DEBUG: bool = false;
+
 type ExeGrResult<T> = Result<T, ExecutionGraphError>;
 
 pub enum ExecutionGraphError {
@@ -230,7 +232,7 @@ pub enum ExecutionCommandDetails {
     ThalamocorticalWrite { sources: Vec<ThalamicTract>, targets: Vec<CorticalBuffer> },
     // InputFilterWrite { sources: Vec<ThalamicTract>, target: CorticalBuffer },
     SubcorticalCopy { source: MemoryBlock, target: MemoryBlock },
-    SubGraph { sources: Vec<MemoryBlock>, target: Vec<MemoryBlock> },
+    Subgraph { sources: Vec<MemoryBlock>, target: Vec<MemoryBlock> },
 }
 
 impl ExecutionCommandDetails {
@@ -252,20 +254,20 @@ impl ExecutionCommandDetails {
             //     sources.iter().map(|src| MemoryBlock::ThalamicTract(src.clone())).collect()
             // },
             ExecutionCommandDetails::SubcorticalCopy { ref source, .. } => vec![source.clone()],
-            ExecutionCommandDetails::SubGraph { .. } => unimplemented!(),
+            ExecutionCommandDetails::Subgraph { .. } => unimplemented!(),
         }
     }
 
     fn targets(&self) -> Vec<MemoryBlock> {
         match *self {
-            ExecutionCommandDetails::CorticalKernel { ref targets, ..  } => {
+            ExecutionCommandDetails::CorticalKernel { ref targets, .. } => {
                 targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
             },
-            ExecutionCommandDetails::CorticothalamicRead { ref targets, ..  } => {
+            ExecutionCommandDetails::CorticothalamicRead { ref targets, .. } => {
                 targets.iter().map(|tar| MemoryBlock::ThalamicTract(tar.clone())).collect()
                 // vec![MemoryBlock::ThalamicTract(target.clone())]
             },
-            ExecutionCommandDetails::ThalamocorticalWrite { ref targets, ..  } => {
+            ExecutionCommandDetails::ThalamocorticalWrite { ref targets, .. } => {
                 targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
                 // vec![MemoryBlock::CorticalBuffer(target.clone())]
             },
@@ -273,8 +275,18 @@ impl ExecutionCommandDetails {
             //     vec![MemoryBlock::CorticalBuffer(targets.clone())]
             //     // targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
             // },
-            ExecutionCommandDetails::SubcorticalCopy { ref target, ..  } => vec![target.clone()],
-            ExecutionCommandDetails::SubGraph { .. } => unimplemented!(),
+            ExecutionCommandDetails::SubcorticalCopy { ref target, .. } => vec![target.clone()],
+            ExecutionCommandDetails::Subgraph { .. } => unimplemented!(),
+        }
+    }
+
+    fn variant_string(&self) -> &'static str {
+        match *self {
+            ExecutionCommandDetails::CorticalKernel { .. } => "CorticalKernel",
+            ExecutionCommandDetails::CorticothalamicRead { .. } => "CorticothalamicRead",
+            ExecutionCommandDetails::ThalamocorticalWrite { .. } => "ThalamocorticalWrite",
+            ExecutionCommandDetails::SubcorticalCopy { .. } => "SubcorticalCopy",
+            ExecutionCommandDetails::Subgraph { .. } => "Subgraph",
         }
     }
 }
@@ -445,13 +457,13 @@ impl ExecutionGraph {
     ///
     fn readers_and_writers_by_mem_block(&self) -> MemBlockRwsMap {
         let mut mem_block_rws = HashMap::with_capacity(self.commands.len() * 16);
-        println!("\n##### Readers and Writers by Memory Block:");
-        println!("#####");
+        if PRINT_DEBUG { println!("\n##### Readers and Writers by Memory Block:"); }
+        if PRINT_DEBUG { println!("#####"); }
 
         for (cmd_idx, cmd) in self.commands.iter().enumerate() {
-            println!("##### Command [{}]:", cmd_idx);
+            if PRINT_DEBUG { println!("##### Command [{}] ({}):", cmd_idx, cmd.details.variant_string()); }
 
-            println!("#####     [Sources:]");
+            if PRINT_DEBUG {  println!("#####     [Sources:]"); }
 
             for cmd_src_block in cmd.sources().into_iter() {
                 let rw_cmd_idxs = mem_block_rws.entry(cmd_src_block.clone())
@@ -459,11 +471,11 @@ impl ExecutionGraph {
 
                 rw_cmd_idxs.readers.push(cmd_idx);
                 // println!("#####     Source Block [{}]: {:?}", rw_cmd_idxs.readers.len() - 1, cmd_src_block);
-                println!("#####     [{}]: {:?}", rw_cmd_idxs.readers.len() - 1, cmd_src_block);
+                if PRINT_DEBUG { println!("#####     [{}]: {:?}", rw_cmd_idxs.readers.len() - 1, cmd_src_block); }
             }
 
             // println!("#####");
-            println!("#####     [Targets:]");
+            if PRINT_DEBUG { println!("#####     [Targets:]"); }
 
             for cmd_tar_block in cmd.targets().into_iter() {
                 let rw_cmd_idxs = mem_block_rws.entry(cmd_tar_block.clone())
@@ -471,12 +483,12 @@ impl ExecutionGraph {
 
                 rw_cmd_idxs.writers.push(cmd_idx);
                 // println!("#####     Target Block [{}]: {:?}", rw_cmd_idxs.writers.len() - 1, cmd_tar_block);
-                println!("#####     [{}]: {:?}", rw_cmd_idxs.writers.len() - 1, cmd_tar_block);
+                if PRINT_DEBUG { println!("#####     [{}]: {:?}", rw_cmd_idxs.writers.len() - 1, cmd_tar_block); }
             }
 
             // println!("#####");
             // println!("#####         Totals: Sources: {}, Targets: {}", cmd.sources().len(), cmd.targets().len());
-            println!("#####");
+            if PRINT_DEBUG { println!("#####"); }
         }
 
         mem_block_rws.shrink_to_fit();
@@ -510,7 +522,7 @@ impl ExecutionGraph {
         }
 
         let cmd_order_idx = self.commands[cmd_idx].order_idx().unwrap();
-        println!("##### [{}: {}]: Preceding Writers: {:?}", cmd_order_idx, cmd_idx, pre_writers);
+        if PRINT_DEBUG { println!("##### [{}: {}]: Preceding Writers: {:?}", cmd_order_idx, cmd_idx, pre_writers); }
         // println!("#####");
         pre_writers
     }
@@ -542,7 +554,7 @@ impl ExecutionGraph {
         }
 
         let cmd_order_idx = self.commands[cmd_idx].order_idx().unwrap();
-        println!("##### [{}: {}]: Following Readers: {:?}", cmd_order_idx, cmd_idx, fol_readers);
+        if PRINT_DEBUG { println!("##### [{}: {}]: Following Readers: {:?}", cmd_order_idx, cmd_idx, fol_readers); }
         // println!("#####");
         fol_readers
     }
@@ -577,13 +589,15 @@ impl ExecutionGraph {
 
         // println!("\n########## Memory Block Reader/Writers: {:#?}\n", mem_block_rws);
 
-        println!("\n##### Preceding Writers and Following Readers:");
-        println!("#####");
+        if PRINT_DEBUG { println!("\n##### Preceding Writers and Following Readers:"); }
+        if PRINT_DEBUG { println!("#####"); }
 
         // [NOTE]: Only using `self.order` instead of `self.commands` for
         // debug printing purposes. [TODO]: Switch back at some point.
         for (&cmd_order, &cmd_idx) in self.order.clone().iter() {
-            println!("##### Command [{}: {}]:", cmd_order, cmd_idx);
+            if PRINT_DEBUG { println!("##### Command [{}: {}] ({}):", cmd_order, cmd_idx,
+                self.commands[cmd_idx].details.variant_string()); }
+
 
             assert!(self.requisite_cmd_idxs[cmd_idx].is_empty() &&
                 self.requisite_cmd_precedence[cmd_idx].is_empty());
@@ -605,7 +619,7 @@ impl ExecutionGraph {
             // println!("##### [{}: {}]: Requisites: {:?}:{:?}",
             //     cmd_order, cmd_idx, self.requisite_cmd_idxs[cmd_idx],
             //     self.requisite_cmd_precedence[cmd_idx]);
-            println!("#####");
+            if PRINT_DEBUG { println!("#####"); }
         }
 
         self.requisite_cmd_idxs.shrink_to_fit();
@@ -674,9 +688,9 @@ impl ExecutionGraph {
         Ok(())
     }
 
-    pub fn _RESET(&mut self) {
-        self.next_order_idx = 0;
-    }
+    // pub fn _RESET(&mut self) {
+    //     self.next_order_idx = 0;
+    // }
 
     // #[inline] pub fn command_count(&self) -> usize { self.order.len() }
 }

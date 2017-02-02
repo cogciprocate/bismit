@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Range;
-use ocl::{ProQue, Buffer, EventList};
+use ocl::{ProQue, Buffer, EventList, Queue};
 use ocl::traits::MemLen;
 use cmn::{self, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute, ExecutionCommand, CorticalBuffer,
@@ -285,19 +285,20 @@ impl IoInfoCache {
 pub struct AxonSpace {
     area_id: usize,
     area_name: &'static str,
-    pub states: Buffer<u8>,
+    states: Buffer<u8>,
     filter_chains: Vec<(LayerAddress, Vec<SensoryFilter>)>,
     io_info: IoInfoCache,
 }
 
 impl AxonSpace {
-    pub fn new(area_map: &AreaMap, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph,
-            thal: &Thalamus) -> CmnResult<AxonSpace>
+    pub fn new(area_map: &AreaMap, ocl_pq: &ProQue, write_queue: &Queue,
+        exe_graph: &mut ExecutionGraph, thal: &Thalamus) -> CmnResult<AxonSpace>
     {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
             area_map.slices().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
 
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, area_map.slices(), None).unwrap();
+        // let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, area_map.slices(), None).unwrap();
+        let states = Buffer::<u8>::new(write_queue.clone(), None, area_map.slices(), None).unwrap();
 
         /*=============================================================================
         =================================== FILTERS ===================================
@@ -363,6 +364,7 @@ impl AxonSpace {
                         output_buffer,
                         output_slc_range,
                         &ocl_pq,
+                        &write_queue,
                         exe_graph)?
                 };
 
@@ -481,7 +483,9 @@ impl AxonSpace {
     ///
     // [TODO]: Store thal tract index instead of using (LayerAddress) key.
     //
-    pub fn output(&self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn output(&self, read_queue: &Queue, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph)
+            -> CmnResult<()>
+    {
         if let Some((io_lyrs, wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
             for io_lyr in io_lyrs.iter() {
                 if let &IoExeCmd::Read(cmd_idx) = io_lyr.exe_cmd() {
@@ -494,8 +498,10 @@ impl AxonSpace {
                             (area: '{}', layer_addr: '{:?}'): ", self.area_name, io_lyr.key()))
                         )?;
 
+                    // let event = target.copy_from_ocl_buffer_v2(source,
+                    //     Some(&exe_graph.get_req_events(cmd_idx)?), None)?;
                     let event = target.copy_from_ocl_buffer_v2(source,
-                        Some(&exe_graph.get_req_events(cmd_idx)?))?;
+                        Some(&exe_graph.get_req_events(cmd_idx)?), Some(read_queue))?;
 
                     exe_graph.set_cmd_event(cmd_idx, event)?;
                 } else {
@@ -506,6 +512,7 @@ impl AxonSpace {
         Ok(())
     }
 
+    pub fn states(&self) -> &Buffer<u8> { &self.states }
     pub fn area_id(&self) -> usize { self.area_id }
     pub fn filter_chains(&self) -> &[(LayerAddress, Vec<SensoryFilter>)] { self.filter_chains.as_slice() }
     pub fn filter_chains_mut(&mut self) -> &mut [(LayerAddress, Vec<SensoryFilter>)] {
@@ -530,12 +537,14 @@ pub mod tests {
 
     impl AxonSpaceTest for AxonSpace {
         fn axn_state(&self, idx: usize) -> u8 {
+            self.states.default_queue().finish();
             let mut sdr = vec![0u8];
             self.states.cmd().read(&mut sdr).offset(idx).enq().unwrap();
             sdr[0]
         }
 
         fn write_to_axon(&mut self, val: u8, idx: u32) {
+            self.states.default_queue().finish();
             let sdr = vec![val];
             self.states.cmd().write(&sdr).offset(idx as usize).enq().unwrap();
         }

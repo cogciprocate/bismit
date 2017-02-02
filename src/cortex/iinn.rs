@@ -5,11 +5,10 @@ use map::CellScheme;
 use cortex::AxonSpace;
 
 
-
 pub struct InhibitoryInterneuronNetwork {
     layer_name: &'static str,
     layer_id: usize,
-    pub dims: CorticalDims,
+    // dims: CorticalDims,
 
     kern_inhib_simple: Kernel,
     kern_inhib_passthrough: Kernel,
@@ -43,7 +42,7 @@ impl InhibitoryInterneuronNetwork {
             .arg_scl(src_base_axn_slc)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(&axns.states);
+            .arg_buf(&axns.states());
 
         // Passthrough kernel:
         let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough")
@@ -52,7 +51,7 @@ impl InhibitoryInterneuronNetwork {
                 dims.u_size() as usize))
             .arg_buf(&src_soma)
             .arg_scl(src_base_axn_slc)
-            .arg_buf(&axns.states);
+            .arg_buf(&axns.states());
 
 
         let exe_cmd_srcs = (0..src_layer_tft_count)
@@ -62,7 +61,7 @@ impl InhibitoryInterneuronNetwork {
 
         // Set up execution command:
         let exe_cmd_tars = (src_base_axn_slc..src_base_axn_slc + dims.depth())
-            .map(|slc_id| CorticalBuffer::axon_slice(&axns.states, area_map.area_id(), slc_id))
+            .map(|slc_id| CorticalBuffer::axon_slice(&axns.states(), area_map.area_id(), slc_id))
             .collect();
 
         let exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
@@ -74,7 +73,7 @@ impl InhibitoryInterneuronNetwork {
         Ok(InhibitoryInterneuronNetwork {
             layer_name: layer_name,
             layer_id: layer_id,
-            dims: dims,
+            // dims: dims,
 
             kern_inhib_simple: kern_inhib_simple,
             kern_inhib_passthrough: kern_inhib_passthrough,

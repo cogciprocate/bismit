@@ -48,31 +48,38 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 
     if switches.contains(ACTIVATE) {
         if print { printlnc!(yellow: "Activating..."); }
-        area.mcols().activate();
+        area.mcols().activate_solo();
     }
 
     if print { area.mcols().kern_activate().default_queue().finish(); }
 
     if switches.contains(LEARN) {
         if print { printlnc!(yellow: "Learning..."); }
-        area.ptal_mut().learn();
+        area.ptal_mut().learn_solo();
     }
 
     if print { area.mcols().kern_activate().default_queue().finish(); }
 
     if switches.contains(CYCLE) {
         if print { printlnc!(yellow: "Cycling..."); }
-        area.ptal_mut().cycle(None);
+        // area.ptal_cycle();
+        area.ptal().dens().syns().cycle_solo();
+        area.ptal().dens().cycle_solo();
+        area.ptal().cycle_solo();
     }
 
     if print { area.mcols().kern_activate().default_queue().finish(); }
 
     if switches.contains(OUTPUT) {
         if print { printlnc!(yellow: "Outputting..."); }
-        area.mcols().output(None);
+        area.mcols().output_solo();
     }
 
     if print { area.mcols().kern_activate().default_queue().finish(); }
+
+    area.finish_queues();
+
+    if print { println!("Finishing queues..."); }
 }
 
 
@@ -130,6 +137,7 @@ pub fn eval_range<T: OclPrm, F>(idx_range: Range<usize>, buf: &Buffer<T>, compar
 pub fn read_idx_direct<T: OclPrm>(idx: usize, buf: &Buffer<T>) -> T {
     let mut val: [T; 1] = [Default::default()];
     buf.cmd().read(&mut val).offset(idx).enq().unwrap();
+    // buf.default_queue().finish();
     val[0]
 }
 

@@ -149,7 +149,7 @@ fn define_a_schemes() -> AreaSchemeList {
             .eff_areas(vec!["v0"])
             // .other_area("v0", Some(&[(&[map::THAL_SP], &[map::L2])]))
             .other_area("v0", None)
-            .filter_chain(InputTrack::Afferent, &[map::THAL_SP, *AT0], &[("retina", None), ("retina", None), ("retina", None)])
+            // .filter_chain(InputTrack::Afferent, &[map::THAL_SP, *AT0], &[("retina", None), ("retina", None), ("retina", None)])
             .filter_chain(InputTrack::Afferent, &[map::THAL_SP, *AT1], &[("retina", None)])
         )
         // .area(AreaScheme::new("m1", "m1_lm", AREA_SIDE)

@@ -4,7 +4,7 @@
 
 use std::ops::Range;
 use ocl::core::{ClWaitList, ClEventPtrNew};
-use ocl::{Buffer, EventList, Event};
+use ocl::{Buffer, EventList, Event, Queue};
 use ::{TractDims, Result as CmnResult};
 // use map::ExecutionGraph;
 
@@ -105,11 +105,6 @@ impl<'b> OclBufferTarget<'b> {
     pub fn copy_from_ocl_buffer(&'b mut self, source: OclBufferSource)
             -> CmnResult<&'b mut OclBufferTarget>
     {
-        // let mut ev = match self.event {
-        //     Some(ev) => ev,
-        //     None => Event::empty(),
-        // };
-
         let mut ev = Event::empty();
 
         source.buf().cmd().copy(self.buf, self.offset, self.dims.to_len())
@@ -135,8 +130,6 @@ impl<'b> OclBufferTarget<'b> {
     {
         let mut ev = Event::empty();
 
-        // self.axns.states.cmd().write(tract.frame()).offset(axn_range.start as usize)
-        //     .block(false).ewait(wait_events).enew(new_events).enq().unwrap();
         self.buf().write(source.slice())
             .offset(self.offset)
             .block(false)
@@ -156,29 +149,18 @@ impl<'b> OclBufferTarget<'b> {
         Ok(self)
     }
 
-    pub fn copy_from_slice_buffer_v2(&'b mut self, source: SliceBufferSource, wait_list: Option<&ClWaitList>)
-            -> CmnResult<Event>
+    pub fn copy_from_slice_buffer_v2(&'b mut self, source: SliceBufferSource,
+            wait_list: Option<&ClWaitList>) -> CmnResult<Event>
     {
         let mut ev = Event::empty();
 
-        // self.axns.states.cmd().write(tract.frame()).offset(axn_range.start as usize)
-        //     .block(false).ewait(wait_events).enew(new_events).enq().unwrap();
         self.buf().write(source.slice())
             .offset(self.offset)
             .block(false)
-            // .ewait_opt(source.events().map(|e| e as &ClWaitList))
             .ewait_opt(wait_list)
             .enew_opt(if self.events.is_some() || self.event.is_some()
                 { Some(&mut ev as &mut ClEventPtrNew) } else { None })
             .enq()?;
-
-        // if let Some(ref mut evl) = self.events {
-        //     evl.push(ev.clone());
-        // }
-
-        // if self.event.is_some() {
-        //     self.event = Some(ev);
-        // }
 
         Ok(ev)
     }
@@ -229,7 +211,6 @@ impl<'b> SliceBufferTarget<'b> {
     pub fn new(slice: &'b mut [u8], dims: TractDims, mut events: Option<&'b mut EventList>,
             store_event: bool) -> CmnResult<Self>
     {
-        // debug_assert_eq!(slice.len(), dims.to_len());
         let event = if store_event { Some(Event::empty()) } else { None };
 
         if let Some(ref mut events) = events {
@@ -269,27 +250,23 @@ impl<'b> SliceBufferTarget<'b> {
         Ok(self)
     }
 
-    pub fn copy_from_ocl_buffer_v2(&'b mut self, source: OclBufferSource, wait_list: Option<&ClWaitList>)
-            -> CmnResult<Event>
+    pub fn copy_from_ocl_buffer_v2(&'b mut self, source: OclBufferSource,
+            wait_list: Option<&ClWaitList>, read_queue: Option<&Queue>) -> CmnResult<Event>
     {
         let mut ev = Event::empty();
 
         unsafe {
-            source.buf().cmd().read_async(self.slice)
+            let mut cmd = source.buf().cmd().read_async(self.slice)
                 .offset(source.offset())
-                // .ewait_opt(source.events().map(|e| e as &ClWaitList))
                 .ewait_opt(wait_list)
-                .enew(&mut ev as &mut ClEventPtrNew)
-                .enq()?;
-        }
+                .enew(&mut ev);
 
-        // if let Some(ref mut evl) = self.events {
-        //     evl.push(ev.clone());
-        // }
+            if let Some(rq) = read_queue {
+                cmd = cmd.queue(rq);
+            }
 
-        // if self.event.is_some() {
-        //     self.event = Some(ev);
-        // }
+            cmd.enq()?;
+        };
 
         Ok(ev)
     }

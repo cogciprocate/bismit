@@ -38,7 +38,9 @@ pub mod tests {
     use std::fmt::{Display, Formatter, Result};
 
     pub trait DataCellLayerTest {
-        fn cycle_self_only(&self);
+        fn cycle_solo(&self);
+        fn learn_solo(&mut self);
+        // fn cycle_soma_only_solo(&self);
         // fn print_cel(&mut self, cel_idx: usize);
         // fn print_range(&mut self, range: Range<usize>, print_syns: bool);
         fn print_range(&self, idx_range: Option<Range<usize>>);

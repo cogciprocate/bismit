@@ -1,5 +1,5 @@
 use std::ops::Range;
-use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
+use ocl::{flags, Kernel, ProQue, SpatialDims, Buffer, Event, Queue};
 use cmn::{CmnError, CmnResult, CorticalDims};
 use map::{ExecutionGraph, ExecutionCommand, CorticalBuffer,
     ThalamicTract};
@@ -27,10 +27,12 @@ impl SensoryFilter {
             output_buffer: &Buffer<u8>,
             output_slc_range: Range<u8>,
             ocl_pq: &ProQue,
+            write_queue: &Queue,
             exe_graph: &mut ExecutionGraph,
         ) -> CmnResult<SensoryFilter>
     {
-        let input_buffer = Buffer::<u8>::new(ocl_pq.queue().clone(), None, dims, None).unwrap();
+        let input_buffer = Buffer::<u8>::new(write_queue.clone(),
+            Some(flags::MEM_HOST_WRITE_ONLY | flags::MEM_READ_ONLY), dims, None).unwrap();
 
         let cycle_kernel = ocl_pq.create_kernel(&filter_name.clone()).expect("[FIXME]: HANDLE ME")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))

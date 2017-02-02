@@ -60,7 +60,7 @@ impl SpinyStellateLayer {
         let kern_ltp = ocl_pq.create_kernel("sst_ltp").expect("[FIXME]: HANDLE ME")
             // .expect("SpinyStellateLayer::new()")
             .gws(SpatialDims::Two(tft_count, grp_count as usize))
-            .arg_buf(&axons.states)
+            .arg_buf(&axons.states())
             .arg_buf(dens.syns().states())
             .arg_scl(lyr_axn_idz)
             .arg_scl(cels_per_grp)
@@ -73,7 +73,7 @@ impl SpinyStellateLayer {
         // Set up execution command:
         let mut ltp_cmd_srcs: Vec<CorticalBuffer> = axn_slc_ids.iter()
             .map(|&slc_id|
-                CorticalBuffer::axon_slice(&axons.states, layer_addr.area_id(), slc_id))
+                CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
             .collect();
 
         ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, sst_tft_id));
@@ -148,6 +148,119 @@ impl SpinyStellateLayer {
     #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn dens(&self) -> &Dendrites { &self.dens }
     #[inline] pub fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }
+}
+
+
+
+#[cfg(test)]
+pub mod tests {
+    use std::ops::{Range};
+    use rand::{XorShiftRng, Rng};
+    use rand::distributions::{IndependentSample, Range as RandRange};
+    // use ocl::util;
+    use cmn::{self, /*DataCellLayer,*/ DataCellLayerTest, CelCoords};
+    use cortex::{SpinyStellateLayer, DendritesTest};
+
+    impl DataCellLayerTest for SpinyStellateLayer {
+        fn cycle_solo(&self) {
+            // self.dens.syns().cycle_solo();
+            self.dens.cycle_solo();
+        }
+
+        fn learn_solo(&mut self) {
+            self.kern_ltp.default_queue().finish();
+            let rnd = self.rng.gen::<u32>();
+            self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
+
+            self.kern_ltp.cmd().enq()
+                .expect("<SpinyStellateLayer as DataCellLayerTest>::learn_solo [1]");
+
+            self.kern_ltp.default_queue().finish();
+        }
+
+        /// Prints a range of pyramidal buffers.
+        ///
+        //
+        ////// Ocl print function signature:
+        //
+        // ocl::util::print_slice<T: OclScl>(vec: &[T], every: usize, val_range: Option<(T, T)>,
+        // idx_range: Option<Range<usize>>, show_zeros: bool)
+        //
+        fn print_range(&self, _: Option<Range<usize>>, /*print_children: bool*/) {
+            // let mut vec = vec![0; self.dens.states().len()];
+
+            // states: Buffer<u8>,
+            // flag_sets: Buffer<u8>,
+            // pyr_states: Buffer<u8>,
+            // tft_best_den_ids: Buffer<u8>,
+            // tft_best_den_states_raw: Buffer<u8>,
+            // tft_best_den_states: Buffer<u8>,
+
+            // print!("pyramidal.states: ");
+            // self.states.read(&mut vec).enq().unwrap();
+            // util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
+
+            // print!("pyramidal.tft_best_den_states_raw: ");
+            // self.tft_best_den_states_raw.read(&mut vec).enq().unwrap();
+            // util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
+
+            // print!("pyramidal.tft_best_den_states: ");
+            // self.tft_best_den_states.read(&mut vec).enq().unwrap();
+            // util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
+
+        }
+
+        fn print_all(&self, /*print_children: bool*/) {
+            self.print_range(None, /*print_children*/);
+        }
+
+        fn rng(&mut self) -> &mut XorShiftRng {
+            &mut self.rng
+        }
+
+        fn rand_cel_coords(&mut self) -> CelCoords {
+            let slc_range = RandRange::new(0, self.dims().depth());
+            let v_range = RandRange::new(0, self.dims().v_size());
+            let u_range = RandRange::new(0, self.dims().u_size());
+
+            let slc_id_lyr = slc_range.ind_sample(self.rng());
+            let v_id = v_range.ind_sample(self.rng());
+            let u_id = u_range.ind_sample(self.rng());
+
+            let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
+
+            CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
+                //self.tft_count, self.dens_per_tft_l2(), self.syns_per_den_l2()
+        }
+
+        fn last_cel_coords(&self) -> CelCoords {
+            let slc_id_lyr = self.dims().depth() - 1;
+            let v_id = self.dims().v_size() - 1;
+            let u_id = self.dims().u_size() - 1;
+
+            let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
+
+            CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
+        }
+
+
+        fn cel_idx(&self, slc_id_lyr: u8, v_id: u32, u_id: u32)-> u32 {
+            cmn::cel_idx_3d(self.dims().depth(), slc_id_lyr, self.dims().v_size(), v_id,
+                self.dims().u_size(), u_id)
+        }
+
+        fn celtft_idx(&self, tft_id: usize, cel_coords: &CelCoords) -> u32 {
+            (tft_id as u32 * self.dims.cells()) + cel_coords.idx
+        }
+
+        fn set_all_to_zero(&mut self) {
+            self.dens.states().default_queue().finish();
+
+            self.dens.states().cmd().fill(0, None).enq().unwrap();
+
+            self.dens.states().default_queue().finish();
+        }
+    }
 }
 
 

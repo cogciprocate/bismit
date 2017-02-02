@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
-use ocl::{Device, ProQue, Context, Buffer, Event};
+use ocl::{flags, Device, ProQue, Context, Buffer, Event, Queue};
 // use ocl::core::ClWaitList;
 use cmn::{self, CmnError, CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
@@ -11,6 +11,9 @@ use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLaye
     SpinyStellateLayer};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
+
+// Out of order asynchronous command queues:
+const QUEUE_OUT_OF_ORDER: bool = true;
 
 // GDB debug mode:
 const KERNEL_DEBUG_MODE: bool = false;
@@ -60,6 +63,8 @@ pub struct CorticalArea {
     psal_name: &'static str,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
     aux: Aux,
     ocl_pq: ProQue,
+    write_queue: Queue,
+    read_queue: Queue,
     counter: usize,
     settings: CorticalAreaSettings,
     exe_graph: ExecutionGraph,
@@ -98,7 +103,17 @@ impl CorticalArea {
             .device(device_idx)
             .context(ocl_context.clone())
             .prog_bldr(build_options)
+            // .queue_properties(/*flags::QUEUE_PROFILING_ENABLE |*/ flags::QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE)
             .build().expect("CorticalArea::new(): ocl_pq.build(): error");
+
+        let (write_queue, read_queue) = if QUEUE_OUT_OF_ORDER {
+            (Queue::new(ocl_context, ocl_pq.device().clone(),
+                    Some(/*flags::QUEUE_PROFILING_ENABLE |*/ flags::QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE))?,
+                Queue::new(ocl_context, ocl_pq.device().clone(),
+                    Some(/*flags::QUEUE_PROFILING_ENABLE |*/ flags::QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE))?)
+        } else {
+            (ocl_pq.queue().clone(), ocl_pq.queue().clone())
+        };
 
         let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size().unwrap());
 
@@ -128,7 +143,7 @@ impl CorticalArea {
         let mut ssts_map = HashMap::new();
         let mut iinns = HashMap::new();
         let mut mcols = None;
-        let axns = AxonSpace::new(&area_map, &ocl_pq, &mut exe_graph, thal)?;
+        let axns = AxonSpace::new(&area_map, &ocl_pq, &write_queue, &mut exe_graph, thal)?;
         // println!("{mt}::NEW(): IO_INFO: {:#?}, Settings: {:#?}", axns.io_info(), settings, mt = cmn::MT);
 
         /*=============================================================================
@@ -337,6 +352,8 @@ impl CorticalArea {
             iinns: iinns,
             aux: aux,
             ocl_pq: ocl_pq,
+            write_queue: write_queue,
+            read_queue: read_queue,
             counter: 0,
             settings: settings,
             exe_graph: exe_graph,
@@ -356,8 +373,6 @@ impl CorticalArea {
         //////
         //////
 
-
-//      &exe_graph.get_req_events(cmd_idx)?
 
         // (1.) Axon Intake:
         self.axns.intake(thal, &mut self.exe_graph, self.settings.bypass_filters)?;
@@ -409,18 +424,23 @@ impl CorticalArea {
         if !self.settings.disable_regrowth { self.regrow(); }
 
         // (9.) Axon Output:
-        self.axns.output(thal, &mut self.exe_graph)?;
+        self.axns.output(&self.read_queue, thal, &mut self.exe_graph)?;
+
+        // // Finish queues [SEMI-TEMPORARY]:
+        // self.finish_queues();
 
         Ok(())
     }
 
     /// Attaches synapses which are below strength threshold to new axons.
     pub fn regrow(&mut self) {
+        self.finish_queues();
+
         if !self.settings.disable_regrowth {
             if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
                 //print!("$");
-                self.ssts_map.get_mut(self.psal_name).expect("cortical_area.rs").regrow();
-                self.ptal_mut().regrow();
+                self.ssts_map.get_mut(self.psal_name).expect("CorticalArea::regrow").regrow();
+                self.pyrs_map.get_mut(self.ptal_name).expect("CorticalArea::regrow").regrow();
                 self.counter = 0;
             } else {
                 self.counter += 1;
@@ -428,29 +448,35 @@ impl CorticalArea {
         }
     }
 
-    /* PIL(): Get Primary Spatial Associative Layer (immutable) */
-    pub fn psal(&self) -> &Box<SpinyStellateLayer> {
-        let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
-        self.ssts_map.get(self.psal_name).expect(e_string)
+    pub fn finish_queues(&self) {
+        self.write_queue.finish();
+        self.ocl_pq.queue().finish();
+        self.read_queue.finish();
     }
 
-    /* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
-    pub fn psal_mut(&mut self) -> &mut Box<SpinyStellateLayer> {
-        let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
-        self.ssts_map.get_mut(self.psal_name).expect(e_string)
-    }
+    // /* PIL(): Get Primary Spatial Associative Layer (immutable) */
+    // pub fn psal(&self) -> &Box<SpinyStellateLayer> {
+    //     let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
+    //     self.ssts_map.get(self.psal_name).expect(e_string)
+    // }
 
-    /* PAL(): Get Primary Temporal Associative Layer (immutable) */
-    pub fn ptal(&self) -> &Box<PyramidalLayer> {
-        let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
-        self.pyrs_map.get(self.ptal_name).expect(e_string)
-    }
+    // /* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
+    // pub fn psal_mut(&mut self) -> &mut Box<SpinyStellateLayer> {
+    //     let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
+    //     self.ssts_map.get_mut(self.psal_name).expect(e_string)
+    // }
 
-    /* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
-    pub fn ptal_mut(&mut self) -> &mut Box<PyramidalLayer> {
-        let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
-        self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
-    }
+    // /* PAL(): Get Primary Temporal Associative Layer (immutable) */
+    // pub fn ptal(&self) -> &Box<PyramidalLayer> {
+    //     let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
+    //     self.pyrs_map.get(self.ptal_name).expect(e_string)
+    // }
+
+    // /* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
+    // pub fn ptal_mut(&mut self) -> &mut Box<PyramidalLayer> {
+    //     let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
+    //     self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
+    // }
 
     /// [FIXME]: Currnently assuming aff out slice is == 1. Ascertain the
     /// slice range correctly by consulting area_map.layers().
@@ -472,14 +498,20 @@ impl CorticalArea {
             equal to slice axon length({}). axn_range: {:?}, slc_range: {:?}",
             buf.len(), axn_range.len(), axn_range, slc_range);
         let mut event = Event::empty();
-        self.axns.states.cmd().read(buf).offset(axn_range.start).enew(&mut event).enq().unwrap();
+
+        self.finish_queues();
+
+        self.axns.states().cmd().read(buf).offset(axn_range.start).enew(&mut event).enq().unwrap();
         event
     }
 
     pub fn sample_axn_space(&self, buf: &mut [u8]) -> Event {
         debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
         let mut event = Event::empty();
-        self.axns.states.read(buf).enew(&mut event).enq().expect("[FIXME]: HANDLE ME!");
+
+        self.finish_queues();
+
+        self.axns.states().read(buf).enew(&mut event).enq().expect("[FIXME]: HANDLE ME!");
         event
     }
 
@@ -529,6 +561,8 @@ impl Aux {
         let ints_1 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, [ptal_syn_len * 4], None).unwrap();
         ints_1.cmd().fill(int_32_min, None).enq().unwrap();
 
+        ocl_pq.queue().finish();
+
         Aux {
             ints_0: ints_0,
             ints_1: ints_1,
@@ -572,6 +606,10 @@ pub mod tests {
         fn read_from_axon(&self, idx: u32) -> u8;
         fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8
             ) -> (i8, i8, u32, u32);
+        fn psal(&self) -> &Box<SpinyStellateLayer>;
+        fn psal_mut(&mut self) -> &mut Box<SpinyStellateLayer>;
+        fn ptal(&self) -> &Box<PyramidalLayer>;
+        fn ptal_mut(&mut self) -> &mut Box<PyramidalLayer>;
         fn print_aux(&mut self);
         fn print_axns(&mut self);
         fn activate_axon(&mut self, idx: u32);
@@ -580,14 +618,17 @@ pub mod tests {
 
     impl CorticalAreaTest for CorticalArea {
         fn axn_state(&self, idx: usize) -> u8 {
+            self.finish_queues();
             self.axns.axn_state(idx)
         }
 
         fn read_from_axon(&self, idx: u32) -> u8 {
+            self.finish_queues();
             self.axns.axn_state(idx as usize)
         }
 
         fn write_to_axon(&mut self, val: u8, idx: u32) {
+            self.finish_queues();
             self.axns.write_to_axon(val, idx);
         }
 
@@ -622,8 +663,34 @@ pub mod tests {
             panic!("SynCoords::rand_safe_src_axn_offs(): Error finding valid offset pair.");
         }
 
+        /* PIL(): Get Primary Spatial Associative Layer (immutable) */
+        fn psal(&self) -> &Box<SpinyStellateLayer> {
+            let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
+            self.ssts_map.get(self.psal_name).expect(e_string)
+        }
+
+        /* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
+        fn psal_mut(&mut self) -> &mut Box<SpinyStellateLayer> {
+            let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
+            self.ssts_map.get_mut(self.psal_name).expect(e_string)
+        }
+
+        /* PAL(): Get Primary Temporal Associative Layer (immutable) */
+        fn ptal(&self) -> &Box<PyramidalLayer> {
+            let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
+            self.pyrs_map.get(self.ptal_name).expect(e_string)
+        }
+
+        /* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
+        fn ptal_mut(&mut self) -> &mut Box<PyramidalLayer> {
+            let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
+            self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
+        }
+
         fn print_aux(&mut self) {
             use ocl::util;
+
+            self.finish_queues();
 
             let mut vec = vec![0; self.aux.ints_0.len()];
 
@@ -640,20 +707,24 @@ pub mod tests {
         fn print_axns(&mut self) {
             use ocl::util;
 
-            let mut vec = vec![0; self.axns.states.len()];
+            self.finish_queues();
+
+            let mut vec = vec![0; self.axns.states().len()];
 
             print!("axns: ");
-            self.axns.states.read(&mut vec).enq().unwrap();
+            self.axns.states().read(&mut vec).enq().unwrap();
             util::print_slice(&vec, 1 << 0, None, None, false);
         }
 
         fn activate_axon(&mut self, idx: u32) {
+            self.finish_queues();
             let mut rng = rand::weak_rng();
             let val = RandRange::new(200, 255).ind_sample(&mut rng);
             self.axns.write_to_axon(val, idx);
         }
 
         fn deactivate_axon(&mut self, idx: u32) {
+            self.finish_queues();
             self.axns.write_to_axon(0, idx);
         }
     }

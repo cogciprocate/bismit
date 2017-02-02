@@ -18,7 +18,10 @@ fn cycle_random_pyrs() {
 
     // Zero all dendrite and synapse buffers:
     area.ptal_mut().dens_mut().set_all_to_zero(true);
-    area.axns().states.cmd().fill(0, None).enq().unwrap();
+
+    area.axns().states().default_queue().finish();
+    area.axns().states().cmd().fill(0, None).enq().unwrap();
+    area.axns().states().default_queue().finish();
 
     // Set source slice to an unused slice for all synapses:
     let unused_slc_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::UNUSED_TESTING);
@@ -26,8 +29,9 @@ fn cycle_random_pyrs() {
     let zeroed_slc_id = unused_slc_ranges[0].start;
     let unused_slc_id = unused_slc_ranges[1].start;
 
+    area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
     area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(zeroed_slc_id, None).enq().unwrap();
-    area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(zeroed_slc_id, None).enq().unwrap();
+    area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
 
     // 'input' source slice which will be assigned to the synapses being tested:
     // let src_slc_ids = area.area_map().layers().layers_containing_tags_slc_range(map::FF_IN);
@@ -85,15 +89,26 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             //     den_syn_range.clone()).unwrap();
 
             let fill_size = den_syn_range.end - den_syn_range.start;
+
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
             area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd()
                 .fill(src_slc_id, Some(fill_size)).offset(den_syn_range.start).enq().unwrap();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
 
             // Write input:
             //area.write_to_axon(128, src_axn_idx);
             area.activate_axon(src_axn_idx);
 
+            // Finish queues:
+            area.finish_queues();
+
             // Cycle entire cell:
-            area.ptal_mut().cycle(None);
+            area.ptal().dens().syns().cycle_solo();
+            area.ptal().dens().cycle_solo();
+            area.ptal().cycle_solo();
+
+            // Finish queues:
+            area.finish_queues();
 
             //=============================================================================
             //================================= EVALUATE ==================================
@@ -105,12 +120,12 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             let mut cel_state = vec![0];
             area.ptal().dens().states().cmd().read(&mut den_state).offset(den_idx as usize).enq().unwrap();
             area.ptal().states().cmd().read(&mut cel_state).offset(cel_coords.idx() as usize).enq().unwrap();
+
+            // Finish queues:
+            area.finish_queues();
+
             let den_state = den_state[0];
             let cel_state = cel_state[0];
-            // area.ptal().dens().states.enqueue_read(&mut den_state[0..1], den_idx as usize);
-            // let den_state = area.ptal().dens().states.read_idx_direct(den_idx as usize);
-            // let cel_state = area.ptal().states.read_idx_direct(cel_coords.idx() as usize);
-
 
             // Ensure that the dendrite is active:
             if den_state == 0 || cel_state == 0 {
@@ -121,10 +136,8 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
                 println!("Axon Info: zeroed_slc_id: {}, src_slc_id: {}, src_axn_idx: {}",
                     zeroed_slc_id, src_slc_id, src_axn_idx);
                 println!("dens.state[{}]: '{}'", den_idx, den_state);
-                // print!("Synapse src_slc_ids: ");
-                // area.ptal_mut().dens_mut().syns_mut().src_slc_ids
-                //     .print(1, None, Some(den_syn_range.clone()), true);
-                // util::print_all(area, " -- TEST_CEL_TUFTS() -- ");
+                print!("Synapse src_slc_ids: ");
+                util::print_all(area, " -- TEST_CEL_TUFTS() -- ");
                 print!("\n");
                 area.ptal().dens().syns().print_all();
                 area.ptal().dens().print_all();
@@ -132,8 +145,8 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
                 area.print_aux();
 
                 // Scream like a little girl:
-                panic!("Error: dendrite (den_idx: {}) not activated on test cell (cel_idx: {}).",
-                    den_idx, cel_coords.idx);
+                panic!("Error: dendrite (den_idx: [{}] = {} ) not activated on test cell \
+                    (cel_idx: [{}] = {}).", den_idx, den_state, cel_coords.idx, cel_state);
             }
 
             // Make sure neighbors, etc. are inactive
@@ -148,15 +161,23 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
 
             let fill_size = den_syn_range.end - den_syn_range.start;
             debug_assert_eq!(fill_size, den_syn_range.len());
+
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
             area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd()
                 .fill(zeroed_slc_id, Some(fill_size)).offset(den_syn_range.start).enq().unwrap();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
 
             area.write_to_axon(0, src_axn_idx);
         }
     }
 
     // Clear out any residual activity:
-    area.ptal_mut().cycle(None);
+    area.ptal().dens().syns().cycle_solo();
+    area.ptal().dens().cycle_solo();
+    area.ptal().cycle_solo();
+
+    // Finish queues:
+    area.finish_queues();
 
     // print!("\n");
     // panic!(" -- DEBUGGING -- ");
@@ -178,7 +199,13 @@ fn cycle_random_dens() {
     let zeroed_slc_range = area.area_map().layers()
         .layers_containing_tags_slc_range(map::UNUSED_TESTING)[0].clone();
     let zeroed_slc_id = zeroed_slc_range.start;
+
+    area.ptal().dens().syns().src_slc_ids().default_queue().finish();
     area.ptal().dens().syns().src_slc_ids().cmd().fill(zeroed_slc_id, None).enq().unwrap();
+    area.ptal().dens().syns().src_slc_ids().default_queue().finish();
+
+    // Finish queues:
+    area.finish_queues();
 
     // ////// SANITY CHECK:
     // ////// DEBUG: 2016-Dec-24
@@ -250,17 +277,28 @@ fn cycle_random_dens() {
         // area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_slc_id,
         //     cel_syn_range.clone()).unwrap();
 
+        area.ptal().dens().syns().src_slc_ids().default_queue().finish();
 
         area.ptal().dens().syns().src_slc_ids().cmd()
             .fill(src_slc_id, Some(cel_syn_range.len()))
             .offset(cel_syn_range.start)
             .enq().unwrap();
 
+        // Finish queues:
+        area.finish_queues();
+
         // WRITE INPUT:
         area.activate_axon(src_axn_idx);
 
+        // Finish queues:
+        area.finish_queues();
+
         // CYCLE SYNS AND DENS:
-        area.ptal_mut().dens_mut().cycle(None);
+        area.ptal().dens().syns().cycle_solo();
+        area.ptal().dens().cycle_solo();
+
+        // Finish queues:
+        area.finish_queues();
 
         // ////// DEBUG: 2016-Dec-24
         //     area.print_axns();
@@ -308,6 +346,9 @@ fn cycle_random_dens() {
             .enq().unwrap();
 
         area.write_to_axon(0, src_axn_idx);
+
+        // Finish queues:
+        area.finish_queues();
     }
 
     // print!("\n");

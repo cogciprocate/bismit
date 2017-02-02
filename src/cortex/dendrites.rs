@@ -69,6 +69,7 @@ impl Dendrites {
         let thresholds = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None).unwrap();
         // energies.cmd().fill(255, None).enq().unwrap();
         energies.cmd().fill(1, None).enq().unwrap();
+        energies.default_queue().finish();
 
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}",
             layer_name, dims, states.len(), mt = cmn::MT);
@@ -189,13 +190,6 @@ impl Dendrites {
         Ok(())
     }
 
-    // FOR TESTING PURPOSES
-    pub fn cycle_self_only(&self) {
-        for kern in self.kernels.iter() {
-            kern.enq().expect("[FIXME]: HANDLE ME!");
-        }
-    }
-
     pub fn regrow(&mut self) {
         self.syns.regrow();
     }
@@ -250,6 +244,7 @@ pub mod tests {
         fn rand_den_coords(&mut self, cel_coords: CelCoords) -> DenCoords;
         fn den_idx(&self, cel_coords: &CelCoords, tft_den_idz: u32,
             tft_dims: &TuftDims, den_id_celtft: u32) -> u32;
+        fn cycle_solo(&self);
         fn tft_id_range(&self) -> Range<usize>;
         fn den_id_range_celtft(&self, tft_id: usize) -> Range<u32>;
         fn print_range(&self, idx_range: Option<Range<usize>>);
@@ -258,10 +253,20 @@ pub mod tests {
 
     impl DendritesTest for Dendrites {
         fn set_all_to_zero(&mut self, set_syns_zero: bool) {
+            self.thresholds.default_queue().finish();
+            self.states_raw.default_queue().finish();
+            self.states.default_queue().finish();
+            self.energies.default_queue().finish();
+
             self.thresholds.cmd().fill(0, None).enq().unwrap();
             self.states_raw.cmd().fill(0, None).enq().unwrap();
             self.states.cmd().fill(0, None).enq().unwrap();
             self.energies.cmd().fill(0, None).enq().unwrap();
+
+            self.thresholds.default_queue().finish();
+            self.states_raw.default_queue().finish();
+            self.states.default_queue().finish();
+            self.energies.default_queue().finish();
 
             if set_syns_zero { self.syns.set_all_to_zero() };
         }
@@ -286,6 +291,14 @@ pub mod tests {
             let den_id_celtft = den_id_range_celtft.ind_sample(self.syns.rng());
 
             DenCoords::new(cel_coords, tft_id, tft_den_idz, tft_dims, den_id_celtft)
+        }
+
+        fn cycle_solo(&self) {
+            for kern in self.kernels.iter() {
+                kern.default_queue().finish();
+                kern.cmd().enq().expect("DendritesTest::cycle_solo");
+                kern.default_queue().finish();
+            }
         }
 
         fn den_idx(&self, cel_coords: &CelCoords, tft_den_idz: u32,

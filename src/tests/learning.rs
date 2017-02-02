@@ -137,13 +137,22 @@ impl LearningTestBed {
 
             // Zero all dendrite and synapse buffers:
             area.ptal_mut().dens_mut().set_all_to_zero(true);
-            area.axns().states.cmd().fill(0, None).enq().unwrap();
+
+            area.axns().states().default_queue().finish();
+            area.axns().states().cmd().fill(0, None).enq().unwrap();
+            area.axns().states().default_queue().finish();
 
             // Set source slice to an unused slice for all synapses:
             let unused_slc_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::UNUSED_TESTING);
             assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
             let unused_slc_id = unused_slc_ranges[0].start;
+
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
             area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(unused_slc_id, None).enq().unwrap();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
+
+            // Finish queues:
+            area.finish_queues();
 
             // Primary spatial layer slice idz (base axon slice):
             let prx_src_slc = area.psal().base_axn_slc();
@@ -221,6 +230,9 @@ impl LearningTestBed {
                 area.ptal_mut().dens_mut().syns_mut().set_src_offs(fake_v_ofs, fake_u_ofs, syn_idx as usize);
                 area.ptal_mut().dens_mut().syns_mut().set_src_slc(fake_neighbor_slc, syn_idx as usize);
             }
+
+            // Finish queues:
+            area.finish_queues();
 
             // PRINT ALL THE THINGS!:
             let syn_val = area.ptal_mut().dens_mut().syns_mut().syn_state(syn_coords.idx);
@@ -381,7 +393,9 @@ impl LearningTestBed {
         if print_debug { printlnc!(yellow: "Activating distal source (neighbor) axon: [{}]...",
             self.fake_neighbor_axn_idx); }
 
+        area.finish_queues();
         area.activate_axon(self.fake_neighbor_axn_idx);
+        area.finish_queues();
 
         util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
 
@@ -436,6 +450,7 @@ impl LearningTestBed {
 
         util::ptal_alco(area, ACTIVATE, print_debug);
 
+
         if print_debug {
             util::print_all(area, "\n - Confirm 1A - ");
             print!("\n");
@@ -462,8 +477,7 @@ impl LearningTestBed {
 
         util::ptal_alco(area, LEARN, print_debug);
 
-        if print_debug { println!("Finishing queue..."); }
-        area.ocl_pq().queue().finish();
+        // if print_debug { println!("Finishing queues..."); }
 
         if print_debug {
             util::print_all(area, "\n - Confirm 1B - ");
@@ -500,7 +514,9 @@ impl LearningTestBed {
 
         // ACTIVATE COLUMN PSAL AXON
         if print_debug {  printlnc!(yellow: "Activating proximal source axon: [{}]...", self.prx_src_axn_idx); }
+        area.finish_queues();
         area.activate_axon(self.prx_src_axn_idx);
+        area.finish_queues();
 
         // // ACTIVATE PTAL SYNAPSE SOURCE AXON
         // // [NOTE 2017-Jan-01]: Unknown what this was used for or has been replaced with. Investigate.
@@ -598,7 +614,9 @@ impl LearningTestBed {
 
         // ZERO PTAL SYNAPSE SOURCE AXON
         if print_debug { printlnc!(yellow: "Deactivating distal source (neighbor) axon..."); }
+        area.finish_queues();
         area.deactivate_axon(self.fake_neighbor_axn_idx);
+        area.finish_queues();
 
         util::ptal_alco(area, CYCLE, print_debug);
         util::ptal_alco(area, ACTIVATE, print_debug);
@@ -629,7 +647,9 @@ impl LearningTestBed {
 
         // ZERO COLUMN PSAL AXON
         if print_debug {  printlnc!(yellow: "Deactivating proximal source axon..."); }
+        area.finish_queues();
         area.deactivate_axon(self.prx_src_axn_idx);
+        area.finish_queues();
         // ZERO PTAL SYNAPSE SOURCE AXON
         // printlnc!(yellow: "Deactivating distal source (neighbor) axon...");
         // area.deactivate_axon(fake_neighbor_axn_idx);
@@ -690,6 +710,9 @@ impl LearningTestBed {
             area.ptal_mut().dens_mut().syns_mut().set_src_offs(self.fake_v_ofs, self.fake_u_ofs, syn_idx as usize);
             area.ptal_mut().dens_mut().syns_mut().set_src_slc(self.fake_neighbor_slc, syn_idx as usize);
         }
+
+        // Finish queues:
+        area.finish_queues();
     }
 
 
@@ -701,6 +724,9 @@ impl LearningTestBed {
         if PRINT_DEBUG_INFO { println!("\n ====================== Clean-up ====================== \n"); }
 
         let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+
+        // Finish queues:
+        area.finish_queues();
 
         printlnc!(yellow: "Cleaning up...");
 
@@ -727,6 +753,9 @@ impl LearningTestBed {
             .fill(0, Some(self.syn_coords.syn_idx_range_celtft().len()))
             .offset(self.syn_coords.syn_idx_range_celtft().start).enq().unwrap();
         }
+
+        // Finish queues:
+        area.finish_queues();
 
         if PRINT_DEBUG_INFO {
             util::print_all(area, "\n - Post-clean-up - ");
