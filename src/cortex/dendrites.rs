@@ -112,8 +112,8 @@ impl Dendrites {
                 .arg_scl(den_threshold)
                 .arg_buf(&energies)
                 .arg_buf(&states_raw)
-                .arg_buf_named::<i32>("aux_ints_0", None)
-                .arg_buf_named::<i32>("aux_ints_1", None)
+                .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
+                .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
                 .arg_buf(&states)
             );
 

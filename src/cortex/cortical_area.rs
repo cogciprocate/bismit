@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
 use ocl::{flags, Device, ProQue, Context, Buffer, Event, Queue};
-// use ocl::core::ClWaitList;
+use ocl::core::CommandQueueProperties;
 use cmn::{self, CmnError, CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
     ExecutionGraph, /*AxonDomainRoute,*/};
@@ -12,11 +12,15 @@ use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLaye
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
-// Out of order asynchronous command queues:
+// Create separate read and write queues in addition to the kernel queue:
+const SEPARATE_IO_QUEUES: bool = true;
+// Enable out of order asynchronous command queues:
 const QUEUE_OUT_OF_ORDER: bool = true;
-
+// Enable queue profiling:
+const QUEUE_PROFILING: bool = false;
 // GDB debug mode:
-const KERNEL_DEBUG_MODE: bool = false;
+const KERNEL_DEBUG_SYMBOLS: bool = true;
+
 
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
 
@@ -90,7 +94,7 @@ impl CorticalArea {
         println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);
 
         // Optionally pass `-g` and `-s {cl path}` flags to compiler:
-        let build_options = if KERNEL_DEBUG_MODE && cfg!(target_os = "linux") {
+        let build_options = if KERNEL_DEBUG_SYMBOLS && cfg!(target_os = "linux") {
             // [TODO]: Add something to identify the platform vendor and match:
             // let debug_opts = format!("-g -s {}", cmn::cl_root_path().join("bismit.cl").to_str());
             let debug_opts = "-g";
@@ -99,18 +103,28 @@ impl CorticalArea {
             area_map.gen_build_options()
         };
 
+        let mut queue_flags = if QUEUE_OUT_OF_ORDER {
+            flags::QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
+        } else {
+            CommandQueueProperties::empty()
+        };
+
+        queue_flags = queue_flags | if QUEUE_PROFILING {
+            flags::QUEUE_PROFILING_ENABLE
+        } else {
+            CommandQueueProperties::empty()
+        };
+
         let ocl_pq = ProQue::builder()
             .device(device_idx)
             .context(ocl_context.clone())
             .prog_bldr(build_options)
-            // .queue_properties(/*flags::QUEUE_PROFILING_ENABLE |*/ flags::QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE)
+            .queue_properties(queue_flags)
             .build().expect("CorticalArea::new(): ocl_pq.build(): error");
 
-        let (write_queue, read_queue) = if QUEUE_OUT_OF_ORDER {
-            (Queue::new(ocl_context, ocl_pq.device().clone(),
-                    Some(/*flags::QUEUE_PROFILING_ENABLE |*/ flags::QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE))?,
-                Queue::new(ocl_context, ocl_pq.device().clone(),
-                    Some(/*flags::QUEUE_PROFILING_ENABLE |*/ flags::QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE))?)
+        let (write_queue, read_queue) = if SEPARATE_IO_QUEUES {
+            (Queue::new(ocl_context, ocl_pq.device().clone(), Some(queue_flags))?,
+                Queue::new(ocl_context, ocl_pq.device().clone(), Some(queue_flags))?)
         } else {
             (ocl_pq.queue().clone(), ocl_pq.queue().clone())
         };
@@ -367,22 +381,12 @@ impl CorticalArea {
     //
     // [TODO]: ISOLATE LEARNING INTO SEPARATE THREAD
     pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
-        //////
-        ////// [REMOVE ME]: TEMPORARY:
-            // self.exe_graph._RESET();
-        //////
-        //////
-
 
         // (1.) Axon Intake:
         self.axns.intake(thal, &mut self.exe_graph, self.settings.bypass_filters)?;
 
         // (2.) SSTs Cycle:
         if !self.settings.disable_ssts {
-            // let aff_input_events = { self.axns.io_info().group_events(AxonDomainRoute::Input)
-            //     .map(|wl| wl as &ClWaitList) };
-            // self.psal().cycle(aff_input_events);
-            // self.psal().cycle(&mut self.exe_graph);
             self.ssts_map[self.psal_name].cycle(&mut self.exe_graph)?;
         }
 
@@ -406,17 +410,12 @@ impl CorticalArea {
                 self.pyrs_map.get_mut(self.ptal_name).ok_or("CorticalArea::cycle: PTAL (pyrs) not found.")?
                     .learn(&mut self.exe_graph)?;
             }
-            // let eff_input_events = { self.axns.io_info().group_events(AxonDomainRoute::Input)
-            //     .map(|wl| wl as &ClWaitList) };
-            // self.ptal().cycle(eff_input_events);
-            // self.ptal().cycle(&mut self.exe_graph);
+
             self.pyrs_map[self.ptal_name].cycle(&mut self.exe_graph)?;
         }
 
         // (7.) MCOLs Output:
         if !self.settings.disable_mcols {
-            // let output_events = { self.axns.io_info_mut().group_events_mut(AxonDomainRoute::Output) };
-            // self.mcols.output(output_events);
             self.mcols.output(&mut self.exe_graph)?;
         }
 
@@ -453,30 +452,6 @@ impl CorticalArea {
         self.ocl_pq.queue().finish();
         self.read_queue.finish();
     }
-
-    // /* PIL(): Get Primary Spatial Associative Layer (immutable) */
-    // pub fn psal(&self) -> &Box<SpinyStellateLayer> {
-    //     let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
-    //     self.ssts_map.get(self.psal_name).expect(e_string)
-    // }
-
-    // /* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
-    // pub fn psal_mut(&mut self) -> &mut Box<SpinyStellateLayer> {
-    //     let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
-    //     self.ssts_map.get_mut(self.psal_name).expect(e_string)
-    // }
-
-    // /* PAL(): Get Primary Temporal Associative Layer (immutable) */
-    // pub fn ptal(&self) -> &Box<PyramidalLayer> {
-    //     let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
-    //     self.pyrs_map.get(self.ptal_name).expect(e_string)
-    // }
-
-    // /* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
-    // pub fn ptal_mut(&mut self) -> &mut Box<PyramidalLayer> {
-    //     let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
-    //     self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
-    // }
 
     /// [FIXME]: Currnently assuming aff out slice is == 1. Ascertain the
     /// slice range correctly by consulting area_map.layers().

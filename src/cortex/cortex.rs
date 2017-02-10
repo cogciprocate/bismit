@@ -1,6 +1,8 @@
 use std::collections::{HashMap};
 use time;
 
+// use cpuprofiler::PROFILER;
+
 use ocl::{self, Platform, Context, Device};
 use cortex::{CorticalArea, CorticalAreas, CorticalAreaSettings};
 use ::{Thalamus};
@@ -70,11 +72,15 @@ impl Cortex {
     }
 
     pub fn cycle(&mut self) {
+        // PROFILER.lock().unwrap().start("./bismit.profile").unwrap();
+
+        ////// [REENABLE ME]:
         self.thal.cycle_external_pathways(&mut self.areas);
 
         for (_, area) in self.areas.iter_mut() {
             area.cycle(&mut self.thal).expect("Cortex::cycle(): Cortical area cycling error");
         }
+        // PROFILER.lock().unwrap().stop().unwrap();
     }
 
     pub fn thal_mut(&mut self) -> &mut Thalamus {

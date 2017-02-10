@@ -1,7 +1,7 @@
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum InputScheme {
-    None,
+    None { layer_count: usize },
     Custom { layer_count: usize },
     World,
     Stripes { stripe_size: usize, zeros_first: bool },
@@ -22,7 +22,7 @@ pub enum InputScheme {
 impl InputScheme {
     pub fn is_some(&self) -> bool {
         match *self {
-            InputScheme::None => false,
+            InputScheme::None { .. } => false,
             _ => true,
         }
     }
@@ -33,7 +33,7 @@ impl InputScheme {
 
     pub fn layer_count(&self) -> usize {
         match *self {
-            // InputScheme::None => 0,
+            InputScheme::None { layer_count } => layer_count,
             InputScheme::GlyphSequences { .. } => 2,
             InputScheme::ReversoScalarSequence { .. } => 2,
             InputScheme::VectorEncoder { ref ranges } => ranges.len(),

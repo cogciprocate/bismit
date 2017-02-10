@@ -1,4 +1,6 @@
+use std::mem;
 use std::ops::{Deref, DerefMut};
+use libc;
 use super::TractDims;
 
 /// A view of a terminal of a tract at an instant in time.
@@ -61,6 +63,13 @@ impl<'a> TractFrameMut<'a> {
     #[inline]
     pub unsafe fn get_unchecked_mut(&mut self, idx: usize) -> *mut u8 {
         self.frame.get_unchecked_mut(idx)
+    }
+
+    pub fn zero(&mut self) {
+        unsafe {
+            libc::memset(self.frame.as_mut_ptr() as *mut libc::c_void, 0,
+                self.frame.len() / mem::size_of::<u8>());
+        }
     }
 
     pub fn frame(&self) -> &[u8] {

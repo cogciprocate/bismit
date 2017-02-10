@@ -463,7 +463,7 @@ impl ExecutionGraph {
         for (cmd_idx, cmd) in self.commands.iter().enumerate() {
             if PRINT_DEBUG { println!("##### Command [{}] ({}):", cmd_idx, cmd.details.variant_string()); }
 
-            if PRINT_DEBUG {  println!("#####     [Sources:]"); }
+            if PRINT_DEBUG { println!("#####     [Sources:]"); }
 
             for cmd_src_block in cmd.sources().into_iter() {
                 let rw_cmd_idxs = mem_block_rws.entry(cmd_src_block.clone())
@@ -501,29 +501,44 @@ impl ExecutionGraph {
     /// [TODO]: Remove redundant, 'superseded', entries.
     ///
     fn preceding_writers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRwsMap) -> BTreeMap<usize, usize> {
-        let mut pre_writers = BTreeMap::new();
+        // let mut pre_writers = BTreeMap::new();
 
-        for (cmd_src_block_idx, cmd_src_block) in self.commands[cmd_idx].sources().iter().enumerate() {
-            let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().writers;
+        // for (cmd_src_block_idx, cmd_src_block) in self.commands[cmd_idx].sources().iter().enumerate() {
+        //     let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().writers;
 
-            // // TEMP:
-            //     let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().readers;
-            // //
+        //     // // TEMP:
+        //     //     let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().readers;
+        //     // //
 
-            // println!("##### Command [{}]: Source Block [{}]: Writers: {:?}, Readers: {:?}", cmd_idx,
-            //     cmd_src_block_idx, block_writers, block_readers);
+        //     // println!("##### Command [{}]: Source Block [{}]: Writers: {:?}, Readers: {:?}", cmd_idx,
+        //     //     cmd_src_block_idx, block_writers, block_readers);
 
-            for &writer_cmd_idx in block_writers.iter() {
-                let cmd_order_idx = self.commands[writer_cmd_idx].order_idx().expect(
-                    "ExecutionGraph::preceeding_writers: Command order index not set.");
+        //     for &writer_cmd_idx in block_writers.iter() {
+        //         let cmd_order_idx = self.commands[writer_cmd_idx].order_idx().expect(
+        //             "ExecutionGraph::preceeding_writers: Command order index not set.");
 
-                pre_writers.insert(cmd_order_idx, writer_cmd_idx);
-            }
-        }
+        //         pre_writers.insert(cmd_order_idx, writer_cmd_idx);
+        //     }
+        // }
 
-        let cmd_order_idx = self.commands[cmd_idx].order_idx().unwrap();
-        if PRINT_DEBUG { println!("##### [{}: {}]: Preceding Writers: {:?}", cmd_order_idx, cmd_idx, pre_writers); }
-        // println!("#####");
+        // let cmd_order_idx = self.commands[cmd_idx].order_idx().unwrap();
+        // if PRINT_DEBUG { println!("##### [{}: {}]: Preceding Writers: {:?}", cmd_order_idx, cmd_idx, pre_writers); }
+        // // println!("#####");
+        // pre_writers
+
+        let pre_writers = self.commands[cmd_idx].details.sources().iter().enumerate()
+            .flat_map(|(cmd_src_block_idx, cmd_src_block)| {
+                mem_block_rws.get(cmd_src_block).unwrap().writers.iter().map(|&writer_cmd_idx| {
+                    let cmd_order_idx = self.commands[writer_cmd_idx].order_idx().expect(
+                        "ExecutionGraph::preceeding_writers: Command order index not set.");
+                    (cmd_order_idx, writer_cmd_idx)
+                })
+            })
+            .collect();
+
+        if PRINT_DEBUG { println!("##### [{}: {}]: Preceding Writers: {:?}",
+            self.commands[cmd_idx].order_idx().unwrap(), cmd_idx, pre_writers); }
+
         pre_writers
     }
 
@@ -553,9 +568,8 @@ impl ExecutionGraph {
             }
         }
 
-        let cmd_order_idx = self.commands[cmd_idx].order_idx().unwrap();
-        if PRINT_DEBUG { println!("##### [{}: {}]: Following Readers: {:?}", cmd_order_idx, cmd_idx, fol_readers); }
-        // println!("#####");
+        if PRINT_DEBUG { println!("##### [{}: {}]: Following Readers: {:?}",
+            self.commands[cmd_idx].order_idx().unwrap(), cmd_idx, fol_readers); }
         fol_readers
     }
 
@@ -653,7 +667,7 @@ impl ExecutionGraph {
                 unsafe {
                     self.requisite_cmd_events.get_unchecked_mut(cmd_idx).push(
                         // *event
-                        //     .core_as_ref()
+                        //     .core()
                         //     .expect(&format!("ExecutionGraph::get_req_events: Empty 'ocl::Event' \
                         //         found for command [{}]", req_idx))
                         //     .as_ptr_ref()
@@ -677,7 +691,7 @@ impl ExecutionGraph {
             return Err(ExecutionGraphError::EventsRequestOutOfOrder(cmd_idx));
         }
 
-        cmd.set_event(event.core_as_ref().cloned());
+        cmd.set_event(event.core().cloned());
 
         if (self.next_order_idx + 1) == self.order.len() {
             self.next_order_idx = 0;
@@ -718,7 +732,7 @@ impl ExecutionGraph {
     //         let cmd = unsafe { self.commands.get_unchecked(req_idx) };
 
     //         if let Some(event) = cmd.event() {
-    //             // unsafe { wait_list.push(*event.core_as_ref()
+    //             // unsafe { wait_list.push(*event.core()
     //             //     /* .expect(&format!("ExecutionGraph::get_req_events: Empty 'ocl::Event' found \
     //             //         for command [{}]", req_idx)) */
     //             //     .as_ptr_ref()); }

@@ -75,7 +75,8 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         assert!(tract.dims().to_len() == self.sdr_len);
 
         // Clear tract frame:
-        for e in tract.frame_mut().iter_mut() { *e = 0; }
+        // for e in tract.frame_mut().iter_mut() { *e = 0; }
+        tract.zero();
 
         // Get a normalized value:
         let val_norm = self.way_norm(val_orig.to_f32().unwrap());

@@ -189,7 +189,10 @@ impl ExternalPathway {
             InputScheme::Custom { .. } => {
                 ExternalPathwayEncoder::OtherUnspecified
             },
-            InputScheme::None | InputScheme::Zeros => ExternalPathwayEncoder::None,
+            InputScheme::None { .. } => {
+                ExternalPathwayEncoder::None
+            }
+            InputScheme::Zeros => ExternalPathwayEncoder::None,
             ref is @ _ => panic!("\nExternalPathway::new(): Input type: '{:?}' not yet supported.", is),
         };
 

@@ -219,15 +219,15 @@ impl Synapses {
                     .expect("Synapses::new()")
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
-                    .arg_buf(&axons.states())
+                    .arg_buf(axons.states())
                     .arg_buf(&src_col_u_offs)
                     .arg_buf(&src_col_v_offs)
                     .arg_buf(&src_slc_ids)
                     .arg_scl(tft_syn_idz)
                     .arg_scl(syns_per_tft_l2)
                     .arg_scl(dims.depth() as u8)
-                    .arg_buf_named::<i32>("aux_ints_0", None)
-                    .arg_buf_named::<i32>("aux_ints_1", None)
+                    .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
+                    .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
                     .arg_buf(&states)
             }));
 

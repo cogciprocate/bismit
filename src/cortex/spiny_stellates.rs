@@ -60,7 +60,7 @@ impl SpinyStellateLayer {
         let kern_ltp = ocl_pq.create_kernel("sst_ltp").expect("[FIXME]: HANDLE ME")
             // .expect("SpinyStellateLayer::new()")
             .gws(SpatialDims::Two(tft_count, grp_count as usize))
-            .arg_buf(&axons.states())
+            .arg_buf(axons.states())
             .arg_buf(dens.syns().states())
             .arg_scl(lyr_axn_idz)
             .arg_scl(cels_per_grp)

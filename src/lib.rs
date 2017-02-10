@@ -8,10 +8,12 @@ extern crate time;
 extern crate ocl;
 extern crate find_folder;
 extern crate twox_hash;
-#[macro_use] extern crate rand;
+// #[macro_use] extern crate rand;
+extern crate rand;
 #[macro_use] extern crate bitflags;
 #[macro_use] extern crate enum_primitive;
 #[macro_use] extern crate colorify;
+// extern crate cpuprofiler;
 
 
 mod cortex;

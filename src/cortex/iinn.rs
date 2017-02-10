@@ -38,20 +38,20 @@ impl InhibitoryInterneuronNetwork {
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
-            .arg_buf(&src_soma)
+            .arg_buf(src_soma)
             .arg_scl(src_base_axn_slc)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(&axns.states());
+            .arg_buf(axns.states());
 
         // Passthrough kernel:
         let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough")
             .expect("InhibitoryInterneuronNetwork::new()")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
-            .arg_buf(&src_soma)
+            .arg_buf(src_soma)
             .arg_scl(src_base_axn_slc)
-            .arg_buf(&axns.states());
+            .arg_buf(axns.states());
 
 
         let exe_cmd_srcs = (0..src_layer_tft_count)

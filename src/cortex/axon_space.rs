@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Range;
-use ocl::{ProQue, Buffer, EventList, Queue};
+use ocl::{ProQue, Buffer, EventList, Queue, Event};
 use ocl::traits::MemLen;
 use cmn::{self, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute, ExecutionCommand, CorticalBuffer,
@@ -9,6 +9,8 @@ use ::Thalamus;
 use tract_terminal::{OclBufferSource, OclBufferTarget};
 use cortex::{SensoryFilter};
 #[cfg(test)] pub use self::tests::{AxonSpaceTest, AxnCoords};
+
+const DISABLE_IO: bool = false;
 
 
 #[derive(Debug)]
@@ -446,7 +448,7 @@ impl AxonSpace {
             for io_lyr in io_lyrs.iter_mut() {
                 let tract_source = thal.tract_terminal_source(io_lyr.key())?;
 
-                if !bypass_filters && io_lyr.exe_cmd().is_filtered_write() {
+                if !DISABLE_IO && !bypass_filters && io_lyr.exe_cmd().is_filtered_write() {
                     let filter_chain_idx = io_lyr.filter_chain_idx().unwrap();
                     let filter_chain = &mut self.filter_chains[filter_chain_idx].1;
                     // let mut filter_event = filter_chain[0].write(tract_source)?;
@@ -460,14 +462,18 @@ impl AxonSpace {
                     let area_name = self.area_name;
 
                     if let &IoExeCmd::Write(cmd_idx) = io_lyr.exe_cmd() {
-                        let event = OclBufferTarget::new(&self.states, axn_range, tract_source.dims().clone(),
+                        let event = if DISABLE_IO {
+                            Event::empty()
+                        } else {
+                            OclBufferTarget::new(&self.states, axn_range, tract_source.dims().clone(),
                                 Some(&mut new_events), false)
                             .map_err(|err|
                                 err.prepend(&format!("CorticalArea::intake():: \
                                 Source tract length must be equal to the target axon range length \
                                 (area: '{}', layer_addr: '{:?}'): ", area_name, io_lyr.key())))?
                             // .copy_from_slice_buffer(tract_source)?;
-                            .copy_from_slice_buffer_v2(tract_source, Some(&exe_graph.get_req_events(cmd_idx)?))?;
+                            .copy_from_slice_buffer_v2(tract_source, Some(&exe_graph.get_req_events(cmd_idx)?))?
+                        };
 
                         exe_graph.set_cmd_event(cmd_idx, event)?;
                     } else {
@@ -489,19 +495,23 @@ impl AxonSpace {
         if let Some((io_lyrs, wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
             for io_lyr in io_lyrs.iter() {
                 if let &IoExeCmd::Read(cmd_idx) = io_lyr.exe_cmd() {
-                    let mut target = thal.tract_terminal_target(io_lyr.key())?;
+                    let event = if DISABLE_IO {
+                        Event::empty()
+                    } else {
+                        let mut target = thal.tract_terminal_target(io_lyr.key())?;
 
-                    let source = OclBufferSource::new(&self.states, io_lyr.axn_range(),
-                            target.dims().clone(), Some(wait_events))
-                        .map_err(|err| err.prepend(&format!("CorticalArea::output(): \
-                            Target tract length must be equal to the source axon range length \
-                            (area: '{}', layer_addr: '{:?}'): ", self.area_name, io_lyr.key()))
-                        )?;
+                        let source = OclBufferSource::new(&self.states, io_lyr.axn_range(),
+                                target.dims().clone(), Some(wait_events))
+                            .map_err(|err| err.prepend(&format!("CorticalArea::output(): \
+                                Target tract length must be equal to the source axon range length \
+                                (area: '{}', layer_addr: '{:?}'): ", self.area_name, io_lyr.key()))
+                            )?;
 
-                    // let event = target.copy_from_ocl_buffer_v2(source,
-                    //     Some(&exe_graph.get_req_events(cmd_idx)?), None)?;
-                    let event = target.copy_from_ocl_buffer_v2(source,
-                        Some(&exe_graph.get_req_events(cmd_idx)?), Some(read_queue))?;
+                        // let event = target.copy_from_ocl_buffer_v2(source,
+                        //     Some(&exe_graph.get_req_events(cmd_idx)?), None)?;
+                        target.copy_from_ocl_buffer_v2(source,
+                            Some(&exe_graph.get_req_events(cmd_idx)?), Some(read_queue))?
+                    };
 
                     exe_graph.set_cmd_event(cmd_idx, event)?;
                 } else {

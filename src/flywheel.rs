@@ -1,3 +1,15 @@
+//! Flywheel
+//!
+//!
+//!
+//
+// [TODO]:
+// - Optional command line printing (and possibly a menu here instead of in vibi).
+//
+//
+//
+
+
 use std::ops::Range;
 use std::sync::mpsc::{Sender, SyncSender, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
@@ -75,6 +87,7 @@ pub enum Request {
 /// Cycle result responses.
 #[derive(Clone, Debug)]
 pub enum Response {
+    CycleStarted(u32),
     CurrentIter(u32),
     Status(Box<Status>),
     Ready,
@@ -88,6 +101,7 @@ pub enum Response {
 /// Cycle status.
 #[derive(Clone, Debug)]
 pub struct Status {
+    pub cycling: bool,
     pub cur_cycle: u32,
     pub prev_cycles: u32,
     pub prev_elapsed: Duration,
@@ -97,6 +111,7 @@ pub struct Status {
 impl Status {
     pub fn new() -> Status {
         Status {
+            cycling: false,
             cur_cycle: 0,
             prev_cycles: 0,
             prev_elapsed: Duration::seconds(0),
@@ -230,6 +245,7 @@ impl Flywheel {
 
             self.status.cur_cycle = 0;
             self.status.cur_start_time = Some(time::get_time());
+            self.status.cycling = true;
             self.broadcast_status();
 
             // // DEBUG:
@@ -241,17 +257,16 @@ impl Flywheel {
                 _ => (),
             }
 
+            self.status.cycling = false;
             self.status.prev_cycles += self.status.cur_cycle;
             self.status.prev_elapsed = self.status.prev_elapsed + self.status.cur_elapsed();
+            self.status.cur_cycle = 0;
+            self.status.cur_start_time = None;
+            self.broadcast_status();
 
             // // DEBUG:
             // println!("{} cycle loops (prev: {}) complete...", self.status.cur_cycle,
             //     self.status.prev_cycles);
-
-            self.status.cur_cycle = 0;
-            self.status.cur_start_time = None;
-            // self.response_tx.send(Response::Status(Box::new(self.status.clone()))).ok();
-            self.broadcast_status();
 
             // // DEBUG:
             // println!("Cycle loop complete, prev_cycles: {}...", self.status.prev_cycles);

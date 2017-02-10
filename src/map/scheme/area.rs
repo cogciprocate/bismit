@@ -30,7 +30,7 @@ impl AreaScheme {
             name: name,
             layer_map_name: layer_map_name,
             dims: CorticalDims::new(dims[0], dims[1], 0, /*0,*/ None),
-            input: InputScheme::None,
+            input: InputScheme::None { layer_count: 0 },
             filter_chains: Vec::with_capacity(4),
             aff_areas: Vec::with_capacity(4),
             eff_areas: Vec::with_capacity(0),

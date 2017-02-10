@@ -13,9 +13,11 @@ mod renderer;
 mod error;
 mod tract_frame;
 mod map_store;
+mod double_buffer_mutex;
 pub mod util;
 // mod warden;
 pub mod data_cell_layer;
+
 
 use std;
 use std::default::{Default};
@@ -42,6 +44,7 @@ pub use self::tract_frame::{TractFrame, TractFrameMut};
 #[cfg(test)] pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
 pub use self::map_store::MapStore;
 pub use self::slice_dims::{calc_scale, scale};
+pub use self::double_buffer_mutex::DoubleBufferMutex;
 // pub use self::warden::{Requisite, KernelWarden, ReadWarden, WriteWarden};
 // pub use self::requisite::Requisite;
 

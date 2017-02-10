@@ -126,8 +126,8 @@ impl PyramidalLayer {
                 .arg_buf(&tft_best_den_states_raw)
                 .arg_buf(&tft_best_den_states)
                 // .arg_buf(&best_den_states)
-                .arg_buf_named::<i32>("aux_ints_0", None)
-                .arg_buf_named::<i32>("aux_ints_1", None)
+                .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
+                .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
                 // .arg_buf(&states)
             );
 
@@ -157,7 +157,7 @@ impl PyramidalLayer {
             pyr_tft_ltp_kernels.push(ocl_pq.create_kernel("pyr_tft_ltp")?
                 // .expect("PyramidalLayer::new()")
                 .gws(SpatialDims::One(cel_grp_count as usize))
-                .arg_buf(&axons.states())
+                .arg_buf(axons.states())
                 .arg_buf(&states)
                 .arg_buf(&tft_best_den_ids)
                 .arg_buf(&tft_best_den_states_raw)
@@ -176,8 +176,8 @@ impl PyramidalLayer {
                 .arg_scl_named::<i32>("rnd", None)
                 .arg_buf(dens.syns().flag_sets())
                 .arg_buf(&flag_sets)
-                .arg_buf_named::<i32>("aux_ints_0", None)
-                .arg_buf_named::<i32>("aux_ints_1", None)
+                .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
+                .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
                 .arg_buf(dens.syns().strengths())
             );
 
@@ -214,8 +214,8 @@ impl PyramidalLayer {
             .arg_scl(tft_count as u32)
             .arg_buf(&best_den_states_raw)
             .arg_buf(&states)
-            .arg_buf_named::<i32>("aux_ints_0", None)
-            .arg_buf_named::<i32>("aux_ints_1", None)
+            .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
+            .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
         ;
 
         let mut cycle_cmd_srcs: Vec<CorticalBuffer> = Vec::with_capacity(3 * tft_count);
