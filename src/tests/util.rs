@@ -147,13 +147,14 @@ pub fn read_idx_range_direct<T: OclPrm>(idx_range: Range<usize>, buf: &Buffer<T>
     vec
 }
 
-pub fn fill_vec<T: OclPrm>(buf: &Buffer<T>, vec: &mut Vec<T>) {
-    buf.cmd().read(vec).enq().unwrap();
-}
+// pub fn fill_vec<T: OclPrm>(buf: &Buffer<T>, vec: &mut Vec<T>) -> Event {
+//     // let mut event = Event::new();
+//     buf.cmd().read(vec).enq().unwrap();
+// }
 
-pub fn fill_new_vec<T: OclPrm>(buf: &Buffer<T>) -> Vec<T> {
+pub fn read_into_new_vec<T: OclPrm>(buf: &Buffer<T>) -> Vec<T> {
     let mut vec = vec![Default::default(); buf.len()];
-    fill_vec(buf, &mut vec);
+    buf.cmd().read(&mut vec).enq().unwrap();
     vec
 }
 
@@ -190,9 +191,9 @@ pub fn compare_buffers<T: OclScl>(env1: &Buffer<T>, env2: &Buffer<T>) -> bool {
     assert!(env1.len() == env2.len());
 
     // env1.fill_vec();
-    let vec1 = fill_new_vec(env1);
+    let vec1 = read_into_new_vec(env1);
     // env2.fill_vec();
-    let vec2 = fill_new_vec(env2);
+    let vec2 = read_into_new_vec(env2);
 
     let mut failure = false;
 
@@ -233,7 +234,7 @@ pub fn eval_others<T: OclScl>(env: &Buffer<T>, foc_idx: usize, other_val: T) {  
     assert!(foc_idx < idn);
 
     // env.fill_vec();
-    let vec = fill_new_vec(env);
+    let vec = read_into_new_vec(env);
 
     if idn <= check_margin * 4 {
         // CHECK THE WHOLE LIST (except for foc_idx)

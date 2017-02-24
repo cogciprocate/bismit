@@ -355,9 +355,9 @@ impl ExecutionCommand {
         self.order_idx = Some(order_idx);
     }
 
-    // pub fn set_event(&mut self, event: Option<EventCore>) {
-    pub fn set_event(&mut self, event: EventCore) {
-        self.event = Some(event);
+    pub fn set_event(&mut self, event: Option<EventCore>) {
+    // pub fn set_event(&mut self, event: EventCore) {
+        self.event = event;
     }
 
     #[inline] pub fn sources(&self) -> Vec<MemoryBlock> { self.details.sources() }
@@ -682,8 +682,8 @@ impl ExecutionGraph {
     }
 
     /// Sets the event associated with the completion of a command.
-    pub fn set_cmd_event(&mut self, cmd_idx: usize, event: Event) -> ExeGrResult<()> {
-    // pub fn set_cmd_event(&mut self, cmd_idx: usize, event: Option<Event>) -> ExeGrResult<()> {
+    // pub fn set_cmd_event(&mut self, cmd_idx: usize, event: Event) -> ExeGrResult<()> {
+    pub fn set_cmd_event(&mut self, cmd_idx: usize, event: Option<Event>) -> ExeGrResult<()> {
         if !self.locked { return Err(ExecutionGraphError::Unlocked); }
 
         let cmd = self.commands.get_mut(cmd_idx)
@@ -693,9 +693,9 @@ impl ExecutionGraph {
             return Err(ExecutionGraphError::EventsRequestOutOfOrder(cmd_idx));
         }
 
-        // cmd.set_event(event.into()); // <--- Correct Version
+        cmd.set_event(event.map(|e| e.into())); // <--- Correct Version
         // cmd.set_event(event.map(|ev| ev.core().clone()));
-        cmd.set_event(event.core().clone());
+        // cmd.set_event(event.core().clone());
 
         if (self.next_order_idx + 1) == self.order.len() {
             self.next_order_idx = 0;

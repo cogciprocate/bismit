@@ -127,6 +127,7 @@ fn syn_and_den_states(dens: &mut Dendrites) {
     dens.syns_mut().src_col_v_offs().default_queue().unwrap().finish().unwrap();
 
     dens.syns().cycle_solo();
+    dens.states().default_queue().unwrap().finish().unwrap();
     dens.cycle_solo();
     dens.states().default_queue().unwrap().finish().unwrap();
 
@@ -151,8 +152,8 @@ fn syn_and_den_states(dens: &mut Dendrites) {
 
     // dens.confab();
 
-    let vec_dens_states = util::fill_new_vec(dens.states());
-    let vec_syns_states = util::fill_new_vec(dens.syns().states());
+    let vec_dens_states = util::read_into_new_vec(dens.states());
+    let vec_syns_states = util::read_into_new_vec(dens.syns().states());
 
 
     let mut test_failed: bool = false;

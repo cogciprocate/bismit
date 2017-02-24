@@ -62,12 +62,12 @@ impl PyramidalLayer {
         let cel_count = dims.to_len();
         let celtft_count = cel_count * tft_count;
 
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, None::<(_, Option<()>)>).unwrap();
-        let best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, None::<(_, Option<()>)>).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, None::<(_, Option<()>)>).unwrap();
-        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, None::<(_, Option<()>)>).unwrap();
-        let tft_best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, None::<(_, Option<()>)>).unwrap();
-        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, None::<(_, Option<()>)>).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, Some((0, None::<()>))).unwrap();
+        let best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, Some((0, None::<()>))).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, Some((0, None::<()>))).unwrap();
+        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
+        let tft_best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
+        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
         // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
         println!("{mt}{mt}PYRAMIDALS::NEW(): \
@@ -348,7 +348,7 @@ impl DataCellLayer for PyramidalLayer {
 
             let mut event = Event::empty();
             ltp_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
-            exe_graph.set_cmd_event(cmd_idx, event)?;
+            exe_graph.set_cmd_event(cmd_idx, Some(event))?;
         }
 
         Ok(())
@@ -410,7 +410,7 @@ impl DataCellLayer for PyramidalLayer {
 
             let mut event = Event::empty();
             tft_cycle_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
-            exe_graph.set_cmd_event(cmd_idx, event)?;
+            exe_graph.set_cmd_event(cmd_idx, Some(event))?;
 
             // [DEBUG]: TEMPORARY:
             if PRINT_DEBUG { tft_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
@@ -423,7 +423,7 @@ impl DataCellLayer for PyramidalLayer {
         self.pyr_cycle_kernel.cmd().ewait(exe_graph.get_req_events(self.cycle_exe_cmd_idx)?)
             .enew(&mut event).enq()?;
 
-        exe_graph.set_cmd_event(self.cycle_exe_cmd_idx, event)?;
+        exe_graph.set_cmd_event(self.cycle_exe_cmd_idx, Some(event))?;
 
         // [DEBUG]: TEMPORARY:
         if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }

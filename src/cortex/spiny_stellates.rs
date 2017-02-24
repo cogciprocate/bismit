@@ -125,7 +125,7 @@ impl SpinyStellateLayer {
 
         let mut event = Event::empty();
         self.kern_ltp.cmd().ewait(exe_graph.get_req_events(self.ltp_exe_cmd_idx)?).enew(&mut event).enq()?;
-        exe_graph.set_cmd_event(self.ltp_exe_cmd_idx, event)?;
+        exe_graph.set_cmd_event(self.ltp_exe_cmd_idx, Some(event))?;
         Ok(())
     }
 

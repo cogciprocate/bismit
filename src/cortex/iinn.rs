@@ -28,9 +28,9 @@ impl InhibitoryInterneuronNetwork {
     {
         // let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
-        let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, None::<(_, Option<()>)>).unwrap();
-        let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, None::<(_, Option<()>)>).unwrap();
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, None::<(_, Option<()>)>).unwrap();
+        let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
+        let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
 
         // Simple (active) kernel:
         let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple")
@@ -106,7 +106,7 @@ impl InhibitoryInterneuronNetwork {
                 .enq()?;
         }
 
-        exe_graph.set_cmd_event(self.exe_cmd_idx, event)?;
+        exe_graph.set_cmd_event(self.exe_cmd_idx, Some(event))?;
 
         Ok(())
     }

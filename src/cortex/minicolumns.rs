@@ -48,8 +48,8 @@ impl Minicolumns {
 
         println!("{mt}{mt}MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth, mt = cmn::MT);
 
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, None::<(_, Option<()>)>).unwrap();
-        let best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, None::<(_, Option<()>)>).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
+        let best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
 
         // [FIXME]: TEMPORARY?:
         // [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':
@@ -186,14 +186,14 @@ impl Minicolumns {
     pub fn activate(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let mut event = Event::empty();
         self.kern_activate.cmd().ewait(exe_graph.get_req_events(self.activate_exe_cmd_idx)?).enew(&mut event).enq()?;
-        exe_graph.set_cmd_event(self.activate_exe_cmd_idx, event)?;
+        exe_graph.set_cmd_event(self.activate_exe_cmd_idx, Some(event))?;
         Ok(())
     }
 
     pub fn output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let mut event = Event::empty();
         self.kern_output.cmd().ewait(exe_graph.get_req_events(self.output_exe_cmd_idx)?).enew(&mut event).enq()?;
-        exe_graph.set_cmd_event(self.output_exe_cmd_idx, event)?;
+        exe_graph.set_cmd_event(self.output_exe_cmd_idx, Some(event))?;
         Ok(())
     }
 

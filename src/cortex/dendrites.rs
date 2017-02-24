@@ -63,10 +63,10 @@ impl Dendrites {
             // println!("");
         }
 
-        let states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, None::<(_, Option<()>)>).unwrap();
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, None::<(_, Option<()>)>).unwrap();
-        let energies = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, None::<(_, Option<()>)>).unwrap();
-        let thresholds = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, None::<(_, Option<()>)>).unwrap();
+        let states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
+        let energies = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
+        let thresholds = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
         // energies.cmd().fill(255, None).enq().unwrap();
         energies.cmd().fill(1, None).enq().unwrap();
         energies.default_queue().unwrap().finish().unwrap();
@@ -182,7 +182,7 @@ impl Dendrites {
 
             let mut event = Event::empty();
             kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
-            exe_graph.set_cmd_event(cmd_idx, event)?;
+            exe_graph.set_cmd_event(cmd_idx, Some(event))?;
 
             if DEBUG_KERN { kern.default_queue().unwrap().finish().unwrap(); }
         }

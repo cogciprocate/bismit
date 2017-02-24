@@ -153,8 +153,8 @@ impl<'b> OclBufferTarget<'b> {
     }
 
     pub fn copy_from_slice_buffer_v2<'e, Ewl>(&'e mut self, source: SliceBufferSource,
-            // wait_list: Option<Ewl>) -> CmnResult<Option<Event>>
             wait_list: Option<Ewl>) -> CmnResult<Event>
+            // wait_list: Option<Ewl>) -> CmnResult<Event>
             where Ewl: Into<ClWaitListPtrEnum<'e>>
     {
         // let mut ev = if self.events.is_some() || self.event.is_some() {
@@ -171,8 +171,9 @@ impl<'b> OclBufferTarget<'b> {
                 .block(false)
                 .ewait_opt(wait_list)
                 // .enew_opt(ev.as_mut())
-                .enew_opt(if self.events.is_some() || self.event.is_some()
-                    { Some(&mut ev) } else { None })
+                // .enew_opt(if self.events.is_some() || self.event.is_some()
+                //     { Some(&mut ev) } else { None })
+                .enew(&mut ev)
                 .enq()?;
         }
 
@@ -270,6 +271,14 @@ impl<'b> SliceBufferTarget<'b> {
             -> CmnResult<Event>
             where Ewl: Into<ClWaitListPtrEnum<'e>>
     {
+        // let mut ev = Event::empty();
+
+        // let mut ev = if self.events.is_some() || self.event.is_some() {
+        //     Some(Event::empty())
+        // } else {
+        //     None
+        // };
+
         let mut ev = Event::empty();
 
         unsafe {
@@ -277,6 +286,8 @@ impl<'b> SliceBufferTarget<'b> {
                 .block(false)
                 .offset(source.offset())
                 .ewait_opt(wait_list)
+                // .enew(&mut ev);
+                // .enew_opt(ev.as_mut());
                 .enew(&mut ev);
 
             if let Some(rq) = read_queue {
