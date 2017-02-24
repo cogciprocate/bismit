@@ -28,9 +28,9 @@ impl InhibitoryInterneuronNetwork {
     {
         // let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
-        let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, None::<(_, Option<()>)>).unwrap();
+        let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, None::<(_, Option<()>)>).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, None::<(_, Option<()>)>).unwrap();
 
         // Simple (active) kernel:
         let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple")
@@ -96,12 +96,12 @@ impl InhibitoryInterneuronNetwork {
 
         if bypass {
             self.kern_inhib_passthrough.cmd()
-                .ewait(&exe_graph.get_req_events(self.exe_cmd_idx)?)
+                .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
                 .enew(&mut event)
                 .enq()?;
         } else {
             self.kern_inhib_simple.cmd()
-                .ewait(&exe_graph.get_req_events(self.exe_cmd_idx)?)
+                .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
                 .enew(&mut event)
                 .enq()?;
         }

@@ -32,7 +32,7 @@ impl SensoryFilter {
         ) -> CmnResult<SensoryFilter>
     {
         let input_buffer = Buffer::<u8>::new(write_queue.clone(),
-            Some(flags::MEM_HOST_WRITE_ONLY | flags::MEM_READ_ONLY), dims, None).unwrap();
+            Some(flags::MEM_HOST_WRITE_ONLY | flags::MEM_READ_ONLY), dims, None, None::<(_, Option<()>)>).unwrap();
 
         let cycle_kernel = ocl_pq.create_kernel(&filter_name.clone()).expect("[FIXME]: HANDLE ME")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
@@ -107,7 +107,7 @@ impl SensoryFilter {
         //     .event().unwrap_or(Event::empty())
         // )
         let event = OclBufferTarget::new(&self.input_buffer, range, source.dims().clone(), None, false)?
-            .copy_from_slice_buffer_v2(source, Some(&exe_graph.get_req_events(cmd_idx)?))?;
+            .copy_from_slice_buffer_v2(source, Some(exe_graph.get_req_events(cmd_idx)?))?;
 
         exe_graph.set_cmd_event(cmd_idx, event)?;
         Ok(())
@@ -123,7 +123,7 @@ impl SensoryFilter {
         // let wait_list = exe_graph.get_req_events(self.exe_cmd_idx_cycle)?;
         let mut event = Event::empty();
 
-        self.cycle_kernel.cmd().ewait(&exe_graph.get_req_events(self.exe_cmd_idx_cycle)?)
+        self.cycle_kernel.cmd().ewait(exe_graph.get_req_events(self.exe_cmd_idx_cycle)?)
             .enew(&mut event).enq()?;
 
         exe_graph.set_cmd_event(self.exe_cmd_idx_cycle, event)?;

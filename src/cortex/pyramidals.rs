@@ -5,7 +5,7 @@ use rand::{self, XorShiftRng, Rng};
 use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
-// use ocl::core::ClWaitList;
+// use ocl::core::ClWaitListPtr;
 use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress};
 use cortex::{Dendrites, AxonSpace};
@@ -62,12 +62,12 @@ impl PyramidalLayer {
         let cel_count = dims.to_len();
         let celtft_count = cel_count * tft_count;
 
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
-        let best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None).unwrap();
-        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None).unwrap();
-        let tft_best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None).unwrap();
-        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, None::<(_, Option<()>)>).unwrap();
+        let best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, None::<(_, Option<()>)>).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, None::<(_, Option<()>)>).unwrap();
+        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, None::<(_, Option<()>)>).unwrap();
+        let tft_best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, None::<(_, Option<()>)>).unwrap();
+        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, None::<(_, Option<()>)>).unwrap();
         // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
 
         println!("{mt}{mt}PYRAMIDALS::NEW(): \
@@ -347,7 +347,7 @@ impl DataCellLayer for PyramidalLayer {
             if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing kern_ltp..."); }
 
             let mut event = Event::empty();
-            ltp_kernel.cmd().ewait(&exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            ltp_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cmd_idx, event)?;
         }
 
@@ -362,12 +362,12 @@ impl DataCellLayer for PyramidalLayer {
     }
 
     // #[inline]
-    // fn cycle(&self, wait_events: Option<&ClWaitList>) {
+    // fn cycle(&self, wait_events: Option<&ClWaitListPtr>) {
     //     if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
     //     self.dens().cycle(wait_events);
 
     //     // [DEBUG]: TEMPORARY:
-    //     if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().finish(); }
+    //     if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
 
     //     for (tft_id, tft_cycle_kernel) in self.pyr_tft_cycle_kernels.iter()
     //             .enumerate()
@@ -377,7 +377,7 @@ impl DataCellLayer for PyramidalLayer {
     //             .expect("bismit::PyramidalLayer::tft_cycle");
 
     //         // [DEBUG]: TEMPORARY:
-    //         if PRINT_DEBUG { tft_cycle_kernel.default_queue().finish(); }
+    //         if PRINT_DEBUG { tft_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
     //     }
 
     //     if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell somas..."); }
@@ -385,7 +385,7 @@ impl DataCellLayer for PyramidalLayer {
     //             .expect("bismit::PyramidalLayer::cycle");
 
     //     // [DEBUG]: TEMPORARY:
-    //     if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().finish(); }
+    //     if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
     // }
 
 
@@ -401,7 +401,7 @@ impl DataCellLayer for PyramidalLayer {
         self.dens().cycle(exe_graph)?;
 
         // [DEBUG]: TEMPORARY:
-        if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().finish(); }
+        if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
 
         for (tft_id, (tft_cycle_kernel, &cmd_idx)) in self.pyr_tft_cycle_kernels.iter()
                 .zip(self.tft_cycle_exe_cmd_idxs.iter()).enumerate()
@@ -409,24 +409,24 @@ impl DataCellLayer for PyramidalLayer {
             if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing cycle kernels for tft: {}...", tft_id); }
 
             let mut event = Event::empty();
-            tft_cycle_kernel.cmd().ewait(&exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            tft_cycle_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cmd_idx, event)?;
 
             // [DEBUG]: TEMPORARY:
-            if PRINT_DEBUG { tft_cycle_kernel.default_queue().finish(); }
+            if PRINT_DEBUG { tft_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
         }
 
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell soma..."); }
 
         let mut event = Event::empty();
 
-        self.pyr_cycle_kernel.cmd().ewait(&exe_graph.get_req_events(self.cycle_exe_cmd_idx)?)
+        self.pyr_cycle_kernel.cmd().ewait(exe_graph.get_req_events(self.cycle_exe_cmd_idx)?)
             .enew(&mut event).enq()?;
 
         exe_graph.set_cmd_event(self.cycle_exe_cmd_idx, event)?;
 
         // [DEBUG]: TEMPORARY:
-        if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().finish(); }
+        if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
 
         Ok(())
     }
@@ -461,23 +461,23 @@ pub mod tests {
 
     impl DataCellLayerTest for PyramidalLayer {
         fn cycle_solo(&self) {
-            self.pyr_cycle_kernel.default_queue().finish();
+            self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap();
 
             for cycle_kern in self.pyr_tft_cycle_kernels.iter() {
-                cycle_kern.default_queue().finish();
+                cycle_kern.default_queue().unwrap().finish().unwrap();
                 cycle_kern.cmd().enq().expect("PyramidalLayer::cycle_self_only: pyr_tft_cycle_kernels");
-                cycle_kern.default_queue().finish();
+                cycle_kern.default_queue().unwrap().finish().unwrap();
             }
 
             self.pyr_cycle_kernel.cmd().enq()
                 .expect("PyramidalLayer::cycle_self_only: pyr_cycle_kernel");
 
-            self.pyr_cycle_kernel.default_queue().finish();
+            self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap();
         }
 
         fn learn_solo(&mut self) {
             for ltp_kernel in self.pyr_tft_ltp_kernels.iter_mut() {
-                ltp_kernel.default_queue().finish();
+                ltp_kernel.default_queue().unwrap().finish().unwrap();
 
                 ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
                     .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [0]");
@@ -485,7 +485,7 @@ pub mod tests {
                 ltp_kernel.cmd().enq()
                     .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [1]");
 
-                ltp_kernel.default_queue().finish();
+                ltp_kernel.default_queue().unwrap().finish().unwrap();
             }
         }
 
@@ -635,11 +635,11 @@ pub mod tests {
         }
 
         fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL
-            self.states.default_queue().finish();
-            self.flag_sets.default_queue().finish();
-            self.tft_best_den_ids.default_queue().finish();
-            self.tft_best_den_states.default_queue().finish();
-            self.tft_best_den_states_raw.default_queue().finish();
+            self.states.default_queue().unwrap().finish().unwrap();
+            self.flag_sets.default_queue().unwrap().finish().unwrap();
+            self.tft_best_den_ids.default_queue().unwrap().finish().unwrap();
+            self.tft_best_den_states.default_queue().unwrap().finish().unwrap();
+            self.tft_best_den_states_raw.default_queue().unwrap().finish().unwrap();
 
             self.states.cmd().fill(0, None).enq().unwrap();
             self.flag_sets.cmd().fill(0, None).enq().unwrap();
@@ -651,11 +651,11 @@ pub mod tests {
 
             // self.energies.cmd().fill(&[0], None).enq().unwrap();                // <<<<< SLATED FOR REMOVAL
 
-            self.states.default_queue().finish();
-            self.flag_sets.default_queue().finish();
-            self.tft_best_den_ids.default_queue().finish();
-            self.tft_best_den_states.default_queue().finish();
-            self.tft_best_den_states_raw.default_queue().finish();
+            self.states.default_queue().unwrap().finish().unwrap();
+            self.flag_sets.default_queue().unwrap().finish().unwrap();
+            self.tft_best_den_ids.default_queue().unwrap().finish().unwrap();
+            self.tft_best_den_states.default_queue().unwrap().finish().unwrap();
+            self.tft_best_den_states_raw.default_queue().unwrap().finish().unwrap();
         }
 
         // fn confab(&mut self) {

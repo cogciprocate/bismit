@@ -1,6 +1,6 @@
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Event};
 use ocl::traits::OclPrm;
-// use ocl::core::ClWaitList;
+// use ocl::core::ClWaitListPtr;
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress};
@@ -63,13 +63,13 @@ impl Dendrites {
             // println!("");
         }
 
-        let states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None).unwrap();
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None).unwrap();
-        let energies = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None).unwrap();
-        let thresholds = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None).unwrap();
+        let states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, None::<(_, Option<()>)>).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, None::<(_, Option<()>)>).unwrap();
+        let energies = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, None::<(_, Option<()>)>).unwrap();
+        let thresholds = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, None::<(_, Option<()>)>).unwrap();
         // energies.cmd().fill(255, None).enq().unwrap();
         energies.cmd().fill(1, None).enq().unwrap();
-        energies.default_queue().finish();
+        energies.default_queue().unwrap().finish().unwrap();
 
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}",
             layer_name, dims, states.len(), mt = cmn::MT);
@@ -160,7 +160,7 @@ impl Dendrites {
         Ok(())
     }
 
-    // pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
+    // pub fn cycle(&self, wait_events: Option<&ClWaitListPtr>) {
     //     if DEBUG_KERN { println!("Dens: Cycling syns..."); }
     //     self.syns.cycle(wait_events);
 
@@ -169,7 +169,7 @@ impl Dendrites {
 
     //         kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
 
-    //         if DEBUG_KERN { kern.default_queue().finish(); }
+    //         if DEBUG_KERN { kern.default_queue().unwrap().finish().unwrap(); }
     //     }
     // }
 
@@ -181,10 +181,10 @@ impl Dendrites {
             if DEBUG_KERN { println!("Dens: Cycling kern_cycle..."); }
 
             let mut event = Event::empty();
-            kern.cmd().ewait(&exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cmd_idx, event)?;
 
-            if DEBUG_KERN { kern.default_queue().finish(); }
+            if DEBUG_KERN { kern.default_queue().unwrap().finish().unwrap(); }
         }
 
         Ok(())
@@ -253,20 +253,20 @@ pub mod tests {
 
     impl DendritesTest for Dendrites {
         fn set_all_to_zero(&mut self, set_syns_zero: bool) {
-            self.thresholds.default_queue().finish();
-            self.states_raw.default_queue().finish();
-            self.states.default_queue().finish();
-            self.energies.default_queue().finish();
+            self.thresholds.default_queue().unwrap().finish().unwrap();
+            self.states_raw.default_queue().unwrap().finish().unwrap();
+            self.states.default_queue().unwrap().finish().unwrap();
+            self.energies.default_queue().unwrap().finish().unwrap();
 
             self.thresholds.cmd().fill(0, None).enq().unwrap();
             self.states_raw.cmd().fill(0, None).enq().unwrap();
             self.states.cmd().fill(0, None).enq().unwrap();
             self.energies.cmd().fill(0, None).enq().unwrap();
 
-            self.thresholds.default_queue().finish();
-            self.states_raw.default_queue().finish();
-            self.states.default_queue().finish();
-            self.energies.default_queue().finish();
+            self.thresholds.default_queue().unwrap().finish().unwrap();
+            self.states_raw.default_queue().unwrap().finish().unwrap();
+            self.states.default_queue().unwrap().finish().unwrap();
+            self.energies.default_queue().unwrap().finish().unwrap();
 
             if set_syns_zero { self.syns.set_all_to_zero() };
         }
@@ -295,9 +295,9 @@ pub mod tests {
 
         fn cycle_solo(&self) {
             for kern in self.kernels.iter() {
-                kern.default_queue().finish();
+                kern.default_queue().unwrap().finish().unwrap();
                 kern.cmd().enq().expect("DendritesTest::cycle_solo");
-                kern.default_queue().finish();
+                kern.default_queue().unwrap().finish().unwrap();
             }
         }
 

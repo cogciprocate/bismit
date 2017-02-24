@@ -48,8 +48,8 @@ impl Minicolumns {
 
         println!("{mt}{mt}MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth, mt = cmn::MT);
 
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
-        let best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, None::<(_, Option<()>)>).unwrap();
+        let best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, None::<(_, Option<()>)>).unwrap();
 
         // [FIXME]: TEMPORARY?:
         // [FIXME]: MAKE THIS CONSISTENT WITH 'aff_out_slc_range()':
@@ -185,14 +185,14 @@ impl Minicolumns {
     #[inline]
     pub fn activate(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let mut event = Event::empty();
-        self.kern_activate.cmd().ewait(&exe_graph.get_req_events(self.activate_exe_cmd_idx)?).enew(&mut event).enq()?;
+        self.kern_activate.cmd().ewait(exe_graph.get_req_events(self.activate_exe_cmd_idx)?).enew(&mut event).enq()?;
         exe_graph.set_cmd_event(self.activate_exe_cmd_idx, event)?;
         Ok(())
     }
 
     pub fn output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let mut event = Event::empty();
-        self.kern_output.cmd().ewait(&exe_graph.get_req_events(self.output_exe_cmd_idx)?).enew(&mut event).enq()?;
+        self.kern_output.cmd().ewait(exe_graph.get_req_events(self.output_exe_cmd_idx)?).enew(&mut event).enq()?;
         exe_graph.set_cmd_event(self.output_exe_cmd_idx, event)?;
         Ok(())
     }
@@ -247,15 +247,15 @@ pub mod tests {
 
     impl MinicolumnsTest for Minicolumns {
         fn activate_solo(&self) {
-            self.kern_activate.default_queue().finish();
+            self.kern_activate.default_queue().unwrap().finish().unwrap();
             self.kern_activate.cmd().enq().expect("MinicolumnsTest::activate_solo");
-            self.kern_activate.default_queue().finish();
+            self.kern_activate.default_queue().unwrap().finish().unwrap();
         }
 
         fn output_solo(&self) {
-            self.kern_output.default_queue().finish();
+            self.kern_output.default_queue().unwrap().finish().unwrap();
             self.kern_output.cmd().enq().expect("MinicolumnsTest::output_solo");
-            self.kern_output.default_queue().finish();
+            self.kern_output.default_queue().unwrap().finish().unwrap();
         }
 
         fn print_range(&self, idx_range: Option<Range<usize>>) {

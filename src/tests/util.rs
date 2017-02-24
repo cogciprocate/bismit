@@ -44,21 +44,21 @@ bitflags! {
 // pub fn ptal_alco(area: &mut CorticalArea, activ: bool, learn: bool, cycle: bool, output: bool) {
 pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: bool) {
 
-    if print { area.mcols().kern_activate().default_queue().finish(); }
+    if print { area.mcols().kern_activate().default_queue().unwrap().finish().unwrap(); }
 
     if switches.contains(ACTIVATE) {
         if print { printlnc!(yellow: "Activating..."); }
         area.mcols().activate_solo();
     }
 
-    if print { area.mcols().kern_activate().default_queue().finish(); }
+    if print { area.mcols().kern_activate().default_queue().unwrap().finish().unwrap(); }
 
     if switches.contains(LEARN) {
         if print { printlnc!(yellow: "Learning..."); }
         area.ptal_mut().learn_solo();
     }
 
-    if print { area.mcols().kern_activate().default_queue().finish(); }
+    if print { area.mcols().kern_activate().default_queue().unwrap().finish().unwrap(); }
 
     if switches.contains(CYCLE) {
         if print { printlnc!(yellow: "Cycling..."); }
@@ -68,14 +68,14 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
         area.ptal().cycle_solo();
     }
 
-    if print { area.mcols().kern_activate().default_queue().finish(); }
+    if print { area.mcols().kern_activate().default_queue().unwrap().finish().unwrap(); }
 
     if switches.contains(OUTPUT) {
         if print { printlnc!(yellow: "Outputting..."); }
         area.mcols().output_solo();
     }
 
-    if print { area.mcols().kern_activate().default_queue().finish(); }
+    if print { area.mcols().kern_activate().default_queue().unwrap().finish().unwrap(); }
 
     area.finish_queues();
 
@@ -137,7 +137,7 @@ pub fn eval_range<T: OclPrm, F>(idx_range: Range<usize>, buf: &Buffer<T>, compar
 pub fn read_idx_direct<T: OclPrm>(idx: usize, buf: &Buffer<T>) -> T {
     let mut val: [T; 1] = [Default::default()];
     buf.cmd().read(&mut val).offset(idx).enq().unwrap();
-    // buf.default_queue().finish();
+    // buf.default_queue().unwrap().finish().unwrap();
     val[0]
 }
 

@@ -138,18 +138,18 @@ impl LearningTestBed {
             // Zero all dendrite and synapse buffers:
             area.ptal_mut().dens_mut().set_all_to_zero(true);
 
-            area.axns().states().default_queue().finish();
+            area.axns().states().default_queue().unwrap().finish().unwrap();
             area.axns().states().cmd().fill(0, None).enq().unwrap();
-            area.axns().states().default_queue().finish();
+            area.axns().states().default_queue().unwrap().finish().unwrap();
 
             // Set source slice to an unused slice for all synapses:
             let unused_slc_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::UNUSED_TESTING);
             assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
             let unused_slc_id = unused_slc_ranges[0].start;
 
-            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
             area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(unused_slc_id, None).enq().unwrap();
-            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
 
             // Finish queues:
             area.finish_queues();
@@ -473,7 +473,7 @@ impl LearningTestBed {
             "\n ====================== {}[{}] 1B ====================== \n", flpd_str, i); }
 
         if print_debug { println!("Finishing queue..."); }
-        area.ocl_pq().queue().finish();
+        area.ocl_pq().queue().finish().unwrap();
 
         util::ptal_alco(area, LEARN, print_debug);
 

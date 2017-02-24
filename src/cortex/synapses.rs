@@ -67,7 +67,7 @@ use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap, SynSrcSlices, SynSrcIdxCache, SynSrc, LayerAddress};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
-// use ocl::core::ClWaitList;
+// use ocl::core::ClWaitListPtr;
 use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use cortex::AxonSpace;
 
@@ -182,12 +182,12 @@ impl Synapses {
         =============================================================================*/
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
-        let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
-        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
-        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
-        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None).unwrap();
+        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, None::<(_, Option<()>)>).unwrap();
+        let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, None::<(_, Option<()>)>).unwrap();
+        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, None::<(_, Option<()>)>).unwrap();
+        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, None::<(_, Option<()>)>).unwrap();
+        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, None::<(_, Option<()>)>).unwrap();
+        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, None::<(_, Option<()>)>).unwrap();
 
         debug_assert!(strengths.len() == src_slc_ids.len() &&
             strengths.len() == src_col_v_offs.len() &&
@@ -296,13 +296,13 @@ impl Synapses {
     }
 
     // #[inline]
-    // pub fn cycle(&self, wait_events: Option<&ClWaitList>) {
+    // pub fn cycle(&self, wait_events: Option<&ClWaitListPtr>) {
     //     for kern in self.kernels.iter() {
     //         if DEBUG_KERN { printlnc!(yellow: "Syns: Enqueuing kernel: '{}'...", kern.name()); }
 
     //         kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
 
-    //         if DEBUG_KERN { kern.default_queue().finish(); }
+    //         if DEBUG_KERN { kern.default_queue().unwrap().finish().unwrap(); }
     //     }
     // }
 
@@ -312,10 +312,10 @@ impl Synapses {
             if DEBUG_KERN { printlnc!(yellow: "Syns: Enqueuing kernel: '{}'...", kern.name()); }
 
             let mut event = Event::empty();
-            kern.cmd().ewait(&exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cmd_idx, event)?;
 
-            if DEBUG_KERN { kern.default_queue().finish(); }
+            if DEBUG_KERN { kern.default_queue().unwrap().finish().unwrap(); }
         }
 
         Ok(())
@@ -483,23 +483,23 @@ pub mod tests {
 
     impl SynapsesTest for Synapses {
         fn set_offs_to_zero(&mut self) {
-            self.src_col_v_offs.default_queue().finish();
-            self.src_col_u_offs.default_queue().finish();
+            self.src_col_v_offs.default_queue().unwrap().finish().unwrap();
+            self.src_col_u_offs.default_queue().unwrap().finish().unwrap();
 
             self.src_col_v_offs.cmd().fill(0, None).enq().unwrap();
             self.src_col_u_offs.cmd().fill(0, None).enq().unwrap();
 
-            self.src_col_v_offs.default_queue().finish();
-            self.src_col_u_offs.default_queue().finish();
+            self.src_col_v_offs.default_queue().unwrap().finish().unwrap();
+            self.src_col_u_offs.default_queue().unwrap().finish().unwrap();
         }
 
         fn set_all_to_zero(&mut self) {
-            self.states.default_queue().finish();
-            self.strengths.default_queue().finish();
-            self.src_slc_ids.default_queue().finish();
-            self.src_col_u_offs.default_queue().finish();
-            self.src_col_v_offs.default_queue().finish();
-            self.flag_sets.default_queue().finish();
+            self.states.default_queue().unwrap().finish().unwrap();
+            self.strengths.default_queue().unwrap().finish().unwrap();
+            self.src_slc_ids.default_queue().unwrap().finish().unwrap();
+            self.src_col_u_offs.default_queue().unwrap().finish().unwrap();
+            self.src_col_v_offs.default_queue().unwrap().finish().unwrap();
+            self.flag_sets.default_queue().unwrap().finish().unwrap();
 
             self.states.cmd().fill(0, None).enq().unwrap();
             self.strengths.cmd().fill(0, None).enq().unwrap();
@@ -508,12 +508,12 @@ pub mod tests {
             self.src_col_v_offs.cmd().fill(0, None).enq().unwrap();
             self.flag_sets.cmd().fill(0, None).enq().unwrap();
 
-            self.states.default_queue().finish();
-            self.strengths.default_queue().finish();
-            self.src_slc_ids.default_queue().finish();
-            self.src_col_u_offs.default_queue().finish();
-            self.src_col_v_offs.default_queue().finish();
-            self.flag_sets.default_queue().finish();
+            self.states.default_queue().unwrap().finish().unwrap();
+            self.strengths.default_queue().unwrap().finish().unwrap();
+            self.src_slc_ids.default_queue().unwrap().finish().unwrap();
+            self.src_col_u_offs.default_queue().unwrap().finish().unwrap();
+            self.src_col_v_offs.default_queue().unwrap().finish().unwrap();
+            self.flag_sets.default_queue().unwrap().finish().unwrap();
         }
 
         fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize) {
@@ -555,9 +555,9 @@ pub mod tests {
 
         fn cycle_solo(&self) {
             for kern in self.kernels.iter() {
-                kern.default_queue().finish();
+                kern.default_queue().unwrap().finish().unwrap();
                 kern.cmd().enq().expect("SynapsesTest::cycle_solo");
-                kern.default_queue().finish();
+                kern.default_queue().unwrap().finish().unwrap();
             }
         }
 

@@ -19,9 +19,9 @@ fn cycle_random_pyrs() {
     // Zero all dendrite and synapse buffers:
     area.ptal_mut().dens_mut().set_all_to_zero(true);
 
-    area.axns().states().default_queue().finish();
+    area.axns().states().default_queue().unwrap().finish().unwrap();
     area.axns().states().cmd().fill(0, None).enq().unwrap();
-    area.axns().states().default_queue().finish();
+    area.axns().states().default_queue().unwrap().finish().unwrap();
 
     // Set source slice to an unused slice for all synapses:
     let unused_slc_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::UNUSED_TESTING);
@@ -29,9 +29,9 @@ fn cycle_random_pyrs() {
     let zeroed_slc_id = unused_slc_ranges[0].start;
     let unused_slc_id = unused_slc_ranges[1].start;
 
-    area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
+    area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
     area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd().fill(zeroed_slc_id, None).enq().unwrap();
-    area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
+    area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
 
     // 'input' source slice which will be assigned to the synapses being tested:
     // let src_slc_ids = area.area_map().layers().layers_containing_tags_slc_range(map::FF_IN);
@@ -90,10 +90,10 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
 
             let fill_size = den_syn_range.end - den_syn_range.start;
 
-            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
             area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd()
                 .fill(src_slc_id, Some(fill_size)).offset(den_syn_range.start).enq().unwrap();
-            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
 
             // Write input:
             //area.write_to_axon(128, src_axn_idx);
@@ -162,10 +162,10 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             let fill_size = den_syn_range.end - den_syn_range.start;
             debug_assert_eq!(fill_size, den_syn_range.len());
 
-            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
             area.ptal_mut().dens_mut().syns_mut().src_slc_ids().cmd()
                 .fill(zeroed_slc_id, Some(fill_size)).offset(den_syn_range.start).enq().unwrap();
-            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().finish();
+            area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
 
             area.write_to_axon(0, src_axn_idx);
         }
@@ -200,9 +200,9 @@ fn cycle_random_dens() {
         .layers_containing_tags_slc_range(map::UNUSED_TESTING)[0].clone();
     let zeroed_slc_id = zeroed_slc_range.start;
 
-    area.ptal().dens().syns().src_slc_ids().default_queue().finish();
+    area.ptal().dens().syns().src_slc_ids().default_queue().unwrap().finish().unwrap();
     area.ptal().dens().syns().src_slc_ids().cmd().fill(zeroed_slc_id, None).enq().unwrap();
-    area.ptal().dens().syns().src_slc_ids().default_queue().finish();
+    area.ptal().dens().syns().src_slc_ids().default_queue().unwrap().finish().unwrap();
 
     // Finish queues:
     area.finish_queues();
@@ -277,7 +277,7 @@ fn cycle_random_dens() {
         // area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(src_slc_id,
         //     cel_syn_range.clone()).unwrap();
 
-        area.ptal().dens().syns().src_slc_ids().default_queue().finish();
+        area.ptal().dens().syns().src_slc_ids().default_queue().unwrap().finish().unwrap();
 
         area.ptal().dens().syns().src_slc_ids().cmd()
             .fill(src_slc_id, Some(cel_syn_range.len()))

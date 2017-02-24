@@ -48,7 +48,7 @@ __kernel void test_axn_idxs_vec4(
             // __global char const* const dim_offs,
             // __private uint const dim_size,
             // __global uint* const outs_n,
-            __global int4* const outs_v4)
+            __global uint4* const outs_v4)
 {
     uchar const slc_id_scl = get_global_id(0);
     uint const v_id_scl = get_global_id(1);
@@ -77,6 +77,8 @@ __kernel void test_axn_idxs_vec4(
     // int4 const scaled_u_id = (mul24(u_id, get_axn_u_scale_vec4(slc_id)) >> 4) + u_ofs;
     
     int4 idx_is_safe = (int4)0;
-    outs_v4[cel_idx_scl] = axn_idx_3d_unsafe_vec4(slc_id, v_id, v_ofs_char4, u_id, u_ofs_char4, &idx_is_safe);
+    
+    outs_v4[cel_idx_scl] = convert_uint4(axn_idx_3d_unsafe_vec4(slc_id, v_id, 
+        v_ofs_char4, u_id, u_ofs_char4, &idx_is_safe));
     //outs_v4[cel_idx_scl] = u_id; //scaled_u_id; // mad24(scaled_v_id, u_size, scaled_u_id);
 }

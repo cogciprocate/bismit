@@ -4,7 +4,7 @@ use rand::{self, Rng};
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
-// use ocl::core::ClWaitList;
+// use ocl::core::ClWaitListPtr;
 use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress};
 use cortex::{Dendrites, AxonSpace};
@@ -124,7 +124,7 @@ impl SpinyStellateLayer {
         self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
 
         let mut event = Event::empty();
-        self.kern_ltp.cmd().ewait(&exe_graph.get_req_events(self.ltp_exe_cmd_idx)?).enew(&mut event).enq()?;
+        self.kern_ltp.cmd().ewait(exe_graph.get_req_events(self.ltp_exe_cmd_idx)?).enew(&mut event).enq()?;
         exe_graph.set_cmd_event(self.ltp_exe_cmd_idx, event)?;
         Ok(())
     }
@@ -168,14 +168,14 @@ pub mod tests {
         }
 
         fn learn_solo(&mut self) {
-            self.kern_ltp.default_queue().finish();
+            self.kern_ltp.default_queue().unwrap().finish().unwrap();
             let rnd = self.rng.gen::<u32>();
             self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
 
             self.kern_ltp.cmd().enq()
                 .expect("<SpinyStellateLayer as DataCellLayerTest>::learn_solo [1]");
 
-            self.kern_ltp.default_queue().finish();
+            self.kern_ltp.default_queue().unwrap().finish().unwrap();
         }
 
         /// Prints a range of pyramidal buffers.
@@ -254,11 +254,11 @@ pub mod tests {
         }
 
         fn set_all_to_zero(&mut self) {
-            self.dens.states().default_queue().finish();
+            self.dens.states().default_queue().unwrap().finish().unwrap();
 
             self.dens.states().cmd().fill(0, None).enq().unwrap();
 
-            self.dens.states().default_queue().finish();
+            self.dens.states().default_queue().unwrap().finish().unwrap();
         }
     }
 }

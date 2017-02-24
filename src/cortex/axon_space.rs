@@ -300,7 +300,7 @@ impl AxonSpace {
             area_map.slices().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
 
         // let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, area_map.slices(), None).unwrap();
-        let states = Buffer::<u8>::new(write_queue.clone(), None, area_map.slices(), None).unwrap();
+        let states = Buffer::<u8>::new(write_queue.clone(), None, area_map.slices(), None, None::<(_, Option<()>)>).unwrap();
 
         /*=============================================================================
         =================================== FILTERS ===================================
@@ -472,7 +472,7 @@ impl AxonSpace {
                                 Source tract length must be equal to the target axon range length \
                                 (area: '{}', layer_addr: '{:?}'): ", area_name, io_lyr.key())))?
                             // .copy_from_slice_buffer(tract_source)?;
-                            .copy_from_slice_buffer_v2(tract_source, Some(&exe_graph.get_req_events(cmd_idx)?))?
+                            .copy_from_slice_buffer_v2(tract_source, Some(exe_graph.get_req_events(cmd_idx)?))?
                         };
 
                         exe_graph.set_cmd_event(cmd_idx, event)?;
@@ -510,7 +510,7 @@ impl AxonSpace {
                         // let event = target.copy_from_ocl_buffer_v2(source,
                         //     Some(&exe_graph.get_req_events(cmd_idx)?), None)?;
                         target.copy_from_ocl_buffer_v2(source,
-                            Some(&exe_graph.get_req_events(cmd_idx)?), Some(read_queue))?
+                            Some(exe_graph.get_req_events(cmd_idx)?), Some(read_queue))?
                     };
 
                     exe_graph.set_cmd_event(cmd_idx, event)?;
@@ -547,14 +547,14 @@ pub mod tests {
 
     impl AxonSpaceTest for AxonSpace {
         fn axn_state(&self, idx: usize) -> u8 {
-            self.states.default_queue().finish();
+            self.states.default_queue().unwrap().finish().unwrap();
             let mut sdr = vec![0u8];
             self.states.cmd().read(&mut sdr).offset(idx).enq().unwrap();
             sdr[0]
         }
 
         fn write_to_axon(&mut self, val: u8, idx: u32) {
-            self.states.default_queue().finish();
+            self.states.default_queue().unwrap().finish().unwrap();
             let sdr = vec![val];
             self.states.cmd().write(&sdr).offset(idx as usize).enq().unwrap();
         }

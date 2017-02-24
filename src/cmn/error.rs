@@ -76,8 +76,9 @@ impl Error for CmnError {
     fn description(&self) -> &str {
         match *self {
             CmnError::String(ref msg) => msg,
+            CmnError::OclError(ref err) => err.description(),
             CmnError::ExecutionGraphError(ref err) => err.description(),
-            _ => unimplemented!(),
+            CmnError::Unknown => "Unknown error.",
         }
     }
 }
@@ -117,10 +118,11 @@ impl fmt::Display for CmnError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             CmnError::String(ref msg) => f.write_str(msg),
+            CmnError::OclError(ref err) => write!(f, "{}", err),
             CmnError::ExecutionGraphError(ref err) => {
                 write!(f, "ExecutionGraph error: ").and(fmt::Display::fmt(err, f))
             },
-            _ => unimplemented!(),
+            ref err @ _ => write!(f, "{}", err.description()),
         }
     }
 }

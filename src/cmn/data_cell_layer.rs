@@ -1,5 +1,5 @@
 use ocl::Buffer;
-// use ocl::core::ClWaitList;
+// use ocl::core::ClWaitListPtr;
 use cortex::Dendrites;
 use cmn::{CmnResult, CorticalDims};
 use map::{CellScheme, ExecutionGraph};
@@ -10,7 +10,7 @@ pub use self::tests::{DataCellLayerTest, CelCoords};
 pub trait DataCellLayer {
     fn learn(&mut self, &mut ExecutionGraph) -> CmnResult <()> ;
     fn regrow(&mut self);
-    // fn cycle(&self, Option<&ClWaitList>);
+    // fn cycle(&self, Option<&ClWaitListPtr>);
     fn cycle(&self, &mut ExecutionGraph) -> CmnResult<()>;
     fn soma(&self) -> &Buffer<u8>;
     fn soma_mut(&mut self) -> &mut Buffer<u8>;

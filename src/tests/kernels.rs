@@ -29,19 +29,19 @@ pub fn axn_idxs(testbed: &TestBed) {
 
     let vec_init = ocl::util::shuffled_vec(syn_range, testbed.dims.to_len());
     let u_offs = Buffer::new(testbed.ocl_pq.queue().clone(), Some(ocl::flags::MEM_READ_WRITE |
-        ocl::flags::MEM_COPY_HOST_PTR), testbed.dims.clone(), Some(&vec_init)).unwrap();
+        ocl::flags::MEM_COPY_HOST_PTR), testbed.dims.clone(), Some(&vec_init), None::<(_, Option<()>)>).unwrap();
 
     let vec_init = ocl::util::shuffled_vec(syn_range, testbed.dims.to_len());
     let v_offs = Buffer::new(testbed.ocl_pq.queue().clone(), Some(ocl::flags::MEM_READ_WRITE |
-        ocl::flags::MEM_COPY_HOST_PTR), testbed.dims.clone(), Some(&vec_init)).unwrap();
+        ocl::flags::MEM_COPY_HOST_PTR), testbed.dims.clone(), Some(&vec_init), None::<(_, Option<()>)>).unwrap();
 
     // let mut outs_sc = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
     // let mut outs_v4 = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
 
     let outs_sc = Buffer::<u32>::new(testbed.ocl_pq.queue().clone(), None,
-        testbed.dims.clone(), None).unwrap();
+        testbed.dims.clone(), None, None::<(_, Option<()>)>).unwrap();
     let outs_v4 = Buffer::<u32>::new(testbed.ocl_pq.queue().clone(), None,
-        testbed.dims.clone(), None).unwrap();
+        testbed.dims.clone(), None, None::<(_, Option<()>)>).unwrap();
 
     let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl").expect("[FIXME]: HANDLE ME")
         .gws(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,

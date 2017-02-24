@@ -448,16 +448,16 @@ impl CorticalArea {
     }
 
     pub fn finish_queues(&self) {
-        self.write_queue.finish();
-        self.ocl_pq.queue().finish();
-        self.read_queue.finish();
+        self.write_queue.finish().unwrap();
+        self.ocl_pq.queue().finish().unwrap();
+        self.read_queue.finish().unwrap();
     }
 
     /// [FIXME]: Currnently assuming aff out slice is == 1. Ascertain the
     /// slice range correctly by consulting area_map.layers().
-    pub fn sample_aff_out(&self, buf: &mut [u8]) {
+    pub fn sample_aff_out(&self, buf: &mut [u8]) -> Event {
         let aff_out_slc = self.mcols.axn_slc_id();
-        self.sample_axn_slc_range(aff_out_slc..(aff_out_slc + 1), buf);
+        self.sample_axn_slc_range(aff_out_slc..(aff_out_slc + 1), buf)
     }
 
     pub fn sample_axn_slc_range<R: Borrow<Range<u8>>>(&self, slc_range: R, buf: &mut [u8])
@@ -499,7 +499,7 @@ impl CorticalArea {
     #[inline] pub fn afferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.aff_areas() }
     #[inline] pub fn efferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.eff_areas() }
     #[inline] pub fn ocl_pq(&self) -> &ProQue { &self.ocl_pq }
-    #[inline] pub fn device(&self) -> &Device { &self.ocl_pq.queue().device() }
+    #[inline] pub fn device(&self) -> Device { self.ocl_pq.queue().device() }
     #[inline] pub fn axn_tract_map(&self) -> SliceTractMap { self.area_map.slices().tract_map() }
     #[inline] pub fn area_map(&self) -> &AreaMap { &self.area_map }
     #[inline] pub fn area_id(&self) -> usize { self.area_id }
@@ -531,12 +531,12 @@ impl Aux {
     pub fn new(ptal_syn_len: usize, ocl_pq: &ProQue) -> Aux {
         let int_32_min = INT_32_MIN;
 
-        let ints_0 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, [ptal_syn_len * 4], None).unwrap();
+        let ints_0 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, [ptal_syn_len * 4], None, None::<(_, Option<()>)>).unwrap();
         ints_0.cmd().fill(int_32_min, None).enq().unwrap();
-        let ints_1 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, [ptal_syn_len * 4], None).unwrap();
+        let ints_1 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, [ptal_syn_len * 4], None, None::<(_, Option<()>)>).unwrap();
         ints_1.cmd().fill(int_32_min, None).enq().unwrap();
 
-        ocl_pq.queue().finish();
+        ocl_pq.queue().finish().unwrap();
 
         Aux {
             ints_0: ints_0,
