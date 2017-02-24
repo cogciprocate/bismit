@@ -693,8 +693,9 @@ impl ExecutionGraph {
             return Err(ExecutionGraphError::EventsRequestOutOfOrder(cmd_idx));
         }
 
-        cmd.set_event(event.into());
+        // cmd.set_event(event.into()); // <--- Correct Version
         // cmd.set_event(event.map(|ev| ev.core().clone()));
+        cmd.set_event(event.core().clone());
 
         if (self.next_order_idx + 1) == self.order.len() {
             self.next_order_idx = 0;

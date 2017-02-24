@@ -19,7 +19,7 @@ const QUEUE_OUT_OF_ORDER: bool = true;
 // Enable queue profiling:
 const QUEUE_PROFILING: bool = false;
 // GDB debug mode:
-const KERNEL_DEBUG_SYMBOLS: bool = true;
+const KERNEL_DEBUG_SYMBOLS: bool = false;
 
 
 pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
@@ -96,7 +96,15 @@ impl CorticalArea {
         // Optionally pass `-g` and `-s {cl path}` flags to compiler:
         let build_options = if KERNEL_DEBUG_SYMBOLS && cfg!(target_os = "linux") {
             // [TODO]: Add something to identify the platform vendor and match:
-            // let debug_opts = format!("-g -s {}", cmn::cl_root_path().join("bismit.cl").to_str());
+            // let kernel_path = concat!(env!("CARGO_MANIFEST_DIR"), "/cl/bismit.cl");
+            // let debug_opts = format!("-g -s \"{}\"", kernel_path);
+
+            if ocl_context.platform()?.unwrap().vendor().contains("Intel") {
+                panic!("[cortical_area::KERNEL_DEBUG_SYMBOLS == true]: \
+                    Cannot debug kernels on an Intel based driver platform (not sure why).
+                    Use the AMD platform drivers with Intel devices instead.");
+            }
+
             let debug_opts = "-g";
             area_map.gen_build_options().cmplr_opt(debug_opts)
         } else {
