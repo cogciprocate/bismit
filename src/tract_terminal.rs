@@ -245,8 +245,11 @@ impl<'b> SliceBufferTarget<'b> {
     {
         let mut ev = Event::empty();
 
+        let slice = unsafe { ::std::slice::from_raw_parts_mut(self.slice.as_mut_ptr(), 
+            self.slice.len()) };
+
         unsafe {
-            source.buf.cmd().read(self.slice)
+            source.buf.cmd().read(slice)
                 .block(false)
                 .offset(source.offset())
                 .ewait_opt(source.events())
@@ -281,8 +284,11 @@ impl<'b> SliceBufferTarget<'b> {
 
         let mut ev = Event::empty();
 
+        let slice = unsafe { ::std::slice::from_raw_parts_mut(self.slice.as_mut_ptr(), 
+            self.slice.len()) };
+
         unsafe {
-            let mut cmd = source.buf.cmd().read(self.slice)
+            let mut cmd = source.buf.cmd().read(slice)
                 .block(false)
                 .offset(source.offset())
                 .ewait_opt(wait_list)
