@@ -38,7 +38,7 @@ pub use self::axon_tags::*;
 
 /// An absolute location and unique identifier of a layer.
 //
-// [TODO]: Add a 'system' or 'node' id to represent the machine within a network.
+// * TODO: Add a 'system' or 'node' id to represent the machine within a network.
 //
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct LayerAddress {
@@ -113,7 +113,7 @@ pub enum LayerMapKind {
 }
 
 
-// [TODO]: Figure out whether or not to keep `AxonTopology` here since only
+// * TODO: Figure out whether or not to keep `AxonTopology` here since only
 // input layer topology matters and since cellular layers are assigned
 // `AxonTopology::Spatial`.
 //
@@ -153,7 +153,7 @@ impl LayerKind {
 
 
 /// [NOTE]: Axon topology is largely ignored for output layers but is
-/// currently stored within `SourceLayerInfo` anyway. [TODO]: Figure out what
+/// currently stored within `SourceLayerInfo` anyway. * TODO: Figure out what
 /// to do with `LayerKind::Axonal(_)` in the output case.
 ///
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::ops::Range;
-use ocl::{ProQue, Buffer, EventList, Queue, /*Event*/};
+use ocl::{ProQue, Buffer, EventList, Queue, MemFlags};
 use ocl::traits::MemLen;
-use cmn::{self, CmnResult};
+use cmn::{self, CmnError, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute, ExecutionCommand, CorticalBuffer,
     ThalamicTract};
 use ::Thalamus;
@@ -60,7 +60,7 @@ impl IoInfo {
 }
 
 
-/// A group of `IoInfo` structs sharing a common set of `LayerTags`.
+/// A group of `IoInfo` structs sharing a common `AxonDomainRoute`.
 ///
 #[derive(Debug)]
 pub struct IoInfoGroup {
@@ -202,7 +202,6 @@ impl IoInfoCache {
 
         let mut groups = HashMap::with_capacity(group_route_list.len());
 
-        // for &group_tags in group_tags_list.iter() {
         for group_route in group_route_list.into_iter() {
             // If the layer is an output layer, consult the layer info
             // directly. If an input layer, consult the layer source info for
@@ -294,7 +293,7 @@ pub struct AxonSpace {
 
 impl AxonSpace {
     pub fn new(area_map: &AreaMap, ocl_pq: &ProQue, write_queue: &Queue,
-        exe_graph: &mut ExecutionGraph, thal: &Thalamus) -> CmnResult<AxonSpace>
+        exe_graph: &mut ExecutionGraph, thal: &mut Thalamus) -> CmnResult<AxonSpace>
     {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
             area_map.slices().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
@@ -396,6 +395,24 @@ impl AxonSpace {
         })
     }
 
+    /// Creates a sub buffer representing a layer of axon space.
+    pub fn create_layer_sub_buffer(&self, layer_addr: LayerAddress, route: AxonDomainRoute) -> CmnResult<Buffer<u8>> {
+        let flags = match route {
+            AxonDomainRoute::Input => Some(MemFlags::new()),
+            AxonDomainRoute::Output => Some(MemFlags::new()),
+            _ => panic!("AxonSpace::create_layer_sub_buffer: Must be input our output route."),
+        };
+
+        let lyr_info = self.io_info.group_info(route).and_then(|grp| 
+                grp.iter().find(|&info| info.key == layer_addr)
+            ).expect("AxonSpace::create_layer_sub_buffer: Cannot find layer");
+
+        let origin = lyr_info.axn_range.start;
+        let len = lyr_info.axn_range.len();
+
+        self.states.create_sub_buffer(flags, origin, len).map_err(|err| CmnError::from(err))
+    }
+
     pub fn set_exe_order_intake(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let (io_info_grp, _) = self.io_info.group(AxonDomainRoute::Input).unwrap();
 
@@ -430,7 +447,7 @@ impl AxonSpace {
                 IoExeCmd::Read(cmd_idx) => {
                     exe_graph.order_next(cmd_idx)?;
                 },
-                _ => panic!("AxonSpace::set_exe_order_output: Internal error."),
+                _ => panic!("AxonSpace::set_exe_order_output: Internal error [1]."),
             }
         }
 
@@ -439,7 +456,7 @@ impl AxonSpace {
 
     /// Reads input from thalamus and writes to axon space.
     ///
-    // [TODO]: Store thal tract index instead of using (LayerAddress) key.
+    // * TODO: Store thal tract index instead of using (LayerAddress) key.
     //
     pub fn intake(&mut self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph,
             bypass_filters: bool) -> CmnResult<()>
@@ -489,7 +506,7 @@ impl AxonSpace {
 
     /// Reads output from axon space and writes to thalamus.
     ///
-    // [TODO]: Store thal tract index instead of using (LayerAddress) key.
+    // * TODO: Store thal tract index instead of using (LayerAddress) key.
     //
     pub fn output(&self, read_queue: &Queue, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>

@@ -70,7 +70,7 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         }
     }
 
-    // [TODO]: Vectorize and port to kernel.
+    // * TODO: Vectorize and port to kernel.
     pub fn encode(&self, val_orig: T, tract: &mut TractFrameMut) {
         assert!(tract.dims().to_len() == self.sdr_len);
 

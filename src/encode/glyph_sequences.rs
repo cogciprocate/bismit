@@ -150,7 +150,7 @@ impl ExternalPathwayTract for GlyphSequences {
                 glyph, tract_frame);
         } else if *addr == self.val_layer_addr {
             assert!(&self.val_layer_dims == tract_frame.dims());
-            // [TODO]: ENCODE THE HRZ BUSINESS
+            // * TODO: ENCODE THE HRZ BUSINESS
             // super::encode_2d_image(glyph_dims, &self.val_layer_dims, self.scale,
             //     glyph, tract_frame);
             for idx in 0..tract_frame.dims().to_len() {

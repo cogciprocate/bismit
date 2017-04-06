@@ -225,7 +225,7 @@ impl LearningTestBed {
             // <<<<< [FIXME] TODO: IMPLEMENT THIS (for efficiency): >>>>>
             //         area.ptal_mut().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range).unwrap();
 
-            // [TODO]: Reimplement using fill:
+            // * TODO: Reimplement using fill:
             for syn_idx in focus_syns.clone() {
                 area.ptal_mut().dens_mut().syns_mut().set_src_offs(fake_v_ofs, fake_u_ofs, syn_idx as usize);
                 area.ptal_mut().dens_mut().syns_mut().set_src_slc(fake_neighbor_slc, syn_idx as usize);
@@ -705,7 +705,7 @@ impl LearningTestBed {
         // area.ptal_mut().dens_mut().syns_mut().src_slc_ids()
         //    .cmd().fill(self.unused_slc_id, None).enq().unwrap();
 
-        // [TODO]: Reimplement using fill:
+        // * TODO: Reimplement using fill:
         for syn_idx in self.focus_syns.clone() {
             area.ptal_mut().dens_mut().syns_mut().set_src_offs(self.fake_v_ofs, self.fake_u_ofs, syn_idx as usize);
             area.ptal_mut().dens_mut().syns_mut().set_src_slc(self.fake_neighbor_slc, syn_idx as usize);

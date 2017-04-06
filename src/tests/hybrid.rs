@@ -59,7 +59,7 @@ pub fn cycles(cortex: &mut Cortex, area_name: &str) {
 
 // TEST PYRAMIDAL CELLS 'PREDICTIVENESS' AKA: SOMA STATES
 // <<<<< TODO: NEEDS MASSIVE UPDATES TO PRETTY MUCH EVERY ASPECT >>>>>
-// [TODO]: Check every tuft.
+// * TODO: Check every tuft.
 fn pyr_preds(pyrs: &mut PyramidalLayer) {
     // let emsg = "\ntests::hybrid::test_pyr_preds()";
 

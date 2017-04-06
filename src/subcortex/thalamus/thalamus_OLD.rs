@@ -12,25 +12,27 @@
 //!
 //!
 
-#![allow(dead_code, unused_imports)]
+
+// #![allow(dead_code, unused_imports)]
 
 use std::ops::Range;
 use std::collections::HashMap;
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
 use map::{AreaMap, LayerMapKind, LayerAddress};
-use ocl::{Context, EventList, Buffer};
+use ocl::{Context, EventList};
 use cortex::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList, /*ExecutionGraph*/};
 use ::{ExternalPathway, ExternalPathwayFrame};
 use tract_terminal::{SliceBufferTarget, SliceBufferSource};
 
 
+
 /// Specifies whether or not the frame buffer for a source exists within the
 /// thalamic tract or an external source itself.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[allow(dead_code)]
 enum TractAreaBufferKind {
-    Ocl(Buffer<u8>),
+    Ocl,
     Vec,
 }
 
@@ -46,8 +48,7 @@ struct TractArea {
 
 impl TractArea {
     fn new(src_lyr_addr: LayerAddress, range: Range<usize>,
-            dims: TractDims, kind: TractAreaBufferKind) -> TractArea 
-    {
+                dims: TractDims, kind: TractAreaBufferKind) -> TractArea {
         // println!("###### TractArea::new(): Adding area with: range: {:?}, dims: {:?}", &range, &dims);
         assert!(range.len() == dims.to_len());
         TractArea {
@@ -59,19 +60,26 @@ impl TractArea {
         }
     }
 
-    fn set_ocl_buffer(&mut self, buf: Buffer<u8>) {
-        self.kind = TractAreaBufferKind::Ocl(buf);
+    fn range(&self) -> &Range<usize> {
+        &self.range
     }
 
-    fn range(&self) -> &Range<usize> { &self.range }
-    fn dims(&self) -> &TractDims { &self.dims }
-    fn events(&self) -> &EventList { &self.events }
-    fn events_mut(&mut self) -> &mut EventList { &mut self.events }
-    fn kind(&self) -> &TractAreaBufferKind { &self.kind }
+    fn dims(&self) -> &TractDims {
+        &self.dims
+    }
+
+    fn events(&self) -> &EventList {
+        &self.events
+    }
+
+    fn events_mut(&mut self) -> &mut EventList {
+        &mut self.events
+    }
 }
 
 
 
+// [FIXME]: REPLACE STRING HASH KEY. SEE TOP OF FILE.
 struct TractAreaCache {
     tract_areas: Vec<TractArea>,
     index: HashMap<LayerAddress, usize>,
@@ -186,13 +194,9 @@ impl ThalamicTract {
             -> Result<(&EventList, TractFrame<'t>), CmnError>
     {
         let ta = try!(self.tract_areas.get(key));
-        let tract = TractFrame::new(&self.vec_buffer[ta.range().clone()], ta.dims());
+        let range = ta.range().clone();
+        let tract = TractFrame::new(&self.vec_buffer[range], ta.dims());
         let events = ta.events();
-
-        // let tract = match *ta.kind() {
-        //     TractAreaBufferKind::Vec => TractFrame::new(&self.vec_buffer[ta.range().clone()], ta.dims()),
-        //     TractAreaBufferKind::Ocl(buf) => TractFrame::new(&self.vec_buffer[ta.range().clone()], ta.dims()),
-        // };
 
         Ok((events, tract))
     }
@@ -247,7 +251,7 @@ pub struct Thalamus {
 
 impl Thalamus {
     pub fn new(layer_map_sl: LayerMapSchemeList, mut area_sl: AreaSchemeList,
-            ocl_context: &Context) -> CmnResult<Thalamus>
+                ocl_context: &Context) -> CmnResult<Thalamus>
     {
         // [FIXME]:
         let _ = ocl_context;
@@ -262,7 +266,7 @@ impl Thalamus {
         ============================ THALAMIC (INPUT) AREAS ===========================
         =============================================================================*/
         for pa in area_sl.areas().iter().filter(|pa|
-                layer_map_sl[pa.layer_map_name()].kind() == &LayerMapKind::Subcortical)
+                    layer_map_sl[pa.layer_map_name()].kind() == &LayerMapKind::Subcortical)
         {
             let es = try!(ExternalPathway::new(pa, &layer_map_sl[pa.layer_map_name()]));
             let addrs = es.layer_addrs();

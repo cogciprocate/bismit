@@ -499,7 +499,7 @@ impl ExecutionGraph {
     /// Returns a list of commands which both precede a command and which
     /// write to a block of memory which is read from by that command.
     ///
-    /// [TODO]: Remove redundant, 'superseded', entries.
+    /// * TODO: Remove redundant, 'superseded', entries.
     ///
     fn preceding_writers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRwsMap) -> BTreeMap<usize, usize> {
         // let mut pre_writers = BTreeMap::new();
@@ -546,7 +546,7 @@ impl ExecutionGraph {
     /// Returns a list of commands which both follow a command and which read
     /// from a block of memory which is written to by that command.
     ///
-    /// [TODO]: Remove redundant, superfluous, entries
+    /// * TODO: Remove redundant, superfluous, entries
     ///
     fn following_readers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRwsMap) -> BTreeMap<usize, usize> {
         let mut fol_readers = BTreeMap::new();
@@ -608,7 +608,7 @@ impl ExecutionGraph {
         if PRINT_DEBUG { println!("#####"); }
 
         // [NOTE]: Only using `self.order` instead of `self.commands` for
-        // debug printing purposes. [TODO]: Switch back at some point.
+        // debug printing purposes. * TODO: Switch back at some point.
         for (&cmd_order, &cmd_idx) in self.order.clone().iter() {
             if PRINT_DEBUG { println!("##### Command [{}: {}] ({}):", cmd_order, cmd_idx,
                 self.commands[cmd_idx].details.variant_string()); }

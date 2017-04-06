@@ -206,7 +206,7 @@ impl LayerMap {
     /// Include `track_opt` for input layers.
     ///
     //
-    // [TODO]: Create a map of track/tags -> layer_id instead of this lookup.
+    // * TODO: Create a map of track/tags -> layer_id instead of this lookup.
     //
     // pub fn layer_info_by_tags(&self, track_opt: Option<&InputTrack>, tags: &AxonTags)
     pub fn layer_info_by_sig(&self, sig: &AxonSignature) -> Option<(&LayerInfo)> {

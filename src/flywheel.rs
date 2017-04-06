@@ -3,7 +3,7 @@
 //!
 //!
 //
-// [TODO]:
+// * TODO:
 // - Optional command line printing (and possibly a menu here instead of in vibi).
 //
 //

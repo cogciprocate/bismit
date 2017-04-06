@@ -216,7 +216,7 @@ impl AreaMap {
                                 let src_lyr_idz = self.axn_idz(src_base_slc_id);
                                 let src_lyr_len = src_lyr.axn_count();
 
-                                // [TODO]: ADDME: self.verify_axn_range()
+                                // * TODO: ADDME: self.verify_axn_range()
                                 debug_assert!({
                                         let slc_idm = src_base_slc_id + src_lyr.dims().depth() - 1;
                                         let slc_len = self.slices.slc_axn_count(slc_idm);
@@ -241,7 +241,7 @@ impl AreaMap {
 
                         let lyr_len = layer.ttl_axn_count();
 
-                        // [TODO]: ADDME: self.verify_axn_range()
+                        // * TODO: ADDME: self.verify_axn_range()
                         debug_assert!({
                                 let slc_idm = base_slc_id + layer.depth() - 1;
                                 let slc_len = self.slices.slc_axn_count(slc_idm);

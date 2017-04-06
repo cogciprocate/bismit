@@ -206,7 +206,7 @@ impl ExternalPathway {
 
     /// Writes input data into a tract.
     ///
-    /// **Should** return promptly... data should already be staged ([TODO]: Process
+    /// **Should** return promptly... data should already be staged (* TODO: Process
     /// in a separate thread).
     pub fn write_into(&mut self, addr: &LayerAddress, mut frame: TractFrameMut, _: &mut EventList) {
         let dims = self.layers[addr].dims().expect(&format!("Dimensions don't exist for \

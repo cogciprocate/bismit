@@ -43,7 +43,7 @@ impl<'b> OclBufferSource<'b> {
     pub fn new(buf: &'b Buffer<u8>, offset: Range<u32>, dims: TractDims,
             events: Option<&'b EventList>,) -> CmnResult<Self>
     {
-        // [TODO]: Ensure buffer is sufficient size to handle offset range.
+        // * TODO: Ensure buffer is sufficient size to handle offset range.
         // ~ debug_assert_eq!(buf.len(), dims.to_len());
 
         if dims.to_len() != offset.len() as usize {
@@ -81,7 +81,7 @@ impl<'b> OclBufferTarget<'b> {
     pub fn new(buf: &'b Buffer<u8>, offset: Range<u32>, dims: TractDims,
             mut events: Option<&'b mut EventList>, store_event: bool) -> CmnResult<Self>
     {
-        // [TODO]: Ensure buffer is sufficient size to handle offset range.
+        // * TODO: Ensure buffer is sufficient size to handle offset range.
         // ~ debug_assert_eq!(buf.len(), dims.to_len());
         let event = if store_event { Some(Event::empty()) } else { None };
 

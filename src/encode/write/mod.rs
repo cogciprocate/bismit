@@ -16,7 +16,7 @@ pub use self::scalar_sdr_writer::ScalarSdrWriter;
 /// Encode a scalar as a hexagon somewhere along the border of the tract frame
 /// (cyclical).
 ///
-/// [TODO]: Migrate this into a type impl which stores calculated
+/// * TODO: Migrate this into a type impl which stores calculated
 /// intermediates.
 ///
 pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
@@ -150,7 +150,7 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
 // '..._n' suffix := index[len]: element after final element, termination
 // point, number of elements (ex.: for(int i = 0, i < idn, i++))
 //
-// [TODO]: Create extra version of `::calc_scale` which accepts an additional
+// * TODO: Create extra version of `::calc_scale` which accepts an additional
 // precision (log2) parameter and returns it's scale adjusted accordingly.
 //
 #[warn(dead_code, unused_variables, unused_mut)]

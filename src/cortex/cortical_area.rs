@@ -78,7 +78,7 @@ impl CorticalArea {
     /// Creates a new cortical area.
     ///
     //
-    // [TODO]: Break this function up a bit. Probably break the major sections
+    // * TODO: Break this function up a bit. Probably break the major sections
     // out into new types.
     //
     // The only use for `thal` is currently within `axon_space` for the
@@ -86,7 +86,7 @@ impl CorticalArea {
     // by the execution graph system.
     //
     pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context,
-                    settings: Option<CorticalAreaSettings>, thal: &Thalamus) -> CmnResult<CorticalArea> {
+                    settings: Option<CorticalAreaSettings>, thal: &mut Thalamus) -> CmnResult<CorticalArea> {
         let emsg = "cortical_area::CorticalArea::new()";
         let area_id = area_map.area_id();
         let area_name = area_map.area_name();
@@ -95,7 +95,7 @@ impl CorticalArea {
 
         // Optionally pass `-g` and `-s {cl path}` flags to compiler:
         let build_options = if KERNEL_DEBUG_SYMBOLS && cfg!(target_os = "linux") {
-            // [TODO]: Add something to identify the platform vendor and match:
+            // * TODO: Add something to identify the platform vendor and match:
             // let kernel_path = concat!(env!("CARGO_MANIFEST_DIR"), "/cl/bismit.cl");
             // let debug_opts = format!("-g -s \"{}\"", kernel_path);
 
@@ -168,10 +168,14 @@ impl CorticalArea {
         let axns = AxonSpace::new(&area_map, &ocl_pq, &write_queue, &mut exe_graph, thal)?;
         // println!("{mt}::NEW(): IO_INFO: {:#?}, Settings: {:#?}", axns.io_info(), settings, mt = cmn::MT);
 
+
+        // HOOK UP AXON LAYERS TO THALAMUS
+
+
         /*=============================================================================
         ================================== DATA CELLS =================================
         =============================================================================*/
-        // [TODO]: BREAK OFF THIS CODE INTO NEW STRUCT DEF
+        // * TODO: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
         for layer in area_map.layers().iter() {
             match layer.kind() {
@@ -209,7 +213,7 @@ impl CorticalArea {
         /*=============================================================================
         ================================ CONTROL CELLS ================================
         =============================================================================*/
-        // [TODO]: BREAK OFF THIS CODE INTO NEW STRUCT DEF
+        // * TODO: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
         for layer in area_map.layers().iter() {
             if let LayerKind::Cellular(ref layer_kind) = *layer.kind() {
@@ -387,7 +391,7 @@ impl CorticalArea {
     /// Cycles the area: running kernels, intaking, and outputting.
     ///
     //
-    // [TODO]: ISOLATE LEARNING INTO SEPARATE THREAD
+    // * TODO: ISOLATE LEARNING INTO SEPARATE THREAD
     pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
 
         // (1.) Axon Intake:

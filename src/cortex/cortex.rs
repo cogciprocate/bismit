@@ -30,16 +30,18 @@ impl Cortex {
             .devices(Device::specifier().type_flags(device_type))
             .build().expect("CorticalArea::new(): ocl_context creation error");
         // println!("Cortex::new(): ocl_context.devices(): {:?}", ocl_context.devices());
-        let thal = Thalamus::new(layer_map_sl, area_sl, &ocl_context).unwrap();
+        let mut thal = Thalamus::new(layer_map_sl, area_sl, &ocl_context).unwrap();
         // let area_maps = thal.area_maps().values().clone();
         let mut areas = HashMap::new();
         let mut device_idx = 1;
 
-        for area_map in thal.area_maps().iter().filter(|area_map|
+        let area_maps = thal.area_maps().to_owned();
+
+        for area_map in area_maps.into_iter().filter(|area_map|
                 area_map.lm_kind_tmp() != &LayerMapKind::Subcortical)
         {
-            areas.insert(area_map.area_name(), Box::new(CorticalArea::new(area_map.clone(),
-                    device_idx, &ocl_context, ca_settings.clone(), &thal).unwrap()));
+            areas.insert(area_map.area_name(), Box::new(CorticalArea::new(area_map,
+                    device_idx, &ocl_context, ca_settings.clone(), &mut thal).unwrap()));
             device_idx += 1;
         }
 

@@ -1,7 +1,7 @@
 //! Synapses: The smallest and most numerous unit in the cortex -- the soldier
 //! at the bottom.
 //!
-//! #### [TODO]:
+//! #### * TODO:
 //! - [high priority] Testing:
 //!   - [INCOMPLETE] Check for uniqueness and correct distribution frequency
 //!     among src_slcs and cols
@@ -203,7 +203,7 @@ impl Synapses {
         {
             let syns_per_tft_l2 = tft_scheme.syns_per_tft_l2();
 
-            // [TODO]: Use kernel to ascertain the optimal workgroup size increment.
+            // * TODO: Use kernel to ascertain the optimal workgroup size increment.
             let min_wg_sqrt = 8 as usize;
             assert_eq!((min_wg_sqrt * min_wg_sqrt), cmn::OPENCL_MINIMUM_WORKGROUP_SIZE as usize);
 
@@ -327,7 +327,7 @@ impl Synapses {
     }
 
     // Debugging purposes
-    // [TODO]: Depricate?
+    // * TODO: Depricate?
     pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, buf: &Buffer<T>)
             -> OclResult<()>
     {

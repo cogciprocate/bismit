@@ -5,7 +5,7 @@ use map::LayerAddress;
 use ::{ExternalPathwayTract, ExternalPathwayFrame};
 use encode::{ScalarGlyphWriter};
 
-// [TODO]: Convert into a multi-layer/multi-slice system. Plumbing should be in place.
+// * TODO: Convert into a multi-layer/multi-slice system. Plumbing should be in place.
 //
 //
 #[derive(Clone, Debug)]
