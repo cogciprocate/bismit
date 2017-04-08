@@ -7,7 +7,7 @@ use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
 // use ocl::core::ClWaitListPtr;
 use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
-    CorticalBuffer, LayerAddress};
+    CorticalBuffer, LayerAddress, LayerTags};
 use cortex::{Dendrites, AxonSpace};
 
 const PRINT_DEBUG: bool = false;
@@ -17,6 +17,7 @@ pub struct PyramidalLayer {
     layer_name: &'static str,
     // layer_id: usize,
     layer_addr: LayerAddress,
+    layer_tags: LayerTags,
     dims: CorticalDims,
     tft_count: usize,
     cell_scheme: CellScheme,
@@ -110,7 +111,8 @@ impl PyramidalLayer {
             ===============================================================================
             =============================================================================*/
 
-            pyr_tft_cycle_kernels.push(ocl_pq.create_kernel("pyr_tft_cycle")?
+            let kern_name = "pyr_tft_cycle";
+            pyr_tft_cycle_kernels.push(ocl_pq.create_kernel(kern_name)?
                 // .expect("PyramidalLayer::new()")
                 .gws(SpatialDims::One(cel_count))
                 // .gwo(SpatialDims::One(tft_cel_idz))
@@ -132,6 +134,7 @@ impl PyramidalLayer {
             );
 
             tft_cycle_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                kern_name,
                 vec![
                     CorticalBuffer::data_den_tft(dens.states_raw(), layer_addr, tft_id),
                     CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id)
@@ -154,7 +157,8 @@ impl PyramidalLayer {
             let cels_per_cel_grp = dims.per_subgrp(cel_grp_count)?;
             let learning_rate_l2i = 0i32;
 
-            pyr_tft_ltp_kernels.push(ocl_pq.create_kernel("pyr_tft_ltp")?
+            let kern_name = "pyr_tft_ltp";
+            pyr_tft_ltp_kernels.push(ocl_pq.create_kernel(kern_name)?
                 // .expect("PyramidalLayer::new()")
                 .gws(SpatialDims::One(cel_grp_count as usize))
                 .arg_buf(axons.states())
@@ -193,6 +197,7 @@ impl PyramidalLayer {
             tft_ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, tft_id));
 
             tft_ltp_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                kern_name, 
                 tft_ltp_cmd_srcs,
                 vec![
                     CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), layer_addr, tft_id),
@@ -206,7 +211,8 @@ impl PyramidalLayer {
         ===============================================================================
         =============================================================================*/
 
-        let pyr_cycle_kernel = ocl_pq.create_kernel("pyr_cycle")?
+        let kern_name = "pyr_cycle";
+        let pyr_cycle_kernel = ocl_pq.create_kernel(kern_name)?
             .gws(SpatialDims::One(cel_count))
             .arg_buf(&tft_best_den_ids)
             .arg_buf(&tft_best_den_states_raw)
@@ -227,6 +233,7 @@ impl PyramidalLayer {
         }
 
         let cycle_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+            kern_name, 
             cycle_cmd_srcs,
             vec![
                 CorticalBuffer::data_soma_lyr(&states, layer_addr),
@@ -245,6 +252,7 @@ impl PyramidalLayer {
             layer_name: layer_name,
             // layer_id: layer_id,
             layer_addr: layer_addr,
+            layer_tags: area_map.layers().layer_info(layer_id).unwrap().layer_tags(),
             dims: dims,
             tft_count: tft_count,
             cell_scheme: cell_scheme,
@@ -326,6 +334,7 @@ impl PyramidalLayer {
 
     #[inline] pub fn layer_id(&self) -> usize { self.layer_addr.layer_id() }
     #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
+    #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn best_den_states_raw(&self) -> &Buffer<u8> { &self.best_den_states_raw }
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
@@ -340,15 +349,18 @@ impl DataCellLayer for PyramidalLayer {
         for (ltp_kernel, &cmd_idx) in self.pyr_tft_ltp_kernels.iter_mut()
                 .zip(self.tft_ltp_exe_cmd_idxs.iter())
         {
-            if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Setting scalar to a random value..."); }
+            if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Performing learning for layer: '{}'...", self.layer_name); }
+            if PRINT_DEBUG { printlnc!(yellow: "Pyrs:   Setting scalar to a random value..."); }
 
             ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>()).expect("PyramidalLayer::learn()");
 
-            if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing kern_ltp..."); }
+            if PRINT_DEBUG { printlnc!(yellow: "Pyrs:   Enqueuing kern_ltp..."); }
 
             let mut event = Event::empty();
-            ltp_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            ltp_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
+            if PRINT_DEBUG { ltp_kernel.default_queue().unwrap().finish().unwrap(); }
+            if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Learning complete for layer: '{}'.", self.layer_name); }
         }
 
         Ok(())
@@ -358,45 +370,10 @@ impl DataCellLayer for PyramidalLayer {
     fn regrow(&mut self) {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Regrowing dens..."); }
         self.dens_mut().regrow();
-        // panic!("Pyramidals::regrow(): reimplement me!");
     }
 
-    // #[inline]
-    // fn cycle(&self, wait_events: Option<&ClWaitListPtr>) {
-    //     if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
-    //     self.dens().cycle(wait_events);
-
-    //     // [DEBUG]: TEMPORARY:
-    //     if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
-
-    //     for (tft_id, tft_cycle_kernel) in self.pyr_tft_cycle_kernels.iter()
-    //             .enumerate()
-    //     {
-    //         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing cycle kernels for tft: {}...", tft_id); }
-    //         tft_cycle_kernel.cmd().ewait_opt(wait_events).enq()
-    //             .expect("bismit::PyramidalLayer::tft_cycle");
-
-    //         // [DEBUG]: TEMPORARY:
-    //         if PRINT_DEBUG { tft_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
-    //     }
-
-    //     if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell somas..."); }
-    //     self.pyr_cycle_kernel.cmd().ewait_opt(wait_events).enq()
-    //             .expect("bismit::PyramidalLayer::cycle");
-
-    //     // [DEBUG]: TEMPORARY:
-    //     if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
-    // }
-
-
-
-    // tft_cycle_exe_cmd_idxs: tft_cycle_exe_cmd_idxs,
-    // tft_ltp_exe_cmd_idxs: tft_ltp_exe_cmd_idxs,
-    // cycle_exe_cmd_idx: cycle_exe_cmd_idx,
-
-    // &exe_graph.get_req_events(cmd_idx)?
-
     fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling layer: '{}'...", self.layer_name); }
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
         self.dens().cycle(exe_graph)?;
 
@@ -419,14 +396,13 @@ impl DataCellLayer for PyramidalLayer {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell soma..."); }
 
         let mut event = Event::empty();
-
         self.pyr_cycle_kernel.cmd().ewait(exe_graph.get_req_events(self.cycle_exe_cmd_idx)?)
             .enew(&mut event).enq()?;
-
         exe_graph.set_cmd_event(self.cycle_exe_cmd_idx, Some(event))?;
 
         // [DEBUG]: TEMPORARY:
         if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
+        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling complete for layer: '{}'.", self.layer_name); }
 
         Ok(())
     }

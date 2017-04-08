@@ -211,11 +211,12 @@ impl Synapses {
             ===============================================================================
             =============================================================================*/
 
+            // let kern_name = "tft_cycle_syns";
+            // let kern_name = "tft_cycle_syns_vec4";
+            // let kern_name = "layer_cycle_syns_wow";
+            let kern_name = "layer_cycle_syns_wow_vec4";
             kernels.push(Box::new({
-                // ocl_pq.create_kernel("tft_cycle_syns")
-                // ocl_pq.create_kernel("tft_cycle_syns_vec4")
-                // ocl_pq.create_kernel("layer_cycle_syns_wow")
-                ocl_pq.create_kernel("layer_cycle_syns_wow_vec4")
+                ocl_pq.create_kernel(kern_name)
                     .expect("Synapses::new()")
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
@@ -240,8 +241,8 @@ impl Synapses {
             cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_v_offs, layer_addr, tft_id));
             cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_slc_ids, layer_addr, tft_id));
 
-            exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(cmd_srcs,
-                vec![CorticalBuffer::data_syn_tft(&states, layer_addr, tft_id)]
+            exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                kern_name, cmd_srcs, vec![CorticalBuffer::data_syn_tft(&states, layer_addr, tft_id)]
             ))?);
 
             // exe_graph.register_requisite(0, 0)?;
@@ -289,7 +290,7 @@ impl Synapses {
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         for &cmd_idx in self.exe_cmd_idxs.iter() {
-            // println!("##### Ordering synapse cmd_idx: {}", cmd_idx);
+            println!("##### Ordering synapse cmd_idx: {}", cmd_idx);
             exe_graph.order_next(cmd_idx)?;
         }
         Ok(())
@@ -309,7 +310,8 @@ impl Synapses {
     pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         // for kern in self.kernels.iter() {
         for (kern, &cmd_idx) in self.kernels.iter().zip(self.exe_cmd_idxs.iter()) {
-            if DEBUG_KERN { printlnc!(yellow: "Syns: Enqueuing kernel: '{}'...", kern.name()); }
+            if DEBUG_KERN { printlnc!(white: "    Syns: Enqueuing kernel: '{}' \
+                (exe_cmd_idx: [{}])...", kern.name(), cmd_idx); }
 
             let mut event = Event::empty();
             kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;

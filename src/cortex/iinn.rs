@@ -21,6 +21,7 @@ pub struct InhibitoryInterneuronNetwork {
 }
 
 impl InhibitoryInterneuronNetwork {
+    // FIXME: This function should take a 'bypass' argument instead of `::cycle`.
     pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
             area_map: &AreaMap, src_soma: &Buffer<u8>, src_layer_id: usize, src_base_axn_slc: u8,
             src_layer_tft_count: usize, axns: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
@@ -33,7 +34,8 @@ impl InhibitoryInterneuronNetwork {
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
 
         // Simple (active) kernel:
-        let kern_inhib_simple = ocl_pq.create_kernel("inhib_simple")
+        let kern_inhib_simple_name = "inhib_simple";
+        let kern_inhib_simple = ocl_pq.create_kernel(kern_inhib_simple_name)
             .expect("InhibitoryInterneuronNetwork::new()")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
@@ -45,7 +47,8 @@ impl InhibitoryInterneuronNetwork {
             .arg_buf(axns.states());
 
         // Passthrough kernel:
-        let kern_inhib_passthrough = ocl_pq.create_kernel("inhib_passthrough")
+        let kern_inhib_passthrough_name = "inhib_passthrough";
+        let kern_inhib_passthrough = ocl_pq.create_kernel(kern_inhib_passthrough_name)
             .expect("InhibitoryInterneuronNetwork::new()")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
@@ -65,9 +68,7 @@ impl InhibitoryInterneuronNetwork {
             .collect();
 
         let exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
-            exe_cmd_srcs,
-            exe_cmd_tars,
-        ))?;
+             "inhib_...", exe_cmd_srcs, exe_cmd_tars))?;
 
 
         Ok(InhibitoryInterneuronNetwork {
@@ -90,6 +91,7 @@ impl InhibitoryInterneuronNetwork {
         Ok(())
     }
 
+    // FIXME: `::new` should take the `bypass` argument instead.
     #[inline]
     pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, bypass: bool) -> CmnResult<()> {
         let mut event = Event::empty();

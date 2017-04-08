@@ -34,7 +34,8 @@ impl SensoryFilter {
         let input_buffer = Buffer::<u8>::new(write_queue.clone(),
             Some(flags::MEM_HOST_WRITE_ONLY | flags::MEM_READ_ONLY), dims, None, Some((0, None::<()>))).unwrap();
 
-        let cycle_kernel = ocl_pq.create_kernel(&filter_name.clone()).expect("[FIXME]: HANDLE ME")
+        let kern_name = filter_name.clone();
+        let cycle_kernel = ocl_pq.create_kernel(&kern_name)?
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(&input_buffer)
@@ -56,7 +57,7 @@ impl SensoryFilter {
         };
 
         let exe_cmd_idx_cycle = exe_graph.add_command(ExecutionCommand::cortical_kernel(
-            cycle_cmd_srcs, cycle_cmd_tars))?;
+            kern_name, cycle_cmd_srcs, cycle_cmd_tars))?;
 
         // Write execution command:
         let exe_cmd_idx_write = if filter_is_first {

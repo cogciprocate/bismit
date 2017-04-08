@@ -1,23 +1,25 @@
-use std::ops;
+// use std::ops;
 use rand::{self, Rng};
 
-use cmn::{self, CmnResult, CorticalDims};
+use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
 // use ocl::core::ClWaitListPtr;
 use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
-    CorticalBuffer, LayerAddress};
+    CorticalBuffer, LayerAddress, LayerTags};
 use cortex::{Dendrites, AxonSpace};
 
 
+const PRINT_DEBUG: bool = false;
 const TUFT_COUNT: usize = 1;
 
 
 pub struct SpinyStellateLayer {
     layer_name: &'static str,
     layer_id: usize,
+    layer_tags: LayerTags,
     dims: CorticalDims,
-    // cell_scheme: CellScheme,
+    cell_scheme: CellScheme,
     axn_slc_ids: Vec<u8>,
     // base_axn_slc: u8,
     lyr_axn_idz: u32,
@@ -40,9 +42,11 @@ impl SpinyStellateLayer {
         // Redesign kernel before changing the 1 tuft limitation:
         assert![tft_count == TUFT_COUNT];
         let sst_tft_id = 0;
-        let tft_scheme = &cell_scheme.tft_schemes()[sst_tft_id];
 
-        let syns_per_tuft_l2: u8 = tft_scheme.syns_per_den_l2() + tft_scheme.dens_per_tft_l2();
+        let syns_per_tuft_l2: u8 = {
+            let tft_scheme = &cell_scheme.tft_schemes()[sst_tft_id];
+            tft_scheme.syns_per_den_l2() + tft_scheme.dens_per_tft_l2()
+        };
 
         println!("{mt}{mt}SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}",
             base_axn_slc, lyr_axn_idz, dims, mt = cmn::MT);
@@ -57,7 +61,8 @@ impl SpinyStellateLayer {
         ===============================================================================
         =============================================================================*/
 
-        let kern_ltp = ocl_pq.create_kernel("sst_ltp").expect("[FIXME]: HANDLE ME")
+        let kern_name = "sst_ltp";
+        let kern_ltp = ocl_pq.create_kernel(kern_name)?
             // .expect("SpinyStellateLayer::new()")
             .gws(SpatialDims::Two(tft_count, grp_count as usize))
             .arg_buf(axons.states())
@@ -79,6 +84,7 @@ impl SpinyStellateLayer {
         ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, sst_tft_id));
 
         let ltp_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+            kern_name, 
             ltp_cmd_srcs,
             vec![CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, sst_tft_id)]
         ))?;
@@ -90,8 +96,9 @@ impl SpinyStellateLayer {
         Ok(SpinyStellateLayer {
             layer_name: layer_name,
             layer_id: layer_id,
+            layer_tags: area_map.layers().layer_info(layer_id).unwrap().layer_tags(),
             dims: dims,
-            // cell_scheme: cell_scheme,
+            cell_scheme: cell_scheme,
             axn_slc_ids: axn_slc_ids,
             // base_axn_slc: base_axn_slc,
             lyr_axn_idz: lyr_axn_idz,
@@ -114,18 +121,23 @@ impl SpinyStellateLayer {
 
     #[inline]
     pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        self.dens.cycle(exe_graph)
+        if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling layer: '{}'...", self.layer_name); }
+        self.dens.cycle(exe_graph)?;
+        if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling complete for layer: '{}'.", self.layer_name); }
+        Ok(())
     }
 
 
     #[inline]
     pub fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Performing learning for layer: '{}'...", self.layer_name); }
         let rnd = self.rng.gen::<u32>();
         self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
 
         let mut event = Event::empty();
         self.kern_ltp.cmd().ewait(exe_graph.get_req_events(self.ltp_exe_cmd_idx)?).enew(&mut event).enq()?;
         exe_graph.set_cmd_event(self.ltp_exe_cmd_idx, Some(event))?;
+        if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Learning complete for layer: '{}'.", self.layer_name); }
         Ok(())
     }
 
@@ -134,20 +146,54 @@ impl SpinyStellateLayer {
     }
 
     #[inline]
-    pub fn axn_range(&self) -> ops::Range<usize> {
+    pub fn axn_range(&self) -> (usize, usize) {
         let ssts_axn_idn = self.lyr_axn_idz + (self.dims.cells());
-        self.lyr_axn_idz as usize..ssts_axn_idn as usize
+        (self.lyr_axn_idz as usize, ssts_axn_idn as usize)
     }
 
+    #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn soma(&self) -> &Buffer<u8> { self.dens.states() }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
     #[inline] pub fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
-    #[inline] pub fn tft_count(&self) -> usize { TUFT_COUNT }
-    #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] pub fn tft_count(&self) -> usize { TUFT_COUNT }    
     #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn dens(&self) -> &Dendrites { &self.dens }
     #[inline] pub fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }
+}
+
+impl DataCellLayer for SpinyStellateLayer {
+    #[inline]
+    fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult <()> {
+        self.learn(exe_graph)
+    }
+
+    #[inline]
+    fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        self.cycle(exe_graph)
+    }
+
+    #[inline]
+    fn regrow(&mut self) {
+        self.regrow()
+    }
+
+    #[inline]
+    fn axn_range(&self) -> (usize, usize) {
+        self.axn_range()
+    }
+
+    #[inline] fn soma(&self) -> &Buffer<u8> { self.dens.states() }
+    #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { self.dens.states_mut() }
+    #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
+    #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
+    #[inline] fn tft_count(&self) -> usize { TUFT_COUNT }
+    #[inline] fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] fn cell_scheme(&self) -> &CellScheme { &self.cell_scheme }
+    #[inline] fn dens(&self) -> &Dendrites { &self.dens }
+    #[inline] fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }
 }
 
 

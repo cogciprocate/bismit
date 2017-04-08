@@ -5,9 +5,10 @@ use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffe
 use ocl::{self, ProQue, SpatialDims, Buffer, /*EventList,*/ Result as OclResult, Event};
 use ocl::traits::OclPrm;
 use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer};
-
 #[cfg(test)]
 pub use self::tests::{MinicolumnsTest};
+
+const PRINT_DEBUG: bool = false;
 
 
 pub struct Minicolumns {
@@ -43,7 +44,7 @@ impl Minicolumns {
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
         // UPDATE ME TO AREA_MAP SETUP
-        let ff_layer_axn_idz = ssts.axn_range().start;
+        let ff_layer_axn_idz = ssts.axn_range().0;
         let pyr_depth = area_map.ptal_layer().depth();
 
         println!("{mt}{mt}MINICOLUMNS::NEW() dims: {:?}, pyr_depth: {}", dims, pyr_depth, mt = cmn::MT);
@@ -66,7 +67,8 @@ impl Minicolumns {
         =============================================================================*/
 
         // Activation kernel:
-        let kern_activate = ocl_pq.create_kernel("mcol_activate_pyrs")
+        let activate_kern_name = "mcol_activate_pyrs";
+        let kern_activate = ocl_pq.create_kernel(activate_kern_name)
             .expect("Minicolumns::new()")
             .gws(SpatialDims::Three(pyrs.dims().depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
@@ -99,14 +101,15 @@ impl Minicolumns {
         activate_cmd_tars.push(CorticalBuffer::data_soma_lyr(&pyrs.flag_sets(), pyrs.layer_addr()));
 
         let activate_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
-            activate_cmd_srcs, activate_cmd_tars))?;
+            activate_kern_name, activate_cmd_srcs, activate_cmd_tars))?;
 
         /*=============================================================================
         ===============================================================================
         =============================================================================*/
 
         // Output kernel:
-        let kern_output = ocl_pq.create_kernel("mcol_output")
+        let output_kern_name = "mcol_output";
+        let kern_output = ocl_pq.create_kernel(output_kern_name)
             .expect("Minicolumns::new()")
             .gws(SpatialDims::Two(dims.v_size() as usize, dims.u_size() as usize))
             .arg_buf(pyrs.best_den_states_raw())
@@ -132,7 +135,7 @@ impl Minicolumns {
         ];
 
         let output_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
-            output_cmd_srcs, output_cmd_tars))?;
+            output_kern_name, output_cmd_srcs, output_cmd_tars))?;
 
         /*=============================================================================
         ===============================================================================
@@ -184,16 +187,20 @@ impl Minicolumns {
 
     #[inline]
     pub fn activate(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        if PRINT_DEBUG { printlnc!(lime: "Mcols: Activating (cmd_idx: [{}])...", self.activate_exe_cmd_idx); }
         let mut event = Event::empty();
-        self.kern_activate.cmd().ewait(exe_graph.get_req_events(self.activate_exe_cmd_idx)?).enew(&mut event).enq()?;
-        exe_graph.set_cmd_event(self.activate_exe_cmd_idx, Some(event))?;
+        self.kern_activate.cmd().ewait(exe_graph.get_req_events(self.activate_exe_cmd_idx).unwrap()).enew(&mut event).enq()?;
+        exe_graph.set_cmd_event(self.activate_exe_cmd_idx, Some(event)).unwrap();
+        if PRINT_DEBUG { printlnc!(lime: "Mcols: Activation complete."); }
         Ok(())
     }
 
     pub fn output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        if PRINT_DEBUG { printlnc!(lime: "Mcols: Outputting (cmd_idx: [{}])...", self.output_exe_cmd_idx); }
         let mut event = Event::empty();
-        self.kern_output.cmd().ewait(exe_graph.get_req_events(self.output_exe_cmd_idx)?).enew(&mut event).enq()?;
-        exe_graph.set_cmd_event(self.output_exe_cmd_idx, Some(event))?;
+        self.kern_output.cmd().ewait(exe_graph.get_req_events(self.output_exe_cmd_idx).unwrap()).enew(&mut event).enq()?;
+        exe_graph.set_cmd_event(self.output_exe_cmd_idx, Some(event)).unwrap();
+        if PRINT_DEBUG { printlnc!(lime: "Mcols: Output complete."); }
         Ok(())
     }
 

@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_mut)]
+
 use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
@@ -60,11 +62,18 @@ pub struct CorticalArea {
     area_map: AreaMap,
     axns: AxonSpace,
     mcols: Box<Minicolumns>,
-    pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,
-    ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,
+    // pyrs_map: HashMap<&'static str, Box<PyramidalLayer>>,
+    // ssts_map: HashMap<&'static str, Box<SpinyStellateLayer>>,
     iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
-    ptal_name: &'static str,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
-    psal_name: &'static str,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
+    ptal_name: Option<&'static str>,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
+    psal_name: Option<&'static str>,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
+    psal_idx: usize,
+    ptal_idx: usize,
+    spatial_cells: Vec<SpinyStellateLayer>,
+    temporal_cells: Vec<PyramidalLayer>,
+    motor_cells: Vec<PyramidalLayer>,
+    focus_cells: Vec<PyramidalLayer>,
+    other_cells: Vec<Box<DataCellLayer>>,
     aux: Aux,
     ocl_pq: ProQue,
     write_queue: Queue,
@@ -146,8 +155,15 @@ impl CorticalArea {
             area_map.aff_areas(), device_idx, ocl_pq.device().name().trim(),
             ocl_pq.device().vendor().trim(), mt = cmn::MT);
 
-        let psal_name = area_map.layers().layers_containing_tags(map::SPATIAL_ASSOCIATIVE)[0].name();
-        let ptal_name = area_map.layers().layers_containing_tags(map::TEMPORAL_ASSOCIATIVE)[0].name();
+        let psal_name = area_map.layers().layers_containing_tags(map::PSAL)
+            .first().map(|lyr| lyr.name());
+        let ptal_name = area_map.layers().layers_containing_tags(map::PTAL)
+            .first().map(|lyr| lyr.name());
+        // let pml_name = area_map.layers().layers_containing_tags(map::PML)
+            // .first().map(|lyr| lyr.name());
+
+        let mut psal_idx = usize::max_value();
+        let mut ptal_idx = usize::max_value();
 
         let settings = settings.unwrap_or(CorticalAreaSettings::new());
 
@@ -161,10 +177,15 @@ impl CorticalArea {
         ================================ CELLS & AXONS ================================
         =============================================================================*/
 
-        let mut pyrs_map = HashMap::new();
-        let mut ssts_map = HashMap::new();
+        // let mut pyrs_map = HashMap::new();
+        // let mut ssts_map = HashMap::new();
         let mut iinns = HashMap::new();
         let mut mcols = None;
+        let mut spatial_cells = Vec::with_capacity(4);
+        let mut temporal_cells = Vec::with_capacity(4);
+        let mut motor_cells: Vec<PyramidalLayer> = Vec::with_capacity(4);
+        let mut focus_cells: Vec<PyramidalLayer> = Vec::with_capacity(4);
+        let mut other_cells: Vec<Box<DataCellLayer>> = Vec::with_capacity(4);
         let axns = AxonSpace::new(&area_map, &ocl_pq, &write_queue, &mut exe_graph, thal)?;
         // println!("{mt}::NEW(): IO_INFO: {:#?}, Settings: {:#?}", axns.io_info(), settings, mt = cmn::MT);
 
@@ -191,7 +212,19 @@ impl CorticalArea {
                                 pyrs_dims, cell_scheme.clone(), &area_map, &axns, &ocl_pq,
                                 &mut exe_graph));
 
-                            pyrs_map.insert(layer.name(), Box::new(pyr_lyr));
+                            // pyrs_map.insert(layer.name(), Box::new(pyr_lyr));
+                            if pyr_lyr.layer_tags().contains(map::SPATIAL) {
+                                // spatial_cells.push(pyr_lyr);
+                                panic!("Spatial pyramidal cells not yet supported.");
+                            } else if pyr_lyr.layer_tags().contains(map::TEMPORAL) {
+                                temporal_cells.push(pyr_lyr);
+                            } else if pyr_lyr.layer_tags().contains(map::FOCUS) {
+                                focus_cells.push(pyr_lyr)
+                            } else if pyr_lyr.layer_tags().contains(map::MOTOR) {
+                                motor_cells.push(pyr_lyr)
+                            } else {
+                                other_cells.push(Box::new(pyr_lyr))
+                            }
                         },
                         CellKind::SpinyStellate => {
                             let ssts_map_dims = dims.clone_with_depth(layer.depth());
@@ -200,7 +233,12 @@ impl CorticalArea {
                                 ssts_map_dims, cell_scheme.clone(), &area_map, &axns, &ocl_pq,
                                 &mut exe_graph));
 
-                            ssts_map.insert(layer.name(), Box::new(sst_lyr));
+                            // ssts_map.insert(layer.name(), Box::new(sst_lyr));
+                            if sst_lyr.layer_tags().contains(map::SPATIAL) {
+                                spatial_cells.push(sst_lyr);
+                            } else {
+                                other_cells.push(Box::new(sst_lyr))
+                            }
                         },
                         _ => (),
                     }
@@ -221,7 +259,8 @@ impl CorticalArea {
                     match *inh_cell_kind {
                         InhibitoryCellKind::BasketSurround { lyr_name: ref src_lyr_name, field_radius: _ } => {
                             let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
-                            let src_soma = &ssts_map.get_mut(src_lyr_name.as_str()).expect(&em1);
+                            let src_soma = spatial_cells.iter().find(|lyr| 
+                                lyr.layer_name() == psal_name.unwrap()).expect(&em1);
                             let src_soma_buf = src_soma.soma();
 
                             let src_slc_ids = area_map.layer_slc_ids(&[src_lyr_name.clone()]);
@@ -253,11 +292,17 @@ impl CorticalArea {
                             let mcols_dims = dims.clone_with_depth(1);
 
                             mcols = Some(Box::new({
-                                let ssts = ssts_map.get(psal_name)
-                                    .expect(&format!("{}: '{}' is not a valid layer", emsg, psal_name));
+                                // let ssts = ssts_map.get(psal_name.unwrap())
+                                //     .expect(&format!("{}: '{}' is not a valid layer", emsg, psal_name.unwrap()));
+                                psal_idx = spatial_cells.iter().position(|lyr| lyr.layer_name() == psal_name.unwrap())
+                                    .expect(&format!("{}: '{}' is not a valid layer", emsg, psal_name.unwrap()));
+                                let ssts = &spatial_cells[psal_idx];
 
-                                let pyrs = pyrs_map.get(ptal_name)
-                                    .expect(&format!("{}: '{}' is not a valid layer", emsg, ptal_name));
+                                // let pyrs = pyrs_map.get(ptal_name.unwrap())
+                                //     .expect(&format!("{}: '{}' is not a valid layer", emsg, ptal_name.unwrap()));
+                                ptal_idx = temporal_cells.iter().position(|lyr| lyr.layer_name() == ptal_name.unwrap())
+                                    .expect(&format!("{}: '{}' is not a valid layer", emsg, ptal_name.unwrap()));
+                                let pyrs = &temporal_cells[ptal_idx];
 
                                 let layer_id = layer.layer_id();
 
@@ -296,24 +341,24 @@ impl CorticalArea {
         ===================================== AUX =====================================
         =============================================================================*/
 
-        let aux = Aux::new(pyrs_map[ptal_name].dens().syns().len(), &ocl_pq);
+        let aux = Aux::new(temporal_cells[ptal_idx].dens().syns().len(), &ocl_pq);
 
         // <<<<< TODO: CLEAN THIS UP >>>>>
         // MAKE ABOVE LIKE BELOW (eliminate set_arg_buf_named() methods and just call directly on buffer)
         // mcols.set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        pyrs_map.get_mut(ptal_name).unwrap()
+        temporal_cells[ptal_idx]
             .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        pyrs_map.get_mut(ptal_name).unwrap()
+        temporal_cells[ptal_idx]
             .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
 
-        pyrs_map.get_mut(ptal_name).unwrap().dens_mut()
+        temporal_cells[ptal_idx].dens_mut()
             .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        pyrs_map.get_mut(ptal_name).unwrap().dens_mut()
+        temporal_cells[ptal_idx].dens_mut()
             .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
 
-        pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
+        temporal_cells[ptal_idx].dens_mut().syns_mut()
             .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        pyrs_map.get_mut(ptal_name).unwrap().dens_mut().syns_mut()
+        temporal_cells[ptal_idx].dens_mut().syns_mut()
             .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
         // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
         // pyrs_map.get_mut(ptal_name).unwrap().kern_ltp()
@@ -330,7 +375,7 @@ impl CorticalArea {
         axns.set_exe_order_intake(&mut exe_graph)?;
 
         // (2.) SSTs Cycle:
-        for sst in ssts_map.values() {
+        for sst in &spatial_cells {
             sst.set_exe_order_cycle(&mut exe_graph)?;
         }
 
@@ -340,16 +385,31 @@ impl CorticalArea {
         }
 
         // (4.) SSTs Learn:
-        for sst in ssts_map.values() {
+        for sst in &spatial_cells {
             sst.set_exe_order_learn(&mut exe_graph)?;
         }
 
         // (5.) MCOLSs Activate:
         mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
 
-        // (6.) PYRs Learn & Cycle:
-        for pyr in pyrs_map.values() {
+        // (6a.) Temporal Layers Learn & Cycle:
+        for pyr in &temporal_cells {
             pyr.set_exe_order(&mut exe_graph)?;
+        }
+
+        // (6b.) Focus Layers Learn & Cycle:
+        for pyr in &focus_cells {
+            pyr.set_exe_order(&mut exe_graph)?;
+        }
+
+        // (6c.) Motor Layers Learn & Cycle:
+        for pyr in &motor_cells {
+            pyr.set_exe_order(&mut exe_graph)?;
+        }
+
+        // (6d.) Other Layers Learn & Cycle:
+        for _pyr in &other_cells {
+            // pyr.set_exe_order(&mut exe_graph)?;
         }
 
         // (7.) MCOLs Output:
@@ -371,11 +431,18 @@ impl CorticalArea {
             area_map: area_map,
             ptal_name: ptal_name,
             psal_name: psal_name,
+            ptal_idx: ptal_idx,
+            psal_idx: psal_idx,
             axns: axns,
             mcols: mcols,
-            pyrs_map: pyrs_map,
-            ssts_map: ssts_map,
+            // pyrs_map: pyrs_map,
+            // ssts_map: ssts_map,
             iinns: iinns,
+            spatial_cells: spatial_cells,
+            temporal_cells: temporal_cells,
+            motor_cells: motor_cells,
+            focus_cells: focus_cells,
+            other_cells: other_cells,
             aux: aux,
             ocl_pq: ocl_pq,
             write_queue: write_queue,
@@ -399,7 +466,9 @@ impl CorticalArea {
 
         // (2.) SSTs Cycle:
         if !self.settings.disable_ssts {
-            self.ssts_map[self.psal_name].cycle(&mut self.exe_graph)?;
+            // self.ssts_map[self.psal_name.unwrap()].cycle(&mut self.exe_graph)?;            
+            // self.spatial_cells[self.psal_idx].cycle(&mut self.exe_graph)?;
+            for lyr in &mut self.spatial_cells { lyr.cycle(&mut self.exe_graph)? }
         }
 
         // (3.) IINNs Cycle:
@@ -409,21 +478,40 @@ impl CorticalArea {
 
         // (4.) SSTs Learn:
         if !self.settings.disable_ssts && !self.settings.disable_learning {
-            self.ssts_map.get_mut(self.psal_name).ok_or("CorticalArea::cycle: PSAL (ssts) not found.")?
-                .learn(&mut self.exe_graph)?;
+            // self.ssts_map.get_mut(self.psal_name.unwrap()).ok_or("CorticalArea::cycle: PSAL (ssts) not found.")?
+            //     .learn(&mut self.exe_graph)?;
+            // self.spatial_cells[self.psal_idx].learn(&mut self.exe_graph)?;
+            for lyr in &mut self.spatial_cells { lyr.learn(&mut self.exe_graph)? }
         }
 
         // (5.) MCOLSs Activate:
         if !self.settings.disable_mcols { self.mcols.activate(&mut self.exe_graph)?; }
 
-        // (6.) PYRs Learn & Cycle:
+        // (6.) Pyramidal Layers Learn & Cycle:
         if !self.settings.disable_pyrs {
-            if !self.settings.disable_learning {
-                self.pyrs_map.get_mut(self.ptal_name).ok_or("CorticalArea::cycle: PTAL (pyrs) not found.")?
-                    .learn(&mut self.exe_graph)?;
+            // (6a.) Temporal Layers Learn & Cycle:
+            for lyr in &mut self.temporal_cells {
+                if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
+                lyr.cycle(&mut self.exe_graph)?;
             }
 
-            self.pyrs_map[self.ptal_name].cycle(&mut self.exe_graph)?;
+            // (6b.) Focus Layers Learn & Cycle:
+            for lyr in &mut self.focus_cells {
+                if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
+                lyr.cycle(&mut self.exe_graph)?;
+            }
+
+            // (6c.) Motor Layers Learn & Cycle:
+            for lyr in &mut self.motor_cells {
+                if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
+                lyr.cycle(&mut self.exe_graph)?;
+            }
+
+            // (6d.) Other Layers Learn & Cycle:
+            for lyr in &mut self.other_cells {
+                if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
+                lyr.cycle(&mut self.exe_graph)?;
+            }
         }
 
         // (7.) MCOLs Output:
@@ -450,8 +538,10 @@ impl CorticalArea {
         if !self.settings.disable_regrowth {
             if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
                 //print!("$");
-                self.ssts_map.get_mut(self.psal_name).expect("CorticalArea::regrow").regrow();
-                self.pyrs_map.get_mut(self.ptal_name).expect("CorticalArea::regrow").regrow();
+                // self.ssts_map.get_mut(self.psal_name.unwrap()).expect("CorticalArea::regrow").regrow();
+                self.spatial_cells[self.psal_idx].regrow();
+                // self.pyrs_map.get_mut(self.ptal_name.unwrap()).expect("CorticalArea::regrow").regrow();
+                self.temporal_cells[self.ptal_idx].regrow();
                 self.counter = 0;
             } else {
                 self.counter += 1;
@@ -506,8 +596,8 @@ impl CorticalArea {
     #[inline] pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> { &mut self.mcols }
     #[inline] pub fn axns(&self) -> &AxonSpace { &self.axns }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] pub fn psal_name(&self) -> &'static str { self.psal_name }
-    #[inline] pub fn ptal_name(&self) -> &'static str { self.ptal_name }
+    #[inline] pub fn psal_name(&self) -> Option<&'static str> { self.psal_name }
+    #[inline] pub fn ptal_name(&self) -> Option<&'static str> { self.ptal_name }
     #[inline] pub fn afferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.aff_areas() }
     #[inline] pub fn efferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.eff_areas() }
     #[inline] pub fn ocl_pq(&self) -> &ProQue { &self.ocl_pq }
@@ -593,10 +683,10 @@ pub mod tests {
         fn read_from_axon(&self, idx: u32) -> u8;
         fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8
             ) -> (i8, i8, u32, u32);
-        fn psal(&self) -> &Box<SpinyStellateLayer>;
-        fn psal_mut(&mut self) -> &mut Box<SpinyStellateLayer>;
-        fn ptal(&self) -> &Box<PyramidalLayer>;
-        fn ptal_mut(&mut self) -> &mut Box<PyramidalLayer>;
+        fn psal(&self) -> &SpinyStellateLayer;
+        fn psal_mut(&mut self) -> &mut SpinyStellateLayer;
+        fn ptal(&self) -> &PyramidalLayer;
+        fn ptal_mut(&mut self) -> &mut PyramidalLayer;
         fn print_aux(&mut self);
         fn print_axns(&mut self);
         fn activate_axon(&mut self, idx: u32);
@@ -651,27 +741,31 @@ pub mod tests {
         }
 
         /* PIL(): Get Primary Spatial Associative Layer (immutable) */
-        fn psal(&self) -> &Box<SpinyStellateLayer> {
-            let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
-            self.ssts_map.get(self.psal_name).expect(e_string)
+        fn psal(&self) -> &SpinyStellateLayer {
+            // let e_string = "cortical_area::CorticalArea::psal(): Primary Spatial Associative Layer: '{}' not found. ";
+            // self.ssts_map.get(self.psal_name.unwrap()).expect(e_string)
+            &self.spatial_cells[self.psal_idx]
         }
 
         /* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
-        fn psal_mut(&mut self) -> &mut Box<SpinyStellateLayer> {
-            let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
-            self.ssts_map.get_mut(self.psal_name).expect(e_string)
+        fn psal_mut(&mut self) -> &mut SpinyStellateLayer {
+            // let e_string = "cortical_area::CorticalArea::psal_mut(): Primary Spatial Associative Layer: '{}' not found. ";
+            // self.ssts_map.get_mut(self.psal_name.unwrap()).expect(e_string)
+            &mut self.spatial_cells[self.psal_idx]
         }
 
         /* PAL(): Get Primary Temporal Associative Layer (immutable) */
-        fn ptal(&self) -> &Box<PyramidalLayer> {
-            let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
-            self.pyrs_map.get(self.ptal_name).expect(e_string)
+        fn ptal(&self) -> &PyramidalLayer {
+            // let e_string = "cortical_area::CorticalArea::ptal(): Primary Temporal Associative Layer: '{}' not found. ";
+            // self.pyrs_map.get(self.ptal_name.unwrap()).expect(e_string)
+            &self.temporal_cells[self.ptal_idx]
         }
 
         /* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
-        fn ptal_mut(&mut self) -> &mut Box<PyramidalLayer> {
-            let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
-            self.pyrs_map.get_mut(self.ptal_name).expect(e_string)
+        fn ptal_mut(&mut self) -> &mut PyramidalLayer {
+            // let e_string = "cortical_area::CorticalArea::ptal_mut(): Primary Temporal Associative Layer: '{}' not found. ";
+            // self.pyrs_map.get_mut(self.ptal_name.unwrap()).expect(e_string)
+            &mut self.temporal_cells[self.ptal_idx]
         }
 
         fn print_aux(&mut self) {

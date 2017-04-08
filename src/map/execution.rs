@@ -10,7 +10,7 @@ use ocl::ffi::cl_event;
 use map::LayerAddress;
 use cmn::{util};
 
-const PRINT_DEBUG: bool = true;
+const PRINT_DEBUG: bool = false;
 
 type ExeGrResult<T> = Result<T, ExecutionGraphError>;
 
@@ -21,7 +21,7 @@ pub enum ExecutionGraphError {
     Locked,
     Unlocked,
     OclError(OclError),
-    EventsRequestOutOfOrder(usize),
+    EventsRequestOutOfOrder(usize, usize),
 }
 
 impl error::Error for ExecutionGraphError {
@@ -33,7 +33,7 @@ impl error::Error for ExecutionGraphError {
             ExecutionGraphError::Locked => "Graph locked.",
             ExecutionGraphError::Unlocked => "Graph unlocked.",
             ExecutionGraphError::OclError(_) => "OpenCL Error.",
-            ExecutionGraphError::EventsRequestOutOfOrder(_) => "Events requested out of order.",
+            ExecutionGraphError::EventsRequestOutOfOrder(..) => "Events requested out of order.",
         }
     }
 }
@@ -67,10 +67,10 @@ impl fmt::Display for ExecutionGraphError {
             ExecutionGraphError::OclError(ref ocl_error) => {
                 f.write_fmt(format_args!("OpenCL Error: '{}'", ocl_error))
             }
-            ExecutionGraphError::EventsRequestOutOfOrder(cmd_idx) => {
-                f.write_fmt(format_args!("ExecutionGraph::get_req_events: Events for command [{}] \
-                    requested out of order. Events must be requested in the order the commands \
-                    were configured with `::order_next`", cmd_idx))
+            ExecutionGraphError::EventsRequestOutOfOrder(expected_order, found_order) => {
+                f.write_fmt(format_args!("ExecutionGraph::get_req_events: Events requested out \
+                    of order. Expected: <{}>, found: <{}>. Events must be requested in the order \
+                    the commands were configured with `::order_next`", expected_order, found_order))
             }
         }
     }
@@ -227,7 +227,7 @@ pub enum MemoryBlock {
 /// An execution command kind.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ExecutionCommandDetails {
-    CorticalKernel { sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer> },
+    CorticalKernel { name: String, sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer> },
     CorticothalamicRead { sources: Vec<CorticalBuffer>, targets: Vec<ThalamicTract> },
     ThalamocorticalWrite { sources: Vec<ThalamicTract>, targets: Vec<CorticalBuffer> },
     // InputFilterWrite { sources: Vec<ThalamicTract>, target: CorticalBuffer },
@@ -289,6 +289,13 @@ impl ExecutionCommandDetails {
             ExecutionCommandDetails::Subgraph { .. } => "Subgraph",
         }
     }
+
+    fn kernel_name<'a>(&'a self) -> &'a str {
+        match *self {
+            ExecutionCommandDetails::CorticalKernel { ref name, .. } => name,
+            _ => "",
+        }
+    }
 }
 
 
@@ -314,11 +321,13 @@ impl ExecutionCommand {
         }
     }
 
-    pub fn cortical_kernel(sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer>)
+    pub fn cortical_kernel<S>(name: S, sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer>)
             -> ExecutionCommand
+            where S: Into<String>
     {
         ExecutionCommand::new(
             ExecutionCommandDetails::CorticalKernel {
+                name: name.into(),
                 sources: sources,
                 targets: targets,
             }
@@ -462,7 +471,8 @@ impl ExecutionGraph {
         if PRINT_DEBUG { println!("#####"); }
 
         for (cmd_idx, cmd) in self.commands.iter().enumerate() {
-            if PRINT_DEBUG { println!("##### Command [{}] ({}):", cmd_idx, cmd.details.variant_string()); }
+            if PRINT_DEBUG { println!("##### Command [{}] ({}: '{}'):", cmd_idx, 
+                cmd.details.variant_string(), cmd.details.kernel_name()); }
 
             if PRINT_DEBUG { println!("#####     [Sources:]"); }
 
@@ -523,7 +533,7 @@ impl ExecutionGraph {
         // }
 
         // let cmd_order_idx = self.commands[cmd_idx].order_idx().unwrap();
-        // if PRINT_DEBUG { println!("##### [{}: {}]: Preceding Writers: {:?}", cmd_order_idx, cmd_idx, pre_writers); }
+        // if PRINT_DEBUG { println!("##### <{}>: [{}]: Preceding Writers: {:?}", cmd_order_idx, cmd_idx, pre_writers); }
         // // println!("#####");
         // pre_writers
 
@@ -537,7 +547,7 @@ impl ExecutionGraph {
             })
             .collect();
 
-        if PRINT_DEBUG { println!("##### [{}: {}]: Preceding Writers: {:?}",
+        if PRINT_DEBUG { println!("##### <{}>: [{}]: Preceding Writers: {:?}",
             self.commands[cmd_idx].order_idx().unwrap(), cmd_idx, pre_writers); }
 
         pre_writers
@@ -569,7 +579,7 @@ impl ExecutionGraph {
             }
         }
 
-        if PRINT_DEBUG { println!("##### [{}: {}]: Following Readers: {:?}",
+        if PRINT_DEBUG { println!("##### <{}>: [{}]: Following Readers: {:?}",
             self.commands[cmd_idx].order_idx().unwrap(), cmd_idx, fol_readers); }
         fol_readers
     }
@@ -610,7 +620,7 @@ impl ExecutionGraph {
         // [NOTE]: Only using `self.order` instead of `self.commands` for
         // debug printing purposes. * TODO: Switch back at some point.
         for (&cmd_order, &cmd_idx) in self.order.clone().iter() {
-            if PRINT_DEBUG { println!("##### Command [{}: {}] ({}):", cmd_order, cmd_idx,
+            if PRINT_DEBUG { println!("##### Command <{}>: [{}] ({}):", cmd_order, cmd_idx,
                 self.commands[cmd_idx].details.variant_string()); }
 
 
@@ -631,7 +641,7 @@ impl ExecutionGraph {
             debug_assert!(self.requisite_cmd_idxs[cmd_idx].len() ==
                 self.requisite_cmd_precedence[cmd_idx].len());
 
-            // println!("##### [{}: {}]: Requisites: {:?}:{:?}",
+            // println!("##### <{}>: [{}]: Requisites: {:?}:{:?}",
             //     cmd_order, cmd_idx, self.requisite_cmd_idxs[cmd_idx],
             //     self.requisite_cmd_precedence[cmd_idx]);
             if PRINT_DEBUG { println!("#####"); }
@@ -656,7 +666,10 @@ impl ExecutionGraph {
             .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
 
         if self.next_order_idx != unsafe { self.commands.get_unchecked(cmd_idx).order_idx().unwrap() } {
-            return Err(ExecutionGraphError::EventsRequestOutOfOrder(cmd_idx));
+            panic!("{}", ExecutionGraphError::EventsRequestOutOfOrder(self.next_order_idx, 
+                 self.commands[cmd_idx].order_idx().unwrap()));
+            // return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_order_idx, 
+            //     self.commands[cmd_idx].order_idx().unwrap()));
         }
 
         unsafe { self.requisite_cmd_events.get_unchecked_mut(cmd_idx).clear(); }
@@ -666,14 +679,7 @@ impl ExecutionGraph {
 
             if let Some(event) = cmd.event() {
                 unsafe {
-                    self.requisite_cmd_events.get_unchecked_mut(cmd_idx).push(
-                        // *event
-                        //     .core()
-                        //     .expect(&format!("ExecutionGraph::get_req_events: Empty 'ocl::Event' \
-                        //         found for command [{}]", req_idx))
-                        //     .as_ptr_ref()
-                        *event.as_ptr_ref()
-                    );
+                    self.requisite_cmd_events.get_unchecked_mut(cmd_idx).push(*event.as_ptr_ref());
                 }
             }
         }
@@ -690,7 +696,7 @@ impl ExecutionGraph {
             .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
 
         if self.next_order_idx != cmd.order_idx().unwrap() {
-            return Err(ExecutionGraphError::EventsRequestOutOfOrder(cmd_idx));
+            return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_order_idx, cmd_idx));
         }
 
         cmd.set_event(event.map(|e| e.into())); // <--- Correct Version
@@ -701,6 +707,8 @@ impl ExecutionGraph {
             self.next_order_idx = 0;
         } else {
             self.next_order_idx += 1;
+            if PRINT_DEBUG { println!("##### ExecutionGraph::set_cmd_event: (cmd_idx: {}): next_order_idx: {}", 
+                cmd_idx, self.next_order_idx) }
         }
 
         Ok(())

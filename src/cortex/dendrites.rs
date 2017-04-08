@@ -102,7 +102,8 @@ impl Dendrites {
             ===============================================================================
             =============================================================================*/
 
-            kernels.push(ocl_pq.create_kernel("den_cycle_tft").expect("[FIXME]: HANDLE ME")
+            let kern_name = "den_cycle_tft";
+            kernels.push(ocl_pq.create_kernel(kern_name)?
                 .gws(SpatialDims::One(tft_den_count as usize))
                 .arg_buf(syns.states())
                 .arg_buf(syns.strengths())
@@ -118,6 +119,7 @@ impl Dendrites {
             );
 
             exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                kern_name, 
                 vec![
                     CorticalBuffer::data_syn_tft(syns.states(), layer_addr, tft_id),
                     CorticalBuffer::data_syn_tft(syns.strengths(), layer_addr, tft_id)
@@ -153,19 +155,19 @@ impl Dendrites {
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         self.syns.set_exe_order(exe_graph)?;
 
-        for cmd_idx in self.exe_cmd_idxs.iter() {
-            // println!("##### Ordering dendrite cmd_idx: {}", cmd_idx);
-            exe_graph.order_next(*cmd_idx)?;
+        for &cmd_idx in self.exe_cmd_idxs.iter() {
+            println!("##### Ordering dendrite cmd_idx: {}", cmd_idx);
+            exe_graph.order_next(cmd_idx)?;
         }
         Ok(())
     }
 
     // pub fn cycle(&self, wait_events: Option<&ClWaitListPtr>) {
-    //     if DEBUG_KERN { println!("Dens: Cycling syns..."); }
+    //     if DEBUG_KERN { println!("  Dens: Cycling syns..."); }
     //     self.syns.cycle(wait_events);
 
     //     for kern in self.kernels.iter() {
-    //         if DEBUG_KERN { println!("Dens: Cycling kern_cycle..."); }
+    //         if DEBUG_KERN { println!("  Dens: Cycling kern_cycle..."); }
 
     //         kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
 
@@ -174,11 +176,11 @@ impl Dendrites {
     // }
 
     pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        if DEBUG_KERN { println!("Dens: Cycling syns..."); }
+        if DEBUG_KERN { println!("  Dens: Cycling syns..."); }
         self.syns.cycle(exe_graph)?;
 
         for (kern, &cmd_idx) in self.kernels.iter().zip(self.exe_cmd_idxs.iter()) {
-            if DEBUG_KERN { println!("Dens: Cycling kern_cycle..."); }
+            if DEBUG_KERN { println!("  Dens: Cycling kern_cycle (exe_cmd_idx: [{}])...", cmd_idx); }
 
             let mut event = Event::empty();
             kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
@@ -213,6 +215,7 @@ impl Dendrites {
     #[inline] pub fn thresholds(&self) -> &Buffer<u8> { &self.thresholds }
     #[inline] pub fn states_raw(&self) -> &Buffer<u8> { &self.states_raw }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
+    #[inline] pub fn states_mut(&mut self) -> &mut Buffer<u8> { &mut self.states }
     #[inline] pub fn energies(&self) -> &Buffer<u8> { &self.energies }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn syns(&self) -> &Synapses { &self.syns }

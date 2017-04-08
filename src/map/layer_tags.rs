@@ -79,9 +79,10 @@ bitflags! {
         // const NONSPECIFIC = 0b0000_0000_1000_0000__0000_0000_0000_0000 << 32,
 
         const PRIMARY = 0b0000_0000_0000_0000__0000_0000_0000_0001 << 32,
-        const SPATIAL_ASSOCIATIVE = 0b0000_0000_0000_0000__0000_0000_0001_0000 << 32,
-        const TEMPORAL_ASSOCIATIVE = 0b0000_0000_0000_0000__0000_0000_0010_0000 << 32,
-        const MOTOR = 0b0000_0000_0000_0000__0000_0000_0100_0000 << 32,
+        const SPATIAL = 0b0000_0000_0000_0000__0000_0000_0001_0000 << 32,
+        const TEMPORAL = 0b0000_0000_0000_0000__0000_0000_0010_0000 << 32,
+        const FOCUS = 0b0000_0000_0000_0000__0000_0000_0100_0000 << 32,
+        const MOTOR = 0b0000_0000_0000_0000__0000_0000_1000_0000 << 32,        
         const UNUSED_TESTING = 0b0000_0000_0000_0000__1000_0000_0000_0000 << 32,
 
         // const FF_IN = FEEDFORWARD.bits | INPUT.bits | SPECIFIC.bits,
@@ -93,9 +94,10 @@ bitflags! {
         // const NS_IN = INPUT.bits | NONSPECIFIC.bits,
         // const NS_OUT = OUTPUT.bits | NONSPECIFIC.bits,
 
-        const PSAL = PRIMARY.bits | SPATIAL_ASSOCIATIVE.bits,
-        const PTAL = PRIMARY.bits | TEMPORAL_ASSOCIATIVE.bits,
-        const PMEL = PRIMARY.bits | MOTOR.bits,
+        const PSAL = PRIMARY.bits | SPATIAL.bits,
+        const PTAL = PRIMARY.bits | TEMPORAL.bits,
+        const PFL = PRIMARY.bits | FOCUS.bits,
+        const PML = PRIMARY.bits | MOTOR.bits,        
     }
 }
 
