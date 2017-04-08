@@ -90,6 +90,12 @@ impl Error for CmnError {
 //     }
 // }
 
+impl From<()> for CmnError {
+    fn from(_: ()) -> CmnError {
+        CmnError::Unknown
+    }
+}
+
 impl From<String> for CmnError {
     fn from(desc: String) -> CmnError {
         CmnError::new(desc)

@@ -240,7 +240,7 @@ impl TestBed {
             .build().expect("CorticalArea::new(): ocl_context creation error");
 
         let thal = Thalamus::new(layer_map_sl, area_schemes, &ocl_context).unwrap();
-        let area_map = thal.area_map_by_name(PRIMARY_AREA_NAME).unwrap().clone();
+        let area_map = thal.area_maps().by_key(PRIMARY_AREA_NAME).unwrap().clone();
 
         let ocl_pq = ProQue::builder()
             .context(ocl_context.clone())

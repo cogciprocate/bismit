@@ -18,7 +18,7 @@ use std::ops::Range;
 use std::collections::HashMap;
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
 use map::{AreaMap, LayerMapKind, LayerAddress};
-use ocl::{Context, EventList, Buffer};
+use ocl::{Context, EventList, Buffer, RwVec, FutureReader, FutureWriter};
 use cortex::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList, /*ExecutionGraph*/};
 use ::{ExternalPathway, ExternalPathwayFrame};
@@ -28,138 +28,67 @@ use tract_terminal::{SliceBufferTarget, SliceBufferSource};
 /// Specifies whether or not the frame buffer for a source exists within the
 /// thalamic tract or an external source itself.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 enum TractAreaBufferKind {
     Ocl(Buffer<u8>),
-    Vec,
+    RwVec(RwVec<u8>),
+    Vec(Vec<u8>),
 }
 
 
 #[derive(Debug)]
 struct TractArea {
     src_lyr_addr: LayerAddress,
-    range: Range<usize>,
+    // range: Range<usize>,
     events: EventList,
     dims: TractDims,
     kind: TractAreaBufferKind,
 }
 
 impl TractArea {
-    fn new(src_lyr_addr: LayerAddress, range: Range<usize>,
-            dims: TractDims, kind: TractAreaBufferKind) -> TractArea 
+    fn new<D>(src_lyr_addr: LayerAddress, dims: D, kind: TractAreaBufferKind) -> TractArea
+            where D: Into<TractDims>
     {
         // println!("###### TractArea::new(): Adding area with: range: {:?}, dims: {:?}", &range, &dims);
-        assert!(range.len() == dims.to_len());
+        // assert!(range.len() == dims.to_len());
         TractArea {
             src_lyr_addr: src_lyr_addr,
-            range: range,
+            // range: range,
             events: EventList::new(),
-            dims: dims,
+            dims: dims.into(),
             kind: kind,
         }
     }
 
-    fn set_ocl_buffer(&mut self, buf: Buffer<u8>) {
-        self.kind = TractAreaBufferKind::Ocl(buf);
+    fn rw_vec(&self) -> Option<&RwVec<u8>> {
+        match self.kind {
+            TractAreaBufferKind::RwVec(ref rv) => Some(rv),
+            _ => None,
+        }
     }
 
-    fn range(&self) -> &Range<usize> { &self.range }
+    // fn range(&self) -> &Range<usize> { &self.range }
     fn dims(&self) -> &TractDims { &self.dims }
     fn events(&self) -> &EventList { &self.events }
     fn events_mut(&mut self) -> &mut EventList { &mut self.events }
     fn kind(&self) -> &TractAreaBufferKind { &self.kind }
+
 }
 
 
-
-struct TractAreaCache {
-    tract_areas: Vec<TractArea>,
-    index: HashMap<LayerAddress, usize>,
-}
-
-impl TractAreaCache {
-    fn new() -> TractAreaCache {
-        TractAreaCache {
-            tract_areas: Vec::with_capacity(32),
-            index: HashMap::with_capacity(48),
-        }
-    }
-
-    fn insert(&mut self, src_lyr_addr: LayerAddress, tract_area: TractArea) {
-        self.tract_areas.push(tract_area);
-
-        self.index.insert(src_lyr_addr.clone(), (self.tract_areas.len() - 1))
-            .map(|_| panic!("TractAreaCache::insert(): Multiple i/o layers using the same layer \
-                tags and id found. I/O layers with the same tags must have unique ids. \
-                (layer address: {:?})", src_lyr_addr));
-    }
-
-    // [NOTE]: Must be `&mut self` because searching saves cache info.
-    fn get(&mut self, key: &LayerAddress) -> Result<&TractArea, CmnError> {
-        match self.area_search(key) {
-            Ok(idx) => self.tract_areas.get(idx).ok_or(CmnError::new(format!("Index '{}' not found for \
-                '{:?}'.", idx, key))),
-            Err(err) => Err(err),
-        }
-    }
-
-    fn get_mut(&mut self, key: &LayerAddress) -> Result<&mut TractArea, CmnError> {
-        match self.area_search(key) {
-            Ok(idx) => self.tract_areas.get_mut(idx).ok_or(CmnError::new(format!("Index '{}' not found for \
-                '{:?}'.", idx, key))),
-            Err(err) => {
-                Err(err)
-            },
-        }
-    }
-
-    // [NOTE]: Must be `&mut self` because searching saves cache info.
-    fn area_search(&mut self, key: &LayerAddress) -> Result<usize, CmnError> {
-        // println!("TractAreaCache::area_search(): Searching for area: {}, tags: {:?}. ALL: {:?}",
-        //     src_area_name, layer_tags, self.tract_areas);
-        let area_id = self.index.get(key).map(|&idx| idx);
-        // println!("   area_id: {:?}", area_id);
-
-        match area_id {
-            Some(idx) => return Ok(idx),
-            None => {
-                let matching_areas: Vec<usize> = self.tract_areas.iter().enumerate()
-                    .filter(|&(_, ta)| ta.src_lyr_addr == *key)
-                    .map(|(i, _)| i)
-                    .collect();
-
-                match matching_areas.len() {
-                    0 => return Err(CmnError::new(format!("No tract areas found with \
-                        layer address: '{:?}'.", key))),
-                    1 => {
-                        self.index.insert(key.clone(), matching_areas[0]);
-                        return Ok(matching_areas[0]);
-                    },
-                    _ => Err(CmnError::new(format!("Multiple tract areas found with \
-                        layer address: {:?}.", key))),
-                }
-            }
-        }
-    }
-}
-
-
-
-// THALAMICTRACT: A buffer for I/O between areas. Effectively analogous to the internal capsule.
+// A buffer for I/O between areas. Effectively analogous to the internal capsule.
 pub struct ThalamicTract {
+    tract_areas: MapStore<LayerAddress, TractArea>,
     vec_buffer: Vec<u8>,
-    tract_areas: TractAreaCache,
     ttl_len: usize,
 }
 
 impl ThalamicTract {
     fn new() -> ThalamicTract {
         let vec_buffer = Vec::with_capacity(0);
-        let tract_areas = TractAreaCache::new();
 
         ThalamicTract {
+            tract_areas: MapStore::with_capacity(32),
             vec_buffer: vec_buffer,
-            tract_areas: tract_areas,
             ttl_len: 0,
         }
     }
@@ -167,13 +96,11 @@ impl ThalamicTract {
     fn add_area(&mut self, src_lyr_addr: LayerAddress, layer_dims: CorticalDims) {
         // println!("###### ThalamicTract::new(): Adding tract for area: {}, tags: {}, layer_dims: {:?}",
         //     src_area_name, layer_tags, layer_dims);
-        let tract_dims: TractDims = layer_dims.into();
-        let len = tract_dims.to_len();
-        let new_area = TractArea::new(src_lyr_addr.clone(),
-            self.ttl_len..(self.ttl_len + len), tract_dims, TractAreaBufferKind::Vec);
-
+        self.ttl_len += layer_dims.to_len();
+        let new_area = TractArea::new(src_lyr_addr.clone(), layer_dims, 
+            TractAreaBufferKind::RwVec(RwVec::from(vec![0; layer_dims.to_len()])));
         self.tract_areas.insert(src_lyr_addr, new_area);
-        self.ttl_len += len;
+        
     }
 
     fn init(mut self) -> ThalamicTract {
@@ -182,57 +109,44 @@ impl ThalamicTract {
         self
     }
 
-    fn frame<'t>(&'t mut self, key: &LayerAddress)
-            -> Result<(&EventList, TractFrame<'t>), CmnError>
-    {
-        let ta = try!(self.tract_areas.get(key));
-        let tract = TractFrame::new(&self.vec_buffer[ta.range().clone()], ta.dims());
-        let events = ta.events();
-
-        // let tract = match *ta.kind() {
-        //     TractAreaBufferKind::Vec => TractFrame::new(&self.vec_buffer[ta.range().clone()], ta.dims()),
-        //     TractAreaBufferKind::Ocl(buf) => TractFrame::new(&self.vec_buffer[ta.range().clone()], ta.dims()),
-        // };
-
-        Ok((events, tract))
+    pub fn index_of(&self, layer_addr: &LayerAddress) -> Option<usize> {
+        self.tract_areas.index_of(layer_addr)
     }
 
-    fn frame_mut<'t>(&'t mut self, key: &LayerAddress)
-            -> Result<(TractFrameMut<'t>, &mut EventList), CmnError>
-    {
-        let ta = try!(self.tract_areas.get_mut(key));
-        let range = ta.range().clone();
-        let tract = TractFrameMut::new(&mut self.vec_buffer[range], ta.dims());
-        let events = ta.events_mut();
-
-        Ok((tract, events))
+    pub fn read<'t>(&'t self, idx: usize) -> CmnResult<FutureReader<u8>> {
+        let ta = self.tract_areas.by_index(idx).unwrap();
+        ta.rw_vec().ok_or(CmnError::from("ThalamicTract::read")).map(|rv| rv.clone().request_read())
     }
 
-    fn terminal_source<'t>(&'t mut self, key: &LayerAddress)
-            -> CmnResult<(SliceBufferSource<'t>)>
-    {
-        let ta = try!(self.tract_areas.get(key));
-        let range = ta.range().clone();
-        let dims = ta.dims().clone();
-        let events = ta.events();
-        let terminal = SliceBufferSource::new(&self.vec_buffer[range], dims, Some(events));
-
-        terminal
+    pub fn write<'t>(&'t self, idx: usize) -> CmnResult<FutureWriter<u8>> {
+        let ta = self.tract_areas.by_index(idx).unwrap();
+        ta.rw_vec().ok_or(CmnError::from("ThalamicTract::write")).map(|rv| rv.clone().request_write())
     }
 
-    fn terminal_target<'t>(&'t mut self, key: &LayerAddress)
-            -> CmnResult<(SliceBufferTarget<'t>)>
-    {
-        let ta = try!(self.tract_areas.get_mut(key));
-        let range = ta.range().clone();
-        let dims = ta.dims().clone();
-        let events = ta.events_mut();
-        let terminal = SliceBufferTarget::new(&mut self.vec_buffer[range], dims, Some(events), false);
+    // // pub fn terminal_source<'t>(&'t mut self, key: &LayerAddress)
+    // pub fn terminal_source<'t>(&'t mut self, idx: usize)
+    //         -> CmnResult<(SliceBufferSource<'t>)>
+    // {
+    //     // let ta = self.tract_areas.by_key(key).unwrap();
+    //     let ta = self.tract_areas.by_index(idx).unwrap();
+    //     let range = ta.range().clone();
+    //     let dims = ta.dims().clone();
+    //     let events = ta.events();
+    //     SliceBufferSource::new(&self.vec_buffer[range], dims, Some(events))
+    // }
 
-        terminal
-    }
+    // // pub fn terminal_target<'t>(&'t mut self, key: &LayerAddress)
+    // pub fn terminal_target<'t>(&'t mut self, idx: usize)
+    //         -> CmnResult<(SliceBufferTarget<'t>)>
+    // {
+    //     // let ta = self.tract_areas.by_key_mut(key).unwrap();
+    //     let ta = self.tract_areas.by_index_mut(idx).unwrap();
+    //     let range = ta.range().clone();
+    //     let dims = ta.dims().clone();
+    //     let events = ta.events_mut();
+    //     SliceBufferTarget::new(&mut self.vec_buffer[range], dims, Some(events), false)
+    // }
 }
-
 
 
 // THALAMUS:
@@ -303,7 +217,6 @@ impl Thalamus {
                     tract.add_area(LayerAddress::new(area_s.area_id(), layer.layer_id()),
                         layer_dims);
                 }
-
                 assert!(output_layers.len() > 0, "Areas must have at least one output layer.");
             }
 
@@ -322,51 +235,15 @@ impl Thalamus {
     pub fn cycle_external_pathways(&mut self, _: &mut CorticalAreas) {
         for &mut (ref mut src_ext_path, ref layer_addr_list) in self.external_pathways.values_mut().iter_mut() {
             src_ext_path.cycle_next();
-
             for layer_addr in layer_addr_list.iter() {
-                let (tract_frame, events) = self.tract.frame_mut(layer_addr)
+                // TODO: ExternalPathway needs to store
+                let tract_area_idx = self.tract.index_of(layer_addr).unwrap();
+                let future_write = self.tract.write(tract_area_idx)
                     .expect("Thalamus::cycle_external_pathways()");
 
-                src_ext_path.write_into(layer_addr, tract_frame, events)
+                src_ext_path.write_into(layer_addr, future_write)
             }
         }
-    }
-
-    pub fn tract_frame<'t>(&'t mut self, key: &LayerAddress)
-            -> Result<(&EventList, TractFrame<'t>), CmnError>
-    {
-        self.tract.frame(key)
-    }
-
-    pub fn tract_frame_mut<'t>(&'t mut self, key: &LayerAddress)
-            -> Result<(TractFrameMut<'t>, &mut EventList), CmnError>
-    {
-        self.tract.frame_mut(key)
-    }
-
-    pub fn tract_terminal_target<'t>(&'t mut self, key: &LayerAddress)
-            -> CmnResult<(SliceBufferTarget<'t>)>
-    {
-        self.tract.terminal_target(key)
-    }
-
-    pub fn tract_terminal_source<'t>(&'t mut self, key: &LayerAddress)
-            -> CmnResult<(SliceBufferSource<'t>)>
-    {
-        self.tract.terminal_source(key)
-    }
-
-    // pub fn area_maps(&self) -> &MapStore<String, AreaMap> {
-    pub fn area_maps(&self) -> &[AreaMap] {
-         &self.area_maps.values()
-    }
-
-    pub fn area_map(&self, area_id: usize) -> Option<&AreaMap> {
-        self.area_maps.by_index(area_id)
-    }
-
-    pub fn area_map_by_name(&self, area_name: &str) -> Option<&AreaMap> {
-        self.area_maps.by_key(area_name)
     }
 
     pub fn ext_pathway_idx(&self, pathway_name: &String) -> CmnResult<usize> {
@@ -381,7 +258,6 @@ impl Thalamus {
         let pathway = try!(self.external_pathways.by_index_mut(pathway_idx).ok_or(
             CmnError::new(format!("Thalamus::ext_pathway_frame(): Invalid pathway index: '{}'.",
             pathway_idx))));
-
         Ok(&mut pathway.0)
     }
 
@@ -389,6 +265,10 @@ impl Thalamus {
         let pathway = try!(self.ext_pathway(pathway_idx));
         pathway.ext_frame_mut()
     }
+
+    pub fn tract(&self) -> &ThalamicTract { &self.tract }
+    pub fn tract_mut(&mut self) -> &mut ThalamicTract { &mut self.tract }
+    pub fn area_maps(&self) -> &MapStore<String, AreaMap> { &self.area_maps }
 }
 
 

@@ -1,9 +1,9 @@
 use std::ops::Range;
-use ocl::{flags, Kernel, ProQue, SpatialDims, Buffer, Event, Queue};
+use ocl::{flags, Kernel, ProQue, SpatialDims, Buffer, Event, Queue, FutureReader};
 use cmn::{CmnError, CmnResult, CorticalDims};
 use map::{ExecutionGraph, ExecutionCommand, CorticalBuffer,
     ThalamicTract};
-use tract_terminal::{SliceBufferSource, OclBufferTarget};
+// use tract_terminal::{SliceBufferSource, OclBufferTarget};
 
 pub struct SensoryFilter {
     filter_idx: usize,
@@ -95,10 +95,11 @@ impl SensoryFilter {
             "SensoryFilter::set_exe_order_write: Write command not created for this filter."))?)?)
     }
 
-    pub fn write(&self, source: SliceBufferSource, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    // pub fn write(&self, source: SliceBufferSource, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn write(&self, source: FutureReader<u8>, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let cmd_idx = self.exe_cmd_idx_write.ok_or(CmnError::new(
             "SensoryFilter::write: Write command not created for this filter."))?;
-        let range = 0..self.input_buffer.len() as u32;
+        // let range = 0..self.input_buffer.len() as u32;
 
         // let wait_list = exe_graph.get_req_events(cmd_idx)?;
 
@@ -106,10 +107,18 @@ impl SensoryFilter {
         //     .copy_from_slice_buffer(source)?
         //     .event().unwrap_or(Event::empty())
         // )
-        let event = OclBufferTarget::new(&self.input_buffer, range, source.dims().clone(), None, false)?
-            .copy_from_slice_buffer_v2(source, Some(exe_graph.get_req_events(cmd_idx)?))?;
+        // let event = OclBufferTarget::new(&self.input_buffer, range, source.dims().clone(), None, false)?
+        //     .copy_from_slice_buffer_v2(source, Some(exe_graph.get_req_events(cmd_idx)?))?;
 
-        exe_graph.set_cmd_event(cmd_idx, Some(event))?;
+
+        let mut ev = Event::empty();
+
+        self.input_buffer.write(source)
+            .ewait(exe_graph.get_req_events(cmd_idx)?)
+            .enew(&mut ev)
+            .enq()?;
+
+        exe_graph.set_cmd_event(cmd_idx, Some(ev))?;
         Ok(())
     }
 

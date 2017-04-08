@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use find_folder::Search;
 use cmn::{self, CorticalDims, CmnResult, CmnError};
-use ocl::{EventList};
+use ocl::{FutureWriter};
 use map::{AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
@@ -208,13 +208,16 @@ impl ExternalPathway {
     ///
     /// **Should** return promptly... data should already be staged (* TODO: Process
     /// in a separate thread).
-    pub fn write_into(&mut self, addr: &LayerAddress, mut frame: TractFrameMut, _: &mut EventList) {
+    // pub fn write_into(&mut self, addr: &LayerAddress, mut frame: TractFrameMut, _: &mut EventList) {
+    pub fn write_into(&mut self, addr: &LayerAddress, future_write: FutureWriter<u8>) {
         let dims = self.layers[addr].dims().expect(&format!("Dimensions don't exist for \
             external input area: \"{}\", addr: '{:?}' ", self.area_name, addr));
 
-        debug_assert!(dims == frame.dims(), "Dimensional mismatch for external input \
-            area: \"{}\", addr: '{:?}', layer dims: {:?}, tract dims: {:?}", self.area_name, addr,
-            dims, frame.dims());
+        // debug_assert!(dims == frame.dims(), "Dimensional mismatch for external input \
+        //     area: \"{}\", addr: '{:?}', layer dims: {:?}, tract dims: {:?}", self.area_name, addr,
+        //     dims, frame.dims());
+        let mut data = future_write.wait().unwrap();
+        let mut frame = TractFrameMut::new(data.as_mut_slice(), dims);
 
         match self.encoder {
             ExternalPathwayEncoder::Other(ref mut es) => {

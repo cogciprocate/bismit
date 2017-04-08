@@ -5,28 +5,54 @@
 use std::ops::Range;
 use ocl::core::{ClWaitListPtr, ClNullEventPtr};
 use ocl::builders::{ClWaitListPtrEnum, ClNullEventPtrEnum};
-use ocl::{Buffer, EventList, Event, Queue};
+use ocl::{Buffer, EventList, Event, Queue, FutureReader, FutureWriter};
 use ::{TractDims, Result as CmnResult};
 // use map::ExecutionGraph;
 
 
-trait CopyFrom {
+trait CopyFrom {}
 
+
+
+pub enum SourceKind {
+    Reader(FutureReader<u8>),
+}
+
+pub struct TerminalSource {
+    kind: SourceKind,
 }
 
 
-// pub struct Multitract {
 
-// }
+pub enum TargetKind {
+    Writer(FutureWriter<u8>),
+}
+
+pub struct TerminalTarget {
+    kind: TargetKind,
+}
+
+// impl TerminalTarget {
 
 
-// pub struct TractTerminal {
+//     fn read_from_source(&mut self, src: TerminalSource) -> CmnResult<Event> {
+//         let mut ev = Event::empty();
 
-// }
+//         match self.kind {
+//             TargetKind::Writer(writer) => {
+//                 self.buf.write(src)
+//                 .offset(self.offset)
+//                 .ewait_opt(wait_list)
+//                 // .enew_opt(ev.as_mut())
+//                 // .enew_opt(if self.events.is_some() || self.event.is_some()
+//                 //     { Some(&mut ev) } else { None })
+//                 .enew(&mut ev)
+//                 .enq()?;   
+//             }
+//         }
 
-
-// pub struct TractDestination {
-
+//         Ok(ev)
+//     }
 // }
 
 
@@ -287,9 +313,8 @@ impl<'b> SliceBufferTarget<'b> {
         let slice = unsafe { ::std::slice::from_raw_parts_mut(self.slice.as_mut_ptr(), 
             self.slice.len()) };
 
-        unsafe {
+        {
             let mut cmd = source.buf.cmd().read(slice)
-                .block(false)
                 .offset(source.offset())
                 .ewait_opt(wait_list)
                 // .enew(&mut ev);
@@ -301,7 +326,7 @@ impl<'b> SliceBufferTarget<'b> {
             }
 
             cmd.enq()?;
-        };
+        }
 
         Ok(ev)
     }

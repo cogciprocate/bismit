@@ -19,7 +19,7 @@ pub struct Cortex {
 
 impl Cortex {
     pub fn new(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList,
-                    ca_settings: Option<CorticalAreaSettings>) -> Cortex {
+                ca_settings: Option<CorticalAreaSettings>) -> Cortex {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
         let platform = Platform::new(ocl::core::default_platform().unwrap());
@@ -37,10 +37,10 @@ impl Cortex {
 
         let area_maps = thal.area_maps().to_owned();
 
-        for area_map in area_maps.into_iter().filter(|area_map|
+        for area_map in area_maps.values().into_iter().filter(|area_map|
                 area_map.lm_kind_tmp() != &LayerMapKind::Subcortical)
         {
-            areas.insert(area_map.area_name(), Box::new(CorticalArea::new(area_map,
+            areas.insert(area_map.area_name(), Box::new(CorticalArea::new(area_map.clone(),
                     device_idx, &ocl_context, ca_settings.clone(), &mut thal).unwrap()));
             device_idx += 1;
         }
