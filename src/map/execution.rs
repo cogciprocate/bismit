@@ -10,7 +10,7 @@ use ocl::ffi::cl_event;
 use map::LayerAddress;
 use cmn::{util};
 
-const PRINT_DEBUG: bool = false;
+const PRINT_DEBUG: bool = true;
 
 type ExeGrResult<T> = Result<T, ExecutionGraphError>;
 
@@ -604,7 +604,7 @@ impl ExecutionGraph {
 
         // println!("\n########## Memory Block Reader/Writers: {:#?}\n", mem_block_rws);
 
-        if PRINT_DEBUG { println!("\n##### Preceding Writers and Following Readers:"); }
+        if PRINT_DEBUG { println!("\n##### Preceding Writers and Following Readers [order: cmd_idx]:"); }
         if PRINT_DEBUG { println!("#####"); }
 
         // [NOTE]: Only using `self.order` instead of `self.commands` for
