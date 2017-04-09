@@ -139,16 +139,16 @@ impl GlyphSequences {
 }
 
 impl ExternalPathwayTract for GlyphSequences {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: &LayerAddress) {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: LayerAddress) {
         let glyph_dims = self.buckets.glyph_dims();
         let (_, next_glyph_id) = self.cursor.get();
         let glyph: &[u8] = self.buckets.next_glyph(next_glyph_id);
 
-        if *addr == self.img_layer_addr {
+        if addr == self.img_layer_addr {
             assert!(&self.img_layer_dims == tract_frame.dims());
             super::encode_2d_image(glyph_dims, &self.img_layer_dims, self.scale,
                 glyph, tract_frame);
-        } else if *addr == self.val_layer_addr {
+        } else if addr == self.val_layer_addr {
             assert!(&self.val_layer_dims == tract_frame.dims());
             // * TODO: ENCODE THE HRZ BUSINESS
             // super::encode_2d_image(glyph_dims, &self.val_layer_dims, self.scale,

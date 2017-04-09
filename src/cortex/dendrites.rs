@@ -7,7 +7,7 @@ use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, Execution
 use cortex::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
-const DEBUG_KERN: bool = false;
+const PRINT_DEBUG: bool = false;
 
 pub struct Dendrites {
     layer_name: &'static str,
@@ -156,37 +156,24 @@ impl Dendrites {
         self.syns.set_exe_order(exe_graph)?;
 
         for &cmd_idx in self.exe_cmd_idxs.iter() {
-            println!("##### Ordering dendrite cmd_idx: {}", cmd_idx);
+            if PRINT_DEBUG { println!("##### Ordering dendrite cmd_idx: {}", cmd_idx); }
             exe_graph.order_next(cmd_idx)?;
         }
         Ok(())
     }
 
-    // pub fn cycle(&self, wait_events: Option<&ClWaitListPtr>) {
-    //     if DEBUG_KERN { println!("  Dens: Cycling syns..."); }
-    //     self.syns.cycle(wait_events);
-
-    //     for kern in self.kernels.iter() {
-    //         if DEBUG_KERN { println!("  Dens: Cycling kern_cycle..."); }
-
-    //         kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Dendrites::cycle");
-
-    //         if DEBUG_KERN { kern.default_queue().unwrap().finish().unwrap(); }
-    //     }
-    // }
-
     pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        if DEBUG_KERN { println!("  Dens: Cycling syns..."); }
+        if PRINT_DEBUG { println!("  Dens: Cycling syns..."); }
         self.syns.cycle(exe_graph)?;
 
         for (kern, &cmd_idx) in self.kernels.iter().zip(self.exe_cmd_idxs.iter()) {
-            if DEBUG_KERN { println!("  Dens: Cycling kern_cycle (exe_cmd_idx: [{}])...", cmd_idx); }
+            if PRINT_DEBUG { println!("  Dens: Cycling kern_cycle (exe_cmd_idx: [{}])...", cmd_idx); }
 
             let mut event = Event::empty();
             kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
 
-            if DEBUG_KERN { kern.default_queue().unwrap().finish().unwrap(); }
+            if PRINT_DEBUG { kern.default_queue().unwrap().finish().unwrap(); }
         }
 
         Ok(())

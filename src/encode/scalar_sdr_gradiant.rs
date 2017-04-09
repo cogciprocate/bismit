@@ -35,7 +35,7 @@ impl<T> ScalarSdrGradiant<T> where T: ScalarEncodable {
 
 impl<T> ExternalPathwayTract for ScalarSdrGradiant<T>
             where T: ScalarEncodable {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: &LayerAddress) {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerAddress) {
         self.writer.encode(self.next, tract_frame);
     }
 

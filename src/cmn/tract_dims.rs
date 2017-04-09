@@ -1,7 +1,7 @@
 use std::convert::From;
 use cmn::{ParaHexArray, CorticalDims};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TractDims {
     v_size: u32,
     u_size: u32,

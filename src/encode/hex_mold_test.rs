@@ -24,7 +24,7 @@ impl HexMoldTest {
 
 
 impl ExternalPathwayTract for HexMoldTest {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: &LayerAddress) {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerAddress) {
         // assert!((self.radius as u32 * 2) + 1 <= tract_frame.dims().v_size() &&
         //     (self.radius as u32 * 2) + 1 <= tract_frame.dims().v_size(),
         //     format!("Radius too big for it's britches (radius: {}, dims: {:?})",

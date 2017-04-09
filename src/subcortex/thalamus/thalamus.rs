@@ -15,6 +15,7 @@
 #![allow(dead_code, unused_imports)]
 
 use std::ops::Range;
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
 use map::{AreaMap, LayerMapKind, LayerAddress};
@@ -109,18 +110,18 @@ impl ThalamicTract {
         self
     }
 
-    pub fn index_of(&self, layer_addr: &LayerAddress) -> Option<usize> {
-        self.tract_areas.index_of(layer_addr)
+    pub fn index_of<A>(&self, layer_addr: A) -> Option<usize> where A: Borrow<LayerAddress> {
+        self.tract_areas.index_of(layer_addr.borrow())
     }
 
     pub fn read<'t>(&'t self, idx: usize) -> CmnResult<FutureReader<u8>> {
         let ta = self.tract_areas.by_index(idx).unwrap();
-        ta.rw_vec().ok_or(CmnError::from("ThalamicTract::read")).map(|rv| rv.clone().request_read())
+        ta.rw_vec().ok_or(CmnError::from("ThalamicTract::read")).map(|rv| rv.clone().read())
     }
 
     pub fn write<'t>(&'t self, idx: usize) -> CmnResult<FutureWriter<u8>> {
         let ta = self.tract_areas.by_index(idx).unwrap();
-        ta.rw_vec().ok_or(CmnError::from("ThalamicTract::write")).map(|rv| rv.clone().request_write())
+        ta.rw_vec().ok_or(CmnError::from("ThalamicTract::write")).map(|rv| rv.clone().write())
     }
 
     // // pub fn terminal_source<'t>(&'t mut self, key: &LayerAddress)
@@ -235,9 +236,9 @@ impl Thalamus {
     pub fn cycle_external_pathways(&mut self, _: &mut CorticalAreas) {
         for &mut (ref mut src_ext_path, ref layer_addr_list) in self.external_pathways.values_mut().iter_mut() {
             src_ext_path.cycle_next();
-            for layer_addr in layer_addr_list.iter() {
+            for &layer_addr in layer_addr_list.iter() {
                 // TODO: ExternalPathway needs to store
-                let tract_area_idx = self.tract.index_of(layer_addr).unwrap();
+                let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
                 let future_write = self.tract.write(tract_area_idx)
                     .expect("Thalamus::cycle_external_pathways()");
 
@@ -261,10 +262,51 @@ impl Thalamus {
         Ok(&mut pathway.0)
     }
 
-    pub fn ext_pathway_frame(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
-        let pathway = try!(self.ext_pathway(pathway_idx));
-        pathway.ext_frame_mut()
-    }
+    // pub fn ext_pathway_frame(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
+    //     let pathway = try!(self.ext_pathway(pathway_idx));
+    //     pathway.ext_frame_mut()
+    // }
+
+    // // [NOTE]: Incoming array values beyond the length of destination slice will
+    // // be silently ignored.
+    // fn intake_sensory_frame(&mut self, frame: SensoryFrame) -> CmnResult<()> {
+    //     // // DEBUG:
+    //     // println!("Intaking sensory frames...");
+
+    //     match frame {
+    //         SensoryFrame::F32Array16(arr) => {
+    //             // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
+    //             //     pathway_idx, arr);
+
+    //             // let pathway = match try!(self.cortex.thal_mut().ext_pathway_frame(pathway_idx)) {
+    //             let pathway = match self.cortex.thal_mut().ext_pathway(pathway_idx)? {
+    //                 ExternalPathwayFrame::F32Slice(s) => s,
+    //                 f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
+    //                     ExternalPathwayFrame variant: {:?}", f)),
+    //             };
+
+    //             for (i, dst) in pathway.iter_mut().enumerate() {
+    //                 *dst = arr[i];
+    //             }
+    //         },
+    //         SensoryFrame::PathwayConfig(pc) => match pc {
+    //             PathwayConfig::EncoderRanges(ranges) => {
+    //                 // match try!(self.cortex.thal_mut().ext_pathway(pathway_idx)).encoder() {
+    //                 //     &mut ExternalPathwayEncoder::VectorEncoder(ref mut v) => {
+    //                 //         try!(v.set_ranges(&ranges.lock().unwrap()[..]));
+    //                 //     }
+    //                 //     _ => unimplemented!(),
+    //                 // } 
+
+    //                 self.cortex.thal_mut().ext_pathway(pathway_idx)?
+    //                     .set_encoder_ranges(ranges);
+    //             }
+    //         },
+    //         SensoryFrame::Tract(_) => unimplemented!(),
+    //     }
+
+    //     Ok(())
+    // }
 
     pub fn tract(&self) -> &ThalamicTract { &self.tract }
     pub fn tract_mut(&mut self) -> &mut ThalamicTract { &mut self.tract }

@@ -77,7 +77,7 @@ pub use self::tests::{SynCoords, SynapsesTest, syn_idx};
 const DEBUG_NEW: bool = true;
 const DEBUG_GROW: bool = true;
 const DEBUG_REGROW_DETAIL: bool = false;
-const DEBUG_KERN: bool = false;
+const PRINT_DEBUG: bool = false;
 
 #[derive(Clone, Debug)]
 pub struct TuftDims {
@@ -290,34 +290,23 @@ impl Synapses {
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         for &cmd_idx in self.exe_cmd_idxs.iter() {
-            println!("##### Ordering synapse cmd_idx: {}", cmd_idx);
+            if PRINT_DEBUG { println!("##### Ordering synapse cmd_idx: {}", cmd_idx); }
             exe_graph.order_next(cmd_idx)?;
         }
         Ok(())
     }
 
-    // #[inline]
-    // pub fn cycle(&self, wait_events: Option<&ClWaitListPtr>) {
-    //     for kern in self.kernels.iter() {
-    //         if DEBUG_KERN { printlnc!(yellow: "Syns: Enqueuing kernel: '{}'...", kern.name()); }
-
-    //         kern.cmd().ewait_opt(wait_events).enq().expect("bismit::Synapses::cycle");
-
-    //         if DEBUG_KERN { kern.default_queue().unwrap().finish().unwrap(); }
-    //     }
-    // }
-
     pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         // for kern in self.kernels.iter() {
         for (kern, &cmd_idx) in self.kernels.iter().zip(self.exe_cmd_idxs.iter()) {
-            if DEBUG_KERN { printlnc!(white: "    Syns: Enqueuing kernel: '{}' \
+            if PRINT_DEBUG { printlnc!(white: "    Syns: Enqueuing kernel: '{}' \
                 (exe_cmd_idx: [{}])...", kern.name(), cmd_idx); }
 
             let mut event = Event::empty();
             kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
 
-            if DEBUG_KERN { kern.default_queue().unwrap().finish().unwrap(); }
+            if PRINT_DEBUG { kern.default_queue().unwrap().finish().unwrap(); }
         }
 
         Ok(())

@@ -17,13 +17,14 @@ use time::{self, Timespec, Duration};
 use cmn::{CmnResult};
 use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings};
 use ::map::SliceTractMap;
-use ::{ExternalPathwayEncoder, ExternalPathwayFrame};
+// use ::{ExternalPathwayEncoder, ExternalPathwayFrame};
 
 
 
 #[derive(Clone, Debug)]
 pub enum PathwayConfig {
-    EncoderRanges(Arc<Mutex<Vec<(f32, f32)>>>),
+    // EncoderRanges(Arc<Mutex<Vec<(f32, f32)>>>),
+    EncoderRanges(Vec<(f32, f32)>),
 }
 
 
@@ -360,28 +361,33 @@ impl Flywheel {
                 match sen_rx.try_recv() {
                     Ok(s) => {
                         match s {
-                            SensoryFrame::F32Array16(arr) => {
+                            SensoryFrame::F32Array16(_arr) => {
                                 // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
                                 //     pathway_idx, arr);
 
-                                let pathway = match try!(self.cortex.thal_mut().ext_pathway_frame(pathway_idx)) {
-                                    ExternalPathwayFrame::F32Slice(s) => s,
-                                    f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
-                                        ExternalPathwayFrame variant: {:?}", f)),
-                                };
+                                // // let pathway = match try!(self.cortex.thal_mut().ext_pathway_frame(pathway_idx)) {
+                                // let pathway = match self.cortex.thal_mut().ext_pathway(pathway_idx)? {
+                                //     ExternalPathwayFrame::F32Slice(s) => s,
+                                //     f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
+                                //         ExternalPathwayFrame variant: {:?}", f)),
+                                // };
 
-                                for (i, dst) in pathway.iter_mut().enumerate() {
-                                    *dst = arr[i];
-                                }
+                                // for (i, dst) in pathway.iter_mut().enumerate() {
+                                //     *dst = arr[i];
+                                // }
+                                unimplemented!();
                             },
                             SensoryFrame::PathwayConfig(pc) => match pc {
-                                PathwayConfig::EncoderRanges(r_am) => {
-                                    match try!(self.cortex.thal_mut().ext_pathway(pathway_idx)).encoder() {
-                                        &mut ExternalPathwayEncoder::VectorEncoder(ref mut v) => {
-                                            try!(v.set_ranges(&r_am.lock().unwrap()[..]));
-                                        }
-                                        _ => unimplemented!(),
-                                    }
+                                PathwayConfig::EncoderRanges(ranges) => {
+                                    // match try!(self.cortex.thal_mut().ext_pathway(pathway_idx)).encoder() {
+                                    //     &mut ExternalPathwayEncoder::VectorEncoder(ref mut v) => {
+                                    //         try!(v.set_ranges(&ranges.lock().unwrap()[..]));
+                                    //     }
+                                    //     _ => unimplemented!(),
+                                    // } 
+
+                                    self.cortex.thal_mut().ext_pathway(pathway_idx)?
+                                        .set_encoder_ranges(ranges);
                                 }
                             },
                             SensoryFrame::Tract(_) => unimplemented!(),

@@ -74,8 +74,8 @@ impl VectorEncoder {
 }
 
 impl ExternalPathwayTract for VectorEncoder {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: &LayerAddress) {
-        let l_idx = self.layer_addrs.iter().position(|t| t == addr)
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: LayerAddress) {
+        let l_idx = self.layer_addrs.iter().position(|&t| t == addr)
             .expect(&format!("VectorEncoder::write_into(): No layers with address: {:?}", addr));
 
         // // [DEBUG]:

@@ -35,7 +35,7 @@ impl<T> ScalarSequence<T> where T: ScalarEncodable {
 
 impl<T> ExternalPathwayTract for ScalarSequence<T>
             where T: ScalarEncodable {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: &LayerAddress) {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerAddress) {
         // super::encode_scalar(self.next, self.range, tract_frame);
         self.writer.encode(self.next, tract_frame);
 

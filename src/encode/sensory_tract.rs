@@ -28,7 +28,7 @@ impl SensoryTract {
 }
 
 impl ExternalPathwayTract for SensoryTract {
-    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: &LayerAddress) {
+    fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerAddress) {
         assert!(tract_frame.dims() == &self.dims);
         tract_frame.frame_mut().clone_from_slice(&self.buf[..]);
         // [0, 0, 0]

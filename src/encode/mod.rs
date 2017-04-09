@@ -35,9 +35,9 @@ const SQRT_3: f32 = 1.73205080756f32;
 
 
 pub trait ScalarEncodable: Num + NumCast + PartialOrd + Debug + Display + Clone +
-    AddAssign + Copy + Default {}
+    AddAssign + Copy + Default + Send {}
 impl<T> ScalarEncodable for T where T: Num + NumCast + PartialOrd + Debug + Display + Clone +
-    AddAssign + Copy + Default {}
+    AddAssign + Copy + Default + Send {}
 
 
 
