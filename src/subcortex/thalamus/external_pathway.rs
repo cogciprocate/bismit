@@ -97,6 +97,23 @@ impl ExternalPathwayEncoder {
             _ => unimplemented!(),
         } 
     }
+
+    // /// Returns a tract frame of an external source buffer, if available.
+    // pub fn ext_frame_mut(&mut self) -> CmnResult<ExternalPathwayFrame> {
+    //     match self.encoder {
+    //         ExternalPathwayEncoder::SensoryTract(ref mut es) => {
+    //             Ok(es.ext_frame_mut())
+    //         },
+    //         ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
+    //             Ok(es.ext_frame_mut())
+    //         },
+    //         ExternalPathwayEncoder::OtherUnspecified => {
+    //             panic!("ExternalPathway::write_into: Custom pathway not specified.")
+    //         },
+    //         _ => Err(CmnError::new(format!("ExternalPathway::ext_frame_Mut(): No tract available for the source \
+    //             kind: {:?}.", self.encoder))),
+    //     }
+    // }
 }
 
 
@@ -126,6 +143,7 @@ enum EncoderCmd {
     WriteInto {addr: LayerAddress, dims: TractDims, future_write: FutureWriter<u8> },
     Cycle,
     SetRanges(Vec<(f32, f32)>),
+    SetEncoder(ExternalPathwayEncoder),
     Exit,
 }
 
@@ -283,6 +301,7 @@ impl ExternalPathway {
                         encoder.write_into(addr, dims, future_write),
                     EncoderCmd::Cycle => encoder.cycle_next(),
                     EncoderCmd::SetRanges(ranges) => encoder.set_ranges(ranges),
+                    EncoderCmd::SetEncoder(e) => encoder = e,
                     EncoderCmd::Exit => break,
                 }
             }
@@ -298,84 +317,26 @@ impl ExternalPathway {
         })
     }
 
-    // // Specify a custom encoder tract. Input scheme must have been configured
-    // // as `InputScheme::Custom` in `AreaScheme`.
-    // pub fn specify_encoder(&mut self, tract: Box<ExternalPathwayTract>) -> CmnResult<()> {
-    //     match self.encoder {
-    //         ExternalPathwayEncoder::OtherUnspecified => (),
-    //         _ => return CmnError::err("ExternalPathway::specify_encoder(): Encoder already specified."),
-    //     }
-    //     self.encoder = ExternalPathwayEncoder::Other(tract);
-    //     Ok(())
-    // }
+    // Specify a custom encoder tract. Input scheme must have been configured
+    // as `InputScheme::Custom` in `AreaScheme`.
+    pub fn set_encoder(&self, tract: Box<ExternalPathwayTract>) {
+        // match self.encoder {
+        //     ExternalPathwayEncoder::OtherUnspecified => (),
+        //     _ => return CmnError::err("ExternalPathway::specify_encoder(): Encoder already specified."),
+        // }
+        // self.encoder = ExternalPathwayEncoder::Other(tract);
+        self.tx.send(EncoderCmd::SetEncoder(ExternalPathwayEncoder::Other(tract))).unwrap();
+    }
 
     /// Writes input data into a tract.
     // pub fn write_into(&mut self, addr: &LayerAddress, mut frame: TractFrameMut, _: &mut EventList) {
     pub fn write_into(&self, addr: LayerAddress, future_write: FutureWriter<u8>) {
         let dims = self.layers[&addr].dims().expect(&format!("Dimensions don't exist for \
             external input area: \"{}\", addr: '{:?}' ", self.area_name, addr)).into();
-
-        // debug_assert!(dims == frame.dims(), "Dimensional mismatch for external input \
-        //     area: \"{}\", addr: '{:?}', layer dims: {:?}, tract dims: {:?}", self.area_name, addr,
-        //     dims, frame.dims());
-        // let mut data = future_write.wait().unwrap();
-        // let mut frame = TractFrameMut::new(data.as_mut_slice(), dims);        
-
-        // match self.encoder {
-        //     ExternalPathwayEncoder::Other(ref mut es) => {
-        //         es.write_into(&mut frame, addr)
-        //     },
-        //     ExternalPathwayEncoder::GlyphSequences(ref mut es) => {
-        //         es.write_into(&mut frame, addr)
-        //     },
-        //     ExternalPathwayEncoder::SensoryTract(ref mut es) => {
-        //         es.write_into(&mut frame, addr)
-        //     },
-        //     ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
-        //         es.write_into(&mut frame, addr)
-        //     },
-        //     ExternalPathwayEncoder::OtherUnspecified => {
-        //         panic!("ExternalPathway::write_into: Custom pathway not specified.")
-        //     },
-        //     _ => (),
-        // }
         self.tx.send(EncoderCmd::WriteInto { addr, dims, future_write }).unwrap();
-    }
-
-    // /// Returns a tract frame of an external source buffer, if available.
-    // pub fn ext_frame_mut(&mut self) -> CmnResult<ExternalPathwayFrame> {
-    //     match self.encoder {
-    //         ExternalPathwayEncoder::SensoryTract(ref mut es) => {
-    //             Ok(es.ext_frame_mut())
-    //         },
-    //         ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
-    //             Ok(es.ext_frame_mut())
-    //         },
-    //         ExternalPathwayEncoder::OtherUnspecified => {
-    //             panic!("ExternalPathway::write_into: Custom pathway not specified.")
-    //         },
-    //         _ => Err(CmnError::new(format!("ExternalPathway::ext_frame_Mut(): No tract available for the source \
-    //             kind: {:?}.", self.encoder))),
-    //     }
-    // }
+    }    
 
     pub fn cycle_next(&self) {
-        // match self.encoder {
-        //     ExternalPathwayEncoder::Other(ref mut es) => {
-        //         es.cycle_next()
-        //     },
-        //     ExternalPathwayEncoder::GlyphSequences(ref mut es) => {
-        //         es.cycle_next()
-        //     },
-        //     ExternalPathwayEncoder::SensoryTract(ref mut es) => {
-        //         es.cycle_next()
-        //     },
-        //     ExternalPathwayEncoder::OtherUnspecified => {
-        //         panic!("ExternalPathway::write_into: Custom pathway not specified.")
-        //     },
-        //     _ => (),
-        // }
-
         self.tx.send(EncoderCmd::Cycle).unwrap();
     }
 
@@ -383,7 +344,7 @@ impl ExternalPathway {
         self.tx.send(EncoderCmd::SetRanges(ranges)).unwrap();
     }
 
-    pub fn layers(&mut self) -> &mut HashMap<LayerAddress, ExternalPathwayLayer> {
+    pub fn layers_mut(&mut self) -> &mut HashMap<LayerAddress, ExternalPathwayLayer> {
         &mut self.layers
     }
 
