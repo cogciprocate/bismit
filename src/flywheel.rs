@@ -14,10 +14,10 @@ use std::ops::Range;
 use std::sync::mpsc::{Sender, SyncSender, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 use time::{self, Timespec, Duration};
+// use ocl::Buffer;
 use cmn::{CmnResult};
 use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings};
-use ::map::SliceTractMap;
-// use ::{ExternalPathwayEncoder, ExternalPathwayFrame};
+use ::map::{SliceTractMap, /*LayerAddress*/};
 
 
 
@@ -72,6 +72,32 @@ pub enum Command {
     Exit,
 }
 
+// /// A request and response specifier for a synapse buffer.
+// #[derive(Clone, Debug)]
+// pub enum SynapseBuffer {
+//     States(Option<Buffer<u8>>),
+//     Strengths(Option<Buffer<u8>>),
+//     SliceIds(Option<Buffer<u8>>),
+//     OffsetsV(Option<Buffer<u8>>),
+//     OffsetsU(Option<Buffer<u8>>),
+//     FlagSets(Option<Buffer<u8>>),
+// }
+
+// /// A request and response specifier for a dendrite buffer.
+// #[derive(Clone, Debug)]
+// pub enum DendriteBuffer {
+//     States(Option<Buffer<u8>>),
+//     StatesRaw(Option<Buffer<u8>>),
+//     Thresholds(Option<Buffer<u8>>),
+// }
+
+// /// A request and response specifier for a cell buffer.
+// #[derive(Clone, Debug)]
+// pub enum CellBuffer {
+//     Soma(Option<Buffer<u8>>),
+//     Dendrites(DendriteBuffer),
+//     Synapses(SynapseBuffer),
+// }
 
 // Requests for and submissions of data.
 #[derive(Clone, Debug)]
@@ -80,6 +106,8 @@ pub enum Request {
     Status,
     AreaInfo,
     Sample(Range<u8>, Arc<Mutex<Vec<u8>>>),
+    // AxonBuffer { area_id: usize },
+    // CellBuffer { lyr_addr: LayerAddress, kind: CellBuffer },
     // Input(Obs),
     // GetAction,
 }
@@ -224,6 +252,14 @@ impl Flywheel {
 
     pub fn add_motor_tx(&mut self, motor_tx: SyncSender<MotorFrame>) {
         self.motor_txs.push(motor_tx);
+    }
+
+    pub fn cortex(&self) -> &Cortex {
+        &self.cortex
+    }
+
+    pub fn cortex_mut(&mut self) -> &mut Cortex {
+        &mut self.cortex
     }
 
     pub fn spin(&mut self) {
@@ -384,7 +420,7 @@ impl Flywheel {
                                     //         try!(v.set_ranges(&ranges.lock().unwrap()[..]));
                                     //     }
                                     //     _ => unimplemented!(),
-                                    // } 
+                                    // }
 
                                     self.cortex.thal_mut().ext_pathway(pathway_idx)?
                                         .set_encoder_ranges(ranges);
@@ -433,12 +469,13 @@ impl Flywheel {
         // // DEBUG:
         // println!("Refreshing buffer...");
 
-        let axn_range = self.cortex.area(&self.area_name).axn_tract_map().axn_id_range(slc_range.clone());
+        let axn_range = self.cortex.areas().by_key(self.area_name.as_str()).unwrap()
+            .axn_tract_map().axn_id_range(slc_range.clone());
 
         // match buf.try_lock() {
         match buf.lock() {
-            Ok(ref mut b) => Some(self.cortex.area(&self.area_name)
-                .sample_axn_slc_range(slc_range, &mut b[axn_range])),
+            Ok(ref mut b) => Some(self.cortex.areas().by_key(self.area_name.as_str())
+                .unwrap().sample_axn_slc_range(slc_range, &mut b[axn_range])),
             Err(_) => None,
         }
     }
@@ -447,8 +484,10 @@ impl Flywheel {
         res_tx.send(Response::AreaInfo(Box::new(
             AreaInfo {
                 name: self.area_name.to_string(),
-                aff_out_slc_range: self.cortex.area(&self.area_name).area_map().aff_out_slc_range(),
-                tract_map: self.cortex.area(&self.area_name).axn_tract_map(),
+                aff_out_slc_range: self.cortex.areas().by_key(self.area_name.as_str())
+                    .unwrap().area_map().aff_out_slc_range(),
+                tract_map: self.cortex.areas().by_key(self.area_name.as_str())
+                    .unwrap().axn_tract_map(),
             }
         ))).expect("Error sending area info.")
     }

@@ -14,7 +14,7 @@ const PRINT_DETAILS: bool = false;
 #[test]
 fn cycle_random_pyrs() {
     let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
-    let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+    let mut area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
     // Zero all dendrite and synapse buffers:
     area.ptal_mut().dens_mut().set_all_to_zero(true);
@@ -190,7 +190,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
 fn cycle_random_dens() {
     // let mut cortex = testbed::fresh_cortex();
     let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
-    let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+    let mut area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
     // area.ptal_mut().dens_mut().syns_mut().set_all_to_zero();
     area.ptal_mut().dens_mut().set_all_to_zero(true);

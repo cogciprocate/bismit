@@ -11,8 +11,8 @@ fn cycle_a_bunch() {
 	// let area_name = "v1".to_owned();
 	let cycle_iters = ITERS;
 
-	// let aff_out_slc_range = cortex.area(&area_name).area_map().aff_out_slc_range();
-	// let tract_map = cortex.area(&area_name).axn_tract_map();
+	// let aff_out_slc_range = cortex.areas().by_key(&area_name).area_map().aff_out_slc_range();
+	// let tract_map = cortex.areas().by_key(&area_name).axn_tract_map();
 
 	for _ in 0..cycle_iters {
 		cortex.cycle();

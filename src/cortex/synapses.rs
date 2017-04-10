@@ -104,13 +104,12 @@ pub struct Synapses {
     src_idx_caches_by_tft: Vec<SynSrcIdxCache>,
     syn_src_slices: SynSrcSlices,
     rng: XorShiftRng,
-    states: Buffer<u8>,
 
+    states: Buffer<u8>,
     strengths: Buffer<i8>,
     src_slc_ids: Buffer<u8>,
-    src_col_u_offs: Buffer<i8>,
     src_col_v_offs: Buffer<i8>,
-
+    src_col_u_offs: Buffer<i8>,
     flag_sets: Buffer<u8>,
 
     vec_strengths: Vec<i8>,
@@ -186,8 +185,8 @@ impl Synapses {
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
         let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
         let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
-        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
         let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
+        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
         let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
 
         debug_assert!(strengths.len() == src_slc_ids.len() &&
@@ -762,7 +761,7 @@ pub mod tests {
         use cmn::{DataCellLayer, DataCellLayerTest};
 
         let mut cortex = testbed::fresh_cortex();
-        let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+        let mut area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
         // Choose a random synapse:
         let cel_coords = area.ptal_mut().rand_cel_coords();

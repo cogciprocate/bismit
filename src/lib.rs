@@ -27,7 +27,7 @@ pub mod map;
 #[cfg(test)] pub mod tests;
 
 pub use ocl::Event as OclEvent;
-pub use self::cortex::{Cortex, CorticalArea, CorticalAreas, AxonSpace, Synapses, Minicolumns,
+pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses, Minicolumns,
     InhibitoryInterneuronNetwork, PyramidalLayer, SpinyStellateLayer, Dendrites,
     CorticalAreaSettings};
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus, TestScNucleus, ExternalPathway,

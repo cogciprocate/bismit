@@ -20,7 +20,6 @@ use std::collections::HashMap;
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
 use map::{AreaMap, LayerMapKind, LayerAddress};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReader, FutureWriter};
-use cortex::CorticalAreas;
 use map::{AreaSchemeList, LayerMapSchemeList, /*ExecutionGraph*/};
 use ::{ExternalPathway, ExternalPathwayFrame};
 use tract_terminal::{SliceBufferTarget, SliceBufferSource};
@@ -98,10 +97,10 @@ impl ThalamicTract {
         // println!("###### ThalamicTract::new(): Adding tract for area: {}, tags: {}, layer_dims: {:?}",
         //     src_area_name, layer_tags, layer_dims);
         self.ttl_len += layer_dims.to_len();
-        let new_area = TractArea::new(src_lyr_addr.clone(), layer_dims, 
+        let new_area = TractArea::new(src_lyr_addr.clone(), layer_dims,
             TractAreaBufferKind::RwVec(RwVec::from(vec![0; layer_dims.to_len()])));
         self.tract_areas.insert(src_lyr_addr, new_area);
-        
+
     }
 
     fn init(mut self) -> ThalamicTract {
@@ -116,14 +115,14 @@ impl ThalamicTract {
 
     pub fn read<'t>(&'t self, idx: usize) -> CmnResult<FutureReader<u8>> {
         let ta = self.tract_areas.by_index(idx).unwrap();
-        // println!("Tract area: Obtaining reader for tract area: source: {:?}, dims: {:?}", 
+        // println!("Tract area: Obtaining reader for tract area: source: {:?}, dims: {:?}",
         //     ta.src_lyr_addr, ta.dims);
         ta.rw_vec().ok_or(CmnError::from("ThalamicTract::read")).map(|rv| rv.clone().read())
     }
 
     pub fn write<'t>(&'t self, idx: usize) -> CmnResult<FutureWriter<u8>> {
         let ta = self.tract_areas.by_index(idx).unwrap();
-        // println!("Tract area: Obtaining writer for tract area: source: {:?}, dims: {:?}", 
+        // println!("Tract area: Obtaining writer for tract area: source: {:?}, dims: {:?}",
         //     ta.src_lyr_addr, ta.dims);
         ta.rw_vec().ok_or(CmnError::from("ThalamicTract::write")).map(|rv| rv.clone().write())
     }
@@ -302,7 +301,7 @@ impl Thalamus {
     //                 //         try!(v.set_ranges(&ranges.lock().unwrap()[..]));
     //                 //     }
     //                 //     _ => unimplemented!(),
-    //                 // } 
+    //                 // }
 
     //                 self.cortex.thal_mut().ext_pathway(pathway_idx)?
     //                     .set_encoder_ranges(ranges);

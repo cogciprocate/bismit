@@ -133,7 +133,7 @@ impl LearningTestBed {
             focus_syns,
             off_focus_syns) = {
 
-            let mut area = cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+            let mut area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
             // Zero all dendrite and synapse buffers:
             area.ptal_mut().dens_mut().set_all_to_zero(true);
@@ -362,7 +362,7 @@ impl LearningTestBed {
     /// our learning algorithm undergoes its many upcoming dramatic changes.
     ///
     fn learning_iter(&mut self, i: usize, flipped: bool, print_debug: bool) {
-        let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+        let mut area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
         let tft_id = self.syn_coords.tft_id;
         let tft_den_idz = area.ptal().dens().den_idzs_by_tft()[tft_id];
         let den_idx = self.syn_coords.den_idx(tft_den_idz);
@@ -701,7 +701,7 @@ impl LearningTestBed {
         self.off_focus_syns = old_focus;
 
         // Set everything back up:
-        let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+        let mut area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
         // area.ptal_mut().dens_mut().syns_mut().src_slc_ids()
         //    .cmd().fill(self.unused_slc_id, None).enq().unwrap();
 
@@ -723,7 +723,7 @@ impl LearningTestBed {
         //=============================================================================
         if PRINT_DEBUG_INFO { println!("\n ====================== Clean-up ====================== \n"); }
 
-        let mut area = self.cortex.area_mut(testbed::PRIMARY_AREA_NAME);
+        let mut area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
         // Finish queues:
         area.finish_queues();

@@ -1,18 +1,19 @@
-use std::collections::{HashMap};
+// use std::collections::{HashMap};
 use time;
 
 // use cpuprofiler::PROFILER;
 
 use ocl::{self, Platform, Context, Device};
-use cortex::{CorticalArea, CorticalAreas, CorticalAreaSettings};
+use cortex::{CorticalArea, CorticalAreaSettings};
 use ::{Thalamus};
+use cmn::MapStore;
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 // use cmn::{CmnResult};
 // use thalamus::{ExternalPathway, ExternalPathwayFrame};
 use subcortex::Subcortex;
 
 pub struct Cortex {
-    areas: CorticalAreas,
+    areas: MapStore<&'static str, CorticalArea>,
     thal: Thalamus,
     sub: Option<Subcortex>,
 }
@@ -32,7 +33,7 @@ impl Cortex {
         // println!("Cortex::new(): ocl_context.devices(): {:?}", ocl_context.devices());
         let mut thal = Thalamus::new(layer_map_sl, area_sl, &ocl_context).unwrap();
         // let area_maps = thal.area_maps().values().clone();
-        let mut areas = HashMap::new();
+        let mut areas = MapStore::new();
         let mut device_idx = 1;
 
         let area_maps = thal.area_maps().to_owned();
@@ -40,8 +41,8 @@ impl Cortex {
         for area_map in area_maps.values().into_iter().filter(|area_map|
                 area_map.lm_kind_tmp() != &LayerMapKind::Subcortical)
         {
-            areas.insert(area_map.area_name(), Box::new(CorticalArea::new(area_map.clone(),
-                    device_idx, &ocl_context, ca_settings.clone(), &mut thal).unwrap()));
+            areas.insert(area_map.area_name(), CorticalArea::new(area_map.clone(),
+                device_idx, &ocl_context, ca_settings.clone(), &mut thal).unwrap());
             device_idx += 1;
         }
 
@@ -54,23 +55,37 @@ impl Cortex {
         }
     }
 
-    pub fn sub(mut self, sub: Subcortex) -> Cortex {
+    pub fn set_sub(mut self, sub: Subcortex) -> Cortex {
         self.sub = Some(sub);
         self
     }
 
-    pub fn area_mut(&mut self, area_name: &str) -> &mut Box<CorticalArea> {
-        let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
-        self.areas.get_mut(area_name).expect(&emsg)
-    }
+    // pub fn area(&self, area_name: &str) -> &CorticalArea {
+    //     let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
+    //     self.areas.by_key(area_name).expect(&emsg)
+    // }
 
-    pub fn area(&self, area_name: &str) -> &Box<CorticalArea> {
-        let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
-        self.areas.get(area_name).expect(&emsg)
-    }
+    // pub fn area_mut(&mut self, area_name: &str) -> &mut CorticalArea {
+    //     let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
+    //     self.areas.by_key_mut(area_name).expect(&emsg)
+    // }
 
-    pub fn areas(&self) -> &CorticalAreas {
+    // pub fn area_by_id(&self, area_id: usize) -> &Box<CorticalArea> {
+    //     let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
+    //     self.areas.get(area_name).expect(&emsg)
+    // }
+
+    // pub fn area_mut_by_id(&mut self, area_id: usize) -> &mut Box<CorticalArea> {
+    //     let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
+    //     self.areas.get_mut(area_name).expect(&emsg)
+    // }
+
+    pub fn areas(&self) -> &MapStore<&'static str, CorticalArea> {
         &self.areas
+    }
+
+    pub fn areas_mut(&mut self) -> &mut MapStore<&'static str, CorticalArea> {
+        &mut self.areas
     }
 
     pub fn cycle(&mut self) {
@@ -78,10 +93,10 @@ impl Cortex {
 
         self.thal.cycle_external_pathways();
 
-        for (_, area) in self.areas.iter_mut() {
+        for area in self.areas.values_mut() {
             area.cycle(&mut self.thal).expect("Cortex::cycle(): Cortical area cycling error");
         }
-        // PROFILER.lock().unwrap().stop().unwrap();        
+        // PROFILER.lock().unwrap().stop().unwrap();
     }
 
     pub fn thal_mut(&mut self) -> &mut Thalamus {

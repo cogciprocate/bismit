@@ -18,9 +18,9 @@ pub struct SliceTractMap {
 
 impl SliceTractMap {
     pub fn new(
-                tags: &[&'static str],
-                v_sizes: &[u32],
-                u_sizes: &[u32])
+            tags: &[&'static str],
+            v_sizes: &[u32],
+            u_sizes: &[u32])
             -> SliceTractMap
     {
         assert!(tags.len() == v_sizes.len());
@@ -88,6 +88,10 @@ impl SliceTractMap {
         //     + (*self.v_sizes.get_unchecked(end) * *self.u_sizes.get_unchecked(end))) as usize;
 
         axn_id_start..axn_id_end
+    }
+
+    pub fn tags_reversed(&self) -> Vec<&'static str> {
+        self.tags.iter().rev().map(|&t| t).collect()
     }
 }
 

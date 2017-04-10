@@ -29,8 +29,6 @@ const QUEUE_PROFILING: bool = false;
 const KERNEL_DEBUG_SYMBOLS: bool = false;
 
 
-pub type CorticalAreas = HashMap<&'static str, Box<CorticalArea>>;
-
 
 /// Cortical area settings.
 #[derive(Debug, Clone)]

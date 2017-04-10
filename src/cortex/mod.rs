@@ -11,7 +11,7 @@ mod dendrites;
 mod sensory_filter;
 
 pub use self::cortex::Cortex;
-pub use self::cortical_area::{CorticalArea, CorticalAreas, CorticalAreaSettings};
+pub use self::cortical_area::{CorticalArea, CorticalAreaSettings};
 pub use self::axon_space::AxonSpace;
 pub use self::synapses::{Synapses, TuftDims};
 pub use self::minicolumns::Minicolumns;

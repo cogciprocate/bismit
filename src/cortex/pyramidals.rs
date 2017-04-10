@@ -24,6 +24,7 @@ pub struct PyramidalLayer {
     // base_axn_slc: u8,
     pyr_lyr_axn_idz: u32,
     rng: XorShiftRng,
+
     states: Buffer<u8>,
     best_den_states_raw: Buffer<u8>,
     flag_sets: Buffer<u8>,
