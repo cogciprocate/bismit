@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 use std::ops::Range;
+use futures::Sink;
+use futures::future::{Future, BoxFuture};
+use futures::sync::mpsc::Sender;
 use ocl::{ProQue, Buffer, Event, EventList, Queue, MemFlags};
 use ocl::traits::MemLen;
 use cmn::{self, CmnError, CmnResult};
@@ -297,10 +300,12 @@ pub struct AxonSpace {
     states: Buffer<u8>,
     filter_chains: Vec<(LayerAddress, Vec<SensoryFilter>)>,
     io_info: IoInfoCache,
+    read_queue: Queue, 
+    write_queue: Queue,
 }
 
 impl AxonSpace {
-    pub fn new(area_map: &AreaMap, ocl_pq: &ProQue, write_queue: &Queue,
+    pub fn new(area_map: &AreaMap, ocl_pq: &ProQue, read_queue: Queue, write_queue: Queue,
         exe_graph: &mut ExecutionGraph, thal: &mut Thalamus) -> CmnResult<AxonSpace>
     {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
@@ -396,9 +401,11 @@ impl AxonSpace {
         Ok(AxonSpace {
             area_id: area_map.area_id(),
             area_name: area_map.area_name(),
-            states: states,
-            filter_chains: filter_chains,
-            io_info: io_info,
+            states,
+            filter_chains,
+            io_info,
+            read_queue,
+            write_queue,
         })
     }
 
@@ -466,10 +473,11 @@ impl AxonSpace {
     // * TODO: Store thal tract index instead of using (LayerAddress) key.
     //
     pub fn intake(&mut self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph,
-            bypass_filters: bool) -> CmnResult<()>
+            bypass_filters: bool, work_tx: &Sender<BoxFuture<(), ()>>) -> CmnResult<()>
     {
         if let Some((io_lyrs, mut _new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {
             for io_lyr in io_lyrs.iter_mut() {
+                // println!("Intaking from: {:?}", io_lyr);
                 let future_reader = thal.tract().read(io_lyr.tract_area_id())?;
 
                 if !DISABLE_IO && !bypass_filters && io_lyr.exe_cmd().is_filtered_write() {
@@ -488,12 +496,42 @@ impl AxonSpace {
                         } else {
                             let mut ev = Event::empty();
 
-                            self.states.write(future_reader)
-                                .offset(axn_range.start as usize)
-                                .ewait(exe_graph.get_req_events(cmd_idx)?)
-                                .enew(&mut ev)
-                                .enq()?;
+                            // let future_write = self.states.write(future_reader)
+                            //     .queue(&self.write_queue)
+                            //     .offset(axn_range.start as usize)
+                            //     .len(axn_range.end as usize)
+                            //     .ewait(exe_graph.get_req_events(cmd_idx)?)
+                            //     .enew(&mut ev)
+                            //     .enq_async()?
+                            //     .and_then(|_guard| Ok(()))
+                            //     .map_err(|err| panic!("{}", err))
+                            //     .boxed();
 
+                            let mut future_map = self.states.map()
+                                .queue(&self.write_queue)
+                                .write_invalidate()
+                                .offset(axn_range.start as usize)
+                                .len(axn_range.len())
+                                .enew(&mut ev)
+                                .enq_async()?;
+
+                            let wait_events = exe_graph.get_req_events(cmd_idx)?;
+                            future_map.set_unmap_wait_list(wait_events);
+
+                            let future_write = future_reader.join(future_map)
+                                .and_then(|(reader, mut map)| {
+                                    debug_assert_eq!(reader.len(), map.len());
+                                    let len = map.len();
+                                    unsafe { 
+                                        ::std::ptr::copy_nonoverlapping(reader.as_ptr(), 
+                                            map.as_mut_ptr(), len); 
+                                    }
+                                    Ok(())
+                                })
+                                .map_err(|err| panic!("{}", err))
+                                .boxed();
+
+                            work_tx.clone().send(future_write).wait()?;
                             Some(ev)
                         };
 
@@ -511,29 +549,34 @@ impl AxonSpace {
     ///
     // * TODO: Store thal tract index instead of using (LayerAddress) key.
     //
-    pub fn output(&self, read_queue: &Queue, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph)
+    pub fn output(&self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph,
+            work_tx: &Sender<BoxFuture<(), ()>>)
             -> CmnResult<()>
     {
         if let Some((io_lyrs, _wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
             for io_lyr in io_lyrs.iter() {
                 if let &IoExeCmd::Read(cmd_idx) = io_lyr.exe_cmd() {
-                    let event;
-
-                    if DISABLE_IO {
-                        event = None;
+                    let event = if DISABLE_IO {
+                        None
                     } else {
                         let future_writer = thal.tract().write(io_lyr.tract_area_id())?;
+                        debug_assert_eq!(io_lyr.axn_range().len(), future_writer.len());
 
                         let mut ev = Event::empty();
 
-                        self.states.read(future_writer)
-                            .queue(read_queue)
+                        let future_read = self.states.read(future_writer)
+                            .queue(&self.read_queue)
                             .offset(io_lyr.axn_range().start as usize)
+                            .len(io_lyr.axn_range().len())
                             .ewait(exe_graph.get_req_events(cmd_idx)?)
                             .enew(&mut ev)
-                            .enq()?;
+                            .enq_async()?
+                            .and_then(|_guard| Ok(()))
+                            .map_err(|err| panic!("{}", err))
+                            .boxed();
 
-                        event = Some(ev);
+                        work_tx.clone().send(future_read).wait()?;
+                        Some(ev)
                     };
 
                     exe_graph.set_cmd_event(cmd_idx, event)?;

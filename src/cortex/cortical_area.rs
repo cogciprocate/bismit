@@ -1,9 +1,14 @@
-#![allow(dead_code, unused_mut)]
+#![allow(dead_code, unused_mut, unused_imports)]
 
+use std::thread::{self, JoinHandle};
 use std::collections::HashMap;
 use std::ops::Range;
 use std::borrow::Borrow;
-use ocl::{flags, Device, ProQue, Context, Buffer, Event, Queue};
+use futures::{Sink, Stream, Future};
+use futures::future::BoxFuture;
+use futures::sync::mpsc::{self, Sender};
+use tokio_core::reactor::{Core, Remote};
+use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue};
 use ocl::core::CommandQueueProperties;
 use cmn::{self, CmnError, CmnResult, CorticalDims, DataCellLayer};
 use map::{self, AreaMap, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
@@ -54,6 +59,14 @@ impl CorticalAreaSettings {
 }
 
 
+// pub enum Work {
+//     Intake(BoxFuture<(), CmnError>),
+//     Output(BoxFuture<(), CmnError>),
+//     Regrow,
+//     Exit,
+// }
+
+
 /// An area of the cortex.
 pub struct CorticalArea {
     area_id: usize,
@@ -79,6 +92,9 @@ pub struct CorticalArea {
     counter: usize,
     settings: CorticalAreaSettings,
     exe_graph: ExecutionGraph,
+    work_tx: Option<Sender<BoxFuture<(), ()>>>,
+    // work_remote: Remote,
+    _work_thread: Option<JoinHandle<()>>,
 }
 
 impl CorticalArea {
@@ -180,7 +196,8 @@ impl CorticalArea {
         let mut focus_cells: Vec<PyramidalLayer> = Vec::with_capacity(4);
         let mut motor_cells: Vec<PyramidalLayer> = Vec::with_capacity(4);
         let mut other_cells: Vec<Box<DataCellLayer>> = Vec::with_capacity(4);
-        let axns = AxonSpace::new(&area_map, &ocl_pq, &write_queue, &mut exe_graph, thal)?;
+        let axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(), 
+            write_queue.clone(), &mut exe_graph, thal)?;
 
 
 
@@ -310,22 +327,6 @@ impl CorticalArea {
 
         let mut mcols = mcols.expect("CorticalArea::new(): No Minicolumn layer found!");
 
-        // let mcols_dims = dims.clone_with_depth(1);
-
-        // // <<<<< EVENTUALLY ADD TO CONTROL CELLS (+PROTOCONTROLCELLS) >>>>>
-        // let mcols = Box::new({
-        //     let em_ssts = format!("{}: '{}' is not a valid layer", emsg, psal_name);
-        //     let ssts = ssts_map.get(psal_name).expect(&em_ssts);
-
-        //     let em_pyrs = format!("{}: '{}' is not a valid layer", emsg, ptal_name);
-        //     let pyrs = pyrs_map.get(ptal_name).expect(&em_pyrs);
-
-        //     debug_assert!(area_map.aff_out_slcs().len() > 0, "CorticalArea::new(): \
-        //         No afferent output slices found for area: '{}'", area_name);
-        //     Minicolumns::new(mcols_dims, &area_map, &axns, ssts, pyrs, /*&aux,*/ &ocl_pq,
-        //         &mut exe_graph)?
-        // });
-
         /*=============================================================================
         ===================================== AUX =====================================
         =============================================================================*/
@@ -351,7 +352,6 @@ impl CorticalArea {
             .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
         // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
         // pyrs_map.get_mut(ptal_name).unwrap().kern_ltp()
-
         //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
         // pyrs_map.get_mut(ptal_name).unwrap().kern_cycle()
         //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
@@ -410,6 +410,22 @@ impl CorticalArea {
         exe_graph.populate_requisites();
 
         /*=============================================================================
+        =========================== WORK COMPLETION THREAD ============================
+        =============================================================================*/
+
+        
+        let (tx, rx) = mpsc::channel(0);
+        let thread_name = format!("CorticalArea_{}", area_name.clone());
+
+        let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
+            let rx = rx;
+            let mut core = Core::new().unwrap();
+            println!("Listening for work items...");
+            let work = rx.buffer_unordered(3).for_each(|_| Ok(()));
+            core.run(work).unwrap();
+        }).unwrap();
+
+        /*=============================================================================
         ===============================================================================
         =============================================================================*/
 
@@ -437,6 +453,9 @@ impl CorticalArea {
             counter: 0,
             settings: settings,
             exe_graph: exe_graph,
+            work_tx: Some(tx),
+            // work_remote: Remote,
+            _work_thread: Some(thread),
         };
 
         Ok(cortical_area)
@@ -449,7 +468,8 @@ impl CorticalArea {
     pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
 
         // (1.) Axon Intake:
-        self.axns.intake(thal, &mut self.exe_graph, self.settings.bypass_filters)?;
+        self.axns.intake(thal, &mut self.exe_graph, self.settings.bypass_filters,
+            self.work_tx.as_ref().unwrap())?;
 
         // (2.) SSTs Cycle:
         if !self.settings.disable_ssts {
@@ -505,10 +525,10 @@ impl CorticalArea {
         if !self.settings.disable_regrowth { self.regrow(); }
 
         // (9.) Axon Output:
-        self.axns.output(&self.read_queue, thal, &mut self.exe_graph)?;
+        self.axns.output(thal, &mut self.exe_graph, self.work_tx.as_ref().unwrap())?;
 
-        // Finish queues [SEMI-TEMPORARY]:
-        self.finish_queues();
+        // // Finish queues [DEBUGGING]:
+        // self.finish_queues();
 
         Ok(())
     }
@@ -589,12 +609,14 @@ impl CorticalArea {
     #[inline] pub fn exe_graph_mut(&mut self) -> &mut ExecutionGraph { &mut self.exe_graph }
 }
 
+
 impl Drop for CorticalArea {
     fn drop(&mut self) {
-        print!("Releasing OpenCL components for '{}'... ", self.name);
-        // NOW DONE AUTOMATICALLY:
-        // self.ocl_pq.release();
-        print!("[ Buffers ][ Event Lists ][ Program ][ Command Queue ]");
+        print!("Releasing work thread for '{}'... ", &self.name);
+        self.work_tx.take();
+        self._work_thread.take().unwrap().join().unwrap();
+        print!("Releasing OpenCL components for '{}'... ", &self.name);
+        print!("[ Buffers ][ Event Lists ][ Program ][ Command Queues ]");
         print!(" ...complete. \n");
     }
 }
@@ -611,7 +633,8 @@ pub struct Aux {
 
 impl Aux {
     pub fn new(ptal_syn_len: usize, ocl_pq: &ProQue) -> Aux {
-        let int_32_min = INT_32_MIN;
+        // let int_32_min = INT_32_MIN;
+        let int_32_min = i32::min_value();
 
         let ints_0 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, [ptal_syn_len * 4], None, Some((0, None::<()>))).unwrap();
         ints_0.cmd().fill(int_32_min, None).enq().unwrap();

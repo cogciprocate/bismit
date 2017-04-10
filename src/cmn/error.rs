@@ -1,7 +1,9 @@
+use std::io;
 use std::error::{Error};
 use std::fmt;
 // use std::ops::Deref;
-use ocl::{Error as OclError, Result as OclResult};
+use futures::sync::mpsc::SendError;
+use ocl::{self, async};
 // use cmn::CmnResult;
 use map::ExecutionGraphError;
 
@@ -32,7 +34,9 @@ pub type CmnResult<T> = Result<T, CmnError>;
 pub enum CmnError {
     Unknown,
     String(String),
-    OclError(OclError),
+    IoError(io::Error),
+    OclError(ocl::Error),
+    AsyncError(async::Error),
     ExecutionGraphError(ExecutionGraphError),
 }
 
@@ -64,7 +68,7 @@ impl CmnError {
         self
     }
 
-    pub fn from_ocl_result<T>(result: OclResult<T>) -> CmnResult<T> {
+    pub fn from_ocl_result<T>(result: ocl::Result<T>) -> CmnResult<T> {
         match result {
             Ok(value) => Ok(value),
             Err(err) => Err(err.into()),
@@ -75,10 +79,12 @@ impl CmnError {
 impl Error for CmnError {
     fn description(&self) -> &str {
         match *self {
-            CmnError::String(ref msg) => msg,
-            CmnError::OclError(ref err) => err.description(),
-            CmnError::ExecutionGraphError(ref err) => err.description(),
             CmnError::Unknown => "Unknown error.",
+            CmnError::String(ref msg) => msg,
+            CmnError::IoError(ref err) => err.description(),
+            CmnError::OclError(ref err) => err.description(),
+            CmnError::AsyncError(ref err) => err.description(),
+            CmnError::ExecutionGraphError(ref err) => err.description(),
         }
     }
 }
@@ -108,9 +114,27 @@ impl<'a> From<&'a str> for CmnError {
     }
 }
 
-impl From<OclError> for CmnError {
-    fn from(e: OclError) -> CmnError {
+impl From<io::Error> for CmnError {
+    fn from(e: io::Error) -> CmnError {
+        CmnError::IoError(e)
+    }
+}
+
+impl From<ocl::Error> for CmnError {
+    fn from(e: ocl::Error) -> CmnError {
         CmnError::OclError(e)
+    }
+}
+
+impl From<async::Error> for CmnError {
+    fn from(e: async::Error) -> CmnError {
+        CmnError::AsyncError(e)
+    }
+}
+
+impl<T> From<SendError<T>> for CmnError {
+    fn from(e: SendError<T>) -> CmnError {
+        CmnError::AsyncError(async::Error::from(e))
     }
 }
 
@@ -125,6 +149,7 @@ impl fmt::Display for CmnError {
         match *self {
             CmnError::String(ref msg) => f.write_str(msg),
             CmnError::OclError(ref err) => write!(f, "{}", err),
+            CmnError::AsyncError(ref err) => write!(f, "{}", err),
             CmnError::ExecutionGraphError(ref err) => {
                 write!(f, "ExecutionGraph error: ").and(fmt::Display::fmt(err, f))
             },

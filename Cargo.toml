@@ -33,6 +33,8 @@ find_folder = "*"
 time = "*"
 twox-hash = "*"
 colorify = "*"
+futures = "*"
+tokio-core = "*"
 
 
 # [dev-dependencies]

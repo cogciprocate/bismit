@@ -1,4 +1,4 @@
-
+use std::fmt;
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
 use cmn::{TractFrameMut, TractDims};
@@ -8,9 +8,24 @@ type TractAxonIdx = usize;
 
 // Inverse factor of SDR columns to activate (SDR_TTL / SPARSITY = SDR_ACTIVE):
 const SPARSITY: usize = 48;
+const AXON_VALUE: u8 = 127;
 
 
-#[derive(Debug, Clone)]
+fn gen_axn_idxs(rng: &mut XorShiftRng, active_count: usize, sdr_len: usize) -> Vec<TractAxonIdx> {
+    let mut sdr = Vec::with_capacity(active_count);
+    let range = Range::new(0, sdr_len);
+
+    for _ in 0..active_count {
+        let idx = range.ind_sample(rng);
+        sdr.push(idx);
+    }
+
+    // sdr.sort();
+    sdr
+}
+
+
+#[derive(Clone)]
 pub struct ScalarSdrWriter<T> {
     val_range_orig: (T, T),
     val_range: (f32, f32),
@@ -19,7 +34,9 @@ pub struct ScalarSdrWriter<T> {
     tract_dims: TractDims,
     sdr_len: usize,
     sdr_active_count: usize,
-    waypoints: Vec<Vec<TractAxonIdx>>,
+    waypoint_indices: Vec<Vec<TractAxonIdx>>,
+    sdrs: Vec<Vec<u8>>,
+    rng: XorShiftRng,
 }
 
 impl<T: ScalarEncodable> ScalarSdrWriter<T> {
@@ -43,13 +60,21 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         let sdr_len = tract_dims.to_len();
         let sdr_active_count = sdr_len / SPARSITY;
 
-        let mut waypoints = Vec::with_capacity(way_count);
-
         let mut rng = rand::weak_rng();
 
+        let mut waypoint_indices = Vec::with_capacity(way_count);
         for _ in 0..way_count {
-            let sdr = gen_sdr(&mut rng, sdr_active_count, sdr_len);
-            waypoints.push(sdr);
+            let sdr = gen_axn_idxs(&mut rng, sdr_active_count, sdr_len);
+            waypoint_indices.push(sdr);
+        }
+
+        let mut sdrs = Vec::with_capacity(way_count);
+        for axn_idxs in waypoint_indices.iter() {
+            let mut sdr = vec![0u8; sdr_len];
+            for &axn_idx in axn_idxs.iter() {
+                sdr[axn_idx] = AXON_VALUE;
+            }
+            sdrs.push(sdr);
         }
 
         // /////// [DEBUG]:
@@ -59,19 +84,21 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         // ///////
 
         ScalarSdrWriter {
-            val_range_orig: val_range_orig,
-            val_range: val_range,
-            val_span: val_span,
-            way_span: way_span,
+            val_range_orig,
+            val_range,
+            val_span,
+            way_span,
             tract_dims: tract_dims.clone(),
-            sdr_len: sdr_len,
-            sdr_active_count: sdr_active_count,
-            waypoints: waypoints,
+            sdr_len,
+            sdr_active_count,
+            waypoint_indices,
+            sdrs,
+            rng,
         }
     }
 
     // * TODO: Vectorize and port to kernel.
-    pub fn encode(&self, val_orig: T, tract: &mut TractFrameMut) {
+    pub fn encode(&mut self, val_orig: T, tract: &mut TractFrameMut) {
         assert!(tract.dims().to_len() == self.sdr_len);
 
         // Clear tract frame:
@@ -84,17 +111,20 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         // Determine the waypoint beneath the current value:
         let way_0 = val_norm.floor();
 
-        // Determine the contribution count for each of the two waypoints:
+        // Determine the contribution ratio then count (0-255) for each of the two waypoints:
         let way_0_contrib_ratio = val_norm - way_0;
         let way_1_contrib_count = ((self.sdr_active_count as f32) * way_0_contrib_ratio) as usize;
         let way_0_contrib_count = self.sdr_active_count - way_1_contrib_count;
+        // let way_0_contrib = (256. * way_0_contrib_ratio) as isize;
+        // debug_assert!(way_0_contrib <= 255);
+        // let way_1_contrib = 255 - way_0_contrib;
 
 
         // Determine waypoint indices:
         let way_0_idx = way_0 as usize;
         let way_1_idx = way_0_idx + 1;
-        debug_assert!(way_0_idx < self.waypoints.len());
-        debug_assert!(way_1_idx < self.waypoints.len());
+        debug_assert!(way_0_idx < self.waypoint_indices.len());
+        debug_assert!(way_1_idx < self.waypoint_indices.len());
 
         // /////// [DEBUG]:
         // println!("###### val_orig: {}, val_norm: {}, way_0_idx: {}, way_1_idx, {}, \
@@ -102,22 +132,50 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         //     way_1_idx, way_0_contrib_count, way_0_contrib_ratio, way_1_contrib_count);
         // ///////
 
+        let w0_idz = Range::new(0, 1 + self.sdr_active_count - way_0_contrib_count)
+            .ind_sample(&mut self.rng);
+        let w1_idz = Range::new(0, 1 + self.sdr_active_count - way_1_contrib_count)
+            .ind_sample(&mut self.rng);
+
         // Write:
-        for idx in 0..way_0_contrib_count {
+        for idx in w0_idz..(w0_idz + way_0_contrib_count) {
+        // for idx in 0..way_0_contrib_count {
             debug_assert!(idx < tract.frame().len());
+            // let idx_idx = range.ind_sample(&mut self.rng);
+
             unsafe {
-                let tract_idx = *self.waypoints.get_unchecked(way_0_idx).get_unchecked(idx);
+                let tract_idx = *self.waypoint_indices.get_unchecked(way_0_idx).get_unchecked(idx);
                 *tract.get_unchecked_mut(tract_idx) = 127;
             }
         }
 
-        for idx in 0..way_1_contrib_count {
+        for idx in w1_idz..(w1_idz + way_1_contrib_count) {
+        // for idx in 0..way_1_contrib_count {
             debug_assert!(idx < tract.frame().len());
+            // let idx_idx = range.ind_sample(&mut self.rng);
+
             unsafe {
-                let tract_idx = *self.waypoints.get_unchecked(way_1_idx).get_unchecked(idx);
+                let tract_idx = *self.waypoint_indices.get_unchecked(way_1_idx).get_unchecked(idx);
                 *tract.get_unchecked_mut(tract_idx) = 127;
             }
         }
+
+        ////// SLOW:
+        // unsafe {
+        //     for (idx, (&w0, &w1)) in self.sdrs.get_unchecked(way_0_idx).iter()
+        //             .zip(self.sdrs.get_unchecked(way_1_idx).iter())
+        //             .enumerate()
+        //     {
+        //         // Get a random number between 0 and 254:
+        //         let rn = range.ind_sample(&mut self.rng);
+        //         // Determine if way_0 contrib (0-255) is greater:
+        //         let way_0_win = way_0_contrib > rn;
+        //         // If so, use w0, else use w1:
+        //         let val = (w0 * way_0_win as u8) + (w1 * (!way_0_win) as u8);
+        //         // Add a little extra randomness:
+        //         *tract.get_unchecked_mut(idx) = val;
+        //     }
+        // }
     }
 
     /// Returns a normalized value where the waypoint span is
@@ -131,14 +189,19 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
     }
 }
 
-fn gen_sdr(rng: &mut XorShiftRng, active_count: usize, sdr_len: usize) -> Vec<TractAxonIdx> {
-    let mut sdr = Vec::with_capacity(active_count);
-    let range = Range::new(0, sdr_len);
-
-    for _ in 0..active_count {
-        let idx = range.ind_sample(rng);
-        sdr.push(idx);
+impl<T> fmt::Debug for ScalarSdrWriter<T> where T: fmt::Debug {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("ScalarSdrWriter")
+            .field("val_range_orig", &self.val_range_orig)
+            .field("val_range", &self.val_range)
+            .field("val_span", &self.val_span)
+            .field("way_span", &self.way_span)
+            .field("tract_dims", &self.tract_dims)
+            .field("sdr_len", &self.sdr_len)
+            .field("sdr_active_count", &self.sdr_active_count)
+            .field("waypoint_indices", &self.waypoint_indices)
+            .field("sdrs", &self.sdrs)
+            // .field("rng", "XorShiftRng { .. }")
+            .finish()
     }
-
-    sdr
 }

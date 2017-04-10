@@ -116,11 +116,15 @@ impl ThalamicTract {
 
     pub fn read<'t>(&'t self, idx: usize) -> CmnResult<FutureReader<u8>> {
         let ta = self.tract_areas.by_index(idx).unwrap();
+        // println!("Tract area: Obtaining reader for tract area: source: {:?}, dims: {:?}", 
+        //     ta.src_lyr_addr, ta.dims);
         ta.rw_vec().ok_or(CmnError::from("ThalamicTract::read")).map(|rv| rv.clone().read())
     }
 
     pub fn write<'t>(&'t self, idx: usize) -> CmnResult<FutureWriter<u8>> {
         let ta = self.tract_areas.by_index(idx).unwrap();
+        // println!("Tract area: Obtaining writer for tract area: source: {:?}, dims: {:?}", 
+        //     ta.src_lyr_addr, ta.dims);
         ta.rw_vec().ok_or(CmnError::from("ThalamicTract::write")).map(|rv| rv.clone().write())
     }
 
@@ -225,19 +229,21 @@ impl Thalamus {
             assert!(area_maps[area_id].area_id() == area_id);
         }
 
-        Ok(Thalamus {
+        let thal = Thalamus {
             tract: tract.init(),
             external_pathways: external_pathways,
             area_maps: area_maps,
-        })
+        };
+
+        Ok(thal)
     }
 
     // Multiple source output areas disabled.
-    pub fn cycle_external_pathways(&mut self, _: &mut CorticalAreas) {
+    pub fn cycle_external_pathways(&mut self) {
         for &mut (ref mut src_ext_path, ref layer_addr_list) in self.external_pathways.values_mut().iter_mut() {
             src_ext_path.cycle_next();
             for &layer_addr in layer_addr_list.iter() {
-                // TODO: ExternalPathway needs to store
+                // TODO: ExternalPathway needs to store tract index.
                 let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
                 let future_write = self.tract.write(tract_area_idx)
                     .expect("Thalamus::cycle_external_pathways()");

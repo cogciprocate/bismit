@@ -76,13 +76,12 @@ impl Cortex {
     pub fn cycle(&mut self) {
         // PROFILER.lock().unwrap().start("./bismit.profile").unwrap();
 
-        ////// [REENABLE ME]:
-        self.thal.cycle_external_pathways(&mut self.areas);
+        self.thal.cycle_external_pathways();
 
         for (_, area) in self.areas.iter_mut() {
             area.cycle(&mut self.thal).expect("Cortex::cycle(): Cortical area cycling error");
         }
-        // PROFILER.lock().unwrap().stop().unwrap();
+        // PROFILER.lock().unwrap().stop().unwrap();        
     }
 
     pub fn thal_mut(&mut self) -> &mut Thalamus {

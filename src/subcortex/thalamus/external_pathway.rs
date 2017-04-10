@@ -164,7 +164,7 @@ pub struct ExternalPathway {
     // encoder: ExternalPathwayEncoder,
     layers: HashMap<LayerAddress, ExternalPathwayLayer>,    
     tx: SyncSender<EncoderCmd>,
-    _thread: JoinHandle<()>,
+    _thread: Option<JoinHandle<()>>,
     // rx: Receiver<EncoderRes>,
 }
 
@@ -312,7 +312,7 @@ impl ExternalPathway {
             area_name: pamap.name().to_owned(),
             layers: layers,
             // encoder: encoder,
-            _thread: thread_handle,
+            _thread: Some(thread_handle),
             tx: tx,
         })
     }
@@ -362,7 +362,8 @@ impl ExternalPathway {
 }
 
 impl Drop for ExternalPathway {
-    fn drop(&mut self) {
+    fn drop(&mut self) {        
         self.tx.send(EncoderCmd::Exit).unwrap();
+        self._thread.take().unwrap().join().unwrap();
     }
 }
