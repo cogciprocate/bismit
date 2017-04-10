@@ -132,30 +132,36 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         //     way_1_idx, way_0_contrib_count, way_0_contrib_ratio, way_1_contrib_count);
         // ///////
 
-        let w0_idz = Range::new(0, 1 + self.sdr_active_count - way_0_contrib_count)
-            .ind_sample(&mut self.rng);
-        let w1_idz = Range::new(0, 1 + self.sdr_active_count - way_1_contrib_count)
-            .ind_sample(&mut self.rng);
+        // let w0_idz = Range::new(0, 1 + self.sdr_active_count - way_0_contrib_count)
+        //     .ind_sample(&mut self.rng);
+        // let w1_idz = Range::new(0, 1 + self.sdr_active_count - way_1_contrib_count)
+        //     .ind_sample(&mut self.rng);
+
+        let idx_range = Range::new(0, self.sdr_active_count);
+
 
         // Write:
-        for idx in w0_idz..(w0_idz + way_0_contrib_count) {
+        // for idx in w0_idz..(w0_idz + way_0_contrib_count) {
         // for idx in 0..way_0_contrib_count {
+        for idx in 0..way_0_contrib_count {
             debug_assert!(idx < tract.frame().len());
-            // let idx_idx = range.ind_sample(&mut self.rng);
+            let idx_idx = idx_range.ind_sample(&mut self.rng);
 
             unsafe {
-                let tract_idx = *self.waypoint_indices.get_unchecked(way_0_idx).get_unchecked(idx);
+                let tract_idx = *self.waypoint_indices.get_unchecked(way_0_idx)
+                    .get_unchecked(idx_idx);
                 *tract.get_unchecked_mut(tract_idx) = 127;
             }
         }
 
-        for idx in w1_idz..(w1_idz + way_1_contrib_count) {
-        // for idx in 0..way_1_contrib_count {
+        // for idx in w1_idz..(w1_idz + way_1_contrib_count) {
+        for idx in 0..way_1_contrib_count {
             debug_assert!(idx < tract.frame().len());
-            // let idx_idx = range.ind_sample(&mut self.rng);
+            let idx_idx = idx_range.ind_sample(&mut self.rng);
 
             unsafe {
-                let tract_idx = *self.waypoint_indices.get_unchecked(way_1_idx).get_unchecked(idx);
+                let tract_idx = *self.waypoint_indices.get_unchecked(way_1_idx)
+                    .get_unchecked(idx_idx);
                 *tract.get_unchecked_mut(tract_idx) = 127;
             }
         }

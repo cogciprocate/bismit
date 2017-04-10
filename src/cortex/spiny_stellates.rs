@@ -7,7 +7,7 @@ use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
 // use ocl::core::ClWaitListPtr;
 use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress, LayerTags};
-use cortex::{Dendrites, AxonSpace};
+use cortex::{Dendrites, AxonSpace, CorticalAreaSettings};
 
 
 const PRINT_DEBUG: bool = false;
@@ -26,12 +26,14 @@ pub struct SpinyStellateLayer {
     kern_ltp: Kernel,
     rng: rand::XorShiftRng,
     pub dens: Dendrites,
-    ltp_exe_cmd_idx: usize,
+    ltp_exe_cmd_idx: Option<usize>,
+    _settings: CorticalAreaSettings,
 }
 
 impl SpinyStellateLayer {
     pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
-            area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph,
+            area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue,
+            settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph,
     ) -> CmnResult<SpinyStellateLayer> {
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
         let axn_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
@@ -53,7 +55,8 @@ impl SpinyStellateLayer {
 
         // let dens_dims = dims.clone_with_ptl2(cell_scheme.dens_per_tft_l2 as i8);
         let dens = try!(Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(),
-            DendriteKind::Proximal, CellKind::SpinyStellate, area_map, axons, ocl_pq, exe_graph));
+            DendriteKind::Proximal, CellKind::SpinyStellate, area_map, axons, ocl_pq,
+            settings.disable_ssts, exe_graph));
         let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
         let cels_per_grp = dims.per_subgrp(grp_count).expect("SpinyStellateLayer::new()");
 
@@ -83,11 +86,12 @@ impl SpinyStellateLayer {
 
         ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, sst_tft_id));
 
-        let ltp_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
-            kern_name, 
-            ltp_cmd_srcs,
-            vec![CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, sst_tft_id)]
-        ))?;
+        let ltp_exe_cmd_idx = if settings.disable_learning {
+            None
+        } else {
+            Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(kern_name, ltp_cmd_srcs,
+                vec![CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, sst_tft_id)]))?)
+        };
 
         /*=============================================================================
         ===============================================================================
@@ -106,6 +110,7 @@ impl SpinyStellateLayer {
             rng: rand::weak_rng(),
             dens: dens,
             ltp_exe_cmd_idx: ltp_exe_cmd_idx,
+            _settings: settings,
         })
     }
 
@@ -115,7 +120,9 @@ impl SpinyStellateLayer {
     }
 
     pub fn set_exe_order_learn(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        exe_graph.order_next(self.ltp_exe_cmd_idx)?;
+        if let Some(cmd_idx) = self.ltp_exe_cmd_idx {
+            exe_graph.order_next(cmd_idx)?;
+        }
         Ok(())
     }
 
@@ -130,14 +137,16 @@ impl SpinyStellateLayer {
 
     #[inline]
     pub fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Performing learning for layer: '{}'...", self.layer_name); }
-        let rnd = self.rng.gen::<u32>();
-        self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
+        if let Some(cmd_idx) = self.ltp_exe_cmd_idx {
+            if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Performing learning for layer: '{}'...", self.layer_name); }
+            let rnd = self.rng.gen::<u32>();
+            self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
 
-        let mut event = Event::empty();
-        self.kern_ltp.cmd().ewait(exe_graph.get_req_events(self.ltp_exe_cmd_idx)?).enew(&mut event).enq()?;
-        exe_graph.set_cmd_event(self.ltp_exe_cmd_idx, Some(event))?;
-        if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Learning complete for layer: '{}'.", self.layer_name); }
+            let mut event = Event::empty();
+            self.kern_ltp.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            exe_graph.set_cmd_event(cmd_idx, Some(event))?;
+            if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Learning complete for layer: '{}'.", self.layer_name); }
+        }
         Ok(())
     }
 
@@ -157,7 +166,7 @@ impl SpinyStellateLayer {
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
     #[inline] pub fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
-    #[inline] pub fn tft_count(&self) -> usize { TUFT_COUNT }    
+    #[inline] pub fn tft_count(&self) -> usize { TUFT_COUNT }
     #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn dens(&self) -> &Dendrites { &self.dens }
     #[inline] pub fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }

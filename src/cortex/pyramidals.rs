@@ -1,14 +1,10 @@
-// [FIXME]: REMOVE:
-
 use rand::{self, XorShiftRng, Rng};
-
 use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
-// use ocl::core::ClWaitListPtr;
 use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress, LayerTags};
-use cortex::{Dendrites, AxonSpace};
+use cortex::{Dendrites, AxonSpace, CorticalAreaSettings};
 
 const PRINT_DEBUG: bool = false;
 
@@ -39,12 +35,14 @@ pub struct PyramidalLayer {
 
     tft_cycle_exe_cmd_idxs: Vec<usize>,
     tft_ltp_exe_cmd_idxs: Vec<usize>,
-    cycle_exe_cmd_idx: usize,
+    cycle_exe_cmd_idx: Option<usize>,
+    settings: CorticalAreaSettings,
 }
 
 impl PyramidalLayer {
     pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
-            area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
+            area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue,
+            settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<PyramidalLayer>
     {
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
@@ -78,7 +76,8 @@ impl PyramidalLayer {
             states.len(), tft_best_den_ids.len(), dims, mt = cmn::MT);
 
         let dens = Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(),
-            DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq, exe_graph)?;
+            DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq,
+            settings.disable_pyrs, exe_graph)?;
 
         let mut pyr_tft_ltp_kernels = Vec::with_capacity(tft_count);
         let mut pyr_tft_cycle_kernels = Vec::with_capacity(tft_count);
@@ -133,19 +132,20 @@ impl PyramidalLayer {
                 // .arg_buf(&states)
             );
 
-            tft_cycle_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
-                kern_name,
-                vec![
-                    CorticalBuffer::data_den_tft(dens.states_raw(), layer_addr, tft_id),
-                    CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id)
-                ],
-                vec![
-                    CorticalBuffer::data_soma_tft(&tft_best_den_ids, layer_addr, tft_id),
-                    CorticalBuffer::data_soma_tft(&tft_best_den_states_raw, layer_addr, tft_id),
-                    CorticalBuffer::data_soma_tft(&tft_best_den_states, layer_addr, tft_id),
-                ]
-            ))?);
-
+            if !settings.disable_pyrs {
+                tft_cycle_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                    kern_name,
+                    vec![
+                        CorticalBuffer::data_den_tft(dens.states_raw(), layer_addr, tft_id),
+                        CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id)
+                    ],
+                    vec![
+                        CorticalBuffer::data_soma_tft(&tft_best_den_ids, layer_addr, tft_id),
+                        CorticalBuffer::data_soma_tft(&tft_best_den_states_raw, layer_addr, tft_id),
+                        CorticalBuffer::data_soma_tft(&tft_best_den_states, layer_addr, tft_id),
+                    ]
+                ))?);
+            };
 
             /*=============================================================================
             ===============================================================================
@@ -196,15 +196,16 @@ impl PyramidalLayer {
             tft_ltp_cmd_srcs.push(CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id));
             tft_ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, tft_id));
 
-            tft_ltp_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
-                kern_name, 
-                tft_ltp_cmd_srcs,
-                vec![
-                    CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), layer_addr, tft_id),
-                    CorticalBuffer::data_soma_tft(&flag_sets, layer_addr, tft_id),
-                    CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, tft_id),
-                ]
-            ))?);
+            if !settings.disable_learning & !settings.disable_pyrs {
+                tft_ltp_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                    kern_name, tft_ltp_cmd_srcs,
+                    vec![
+                        CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), layer_addr, tft_id),
+                        CorticalBuffer::data_soma_tft(&flag_sets, layer_addr, tft_id),
+                        CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, tft_id),
+                    ]
+                ))?);
+            }
         }
 
         /*=============================================================================
@@ -232,14 +233,14 @@ impl PyramidalLayer {
             cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states, layer_addr, tft_id));
         }
 
-        let cycle_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
-            kern_name, 
-            cycle_cmd_srcs,
-            vec![
-                CorticalBuffer::data_soma_lyr(&states, layer_addr),
-                CorticalBuffer::data_soma_lyr(&best_den_states_raw, layer_addr),
-            ]
-        ))?;
+        let cycle_exe_cmd_idx = if !settings.disable_pyrs {
+            Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                kern_name, cycle_cmd_srcs,
+                vec![CorticalBuffer::data_soma_lyr(&states, layer_addr),
+                    CorticalBuffer::data_soma_lyr(&best_den_states_raw, layer_addr)] ))?)
+        } else {
+            None
+        };
 
         /*=============================================================================
         ===============================================================================
@@ -274,21 +275,26 @@ impl PyramidalLayer {
             tft_cycle_exe_cmd_idxs: tft_cycle_exe_cmd_idxs,
             tft_ltp_exe_cmd_idxs: tft_ltp_exe_cmd_idxs,
             cycle_exe_cmd_idx: cycle_exe_cmd_idx,
+            settings,
         })
     }
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        for &cmd_idx in self.tft_ltp_exe_cmd_idxs.iter() {
-            exe_graph.order_next(cmd_idx)?;
+        if !self.settings.disable_pyrs {
+            for &cmd_idx in self.tft_ltp_exe_cmd_idxs.iter() {
+                exe_graph.order_next(cmd_idx)?;
+            }
+
+            self.dens.set_exe_order(exe_graph)?;
+
+            for &cmd_idx in self.tft_cycle_exe_cmd_idxs.iter() {
+                exe_graph.order_next(cmd_idx)?;
+            }
+
+            if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
+                exe_graph.order_next(cycle_cmd_idx)?;
+            }
         }
-
-        self.dens.set_exe_order(exe_graph)?;
-
-        for &cmd_idx in self.tft_cycle_exe_cmd_idxs.iter() {
-            exe_graph.order_next(cmd_idx)?;
-        }
-
-        exe_graph.order_next(self.cycle_exe_cmd_idx)?;
 
         Ok(())
     }
@@ -396,9 +402,11 @@ impl DataCellLayer for PyramidalLayer {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell soma..."); }
 
         let mut event = Event::empty();
-        self.pyr_cycle_kernel.cmd().ewait(exe_graph.get_req_events(self.cycle_exe_cmd_idx)?)
-            .enew(&mut event).enq()?;
-        exe_graph.set_cmd_event(self.cycle_exe_cmd_idx, Some(event))?;
+        if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
+            self.pyr_cycle_kernel.cmd().ewait(exe_graph.get_req_events(cycle_cmd_idx)?)
+                .enew(&mut event).enq()?;
+            exe_graph.set_cmd_event(cycle_cmd_idx, Some(event))?;
+        }
 
         // [DEBUG]: TEMPORARY:
         if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }

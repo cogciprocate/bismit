@@ -59,14 +59,6 @@ impl CorticalAreaSettings {
 }
 
 
-// pub enum Work {
-//     Intake(BoxFuture<(), CmnError>),
-//     Output(BoxFuture<(), CmnError>),
-//     Regrow,
-//     Exit,
-// }
-
-
 /// An area of the cortex.
 pub struct CorticalArea {
     area_id: usize,
@@ -83,7 +75,7 @@ pub struct CorticalArea {
     spatial_cells: Vec<SpinyStellateLayer>,
     temporal_cells: Vec<PyramidalLayer>,
     focus_cells: Vec<PyramidalLayer>,
-    motor_cells: Vec<PyramidalLayer>,    
+    motor_cells: Vec<PyramidalLayer>,
     other_cells: Vec<Box<DataCellLayer>>,
     aux: Aux,
     ocl_pq: ProQue,
@@ -93,7 +85,6 @@ pub struct CorticalArea {
     settings: CorticalAreaSettings,
     exe_graph: ExecutionGraph,
     work_tx: Option<Sender<BoxFuture<(), ()>>>,
-    // work_remote: Remote,
     _work_thread: Option<JoinHandle<()>>,
 }
 
@@ -196,14 +187,8 @@ impl CorticalArea {
         let mut focus_cells: Vec<PyramidalLayer> = Vec::with_capacity(4);
         let mut motor_cells: Vec<PyramidalLayer> = Vec::with_capacity(4);
         let mut other_cells: Vec<Box<DataCellLayer>> = Vec::with_capacity(4);
-        let axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(), 
+        let axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
             write_queue.clone(), &mut exe_graph, thal)?;
-
-
-
-        // HOOK UP AXON LAYERS TO THALAMUS: still?
-
-
 
         /*=============================================================================
         ================================== DATA CELLS =================================
@@ -222,7 +207,7 @@ impl CorticalArea {
 
                             let pyr_lyr = try!(PyramidalLayer::new(layer.name(), layer.layer_id(),
                                 pyrs_dims, cell_scheme.clone(), &area_map, &axns, &ocl_pq,
-                                &mut exe_graph));
+                                settings.clone(), &mut exe_graph));
 
                             if pyr_lyr.layer_tags().contains(map::SPATIAL) {
                                 // spatial_cells.push(pyr_lyr);
@@ -242,7 +227,7 @@ impl CorticalArea {
 
                             let sst_lyr = try!(SpinyStellateLayer::new(layer.name(), layer.layer_id(),
                                 ssts_map_dims, cell_scheme.clone(), &area_map, &axns, &ocl_pq,
-                                &mut exe_graph));
+                                settings.clone(), &mut exe_graph));
 
                             if sst_lyr.layer_tags().contains(map::SPATIAL) {
                                 spatial_cells.push(sst_lyr);
@@ -269,7 +254,7 @@ impl CorticalArea {
                     match *inh_cell_kind {
                         InhibitoryCellKind::BasketSurround { lyr_name: ref src_lyr_name, field_radius: _ } => {
                             let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
-                            let src_soma = spatial_cells.iter().find(|lyr| 
+                            let src_soma = spatial_cells.iter().find(|lyr|
                                 lyr.layer_name() == psal_name.unwrap()).expect(&em1);
                             let src_soma_buf = src_soma.soma();
 
@@ -305,7 +290,7 @@ impl CorticalArea {
                                 psal_idx = spatial_cells.iter().position(|lyr| lyr.layer_name() == psal_name.unwrap())
                                     .expect(&format!("{}: '{}' is not a valid layer", emsg, psal_name.unwrap()));
                                 let ssts = &spatial_cells[psal_idx];
-                                
+
                                 ptal_idx = temporal_cells.iter().position(|lyr| lyr.layer_name() == ptal_name.unwrap())
                                     .expect(&format!("{}: '{}' is not a valid layer", emsg, ptal_name.unwrap()));
                                 let pyrs = &temporal_cells[ptal_idx];
@@ -379,30 +364,37 @@ impl CorticalArea {
         }
 
         // (5.) MCOLSs Activate:
-        mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
-
-        // (6a.) Temporal Layers Learn & Cycle:
-        for pyr in &temporal_cells {
-            pyr.set_exe_order(&mut exe_graph)?;
+        if !settings.disable_mcols {
+            mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
         }
 
-        // (6b.) Focus Layers Learn & Cycle:
-        for pyr in &focus_cells {
-            pyr.set_exe_order(&mut exe_graph)?;
-        }
+        // (6.) Pyramidal Layers Learn & Cycle:
+        if !settings.disable_pyrs {
+            // (6a.) Temporal Layers Learn & Cycle:
+            for pyr in &temporal_cells {
+                pyr.set_exe_order(&mut exe_graph)?;
+            }
 
-        // (6c.) Motor Layers Learn & Cycle:
-        for pyr in &motor_cells {
-            pyr.set_exe_order(&mut exe_graph)?;
-        }
+            // (6b.) Focus Layers Learn & Cycle:
+            for pyr in &focus_cells {
+                pyr.set_exe_order(&mut exe_graph)?;
+            }
 
-        // (6d.) Other Layers Learn & Cycle:
-        for _pyr in &other_cells {
-            // pyr.set_exe_order(&mut exe_graph)?;
+            // (6c.) Motor Layers Learn & Cycle:
+            for pyr in &motor_cells {
+                pyr.set_exe_order(&mut exe_graph)?;
+            }
+
+            // (6d.) Other Layers Learn & Cycle:
+            for _pyr in &other_cells {
+                // pyr.set_exe_order(&mut exe_graph)?;
+            }
         }
 
         // (7.) MCOLs Output:
-        mcols.as_mut().set_exe_order_output(&mut exe_graph)?;
+        if !settings.disable_mcols {
+            mcols.as_mut().set_exe_order_output(&mut exe_graph)?;
+        }
 
         // (9.) Axon Output:
         axns.set_exe_order_output(&mut exe_graph)?;
@@ -413,14 +405,12 @@ impl CorticalArea {
         =========================== WORK COMPLETION THREAD ============================
         =============================================================================*/
 
-        
         let (tx, rx) = mpsc::channel(0);
         let thread_name = format!("CorticalArea_{}", area_name.clone());
 
         let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let rx = rx;
             let mut core = Core::new().unwrap();
-            println!("Listening for work items...");
             let work = rx.buffer_unordered(3).for_each(|_| Ok(()));
             core.run(work).unwrap();
         }).unwrap();
@@ -454,7 +444,6 @@ impl CorticalArea {
             settings: settings,
             exe_graph: exe_graph,
             work_tx: Some(tx),
-            // work_remote: Remote,
             _work_thread: Some(thread),
         };
 

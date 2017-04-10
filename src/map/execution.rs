@@ -471,7 +471,7 @@ impl ExecutionGraph {
         if PRINT_DEBUG { println!("#####"); }
 
         for (cmd_idx, cmd) in self.commands.iter().enumerate() {
-            if PRINT_DEBUG { println!("##### Command [{}] ({}: '{}'):", cmd_idx, 
+            if PRINT_DEBUG { println!("##### Command [{}] ({}: '{}'):", cmd_idx,
                 cmd.details.variant_string(), cmd.details.kernel_name()); }
 
             if PRINT_DEBUG { println!("#####     [Sources:]"); }
@@ -512,31 +512,6 @@ impl ExecutionGraph {
     /// * TODO: Remove redundant, 'superseded', entries.
     ///
     fn preceding_writers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRwsMap) -> BTreeMap<usize, usize> {
-        // let mut pre_writers = BTreeMap::new();
-
-        // for (cmd_src_block_idx, cmd_src_block) in self.commands[cmd_idx].sources().iter().enumerate() {
-        //     let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().writers;
-
-        //     // // TEMP:
-        //     //     let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_src_block).unwrap().readers;
-        //     // //
-
-        //     // println!("##### Command [{}]: Source Block [{}]: Writers: {:?}, Readers: {:?}", cmd_idx,
-        //     //     cmd_src_block_idx, block_writers, block_readers);
-
-        //     for &writer_cmd_idx in block_writers.iter() {
-        //         let cmd_order_idx = self.commands[writer_cmd_idx].order_idx().expect(
-        //             "ExecutionGraph::preceeding_writers: Command order index not set.");
-
-        //         pre_writers.insert(cmd_order_idx, writer_cmd_idx);
-        //     }
-        // }
-
-        // let cmd_order_idx = self.commands[cmd_idx].order_idx().unwrap();
-        // if PRINT_DEBUG { println!("##### <{}>: [{}]: Preceding Writers: {:?}", cmd_order_idx, cmd_idx, pre_writers); }
-        // // println!("#####");
-        // pre_writers
-
         let pre_writers = self.commands[cmd_idx].details.sources().iter().enumerate()
             .flat_map(|(cmd_src_block_idx, cmd_src_block)| {
                 mem_block_rws.get(cmd_src_block).unwrap().writers.iter().map(|&writer_cmd_idx| {
@@ -547,7 +522,7 @@ impl ExecutionGraph {
             })
             .collect();
 
-        if PRINT_DEBUG { println!("##### <{}>: [{}]: Preceding Writers: {:?}",
+        if PRINT_DEBUG { println!("##### <{}>:[{}]: Preceding Writers: {:?}",
             self.commands[cmd_idx].order_idx().unwrap(), cmd_idx, pre_writers); }
 
         pre_writers
@@ -579,7 +554,7 @@ impl ExecutionGraph {
             }
         }
 
-        if PRINT_DEBUG { println!("##### <{}>: [{}]: Following Readers: {:?}",
+        if PRINT_DEBUG { println!("##### <{}>:[{}]: Following Readers: {:?}",
             self.commands[cmd_idx].order_idx().unwrap(), cmd_idx, fol_readers); }
         fol_readers
     }
@@ -614,13 +589,13 @@ impl ExecutionGraph {
 
         // println!("\n########## Memory Block Reader/Writers: {:#?}\n", mem_block_rws);
 
-        if PRINT_DEBUG { println!("\n##### Preceding Writers and Following Readers [order: cmd_idx]:"); }
+        if PRINT_DEBUG { println!("\n##### Preceding Writers and Following Readers <order>:[cmd_idx]:"); }
         if PRINT_DEBUG { println!("#####"); }
 
         // [NOTE]: Only using `self.order` instead of `self.commands` for
         // debug printing purposes. * TODO: Switch back at some point.
         for (&cmd_order, &cmd_idx) in self.order.clone().iter() {
-            if PRINT_DEBUG { println!("##### Command <{}>: [{}] ({}):", cmd_order, cmd_idx,
+            if PRINT_DEBUG { println!("##### Command <{}>:[{}] ({}):", cmd_order, cmd_idx,
                 self.commands[cmd_idx].details.variant_string()); }
 
 
@@ -641,7 +616,7 @@ impl ExecutionGraph {
             debug_assert!(self.requisite_cmd_idxs[cmd_idx].len() ==
                 self.requisite_cmd_precedence[cmd_idx].len());
 
-            // println!("##### <{}>: [{}]: Requisites: {:?}:{:?}",
+            // println!("##### <{}>:[{}]: Requisites: {:?}:{:?}",
             //     cmd_order, cmd_idx, self.requisite_cmd_idxs[cmd_idx],
             //     self.requisite_cmd_precedence[cmd_idx]);
             if PRINT_DEBUG { println!("#####"); }
@@ -666,9 +641,9 @@ impl ExecutionGraph {
             .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
 
         if self.next_order_idx != unsafe { self.commands.get_unchecked(cmd_idx).order_idx().unwrap() } {
-            panic!("{}", ExecutionGraphError::EventsRequestOutOfOrder(self.next_order_idx, 
+            panic!("{}", ExecutionGraphError::EventsRequestOutOfOrder(self.next_order_idx,
                  self.commands[cmd_idx].order_idx().unwrap()));
-            // return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_order_idx, 
+            // return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_order_idx,
             //     self.commands[cmd_idx].order_idx().unwrap()));
         }
 
@@ -707,7 +682,7 @@ impl ExecutionGraph {
             self.next_order_idx = 0;
         } else {
             self.next_order_idx += 1;
-            if PRINT_DEBUG { println!("##### ExecutionGraph::set_cmd_event: (cmd_idx: {}): next_order_idx: {}", 
+            if PRINT_DEBUG { println!("##### ExecutionGraph::set_cmd_event: (cmd_idx: {}): next_order_idx: {}",
                 cmd_idx, self.next_order_idx) }
         }
 

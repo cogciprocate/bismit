@@ -123,12 +123,13 @@ pub struct Synapses {
     tft_dims_by_tft: Vec<TuftDims>,
 
     exe_cmd_idxs: Vec<usize>,
+    bypass_exe_graph: bool,
 }
 
 impl Synapses {
     pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
             den_kind: DendriteKind, _: CellKind, area_map: &AreaMap, axons: &AxonSpace,
-            ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph,
+            ocl_pq: &ProQue, bypass_exe_graph: bool, exe_graph: &mut ExecutionGraph,
             ) -> CmnResult<Synapses>
     {
         let syn_src_slices = SynSrcSlices::new(layer_id, cell_scheme.tft_schemes(), area_map)?;
@@ -241,9 +242,11 @@ impl Synapses {
             cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_v_offs, layer_addr, tft_id));
             cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_slc_ids, layer_addr, tft_id));
 
-            exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
-                kern_name, cmd_srcs, vec![CorticalBuffer::data_syn_tft(&states, layer_addr, tft_id)]
-            ))?);
+            if !bypass_exe_graph {
+                exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                    kern_name, cmd_srcs, vec![CorticalBuffer::data_syn_tft(&states, layer_addr, tft_id)]
+                ))?);
+            }
 
             // exe_graph.register_requisite(0, 0)?;
         }
@@ -281,6 +284,7 @@ impl Synapses {
             syn_idzs_by_tft: syn_idzs_by_tft,
             tft_dims_by_tft: tft_dims_by_tft,
             exe_cmd_idxs: exe_cmd_idxs,
+            bypass_exe_graph,
         };
 
         syns.grow(true);
@@ -289,9 +293,11 @@ impl Synapses {
     }
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        for &cmd_idx in self.exe_cmd_idxs.iter() {
-            if PRINT_DEBUG { println!("##### Ordering synapse cmd_idx: {}", cmd_idx); }
-            exe_graph.order_next(cmd_idx)?;
+        if !self.bypass_exe_graph {
+            for &cmd_idx in self.exe_cmd_idxs.iter() {
+                if PRINT_DEBUG { println!("##### Ordering synapse cmd_idx: {}", cmd_idx); }
+                exe_graph.order_next(cmd_idx)?;
+            }
         }
         Ok(())
     }

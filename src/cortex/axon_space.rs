@@ -43,8 +43,8 @@ pub struct IoInfo {
 }
 
 impl IoInfo {
-    pub fn new(tract_area_id: usize, src_lyr_addr: LayerAddress, axn_range: Range<u32>, 
-            exe_cmd: IoExeCmd) -> IoInfo 
+    pub fn new(tract_area_id: usize, src_lyr_addr: LayerAddress, axn_range: Range<u32>,
+            exe_cmd: IoExeCmd) -> IoInfo
     {
         IoInfo {
             tract_area_id: tract_area_id,
@@ -300,18 +300,20 @@ pub struct AxonSpace {
     states: Buffer<u8>,
     filter_chains: Vec<(LayerAddress, Vec<SensoryFilter>)>,
     io_info: IoInfoCache,
-    read_queue: Queue, 
+    read_queue: Queue,
     write_queue: Queue,
 }
 
 impl AxonSpace {
     pub fn new(area_map: &AreaMap, ocl_pq: &ProQue, read_queue: Queue, write_queue: Queue,
-        exe_graph: &mut ExecutionGraph, thal: &mut Thalamus) -> CmnResult<AxonSpace>
+            exe_graph: &mut ExecutionGraph, thal: &mut Thalamus) -> CmnResult<AxonSpace>
     {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
             area_map.slices().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
 
-        let states = Buffer::<u8>::new(write_queue.clone(), None, area_map.slices(), None, Some((0, None::<()>))).unwrap();
+        let states = Buffer::<u8>::new(write_queue.clone(),
+            Some(MemFlags::new().read_write().alloc_host_ptr()),
+            area_map.slices(), None, Some((0, None::<()>))).unwrap();
 
         /*=============================================================================
         =================================== FILTERS ===================================
@@ -417,7 +419,7 @@ impl AxonSpace {
             _ => panic!("AxonSpace::create_layer_sub_buffer: Must be input our output route."),
         };
 
-        let lyr_info = self.io_info.group_info(route).and_then(|grp| 
+        let lyr_info = self.io_info.group_info(route).and_then(|grp|
                 grp.iter().find(|&info| info.src_lyr_addr == src_lyr_addr)
             ).expect("AxonSpace::create_layer_sub_buffer: Cannot find layer");
 
@@ -522,9 +524,9 @@ impl AxonSpace {
                                 .and_then(|(reader, mut map)| {
                                     debug_assert_eq!(reader.len(), map.len());
                                     let len = map.len();
-                                    unsafe { 
-                                        ::std::ptr::copy_nonoverlapping(reader.as_ptr(), 
-                                            map.as_mut_ptr(), len); 
+                                    unsafe {
+                                        ::std::ptr::copy_nonoverlapping(reader.as_ptr(),
+                                            map.as_mut_ptr(), len);
                                     }
                                     Ok(())
                                 })

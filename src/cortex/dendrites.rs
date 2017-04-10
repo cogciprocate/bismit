@@ -22,6 +22,7 @@ pub struct Dendrites {
     den_idzs_by_tft: Vec<u32>,
     den_counts_by_tft: Vec<u32>,
     exe_cmd_idxs: Vec<usize>,
+    bypass_exe_graph: bool,
 }
 
 impl Dendrites {
@@ -35,6 +36,7 @@ impl Dendrites {
             area_map: &AreaMap,
             axons: &AxonSpace,
             ocl_pq: &ProQue,
+            bypass_exe_graph: bool,
             exe_graph: &mut ExecutionGraph,
             ) -> CmnResult<Dendrites>
     {
@@ -75,7 +77,7 @@ impl Dendrites {
             layer_name, dims, states.len(), mt = cmn::MT);
 
         let syns = Synapses::new(layer_name, layer_id, dims, cell_scheme.clone(), den_kind, cell_kind,
-            area_map, axons, ocl_pq, exe_graph)?;
+            area_map, axons, ocl_pq, bypass_exe_graph, exe_graph)?;
 
         /*=============================================================================
         ===============================================================================
@@ -118,18 +120,20 @@ impl Dendrites {
                 .arg_buf(&states)
             );
 
-            exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
-                kern_name, 
-                vec![
-                    CorticalBuffer::data_syn_tft(syns.states(), layer_addr, tft_id),
-                    CorticalBuffer::data_syn_tft(syns.strengths(), layer_addr, tft_id)
-                ],
-                vec![
-                    CorticalBuffer::data_den_tft(&energies, layer_addr, tft_id),
-                    CorticalBuffer::data_den_tft(&states_raw, layer_addr, tft_id),
-                    CorticalBuffer::data_den_tft(&states, layer_addr, tft_id),
-                ]
-            ))?);
+            if !bypass_exe_graph {
+                exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                    kern_name,
+                    vec![
+                        CorticalBuffer::data_syn_tft(syns.states(), layer_addr, tft_id),
+                        CorticalBuffer::data_syn_tft(syns.strengths(), layer_addr, tft_id)
+                    ],
+                    vec![
+                        CorticalBuffer::data_den_tft(&energies, layer_addr, tft_id),
+                        CorticalBuffer::data_den_tft(&states_raw, layer_addr, tft_id),
+                        CorticalBuffer::data_den_tft(&states, layer_addr, tft_id),
+                    ]
+                ))?);
+            }
         }
 
         /*=============================================================================
@@ -149,15 +153,18 @@ impl Dendrites {
             den_idzs_by_tft: den_idzs_by_tft,
             den_counts_by_tft: den_counts_by_tft,
             exe_cmd_idxs: exe_cmd_idxs,
+            bypass_exe_graph,
         })
     }
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        self.syns.set_exe_order(exe_graph)?;
+        if !self.bypass_exe_graph {
+            self.syns.set_exe_order(exe_graph)?;
 
-        for &cmd_idx in self.exe_cmd_idxs.iter() {
-            if PRINT_DEBUG { println!("##### Ordering dendrite cmd_idx: {}", cmd_idx); }
-            exe_graph.order_next(cmd_idx)?;
+            for &cmd_idx in self.exe_cmd_idxs.iter() {
+                if PRINT_DEBUG { println!("##### Ordering dendrite cmd_idx: {}", cmd_idx); }
+                exe_graph.order_next(cmd_idx)?;
+            }
         }
         Ok(())
     }
