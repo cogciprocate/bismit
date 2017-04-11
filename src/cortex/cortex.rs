@@ -55,7 +55,7 @@ impl Cortex {
         }
     }
 
-    pub fn set_sub(mut self, sub: Subcortex) -> Cortex {
+    pub fn sub(mut self, sub: Subcortex) -> Cortex {
         self.sub = Some(sub);
         self
     }

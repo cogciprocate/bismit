@@ -696,6 +696,7 @@ impl ExecutionGraph {
     // #[inline] pub fn command_count(&self) -> usize { self.order.len() }
 }
 
+unsafe impl Send for ExecutionGraph {}
 
 
 

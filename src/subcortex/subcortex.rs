@@ -22,7 +22,7 @@ use subcortex::Thalamus;
 
 
 
-pub trait SubcorticalNucleus {
+pub trait SubcorticalNucleus: Send {
     fn area_name<'a>(&'a self) -> &'a str;
 }
 

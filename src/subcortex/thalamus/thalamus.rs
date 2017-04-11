@@ -252,11 +252,11 @@ impl Thalamus {
         }
     }
 
-    pub fn ext_pathway_idx(&self, pathway_name: &String) -> CmnResult<usize> {
-        match self.external_pathways.indices().get(pathway_name) {
+    pub fn ext_pathway_idx<S: AsRef<str>>(&self, pathway_name: S) -> CmnResult<usize> {
+        match self.external_pathways.indices().get(pathway_name.as_ref()) {
             Some(&idx) => Ok(idx),
             None => CmnError::err(format!("Thalamus::ext_pathway_idx(): \
-                No external pathway found named: '{}'.", pathway_name)),
+                No external pathway found named: '{}'.", pathway_name.as_ref())),
         }
     }
 

@@ -208,7 +208,8 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
             .eff_areas(vec!["dummy_area"])
         )
         .area(AreaScheme::new("dummy_area", "dummy_lm", 44)
-            .input(InputScheme::None { layer_count: 1 })
+            // .input(InputScheme::None)
+            .input(InputScheme::Custom { layer_count: 1 })
         )
     ;
 

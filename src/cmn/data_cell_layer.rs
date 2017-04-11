@@ -7,7 +7,7 @@ use map::{CellScheme, ExecutionGraph};
 #[cfg(test)]
 pub use self::tests::{DataCellLayerTest, CelCoords};
 
-pub trait DataCellLayer {
+pub trait DataCellLayer: Send {
     fn learn(&mut self, &mut ExecutionGraph) -> CmnResult <()> ;
     fn regrow(&mut self);
     // fn cycle(&self, Option<&ClWaitListPtr>);

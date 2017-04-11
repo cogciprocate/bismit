@@ -41,8 +41,8 @@ pub enum ExternalPathwayEncoder {
     GlyphSequences(Box<GlyphSequences>),
     SensoryTract(Box<SensoryTract>),
     VectorEncoder(Box<VectorEncoder>),
-    Other(Box<ExternalPathwayTract>),
-    OtherUnspecified,
+    Custom(Box<ExternalPathwayTract>),
+    CustomUnspecified,
 }
 
 impl ExternalPathwayEncoder {
@@ -52,7 +52,7 @@ impl ExternalPathwayEncoder {
         let mut frame = TractFrameMut::new(data.as_mut_slice(), dims);
 
         match *self {
-            ExternalPathwayEncoder::Other(ref mut es) => {
+            ExternalPathwayEncoder::Custom(ref mut es) => {
                 es.write_into(&mut frame, addr)
             },
             ExternalPathwayEncoder::GlyphSequences(ref mut es) => {
@@ -64,7 +64,7 @@ impl ExternalPathwayEncoder {
             ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
                 es.write_into(&mut frame, addr)
             },
-            ExternalPathwayEncoder::OtherUnspecified => {
+            ExternalPathwayEncoder::CustomUnspecified => {
                 panic!("ExternalPathway::write_into: Custom pathway not specified.")
             },
             _ => (),
@@ -73,7 +73,7 @@ impl ExternalPathwayEncoder {
 
     pub fn cycle_next(&mut self) {
         match *self {
-            ExternalPathwayEncoder::Other(ref mut es) => {
+            ExternalPathwayEncoder::Custom(ref mut es) => {
                 es.cycle_next()
             },
             ExternalPathwayEncoder::GlyphSequences(ref mut es) => {
@@ -82,7 +82,7 @@ impl ExternalPathwayEncoder {
             ExternalPathwayEncoder::SensoryTract(ref mut es) => {
                 es.cycle_next()
             },
-            ExternalPathwayEncoder::OtherUnspecified => {
+            ExternalPathwayEncoder::CustomUnspecified => {
                 panic!("ExternalPathway::cycle_next: Custom pathway not specified.")
             },
             _ => (),
@@ -95,7 +95,7 @@ impl ExternalPathwayEncoder {
                 v.set_ranges(&ranges).unwrap();
             }
             _ => unimplemented!(),
-        } 
+        }
     }
 
     // /// Returns a tract frame of an external source buffer, if available.
@@ -107,7 +107,7 @@ impl ExternalPathwayEncoder {
     //         ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
     //             Ok(es.ext_frame_mut())
     //         },
-    //         ExternalPathwayEncoder::OtherUnspecified => {
+    //         ExternalPathwayEncoder::CustomUnspecified => {
     //             panic!("ExternalPathway::write_into: Custom pathway not specified.")
     //         },
     //         _ => Err(CmnError::new(format!("ExternalPathway::ext_frame_Mut(): No tract available for the source \
@@ -162,7 +162,7 @@ pub struct ExternalPathway {
     area_id: usize,
     area_name: String,
     // encoder: ExternalPathwayEncoder,
-    layers: HashMap<LayerAddress, ExternalPathwayLayer>,    
+    layers: HashMap<LayerAddress, ExternalPathwayLayer>,
     tx: SyncSender<EncoderCmd>,
     _thread: Option<JoinHandle<()>>,
     // rx: Receiver<EncoderRes>,
@@ -233,7 +233,7 @@ impl ExternalPathway {
                 if loop_frames > 0 {
                     is = is.loop_frames(loop_frames);
                 }
-                ExternalPathwayEncoder::Other(Box::new(is))
+                ExternalPathwayEncoder::Custom(Box::new(is))
             },
             InputScheme::GlyphSequences { seq_lens, seq_count, scale, hrz_dims } => {
                 let label_file = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
@@ -258,7 +258,7 @@ impl ExternalPathway {
                     lyr_dims_list[0].unwrap().into()
                 };
 
-                ExternalPathwayEncoder::Other(Box::new(ScalarSequence::new(range, incr, &tract_dims)))
+                ExternalPathwayEncoder::Custom(Box::new(ScalarSequence::new(range, incr, &tract_dims)))
             },
             InputScheme::ScalarSdrGradiant { range, way_span, incr } => {
                 let tract_dims = {
@@ -266,10 +266,10 @@ impl ExternalPathway {
                     lyr_dims_list[0].unwrap().into()
                 };
 
-                ExternalPathwayEncoder::Other(Box::new(ScalarSdrGradiant::new(range, way_span, incr, &tract_dims)))
+                ExternalPathwayEncoder::Custom(Box::new(ScalarSdrGradiant::new(range, way_span, incr, &tract_dims)))
             },
             InputScheme::ReversoScalarSequence { range, incr } => {
-                ExternalPathwayEncoder::Other(Box::new(
+                ExternalPathwayEncoder::Custom(Box::new(
                     ReversoScalarSequence::new(range, incr, &lyr_addr_list)))
             },
             InputScheme::VectorEncoder { ref ranges } => {
@@ -280,7 +280,7 @@ impl ExternalPathway {
                 )))
             },
             InputScheme::Custom { .. } => {
-                ExternalPathwayEncoder::OtherUnspecified
+                ExternalPathwayEncoder::CustomUnspecified
             },
             InputScheme::None { .. } => {
                 ExternalPathwayEncoder::None
@@ -297,7 +297,7 @@ impl ExternalPathway {
 
             loop {
                 match rx.recv().unwrap() {
-                    EncoderCmd::WriteInto { addr, dims, future_write } => 
+                    EncoderCmd::WriteInto { addr, dims, future_write } =>
                         encoder.write_into(addr, dims, future_write),
                     EncoderCmd::Cycle => encoder.cycle_next(),
                     EncoderCmd::SetRanges(ranges) => encoder.set_ranges(ranges),
@@ -321,11 +321,11 @@ impl ExternalPathway {
     // as `InputScheme::Custom` in `AreaScheme`.
     pub fn set_encoder(&self, tract: Box<ExternalPathwayTract>) {
         // match self.encoder {
-        //     ExternalPathwayEncoder::OtherUnspecified => (),
+        //     ExternalPathwayEncoder::CustomUnspecified => (),
         //     _ => return CmnError::err("ExternalPathway::specify_encoder(): Encoder already specified."),
         // }
-        // self.encoder = ExternalPathwayEncoder::Other(tract);
-        self.tx.send(EncoderCmd::SetEncoder(ExternalPathwayEncoder::Other(tract))).unwrap();
+        // self.encoder = ExternalPathwayEncoder::Custom(tract);
+        self.tx.send(EncoderCmd::SetEncoder(ExternalPathwayEncoder::Custom(tract))).unwrap();
     }
 
     /// Writes input data into a tract.
@@ -334,7 +334,7 @@ impl ExternalPathway {
         let dims = self.layers[&addr].dims().expect(&format!("Dimensions don't exist for \
             external input area: \"{}\", addr: '{:?}' ", self.area_name, addr)).into();
         self.tx.send(EncoderCmd::WriteInto { addr, dims, future_write }).unwrap();
-    }    
+    }
 
     pub fn cycle_next(&self) {
         self.tx.send(EncoderCmd::Cycle).unwrap();
@@ -362,7 +362,7 @@ impl ExternalPathway {
 }
 
 impl Drop for ExternalPathway {
-    fn drop(&mut self) {        
+    fn drop(&mut self) {
         self.tx.send(EncoderCmd::Exit).unwrap();
         self._thread.take().unwrap().join().unwrap();
     }

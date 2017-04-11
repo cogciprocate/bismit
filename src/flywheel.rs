@@ -72,32 +72,6 @@ pub enum Command {
     Exit,
 }
 
-// /// A request and response specifier for a synapse buffer.
-// #[derive(Clone, Debug)]
-// pub enum SynapseBuffer {
-//     States(Option<Buffer<u8>>),
-//     Strengths(Option<Buffer<u8>>),
-//     SliceIds(Option<Buffer<u8>>),
-//     OffsetsV(Option<Buffer<u8>>),
-//     OffsetsU(Option<Buffer<u8>>),
-//     FlagSets(Option<Buffer<u8>>),
-// }
-
-// /// A request and response specifier for a dendrite buffer.
-// #[derive(Clone, Debug)]
-// pub enum DendriteBuffer {
-//     States(Option<Buffer<u8>>),
-//     StatesRaw(Option<Buffer<u8>>),
-//     Thresholds(Option<Buffer<u8>>),
-// }
-
-// /// A request and response specifier for a cell buffer.
-// #[derive(Clone, Debug)]
-// pub enum CellBuffer {
-//     Soma(Option<Buffer<u8>>),
-//     Dendrites(DendriteBuffer),
-//     Synapses(SynapseBuffer),
-// }
 
 // Requests for and submissions of data.
 #[derive(Clone, Debug)]
@@ -106,8 +80,6 @@ pub enum Request {
     Status,
     AreaInfo,
     Sample(Range<u8>, Arc<Mutex<Vec<u8>>>),
-    // AxonBuffer { area_id: usize },
-    // CellBuffer { lyr_addr: LayerAddress, kind: CellBuffer },
     // Input(Obs),
     // GetAction,
 }
@@ -196,6 +168,9 @@ pub enum LoopAction {
 }
 
 
+/// An event loop for the cortex.
+///
+// Currently clocking in at ~488 bytes (2017-Apr-10)
 pub struct Flywheel {
     command_rx: Receiver<Command>,
     req_res_pairs: Vec<(Receiver<Request>, Sender<Response>)>,
@@ -210,7 +185,7 @@ pub struct Flywheel {
 
 impl Flywheel {
     // TODO: Find some other way to set current area.
-    pub fn new(cortex: Cortex, command_rx: Receiver<Command>, area_name: String) -> Flywheel {
+    pub fn new<S: Into<String>>(cortex: Cortex, command_rx: Receiver<Command>, area_name: S) -> Flywheel {
         // let area_name = "v1".to_owned();
 
         Flywheel {
@@ -220,21 +195,21 @@ impl Flywheel {
             motor_txs: Vec::with_capacity(8),
             cortex: cortex,
             cycle_iters_max: 1,
-            area_name: area_name,
+            area_name: area_name.into(),
             status: Status::new(),
         }
     }
 
-    pub fn from_blueprint(
+    pub fn from_blueprint<S: Into<String>>(
                 lm_schemes: LayerMapSchemeList,
                 a_schemes: AreaSchemeList,
                 ca_settings: Option<CorticalAreaSettings>,
                 command_rx: Receiver<Command>,
-                area_name: String,
+                area_name: S,
             ) -> Flywheel {
         let cortex = Cortex::new(lm_schemes, a_schemes, ca_settings);
 
-        Flywheel::new(cortex, command_rx, area_name)
+        Flywheel::new(cortex, command_rx, area_name.into())
     }
 
     pub fn add_req_res_pair(&mut self, req_rx: Receiver<Request>, res_tx: Sender<Response>) {
@@ -245,8 +220,8 @@ impl Flywheel {
     //     self.sen_mot_pairs.push((sen_rx, mot_tx));
     // }
 
-    pub fn add_sensory_rx(&mut self, sensory_rx: Receiver<SensoryFrame>, pathway_name: String) {
-        let pathway_idx = self.cortex.thal_mut().ext_pathway_idx(&pathway_name).unwrap();
+    pub fn add_sensory_rx<S: AsRef<str>>(&mut self, sensory_rx: Receiver<SensoryFrame>, pathway_name: S) {
+        let pathway_idx = self.cortex.thal_mut().ext_pathway_idx(pathway_name.as_ref()).unwrap();
         self.sensory_rxs.push((sensory_rx, pathway_idx));
     }
 
