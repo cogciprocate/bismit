@@ -12,6 +12,8 @@ use vibi::bismit::map::*;
 use vibi::bismit::flywheel::Flywheel;
 
 static PRI_AREA: &'static str = "v1";
+static IN_AREA: &'static str = "v0";
+static IN_LYR: &'static str = "external_0";
 
 fn main() {
     use std::thread;
@@ -32,6 +34,11 @@ fn main() {
             define_a_schemes(), Some(ca_settings()), command_rx, PRI_AREA);
     flywheel.add_req_res_pair(vibi_request_rx, vibi_response_tx);
     flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
+
+    let v0_area_id = flywheel.cortex().areas().by_key(IN_AREA).unwrap().area_id();
+    let v0_in_lyr_id = flywheel.cortex().areas().by_index(v0_area_id).unwrap()
+        .area_map()
+    // let v0_lyr_addr =
 
     let axns = flywheel.cortex().areas().by_key(PRI_AREA).unwrap()
         .axns().states().clone();
@@ -74,7 +81,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer("external", 1, map::DEFAULT,
+            .layer(IN_LYR, 1, map::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, at0]),
                 LayerKind::Axonal(AxonTopology::Spatial))
         )
@@ -91,7 +98,8 @@ fn define_a_schemes() -> AreaSchemeList {
             //    scale: 1.4, hrz_dims: (16, 16) }),
             // .input(InputScheme::ScalarSdrGradiant { range: (-8.0, 8.0), way_span: 16.0, incr: 0.1 }),
             // .input(InputScheme::None),
-            .input(InputScheme::Custom { layer_count: 1 }),
+            // .input(InputScheme::Custom { layer_count: 1 }),
+            .custom_layer_count(1)
         )
         .area(AreaScheme::new(PRI_AREA, "visual", AREA_SIDE)
             .eff_areas(vec!["v0"])

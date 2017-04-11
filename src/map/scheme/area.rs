@@ -38,8 +38,20 @@ impl AreaScheme {
         }
     }
 
+    /// Sets an input scheme which will generate or encode data of some sort.
     pub fn input(mut self, input: InputScheme) -> AreaScheme {
         self.input = input;
+        self
+    }
+
+    /// Sets a custom layer count for this area indicating it will be used for
+    /// I/O or encoding of some sort.
+    ///
+    /// Setting this requires you to set a custom encoder via the thalamic
+    /// ext. pathway (`cortex.thal_mut().ext_pathway(ep_idx).unwrap().set_encoder( ... )`).
+    pub fn custom_layer_count(mut self, layer_count: usize) -> AreaScheme {
+        assert!(self.input.is_none(), "Cannot set area scheme layer count. Input already set.");
+        self.input = InputScheme::Custom { layer_count };
         self
     }
 

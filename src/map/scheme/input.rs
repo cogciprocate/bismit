@@ -27,6 +27,7 @@ impl InputScheme {
         }
     }
 
+    #[inline]
     pub fn is_none(&self) -> bool {
         !self.is_some()
     }

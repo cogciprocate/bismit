@@ -302,6 +302,7 @@ impl LayerMap {
         }
     }
 
+    #[inline] pub fn layers(&self) -> &MapStore<String, LayerInfo> { &self.layers }
     #[inline] pub fn iter(&self) -> Iter<LayerInfo> { self.layers.values().iter() }
     #[inline] pub fn region_kind(&self) -> &LayerMapKind { &self.kind }
     #[inline] pub fn depth(&self) -> u8 { self.depth }

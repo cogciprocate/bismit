@@ -158,9 +158,9 @@ impl CorticalArea {
             area_map.aff_areas(), device_idx, ocl_pq.device().name().trim(),
             ocl_pq.device().vendor().trim(), mt = cmn::MT);
 
-        let psal_name = area_map.layers().layers_containing_tags(map::PSAL)
+        let psal_name = area_map.layer_map().layers_containing_tags(map::PSAL)
             .first().map(|lyr| lyr.name());
-        let ptal_name = area_map.layers().layers_containing_tags(map::PTAL)
+        let ptal_name = area_map.layer_map().layers_containing_tags(map::PTAL)
             .first().map(|lyr| lyr.name());
 
         let mut psal_idx = usize::max_value();
@@ -193,7 +193,7 @@ impl CorticalArea {
         =============================================================================*/
         // * TODO: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
-        for layer in area_map.layers().iter() {
+        for layer in area_map.layer_map().iter() {
             match layer.kind() {
                 &LayerKind::Cellular(ref cell_scheme) => {
                     println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
@@ -246,7 +246,7 @@ impl CorticalArea {
         =============================================================================*/
         // * TODO: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
-        for layer in area_map.layers().iter() {
+        for layer in area_map.layer_map().iter() {
             if let LayerKind::Cellular(ref layer_kind) = *layer.kind() {
                 if let CellKind::Inhibitory(ref inh_cell_kind) = *layer_kind.cell_kind() {
                     match *inh_cell_kind {
@@ -274,7 +274,7 @@ impl CorticalArea {
             }
         }
 
-        for layer in area_map.layers().iter() {
+        for layer in area_map.layer_map().iter() {
             match layer.kind() {
                 &LayerKind::Cellular(ref cell_scheme) => {
                     println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
@@ -543,7 +543,7 @@ impl CorticalArea {
     }
 
     /// [FIXME]: Currnently assuming aff out slice is == 1. Ascertain the
-    /// slice range correctly by consulting area_map.layers().
+    /// slice range correctly by consulting area_map.layer_map().
     pub fn sample_aff_out(&self, buf: &mut [u8]) -> Event {
         let aff_out_slc = self.mcols.axn_slc_id();
         self.sample_axn_slc_range(aff_out_slc..(aff_out_slc + 1), buf)
@@ -554,8 +554,8 @@ impl CorticalArea {
         let slc_range = slc_range.borrow();
         assert!(slc_range.len() > 0, "CorticalArea::sample_axn_slc_range(): \
             Invalid slice range: '{:?}'. Slice range length must be at least one.", slc_range);
-        let axn_range_start = self.area_map.slices().axn_range(slc_range.start).start;
-        let axn_range_end = self.area_map.slices().axn_range(slc_range.end - 1).end;
+        let axn_range_start = self.area_map.slice_map().axn_range(slc_range.start).start;
+        let axn_range_end = self.area_map.slice_map().axn_range(slc_range.end - 1).end;
         let axn_range = axn_range_start..axn_range_end;
 
         debug_assert!(buf.len() == axn_range.len(), "Sample buffer length ({}) not \
@@ -570,7 +570,7 @@ impl CorticalArea {
     }
 
     pub fn sample_axn_space(&self, buf: &mut [u8]) -> Event {
-        debug_assert!(buf.len() == self.area_map.slices().axn_count() as usize);
+        debug_assert!(buf.len() == self.area_map.slice_map().axn_count() as usize);
         let mut event = Event::empty();
 
         self.finish_queues();
@@ -589,7 +589,7 @@ impl CorticalArea {
     #[inline] pub fn efferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.eff_areas() }
     #[inline] pub fn ocl_pq(&self) -> &ProQue { &self.ocl_pq }
     #[inline] pub fn device(&self) -> Device { self.ocl_pq.queue().device() }
-    #[inline] pub fn axn_tract_map(&self) -> SliceTractMap { self.area_map.slices().tract_map() }
+    #[inline] pub fn axn_tract_map(&self) -> SliceTractMap { self.area_map.slice_map().tract_map() }
     #[inline] pub fn area_map(&self) -> &AreaMap { &self.area_map }
     #[inline] pub fn area_id(&self) -> usize { self.area_id }
     #[inline] pub fn aux(&self) -> &Aux { &self.aux }

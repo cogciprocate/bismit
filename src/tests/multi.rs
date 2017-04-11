@@ -11,9 +11,9 @@ fn multi_layer_input() {
 		cortex.cycle();
 
 		for area in cortex.areas().values().iter() {
-			// let slc_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::NS_IN);
+			// let slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(map::NS_IN);
 
-			let input_layers = area.area_map().layers().iter()
+			let input_layers = area.area_map().layer_map().iter()
 				.filter(|li| li.is_input()).map(|li| li)
 				.collect::<Vec<_>>();
 

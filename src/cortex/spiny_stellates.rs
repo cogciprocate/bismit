@@ -100,7 +100,7 @@ impl SpinyStellateLayer {
         Ok(SpinyStellateLayer {
             layer_name: layer_name,
             layer_id: layer_id,
-            layer_tags: area_map.layers().layer_info(layer_id).unwrap().layer_tags(),
+            layer_tags: area_map.layer_map().layer_info(layer_id).unwrap().layer_tags(),
             dims: dims,
             cell_scheme: cell_scheme,
             axn_slc_ids: axn_slc_ids,

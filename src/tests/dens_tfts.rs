@@ -24,7 +24,7 @@ fn cycle_random_pyrs() {
     area.axns().states().default_queue().unwrap().finish().unwrap();
 
     // Set source slice to an unused slice for all synapses:
-    let unused_slc_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::UNUSED_TESTING);
+    let unused_slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(map::UNUSED_TESTING);
     assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
     let zeroed_slc_id = unused_slc_ranges[0].start;
     let unused_slc_id = unused_slc_ranges[1].start;
@@ -34,7 +34,7 @@ fn cycle_random_pyrs() {
     area.ptal_mut().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
 
     // 'input' source slice which will be assigned to the synapses being tested:
-    // let src_slc_ids = area.area_map().layers().layers_containing_tags_slc_range(map::FF_IN);
+    // let src_slc_ids = area.area_map().layer_map().layers_containing_tags_slc_range(map::FF_IN);
     // assert!(src_slc_ids.len() == 1);
     // let src_slc_id = ;
 
@@ -196,7 +196,7 @@ fn cycle_random_dens() {
     area.ptal_mut().dens_mut().set_all_to_zero(true);
 
     // SET SOURCE SLICE TO UNUSED SLICE FOR EVERY SYNAPSE:
-    let zeroed_slc_range = area.area_map().layers()
+    let zeroed_slc_range = area.area_map().layer_map()
         .layers_containing_tags_slc_range(map::UNUSED_TESTING)[0].clone();
     let zeroed_slc_id = zeroed_slc_range.start;
 
@@ -248,7 +248,7 @@ fn cycle_random_dens() {
         let cel_syn_range = den_coords.syn_idx_range_celtft(den_coords.tft_id, tft_syn_idz);
 
         // [FIXME]: ASSIGN SPECIAL TAGS TO THIS LAYER:
-        let src_slc_ranges = area.area_map().layers().iter()
+        let src_slc_ranges = area.area_map().layer_map().iter()
             .filter(|li| li.axn_domain().is_input() && li.slc_range().is_some())
             .map(|li| li.slc_range().unwrap().clone())
             .collect::<Vec<_>>();

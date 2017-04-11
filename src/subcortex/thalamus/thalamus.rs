@@ -201,7 +201,7 @@ impl Thalamus {
                 area_s.name(), mt = cmn::MT);
 
             {
-                let output_layers = area_map.layers().iter()
+                let output_layers = area_map.layer_map().iter()
                     .filter(|li| li.axn_domain().is_output()).collect::<Vec<_>>();
 
                 for layer in output_layers.iter() {

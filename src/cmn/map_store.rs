@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use std::hash::{Hash, /*BuildHasherDefault*/};
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
+use std::slice::{Iter, IterMut};
 // use twox_hash::XxHash;
 
 
@@ -14,6 +15,7 @@ use std::ops::{Index, IndexMut};
 ///
 /// This might need a better name :/
 ///
+// TODO: [impl Iterator]: https://doc.rust-lang.org/std/iter/index.html#implementing-iterator
 #[derive(Debug, Clone)]
 pub struct MapStore<K, V> where K: Eq + Hash {
     values: Vec<V>,
@@ -83,6 +85,8 @@ impl<K, V> MapStore<K, V> where K: Eq + Hash + Debug {
     // #[inline] pub fn indices_mut(&mut self) -> &mut HashMap<K, usize> { &mut self.indices }
     #[inline] pub fn values(&self) -> &[V] { self.values.as_slice() }
     #[inline] pub fn values_mut(&mut self) -> &mut [V] { self.values.as_mut_slice() }
+    #[inline] pub fn iter(&self) -> Iter<V> { self.values.iter() }
+    #[inline] pub fn iter_mut(&mut self) -> IterMut<V> { self.values.iter_mut() }
 }
 
 impl<K, V> Index<usize> for MapStore<K, V> where K: Eq + Hash + Debug {

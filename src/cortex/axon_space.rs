@@ -17,6 +17,7 @@ use cortex::{SensoryFilter};
 const DISABLE_IO: bool = false;
 
 
+/// The execution graph command kind and index for an I/O layer.
 #[derive(Debug)]
 pub enum IoExeCmd {
     Read(usize),
@@ -97,7 +98,7 @@ impl IoInfoGroup {
                 ==================================== OUTPUT ===================================
                 =============================================================================*/
 
-                let lyr_slc_id_range = area_map.layers()
+                let lyr_slc_id_range = area_map.layer_map()
                     .layer_info(lyr_addr.layer_id()).expect("IoInfoCache::new(): \
                         Internal consistency error. Source layer address is invalid.")
                     .slc_range().expect("IoInfoCache::new(): \
@@ -152,7 +153,7 @@ impl IoInfoGroup {
                     }
 
                     // Get target layer absolute slice id range:
-                    let tar_lyr_slc_id_range = area_map.layers()
+                    let tar_lyr_slc_id_range = area_map.layer_map()
                         .layer_info(lyr_addr.layer_id()).expect("IoInfoCache::new(): \
                             Internal consistency error. Target layer address is invalid.")
                         .src_lyr(&src_lyr_addr).expect("IoInfoCache::new(): \
@@ -221,7 +222,7 @@ impl IoInfoCache {
             // key to access the correct thalamic tract:
             let tract_src_lyr_addrs: Vec<(LayerAddress, Option<LayerAddress>)> =
                 if let AxonDomainRoute::Output = *group_route {
-                    area_map.layers().iter()
+                    area_map.layer_map().iter()
                         .filter(|li| li.axn_domain().is_output())
                         .map(|li| {
                             let lyr_addr = LayerAddress::new(area_map.area_id(), li.layer_id());
@@ -232,7 +233,7 @@ impl IoInfoCache {
                     // because it needs `li` to build its `LayerAddress`:
                     let mut tract_src_lyr_addrs = Vec::with_capacity(16);
 
-                    for li in area_map.layers().iter() {
+                    for li in area_map.layer_map().iter() {
                         if li.axn_domain().is_input() {
                             let lyr_addr = LayerAddress::new(area_map.area_id(), li.layer_id());
 
@@ -309,11 +310,11 @@ impl AxonSpace {
             exe_graph: &mut ExecutionGraph, thal: &mut Thalamus) -> CmnResult<AxonSpace>
     {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
-            area_map.slices().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
+            area_map.slice_map().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
 
         let states = Buffer::<u8>::new(write_queue.clone(),
             Some(MemFlags::new().read_write().alloc_host_ptr()),
-            area_map.slices(), None, Some((0, None::<()>))).unwrap();
+            area_map.slice_map(), None, Some((0, None::<()>))).unwrap();
 
         /*=============================================================================
         =================================== FILTERS ===================================
@@ -322,7 +323,7 @@ impl AxonSpace {
         let mut filter_chains = Vec::with_capacity(4);
 
         for &(ref track, ref tags, ref chain_scheme) in area_map.filter_chain_schemes() {
-            let (src_lyr_info, _) = area_map.layers().src_layer_info_by_sig(&(track, tags).into())
+            let (src_lyr_info, _) = area_map.layer_map().src_layer_info_by_sig(&(track, tags).into())
                 .expect(&format!("Unable to find a layer within the area map matching the axon \
                     domain (track: '{:?}', tags: '{:?}') specified by the filter chain scheme: '{:?}'.",
                     track, tags, chain_scheme));
@@ -412,10 +413,14 @@ impl AxonSpace {
     }
 
     /// Creates a sub buffer representing a layer of axon space.
-    pub fn create_layer_sub_buffer(&self, src_lyr_addr: LayerAddress, route: AxonDomainRoute) -> CmnResult<Buffer<u8>> {
+    ///
+    ///
+    pub fn create_layer_sub_buffer(&self, src_lyr_addr: LayerAddress, route: AxonDomainRoute)
+            -> CmnResult<Buffer<u8>>
+    {
         let flags = match route {
-            AxonDomainRoute::Input => Some(MemFlags::new()),
-            AxonDomainRoute::Output => Some(MemFlags::new()),
+            AxonDomainRoute::Input => Some(MemFlags::new().host_write_only()),
+            AxonDomainRoute::Output => Some(MemFlags::new().host_read_only()),
             _ => panic!("AxonSpace::create_layer_sub_buffer: Must be input our output route."),
         };
 

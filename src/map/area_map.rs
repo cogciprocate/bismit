@@ -12,8 +12,8 @@ pub struct AreaMap {
     area_id: usize,
     area_name: &'static str,
     dims: CorticalDims,
-    slices: SliceMap,
-    layers: LayerMap,
+    slice_map: SliceMap,
+    layer_map: LayerMap,
     eff_areas: Vec<&'static str>,
     aff_areas: Vec<&'static str>,
     other_areas: Vec<(&'static str, Option<Vec<(AxonTags, AxonTags)>>)>,
@@ -28,19 +28,19 @@ impl AreaMap {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", area_sch.name(),
             area_sch.get_eff_areas(), area_sch.get_aff_areas(), mt = cmn::MT);
 
-        let layers = LayerMap::new(area_sch, layer_map_sl, area_sl, ext_paths)?;
+        let layer_map = LayerMap::new(area_sch, layer_map_sl, area_sl, ext_paths)?;
 
-        let dims = area_sch.dims().clone_with_depth(layers.depth());
+        let dims = area_sch.dims().clone_with_depth(layer_map.depth());
 
-        let slices = SliceMap::new(&dims, &layers);
-        slices.print_debug();
+        let slice_map = SliceMap::new(&dims, &layer_map);
+        slice_map.print_debug();
 
         Ok(AreaMap {
             area_id: area_id,
             area_name: area_sch.name(),
             dims: dims,
-            slices: slices,
-            layers: layers,
+            slice_map: slice_map,
+            layer_map: layer_map,
             eff_areas: area_sch.get_eff_areas().clone(),
             aff_areas: area_sch.get_aff_areas().clone(),
             other_areas: area_sch.get_other_areas().clone(),
@@ -51,15 +51,15 @@ impl AreaMap {
     // ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
     pub fn gen_build_options(&self) -> ProgramBuilder {
         let mut build_options = cmn::base_build_options()
-            .cmplr_def("AXN_SLC_COUNT", self.slices.depth() as i32)
+            .cmplr_def("AXN_SLC_COUNT", self.slice_map.depth() as i32)
             .cmplr_def("SLC_SCL_COEFF_L2", cmn::SLC_SCL_COEFF_L2)
-            .bo(BuildOpt::include_def("AXN_SLC_IDZS", literal_list(self.slices.axn_idzs())))
-            .bo(BuildOpt::include_def("AXN_SLC_V_SIZES", literal_list(self.slices.v_sizes())))
-            .bo(BuildOpt::include_def("AXN_SLC_U_SIZES", literal_list(self.slices.u_sizes())))
-            .bo(BuildOpt::include_def("AXN_SLC_V_SCALES", literal_list(self.slices.v_scales())))
-            .bo(BuildOpt::include_def("AXN_SLC_U_SCALES", literal_list(self.slices.u_scales())))
-            .bo(BuildOpt::include_def("AXN_SLC_V_MIDS", literal_list(self.slices.v_mids())))
-            .bo(BuildOpt::include_def("AXN_SLC_U_MIDS", literal_list(self.slices.u_mids())))
+            .bo(BuildOpt::include_def("AXN_SLC_IDZS", literal_list(self.slice_map.axn_idzs())))
+            .bo(BuildOpt::include_def("AXN_SLC_V_SIZES", literal_list(self.slice_map.v_sizes())))
+            .bo(BuildOpt::include_def("AXN_SLC_U_SIZES", literal_list(self.slice_map.u_sizes())))
+            .bo(BuildOpt::include_def("AXN_SLC_V_SCALES", literal_list(self.slice_map.v_scales())))
+            .bo(BuildOpt::include_def("AXN_SLC_U_SCALES", literal_list(self.slice_map.u_scales())))
+            .bo(BuildOpt::include_def("AXN_SLC_V_MIDS", literal_list(self.slice_map.v_mids())))
+            .bo(BuildOpt::include_def("AXN_SLC_U_MIDS", literal_list(self.slice_map.u_mids())))
         ;
 
         // Custom filter kernels
@@ -79,7 +79,7 @@ impl AreaMap {
 
     // NEW
     pub fn layer_name_by_tags(&self, layer_tags: LayerTags) -> &'static str {
-        let layer_info = self.layers.layers_meshing_tags(layer_tags);
+        let layer_info = self.layer_map.layers_meshing_tags(layer_tags);
         assert!(layer_info.len() == 1, "AreaMap::layer_name_by_tags(): ({}) \
             tags matching: {} for area: \"{}\" found", layer_info.len(), layer_tags, self.area_name);
         layer_info[0].name()
@@ -93,7 +93,7 @@ impl AreaMap {
         let mut slc_ids = Vec::with_capacity(32);
 
         for layer_name in layer_names.iter() {
-            let li = match self.layers.layer_info_by_name(layer_name.clone()) {
+            let li = match self.layer_map.layer_info_by_name(layer_name.clone()) {
                 Some(li) => li,
                 None => panic!("AreaMap::layer_slc_ids(): No layer named '{}' found.",
                     &layer_name),
@@ -118,7 +118,7 @@ impl AreaMap {
     pub fn cel_src_slc_id_rchs(&self, lyr_id: usize, tft_id: usize, use_prevalance: bool)
             -> Vec<(u8, i8)>
     {
-        let li = self.layers.layer_info(lyr_id)
+        let li = self.layer_map.layer_info(lyr_id)
             .expect(&format!("AreaMap::layer_src_slc_ids(): No layer with id: '{}' found.",
                 lyr_id));
 
@@ -144,7 +144,7 @@ impl AreaMap {
         let mut output_slcs: Vec<u8> = Vec::with_capacity(8);
 
          // Push all matching slices:
-         for layer in self.layers.iter() {
+         for layer in self.layer_map.iter() {
              // if (layer.layer_tags() & map::FF_OUT) == map::FF_OUT {
             if layer.axn_domain().is_output() {
                 let v = self.layer_slc_ids(&[layer.name().to_owned()]);
@@ -176,7 +176,7 @@ impl AreaMap {
 
     // NEW
     pub fn psal_layer(&self) -> &LayerInfo {
-        let psal_layer_vec = self.layers.layers_containing_tags(map::PSAL);
+        let psal_layer_vec = self.layer_map.layers_containing_tags(map::PSAL);
         assert_eq!(psal_layer_vec.len(), 1);
         psal_layer_vec[0]
     }
@@ -184,7 +184,7 @@ impl AreaMap {
     // NEW
     #[inline]
     pub fn ptal_layer(&self) -> &LayerInfo {
-        let ptal_layer_vec = self.layers.layers_containing_tags(map::PTAL);
+        let ptal_layer_vec = self.layer_map.layers_containing_tags(map::PTAL);
         assert_eq!(ptal_layer_vec.len(), 1);
         ptal_layer_vec[0]
     }
@@ -201,7 +201,7 @@ impl AreaMap {
     pub fn axn_range_meshing_tags_either_way(&self, layer_tags: LayerTags,
                 src_lyr_sub_slcs: Option<(usize, Range<u8>)>) -> Option<Range<u32>>
     {
-        let layers = self.layers.layers_meshing_tags_either_way(layer_tags);
+        let layers = self.layer_map.layers_meshing_tags_either_way(layer_tags);
 
         if layers.len() == 1 {
             let layer = layers[0];
@@ -219,7 +219,7 @@ impl AreaMap {
                                 // * TODO: ADDME: self.verify_axn_range()
                                 debug_assert!({
                                         let slc_idm = src_base_slc_id + src_lyr.dims().depth() - 1;
-                                        let slc_len = self.slices.slc_axn_count(slc_idm);
+                                        let slc_len = self.slice_map.slc_axn_count(slc_idm);
                                         let axn_idz = self.axn_idz(slc_idm);
                                         let axn_idn = axn_idz + slc_len;
                                         // // [DEBUG]:
@@ -244,7 +244,7 @@ impl AreaMap {
                         // * TODO: ADDME: self.verify_axn_range()
                         debug_assert!({
                                 let slc_idm = base_slc_id + layer.depth() - 1;
-                                let slc_len = self.slices.slc_axn_count(slc_idm);
+                                let slc_len = self.slice_map.slc_axn_count(slc_idm);
                                 let axn_idz = self.axn_idz(slc_idm);
                                 let axn_idn = axn_idz + slc_len;
                                 // [DEBUG]:
@@ -279,7 +279,7 @@ impl AreaMap {
             The layer address area id provided ({}) does not match this area's id ({}).",
             lyr_addr.area_id(), self.area_id());
 
-        if let Some(ref li) = self.layers.layer_info(lyr_addr.layer_id()) {
+        if let Some(ref li) = self.layer_map.layer_info(lyr_addr.layer_id()) {
             if let Some(sl_addr) = src_lyr_addr {
                 if let Some(sli) = li.src_lyr(sl_addr) {
                     let src_base_slc_id = sli.tar_slc_range().start;
@@ -317,7 +317,7 @@ impl AreaMap {
 
     pub fn verify_axn_range(&self, axn_range: Range<u32>, base_slc_id: u8, depth: u8) -> bool {
         let slc_idm = base_slc_id + depth - 1;
-        let slc_len = self.slices.slc_axn_count(slc_idm);
+        let slc_len = self.slice_map.slc_axn_count(slc_idm);
         let axn_idz = self.axn_idz(slc_idm);
         let axn_idn = axn_idz + slc_len;
         // [DEBUG]:
@@ -329,7 +329,7 @@ impl AreaMap {
 
     // NEW
     pub fn slc_src_layer_dims(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&CorticalDims> {
-        self.layers.slc_src_layer_info(slc_id, layer_tags).map(|sli| sli.dims())
+        self.layer_map.slc_src_layer_info(slc_id, layer_tags).map(|sli| sli.dims())
     }
 
     // DEPRICATE
@@ -349,15 +349,15 @@ impl AreaMap {
 
     // UPDATE / DEPRICATE
     pub fn lm_kind_tmp(&self) -> &LayerMapKind {
-        &self.layers.region_kind()
+        &self.layer_map.region_kind()
     }
 
     pub fn area_id(&self) -> usize { self.area_id }
     pub fn area_name(&self) -> &'static str { self.area_name }
-    pub fn axn_idz(&self, slc_id: u8) -> u32 { self.slices.idz(slc_id) }
-    pub fn slices(&self) -> &SliceMap { &self.slices }
-    pub fn layers(&self) -> &LayerMap { &self.layers }
-    pub fn layer(&self, layer_id: usize) -> Option<&LayerInfo> { self.layers.layer_info(layer_id) }
+    pub fn axn_idz(&self, slc_id: u8) -> u32 { self.slice_map.idz(slc_id) }
+    pub fn slice_map(&self) -> &SliceMap { &self.slice_map }
+    pub fn layer_map(&self) -> &LayerMap { &self.layer_map }
+    pub fn layer(&self, layer_id: usize) -> Option<&LayerInfo> { self.layer_map.layer_info(layer_id) }
     pub fn dims(&self) -> &CorticalDims { &self.dims }
 }
 
@@ -409,15 +409,15 @@ pub mod tests {
         fn axn_idx(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
                 -> Result<u32, &'static str>
         {
-            let v_scale = self.slices.v_scales()[slc_id as usize];
-            let u_scale = self.slices.u_scales()[slc_id as usize];
+            let v_scale = self.slice_map.v_scales()[slc_id as usize];
+            let u_scale = self.slice_map.u_scales()[slc_id as usize];
 
             let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
             let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
 
-            let slc_count = self.slices().depth();
-            let v_size = self.slices.v_sizes()[slc_id as usize];
-            let u_size = self.slices.u_sizes()[slc_id as usize];
+            let slc_count = self.slice_map().depth();
+            let v_size = self.slice_map.v_sizes()[slc_id as usize];
+            let u_size = self.slice_map.u_sizes()[slc_id as usize];
 
             if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
                     u_size, u_id_scaled as u32, u_ofs) {
@@ -431,14 +431,14 @@ pub mod tests {
         fn axn_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
                 -> Result<u32, &'static str>
         {
-            let v_scale = self.slices.v_scales()[slc_id as usize];
-            let u_scale = self.slices.u_scales()[slc_id as usize];
+            let v_scale = self.slice_map.v_scales()[slc_id as usize];
+            let u_scale = self.slice_map.u_scales()[slc_id as usize];
 
             let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
             let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
 
-            let v_size = self.slices.v_sizes()[slc_id as usize];
-            let u_size = self.slices.u_sizes()[slc_id as usize];
+            let v_size = self.slice_map.v_sizes()[slc_id as usize];
+            let u_size = self.slice_map.u_sizes()[slc_id as usize];
 
             // Make sure v and u are safe (give fake slice info to coords_are_safe()):
             if coords_are_safe(1, 0, v_size, v_id_scaled as u32, v_ofs,
@@ -455,7 +455,7 @@ pub mod tests {
 
     impl Display for AreaMap {
         fn fmt(&self, fmtr: &mut Formatter) -> FmtResult {
-            write!(fmtr, "area slices: {}", self.slices)
+            write!(fmtr, "slice_map: {}", self.slice_map)
         }
     }
 

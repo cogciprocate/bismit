@@ -143,7 +143,7 @@ impl LearningTestBed {
             area.axns().states().default_queue().unwrap().finish().unwrap();
 
             // Set source slice to an unused slice for all synapses:
-            let unused_slc_ranges = area.area_map().layers().layers_containing_tags_slc_range(map::UNUSED_TESTING);
+            let unused_slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(map::UNUSED_TESTING);
             assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
             let unused_slc_id = unused_slc_ranges[0].start;
 
@@ -166,7 +166,7 @@ impl LearningTestBed {
 
             // Afferent output slice id:
             // [FIXME]: ASSIGN SPECIAL TAGS TO THIS LAYER:
-            let aff_out_slc_ranges = area.area_map().layers().iter()
+            let aff_out_slc_ranges = area.area_map().layer_map().iter()
                 .filter(|li| li.axn_domain().is_output() && li.slc_range().is_some())
                 .map(|li| li.slc_range().unwrap().clone())
                 .collect::<Vec<_>>();

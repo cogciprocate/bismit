@@ -365,10 +365,10 @@ impl SynSrcSlices {
             let mut slcs = BTreeMap::new();
 
             for &(slc_id, syn_rch) in lyr_id_rchs.iter() {
-                let axn_kind = area_map.slices().axn_topologies().get(slc_id as usize)
+                let axn_kind = area_map.slice_map().axn_topologies().get(slc_id as usize)
                     .expect("SynSrcSlices::new(): {{2}}");
 
-                let src_slc_dims = area_map.slices().dims().get(slc_id as usize)
+                let src_slc_dims = area_map.slice_map().dims().get(slc_id as usize)
                     .expect("SynSrcSlices::new(): {{3}}");
 
                 let src_slc_info = SynSrcSliceInfo::new(axn_kind, src_slc_dims, syn_rch,

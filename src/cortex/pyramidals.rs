@@ -254,7 +254,7 @@ impl PyramidalLayer {
             layer_name: layer_name,
             // layer_id: layer_id,
             layer_addr: layer_addr,
-            layer_tags: area_map.layers().layer_info(layer_id).unwrap().layer_tags(),
+            layer_tags: area_map.layer_map().layer_info(layer_id).unwrap().layer_tags(),
             dims: dims,
             tft_count: tft_count,
             cell_scheme: cell_scheme,
