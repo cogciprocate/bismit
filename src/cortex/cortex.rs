@@ -60,26 +60,6 @@ impl Cortex {
         self
     }
 
-    // pub fn area(&self, area_name: &str) -> &CorticalArea {
-    //     let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
-    //     self.areas.by_key(area_name).expect(&emsg)
-    // }
-
-    // pub fn area_mut(&mut self, area_name: &str) -> &mut CorticalArea {
-    //     let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
-    //     self.areas.by_key_mut(area_name).expect(&emsg)
-    // }
-
-    // pub fn area_by_id(&self, area_id: usize) -> &Box<CorticalArea> {
-    //     let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
-    //     self.areas.get(area_name).expect(&emsg)
-    // }
-
-    // pub fn area_mut_by_id(&mut self, area_id: usize) -> &mut Box<CorticalArea> {
-    //     let emsg = format!("cortex::Cortex::area_mut(): Area: '{}' not found. ", area_name);
-    //     self.areas.get_mut(area_name).expect(&emsg)
-    // }
-
     pub fn areas(&self) -> &MapStore<&'static str, CorticalArea> {
         &self.areas
     }
@@ -93,9 +73,18 @@ impl Cortex {
 
         self.thal.cycle_external_pathways();
 
+        if let Some(ref mut s) = self.sub {
+            s.pre_cycle(&mut self.thal)
+        }
+
         for area in self.areas.values_mut() {
             area.cycle(&mut self.thal).expect("Cortex::cycle(): Cortical area cycling error");
         }
+
+        if let Some(ref mut s) = self.sub {
+            s.post_cycle(&mut self.thal)
+        }
+
         // PROFILER.lock().unwrap().stop().unwrap();
     }
 

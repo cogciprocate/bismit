@@ -6,7 +6,7 @@
 
 use cortex::Cortex;
 use map::{self, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme,
-    AreaSchemeList, CellScheme, InputScheme, AxonTopology, LayerKind, AxonDomain,
+    AreaSchemeList, CellScheme, EncoderScheme, AxonTopology, LayerKind, AxonDomain,
     AxonTag, InputTrack};
 use encode::GlyphSequences;
 
@@ -88,12 +88,12 @@ pub fn define_area_sl() -> AreaSchemeList {
 
     AreaSchemeList::new()
         // .area_ext("v0", "gly_seq_lm", AREA_SIDE,
-        //     InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) },
+        //     EncoderScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) },
         //     None,
         //     None,
         // )
         // .area_ext("v00", "gly_seq_rose_lm", AREA_SIDE,
-        //     InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) },
+        //     EncoderScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) },
         //     None,
         //     None,
         // )
@@ -102,10 +102,10 @@ pub fn define_area_sl() -> AreaSchemeList {
         //     Some(vec!["v0", "v00"]),
         // )
         .area(AreaScheme::new("gly_seq", "gly_seq_lm", AREA_SIDE)
-            .input(InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) })
+            .input(EncoderScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) })
         )
         .area(AreaScheme::new("gly_seq_rose", "gly_seq_rose_lm", AREA_SIDE)
-            .input(InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) })
+            .input(EncoderScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) })
         )
         .area(AreaScheme::new("v1", "cortical_lm", AREA_SIDE,)
             .eff_areas(vec!["gly_seq"])

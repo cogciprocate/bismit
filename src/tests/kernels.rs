@@ -1,6 +1,6 @@
 
 use cmn::{self, /*CorticalDims*/};
-// use map::{LayerMapScheme, LayerMapSchemeList, AreaSchemeList, AreaScheme, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, CellScheme, FilterScheme, InputScheme};
+// use map::{LayerMapScheme, LayerMapSchemeList, AreaSchemeList, AreaScheme, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, CellScheme, FilterScheme, EncoderScheme};
 // use area::{self, Cortex};
 use ocl::{self, Buffer, SpatialDims};
 // use cycle::{input_czar, InputCzar, InputKind};

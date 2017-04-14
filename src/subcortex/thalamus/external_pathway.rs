@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use find_folder::Search;
 use cmn::{self, CorticalDims, CmnResult, /*CmnError,*/ TractDims};
 use ocl::{FutureWriter};
-use map::{AreaScheme, InputScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
+use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
@@ -173,11 +173,11 @@ impl ExternalPathway {
     pub fn new(pamap: &AreaScheme, plmap: &LayerMapScheme) -> CmnResult<ExternalPathway> {
         let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|pl| pl).collect();
 
-        assert!(pamap.get_input().layer_count() == p_layers.len(), "ExternalPathway::new(): \
+        assert!(pamap.get_encoder().layer_count() == p_layers.len(), "ExternalPathway::new(): \
             Inputs for the area scheme, \"{}\" ({}), must equal the layers in the layer map \
-            scheme, '{}' ({}). Ensure `InputScheme::layer_count()` is set correctly for {:?}",
-            pamap.name(), pamap.get_input().layer_count(), plmap.name(), p_layers.len(),
-            pamap.get_input());
+            scheme, '{}' ({}). Ensure `EncoderScheme::layer_count()` is set correctly for {:?}",
+            pamap.name(), pamap.get_encoder().layer_count(), plmap.name(), p_layers.len(),
+            pamap.get_encoder());
 
         let mut layers = HashMap::with_capacity(4);
         let mut lyr_addr_list = Vec::with_capacity(4);
@@ -223,8 +223,8 @@ impl ExternalPathway {
             });
         }
 
-        let encoder = match *pamap.get_input() {
-            InputScheme::IdxStreamer { ref file_name, cyc_per, scale, loop_frames } => {
+        let encoder = match *pamap.get_encoder() {
+            EncoderScheme::IdxStreamer { ref file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
                 let mut is = IdxStreamer::new(layers[&lyr_addr_list[0]].dims()
                     .expect("ExternalPathway::new(): Layer dims not set properly.").clone(),
@@ -235,7 +235,7 @@ impl ExternalPathway {
                 }
                 ExternalPathwayEncoder::Custom(Box::new(is))
             },
-            InputScheme::GlyphSequences { seq_lens, seq_count, scale, hrz_dims } => {
+            EncoderScheme::GlyphSequences { seq_lens, seq_count, scale, hrz_dims } => {
                 let label_file = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
                     .expect("ExternalPathway::new(): 'label file folder (tmp_data)'")
                     .join("train-labels-idx1-ubyte");
@@ -246,13 +246,13 @@ impl ExternalPathway {
                     label_file, image_file);
                 ExternalPathwayEncoder::GlyphSequences(Box::new(gs))
             },
-            InputScheme::SensoryTract => {
+            EncoderScheme::SensoryTract => {
                 assert_eq!(layers.len(), 1);
                 let st = SensoryTract::new(layers[&lyr_addr_list[0]].dims()
                     .expect("ExternalPathway::new(): Layer dims not set properly."));
                 ExternalPathwayEncoder::SensoryTract(Box::new(st))
             },
-            InputScheme::ScalarSequence { range, incr } => {
+            EncoderScheme::ScalarSequence { range, incr } => {
                 let tract_dims = {
                     assert!(lyr_dims_list.len() == 1);
                     lyr_dims_list[0].unwrap().into()
@@ -260,7 +260,7 @@ impl ExternalPathway {
 
                 ExternalPathwayEncoder::Custom(Box::new(ScalarSequence::new(range, incr, &tract_dims)))
             },
-            InputScheme::ScalarSdrGradiant { range, way_span, incr } => {
+            EncoderScheme::ScalarSdrGradiant { range, way_span, incr } => {
                 let tract_dims = {
                     assert!(lyr_dims_list.len() == 1);
                     lyr_dims_list[0].unwrap().into()
@@ -268,24 +268,24 @@ impl ExternalPathway {
 
                 ExternalPathwayEncoder::Custom(Box::new(ScalarSdrGradiant::new(range, way_span, incr, &tract_dims)))
             },
-            InputScheme::ReversoScalarSequence { range, incr } => {
+            EncoderScheme::ReversoScalarSequence { range, incr } => {
                 ExternalPathwayEncoder::Custom(Box::new(
                     ReversoScalarSequence::new(range, incr, &lyr_addr_list)))
             },
-            InputScheme::VectorEncoder { ref ranges } => {
+            EncoderScheme::VectorEncoder { ref ranges } => {
                 let tract_dims: Vec<_> = lyr_dims_list.iter().map(|d| d.unwrap().into()).collect();
 
                 ExternalPathwayEncoder::VectorEncoder(Box::new(try!(
                     VectorEncoder::new(ranges.clone(), &lyr_addr_list, &tract_dims)
                 )))
             },
-            InputScheme::Custom { .. } => {
+            EncoderScheme::Custom { .. } => {
                 ExternalPathwayEncoder::CustomUnspecified
             },
-            InputScheme::None { .. } => {
+            EncoderScheme::None { .. } => {
                 ExternalPathwayEncoder::None
             }
-            InputScheme::Zeros => ExternalPathwayEncoder::None,
+            EncoderScheme::Zeros => ExternalPathwayEncoder::None,
             ref is @ _ => panic!("\nExternalPathway::new(): Input type: '{:?}' not yet supported.", is),
         };
 
@@ -318,7 +318,7 @@ impl ExternalPathway {
     }
 
     // Specify a custom encoder tract. Input scheme must have been configured
-    // as `InputScheme::Custom` in `AreaScheme`.
+    // as `EncoderScheme::Custom` in `AreaScheme`.
     pub fn set_encoder(&self, tract: Box<ExternalPathwayTract>) {
         // match self.encoder {
         //     ExternalPathwayEncoder::CustomUnspecified => (),

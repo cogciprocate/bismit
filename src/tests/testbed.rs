@@ -1,7 +1,7 @@
 use cmn::CorticalDims;
 use map;
 use map::{LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme, AreaSchemeList,
-    CellScheme, InputScheme, AxonTopology, LayerKind, AxonDomain, InputTrack};
+    CellScheme, EncoderScheme, AxonTopology, LayerKind, AxonDomain, InputTrack};
 use ::Thalamus;
 use ocl::{Context, ProQue};
 use cortex::Cortex;
@@ -71,7 +71,7 @@ pub fn define_protoareas() -> AreaSchemeList {
         //     // area_side * 2, area_side * 2,
         //     area_side,
         //                 // area_side / 2, area_side / 2,
-        //     InputScheme::IdxStreamer {
+        //     EncoderScheme::IdxStreamer {
         //         file_name: "train-images-idx3-ubyte".to_owned(),
         //         cyc_per: CYCLES_PER_FRAME,
         //         scale: 1.3,
@@ -94,7 +94,7 @@ pub fn define_protoareas() -> AreaSchemeList {
         // )
 
         .area(AreaScheme::new("v0", "external", area_side)
-            .input(InputScheme::IdxStreamer {
+            .input(EncoderScheme::IdxStreamer {
                 file_name: "train-images-idx3-ubyte".to_owned(),
                 cyc_per: CYCLES_PER_FRAME,
                 scale: 1.3,
@@ -203,13 +203,13 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
 
     let area_sl = AreaSchemeList::new()
         // .area(area_name, lmap_name, 32, None, Some(vec!["dummy_area"]))
-        // .area_ext("dummy_area", "dummy_lm", 67, InputScheme::None, None, None)
+        // .area_ext("dummy_area", "dummy_lm", 67, EncoderScheme::None, None, None)
         .area(AreaScheme::new(area_name, lmap_name, area_size)
             .eff_areas(vec!["dummy_area"])
         )
         .area(AreaScheme::new("dummy_area", "dummy_lm", 44)
-            // .input(InputScheme::None)
-            .input(InputScheme::Custom { layer_count: 1 })
+            // .input(EncoderScheme::None)
+            .input(EncoderScheme::Custom { layer_count: 1 })
         )
     ;
 

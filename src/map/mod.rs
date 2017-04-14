@@ -18,7 +18,7 @@ pub use self::layer_info::{LayerInfo, SourceLayerInfo};
 pub use self::syn_src::{SynSrcSlices, SynSrcIdxCache, SynSrc, gen_syn_offs};
 pub use self::slice_tract_map::SliceTractMap;
 pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
-	LayerScheme, FilterScheme, InputScheme, TuftSourceLayer, TuftScheme};
+	LayerScheme, FilterScheme, EncoderScheme, TuftSourceLayer, TuftScheme};
 pub use self::layer_tags::{LayerTags, DEFAULT, PRIMARY, SPATIAL, TEMPORAL, FOCUS, MOTOR,
     UNUSED_TESTING, PSAL, PTAL, PML, PFL};
 

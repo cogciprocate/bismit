@@ -386,7 +386,6 @@ impl AxonSpace {
 
                 layer_filters_rev.push(filter);
             }
-
             // [DEBUG]:
             // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
             let layer_filters = layer_filters_rev.into_iter().rev().collect();

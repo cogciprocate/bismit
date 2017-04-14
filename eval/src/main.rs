@@ -13,7 +13,7 @@ use vibi::bismit::flywheel::Flywheel;
 
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
-static IN_LYR: &'static str = "external_0";
+static EXT_LYR: &'static str = "external_0";
 
 fn main() {
     use std::thread;
@@ -28,20 +28,23 @@ fn main() {
     let (spatial_response_tx, spatial_response_rx) = mpsc::channel();
     let spatial_command_tx = command_tx;
 
-    // let primary_area = "v1";
+    let cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
 
-    let mut flywheel = Flywheel::from_blueprint(define_lm_schemes(),
-            define_a_schemes(), Some(ca_settings()), command_rx, PRI_AREA);
+    let v0_ext_lyr_addr = *cortex.areas().by_key(IN_AREA).unwrap()
+        .area_map().layer_map().layers().by_key(EXT_LYR).unwrap().layer_addr();
+    let v1_in_lyr_buf = cortex.areas().by_key(PRI_AREA).unwrap()
+        .axns().create_layer_sub_buffer(v0_ext_lyr_addr, AxonDomainRoute::Input);
+    let axns = cortex.areas().by_key(PRI_AREA).unwrap()
+        .axns().states().clone();
+
+
+    // let mut flywheel = Flywheel::from_blueprint(define_lm_schemes(),
+    //         define_a_schemes(), Some(ca_settings()), command_rx, PRI_AREA);
+    let mut flywheel = Flywheel::new(cortex, command_rx, PRI_AREA);
     flywheel.add_req_res_pair(vibi_request_rx, vibi_response_tx);
     flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
 
-    let v0_area_id = flywheel.cortex().areas().by_key(IN_AREA).unwrap().area_id();
-    let v0_in_lyr_id = flywheel.cortex().areas().by_index(v0_area_id).unwrap()
-        .area_map()
-    // let v0_lyr_addr =
 
-    let axns = flywheel.cortex().areas().by_key(PRI_AREA).unwrap()
-        .axns().states().clone();
     // let ssts =
 
     let th_flywheel = thread::Builder::new().name("flywheel".to_string()).spawn(move || {
@@ -81,7 +84,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer(IN_LYR, 1, map::DEFAULT,
+            .layer(EXT_LYR, 1, map::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, at0]),
                 LayerKind::Axonal(AxonTopology::Spatial))
         )

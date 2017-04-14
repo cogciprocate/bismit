@@ -24,6 +24,8 @@ use subcortex::Thalamus;
 
 pub trait SubcorticalNucleus: Send {
     fn area_name<'a>(&'a self) -> &'a str;
+    fn pre_cycle(&mut self, thal: &mut Thalamus);
+    fn post_cycle(&mut self, thal: &mut Thalamus);
 }
 
 
@@ -43,6 +45,14 @@ impl TestScNucleus {
 impl SubcorticalNucleus for TestScNucleus {
     fn area_name<'a>(&'a self) -> &'a str {
         &self.area_name
+    }
+
+    fn pre_cycle(&mut self, _thal: &mut Thalamus) {
+        println!("Pre-cycling!");
+    }
+
+    fn post_cycle(&mut self, _thal: &mut Thalamus) {
+        println!("Post-cycling!");
     }
 }
 
@@ -64,7 +74,14 @@ impl Subcortex {
         self
     }
 
-    pub fn cycle(&mut self, thal: &Thalamus) {
+    pub fn pre_cycle(&mut self, thal: &mut Thalamus) {
+        for nucleus in self.nuclei.iter_mut() {
+            thal.area_maps();
+            let _ = nucleus;
+        }
+    }
+
+    pub fn post_cycle(&mut self, thal: &mut Thalamus) {
         for nucleus in self.nuclei.iter_mut() {
             thal.area_maps();
             let _ = nucleus;

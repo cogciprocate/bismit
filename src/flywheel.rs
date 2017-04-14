@@ -220,7 +220,9 @@ impl Flywheel {
     //     self.sen_mot_pairs.push((sen_rx, mot_tx));
     // }
 
-    pub fn add_sensory_rx<S: AsRef<str>>(&mut self, sensory_rx: Receiver<SensoryFrame>, pathway_name: S) {
+    pub fn add_sensory_rx<S: AsRef<str>>(&mut self, sensory_rx: Receiver<SensoryFrame>,
+            pathway_name: S)
+    {
         let pathway_idx = self.cortex.thal_mut().ext_pathway_idx(pathway_name.as_ref()).unwrap();
         self.sensory_rxs.push((sensory_rx, pathway_idx));
     }

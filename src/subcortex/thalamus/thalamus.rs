@@ -201,8 +201,7 @@ impl Thalamus {
                 area_s.name(), mt = cmn::MT);
 
             let mut output_layer_count = 0;
-                for layer in area_map.layer_map().iter().filter(|li| li.axn_domain().is_output()) {
-
+            for layer in area_map.layer_map().iter().filter(|li| li.axn_domain().is_output()) {
                 // If the layer is thalamic it will have an irregular size
                 // which will need to be reflected on its tract size.
                 let layer_dims = match layer.irregular_layer_dims() {

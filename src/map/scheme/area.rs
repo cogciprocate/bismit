@@ -1,4 +1,4 @@
-use map::{FilterScheme, InputScheme, AxonTags, InputTrack};
+use map::{FilterScheme, EncoderScheme, AxonTags, InputTrack};
 use cmn::{self, CorticalDims, MapStore};
 
 
@@ -9,7 +9,7 @@ pub struct AreaScheme {
     name: &'static str,
     layer_map_name: &'static str,
     dims: CorticalDims,
-    input: InputScheme,
+    encoder: EncoderScheme,
     filter_chains: Vec<(InputTrack, AxonTags, Vec<FilterScheme>)>,
     aff_areas: Vec<&'static str>,
     eff_areas: Vec<&'static str>,
@@ -30,7 +30,7 @@ impl AreaScheme {
             name: name,
             layer_map_name: layer_map_name,
             dims: CorticalDims::new(dims[0], dims[1], 0, None),
-            input: InputScheme::None,
+            encoder: EncoderScheme::None,
             filter_chains: Vec::with_capacity(4),
             aff_areas: Vec::with_capacity(4),
             eff_areas: Vec::with_capacity(0),
@@ -38,9 +38,9 @@ impl AreaScheme {
         }
     }
 
-    /// Sets an input scheme which will generate or encode data of some sort.
-    pub fn input(mut self, input: InputScheme) -> AreaScheme {
-        self.input = input;
+    /// Sets an encoder scheme which will generate or encode data of some sort.
+    pub fn encoder(mut self, encoder: EncoderScheme) -> AreaScheme {
+        self.encoder = encoder;
         self
     }
 
@@ -50,8 +50,8 @@ impl AreaScheme {
     /// Setting this requires you to set a custom encoder via the thalamic
     /// ext. pathway (`cortex.thal_mut().ext_pathway(ep_idx).unwrap().set_encoder( ... )`).
     pub fn custom_layer_count(mut self, layer_count: usize) -> AreaScheme {
-        assert!(self.input.is_none(), "Cannot set area scheme layer count. Input already set.");
-        self.input = InputScheme::Custom { layer_count };
+        assert!(self.encoder.is_none(), "Cannot set area scheme layer count. Input already set.");
+        self.encoder = EncoderScheme::Custom { layer_count };
         self
     }
 
@@ -130,7 +130,7 @@ impl AreaScheme {
     #[inline] pub fn name(&self) -> &'static str { self.name }
     #[inline] pub fn layer_map_name(&self) -> &'static str { self.layer_map_name }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] pub fn get_input(&self) -> &InputScheme { &self.input }
+    #[inline] pub fn get_encoder(&self) -> &EncoderScheme { &self.encoder }
     #[inline] pub fn get_eff_areas(&self) -> &Vec<&'static str> { &self.eff_areas }
     #[inline] pub fn get_aff_areas(&self) -> &Vec<&'static str> { &self.aff_areas }
 

@@ -26,4 +26,4 @@ pub use self::cell::{TuftScheme, TuftSourceLayer, CellScheme};
 
 pub use self::filter::{FilterScheme};
 
-pub use self::input::{InputScheme};
+pub use self::input::{EncoderScheme};

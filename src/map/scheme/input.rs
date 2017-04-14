@@ -1,6 +1,6 @@
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum InputScheme {
+pub enum EncoderScheme {
     None,
     Custom { layer_count: usize },
     World,
@@ -19,10 +19,10 @@ pub enum InputScheme {
     ScalarSdrGradiant { range: (f32, f32), way_span: f32, incr: f32 },
 }
 
-impl InputScheme {
+impl EncoderScheme {
     pub fn is_some(&self) -> bool {
         match *self {
-            InputScheme::None { .. } => false,
+            EncoderScheme::None { .. } => false,
             _ => true,
         }
     }
@@ -34,12 +34,12 @@ impl InputScheme {
 
     pub fn layer_count(&self) -> usize {
         match *self {
-            InputScheme::None => 0,
-            InputScheme::GlyphSequences { .. } => 2,
-            InputScheme::ReversoScalarSequence { .. } => 2,
-            InputScheme::VectorEncoder { ref ranges } => ranges.len(),
-            InputScheme::Custom { layer_count } => layer_count,
-            // InputScheme::SensoryTract { ref dims, .. } => dims.len(),
+            EncoderScheme::None => 0,
+            EncoderScheme::GlyphSequences { .. } => 2,
+            EncoderScheme::ReversoScalarSequence { .. } => 2,
+            EncoderScheme::VectorEncoder { ref ranges } => ranges.len(),
+            EncoderScheme::Custom { layer_count } => layer_count,
+            // EncoderScheme::SensoryTract { ref dims, .. } => dims.len(),
             _ => 1,
         }
     }
