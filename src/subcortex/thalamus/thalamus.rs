@@ -200,29 +200,26 @@ impl Thalamus {
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ",
                 area_s.name(), mt = cmn::MT);
 
-            {
-                let output_layers = area_map.layer_map().iter()
-                    .filter(|li| li.axn_domain().is_output()).collect::<Vec<_>>();
+            let mut output_layer_count = 0;
+                for layer in area_map.layer_map().iter().filter(|li| li.axn_domain().is_output()) {
 
-                for layer in output_layers.iter() {
-                    // println!("###### Thalamus::new(): Processing layer {}.", layer.name());
+                // If the layer is thalamic it will have an irregular size
+                // which will need to be reflected on its tract size.
+                let layer_dims = match layer.irregular_layer_dims() {
+                    Some(dims) => dims.clone(),
+                    None => area_s.dims().clone_with_depth(layer.depth()),
+                };
 
-                    // If the layer is thalamic it will have an irregular size
-                    // which will need to be reflected on its tract size.
-                    let layer_dims = match layer.irregular_layer_dims() {
-                        Some(dims) => dims.clone(),
-                        None => area_s.dims().clone_with_depth(layer.depth()),
-                    };
+                println!("{mt}{mt}{mt}'{}': tags: {}, slc_range: {:?}, map_kind: {:?}, \
+                    axn_kind: {:?}", layer.name(), layer.layer_tags(), layer.slc_range(),
+                    layer.layer_map_kind(), layer.axn_topology(), mt = cmn::MT);
 
-                    println!("{mt}{mt}{mt}'{}': tags: {}, slc_range: {:?}, map_kind: {:?}, \
-                        axn_kind: {:?}", layer.name(), layer.layer_tags(), layer.slc_range(),
-                        layer.layer_map_kind(), layer.axn_topology(), mt = cmn::MT);
+                tract.add_area(LayerAddress::new(area_s.area_id(), layer.layer_id()),
+                    layer_dims);
+                output_layer_count += 1;
 
-                    tract.add_area(LayerAddress::new(area_s.area_id(), layer.layer_id()),
-                        layer_dims);
-                }
-                assert!(output_layers.len() > 0, "Areas must have at least one output layer.");
             }
+            assert!(output_layer_count > 0, "Areas must have at least one output layer.");
 
             area_maps.insert(area_s.name().to_owned(), area_map);
             assert!(area_maps[area_id].area_id() == area_id);
