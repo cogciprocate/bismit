@@ -56,8 +56,12 @@ impl Cortex {
     }
 
     pub fn sub(mut self, sub: Subcortex) -> Cortex {
-        self.sub = Some(sub);
+        self.add_subcortex(sub);
         self
+    }
+
+    pub fn add_subcortex(&mut self, sub: Subcortex) {
+        self.sub = Some(sub);
     }
 
     pub fn areas(&self) -> &MapStore<&'static str, CorticalArea> {

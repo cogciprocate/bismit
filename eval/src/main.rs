@@ -6,14 +6,17 @@ extern crate vibi;
 
 mod spatial;
 
-// use vibi::window;
-use vibi::bismit::{map, Cortex, CorticalAreaSettings};
+use vibi::window;
+use vibi::bismit::{map, Cortex, CorticalAreaSettings, Subcortex};
 use vibi::bismit::map::*;
 use vibi::bismit::flywheel::Flywheel;
 
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
 static EXT_LYR: &'static str = "external_0";
+
+const ENCODE_SIZE: u32 = 64;
+const AREA_SIDE: u32 = 16;
 
 fn main() {
     use std::thread;
@@ -28,15 +31,19 @@ fn main() {
     let (spatial_response_tx, spatial_response_rx) = mpsc::channel();
     let spatial_command_tx = command_tx;
 
-    let cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
+    let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
 
-    let v0_ext_lyr_addr = *cortex.areas().by_key(IN_AREA).unwrap()
-        .area_map().layer_map().layers().by_key(EXT_LYR).unwrap().layer_addr();
-    let v1_in_lyr_buf = cortex.areas().by_key(PRI_AREA).unwrap()
-        .axns().create_layer_sub_buffer(v0_ext_lyr_addr, AxonDomainRoute::Input);
+    // let v0_ext_lyr_addr = *cortex.areas().by_key(IN_AREA).unwrap()
+    //     .area_map().layer_map().layers().by_key(EXT_LYR).unwrap().layer_addr();
+    // let v1_in_lyr_buf = cortex.areas().by_key(PRI_AREA).unwrap()
+    //     .axns().create_layer_sub_buffer(v0_ext_lyr_addr, AxonDomainRoute::Input);
     let axns = cortex.areas().by_key(PRI_AREA).unwrap()
         .axns().states().clone();
+    let area_map = cortex.areas().by_key(IN_AREA).unwrap()
+            .area_map().clone();
 
+    let nucl = spatial::Nucleus::new(IN_AREA, EXT_LYR, PRI_AREA, &cortex);
+    cortex.add_subcortex(Subcortex::new().nucl(nucl));
 
     // let mut flywheel = Flywheel::from_blueprint(define_lm_schemes(),
     //         define_a_schemes(), Some(ca_settings()), command_rx, PRI_AREA);
@@ -51,14 +58,14 @@ fn main() {
         flywheel.spin();
     }).expect("Error creating 'flywheel' thread");
 
-    // let th_win = thread::Builder::new().name("win".to_string()).spawn(move || {
-    //     window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
-    // }).expect("Error creating 'win' thread");
+    let th_win = thread::Builder::new().name("win".to_string()).spawn(move || {
+        window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
+    }).expect("Error creating 'win' thread");
 
     spatial::eval(spatial_command_tx, spatial_request_tx, spatial_response_rx,
-        axns);
+        axns, area_map, ENCODE_SIZE);
 
-    // if let Err(e) = th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
+    if let Err(e) = th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
     if let Err(e) = th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
 }
 
@@ -92,9 +99,6 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
 
 fn define_a_schemes() -> AreaSchemeList {
-    const ENCODE_SIZE: u32 = 64;
-    const AREA_SIDE: u32 = 48;
-
     AreaSchemeList::new()
         .area(AreaScheme::new("v0", "v0_lm", ENCODE_SIZE)
             // .input(InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10,
@@ -118,8 +122,8 @@ pub fn ca_settings() -> CorticalAreaSettings {
     let mut settings = CorticalAreaSettings::new();
 
     // settings.bypass_inhib = true;
-    // settings.bypass_filters = true;
-    // settings.disable_pyrs = true;
+    settings.bypass_filters = true;
+    settings.disable_pyrs = true;
     // settings.disable_ssts = true;
     // settings.disable_mcols = true;
     // settings.disable_regrowth = true;

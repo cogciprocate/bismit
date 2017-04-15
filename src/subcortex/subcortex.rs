@@ -22,7 +22,7 @@ use subcortex::Thalamus;
 
 
 
-pub trait SubcorticalNucleus: Send {
+pub trait SubcorticalNucleus: 'static + Send {
     fn area_name<'a>(&'a self) -> &'a str;
     fn pre_cycle(&mut self, thal: &mut Thalamus);
     fn post_cycle(&mut self, thal: &mut Thalamus);
@@ -69,9 +69,14 @@ impl Subcortex {
         }
     }
 
-    pub fn nucleus(mut self, nucleus: Box<SubcorticalNucleus>) -> Subcortex {
-        self.nuclei.push(nucleus);
+    pub fn nucl<N: SubcorticalNucleus>(mut self, nucleus: N) -> Subcortex {
+        self.add_nucleus(nucleus);
         self
+    }
+
+    pub fn add_nucleus<N: SubcorticalNucleus>(&mut self, nucleus: N) {
+        self.nuclei.push(Box::new(nucleus));
+
     }
 
     pub fn pre_cycle(&mut self, thal: &mut Thalamus) {

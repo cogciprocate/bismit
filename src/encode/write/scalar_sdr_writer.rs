@@ -137,36 +137,59 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         // let w1_idz = Range::new(0, 1 + self.sdr_active_count - way_1_contrib_count)
         //     .ind_sample(&mut self.rng);
 
-        let idx_range = Range::new(0, self.sdr_active_count);
+        #[inline]
+        fn write_rand_subset(subset_count: usize, set_count_ttl: usize, indices: &[usize],
+                rng: &mut XorShiftRng, tar: &mut [u8])
+        {
+            let idx_range = Range::new(0, set_count_ttl);
 
+            for _ in 0..subset_count {
+                let idx_idx = idx_range.ind_sample(rng);
 
-        // Write:
-        // for idx in w0_idz..(w0_idz + way_0_contrib_count) {
-        // for idx in 0..way_0_contrib_count {
-        for idx in 0..way_0_contrib_count {
-            debug_assert!(idx < tract.frame().len());
-            let idx_idx = idx_range.ind_sample(&mut self.rng);
-
-            unsafe {
-                let tract_idx = *self.waypoint_indices.get_unchecked(way_0_idx)
-                    .get_unchecked(idx_idx);
-                *tract.get_unchecked_mut(tract_idx) = 127;
+                unsafe {
+                    let tract_idx = *indices.get_unchecked(idx_idx);
+                    debug_assert!(tract_idx < tar.len());
+                    *tar.get_unchecked_mut(tract_idx) = 96 + (idx_idx & 63) as u8;
+                }
             }
         }
 
-        // for idx in w1_idz..(w1_idz + way_1_contrib_count) {
-        for idx in 0..way_1_contrib_count {
-            debug_assert!(idx < tract.frame().len());
-            let idx_idx = idx_range.ind_sample(&mut self.rng);
+        // let idx_range = Range::new(0, self.sdr_active_count);
 
-            unsafe {
-                let tract_idx = *self.waypoint_indices.get_unchecked(way_1_idx)
-                    .get_unchecked(idx_idx);
-                *tract.get_unchecked_mut(tract_idx) = 127;
-            }
-        }
 
-        ////// SLOW:
+        // // Write:
+        // // for idx in w0_idz..(w0_idz + way_0_contrib_count) {
+        // // for idx in 0..way_0_contrib_count {
+        // for _ in 0..way_0_contrib_count {
+        //     let idx_idx = idx_range.ind_sample(&mut self.rng);
+
+        //     unsafe {
+        //         let tract_idx = *self.waypoint_indices.get_unchecked(way_0_idx)
+        //             .get_unchecked(idx_idx);
+        //         debug_assert!(tract_idx < tract.len());
+        //         *tract.get_unchecked_mut(tract_idx) = 127;
+        //     }
+        // }
+
+        write_rand_subset(way_0_contrib_count, self.sdr_active_count,
+            self.waypoint_indices[way_0_idx].as_slice(), &mut self.rng, tract);
+
+        // // for idx in w1_idz..(w1_idz + way_1_contrib_count) {
+        // for _ in 0..way_1_contrib_count {
+        //     let idx_idx = idx_range.ind_sample(&mut self.rng);
+
+        //     unsafe {
+        //         let tract_idx = *self.waypoint_indices.get_unchecked(way_1_idx)
+        //             .get_unchecked(idx_idx);
+        //         debug_assert!(tract_idx < tract.len());
+        //         *tract.get_unchecked_mut(tract_idx) = 127;
+        //     }
+        // }
+
+        write_rand_subset(way_1_contrib_count, self.sdr_active_count,
+            self.waypoint_indices[way_1_idx].as_slice(), &mut self.rng, tract);
+
+        ////// SLOW (maybe not -- need to retest):
         // unsafe {
         //     for (idx, (&w0, &w1)) in self.sdrs.get_unchecked(way_0_idx).iter()
         //             .zip(self.sdrs.get_unchecked(way_1_idx).iter())
