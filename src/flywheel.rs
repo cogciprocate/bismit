@@ -80,6 +80,7 @@ pub enum Request {
     Status,
     AreaInfo,
     Sample(Range<u8>, Arc<Mutex<Vec<u8>>>),
+    FinishQueues,
     // Input(Obs),
     // GetAction,
 }
@@ -95,6 +96,7 @@ pub enum Response {
     Motor(MotorFrame),
     AreaInfo(Box<AreaInfo>),
     SampleProgress(Option<OclEvent>),
+    QueuesFinished(u32),
     Exiting,
 }
 
@@ -351,10 +353,17 @@ impl Flywheel {
                             Request::CurrentIter => {
                                 res_tx.send(Response::CurrentIter(self.status.cur_cycle)).unwrap();
                             },
+                            Request::FinishQueues => {
+                                // Will block:
+                                self.cortex.finish_queues();
+                                res_tx.send(Response::QueuesFinished(self.status.prev_cycles)).unwrap();
+                            }
                         }
                     }
                     Err(e) => match e {
                         TryRecvError::Empty => break,
+                        // TODO: Have this either do nothing or check to see
+                        // if any senders remain and exit if 0.
                         TryRecvError::Disconnected => panic!("Flywheel::fulfill_requests(): \
                             Sender disconnected."),
                     },

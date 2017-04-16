@@ -166,6 +166,7 @@ pub struct ExternalPathway {
     tx: SyncSender<EncoderCmd>,
     _thread: Option<JoinHandle<()>>,
     // rx: Receiver<EncoderRes>,
+    disabled: bool,
 }
 
 impl ExternalPathway {
@@ -173,11 +174,11 @@ impl ExternalPathway {
     pub fn new(pamap: &AreaScheme, plmap: &LayerMapScheme) -> CmnResult<ExternalPathway> {
         let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|pl| pl).collect();
 
-        assert!(pamap.get_encoder().layer_count() == p_layers.len(), "ExternalPathway::new(): \
-            Inputs for the area scheme, \"{}\" ({}), must equal the layers in the layer map \
-            scheme, '{}' ({}). Ensure `EncoderScheme::layer_count()` is set correctly for {:?}",
-            pamap.name(), pamap.get_encoder().layer_count(), plmap.name(), p_layers.len(),
-            pamap.get_encoder());
+        // assert!(pamap.get_encoder().layer_count() == p_layers.len(), "ExternalPathway::new(): \
+        //     Inputs for the area scheme, \"{}\" ({}), must equal the layers in the layer map \
+        //     scheme, '{}' ({}). Ensure `EncoderScheme::layer_count()` is set correctly for {:?}",
+        //     pamap.name(), pamap.get_encoder().layer_count(), plmap.name(), p_layers.len(),
+        //     pamap.get_encoder());
 
         let mut layers = HashMap::with_capacity(4);
         let mut lyr_addr_list = Vec::with_capacity(4);
@@ -222,6 +223,8 @@ impl ExternalPathway {
                 dims: dims,
             });
         }
+
+        let mut disabled = false;
 
         let encoder = match *pamap.get_encoder() {
             EncoderScheme::IdxStreamer { ref file_name, cyc_per, scale, loop_frames } => {
@@ -279,10 +282,15 @@ impl ExternalPathway {
                     VectorEncoder::new(ranges.clone(), &lyr_addr_list, &tract_dims)
                 )))
             },
-            EncoderScheme::Custom { .. } => {
+            EncoderScheme::Custom => {
                 ExternalPathwayEncoder::CustomUnspecified
             },
-            EncoderScheme::None { .. } => {
+            EncoderScheme::None => {
+                disabled = true;
+                ExternalPathwayEncoder::None
+            }
+            EncoderScheme::Subcortex => {
+                disabled = true;
                 ExternalPathwayEncoder::None
             }
             EncoderScheme::Zeros => ExternalPathwayEncoder::None,
@@ -314,6 +322,7 @@ impl ExternalPathway {
             // encoder: encoder,
             _thread: Some(thread_handle),
             tx: tx,
+            disabled,
         })
     }
 
@@ -331,17 +340,19 @@ impl ExternalPathway {
     /// Writes input data into a tract.
     // pub fn write_into(&mut self, addr: &LayerAddress, mut frame: TractFrameMut, _: &mut EventList) {
     pub fn write_into(&self, addr: LayerAddress, future_write: FutureWriter<u8>) {
-        let dims = self.layers[&addr].dims().expect(&format!("Dimensions don't exist for \
-            external input area: \"{}\", addr: '{:?}' ", self.area_name, addr)).into();
-        self.tx.send(EncoderCmd::WriteInto { addr, dims, future_write }).unwrap();
+        if !self.disabled {
+            let dims = self.layers[&addr].dims().expect(&format!("Dimensions don't exist for \
+                external input area: \"{}\", addr: '{:?}' ", self.area_name, addr)).into();
+            self.tx.send(EncoderCmd::WriteInto { addr, dims, future_write }).unwrap();
+        }
     }
 
     pub fn cycle_next(&self) {
-        self.tx.send(EncoderCmd::Cycle).unwrap();
+        if !self.disabled { self.tx.send(EncoderCmd::Cycle).unwrap(); }
     }
 
     pub fn set_encoder_ranges(&self, ranges: Vec<(f32, f32)>) {
-        self.tx.send(EncoderCmd::SetRanges(ranges)).unwrap();
+        if !self.disabled { self.tx.send(EncoderCmd::SetRanges(ranges)).unwrap(); }
     }
 
     pub fn layers_mut(&mut self) -> &mut HashMap<LayerAddress, ExternalPathwayLayer> {
@@ -359,6 +370,7 @@ impl ExternalPathway {
     pub fn area_id(&self) -> usize { self.area_id }
     pub fn area_name<'a>(&'a self) -> &'a str { &self.area_name }
     // pub fn encoder(&mut self) -> &mut ExternalPathwayEncoderKind { &mut self.encoder_kind }
+    pub fn is_disabled(&self) -> bool { self.disabled }
 }
 
 impl Drop for ExternalPathway {

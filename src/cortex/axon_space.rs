@@ -411,9 +411,14 @@ impl AxonSpace {
         })
     }
 
-    /// Creates a sub buffer representing a layer of axon space.
-    ///
-    ///
+    /// Creates a sub buffer for a range of axon space.
+    pub fn create_sub_buffer(&self, range: &Range<u32>) -> CmnResult<Buffer<u8>> {
+        assert!((range.end as usize) < self.states.len());
+        self.states.create_sub_buffer(None, range.start as usize, range.len())
+            .map_err(|err| CmnError::from(err))
+    }
+
+    /// Creates a sub buffer for a layer of axon space.
     pub fn create_layer_sub_buffer(&self, src_lyr_addr: LayerAddress, route: AxonDomainRoute)
             -> CmnResult<Buffer<u8>>
     {

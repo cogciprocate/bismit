@@ -11,17 +11,38 @@ const SPARSITY: usize = 48;
 const AXON_VALUE: u8 = 127;
 
 
-fn gen_axn_idxs(rng: &mut XorShiftRng, active_count: usize, sdr_len: usize) -> Vec<TractAxonIdx> {
-    let mut sdr = Vec::with_capacity(active_count);
+#[inline]
+pub fn gen_axn_idxs(rng: &mut XorShiftRng, active_count: usize, sdr_len: usize) -> Vec<TractAxonIdx> {
     let range = Range::new(0, sdr_len);
 
-    for _ in 0..active_count {
-        let idx = range.ind_sample(rng);
-        sdr.push(idx);
-    }
+    // let mut sdr = Vec::with_capacity(active_count);
+    // for _ in 0..active_count {
+    //     let idx = range.ind_sample(rng);
+    //     sdr.push(idx);
+    // }
 
-    // sdr.sort();
-    sdr
+    // // sdr.sort();
+    // sdr
+
+    (0..active_count).map(|_| range.ind_sample(rng)).collect()
+}
+
+
+#[inline]
+pub fn write_rand_subset(subset_count: usize, set_count_ttl: usize, indices: &[usize],
+        rng: &mut XorShiftRng, tar: &mut [u8])
+{
+    let idx_range = Range::new(0, set_count_ttl);
+
+    for _ in 0..subset_count {
+        let idx_idx = idx_range.ind_sample(rng);
+
+        unsafe {
+            let tract_idx = *indices.get_unchecked(idx_idx);
+            debug_assert!(tract_idx < tar.len());
+            *tar.get_unchecked_mut(tract_idx) = 96 + (idx_idx & 63) as u8;
+        }
+    }
 }
 
 
@@ -62,20 +83,30 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
 
         let mut rng = rand::weak_rng();
 
-        let mut waypoint_indices = Vec::with_capacity(way_count);
-        for _ in 0..way_count {
-            let sdr = gen_axn_idxs(&mut rng, sdr_active_count, sdr_len);
-            waypoint_indices.push(sdr);
-        }
+        // let mut waypoint_indices = Vec::with_capacity(way_count);
+        // for _ in 0..way_count {
+        //     let sdr = gen_axn_idxs(&mut rng, sdr_active_count, sdr_len);
+        //     waypoint_indices.push(sdr);
+        // }
+        let waypoint_indices: Vec<_> = (0..way_count).map(|_| {
+                gen_axn_idxs(&mut rng, sdr_active_count, sdr_len)
+            }).collect();
 
-        let mut sdrs = Vec::with_capacity(way_count);
-        for axn_idxs in waypoint_indices.iter() {
-            let mut sdr = vec![0u8; sdr_len];
-            for &axn_idx in axn_idxs.iter() {
-                sdr[axn_idx] = AXON_VALUE;
-            }
-            sdrs.push(sdr);
-        }
+        // let mut sdrs = Vec::with_capacity(way_count);
+        // for axn_idxs in waypoint_indices.iter() {
+        //     let mut sdr = vec![0u8; sdr_len];
+        //     for &axn_idx in axn_idxs.iter() {
+        //         sdr[axn_idx] = AXON_VALUE;
+        //     }
+        //     sdrs.push(sdr);
+        // }
+        let sdrs: Vec<_> = waypoint_indices.iter().map(|axn_idxs| {
+                let mut sdr = vec![0u8; sdr_len];
+                for &axn_idx in axn_idxs.iter() {
+                    sdr[axn_idx] = AXON_VALUE;
+                }
+                sdr
+            }).collect();
 
         // /////// [DEBUG]:
         // println!("########## ScalarSdrWriter::new: Value Range: {:?}; Waypoint Span: {}; \
@@ -137,22 +168,7 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         // let w1_idz = Range::new(0, 1 + self.sdr_active_count - way_1_contrib_count)
         //     .ind_sample(&mut self.rng);
 
-        #[inline]
-        fn write_rand_subset(subset_count: usize, set_count_ttl: usize, indices: &[usize],
-                rng: &mut XorShiftRng, tar: &mut [u8])
-        {
-            let idx_range = Range::new(0, set_count_ttl);
 
-            for _ in 0..subset_count {
-                let idx_idx = idx_range.ind_sample(rng);
-
-                unsafe {
-                    let tract_idx = *indices.get_unchecked(idx_idx);
-                    debug_assert!(tract_idx < tar.len());
-                    *tar.get_unchecked_mut(tract_idx) = 96 + (idx_idx & 63) as u8;
-                }
-            }
-        }
 
         // let idx_range = Range::new(0, self.sdr_active_count);
 

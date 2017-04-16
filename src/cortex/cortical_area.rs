@@ -298,7 +298,7 @@ impl CorticalArea {
                                 debug_assert!(area_map.aff_out_slcs().len() > 0, "CorticalArea::new(): \
                                     No afferent output slices found for area: '{}'", area_name);
                                 Minicolumns::new(layer_id, mcols_dims, &area_map, &axns, ssts, pyrs,
-                                    &ocl_pq, &mut exe_graph)?
+                                    &ocl_pq, settings.clone(), &mut exe_graph)?
                             }));
                         },
                         _ => (),

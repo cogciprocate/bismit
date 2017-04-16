@@ -4,7 +4,7 @@ use cmn::{self, CorticalDims, DataCellLayer, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{self, ProQue, SpatialDims, Buffer, /*EventList,*/ Result as OclResult, Event};
 use ocl::traits::OclPrm;
-use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer};
+use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer, CorticalAreaSettings};
 #[cfg(test)]
 pub use self::tests::{MinicolumnsTest};
 
@@ -18,9 +18,9 @@ pub struct Minicolumns {
     lyr_axn_idz: u32,
     ff_layer_axn_idz: usize,
     kern_activate: ocl::Kernel,
-    activate_exe_cmd_idx: usize,
+    activate_exe_cmd_idx: Option<usize>,
     kern_output: ocl::Kernel,
-    output_exe_cmd_idx: usize,
+    output_exe_cmd_idx: Option<usize>,
     // rng: rand::XorShiftRng,
     pub flag_sets: Buffer<u8>,
     pub best_den_states: Buffer<u8>,
@@ -29,7 +29,7 @@ pub struct Minicolumns {
 impl Minicolumns {
     pub fn new(layer_id: usize, dims: CorticalDims, area_map: &AreaMap, axons: &AxonSpace,
                 ssts: &SpinyStellateLayer, pyrs: &PyramidalLayer, ocl_pq: &ProQue,
-                exe_graph: &mut ExecutionGraph,
+                settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph,
             ) -> CmnResult<Minicolumns>
     {
         assert!(dims.depth() == 1);
@@ -100,8 +100,12 @@ impl Minicolumns {
 
         activate_cmd_tars.push(CorticalBuffer::data_soma_lyr(&pyrs.flag_sets(), pyrs.layer_addr()));
 
-        let activate_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
-            activate_kern_name, activate_cmd_srcs, activate_cmd_tars))?;
+        let activate_exe_cmd_idx = if settings.disable_learning {
+            Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                activate_kern_name, activate_cmd_srcs, activate_cmd_tars))?)
+        } else {
+            None
+        };
 
         /*=============================================================================
         ===============================================================================
@@ -134,8 +138,12 @@ impl Minicolumns {
             CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), mcol_axn_slc_id),
         ];
 
-        let output_exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
-            output_kern_name, output_cmd_srcs, output_cmd_tars))?;
+        let output_exe_cmd_idx = if settings.disable_learning {
+            Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                output_kern_name, output_cmd_srcs, output_cmd_tars))?)
+        } else {
+            None
+        };
 
         /*=============================================================================
         ===============================================================================
@@ -158,12 +166,16 @@ impl Minicolumns {
     }
 
     pub fn set_exe_order_activate(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        exe_graph.order_next(self.activate_exe_cmd_idx)?;
+        if let Some(cmd_idx) = self.activate_exe_cmd_idx {
+            exe_graph.order_next(cmd_idx)?;
+        }
         Ok(())
     }
 
     pub fn set_exe_order_output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        exe_graph.order_next(self.output_exe_cmd_idx)?;
+        if let Some(cmd_idx) = self.output_exe_cmd_idx {
+            exe_graph.order_next(cmd_idx)?;
+        }
         Ok(())
     }
 
@@ -187,20 +199,24 @@ impl Minicolumns {
 
     #[inline]
     pub fn activate(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        if PRINT_DEBUG { printlnc!(lime: "Mcols: Activating (cmd_idx: [{}])...", self.activate_exe_cmd_idx); }
-        let mut event = Event::empty();
-        self.kern_activate.cmd().ewait(exe_graph.get_req_events(self.activate_exe_cmd_idx).unwrap()).enew(&mut event).enq()?;
-        exe_graph.set_cmd_event(self.activate_exe_cmd_idx, Some(event)).unwrap();
-        if PRINT_DEBUG { printlnc!(lime: "Mcols: Activation complete."); }
+        if let Some(cmd_idx) = self.activate_exe_cmd_idx {
+            if PRINT_DEBUG { printlnc!(lime: "Mcols: Activating (cmd_idx: [{}])...", cmd_idx); }
+            let mut event = Event::empty();
+            self.kern_activate.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?;
+            exe_graph.set_cmd_event(cmd_idx, Some(event)).unwrap();
+            if PRINT_DEBUG { printlnc!(lime: "Mcols: Activation complete."); }
+        }
         Ok(())
     }
 
     pub fn output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        if PRINT_DEBUG { printlnc!(lime: "Mcols: Outputting (cmd_idx: [{}])...", self.output_exe_cmd_idx); }
-        let mut event = Event::empty();
-        self.kern_output.cmd().ewait(exe_graph.get_req_events(self.output_exe_cmd_idx).unwrap()).enew(&mut event).enq()?;
-        exe_graph.set_cmd_event(self.output_exe_cmd_idx, Some(event)).unwrap();
-        if PRINT_DEBUG { printlnc!(lime: "Mcols: Output complete."); }
+        if let Some(cmd_idx) = self.output_exe_cmd_idx {
+            if PRINT_DEBUG { printlnc!(lime: "Mcols: Outputting (cmd_idx: [{}])...", cmd_idx); }
+            let mut event = Event::empty();
+            self.kern_output.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?;
+            exe_graph.set_cmd_event(cmd_idx, Some(event)).unwrap();
+            if PRINT_DEBUG { printlnc!(lime: "Mcols: Output complete."); }
+        }
         Ok(())
     }
 

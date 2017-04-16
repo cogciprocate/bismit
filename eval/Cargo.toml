@@ -5,3 +5,6 @@ authors = ["Nick Sanders <cogciprocate@gmail.com>"]
 
 [dependencies]
 vibi = { path = "../../vibi" }
+rand = "*"
+log = "*"
+env_logger = "*"

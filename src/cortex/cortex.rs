@@ -99,6 +99,13 @@ impl Cortex {
     pub fn thal(&self) -> &Thalamus {
         &self.thal
     }
+
+    /// Blocks until all command queues are finished.
+    pub fn finish_queues(&self) {
+        for area in self.areas.values() {
+            area.finish_queues();
+        }
+    }
 }
 
 impl Drop for Cortex {

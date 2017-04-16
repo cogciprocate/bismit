@@ -28,7 +28,7 @@ use tract_terminal::{SliceBufferTarget, SliceBufferSource};
 /// Specifies whether or not the frame buffer for a source exists within the
 /// thalamic tract or an external source itself.
 #[derive(Debug, Clone)]
-enum TractAreaBufferKind {
+enum BufferKind {
     Ocl(Buffer<u8>),
     RwVec(RwVec<u8>),
     Vec(Vec<u8>),
@@ -41,11 +41,11 @@ struct TractArea {
     // range: Range<usize>,
     events: EventList,
     dims: TractDims,
-    kind: TractAreaBufferKind,
+    kind: BufferKind,
 }
 
 impl TractArea {
-    fn new<D>(src_lyr_addr: LayerAddress, dims: D, kind: TractAreaBufferKind) -> TractArea
+    fn new<D>(src_lyr_addr: LayerAddress, dims: D, kind: BufferKind) -> TractArea
             where D: Into<TractDims>
     {
         // println!("###### TractArea::new(): Adding area with: range: {:?}, dims: {:?}", &range, &dims);
@@ -61,7 +61,7 @@ impl TractArea {
 
     fn rw_vec(&self) -> Option<&RwVec<u8>> {
         match self.kind {
-            TractAreaBufferKind::RwVec(ref rv) => Some(rv),
+            BufferKind::RwVec(ref rv) => Some(rv),
             _ => None,
         }
     }
@@ -70,7 +70,7 @@ impl TractArea {
     fn dims(&self) -> &TractDims { &self.dims }
     fn events(&self) -> &EventList { &self.events }
     fn events_mut(&mut self) -> &mut EventList { &mut self.events }
-    fn kind(&self) -> &TractAreaBufferKind { &self.kind }
+    fn kind(&self) -> &BufferKind { &self.kind }
 
 }
 
@@ -98,7 +98,7 @@ impl ThalamicTract {
         //     src_area_name, layer_tags, layer_dims);
         self.ttl_len += layer_dims.to_len();
         let new_area = TractArea::new(src_lyr_addr.clone(), layer_dims,
-            TractAreaBufferKind::RwVec(RwVec::from(vec![0; layer_dims.to_len()])));
+            BufferKind::RwVec(RwVec::from(vec![0; layer_dims.to_len()])));
         self.tract_areas.insert(src_lyr_addr, new_area);
 
     }
@@ -114,17 +114,22 @@ impl ThalamicTract {
     }
 
     pub fn read<'t>(&'t self, idx: usize) -> CmnResult<FutureReader<u8>> {
-        let ta = self.tract_areas.by_index(idx).unwrap();
+        let ta = self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))?;
         // println!("Tract area: Obtaining reader for tract area: source: {:?}, dims: {:?}",
         //     ta.src_lyr_addr, ta.dims);
         ta.rw_vec().ok_or(CmnError::from("ThalamicTract::read")).map(|rv| rv.clone().read())
     }
 
     pub fn write<'t>(&'t self, idx: usize) -> CmnResult<FutureWriter<u8>> {
-        let ta = self.tract_areas.by_index(idx).unwrap();
+        let ta = self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))?;
         // println!("Tract area: Obtaining writer for tract area: source: {:?}, dims: {:?}",
         //     ta.src_lyr_addr, ta.dims);
         ta.rw_vec().ok_or(CmnError::from("ThalamicTract::write")).map(|rv| rv.clone().write())
+    }
+
+    pub fn buffer<'t>(&'t self, idx: usize) -> CmnResult<&RwVec<u8>> {
+        let ta = self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))?;
+        ta.rw_vec().ok_or(CmnError::from("no RwVec found"))
     }
 
     // // pub fn terminal_source<'t>(&'t mut self, key: &LayerAddress)
@@ -236,6 +241,7 @@ impl Thalamus {
     // Multiple source output areas disabled.
     pub fn cycle_external_pathways(&mut self) {
         for &mut (ref mut src_ext_path, ref layer_addr_list) in self.external_pathways.values_mut().iter_mut() {
+            if src_ext_path.is_disabled() { continue; }
             src_ext_path.cycle_next();
             for &layer_addr in layer_addr_list.iter() {
                 // TODO: ExternalPathway needs to store tract index.

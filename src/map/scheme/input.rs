@@ -2,7 +2,8 @@
 #[derive(PartialEq, Debug, Clone)]
 pub enum EncoderScheme {
     None,
-    Custom { layer_count: usize },
+    Subcortex,
+    Custom,
     World,
     Stripes { stripe_size: usize, zeros_first: bool },
     Hexballs { edge_size: usize, invert: bool, fill: bool },
@@ -32,15 +33,16 @@ impl EncoderScheme {
         !self.is_some()
     }
 
-    pub fn layer_count(&self) -> usize {
-        match *self {
-            EncoderScheme::None => 0,
-            EncoderScheme::GlyphSequences { .. } => 2,
-            EncoderScheme::ReversoScalarSequence { .. } => 2,
-            EncoderScheme::VectorEncoder { ref ranges } => ranges.len(),
-            EncoderScheme::Custom { layer_count } => layer_count,
-            // EncoderScheme::SensoryTract { ref dims, .. } => dims.len(),
-            _ => 1,
-        }
-    }
+    // pub fn layer_count(&self) -> usize {
+    //     match *self {
+    //         EncoderScheme::None => 0,
+    //         EncoderScheme::Subcortex => 0,
+    //         EncoderScheme::GlyphSequences { .. } => 2,
+    //         EncoderScheme::ReversoScalarSequence { .. } => 2,
+    //         EncoderScheme::VectorEncoder { ref ranges } => ranges.len(),
+    //         EncoderScheme::Custom { layer_count } => layer_count,
+    //         // EncoderScheme::SensoryTract { ref dims, .. } => dims.len(),
+    //         _ => 1,
+    //     }
+    // }
 }

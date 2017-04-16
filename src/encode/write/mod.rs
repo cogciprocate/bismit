@@ -10,7 +10,7 @@ use rand::distributions::{Range, IndependentSample};
 use cmn::{self, TractFrameMut};
 use super::ScalarEncodable;
 pub use self::scalar_glyph_writer::ScalarGlyphWriter;
-pub use self::scalar_sdr_writer::ScalarSdrWriter;
+pub use self::scalar_sdr_writer::{ScalarSdrWriter, gen_axn_idxs, write_rand_subset};
 
 
 /// Encode a scalar as a hexagon somewhere along the border of the tract frame

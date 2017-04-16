@@ -1,10 +1,25 @@
 
-use std::sync::mpsc::{Sender, Receiver};
-use vibi::bismit::ocl::Buffer;
+use std::sync::mpsc::{Sender, Receiver, TryRecvError};
+use rand;
+use rand::distributions::{Range, IndependentSample};
+use vibi::bismit::ocl::{Buffer, RwVec, WriteGuard};
 use vibi::bismit::{Cortex, Thalamus, SubcorticalNucleus};
 use vibi::bismit::flywheel::{Command, Request, Response};
 use vibi::bismit::map::{AxonDomainRoute, AreaMap};
-use vibi::bismit::encode::ScalarSdrWriter;
+use vibi::bismit::encode::{self, ScalarSdrWriter};
+
+
+pub struct Params {
+    pub cmd_tx: Sender<Command>,
+    pub req_tx: Sender<Request>,
+    pub res_rx: Receiver<Response>,
+    pub tract_buffer: RwVec<u8>,
+    pub axns: Buffer<u8>,
+    pub l4_axns: Buffer<u8>,
+    pub area_map: AreaMap,
+    pub encode_dim: u32,
+    pub area_dim: u32,
+}
 
 
 pub(crate) struct Nucleus {
@@ -17,14 +32,14 @@ impl Nucleus {
     {
         let area_name = area_name.into();
 
-        let v0_ext_lyr_addr = *cortex.areas().by_key(area_name.as_str()).unwrap()
-            .area_map().layer_map().layers().by_key(lyr_name).unwrap().layer_addr();
-        let v1_in_lyr_buf = cortex.areas().by_key(tar_area).unwrap()
-            .axns().create_layer_sub_buffer(v0_ext_lyr_addr, AxonDomainRoute::Input);
-        let axns = cortex.areas().by_key(tar_area).unwrap()
-            .axns().states().clone();
-        let area_map = cortex.areas().by_key(area_name.as_str()).unwrap()
-            .area_map().clone();
+        // let v0_ext_lyr_addr = *cortex.areas().by_key(area_name.as_str()).unwrap()
+        //     .area_map().layer_map().layers().by_key(lyr_name).unwrap().layer_addr();
+        // let v1_in_lyr_buf = cortex.areas().by_key(tar_area).unwrap()
+        //     .axns().create_layer_sub_buffer(v0_ext_lyr_addr, AxonDomainRoute::Input);
+        // let axns = cortex.areas().by_key(tar_area).unwrap()
+        //     .axns().states().clone();
+        // let area_map = cortex.areas().by_key(area_name.as_str()).unwrap()
+        //     .area_map().clone();
 
         Nucleus {
             area_name: area_name.into()
@@ -47,14 +62,191 @@ impl SubcorticalNucleus for Nucleus {
 }
 
 
-pub(crate) fn eval(cmd_tx: Sender<Command>, req_tx: Sender<Request>, res_rx: Receiver<Response>,
-        axns: Buffer<u8>, area_map: AreaMap, area_side: u32)
+fn cycle(params: &Params, training_iters: usize, collect_iters: usize, pattern_count: usize,
+         sdrs: &Vec<Vec<u8>>, activity_counts: &mut Vec<Vec<usize>>)
 {
-    // let writer = ScalarSdrWriter::new((0, 31u32), 1, &(area_side, area_side, 1).into());
+    let mut rng = rand::weak_rng();
+    let mut exiting = false;
+    let mut cycle_count = 0u32;
+
+    // Main loop:
+    for i in 0..training_iters + collect_iters {
+        // Write a random SDR.
+        let pattern_idx = Range::new(0, pattern_count).ind_sample(&mut rng);
+        debug!("Locking tract buffer...");
+        let mut guard = params.tract_buffer.clone().write().wait().unwrap();
+        debug_assert!(guard.len() == sdrs[pattern_idx].len());
+        for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
+            *dst = *src;
+        }
+        WriteGuard::release(guard);
+
+        // Cycle.
+        params.cmd_tx.send(Command::Iterate(1)).unwrap();
+
+        // Wait for completion.
+        loop {
+            debug!("Attempting to receive...");
+            match params.res_rx.recv() {
+                Ok(res) => match res {
+                    Response::Status(status) => {
+                        debug!("Status: {:?}", status);
+                        if status.prev_cycles > cycle_count {
+                            params.req_tx.send(Request::FinishQueues).unwrap();
+                            params.cmd_tx.send(Command::None).unwrap();
+                        }
+                    },
+                    Response::QueuesFinished(prev_cycles) => {
+                        if prev_cycles > cycle_count {
+                            debug!("Queues finished for: {}", prev_cycles);
+                            cycle_count = cycle_count.wrapping_add(1);
+                            break;
+                        }
+                    },
+                    Response::Exiting => {
+                        exiting = true;
+                        break;
+                    },
+                    res @ _ => panic!("Unknown response received: {:?}", res),
+                },
+                Err(_) => {
+                    exiting = true;
+                    break;
+                }
+            };
+        }
+
+        if i >= training_iters {
+            // Increment the cell activity counts.
+            let l4_axns = params.l4_axns.map().read().enq().unwrap();
+            for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
+                counts[pattern_idx] += (axn > 0) as usize;
+            }
+        }
+
+        if exiting { break; }
+    }
+}
 
 
+// pub(crate) fn eval(cmd_tx: Sender<Command>, req_tx: Sender<Request>, res_rx: Receiver<Response>,
+//         tract_buffer: RwVec<u8>, axns: Buffer<u8>, l4_axns: Buffer<u8>, area_map: AreaMap,
+//         encode_dim: u32, area_dim: u32)
+pub(crate) fn eval(params: Params) {
+    const SPARSITY: usize = 48;
+    let pattern_count = 64;
+    let sdr_len = (params.encode_dim * params.encode_dim) as usize;
+    let sdr_active_count = sdr_len / SPARSITY;
+    let training_iters = 80000;
+    let collect_iters = 20000;
+    let mut rng = rand::weak_rng();
 
+    let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
+            encode::gen_axn_idxs(&mut rng, sdr_active_count, sdr_len)
+        }).collect();
 
+    let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
+            let mut sdr = vec![0u8; sdr_len];
+            for &axn_idx in axn_idxs.iter() {
+                sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
+            }
+            sdr
+        }).collect();
 
+    let cell_count = (params.area_dim * params.area_dim) as usize;
 
+    // The number of times each cell has become active for each pattern:
+    let mut activity_counts = vec![vec![0; pattern_count]; cell_count];
+
+    // Get the flywheel moving:
+    params.cmd_tx.send(Command::None).unwrap();
+
+    // let mut exiting = false;
+    // let mut cycle_count = 0u32;
+
+    // // Main loop:
+    // for i in 0..training_iters + collect_iters {
+    //     // Write a random SDR.
+    //     let pattern_idx = Range::new(0, pattern_count).ind_sample(&mut rng);
+    //     debug!("Locking tract buffer...");
+    //     let mut guard = tract_buffer.clone().write().wait().unwrap();
+    //     debug_assert!(guard.len() == sdrs[pattern_idx].len());
+    //     for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
+    //         *dst = *src;
+    //     }
+    //     WriteGuard::release(guard);
+
+    //     // Cycle.
+    //     cmd_tx.send(Command::Iterate(1)).unwrap();
+
+    //     // Wait for completion.
+    //     loop {
+    //         debug!("Attempting to receive...");
+    //         match res_rx.recv() {
+    //             Ok(res) => match res {
+    //                 Response::Status(status) => {
+    //                     debug!("Status: {:?}", status);
+    //                     if status.prev_cycles > cycle_count {
+    //                         req_tx.send(Request::FinishQueues).unwrap();
+    //                         cmd_tx.send(Command::None).unwrap();
+    //                     }
+    //                 },
+    //                 Response::QueuesFinished(prev_cycles) => {
+    //                     if prev_cycles > cycle_count {
+    //                         debug!("Queues finished for: {}", prev_cycles);
+    //                         cycle_count = cycle_count.wrapping_add(1);
+    //                         break;
+    //                     }
+    //                 },
+    //                 Response::Exiting => {
+    //                     exiting = true;
+    //                     break;
+    //                 },
+    //                 res @ _ => panic!("Unknown response received: {:?}", res),
+    //             },
+    //             Err(_) => {
+    //                 exiting = true;
+    //                 break;
+    //             }
+    //         };
+    //     }
+
+    //     if i >= training_iters {
+    //         // Increment the cell activity counts.
+    //         let l4_axns = l4_axns.map().read().enq().unwrap();
+    //         for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
+    //             counts[pattern_idx] += (axn > 0) as usize;
+    //         }
+    //     }
+
+    //     if exiting { break; }
+    // }
+
+    cycle(&params, training_iters, collect_iters, pattern_count, &sdrs, &mut activity_counts);
+
+    println!("Activity Counts:");
+
+    // for idx in 128..144 {
+    //     println!("Cell [{}]: {:?}", idx, activity_counts[idx]);
+    // }
+
+    let mut cond_count: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
+
+    for (axn_idx, counts) in activity_counts.iter().enumerate() {
+        let mut active = false;
+        cond_count.clear();
+
+        for (pattern_idx, &count) in counts.iter().enumerate() {
+            if count > 0 {
+                active = true;
+                cond_count.push((pattern_idx, count));
+            }
+        }
+
+        if active {
+            println!("Cell [{}]: {:?}", axn_idx, cond_count);
+        }
+    }
+
+    params.cmd_tx.send(Command::Exit).unwrap();
 }
