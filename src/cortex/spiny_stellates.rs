@@ -1,13 +1,15 @@
+#![allow(unused_imports)]
+
 // use std::ops;
 use rand::{self, Rng};
 
-use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
+use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
 // use ocl::core::ClWaitListPtr;
 use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress, LayerTags};
-use cortex::{Dendrites, AxonSpace, CorticalAreaSettings};
+use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer};
 
 
 const PRINT_DEBUG: bool = false;
@@ -57,26 +59,40 @@ impl SpinyStellateLayer {
         let dens = try!(Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(),
             DendriteKind::Proximal, CellKind::SpinyStellate, area_map, axons, ocl_pq,
             settings.disable_ssts, exe_graph));
-        let grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-        let cels_per_grp = dims.per_subgrp(grp_count).expect("SpinyStellateLayer::new()");
+        let _grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
+        let _cels_per_grp = dims.per_subgrp(_grp_count).expect("SpinyStellateLayer::new()");
 
         /*=============================================================================
         ===============================================================================
         =============================================================================*/
 
-        let kern_name = "sst_ltp";
+        let kern_name = "sst_ltp_simple";
         let kern_ltp = ocl_pq.create_kernel(kern_name)?
             // .expect("SpinyStellateLayer::new()")
-            .gws(SpatialDims::Two(tft_count, grp_count as usize))
+            .gws(dims)
             .arg_buf(axons.states())
             .arg_buf(dens.syns().states())
             .arg_scl(lyr_axn_idz)
-            .arg_scl(cels_per_grp)
+            // .arg_scl(cels_per_grp)
             .arg_scl(syns_per_tuft_l2)
             .arg_scl_named::<u32>("rnd", None)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(dens.syns().strengths());
+
+        // let kern_name = "sst_ltp";
+        // let kern_ltp = ocl_pq.create_kernel(kern_name)?
+        //     // .expect("SpinyStellateLayer::new()")
+        //     .gws(SpatialDims::Two(tft_count, grp_count as usize))
+        //     .arg_buf(axons.states())
+        //     .arg_buf(dens.syns().states())
+        //     .arg_scl(lyr_axn_idz)
+        //     .arg_scl(_cels_per_grp)
+        //     .arg_scl(syns_per_tuft_l2)
+        //     .arg_scl_named::<u32>("rnd", None)
+        //     // .arg_buf_named("aux_ints_0", None)
+        //     // .arg_buf_named("aux_ints_1", None)
+        //     .arg_buf(dens.syns().strengths());
 
         // Set up execution command:
         let mut ltp_cmd_srcs: Vec<CorticalBuffer> = axn_slc_ids.iter()

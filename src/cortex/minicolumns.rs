@@ -1,10 +1,10 @@
 use std::ops::Range;
 // use rand;
-use cmn::{self, CorticalDims, DataCellLayer, CmnResult};
+use cmn::{self, CorticalDims, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{self, ProQue, SpatialDims, Buffer, /*EventList,*/ Result as OclResult, Event};
 use ocl::traits::OclPrm;
-use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer, CorticalAreaSettings};
+use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer, CorticalAreaSettings, DataCellLayer};
 #[cfg(test)]
 pub use self::tests::{MinicolumnsTest};
 

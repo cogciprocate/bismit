@@ -364,8 +364,9 @@ impl Flywheel {
                         TryRecvError::Empty => break,
                         // TODO: Have this either do nothing or check to see
                         // if any senders remain and exit if 0.
-                        TryRecvError::Disconnected => panic!("Flywheel::fulfill_requests(): \
-                            Sender disconnected."),
+                        // TryRecvError::Disconnected => panic!("Flywheel::fulfill_requests(): \
+                        //     Sender disconnected."),
+                        TryRecvError::Disconnected => (),
                     },
                 }
             }

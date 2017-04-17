@@ -137,14 +137,15 @@ pub(crate) fn eval(params: Params) {
     let pattern_count = 64;
     let sdr_len = (params.encode_dim * params.encode_dim) as usize;
     let sdr_active_count = sdr_len / SPARSITY;
-    let training_iters = 80000;
-    let collect_iters = 20000;
+
     let mut rng = rand::weak_rng();
 
+    // Produce randomized indexes:
     let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
             encode::gen_axn_idxs(&mut rng, sdr_active_count, sdr_len)
         }).collect();
 
+    // Create sdr from randomized indexes:
     let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
             let mut sdr = vec![0u8; sdr_len];
             for &axn_idx in axn_idxs.iter() {
@@ -156,97 +157,46 @@ pub(crate) fn eval(params: Params) {
     let cell_count = (params.area_dim * params.area_dim) as usize;
 
     // The number of times each cell has become active for each pattern:
-    let mut activity_counts = vec![vec![0; pattern_count]; cell_count];
+    let mut activity_counts_start = vec![vec![0; pattern_count]; cell_count];
+    let mut activity_counts_end = vec![vec![0; pattern_count]; cell_count];
 
     // Get the flywheel moving:
     params.cmd_tx.send(Command::None).unwrap();
 
-    // let mut exiting = false;
-    // let mut cycle_count = 0u32;
+    let training_iters_start = 0;
+    let collect_iters_start = 20000;
+    cycle(&params, training_iters_start, collect_iters_start, pattern_count, &sdrs, &mut activity_counts_start);
 
-    // // Main loop:
-    // for i in 0..training_iters + collect_iters {
-    //     // Write a random SDR.
-    //     let pattern_idx = Range::new(0, pattern_count).ind_sample(&mut rng);
-    //     debug!("Locking tract buffer...");
-    //     let mut guard = tract_buffer.clone().write().wait().unwrap();
-    //     debug_assert!(guard.len() == sdrs[pattern_idx].len());
-    //     for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
-    //         *dst = *src;
-    //     }
-    //     WriteGuard::release(guard);
+    let training_iters_end = 100000;
+    let collect_iters_end = 20000;
+    cycle(&params, training_iters_end, collect_iters_end, pattern_count, &sdrs, &mut activity_counts_end);
 
-    //     // Cycle.
-    //     cmd_tx.send(Command::Iterate(1)).unwrap();
+    println!("\nStart Activity Counts:");
+    print_activity_counts(&activity_counts_start, collect_iters_start / 1000);
 
-    //     // Wait for completion.
-    //     loop {
-    //         debug!("Attempting to receive...");
-    //         match res_rx.recv() {
-    //             Ok(res) => match res {
-    //                 Response::Status(status) => {
-    //                     debug!("Status: {:?}", status);
-    //                     if status.prev_cycles > cycle_count {
-    //                         req_tx.send(Request::FinishQueues).unwrap();
-    //                         cmd_tx.send(Command::None).unwrap();
-    //                     }
-    //                 },
-    //                 Response::QueuesFinished(prev_cycles) => {
-    //                     if prev_cycles > cycle_count {
-    //                         debug!("Queues finished for: {}", prev_cycles);
-    //                         cycle_count = cycle_count.wrapping_add(1);
-    //                         break;
-    //                     }
-    //                 },
-    //                 Response::Exiting => {
-    //                     exiting = true;
-    //                     break;
-    //                 },
-    //                 res @ _ => panic!("Unknown response received: {:?}", res),
-    //             },
-    //             Err(_) => {
-    //                 exiting = true;
-    //                 break;
-    //             }
-    //         };
-    //     }
-
-    //     if i >= training_iters {
-    //         // Increment the cell activity counts.
-    //         let l4_axns = l4_axns.map().read().enq().unwrap();
-    //         for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
-    //             counts[pattern_idx] += (axn > 0) as usize;
-    //         }
-    //     }
-
-    //     if exiting { break; }
-    // }
-
-    cycle(&params, training_iters, collect_iters, pattern_count, &sdrs, &mut activity_counts);
-
-    println!("Activity Counts:");
-
-    // for idx in 128..144 {
-    //     println!("Cell [{}]: {:?}", idx, activity_counts[idx]);
-    // }
-
-    let mut cond_count: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
-
-    for (axn_idx, counts) in activity_counts.iter().enumerate() {
-        let mut active = false;
-        cond_count.clear();
-
-        for (pattern_idx, &count) in counts.iter().enumerate() {
-            if count > 0 {
-                active = true;
-                cond_count.push((pattern_idx, count));
-            }
-        }
-
-        if active {
-            println!("Cell [{}]: {:?}", axn_idx, cond_count);
-        }
-    }
+    println!("\nEnd Activity Counts:");
+    print_activity_counts(&activity_counts_end, collect_iters_end / 1000);
 
     params.cmd_tx.send(Command::Exit).unwrap();
+    params.res_rx.recv().unwrap();
+}
+
+fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, min: usize) {
+    let pattern_count = activity_counts[0].len();
+    let mut cond_counts: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
+
+    for (axn_idx, counts) in activity_counts.iter().enumerate() {
+        let mut ttl_count = 0;
+        cond_counts.clear();
+
+        for (pattern_idx, &count) in counts.iter().enumerate() {
+            if count > min {
+                ttl_count += count;
+                cond_counts.push((pattern_idx, count));
+            }
+        }
+        if ttl_count > 0 {
+            println!("Cell [{}]({}): {:?}", axn_idx, ttl_count, cond_counts);
+        }
+    }
 }

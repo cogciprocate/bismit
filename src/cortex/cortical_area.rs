@@ -10,12 +10,12 @@ use futures::sync::mpsc::{self, Sender};
 use tokio_core::reactor::{Core, Remote};
 use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue};
 use ocl::core::CommandQueueProperties;
-use cmn::{self, CmnError, CmnResult, CorticalDims, DataCellLayer};
+use cmn::{self, CmnError, CmnResult, CorticalDims};
 use map::{self, AreaMap, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
     ExecutionGraph, /*AxonDomainRoute,*/};
 use ::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
-    SpinyStellateLayer};
+    SpinyStellateLayer, DataCellLayer};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 

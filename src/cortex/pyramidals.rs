@@ -1,10 +1,10 @@
 use rand::{self, XorShiftRng, Rng};
-use cmn::{self, CmnResult, CorticalDims, DataCellLayer};
+use cmn::{self, CmnResult, CorticalDims};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
 use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress, LayerTags};
-use cortex::{Dendrites, AxonSpace, CorticalAreaSettings};
+use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer};
 
 const PRINT_DEBUG: bool = false;
 

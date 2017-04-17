@@ -9,6 +9,7 @@ mod pyramidals;
 mod spiny_stellates;
 mod dendrites;
 mod sensory_filter;
+mod data_cell_layer;
 
 pub use self::cortex::Cortex;
 pub use self::cortical_area::{CorticalArea, CorticalAreaSettings};
@@ -20,6 +21,7 @@ pub use self::pyramidals::PyramidalLayer;
 pub use self::spiny_stellates::SpinyStellateLayer;
 pub use self::dendrites::Dendrites;
 pub use self::sensory_filter::SensoryFilter;
+pub use self::data_cell_layer::DataCellLayer;
 
 #[cfg(test)] pub use self::cortical_area::CorticalAreaTest;
 #[cfg(test)] pub use self::synapses::{SynCoords, SynapsesTest, syn_idx};

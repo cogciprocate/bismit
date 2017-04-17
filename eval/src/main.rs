@@ -99,7 +99,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 CellScheme::minicolumn("iv", "iii")
             )
             .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 16, 1)], 7, 600)
+                CellScheme::spiny_stellate(&[("aff_in", 4, 1)], 7, 600)
             )
             .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhibitory(4, "iv"))
             .layer("iii", 1, map::PTAL, AxonDomain::Local,

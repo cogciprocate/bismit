@@ -1,5 +1,4 @@
 use ocl::Buffer;
-// use ocl::core::ClWaitListPtr;
 use cortex::Dendrites;
 use cmn::{CmnResult, CorticalDims};
 use map::{CellScheme, ExecutionGraph};
@@ -10,7 +9,6 @@ pub use self::tests::{DataCellLayerTest, CelCoords};
 pub trait DataCellLayer: Send {
     fn learn(&mut self, &mut ExecutionGraph) -> CmnResult <()> ;
     fn regrow(&mut self);
-    // fn cycle(&self, Option<&ClWaitListPtr>);
     fn cycle(&self, &mut ExecutionGraph) -> CmnResult<()>;
     fn soma(&self) -> &Buffer<u8>;
     fn soma_mut(&mut self) -> &mut Buffer<u8>;
@@ -30,9 +28,7 @@ pub trait DataCellLayer: Send {
 pub mod tests {
     use std::ops::{Range};
     use rand::{XorShiftRng};
-    // use rand::distributions::{IndependentSample, Range};
 
-    // use super::{DataCellLayer};
     use map::{AreaMap, AreaMapTest};
     use cmn::{self, CorticalDims};
     use std::fmt::{Display, Formatter, Result};

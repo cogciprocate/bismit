@@ -16,7 +16,7 @@ mod map_store;
 mod double_buffer_mutex;
 pub mod util;
 // mod warden;
-pub mod data_cell_layer;
+// pub mod data_cell_layer;
 
 
 use std;
@@ -37,7 +37,7 @@ use ocl::builders::ProgramBuilder;
 pub use self::cortical_dims::{CorticalDims};
 pub use self::slice_dims::SliceDims;
 pub use self::tract_dims::TractDims;
-pub use self::data_cell_layer::{DataCellLayer};
+// pub use self::data_cell_layer::{DataCellLayer};
 pub use self::renderer::{Renderer};
 pub use self::error::{CmnError, CmnResult};
 pub use self::tract_frame::{TractFrame, TractFrameMut};
