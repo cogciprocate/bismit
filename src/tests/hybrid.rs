@@ -1,8 +1,9 @@
 use std::iter;
 use std::io::{self, Write};
 
-use cortex::{Cortex, CorticalAreaTest, Dendrites, PyramidalLayer, DendritesTest, SynapsesTest};
-use cmn::{self, DataCellLayer, DataCellLayerTest};
+use cortex::{Cortex, CorticalAreaTest, Dendrites, PyramidalLayer, DendritesTest, SynapsesTest,
+    DataCellLayer, DataCellLayerTest};
+use cmn;
 use tests::util;
 
 /*    HYBRID TESTS: Tests runnable in either an interactive or automated manner

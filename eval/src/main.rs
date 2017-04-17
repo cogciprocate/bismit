@@ -101,7 +101,8 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
                 CellScheme::spiny_stellate(&[("aff_in", 4, 1)], 7, 600)
             )
-            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhibitory(4, "iv"))
+            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhibitory("iv", 4))
+            .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smoother("iv", 4))
             .layer("iii", 1, map::PTAL, AxonDomain::Local,
                 CellScheme::pyramidal(&[("iii", 20, 1)], 1, 6, 500)
                     // .apical(&[("eff_in", 22)], 1, 5, 500)

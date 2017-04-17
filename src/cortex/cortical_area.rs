@@ -11,7 +11,7 @@ use tokio_core::reactor::{Core, Remote};
 use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue};
 use ocl::core::CommandQueueProperties;
 use cmn::{self, CmnError, CmnResult, CorticalDims};
-use map::{self, AreaMap, SliceTractMap, LayerKind, CellKind, InhibitoryCellKind,
+use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind,
     ExecutionGraph, /*AxonDomainRoute,*/};
 use ::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
@@ -197,10 +197,10 @@ impl CorticalArea {
             match layer.kind() {
                 &LayerKind::Cellular(ref cell_scheme) => {
                     println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
-                        cell_scheme.cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
+                        cell_scheme.data_cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
 
-                    match *cell_scheme.cell_kind() {
-                        CellKind::Pyramidal => {
+                    match cell_scheme.data_cell_kind() {
+                        Some(&DataCellKind::Pyramidal) => {
                             let pyrs_dims = dims.clone_with_depth(layer.depth());
 
                             let pyr_lyr = try!(PyramidalLayer::new(layer.name(), layer.layer_id(),
@@ -220,7 +220,7 @@ impl CorticalArea {
                                 other_cells.push(Box::new(pyr_lyr))
                             }
                         },
-                        CellKind::SpinyStellate => {
+                        Some(&DataCellKind::SpinyStellate) => {
                             let ssts_map_dims = dims.clone_with_depth(layer.depth());
 
                             let sst_lyr = try!(SpinyStellateLayer::new(layer.name(), layer.layer_id(),
@@ -248,28 +248,27 @@ impl CorticalArea {
 
         for layer in area_map.layer_map().iter() {
             if let LayerKind::Cellular(ref layer_kind) = *layer.kind() {
-                if let CellKind::Inhibitory(ref inh_cell_kind) = *layer_kind.cell_kind() {
-                    match *inh_cell_kind {
-                        InhibitoryCellKind::BasketSurround { lyr_name: ref src_lyr_name, field_radius: _ } => {
-                            let em1 = format!("{}: '{}' is not a valid layer", emsg, src_lyr_name);
+                if let Some(&ControlCellKind::InhibitoryBasketSurround { ref tar_lyr_name, field_radius: _ }) = layer_kind.control_cell_kind() {
+                    // match *inh_cell_kind {
+                    //     InhibitoryCellKind::BasketSurround { ref tar_lyr_name, field_radius: _ } => {
+                            let em1 = format!("{}: '{}' is not a valid layer", emsg, tar_lyr_name);
                             let src_soma = spatial_cells.iter().find(|lyr|
                                 lyr.layer_name() == psal_name.unwrap()).expect(&em1);
                             let src_soma_buf = src_soma.soma();
 
-                            let src_slc_ids = area_map.layer_slc_ids(&[src_lyr_name.clone()]);
+                            let src_slc_ids = area_map.layer_slc_ids(&[tar_lyr_name.clone()]);
                             let src_lyr_depth = src_slc_ids.len() as u8;
                             let src_base_axn_slc = src_slc_ids[0];
 
                             let iinns_dims = dims.clone_with_depth(src_lyr_depth);
                             let iinn_lyr = InhibitoryInterneuronNetwork::new(layer.name(),
                                 layer.layer_id(), iinns_dims, layer_kind.clone(),
-                                &area_map, src_soma_buf, src_soma.layer_id(), src_base_axn_slc,
-                                src_soma.tft_count(),
-                                &axns, &ocl_pq, &mut exe_graph)?;
+                                src_soma_buf, src_soma.layer_id(), src_base_axn_slc,
+                                src_soma.tft_count(), &axns, &area_map, &ocl_pq, &mut exe_graph)?;
 
                             iinns.insert(layer.name(), Box::new(iinn_lyr));
-                        },
-                    }
+                    //     },
+                    // }
                 }
             }
         }
@@ -278,10 +277,10 @@ impl CorticalArea {
             match layer.kind() {
                 &LayerKind::Cellular(ref cell_scheme) => {
                     println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
-                        cell_scheme.cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
+                        cell_scheme.control_cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
 
-                    match *cell_scheme.cell_kind() {
-                        CellKind::Complex => {
+                    match cell_scheme.control_cell_kind() {
+                        Some(&ControlCellKind::Complex) => {
                             let mcols_dims = dims.clone_with_depth(1);
 
                             mcols = Some(Box::new({
@@ -663,8 +662,7 @@ pub mod tests {
     use rand::distributions::{IndependentSample, Range as RandRange};
 
     use super::*;
-    use cortex::{AxonSpaceTest};
-    use cmn::{CelCoords};
+    use cortex::{AxonSpaceTest, CelCoords};
     use map::{AreaMapTest};
 
     pub trait CorticalAreaTest {

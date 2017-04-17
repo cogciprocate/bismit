@@ -44,7 +44,7 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
         )
 
         .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local,
-            CellScheme::inhibitory(4, "iv")
+            CellScheme::inhibitory("iv", 4)
         )
 
         .layer("iii", 3, map::PTAL, AxonDomain::Local,
@@ -94,7 +94,7 @@ pub fn define_protoareas() -> AreaSchemeList {
         // )
 
         .area(AreaScheme::new("v0", "external", area_side)
-            .input(EncoderScheme::IdxStreamer {
+            .encoder(EncoderScheme::IdxStreamer {
                 file_name: "train-images-idx3-ubyte".to_owned(),
                 cyc_per: CYCLES_PER_FRAME,
                 scale: 1.3,
@@ -209,7 +209,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         )
         .area(AreaScheme::new("dummy_area", "dummy_lm", 44)
             // .input(EncoderScheme::None)
-            .input(EncoderScheme::Custom { layer_count: 1 })
+            .encoder(EncoderScheme::Custom)
         )
     ;
 

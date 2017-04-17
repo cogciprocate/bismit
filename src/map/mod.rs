@@ -62,28 +62,35 @@ impl LayerAddress {
 // }
 
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum InhibitoryCellKind {
-    BasketSurround { lyr_name: String, field_radius: u8  },
-    //AspinyStellate,
-}
+// #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+// pub enum ControlCellKind {
+//     InhibitoryBasketSurround { tar_lyr_name: String, field_radius: u8  },
+//     Smoother { tar_lyr_name: String, field_radius: u8 },
+//     //AspinyStellate,
+// }
 
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum CellKind {
+pub enum DataCellKind {
     Pyramidal,
     SpinyStellate,
-    Inhibitory(InhibitoryCellKind),
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum ControlCellKind {
+    InhibitoryBasketSurround { tar_lyr_name: String, field_radius: u8  },
+    Smoother { tar_lyr_name: String, field_radius: u8 },
     Complex,
 }
 
-
-// Roughly whether or not a cell is excitatory or inhibitory.
+/// Roughly whether or not a cell is excitatory or inhibitory.
 //
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum CellClass {
-    Data,
-    Control,
+    /// Cells that directly contribute to the stream of information.
+    Data(DataCellKind),
+    /// Cells that indirectly contribute to the stream of information.
+    Control(ControlCellKind),
 }
 
 

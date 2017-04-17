@@ -1,6 +1,7 @@
-use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, DenCoords, SynapsesTest};
+use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, DenCoords, SynapsesTest,
+    DataCellLayer, DataCellLayerTest};
 use map::{self, AreaMapTest};
-use cmn::{self, DataCellLayer, DataCellLayerTest};
+use cmn;
 use super::{testbed, util};
 
 const DENS_TEST_ITERATIONS: usize = 500;

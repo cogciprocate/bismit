@@ -1,9 +1,10 @@
 // use std::io;
 use std::ops::Range;
 
-use cortex::{Cortex, CorticalAreaTest, SynapsesTest, SynCoords, DendritesTest};
+use cortex::{Cortex, CorticalAreaTest, SynapsesTest, SynCoords, DendritesTest,
+    DataCellLayer, DataCellLayerTest};
 use map;
-use cmn::{self, DataCellLayer, DataCellLayerTest};
+use cmn;
 use super::testbed;
 use super::util::{self, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL};
 

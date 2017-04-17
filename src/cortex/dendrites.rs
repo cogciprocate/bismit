@@ -1,8 +1,7 @@
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Event};
 use ocl::traits::OclPrm;
-// use ocl::core::ClWaitListPtr;
 use cmn::{self, CmnResult, CorticalDims};
-use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
+use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress};
 use cortex::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
@@ -32,7 +31,6 @@ impl Dendrites {
             dims: CorticalDims,
             cell_scheme: CellScheme,
             den_kind: DendriteKind,
-            cell_kind: CellKind,
             area_map: &AreaMap,
             axons: &AxonSpace,
             ocl_pq: &ProQue,
@@ -76,7 +74,7 @@ impl Dendrites {
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}",
             layer_name, dims, states.len(), mt = cmn::MT);
 
-        let syns = Synapses::new(layer_name, layer_id, dims, cell_scheme.clone(), den_kind, cell_kind,
+        let syns = Synapses::new(layer_name, layer_id, dims, cell_scheme.clone(), den_kind,
             area_map, axons, ocl_pq, bypass_exe_graph, exe_graph)?;
 
         /*=============================================================================
@@ -231,8 +229,8 @@ pub mod tests {
     use rand::distributions::{IndependentSample, Range as RandRange};
     use ocl::util;
     use tests;
-    use cmn::{CelCoords, CorticalDims};
-    use cortex::{SynapsesTest, TuftDims, syn_idx};
+    use cmn::{CorticalDims};
+    use cortex::{SynapsesTest, TuftDims, CelCoords, syn_idx};
     use super::{Dendrites};
 
     pub trait DendritesTest {

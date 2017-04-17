@@ -1,13 +1,10 @@
-#![allow(unused_imports)]
+// #![allow(unused_imports)]
 
-// use std::ops;
 use rand::{self, Rng};
-
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
-use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
-// use ocl::core::ClWaitListPtr;
-use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
+use ocl::{Kernel, ProQue, Buffer, Event};
+use map::{CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress, LayerTags};
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer};
 
@@ -57,7 +54,7 @@ impl SpinyStellateLayer {
 
         // let dens_dims = dims.clone_with_ptl2(cell_scheme.dens_per_tft_l2 as i8);
         let dens = try!(Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(),
-            DendriteKind::Proximal, CellKind::SpinyStellate, area_map, axons, ocl_pq,
+            DendriteKind::Proximal, /*DataCellKind::SpinyStellate,*/ area_map, axons, ocl_pq,
             settings.disable_ssts, exe_graph));
         let _grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
         let _cels_per_grp = dims.per_subgrp(_grp_count).expect("SpinyStellateLayer::new()");
@@ -229,8 +226,8 @@ pub mod tests {
     use rand::{XorShiftRng, Rng};
     use rand::distributions::{IndependentSample, Range as RandRange};
     // use ocl::util;
-    use cmn::{self, /*DataCellLayer,*/ DataCellLayerTest, CelCoords};
-    use cortex::{SpinyStellateLayer, DendritesTest};
+    use cmn;
+    use cortex::{SpinyStellateLayer, DendritesTest, DataCellLayerTest, CelCoords};
 
     impl DataCellLayerTest for SpinyStellateLayer {
         fn cycle_solo(&self) {

@@ -4,8 +4,9 @@ use std::ops::{Range};
 
 use ocl::Buffer;
 use ocl::traits::{OclPrm, OclScl};
-use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, SynapsesTest, MinicolumnsTest};
-use cmn::{self, DataCellLayer, DataCellLayerTest};
+use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, SynapsesTest, MinicolumnsTest,
+    DataCellLayer, DataCellLayerTest};
+use cmn;
 
 const PRINT_DETAILS: bool = false;
 

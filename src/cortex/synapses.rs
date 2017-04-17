@@ -67,8 +67,7 @@ use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap, SynSrcSlices, SynSrcIdxCache, SynSrc, LayerAddress};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
-// use ocl::core::ClWaitListPtr;
-use map::{CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand, CorticalBuffer};
+use map::{CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use cortex::AxonSpace;
 
 #[cfg(test)]
@@ -127,7 +126,7 @@ pub struct Synapses {
 
 impl Synapses {
     pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
-            den_kind: DendriteKind, _: CellKind, area_map: &AreaMap, axons: &AxonSpace,
+            den_kind: DendriteKind, area_map: &AreaMap, axons: &AxonSpace,
             ocl_pq: &ProQue, bypass_exe_graph: bool, exe_graph: &mut ExecutionGraph,
             ) -> CmnResult<Synapses>
     {
@@ -456,9 +455,9 @@ pub mod tests {
     use rand::{XorShiftRng};
     use rand::distributions::{IndependentSample, Range as RandRange};
     use ocl::util;
-    use cmn::{CelCoords, CorticalDims};
+    use cmn::{CorticalDims};
     // use super::super::dendrites::{self};
-    use cortex::{dendrites, CorticalAreaTest};
+    use cortex::{dendrites, CorticalAreaTest, CelCoords};
     use super::{Synapses, TuftDims};
 
     const PRINT_DEBUG_INFO: bool = false;
@@ -757,8 +756,7 @@ pub mod tests {
     #[test]
     fn syn_idx_range_den() {
         use tests::testbed;
-        use cortex::DenCoords;
-        use cmn::{DataCellLayer, DataCellLayerTest};
+        use cortex::{DenCoords, DataCellLayer, DataCellLayerTest};
 
         let mut cortex = testbed::fresh_cortex();
         let mut area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();

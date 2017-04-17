@@ -1,4 +1,5 @@
-use map::{CellKind, CellClass, LayerKind, DendriteClass, DendriteKind, InhibitoryCellKind};
+use map::{/*CellKind,*/ CellClass, LayerKind, DendriteClass, DendriteKind, DataCellKind,
+    ControlCellKind};
 use cmn;
 
 
@@ -85,14 +86,14 @@ impl TuftScheme {
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct CellScheme {
-    cell_kind: CellKind,
+    // cell_kind: CellKind,
     cell_class: CellClass,
     tft_schemes: Vec<TuftScheme>,
 }
 
 impl CellScheme {
     pub fn new(
-            cell_kind: CellKind,
+            // cell_kind: CellKind,
             cell_class: CellClass,
             tft_schemes: Vec<TuftScheme>,
             ) -> CellScheme
@@ -100,7 +101,7 @@ impl CellScheme {
 
         // DO SOME CHECKS ON PARAMETERS (certain cell types must/mustn't have certain dendritic segments)
         CellScheme {
-            cell_kind: cell_kind,
+            // cell_kind: cell_kind,
             cell_class: cell_class,
             tft_schemes: tft_schemes,
         }.validate()
@@ -115,8 +116,8 @@ impl CellScheme {
             dens_per_tft_l2, syns_per_den_l2, src_lyrs_vec, Some(thresh)).and_tft_id(0);
 
         LayerKind::Cellular(CellScheme {
-            cell_kind: CellKind::Pyramidal,
-            cell_class: CellClass::Data,
+            // cell_kind: CellKind::Pyramidal,
+            cell_class: CellClass::Data(DataCellKind::Pyramidal),
             tft_schemes: vec![tft_scheme]
         }.validate())
     }
@@ -131,22 +132,27 @@ impl CellScheme {
             syns_per_den_l2, src_lyrs_vec, Some(thresh)).and_tft_id(0);
 
         LayerKind::Cellular(CellScheme {
-            cell_kind: CellKind::SpinyStellate,
-            cell_class: CellClass::Data,
+            // cell_kind: CellKind::SpinyStellate,
+            cell_class: CellClass::Data(DataCellKind::SpinyStellate),
             tft_schemes: vec![tft_scheme],
         }.validate())
     }
 
-    pub fn inhibitory(cols_per_cel_l2: u8, src: &str) -> LayerKind {
+    pub fn inhibitory(src: &str, cols_per_cel_l2: u8) -> LayerKind {
 
         LayerKind::Cellular(CellScheme {
-            cell_kind: CellKind::Inhibitory(
-                InhibitoryCellKind::BasketSurround {
-                    lyr_name: src.to_owned(),
+            // cell_kind: CellKind::Control(
+            //     InhibitoryCellKind::BasketSurround {
+            //         tar_lyr_name: src.to_owned(),
+            //         field_radius: cols_per_cel_l2
+            //     }
+            // ),
+            cell_class: CellClass::Control(
+                ControlCellKind::InhibitoryBasketSurround {
+                    tar_lyr_name: src.to_owned(),
                     field_radius: cols_per_cel_l2
                 }
             ),
-            cell_class: CellClass::Control,
             tft_schemes: Vec::with_capacity(0),
         }.validate())
     }
@@ -157,8 +163,8 @@ impl CellScheme {
             TuftSourceLayer::new(ptal_lyr.to_owned(), 0, 1)], None).and_tft_id(0);
 
         LayerKind::Cellular(CellScheme {
-            cell_kind: CellKind::Complex,
-            cell_class: CellClass::Control,
+            // cell_kind: CellKind::Complex,
+            cell_class: CellClass::Control(ControlCellKind::Complex),
             tft_schemes: vec![tft_scheme],
         }.validate())
     }
@@ -180,15 +186,39 @@ impl CellScheme {
 
     // [FIXME]: This check would be better to do within `CorticalArea`.
     pub fn validate_depth(&self, depth: Option<u8>) -> Option<u8> {
-        match self.cell_kind {
-            CellKind::Inhibitory(_) => Some(0),
-            CellKind::Complex => Some(cmn::DEFAULT_OUTPUT_LAYER_DEPTH),
+        // match self.cell_kind {
+        //     CellKind::Inhibitory(_) => Some(0),
+        //     CellKind::Complex => Some(cmn::DEFAULT_OUTPUT_LAYER_DEPTH),
+        //     _ => depth,
+        // }
+
+        match self.cell_class {
+            CellClass::Control(ref kind) => match *kind {
+                ControlCellKind::InhibitoryBasketSurround { .. } => Some(0),
+                ControlCellKind::Smoother { .. } => Some(0),
+                ControlCellKind::Complex => Some(cmn::DEFAULT_OUTPUT_LAYER_DEPTH),
+                // _ => ,
+            },
             _ => depth,
         }
     }
 
+    #[inline] pub fn data_cell_kind(&self) -> Option<&DataCellKind> {
+        match self.cell_class {
+            CellClass::Data(ref ck) => Some(ck),
+            _ => None,
+        }
+    }
+
+    #[inline] pub fn control_cell_kind(&self) -> Option<&ControlCellKind> {
+        match self.cell_class {
+            CellClass::Control(ref ck) => Some(ck),
+            _ => None,
+        }
+    }
+
+
     // #[inline] pub fn cols_per_cel_l2(&self) -> u8 { self.cols_per_cel_l2 }
-    #[inline] pub fn cell_kind(&self) -> &CellKind { &self.cell_kind }
     #[inline] pub fn cell_class(&self) -> &CellClass { &self.cell_class }
     #[inline] pub fn tft_schemes(&self) -> &[TuftScheme] { self.tft_schemes.as_slice() }
     #[inline] pub fn tft_count(&self) -> usize { self.tft_schemes.len() }

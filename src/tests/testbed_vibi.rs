@@ -42,7 +42,7 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
             .input_layer("unused", map::UNUSED_TESTING, AxonDomain::Local, AxonTopology::Spatial)
             .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
                 CellScheme::minicolumn("iv", "iii"))
-            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhibitory(4, "iv"))
+            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhibitory("iv", 4))
 
             // .layer("iv", 1, map::PSAL, AxonDomain::Local,
             //     CellScheme::spiny_stellate(4, vec!["aff_in"], 400, 8))
@@ -102,10 +102,10 @@ pub fn define_area_sl() -> AreaSchemeList {
         //     Some(vec!["v0", "v00"]),
         // )
         .area(AreaScheme::new("gly_seq", "gly_seq_lm", AREA_SIDE)
-            .input(EncoderScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) })
+            .encoder(EncoderScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10, scale: 1.4, hrz_dims: (16, 16) })
         )
         .area(AreaScheme::new("gly_seq_rose", "gly_seq_rose_lm", AREA_SIDE)
-            .input(EncoderScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) })
+            .encoder(EncoderScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 1, scale: 1.4, hrz_dims: (16, 16) })
         )
         .area(AreaScheme::new("v1", "cortical_lm", AREA_SIDE,)
             .eff_areas(vec!["gly_seq"])

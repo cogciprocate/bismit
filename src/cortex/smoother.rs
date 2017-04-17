@@ -5,6 +5,7 @@ use map::CellScheme;
 use cortex::AxonSpace;
 
 
+/// Facilitates the concept of 'restlessness' within cells.
 pub struct Smoother {
     layer_name: &'static str,
     layer_id: usize,
@@ -23,9 +24,10 @@ pub struct Smoother {
 impl Smoother {
     // FIXME: This function should take a 'bypass' argument instead of `::cycle`.
     pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
-            area_map: &AreaMap, src_soma: &Buffer<u8>, src_layer_id: usize, src_base_axn_slc: u8,
-            src_layer_tft_count: usize, axns: &AxonSpace, ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
-        -> CmnResult<Smoother>
+            src_soma: &Buffer<u8>, src_layer_id: usize, src_base_axn_slc: u8,
+            src_layer_tft_count: usize, axns: &AxonSpace, area_map: &AreaMap,
+             ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
+            -> CmnResult<Smoother>
     {
         // let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 

@@ -41,7 +41,7 @@ pub use self::tract_dims::TractDims;
 pub use self::renderer::{Renderer};
 pub use self::error::{CmnError, CmnResult};
 pub use self::tract_frame::{TractFrame, TractFrameMut};
-#[cfg(test)] pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
+
 pub use self::map_store::MapStore;
 pub use self::slice_dims::{calc_scale, scale};
 pub use self::double_buffer_mutex::DoubleBufferMutex;

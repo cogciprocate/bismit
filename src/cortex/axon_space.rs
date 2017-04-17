@@ -616,7 +616,7 @@ pub mod tests {
     #![allow(dead_code)]
     use super::{AxonSpace};
     use map::{AreaMap, AreaMapTest};
-    use cmn::{CelCoords};
+    use cortex::{CelCoords};
 
     pub trait AxonSpaceTest {
         fn axn_state(&self, idx: usize) -> u8;

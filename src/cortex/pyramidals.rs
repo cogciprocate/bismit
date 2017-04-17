@@ -2,7 +2,7 @@ use rand::{self, XorShiftRng, Rng};
 use cmn::{self, CmnResult, CorticalDims};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
-use map::{AreaMap, CellKind, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
+use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress, LayerTags};
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer};
 
@@ -77,7 +77,7 @@ impl PyramidalLayer {
             states.len(), tft_best_den_ids.len(), dims, mt = cmn::MT);
 
         let dens = Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(),
-            DendriteKind::Distal, CellKind::Pyramidal, area_map, axons, ocl_pq,
+            DendriteKind::Distal, /*DataCellKind::Pyramidal,*/ area_map, axons, ocl_pq,
             settings.disable_pyrs, exe_graph)?;
 
         let mut pyr_tft_ltp_kernels = Vec::with_capacity(tft_count);
@@ -441,8 +441,8 @@ pub mod tests {
     use rand::{XorShiftRng, Rng};
     use rand::distributions::{IndependentSample, Range as RandRange};
     use ocl::util;
-    use cmn::{self, DataCellLayer, DataCellLayerTest, CelCoords};
-    use cortex::{PyramidalLayer};
+    use cmn;
+    use cortex::{PyramidalLayer, DataCellLayer, DataCellLayerTest, CelCoords};
 
     impl DataCellLayerTest for PyramidalLayer {
         fn cycle_solo(&self) {
