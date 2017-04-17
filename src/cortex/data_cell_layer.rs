@@ -1,15 +1,17 @@
 use ocl::Buffer;
 use cortex::Dendrites;
 use cmn::{CmnResult, CorticalDims};
-use map::{CellScheme, ExecutionGraph};
+use map::{CellScheme, ExecutionGraph, LayerAddress};
 
 #[cfg(test)]
 pub use self::tests::{DataCellLayerTest, CelCoords};
 
 pub trait DataCellLayer: Send {
+    fn layer_name(&self) -> &'static str;
+    fn layer_addr(&self) -> LayerAddress;
+    fn cycle(&self, &mut ExecutionGraph) -> CmnResult<()>;
     fn learn(&mut self, &mut ExecutionGraph) -> CmnResult <()> ;
     fn regrow(&mut self);
-    fn cycle(&self, &mut ExecutionGraph) -> CmnResult<()>;
     fn soma(&self) -> &Buffer<u8>;
     fn soma_mut(&mut self) -> &mut Buffer<u8>;
     fn dims(&self) -> &CorticalDims;
@@ -17,7 +19,6 @@ pub trait DataCellLayer: Send {
     fn axn_slc_ids(&self) -> &[u8];
     fn base_axn_slc(&self) -> u8;
     fn tft_count(&self) -> usize;
-    fn layer_name(&self) -> &'static str;
     fn cell_scheme(&self) -> &CellScheme;
     fn dens(&self) -> &Dendrites;
     fn dens_mut(&mut self) -> &mut Dendrites;

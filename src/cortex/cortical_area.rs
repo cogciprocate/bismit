@@ -15,7 +15,7 @@ use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind
     ExecutionGraph, /*AxonDomainRoute,*/};
 use ::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
-    SpinyStellateLayer, DataCellLayer};
+    SpinyStellateLayer, DataCellLayer, ControlCellLayer};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -65,16 +65,17 @@ pub struct CorticalArea {
     area_map: AreaMap,
     axns: AxonSpace,
     mcols: Box<Minicolumns>,
-    iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
+    // iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
     ptal_name: Option<&'static str>,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
     psal_name: Option<&'static str>,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
     psal_idx: usize,
     ptal_idx: usize,
-    spatial_cells: Vec<SpinyStellateLayer>,
-    temporal_cells: Vec<PyramidalLayer>,
-    focus_cells: Vec<PyramidalLayer>,
-    motor_cells: Vec<PyramidalLayer>,
-    other_cells: Vec<Box<DataCellLayer>>,
+    spatial_layers: Vec<SpinyStellateLayer>,
+    temporal_layers: Vec<PyramidalLayer>,
+    focus_layers: Vec<PyramidalLayer>,
+    motor_layers: Vec<PyramidalLayer>,
+    other_layers: Vec<Box<DataCellLayer>>,
+    control_layers: Vec<Box<ControlCellLayer>>,
     aux: Aux,
     ocl_pq: ProQue,
     write_queue: Queue,
@@ -178,13 +179,14 @@ impl CorticalArea {
         ================================ CELLS & AXONS ================================
         =============================================================================*/
 
-        let mut iinns = HashMap::new();
+        // let mut iinns = HashMap::new();
         let mut mcols = None;
-        let mut spatial_cells = Vec::with_capacity(4);
-        let mut temporal_cells = Vec::with_capacity(4);
-        let mut focus_cells: Vec<PyramidalLayer> = Vec::with_capacity(4);
-        let mut motor_cells: Vec<PyramidalLayer> = Vec::with_capacity(4);
-        let mut other_cells: Vec<Box<DataCellLayer>> = Vec::with_capacity(4);
+        let mut spatial_layers = Vec::with_capacity(4);
+        let mut temporal_layers = Vec::with_capacity(4);
+        let mut focus_layers: Vec<PyramidalLayer> = Vec::with_capacity(4);
+        let mut motor_layers: Vec<PyramidalLayer> = Vec::with_capacity(4);
+        let mut other_layers: Vec<Box<DataCellLayer>> = Vec::with_capacity(4);
+        let mut control_layers: Vec<Box<ControlCellLayer>> = Vec::with_capacity(4);
         let axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
             write_queue.clone(), &mut exe_graph, thal)?;
 
@@ -208,16 +210,16 @@ impl CorticalArea {
                                 settings.clone(), &mut exe_graph));
 
                             if pyr_lyr.layer_tags().contains(map::SPATIAL) {
-                                // spatial_cells.push(pyr_lyr);
+                                // spatial_layers.push(pyr_lyr);
                                 panic!("Spatial pyramidal cells not yet supported.");
                             } else if pyr_lyr.layer_tags().contains(map::TEMPORAL) {
-                                temporal_cells.push(pyr_lyr);
+                                temporal_layers.push(pyr_lyr);
                             } else if pyr_lyr.layer_tags().contains(map::FOCUS) {
-                                focus_cells.push(pyr_lyr)
+                                focus_layers.push(pyr_lyr)
                             } else if pyr_lyr.layer_tags().contains(map::MOTOR) {
-                                motor_cells.push(pyr_lyr)
+                                motor_layers.push(pyr_lyr)
                             } else {
-                                other_cells.push(Box::new(pyr_lyr))
+                                other_layers.push(Box::new(pyr_lyr))
                             }
                         },
                         Some(&DataCellKind::SpinyStellate) => {
@@ -228,9 +230,9 @@ impl CorticalArea {
                                 settings.clone(), &mut exe_graph));
 
                             if sst_lyr.layer_tags().contains(map::SPATIAL) {
-                                spatial_cells.push(sst_lyr);
+                                spatial_layers.push(sst_lyr);
                             } else {
-                                other_cells.push(Box::new(sst_lyr))
+                                other_layers.push(Box::new(sst_lyr))
                             }
                         },
                         _ => (),
@@ -248,25 +250,27 @@ impl CorticalArea {
 
         for layer in area_map.layer_map().iter() {
             if let LayerKind::Cellular(ref layer_kind) = *layer.kind() {
-                if let Some(&ControlCellKind::InhibitoryBasketSurround { ref tar_lyr_name, field_radius: _ }) = layer_kind.control_cell_kind() {
+                if let Some(&ControlCellKind::InhibitoryBasketSurround { ref host_lyr_name,
+                        field_radius: _ }) = layer_kind.control_cell_kind()
+                {
                     // match *inh_cell_kind {
                     //     InhibitoryCellKind::BasketSurround { ref tar_lyr_name, field_radius: _ } => {
-                            let em1 = format!("{}: '{}' is not a valid layer", emsg, tar_lyr_name);
-                            let src_soma = spatial_cells.iter().find(|lyr|
+                            let em1 = format!("{}: '{}' is not a valid layer", emsg, host_lyr_name);
+                            let host_lyr = spatial_layers.iter().find(|lyr|
                                 lyr.layer_name() == psal_name.unwrap()).expect(&em1);
-                            let src_soma_buf = src_soma.soma();
+                            // let src_soma_buf = src_soma.soma();
 
-                            let src_slc_ids = area_map.layer_slc_ids(&[tar_lyr_name.clone()]);
-                            let src_lyr_depth = src_slc_ids.len() as u8;
-                            let src_base_axn_slc = src_slc_ids[0];
+                            let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr_name.clone()]);
+                            let host_lyr_depth = host_lyr_slc_ids.len() as u8;
+                            let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
 
-                            let iinns_dims = dims.clone_with_depth(src_lyr_depth);
+                            let iinns_dims = dims.clone_with_depth(host_lyr_depth);
                             let iinn_lyr = InhibitoryInterneuronNetwork::new(layer.name(),
                                 layer.layer_id(), iinns_dims, layer_kind.clone(),
-                                src_soma_buf, src_soma.layer_id(), src_base_axn_slc,
-                                src_soma.tft_count(), &axns, &area_map, &ocl_pq, &mut exe_graph)?;
+                                host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq, &mut exe_graph)?;
 
-                            iinns.insert(layer.name(), Box::new(iinn_lyr));
+                            // iinns.insert(layer.name(), Box::new(iinn_lyr));
+                            control_layers.push(Box::new(iinn_lyr));
                     //     },
                     // }
                 }
@@ -284,13 +288,13 @@ impl CorticalArea {
                             let mcols_dims = dims.clone_with_depth(1);
 
                             mcols = Some(Box::new({
-                                psal_idx = spatial_cells.iter().position(|lyr| lyr.layer_name() == psal_name.unwrap())
+                                psal_idx = spatial_layers.iter().position(|lyr| lyr.layer_name() == psal_name.unwrap())
                                     .expect(&format!("{}: '{}' is not a valid layer", emsg, psal_name.unwrap()));
-                                let ssts = &spatial_cells[psal_idx];
+                                let ssts = &spatial_layers[psal_idx];
 
-                                ptal_idx = temporal_cells.iter().position(|lyr| lyr.layer_name() == ptal_name.unwrap())
+                                ptal_idx = temporal_layers.iter().position(|lyr| lyr.layer_name() == ptal_name.unwrap())
                                     .expect(&format!("{}: '{}' is not a valid layer", emsg, ptal_name.unwrap()));
-                                let pyrs = &temporal_cells[ptal_idx];
+                                let pyrs = &temporal_layers[ptal_idx];
 
                                 let layer_id = layer.layer_id();
 
@@ -313,24 +317,24 @@ impl CorticalArea {
         ===================================== AUX =====================================
         =============================================================================*/
 
-        let aux = Aux::new(temporal_cells[ptal_idx].dens().syns().len(), &ocl_pq);
+        let aux = Aux::new(temporal_layers[ptal_idx].dens().syns().len(), &ocl_pq);
 
         // <<<<< TODO: CLEAN THIS UP >>>>>
         // MAKE ABOVE LIKE BELOW (eliminate set_arg_buf_named() methods and just call directly on buffer)
         // mcols.set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        temporal_cells[ptal_idx]
+        temporal_layers[ptal_idx]
             .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        temporal_cells[ptal_idx]
+        temporal_layers[ptal_idx]
             .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
 
-        temporal_cells[ptal_idx].dens_mut()
+        temporal_layers[ptal_idx].dens_mut()
             .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        temporal_cells[ptal_idx].dens_mut()
+        temporal_layers[ptal_idx].dens_mut()
             .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
 
-        temporal_cells[ptal_idx].dens_mut().syns_mut()
+        temporal_layers[ptal_idx].dens_mut().syns_mut()
             .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
-        temporal_cells[ptal_idx].dens_mut().syns_mut()
+        temporal_layers[ptal_idx].dens_mut().syns_mut()
             .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
         // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
         // pyrs_map.get_mut(ptal_name).unwrap().kern_ltp()
@@ -346,17 +350,22 @@ impl CorticalArea {
         axns.set_exe_order_intake(&mut exe_graph)?;
 
         // (2.) SSTs Cycle:
-        for sst in &spatial_cells {
+        for sst in &spatial_layers {
             sst.set_exe_order_cycle(&mut exe_graph)?;
         }
 
         // (3.) IINNs Cycle:
-        for iinn in iinns.values() {
-            iinn.set_exe_order(&mut exe_graph)?;
+        // for iinn in iinns.values() {
+        //     iinn.set_exe_order(&mut exe_graph)?;
+        // }
+
+        // (3.) IINNs Cycle:
+        for layer in &control_layers {
+            layer.set_exe_order(&mut exe_graph)?;
         }
 
         // (4.) SSTs Learn:
-        for sst in &spatial_cells {
+        for sst in &spatial_layers {
             sst.set_exe_order_learn(&mut exe_graph)?;
         }
 
@@ -368,23 +377,23 @@ impl CorticalArea {
         // (6.) Pyramidal Layers Learn & Cycle:
         if !settings.disable_pyrs {
             // (6a.) Temporal Layers Learn & Cycle:
-            for pyr in &temporal_cells {
-                pyr.set_exe_order(&mut exe_graph)?;
+            for layer in &temporal_layers {
+                layer.set_exe_order(&mut exe_graph)?;
             }
 
             // (6b.) Focus Layers Learn & Cycle:
-            for pyr in &focus_cells {
-                pyr.set_exe_order(&mut exe_graph)?;
+            for layer in &focus_layers {
+                layer.set_exe_order(&mut exe_graph)?;
             }
 
             // (6c.) Motor Layers Learn & Cycle:
-            for pyr in &motor_cells {
-                pyr.set_exe_order(&mut exe_graph)?;
+            for layer in &motor_layers {
+                layer.set_exe_order(&mut exe_graph)?;
             }
 
             // (6d.) Other Layers Learn & Cycle:
-            for _pyr in &other_cells {
-                // pyr.set_exe_order(&mut exe_graph)?;
+            for _layer in &other_layers {
+                // layer.set_exe_order(&mut exe_graph)?;
             }
         }
 
@@ -427,12 +436,13 @@ impl CorticalArea {
             psal_idx: psal_idx,
             axns: axns,
             mcols: mcols,
-            iinns: iinns,
-            spatial_cells: spatial_cells,
-            temporal_cells: temporal_cells,
-            motor_cells: motor_cells,
-            focus_cells: focus_cells,
-            other_cells: other_cells,
+            // iinns: iinns,
+            spatial_layers,
+            temporal_layers,
+            motor_layers,
+            focus_layers,
+            other_layers,
+            control_layers,
             aux: aux,
             ocl_pq: ocl_pq,
             write_queue: write_queue,
@@ -459,17 +469,22 @@ impl CorticalArea {
 
         // (2.) SSTs Cycle:
         if !self.settings.disable_ssts {
-            for lyr in &mut self.spatial_cells { lyr.cycle(&mut self.exe_graph)? }
+            for lyr in &mut self.spatial_layers { lyr.cycle(&mut self.exe_graph)? }
         }
 
+        // // (3.) IINNs Cycle:
+        // self.iinns.get_mut("iv_inhib")
+        //     .ok_or(CmnError::new("cortical_area::CorticalArea::cycle(): Invalid layer."))?
+        //     .cycle(&mut self.exe_graph, self.settings.bypass_inhib)?;
+
         // (3.) IINNs Cycle:
-        self.iinns.get_mut("iv_inhib")
-            .ok_or(CmnError::new("cortical_area::CorticalArea::cycle(): Invalid layer."))?
+        self.control_layers.get_mut(0)
+            .ok_or(CmnError::new("cortical_area::CorticalArea::cycle(): Invalid control layer."))?
             .cycle(&mut self.exe_graph, self.settings.bypass_inhib)?;
 
         // (4.) SSTs Learn:
         if !self.settings.disable_ssts && !self.settings.disable_learning {
-            for lyr in &mut self.spatial_cells { lyr.learn(&mut self.exe_graph)? }
+            for lyr in &mut self.spatial_layers { lyr.learn(&mut self.exe_graph)? }
         }
 
         // (5.) MCOLSs Activate:
@@ -478,25 +493,25 @@ impl CorticalArea {
         // (6.) Pyramidal Layers Learn & Cycle:
         if !self.settings.disable_pyrs {
             // (6a.) Temporal Layers Learn & Cycle:
-            for lyr in &mut self.temporal_cells {
+            for lyr in &mut self.temporal_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
                 lyr.cycle(&mut self.exe_graph)?;
             }
 
             // (6b.) Focus Layers Learn & Cycle:
-            for lyr in &mut self.focus_cells {
+            for lyr in &mut self.focus_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
                 lyr.cycle(&mut self.exe_graph)?;
             }
 
             // (6c.) Motor Layers Learn & Cycle:
-            for lyr in &mut self.motor_cells {
+            for lyr in &mut self.motor_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
                 lyr.cycle(&mut self.exe_graph)?;
             }
 
             // (6d.) Other Layers Learn & Cycle:
-            for lyr in &mut self.other_cells {
+            for lyr in &mut self.other_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
                 lyr.cycle(&mut self.exe_graph)?;
             }
@@ -526,8 +541,8 @@ impl CorticalArea {
         if !self.settings.disable_regrowth {
             if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
                 //print!("$");
-                self.spatial_cells[self.psal_idx].regrow();
-                self.temporal_cells[self.ptal_idx].regrow();
+                self.spatial_layers[self.psal_idx].regrow();
+                self.temporal_layers[self.ptal_idx].regrow();
                 self.counter = 0;
             } else {
                 self.counter += 1;
@@ -730,22 +745,22 @@ pub mod tests {
 
         /* PIL(): Get Primary Spatial Associative Layer (immutable) */
         fn psal(&self) -> &SpinyStellateLayer {
-            &self.spatial_cells[self.psal_idx]
+            &self.spatial_layers[self.psal_idx]
         }
 
         /* PIL_MUT(): Get Primary Spatial Associative Layer (mutable) */
         fn psal_mut(&mut self) -> &mut SpinyStellateLayer {
-            &mut self.spatial_cells[self.psal_idx]
+            &mut self.spatial_layers[self.psal_idx]
         }
 
         /* PAL(): Get Primary Temporal Associative Layer (immutable) */
         fn ptal(&self) -> &PyramidalLayer {
-            &self.temporal_cells[self.ptal_idx]
+            &self.temporal_layers[self.ptal_idx]
         }
 
         /* PAL_MUT(): Get Primary Temporal Associative Layer (mutable) */
         fn ptal_mut(&mut self) -> &mut PyramidalLayer {
-            &mut self.temporal_cells[self.ptal_idx]
+            &mut self.temporal_layers[self.ptal_idx]
         }
 
         fn print_aux(&mut self) {

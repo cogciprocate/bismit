@@ -15,7 +15,8 @@ const TUFT_COUNT: usize = 1;
 
 pub struct SpinyStellateLayer {
     layer_name: &'static str,
-    layer_id: usize,
+    // layer_id: usize,
+    layer_addr: LayerAddress,
     layer_tags: LayerTags,
     dims: CorticalDims,
     cell_scheme: CellScheme,
@@ -112,7 +113,8 @@ impl SpinyStellateLayer {
 
         Ok(SpinyStellateLayer {
             layer_name: layer_name,
-            layer_id: layer_id,
+            // layer_id: layer_id,
+            layer_addr,
             layer_tags: area_map.layer_map().layer_info(layer_id).unwrap().layer_tags(),
             dims: dims,
             cell_scheme: cell_scheme,
@@ -175,12 +177,12 @@ impl SpinyStellateLayer {
 
     #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
+    #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn soma(&self) -> &Buffer<u8> { self.dens.states() }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
     #[inline] pub fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
     #[inline] pub fn tft_count(&self) -> usize { TUFT_COUNT }
-    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn dens(&self) -> &Dendrites { &self.dens }
     #[inline] pub fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }
 }
@@ -206,13 +208,14 @@ impl DataCellLayer for SpinyStellateLayer {
         self.axn_range()
     }
 
+    #[inline] fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] fn soma(&self) -> &Buffer<u8> { self.dens.states() }
     #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { self.dens.states_mut() }
     #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
     #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
     #[inline] fn tft_count(&self) -> usize { TUFT_COUNT }
-    #[inline] fn layer_name(&self) -> &'static str { self.layer_name }
     #[inline] fn cell_scheme(&self) -> &CellScheme { &self.cell_scheme }
     #[inline] fn dens(&self) -> &Dendrites { &self.dens }
     #[inline] fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }

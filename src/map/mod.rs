@@ -78,8 +78,8 @@ pub enum DataCellKind {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ControlCellKind {
-    InhibitoryBasketSurround { tar_lyr_name: String, field_radius: u8  },
-    Smoother { tar_lyr_name: String, field_radius: u8 },
+    InhibitoryBasketSurround { host_lyr_name: String, field_radius: u8  },
+    Smoother { host_lyr_name: String, field_radius: u8 },
     Complex,
 }
 

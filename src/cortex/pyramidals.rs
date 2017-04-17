@@ -422,13 +422,14 @@ impl DataCellLayer for PyramidalLayer {
         (self.pyr_lyr_axn_idz as usize, axn_idn as usize)
     }
 
+    #[inline] fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] fn layer_addr(&self) -> LayerAddress{ self.layer_addr }
     #[inline] fn soma(&self) -> &Buffer<u8> { &self.states }
     #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { &mut self.states }
     #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
     #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
     #[inline] fn tft_count(&self) -> usize { self.tft_count }
-    #[inline] fn layer_name(&self) -> &'static str { self.layer_name }
     #[inline] fn cell_scheme(&self) -> &CellScheme { &self.cell_scheme }
     #[inline] fn dens(&self) -> &Dendrites { &self.dens }
     #[inline] fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }

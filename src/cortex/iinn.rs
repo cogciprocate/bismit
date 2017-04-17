@@ -2,7 +2,7 @@ use cmn::{CorticalDims, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
 use map::CellScheme;
-use cortex::AxonSpace;
+use cortex::{AxonSpace, ControlCellLayer, DataCellLayer};
 
 
 pub struct InhibitoryInterneuronNetwork {
@@ -22,11 +22,11 @@ pub struct InhibitoryInterneuronNetwork {
 
 impl InhibitoryInterneuronNetwork {
     // FIXME: This function should take a 'bypass' argument instead of `::cycle`.
-    pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
-            src_soma: &Buffer<u8>, src_layer_id: usize, src_base_axn_slc: u8,
-            src_layer_tft_count: usize, axns: &AxonSpace, area_map: &AreaMap,
+    pub fn new<D>(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
+            host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
             -> CmnResult<InhibitoryInterneuronNetwork>
+            where D: DataCellLayer
     {
         // let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
@@ -41,8 +41,8 @@ impl InhibitoryInterneuronNetwork {
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
-            .arg_buf(src_soma)
-            .arg_scl(src_base_axn_slc)
+            .arg_buf(host_lyr.soma())
+            .arg_scl(host_lyr_base_axn_slc)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(axns.states());
@@ -53,18 +53,18 @@ impl InhibitoryInterneuronNetwork {
             .expect("InhibitoryInterneuronNetwork::new()")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
-            .arg_buf(src_soma)
-            .arg_scl(src_base_axn_slc)
+            .arg_buf(host_lyr.soma())
+            .arg_scl(host_lyr_base_axn_slc)
             .arg_buf(axns.states());
 
 
-        let exe_cmd_srcs = (0..src_layer_tft_count)
-            .map(|src_tft_id| CorticalBuffer::data_den_tft(&src_soma,
-                LayerAddress::new(area_map.area_id(), src_layer_id), src_tft_id))
+        let exe_cmd_srcs = (0..host_lyr.tft_count())
+            .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
+                LayerAddress::new(area_map.area_id(), host_lyr.layer_addr().layer_id()), host_lyr_tft_id))
             .collect();
 
         // Set up execution command:
-        let exe_cmd_tars = (src_base_axn_slc..src_base_axn_slc + dims.depth())
+        let exe_cmd_tars = (host_lyr_base_axn_slc..host_lyr_base_axn_slc + dims.depth())
             .map(|slc_id| CorticalBuffer::axon_slice(&axns.states(), area_map.area_id(), slc_id))
             .collect();
 
@@ -117,4 +117,17 @@ impl InhibitoryInterneuronNetwork {
     #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
     #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
 
+}
+
+impl ControlCellLayer for InhibitoryInterneuronNetwork {
+    fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        self.set_exe_order(exe_graph)
+    }
+
+    fn cycle(&mut self, exe_graph: &mut ExecutionGraph, bypass: bool) -> CmnResult<()> {
+        self.cycle(exe_graph, bypass)
+    }
+
+    fn layer_name(&self) -> &'static str { self.layer_name() }
+    fn layer_id(&self) -> usize { self.layer_id() }
 }
