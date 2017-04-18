@@ -84,7 +84,7 @@ pub struct ThalamicTract {
 
 impl ThalamicTract {
     fn new() -> ThalamicTract {
-        let vec_buffer = Vec::with_capacity(0);
+        let vec_buffer = Vec::new();
 
         ThalamicTract {
             tract_areas: MapStore::with_capacity(32),

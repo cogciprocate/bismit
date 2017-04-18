@@ -33,8 +33,8 @@ impl AreaScheme {
             encoder: EncoderScheme::None,
             filter_chains: Vec::with_capacity(4),
             aff_areas: Vec::with_capacity(4),
-            eff_areas: Vec::with_capacity(0),
-            other_areas: Vec::with_capacity(0),
+            eff_areas: Vec::new(),
+            other_areas: Vec::new(),
         }
     }
 

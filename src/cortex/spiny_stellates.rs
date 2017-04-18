@@ -6,7 +6,7 @@ use map::{AreaMap};
 use ocl::{Kernel, ProQue, Buffer, Event};
 use map::{CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress, LayerTags};
-use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer};
+use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayer};
 
 
 const PRINT_DEBUG: bool = false;
@@ -28,6 +28,7 @@ pub struct SpinyStellateLayer {
     pub dens: Dendrites,
     ltp_exe_cmd_idx: Option<usize>,
     _settings: CorticalAreaSettings,
+    control_lyr_idxs: Vec<usize>,
 }
 
 impl SpinyStellateLayer {
@@ -126,11 +127,48 @@ impl SpinyStellateLayer {
             dens: dens,
             ltp_exe_cmd_idx: ltp_exe_cmd_idx,
             _settings: settings,
+            control_lyr_idxs: Vec::with_capacity(4),
         })
     }
 
-    pub fn set_exe_order_cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    // pub fn set_ctrl_lyr_idxs(&mut self, control_layers: &[Box<ControlCellLayer>]) {
+    //     // self.control_lyr_idxs = control_layers.iter().filter_map(|l| {
+    //     //     if self.layer_addr == l.host_layer_addr() {
+
+    //     //     }
+    //     // })
+
+    //     for (cl_idx, cl) in control_layers.iter().enumerate() {
+    //         if cl.layer_addr() == self.layer_addr {
+    //             self.control_lyr_idxs.push(cl_idx);
+    //         }
+    //     }
+    // }
+
+    pub fn set_exe_order_cycle(&mut self, control_layers: &[Box<ControlCellLayer>],
+            exe_graph: &mut ExecutionGraph) -> CmnResult<()>
+    {
+        // println!("##### SpinyStellateLayer::set_exe_order: control_layers: {:?}", control_layers);
+
+        for (cl_idx, cl) in control_layers.iter().enumerate() {
+            if cl.host_layer_addr() == self.layer_addr {
+                // println!("#### adding control_lyr_idx...");
+                self.control_lyr_idxs.push(cl_idx);
+            }
+        }
+
+        for lyr in self.control_lyr_idxs.iter().map(|&idx| &control_layers[idx]) {
+            // println!("#### setting pre-order...");
+            lyr.set_exe_order_pre(exe_graph, self.layer_addr)?;
+        }
+
         self.dens.set_exe_order(exe_graph)?;
+
+        for lyr in self.control_lyr_idxs.iter().map(|&idx| &control_layers[idx]) {
+            // println!("#### setting post-order...");
+            lyr.set_exe_order_post(exe_graph, self.layer_addr)?;
+        }
+
         Ok(())
     }
 

@@ -5,9 +5,12 @@ use map::CellScheme;
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer};
 
 
+#[derive(Debug)]
 pub struct InhibitoryInterneuronNetwork {
     layer_name: &'static str,
-    layer_id: usize,
+    // layer_id: usize,
+    layer_addr: LayerAddress,
+    host_lyr_addr: LayerAddress,
     // dims: CorticalDims,
 
     kern_inhib_simple: Kernel,
@@ -28,7 +31,7 @@ impl InhibitoryInterneuronNetwork {
             -> CmnResult<InhibitoryInterneuronNetwork>
             where D: DataCellLayer
     {
-        // let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
+        let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
         let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
         let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
@@ -60,7 +63,7 @@ impl InhibitoryInterneuronNetwork {
 
         let exe_cmd_srcs = (0..host_lyr.tft_count())
             .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
-                LayerAddress::new(area_map.area_id(), host_lyr.layer_addr().layer_id()), host_lyr_tft_id))
+                host_lyr.layer_addr(), host_lyr_tft_id))
             .collect();
 
         // Set up execution command:
@@ -74,7 +77,9 @@ impl InhibitoryInterneuronNetwork {
 
         Ok(InhibitoryInterneuronNetwork {
             layer_name: layer_name,
-            layer_id: layer_id,
+            // layer_id: layer_id,
+            layer_addr: layer_addr,
+            host_lyr_addr: host_lyr.layer_addr(),
             // dims: dims,
 
             kern_inhib_simple: kern_inhib_simple,
@@ -115,12 +120,18 @@ impl InhibitoryInterneuronNetwork {
     }
 
     #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
-    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
+    #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
 
 }
 
 impl ControlCellLayer for InhibitoryInterneuronNetwork {
-    fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    fn set_exe_order_pre(&self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+        // self.set_exe_order(exe_graph)
+        Ok(())
+    }
+
+    fn set_exe_order_post(&self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+        println!("#### set_exe_order_post called.");
         self.set_exe_order(exe_graph)
     }
 
@@ -129,5 +140,6 @@ impl ControlCellLayer for InhibitoryInterneuronNetwork {
     }
 
     fn layer_name(&self) -> &'static str { self.layer_name() }
-    fn layer_id(&self) -> usize { self.layer_id() }
+    fn layer_addr(&self) -> LayerAddress { self.layer_addr }
+    fn host_layer_addr(&self) -> LayerAddress { self.host_lyr_addr }
 }

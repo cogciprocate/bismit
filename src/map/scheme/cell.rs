@@ -142,7 +142,7 @@ impl CellScheme {
                     field_radius: cols_per_cel_l2
                 }
             ),
-            tft_schemes: Vec::with_capacity(0),
+            tft_schemes: Vec::new(),
         }.validate())
     }
 

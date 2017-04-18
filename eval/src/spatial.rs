@@ -178,6 +178,8 @@ pub(crate) fn eval(params: Params) {
     print_activity_counts(&activity_counts_end, collect_iters_end / 1000);
 
     params.cmd_tx.send(Command::Exit).unwrap();
+
+    println!("Spatial evaluation complete.");
     params.res_rx.recv().unwrap();
 }
 

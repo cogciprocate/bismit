@@ -16,7 +16,6 @@ extern crate tokio_core;
 #[macro_use] extern crate colorify;
 pub extern crate ocl;
 
-
 mod cortex;
 mod subcortex;
 mod tract_terminal;

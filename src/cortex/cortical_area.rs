@@ -350,8 +350,9 @@ impl CorticalArea {
         axns.set_exe_order_intake(&mut exe_graph)?;
 
         // (2.) SSTs Cycle:
-        for sst in &spatial_layers {
-            sst.set_exe_order_cycle(&mut exe_graph)?;
+        for sst in &mut spatial_layers {
+            // sst.set_ctrl_lyr_idxs(&control_layers);
+            sst.set_exe_order_cycle(&control_layers, &mut exe_graph)?;
         }
 
         // (3.) IINNs Cycle:
@@ -359,10 +360,10 @@ impl CorticalArea {
         //     iinn.set_exe_order(&mut exe_graph)?;
         // }
 
-        // (3.) IINNs Cycle:
-        for layer in &control_layers {
-            layer.set_exe_order(&mut exe_graph)?;
-        }
+        // // (3.) IINNs Cycle:
+        // for layer in &control_layers {
+        //     layer.set_exe_order(&mut exe_graph)?;
+        // }
 
         // (4.) SSTs Learn:
         for sst in &spatial_layers {
