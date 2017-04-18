@@ -2,7 +2,7 @@ use cmn::{CorticalDims, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
 use map::CellScheme;
-use cortex::{AxonSpace, ControlCellLayer, DataCellLayer};
+use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 
 #[derive(Debug)]
@@ -21,13 +21,14 @@ pub struct InhibitoryInterneuronNetwork {
     pub wins: Buffer<u8>,
     pub states: Buffer<u8>,
 
+    settings: CorticalAreaSettings,
 }
 
 impl InhibitoryInterneuronNetwork {
     // FIXME: This function should take a 'bypass' argument instead of `::cycle`.
     pub fn new<D>(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
             host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
-            ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
+            ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<InhibitoryInterneuronNetwork>
             where D: DataCellLayer
     {
@@ -89,6 +90,7 @@ impl InhibitoryInterneuronNetwork {
             spi_ids: spi_ids,
             wins: wins,
             states: states,
+            settings: settings,
         })
     }
 
@@ -99,10 +101,10 @@ impl InhibitoryInterneuronNetwork {
 
     // FIXME: `::new` should take the `bypass` argument instead.
     #[inline]
-    pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, bypass: bool) -> CmnResult<()> {
+    pub fn cycle(&self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         let mut event = Event::empty();
 
-        if bypass {
+        if self.settings.bypass_inhib {
             self.kern_inhib_passthrough.cmd()
                 .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
                 .enew(&mut event)
@@ -126,17 +128,19 @@ impl InhibitoryInterneuronNetwork {
 
 impl ControlCellLayer for InhibitoryInterneuronNetwork {
     fn set_exe_order_pre(&self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
-        // self.set_exe_order(exe_graph)
         Ok(())
     }
 
     fn set_exe_order_post(&self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
-        println!("#### set_exe_order_post called.");
         self.set_exe_order(exe_graph)
     }
 
-    fn cycle(&mut self, exe_graph: &mut ExecutionGraph, bypass: bool) -> CmnResult<()> {
-        self.cycle(exe_graph, bypass)
+    fn cycle_pre(&self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+        Ok(())
+    }
+
+    fn cycle_post(&self, exe_graph: &mut ExecutionGraph, host_lyr_addr: LayerAddress) -> CmnResult<()> {
+        self.cycle(exe_graph, host_lyr_addr)
     }
 
     fn layer_name(&self) -> &'static str { self.layer_name() }

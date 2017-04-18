@@ -131,44 +131,22 @@ impl SpinyStellateLayer {
         })
     }
 
-    // pub fn set_ctrl_lyr_idxs(&mut self, control_layers: &[Box<ControlCellLayer>]) {
-    //     // self.control_lyr_idxs = control_layers.iter().filter_map(|l| {
-    //     //     if self.layer_addr == l.host_layer_addr() {
-
-    //     //     }
-    //     // })
-
-    //     for (cl_idx, cl) in control_layers.iter().enumerate() {
-    //         if cl.layer_addr() == self.layer_addr {
-    //             self.control_lyr_idxs.push(cl_idx);
-    //         }
-    //     }
-    // }
-
     pub fn set_exe_order_cycle(&mut self, control_layers: &[Box<ControlCellLayer>],
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
-        // println!("##### SpinyStellateLayer::set_exe_order: control_layers: {:?}", control_layers);
-
         for (cl_idx, cl) in control_layers.iter().enumerate() {
             if cl.host_layer_addr() == self.layer_addr {
-                // println!("#### adding control_lyr_idx...");
                 self.control_lyr_idxs.push(cl_idx);
             }
         }
 
         for lyr in self.control_lyr_idxs.iter().map(|&idx| &control_layers[idx]) {
-            // println!("#### setting pre-order...");
             lyr.set_exe_order_pre(exe_graph, self.layer_addr)?;
         }
-
         self.dens.set_exe_order(exe_graph)?;
-
         for lyr in self.control_lyr_idxs.iter().map(|&idx| &control_layers[idx]) {
-            // println!("#### setting post-order...");
             lyr.set_exe_order_post(exe_graph, self.layer_addr)?;
         }
-
         Ok(())
     }
 
@@ -180,9 +158,17 @@ impl SpinyStellateLayer {
     }
 
     #[inline]
-    pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn cycle(&self, control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+            -> CmnResult<()>
+    {
         if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling layer: '{}'...", self.layer_name); }
+        for lyr in self.control_lyr_idxs.iter().map(|&idx| &control_layers[idx]) {
+            lyr.cycle_pre(exe_graph, self.layer_addr)?;
+        }
         self.dens.cycle(exe_graph)?;
+        for lyr in self.control_lyr_idxs.iter().map(|&idx| &control_layers[idx]) {
+            lyr.cycle_post(exe_graph, self.layer_addr)?;
+        }
         if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling complete for layer: '{}'.", self.layer_name); }
         Ok(())
     }
@@ -232,8 +218,10 @@ impl DataCellLayer for SpinyStellateLayer {
     }
 
     #[inline]
-    fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        self.cycle(exe_graph)
+    fn cycle(&self, control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+            -> CmnResult<()>
+    {
+        self.cycle(control_layers, exe_graph)
     }
 
     #[inline]

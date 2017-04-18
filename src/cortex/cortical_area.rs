@@ -267,7 +267,8 @@ impl CorticalArea {
                             let iinns_dims = dims.clone_with_depth(host_lyr_depth);
                             let iinn_lyr = InhibitoryInterneuronNetwork::new(layer.name(),
                                 layer.layer_id(), iinns_dims, layer_kind.clone(),
-                                host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq, &mut exe_graph)?;
+                                host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
+                                settings.clone(), &mut exe_graph)?;
 
                             // iinns.insert(layer.name(), Box::new(iinn_lyr));
                             control_layers.push(Box::new(iinn_lyr));
@@ -379,22 +380,22 @@ impl CorticalArea {
         if !settings.disable_pyrs {
             // (6a.) Temporal Layers Learn & Cycle:
             for layer in &temporal_layers {
-                layer.set_exe_order(&mut exe_graph)?;
+                layer.set_exe_order_cycle(&control_layers, &mut exe_graph)?;
             }
 
             // (6b.) Focus Layers Learn & Cycle:
             for layer in &focus_layers {
-                layer.set_exe_order(&mut exe_graph)?;
+                layer.set_exe_order_cycle(&control_layers, &mut exe_graph)?;
             }
 
             // (6c.) Motor Layers Learn & Cycle:
             for layer in &motor_layers {
-                layer.set_exe_order(&mut exe_graph)?;
+                layer.set_exe_order_cycle(&control_layers, &mut exe_graph)?;
             }
 
             // (6d.) Other Layers Learn & Cycle:
             for _layer in &other_layers {
-                // layer.set_exe_order(&mut exe_graph)?;
+                // layer.set_exe_order_cycle(&control_layers, &mut exe_graph)?;
             }
         }
 
@@ -470,7 +471,8 @@ impl CorticalArea {
 
         // (2.) SSTs Cycle:
         if !self.settings.disable_ssts {
-            for lyr in &mut self.spatial_layers { lyr.cycle(&mut self.exe_graph)? }
+            for lyr in &mut self.spatial_layers { lyr.cycle(&self.control_layers,
+                &mut self.exe_graph)? }
         }
 
         // // (3.) IINNs Cycle:
@@ -478,10 +480,10 @@ impl CorticalArea {
         //     .ok_or(CmnError::new("cortical_area::CorticalArea::cycle(): Invalid layer."))?
         //     .cycle(&mut self.exe_graph, self.settings.bypass_inhib)?;
 
-        // (3.) IINNs Cycle:
-        self.control_layers.get_mut(0)
-            .ok_or(CmnError::new("cortical_area::CorticalArea::cycle(): Invalid control layer."))?
-            .cycle(&mut self.exe_graph, self.settings.bypass_inhib)?;
+        // // (3.) IINNs Cycle:
+        // self.control_layers.get_mut(0)
+        //     .ok_or(CmnError::new("cortical_area::CorticalArea::cycle(): Invalid control layer."))?
+        //     .cycle(&mut self.exe_graph, self.settings.bypass_inhib)?;
 
         // (4.) SSTs Learn:
         if !self.settings.disable_ssts && !self.settings.disable_learning {
@@ -496,25 +498,25 @@ impl CorticalArea {
             // (6a.) Temporal Layers Learn & Cycle:
             for lyr in &mut self.temporal_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
-                lyr.cycle(&mut self.exe_graph)?;
+                lyr.cycle(&self.control_layers, &mut self.exe_graph)?;
             }
 
             // (6b.) Focus Layers Learn & Cycle:
             for lyr in &mut self.focus_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
-                lyr.cycle(&mut self.exe_graph)?;
+                lyr.cycle(&self.control_layers, &mut self.exe_graph)?;
             }
 
             // (6c.) Motor Layers Learn & Cycle:
             for lyr in &mut self.motor_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
-                lyr.cycle(&mut self.exe_graph)?;
+                lyr.cycle(&self.control_layers, &mut self.exe_graph)?;
             }
 
             // (6d.) Other Layers Learn & Cycle:
             for lyr in &mut self.other_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
-                lyr.cycle(&mut self.exe_graph)?;
+                lyr.cycle(&self.control_layers, &mut self.exe_graph)?;
             }
         }
 

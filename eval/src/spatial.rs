@@ -180,7 +180,7 @@ pub(crate) fn eval(params: Params) {
     params.cmd_tx.send(Command::Exit).unwrap();
 
     println!("Spatial evaluation complete.");
-    params.res_rx.recv().unwrap();
+    // params.res_rx.recv().unwrap();
 }
 
 fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, min: usize) {

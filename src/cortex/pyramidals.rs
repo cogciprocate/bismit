@@ -4,7 +4,7 @@ use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
 use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress, LayerTags};
-use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer};
+use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayer};
 
 const PRINT_DEBUG: bool = false;
 
@@ -280,7 +280,9 @@ impl PyramidalLayer {
         })
     }
 
-    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn set_exe_order_cycle(&self, _control_layers: &[Box<ControlCellLayer>],
+            exe_graph: &mut ExecutionGraph) -> CmnResult<()>
+    {
         if !self.settings.disable_pyrs {
             for &cmd_idx in self.tft_ltp_exe_cmd_idxs.iter() {
                 exe_graph.order_next(cmd_idx)?;
@@ -379,7 +381,9 @@ impl DataCellLayer for PyramidalLayer {
         self.dens_mut().regrow();
     }
 
-    fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    fn cycle(&self, _control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+            -> CmnResult<()>
+    {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling layer: '{}'...", self.layer_name); }
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
         self.dens().cycle(exe_graph)?;
