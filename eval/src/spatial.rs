@@ -128,6 +128,43 @@ fn cycle(params: &Params, training_iters: usize, collect_iters: usize, pattern_c
     }
 }
 
+fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, _min: usize) {
+    let cel_count = activity_counts.len();
+    let pattern_count = activity_counts[0].len();
+    let mut cel_ttls = Vec::with_capacity(cel_count);
+    let mut non_zero_ptrn_ttls: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
+    let mut ttl_count = 0f32;
+
+    for (cel_idx, counts) in activity_counts.iter().enumerate() {
+        let mut cel_ttl = 0.;
+        non_zero_ptrn_ttls.clear();
+
+        for (pattern_idx, &ptrn_ttl) in counts.iter().enumerate() {
+            if ptrn_ttl > 0 {
+                non_zero_ptrn_ttls.push((pattern_idx, ptrn_ttl));
+                cel_ttl += ptrn_ttl as f32;
+            }
+        }
+        // if cel_ttl > _min {
+        //     println!("Cell [{}]({}): {:?}", cel_idx, cel_ttl, non_zero_ptrn_ttls);
+        // }
+        cel_ttls.push(cel_ttl);
+        ttl_count += cel_ttl;
+    }
+
+    // Calc stdev:
+    let mean = ttl_count / cel_count as f32;
+    let mut sq_diff_ttl = 0f32;
+    for &cel_ttl in cel_ttls.iter() {
+        sq_diff_ttl += (cel_ttl - mean).powi(2);
+        // print!("<{}>", (cel_ttl - mean).powi(2));
+    }
+    // print!("\n");
+
+    let stdev = (sq_diff_ttl / ttl_count).sqrt();
+    println!("Standard deviation: {}", stdev);
+}
+
 
 // pub(crate) fn eval(cmd_tx: Sender<Command>, req_tx: Sender<Request>, res_rx: Receiver<Response>,
 //         tract_buffer: RwVec<u8>, axns: Buffer<u8>, l4_axns: Buffer<u8>, area_map: AreaMap,
@@ -135,19 +172,19 @@ fn cycle(params: &Params, training_iters: usize, collect_iters: usize, pattern_c
 pub(crate) fn eval(params: Params) {
     const SPARSITY: usize = 48;
     let pattern_count = 64;
-    let sdr_len = (params.encode_dim * params.encode_dim) as usize;
-    let sdr_active_count = sdr_len / SPARSITY;
+    let cell_count = (params.encode_dim * params.encode_dim) as usize;
+    let sdr_active_count = cell_count / SPARSITY;
 
     let mut rng = rand::weak_rng();
 
     // Produce randomized indexes:
     let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
-            encode::gen_axn_idxs(&mut rng, sdr_active_count, sdr_len)
+            encode::gen_axn_idxs(&mut rng, sdr_active_count, cell_count)
         }).collect();
 
     // Create sdr from randomized indexes:
     let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
-            let mut sdr = vec![0u8; sdr_len];
+            let mut sdr = vec![0u8; cell_count];
             for &axn_idx in axn_idxs.iter() {
                 sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
             }
@@ -173,32 +210,16 @@ pub(crate) fn eval(params: Params) {
 
     println!("\nStart Activity Counts:");
     print_activity_counts(&activity_counts_start, collect_iters_start / 1000);
+    // print_activity_counts(&activity_counts_start);
 
     println!("\nEnd Activity Counts:");
     print_activity_counts(&activity_counts_end, collect_iters_end / 1000);
+    // print_activity_counts(&activity_counts_end);
 
     params.cmd_tx.send(Command::Exit).unwrap();
+    params.cmd_tx.send(Command::None).unwrap();
 
-    println!("Spatial evaluation complete.");
+    println!("Spatial evaluation complete.\n");
     // params.res_rx.recv().unwrap();
 }
 
-fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, min: usize) {
-    let pattern_count = activity_counts[0].len();
-    let mut cond_counts: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
-
-    for (axn_idx, counts) in activity_counts.iter().enumerate() {
-        let mut ttl_count = 0;
-        cond_counts.clear();
-
-        for (pattern_idx, &count) in counts.iter().enumerate() {
-            if count > min {
-                ttl_count += count;
-                cond_counts.push((pattern_idx, count));
-            }
-        }
-        if ttl_count > 0 {
-            println!("Cell [{}]({}): {:?}", axn_idx, ttl_count, cond_counts);
-        }
-    }
-}
