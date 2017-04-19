@@ -183,6 +183,7 @@ pub struct Flywheel {
     cycle_iters_max: u32,
     area_name: String,
     status: Status,
+    exiting: bool,
 }
 
 impl Flywheel {
@@ -199,6 +200,7 @@ impl Flywheel {
             cycle_iters_max: 1,
             area_name: area_name.into(),
             status: Status::new(),
+            exiting: false,
         }
     }
 
@@ -253,7 +255,10 @@ impl Flywheel {
                 Ok(cmd) => match cmd {
                     Command::Iterate(i) => self.cycle_iters_max = i,
                     // Command::Spin => self.cycle_iters_max = 0,
-                    Command::Exit => break,
+                    Command::Exit => {
+                        self.exiting = true;
+                        break;
+                    },
                     _ => continue,
                 },
                 Err(e) => panic!("{}", e),
@@ -269,7 +274,10 @@ impl Flywheel {
 
             // Run primary loop and check for exit response:
             match self.cycle_loop() {
-                Command::Exit => break,
+                Command::Exit => {
+                    self.exiting = true;
+                    break;
+                },
                 _ => (),
             }
 
@@ -356,7 +364,11 @@ impl Flywheel {
                             Request::FinishQueues => {
                                 // Will block:
                                 self.cortex.finish_queues();
-                                res_tx.send(Response::QueuesFinished(self.status.prev_cycles)).unwrap();
+                                match res_tx.send(Response::QueuesFinished(self.status.prev_cycles)) {
+                                    Ok(_) => (),
+                                    Err(err) => if !self.exiting { panic!("{:?}", err); }
+                                }
+
                             }
                         }
                     }

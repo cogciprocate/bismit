@@ -2,34 +2,32 @@ use cmn::{CorticalDims, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
 use map::CellScheme;
-use cortex::AxonSpace;
+use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 
-/// Facilitates the concept of 'restlessness' within cells.
+#[derive(Debug)]
 pub struct Smoother {
     layer_name: &'static str,
-    layer_id: usize,
-    // dims: CorticalDims,
-
+    layer_addr: LayerAddress,
+    host_lyr_addr: LayerAddress,
     kern_inhib_simple: Kernel,
     kern_inhib_passthrough: Kernel,
     exe_cmd_idx: usize,
-
     pub spi_ids: Buffer<u8>,
     pub wins: Buffer<u8>,
     pub states: Buffer<u8>,
-
+    settings: CorticalAreaSettings,
 }
 
 impl Smoother {
     // FIXME: This function should take a 'bypass' argument instead of `::cycle`.
-    pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
-            src_soma: &Buffer<u8>, src_layer_id: usize, src_base_axn_slc: u8,
-            src_layer_tft_count: usize, axns: &AxonSpace, area_map: &AreaMap,
-             ocl_pq: &ProQue, exe_graph: &mut ExecutionGraph)
+    pub fn new<D>(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
+            host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
+            ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<Smoother>
+            where D: DataCellLayer
     {
-        // let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
+        let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
         let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
         let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
@@ -42,8 +40,8 @@ impl Smoother {
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
-            .arg_buf(src_soma)
-            .arg_scl(src_base_axn_slc)
+            .arg_buf(host_lyr.soma())
+            .arg_scl(host_lyr_base_axn_slc)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(axns.states());
@@ -54,18 +52,18 @@ impl Smoother {
             .expect("Smoother::new()")
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
-            .arg_buf(src_soma)
-            .arg_scl(src_base_axn_slc)
+            .arg_buf(host_lyr.soma())
+            .arg_scl(host_lyr_base_axn_slc)
             .arg_buf(axns.states());
 
 
-        let exe_cmd_srcs = (0..src_layer_tft_count)
-            .map(|src_tft_id| CorticalBuffer::data_den_tft(&src_soma,
-                LayerAddress::new(area_map.area_id(), src_layer_id), src_tft_id))
+        let exe_cmd_srcs = (0..host_lyr.tft_count())
+            .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
+                host_lyr.layer_addr(), host_lyr_tft_id))
             .collect();
 
         // Set up execution command:
-        let exe_cmd_tars = (src_base_axn_slc..src_base_axn_slc + dims.depth())
+        let exe_cmd_tars = (host_lyr_base_axn_slc..host_lyr_base_axn_slc + dims.depth())
             .map(|slc_id| CorticalBuffer::axon_slice(&axns.states(), area_map.area_id(), slc_id))
             .collect();
 
@@ -75,16 +73,15 @@ impl Smoother {
 
         Ok(Smoother {
             layer_name: layer_name,
-            layer_id: layer_id,
-            // dims: dims,
-
+            layer_addr: layer_addr,
+            host_lyr_addr: host_lyr.layer_addr(),
             kern_inhib_simple: kern_inhib_simple,
             kern_inhib_passthrough: kern_inhib_passthrough,
             exe_cmd_idx: exe_cmd_idx,
-
             spi_ids: spi_ids,
             wins: wins,
             states: states,
+            settings: settings,
         })
     }
 
@@ -95,10 +92,10 @@ impl Smoother {
 
     // FIXME: `::new` should take the `bypass` argument instead.
     #[inline]
-    pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, bypass: bool) -> CmnResult<()> {
+    pub fn cycle(&self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         let mut event = Event::empty();
 
-        if bypass {
+        if self.settings.bypass_inhib {
             self.kern_inhib_passthrough.cmd()
                 .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
                 .enew(&mut event)
@@ -116,6 +113,28 @@ impl Smoother {
     }
 
     #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
-    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
+    #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
 
+}
+
+impl ControlCellLayer for Smoother {
+    fn set_exe_order_pre(&self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+        Ok(())
+    }
+
+    fn set_exe_order_post(&self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+        self.set_exe_order(exe_graph)
+    }
+
+    fn cycle_pre(&self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+        Ok(())
+    }
+
+    fn cycle_post(&self, exe_graph: &mut ExecutionGraph, host_lyr_addr: LayerAddress) -> CmnResult<()> {
+        self.cycle(exe_graph, host_lyr_addr)
+    }
+
+    fn layer_name(&self) -> &'static str { self.layer_name() }
+    fn layer_addr(&self) -> LayerAddress { self.layer_addr }
+    fn host_layer_addr(&self) -> LayerAddress { self.host_lyr_addr }
 }

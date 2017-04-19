@@ -44,7 +44,7 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
         )
 
         .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local,
-            CellScheme::inhibitory("iv", 4)
+            CellScheme::inhib("iv", 4)
         )
 
         .layer("iii", 3, map::PTAL, AxonDomain::Local,
@@ -171,7 +171,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         // .layer("iv", 1, map::PSAL, AxonDomain::Local,
         //     CellScheme::spiny_stellate(5, vec!["unused"], 1, 8))
         // // .layer("iv_inhib", 0, map::DEFAULT,
-        // //     CellScheme::inhibitory(4, "iv"))
+        // //     CellScheme::inhib(4, "iv"))
         // .layer("iii", 2, map::PTAL, AxonDomain::Local,
         //     CellScheme::pyramidal(2, 4, vec!["unused"], 1, 8)
         //         .apical(vec!["test1"], 12)

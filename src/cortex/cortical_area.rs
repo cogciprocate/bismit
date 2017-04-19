@@ -99,7 +99,8 @@ impl CorticalArea {
     // by the execution graph system.
     //
     pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context,
-                    settings: Option<CorticalAreaSettings>, thal: &mut Thalamus) -> CmnResult<CorticalArea> {
+            settings: Option<CorticalAreaSettings>, thal: &mut Thalamus) -> CmnResult<CorticalArea>
+    {
         let emsg = "cortical_area::CorticalArea::new()";
         let area_id = area_map.area_id();
         let area_name = area_map.area_name();
@@ -616,7 +617,7 @@ impl CorticalArea {
 
 impl Drop for CorticalArea {
     fn drop(&mut self) {
-        print!("Releasing work thread for '{}'... ", &self.name);
+        println!("Releasing work thread for '{}'... ", &self.name);
         self.work_tx.take();
         self._work_thread.take().unwrap().join().unwrap();
         print!("Releasing OpenCL components for '{}'... ", &self.name);

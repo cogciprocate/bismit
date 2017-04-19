@@ -28,7 +28,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .axn_layer("aff_in", map::FF_IN, AxonKind::Spatial)
             .axn_layer("unused", map::UNUSED_TESTING, AxonKind::Spatial)
             .layer("mcols", 1, map::FF_FB_OUT, CellScheme::minicolumn("iv", "iii"))
-            .layer("iv_inhib", 0, map::DEFAULT, CellScheme::inhibitory(4, "iv"))
+            .layer("iv_inhib", 0, map::DEFAULT, CellScheme::inhib(4, "iv"))
 
             .layer("iv", 1, map::PSAL,
                 CellScheme::spiny_stellate(7, vec!["aff_in"], 400, 10))

@@ -133,11 +133,22 @@ impl CellScheme {
         }.validate())
     }
 
-    pub fn inhibitory(src: &str, cols_per_cel_l2: u8) -> LayerKind {
-
+    pub fn inhib(src: &str, cols_per_cel_l2: u8) -> LayerKind {
         LayerKind::Cellular(CellScheme {
             cell_class: CellClass::Control(
                 ControlCellKind::InhibitoryBasketSurround {
+                    host_lyr_name: src.to_owned(),
+                    field_radius: cols_per_cel_l2
+                }
+            ),
+            tft_schemes: Vec::new(),
+        }.validate())
+    }
+
+    pub fn smooth(src: &str, cols_per_cel_l2: u8) -> LayerKind {
+        LayerKind::Cellular(CellScheme {
+            cell_class: CellClass::Control(
+                ControlCellKind::Smoother {
                     host_lyr_name: src.to_owned(),
                     field_radius: cols_per_cel_l2
                 }
