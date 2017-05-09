@@ -22,13 +22,15 @@ static SPT_LYR: &'static str = "iv";
 
 const ENCODE_DIM: u32 = 64;
 const AREA_DIM: u32 = 16;
+const HEX_GRP_SIDE: usize = 4;
 
 
 pub fn draw(params: &Params) {
     // Write to tract:
     debug!("Locking tract buffer...");
     let mut guard = params.tract_buffer.clone().write().wait().unwrap();
-    cmn::populate_hex_tile_grps(6, guard.as_mut_slice());
+    let dims = [ENCODE_DIM, ENCODE_DIM];
+    cmn::populate_hex_tile_grps(HEX_GRP_SIDE, dims, guard.as_mut_slice());
     WriteGuard::release(guard);
 
     // Cycle and finish queues:
