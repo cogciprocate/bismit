@@ -765,6 +765,23 @@ pub fn wrap_idx(idx: usize, len: usize) -> usize {
 
 
 
+/// Populates a parallelogram-shaped (diamond-shaped) hex-tile area with the
+/// centers of non-overlapping hexagonally shaped groups.
+///
+/// Useful for placing cells within a cortical layer without overlapping
+/// nearby cells. This can provide small, evenly distributed regions (groups)
+/// without having to keep track of arbitrarily addressed (positioned)
+/// sources.
+///
+/// `side_len` is the circumradius (and side length) of each hexagon group in
+/// tiles.
+///
+pub fn populate_hex_tile_grps(_side_len: usize, sdr: &mut [u8]) {
+    for cell in sdr.iter_mut() {
+        *cell = 100;
+    }
+}
+
 
 /*=============================================================================
 ===============================================================================

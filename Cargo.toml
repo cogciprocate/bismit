@@ -19,8 +19,8 @@ authors = ["Nick Sanders <github.com/c0gent>"]
 # features = ["kernel_debug_print"]
 
 [dependencies]
-# ocl = "*"
-ocl = { path = "../ocl" }
+ocl = "*"
+# ocl = { path = "../ocl" }
 # ocl = { path = "/home/nick/projects/ocl", version = "0.11" }
 # ocl = { version = "0.12.0", git = "https://github.com/cogciprocate/ocl" }
 

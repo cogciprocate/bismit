@@ -1,9 +1,13 @@
 
-use std::sync::mpsc::{Sender, Receiver, TryRecvError};
+use std::thread;
+use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
 use rand;
 use rand::distributions::{Range, IndependentSample};
+use vibi::window;
+use vibi::bismit::map::*;
+use vibi::bismit::flywheel::Flywheel;
 use vibi::bismit::ocl::{Buffer, RwVec, WriteGuard};
-use vibi::bismit::{Cortex, Thalamus, SubcorticalNucleus};
+use vibi::bismit::{map, Cortex, Thalamus, SubcorticalNucleus, CorticalAreaSettings, Subcortex};
 use vibi::bismit::flywheel::{Command, Request, Response};
 use vibi::bismit::map::{AxonDomainRoute, AreaMap};
 use vibi::bismit::encode::{self, ScalarSdrWriter};
@@ -46,6 +50,7 @@ impl Nucleus {
         }
     }
 }
+
 
 impl SubcorticalNucleus for Nucleus {
     fn area_name<'a>(&'a self) -> &'a str {
@@ -128,6 +133,7 @@ fn cycle(params: &Params, training_iters: usize, collect_iters: usize, pattern_c
     }
 }
 
+
 fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, _min: usize) {
     let cel_count = activity_counts.len();
     let pattern_count = activity_counts[0].len();
@@ -166,60 +172,189 @@ fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, _min: usize) {
 }
 
 
+static PRI_AREA: &'static str = "v1";
+static IN_AREA: &'static str = "v0";
+static EXT_LYR: &'static str = "external_0";
+static SPT_LYR: &'static str = "iv";
+
+const ENCODE_DIM: u32 = 64;
+const AREA_DIM: u32 = 16;
+
+
 // pub(crate) fn eval(cmd_tx: Sender<Command>, req_tx: Sender<Request>, res_rx: Receiver<Response>,
 //         tract_buffer: RwVec<u8>, axns: Buffer<u8>, l4_axns: Buffer<u8>, area_map: AreaMap,
 //         encode_dim: u32, area_dim: u32)
-pub(crate) fn eval(params: Params) {
-    const SPARSITY: usize = 48;
-    let pattern_count = 64;
-    let cell_count = (params.encode_dim * params.encode_dim) as usize;
-    let sdr_active_count = cell_count / SPARSITY;
+pub fn eval(/*params: Params*/) {
+    let (command_tx, command_rx) = mpsc::channel();
+    let (vibi_request_tx, vibi_request_rx) = mpsc::channel();
+    let (vibi_response_tx, vibi_response_rx) = mpsc::channel();
+    let vibi_command_tx = command_tx.clone();
 
-    let mut rng = rand::weak_rng();
+    let (spatial_request_tx, spatial_request_rx) = mpsc::channel();
+    let (spatial_response_tx, spatial_response_rx) = mpsc::channel();
+    let spatial_command_tx = command_tx;
 
-    // Produce randomized indexes:
-    let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
-            encode::gen_axn_idxs(&mut rng, sdr_active_count, cell_count)
-        }).collect();
+    let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
 
-    // Create sdr from randomized indexes:
-    let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
-            let mut sdr = vec![0u8; cell_count];
-            for &axn_idx in axn_idxs.iter() {
-                sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
-            }
-            sdr
-        }).collect();
+    let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
+        .layer_map().layers().by_key(EXT_LYR).expect("bad lyr").layer_addr();
 
-    let cell_count = (params.area_dim * params.area_dim) as usize;
+    let v1_spt_lyr_buf = {
+        let pri_area_map = cortex.thal().area_maps().by_key(PRI_AREA).expect("bad area");
+        let v1_spt_lyr_addr = *pri_area_map.layer_map().layers().by_key(SPT_LYR)
+            .expect("bad lyr").layer_addr();
+        let v1_spt_lyr_axn_range = pri_area_map.lyr_axn_range(&v1_spt_lyr_addr, None).unwrap();
+        cortex.areas().by_key(PRI_AREA).unwrap().axns()
+            .create_sub_buffer(&v1_spt_lyr_axn_range).unwrap()
+    };
 
-    // The number of times each cell has become active for each pattern:
-    let mut activity_counts_start = vec![vec![0; pattern_count]; cell_count];
-    let mut activity_counts_end = vec![vec![0; pattern_count]; cell_count];
+    let in_tract_idx = cortex.thal().tract().index_of(v0_ext_lyr_addr).unwrap();
+    let in_tract_buffer = cortex.thal().tract().buffer(in_tract_idx).unwrap().clone();
+    let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
+    let area_map = cortex.areas().by_key(PRI_AREA).unwrap().area_map().clone();
+    // let ssts =
 
-    // Get the flywheel moving:
-    params.cmd_tx.send(Command::None).unwrap();
+    let nucl = Nucleus::new(IN_AREA, EXT_LYR, PRI_AREA, &cortex);
+    cortex.add_subcortex(Subcortex::new().nucl(nucl));
 
-    let training_iters_start = 0;
-    let collect_iters_start = 20000;
-    cycle(&params, training_iters_start, collect_iters_start, pattern_count, &sdrs, &mut activity_counts_start);
+    let mut flywheel = Flywheel::new(cortex, command_rx, PRI_AREA);
+    flywheel.add_req_res_pair(vibi_request_rx, vibi_response_tx);
+    flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
 
-    let training_iters_end = 100000;
-    let collect_iters_end = 20000;
-    cycle(&params, training_iters_end, collect_iters_end, pattern_count, &sdrs, &mut activity_counts_end);
+    // Flywheel thread:
+    let th_flywheel = thread::Builder::new().name("flywheel".to_string()).spawn(move || {
+        flywheel.spin();
+    }).expect("Error creating 'flywheel' thread");
 
-    println!("\nStart Activity Counts:");
-    print_activity_counts(&activity_counts_start, collect_iters_start / 1000);
-    // print_activity_counts(&activity_counts_start);
+    // Vibi thread:
+    let th_win = thread::Builder::new().name("win".to_string()).spawn(move || {
+        println!("Opening vibi window...");
+        window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
+    }).expect("Error creating 'win' thread");
 
-    println!("\nEnd Activity Counts:");
-    print_activity_counts(&activity_counts_end, collect_iters_end / 1000);
-    // print_activity_counts(&activity_counts_end);
+    let params = Params { cmd_tx: spatial_command_tx, req_tx: spatial_request_tx,
+        res_rx: spatial_response_rx, tract_buffer: in_tract_buffer, axns,
+        l4_axns: v1_spt_lyr_buf, area_map, encode_dim: ENCODE_DIM, area_dim: AREA_DIM };
 
-    params.cmd_tx.send(Command::Exit).unwrap();
-    params.cmd_tx.send(Command::None).unwrap();
+    { // Inner (refactorable)
+        const SPARSITY: usize = 48;
+        let pattern_count = 64;
+        let cell_count = (params.encode_dim * params.encode_dim) as usize;
+        let sdr_active_count = cell_count / SPARSITY;
 
-    println!("Spatial evaluation complete.\n");
-    // params.res_rx.recv().unwrap();
+        let mut rng = rand::weak_rng();
+
+        // Produce randomized indexes:
+        let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
+                encode::gen_axn_idxs(&mut rng, sdr_active_count, cell_count)
+            }).collect();
+
+        // Create sdr from randomized indexes:
+        let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
+                let mut sdr = vec![0u8; cell_count];
+                for &axn_idx in axn_idxs.iter() {
+                    sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
+                }
+                sdr
+            }).collect();
+
+        let cell_count = (params.area_dim * params.area_dim) as usize;
+
+        // The number of times each cell has become active for each pattern:
+        let mut activity_counts_start = vec![vec![0; pattern_count]; cell_count];
+        let mut activity_counts_end = vec![vec![0; pattern_count]; cell_count];
+
+        // Get the flywheel moving:
+        params.cmd_tx.send(Command::None).unwrap();
+
+        let training_iters_start = 0;
+        let collect_iters_start = 20000;
+        cycle(&params, training_iters_start, collect_iters_start, pattern_count, &sdrs, &mut activity_counts_start);
+
+        let training_iters_end = 100000;
+        let collect_iters_end = 20000;
+        cycle(&params, training_iters_end, collect_iters_end, pattern_count, &sdrs, &mut activity_counts_end);
+
+        println!("\nStart Activity Counts:");
+        print_activity_counts(&activity_counts_start, collect_iters_start / 1000);
+        // print_activity_counts(&activity_counts_start);
+
+        println!("\nEnd Activity Counts:");
+        print_activity_counts(&activity_counts_end, collect_iters_end / 1000);
+        // print_activity_counts(&activity_counts_end);
+
+        params.cmd_tx.send(Command::Exit).unwrap();
+        params.cmd_tx.send(Command::None).unwrap();
+
+        println!("Spatial evaluation complete.\n");
+        // params.res_rx.recv().unwrap();
+    }
+
+    if let Err(e) = th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
+    if let Err(e) = th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
 }
 
+fn define_lm_schemes() -> LayerMapSchemeList {
+    let at0 = AxonTag::unique();
+
+    LayerMapSchemeList::new()
+        .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
+            .input_layer("aff_in", map::DEFAULT,
+                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
+                AxonTopology::Spatial
+            )
+            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+                CellScheme::minicolumn("iv", "iii")
+            )
+            .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
+                CellScheme::spiny_stellate(&[("aff_in", 4, 1)], 7, 600)
+            )
+            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4))
+            // .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4))
+            .layer("iii", 1, map::PTAL, AxonDomain::Local,
+                CellScheme::pyramidal(&[("iii", 20, 1)], 1, 6, 500)
+                    // .apical(&[("eff_in", 22)], 1, 5, 500)
+            )
+        )
+        .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
+            .layer(EXT_LYR, 1, map::DEFAULT,
+                AxonDomain::output(&[map::THAL_SP, at0]),
+                LayerKind::Axonal(AxonTopology::Spatial))
+        )
+}
+
+
+fn define_a_schemes() -> AreaSchemeList {
+    AreaSchemeList::new()
+        .area(AreaScheme::new("v0", "v0_lm", ENCODE_DIM)
+            // .input(InputScheme::GlyphSequences { seq_lens: (5, 5), seq_count: 10,
+            //    scale: 1.4, hrz_dims: (16, 16) }),
+            // .input(InputScheme::ScalarSdrGradiant { range: (-8.0, 8.0), way_span: 16.0, incr: 0.1 }),
+            // .input(InputScheme::None),
+            // .input(InputScheme::Custom { layer_count: 1 }),
+            // .custom_layer_count(1)
+            .subcortex()
+        )
+        .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)
+            .eff_areas(vec!["v0"])
+            // .filter_chain(map::FF_IN, vec![FilterScheme::new("retina", None)])
+        )
+}
+
+// #########################
+// ##### DISABLE STUFF #####
+// #########################
+#[allow(unused_mut)]
+pub fn ca_settings() -> CorticalAreaSettings {
+    let mut settings = CorticalAreaSettings::new();
+
+    // settings.bypass_inhib = true;
+    settings.bypass_filters = true;
+    settings.disable_pyrs = true;
+    // settings.disable_ssts = true;
+    settings.disable_mcols = true;
+    // settings.disable_regrowth = true;
+    // settings.disable_learning = true;
+
+    settings
+}

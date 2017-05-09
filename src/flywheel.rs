@@ -245,6 +245,7 @@ impl Flywheel {
 
     pub fn spin(&mut self) {
         loop {
+            if self.exiting { break; }
             self.intake_sensory_frames().unwrap();
             self.fulfill_requests();
 
@@ -459,6 +460,7 @@ impl Flywheel {
 
     fn broadcast_status(&self) {
         for &(_, ref res_tx) in self.req_res_pairs.iter() {
+            // TODO: Remove unnecessary (redundant) heap allocation:
             res_tx.send(Response::Status(Box::new(self.status.clone()))).unwrap();
         }
     }

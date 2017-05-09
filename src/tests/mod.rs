@@ -13,6 +13,7 @@ mod dens_tfts;
 mod automated;
 mod cycle;
 mod multi;
+mod hex_tile_fields;
 pub mod testbed;
 pub mod testbed_vibi;
 pub mod util;

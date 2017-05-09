@@ -8,3 +8,4 @@ vibi = { path = "../../vibi" }
 rand = "*"
 log = "*"
 env_logger = "*"
+clap = "*"
