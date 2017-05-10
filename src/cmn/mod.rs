@@ -767,7 +767,7 @@ pub fn wrap_idx(idx: usize, len: usize) -> usize {
 
 
 /// Evenly distributed hexagon-tile-group center coordinates ([v, u]).
-struct HexGroupCenters {
+pub struct HexGroupCenters {
     centers: HashSet<[i32; 2]>,
     new_centers: HashSet<[i32; 2]>,
     // Hex group side length.
@@ -776,13 +776,13 @@ struct HexGroupCenters {
     // counterclockwise direction.
     clockwise_lean: bool,
     // Lower parallelogram bound ([v, u]) closed (inclusive).
-    l_bound: Option<[i32; 2]>,
+    l_bound: [i32; 2],
     // Upper parallelogram bound ([v, u]) open (exclusive).
-    u_bound: Option<[i32; 2]>,
+    u_bound: [i32; 2],
 }
 
 impl HexGroupCenters {
-    fn new(side_len: i32) -> HexGroupCenters {
+    pub fn new(side_len: i32, l_bound: [i32; 2], u_bound: [i32; 2]) -> HexGroupCenters {
         const CLOCKWISE_LEAN: bool = true;
 
         HexGroupCenters {
@@ -790,33 +790,27 @@ impl HexGroupCenters {
             new_centers: HashSet::new(),
             side_len,
             clockwise_lean: CLOCKWISE_LEAN,
-            l_bound: None,
-            u_bound: None,
+            l_bound: l_bound,
+            u_bound: u_bound,
         }
     }
 
-    /// Sets lower and upper boundaries within a parallelogram.
-    fn bounds(mut self, l_bound: [i32; 2], u_bound: [i32; 2]) -> HexGroupCenters {
-        self.l_bound = Some(l_bound);
-        self.u_bound = Some(u_bound);
-        self
-    }
+    // /// Sets lower and upper boundaries within a parallelogram.
+    // pub fn bounds(mut self, l_bound: [i32; 2], u_bound: [i32; 2]) -> HexGroupCenters {
+    //     self.l_bound = Some(l_bound);
+    //     self.u_bound = Some(u_bound);
+    //     self
+    // }
 
     /// Adds a coordinate to the `centers` set.
     ///
     /// If lower or upper boundaries are set, checks against them. If `center`
     /// is a new (unique) coordinate, adds to the `new_centers` set.
-    fn add_center(&mut self, center: [i32; 2]) {
-        if let Some(l_bound) = self.l_bound {
-            if center[0] < l_bound[0] || center[1] < l_bound[1] {
-                return;
-            }
-        }
-
-        if let Some(u_bound) = self.u_bound {
-            if center[0] >= u_bound[0] || center[1] >= u_bound[1] {
-                return;
-            }
+    pub fn add_center(&mut self, center: [i32; 2]) {
+        if center[0] < self.l_bound[0] || center[1] < self.l_bound[1] ||
+                center[0] >= self.u_bound[0] || center[1] >= self.u_bound[1]
+        {
+            return;
         }
 
         if self.centers.insert(center) {
@@ -828,40 +822,34 @@ impl HexGroupCenters {
     ///
     /// If the surround coordinate is not already in the `centers` set, adds
     /// it to the `new_centers` set as well.
-    fn add_surrounds(&mut self, center: [i32; 2]) {
+    pub fn add_surrounds(&mut self, center: [i32; 2]) {
         let (l, s) = if self.clockwise_lean {
             (self.side_len, self.side_len - 1)
         } else {
             (self.side_len - 1, self.side_len)
         };
-
         let ls = l + s;
 
         // u: 4, vi: 0, w: -3
         // v: -3, u: 7
         // new.push([center[0] - 3, center[1] + 7]);
         self.add_center([center[0] - s, center[1] + ls]);
-
         // u: 3, vi: -4, w: 0
         // v: 4, u: 3
         // new.push([center[0] + 4, center[1] + 3]);
         self.add_center([center[0] + l, center[1] + s]);
-
         // u: 0, vi: -3, w: 4
         // v: 7, u: -4
         // new.push([center[0] + 7, center[1] - 4]);
         self.add_center([center[0] + ls, center[1] - l]);
-
         // u: -4, vi: 0, w: 3
         // v: 3, u: -7
         // new.push([center[0] + 3, center[1] - 7]);
         self.add_center([center[0] + s, center[1] - ls]);
-
         // u: -3, vi: 4, w: 0
         // v: -4, u: -3
         // new.push([center[0] - 4, center[1] - 3]);
         self.add_center([center[0] - l, center[1] - s]);
-
         // u: 0, vi: 3, w: -4
         // v: -7, u: 4
         // new.push([center[0] - 7, center[1] + 4]);
@@ -873,11 +861,10 @@ impl HexGroupCenters {
     /// If `center` is specified, that coordinate is used as the starting
     /// seed. If `center` is unspecified and no seed coordinates have been
     /// added, this function will return without doing anything.
-    fn populate(&mut self, start: Option<[i32; 2]>) {
+    pub fn populate(&mut self, start: Option<[i32; 2]>) {
         if let Some(cntr) = start {
             self.add_center(cntr);
         }
-
         while self.new_centers.len() > 0 {
             let mut new_cntrs = HashSet::new();
             ::std::mem::swap(&mut self.new_centers, &mut new_cntrs);
@@ -901,31 +888,16 @@ impl HexGroupCenters {
 /// `side_len` is the circumradius (= side length) of each hexagon group
 /// measured in tiles.
 ///
-pub fn populate_hex_tile_grps(side_len: usize, coords: [u32; 2], sdr: &mut [u8]) {
-    let coords = [coords[0] as i32, coords[1] as i32];
-    // Generate list of hex-centers
-    // - Clockwiseness
+pub fn populate_hex_tile_grps(side_len: usize, dims: [i32; 2], start: [i32; 2], val: u8, sdr: &mut [u8]) {
+    let dims = [dims[0] as i32, dims[1] as i32];
 
-    // Prune out of bounds centers (centers which cannot reach inside at all)
-
-    let mut centers = HexGroupCenters::new(side_len as i32)
-        .bounds([0, 0], coords);
-
-    let start = [(coords[0] / 2), (coords[1] / 2)];
-
-    // centers.centers.insert(start);
-    // centers.add_surrounds(start);
-
+    let mut centers = HexGroupCenters::new(side_len as i32, [0, 0], dims);
     centers.populate(Some(start));
 
-    // for cell in sdr.iter_mut() {
-    //     *cell = 100;
-    // }
-
     for cntr in centers.centers {
-        let idx = (cntr[0] * coords[1] as i32) + cntr[1];
+        let idx = (cntr[0] * dims[1] as i32) + cntr[1];
         assert!(idx > 0);
-        sdr[idx as usize] = 137;
+        sdr[idx as usize] = val;
     }
 }
 

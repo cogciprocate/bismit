@@ -34,10 +34,10 @@ fn main() {
             .index(1))
         .get_matches();
 
-    match matches.value_of("EVALUATION").unwrap_or("unspecified") {
+    match matches.value_of("EVALUATION").unwrap() {
         "spatial" => spatial::eval(),
         "hexdraw" => hexdraw::eval(),
-        _ => panic!("unknown evaluation specified"),
+        e @ _ => println!("Unknown evaluation specified: {}", e),
     }
 }
 
