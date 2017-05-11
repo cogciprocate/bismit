@@ -764,8 +764,6 @@ pub fn wrap_idx(idx: usize, len: usize) -> usize {
 }
 
 
-
-
 /// Evenly distributed hexagon-tile-group center coordinates ([v, u]).
 pub struct HexGroupCenters {
     centers: HashSet<[i32; 2]>,
@@ -874,6 +872,11 @@ impl HexGroupCenters {
             }
         }
     }
+
+    /// Converts the internal group centers list into a `Vec`.
+    pub fn to_vec(&self) -> Vec<[i32; 2]> {
+        self.centers.iter().cloned().collect()
+    }
 }
 
 
@@ -896,7 +899,7 @@ pub fn populate_hex_tile_grps(side_len: usize, dims: [i32; 2], start: [i32; 2], 
 
     for cntr in centers.centers {
         let idx = (cntr[0] * dims[1] as i32) + cntr[1];
-        assert!(idx > 0);
+        assert!(idx >= 0);
         sdr[idx as usize] = val;
     }
 }

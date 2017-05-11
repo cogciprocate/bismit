@@ -26,6 +26,7 @@ const HEX_GRP_SIDE: usize = 8;
 
 
 pub fn draw(params: &Params) {
+    // Populates the thing.
     fn pop(offset: [i32; 2], val: u8, guard: &mut [u8]) {
         let dims = [ENCODE_DIM as i32, ENCODE_DIM as i32];
         let start = [(dims[0] / 2) + offset[0], (dims[1] / 2) + offset[1]];
@@ -38,10 +39,15 @@ pub fn draw(params: &Params) {
     // assert!(HEX_GRP_SIDE % 2 == 0);
     let ofs_dist = (HEX_GRP_SIDE / 2) as i32;
 
-    // pop([0, 0], guard.as_mut_slice());
+    // pop([0, 0], 255, guard.as_mut_slice());
+
     pop([0, ofs_dist], 1, guard.as_mut_slice());
-    pop([-ofs_dist, 0], 127, guard.as_mut_slice());
-    pop([ofs_dist, -ofs_dist], 255, guard.as_mut_slice());
+    pop([-ofs_dist, 0], 102, guard.as_mut_slice());
+    pop([ofs_dist, -ofs_dist], 204, guard.as_mut_slice());
+
+    pop([-ofs_dist, ofs_dist], 51, guard.as_mut_slice());
+    pop([0, -ofs_dist], 153, guard.as_mut_slice());
+    pop([ofs_dist, 0], 255, guard.as_mut_slice());
 
     WriteGuard::release(guard);
 
