@@ -17,6 +17,7 @@ pub struct Dendrites {
     states_raw: Buffer<u8>,
     states: Buffer<u8>,
     energies: Buffer<u8>,
+    activity: Buffer<u8>,
     syns: Synapses,
     den_idzs_by_tft: Vec<u32>,
     den_counts_by_tft: Vec<u32>,
@@ -56,6 +57,7 @@ impl Dendrites {
 
             den_count_ttl += tft_den_count;
 
+
             // // [DEBUG]:
             // println!("###########  DENDRITE: tft_den_idz: {}", tft_den_idz);
             // println!("###########  DENDRITE: tft_den_count: {}", tft_den_count);
@@ -67,6 +69,9 @@ impl Dendrites {
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
         let energies = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
         let thresholds = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
+
+        // let activity = Buffer::<u8>::new(ocl_pq.queue().clone(), None, den_count_ttl, None, Some(()))
+        let activity = Buffer::builder().queue(ocl_pq.queue().clone()).dims(den_count_ttl).build()?;
         // energies.cmd().fill(255, None).enq().unwrap();
         energies.cmd().fill(1, None).enq().unwrap();
         energies.default_queue().unwrap().finish().unwrap();
@@ -147,6 +152,7 @@ impl Dendrites {
             states_raw: states_raw,
             states: states,
             energies: energies,
+            activity,
             syns: syns,
             den_idzs_by_tft: den_idzs_by_tft,
             den_counts_by_tft: den_counts_by_tft,

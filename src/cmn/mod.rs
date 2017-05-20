@@ -330,9 +330,10 @@ static OPENCL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-rela
 // ];
 
 // BUILTIN_OPENCL_KERNEL_FILE_NAMES: Loaded in reverse order.
-pub static BUILTIN_OPENCL_PROGRAM_SOURCE: [&'static str; 4] = [
+pub static BUILTIN_OPENCL_PROGRAM_SOURCE: [&'static str; 5] = [
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/bismit.cl")),
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/syns.cl")),
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/control.cl")),
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/filters.cl")),
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/tests.cl")),
 ];
@@ -772,7 +773,7 @@ pub struct HexGroupCenters {
     side_len: i32,
     // Determines whether surrounding groups are biased in the clockwise or
     // counterclockwise direction.
-    clockwise_lean: bool,
+    clockwise_bias: bool,
     // Lower parallelogram bound ([v, u]) closed (inclusive).
     l_bound: [i32; 2],
     // Upper parallelogram bound ([v, u]) open (exclusive).
@@ -781,13 +782,13 @@ pub struct HexGroupCenters {
 
 impl HexGroupCenters {
     pub fn new(side_len: i32, l_bound: [i32; 2], u_bound: [i32; 2]) -> HexGroupCenters {
-        const CLOCKWISE_LEAN: bool = true;
+        const CLOCKWISE_BIAS: bool = true;
 
         HexGroupCenters {
             centers: HashSet::new(),
             new_centers: HashSet::new(),
             side_len,
-            clockwise_lean: CLOCKWISE_LEAN,
+            clockwise_bias: CLOCKWISE_BIAS,
             l_bound: l_bound,
             u_bound: u_bound,
         }
@@ -821,7 +822,7 @@ impl HexGroupCenters {
     /// If the surround coordinate is not already in the `centers` set, adds
     /// it to the `new_centers` set as well.
     pub fn add_surrounds(&mut self, center: [i32; 2]) {
-        let (l, s) = if self.clockwise_lean {
+        let (l, s) = if self.clockwise_bias {
             (self.side_len, self.side_len - 1)
         } else {
             (self.side_len - 1, self.side_len)

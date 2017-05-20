@@ -31,7 +31,8 @@ fn main() {
         .arg(Arg::with_name("EVALUATION")
             .help("Specifies the evaluation to run")
             .required(true)
-            .index(1))
+            .index(1)
+            .value_name("spatial, hexdraw"))
         .get_matches();
 
     match matches.value_of("EVALUATION").unwrap() {
