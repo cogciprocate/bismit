@@ -513,18 +513,44 @@ static inline int rnd_inc(int const rnd_a, int const seed, char const val,
 static inline int rnd_dec(int const rnd_a, int const seed, char const val,
             int const lr_l2i, int const lr_mask)
 {
-    int const str_is_max = val == 127;
+    int const val_is_max = val == 127;
 
     // return ((rnd_mix(rnd_a, seed) & 0x7F)) > (abs(val) - str_is_max);       // FAST
     // return ((char)rnd_mix(rnd_a, seed)) > (char)(abs(val) - str_is_max);    // SLOWER VARIANT
+
+    // Decrements by one if the value is maxed (to give it a chance) then
+    // returns true if the random number is larger than the value.
     return ((rnd_mix(rnd_a, seed) & lr_mask))
-        > ((abs(val) - str_is_max) + (lr_mask - 0x7f));                        // ADJUSTABLE VARIANT
+        > ((abs(val) - val_is_max) + (lr_mask - 0x7f));                        // ADJUSTABLE VARIANT
 }
 
 // Creates a union of a provided mask and a new mask which marks every bit
 // below `shft_l2` active.
 static inline void lshft_mask(int* mask, int const shft_l2) {
     for (int i = 0; i < shft_l2; i++) { *mask |= (1 << i); }
+}
+
+
+// Returns true if the value should be incremented (unsigned version).
+//
+// As values approach the max value they will be increasingly less likely to
+// be incrementable.
+static inline int rnd_inc_u(int const rnd_a, int const seed, uchar const val) {
+    return (rnd_mix(rnd_a, seed) & 0x7F) > val;
+}
+
+// Returns true if the value should be decremented (unsigned version).
+//
+// As values approach the max value they will be increasingly less likely to
+// be decrementable.
+static inline int rnd_dec_u(int const rnd_a, int const seed, uchar const val) {
+    int const val_is_max = val == 255;
+
+    // Decrements by one if the value is maxed (to give it a chance) then
+    // returns true if the random number is larger than the value.
+    return (rnd_mix(rnd_a, seed) & 0x7F) > val - val_is_max;
+
+    // Decay by exponential amount
 }
 
 /*=============================================================================
@@ -719,7 +745,9 @@ __kernel void den_cycle_tft(
             __private uint const tft_syn_idz,
             __private uchar const syns_per_den_l2,
             __private uint const den_threshold,
+            __private int const rnd,
             __global uchar* const den_energies,
+            __global uchar* const den_activity,
             __global uchar* const den_states_raw,
             __global int* const aux_ints_0,
             __global int* const aux_ints_1,
@@ -744,6 +772,10 @@ __kernel void den_cycle_tft(
     int den_reduction = syns_per_den_l2 - 1;
 
     uint const den_idx = den_id_lyrtft + tft_den_idz;
+
+    // Increment activity count:
+    uchar activity_count = den_activity[den_idx];
+    den_activity[den_idx] = activity_count + rnd_inc_u(rnd, syn_sum_raw & den_idx, activity_count);
 
     den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255);
     den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255);

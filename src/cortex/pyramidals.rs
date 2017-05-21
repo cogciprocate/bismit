@@ -381,12 +381,12 @@ impl DataCellLayer for PyramidalLayer {
         self.dens_mut().regrow();
     }
 
-    fn cycle(&self, _control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+    fn cycle(&mut self, _control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling layer: '{}'...", self.layer_name); }
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
-        self.dens().cycle(exe_graph)?;
+        self.dens.cycle(exe_graph)?;
 
         // [DEBUG]: TEMPORARY:
         if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }

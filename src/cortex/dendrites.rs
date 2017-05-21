@@ -1,3 +1,4 @@
+use rand::{self, XorShiftRng, Rng};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Event};
 use ocl::traits::OclPrm;
 use cmn::{self, CmnResult, CorticalDims};
@@ -22,6 +23,7 @@ pub struct Dendrites {
     den_idzs_by_tft: Vec<u32>,
     den_counts_by_tft: Vec<u32>,
     exe_cmd_idxs: Vec<usize>,
+    rng: XorShiftRng,
     bypass_exe_graph: bool,
 }
 
@@ -69,8 +71,6 @@ impl Dendrites {
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
         let energies = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
         let thresholds = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
-
-        // let activity = Buffer::<u8>::new(ocl_pq.queue().clone(), None, den_count_ttl, None, Some(()))
         let activity = Buffer::builder().queue(ocl_pq.queue().clone()).dims(den_count_ttl).build()?;
         // energies.cmd().fill(255, None).enq().unwrap();
         energies.cmd().fill(1, None).enq().unwrap();
@@ -116,7 +116,9 @@ impl Dendrites {
                 .arg_scl(tft_syn_idz)
                 .arg_scl(syns_per_den_l2)
                 .arg_scl(den_threshold)
+                .arg_scl_named::<i32>("rnd", None)
                 .arg_buf(&energies)
+                .arg_buf(&activity)
                 .arg_buf(&states_raw)
                 .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
                 .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
@@ -157,6 +159,7 @@ impl Dendrites {
             den_idzs_by_tft: den_idzs_by_tft,
             den_counts_by_tft: den_counts_by_tft,
             exe_cmd_idxs: exe_cmd_idxs,
+            rng: rand::weak_rng(),
             bypass_exe_graph,
         })
     }
@@ -173,12 +176,14 @@ impl Dendrites {
         Ok(())
     }
 
-    pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if PRINT_DEBUG { println!("  Dens: Cycling syns..."); }
         self.syns.cycle(exe_graph)?;
 
-        for (kern, &cmd_idx) in self.kernels.iter().zip(self.exe_cmd_idxs.iter()) {
+        for (kern, &cmd_idx) in self.kernels.iter_mut().zip(self.exe_cmd_idxs.iter()) {
             if PRINT_DEBUG { println!("  Dens: Cycling kern_cycle (exe_cmd_idx: [{}])...", cmd_idx); }
+
+            kern.set_arg_scl_named("rnd", self.rng.gen::<i32>())?;
 
             let mut event = Event::empty();
             kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
@@ -215,6 +220,7 @@ impl Dendrites {
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn states_mut(&mut self) -> &mut Buffer<u8> { &mut self.states }
     #[inline] pub fn energies(&self) -> &Buffer<u8> { &self.energies }
+    #[inline] pub fn activity(&self) -> &Buffer<u8> { &self.activity }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn syns(&self) -> &Synapses { &self.syns }
     #[inline] pub fn syns_mut(&mut self) -> &mut Synapses { &mut self.syns }

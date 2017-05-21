@@ -158,7 +158,7 @@ impl SpinyStellateLayer {
     }
 
     #[inline]
-    pub fn cycle(&self, control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+    pub fn cycle(&mut self, control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling layer: '{}'...", self.layer_name); }
@@ -218,7 +218,7 @@ impl DataCellLayer for SpinyStellateLayer {
     }
 
     #[inline]
-    fn cycle(&self, control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+    fn cycle(&mut self, control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         self.cycle(control_layers, exe_graph)
