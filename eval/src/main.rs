@@ -20,7 +20,7 @@ use spatial::Params;
 
 
 fn main() {
-    use clap::{Arg, App, SubCommand};
+    use clap::{Arg, ArgGroup, App, SubCommand};
 
     env_logger::init().unwrap();
 
@@ -40,5 +40,27 @@ fn main() {
         "hexdraw" => hexdraw::eval(),
         e @ _ => println!("Unknown evaluation specified: {}", e),
     }
+
+    // let matches = App::new("Bismit Evaluator")
+    //     .version("0.1")
+    //     .author("Nick Sanders <cogciprocate@gmail.com>")
+    //     .about("Runs a variety of evaluations and tests using Bismit")
+    //     .arg(Arg::with_name("spatial")
+    //         .help("Spatial activity frequencies") )
+    //     .arg(Arg::with_name("hexdraw")
+    //         .help("Draw arbitrary patterns") )
+    //     .group(ArgGroup::with_name("evaluation")
+    //         .args(&["spatial", "hexdraw"])
+    //         .required(true))
+    //     .get_matches();
+
+    // if matches.is_present("spatial") {
+    //     // spatial::eval()
+    //     println!("")
+    // } else if matches.is_present("hexdraw") {
+    //     hexdraw::eval()
+    // } else {
+    //     println!("No evaluation specified");
+    // }
 }
 

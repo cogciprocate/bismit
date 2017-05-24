@@ -20,6 +20,7 @@ pub struct Params {
     pub tract_buffer: RwVec<u8>,
     pub axns: Buffer<u8>,
     pub l4_axns: Buffer<u8>,
+    // pub l4_spt_den_acts: Buffer<u8>,
     pub area_map: AreaMap,
     pub encode_dim: u32,
     pub area_dim: u32,
@@ -66,13 +67,105 @@ impl SubcorticalNucleus for Nucleus {
     }
 }
 
+fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, den_actvs: &Buffer<u8>, /*_min: usize*/) {
+    let cel_count = activity_counts.len();
+    let pattern_count = activity_counts[0].len();
+    let mut cel_ttls = Vec::with_capacity(cel_count);
+    let mut non_zero_ptrn_ttls: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
+    let mut ttl_count = 0f32;
 
-fn cycle(params: &Params, training_iters: usize, collect_iters: usize, pattern_count: usize,
-         sdrs: &Vec<Vec<u8>>, activity_counts: &mut Vec<Vec<usize>>)
+    let mut den_activities = vec![0; den_actvs.len()];
+    den_actvs.read(&mut den_activities).enq().unwrap();
+    assert_eq!(den_activities.len(), activity_counts.len());
+
+    for (cel_idx, counts) in activity_counts.iter().enumerate() {
+        let mut cel_ttl = 0.;
+        non_zero_ptrn_ttls.clear();
+
+        for (pattern_idx, &ptrn_ttl) in counts.iter().enumerate() {
+            if ptrn_ttl > 0 {
+                non_zero_ptrn_ttls.push((pattern_idx, ptrn_ttl));
+                cel_ttl += ptrn_ttl as f32;
+            }
+        }
+
+        if (cel_idx & 15) == 0 {
+            print!("{{[{}]:{}}}", cel_idx, den_activities[cel_idx])
+        }
+
+        // if cel_ttl > _min {
+        //     println!("Cell [{}]({}): {:?}", cel_idx, cel_ttl, non_zero_ptrn_ttls);
+        // }
+        cel_ttls.push(cel_ttl);
+        ttl_count += cel_ttl;
+    }
+
+    print!("\n");
+
+    // Calc stdev:
+    let mean = ttl_count / cel_count as f32;
+    let mut sq_diff_ttl = 0f32;
+    for &cel_ttl in cel_ttls.iter() {
+        sq_diff_ttl += (cel_ttl - mean).powi(2);
+        // print!("<{}>", (cel_ttl - mean).powi(2));
+    }
+    // print!("\n");
+
+    let stdev = (sq_diff_ttl / ttl_count).sqrt();
+    println!("Standard deviation: {}", stdev);
+}
+
+
+fn finish_queues(params: &Params, i: usize, exiting: &mut bool) {
+    params.req_tx.send(Request::FinishQueues(i)).unwrap();
+    params.cmd_tx.send(Command::None).unwrap();
+
+    // Wait for completion.
+    loop {
+        debug!("Attempting to receive...");
+        match params.res_rx.recv() {
+            Ok(res) => match res {
+                Response::Status(status) => {
+                    debug!("Status: {:?}", status);
+                    // if status.prev_cycles > cycle_count {
+                    //     params.req_tx.send(Request::FinishQueues(i)).unwrap();
+                    //     params.cmd_tx.send(Command::None).unwrap();
+                    // }
+                },
+                // Response::QueuesFinished(prev_cycles) => {
+                Response::QueuesFinished(qf_i) => {
+                    // if prev_cycles > cycle_count {
+                    //     debug!("Queues finished for: {}", prev_cycles);
+                    //     cycle_count = cycle_count.wrapping_add(1);
+                    //     break;=
+                    // }
+                    if qf_i == i {
+                        debug!("Queues finished for iteration: {}", i);
+                        // cycle_count = cycle_count.wrapping_add(1);
+                        break;
+                    }
+                },
+                Response::Exiting => {
+                    *exiting = true;
+                    break;
+                },
+                res @ _ => panic!("Unknown response received: {:?}", res),
+            },
+            Err(_) => {
+                *exiting = true;
+                break;
+            }
+        };
+    }
+}
+
+
+fn cycle(params: &Params, den_actvs: &Buffer<u8>, training_iters: usize, collect_iters: usize,
+        pattern_count: usize, sdrs: &Vec<Vec<u8>>, activity_counts: &mut Vec<Vec<usize>>)
 {
     let mut rng = rand::weak_rng();
     let mut exiting = false;
-    let mut cycle_count = 0u32;
+    // let mut cycle_count = 0u32;
 
     // Main loop:
     for i in 0..training_iters + collect_iters {
@@ -90,36 +183,7 @@ fn cycle(params: &Params, training_iters: usize, collect_iters: usize, pattern_c
         params.cmd_tx.send(Command::Iterate(1)).unwrap();
 
         // Wait for completion.
-        loop {
-            debug!("Attempting to receive...");
-            match params.res_rx.recv() {
-                Ok(res) => match res {
-                    Response::Status(status) => {
-                        debug!("Status: {:?}", status);
-                        if status.prev_cycles > cycle_count {
-                            params.req_tx.send(Request::FinishQueues).unwrap();
-                            params.cmd_tx.send(Command::None).unwrap();
-                        }
-                    },
-                    Response::QueuesFinished(prev_cycles) => {
-                        if prev_cycles > cycle_count {
-                            debug!("Queues finished for: {}", prev_cycles);
-                            cycle_count = cycle_count.wrapping_add(1);
-                            break;
-                        }
-                    },
-                    Response::Exiting => {
-                        exiting = true;
-                        break;
-                    },
-                    res @ _ => panic!("Unknown response received: {:?}", res),
-                },
-                Err(_) => {
-                    exiting = true;
-                    break;
-                }
-            };
-        }
+        finish_queues(params, i, &mut exiting);
 
         if i >= training_iters {
             // Increment the cell activity counts.
@@ -129,48 +193,13 @@ fn cycle(params: &Params, training_iters: usize, collect_iters: usize, pattern_c
             }
         }
 
+        if (i & 255) == 0 {
+            // den_actvs.
+        }
+
         if exiting { break; }
     }
 }
-
-
-fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, _min: usize) {
-    let cel_count = activity_counts.len();
-    let pattern_count = activity_counts[0].len();
-    let mut cel_ttls = Vec::with_capacity(cel_count);
-    let mut non_zero_ptrn_ttls: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
-    let mut ttl_count = 0f32;
-
-    for (cel_idx, counts) in activity_counts.iter().enumerate() {
-        let mut cel_ttl = 0.;
-        non_zero_ptrn_ttls.clear();
-
-        for (pattern_idx, &ptrn_ttl) in counts.iter().enumerate() {
-            if ptrn_ttl > 0 {
-                non_zero_ptrn_ttls.push((pattern_idx, ptrn_ttl));
-                cel_ttl += ptrn_ttl as f32;
-            }
-        }
-        // if cel_ttl > _min {
-        //     println!("Cell [{}]({}): {:?}", cel_idx, cel_ttl, non_zero_ptrn_ttls);
-        // }
-        cel_ttls.push(cel_ttl);
-        ttl_count += cel_ttl;
-    }
-
-    // Calc stdev:
-    let mean = ttl_count / cel_count as f32;
-    let mut sq_diff_ttl = 0f32;
-    for &cel_ttl in cel_ttls.iter() {
-        sq_diff_ttl += (cel_ttl - mean).powi(2);
-        // print!("<{}>", (cel_ttl - mean).powi(2));
-    }
-    // print!("\n");
-
-    let stdev = (sq_diff_ttl / ttl_count).sqrt();
-    println!("Standard deviation: {}", stdev);
-}
-
 
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
@@ -180,10 +209,6 @@ static SPT_LYR: &'static str = "iv";
 const ENCODE_DIM: u32 = 64;
 const AREA_DIM: u32 = 16;
 
-
-// pub(crate) fn eval(cmd_tx: Sender<Command>, req_tx: Sender<Request>, res_rx: Receiver<Response>,
-//         tract_buffer: RwVec<u8>, axns: Buffer<u8>, l4_axns: Buffer<u8>, area_map: AreaMap,
-//         encode_dim: u32, area_dim: u32)
 pub fn eval(/*params: Params*/) {
     let (command_tx, command_rx) = mpsc::channel();
     let (vibi_request_tx, vibi_request_rx) = mpsc::channel();
@@ -207,6 +232,9 @@ pub fn eval(/*params: Params*/) {
         cortex.areas().by_key(PRI_AREA).unwrap().axns()
             .create_sub_buffer(&v1_spt_lyr_axn_range).unwrap()
     };
+
+    let l4_spt_den_actvs = cortex.areas().by_key(PRI_AREA).unwrap()
+        .psal_TEMP().dens().activities().clone();
 
     let in_tract_idx = cortex.thal().tract().index_of(v0_ext_lyr_addr).unwrap();
     let in_tract_buffer = cortex.thal().tract().buffer(in_tract_idx).unwrap().clone();
@@ -234,7 +262,8 @@ pub fn eval(/*params: Params*/) {
 
     let params = Params { cmd_tx: spatial_command_tx, req_tx: spatial_request_tx,
         res_rx: spatial_response_rx, tract_buffer: in_tract_buffer, axns,
-        l4_axns: v1_spt_lyr_buf, area_map, encode_dim: ENCODE_DIM, area_dim: AREA_DIM };
+        l4_axns: v1_spt_lyr_buf, /*l4_spt_den_acts: l4_spt_den_acts,*/
+        area_map, encode_dim: ENCODE_DIM, area_dim: AREA_DIM };
 
     { // Inner (refactorable)
         const SPARSITY: usize = 48;
@@ -268,20 +297,22 @@ pub fn eval(/*params: Params*/) {
         params.cmd_tx.send(Command::None).unwrap();
 
         let training_iters_start = 0;
-        let collect_iters_start = 20000;
-        cycle(&params, training_iters_start, collect_iters_start, pattern_count, &sdrs, &mut activity_counts_start);
+        let collect_iters_start = 10000;
+        cycle(&params, &l4_spt_den_actvs, training_iters_start, collect_iters_start, pattern_count,
+            &sdrs, &mut activity_counts_start);
 
-        let training_iters_end = 100000;
-        let collect_iters_end = 20000;
-        cycle(&params, training_iters_end, collect_iters_end, pattern_count, &sdrs, &mut activity_counts_end);
+        let training_iters_end = 20000;
+        let collect_iters_end = 10000;
+        cycle(&params, &l4_spt_den_actvs, training_iters_end, collect_iters_end, pattern_count,
+            &sdrs, &mut activity_counts_end);
 
         println!("\nStart Activity Counts:");
-        print_activity_counts(&activity_counts_start, collect_iters_start / 1000);
-        // print_activity_counts(&activity_counts_start);
+        // print_activity_counts(&activity_counts_start, collect_iters_start / 1000);
+        print_activity_counts(&activity_counts_start, &l4_spt_den_actvs);
 
         println!("\nEnd Activity Counts:");
-        print_activity_counts(&activity_counts_end, collect_iters_end / 1000);
-        // print_activity_counts(&activity_counts_end);
+        // print_activity_counts(&activity_counts_end, collect_iters_end / 1000);
+        print_activity_counts(&activity_counts_end, &l4_spt_den_actvs);
 
         params.cmd_tx.send(Command::Exit).unwrap();
         params.cmd_tx.send(Command::None).unwrap();

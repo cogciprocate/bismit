@@ -53,7 +53,7 @@ pub fn draw(params: &Params) {
 
     // Cycle and finish queues:
     params.cmd_tx.send(Command::Iterate(1)).unwrap();
-    params.req_tx.send(Request::FinishQueues).unwrap();
+    params.req_tx.send(Request::FinishQueues(0)).unwrap();
     params.cmd_tx.send(Command::None).unwrap();
 
     // Wait for completion.
@@ -62,15 +62,15 @@ pub fn draw(params: &Params) {
         match params.res_rx.recv() {
             Ok(res) => match res {
                 Response::Status(status) => {
-                    // debug!("Status: {:?}", status);
+                    debug!("Status: {:?}", status);
                     // if status.prev_cycles == 0 {
-                        params.req_tx.send(Request::FinishQueues).unwrap();
-                        params.cmd_tx.send(Command::None).unwrap();
+                        // params.req_tx.send(Request::FinishQueues(0)).unwrap();
+                        // params.cmd_tx.send(Command::None).unwrap();
                     // }
                 },
-                Response::QueuesFinished(prev_cycles) => {
-                    if prev_cycles > 0 {
-                        debug!("Queues finished for: {}", prev_cycles);
+                Response::QueuesFinished(id) => {
+                    if id == 0 {
+                        debug!("Queues finished (id: {})", id);
                         // cycle_count = cycle_count.wrapping_add(1);
                         break;
                     }

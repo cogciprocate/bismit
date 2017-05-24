@@ -18,7 +18,8 @@ pub struct Dendrites {
     states_raw: Buffer<u8>,
     states: Buffer<u8>,
     energies: Buffer<u8>,
-    activity: Buffer<u8>,
+    activities: Buffer<u8>,
+    activity_counter: usize,
     syns: Synapses,
     den_idzs_by_tft: Vec<u32>,
     den_counts_by_tft: Vec<u32>,
@@ -71,7 +72,7 @@ impl Dendrites {
         let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
         let energies = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
         let thresholds = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
-        let activity = Buffer::builder().queue(ocl_pq.queue().clone()).dims(den_count_ttl).build()?;
+        let activities = Buffer::builder().queue(ocl_pq.queue().clone()).dims(den_count_ttl).build()?;
         // energies.cmd().fill(255, None).enq().unwrap();
         energies.cmd().fill(1, None).enq().unwrap();
         energies.default_queue().unwrap().finish().unwrap();
@@ -118,7 +119,7 @@ impl Dendrites {
                 .arg_scl(den_threshold)
                 .arg_scl_named::<i32>("rnd", None)
                 .arg_buf(&energies)
-                .arg_buf(&activity)
+                .arg_buf(&activities)
                 .arg_buf(&states_raw)
                 .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
                 .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
@@ -154,7 +155,8 @@ impl Dendrites {
             states_raw: states_raw,
             states: states,
             energies: energies,
-            activity,
+            activities,
+            activity_counter: 0,
             syns: syns,
             den_idzs_by_tft: den_idzs_by_tft,
             den_counts_by_tft: den_counts_by_tft,
@@ -192,6 +194,7 @@ impl Dendrites {
             if PRINT_DEBUG { kern.default_queue().unwrap().finish().unwrap(); }
         }
 
+        self.activity_counter += 1;
         Ok(())
     }
 
@@ -214,13 +217,18 @@ impl Dendrites {
         Ok(())
     }
 
+    pub fn zero_activities(&mut self) {
+        self.activity_counter = 0;
+    }
+
     #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
     #[inline] pub fn thresholds(&self) -> &Buffer<u8> { &self.thresholds }
     #[inline] pub fn states_raw(&self) -> &Buffer<u8> { &self.states_raw }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn states_mut(&mut self) -> &mut Buffer<u8> { &mut self.states }
     #[inline] pub fn energies(&self) -> &Buffer<u8> { &self.energies }
-    #[inline] pub fn activity(&self) -> &Buffer<u8> { &self.activity }
+    #[inline] pub fn activities(&self) -> &Buffer<u8> { &self.activities }
+    #[inline] pub fn activity_counter(&self) -> usize { self.activity_counter }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn syns(&self) -> &Synapses { &self.syns }
     #[inline] pub fn syns_mut(&mut self) -> &mut Synapses { &mut self.syns }

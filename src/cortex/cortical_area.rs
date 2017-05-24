@@ -597,6 +597,12 @@ impl CorticalArea {
         event
     }
 
+    /// Get Primary Spatial Associative Layer (immutable)
+    #[allow(non_snake_case)]
+    pub fn psal_TEMP(&self) -> &SpinyStellateLayer {
+        &self.spatial_layers[self.psal_idx]
+    }
+
     #[inline] pub fn mcols(&self) -> &Box<Minicolumns> { &self.mcols }
     #[inline] pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> { &mut self.mcols }
     #[inline] pub fn axns(&self) -> &AxonSpace { &self.axns }

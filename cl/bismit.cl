@@ -221,13 +221,6 @@ static inline int square(int const x) {
 }
 
 
-static inline int rnd_mix(int const rnd_a, int seed) {
-    seed ^= (seed ^ rnd_a) << 13;
-    seed ^= seed >> 17;
-    seed ^= seed << 5;
-    return seed;
-}
-
 // [NOTE]: Pre-variable-tuft size (2016-Dec-31).
 static inline uint calc_syn_idz_OLD(uint const tuft_id, uint const cel_count, uint const cel_id,
             uchar const syns_per_tft_l2)
@@ -486,6 +479,14 @@ static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
 ===================================== WIP =====================================
 =============================================================================*/
 
+// Cheap xorshift random number.
+static inline int rnd_mix(int const rnd_a, int seed) {
+    seed ^= (seed ^ rnd_a) << 13;
+    seed ^= seed >> 17;
+    seed ^= seed << 5;
+    return seed;
+}
+
 /* RND INC/DEC NOTES:
         - Must cap at the min and max limits (-127, 127).
         - Must not get stuck at max limit. If at max, must be decrementable. At min, who cares.
@@ -525,7 +526,7 @@ static inline int rnd_dec(int const rnd_a, int const seed, char const val,
 }
 
 // Creates a union of a provided mask and a new mask which marks every bit
-// below `shft_l2` active.
+// below `shft_l2` active. This is slow.
 static inline void lshft_mask(int* mask, int const shft_l2) {
     for (int i = 0; i < shft_l2; i++) { *mask |= (1 << i); }
 }
@@ -536,7 +537,7 @@ static inline void lshft_mask(int* mask, int const shft_l2) {
 // As values approach the max value they will be increasingly less likely to
 // be incrementable.
 static inline int rnd_inc_u(int const rnd_a, int const seed, uchar const val) {
-    return (rnd_mix(rnd_a, seed) & 0x7F) > val;
+    return (rnd_mix(rnd_a, seed) & 0xFF) > val;
 }
 
 // Returns true if the value should be decremented (unsigned version).
@@ -548,7 +549,7 @@ static inline int rnd_dec_u(int const rnd_a, int const seed, uchar const val) {
 
     // Decrements by one if the value is maxed (to give it a chance) then
     // returns true if the random number is larger than the value.
-    return (rnd_mix(rnd_a, seed) & 0x7F) > val - val_is_max;
+    return (rnd_mix(rnd_a, seed) & 0xFF) > val - val_is_max;
 
     // Decay by exponential amount
 }
@@ -732,6 +733,12 @@ __kernel void den_cycle_DEPRICATE(
 }
 
 
+// Returns true (1) 1 out of every 16 times (1:15 ratio)
+static int rnd_256(int rnd, int seed, uchar cutoff) {
+    return (rnd_mix(rnd, seed) & 255) < cutoff;
+}
+
+
 // Cycles dendrites.
 //
 // The 'raw' tract disregards whether or not the synapse states have strengths
@@ -747,7 +754,7 @@ __kernel void den_cycle_tft(
             __private uint const den_threshold,
             __private int const rnd,
             __global uchar* const den_energies,
-            __global uchar* const den_activity,
+            __global uchar* const den_activities,
             __global uchar* const den_states_raw,
             __global int* const aux_ints_0,
             __global int* const aux_ints_1,
@@ -769,14 +776,22 @@ __kernel void den_cycle_tft(
 
     syn_sum = mul24((syn_sum > den_threshold), syn_sum);
 
-    int den_reduction = syns_per_den_l2 - 1;
-
     uint const den_idx = den_id_lyrtft + tft_den_idz;
 
-    // Increment activity count:
-    uchar activity_count = den_activity[den_idx];
-    den_activity[den_idx] = activity_count + rnd_inc_u(rnd, syn_sum_raw & den_idx, activity_count);
+    // Increment activities count if active:
+    uchar activity_count = den_activities[den_idx];
+    activity_count += rnd_inc_u(rnd, syn_sum_raw & den_idx, activity_count)
+        // & (syn_sum > 0)
+        ;
 
+    // Decrement activities count at random (odds should be tuned [256 max]):
+    // TODO: Streamline / speed up (remove double ran_mix calls?).
+    uchar const odds_cutoff = 255;
+    // activity_count -= rnd_256(rnd, syn_sum_raw | den_idx, odds_cutoff) &
+    //     rnd_dec_u(rnd, syn_sum_raw & den_idx, activity_count);
+
+    den_activities[den_idx] = activity_count;
+    int den_reduction = syns_per_den_l2 - 1;
     den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255);
     den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255);
 }

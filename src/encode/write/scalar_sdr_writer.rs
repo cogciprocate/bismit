@@ -14,16 +14,6 @@ const AXON_VALUE: u8 = 127;
 #[inline]
 pub fn gen_axn_idxs(rng: &mut XorShiftRng, active_count: usize, sdr_len: usize) -> Vec<TractAxonIdx> {
     let range = Range::new(0, sdr_len);
-
-    // let mut sdr = Vec::with_capacity(active_count);
-    // for _ in 0..active_count {
-    //     let idx = range.ind_sample(rng);
-    //     sdr.push(idx);
-    // }
-
-    // // sdr.sort();
-    // sdr
-
     (0..active_count).map(|_| range.ind_sample(rng)).collect()
 }
 

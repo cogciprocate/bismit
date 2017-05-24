@@ -80,7 +80,7 @@ pub enum Request {
     Status,
     AreaInfo,
     Sample(Range<u8>, Arc<Mutex<Vec<u8>>>),
-    FinishQueues,
+    FinishQueues(usize),
     // Input(Obs),
     // GetAction,
 }
@@ -96,7 +96,7 @@ pub enum Response {
     Motor(MotorFrame),
     AreaInfo(Box<AreaInfo>),
     SampleProgress(Option<OclEvent>),
-    QueuesFinished(u32),
+    QueuesFinished(usize),
     Exiting,
 }
 
@@ -362,10 +362,10 @@ impl Flywheel {
                             Request::CurrentIter => {
                                 res_tx.send(Response::CurrentIter(self.status.cur_cycle)).unwrap();
                             },
-                            Request::FinishQueues => {
+                            Request::FinishQueues(id) => {
                                 // Will block:
                                 self.cortex.finish_queues();
-                                match res_tx.send(Response::QueuesFinished(self.status.prev_cycles)) {
+                                match res_tx.send(Response::QueuesFinished(id)) {
                                     Ok(_) => (),
                                     Err(err) => if !self.exiting { panic!("{:?}", err); }
                                 }

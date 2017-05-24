@@ -341,7 +341,6 @@ pub static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 5] = [
 
 // LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
 //        -Used by AreaMap
-// [FIXME]: TEMPORARY: determine path non-retardedly...
 pub fn load_builtin_kernel_source(mut build_options: ProgramBuilder) -> ProgramBuilder {
     // for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
     //     build_options = build_options.src_file(
