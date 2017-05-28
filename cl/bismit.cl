@@ -22,10 +22,10 @@
 // INHIB_INFL_HORIZ_OFFSET: STRETCHES EDGE OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
 #define INHIB_INFL_HORIZ_OFFSET            3
 
-#define RETNAL_THRESHOLD                 48
+#define RETNAL_THRESHOLD       48
 
-// Passed to `rnd_256()`. 255 (max) ~> 1:1
-#define DENDRITE_ACTIVITY_DECAY_FACTOR 3
+// Passed to `rnd_0xFFFF()`. 255 (max) ~> 1:1
+#define DENDRITE_ACTIVITY_DECAY_FACTOR      768
 
  /* bismit.cl: CONVENTIONS
 
@@ -558,7 +558,7 @@ static inline int rnd_dec_u(int const rnd_a, int const seed, uchar const val) {
 }
 
 
-// Returns true (1) [approx.] every `cutoff` / 256 calls.
+// Returns true (1) [approx.] every `cutoff / 256` calls.
 //
 // `cutoff` of:
 // 8 ~> 1/32
@@ -568,8 +568,22 @@ static inline int rnd_dec_u(int const rnd_a, int const seed, uchar const val) {
 //
 // TODO: Add unit test.
 //
-static int rnd_256(int rnd, int seed, uchar cutoff) {
-    return (rnd_mix(rnd, seed) & 255) < cutoff;
+static int rnd_0xFF(int rnd, int seed, uchar cutoff) {
+    return (rnd_mix(rnd, seed) & 0xFF) < cutoff;
+}
+
+// Returns true (1) [approx.] every `cutoff / 65536` calls
+//
+// `cutoff` of:
+// 256 ~> 1/256
+// 1024 ~> 1/64
+// 32768 ~> 1/2
+// etc.
+///
+// TODO: Add unit test.
+//
+static int rnd_0xFFFF(int rnd, int seed, ushort cutoff) {
+    return (rnd_mix(rnd, seed) & 0xFFFF) < cutoff;
 }
 
 /*=============================================================================
@@ -744,7 +758,7 @@ __kernel void den_cycle_tft(
     // Increment activity rating if active:
     activity_rating += rnd_inc_u(rnd, syn_sum_raw & den_idx, activity_rating) & den_is_active;
     // Decrement activities count at random (may need tuning [256 max]):
-    activity_rating -= rnd_256(rnd, syn_sum_raw | den_idx, DENDRITE_ACTIVITY_DECAY_FACTOR) &
+    activity_rating -= rnd_0xFFFF(rnd, syn_sum_raw | den_idx, DENDRITE_ACTIVITY_DECAY_FACTOR) &
         (activity_rating > 0);
 
     den_activities[den_idx] = activity_rating;

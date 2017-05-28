@@ -579,7 +579,6 @@ impl ExecutionGraph {
     }
 
     /// Populates the list of requisite commands for each command.
-    ///
     pub fn populate_requisites(&mut self) {
         assert!(self.commands.len() == self.order.len(), "ExecutionGraph::populate_requisites \
             Not all commands have had their order properly set ({}/{}). Call '::order_next' to \
@@ -633,7 +632,6 @@ impl ExecutionGraph {
     }
 
     /// Returns the list of requisite events for a command.
-    ///
     pub fn get_req_events(&mut self, cmd_idx: usize) -> ExeGrResult<&[cl_event]> {
         if !self.locked { return Err(ExecutionGraphError::Unlocked); }
 
@@ -663,7 +661,6 @@ impl ExecutionGraph {
     }
 
     /// Sets the event associated with the completion of a command.
-    // pub fn set_cmd_event(&mut self, cmd_idx: usize, event: Event) -> ExeGrResult<()> {
     pub fn set_cmd_event(&mut self, cmd_idx: usize, event: Option<Event>) -> ExeGrResult<()> {
         if !self.locked { return Err(ExecutionGraphError::Unlocked); }
 
@@ -674,9 +671,7 @@ impl ExecutionGraph {
             return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_order_idx, cmd_idx));
         }
 
-        cmd.set_event(event.map(|e| e.into())); // <--- Correct Version
-        // cmd.set_event(event.map(|ev| ev.core().clone()));
-        // cmd.set_event(event.core().clone());
+        cmd.set_event(event.map(|e| e.into()));
 
         if (self.next_order_idx + 1) == self.order.len() {
             self.next_order_idx = 0;
@@ -688,10 +683,6 @@ impl ExecutionGraph {
 
         Ok(())
     }
-
-    // pub fn _RESET(&mut self) {
-    //     self.next_order_idx = 0;
-    // }
 
     // #[inline] pub fn command_count(&self) -> usize { self.order.len() }
 }

@@ -2,8 +2,8 @@
 //
 // Kernels for control (inhibitory, etc.) cells.
 
-// Passed to `rnd_256()`. 255 (max) ~> 1:1
-#define CELL_ACTIVITY_DECAY_FACTOR 3
+// Passed to `rnd_0xFFFF()`. 255 (max) ~> 1:1
+#define CELL_ACTIVITY_DECAY_FACTOR      768
 
 
 //     INHIB_SIMPLE(): [DESCRIPTION OUT OF DATE] Cell Inhibition - reads from soma, writes to axon
@@ -156,13 +156,13 @@ __kernel void inhib_simple(
     int axon_is_active = uninhibited & (cel_state != 0);
     activity_rating += rnd_inc_u(rnd, cel_state & cel_idx, activity_rating) & axon_is_active;
     // Decrement activities count at random (may need tuning [256 max]):
-    activity_rating -= rnd_256(rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_FACTOR) &
+    activity_rating -= rnd_0xFFFF(rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_FACTOR) &
        (activity_rating > 0);
 
     // /////// DEBUG:
     // uchar activity_rating = activities[cel_idx];
     // activity_rating += axon_is_active & (activity_rating < 254);
-    // activity_rating -= rnd_256(rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_FACTOR)
+    // activity_rating -= rnd_0xFF(rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_FACTOR)
     //     & (activity_rating > 0);
     // ///////
 
