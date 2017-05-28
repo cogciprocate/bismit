@@ -24,6 +24,9 @@
 
 #define RETNAL_THRESHOLD                 48
 
+// Passed to `rnd_256()`. 255 (max) ~> 1:1
+#define DENDRITE_ACTIVITY_DECAY_FACTOR 8
+
  /* bismit.cl: CONVENTIONS
 
         idx: current index (of a loop, workgroup, queue, etc.)
@@ -696,9 +699,6 @@ __kernel void reference_all_the_things(__private int const for_sanitys_sake) {
 //     - TODO: Split this beast up.
 
 
-#define DENDRITE_ACTIVITY_DECAY_CUTOFF 8
-
-
 // Cycles dendrites.
 //
 // The 'raw' tract disregards whether or not the synapse states have strengths
@@ -739,17 +739,12 @@ __kernel void den_cycle_tft(
 
     uint const den_idx = den_id_lyrtft + tft_den_idz;
 
-    // Increment activities count if active:
+    // Get activity rating:
     uchar activity_rating = den_activities[den_idx];
-    activity_rating += rnd_inc_u(rnd, syn_sum_raw & den_idx, activity_rating)
-        & den_is_active;
-
-    // Decrement activities count at random (odds should be tuned [256 max]):
-    // TODO: Streamline / speed up (remove double ran_mix calls?).
-    uchar const odds_cutoff = 16;
-    // activity_rating -= rnd_256(rnd, syn_sum_raw | den_idx, odds_cutoff) &
-    //     rnd_dec_u(rnd, syn_sum_raw & den_idx, activity_rating);
-    activity_rating -= rnd_256(rnd, syn_sum_raw | den_idx, odds_cutoff) &
+    // Increment activity rating if active:
+    activity_rating += rnd_inc_u(rnd, syn_sum_raw & den_idx, activity_rating) & den_is_active;
+    // Decrement activities count at random (may need tuning [256 max]):
+    activity_rating -= rnd_256(rnd, syn_sum_raw | den_idx, DENDRITE_ACTIVITY_DECAY_FACTOR) &
         (activity_rating > 0);
 
     den_activities[den_idx] = activity_rating;
