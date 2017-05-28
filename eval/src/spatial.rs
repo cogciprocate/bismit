@@ -1,6 +1,6 @@
 
 use std::thread;
-use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
+use std::sync::mpsc::{self, Sender, Receiver, /*TryRecvError*/};
 use rand;
 use rand::distributions::{Range, IndependentSample};
 use vibi::window;
@@ -9,8 +9,8 @@ use vibi::bismit::flywheel::Flywheel;
 use vibi::bismit::ocl::{Buffer, RwVec, WriteGuard};
 use vibi::bismit::{map, Cortex, Thalamus, SubcorticalNucleus, CorticalAreaSettings, Subcortex};
 use vibi::bismit::flywheel::{Command, Request, Response};
-use vibi::bismit::map::{AxonDomainRoute, AreaMap};
-use vibi::bismit::encode::{self, ScalarSdrWriter};
+use vibi::bismit::map::{/*AxonDomainRoute,*/ AreaMap};
+use vibi::bismit::encode::{self, /*ScalarSdrWriter*/};
 
 
 pub struct Params {
@@ -32,8 +32,8 @@ pub(crate) struct Nucleus {
 }
 
 impl Nucleus {
-    pub fn new<S: Into<String>>(area_name: S, lyr_name: &'static str, tar_area: &'static str,
-            cortex: &Cortex) -> Nucleus
+    pub fn new<S: Into<String>>(area_name: S, _lyr_name: &'static str, _tar_area: &'static str,
+            _cortex: &Cortex) -> Nucleus
     {
         let area_name = area_name.into();
 
@@ -67,8 +67,10 @@ impl SubcorticalNucleus for Nucleus {
     }
 }
 
-fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, den_actvs: &Buffer<u8>,
-        cel_actvs: &Buffer<u8>)
+// Prints dendritic and cell activity ratings as well as a total activity
+// count for a selection of cells (currently every 8th).
+fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>,
+        activity_counts: &Vec<Vec<usize>>)
 {
     let cel_count = activity_counts.len();
     let pattern_count = activity_counts[0].len();
@@ -98,6 +100,10 @@ fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, den_actvs: &Buffer<u
 
         // let d_act = den_activities[cel_idx];
 
+
+        // `da`: dendrite activity rating (pre-inhib)
+        // `ca`: cell activity rating (post-inhib)
+        // `ct`: cell activity count
         if (cel_idx & 7) == 0 {
             print!("{{[");
             printc!(dark_grey: "{}", cel_idx);
@@ -177,7 +183,7 @@ fn finish_queues(params: &Params, i: usize, exiting: &mut bool) {
 }
 
 
-fn cycle(params: &Params, den_actvs: &Buffer<u8>, training_iters: usize, collect_iters: usize,
+fn cycle(params: &Params, training_iters: usize, collect_iters: usize,
         pattern_count: usize, sdrs: &Vec<Vec<u8>>, activity_counts: &mut Vec<Vec<usize>>)
 {
     let mut rng = rand::weak_rng();
@@ -208,10 +214,6 @@ fn cycle(params: &Params, den_actvs: &Buffer<u8>, training_iters: usize, collect
             for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
                 counts[pattern_idx] += (axn > 0) as usize;
             }
-        }
-
-        if (i & 255) == 0 {
-            // den_actvs.
         }
 
         if exiting { break; }
@@ -250,9 +252,11 @@ pub fn eval(/*params: Params*/) {
             .create_sub_buffer(&v1_spt_lyr_axn_range).unwrap()
     };
 
+    // Layer 4 spatial dendrite activity ratings (pre-inhib):
     let l4_spt_den_actvs = cortex.areas().by_key(PRI_AREA).unwrap()
         .psal_TEMP().dens().activities().clone();
 
+    // Layer 4 spatial cell activity ratings (axon activity, post-inhib):
     let l4_spt_cel_actvs = cortex.areas().by_key(PRI_AREA).unwrap()
         .psal_TEMP().activities().clone();
 
@@ -260,7 +264,6 @@ pub fn eval(/*params: Params*/) {
     let in_tract_buffer = cortex.thal().tract().buffer(in_tract_idx).unwrap().clone();
     let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
     let area_map = cortex.areas().by_key(PRI_AREA).unwrap().area_map().clone();
-    // let ssts =
 
     let nucl = Nucleus::new(IN_AREA, EXT_LYR, PRI_AREA, &cortex);
     cortex.add_subcortex(Subcortex::new().nucl(nucl));
@@ -309,41 +312,64 @@ pub fn eval(/*params: Params*/) {
 
         let cell_count = (params.area_dim * params.area_dim) as usize;
 
-        // The number of times each cell has become active for each pattern:
-        let mut activity_counts_t0 = vec![vec![0; pattern_count]; cell_count];
-        let mut activity_counts_t1 = vec![vec![0; pattern_count]; cell_count];
-        let mut activity_counts_t2 = vec![vec![0; pattern_count]; cell_count];
-
         // Get the flywheel moving:
         params.cmd_tx.send(Command::None).unwrap();
 
-        // T[0]:
-        let training_iters_t0 = 0;
-        let collect_iters_t0 = 100;
-        cycle(&params, &l4_spt_den_actvs, training_iters_t0, collect_iters_t0, pattern_count,
-            &sdrs, &mut activity_counts_t0);
-        println!("\nStart Activity Counts:");
-        // print_activity_counts(&activity_counts_t0, collect_iters_t0 / 1000);
-        print_activity_counts(&activity_counts_t0, &l4_spt_den_actvs, &l4_spt_cel_actvs);
+        // Define the number of iters to first train then collect for each
+        // sample period. All learning and other cell parameters (activity,
+        // energy, etc.) persist between sample periods. Only collection
+        // iters are recorded and evaluated.
+        let training_collect_iters = vec![
+            (0, 10000),
+            (40000, 10000),
+            (40000, 10000),
+            (40000, 10000),
+            (40000, 10000),
+            (40000, 10000),
+            (40000, 10000),
+            (0, 1000),
+            // (0, 100),
+        ];
 
-        // T[1]:
-        // let training_iters_t1 = 30000;
-        let training_iters_t1 = 0;
-        let collect_iters_t1 = 100;
-        cycle(&params, &l4_spt_den_actvs, training_iters_t1, collect_iters_t1, pattern_count,
-            &sdrs, &mut activity_counts_t1);
-        println!("\nEnd Activity Counts:");
-        // print_activity_counts(&activity_counts_t1, collect_iters_t1 / 1000);
-        print_activity_counts(&activity_counts_t1, &l4_spt_den_actvs, &l4_spt_cel_actvs);
+        for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {
+            let mut activity_counts = vec![vec![0; pattern_count]; cell_count];
+            cycle(&params, training_iters, collect_iters, pattern_count,
+                &sdrs, &mut activity_counts);
+            println!("\nActivity Counts [{}] (train: {}, collect: {}):",
+                t, training_iters, collect_iters);
+            print_activity_counts(&l4_spt_den_actvs, &l4_spt_cel_actvs, &activity_counts);
+        }
 
-        // T[2]:
-        let training_iters_t2 = 0;
-        let collect_iters_t2 = 100;
-        cycle(&params, &l4_spt_den_actvs, training_iters_t2, collect_iters_t2, pattern_count,
-            &sdrs, &mut activity_counts_t2);
-        println!("\nEnd Activity Counts:");
-        // print_activity_counts(&activity_counts_t2, collect_iters_t2 / 1000);
-        print_activity_counts(&activity_counts_t2, &l4_spt_den_actvs, &l4_spt_cel_actvs);
+        // // T[0]:
+        // let mut activity_counts_t0 = vec![vec![0; pattern_count]; cell_count];
+        // let training_iters_t0 = 0;
+        // let collect_iters_t0 = 1000;
+        // cycle(&params, &l4_spt_den_actvs, training_iters_t0, collect_iters_t0, pattern_count,
+        //     &sdrs, &mut activity_counts_t0);
+        // println!("\nStart Activity Counts:");
+        // // print_activity_counts(&activity_counts_t0, collect_iters_t0 / 1000);
+        // print_activity_counts(&activity_counts_t0, &l4_spt_den_actvs, &l4_spt_cel_actvs);
+
+        // // T[1]:
+        // // let training_iters_t1 = 30000;
+        // let mut activity_counts_t1 = vec![vec![0; pattern_count]; cell_count];
+        // let training_iters_t1 = 0;
+        // let collect_iters_t1 = 1000;
+        // cycle(&params, &l4_spt_den_actvs, training_iters_t1, collect_iters_t1, pattern_count,
+        //     &sdrs, &mut activity_counts_t1);
+        // println!("\nEnd Activity Counts:");
+        // // print_activity_counts(&activity_counts_t1, collect_iters_t1 / 1000);
+        // print_activity_counts(&activity_counts_t1, &l4_spt_den_actvs, &l4_spt_cel_actvs);
+
+        // // T[2]:
+        // let mut activity_counts_t2 = vec![vec![0; pattern_count]; cell_count];
+        // let training_iters_t2 = 0;
+        // let collect_iters_t2 = 1000;
+        // cycle(&params, &l4_spt_den_actvs, training_iters_t2, collect_iters_t2, pattern_count,
+        //     &sdrs, &mut activity_counts_t2);
+        // println!("\nEnd Activity Counts:");
+        // // print_activity_counts(&activity_counts_t2, collect_iters_t2 / 1000);
+        // print_activity_counts(&activity_counts_t2, &l4_spt_den_actvs, &l4_spt_cel_actvs);
 
         params.cmd_tx.send(Command::Exit).unwrap();
         params.cmd_tx.send(Command::None).unwrap();

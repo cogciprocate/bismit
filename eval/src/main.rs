@@ -1,6 +1,6 @@
 //! Encode a sequence of scalar values and display their representation.
 
-#![allow(unused_imports, unused_variables, dead_code)]
+// #![allow(unused_imports, unused_variables, dead_code)]
 
 extern crate rand;
 extern crate vibi;
@@ -12,16 +12,16 @@ extern crate clap;
 mod spatial;
 mod hexdraw;
 
-use vibi::window;
-use vibi::bismit::{map, Cortex, CorticalAreaSettings, Subcortex};
-use vibi::bismit::map::*;
-use vibi::bismit::flywheel::Flywheel;
-use spatial::Params;
+// use vibi::window;
+// use vibi::bismit::{map, Cortex, CorticalAreaSettings, Subcortex};
+// use vibi::bismit::map::*;
+// use vibi::bismit::flywheel::Flywheel;
+// use spatial::Params;
 
 
 
 fn main() {
-    use clap::{Arg, ArgGroup, App, SubCommand};
+    use clap::{Arg, /*ArgGroup,*/ App, /*SubCommand*/};
 
     env_logger::init().unwrap();
 

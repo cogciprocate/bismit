@@ -696,7 +696,7 @@ __kernel void reference_all_the_things(__private int const for_sanitys_sake) {
 //     - TODO: Split this beast up.
 
 
-#define DENDRITE_ACTIVITY_DECAY_CUTOFF 16
+#define DENDRITE_ACTIVITY_DECAY_CUTOFF 8
 
 
 // Cycles dendrites.
@@ -734,23 +734,25 @@ __kernel void den_cycle_tft(
         syn_sum_raw += syn_state;
     }
 
-    syn_sum = mul24((syn_sum > den_threshold), syn_sum);
+    int den_is_active = (syn_sum > den_threshold);
+    syn_sum = mul24(den_is_active, syn_sum);
 
     uint const den_idx = den_id_lyrtft + tft_den_idz;
 
     // Increment activities count if active:
-    uchar activity_count = den_activities[den_idx];
-    activity_count += rnd_inc_u(rnd, syn_sum_raw & den_idx, activity_count)
-        & (syn_sum > 0);
+    uchar activity_rating = den_activities[den_idx];
+    activity_rating += rnd_inc_u(rnd, syn_sum_raw & den_idx, activity_rating)
+        & den_is_active;
 
     // Decrement activities count at random (odds should be tuned [256 max]):
     // TODO: Streamline / speed up (remove double ran_mix calls?).
     uchar const odds_cutoff = 16;
-    // activity_count -= rnd_256(rnd, syn_sum_raw | den_idx, odds_cutoff) &
-    //     rnd_dec_u(rnd, syn_sum_raw & den_idx, activity_count);
-    activity_count -= rnd_256(rnd, syn_sum_raw | den_idx, odds_cutoff);
+    // activity_rating -= rnd_256(rnd, syn_sum_raw | den_idx, odds_cutoff) &
+    //     rnd_dec_u(rnd, syn_sum_raw & den_idx, activity_rating);
+    activity_rating -= rnd_256(rnd, syn_sum_raw | den_idx, odds_cutoff) &
+        (activity_rating > 0);
 
-    den_activities[den_idx] = activity_count;
+    den_activities[den_idx] = activity_rating;
     int den_reduction = syns_per_den_l2 - 1;
     den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255);
     den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255);

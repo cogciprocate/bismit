@@ -1,17 +1,17 @@
 
 use std::thread;
-use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
-use rand;
-use rand::distributions::{Range, IndependentSample};
+use std::sync::mpsc::{self, /*Sender, Receiver, TryRecvError*/};
+// use rand;
+// use rand::distributions::{Range, IndependentSample};
 use vibi::window;
 use vibi::bismit::cmn;
 use vibi::bismit::map::*;
 use vibi::bismit::flywheel::Flywheel;
-use vibi::bismit::ocl::{Buffer, RwVec, WriteGuard};
-use vibi::bismit::{map, Cortex, Thalamus, SubcorticalNucleus, CorticalAreaSettings, Subcortex};
+use vibi::bismit::ocl::{/*Buffer, RwVec,*/ WriteGuard};
+use vibi::bismit::{map, Cortex, /*Thalamus, SubcorticalNucleus,*/ CorticalAreaSettings, /*Subcortex*/};
 use vibi::bismit::flywheel::{Command, Request, Response};
-use vibi::bismit::map::{AxonDomainRoute, AreaMap};
-use vibi::bismit::encode::{self, ScalarSdrWriter};
+// use vibi::bismit::map::{AxonDomainRoute, AreaMap};
+// use vibi::bismit::encode::{self, ScalarSdrWriter};
 use spatial::Params;
 
 
