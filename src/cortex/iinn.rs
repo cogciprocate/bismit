@@ -1,26 +1,25 @@
+use rand::{self, Rng};
 use cmn::{CorticalDims, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
-use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
+use ocl::{Kernel, ProQue, SpatialDims, /*Buffer,*/ Event};
 use map::CellScheme;
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct InhibitoryInterneuronNetwork {
     layer_name: &'static str,
     // layer_id: usize,
     layer_addr: LayerAddress,
     host_lyr_addr: LayerAddress,
     // dims: CorticalDims,
-
     kern_inhib_simple: Kernel,
     kern_inhib_passthrough: Kernel,
     exe_cmd_idx: usize,
-
-    pub spi_ids: Buffer<u8>,
-    pub wins: Buffer<u8>,
-    pub states: Buffer<u8>,
-
+    rng: rand::XorShiftRng,
+    // pub spi_ids: Buffer<u8>,
+    // pub wins: Buffer<u8>,
+    // pub states: Buffer<u8>,
     settings: CorticalAreaSettings,
 }
 
@@ -34,27 +33,27 @@ impl InhibitoryInterneuronNetwork {
     {
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
-        let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
-        let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
+        // let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
+        // let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
+        // let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
 
         // Simple (active) kernel:
         let kern_inhib_simple_name = "inhib_simple";
-        let kern_inhib_simple = ocl_pq.create_kernel(kern_inhib_simple_name)
-            .expect("InhibitoryInterneuronNetwork::new()")
+        let kern_inhib_simple = ocl_pq.create_kernel(kern_inhib_simple_name)?
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(host_lyr.soma())
             .arg_scl(host_lyr_base_axn_slc)
+            .arg_scl_named::<i32>("rnd", None)
+            .arg_buf(host_lyr.activities())
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(axns.states());
 
         // Passthrough kernel:
         let kern_inhib_passthrough_name = "inhib_passthrough";
-        let kern_inhib_passthrough = ocl_pq.create_kernel(kern_inhib_passthrough_name)
-            .expect("InhibitoryInterneuronNetwork::new()")
+        let kern_inhib_passthrough = ocl_pq.create_kernel(kern_inhib_passthrough_name)?
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .arg_buf(host_lyr.soma())
@@ -82,14 +81,13 @@ impl InhibitoryInterneuronNetwork {
             layer_addr: layer_addr,
             host_lyr_addr: host_lyr.layer_addr(),
             // dims: dims,
-
             kern_inhib_simple: kern_inhib_simple,
             kern_inhib_passthrough: kern_inhib_passthrough,
             exe_cmd_idx: exe_cmd_idx,
-
-            spi_ids: spi_ids,
-            wins: wins,
-            states: states,
+            rng: rand::weak_rng(),
+            // spi_ids: spi_ids,
+            // wins: wins,
+            // states: states,
             settings: settings,
         })
     }
@@ -101,7 +99,7 @@ impl InhibitoryInterneuronNetwork {
 
     // FIXME: `::new` should take the `bypass` argument instead.
     #[inline]
-    pub fn cycle(&self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+    pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         let mut event = Event::empty();
 
         if self.settings.bypass_inhib {
@@ -110,6 +108,8 @@ impl InhibitoryInterneuronNetwork {
                 .enew(&mut event)
                 .enq()?;
         } else {
+            self.kern_inhib_simple.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
+
             self.kern_inhib_simple.cmd()
                 .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
                 .enew(&mut event)
@@ -135,11 +135,11 @@ impl ControlCellLayer for InhibitoryInterneuronNetwork {
         self.set_exe_order(exe_graph)
     }
 
-    fn cycle_pre(&self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+    fn cycle_pre(&mut self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         Ok(())
     }
 
-    fn cycle_post(&self, exe_graph: &mut ExecutionGraph, host_lyr_addr: LayerAddress) -> CmnResult<()> {
+    fn cycle_post(&mut self, exe_graph: &mut ExecutionGraph, host_lyr_addr: LayerAddress) -> CmnResult<()> {
         self.cycle(exe_graph, host_lyr_addr)
     }
 

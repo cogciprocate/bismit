@@ -472,7 +472,7 @@ impl CorticalArea {
 
         // (2.) SSTs Cycle:
         if !self.settings.disable_ssts {
-            for lyr in &mut self.spatial_layers { lyr.cycle(&self.control_layers,
+            for lyr in &mut self.spatial_layers { lyr.cycle(&mut self.control_layers,
                 &mut self.exe_graph)? }
         }
 
@@ -499,25 +499,25 @@ impl CorticalArea {
             // (6a.) Temporal Layers Learn & Cycle:
             for lyr in &mut self.temporal_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
-                lyr.cycle(&self.control_layers, &mut self.exe_graph)?;
+                lyr.cycle(&mut self.control_layers, &mut self.exe_graph)?;
             }
 
             // (6b.) Focus Layers Learn & Cycle:
             for lyr in &mut self.focus_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
-                lyr.cycle(&self.control_layers, &mut self.exe_graph)?;
+                lyr.cycle(&mut self.control_layers, &mut self.exe_graph)?;
             }
 
             // (6c.) Motor Layers Learn & Cycle:
             for lyr in &mut self.motor_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
-                lyr.cycle(&self.control_layers, &mut self.exe_graph)?;
+                lyr.cycle(&mut self.control_layers, &mut self.exe_graph)?;
             }
 
             // (6d.) Other Layers Learn & Cycle:
             for lyr in &mut self.other_layers {
                 if !self.settings.disable_learning { lyr.learn(&mut self.exe_graph)?; }
-                lyr.cycle(&self.control_layers, &mut self.exe_graph)?;
+                lyr.cycle(&mut self.control_layers, &mut self.exe_graph)?;
             }
         }
 

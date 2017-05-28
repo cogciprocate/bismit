@@ -9,11 +9,13 @@ pub use self::tests::{DataCellLayerTest, CelCoords};
 pub trait DataCellLayer: Send {
     fn layer_name(&self) -> &'static str;
     fn layer_addr(&self) -> LayerAddress;
-    fn cycle(&mut self, &[Box<ControlCellLayer>], &mut ExecutionGraph) -> CmnResult<()>;
+    fn cycle(&mut self, &mut [Box<ControlCellLayer>], &mut ExecutionGraph) -> CmnResult<()>;
     fn learn(&mut self, &mut ExecutionGraph) -> CmnResult <()> ;
     fn regrow(&mut self);
     fn soma(&self) -> &Buffer<u8>;
     fn soma_mut(&mut self) -> &mut Buffer<u8>;
+    fn energies(&self) -> &Buffer<u8>;
+    fn activities(&self) -> &Buffer<u8>;
     fn dims(&self) -> &CorticalDims;
     fn axn_range(&self) -> (usize, usize);
     fn axn_slc_ids(&self) -> &[u8];

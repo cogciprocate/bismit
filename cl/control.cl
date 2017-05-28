@@ -1,3 +1,10 @@
+// # CONTROL.CL
+//
+// Kernels for control (inhibitory, etc.) cells.
+
+// 255 (max) ~> 1:1
+#define CELL_ACTIVITY_DECAY_CUTOFF 16
+
 
 //     INHIB_SIMPLE(): [DESCRIPTION OUT OF DATE] Cell Inhibition - reads from soma, writes to axon
 //        - If any nearby cells are more active (have a higher soma 'state')
@@ -14,6 +21,8 @@
 __kernel void inhib_simple(
             __global uchar const* const cel_states,
             __private uchar const cel_base_axn_slc,
+            __private int const rnd,
+            __global uchar* const activities,
             // __global int* const aux_ints_1,
             __global uchar* const axn_states)
 {
@@ -138,8 +147,24 @@ __kernel void inhib_simple(
         }
     }
 
+    // Set axon state if cell is uninhibited:
     axn_states[cel_axn_idx] = mul24((uint)uninhibited, (uint)cel_state);
 
+    int axon_is_active = uninhibited & (cel_state != 0);
+
+    // // Get activity rating:
+    // uchar activity_rating = activities[cel_idx];
+    // // Increment activity rating if active:
+    // activity_rating += rnd_inc_u(rnd, cel_state & cel_idx, activity_rating) & axon_is_active;
+    // // Decrement activities count at random (needs tuning [256 max]):
+    // activity_rating -= rnd_256(rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_CUTOFF);
+
+    /////// DEBUG:
+    uchar activity_rating = activities[cel_idx];
+    activity_rating += axon_is_active & (activity_rating < 254);
+    ///////
+
+    activities[cel_idx] = activity_rating;
 }
 
 

@@ -31,7 +31,8 @@ pub struct PyramidalLayer {
     tft_best_den_ids: Buffer<u8>,
     tft_best_den_states_raw: Buffer<u8>,
     tft_best_den_states: Buffer<u8>,
-    // energies: Buffer<u8>, // <<<<< SLATED FOR REMOVAL
+    energies: Buffer<u8>,
+    activities: Buffer<u8>,
     pub dens: Dendrites,
 
     tft_cycle_exe_cmd_idxs: Vec<usize>,
@@ -68,7 +69,8 @@ impl PyramidalLayer {
         let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
         let tft_best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
         let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
-        // let energies = Buffer::<u8>::with_vec(&dims, 255, ocl); // <<<<< SLATED FOR REMOVAL
+        let energies = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims.cells()).fill_val(0, None::<()>).build()?;
+        let activities = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims.cells()).fill_val(0, None::<()>).build()?;
 
         println!("{mt}{mt}PYRAMIDALS::NEW(): \
             layer: '{}', base_axn_slc: {}, pyr_lyr_axn_idz: {}, tft_count: {}, \
@@ -271,7 +273,8 @@ impl PyramidalLayer {
             tft_best_den_ids: tft_best_den_ids,
             tft_best_den_states_raw: tft_best_den_states_raw,
             tft_best_den_states: tft_best_den_states,
-            // energies: energies, // <<<<< SLATED FOR REMOVAL
+            energies,
+            activities,
             dens: dens,
             tft_cycle_exe_cmd_idxs: tft_cycle_exe_cmd_idxs,
             tft_ltp_exe_cmd_idxs: tft_ltp_exe_cmd_idxs,
@@ -381,7 +384,7 @@ impl DataCellLayer for PyramidalLayer {
         self.dens_mut().regrow();
     }
 
-    fn cycle(&mut self, _control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+    fn cycle(&mut self, _control_layers: &mut [Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling layer: '{}'...", self.layer_name); }
@@ -430,6 +433,8 @@ impl DataCellLayer for PyramidalLayer {
     #[inline] fn layer_addr(&self) -> LayerAddress{ self.layer_addr }
     #[inline] fn soma(&self) -> &Buffer<u8> { &self.states }
     #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { &mut self.states }
+    #[inline] fn energies(&self) -> &Buffer<u8> { &self.energies }
+    #[inline] fn activities(&self) -> &Buffer<u8> { &self.activities }
     #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
     #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }

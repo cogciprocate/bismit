@@ -67,34 +67,51 @@ impl SubcorticalNucleus for Nucleus {
     }
 }
 
-fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, den_actvs: &Buffer<u8>, /*_min: usize*/) {
+fn print_activity_counts(activity_counts: &Vec<Vec<usize>>, den_actvs: &Buffer<u8>,
+        cel_actvs: &Buffer<u8>)
+{
     let cel_count = activity_counts.len();
     let pattern_count = activity_counts[0].len();
     let mut cel_ttls = Vec::with_capacity(cel_count);
-    let mut non_zero_ptrn_ttls: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
+    let mut _non_zero_ptrn_ttls: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
     let mut ttl_count = 0f32;
 
     let mut den_activities = vec![0; den_actvs.len()];
     den_actvs.read(&mut den_activities).enq().unwrap();
     assert_eq!(den_activities.len(), activity_counts.len());
 
+    let mut cel_activities = vec![0; cel_actvs.len()];
+    cel_actvs.read(&mut cel_activities).enq().unwrap();
+    assert_eq!(cel_activities.len(), activity_counts.len());
+
     for (cel_idx, counts) in activity_counts.iter().enumerate() {
+        debug_assert!(counts.len() == pattern_count);
         let mut cel_ttl = 0.;
-        non_zero_ptrn_ttls.clear();
+        _non_zero_ptrn_ttls.clear();
 
         for (pattern_idx, &ptrn_ttl) in counts.iter().enumerate() {
             if ptrn_ttl > 0 {
-                non_zero_ptrn_ttls.push((pattern_idx, ptrn_ttl));
+                _non_zero_ptrn_ttls.push((pattern_idx, ptrn_ttl));
                 cel_ttl += ptrn_ttl as f32;
             }
         }
 
-        if (cel_idx & 15) == 0 {
-            print!("{{[{}]:{}}}", cel_idx, den_activities[cel_idx])
+        // let d_act = den_activities[cel_idx];
+
+        if (cel_idx & 7) == 0 {
+            print!("{{[");
+            printc!(dark_grey: "{}", cel_idx);
+            print!("]::da:");
+            printc!(green: "{}", den_activities[cel_idx]);
+            print!(",ca:");
+            printc!(green: "{}", cel_activities[cel_idx]);
+            print!(",ct:");
+            printc!(royal_blue: "{}", cel_ttl);
+            print!("}} ");
         }
 
         // if cel_ttl > _min {
-        //     println!("Cell [{}]({}): {:?}", cel_idx, cel_ttl, non_zero_ptrn_ttls);
+        //     println!("Cell [{}]({}): {:?}", cel_idx, cel_ttl, _non_zero_ptrn_ttls);
         // }
         cel_ttls.push(cel_ttl);
         ttl_count += cel_ttl;
@@ -236,6 +253,9 @@ pub fn eval(/*params: Params*/) {
     let l4_spt_den_actvs = cortex.areas().by_key(PRI_AREA).unwrap()
         .psal_TEMP().dens().activities().clone();
 
+    let l4_spt_cel_actvs = cortex.areas().by_key(PRI_AREA).unwrap()
+        .psal_TEMP().activities().clone();
+
     let in_tract_idx = cortex.thal().tract().index_of(v0_ext_lyr_addr).unwrap();
     let in_tract_buffer = cortex.thal().tract().buffer(in_tract_idx).unwrap().clone();
     let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
@@ -290,29 +310,40 @@ pub fn eval(/*params: Params*/) {
         let cell_count = (params.area_dim * params.area_dim) as usize;
 
         // The number of times each cell has become active for each pattern:
-        let mut activity_counts_start = vec![vec![0; pattern_count]; cell_count];
-        let mut activity_counts_end = vec![vec![0; pattern_count]; cell_count];
+        let mut activity_counts_t0 = vec![vec![0; pattern_count]; cell_count];
+        let mut activity_counts_t1 = vec![vec![0; pattern_count]; cell_count];
+        let mut activity_counts_t2 = vec![vec![0; pattern_count]; cell_count];
 
         // Get the flywheel moving:
         params.cmd_tx.send(Command::None).unwrap();
 
-        let training_iters_start = 0;
-        let collect_iters_start = 10000;
-        cycle(&params, &l4_spt_den_actvs, training_iters_start, collect_iters_start, pattern_count,
-            &sdrs, &mut activity_counts_start);
-
-        let training_iters_end = 20000;
-        let collect_iters_end = 10000;
-        cycle(&params, &l4_spt_den_actvs, training_iters_end, collect_iters_end, pattern_count,
-            &sdrs, &mut activity_counts_end);
-
+        // T[0]:
+        let training_iters_t0 = 0;
+        let collect_iters_t0 = 100;
+        cycle(&params, &l4_spt_den_actvs, training_iters_t0, collect_iters_t0, pattern_count,
+            &sdrs, &mut activity_counts_t0);
         println!("\nStart Activity Counts:");
-        // print_activity_counts(&activity_counts_start, collect_iters_start / 1000);
-        print_activity_counts(&activity_counts_start, &l4_spt_den_actvs);
+        // print_activity_counts(&activity_counts_t0, collect_iters_t0 / 1000);
+        print_activity_counts(&activity_counts_t0, &l4_spt_den_actvs, &l4_spt_cel_actvs);
 
+        // T[1]:
+        // let training_iters_t1 = 30000;
+        let training_iters_t1 = 0;
+        let collect_iters_t1 = 100;
+        cycle(&params, &l4_spt_den_actvs, training_iters_t1, collect_iters_t1, pattern_count,
+            &sdrs, &mut activity_counts_t1);
         println!("\nEnd Activity Counts:");
-        // print_activity_counts(&activity_counts_end, collect_iters_end / 1000);
-        print_activity_counts(&activity_counts_end, &l4_spt_den_actvs);
+        // print_activity_counts(&activity_counts_t1, collect_iters_t1 / 1000);
+        print_activity_counts(&activity_counts_t1, &l4_spt_den_actvs, &l4_spt_cel_actvs);
+
+        // T[2]:
+        let training_iters_t2 = 0;
+        let collect_iters_t2 = 100;
+        cycle(&params, &l4_spt_den_actvs, training_iters_t2, collect_iters_t2, pattern_count,
+            &sdrs, &mut activity_counts_t2);
+        println!("\nEnd Activity Counts:");
+        // print_activity_counts(&activity_counts_t2, collect_iters_t2 / 1000);
+        print_activity_counts(&activity_counts_t2, &l4_spt_den_actvs, &l4_spt_cel_actvs);
 
         params.cmd_tx.send(Command::Exit).unwrap();
         params.cmd_tx.send(Command::None).unwrap();

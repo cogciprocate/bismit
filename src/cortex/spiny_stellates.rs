@@ -24,8 +24,10 @@ pub struct SpinyStellateLayer {
     // base_axn_slc: u8,
     lyr_axn_idz: u32,
     kern_ltp: Kernel,
-    rng: rand::XorShiftRng,
+    energies: Buffer<u8>,
+    activities: Buffer<u8>,
     pub dens: Dendrites,
+    rng: rand::XorShiftRng,
     ltp_exe_cmd_idx: Option<usize>,
     _settings: CorticalAreaSettings,
     control_lyr_idxs: Vec<usize>,
@@ -51,6 +53,9 @@ impl SpinyStellateLayer {
             tft_scheme.syns_per_den_l2() + tft_scheme.dens_per_tft_l2()
         };
 
+        let energies = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims).fill_val(0, None::<()>).build()?;
+        let activities = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims).fill_val(0, None::<()>).build()?;
+
         println!("{mt}{mt}SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}",
             base_axn_slc, lyr_axn_idz, dims, mt = cmn::MT);
 
@@ -74,6 +79,7 @@ impl SpinyStellateLayer {
             .arg_scl(lyr_axn_idz)
             // .arg_scl(cels_per_grp)
             .arg_scl(syns_per_tuft_l2)
+            // CURRENTLY UNUSED:
             .arg_scl_named::<u32>("rnd", None)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
@@ -123,6 +129,8 @@ impl SpinyStellateLayer {
             // base_axn_slc: base_axn_slc,
             lyr_axn_idz: lyr_axn_idz,
             kern_ltp: kern_ltp,
+            energies,
+            activities,
             rng: rand::weak_rng(),
             dens: dens,
             ltp_exe_cmd_idx: ltp_exe_cmd_idx,
@@ -158,17 +166,24 @@ impl SpinyStellateLayer {
     }
 
     #[inline]
-    pub fn cycle(&mut self, control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+    pub fn cycle(&mut self, control_layers: &mut [Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling layer: '{}'...", self.layer_name); }
-        for lyr in self.control_lyr_idxs.iter().map(|&idx| &control_layers[idx]) {
-            lyr.cycle_pre(exe_graph, self.layer_addr)?;
+
+        // Pre cycle:
+        for &lyr_idx in self.control_lyr_idxs.iter() {
+            control_layers[lyr_idx].cycle_pre(exe_graph, self.layer_addr)?;
         }
+
+        // Cycle:
         self.dens.cycle(exe_graph)?;
-        for lyr in self.control_lyr_idxs.iter().map(|&idx| &control_layers[idx]) {
-            lyr.cycle_post(exe_graph, self.layer_addr)?;
+
+        // Post cycle:
+        for &lyr_idx in self.control_lyr_idxs.iter() {
+            control_layers[lyr_idx].cycle_post(exe_graph, self.layer_addr)?;
         }
+
         if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling complete for layer: '{}'.", self.layer_name); }
         Ok(())
     }
@@ -203,6 +218,8 @@ impl SpinyStellateLayer {
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn soma(&self) -> &Buffer<u8> { self.dens.states() }
+    #[inline] pub fn energies(&self) -> &Buffer<u8> { &self.energies }
+    #[inline] pub fn activities(&self) -> &Buffer<u8> { &self.activities }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
     #[inline] pub fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
@@ -218,7 +235,7 @@ impl DataCellLayer for SpinyStellateLayer {
     }
 
     #[inline]
-    fn cycle(&mut self, control_layers: &[Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+    fn cycle(&mut self, control_layers: &mut [Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         self.cycle(control_layers, exe_graph)
@@ -238,6 +255,8 @@ impl DataCellLayer for SpinyStellateLayer {
     #[inline] fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] fn soma(&self) -> &Buffer<u8> { self.dens.states() }
     #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { self.dens.states_mut() }
+    #[inline] fn energies(&self) -> &Buffer<u8> { &self.energies }
+    #[inline] fn activities(&self) -> &Buffer<u8> { &self.activities }
     #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
     #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
