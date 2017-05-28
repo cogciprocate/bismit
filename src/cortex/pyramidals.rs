@@ -287,8 +287,10 @@ impl PyramidalLayer {
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         if !self.settings.disable_pyrs {
-            for &cmd_idx in self.tft_ltp_exe_cmd_idxs.iter() {
-                exe_graph.order_next(cmd_idx)?;
+            if !self.settings.disable_learning {
+                for &cmd_idx in self.tft_ltp_exe_cmd_idxs.iter() {
+                    exe_graph.order_next(cmd_idx)?;
+                }
             }
 
             self.dens.set_exe_order(exe_graph)?;

@@ -104,7 +104,10 @@ fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>,
         // `da`: dendrite activity rating (pre-inhib)
         // `ca`: cell activity rating (post-inhib)
         // `ct`: cell activity count
-        if (cel_idx & 7) == 0 {
+
+        // if (cel_idx & 7) == 0 {
+        if cel_ttl > 0. && cel_ttl < 150. {
+        // if cel_ttl > 600. {
             print!("{{[");
             printc!(dark_grey: "{}", cel_idx);
             print!("]::da:");
@@ -320,15 +323,18 @@ pub fn eval(/*params: Params*/) {
         // energy, etc.) persist between sample periods. Only collection
         // iters are recorded and evaluated.
         let training_collect_iters = vec![
+            // (0, 10000),
+            // (40000, 10000),
+            // (40000, 10000),
+            // (40000, 10000),
+            // (40000, 10000),
+            // (40000, 10000),
+            // (40000, 10000),
+
+            (0, 10000),
             (0, 10000),
             (40000, 10000),
-            (40000, 10000),
-            (40000, 10000),
-            (40000, 10000),
-            (40000, 10000),
-            (40000, 10000),
-            (0, 1000),
-            // (0, 100),
+            (0, 10000),
         ];
 
         for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {
@@ -441,8 +447,8 @@ pub fn ca_settings() -> CorticalAreaSettings {
     settings.disable_pyrs = true;
     // settings.disable_ssts = true;
     settings.disable_mcols = true;
-    // settings.disable_regrowth = true;
-    // settings.disable_learning = true;
+    settings.disable_regrowth = true;
+    settings.disable_learning = true;
 
     settings
 }

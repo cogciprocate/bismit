@@ -25,7 +25,7 @@
 #define RETNAL_THRESHOLD                 48
 
 // Passed to `rnd_256()`. 255 (max) ~> 1:1
-#define DENDRITE_ACTIVITY_DECAY_FACTOR 8
+#define DENDRITE_ACTIVITY_DECAY_FACTOR 3
 
  /* bismit.cl: CONVENTIONS
 

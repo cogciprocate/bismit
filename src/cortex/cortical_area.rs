@@ -368,8 +368,10 @@ impl CorticalArea {
         // }
 
         // (4.) SSTs Learn:
-        for sst in &spatial_layers {
-            sst.set_exe_order_learn(&mut exe_graph)?;
+        if !settings.disable_learning {
+            for sst in &spatial_layers {
+                sst.set_exe_order_learn(&mut exe_graph)?;
+            }
         }
 
         // (5.) MCOLSs Activate:

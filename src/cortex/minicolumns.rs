@@ -100,7 +100,9 @@ impl Minicolumns {
 
         activate_cmd_tars.push(CorticalBuffer::data_soma_lyr(&pyrs.flag_sets(), pyrs.layer_addr()));
 
-        let activate_exe_cmd_idx = if settings.disable_learning {
+        // let activate_exe_cmd_idx = if !settings.disable_learning && !settings.disable_mcols {
+        // let activate_exe_cmd_idx = if !settings.disable_learning {
+        let activate_exe_cmd_idx = if !settings.disable_mcols {
             Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(
                 activate_kern_name, activate_cmd_srcs, activate_cmd_tars))?)
         } else {
@@ -138,7 +140,8 @@ impl Minicolumns {
             CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), mcol_axn_slc_id),
         ];
 
-        let output_exe_cmd_idx = if settings.disable_learning {
+        // let output_exe_cmd_idx = if settings.disable_learning {
+        let output_exe_cmd_idx = if !settings.disable_mcols {
             Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(
                 output_kern_name, output_cmd_srcs, output_cmd_tars))?)
         } else {

@@ -3,7 +3,7 @@
 // Kernels for control (inhibitory, etc.) cells.
 
 // Passed to `rnd_256()`. 255 (max) ~> 1:1
-#define CELL_ACTIVITY_DECAY_FACTOR 8
+#define CELL_ACTIVITY_DECAY_FACTOR 3
 
 
 //     INHIB_SIMPLE(): [DESCRIPTION OUT OF DATE] Cell Inhibition - reads from soma, writes to axon
