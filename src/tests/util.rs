@@ -18,13 +18,13 @@ const PRINT_DETAILS: bool = false;
 
 bitflags! {
     // #[derive(Debug)]
-    pub flags PtalAlcoSwitches: u32 {
-        const NONE                = 0b00000000,
-        const ACTIVATE             = 0b00000001,
-        const LEARN                = 0b00000010,
-        const CYCLE             = 0b00000100,
-        const OUTPUT              = 0b00001000,
-        const ALL                 = 0xFFFFFFFF,
+    pub struct PtalAlcoSwitches: u32 {
+        const NONE                = 0b00000000;
+        const ACTIVATE             = 0b00000001;
+        const LEARN                = 0b00000010;
+        const CYCLE             = 0b00000100;
+        const OUTPUT              = 0b00001000;
+        const ALL                 = 0xFFFFFFFF;
     }
 }
 

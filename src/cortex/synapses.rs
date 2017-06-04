@@ -94,6 +94,7 @@ impl TuftDims {
 }
 
 
+// #[derive(Debug)]
 pub struct Synapses {
     layer_name: &'static str,
     layer_id: usize,

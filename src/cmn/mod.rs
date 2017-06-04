@@ -5,7 +5,7 @@
 //! - Some of it may be moved to util
 
 
-#[macro_use] mod macros;
+// #[macro_use] mod macros;
 mod cortical_dims;
 mod slice_dims;
 mod tract_dims;
@@ -14,10 +14,8 @@ mod error;
 mod tract_frame;
 mod map_store;
 mod double_buffer_mutex;
+mod xorshiftrng;
 pub mod util;
-// mod warden;
-// pub mod data_cell_layer;
-
 
 use std;
 use std::default::{Default};
@@ -46,8 +44,9 @@ pub use self::tract_frame::{TractFrame, TractFrameMut};
 pub use self::map_store::MapStore;
 pub use self::slice_dims::{calc_scale, scale};
 pub use self::double_buffer_mutex::DoubleBufferMutex;
-// pub use self::warden::{Requisite, KernelWarden, ReadWarden, WriteWarden};
-// pub use self::requisite::Requisite;
+
+pub use self::xorshiftrng::{weak_rng, XorShiftRng};
+
 
 // pub trait ParaHexArray {
 //     fn v_size(&self) -> u32;

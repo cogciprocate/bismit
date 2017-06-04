@@ -27,7 +27,7 @@ pub mod map;
 
 pub use ocl::Event as OclEvent;
 pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses, Minicolumns,
-    InhibitoryInterneuronNetwork, PyramidalLayer, SpinyStellateLayer, Dendrites,
+    InhibitoryInterneuronNetwork, Smoother, PyramidalLayer, SpinyStellateLayer, Dendrites,
     CorticalAreaSettings, DataCellLayer};
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus, TestScNucleus, ExternalPathway,
     ExternalPathwayTract, ExternalPathwayEncoder, ExternalPathwayFrame, ExternalPathwayLayer};

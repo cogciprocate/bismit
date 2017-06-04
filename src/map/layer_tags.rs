@@ -67,10 +67,10 @@ use std::fmt::{self, Formatter};
 // properties relevant to interlaminar axons and cells. 0 - 31 are reserved
 // for unique ids (particularly non-specific group ids).
 bitflags! {
-    pub flags LayerTags: u64 {
-        const DEFAULT = 0b0000_0000_0000_0000__0000_0000_0000_0000 << 32,
-        const INPUT = 0b0000_0000_0000_0001__0000_0000_0000_0000 << 32,
-        const OUTPUT = 0b0000_0000_0000_0010__0000_0000_0000_0000 << 32,
+    pub struct LayerTags: u64 {
+        const DEFAULT = 0b0000_0000_0000_0000__0000_0000_0000_0000 << 32;
+        const INPUT = 0b0000_0000_0000_0001__0000_0000_0000_0000 << 32;
+        const OUTPUT = 0b0000_0000_0000_0010__0000_0000_0000_0000 << 32;
         // const SPATIAL = 0b0000_0000_0000_0100__0000_0000_0000_0000 << 32,
         // const HORIZONTAL = 0b0000_0000_0000_1000__0000_0000_0000_0000 << 32,
         // const FEEDFORWARD = 0b0000_0000_0001_0000__0000_0000_0000_0000 << 32,
@@ -78,12 +78,12 @@ bitflags! {
         // const SPECIFIC = 0b0000_0000_0100_0000__0000_0000_0000_0000 << 32,
         // const NONSPECIFIC = 0b0000_0000_1000_0000__0000_0000_0000_0000 << 32,
 
-        const PRIMARY = 0b0000_0000_0000_0000__0000_0000_0000_0001 << 32,
-        const SPATIAL = 0b0000_0000_0000_0000__0000_0000_0001_0000 << 32,
-        const TEMPORAL = 0b0000_0000_0000_0000__0000_0000_0010_0000 << 32,
-        const FOCUS = 0b0000_0000_0000_0000__0000_0000_0100_0000 << 32,
-        const MOTOR = 0b0000_0000_0000_0000__0000_0000_1000_0000 << 32,        
-        const UNUSED_TESTING = 0b0000_0000_0000_0000__1000_0000_0000_0000 << 32,
+        const PRIMARY = 0b0000_0000_0000_0000__0000_0000_0000_0001 << 32;
+        const SPATIAL = 0b0000_0000_0000_0000__0000_0000_0001_0000 << 32;
+        const TEMPORAL = 0b0000_0000_0000_0000__0000_0000_0010_0000 << 32;
+        const FOCUS = 0b0000_0000_0000_0000__0000_0000_0100_0000 << 32;
+        const MOTOR = 0b0000_0000_0000_0000__0000_0000_1000_0000 << 32;
+        const UNUSED_TESTING = 0b0000_0000_0000_0000__1000_0000_0000_0000 << 32;
 
         // const FF_IN = FEEDFORWARD.bits | INPUT.bits | SPECIFIC.bits,
         // const FF_OUT = FEEDFORWARD.bits | OUTPUT.bits | SPECIFIC.bits,
@@ -94,10 +94,10 @@ bitflags! {
         // const NS_IN = INPUT.bits | NONSPECIFIC.bits,
         // const NS_OUT = OUTPUT.bits | NONSPECIFIC.bits,
 
-        const PSAL = PRIMARY.bits | SPATIAL.bits,
-        const PTAL = PRIMARY.bits | TEMPORAL.bits,
-        const PFL = PRIMARY.bits | FOCUS.bits,
-        const PML = PRIMARY.bits | MOTOR.bits,        
+        const PSAL = PRIMARY.bits | SPATIAL.bits;
+        const PTAL = PRIMARY.bits | TEMPORAL.bits;
+        const PFL = PRIMARY.bits | FOCUS.bits;
+        const PML = PRIMARY.bits | MOTOR.bits;
     }
 }
 

@@ -9,6 +9,7 @@ use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlC
 const PRINT_DEBUG: bool = false;
 
 
+// #[derive(Debug)]
 pub struct PyramidalLayer {
     layer_name: &'static str,
     // layer_id: usize,

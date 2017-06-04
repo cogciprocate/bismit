@@ -22,7 +22,7 @@ static SPT_LYR: &'static str = "iv";
 
 const ENCODE_DIM: u32 = 64;
 const AREA_DIM: u32 = 16;
-const HEX_GRP_SIDE: usize = 8;
+const HEX_GRP_SIDE: usize = 4;
 
 
 pub fn draw(params: &Params) {

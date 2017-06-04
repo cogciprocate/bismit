@@ -1,6 +1,6 @@
 use cmn::{CorticalDims, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
-use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
+use ocl::{Kernel, ProQue, SpatialDims, /*Buffer,*/ Event};
 use map::CellScheme;
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 

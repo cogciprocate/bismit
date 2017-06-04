@@ -151,6 +151,7 @@ pub fn gen_syn_offs(radius: i8, scales: [u32; 2]) -> CmnResult<Vec<(i8, i8)>> {
 /// tuft.
 ///
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct SynSrcIdxCache {
     tft_syn_idz: usize,
     tft_dims: TuftDims,
@@ -326,6 +327,7 @@ pub struct SynSrc {
 /// each tuft.
 ///
 /// Used to calculate a valid source axon index during synapse growth or regrowth.
+// #[derive(Debug)]
 pub struct SynSrcSlices {
     slc_info_by_tft: Vec<BTreeMap<u8, SynSrcSliceInfo>>,
     src_slc_id_pools_by_tft: Vec<Vec<u8>>,

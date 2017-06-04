@@ -20,6 +20,7 @@
 //            - be vectorized
 __kernel void inhib_simple(
             __global uchar const* const cel_states,
+            __global uchar const* const energies,
             __private uchar const cel_base_axn_slc,
             __private int const rnd,
             __global uchar* const activities,
@@ -34,9 +35,14 @@ __kernel void inhib_simple(
     uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
     //uint const axn_idx = axn_idx_3d_safe(slc_id_lyr + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
     int idx_is_safe = 0;
-    uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id_lyr + cel_base_axn_slc, v_id, 0, u_id, 0, &idx_is_safe);
 
-    uchar const cel_state = mul24(idx_is_safe, (int)cel_states[cel_idx]);
+    uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id_lyr + cel_base_axn_slc,
+        v_id, 0, u_id, 0, &idx_is_safe);
+
+    // Add the energy (restlessness) to the feed-forward state and divide by two:
+    int const cel_state_raw = (cel_states[cel_idx] + energies[cel_idx]) >> 1;
+    // The cell state, if the index is not out of bounds (otherwise zero):
+    uchar const cel_state = mul24(idx_is_safe, cel_state_raw);
 
     int const radius_pos = INHIB_RADIUS;
     int const radius_neg = 0 - radius_pos;

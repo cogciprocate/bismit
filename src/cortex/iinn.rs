@@ -1,12 +1,13 @@
-use rand::{self, Rng};
-use cmn::{CorticalDims, CmnResult};
+// use std::fmt::Debug;
+use rand::Rng;
+use cmn::{self, CorticalDims, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{Kernel, ProQue, SpatialDims, /*Buffer,*/ Event};
 use map::CellScheme;
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 
-// #[derive(Debug)]
+#[derive(Debug)]
 pub struct InhibitoryInterneuronNetwork {
     layer_name: &'static str,
     // layer_id: usize,
@@ -16,10 +17,8 @@ pub struct InhibitoryInterneuronNetwork {
     kern_inhib_simple: Kernel,
     kern_inhib_passthrough: Kernel,
     exe_cmd_idx: usize,
-    rng: rand::XorShiftRng,
-    // pub spi_ids: Buffer<u8>,
-    // pub wins: Buffer<u8>,
-    // pub states: Buffer<u8>,
+    // rng: rand::XorShiftRng,
+    rng: cmn::XorShiftRng,
     settings: CorticalAreaSettings,
 }
 
@@ -33,9 +32,8 @@ impl InhibitoryInterneuronNetwork {
     {
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
-        // let spi_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
-        // let wins = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
-        // let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, &dims, None, Some((0, None::<()>))).unwrap();
+        // Ensure that the host layer is constructed correctly.
+        debug_assert_eq!(host_lyr.soma().len(), host_lyr.energies().len());
 
         // Simple (active) kernel:
         let kern_inhib_simple_name = "inhib_simple";
@@ -44,6 +42,7 @@ impl InhibitoryInterneuronNetwork {
                 dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(host_lyr.soma())
+            .arg_buf(host_lyr.energies())
             .arg_scl(host_lyr_base_axn_slc)
             .arg_scl_named::<i32>("rnd", None)
             .arg_buf(host_lyr.activities())
@@ -84,10 +83,7 @@ impl InhibitoryInterneuronNetwork {
             kern_inhib_simple: kern_inhib_simple,
             kern_inhib_passthrough: kern_inhib_passthrough,
             exe_cmd_idx: exe_cmd_idx,
-            rng: rand::weak_rng(),
-            // spi_ids: spi_ids,
-            // wins: wins,
-            // states: states,
+            rng: cmn::weak_rng(),
             settings: settings,
         })
     }
@@ -98,7 +94,6 @@ impl InhibitoryInterneuronNetwork {
     }
 
     // FIXME: `::new` should take the `bypass` argument instead.
-    #[inline]
     pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         let mut event = Event::empty();
 
