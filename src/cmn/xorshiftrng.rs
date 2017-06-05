@@ -153,7 +153,7 @@ pub fn weak_rng() -> XorShiftRng {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```text
 /// use rand::distributions::{IndependentSample, Range};
 ///
 /// fn main() {

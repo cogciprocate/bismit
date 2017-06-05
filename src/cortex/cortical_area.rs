@@ -29,7 +29,6 @@ const QUEUE_PROFILING: bool = false;
 const KERNEL_DEBUG_SYMBOLS: bool = false;
 
 
-
 /// Cortical area settings.
 #[derive(Debug, Clone)]
 pub struct CorticalAreaSettings {

@@ -323,22 +323,22 @@ pub fn eval(/*params: Params*/) {
         // energy, etc.) persist between sample periods. Only collection
         // iters are recorded and evaluated.
         let training_collect_iters = vec![
-            (0, 10000),
-            (40000, 10000),
-            (40000, 10000),
-            (40000, 10000),
-            (40000, 10000),
-            (40000, 10000),
-            (80000, 10000),
-            (80000, 10000),
-            (80000, 10000),
-            (80000, 10000),
-            (80000, 10000),
-
-            // (0, 10000),
             // (0, 10000),
             // (40000, 10000),
-            // (0, 10000),
+            // (40000, 10000),
+            // (40000, 10000),
+            // (40000, 10000),
+            // (40000, 10000),
+            // (80000, 10000),
+            // (80000, 10000),
+            // (80000, 10000),
+            // (80000, 10000),
+            // (80000, 10000),
+
+            (0, 10000),
+            (0, 10000),
+            (40000, 10000),
+            (0, 10000),
         ];
 
         for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {
@@ -349,37 +349,6 @@ pub fn eval(/*params: Params*/) {
                 t, training_iters, collect_iters);
             print_activity_counts(&l4_spt_den_actvs, &l4_spt_cel_actvs, &activity_counts);
         }
-
-        // // T[0]:
-        // let mut activity_counts_t0 = vec![vec![0; pattern_count]; cell_count];
-        // let training_iters_t0 = 0;
-        // let collect_iters_t0 = 1000;
-        // cycle(&params, &l4_spt_den_actvs, training_iters_t0, collect_iters_t0, pattern_count,
-        //     &sdrs, &mut activity_counts_t0);
-        // println!("\nStart Activity Counts:");
-        // // print_activity_counts(&activity_counts_t0, collect_iters_t0 / 1000);
-        // print_activity_counts(&activity_counts_t0, &l4_spt_den_actvs, &l4_spt_cel_actvs);
-
-        // // T[1]:
-        // // let training_iters_t1 = 30000;
-        // let mut activity_counts_t1 = vec![vec![0; pattern_count]; cell_count];
-        // let training_iters_t1 = 0;
-        // let collect_iters_t1 = 1000;
-        // cycle(&params, &l4_spt_den_actvs, training_iters_t1, collect_iters_t1, pattern_count,
-        //     &sdrs, &mut activity_counts_t1);
-        // println!("\nEnd Activity Counts:");
-        // // print_activity_counts(&activity_counts_t1, collect_iters_t1 / 1000);
-        // print_activity_counts(&activity_counts_t1, &l4_spt_den_actvs, &l4_spt_cel_actvs);
-
-        // // T[2]:
-        // let mut activity_counts_t2 = vec![vec![0; pattern_count]; cell_count];
-        // let training_iters_t2 = 0;
-        // let collect_iters_t2 = 1000;
-        // cycle(&params, &l4_spt_den_actvs, training_iters_t2, collect_iters_t2, pattern_count,
-        //     &sdrs, &mut activity_counts_t2);
-        // println!("\nEnd Activity Counts:");
-        // // print_activity_counts(&activity_counts_t2, collect_iters_t2 / 1000);
-        // print_activity_counts(&activity_counts_t2, &l4_spt_den_actvs, &l4_spt_cel_actvs);
 
         params.cmd_tx.send(Command::Exit).unwrap();
         params.cmd_tx.send(Command::None).unwrap();

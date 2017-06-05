@@ -451,10 +451,10 @@ impl DataCellLayer for PyramidalLayer {
 #[cfg(test)]
 pub mod tests {
     use std::ops::{Range};
-    use rand::{XorShiftRng, Rng};
-    use rand::distributions::{IndependentSample, Range as RandRange};
+    use rand::{Rng};
+    use rand::distributions::{IndependentSample};
     use ocl::util;
-    use cmn;
+    use cmn::{self, XorShiftRng, Range as RandRange};
     use cortex::{PyramidalLayer, DataCellLayer, DataCellLayerTest, CelCoords};
 
     impl DataCellLayerTest for PyramidalLayer {

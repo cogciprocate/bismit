@@ -31,10 +31,10 @@ pub trait DataCellLayer: Debug + Send {
 #[cfg(test)]
 pub mod tests {
     use std::ops::{Range};
-    use rand::{XorShiftRng};
+    // use rand::{XorShiftRng};
 
     use map::{AreaMap, AreaMapTest};
-    use cmn::{self, CorticalDims};
+    use cmn::{self, CorticalDims, XorShiftRng};
     use std::fmt::{Display, Formatter, Result};
 
     pub trait DataCellLayerTest {

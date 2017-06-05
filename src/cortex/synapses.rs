@@ -451,10 +451,9 @@ pub mod tests {
     #![allow(non_snake_case, dead_code)]
     use std::ops::{Range};
     use std::fmt::{Display, Formatter, Result as FmtResult};
-    use rand::{XorShiftRng};
-    use rand::distributions::{IndependentSample, Range as RandRange};
+    use rand::distributions::{IndependentSample};
     use ocl::util;
-    use cmn::{CorticalDims};
+    use cmn::{CorticalDims, XorShiftRng, Range as RandRange};
     // use super::super::dendrites::{self};
     use cortex::{dendrites, CorticalAreaTest, CelCoords};
     use super::{Synapses, TuftDims};

@@ -1,6 +1,6 @@
 // #![allow(unused_imports)]
 
-use rand::{self, Rng};
+use rand::{Rng};
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, Buffer, Event};
@@ -13,6 +13,7 @@ const PRINT_DEBUG: bool = false;
 const TUFT_COUNT: usize = 1;
 
 
+#[derive(Debug)]
 pub struct SpinyStellateLayer {
     layer_name: &'static str,
     // layer_id: usize,
@@ -27,7 +28,7 @@ pub struct SpinyStellateLayer {
     energies: Buffer<u8>,
     activities: Buffer<u8>,
     pub dens: Dendrites,
-    rng: rand::XorShiftRng,
+    rng: cmn::XorShiftRng,
     ltp_exe_cmd_idx: Option<usize>,
     _settings: CorticalAreaSettings,
     control_lyr_idxs: Vec<usize>,
@@ -131,7 +132,7 @@ impl SpinyStellateLayer {
             kern_ltp: kern_ltp,
             energies,
             activities,
-            rng: rand::weak_rng(),
+            rng: cmn::weak_rng(),
             dens: dens,
             ltp_exe_cmd_idx: ltp_exe_cmd_idx,
             _settings: settings,
@@ -271,10 +272,10 @@ impl DataCellLayer for SpinyStellateLayer {
 #[cfg(test)]
 pub mod tests {
     use std::ops::{Range};
-    use rand::{XorShiftRng, Rng};
-    use rand::distributions::{IndependentSample, Range as RandRange};
+    use rand::{Rng};
+    use rand::distributions::{IndependentSample};
     // use ocl::util;
-    use cmn;
+    use cmn::{self, XorShiftRng, Range as RandRange};
     use cortex::{SpinyStellateLayer, DendritesTest, DataCellLayerTest, CelCoords};
 
     impl DataCellLayerTest for SpinyStellateLayer {

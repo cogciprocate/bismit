@@ -312,7 +312,7 @@ impl LearningTestBed {
 
     */
     fn test_on_off(&mut self, on_focus_iters: usize, off_focus_iters: usize) {
-        printlny!("\n###### on_focus_iters: ######");
+        printlnc!(yellow: "\n###### on_focus_iters: ######");
 
         for i in 0..on_focus_iters {
             // // [DEBUG]: Prints a number for each iter
@@ -330,7 +330,7 @@ impl LearningTestBed {
         printlnc!(yellow: "\n\nFlipping focus syns...");
         self.flip_focus_syns();
 
-        printlny!("\n###### off_focus_iters: ######");
+        printlnc!(yellow: "\n###### off_focus_iters: ######");
 
         for i in 0..off_focus_iters {
             // // [DEBUG]: Prints a number for each iter

@@ -682,6 +682,8 @@ __kernel void reference_all_the_things(__private int const for_sanitys_sake) {
     //axn_idx_hrz(0, 0, 0, 0, 0);
     //coord_is_safe_vec4((int4)0, (int4)0, (int4)0);
     //axn_idx_hrz_vec4((int4)0, (int4)0, (int4)0, (int4)0, (int4)0);
+    rnd_dec_u(0, 0, 0);
+    rnd_0xFF(0, 0, 0);
 }
 
 /*=============================================================================
