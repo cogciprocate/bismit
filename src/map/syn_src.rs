@@ -1,10 +1,9 @@
-use rand::{XorShiftRng};
-use rand::distributions::{IndependentSample, Range as RandRange};
+use rand::distributions::{IndependentSample};
 use std::collections::{BTreeMap, BTreeSet};
 use std::cmp;
 
 use cortex::TuftDims;
-use cmn::{self, CmnError, CmnResult, CorticalDims, SliceDims};
+use cmn::{self, CmnError, CmnResult, CorticalDims, SliceDims, XorShiftRng, Range as RandRange};
 use map::{AreaMap, AxonTopology, TuftScheme};
 
 const INTENSITY_REDUCTION_L2: i8 = 3;
@@ -206,6 +205,7 @@ impl SynSrcIdxCache {
 
 
 /// Pool of potential synapse values.
+#[derive(Debug)]
 pub enum OfsPool {
     Horizontal((RandRange<i8>, RandRange<i8>)),
     Spatial { offs: Vec<(i8, i8)>, ofs_idx_range: RandRange<usize> },
@@ -215,6 +215,7 @@ pub enum OfsPool {
 /// Parameters describing a slice.
 ///
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct SynSrcSliceInfo {
     slc_off_pool: OfsPool,
     v_size: u32,
@@ -327,7 +328,7 @@ pub struct SynSrc {
 /// each tuft.
 ///
 /// Used to calculate a valid source axon index during synapse growth or regrowth.
-// #[derive(Debug)]
+#[derive(Debug)]
 pub struct SynSrcSlices {
     slc_info_by_tft: Vec<BTreeMap<u8, SynSrcSliceInfo>>,
     src_slc_id_pools_by_tft: Vec<Vec<u8>>,

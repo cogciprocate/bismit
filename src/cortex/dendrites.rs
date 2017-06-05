@@ -1,7 +1,7 @@
-use rand::{self, XorShiftRng, Rng};
+use rand::Rng;
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Event};
 use ocl::traits::OclPrm;
-use cmn::{self, CmnResult, CorticalDims};
+use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress};
 use cortex::{AxonSpace, Synapses};
@@ -9,6 +9,7 @@ use cortex::{AxonSpace, Synapses};
 
 const PRINT_DEBUG: bool = false;
 
+#[derive(Debug)]
 pub struct Dendrites {
     layer_name: &'static str,
     layer_id: usize,
@@ -161,7 +162,7 @@ impl Dendrites {
             den_idzs_by_tft: den_idzs_by_tft,
             den_counts_by_tft: den_counts_by_tft,
             exe_cmd_idxs: exe_cmd_idxs,
-            rng: rand::weak_rng(),
+            rng: cmn::weak_rng(),
             bypass_exe_graph,
         })
     }

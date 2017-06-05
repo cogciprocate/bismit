@@ -61,9 +61,7 @@
 //!
 
 
-use rand::{self, XorShiftRng};
-
-use cmn::{self, CmnResult, CorticalDims};
+use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use map::{AreaMap, SynSrcSlices, SynSrcIdxCache, SynSrc, LayerAddress};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
@@ -94,7 +92,7 @@ impl TuftDims {
 }
 
 
-// #[derive(Debug)]
+#[derive(Debug)]
 pub struct Synapses {
     layer_name: &'static str,
     layer_id: usize,
@@ -268,7 +266,7 @@ impl Synapses {
             kernels: kernels,
             src_idx_caches_by_tft: src_idx_caches_by_tft,
             syn_src_slices: syn_src_slices,
-            rng: rand::weak_rng(),
+            rng: cmn::weak_rng(),
             states: states,
             strengths: strengths,
             src_slc_ids: src_slc_ids,

@@ -1,5 +1,5 @@
-use rand::{self, XorShiftRng, Rng};
-use cmn::{self, CmnResult, CorticalDims};
+use rand::Rng;
+use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
 use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
@@ -9,7 +9,7 @@ use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlC
 const PRINT_DEBUG: bool = false;
 
 
-// #[derive(Debug)]
+#[derive(Debug)]
 pub struct PyramidalLayer {
     layer_name: &'static str,
     // layer_id: usize,
@@ -267,7 +267,7 @@ impl PyramidalLayer {
             axn_slc_ids: axn_slc_ids,
             // base_axn_slc: base_axn_slc,
             pyr_lyr_axn_idz: pyr_lyr_axn_idz,
-            rng: rand::weak_rng(),
+            rng: cmn::weak_rng(),
             states: states,
             best_den_states_raw: best_den_states_raw,
             flag_sets: flag_sets,

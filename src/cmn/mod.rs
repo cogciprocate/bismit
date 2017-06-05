@@ -28,7 +28,7 @@ use std::collections::{BTreeMap, HashSet};
 use num::{FromPrimitive, };
 // use num::{Num, NumCast};
 use rand;
-use rand::distributions::{IndependentSample, Range};
+use rand::distributions::{IndependentSample, /*Range*/};
 use find_folder::Search;
 use ocl::traits::OclScl;
 use ocl::builders::ProgramBuilder;
@@ -45,7 +45,9 @@ pub use self::map_store::MapStore;
 pub use self::slice_dims::{calc_scale, scale};
 pub use self::double_buffer_mutex::DoubleBufferMutex;
 
-pub use self::xorshiftrng::{weak_rng, XorShiftRng};
+// A clone of the counterpart types in the `rand` crate. Duplicated due to
+// some sort of bug with deriving `Debug`.
+pub use self::xorshiftrng::{weak_rng, XorShiftRng, Range, SampleRange};
 
 
 // pub trait ParaHexArray {

@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use ocl::Buffer;
 use cortex::{Dendrites, ControlCellLayer};
 use cmn::{CmnResult, CorticalDims};
@@ -6,7 +7,7 @@ use map::{CellScheme, ExecutionGraph, LayerAddress};
 #[cfg(test)]
 pub use self::tests::{DataCellLayerTest, CelCoords};
 
-pub trait DataCellLayer: Send {
+pub trait DataCellLayer: Debug + Send {
     fn layer_name(&self) -> &'static str;
     fn layer_addr(&self) -> LayerAddress;
     fn cycle(&mut self, &mut [Box<ControlCellLayer>], &mut ExecutionGraph) -> CmnResult<()>;
