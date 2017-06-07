@@ -1,6 +1,7 @@
 // #![allow(unused_imports)]
 
-use rand::{Rng};
+use std::collections::BTreeMap;
+use rand::Rng;
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, Buffer, Event};
@@ -9,7 +10,7 @@ use map::{CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayer};
 
 
-const PRINT_DEBUG: bool = false;
+const PRINT_DEBUG: bool = true;
 const TUFT_COUNT: usize = 1;
 
 
@@ -140,20 +141,20 @@ impl SpinyStellateLayer {
         })
     }
 
-    pub fn set_exe_order_cycle(&mut self, control_layers: &[Box<ControlCellLayer>],
+    pub fn set_exe_order_cycle(&mut self, control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
-        for (cl_idx, cl) in control_layers.iter().enumerate() {
+        for (&cl_idx, cl) in control_layers.iter() {
             if cl.host_layer_addr() == self.layer_addr {
                 self.control_lyr_idxs.push(cl_idx);
             }
         }
 
-        for lyr in self.control_lyr_idxs.iter().map(|&idx| &control_layers[idx]) {
+        for lyr in self.control_lyr_idxs.iter().map(|idx| &control_layers[idx]) {
             lyr.set_exe_order_pre(exe_graph, self.layer_addr)?;
         }
         self.dens.set_exe_order(exe_graph)?;
-        for lyr in self.control_lyr_idxs.iter().map(|&idx| &control_layers[idx]) {
+        for lyr in self.control_lyr_idxs.iter().map(|idx| &control_layers[idx]) {
             lyr.set_exe_order_post(exe_graph, self.layer_addr)?;
         }
         Ok(())
@@ -167,22 +168,24 @@ impl SpinyStellateLayer {
     }
 
     #[inline]
-    pub fn cycle(&mut self, control_layers: &mut [Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+    pub fn cycle(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>, exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling layer: '{}'...", self.layer_name); }
 
         // Pre cycle:
-        for &lyr_idx in self.control_lyr_idxs.iter() {
-            control_layers[lyr_idx].cycle_pre(exe_graph, self.layer_addr)?;
+        for lyr_idx in self.control_lyr_idxs.iter() {
+            if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Pre-cycling control layer: [{}]...", lyr_idx); }
+            control_layers.get_mut(lyr_idx).unwrap().cycle_pre(exe_graph, self.layer_addr)?;
         }
 
         // Cycle:
         self.dens.cycle(exe_graph)?;
 
         // Post cycle:
-        for &lyr_idx in self.control_lyr_idxs.iter() {
-            control_layers[lyr_idx].cycle_post(exe_graph, self.layer_addr)?;
+        for lyr_idx in self.control_lyr_idxs.iter() {
+            if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Post-cycling control layer: [{}]...", lyr_idx); }
+            control_layers.get_mut(lyr_idx).unwrap().cycle_post(exe_graph, self.layer_addr)?;
         }
 
         if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling complete for layer: '{}'.", self.layer_name); }
@@ -236,7 +239,7 @@ impl DataCellLayer for SpinyStellateLayer {
     }
 
     #[inline]
-    fn cycle(&mut self, control_layers: &mut [Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+    fn cycle(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>, exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         self.cycle(control_layers, exe_graph)

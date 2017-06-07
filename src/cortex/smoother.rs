@@ -6,7 +6,7 @@ use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 
 #[derive(Debug)]
-pub struct Smoother {
+pub struct ActivitySmoother {
     layer_name: &'static str,
     layer_addr: LayerAddress,
     host_lyr_addr: LayerAddress,
@@ -16,14 +16,30 @@ pub struct Smoother {
     settings: CorticalAreaSettings,
 }
 
-impl Smoother {
+impl ActivitySmoother {
     pub fn new<D>(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
             host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
-            -> CmnResult<Smoother>
+            -> CmnResult<ActivitySmoother>
             where D: DataCellLayer
     {
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
+
+
+        // TODO (adapt into documentation):
+        //
+        // - Generate lists of focal "smoother" cells and fill buffer(s?).
+        //   - Because we will need to be able to calculate target layer `v`
+        //     and `u`, separate buffers for each may be necessary (or store
+        //     as tuples?).
+        //     - Mash each layer together within kernel (loop through them --
+        //       imagine that the each smoother cell controls all layers).
+        //
+        // - global work dims:
+        //   - linear?
+        //
+        // - activities
+        //
 
         // Kernel:
         let kern_name = "smooth";
@@ -32,7 +48,10 @@ impl Smoother {
                 dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(host_lyr.soma())
+            .arg_buf(host_lyr.activities())
             .arg_scl(host_lyr_base_axn_slc)
+            .arg_scl_named::<i32>("rnd", None)
+            .arg_buf(host_lyr.energies())
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(axns.states());
@@ -51,7 +70,7 @@ impl Smoother {
              kern_name, exe_cmd_srcs, exe_cmd_tars))?;
 
 
-        Ok(Smoother {
+        Ok(ActivitySmoother {
             layer_name: layer_name,
             layer_addr: layer_addr,
             host_lyr_addr: host_lyr.layer_addr(),
@@ -84,7 +103,7 @@ impl Smoother {
 
 }
 
-impl ControlCellLayer for Smoother {
+impl ControlCellLayer for ActivitySmoother {
     fn set_exe_order_pre(&self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         Ok(())
     }

@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_mut, unused_imports)]
 
 use std::thread::{self, JoinHandle};
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::ops::Range;
 use std::borrow::Borrow;
 use futures::{Sink, Stream, Future};
@@ -12,10 +12,10 @@ use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue};
 use ocl::core::CommandQueueProperties;
 use cmn::{self, CmnError, CmnResult, CorticalDims};
 use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind,
-    ExecutionGraph, /*AxonDomainRoute,*/};
+    ExecutionGraph, CellClass /*AxonDomainRoute,*/};
 use ::Thalamus;
 use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
-    SpinyStellateLayer, DataCellLayer, ControlCellLayer};
+    SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -74,7 +74,8 @@ pub struct CorticalArea {
     focus_layers: Vec<PyramidalLayer>,
     motor_layers: Vec<PyramidalLayer>,
     other_layers: Vec<Box<DataCellLayer>>,
-    control_layers: Vec<Box<ControlCellLayer>>,
+    // control_layers: Vec<Box<ControlCellLayer>>,
+    control_layers: BTreeMap<usize, Box<ControlCellLayer>>,
     aux: Aux,
     ocl_pq: ProQue,
     write_queue: Queue,
@@ -186,7 +187,8 @@ impl CorticalArea {
         let mut focus_layers: Vec<PyramidalLayer> = Vec::with_capacity(4);
         let mut motor_layers: Vec<PyramidalLayer> = Vec::with_capacity(4);
         let mut other_layers: Vec<Box<DataCellLayer>> = Vec::with_capacity(4);
-        let mut control_layers: Vec<Box<ControlCellLayer>> = Vec::with_capacity(4);
+        // let mut control_layers: Vec<Box<ControlCellLayer>> = Vec::with_capacity(4);
+        let mut control_layers: BTreeMap<usize, Box<ControlCellLayer>> = BTreeMap::new();
         let axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
             write_queue.clone(), &mut exe_graph, thal)?;
 
@@ -196,8 +198,9 @@ impl CorticalArea {
         // * TODO: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
         for layer in area_map.layer_map().iter() {
-            match layer.kind() {
-                &LayerKind::Cellular(ref cell_scheme) => {
+            // match layer.kind() {
+            if let LayerKind::Cellular(ref cell_scheme) = *layer.kind() {
+                // &LayerKind::Cellular(ref cell_scheme) => {
                     println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
                         cell_scheme.data_cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
 
@@ -237,8 +240,8 @@ impl CorticalArea {
                         },
                         _ => (),
                     }
-                },
-                _ => (),
+                // },
+                // _ => (),
             }
         }
 
@@ -249,31 +252,70 @@ impl CorticalArea {
         // * TODO: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
         for layer in area_map.layer_map().iter() {
-            if let LayerKind::Cellular(ref layer_kind) = *layer.kind() {
-                if let Some(&ControlCellKind::InhibitoryBasketSurround { ref host_lyr_name,
-                        field_radius: _ }) = layer_kind.control_cell_kind()
-                {
-                    // match *inh_cell_kind {
-                    //     InhibitoryCellKind::BasketSurround { ref tar_lyr_name, field_radius: _ } => {
-                            let em1 = format!("{}: '{}' is not a valid layer", emsg, host_lyr_name);
-                            let host_lyr = spatial_layers.iter().find(|lyr|
-                                lyr.layer_name() == psal_name.unwrap()).expect(&em1);
-                            // let src_soma_buf = src_soma.soma();
+            if let LayerKind::Cellular(ref cell_scheme) = *layer.kind() {
+                // if let Some(&ControlCellKind::InhibitoryBasketSurround { ref host_lyr_name,
+                //         field_radius: _ }) = cell_scheme.control_cell_kind()
+                // {
+                match *cell_scheme.cell_class() {
+                        CellClass::Control {
+                                kind: ControlCellKind::InhibitoryBasketSurround {
+                                    ref host_lyr_name, field_radius: _ },
+                                exe_order, } =>
+                        {
+                    // Some(&ControlCellKind::InhibitoryBasketSurround { ref host_lyr_name, field_radius: _ }) => {
+                        // let em1 = format!("{}: '{}' is not a valid layer", emsg, host_lyr_name);
+                        let host_lyr = spatial_layers.iter().find(|lyr|
+                                lyr.layer_name() == psal_name.unwrap())
+                            .expect(&format!("{}: '{}' is not a valid layer", emsg, host_lyr_name));
+                        // let src_soma_buf = src_soma.soma();
 
-                            let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr_name.clone()]);
-                            let host_lyr_depth = host_lyr_slc_ids.len() as u8;
-                            let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
+                        let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr_name.clone()]);
+                        let host_lyr_depth = host_lyr_slc_ids.len() as u8;
+                        let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
 
-                            let iinns_dims = dims.clone_with_depth(host_lyr_depth);
-                            let iinn_lyr = InhibitoryInterneuronNetwork::new(layer.name(),
-                                layer.layer_id(), iinns_dims, layer_kind.clone(),
-                                host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
-                                settings.clone(), &mut exe_graph)?;
+                        let ccs_dims = dims.clone_with_depth(host_lyr_depth);
+                        let cc_lyr = InhibitoryInterneuronNetwork::new(layer.name(),
+                            layer.layer_id(), ccs_dims, cell_scheme.clone(),
+                            host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
+                            settings.clone(), &mut exe_graph)?;
 
-                            // iinns.insert(layer.name(), Box::new(iinn_lyr));
-                            control_layers.push(Box::new(iinn_lyr));
-                    //     },
-                    // }
+                        // ccs.insert(layer.name(), Box::new(cc_lyr));
+                        // control_layers.push(Box::new(cc_lyr));
+                        if control_layers.insert(exe_order, Box::new(cc_lyr)).is_some() {
+                            panic!("Duplicate control cell order index found for layer: {} ({})",
+                                layer.name(), exe_order);
+                        };
+                    },
+                    CellClass::Control {
+                            kind: ControlCellKind::ActivitySmoother {
+                                ref host_lyr_name, field_radius: _ },
+                                exe_order, } =>
+                    {
+                    // Some(&ControlCellKind::ActivitySmoother { ref host_lyr_name, field_radius: _ }) => {
+                        // let em1 = format!("{}: '{}' is not a valid layer", emsg, host_lyr_name);
+                        let host_lyr = spatial_layers.iter().find(|lyr|
+                                lyr.layer_name() == psal_name.unwrap())
+                            .expect(&format!("{}: '{}' is not a valid layer", emsg, host_lyr_name));
+                        // let src_soma_buf = src_soma.soma();
+
+                        let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr_name.clone()]);
+                        let host_lyr_depth = host_lyr_slc_ids.len() as u8;
+                        let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
+
+                        let ccs_dims = dims.clone_with_depth(host_lyr_depth);
+                        let cc_lyr = ActivitySmoother::new(layer.name(),
+                            layer.layer_id(), ccs_dims, cell_scheme.clone(),
+                            host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
+                            settings.clone(), &mut exe_graph)?;
+
+                        // ccs.insert(layer.name(), Box::new(cc_lyr));
+                        // control_layers.push(Box::new(cc_lyr));
+                        if control_layers.insert(exe_order, Box::new(cc_lyr)).is_some() {
+                            panic!("Duplicate control cell order index found for layer: {} ({})",
+                                layer.name(), exe_order);
+                        }
+                    },
+                    _ => (),
                 }
             }
         }

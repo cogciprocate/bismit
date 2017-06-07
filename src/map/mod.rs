@@ -65,7 +65,7 @@ impl LayerAddress {
 // #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 // pub enum ControlCellKind {
 //     InhibitoryBasketSurround { tar_lyr_name: String, field_radius: u8  },
-//     Smoother { tar_lyr_name: String, field_radius: u8 },
+//     ActivitySmoother { tar_lyr_name: String, field_radius: u8 },
 //     //AspinyStellate,
 // }
 
@@ -79,7 +79,7 @@ pub enum DataCellKind {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ControlCellKind {
     InhibitoryBasketSurround { host_lyr_name: String, field_radius: u8  },
-    Smoother { host_lyr_name: String, field_radius: u8 },
+    ActivitySmoother { host_lyr_name: String, field_radius: u8 },
     Complex,
 }
 
@@ -89,8 +89,9 @@ pub enum ControlCellKind {
 pub enum CellClass {
     /// Cells that directly contribute to the stream of information.
     Data(DataCellKind),
+    // Data { kind: ControlCellKind, exe_order: usize }
     /// Cells that indirectly contribute to the stream of information.
-    Control(ControlCellKind),
+    Control { kind: ControlCellKind, exe_order: usize },
 }
 
 

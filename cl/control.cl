@@ -35,7 +35,6 @@ __kernel void inhib_simple(
     uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
     //uint const axn_idx = axn_idx_3d_safe(slc_id_lyr + cel_base_axn_slc, v_size, v_id, 0, u_size, u_id, 0);
     int idx_is_safe = 0;
-
     uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id_lyr + cel_base_axn_slc,
         v_id, 0, u_id, 0, &idx_is_safe);
 
@@ -199,9 +198,22 @@ __kernel void inhib_passthrough(
 }
 
 
-// __kernel void smooth(
-//             __global uchar
-//     )
-// {
+__kernel void smooth(
+            __global uchar const* const cel_states,
+            __global uchar const* const activities,
+            __private uchar const cel_base_axn_slc,
+            __private int const rnd,
+            __global uchar* const energies,
+            // __global int* const aux_ints_1,
+            __global uchar* const axn_states)
+{
+    uint const slc_id_lyr = get_global_id(0);
+    uint const v_id = get_global_id(1);
+    uint const u_id = get_global_id(2);
+    uint const v_size = get_global_size(1);
+    uint const u_size = get_global_size(2);
+    uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
 
-// }
+    // energies[cel_idx] += (energies[cel_idx] < 10);
+    energies[cel_idx] = 255 - activities[cel_idx];
+}

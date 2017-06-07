@@ -1,6 +1,7 @@
 use rand::Rng;
 use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
+use std::collections::BTreeMap;
 use ocl::traits::OclPrm;
 use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress, LayerTags};
@@ -284,7 +285,7 @@ impl PyramidalLayer {
         })
     }
 
-    pub fn set_exe_order_cycle(&self, _control_layers: &[Box<ControlCellLayer>],
+    pub fn set_exe_order_cycle(&self, _control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         if !self.settings.disable_pyrs {
@@ -387,7 +388,7 @@ impl DataCellLayer for PyramidalLayer {
         self.dens_mut().regrow();
     }
 
-    fn cycle(&mut self, _control_layers: &mut [Box<ControlCellLayer>], exe_graph: &mut ExecutionGraph)
+    fn cycle(&mut self, _control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>, exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling layer: '{}'...", self.layer_name); }

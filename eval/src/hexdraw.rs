@@ -171,10 +171,10 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
                 AxonTopology::Spatial )
             .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-                CellScheme::minicolumn("iv", "iii") )
+                CellScheme::minicolumn("iv", "iii", 9999) )
             .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
                 CellScheme::spiny_stellate(&[("aff_in", 4, 1)], 7, 600) )
-            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4))
+            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
             .layer("iii", 1, map::PTAL, AxonDomain::Local,
                 CellScheme::pyramidal(&[("iii", 20, 1)], 1, 6, 500) ) )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)

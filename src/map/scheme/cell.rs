@@ -133,37 +133,39 @@ impl CellScheme {
         }.validate())
     }
 
-    pub fn inhib(src: &str, cols_per_cel_l2: u8) -> LayerKind {
+    pub fn inhib(src: &str, cols_per_cel_l2: u8, exe_order: usize) -> LayerKind {
         LayerKind::Cellular(CellScheme {
-            cell_class: CellClass::Control(
-                ControlCellKind::InhibitoryBasketSurround {
+            cell_class: CellClass::Control {
+                kind: ControlCellKind::InhibitoryBasketSurround {
                     host_lyr_name: src.to_owned(),
                     field_radius: cols_per_cel_l2
-                }
-            ),
+                },
+                exe_order,
+            },
             tft_schemes: Vec::new(),
         }.validate())
     }
 
-    pub fn smooth(src: &str, cols_per_cel_l2: u8) -> LayerKind {
+    pub fn smooth(src: &str, cols_per_cel_l2: u8, exe_order: usize) -> LayerKind {
         LayerKind::Cellular(CellScheme {
-            cell_class: CellClass::Control(
-                ControlCellKind::Smoother {
+            cell_class: CellClass::Control {
+                kind: ControlCellKind::ActivitySmoother {
                     host_lyr_name: src.to_owned(),
                     field_radius: cols_per_cel_l2
-                }
-            ),
+                },
+                exe_order,
+            },
             tft_schemes: Vec::new(),
         }.validate())
     }
 
-    pub fn minicolumn(psal_lyr: &'static str, ptal_lyr: &'static str,) -> LayerKind {
+    pub fn minicolumn(psal_lyr: &'static str, ptal_lyr: &'static str, exe_order: usize) -> LayerKind {
         let tft_scheme = TuftScheme::new(DendriteClass::Basal, DendriteKind::Other, 0, 0,
             vec![TuftSourceLayer::new(psal_lyr.to_owned(), 0, 1),
             TuftSourceLayer::new(ptal_lyr.to_owned(), 0, 1)], None).and_tft_id(0);
 
         LayerKind::Cellular(CellScheme {
-            cell_class: CellClass::Control(ControlCellKind::Complex),
+            cell_class: CellClass::Control { kind: ControlCellKind::Complex, exe_order, },
             tft_schemes: vec![tft_scheme],
         }.validate())
     }
@@ -186,9 +188,9 @@ impl CellScheme {
     // [FIXME]: This check would be better to do within `CorticalArea`.
     pub fn validate_depth(&self, depth: Option<u8>) -> Option<u8> {
         match self.cell_class {
-            CellClass::Control(ref kind) => match *kind {
+            CellClass::Control { ref kind, exe_order: _ } => match *kind {
                 ControlCellKind::InhibitoryBasketSurround { .. } => Some(0),
-                ControlCellKind::Smoother { .. } => Some(0),
+                ControlCellKind::ActivitySmoother { .. } => Some(0),
                 ControlCellKind::Complex => Some(cmn::DEFAULT_OUTPUT_LAYER_DEPTH),
                 // _ => ,
             },
@@ -205,7 +207,7 @@ impl CellScheme {
 
     #[inline] pub fn control_cell_kind(&self) -> Option<&ControlCellKind> {
         match self.cell_class {
-            CellClass::Control(ref ck) => Some(ck),
+            CellClass::Control { ref kind, exe_order: _ } => Some(kind),
             _ => None,
         }
     }

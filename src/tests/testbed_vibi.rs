@@ -41,8 +41,8 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
             )
             .input_layer("unused", map::UNUSED_TESTING, AxonDomain::Local, AxonTopology::Spatial)
             .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-                CellScheme::minicolumn("iv", "iii"))
-            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4))
+                CellScheme::minicolumn("iv", "iii", 9999))
+            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
 
             // .layer("iv", 1, map::PSAL, AxonDomain::Local,
             //     CellScheme::spiny_stellate(4, vec!["aff_in"], 400, 8))

@@ -19,7 +19,7 @@ pub use self::axon_space::AxonSpace;
 pub use self::synapses::{Synapses, TuftDims};
 pub use self::minicolumns::Minicolumns;
 pub use self::iinn::InhibitoryInterneuronNetwork;
-pub use self::smoother::Smoother;
+pub use self::smoother::ActivitySmoother;
 pub use self::pyramidals::PyramidalLayer;
 pub use self::spiny_stellates::SpinyStellateLayer;
 pub use self::dendrites::Dendrites;
