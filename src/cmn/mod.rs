@@ -788,6 +788,11 @@ pub struct HexGroupCenters {
 }
 
 impl HexGroupCenters {
+    /// Returns a new `HexGroupCenters`.
+    ///
+    /// `side_len` sets the side length for each hexagon-tile group (in
+    /// tiles). `l_bound` and `u_bound` set the lower and upper boundaries
+    /// (creating a parallelogram).
     pub fn new(side_len: i32, l_bound: [i32; 2], u_bound: [i32; 2]) -> HexGroupCenters {
         const CLOCKWISE_BIAS: bool = true;
 
@@ -801,7 +806,7 @@ impl HexGroupCenters {
         }
     }
 
-    // /// Sets lower and upper boundaries within a parallelogram.
+    //
     // pub fn bounds(mut self, l_bound: [i32; 2], u_bound: [i32; 2]) -> HexGroupCenters {
     //     self.l_bound = Some(l_bound);
     //     self.u_bound = Some(u_bound);
@@ -885,6 +890,23 @@ impl HexGroupCenters {
     pub fn to_vec(&self) -> Vec<[i32; 2]> {
         self.centers.iter().cloned().collect()
     }
+
+    /// Converts the internal group centers list into two `Vec`s, one for each
+    /// coord.
+    pub fn to_vecs(&self) -> (Vec<i32>, Vec<i32>) {
+        let mut vcoords = Vec::with_capacity(self.centers.len());
+        let mut ucoords = Vec::with_capacity(self.centers.len());
+
+        for center in self.centers.iter() {
+            vcoords.push(center[0]);
+            ucoords.push(center[1]);
+        }
+
+        (vcoords, ucoords)
+    }
+
+    // Returns a reference to the centers set.
+    pub fn set(&self) -> &HashSet<[i32; 2]> { &self.centers }
 }
 
 
@@ -911,6 +933,7 @@ pub fn populate_hex_tile_grps(side_len: usize, dims: [i32; 2], start: [i32; 2], 
         sdr[idx as usize] = val;
     }
 }
+
 
 
 /*=============================================================================
