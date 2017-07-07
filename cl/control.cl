@@ -198,7 +198,19 @@ __kernel void inhib_passthrough(
 }
 
 
-__kernel void smooth(
+/// Smooths cell activity by manipulating the cell's energy.
+///
+// * Iterate through data cells within the smoother cell's radius
+// * Calculate a cell index for each iteration
+// * Find most and least active cells within radius
+// * Increment energy of least active cell if < 255
+// * Decrement most active if > 0
+__kernel void smooth_activity(
+            __global int const* const centers_v,
+            __global int const* const centers_u,
+            __private uint const v_size,
+            __private uint const u_size,
+            __private int const radius,
             __global uchar const* const cel_states,
             __global uchar const* const activities,
             __private uchar const cel_base_axn_slc,
@@ -208,12 +220,30 @@ __kernel void smooth(
             __global uchar* const axn_states)
 {
     uint const slc_id_lyr = get_global_id(0);
-    uint const v_id = get_global_id(1);
-    uint const u_id = get_global_id(2);
-    uint const v_size = get_global_size(1);
-    uint const u_size = get_global_size(2);
-    uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
+    uint const center_idx = get_global_id(1);
+    int const center_v = centers_v[center_idx];
+    int const center_u = centers_u[center_idx];
+
+    uint least_active_cel_idx = 0;
+    uint least_active_val = 0;
+
+    int const radius_pos = radius;
+    int const radius_neg = 0 - radius_pos;
+
+    for (int v_ofs = radius_neg; v_ofs <= radius_pos; v_ofs++) {
+        int v_neg = 0 - v_ofs;
+        int u_z = max(radius_neg, v_neg - radius_pos);
+        int u_m = min(radius_pos, v_neg + radius_pos);
+
+        for (int u_ofs = u_z; u_ofs <= u_m; u_ofs++) {
+            int idx_is_safe = 0;
+            uint cel_idx = cel_idx_3d_checked(slc_id_lyr, v_size, center_v + v_ofs,
+                u_size, center_u + u_ofs, &idx_is_safe);
+            // uchar cell_state = cel_states,
+
+        }
+    }
 
     // energies[cel_idx] += (energies[cel_idx] < 10);
-    energies[cel_idx] = 255 - activities[cel_idx];
+    // energies[cel_idx] = 255 - activities[cel_idx];
 }

@@ -71,8 +71,8 @@ impl PyramidalLayer {
         let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
         let tft_best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
         let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
-        let energies = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims.cells()).fill_val(0, None::<()>).build()?;
-        let activities = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims.cells()).fill_val(0, None::<()>).build()?;
+        let energies = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims.cells()).fill_val(0).build()?;
+        let activities = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims.cells()).fill_val(0).build()?;
 
         println!("{mt}{mt}PYRAMIDALS::NEW(): \
             layer: '{}', base_axn_slc: {}, pyr_lyr_axn_idz: {}, tft_count: {}, \

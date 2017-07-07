@@ -10,7 +10,7 @@ use map::{CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayer};
 
 
-const PRINT_DEBUG: bool = true;
+const PRINT_DEBUG: bool = false;
 const TUFT_COUNT: usize = 1;
 
 
@@ -55,8 +55,8 @@ impl SpinyStellateLayer {
             tft_scheme.syns_per_den_l2() + tft_scheme.dens_per_tft_l2()
         };
 
-        let energies = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims).fill_val(0, None::<()>).build()?;
-        let activities = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims).fill_val(0, None::<()>).build()?;
+        let energies = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims).fill_val(0).build()?;
+        let activities = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims).fill_val(0).build()?;
 
         println!("{mt}{mt}SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}",
             base_axn_slc, lyr_axn_idz, dims, mt = cmn::MT);

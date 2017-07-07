@@ -335,12 +335,12 @@ pub fn eval(/*params: Params*/) {
             // (80000, 10000),
             // (80000, 10000),
 
-            // (0, 10000),
-            // (0, 10000),
-            // (40000, 10000),
-            // (0, 10000),
+            (0, 10000),
+            (0, 10000),
+            (40000, 10000),
+            (0, 10000),
 
-            (0, 10),
+            // (0, 10),
         ];
 
         for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {

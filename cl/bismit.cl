@@ -264,10 +264,10 @@ static inline int4 coord_is_safe_vec4(int4 const dim_size, int4 const coord_id, 
 =============================================================================*/
 
 // CEL_IDX_3D_UNSAFE(): LINEAR INDEX OF A CELL - NOT ACCURATE FOR AXONS
-static inline uint cel_idx_3d_unsafe(uint const slc_id_lyr, uint const v_size, uint const v_id,
-            uint const u_size, uint const u_id)
+static inline uint cel_idx_3d_unsafe(uint const slc_id_lyr, uint const v_size, int const v_id,
+            uint const u_size, int const u_id)
 {
-    return mad24(slc_id_lyr, mul24(v_size, u_size), mad24(v_id, u_size, u_id));
+    return (uint)mad24((int)slc_id_lyr, mul24((int)v_size, (int)u_size), mad24(v_id, (int)u_size, u_id));
 }
 
 // CEL_IDX_3D_UNSAFE_VEC4(): LINEAR INDEX OF A CELL - NOT FOR ACCURATE AXONS
@@ -284,19 +284,28 @@ static inline int4 cel_idx_3d_unsafe_vec4(uchar4 const slc_id_lyr_uchar4, int4 c
 //    - Intended primarily for use by the inhibition-related kernel(s)
 // +8
 static inline uchar cel_state_3d_safe(uchar const slc_id_lyr,
-            uint const v_size, uint const v_id, char const v_ofs,
-            uint const u_size, uint const u_id, char const u_ofs,
+            uint const v_size, int const v_id, char const v_ofs,
+            uint const u_size, int const u_id, char const u_ofs,
             __global uchar const* const cel_states)
 {
     int v_ofs_is_safe = coord_is_safe(v_size, v_id, v_ofs);
     int u_ofs_is_safe = coord_is_safe(u_size, u_id, u_ofs);
     int cel_idx_is_safe = v_ofs_is_safe & u_ofs_is_safe;
 
-    uint cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, (int)v_id + v_ofs, u_size, (int)u_id + u_ofs);
+    uint cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id + v_ofs, u_size, u_id + u_ofs);
 
     return mul24(cel_idx_is_safe, cel_states[mul24((uint)cel_idx_is_safe, cel_idx)]);
 }
 
+// CEL_IDX_3D_CHECKED(): LINEAR INDEX OF A CELL - NOT ACCURATE FOR AXONS
+static inline uint cel_idx_3d_checked(uint const slc_id_lyr, uint const v_size, int const v_id,
+            uint const u_size, int const u_id, int* idx_is_safe)
+{
+    int v_ofs_is_safe = coord_is_safe(v_size, v_id, 0);
+    int u_ofs_is_safe = coord_is_safe(u_size, u_id, 0);
+    *idx_is_safe = v_ofs_is_safe & u_ofs_is_safe;
+    return (uint)mad24((int)slc_id_lyr, mul24((int)v_size, (int)u_size), mad24(v_id, (int)u_size, u_id));
+}
 
 /*=============================================================================
 ================================ AXON INDEXING ================================

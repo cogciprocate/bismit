@@ -270,12 +270,12 @@ impl CorticalArea {
                         // let src_soma_buf = src_soma.soma();
 
                         let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr_name.clone()]);
-                        let host_lyr_depth = host_lyr_slc_ids.len() as u8;
+                        // let host_lyr_depth = host_lyr_slc_ids.len() as u8;
                         let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
 
-                        let ccs_dims = dims.clone_with_depth(host_lyr_depth);
+                        // let ccs_dims = dims.clone_with_depth(host_lyr_depth);
                         let cc_lyr = InhibitoryInterneuronNetwork::new(layer.name(),
-                            layer.layer_id(), ccs_dims, cell_scheme.clone(),
+                            layer.layer_id(), /*ccs_dims,*/ cell_scheme.clone(),
                             host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
                             settings.clone(), &mut exe_graph)?;
 
@@ -299,12 +299,12 @@ impl CorticalArea {
                         // let src_soma_buf = src_soma.soma();
 
                         let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr_name.clone()]);
-                        let host_lyr_depth = host_lyr_slc_ids.len() as u8;
+                        // let host_lyr_depth = host_lyr_slc_ids.len() as u8;
                         let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
 
-                        let ccs_dims = dims.clone_with_depth(host_lyr_depth);
+                        // let ccs_dims = dims.clone_with_depth(host_lyr_depth);
                         let cc_lyr = ActivitySmoother::new(layer.name(),
-                            layer.layer_id(), ccs_dims, cell_scheme.clone(),
+                            layer.layer_id(), /*ccs_dims,*/ cell_scheme.clone(),
                             host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
                             settings.clone(), &mut exe_graph)?;
 

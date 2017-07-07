@@ -1,12 +1,13 @@
-use cmn::{CorticalDims, CmnResult};
+use cmn::{/*CorticalDims,*/ CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
-use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event};
+use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event, MemFlags};
 use map::CellScheme;
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 
 // const OVERLAP_COUNT: usize = 6;
 const GRP_SIDE_LEN: i32 = 4;
+const GRP_RADIUS: i32 = GRP_SIDE_LEN - 1;
 
 
 /// Generates a set of 'center' coordinates for cells grouped by overlap-layer
@@ -21,8 +22,8 @@ fn gen_grp_centers(side_len: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
     let l_bound = [0 - side_len, 0 - side_len];
     let u_bound = [dims[0] + side_len, dims[1] + side_len];
 
-    let mut centers_u = Vec::with_capacity(4096);
     let mut centers_v = Vec::with_capacity(4096);
+    let mut centers_u = Vec::with_capacity(4096);
 
     assert!(side_len % 2 == 0);
     let ofs_dist = side_len / 2;
@@ -40,10 +41,10 @@ fn gen_grp_centers(side_len: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
         }
     }
 
-    centers_u.shrink_to_fit();
     centers_v.shrink_to_fit();
+    centers_u.shrink_to_fit();
 
-    (centers_u, centers_v)
+    (centers_v, centers_u)
 }
 
 
@@ -61,7 +62,7 @@ pub struct ActivitySmoother {
 }
 
 impl ActivitySmoother {
-    pub fn new<D>(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
+    pub fn new<D>(layer_name: &'static str, layer_id: usize, /*dims: CorticalDims,*/ _: CellScheme,
             host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<ActivitySmoother>
@@ -85,22 +86,29 @@ impl ActivitySmoother {
         // - activities
         //
 
-        let (centers_u_vec, centers_v_vec) = gen_grp_centers(GRP_SIDE_LEN,
-            [dims.v_size() as i32, dims.u_size() as i32]);
+        let (centers_v_vec, centers_u_vec) = gen_grp_centers(GRP_SIDE_LEN,
+            [host_lyr.dims().v_size() as i32, host_lyr.dims().u_size() as i32]);
 
         assert!(centers_v_vec.len() == centers_u_vec.len());
         let cell_count = centers_v_vec.len();
 
-        let centers_u = Buffer::builder().queue(ocl_pq.queue().clone()).dims(cell_count).build()?;
-        let centers_v = Buffer::builder().queue(ocl_pq.queue().clone()).dims(cell_count).build()?;
+        let centers_v = Buffer::builder().queue(ocl_pq.queue().clone()).dims(cell_count)
+            .host_data(&centers_v_vec).flags(MemFlags::new().copy_host_ptr()).build()?;
+        let centers_u = Buffer::builder().queue(ocl_pq.queue().clone()).dims(cell_count)
+            .host_data(&centers_u_vec).flags(MemFlags::new().copy_host_ptr()).build()?;
 
         // Kernel:
-        let kern_name = "smooth";
+        let kern_name = "smooth_activity";
         let kern = ocl_pq.create_kernel(kern_name)?
             // .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
             //     dims.u_size() as usize))
-            .gws(SpatialDims::One(cell_count))
+            .gws(SpatialDims::Two(host_lyr.dims().depth() as usize, cell_count))
             // .lws(SpatialDims::Three(1, 8, 8 as usize))
+            .arg_buf(&centers_v)
+            .arg_buf(&centers_u)
+            .arg_scl(host_lyr.dims().v_size())
+            .arg_scl(host_lyr.dims().u_size())
+            .arg_scl(GRP_RADIUS)
             .arg_buf(host_lyr.soma())
             .arg_buf(host_lyr.activities())
             .arg_scl(host_lyr_base_axn_slc)
@@ -116,13 +124,12 @@ impl ActivitySmoother {
             .collect();
 
         // Set up execution command:
-        let exe_cmd_tars = (host_lyr_base_axn_slc..host_lyr_base_axn_slc + dims.depth())
+        let exe_cmd_tars = (host_lyr_base_axn_slc..host_lyr_base_axn_slc + host_lyr.dims().depth())
             .map(|slc_id| CorticalBuffer::axon_slice(&axns.states(), area_map.area_id(), slc_id))
             .collect();
 
         let exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
              kern_name, exe_cmd_srcs, exe_cmd_tars))?;
-
 
         Ok(ActivitySmoother {
             layer_name: layer_name,

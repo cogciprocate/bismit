@@ -1,6 +1,6 @@
 // use std::fmt::Debug;
 use rand::Rng;
-use cmn::{self, CorticalDims, CmnResult};
+use cmn::{self, /*CorticalDims,*/ CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{Kernel, ProQue, SpatialDims, /*Buffer,*/ Event};
 use map::CellScheme;
@@ -24,7 +24,7 @@ pub struct InhibitoryInterneuronNetwork {
 
 impl InhibitoryInterneuronNetwork {
     // FIXME: This function should take a 'bypass' argument instead of `::cycle`.
-    pub fn new<D>(layer_name: &'static str, layer_id: usize, dims: CorticalDims, _: CellScheme,
+    pub fn new<D>(layer_name: &'static str, layer_id: usize, /*dims: CorticalDims,*/ _: CellScheme,
             host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<InhibitoryInterneuronNetwork>
@@ -38,8 +38,8 @@ impl InhibitoryInterneuronNetwork {
         // Simple (active) kernel:
         let kern_inhib_simple_name = "inhib_simple";
         let kern_inhib_simple = ocl_pq.create_kernel(kern_inhib_simple_name)?
-            .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
-                dims.u_size() as usize))
+            .gws(SpatialDims::Three(host_lyr.dims().depth() as usize, host_lyr.dims().v_size() as usize,
+                host_lyr.dims().u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(host_lyr.soma())
             .arg_buf(host_lyr.energies())
@@ -53,8 +53,8 @@ impl InhibitoryInterneuronNetwork {
         // Passthrough kernel:
         let kern_inhib_passthrough_name = "inhib_passthrough";
         let kern_inhib_passthrough = ocl_pq.create_kernel(kern_inhib_passthrough_name)?
-            .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
-                dims.u_size() as usize))
+            .gws(SpatialDims::Three(host_lyr.dims().depth() as usize, host_lyr.dims().v_size() as usize,
+                host_lyr.dims().u_size() as usize))
             .arg_buf(host_lyr.soma())
             .arg_scl(host_lyr_base_axn_slc)
             .arg_buf(axns.states());
@@ -66,7 +66,7 @@ impl InhibitoryInterneuronNetwork {
             .collect();
 
         // Set up execution command:
-        let exe_cmd_tars = (host_lyr_base_axn_slc..host_lyr_base_axn_slc + dims.depth())
+        let exe_cmd_tars = (host_lyr_base_axn_slc..host_lyr_base_axn_slc + host_lyr.dims().depth())
             .map(|slc_id| CorticalBuffer::axon_slice(&axns.states(), area_map.area_id(), slc_id))
             .collect();
 
