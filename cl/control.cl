@@ -20,7 +20,7 @@
 //            - be vectorized
 __kernel void inhib_simple(
             __global uchar const* const cel_states,
-            __global uchar const* const energies,
+            // __global uchar const* const energies,
             __private uchar const cel_base_axn_slc,
             __private int const rnd,
             __global uchar* const activities,
@@ -38,11 +38,15 @@ __kernel void inhib_simple(
     uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id_lyr + cel_base_axn_slc,
         v_id, 0, u_id, 0, &idx_is_safe);
 
-    // Add the energy (restlessness) to the feed-forward state:
-    uchar const cel_state_raw = clamp((uint)cel_states[cel_idx] + (uint)energies[cel_idx],
-        (uint)0, (uint)255);
+    // // Add the energy (restlessness) to the feed-forward state:
+    // uint energy = (uint)energies[cel_idx];
+    // energy = mul24((uint)(energy > 127), energy);
+    // uchar const cel_state_raw = clamp((uint)cel_states[cel_idx] + energy, (uint)0, (uint)255);
+
     // The cell state, if the index is not out of bounds (otherwise zero):
-    uchar const cel_state = mul24(idx_is_safe, (int)cel_state_raw);
+    uchar const cel_state = mul24(idx_is_safe, (int)cel_states[cel_idx]);
+
+    // uchar const cel_state = cel_states[cel_idx];
 
     int const radius_pos = INHIB_RADIUS;
     int const radius_neg = 0 - radius_pos;
@@ -160,7 +164,7 @@ __kernel void inhib_simple(
     // Increment activity rating if active:
     int axon_is_active = uninhibited & (cel_state != 0);
     activity_rating += rnd_inc_u(rnd, cel_state & cel_idx, activity_rating) & axon_is_active;
-    // Decrement activities count at random (may need tuning [256 max]):
+    // Decrement activities count at random (may need tuning):
     activity_rating -= rnd_0xFFFF(rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_FACTOR) &
        (activity_rating > 0);
 
@@ -198,8 +202,8 @@ __kernel void inhib_passthrough(
 }
 
 
-/// Smooths cell activity by manipulating the cell's energy.
-///
+// Smooths cell activity by manipulating the cell's energy.
+//
 // * Iterate through data cells within the smoother cell's radius
 // * Calculate a cell index for each iteration
 // * Find most and least active cells within radius
@@ -211,13 +215,13 @@ __kernel void smooth_activity(
             __private uint const v_size,
             __private uint const u_size,
             __private int const radius,
-            __global uchar const* const cel_states,
-            __global uchar const* const activities,
-            __private uchar const cel_base_axn_slc,
-            __private int const rnd,
-            __global uchar* const energies,
+            __global uchar const* const cel_actvs,
+            // __global uchar const* const cel_states,
+            // __private uchar const cel_base_axn_slc,
+            // __private int const rnd,
+            // __global uchar* const axn_states
             // __global int* const aux_ints_1,
-            __global uchar* const axn_states)
+            __global uchar* const cel_energies)
 {
     uint const slc_id_lyr = get_global_id(0);
     uint const center_idx = get_global_id(1);
@@ -225,7 +229,9 @@ __kernel void smooth_activity(
     int const center_u = centers_u[center_idx];
 
     uint least_active_cel_idx = 0;
-    uint least_active_val = 0;
+    uchar least_active_cel_actv = 255;
+    uint most_active_cel_idx = 0;
+    uchar most_active_cel_actv = 0;
 
     int const radius_pos = radius;
     int const radius_neg = 0 - radius_pos;
@@ -239,11 +245,36 @@ __kernel void smooth_activity(
             int idx_is_safe = 0;
             uint cel_idx = cel_idx_3d_checked(slc_id_lyr, v_size, center_v + v_ofs,
                 u_size, center_u + u_ofs, &idx_is_safe);
-            // uchar cell_state = cel_states,
+            uchar cel_actv = cel_actvs[mul24((uint)idx_is_safe, cel_idx)];
 
+            int cel_is_least_active = (cel_actv <= least_active_cel_actv) & idx_is_safe;
+            // int cel_is_least_active = (cel_actv <= least_active_cel_actv);
+            least_active_cel_idx = tern24(cel_is_least_active, cel_idx, least_active_cel_idx);
+            least_active_cel_actv = tern24(cel_is_least_active, cel_actv, least_active_cel_actv);
+
+            int cel_is_most_active = (cel_actv >= most_active_cel_actv) & idx_is_safe;
+            most_active_cel_idx = tern24(cel_is_most_active, cel_idx, most_active_cel_idx);
+            most_active_cel_actv = tern24(cel_is_most_active, cel_actv, most_active_cel_actv);
+
+            // if (idx_is_safe) {
+            //     if ((cel_energies[cel_idx] < 255) ) {
+            //         cel_energies[cel_idx] += 1;
+            //     }
+            // }
         }
     }
 
-    // energies[cel_idx] += (energies[cel_idx] < 10);
-    // energies[cel_idx] = 255 - activities[cel_idx];
+    // REMINDER: Energy is (currently) being added linearly with cell state (before inhib):
+
+    // Least Active (boost energy):
+    uchar least_active_cel_energy = cel_energies[least_active_cel_idx];
+    cel_energies[least_active_cel_idx] = least_active_cel_energy +
+        (least_active_cel_energy < 255);
+
+    // Most Active (sap energy):
+    uchar most_active_cel_energy = cel_energies[most_active_cel_idx];
+    // Do not sap cells with zero activity.
+    // cel_energies[most_active_cel_idx] = most_active_cel_energy -
+    //     ((most_active_cel_energy > 0) & (most_active_cel_actv > 0) &
+    //         (least_active_cel_idx != most_active_cel_idx));
 }

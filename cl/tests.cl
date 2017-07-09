@@ -36,11 +36,12 @@ __kernel void test_axn_idxs_scl(
     // uint const scaled_v_id = (mul24(v_id, get_axn_v_scale(slc_id)) >> 4) + v_ofs;
     // uint const scaled_u_id = (mul24(u_id, get_axn_u_scale(slc_id)) >> 4) + u_ofs;
     // uint const axn_idx_n = get_axn_slc_idz(slc_id) + mad24(scaled_v_id, u_size_axn, scaled_u_id);
-    
+
     int idx_is_safe = 0;
     outs_n[cel_idx] = axn_idx_3d_unsafe(slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
     //outs_n[cel_idx] = u_id; //scaled_u_id; //mad24(scaled_v_id, axn_u_size, scaled_u_id);
 }
+
 
 __kernel void test_axn_idxs_vec4(
             __global char4 const* const v_offs,
@@ -75,10 +76,20 @@ __kernel void test_axn_idxs_vec4(
     // int4 const u_size = get_axn_u_size_vec4(slc_id);
     // int4 const scaled_v_id = (mul24(v_id, get_axn_v_scale_vec4(slc_id)) >> 4) + v_ofs;
     // int4 const scaled_u_id = (mul24(u_id, get_axn_u_scale_vec4(slc_id)) >> 4) + u_ofs;
-    
+
     int4 idx_is_safe = (int4)0;
-    
-    outs_v4[cel_idx_scl] = convert_uint4(axn_idx_3d_unsafe_vec4(slc_id, v_id, 
+
+    outs_v4[cel_idx_scl] = convert_uint4(axn_idx_3d_unsafe_vec4(slc_id, v_id,
         v_ofs_char4, u_id, u_ofs_char4, &idx_is_safe));
     //outs_v4[cel_idx_scl] = u_id; //scaled_u_id; // mad24(scaled_v_id, u_size, scaled_u_id);
 }
+
+
+// __kernel void test_hex_radial_iter(
+//         __global
+
+
+
+
+
+// )

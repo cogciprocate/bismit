@@ -9,7 +9,6 @@ use super::{TestBed, util};
 
 
 
-
 // TEST THAT:
 //        - VECTORIZED AND NON-VECTORIZED INDEX RESOLUTION FUNCTIONS RETURN THE SAME RESULTS
 //         - KERNEL CALCULATED AXON INDEXES FALL WITHIN THE CORRECT RANGE (ON THE APPROPRIATE SLICE)
@@ -68,6 +67,18 @@ pub fn axn_idxs(testbed: &TestBed) {
     let failure = util::compare_buffers(&outs_sc, &outs_v4);
 
     if failure { panic!("Vectorized and non-vectorized kernel results are not equal.") };
+}
+
+
+/// Tests to ensure that the hex-tile radius nested loop commonly used within
+/// kernels is correct.
+pub fn hex_radial_iter(testbed: &TestBed) {
+    // * Establish the size of the area (randomizd: 8-64ish) and create a buffer of
+    //   'cell states' initialized to zero.
+    // * Pick 8 'center' positions at random.
+    // * Run kernel on center positions, setting the state of all cells that
+    //   fall within the (randomized: 0-10ish) radius.
+    // * Read from buffer and iterate through
 }
 
 

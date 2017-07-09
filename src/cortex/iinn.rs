@@ -42,7 +42,7 @@ impl InhibitoryInterneuronNetwork {
                 host_lyr.dims().u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(host_lyr.soma())
-            .arg_buf(host_lyr.energies())
+            // .arg_buf(host_lyr.energies())
             .arg_scl(host_lyr_base_axn_slc)
             .arg_scl_named::<i32>("rnd", None)
             .arg_buf(host_lyr.activities())

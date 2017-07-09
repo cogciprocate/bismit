@@ -69,8 +69,8 @@ impl SubcorticalNucleus for Nucleus {
 
 // Prints dendritic and cell activity ratings as well as a total activity
 // count for a selection of cells (currently every 8th).
-fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>,
-        activity_counts: &Vec<Vec<usize>>)
+fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>, cel_enrgs: &Buffer<u8>,
+        activity_counts: &Vec<Vec<usize>>, /*energy_level: u8*/)
 {
     let cel_count = activity_counts.len();
     let pattern_count = activity_counts[0].len();
@@ -85,6 +85,10 @@ fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>,
     let mut cel_activities = vec![0; cel_actvs.len()];
     cel_actvs.read(&mut cel_activities).enq().unwrap();
     assert_eq!(cel_activities.len(), activity_counts.len());
+
+    let mut cel_energies = vec![0; cel_enrgs.len()];
+    cel_enrgs.read(&mut cel_energies).enq().unwrap();
+    assert_eq!(cel_energies.len(), activity_counts.len());
 
     for (cel_idx, counts) in activity_counts.iter().enumerate() {
         debug_assert!(counts.len() == pattern_count);
@@ -105,15 +109,21 @@ fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>,
         // `ca`: cell activity rating (post-inhib)
         // `ct`: cell activity count
 
-        if (cel_idx & 7) == 0 {
+        // if (cel_idx & 7) == 0 {
         // if cel_ttl > 0. && cel_ttl < 150. {
         // if cel_ttl > 600. {
+        // if cel_energies[cel_idx] == 0 && cel_activities[cel_idx] == 0 {
+        if cel_activities[cel_idx] == 0 {
+        // if cel_energies[cel_idx] != energy_level {
+        // if cel_energies[cel_idx] == 0 {
             print!("{{[");
             printc!(dark_grey: "{}", cel_idx);
             print!("]::da:");
             printc!(green: "{}", den_activities[cel_idx]);
             print!(",ca:");
             printc!(green: "{}", cel_activities[cel_idx]);
+            print!(",ce:");
+            printc!(green: "{}", cel_energies[cel_idx]);
             print!(",ct:");
             printc!(royal_blue: "{}", cel_ttl);
             print!("}} ");
@@ -263,6 +273,10 @@ pub fn eval(/*params: Params*/) {
     let l4_spt_cel_actvs = cortex.areas().by_key(PRI_AREA).unwrap()
         .psal_TEMP().activities().clone();
 
+    // Layer 4 spatial cell energies (restlessness):
+    let l4_spt_cel_enrgs = cortex.areas().by_key(PRI_AREA).unwrap()
+        .psal_TEMP().energies().clone();
+
     let in_tract_idx = cortex.thal().tract().index_of(v0_ext_lyr_addr).unwrap();
     let in_tract_buffer = cortex.thal().tract().buffer(in_tract_idx).unwrap().clone();
     let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
@@ -335,21 +349,50 @@ pub fn eval(/*params: Params*/) {
             // (80000, 10000),
             // (80000, 10000),
 
-            (0, 10000),
-            (0, 10000),
-            (40000, 10000),
-            (0, 10000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (60000, 2000),
+            // (0, 2000),
 
-            // (0, 10),
+            (0, 100),
+            // (0, 100),
+            // (0, 100),
+            // (0, 100),
+            // (0, 100),
+            // (0, 100),
+            // (0, 100),
+            // (0, 100),
+
+            (0, 40000),
+            (0, 100),
+            // // (0, 10000),
+            // (0, 100),
+            // (0, 100),
+
+            // (0, 1)
         ];
+
+        let mut total_cycles = 0usize;
 
         for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {
             let mut activity_counts = vec![vec![0; pattern_count]; cell_count];
             cycle(&params, training_iters, collect_iters, pattern_count,
                 &sdrs, &mut activity_counts);
-            println!("\nActivity Counts [{}] (train: {}, collect: {}):",
-                t, training_iters, collect_iters);
-            print_activity_counts(&l4_spt_den_actvs, &l4_spt_cel_actvs, &activity_counts);
+            total_cycles += training_iters + collect_iters;
+            println!("\nActivity Counts [{}] (train: {}, collect: {}, running total: {}):",
+                t, training_iters, collect_iters, total_cycles);
+
+            // let smoother_layers = 6;
+            // let mut energy_level = smoother_layers * total_cycles;
+            // energy_level = if energy_level > 255 { 255 } else { energy_level };
+            print_activity_counts(&l4_spt_den_actvs, &l4_spt_cel_actvs,
+                &l4_spt_cel_enrgs, &activity_counts, /*energy_level as u8*/);
         }
 
         params.cmd_tx.send(Command::Exit).unwrap();
@@ -376,7 +419,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 CellScheme::minicolumn("iv", "iii", 9999)
             )
             .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 4, 1)], 7, 600)
+                CellScheme::spiny_stellate(&[("aff_in", 9, 1)], 7, 400)
             )
             .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
             .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4, 1))
@@ -417,7 +460,7 @@ fn define_a_schemes() -> AreaSchemeList {
 pub fn ca_settings() -> CorticalAreaSettings {
     let mut settings = CorticalAreaSettings::new();
 
-    // settings.bypass_inhib = true;
+    settings.bypass_inhib = true;
     settings.bypass_filters = true;
     settings.disable_pyrs = true;
     // settings.disable_ssts = true;

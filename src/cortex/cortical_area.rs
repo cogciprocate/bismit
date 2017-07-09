@@ -26,7 +26,7 @@ const QUEUE_OUT_OF_ORDER: bool = true;
 // Enable queue profiling:
 const QUEUE_PROFILING: bool = false;
 // GDB debug mode:
-const KERNEL_DEBUG_SYMBOLS: bool = false;
+const KERNEL_DEBUG_SYMBOLS: bool = true;
 
 
 /// Cortical area settings.
@@ -139,6 +139,7 @@ impl CorticalArea {
 
         let ocl_pq = ProQue::builder()
             .device(device_idx)
+            // .device(1)
             .context(ocl_context.clone())
             .prog_bldr(build_options)
             .queue_properties(queue_flags)

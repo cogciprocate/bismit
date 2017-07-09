@@ -413,8 +413,8 @@ impl DataCellLayer for PyramidalLayer {
 
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell soma..."); }
 
-        let mut event = Event::empty();
         if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
+            let mut event = Event::empty();
             self.pyr_cycle_kernel.cmd().ewait(exe_graph.get_req_events(cycle_cmd_idx)?)
                 .enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cycle_cmd_idx, Some(event))?;

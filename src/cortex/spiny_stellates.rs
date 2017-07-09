@@ -25,13 +25,15 @@ pub struct SpinyStellateLayer {
     axn_slc_ids: Vec<u8>,
     // base_axn_slc: u8,
     lyr_axn_idz: u32,
+    kern_cycle: Kernel,
     kern_ltp: Kernel,
     energies: Buffer<u8>,
     activities: Buffer<u8>,
     pub dens: Dendrites,
     rng: cmn::XorShiftRng,
+    cycle_exe_cmd_idx: Option<usize>,
     ltp_exe_cmd_idx: Option<usize>,
-    _settings: CorticalAreaSettings,
+    settings: CorticalAreaSettings,
     control_lyr_idxs: Vec<usize>,
 }
 
@@ -72,6 +74,24 @@ impl SpinyStellateLayer {
         ===============================================================================
         =============================================================================*/
 
+        let kern_name = "sst_cycle";
+        let kern_cycle = ocl_pq.create_kernel(kern_name)?
+            .gws(dims)
+            .arg_buf(&energies)
+            .arg_buf(dens.syns().states());
+
+        // let mut cycle_cmd_srcs = Vec::with_capacity(2);
+        // // cycle_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, sst_tft_id));
+        // cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&energies, layer_addr, sst_tft_id));
+
+        let cycle_exe_cmd_idx = if settings.disable_ssts {
+            None
+        } else {
+            Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(kern_name, /*cycle_cmd_srcs,*/
+                vec![CorticalBuffer::data_soma_tft(&energies, layer_addr, sst_tft_id)],
+                vec![CorticalBuffer::data_den_tft(dens.states(), layer_addr, sst_tft_id)]))?)
+        };
+
         let kern_name = "sst_ltp_simple";
         let kern_ltp = ocl_pq.create_kernel(kern_name)?
             // .expect("SpinyStellateLayer::new()")
@@ -87,20 +107,6 @@ impl SpinyStellateLayer {
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(dens.syns().strengths());
 
-        // let kern_name = "sst_ltp";
-        // let kern_ltp = ocl_pq.create_kernel(kern_name)?
-        //     // .expect("SpinyStellateLayer::new()")
-        //     .gws(SpatialDims::Two(tft_count, grp_count as usize))
-        //     .arg_buf(axons.states())
-        //     .arg_buf(dens.syns().states())
-        //     .arg_scl(lyr_axn_idz)
-        //     .arg_scl(_cels_per_grp)
-        //     .arg_scl(syns_per_tuft_l2)
-        //     .arg_scl_named::<u32>("rnd", None)
-        //     // .arg_buf_named("aux_ints_0", None)
-        //     // .arg_buf_named("aux_ints_1", None)
-        //     .arg_buf(dens.syns().strengths());
-
         // Set up execution command:
         let mut ltp_cmd_srcs: Vec<CorticalBuffer> = axn_slc_ids.iter()
             .map(|&slc_id|
@@ -109,7 +115,7 @@ impl SpinyStellateLayer {
 
         ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, sst_tft_id));
 
-        let ltp_exe_cmd_idx = if settings.disable_learning {
+        let ltp_exe_cmd_idx = if settings.disable_ssts | settings.disable_learning {
             None
         } else {
             Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(kern_name, ltp_cmd_srcs,
@@ -130,13 +136,15 @@ impl SpinyStellateLayer {
             axn_slc_ids: axn_slc_ids,
             // base_axn_slc: base_axn_slc,
             lyr_axn_idz: lyr_axn_idz,
+            kern_cycle: kern_cycle,
             kern_ltp: kern_ltp,
             energies,
             activities,
             rng: cmn::weak_rng(),
             dens: dens,
+            cycle_exe_cmd_idx: cycle_exe_cmd_idx,
             ltp_exe_cmd_idx: ltp_exe_cmd_idx,
-            _settings: settings,
+            settings,
             control_lyr_idxs: Vec::with_capacity(4),
         })
     }
@@ -144,25 +152,41 @@ impl SpinyStellateLayer {
     pub fn set_exe_order_cycle(&mut self, control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
+        // Determine which control layers apply to this layer and add to list:
         for (&cl_idx, cl) in control_layers.iter() {
             if cl.host_layer_addr() == self.layer_addr {
                 self.control_lyr_idxs.push(cl_idx);
             }
         }
 
-        for lyr in self.control_lyr_idxs.iter().map(|idx| &control_layers[idx]) {
-            lyr.set_exe_order_pre(exe_graph, self.layer_addr)?;
+        if !self.settings.disable_ssts {
+            // Control layers pre-cycle:
+            for lyr in self.control_lyr_idxs.iter().map(|idx| &control_layers[idx]) {
+                lyr.set_exe_order_pre(exe_graph, self.layer_addr)?;
+            }
+
+            // Dendrites:
+            self.dens.set_exe_order(exe_graph)?;
+
+            // Soma:
+            if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
+                exe_graph.order_next(cycle_cmd_idx)?;
+            }
+
+            // Control layers post-cycle:
+            for lyr in self.control_lyr_idxs.iter().map(|idx| &control_layers[idx]) {
+                lyr.set_exe_order_post(exe_graph, self.layer_addr)?;
+            }
         }
-        self.dens.set_exe_order(exe_graph)?;
-        for lyr in self.control_lyr_idxs.iter().map(|idx| &control_layers[idx]) {
-            lyr.set_exe_order_post(exe_graph, self.layer_addr)?;
-        }
+
         Ok(())
     }
 
     pub fn set_exe_order_learn(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        if let Some(cmd_idx) = self.ltp_exe_cmd_idx {
-            exe_graph.order_next(cmd_idx)?;
+        if !self.settings.disable_ssts & !self.settings.disable_learning {
+            if let Some(cmd_idx) = self.ltp_exe_cmd_idx {
+                exe_graph.order_next(cmd_idx)?;
+            }
         }
         Ok(())
     }
@@ -179,8 +203,16 @@ impl SpinyStellateLayer {
             control_layers.get_mut(lyr_idx).unwrap().cycle_pre(exe_graph, self.layer_addr)?;
         }
 
-        // Cycle:
+        // Cycle dens:
         self.dens.cycle(exe_graph)?;
+
+        // Cycle soma (currently adds energies to den states):
+        if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
+            let mut event = Event::empty();
+            self.kern_cycle.cmd().ewait(exe_graph.get_req_events(cycle_cmd_idx)?)
+                .enew(&mut event).enq()?;
+            exe_graph.set_cmd_event(cycle_cmd_idx, Some(event))?;
+        }
 
         // Post cycle:
         for lyr_idx in self.control_lyr_idxs.iter() {

@@ -28,12 +28,14 @@ fn gen_grp_centers(side_len: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
     assert!(side_len % 2 == 0);
     let ofs_dist = side_len / 2;
 
-    let starts = [[0, ofs_dist], [-ofs_dist, ofs_dist], [-ofs_dist, 0],
-        [0, -ofs_dist], [ofs_dist, -ofs_dist], [ofs_dist, 0]];
+    // let starts = [[0, ofs_dist], [-ofs_dist, ofs_dist], [-ofs_dist, 0],
+    //     [0, -ofs_dist], [ofs_dist, -ofs_dist], [ofs_dist, 0]];
 
-    for lyr in 0..starts.len() {
+    let starts = [[0, 0]];
+
+    for lyr_id in 0..starts.len() {
         let mut centers = HexGroupCenters::new(side_len, l_bound, u_bound);
-        centers.populate(Some(starts[lyr]));
+        centers.populate(Some(starts[lyr_id]));
 
         for center in centers.set() {
             centers_v.push(center[0]);
@@ -43,6 +45,8 @@ fn gen_grp_centers(side_len: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
 
     centers_v.shrink_to_fit();
     centers_u.shrink_to_fit();
+
+    // println!("centers_v: {:?}\ncenters_u: {:?}", centers_v, centers_u);
 
     (centers_v, centers_u)
 }
@@ -109,14 +113,14 @@ impl ActivitySmoother {
             .arg_scl(host_lyr.dims().v_size())
             .arg_scl(host_lyr.dims().u_size())
             .arg_scl(GRP_RADIUS)
-            .arg_buf(host_lyr.soma())
+            // .arg_buf(host_lyr.soma())
             .arg_buf(host_lyr.activities())
-            .arg_scl(host_lyr_base_axn_slc)
-            .arg_scl_named::<i32>("rnd", None)
-            .arg_buf(host_lyr.energies())
+            // .arg_scl(host_lyr_base_axn_slc)
+            // .arg_scl_named::<i32>("rnd", None)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(axns.states());
+            .arg_buf(host_lyr.energies());
+            // .arg_buf(axns.states());
 
         let exe_cmd_srcs = (0..host_lyr.tft_count())
             .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),

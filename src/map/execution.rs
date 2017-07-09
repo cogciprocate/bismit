@@ -10,7 +10,8 @@ use ocl::ffi::cl_event;
 use map::LayerAddress;
 use cmn::{util};
 
-const PRINT_DEBUG: bool = false;
+const PRINT_DEBUG: bool = true;
+const PRINT_DEBUG_ALL: bool = false;
 
 type ExeGrResult<T> = Result<T, ExecutionGraphError>;
 
@@ -559,14 +560,20 @@ impl ExecutionGraph {
         fol_readers
     }
 
-
+    /// Adds a requisite command index and precedence to a command's list of
+    /// requisites.
     fn add_requisite(&mut self, cmd_idx: usize, req_cmd_idx: usize) {
         let cmd_order = self.commands[cmd_idx].order_idx().expect(
                 "ExecutionGraph::add_requisite: Command order index not set.");
         let req_cmd_order = self.commands[req_cmd_idx].order_idx().expect(
                 "ExecutionGraph::add_requisite: Requisite command order index not set.");
 
-        assert!(req_cmd_order != cmd_order);
+        // If a requisite command is the command itself, it must contain a
+        // memory block which is both read from and written to:
+        assert!(req_cmd_order != cmd_order, "Execution commands which both read from and write \
+            to a memory block should omit that block from the list of sources and specify only \
+            within the list of targets.");
+
         self.requisite_cmd_idxs[cmd_idx].push(req_cmd_idx);
 
         let req_cmd_precedence = if req_cmd_order < cmd_order {
@@ -596,7 +603,6 @@ impl ExecutionGraph {
         for (&cmd_order, &cmd_idx) in self.order.clone().iter() {
             if PRINT_DEBUG { println!("##### Command <{}>:[{}] ({}):", cmd_order, cmd_idx,
                 self.commands[cmd_idx].details.variant_string()); }
-
 
             assert!(self.requisite_cmd_idxs[cmd_idx].is_empty() &&
                 self.requisite_cmd_precedence[cmd_idx].is_empty());
@@ -677,8 +683,8 @@ impl ExecutionGraph {
             self.next_order_idx = 0;
         } else {
             self.next_order_idx += 1;
-            if PRINT_DEBUG { println!("##### ExecutionGraph::set_cmd_event: (cmd_idx: {}): next_order_idx: {}",
-                cmd_idx, self.next_order_idx) }
+            if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### ExecutionGraph::set_cmd_event: \
+                (cmd_idx: {}): next_order_idx: {}", cmd_idx, self.next_order_idx) }
         }
 
         Ok(())

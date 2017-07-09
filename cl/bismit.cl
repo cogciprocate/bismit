@@ -213,6 +213,11 @@ static inline int4 get_axn_u_mid_vec4(uchar4 const slc_id) {
 ===============================================================================
 =============================================================================*/
 
+// Performs the equivalent of a ternary operation. 24-bit values max.
+static int tern24(int condition, int val_if_true, int val_if_false) {
+    return mul24(condition, val_if_true) | mul24(!condition, val_if_false);
+}
+
 //     W_COORD():
 static inline int w_ofs(int const v_ofs, int const u_ofs) {
     return (0 - v_ofs) - u_ofs;
@@ -768,7 +773,7 @@ __kernel void den_cycle_tft(
     uchar activity_rating = den_activities[den_idx];
     // Increment activity rating if active:
     activity_rating += rnd_inc_u(rnd, syn_sum_raw & den_idx, activity_rating) & den_is_active;
-    // Decrement activities count at random (may need tuning [256 max]):
+    // Decrement activities count at random (may need tuning):
     activity_rating -= rnd_0xFFFF(rnd, syn_sum_raw | den_idx, DENDRITE_ACTIVITY_DECAY_FACTOR) &
         (activity_rating > 0);
 
@@ -776,6 +781,30 @@ __kernel void den_cycle_tft(
     int den_reduction = syns_per_den_l2 - 1;
     den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255);
     den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255);
+}
+
+
+// Sets the cell state (currently synonymous with the dendrite state).
+//
+// Adds cell energy to the dendrite state(s). This is important to do before
+// inhibition.
+__kernel void sst_cycle(
+        __global uchar const* const energies,
+        __global uchar* const cel_states)
+{
+    uint const slc_id_lyr = get_global_id(0);
+    uint const v_id = get_global_id(1);
+    uint const u_id = get_global_id(2);
+    uint const v_size = get_global_size(1);
+    uint const u_size = get_global_size(2);
+    uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
+
+    // Add the energy (restlessness) to the feed-forward state:
+    uint const energy = (uint)energies[cel_idx];
+    // energy = mul24((uint)(energy > 127), energy);
+    uchar const cel_state = clamp((uint)cel_states[cel_idx] + energy, (uint)0, (uint)255);
+    // cel_states[cel_idx] = (int)cel_state;
+    cel_states[cel_idx] = (int)64;
 }
 
 
