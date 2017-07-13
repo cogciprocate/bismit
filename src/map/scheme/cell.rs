@@ -216,7 +216,7 @@ impl CellScheme {
 
 
     // #[inline] pub fn cols_per_cel_l2(&self) -> u8 { self.cols_per_cel_l2 }
-    #[inline] pub fn cell_class(&self) -> &CellClass { &self.cell_class }
+    #[inline] pub fn class(&self) -> &CellClass { &self.cell_class }
     #[inline] pub fn tft_schemes(&self) -> &[TuftScheme] { self.tft_schemes.as_slice() }
     #[inline] pub fn tft_count(&self) -> usize { self.tft_schemes.len() }
 }

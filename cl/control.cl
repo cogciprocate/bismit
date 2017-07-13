@@ -277,7 +277,7 @@ __kernel void smooth_activity(
     // Least Active (boost energy):
     uchar least_active_cel_energy = cel_energies[least_active_cel_idx];
     cel_energies[least_active_cel_idx] = least_active_cel_energy +
-        ((least_active_cel_energy < 255) &
+        ((least_active_cel_energy < 255) & (most_active_cel_actv < 255) &
             (least_active_cel_idx != most_active_cel_idx));
 
     // Most Active (sap energy):

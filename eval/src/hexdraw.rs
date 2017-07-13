@@ -39,15 +39,15 @@ pub fn draw(params: &Params) {
     // assert!(HEX_GRP_SIDE % 2 == 0);
     let ofs_dist = (HEX_GRP_SIDE / 2) as i32;
 
-    // pop([0, 0], 255, guard.as_mut_slice());
+    pop([0, 0], 255, guard.as_mut_slice());
 
-    pop([0, ofs_dist], 1, guard.as_mut_slice());
-    pop([-ofs_dist, 0], 102, guard.as_mut_slice());
-    pop([ofs_dist, -ofs_dist], 204, guard.as_mut_slice());
+    // pop([0, ofs_dist], 1, guard.as_mut_slice());
+    // pop([-ofs_dist, 0], 102, guard.as_mut_slice());
+    // pop([ofs_dist, -ofs_dist], 204, guard.as_mut_slice());
 
-    pop([-ofs_dist, ofs_dist], 51, guard.as_mut_slice());
-    pop([0, -ofs_dist], 153, guard.as_mut_slice());
-    pop([ofs_dist, 0], 255, guard.as_mut_slice());
+    // pop([-ofs_dist, ofs_dist], 51, guard.as_mut_slice());
+    // pop([0, -ofs_dist], 153, guard.as_mut_slice());
+    // pop([ofs_dist, 0], 255, guard.as_mut_slice());
 
     WriteGuard::release(guard);
 

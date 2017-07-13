@@ -6,9 +6,9 @@ use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 
 // const OVERLAP_COUNT: usize = 6;
-// FIXME: Should be set by the currently unused `field_radius` `CellScheme` param.
-const GRP_SIDE_LEN: i32 = 4;
-const GRP_RADIUS: i32 = GRP_SIDE_LEN - 1;
+// FIXME[DONE]: Should be set by the currently unused `field_radius` `CellScheme` param.
+// const GRP_SIDE_LEN: i32 = 4;
+// const GRP_RADIUS: i32 = GRP_SIDE_LEN - 1;
 const CYCLE_FREQUENCY: usize = 0x7F;
 
 
@@ -17,8 +17,10 @@ const CYCLE_FREQUENCY: usize = 0x7F;
 ///
 /// `side_len` is the circumradius of the hexagon-shaped area which each cell
 /// will influence.
-fn gen_grp_centers(side_len: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
+fn gen_grp_centers(group_radius: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
     use cmn::HexGroupCenters;
+
+    let side_len = group_radius;
 
     // Boundaries
     let l_bound = [0 - side_len, 0 - side_len];
@@ -67,7 +69,7 @@ pub struct ActivitySmoother {
 }
 
 impl ActivitySmoother {
-    pub fn new<D>(layer_name: &'static str, layer_id: usize, /*dims: CorticalDims,*/ _: CellScheme,
+    pub fn new<D>(layer_name: &'static str, layer_id: usize, /*dims: CorticalDims,*/ scheme: CellScheme,
             host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<ActivitySmoother>
@@ -91,7 +93,9 @@ impl ActivitySmoother {
         // - activities
         //
 
-        let (centers_v_vec, centers_u_vec) = gen_grp_centers(GRP_SIDE_LEN,
+        let group_radius = scheme.class().control_kind().field_radius() as i32;
+
+        let (centers_v_vec, centers_u_vec) = gen_grp_centers(group_radius,
             [host_lyr.dims().v_size() as i32, host_lyr.dims().u_size() as i32]);
 
         assert!(centers_v_vec.len() == centers_u_vec.len());
@@ -113,7 +117,7 @@ impl ActivitySmoother {
             .arg_buf(&centers_u)
             .arg_scl(host_lyr.dims().v_size())
             .arg_scl(host_lyr.dims().u_size())
-            .arg_scl(GRP_RADIUS)
+            .arg_scl(group_radius)
             // .arg_buf(host_lyr.soma())
             .arg_buf(host_lyr.activities())
             // .arg_scl(host_lyr_base_axn_slc)

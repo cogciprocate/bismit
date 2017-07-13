@@ -257,13 +257,12 @@ impl CorticalArea {
                 // if let Some(&ControlCellKind::InhibitoryBasketSurround { ref host_lyr_name,
                 //         field_radius: _ }) = cell_scheme.control_cell_kind()
                 // {
-                match *cell_scheme.cell_class() {
+                match *cell_scheme.class() {
                         CellClass::Control {
                                 kind: ControlCellKind::InhibitoryBasketSurround {
-                                    ref host_lyr_name, field_radius },
+                                    ref host_lyr_name, field_radius: _ },
                                 exe_order, } =>
                         {
-                            if field_radius != 99 { panic!("field_radius not yet implemented (use 99).")};
                     // Some(&ControlCellKind::InhibitoryBasketSurround { ref host_lyr_name, field_radius: _ }) => {
                         // let em1 = format!("{}: '{}' is not a valid layer", emsg, host_lyr_name);
                         let host_lyr = spatial_layers.iter().find(|lyr|
@@ -290,10 +289,9 @@ impl CorticalArea {
                     },
                     CellClass::Control {
                             kind: ControlCellKind::ActivitySmoother {
-                                ref host_lyr_name, field_radius },
+                                ref host_lyr_name, field_radius: _ },
                                 exe_order, } =>
                     {
-                        if field_radius != 99 { panic!("field_radius not yet implemented (use 99).")};
                     // Some(&ControlCellKind::ActivitySmoother { ref host_lyr_name, field_radius: _ }) => {
                         // let em1 = format!("{}: '{}' is not a valid layer", emsg, host_lyr_name);
                         let host_lyr = spatial_layers.iter().find(|lyr|

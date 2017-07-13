@@ -83,6 +83,16 @@ pub enum ControlCellKind {
     Complex,
 }
 
+impl ControlCellKind {
+    pub fn field_radius(&self) -> u8 {
+        match *self {
+            ControlCellKind::InhibitoryBasketSurround { field_radius, .. } => field_radius,
+            ControlCellKind::ActivitySmoother { field_radius, .. } => field_radius,
+            _ => panic!("ControlCellKind::field_radius: This control cell kind has no field radius."),
+        }
+    }
+}
+
 /// Roughly whether or not a cell is excitatory or inhibitory.
 //
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -92,6 +102,15 @@ pub enum CellClass {
     // Data { kind: ControlCellKind, exe_order: usize }
     /// Cells that indirectly contribute to the stream of information.
     Control { kind: ControlCellKind, exe_order: usize },
+}
+
+impl CellClass {
+    pub fn control_kind(&self) -> ControlCellKind {
+        match *self {
+            CellClass::Control { ref kind, exe_order: _ } => kind.clone(),
+            _ => panic!("CellClass::control_kind: Not a control cell."),
+        }
+    }
 }
 
 

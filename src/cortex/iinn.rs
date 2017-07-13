@@ -6,8 +6,8 @@ use ocl::{Kernel, ProQue, SpatialDims, /*Buffer,*/ Event};
 use map::CellScheme;
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
-// FIXME: Should be set by the currently unused `field_radius` `CellScheme` param.
-const INHIB_RADIUS: i32 = 6;
+// // FIXME[DONE]: Should be set by the currently unused `field_radius` `CellScheme` param.
+// const INHIB_RADIUS: i32 = 4;
 
 #[derive(Debug)]
 pub struct InhibitoryInterneuronNetwork {
@@ -26,7 +26,7 @@ pub struct InhibitoryInterneuronNetwork {
 
 impl InhibitoryInterneuronNetwork {
     // FIXME: This function should take a 'bypass' argument instead of `::cycle`.
-    pub fn new<D>(layer_name: &'static str, layer_id: usize, /*dims: CorticalDims,*/ _: CellScheme,
+    pub fn new<D>(layer_name: &'static str, layer_id: usize, /*dims: CorticalDims,*/ scheme: CellScheme,
             host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<InhibitoryInterneuronNetwork>
@@ -37,6 +37,8 @@ impl InhibitoryInterneuronNetwork {
         // Ensure that the host layer is constructed correctly.
         debug_assert_eq!(host_lyr.soma().len(), host_lyr.energies().len());
 
+        let inhib_radius = scheme.class().control_kind().field_radius() as i32;
+
         // Simple (active) kernel:
         let kern_inhib_simple_name = "inhib_simple";
         let kern_inhib_simple = ocl_pq.create_kernel(kern_inhib_simple_name)?
@@ -46,7 +48,7 @@ impl InhibitoryInterneuronNetwork {
             .arg_buf(host_lyr.soma())
             // .arg_buf(host_lyr.energies())
             .arg_scl(host_lyr_base_axn_slc)
-            .arg_scl(INHIB_RADIUS)
+            .arg_scl(inhib_radius)
             .arg_scl_named::<i32>("rnd", None)
             .arg_buf(host_lyr.activities())
             // .arg_buf_named("aux_ints_0", None)

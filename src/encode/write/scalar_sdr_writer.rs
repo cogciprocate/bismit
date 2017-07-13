@@ -177,11 +177,11 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         debug_assert!(way_0_idx < self.waypoint_indices.len());
         debug_assert!(way_1_idx < self.waypoint_indices.len());
 
-        /////// [DEBUG]:
-        println!("###### val_orig: {}, val_norm: {}, way_0_idx: {}, way_1_idx, {}, \
-            way_0_contrib_count: {}({}), way_1_contrib_count: {}", val_orig, val_norm, way_0_idx,
-            way_1_idx, way_0_contrib_count, way_0_contrib_ratio, way_1_contrib_count);
-        ///////
+        // /////// [DEBUG]:
+        // println!("###### val_orig: {}, val_norm: {}, way_0_idx: {}, way_1_idx, {}, \
+        //     way_0_contrib_count: {}({}), way_1_contrib_count: {}", val_orig, val_norm, way_0_idx,
+        //     way_1_idx, way_0_contrib_count, way_0_contrib_ratio, way_1_contrib_count);
+        // ///////
 
         // let w0_idz = Range::new(0, 1 + self.sdr_active_count - way_0_contrib_count)
         //     .ind_sample(&mut self.rng);
