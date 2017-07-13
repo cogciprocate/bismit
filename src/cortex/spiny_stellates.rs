@@ -78,7 +78,7 @@ impl SpinyStellateLayer {
         let kern_cycle = ocl_pq.create_kernel(kern_name)?
             .gws(dims)
             .arg_buf(&energies)
-            .arg_buf(dens.syns().states());
+            .arg_buf(dens.states());
 
         // let mut cycle_cmd_srcs = Vec::with_capacity(2);
         // // cycle_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, sst_tft_id));
@@ -87,9 +87,9 @@ impl SpinyStellateLayer {
         let cycle_exe_cmd_idx = if settings.disable_ssts {
             None
         } else {
-            Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(kern_name, /*cycle_cmd_srcs,*/
+            Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(kern_name,
                 vec![CorticalBuffer::data_soma_tft(&energies, layer_addr, sst_tft_id)],
-                vec![CorticalBuffer::data_den_tft(dens.states(), layer_addr, sst_tft_id)]))?)
+                vec![CorticalBuffer::data_den_tft(dens.states(), layer_addr, sst_tft_id)]) )?)
         };
 
         let kern_name = "sst_ltp_simple";

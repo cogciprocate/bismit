@@ -109,11 +109,11 @@ fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>, cel_enr
         // `ca`: cell activity rating (post-inhib)
         // `ct`: cell activity count
 
-        // if (cel_idx & 7) == 0 {
+        if (cel_idx & 7) == 0 {
         // if cel_ttl > 0. && cel_ttl < 150. {
         // if cel_ttl > 600. {
         // if cel_energies[cel_idx] == 0 && cel_activities[cel_idx] == 0 {
-        if cel_activities[cel_idx] == 0 {
+        // if cel_activities[cel_idx] == 0 {
         // if cel_energies[cel_idx] != energy_level {
         // if cel_energies[cel_idx] == 0 {
             print!("{{[");
@@ -338,6 +338,29 @@ pub fn eval(/*params: Params*/) {
         // iters are recorded and evaluated.
         let training_collect_iters = vec![
             // (0, 10000),
+
+            (0, 2000),
+            (0, 2000),
+            (0, 2000),
+            (0, 2000),
+            (0, 2000),
+            (0, 2000),
+            (0, 2000),
+            (0, 2000),
+            (0, 2000),
+            (0, 2000),
+
+            (0, 20000),
+            (0, 20000),
+            (0, 20000),
+            (0, 20000),
+            (0, 20000),
+            (0, 20000),
+            (0, 20000),
+            (0, 20000),
+            (0, 20000),
+            (0, 20000),
+
             // (40000, 10000),
             // (40000, 10000),
             // (40000, 10000),
@@ -360,19 +383,6 @@ pub fn eval(/*params: Params*/) {
             // (60000, 2000),
             // (0, 2000),
 
-            (0, 100),
-            // (0, 100),
-            // (0, 100),
-            // (0, 100),
-            // (0, 100),
-            // (0, 100),
-            // (0, 100),
-            // (0, 100),
-
-            (0, 40000),
-            (0, 100),
-            // // (0, 10000),
-            // (0, 100),
             // (0, 100),
 
             // (0, 1)
@@ -419,7 +429,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 CellScheme::minicolumn("iv", "iii", 9999)
             )
             .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 9, 1)], 7, 400)
+                CellScheme::spiny_stellate(&[("aff_in", 4, 1)], 7, 400)
             )
             .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
             .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4, 1))
@@ -460,8 +470,8 @@ fn define_a_schemes() -> AreaSchemeList {
 pub fn ca_settings() -> CorticalAreaSettings {
     let mut settings = CorticalAreaSettings::new();
 
-    settings.bypass_inhib = true;
-    settings.bypass_filters = true;
+    // settings.bypass_inhib = true;
+    // settings.bypass_filters = true;
     settings.disable_pyrs = true;
     // settings.disable_ssts = true;
     settings.disable_mcols = true;

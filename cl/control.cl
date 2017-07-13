@@ -163,7 +163,7 @@ __kernel void inhib_simple(
     uchar activity_rating = activities[cel_idx];
     // Increment activity rating if active:
     int axon_is_active = uninhibited & (cel_state != 0);
-    activity_rating += rnd_inc_u(rnd, cel_state & cel_idx, activity_rating) & axon_is_active;
+    activity_rating += rnd_inc_u(rnd, cel_state ^ cel_idx, activity_rating) & axon_is_active;
     // Decrement activities count at random (may need tuning):
     activity_rating -= rnd_0xFFFF(rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_FACTOR) &
        (activity_rating > 0);
@@ -269,12 +269,13 @@ __kernel void smooth_activity(
     // Least Active (boost energy):
     uchar least_active_cel_energy = cel_energies[least_active_cel_idx];
     cel_energies[least_active_cel_idx] = least_active_cel_energy +
-        (least_active_cel_energy < 255);
+        ((least_active_cel_energy < 255) &
+            (least_active_cel_idx != most_active_cel_idx));
 
     // Most Active (sap energy):
     uchar most_active_cel_energy = cel_energies[most_active_cel_idx];
     // Do not sap cells with zero activity.
-    // cel_energies[most_active_cel_idx] = most_active_cel_energy -
-    //     ((most_active_cel_energy > 0) & (most_active_cel_actv > 0) &
-    //         (least_active_cel_idx != most_active_cel_idx));
+    cel_energies[most_active_cel_idx] = most_active_cel_energy -
+        ((most_active_cel_energy > 0) & (most_active_cel_actv > 0) &
+            (least_active_cel_idx != most_active_cel_idx));
 }

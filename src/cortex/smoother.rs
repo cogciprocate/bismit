@@ -8,6 +8,7 @@ use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 // const OVERLAP_COUNT: usize = 6;
 const GRP_SIDE_LEN: i32 = 4;
 const GRP_RADIUS: i32 = GRP_SIDE_LEN - 1;
+const CYCLE_FREQUENCY: usize = 0x7F;
 
 
 /// Generates a set of 'center' coordinates for cells grouped by overlap-layer
@@ -28,10 +29,8 @@ fn gen_grp_centers(side_len: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
     assert!(side_len % 2 == 0);
     let ofs_dist = side_len / 2;
 
-    // let starts = [[0, ofs_dist], [-ofs_dist, ofs_dist], [-ofs_dist, 0],
-    //     [0, -ofs_dist], [ofs_dist, -ofs_dist], [ofs_dist, 0]];
-
-    let starts = [[0, 0]];
+    let starts = [[0, ofs_dist], [-ofs_dist, ofs_dist], [-ofs_dist, 0],
+        [0, -ofs_dist], [ofs_dist, -ofs_dist], [ofs_dist, 0]];
 
     for lyr_id in 0..starts.len() {
         let mut centers = HexGroupCenters::new(side_len, l_bound, u_bound);
@@ -63,6 +62,7 @@ pub struct ActivitySmoother {
     // kern_inhib_passthrough: Kernel,
     exe_cmd_idx: usize,
     settings: CorticalAreaSettings,
+    cycle_count: usize,
 }
 
 impl ActivitySmoother {
@@ -144,6 +144,7 @@ impl ActivitySmoother {
             kern,
             exe_cmd_idx: exe_cmd_idx,
             settings: settings,
+            cycle_count: 0usize,
         })
     }
 
@@ -152,16 +153,20 @@ impl ActivitySmoother {
         Ok(())
     }
 
-    pub fn cycle(&self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
-        let mut event = Event::empty();
+    pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+        // Run only once every 128 cycles:
+        if self.cycle_count & CYCLE_FREQUENCY == 0 {
 
-        self.kern.cmd()
-            .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
-            .enew(&mut event)
-            .enq()?;
-
-        exe_graph.set_cmd_event(self.exe_cmd_idx, Some(event))?;
-
+            let mut event = Event::empty();
+            self.kern.cmd()
+                .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
+                .enew(&mut event)
+                .enq()?;
+            exe_graph.set_cmd_event(self.exe_cmd_idx, Some(event))?;
+        } else {
+            exe_graph.set_cmd_event(self.exe_cmd_idx, None)?;
+        }
+        self.cycle_count.wrapping_add(1);
         Ok(())
     }
 

@@ -803,8 +803,8 @@ __kernel void sst_cycle(
     uint const energy = (uint)energies[cel_idx];
     // energy = mul24((uint)(energy > 127), energy);
     uchar const cel_state = clamp((uint)cel_states[cel_idx] + energy, (uint)0, (uint)255);
-    // cel_states[cel_idx] = (int)cel_state;
-    cel_states[cel_idx] = (int)64;
+    cel_states[cel_idx] = (int)cel_state;
+    // cel_states[cel_idx] = (int)190;
 }
 
 

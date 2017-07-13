@@ -10,7 +10,7 @@ use ocl::ffi::cl_event;
 use map::LayerAddress;
 use cmn::{util};
 
-const PRINT_DEBUG: bool = true;
+const PRINT_DEBUG: bool = false;
 const PRINT_DEBUG_ALL: bool = false;
 
 type ExeGrResult<T> = Result<T, ExecutionGraphError>;
@@ -448,6 +448,7 @@ impl ExecutionGraph {
         Ok(cmd_idx)
     }
 
+    /// Specifies a command (by index) as the next in the loose sequence.
     pub fn order_next(&mut self, cmd_idx: usize) -> ExeGrResult<usize> {
         if self.locked { return Err(ExecutionGraphError::Locked); }
 
@@ -492,8 +493,8 @@ impl ExecutionGraph {
             for cmd_tar_block in cmd.targets().into_iter() {
                 let rw_cmd_idxs = mem_block_rws.entry(cmd_tar_block.clone())
                     .or_insert(MemBlockRwCmdIdxs::new());
-
                 rw_cmd_idxs.writers.push(cmd_idx);
+
                 // println!("#####     Target Block [{}]: {:?}", rw_cmd_idxs.writers.len() - 1, cmd_tar_block);
                 if PRINT_DEBUG { println!("#####     [{}]: {:?}", rw_cmd_idxs.writers.len() - 1, cmd_tar_block); }
             }
