@@ -6,6 +6,7 @@ use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 
 // const OVERLAP_COUNT: usize = 6;
+// FIXME: Should be set by the currently unused `field_radius` `CellScheme` param.
 const GRP_SIDE_LEN: i32 = 4;
 const GRP_RADIUS: i32 = GRP_SIDE_LEN - 1;
 const CYCLE_FREQUENCY: usize = 0x7F;

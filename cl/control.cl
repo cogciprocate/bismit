@@ -5,6 +5,13 @@
 // Passed to `rnd_0xFFFF()`. 255 (max) ~> 1:1
 #define CELL_ACTIVITY_DECAY_FACTOR      768
 
+// // INHIB_RADIUS: A CELL'S SPHERE OF INFLUENCE
+// #define INHIB_RADIUS                    4
+// INHIB_INFL_CENTER_OFFSET: MOVES CENTER OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+#define INHIB_INFL_CENTER_OFFSET        1
+// INHIB_INFL_HORIZ_OFFSET: STRETCHES EDGE OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
+#define INHIB_INFL_HORIZ_OFFSET          3
+
 
 //     INHIB_SIMPLE(): [DESCRIPTION OUT OF DATE] Cell Inhibition - reads from soma, writes to axon
 //        - If any nearby cells are more active (have a higher soma 'state')
@@ -22,6 +29,7 @@ __kernel void inhib_simple(
             __global uchar const* const cel_states,
             // __global uchar const* const energies,
             __private uchar const cel_base_axn_slc,
+            __private int const inhib_radius,
             __private int const rnd,
             __global uchar* const activities,
             // __global int* const aux_ints_1,
@@ -48,7 +56,7 @@ __kernel void inhib_simple(
 
     // uchar const cel_state = cel_states[cel_idx];
 
-    int const radius_pos = INHIB_RADIUS;
+    int const radius_pos = inhib_radius;
     int const radius_neg = 0 - radius_pos;
 
     int uninhibited = 1;

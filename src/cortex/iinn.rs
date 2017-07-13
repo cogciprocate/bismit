@@ -6,6 +6,8 @@ use ocl::{Kernel, ProQue, SpatialDims, /*Buffer,*/ Event};
 use map::CellScheme;
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
+// FIXME: Should be set by the currently unused `field_radius` `CellScheme` param.
+const INHIB_RADIUS: i32 = 6;
 
 #[derive(Debug)]
 pub struct InhibitoryInterneuronNetwork {
@@ -44,6 +46,7 @@ impl InhibitoryInterneuronNetwork {
             .arg_buf(host_lyr.soma())
             // .arg_buf(host_lyr.energies())
             .arg_scl(host_lyr_base_axn_slc)
+            .arg_scl(INHIB_RADIUS)
             .arg_scl_named::<i32>("rnd", None)
             .arg_buf(host_lyr.activities())
             // .arg_buf_named("aux_ints_0", None)

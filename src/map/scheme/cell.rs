@@ -104,6 +104,7 @@ impl CellScheme {
         }.validate()
     }
 
+    //                             &[name, reach, prevalance]
     pub fn pyramidal<'a>(dst_srcs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8, syns_per_den_l2: u8,
             thresh: u32) -> LayerKind
     {
@@ -119,6 +120,7 @@ impl CellScheme {
     }
 
     // SWITCH TO DISTAL
+    //                                  &[name, reach, prevalance]
     pub fn spiny_stellate<'a>(prx_srcs: &[(&'a str, i8, u8)], syns_per_den_l2: u8, thresh: u32,
             ) -> LayerKind
     {
@@ -133,12 +135,12 @@ impl CellScheme {
         }.validate())
     }
 
-    pub fn inhib(src: &str, cols_per_cel_l2: u8, exe_order: usize) -> LayerKind {
+    pub fn inhib(src: &str, field_radius: u8, exe_order: usize) -> LayerKind {
         LayerKind::Cellular(CellScheme {
             cell_class: CellClass::Control {
                 kind: ControlCellKind::InhibitoryBasketSurround {
                     host_lyr_name: src.to_owned(),
-                    field_radius: cols_per_cel_l2
+                    field_radius: field_radius
                 },
                 exe_order,
             },
@@ -146,12 +148,12 @@ impl CellScheme {
         }.validate())
     }
 
-    pub fn smooth(src: &str, cols_per_cel_l2: u8, exe_order: usize) -> LayerKind {
+    pub fn smooth(src: &str, field_radius: u8, exe_order: usize) -> LayerKind {
         LayerKind::Cellular(CellScheme {
             cell_class: CellClass::Control {
                 kind: ControlCellKind::ActivitySmoother {
                     host_lyr_name: src.to_owned(),
-                    field_radius: cols_per_cel_l2
+                    field_radius: field_radius
                 },
                 exe_order,
             },

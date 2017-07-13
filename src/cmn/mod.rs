@@ -29,6 +29,7 @@ use num::{FromPrimitive, };
 // use num::{Num, NumCast};
 use rand;
 use rand::distributions::{IndependentSample, /*Range*/};
+#[allow(unused_imports)]
 use find_folder::Search;
 use ocl::traits::OclScl;
 use ocl::builders::ProgramBuilder;
@@ -323,39 +324,41 @@ pub const SYN_CONCRETE_FLAG: u8                = 0b00001000;
 //pub static BUILTIN_FILTERS_CL_FILE_NAME: &'static str = "filters.cl";
 static OPENCL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-relaxed-math";
 
-// // BUILTIN_OPENCL_KERNEL_FILE_NAMES: Loaded in reverse order.
-pub static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 5] = [
-    "bismit.cl",
-    "syns.cl",
-    "control.cl",
-    "filters.cl",
-    "tests.cl",
-];
 
-// pub static BUILTIN_OPENCL_PROGRAM_SOURCE: [&'static str; 5] = [
-//     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/bismit.cl")),
-//     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/syns.cl")),
-//     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/control.cl")),
-//     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/filters.cl")),
-//     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/tests.cl")),
-// ];
 
 // LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
 //        -Used by AreaMap
 pub fn load_builtin_kernel_source(mut build_options: ProgramBuilder) -> ProgramBuilder {
-    // for i in 0..BUILTIN_OPENCL_KERNEL_FILE_NAMES.len() {
-    //     build_options = build_options.src_file(
-    //         cl_root_path().join(BUILTIN_OPENCL_KERNEL_FILE_NAMES[i]));
-    // }
-    // for i in 0..BUILTIN_OPENCL_PROGRAM_SOURCE.len() {
-    //     build_options = build_options.src(BUILTIN_OPENCL_PROGRAM_SOURCE[i]);
-    // }
+    // STATIC KERNEL SOURCE: Use normally:
+    {
+        pub static BUILTIN_OPENCL_PROGRAM_SOURCE: [&'static str; 5] = [
+            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/bismit.cl")),
+            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/syns.cl")),
+            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/control.cl")),
+            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/filters.cl")),
+            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/cl/tests.cl")),
+        ];
 
-    let src_path_root = Search::ParentsThenKids(3, 3).for_folder("cl").unwrap();
-
-    for file_name in BUILTIN_OPENCL_KERNEL_FILE_NAMES.iter() {
-        build_options = build_options.src_file(src_path_root.clone().join(file_name));
+        for i in 0..BUILTIN_OPENCL_PROGRAM_SOURCE.len() {
+            build_options = build_options.src(BUILTIN_OPENCL_PROGRAM_SOURCE[i]);
+        }
     }
+
+    // // DYNAMIC KERNEL SOURCE: Use for faster kernel iteration:
+    // {
+    //     // Loaded in reverse order:
+    //     static BUILTIN_OPENCL_KERNEL_FILE_NAMES: [&'static str; 5] = [
+    //         "bismit.cl",
+    //         "syns.cl",
+    //         "control.cl",
+    //         "filters.cl",
+    //         "tests.cl",
+    //     ];
+    //     let src_path_root = Search::ParentsThenKids(3, 3).for_folder("cl").unwrap();
+    //     for file_name in BUILTIN_OPENCL_KERNEL_FILE_NAMES.iter() {
+    //         build_options = build_options.src_file(src_path_root.clone().join(file_name));
+    //     }
+    // }
 
     build_options
 }
@@ -399,14 +402,6 @@ pub fn base_build_options() -> ProgramBuilder {
         .cmplr_def("SYN_STDEP_FLAG", SYN_STDEP_FLAG as i32)
         .cmplr_def("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
 }
-
-
-// // [FIXME]: TEMPORARY
-// pub fn cl_root_path() -> PathBuf {
-//     // PathBuf::from("/home/nick/projects/bismit/cl")
-//     Search::ParentsThenKids(3, 3).for_folder("cl")
-//         .expect("bismit::cmn::cl_root_path()")
-// }
 
 
 

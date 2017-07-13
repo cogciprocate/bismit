@@ -15,12 +15,6 @@
 // SYNAPSE_AXON_BIAS_LOG2: Reduces source axon influence on synaptic dendrite
 #define SYNAPSE_AXON_BIAS_LOG2            2
 
-// INHIB_RADIUS: A CELL'S SPHERE OF INFLUENCE
-#define INHIB_RADIUS                    4
-// INHIB_INFL_CENTER_OFFSET: MOVES CENTER OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
-#define INHIB_INFL_CENTER_OFFSET        1
-// INHIB_INFL_HORIZ_OFFSET: STRETCHES EDGE OF INHIBITION CURVE NEARER(-) OR FURTHER(+) FROM CELL
-#define INHIB_INFL_HORIZ_OFFSET            3
 
 #define RETNAL_THRESHOLD       48
 
@@ -800,9 +794,9 @@ __kernel void sst_cycle(
     uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
 
     // Add the energy (restlessness) to the feed-forward state:
-    uint const energy = (uint)energies[cel_idx];
-    // energy = mul24((uint)(energy > 127), energy);
-    uchar const cel_state = clamp((uint)cel_states[cel_idx] + energy, (uint)0, (uint)255);
+    uint const energy = (uint)energies[cel_idx] >> 1;
+    uint const state = cel_states[cel_idx];
+    uchar const cel_state = clamp(state + energy, (uint)0, (uint)255);
     cel_states[cel_idx] = (int)cel_state;
     // cel_states[cel_idx] = (int)190;
 }

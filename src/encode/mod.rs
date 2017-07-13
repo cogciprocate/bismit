@@ -19,7 +19,7 @@ use num::{Num, NumCast};
 // use rand::distributions::{Range, IndependentSample};
 use cmn::{TractFrameMut, ParaHexArray};
 pub use self::write::{ScalarGlyphWriter, ScalarSdrWriter, encode_scalar, encode_hex_mold_scaled,
-    gen_axn_idxs, write_rand_subset};
+    gen_axn_idxs, write_rand_subset_linear, write_rand_subset_stochastic};
 pub use self::idx_streamer::IdxStreamer;
 pub use self::idx_data::IdxData;
 pub use self::glyph_buckets::GlyphBuckets;
