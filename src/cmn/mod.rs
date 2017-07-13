@@ -772,7 +772,7 @@ pub struct HexGroupCenters {
     centers: HashSet<[i32; 2]>,
     new_centers: HashSet<[i32; 2]>,
     // Hex group side length.
-    side_len: i32,
+    radius: i32,
     // Determines whether surrounding groups are biased in the clockwise or
     // counterclockwise direction.
     clockwise_bias: bool,
@@ -785,16 +785,16 @@ pub struct HexGroupCenters {
 impl HexGroupCenters {
     /// Returns a new `HexGroupCenters`.
     ///
-    /// `side_len` sets the side length for each hexagon-tile group (in
+    /// `radius` sets the side length for each hexagon-tile group (in
     /// tiles). `l_bound` and `u_bound` set the lower and upper boundaries
     /// (creating a parallelogram).
-    pub fn new(side_len: i32, l_bound: [i32; 2], u_bound: [i32; 2]) -> HexGroupCenters {
+    pub fn new(radius: i32, l_bound: [i32; 2], u_bound: [i32; 2]) -> HexGroupCenters {
         const CLOCKWISE_BIAS: bool = true;
 
         HexGroupCenters {
             centers: HashSet::new(),
             new_centers: HashSet::new(),
-            side_len,
+            radius,
             clockwise_bias: CLOCKWISE_BIAS,
             l_bound: l_bound,
             u_bound: u_bound,
@@ -830,9 +830,9 @@ impl HexGroupCenters {
     /// it to the `new_centers` set as well.
     pub fn add_surrounds(&mut self, center: [i32; 2]) {
         let (l, s) = if self.clockwise_bias {
-            (self.side_len, self.side_len - 1)
+            (self.radius + 1, self.radius)
         } else {
-            (self.side_len - 1, self.side_len)
+            (self.radius, self.radius + 1)
         };
         let ls = l + s;
 
@@ -913,13 +913,13 @@ impl HexGroupCenters {
 /// without having to keep track of arbitrarily addressed (positioned)
 /// sources.
 ///
-/// `side_len` is the circumradius (= side length) of each hexagon group
+/// `radius` is the circumradius (= side length) of each hexagon group
 /// measured in tiles.
 ///
-pub fn populate_hex_tile_grps(side_len: usize, dims: [i32; 2], start: [i32; 2], val: u8, sdr: &mut [u8]) {
+pub fn populate_hex_tile_grps(radius: usize, dims: [i32; 2], start: [i32; 2], val: u8, sdr: &mut [u8]) {
     let dims = [dims[0] as i32, dims[1] as i32];
 
-    let mut centers = HexGroupCenters::new(side_len as i32, [0, 0], dims);
+    let mut centers = HexGroupCenters::new(radius as i32, [0, 0], dims);
     centers.populate(Some(start));
 
     for cntr in centers.centers {
