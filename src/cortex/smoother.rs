@@ -1,14 +1,25 @@
-use cmn::{/*CorticalDims,*/ CmnResult};
+    // TODO: Adapt into descriptive documentation:
+    //
+    // - Generate lists of focal "smoother" cells and fill buffer(s?).
+    //   - Because we will need to be able to calculate target layer `v`
+    //     and `u`, separate buffers for each may be necessary (or store
+    //     as tuples?).
+    //     - Mash each layer together within kernel (loop through them --
+    //       imagine that the each smoother cell controls all layers).
+    //
+    // - global work dims:
+    //   - linear?
+    //
+    // - activities
+    //
+
+use cmn::{CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event, MemFlags};
 use map::CellScheme;
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 
-// const OVERLAP_COUNT: usize = 6;
-// FIXME[DONE]: Should be set by the currently unused `field_radius` `CellScheme` param.
-// const GRP_SIDE_LEN: i32 = 4;
-// const GRP_RADIUS: i32 = GRP_SIDE_LEN - 1;
 const CYCLE_FREQUENCY: usize = 0x7F;
 
 
@@ -20,13 +31,11 @@ const CYCLE_FREQUENCY: usize = 0x7F;
 fn gen_grp_centers(radius: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
     use cmn::HexGroupCenters;
 
-    // Boundaries
+    // Boundaries:
     let l_bound = [0 - radius, 0 - radius];
     let u_bound = [dims[0] + radius, dims[1] + radius];
-
     let mut centers_v = Vec::with_capacity(4096);
     let mut centers_u = Vec::with_capacity(4096);
-
     let ofs_dist = (radius + 1) / 2;
 
     let starts = [[0, ofs_dist], [-ofs_dist, ofs_dist], [-ofs_dist, 0],
@@ -44,9 +53,7 @@ fn gen_grp_centers(radius: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
 
     centers_v.shrink_to_fit();
     centers_u.shrink_to_fit();
-
     // println!("centers_v: {:?}\ncenters_u: {:?}", centers_v, centers_u);
-
     (centers_v, centers_u)
 }
 
@@ -73,28 +80,10 @@ impl ActivitySmoother {
             where D: DataCellLayer
     {
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
-
-
-        // TODO (adapt into documentation):
-        //
-        // - Generate lists of focal "smoother" cells and fill buffer(s?).
-        //   - Because we will need to be able to calculate target layer `v`
-        //     and `u`, separate buffers for each may be necessary (or store
-        //     as tuples?).
-        //     - Mash each layer together within kernel (loop through them --
-        //       imagine that the each smoother cell controls all layers).
-        //
-        // - global work dims:
-        //   - linear?
-        //
-        // - activities
-        //
-
         let group_radius = scheme.class().control_kind().field_radius() as i32;
 
         let (centers_v_vec, centers_u_vec) = gen_grp_centers(group_radius,
             [host_lyr.dims().v_size() as i32, host_lyr.dims().u_size() as i32]);
-
         assert!(centers_v_vec.len() == centers_u_vec.len());
         let cell_count = centers_v_vec.len();
 
@@ -106,23 +95,17 @@ impl ActivitySmoother {
         // Kernel:
         let kern_name = "smooth_activity";
         let kern = ocl_pq.create_kernel(kern_name)?
-            // .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize,
-            //     dims.u_size() as usize))
-            .gws(SpatialDims::Two(host_lyr.dims().depth() as usize, cell_count))
-            // .lws(SpatialDims::Three(1, 8, 8 as usize))
+            .gws(SpatialDims::One(cell_count))
             .arg_buf(&centers_v)
             .arg_buf(&centers_u)
             .arg_scl(host_lyr.dims().v_size())
             .arg_scl(host_lyr.dims().u_size())
             .arg_scl(group_radius)
-            // .arg_buf(host_lyr.soma())
+            .arg_scl(host_lyr.dims().depth())
             .arg_buf(host_lyr.activities())
-            // .arg_scl(host_lyr_base_axn_slc)
-            // .arg_scl_named::<i32>("rnd", None)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(host_lyr.energies());
-            // .arg_buf(axns.states());
 
         let exe_cmd_srcs = (0..host_lyr.tft_count())
             .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
@@ -156,7 +139,6 @@ impl ActivitySmoother {
     }
 
     pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
-        // Run only once every 128 cycles:
         if self.cycle_count & CYCLE_FREQUENCY == 0 {
 
             let mut event = Event::empty();

@@ -223,16 +223,12 @@ __kernel void smooth_activity(
             __private uint const v_size,
             __private uint const u_size,
             __private int const radius,
+            __private uchar const src_lyr_depth,
             __global uchar const* const cel_actvs,
-            // __global uchar const* const cel_states,
-            // __private uchar const cel_base_axn_slc,
-            // __private int const rnd,
-            // __global uchar* const axn_states
             // __global int* const aux_ints_1,
             __global uchar* const cel_energies)
 {
-    uint const slc_id_lyr = get_global_id(0);
-    uint const center_idx = get_global_id(1);
+    uint const center_idx = get_global_id(0);
     int const center_v = centers_v[center_idx];
     int const center_u = centers_u[center_idx];
 
@@ -244,41 +240,40 @@ __kernel void smooth_activity(
     int const radius_pos = radius;
     int const radius_neg = 0 - radius_pos;
 
-    for (int v_ofs = radius_neg; v_ofs <= radius_pos; v_ofs++) {
-        int v_neg = 0 - v_ofs;
-        int u_z = max(radius_neg, v_neg - radius_pos);
-        int u_m = min(radius_pos, v_neg + radius_pos);
+    for (uchar slc_id_lyr = 0; slc_id_lyr < src_lyr_depth; slc_id_lyr++) {
+        for (int v_ofs = radius_neg; v_ofs <= radius_pos; v_ofs++) {
+            int v_neg = 0 - v_ofs;
+            int u_z = max(radius_neg, v_neg - radius_pos);
+            int u_m = min(radius_pos, v_neg + radius_pos);
 
-        for (int u_ofs = u_z; u_ofs <= u_m; u_ofs++) {
-            int idx_is_safe = 0;
-            uint cel_idx = cel_idx_3d_checked(slc_id_lyr, v_size, center_v + v_ofs,
-                u_size, center_u + u_ofs, &idx_is_safe);
-            uchar cel_actv = cel_actvs[mul24((uint)idx_is_safe, cel_idx)];
+            for (int u_ofs = u_z; u_ofs <= u_m; u_ofs++) {
+                int idx_is_safe = 0;
+                uint cel_idx = cel_idx_3d_checked(slc_id_lyr, v_size, center_v + v_ofs,
+                    u_size, center_u + u_ofs, &idx_is_safe);
+                uchar cel_actv = cel_actvs[mul24((uint)idx_is_safe, cel_idx)];
 
-            int cel_is_least_active = (cel_actv <= least_active_cel_actv) & idx_is_safe;
-            // int cel_is_least_active = (cel_actv <= least_active_cel_actv);
-            least_active_cel_idx = tern24(cel_is_least_active, cel_idx, least_active_cel_idx);
-            least_active_cel_actv = tern24(cel_is_least_active, cel_actv, least_active_cel_actv);
+                int cel_is_least_active = (cel_actv <= least_active_cel_actv) & idx_is_safe;
+                // int cel_is_least_active = (cel_actv <= least_active_cel_actv);
+                least_active_cel_idx = tern24(cel_is_least_active, cel_idx, least_active_cel_idx);
+                least_active_cel_actv = tern24(cel_is_least_active, cel_actv, least_active_cel_actv);
 
-            int cel_is_most_active = (cel_actv >= most_active_cel_actv) & idx_is_safe;
-            most_active_cel_idx = tern24(cel_is_most_active, cel_idx, most_active_cel_idx);
-            most_active_cel_actv = tern24(cel_is_most_active, cel_actv, most_active_cel_actv);
+                int cel_is_most_active = (cel_actv >= most_active_cel_actv) & idx_is_safe;
+                most_active_cel_idx = tern24(cel_is_most_active, cel_idx, most_active_cel_idx);
+                most_active_cel_actv = tern24(cel_is_most_active, cel_actv, most_active_cel_actv);
 
-            ////// DEBUG RADIUS/OFFSET CALCULATIONS:
-            #ifdef DEBUG_SMOOTHER_OVERLAP
-                if (idx_is_safe) {
-                    if ((cel_energies[cel_idx] < 255) ) {
-                        cel_energies[cel_idx] += 1;
+                // DEBUG RADIUS/OFFSET CALCULATIONS:
+                #ifdef DEBUG_SMOOTHER_OVERLAP
+                    if (idx_is_safe) {
+                        if ((cel_energies[cel_idx] < 255) ) {
+                            cel_energies[cel_idx] += 1;
+                        }
                     }
-                }
-            #endif
-            //////
+                #endif
+            }
         }
     }
 
     #ifndef DEBUG_SMOOTHER_OVERLAP
-        // REMINDER: Energy is (currently) being added linearly with cell state (before inhib):
-
         // Least Active (boost energy):
         uchar least_active_cel_energy = cel_energies[least_active_cel_idx];
         cel_energies[least_active_cel_idx] = least_active_cel_energy +
@@ -287,7 +282,6 @@ __kernel void smooth_activity(
 
         // Most Active (sap energy):
         uchar most_active_cel_energy = cel_energies[most_active_cel_idx];
-        // Do not sap cells with zero activity.
         cel_energies[most_active_cel_idx] = most_active_cel_energy -
             ((most_active_cel_energy > 0) & (most_active_cel_actv > 0) &
                 (least_active_cel_idx != most_active_cel_idx));
