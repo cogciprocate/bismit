@@ -264,26 +264,32 @@ __kernel void smooth_activity(
             most_active_cel_idx = tern24(cel_is_most_active, cel_idx, most_active_cel_idx);
             most_active_cel_actv = tern24(cel_is_most_active, cel_actv, most_active_cel_actv);
 
-            // if (idx_is_safe) {
-            //     if ((cel_energies[cel_idx] < 255) ) {
-            //         cel_energies[cel_idx] += 1;
-            //     }
-            // }
+            ////// DEBUG RADIUS/OFFSET CALCULATIONS:
+            #ifdef DEBUG_SMOOTHER_OVERLAP
+                if (idx_is_safe) {
+                    if ((cel_energies[cel_idx] < 255) ) {
+                        cel_energies[cel_idx] += 1;
+                    }
+                }
+            #endif
+            //////
         }
     }
 
-    // REMINDER: Energy is (currently) being added linearly with cell state (before inhib):
+    #ifndef DEBUG_SMOOTHER_OVERLAP
+        // REMINDER: Energy is (currently) being added linearly with cell state (before inhib):
 
-    // Least Active (boost energy):
-    uchar least_active_cel_energy = cel_energies[least_active_cel_idx];
-    cel_energies[least_active_cel_idx] = least_active_cel_energy +
-        ((least_active_cel_energy < 255) & (most_active_cel_actv < 255) &
-            (least_active_cel_idx != most_active_cel_idx));
+        // Least Active (boost energy):
+        uchar least_active_cel_energy = cel_energies[least_active_cel_idx];
+        cel_energies[least_active_cel_idx] = least_active_cel_energy +
+            ((least_active_cel_energy < 255) & (most_active_cel_actv < 255) &
+                (least_active_cel_idx != most_active_cel_idx));
 
-    // Most Active (sap energy):
-    uchar most_active_cel_energy = cel_energies[most_active_cel_idx];
-    // Do not sap cells with zero activity.
-    cel_energies[most_active_cel_idx] = most_active_cel_energy -
-        ((most_active_cel_energy > 0) & (most_active_cel_actv > 0) &
-            (least_active_cel_idx != most_active_cel_idx));
+        // Most Active (sap energy):
+        uchar most_active_cel_energy = cel_energies[most_active_cel_idx];
+        // Do not sap cells with zero activity.
+        cel_energies[most_active_cel_idx] = most_active_cel_energy -
+            ((most_active_cel_energy > 0) & (most_active_cel_actv > 0) &
+                (least_active_cel_idx != most_active_cel_idx));
+    #endif
 }

@@ -22,7 +22,7 @@ static SPT_LYR: &'static str = "iv";
 
 const ENCODE_DIM: u32 = 64;
 const AREA_DIM: u32 = 16;
-const HEX_GRP_SIDE: usize = 4;
+const HEX_GRP_RADIUS: usize = 6;
 
 
 pub fn draw(params: &Params) {
@@ -30,24 +30,26 @@ pub fn draw(params: &Params) {
     fn pop(offset: [i32; 2], val: u8, guard: &mut [u8]) {
         let dims = [ENCODE_DIM as i32, ENCODE_DIM as i32];
         let start = [(dims[0] / 2) + offset[0], (dims[1] / 2) + offset[1]];
-        cmn::populate_hex_tile_grps(HEX_GRP_SIDE, dims, start, val, guard);
+        cmn::populate_hex_tile_grps(HEX_GRP_RADIUS, dims, start, val, guard);
     }
 
     // Write to tract:
     debug!("Locking tract buffer...");
     let mut guard = params.tract_buffer.clone().write().wait().unwrap();
-    // assert!(HEX_GRP_SIDE % 2 == 0);
-    let ofs_dist = (HEX_GRP_SIDE / 2) as i32;
+    // assert!(HEX_GRP_RADIUS % 2 == 0);
+    let ofs_dist = ((HEX_GRP_RADIUS + 1) / 2) as i32;
 
-    pop([0, 0], 255, guard.as_mut_slice());
+    // let ofs_dist = HEX_GRP_RADIUS as i32 - 1;
 
-    // pop([0, ofs_dist], 1, guard.as_mut_slice());
-    // pop([-ofs_dist, 0], 102, guard.as_mut_slice());
-    // pop([ofs_dist, -ofs_dist], 204, guard.as_mut_slice());
+    // pop([0, 0], 255, guard.as_mut_slice());
 
-    // pop([-ofs_dist, ofs_dist], 51, guard.as_mut_slice());
-    // pop([0, -ofs_dist], 153, guard.as_mut_slice());
-    // pop([ofs_dist, 0], 255, guard.as_mut_slice());
+    pop([0, ofs_dist], 1, guard.as_mut_slice());
+    pop([-ofs_dist, 0], 102, guard.as_mut_slice());
+    pop([ofs_dist, -ofs_dist], 204, guard.as_mut_slice());
+
+    pop([-ofs_dist, ofs_dist], 51, guard.as_mut_slice());
+    pop([0, -ofs_dist], 153, guard.as_mut_slice());
+    pop([ofs_dist, 0], 255, guard.as_mut_slice());
 
     WriteGuard::release(guard);
 

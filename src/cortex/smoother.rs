@@ -15,28 +15,25 @@ const CYCLE_FREQUENCY: usize = 0x7F;
 /// Generates a set of 'center' coordinates for cells grouped by overlap-layer
 /// (and haphazardly sorted within).
 ///
-/// `side_len` is the circumradius of the hexagon-shaped area which each cell
+/// `radius` is the circumradius of the hexagon-shaped area which each cell
 /// will influence.
-fn gen_grp_centers(group_radius: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
+fn gen_grp_centers(radius: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
     use cmn::HexGroupCenters;
 
-    let side_len = group_radius;
-
     // Boundaries
-    let l_bound = [0 - side_len, 0 - side_len];
-    let u_bound = [dims[0] + side_len, dims[1] + side_len];
+    let l_bound = [0 - radius, 0 - radius];
+    let u_bound = [dims[0] + radius, dims[1] + radius];
 
     let mut centers_v = Vec::with_capacity(4096);
     let mut centers_u = Vec::with_capacity(4096);
 
-    assert!(side_len % 2 == 0);
-    let ofs_dist = side_len / 2;
+    let ofs_dist = (radius + 1) / 2;
 
     let starts = [[0, ofs_dist], [-ofs_dist, ofs_dist], [-ofs_dist, 0],
         [0, -ofs_dist], [ofs_dist, -ofs_dist], [ofs_dist, 0]];
 
     for lyr_id in 0..starts.len() {
-        let mut centers = HexGroupCenters::new(side_len, l_bound, u_bound);
+        let mut centers = HexGroupCenters::new(radius, l_bound, u_bound);
         centers.populate(Some(starts[lyr_id]));
 
         for center in centers.set() {

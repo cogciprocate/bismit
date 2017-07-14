@@ -10,6 +10,7 @@ use futures::sync::mpsc::{self, Sender};
 use tokio_core::reactor::{Core, Remote};
 use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue};
 use ocl::core::CommandQueueProperties;
+use ocl::builders::{BuildOpt, ProgramBuilder};
 use cmn::{self, CmnError, CmnResult, CorticalDims};
 use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind,
     ExecutionGraph, CellClass /*AxonDomainRoute,*/};
@@ -39,6 +40,7 @@ pub struct CorticalAreaSettings {
     pub disable_mcols: bool,
     pub disable_regrowth: bool,
     pub disable_learning: bool,
+    pub build_options: Vec<BuildOpt>
 }
 
 impl CorticalAreaSettings {
@@ -51,7 +53,24 @@ impl CorticalAreaSettings {
             disable_mcols: false,
             disable_regrowth: false,
             disable_learning: false,
+            build_options: Vec::new(),
         }
+    }
+
+    /// Adds a build option.
+    //
+    // BuildOpt::include_def("DEFINITION", 1)
+    pub fn build_opt(&mut self, bo: BuildOpt) -> &mut CorticalAreaSettings {
+        self.build_options.push(bo);
+        self
+    }
+
+    /// Adds all build options to a program builder.
+    pub fn add_build_options(&self, mut pbldr: ProgramBuilder) -> ProgramBuilder {
+        for bo in self.build_options.iter() {
+            pbldr = pbldr.bo(bo.clone())
+        }
+        pbldr
     }
 }
 
@@ -104,25 +123,23 @@ impl CorticalArea {
         let emsg = "cortical_area::CorticalArea::new()";
         let area_id = area_map.area_id();
         let area_name = area_map.area_name();
+        let settings = settings.unwrap_or(CorticalAreaSettings::new());
 
         println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);
 
-        // Optionally pass `-g` and `-s {cl path}` flags to compiler:
         let build_options = if KERNEL_DEBUG_SYMBOLS && cfg!(target_os = "linux") {
-            // * TODO: Add something to identify the platform vendor and match:
-            // let kernel_path = concat!(env!("CARGO_MANIFEST_DIR"), "/cl/bismit.cl");
-            // let debug_opts = format!("-g -s \"{}\"", kernel_path);
-
             if ocl_context.platform()?.unwrap().vendor().contains("Intel") {
                 panic!("[cortical_area::KERNEL_DEBUG_SYMBOLS == true]: \
                     Cannot debug kernels on an Intel based driver platform (not sure why).
                     Use the AMD platform drivers with Intel devices instead.");
             }
-
+            // * TODO: Save kernel file for debugging on Intel.
+            // // Optionally pass `-g` and `-s {cl path}` flags to compiler:
+            // let debug_opts = format!("-g -s \"{}\"", kernel_path);
             let debug_opts = "-g";
-            area_map.gen_build_options().cmplr_opt(debug_opts)
+            settings.add_build_options(area_map.gen_build_options().cmplr_opt(debug_opts))
         } else {
-            area_map.gen_build_options()
+            settings.add_build_options(area_map.gen_build_options())
         };
 
         let mut queue_flags = if QUEUE_OUT_OF_ORDER {
@@ -168,8 +185,6 @@ impl CorticalArea {
 
         let mut psal_idx = usize::max_value();
         let mut ptal_idx = usize::max_value();
-
-        let settings = settings.unwrap_or(CorticalAreaSettings::new());
 
         /*=============================================================================
         =============================== EXECUTION GRAPH ===============================

@@ -4,6 +4,7 @@ use std::sync::mpsc::{self, Sender, Receiver, /*TryRecvError*/};
 use rand;
 use rand::distributions::{Range, IndependentSample};
 use vibi::window;
+use vibi::bismit::ocl::builders::BuildOpt;
 use vibi::bismit::map::*;
 use vibi::bismit::flywheel::Flywheel;
 use vibi::bismit::ocl::{Buffer, RwVec, WriteGuard};
@@ -11,6 +12,7 @@ use vibi::bismit::{map, Cortex, Thalamus, SubcorticalNucleus, CorticalAreaSettin
 use vibi::bismit::flywheel::{Command, Request, Response};
 use vibi::bismit::map::{/*AxonDomainRoute,*/ AreaMap};
 use vibi::bismit::encode::{self, /*ScalarSdrWriter*/};
+
 
 
 pub struct Params {
@@ -27,6 +29,7 @@ pub struct Params {
 }
 
 
+// TODO: DO SOMETHING WITH ME
 pub(crate) struct Nucleus {
     area_name: String,
 }
@@ -52,7 +55,7 @@ impl Nucleus {
     }
 }
 
-
+// TODO: DO SOMETHING WITH ME
 impl SubcorticalNucleus for Nucleus {
     fn area_name<'a>(&'a self) -> &'a str {
         &self.area_name
@@ -69,8 +72,12 @@ impl SubcorticalNucleus for Nucleus {
 
 // Prints dendritic and cell activity ratings as well as a total activity
 // count for a selection of cells (currently every 8th).
+//
+// `_energy_level` can be used to make sure that all cells are being processed
+// uniformly by the smoother kernel (by using the '+1 to all' debug code
+// contained within).
 fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>, cel_enrgs: &Buffer<u8>,
-        activity_counts: &Vec<Vec<usize>>, /*energy_level: u8*/)
+        activity_counts: &Vec<Vec<usize>>, _energy_level: u8)
 {
     let cel_count = activity_counts.len();
     let pattern_count = activity_counts[0].len();
@@ -86,9 +93,9 @@ fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>, cel_enr
     cel_actvs.read(&mut cel_activities).enq().unwrap();
     assert_eq!(cel_activities.len(), activity_counts.len());
 
-    let mut cel_energies = vec![0; cel_enrgs.len()];
-    cel_enrgs.read(&mut cel_energies).enq().unwrap();
-    assert_eq!(cel_energies.len(), activity_counts.len());
+    let mut cel_energies_vec = vec![0; cel_enrgs.len()];
+    cel_enrgs.read(&mut cel_energies_vec).enq().unwrap();
+    assert_eq!(cel_energies_vec.len(), activity_counts.len());
 
     for (cel_idx, counts) in activity_counts.iter().enumerate() {
         debug_assert!(counts.len() == pattern_count);
@@ -109,13 +116,13 @@ fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>, cel_enr
         // `ca`: cell activity rating (post-inhib)
         // `ct`: cell activity count
 
-        if (cel_idx & 7) == 0 {
+        // if (cel_idx & 7) == 0 {
         // if cel_ttl > 0. && cel_ttl < 150. {
         // if cel_ttl > 600. {
-        // if cel_energies[cel_idx] == 0 && cel_activities[cel_idx] == 0 {
+        // if cel_energies_vec[cel_idx] == 0 && cel_activities[cel_idx] == 0 {
         // if cel_activities[cel_idx] == 0 {
-        // if cel_energies[cel_idx] != energy_level {
-        // if cel_energies[cel_idx] == 0 {
+        if cel_energies_vec[cel_idx] != _energy_level {
+        // if cel_energies_vec[cel_idx] == 0 {
             print!("{{[");
             printc!(dark_grey: "{}", cel_idx);
             print!("]::da:");
@@ -123,7 +130,7 @@ fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>, cel_enr
             print!(",ca:");
             printc!(green: "{}", cel_activities[cel_idx]);
             print!(",ce:");
-            printc!(green: "{}", cel_energies[cel_idx]);
+            printc!(green: "{}", cel_energies_vec[cel_idx]);
             print!(",ct:");
             printc!(royal_blue: "{}", cel_ttl);
             print!("}} ");
@@ -240,6 +247,7 @@ static SPT_LYR: &'static str = "iv";
 
 const ENCODE_DIM: u32 = 64;
 const AREA_DIM: u32 = 16;
+const DEBUG_SMOOTHER_OVERLAP: bool = true;
 
 pub fn eval(/*params: Params*/) {
     let (command_tx, command_rx) = mpsc::channel();
@@ -282,6 +290,7 @@ pub fn eval(/*params: Params*/) {
     let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
     let area_map = cortex.areas().by_key(PRI_AREA).unwrap().area_map().clone();
 
+    // TODO: DO SOMETHING WITH ME
     let nucl = Nucleus::new(IN_AREA, EXT_LYR, PRI_AREA, &cortex);
     cortex.add_subcortex(Subcortex::new().nucl(nucl));
 
@@ -339,27 +348,31 @@ pub fn eval(/*params: Params*/) {
         let training_collect_iters = vec![
             // (0, 10000),
 
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
+            (0, 5), (0, 5), (0, 5), (0, 5),
+            (0, 5), (0, 5), (0, 5), (0, 5),
+            (0, 5), (0, 5), (0, 5), (0, 5),
 
-            (0, 20000),
-            (0, 20000),
-            (0, 20000),
-            (0, 20000),
-            (0, 20000),
-            (0, 20000),
-            (0, 20000),
-            (0, 20000),
-            (0, 20000),
-            (0, 20000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+            // (0, 2000),
+
+            // (0, 20000),
+            // (0, 20000),
+            // (0, 20000),
+            // (0, 20000),
+            // (0, 20000),
+            // (0, 20000),
+            // (0, 20000),
+            // (0, 20000),
+            // (0, 20000),
+            // (0, 20000),
 
             // (40000, 10000),
             // (40000, 10000),
@@ -398,11 +411,11 @@ pub fn eval(/*params: Params*/) {
             println!("\nActivity Counts [{}] (train: {}, collect: {}, running total: {}):",
                 t, training_iters, collect_iters, total_cycles);
 
-            // let smoother_layers = 6;
-            // let mut energy_level = smoother_layers * total_cycles;
-            // energy_level = if energy_level > 255 { 255 } else { energy_level };
+            let _smoother_layers = 6;
+            let _energy_level_raw = _smoother_layers * total_cycles;
+            let _energy_level = if _energy_level_raw > 255 { 255 } else { _energy_level_raw as u8 };
             print_activity_counts(&l4_spt_den_actvs, &l4_spt_cel_actvs,
-                &l4_spt_cel_enrgs, &activity_counts, /*energy_level as u8*/);
+                &l4_spt_cel_enrgs, &activity_counts, _energy_level);
         }
 
         params.cmd_tx.send(Command::Exit).unwrap();
@@ -429,12 +442,12 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 CellScheme::minicolumn("iv", "iii", 9999)
             )
             .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 4, 1)], 7, 400)
+                CellScheme::spiny_stellate(&[("aff_in", 10, 1)], 5, 400)
             )
             .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
-            .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4, 1))
+            .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 6, 1))
             .layer("iii", 1, map::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 20, 1)], 1, 6, 500)
+                CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
                     // .apical(&[("eff_in", 22)], 1, 5, 500)
             )
         )
@@ -477,6 +490,7 @@ pub fn ca_settings() -> CorticalAreaSettings {
     settings.disable_mcols = true;
     // settings.disable_regrowth = true;
     // settings.disable_learning = true;
+    settings.build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", DEBUG_SMOOTHER_OVERLAP as i32));
 
     settings
 }
