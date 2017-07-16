@@ -1,23 +1,23 @@
 
-use std::thread;
-use std::sync::mpsc::{self, Sender, Receiver, /*TryRecvError*/};
+// use std::thread;
+// use std::sync::mpsc::{self, Sender, Receiver, /*TryRecvError*/};
 use rand;
 use rand::distributions::{Range, IndependentSample};
-use vibi::window;
+// use vibi::window;
 use vibi::bismit::map::*;
-use vibi::bismit::flywheel::Flywheel;
 use vibi::bismit::ocl::{Buffer, RwVec, WriteGuard};
 use vibi::bismit::{map, Cortex, Thalamus, SubcorticalNucleus, CorticalAreaSettings, Subcortex};
-use vibi::bismit::flywheel::{Command, Request, Response};
+use vibi::bismit::flywheel::{/*Flywheel,*/ Command, Request, Response};
 use vibi::bismit::map::{/*AxonDomainRoute,*/ AreaMap};
 use vibi::bismit::encode::{self, /*ScalarSdrWriter*/};
+use ::Controls;
 
 
 
 pub struct Params {
-    pub cmd_tx: Sender<Command>,
-    pub req_tx: Sender<Request>,
-    pub res_rx: Receiver<Response>,
+    // pub cmd_tx: Sender<Command>,
+    // pub req_tx: Sender<Request>,
+    // pub res_rx: Receiver<Response>,
     pub tract_buffer: RwVec<u8>,
     pub axns: Buffer<u8>,
     pub l4_axns: Buffer<u8>,
@@ -76,7 +76,7 @@ impl SubcorticalNucleus for Nucleus {
 // uniformly by the smoother kernel (by using the '+1 to all' debug code
 // contained within).
 fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>, cel_enrgs: &Buffer<u8>,
-        activity_counts: &Vec<Vec<usize>>, _energy_level: u8)
+        activity_counts: &Vec<Vec<usize>>, /*_energy_level: u8,*/)
 {
     let cel_count = activity_counts.len();
     let pattern_count = activity_counts[0].len();
@@ -160,20 +160,20 @@ fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>, cel_enr
 }
 
 
-fn finish_queues(params: &Params, i: usize, exiting: &mut bool) {
-    params.req_tx.send(Request::FinishQueues(i)).unwrap();
-    params.cmd_tx.send(Command::None).unwrap();
+fn finish_queues(controls: &Controls, i: usize, exiting: &mut bool) {
+    controls.req_tx.send(Request::FinishQueues(i)).unwrap();
+    controls.cmd_tx.send(Command::None).unwrap();
 
     // Wait for completion.
     loop {
         debug!("Attempting to receive...");
-        match params.res_rx.recv() {
+        match controls.res_rx.recv() {
             Ok(res) => match res {
                 Response::Status(status) => {
                     debug!("Status: {:?}", status);
                     // if status.prev_cycles > cycle_count {
-                    //     params.req_tx.send(Request::FinishQueues(i)).unwrap();
-                    //     params.cmd_tx.send(Command::None).unwrap();
+                    //     controls.cmd_tx.send(Request::FinishQueues(i)).unwrap();
+                    //     controls.cmd_tx.send(Command::None).unwrap();
                     // }
                 },
                 // Response::QueuesFinished(prev_cycles) => {
@@ -204,7 +204,7 @@ fn finish_queues(params: &Params, i: usize, exiting: &mut bool) {
 }
 
 
-fn cycle(params: &Params, training_iters: usize, collect_iters: usize,
+fn cycle(controls: &Controls, params: &Params, training_iters: usize, collect_iters: usize,
         pattern_count: usize, sdrs: &Vec<Vec<u8>>, activity_counts: &mut Vec<Vec<usize>>)
 {
     let mut rng = rand::weak_rng();
@@ -224,10 +224,10 @@ fn cycle(params: &Params, training_iters: usize, collect_iters: usize,
         WriteGuard::release(guard);
 
         // Cycle.
-        params.cmd_tx.send(Command::Iterate(1)).unwrap();
+        controls.cmd_tx.send(Command::Iterate(1)).unwrap();
 
         // Wait for completion.
-        finish_queues(params, i, &mut exiting);
+        finish_queues(controls, i, &mut exiting);
 
         if i >= training_iters {
             // Increment the cell activity counts.
@@ -248,18 +248,9 @@ static SPT_LYR: &'static str = "iv";
 
 const ENCODE_DIM: u32 = 64;
 const AREA_DIM: u32 = 24;
-const DEBUG_SMOOTHER_OVERLAP: bool = true;
+// const DEBUG_SMOOTHER_OVERLAP: bool = true;
 
 pub fn eval(/*params: Params*/) {
-    let (command_tx, command_rx) = mpsc::channel();
-    let (vibi_request_tx, vibi_request_rx) = mpsc::channel();
-    let (vibi_response_tx, vibi_response_rx) = mpsc::channel();
-    let vibi_command_tx = command_tx.clone();
-
-    let (spatial_request_tx, spatial_request_rx) = mpsc::channel();
-    let (spatial_response_tx, spatial_response_rx) = mpsc::channel();
-    let spatial_command_tx = command_tx;
-
     let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
 
     let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
@@ -295,25 +286,45 @@ pub fn eval(/*params: Params*/) {
     let nucl = Nucleus::new(IN_AREA, EXT_LYR, PRI_AREA, &cortex);
     cortex.add_subcortex(Subcortex::new().nucl(nucl));
 
-    let mut flywheel = Flywheel::new(cortex, command_rx, PRI_AREA);
-    flywheel.add_req_res_pair(vibi_request_rx, vibi_response_tx);
-    flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
 
-    // Flywheel thread:
-    let th_flywheel = thread::Builder::new().name("flywheel".to_string()).spawn(move || {
-        flywheel.spin();
-    }).expect("Error creating 'flywheel' thread");
+    // let (command_tx, command_rx) = mpsc::channel();
+    // let (vibi_request_tx, vibi_request_rx) = mpsc::channel();
+    // let (vibi_response_tx, vibi_response_rx) = mpsc::channel();
+    // let vibi_command_tx = command_tx.clone();
 
-    // Vibi thread:
-    let th_win = thread::Builder::new().name("win".to_string()).spawn(move || {
-        println!("Opening vibi window...");
-        window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
-    }).expect("Error creating 'win' thread");
+    // let (spatial_request_tx, spatial_request_rx) = mpsc::channel();
+    // let (spatial_response_tx, spatial_response_rx) = mpsc::channel();
+    // let spatial_command_tx = command_tx;
 
-    let params = Params { cmd_tx: spatial_command_tx, req_tx: spatial_request_tx,
-        res_rx: spatial_response_rx, tract_buffer: in_tract_buffer, axns,
-        l4_axns: v1_spt_lyr_buf, /*l4_spt_den_acts: l4_spt_den_acts,*/
-        area_map, encode_dim: ENCODE_DIM, area_dim: AREA_DIM };
+    // let mut flywheel = Flywheel::new(cortex, command_rx, PRI_AREA);
+    // flywheel.add_req_res_pair(vibi_request_rx, vibi_response_tx);
+    // flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
+
+    // // Flywheel thread:
+    // let th_flywheel = thread::Builder::new().name("flywheel".to_string()).spawn(move || {
+    //     flywheel.spin();
+    // }).expect("Error creating 'flywheel' thread");
+
+    // // Vibi thread:
+    // let th_win = thread::Builder::new().name("win".to_string()).spawn(move || {
+    //     println!("Opening vibi window...");
+    //     window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
+    // }).expect("Error creating 'win' thread");
+
+    let controls = ::spawn_threads(cortex, PRI_AREA);
+
+    let params = Params {
+        // cmd_tx: spatial_command_tx,
+        // req_tx: spatial_request_tx,
+        // res_rx: spatial_response_rx,
+        tract_buffer: in_tract_buffer,
+        axns,
+        l4_axns: v1_spt_lyr_buf,
+        // l4_spt_den_acts: l4_spt_den_acts,
+        area_map,
+        encode_dim: ENCODE_DIM,
+        area_dim: AREA_DIM,
+    };
 
     { // Inner (refactorable)
         const SPARSITY: usize = 48;
@@ -340,7 +351,7 @@ pub fn eval(/*params: Params*/) {
         let cell_count = (params.area_dim * params.area_dim) as usize;
 
         // Get the flywheel moving:
-        params.cmd_tx.send(Command::None).unwrap();
+        controls.cmd_tx.send(Command::None).unwrap();
 
         // Define the number of iters to first train then collect for each
         // sample period. All learning and other cell parameters (activity,
@@ -359,59 +370,38 @@ pub fn eval(/*params: Params*/) {
             (0, 20000), (0, 20000), (0, 20000), (0, 20000), (0, 20000),
             (0, 20000), (0, 20000), (0, 20000), (0, 20000), (0, 20000),
 
-            // (40000, 10000),
-            // (40000, 10000),
-            // (40000, 10000),
-            // (40000, 10000),
-            // (40000, 10000),
-            // (80000, 10000),
-            // (80000, 10000),
-            // (80000, 10000),
-            // (80000, 10000),
-            // (80000, 10000),
-
-            // (0, 2000),
-            // (0, 2000),
-            // (0, 2000),
-            // (0, 2000),
-            // (0, 2000),
-            // (0, 2000),
-            // (0, 2000),
-            // (0, 2000),
-            // (60000, 2000),
-            // (0, 2000),
-
-            // (0, 100),
-
-            // (0, 1)
+            (40000, 10000), (40000, 10000), (40000, 10000), (40000, 10000),
+            (40000, 10000), (80000, 10000), (80000, 10000), (80000, 10000),
+            (80000, 10000), (80000, 10000),
         ];
 
         let mut total_cycles = 0usize;
 
         for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {
             let mut activity_counts = vec![vec![0; pattern_count]; cell_count];
-            cycle(&params, training_iters, collect_iters, pattern_count,
+            cycle(&controls, &params, training_iters, collect_iters, pattern_count,
                 &sdrs, &mut activity_counts);
             total_cycles += training_iters + collect_iters;
             println!("\nActivity Counts [{}] (train: {}, collect: {}, running total: {}):",
                 t, training_iters, collect_iters, total_cycles);
 
-            let _smoother_layers = 6;
-            let _energy_level_raw = _smoother_layers * total_cycles;
-            let _energy_level = if _energy_level_raw > 255 { 255 } else { _energy_level_raw as u8 };
+            // let _smoother_layers = 6;
+            // let _energy_level_raw = _smoother_layers * total_cycles;
+            // let _energy_level = if _energy_level_raw > 255 { 255 } else { _energy_level_raw as u8 };
+
             print_activity_counts(&l4_spt_den_actvs, &l4_spt_cel_actvs,
-                &l4_spt_cel_enrgs, &activity_counts, _energy_level);
+                &l4_spt_cel_enrgs, &activity_counts, /*_energy_level,*/);
         }
 
-        params.cmd_tx.send(Command::Exit).unwrap();
-        params.cmd_tx.send(Command::None).unwrap();
+        controls.cmd_tx.send(Command::Exit).unwrap();
+        controls.cmd_tx.send(Command::None).unwrap();
 
         println!("Spatial evaluation complete.\n");
-        // params.res_rx.recv().unwrap();
+        // controls.cmd_tx.recv().unwrap();
     }
 
-    if let Err(e) = th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
-    if let Err(e) = th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
+    if let Err(e) = controls.th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
+    if let Err(e) = controls.th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
 }
 
 fn define_lm_schemes() -> LayerMapSchemeList {

@@ -1,17 +1,18 @@
 
 use std::thread;
-use std::sync::mpsc::{self, /*Sender, Receiver, TryRecvError*/};
+// use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
 // use rand;
 // use rand::distributions::{Range, IndependentSample};
-use vibi::window;
+// use vibi::window;
 use vibi::bismit::cmn;
 use vibi::bismit::map::*;
-use vibi::bismit::flywheel::Flywheel;
+// use vibi::bismit::flywheel::Flywheel;
 use vibi::bismit::ocl::{/*Buffer, RwVec,*/ WriteGuard};
 use vibi::bismit::{map, Cortex, /*Thalamus, SubcorticalNucleus,*/ CorticalAreaSettings, /*Subcortex*/};
 use vibi::bismit::flywheel::{Command, Request, Response};
 // use vibi::bismit::map::{AxonDomainRoute, AreaMap};
 // use vibi::bismit::encode::{self, ScalarSdrWriter};
+use ::Controls;
 use spatial::Params;
 
 
@@ -25,7 +26,7 @@ const AREA_DIM: u32 = 16;
 const HEX_GRP_RADIUS: usize = 6;
 
 
-pub fn draw(params: &Params) {
+pub fn draw(params: &Params, controls: &Controls) {
     // Populates the thing.
     fn pop(offset: [i32; 2], val: u8, guard: &mut [u8]) {
         let dims = [ENCODE_DIM as i32, ENCODE_DIM as i32];
@@ -54,20 +55,20 @@ pub fn draw(params: &Params) {
     WriteGuard::release(guard);
 
     // Cycle and finish queues:
-    params.cmd_tx.send(Command::Iterate(1)).unwrap();
-    params.req_tx.send(Request::FinishQueues(0)).unwrap();
-    params.cmd_tx.send(Command::None).unwrap();
+    controls.cmd_tx.send(Command::Iterate(1)).unwrap();
+    controls.req_tx.send(Request::FinishQueues(0)).unwrap();
+    controls.cmd_tx.send(Command::None).unwrap();
 
     // Wait for completion.
     loop {
         debug!("Attempting to receive...");
-        match params.res_rx.recv() {
+        match controls.res_rx.recv() {
             Ok(res) => match res {
                 Response::Status(status) => {
                     debug!("Status: {:?}", status);
                     // if status.prev_cycles == 0 {
-                        // params.req_tx.send(Request::FinishQueues(0)).unwrap();
-                        // params.cmd_tx.send(Command::None).unwrap();
+                        // controls.req_tx.send(Request::FinishQueues(0)).unwrap();
+                        // controls.cmd_tx.send(Command::None).unwrap();
                     // }
                 },
                 Response::QueuesFinished(id) => {
@@ -91,23 +92,14 @@ pub fn draw(params: &Params) {
     }
 
     // // Exit:
-    // params.cmd_tx.send(Command::Exit).unwrap();
-    // params.cmd_tx.send(Command::None).unwrap();
+    // controls.cmd_tx.send(Command::Exit).unwrap();
+    // controls.cmd_tx.send(Command::None).unwrap();
     // println!("Drawing complete.\n");
 }
 
 
 /// Draws an arbitrary pattern as an sdr.
 pub fn eval() {
-    let (command_tx, command_rx) = mpsc::channel();
-    let (vibi_request_tx, vibi_request_rx) = mpsc::channel();
-    let (vibi_response_tx, vibi_response_rx) = mpsc::channel();
-    let vibi_command_tx = command_tx.clone();
-
-    let (spatial_request_tx, spatial_request_rx) = mpsc::channel();
-    let (spatial_response_tx, spatial_response_rx) = mpsc::channel();
-    let spatial_command_tx = command_tx;
-
     let cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
 
     let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
@@ -127,39 +119,51 @@ pub fn eval() {
     let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
     let area_map = cortex.areas().by_key(PRI_AREA).unwrap().area_map().clone();
 
-    let mut flywheel = Flywheel::new(cortex, command_rx, PRI_AREA);
-    flywheel.add_req_res_pair(vibi_request_rx, vibi_response_tx);
-    flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
+    // let (command_tx, command_rx) = mpsc::channel();
+    // let (vibi_request_tx, vibi_request_rx) = mpsc::channel();
+    // let (vibi_response_tx, vibi_response_rx) = mpsc::channel();
+    // let vibi_command_tx = command_tx.clone();
 
-    // Flywheel thread:
-    let th_flywheel = thread::Builder::new().name("flywheel".to_string()).spawn(move || {
-        flywheel.spin();
-    }).expect("Error creating 'flywheel' thread");
+    // let (spatial_request_tx, spatial_request_rx) = mpsc::channel();
+    // let (spatial_response_tx, spatial_response_rx) = mpsc::channel();
+    // let spatial_command_tx = command_tx;
 
-    // Vibi thread:
-    let th_win = thread::Builder::new().name("win".to_string()).spawn(move || {
-        println!("Opening vibi window...");
-        window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
-    }).expect("Error creating 'win' thread");
+    // let mut flywheel = Flywheel::new(cortex, command_rx, PRI_AREA);
+    // flywheel.add_req_res_pair(vibi_request_rx, vibi_response_tx);
+    // flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
 
-    let params = Params { cmd_tx: spatial_command_tx, req_tx: spatial_request_tx,
-        res_rx: spatial_response_rx, tract_buffer: in_tract_buffer, axns,
+    // // Flywheel thread:
+    // let th_flywheel = thread::Builder::new().name("flywheel".to_string()).spawn(move || {
+    //     flywheel.spin();
+    // }).expect("Error creating 'flywheel' thread");
+
+    // // Vibi thread:
+    // let th_win = thread::Builder::new().name("win".to_string()).spawn(move || {
+    //     println!("Opening vibi window...");
+    //     window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
+    // }).expect("Error creating 'win' thread");
+
+    let controls = ::spawn_threads(cortex, PRI_AREA);
+
+    let params = Params { /*cmd_tx: spatial_command_tx, req_tx: spatial_request_tx,
+        res_rx: spatial_response_rx,*/
+        tract_buffer: in_tract_buffer, axns,
         l4_axns: v1_spt_lyr_buf, area_map, encode_dim: ENCODE_DIM, area_dim: AREA_DIM };
 
     // Get the flywheel moving:
-    params.cmd_tx.send(Command::None).unwrap();
+    controls.cmd_tx.send(Command::None).unwrap();
 
     // Sleep until vibi window opens (need a better mech. for this):
     thread::sleep(::std::time::Duration::new(1, 0));
 
     // Draw (only need to draw 1):
     for _ in 0..5000 {
-        draw(&params);
+        draw(&params, &controls);
     }
 
-    if let Err(e) = th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
+    if let Err(e) = controls.th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
     println!("Vibi window closed.");
-    if let Err(e) = th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
+    if let Err(e) = controls.th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
     println!("Flywheel stopped.");
 }
 

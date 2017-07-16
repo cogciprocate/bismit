@@ -12,12 +12,58 @@ extern crate clap;
 mod spatial;
 mod hexdraw;
 
-// use vibi::window;
-// use vibi::bismit::{map, Cortex, CorticalAreaSettings, Subcortex};
-// use vibi::bismit::map::*;
-// use vibi::bismit::flywheel::Flywheel;
+use vibi::window;
+use vibi::bismit::{/*map, */Cortex, /*CorticalAreaSettings, Subcortex*/};
+use vibi::bismit::flywheel::{Flywheel, Command, Request, Response};
 // use spatial::Params;
 
+use std::thread;
+use std::sync::mpsc::{self, Sender, Receiver};
+
+pub struct Controls {
+    pub cmd_tx: Sender<Command>,
+    pub req_tx: Sender<Request>,
+    pub res_rx: Receiver<Response>,
+    pub th_flywheel: thread::JoinHandle<()>,
+    pub th_win: thread::JoinHandle<()>,
+}
+
+
+pub fn spawn_threads(cortex: Cortex, pri_area_name: &'static str)
+        -> Controls
+{
+    let (command_tx, command_rx) = mpsc::channel();
+    let (vibi_request_tx, vibi_request_rx) = mpsc::channel();
+    let (vibi_response_tx, vibi_response_rx) = mpsc::channel();
+    let vibi_command_tx = command_tx.clone();
+
+    let (spatial_request_tx, spatial_request_rx) = mpsc::channel();
+    let (spatial_response_tx, spatial_response_rx) = mpsc::channel();
+    let spatial_command_tx = command_tx;
+
+    let mut flywheel = Flywheel::new(cortex, command_rx, pri_area_name);
+    flywheel.add_req_res_pair(vibi_request_rx, vibi_response_tx);
+    flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
+
+    // Flywheel thread:
+    let th_flywheel = thread::Builder::new().name("flywheel".to_string()).spawn(move || {
+        flywheel.spin();
+    }).expect("Error creating 'flywheel' thread");
+
+    // Vibi thread:
+    let th_win = thread::Builder::new().name("win".to_string()).spawn(move || {
+        println!("Opening vibi window...");
+        window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
+    }).expect("Error creating 'win' thread");
+
+    Controls {
+        cmd_tx: spatial_command_tx,
+        req_tx: spatial_request_tx,
+        res_rx: spatial_response_rx,
+        th_flywheel,
+        th_win,
+    }
+}
 
 
 fn main() {
