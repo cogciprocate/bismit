@@ -1,6 +1,6 @@
 use std::fmt;
 use rand::{self, XorShiftRng};
-use rand::distributions::{Range, IndependentSample};
+use rand::distributions::{Range as RandRange, IndependentSample};
 use cmn::{TractFrameMut, TractDims};
 use encode::ScalarEncodable;
 
@@ -13,34 +13,32 @@ const AXON_VALUE: u8 = 127;
 
 #[inline]
 pub fn gen_axn_idxs(rng: &mut XorShiftRng, active_count: usize, sdr_len: usize) -> Vec<TractAxonIdx> {
-    let range = Range::new(0, sdr_len);
+    let range = RandRange::new(0, sdr_len);
     (0..active_count).map(|_| range.ind_sample(rng)).collect()
 }
 
 /// Writes to deterministic indices.
 #[inline]
 #[allow(dead_code)]
-pub fn write_rand_subset_linear(subset_count: usize, _: usize, indices: &[usize],
-        _: &mut XorShiftRng, tar: &mut [u8])
+pub fn write_rand_subset_linear(contrib_count: usize, rev: bool, _: usize,
+        indices: &[usize], _: &mut XorShiftRng, tar: &mut [u8])
 {
-    // let idx_range = Range::new(0, set_count_ttl);
-
-    // for _ in 0..subset_count {
-    //     let idx_idx = idx_range.ind_sample(rng);
-
-    //     unsafe {
-    //         let tract_idx = *indices.get_unchecked(idx_idx);
-    //         debug_assert!(tract_idx < tar.len());
-    //         *tar.get_unchecked_mut(tract_idx) = 96 + (idx_idx & 63) as u8;
-    //     }
-    // }
-
-    for idx_idx in 0..subset_count {
+    fn write(idx_idx: usize, indices: &[usize], tar: &mut [u8]) {
         unsafe {
             let tract_idx = *indices.get_unchecked(idx_idx);
             debug_assert!(tract_idx < tar.len());
             // *tar.get_unchecked_mut(tract_idx) = 64 + (idx_idx & 63) as u8;
             *tar.get_unchecked_mut(tract_idx) = 128;
+        }
+    }
+
+    if !rev {
+        for idx_idx in 0..contrib_count {
+            write(idx_idx, indices, tar);
+        }
+    } else {
+        for idx_idx in (0..contrib_count).rev() {
+            write(idx_idx, indices, tar);
         }
     }
 }
@@ -51,7 +49,7 @@ pub fn write_rand_subset_linear(subset_count: usize, _: usize, indices: &[usize]
 pub fn write_rand_subset_stochastic(subset_count: usize, set_count_ttl: usize, indices: &[usize],
         rng: &mut XorShiftRng, tar: &mut [u8])
 {
-    let idx_range = Range::new(0, set_count_ttl);
+    let idx_range = RandRange::new(0, set_count_ttl);
 
     for _ in 0..subset_count {
         let idx_idx = idx_range.ind_sample(rng);
@@ -162,10 +160,10 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         let way_0 = val_norm.floor();
 
         // Determine the contribution ratio then count (0-255) for each of the two waypoints:
-        let way_0_contrib_ratio = val_norm - way_0;
-        let way_0_contrib_count = ((self.sdr_active_count as f32) * way_0_contrib_ratio) as usize;
-        debug_assert!(way_0_contrib_count <= self.sdr_active_count);
-        let way_1_contrib_count = self.sdr_active_count - way_0_contrib_count;
+        let way_1_contrib_ratio = val_norm - way_0;
+        let way_1_contrib_count = ((self.sdr_active_count as f32) * way_1_contrib_ratio) as usize;
+        debug_assert!(way_1_contrib_count <= self.sdr_active_count);
+        let way_0_contrib_count = self.sdr_active_count - way_1_contrib_count;
         // let way_0_contrib = (256. * way_0_contrib_ratio) as isize;
         // debug_assert!(way_0_contrib <= 255);
         // let way_1_contrib = 255 - way_0_contrib;
@@ -178,19 +176,20 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         debug_assert!(way_1_idx < self.waypoint_indices.len());
 
         // /////// [DEBUG]:
-        // println!("###### val_orig: {}, val_norm: {}, way_0_idx: {}, way_1_idx, {}, \
-        //     way_0_contrib_count: {}({}), way_1_contrib_count: {}", val_orig, val_norm, way_0_idx,
-        //     way_1_idx, way_0_contrib_count, way_0_contrib_ratio, way_1_contrib_count);
+        //     let way_0_contrib_ratio = 1.0 - way_1_contrib_ratio;
+        //     println!("###### val_orig: {}, val_norm: {}, way_0_idx: {}, way_1_idx, {}, \
+        //         way_0_contrib_count: {}({}), way_1_contrib_count: {}({})", val_orig, val_norm, way_0_idx,
+        //         way_1_idx, way_0_contrib_count, way_0_contrib_ratio, way_1_contrib_ratio, way_1_contrib_count);
         // ///////
 
-        // let w0_idz = Range::new(0, 1 + self.sdr_active_count - way_0_contrib_count)
+        // let w0_idz = RandRange::new(0, 1 + self.sdr_active_count - way_0_contrib_count)
         //     .ind_sample(&mut self.rng);
-        // let w1_idz = Range::new(0, 1 + self.sdr_active_count - way_1_contrib_count)
+        // let w1_idz = RandRange::new(0, 1 + self.sdr_active_count - way_1_contrib_count)
         //     .ind_sample(&mut self.rng);
 
 
 
-        // let idx_range = Range::new(0, self.sdr_active_count);
+        // let idx_range = RandRange::new(0, self.sdr_active_count);
 
 
         // // Write:
@@ -207,7 +206,7 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         //     }
         // }
 
-        write_rand_subset_linear(way_0_contrib_count, self.sdr_active_count,
+        write_rand_subset_linear(way_0_contrib_count, false, self.sdr_active_count,
             self.waypoint_indices[way_0_idx].as_slice(), &mut self.rng, tract);
 
         // // for idx in w1_idz..(w1_idz + way_1_contrib_count) {
@@ -222,7 +221,7 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         //     }
         // }
 
-        write_rand_subset_linear(way_1_contrib_count, self.sdr_active_count,
+        write_rand_subset_linear(way_1_contrib_count, true, self.sdr_active_count,
             self.waypoint_indices[way_1_idx].as_slice(), &mut self.rng, tract);
 
         ////// SLOW (maybe not -- need to retest):
