@@ -594,6 +594,19 @@ static int rnd_0xFFFF(int rnd, int seed, ushort cutoff) {
     return (rnd_mix(rnd, seed) & 0xFFFF) < cutoff;
 }
 
+
+// Updates activity rating.
+static uchar update_activity_rating(uchar activity_rating, int is_active, int rnd,
+        int rnd_seed, ushort decay_factor)
+{
+    // Increment activity rating if active:
+    activity_rating += rnd_inc_u(rnd, rnd_seed, activity_rating) & is_active;
+    // Decrement activities count at random (may need tuning):
+    activity_rating -= rnd_0xFFFF(rnd, rnd_seed << 1, decay_factor) &
+       (activity_rating > 0);
+   return activity_rating;
+}
+
 /*=============================================================================
 ==================================== /WIP =====================================
 =============================================================================*/
@@ -763,15 +776,22 @@ __kernel void den_cycle_tft(
 
     uint const den_idx = den_id_lyrtft + tft_den_idz;
 
-    // Get activity rating:
-    uchar activity_rating = den_activities[den_idx];
-    // Increment activity rating if active:
-    activity_rating += rnd_inc_u(rnd, syn_sum_raw & den_idx, activity_rating) & den_is_active;
-    // Decrement activities count at random (may need tuning):
-    activity_rating -= rnd_0xFFFF(rnd, syn_sum_raw | den_idx, DENDRITE_ACTIVITY_DECAY_FACTOR) &
-        (activity_rating > 0);
+    // // Get activity rating:
+    // uchar activity_rating = den_activities[den_idx];
+    // // Increment activity rating if active:
+    // uint const rnd_seed = (syn_sum_raw + den_threshold) | den_idx;
+    // activity_rating += rnd_inc_u(rnd, rnd_seed, activity_rating) & den_is_active;
+    // // Decrement activities count at random (may need tuning):
+    // activity_rating -= rnd_0xFFFF(rnd, rnd_seed << 1, DENDRITE_ACTIVITY_DECAY_FACTOR) &
+    //     (activity_rating > 0);
 
-    den_activities[den_idx] = activity_rating;
+    // den_activities[den_idx] = activity_rating;
+
+    // Update activity rating:
+    uint const rnd_seed = (syn_sum_raw + den_threshold) | den_idx;
+    den_activities[den_idx] = update_activity_rating(den_activities[den_idx], den_is_active,
+        rnd, rnd_seed, DENDRITE_ACTIVITY_DECAY_FACTOR);
+
     int den_reduction = syns_per_den_l2 - 1;
     den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255);
     den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255);
@@ -793,9 +813,15 @@ __kernel void sst_cycle(
     uint const u_size = get_global_size(2);
     uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
 
+    // Subtract 1 if state is max so that max energy will trump max state during inhib:
+    uint state = cel_states[cel_idx];
+    state = state >> 1;
+
+    // Energy must be above 196 to be included:
+    uint energy = energies[cel_idx];
+    energy = mul24((uint)(energy > 196), (energy >> 1) + 1);
+
     // Add the energy (restlessness) to the feed-forward state:
-    uint const energy = (uint)energies[cel_idx] >> 1;
-    uint const state = cel_states[cel_idx];
     uchar const cel_state = clamp(state + energy, (uint)0, (uint)255);
     cel_states[cel_idx] = (int)cel_state;
     // cel_states[cel_idx] = (int)190;

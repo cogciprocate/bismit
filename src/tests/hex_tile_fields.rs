@@ -52,16 +52,15 @@ fn define_a_schemes() -> AreaSchemeList {
 }
 
 pub fn ca_settings() -> CorticalAreaSettings {
-    let mut settings = CorticalAreaSettings::new();
-    // settings.bypass_inhib = true;
-    // settings.bypass_filters = true;
-    settings.disable_pyrs = true;
-    // settings.disable_ssts = true;
-    settings.disable_mcols = true;
-    settings.disable_regrowth = true;
-    settings.disable_learning = true;
-    settings.build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", 1));
-    settings
+    CorticalAreaSettings::new()
+        // .bypass_inhib()
+        // .bypass_filters()
+        .disable_pyrs()
+        // .disable_ssts()
+        // .disable_mcols()
+        .disable_regrowth()
+        .disable_learning()
+        .build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", 1))
 }
 
 

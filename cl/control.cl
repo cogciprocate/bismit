@@ -167,14 +167,14 @@ __kernel void inhib_simple(
     // Set axon state if cell is uninhibited:
     axn_states[cel_axn_idx] = mul24((uint)uninhibited, (uint)cel_state);
 
-    // Get activity rating:
-    uchar activity_rating = activities[cel_idx];
-    // Increment activity rating if active:
-    int axon_is_active = uninhibited & (cel_state != 0);
-    activity_rating += rnd_inc_u(rnd, cel_state ^ cel_idx, activity_rating) & axon_is_active;
-    // Decrement activities count at random (may need tuning):
-    activity_rating -= rnd_0xFFFF(rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_FACTOR) &
-       (activity_rating > 0);
+    // // Get activity rating:
+    // uchar activity_rating = activities[cel_idx];
+    // // Increment activity rating if active:
+    // int axon_is_active = uninhibited & (cel_state != 0);
+    // activity_rating += rnd_inc_u(rnd, cel_state ^ cel_idx, activity_rating) & axon_is_active;
+    // // Decrement activities count at random (may need tuning):
+    // activity_rating -= rnd_0xFFFF(rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_FACTOR) &
+    //    (activity_rating > 0);
 
     // /////// DEBUG:
     // uchar activity_rating = activities[cel_idx];
@@ -183,13 +183,20 @@ __kernel void inhib_simple(
     //     & (activity_rating > 0);
     // ///////
 
-    activities[cel_idx] = activity_rating;
+    // Increment activity rating if active:
+    int axon_is_active = uninhibited & (cel_state != 0);
+
+    // activities[cel_idx] = activity_rating;
+    activities[cel_idx] = update_activity_rating(activities[cel_idx], axon_is_active,
+        rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_FACTOR);
 }
 
 
 __kernel void inhib_passthrough(
             __global uchar const* const cel_states,
             __private uchar const cel_base_axn_slc,
+            __private int const rnd,
+            __global uchar* const activities,
             __global uchar* const axn_states)
 {
     uint const slc_id_lyr = get_global_id(0);
@@ -205,8 +212,10 @@ __kernel void inhib_passthrough(
 
     //uchar const cel_state = mul24(idx_is_safe, (int)cel_states[cel_idx]);
     uchar const cel_state = cel_states[cel_idx];
-
     axn_states[cel_axn_idx] = cel_state;
+    int axon_is_active = cel_state != 0;
+    activities[cel_idx] = update_activity_rating(activities[cel_idx], axon_is_active,
+        rnd, cel_state | cel_idx, CELL_ACTIVITY_DECAY_FACTOR);
 }
 
 

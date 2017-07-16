@@ -72,7 +72,7 @@ pub fn axn_idxs(testbed: &TestBed) {
 
 /// Tests to ensure that the hex-tile radius nested loop commonly used within
 /// kernels is correct.
-pub fn hex_radial_iter(testbed: &TestBed) {
+pub fn hex_radial_iter(_testbed: &TestBed) {
     // * Establish the size of the area (randomizd: 8-64ish) and create a buffer of
     //   'cell states' initialized to zero.
     // * Pick 8 'center' positions at random.

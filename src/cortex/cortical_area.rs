@@ -57,10 +57,52 @@ impl CorticalAreaSettings {
         }
     }
 
+    /// Disables inhibition.
+    pub fn bypass_inhib(mut self) -> CorticalAreaSettings {
+        self.bypass_inhib = true;
+        self
+    }
+
+    /// Disables filters.
+    pub fn bypass_filters(mut self) -> CorticalAreaSettings {
+        self.bypass_filters = true;
+        self
+    }
+
+    /// Disable all pyramidal (temporal) cell layers.
+    pub fn disable_pyrs(mut self) -> CorticalAreaSettings {
+        self.disable_pyrs = true;
+        self
+    }
+
+    /// Disable all spiny stellate (spatial) cell layers.
+    pub fn disable_ssts(mut self) -> CorticalAreaSettings {
+        self.disable_ssts = true;
+        self
+    }
+
+    /// Disable minicolumn output and temporal layer activation.
+    pub fn disable_mcols(mut self) -> CorticalAreaSettings {
+        self.disable_mcols = true;
+        self
+    }
+
+    /// Disable learning based regrowth.
+    pub fn disable_regrowth(mut self) -> CorticalAreaSettings {
+        self.disable_regrowth = true;
+        self
+    }
+
+    /// Disable learning for all layers.
+    pub fn disable_learning(mut self) -> CorticalAreaSettings {
+        self.disable_learning = true;
+        self
+    }
+
     /// Adds a build option.
     //
     // BuildOpt::include_def("DEFINITION", 1)
-    pub fn build_opt(&mut self, bo: BuildOpt) -> &mut CorticalAreaSettings {
+    pub fn build_opt(mut self, bo: BuildOpt) -> CorticalAreaSettings {
         self.build_options.push(bo);
         self
     }

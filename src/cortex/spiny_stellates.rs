@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use rand::Rng;
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
-use ocl::{Kernel, ProQue, Buffer, Event};
+use ocl::{Kernel, ProQue, Buffer, Event, SpatialDims};
 use map::{CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
     CorticalBuffer, LayerAddress, LayerTags};
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayer};
@@ -76,7 +76,8 @@ impl SpinyStellateLayer {
 
         let kern_name = "sst_cycle";
         let kern_cycle = ocl_pq.create_kernel(kern_name)?
-            .gws(dims)
+            // .gws(dims)
+            .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
             .arg_buf(&energies)
             .arg_buf(dens.states());
 
@@ -94,8 +95,8 @@ impl SpinyStellateLayer {
 
         let kern_name = "sst_ltp_simple";
         let kern_ltp = ocl_pq.create_kernel(kern_name)?
-            // .expect("SpinyStellateLayer::new()")
-            .gws(dims)
+            // .gws(dims)
+            .gws(SpatialDims::Two(1, dims.cells() as usize))
             .arg_buf(axons.states())
             .arg_buf(dens.syns().states())
             .arg_scl(lyr_axn_idz)
@@ -106,6 +107,23 @@ impl SpinyStellateLayer {
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(dens.syns().strengths());
+
+        ////// KEEP ME:
+            // let kern_name = "sst_ltp";
+            // let kern_ltp = ocl_pq.create_kernel(kern_name)?
+            //     // .expect("SpinyStellateLayer::new()")
+            //     .gws(SpatialDims::Two(tft_count, grp_count as usize))
+            //     .arg_buf(axons.states())
+            //     .arg_buf(dens.syns().states())
+            //     .arg_scl(lyr_axn_idz)
+            //     .arg_scl(_cels_per_grp)
+            //     .arg_scl(syns_per_tuft_l2)
+            //     .arg_scl_named::<u32>("rnd", None)
+            //     // .arg_buf_named("aux_ints_0", None)
+            //     // .arg_buf_named("aux_ints_1", None)
+            //     .arg_buf(dens.syns().strengths());
+        ///////
+
 
         // Set up execution command:
         let mut ltp_cmd_srcs: Vec<CorticalBuffer> = axn_slc_ids.iter()

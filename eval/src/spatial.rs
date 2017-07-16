@@ -4,7 +4,6 @@ use std::sync::mpsc::{self, Sender, Receiver, /*TryRecvError*/};
 use rand;
 use rand::distributions::{Range, IndependentSample};
 use vibi::window;
-use vibi::bismit::ocl::builders::BuildOpt;
 use vibi::bismit::map::*;
 use vibi::bismit::flywheel::Flywheel;
 use vibi::bismit::ocl::{Buffer, RwVec, WriteGuard};
@@ -121,7 +120,9 @@ fn print_activity_counts(den_actvs: &Buffer<u8>, cel_actvs: &Buffer<u8>, cel_enr
         // if cel_ttl > 600. {
         // if cel_energies_vec[cel_idx] == 0 && cel_activities[cel_idx] == 0 {
         // if cel_activities[cel_idx] == 0 {
-        if cel_energies_vec[cel_idx] != _energy_level {
+        // if den_activities[cel_idx] == 0 {
+        if den_activities[cel_idx] == 0 || cel_activities[cel_idx] == 0 {
+        // if cel_energies_vec[cel_idx] != _energy_level {
         // if cel_energies_vec[cel_idx] == 0 {
             print!("{{[");
             printc!(dark_grey: "{}", cel_idx);
@@ -246,7 +247,7 @@ static EXT_LYR: &'static str = "external_0";
 static SPT_LYR: &'static str = "iv";
 
 const ENCODE_DIM: u32 = 64;
-const AREA_DIM: u32 = 16;
+const AREA_DIM: u32 = 24;
 const DEBUG_SMOOTHER_OVERLAP: bool = true;
 
 pub fn eval(/*params: Params*/) {
@@ -352,27 +353,11 @@ pub fn eval(/*params: Params*/) {
             // (0, 5), (0, 5), (0, 5), (0, 5),
             // (0, 5), (0, 5), (0, 5), (0, 5),
 
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
-            (0, 2000),
+            (0, 2000), (0, 2000), (0, 2000), (0, 2000), (0, 2000),
+            (0, 2000), (0, 2000), (0, 2000), (0, 2000), (0, 2000),
 
-            // (0, 20000),
-            // (0, 20000),
-            // (0, 20000),
-            // (0, 20000),
-            // (0, 20000),
-            // (0, 20000),
-            // (0, 20000),
-            // (0, 20000),
-            // (0, 20000),
-            // (0, 20000),
+            (0, 20000), (0, 20000), (0, 20000), (0, 20000), (0, 20000),
+            (0, 20000), (0, 20000), (0, 20000), (0, 20000), (0, 20000),
 
             // (40000, 10000),
             // (40000, 10000),
@@ -438,17 +423,17 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
                 AxonTopology::Spatial
             )
-            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-                CellScheme::minicolumn("iv", "iii", 9999)
-            )
             .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 10, 1)], 5, 400)
+                CellScheme::spiny_stellate(&[("aff_in", 16, 1)], 5, 000)
             )
-            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
-            .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 6, 1))
+            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 6, 0))
+            .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4, 1))
             .layer("iii", 1, map::PTAL, AxonDomain::Local,
                 CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
                     // .apical(&[("eff_in", 22)], 1, 5, 500)
+            )
+            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+                CellScheme::minicolumn("iv", "iii", 9999)
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
@@ -481,16 +466,16 @@ fn define_a_schemes() -> AreaSchemeList {
 // #########################
 #[allow(unused_mut)]
 pub fn ca_settings() -> CorticalAreaSettings {
-    let mut settings = CorticalAreaSettings::new();
+    #[allow(unused_imports)]
+    use vibi::bismit::ocl::builders::BuildOpt;
 
-    // settings.bypass_inhib = true;
-    // settings.bypass_filters = true;
-    settings.disable_pyrs = true;
-    // settings.disable_ssts = true;
-    settings.disable_mcols = true;
-    // settings.disable_regrowth = true;
-    // settings.disable_learning = true;
-    settings.build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", DEBUG_SMOOTHER_OVERLAP as i32));
-
-    settings
+    CorticalAreaSettings::new()
+        // .bypass_inhib()
+        // .bypass_filters()
+        .disable_pyrs()
+        // .disable_ssts()
+        .disable_mcols()
+        // .disable_regrowth()
+        // .disable_learning()
+        // .build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", 1))
 }
