@@ -6,27 +6,30 @@
 //!   - [INCOMPLETE] Check for uniqueness and correct distribution frequency
 //!     among src_slcs and cols
 //! - [low priority] Optimization:
-//!   - [Complete] Obviously grow() and it's ilk need a lot of work
+//!   - Split grow into smaller, more frequent pieces.
 //!
-//! Synapse index space (for each of the synapse property buffers) is first
-//! divided by tuft, then slice, then cell, then synapse. This means that even
-//! though a cell may have three (or any number of) tufts, and you would
-//! naturally tend to think that synapse space would be first divided by
-//! slice, then cell, then tuft, tufts are moved to the front of that list.
-//! The reason for this is nuanced but it basically boils down to performance.
-//! When a kernel is processing synapses it's best to process tuft-at-a-time
-//! as the first order iteration rather than slice or cell-at-a-time because
-//! the each tuft inherently shares synapses whose axon sources are going to
-//! tend to be similar, making cache performance consistently better. This
-//! makes indexing very confusing so there's a definite trade off in
-//! complexity (for us poor humans).
+//! Synapse index space (the address space shared by all of the synapse
+//! 'property' buffers, `states`, `strengths`, et al.) is first divided by
+//! tuft, then slice, then cell, then synapse. This means that even though a
+//! cell may have three (or any number of) tufts, and you would naturally tend
+//! to think that synapse space would be first divided by slice, then cell,
+//! then tuft, tufts are moved to the front of that list. The reason for this
+//! is nuanced but it basically boils down to performance. When a kernel is
+//! processing synapses it's best to process tuft-at-a-time as the first order
+//! iteration rather than slice or cell-at-a-time because the each tuft
+//! inherently shares synapses whose axon sources are going to tend to be
+//! similar, making cache performance consistently better. This makes indexing
+//! very confusing so there's a definite trade off in complexity (for us poor
+//! humans). TLDR: Synapse storage is hierarchically organized differently
+//! here than it is in nature.
 //!
-//! Calculating a particular synapse index is shown below in syn_idx(). This
-//! is the exact same method the kernel uses for addressing: tuft is most
-//! significant, followed by slice, then cell, then synapse. Dendrites are not
-//! necessary to calculate a synapses index unless you happen only to have a
-//! synapses id (address) within a dendrite. Mostly the id within a cell is
-//! used and the dendrite is irrelevant, especially on the host side.
+//! Calculating a particular synapse index is shown at the bottom of this file
+//! in the `tests` module in the syn_idx() function. This is the exact same
+//! method the kernel uses for addressing: tuft is most significant, followed
+//! by slice, then cell, then synapse. Dendrites are not necessary to
+//! calculate a synapses index unless you happen only to have a synapses id
+//! (address) within a dendrite. Mostly the id within a cell is used and the
+//! dendrite is irrelevant, especially on the host side.
 //!
 //! Synapse space breakdown (m := n - 1, n being the number of elements in any
 //! particular segment):

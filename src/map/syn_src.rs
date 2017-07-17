@@ -229,8 +229,9 @@ impl SynSrcSliceInfo {
             syns_per_den_l2: u8) -> CmnResult<SynSrcSliceInfo>
     {
         let syns_per_den = 1 << syns_per_den_l2;
+        let slc_off_pool;
 
-        let slc_off_pool = match axn_kind {
+        match axn_kind {
             &AxonTopology::Horizontal => {
                 // Already checked within `SliceDims` (keep here though).
                 debug_assert!(src_slc_dims.v_size() <= cmn::MAX_HRZ_DIM_SIZE);
@@ -240,10 +241,12 @@ impl SynSrcSliceInfo {
                     return Err("Horizontal slices must have u and v sizes evenly divisible by 2.".into());
                 }
 
-                // if syn_reach != 0 {
-                //     return Err("The reach of a synapse with non-spatial (horizontal) sources \
-                //         must be zero (0).".into());
-                // }
+                if syn_reach != 0 {
+                    // return Err("The reach of a synapse with non-spatial (horizontal) sources \
+                    //     must be zero (0).".into());
+                    println!("\n\nCONFIG: The reach of synapses in layer([FIXME: ADD LAYER INFO]) \
+                        should be zero when their source is a non-spatial (horizontal). Ignoring. \n");
+                }
 
                 let poss_syn_offs_val_count = src_slc_dims.v_size() * src_slc_dims.u_size();
 
@@ -258,9 +261,10 @@ impl SynSrcSliceInfo {
                 let v_reach = (src_slc_dims.v_size() / 2) as i8;
                 let u_reach = (src_slc_dims.u_size() / 2) as i8;
 
-                OfsPool::Horizontal((
+                slc_off_pool = OfsPool::Horizontal((
                     RandRange::new(0 - v_reach, v_reach + 1),
-                    RandRange::new(0 - u_reach, u_reach + 1), ))
+                    RandRange::new(0 - u_reach, u_reach + 1),
+                ));
             },
 
             &AxonTopology::Spatial | &AxonTopology::None => {
@@ -279,18 +283,21 @@ impl SynSrcSliceInfo {
 
                 let len = hex_tile_offs.len();
 
-                OfsPool::Spatial { offs: hex_tile_offs, ofs_idx_range: RandRange::new(0, len) }
+                slc_off_pool = OfsPool::Spatial {
+                    offs: hex_tile_offs,
+                    ofs_idx_range: RandRange::new(0, len)
+                };
             },
         };
 
         let scaled_syn_reaches = try!(src_slc_dims.scale_offs((syn_reach, syn_reach)));
 
         Ok(SynSrcSliceInfo {
-            slc_off_pool: slc_off_pool,
+            slc_off_pool,
             v_size: src_slc_dims.v_size(),
             u_size: src_slc_dims.u_size(),
-            syn_reach: syn_reach,
-            scaled_syn_reaches: scaled_syn_reaches,
+            syn_reach,
+            scaled_syn_reaches,
         })
     }
 
