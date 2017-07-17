@@ -803,7 +803,7 @@ __kernel void den_cycle_tft(
 // Adds cell energy to the dendrite state(s). This is important to do before
 // inhibition.
 __kernel void sst_cycle(
-        __global uchar const* const energies,
+        __global uchar* const energies,
         __global uchar* const cel_states)
 {
     uint const slc_id_lyr = get_global_id(0);
@@ -813,18 +813,26 @@ __kernel void sst_cycle(
     uint const u_size = get_global_size(2);
     uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
 
-    // Subtract 1 if state is max so that max energy will trump max state during inhib:
-    uint state = cel_states[cel_idx];
-    state = state >> 1;
+    uint const energy = energies[cel_idx];
+    uint const state = cel_states[cel_idx];
 
-    // Energy must be above 196 to be included:
-    uint energy = energies[cel_idx];
-    energy = mul24((uint)(energy > 196), (energy >> 1) + 1);
+    // If the cell is relatively high energy, spend some:
+    int const is_restless = energy > 196;
+    // uint restless_contrib = mul24((uint)is_restless, (energy >> 1) + 1);
+    uint restless_contrib = mul24((uint)(is_restless & (state != 0)), (uint)255);
 
-    // Add the energy (restlessness) to the feed-forward state:
-    uchar const cel_state = clamp(state + energy, (uint)0, (uint)255);
+    // If the cell has gone unused (has consistently been the least active of
+    // its groups), spend:
+    int const is_dark = energy == 255;
+    uint dark_contrib = mul24((uint)is_restless, (uint)255);
+
+    // If energy was used, decrement:
+    energies[cel_idx] = tern24(is_dark | is_restless, energy - 1, energy);
+
+    // State:
+    uint const state_contrib = state >> 1;
+    uchar const cel_state = clamp(state_contrib + restless_contrib + dark_contrib, (uint)0, (uint)255);
     cel_states[cel_idx] = (int)cel_state;
-    // cel_states[cel_idx] = (int)190;
 }
 
 
