@@ -244,8 +244,11 @@ impl SynSrcSliceInfo {
                 if syn_reach != 0 {
                     // return Err("The reach of a synapse with non-spatial (horizontal) sources \
                     //     must be zero (0).".into());
-                    println!("\n\nCONFIG: The reach of synapses in layer([FIXME: ADD LAYER INFO]) \
-                        should be zero when their source is a non-spatial (horizontal). Ignoring. \n");
+                    printlnc!(red_bold: "\nCONFIG: LAYER MAP SCHEME: The reach of synapses \
+                        in layer ([FIXME: ADD LAYER INFO]) should be zero when the source is a \
+                        non-spatial (horizontal) layer. The currently set reach of '{}' \
+                        will be ignored. \n",
+                        syn_reach);
                 }
 
                 let poss_syn_offs_val_count = src_slc_dims.v_size() * src_slc_dims.u_size();
