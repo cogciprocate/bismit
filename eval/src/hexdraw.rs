@@ -1,19 +1,11 @@
 
 use std::thread;
-// use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
-// use rand;
-// use rand::distributions::{Range, IndependentSample};
-// use vibi::window;
 use vibi::bismit::cmn;
 use vibi::bismit::map::*;
-// use vibi::bismit::flywheel::Flywheel;
-use vibi::bismit::ocl::{/*Buffer, RwVec,*/ WriteGuard};
-use vibi::bismit::{map, Cortex, /*Thalamus, SubcorticalNucleus,*/ CorticalAreaSettings, /*Subcortex*/};
+use vibi::bismit::ocl::{ WriteGuard};
+use vibi::bismit::{map, Cortex, CorticalAreaSettings};
 use vibi::bismit::flywheel::{Command, Request, Response};
-// use vibi::bismit::map::{AxonDomainRoute, AreaMap};
-// use vibi::bismit::encode::{self, ScalarSdrWriter};
-use ::Controls;
-use spatial::Params;
+use ::{Controls, Params};
 
 
 static PRI_AREA: &'static str = "v1";
@@ -66,15 +58,10 @@ pub fn draw(params: &Params, controls: &Controls) {
             Ok(res) => match res {
                 Response::Status(status) => {
                     debug!("Status: {:?}", status);
-                    // if status.prev_cycles == 0 {
-                        // controls.req_tx.send(Request::FinishQueues(0)).unwrap();
-                        // controls.cmd_tx.send(Command::None).unwrap();
-                    // }
                 },
                 Response::QueuesFinished(id) => {
                     if id == 0 {
                         debug!("Queues finished (id: {})", id);
-                        // cycle_count = cycle_count.wrapping_add(1);
                         break;
                     }
                 },
@@ -119,35 +106,9 @@ pub fn eval() {
     let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
     let area_map = cortex.areas().by_key(PRI_AREA).unwrap().area_map().clone();
 
-    // let (command_tx, command_rx) = mpsc::channel();
-    // let (vibi_request_tx, vibi_request_rx) = mpsc::channel();
-    // let (vibi_response_tx, vibi_response_rx) = mpsc::channel();
-    // let vibi_command_tx = command_tx.clone();
-
-    // let (spatial_request_tx, spatial_request_rx) = mpsc::channel();
-    // let (spatial_response_tx, spatial_response_rx) = mpsc::channel();
-    // let spatial_command_tx = command_tx;
-
-    // let mut flywheel = Flywheel::new(cortex, command_rx, PRI_AREA);
-    // flywheel.add_req_res_pair(vibi_request_rx, vibi_response_tx);
-    // flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
-
-    // // Flywheel thread:
-    // let th_flywheel = thread::Builder::new().name("flywheel".to_string()).spawn(move || {
-    //     flywheel.spin();
-    // }).expect("Error creating 'flywheel' thread");
-
-    // // Vibi thread:
-    // let th_win = thread::Builder::new().name("win".to_string()).spawn(move || {
-    //     println!("Opening vibi window...");
-    //     window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
-    // }).expect("Error creating 'win' thread");
-
     let controls = ::spawn_threads(cortex, PRI_AREA);
 
-    let params = Params { /*cmd_tx: spatial_command_tx, req_tx: spatial_request_tx,
-        res_rx: spatial_response_rx,*/
-        tract_buffer: in_tract_buffer, axns,
+    let params = Params { tract_buffer: in_tract_buffer, axns,
         l4_axns: v1_spt_lyr_buf, area_map, encode_dim: ENCODE_DIM, area_dim: AREA_DIM };
 
     // Get the flywheel moving:

@@ -13,12 +13,24 @@ mod spatial;
 mod hexdraw;
 
 use vibi::window;
-use vibi::bismit::{/*map, */Cortex, /*CorticalAreaSettings, Subcortex*/};
+use vibi::bismit::Cortex;
 use vibi::bismit::flywheel::{Flywheel, Command, Request, Response};
-// use spatial::Params;
+use vibi::bismit::map::AreaMap;
+use vibi::bismit::ocl::{Buffer, RwVec};
 
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
+
+
+pub struct Params {
+    pub tract_buffer: RwVec<u8>,
+    pub axns: Buffer<u8>,
+    pub l4_axns: Buffer<u8>,
+    pub area_map: AreaMap,
+    pub encode_dim: u32,
+    pub area_dim: u32,
+}
+
 
 pub struct Controls {
     pub cmd_tx: Sender<Command>,
