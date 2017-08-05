@@ -505,8 +505,7 @@ impl AxonSpace {
                         let event = if DISABLE_IO {
                             None
                         } else {
-                            let mut ev = Event::empty();
-
+                            // let mut ev = Event::empty();
                             // let future_write = self.states.write(future_reader)
                             //     .queue(&self.write_queue)
                             //     .offset(axn_range.start as usize)
@@ -523,11 +522,12 @@ impl AxonSpace {
                                 .write_invalidate()
                                 .offset(axn_range.start as usize)
                                 .len(axn_range.len())
-                                .enew(&mut ev)
+                                // .enew(&mut ev)
                                 .enq_async()?;
 
                             let wait_events = exe_graph.get_req_events(cmd_idx)?;
                             future_map.set_unmap_wait_list(wait_events);
+                            let ev = future_map.create_unmap_target_event()?.clone();
 
                             let future_write = future_reader.join(future_map)
                                 .and_then(|(reader, mut map)| {
@@ -537,6 +537,10 @@ impl AxonSpace {
                                         ::std::ptr::copy_nonoverlapping(reader.as_ptr(),
                                             map.as_mut_ptr(), len);
                                     }
+
+                                    ////// DEBUG:
+                                    println!("Tract buffer (RwVec) memcopy to mapped buffer complete.");
+
                                     Ok(())
                                 })
                                 .map_err(|err| panic!("{}", err))
@@ -545,7 +549,6 @@ impl AxonSpace {
                             work_tx.clone().send(future_write).wait()?;
                             Some(ev)
                         };
-
                         exe_graph.set_cmd_event(cmd_idx, event)?;
                     } else {
                         panic!("CorticalArea::intake():: Invalid 'IoExeCmd' type: {:?}", io_lyr.exe_cmd());
