@@ -5,7 +5,7 @@ use std::collections::{HashMap, BTreeMap};
 use std::error;
 use std::fmt;
 use ocl::{Event, Buffer, OclPrm, Error as OclError};
-use ocl::core::Event as EventCore;
+// use ocl::core::Event as EventCore;
 use ocl::ffi::cl_event;
 use map::LayerAddress;
 use cmn::{util};
@@ -307,7 +307,7 @@ impl ExecutionCommandDetails {
 #[derive(Debug, Clone)]
 pub struct ExecutionCommand {
     details: ExecutionCommandDetails,
-    event: Option<EventCore>,
+    event: Option<Event>,
     event_cycle_id: usize,
     order_idx: Option<usize>,
 }
@@ -365,14 +365,14 @@ impl ExecutionCommand {
         self.order_idx = Some(order_idx);
     }
 
-    pub fn set_event(&mut self, event: Option<EventCore>) {
+    pub fn set_event(&mut self, event: Option<Event>) {
     // pub fn set_event(&mut self, event: EventCore) {
         self.event = event;
     }
 
     #[inline] pub fn sources(&self) -> Vec<MemoryBlock> { self.details.sources() }
     #[inline] pub fn targets(&self) -> Vec<MemoryBlock> { self.details.targets() }
-    #[inline] pub fn event(&self) -> Option<&EventCore> { self.event.as_ref() }
+    #[inline] pub fn event(&self) -> Option<&Event> { self.event.as_ref() }
     #[inline] pub fn order_idx(&self) -> Option<usize> { self.order_idx.clone() }
 }
 
@@ -688,6 +688,23 @@ impl ExecutionGraph {
                 (cmd_idx: {}): next_order_idx: {}", cmd_idx, self.next_order_idx) }
         }
 
+        Ok(())
+    }
+
+    /// Blocks until all events from all commands have completed.
+    pub fn finish(&self) -> ExeGrResult<()> {
+        // for cmd in self.commands.iter() {
+        //     if let Some(ref ev) = cmd.event {
+        //         ev.wait_for()?;
+        //     }
+        // }
+        for cmd in self.order.iter().map(|(&cmd_idx, _)|
+                unsafe { self.commands.get_unchecked(cmd_idx) } )
+        {
+            if let Some(ref ev) = cmd.event {
+                ev.wait_for()?;
+            }
+        }
         Ok(())
     }
 
