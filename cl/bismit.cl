@@ -18,8 +18,8 @@
 
 #define RETNAL_THRESHOLD       48
 
-// Passed to `rnd_0xFFFF()`. 255 (max) ~> 1:1
-#define DENDRITE_ACTIVITY_DECAY_FACTOR      768
+// Passed to `rnd_0xFFFF()`. 65536 (max) ~> 1:1
+#define DENDRITE_ACTIVITY_DECAY_FACTOR      1536
 
  /* bismit.cl: CONVENTIONS
 
@@ -442,6 +442,7 @@ static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
             uint const syns_per_den_l2,
             int const rnd,
             __global uchar* const syn_flag_sets,
+            // TODO: Switch to `u8` (`uchar`):
             __global char* const syn_strengths)
 {
     uint const n = syn_idz + (1 << syns_per_den_l2);
@@ -615,7 +616,7 @@ static uchar update_activity_rating(uchar activity_rating, int is_active, int rn
 // DST_TFT_SYNS_LEARN_TRMN(): Learning termination for a tuft:
 //         - Occurs when a cell which had been active becomes inactive.
 // TODO: VECTORIZE
-// +8
+//
 static inline void tft_syns_trm(
             __global uchar const* const syn_states,
             uint const syn_idz,
@@ -624,6 +625,7 @@ static inline void tft_syns_trm(
             int const lr_l2i, // LEARNING RATE INVERSE LOG BASE 2 (1/L2)
             __global uchar* const syn_flag_sets,
             __global int* const aux_ints_0,
+            // TODO: Switch to `u8` (`uchar`):
             __global char* const syn_strengths)
 {
     uint const n = syn_idz + (1 << syns_per_tft_l2);
@@ -668,6 +670,7 @@ static inline void prx_syns__active__ltp_ltd(
             uint const syn_idz,
             uint const syns_per_den_l2,
             int const rnd,
+            // TODO: Switch to `u8` (`uchar`):
             __global char* const syn_strengths)
 {
     uint const n = syn_idz + (1 << syns_per_den_l2);
@@ -744,6 +747,7 @@ __kernel void reference_all_the_things(__private int const for_sanitys_sake) {
 //
 __kernel void den_cycle_tft(
             __global uchar const* const syn_states,
+            // TODO: Switch to `u8` (`uchar`):
             __global char const* const syn_strengths,
             __private uint const tft_den_idz,
             __private uint const tft_syn_idz,
@@ -815,24 +819,28 @@ __kernel void sst_cycle(
 
     uint const energy = energies[cel_idx];
     uint const state = cel_states[cel_idx];
+    int const is_active = (state != 0);
 
-    // If the cell is relatively high energy, spend some:
-    int const is_restless = energy > 196;
-    // uint restless_contrib = mul24((uint)is_restless, (energy >> 1) + 1);
-    uint restless_contrib = mul24((uint)(is_restless & (state != 0)), (uint)255);
+    // // If the cell is relatively high in energy and is active, fire:
+    // int const high_energy_cutoff = 191;
+    // int const is_restless = (energy > high_energy_cutoff) & is_active;
+    // uint restless_contrib = mul24((uint)is_restless, (uint)255);
 
-    // If the cell has gone unused (has consistently been the least active of
-    // its groups), spend:
+    // If the cell has gone unused (has constantly been the least active of
+    // its groups), fire:
     int const is_dark = energy == 255;
-    uint dark_contrib = mul24((uint)is_restless, (uint)255);
+    uint dark_contrib = mul24((uint)is_dark, (uint)255);
 
-    // If energy was used, decrement:
-    energies[cel_idx] = tern24(is_dark | is_restless, energy - 1, energy);
+    // If cell has fired, reduce energy:
+    // energies[cel_idx] = tern24(is_dark | is_restless, energy - 64, energy);
+    // energies[cel_idx] = tern24(is_dark, energy - 32, energy);
 
     // State:
-    uint const state_contrib = state >> 1;
-    uchar const cel_state = clamp(state_contrib + restless_contrib + dark_contrib, (uint)0, (uint)255);
-    cel_states[cel_idx] = (int)cel_state;
+    // uint const state_contrib = state >> 1; // max 127.
+    uint const state_contrib = state;
+    // cel_states[cel_idx] = clamp(state_contrib + restless_contrib + dark_contrib, (uint)0, (uint)255);
+    // cel_states[cel_idx] = clamp(state_contrib + dark_contrib, (uint)0, (uint)255);
+    cel_states[cel_idx] = state_contrib;
 }
 
 
@@ -845,6 +853,7 @@ __kernel void sst_ltp_simple(
             __private uchar const syns_per_tft_l2,
             __private uint const rnd,
             // __global int* const aux_ints_0,
+            // TODO: Switch to `u8` (`uchar`):
             __global char* const syn_strengths)
 {
     uint const tuft_id = get_global_id(0);
@@ -877,6 +886,7 @@ __kernel void sst_ltp(
             __private uchar const syns_per_tft_l2,
             __private uint const rnd,
             // __global int* const aux_ints_0,
+            // TODO: Switch to `u8` (`uchar`):
             __global char* const syn_strengths)
 {
     uint const tuft_id = get_global_id(0);
@@ -1200,6 +1210,7 @@ __kernel void pyr_tft_ltp(
             __global uchar* const cel_flag_sets,
             __global int* const aux_ints_0,
             __global int* const aux_ints_1,
+            // TODO: Switch to `u8` (`uchar`):
             __global char* const syn_strengths)
 {
     uint const cel_grp_id = get_global_id(0);

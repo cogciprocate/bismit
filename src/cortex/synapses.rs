@@ -107,12 +107,14 @@ pub struct Synapses {
     rng: XorShiftRng,
 
     states: Buffer<u8>,
+    // TODO: Switch to `u8` (`uchar`):
     strengths: Buffer<i8>,
     src_slc_ids: Buffer<u8>,
     src_col_v_offs: Buffer<i8>,
     src_col_u_offs: Buffer<i8>,
     flag_sets: Buffer<u8>,
 
+    // TODO: Switch to `u8` (`uchar`):
     vec_strengths: Vec<i8>,
     vec_src_slc_ids: Vec<u8>,
     vec_src_col_u_offs: Vec<i8>,

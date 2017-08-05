@@ -655,6 +655,8 @@ impl CorticalArea {
         }
     }
 
+    /// Blocks until all previously queued OpenCL commands in all
+    /// command-queues are issued to the associated device and have completed.
     pub fn finish_queues(&self) {
         self.write_queue.finish().unwrap();
         self.ocl_pq.queue().finish().unwrap();

@@ -1,5 +1,5 @@
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use rand;
 use rand::distributions::{Range, IndependentSample};
 use vibi::bismit::map::*;
@@ -16,10 +16,10 @@ static IN_AREA: &'static str = "v0";
 static EXT_LYR: &'static str = "external_0";
 static SPT_LYR: &'static str = "iv";
 
-const ENCODE_DIM: u32 = 64;
+const ENCODE_DIM: u32 = 48;
 const AREA_DIM: u32 = 16;
+const SEQUENTIAL_SDR: bool = true;
 // const DEBUG_SMOOTHER_OVERLAP: bool = true;
-
 
 struct Buffers {
     pub l4_spt_den_actvs: Buffer<u8>,
@@ -60,62 +60,6 @@ impl SubcorticalNucleus for Nucleus {
     fn pre_cycle(&mut self, _thal: &mut Thalamus) {}
     fn post_cycle(&mut self, _thal: &mut Thalamus) {}
 }
-
-
-fn define_lm_schemes() -> LayerMapSchemeList {
-    let at0 = AxonTag::unique();
-
-    LayerMapSchemeList::new()
-        .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
-            .input_layer("aff_in", map::DEFAULT,
-                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
-                // AxonTopology::Spatial
-                AxonTopology::Horizontal
-            )
-            .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 16, 1)], 5, 000)
-            )
-            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 6, 0))
-            .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4, 1))
-            .layer("iii", 1, map::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
-            )
-            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-                CellScheme::minicolumn("iv", "iii", 9999)
-            )
-        )
-        .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer(EXT_LYR, 1, map::DEFAULT,
-                AxonDomain::output(&[map::THAL_SP, at0]),
-                LayerKind::Axonal(AxonTopology::Spatial))
-        )
-}
-
-fn define_a_schemes() -> AreaSchemeList {
-    AreaSchemeList::new()
-        .area(AreaScheme::new("v0", "v0_lm", ENCODE_DIM)
-            .subcortex()
-        )
-        .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)
-            .eff_areas(vec!["v0"])
-        )
-}
-
-pub fn ca_settings() -> CorticalAreaSettings {
-    #[allow(unused_imports)]
-    use vibi::bismit::ocl::builders::BuildOpt;
-
-    CorticalAreaSettings::new()
-        // .bypass_inhib()
-        // .bypass_filters()
-        .disable_pyrs()
-        // .disable_ssts()
-        .disable_mcols()
-        // .disable_regrowth()
-        // .disable_learning()
-        // .build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", 1))
-}
-
 
 fn finish_queues(controls: &Controls, i: usize, exiting: &mut bool) {
     controls.req_tx.send(Request::FinishQueues(i)).unwrap();
@@ -158,8 +102,16 @@ fn cycle(controls: &Controls, params: &Params, training_iters: usize, collect_it
 
     // Main loop:
     for i in 0..training_iters + collect_iters {
-        // Write a random SDR.
-        let pattern_idx = Range::new(0, pattern_count).ind_sample(&mut rng);
+        let pattern_idx = if SEQUENTIAL_SDR {
+            // Write a non-random SDR:
+            i % pattern_count
+        } else {
+            // Write a random SDR:
+            Range::new(0, pattern_count).ind_sample(&mut rng)
+        };
+
+        println!("Locking tract buffer...");
+
         debug!("Locking tract buffer...");
         let mut guard = params.tract_buffer.clone().write().wait().unwrap();
         debug_assert!(guard.len() == sdrs[pattern_idx].len());
@@ -168,11 +120,20 @@ fn cycle(controls: &Controls, params: &Params, training_iters: usize, collect_it
         }
         WriteGuard::release(guard);
 
+        println!("SDR copied to tract buffer (RwVec). Cycling.");
+
         // Cycle.
         controls.cmd_tx.send(Command::Iterate(1)).unwrap();
 
         // Wait for completion.
         finish_queues(controls, i, &mut exiting);
+
+        ::std::thread::sleep(::std::time::Duration::from_millis(50));
+
+        println!("All queues complete.");
+
+        // // (TEMPORARY) Sleep this thread.
+        // ::std::thread::sleep(::std::time::Duration::from_millis(10));
 
         if i >= training_iters {
             // Increment the cell activity counts.
@@ -212,6 +173,8 @@ fn print_activity_counts(buffers: &Buffers, activity_counts: &Vec<Vec<usize>>, _
     buffers.l4_spt_cel_enrgs.read(&mut cel_energies_vec).enq().unwrap();
     assert_eq!(cel_energies_vec.len(), activity_counts.len());
 
+    let mut printed = 0usize;
+
     for (cel_idx, counts) in activity_counts.iter().enumerate() {
         debug_assert!(counts.len() == pattern_count);
         let mut cel_ttl = 0.;
@@ -238,6 +201,7 @@ fn print_activity_counts(buffers: &Buffers, activity_counts: &Vec<Vec<usize>>, _
         // if den_activities[cel_idx] == 0 || cel_activities[cel_idx] == 0 {
         // if cel_energies_vec[cel_idx] != _energy_level {
         // if cel_energies_vec[cel_idx] == 0 {
+        // if cel_energies_vec[cel_idx] >= 196 {
             print!("{{[");
             printc!(dark_grey: "{}", cel_idx);
             print!("]::da:");
@@ -249,6 +213,8 @@ fn print_activity_counts(buffers: &Buffers, activity_counts: &Vec<Vec<usize>>, _
             print!(",ct:");
             printc!(royal_blue: "{}", cel_ttl);
             print!("}} ");
+
+            printed += 1;
         }
 
         // if cel_ttl > _min {
@@ -260,6 +226,7 @@ fn print_activity_counts(buffers: &Buffers, activity_counts: &Vec<Vec<usize>>, _
     }
 
     print!("\n");
+    println!("Printed: {}", printed);
 
     // Calc stdev:
     let mean = ttl_count / cel_count as f32;
@@ -282,6 +249,7 @@ type PatternAssociations = BTreeMap<PatternIdx, ActiveCells>;
 
 struct Trials {
     trials: Vec<PatternAssociations>,
+    trial_cycle_counts: Vec<usize>,
     pattern_watch_list: Vec<usize>,
 }
 
@@ -289,11 +257,16 @@ impl Trials {
     pub fn new(pattern_watch_list: Vec<PatternIdx>) -> Trials {
         Trials {
             trials: Vec::with_capacity(16),
+            trial_cycle_counts: Vec::with_capacity(16),
             pattern_watch_list,
         }
     }
 
-    pub fn add(&mut self, counts: &Vec<Vec<ActivityCount>>, actv_cutoff: usize) {
+    /// Adds the cell activity counts for each pattern in the watch list.
+    ///
+    /// Only adds those cells with activity counts above `actv_cutoff`, if
+    /// specified.
+    pub fn add(&mut self, counts: &Vec<Vec<ActivityCount>>, ttl_cycle_count: usize, actv_cutoff: Option<usize>) {
         // let mut active_cells = ActiveCells::new();
         let mut pattern_assoc = PatternAssociations::new();
 
@@ -303,8 +276,13 @@ impl Trials {
             for (cell_idx, cell) in counts.iter().enumerate() {
                 let cell_actv_cnt = cell[pattern_idx];
 
-                if cell_actv_cnt > actv_cutoff {
-                    active_cells.insert(cell_idx, cell_actv_cnt);
+                match actv_cutoff {
+                    Some(ac) => {
+                        if cell_actv_cnt >= ac {
+                            active_cells.insert(cell_idx, cell_actv_cnt);
+                        }
+                    },
+                    None => { active_cells.insert(cell_idx, cell_actv_cnt); },
                 }
             }
 
@@ -312,31 +290,187 @@ impl Trials {
         }
 
         self.trials.push(pattern_assoc);
+        self.trial_cycle_counts.push(ttl_cycle_count);
     }
 
+    /// Calculates the normalized consistency rating for two trials.
+    fn trial_consistency(&self, trial_a_idx: usize, trial_b_idx: usize, ignore_inactive: bool) -> f32 {
+        fn cell_consistency(actv_count_a: ActivityCount, actv_count_a_ttl: ActivityCount, actv_count_b: ActivityCount,
+                actv_count_b_ttl: ActivityCount) -> (f32, f32) {
+            let actv_count_a_norm = actv_count_a as f32 / actv_count_a_ttl as f32;
+            let actv_count_b_norm = actv_count_b as f32 / actv_count_b_ttl as f32;
+
+            let consistency_rating = 1.0 - (actv_count_a_norm - actv_count_b_norm).abs();
+            let influence_factor = (actv_count_a_norm + actv_count_b_norm) / 2.;
+            (consistency_rating, influence_factor)
+        }
+
+        fn cell_deviation(actv_count_a: ActivityCount, actv_count_a_ttl: ActivityCount, actv_count_b: ActivityCount,
+                actv_count_b_ttl: ActivityCount) -> f32 {
+            let actv_count_a_norm = actv_count_a as f32 / actv_count_a_ttl as f32;
+            let actv_count_b_norm = actv_count_b as f32 / actv_count_b_ttl as f32;
+
+            // let abs_deviation = (actv_count_a_norm - actv_count_b_norm).abs();
+            // let influence_factor = (actv_count_a_norm + actv_count_b_norm) / 2.;
+            // (consistency_rating, influence_factor)
+            (actv_count_a_norm - actv_count_b_norm).abs()
+        }
+
+        let trial_a = self.trials.get(trial_a_idx).expect("Trial A index OOR.");
+        let trial_b = self.trials.get(trial_b_idx).expect("Trial B index OOR.");
+        let trial_a_cycle_count = self.trial_cycle_counts[trial_a_idx];
+        let trial_b_cycle_count = self.trial_cycle_counts[trial_b_idx];
+        assert!(trial_a.len() == trial_b.len());
+
+        // This could just be a `Vec`:
+        let mut pattern_consistencies: HashMap<PatternIdx, f32> = HashMap::new();
+        let mut pattern_deviations: HashMap<PatternIdx, f32> = HashMap::new();
+
+        for ((&pat_idx_a, active_cells_a), (&pat_idx_b, active_cells_b)) in trial_a.iter().zip(trial_b.iter()) {
+        // for ((&pat_idx_a, active_cells_a), (&pat_idx_b, active_cells_b)) in trial_a.iter().zip(trial_b.iter().rev()) {
+            assert!(pat_idx_a == pat_idx_b);
+            // This hashmap stores the consistency rating and an influence
+            // factor. Influence factor is determined by the average
+            // normalized activity counts. Influence factor directly affects
+            // how much the consistency rating affects the overall consistency
+            // total for that pattern.
+            let mut cell_consistencies: HashMap<CellIdx, (f32, f32)> = HashMap::new();
+            let mut cell_deviations: HashMap<CellIdx, f32> = HashMap::new();
+
+            for (&cell_idx, &actv_count_a) in active_cells_a.iter() {
+                let actv_count_b = match active_cells_b.get(&cell_idx) {
+                    Some(&count) => count,
+                    None => 0,
+                };
+
+                let (consistency, influence) = cell_consistency(actv_count_a, trial_a_cycle_count,
+                    actv_count_b, trial_b_cycle_count);
+                let deviation = cell_deviation(actv_count_a, trial_a_cycle_count,
+                    actv_count_b, trial_b_cycle_count);
+
+                if !(ignore_inactive && (actv_count_a == 0 && actv_count_b == 0)) {
+                    cell_consistencies.insert(cell_idx, (consistency, influence));
+                    cell_deviations.insert(cell_idx, deviation);
+                }
+            }
+
+            for (&cell_idx, &actv_count_b) in active_cells_b.iter() {
+                let actv_count_a = match active_cells_a.get(&cell_idx) {
+                    Some(&count) => count,
+                    None => 0,
+                };
+
+                let (consistency, influence) = cell_consistency(actv_count_a, trial_a_cycle_count,
+                    actv_count_b, trial_b_cycle_count);
+                let deviation = cell_deviation(actv_count_a, trial_a_cycle_count,
+                    actv_count_b, trial_b_cycle_count);
+
+                if !(ignore_inactive && (actv_count_a == 0 && actv_count_b == 0)) {
+                    match cell_consistencies.insert(cell_idx, (consistency, influence)) {
+                        Some((cnsty, infl)) => assert!(cnsty == consistency && infl == influence),
+                        None => (),
+                    }
+                    match cell_deviations.insert(cell_idx, deviation) {
+                        Some(dev) => assert!(dev == deviation),
+                        None => (),
+                    }
+                }
+            }
+
+            let mut pat_cnsty_ttl = 0.;
+            let mut pat_infl_ttl = 0.;
+            // let cel_cnt = cell_consistencies.len() as f32;
+            for (_, (cel_cnsty, cel_infl)) in cell_consistencies {
+                pat_cnsty_ttl += cel_cnsty * cel_infl;
+                pat_infl_ttl += cel_infl;
+            }
+            pattern_consistencies.insert(pat_idx_a, (pat_cnsty_ttl / pat_infl_ttl) * 100.);
+
+            let mut dev_ttl = 0.;
+            let cel_cnt = cell_deviations.len() as f32;
+            for (_, cel_dev) in cell_deviations {
+                dev_ttl += cel_dev;
+            }
+            pattern_deviations.insert(pat_idx_a, (dev_ttl / cel_cnt) * 100.);
+        }
+
+        let mut consistency_total = 0.;
+        let pattern_count = trial_a.len() as f32;
+        for (_, pat_cnsty) in pattern_consistencies {
+            consistency_total += pat_cnsty;
+        }
+
+        // let mut deviation_total = 0.;
+        // for (_, pat_dev) in pattern_deviations {
+        //     deviation_total += pat_dev;
+        // }
+
+        consistency_total / pattern_count
+        // deviation_total / pattern_count
+
+    }
+
+    pub fn prior_trial_consistencies(&self, trial_a_idx: usize) -> Vec<f32> {
+        let mut trial_a_cnstys = Vec::with_capacity(trial_a_idx);
+        for trial_b_idx in 0..trial_a_idx {
+            trial_a_cnstys.push(self.trial_consistency(trial_a_idx, trial_b_idx, false))
+        }
+        trial_a_cnstys
+    }
+
+
+    /// Calculates the consistency of the last trial with all prior trials and
+    /// returns a list with one element for each previous trial.
+    ///
+    /// Consistency is calculated as the average over each cells closeness
+    /// with it's past counterpart where the closeness is the normalized (0.0
+    /// - 1.0) difference of activity counts between the floor (0) and the max
+    /// (the number of cycles per pattern).
+    pub fn all_past_consistencies(&self) -> Vec<Vec<f32>> {
+        let mut trial_consistencies = Vec::with_capacity(self.trials.len());
+        // Compare each trial to all prior trials:
+        for trial_a_idx in 0..self.trials.len() {
+            trial_consistencies.push(self.prior_trial_consistencies(trial_a_idx));
+        }
+        trial_consistencies
+    }
+
+    /// Prints all cell activity counts over the `actv_cutoff` threshold.
     pub fn print(&self, trial_idx: usize, cycles_per_pattern: usize, actv_cutoff: usize) {
         // println!("\nTrial[{}]: {:?}", trial_idx, self.trials[trial_idx]);
         printc!(magenta_bold: "\nTrial[{}]: ", trial_idx);
-        print!("[activity cutoff (min shown): {}, cycles per pattern (max possible): {}]: ",
+        print!("[activity cutoff (min printed): {}, cycles per pattern (max possible): {}]: ",
             actv_cutoff, cycles_per_pattern);
         print!("\n");
 
         for (pattern_idx, patterns) in self.trials[trial_idx].iter() {
-            printlnc!(royal_blue_bold: "Pattern {}: ", pattern_idx);
-            for (cell_idx, actv_count) in patterns.iter() {
-                print!("{{[");
-                printc!(orange: "{}", cell_idx);
-                print!("]:");
-                printc!(green: "{}", actv_count);
-                print!("}} ");
+            printc!(royal_blue_bold: "Pattern {}: ", pattern_idx);
+            for (cell_idx, &actv_count) in patterns.iter() {
+                if actv_count >= actv_cutoff {
+                    print!("{{[");
+                    printc!(orange: "{}", cell_idx);
+                    print!("]:");
+                    printc!(green: "{}", actv_count);
+                    print!("}} ");
+                }
             }
+            print!("\n");
         }
-        print!("\n");
+        // print!("\n");
+
+        // Calculate similarity ratios with each previous trial generation:
     }
 
     #[allow(dead_code)]
     pub fn print_all(&self, cycles_per_pattern: usize, actv_cutoff: usize) {
         println!("\nTrial Results:");
+
+        // TODO: Calculate similarity with previous (and others?):
+        // * A 100% similarity would be exactly the same amount of activity for each cell.
+        //   * ex: A 4 cell system with activities [100, 50, 50, 100] then
+        //     [100, 100, 100, 100] would have 75% similarity.
+        //
+        // Perhaps a calculation of the similarity rating
 
         for trial_idx in 0..self.trials.len() {
             self.print(trial_idx, cycles_per_pattern, actv_cutoff);
@@ -345,9 +479,63 @@ impl Trials {
 }
 
 
+fn define_lm_schemes() -> LayerMapSchemeList {
+    let at0 = AxonTag::unique();
+
+    LayerMapSchemeList::new()
+        .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
+            .input_layer("aff_in", map::DEFAULT,
+                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
+                AxonTopology::Spatial
+                // AxonTopology::Horizontal
+            )
+            .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
+                CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
+            )
+            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 6, 0))
+            // .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4, 1))
+            .layer("iii", 1, map::PTAL, AxonDomain::Local,
+                CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
+            )
+            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+                CellScheme::minicolumn("iv", "iii", 9999)
+            )
+        )
+        .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
+            .layer(EXT_LYR, 1, map::DEFAULT,
+                AxonDomain::output(&[map::THAL_SP, at0]),
+                LayerKind::Axonal(AxonTopology::Spatial))
+        )
+}
+
+fn define_a_schemes() -> AreaSchemeList {
+    AreaSchemeList::new()
+        .area(AreaScheme::new("v0", "v0_lm", ENCODE_DIM)
+            .subcortex()
+        )
+        .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)
+            .eff_areas(vec!["v0"])
+        )
+}
+
+pub fn ca_settings() -> CorticalAreaSettings {
+    #[allow(unused_imports)]
+    use vibi::bismit::ocl::builders::BuildOpt;
+
+    CorticalAreaSettings::new()
+        // .bypass_inhib()
+        // .bypass_filters()
+        .disable_pyrs()
+        // .disable_ssts()
+        .disable_mcols()
+        .disable_regrowth()
+        .disable_learning()
+        // .build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", 1))
+}
+
 fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers) {
     const SPARSITY: usize = 48;
-    let pattern_count = 64;
+    let pattern_count = 32;
     let cell_count = (params.encode_dim * params.encode_dim) as usize;
     let sdr_active_count = cell_count / SPARSITY;
 
@@ -379,28 +567,31 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
     let training_collect_iters = vec![
         // (0, 10000),
 
-        // (0, 5), (0, 5), (0, 5), (0, 5),
+        (0, 5), (0, 5), (0, 5), (0, 5),
         // (0, 5), (0, 5), (0, 5), (0, 5),
         // (0, 5), (0, 5), (0, 5), (0, 5),
 
-        // (0, 2000), (0, 2000), (0, 2000), (0, 2000), (0, 2000),
-        // (0, 2000), (0, 2000), (0, 2000), (0, 2000), (0, 2000),
+        // (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
+        // (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
 
         // (0, 20000), (0, 20000), (0, 20000), (0, 20000), (0, 20000),
         // (0, 20000), (0, 20000), (0, 20000), (0, 20000), (0, 20000),
 
-        (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
-        (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
+        // (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
+        // (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
+
+        // (0, 80000), (0, 80000), (0, 80000), (0, 80000), (0, 80000),
+        // (0, 80000), (0, 80000), (0, 80000), (0, 80000), (0, 80000),
 
         // (40000, 10000), (80000, 10000), (80000, 10000), (80000, 10000),
         // (80000, 10000), (80000, 10000),
     ];
 
     // let pattern_watch_list = vec![0, 1, 2, 3];
-    let pattern_watch_list = vec![0];
+    let pattern_watch_list = vec![1, 7, 15];
     let mut trials = Trials::new(pattern_watch_list);
 
-    let mut total_cycles = 0usize;
+    let mut cycle_count_running_ttl = 0usize;
 
     for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {
         let mut activity_counts = vec![vec![0; pattern_count]; cell_count];
@@ -408,22 +599,25 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
         cycle(&controls, &params, training_iters, collect_iters, pattern_count,
             &sdrs, &mut activity_counts);
 
-        total_cycles += training_iters + collect_iters;
+        let trial_cycle_count = training_iters + collect_iters;
+        cycle_count_running_ttl += trial_cycle_count;
         println!("\nActivity Counts [{}] (train: {}, collect: {}, running total: {}):",
-            t, training_iters, collect_iters, total_cycles);
+            t, training_iters, collect_iters, cycle_count_running_ttl);
 
         let _smoother_layers = 6;
-        let _energy_level_raw = _smoother_layers * total_cycles;
+        let _energy_level_raw = _smoother_layers * cycle_count_running_ttl;
         let _energy_level = if _energy_level_raw > 255 { 255 } else { _energy_level_raw as u8 };
 
         print_activity_counts(&buffers, &activity_counts, _energy_level);
         let cycles_per_pattern = collect_iters / pattern_count;
         const CUTOFF_QUOTIENT: usize = 16;
         let actv_cutoff = cycles_per_pattern / CUTOFF_QUOTIENT;
-        trials.add(&activity_counts, actv_cutoff);
+        trials.add(&activity_counts, trial_cycle_count, Some(actv_cutoff));
         trials.print(trials.trials.len() - 1, cycles_per_pattern, actv_cutoff);
+        println!("Prior Trial Consistencies: {:?}", trials.prior_trial_consistencies(t));
     }
 
+    println!("All Trial Consistencies: {:?}", trials.all_past_consistencies());
     // trials.print_all();
 
     controls.cmd_tx.send(Command::Exit).unwrap();
