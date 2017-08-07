@@ -150,7 +150,6 @@ impl ActivitySmoother {
                 .enew(&mut event)
                 .enq()?;
             exe_graph.set_cmd_event(self.exe_cmd_idx, Some(event))?;
-                // exe_graph.set_cmd_event(self.exe_cmd_idx, None)?;
         } else {
             exe_graph.set_cmd_event(self.exe_cmd_idx, None)?;
         }

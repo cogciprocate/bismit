@@ -283,16 +283,16 @@ __kernel void smooth_activity(
     }
 
     #ifndef DEBUG_SMOOTHER_OVERLAP
-        // // Least Active (boost energy):
-        // uchar least_active_cel_energy = cel_energies[least_active_cel_idx];
-        // cel_energies[least_active_cel_idx] = least_active_cel_energy +
-        //     ((least_active_cel_energy < 255) & (most_active_cel_actv < 255) &
-        //         (least_active_cel_idx != most_active_cel_idx));
+        // Least Active (boost energy):
+        uchar least_active_cel_energy = cel_energies[least_active_cel_idx];
+        cel_energies[least_active_cel_idx] = least_active_cel_energy +
+            ((least_active_cel_energy < 255) & (most_active_cel_actv < 255) &
+                (least_active_cel_idx != most_active_cel_idx));
 
-        // // Most Active (sap energy):
-        // uchar most_active_cel_energy = cel_energies[most_active_cel_idx];
-        // cel_energies[most_active_cel_idx] = most_active_cel_energy -
-        //     ((most_active_cel_energy > 0) & (most_active_cel_actv > 0) &
-        //         (least_active_cel_idx != most_active_cel_idx));
+        // Most Active (sap energy):
+        uchar most_active_cel_energy = cel_energies[most_active_cel_idx];
+        cel_energies[most_active_cel_idx] = most_active_cel_energy -
+            ((most_active_cel_energy > 0) & (most_active_cel_actv > 0) &
+                (least_active_cel_idx != most_active_cel_idx));
     #endif
 }

@@ -501,7 +501,7 @@ fn print_activity_counts(buffers: &Buffers, activity_counts: &Vec<Vec<usize>>, _
 
 fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers) {
     const SPARSITY: usize = 48;
-    let pattern_count = 5;
+    let pattern_count = 300;
     let cell_count = (params.encode_dim * params.encode_dim) as usize;
     let sdr_active_count = cell_count / SPARSITY;
 
@@ -540,10 +540,10 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
         // (0, 100), (0, 100), (0, 100), (0, 100), (0, 100),
 
         // (0, 500), (0, 500), (0, 500), (0, 500), (0, 500),
-        (0, 1000), (0, 1000), (0, 1000), (0, 1000), (0, 1000),
+        // (0, 1000), (0, 1000), (0, 1000), (0, 1000), (0, 1000),
 
-        // (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
-        // (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
+        (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
+        (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
 
         // (0, 20000), (0, 20000), (0, 20000), (0, 20000), (0, 20000),
         // (0, 20000), (0, 20000), (0, 20000), (0, 20000), (0, 20000),
@@ -551,8 +551,8 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
         // (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
         // (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
 
-        // (0, 80000), (0, 80000), (0, 80000), (0, 80000), (0, 80000),
-        // (0, 80000), (0, 80000), (0, 80000), (0, 80000), (0, 80000),
+        (0, 100000), (0, 100000), (0, 100000), (0, 100000), (0, 100000),
+        (0, 100000), (0, 100000), (0, 100000), (0, 100000), (0, 100000),
 
         // (40000, 10000), (80000, 10000), (80000, 10000), (80000, 10000),
         // (80000, 10000), (80000, 10000),
@@ -588,13 +588,13 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
         println!("Prior Trial Consistencies: {:?}", trials.prior_trial_consistencies(t));
     }
 
-    println!("All Trial Consistencies: {:?}", trials.all_past_consistencies());
+    // println!("\nAll Trial Consistencies: {:?}", trials.all_past_consistencies());
     // trials.print_all();
 
     controls.cmd_tx.send(Command::Exit).unwrap();
     controls.cmd_tx.send(Command::None).unwrap();
 
-    println!("Spatial evaluation complete.\n");
+    println!("\nSpatial evaluation complete.\n");
     // controls.cmd_tx.recv().unwrap();
 }
 
@@ -670,8 +670,8 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
                 CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
             )
-            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 6, 0))
-            // .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4, 1))
+            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
+            .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4, 1))
             .layer("iii", 1, map::PTAL, AxonDomain::Local,
                 CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
             )
@@ -706,7 +706,7 @@ pub fn ca_settings() -> CorticalAreaSettings {
         .disable_pyrs()
         // .disable_ssts()
         .disable_mcols()
-        .disable_regrowth()
-        .disable_learning()
+        // .disable_regrowth()
+        // .disable_learning()
         // .build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", 1))
 }

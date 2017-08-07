@@ -821,10 +821,10 @@ __kernel void sst_cycle(
     uint const state = cel_states[cel_idx];
     int const is_active = (state != 0);
 
-    // // If the cell is relatively high in energy and is active, fire:
-    // int const high_energy_cutoff = 191;
-    // int const is_restless = (energy > high_energy_cutoff) & is_active;
-    // uint restless_contrib = mul24((uint)is_restless, (uint)255);
+    // If the cell is relatively high in energy and is active, fire:
+    int const high_energy_cutoff = 191;
+    int const is_restless = (energy > high_energy_cutoff) & is_active;
+    uint restless_contrib = mul24((uint)is_restless, (uint)255);
 
     // If the cell has gone unused (has constantly been the least active of
     // its groups), fire:
@@ -832,15 +832,15 @@ __kernel void sst_cycle(
     uint dark_contrib = mul24((uint)is_dark, (uint)255);
 
     // If cell has fired, reduce energy:
-    // energies[cel_idx] = tern24(is_dark | is_restless, energy - 64, energy);
+    energies[cel_idx] = tern24(is_dark | is_restless, energy - 64, energy);
     // energies[cel_idx] = tern24(is_dark, energy - 32, energy);
 
     // State:
     // uint const state_contrib = state >> 1; // max 127.
     uint const state_contrib = state;
-    // cel_states[cel_idx] = clamp(state_contrib + restless_contrib + dark_contrib, (uint)0, (uint)255);
+    cel_states[cel_idx] = clamp(state_contrib + restless_contrib + dark_contrib, (uint)0, (uint)255);
     // cel_states[cel_idx] = clamp(state_contrib + dark_contrib, (uint)0, (uint)255);
-    cel_states[cel_idx] = state_contrib;
+    // cel_states[cel_idx] = state_contrib;
 }
 
 
