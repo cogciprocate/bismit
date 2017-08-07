@@ -15,6 +15,7 @@ use cortex::{SensoryFilter};
 
 
 const DISABLE_IO: bool = false;
+const DISABLE_OUTPUT: bool = true;
 
 
 /// The execution graph command kind and index for an I/O layer.
@@ -47,6 +48,9 @@ impl IoInfo {
     pub fn new(tract_area_id: usize, src_lyr_addr: LayerAddress, axn_range: Range<u32>,
             exe_cmd: IoExeCmd) -> IoInfo
     {
+        println!("IoInfo::new: tract_area_id: {}, src_lyr_addr: {:?}, axn_range: {:?}, exe_cmd: {:?}.",
+            tract_area_id, src_lyr_addr, axn_range, exe_cmd);
+
         IoInfo {
             tract_area_id: tract_area_id,
             src_lyr_addr: src_lyr_addr,
@@ -523,10 +527,10 @@ impl AxonSpace {
                                 .offset(axn_range.start as usize)
                                 .len(axn_range.len())
                                 // .enew(&mut ev)
+                                // .ewait(exe_graph.get_req_events(cmd_idx)?)
                                 .enq_async()?;
 
-                            let wait_events = exe_graph.get_req_events(cmd_idx)?;
-                            future_map.set_unmap_wait_list(wait_events);
+                            future_map.set_unmap_wait_list(exe_graph.get_req_events(cmd_idx)?);
                             let ev = future_map.create_unmap_target_event()?.clone();
 
                             let future_write = future_reader.join(future_map)
@@ -538,13 +542,18 @@ impl AxonSpace {
                                             map.as_mut_ptr(), len);
                                     }
 
-                                    ////// DEBUG:
-                                    println!("Tract buffer (RwVec) memcopy to mapped buffer complete.");
+                                    // ////// DEBUG:
+                                    // println!(" (2.0-ReadComplete) ");
 
                                     Ok(())
                                 })
                                 .map_err(|err| panic!("{}", err))
                                 .boxed();
+
+                            // future_write.wait().unwrap();
+                            // ev.clone().wait_for()?;
+                            // // println!("Write event for exe_cmd {}: {}", cmd_idx, ev.is_complete()?);
+                            // assert!(ev.is_complete()?);
 
                             work_tx.clone().send(future_write).wait()?;
                             Some(ev)
@@ -570,7 +579,7 @@ impl AxonSpace {
         if let Some((io_lyrs, _wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
             for io_lyr in io_lyrs.iter() {
                 if let &IoExeCmd::Read(cmd_idx) = io_lyr.exe_cmd() {
-                    let event = if DISABLE_IO {
+                    let event = if DISABLE_IO || DISABLE_OUTPUT {
                         None
                     } else {
                         let future_writer = thal.tract().write(io_lyr.tract_area_id())?;

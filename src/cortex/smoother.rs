@@ -109,19 +109,19 @@ impl ActivitySmoother {
             // .arg_buf_named("aux_ints_1", None)
             .arg_buf(host_lyr.energies());
 
-        // let exe_cmd_srcs = (0..host_lyr.tft_count())
-        //     .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
-        //         host_lyr.layer_addr(), host_lyr_tft_id))
-        //     .collect();
+        let exe_cmd_srcs = (0..host_lyr.tft_count())
+            .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
+                host_lyr.layer_addr(), host_lyr_tft_id))
+            .collect();
 
-        // // Set up execution command:
-        // let exe_cmd_tars = (host_lyr_base_axn_slc..host_lyr_base_axn_slc + host_lyr.dims().depth())
-        //     .map(|slc_id| CorticalBuffer::axon_slice(&axns.states(), area_map.area_id(), slc_id))
-        //     .collect();
+        // Set up execution command:
+        let exe_cmd_tars = (host_lyr_base_axn_slc..host_lyr_base_axn_slc + host_lyr.dims().depth())
+            .map(|slc_id| CorticalBuffer::axon_slice(&axns.states(), area_map.area_id(), slc_id))
+            .collect();
 
-        // let exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
-        //      kern_name, exe_cmd_srcs, exe_cmd_tars))?;
-        let exe_cmd_idx = 0;
+        let exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+             kern_name, exe_cmd_srcs, exe_cmd_tars))?;
+        // let exe_cmd_idx = 0;
 
         Ok(ActivitySmoother {
             layer_name: layer_name,
@@ -137,24 +137,24 @@ impl ActivitySmoother {
     }
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        // exe_graph.order_next(self.exe_cmd_idx)?;
+        exe_graph.order_next(self.exe_cmd_idx)?;
         Ok(())
     }
 
     pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
-        // if self.cycle_count & CYCLE_FREQUENCY == 0 {
+        if self.cycle_count & CYCLE_FREQUENCY == 0 {
 
-        //     let mut event = Event::empty();
-        //     self.kern.cmd()
-        //         .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
-        //         .enew(&mut event)
-        //         .enq()?;
-        //     exe_graph.set_cmd_event(self.exe_cmd_idx, Some(event))?;
-        //         // exe_graph.set_cmd_event(self.exe_cmd_idx, None)?;
-        // } else {
-        //     exe_graph.set_cmd_event(self.exe_cmd_idx, None)?;
-        // }
-        // self.cycle_count.wrapping_add(1);
+            let mut event = Event::empty();
+            self.kern.cmd()
+                .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
+                .enew(&mut event)
+                .enq()?;
+            exe_graph.set_cmd_event(self.exe_cmd_idx, Some(event))?;
+                // exe_graph.set_cmd_event(self.exe_cmd_idx, None)?;
+        } else {
+            exe_graph.set_cmd_event(self.exe_cmd_idx, None)?;
+        }
+        self.cycle_count.wrapping_add(1);
         Ok(())
     }
 

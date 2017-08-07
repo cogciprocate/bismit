@@ -27,7 +27,7 @@ const QUEUE_OUT_OF_ORDER: bool = true;
 // Enable queue profiling:
 const QUEUE_PROFILING: bool = false;
 // GDB debug mode:
-const KERNEL_DEBUG_SYMBOLS: bool = true;
+const KERNEL_DEBUG_SYMBOLS: bool = false;
 
 
 /// Cortical area settings.
@@ -571,11 +571,19 @@ impl CorticalArea {
         self.axns.intake(thal, &mut self.exe_graph, self.settings.bypass_filters,
             self.work_tx.as_ref().unwrap())?;
 
+        // ////// DEBUG:
+        // self.finish_queues();
+        // //////
+
         // (2.) SSTs Cycle:
         if !self.settings.disable_ssts {
             for lyr in &mut self.spatial_layers { lyr.cycle(&mut self.control_layers,
                 &mut self.exe_graph)? }
         }
+
+        // ////// DEBUG:
+        // self.finish_queues();
+        // //////
 
         // // (3.) IINNs Cycle:
         // self.iinns.get_mut("iv_inhib")
@@ -592,8 +600,16 @@ impl CorticalArea {
             for lyr in &mut self.spatial_layers { lyr.learn(&mut self.exe_graph)? }
         }
 
+        // ////// DEBUG:
+        // self.finish_queues();
+        // //////
+
         // (5.) MCOLSs Activate:
         if !self.settings.disable_mcols { self.mcols.activate(&mut self.exe_graph)?; }
+
+        // ////// DEBUG:
+        // self.finish_queues();
+        // //////
 
         // (6.) Pyramidal Layers Learn & Cycle:
         if !self.settings.disable_pyrs {
@@ -622,19 +638,32 @@ impl CorticalArea {
             }
         }
 
+        // ////// DEBUG:
+        // self.finish_queues();
+        // //////
+
         // (7.) MCOLs Output:
         if !self.settings.disable_mcols {
             self.mcols.output(&mut self.exe_graph)?;
         }
 
+        // ////// DEBUG:
+        // self.finish_queues();
+        // //////
+
         // (8.) Regrow:
         if !self.settings.disable_regrowth { self.regrow(); }
+
+        // ////// DEBUG:
+        // self.finish_queues();
+        // //////
 
         // (9.) Axon Output:
         self.axns.output(thal, &mut self.exe_graph, self.work_tx.as_ref().unwrap())?;
 
-        // // Finish queues [DEBUGGING]:
+        // ////// DEBUG:
         // self.finish_queues();
+        // //////
 
         Ok(())
     }
@@ -661,6 +690,7 @@ impl CorticalArea {
         self.write_queue.finish().unwrap();
         self.ocl_pq.queue().finish().unwrap();
         self.read_queue.finish().unwrap();
+        self.exe_graph.finish().unwrap();
     }
 
     /// [FIXME]: Currnently assuming aff out slice is == 1. Ascertain the

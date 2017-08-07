@@ -10,6 +10,7 @@
 //
 
 
+use std::num::Wrapping;
 use std::ops::Range;
 use std::sync::mpsc::{Sender, SyncSender, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
@@ -80,7 +81,7 @@ pub enum Request {
     Status,
     AreaInfo,
     Sample(Range<u8>, Arc<Mutex<Vec<u8>>>),
-    FinishQueues(usize),
+    FinishQueues,
     // Input(Obs),
     // GetAction,
 }
@@ -96,7 +97,7 @@ pub enum Response {
     Motor(MotorFrame),
     AreaInfo(Box<AreaInfo>),
     SampleProgress(Option<OclEvent>),
-    QueuesFinished(usize),
+    QueuesFinished(u64),
     Exiting,
 }
 
@@ -105,25 +106,27 @@ pub enum Response {
 #[derive(Clone, Debug)]
 pub struct Status {
     pub cycling: bool,
-    pub cur_cycle: u32,
-    pub prev_cycles: u32,
+    pub cur_cycle: Wrapping<u32>,
+    pub prev_cycles: Wrapping<u32>,
     pub prev_elapsed: Duration,
     pub cur_start_time: Option<Timespec>,
+    pub cycle_counter: Wrapping<u64>,
 }
 
 impl Status {
     pub fn new() -> Status {
         Status {
             cycling: false,
-            cur_cycle: 0,
-            prev_cycles: 0,
+            cur_cycle: Wrapping(0),
+            prev_cycles: Wrapping(0),
             prev_elapsed: Duration::seconds(0),
             cur_start_time: Some(time::get_time()),
+            cycle_counter: Wrapping(0),
         }
     }
 
     pub fn cur_cycle(&self) -> u32 {
-        self.cur_cycle
+        self.cur_cycle.0
     }
 
     pub fn cur_elapsed(&self) -> Duration {
@@ -135,14 +138,14 @@ impl Status {
 
     pub fn cur_cps(&self) -> f32 {
         match self.cur_start_time {
-            Some(_) => Status::cps(self.cur_cycle, self.cur_elapsed()),
+            Some(_) => Status::cps(self.cur_cycle.0, self.cur_elapsed()),
             None => 0.0,
         }
     }
 
 
     pub fn ttl_cycles(&self) -> u32 {
-        self.cur_cycle + self.prev_cycles
+        self.cur_cycle.0 + self.prev_cycles.0
     }
 
     pub fn ttl_elapsed(&self) -> Duration {
@@ -265,7 +268,7 @@ impl Flywheel {
                 Err(e) => panic!("{}", e),
             }
 
-            self.status.cur_cycle = 0;
+            self.status.cur_cycle = Wrapping(0);
             self.status.cur_start_time = Some(time::get_time());
             self.status.cycling = true;
             self.broadcast_status();
@@ -282,10 +285,13 @@ impl Flywheel {
                 _ => (),
             }
 
+            // ////// DEBUG:
+            // println!(">>>>>> Cycle loop complete. Status: {:?}", self.status);
+
             self.status.cycling = false;
             self.status.prev_cycles += self.status.cur_cycle;
             self.status.prev_elapsed = self.status.prev_elapsed + self.status.cur_elapsed();
-            self.status.cur_cycle = 0;
+            self.status.cur_cycle = Wrapping(0);
             self.status.cur_start_time = None;
             self.broadcast_status();
 
@@ -309,17 +315,18 @@ impl Flywheel {
         // println!("Cycle loop started...");
 
         loop {
-            if (self.cycle_iters_max != 0) && (self.status.cur_cycle >= self.cycle_iters_max) { break; }
+            if (self.cycle_iters_max != 0) && (self.status.cur_cycle.0 >= self.cycle_iters_max) { break; }
 
             self.intake_sensory_frames().unwrap();
 
             self.cortex.cycle();
 
-            // Update current cycle:
-            self.status.cur_cycle += 1;
+            // Update cycle_counts:
+            self.status.cur_cycle += Wrapping(1);
+            self.status.cycle_counter += Wrapping(1);
 
             // // DEBUG:
-            // println!("self.status.cur_cycle: {}", self.status.cur_cycle);
+            // println!(">>>>>> Flywheel::cycle_loop: self.status: {:?}", self.status);
 
             // Respond to any commands:
             match self.command_rx.try_recv() {
@@ -345,10 +352,15 @@ impl Flywheel {
     }
 
     fn fulfill_requests(&self) {
+        // ////// DEBUG:
+        // println!("Fulfilling requests...");
+
         for &(ref req_rx, ref res_tx) in self.req_res_pairs.iter() {
             loop {
                 match req_rx.try_recv() {
                     Ok(r) => {
+                        // ////// DEBUG:
+                        // println!("Fullfilling request: {:?}", r);
                         match r {
                             Request::Sample(range, buf) => {
                                 res_tx.send(Response::SampleProgress(self.refresh_buf(range, buf))).unwrap();
@@ -360,12 +372,14 @@ impl Flywheel {
                                 res_tx.send(Response::Status(Box::new(self.status.clone()))).unwrap();
                             }
                             Request::CurrentIter => {
-                                res_tx.send(Response::CurrentIter(self.status.cur_cycle)).unwrap();
+                                res_tx.send(Response::CurrentIter(self.status.cur_cycle.0)).unwrap();
                             },
-                            Request::FinishQueues(id) => {
+                            Request::FinishQueues => {
                                 // Will block:
                                 self.cortex.finish_queues();
-                                match res_tx.send(Response::QueuesFinished(id)) {
+                                // ////// DEBUG:
+                                // println!("Queues have been finished. Sending 'Response::QueuesFinished'...");
+                                match res_tx.send(Response::QueuesFinished(self.status.cycle_counter.0)) {
                                     Ok(_) => (),
                                     Err(err) => if !self.exiting { panic!("{:?}", err); }
                                 }
@@ -459,6 +473,7 @@ impl Flywheel {
     }
 
     fn broadcast_status(&self) {
+        // println!(">>>>>> Broadcasting status...");
         for &(_, ref res_tx) in self.req_res_pairs.iter() {
             // TODO: Remove unnecessary (redundant) heap allocation:
             res_tx.send(Response::Status(Box::new(self.status.clone()))).unwrap();

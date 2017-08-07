@@ -61,185 +61,7 @@ impl SubcorticalNucleus for Nucleus {
     fn post_cycle(&mut self, _thal: &mut Thalamus) {}
 }
 
-fn finish_queues(controls: &Controls, i: usize, exiting: &mut bool) {
-    controls.req_tx.send(Request::FinishQueues(i)).unwrap();
-    controls.cmd_tx.send(Command::None).unwrap();
 
-    // Wait for completion.
-    loop {
-        debug!("Attempting to receive...");
-        match controls.res_rx.recv() {
-            Ok(res) => match res {
-                Response::Status(status) => {
-                    debug!("Status: {:?}", status);
-                },
-                Response::QueuesFinished(qf_i) => {
-                    if qf_i == i {
-                        debug!("Queues finished for iteration: {}", i);
-                        break;
-                    }
-                },
-                Response::Exiting => {
-                    *exiting = true;
-                    break;
-                },
-                res @ _ => panic!("Unknown response received: {:?}", res),
-            },
-            Err(_) => {
-                *exiting = true;
-                break;
-            }
-        };
-    }
-}
-
-
-fn cycle(controls: &Controls, params: &Params, training_iters: usize, collect_iters: usize,
-        pattern_count: usize, sdrs: &Vec<Vec<u8>>, activity_counts: &mut Vec<Vec<usize>>)
-{
-    let mut rng = rand::weak_rng();
-    let mut exiting = false;
-
-    // Main loop:
-    for i in 0..training_iters + collect_iters {
-        let pattern_idx = if SEQUENTIAL_SDR {
-            // Write a non-random SDR:
-            i % pattern_count
-        } else {
-            // Write a random SDR:
-            Range::new(0, pattern_count).ind_sample(&mut rng)
-        };
-
-        println!("Locking tract buffer...");
-
-        debug!("Locking tract buffer...");
-        let mut guard = params.tract_buffer.clone().write().wait().unwrap();
-        debug_assert!(guard.len() == sdrs[pattern_idx].len());
-        for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
-            *dst = *src;
-        }
-        WriteGuard::release(guard);
-
-        println!("SDR copied to tract buffer (RwVec). Cycling.");
-
-        // Cycle.
-        controls.cmd_tx.send(Command::Iterate(1)).unwrap();
-
-        // Wait for completion.
-        finish_queues(controls, i, &mut exiting);
-
-        ::std::thread::sleep(::std::time::Duration::from_millis(50));
-
-        println!("All queues complete.");
-
-        // // (TEMPORARY) Sleep this thread.
-        // ::std::thread::sleep(::std::time::Duration::from_millis(10));
-
-        if i >= training_iters {
-            // Increment the cell activity counts.
-            let l4_axns = params.l4_axns.map().read().enq().unwrap();
-            for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
-                counts[pattern_idx] += (axn > 0) as usize;
-            }
-        }
-
-        if exiting { break; }
-    }
-}
-
-
-// Prints dendritic and cell activity ratings as well as a total activity
-// count for a selection of cells (currently every 8th).
-//
-// `_energy_level` can be used to make sure that all cells are being processed
-// uniformly by the smoother kernel (by using the '+1 to all' debug code
-// contained within).
-fn print_activity_counts(buffers: &Buffers, activity_counts: &Vec<Vec<usize>>, _energy_level: u8) {
-    let cel_count = activity_counts.len();
-    let pattern_count = activity_counts[0].len();
-    let mut cel_ttls = Vec::with_capacity(cel_count);
-    let mut _non_zero_ptrn_ttls: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
-    let mut ttl_count = 0f32;
-
-    let mut den_activities = vec![0; buffers.l4_spt_den_actvs.len()];
-    buffers.l4_spt_den_actvs.read(&mut den_activities).enq().unwrap();
-    assert_eq!(den_activities.len(), activity_counts.len());
-
-    let mut cel_activities = vec![0; buffers.l4_spt_cel_actvs.len()];
-    buffers.l4_spt_cel_actvs.read(&mut cel_activities).enq().unwrap();
-    assert_eq!(cel_activities.len(), activity_counts.len());
-
-    let mut cel_energies_vec = vec![0; buffers.l4_spt_cel_enrgs.len()];
-    buffers.l4_spt_cel_enrgs.read(&mut cel_energies_vec).enq().unwrap();
-    assert_eq!(cel_energies_vec.len(), activity_counts.len());
-
-    let mut printed = 0usize;
-
-    for (cel_idx, counts) in activity_counts.iter().enumerate() {
-        debug_assert!(counts.len() == pattern_count);
-        let mut cel_ttl = 0.;
-        _non_zero_ptrn_ttls.clear();
-
-        for (pattern_idx, &ptrn_ttl) in counts.iter().enumerate() {
-            if ptrn_ttl > 0 {
-                _non_zero_ptrn_ttls.push((pattern_idx, ptrn_ttl));
-                cel_ttl += ptrn_ttl as f32;
-            }
-        }
-
-        // `da`: dendrite activity rating (pre-inhib)
-        // `ca`: cell activity rating (post-inhib)
-        // `ct`: cell activity count
-
-        // if false {
-        if (cel_idx & 7) == 0 {
-        // if cel_ttl > 0. && cel_ttl < 150. {
-        // if cel_ttl > 600. {
-        // if cel_energies_vec[cel_idx] == 0 && cel_activities[cel_idx] == 0 {
-        // if cel_activities[cel_idx] == 0 {
-        // if den_activities[cel_idx] == 0 {
-        // if den_activities[cel_idx] == 0 || cel_activities[cel_idx] == 0 {
-        // if cel_energies_vec[cel_idx] != _energy_level {
-        // if cel_energies_vec[cel_idx] == 0 {
-        // if cel_energies_vec[cel_idx] >= 196 {
-            print!("{{[");
-            printc!(dark_grey: "{}", cel_idx);
-            print!("]::da:");
-            printc!(green: "{}", den_activities[cel_idx]);
-            print!(",ca:");
-            printc!(green: "{}", cel_activities[cel_idx]);
-            print!(",ce:");
-            printc!(green: "{}", cel_energies_vec[cel_idx]);
-            print!(",ct:");
-            printc!(royal_blue: "{}", cel_ttl);
-            print!("}} ");
-
-            printed += 1;
-        }
-
-        // if cel_ttl > _min {
-        //     println!("Cell [{}]({}): {:?}", cel_idx, cel_ttl, _non_zero_ptrn_ttls);
-        // }
-
-        cel_ttls.push(cel_ttl);
-        ttl_count += cel_ttl;
-    }
-
-    print!("\n");
-    println!("Printed: {}", printed);
-
-    // Calc stdev:
-    let mean = ttl_count / cel_count as f32;
-    let mut sq_diff_ttl = 0f32;
-    for &cel_ttl in cel_ttls.iter() {
-        sq_diff_ttl += (cel_ttl - mean).powi(2);
-        // print!("<{}>", (cel_ttl - mean).powi(2));
-    }
-    // print!("\n");
-
-    let stdev = (sq_diff_ttl / ttl_count).sqrt();
-    println!("Standard deviation: {}", stdev);
-}
 
 type CellIdx = usize;
 type ActivityCount = usize;
@@ -446,9 +268,12 @@ impl Trials {
         for (pattern_idx, patterns) in self.trials[trial_idx].iter() {
             printc!(royal_blue_bold: "Pattern {}: ", pattern_idx);
             for (cell_idx, &actv_count) in patterns.iter() {
-                if actv_count >= actv_cutoff {
+
+                // if actv_count >= actv_cutoff {
+                // if actv_count > actv_cutoff {
+                if actv_count > 0 {
                     print!("{{[");
-                    printc!(orange: "{}", cell_idx);
+                    printc!(dark_grey: "{}", cell_idx);
                     print!("]:");
                     printc!(green: "{}", actv_count);
                     print!("}} ");
@@ -479,63 +304,204 @@ impl Trials {
 }
 
 
-fn define_lm_schemes() -> LayerMapSchemeList {
-    let at0 = AxonTag::unique();
+fn finish_queues(controls: &Controls, i: u64, exiting: &mut bool) {
+    // controls.req_tx.send(Request::FinishQueues).unwrap();
+    // controls.cmd_tx.send(Command::None).unwrap();
 
-    LayerMapSchemeList::new()
-        .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
-            .input_layer("aff_in", map::DEFAULT,
-                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
-                AxonTopology::Spatial
-                // AxonTopology::Horizontal
-            )
-            .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
-            )
-            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 6, 0))
-            // .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4, 1))
-            .layer("iii", 1, map::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
-            )
-            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-                CellScheme::minicolumn("iv", "iii", 9999)
-            )
-        )
-        .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer(EXT_LYR, 1, map::DEFAULT,
-                AxonDomain::output(&[map::THAL_SP, at0]),
-                LayerKind::Axonal(AxonTopology::Spatial))
-        )
+    // Wait for completion.
+    loop {
+        // println!(">>>>>> Attempting to receive...");
+        debug!("Attempting to receive...");
+        match controls.res_rx.recv() {
+            Ok(res) => match res {
+                Response::Status(status) => {
+                    debug!("Status: {:?}", status);
+                    // println!(">>>>>> Response::Status({:?})", status);
+                    if status.cycle_counter.0 == i + 1 {
+                        // println!(">>>>> Waiting for completion for cycle: {}", i + 1);
+                        controls.req_tx.send(Request::FinishQueues).unwrap();
+                        controls.cmd_tx.send(Command::None).unwrap();
+                    }
+                },
+                Response::QueuesFinished(qf_i) => {
+                    if qf_i == i + 1 {
+                        // println!(">>>>> Queues finished for cycle: {}", qf_i);
+                        debug!("Queues finished for cycle: {}", qf_i);
+                        break;
+                    }
+                },
+                Response::Exiting => {
+                    *exiting = true;
+                    break;
+                },
+                res @ _ => panic!("Unknown response received: {:?}", res),
+            },
+            Err(_) => {
+                *exiting = true;
+                break;
+            }
+        };
+    }
 }
 
-fn define_a_schemes() -> AreaSchemeList {
-    AreaSchemeList::new()
-        .area(AreaScheme::new("v0", "v0_lm", ENCODE_DIM)
-            .subcortex()
-        )
-        .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)
-            .eff_areas(vec!["v0"])
-        )
+fn cycle(controls: &Controls, params: &Params, training_iters: usize, collect_iters: usize,
+        pattern_count: usize, sdrs: &Vec<Vec<u8>>, activity_counts: &mut Vec<Vec<usize>>,
+        prev_elapsed_iters: usize)
+{
+    let mut rng = rand::weak_rng();
+    let mut exiting = false;
+
+    // Main loop:
+    for i in 0..training_iters + collect_iters {
+        let pattern_idx = if SEQUENTIAL_SDR {
+            // Write a non-random SDR:
+            i % pattern_count
+        } else {
+            // Write a random SDR:
+            Range::new(0, pattern_count).ind_sample(&mut rng)
+        };
+
+        // println!(" (0.0-WriteStart...) ");
+
+        // debug!("Locking tract buffer...");
+        let mut guard = params.tract_buffer.clone().write().wait().unwrap();
+        debug_assert!(guard.len() == sdrs[pattern_idx].len());
+
+        // println!(" (1.0-WriteLocked) ");
+
+        for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
+            *dst = *src;
+        }
+
+        // println!(" (1.1-WriteComplete) ");
+
+        WriteGuard::release(guard);
+
+        // ::std::thread::sleep(::std::time::Duration::from_millis(10));
+
+        // println!(" (1.2-WriteReleased) ");
+
+        // Cycle.
+        controls.cmd_tx.send(Command::Iterate(1)).unwrap();
+
+        // println!(" (1.3-FinishingQueues...) ");
+
+        // Wait for completion.
+        finish_queues(controls, (prev_elapsed_iters + i) as u64, &mut exiting);
+
+        // ::std::thread::sleep(::std::time::Duration::from_millis(50));
+        // println!(" (3.0-QueuesFinished) ");
+
+        if i >= training_iters {
+            // Increment the cell activity counts.
+            let l4_axns = params.l4_axns.map().read().enq().unwrap();
+            for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
+                counts[pattern_idx] += (axn > 0) as usize;
+            }
+        }
+
+        if exiting { break; }
+    }
+
+    // print!("\n");
 }
 
-pub fn ca_settings() -> CorticalAreaSettings {
-    #[allow(unused_imports)]
-    use vibi::bismit::ocl::builders::BuildOpt;
+// Prints dendritic and cell activity ratings as well as a total activity
+// count for a selection of cells (currently every 8th).
+//
+// `_energy_level` can be used to make sure that all cells are being processed
+// uniformly by the smoother kernel (by using the '+1 to all' debug code
+// contained within).
+fn print_activity_counts(buffers: &Buffers, activity_counts: &Vec<Vec<usize>>, _energy_level: u8) {
+    let cel_count = activity_counts.len();
+    let pattern_count = activity_counts[0].len();
+    let mut cel_ttls = Vec::with_capacity(cel_count);
+    let mut _non_zero_ptrn_ttls: Vec<(usize, usize)> = Vec::with_capacity(pattern_count);
+    let mut ttl_count = 0f32;
 
-    CorticalAreaSettings::new()
-        // .bypass_inhib()
-        // .bypass_filters()
-        .disable_pyrs()
-        // .disable_ssts()
-        .disable_mcols()
-        .disable_regrowth()
-        .disable_learning()
-        // .build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", 1))
+    let mut den_activities = vec![0; buffers.l4_spt_den_actvs.len()];
+    buffers.l4_spt_den_actvs.read(&mut den_activities).enq().unwrap();
+    assert_eq!(den_activities.len(), activity_counts.len());
+
+    let mut cel_activities = vec![0; buffers.l4_spt_cel_actvs.len()];
+    buffers.l4_spt_cel_actvs.read(&mut cel_activities).enq().unwrap();
+    assert_eq!(cel_activities.len(), activity_counts.len());
+
+    let mut cel_energies_vec = vec![0; buffers.l4_spt_cel_enrgs.len()];
+    buffers.l4_spt_cel_enrgs.read(&mut cel_energies_vec).enq().unwrap();
+    assert_eq!(cel_energies_vec.len(), activity_counts.len());
+
+    let mut printed = 0usize;
+
+    for (cel_idx, counts) in activity_counts.iter().enumerate() {
+        debug_assert!(counts.len() == pattern_count);
+        let mut cel_ttl = 0.;
+        _non_zero_ptrn_ttls.clear();
+
+        for (pattern_idx, &ptrn_ttl) in counts.iter().enumerate() {
+            if ptrn_ttl > 0 {
+                _non_zero_ptrn_ttls.push((pattern_idx, ptrn_ttl));
+                cel_ttl += ptrn_ttl as f32;
+            }
+        }
+
+        // `da`: dendrite activity rating (pre-inhib)
+        // `ca`: cell activity rating (post-inhib)
+        // `ct`: cell activity count
+
+        // if false {
+        if (cel_idx & 7) == 0 {
+        // if cel_ttl > 0. && cel_ttl < 150. {
+        // if cel_ttl > 600. {
+        // if cel_energies_vec[cel_idx] == 0 && cel_activities[cel_idx] == 0 {
+        // if cel_activities[cel_idx] == 0 {
+        // if den_activities[cel_idx] == 0 {
+        // if den_activities[cel_idx] == 0 || cel_activities[cel_idx] == 0 {
+        // if cel_energies_vec[cel_idx] != _energy_level {
+        // if cel_energies_vec[cel_idx] == 0 {
+        // if cel_energies_vec[cel_idx] >= 196 {
+            print!("{{[");
+            printc!(dark_grey: "{}", cel_idx);
+            print!("]::da:");
+            printc!(green: "{}", den_activities[cel_idx]);
+            print!(",ca:");
+            printc!(green: "{}", cel_activities[cel_idx]);
+            print!(",ce:");
+            printc!(green: "{}", cel_energies_vec[cel_idx]);
+            print!(",ct:");
+            printc!(royal_blue: "{}", cel_ttl);
+            print!("}} ");
+
+            printed += 1;
+        }
+
+        // if cel_ttl > _min {
+        //     println!("Cell [{}]({}): {:?}", cel_idx, cel_ttl, _non_zero_ptrn_ttls);
+        // }
+
+        cel_ttls.push(cel_ttl);
+        ttl_count += cel_ttl;
+    }
+
+    print!("\n");
+    println!("Printed: {}", printed);
+
+    // Calc stdev:
+    let mean = ttl_count / cel_count as f32;
+    let mut sq_diff_ttl = 0f32;
+    for &cel_ttl in cel_ttls.iter() {
+        sq_diff_ttl += (cel_ttl - mean).powi(2);
+        // print!("<{}>", (cel_ttl - mean).powi(2));
+    }
+    // print!("\n");
+
+    let stdev = (sq_diff_ttl / ttl_count).sqrt();
+    println!("Standard deviation: {}", stdev);
 }
 
 fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers) {
     const SPARSITY: usize = 48;
-    let pattern_count = 32;
+    let pattern_count = 5;
     let cell_count = (params.encode_dim * params.encode_dim) as usize;
     let sdr_active_count = cell_count / SPARSITY;
 
@@ -567,9 +533,14 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
     let training_collect_iters = vec![
         // (0, 10000),
 
-        (0, 5), (0, 5), (0, 5), (0, 5),
         // (0, 5), (0, 5), (0, 5), (0, 5),
         // (0, 5), (0, 5), (0, 5), (0, 5),
+        // (0, 5), (0, 5), (0, 5), (0, 5),
+
+        // (0, 100), (0, 100), (0, 100), (0, 100), (0, 100),
+
+        // (0, 500), (0, 500), (0, 500), (0, 500), (0, 500),
+        (0, 1000), (0, 1000), (0, 1000), (0, 1000), (0, 1000),
 
         // (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
         // (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
@@ -587,8 +558,8 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
         // (80000, 10000), (80000, 10000),
     ];
 
-    // let pattern_watch_list = vec![0, 1, 2, 3];
-    let pattern_watch_list = vec![1, 7, 15];
+    let pattern_watch_list = vec![0, 1, 2, 3, 4];
+    // let pattern_watch_list = vec![1, 7, 15];
     let mut trials = Trials::new(pattern_watch_list);
 
     let mut cycle_count_running_ttl = 0usize;
@@ -597,7 +568,7 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
         let mut activity_counts = vec![vec![0; pattern_count]; cell_count];
 
         cycle(&controls, &params, training_iters, collect_iters, pattern_count,
-            &sdrs, &mut activity_counts);
+            &sdrs, &mut activity_counts, cycle_count_running_ttl);
 
         let trial_cycle_count = training_iters + collect_iters;
         cycle_count_running_ttl += trial_cycle_count;
@@ -626,7 +597,6 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
     println!("Spatial evaluation complete.\n");
     // controls.cmd_tx.recv().unwrap();
 }
-
 
 pub fn eval() {
     let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
@@ -685,4 +655,58 @@ pub fn eval() {
 
     if let Err(e) = controls.th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
     if let Err(e) = controls.th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
+}
+
+fn define_lm_schemes() -> LayerMapSchemeList {
+    let at0 = AxonTag::unique();
+
+    LayerMapSchemeList::new()
+        .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
+            .input_layer("aff_in", map::DEFAULT,
+                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
+                AxonTopology::Spatial
+                // AxonTopology::Horizontal
+            )
+            .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
+                CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
+            )
+            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 6, 0))
+            // .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 4, 1))
+            .layer("iii", 1, map::PTAL, AxonDomain::Local,
+                CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
+            )
+            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+                CellScheme::minicolumn("iv", "iii", 9999)
+            )
+        )
+        .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
+            .layer(EXT_LYR, 1, map::DEFAULT,
+                AxonDomain::output(&[map::THAL_SP, at0]),
+                LayerKind::Axonal(AxonTopology::Spatial))
+        )
+}
+
+fn define_a_schemes() -> AreaSchemeList {
+    AreaSchemeList::new()
+        .area(AreaScheme::new("v0", "v0_lm", ENCODE_DIM)
+            .subcortex()
+        )
+        .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)
+            .eff_areas(vec!["v0"])
+        )
+}
+
+pub fn ca_settings() -> CorticalAreaSettings {
+    #[allow(unused_imports)]
+    use vibi::bismit::ocl::builders::BuildOpt;
+
+    CorticalAreaSettings::new()
+        // .bypass_inhib()
+        // .bypass_filters()
+        .disable_pyrs()
+        // .disable_ssts()
+        .disable_mcols()
+        .disable_regrowth()
+        .disable_learning()
+        // .build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", 1))
 }

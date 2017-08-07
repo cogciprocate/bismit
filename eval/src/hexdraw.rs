@@ -48,7 +48,7 @@ pub fn draw(params: &Params, controls: &Controls) {
 
     // Cycle and finish queues:
     controls.cmd_tx.send(Command::Iterate(1)).unwrap();
-    controls.req_tx.send(Request::FinishQueues(0)).unwrap();
+    controls.req_tx.send(Request::FinishQueues).unwrap();
     controls.cmd_tx.send(Command::None).unwrap();
 
     // Wait for completion.
@@ -59,11 +59,9 @@ pub fn draw(params: &Params, controls: &Controls) {
                 Response::Status(status) => {
                     debug!("Status: {:?}", status);
                 },
-                Response::QueuesFinished(id) => {
-                    if id == 0 {
-                        debug!("Queues finished (id: {})", id);
-                        break;
-                    }
+                Response::QueuesFinished(cycle_iter) => {
+                    debug!("Queues finished (cycle: {})", cycle_iter);
+                    break;
                 },
                 Response::Exiting => {
                     // exiting = true;
