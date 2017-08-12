@@ -1,4 +1,7 @@
+//! Control Cells (Interneurons)
+
 #![allow(unused_imports)]
+
 
 use std::fmt::Debug;
 use ocl::Buffer;

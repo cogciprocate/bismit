@@ -2,6 +2,44 @@
 //!
 //!
 
+// # Neuronal Sub-types
+//
+// (Based on: http://science.sciencemag.org/content/357/6351/600)
+//
+// Human neocortical cells largely fit into one of the following 21 groupings:
+//
+// * Excitatory
+//
+//   * L2/3
+//   * DL-3
+//   * DL-1
+//   * DL-2
+//
+//   * L4
+//   * L5-1
+//   * L5-2
+//   * L5-3
+//   * L5-4
+//
+//   * L6-2
+//   * L6-3
+//   * L6-1
+//
+// * Inhibitory
+//
+//   * Vip-1
+//   * Vip-2
+//   * Ndnf
+//   * Nos
+//
+//   * Pv-1
+//   * Sst-1
+//   * Sst-3
+//   * Sst-2
+//
+//   * Pv-2
+
+
 use std::ops::BitOr;
 use std::iter::FromIterator;
 use std::collections::BTreeSet;

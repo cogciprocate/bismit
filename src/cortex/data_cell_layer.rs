@@ -1,3 +1,6 @@
+//! Data Cells (Principal Neurons)
+//!
+
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use ocl::Buffer;
