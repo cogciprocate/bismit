@@ -9,6 +9,7 @@ use map::{self, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme,
     AreaSchemeList, CellScheme, EncoderScheme, AxonTopology, LayerKind, AxonDomain,
     AxonTag, InputTrack};
 use encode::GlyphSequences;
+use tests::testbed::{PRIMARY_SPATIAL_SSC_LAYER_NAME, PRIMARY_TEMPORAL_PYR_LAYER_NAME};
 
 // const MOTOR_UID: u16 = 654;
 const ROSE_UID: u16 = 435;
@@ -51,11 +52,11 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
             //     CellScheme::pyramidal(1, 4, vec!["iii"], 800, 10)
             //         .apical(vec!["eff_in"/*, "olfac"*/], 12))
 
-            .layer("iv", 1, map::PSAL, AxonDomain::Local,
+            .layer(PRIMARY_SPATIAL_SSC_LAYER_NAME, 1, map::PSAL, AxonDomain::Local,
                 CellScheme::spiny_stellate(&[("aff_in", 8, 1)], 4, 300)
             )
 
-            .layer("iii", 2, map::PTAL, AxonDomain::Local,
+            .layer(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 2, map::PTAL, AxonDomain::Local,
                 CellScheme::pyramidal(&[("iii", 10, 1)], 1, 3, 300)
                     // .apical(&[("eff_in", 12)], 1, 4, 800)
             )
@@ -140,7 +141,7 @@ pub fn define_area_sl() -> AreaSchemeList {
 #[allow(unused_variables)]
 pub fn disable_stuff(_: &mut Cortex) {
     // for (_, area) in &mut cortex.areas {
-    //     // area.psal_mut().unwrap().dens_mut().syns_mut().set_offs_to_zero_temp();
+    //     // area.ssc_layer_mut(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().dens_mut().syns_mut().set_offs_to_zero_temp();
     //     // area.bypass_inhib = true;
     //     // area.bypass_filters = true;
     //     // area.disable_pyrs = true;

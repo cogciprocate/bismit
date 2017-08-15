@@ -460,7 +460,7 @@ pub mod tests {
     use ocl::util;
     use cmn::{CorticalDims, XorShiftRng, Range as RandRange};
     // use super::super::dendrites::{self};
-    use cortex::{dendrites, CorticalAreaTest, CelCoords};
+    use cortex::{dendrites, CelCoords};
     use super::{Synapses, TuftDims};
 
     const PRINT_DEBUG_INFO: bool = false;
@@ -765,10 +765,13 @@ pub mod tests {
         let mut area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
         // Choose a random synapse:
-        let cel_coords = area.ptal_mut().unwrap().rand_cel_coords();
-        let syn_coords = area.ptal_mut().unwrap().dens_mut().syns_mut().rand_syn_coords(cel_coords.clone());
+        let cel_coords = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
+            .unwrap().rand_cel_coords();
+        let syn_coords = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
+            .unwrap().dens_mut().syns_mut().rand_syn_coords(cel_coords.clone());
 
-        let tft_den_idz = area.ptal().unwrap().dens().den_idzs_by_tft()[syn_coords.tft_id];
+        let tft_den_idz = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
+            .unwrap().dens().den_idzs_by_tft()[syn_coords.tft_id];
 
         let den_coords = DenCoords::new(syn_coords.cel_coords.clone(), syn_coords.tft_id,
             tft_den_idz, syn_coords.tft_dims.clone(), syn_coords.den_id_celtft);

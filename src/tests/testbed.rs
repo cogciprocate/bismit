@@ -8,6 +8,8 @@ use cortex::Cortex;
 
 pub static PRIMARY_AREA_NAME: &'static str = "v1";
 pub static INHIB_LAYER_NAME: &'static str = "iv_inhib";
+pub static PRIMARY_SPATIAL_SSC_LAYER_NAME: &str = "iv";
+pub static PRIMARY_TEMPORAL_PYR_LAYER_NAME: &str = "iii";
 const CYCLES_PER_FRAME: usize = 1;
 
 /*=============================================================================
@@ -39,7 +41,7 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
 
         .layer("unused", 1, map::DEFAULT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
 
-        .layer("iv", 1, map::PSAL, AxonDomain::Local,
+        .layer(PRIMARY_SPATIAL_SSC_LAYER_NAME, 1, map::PSAL, AxonDomain::Local,
             CellScheme::spiny_stellate(&[("aff_in", 8, 1)], 5, 400)
         )
 
@@ -47,7 +49,7 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
             CellScheme::inhib("iv", 4, 0)
         )
 
-        .layer("iii", 3, map::PTAL, AxonDomain::Local,
+        .layer(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 3, map::PTAL, AxonDomain::Local,
                 CellScheme::pyramidal(&[("iii", 8, 1)], 2, 3, 1200)
                     .apical(&[("iii", 3, 1)], 1, 5, 500)
         )
@@ -181,10 +183,10 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         //         // .apical(vec!["test5"])
         // )
 
-        .layer("iv", 1, map::PSAL, AxonDomain::Local,
+        .layer(PRIMARY_SPATIAL_SSC_LAYER_NAME, 1, map::PSAL, AxonDomain::Local,
             CellScheme::spiny_stellate(&[("unused", 8, 1)], 4, 100))
 
-        .layer("iii", 3, map::PTAL, AxonDomain::Local,
+        .layer(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 3, map::PTAL, AxonDomain::Local,
             CellScheme::pyramidal(&[("unused", 8, 1)], 2, 3, 100)
                 .apical(&[("test1", 7, 1)], 2, 3, 500)
                 .apical(&[("test2", 6, 1)], 2, 3, 500)

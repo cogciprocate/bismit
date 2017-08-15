@@ -10,7 +10,7 @@ use ocl::ffi::cl_event;
 use map::LayerAddress;
 use cmn::{util};
 
-const PRINT_DEBUG: bool = false;
+const PRINT_DEBUG: bool = true;
 const PRINT_DEBUG_ALL: bool = false;
 
 type ExeGrResult<T> = Result<T, ExecutionGraphError>;

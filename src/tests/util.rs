@@ -7,6 +7,7 @@ use ocl::traits::{OclPrm, OclScl};
 use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, SynapsesTest, MinicolumnsTest,
     DataCellLayer, DataCellLayerTest};
 use cmn;
+use tests::testbed;
 
 const PRINT_DETAILS: bool = false;
 
@@ -32,8 +33,8 @@ bitflags! {
 // ACTIVATE, LEARN, CYCLE, & OUTPUT
 // pub fn al_cycle_depricate(area: &mut CorticalArea) {
 //     area.mcols().activate();
-//     area.ptal_mut().unwrap().learn();
-//     area.ptal_mut().unwrap().cycle(None);
+//     area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().learn();
+//     area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().cycle(None);
 //     area.mcols().output();
 // }
 
@@ -56,7 +57,7 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 
     if switches.contains(LEARN) {
         if print { printlnc!(yellow: "Learning..."); }
-        area.ptal_mut().unwrap().learn_solo();
+        area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().learn_solo();
     }
 
     if print { area.mcols().kern_activate().default_queue().unwrap().finish().unwrap(); }
@@ -64,9 +65,9 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
     if switches.contains(CYCLE) {
         if print { printlnc!(yellow: "Cycling..."); }
         // area.ptal_cycle();
-        area.ptal().unwrap().dens().syns().cycle_solo();
-        area.ptal().unwrap().dens().cycle_solo();
-        area.ptal().unwrap().cycle_solo();
+        area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().cycle_solo();
+        area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().cycle_solo();
+        area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().cycle_solo();
     }
 
     if print { area.mcols().kern_activate().default_queue().unwrap().finish().unwrap(); }
@@ -88,12 +89,12 @@ pub fn ptal_alco(area: &mut CorticalArea, switches: PtalAlcoSwitches, print: boo
 //         flag_set_eq: u8, strength_eq: i8)
 // {
 //     for syn_idx in syn_range.clone() {
-//         area.ptal_mut().unwrap().dens_mut().syns_mut().states.fill_vec();
-//         area.ptal_mut().unwrap().dens_mut().syns_mut().flag_sets.fill_vec();
-//         area.ptal_mut().unwrap().dens_mut().syns_mut().strengths.fill_vec();
-//         assert!(area.ptal_mut().unwrap().dens_mut().syns_mut().states[syn_idx] != state_neq);
-//         assert!(area.ptal_mut().unwrap().dens_mut().syns_mut().flag_sets[syn_idx] == flag_set_eq);
-//         assert!(area.ptal_mut().unwrap().dens_mut().syns_mut().strengths[syn_idx] == strength_eq);
+//         area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().states.fill_vec();
+//         area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().flag_sets.fill_vec();
+//         area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().strengths.fill_vec();
+//         assert!(area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().states[syn_idx] != state_neq);
+//         assert!(area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().flag_sets[syn_idx] == flag_set_eq);
+//         assert!(area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().strengths[syn_idx] == strength_eq);
 //     }
 // }
 
@@ -164,9 +165,9 @@ pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
     //println!("\n - Confirm 1A - Activate");
     println!("{}", desc);
     area.print_axns();
-    area.ptal().unwrap().dens().syns().print_all();
-    area.ptal().unwrap().dens().print_all();
-    area.ptal().unwrap().print_all();
+    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().print_all();
+    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().print_all();
+    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().print_all();
     area.mcols().print_all();
     area.print_aux();
 }
@@ -174,9 +175,9 @@ pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
 pub fn print_all_syn_range(range: Range<usize>, area: &mut CorticalArea, desc: &'static str) {
     println!("{}", desc);
     area.print_axns();
-    area.ptal().unwrap().dens().syns().print_range(Some(range));
-    area.ptal().unwrap().dens().print_all();
-    area.ptal().unwrap().print_all();
+    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().print_range(Some(range));
+    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().print_all();
+    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().print_all();
     area.mcols().print_all();
     area.print_aux();
     unimplemented!();

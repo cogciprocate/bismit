@@ -3,6 +3,7 @@
 use ocl::builders::{BuildOpt};
 use ::{map, Cortex, CorticalAreaSettings};
 use map::*;
+use tests::testbed;
 
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
@@ -78,13 +79,11 @@ pub fn ca_settings() -> CorticalAreaSettings {
 // #[test]
 #[allow(dead_code)]
 pub fn smoother_overlap() {
-    use cortex::CorticalAreaTest;
-
     let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
 
     // Layer 4 spatial cell energies:
     let l4_spt_cel_enrgs = cortex.areas().by_key(PRI_AREA).unwrap()
-        .psal().unwrap().energies().clone();
+        .ssc_layer(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().energies().clone();
 
     let training_collect_iters = vec![5; 12];
     let cell_count = (AREA_DIM * AREA_DIM) as usize;
