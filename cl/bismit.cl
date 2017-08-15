@@ -419,76 +419,7 @@ static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_of
 
 
 /*=============================================================================
-================================== LEARNING ===================================
-=============================================================================*/
-
-// ISSUE: LOTS OF PROBLEMS WITH GLITCHES AND COMPILER BUGS ON THESE FUNCTIONS!
-//         UPDATE: CATALYST 15.9 SEEMS TO HAVE FIXED SEVERAL (ALL?). NOT SURE ABOUT
-
-// DST_DEN_SYNS_LEARN_INIT():
-//         - Occurs when a cell is active.
-//         - Applies to a single dendrite on that cell.
-//             - Must only be called with a syn_idz of the best (most active)
-//               dendrite on an active tuft on an active cell.
-//         - Is intended to handle both crystallization (predictions becoming
-//           or staying true) or anomalies (situations where no cell in the
-//           column had predicted the column's spatial input).
-//
-//         STDEP set when depression has already been applied (needs to be cleared by trmn)
-//         STPOT set when potentiation is due to be applied (by trmn)
-static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
-            __global uchar const* const syn_states,
-            uint const syn_idz,
-            uint const syns_per_den_l2,
-            int const rnd,
-            __global uchar* const syn_flag_sets,
-            // TODO: Switch to `u8` (`uchar`):
-            __global char* const syn_strengths)
-{
-    uint const n = syn_idz + (1 << syns_per_den_l2);
-
-    for (uint i = syn_idz; i < n; i++) {
-        char syn_strength = syn_strengths[i];
-        uchar syn_flag_set = syn_flag_sets[i];
-        uchar const syn_state = syn_states[i];
-        // int const inc = rnd_inc(rnd, syn_idz + i, syn_strength);
-        int const syn_is_active = syn_state != 0;
-        int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == (SYN_STPOT_FLAG);
-        int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == (SYN_STDEP_FLAG);
-
-        // Synapse has either a short term potentiation or short term depression flag:
-        int const syn_has_stX_flag = (syn_has_stpot | syn_has_stdep);
-
-        // Synapse is active and does not have a short term depression or potentiation flag:
-        int const syn_needs_stpot = syn_is_active && (!syn_has_stX_flag);
-        // Synapse is inactive and does not have a short term depression or potentiation flag:
-        int const syn_needs_stdep = (!syn_is_active) && (!syn_has_stX_flag);
-
-        // If syn_needs_stdep, depress the synapse's strength by 'inc' (generally a 1 or 0) ...
-        // syn_strength -= mul24(syn_needs_stdep, inc);
-
-        // Deactivate synapse short term potentiation and depression flags regardless of their states:
-        // syn_flag_set &= ~(SYN_STPOT_FLAG | SYN_STDEP_FLAG);
-
-
-        // If syn_needs_stpot activate STPOT flag:
-        syn_flag_set = syn_flag_set | mul24(syn_needs_stpot, (SYN_STPOT_FLAG))
-            | mul24(syn_needs_stdep, (SYN_STDEP_FLAG));
-        // If syn_needs_stdep activate STDEP flag:
-        // syn_flag_set |= mul24(syn_needs_stdep, (SYN_STDEP_FLAG));
-
-        syn_flag_sets[i] = syn_flag_set;
-        // syn_flag_sets[i] = ;
-        // syn_flag_sets[i] = 2 | 1;
-
-        syn_strengths[i] = syn_strength;
-    }
-}
-
-
-
-/*=============================================================================
-===================================== WIP =====================================
+===================================== RND =====================================
 =============================================================================*/
 
 // Cheap xorshift random number.
@@ -608,10 +539,73 @@ static uchar update_activity_rating(uchar activity_rating, int is_active, int rn
    return activity_rating;
 }
 
+
 /*=============================================================================
-==================================== /WIP =====================================
+================================== LEARNING ===================================
 =============================================================================*/
 
+// ISSUE: LOTS OF PROBLEMS WITH GLITCHES AND COMPILER BUGS ON THESE FUNCTIONS!
+//         UPDATE: CATALYST 15.9 SEEMS TO HAVE FIXED SEVERAL (ALL?). NOT SURE ABOUT
+
+// DST_DEN_SYNS_LEARN_INIT():
+//         - Occurs when a cell is active.
+//         - Applies to a single dendrite on that cell.
+//             - Must only be called with a syn_idz of the best (most active)
+//               dendrite on an active tuft on an active cell.
+//         - Is intended to handle both crystallization (predictions becoming
+//           or staying true) or anomalies (situations where no cell in the
+//           column had predicted the column's spatial input).
+//
+//         STDEP set when depression has already been applied (needs to be cleared by trmn)
+//         STPOT set when potentiation is due to be applied (by trmn)
+static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
+            __global uchar const* const syn_states,
+            uint const syn_idz,
+            uint const syns_per_den_l2,
+            int const rnd,
+            __global uchar* const syn_flag_sets,
+            // TODO: Switch to `u8` (`uchar`):
+            __global char* const syn_strengths)
+{
+    uint const n = syn_idz + (1 << syns_per_den_l2);
+
+    for (uint i = syn_idz; i < n; i++) {
+        // char syn_strength = syn_strengths[i];
+        uchar syn_flag_set = syn_flag_sets[i];
+        uchar const syn_state = syn_states[i];
+        // int const inc = rnd_inc(rnd, syn_idz + i, syn_strength);
+        int const syn_is_active = syn_state != 0;
+        int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == (SYN_STPOT_FLAG);
+        int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == (SYN_STDEP_FLAG);
+
+        // Synapse has either a short term potentiation or short term depression flag:
+        int const syn_has_stX_flag = (syn_has_stpot | syn_has_stdep);
+
+        // Synapse is active and does not have a short term depression or potentiation flag:
+        int const syn_needs_stpot = syn_is_active && (!syn_has_stX_flag);
+        // Synapse is inactive and does not have a short term depression or potentiation flag:
+        int const syn_needs_stdep = (!syn_is_active) && (!syn_has_stX_flag);
+
+        // If syn_needs_stdep, depress the synapse's strength by 'inc' (generally a 1 or 0) ...
+        // syn_strength -= mul24(syn_needs_stdep, inc);
+
+        // Deactivate synapse short term potentiation and depression flags regardless of their states:
+        // syn_flag_set &= ~(SYN_STPOT_FLAG | SYN_STDEP_FLAG);
+
+
+        // If syn_needs_stpot activate STPOT flag:
+        syn_flag_set = syn_flag_set | mul24(syn_needs_stpot, (SYN_STPOT_FLAG))
+            | mul24(syn_needs_stdep, (SYN_STDEP_FLAG));
+        // If syn_needs_stdep activate STDEP flag:
+        // syn_flag_set |= mul24(syn_needs_stdep, (SYN_STDEP_FLAG));
+
+        syn_flag_sets[i] = syn_flag_set;
+        // syn_flag_sets[i] = ;
+        // syn_flag_sets[i] = 2 | 1;
+
+        // syn_strengths[i] = syn_strength;
+    }
+}
 
 // DST_TFT_SYNS_LEARN_TRMN(): Learning termination for a tuft:
 //         - Occurs when a cell which had been active becomes inactive.
@@ -622,7 +616,9 @@ static inline void tft_syns_trm(
             uint const syn_idz,
             uint const syns_per_tft_l2,
             int const rnd,
-            int const lr_l2i, // LEARNING RATE INVERSE LOG BASE 2 (1/L2)
+            // LEARNING RATE INVERSE LOG BASE 2 (1/L2):
+            // TODO: Use asymmetrical potentiation/depression rates:
+            int const lr_l2i,
             __global uchar* const syn_flag_sets,
             __global int* const aux_ints_0,
             // TODO: Switch to `u8` (`uchar`):
@@ -631,6 +627,7 @@ static inline void tft_syns_trm(
     uint const n = syn_idz + (1 << syns_per_tft_l2);
 
     // TODO: Pre-calculate host side:
+    // TODO: Use asymmetrical potentiation/depression rates:
     int lr_mask = 0x7F << lr_l2i;
     lshft_mask(&lr_mask, lr_l2i);
 
@@ -676,17 +673,22 @@ static inline void prx_syns__active__ltp_ltd(
     uint const n = syn_idz + (1 << syns_per_den_l2);
 
     // TODO: Pre-calculate host side:
-    // Learning rate:
-    int const lr_l2i = 0;
-    int lr_mask = 0x7F << lr_l2i;
-    lshft_mask(&lr_mask, lr_l2i);
+    // Potentiation rate:
+    int const pr_l2i = 0;
+    int pr_mask = 0x7F << pr_l2i;
+    lshft_mask(&pr_mask, pr_l2i);
+
+    // Depression rate:
+    int const dr_l2i = 2;
+    int dr_mask = 0x7F << dr_l2i;
+    lshft_mask(&dr_mask, dr_l2i);
 
     for (uint i = syn_idz; i < n; i++) {
         uchar const syn_state = syn_states[i];
         char syn_strength = syn_strengths[i];
         // int const inc = rnd_inc(rnd, syn_idz + i, syn_strength);
-        int const should_inc = rnd_inc(rnd, (syn_idz + i), syn_strength, lr_l2i, lr_mask);
-        int const should_dec = rnd_dec(rnd, (syn_idz + i), syn_strength, lr_l2i, lr_mask);
+        int const should_inc = rnd_inc(rnd, (syn_idz + i), syn_strength, pr_l2i, pr_mask);
+        int const should_dec = rnd_dec(rnd, (syn_idz + i), syn_strength, dr_l2i, dr_mask);
         int const syn_is_active = syn_state != 0;
 
         syn_strength += mul24(syn_is_active, should_inc);
@@ -696,6 +698,11 @@ static inline void prx_syns__active__ltp_ltd(
     }
 
 }
+
+
+/*=============================================================================
+=================================== OTHER =====================================
+=============================================================================*/
 
 
 
