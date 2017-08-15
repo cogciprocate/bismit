@@ -21,17 +21,17 @@ use tests::util;
 pub fn cycles(cortex: &mut Cortex, area_name: &str) {
     // let emsg = "\ntests::hybrid::test_cycles()";
 
-    /*cortex.areas_mut().by_key_mut(area_name).psal_mut().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
-    cortex.areas_mut().by_key_mut(area_name).ptal_mut().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+    /*cortex.areas_mut().by_key_mut(area_name).psal_mut().unwrap().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+    cortex.areas_mut().by_key_mut(area_name).ptal_mut().unwrap().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
 
-    cortex.areas_mut().by_key_mut(area_name).psal_mut().dens.cycle();
-    cortex.areas_mut().by_key_mut(area_name).ptal_mut().dens.cycle();*/
+    cortex.areas_mut().by_key_mut(area_name).psal_mut().unwrap().dens.cycle();
+    cortex.areas_mut().by_key_mut(area_name).ptal_mut().unwrap().dens.cycle();*/
 
         //#####  TRY THIS OUT SOMETIME  #####
-    //let pyrs_input_len = cortex.areas_mut().by_key_mut(area_name).ptal_mut().len();
+    //let pyrs_input_len = cortex.areas_mut().by_key_mut(area_name).ptal_mut().unwrap().len();
     //let mut vec_pyrs = iter::repeat(0).take().collect();
     //input_czar::vec_band_512_fill(&mut vec_pyrs);
-    //let pyr_axn_ranges = cortex.areas_mut().by_key_mut(area_name).layer_input_ranges("iii", cortex.areas_mut().by_key_mut(area_name).ptal_mut().dens.syns().den_kind());
+    //let pyr_axn_ranges = cortex.areas_mut().by_key_mut(area_name).layer_input_ranges("iii", cortex.areas_mut().by_key_mut(area_name).ptal_mut().unwrap().dens.syns().den_kind());
     //write_to_axons(axn_range, vec1);
     let vec1: Vec<u8> = iter::repeat(0).take(cortex.areas_mut().by_key_mut(area_name).unwrap().dims().columns() as usize).collect();
 
@@ -39,17 +39,17 @@ pub fn cycles(cortex: &mut Cortex, area_name: &str) {
     // input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize * 2), true, &mut vec1);
 
     println!("Primary Spatial Associative Layer...");
-    //let psal_name = cortex.areas().by_key(area_name).psal().layer_name();
+    //let psal_name = cortex.areas().by_key(area_name).psal().unwrap().layer_name();
     //cortex.enqueue_write(area_name, psal_name, &vec1);
-    cortex.areas_mut().by_key_mut(area_name).unwrap().psal_mut().soma().cmd().write(&vec1).offset(0).enq().unwrap();
-    syn_and_den_states(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().psal_mut().dens_mut());
+    cortex.areas_mut().by_key_mut(area_name).unwrap().psal_mut().unwrap().soma().cmd().write(&vec1).offset(0).enq().unwrap();
+    syn_and_den_states(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().psal_mut().unwrap().dens_mut());
 
     println!("Primary Temporal Associative Layer...");
-    //let ptal_name = cortex.areas().by_key(area_name).ptal().layer_name();
+    //let ptal_name = cortex.areas().by_key(area_name).ptal().unwrap().layer_name();
     //cortex.enqueue_write(area_name, ptal_name, &vec1);
-    cortex.areas_mut().by_key_mut(area_name).unwrap().ptal_mut().soma().cmd().write(&vec1).offset(0).enq().unwrap();
-    syn_and_den_states(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().ptal_mut().dens_mut());
-    pyr_preds(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().ptal_mut());
+    cortex.areas_mut().by_key_mut(area_name).unwrap().ptal_mut().unwrap().soma().cmd().write(&vec1).offset(0).enq().unwrap();
+    syn_and_den_states(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().ptal_mut().unwrap().dens_mut());
+    pyr_preds(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().ptal_mut().unwrap());
 }
 
 

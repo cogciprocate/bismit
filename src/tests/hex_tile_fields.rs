@@ -67,13 +67,24 @@ pub fn ca_settings() -> CorticalAreaSettings {
 
 /// Tests that all cells are processed an equal number of times by the
 /// activity smoother layer.
-#[test]
+//
+// # [FIXME] OUTDATED
+//
+// Checking smoother overlap will now require some way to disable the energy
+// level being manipulated by any kernel other than the smoother kernel.
+// Perhaps selectively skipping the cycle kernel for the primary spatial area
+// will suffice.
+//
+// #[test]
+#[allow(dead_code)]
 pub fn smoother_overlap() {
+    use cortex::CorticalAreaTest;
+
     let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
 
     // Layer 4 spatial cell energies:
     let l4_spt_cel_enrgs = cortex.areas().by_key(PRI_AREA).unwrap()
-        .psal_TEMP().energies().clone();
+        .psal().unwrap().energies().clone();
 
     let training_collect_iters = vec![5; 12];
     let cell_count = (AREA_DIM * AREA_DIM) as usize;
@@ -96,7 +107,7 @@ pub fn smoother_overlap() {
         for cel_idx in 0..cell_count {
             if cel_energies_vec[cel_idx] != energy_level {
                 panic!("Energy level mismatch: expected: {}, found: {}",
-                    cel_energies_vec[cel_idx], energy_level);
+                    energy_level, cel_energies_vec[cel_idx]);
             }
         }
     }

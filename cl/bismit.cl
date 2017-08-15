@@ -806,7 +806,7 @@ __kernel void den_cycle_tft(
 //
 // Adds cell energy to the dendrite state(s). This is important to do before
 // inhibition.
-__kernel void sst_cycle(
+__kernel void ssc_cycle(
         __global uchar* const energies,
         __global uchar* const cel_states)
 {
@@ -845,7 +845,7 @@ __kernel void sst_cycle(
 
 
 // SST_LTP_SIMPLE(): Long term potentiation for Spiny Stellate Cells - Completely unoptimized
-__kernel void sst_ltp_simple(
+__kernel void ssc_ltp_simple(
             __global uchar const* const axn_states,
             __global uchar const* const syn_states,
             __private uint const cel_axn_idz,
@@ -878,7 +878,7 @@ __kernel void sst_ltp_simple(
 // SST_LTP(): Long term potentiation for Spiny Stellate Cells
 // <<<<< TODO: ADD AN ADDITIONAL DIMENSION [0] FOR SLC_ID TO SUPPORT MULTIPLE SLICE SST LAYERS >>>>>
 // <<<<< NOTE: THIS KERNEL MAY BE FLAWED WHEN USED WITH MULTIPLE TUFTS - SEE PYR_LTP >>>>>
-__kernel void sst_ltp(
+__kernel void ssc_ltp(
             __global uchar const* const axn_states,
             __global uchar const* const syn_states,
             __private uint const cel_lyr_axn_idz,
@@ -938,7 +938,7 @@ __kernel void mcol_activate_pyrs(
             __global uchar const* const pyr_states,
             // __global uchar const* const den_states,
             // __global uchar const* const cel_tft_best_den_ids, // ADD ME?
-            __private uint const ssts_axn_idz,         // Primary spatial associative cell layer (ssts)
+            __private uint const sscs_axn_idz,         // Primary spatial associative cell layer (sscs)
             __private uint const pyrs_axn_idz,          // Primary temporal associative cell layer (pyrs)
             // __private uchar const pyr_axn_slc_base,
             // __private uchar const dens_per_tft_l2,
@@ -968,7 +968,7 @@ __kernel void mcol_activate_pyrs(
     uchar const best_den_state = pyr_best_den_states_raw[cel_idx];
 
     uchar const mcol_best_col_den_state = mcol_best_den_states[col_id];
-    uchar const psa_cel_axn_state = axn_states[ssts_axn_idz + col_id];
+    uchar const psa_cel_axn_state = axn_states[sscs_axn_idz + col_id];
     //uchar const mcol_state = mcol_states[col_id];
     uchar const mcol_flag_set = mcol_flag_sets[col_id];
     uchar const pyr_state = pyr_states[cel_idx];
@@ -1419,7 +1419,7 @@ __kernel void mcol_output(
             __global uchar const* const pyr_states,
             // __global uchar const* const cel_tft_best_den_states,
             // __private uint const tfts_per_cel,
-            __private uint const sst_axn_idz,
+            __private uint const ssc_axn_idz,
             __private uchar const pyr_depth,
             __private uchar const aff_out_axn_slc,
             __global uchar* const mcol_flag_sets,
@@ -1442,7 +1442,7 @@ __kernel void mcol_output(
     //uint const col_id = mad24(slc_id_lyr, slc_columns, col_id);
 
     // Primary spatial associative cell axon index (column spatial input, i.e. layer 4 spiny stellates)
-    uint const psa_cel_axn_idx = sst_axn_idz + col_id;
+    uint const psa_cel_axn_idx = ssc_axn_idz + col_id;
 
     int const psa_cel_axn_state = axn_states[psa_cel_axn_idx];
     uchar mcol_den_state_max = 0;

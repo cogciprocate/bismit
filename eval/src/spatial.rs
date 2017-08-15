@@ -248,6 +248,7 @@ impl Trials {
     /// with it's past counterpart where the closeness is the normalized (0.0
     /// - 1.0) difference of activity counts between the floor (0) and the max
     /// (the number of cycles per pattern).
+    #[allow(dead_code)]
     pub fn all_past_consistencies(&self) -> Vec<Vec<f32>> {
         let mut trial_consistencies = Vec::with_capacity(self.trials.len());
         // Compare each trial to all prior trials:
@@ -615,15 +616,15 @@ pub fn eval() {
 
     // Layer 4 spatial dendrite activity ratings (pre-inhib):
     let l4_spt_den_actvs = cortex.areas().by_key(PRI_AREA).unwrap()
-        .psal_TEMP().dens().activities().clone();
+        .ssc_layer(SPT_LYR).unwrap().dens().activities().clone();
 
     // Layer 4 spatial cell activity ratings (axon activity, post-inhib):
     let l4_spt_cel_actvs = cortex.areas().by_key(PRI_AREA).unwrap()
-        .psal_TEMP().activities().clone();
+        .ssc_layer(SPT_LYR).unwrap().activities().clone();
 
     // Layer 4 spatial cell energies (restlessness):
     let l4_spt_cel_enrgs = cortex.areas().by_key(PRI_AREA).unwrap()
-        .psal_TEMP().energies().clone();
+        .ssc_layer(SPT_LYR).unwrap().energies().clone();
 
     let in_tract_idx = cortex.thal().tract().index_of(v0_ext_lyr_addr).unwrap();
     let in_tract_buffer = cortex.thal().tract().buffer(in_tract_idx).unwrap().clone();

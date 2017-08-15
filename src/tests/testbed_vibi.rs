@@ -140,7 +140,7 @@ pub fn define_area_sl() -> AreaSchemeList {
 #[allow(unused_variables)]
 pub fn disable_stuff(_: &mut Cortex) {
     // for (_, area) in &mut cortex.areas {
-    //     // area.psal_mut().dens_mut().syns_mut().set_offs_to_zero_temp();
+    //     // area.psal_mut().unwrap().dens_mut().syns_mut().set_offs_to_zero_temp();
     //     // area.bypass_inhib = true;
     //     // area.bypass_filters = true;
     //     // area.disable_pyrs = true;
