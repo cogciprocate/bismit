@@ -61,7 +61,7 @@ impl Minicolumns {
         // let aff_out_axn_slc = area_map.aff_out_slcs()[0];
         let mcol_axn_slc_id = mcol_axn_slc_range.start;
         let mcol_lyr_axn_idz = area_map.axn_idz(mcol_axn_slc_id);
-        let pyr_lyr_axn_idz = area_map.axn_idz(pyrs.base_axn_slc());
+        let pyr_lyr_axn_idz = area_map.axn_idz(temporal_pyrs.base_axn_slc());
 
         // let pyr_depth = area_map.ptal_layer().depth();
 
@@ -74,22 +74,22 @@ impl Minicolumns {
 
 
 
-        assert!(dims.v_size() == pyrs.dims().v_size() && dims.u_size() == pyrs.dims().u_size());
+        assert!(dims.v_size() == temporal_pyrs.dims().v_size() && dims.u_size() == temporal_pyrs.dims().u_size());
 
         // Activation kernel:
         let activate_kern_name = "mcol_activate_pyrs";
         let kern_activate = ocl_pq.create_kernel(activate_kern_name)
             .expect("Minicolumns::new()")
-            .gws(SpatialDims::Three(pyrs.dims().depth() as usize, dims.v_size() as usize,
+            .gws(SpatialDims::Three(temporal_pyrs.dims().depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
-            .arg_buf(pyrs.best_den_states_raw())
-            .arg_buf(pyrs.states())
+            .arg_buf(temporal_pyrs.best_den_states_raw())
+            .arg_buf(temporal_pyrs.states())
             .arg_scl(ff_layer_axn_idz as u32)
             .arg_scl(pyr_lyr_axn_idz)
-            // .arg_scl(pyrs.cell_scheme().dens_per_tft_l2)
-            .arg_buf(pyrs.flag_sets())
+            // .arg_scl(temporal_pyrs.cell_scheme().dens_per_tft_l2)
+            .arg_buf(temporal_pyrs.flag_sets())
             // .arg_buf_named::<i32>("aux_ints_0", None)
             // .arg_buf_named::<i32>("aux_ints_1", None)
             .arg_buf(axons.states());
@@ -98,17 +98,17 @@ impl Minicolumns {
         let activate_cmd_srcs = vec![
             CorticalBuffer::control_soma_lyr(&flag_sets, layer_addr),
             CorticalBuffer::control_soma_lyr(&best_den_states, layer_addr),
-            CorticalBuffer::data_soma_lyr(&pyrs.best_den_states_raw(), pyrs.layer_addr()),
-            CorticalBuffer::data_soma_lyr(&pyrs.states(), pyrs.layer_addr()),
+            CorticalBuffer::data_soma_lyr(&temporal_pyrs.best_den_states_raw(), temporal_pyrs.layer_addr()),
+            CorticalBuffer::data_soma_lyr(&temporal_pyrs.states(), temporal_pyrs.layer_addr()),
             CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), sst_axn_slc_id),
         ];
 
-        let mut activate_cmd_tars = pyrs.axn_slc_ids().iter()
+        let mut activate_cmd_tars = temporal_pyrs.axn_slc_ids().iter()
             .map(|&pyr_slc_id| CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(),
                 pyr_slc_id))
             .collect::<Vec<_>>();
 
-        activate_cmd_tars.push(CorticalBuffer::data_soma_lyr(&pyrs.flag_sets(), pyrs.layer_addr()));
+        activate_cmd_tars.push(CorticalBuffer::data_soma_lyr(&temporal_pyrs.flag_sets(), temporal_pyrs.layer_addr()));
 
         // let activate_exe_cmd_idx = if !settings.disable_learning && !settings.disable_mcols {
         // let activate_exe_cmd_idx = if !settings.disable_learning {
@@ -185,12 +185,12 @@ impl Minicolumns {
         Ok(())
     }
 
-    // pub fn set_exe_order_output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-    //     if let Some(cmd_idx) = self.output_exe_cmd_idx {
-    //         exe_graph.order_next(cmd_idx)?;
-    //     }
-    //     Ok(())
-    // }
+    pub fn set_exe_order_output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        if let Some(cmd_idx) = self.output_exe_cmd_idx {
+            exe_graph.order_next(cmd_idx)?;
+        }
+        Ok(())
+    }
 
     // <<<<< TODO: DEPRICATE >>>>>
     pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
@@ -222,16 +222,16 @@ impl Minicolumns {
         Ok(())
     }
 
-    // pub fn output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-    //     if let Some(cmd_idx) = self.output_exe_cmd_idx {
-    //         if PRINT_DEBUG { printlnc!(lime: "Mcols: Outputting (cmd_idx: [{}])...", cmd_idx); }
-    //         let mut event = Event::empty();
-    //         self.kern_output.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?;
-    //         exe_graph.set_cmd_event(cmd_idx, Some(event)).unwrap();
-    //         if PRINT_DEBUG { printlnc!(lime: "Mcols: Output complete."); }
-    //     }
-    //     Ok(())
-    // }
+    pub fn output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        if let Some(cmd_idx) = self.output_exe_cmd_idx {
+            if PRINT_DEBUG { printlnc!(lime: "Mcols: Outputting (cmd_idx: [{}])...", cmd_idx); }
+            let mut event = Event::empty();
+            self.kern_output.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?;
+            exe_graph.set_cmd_event(cmd_idx, Some(event)).unwrap();
+            if PRINT_DEBUG { printlnc!(lime: "Mcols: Output complete."); }
+        }
+        Ok(())
+    }
 
 
     // pub fn confab(&mut self) {

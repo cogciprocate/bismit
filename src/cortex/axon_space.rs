@@ -323,7 +323,8 @@ impl AxonSpace {
             .queue(write_queue.clone())
             .flags(MemFlags::new().read_write().alloc_host_ptr())
             .dims(area_map.slice_map())
-            .fill_val(0);
+            .fill_val(0)
+            .build()?;
 
         /*=============================================================================
         =================================== FILTERS ===================================

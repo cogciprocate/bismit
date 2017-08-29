@@ -6,6 +6,7 @@ use std::ops::Range;
 use std::borrow::Borrow;
 use futures::{Sink, Stream, Future};
 use futures::future::BoxFuture;
+
 use futures::sync::mpsc::{self, Sender};
 use tokio_core::reactor::{Core, Remote};
 use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue};
@@ -15,7 +16,7 @@ use cmn::{self, CmnError, CmnResult, CorticalDims};
 use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind,
     ExecutionGraph, CellClass, LayerTags, LayerAddress};
 use ::Thalamus;
-use cortex::{AxonSpace, Minicolumns, InhibitoryInterneuronNetwork, PyramidalLayer,
+use cortex::{AxonSpace, /*Minicolumns,*/ InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
@@ -105,6 +106,13 @@ impl Layer {
         match *self {
             Layer::SpinyStellateLayer(_) => false,
             Layer::PyramidalLayer(_) => true,
+        }
+    }
+
+    fn as_pyr_lyr(&self) -> CmnResult<&PyramidalLayer> {
+        match *self {
+            Layer::SpinyStellateLayer(_) => Err("not a pyramidal layer".into()),
+            Layer::PyramidalLayer(ref lyr) => Ok(lyr),
         }
     }
 }
@@ -267,7 +275,7 @@ pub struct CorticalArea {
     dims: CorticalDims,
     area_map: AreaMap,
     axns: AxonSpace,
-    mcols: Box<Minicolumns>,
+    // mcols: Box<Minicolumns>,
     // iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
     ptal_name: Option<&'static str>,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
     psal_name: Option<&'static str>,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
@@ -388,7 +396,7 @@ impl CorticalArea {
         ================================ CELLS & AXONS ================================
         =============================================================================*/
 
-        let mut mcols = None;
+        // let mut mcols = None;
         let mut data_layers = Layers::new();
         let mut control_layers: BTreeMap<usize, Box<ControlCellLayer>> = BTreeMap::new();
         let axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
@@ -479,40 +487,41 @@ impl CorticalArea {
             }
         }
 
-        for layer in area_map.layer_map().iter() {
-            match layer.kind() {
-                &LayerKind::Cellular(ref cell_scheme) => {
-                    println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
-                        cell_scheme.control_cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
+        // for layer in area_map.layer_map().iter() {
+        //     match layer.kind() {
+        //         &LayerKind::Cellular(ref cell_scheme) => {
+        //             println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
+        //                 cell_scheme.control_cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
 
-                    match cell_scheme.control_cell_kind() {
-                        Some(&ControlCellKind::Complex) => {
-                            let mcols_dims = dims.clone_with_depth(1);
+        //             match cell_scheme.control_cell_kind() {
+        //                 Some(&ControlCellKind::Complex) => {
+        //                     let mcols_dims = dims.clone_with_depth(1);
 
-                            mcols = Some(Box::new({
-                                let sscs = data_layers.ssc_by_name(psal_name.unwrap())?;
-                                // let pyrs = data_layers.pyr_by_name(ptal_name.unwrap())?;
-                                // let mut sscs = Vec::with_capacity(8);
-                                let mut temporal_pyrs: Vec<_> = data_layers.lyrs.iter()
-                                    .filter(|lyr| lyr.tags().contains(map::TEMPORAL) && lyr.is_pyramidal())
-                                    .collect();
+        //                     mcols = Some(Box::new({
+        //                         let sscs = data_layers.ssc_by_name(psal_name.unwrap())?;
+        //                         // let pyrs = data_layers.pyr_by_name(ptal_name.unwrap())?;
+        //                         // let mut sscs = Vec::with_capacity(8);
+        //                         let mut temporal_pyrs: Vec<_> = data_layers.lyrs.iter()
+        //                             .filter(|lyr| lyr.tags().contains(map::TEMPORAL) && lyr.is_pyramidal())
+        //                             .map(|lyr| lyr.as_pyr_lyr().unwrap())
+        //                             .collect();
 
-                                let layer_id = layer.layer_id();
-                                debug_assert!(area_map.aff_out_slcs().len() > 0, "CorticalArea::new(): \
-                                    No afferent output slices found for area: '{}'", area_name);
-                                Minicolumns::new(layer_id, mcols_dims, &area_map, &axns, sscs,
-                                    temporal_pyrs,
-                                    &ocl_pq, settings.clone(), &mut exe_graph)?
-                            }));
-                        },
-                        _ => (),
-                    }
-                },
-                _ => (),
-            }
-        }
+        //                         let layer_id = layer.layer_id();
+        //                         debug_assert!(area_map.aff_out_slcs().len() > 0, "CorticalArea::new(): \
+        //                             No afferent output slices found for area: '{}'", area_name);
+        //                         Minicolumns::new(layer_id, mcols_dims, &area_map, &axns, sscs,
+        //                             temporal_pyrs,
+        //                             &ocl_pq, settings.clone(), &mut exe_graph)?
+        //                     }));
+        //                 },
+        //                 _ => (),
+        //             }
+        //         },
+        //         _ => (),
+        //     }
+        // }
 
-        let mut mcols = mcols.expect("CorticalArea::new(): No Minicolumn layer found!");
+        // let mut mcols = mcols.expect("CorticalArea::new(): No Minicolumn layer found!");
 
         /*=============================================================================
         ===================================== AUX =====================================
@@ -588,10 +597,10 @@ impl CorticalArea {
             lyr.set_exe_order_learn(&mut exe_graph)?;
         }
 
-        // (5.) MCOLSs Activate:
-        if !settings.disable_mcols {
-            mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
-        }
+        // // (5.) MCOLSs Activate:
+        // if !settings.disable_mcols {
+        //     mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
+        // }
 
         // (6.) Pyramidal Layers Learn & Cycle:
         if !settings.disable_pyrs {
@@ -603,10 +612,10 @@ impl CorticalArea {
             }
         }
 
-        // (7.) MCOLs Output:
-        if !settings.disable_mcols {
-            mcols.as_mut().set_exe_order_output(&mut exe_graph)?;
-        }
+        // // (7.) MCOLs Output:
+        // if !settings.disable_mcols {
+        //     mcols.as_mut().set_exe_order_output(&mut exe_graph)?;
+        // }
 
         // (9.) Axon Output:
         axns.set_exe_order_output(&mut exe_graph)?;
@@ -641,7 +650,7 @@ impl CorticalArea {
             ptal_idx: ptal_idx,
             psal_idx: psal_idx,
             axns: axns,
-            mcols: mcols,
+            // mcols: mcols,
             data_layers,
             control_layers,
             aux: aux,
@@ -689,10 +698,10 @@ impl CorticalArea {
             }
         }
 
-        // (5.) MCOLSs Activate:
-        if !self.settings.disable_mcols {
-            self.mcols.activate(&mut self.exe_graph)?;
-        }
+        // // (5.) MCOLSs Activate:
+        // if !self.settings.disable_mcols {
+        //     self.mcols.activate(&mut self.exe_graph)?;
+        // }
 
         // (6.) Pyramidal Layers Learn & Cycle:
         if !self.settings.disable_pyrs {
@@ -707,10 +716,10 @@ impl CorticalArea {
             }
         }
 
-        // (7.) MCOLs Output:
-        if !self.settings.disable_mcols {
-            self.mcols.output(&mut self.exe_graph)?;
-        }
+        // // (7.) MCOLs Output:
+        // if !self.settings.disable_mcols {
+        //     self.mcols.output(&mut self.exe_graph)?;
+        // }
 
         // (8.) Regrow:
         if !self.settings.disable_regrowth {
@@ -750,12 +759,12 @@ impl CorticalArea {
         self.exe_graph.finish().unwrap();
     }
 
-    /// [FIXME]: Currnently assuming aff out slice is == 1. Ascertain the
-    /// slice range correctly by consulting area_map.layer_map().
-    pub fn sample_aff_out(&self, buf: &mut [u8]) -> Event {
-        let aff_out_slc = self.mcols.axn_slc_id();
-        self.sample_axn_slc_range(aff_out_slc..(aff_out_slc + 1), buf)
-    }
+    // /// [FIXME]: Currnently assuming aff out slice is == 1. Ascertain the
+    // /// slice range correctly by consulting area_map.layer_map().
+    // pub fn sample_aff_out(&self, buf: &mut [u8]) -> Event {
+    //     let aff_out_slc = self.mcols.axn_slc_id();
+    //     self.sample_axn_slc_range(aff_out_slc..(aff_out_slc + 1), buf)
+    // }
 
     pub fn sample_axn_slc_range<R: Borrow<Range<u8>>>(&self, slc_range: R, buf: &mut [u8])
                 -> Event {
@@ -817,8 +826,8 @@ impl CorticalArea {
         self.data_layers.pyr_by_name_mut(layer_name)
     }
 
-    #[inline] pub fn mcols(&self) -> &Box<Minicolumns> { &self.mcols }
-    #[inline] pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> { &mut self.mcols }
+    // #[inline] pub fn mcols(&self) -> &Box<Minicolumns> { &self.mcols }
+    // #[inline] pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> { &mut self.mcols }
     #[inline] pub fn axns(&self) -> &AxonSpace { &self.axns }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn psal_name(&self) -> Option<&'static str> { self.psal_name }
