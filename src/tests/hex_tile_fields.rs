@@ -22,9 +22,9 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
                 AxonTopology::Spatial
             )
-            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-                CellScheme::minicolumn("iv", "iii", 9999)
-            )
+            // .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+            //     CellScheme::minicolumn("iv", "iii", 9999)
+            // )
             .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
                 CellScheme::spiny_stellate(&[("aff_in", 8, 1)], 7, 400)
             )

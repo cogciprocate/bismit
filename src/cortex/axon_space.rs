@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Range;
 use futures::Sink;
-use futures::future::{Future, BoxFuture};
+use futures::future::{Future, /*BoxFuture*/};
 use futures::sync::mpsc::Sender;
 use ocl::{ProQue, Buffer, Event, EventList, Queue, MemFlags};
 use ocl::traits::MemLen;
@@ -494,7 +494,7 @@ impl AxonSpace {
     // * TODO: Store thal tract index instead of using (LayerAddress) key.
     //
     pub fn intake(&mut self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph,
-            bypass_filters: bool, work_tx: &Sender<BoxFuture<(), ()>>) -> CmnResult<()>
+            bypass_filters: bool, work_tx: &Sender<Box<Future<Item=(), Error=()> + Send>>) -> CmnResult<()>
     {
         if let Some((io_lyrs, mut _new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {
             for io_lyr in io_lyrs.iter_mut() {
@@ -539,7 +539,7 @@ impl AxonSpace {
                             future_map.set_unmap_wait_list(exe_graph.get_req_events(cmd_idx)?);
                             let ev = future_map.create_unmap_target_event()?.clone();
 
-                            let future_write = future_reader.join(future_map)
+                            let future_write = Box::new(future_reader.join(future_map)
                                 .and_then(|(reader, mut map)| {
                                     debug_assert_eq!(reader.len(), map.len());
                                     let len = map.len();
@@ -553,8 +553,7 @@ impl AxonSpace {
 
                                     Ok(())
                                 })
-                                .map_err(|err| panic!("{}", err))
-                                .boxed();
+                                .map_err(|err| panic!("{}", err)));
 
                             // future_write.wait().unwrap();
                             // ev.clone().wait_for()?;
@@ -579,7 +578,7 @@ impl AxonSpace {
     // * TODO: Store thal tract index instead of using (LayerAddress) key.
     //
     pub fn output(&self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph,
-            work_tx: &Sender<BoxFuture<(), ()>>)
+            work_tx: &Sender<Box<Future<Item=(), Error=()> + Send>>)
             -> CmnResult<()>
     {
         if let Some((io_lyrs, _wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
@@ -593,7 +592,7 @@ impl AxonSpace {
 
                         let mut ev = Event::empty();
 
-                        let future_read = self.states.read(future_writer)
+                        let future_read = Box::new(self.states.read(future_writer)
                             .queue(&self.read_queue)
                             .offset(io_lyr.axn_range().start as usize)
                             .len(io_lyr.axn_range().len())
@@ -601,8 +600,7 @@ impl AxonSpace {
                             .enew(&mut ev)
                             .enq_async()?
                             .and_then(|_guard| Ok(()))
-                            .map_err(|err| panic!("{}", err))
-                            .boxed();
+                            .map_err(|err| panic!("{}", err)));
 
                         work_tx.clone().send(future_read).wait()?;
                         Some(ev)

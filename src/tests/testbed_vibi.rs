@@ -40,9 +40,11 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
                 AxonDomain::input(&[(InputTrack::Afferent, GlyphSequences::img_lyr_tags())]),
                 AxonTopology::Spatial
             )
-            .input_layer("unused", map::UNUSED_TESTING, AxonDomain::Local, AxonTopology::Spatial)
-            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-                CellScheme::minicolumn("iv", "iii", 9999))
+            .input_layer("unused", map::UNUSED, AxonDomain::Local, AxonTopology::Spatial)
+            // .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+            //     CellScheme::minicolumn("iv", "iii", 9999))
+            .layer("out", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+                LayerKind::Axonal(AxonTopology::Spatial))
             .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
 
             // .layer("iv", 1, map::PSAL, AxonDomain::Local,

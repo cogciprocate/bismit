@@ -25,7 +25,7 @@ fn cycle_random_pyrs() {
     area.axns().states().default_queue().unwrap().finish().unwrap();
 
     // Set source slice to an unused slice for all synapses:
-    let unused_slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(map::UNUSED_TESTING);
+    let unused_slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(map::UNUSED);
     assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
     let zeroed_slc_id = unused_slc_ranges[0].start;
     let unused_slc_id = unused_slc_ranges[1].start;
@@ -198,7 +198,7 @@ fn cycle_random_dens() {
 
     // SET SOURCE SLICE TO UNUSED SLICE FOR EVERY SYNAPSE:
     let zeroed_slc_range = area.area_map().layer_map()
-        .layers_containing_tags_slc_range(map::UNUSED_TESTING)[0].clone();
+        .layers_containing_tags_slc_range(map::UNUSED)[0].clone();
     let zeroed_slc_id = zeroed_slc_range.start;
 
     area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().src_slc_ids().default_queue().unwrap().finish().unwrap();

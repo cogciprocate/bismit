@@ -28,20 +28,32 @@ pub fn axn_idxs(testbed: &TestBed) {
     let syn_range = (0 - syn_reach, syn_reach + 1);
 
     let vec_init = ocl::util::shuffled_vec(syn_range, testbed.dims.to_len());
-    let u_offs = Buffer::new(testbed.ocl_pq.queue().clone(), Some(ocl::flags::MEM_READ_WRITE |
-        ocl::flags::MEM_COPY_HOST_PTR), testbed.dims.clone(), Some(&vec_init), None::<(_, Option<()>)>).unwrap();
+    let u_offs = Buffer::builder()
+        .queue(testbed.ocl_pq.queue().clone())
+        .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
+        .dims(testbed.dims.clone())
+        .host_data(&vec_init)
+        .build().unwrap();
 
     let vec_init = ocl::util::shuffled_vec(syn_range, testbed.dims.to_len());
-    let v_offs = Buffer::new(testbed.ocl_pq.queue().clone(), Some(ocl::flags::MEM_READ_WRITE |
-        ocl::flags::MEM_COPY_HOST_PTR), testbed.dims.clone(), Some(&vec_init), None::<(_, Option<()>)>).unwrap();
+    let v_offs = Buffer::builder()
+        .queue(testbed.ocl_pq.queue().clone())
+        .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
+        .dims(testbed.dims.clone())
+        .host_data(&vec_init)
+        .build().unwrap();
 
     // let mut outs_sc = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
     // let mut outs_v4 = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
 
-    let outs_sc = Buffer::<u32>::new(testbed.ocl_pq.queue().clone(), None,
-        testbed.dims.clone(), None, None::<(_, Option<()>)>).unwrap();
-    let outs_v4 = Buffer::<u32>::new(testbed.ocl_pq.queue().clone(), None,
-        testbed.dims.clone(), None, None::<(_, Option<()>)>).unwrap();
+    let outs_sc = Buffer::<u32>::builder()
+        .queue(testbed.ocl_pq.queue().clone())
+        .dims(testbed.dims.clone())
+        .build().unwrap();
+    let outs_v4 = Buffer::<u32>::builder()
+        .queue(testbed.ocl_pq.queue().clone())
+        .dims(testbed.dims.clone())
+        .build().unwrap();
 
     let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl").expect("[FIXME]: HANDLE ME")
         .gws(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,

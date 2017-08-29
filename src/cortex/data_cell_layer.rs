@@ -99,12 +99,14 @@ pub mod tests {
             self.idx
         }
 
+        #[allow(dead_code)]
         pub fn col_id(&self) -> u32 {
             // Fake a slice id of 0 with a slice depth of 1 and ignore our actual depth and id:
             cmn::cel_idx_3d(1, 0, self.lyr_dims.v_size(), self.v_id,
                 self.lyr_dims.u_size(), self.u_id)
         }
 
+        #[allow(dead_code)]
         pub fn cel_axn_idx(&self, area_map: &AreaMap) -> u32 {
             area_map.axn_idx(self.axn_slc_id, self.v_id, 0, self.u_id, 0).unwrap()
         }
