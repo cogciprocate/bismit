@@ -20,7 +20,7 @@ pub use self::slice_tract_map::SliceTractMap;
 pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
 	LayerScheme, FilterScheme, EncoderScheme, TuftSourceLayer, TuftScheme};
 pub use self::layer_tags::{LayerTags, DEFAULT, PRIMARY, SPATIAL, TEMPORAL, FOCUS, MOTOR,
-    UNUSED_TESTING, PSAL, PTAL, PML, PFL};
+    UNUSED, PSAL, PTAL, PML, PFL};
 
 
 /////// FIXME: IMPORT MANUALLY:

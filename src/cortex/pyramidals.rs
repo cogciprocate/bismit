@@ -65,12 +65,12 @@ impl PyramidalLayer {
         let cel_count = dims.to_len();
         let celtft_count = cel_count * tft_count;
 
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, Some((0, None::<()>))).unwrap();
-        let best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, Some((0, None::<()>))).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [cel_count], None, Some((0, None::<()>))).unwrap();
-        let tft_best_den_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
-        let tft_best_den_states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
-        let tft_best_den_states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [celtft_count], None, Some((0, None::<()>))).unwrap();
+        let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([cel_count]).fill_val(0).build()?;
+        let best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([cel_count]).fill_val(0).build()?;
+        let flag_sets = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([cel_count]).fill_val(0).build()?;
+        let tft_best_den_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([celtft_count]).fill_val(0).build()?;
+        let tft_best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([celtft_count]).fill_val(0).build()?;
+        let tft_best_den_states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([celtft_count]).fill_val(0).build()?;
         let energies = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims.cells()).fill_val(0).build()?;
         let activities = Buffer::builder().queue(ocl_pq.queue().clone()).dims(dims.cells()).fill_val(0).build()?;
 
@@ -285,7 +285,7 @@ impl PyramidalLayer {
         })
     }
 
-    pub fn set_exe_order_cycle(&self, _control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
+    pub fn set_exe_order(&self, _control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         if !self.settings.disable_pyrs {

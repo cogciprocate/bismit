@@ -31,8 +31,12 @@ impl SensoryFilter {
             exe_graph: &mut ExecutionGraph,
         ) -> CmnResult<SensoryFilter>
     {
-        let input_buffer = Buffer::<u8>::new(write_queue.clone(),
-            Some(flags::MEM_HOST_WRITE_ONLY | flags::MEM_READ_ONLY), dims, None, Some((0, None::<()>))).unwrap();
+        let input_buffer = Buffer::<u8>::builder()
+            .queue(write_queue.clone())
+            .flags(flags::MEM_HOST_WRITE_ONLY | flags::MEM_READ_ONLY)
+            .dims(dims)
+            .fill_val(0)
+            .build()?;
 
         let kern_name = filter_name.clone();
         let cycle_kernel = ocl_pq.create_kernel(&kern_name)?

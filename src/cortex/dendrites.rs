@@ -69,9 +69,9 @@ impl Dendrites {
             // println!("");
         }
 
-        let states_raw = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
-        let thresholds = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [den_count_ttl], None, Some((0, None::<()>))).unwrap();
+        let states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([den_count_ttl]).fill_val(0).build()?;
+        let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([den_count_ttl]).fill_val(0).build()?;
+        let thresholds = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([den_count_ttl]).fill_val(0).build()?;
         let energies = Buffer::builder().queue(ocl_pq.queue().clone()).dims(den_count_ttl).fill_val(0).build()?;
         let activities = Buffer::builder().queue(ocl_pq.queue().clone()).dims(den_count_ttl).fill_val(0).build()?;
         // energies.cmd().fill(255, None).enq().unwrap();

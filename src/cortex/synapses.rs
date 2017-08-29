@@ -185,12 +185,12 @@ impl Synapses {
         =============================================================================*/
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-        let states = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
-        let strengths = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
-        let src_slc_ids = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
-        let src_col_v_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
-        let src_col_u_offs = Buffer::<i8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
-        let flag_sets = Buffer::<u8>::new(ocl_pq.queue().clone(), None, [syn_count_ttl], None, Some((0, None::<()>))).unwrap();
+        let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
+        let strengths = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
+        let src_slc_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
+        let src_col_v_offs = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
+        let src_col_u_offs = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
+        let flag_sets = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
 
         debug_assert!(strengths.len() == src_slc_ids.len() &&
             strengths.len() == src_col_v_offs.len() &&

@@ -161,14 +161,14 @@ impl CellScheme {
         }.validate())
     }
 
-    pub fn minicolumn(psal_lyr: &'static str, ptal_lyr: &'static str, exe_order: usize) -> LayerKind {
-        let tft_scheme = TuftScheme::new(DendriteClass::Basal, DendriteKind::Other, 0, 0,
-            vec![TuftSourceLayer::new(psal_lyr.to_owned(), 0, 1),
-            TuftSourceLayer::new(ptal_lyr.to_owned(), 0, 1)], None).and_tft_id(0);
+    pub fn minicolumn(exe_order: usize) -> LayerKind {
+        // let tft_scheme = TuftScheme::new(DendriteClass::Basal, DendriteKind::Other, 0, 0,
+        //     vec![TuftSourceLayer::new(psal_lyr.to_owned(), 0, 1),
+        //     TuftSourceLayer::new(ptal_lyr.to_owned(), 0, 1)], None).and_tft_id(0);
 
         LayerKind::Cellular(CellScheme {
             cell_class: CellClass::Control { kind: ControlCellKind::Complex, exe_order, },
-            tft_schemes: vec![tft_scheme],
+            tft_schemes: Vec::new(),
         }.validate())
     }
 

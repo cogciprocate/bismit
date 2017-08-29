@@ -316,9 +316,14 @@ impl AxonSpace {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
             area_map.slice_map().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
 
-        let states = Buffer::<u8>::new(write_queue.clone(),
-            Some(MemFlags::new().read_write().alloc_host_ptr()),
-            area_map.slice_map(), None, Some((0, None::<()>))).unwrap();
+        // let states = Buffer::<u8>::new(write_queue.clone(),
+        //     Some(MemFlags::new().read_write().alloc_host_ptr()),
+        //     area_map.slice_map(), None, Some((0, None::<()>))).unwrap();
+        let states = Buffer::<u8>::builder()
+            .queue(write_queue.clone())
+            .flags(MemFlags::new().read_write().alloc_host_ptr())
+            .dims(area_map.slice_map())
+            .fill_val(0);
 
         /*=============================================================================
         =================================== FILTERS ===================================

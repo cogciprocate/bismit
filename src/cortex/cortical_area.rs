@@ -53,12 +53,21 @@ impl Layer {
         }
     }
 
+    fn set_exe_order(&mut self, control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
+            exe_graph: &mut ExecutionGraph) -> CmnResult<()>
+    {
+        match *self {
+            Layer::SpinyStellateLayer(ref mut _lyr) => Err("".into()),
+            Layer::PyramidalLayer(ref mut lyr) => lyr.set_exe_order(control_layers, exe_graph),
+        }
+    }
+
     fn set_exe_order_cycle(&mut self, control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         match *self {
             Layer::SpinyStellateLayer(ref mut lyr) => lyr.set_exe_order_cycle(control_layers, exe_graph),
-            Layer::PyramidalLayer(ref mut lyr) => lyr.set_exe_order_cycle(control_layers, exe_graph),
+            Layer::PyramidalLayer(ref mut _lyr) => Err("".into()),
         }
     }
 
@@ -89,6 +98,13 @@ impl Layer {
         match *self {
             Layer::SpinyStellateLayer(ref mut lyr) => lyr.regrow(),
             Layer::PyramidalLayer(ref mut lyr) => lyr.regrow(),
+        }
+    }
+
+    fn is_pyramidal(&self) -> bool {
+        match *self {
+            Layer::SpinyStellateLayer(_) => false,
+            Layer::PyramidalLayer(_) => true,
         }
     }
 }
@@ -475,11 +491,17 @@ impl CorticalArea {
 
                             mcols = Some(Box::new({
                                 let sscs = data_layers.ssc_by_name(psal_name.unwrap())?;
-                                let pyrs = data_layers.pyr_by_name(ptal_name.unwrap())?;
+                                // let pyrs = data_layers.pyr_by_name(ptal_name.unwrap())?;
+                                // let mut sscs = Vec::with_capacity(8);
+                                let mut temporal_pyrs: Vec<_> = data_layers.lyrs.iter()
+                                    .filter(|lyr| lyr.tags().contains(map::TEMPORAL) && lyr.is_pyramidal())
+                                    .collect();
+
                                 let layer_id = layer.layer_id();
                                 debug_assert!(area_map.aff_out_slcs().len() > 0, "CorticalArea::new(): \
                                     No afferent output slices found for area: '{}'", area_name);
-                                Minicolumns::new(layer_id, mcols_dims, &area_map, &axns, sscs, pyrs,
+                                Minicolumns::new(layer_id, mcols_dims, &area_map, &axns, sscs,
+                                    temporal_pyrs,
                                     &ocl_pq, settings.clone(), &mut exe_graph)?
                             }));
                         },
@@ -576,7 +598,7 @@ impl CorticalArea {
             for &lyr_idx in cycle_order.iter() {
                 let lyr = data_layers.lyrs.get_mut(lyr_idx).unwrap();
                 if !lyr.tags().contains(map::SPATIAL) {
-                    lyr.set_exe_order_cycle(&control_layers, &mut exe_graph)?;
+                    lyr.set_exe_order(&control_layers, &mut exe_graph)?;
                 }
             }
         }
@@ -825,8 +847,6 @@ impl Drop for CorticalArea {
 }
 
 
-const INT_32_MIN: i32 = -2147483648;
-
 pub struct Aux {
     pub ints_0: Buffer<i32>,
     pub ints_1: Buffer<i32>,
@@ -836,13 +856,17 @@ pub struct Aux {
 
 impl Aux {
     pub fn new(len: usize, ocl_pq: &ProQue) -> Aux {
-        // let int_32_min = INT_32_MIN;
-        let int_32_min = i32::min_value();
+        let ints_0 = Buffer::<i32>::builder()
+            .queue(ocl_pq.queue().clone())
+            .dims(len)
+            .fill_val(i32::min_value())
+            .build().unwrap();
 
-        let ints_0 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, len, None, Some((0, None::<()>))).unwrap();
-        ints_0.cmd().fill(int_32_min, None).enq().unwrap();
-        let ints_1 = Buffer::<i32>::new(ocl_pq.queue().clone(), None, len, None, Some((0, None::<()>))).unwrap();
-        ints_1.cmd().fill(int_32_min, None).enq().unwrap();
+        let ints_1 = Buffer::<i32>::builder()
+            .queue(ocl_pq.queue().clone())
+            .dims(len)
+            .fill_val(i32::min_value())
+            .build().unwrap();
 
         ocl_pq.queue().finish().unwrap();
 
