@@ -1,3 +1,4 @@
+
 /*
 
 # Open Questions
@@ -17,44 +18,84 @@ use futures::sync::mpsc::{self, Sender, Receiver};
 use ocl::{Buffer, RwVec, FutureReader, FutureWriter, OclPrm};
 
 
-
-struct TractInner<T> {
-    tract_buffer: RwVec<T>,
-    tract_range: Range<usize>,
+#[derive(Debug)]
+enum TractBufferKind<T: OclPrm> {
+    TractReader(FutureReader<T>),
+    TractWriter(FutureWriter<T>),
+    OclBufferReader(Buffer<T>),
+    OclBufferWriter(Buffer<T>),
+    Single(RwVec<T>),
+    Double,
+    Triple,
 }
 
 
+#[derive(Debug)]
+struct TractInner<T: OclPrm> {
+    buffer_kind: TractBufferKind<T>,
+    buffer_idx_range: Range<usize>,
+    backpressure: bool,
+}
 
-// (for now) the `Thalamus` end:
-pub struct TractSender<T> {
+
+#[derive(Debug)]
+struct TractSenderUntyped<T: OclPrm> {
     inner: Arc<TractInner<T>>,
     tx: Sender<()>,
 }
 
-
-// (for now) the external end:
-pub struct TractReceiver<T> {
+#[derive(Debug)]
+struct TractReceiverUntyped<T: OclPrm> {
     inner: Arc<TractInner<T>>,
     rx: Receiver<()>,
 }
 
 
-pub fn tract_channel<T>(tract_buffer: RwVec<T>, tract_range: Range<usize>)
-        -> (TractSender<T>, TractReceiver<T>)
+#[derive(Debug)]
+enum TractSenderKind {
+    I8(TractSenderUntyped<i8>),
+    U8(TractSenderUntyped<u8>),
+}
+
+#[derive(Debug)]
+enum TractReceiverKind {
+    I8(TractReceiverUntyped<i8>),
+    U8(TractReceiverUntyped<u8>),
+}
+
+
+#[derive(Debug)]
+pub struct TractSender(TractSenderKind);
+
+impl TractSender {
+
+}
+
+#[derive(Debug)]
+pub struct TractReceiver(TractReceiverKind);
+
+impl TractReceiver {
+
+}
+
+
+fn tract_channel<T: OclPrm>(buffer_kind: TractBufferKind<T>, buffer_idx_range: Range<usize>, backpressure: bool)
+        -> (TractSenderUntyped<T>, TractReceiverUntyped<T>)
 {
     let inner = Arc::new(TractInner {
-        tract_buffer,
-        tract_range,
+        buffer_kind,
+        buffer_idx_range,
+        backpressure,
     });
 
     let (tx, rx) = mpsc::channel(0);
 
-    let sender = TractSender {
+    let sender = TractSenderUntyped {
         inner: inner.clone(),
         tx,
     };
 
-    let receiver = TractReceiver {
+    let receiver = TractReceiverUntyped {
         inner: inner,
         rx,
     };
@@ -62,40 +103,54 @@ pub fn tract_channel<T>(tract_buffer: RwVec<T>, tract_range: Range<usize>)
     (sender, receiver)
 }
 
-
-
-
-
-enum Inner<T: OclPrm> {
-    TractReader(FutureReader<T>),
-    TractWriter(FutureWriter<T>),
-    BufferReader(Buffer<T>),
-    BufferWriter(Buffer<T>),
-    Single(RwVec<T>),
-    Double,
-    Triple,
+pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Range<usize>, backpressure: bool)
+        -> (TractSender, TractReceiver)
+{
+    let (tx, rx) = tract_channel(TractBufferKind::Single(buffer), buffer_idx_range, backpressure);
+    (TractSender(TractSenderKind::I8(tx)), TractReceiver(TractReceiverKind::I8(rx)))
 }
 
-// Alternative Names: IoChannel
-//
-//
-pub struct IoLink<T: OclPrm> {
-    inner: Inner<T>,
-    backpressure: bool,
+pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
+        -> (TractSender, TractReceiver)
+{
+    let (tx, rx) = tract_channel(TractBufferKind::Single(buffer), buffer_idx_range, backpressure);
+    (TractSender(TractSenderKind::U8(tx)), TractReceiver(TractReceiverKind::U8(rx)))
 }
 
-impl<T: OclPrm> IoLink<T> {
-    pub fn direct_reader(reader: FutureReader<T>, backpressure: bool) -> IoLink<T> {
-        IoLink {
-            inner: Inner::TractReader(reader),
-            backpressure
-        }
-    }
 
-    pub fn direct_writer(writer: FutureWriter<T>, backpressure: bool) -> IoLink<T> {
-        IoLink {
-            inner: Inner::TractWriter(writer),
-            backpressure
-        }
-    }
-}
+
+
+
+// enum Inner<T: OclPrm> {
+//     TractReader(FutureReader<T>),
+//     TractWriter(FutureWriter<T>),
+//     BufferReader(Buffer<T>),
+//     BufferWriter(Buffer<T>),
+//     Single(RwVec<T>),
+//     Double,
+//     Triple,
+// }
+
+// // Alternative Names: IoChannel
+// //
+// //
+// pub struct IoLink<T: OclPrm> {
+//     inner: Inner<T>,
+//     backpressure: bool,
+// }
+
+// impl<T: OclPrm> IoLink<T> {
+//     pub fn direct_reader(reader: FutureReader<T>, backpressure: bool) -> IoLink<T> {
+//         IoLink {
+//             inner: Inner::TractReader(reader),
+//             backpressure
+//         }
+//     }
+
+//     pub fn direct_writer(writer: FutureWriter<T>, backpressure: bool) -> IoLink<T> {
+//         IoLink {
+//             inner: Inner::TractWriter(writer),
+//             backpressure
+//         }
+//     }
+// }

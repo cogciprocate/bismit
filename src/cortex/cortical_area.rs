@@ -9,7 +9,7 @@ use futures::{Sink, Stream, Future};
 
 use futures::sync::mpsc::{self, Sender};
 use tokio_core::reactor::{Core, Remote};
-use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue};
+use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue, OclPrm};
 use ocl::core::CommandQueueProperties;
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use cmn::{self, CmnError, CmnResult, CorticalDims};
@@ -18,7 +18,7 @@ use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind
 use ::Thalamus;
 use cortex::{AxonSpace, /*Minicolumns,*/ InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother};
-use subcortex::{tract_channel, TractSender, TractReceiver};
+use subcortex::{self, TractSender, TractReceiver};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -304,6 +304,8 @@ pub struct CorticalArea {
     work_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
     // TODO: Move this to a centralized thread pool on thalamus or cortex.
     _work_thread: Option<JoinHandle<()>>,
+
+    samplers: Vec<Sampler>,
 }
 
 impl CorticalArea {
@@ -665,6 +667,7 @@ impl CorticalArea {
             exe_graph: exe_graph,
             work_tx: Some(tx),
             _work_thread: Some(thread),
+            samplers: Vec::with_capacity(8),
         };
 
         Ok(cortical_area)
@@ -770,13 +773,13 @@ impl CorticalArea {
 
 
 
-    /// Requests a cortical 'sample' which provides external read/write access
-    /// to cortical cells and axons.
-    pub fn sample(&mut self, kind: SampleKind) -> TractReceiver<u8> {
+    /// Requests a cortical 'sampler' which provides external read/write
+    /// access to cortical cells and axons.
+    pub fn sampler(&mut self, kind: SamplerKind, buffer_kind: SamplerBufferKind) -> TractReceiver {
         use ocl::RwVec;
 
         match kind {
-            SampleKind::AxonLayer(layer_id) => {
+            SamplerKind::AxonLayer(layer_id) => {
                 let slc_range = match layer_id {
                     Some(lyr_id) => {
                         self.area_map.layer_map().layer_info(lyr_id)
@@ -787,12 +790,28 @@ impl CorticalArea {
                     },
                     None => 0..self.area_map.slice_map().depth() as usize,
                 };
-
                 let axn_range = self.area_map.slice_map().axn_range(slc_range);
                 let tract_buffer = RwVec::from(vec![0u8; axn_range.len()]);
-                let (_tx, rx) = tract_channel(tract_buffer, axn_range);
+                let (tx, rx) = match buffer_kind {
+                    SamplerBufferKind::Single => subcortex::tract_channel_single_u8(
+                        tract_buffer, 0..axn_range.len(), false),
+                    _ => unimplemented!(),
+                };
+                let sampler = Sampler::new(kind.clone(), axn_range, tx);
+                self.samplers.push(sampler);
                 rx
+
             },
+            SamplerKind::Dummy => {
+                let axn_range = 0..1;
+                let tract_buffer = RwVec::from(vec![0i8; axn_range.len()]);
+                let (_tx, rx) = match buffer_kind {
+                    SamplerBufferKind::Single => subcortex::tract_channel_single_i8(
+                        tract_buffer, 0..axn_range.len(), true),
+                    _ => unimplemented!(),
+                };
+                rx
+            }
         }
     }
 
@@ -879,17 +898,39 @@ impl CorticalArea {
 }
 
 
-struct Sampler {
 
+
+#[derive(Debug)]
+struct Sampler {
+    kind: SamplerKind,
+    src_idx_range: Range<usize>,
+    tx: TractSender,
+}
+
+impl Sampler {
+    fn new(kind: SamplerKind, src_idx_range: Range<usize>, tx: TractSender) -> Sampler {
+        Sampler { kind, src_idx_range, tx }
+    }
 }
 
 
-pub enum SampleKind {
+#[derive(Debug, Clone)]
+pub enum SamplerKind {
     /// Axons for a specific layer.
     AxonLayer(Option<usize>),
     // /// All axons.
     // AxonSpace,
+    Dummy,
 }
+
+#[derive(Debug, Clone)]
+pub enum SamplerBufferKind {
+    None,
+    Single,
+    Double,
+    Triple,
+}
+
 
 
 
