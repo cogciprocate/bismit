@@ -18,6 +18,7 @@ use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind
 use ::Thalamus;
 use cortex::{AxonSpace, /*Minicolumns,*/ InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother};
+use subcortex::{tract_channel, TractSender, TractReceiver};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -287,7 +288,6 @@ pub struct CorticalArea {
     // motor_layers: Vec<PyramidalLayer>,
     // other_layers: Vec<Box<DataCellLayer>>,
     // control_layers: Vec<Box<ControlCellLayer>>,
-
     /// Primary neuron layers.
     data_layers: Layers,
     /// Interneuron layers.
@@ -302,6 +302,7 @@ pub struct CorticalArea {
     cycle_order: Vec<usize>,
     exe_graph: ExecutionGraph,
     work_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
+    // TODO: Move this to a centralized thread pool on thalamus or cortex.
     _work_thread: Option<JoinHandle<()>>,
 }
 
@@ -629,6 +630,7 @@ impl CorticalArea {
         let (tx, rx) = mpsc::channel(0);
         let thread_name = format!("CorticalArea_{}", area_name.clone());
 
+        // TODO: Move this to a centralized thread pool on thalamus or cortex.
         let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let rx = rx;
             let mut core = Core::new().unwrap();
@@ -759,21 +761,54 @@ impl CorticalArea {
         self.exe_graph.finish().unwrap();
     }
 
-    // /// [FIXME]: Currnently assuming aff out slice is == 1. Ascertain the
-    // /// slice range correctly by consulting area_map.layer_map().
-    // pub fn sample_aff_out(&self, buf: &mut [u8]) -> Event {
-    //     let aff_out_slc = self.mcols.axn_slc_id();
-    //     self.sample_axn_slc_range(aff_out_slc..(aff_out_slc + 1), buf)
-    // }
 
-    pub fn sample_axn_slc_range<R: Borrow<Range<u8>>>(&self, slc_range: R, buf: &mut [u8])
-                -> Event {
-        let slc_range = slc_range.borrow();
+    /// Cycles through sampling requests
+    fn cycle_samples() {
+
+    }
+
+
+
+
+    /// Requests a cortical 'sample' which provides external read/write access
+    /// to cortical cells and axons.
+    pub fn sample(&mut self, kind: SampleKind) -> TractReceiver<u8> {
+        use ocl::RwVec;
+
+        match kind {
+            SampleKind::AxonLayer(layer_id) => {
+                let slc_range = match layer_id {
+                    Some(lyr_id) => {
+                        self.area_map.layer_map().layer_info(lyr_id)
+                            .expect(&format!("CorticalArea::sample: Invalid layer: [id:{}].", lyr_id))
+                            .slc_range()
+                            .expect(&format!("CorticalArea::sample: Layer [id:{}] has no slices.", lyr_id))
+                            .clone()
+                    },
+                    None => 0..self.area_map.slice_map().depth() as usize,
+                };
+
+                let axn_range = self.area_map.slice_map().axn_range(slc_range);
+                let tract_buffer = RwVec::from(vec![0u8; axn_range.len()]);
+                let (_tx, rx) = tract_channel(tract_buffer, axn_range);
+                rx
+            },
+        }
+    }
+
+
+
+
+
+    pub fn sample_axn_slc_range(&self, slc_range: Range<usize>, buf: &mut [u8]) -> Event {
+        // let slc_range = slc_range.borrow();
         assert!(slc_range.len() > 0, "CorticalArea::sample_axn_slc_range(): \
             Invalid slice range: '{:?}'. Slice range length must be at least one.", slc_range);
-        let axn_range_start = self.area_map.slice_map().axn_range(slc_range.start).start;
-        let axn_range_end = self.area_map.slice_map().axn_range(slc_range.end - 1).end;
-        let axn_range = axn_range_start..axn_range_end;
+        // let axn_range_start = self.area_map.slice_map().axn_range(slc_range.start).start;
+        // let axn_range_end = self.area_map.slice_map().axn_range(slc_range.end - 1).end;
+        // let axn_range = axn_range_start..axn_range_end;
+
+        let axn_range = self.area_map.slice_map().axn_range(slc_range.clone());
 
         debug_assert!(buf.len() == axn_range.len(), "Sample buffer length ({}) not \
             equal to slice axon length({}). axn_range: {:?}, slc_range: {:?}",
@@ -842,6 +877,20 @@ impl CorticalArea {
     #[inline] pub fn aux(&self) -> &Aux { &self.aux }
     #[inline] pub fn exe_graph_mut(&mut self) -> &mut ExecutionGraph { &mut self.exe_graph }
 }
+
+
+struct Sampler {
+
+}
+
+
+pub enum SampleKind {
+    /// Axons for a specific layer.
+    AxonLayer(Option<usize>),
+    // /// All axons.
+    // AxonSpace,
+}
+
 
 
 impl Drop for CorticalArea {

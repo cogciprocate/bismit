@@ -19,9 +19,8 @@ authors = ["Nick Sanders <github.com/c0gent>"]
 # features = ["kernel_debug_print"]
 
 [dependencies]
-# ocl = "*"
-ocl = { version = "*", path = "../ocl" }
-# ocl = { path = "/home/nick/projects/ocl", version = "0.11" }
+ocl = "*"
+# ocl = { version = "*", path = "../ocl" }
 # ocl = { version = "*", git = "https://github.com/cogciprocate/ocl" }
 
 bitflags = "*"
@@ -40,13 +39,12 @@ tokio-core = "*"
 [workspace]
 members = ["eval"]
 
-
 # [dev-dependencies]
 
 [replace]
 # "qutex:0.1.1" = { git = "https://github.com/cogciprocate/qutex" }
-"qutex:0.1.1" = { path = "/home/nick/src/github.com/cogciprocate/qutex" }
-"cl-sys:0.3.0" = { git = 'https://github.com/cogciprocate/cl-sys' }
-"ocl-core:0.5.1" = { git = "https://github.com/cogciprocate/ocl-core" }
+# "qutex:0.1.1" = { path = "/home/nick/src/github.com/cogciprocate/qutex" }
+# "cl-sys:0.3.0" = { git = 'https://github.com/cogciprocate/cl-sys' }
+# "ocl-core:0.5.1" = { git = "https://github.com/cogciprocate/ocl-core" }
 # "ocl-core:0.3.2" = { path = "/home/nick/src/github.com/cogciprocate/ocl-core" }
 # "ocl-core:0.3.2" = { path = "../ocl-core" }

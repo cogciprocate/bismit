@@ -47,8 +47,8 @@ impl SliceTractMap {
         }
     }
 
-    pub fn slc_id_range(&self) -> Range<u8> {
-        0..self.tags.len() as u8
+    pub fn slc_id_range(&self) -> Range<usize> {
+        0..self.tags.len()
     }
 
     pub fn slc_dims(&self, slc_id: u8) -> (u32, u32) {
@@ -57,7 +57,7 @@ impl SliceTractMap {
     }
 
     // TODO: Make fancy with iterators.
-    pub fn axn_count(&self, slc_id_range: Range<u8>) -> usize {
+    pub fn axn_count(&self, slc_id_range: Range<usize>) -> usize {
         let mut count = 0;
 
         for i in slc_id_range.clone() {
@@ -67,7 +67,7 @@ impl SliceTractMap {
         count as usize
     }
 
-    pub fn axn_id_range(&self, slc_id_range: Range<u8>) -> Range<usize> {
+    pub fn axn_id_range(&self, slc_id_range: Range<usize>) -> Range<usize> {
         let start = slc_id_range.start as usize;
         let end = slc_id_range.end as usize;
         assert!(start < self.idzs.len());

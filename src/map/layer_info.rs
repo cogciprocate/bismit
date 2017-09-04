@@ -101,7 +101,9 @@ pub struct LayerInfo {
     name: &'static str,
     layer_tags: LayerTags,
     axon_domain: AxonDomain,
-    slc_range: Option<Range<u8>>,
+    // TODO: Change this to a tuple.
+    // slc_range: Option<Range<u8>>,
+    slc_range: Option<Range<usize>>,
     sources: Vec<SourceLayerInfo>,
     layer_map_kind: LayerMapKind,
     axn_topology: AxonTopology,
@@ -127,7 +129,7 @@ impl LayerInfo {
         let axn_topology = layer_scheme.axn_topology();
         let mut sources: Vec<SourceLayerInfo> = Vec::with_capacity(8);
 
-        let mut next_slc_idz = slc_total;
+        let mut next_slc_idz = slc_total as usize;
         let mut ttl_axn_count = 0;
 
         let mut irregular_layer_dims: Option<CorticalDims> = None;
@@ -206,7 +208,7 @@ impl LayerInfo {
                     ===============================================================================
                     =============================================================================*/
 
-                    let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth());
+                    let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth() as usize);
 
                     sources.push(SourceLayerInfo::new(src_lyr_addr, src_layer_dims.clone(),
                         src_layer.layer_tags(), src_layer_axn_topology, sig, masq_orig_axn_tags,
@@ -224,7 +226,7 @@ impl LayerInfo {
                     src_layer_debug.push(format!("{mt}{mt}{mt}{mt}<{}>: {:?}: area: [\"{}\"], tags: {}",
                         src_layer.name(), tar_slc_range, src_area_name, src_layer.layer_tags(), mt = cmn::MT));
 
-                    next_slc_idz += src_layer_dims.depth();
+                    next_slc_idz += src_layer_dims.depth() as usize;
                     ttl_axn_count += src_layer_dims.cells();
                 }
 
@@ -259,7 +261,7 @@ impl LayerInfo {
 
                 // If the depth is not set, default to 0;
                 let layer_depth = layer_scheme.depth().unwrap_or(0);
-                next_slc_idz += layer_depth;
+                next_slc_idz += layer_depth as usize;
                 ttl_axn_count += columns * layer_depth as u32;
             },
             /*=============================================================================
@@ -268,12 +270,12 @@ impl LayerInfo {
             AxonDomain::Local => {
                 let columns = area_sch.dims().columns();
                 let layer_depth = layer_scheme.depth().unwrap_or(0);
-                next_slc_idz += layer_depth;
+                next_slc_idz += layer_depth as usize;
                 ttl_axn_count += columns * layer_depth as u32;
             }
         }
 
-        let ttl_slc_range = slc_total..next_slc_idz;
+        let ttl_slc_range = (slc_total as usize)..next_slc_idz;
         let slc_range = if ttl_slc_range.len() > 0 { Some(ttl_slc_range) } else { None };
         sources.shrink_to_fit();
 
@@ -310,7 +312,7 @@ impl LayerInfo {
         }
     }
 
-    pub fn src_lyr_old(&self, area_id: usize, tar_slc_range: Range<u8>)
+    pub fn src_lyr_old(&self, area_id: usize, tar_slc_range: Range<usize>)
             -> Option<&SourceLayerInfo>
     {
         self.sources.iter().find(|sli| sli.area_id() == area_id &&
@@ -379,7 +381,8 @@ impl LayerInfo {
     #[inline] pub fn ttl_axn_count(&self) -> u32 { self.ttl_axn_count }
     #[inline] pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
     #[inline] pub fn layer_map_kind(&self) -> LayerMapKind { self.layer_map_kind.clone() }
-    #[inline] pub fn slc_range(&self) -> Option<&Range<u8>> { self.slc_range.as_ref() }
+    // #[inline] pub fn slc_range(&self) -> Option<&Range<u8>> { self.slc_range.as_ref() }
+    #[inline] pub fn slc_range(&self) -> Option<&Range<usize>> { self.slc_range.as_ref() }
 }
 
 impl fmt::Display for LayerInfo {
@@ -416,7 +419,7 @@ pub struct SourceLayerInfo {
     masq_orig_axn_tags: Option<AxonTags>,
     // src_slc_range: Range<u8>,
     // Absolute target slice range (not level-relative):
-    tar_slc_range: Range<u8>,
+    tar_slc_range: Range<usize>,
 }
 
 impl SourceLayerInfo {
@@ -424,7 +427,7 @@ impl SourceLayerInfo {
     pub fn new(src_lyr_addr: LayerAddress, src_layer_dims: CorticalDims, src_layer_tags: LayerTags,
             src_axn_topology: AxonTopology, input_sig: AxonSignature,
             masq_orig_axn_tags: Option<AxonTags>, /*src_slc_range: Range<u8>,*/
-            tar_slc_range: Range<u8>) -> SourceLayerInfo
+            tar_slc_range: Range<usize>) -> SourceLayerInfo
     {
         assert!(input_sig.is_input());
         assert!(tar_slc_range.len() == src_layer_dims.depth() as usize);
@@ -451,7 +454,7 @@ impl SourceLayerInfo {
     #[inline] pub fn axn_tags(&self) -> &AxonTags { &self.input_sig.tags() }
     #[inline] pub fn input_sig(&self) -> &AxonSignature { &self.input_sig }
     #[inline] pub fn masq_orig_axn_tags(&self) -> Option<&AxonTags> { self.masq_orig_axn_tags.as_ref() }
-    #[inline] pub fn tar_slc_range(&self) -> &Range<u8> { &self.tar_slc_range }
+    #[inline] pub fn tar_slc_range(&self) -> &Range<usize> { &self.tar_slc_range }
 }
 
 impl fmt::Debug for SourceLayerInfo {

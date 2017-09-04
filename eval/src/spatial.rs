@@ -496,6 +496,8 @@ fn print_activity_counts(buffers: &Buffers, activity_counts: &Vec<Vec<usize>>, _
     }
     // print!("\n");
 
+    // TODO: Change to: https://en.wikipedia.org/wiki/Coefficient_of_variation
+    // (or just Mean +/- SD)
     let stdev = (sq_diff_ttl / ttl_count).sqrt();
     println!("Standard deviation: {}", stdev);
 }
@@ -610,6 +612,7 @@ pub fn eval() {
         let v1_spt_lyr_addr = *pri_area_map.layer_map().layers().by_key(SPT_LYR)
             .expect("bad lyr").layer_addr();
         let v1_spt_lyr_axn_range = pri_area_map.lyr_axn_range(&v1_spt_lyr_addr, None).unwrap();
+        println!("######## v1_spt_lyr_axn_range: {:?}", v1_spt_lyr_axn_range);
         cortex.areas().by_key(PRI_AREA).unwrap().axns()
             .create_sub_buffer(&v1_spt_lyr_axn_range).unwrap()
     };
@@ -668,17 +671,27 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 AxonTopology::Spatial
                 // AxonTopology::Horizontal
             )
+
+            .layer("dummy_out", 1, map::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
+                LayerKind::Axonal(AxonTopology::Spatial)
+            )
+
             .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
+            // .layer(SPT_LYR, 1, map::PSAL, AxonDomain::output(&[map::THAL_SP]),
                 CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
             )
+
             .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib(SPT_LYR, 4, 0))
             .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth(SPT_LYR, 4, 1))
-            .layer("iii", 1, map::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
-            )
-            .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-                CellScheme::minicolumn(9999)
-            )
+
+            // // .layer("iii", 1, map::PTAL, AxonDomain::Local,
+            // .layer("iii", 1, map::PTAL, AxonDomain::output(&[AxonTag::unique()]),
+            //     CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
+            // )
+
+            // .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+            //     CellScheme::minicolumn(9999)
+            // )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
             .layer(EXT_LYR, 1, map::DEFAULT,

@@ -101,7 +101,7 @@ impl AreaMap {
 
             if let Some(slc_range) = li.slc_range() {
                 for i in slc_range.clone() {
-                    slc_ids.push(i);
+                    slc_ids.push(i as u8);
                 }
             }
         }
@@ -167,11 +167,11 @@ impl AreaMap {
 
     // NEW NEW NEW
     /// Returns the slice range of the afferent output axon slices (FF_OUT).
-    pub fn aff_out_slc_range(&self) -> Range<u8> {
+    pub fn aff_out_slc_range(&self) -> Range<usize> {
         let aff_out_slcs = self.aff_out_slcs();
         let idz = 0;
         let idn = aff_out_slcs.len() - 1;
-        aff_out_slcs[idz]..(aff_out_slcs[idn] + 1)
+        (aff_out_slcs[idz] as usize)..(aff_out_slcs[idn] as usize + 1)
     }
 
     // NEW
@@ -199,7 +199,7 @@ impl AreaMap {
     /// [DEPRICATED]
     ///
     pub fn axn_range_meshing_tags_either_way(&self, layer_tags: LayerTags,
-                src_lyr_sub_slcs: Option<(usize, Range<u8>)>) -> Option<Range<u32>>
+                src_lyr_sub_slcs: Option<(usize, Range<usize>)>) -> Option<Range<u32>>
     {
         let layers = self.layer_map.layers_meshing_tags_either_way(layer_tags);
 
@@ -212,8 +212,8 @@ impl AreaMap {
                     Some((area_id, slc_range)) => {
                         match layer.src_lyr_old(area_id, slc_range) {
                             Some(src_lyr) => {
-                                let src_base_slc_id = src_lyr.tar_slc_range().start;
-                                let src_lyr_idz = self.axn_idz(src_base_slc_id);
+                                let src_base_slc_id = src_lyr.tar_slc_range().start as u8;
+                                let src_lyr_idz = self.axn_idz(src_base_slc_id as u8);
                                 let src_lyr_len = src_lyr.axn_count();
 
                                 // * TODO: ADDME: self.verify_axn_range()
@@ -236,7 +236,7 @@ impl AreaMap {
                     },
                     // Entire Layer:
                     None => {
-                        let base_slc_id = lyr_slc_range.start;
+                        let base_slc_id = lyr_slc_range.start as u8;
                         let lyr_idz = self.axn_idz(base_slc_id);
 
                         let lyr_len = layer.ttl_axn_count();
@@ -282,7 +282,7 @@ impl AreaMap {
         if let Some(ref li) = self.layer_map.layer_info(lyr_addr.layer_id()) {
             if let Some(sl_addr) = src_lyr_addr {
                 if let Some(sli) = li.src_lyr(sl_addr) {
-                    let src_base_slc_id = sli.tar_slc_range().start;
+                    let src_base_slc_id = sli.tar_slc_range().start as u8;
                     let src_lyr_axn_idz = self.axn_idz(src_base_slc_id);
                     let src_lyr_axn_len = sli.axn_count();
                     let src_lyr_axn_range = src_lyr_axn_idz..(src_lyr_axn_idz + src_lyr_axn_len);
@@ -296,7 +296,7 @@ impl AreaMap {
                     None
                 }
             } else if let Some(lyr_slc_range) = li.slc_range() {
-                let base_slc_id = lyr_slc_range.start;
+                let base_slc_id = lyr_slc_range.start as u8;
                 let lyr_axn_idz = self.axn_idz(base_slc_id);
                 let lyr_axn_len = li.ttl_axn_count();
                 let lyr_axn_range = lyr_axn_idz..(lyr_axn_idz + lyr_axn_len);

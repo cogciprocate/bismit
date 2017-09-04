@@ -74,7 +74,6 @@ impl TractArea {
 
 }
 
-
 // A buffer for I/O between areas. Effectively analogous to the internal capsule.
 pub struct ThalamicTract {
     tract_areas: MapStore<LayerAddress, TractArea>,

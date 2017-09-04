@@ -148,7 +148,7 @@ impl LearningTestBed {
             // Set source slice to an unused slice for all synapses:
             let unused_slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(map::UNUSED);
             assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
-            let unused_slc_id = unused_slc_ranges[0].start;
+            let unused_slc_id = unused_slc_ranges[0].start as u8;
 
             area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
             area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().cmd().fill(unused_slc_id, None).enq().unwrap();
@@ -161,7 +161,7 @@ impl LearningTestBed {
             let prx_src_slc = area.ssc_layer(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().base_axn_slc();
 
             // Fake neighbor slice:
-            let fake_neighbor_slc = unused_slc_ranges[1].start;
+            let fake_neighbor_slc = unused_slc_ranges[1].start as u8;
 
             // DEBUG: Print slice map and synapse dims:
             println!("\nDEBUG INFO: \n{mt}{}, \n{mt}synapse dims: {:?}",
@@ -175,7 +175,7 @@ impl LearningTestBed {
                 .collect::<Vec<_>>();
 
             assert!(aff_out_slc_ranges.len() == 1);
-            let aff_out_slc = aff_out_slc_ranges[0].start;
+            let aff_out_slc = aff_out_slc_ranges[0].start as u8;
 
             // Get a random cell and a random synapse on that cell:
             let cel_coords = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().rand_cel_coords();

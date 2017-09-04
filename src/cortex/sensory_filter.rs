@@ -22,10 +22,10 @@ impl SensoryFilter {
             filter_chain_count: usize,
             filter_name: String,
             cl_file_name: Option<String>,
-            src_tract_info: Option<(usize, Range<u8>)>,
+            src_tract_info: Option<(usize, Range<usize>)>,
             dims: &CorticalDims,
             output_buffer: &Buffer<u8>,
-            output_slc_range: Range<u8>,
+            output_slc_range: Range<usize>,
             ocl_pq: &ProQue,
             write_queue: &Queue,
             exe_graph: &mut ExecutionGraph,
@@ -43,7 +43,7 @@ impl SensoryFilter {
             .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
             .lws(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(&input_buffer)
-            .arg_scl(output_slc_range.start)
+            .arg_scl(output_slc_range.start as u8)
             .arg_buf(output_buffer);
 
         let filter_is_first = filter_idx == 0;
@@ -54,7 +54,7 @@ impl SensoryFilter {
 
         let cycle_cmd_tars = if filter_is_last {
             output_slc_range
-                .map(|slc_id| CorticalBuffer::axon_slice(output_buffer, area_id, slc_id))
+                .map(|slc_id| CorticalBuffer::axon_slice(output_buffer, area_id, slc_id as u8))
                 .collect()
         } else {
             vec![CorticalBuffer::axon_input_filter(&output_buffer)]
@@ -69,7 +69,7 @@ impl SensoryFilter {
                 No source tract info found for first filter.");
 
             let write_cmd_srcs = src_slc_range
-                .map(|slc_id| ThalamicTract::axon_slice(src_area_id, slc_id))
+                .map(|slc_id| ThalamicTract::axon_slice(src_area_id, slc_id as u8))
                 .collect();
 
             Some(exe_graph.add_command(ExecutionCommand::thalamocortical_write(

@@ -27,8 +27,8 @@ fn cycle_random_pyrs() {
     // Set source slice to an unused slice for all synapses:
     let unused_slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(map::UNUSED);
     assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
-    let zeroed_slc_id = unused_slc_ranges[0].start;
-    let unused_slc_id = unused_slc_ranges[1].start;
+    let zeroed_slc_id = unused_slc_ranges[0].start as u8;
+    let unused_slc_id = unused_slc_ranges[1].start as u8;
 
     area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
     area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().cmd().fill(zeroed_slc_id, None).enq().unwrap();
@@ -199,7 +199,7 @@ fn cycle_random_dens() {
     // SET SOURCE SLICE TO UNUSED SLICE FOR EVERY SYNAPSE:
     let zeroed_slc_range = area.area_map().layer_map()
         .layers_containing_tags_slc_range(map::UNUSED)[0].clone();
-    let zeroed_slc_id = zeroed_slc_range.start;
+    let zeroed_slc_id = zeroed_slc_range.start as u8;
 
     area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().src_slc_ids().default_queue().unwrap().finish().unwrap();
     area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().src_slc_ids().cmd().fill(zeroed_slc_id, None).enq().unwrap();
@@ -255,7 +255,7 @@ fn cycle_random_dens() {
             .collect::<Vec<_>>();
 
         assert!(src_slc_ranges.len() == 1);
-        let src_slc_id = src_slc_ranges[0].start;
+        let src_slc_id = src_slc_ranges[0].start as u8;
 
         // GET THE AXON INDEX CORRESPONDING TO OUR CELL AND SOURCE SLICE:
         let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id,

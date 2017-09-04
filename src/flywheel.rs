@@ -59,7 +59,7 @@ pub enum MotorFrame {
 #[derive(Clone, Debug)]
 pub struct AreaInfo {
     pub name: String,
-    pub aff_out_slc_range: Range<u8>,
+    pub aff_out_slc_range: Range<usize>,
     pub tract_map: SliceTractMap,
 }
 
@@ -80,7 +80,7 @@ pub enum Request {
     CurrentIter,
     Status,
     AreaInfo,
-    Sample(Range<u8>, Arc<Mutex<Vec<u8>>>),
+    Sample(Range<usize>, Arc<Mutex<Vec<u8>>>),
     FinishQueues,
     // Input(Obs),
     // GetAction,
@@ -480,7 +480,7 @@ impl Flywheel {
         }
     }
 
-    fn refresh_buf(&self, slc_range: Range<u8>, buf: Arc<Mutex<Vec<u8>>>)
+    fn refresh_buf(&self, slc_range: Range<usize>, buf: Arc<Mutex<Vec<u8>>>)
                 -> Option<OclEvent> {
         // // DEBUG:
         // println!("Refreshing buffer...");

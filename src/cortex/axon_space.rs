@@ -34,7 +34,7 @@ impl IoExeCmd {
 
 
 /// Information needed to read from and write to the thalamus for a layer
-/// uniquely identified by `key`.
+/// uniquely identified by `src_lyr_addr`.
 ///
 #[derive(Debug)]
 pub struct IoInfo {
@@ -111,9 +111,9 @@ impl IoInfoGroup {
                 let mut srcs: Vec<CorticalBuffer> = Vec::with_capacity(lyr_slc_id_range.len());
                 let mut tars: Vec<ThalamicTract> = Vec::with_capacity(lyr_slc_id_range.len());
 
-                for slc_id in lyr_slc_id_range.start..lyr_slc_id_range.end {
-                    srcs.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id));
-                    tars.push(ThalamicTract::axon_slice(lyr_addr.area_id(), slc_id));
+                for slc_id in lyr_slc_id_range.clone() {
+                    srcs.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id as u8));
+                    tars.push(ThalamicTract::axon_slice(lyr_addr.area_id(), slc_id as u8));
                 }
 
                 let exe_cmd = ExecutionCommand::corticothalamic_read(srcs, tars);
@@ -153,7 +153,7 @@ impl IoInfoGroup {
                     let mut write_cmd_srcs: Vec<ThalamicTract> = Vec::with_capacity(src_lyr_slc_id_range.len());
 
                     for slc_id in src_lyr_slc_id_range.start..src_lyr_slc_id_range.end {
-                        write_cmd_srcs.push(ThalamicTract::axon_slice(src_lyr_addr.area_id(), slc_id));
+                        write_cmd_srcs.push(ThalamicTract::axon_slice(src_lyr_addr.area_id(), slc_id as u8));
                     }
 
                     // Get target layer absolute slice id range:
@@ -168,7 +168,7 @@ impl IoInfoGroup {
                     let mut write_cmd_tars: Vec<CorticalBuffer> = Vec::with_capacity(tar_lyr_slc_id_range.len());
 
                     for slc_id in tar_lyr_slc_id_range.start..tar_lyr_slc_id_range.end {
-                        write_cmd_tars.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id))
+                        write_cmd_tars.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id as u8))
                     }
 
                     let exe_cmd = ExecutionCommand::thalamocortical_write(write_cmd_srcs, write_cmd_tars);
@@ -355,7 +355,7 @@ impl AxonSpace {
                     } else {
                         debug_assert!(i > 0);
                         (layer_filters_rev[i - 1].input_buffer(),
-                            0..(src_lyr_info.tar_slc_range().len() as u8))
+                            0..(src_lyr_info.tar_slc_range().len()))
                     };
 
                     let filter_is_first = filter_idx == 0;
@@ -423,7 +423,7 @@ impl AxonSpace {
 
     /// Creates a sub buffer for a range of axon space.
     pub fn create_sub_buffer(&self, range: &Range<u32>) -> CmnResult<Buffer<u8>> {
-        assert!((range.end as usize) < self.states.len());
+        assert!((range.end as usize) <= self.states.len());
         self.states.create_sub_buffer(None, range.start as usize, range.len())
             .map_err(|err| CmnError::from(err))
     }
@@ -548,17 +548,9 @@ impl AxonSpace {
                                             map.as_mut_ptr(), len);
                                     }
 
-                                    // ////// DEBUG:
-                                    // println!(" (2.0-ReadComplete) ");
-
                                     Ok(())
                                 })
                                 .map_err(|err| panic!("{}", err)));
-
-                            // future_write.wait().unwrap();
-                            // ev.clone().wait_for()?;
-                            // // println!("Write event for exe_cmd {}: {}", cmd_idx, ev.is_complete()?);
-                            // assert!(ev.is_complete()?);
 
                             work_tx.clone().send(future_write).wait()?;
                             Some(ev)

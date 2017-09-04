@@ -12,6 +12,7 @@ mod dendrites;
 mod sensory_filter;
 mod data_cell_layer;
 mod control_cell_layer;
+mod cortical_sampler;
 
 pub use self::cortex::Cortex;
 pub use self::cortical_area::{CorticalArea, CorticalAreaSettings};

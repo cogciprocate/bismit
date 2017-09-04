@@ -103,7 +103,6 @@ impl LayerMap {
     pub fn slc_map(&self) -> BTreeMap<u8, &LayerInfo> {
         let mut slc_map = BTreeMap::new();
         let mut slc_id_count = 0;
-
         // if DEBUG_PRINT {
         //     println!("\n{mt}Creating Slice Map...", mt = cmn::MT);
         // }
@@ -114,14 +113,30 @@ impl LayerMap {
             //         layer.slc_range(), mt = cmn::MT);
             // }
 
-            if layer.slc_range().is_some() {
-                for slc_id in layer.slc_range().unwrap().clone() {
+            // if layer.slc_range().is_some() {
+            //     for slc_id in layer.slc_range().unwrap().clone() {
+            //         // if DEBUG_PRINT {
+            //         //     println!("{mt}{mt}{mt}Processing slice: '{}'", slc_id, mt = cmn::MT);
+            //         // }
+            //         debug_assert_eq!(slc_id_count, slc_id);
+
+            //         if slc_map.insert(slc_id, layer).is_some() {
+            //             panic!("LayerMap::slc_map(): Duplicate slices found in LayerMap: \
+            //                 layer: '{}', slc_id: '{}'.", layer.name(), slc_id);
+            //         }
+
+            //         slc_id_count = slc_id + 1;
+            //     }
+            // }
+
+            if let Some(slc_range) = layer.slc_range() {
+                for slc_id in slc_range.clone() {
                     // if DEBUG_PRINT {
                     //     println!("{mt}{mt}{mt}Processing slice: '{}'", slc_id, mt = cmn::MT);
                     // }
                     debug_assert_eq!(slc_id_count, slc_id);
 
-                    if slc_map.insert(slc_id, layer).is_some() {
+                    if slc_map.insert(slc_id as u8, layer).is_some() {
                         panic!("LayerMap::slc_map(): Duplicate slices found in LayerMap: \
                             layer: '{}', slc_id: '{}'.", layer.name(), slc_id);
                     }
@@ -152,7 +167,7 @@ impl LayerMap {
     }
 
     /// Returns the slice ranges associated with matching layers.
-    pub fn layers_containing_tags_slc_range(&self, layer_tags: LayerTags) -> Vec<Range<u8>> {
+    pub fn layers_containing_tags_slc_range(&self, layer_tags: LayerTags) -> Vec<Range<usize>> {
         self.layers_containing_tags(layer_tags).iter()
             .filter(|l| l.slc_range().is_some())
             .map(|l| l.slc_range().unwrap().clone())
@@ -286,8 +301,8 @@ impl LayerMap {
         for lyr in layer_info {
             if lyr.depth() > 0 {
                 for src_lyr in lyr.sources() {
-                    if slc_id >= src_lyr.tar_slc_range().start
-                        && slc_id < src_lyr.tar_slc_range().end
+                    if (slc_id as usize) >= src_lyr.tar_slc_range().start
+                        && (slc_id as usize) < src_lyr.tar_slc_range().end
                     {
                         src_layer_info.push(src_lyr);
                     }

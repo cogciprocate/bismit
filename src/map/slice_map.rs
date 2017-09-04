@@ -70,8 +70,8 @@ impl SliceMap {
                 for layer_source in layer_sources {
                     // Only add a slice to the final slice map if current
                     // slc_id is within the source layer's target slice range
-                    if slc_id >= layer_source.tar_slc_range().start
-                        && slc_id < layer_source.tar_slc_range().end
+                    if (slc_id as usize) >= layer_source.tar_slc_range().start
+                        && (slc_id as usize) < layer_source.tar_slc_range().end
                     {
                         debug_assert!(slc_id == slc_id_ttl);
                         // debug_assert_eq!(layer.axn_kind(), layer_source.axn_kind());
@@ -194,17 +194,33 @@ impl SliceMap {
         self.v_sizes[slc_id as usize] * self.u_sizes[slc_id as usize]
     }
 
+    // /// Returns the (exclusive) range for axons in the range of slices
+    // /// starting with `slc_id_first` and ending with and including
+    // /// `slc_id_last`.
+    // #[inline]
+    // pub fn axn_range(&self, slc_id_first: u8, slc_id_last: u8) -> Range<usize> {
+    //     let idz_first = self.idz(slc_id_first) as usize;
+    //     let idz_last = self.idz(slc_id_last) as usize;
+    //     idz_first..(idz_last + self.slc_axn_count(slc_id_last) as usize)
+    // }
+
+    /// Returns the (exclusive) range for axons within an (exclusive) range of
+    /// slices.
     #[inline]
-    pub fn axn_range(&self, slc_id: u8) -> Range<usize> {
-        let idz = self.idz(slc_id) as usize;
-        idz..(idz + self.slc_axn_count(slc_id) as usize)
+    pub fn axn_range(&self, slc_id_range: Range<usize>) -> Range<usize> {
+        assert!(slc_id_range.end <= 255);
+        let slc_id_first = slc_id_range.start as u8;
+        let slc_id_last = (slc_id_range.end - 1) as u8;
+        let idz_first = self.idz(slc_id_first) as usize;
+        let idz_last = self.idz(slc_id_last) as usize;
+        idz_first..(idz_last + self.slc_axn_count(slc_id_last) as usize)
     }
 
     #[inline]
-    pub fn tract_map_range(&self, slc_range: Range<usize>) -> SliceTractMap {
-        assert!(slc_range.end <= 255);
-        SliceTractMap::new(&self.layer_names[slc_range.clone()], &self.v_sizes[slc_range.clone()],
-            &self.u_sizes[slc_range.clone()])
+    pub fn tract_map_range(&self, slc_id_range: Range<usize>) -> SliceTractMap {
+        assert!(slc_id_range.end <= 255);
+        SliceTractMap::new(&self.layer_names[slc_id_range.clone()], &self.v_sizes[slc_id_range.clone()],
+            &self.u_sizes[slc_id_range.clone()])
     }
 
     #[inline]
