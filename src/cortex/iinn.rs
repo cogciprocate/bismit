@@ -1,9 +1,8 @@
 // use std::fmt::Debug;
 use rand::Rng;
 use cmn::{self, /*CorticalDims,*/ CmnResult};
-use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
+use map::{AreaMap, LayerAddress, ExecutionGraph, CommandRelations, CorticalBuffer, CellScheme, CommandUid};
 use ocl::{Kernel, ProQue, SpatialDims, /*Buffer,*/ Event};
-use map::CellScheme;
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 // // FIXME[DONE]: Should be set by the currently unused `field_radius` `CellScheme` param.
@@ -18,6 +17,7 @@ pub struct InhibitoryInterneuronNetwork {
     // dims: CorticalDims,
     kern_inhib_simple: Kernel,
     kern_inhib_passthrough: Kernel,
+    exe_cmd_uid: CommandUid,
     exe_cmd_idx: usize,
     // rng: rand::XorShiftRng,
     rng: cmn::XorShiftRng,
@@ -77,7 +77,7 @@ impl InhibitoryInterneuronNetwork {
             .map(|slc_id| CorticalBuffer::axon_slice(&axns.states(), area_map.area_id(), slc_id))
             .collect();
 
-        let exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+        let exe_cmd_uid = exe_graph.add_command(CommandRelations::cortical_kernel(
              "inhib_...", exe_cmd_srcs, exe_cmd_tars))?;
 
 
@@ -89,14 +89,15 @@ impl InhibitoryInterneuronNetwork {
             // dims: dims,
             kern_inhib_simple: kern_inhib_simple,
             kern_inhib_passthrough: kern_inhib_passthrough,
-            exe_cmd_idx: exe_cmd_idx,
+            exe_cmd_uid,
+            exe_cmd_idx: 0,
             rng: cmn::weak_rng(),
             settings: settings,
         })
     }
 
     pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        exe_graph.order_next(self.exe_cmd_idx)?;
+        exe_graph.order_command(self.exe_cmd_uid)?;
         Ok(())
     }
 
@@ -129,11 +130,11 @@ impl InhibitoryInterneuronNetwork {
 }
 
 impl ControlCellLayer for InhibitoryInterneuronNetwork {
-    fn set_exe_order_pre(&self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+    fn set_exe_order_pre(&mut self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         Ok(())
     }
 
-    fn set_exe_order_post(&self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+    fn set_exe_order_post(&mut self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         self.set_exe_order(exe_graph)
     }
 

@@ -68,7 +68,7 @@ use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use map::{AreaMap, SynSrcSlices, SynSrcIdxCache, SynSrc, LayerAddress};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
-use map::{CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand, CorticalBuffer};
+use map::{CellScheme, DendriteKind, ExecutionGraph, CommandRelations, CorticalBuffer, CommandUid};
 use cortex::AxonSpace;
 
 #[cfg(test)]
@@ -124,6 +124,7 @@ pub struct Synapses {
     syn_counts_by_tft: Vec<u32>,
     tft_dims_by_tft: Vec<TuftDims>,
 
+    exe_cmd_uids: Vec<CommandUid>,
     exe_cmd_idxs: Vec<usize>,
     bypass_exe_graph: bool,
 }
@@ -144,7 +145,8 @@ impl Synapses {
         let mut syn_idzs_by_tft = Vec::with_capacity(tft_count);
         let mut syn_counts_by_tft = Vec::with_capacity(tft_count);
         let mut tft_dims_by_tft = Vec::with_capacity(tft_count);
-        let mut exe_cmd_idxs = Vec::with_capacity(tft_count);
+        let mut exe_cmd_uids = Vec::with_capacity(tft_count);
+        let exe_cmd_idxs = Vec::with_capacity(tft_count);
         let mut syn_count_ttl = 0u32;
 
         debug_assert!(cell_scheme.tft_schemes().len() == tft_count);
@@ -245,7 +247,7 @@ impl Synapses {
             cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_slc_ids, layer_addr, tft_id));
 
             if !bypass_exe_graph {
-                exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                exe_cmd_uids.push(exe_graph.add_command(CommandRelations::cortical_kernel(
                     kern_name, cmd_srcs, vec![CorticalBuffer::data_syn_tft(&states, layer_addr, tft_id)]
                 ))?);
             }
@@ -285,7 +287,8 @@ impl Synapses {
             syn_counts_by_tft: syn_counts_by_tft,
             syn_idzs_by_tft: syn_idzs_by_tft,
             tft_dims_by_tft: tft_dims_by_tft,
-            exe_cmd_idxs: exe_cmd_idxs,
+            exe_cmd_uids,
+            exe_cmd_idxs,
             bypass_exe_graph,
         };
 
@@ -294,11 +297,12 @@ impl Synapses {
         Ok(syns)
     }
 
-    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn set_exe_order(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if !self.bypass_exe_graph {
-            for &cmd_idx in self.exe_cmd_idxs.iter() {
-                if PRINT_DEBUG { println!("##### Ordering synapse cmd_idx: {}", cmd_idx); }
-                exe_graph.order_next(cmd_idx)?;
+            self.exe_cmd_idxs.clear();
+            for &cmd_uid in self.exe_cmd_uids.iter() {
+                if PRINT_DEBUG { println!("##### Ordering synapse: {}", cmd_uid); }
+                self.exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
             }
         }
         Ok(())

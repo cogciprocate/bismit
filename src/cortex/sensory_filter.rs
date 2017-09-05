@@ -1,8 +1,8 @@
 use std::ops::Range;
 use ocl::{flags, Kernel, ProQue, SpatialDims, Buffer, Event, Queue, FutureReader};
 use cmn::{CmnError, CmnResult, CorticalDims};
-use map::{ExecutionGraph, ExecutionCommand, CorticalBuffer,
-    ThalamicTract};
+use map::{ExecutionGraph, CommandRelations, CorticalBuffer,
+    ThalamicTract, CommandUid};
 // use tract_terminal::{SliceBufferSource, OclBufferTarget};
 
 pub struct SensoryFilter {
@@ -11,7 +11,9 @@ pub struct SensoryFilter {
     cl_file_name: Option<String>,
     input_buffer: Buffer<u8>,
     cycle_kernel: Kernel,
+    exe_cmd_uid_cycle: CommandUid,
     exe_cmd_idx_cycle: usize,
+    exe_cmd_uid_write: Option<CommandUid>,
     exe_cmd_idx_write: Option<usize>,
 }
 
@@ -60,11 +62,11 @@ impl SensoryFilter {
             vec![CorticalBuffer::axon_input_filter(&output_buffer)]
         };
 
-        let exe_cmd_idx_cycle = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+        let exe_cmd_uid_cycle = exe_graph.add_command(CommandRelations::cortical_kernel(
             kern_name, cycle_cmd_srcs, cycle_cmd_tars))?;
 
         // Write execution command:
-        let exe_cmd_idx_write = if filter_is_first {
+        let exe_cmd_uid_write = if filter_is_first {
             let (src_area_id, src_slc_range) = src_tract_info.expect("SensoryFilter::new: \
                 No source tract info found for first filter.");
 
@@ -72,7 +74,7 @@ impl SensoryFilter {
                 .map(|slc_id| ThalamicTract::axon_slice(src_area_id, slc_id as u8))
                 .collect();
 
-            Some(exe_graph.add_command(ExecutionCommand::thalamocortical_write(
+            Some(exe_graph.add_command(CommandRelations::thalamocortical_write(
                 write_cmd_srcs,
                 vec![CorticalBuffer::axon_input_filter(&input_buffer)],
             ))?)
@@ -86,18 +88,29 @@ impl SensoryFilter {
             cl_file_name: cl_file_name,
             input_buffer: input_buffer,
             cycle_kernel: cycle_kernel,
-            exe_cmd_idx_cycle: exe_cmd_idx_cycle,
-            exe_cmd_idx_write: exe_cmd_idx_write,
+            exe_cmd_uid_cycle,
+            exe_cmd_idx_cycle: 0,
+            exe_cmd_uid_write,
+            exe_cmd_idx_write: None,
         })
     }
 
-    pub fn set_exe_order_cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<usize> {
-        Ok(exe_graph.order_next(self.exe_cmd_idx_cycle)?)
+    pub fn set_exe_order_cycle(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<usize> {
+        self.exe_cmd_idx_cycle = exe_graph.order_command(self.exe_cmd_uid_cycle)?;
+        Ok(self.exe_cmd_idx_cycle)
     }
 
-    pub fn set_exe_order_write(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<usize> {
-        Ok(exe_graph.order_next(self.exe_cmd_idx_write.ok_or(CmnError::new(
-            "SensoryFilter::set_exe_order_write: Write command not created for this filter."))?)?)
+    pub fn set_exe_order_write(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<usize> {
+        // Ok(exe_graph.order_command(self.exe_cmd_idx_write.ok_or())?)?)
+        match self.exe_cmd_uid_write {
+            Some(cmd_uid) => {
+                let cmd_idx = exe_graph.order_command(cmd_uid)?;
+                self.exe_cmd_idx_write = Some(cmd_idx);
+                Ok(cmd_idx)
+            }
+            None => Err(CmnError::new("SensoryFilter::set_exe_order_write: Write command not \
+                created for this filter.")),
+        }
     }
 
     // pub fn write(&self, source: SliceBufferSource, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {

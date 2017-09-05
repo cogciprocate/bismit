@@ -180,14 +180,14 @@ impl Minicolumns {
 
     pub fn set_exe_order_activate(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if let Some(cmd_idx) = self.activate_exe_cmd_idx {
-            exe_graph.order_next(cmd_idx)?;
+            exe_graph.order_command(cmd_idx)?;
         }
         Ok(())
     }
 
     pub fn set_exe_order_output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if let Some(cmd_idx) = self.output_exe_cmd_idx {
-            exe_graph.order_next(cmd_idx)?;
+            exe_graph.order_command(cmd_idx)?;
         }
         Ok(())
     }

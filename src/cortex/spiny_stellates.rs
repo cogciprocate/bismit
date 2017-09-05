@@ -5,8 +5,8 @@ use rand::Rng;
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, Buffer, Event, SpatialDims};
-use map::{CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
-    CorticalBuffer, LayerAddress, LayerTags};
+use map::{CellScheme, DendriteKind, ExecutionGraph, CommandRelations,
+    CorticalBuffer, LayerAddress, LayerTags, CommandUid};
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayer};
 
 
@@ -31,7 +31,9 @@ pub struct SpinyStellateLayer {
     activities: Buffer<u8>,
     pub dens: Dendrites,
     rng: cmn::XorShiftRng,
+    cycle_exe_cmd_uid: Option<CommandUid>,
     cycle_exe_cmd_idx: Option<usize>,
+    ltp_exe_cmd_uid: Option<CommandUid>,
     ltp_exe_cmd_idx: Option<usize>,
     settings: CorticalAreaSettings,
     control_lyr_idxs: Vec<usize>,
@@ -85,10 +87,10 @@ impl SpinyStellateLayer {
         // // cycle_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, ssc_tft_id));
         // cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&energies, layer_addr, ssc_tft_id));
 
-        let cycle_exe_cmd_idx = if settings.disable_sscs {
+        let cycle_exe_cmd_uid = if settings.disable_sscs {
             None
         } else {
-            Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(kern_name,
+            Some(exe_graph.add_command(CommandRelations::cortical_kernel(kern_name,
                 vec![CorticalBuffer::data_soma_tft(&energies, layer_addr, ssc_tft_id)],
                 vec![CorticalBuffer::data_den_tft(dens.states(), layer_addr, ssc_tft_id)]) )?)
         };
@@ -133,10 +135,10 @@ impl SpinyStellateLayer {
 
         ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, ssc_tft_id));
 
-        let ltp_exe_cmd_idx = if settings.disable_sscs | settings.disable_learning {
+        let ltp_exe_cmd_uid = if settings.disable_sscs | settings.disable_learning {
             None
         } else {
-            Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(kern_name, ltp_cmd_srcs,
+            Some(exe_graph.add_command(CommandRelations::cortical_kernel(kern_name, ltp_cmd_srcs,
                 vec![CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, ssc_tft_id)]))?)
         };
 
@@ -160,50 +162,54 @@ impl SpinyStellateLayer {
             activities,
             rng: cmn::weak_rng(),
             dens: dens,
-            cycle_exe_cmd_idx: cycle_exe_cmd_idx,
-            ltp_exe_cmd_idx: ltp_exe_cmd_idx,
+            cycle_exe_cmd_uid,
+            cycle_exe_cmd_idx: None,
+            ltp_exe_cmd_uid,
+            ltp_exe_cmd_idx: None,
             settings,
             control_lyr_idxs: Vec::with_capacity(4),
         })
     }
 
-    pub fn set_exe_order_cycle(&mut self, control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
+    pub fn set_exe_order_cycle(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         // Determine which control layers apply to this layer and add to list:
-        for (&cl_idx, cl) in control_layers.iter() {
-            if cl.host_layer_addr() == self.layer_addr {
-                self.control_lyr_idxs.push(cl_idx);
+        if self.control_lyr_idxs.is_empty() {
+            for (&cl_idx, cl) in control_layers.iter() {
+                if cl.host_layer_addr() == self.layer_addr {
+                    self.control_lyr_idxs.push(cl_idx);
+                }
             }
         }
 
         if !self.settings.disable_sscs {
             // Control layers pre-cycle:
-            for lyr in self.control_lyr_idxs.iter().map(|idx| &control_layers[idx]) {
-                lyr.set_exe_order_pre(exe_graph, self.layer_addr)?;
+            for cl_idx in self.control_lyr_idxs.iter() {
+                control_layers.get_mut(cl_idx).unwrap().set_exe_order_pre(exe_graph, self.layer_addr)?;
             }
 
             // Dendrites:
             self.dens.set_exe_order(exe_graph)?;
 
             // Soma:
-            if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
-                exe_graph.order_next(cycle_cmd_idx)?;
+            if let Some(cycle_cmd_uid) = self.cycle_exe_cmd_uid {
+                self.cycle_exe_cmd_idx = Some(exe_graph.order_command(cycle_cmd_uid)?);
             }
 
             // Control layers post-cycle:
-            for lyr in self.control_lyr_idxs.iter().map(|idx| &control_layers[idx]) {
-                lyr.set_exe_order_post(exe_graph, self.layer_addr)?;
+            for cl_idx in self.control_lyr_idxs.iter() {
+                control_layers.get_mut(cl_idx).unwrap().set_exe_order_post(exe_graph, self.layer_addr)?;
             }
         }
 
         Ok(())
     }
 
-    pub fn set_exe_order_learn(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn set_exe_order_learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if !self.settings.disable_sscs & !self.settings.disable_learning {
-            if let Some(cmd_idx) = self.ltp_exe_cmd_idx {
-                exe_graph.order_next(cmd_idx)?;
+            if let Some(cmd_uid) = self.ltp_exe_cmd_uid {
+                self.ltp_exe_cmd_idx = Some(exe_graph.order_command(cmd_uid)?);
             }
         }
         Ok(())

@@ -14,9 +14,8 @@
     //
 
 use cmn::{CmnResult};
-use map::{AreaMap, LayerAddress, ExecutionGraph, ExecutionCommand, CorticalBuffer};
+use map::{AreaMap, LayerAddress, ExecutionGraph, CommandRelations, CorticalBuffer, CellScheme, CommandUid};
 use ocl::{Kernel, ProQue, SpatialDims, Buffer, Event, MemFlags};
-use map::CellScheme;
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
 
@@ -69,6 +68,7 @@ pub struct ActivitySmoother {
     centers_u: Buffer<i32>,
     kern: Kernel,
     // kern_inhib_passthrough: Kernel,
+    exe_cmd_uid: CommandUid,
     exe_cmd_idx: usize,
     settings: CorticalAreaSettings,
     cycle_count: usize,
@@ -119,7 +119,7 @@ impl ActivitySmoother {
             .map(|slc_id| CorticalBuffer::axon_slice(&axns.states(), area_map.area_id(), slc_id))
             .collect();
 
-        let exe_cmd_idx = exe_graph.add_command(ExecutionCommand::cortical_kernel(
+        let exe_cmd_uid = exe_graph.add_command(CommandRelations::cortical_kernel(
              kern_name, exe_cmd_srcs, exe_cmd_tars))?;
         // let exe_cmd_idx = 0;
 
@@ -130,14 +130,15 @@ impl ActivitySmoother {
             centers_v,
             centers_u,
             kern,
-            exe_cmd_idx: exe_cmd_idx,
+            exe_cmd_uid,
+            exe_cmd_idx: 0,
             settings: settings,
             cycle_count: 0usize,
         })
     }
 
-    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        exe_graph.order_next(self.exe_cmd_idx)?;
+    pub fn set_exe_order(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        self.exe_cmd_idx = exe_graph.order_command(self.exe_cmd_uid)?;
         Ok(())
     }
 
@@ -163,11 +164,11 @@ impl ActivitySmoother {
 }
 
 impl ControlCellLayer for ActivitySmoother {
-    fn set_exe_order_pre(&self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+    fn set_exe_order_pre(&mut self, _exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         Ok(())
     }
 
-    fn set_exe_order_post(&self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
+    fn set_exe_order_post(&mut self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         self.set_exe_order(exe_graph)
     }
 

@@ -55,7 +55,7 @@ impl Layer {
         }
     }
 
-    fn set_exe_order(&mut self, control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
+    fn set_exe_order(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         match *self {
@@ -64,7 +64,7 @@ impl Layer {
         }
     }
 
-    fn set_exe_order_cycle(&mut self, control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
+    fn set_exe_order_cycle(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         match *self {
@@ -73,9 +73,9 @@ impl Layer {
         }
     }
 
-    fn set_exe_order_learn(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    fn set_exe_order_learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         match *self {
-            Layer::SpinyStellateLayer(ref lyr) => lyr.set_exe_order_learn(exe_graph),
+            Layer::SpinyStellateLayer(ref mut lyr) => lyr.set_exe_order_learn(exe_graph),
             Layer::PyramidalLayer(ref _lyr) => Ok(()) /*lyr.set_exe_order_learn(control_layers, exe_graph)*/,
         }
     }
@@ -402,7 +402,7 @@ impl CorticalArea {
         // let mut mcols = None;
         let mut data_layers = Layers::new();
         let mut control_layers: BTreeMap<usize, Box<ControlCellLayer>> = BTreeMap::new();
-        let axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
+        let mut axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
             write_queue.clone(), &mut exe_graph, thal)?;
 
         /*=============================================================================
@@ -588,16 +588,16 @@ impl CorticalArea {
         for &lyr_idx in cycle_order.iter() {
             let lyr = data_layers.lyrs.get_mut(lyr_idx).unwrap();
             if lyr.tags().contains(map::SPATIAL) {
-                lyr.set_exe_order_cycle(&control_layers, &mut exe_graph)?;
+                lyr.set_exe_order_cycle(&mut control_layers, &mut exe_graph)?;
             }
         }
 
         // (4.) SSTs Learn:
-        for lyr in cycle_order.iter()
-                .map(|&lyr_idx| &data_layers.lyrs[lyr_idx])
-                .filter(|lyr| lyr.tags().contains(map::SPATIAL))
-        {
-            lyr.set_exe_order_learn(&mut exe_graph)?;
+        for &lyr_idx in cycle_order.iter() {
+            let lyr = data_layers.lyrs.get_mut(lyr_idx).unwrap();
+            if lyr.tags().contains(map::SPATIAL) {
+                lyr.set_exe_order_learn(&mut exe_graph)?;
+            }
         }
 
         // // (5.) MCOLSs Activate:
@@ -610,7 +610,7 @@ impl CorticalArea {
             for &lyr_idx in cycle_order.iter() {
                 let lyr = data_layers.lyrs.get_mut(lyr_idx).unwrap();
                 if !lyr.tags().contains(map::SPATIAL) {
-                    lyr.set_exe_order(&control_layers, &mut exe_graph)?;
+                    lyr.set_exe_order(&mut control_layers, &mut exe_graph)?;
                 }
             }
         }
@@ -623,7 +623,7 @@ impl CorticalArea {
         // (9.) Axon Output:
         axns.set_exe_order_output(&mut exe_graph)?;
 
-        exe_graph.populate_requisites();
+        exe_graph.populate();
 
         /*=============================================================================
         =========================== WORK COMPLETION THREAD ============================
@@ -746,7 +746,7 @@ impl CorticalArea {
                         sampler.src_idx_range.len());
                     let mut rw_vec = sampler.buffer.unwrap_single_u8().clone();
                     let mut event = Event::empty();
-                    let future_read = self.axns.states().cmd().read(rw_vec)
+                    let _future_read = self.axns.states().cmd().read(rw_vec)
                         .offset(sampler.src_idx_range.start)
                         .len(sampler.src_idx_range.len())
                         .dst_offset(sampler.tx.buffer_idx_range().start)

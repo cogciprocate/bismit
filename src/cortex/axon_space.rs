@@ -6,8 +6,8 @@ use futures::sync::mpsc::Sender;
 use ocl::{ProQue, Buffer, Event, EventList, Queue, MemFlags};
 use ocl::traits::MemLen;
 use cmn::{self, CmnError, CmnResult};
-use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute, ExecutionCommand, CorticalBuffer,
-    ThalamicTract};
+use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute, CommandRelations, CorticalBuffer,
+    ThalamicTract, CommandUid};
 use ::Thalamus;
 // use tract_terminal::{OclBufferSource, OclBufferTarget};
 use cortex::{SensoryFilter};
@@ -21,8 +21,8 @@ const DISABLE_OUTPUT: bool = true;
 /// The execution graph command kind and index for an I/O layer.
 #[derive(Debug)]
 pub enum IoExeCmd {
-    Read(usize),
-    Write(usize),
+    Read(CommandUid, usize),
+    Write(CommandUid, usize),
     FilteredWrite(usize),
 }
 
@@ -71,6 +71,7 @@ impl IoInfo {
     #[inline] pub fn src_lyr_addr(&self) -> &LayerAddress { &self.src_lyr_addr }
     #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
     #[inline] pub fn exe_cmd(&self) -> &IoExeCmd { &self.exe_cmd }
+    #[inline] pub fn exe_cmd_mut(&mut self) -> &mut IoExeCmd { &mut self.exe_cmd }
 }
 
 
@@ -116,8 +117,8 @@ impl IoInfoGroup {
                     tars.push(ThalamicTract::axon_slice(lyr_addr.area_id(), slc_id as u8));
                 }
 
-                let exe_cmd = ExecutionCommand::corticothalamic_read(srcs, tars);
-                io_cmd = IoExeCmd::Read(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"));
+                let exe_cmd = CommandRelations::corticothalamic_read(srcs, tars);
+                io_cmd = IoExeCmd::Read(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"), 0);
                 tract_src_lyr_addr = lyr_addr;
             } else {
                 /*=============================================================================
@@ -171,9 +172,9 @@ impl IoInfoGroup {
                         write_cmd_tars.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id as u8))
                     }
 
-                    let exe_cmd = ExecutionCommand::thalamocortical_write(write_cmd_srcs, write_cmd_tars);
+                    let exe_cmd = CommandRelations::thalamocortical_write(write_cmd_srcs, write_cmd_tars);
 
-                    IoExeCmd::Write(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"))
+                    IoExeCmd::Write(exe_graph.add_command(exe_cmd).expect("IoInfoGroup::new"), 0)
                 };
 
                 tract_src_lyr_addr = src_lyr_addr;
@@ -448,16 +449,16 @@ impl AxonSpace {
         self.states.create_sub_buffer(flags, origin, len).map_err(|err| CmnError::from(err))
     }
 
-    pub fn set_exe_order_intake(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        let (io_info_grp, _) = self.io_info.group(AxonDomainRoute::Input).unwrap();
+    pub fn set_exe_order_intake(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        let (io_info_grp, _) = self.io_info.group_mut(AxonDomainRoute::Input).unwrap();
 
-        for io_lyr in io_info_grp {
-            match *io_lyr.exe_cmd() {
-                IoExeCmd::Write(cmd_idx) => {
-                    exe_graph.order_next(cmd_idx)?;
+        for io_lyr in io_info_grp.iter_mut() {
+            match *io_lyr.exe_cmd_mut() {
+                IoExeCmd::Write(cmd_uid, ref mut cmd_idx) => {
+                    *cmd_idx = exe_graph.order_command(cmd_uid)?;
                 },
                 IoExeCmd::FilteredWrite(filter_chain_idx) => {
-                    if let Some(last_filter) = self.filter_chains[filter_chain_idx].1.first() {
+                    if let Some(ref mut last_filter) = self.filter_chains[filter_chain_idx].1.first_mut() {
                         last_filter.set_exe_order_write(exe_graph)?;
                     }
                 }
@@ -465,7 +466,7 @@ impl AxonSpace {
             }
 
             if let IoExeCmd::FilteredWrite(filter_chain_idx) = *io_lyr.exe_cmd() {
-                for filter in self.filter_chains[filter_chain_idx].1.iter() {
+                for filter in self.filter_chains[filter_chain_idx].1.iter_mut() {
                     filter.set_exe_order_cycle(exe_graph)?;
                 }
             }
@@ -474,13 +475,13 @@ impl AxonSpace {
         Ok(())
     }
 
-    pub fn set_exe_order_output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        let (io_info_grp, _) = self.io_info.group(AxonDomainRoute::Output).unwrap();
+    pub fn set_exe_order_output(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        let (io_info_grp, _) = self.io_info.group_mut(AxonDomainRoute::Output).unwrap();
 
         for io_lyr in io_info_grp {
-            match *io_lyr.exe_cmd() {
-                IoExeCmd::Read(cmd_idx) => {
-                    exe_graph.order_next(cmd_idx)?;
+            match *io_lyr.exe_cmd_mut() {
+                IoExeCmd::Read(cmd_uid, ref mut cmd_idx) => {
+                    *cmd_idx = exe_graph.order_command(cmd_uid)?;
                 },
                 _ => panic!("AxonSpace::set_exe_order_output: Internal error [1]."),
             }
@@ -511,7 +512,7 @@ impl AxonSpace {
                 } else {
                     let axn_range = io_lyr.axn_range();
 
-                    if let &IoExeCmd::Write(cmd_idx) = io_lyr.exe_cmd() {
+                    if let &IoExeCmd::Write(_, cmd_idx) = io_lyr.exe_cmd() {
                         let event = if DISABLE_IO {
                             None
                         } else {
@@ -575,7 +576,7 @@ impl AxonSpace {
     {
         if let Some((io_lyrs, _wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
             for io_lyr in io_lyrs.iter() {
-                if let &IoExeCmd::Read(cmd_idx) = io_lyr.exe_cmd() {
+                if let &IoExeCmd::Read(_, cmd_idx) = io_lyr.exe_cmd() {
                     let event = if DISABLE_IO || DISABLE_OUTPUT {
                         None
                     } else {

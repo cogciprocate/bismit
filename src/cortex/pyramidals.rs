@@ -3,8 +3,8 @@ use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use std::collections::BTreeMap;
 use ocl::traits::OclPrm;
-use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
-    CorticalBuffer, LayerAddress, LayerTags};
+use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, CommandRelations,
+    CorticalBuffer, LayerAddress, LayerTags, CommandUid};
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayer};
 
 const PRINT_DEBUG: bool = false;
@@ -37,8 +37,11 @@ pub struct PyramidalLayer {
     activities: Buffer<u8>,
     pub dens: Dendrites,
 
+    tft_cycle_exe_cmd_uids: Vec<CommandUid>,
     tft_cycle_exe_cmd_idxs: Vec<usize>,
+    tft_ltp_exe_cmd_uids: Vec<CommandUid>,
     tft_ltp_exe_cmd_idxs: Vec<usize>,
+    cycle_exe_cmd_uid: Option<CommandUid>,
     cycle_exe_cmd_idx: Option<usize>,
     settings: CorticalAreaSettings,
 }
@@ -86,8 +89,10 @@ impl PyramidalLayer {
 
         let mut pyr_tft_ltp_kernels = Vec::with_capacity(tft_count);
         let mut pyr_tft_cycle_kernels = Vec::with_capacity(tft_count);
-        let mut tft_cycle_exe_cmd_idxs = Vec::with_capacity(tft_count);
-        let mut tft_ltp_exe_cmd_idxs = Vec::with_capacity(tft_count);
+        let mut tft_cycle_exe_cmd_uids = Vec::with_capacity(tft_count);
+        let tft_cycle_exe_cmd_idxs = Vec::with_capacity(tft_count);
+        let mut tft_ltp_exe_cmd_uids = Vec::with_capacity(tft_count);
+        let tft_ltp_exe_cmd_idxs = Vec::with_capacity(tft_count);
         let mut den_count_ttl = 0u32;
         let mut syn_count_ttl = 0u32;
 
@@ -138,7 +143,7 @@ impl PyramidalLayer {
             );
 
             if !settings.disable_pyrs {
-                tft_cycle_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                tft_cycle_exe_cmd_uids.push(exe_graph.add_command(CommandRelations::cortical_kernel(
                     kern_name,
                     vec![
                         CorticalBuffer::data_den_tft(dens.states_raw(), layer_addr, tft_id),
@@ -202,7 +207,7 @@ impl PyramidalLayer {
             tft_ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, tft_id));
 
             if !settings.disable_learning & !settings.disable_pyrs {
-                tft_ltp_exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                tft_ltp_exe_cmd_uids.push(exe_graph.add_command(CommandRelations::cortical_kernel(
                     kern_name, tft_ltp_cmd_srcs,
                     vec![
                         CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), layer_addr, tft_id),
@@ -238,8 +243,8 @@ impl PyramidalLayer {
             cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&tft_best_den_states, layer_addr, tft_id));
         }
 
-        let cycle_exe_cmd_idx = if !settings.disable_pyrs {
-            Some(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+        let cycle_exe_cmd_uid = if !settings.disable_pyrs {
+            Some(exe_graph.add_command(CommandRelations::cortical_kernel(
                 kern_name, cycle_cmd_srcs,
                 vec![CorticalBuffer::data_soma_lyr(&states, layer_addr),
                     CorticalBuffer::data_soma_lyr(&best_den_states_raw, layer_addr)] ))?)
@@ -278,31 +283,37 @@ impl PyramidalLayer {
             energies,
             activities,
             dens: dens,
-            tft_cycle_exe_cmd_idxs: tft_cycle_exe_cmd_idxs,
-            tft_ltp_exe_cmd_idxs: tft_ltp_exe_cmd_idxs,
-            cycle_exe_cmd_idx: cycle_exe_cmd_idx,
+            tft_cycle_exe_cmd_uids,
+            tft_cycle_exe_cmd_idxs,
+            tft_ltp_exe_cmd_uids,
+            tft_ltp_exe_cmd_idxs,
+            cycle_exe_cmd_uid,
+            cycle_exe_cmd_idx: None,
             settings,
         })
     }
 
-    pub fn set_exe_order(&self, _control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
+    pub fn set_exe_order(&mut self, _control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         if !self.settings.disable_pyrs {
+            self.tft_ltp_exe_cmd_idxs.clear();
+            self.tft_cycle_exe_cmd_idxs.clear();
+
             if !self.settings.disable_learning {
-                for &cmd_idx in self.tft_ltp_exe_cmd_idxs.iter() {
-                    exe_graph.order_next(cmd_idx)?;
+                for &cmd_uid in self.tft_ltp_exe_cmd_uids.iter() {
+                    self.tft_ltp_exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
                 }
             }
 
             self.dens.set_exe_order(exe_graph)?;
 
-            for &cmd_idx in self.tft_cycle_exe_cmd_idxs.iter() {
-                exe_graph.order_next(cmd_idx)?;
+            for &cmd_uid in self.tft_cycle_exe_cmd_uids.iter() {
+                self.tft_cycle_exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
             }
 
-            if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
-                exe_graph.order_next(cycle_cmd_idx)?;
+            if let Some(cycle_cmd_uid) = self.cycle_exe_cmd_uid {
+                self.cycle_exe_cmd_idx = Some(exe_graph.order_command(cycle_cmd_uid)?);
             }
         }
 

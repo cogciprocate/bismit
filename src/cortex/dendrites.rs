@@ -2,8 +2,8 @@ use rand::Rng;
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Event};
 use ocl::traits::OclPrm;
 use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
-use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, ExecutionCommand,
-    CorticalBuffer, LayerAddress};
+use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, CommandRelations,
+    CorticalBuffer, LayerAddress, CommandUid};
 use cortex::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
@@ -24,6 +24,7 @@ pub struct Dendrites {
     syns: Synapses,
     den_idzs_by_tft: Vec<u32>,
     den_counts_by_tft: Vec<u32>,
+    exe_cmd_uids: Vec<CommandUid>,
     exe_cmd_idxs: Vec<usize>,
     rng: XorShiftRng,
     bypass_exe_graph: bool,
@@ -49,7 +50,8 @@ impl Dendrites {
         let mut kernels = Vec::with_capacity(tft_count);
         let mut den_idzs_by_tft = Vec::with_capacity(tft_count);
         let mut den_counts_by_tft = Vec::with_capacity(tft_count);
-        let mut exe_cmd_idxs = Vec::with_capacity(tft_count);
+        let mut exe_cmd_uids = Vec::with_capacity(tft_count);
+        let exe_cmd_idxs = Vec::with_capacity(tft_count);
         let mut den_count_ttl = 0u32;
 
         for tft_scheme in cell_scheme.tft_schemes() {
@@ -128,7 +130,7 @@ impl Dendrites {
             );
 
             if !bypass_exe_graph {
-                exe_cmd_idxs.push(exe_graph.add_command(ExecutionCommand::cortical_kernel(
+                exe_cmd_uids.push(exe_graph.add_command(CommandRelations::cortical_kernel(
                     kern_name,
                     vec![
                         CorticalBuffer::data_syn_tft(syns.states(), layer_addr, tft_id),
@@ -161,19 +163,21 @@ impl Dendrites {
             syns: syns,
             den_idzs_by_tft: den_idzs_by_tft,
             den_counts_by_tft: den_counts_by_tft,
-            exe_cmd_idxs: exe_cmd_idxs,
+            exe_cmd_uids,
+            exe_cmd_idxs,
             rng: cmn::weak_rng(),
             bypass_exe_graph,
         })
     }
 
-    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn set_exe_order(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if !self.bypass_exe_graph {
             self.syns.set_exe_order(exe_graph)?;
+            self.exe_cmd_idxs.clear();
 
-            for &cmd_idx in self.exe_cmd_idxs.iter() {
-                if PRINT_DEBUG { println!("##### Ordering dendrite cmd_idx: {}", cmd_idx); }
-                exe_graph.order_next(cmd_idx)?;
+            for &cmd_uid in self.exe_cmd_uids.iter() {
+                if PRINT_DEBUG { println!("##### Ordering dendrite cmd_uid: {}", cmd_uid); }
+                self.exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
             }
         }
         Ok(())
