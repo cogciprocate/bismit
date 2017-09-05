@@ -1,11 +1,9 @@
-#![allow(dead_code, unused_variables)]
+// #![allow(dead_code, unused_variables)]
 
-// use std::num::Wrapping;
 use std::collections::{HashMap, BTreeMap};
 use std::error;
 use std::fmt;
 use ocl::{Event, Buffer, OclPrm, Error as OclError};
-// use ocl::core::Event as EventCore;
 use ocl::ffi::cl_event;
 use map::LayerAddress;
 use cmn::{util};
@@ -24,6 +22,7 @@ impl MemBlockRwCmdIdxs {
         MemBlockRwCmdIdxs { writers: Vec::with_capacity(16), readers: Vec::with_capacity(16) }
     }
 
+    #[allow(dead_code)]
     fn shrink_to_fit(&mut self) {
         self.writers.shrink_to_fit();
         self.readers.shrink_to_fit();
@@ -388,84 +387,29 @@ impl CommandRelations {
 //
 #[derive(Debug, Clone)]
 pub struct ExecutionCommand {
-    // details: CommandRelations,
     uid: CommandUid,
     event: Option<Event>,
-    // event_cycle_id: usize,
-    order_idx: Option<usize>,
     requisite_cmd_idxs: Vec<usize>,
     requisite_cmd_precedence: Vec<RequisitePrecedence>,
-    // requisite_cmd_events: Vec<cl_event>,
 }
 
 impl ExecutionCommand {
     pub fn new(uid: CommandUid) -> ExecutionCommand {
         ExecutionCommand {
-            // details: details,
             uid,
             event: None,
-            // event_cycle_id: 0,
-            order_idx: None,
             // [NOTE]: Sizing these vectors here could be delayed until
             // `::populate_requisites` to avoid creating canned sizes.
             requisite_cmd_idxs: Vec::with_capacity(8),
             requisite_cmd_precedence: Vec::with_capacity(8),
-            // requisite_cmd_events: Vec::with_capacity(16),
         }
     }
 
-    // pub fn cortical_kernel<S>(name: S, sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer>)
-    //         -> ExecutionCommand
-    //         where S: Into<String>
-    // {
-    //     ExecutionCommand::new(
-    //         CommandRelations::CorticalKernel {
-    //             name: name.into(),
-    //             sources: sources,
-    //             targets: targets,
-    //         }
-    //     )
-    // }
-
-    // pub fn corticothalamic_read(sources: Vec<CorticalBuffer>, targets: Vec<ThalamicTract>)
-    //         -> ExecutionCommand
-    // {
-    //     ExecutionCommand::new(CommandRelations::CorticothalamicRead {
-    //         sources: sources, targets: targets
-    //     })
-    // }
-
-    // pub fn thalamocortical_write(sources: Vec<ThalamicTract>, targets: Vec<CorticalBuffer>)
-    //         -> ExecutionCommand
-    // {
-    //     ExecutionCommand::new(CommandRelations::ThalamocorticalWrite {
-    //         sources: sources, targets: targets
-    //     })
-    // }
-
-    // pub fn input_filter_write(source: CorticalBuffer, targets: Vec<CorticalBuffer>) -> ExecutionCommand {
-    //     ExecutionCommand::new(CommandRelations::InputFilterWrite {
-    //         source: source, targets: targets
-    //     })
-    // }
-
-    // pub fn local_copy() -> ExecutionCommand {
-    //     ExecutionCommand::new(CommandRelations::ThalamicCopy)
-    // }
-
-    pub fn set_order_idx(&mut self, order_idx: usize) {
-        self.order_idx = Some(order_idx);
-    }
-
     pub fn set_event(&mut self, event: Option<Event>) {
-    // pub fn set_event(&mut self, event: EventCore) {
         self.event = event;
     }
 
-    // #[inline] pub fn sources(&self) -> Vec<MemoryBlock> { self.details.sources() }
-    // #[inline] pub fn targets(&self) -> Vec<MemoryBlock> { self.details.targets() }
     #[inline] pub fn event(&self) -> Option<&Event> { self.event.as_ref() }
-    #[inline] pub fn order_idx(&self) -> Option<usize> { self.order_idx.clone() }
 }
 
 
@@ -477,12 +421,7 @@ pub struct ExecutionGraph {
     cmd_relations: BTreeMap<CommandUid, CommandRelations>,
     cmds: Vec<ExecutionCommand>,
     cmd_requisite_events: Vec<Vec<cl_event>>,
-    // requisite_cmd_idxs: Vec<Vec<usize>>,
-    // requisite_cmd_precedence: Vec<Vec<RequisitePrecedence>>,
-    // cycle_id: Wrapping<usize>,
-    // requisite_cmd_event_cycle_ids: Vec<Vec<usize>>,
-    order: BTreeMap<usize, usize>,
-    next_order_idx: usize,
+    next_cmd_idx: usize,
     locked: bool,
 }
 
@@ -494,12 +433,7 @@ impl ExecutionGraph {
             cmd_relations: BTreeMap::new(),
             cmds: Vec::with_capacity(256),
             cmd_requisite_events: Vec::with_capacity(256),
-            // requisite_cmd_idxs: Vec::with_capacity(256),
-            // requisite_cmd_precedence: Vec::with_capacity(256),
-            // requisite_cmd_event_cycle_ids: Vec::with_capacity(256),
-            // cycle_id: Wrapping(0),
-            order: BTreeMap::new(),
-            next_order_idx: 0,
+            next_cmd_idx: 0,
             locked: false,
         }
     }
@@ -517,10 +451,6 @@ impl ExecutionGraph {
         // let cmd_idx = self.cmds.len();
         let cmd_uid = self.next_cmd_uid();
         self.cmd_relations.insert(cmd_uid, cmd_relations);
-        // // [NOTE]: Pushing these vectors here could be delayed until
-        // // `::populate_requisites` and avoid creating canned sizes.
-        // self.requisite_cmd_idxs.push(Vec::with_capacity(16));
-        // self.requisite_cmd_precedence.push(Vec::with_capacity(16));
         Ok(cmd_uid)
     }
 
@@ -533,14 +463,7 @@ impl ExecutionGraph {
             Some(cmd_rel) => {
                 let cmd_idx = self.cmds.len();
                 cmd_rel.cmd_idx = Some(cmd_idx);
-                let mut cmd = ExecutionCommand::new(cmd_uid);
-
-                let order_idx = self.next_order_idx;
-                cmd.set_order_idx(order_idx);
-                self.order.insert(order_idx, cmd_idx);
-                self.next_order_idx += 1;
-
-                self.cmds.push(cmd);
+                self.cmds.push(ExecutionCommand::new(cmd_uid));
                 self.cmd_requisite_events.push(Vec::with_capacity(8));
                 Ok(cmd_idx)
             },
@@ -561,7 +484,7 @@ impl ExecutionGraph {
         for (cmd_idx, cmd) in self.cmds.iter().enumerate() {
             let cmd_relations = self.cmd_relations.get(&cmd.uid).unwrap();
 
-            if PRINT_DEBUG { println!("##### Command [{}][idx:{}] ({}: '{}'):",
+            if PRINT_DEBUG { println!("##### Command {}[idx:{}] ({}: '{}'):",
                 cmd.uid, cmd_idx, cmd_relations.variant_string(), cmd_relations.kernel_name()); }
             if PRINT_DEBUG { println!("#####     [Sources:]"); }
 
@@ -586,122 +509,86 @@ impl ExecutionGraph {
             if PRINT_DEBUG { println!("#####"); }
         }
 
-        // mem_block_rws.shrink_to_fit(); // Don't bother, it'll be dropped later.
         mem_block_rws
     }
 
     /// Returns a list of commands which both precede a command and which
     /// write to a block of memory which is read from by that command.
     ///
-    /// * TODO: Remove redundant, 'superseded', entries.
+    /// * TODO: Remove redundant, 'superseded', entries (to save time).
     ///
-    fn preceding_writers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRwsMap) -> BTreeMap<usize, usize> {
+    fn preceding_writers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRwsMap) -> Vec<usize> {
         let cmd_relations = &self.cmd_relations[&self.cmds[cmd_idx].uid];
-        let pre_writers = cmd_relations.sources().iter().enumerate()
-            .flat_map(|(cmd_src_block_idx, cmd_src_block)| {
-                mem_block_rws.get(cmd_src_block).unwrap().writers.iter().map(|&writer_cmd_idx| {
-                    let cmd_order_idx = self.cmds[writer_cmd_idx].order_idx().expect(
-                        "ExecutionGraph::preceeding_writers: Command order index not set.");
-                    (cmd_order_idx, writer_cmd_idx)
-                })
-            })
-            .collect();
-
-        if PRINT_DEBUG { println!("##### <{}>:[{}]: Preceding Writers: {:?}",
-            self.cmds[cmd_idx].order_idx().unwrap(), cmd_idx, pre_writers); }
-
+        let pre_writers = cmd_relations.sources().iter().flat_map(|cmd_src_block| {
+                mem_block_rws.get(cmd_src_block).unwrap().writers.iter().cloned()
+            }).collect();
+        if PRINT_DEBUG { println!("##### {}:[{}]: Preceding Writers: {:?}",
+            self.cmds[cmd_idx].uid, cmd_idx, pre_writers); }
         pre_writers
     }
 
     /// Returns a list of commands which both follow a command and which read
     /// from a block of memory which is written to by that command.
     ///
-    /// * TODO: Remove redundant, superfluous, entries
+    /// * TODO: Remove redundant, 'superseded', entries (to save time).
     ///
-    fn following_readers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRwsMap) -> BTreeMap<usize, usize> {
+    fn following_readers(&self, cmd_idx: usize, mem_block_rws: &MemBlockRwsMap) -> Vec<usize> {
         let cmd_relations = &self.cmd_relations[&self.cmds[cmd_idx].uid];
-        let mut fol_readers = BTreeMap::new();
-
-        for (cmd_tar_block_idx, cmd_tar_block) in cmd_relations.targets().iter().enumerate() {
-            // // TEMP:
-            //     let ref block_writers: Vec<usize> = mem_block_rws.get(cmd_tar_block).unwrap().writers;
-            // //
-
-            let ref block_readers: Vec<usize> = mem_block_rws.get(cmd_tar_block).unwrap().readers;
-
-                // println!("##### Command [{}]: Target Block [{}]: Writers: {:?}, Readers: {:?},", cmd_idx,
-                //     cmd_tar_block_idx, block_writers, block_readers);
-
-            for &reader_cmd_idx in block_readers.iter() {
-                let cmd_order_idx = self.cmds[reader_cmd_idx].order_idx().expect(
-                    "ExecutionGraph::preceeding_writers: Command order index not set.");
-
-                fol_readers.insert(cmd_order_idx, reader_cmd_idx);
-            }
-        }
-
-        if PRINT_DEBUG { println!("##### <{}>:[{}]: Following Readers: {:?}",
-            self.cmds[cmd_idx].order_idx().unwrap(), cmd_idx, fol_readers); }
+        let fol_readers = cmd_relations.targets().iter().flat_map(|cmd_tar_block| {
+                mem_block_rws.get(cmd_tar_block).unwrap().readers.iter().cloned()
+            }).collect();
+        if PRINT_DEBUG { println!("##### {}:[{}]: Following Readers: {:?}",
+            self.cmds[cmd_idx].uid, cmd_idx, fol_readers); }
         fol_readers
     }
 
     /// Adds a requisite command index and precedence to a command's list of
     /// requisites.
     fn add_requisite(&mut self, cmd_idx: usize, req_cmd_idx: usize) {
-        let cmd_order = self.cmds[cmd_idx].order_idx().expect(
-                "ExecutionGraph::add_requisite: Command order index not set.");
-        let req_cmd_order = self.cmds[req_cmd_idx].order_idx().expect(
-                "ExecutionGraph::add_requisite: Requisite command order index not set.");
-
-        // If a requisite command is the command itself, it must contain a
-        // memory block which is both read from and written to:
-        assert!(req_cmd_order != cmd_order, "Execution commands which both read from and write \
+        // If a requisite command is the command itself, it contains a memory
+        // block which is both read from and written to within the same
+        // command and need not be specified:
+        assert!(cmd_idx != req_cmd_idx, "Execution commands which both read from and write \
             to a memory block should omit that block from the list of sources and specify only \
-            within the list of targets.");
-
+            within the list of targets. (cmd_idx: {}, req_cmd_idx: {})", cmd_idx, req_cmd_idx);
         self.cmds[cmd_idx].requisite_cmd_idxs.push(req_cmd_idx);
 
-        let req_cmd_precedence = if req_cmd_order < cmd_order {
+        let req_cmd_precedence = if req_cmd_idx < cmd_idx {
             RequisitePrecedence::Preceding
         } else {
             RequisitePrecedence::Following
         };
-
         self.cmds[cmd_idx].requisite_cmd_precedence.push(req_cmd_precedence);
     }
 
     /// Populates the list of requisite commands for each command and locks
     /// the graph, disallowing addition or removal of commands until unlocked
     /// with `::unlock`.
-    //
-    // TODO: Consider renaming to `lock`.
     pub fn lock(&mut self) {
         assert!(self.cmd_relations.len() == self.cmds.len(), "ExecutionGraph::populate_requisites \
             Not all commands have had their order properly set ({}/{}). Call '::order_next' to \
-            include commands in the execution order.", self.order.len(), self.cmds.len());
+            include commands in the execution order.", self.cmd_relations.len(), self.cmds.len());
         assert!(!self.locked, "Cannot populate this graph while locked. Use '::unlock_clear' first.");
 
         let mem_block_rws = self.readers_and_writers_by_mem_block();
 
-        // println!("\n########## Memory Block Reader/Writers: {:#?}\n", mem_block_rws);
-
-        if PRINT_DEBUG { println!("\n##### Preceding Writers and Following Readers <order>:[cmd_idx]:"); }
+        if PRINT_DEBUG { println!("\n##### Preceding Writers and Following Readers (CommandUid:[idx]:)"); }
         if PRINT_DEBUG { println!("#####"); }
 
         // [NOTE]: Only using `self.order` instead of `self.commands` for
         // debug printing purposes. * TODO: Switch back at some point.
-        for (&cmd_order, &cmd_idx) in self.order.clone().iter() {
-            if PRINT_DEBUG { println!("##### Command <{}>:[{}] ({}):", cmd_order, cmd_idx,
-                self.cmd_relations[&self.cmds[cmd_idx].uid].variant_string()); }
+        for cmd_idx in 0..self.cmds.len() {
+            if PRINT_DEBUG { println!("##### Command {}:[{}] ({}):", self.cmds[cmd_idx].uid,
+                cmd_idx, self.cmd_relations[&self.cmds[cmd_idx].uid].variant_string()); }
 
             assert!(self.cmds[cmd_idx].requisite_cmd_idxs.is_empty() &&
                 self.cmds[cmd_idx].requisite_cmd_precedence.is_empty());
 
-            for (_, pre_writer_cmd_idx) in self.preceding_writers(cmd_idx, &mem_block_rws) {
+            for pre_writer_cmd_idx in self.preceding_writers(cmd_idx, &mem_block_rws) {
                 self.add_requisite(cmd_idx, pre_writer_cmd_idx);
             }
 
-            for (_, fol_reader_cmd_idx) in self.following_readers(cmd_idx, &mem_block_rws) {
+            for fol_reader_cmd_idx in self.following_readers(cmd_idx, &mem_block_rws) {
                 self.add_requisite(cmd_idx, fol_reader_cmd_idx);
             }
 
@@ -711,30 +598,19 @@ impl ExecutionGraph {
             debug_assert!(self.cmds[cmd_idx].requisite_cmd_idxs.len() ==
                 self.cmds[cmd_idx].requisite_cmd_precedence.len());
 
-            // println!("##### <{}>:[{}]: Requisites: {:?}:{:?}",
-            //     cmd_order, cmd_idx, self.requisite_cmd_idxs[cmd_idx],
-            //     self.requisite_cmd_precedence[cmd_idx]);
             if PRINT_DEBUG { println!("#####"); }
         }
 
-        // self.cmds[cmd_idx].requisite_cmd_idxs.shrink_to_fit();
-        // self.cmds[cmd_idx].requisite_cmd_precedence.shrink_to_fit();
-
-        // debug_assert!(self.cmds.len() == self.cmds[cmd_idx].requisite_cmd_idxs.len() &&
-        //     self.cmds.len() == self.cmds[cmd_idx].requisite_cmd_precedence.len());
-
         self.locked = true;
-        self.next_order_idx = 0;
+        self.next_cmd_idx = 0;
     }
 
     /// Returns the list of requisite events for a command.
     pub fn get_req_events(&mut self, cmd_idx: usize) -> ExeGrResult<&[cl_event]> {
         if !self.locked { return Err(ExecutionGraphError::Unlocked); }
 
-        if self.next_order_idx != unsafe { self.cmds.get_unchecked(cmd_idx).order_idx().unwrap() } {
-            panic!("{}", ExecutionGraphError::EventsRequestOutOfOrder(self.next_order_idx,
-                 self.cmds[cmd_idx].order_idx().unwrap()));
-        }
+        assert!(self.next_cmd_idx == cmd_idx,"{}", ExecutionGraphError::EventsRequestOutOfOrder(
+            self.next_cmd_idx, cmd_idx));
 
         debug_assert!(self.cmd_requisite_events.len() > cmd_idx);
         unsafe { self.cmd_requisite_events.get_unchecked_mut(cmd_idx).clear(); }
@@ -762,20 +638,18 @@ impl ExecutionGraph {
     /// Sets the event associated with the completion of a command.
     pub fn set_cmd_event(&mut self, cmd_idx: usize, event: Option<Event>) -> ExeGrResult<()> {
         if !self.locked { return Err(ExecutionGraphError::Unlocked); }
-
+        let cmds_len = self.cmds.len();
         let cmd = self.cmds.get_mut(cmd_idx)
             .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
-
-        if self.next_order_idx != cmd.order_idx().unwrap() {
-            return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_order_idx, cmd_idx));
+        if self.next_cmd_idx != cmd_idx {
+            return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_cmd_idx, cmd_idx));
         }
-
         cmd.set_event(event.map(|e| e.into()));
 
-        if (self.next_order_idx + 1) == self.order.len() {
-            self.next_order_idx = 0;
+        if (self.next_cmd_idx + 1) == cmds_len {
+            self.next_cmd_idx = 0;
         } else {
-            self.next_order_idx += 1;
+            self.next_cmd_idx += 1;
             if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### ExecutionGraph::set_cmd_event: \
                 Setting event for [cmd_idx: {}].", cmd_idx,) }
         }
@@ -785,14 +659,7 @@ impl ExecutionGraph {
 
     /// Blocks until all events from all commands have completed.
     pub fn finish(&self) -> ExeGrResult<()> {
-        // for cmd in self.commands.iter() {
-        //     if let Some(ref ev) = cmd.event {
-        //         ev.wait_for()?;
-        //     }
-        // }
-        for cmd in self.order.iter().map(|(&cmd_idx, _)|
-                unsafe { self.cmds.get_unchecked(cmd_idx) } )
-        {
+        for cmd in self.cmds.iter() {
             if let Some(ref ev) = cmd.event {
                 ev.wait_for()?;
             }
@@ -810,70 +677,7 @@ impl ExecutionGraph {
             cmd_rel.cmd_idx = None;
         }
     }
-
-    // #[inline] pub fn command_count(&self) -> usize { self.order.len() }
 }
 
 unsafe impl Send for ExecutionGraph {}
 
-
-
-
-    // /// Returns the list of requisite events for a command.
-    // ///
-    // // pub fn get_req_events(&self, cmd_idx: usize, wait_list: &mut Vec<cl_event>) -> ExeGrResult<()> {
-    // pub fn get_req_events(&self, cmd_idx: usize, wait_list: &mut EventList) -> ExeGrResult<()> {
-    //     if !self.locked { return Err(ExecutionGraphError::Unlocked); }
-
-    //     let req_idxs = self.requisite_cmd_idxs.get(cmd_idx)
-    //         .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
-
-    //     if self.next_order_idx != unsafe { self.commands.get_unchecked(cmd_idx).order_idx().unwrap() } {
-    //         return Err(ExecutionGraphError::EventsRequestOutOfOrder(cmd_idx));
-    //     }
-
-    //     wait_list.clear()?;
-
-    //     for &req_idx in req_idxs.iter() {
-    //         let cmd = unsafe { self.commands.get_unchecked(req_idx) };
-
-    //         if let Some(event) = cmd.event() {
-    //             // unsafe { wait_list.push(*event.core()
-    //             //     /* .expect(&format!("ExecutionGraph::get_req_events: Empty 'ocl::Event' found \
-    //             //         for command [{}]", req_idx)) */
-    //             //     .as_ptr_ref()); }
-    //             wait_list.push(event.clone())
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
-
-
-
-
-    // fn req_cmds_mut(&mut self, cmd_idx: usize) -> Result<&mut Vec<usize>, ExecutionGraphError> {
-    //     self.requisite_cmd_idxs.get_mut(cmd_idx)
-    //         .ok_or(CmnError::new(format!("ExecutionGraph::register_requisite: Invalid command index \
-    //             (cmd_idx: {}).", cmd_idx)))
-    // }
-
-
-    // /// Registers a command as requisite to another.
-    // pub fn register_requisite(&mut self, cmd_idx: usize, req_cmd_idx: usize) -> Result<(), ExecutionGraphError> {
-    //     let req_idxs = self.requisite_cmd_idxs.get_mut(cmd_idx)
-    //         // .ok_or(CmnError::new(format!("ExecutionGraph::register_requisite: Invalid command index \
-    //         //     (cmd_idx: {}).", cmd_idx)))?;
-    //         .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
-
-    //     // Ensure the requisite command index is within bounds and isn't the
-    //     // same as the command index:
-    //     if req_cmd_idx >= req_idxs.len() || cmd_idx == req_cmd_idx {
-    //         // return CmnError::err(format!("ExecutionGraph::register_requisite: Invalid requisite command index \
-    //         //     (req_cmd_idx: {}).", req_cmd_idx));
-    //         return Err(CmnError::from(ExecutionGraphError::InvalidRequisiteCommandIndex(
-    //             req_cmd_idx, cmd_idx)));
-    //     }
-
-    //     Ok(req_idxs.push(req_cmd_idx))
-    // }
