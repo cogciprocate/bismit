@@ -559,7 +559,7 @@ impl CorticalArea {
         //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
 
         /*=============================================================================
-        =================== EXECUTION ORDERING & GRAPH POPULATION =====================
+        ======================= LAYER ROLE EXECUTION ORDERING =========================
         =============================================================================*/
 
         // Set up layer cycling order based on layer 'role' (motor, temporal,
@@ -581,50 +581,6 @@ impl CorticalArea {
             }
         }
 
-        // (1.) Axon Intake:
-        axns.set_exe_order_intake(&mut exe_graph)?;
-
-        // (2.) SSTs Cycle:
-        for &lyr_idx in cycle_order.iter() {
-            let lyr = data_layers.lyrs.get_mut(lyr_idx).unwrap();
-            if lyr.tags().contains(map::SPATIAL) {
-                lyr.set_exe_order_cycle(&mut control_layers, &mut exe_graph)?;
-            }
-        }
-
-        // (4.) SSTs Learn:
-        for &lyr_idx in cycle_order.iter() {
-            let lyr = data_layers.lyrs.get_mut(lyr_idx).unwrap();
-            if lyr.tags().contains(map::SPATIAL) {
-                lyr.set_exe_order_learn(&mut exe_graph)?;
-            }
-        }
-
-        // // (5.) MCOLSs Activate:
-        // if !settings.disable_mcols {
-        //     mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
-        // }
-
-        // (6.) Pyramidal Layers Learn & Cycle:
-        if !settings.disable_pyrs {
-            for &lyr_idx in cycle_order.iter() {
-                let lyr = data_layers.lyrs.get_mut(lyr_idx).unwrap();
-                if !lyr.tags().contains(map::SPATIAL) {
-                    lyr.set_exe_order(&mut control_layers, &mut exe_graph)?;
-                }
-            }
-        }
-
-        // // (7.) MCOLs Output:
-        // if !settings.disable_mcols {
-        //     mcols.as_mut().set_exe_order_output(&mut exe_graph)?;
-        // }
-
-        // (9.) Axon Output:
-        axns.set_exe_order_output(&mut exe_graph)?;
-
-        exe_graph.lock();
-
         /*=============================================================================
         =========================== WORK COMPLETION THREAD ============================
         =============================================================================*/
@@ -644,7 +600,7 @@ impl CorticalArea {
         ===============================================================================
         =============================================================================*/
 
-        let cortical_area = CorticalArea {
+        let mut cortical_area = CorticalArea {
             area_id: area_id,
             name: area_name,
             dims: dims,
@@ -670,7 +626,65 @@ impl CorticalArea {
             samplers: Vec::with_capacity(8),
         };
 
+        cortical_area.order()?;
+
+        cortical_area.exe_graph.unlock();
+        cortical_area.order()?;
+
+        cortical_area.exe_graph.unlock();
+        cortical_area.order()?;
+
         Ok(cortical_area)
+    }
+
+    /// Establish loose order for commands in execution graph.
+    fn order(&mut self) -> CmnResult<()> {
+        // (1.) Axon Intake:
+        self.axns.set_exe_order_intake(&mut self.exe_graph)?;
+
+        // (2.) SSTs Cycle:
+        for lyr_idx in self.cycle_order.clone() {
+            let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
+            if lyr.tags().contains(map::SPATIAL) {
+                lyr.set_exe_order_cycle(&mut self.control_layers,
+                    &mut self.exe_graph)?;
+            }
+        }
+
+        // (4.) SSTs Learn:
+        for lyr_idx in self.cycle_order.clone() {
+            let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
+            if lyr.tags().contains(map::SPATIAL) {
+                lyr.set_exe_order_learn(&mut self.exe_graph)?;
+            }
+        }
+
+        // // (5.) MCOLSs Activate:
+        // if !settings.disable_mcols {
+        //     mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
+        // }
+
+        // (6.) Pyramidal Layers Learn & Cycle:
+        if !self.settings.disable_pyrs {
+            for &lyr_idx in self.cycle_order.iter() {
+                let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
+                if !lyr.tags().contains(map::SPATIAL) {
+                    lyr.set_exe_order(&mut self.control_layers,
+                        &mut self.exe_graph)?;
+                }
+            }
+        }
+
+        // // (7.) MCOLs Output:
+        // if !settings.disable_mcols {
+        //     mcols.as_mut().set_exe_order_output(&mut exe_graph)?;
+        // }
+
+        // (9.) Axon Output:
+        self.axns.set_exe_order_output(&mut self.exe_graph)?;
+
+        // Lock and populate execution graph:
+        Ok(self.exe_graph.lock())
     }
 
     /// Cycles the area: running kernels, intaking, and outputting.
