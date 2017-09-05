@@ -96,8 +96,8 @@ impl InhibitoryInterneuronNetwork {
         })
     }
 
-    pub fn set_exe_order(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        exe_graph.order_command(self.exe_cmd_uid)?;
+    pub fn set_exe_order(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        self.exe_cmd_idx = exe_graph.order_command(self.exe_cmd_uid)?;
         Ok(())
     }
 

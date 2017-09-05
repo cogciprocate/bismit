@@ -10,8 +10,8 @@ use ocl::ffi::cl_event;
 use map::LayerAddress;
 use cmn::{util};
 
-const PRINT_DEBUG: bool = true;
-const PRINT_DEBUG_ALL: bool = true;
+const PRINT_DEBUG: bool = false;
+const PRINT_DEBUG_ALL: bool = false;
 
 
 struct MemBlockRwCmdIdxs {
@@ -408,8 +408,8 @@ impl ExecutionCommand {
             order_idx: None,
             // [NOTE]: Sizing these vectors here could be delayed until
             // `::populate_requisites` to avoid creating canned sizes.
-            requisite_cmd_idxs: Vec::with_capacity(16),
-            requisite_cmd_precedence: Vec::with_capacity(16),
+            requisite_cmd_idxs: Vec::with_capacity(8),
+            requisite_cmd_precedence: Vec::with_capacity(8),
             // requisite_cmd_events: Vec::with_capacity(16),
         }
     }
@@ -521,7 +521,6 @@ impl ExecutionGraph {
         // // `::populate_requisites` and avoid creating canned sizes.
         // self.requisite_cmd_idxs.push(Vec::with_capacity(16));
         // self.requisite_cmd_precedence.push(Vec::with_capacity(16));
-        // self.requisite_cmd_events.push(Vec::with_capacity(16));
         Ok(cmd_uid)
     }
 
@@ -533,6 +532,7 @@ impl ExecutionGraph {
         match self.cmd_relations.get_mut(&cmd_uid) {
             Some(cmd_rel) => {
                 let cmd_idx = self.cmds.len();
+                cmd_rel.cmd_idx = Some(cmd_idx);
                 let mut cmd = ExecutionCommand::new(cmd_uid);
 
                 let order_idx = self.next_order_idx;
@@ -541,7 +541,7 @@ impl ExecutionGraph {
                 self.next_order_idx += 1;
 
                 self.cmds.push(cmd);
-                cmd_rel.cmd_idx = Some(cmd_idx);
+                self.cmd_requisite_events.push(Vec::with_capacity(8));
                 Ok(cmd_idx)
             },
             None => Err(ExecutionGraphError::OrderInvalidCommandUid(cmd_uid)),
@@ -566,21 +566,21 @@ impl ExecutionGraph {
             if PRINT_DEBUG { println!("#####     [Sources:]"); }
 
             for cmd_src_block in cmd_relations.sources().into_iter() {
-                let rw_cmd_idxs = mem_block_rws.entry(cmd_src_block.clone())
+                let block_rw_cmd_idxs = mem_block_rws.entry(cmd_src_block.clone())
                     .or_insert(MemBlockRwCmdIdxs::new());
 
-                rw_cmd_idxs.readers.push(cmd_idx);
-                if PRINT_DEBUG { println!("#####     [{}]: {:?}", rw_cmd_idxs.readers.len() - 1, cmd_src_block); }
+                block_rw_cmd_idxs.readers.push(cmd_idx);
+                if PRINT_DEBUG { println!("#####     [{}]: {:?}", block_rw_cmd_idxs.readers.len() - 1, cmd_src_block); }
             }
 
             if PRINT_DEBUG { println!("#####     [Targets:]"); }
 
             for cmd_tar_block in cmd_relations.targets().into_iter() {
-                let rw_cmd_idxs = mem_block_rws.entry(cmd_tar_block.clone())
+                let block_rw_cmd_idxs = mem_block_rws.entry(cmd_tar_block.clone())
                     .or_insert(MemBlockRwCmdIdxs::new());
-                rw_cmd_idxs.writers.push(cmd_idx);
+                block_rw_cmd_idxs.writers.push(cmd_idx);
 
-                if PRINT_DEBUG { println!("#####     [{}]: {:?}", rw_cmd_idxs.writers.len() - 1, cmd_tar_block); }
+                if PRINT_DEBUG { println!("#####     [{}]: {:?}", block_rw_cmd_idxs.writers.len() - 1, cmd_tar_block); }
             }
 
             if PRINT_DEBUG { println!("#####"); }
@@ -671,11 +671,11 @@ impl ExecutionGraph {
     }
 
     /// Populates the list of requisite commands for each command and locks
-    /// the graph, disallowing any commands to be added or removed until
-    /// unlocked with `::unlock_clear`.
+    /// the graph, disallowing addition or removal of commands until unlocked
+    /// with `::unlock`.
     //
     // TODO: Consider renaming to `lock`.
-    pub fn populate(&mut self) {
+    pub fn lock(&mut self) {
         assert!(self.cmd_relations.len() == self.cmds.len(), "ExecutionGraph::populate_requisites \
             Not all commands have had their order properly set ({}/{}). Call '::order_next' to \
             include commands in the execution order.", self.order.len(), self.cmds.len());
@@ -736,6 +736,7 @@ impl ExecutionGraph {
                  self.cmds[cmd_idx].order_idx().unwrap()));
         }
 
+        debug_assert!(self.cmd_requisite_events.len() > cmd_idx);
         unsafe { self.cmd_requisite_events.get_unchecked_mut(cmd_idx).clear(); }
 
         let req_idxs = &self.cmds.get(cmd_idx)
@@ -751,6 +752,9 @@ impl ExecutionGraph {
                 }
             }
         }
+
+        if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### ExecutionGraph::get_req_events: Event \
+            list for [cmd_idx: {}]: {:?}", cmd_idx, self.cmd_requisite_events.get(cmd_idx).unwrap()); }
 
         Ok(unsafe { self.cmd_requisite_events.get_unchecked_mut(cmd_idx).as_slice() })
     }
@@ -773,7 +777,7 @@ impl ExecutionGraph {
         } else {
             self.next_order_idx += 1;
             if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### ExecutionGraph::set_cmd_event: \
-                (cmd_idx: {}): next_order_idx: {}", cmd_idx, self.next_order_idx) }
+                Setting event for [cmd_idx: {}].", cmd_idx,) }
         }
 
         Ok(())
@@ -799,7 +803,7 @@ impl ExecutionGraph {
     /// Unlocks this graph and allows commands to be added or removed.
     ///
     /// Graph must be locked with `::populate` to use.
-    pub fn unlock_clear(&mut self) {
+    pub fn unlock(&mut self) {
         self.locked = false;
         self.cmds.clear();
         for (_, cmd_rel) in self.cmd_relations.iter_mut() {

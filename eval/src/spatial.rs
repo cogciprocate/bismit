@@ -612,7 +612,7 @@ pub fn eval() {
         let v1_spt_lyr_addr = *pri_area_map.layer_map().layers().by_key(SPT_LYR)
             .expect("bad lyr").layer_addr();
         let v1_spt_lyr_axn_range = pri_area_map.lyr_axn_range(&v1_spt_lyr_addr, None).unwrap();
-        println!("######## v1_spt_lyr_axn_range: {:?}", v1_spt_lyr_axn_range);
+        // println!("######## v1_spt_lyr_axn_range: {:?}", v1_spt_lyr_axn_range);
         cortex.areas().by_key(PRI_AREA).unwrap().axns()
             .create_sub_buffer(&v1_spt_lyr_axn_range).unwrap()
     };

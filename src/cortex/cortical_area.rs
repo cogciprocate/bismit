@@ -623,7 +623,7 @@ impl CorticalArea {
         // (9.) Axon Output:
         axns.set_exe_order_output(&mut exe_graph)?;
 
-        exe_graph.populate();
+        exe_graph.lock();
 
         /*=============================================================================
         =========================== WORK COMPLETION THREAD ============================
