@@ -9,7 +9,7 @@ use futures::{Sink, Stream, Future};
 
 use futures::sync::mpsc::{self, Sender};
 use tokio_core::reactor::{Core, Remote};
-use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue, OclPrm};
+use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue, OclPrm, RwVec};
 use ocl::core::CommandQueueProperties;
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use cmn::{self, CmnError, CmnResult, CorticalDims};
@@ -18,7 +18,7 @@ use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind
 use ::Thalamus;
 use cortex::{AxonSpace, /*Minicolumns,*/ InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother};
-use subcortex::{self, TractSender, TractReceiver};
+use subcortex::{self, TractBuffer, TractSender, TractReceiver};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -737,6 +737,30 @@ impl CorticalArea {
         Ok(())
     }
 
+    /// Cycles through sampling requests
+    fn cycle_samplers(&self) -> CmnResult<()> {
+        for sampler in &self.samplers {
+            match sampler.kind {
+                SamplerKind::AxonLayer(_) => {
+                    debug_assert!(sampler.tx.buffer_idx_range().len() ==
+                        sampler.src_idx_range.len());
+                    let mut rw_vec = sampler.buffer.unwrap_single_u8().clone();
+                    let mut event = Event::empty();
+                    let future_read = self.axns.states().cmd().read(rw_vec)
+                        .offset(sampler.src_idx_range.start)
+                        .len(sampler.src_idx_range.len())
+                        .dst_offset(sampler.tx.buffer_idx_range().start)
+                        // .ewait()
+                        .enew(&mut event)
+                        .enq_async()?;
+                },
+                _ => unimplemented!(),
+            }
+        }
+
+        Ok(())
+    }
+
     /// Attaches synapses which are below strength threshold to new axons.
     pub fn regrow(&mut self) {
         self.finish_queues();
@@ -764,15 +788,6 @@ impl CorticalArea {
         self.exe_graph.finish().unwrap();
     }
 
-
-    /// Cycles through sampling requests
-    fn cycle_samples() {
-
-    }
-
-
-
-
     /// Requests a cortical 'sampler' which provides external read/write
     /// access to cortical cells and axons.
     pub fn sampler(&mut self, kind: SamplerKind, buffer_kind: SamplerBufferKind) -> TractReceiver {
@@ -791,33 +806,32 @@ impl CorticalArea {
                     None => 0..self.area_map.slice_map().depth() as usize,
                 };
                 let axn_range = self.area_map.slice_map().axn_range(slc_range);
-                let tract_buffer = RwVec::from(vec![0u8; axn_range.len()]);
-                let (tx, rx) = match buffer_kind {
-                    SamplerBufferKind::Single => subcortex::tract_channel_single_u8(
-                        tract_buffer, 0..axn_range.len(), false),
+                match buffer_kind {
+                    SamplerBufferKind::Single => {
+                        let tract_buffer = RwVec::from(vec![0u8; axn_range.len()]);
+                        let (tx, rx) = subcortex::tract_channel_single_u8(tract_buffer.clone(),
+                            0..axn_range.len(), false);
+                        let sampler = Sampler::new(kind.clone(), axn_range,
+                            SamplerBuffer::U8(TractBuffer::Single(tract_buffer)), tx);
+                        self.samplers.push(sampler);
+                        rx
+                    },
                     _ => unimplemented!(),
-                };
-                let sampler = Sampler::new(kind.clone(), axn_range, tx);
-                self.samplers.push(sampler);
-                rx
-
+                }
             },
             SamplerKind::Dummy => {
                 let axn_range = 0..1;
-                let tract_buffer = RwVec::from(vec![0i8; axn_range.len()]);
                 let (_tx, rx) = match buffer_kind {
-                    SamplerBufferKind::Single => subcortex::tract_channel_single_i8(
-                        tract_buffer, 0..axn_range.len(), true),
+                    SamplerBufferKind::Single => {
+                        let tract_buffer = RwVec::from(vec![0i8; axn_range.len()]);
+                        subcortex::tract_channel_single_i8(tract_buffer, 0..axn_range.len(), true)
+                    },
                     _ => unimplemented!(),
                 };
                 rx
             }
         }
     }
-
-
-
-
 
     pub fn sample_axn_slc_range(&self, slc_range: Range<usize>, buf: &mut [u8]) -> Event {
         // let slc_range = slc_range.borrow();
@@ -898,18 +912,35 @@ impl CorticalArea {
 }
 
 
+#[derive(Debug)]
+enum SamplerBuffer {
+    I8(TractBuffer<i8>),
+    U8(TractBuffer<u8>),
+}
+
+impl SamplerBuffer {
+    fn unwrap_single_u8(&self) -> &RwVec<u8> {
+        match *self {
+            SamplerBuffer::U8(TractBuffer::Single(ref b)) => b,
+            _ => panic!("SamplerBuffer::single_u8: This buffer is not a 'Single'/'u8'."),
+        }
+    }
+}
 
 
 #[derive(Debug)]
 struct Sampler {
     kind: SamplerKind,
     src_idx_range: Range<usize>,
+    buffer: SamplerBuffer,
     tx: TractSender,
 }
 
 impl Sampler {
-    fn new(kind: SamplerKind, src_idx_range: Range<usize>, tx: TractSender) -> Sampler {
-        Sampler { kind, src_idx_range, tx }
+    fn new(kind: SamplerKind, src_idx_range: Range<usize>, buffer: SamplerBuffer, tx: TractSender)
+            -> Sampler
+    {
+        Sampler { kind, src_idx_range, buffer, tx }
     }
 }
 

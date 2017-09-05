@@ -12,14 +12,14 @@
 
 #![allow(dead_code)]
 
-use std::ops::Range;
+use std::ops::{Range};
 use std::sync::Arc;
 use futures::sync::mpsc::{self, Sender, Receiver};
 use ocl::{Buffer, RwVec, FutureReader, FutureWriter, OclPrm};
 
 
 #[derive(Debug)]
-enum TractBufferKind<T: OclPrm> {
+pub enum TractBuffer<T: OclPrm> {
     TractReader(FutureReader<T>),
     TractWriter(FutureWriter<T>),
     OclBufferReader(Buffer<T>),
@@ -32,10 +32,16 @@ enum TractBufferKind<T: OclPrm> {
 
 #[derive(Debug)]
 struct TractInner<T: OclPrm> {
-    buffer_kind: TractBufferKind<T>,
+    buffer_kind: TractBuffer<T>,
     buffer_idx_range: Range<usize>,
     backpressure: bool,
 }
+
+// impl<T: OclPrm> TractInner<T> {
+//     pub fn buffer_idx_range(&self) -> Range<usize> {
+//         self.buffer_idx_range.clone()
+//     }
+// }
 
 
 #[derive(Debug)]
@@ -68,18 +74,39 @@ enum TractReceiverKind {
 pub struct TractSender(TractSenderKind);
 
 impl TractSender {
-
+    pub fn buffer_idx_range(&self) -> Range<usize> {
+        match self.0 {
+            TractSenderKind::I8(ref tsu) => tsu.inner.buffer_idx_range.clone(),
+            TractSenderKind::U8(ref tsu) => tsu.inner.buffer_idx_range.clone(),
+        }
+    }
 }
+
+// impl Deref for TractSender {
+//     type Target = TractInner<T>;
+
+//     fn deref(&self) -> &TractInner<T> {
+//         match self.0 {
+//             TractSenderKind::I8(ref tsu) => &tsu.inner,
+//             TractSenderKind::U8(ref tsu) => &tsu.inner,
+//         }
+//     }
+// }
 
 #[derive(Debug)]
 pub struct TractReceiver(TractReceiverKind);
 
 impl TractReceiver {
-
+    pub fn buffer_idx_range(&self) -> Range<usize> {
+        match self.0 {
+            TractReceiverKind::I8(ref tsu) => tsu.inner.buffer_idx_range.clone(),
+            TractReceiverKind::U8(ref tsu) => tsu.inner.buffer_idx_range.clone(),
+        }
+    }
 }
 
 
-fn tract_channel<T: OclPrm>(buffer_kind: TractBufferKind<T>, buffer_idx_range: Range<usize>, backpressure: bool)
+fn tract_channel<T: OclPrm>(buffer_kind: TractBuffer<T>, buffer_idx_range: Range<usize>, backpressure: bool)
         -> (TractSenderUntyped<T>, TractReceiverUntyped<T>)
 {
     let inner = Arc::new(TractInner {
@@ -106,14 +133,14 @@ fn tract_channel<T: OclPrm>(buffer_kind: TractBufferKind<T>, buffer_idx_range: R
 pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Range<usize>, backpressure: bool)
         -> (TractSender, TractReceiver)
 {
-    let (tx, rx) = tract_channel(TractBufferKind::Single(buffer), buffer_idx_range, backpressure);
+    let (tx, rx) = tract_channel(TractBuffer::Single(buffer), buffer_idx_range, backpressure);
     (TractSender(TractSenderKind::I8(tx)), TractReceiver(TractReceiverKind::I8(rx)))
 }
 
 pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
         -> (TractSender, TractReceiver)
 {
-    let (tx, rx) = tract_channel(TractBufferKind::Single(buffer), buffer_idx_range, backpressure);
+    let (tx, rx) = tract_channel(TractBuffer::Single(buffer), buffer_idx_range, backpressure);
     (TractSender(TractSenderKind::U8(tx)), TractReceiver(TractReceiverKind::U8(rx)))
 }
 
