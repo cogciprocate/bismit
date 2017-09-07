@@ -14,7 +14,7 @@ use ocl::core::CommandQueueProperties;
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use cmn::{self, CmnError, CmnResult, CorticalDims};
 use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind,
-    ExecutionGraph, CellClass, LayerTags, LayerAddress};
+    ExecutionGraph, CellClass, LayerTags, LayerAddress, CommandUid};
 use ::Thalamus;
 use cortex::{AxonSpace, /*Minicolumns,*/ InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother};
@@ -278,21 +278,14 @@ pub struct CorticalArea {
     axns: AxonSpace,
     // mcols: Box<Minicolumns>,
     // iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
-    ptal_name: Option<&'static str>,    // PRIMARY TEMPORAL ASSOCIATIVE LAYER NAME
-    psal_name: Option<&'static str>,    // PRIMARY SPATIAL ASSOCIATIVE LAYER NAME
+    ptal_name: Option<&'static str>,
+    psal_name: Option<&'static str>,
     psal_idx: usize,
     ptal_idx: usize,
-    // spatial_layers: Vec<SpinyStellateLayer>,
-    // temporal_layers: Vec<PyramidalLayer>,
-    // focus_layers: Vec<PyramidalLayer>,
-    // motor_layers: Vec<PyramidalLayer>,
-    // other_layers: Vec<Box<DataCellLayer>>,
-    // control_layers: Vec<Box<ControlCellLayer>>,
     /// Primary neuron layers.
     data_layers: Layers,
     /// Interneuron layers.
     control_layers: BTreeMap<usize, Box<ControlCellLayer>>,
-
     aux: Aux,
     ocl_pq: ProQue,
     write_queue: Queue,
@@ -302,7 +295,7 @@ pub struct CorticalArea {
     cycle_order: Vec<usize>,
     exe_graph: ExecutionGraph,
     work_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
-    // TODO: Move this to a centralized thread pool on thalamus or cortex.
+    // TODO: Move this to a centralized thread pool on thalamus or cortex (maybe?).
     _work_thread: Option<JoinHandle<()>>,
 
     samplers: Vec<Sampler>,
@@ -588,11 +581,11 @@ impl CorticalArea {
         let (tx, rx) = mpsc::channel(0);
         let thread_name = format!("CorticalArea_{}", area_name.clone());
 
-        // TODO: Move this to a centralized thread pool on thalamus or cortex.
+        // TODO: Move this to a centralized thread pool on thalamus or cortex (maybe?).
         let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let rx = rx;
             let mut core = Core::new().unwrap();
-            let work = rx.buffer_unordered(3).for_each(|_| Ok(()));
+            let work = rx.buffer_unordered(12).for_each(|_| Ok(()));
             core.run(work).unwrap();
         }).unwrap();
 
@@ -627,18 +620,13 @@ impl CorticalArea {
         };
 
         cortical_area.order()?;
-
-        cortical_area.exe_graph.unlock();
-        cortical_area.order()?;
-
-        cortical_area.exe_graph.unlock();
-        cortical_area.order()?;
-
         Ok(cortical_area)
     }
 
     /// Establish loose order for commands in execution graph.
     fn order(&mut self) -> CmnResult<()> {
+        if self.exe_graph.is_locked() { self.exe_graph.unlock(); }
+
         // (1.) Axon Intake:
         self.axns.set_exe_order_intake(&mut self.exe_graph)?;
 
@@ -683,6 +671,11 @@ impl CorticalArea {
         // (9.) Axon Output:
         self.axns.set_exe_order_output(&mut self.exe_graph)?;
 
+        // (10.) Samplers:
+        for sampler in self.samplers.iter_mut() {
+            sampler.set_exe_order(&mut self.exe_graph)?;
+        }
+
         // Lock and populate execution graph:
         Ok(self.exe_graph.lock())
     }
@@ -692,7 +685,6 @@ impl CorticalArea {
     //
     // * TODO: ISOLATE LEARNING INTO SEPARATE THREAD
     pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
-
         // (1.) Axon Intake:
         self.axns.intake(thal, &mut self.exe_graph, self.settings.bypass_filters,
             self.work_tx.as_ref().unwrap())?;
@@ -752,26 +744,37 @@ impl CorticalArea {
     }
 
     /// Cycles through sampling requests
-    fn cycle_samplers(&self) -> CmnResult<()> {
+    fn cycle_samplers(&mut self) -> CmnResult<()> {
         for sampler in &self.samplers {
-            match sampler.kind {
-                SamplerKind::AxonLayer(_) => {
-                    debug_assert!(sampler.tx.buffer_idx_range().len() ==
-                        sampler.src_idx_range.len());
-                    let mut rw_vec = sampler.buffer.unwrap_single_u8().clone();
-                    let mut event = Event::empty();
-                    let _future_read = self.axns.states().cmd().read(rw_vec)
-                        .offset(sampler.src_idx_range.start)
-                        .len(sampler.src_idx_range.len())
-                        .dst_offset(sampler.tx.buffer_idx_range().start)
-                        // .ewait()
-                        .enew(&mut event)
-                        .enq_async()?;
-                },
-                _ => unimplemented!(),
+            // Check to see if we need to send this frame. `::wait` will only
+            // block if sampler backpressure is on (and buffer is stale).
+            if sampler.tx.send().wait().unwrap() {
+                let mut new_event = Event::empty();
+                let wait_list = self.exe_graph.get_req_events(sampler.cmd_idx.unwrap())?;
+
+                match sampler.kind {
+                    SamplerKind::AxonLayer(_) => {
+                        debug_assert!(sampler.tx.buffer_idx_range().len() ==
+                            sampler.src_idx_range.len());
+
+                        let mut rw_vec = sampler.tx.buffer_u8().clone();
+                        let future_read = self.axns.states().cmd().read(rw_vec)
+                            .offset(sampler.src_idx_range.start)
+                            .len(sampler.src_idx_range.len())
+                            .dst_offset(sampler.tx.buffer_idx_range().start)
+                            .ewait(wait_list)
+                            .enew(&mut new_event)
+                            .enq_async()?
+                            // .and_then(|_guard| Ok(()))
+                            .map(|_guard| ())
+                            .map_err(|err| panic!("{}", err));
+
+                        self.work_tx.clone().unwrap().send(Box::new(future_read)).wait()?;
+                    },
+                    _ => unimplemented!(),
+                }
             }
         }
-
         Ok(())
     }
 
@@ -800,51 +803,6 @@ impl CorticalArea {
         self.ocl_pq.queue().finish().unwrap();
         self.read_queue.finish().unwrap();
         self.exe_graph.finish().unwrap();
-    }
-
-    /// Requests a cortical 'sampler' which provides external read/write
-    /// access to cortical cells and axons.
-    pub fn sampler(&mut self, kind: SamplerKind, buffer_kind: SamplerBufferKind) -> TractReceiver {
-        use ocl::RwVec;
-
-        match kind {
-            SamplerKind::AxonLayer(layer_id) => {
-                let slc_range = match layer_id {
-                    Some(lyr_id) => {
-                        self.area_map.layer_map().layer_info(lyr_id)
-                            .expect(&format!("CorticalArea::sample: Invalid layer: [id:{}].", lyr_id))
-                            .slc_range()
-                            .expect(&format!("CorticalArea::sample: Layer [id:{}] has no slices.", lyr_id))
-                            .clone()
-                    },
-                    None => 0..self.area_map.slice_map().depth() as usize,
-                };
-                let axn_range = self.area_map.slice_map().axn_range(slc_range);
-                match buffer_kind {
-                    SamplerBufferKind::Single => {
-                        let tract_buffer = RwVec::from(vec![0u8; axn_range.len()]);
-                        let (tx, rx) = subcortex::tract_channel_single_u8(tract_buffer.clone(),
-                            0..axn_range.len(), false);
-                        let sampler = Sampler::new(kind.clone(), axn_range,
-                            SamplerBuffer::U8(TractBuffer::Single(tract_buffer)), tx);
-                        self.samplers.push(sampler);
-                        rx
-                    },
-                    _ => unimplemented!(),
-                }
-            },
-            SamplerKind::Dummy => {
-                let axn_range = 0..1;
-                let (_tx, rx) = match buffer_kind {
-                    SamplerBufferKind::Single => {
-                        let tract_buffer = RwVec::from(vec![0i8; axn_range.len()]);
-                        subcortex::tract_channel_single_i8(tract_buffer, 0..axn_range.len(), true)
-                    },
-                    _ => unimplemented!(),
-                };
-                rx
-            }
-        }
     }
 
     pub fn sample_axn_slc_range(&self, slc_range: Range<usize>, buf: &mut [u8]) -> Event {
@@ -923,39 +881,108 @@ impl CorticalArea {
     #[inline] pub fn area_id(&self) -> usize { self.area_id }
     #[inline] pub fn aux(&self) -> &Aux { &self.aux }
     #[inline] pub fn exe_graph_mut(&mut self) -> &mut ExecutionGraph { &mut self.exe_graph }
-}
 
 
-#[derive(Debug)]
-enum SamplerBuffer {
-    I8(TractBuffer<i8>),
-    U8(TractBuffer<u8>),
-}
+    /// Requests a cortical 'sampler' which provides external read/write
+    /// access to cortical cells and axons.
+    pub fn sampler(&mut self, kind: SamplerKind, buffer_kind: SamplerBufferKind) -> TractReceiver {
+        use ocl::RwVec;
+        use map::{CommandRelations, CorticalBuffer};
 
-impl SamplerBuffer {
-    fn unwrap_single_u8(&self) -> &RwVec<u8> {
-        match *self {
-            SamplerBuffer::U8(TractBuffer::Single(ref b)) => b,
-            _ => panic!("SamplerBuffer::single_u8: This buffer is not a 'Single'/'u8'."),
+        match kind {
+            SamplerKind::AxonLayer(layer_id) => {
+                let slc_range = match layer_id {
+                    Some(lyr_id) => {
+                        self.area_map.layer_map().layer_info(lyr_id)
+                            .expect(&format!("CorticalArea::sample: Invalid layer: [id:{}]", lyr_id))
+                            .slc_range()
+                            .expect(&format!("CorticalArea::sample: Layer [id:{}] has no slices", lyr_id))
+                            .clone()
+                    },
+                    None => 0..self.area_map.slice_map().depth() as usize,
+                };
+                let axn_range = self.area_map.slice_map().axn_range(slc_range.clone());
+                match buffer_kind {
+                    SamplerBufferKind::Single => {
+                        let tract_buffer = RwVec::from(vec![0u8; axn_range.len()]);
+                        let (tx, rx) = subcortex::tract_channel_single_u8(tract_buffer,
+                            0..axn_range.len(), false);
+
+                        // Determine source axon slices for execution graph:
+                        let cmd_srcs = slc_range.map(|slc_id| {
+                            CorticalBuffer::axon_slice(self.axns.states(), self.area_id, slc_id as u8)
+                        }).collect();
+                        // Add command to graph and get uid:
+                        let cmd_uid = self.exe_graph.add_command(
+                            CommandRelations::corticothalamic_read(cmd_srcs, vec![]))
+                            .expect("CorticalArea::sampler: Error adding exe. graph command");
+                        // Repopulate execution graph:
+                        self.order().expect("CorticalArea::sampler: Error reordering");
+
+                        let sampler = Sampler::new(kind.clone(), axn_range, tx, cmd_uid);
+                        self.samplers.push(sampler);
+                        rx
+                    },
+                    _ => unimplemented!(),
+                }
+            },
+            SamplerKind::Dummy => {
+                let axn_range = 0..1;
+                let (_tx, rx) = match buffer_kind {
+                    SamplerBufferKind::Single => {
+                        let tract_buffer = RwVec::from(vec![0i8; axn_range.len()]);
+                        subcortex::tract_channel_single_i8(tract_buffer, 0..axn_range.len(), true)
+                    },
+                    _ => unimplemented!(),
+                };
+                rx
+            }
         }
     }
 }
+
+
+// #[derive(Debug)]
+// enum SamplerBuffer {
+//     I8(TractBuffer<i8>),
+//     U8(TractBuffer<u8>),
+// }
+
+// impl SamplerBuffer {
+//     fn unwrap_single_u8(&self) -> &RwVec<u8> {
+//         match *self {
+//             SamplerBuffer::U8(TractBuffer::Single(ref b)) => b,
+//             _ => panic!("SamplerBuffer::single_u8: This buffer is not a 'Single'/'u8'."),
+//         }
+//     }
+// }
 
 
 #[derive(Debug)]
 struct Sampler {
     kind: SamplerKind,
     src_idx_range: Range<usize>,
-    buffer: SamplerBuffer,
+    // buffer: SamplerBuffer,
     tx: TractSender,
+    cmd_uid: CommandUid,
+    cmd_idx: Option<usize>,
 }
 
 impl Sampler {
-    fn new(kind: SamplerKind, src_idx_range: Range<usize>, buffer: SamplerBuffer, tx: TractSender)
-            -> Sampler
+    fn new(kind: SamplerKind, src_idx_range: Range<usize>, /*buffer: SamplerBuffer,*/
+            tx: TractSender, cmd_uid: CommandUid) -> Sampler
     {
-        Sampler { kind, src_idx_range, buffer, tx }
+        Sampler { kind, src_idx_range, /*buffer,*/ tx, cmd_uid, cmd_idx: None }
     }
+
+    fn set_exe_order(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        self.cmd_idx = Some(exe_graph.order_command(self.cmd_uid)?);
+        Ok(())
+    }
+
+    // fn buffer_single_u8(&self) -> RwVec<u8> {
+    //     self.tx.buffer_single_u8()
+    // }
 }
 
 
@@ -975,8 +1002,6 @@ pub enum SamplerBufferKind {
     Double,
     Triple,
 }
-
-
 
 
 impl Drop for CorticalArea {

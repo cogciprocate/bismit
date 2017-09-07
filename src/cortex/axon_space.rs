@@ -524,7 +524,8 @@ impl AxonSpace {
                             //     .ewait(exe_graph.get_req_events(cmd_idx)?)
                             //     .enew(&mut ev)
                             //     .enq_async()?
-                            //     .and_then(|_guard| Ok(()))
+                            //     // .and_then(|_guard| Ok(()))
+                            //     .map(|_guard| ())
                             //     .map_err(|err| panic!("{}", err))
                             //     .boxed();
 
@@ -541,7 +542,17 @@ impl AxonSpace {
                             let ev = future_map.create_unmap_target_event()?.clone();
 
                             let future_write = Box::new(future_reader.join(future_map)
-                                .and_then(|(reader, mut map)| {
+                                // .and_then(|(reader, mut map)| {
+                                //     debug_assert_eq!(reader.len(), map.len());
+                                //     let len = map.len();
+                                //     unsafe {
+                                //         ::std::ptr::copy_nonoverlapping(reader.as_ptr(),
+                                //             map.as_mut_ptr(), len);
+                                //     }
+
+                                //     Ok(())
+                                // })
+                                .map(|(reader, mut map)| {
                                     debug_assert_eq!(reader.len(), map.len());
                                     let len = map.len();
                                     unsafe {
@@ -549,7 +560,7 @@ impl AxonSpace {
                                             map.as_mut_ptr(), len);
                                     }
 
-                                    Ok(())
+                                    ()
                                 })
                                 .map_err(|err| panic!("{}", err)));
 

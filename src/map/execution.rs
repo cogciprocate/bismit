@@ -153,7 +153,7 @@ impl CorticalBuffer {
     //     }
     // }
 
-    pub fn axon_slice<T: OclPrm>(buf: &Buffer<T>, area_id: usize, slc_id: u8)
+    pub fn axon_slice(buf: &Buffer<u8>, area_id: usize, slc_id: u8)
             -> CorticalBuffer
     {
         CorticalBuffer::AxonSlice {
@@ -677,6 +677,8 @@ impl ExecutionGraph {
             cmd_rel.cmd_idx = None;
         }
     }
+
+    #[inline] pub fn is_locked(&self) -> bool { self.locked }
 }
 
 unsafe impl Send for ExecutionGraph {}

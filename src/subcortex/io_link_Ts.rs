@@ -1,3 +1,75 @@
+
+
+
+#[derive(Debug, Clone)]
+pub enum SamplerKind {
+    /// Axons for a specific layer.
+    AxonLayer(Option<usize>),
+    // /// All axons.
+    // AxonSpace,
+    Dummy,
+}
+
+#[derive(Debug, Clone)]
+pub enum SamplerBufferKind {
+    None,
+    Single,
+    Double,
+    Triple,
+}
+
+#[derive(Debug)]
+pub enum SamplerTractReceiver {
+    AxonLayer(TractReceiver<u8>),
+    Dummy,
+}
+
+
+#[derive(Debug)]
+enum SamplerTractSender {
+    AxonLayer(TractSender<u8>),
+    Dummy,
+}
+
+
+#[derive(Debug)]
+struct Sampler {
+    // kind: SamplerKind,
+    sender: SamplerTractSender,
+    src_idx_range: Range<usize>,
+    // buffer: SamplerBuffer,
+
+    cmd_uid: CommandUid,
+    cmd_idx: Option<usize>,
+}
+
+impl Sampler {
+    fn new<T: OclPrm>(sender: SamplerTractSender, src_idx_range: Range<usize>, /*buffer: SamplerBuffer,*/
+            tx: TractSender<T>, cmd_uid: CommandUid) -> Sampler
+    {
+        Sampler { sender, src_idx_range, /*buffer,*/ /*tx,*/ cmd_uid, cmd_idx: None }
+    }
+
+    fn set_exe_order(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        self.cmd_idx = Some(exe_graph.order_command(self.cmd_uid)?);
+        Ok(())
+    }
+
+    // fn send() -> FutureSender {
+    //     match self.sender {
+    //         SamplerTractSender::AxonLayer(ref tr) => tr.send(),
+    //         SamplerTractSender::Dummy => panic!("Cannot send, dummy."),
+    //     }
+    // }
+
+    // fn buffer_single_u8(&self) -> RwVec<u8> {
+    //     self.tx.buffer_single_u8()
+    // }
+}
+
+
+
+
 // # Open Questions
 //
 // * Can we use mapped memory somewhere in all of this (for buffer* variants)?
@@ -80,7 +152,7 @@ pub enum TractBuffer<T: OclPrm> {
 
 
 #[derive(Debug)]
-pub struct UntypedTractInner<T: OclPrm> {
+pub struct TractInner<T: OclPrm> {
     buffer: TractBuffer<T>,
     buffer_idx_range: Range<usize>,
     backpressure: bool,
@@ -89,11 +161,11 @@ pub struct UntypedTractInner<T: OclPrm> {
     recv_tx: AtomicOption<Sender<()>>,
 }
 
-impl<T: OclPrm> UntypedTractInner<T> {
+impl<T: OclPrm> TractInner<T> {
     fn new(buffer: TractBuffer<T>, buffer_idx_range: Range<usize>, backpressure: bool)
-            -> UntypedTractInner<T>
+            -> TractInner<T>
     {
-        UntypedTractInner {
+        TractInner {
             buffer,
             buffer_idx_range,
             backpressure,
@@ -131,42 +203,10 @@ impl<T: OclPrm> UntypedTractInner<T> {
             return false;
         }
     }
-}
-
-unsafe impl<T: OclPrm> Send for UntypedTractInner<T> {}
-unsafe impl<T: OclPrm> Sync for UntypedTractInner<T> {}
-
-
-
-#[derive(Debug)]
-pub enum TractInner {
-    I8(UntypedTractInner<i8>),
-    U8(UntypedTractInner<u8>),
-}
-
-impl TractInner {
-    fn new_i8(buffer: TractBuffer<i8>, buffer_idx_range: Range<usize>, backpressure: bool) -> TractInner {
-        TractInner::I8(UntypedTractInner::new(buffer, buffer_idx_range, backpressure))
-    }
-
-    fn new_u8(buffer: TractBuffer<u8>, buffer_idx_range: Range<usize>, backpressure: bool) -> TractInner {
-        TractInner::U8(UntypedTractInner::new(buffer, buffer_idx_range, backpressure))
-    }
-
-    #[inline]
-    fn send(&self) -> FutureSend {
-        match *self {
-            TractInner::I8(ref ti) => ti.send(),
-            TractInner::U8(ref ti) => ti.send(),
-        }
-    }
 
     #[inline]
     pub fn buffer_idx_range(&self) -> Range<usize> {
-        match *self {
-            TractInner::I8(ref ti) => ti.buffer_idx_range.clone(),
-            TractInner::U8(ref ti) => ti.buffer_idx_range.clone(),
-        }
+        self.buffer_idx_range.clone()
     }
 
     #[inline]
@@ -192,60 +232,127 @@ impl TractInner {
     }
 }
 
+unsafe impl<T: OclPrm> Send for TractInner<T> {}
+unsafe impl<T: OclPrm> Sync for TractInner<T> {}
+
+
+
+// #[derive(Debug)]
+// pub enum TractInner {
+//     I8(UntypedTractInner<i8>),
+//     U8(UntypedTractInner<u8>),
+// }
+
+// impl TractInner {
+//     fn new_i8(buffer: TractBuffer<i8>, buffer_idx_range: Range<usize>, backpressure: bool) -> TractInner {
+//         TractInner::I8(UntypedTractInner::new(buffer, buffer_idx_range, backpressure))
+//     }
+
+//     fn new_u8(buffer: TractBuffer<u8>, buffer_idx_range: Range<usize>, backpressure: bool) -> TractInner {
+//         TractInner::U8(UntypedTractInner::new(buffer, buffer_idx_range, backpressure))
+//     }
+
+//     #[inline]
+//     fn send(&self) -> FutureSend {
+//         match *self {
+//             TractInner::I8(ref ti) => ti.send(),
+//             TractInner::U8(ref ti) => ti.send(),
+//         }
+//     }
+
+//     #[inline]
+//     pub fn buffer_idx_range(&self) -> Range<usize> {
+//         match *self {
+//             TractInner::I8(ref ti) => ti.buffer_idx_range.clone(),
+//             TractInner::U8(ref ti) => ti.buffer_idx_range.clone(),
+//         }
+//     }
+
+//     #[inline]
+//     pub fn backpressure(&self) -> bool {
+//         match *self {
+//             TractInner::I8(ref ti) => ti.backpressure,
+//             TractInner::U8(ref ti) => ti.backpressure,
+//         }
+//     }
+
+//     /// Panics if not a u8.
+//     #[inline]
+//     pub fn buffer_u8(&self) -> &RwVec<u8> {
+//         match *self {
+//             TractInner::U8(ref ti) => {
+//                 match ti.buffer {
+//                     TractBuffer::Single(ref b) => b,
+//                     _ => unimplemented!(),
+//                 }
+//             },
+//             _ => panic!("TractSender::single_u8: This buffer is not a 'u8'."),
+//         }
+//     }
+// }
+
 
 #[derive(Debug)]
-pub struct TractSender {
-    inner: Arc<TractInner>,
+pub struct TractSender<T: OclPrm> {
+    inner: Arc<TractInner<T>>,
 }
 
-impl TractSender {
+impl<T: OclPrm> TractSender<T> {
     pub fn send(&self) -> FutureSend {
         self.inner.send()
     }
 }
 
-impl Deref for TractSender {
-    type Target = TractInner;
+impl<T: OclPrm> Deref for TractSender<T> {
+    type Target = TractInner<T>;
 
-    fn deref(&self) -> &TractInner {
+    fn deref(&self) -> &TractInner<T> {
         &self.inner
     }
 }
 
 
 #[derive(Debug)]
-pub struct TractReceiver {
-    inner: Arc<TractInner>,
+pub struct TractReceiver<T: OclPrm> {
+    inner: Arc<TractInner<T>>,
 }
 
-impl TractReceiver {
+impl<T: OclPrm> TractReceiver<T> {
 
 }
 
-impl Deref for TractReceiver {
-    type Target = TractInner;
+impl<T: OclPrm> Deref for TractReceiver<T> {
+    type Target = TractInner<T>;
 
-    fn deref(&self) -> &TractInner {
+    fn deref(&self) -> &TractInner<T> {
         &self.inner
     }
 }
 
 
-pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Range<usize>, backpressure: bool)
-        -> (TractSender, TractReceiver)
+pub fn tract_channel_single<T: OclPrm>(buffer: RwVec<T>, buffer_idx_range: Range<usize>, backpressure: bool)
+        -> (TractSender<T>, TractReceiver<T>)
 {
-    // let (tx, rx) = tract_channel(TractBuffer::Single(buffer), buffer_idx_range, backpressure);
-    // (TractSender(TractSenderKind::I8(tx)), TractReceiver(TractReceiverKind::I8(rx)))
     let inner = Arc::new(TractInner::new_i8(TractBuffer::Single(buffer), buffer_idx_range, backpressure));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
 }
 
-pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
-        -> (TractSender, TractReceiver)
-{
-    let inner = Arc::new(TractInner::new_u8(TractBuffer::Single(buffer), buffer_idx_range, backpressure));
-    (TractSender { inner: inner.clone() }, TractReceiver { inner })
-}
+
+// pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Range<usize>, backpressure: bool)
+//         -> (TractSender, TractReceiver)
+// {
+//     // let (tx, rx) = tract_channel(TractBuffer::Single(buffer), buffer_idx_range, backpressure);
+//     // (TractSender(TractSenderKind::I8(tx)), TractReceiver(TractReceiverKind::I8(rx)))
+//     let inner = Arc::new(TractInner::new_i8(TractBuffer::Single(buffer), buffer_idx_range, backpressure));
+//     (TractSender { inner: inner.clone() }, TractReceiver { inner })
+// }
+
+// pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
+//         -> (TractSender, TractReceiver)
+// {
+//     let inner = Arc::new(TractInner::new_u8(TractBuffer::Single(buffer), buffer_idx_range, backpressure));
+//     (TractSender { inner: inner.clone() }, TractReceiver { inner })
+// }
 
 
 

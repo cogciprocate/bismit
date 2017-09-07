@@ -3,6 +3,7 @@ use std::error::{Error};
 use std::fmt;
 // use std::ops::Deref;
 use futures::sync::mpsc::SendError;
+use futures::sync::oneshot::Canceled;
 use ocl::{self, async};
 // use cmn::CmnResult;
 use map::ExecutionGraphError;
@@ -134,6 +135,12 @@ impl From<async::Error> for CmnError {
 
 impl<T> From<SendError<T>> for CmnError {
     fn from(e: SendError<T>) -> CmnError {
+        CmnError::AsyncError(async::Error::from(e))
+    }
+}
+
+impl From<Canceled> for CmnError {
+    fn from(e: Canceled) -> CmnError {
         CmnError::AsyncError(async::Error::from(e))
     }
 }

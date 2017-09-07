@@ -8,5 +8,5 @@ pub use self::thalamus::{Thalamus, ExternalPathwayTract, ExternalPathway, Extern
     ExternalPathwayEncoder, ExternalPathwayLayer};
 pub use self::cerebellum::Cerebellum;
 
-pub use self::io_link::{tract_channel_single_i8, tract_channel_single_u8, TractBuffer,
+pub use self::io_link::{tract_channel_single_u8, tract_channel_single_i8, TractBuffer,
     TractSender, TractReceiver};

@@ -34,6 +34,7 @@ twox-hash = "*"
 colorify = "*"
 futures = "*"
 tokio-core = "*"
+crossbeam = "*"
 # log = "*"
 
 [workspace]

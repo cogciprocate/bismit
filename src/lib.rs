@@ -12,6 +12,7 @@ extern crate rand;
 extern crate futures;
 extern crate tokio_core;
 // extern crate cpuprofiler;
+extern crate crossbeam;
 #[macro_use] extern crate bitflags;
 #[macro_use] extern crate enum_primitive;
 #[macro_use] extern crate colorify;
