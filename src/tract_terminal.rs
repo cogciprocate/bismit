@@ -5,7 +5,7 @@
 use std::ops::Range;
 use ocl::core::{ClWaitListPtr, ClNullEventPtr};
 use ocl::builders::{ClWaitListPtrEnum, ClNullEventPtrEnum};
-use ocl::{Buffer, EventList, Event, Queue, FutureReader, FutureWriter};
+use ocl::{Buffer, EventList, Event, Queue, FutureReadGuard, FutureWriteGuard};
 use ::{TractDims, Result as CmnResult};
 // use map::ExecutionGraph;
 
@@ -15,7 +15,7 @@ trait CopyFrom {}
 
 
 pub enum SourceKind {
-    Reader(FutureReader<u8>),
+    Reader(FutureReadGuard<u8>),
 }
 
 pub struct TerminalSource {
@@ -25,7 +25,7 @@ pub struct TerminalSource {
 
 
 pub enum TargetKind {
-    Writer(FutureWriter<u8>),
+    Writer(FutureWriteGuard<u8>),
 }
 
 pub struct TerminalTarget {
@@ -47,7 +47,7 @@ pub struct TerminalTarget {
 //                 // .enew_opt(if self.events.is_some() || self.event.is_some()
 //                 //     { Some(&mut ev) } else { None })
 //                 .enew(&mut ev)
-//                 .enq()?;   
+//                 .enq()?;
 //             }
 //         }
 
@@ -271,7 +271,7 @@ impl<'b> SliceBufferTarget<'b> {
     {
         let mut ev = Event::empty();
 
-        let slice = unsafe { ::std::slice::from_raw_parts_mut(self.slice.as_mut_ptr(), 
+        let slice = unsafe { ::std::slice::from_raw_parts_mut(self.slice.as_mut_ptr(),
             self.slice.len()) };
 
         unsafe {
@@ -310,7 +310,7 @@ impl<'b> SliceBufferTarget<'b> {
 
         let mut ev = Event::empty();
 
-        let slice = unsafe { ::std::slice::from_raw_parts_mut(self.slice.as_mut_ptr(), 
+        let slice = unsafe { ::std::slice::from_raw_parts_mut(self.slice.as_mut_ptr(),
             self.slice.len()) };
 
         {

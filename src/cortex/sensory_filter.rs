@@ -1,5 +1,5 @@
 use std::ops::Range;
-use ocl::{flags, Kernel, ProQue, SpatialDims, Buffer, Event, Queue, FutureReader};
+use ocl::{flags, Kernel, ProQue, SpatialDims, Buffer, Event, Queue, FutureReadGuard};
 use cmn::{CmnError, CmnResult, CorticalDims};
 use map::{ExecutionGraph, CommandRelations, CorticalBuffer,
     ThalamicTract, CommandUid};
@@ -114,7 +114,7 @@ impl SensoryFilter {
     }
 
     // pub fn write(&self, source: SliceBufferSource, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-    pub fn write(&self, source: FutureReader<u8>, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn write(&self, source: FutureReadGuard<u8>, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         let cmd_idx = self.exe_cmd_idx_write.ok_or(CmnError::new(
             "SensoryFilter::write: Write command not created for this filter."))?;
         // let range = 0..self.input_buffer.len() as u32;

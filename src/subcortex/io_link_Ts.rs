@@ -87,7 +87,7 @@ use futures::{Async, Poll};
 use futures::sync::oneshot::{self, Sender, Receiver, Canceled};
 use crossbeam::sync::AtomicOption;
 use futures::{Future};
-use ocl::{/*Buffer,*/ RwVec, /*FutureReader, FutureWriter,*/ OclPrm};
+use ocl::{/*Buffer,*/ RwVec, /*FutureReadGuard, FutureWriteGuard,*/ OclPrm};
 use cmn::CmnError;
 
 
@@ -141,8 +141,8 @@ pub struct FutureRecv {
 
 #[derive(Debug)]
 pub enum TractBuffer<T: OclPrm> {
-    // TractReader(FutureReader<T>),
-    // TractWriter(FutureWriter<T>),
+    // TractReader(FutureReadGuard<T>),
+    // TractWriter(FutureWriteGuard<T>),
     // OclBufferReader(Buffer<T>),
     // OclBufferWriter(Buffer<T>),
     Single(RwVec<T>),
@@ -469,8 +469,8 @@ pub fn tract_channel_single<T: OclPrm>(buffer: RwVec<T>, buffer_idx_range: Range
 
 
 // enum Inner<T: OclPrm> {
-//     TractReader(FutureReader<T>),
-//     TractWriter(FutureWriter<T>),
+//     TractReader(FutureReadGuard<T>),
+//     TractWriter(FutureWriteGuard<T>),
 //     BufferReader(Buffer<T>),
 //     BufferWriter(Buffer<T>),
 //     Single(RwVec<T>),
@@ -487,14 +487,14 @@ pub fn tract_channel_single<T: OclPrm>(buffer: RwVec<T>, buffer_idx_range: Range
 // }
 
 // impl<T: OclPrm> IoLink<T> {
-//     pub fn direct_reader(reader: FutureReader<T>, backpressure: bool) -> IoLink<T> {
+//     pub fn direct_reader(reader: FutureReadGuard<T>, backpressure: bool) -> IoLink<T> {
 //         IoLink {
 //             inner: Inner::TractReader(reader),
 //             backpressure
 //         }
 //     }
 
-//     pub fn direct_writer(writer: FutureWriter<T>, backpressure: bool) -> IoLink<T> {
+//     pub fn direct_writer(writer: FutureWriteGuard<T>, backpressure: bool) -> IoLink<T> {
 //         IoLink {
 //             inner: Inner::TractWriter(writer),
 //             backpressure

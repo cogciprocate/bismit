@@ -748,7 +748,7 @@ impl CorticalArea {
         for sampler in &self.samplers {
             // Check to see if we need to send this frame. `::wait` will only
             // block if sampler backpressure is on (and buffer is stale).
-            if sampler.tx.send().wait().unwrap() {
+            if let Some(write_buffer) = sampler.tx.send().wait()? {
                 let mut new_event = Event::empty();
                 let wait_list = self.exe_graph.get_req_events(sampler.cmd_idx.unwrap())?;
 
@@ -756,16 +756,13 @@ impl CorticalArea {
                     SamplerKind::AxonLayer(_) => {
                         debug_assert!(sampler.tx.buffer_idx_range().len() ==
                             sampler.src_idx_range.len());
-
-                        let mut rw_vec = sampler.tx.buffer_u8().clone();
-                        let future_read = self.axns.states().cmd().read(rw_vec)
+                        let future_read = self.axns.states().cmd().read(write_buffer.write_u8())
                             .offset(sampler.src_idx_range.start)
                             .len(sampler.src_idx_range.len())
                             .dst_offset(sampler.tx.buffer_idx_range().start)
                             .ewait(wait_list)
                             .enew(&mut new_event)
                             .enq_async()?
-                            // .and_then(|_guard| Ok(()))
                             .map(|_guard| ())
                             .map_err(|err| panic!("{}", err));
 

@@ -15,7 +15,7 @@ use futures::{Async, Poll};
 use futures::sync::oneshot::{self, Sender, Receiver, Canceled};
 use crossbeam::sync::AtomicOption;
 use futures::{Future};
-use ocl::{/*Buffer,*/ RwVec, /*FutureReader, FutureWriter,*/ OclPrm};
+use ocl::{RwVec, FutureReadGuard, FutureWriteGuard, OclPrm};
 use cmn::CmnError;
 
 
@@ -43,20 +43,20 @@ const BUFFER_2_FRESH: usize = 0x00000004;
 
 
 pub enum FutureSend {
-    Send,
+    Send(Option<WriteBuffer>),
     Skip,
-    Wait(Receiver<()>),
+    Wait(Receiver<()>, Option<WriteBuffer>),
 }
 
 impl Future for FutureSend {
-    type Item = bool;
+    type Item = Option<WriteBuffer>;
     type Error = Canceled;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         match *self {
-            FutureSend::Send => Ok(Async::Ready(true)),
-            FutureSend::Skip => Ok(Async::Ready(false)),
-            FutureSend::Wait(ref mut rx) => rx.poll().map(|status| status.map(|_| true)),
+            FutureSend::Send(ref mut tb) => Ok(Async::Ready(tb.take())),
+            FutureSend::Skip => Ok(Async::Ready(None)),
+            FutureSend::Wait(ref mut rx, ref mut tb) => rx.poll().map(|status| status.map(|_| tb.take())),
         }
     }
 }
@@ -67,39 +67,105 @@ pub struct FutureRecv {
 }
 
 
+pub enum WriteBuffer {
+    I8(RwVec<i8>),
+    U8(RwVec<u8>),
+}
+
+impl WriteBuffer {
+    pub fn write_i8(&self) -> FutureWriteGuard<i8> {
+        match *self {
+            WriteBuffer::I8(ref rwv) => rwv.clone().write(),
+            _ => panic!("WriteBuffer::write_i8: This buffer is not a 'i8'."),
+        }
+    }
+
+    pub fn write_u8(&self) -> FutureWriteGuard<u8> {
+        match *self {
+            WriteBuffer::U8(ref rwv) => rwv.clone().write(),
+            _ => panic!("WriteBuffer::write_u8: This buffer is not a 'u8'."),
+        }
+    }
+}
+
+
+pub enum ReadBuffer {
+    I8(RwVec<i8>),
+    U8(RwVec<u8>),
+}
+
+impl ReadBuffer {
+    pub fn read_i8(&self) -> FutureReadGuard<i8> {
+        match *self {
+            ReadBuffer::I8(ref rwv) => rwv.clone().read(),
+            _ => panic!("ReadBuffer::read_i8: This buffer is not a 'i8'."),
+        }
+    }
+
+    pub fn read_u8(&self) -> FutureReadGuard<u8> {
+        match *self {
+            ReadBuffer::U8(ref rwv) => rwv.clone().read(),
+            _ => panic!("ReadBuffer::read_u8: This buffer is not a 'u8'."),
+        }
+    }
+}
+
+
 #[derive(Debug)]
-pub enum TractBuffer<T: OclPrm> {
-    // TractReader(FutureReader<T>),
-    // TractWriter(FutureWriter<T>),
-    // OclBufferReader(Buffer<T>),
-    // OclBufferWriter(Buffer<T>),
+pub enum TractBufferTyped<T: OclPrm> {
     Single(RwVec<T>),
     Double,
     Triple,
 }
 
+impl<T: OclPrm> TractBufferTyped<T> {
+    fn next_write_buffer(&self) -> RwVec<T> {
+        match *self {
+            TractBufferTyped::Single(ref rwv) => rwv.clone(),
+            TractBufferTyped::Double => unimplemented!(),
+            TractBufferTyped::Triple => unimplemented!(),
+        }
+    }
+}
+
 
 #[derive(Debug)]
-pub struct UntypedTractInner<T: OclPrm> {
-    buffer: TractBuffer<T>,
+pub enum TractBuffer {
+    I8(TractBufferTyped<i8>),
+    U8(TractBufferTyped<u8>),
+}
+
+impl TractBuffer {
+    fn next_write_buffer(&self) -> WriteBuffer {
+        match *self {
+            TractBuffer::I8(ref tbt) => WriteBuffer::I8(tbt.next_write_buffer()),
+            TractBuffer::U8(ref tbt) => WriteBuffer::U8(tbt.next_write_buffer()),
+        }
+    }
+}
+
+
+#[derive(Debug)]
+pub struct TractInner {
+    buffer: TractBuffer,
     buffer_idx_range: Range<usize>,
     backpressure: bool,
     state: AtomicUsize,
-    send_tx: AtomicOption<Sender<()>>,
-    recv_tx: AtomicOption<Sender<()>>,
+    send_waiting_tx: AtomicOption<Sender<()>>,
+    recv_waiting_tx: AtomicOption<Sender<()>>,
 }
 
-impl<T: OclPrm> UntypedTractInner<T> {
-    fn new(buffer: TractBuffer<T>, buffer_idx_range: Range<usize>, backpressure: bool)
-            -> UntypedTractInner<T>
+impl TractInner {
+    fn new(buffer: TractBuffer, buffer_idx_range: Range<usize>, backpressure: bool)
+            -> TractInner
     {
-        UntypedTractInner {
+        TractInner {
             buffer,
             buffer_idx_range,
             backpressure,
             state: AtomicUsize::new(0),
-            send_tx: AtomicOption::new(),
-            recv_tx: AtomicOption::new(),
+            send_waiting_tx: AtomicOption::new(),
+            recv_waiting_tx: AtomicOption::new(),
         }
     }
 
@@ -110,87 +176,49 @@ impl<T: OclPrm> UntypedTractInner<T> {
         if buffer_is_fresh {
             if self.backpressure {
                 let (tx, rx) = oneshot::channel();
-                let old_tx = self.send_tx.swap(tx, Ordering::SeqCst);
+                let old_tx = self.send_waiting_tx.swap(tx, Ordering::SeqCst);
                 assert!(old_tx.is_none());
-                FutureSend::Wait(rx)
+                FutureSend::Wait(rx, Some(self.buffer.next_write_buffer()))
             } else {
                 FutureSend::Skip
             }
         } else {
-            FutureSend::Send
+            FutureSend::Send(Some(self.buffer.next_write_buffer()))
         }
     }
 
     fn recv(&self) -> bool {
+        let mut tx_completed = false;
+        if let Some(tx) = self.send_waiting_tx.take(Ordering::SeqCst) {
+            tx.send(()).ok();
+            tx_completed = true;
+        }
+
         let cur_state = self.state.fetch_and(!BUFFER_0_FRESH, Ordering::SeqCst);
         let buffer_is_fresh = (cur_state & BUFFER_0_FRESH) != 0;
 
         if buffer_is_fresh {
+            assert!(tx_completed);
             return true;
         } else {
             return false;
         }
     }
-}
-
-unsafe impl<T: OclPrm> Send for UntypedTractInner<T> {}
-unsafe impl<T: OclPrm> Sync for UntypedTractInner<T> {}
-
-
-
-#[derive(Debug)]
-pub enum TractInner {
-    I8(UntypedTractInner<i8>),
-    U8(UntypedTractInner<u8>),
-}
-
-impl TractInner {
-    fn new_i8(buffer: TractBuffer<i8>, buffer_idx_range: Range<usize>, backpressure: bool) -> TractInner {
-        TractInner::I8(UntypedTractInner::new(buffer, buffer_idx_range, backpressure))
-    }
-
-    fn new_u8(buffer: TractBuffer<u8>, buffer_idx_range: Range<usize>, backpressure: bool) -> TractInner {
-        TractInner::U8(UntypedTractInner::new(buffer, buffer_idx_range, backpressure))
-    }
-
-    #[inline]
-    fn send(&self) -> FutureSend {
-        match *self {
-            TractInner::I8(ref ti) => ti.send(),
-            TractInner::U8(ref ti) => ti.send(),
-        }
-    }
 
     #[inline]
     pub fn buffer_idx_range(&self) -> Range<usize> {
-        match *self {
-            TractInner::I8(ref ti) => ti.buffer_idx_range.clone(),
-            TractInner::U8(ref ti) => ti.buffer_idx_range.clone(),
-        }
+        self.buffer_idx_range.clone()
     }
 
     #[inline]
     pub fn backpressure(&self) -> bool {
-        match *self {
-            TractInner::I8(ref ti) => ti.backpressure,
-            TractInner::U8(ref ti) => ti.backpressure,
-        }
-    }
-
-    /// Panics if not a u8.
-    #[inline]
-    pub fn buffer_u8(&self) -> &RwVec<u8> {
-        match *self {
-            TractInner::U8(ref ti) => {
-                match ti.buffer {
-                    TractBuffer::Single(ref b) => b,
-                    _ => unimplemented!(),
-                }
-            },
-            _ => panic!("TractSender::single_u8: This buffer is not a 'u8'."),
-        }
+        self.backpressure
     }
 }
+
+unsafe impl Send for TractInner {}
+unsafe impl Sync for TractInner {}
+
 
 
 #[derive(Debug)]
@@ -234,16 +262,17 @@ impl Deref for TractReceiver {
 pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Range<usize>, backpressure: bool)
         -> (TractSender, TractReceiver)
 {
-    // let (tx, rx) = tract_channel(TractBuffer::Single(buffer), buffer_idx_range, backpressure);
-    // (TractSender(TractSenderKind::I8(tx)), TractReceiver(TractReceiverKind::I8(rx)))
-    let inner = Arc::new(TractInner::new_i8(TractBuffer::Single(buffer), buffer_idx_range, backpressure));
+    // let inner = Arc::new(TractInner::new_i8(TractBuffer::Single(buffer), buffer_idx_range, backpressure));
+    let tract_buffer = TractBuffer::I8(TractBufferTyped::Single(buffer));
+    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
 }
 
 pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
         -> (TractSender, TractReceiver)
 {
-    let inner = Arc::new(TractInner::new_u8(TractBuffer::Single(buffer), buffer_idx_range, backpressure));
+    let tract_buffer = TractBuffer::U8(TractBufferTyped::Single(buffer));
+    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
 }
 
@@ -362,8 +391,8 @@ pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>
 
 
 // enum Inner<T: OclPrm> {
-//     TractReader(FutureReader<T>),
-//     TractWriter(FutureWriter<T>),
+//     TractReader(FutureReadGuard<T>),
+//     TractWriter(FutureWriteGuard<T>),
 //     BufferReader(Buffer<T>),
 //     BufferWriter(Buffer<T>),
 //     Single(RwVec<T>),
@@ -380,14 +409,14 @@ pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>
 // }
 
 // impl<T: OclPrm> IoLink<T> {
-//     pub fn direct_reader(reader: FutureReader<T>, backpressure: bool) -> IoLink<T> {
+//     pub fn direct_reader(reader: FutureReadGuard<T>, backpressure: bool) -> IoLink<T> {
 //         IoLink {
 //             inner: Inner::TractReader(reader),
 //             backpressure
 //         }
 //     }
 
-//     pub fn direct_writer(writer: FutureWriter<T>, backpressure: bool) -> IoLink<T> {
+//     pub fn direct_writer(writer: FutureWriteGuard<T>, backpressure: bool) -> IoLink<T> {
 //         IoLink {
 //             inner: Inner::TractWriter(writer),
 //             backpressure

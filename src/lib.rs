@@ -7,7 +7,7 @@ extern crate num;
 extern crate libc;
 extern crate time;
 extern crate find_folder;
-extern crate twox_hash;
+// extern crate twox_hash;
 extern crate rand;
 extern crate futures;
 extern crate tokio_core;

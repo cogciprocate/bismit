@@ -6,7 +6,7 @@ use std::fmt::Debug;
 // use std::mem::{self, Discriminant};
 use find_folder::Search;
 use cmn::{self, CorticalDims, CmnResult, /*CmnError,*/ TractDims};
-use ocl::{FutureWriter};
+use ocl::{FutureWriteGuard};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
@@ -16,7 +16,7 @@ use cmn::TractFrameMut;
 
 #[derive(Debug)]
 pub enum ExternalPathwayFrame<'a> {
-    Writer(FutureWriter<u8>),
+    Writer(FutureWriteGuard<u8>),
     Tract(TractFrameMut<'a>),
     F32Slice(&'a mut [f32]),
 }
@@ -47,7 +47,7 @@ pub enum ExternalPathwayEncoder {
 
 impl ExternalPathwayEncoder {
     /// Writes input data into a tract.
-    pub fn write_into(&mut self, addr: LayerAddress, dims: TractDims, future_write: FutureWriter<u8>) {
+    pub fn write_into(&mut self, addr: LayerAddress, dims: TractDims, future_write: FutureWriteGuard<u8>) {
         let mut data = future_write.wait().unwrap();
         let mut frame = TractFrameMut::new(data.as_mut_slice(), dims);
 
@@ -140,7 +140,7 @@ impl ExternalPathwayLayer {
 
 
 enum EncoderCmd {
-    WriteInto {addr: LayerAddress, dims: TractDims, future_write: FutureWriter<u8> },
+    WriteInto {addr: LayerAddress, dims: TractDims, future_write: FutureWriteGuard<u8> },
     Cycle,
     SetRanges(Vec<(f32, f32)>),
     SetEncoder(ExternalPathwayEncoder),
@@ -339,7 +339,7 @@ impl ExternalPathway {
 
     /// Writes input data into a tract.
     // pub fn write_into(&mut self, addr: &LayerAddress, mut frame: TractFrameMut, _: &mut EventList) {
-    pub fn write_into(&self, addr: LayerAddress, future_write: FutureWriter<u8>) {
+    pub fn write_into(&self, addr: LayerAddress, future_write: FutureWriteGuard<u8>) {
         if !self.disabled {
             let dims = self.layers[&addr].dims().expect(&format!("Dimensions don't exist for \
                 external input area: \"{}\", addr: '{:?}' ", self.area_name, addr)).into();
