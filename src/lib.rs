@@ -30,9 +30,10 @@ pub mod map;
 pub use ocl::Event as OclEvent;
 pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses, /*Minicolumns,*/
     InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer, SpinyStellateLayer, Dendrites,
-    CorticalAreaSettings, DataCellLayer};
+    CorticalAreaSettings, DataCellLayer, SamplerKind, SamplerBufferKind};
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus, TestScNucleus, ExternalPathway,
-    ExternalPathwayTract, ExternalPathwayEncoder, ExternalPathwayFrame, ExternalPathwayLayer};
+    ExternalPathwayTract, ExternalPathwayEncoder, ExternalPathwayFrame, ExternalPathwayLayer,
+    TractBuffer, TractSender, TractReceiver};
 // pub use self::subcortex::thalamus::{};
 pub use self::flywheel::Flywheel;
 pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap};

@@ -105,7 +105,8 @@ impl fmt::Display for ExecutionGraphError {
             ExecutionGraphError::EventsRequestOutOfOrder(expected_order, found_order) => {
                 f.write_fmt(format_args!("ExecutionGraph::get_req_events: Events requested out \
                     of order. Expected: <{}>, found: <{}>. Events must be requested in the order \
-                    the commands were configured with `::order_next`", expected_order, found_order))
+                    the commands were configured with `::order_next`. Ensure that each command is \
+                    calling `::set_cmd_event` when enqueued.", expected_order, found_order))
             }
         }
     }
@@ -565,9 +566,9 @@ impl ExecutionGraph {
     /// the graph, disallowing addition or removal of commands until unlocked
     /// with `::unlock`.
     pub fn lock(&mut self) {
-        assert!(self.cmd_relations.len() == self.cmds.len(), "ExecutionGraph::populate_requisites \
+        assert!(self.cmd_relations.len() == self.cmds.len(), "ExecutionGraph::lock \
             Not all commands have had their order properly set ({}/{}). Call '::order_next' to \
-            include commands in the execution order.", self.cmd_relations.len(), self.cmds.len());
+            include commands in the execution order.", self.cmds.len(), self.cmd_relations.len());
         assert!(!self.locked, "Cannot populate this graph while locked. Use '::unlock_clear' first.");
 
         let mem_block_rws = self.readers_and_writers_by_mem_block();
@@ -653,7 +654,6 @@ impl ExecutionGraph {
             if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### ExecutionGraph::set_cmd_event: \
                 Setting event for [cmd_idx: {}].", cmd_idx,) }
         }
-
         Ok(())
     }
 

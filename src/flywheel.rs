@@ -17,7 +17,8 @@ use std::sync::{Arc, Mutex};
 use time::{self, Timespec, Duration};
 // use ocl::Buffer;
 use cmn::{CmnResult};
-use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings};
+use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings, SamplerKind,
+    SamplerBufferKind, TractReceiver};
 use ::map::{SliceTractMap, /*LayerAddress*/};
 
 
@@ -81,6 +82,7 @@ pub enum Request {
     Status,
     AreaInfo,
     Sample(Range<usize>, Arc<Mutex<Vec<u8>>>),
+    Sampler { area_name: String, kind: SamplerKind, buffer_kind: SamplerBufferKind },
     FinishQueues,
     // Input(Obs),
     // GetAction,
@@ -88,7 +90,7 @@ pub enum Request {
 
 
 /// Cycle result responses.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Response {
     CycleStarted(u32),
     CurrentIter(u32),
@@ -98,6 +100,7 @@ pub enum Response {
     AreaInfo(Box<AreaInfo>),
     SampleProgress(Option<OclEvent>),
     QueuesFinished(u64),
+    Sampler(TractReceiver),
     Exiting,
 }
 
@@ -351,7 +354,7 @@ impl Flywheel {
         Command::None
     }
 
-    fn fulfill_requests(&self) {
+    fn fulfill_requests(&mut self) {
         // ////// DEBUG:
         // println!("Fulfilling requests...");
 
@@ -364,6 +367,11 @@ impl Flywheel {
                         match r {
                             Request::Sample(range, buf) => {
                                 res_tx.send(Response::SampleProgress(self.refresh_buf(range, buf))).unwrap();
+                            },
+                            Request::Sampler { area_name, kind, buffer_kind } => {
+                                let tract_rx = self.cortex.areas_mut().by_key_mut(area_name.as_str()).unwrap()
+                                    .sampler(kind, buffer_kind);
+                                res_tx.send(Response::Sampler(tract_rx)).unwrap();
                             },
                             Request::AreaInfo => {
                                 self.send_area_info(res_tx);
@@ -383,8 +391,7 @@ impl Flywheel {
                                     Ok(_) => (),
                                     Err(err) => if !self.exiting { panic!("{:?}", err); }
                                 }
-
-                            }
+                            },
                         }
                     }
                     Err(e) => match e {

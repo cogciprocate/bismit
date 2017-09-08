@@ -54,16 +54,37 @@ impl Future for FutureSend {
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         match *self {
-            FutureSend::Send(ref mut tb) => Ok(Async::Ready(tb.take())),
+            FutureSend::Send(ref mut b) => Ok(Async::Ready(b.take())),
             FutureSend::Skip => Ok(Async::Ready(None)),
-            FutureSend::Wait(ref mut rx, ref mut tb) => rx.poll().map(|status| status.map(|_| tb.take())),
+            FutureSend::Wait(ref mut rx, ref mut b) => rx.poll().map(|status| status.map(|_| b.take())),
         }
     }
 }
 
 
-pub struct FutureRecv {
+pub enum FutureRecv {
+    Recv(Option<ReadBuffer>),
+    Skip,
+    Wait(Receiver<()>, Option<ReadBuffer>),
+}
 
+impl FutureRecv {
+    pub fn wait(&mut self) -> Result<Option<ReadBuffer>, Canceled> {
+        Future::wait(self)
+    }
+}
+
+impl Future for FutureRecv {
+    type Item = Option<ReadBuffer>;
+    type Error = Canceled;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        match *self {
+            FutureRecv::Recv(ref mut b) => Ok(Async::Ready(b.take())),
+            FutureRecv::Skip => Ok(Async::Ready(None)),
+            FutureRecv::Wait(ref mut rx, ref mut b) => rx.poll().map(|status| status.map(|_| b.take())),
+        }
+    }
 }
 
 
@@ -73,16 +94,16 @@ pub enum WriteBuffer {
 }
 
 impl WriteBuffer {
-    pub fn write_i8(&self) -> FutureWriteGuard<i8> {
-        match *self {
-            WriteBuffer::I8(ref rwv) => rwv.clone().write(),
+    pub fn write_i8(self) -> FutureWriteGuard<i8> {
+        match self {
+            WriteBuffer::I8(rwv) => rwv.write(),
             _ => panic!("WriteBuffer::write_i8: This buffer is not a 'i8'."),
         }
     }
 
-    pub fn write_u8(&self) -> FutureWriteGuard<u8> {
-        match *self {
-            WriteBuffer::U8(ref rwv) => rwv.clone().write(),
+    pub fn write_u8(self) -> FutureWriteGuard<u8> {
+        match self {
+            WriteBuffer::U8(rwv) => rwv.write(),
             _ => panic!("WriteBuffer::write_u8: This buffer is not a 'u8'."),
         }
     }
@@ -95,16 +116,16 @@ pub enum ReadBuffer {
 }
 
 impl ReadBuffer {
-    pub fn read_i8(&self) -> FutureReadGuard<i8> {
-        match *self {
-            ReadBuffer::I8(ref rwv) => rwv.clone().read(),
+    pub fn read_i8(self) -> FutureReadGuard<i8> {
+        match self {
+            ReadBuffer::I8(rwv) => rwv.read(),
             _ => panic!("ReadBuffer::read_i8: This buffer is not a 'i8'."),
         }
     }
 
-    pub fn read_u8(&self) -> FutureReadGuard<u8> {
-        match *self {
-            ReadBuffer::U8(ref rwv) => rwv.clone().read(),
+    pub fn read_u8(self) -> FutureReadGuard<u8> {
+        match self {
+            ReadBuffer::U8(rwv) => rwv.read(),
             _ => panic!("ReadBuffer::read_u8: This buffer is not a 'u8'."),
         }
     }
@@ -126,6 +147,14 @@ impl<T: OclPrm> TractBufferTyped<T> {
             TractBufferTyped::Triple => unimplemented!(),
         }
     }
+
+    fn next_read_buffer(&self) -> RwVec<T> {
+        match *self {
+            TractBufferTyped::Single(ref rwv) => rwv.clone(),
+            TractBufferTyped::Double => unimplemented!(),
+            TractBufferTyped::Triple => unimplemented!(),
+        }
+    }
 }
 
 
@@ -140,6 +169,13 @@ impl TractBuffer {
         match *self {
             TractBuffer::I8(ref tbt) => WriteBuffer::I8(tbt.next_write_buffer()),
             TractBuffer::U8(ref tbt) => WriteBuffer::U8(tbt.next_write_buffer()),
+        }
+    }
+
+    fn next_read_buffer(&self) -> ReadBuffer {
+        match *self {
+            TractBuffer::I8(ref tbt) => ReadBuffer::I8(tbt.next_read_buffer()),
+            TractBuffer::U8(ref tbt) => ReadBuffer::U8(tbt.next_read_buffer()),
         }
     }
 }
@@ -187,21 +223,25 @@ impl TractInner {
         }
     }
 
-    fn recv(&self) -> bool {
-        let mut tx_completed = false;
+    fn recv(&self, sync: bool) -> FutureRecv {
         if let Some(tx) = self.send_waiting_tx.take(Ordering::SeqCst) {
             tx.send(()).ok();
-            tx_completed = true;
         }
 
         let cur_state = self.state.fetch_and(!BUFFER_0_FRESH, Ordering::SeqCst);
         let buffer_is_fresh = (cur_state & BUFFER_0_FRESH) != 0;
 
         if buffer_is_fresh {
-            assert!(tx_completed);
-            return true;
+            FutureRecv::Recv(Some(self.buffer.next_read_buffer()))
         } else {
-            return false;
+            if sync {
+                let (tx, rx) = oneshot::channel();
+                let old_tx = self.recv_waiting_tx.swap(tx, Ordering::SeqCst);
+                assert!(old_tx.is_none());
+                FutureRecv::Wait(rx, Some(self.buffer.next_read_buffer()))
+            } else {
+                FutureRecv::Skip
+            }
         }
     }
 
@@ -247,7 +287,9 @@ pub struct TractReceiver {
 }
 
 impl TractReceiver {
-
+    pub fn recv(&self, sync: bool) -> FutureRecv {
+        self.inner.recv(sync)
+    }
 }
 
 impl Deref for TractReceiver {
