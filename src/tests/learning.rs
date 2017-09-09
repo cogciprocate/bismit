@@ -4,10 +4,10 @@
 use std::ops::Range;
 use cortex::{Cortex, CorticalAreaTest, SynapsesTest, SynCoords, DendritesTest,
     DataCellLayer, DataCellLayerTest};
-use map;
+use map::LayerTags;
 use cmn;
 use super::testbed;
-use super::util::{self, ACTIVATE, LEARN, CYCLE, OUTPUT, ALL};
+use super::util::{self, PtalAlco};
 
 // const LEARNING_TEST_ITERATIONS: usize = 5; //50;
 // const LEARNING_ITERS_PER_CELL: usize = 2;
@@ -136,7 +136,7 @@ impl LearningTestBed {
             focus_syns,
             off_focus_syns) = {
 
-            let mut area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
+            let area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
             // Zero all dendrite and synapse buffers:
             area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().set_all_to_zero(true);
@@ -146,7 +146,7 @@ impl LearningTestBed {
             area.axns().states().default_queue().unwrap().finish().unwrap();
 
             // Set source slice to an unused slice for all synapses:
-            let unused_slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(map::UNUSED);
+            let unused_slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(LayerTags::UNUSED);
             assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
             let unused_slc_id = unused_slc_ranges[0].start as u8;
 
@@ -365,7 +365,7 @@ impl LearningTestBed {
     /// our learning algorithm undergoes its many upcoming dramatic changes.
     ///
     fn learning_iter(&mut self, i: usize, flipped: bool, print_debug: bool) {
-        let mut area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
+        let area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
         let tft_id = self.syn_coords.tft_id;
         let tft_den_idz = area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().den_idzs_by_tft()[tft_id];
         let den_idx = self.syn_coords.den_idx(tft_den_idz);
@@ -400,7 +400,7 @@ impl LearningTestBed {
         area.activate_axon(self.fake_neighbor_axn_idx);
         area.finish_queues();
 
-        util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
+        util::ptal_alco(area, PtalAlco::CYCLE | PtalAlco::OUTPUT, print_debug);
 
         if print_debug {
             util::print_all(area, "\n - Confirm 0 - ");
@@ -451,7 +451,7 @@ impl LearningTestBed {
             println!("       ====================== {}[{}] 1A ====================== \n", flpd_str, i);
         }
 
-        util::ptal_alco(area, ACTIVATE, print_debug);
+        util::ptal_alco(area, PtalAlco::ACTIVATE, print_debug);
 
 
         if print_debug {
@@ -478,7 +478,7 @@ impl LearningTestBed {
         if print_debug { println!("Finishing queue..."); }
         area.ocl_pq().queue().finish().unwrap();
 
-        util::ptal_alco(area, LEARN, print_debug);
+        util::ptal_alco(area, PtalAlco::LEARN, print_debug);
 
         // if print_debug { println!("Finishing queues..."); }
 
@@ -498,7 +498,7 @@ impl LearningTestBed {
             \n ====================== {}[{}] 1C ====================== \n", flpd_str, i); }
 
 
-        util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
+        util::ptal_alco(area, PtalAlco::CYCLE | PtalAlco::OUTPUT, print_debug);
 
         if print_debug {
             util::print_all(area, "\n - Confirm 1C - ");
@@ -526,7 +526,7 @@ impl LearningTestBed {
         // printlnc!(yellow: "Activating distal source (neighbor) axon: [{}]...", self.fake_neighbor_axn_idx);
         // area.activate_axon(self.fake_neighbor_axn_idx);
 
-        util::ptal_alco(area, ACTIVATE, print_debug);
+        util::ptal_alco(area, PtalAlco::ACTIVATE, print_debug);
 
         if print_debug {
             util::print_all(area, "\n - Confirm 2A - ");
@@ -548,7 +548,7 @@ impl LearningTestBed {
         if print_debug { println!(
             "\n ====================== {}[{}] 2B ====================== \n", flpd_str, i); }
 
-        util::ptal_alco(area, LEARN, print_debug);
+        util::ptal_alco(area, PtalAlco::LEARN, print_debug);
 
         if print_debug {
             util::print_all(area, "\n - Confirm 2B - ");
@@ -577,7 +577,7 @@ impl LearningTestBed {
         if print_debug { println!(
             "\n ====================== {}[{}] 2C ====================== \n", flpd_str, i); }
 
-        util::ptal_alco(area, CYCLE | OUTPUT, print_debug);
+        util::ptal_alco(area, PtalAlco::CYCLE | PtalAlco::OUTPUT, print_debug);
 
         if print_debug {
             util::print_all(area, "\n - Confirm 2C - ");
@@ -599,7 +599,7 @@ impl LearningTestBed {
             LEARNING_CONTINUATION_ITERS); }
 
         for _ in 0..LEARNING_CONTINUATION_ITERS {
-            util::ptal_alco(area, ALL, false);
+            util::ptal_alco(area, PtalAlco::ALL, false);
         }
 
         if print_debug {
@@ -621,8 +621,8 @@ impl LearningTestBed {
         area.deactivate_axon(self.fake_neighbor_axn_idx);
         area.finish_queues();
 
-        util::ptal_alco(area, CYCLE, print_debug);
-        util::ptal_alco(area, ACTIVATE, print_debug);
+        util::ptal_alco(area, PtalAlco::CYCLE, print_debug);
+        util::ptal_alco(area, PtalAlco::ACTIVATE, print_debug);
 
         if print_debug {
             util::print_all(area, "\n - Confirm 4 - ");
@@ -658,7 +658,7 @@ impl LearningTestBed {
         // area.deactivate_axon(fake_neighbor_axn_idx);
 
         // util::ptal_alco(area, ALL, print_debug);
-        util::ptal_alco(area, ACTIVATE | LEARN | OUTPUT, print_debug);
+        util::ptal_alco(area, PtalAlco::ACTIVATE | PtalAlco::LEARN | PtalAlco::OUTPUT, print_debug);
 
         if print_debug {
             util::print_all(area, "\n - Confirm 5 - ");
@@ -704,7 +704,7 @@ impl LearningTestBed {
         self.off_focus_syns = old_focus;
 
         // Set everything back up:
-        let mut area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
+        let area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
         // area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids()
         //    .cmd().fill(self.unused_slc_id, None).enq().unwrap();
 
@@ -726,7 +726,7 @@ impl LearningTestBed {
         //=============================================================================
         if PRINT_DEBUG_INFO { println!("\n ====================== Clean-up ====================== \n"); }
 
-        let mut area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
+        let area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
         // Finish queues:
         area.finish_queues();

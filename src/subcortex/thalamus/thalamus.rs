@@ -244,10 +244,12 @@ impl Thalamus {
             src_ext_path.cycle_next();
             for &layer_addr in layer_addr_list.iter() {
                 // TODO: ExternalPathway needs to store tract index.
-                let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
-                let future_write = self.tract.write(tract_area_idx)
-                    .expect("Thalamus::cycle_external_pathways()");
-                src_ext_path.write_into(layer_addr, future_write)
+                ////// DEBUG TEMP:
+                    // let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
+                    // let future_write = self.tract.write(tract_area_idx)
+                    //     .expect("Thalamus::cycle_external_pathways()");
+                    // src_ext_path.write_into(layer_addr, future_write)
+                ///////
             }
         }
     }

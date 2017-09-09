@@ -1,6 +1,6 @@
 use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, DenCoords, SynapsesTest,
     DataCellLayer, DataCellLayerTest};
-use map::{self, AreaMapTest};
+use map::{AreaMapTest, LayerTags};
 use cmn;
 use super::{testbed, util};
 
@@ -15,7 +15,7 @@ const PRINT_DETAILS: bool = false;
 #[test]
 fn cycle_random_pyrs() {
     let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
-    let mut area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
+    let area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
     // Zero all dendrite and synapse buffers:
     area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().set_all_to_zero(true);
@@ -25,7 +25,7 @@ fn cycle_random_pyrs() {
     area.axns().states().default_queue().unwrap().finish().unwrap();
 
     // Set source slice to an unused slice for all synapses:
-    let unused_slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(map::UNUSED);
+    let unused_slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(LayerTags::UNUSED);
     assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
     let zeroed_slc_id = unused_slc_ranges[0].start as u8;
     let unused_slc_id = unused_slc_ranges[1].start as u8;
@@ -191,14 +191,14 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
 fn cycle_random_dens() {
     // let mut cortex = testbed::fresh_cortex();
     let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
-    let mut area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
+    let area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
     // area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().set_all_to_zero();
     area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().set_all_to_zero(true);
 
     // SET SOURCE SLICE TO UNUSED SLICE FOR EVERY SYNAPSE:
     let zeroed_slc_range = area.area_map().layer_map()
-        .layers_containing_tags_slc_range(map::UNUSED)[0].clone();
+        .layers_containing_tags_slc_range(LayerTags::UNUSED)[0].clone();
     let zeroed_slc_id = zeroed_slc_range.start as u8;
 
     area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().src_slc_ids().default_queue().unwrap().finish().unwrap();

@@ -31,7 +31,7 @@ const QUEUE_PROFILING: bool = false;
 // GDB debug mode:
 const KERNEL_DEBUG_SYMBOLS: bool = false;
 // Layer role execution order:
-static ROLE_ORDER: [LayerTags; 4] = [map::FOCUS, map::SPATIAL, map::TEMPORAL, map::MOTOR];
+static ROLE_ORDER: [LayerTags; 4] = [LayerTags::FOCUS, LayerTags::SPATIAL, LayerTags::TEMPORAL, LayerTags::MOTOR];
 
 
 
@@ -421,9 +421,9 @@ impl CorticalArea {
             area_map.aff_areas(), device_idx, ocl_pq.device().name().trim(),
             ocl_pq.device().vendor().trim(), mt = cmn::MT);
 
-        let psal_name = area_map.layer_map().layers_containing_tags(map::PSAL)
+        let psal_name = area_map.layer_map().layers_containing_tags(LayerTags::PSAL)
             .first().map(|lyr| lyr.name());
-        let ptal_name = area_map.layer_map().layers_containing_tags(map::PTAL)
+        let ptal_name = area_map.layer_map().layers_containing_tags(LayerTags::PTAL)
             .first().map(|lyr| lyr.name());
 
         // Ensures if they are not set later the indexes will be invalid:
@@ -681,7 +681,7 @@ impl CorticalArea {
         // (2.) SSTs Cycle:
         for lyr_idx in self.cycle_order.clone() {
             let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
-            if lyr.tags().contains(map::SPATIAL) {
+            if lyr.tags().contains(LayerTags::SPATIAL) {
                 lyr.set_exe_order_cycle(&mut self.control_layers,
                     &mut self.exe_graph)?;
             }
@@ -690,7 +690,7 @@ impl CorticalArea {
         // (4.) SSTs Learn:
         for lyr_idx in self.cycle_order.clone() {
             let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
-            if lyr.tags().contains(map::SPATIAL) {
+            if lyr.tags().contains(LayerTags::SPATIAL) {
                 lyr.set_exe_order_learn(&mut self.exe_graph)?;
             }
         }
@@ -704,7 +704,7 @@ impl CorticalArea {
         if !self.settings.disable_pyrs {
             for &lyr_idx in self.cycle_order.iter() {
                 let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
-                if !lyr.tags().contains(map::SPATIAL) {
+                if !lyr.tags().contains(LayerTags::SPATIAL) {
                     lyr.set_exe_order(&mut self.control_layers,
                         &mut self.exe_graph)?;
                 }
@@ -742,7 +742,7 @@ impl CorticalArea {
         if !self.settings.disable_sscs {
             for &lyr_idx in self.cycle_order.iter() {
                 let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
-                if lyr.tags().contains(map::SPATIAL) {
+                if lyr.tags().contains(LayerTags::SPATIAL) {
                     lyr.cycle(&mut self.control_layers, &mut self.exe_graph)?
                 }
             }
@@ -752,7 +752,7 @@ impl CorticalArea {
         if !self.settings.disable_sscs {
             for &lyr_idx in self.cycle_order.iter() {
                 let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
-                if lyr.tags().contains(map::SPATIAL) {
+                if lyr.tags().contains(LayerTags::SPATIAL) {
                     lyr.learn(&mut self.exe_graph)?
                 }
             }
@@ -767,7 +767,7 @@ impl CorticalArea {
         if !self.settings.disable_pyrs {
             for &lyr_idx in self.cycle_order.iter() {
                 let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
-                if !lyr.tags().contains(map::SPATIAL) {
+                if !lyr.tags().contains(LayerTags::SPATIAL) {
                     if !self.settings.disable_learning {
                         lyr.learn(&mut self.exe_graph)?;
                     }

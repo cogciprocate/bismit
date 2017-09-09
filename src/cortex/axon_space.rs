@@ -505,7 +505,7 @@ impl AxonSpace {
                 if !DISABLE_IO && !bypass_filters && io_lyr.exe_cmd().is_filtered_write() {
                     let filter_chain_idx = io_lyr.filter_chain_idx().unwrap();
                     let filter_chain = &mut self.filter_chains[filter_chain_idx].1;
-                    filter_chain[0].write(future_reader, exe_graph)?;
+                    filter_chain[0].write(future_reader, exe_graph, work_tx)?;
                     for filter in filter_chain.iter() {
                         filter.cycle(exe_graph)?;
                     }

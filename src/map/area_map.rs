@@ -3,7 +3,7 @@ use std::ops::{Range, Deref};
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use cmn::{self, CorticalDims, MapStore, CmnResult};
 use ::ExternalPathway;
-use map::{self, SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapSchemeList,
+use map::{SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapSchemeList,
     AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme, AxonTags, InputTrack};
 
 
@@ -176,7 +176,7 @@ impl AreaMap {
 
     // NEW
     pub fn psal_layer(&self) -> &LayerInfo {
-        let psal_layer_vec = self.layer_map.layers_containing_tags(map::PSAL);
+        let psal_layer_vec = self.layer_map.layers_containing_tags(LayerTags::PSAL);
         assert_eq!(psal_layer_vec.len(), 1);
         psal_layer_vec[0]
     }
@@ -184,7 +184,7 @@ impl AreaMap {
     // NEW
     #[inline]
     pub fn ptal_layer(&self) -> &LayerInfo {
-        let ptal_layer_vec = self.layer_map.layers_containing_tags(map::PTAL);
+        let ptal_layer_vec = self.layer_map.layers_containing_tags(LayerTags::PTAL);
         assert_eq!(ptal_layer_vec.len(), 1);
         ptal_layer_vec[0]
     }

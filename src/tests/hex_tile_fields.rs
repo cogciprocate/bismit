@@ -1,7 +1,8 @@
 #![allow(dead_code, unused_variables, unused_mut)]
 
 use ocl::builders::{BuildOpt};
-use ::{map, Cortex, CorticalAreaSettings};
+use ::{Cortex, CorticalAreaSettings};
+use map;
 use map::*;
 use tests::testbed;
 
@@ -18,24 +19,24 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
-            .input_layer("aff_in", map::DEFAULT,
+            .input_layer("aff_in", LayerTags::DEFAULT,
                 AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
                 AxonTopology::Spatial
             )
-            // .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+            // .layer("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[LayerTags::THAL_SP]),
             //     CellScheme::minicolumn("iv", "iii", 9999)
             // )
-            .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
+            .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
                 CellScheme::spiny_stellate(&[("aff_in", 8, 1)], 7, 400)
             )
-            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
-            .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 6, 1))
-            .layer("iii", 1, map::PTAL, AxonDomain::Local,
+            .layer("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
+            .layer("iv_smooth", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 6, 1))
+            .layer("iii", 1, LayerTags::PTAL, AxonDomain::Local,
                 CellScheme::pyramidal(&[("iii", 8, 1)], 1, 2, 500)
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer(EXT_LYR, 1, map::DEFAULT,
+            .layer(EXT_LYR, 1, LayerTags::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, at0]),
                 LayerKind::Axonal(AxonTopology::Spatial))
         )
@@ -48,7 +49,7 @@ fn define_a_schemes() -> AreaSchemeList {
         )
         .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)
             .eff_areas(vec!["v0"])
-            // .filter_chain(map::FF_IN, vec![FilterScheme::new("retina", None)])
+            // .filter_chain(LayerTags::FF_IN, vec![FilterScheme::new("retina", None)])
         )
 }
 

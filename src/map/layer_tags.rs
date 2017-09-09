@@ -133,10 +133,10 @@ bitflags! {
         // const NS_IN = INPUT.bits | NONSPECIFIC.bits,
         // const NS_OUT = OUTPUT.bits | NONSPECIFIC.bits,
 
-        const PSAL = PRIMARY.bits | SPATIAL.bits;
-        const PTAL = PRIMARY.bits | TEMPORAL.bits;
-        const PFL = PRIMARY.bits | FOCUS.bits;
-        const PML = PRIMARY.bits | MOTOR.bits;
+        const PSAL = Self::PRIMARY.bits | Self::SPATIAL.bits;
+        const PTAL = Self::PRIMARY.bits | Self::TEMPORAL.bits;
+        const PFL = Self::PRIMARY.bits | Self::FOCUS.bits;
+        const PML = Self::PRIMARY.bits | Self::MOTOR.bits;
     }
 }
 
@@ -189,7 +189,7 @@ impl LayerTags {
     /// superset of `other` or `other` a superset of `self`.
     pub fn meshes_either_way(&self, other: LayerTags) -> bool {
         (self.contains(other) || other.contains(*self)) &&
-            (*self != DEFAULT && other != DEFAULT) &&
+            (*self != LayerTags::DEFAULT && other != LayerTags::DEFAULT) &&
             self.get_uid() == other.get_uid()
     }
 

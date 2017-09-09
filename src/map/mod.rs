@@ -19,9 +19,7 @@ pub use self::syn_src::{SynSrcSlices, SynSrcIdxCache, SynSrc, gen_syn_offs};
 pub use self::slice_tract_map::SliceTractMap;
 pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
 	LayerScheme, FilterScheme, EncoderScheme, TuftSourceLayer, TuftScheme};
-pub use self::layer_tags::{LayerTags, DEFAULT, PRIMARY, SPATIAL, TEMPORAL, FOCUS, MOTOR,
-    UNUSED, PSAL, PTAL, PML, PFL};
-
+pub use self::layer_tags::LayerTags;
 
 /////// FIXME: IMPORT MANUALLY:
 // pub use self::execution::{ExecutionGraphError, ExecutionCommandKind, ExecutionGraph};

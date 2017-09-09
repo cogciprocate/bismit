@@ -19,7 +19,7 @@ const PRINT_DETAILS: bool = false;
 
 bitflags! {
     // #[derive(Debug)]
-    pub struct PtalAlcoSwitches: u32 {
+    pub struct PtalAlco: u32 {
         const NONE                = 0b00000000;
         const ACTIVATE             = 0b00000001;
         const LEARN                = 0b00000010;
@@ -44,7 +44,7 @@ bitflags! {
 /// after each kernel.
 ///
 // pub fn ptal_alco(area: &mut CorticalArea, activ: bool, learn: bool, cycle: bool, output: bool) {
-pub fn ptal_alco(_area: &mut CorticalArea, _switches: PtalAlcoSwitches, print: bool) {
+pub fn ptal_alco(_area: &mut CorticalArea, _switches: PtalAlco, print: bool) {
 
     // if print { area.mcols().kern_activate().default_queue().unwrap().finish().unwrap(); }
 

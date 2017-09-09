@@ -766,7 +766,7 @@ pub mod tests {
         use cortex::{DenCoords, DataCellLayer, DataCellLayerTest};
 
         let mut cortex = testbed::fresh_cortex();
-        let mut area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
+        let area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
         // Choose a random synapse:
         let cel_coords = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)

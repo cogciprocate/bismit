@@ -1,4 +1,6 @@
 use std::ops::Range;
+use futures::{Future, Sink};
+use futures::sync::mpsc::Sender;
 use ocl::{flags, Kernel, ProQue, SpatialDims, Buffer, Event, Queue, FutureReadGuard};
 use cmn::{CmnError, CmnResult, CorticalDims};
 use map::{ExecutionGraph, CommandRelations, CorticalBuffer,
@@ -114,7 +116,9 @@ impl SensoryFilter {
     }
 
     // pub fn write(&self, source: SliceBufferSource, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-    pub fn write(&self, source: FutureReadGuard<u8>, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+    pub fn write(&self, source: FutureReadGuard<u8>, exe_graph: &mut ExecutionGraph,
+            work_tx: &Sender<Box<Future<Item=(), Error=()> + Send>>) -> CmnResult<()>
+    {
         let cmd_idx = self.exe_cmd_idx_write.ok_or(CmnError::new(
             "SensoryFilter::write: Write command not created for this filter."))?;
         // let range = 0..self.input_buffer.len() as u32;
@@ -131,10 +135,14 @@ impl SensoryFilter {
 
         let mut ev = Event::empty();
 
-        self.input_buffer.write(source)
+        let future_write = self.input_buffer.write(source)
             .ewait(exe_graph.get_req_events(cmd_idx)?)
             .enew(&mut ev)
-            .enq_async()?;
+            .enq_async()?
+            .map(|_guard| ())
+            .map_err(|err| panic!("{:?}", err));
+
+        work_tx.clone().send(Box::new(future_write)).wait()?;
 
         exe_graph.set_cmd_event(cmd_idx, Some(ev))?;
         Ok(())
