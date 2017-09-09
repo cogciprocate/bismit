@@ -516,55 +516,54 @@ impl AxonSpace {
                         let event = if DISABLE_IO {
                             None
                         } else {
-                            // let mut ev = Event::empty();
-                            // let future_write = self.states.write(future_reader)
-                            //     .queue(&self.write_queue)
-                            //     .offset(axn_range.start as usize)
-                            //     .len(axn_range.end as usize)
-                            //     .ewait(exe_graph.get_req_events(cmd_idx)?)
-                            //     .enew(&mut ev)
-                            //     .enq_async()?
-                            //     // .and_then(|_guard| Ok(()))
-                            //     .map(|_guard| ())
-                            //     .map_err(|err| panic!("{}", err))
-                            //     .boxed();
-
-                            let mut future_map = self.states.map()
+                            let mut ev = Event::empty();
+                            let future_write = self.states.write(future_reader)
                                 .queue(&self.write_queue)
-                                .write_invalidate()
                                 .offset(axn_range.start as usize)
                                 .len(axn_range.len())
-                                // .enew(&mut ev)
-                                // .ewait(exe_graph.get_req_events(cmd_idx)?)
-                                .enq_async()?;
+                                .ewait(exe_graph.get_req_events(cmd_idx)?)
+                                .enew(&mut ev)
+                                .enq_async()?
+                                // .and_then(|_guard| Ok(()))
+                                .map(|_guard| ())
+                                .map_err(|err| panic!("{:?}", err));
 
-                            future_map.set_unmap_wait_list(exe_graph.get_req_events(cmd_idx)?);
-                            let ev = future_map.create_unmap_target_event()?.clone();
+                            // let mut future_map = self.states.map()
+                            //     .queue(&self.write_queue)
+                            //     .write_invalidate()
+                            //     .offset(axn_range.start as usize)
+                            //     .len(axn_range.len())
+                            //     // .enew(&mut ev)
+                            //     // .ewait(exe_graph.get_req_events(cmd_idx)?)
+                            //     .enq_async()?;
 
-                            let future_write = Box::new(future_reader.join(future_map)
-                                // .and_then(|(reader, mut map)| {
-                                //     debug_assert_eq!(reader.len(), map.len());
-                                //     let len = map.len();
-                                //     unsafe {
-                                //         ::std::ptr::copy_nonoverlapping(reader.as_ptr(),
-                                //             map.as_mut_ptr(), len);
-                                //     }
+                            // future_map.set_unmap_wait_list(exe_graph.get_req_events(cmd_idx)?);
+                            // let ev = future_map.create_unmap_target_event()?.clone();
 
-                                //     Ok(())
-                                // })
-                                .map(|(reader, mut map)| {
-                                    debug_assert_eq!(reader.len(), map.len());
-                                    let len = map.len();
-                                    unsafe {
-                                        ::std::ptr::copy_nonoverlapping(reader.as_ptr(),
-                                            map.as_mut_ptr(), len);
-                                    }
+                            // let future_write = future_reader.join(future_map)
+                            //     // .and_then(|(reader, mut map)| {
+                            //     //     debug_assert_eq!(reader.len(), map.len());
+                            //     //     let len = map.len();
+                            //     //     unsafe {
+                            //     //         ::std::ptr::copy_nonoverlapping(reader.as_ptr(),
+                            //     //             map.as_mut_ptr(), len);
+                            //     //     }
 
-                                    ()
-                                })
-                                .map_err(|err| panic!("{}", err)));
+                            //     //     Ok(())
+                            //     // })
+                            //     .map(|(reader, mut map)| {
+                            //         debug_assert_eq!(reader.len(), map.len());
+                            //         let len = map.len();
+                            //         unsafe {
+                            //             ::std::ptr::copy_nonoverlapping(reader.as_ptr(),
+                            //                 map.as_mut_ptr(), len);
+                            //         }
 
-                            work_tx.clone().send(future_write).wait()?;
+                            //         ()
+                            //     })
+                            //     .map_err(|err| panic!("{:?}", err));
+
+                            work_tx.clone().send(Box::new(future_write)).wait()?;
                             Some(ev)
                         };
                         exe_graph.set_cmd_event(cmd_idx, event)?;
@@ -604,7 +603,7 @@ impl AxonSpace {
                             .enew(&mut ev)
                             .enq_async()?
                             .and_then(|_guard| Ok(()))
-                            .map_err(|err| panic!("{}", err)));
+                            .map_err(|err| panic!("{:?}", err)));
 
                         work_tx.clone().send(future_read).wait()?;
                         Some(ev)

@@ -134,7 +134,7 @@ impl SensoryFilter {
         self.input_buffer.write(source)
             .ewait(exe_graph.get_req_events(cmd_idx)?)
             .enew(&mut ev)
-            .enq()?;
+            .enq_async()?;
 
         exe_graph.set_cmd_event(cmd_idx, Some(ev))?;
         Ok(())

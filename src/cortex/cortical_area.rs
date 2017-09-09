@@ -633,7 +633,7 @@ impl CorticalArea {
         let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let rx = rx;
             let mut core = Core::new().unwrap();
-            let work = rx.buffer_unordered(12).for_each(|_| Ok(()));
+            let work = rx.buffer_unordered(8).for_each(|_| Ok(()));
             core.run(work).unwrap();
         }).unwrap();
 
@@ -719,8 +719,6 @@ impl CorticalArea {
         // (9.) Axon Output:
         self.axns.set_exe_order_output(&mut self.exe_graph)?;
 
-        // println!("####### Sampler count: {}", self.samplers.len());
-
         // (10.) Samplers:
         for sampler in self.samplers.iter_mut() {
             // println!("######### Ordering sampler: {:?}", sampler);
@@ -794,6 +792,8 @@ impl CorticalArea {
         // (10.) Samplers:
         self.cycle_samplers()?;
 
+        // self.finish_queues();
+
         // println!("######### Cycle complete.");
 
         Ok(())
@@ -836,10 +836,9 @@ impl CorticalArea {
 
     /// Attaches synapses which are below strength threshold to new axons.
     pub fn regrow(&mut self) {
-        self.finish_queues();
-
         if !self.settings.disable_regrowth {
             if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
+                self.finish_queues();
                 //print!("$");
                 for &lyr_idx in self.cycle_order.iter() {
                     let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
