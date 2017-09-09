@@ -296,3 +296,22 @@ __kernel void smooth_activity(
                 (least_active_cel_idx != most_active_cel_idx));
     #endif
 }
+
+
+__kernel void pyr_output(
+    __global uchar const* const cel_states,
+    __private uchar const cel_base_axn_slc,
+    __global uchar* const axn_states)
+{
+    uint const slc_id_lyr = get_global_id(0);
+    uint const v_id = get_global_id(1);
+    uint const u_id = get_global_id(2);
+    uint const v_size = get_global_size(1);
+    uint const u_size = get_global_size(2);
+
+    uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
+    int idx_is_safe = 0;
+    uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id_lyr + cel_base_axn_slc, v_id, 0, u_id, 0, &idx_is_safe);
+
+    axn_states[cel_axn_idx] = cel_states[cel_idx];
+}

@@ -3,13 +3,39 @@
 use std::collections::{HashMap, BTreeMap};
 use std::error;
 use std::fmt;
-use ocl::{Event, Buffer, OclPrm, Error as OclError};
-use ocl::ffi::cl_event;
+use ocl::{self, Event, Buffer, OclPrm, Error as OclError};
+use ocl::core::CommandExecutionStatus;
+use ocl::ffi::{cl_event, c_void};
 use map::LayerAddress;
 use cmn::{util};
 
 const PRINT_DEBUG: bool = true;
 const PRINT_DEBUG_ALL: bool = false;
+const PRINT_EVENT_DEBUG: bool = true;
+
+extern "C" fn __event_running(event: cl_event, _status: i32, cmd_idx: *mut c_void) {
+    println!("##### [{}]   >>> Event running:    \t(event: {:?})",
+        cmd_idx as usize, event);
+}
+
+extern "C" fn __event_complete(event: cl_event, _status: i32, cmd_idx: *mut c_void) {
+    println!("##### [{}]   <<<   Event complete: \t(event: {:?})",
+        cmd_idx as usize, event);
+}
+
+fn set_debug_callback_running(event: &Event, cmd_idx: usize) {
+    if PRINT_DEBUG && PRINT_EVENT_DEBUG {
+        unsafe { ocl::core::set_event_callback(event, CommandExecutionStatus::Running,
+            Some(__event_running), cmd_idx as *mut c_void).unwrap(); }
+    }
+}
+
+fn set_debug_callback_complete(event: &Event, cmd_idx: usize) {
+    if PRINT_DEBUG && PRINT_EVENT_DEBUG {
+        unsafe { ocl::core::set_event_callback(event, CommandExecutionStatus::Complete,
+            Some(__event_complete), cmd_idx as *mut c_void).unwrap(); }
+    }
+}
 
 
 struct MemBlockRwCmdIdxs {
@@ -645,14 +671,23 @@ impl ExecutionGraph {
         if self.next_cmd_idx != cmd_idx {
             return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_cmd_idx, cmd_idx));
         }
-        cmd.set_event(event.map(|e| e.into()));
+
+        if PRINT_DEBUG && PRINT_EVENT_DEBUG {
+            if PRINT_DEBUG_ALL {println!("##### [{}] Setting command event \t (event: {:?}", cmd_idx, event); }
+            if let Some(ref ev) = event {
+                set_debug_callback_running(ev, cmd_idx);
+                set_debug_callback_complete(ev, cmd_idx);
+            }
+        }
+
+        cmd.set_event(event);
 
         if (self.next_cmd_idx + 1) == cmds_len {
             self.next_cmd_idx = 0;
         } else {
             self.next_cmd_idx += 1;
-            if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### ExecutionGraph::set_cmd_event: \
-                Setting event for [cmd_idx: {}].", cmd_idx,) }
+            // if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### ExecutionGraph::set_cmd_event: \
+            //     Setting event for [cmd_idx: {}].", cmd_idx,) }
         }
         Ok(())
     }

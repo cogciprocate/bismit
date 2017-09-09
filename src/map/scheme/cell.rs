@@ -161,6 +161,18 @@ impl CellScheme {
         }.validate())
     }
 
+    pub fn pyr_outputter(src: &str, exe_order: usize) -> LayerKind {
+        LayerKind::Cellular(CellScheme {
+            cell_class: CellClass::Control {
+                kind: ControlCellKind::PyrOutputter {
+                    host_lyr_name: src.to_owned(),
+                },
+                exe_order,
+            },
+            tft_schemes: Vec::new(),
+        }.validate())
+    }
+
     pub fn minicolumn(exe_order: usize) -> LayerKind {
         // let tft_scheme = TuftScheme::new(DendriteClass::Basal, DendriteKind::Other, 0, 0,
         //     vec![TuftSourceLayer::new(psal_lyr.to_owned(), 0, 1),
@@ -193,6 +205,7 @@ impl CellScheme {
             CellClass::Control { ref kind, exe_order: _ } => match *kind {
                 ControlCellKind::InhibitoryBasketSurround { .. } => Some(0),
                 ControlCellKind::ActivitySmoother { .. } => Some(0),
+                ControlCellKind::PyrOutputter { .. } => Some(0),
                 ControlCellKind::Complex => Some(cmn::DEFAULT_OUTPUT_LAYER_DEPTH),
                 // _ => ,
             },

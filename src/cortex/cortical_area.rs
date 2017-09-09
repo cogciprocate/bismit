@@ -17,7 +17,7 @@ use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind
     ExecutionGraph, CellClass, LayerTags, LayerAddress, CommandUid};
 use ::Thalamus;
 use cortex::{AxonSpace, /*Minicolumns,*/ InhibitoryInterneuronNetwork, PyramidalLayer,
-    SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother};
+    SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother, PyrOutputter};
 use subcortex::{self, TractBuffer, TractSender, TractReceiver};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
@@ -33,6 +33,8 @@ const KERNEL_DEBUG_SYMBOLS: bool = false;
 // Layer role execution order:
 static ROLE_ORDER: [LayerTags; 4] = [LayerTags::FOCUS, LayerTags::SPATIAL, LayerTags::TEMPORAL, LayerTags::MOTOR];
 
+
+pub type ControlCellLayers = BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>;
 
 
 #[derive(Debug)]
@@ -103,32 +105,32 @@ impl Layer {
         }
     }
 
-    fn set_exe_order(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>,
-            exe_graph: &mut ExecutionGraph) -> CmnResult<()>
-    {
-        match *self {
-            Layer::SpinyStellateLayer(ref mut _lyr) => Err("".into()),
-            Layer::PyramidalLayer(ref mut lyr) => lyr.set_exe_order(control_layers, exe_graph),
-        }
-    }
+    // fn set_exe_order(&mut self, control_layers: &mut ControlCellLayers,
+    //         exe_graph: &mut ExecutionGraph) -> CmnResult<()>
+    // {
+    //     match *self {
+    //         Layer::SpinyStellateLayer(ref mut _lyr) => Err("".into()),
+    //         Layer::PyramidalLayer(ref mut lyr) => lyr.set_exe_order(control_layers, exe_graph),
+    //     }
+    // }
 
-    fn set_exe_order_cycle(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>,
+    fn set_exe_order_cycle(&mut self, control_layers: &mut ControlCellLayers,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         match *self {
             Layer::SpinyStellateLayer(ref mut lyr) => lyr.set_exe_order_cycle(control_layers, exe_graph),
-            Layer::PyramidalLayer(ref mut _lyr) => Err("".into()),
+            Layer::PyramidalLayer(ref mut lyr) => lyr.set_exe_order_cycle(control_layers, exe_graph),
         }
     }
 
     fn set_exe_order_learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         match *self {
             Layer::SpinyStellateLayer(ref mut lyr) => lyr.set_exe_order_learn(exe_graph),
-            Layer::PyramidalLayer(ref _lyr) => Ok(()) /*lyr.set_exe_order_learn(control_layers, exe_graph)*/,
+            Layer::PyramidalLayer(ref mut lyr) => lyr.set_exe_order_learn(exe_graph),
         }
     }
 
-    fn cycle(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>,
+    fn cycle(&mut self, control_layers: &mut ControlCellLayers,
         exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         match *self {
@@ -333,7 +335,7 @@ pub struct CorticalArea {
     /// Primary neuron layers.
     data_layers: Layers,
     /// Interneuron layers.
-    control_layers: BTreeMap<usize, Box<ControlCellLayer>>,
+    control_layers: BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>,
     aux: Aux,
     ocl_pq: ProQue,
     write_queue: Queue,
@@ -442,7 +444,7 @@ impl CorticalArea {
 
         // let mut mcols = None;
         let mut data_layers = Layers::new();
-        let mut control_layers: BTreeMap<usize, Box<ControlCellLayer>> = BTreeMap::new();
+        let mut control_layers: BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>> = BTreeMap::new();
         let mut axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
             write_queue.clone(), &mut exe_graph, thal)?;
 
@@ -503,9 +505,11 @@ impl CorticalArea {
                             host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
                             settings.clone(), &mut exe_graph)?;
 
-                        if control_layers.insert(exe_order, Box::new(cc_lyr)).is_some() {
-                            panic!("Duplicate control cell order index found for layer: {} ({})",
-                                layer.name(), exe_order);
+                        if control_layers.insert((host_lyr.layer_addr(), exe_order),
+                                Box::new(cc_lyr)).is_some()
+                        {
+                            panic!("Duplicate control cell layer address / order index \
+                                found for layer: {} ({})", layer.name(), exe_order);
                         };
                     },
                     CellClass::Control {
@@ -521,9 +525,31 @@ impl CorticalArea {
                             host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
                             settings.clone(), &mut exe_graph)?;
 
-                        if control_layers.insert(exe_order, Box::new(cc_lyr)).is_some() {
-                            panic!("Duplicate control cell order index found for layer: {} ({})",
-                                layer.name(), exe_order);
+                        if control_layers.insert((host_lyr.layer_addr(), exe_order),
+                                Box::new(cc_lyr)).is_some()
+                        {
+                            panic!("Duplicate control cell layer address / order index \
+                                found for layer: {} ({})", layer.name(), exe_order);
+                        }
+                    },
+                    CellClass::Control {
+                            kind: ControlCellKind::PyrOutputter {
+                            ref host_lyr_name }, exe_order, } =>
+                    {
+                        let host_lyr = data_layers.pyr_by_name(host_lyr_name)?;
+                        let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr_name.clone()]);
+                        let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
+
+                        let cc_lyr = PyrOutputter::new(layer.name(),
+                            layer.layer_id(), cell_scheme.clone(),
+                            host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
+                            settings.clone(), &mut exe_graph)?;
+
+                        if control_layers.insert((host_lyr.layer_addr(), exe_order),
+                                Box::new(cc_lyr)).is_some()
+                        {
+                            panic!("Duplicate control cell layer address / order index \
+                                found for layer: {} ({})", layer.name(), exe_order);
                         }
                     },
                     _ => (),
@@ -700,18 +726,28 @@ impl CorticalArea {
         //     mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
         // }
 
-        // (6.) Pyramidal Layers Learn & Cycle:
+        // (6.) Pyramidal Layers Learn:
         if !self.settings.disable_pyrs {
             for &lyr_idx in self.cycle_order.iter() {
                 let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
                 if !lyr.tags().contains(LayerTags::SPATIAL) {
-                    lyr.set_exe_order(&mut self.control_layers,
+                    lyr.set_exe_order_learn(&mut self.exe_graph)?;
+                }
+            }
+        }
+
+        // (7.) Pyramidal Layers Cycle:
+        if !self.settings.disable_pyrs {
+            for &lyr_idx in self.cycle_order.iter() {
+                let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
+                if !lyr.tags().contains(LayerTags::SPATIAL) {
+                    lyr.set_exe_order_cycle(&mut self.control_layers,
                         &mut self.exe_graph)?;
                 }
             }
         }
 
-        // // (7.) MCOLs Output:
+        // // (8.) MCOLs Output:
         // if !settings.disable_mcols {
         //     mcols.as_mut().set_exe_order_output(&mut exe_graph)?;
         // }
@@ -763,7 +799,7 @@ impl CorticalArea {
         //     self.mcols.activate(&mut self.exe_graph)?;
         // }
 
-        // (6.) Pyramidal Layers Learn & Cycle:
+        // (6.) Pyramidal Layers Learn:
         if !self.settings.disable_pyrs {
             for &lyr_idx in self.cycle_order.iter() {
                 let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
@@ -771,6 +807,15 @@ impl CorticalArea {
                     if !self.settings.disable_learning {
                         lyr.learn(&mut self.exe_graph)?;
                     }
+                }
+            }
+        }
+
+        // (6.) Pyramidal Layers Cycle:
+        if !self.settings.disable_pyrs {
+            for &lyr_idx in self.cycle_order.iter() {
+                let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
+                if !lyr.tags().contains(LayerTags::SPATIAL) {
                     lyr.cycle(&mut self.control_layers, &mut self.exe_graph)?;
                 }
             }

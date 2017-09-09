@@ -11,6 +11,7 @@ mod scheme;
 mod axon_tags;
 mod execution;
 
+use std::fmt;
 pub use self::area_map::AreaMap;
 pub use self::slice_map::SliceMap;
 pub use self::layer_map::LayerMap;
@@ -38,7 +39,7 @@ pub use self::axon_tags::*;
 //
 // * TODO: Add a 'system' or 'node' id to represent the machine within a network.
 //
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LayerAddress {
     area_id: usize,
     layer_id: usize,
@@ -52,6 +53,13 @@ impl LayerAddress {
     #[inline] pub fn area_id(&self) -> usize { self.area_id }
     #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
 }
+
+impl fmt::Display for LayerAddress {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 
 // impl From<(usize, usize)> for LayerAddress {
 //     fn from(tup: (usize, usize)) -> LayerAddress {
@@ -78,6 +86,7 @@ pub enum DataCellKind {
 pub enum ControlCellKind {
     InhibitoryBasketSurround { host_lyr_name: String, field_radius: u8  },
     ActivitySmoother { host_lyr_name: String, field_radius: u8 },
+    PyrOutputter { host_lyr_name: String },
     Complex,
 }
 

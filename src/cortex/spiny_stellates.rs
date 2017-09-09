@@ -36,7 +36,7 @@ pub struct SpinyStellateLayer {
     ltp_exe_cmd_uid: Option<CommandUid>,
     ltp_exe_cmd_idx: Option<usize>,
     settings: CorticalAreaSettings,
-    control_lyr_idxs: Vec<usize>,
+    control_lyr_idxs: Vec<(LayerAddress, usize)>,
 }
 
 impl SpinyStellateLayer {
@@ -171,7 +171,7 @@ impl SpinyStellateLayer {
         })
     }
 
-    pub fn set_exe_order_cycle(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>,
+    pub fn set_exe_order_cycle(&mut self, control_layers: &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         // Determine which control layers apply to this layer and add to list:
@@ -216,14 +216,14 @@ impl SpinyStellateLayer {
     }
 
     #[inline]
-    pub fn cycle(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>, exe_graph: &mut ExecutionGraph)
+    pub fn cycle(&mut self, control_layers: &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>, exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling layer: '{}'...", self.layer_name); }
 
         // Pre cycle:
         for lyr_idx in self.control_lyr_idxs.iter() {
-            if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Pre-cycling control layer: [{}]...", lyr_idx); }
+            if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Pre-cycling control layer: [{:?}]...", lyr_idx); }
             control_layers.get_mut(lyr_idx).unwrap().cycle_pre(exe_graph, self.layer_addr)?;
         }
 
@@ -240,7 +240,7 @@ impl SpinyStellateLayer {
 
         // Post cycle:
         for lyr_idx in self.control_lyr_idxs.iter() {
-            if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Post-cycling control layer: [{}]...", lyr_idx); }
+            if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Post-cycling control layer: [{:?}]...", lyr_idx); }
             control_layers.get_mut(lyr_idx).unwrap().cycle_post(exe_graph, self.layer_addr)?;
         }
 
@@ -295,7 +295,7 @@ impl DataCellLayer for SpinyStellateLayer {
     }
 
     #[inline]
-    fn cycle(&mut self, control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>, exe_graph: &mut ExecutionGraph)
+    fn cycle(&mut self, control_layers: &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>, exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         self.cycle(control_layers, exe_graph)

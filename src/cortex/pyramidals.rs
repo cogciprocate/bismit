@@ -44,6 +44,7 @@ pub struct PyramidalLayer {
     cycle_exe_cmd_uid: Option<CommandUid>,
     cycle_exe_cmd_idx: Option<usize>,
     settings: CorticalAreaSettings,
+    control_lyr_idxs: Vec<(LayerAddress, usize)>,
 }
 
 impl PyramidalLayer {
@@ -290,33 +291,61 @@ impl PyramidalLayer {
             cycle_exe_cmd_uid,
             cycle_exe_cmd_idx: None,
             settings,
+            control_lyr_idxs: Vec::with_capacity(4),
         })
     }
 
-    pub fn set_exe_order(&mut self, _control_layers: &BTreeMap<usize, Box<ControlCellLayer>>,
+    pub fn set_exe_order_learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
+        if !self.settings.disable_pyrs && !self.settings.disable_learning {
+            // Clear old ltp cmd idxs:
+            self.tft_ltp_exe_cmd_idxs.clear();
+
+            // Learning:
+            for &cmd_uid in self.tft_ltp_exe_cmd_uids.iter() {
+                self.tft_ltp_exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn set_exe_order_cycle(&mut self, control_layers: &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
-        if !self.settings.disable_pyrs {
-            self.tft_ltp_exe_cmd_idxs.clear();
-            self.tft_cycle_exe_cmd_idxs.clear();
-
-            if !self.settings.disable_learning {
-                for &cmd_uid in self.tft_ltp_exe_cmd_uids.iter() {
-                    self.tft_ltp_exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
+        // Determine which control layers apply to this layer and add to list:
+        if self.control_lyr_idxs.is_empty() {
+            for (&cl_idx, cl) in control_layers.iter() {
+                if cl.host_layer_addr() == self.layer_addr {
+                    self.control_lyr_idxs.push(cl_idx);
                 }
             }
+        }
+        if !self.settings.disable_pyrs {
+            // Clear old cycle cmd idxs:
+            self.tft_cycle_exe_cmd_idxs.clear();
 
+            // Control layers pre:
+            for cl_idx in self.control_lyr_idxs.iter() {
+                control_layers.get_mut(cl_idx).unwrap().set_exe_order_pre(exe_graph, self.layer_addr)?;
+            }
+
+            // Dendrites:
             self.dens.set_exe_order(exe_graph)?;
 
+            // Tufts:
             for &cmd_uid in self.tft_cycle_exe_cmd_uids.iter() {
                 self.tft_cycle_exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
             }
 
+            // Somata:
             if let Some(cycle_cmd_uid) = self.cycle_exe_cmd_uid {
                 self.cycle_exe_cmd_idx = Some(exe_graph.order_command(cycle_cmd_uid)?);
             }
-        }
 
+            // Control layers post:
+            for cl_idx in self.control_lyr_idxs.iter() {
+                control_layers.get_mut(cl_idx).unwrap().set_exe_order_post(exe_graph, self.layer_addr)?;
+            }
+        }
         Ok(())
     }
 
@@ -399,9 +428,15 @@ impl DataCellLayer for PyramidalLayer {
         self.dens_mut().regrow();
     }
 
-    fn cycle(&mut self, _control_layers: &mut BTreeMap<usize, Box<ControlCellLayer>>, exe_graph: &mut ExecutionGraph)
-            -> CmnResult<()>
+    fn cycle(&mut self, control_layers: &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>,
+            exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
+        // Control Pre:
+        for lyr_idx in self.control_lyr_idxs.iter() {
+            if PRINT_DEBUG { printlnc!(royal_blue: "    Pyrs: Pre-cycling control layer: [{:?}]...", lyr_idx); }
+            control_layers.get_mut(lyr_idx).unwrap().cycle_pre(exe_graph, self.layer_addr)?;
+        }
+
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling layer: '{}'...", self.layer_name); }
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling dens..."); }
         self.dens.cycle(exe_graph)?;
@@ -409,6 +444,8 @@ impl DataCellLayer for PyramidalLayer {
         // [DEBUG]: TEMPORARY:
         if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
 
+
+        // Tufts:
         for (tft_id, (tft_cycle_kernel, &cmd_idx)) in self.pyr_tft_cycle_kernels.iter()
                 .zip(self.tft_cycle_exe_cmd_idxs.iter()).enumerate()
         {
@@ -424,11 +461,18 @@ impl DataCellLayer for PyramidalLayer {
 
         if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell soma..."); }
 
+        // Soma:
         if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
             let mut event = Event::empty();
             self.pyr_cycle_kernel.cmd().ewait(exe_graph.get_req_events(cycle_cmd_idx)?)
                 .enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cycle_cmd_idx, Some(event))?;
+        }
+
+        // Control Post:
+        for lyr_idx in self.control_lyr_idxs.iter() {
+            if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Post-cycling control layer: [{:?}]...", lyr_idx); }
+            control_layers.get_mut(lyr_idx).unwrap().cycle_post(exe_graph, self.layer_addr)?;
         }
 
         // [DEBUG]: TEMPORARY:

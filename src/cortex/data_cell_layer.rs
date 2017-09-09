@@ -14,7 +14,7 @@ pub use self::tests::{DataCellLayerTest, CelCoords};
 pub trait DataCellLayer: 'static + Debug + Send {
     fn layer_name(&self) -> &'static str;
     fn layer_addr(&self) -> LayerAddress;
-    fn cycle(&mut self, &mut BTreeMap<usize, Box<ControlCellLayer>>, &mut ExecutionGraph) -> CmnResult<()>;
+    fn cycle(&mut self, &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>, &mut ExecutionGraph) -> CmnResult<()>;
     fn learn(&mut self, &mut ExecutionGraph) -> CmnResult <()> ;
     fn regrow(&mut self);
     fn soma(&self) -> &Buffer<u8>;
