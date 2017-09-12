@@ -15,7 +15,7 @@ use cortex::{SensoryFilter};
 
 
 const DISABLE_IO: bool = false;
-const DISABLE_OUTPUT: bool = true;
+const DISABLE_OUTPUT: bool = false;
 
 
 /// The execution graph command kind and index for an I/O layer.
@@ -114,7 +114,9 @@ impl IoInfoGroup {
 
                 for slc_id in lyr_slc_id_range.clone() {
                     srcs.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id as u8));
-                    tars.push(ThalamicTract::axon_slice(lyr_addr.area_id(), slc_id as u8));
+                    let rw_vec_id = thal.tract().buffer(thal.tract().index_of(lyr_addr).unwrap())
+                        .unwrap().id();
+                    tars.push(ThalamicTract::axon_slice(rw_vec_id, lyr_addr.area_id(), slc_id as u8));
                 }
 
                 let exe_cmd = CommandRelations::corticothalamic_read(srcs, tars);
@@ -152,9 +154,12 @@ impl IoInfoGroup {
 
                     // Set write command source blocks:
                     let mut write_cmd_srcs: Vec<ThalamicTract> = Vec::with_capacity(src_lyr_slc_id_range.len());
-
                     for slc_id in src_lyr_slc_id_range.start..src_lyr_slc_id_range.end {
-                        write_cmd_srcs.push(ThalamicTract::axon_slice(src_lyr_addr.area_id(), slc_id as u8));
+                        let rw_vec_id = thal.tract().buffer(thal.tract().index_of(src_lyr_addr)
+                            .expect(&format!("No thalamic tract for layer: {:?}", src_lyr_addr)))
+                            .unwrap().id();
+                        write_cmd_srcs.push(ThalamicTract::axon_slice(rw_vec_id, src_lyr_addr.area_id(),
+                            slc_id as u8));
                     }
 
                     // Get target layer absolute slice id range:
@@ -362,7 +367,7 @@ impl AxonSpace {
                     let filter_is_first = filter_idx == 0;
 
                     let src_tract_info = if filter_is_first {
-                        let src_lyr_addr = src_lyr_info.layer_addr();
+                        let src_lyr_addr = src_lyr_info.layer_addr().clone();
 
                         // Get source layer absolute slice id range:
                         let src_lyr_slc_id_range = thal.area_maps().by_index(src_lyr_addr.area_id())
@@ -375,7 +380,10 @@ impl AxonSpace {
                                     src_lyr_addr, chain_scheme))
                             .clone();
 
-                        Some((src_lyr_addr.area_id(), src_lyr_slc_id_range))
+                        let rw_vec_id = thal.tract().buffer(thal.tract()
+                            .index_of(src_lyr_addr).unwrap()).unwrap().id();
+
+                        Some((rw_vec_id, src_lyr_addr, src_lyr_slc_id_range))
                     } else {
                         None
                     };
@@ -492,10 +500,16 @@ impl AxonSpace {
 
     /// Reads input from thalamus and writes to axon space.
     ///
-    // * TODO: Store thal tract index instead of using (LayerAddress) key.
+    //
+    // IMPORTANT: The thalamic tract `RwVec`/`FutureReadGuard`s being read
+    // from must be locked for writing between each read (by thalamus).
+    // Failure to do so will cause the read locks never to release properly
+    // because the `QrwLock` read requests from subsequent cycles will pile up
+    // and never properly release (they try to upgrade to write locks before
+    // dropping which requires exclusive access).
     //
     pub fn intake(&mut self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph,
-            bypass_filters: bool, work_tx: &Sender<Box<Future<Item=(), Error=()> + Send>>) -> CmnResult<()>
+            bypass_filters: bool, work_tx: &mut Option<Sender<Box<Future<Item=(), Error=()> + Send>>>) -> CmnResult<()>
     {
         if let Some((io_lyrs, mut _new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {
             for io_lyr in io_lyrs.iter_mut() {
@@ -516,6 +530,8 @@ impl AxonSpace {
                         let event = if DISABLE_IO {
                             None
                         } else {
+                            exe_graph.cmd(cmd_idx).unwrap().event().map(|ev| ev.wait_for().unwrap());
+
                             let mut ev = Event::empty();
                             let future_write = self.states.write(future_reader)
                                 .queue(&self.write_queue)
@@ -563,7 +579,8 @@ impl AxonSpace {
                             //     })
                             //     .map_err(|err| panic!("{:?}", err));
 
-                            work_tx.clone().send(Box::new(future_write)).wait()?;
+                            let wtx = work_tx.take().unwrap();
+                            work_tx.get_or_insert(wtx.send(Box::new(future_write)).wait()?);
                             Some(ev)
                         };
                         exe_graph.set_cmd_event(cmd_idx, event)?;
@@ -581,7 +598,7 @@ impl AxonSpace {
     // * TODO: Store thal tract index instead of using (LayerAddress) key.
     //
     pub fn output(&self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph,
-            work_tx: &Sender<Box<Future<Item=(), Error=()> + Send>>)
+            work_tx: &mut Option<Sender<Box<Future<Item=(), Error=()> + Send>>>)
             -> CmnResult<()>
     {
         if let Some((io_lyrs, _wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
@@ -605,7 +622,8 @@ impl AxonSpace {
                             .and_then(|_guard| Ok(()))
                             .map_err(|err| panic!("{:?}", err)));
 
-                        work_tx.clone().send(future_read).wait()?;
+                        let wtx = work_tx.take().unwrap();
+                        work_tx.get_or_insert(wtx.send(future_read).wait()?);
                         Some(ev)
                     };
 

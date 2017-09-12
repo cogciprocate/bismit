@@ -659,7 +659,7 @@ impl CorticalArea {
         let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let rx = rx;
             let mut core = Core::new().unwrap();
-            let work = rx.buffer_unordered(8).for_each(|_| Ok(()));
+            let work = rx.buffer_unordered(4).for_each(|_| Ok(()));
             core.run(work).unwrap();
         }).unwrap();
 
@@ -772,7 +772,7 @@ impl CorticalArea {
     pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
         // (1.) Axon Intake:
         self.axns.intake(thal, &mut self.exe_graph, self.settings.bypass_filters,
-            self.work_tx.as_ref().unwrap())?;
+            &mut self.work_tx)?;
 
         // (2.) SSTs Cycle:
         if !self.settings.disable_sscs {
@@ -831,13 +831,13 @@ impl CorticalArea {
             self.regrow();
         }
 
+        // self.flush_queues();
+
         // (9.) Axon Output:
-        self.axns.output(thal, &mut self.exe_graph, self.work_tx.as_ref().unwrap())?;
+        self.axns.output(thal, &mut self.exe_graph, &mut self.work_tx)?;
 
         // (10.) Samplers:
         self.cycle_samplers()?;
-
-        // self.finish_queues();
 
         // println!("######### Cycle complete.");
 
@@ -846,6 +846,7 @@ impl CorticalArea {
 
     /// Cycles through sampling requests
     fn cycle_samplers(&mut self) -> CmnResult<()> {
+        // let mut work_tx = self.work_tx.take();
         for sampler in &self.samplers {
             let cmd_idx = sampler.cmd_idx.expect("sampler order not set");
 
@@ -867,7 +868,8 @@ impl CorticalArea {
                             .map(|_guard| ())
                             .map_err(|err| panic!("{}", err));
 
-                        self.work_tx.clone().unwrap().send(Box::new(future_read)).wait()?;
+                        let wtx = self.work_tx.take().unwrap();
+                        self.work_tx.get_or_insert(wtx.send(Box::new(future_read)).wait()?);
                     },
                     _ => unimplemented!(),
                 }
@@ -952,6 +954,14 @@ impl CorticalArea {
                 rx
             }
         }
+    }
+
+    /// Blocks until all previously queued OpenCL commands in all
+    /// command-queues are issued to the associated device.
+    pub fn flush_queues(&self) {
+        self.write_queue.flush().unwrap();
+        self.ocl_pq.queue().flush().unwrap();
+        self.read_queue.flush().unwrap();
     }
 
     /// Blocks until all previously queued OpenCL commands in all
@@ -1044,7 +1054,7 @@ impl CorticalArea {
 impl Drop for CorticalArea {
     fn drop(&mut self) {
         println!("Releasing work thread for '{}'... ", &self.name);
-        self.work_tx.take();
+        self.work_tx.take().unwrap().close().unwrap();
         self._work_thread.take().unwrap().join().unwrap();
         print!("Releasing OpenCL components for '{}'... ", &self.name);
         print!("[ Buffers ][ Event Lists ][ Program ][ Command Queues ]");

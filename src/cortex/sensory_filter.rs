@@ -3,8 +3,8 @@ use futures::{Future, Sink};
 use futures::sync::mpsc::Sender;
 use ocl::{flags, Kernel, ProQue, SpatialDims, Buffer, Event, Queue, FutureReadGuard};
 use cmn::{CmnError, CmnResult, CorticalDims};
-use map::{ExecutionGraph, CommandRelations, CorticalBuffer,
-    ThalamicTract, CommandUid};
+use map::{ExecutionGraph, CommandRelations, CorticalBuffer, ThalamicTract, CommandUid,
+    LayerAddress};
 // use tract_terminal::{SliceBufferSource, OclBufferTarget};
 
 pub struct SensoryFilter {
@@ -26,7 +26,7 @@ impl SensoryFilter {
             filter_chain_count: usize,
             filter_name: String,
             cl_file_name: Option<String>,
-            src_tract_info: Option<(usize, Range<usize>)>,
+            src_tract_info: Option<(usize, LayerAddress, Range<usize>)>,
             dims: &CorticalDims,
             output_buffer: &Buffer<u8>,
             output_slc_range: Range<usize>,
@@ -69,11 +69,11 @@ impl SensoryFilter {
 
         // Write execution command:
         let exe_cmd_uid_write = if filter_is_first {
-            let (src_area_id, src_slc_range) = src_tract_info.expect("SensoryFilter::new: \
+            let (rw_vec_id, src_layer_addr, src_slc_range) = src_tract_info.expect("SensoryFilter::new: \
                 No source tract info found for first filter.");
 
             let write_cmd_srcs = src_slc_range
-                .map(|slc_id| ThalamicTract::axon_slice(src_area_id, slc_id as u8))
+                .map(|slc_id| ThalamicTract::axon_slice(rw_vec_id, src_layer_addr.area_id(), slc_id as u8))
                 .collect();
 
             Some(exe_graph.add_command(CommandRelations::thalamocortical_write(
@@ -117,7 +117,7 @@ impl SensoryFilter {
 
     // pub fn write(&self, source: SliceBufferSource, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
     pub fn write(&self, source: FutureReadGuard<u8>, exe_graph: &mut ExecutionGraph,
-            work_tx: &Sender<Box<Future<Item=(), Error=()> + Send>>) -> CmnResult<()>
+            work_tx: &mut Option<Sender<Box<Future<Item=(), Error=()> + Send>>>) -> CmnResult<()>
     {
         let cmd_idx = self.exe_cmd_idx_write.ok_or(CmnError::new(
             "SensoryFilter::write: Write command not created for this filter."))?;
@@ -142,7 +142,8 @@ impl SensoryFilter {
             .map(|_guard| ())
             .map_err(|err| panic!("{:?}", err));
 
-        work_tx.clone().send(Box::new(future_write)).wait()?;
+        let wtx = work_tx.take().unwrap();
+        work_tx.get_or_insert(wtx.send(Box::new(future_write)).wait()?);
 
         exe_graph.set_cmd_event(cmd_idx, Some(ev))?;
         Ok(())

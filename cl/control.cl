@@ -311,7 +311,8 @@ __kernel void pyr_output(
 
     uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
     int idx_is_safe = 0;
-    uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id_lyr + cel_base_axn_slc, v_id, 0, u_id, 0, &idx_is_safe);
+    uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id_lyr + cel_base_axn_slc, v_id, 0, u_id, 0,
+        &idx_is_safe);
 
     axn_states[cel_axn_idx] = cel_states[cel_idx];
 }

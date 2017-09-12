@@ -9,9 +9,9 @@ use ocl::ffi::{cl_event, c_void};
 use map::LayerAddress;
 use cmn::{util};
 
-const PRINT_DEBUG: bool = true;
-const PRINT_DEBUG_ALL: bool = false;
+const PRINT_DEBUG: bool = false;
 const PRINT_EVENT_DEBUG: bool = true;
+const PRINT_DEBUG_ALL: bool = false;
 
 extern "C" fn __event_running(event: cl_event, _status: i32, cmd_idx: *mut c_void) {
     println!("##### [{}]   >>> Event running:    \t(event: {:?})",
@@ -221,8 +221,8 @@ impl CorticalBuffer {
     {
         CorticalBuffer::DataCellSomaTuft {
             buffer_id: util::buffer_uid(buf),
-            layer_addr: layer_addr,
-            tuft_id: tuft_id,
+            layer_addr,
+            tuft_id,
         }
     }
 
@@ -231,7 +231,7 @@ impl CorticalBuffer {
     {
         CorticalBuffer::DataCellSomaLayer {
             buffer_id: util::buffer_uid(buf),
-            layer_addr: layer_addr,
+            layer_addr,
         }
     }
 
@@ -240,7 +240,7 @@ impl CorticalBuffer {
     {
         CorticalBuffer::ControlCellSomaLayer {
             buffer_id: util::buffer_uid(buf),
-            layer_addr: layer_addr,
+            layer_addr,
         }
     }
 }
@@ -249,16 +249,13 @@ impl CorticalBuffer {
 /// A block of memory outside of the Cortex.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SubcorticalBuffer {
-    AxonSlice { area_id: usize, slc_id: u8 },
+    AxonSlice { mem_id: usize, area_id: usize, slc_id: u8 },
     // SubCorticalLayerSource { area_id: usize, layer_id: usize },
 }
 
 impl SubcorticalBuffer {
-    pub fn axon_slice(area_id: usize, slc_id: u8) -> SubcorticalBuffer {
-        SubcorticalBuffer::AxonSlice {
-            area_id: area_id,
-            slc_id: slc_id,
-        }
+    pub fn axon_slice(mem_id: usize, area_id: usize, slc_id: u8) -> SubcorticalBuffer {
+        SubcorticalBuffer::AxonSlice { mem_id, area_id, slc_id, }
     }
 }
 
@@ -266,16 +263,13 @@ impl SubcorticalBuffer {
 /// A block of the thalamic tract.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ThalamicTract {
-    Slice { area_id: usize, slc_id: u8 },
+    AxonSlice { mem_id: usize, area_id: usize, slc_id: u8 },
     // SubCorticalLayerSource { area_id: usize, layer_id: usize },
 }
 
 impl ThalamicTract {
-    pub fn axon_slice(area_id: usize, slc_id: u8) -> ThalamicTract {
-        ThalamicTract::Slice {
-            area_id: area_id,
-            slc_id: slc_id,
-        }
+    pub fn axon_slice(mem_id: usize, area_id: usize, slc_id: u8) -> ThalamicTract {
+        ThalamicTract::AxonSlice { mem_id, area_id, slc_id, }
     }
 }
 
@@ -418,10 +412,11 @@ pub struct ExecutionCommand {
     event: Option<Event>,
     requisite_cmd_idxs: Vec<usize>,
     requisite_cmd_precedence: Vec<RequisitePrecedence>,
+    stale_events: Vec<Event>,
 }
 
 impl ExecutionCommand {
-    pub fn new(uid: CommandUid) -> ExecutionCommand {
+    fn new(uid: CommandUid) -> ExecutionCommand {
         ExecutionCommand {
             uid,
             event: None,
@@ -429,10 +424,11 @@ impl ExecutionCommand {
             // `::populate_requisites` to avoid creating canned sizes.
             requisite_cmd_idxs: Vec::with_capacity(8),
             requisite_cmd_precedence: Vec::with_capacity(8),
+            stale_events: Vec::with_capacity(16),
         }
     }
 
-    pub fn set_event(&mut self, event: Option<Event>) {
+    fn set_event(&mut self, event: Option<Event>) {
         self.event = event;
     }
 
@@ -450,6 +446,7 @@ pub struct ExecutionGraph {
     cmd_requisite_events: Vec<Vec<cl_event>>,
     next_cmd_idx: usize,
     locked: bool,
+    // stale_events: HashMap<(Event, usize), usize>,
 }
 
 impl ExecutionGraph {
@@ -462,6 +459,7 @@ impl ExecutionGraph {
             cmd_requisite_events: Vec::with_capacity(256),
             next_cmd_idx: 0,
             locked: false,
+            // stale_events: HashMap::with_capacity(64),
         }
     }
 
@@ -575,17 +573,22 @@ impl ExecutionGraph {
         // If a requisite command is the command itself, it contains a memory
         // block which is both read from and written to within the same
         // command and need not be specified:
-        assert!(cmd_idx != req_cmd_idx, "Execution commands which both read from and write \
-            to a memory block should omit that block from the list of sources and specify only \
+        assert!(cmd_idx != req_cmd_idx, "Execution commands which both read from and write to the \
+            same memory block should omit that block from the list of sources and specify only \
             within the list of targets. (cmd_idx: {}, req_cmd_idx: {})", cmd_idx, req_cmd_idx);
-        self.cmds[cmd_idx].requisite_cmd_idxs.push(req_cmd_idx);
 
-        let req_cmd_precedence = if req_cmd_idx < cmd_idx {
-            RequisitePrecedence::Preceding
-        } else {
-            RequisitePrecedence::Following
-        };
-        self.cmds[cmd_idx].requisite_cmd_precedence.push(req_cmd_precedence);
+        // Add requisite command index if not a duplicate:
+        if !self.cmds[cmd_idx].requisite_cmd_idxs.contains(&req_cmd_idx) {
+            self.cmds[cmd_idx].requisite_cmd_idxs.push(req_cmd_idx);
+
+            let req_cmd_precedence = if req_cmd_idx < cmd_idx {
+                RequisitePrecedence::Preceding
+            } else {
+                RequisitePrecedence::Following
+            };
+
+            self.cmds[cmd_idx].requisite_cmd_precedence.push(req_cmd_precedence);
+        }
     }
 
     /// Populates the list of requisite commands for each command and locks
@@ -656,8 +659,8 @@ impl ExecutionGraph {
             }
         }
 
-        if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### ExecutionGraph::get_req_events: Event \
-            list for [cmd_idx: {}]: {:?}", cmd_idx, self.cmd_requisite_events.get(cmd_idx).unwrap()); }
+        if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### [{}] Getting event list: {:?}", cmd_idx,
+            self.cmd_requisite_events.get(cmd_idx).unwrap()); }
 
         Ok(unsafe { self.cmd_requisite_events.get_unchecked_mut(cmd_idx).as_slice() })
     }
@@ -666,23 +669,25 @@ impl ExecutionGraph {
     pub fn set_cmd_event(&mut self, cmd_idx: usize, event: Option<Event>) -> ExeGrResult<()> {
         if !self.locked { return Err(ExecutionGraphError::Unlocked); }
         let cmds_len = self.cmds.len();
-        let cmd = self.cmds.get_mut(cmd_idx)
-            .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
-        if self.next_cmd_idx != cmd_idx {
-            return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_cmd_idx, cmd_idx));
-        }
 
-        if PRINT_DEBUG && PRINT_EVENT_DEBUG {
-            if PRINT_DEBUG_ALL {println!("##### [{}] Setting command event \t (event: {:?}", cmd_idx, event); }
-            if let Some(ref ev) = event {
-                set_debug_callback_running(ev, cmd_idx);
-                set_debug_callback_complete(ev, cmd_idx);
+        {
+            let cmd = self.cmds.get_mut(cmd_idx)
+                .ok_or(ExecutionGraphError::InvalidCommandIndex(cmd_idx))?;
+            if self.next_cmd_idx != cmd_idx {
+                return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_cmd_idx, cmd_idx));
             }
+            if PRINT_DEBUG && PRINT_EVENT_DEBUG {
+                if PRINT_DEBUG_ALL {println!("##### [{}] Setting command event \t (event: {:?}", cmd_idx, event); }
+                if let Some(ref ev) = event {
+                    set_debug_callback_running(ev, cmd_idx);
+                    set_debug_callback_complete(ev, cmd_idx);
+                }
+            }
+            cmd.set_event(event);
         }
-
-        cmd.set_event(event);
 
         if (self.next_cmd_idx + 1) == cmds_len {
+            // self.eval_events();
             self.next_cmd_idx = 0;
         } else {
             self.next_cmd_idx += 1;
@@ -713,7 +718,34 @@ impl ExecutionGraph {
         }
     }
 
+    /// Determine which commands have events which are incomplete.
+    fn _eval_events(&mut self) {
+        println!("########################## Stale Events: ##########################");
+
+        // Iterate over all events, adding incomplete events to the stale list:
+        for (cmd_idx, cmd) in self.cmds.iter_mut().enumerate() {
+            // Prune old:
+            let mut pruned_stale = Vec::with_capacity(cmd.stale_events.capacity());
+            for ev in cmd.stale_events.iter() {
+                if !ev.is_complete().unwrap() {
+                    pruned_stale.push(ev.clone());
+                }
+            }
+            cmd.stale_events = pruned_stale;
+
+            // Add new:
+            if let Some(ev) = cmd.event.clone() {
+                if !ev.is_complete().unwrap() {
+                    cmd.stale_events.push(ev);
+                }
+            }
+            println!("########################## [{}]:{}", cmd_idx, cmd.stale_events.len());
+        }
+        println!("###################################################################");
+    }
+
     #[inline] pub fn is_locked(&self) -> bool { self.locked }
+    #[inline] pub fn cmd(&self, cmd_idx: usize) -> Option<&ExecutionCommand> { self.cmds.get(cmd_idx) }
 }
 
 unsafe impl Send for ExecutionGraph {}
