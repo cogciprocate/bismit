@@ -1,8 +1,13 @@
-// # Open Questions
-//
+//! An asynchronous channel for cortical input and output which can interact
+//! with OpenCL events and optionally apply back-pressure.
+//!
+
+// Open Questions:
 // * Can we use mapped memory somewhere in all of this (for buffer* variants)?
 // *
 //
+// TODO: Loosen ordering constraints where possible.
+// TODO: Replace `AtomicOption`s with `UnsafeCell`s where possible.
 
 #![allow(dead_code, unused_imports)]
 
@@ -20,7 +25,7 @@ use ocl::{RwVec, FutureReadGuard, FutureWriteGuard, OclPrm};
 use cmn::CmnError;
 
 
-const BUFFER_0_FRESH: usize = 0x00000001;
+const NEXT_READ_GUARD_FRESH: usize = 0x00000001;
 const BUFFER_1_FRESH: usize = 0x00000002;
 const BUFFER_2_FRESH: usize = 0x00000004;
 
@@ -68,7 +73,7 @@ impl Future for FutureSend {
 pub enum FutureRecv {
     Recv(Option<ReadBuffer>),
     Skip,
-    Wait(Receiver<()>, Option<ReadBuffer>),
+    Wait(Receiver<ReadBuffer>),
 }
 
 impl FutureRecv {
@@ -85,7 +90,7 @@ impl Future for FutureRecv {
         match *self {
             FutureRecv::Recv(ref mut b) => Ok(Async::Ready(b.take())),
             FutureRecv::Skip => Ok(Async::Ready(None)),
-            FutureRecv::Wait(ref mut rx, ref mut b) => rx.poll().map(|status| status.map(|_| b.take())),
+            FutureRecv::Wait(ref mut rx) => rx.poll().map(|status| status.map(|b| Some(b))),
         }
     }
 }
@@ -216,11 +221,8 @@ pub struct TractInner {
     backpressure: bool,
     state: AtomicUsize,
     next_read_guard: AtomicOption<ReadBuffer>,
-    // next_read_guard: UnsafeCell<Option<ReadBuffer>>,
     send_waiting: AtomicOption<(Sender<()>, ReadBuffer)>,
-    // send_waiting_read_buffer: AtomicOption<ReadBuffer>,
-    // send_waiting_read_buffer: UnsafeCell<Option<ReadBuffer>>,
-    // recv_waiting_tx: AtomicOption<Sender<()>>,
+    recv_waiting: AtomicOption<Sender<ReadBuffer>>,
 }
 
 impl TractInner {
@@ -233,21 +235,14 @@ impl TractInner {
             backpressure,
             state: AtomicUsize::new(0),
             next_read_guard: AtomicOption::new(),
-            // next_read_guard: UnsafeCell::new(None),
             send_waiting: AtomicOption::new(),
-            // send_waiting_read_buffer: AtomicOption::new(),
-            // send_waiting_read_buffer: UnsafeCell::new(None),
-            // recv_waiting_tx: AtomicOption::new(),
+            recv_waiting: AtomicOption::new(),
         }
     }
 
     fn send(&self) -> FutureSend {
-        // if let Some(tx) = self.recv_waiting_tx.take(Ordering::SeqCst) {
-        //     tx.send(()).ok();
-        // }
-
-        let cur_state = self.state.fetch_or(BUFFER_0_FRESH, Ordering::SeqCst);
-        let buffer_already_fresh = (cur_state & BUFFER_0_FRESH) != 0;
+        let cur_state = self.state.fetch_or(NEXT_READ_GUARD_FRESH, Ordering::SeqCst);
+        let buffer_already_fresh = (cur_state & NEXT_READ_GUARD_FRESH) != 0;
 
         if buffer_already_fresh {
             if self.backpressure {
@@ -261,23 +256,41 @@ impl TractInner {
             }
         } else {
             let (wg, rg) = self.buffer.next_wr_guard_pair();
-            let old_rg = self.next_read_guard.swap(rg, Ordering::SeqCst);
-            assert!(old_rg.is_none());
+            match self.recv_waiting.take(Ordering::SeqCst) {
+                Some(tx) => {
+                    // The read guard state will be marked 'stale' because the
+                    // guard we are about to use will already have been
+                    // delivered to the receiving end via its `FutureRecv` and
+                    // the next call to `::recv` will expect the next guard
+                    // after that.
+                    let state = self.state.fetch_and(!NEXT_READ_GUARD_FRESH, Ordering::SeqCst);
+                    // Ensure a receiver has not tampered with the guard
+                    // state (it should be blocked waiting on its receiver):
+                    assert!(state & NEXT_READ_GUARD_FRESH != 0);
+                    tx.send(rg).unwrap();
+                },
+                None => {
+                    let old_rg = self.next_read_guard.swap(rg, Ordering::SeqCst);
+                    assert!(old_rg.is_none());
+                },
+            }
             FutureSend::Send(Some(wg))
         }
     }
 
-    fn recv(&self, _wait_for_frame: bool) -> FutureRecv {
-        let cur_state = self.state.fetch_and(!BUFFER_0_FRESH, Ordering::SeqCst);
-        let buffer_is_fresh = (cur_state & BUFFER_0_FRESH) != 0;
+    fn recv(&self, wait_for_frame: bool) -> FutureRecv {
+        let cur_state = self.state.fetch_and(!NEXT_READ_GUARD_FRESH, Ordering::SeqCst);
+        let buffer_is_fresh = (cur_state & NEXT_READ_GUARD_FRESH) != 0;
 
         if buffer_is_fresh {
             let next_read_guard = match self.send_waiting.take(Ordering::SeqCst) {
                 Some((tx, wrg)) => {
-                    let state = self.state.fetch_or(BUFFER_0_FRESH, Ordering::SeqCst);
+                    // The guard will be marked 'fresh' since there is still
+                    // a fresh read guard lined up.
+                    let state = self.state.fetch_or(NEXT_READ_GUARD_FRESH, Ordering::SeqCst);
                     // Ensure no one has tampered with the state (the
-                    // sender(s) should be blocked by backpressure):
-                    assert!(state & BUFFER_0_FRESH == 0);
+                    // sender(s) should be blocked by back-pressure):
+                    assert!(state & NEXT_READ_GUARD_FRESH == 0);
                     tx.send(()).ok();
                     self.next_read_guard.swap(wrg, Ordering::SeqCst)
                 },
@@ -288,16 +301,14 @@ impl TractInner {
             FutureRecv::Recv(next_read_guard)
         } else {
             debug_assert!(self.send_waiting.take(Ordering::SeqCst).is_none());
-            // if wait_for_frame {
-            //     let (tx, rx) = oneshot::channel();
-            //     let old_tx = self.recv_waiting_tx.swap(tx, Ordering::SeqCst);
-            //     assert!(old_tx.is_none());
-
-            //     FutureRecv::Wait(rx, Some(self.buffer.next_read_guard()))
-            // } else {
-            //     FutureRecv::Skip
-            // }
-            FutureRecv::Skip
+            if wait_for_frame {
+                let (tx, rx) = oneshot::channel();
+                let old_tx = self.recv_waiting.swap(tx, Ordering::SeqCst);
+                assert!(old_tx.is_none());
+                FutureRecv::Wait(rx)
+            } else {
+                FutureRecv::Skip
+            }
         }
     }
 
@@ -323,6 +334,7 @@ pub struct TractSender {
 }
 
 impl TractSender {
+    #[inline]
     pub fn send(&self) -> FutureSend {
         self.inner.send()
     }
@@ -331,6 +343,7 @@ impl TractSender {
 impl Deref for TractSender {
     type Target = TractInner;
 
+    #[inline]
     fn deref(&self) -> &TractInner {
         &self.inner
     }
@@ -343,6 +356,7 @@ pub struct TractReceiver {
 }
 
 impl TractReceiver {
+    #[inline]
     pub fn recv(&self, wait_for_frame: bool) -> FutureRecv {
         self.inner.recv(wait_for_frame)
     }
@@ -351,6 +365,7 @@ impl TractReceiver {
 impl Deref for TractReceiver {
     type Target = TractInner;
 
+    #[inline]
     fn deref(&self) -> &TractInner {
         &self.inner
     }
@@ -360,7 +375,6 @@ impl Deref for TractReceiver {
 pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Range<usize>, backpressure: bool)
         -> (TractSender, TractReceiver)
 {
-    // let inner = Arc::new(TractInner::new_i8(TractBuffer::Single(buffer), buffer_idx_range, backpressure));
     let tract_buffer = TractBuffer::I8(TractBufferTyped::Single(buffer));
     let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
@@ -375,149 +389,3 @@ pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>
 }
 
 
-
-
-
-
-
-// #[derive(Debug)]
-// struct TractSenderUntyped<T: OclPrm> {
-//     inner: Arc<TractInner<T>>,
-//     // tx: Sender<()>,
-// }
-
-// #[derive(Debug)]
-// struct TractReceiverUntyped<T: OclPrm> {
-//     inner: Arc<TractInner<T>>,
-//     // rx: Receiver<()>,
-// }
-
-
-// #[derive(Debug)]
-// enum TractSenderKind {
-//     I8(TractSenderUntyped<i8>),
-//     U8(TractSenderUntyped<u8>),
-// }
-
-// #[derive(Debug)]
-// enum TractReceiverKind {
-//     I8(TractReceiverUntyped<i8>),
-//     U8(TractReceiverUntyped<u8>),
-// }
-
-
-// impl TractSender {
-//     pub fn buffer_idx_range(&self) -> Range<usize> {
-//         self.inner.buffer_idx_range()
-//     }
-
-//     pub fn backpressure(&self) -> bool {
-//         match self.0 {
-//             TractSenderKind::I8(ref ts) => ts.inner.backpressure,
-//             TractSenderKind::U8(ref ts) => ts.inner.backpressure,
-//         }
-//     }
-
-//     pub fn buffer_single_u8(&self) -> &RwVec<u8> {
-//         match self.0 {
-//             TractSenderKind::U8(ref ts) => {
-//                 match ts.inner.buffer {
-//                     TractBuffer::Single(ref b) => b,
-//                     _ => panic!("TractSender::single_u8: This buffer is not a 'Single'."),
-//                 }
-//             },
-//             _ => panic!("TractSender::single_u8: This buffer is not a 'u8'."),
-//         }
-//     }
-// }
-
-
-
-// impl TractReceiver {
-//     pub fn buffer_idx_range(&self) -> Range<usize> {
-//         match self.0 {
-//             TractReceiverKind::I8(ref tr) => tr.inner.buffer_idx_range.clone(),
-//             TractReceiverKind::U8(ref tr) => tr.inner.buffer_idx_range.clone(),
-//         }
-//     }
-
-//     pub fn backpressure(&self) -> bool {
-//         match self.0 {
-//             TractReceiverKind::I8(ref tr) => tr.inner.backpressure,
-//             TractReceiverKind::U8(ref tr) => tr.inner.backpressure,
-//         }
-//     }
-
-//     pub fn buffer_single_u8(&self) -> &RwVec<u8> {
-//         match self.0 {
-//             TractReceiverKind::U8(ref ts) => {
-//                 match ts.inner.buffer {
-//                     TractBuffer::Single(ref b) => b,
-//                     _ => panic!("TractReceiver::single_u8: This buffer is not a 'Single'."),
-//                 }
-//             },
-//             _ => panic!("TractReceiver::single_u8: This buffer is not a 'u8'."),
-//         }
-//     }
-// }
-
-
-// fn tract_channel<T: OclPrm>(buffer: TractBuffer<T>, buffer_idx_range: Range<usize>, backpressure: bool)
-//         -> (TractSenderUntyped<T>, TractReceiverUntyped<T>)
-// {
-//     let inner = Arc::new(TractInner {
-//         buffer,
-//         buffer_idx_range,
-//         backpressure,
-//         state: AtomicUsize::new(0),
-//     });
-
-//     // let (tx, rx) = mpsc::channel(0);
-
-//     let sender = TractSenderUntyped {
-//         inner: inner.clone(),
-//         // tx,
-//     };
-
-//     let receiver = TractReceiverUntyped {
-//         inner: inner,
-//         // rx,
-//     };
-
-//     (sender, receiver)
-// }
-
-
-// enum Inner<T: OclPrm> {
-//     TractReader(FutureReadGuard<T>),
-//     TractWriter(FutureWriteGuard<T>),
-//     BufferReader(Buffer<T>),
-//     BufferWriter(Buffer<T>),
-//     Single(RwVec<T>),
-//     Double,
-//     Triple,
-// }
-
-// // Alternative Names: IoChannel
-// //
-// //
-// pub struct IoLink<T: OclPrm> {
-//     inner: Inner<T>,
-//     backpressure: bool,
-// }
-
-// impl<T: OclPrm> IoLink<T> {
-//     pub fn direct_reader(reader: FutureReadGuard<T>, backpressure: bool) -> IoLink<T> {
-//         IoLink {
-//             inner: Inner::TractReader(reader),
-//             backpressure
-//         }
-//     }
-
-//     pub fn direct_writer(writer: FutureWriteGuard<T>, backpressure: bool) -> IoLink<T> {
-//         IoLink {
-//             inner: Inner::TractWriter(writer),
-//             backpressure
-//         }
-//     }
-// }
