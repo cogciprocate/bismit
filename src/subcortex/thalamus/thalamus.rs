@@ -130,30 +130,6 @@ impl ThalamicTract {
         let ta = self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))?;
         ta.rw_vec().ok_or(CmnError::from("no RwVec found"))
     }
-
-    // // pub fn terminal_source<'t>(&'t mut self, key: &LayerAddress)
-    // pub fn terminal_source<'t>(&'t mut self, idx: usize)
-    //         -> CmnResult<(SliceBufferSource<'t>)>
-    // {
-    //     // let ta = self.tract_areas.by_key(key).unwrap();
-    //     let ta = self.tract_areas.by_index(idx).unwrap();
-    //     let range = ta.range().clone();
-    //     let dims = ta.dims().clone();
-    //     let events = ta.events();
-    //     SliceBufferSource::new(&self.vec_buffer[range], dims, Some(events))
-    // }
-
-    // // pub fn terminal_target<'t>(&'t mut self, key: &LayerAddress)
-    // pub fn terminal_target<'t>(&'t mut self, idx: usize)
-    //         -> CmnResult<(SliceBufferTarget<'t>)>
-    // {
-    //     // let ta = self.tract_areas.by_key_mut(key).unwrap();
-    //     let ta = self.tract_areas.by_index_mut(idx).unwrap();
-    //     let range = ta.range().clone();
-    //     let dims = ta.dims().clone();
-    //     let events = ta.events_mut();
-    //     SliceBufferTarget::new(&mut self.vec_buffer[range], dims, Some(events), false)
-    // }
 }
 
 

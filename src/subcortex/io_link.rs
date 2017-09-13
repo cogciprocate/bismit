@@ -11,6 +11,7 @@ use std::error::Error as StdError;
 use std::ops::{Range, Deref};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::cell::UnsafeCell;
 use futures::{Async, Poll};
 use futures::sync::oneshot::{self, Sender, Receiver, Canceled};
 use crossbeam::sync::AtomicOption;
@@ -42,6 +43,7 @@ const BUFFER_2_FRESH: usize = 0x00000004;
 // }
 
 
+#[derive(Debug)]
 pub enum FutureSend {
     Send(Option<WriteBuffer>),
     Skip,
@@ -62,6 +64,7 @@ impl Future for FutureSend {
 }
 
 
+#[derive(Debug)]
 pub enum FutureRecv {
     Recv(Option<ReadBuffer>),
     Skip,
@@ -88,44 +91,54 @@ impl Future for FutureRecv {
 }
 
 
+#[derive(Debug)]
 pub enum WriteBuffer {
-    I8(RwVec<i8>),
-    U8(RwVec<u8>),
+    RwVecI8(RwVec<i8>),
+    RwVecU8(RwVec<u8>),
+    FutureWriteGuardI8(FutureWriteGuard<i8>),
+    FutureWriteGuardU8(FutureWriteGuard<u8>),
 }
 
 impl WriteBuffer {
     pub fn write_i8(self) -> FutureWriteGuard<i8> {
         match self {
-            WriteBuffer::I8(rwv) => rwv.write(),
+            WriteBuffer::RwVecI8(rwv) => rwv.write(),
+            WriteBuffer::FutureWriteGuardI8(fwg) => fwg,
             _ => panic!("WriteBuffer::write_i8: This buffer is not a 'i8'."),
         }
     }
 
     pub fn write_u8(self) -> FutureWriteGuard<u8> {
         match self {
-            WriteBuffer::U8(rwv) => rwv.write(),
+            WriteBuffer::RwVecU8(rwv) => rwv.write(),
+            WriteBuffer::FutureWriteGuardU8(fwg) => fwg,
             _ => panic!("WriteBuffer::write_u8: This buffer is not a 'u8'."),
         }
     }
 }
 
 
+#[derive(Debug)]
 pub enum ReadBuffer {
-    I8(RwVec<i8>),
-    U8(RwVec<u8>),
+    RwVecI8(RwVec<i8>),
+    RwVecU8(RwVec<u8>),
+    FutureReadGuardI8(FutureReadGuard<i8>),
+    FutureReadGuardU8(FutureReadGuard<u8>),
 }
 
 impl ReadBuffer {
     pub fn read_i8(self) -> FutureReadGuard<i8> {
         match self {
-            ReadBuffer::I8(rwv) => rwv.read(),
+            ReadBuffer::RwVecI8(rwv) => rwv.read(),
+            ReadBuffer::FutureReadGuardI8(frg) => frg,
             _ => panic!("ReadBuffer::read_i8: This buffer is not a 'i8'."),
         }
     }
 
     pub fn read_u8(self) -> FutureReadGuard<u8> {
         match self {
-            ReadBuffer::U8(rwv) => rwv.read(),
+            ReadBuffer::RwVecU8(rwv) => rwv.read(),
+            ReadBuffer::FutureReadGuardU8(frg) => frg,
             _ => panic!("ReadBuffer::read_u8: This buffer is not a 'u8'."),
         }
     }
@@ -167,15 +180,30 @@ pub enum TractBuffer {
 impl TractBuffer {
     fn next_write_buffer(&self) -> WriteBuffer {
         match *self {
-            TractBuffer::I8(ref tbt) => WriteBuffer::I8(tbt.next_write_buffer()),
-            TractBuffer::U8(ref tbt) => WriteBuffer::U8(tbt.next_write_buffer()),
+            TractBuffer::I8(ref tbt) => WriteBuffer::RwVecI8(tbt.next_write_buffer()),
+            TractBuffer::U8(ref tbt) => WriteBuffer::RwVecU8(tbt.next_write_buffer()),
         }
     }
 
     fn next_read_buffer(&self) -> ReadBuffer {
         match *self {
-            TractBuffer::I8(ref tbt) => ReadBuffer::I8(tbt.next_read_buffer()),
-            TractBuffer::U8(ref tbt) => ReadBuffer::U8(tbt.next_read_buffer()),
+            TractBuffer::I8(ref tbt) => ReadBuffer::RwVecI8(tbt.next_read_buffer()),
+            TractBuffer::U8(ref tbt) => ReadBuffer::RwVecU8(tbt.next_read_buffer()),
+        }
+    }
+
+    fn next_wr_guard_pair(&self) -> (WriteBuffer, ReadBuffer) {
+        match *self {
+            TractBuffer::I8(ref tbt) => {
+                let wg = WriteBuffer::FutureWriteGuardI8(tbt.next_write_buffer().write());
+                let rg = ReadBuffer::FutureReadGuardI8(tbt.next_read_buffer().read());
+                (wg, rg)
+            },
+            TractBuffer::U8(ref tbt) => {
+                let wg = WriteBuffer::FutureWriteGuardU8(tbt.next_write_buffer().write());
+                let rg = ReadBuffer::FutureReadGuardU8(tbt.next_read_buffer().read());
+                (wg, rg)
+            },
         }
     }
 }
@@ -187,8 +215,12 @@ pub struct TractInner {
     buffer_idx_range: Range<usize>,
     backpressure: bool,
     state: AtomicUsize,
-    send_waiting_tx: AtomicOption<Sender<()>>,
-    recv_waiting_tx: AtomicOption<Sender<()>>,
+    next_read_guard: AtomicOption<ReadBuffer>,
+    // next_read_guard: UnsafeCell<Option<ReadBuffer>>,
+    send_waiting: AtomicOption<(Sender<()>, ReadBuffer)>,
+    // send_waiting_read_buffer: AtomicOption<ReadBuffer>,
+    // send_waiting_read_buffer: UnsafeCell<Option<ReadBuffer>>,
+    // recv_waiting_tx: AtomicOption<Sender<()>>,
 }
 
 impl TractInner {
@@ -200,48 +232,72 @@ impl TractInner {
             buffer_idx_range,
             backpressure,
             state: AtomicUsize::new(0),
-            send_waiting_tx: AtomicOption::new(),
-            recv_waiting_tx: AtomicOption::new(),
+            next_read_guard: AtomicOption::new(),
+            // next_read_guard: UnsafeCell::new(None),
+            send_waiting: AtomicOption::new(),
+            // send_waiting_read_buffer: AtomicOption::new(),
+            // send_waiting_read_buffer: UnsafeCell::new(None),
+            // recv_waiting_tx: AtomicOption::new(),
         }
     }
 
     fn send(&self) -> FutureSend {
-        let cur_state = self.state.fetch_or(BUFFER_0_FRESH, Ordering::SeqCst);
-        let buffer_is_fresh = (cur_state & BUFFER_0_FRESH) != 0;
+        // if let Some(tx) = self.recv_waiting_tx.take(Ordering::SeqCst) {
+        //     tx.send(()).ok();
+        // }
 
-        if buffer_is_fresh {
+        let cur_state = self.state.fetch_or(BUFFER_0_FRESH, Ordering::SeqCst);
+        let buffer_already_fresh = (cur_state & BUFFER_0_FRESH) != 0;
+
+        if buffer_already_fresh {
             if self.backpressure {
                 let (tx, rx) = oneshot::channel();
-                let old_tx = self.send_waiting_tx.swap(tx, Ordering::SeqCst);
+                let (wg, rg) = self.buffer.next_wr_guard_pair();
+                let old_tx = self.send_waiting.swap((tx, rg), Ordering::SeqCst);
                 assert!(old_tx.is_none());
-                FutureSend::Wait(rx, Some(self.buffer.next_write_buffer()))
+                FutureSend::Wait(rx, Some(wg))
             } else {
                 FutureSend::Skip
             }
         } else {
-            FutureSend::Send(Some(self.buffer.next_write_buffer()))
+            let (wg, rg) = self.buffer.next_wr_guard_pair();
+            let old_rg = self.next_read_guard.swap(rg, Ordering::SeqCst);
+            assert!(old_rg.is_none());
+            FutureSend::Send(Some(wg))
         }
     }
 
-    fn recv(&self, sync: bool) -> FutureRecv {
-        if let Some(tx) = self.send_waiting_tx.take(Ordering::SeqCst) {
-            tx.send(()).ok();
-        }
-
+    fn recv(&self, _wait_for_frame: bool) -> FutureRecv {
         let cur_state = self.state.fetch_and(!BUFFER_0_FRESH, Ordering::SeqCst);
         let buffer_is_fresh = (cur_state & BUFFER_0_FRESH) != 0;
 
         if buffer_is_fresh {
-            FutureRecv::Recv(Some(self.buffer.next_read_buffer()))
+            let next_read_guard = match self.send_waiting.take(Ordering::SeqCst) {
+                Some((tx, wrg)) => {
+                    let state = self.state.fetch_or(BUFFER_0_FRESH, Ordering::SeqCst);
+                    // Ensure no one has tampered with the state (the
+                    // sender(s) should be blocked by backpressure):
+                    assert!(state & BUFFER_0_FRESH == 0);
+                    tx.send(()).ok();
+                    self.next_read_guard.swap(wrg, Ordering::SeqCst)
+                },
+                None => self.next_read_guard.take(Ordering::SeqCst),
+            };
+
+            assert!(next_read_guard.is_some());
+            FutureRecv::Recv(next_read_guard)
         } else {
-            if sync {
-                let (tx, rx) = oneshot::channel();
-                let old_tx = self.recv_waiting_tx.swap(tx, Ordering::SeqCst);
-                assert!(old_tx.is_none());
-                FutureRecv::Wait(rx, Some(self.buffer.next_read_buffer()))
-            } else {
-                FutureRecv::Skip
-            }
+            debug_assert!(self.send_waiting.take(Ordering::SeqCst).is_none());
+            // if wait_for_frame {
+            //     let (tx, rx) = oneshot::channel();
+            //     let old_tx = self.recv_waiting_tx.swap(tx, Ordering::SeqCst);
+            //     assert!(old_tx.is_none());
+
+            //     FutureRecv::Wait(rx, Some(self.buffer.next_read_guard()))
+            // } else {
+            //     FutureRecv::Skip
+            // }
+            FutureRecv::Skip
         }
     }
 
@@ -287,8 +343,8 @@ pub struct TractReceiver {
 }
 
 impl TractReceiver {
-    pub fn recv(&self, sync: bool) -> FutureRecv {
-        self.inner.recv(sync)
+    pub fn recv(&self, wait_for_frame: bool) -> FutureRecv {
+        self.inner.recv(wait_for_frame)
     }
 }
 

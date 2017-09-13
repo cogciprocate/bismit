@@ -659,7 +659,7 @@ impl CorticalArea {
         let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let rx = rx;
             let mut core = Core::new().unwrap();
-            let work = rx.buffer_unordered(4).for_each(|_| Ok(()));
+            let work = rx.buffer_unordered(8).for_each(|_| Ok(()));
             core.run(work).unwrap();
         }).unwrap();
 
@@ -844,6 +844,23 @@ impl CorticalArea {
         Ok(())
     }
 
+    /// Attaches synapses which are below strength threshold to new axons.
+    pub fn regrow(&mut self) {
+        if !self.settings.disable_regrowth {
+            if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
+                self.finish_queues();
+                //print!("$");
+                for &lyr_idx in self.cycle_order.iter() {
+                    let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
+                    lyr.regrow();
+                }
+                self.counter = 0;
+            } else {
+                self.counter += 1;
+            }
+        }
+    }
+
     /// Cycles through sampling requests
     fn cycle_samplers(&mut self) -> CmnResult<()> {
         // let mut work_tx = self.work_tx.take();
@@ -879,23 +896,6 @@ impl CorticalArea {
             }
         }
         Ok(())
-    }
-
-    /// Attaches synapses which are below strength threshold to new axons.
-    pub fn regrow(&mut self) {
-        if !self.settings.disable_regrowth {
-            if self.counter >= cmn::SYNAPSE_REGROWTH_INTERVAL {
-                self.finish_queues();
-                //print!("$");
-                for &lyr_idx in self.cycle_order.iter() {
-                    let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
-                    lyr.regrow();
-                }
-                self.counter = 0;
-            } else {
-                self.counter += 1;
-            }
-        }
     }
 
     /// Requests a cortical 'sampler' which provides external read/write
