@@ -666,35 +666,38 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
-            .input_layer("aff_in", map::DEFAULT,
+            .input_layer("aff_in", LayerTags::DEFAULT,
                 AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
                 AxonTopology::Spatial
                 // AxonTopology::Horizontal
             )
 
-            .layer("dummy_out", 1, map::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
+            .layer("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
                 LayerKind::Axonal(AxonTopology::Spatial)
             )
 
-            .layer(SPT_LYR, 1, map::PSAL, AxonDomain::Local,
-            // .layer(SPT_LYR, 1, map::PSAL, AxonDomain::output(&[map::THAL_SP]),
+            .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
+            // .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::output(&[map::THAL_SP]),
                 CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
             )
 
-            .layer("iv_inhib", 0, map::DEFAULT, AxonDomain::Local, CellScheme::inhib(SPT_LYR, 4, 0))
-            .layer("iv_smooth", 0, map::DEFAULT, AxonDomain::Local, CellScheme::smooth(SPT_LYR, 4, 1))
+            .layer("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib(SPT_LYR, 4, 0))
+            .layer("iv_smooth", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::smooth(SPT_LYR, 4, 1))
 
-            // // .layer("iii", 1, map::PTAL, AxonDomain::Local,
-            // .layer("iii", 1, map::PTAL, AxonDomain::output(&[AxonTag::unique()]),
-            //     CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
-            // )
+            // .layer("iii", 1, LayerTags::PTAL, AxonDomain::Local,
+            .layer("iii", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
+                CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
+            )
+            .layer("iii_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
+                CellScheme::pyr_outputter("iii", 0)
+            )
 
-            // .layer("mcols", 1, map::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+            // .layer("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
             //     CellScheme::minicolumn(9999)
             // )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer(EXT_LYR, 1, map::DEFAULT,
+            .layer(EXT_LYR, 1, LayerTags::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, at0]),
                 LayerKind::Axonal(AxonTopology::Spatial))
         )
@@ -717,7 +720,7 @@ pub fn ca_settings() -> CorticalAreaSettings {
     CorticalAreaSettings::new()
         // .bypass_inhib()
         // .bypass_filters()
-        .disable_pyrs()
+        // .disable_pyrs()
         // .disable_ssts()
         .disable_mcols()
         // .disable_regrowth()

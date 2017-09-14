@@ -11,7 +11,7 @@
 
 
 use std::num::Wrapping;
-use std::ops::Range;
+// use std::ops::Range;
 use std::sync::mpsc::{Sender, SyncSender, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 use time::{self, Timespec, Duration};
@@ -60,7 +60,8 @@ pub enum MotorFrame {
 #[derive(Clone, Debug)]
 pub struct AreaInfo {
     pub name: String,
-    pub aff_out_slc_range: Range<usize>,
+    // pub aff_out_slc_range: Range<usize>,
+    pub aff_out_slc_ids: Vec<u8>,
     pub tract_map: SliceTractMap,
 }
 
@@ -81,7 +82,7 @@ pub enum Request {
     CurrentIter,
     Status,
     AreaInfo,
-    Sample(Range<usize>, Arc<Mutex<Vec<u8>>>),
+    // Sample(Range<usize>, Arc<Mutex<Vec<u8>>>),
     Sampler { area_name: String, kind: SamplerKind, buffer_kind: SamplerBufferKind },
     FinishQueues,
     // Input(Obs),
@@ -365,9 +366,9 @@ impl Flywheel {
                         // ////// DEBUG:
                         // println!("Fullfilling request: {:?}", r);
                         match r {
-                            Request::Sample(range, buf) => {
-                                res_tx.send(Response::SampleProgress(self.refresh_buf(range, buf))).unwrap();
-                            },
+                            // Request::Sample(range, buf) => {
+                            //     res_tx.send(Response::SampleProgress(self.refresh_buf(range, buf))).unwrap();
+                            // },
                             Request::Sampler { area_name, kind, buffer_kind } => {
                                 let tract_rx = self.cortex.areas_mut().by_key_mut(area_name.as_str()).unwrap()
                                     .sampler(kind, buffer_kind);
@@ -487,28 +488,31 @@ impl Flywheel {
         }
     }
 
-    fn refresh_buf(&self, slc_range: Range<usize>, buf: Arc<Mutex<Vec<u8>>>)
-                -> Option<OclEvent> {
-        // // DEBUG:
-        // println!("Refreshing buffer...");
+    // #[deprecated]
+    // fn refresh_buf(&self, slc_range: Range<usize>, buf: Arc<Mutex<Vec<u8>>>)
+    //             -> Option<OclEvent> {
+    //     // // DEBUG:
+    //     // println!("Refreshing buffer...");
 
-        let axn_range = self.cortex.areas().by_key(self.area_name.as_str()).unwrap()
-            .axn_tract_map().axn_id_range(slc_range.clone());
+    //     let axn_range = self.cortex.areas().by_key(self.area_name.as_str()).unwrap()
+    //         .axn_tract_map().axn_id_range(slc_range.clone());
 
-        // match buf.try_lock() {
-        match buf.lock() {
-            Ok(ref mut b) => Some(self.cortex.areas().by_key(self.area_name.as_str())
-                .unwrap().sample_axn_slc_range(slc_range, &mut b[axn_range])),
-            Err(_) => None,
-        }
-    }
+    //     // match buf.try_lock() {
+    //     match buf.lock() {
+    //         Ok(ref mut b) => Some(self.cortex.areas().by_key(self.area_name.as_str())
+    //             .unwrap().sample_axn_slc_range(slc_range, &mut b[axn_range])),
+    //         Err(_) => None,
+    //     }
+    // }
 
     fn send_area_info(&self, res_tx: &Sender<Response>) {
         res_tx.send(Response::AreaInfo(Box::new(
             AreaInfo {
                 name: self.area_name.to_string(),
-                aff_out_slc_range: self.cortex.areas().by_key(self.area_name.as_str())
-                    .unwrap().area_map().aff_out_slc_range(),
+                // aff_out_slc_range: self.cortex.areas().by_key(self.area_name.as_str())
+                //     .unwrap().area_map().aff_out_slc_range(),
+                aff_out_slc_ids: self.cortex.areas().by_key(self.area_name.as_str())
+                    .unwrap().area_map().aff_out_slc_ids(),
                 tract_map: self.cortex.areas().by_key(self.area_name.as_str())
                     .unwrap().axn_tract_map(),
             }

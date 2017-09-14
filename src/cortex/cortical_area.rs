@@ -973,6 +973,7 @@ impl CorticalArea {
         self.exe_graph.finish().unwrap();
     }
 
+    #[deprecated]
     pub fn sample_axn_slc_range(&self, slc_range: Range<usize>, buf: &mut [u8]) -> Event {
         // let slc_range = slc_range.borrow();
         assert!(slc_range.len() > 0, "CorticalArea::sample_axn_slc_range(): \
@@ -994,6 +995,7 @@ impl CorticalArea {
         event
     }
 
+    #[deprecated]
     pub fn sample_axn_space(&self, buf: &mut [u8]) -> Event {
         debug_assert!(buf.len() == self.area_map.slice_map().axn_count() as usize);
         let mut event = Event::empty();

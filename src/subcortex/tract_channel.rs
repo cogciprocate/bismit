@@ -49,54 +49,6 @@ const BUFFER_2_FRESH: usize = 0x00000004;
 
 
 #[derive(Debug)]
-pub enum FutureSend {
-    Send(Option<WriteBuffer>),
-    Skip,
-    Wait(Receiver<()>, Option<WriteBuffer>),
-}
-
-impl Future for FutureSend {
-    type Item = Option<WriteBuffer>;
-    type Error = Canceled;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        match *self {
-            FutureSend::Send(ref mut b) => Ok(Async::Ready(b.take())),
-            FutureSend::Skip => Ok(Async::Ready(None)),
-            FutureSend::Wait(ref mut rx, ref mut b) => rx.poll().map(|status| status.map(|_| b.take())),
-        }
-    }
-}
-
-
-#[derive(Debug)]
-pub enum FutureRecv {
-    Recv(Option<ReadBuffer>),
-    Skip,
-    Wait(Receiver<ReadBuffer>),
-}
-
-impl FutureRecv {
-    pub fn wait(&mut self) -> Result<Option<ReadBuffer>, Canceled> {
-        Future::wait(self)
-    }
-}
-
-impl Future for FutureRecv {
-    type Item = Option<ReadBuffer>;
-    type Error = Canceled;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        match *self {
-            FutureRecv::Recv(ref mut b) => Ok(Async::Ready(b.take())),
-            FutureRecv::Skip => Ok(Async::Ready(None)),
-            FutureRecv::Wait(ref mut rx) => rx.poll().map(|status| status.map(|b| Some(b))),
-        }
-    }
-}
-
-
-#[derive(Debug)]
 pub enum WriteBuffer {
     RwVecI8(RwVec<i8>),
     RwVecU8(RwVec<u8>),
@@ -145,6 +97,54 @@ impl ReadBuffer {
             ReadBuffer::RwVecU8(rwv) => rwv.read(),
             ReadBuffer::FutureReadGuardU8(frg) => frg,
             _ => panic!("ReadBuffer::read_u8: This buffer is not a 'u8'."),
+        }
+    }
+}
+
+
+#[derive(Debug)]
+pub enum FutureSend {
+    Send(Option<WriteBuffer>),
+    Skip,
+    Wait(Receiver<()>, Option<WriteBuffer>),
+}
+
+impl Future for FutureSend {
+    type Item = Option<WriteBuffer>;
+    type Error = Canceled;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        match *self {
+            FutureSend::Send(ref mut b) => Ok(Async::Ready(b.take())),
+            FutureSend::Skip => Ok(Async::Ready(None)),
+            FutureSend::Wait(ref mut rx, ref mut b) => rx.poll().map(|status| status.map(|_| b.take())),
+        }
+    }
+}
+
+
+#[derive(Debug)]
+pub enum FutureRecv {
+    Recv(Option<ReadBuffer>),
+    Skip,
+    Wait(Receiver<ReadBuffer>),
+}
+
+impl FutureRecv {
+    pub fn wait(&mut self) -> Result<Option<ReadBuffer>, Canceled> {
+        Future::wait(self)
+    }
+}
+
+impl Future for FutureRecv {
+    type Item = Option<ReadBuffer>;
+    type Error = Canceled;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        match *self {
+            FutureRecv::Recv(ref mut b) => Ok(Async::Ready(b.take())),
+            FutureRecv::Skip => Ok(Async::Ready(None)),
+            FutureRecv::Wait(ref mut rx) => rx.poll().map(|status| status.map(|b| Some(b))),
         }
     }
 }
