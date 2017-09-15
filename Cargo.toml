@@ -20,8 +20,8 @@ authors = ["Nick Sanders <github.com/c0gent>"]
 
 [dependencies]
 # ocl = "*"
-ocl = { version = "*", path = "../ocl" }
-# ocl = { version = "*", git = "https://github.com/cogciprocate/ocl" }
+# ocl = { version = "*", path = "../ocl" }
+ocl = { version = "*", git = "https://github.com/cogciprocate/ocl" }
 
 bitflags = "*"
 rand = "*"

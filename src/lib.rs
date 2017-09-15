@@ -1,7 +1,7 @@
 //! # Bismit: Biologically Inspired Sensory Motor Interface Tool
 
 // #![feature(discriminant_value)]
-#![feature(conservative_impl_trait)]
+// #![feature(conservative_impl_trait)]
 
 extern crate num;
 extern crate libc;

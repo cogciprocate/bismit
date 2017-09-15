@@ -15,8 +15,9 @@ use std::fmt;
 use std::error::Error as StdError;
 use std::ops::{Range, Deref};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{fence, AtomicUsize, Ordering};
 use std::cell::UnsafeCell;
+use std::thread;
 use futures::{Async, Poll};
 use futures::sync::oneshot::{self, Sender, Receiver, Canceled};
 use crossbeam::sync::AtomicOption;
@@ -25,7 +26,7 @@ use ocl::{RwVec, FutureReadGuard, FutureWriteGuard, OclPrm};
 use cmn::CmnError;
 
 
-const NEXT_READ_GUARD_FRESH: usize = 0x00000001;
+const NEXT_READ_GUARD_READY: usize = 0x00000001;
 const BUFFER_1_FRESH: usize = 0x00000002;
 const BUFFER_2_FRESH: usize = 0x00000004;
 
@@ -46,6 +47,16 @@ const BUFFER_2_FRESH: usize = 0x00000004;
 //         "FutureSendError"
 //     }
 // }
+
+/// Spins an ever increasing amount of time.
+fn _spin(spins: &mut usize) {
+    if *spins < 16 {
+        for _ in 0..(2 << *spins) { fence(Ordering::SeqCst); }
+    } else {
+        thread::yield_now();
+    }
+    *spins += 1;
+}
 
 
 #[derive(Debug)]
@@ -241,10 +252,9 @@ impl TractInner {
     }
 
     fn send(&self) -> FutureSend {
-        let cur_state = self.state.fetch_or(NEXT_READ_GUARD_FRESH, Ordering::SeqCst);
-        let buffer_already_fresh = (cur_state & NEXT_READ_GUARD_FRESH) != 0;
-
-        if buffer_already_fresh {
+        let cur_state = self.state.fetch_or(NEXT_READ_GUARD_READY, Ordering::SeqCst);
+        let buffer_already_ready = (cur_state & NEXT_READ_GUARD_READY) != 0;
+        if buffer_already_ready {
             if self.backpressure {
                 let (tx, rx) = oneshot::channel();
                 let (wg, rg) = self.buffer.next_wr_guard_pair();
@@ -258,18 +268,11 @@ impl TractInner {
             let (wg, rg) = self.buffer.next_wr_guard_pair();
             match self.recv_waiting.take(Ordering::SeqCst) {
                 Some(tx) => {
-                    // The read guard state will be marked 'stale' because the
-                    // guard we are about to use will already have been
-                    // delivered to the receiving end via its `FutureRecv` and
-                    // the next call to `::recv` will expect the next guard
-                    // after that.
-                    let state = self.state.fetch_and(!NEXT_READ_GUARD_FRESH, Ordering::SeqCst);
-                    // Ensure a receiver has not tampered with the guard
-                    // state (it should be blocked waiting on its receiver):
-                    assert!(state & NEXT_READ_GUARD_FRESH != 0);
+                    // println!("TractInner::send: Read guard stale. Sending new...");
                     tx.send(rg).unwrap();
                 },
                 None => {
+                    // println!("TractInner::send: Read guard stale. Swapping in new.");
                     let old_rg = self.next_read_guard.swap(rg, Ordering::SeqCst);
                     assert!(old_rg.is_none());
                 },
@@ -278,36 +281,38 @@ impl TractInner {
         }
     }
 
+    // `wait_for_frame` untested.
     fn recv(&self, wait_for_frame: bool) -> FutureRecv {
-        let cur_state = self.state.fetch_and(!NEXT_READ_GUARD_FRESH, Ordering::SeqCst);
-        let buffer_is_fresh = (cur_state & NEXT_READ_GUARD_FRESH) != 0;
-
-        if buffer_is_fresh {
-            let next_read_guard = match self.send_waiting.take(Ordering::SeqCst) {
-                Some((tx, wrg)) => {
-                    // The guard will be marked 'fresh' since there is still
-                    // a fresh read guard lined up.
-                    let state = self.state.fetch_or(NEXT_READ_GUARD_FRESH, Ordering::SeqCst);
-                    // Ensure no one has tampered with the state (the
-                    // sender(s) should be blocked by back-pressure):
-                    assert!(state & NEXT_READ_GUARD_FRESH == 0);
-                    tx.send(()).ok();
-                    self.next_read_guard.swap(wrg, Ordering::SeqCst)
-                },
-                None => self.next_read_guard.take(Ordering::SeqCst),
-            };
-
-            assert!(next_read_guard.is_some());
-            FutureRecv::Recv(next_read_guard)
-        } else {
-            debug_assert!(self.send_waiting.take(Ordering::SeqCst).is_none());
-            if wait_for_frame {
-                let (tx, rx) = oneshot::channel();
-                let old_tx = self.recv_waiting.swap(tx, Ordering::SeqCst);
-                assert!(old_tx.is_none());
-                FutureRecv::Wait(rx)
-            } else {
-                FutureRecv::Skip
+        match self.next_read_guard.take(Ordering::SeqCst) {
+            Some(next_read_guard) => {
+                assert!(self.state.load(Ordering::SeqCst) & NEXT_READ_GUARD_READY != 0);
+                // Rotate in the waiting guard if any:
+                match self.send_waiting.take(Ordering::SeqCst) {
+                    Some((tx, wrg)) => {
+                        // println!("TractInner::recv: self.send_waiting => Some(tx, wrg)");
+                        self.next_read_guard.swap(wrg, Ordering::SeqCst);
+                        tx.send(()).ok();
+                    },
+                    None => {
+                        // println!("TractInner::recv: self.send_waiting => None");
+                        let prior_state = self.state.fetch_and(!NEXT_READ_GUARD_READY, Ordering::SeqCst);
+                        assert!(prior_state & NEXT_READ_GUARD_READY != 0);
+                    },
+                }
+                FutureRecv::Recv(Some(next_read_guard))
+            },
+            None => {
+                // NOTE: self.state.load(Ordering::SeqCst) & NEXT_READ_GUARD_READY ??= 0 //
+                if wait_for_frame {
+                    // UNTESTED:
+                    // println!("TractInner::recv: Waiting for next frame.");
+                    let (tx, rx) = oneshot::channel();
+                    let old_tx = self.recv_waiting.swap(tx, Ordering::SeqCst);
+                    assert!(old_tx.is_none());
+                    FutureRecv::Wait(rx)
+                } else {
+                    FutureRecv::Skip
+                }
             }
         }
     }
@@ -334,6 +339,7 @@ pub struct TractSender {
 }
 
 impl TractSender {
+    /// Sends the next buffer frame.
     #[inline]
     pub fn send(&self) -> FutureSend {
         self.inner.send()
@@ -356,6 +362,7 @@ pub struct TractReceiver {
 }
 
 impl TractReceiver {
+    /// Returns the next buffer frame.
     #[inline]
     pub fn recv(&self, wait_for_frame: bool) -> FutureRecv {
         self.inner.recv(wait_for_frame)

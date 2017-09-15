@@ -863,6 +863,7 @@ impl CorticalArea {
 
     /// Cycles through sampling requests
     fn cycle_samplers(&mut self) -> CmnResult<()> {
+        // ::std::thread::sleep(::std::time::Duration::from_millis(1000));
         // let mut work_tx = self.work_tx.take();
         for sampler in &self.samplers {
             let cmd_idx = sampler.cmd_idx.expect("sampler order not set");
@@ -921,7 +922,7 @@ impl CorticalArea {
                     SamplerBufferKind::Single => {
                         let tract_buffer = RwVec::from(vec![0u8; axn_range.len()]);
                         let (tx, rx) = subcortex::tract_channel_single_u8(tract_buffer,
-                            0..axn_range.len(), false);
+                            0..axn_range.len(), true);
 
                         // Determine source axon slices for execution graph:
                         let cmd_srcs = slc_range.map(|slc_id| {
