@@ -396,3 +396,11 @@ pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>
 }
 
 
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn tract_channel() {
+
+    }
+}

@@ -216,20 +216,18 @@ impl Thalamus {
     // Multiple source output areas disabled.
     //
     // NOTE: Do not disable `RwVec` locking. A write lock must be queued each
-    // cycle to prevent read locks piling up.
+    // cycle to prevent read locks piling up. [NOTE: 2017-Oct-14: This may
+    // have been corrected by ocl patch -- Verify]
     pub fn cycle_external_pathways(&mut self) {
         for &mut (ref mut src_ext_path, ref layer_addr_list) in self.external_pathways.values_mut().iter_mut() {
             if src_ext_path.is_disabled() { continue; }
             src_ext_path.cycle_next();
             for &layer_addr in layer_addr_list.iter() {
                 // TODO: ExternalPathway needs to store tract index.
-                ////// DEBUG TEMP:
-                    let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
-                    let future_write = self.tract.write(tract_area_idx)
-                        .expect("Thalamus::cycle_external_pathways()");
-                ///////
-                    src_ext_path.write_into(layer_addr, future_write)
-                ///////
+                let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
+                let future_write = self.tract.write(tract_area_idx)
+                    .expect("Thalamus::cycle_external_pathways()");
+                src_ext_path.write_into(layer_addr, future_write)
             }
         }
     }
