@@ -315,7 +315,7 @@ impl Synapses {
                 (exe_cmd_idx: [{}])...", kern.name(), cmd_idx); }
 
             let mut event = Event::empty();
-            kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            unsafe { kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
 
             if PRINT_DEBUG { kern.default_queue().unwrap().finish().unwrap(); }
@@ -558,7 +558,7 @@ pub mod tests {
         fn cycle_solo(&self) {
             for kern in self.kernels.iter() {
                 kern.default_queue().unwrap().finish().unwrap();
-                kern.cmd().enq().expect("SynapsesTest::cycle_solo");
+                unsafe { kern.cmd().enq().expect("SynapsesTest::cycle_solo"); }
                 kern.default_queue().unwrap().finish().unwrap();
             }
         }

@@ -608,7 +608,8 @@ impl AxonSpace {
                         None
                     } else {
                         let future_writer = thal.tract().write(io_lyr.tract_area_id())?;
-                        debug_assert_eq!(io_lyr.axn_range().len(), future_writer.len());
+                        let future_writer_len = unsafe { (*future_writer.as_ptr()).len() };
+                        debug_assert_eq!(io_lyr.axn_range().len(), future_writer_len);
 
                         let mut ev = Event::empty();
 

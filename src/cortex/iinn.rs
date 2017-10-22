@@ -106,17 +106,20 @@ impl InhibitoryInterneuronNetwork {
         let mut event = Event::empty();
 
         if self.settings.bypass_inhib {
-            self.kern_inhib_passthrough.cmd()
+            unsafe {
+                self.kern_inhib_passthrough.cmd()
                 .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
                 .enew(&mut event)
                 .enq()?;
+            }
         } else {
             self.kern_inhib_simple.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
-
-            self.kern_inhib_simple.cmd()
-                .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
-                .enew(&mut event)
-                .enq()?;
+            unsafe {
+                self.kern_inhib_simple.cmd()
+                    .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
+                    .enew(&mut event)
+                    .enq()?;
+            }
         }
 
         exe_graph.set_cmd_event(self.exe_cmd_idx, Some(event))?;

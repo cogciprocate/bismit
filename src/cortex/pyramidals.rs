@@ -413,7 +413,7 @@ impl DataCellLayer for PyramidalLayer {
             if PRINT_DEBUG { printlnc!(yellow: "Pyrs:   Enqueuing kern_ltp..."); }
 
             let mut event = Event::empty();
-            ltp_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?;
+            unsafe { ltp_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?; }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
             if PRINT_DEBUG { ltp_kernel.default_queue().unwrap().finish().unwrap(); }
             if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Learning complete for layer: '{}'.", self.layer_name); }
@@ -452,7 +452,7 @@ impl DataCellLayer for PyramidalLayer {
             if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Enqueuing cycle kernels for tft: {}...", tft_id); }
 
             let mut event = Event::empty();
-            tft_cycle_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            unsafe { tft_cycle_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
 
             // [DEBUG]: TEMPORARY:
@@ -464,8 +464,10 @@ impl DataCellLayer for PyramidalLayer {
         // Soma:
         if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
             let mut event = Event::empty();
-            self.pyr_cycle_kernel.cmd().ewait(exe_graph.get_req_events(cycle_cmd_idx)?)
-                .enew(&mut event).enq()?;
+            unsafe {
+                self.pyr_cycle_kernel.cmd().ewait(exe_graph.get_req_events(cycle_cmd_idx)?)
+                    .enew(&mut event).enq()?;
+            }
             exe_graph.set_cmd_event(cycle_cmd_idx, Some(event))?;
         }
 
@@ -519,12 +521,14 @@ pub mod tests {
 
             for cycle_kern in self.pyr_tft_cycle_kernels.iter() {
                 cycle_kern.default_queue().unwrap().finish().unwrap();
-                cycle_kern.cmd().enq().expect("PyramidalLayer::cycle_self_only: pyr_tft_cycle_kernels");
+                unsafe { cycle_kern.cmd().enq().expect("PyramidalLayer::cycle_self_only: pyr_tft_cycle_kernels"); }
                 cycle_kern.default_queue().unwrap().finish().unwrap();
             }
 
-            self.pyr_cycle_kernel.cmd().enq()
-                .expect("PyramidalLayer::cycle_self_only: pyr_cycle_kernel");
+            unsafe {
+                self.pyr_cycle_kernel.cmd().enq()
+                    .expect("PyramidalLayer::cycle_self_only: pyr_cycle_kernel");
+            }
 
             self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap();
         }
@@ -536,8 +540,10 @@ pub mod tests {
                 ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
                     .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [0]");
 
-                ltp_kernel.cmd().enq()
-                    .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [1]");
+                unsafe {
+                    ltp_kernel.cmd().enq()
+                        .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [1]");
+                }
 
                 ltp_kernel.default_queue().unwrap().finish().unwrap();
             }

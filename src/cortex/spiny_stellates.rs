@@ -233,8 +233,10 @@ impl SpinyStellateLayer {
         // Cycle soma (currently adds energies to den states):
         if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
             let mut event = Event::empty();
-            self.kern_cycle.cmd().ewait(exe_graph.get_req_events(cycle_cmd_idx)?)
-                .enew(&mut event).enq()?;
+            unsafe {
+                self.kern_cycle.cmd().ewait(exe_graph.get_req_events(cycle_cmd_idx)?)
+                    .enew(&mut event).enq()?;
+            }
             exe_graph.set_cmd_event(cycle_cmd_idx, Some(event))?;
         }
 
@@ -257,7 +259,7 @@ impl SpinyStellateLayer {
             self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
 
             let mut event = Event::empty();
-            self.kern_ltp.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?;
+            unsafe { self.kern_ltp.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
             if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Learning complete for layer: '{}'.", self.layer_name); }
         }
@@ -348,8 +350,10 @@ pub mod tests {
             let rnd = self.rng.gen::<u32>();
             self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
 
+            unsafe {
             self.kern_ltp.cmd().enq()
                 .expect("<SpinyStellateLayer as DataCellLayerTest>::learn_solo [1]");
+            }
 
             self.kern_ltp.default_queue().unwrap().finish().unwrap();
         }

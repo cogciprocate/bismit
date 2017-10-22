@@ -1,10 +1,6 @@
 
-use cmn::{self, /*CorticalDims*/};
-// use map::{LayerMapScheme, LayerMapSchemeList, AreaSchemeList, AreaScheme, Cellular, Axonal, Spatial, Horizontal, Sensory, Thalamic, layer, CellScheme, FilterScheme, EncoderScheme};
-// use area::{self, Cortex};
+use cmn::{self};
 use ocl::{self, Buffer, SpatialDims};
-// use cycle::{input_czar, InputCzar, InputKind};
-// use super::hybrid;
 use super::{TestBed, util};
 
 
@@ -73,8 +69,10 @@ pub fn axn_idxs(testbed: &TestBed) {
         .arg_buf(&outs_v4)
     ;
 
-    kern_sc.enq().expect("[FIXME]: HANDLE ME!");
-    kern_v4.enq().expect("[FIXME]: HANDLE ME!");
+    unsafe {
+        kern_sc.enq().expect("[FIXME]: HANDLE ME!");
+        kern_v4.enq().expect("[FIXME]: HANDLE ME!");
+    }
 
     let failure = util::compare_buffers(&outs_sc, &outs_v4);
 

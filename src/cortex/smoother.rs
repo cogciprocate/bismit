@@ -146,10 +146,12 @@ impl ActivitySmoother {
         if self.cycle_count & CYCLE_FREQUENCY == 0 {
 
             let mut event = Event::empty();
-            self.kern.cmd()
-                .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
-                .enew(&mut event)
-                .enq()?;
+            unsafe {
+                self.kern.cmd()
+                    .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
+                    .enew(&mut event)
+                    .enq()?;
+            }
             exe_graph.set_cmd_event(self.exe_cmd_idx, Some(event))?;
         } else {
             exe_graph.set_cmd_event(self.exe_cmd_idx, None)?;

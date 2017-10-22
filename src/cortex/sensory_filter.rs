@@ -159,8 +159,10 @@ impl SensoryFilter {
         // let wait_list = exe_graph.get_req_events(self.exe_cmd_idx_cycle)?;
         let mut event = Event::empty();
 
-        self.cycle_kernel.cmd().ewait(exe_graph.get_req_events(self.exe_cmd_idx_cycle)?)
-            .enew(&mut event).enq()?;
+        unsafe {
+            self.cycle_kernel.cmd().ewait(exe_graph.get_req_events(self.exe_cmd_idx_cycle)?)
+                .enew(&mut event).enq()?;
+        }
 
         exe_graph.set_cmd_event(self.exe_cmd_idx_cycle, Some(event))?;
         Ok(())
