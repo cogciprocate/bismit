@@ -112,14 +112,14 @@ impl ThalamicTract {
         self.tract_areas.index_of(layer_addr.borrow())
     }
 
-    pub fn read<'t>(&'t self, idx: usize) -> CmnResult<FutureReadGuard<u8>> {
+    pub fn read<'t>(&'t self, idx: usize) -> CmnResult<FutureReadGuard<Vec<u8>>> {
         let ta = self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))?;
         // println!("Tract area: Obtaining reader for tract area: source: {:?}, dims: {:?}",
         //     ta.src_lyr_addr, ta.dims);
         ta.rw_vec().ok_or(CmnError::from("ThalamicTract::read")).map(|rv| rv.clone().read())
     }
 
-    pub fn write<'t>(&'t self, idx: usize) -> CmnResult<FutureWriteGuard<u8>> {
+    pub fn write<'t>(&'t self, idx: usize) -> CmnResult<FutureWriteGuard<Vec<u8>>> {
         let ta = self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))?;
         // println!("Tract area: Obtaining writer for tract area: source: {:?}, dims: {:?}",
         //     ta.src_lyr_addr, ta.dims);

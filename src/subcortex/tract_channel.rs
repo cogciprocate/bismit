@@ -63,12 +63,12 @@ fn _spin(spins: &mut usize) {
 pub enum WriteBuffer {
     RwVecI8(RwVec<i8>),
     RwVecU8(RwVec<u8>),
-    FutureWriteGuardI8(FutureWriteGuard<i8>),
-    FutureWriteGuardU8(FutureWriteGuard<u8>),
+    FutureWriteGuardI8(FutureWriteGuard<Vec<i8>>),
+    FutureWriteGuardU8(FutureWriteGuard<Vec<u8>>),
 }
 
 impl WriteBuffer {
-    pub fn write_i8(self) -> FutureWriteGuard<i8> {
+    pub fn write_i8(self) -> FutureWriteGuard<Vec<i8>> {
         match self {
             WriteBuffer::RwVecI8(rwv) => rwv.write(),
             WriteBuffer::FutureWriteGuardI8(fwg) => fwg,
@@ -76,7 +76,7 @@ impl WriteBuffer {
         }
     }
 
-    pub fn write_u8(self) -> FutureWriteGuard<u8> {
+    pub fn write_u8(self) -> FutureWriteGuard<Vec<u8>> {
         match self {
             WriteBuffer::RwVecU8(rwv) => rwv.write(),
             WriteBuffer::FutureWriteGuardU8(fwg) => fwg,
@@ -90,12 +90,12 @@ impl WriteBuffer {
 pub enum ReadBuffer {
     RwVecI8(RwVec<i8>),
     RwVecU8(RwVec<u8>),
-    FutureReadGuardI8(FutureReadGuard<i8>),
-    FutureReadGuardU8(FutureReadGuard<u8>),
+    FutureReadGuardI8(FutureReadGuard<Vec<i8>>),
+    FutureReadGuardU8(FutureReadGuard<Vec<u8>>),
 }
 
 impl ReadBuffer {
-    pub fn read_i8(self) -> FutureReadGuard<i8> {
+    pub fn read_i8(self) -> FutureReadGuard<Vec<i8>> {
         match self {
             ReadBuffer::RwVecI8(rwv) => rwv.read(),
             ReadBuffer::FutureReadGuardI8(frg) => frg,
@@ -103,7 +103,7 @@ impl ReadBuffer {
         }
     }
 
-    pub fn read_u8(self) -> FutureReadGuard<u8> {
+    pub fn read_u8(self) -> FutureReadGuard<Vec<u8>> {
         match self {
             ReadBuffer::RwVecU8(rwv) => rwv.read(),
             ReadBuffer::FutureReadGuardU8(frg) => frg,

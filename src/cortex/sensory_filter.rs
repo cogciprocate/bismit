@@ -116,7 +116,7 @@ impl SensoryFilter {
     }
 
     // pub fn write(&self, source: SliceBufferSource, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-    pub fn write(&self, source: FutureReadGuard<u8>, exe_graph: &mut ExecutionGraph,
+    pub fn write(&self, source: FutureReadGuard<Vec<u8>>, exe_graph: &mut ExecutionGraph,
             work_tx: &mut Option<Sender<Box<Future<Item=(), Error=()> + Send>>>) -> CmnResult<()>
     {
         let cmd_idx = self.exe_cmd_idx_write.ok_or(CmnError::new(
