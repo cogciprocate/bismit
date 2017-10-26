@@ -27,8 +27,8 @@ use cmn::CmnError;
 
 
 const NEXT_READ_GUARD_READY: usize = 0x00000001;
-const BUFFER_1_FRESH: usize = 0x00000002;
-const BUFFER_2_FRESH: usize = 0x00000004;
+// const BUFFER_1_FRESH: usize = 0x00000002;
+// const BUFFER_2_FRESH: usize = 0x00000004;
 
 
 // #[derive(Debug)]
@@ -344,15 +344,9 @@ impl TractSender {
     pub fn send(&self) -> FutureSend {
         self.inner.send()
     }
-}
 
-impl Deref for TractSender {
-    type Target = TractInner;
-
-    #[inline]
-    fn deref(&self) -> &TractInner {
-        &self.inner
-    }
+    #[inline] pub fn buffer_idx_range(&self) -> Range<usize> { self.inner.buffer_idx_range() }
+    #[inline] pub fn backpressure(&self) -> bool { self.inner.backpressure() }
 }
 
 
@@ -367,16 +361,11 @@ impl TractReceiver {
     pub fn recv(&self, wait_for_frame: bool) -> FutureRecv {
         self.inner.recv(wait_for_frame)
     }
+
+    #[inline] pub fn buffer_idx_range(&self) -> Range<usize> { self.inner.buffer_idx_range() }
+    #[inline] pub fn backpressure(&self) -> bool { self.inner.backpressure() }
 }
 
-impl Deref for TractReceiver {
-    type Target = TractInner;
-
-    #[inline]
-    fn deref(&self) -> &TractInner {
-        &self.inner
-    }
-}
 
 
 pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Range<usize>, backpressure: bool)
