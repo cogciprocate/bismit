@@ -37,6 +37,27 @@ static ROLE_ORDER: [LayerTags; 4] = [LayerTags::FOCUS, LayerTags::SPATIAL, Layer
 pub type ControlCellLayers = BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>;
 
 
+
+#[derive(Debug, Clone)]
+pub enum SamplerBufferKind {
+    None,
+    Map,
+    Single,
+    Double,
+    Triple,
+}
+
+
+#[derive(Debug, Clone)]
+pub enum SamplerKind {
+    /// Axons for a specific layer.
+    AxonLayer(Option<usize>),
+    // /// All axons.
+    // AxonSpace,
+    Dummy,
+}
+
+
 #[derive(Debug)]
 struct Sampler {
     kind: SamplerKind,
@@ -62,25 +83,6 @@ impl Sampler {
     // fn buffer_single_u8(&self) -> RwVec<u8> {
     //     self.tx.buffer_single_u8()
     // }
-}
-
-
-#[derive(Debug, Clone)]
-pub enum SamplerKind {
-    /// Axons for a specific layer.
-    AxonLayer(Option<usize>),
-    // /// All axons.
-    // AxonSpace,
-    Dummy,
-}
-
-
-#[derive(Debug, Clone)]
-pub enum SamplerBufferKind {
-    None,
-    Single,
-    Double,
-    Triple,
 }
 
 

@@ -42,9 +42,9 @@ pub struct TerminalTarget {
 //             TargetKind::Writer(writer) => {
 //                 self.buf.write(src)
 //                 .offset(self.offset)
-//                 .ewait_opt(wait_list)
-//                 // .enew_opt(ev.as_mut())
-//                 // .enew_opt(if self.events.is_some() || self.event.is_some()
+//                 .ewait(wait_list)
+//                 // .enew(ev.as_mut())
+//                 // .enew(if self.events.is_some() || self.event.is_some()
 //                 //     { Some(&mut ev) } else { None })
 //                 .enew(&mut ev)
 //                 .enq()?;
@@ -136,8 +136,8 @@ impl<'b> OclBufferTarget<'b> {
 
         source.buf().cmd().copy(self.buf, Some(self.offset), Some(self.dims.to_len()))
             .offset(source.offset)
-            .ewait_opt(source.events().clone())
-            .enew_opt(if self.events.is_some() || self.event.is_some()
+            .ewait(source.events().clone())
+            .enew(if self.events.is_some() || self.event.is_some()
                 { Some(&mut ev) } else { None })
             .enq()?;
 
@@ -161,8 +161,8 @@ impl<'b> OclBufferTarget<'b> {
             self.buf.write(source.slice())
                 .offset(self.offset)
                 .block(false)
-                .ewait_opt(source.events())
-                .enew_opt(if self.events.is_some() || self.event.is_some()
+                .ewait(source.events())
+                .enew(if self.events.is_some() || self.event.is_some()
                     { Some(&mut ev) } else { None })
                 .enq()?;
         }
@@ -195,9 +195,9 @@ impl<'b> OclBufferTarget<'b> {
             self.buf.write(source.slice())
                 .offset(self.offset)
                 .block(false)
-                .ewait_opt(wait_list)
-                // .enew_opt(ev.as_mut())
-                // .enew_opt(if self.events.is_some() || self.event.is_some()
+                .ewait(wait_list)
+                // .enew(ev.as_mut())
+                // .enew(if self.events.is_some() || self.event.is_some()
                 //     { Some(&mut ev) } else { None })
                 .enew(&mut ev)
                 .enq()?;
@@ -278,8 +278,8 @@ impl<'b> SliceBufferTarget<'b> {
             source.buf.cmd().read(slice)
                 .block(false)
                 .offset(source.offset())
-                .ewait_opt(source.events())
-                .enew_opt(if self.events.is_some() || self.event.is_some()
+                .ewait(source.events())
+                .enew(if self.events.is_some() || self.event.is_some()
                     { Some(&mut ev) } else { None })
                 .enq()?;
         }
@@ -316,9 +316,9 @@ impl<'b> SliceBufferTarget<'b> {
         {
             let mut cmd = source.buf.cmd().read(slice)
                 .offset(source.offset())
-                .ewait_opt(wait_list)
+                .ewait(wait_list)
                 // .enew(&mut ev);
-                // .enew_opt(ev.as_mut());
+                // .enew(ev.as_mut());
                 .enew(&mut ev);
 
             if let Some(rq) = read_queue {
