@@ -234,7 +234,7 @@ impl Flywheel {
     pub fn add_sensory_rx<S: AsRef<str>>(&mut self, sensory_rx: Receiver<SensoryFrame>,
             pathway_name: S)
     {
-        let pathway_idx = self.cortex.thal_mut().ext_pathway_idx(pathway_name.as_ref()).unwrap();
+        let pathway_idx = self.cortex.thal_mut().input_generator_idx(pathway_name.as_ref()).unwrap();
         self.sensory_rxs.push((sensory_rx, pathway_idx));
     }
 
@@ -423,8 +423,8 @@ impl Flywheel {
                                 // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
                                 //     pathway_idx, arr);
 
-                                // // let pathway = match try!(self.cortex.thal_mut().ext_pathway_frame(pathway_idx)) {
-                                // let pathway = match self.cortex.thal_mut().ext_pathway(pathway_idx)? {
+                                // // let pathway = match try!(self.cortex.thal_mut().input_generator_frame(pathway_idx)) {
+                                // let pathway = match self.cortex.thal_mut().input_generator(pathway_idx)? {
                                 //     InputGeneratorFrame::F32Slice(s) => s,
                                 //     f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
                                 //         InputGeneratorFrame variant: {:?}", f)),
@@ -437,14 +437,14 @@ impl Flywheel {
                             },
                             SensoryFrame::PathwayConfig(pc) => match pc {
                                 PathwayConfig::EncoderRanges(ranges) => {
-                                    // match try!(self.cortex.thal_mut().ext_pathway(pathway_idx)).encoder() {
+                                    // match try!(self.cortex.thal_mut().input_generator(pathway_idx)).encoder() {
                                     //     &mut InputGeneratorEncoder::VectorEncoder(ref mut v) => {
                                     //         try!(v.set_ranges(&ranges.lock().unwrap()[..]));
                                     //     }
                                     //     _ => unimplemented!(),
                                     // }
 
-                                    self.cortex.thal_mut().ext_pathway(pathway_idx)?
+                                    self.cortex.thal_mut().input_generator(pathway_idx)?
                                         .set_encoder_ranges(ranges);
                                 }
                             },

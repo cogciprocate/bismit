@@ -17,13 +17,13 @@
 use std::ops::Range;
 use std::borrow::Borrow;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
-use map::{AreaMap, LayerMapKind, LayerAddress, CommandUid};
+use map::{AreaMap, LayerMapKind, LayerAddress, CommandUid, AreaSchemeList, LayerMapSchemeList};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
-use map::{AreaSchemeList, LayerMapSchemeList, /*ExecutionGraph*/};
 use ::{InputGenerator, InputGeneratorFrame};
 // use tract_terminal::{SliceBufferTarget, SliceBufferSource};
-use subcortex::tract_channel::{TractSender, TractReceiver};
+use subcortex::{self, TractSender, TractReceiver};
 
 
 // #[derive(Debug, Clone)]
@@ -118,7 +118,7 @@ impl ThalamicTract {
         self
     }
 
-    pub fn index_of<A>(&self, layer_addr: A) -> Option<usize> where A: Borrow<LayerAddress> + ::std::fmt::Debug {
+    pub fn index_of<A>(&self, layer_addr: A) -> Option<usize> where A: Borrow<LayerAddress> {
         self.tract_areas.index_of(layer_addr.borrow())
     }
 
@@ -149,7 +149,7 @@ impl ThalamicTract {
 
 
 // #[derive(Debug)]
-// pub struct InputChannel {
+// pub struct InputPathway {
 //     tract_area_id: usize,
 //     rx: TractReceiver,
 //     // cmd_uid: CommandUid,
@@ -158,7 +158,7 @@ impl ThalamicTract {
 
 
 // #[derive(Debug)]
-// pub struct OutputChannel {
+// pub struct OutputPathway {
 //     tract_area_id: usize,
 //     tx: TractSender,
 //     // cmd_uid: CommandUid,
@@ -167,9 +167,9 @@ impl ThalamicTract {
 
 
 #[derive(Debug)]
-pub enum Channel {
-    Input { tract_area_id: usize, rx: TractReceiver },
-    Output { tract_area_id: usize, tx: TractSender },
+pub enum Pathway {
+    Input { tract_area_id: usize, rx: TractReceiver, wait_for_frame: bool },
+    Output { tract_area_id: usize, tx: TractSender, wait_for_frame: bool },
 }
 
 
@@ -181,7 +181,7 @@ pub enum Channel {
 pub struct Thalamus {
     tract: ThalamicTract,
     input_generators: MapStore<String, (InputGenerator, Vec<LayerAddress>)>,
-    channels: MapStore<String, (Channel, Vec<LayerAddress>)>,
+    pathways: MapStore<LayerAddress, Pathway>,
     area_maps: MapStore<String, AreaMap>,
 }
 
@@ -248,7 +248,7 @@ impl Thalamus {
         let thal = Thalamus {
             tract: tract.init(),
             input_generators: input_generators,
-            channels: MapStore::with_capacity(16),
+            pathways: MapStore::with_capacity(16),
             area_maps: area_maps,
         };
 
@@ -260,31 +260,38 @@ impl Thalamus {
 
 
 
-    /// Cycles thalamic tract channels.
-    pub fn cycle_channels(&mut self) {
+    /// Cycles thalamic tract pathways.
+    pub fn cycle_pathways(&mut self) {
 
     }
 
 
 
 
-    /// Creates a thalamic tract channel.
-    pub fn new_input_channel(&mut self, tract_area_id: usize, buffer_idx_range: Range<usize>,
-            wait_for: bool) -> TractSender {
-        // pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
+    /// Creates a thalamic tract pathway.
+    pub fn new_input_pathway<La>(&mut self, src_lyr_addr: La, buffer_idx_range: Range<usize>,
+            wait_for_frame: bool) -> TractSender
+            where La: Borrow<LayerAddress> + Debug {
+        // pub fn tract_pathway_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
         //     -> (TractSender, TractReceiver)
+        let tract_area_id = self.tract.index_of(src_lyr_addr.borrow())
+            .expect(&format!("Thalamus::new_input_pathway: Invalid layer address: '{:?}'.",
+                src_lyr_addr.borrow()));
 
         let buffer = match self.tract.buffer(tract_area_id) {
             Ok(&TractBuffer::RwVec(ref rw_vec)) => rw_vec.clone(),
-            Ok(tb @ _) => panic!("Thalamus::new_input_channel: \
+            Ok(tb @ _) => panic!("Thalamus::new_input_pathway: \
                 Unsupported tract buffer type: '{:?}'.", tb),
-            Err(err) => panic!("Thalamus::new_input_channel: \
+            Err(err) => panic!("Thalamus::new_input_pathway: \
                 (tract area id: {}): {}", tract_area_id, err),
         };
 
-        // map::tract_channel_single_u8
+        let (tx, rx) = subcortex::tract_channel_single_u8(buffer, buffer_idx_range, true);
 
-        unimplemented!();
+        let pathway = Pathway::Input { tract_area_id, rx, wait_for_frame };
+        self.pathways.insert(src_lyr_addr.borrow().to_owned(), pathway);
+
+        tx
     }
 
 
@@ -308,23 +315,23 @@ impl Thalamus {
         }
     }
 
-    pub fn ext_pathway_idx<S: AsRef<str>>(&self, pathway_name: S) -> CmnResult<usize> {
+    pub fn input_generator_idx<S: AsRef<str>>(&self, pathway_name: S) -> CmnResult<usize> {
         match self.input_generators.indices().get(pathway_name.as_ref()) {
             Some(&idx) => Ok(idx),
-            None => CmnError::err(format!("Thalamus::ext_pathway_idx(): \
+            None => CmnError::err(format!("Thalamus::input_generator_idx(): \
                 No external pathway found named: '{}'.", pathway_name.as_ref())),
         }
     }
 
-    pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<&mut InputGenerator> {
+    pub fn input_generator(&mut self, pathway_idx: usize) -> CmnResult<&mut InputGenerator> {
         let pathway = try!(self.input_generators.by_index_mut(pathway_idx).ok_or(
-            CmnError::new(format!("Thalamus::ext_pathway_frame(): Invalid pathway index: '{}'.",
+            CmnError::new(format!("Thalamus::input_generator_frame(): Invalid pathway index: '{}'.",
             pathway_idx))));
         Ok(&mut pathway.0)
     }
 
-    // pub fn ext_pathway_frame(&mut self, pathway_idx: usize) -> CmnResult<InputGeneratorFrame> {
-    //     let pathway = try!(self.ext_pathway(pathway_idx));
+    // pub fn input_generator_frame(&mut self, pathway_idx: usize) -> CmnResult<InputGeneratorFrame> {
+    //     let pathway = try!(self.input_generator(pathway_idx));
     //     pathway.ext_frame_mut()
     // }
 
@@ -339,8 +346,8 @@ impl Thalamus {
     //             // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
     //             //     pathway_idx, arr);
 
-    //             // let pathway = match try!(self.cortex.thal_mut().ext_pathway_frame(pathway_idx)) {
-    //             let pathway = match self.cortex.thal_mut().ext_pathway(pathway_idx)? {
+    //             // let pathway = match try!(self.cortex.thal_mut().input_generator_frame(pathway_idx)) {
+    //             let pathway = match self.cortex.thal_mut().input_generator(pathway_idx)? {
     //                 InputGeneratorFrame::F32Slice(s) => s,
     //                 f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
     //                     InputGeneratorFrame variant: {:?}", f)),
@@ -352,14 +359,14 @@ impl Thalamus {
     //         },
     //         SensoryFrame::PathwayConfig(pc) => match pc {
     //             PathwayConfig::EncoderRanges(ranges) => {
-    //                 // match try!(self.cortex.thal_mut().ext_pathway(pathway_idx)).encoder() {
+    //                 // match try!(self.cortex.thal_mut().input_generator(pathway_idx)).encoder() {
     //                 //     &mut InputGeneratorEncoder::VectorEncoder(ref mut v) => {
     //                 //         try!(v.set_ranges(&ranges.lock().unwrap()[..]));
     //                 //     }
     //                 //     _ => unimplemented!(),
     //                 // }
 
-    //                 self.cortex.thal_mut().ext_pathway(pathway_idx)?
+    //                 self.cortex.thal_mut().input_generator(pathway_idx)?
     //                     .set_encoder_ranges(ranges);
     //             }
     //         },

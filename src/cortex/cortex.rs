@@ -75,7 +75,7 @@ impl Cortex {
     pub fn cycle(&mut self) {
         // PROFILER.lock().unwrap().start("./bismit.profile").unwrap();
 
-        self.thal.cycle_channels();
+        self.thal.cycle_pathways();
         self.thal.cycle_input_generators();
 
         if let Some(ref mut s) = self.sub {
