@@ -18,20 +18,40 @@ use std::ops::Range;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
-use map::{AreaMap, LayerMapKind, LayerAddress};
+use map::{AreaMap, LayerMapKind, LayerAddress, CommandUid};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
 use map::{AreaSchemeList, LayerMapSchemeList, /*ExecutionGraph*/};
 use ::{ExternalPathway, ExternalPathwayFrame};
-use tract_terminal::{SliceBufferTarget, SliceBufferSource};
+// use tract_terminal::{SliceBufferTarget, SliceBufferSource};
+use subcortex::tract_channel::{TractSender, TractReceiver};
+
+
+// #[derive(Debug, Clone)]
+// pub enum PathwayKind {
+//     AxonLayer(Option<usize>),
+//     Dummy,
+// }
+
+
+#[derive(Debug)]
+pub struct InputPathway {
+    // src_idx_range: Range<usize>,
+    // buffer: PathwayBuffer,
+    tract_area_id: usize,
+    tx: TractReceiver,
+    cmd_uid: CommandUid,
+    cmd_idx: Option<usize>,
+}
 
 
 /// Specifies whether or not the frame buffer for a source exists within the
 /// thalamic tract or an external source itself.
-#[derive(Debug, Clone)]
-enum BufferKind {
+#[derive(Debug)]
+pub enum TractBuffer {
     Ocl(Buffer<u8>),
     RwVec(RwVec<u8>),
     Vec(Vec<u8>),
+    InputPathway(InputPathway),
 }
 
 
@@ -41,11 +61,11 @@ struct TractArea {
     // range: Range<usize>,
     events: EventList,
     dims: TractDims,
-    kind: BufferKind,
+    buffer: TractBuffer,
 }
 
 impl TractArea {
-    fn new<D>(src_lyr_addr: LayerAddress, dims: D, kind: BufferKind) -> TractArea
+    fn new<D>(src_lyr_addr: LayerAddress, dims: D, buffer: TractBuffer) -> TractArea
             where D: Into<TractDims>
     {
         // println!("###### TractArea::new(): Adding area with: range: {:?}, dims: {:?}", &range, &dims);
@@ -55,13 +75,13 @@ impl TractArea {
             // range: range,
             events: EventList::new(),
             dims: dims.into(),
-            kind: kind,
+            buffer: buffer,
         }
     }
 
     fn rw_vec(&self) -> Option<&RwVec<u8>> {
-        match self.kind {
-            BufferKind::RwVec(ref rv) => Some(rv),
+        match self.buffer {
+            TractBuffer::RwVec(ref rv) => Some(rv),
             _ => None,
         }
     }
@@ -70,24 +90,23 @@ impl TractArea {
     fn dims(&self) -> &TractDims { &self.dims }
     fn events(&self) -> &EventList { &self.events }
     fn events_mut(&mut self) -> &mut EventList { &mut self.events }
-    fn kind(&self) -> &BufferKind { &self.kind }
-
+    fn buffer(&self) -> &TractBuffer { &self.buffer }
 }
 
 // A buffer for I/O between areas. Effectively analogous to the internal capsule.
 pub struct ThalamicTract {
     tract_areas: MapStore<LayerAddress, TractArea>,
-    vec_buffer: Vec<u8>,
+    // vec_buffer: Vec<u8>,
     ttl_len: usize,
 }
 
 impl ThalamicTract {
     fn new() -> ThalamicTract {
-        let vec_buffer = Vec::new();
+        // let vec_buffer = Vec::new();
 
         ThalamicTract {
             tract_areas: MapStore::with_capacity(32),
-            vec_buffer: vec_buffer,
+            // vec_buffer: vec_buffer,
             ttl_len: 0,
         }
     }
@@ -97,13 +116,13 @@ impl ThalamicTract {
         //     src_area_name, layer_tags, layer_dims);
         self.ttl_len += layer_dims.to_len();
         let new_area = TractArea::new(src_lyr_addr.clone(), layer_dims,
-            BufferKind::RwVec(RwVec::from(vec![0; layer_dims.to_len()])));
+            TractBuffer::RwVec(RwVec::from(vec![0; layer_dims.to_len()])));
         self.tract_areas.insert(src_lyr_addr, new_area);
 
     }
 
-    fn init(mut self) -> ThalamicTract {
-        self.vec_buffer.resize(self.ttl_len, 0);
+    fn init(self) -> ThalamicTract {
+        // self.vec_buffer.resize(self.ttl_len, 0);
         // println!("{}THALAMICTRACT::INIT(): tract_areas: {:?}", cmn::MT, self.tract_areas);
         self
     }
@@ -126,9 +145,14 @@ impl ThalamicTract {
         ta.rw_vec().ok_or(CmnError::from("ThalamicTract::write")).map(|rv| rv.clone().write())
     }
 
-    pub fn buffer<'t>(&'t self, idx: usize) -> CmnResult<&RwVec<u8>> {
+    pub fn buffer_rwvec<'t>(&'t self, idx: usize) -> CmnResult<&RwVec<u8>> {
         let ta = self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))?;
         ta.rw_vec().ok_or(CmnError::from("no RwVec found"))
+    }
+
+    pub fn buffer<'t>(&'t self, idx: usize) -> CmnResult<&TractBuffer> {
+        self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))
+            .map(|ta| ta.buffer())
     }
 }
 

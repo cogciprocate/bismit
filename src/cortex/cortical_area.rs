@@ -345,9 +345,10 @@ pub struct CorticalArea {
     counter: usize,
     settings: CorticalAreaSettings,
     cycle_order: Vec<usize>,
+    // TODO: Move to thalamus.
     exe_graph: ExecutionGraph,
     work_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
-    // TODO: Move this to a centralized thread pool on thalamus or cortex (maybe?).
+    // TODO: Move this to a centralized thread pool on thalamus or cortex.
     _work_thread: Option<JoinHandle<()>>,
 
     samplers: Vec<Sampler>,
@@ -657,7 +658,7 @@ impl CorticalArea {
         let (tx, rx) = mpsc::channel(0);
         let thread_name = format!("CorticalArea_{}", area_name.clone());
 
-        // TODO: Move this to a centralized thread pool on thalamus or cortex (maybe?).
+        // TODO: Move this to a centralized thread pool on thalamus or cortex.
         let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let rx = rx;
             let mut core = Core::new().unwrap();

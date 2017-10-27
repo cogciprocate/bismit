@@ -395,7 +395,7 @@ fn cycle(controls: &Controls, params: &Params, training_iters: usize, collect_it
 
         if i >= training_iters {
             // Increment the cell activity counts.
-            let l4_axns = params.l4_axns.map().read().enq().unwrap();
+            let l4_axns = unsafe { params.l4_axns.map().read().enq().unwrap() };
             for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
                 counts[pattern_idx] += (axn > 0) as usize;
             }
@@ -657,8 +657,9 @@ pub fn eval() {
 
     track_pattern_activity(&controls, params, buffers);
 
-    if let Err(e) = controls.th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
-    if let Err(e) = controls.th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
+    // if let Err(e) = controls.th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
+    // if let Err(e) = controls.th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
+    ::join_threads(controls)
 }
 
 fn define_lm_schemes() -> LayerMapSchemeList {

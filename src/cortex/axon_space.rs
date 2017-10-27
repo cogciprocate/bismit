@@ -114,7 +114,7 @@ impl IoInfoGroup {
 
                 for slc_id in lyr_slc_id_range.clone() {
                     srcs.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id as u8));
-                    let rw_vec_id = thal.tract().buffer(thal.tract().index_of(lyr_addr).unwrap())
+                    let rw_vec_id = thal.tract().buffer_rwvec(thal.tract().index_of(lyr_addr).unwrap())
                         .unwrap().id();
                     tars.push(ThalamicTract::axon_slice(rw_vec_id, lyr_addr.area_id(), slc_id as u8));
                 }
@@ -155,7 +155,7 @@ impl IoInfoGroup {
                     // Set write command source blocks:
                     let mut write_cmd_srcs: Vec<ThalamicTract> = Vec::with_capacity(src_lyr_slc_id_range.len());
                     for slc_id in src_lyr_slc_id_range.start..src_lyr_slc_id_range.end {
-                        let rw_vec_id = thal.tract().buffer(thal.tract().index_of(src_lyr_addr)
+                        let rw_vec_id = thal.tract().buffer_rwvec(thal.tract().index_of(src_lyr_addr)
                             .expect(&format!("No thalamic tract for layer: {:?}", src_lyr_addr)))
                             .unwrap().id();
                         write_cmd_srcs.push(ThalamicTract::axon_slice(rw_vec_id, src_lyr_addr.area_id(),
@@ -380,7 +380,7 @@ impl AxonSpace {
                                     src_lyr_addr, chain_scheme))
                             .clone();
 
-                        let rw_vec_id = thal.tract().buffer(thal.tract()
+                        let rw_vec_id = thal.tract().buffer_rwvec(thal.tract()
                             .index_of(src_lyr_addr).unwrap()).unwrap().id();
 
                         Some((rw_vec_id, src_lyr_addr, src_lyr_slc_id_range))

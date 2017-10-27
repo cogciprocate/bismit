@@ -120,10 +120,8 @@ pub fn eval() {
         draw(&params, &controls);
     }
 
-    if let Err(e) = controls.th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
-    println!("Vibi window closed.");
-    if let Err(e) = controls.th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
-    println!("Flywheel stopped.");
+    ::join_threads(controls);
+
 }
 
 

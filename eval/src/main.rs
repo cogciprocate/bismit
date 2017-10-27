@@ -11,6 +11,7 @@ extern crate clap;
 
 mod spatial;
 mod hexdraw;
+mod motor;
 
 use vibi::window;
 use vibi::bismit::Cortex;
@@ -77,6 +78,17 @@ pub fn spawn_threads(cortex: Cortex, pri_area_name: &'static str)
     }
 }
 
+pub fn join_threads(controls: Controls) {
+    if let Err(e) = controls.th_win.join() {
+        println!("th_win.join(): Error: '{:?}'", e);
+    }
+    println!("Vibi window closed.");
+    if let Err(e) = controls.th_flywheel.join() {
+        println!("th_flywheel.join(): Error: '{:?}'", e);
+    }
+    println!("Flywheel stopped.");
+}
+
 
 fn main() {
     use clap::{Arg, /*ArgGroup,*/ App, /*SubCommand*/};
@@ -97,6 +109,7 @@ fn main() {
     match matches.value_of("EVALUATION").unwrap() {
         "spatial" => spatial::eval(),
         "hexdraw" => hexdraw::eval(),
+        "motor" => motor::eval(),
         e @ _ => println!("Unknown evaluation specified: {}", e),
     }
 
