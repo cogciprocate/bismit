@@ -1,6 +1,6 @@
 use cmn::{TractFrameMut, TractDims};
 use map::LayerAddress;
-use ::{ExternalPathwayTract, ExternalPathwayFrame};
+use ::{InputGeneratorTract, InputGeneratorFrame};
 
 #[derive(Debug, Clone)]
 pub struct SensoryTract {
@@ -22,12 +22,12 @@ impl SensoryTract {
         }
     }
 
-    pub fn ext_frame_mut(&mut self) -> ExternalPathwayFrame {
-        ExternalPathwayFrame::Tract(TractFrameMut::new(&mut self.buf[..], self.dims.clone()))
+    pub fn ext_frame_mut(&mut self) -> InputGeneratorFrame {
+        InputGeneratorFrame::Tract(TractFrameMut::new(&mut self.buf[..], self.dims.clone()))
     }
 }
 
-impl ExternalPathwayTract for SensoryTract {
+impl InputGeneratorTract for SensoryTract {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerAddress) {
         assert!(tract_frame.dims() == &self.dims);
         tract_frame.frame_mut().clone_from_slice(&self.buf[..]);

@@ -558,6 +558,11 @@ impl AxonSpace {
                                     .write_invalidate()
                                     .offset(axn_range.start as usize)
                                     .len(axn_range.len())
+                                    // NOTE: Wait for events here on the map
+                                    // command rather than the unmap so that
+                                    // memcpy closure (below) doesn't begin
+                                    // until all downstream areas have
+                                    // finished reading.
                                     .ewait(exe_graph.get_req_events(cmd_idx)?)
                                     .enq_async()?
                                     // .ewait_unmap(exe_graph.get_req_events(cmd_idx)?)

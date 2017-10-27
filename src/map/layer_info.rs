@@ -5,7 +5,7 @@ use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapS
     LayerKind, LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack, LayerAddress,
     TuftSourceLayer, LayerTags, AxonSignature};
 use cmn::{self, CorticalDims, MapStore};
-use ::ExternalPathway;
+use ::InputGenerator;
 
 const DEBUG_PRINT: bool = false;
 
@@ -119,7 +119,7 @@ impl LayerInfo {
     pub fn new(layer_id: usize, layer_scheme: &LayerScheme, plmap_kind: LayerMapKind,
             area_sch: &AreaScheme, area_sch_list: &AreaSchemeList,
             layer_map_sch_list: &LayerMapSchemeList,
-            ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerAddress>)>, slc_total: u8)
+            ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>, slc_total: u8)
             -> LayerInfo
     {
         let layer_scheme = layer_scheme.clone();
@@ -174,7 +174,7 @@ impl LayerInfo {
 
                     let (src_layer_dims, src_layer_axn_topology) = match src_lyr_map_sch.kind() {
                         // If the source layer is subcortical, we will be relying
-                        // on the `ExternalPathway` associated with it to
+                        // on the `InputGenerator` associated with it to
                         // provide its dimensions.
                         &LayerMapKind::Subcortical => {
                             let &(ref ext_src, _) = ext_paths.by_key(src_area_name)
@@ -239,7 +239,7 @@ impl LayerInfo {
             AxonDomain::Output(/*ref axon_tags*/ _) => {
 
                 // If this is a subcortical layer we need to use the dimensions
-                // set by the `ExternalPathway` area instead of the dimensions of
+                // set by the `InputGenerator` area instead of the dimensions of
                 // the area. Thalamic output layers have irregular layer sizes.
                 let columns = match plmap_kind {
                     LayerMapKind::Subcortical => {

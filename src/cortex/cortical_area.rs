@@ -939,7 +939,7 @@ impl CorticalArea {
                         // Add command to graph and get uid:
                         self.exe_graph.unlock();
                         let cmd_uid = self.exe_graph.add_command(
-                            CommandRelations::corticothalamic_read(cmd_srcs, vec![]))
+                                CommandRelations::corticothalamic_read(cmd_srcs, vec![]))
                             .expect("CorticalArea::sampler: Error adding exe. graph command");
                         // Create and push sampler:
                         let sampler = Sampler::new(kind.clone(), axn_range, tx, cmd_uid);

@@ -31,8 +31,8 @@ pub use ocl::Event as OclEvent;
 pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses, /*Minicolumns,*/
     InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer, SpinyStellateLayer, Dendrites,
     CorticalAreaSettings, DataCellLayer, SamplerKind, SamplerBufferKind};
-pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus, TestScNucleus, ExternalPathway,
-    ExternalPathwayTract, ExternalPathwayEncoder, ExternalPathwayFrame, ExternalPathwayLayer,
+pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus, TestScNucleus, InputGenerator,
+    InputGeneratorTract, InputGeneratorEncoder, InputGeneratorFrame, InputGeneratorLayer,
     TractBuffer, TractSender, TractReceiver};
 // pub use self::subcortex::thalamus::{};
 pub use self::flywheel::Flywheel;

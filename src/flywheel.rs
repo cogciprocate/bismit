@@ -425,9 +425,9 @@ impl Flywheel {
 
                                 // // let pathway = match try!(self.cortex.thal_mut().ext_pathway_frame(pathway_idx)) {
                                 // let pathway = match self.cortex.thal_mut().ext_pathway(pathway_idx)? {
-                                //     ExternalPathwayFrame::F32Slice(s) => s,
+                                //     InputGeneratorFrame::F32Slice(s) => s,
                                 //     f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
-                                //         ExternalPathwayFrame variant: {:?}", f)),
+                                //         InputGeneratorFrame variant: {:?}", f)),
                                 // };
 
                                 // for (i, dst) in pathway.iter_mut().enumerate() {
@@ -438,7 +438,7 @@ impl Flywheel {
                             SensoryFrame::PathwayConfig(pc) => match pc {
                                 PathwayConfig::EncoderRanges(ranges) => {
                                     // match try!(self.cortex.thal_mut().ext_pathway(pathway_idx)).encoder() {
-                                    //     &mut ExternalPathwayEncoder::VectorEncoder(ref mut v) => {
+                                    //     &mut InputGeneratorEncoder::VectorEncoder(ref mut v) => {
                                     //         try!(v.set_ranges(&ranges.lock().unwrap()[..]));
                                     //     }
                                     //     _ => unimplemented!(),

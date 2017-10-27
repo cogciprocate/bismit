@@ -2,7 +2,7 @@
 use find_folder::Search;
 use cmn::{CorticalDims, Sdr, TractFrameMut};
 use map::LayerAddress;
-use ::ExternalPathwayTract;
+use ::InputGeneratorTract;
 use super::IdxData;
 
 //    IDXREADER: Reads IDX files containing a series of two dimensional matrices of unsigned
@@ -142,7 +142,7 @@ impl IdxStreamer {
     }
 }
 
-impl ExternalPathwayTract for IdxStreamer {
+impl InputGeneratorTract for IdxStreamer {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerAddress) {
         assert!(tract_frame.dims() == &self.layer_dims);
         assert!((self.image_len()) <= tract_frame.dims().to_len(),

@@ -21,7 +21,7 @@ use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, Corti
 use map::{AreaMap, LayerMapKind, LayerAddress, CommandUid};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
 use map::{AreaSchemeList, LayerMapSchemeList, /*ExecutionGraph*/};
-use ::{ExternalPathway, ExternalPathwayFrame};
+use ::{InputGenerator, InputGeneratorFrame};
 // use tract_terminal::{SliceBufferTarget, SliceBufferSource};
 use subcortex::tract_channel::{TractSender, TractReceiver};
 
@@ -33,16 +33,6 @@ use subcortex::tract_channel::{TractSender, TractReceiver};
 // }
 
 
-#[derive(Debug)]
-pub struct InputPathway {
-    // src_idx_range: Range<usize>,
-    // buffer: PathwayBuffer,
-    tract_area_id: usize,
-    tx: TractReceiver,
-    cmd_uid: CommandUid,
-    cmd_idx: Option<usize>,
-}
-
 
 /// Specifies whether or not the frame buffer for a source exists within the
 /// thalamic tract or an external source itself.
@@ -51,10 +41,10 @@ pub enum TractBuffer {
     Ocl(Buffer<u8>),
     RwVec(RwVec<u8>),
     Vec(Vec<u8>),
-    InputPathway(InputPathway),
 }
 
 
+/// An area of the thalamic tract.
 #[derive(Debug)]
 struct TractArea {
     src_lyr_addr: LayerAddress,
@@ -66,8 +56,7 @@ struct TractArea {
 
 impl TractArea {
     fn new<D>(src_lyr_addr: LayerAddress, dims: D, buffer: TractBuffer) -> TractArea
-            where D: Into<TractDims>
-    {
+            where D: Into<TractDims> {
         // println!("###### TractArea::new(): Adding area with: range: {:?}, dims: {:?}", &range, &dims);
         // assert!(range.len() == dims.to_len());
         TractArea {
@@ -93,7 +82,9 @@ impl TractArea {
     fn buffer(&self) -> &TractBuffer { &self.buffer }
 }
 
+
 // A buffer for I/O between areas. Effectively analogous to the internal capsule.
+#[derive(Debug)]
 pub struct ThalamicTract {
     tract_areas: MapStore<LayerAddress, TractArea>,
     // vec_buffer: Vec<u8>,
@@ -157,27 +148,53 @@ impl ThalamicTract {
 }
 
 
+// #[derive(Debug)]
+// pub struct InputChannel {
+//     tract_area_id: usize,
+//     rx: TractReceiver,
+//     // cmd_uid: CommandUid,
+//     // cmd_idx: Option<usize>,
+// }
+
+
+// #[derive(Debug)]
+// pub struct OutputChannel {
+//     tract_area_id: usize,
+//     tx: TractSender,
+//     // cmd_uid: CommandUid,
+//     // cmd_idx: Option<usize>,
+// }
+
+
+#[derive(Debug)]
+pub enum Channel {
+    Input { tract_area_id: usize, rx: TractReceiver },
+    Output { tract_area_id: usize, tx: TractSender },
+}
+
+
+
 // THALAMUS:
 // - Input/Output is from a CorticalArea's point of view
 //   - input: to layer / area
 //   - output: from layer / area
 pub struct Thalamus {
     tract: ThalamicTract,
-    external_pathways: MapStore<String, (ExternalPathway, Vec<LayerAddress>)>,
+    input_generators: MapStore<String, (InputGenerator, Vec<LayerAddress>)>,
+    channels: MapStore<String, (Channel, Vec<LayerAddress>)>,
     area_maps: MapStore<String, AreaMap>,
 }
 
 impl Thalamus {
     pub fn new(layer_map_sl: LayerMapSchemeList, mut area_sl: AreaSchemeList,
-            ocl_context: &Context) -> CmnResult<Thalamus>
-    {
+            ocl_context: &Context) -> CmnResult<Thalamus> {
         // [FIXME]:
         let _ = ocl_context;
 
         area_sl.freeze();
         let area_sl = area_sl;
         let mut tract = ThalamicTract::new();
-        let mut external_pathways = MapStore::with_capacity(area_sl.areas().len());
+        let mut input_generators = MapStore::with_capacity(16);
         let mut area_maps = MapStore::with_capacity(area_sl.areas().len());
 
         /*=============================================================================
@@ -186,10 +203,10 @@ impl Thalamus {
         for pa in area_sl.areas().iter().filter(|pa|
                 layer_map_sl[pa.layer_map_name()].kind() == &LayerMapKind::Subcortical)
         {
-            let es = try!(ExternalPathway::new(pa, &layer_map_sl[pa.layer_map_name()]));
+            let es = try!(InputGenerator::new(pa, &layer_map_sl[pa.layer_map_name()]));
             let addrs = es.layer_addrs();
-            external_pathways.insert(es.area_name().to_owned(), (es, addrs))
-                .map(|es_tup| panic!("Duplicate 'ExternalPathway' keys: [\"{}\"]. \
+            input_generators.insert(es.area_name().to_owned(), (es, addrs))
+                .map(|es_tup| panic!("Duplicate 'InputGenerator' keys: [\"{}\"]. \
                     Only one external (thalamic) input source per area is allowed.",
                     es_tup.0.area_name()));
         }
@@ -199,7 +216,7 @@ impl Thalamus {
         =============================================================================*/
         for (area_id, area_s) in area_sl.areas().iter().enumerate() {
             assert!(area_s.area_id() == area_id);
-            let area_map = AreaMap::new(area_id, area_s, &layer_map_sl, &area_sl, &external_pathways)?;
+            let area_map = AreaMap::new(area_id, area_s, &layer_map_sl, &area_sl, &input_generators)?;
 
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ",
                 area_s.name(), mt = cmn::MT);
@@ -230,48 +247,83 @@ impl Thalamus {
 
         let thal = Thalamus {
             tract: tract.init(),
-            external_pathways: external_pathways,
+            input_generators: input_generators,
+            channels: MapStore::with_capacity(16),
             area_maps: area_maps,
         };
 
         Ok(thal)
     }
 
+
+
+
+
+
+    /// Cycles thalamic tract channels.
+    pub fn cycle_channels(&mut self) {
+
+    }
+
+
+
+
+    /// Creates a thalamic tract channel.
+    pub fn new_input_channel(&mut self, tract_area_id: usize, buffer_idx_range: Range<usize>,
+            wait_for: bool) -> TractSender {
+        // pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
+        //     -> (TractSender, TractReceiver)
+
+        let buffer = match self.tract.buffer(tract_area_id) {
+            Ok(&TractBuffer::RwVec(ref rw_vec)) => rw_vec.clone(),
+            Ok(tb @ _) => panic!("Thalamus::new_input_channel: \
+                Unsupported tract buffer type: '{:?}'.", tb),
+            Err(err) => panic!("Thalamus::new_input_channel: \
+                (tract area id: {}): {}", tract_area_id, err),
+        };
+
+        // map::tract_channel_single_u8
+
+        unimplemented!();
+    }
+
+
+
     // Multiple source output areas disabled.
     //
     // NOTE: Do not disable `RwVec` locking. A write lock must be queued each
     // cycle to prevent read locks piling up. [NOTE: 2017-Oct-14: This may
     // have been corrected by ocl patch -- Verify]
-    pub fn cycle_external_pathways(&mut self) {
-        for &mut (ref mut src_ext_path, ref layer_addr_list) in self.external_pathways.values_mut().iter_mut() {
+    pub fn cycle_input_generators(&mut self) {
+        for &mut (ref mut src_ext_path, ref layer_addr_list) in self.input_generators.values_mut().iter_mut() {
             if src_ext_path.is_disabled() { continue; }
             src_ext_path.cycle_next();
             for &layer_addr in layer_addr_list.iter() {
-                // TODO: ExternalPathway needs to store tract index.
+                // TODO: InputGenerator needs to store tract index.
                 let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
                 let future_write = self.tract.write(tract_area_idx)
-                    .expect("Thalamus::cycle_external_pathways()");
+                    .expect("Thalamus::cycle_input_generators()");
                 src_ext_path.write_into(layer_addr, future_write)
             }
         }
     }
 
     pub fn ext_pathway_idx<S: AsRef<str>>(&self, pathway_name: S) -> CmnResult<usize> {
-        match self.external_pathways.indices().get(pathway_name.as_ref()) {
+        match self.input_generators.indices().get(pathway_name.as_ref()) {
             Some(&idx) => Ok(idx),
             None => CmnError::err(format!("Thalamus::ext_pathway_idx(): \
                 No external pathway found named: '{}'.", pathway_name.as_ref())),
         }
     }
 
-    pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<&mut ExternalPathway> {
-        let pathway = try!(self.external_pathways.by_index_mut(pathway_idx).ok_or(
+    pub fn ext_pathway(&mut self, pathway_idx: usize) -> CmnResult<&mut InputGenerator> {
+        let pathway = try!(self.input_generators.by_index_mut(pathway_idx).ok_or(
             CmnError::new(format!("Thalamus::ext_pathway_frame(): Invalid pathway index: '{}'.",
             pathway_idx))));
         Ok(&mut pathway.0)
     }
 
-    // pub fn ext_pathway_frame(&mut self, pathway_idx: usize) -> CmnResult<ExternalPathwayFrame> {
+    // pub fn ext_pathway_frame(&mut self, pathway_idx: usize) -> CmnResult<InputGeneratorFrame> {
     //     let pathway = try!(self.ext_pathway(pathway_idx));
     //     pathway.ext_frame_mut()
     // }
@@ -289,9 +341,9 @@ impl Thalamus {
 
     //             // let pathway = match try!(self.cortex.thal_mut().ext_pathway_frame(pathway_idx)) {
     //             let pathway = match self.cortex.thal_mut().ext_pathway(pathway_idx)? {
-    //                 ExternalPathwayFrame::F32Slice(s) => s,
+    //                 InputGeneratorFrame::F32Slice(s) => s,
     //                 f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
-    //                     ExternalPathwayFrame variant: {:?}", f)),
+    //                     InputGeneratorFrame variant: {:?}", f)),
     //             };
 
     //             for (i, dst) in pathway.iter_mut().enumerate() {
@@ -301,7 +353,7 @@ impl Thalamus {
     //         SensoryFrame::PathwayConfig(pc) => match pc {
     //             PathwayConfig::EncoderRanges(ranges) => {
     //                 // match try!(self.cortex.thal_mut().ext_pathway(pathway_idx)).encoder() {
-    //                 //     &mut ExternalPathwayEncoder::VectorEncoder(ref mut v) => {
+    //                 //     &mut InputGeneratorEncoder::VectorEncoder(ref mut v) => {
     //                 //         try!(v.set_ranges(&ranges.lock().unwrap()[..]));
     //                 //     }
     //                 //     _ => unimplemented!(),

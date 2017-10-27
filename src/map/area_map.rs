@@ -2,7 +2,7 @@ use std::fmt::Display;
 use std::ops::{Range, Deref};
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use cmn::{self, CorticalDims, MapStore, CmnResult};
-use ::ExternalPathway;
+use ::InputGenerator;
 use map::{SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapSchemeList,
     AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme, AxonTags, InputTrack};
 
@@ -22,7 +22,7 @@ pub struct AreaMap {
 
 impl AreaMap {
     pub fn new(area_id: usize, area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList,
-            area_sl: &AreaSchemeList, ext_paths: &MapStore<String, (ExternalPathway, Vec<LayerAddress>)>)
+            area_sl: &AreaSchemeList, ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>)
             -> CmnResult<AreaMap>
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", area_sch.name(),

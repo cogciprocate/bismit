@@ -2,7 +2,7 @@
 // use cmn::ScalarEncodable;
 use cmn::{CmnError, CmnResult, TractDims, TractFrameMut};
 use map::LayerAddress;
-use ::{ExternalPathwayTract, ExternalPathwayFrame};
+use ::{InputGeneratorTract, InputGeneratorFrame};
 use encode::{ScalarGlyphWriter};
 
 // * TODO: Convert into a multi-layer/multi-slice system. Plumbing should be in place.
@@ -41,8 +41,8 @@ impl VectorEncoder {
         })
     }
 
-    pub fn ext_frame_mut(&mut self) -> ExternalPathwayFrame {
-        ExternalPathwayFrame::F32Slice(&mut self.values[..])
+    pub fn ext_frame_mut(&mut self) -> InputGeneratorFrame {
+        InputGeneratorFrame::F32Slice(&mut self.values[..])
     }
 
     /// Resets the ranges and number of scalars this encoder will encode.
@@ -73,7 +73,7 @@ impl VectorEncoder {
     }
 }
 
-impl ExternalPathwayTract for VectorEncoder {
+impl InputGeneratorTract for VectorEncoder {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: LayerAddress) {
         let l_idx = self.layer_addrs.iter().position(|&t| t == addr)
             .expect(&format!("VectorEncoder::write_into(): No layers with address: {:?}", addr));

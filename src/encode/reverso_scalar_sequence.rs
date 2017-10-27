@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::ops::AddAssign;
 use num::{Num, NumCast};
 use cmn::TractFrameMut;
-use ::{ExternalPathwayTract};
+use ::{InputGeneratorTract};
 use encode::ScalarEncodable;
 use map::LayerAddress;
 
@@ -41,7 +41,7 @@ impl<T> ReversoScalarSequence<T> where T: Num + NumCast + PartialOrd + Debug + C
     }
 }
 
-impl<T> ExternalPathwayTract for ReversoScalarSequence<T>
+impl<T> InputGeneratorTract for ReversoScalarSequence<T>
             where T: ScalarEncodable {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: LayerAddress) {
         let l_idx = self.layer_addrs.iter().position(|&t| t == addr)

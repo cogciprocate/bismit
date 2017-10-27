@@ -1,6 +1,6 @@
 use cmn::{TractFrameMut, TractDims};
 use map::LayerAddress;
-use ::{ExternalPathwayTract};
+use ::{InputGeneratorTract};
 use encode;
 
 
@@ -18,7 +18,7 @@ impl HexMoldTest {
         let dst_dims = dst_dims.into();
         let mut hex_mold = vec![0u8; dst_dims.to_len()];
         {
-            let mut tract_frame = TractFrameMut::new(hex_mold.as_mut_slice(), 
+            let mut tract_frame = TractFrameMut::new(hex_mold.as_mut_slice(),
                 dst_dims);
             encode::encode_hex_mold_scaled(radius, src_dims, &mut tract_frame);
         }
@@ -32,7 +32,7 @@ impl HexMoldTest {
 }
 
 
-impl ExternalPathwayTract for HexMoldTest {
+impl InputGeneratorTract for HexMoldTest {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerAddress) {
         // assert!((self.radius as u32 * 2) + 1 <= tract_frame.dims().v_size() &&
         //     (self.radius as u32 * 2) + 1 <= tract_frame.dims().v_size(),
@@ -57,7 +57,7 @@ impl ExternalPathwayTract for HexMoldTest {
         let len = self.hex_mold.len();
         assert_eq!(tract_frame.dims().to_len(), len);
         unsafe {
-            ::std::ptr::copy_nonoverlapping(self.hex_mold.as_ptr(), 
+            ::std::ptr::copy_nonoverlapping(self.hex_mold.as_ptr(),
                 tract_frame.frame_mut().as_mut_ptr(), len);
         }
     }

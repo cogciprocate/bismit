@@ -9,7 +9,7 @@ use ::{Thalamus};
 use cmn::MapStore;
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 // use cmn::{CmnResult};
-// use thalamus::{ExternalPathway, ExternalPathwayFrame};
+// use thalamus::{InputGenerator, InputGeneratorFrame};
 use subcortex::Subcortex;
 
 pub struct Cortex {
@@ -75,7 +75,8 @@ impl Cortex {
     pub fn cycle(&mut self) {
         // PROFILER.lock().unwrap().start("./bismit.profile").unwrap();
 
-        self.thal.cycle_external_pathways();
+        self.thal.cycle_channels();
+        self.thal.cycle_input_generators();
 
         if let Some(ref mut s) = self.sub {
             s.pre_cycle(&mut self.thal)

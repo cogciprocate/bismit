@@ -15,7 +15,7 @@ use cmn::TractFrameMut;
 
 
 #[derive(Debug)]
-pub enum ExternalPathwayFrame<'a> {
+pub enum InputGeneratorFrame<'a> {
     Writer(FutureWriteGuard<u8>),
     Tract(TractFrameMut<'a>),
     F32Slice(&'a mut [f32]),
@@ -24,7 +24,7 @@ pub enum ExternalPathwayFrame<'a> {
 
 /// A highway for input.
 ///
-pub trait ExternalPathwayTract: Debug + Send {
+pub trait InputGeneratorTract: Debug + Send {
     fn write_into(&mut self, frame: &mut TractFrameMut, addr: LayerAddress);
     fn cycle_next(&mut self);
 }
@@ -32,7 +32,7 @@ pub trait ExternalPathwayTract: Debug + Send {
 
 #[allow(unused_variables)]
 #[derive(Debug)]
-pub enum ExternalPathwayEncoder {
+pub enum InputGeneratorEncoder {
     None,
     World,
     Stripes { stripe_size: usize, zeros_first: bool },
@@ -41,31 +41,31 @@ pub enum ExternalPathwayEncoder {
     GlyphSequences(Box<GlyphSequences>),
     SensoryTract(Box<SensoryTract>),
     VectorEncoder(Box<VectorEncoder>),
-    Custom(Box<ExternalPathwayTract>),
+    Custom(Box<InputGeneratorTract>),
     CustomUnspecified,
 }
 
-impl ExternalPathwayEncoder {
+impl InputGeneratorEncoder {
     /// Writes input data into a tract.
     pub fn write_into(&mut self, addr: LayerAddress, dims: TractDims, future_write: FutureWriteGuard<Vec<u8>>) {
         let mut data = future_write.wait().unwrap();
         let mut frame = TractFrameMut::new(data.as_mut_slice(), dims);
 
         match *self {
-            ExternalPathwayEncoder::Custom(ref mut es) => {
+            InputGeneratorEncoder::Custom(ref mut es) => {
                 es.write_into(&mut frame, addr)
             },
-            ExternalPathwayEncoder::GlyphSequences(ref mut es) => {
+            InputGeneratorEncoder::GlyphSequences(ref mut es) => {
                 es.write_into(&mut frame, addr)
             },
-            ExternalPathwayEncoder::SensoryTract(ref mut es) => {
+            InputGeneratorEncoder::SensoryTract(ref mut es) => {
                 es.write_into(&mut frame, addr)
             },
-            ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
+            InputGeneratorEncoder::VectorEncoder(ref mut es) => {
                 es.write_into(&mut frame, addr)
             },
-            ExternalPathwayEncoder::CustomUnspecified => {
-                panic!("ExternalPathway::write_into: Custom pathway not specified.")
+            InputGeneratorEncoder::CustomUnspecified => {
+                panic!("InputGenerator::write_into: Custom pathway not specified.")
             },
             _ => (),
         }
@@ -73,17 +73,17 @@ impl ExternalPathwayEncoder {
 
     pub fn cycle_next(&mut self) {
         match *self {
-            ExternalPathwayEncoder::Custom(ref mut es) => {
+            InputGeneratorEncoder::Custom(ref mut es) => {
                 es.cycle_next()
             },
-            ExternalPathwayEncoder::GlyphSequences(ref mut es) => {
+            InputGeneratorEncoder::GlyphSequences(ref mut es) => {
                 es.cycle_next()
             },
-            ExternalPathwayEncoder::SensoryTract(ref mut es) => {
+            InputGeneratorEncoder::SensoryTract(ref mut es) => {
                 es.cycle_next()
             },
-            ExternalPathwayEncoder::CustomUnspecified => {
-                panic!("ExternalPathway::cycle_next: Custom pathway not specified.")
+            InputGeneratorEncoder::CustomUnspecified => {
+                panic!("InputGenerator::cycle_next: Custom pathway not specified.")
             },
             _ => (),
         }
@@ -91,7 +91,7 @@ impl ExternalPathwayEncoder {
 
     pub fn set_ranges(&mut self, ranges: Vec<(f32, f32)>) {
         match *self {
-            ExternalPathwayEncoder::VectorEncoder(ref mut v) => {
+            InputGeneratorEncoder::VectorEncoder(ref mut v) => {
                 v.set_ranges(&ranges).unwrap();
             }
             _ => unimplemented!(),
@@ -99,25 +99,25 @@ impl ExternalPathwayEncoder {
     }
 
     // /// Returns a tract frame of an external source buffer, if available.
-    // pub fn ext_frame_mut(&mut self) -> CmnResult<ExternalPathwayFrame> {
+    // pub fn ext_frame_mut(&mut self) -> CmnResult<InputGeneratorFrame> {
     //     match self.encoder {
-    //         ExternalPathwayEncoder::SensoryTract(ref mut es) => {
+    //         InputGeneratorEncoder::SensoryTract(ref mut es) => {
     //             Ok(es.ext_frame_mut())
     //         },
-    //         ExternalPathwayEncoder::VectorEncoder(ref mut es) => {
+    //         InputGeneratorEncoder::VectorEncoder(ref mut es) => {
     //             Ok(es.ext_frame_mut())
     //         },
-    //         ExternalPathwayEncoder::CustomUnspecified => {
-    //             panic!("ExternalPathway::write_into: Custom pathway not specified.")
+    //         InputGeneratorEncoder::CustomUnspecified => {
+    //             panic!("InputGenerator::write_into: Custom pathway not specified.")
     //         },
-    //         _ => Err(CmnError::new(format!("ExternalPathway::ext_frame_Mut(): No tract available for the source \
+    //         _ => Err(CmnError::new(format!("InputGenerator::ext_frame_Mut(): No tract available for the source \
     //             kind: {:?}.", self.encoder))),
     //     }
     // }
 }
 
 
-pub struct ExternalPathwayLayer {
+pub struct InputGeneratorLayer {
     name: &'static str,
     addr: LayerAddress,
     axn_sig: AxonSignature,
@@ -125,7 +125,7 @@ pub struct ExternalPathwayLayer {
     dims: Option<CorticalDims>,
 }
 
-impl ExternalPathwayLayer {
+impl InputGeneratorLayer {
     pub fn set_dims(&mut self, dims: Option<CorticalDims>) {
         self.dims = dims;
     }
@@ -143,7 +143,7 @@ enum EncoderCmd {
     WriteInto {addr: LayerAddress, dims: TractDims, future_write: FutureWriteGuard<Vec<u8>> },
     Cycle,
     SetRanges(Vec<(f32, f32)>),
-    SetEncoder(ExternalPathwayEncoder),
+    SetEncoder(InputGeneratorEncoder),
     Exit,
 }
 
@@ -158,23 +158,23 @@ enum EncoderCmd {
 // [NOTE (out of date)]: To implement multiple layers from a single input source:
 // - Must pass layer count to the input 'generator' and have it accept a
 //   multi-headed mutable slice when cycled.
-pub struct ExternalPathway {
+pub struct InputGenerator {
     area_id: usize,
     area_name: String,
-    // encoder: ExternalPathwayEncoder,
-    layers: HashMap<LayerAddress, ExternalPathwayLayer>,
+    // encoder: InputGeneratorEncoder,
+    layers: HashMap<LayerAddress, InputGeneratorLayer>,
     tx: SyncSender<EncoderCmd>,
     _thread: Option<JoinHandle<()>>,
     // rx: Receiver<EncoderRes>,
     disabled: bool,
 }
 
-impl ExternalPathway {
+impl InputGenerator {
     // [FIXME]: Determine (or have passed in) the layer depth corresponding to this source.
-    pub fn new(pamap: &AreaScheme, plmap: &LayerMapScheme) -> CmnResult<ExternalPathway> {
+    pub fn new(pamap: &AreaScheme, plmap: &LayerMapScheme) -> CmnResult<InputGenerator> {
         let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|pl| pl).collect();
 
-        // assert!(pamap.get_encoder().layer_count() == p_layers.len(), "ExternalPathway::new(): \
+        // assert!(pamap.get_encoder().layer_count() == p_layers.len(), "InputGenerator::new(): \
         //     Inputs for the area scheme, \"{}\" ({}), must equal the layers in the layer map \
         //     scheme, '{}' ({}). Ensure `EncoderScheme::layer_count()` is set correctly for {:?}",
         //     pamap.name(), pamap.get_encoder().layer_count(), plmap.name(), p_layers.len(),
@@ -198,15 +198,15 @@ impl ExternalPathway {
             };
 
             ////// [FIXME]: Determine if either of these checks is still necessary or relevant:
-            // assert!(layer_tags.contains(map::OUTPUT), "ExternalPathway::new(): External ('Thalamic') areas \
+            // assert!(layer_tags.contains(map::OUTPUT), "InputGenerator::new(): External ('Thalamic') areas \
             //     must have a layer or layers with an 'OUTPUT' tag. [area: '{}', layer map: '{}']",
             //     pamap.name(), plmap.name());
-            // assert!(p_layer.axon_domain().is_output(), "ExternalPathway::new(): External areas \
+            // assert!(p_layer.axon_domain().is_output(), "InputGenerator::new(): External areas \
             //     must currently be output layers. [area: '{}', layer: '{}']", pamap.name(), plmap.name());
 
             let lyr_axn_sig = match *p_layer.axn_domain() {
                 AxonDomain::Output(ref axn_sig) => axn_sig.clone(),
-                _ => return Err(format!("ExternalPathway::new(): External areas \
+                _ => return Err(format!("InputGenerator::new(): External areas \
                     must currently be output layers. [area: '{}', layer: '{}']", pamap.name(),
                     plmap.name()).into()),
             };
@@ -215,7 +215,7 @@ impl ExternalPathway {
             lyr_dims_list.push(dims.clone());
             lyr_axn_sigs_list.push(lyr_axn_sig.clone());
 
-            layers.insert(lyr_addr.clone(), ExternalPathwayLayer {
+            layers.insert(lyr_addr.clone(), InputGeneratorLayer {
                 name: lyr_name,
                 addr: lyr_addr,
                 axn_sig: lyr_axn_sig,
@@ -230,30 +230,30 @@ impl ExternalPathway {
             EncoderScheme::IdxStreamer { ref file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
                 let mut is = IdxStreamer::new(layers[&lyr_addr_list[0]].dims()
-                    .expect("ExternalPathway::new(): Layer dims not set properly.").clone(),
+                    .expect("InputGenerator::new(): Layer dims not set properly.").clone(),
                     file_name.clone(), cyc_per, scale);
 
                 if loop_frames > 0 {
                     is = is.loop_frames(loop_frames);
                 }
-                ExternalPathwayEncoder::Custom(Box::new(is))
+                InputGeneratorEncoder::Custom(Box::new(is))
             },
             EncoderScheme::GlyphSequences { seq_lens, seq_count, scale, hrz_dims } => {
                 let label_file = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
-                    .expect("ExternalPathway::new(): 'label file folder (tmp_data)'")
+                    .expect("InputGenerator::new(): 'label file folder (tmp_data)'")
                     .join("train-labels-idx1-ubyte");
                 let image_file = Search::ParentsThenKids(3, 3).for_folder("tmp_data")
-                    .expect("ExternalPathway::new(): 'image file folder (tmp_data)'")
+                    .expect("InputGenerator::new(): 'image file folder (tmp_data)'")
                     .join("train-images-idx3-ubyte");
                 let gs = GlyphSequences::new(&mut layers, seq_lens, seq_count, scale, hrz_dims,
                     label_file, image_file);
-                ExternalPathwayEncoder::GlyphSequences(Box::new(gs))
+                InputGeneratorEncoder::GlyphSequences(Box::new(gs))
             },
             EncoderScheme::SensoryTract => {
                 assert_eq!(layers.len(), 1);
                 let st = SensoryTract::new(layers[&lyr_addr_list[0]].dims()
-                    .expect("ExternalPathway::new(): Layer dims not set properly."));
-                ExternalPathwayEncoder::SensoryTract(Box::new(st))
+                    .expect("InputGenerator::new(): Layer dims not set properly."));
+                InputGeneratorEncoder::SensoryTract(Box::new(st))
             },
             EncoderScheme::ScalarSequence { range, incr } => {
                 let tract_dims = {
@@ -261,7 +261,7 @@ impl ExternalPathway {
                     lyr_dims_list[0].unwrap().into()
                 };
 
-                ExternalPathwayEncoder::Custom(Box::new(ScalarSequence::new(range, incr, &tract_dims)))
+                InputGeneratorEncoder::Custom(Box::new(ScalarSequence::new(range, incr, &tract_dims)))
             },
             EncoderScheme::ScalarSdrGradiant { range, way_span, incr } => {
                 let tract_dims = {
@@ -269,36 +269,36 @@ impl ExternalPathway {
                     lyr_dims_list[0].unwrap().into()
                 };
 
-                ExternalPathwayEncoder::Custom(Box::new(ScalarSdrGradiant::new(range, way_span, incr, &tract_dims)))
+                InputGeneratorEncoder::Custom(Box::new(ScalarSdrGradiant::new(range, way_span, incr, &tract_dims)))
             },
             EncoderScheme::ReversoScalarSequence { range, incr } => {
-                ExternalPathwayEncoder::Custom(Box::new(
+                InputGeneratorEncoder::Custom(Box::new(
                     ReversoScalarSequence::new(range, incr, &lyr_addr_list)))
             },
             EncoderScheme::VectorEncoder { ref ranges } => {
                 let tract_dims: Vec<_> = lyr_dims_list.iter().map(|d| d.unwrap().into()).collect();
 
-                ExternalPathwayEncoder::VectorEncoder(Box::new(try!(
+                InputGeneratorEncoder::VectorEncoder(Box::new(try!(
                     VectorEncoder::new(ranges.clone(), &lyr_addr_list, &tract_dims)
                 )))
             },
             EncoderScheme::Custom => {
-                ExternalPathwayEncoder::CustomUnspecified
+                InputGeneratorEncoder::CustomUnspecified
             },
             EncoderScheme::None => {
                 disabled = true;
-                ExternalPathwayEncoder::None
+                InputGeneratorEncoder::None
             }
             EncoderScheme::Subcortex => {
                 disabled = true;
-                ExternalPathwayEncoder::None
+                InputGeneratorEncoder::None
             }
-            EncoderScheme::Zeros => ExternalPathwayEncoder::None,
-            ref is @ _ => panic!("\nExternalPathway::new(): Input type: '{:?}' not yet supported.", is),
+            EncoderScheme::Zeros => InputGeneratorEncoder::None,
+            ref is @ _ => panic!("\nInputGenerator::new(): Input type: '{:?}' not yet supported.", is),
         };
 
         let (tx, rx) = mpsc::sync_channel(1);
-        let thread_name = format!("ExternalPathwayEncoder_{}", pamap.name());
+        let thread_name = format!("InputGeneratorEncoder_{}", pamap.name());
         let thread_handle: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let mut encoder = encoder;
             let rx = rx;
@@ -315,7 +315,7 @@ impl ExternalPathway {
             }
         }).unwrap();
 
-        Ok(ExternalPathway {
+        Ok(InputGenerator {
             area_id: pamap.area_id(),
             area_name: pamap.name().to_owned(),
             layers: layers,
@@ -328,13 +328,13 @@ impl ExternalPathway {
 
     // Specify a custom encoder tract. Input scheme must have been configured
     // as `EncoderScheme::Custom` in `AreaScheme`.
-    pub fn set_encoder(&self, tract: Box<ExternalPathwayTract>) {
+    pub fn set_encoder(&self, tract: Box<InputGeneratorTract>) {
         // match self.encoder {
-        //     ExternalPathwayEncoder::CustomUnspecified => (),
-        //     _ => return CmnError::err("ExternalPathway::specify_encoder(): Encoder already specified."),
+        //     InputGeneratorEncoder::CustomUnspecified => (),
+        //     _ => return CmnError::err("InputGenerator::specify_encoder(): Encoder already specified."),
         // }
-        // self.encoder = ExternalPathwayEncoder::Custom(tract);
-        self.tx.send(EncoderCmd::SetEncoder(ExternalPathwayEncoder::Custom(tract))).unwrap();
+        // self.encoder = InputGeneratorEncoder::Custom(tract);
+        self.tx.send(EncoderCmd::SetEncoder(InputGeneratorEncoder::Custom(tract))).unwrap();
     }
 
     /// Writes input data into a tract.
@@ -355,12 +355,12 @@ impl ExternalPathway {
         if !self.disabled { self.tx.send(EncoderCmd::SetRanges(ranges)).unwrap(); }
     }
 
-    pub fn layers_mut(&mut self) -> &mut HashMap<LayerAddress, ExternalPathwayLayer> {
+    pub fn layers_mut(&mut self) -> &mut HashMap<LayerAddress, InputGeneratorLayer> {
         &mut self.layers
     }
 
-    pub fn layer(&self, addr: LayerAddress) -> &ExternalPathwayLayer {
-        self.layers.get(&addr).expect(&format!("ExternalPathway::layer(): Invalid addr: {:?}", addr))
+    pub fn layer(&self, addr: LayerAddress) -> &InputGeneratorLayer {
+        self.layers.get(&addr).expect(&format!("InputGenerator::layer(): Invalid addr: {:?}", addr))
     }
 
     pub fn layer_addrs(&self) -> Vec<LayerAddress> {
@@ -369,11 +369,11 @@ impl ExternalPathway {
 
     pub fn area_id(&self) -> usize { self.area_id }
     pub fn area_name<'a>(&'a self) -> &'a str { &self.area_name }
-    // pub fn encoder(&mut self) -> &mut ExternalPathwayEncoderKind { &mut self.encoder_kind }
+    // pub fn encoder(&mut self) -> &mut InputGeneratorEncoderKind { &mut self.encoder_kind }
     pub fn is_disabled(&self) -> bool { self.disabled }
 }
 
-impl Drop for ExternalPathway {
+impl Drop for InputGenerator {
     fn drop(&mut self) {
         self.tx.send(EncoderCmd::Exit).unwrap();
         self._thread.take().unwrap().join().unwrap();

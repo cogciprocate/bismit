@@ -2,7 +2,7 @@
 
 use cmn::{TractDims, TractFrameMut};
 use map::LayerAddress;
-use ::{ExternalPathwayTract};
+use ::{InputGeneratorTract};
 use encode::{ScalarEncodable, ScalarSdrWriter};
 
 #[derive(Clone, Debug)]
@@ -33,7 +33,7 @@ impl<T> ScalarSdrGradiant<T> where T: ScalarEncodable {
     }
 }
 
-impl<T> ExternalPathwayTract for ScalarSdrGradiant<T>
+impl<T> InputGeneratorTract for ScalarSdrGradiant<T>
             where T: ScalarEncodable {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, _: LayerAddress) {
         self.writer.encode(self.next, tract_frame);

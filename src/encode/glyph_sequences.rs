@@ -4,7 +4,7 @@ use rand::distributions::{IndependentSample, Range};
 use rand;
 use cmn::{CorticalDims, TractFrameMut};
 use map::{self, LayerAddress, AxonTags};
-use ::{ExternalPathwayTract, ExternalPathwayLayer};
+use ::{InputGeneratorTract, InputGeneratorLayer};
 use encode::GlyphBuckets;
 // use map::AxonTopology;
 
@@ -67,7 +67,7 @@ impl GlyphSequences {
         AxonTags::new(&[map::EXT, map::GLY_SEQ_VAL])
     }
 
-    pub fn new(layers: &mut HashMap<LayerAddress, ExternalPathwayLayer>, seq_lens: (usize, usize),
+    pub fn new(layers: &mut HashMap<LayerAddress, InputGeneratorLayer>, seq_lens: (usize, usize),
                 seq_count: usize, scale: f32, hrz_dims: (u32, u32), label_file: PathBuf,
                 image_file: PathBuf) -> GlyphSequences
     {
@@ -138,7 +138,7 @@ impl GlyphSequences {
     }
 }
 
-impl ExternalPathwayTract for GlyphSequences {
+impl InputGeneratorTract for GlyphSequences {
     fn write_into(&mut self, tract_frame: &mut TractFrameMut, addr: LayerAddress) {
         let glyph_dims = self.buckets.glyph_dims();
         let (_, next_glyph_id) = self.cursor.get();
@@ -172,13 +172,13 @@ impl ExternalPathwayTract for GlyphSequences {
 mod tests {
     // #[test]
     // /// Huge pain in the ass to re-implement this test now that a hashmap of
-    // /// `ExternalPathwayLayer`s is req'd.
+    // /// `InputGeneratorLayer`s is req'd.
     // fn glyph_sequences_FIXME() {
     //     use std::collections::HashMap;
     //     use encode::GlyphSequences;
     //     use cmn::CorticalDims;
     //     use map::LayerTags;
-    //     use thalamus::ExternalPathwayLayer;
+    //     use thalamus::InputGeneratorLayer;
 
     //     let dims = CorticalDims::new(32, 32, 1, 0, None);
 
@@ -186,7 +186,7 @@ mod tests {
     //         let seq_lens = (i, (i * 2) + 11);
     //         let seq_count = 79 - i;
 
-    //         let mut layers: HashMap<LayerTags, ExternalPathwayLayer> = HashMap::with_capacity(2);
+    //         let mut layers: HashMap<LayerTags, InputGeneratorLayer> = HashMap::with_capacity(2);
 
     //         let gss = GlyphSequences::new(&mut area_map, seq_lens, seq_count, 1.0, (16, 16));
 
