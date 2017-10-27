@@ -342,6 +342,7 @@ pub struct CorticalArea {
     ocl_pq: ProQue,
     write_queue: Queue,
     read_queue: Queue,
+    unmap_queue: Queue,
     counter: usize,
     settings: CorticalAreaSettings,
     cycle_order: Vec<usize>,
@@ -410,11 +411,12 @@ impl CorticalArea {
             .queue_properties(queue_flags)
             .build().expect("CorticalArea::new(): ocl_pq.build(): error");
 
-        let (write_queue, read_queue) = if SEPARATE_IO_QUEUES {
+        let (write_queue, read_queue, unmap_queue) = if SEPARATE_IO_QUEUES {
             (Queue::new(ocl_context, ocl_pq.device().clone(), Some(queue_flags))?,
+                Queue::new(ocl_context, ocl_pq.device().clone(), Some(queue_flags))?,
                 Queue::new(ocl_context, ocl_pq.device().clone(), Some(queue_flags))?)
         } else {
-            (ocl_pq.queue().clone(), ocl_pq.queue().clone())
+            (ocl_pq.queue().clone(), ocl_pq.queue().clone(), ocl_pq.queue().clone())
         };
 
         let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size().unwrap());
@@ -449,7 +451,7 @@ impl CorticalArea {
         let mut data_layers = Layers::new();
         let mut control_layers: BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>> = BTreeMap::new();
         let mut axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
-            write_queue.clone(), &mut exe_graph, thal)?;
+            write_queue.clone(), unmap_queue.clone(), &mut exe_graph, thal)?;
 
         /*=============================================================================
         ================================== DATA CELLS =================================
@@ -687,6 +689,7 @@ impl CorticalArea {
             ocl_pq: ocl_pq,
             write_queue: write_queue,
             read_queue: read_queue,
+            unmap_queue: unmap_queue,
             counter: 0,
             settings: settings,
             cycle_order,

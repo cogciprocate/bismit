@@ -313,11 +313,15 @@ pub struct AxonSpace {
     io_info: IoInfoCache,
     read_queue: Queue,
     write_queue: Queue,
+    // Only necessary until we use bufferstream/sink. Also, multiple layers
+    // using this queue could cause deadlock.
+    unmap_queue: Queue,
 }
 
 impl AxonSpace {
     pub fn new(area_map: &AreaMap, ocl_pq: &ProQue, read_queue: Queue, write_queue: Queue,
-            exe_graph: &mut ExecutionGraph, thal: &mut Thalamus) -> CmnResult<AxonSpace>
+            unmap_queue: Queue, exe_graph: &mut ExecutionGraph, thal: &mut Thalamus)
+            -> CmnResult<AxonSpace>
     {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
             area_map.slice_map().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
@@ -427,6 +431,7 @@ impl AxonSpace {
             io_info,
             read_queue,
             write_queue,
+            unmap_queue,
         })
     }
 
@@ -531,53 +536,46 @@ impl AxonSpace {
                             None
                         } else {
                             exe_graph.cmd(cmd_idx).unwrap().event().map(|ev| ev.wait_for().unwrap());
-
                             let mut ev = Event::empty();
-                            let future_write = self.states.write(future_reader)
-                                .queue(&self.write_queue)
-                                .offset(axn_range.start as usize)
-                                .len(axn_range.len())
-                                .ewait(exe_graph.get_req_events(cmd_idx)?)
-                                .enew(&mut ev)
-                                .enq_async()?
-                                // .and_then(|_guard| Ok(()))
-                                .map(|_guard| ())
-                                .map_err(|err| panic!("{:?}", err));
 
-                            // let mut future_map = self.states.map()
+                            // ///////////// WRITE BUFFER:
+                            // let future_write = self.states.write(future_reader)
                             //     .queue(&self.write_queue)
-                            //     .write_invalidate()
                             //     .offset(axn_range.start as usize)
                             //     .len(axn_range.len())
-                            //     // .enew(&mut ev)
-                            //     // .ewait(exe_graph.get_req_events(cmd_idx)?)
-                            //     .enq_async()?;
-
-                            // future_map.set_unmap_wait_list(exe_graph.get_req_events(cmd_idx)?);
-                            // let ev = future_map.create_unmap_target_event()?.clone();
-
-                            // let future_write = future_reader.join(future_map)
-                            //     // .and_then(|(reader, mut map)| {
-                            //     //     debug_assert_eq!(reader.len(), map.len());
-                            //     //     let len = map.len();
-                            //     //     unsafe {
-                            //     //         ::std::ptr::copy_nonoverlapping(reader.as_ptr(),
-                            //     //             map.as_mut_ptr(), len);
-                            //     //     }
-
-                            //     //     Ok(())
-                            //     // })
-                            //     .map(|(reader, mut map)| {
-                            //         debug_assert_eq!(reader.len(), map.len());
-                            //         let len = map.len();
-                            //         unsafe {
-                            //             ::std::ptr::copy_nonoverlapping(reader.as_ptr(),
-                            //                 map.as_mut_ptr(), len);
-                            //         }
-
-                            //         ()
-                            //     })
+                            //     .ewait(exe_graph.get_req_events(cmd_idx)?)
+                            //     .enew(&mut ev)
+                            //     .enq_async()?
+                            //     // .and_then(|_guard| Ok(()))
+                            //     .map(|_guard| ())
                             //     .map_err(|err| panic!("{:?}", err));
+                            // //////////////
+
+                            ////////////// MAP BUFFER:
+                            let future_map = unsafe {
+                                self.states.map()
+                                    .queue(&self.write_queue)
+                                    .write_invalidate()
+                                    .offset(axn_range.start as usize)
+                                    .len(axn_range.len())
+                                    .ewait(exe_graph.get_req_events(cmd_idx)?)
+                                    .enq_async()?
+                                    // .ewait_unmap(exe_graph.get_req_events(cmd_idx)?)
+                                    .enew_unmap(&mut ev)
+                                    .with_unmap_queue(self.unmap_queue.clone())
+                            };
+
+                            let future_write = future_reader.join(future_map)
+                                .map(|(reader, mut map)| {
+                                    debug_assert_eq!(reader.len(), map.len());
+                                    let len = map.len();
+                                    unsafe {
+                                        ::std::ptr::copy_nonoverlapping(reader.as_ptr(),
+                                            map.as_mut_ptr(), len);
+                                    }
+                                })
+                                .map_err(|err| panic!("{:?}", err));
+                            //////////////
 
                             let wtx = work_tx.take().unwrap();
                             work_tx.get_or_insert(wtx.send(Box::new(future_write)).wait()?);

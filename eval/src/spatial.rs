@@ -630,7 +630,7 @@ pub fn eval() {
         .ssc_layer(SPT_LYR).unwrap().energies().clone();
 
     let in_tract_idx = cortex.thal().tract().index_of(v0_ext_lyr_addr).unwrap();
-    let in_tract_buffer = cortex.thal().tract().buffer(in_tract_idx).unwrap().clone();
+    let in_tract_buffer = cortex.thal().tract().buffer_rwvec(in_tract_idx).unwrap().clone();
     let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
     let area_map = cortex.areas().by_key(PRI_AREA).unwrap().area_map().clone();
 
