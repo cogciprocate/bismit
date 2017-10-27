@@ -80,7 +80,9 @@ pub fn ca_settings() -> CorticalAreaSettings {
 // #[test]
 #[allow(dead_code)]
 pub fn smoother_overlap() {
-    let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
+    let mut cortex = Cortex::builder(define_lm_schemes(), define_a_schemes())
+        .ca_settings(ca_settings())
+        .build().unwrap();
 
     // Layer 4 spatial cell energies:
     let l4_spt_cel_enrgs = cortex.areas().by_key(PRI_AREA).unwrap()

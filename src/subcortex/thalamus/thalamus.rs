@@ -203,12 +203,12 @@ impl Thalamus {
         for pa in area_sl.areas().iter().filter(|pa|
                 layer_map_sl[pa.layer_map_name()].kind() == &LayerMapKind::Subcortical)
         {
-            let es = try!(InputGenerator::new(pa, &layer_map_sl[pa.layer_map_name()]));
-            let addrs = es.layer_addrs();
-            input_generators.insert(es.area_name().to_owned(), (es, addrs))
-                .map(|es_tup| panic!("Duplicate 'InputGenerator' keys: [\"{}\"]. \
+            let in_gen = try!(InputGenerator::new(pa, &layer_map_sl[pa.layer_map_name()]));
+            let addrs = in_gen.layer_addrs();
+            input_generators.insert(in_gen.area_name().to_owned(), (in_gen, addrs))
+                .map(|in_gen_tup| panic!("Duplicate 'InputGenerator' keys: [\"{}\"]. \
                     Only one external (thalamic) input source per area is allowed.",
-                    es_tup.0.area_name()));
+                    in_gen_tup.0.area_name()));
         }
 
         /*=============================================================================
@@ -262,6 +262,7 @@ impl Thalamus {
 
     /// Cycles thalamic tract pathways.
     pub fn cycle_pathways(&mut self) {
+        // for (_, pathway) in
 
     }
 
@@ -269,14 +270,23 @@ impl Thalamus {
 
 
     /// Creates a thalamic tract pathway.
-    pub fn new_input_pathway<La>(&mut self, src_lyr_addr: La, buffer_idx_range: Range<usize>,
-            wait_for_frame: bool) -> TractSender
-            where La: Borrow<LayerAddress> + Debug {
+    pub fn input_pathway(&mut self, src_lyr_addr: LayerAddress, buffer_idx_range: Range<usize>,
+            wait_for_frame: bool) -> TractSender {
         // pub fn tract_pathway_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
         //     -> (TractSender, TractReceiver)
-        let tract_area_id = self.tract.index_of(src_lyr_addr.borrow())
-            .expect(&format!("Thalamus::new_input_pathway: Invalid layer address: '{:?}'.",
-                src_lyr_addr.borrow()));
+        let area = self.area_maps.by_index(src_lyr_addr.area_id())
+            .expect(&format!("Thalamus::new_input_pathway: \
+                Invalid layer address (area id): '{:?}'.", &src_lyr_addr));
+
+        let _layer = area.layer(src_lyr_addr.area_id())
+            .expect(&format!("Thalamus::new_input_pathway: \
+                Invalid layer address (layer id): '{:?}'.", &src_lyr_addr));
+
+
+
+        let tract_area_id = self.tract.index_of(&src_lyr_addr)
+            .expect(&format!("Thalamus::new_input_pathway: \
+                No thalamic tract area with layer address: '{:?}'.", &src_lyr_addr));
 
         let buffer = match self.tract.buffer(tract_area_id) {
             Ok(&TractBuffer::RwVec(ref rw_vec)) => rw_vec.clone(),
@@ -289,7 +299,7 @@ impl Thalamus {
         let (tx, rx) = subcortex::tract_channel_single_u8(buffer, buffer_idx_range, true);
 
         let pathway = Pathway::Input { tract_area_id, rx, wait_for_frame };
-        self.pathways.insert(src_lyr_addr.borrow().to_owned(), pathway);
+        self.pathways.insert(src_lyr_addr, pathway);
 
         tx
     }

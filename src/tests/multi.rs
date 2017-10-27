@@ -1,4 +1,8 @@
 // use map;
+
+
+#![allow(deprecated)]
+
 use tests::testbed_vibi;
 
 #[test]

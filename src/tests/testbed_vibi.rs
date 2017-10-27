@@ -158,7 +158,7 @@ pub fn disable_stuff(_: &mut Cortex) {
 
 
 pub fn new_cortex() -> Cortex {
-    let mut cortex = Cortex::new(define_layer_map_sl(), define_area_sl(), None);
+    let mut cortex = Cortex::builder(define_layer_map_sl(), define_area_sl()).build().unwrap();
     disable_stuff(&mut cortex);
     cortex
 }

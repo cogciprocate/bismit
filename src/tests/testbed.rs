@@ -129,7 +129,8 @@ pub fn define_protoareas() -> AreaSchemeList {
 
 // FRESH_CORTEX(): Mmmm... Yummy.
 pub fn fresh_cortex() -> Cortex {
-    Cortex::new(define_layer_map_schemes(), define_protoareas(), None)
+    Cortex::builder(define_layer_map_schemes(), define_protoareas())
+        .build().unwrap()
 }
 
 
@@ -214,7 +215,8 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         )
     ;
 
-    Cortex::new(layer_map_sl, area_sl, None)
+    Cortex::builder(layer_map_sl, area_sl)
+        .build().unwrap()
 }
 
 

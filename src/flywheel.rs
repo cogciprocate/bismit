@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 use time::{self, Timespec, Duration};
 // use ocl::Buffer;
 use cmn::{CmnResult};
-use ::{Cortex, OclEvent, LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings, SamplerKind,
+use ::{Cortex, OclEvent, /*LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings,*/ SamplerKind,
     SamplerBufferKind, TractReceiver};
 use ::map::{SliceTractMap, /*LayerAddress*/};
 
@@ -211,17 +211,17 @@ impl Flywheel {
         }
     }
 
-    pub fn from_blueprint<S: Into<String>>(
-                lm_schemes: LayerMapSchemeList,
-                a_schemes: AreaSchemeList,
-                ca_settings: Option<CorticalAreaSettings>,
-                command_rx: Receiver<Command>,
-                area_name: S,
-            ) -> Flywheel {
-        let cortex = Cortex::new(lm_schemes, a_schemes, ca_settings);
+    // pub fn from_blueprint<S: Into<String>>(
+    //             lm_schemes: LayerMapSchemeList,
+    //             a_schemes: AreaSchemeList,
+    //             ca_settings: Option<CorticalAreaSettings>,
+    //             command_rx: Receiver<Command>,
+    //             area_name: S,
+    //         ) -> Flywheel {
+    // let cortex = Cortex::builder(lm_schemes, a_schemes).settings(ca_settings);
 
-        Flywheel::new(cortex, command_rx, area_name.into())
-    }
+    //     Flywheel::new(cortex, command_rx, area_name.into())
+    // }
 
     pub fn add_req_res_pair(&mut self, req_rx: Receiver<Request>, res_tx: Sender<Response>) {
         self.req_res_pairs.push((req_rx, res_tx));

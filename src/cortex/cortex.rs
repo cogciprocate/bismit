@@ -8,9 +8,20 @@ use cortex::{CorticalArea, CorticalAreaSettings};
 use ::{Thalamus};
 use cmn::MapStore;
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
-// use cmn::{CmnResult};
+use cmn::{CmnResult};
 // use thalamus::{InputGenerator, InputGeneratorFrame};
 use subcortex::Subcortex;
+
+
+
+// Prints the time it took to start up.
+fn print_startup_time(time_start: time::Timespec) {
+    let time_elapsed = time::get_time() - time_start;
+    let t_sec = time_elapsed.num_seconds();
+    let t_ms = time_elapsed.num_milliseconds() - (t_sec * 1000);
+    println!("\n\n... Cortex initialized in: {}.{} seconds.", t_sec, t_ms);
+}
+
 
 pub struct Cortex {
     areas: MapStore<&'static str, CorticalArea>,
@@ -19,8 +30,13 @@ pub struct Cortex {
 }
 
 impl Cortex {
+    pub fn builder(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList) -> Builder {
+        Builder::new(layer_map_sl, area_sl)
+    }
+
     pub fn new(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList,
-                ca_settings: Option<CorticalAreaSettings>) -> Cortex {
+            ca_settings: Option<CorticalAreaSettings>, sub: Option<Subcortex>)
+            -> CmnResult<Cortex> {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
         let platform = Platform::new(ocl::core::default_platform().unwrap());
@@ -48,21 +64,21 @@ impl Cortex {
 
         print_startup_time(time_start);
 
-        Cortex {
+        Ok(Cortex {
             areas: areas,
             thal: thal,
-            sub: None,
-        }
+            sub: sub,
+        })
     }
 
-    pub fn sub(mut self, sub: Subcortex) -> Cortex {
-        self.add_subcortex(sub);
-        self
-    }
+    // pub fn sub(mut self, sub: Subcortex) -> Cortex {
+    //     self.add_subcortex(sub);
+    //     self
+    // }
 
-    pub fn add_subcortex(&mut self, sub: Subcortex) {
-        self.sub = Some(sub);
-    }
+    // pub fn add_subcortex(&mut self, sub: Subcortex) {
+    //     self.sub = Some(sub);
+    // }
 
     pub fn areas(&self) -> &MapStore<&'static str, CorticalArea> {
         &self.areas
@@ -120,10 +136,44 @@ impl Drop for Cortex {
 }
 
 
-// Prints the time it took to start up.
-fn print_startup_time(time_start: time::Timespec) {
-    let time_elapsed = time::get_time() - time_start;
-    let t_sec = time_elapsed.num_seconds();
-    let t_ms = time_elapsed.num_milliseconds() - (t_sec * 1000);
-    println!("\n\n... Cortex initialized in: {}.{} seconds.", t_sec, t_ms);
+pub struct Builder {
+    layer_maps: LayerMapSchemeList,
+    areas: AreaSchemeList,
+    ca_settings: Option<CorticalAreaSettings>,
+    sub: Option<Subcortex>,
+}
+
+impl Builder {
+    pub fn new(layer_maps: LayerMapSchemeList, areas: AreaSchemeList) -> Builder {
+        Builder {
+            layer_maps,
+            areas,
+            ca_settings: None,
+            sub: None,
+        }
+    }
+
+    // pub fn layer_map_schemes(mut self, layer_maps: LayerMapSchemeList) -> Builder {
+    //     self.layer_maps = Some(layer_maps);
+    //     self
+    // }
+
+    // pub fn area_schemes(mut self, areas: AreaSchemeList) -> Builder {
+    //     self.areas = Some(areas);
+    //     self
+    // }
+
+    pub fn ca_settings(mut self, ca_settings: CorticalAreaSettings) -> Builder {
+        self.ca_settings = Some(ca_settings);
+        self
+    }
+
+    pub fn sub(mut self, sub: Subcortex) -> Builder {
+        self.sub = Some(sub);
+        self
+    }
+
+    pub fn build(self) -> CmnResult<Cortex> {
+        Cortex::new(self.layer_maps, self.areas, self.ca_settings, self.sub)
+    }
 }
