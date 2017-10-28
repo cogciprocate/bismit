@@ -5,6 +5,7 @@ use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapS
     LayerKind, LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack, LayerAddress,
     TuftSourceLayer, LayerTags, AxonSignature};
 use cmn::{self, CorticalDims, MapStore};
+use subcortex::Subcortex;
 use ::InputGenerator;
 
 const DEBUG_PRINT: bool = false;
@@ -119,9 +120,8 @@ impl LayerInfo {
     pub fn new(layer_id: usize, layer_scheme: &LayerScheme, plmap_kind: LayerMapKind,
             area_sch: &AreaScheme, area_sch_list: &AreaSchemeList,
             layer_map_sch_list: &LayerMapSchemeList,
-            ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>, slc_total: u8)
-            -> LayerInfo
-    {
+            _ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>,
+            subcortex: &Subcortex, slc_total: u8) -> LayerInfo {
         let layer_scheme = layer_scheme.clone();
         let name = layer_scheme.name();
         let layer_tags = layer_scheme.layer_tags();
@@ -177,10 +177,14 @@ impl LayerInfo {
                         // on the `InputGenerator` associated with it to
                         // provide its dimensions.
                         &LayerMapKind::Subcortical => {
-                            let &(ref ext_src, _) = ext_paths.by_key(src_area_name)
+                            // let &(ref ext_src, _) = ext_paths.by_key(src_area_name)
+                            //     .expect(&format!("LayerInfo::new(): Invalid input source key: \
+                            //         '{}'", src_area_name));
+                            let subcortical_nucleus = subcortex.by_key(src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                     '{}'", src_area_name));
-                            let ext_src_layer = ext_src.layer(src_lyr_addr.clone());
+
+                            let ext_src_layer = subcortical_nucleus.layer(src_lyr_addr.clone());
                             let ext_src_layer_dims = ext_src_layer.dims().expect(
                                 &format!("LayerInfo::new(): External source layer dims for layer \
                                     '{}' in area '{}' are not set.", ext_src_layer.name(),
@@ -244,11 +248,16 @@ impl LayerInfo {
                 let columns = match plmap_kind {
                     LayerMapKind::Subcortical => {
                         let area_sch_name = area_sch.name().to_owned();
-                        let &(ref ext_src, _) = ext_paths.by_key(&area_sch_name)
+
+                        // let &(ref ext_src, _) = subcortex.by_key(&area_sch_name)
+                        //     .expect(&format!("LayerInfo::new(): Invalid input source key: \
+                        //         '{}'", area_sch.name()));
+                        let subcortical_nucleus = subcortex.by_key(&area_sch_name)
                             .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                 '{}'", area_sch.name()));
+
                         let ext_src_lyr_addr = LayerAddress::new(area_sch.area_id(), layer_id);
-                        let ext_src_layer = ext_src.layer(ext_src_lyr_addr);
+                        let ext_src_layer = subcortical_nucleus.layer(ext_src_lyr_addr);
                         let ext_src_layer_dims = ext_src_layer.dims().expect(&format!(
                             "LayerInfo::new(): External source layer dims for layer \
                             '{}' in area '{}' are not set.", ext_src_layer.name(),

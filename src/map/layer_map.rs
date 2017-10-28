@@ -5,6 +5,7 @@ use map::{AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapKind, AxonDoma
     AxonDomain, AxonSignature};
 use cmn::{self, MapStore, CmnResult};
 use map::{LayerTags, LayerInfo, SourceLayerInfo, LayerAddress};
+use subcortex::Subcortex;
 use ::InputGenerator;
 
 const DEBUG_PRINT: bool = false;
@@ -62,8 +63,8 @@ pub struct LayerMap {
 
 impl LayerMap {
     pub fn new(area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList, area_sl: &AreaSchemeList,
-                ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>) -> CmnResult<LayerMap>
-    {
+            ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>,
+            subcortex: &Subcortex) -> CmnResult<LayerMap> {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...",
             area_sch.name(), mt = cmn::MT);
         println!("{mt}{mt}{mt}[Layer ID] <Layer Name>: Option(Slice Range): {{ Layer Tags }}",
@@ -79,7 +80,7 @@ impl LayerMap {
         for (layer_id, ls) in lm_scheme.layers().iter().enumerate() {
             assert!(ls.layer_id() == layer_id);
             let new_layer = LayerInfo::new(layer_id, ls, lm_scheme.kind().clone(), area_sch,
-                area_sl, layer_map_sl, ext_paths, slc_total);
+                area_sl, layer_map_sl, ext_paths, subcortex, slc_total);
 
             // Check for duplicate input or output domains:
             domain_cache.add(new_layer.axn_domain())?;

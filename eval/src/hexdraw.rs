@@ -85,7 +85,9 @@ pub fn draw(params: &Params, controls: &Controls) {
 
 /// Draws an arbitrary pattern as an sdr.
 pub fn eval() {
-    let cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
+    let cortex = Cortex::builder(define_lm_schemes(), define_a_schemes())
+        .ca_settings(ca_settings())
+        .build().unwrap();
 
     let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
         .layer_map().layers().by_key(EXT_LYR).expect("bad lyr").layer_addr();

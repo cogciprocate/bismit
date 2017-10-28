@@ -1,4 +1,3 @@
-// use std::collections::{HashMap};
 use time;
 
 // use cpuprofiler::PROFILER;
@@ -26,7 +25,7 @@ fn print_startup_time(time_start: time::Timespec) {
 pub struct Cortex {
     areas: MapStore<&'static str, CorticalArea>,
     thal: Thalamus,
-    sub: Option<Subcortex>,
+    sub: Subcortex,
 }
 
 impl Cortex {
@@ -35,20 +34,23 @@ impl Cortex {
     }
 
     pub fn new(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList,
-            ca_settings: Option<CorticalAreaSettings>, sub: Option<Subcortex>)
+            ca_settings: Option<CorticalAreaSettings>, sub_opt: Option<Subcortex>)
             -> CmnResult<Cortex> {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
         let platform = Platform::new(ocl::core::default_platform().unwrap());
         let device_type = ocl::core::default_device_type().unwrap();
-        // println!("Cortex::new(): device_type: {:?}", device_type);
         let ocl_context: Context = Context::builder()
             .platform(platform)
             .devices(Device::specifier().type_flags(device_type))
             .build().expect("CorticalArea::new(): ocl_context creation error");
-        // println!("Cortex::new(): ocl_context.devices(): {:?}", ocl_context.devices());
-        let mut thal = Thalamus::new(layer_map_sl, area_sl, &ocl_context).unwrap();
-        // let area_maps = thal.area_maps().values().clone();
+
+        let sub = match sub_opt {
+            Some(s) => s,
+            None => Subcortex::new(),
+        };
+
+        let mut thal = Thalamus::new(layer_map_sl, area_sl, &sub, &ocl_context).unwrap();
         let mut areas = MapStore::new();
         let mut device_idx = 1;
 
@@ -71,15 +73,6 @@ impl Cortex {
         })
     }
 
-    // pub fn sub(mut self, sub: Subcortex) -> Cortex {
-    //     self.add_subcortex(sub);
-    //     self
-    // }
-
-    // pub fn add_subcortex(&mut self, sub: Subcortex) {
-    //     self.sub = Some(sub);
-    // }
-
     pub fn areas(&self) -> &MapStore<&'static str, CorticalArea> {
         &self.areas
     }
@@ -94,17 +87,19 @@ impl Cortex {
         self.thal.cycle_pathways();
         self.thal.cycle_input_generators();
 
-        if let Some(ref mut s) = self.sub {
-            s.pre_cycle(&mut self.thal)
-        }
+        // if let Some(ref mut s) = self.sub {
+        //     s.pre_cycle(&mut self.thal)
+        // }
+        self.sub.pre_cycle(&mut self.thal);
 
         for area in self.areas.values_mut() {
             area.cycle(&mut self.thal).expect("Cortex::cycle(): Cortical area cycling error");
         }
 
-        if let Some(ref mut s) = self.sub {
-            s.post_cycle(&mut self.thal)
-        }
+        // if let Some(ref mut s) = self.sub {
+        //     s.post_cycle(&mut self.thal)
+        // }
+        self.sub.post_cycle(&mut self.thal);
 
         // PROFILER.lock().unwrap().stop().unwrap();
     }
@@ -152,16 +147,6 @@ impl Builder {
             sub: None,
         }
     }
-
-    // pub fn layer_map_schemes(mut self, layer_maps: LayerMapSchemeList) -> Builder {
-    //     self.layer_maps = Some(layer_maps);
-    //     self
-    // }
-
-    // pub fn area_schemes(mut self, areas: AreaSchemeList) -> Builder {
-    //     self.areas = Some(areas);
-    //     self
-    // }
 
     pub fn ca_settings(mut self, ca_settings: CorticalAreaSettings) -> Builder {
         self.ca_settings = Some(ca_settings);

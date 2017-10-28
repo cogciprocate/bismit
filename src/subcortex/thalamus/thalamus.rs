@@ -12,7 +12,7 @@
 //!
 //!
 
-#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports, unused_variables)]
 
 use std::ops::Range;
 use std::borrow::Borrow;
@@ -23,7 +23,7 @@ use map::{AreaMap, LayerMapKind, LayerAddress, CommandUid, AreaSchemeList, Layer
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
 use ::{InputGenerator, InputGeneratorFrame};
 // use tract_terminal::{SliceBufferTarget, SliceBufferSource};
-use subcortex::{self, TractSender, TractReceiver};
+use subcortex::{self, Subcortex, TractSender, TractReceiver};
 
 
 // #[derive(Debug, Clone)]
@@ -187,7 +187,7 @@ pub struct Thalamus {
 
 impl Thalamus {
     pub fn new(layer_map_sl: LayerMapSchemeList, mut area_sl: AreaSchemeList,
-            ocl_context: &Context) -> CmnResult<Thalamus> {
+            subcortex: &Subcortex, ocl_context: &Context) -> CmnResult<Thalamus> {
         // [FIXME]:
         let _ = ocl_context;
 
@@ -200,10 +200,9 @@ impl Thalamus {
         /*=============================================================================
         ============================ THALAMIC (INPUT) AREAS ===========================
         =============================================================================*/
-        for pa in area_sl.areas().iter().filter(|pa|
-                layer_map_sl[pa.layer_map_name()].kind() == &LayerMapKind::Subcortical)
-        {
-            let in_gen = try!(InputGenerator::new(pa, &layer_map_sl[pa.layer_map_name()]));
+        for area_scheme in area_sl.areas().iter().filter(|area_scheme|
+                layer_map_sl[area_scheme.layer_map_name()].kind() == &LayerMapKind::Subcortical) {
+            let in_gen = try!(InputGenerator::new(area_scheme, &layer_map_sl[area_scheme.layer_map_name()]));
             let addrs = in_gen.layer_addrs();
             input_generators.insert(in_gen.area_name().to_owned(), (in_gen, addrs))
                 .map(|in_gen_tup| panic!("Duplicate 'InputGenerator' keys: [\"{}\"]. \
@@ -216,7 +215,7 @@ impl Thalamus {
         =============================================================================*/
         for (area_id, area_s) in area_sl.areas().iter().enumerate() {
             assert!(area_s.area_id() == area_id);
-            let area_map = AreaMap::new(area_id, area_s, &layer_map_sl, &area_sl, &input_generators)?;
+            let area_map = AreaMap::new(area_id, area_s, &layer_map_sl, &area_sl, &input_generators, subcortex)?;
 
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ",
                 area_s.name(), mt = cmn::MT);
@@ -278,7 +277,7 @@ impl Thalamus {
             .expect(&format!("Thalamus::new_input_pathway: \
                 Invalid layer address (area id): '{:?}'.", &src_lyr_addr));
 
-        let _layer = area.layer(src_lyr_addr.area_id())
+        let layer = area.layer(src_lyr_addr.area_id())
             .expect(&format!("Thalamus::new_input_pathway: \
                 Invalid layer address (layer id): '{:?}'.", &src_lyr_addr));
 

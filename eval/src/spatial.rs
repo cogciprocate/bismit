@@ -4,7 +4,8 @@ use rand;
 use rand::distributions::{Range, IndependentSample};
 use vibi::bismit::map::*;
 use vibi::bismit::ocl::{Buffer, /*RwVec,*/ WriteGuard};
-use vibi::bismit::{map, Cortex, Thalamus, SubcorticalNucleus, CorticalAreaSettings, Subcortex};
+use vibi::bismit::{map, Cortex, Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer,
+    CorticalAreaSettings, Subcortex};
 use vibi::bismit::flywheel::{Command, Request, Response};
 // use vibi::bismit::map::{AreaMap};
 use vibi::bismit::encode::{self};
@@ -31,12 +32,12 @@ struct Buffers {
 // TODO: DO SOMETHING WITH ME
 pub(crate) struct Nucleus {
     area_name: String,
+    layers: HashMap<LayerAddress, SubcorticalNucleusLayer>,
 }
 
 impl Nucleus {
-    pub fn new<S: Into<String>>(area_name: S, _lyr_name: &'static str, _tar_area: &'static str,
-            _cortex: &Cortex) -> Nucleus
-    {
+    pub fn new<S: Into<String>>(area_name: S, _lyr_name: &'static str, _tar_area: &'static str)
+            -> Nucleus {
         let area_name = area_name.into();
 
         // let v0_ext_lyr_addr = *cortex.areas().by_key(area_name.as_str()).unwrap()
@@ -49,7 +50,8 @@ impl Nucleus {
         //     .area_map().clone();
 
         Nucleus {
-            area_name: area_name.into()
+            area_name: area_name.into(),
+            layers: HashMap::new(),
         }
     }
 }
@@ -59,6 +61,10 @@ impl SubcorticalNucleus for Nucleus {
     fn area_name<'a>(&'a self) -> &'a str { &self.area_name }
     fn pre_cycle(&mut self, _thal: &mut Thalamus) {}
     fn post_cycle(&mut self, _thal: &mut Thalamus) {}
+
+    fn layer(&self, addr: LayerAddress) -> &SubcorticalNucleusLayer {
+        self.layers.get(&addr).expect(&format!("SubcorticalNucleus::layer(): Invalid addr: {:?}", addr))
+    }
 }
 
 
@@ -592,7 +598,13 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
 }
 
 pub fn eval() {
-    let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
+    // let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
+    let subcortex = Subcortex::new().nucl(IN_AREA, Nucleus::new(IN_AREA, EXT_LYR, PRI_AREA));
+
+    let cortex = Cortex::builder(define_lm_schemes(), define_a_schemes())
+        .ca_settings(ca_settings())
+        .sub(subcortex)
+        .build().unwrap();
 
     let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
         .layer_map().layers().by_key(EXT_LYR).expect("bad lyr").layer_addr();
@@ -624,9 +636,9 @@ pub fn eval() {
     let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
     let area_map = cortex.areas().by_key(PRI_AREA).unwrap().area_map().clone();
 
-    // TODO: DO SOMETHING WITH ME
-    let nucl = Nucleus::new(IN_AREA, EXT_LYR, PRI_AREA, &cortex);
-    cortex.add_subcortex(Subcortex::new().nucl(nucl));
+    // // TODO: DO SOMETHING WITH ME
+    // let nucl = Nucleus::new(IN_AREA, EXT_LYR, PRI_AREA, &cortex);
+    // cortex.add_subcortex(Subcortex::new().nucl(nucl));
 
     let controls = ::spawn_threads(cortex, PRI_AREA);
 

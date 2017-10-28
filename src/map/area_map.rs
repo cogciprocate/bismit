@@ -5,6 +5,7 @@ use cmn::{self, CorticalDims, MapStore, CmnResult};
 use ::InputGenerator;
 use map::{SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapSchemeList,
     AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme, AxonTags, InputTrack};
+use subcortex::Subcortex;
 
 
 #[derive(Clone)]
@@ -22,13 +23,14 @@ pub struct AreaMap {
 
 impl AreaMap {
     pub fn new(area_id: usize, area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList,
-            area_sl: &AreaSchemeList, ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>)
+            area_sl: &AreaSchemeList, ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>,
+            subcortex: &Subcortex)
             -> CmnResult<AreaMap>
     {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", area_sch.name(),
             area_sch.get_eff_areas(), area_sch.get_aff_areas(), mt = cmn::MT);
 
-        let layer_map = LayerMap::new(area_sch, layer_map_sl, area_sl, ext_paths)?;
+        let layer_map = LayerMap::new(area_sch, layer_map_sl, area_sl, ext_paths, subcortex)?;
 
         let dims = area_sch.dims().clone_with_depth(layer_map.depth());
 

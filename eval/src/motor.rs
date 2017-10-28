@@ -46,7 +46,11 @@ const SEQUENTIAL_SDR: bool = true;
 
 pub fn eval() {
 
-    let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
+    // let mut cortex = Cortex::new(define_lm_schemes(), define_a_schemes(), Some(ca_settings()));
+    let mut cortex = Cortex::builder(define_lm_schemes(), define_a_schemes())
+        .ca_settings(ca_settings())
+        // .sub(subcortex)
+        .build().unwrap();
 
     // let nucl = Nucleus::new(IN_AREA, EXT_LYR, PRI_AREA, &cortex);
     // cortex.add_subcortex(Subcortex::new().nucl(nucl));
