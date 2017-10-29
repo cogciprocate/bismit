@@ -4,7 +4,7 @@ use rand::distributions::{IndependentSample, Range};
 use rand;
 use cmn::{CorticalDims, TractFrameMut};
 use map::{self, LayerAddress, AxonTags};
-use ::{InputGeneratorTract, InputGeneratorLayer};
+use ::{InputGeneratorTract, SubcorticalNucleusLayer};
 use encode::GlyphBuckets;
 // use map::AxonTopology;
 
@@ -67,7 +67,7 @@ impl GlyphSequences {
         AxonTags::new(&[map::EXT, map::GLY_SEQ_VAL])
     }
 
-    pub fn new(layers: &mut HashMap<LayerAddress, InputGeneratorLayer>, seq_lens: (usize, usize),
+    pub fn new(layers: &mut HashMap<LayerAddress, SubcorticalNucleusLayer>, seq_lens: (usize, usize),
                 seq_count: usize, scale: f32, hrz_dims: (u32, u32), label_file: PathBuf,
                 image_file: PathBuf) -> GlyphSequences
     {

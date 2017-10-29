@@ -1,3 +1,4 @@
+use std::ops::{Deref, Index, IndexMut};
 use map::{FilterScheme, EncoderScheme, AxonTags, InputTrack};
 use cmn::{self, CorticalDims, MapStore};
 
@@ -196,4 +197,30 @@ impl <'a>AreaSchemeList {
     }
 
     #[inline] pub fn areas(&self) -> &[AreaScheme] { &self.areas.values() }
+}
+
+impl Deref for AreaSchemeList {
+    type Target = MapStore<&'static str, AreaScheme>;
+
+    fn deref(&self) -> &MapStore<&'static str, AreaScheme> {
+        &self.areas
+    }
+}
+
+impl<'b> Index<&'b str> for AreaSchemeList {
+    type Output = AreaScheme;
+
+    fn index<'a>(&'a self, region_name: &'b str) -> &'a AreaScheme {
+        self.areas.by_key(region_name)
+            .expect(&format!("map::regions::AreaSchemeList::index(): \
+            Invalid layer map name: '{}'.", region_name))
+    }
+}
+
+impl<'b> IndexMut<&'b str> for AreaSchemeList {
+    fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut AreaScheme {
+        self.areas.by_key_mut(region_name)
+            .expect(&format!("map::regions::AreaSchemeList::index_mut(): \
+            Invalid layer map name: '{}'.", region_name))
+    }
 }

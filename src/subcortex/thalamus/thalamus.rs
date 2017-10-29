@@ -186,36 +186,37 @@ pub struct Thalamus {
 }
 
 impl Thalamus {
-    pub fn new(layer_map_sl: LayerMapSchemeList, mut area_sl: AreaSchemeList,
+    pub fn new(layer_map_schemes: LayerMapSchemeList, mut area_schemes: AreaSchemeList,
             subcortex: &Subcortex, ocl_context: &Context) -> CmnResult<Thalamus> {
         // [FIXME]:
         let _ = ocl_context;
 
-        area_sl.freeze();
-        let area_sl = area_sl;
+        area_schemes.freeze();
+        let area_schemes = area_schemes;
         let mut tract = ThalamicTract::new();
-        let mut input_generators = MapStore::with_capacity(16);
-        let mut area_maps = MapStore::with_capacity(area_sl.areas().len());
+        let input_generators = MapStore::with_capacity(16);
+        let mut area_maps = MapStore::with_capacity(area_schemes.areas().len());
 
-        /*=============================================================================
-        ============================ THALAMIC (INPUT) AREAS ===========================
-        =============================================================================*/
-        for area_scheme in area_sl.areas().iter().filter(|area_scheme|
-                layer_map_sl[area_scheme.layer_map_name()].kind() == &LayerMapKind::Subcortical) {
-            let in_gen = try!(InputGenerator::new(area_scheme, &layer_map_sl[area_scheme.layer_map_name()]));
-            let addrs = in_gen.layer_addrs();
-            input_generators.insert(in_gen.area_name().to_owned(), (in_gen, addrs))
-                .map(|in_gen_tup| panic!("Duplicate 'InputGenerator' keys: [\"{}\"]. \
-                    Only one external (thalamic) input source per area is allowed.",
-                    in_gen_tup.0.area_name()));
-        }
+        // /*=============================================================================
+        // ============================ THALAMIC (INPUT) AREAS ===========================
+        // =============================================================================*/
+        // for area_scheme in area_schemes.areas().iter().filter(|area_scheme|
+        //         layer_map_schemes[area_scheme.layer_map_name()].kind() == &LayerMapKind::Subcortical) {
+        //     let in_gen = try!(InputGenerator::new(area_scheme, &layer_map_schemes[area_scheme.layer_map_name()]));
+        //     let addrs = in_gen.layer_addrs();
+        //     input_generators.insert(in_gen.area_name().to_owned(), (in_gen, addrs))
+        //         .map(|in_gen_tup| panic!("Duplicate 'InputGenerator' keys: [\"{}\"]. \
+        //             Only one external (thalamic) input source per area is allowed.",
+        //             in_gen_tup.0.area_name()));
+        // }
 
         /*=============================================================================
         =================================== ALL AREAS =================================
         =============================================================================*/
-        for (area_id, area_s) in area_sl.areas().iter().enumerate() {
+        for (area_id, area_s) in area_schemes.areas().iter().enumerate() {
             assert!(area_s.area_id() == area_id);
-            let area_map = AreaMap::new(area_id, area_s, &layer_map_sl, &area_sl, &input_generators, subcortex)?;
+            let area_map = AreaMap::new(area_id, area_s, &layer_map_schemes, &area_schemes,
+                &input_generators, subcortex)?;
 
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ",
                 area_s.name(), mt = cmn::MT);

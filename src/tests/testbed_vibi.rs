@@ -8,6 +8,7 @@ use cortex::Cortex;
 use map::{self, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme,
     AreaSchemeList, CellScheme, EncoderScheme, AxonTopology, LayerKind, AxonDomain,
     AxonTag, InputTrack, LayerTags};
+use subcortex::{InputGenerator, Subcortex};
 use encode::GlyphSequences;
 use tests::testbed::{PRIMARY_SPATIAL_SSC_LAYER_NAME, PRIMARY_TEMPORAL_PYR_LAYER_NAME};
 
@@ -15,7 +16,7 @@ use tests::testbed::{PRIMARY_SPATIAL_SSC_LAYER_NAME, PRIMARY_TEMPORAL_PYR_LAYER_
 const ROSE_UID: u16 = 435;
 
 /// A complex but (linearly) small set of layer maps.
-pub fn define_layer_map_sl() -> LayerMapSchemeList {
+pub fn define_layer_map_schemes() -> LayerMapSchemeList {
     // let motor_tag = AxonTag::unique();
     // let rose_tag = AxonTag::unique();
     // let unused_tag = AxonTag::unique();
@@ -86,7 +87,7 @@ pub fn define_layer_map_sl() -> LayerMapSchemeList {
 
 
 /// A complex but (linearly) small set of area maps.
-pub fn define_area_sl() -> AreaSchemeList {
+pub fn define_area_schemes() -> AreaSchemeList {
     const AREA_SIDE: u32 = 16;
 
     AreaSchemeList::new()
@@ -158,7 +159,22 @@ pub fn disable_stuff(_: &mut Cortex) {
 
 
 pub fn new_cortex() -> Cortex {
-    let mut cortex = Cortex::builder(define_layer_map_sl(), define_area_sl()).build().unwrap();
+    let layer_map_schemes = define_layer_map_schemes();
+    let area_schemes = define_area_schemes();
+
+    let gly_seq = InputGenerator::new(
+        &layer_map_schemes[&area_schemes["gly_seq"].layer_map_name()],
+        &area_schemes["gly_seq"]).unwrap();
+    let gly_seq_rose = InputGenerator::new(
+        &layer_map_schemes[&area_schemes["gly_seq_rose"].layer_map_name()],
+        &area_schemes["gly_seq_rose"]).unwrap();
+    let subcortex = Subcortex::new()
+        .nucleus(gly_seq)
+        .nucleus(gly_seq_rose);
+
+    let mut cortex = Cortex::builder(layer_map_schemes, area_schemes)
+        .sub(subcortex)
+        .build().unwrap();
     disable_stuff(&mut cortex);
     cortex
 }

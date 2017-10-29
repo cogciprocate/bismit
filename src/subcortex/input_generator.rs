@@ -5,13 +5,14 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 // use std::mem::{self, Discriminant};
 use find_folder::Search;
-use cmn::{self, CorticalDims, CmnResult, /*CmnError,*/ TractDims};
+use cmn::{self, /*CorticalDims,*/ CmnResult, /*CmnError,*/ TractDims};
 use ocl::{FutureWriteGuard};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
-    AxonDomain, AxonTags, AxonSignature};
+    AxonDomain, /*AxonTags, AxonSignature*/};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
+use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer};
 
 
 #[derive(Debug)]
@@ -117,26 +118,26 @@ impl InputGeneratorEncoder {
 }
 
 
-pub struct InputGeneratorLayer {
-    name: &'static str,
-    addr: LayerAddress,
-    axn_sig: AxonSignature,
-    axn_topology: AxonTopology,
-    dims: Option<CorticalDims>,
-}
+// pub struct SubcorticalNucleusLayer {
+//     name: &'static str,
+//     addr: LayerAddress,
+//     axn_sig: AxonSignature,
+//     axn_topology: AxonTopology,
+//     dims: Option<CorticalDims>,
+// }
 
-impl InputGeneratorLayer {
-    pub fn set_dims(&mut self, dims: Option<CorticalDims>) {
-        self.dims = dims;
-    }
+// impl SubcorticalNucleusLayer {
+//     pub fn set_dims(&mut self, dims: Option<CorticalDims>) {
+//         self.dims = dims;
+//     }
 
-    pub fn name(&self) -> &'static str { self.name }
-    pub fn addr(&self) -> &LayerAddress { &self.addr }
-    pub fn axn_sig(&self) -> &AxonSignature { &self.axn_sig }
-    pub fn axn_tags(&self) -> &AxonTags { &self.axn_sig.tags() }
-    pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
-    pub fn dims(&self) -> Option<&CorticalDims> { self.dims.as_ref() }
-}
+//     pub fn name(&self) -> &'static str { self.name }
+//     pub fn addr(&self) -> &LayerAddress { &self.addr }
+//     pub fn axn_sig(&self) -> &AxonSignature { &self.axn_sig }
+//     pub fn axn_tags(&self) -> &AxonTags { &self.axn_sig.tags() }
+//     pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
+//     pub fn dims(&self) -> Option<&CorticalDims> { self.dims.as_ref() }
+// }
 
 
 enum EncoderCmd {
@@ -162,7 +163,7 @@ pub struct InputGenerator {
     area_id: usize,
     area_name: String,
     // encoder: InputGeneratorEncoder,
-    layers: HashMap<LayerAddress, InputGeneratorLayer>,
+    layers: HashMap<LayerAddress, SubcorticalNucleusLayer>,
     tx: SyncSender<EncoderCmd>,
     _thread: Option<JoinHandle<()>>,
     // rx: Receiver<EncoderRes>,
@@ -171,7 +172,7 @@ pub struct InputGenerator {
 
 impl InputGenerator {
     // [FIXME]: Determine (or have passed in) the layer depth corresponding to this source.
-    pub fn new(pamap: &AreaScheme, plmap: &LayerMapScheme) -> CmnResult<InputGenerator> {
+    pub fn new(plmap: &LayerMapScheme, pamap: &AreaScheme) -> CmnResult<InputGenerator> {
         let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|pl| pl).collect();
 
         // assert!(pamap.get_encoder().layer_count() == p_layers.len(), "InputGenerator::new(): \
@@ -215,13 +216,16 @@ impl InputGenerator {
             lyr_dims_list.push(dims.clone());
             lyr_axn_sigs_list.push(lyr_axn_sig.clone());
 
-            layers.insert(lyr_addr.clone(), InputGeneratorLayer {
-                name: lyr_name,
-                addr: lyr_addr,
-                axn_sig: lyr_axn_sig,
-                axn_topology: axn_topology,
-                dims: dims,
-            });
+            // layers.insert(lyr_addr.clone(), SubcorticalNucleusLayer {
+            //     name: lyr_name,
+            //     addr: lyr_addr,
+            //     axn_sig: lyr_axn_sig,
+            //     axn_topology: axn_topology,
+            //     dims: dims,
+            // });
+
+            layers.insert(lyr_addr.clone(), SubcorticalNucleusLayer::new(lyr_name,
+                lyr_addr, lyr_axn_sig, axn_topology, dims, ));
         }
 
         let mut disabled = false;
@@ -355,11 +359,11 @@ impl InputGenerator {
         if !self.disabled { self.tx.send(EncoderCmd::SetRanges(ranges)).unwrap(); }
     }
 
-    pub fn layers_mut(&mut self) -> &mut HashMap<LayerAddress, InputGeneratorLayer> {
+    pub fn layers_mut(&mut self) -> &mut HashMap<LayerAddress, SubcorticalNucleusLayer> {
         &mut self.layers
     }
 
-    pub fn layer(&self, addr: LayerAddress) -> &InputGeneratorLayer {
+    pub fn layer(&self, addr: LayerAddress) -> &SubcorticalNucleusLayer {
         self.layers.get(&addr).expect(&format!("InputGenerator::layer(): Invalid addr: {:?}", addr))
     }
 
@@ -377,5 +381,16 @@ impl Drop for InputGenerator {
     fn drop(&mut self) {
         self.tx.send(EncoderCmd::Exit).unwrap();
         self._thread.take().unwrap().join().unwrap();
+    }
+}
+
+impl SubcorticalNucleus for InputGenerator {
+    fn area_name<'a>(&'a self) -> &'a str { &self.area_name }
+    fn pre_cycle(&mut self, _thal: &mut Thalamus) {}
+    fn post_cycle(&mut self, _thal: &mut Thalamus) {}
+
+    fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {
+        self.layers.get(&addr)
+            // .expect(&format!("SubcorticalInputGenerator::layer(): Invalid addr: {:?}", addr))
     }
 }

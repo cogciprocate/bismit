@@ -1,5 +1,5 @@
 // use std::collections::{HashMap};
-use std::ops::{Index, IndexMut, };
+use std::ops::{Index, IndexMut, Deref};
 // use std::hash::{Hasher};
 use cmn::MapStore;
 use map::{LayerTags, LayerMapKind, LayerScheme, AxonTopology, LayerKind, AxonDomain, AxonTags};
@@ -148,21 +148,28 @@ impl LayerMapSchemeList {
     }
 }
 
-impl<'b> Index<&'b str> for LayerMapSchemeList
-{
+impl<'b> Index<&'b str> for LayerMapSchemeList {
     type Output = LayerMapScheme;
 
     fn index<'a>(&'a self, region_name: &'b str) -> &'a LayerMapScheme {
-        self.schemes.by_key(region_name).expect(&format!("map::regions::LayerMapSchemeList::index(): \
+        self.schemes.by_key(region_name)
+            .expect(&format!("map::regions::LayerMapSchemeList::index(): \
             Invalid layer map name: '{}'.", region_name))
     }
 }
 
-impl<'b> IndexMut<&'b str> for LayerMapSchemeList
-{
+impl<'b> IndexMut<&'b str> for LayerMapSchemeList {
     fn index_mut<'a>(&'a mut self, region_name: &'b str) -> &'a mut LayerMapScheme {
-        self.schemes.by_key_mut(region_name).expect(&format!("map::regions::LayerMapSchemeList::index_mut(): \
+        self.schemes.by_key_mut(region_name)
+            .expect(&format!("map::regions::LayerMapSchemeList::index_mut(): \
             Invalid layer map name: '{}'.", region_name))
     }
 }
 
+impl Deref for LayerMapSchemeList {
+    type Target = MapStore<String, LayerMapScheme>;
+
+    fn deref(&self) -> &MapStore<String, LayerMapScheme> {
+        &self.schemes
+    }
+}

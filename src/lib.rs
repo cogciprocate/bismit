@@ -32,7 +32,7 @@ pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses, /*Minicolumns,
     InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer, SpinyStellateLayer, Dendrites,
     CorticalAreaSettings, DataCellLayer, SamplerKind, SamplerBufferKind};
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus, SubcorticalNucleusLayer, TestScNucleus,
-    InputGenerator, InputGeneratorTract, InputGeneratorEncoder, InputGeneratorFrame, InputGeneratorLayer,
+    InputGenerator, InputGeneratorTract, InputGeneratorEncoder, InputGeneratorFrame, /*InputGeneratorLayer,*/
     TractBuffer, TractSender, TractReceiver};
 // pub use self::subcortex::thalamus::{};
 pub use self::flywheel::Flywheel;

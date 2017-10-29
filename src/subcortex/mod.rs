@@ -10,7 +10,7 @@ pub use self::thalamus::{Thalamus, /*InputGeneratorTract, InputGenerator, InputG
 pub use self::cerebellum::Cerebellum;
 
 pub use self::input_generator::{InputGenerator, InputGeneratorFrame, InputGeneratorTract,
-    InputGeneratorEncoder, InputGeneratorLayer};
+    InputGeneratorEncoder, /*InputGeneratorLayer*/};
 
 pub use self::tract_channel::{tract_channel_single_u8, tract_channel_single_i8, TractBuffer,
     TractSender, TractReceiver};

@@ -30,6 +30,16 @@ use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, 
 // It helps to function in movement by providing feedback for the outputs of the basal ganglia.
 
 
+
+/// A subcortical nucleus.
+pub trait SubcorticalNucleus: 'static + Send {
+    fn area_name<'a>(&'a self) -> &'a str;
+    fn pre_cycle(&mut self, thal: &mut Thalamus);
+    fn post_cycle(&mut self, thal: &mut Thalamus);
+    fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer>;
+}
+
+
 pub struct SubcorticalNucleusLayer {
     name: &'static str,
     addr: LayerAddress,
@@ -39,6 +49,16 @@ pub struct SubcorticalNucleusLayer {
 }
 
 impl SubcorticalNucleusLayer {
+    pub fn new(name: &'static str, addr: LayerAddress, axn_sig: AxonSignature,
+            axn_topology: AxonTopology, dims: Option<CorticalDims>,) -> SubcorticalNucleusLayer {
+        SubcorticalNucleusLayer {
+            name,
+            addr,
+            axn_sig,
+            axn_topology,
+            dims,
+        }
+    }
     pub fn set_dims(&mut self, dims: Option<CorticalDims>) {
         self.dims = dims;
     }
@@ -49,15 +69,6 @@ impl SubcorticalNucleusLayer {
     pub fn axn_tags(&self) -> &AxonTags { &self.axn_sig.tags() }
     pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
     pub fn dims(&self) -> Option<&CorticalDims> { self.dims.as_ref() }
-}
-
-
-
-pub trait SubcorticalNucleus: 'static + Send {
-    fn area_name<'a>(&'a self) -> &'a str;
-    fn pre_cycle(&mut self, thal: &mut Thalamus);
-    fn post_cycle(&mut self, thal: &mut Thalamus);
-    fn layer(&self, addr: LayerAddress) -> &SubcorticalNucleusLayer;
 }
 
 
@@ -89,8 +100,9 @@ impl SubcorticalNucleus for TestScNucleus {
         println!("Post-cycling!");
     }
 
-    fn layer(&self, addr: LayerAddress) -> &SubcorticalNucleusLayer {
-        self.layers.get(&addr).expect(&format!("SubcorticalNucleus::layer(): Invalid addr: {:?}", addr))
+    fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {
+        self.layers.get(&addr)
+            // .expect(&format!("SubcorticalNucleus::layer(): Invalid addr: {:?}", addr))
     }
 }
 
@@ -107,8 +119,9 @@ impl Subcortex {
         }
     }
 
-    pub fn nucl<S, N>(mut self, area_name: S, nucleus: N) -> Subcortex
-            where S: Into<String>, N: SubcorticalNucleus {
+    pub fn nucleus<N>(mut self, nucleus: N) -> Subcortex
+            where N: SubcorticalNucleus {
+        let area_name = nucleus.area_name().to_owned();
         self.add_nucleus(area_name, nucleus);
         self
     }

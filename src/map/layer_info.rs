@@ -184,12 +184,14 @@ impl LayerInfo {
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                     '{}'", src_area_name));
 
-                            let ext_src_layer = subcortical_nucleus.layer(src_lyr_addr.clone());
-                            let ext_src_layer_dims = ext_src_layer.dims().expect(
-                                &format!("LayerInfo::new(): External source layer dims for layer \
-                                    '{}' in area '{}' are not set.", ext_src_layer.name(),
-                                    src_area_name)
-                                ).clone();
+                            let ext_src_layer = subcortical_nucleus.layer(src_lyr_addr.clone())
+                                .expect(&format!("LayerInfo::new(): Invalid addr: {:?}", src_lyr_addr));;
+
+                            let ext_src_layer_dims = ext_src_layer.dims().expect(&format!("LayerInfo::new(): \
+                                External source layer dims for layer '{}' in area '{}' are not set.",
+                                ext_src_layer.name(), src_area_name))
+                            .clone();
+
                             (ext_src_layer_dims, ext_src_layer.axn_topology())
                         },
                         // If the source layer is cortical, we will give the
@@ -242,9 +244,10 @@ impl LayerInfo {
             =============================================================================*/
             AxonDomain::Output(/*ref axon_tags*/ _) => {
 
-                // If this is a subcortical layer we need to use the dimensions
-                // set by the `InputGenerator` area instead of the dimensions of
-                // the area. Thalamic output layers have irregular layer sizes.
+                // If this is a subcortical layer we need to use the
+                // dimensions set by the `SubcorticalNucleusLayer` instead of
+                // the dimensions of the `SubcorticalNucleus` area.
+                // Subcortical output layers have irregular layer sizes.
                 let columns = match plmap_kind {
                     LayerMapKind::Subcortical => {
                         let area_sch_name = area_sch.name().to_owned();
@@ -257,11 +260,15 @@ impl LayerInfo {
                                 '{}'", area_sch.name()));
 
                         let ext_src_lyr_addr = LayerAddress::new(area_sch.area_id(), layer_id);
-                        let ext_src_layer = subcortical_nucleus.layer(ext_src_lyr_addr);
+
+                        let ext_src_layer = subcortical_nucleus.layer(ext_src_lyr_addr)
+                            .expect(&format!("LayerInfo::new(): Invalid addr: {:?}", ext_src_lyr_addr));
+
                         let ext_src_layer_dims = ext_src_layer.dims().expect(&format!(
                             "LayerInfo::new(): External source layer dims for layer \
                             '{}' in area '{}' are not set.", ext_src_layer.name(),
                             area_sch.name()));
+
                         irregular_layer_dims = Some(ext_src_layer_dims.clone());
                         ext_src_layer_dims.columns()
                     },
