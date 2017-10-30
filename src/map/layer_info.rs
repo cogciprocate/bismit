@@ -4,9 +4,8 @@ use std::ops::{Range};
 use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapScheme,
     LayerKind, LayerMapKind, AxonTopology, AxonDomain, AxonTags, InputTrack, LayerAddress,
     TuftSourceLayer, LayerTags, AxonSignature};
-use cmn::{self, CorticalDims, MapStore};
+use cmn::{self, CorticalDims};
 use subcortex::Subcortex;
-use ::InputGenerator;
 
 const DEBUG_PRINT: bool = false;
 
@@ -22,7 +21,6 @@ fn matching_source_layers<'a>(area_sch: &'a AreaScheme, area_sch_list: &'a AreaS
 {
     let mut matching_source_layers = Vec::with_capacity(16);
 
-    // for &(ref track, ref axon_tags) in input_filters.iter() {
     for filter_sig in input_filters.iter() {
         debug_assert!(filter_sig.is_input());
         let candidate_areas: Vec<(&str, Option<Vec<(AxonTags, AxonTags)>>)> =
@@ -102,8 +100,6 @@ pub struct LayerInfo {
     name: &'static str,
     layer_tags: LayerTags,
     axon_domain: AxonDomain,
-    // TODO: Change this to a tuple.
-    // slc_range: Option<Range<u8>>,
     slc_range: Option<Range<usize>>,
     sources: Vec<SourceLayerInfo>,
     layer_map_kind: LayerMapKind,
@@ -119,9 +115,8 @@ impl LayerInfo {
     /// [FIXME]: Refactor much of this into sub-functions.
     pub fn new(layer_id: usize, layer_scheme: &LayerScheme, plmap_kind: LayerMapKind,
             area_sch: &AreaScheme, area_sch_list: &AreaSchemeList,
-            layer_map_sch_list: &LayerMapSchemeList,
-            _ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>,
-            subcortex: &Subcortex, slc_total: u8) -> LayerInfo {
+            layer_map_sch_list: &LayerMapSchemeList, subcortex: &Subcortex, slc_total: u8)
+            -> LayerInfo {
         let layer_scheme = layer_scheme.clone();
         let name = layer_scheme.name();
         let layer_tags = layer_scheme.layer_tags();
@@ -162,8 +157,6 @@ impl LayerInfo {
                 for (src_layer, sig, masq_orig_axn_tags,
                         src_lyr_map_sch, src_area_sch) in matching_source_layers.into_iter()
                 {
-                    // let input_track = sig.track().unwrap();
-                    // let orig_axn_tags = sig.tags();
                     let src_area_name = src_area_sch.name();
                     let src_area_id = src_area_sch.area_id();
                     let src_lyr_addr = LayerAddress::new(src_area_id, src_layer.layer_id());
@@ -177,9 +170,6 @@ impl LayerInfo {
                         // on the `InputGenerator` associated with it to
                         // provide its dimensions.
                         &LayerMapKind::Subcortical => {
-                            // let &(ref ext_src, _) = ext_paths.by_key(src_area_name)
-                            //     .expect(&format!("LayerInfo::new(): Invalid input source key: \
-                            //         '{}'", src_area_name));
                             let subcortical_nucleus = subcortex.by_key(src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                     '{}'", src_area_name));
@@ -249,9 +239,6 @@ impl LayerInfo {
                     LayerMapKind::Subcortical => {
                         let area_sch_name = area_sch.name().to_owned();
 
-                        // let &(ref ext_src, _) = subcortex.by_key(&area_sch_name)
-                        //     .expect(&format!("LayerInfo::new(): Invalid input source key: \
-                        //         '{}'", area_sch.name()));
                         let subcortical_nucleus = subcortex.by_key(&area_sch_name)
                             .expect(&format!("LayerInfo::new(): Invalid input source key: \
                                 '{}'", area_sch.name()));
@@ -333,32 +320,9 @@ impl LayerInfo {
         self.sources.iter().find(|sli| sli.layer_addr() == src_layer_addr)
     }
 
-    // pub fn src_lyr_sub_slc_range(&self, src_layer_addr: &LayerAddress) -> Option<Range<u8>> {
-    //     let lyr_slc_range = match self.slc_range {
-    //         Some(ref slc_range) => slc_range,
-    //         None => return None,
-    //     };
-
-    //     self.sources.iter().find(|sli| sli.layer_addr() == src_layer_addr)
-    //         .map(|sli| {
-    //             let src_lyr_slc_ofs = sli.tar_slc_range().start - lyr_slc_range.start;
-    //             src_lyr_slc_ofs..(src_lyr_slc_ofs + sli.tar_slc_range().len() as u8)
-    //         })
-    // }
-
     pub fn irregular_layer_dims(&self) -> Option<&CorticalDims> {
         self.irregular_layer_dims.as_ref()
     }
-
-    // [REMOVE]:
-    // pub fn thalamic_horizontal_axon_count(&self) -> Option<u32> {
-    //     if self.layer_map_kind == LayerMapKind::Subcortical && self.axn_topology == AxonTopology::Horizontal {
-    //         debug_assert!(self.layer_tags.contains(map::NS_OUT));
-    //         Some(self.ttl_axn_count)
-    //     } else {
-    //         None
-    //     }
-    // }
 
     pub fn cel_tft_src_lyrs(&self, tft_id: usize) -> &[TuftSourceLayer] {
         match *self.layer_scheme.kind() {
@@ -391,7 +355,6 @@ impl LayerInfo {
     #[inline] pub fn ttl_axn_count(&self) -> u32 { self.ttl_axn_count }
     #[inline] pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
     #[inline] pub fn layer_map_kind(&self) -> LayerMapKind { self.layer_map_kind.clone() }
-    // #[inline] pub fn slc_range(&self) -> Option<&Range<u8>> { self.slc_range.as_ref() }
     #[inline] pub fn slc_range(&self) -> Option<&Range<usize>> { self.slc_range.as_ref() }
 }
 
@@ -427,7 +390,6 @@ pub struct SourceLayerInfo {
     axn_topology: AxonTopology,
     input_sig: AxonSignature,
     masq_orig_axn_tags: Option<AxonTags>,
-    // src_slc_range: Range<u8>,
     // Absolute target slice range (not level-relative):
     tar_slc_range: Range<usize>,
 }
@@ -436,7 +398,7 @@ impl SourceLayerInfo {
     #[inline]
     pub fn new(src_lyr_addr: LayerAddress, src_layer_dims: CorticalDims, src_layer_tags: LayerTags,
             src_axn_topology: AxonTopology, input_sig: AxonSignature,
-            masq_orig_axn_tags: Option<AxonTags>, /*src_slc_range: Range<u8>,*/
+            masq_orig_axn_tags: Option<AxonTags>,
             tar_slc_range: Range<usize>) -> SourceLayerInfo
     {
         assert!(input_sig.is_input());
@@ -449,7 +411,6 @@ impl SourceLayerInfo {
             axn_topology: src_axn_topology,
             input_sig: input_sig,
             masq_orig_axn_tags: masq_orig_axn_tags,
-            // src_slc_range: src_slc_range,
             tar_slc_range: tar_slc_range,
         }
     }

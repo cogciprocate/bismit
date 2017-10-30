@@ -4,9 +4,8 @@ use std::slice::{Iter};
 use map::{AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapKind, AxonDomainRoute,
     AxonDomain, AxonSignature};
 use cmn::{self, MapStore, CmnResult};
-use map::{LayerTags, LayerInfo, SourceLayerInfo, LayerAddress};
+use map::{LayerTags, LayerInfo, SourceLayerInfo};
 use subcortex::Subcortex;
-use ::InputGenerator;
 
 const DEBUG_PRINT: bool = false;
 
@@ -63,7 +62,6 @@ pub struct LayerMap {
 
 impl LayerMap {
     pub fn new(area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList, area_sl: &AreaSchemeList,
-            _ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>,
             subcortex: &Subcortex) -> CmnResult<LayerMap> {
         println!("{mt}{mt}LAYERMAP::NEW(): Assembling layer map for area \"{}\"...",
             area_sch.name(), mt = cmn::MT);
@@ -80,7 +78,7 @@ impl LayerMap {
         for (layer_id, ls) in lm_scheme.layers().iter().enumerate() {
             assert!(ls.layer_id() == layer_id);
             let new_layer = LayerInfo::new(layer_id, ls, lm_scheme.kind().clone(), area_sch,
-                area_sl, layer_map_sl, _ext_paths, subcortex, slc_total);
+                area_sl, layer_map_sl, subcortex, slc_total);
 
             // Check for duplicate input or output domains:
             domain_cache.add(new_layer.axn_domain())?;
@@ -104,37 +102,11 @@ impl LayerMap {
     pub fn slc_map(&self) -> BTreeMap<u8, &LayerInfo> {
         let mut slc_map = BTreeMap::new();
         let mut slc_id_count = 0;
-        // if DEBUG_PRINT {
-        //     println!("\n{mt}Creating Slice Map...", mt = cmn::MT);
-        // }
 
         for layer in self.layers.values().iter() {
-            // if DEBUG_PRINT {
-            //     println!("{mt}{mt}Processing layer: '{}', slc_range: {:?}", layer.name(),
-            //         layer.slc_range(), mt = cmn::MT);
-            // }
-
-            // if layer.slc_range().is_some() {
-            //     for slc_id in layer.slc_range().unwrap().clone() {
-            //         // if DEBUG_PRINT {
-            //         //     println!("{mt}{mt}{mt}Processing slice: '{}'", slc_id, mt = cmn::MT);
-            //         // }
-            //         debug_assert_eq!(slc_id_count, slc_id);
-
-            //         if slc_map.insert(slc_id, layer).is_some() {
-            //             panic!("LayerMap::slc_map(): Duplicate slices found in LayerMap: \
-            //                 layer: '{}', slc_id: '{}'.", layer.name(), slc_id);
-            //         }
-
-            //         slc_id_count = slc_id + 1;
-            //     }
-            // }
 
             if let Some(slc_range) = layer.slc_range() {
                 for slc_id in slc_range.clone() {
-                    // if DEBUG_PRINT {
-                    //     println!("{mt}{mt}{mt}Processing slice: '{}'", slc_id, mt = cmn::MT);
-                    // }
                     debug_assert_eq!(slc_id_count, slc_id);
 
                     if slc_map.insert(slc_id as u8, layer).is_some() {
@@ -146,10 +118,6 @@ impl LayerMap {
                 }
             }
         }
-
-        // if DEBUG_PRINT {
-        //     print!("\n");
-        // }
 
         slc_map
     }
@@ -278,7 +246,6 @@ impl LayerMap {
 
         for lyr_info in self.layers.values().iter() {
             for src_lyr_info in lyr_info.sources().iter() {
-                // if src_lyr_info.input_track() == sig.track && src_lyr_info.axn_tags() == tags {
                 if src_lyr_info.input_sig() == sig {
                     matching_layers.push((src_lyr_info, lyr_info))
                 }

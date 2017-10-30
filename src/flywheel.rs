@@ -11,21 +11,18 @@
 
 
 use std::num::Wrapping;
-// use std::ops::Range;
 use std::sync::mpsc::{Sender, SyncSender, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 use time::{self, Timespec, Duration};
 // use ocl::Buffer;
 use cmn::{CmnResult};
-use ::{Cortex, OclEvent, /*LayerMapSchemeList, AreaSchemeList, CorticalAreaSettings,*/ SamplerKind,
-    SamplerBufferKind, TractReceiver};
-use ::map::{SliceTractMap, /*LayerAddress*/};
+use ::{Cortex, OclEvent, SamplerKind, SamplerBufferKind, TractReceiver};
+use ::map::{SliceTractMap};
 
 
 
 #[derive(Clone, Debug)]
 pub enum PathwayConfig {
-    // EncoderRanges(Arc<Mutex<Vec<(f32, f32)>>>),
     EncoderRanges(Vec<(f32, f32)>),
 }
 
@@ -60,7 +57,6 @@ pub enum MotorFrame {
 #[derive(Clone, Debug)]
 pub struct AreaInfo {
     pub name: String,
-    // pub aff_out_slc_range: Range<usize>,
     pub aff_out_slc_ids: Vec<u8>,
     pub tract_map: SliceTractMap,
 }
@@ -82,11 +78,8 @@ pub enum Request {
     CurrentIter,
     Status,
     AreaInfo,
-    // Sample(Range<usize>, Arc<Mutex<Vec<u8>>>),
     Sampler { area_name: String, kind: SamplerKind, buffer_kind: SamplerBufferKind },
     FinishQueues,
-    // Input(Obs),
-    // GetAction,
 }
 
 
@@ -183,7 +176,6 @@ pub enum LoopAction {
 pub struct Flywheel {
     command_rx: Receiver<Command>,
     req_res_pairs: Vec<(Receiver<Request>, Sender<Response>)>,
-    // sen_mot_pairs: Vec<(Receiver<SensoryFrame>, Sender<MotorFrame>)>,
     sensory_rxs: Vec<(Receiver<SensoryFrame>, usize)>,
     motor_txs: Vec<SyncSender<MotorFrame>>,
     cortex: Cortex,
@@ -196,8 +188,6 @@ pub struct Flywheel {
 impl Flywheel {
     // TODO: Find some other way to set current area.
     pub fn new<S: Into<String>>(cortex: Cortex, command_rx: Receiver<Command>, area_name: S) -> Flywheel {
-        // let area_name = "v1".to_owned();
-
         Flywheel {
             command_rx: command_rx,
             req_res_pairs: Vec::with_capacity(16),
@@ -211,31 +201,16 @@ impl Flywheel {
         }
     }
 
-    // pub fn from_blueprint<S: Into<String>>(
-    //             lm_schemes: LayerMapSchemeList,
-    //             a_schemes: AreaSchemeList,
-    //             ca_settings: Option<CorticalAreaSettings>,
-    //             command_rx: Receiver<Command>,
-    //             area_name: S,
-    //         ) -> Flywheel {
-    // let cortex = Cortex::builder(lm_schemes, a_schemes).settings(ca_settings);
-
-    //     Flywheel::new(cortex, command_rx, area_name.into())
-    // }
-
     pub fn add_req_res_pair(&mut self, req_rx: Receiver<Request>, res_tx: Sender<Response>) {
         self.req_res_pairs.push((req_rx, res_tx));
     }
 
-    // pub fn add_sen_mot_pair(&mut self, sen_rx: Receiver<SensoryFrame>, mot_tx: Sender<MotorFrame>) {
-    //     self.sen_mot_pairs.push((sen_rx, mot_tx));
-    // }
-
-    pub fn add_sensory_rx<S: AsRef<str>>(&mut self, sensory_rx: Receiver<SensoryFrame>,
-            pathway_name: S)
+    #[deprecated]
+    pub fn add_sensory_rx<S: AsRef<str>>(&mut self, _sensory_rx: Receiver<SensoryFrame>,
+            _pathway_name: S)
     {
-        let pathway_idx = self.cortex.thal_mut().input_generator_idx(pathway_name.as_ref()).unwrap();
-        self.sensory_rxs.push((sensory_rx, pathway_idx));
+        // let pathway_idx = self.cortex.thal_mut().input_generator_idx(pathway_name.as_ref()).unwrap();
+        // self.sensory_rxs.push((sensory_rx, pathway_idx));
     }
 
     pub fn add_motor_tx(&mut self, motor_tx: SyncSender<MotorFrame>) {
@@ -256,13 +231,9 @@ impl Flywheel {
             self.intake_sensory_frames().unwrap();
             self.fulfill_requests();
 
-            // // DEBUG:
-            // println!("Waiting on command...");
-
             match self.command_rx.recv() {
                 Ok(cmd) => match cmd {
                     Command::Iterate(i) => self.cycle_iters_max = i,
-                    // Command::Spin => self.cycle_iters_max = 0,
                     Command::Exit => {
                         self.exiting = true;
                         break;
@@ -277,9 +248,6 @@ impl Flywheel {
             self.status.cycling = true;
             self.broadcast_status();
 
-            // // DEBUG:
-            // println!("Starting cycle loop with {} iters...", self.cycle_iters_max);
-
             // Run primary loop and check for exit response:
             match self.cycle_loop() {
                 Command::Exit => {
@@ -289,22 +257,12 @@ impl Flywheel {
                 _ => (),
             }
 
-            // ////// DEBUG:
-            // println!(">>>>>> Cycle loop complete. Status: {:?}", self.status);
-
             self.status.cycling = false;
             self.status.prev_cycles += self.status.cur_cycle;
             self.status.prev_elapsed = self.status.prev_elapsed + self.status.cur_elapsed();
             self.status.cur_cycle = Wrapping(0);
             self.status.cur_start_time = None;
             self.broadcast_status();
-
-            // // DEBUG:
-            // println!("{} cycle loops (prev: {}) complete...", self.status.cur_cycle,
-            //     self.status.prev_cycles);
-
-            // // DEBUG:
-            // println!("Cycle loop complete, prev_cycles: {}...", self.status.prev_cycles);
         }
 
         // Broadcast an `Exiting` to everyone.
@@ -315,9 +273,6 @@ impl Flywheel {
     }
 
     fn cycle_loop(&mut self) -> Command {
-        // // DEBUG:
-        // println!("Cycle loop started...");
-
         loop {
             if (self.cycle_iters_max != 0) && (self.status.cur_cycle.0 >= self.cycle_iters_max) { break; }
 
@@ -328,9 +283,6 @@ impl Flywheel {
             // Update cycle_counts:
             self.status.cur_cycle += Wrapping(1);
             self.status.cycle_counter += Wrapping(1);
-
-            // // DEBUG:
-            // println!(">>>>>> Flywheel::cycle_loop: self.status: {:?}", self.status);
 
             // Respond to any commands:
             match self.command_rx.try_recv() {
@@ -356,19 +308,11 @@ impl Flywheel {
     }
 
     fn fulfill_requests(&mut self) {
-        // ////// DEBUG:
-        // println!("Fulfilling requests...");
-
         for &(ref req_rx, ref res_tx) in self.req_res_pairs.iter() {
             loop {
                 match req_rx.try_recv() {
                     Ok(r) => {
-                        // ////// DEBUG:
-                        // println!("Fullfilling request: {:?}", r);
                         match r {
-                            // Request::Sample(range, buf) => {
-                            //     res_tx.send(Response::SampleProgress(self.refresh_buf(range, buf))).unwrap();
-                            // },
                             Request::Sampler { area_name, kind, buffer_kind } => {
                                 let tract_rx = self.cortex.areas_mut().by_key_mut(area_name.as_str()).unwrap()
                                     .sampler(kind, buffer_kind);
@@ -386,8 +330,6 @@ impl Flywheel {
                             Request::FinishQueues => {
                                 // Will block:
                                 self.cortex.finish_queues();
-                                // ////// DEBUG:
-                                // println!("Queues have been finished. Sending 'Response::QueuesFinished'...");
                                 match res_tx.send(Response::QueuesFinished(self.status.cycle_counter.0)) {
                                     Ok(_) => (),
                                     Err(err) => if !self.exiting { panic!("{:?}", err); }
@@ -399,8 +341,6 @@ impl Flywheel {
                         TryRecvError::Empty => break,
                         // TODO: Have this either do nothing or check to see
                         // if any senders remain and exit if 0.
-                        // TryRecvError::Disconnected => panic!("Flywheel::fulfill_requests(): \
-                        //     Sender disconnected."),
                         TryRecvError::Disconnected => (),
                     },
                 }
@@ -411,10 +351,7 @@ impl Flywheel {
     // [NOTE]: Incoming array values beyond the length of destination slice will
     // be silently ignored.
     fn intake_sensory_frames(&mut self) -> CmnResult<()> {
-        // // DEBUG:
-        // println!("Intaking sensory frames...");
-
-        for &(ref sen_rx, pathway_idx) in self.sensory_rxs.iter() {
+        for &(ref sen_rx, _pathway_idx) in self.sensory_rxs.iter() {
             loop {
                 match sen_rx.try_recv() {
                     Ok(s) => {
@@ -436,16 +373,12 @@ impl Flywheel {
                                 unimplemented!();
                             },
                             SensoryFrame::PathwayConfig(pc) => match pc {
-                                PathwayConfig::EncoderRanges(ranges) => {
-                                    // match try!(self.cortex.thal_mut().input_generator(pathway_idx)).encoder() {
-                                    //     &mut InputGeneratorEncoder::VectorEncoder(ref mut v) => {
-                                    //         try!(v.set_ranges(&ranges.lock().unwrap()[..]));
-                                    //     }
-                                    //     _ => unimplemented!(),
-                                    // }
+                                PathwayConfig::EncoderRanges(_ranges) => {
 
-                                    self.cortex.thal_mut().input_generator(pathway_idx)?
-                                        .set_encoder_ranges(ranges);
+                                    // self.cortex.thal_mut().input_generator(pathway_idx)?
+                                    //     .set_encoder_ranges(ranges);
+
+                                    unimplemented!();
                                 }
                             },
                             SensoryFrame::Tract(_) => unimplemented!(),
@@ -478,39 +411,20 @@ impl Flywheel {
         //         },
         //     }
         // }
+        unimplemented!();
     }
 
     fn broadcast_status(&self) {
-        // println!(">>>>>> Broadcasting status...");
         for &(_, ref res_tx) in self.req_res_pairs.iter() {
             // TODO: Remove unnecessary (redundant) heap allocation:
             res_tx.send(Response::Status(Box::new(self.status.clone()))).unwrap();
         }
     }
 
-    // #[deprecated]
-    // fn refresh_buf(&self, slc_range: Range<usize>, buf: Arc<Mutex<Vec<u8>>>)
-    //             -> Option<OclEvent> {
-    //     // // DEBUG:
-    //     // println!("Refreshing buffer...");
-
-    //     let axn_range = self.cortex.areas().by_key(self.area_name.as_str()).unwrap()
-    //         .axn_tract_map().axn_id_range(slc_range.clone());
-
-    //     // match buf.try_lock() {
-    //     match buf.lock() {
-    //         Ok(ref mut b) => Some(self.cortex.areas().by_key(self.area_name.as_str())
-    //             .unwrap().sample_axn_slc_range(slc_range, &mut b[axn_range])),
-    //         Err(_) => None,
-    //     }
-    // }
-
     fn send_area_info(&self, res_tx: &Sender<Response>) {
         res_tx.send(Response::AreaInfo(Box::new(
             AreaInfo {
                 name: self.area_name.to_string(),
-                // aff_out_slc_range: self.cortex.areas().by_key(self.area_name.as_str())
-                //     .unwrap().area_map().aff_out_slc_range(),
                 aff_out_slc_ids: self.cortex.areas().by_key(self.area_name.as_str())
                     .unwrap().area_map().aff_out_slc_ids(),
                 tract_map: self.cortex.areas().by_key(self.area_name.as_str())
@@ -519,12 +433,3 @@ impl Flywheel {
         ))).expect("Error sending area info.")
     }
 }
-
-// impl Drop for Flywheel {
-//     fn drop(&mut self) {
-//         for &(_, ref res_tx) in self.req_res_pairs.iter() {
-//             res_tx.send(Response::Exiting).unwrap();
-//         }
-//     }
-// }
-

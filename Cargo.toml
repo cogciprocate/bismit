@@ -3,6 +3,9 @@ name = "bismit"
 version = "0.0.1"
 authors = ["Nick Sanders <github.com/c0gent>"]
 
+[features]
+profile = ["cpuprofiler"]
+
 # [dependencies.microcosm]
 # git = "https://github.com/cogciprocate/microcosm.git"
 
@@ -36,6 +39,7 @@ futures = "*"
 futures-cpupool = "*"
 tokio-core = "*"
 crossbeam = "*"
+cpuprofiler = { version = "*", optional = true }
 # log = "*"
 
 [workspace]

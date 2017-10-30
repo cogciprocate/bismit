@@ -6,7 +6,8 @@ use futures::{Sink, Stream, Future};
 use futures::sync::mpsc::{self, Sender};
 use futures_cpupool::{CpuPool, Builder as CpuPoolBuilder};
 use tokio_core::reactor::{Core, /*Remote,*/ /*Handle*/};
-// use cpuprofiler::PROFILER;
+#[cfg(feature = "profile")]
+use cpuprofiler::PROFILER;
 use ocl::{self, Platform, Context, Device};
 use cmn::{/*CmnError,*/ CmnResult, MapStore};
 use cortex::{CorticalArea, CorticalAreaSettings};
@@ -44,19 +45,19 @@ impl WorkPool {
         }
     }
 
-    pub fn complete(&mut self, future: Box<Future<Item=(), Error=()> + Send>)
-            -> CmnResult<()> {
-        let tx = self.reactor_tx.take().unwrap();
-        self.reactor_tx.get_or_insert(tx.send(future).wait()?);
-        Ok(())
-    }
-
-    pub fn submit_work(&mut self, work: Box<Future<Item=(), Error=()> + Send>)
-            -> CmnResult<()> {
-        let future = self.cpu_pool.spawn(work);
+    pub fn complete<F>(&mut self, future: F)
+            -> CmnResult<()>
+            where F: Future<Item=(), Error=()> + Send + 'static {
         let tx = self.reactor_tx.take().unwrap();
         self.reactor_tx.get_or_insert(tx.send(Box::new(future)).wait()?);
         Ok(())
+    }
+
+    pub fn submit_work<F>(&mut self, work: F)
+            -> CmnResult<()>
+            where F: Future<Item=(), Error=()> + Send + 'static {
+        let future = self.cpu_pool.spawn(work);
+        self.complete(future)
     }
 }
 
@@ -112,6 +113,7 @@ impl Cortex {
 
         let area_maps = thal.area_maps().to_owned();
 
+        // Construct cortical areas:
         for area_map in area_maps.values().into_iter().filter(|area_map|
                 area_map.lm_kind_tmp() != &LayerMapKind::Subcortical) {
             areas.insert(area_map.area_name(), CorticalArea::new(area_map.clone(),
@@ -119,7 +121,7 @@ impl Cortex {
             device_idx += 1;
         }
 
-        // Wire up subcortical pathways (channels):
+        // Wire up subcortical pathway channels:
         for nucleus in sub.iter_mut() {
             nucleus.create_pathways(&mut thal);
         }
@@ -143,14 +145,12 @@ impl Cortex {
     }
 
     pub fn cycle(&mut self) {
-        // PROFILER.lock().unwrap().start("./bismit.profile").unwrap();
+        #[cfg(feature = "profile")]
+        PROFILER.lock().unwrap().start("./bismit.profile").unwrap();
 
         self.thal.cycle_pathways(&mut self.work_pool);
         // self.thal.cycle_input_generators();
 
-        // if let Some(ref mut s) = self.sub {
-        //     s.pre_cycle(&mut self.thal)
-        // }
         self.sub.pre_cycle(&mut self.thal, &mut self.work_pool);
 
         for area in self.areas.values_mut() {
@@ -158,12 +158,10 @@ impl Cortex {
                 .expect("Cortex::cycle(): Cortical area cycling error");
         }
 
-        // if let Some(ref mut s) = self.sub {
-        //     s.post_cycle(&mut self.thal)
-        // }
         self.sub.post_cycle(&mut self.thal, &mut self.work_pool);
 
-        // PROFILER.lock().unwrap().stop().unwrap();
+        #[cfg(feature = "profile")]
+        PROFILER.lock().unwrap().stop().unwrap();
     }
 
     pub fn thal_mut(&mut self) -> &mut Thalamus {

@@ -1,15 +1,12 @@
 use std::collections::HashMap;
 use std::ops::Range;
-// use futures::Sink;
-use futures::future::{Future, /*BoxFuture*/};
-// use futures::sync::mpsc::Sender;
+use futures::future::{Future};
 use ocl::{ProQue, Buffer, Event, EventList, Queue, MemFlags};
 use ocl::traits::MemLen;
 use cmn::{self, CmnError, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute, CommandRelations, CorticalBuffer,
     ThalamicTract, CommandUid};
 use ::{Thalamus, WorkPool};
-// use tract_terminal::{OclBufferSource, OclBufferTarget};
 use cortex::{SensoryFilter};
 #[cfg(test)] pub use self::tests::{AxonSpaceTest, AxnCoords};
 
@@ -326,9 +323,6 @@ impl AxonSpace {
         println!("{mt}{mt}AXONS::NEW(): new axons with: total axons: {}",
             area_map.slice_map().to_len_padded(ocl_pq.max_wg_size().unwrap()), mt = cmn::MT);
 
-        // let states = Buffer::<u8>::new(write_queue.clone(),
-        //     Some(MemFlags::new().read_write().alloc_host_ptr()),
-        //     area_map.slice_map(), None, Some((0, None::<()>))).unwrap();
         let states = Buffer::<u8>::builder()
             .queue(write_queue.clone())
             .flags(MemFlags::new().read_write().alloc_host_ptr())
@@ -409,8 +403,7 @@ impl AxonSpace {
 
                 layer_filters_rev.push(filter);
             }
-            // [DEBUG]:
-            // println!("###### ADDING FILTER CHAIN: tags: {}", tags);
+
             let layer_filters = layer_filters_rev.into_iter().rev().collect();
             filter_chains.push((src_lyr_info.layer_addr().clone(), layer_filters));
         }
@@ -518,7 +511,6 @@ impl AxonSpace {
     {
         if let Some((io_lyrs, mut _new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {
             for io_lyr in io_lyrs.iter_mut() {
-                // println!("Intaking from: {:?}", io_lyr);
                 let future_reader = thal.tract().read(io_lyr.tract_area_id())?;
 
                 if !DISABLE_IO && !bypass_filters && io_lyr.exe_cmd().is_filtered_write() {
@@ -582,9 +574,7 @@ impl AxonSpace {
                                 .map_err(|err| panic!("{:?}", err));
                             //////////////
 
-                            // let wtx = work_tx.take().unwrap();
-                            // work_tx.get_or_insert(wtx.send(Box::new(future_write)).wait()?);
-                            work_pool.submit_work(Box::new(future_write))?;
+                            work_pool.submit_work(future_write)?;
                             Some(ev)
                         };
                         exe_graph.set_cmd_event(cmd_idx, event)?;
@@ -625,9 +615,7 @@ impl AxonSpace {
                             .and_then(|_guard| Ok(()))
                             .map_err(|err| panic!("{:?}", err)));
 
-                        // let wtx = work_tx.take().unwrap();
-                        // work_tx.get_or_insert(wtx.send(future_read).wait()?);
-                        work_pool.submit_work(Box::new(future_read))?;
+                        work_pool.submit_work(future_read)?;
                         Some(ev)
                     };
 

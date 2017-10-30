@@ -106,15 +106,6 @@ impl Layer {
         }
     }
 
-    // fn set_exe_order(&mut self, control_layers: &mut ControlCellLayers,
-    //         exe_graph: &mut ExecutionGraph) -> CmnResult<()>
-    // {
-    //     match *self {
-    //         Layer::SpinyStellateLayer(ref mut _lyr) => Err("".into()),
-    //         Layer::PyramidalLayer(ref mut lyr) => lyr.set_exe_order(control_layers, exe_graph),
-    //     }
-    // }
-
     fn set_exe_order_cycle(&mut self, control_layers: &mut ControlCellLayers,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
@@ -327,8 +318,6 @@ pub struct CorticalArea {
     dims: CorticalDims,
     area_map: AreaMap,
     axns: AxonSpace,
-    // mcols: Box<Minicolumns>,
-    // iinns: HashMap<&'static str, Box<InhibitoryInterneuronNetwork>>,
     ptal_name: Option<&'static str>,
     psal_name: Option<&'static str>,
     psal_idx: usize,
@@ -345,11 +334,7 @@ pub struct CorticalArea {
     counter: usize,
     settings: CorticalAreaSettings,
     cycle_order: Vec<usize>,
-    // TODO: Move to thalamus.
     exe_graph: ExecutionGraph,
-    // work_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
-    // // TODO: Move this to a centralized thread pool on thalamus or cortex.
-    // _work_thread: Option<JoinHandle<()>>,
 
     samplers: Vec<Sampler>,
 }
@@ -404,7 +389,6 @@ impl CorticalArea {
 
         let ocl_pq = ProQue::builder()
             .device(device_idx)
-            // .device(1)
             .context(ocl_context.clone())
             .prog_bldr(build_options)
             .queue_properties(queue_flags)
@@ -652,20 +636,6 @@ impl CorticalArea {
             }
         }
 
-        /*=============================================================================
-        =========================== WORK COMPLETION THREAD ============================
-        =============================================================================*/
-
-        // let (tx, rx) = mpsc::channel(0);
-        // let thread_name = format!("CorticalArea_{}", area_name.clone());
-
-        // // TODO: Move this to a centralized thread pool on thalamus or cortex.
-        // let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
-        //     let rx = rx;
-        //     let mut core = Core::new().unwrap();
-        //     let work = rx.buffer_unordered(8).for_each(|_| Ok(()));
-        //     core.run(work).unwrap();
-        // }).unwrap();
 
         /*=============================================================================
         ===============================================================================
@@ -681,7 +651,6 @@ impl CorticalArea {
             ptal_idx: ptal_idx,
             psal_idx: psal_idx,
             axns: axns,
-            // mcols: mcols,
             data_layers,
             control_layers,
             aux: aux,
@@ -693,8 +662,6 @@ impl CorticalArea {
             settings: settings,
             cycle_order,
             exe_graph: exe_graph,
-            // work_tx: Some(tx),
-            // _work_thread: Some(thread),
             samplers: Vec::with_capacity(8),
         };
 
@@ -891,9 +858,7 @@ impl CorticalArea {
                             .map(|_guard| ())
                             .map_err(|err| panic!("{}", err));
 
-                        // let wtx = self.work_tx.take().unwrap();
-                        // self.work_tx.get_or_insert(wtx.send(Box::new(future_read)).wait()?);
-                        work_pool.complete(Box::new(future_read))?;
+                        work_pool.complete(future_read)?;
                     },
                     _ => unimplemented!(),
                 }
@@ -984,12 +949,8 @@ impl CorticalArea {
 
     #[deprecated]
     pub fn sample_axn_slc_range(&self, slc_range: Range<usize>, buf: &mut [u8]) -> Event {
-        // let slc_range = slc_range.borrow();
         assert!(slc_range.len() > 0, "CorticalArea::sample_axn_slc_range(): \
             Invalid slice range: '{:?}'. Slice range length must be at least one.", slc_range);
-        // let axn_range_start = self.area_map.slice_map().axn_range(slc_range.start).start;
-        // let axn_range_end = self.area_map.slice_map().axn_range(slc_range.end - 1).end;
-        // let axn_range = axn_range_start..axn_range_end;
 
         let axn_range = self.area_map.slice_map().axn_range(slc_range.clone());
 
@@ -1045,8 +1006,6 @@ impl CorticalArea {
         self.data_layers.pyr_by_name_mut(layer_name)
     }
 
-    // #[inline] pub fn mcols(&self) -> &Box<Minicolumns> { &self.mcols }
-    // #[inline] pub fn mcols_mut(&mut self) -> &mut Box<Minicolumns> { &mut self.mcols }
     #[inline] pub fn axns(&self) -> &AxonSpace { &self.axns }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn psal_name(&self) -> Option<&'static str> { self.psal_name }
@@ -1065,8 +1024,6 @@ impl CorticalArea {
 impl Drop for CorticalArea {
     fn drop(&mut self) {
         println!("Releasing work thread for '{}'... ", &self.name);
-        // self.work_tx.take().unwrap().close().unwrap();
-        // self._work_thread.take().unwrap().join().unwrap();
         print!("Releasing OpenCL components for '{}'... ", &self.name);
         print!("[ Buffers ][ Event Lists ][ Program ][ Command Queues ]");
         print!(" ...complete. \n");

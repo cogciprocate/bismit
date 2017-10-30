@@ -12,27 +12,13 @@
 //!
 //!
 
-#![allow(dead_code, unused_imports, unused_variables)]
-
-use std::ops::Range;
 use std::borrow::Borrow;
-use std::collections::HashMap;
-use std::fmt::Debug;
 use futures::Future;
-use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
-use map::{AreaMap, LayerMapKind, LayerAddress, CommandUid, AreaSchemeList, LayerMapSchemeList};
+use cmn::{self, CmnError, CmnResult, TractDims, CorticalDims, MapStore};
+use map::{AreaMap, LayerAddress, AreaSchemeList, LayerMapSchemeList};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
-use ::{InputGenerator, InputGeneratorFrame, WorkPool};
-// use tract_terminal::{SliceBufferTarget, SliceBufferSource};
+use ::{InputGenerator, WorkPool};
 use subcortex::{self, Subcortex, TractSender, TractReceiver};
-
-
-// #[derive(Debug, Clone)]
-// pub enum PathwayKind {
-//     AxonLayer(Option<usize>),
-//     Dummy,
-// }
-
 
 
 /// Specifies whether or not the frame buffer for a source exists within the
@@ -49,20 +35,17 @@ pub enum TractBuffer {
 #[derive(Debug)]
 struct TractArea {
     src_lyr_addr: LayerAddress,
-    // range: Range<usize>,
     events: EventList,
     dims: TractDims,
     buffer: TractBuffer,
 }
 
+#[allow(dead_code)]
 impl TractArea {
     fn new<D>(src_lyr_addr: LayerAddress, dims: D, buffer: TractBuffer) -> TractArea
             where D: Into<TractDims> {
-        // println!("###### TractArea::new(): Adding area with: range: {:?}, dims: {:?}", &range, &dims);
-        // assert!(range.len() == dims.to_len());
         TractArea {
             src_lyr_addr: src_lyr_addr,
-            // range: range,
             events: EventList::new(),
             dims: dims.into(),
             buffer: buffer,
@@ -76,7 +59,6 @@ impl TractArea {
         }
     }
 
-    // fn range(&self) -> &Range<usize> { &self.range }
     fn dims(&self) -> &TractDims { &self.dims }
     fn events(&self) -> &EventList { &self.events }
     fn events_mut(&mut self) -> &mut EventList { &mut self.events }
@@ -88,35 +70,24 @@ impl TractArea {
 #[derive(Debug)]
 pub struct ThalamicTract {
     tract_areas: MapStore<LayerAddress, TractArea>,
-    // vec_buffer: Vec<u8>,
     ttl_len: usize,
 }
 
 impl ThalamicTract {
     fn new() -> ThalamicTract {
-        // let vec_buffer = Vec::new();
 
         ThalamicTract {
             tract_areas: MapStore::with_capacity(32),
-            // vec_buffer: vec_buffer,
             ttl_len: 0,
         }
     }
 
     fn add_area(&mut self, src_lyr_addr: LayerAddress, layer_dims: CorticalDims) {
-        // println!("###### ThalamicTract::new(): Adding tract for area: {}, tags: {}, layer_dims: {:?}",
-        //     src_area_name, layer_tags, layer_dims);
         self.ttl_len += layer_dims.to_len();
         let new_area = TractArea::new(src_lyr_addr.clone(), layer_dims,
             TractBuffer::RwVec(RwVec::from(vec![0; layer_dims.to_len()])));
         self.tract_areas.insert(src_lyr_addr, new_area);
 
-    }
-
-    fn init(self) -> ThalamicTract {
-        // self.vec_buffer.resize(self.ttl_len, 0);
-        // println!("{}THALAMICTRACT::INIT(): tract_areas: {:?}", cmn::MT, self.tract_areas);
-        self
     }
 
     pub fn index_of<A>(&self, layer_addr: A) -> Option<usize> where A: Borrow<LayerAddress> {
@@ -125,15 +96,11 @@ impl ThalamicTract {
 
     pub fn read<'t>(&'t self, idx: usize) -> CmnResult<FutureReadGuard<Vec<u8>>> {
         let ta = self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))?;
-        // println!("Tract area: Obtaining reader for tract area: source: {:?}, dims: {:?}",
-        //     ta.src_lyr_addr, ta.dims);
         ta.rw_vec().ok_or(CmnError::from("ThalamicTract::read")).map(|rv| rv.clone().read())
     }
 
     pub fn write<'t>(&'t self, idx: usize) -> CmnResult<FutureWriteGuard<Vec<u8>>> {
         let ta = self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))?;
-        // println!("Tract area: Obtaining writer for tract area: source: {:?}, dims: {:?}",
-        //     ta.src_lyr_addr, ta.dims);
         ta.rw_vec().ok_or(CmnError::from("ThalamicTract::write")).map(|rv| rv.clone().write())
     }
 
@@ -144,30 +111,13 @@ impl ThalamicTract {
 
     pub fn buffer<'t>(&'t self, idx: usize) -> CmnResult<&TractBuffer> {
         self.tract_areas.by_index(idx).ok_or(CmnError::from("invalid tract idx"))
-            .map(|ta| ta.buffer())
+            .map(|ta| &ta.buffer)
     }
 }
 
 
-// #[derive(Debug)]
-// pub struct InputPathway {
-//     tract_area_id: usize,
-//     rx: TractReceiver,
-//     // cmd_uid: CommandUid,
-//     // cmd_idx: Option<usize>,
-// }
-
-
-// #[derive(Debug)]
-// pub struct OutputPathway {
-//     tract_area_id: usize,
-//     tx: TractSender,
-//     // cmd_uid: CommandUid,
-//     // cmd_idx: Option<usize>,
-// }
-
-
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum Pathway {
     Input { tract_area_id: usize, rx: TractReceiver, wait_for_frame: bool },
     Output { tract_area_id: usize, tx: TractSender },
@@ -181,35 +131,17 @@ pub enum Pathway {
 //   - output: from layer / area
 pub struct Thalamus {
     tract: ThalamicTract,
-    input_generators: MapStore<String, (InputGenerator, Vec<LayerAddress>)>,
     pathways: MapStore<LayerAddress, Pathway>,
     area_maps: MapStore<String, AreaMap>,
 }
 
 impl Thalamus {
     pub fn new(layer_map_schemes: LayerMapSchemeList, mut area_schemes: AreaSchemeList,
-            subcortex: &Subcortex, ocl_context: &Context) -> CmnResult<Thalamus> {
-        // [FIXME]:
-        let _ = ocl_context;
-
+            subcortex: &Subcortex, _ocl_context: &Context) -> CmnResult<Thalamus> {
         area_schemes.freeze();
         let area_schemes = area_schemes;
         let mut tract = ThalamicTract::new();
-        let input_generators = MapStore::with_capacity(16);
         let mut area_maps = MapStore::with_capacity(area_schemes.areas().len());
-
-        // /*=============================================================================
-        // ============================ THALAMIC (INPUT) AREAS ===========================
-        // =============================================================================*/
-        // for area_scheme in area_schemes.areas().iter().filter(|area_scheme|
-        //         layer_map_schemes[area_scheme.layer_map_name()].kind() == &LayerMapKind::Subcortical) {
-        //     let in_gen = try!(InputGenerator::new(&layer_map_schemes[area_scheme.layer_map_name()], area_scheme));
-        //     let addrs = in_gen.layer_addrs();
-        //     input_generators.insert(in_gen.area_name().to_owned(), (in_gen, addrs))
-        //         .map(|in_gen_tup| panic!("Duplicate 'InputGenerator' keys: [\"{}\"]. \
-        //             Only one external (thalamic) input source per area is allowed.",
-        //             in_gen_tup.0.area_name()));
-        // }
 
         /*=============================================================================
         =================================== ALL AREAS =================================
@@ -217,7 +149,7 @@ impl Thalamus {
         for (area_id, area_s) in area_schemes.areas().iter().enumerate() {
             assert!(area_s.area_id() == area_id);
             let area_map = AreaMap::new(area_id, area_s, &layer_map_schemes, &area_schemes,
-                &input_generators, subcortex)?;
+                subcortex)?;
 
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ",
                 area_s.name(), mt = cmn::MT);
@@ -247,8 +179,7 @@ impl Thalamus {
         }
 
         let thal = Thalamus {
-            tract: tract.init(),
-            input_generators: input_generators,
+            tract,
             pathways: MapStore::with_capacity(16),
             area_maps: area_maps,
         };
@@ -261,16 +192,13 @@ impl Thalamus {
         for pathway in self.pathways.values_mut().iter_mut() {
             match *pathway {
                 Pathway::Input { ref mut rx, wait_for_frame, .. } => {
-                    // All we need to do here is block until the frame is
-                    // ready before continuing on.
-
                     let future_read_guard = rx.recv(wait_for_frame)
                         .map(|buf_opt| buf_opt.map(|buf| buf.read_u8()))
                         .flatten()
                         .map(|_guard_opt| ())
                         .map_err(|err| panic!("{}", err));
 
-                    work_pool.complete(Box::new(future_read_guard))
+                    work_pool.complete(future_read_guard)
                         .expect("Thalamus::cycle_pathways")
                 },
                 Pathway::Output { .. } => unimplemented!(),
@@ -279,19 +207,8 @@ impl Thalamus {
     }
 
     /// Creates a thalamic tract pathway.
-    pub fn input_pathway(&mut self, src_lyr_addr: LayerAddress,
-            // buffer_idx_range: Range<usize>,
-            wait_for_frame: bool) -> TractSender {
-        // pub fn tract_pathway_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
-        //     -> (TractSender, TractReceiver)
-        let area = self.area_maps.by_index(src_lyr_addr.area_id())
-            .expect(&format!("Thalamus::input_pathway: \
-                Invalid layer address (area id): '{:?}'.", &src_lyr_addr));
-
-        let layer = area.layer(src_lyr_addr.area_id())
-            .expect(&format!("Thalamus::input_pathway: \
-                Invalid layer address (layer id): '{:?}'.", &src_lyr_addr));
-
+    pub fn input_pathway(&mut self, src_lyr_addr: LayerAddress, wait_for_frame: bool)
+            -> TractSender {
         let tract_area_id = self.tract.index_of(&src_lyr_addr)
             .expect(&format!("Thalamus::input_pathway: \
                 No thalamic tract area with layer address: '{:?}'.", &src_lyr_addr));
@@ -326,83 +243,38 @@ impl Thalamus {
     // have been corrected by ocl patch -- Verify]
     #[deprecated]
     pub fn cycle_input_generators(&mut self) {
-        for &mut (ref mut input_gen, ref layer_addr_list) in self.input_generators.values_mut().iter_mut() {
-            if input_gen.is_disabled() { continue; }
-            input_gen.cycle_next();
-            for &layer_addr in layer_addr_list.iter() {
-                // // TODO: InputGenerator needs to store tract index.
-                // let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
-                // let future_write = self.tract.write(tract_area_idx)
-                //     .expect("Thalamus::cycle_input_generators()");
-                // input_gen.write_into(layer_addr, future_write)
-            }
-        }
+        // for &mut (ref mut input_gen, ref layer_addr_list) in self.input_generators.values_mut().iter_mut() {
+        //     if input_gen.is_disabled() { continue; }
+        //     input_gen.cycle_next();
+        //     for &layer_addr in layer_addr_list.iter() {
+        //         // TODO: InputGenerator needs to store tract index.
+        //         let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
+        //         let future_write = self.tract.write(tract_area_idx)
+        //             .expect("Thalamus::cycle_input_generators()");
+        //         input_gen.write_into(layer_addr, future_write)
+        //     }
+        // }
+        unimplemented!();
     }
 
-    // [REMOVE ME]
-    // #[deprecated]
-    pub fn input_generator_idx<S: AsRef<str>>(&self, pathway_name: S) -> CmnResult<usize> {
-        match self.input_generators.indices().get(pathway_name.as_ref()) {
-            Some(&idx) => Ok(idx),
-            None => CmnError::err(format!("Thalamus::input_generator_idx(): \
-                No external pathway found named: '{}'.", pathway_name.as_ref())),
-        }
+    #[deprecated]
+    pub fn input_generator_idx<S: AsRef<str>>(&self, _pathway_name: S) -> CmnResult<usize> {
+        // match self.input_generators.indices().get(pathway_name.as_ref()) {
+        //     Some(&idx) => Ok(idx),
+        //     None => CmnError::err(format!("Thalamus::input_generator_idx(): \
+        //         No external pathway found named: '{}'.", pathway_name.as_ref())),
+        // }
+        unimplemented!();
     }
 
-    // [REMOVE ME]
-    // #[deprecated]
-    pub fn input_generator(&mut self, pathway_idx: usize) -> CmnResult<&mut InputGenerator> {
-        let pathway = try!(self.input_generators.by_index_mut(pathway_idx).ok_or(
-            CmnError::new(format!("Thalamus::input_generator_frame(): Invalid pathway index: '{}'.",
-            pathway_idx))));
-        Ok(&mut pathway.0)
+    #[deprecated]
+    pub fn input_generator(&mut self, _pathway_idx: usize) -> CmnResult<&mut InputGenerator> {
+        // let pathway = try!(self.input_generators.by_index_mut(pathway_idx).ok_or(
+        //     CmnError::new(format!("Thalamus::input_generator_frame(): Invalid pathway index: '{}'.",
+        //     pathway_idx))));
+        // Ok(&mut pathway.0)
+        unimplemented!();
     }
-
-    // pub fn input_generator_frame(&mut self, pathway_idx: usize) -> CmnResult<InputGeneratorFrame> {
-    //     let pathway = try!(self.input_generator(pathway_idx));
-    //     pathway.ext_frame_mut()
-    // }
-
-    // // [NOTE]: Incoming array values beyond the length of destination slice will
-    // // be silently ignored.
-    // fn intake_sensory_frame(&mut self, frame: SensoryFrame) -> CmnResult<()> {
-    //     // // DEBUG:
-    //     // println!("Intaking sensory frames...");
-
-    //     match frame {
-    //         SensoryFrame::F32Array16(arr) => {
-    //             // println!("Intaking sensory frame [pathway id: {}]: {:?} ...",
-    //             //     pathway_idx, arr);
-
-    //             // let pathway = match try!(self.cortex.thal_mut().input_generator_frame(pathway_idx)) {
-    //             let pathway = match self.cortex.thal_mut().input_generator(pathway_idx)? {
-    //                 InputGeneratorFrame::F32Slice(s) => s,
-    //                 f @ _ => panic!(format!("Flywheel::intake_sensory_frames(): Unsupported \
-    //                     InputGeneratorFrame variant: {:?}", f)),
-    //             };
-
-    //             for (i, dst) in pathway.iter_mut().enumerate() {
-    //                 *dst = arr[i];
-    //             }
-    //         },
-    //         SensoryFrame::PathwayConfig(pc) => match pc {
-    //             PathwayConfig::EncoderRanges(ranges) => {
-    //                 // match try!(self.cortex.thal_mut().input_generator(pathway_idx)).encoder() {
-    //                 //     &mut InputGeneratorEncoder::VectorEncoder(ref mut v) => {
-    //                 //         try!(v.set_ranges(&ranges.lock().unwrap()[..]));
-    //                 //     }
-    //                 //     _ => unimplemented!(),
-    //                 // }
-
-    //                 self.cortex.thal_mut().input_generator(pathway_idx)?
-    //                     .set_encoder_ranges(ranges);
-    //             }
-    //         },
-    //         SensoryFrame::Tract(_) => unimplemented!(),
-    //     }
-
-    //     Ok(())
-    // }
 
     pub fn tract(&self) -> &ThalamicTract { &self.tract }
     pub fn tract_mut(&mut self) -> &mut ThalamicTract { &mut self.tract }

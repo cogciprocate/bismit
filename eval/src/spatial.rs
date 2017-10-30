@@ -3,11 +3,9 @@ use std::collections::{BTreeMap, HashMap};
 use rand;
 use rand::distributions::{Range, IndependentSample};
 use vibi::bismit::map::*;
-use vibi::bismit::ocl::{Buffer, /*RwVec,*/ WriteGuard};
-use vibi::bismit::{map, Cortex, /*Thalamus,*/ /*SubcorticalNucleus,*/ /*SubcorticalNucleusLayer,*/
-    CorticalAreaSettings, Subcortex, InputGenerator};
+use vibi::bismit::ocl::{Buffer, WriteGuard};
+use vibi::bismit::{map, Cortex, CorticalAreaSettings, Subcortex, InputGenerator};
 use vibi::bismit::flywheel::{Command, Request, Response};
-// use vibi::bismit::map::{AreaMap};
 use vibi::bismit::encode::{self};
 use ::{Controls, Params};
 

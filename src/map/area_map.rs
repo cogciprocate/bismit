@@ -1,8 +1,7 @@
 use std::fmt::Display;
 use std::ops::{Range, Deref};
 use ocl::builders::{BuildOpt, ProgramBuilder};
-use cmn::{self, CorticalDims, MapStore, CmnResult};
-use ::InputGenerator;
+use cmn::{self, CorticalDims, CmnResult};
 use map::{SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapSchemeList,
     AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme, AxonTags, InputTrack};
 use subcortex::Subcortex;
@@ -23,14 +22,11 @@ pub struct AreaMap {
 
 impl AreaMap {
     pub fn new(area_id: usize, area_sch: &AreaScheme, layer_map_sl: &LayerMapSchemeList,
-            area_sl: &AreaSchemeList, _ext_paths: &MapStore<String, (InputGenerator, Vec<LayerAddress>)>,
-            subcortex: &Subcortex)
-            -> CmnResult<AreaMap>
-    {
+            area_sl: &AreaSchemeList, subcortex: &Subcortex) -> CmnResult<AreaMap> {
         println!("\n{mt}AREAMAP::NEW(): Area: \"{}\", eff areas: {:?}, aff areas: {:?}", area_sch.name(),
             area_sch.get_eff_areas(), area_sch.get_aff_areas(), mt = cmn::MT);
 
-        let layer_map = LayerMap::new(area_sch, layer_map_sl, area_sl, _ext_paths, subcortex)?;
+        let layer_map = LayerMap::new(area_sch, layer_map_sl, area_sl, subcortex)?;
 
         let dims = area_sch.dims().clone_with_depth(layer_map.depth());
 
@@ -166,15 +162,6 @@ impl AreaMap {
 
         output_slcs
     }
-
-    // // NEW NEW NEW
-    // /// Returns the slice range of the afferent output axon slices (FF_OUT).
-    // pub fn aff_out_slc_range(&self) -> Range<usize> {
-    //     let aff_out_slcs = self.aff_out_slcs();
-    //     let idz = 0;
-    //     let idn = aff_out_slcs.len() - 1;
-    //     (aff_out_slcs[idz] as usize)..(aff_out_slcs[idn] as usize + 1)
-    // }
 
     // NEW
     pub fn psal_layer(&self) -> &LayerInfo {
