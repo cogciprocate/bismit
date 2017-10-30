@@ -12,7 +12,7 @@ use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, 
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
-use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, TractSender};
+use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, TractSender, /*FutureSend*/};
 
 
 #[derive(Debug)]
@@ -49,8 +49,8 @@ pub enum InputGeneratorEncoder {
 impl InputGeneratorEncoder {
     /// Writes input data into a tract.
     pub fn write_into(&mut self, addr: LayerAddress, dims: TractDims, future_write: FutureWriteGuard<Vec<u8>>) {
-        let mut data = future_write.wait().unwrap();
-        let mut frame = TractFrameMut::new(data.as_mut_slice(), dims);
+        let mut buffer = future_write.wait().expect("InputGeneratorEncoder::write_into");
+        let mut frame = TractFrameMut::new(buffer.as_mut_slice(), dims);
 
         match *self {
             InputGeneratorEncoder::Custom(ref mut es) => {
@@ -117,29 +117,6 @@ impl InputGeneratorEncoder {
     // }
 }
 
-
-// pub struct SubcorticalNucleusLayer {
-//     name: &'static str,
-//     addr: LayerAddress,
-//     axn_sig: AxonSignature,
-//     axn_topology: AxonTopology,
-//     dims: Option<CorticalDims>,
-// }
-
-// impl SubcorticalNucleusLayer {
-//     pub fn set_dims(&mut self, dims: Option<CorticalDims>) {
-//         self.dims = dims;
-//     }
-
-//     pub fn name(&self) -> &'static str { self.name }
-//     pub fn addr(&self) -> &LayerAddress { &self.addr }
-//     pub fn axn_sig(&self) -> &AxonSignature { &self.axn_sig }
-//     pub fn axn_tags(&self) -> &AxonTags { &self.axn_sig.tags() }
-//     pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
-//     pub fn dims(&self) -> Option<&CorticalDims> { self.dims.as_ref() }
-// }
-
-
 enum EncoderCmd {
     WriteInto {addr: LayerAddress, dims: TractDims, future_write: FutureWriteGuard<Vec<u8>> },
     Cycle,
@@ -148,14 +125,8 @@ enum EncoderCmd {
     Exit,
 }
 
-// enum EncoderRes {
-
-// }
-
 
 pub struct InputGeneratorLayer {
-    // axn_sig: AxonSignature,
-    // axn_topology: AxonTopology,
     sub: SubcorticalNucleusLayer,
     pathway: Option<TractSender>,
 }
@@ -166,7 +137,6 @@ impl InputGeneratorLayer {
     }
 
     pub fn axn_sig(&self) -> &AxonSignature {
-        // &self.axn_sig
         match *self.sub.axon_domain() {
             AxonDomain::Output(ref sig) => sig,
             _ => panic!("InputGeneratorLayer::axn_sig: Input generator layers must be \
@@ -196,7 +166,6 @@ impl InputGeneratorLayer {
 }
 
 
-
 /// An input source.
 ///
 // [NOTE (out of date)]: To implement multiple layers from a single input source:
@@ -205,71 +174,46 @@ impl InputGeneratorLayer {
 pub struct InputGenerator {
     area_id: usize,
     area_name: String,
-    // encoder: InputGeneratorEncoder,
     layers: HashMap<LayerAddress, InputGeneratorLayer>,
-    // thalamic_pathways: Vec<>,
     tx: SyncSender<EncoderCmd>,
     _thread: Option<JoinHandle<()>>,
-    // rx: Receiver<EncoderRes>,
     disabled: bool,
 }
 
 impl InputGenerator {
-    // [FIXME]: Determine (or have passed in) the layer depth corresponding to this source.
-    pub fn new(plmap: &LayerMapScheme, pamap: &AreaScheme) -> CmnResult<InputGenerator> {
-        let p_layers: Vec<&LayerScheme> = plmap.layers().iter().map(|pl| pl).collect();
-
-        // assert!(pamap.get_encoder().layer_count() == p_layers.len(), "InputGenerator::new(): \
-        //     Inputs for the area scheme, \"{}\" ({}), must equal the layers in the layer map \
-        //     scheme, '{}' ({}). Ensure `EncoderScheme::layer_count()` is set correctly for {:?}",
-        //     pamap.name(), pamap.get_encoder().layer_count(), plmap.name(), p_layers.len(),
-        //     pamap.get_encoder());
+    pub fn new(layer_map_schemes: &LayerMapScheme, area_schemes: &AreaScheme) -> CmnResult<InputGenerator> {
+        let layer_schemes: Vec<&LayerScheme> = layer_map_schemes.layers().iter().map(|pl| pl).collect();
 
         let mut layers = HashMap::with_capacity(4);
         let mut lyr_addr_list = Vec::with_capacity(4);
         let mut lyr_dims_list = Vec::with_capacity(4);
         let mut lyr_axn_sigs_list = Vec::with_capacity(4);
 
-        for p_layer in p_layers.into_iter() {
-            let lyr_name = p_layer.name();
-            let lyr_addr = LayerAddress::new(pamap.area_id(), p_layer.layer_id());
-            let axn_topology = p_layer.kind().axn_topology();
-            let lyr_depth = p_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
+        for layer_scheme in layer_schemes.into_iter() {
+            let lyr_name = layer_scheme.name();
+            let lyr_addr = LayerAddress::new(area_schemes.area_id(), layer_scheme.layer_id());
+            let axn_topology = layer_scheme.kind().axn_topology();
+            let lyr_depth = layer_scheme.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
             let dims = match axn_topology {
-                AxonTopology::Spatial => Some(pamap.dims().clone_with_depth(lyr_depth)),
+                AxonTopology::Spatial => Some(area_schemes.dims().clone_with_depth(lyr_depth)),
                 AxonTopology::Horizontal => None,
                 AxonTopology::None => None,
             };
 
-            ////// [FIXME]: Determine if either of these checks is still necessary or relevant:
-            // assert!(layer_tags.contains(map::OUTPUT), "InputGenerator::new(): External ('Thalamic') areas \
-            //     must have a layer or layers with an 'OUTPUT' tag. [area: '{}', layer map: '{}']",
-            //     pamap.name(), plmap.name());
-            // assert!(p_layer.axon_domain().is_output(), "InputGenerator::new(): External areas \
-            //     must currently be output layers. [area: '{}', layer: '{}']", pamap.name(), plmap.name());
-
-            let lyr_axn_sig = match *p_layer.axn_domain() {
+            let lyr_axn_sig = match *layer_scheme.axn_domain() {
                 AxonDomain::Output(ref axn_sig) => axn_sig.clone(),
                 _ => return Err(format!("InputGenerator::new(): External areas \
-                    must currently be output layers. [area: '{}', layer: '{}']", pamap.name(),
-                    plmap.name()).into()),
+                    must currently be output layers. [area: '{}', layer: '{}']", area_schemes.name(),
+                    layer_map_schemes.name()).into()),
             };
 
             lyr_addr_list.push(lyr_addr.clone());
             lyr_dims_list.push(dims.clone());
             lyr_axn_sigs_list.push(lyr_axn_sig.clone());
 
-            // layers.insert(lyr_addr.clone(), SubcorticalNucleusLayer {
-            //     name: lyr_name,
-            //     addr: lyr_addr,
-            //     axn_sig: lyr_axn_sig,
-            //     axn_topology: axn_topology,
-            //     dims: dims,
-            // });
-
             let layer = InputGeneratorLayer {
-                sub: SubcorticalNucleusLayer::new(lyr_name, lyr_addr, p_layer.axn_domain().clone(),
+                sub: SubcorticalNucleusLayer::new(lyr_name, lyr_addr, layer_scheme.axn_domain().clone(),
                     axn_topology, dims.unwrap_or(CorticalDims::new(0, 0, 0, None))),
                 pathway: None,
             };
@@ -279,12 +223,10 @@ impl InputGenerator {
 
         let mut disabled = false;
 
-        let encoder = match *pamap.get_encoder() {
+        let encoder = match *area_schemes.get_encoder() {
             EncoderScheme::IdxStreamer { ref file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
-                let mut is = IdxStreamer::new(layers[&lyr_addr_list[0]].sub.dims()
-                    // .expect("InputGenerator::new(): Layer dims not set properly.")
-                    .clone(),
+                let mut is = IdxStreamer::new(layers[&lyr_addr_list[0]].sub.dims() .clone(),
                     file_name.clone(), cyc_per, scale);
 
                 if loop_frames > 0 {
@@ -305,9 +247,7 @@ impl InputGenerator {
             },
             EncoderScheme::SensoryTract => {
                 assert_eq!(layers.len(), 1);
-                let st = SensoryTract::new(layers[&lyr_addr_list[0]].sub.dims()
-                    // .expect("InputGenerator::new(): Layer dims not set properly.")
-                    );
+                let st = SensoryTract::new(layers[&lyr_addr_list[0]].sub.dims());
                 InputGeneratorEncoder::SensoryTract(Box::new(st))
             },
             EncoderScheme::ScalarSequence { range, incr } => {
@@ -353,7 +293,7 @@ impl InputGenerator {
         };
 
         let (tx, rx) = mpsc::sync_channel(1);
-        let thread_name = format!("InputGeneratorEncoder_{}", pamap.name());
+        let thread_name = format!("InputGeneratorEncoder_{}", area_schemes.name());
         let thread_handle: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let mut encoder = encoder;
             let rx = rx;
@@ -370,14 +310,10 @@ impl InputGenerator {
             }
         }).unwrap();
 
-        // let thalamic_pathways = Vec::with_capacity(self.layers.len());
-
         Ok(InputGenerator {
-            area_id: pamap.area_id(),
-            area_name: pamap.name().to_owned(),
+            area_id: area_schemes.area_id(),
+            area_name: area_schemes.name().to_owned(),
             layers: layers,
-            // thalamic_pathways,
-            // encoder: encoder,
             _thread: Some(thread_handle),
             tx: tx,
             disabled,
@@ -387,23 +323,32 @@ impl InputGenerator {
     // Specify a custom encoder tract. Input scheme must have been configured
     // as `EncoderScheme::Custom` in `AreaScheme`.
     pub fn set_encoder(&self, tract: Box<InputGeneratorTract>) {
-        // match self.encoder {
-        //     InputGeneratorEncoder::CustomUnspecified => (),
-        //     _ => return CmnError::err("InputGenerator::specify_encoder(): Encoder already specified."),
-        // }
-        // self.encoder = InputGeneratorEncoder::Custom(tract);
         self.tx.send(EncoderCmd::SetEncoder(InputGeneratorEncoder::Custom(tract))).unwrap();
     }
 
     /// Writes input data into a tract.
-    // pub fn write_into(&mut self, addr: &LayerAddress, mut frame: TractFrameMut, _: &mut EventList) {
     pub fn write_into(&self, addr: LayerAddress, future_write: FutureWriteGuard<Vec<u8>>) {
         if !self.disabled {
-            let dims = self.layers[&addr].sub.dims()
-                // .expect(&format!("Dimensions don't exist for external input area: \"{}\", \
-                //     addr: '{:?}' ", self.area_name, addr))
-                    .into();
-            self.tx.send(EncoderCmd::WriteInto { addr, dims, future_write }).unwrap();
+            let layer = &self.layers[&addr];
+            let dims = layer.sub.dims().into();
+            self.tx.send(EncoderCmd::WriteInto { addr: addr, dims, future_write }).unwrap();
+        }
+    }
+
+    /// Writes input data into a tract.
+    pub fn send_to_pathway(&self, layer: &InputGeneratorLayer) {
+        if !self.disabled {
+            let pathway = layer.pathway.as_ref().expect("no pathway set");
+            let future_write = match pathway.send().wait().unwrap() {
+                Some(fw) => fw.write_u8(),
+                None => panic!("tract wants to skip frame"),
+            };
+
+            self.tx.send(EncoderCmd::WriteInto {
+                addr: *layer.sub().addr(),
+                dims: layer.sub.dims().into(),
+                future_write,
+            }).unwrap();
         }
     }
 
@@ -419,17 +364,12 @@ impl InputGenerator {
         &mut self.layers
     }
 
-    // pub fn layer(&self, addr: LayerAddress) -> &SubcorticalNucleusLayer {
-    //     self.layers.get(&addr).expect(&format!("InputGenerator::layer(): Invalid addr: {:?}", addr))
-    // }
-
     pub fn layer_addrs(&self) -> Vec<LayerAddress> {
         self.layers.iter().map(|(_, layer)| layer.sub.addr().clone()).collect()
     }
 
     pub fn area_id(&self) -> usize { self.area_id }
     pub fn area_name<'a>(&'a self) -> &'a str { &self.area_name }
-    // pub fn encoder(&mut self) -> &mut InputGeneratorEncoderKind { &mut self.encoder_kind }
     pub fn is_disabled(&self) -> bool { self.disabled }
 }
 
@@ -441,13 +381,18 @@ impl Drop for InputGenerator {
 }
 
 impl SubcorticalNucleus for InputGenerator {
-    fn create_pathways(&mut self, _thal: &mut Thalamus) {
-        for _layer in self.layers.values_mut() {
-
+    fn create_pathways(&mut self, thal: &mut Thalamus) {
+        for layer in self.layers.values_mut() {
+            let tx = thal.input_pathway(*layer.sub().addr(), true);
+            layer.pathway = Some(tx);
         }
     }
 
     fn pre_cycle(&mut self, _thal: &mut Thalamus) {
+        // println!("Pre-cycling...");
+        for layer in self.layers.values() {
+            self.send_to_pathway(layer);
+        }
         self.cycle_next()
     }
 

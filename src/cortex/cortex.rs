@@ -1,15 +1,43 @@
+#![allow(unused_imports, dead_code, unused_variables)]
+
+use std::thread::{self, JoinHandle};
 use time;
-
+use futures::{Sink, Stream, Future};
+use futures::sync::mpsc::{self, Sender};
+use tokio_core::reactor::{Core, Remote};
 // use cpuprofiler::PROFILER;
-
 use ocl::{self, Platform, Context, Device};
 use cortex::{CorticalArea, CorticalAreaSettings};
-use ::{Thalamus};
-use cmn::MapStore;
+
+use cmn::{MapStore, CmnResult};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
-use cmn::{CmnResult};
-// use thalamus::{InputGenerator, InputGeneratorFrame};
-use subcortex::Subcortex;
+use subcortex::{Subcortex, Thalamus};
+
+
+pub struct WorkPool {
+    work_tx: Sender<Box<Future<Item=(), Error=()> + Send>>,
+    reactor_thread: Option<JoinHandle<()>>,
+}
+
+impl WorkPool {
+    pub fn new() -> WorkPool {
+        let (tx, rx) = mpsc::channel(0);
+        // let thread_name = format!("BismitWorkPool_{}", area_name.clone());
+        let reactor_thread_name = "bismit_work_pool_reactor_core";
+
+        let core_thread: JoinHandle<_> = thread::Builder::new().name(core_thread_name).spawn(move || {
+            // let rx = rx;
+            let mut core = Core::new().unwrap();
+            let work = rx.buffer_unordered(8).for_each(|_| Ok(()));
+            core.run(work).unwrap();
+        }).unwrap();
+
+        WorkPool {
+            work_tx: tx
+            reactor_thread: thread
+        }
+    }
+}
 
 
 
@@ -89,7 +117,7 @@ impl Cortex {
         // PROFILER.lock().unwrap().start("./bismit.profile").unwrap();
 
         self.thal.cycle_pathways();
-        self.thal.cycle_input_generators();
+        // self.thal.cycle_input_generators();
 
         // if let Some(ref mut s) = self.sub {
         //     s.pre_cycle(&mut self.thal)

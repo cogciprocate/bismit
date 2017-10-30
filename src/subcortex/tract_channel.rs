@@ -120,6 +120,12 @@ pub enum FutureSend {
     Wait(Receiver<()>, Option<WriteBuffer>),
 }
 
+impl FutureSend {
+    pub fn wait(self) -> Result<Option<WriteBuffer>, Canceled> {
+        <Self as Future>::wait(self)
+    }
+}
+
 impl Future for FutureSend {
     type Item = Option<WriteBuffer>;
     type Error = Canceled;

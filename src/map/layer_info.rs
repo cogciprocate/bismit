@@ -187,11 +187,7 @@ impl LayerInfo {
                             let sub_layer = subcortical_nucleus.layer(src_lyr_addr.clone())
                                 .expect(&format!("LayerInfo::new(): Invalid addr: {:?}", src_lyr_addr));;
 
-                            let sub_layer_dims = sub_layer.dims()
-                                // .expect(&format!("LayerInfo::new(): \
-                                //     Subcortical nucleus layer dims for layer '{}' in area '{}' are not set.",
-                                //     sub_layer.name(), src_area_name))
-                                .clone();
+                            let sub_layer_dims = sub_layer.dims().clone();
 
                             (sub_layer_dims, sub_layer.axon_topology())
                         },
@@ -265,11 +261,7 @@ impl LayerInfo {
                         let sub_layer = subcortical_nucleus.layer(sub_lyr_addr)
                             .expect(&format!("LayerInfo::new(): Invalid addr: {:?}", sub_lyr_addr));
 
-                        let sub_layer_dims = sub_layer.dims()
-                            // .expect(&format!(
-                            //     "LayerInfo::new(): Subcortical nucleus layer dims for layer \
-                            //     '{}' in area '{}' are not set.", sub_layer.name(), area_sch.name()))
-                            ;
+                        let sub_layer_dims = sub_layer.dims();
 
                         irregular_layer_dims = Some(sub_layer_dims.clone());
                         sub_layer_dims.columns()

@@ -34,23 +34,17 @@ pub struct SubcorticalNucleusLayer {
     name: &'static str,
     addr: LayerAddress,
     axon_domain: AxonDomain,
-    // axon_sig: AxonSignature,
     axon_topology: AxonTopology,
-    // dims: Option<CorticalDims>,
     dims: CorticalDims,
 }
 
 impl SubcorticalNucleusLayer {
-    pub fn new(name: &'static str, addr: LayerAddress, /*axn_sig: AxonSignature,*/
-            axon_domain: AxonDomain, axon_topology: AxonTopology,
-            // dims: Option<CorticalDims>
-            dims: CorticalDims
-            )
+    pub fn new(name: &'static str, addr: LayerAddress, axon_domain: AxonDomain,
+            axon_topology: AxonTopology, dims: CorticalDims)
             -> SubcorticalNucleusLayer {
         SubcorticalNucleusLayer {
             name,
             addr,
-            // axn_sig,
             axon_domain,
             axon_topology,
             dims,
@@ -63,11 +57,8 @@ impl SubcorticalNucleusLayer {
 
     pub fn name(&self) -> &'static str { self.name }
     pub fn addr(&self) -> &LayerAddress { &self.addr }
-    // pub fn axn_sig(&self) -> &AxonSignature { &self.axn_sig }
-    // pub fn axn_tags(&self) -> &AxonTags { &self.axn_sig.tags() }
     pub fn axon_domain(&self) -> &AxonDomain { &self.axon_domain }
     pub fn axon_topology(&self) -> AxonTopology { self.axon_topology.clone() }
-    // pub fn dims(&self) -> Option<&CorticalDims> { self.dims.as_ref() }
     pub fn dims(&self) -> &CorticalDims { &self.dims }
 }
 
@@ -78,8 +69,6 @@ pub trait SubcorticalNucleus: 'static + Send {
     fn create_pathways(&mut self, thal: &mut Thalamus);
     fn pre_cycle(&mut self, thal: &mut Thalamus);
     fn post_cycle(&mut self, thal: &mut Thalamus);
-    // fn layers<'a>(&'a self) -> Iter<'a, SubcorticalNucleusLayer>;
-    // fn layers_mut<'a>(&'a mut self) -> IterMut<'a, SubcorticalNucleusLayer>;
     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer>;
     fn area_name<'a>(&'a self) -> &'a str;
 }
@@ -113,15 +102,13 @@ impl Subcortex {
 
     pub fn pre_cycle(&mut self, thal: &mut Thalamus) {
         for nucleus in self.nuclei.iter_mut() {
-            thal.area_maps();
-            let _ = nucleus;
+            nucleus.pre_cycle(thal);
         }
     }
 
     pub fn post_cycle(&mut self, thal: &mut Thalamus) {
         for nucleus in self.nuclei.iter_mut() {
-            thal.area_maps();
-            let _ = nucleus;
+            nucleus.post_cycle(thal);
         }
     }
 

@@ -5,8 +5,6 @@ use std::collections::{HashMap, HashSet, BTreeMap};
 use std::ops::Range;
 use std::borrow::Borrow;
 use futures::{Sink, Stream, Future};
-// use futures::future::BoxFuture;
-
 use futures::sync::mpsc::{self, Sender};
 use tokio_core::reactor::{Core, Remote};
 use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue, OclPrm, RwVec};

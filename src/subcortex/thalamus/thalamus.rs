@@ -18,6 +18,7 @@ use std::ops::Range;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use futures::Future;
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
 use map::{AreaMap, LayerMapKind, LayerAddress, CommandUid, AreaSchemeList, LayerMapSchemeList};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
@@ -255,48 +256,55 @@ impl Thalamus {
         Ok(thal)
     }
 
-
-
-
-
-
     /// Cycles thalamic tract pathways.
     pub fn cycle_pathways(&mut self) {
-        // for (_, pathway) in
+        for pathway in self.pathways.values_mut().iter_mut() {
+            match *pathway {
+                Pathway::Input { ref mut rx, wait_for_frame, .. } => {
+                    // All we need to do here is block until the frame is
+                    // ready before continuing on.
 
+                    rx.recv(wait_for_frame)
+                        .map(|buf_opt| buf_opt.map(|buf| buf.read_u8()))
+                        .flatten()
+                        .wait().unwrap();
+                },
+                Pathway::Output { .. } => unimplemented!(),
+            }
+        }
     }
 
-
-
-
     /// Creates a thalamic tract pathway.
-    pub fn input_pathway(&mut self, src_lyr_addr: LayerAddress, buffer_idx_range: Range<usize>,
+    pub fn input_pathway(&mut self, src_lyr_addr: LayerAddress,
+            // buffer_idx_range: Range<usize>,
             wait_for_frame: bool) -> TractSender {
         // pub fn tract_pathway_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
         //     -> (TractSender, TractReceiver)
         let area = self.area_maps.by_index(src_lyr_addr.area_id())
-            .expect(&format!("Thalamus::new_input_pathway: \
+            .expect(&format!("Thalamus::input_pathway: \
                 Invalid layer address (area id): '{:?}'.", &src_lyr_addr));
 
         let layer = area.layer(src_lyr_addr.area_id())
-            .expect(&format!("Thalamus::new_input_pathway: \
+            .expect(&format!("Thalamus::input_pathway: \
                 Invalid layer address (layer id): '{:?}'.", &src_lyr_addr));
 
-
-
         let tract_area_id = self.tract.index_of(&src_lyr_addr)
-            .expect(&format!("Thalamus::new_input_pathway: \
+            .expect(&format!("Thalamus::input_pathway: \
                 No thalamic tract area with layer address: '{:?}'.", &src_lyr_addr));
 
         let buffer = match self.tract.buffer(tract_area_id) {
             Ok(&TractBuffer::RwVec(ref rw_vec)) => rw_vec.clone(),
-            Ok(tb @ _) => panic!("Thalamus::new_input_pathway: \
+            Ok(tb @ _) => panic!("Thalamus::input_pathway: \
                 Unsupported tract buffer type: '{:?}'.", tb),
-            Err(err) => panic!("Thalamus::new_input_pathway: \
+            Err(err) => panic!("Thalamus::input_pathway: \
                 (tract area id: {}): {}", tract_area_id, err),
         };
 
+        let buffer_idx_range = 0..buffer.len();
         let (tx, rx) = subcortex::tract_channel_single_u8(buffer, buffer_idx_range, true);
+
+        // Send a dummy/init frame, dropping the guard immediately:
+        tx.send().wait().unwrap().unwrap().write_u8().wait().unwrap();
 
         let pathway = Pathway::Input { tract_area_id, rx, wait_for_frame };
         self.pathways.insert(src_lyr_addr, pathway);
@@ -305,13 +313,14 @@ impl Thalamus {
     }
 
 
-
+    // [REMOVE ME]
+    //
     // Multiple source output areas disabled.
     //
     // NOTE: Do not disable `RwVec` locking. A write lock must be queued each
     // cycle to prevent read locks piling up. [NOTE: 2017-Oct-14: This may
     // have been corrected by ocl patch -- Verify]
-    // #[deprecated]
+    #[deprecated]
     pub fn cycle_input_generators(&mut self) {
         for &mut (ref mut input_gen, ref layer_addr_list) in self.input_generators.values_mut().iter_mut() {
             if input_gen.is_disabled() { continue; }
@@ -326,7 +335,7 @@ impl Thalamus {
         }
     }
 
-
+    // [REMOVE ME]
     // #[deprecated]
     pub fn input_generator_idx<S: AsRef<str>>(&self, pathway_name: S) -> CmnResult<usize> {
         match self.input_generators.indices().get(pathway_name.as_ref()) {
@@ -336,6 +345,7 @@ impl Thalamus {
         }
     }
 
+    // [REMOVE ME]
     // #[deprecated]
     pub fn input_generator(&mut self, pathway_idx: usize) -> CmnResult<&mut InputGenerator> {
         let pathway = try!(self.input_generators.by_index_mut(pathway_idx).ok_or(
