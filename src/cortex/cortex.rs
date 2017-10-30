@@ -1,17 +1,20 @@
-#![allow(unused_imports, dead_code, unused_variables)]
+// #![allow(unused_imports, dead_code, unused_variables)]
 
 use std::thread::{self, JoinHandle};
 use time;
 use futures::{Sink, Stream, Future};
 use futures::sync::mpsc::{self, Sender};
 use futures_cpupool::{CpuPool, Builder as CpuPoolBuilder};
-use tokio_core::reactor::{Core, Remote, Handle};
+use tokio_core::reactor::{Core, /*Remote,*/ /*Handle*/};
 // use cpuprofiler::PROFILER;
 use ocl::{self, Platform, Context, Device};
-use cmn::{CmnError, CmnResult, MapStore};
+use cmn::{/*CmnError,*/ CmnResult, MapStore};
 use cortex::{CorticalArea, CorticalAreaSettings};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use subcortex::{Subcortex, Thalamus};
+
+
+const WORK_POOL_BUFFER_SIZE: usize = 32;
 
 
 pub struct WorkPool {
@@ -28,7 +31,7 @@ impl WorkPool {
         let reactor_thread: JoinHandle<_> = thread::Builder::new()
                 .name(reactor_thread_name).spawn(move || {
             let mut core = Core::new().unwrap();
-            let work = reactor_rx.buffer_unordered(8).for_each(|_| Ok(()));
+            let work = reactor_rx.buffer_unordered(WORK_POOL_BUFFER_SIZE).for_each(|_| Ok(()));
             core.run(work).unwrap();
         }).unwrap();
 
@@ -148,16 +151,17 @@ impl Cortex {
         // if let Some(ref mut s) = self.sub {
         //     s.pre_cycle(&mut self.thal)
         // }
-        self.sub.pre_cycle(&mut self.thal);
+        self.sub.pre_cycle(&mut self.thal, &mut self.work_pool);
 
         for area in self.areas.values_mut() {
-            area.cycle(&mut self.thal).expect("Cortex::cycle(): Cortical area cycling error");
+            area.cycle(&mut self.thal, &mut self.work_pool)
+                .expect("Cortex::cycle(): Cortical area cycling error");
         }
 
         // if let Some(ref mut s) = self.sub {
         //     s.post_cycle(&mut self.thal)
         // }
-        self.sub.post_cycle(&mut self.thal);
+        self.sub.post_cycle(&mut self.thal, &mut self.work_pool);
 
         // PROFILER.lock().unwrap().stop().unwrap();
     }

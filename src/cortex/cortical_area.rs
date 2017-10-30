@@ -15,7 +15,8 @@ use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind
     ExecutionGraph, CellClass, LayerTags, LayerAddress, CommandUid};
 use ::Thalamus;
 use cortex::{AxonSpace, /*Minicolumns,*/ InhibitoryInterneuronNetwork, PyramidalLayer,
-    SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother, PyrOutputter};
+    SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother, PyrOutputter,
+    WorkPool};
 use subcortex::{self, TractBuffer, TractSender, TractReceiver};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
@@ -346,9 +347,9 @@ pub struct CorticalArea {
     cycle_order: Vec<usize>,
     // TODO: Move to thalamus.
     exe_graph: ExecutionGraph,
-    work_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
-    // TODO: Move this to a centralized thread pool on thalamus or cortex.
-    _work_thread: Option<JoinHandle<()>>,
+    // work_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
+    // // TODO: Move this to a centralized thread pool on thalamus or cortex.
+    // _work_thread: Option<JoinHandle<()>>,
 
     samplers: Vec<Sampler>,
 }
@@ -655,16 +656,16 @@ impl CorticalArea {
         =========================== WORK COMPLETION THREAD ============================
         =============================================================================*/
 
-        let (tx, rx) = mpsc::channel(0);
-        let thread_name = format!("CorticalArea_{}", area_name.clone());
+        // let (tx, rx) = mpsc::channel(0);
+        // let thread_name = format!("CorticalArea_{}", area_name.clone());
 
-        // TODO: Move this to a centralized thread pool on thalamus or cortex.
-        let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
-            let rx = rx;
-            let mut core = Core::new().unwrap();
-            let work = rx.buffer_unordered(8).for_each(|_| Ok(()));
-            core.run(work).unwrap();
-        }).unwrap();
+        // // TODO: Move this to a centralized thread pool on thalamus or cortex.
+        // let thread: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
+        //     let rx = rx;
+        //     let mut core = Core::new().unwrap();
+        //     let work = rx.buffer_unordered(8).for_each(|_| Ok(()));
+        //     core.run(work).unwrap();
+        // }).unwrap();
 
         /*=============================================================================
         ===============================================================================
@@ -692,8 +693,8 @@ impl CorticalArea {
             settings: settings,
             cycle_order,
             exe_graph: exe_graph,
-            work_tx: Some(tx),
-            _work_thread: Some(thread),
+            // work_tx: Some(tx),
+            // _work_thread: Some(thread),
             samplers: Vec::with_capacity(8),
         };
 
@@ -773,10 +774,10 @@ impl CorticalArea {
     ///
     //
     // * TODO: ISOLATE LEARNING INTO SEPARATE THREAD
-    pub fn cycle(&mut self, thal: &mut Thalamus) -> CmnResult<()> {
+    pub fn cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
         // (1.) Axon Intake:
         self.axns.intake(thal, &mut self.exe_graph, self.settings.bypass_filters,
-            &mut self.work_tx)?;
+            work_pool)?;
 
         // (2.) SSTs Cycle:
         if !self.settings.disable_sscs {
@@ -838,10 +839,10 @@ impl CorticalArea {
         // self.flush_queues();
 
         // (9.) Axon Output:
-        self.axns.output(thal, &mut self.exe_graph, &mut self.work_tx)?;
+        self.axns.output(thal, &mut self.exe_graph, work_pool)?;
 
         // (10.) Samplers:
-        self.cycle_samplers()?;
+        self.cycle_samplers(work_pool)?;
 
         // println!("######### Cycle complete.");
 
@@ -866,7 +867,7 @@ impl CorticalArea {
     }
 
     /// Cycles through sampling requests
-    fn cycle_samplers(&mut self) -> CmnResult<()> {
+    fn cycle_samplers(&mut self, work_pool: &mut WorkPool) -> CmnResult<()> {
         // // NOTE: Enable for testing only:
         // ::std::thread::sleep(::std::time::Duration::from_millis(1000));
         for sampler in &self.samplers {
@@ -890,8 +891,9 @@ impl CorticalArea {
                             .map(|_guard| ())
                             .map_err(|err| panic!("{}", err));
 
-                        let wtx = self.work_tx.take().unwrap();
-                        self.work_tx.get_or_insert(wtx.send(Box::new(future_read)).wait()?);
+                        // let wtx = self.work_tx.take().unwrap();
+                        // self.work_tx.get_or_insert(wtx.send(Box::new(future_read)).wait()?);
+                        work_pool.complete(Box::new(future_read))?;
                     },
                     _ => unimplemented!(),
                 }
@@ -1063,8 +1065,8 @@ impl CorticalArea {
 impl Drop for CorticalArea {
     fn drop(&mut self) {
         println!("Releasing work thread for '{}'... ", &self.name);
-        self.work_tx.take().unwrap().close().unwrap();
-        self._work_thread.take().unwrap().join().unwrap();
+        // self.work_tx.take().unwrap().close().unwrap();
+        // self._work_thread.take().unwrap().join().unwrap();
         print!("Releasing OpenCL components for '{}'... ", &self.name);
         print!("[ Buffers ][ Event Lists ][ Program ][ Command Queues ]");
         print!(" ...complete. \n");

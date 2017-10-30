@@ -13,6 +13,7 @@ use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoS
     VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
 use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, TractSender, /*FutureSend*/};
+use cortex::WorkPool;
 
 
 #[derive(Debug)]
@@ -327,6 +328,7 @@ impl InputGenerator {
     }
 
     /// Writes input data into a tract.
+    #[deprecated]
     pub fn write_into(&self, addr: LayerAddress, future_write: FutureWriteGuard<Vec<u8>>) {
         if !self.disabled {
             let layer = &self.layers[&addr];
@@ -388,15 +390,14 @@ impl SubcorticalNucleus for InputGenerator {
         }
     }
 
-    fn pre_cycle(&mut self, _thal: &mut Thalamus) {
-        // println!("Pre-cycling...");
+    fn pre_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {
         for layer in self.layers.values() {
             self.send_to_pathway(layer);
         }
         self.cycle_next()
     }
 
-    fn post_cycle(&mut self, _thal: &mut Thalamus) {}
+    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {}
 
 
     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {

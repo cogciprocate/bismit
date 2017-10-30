@@ -330,11 +330,11 @@ impl Thalamus {
             if input_gen.is_disabled() { continue; }
             input_gen.cycle_next();
             for &layer_addr in layer_addr_list.iter() {
-                // TODO: InputGenerator needs to store tract index.
-                let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
-                let future_write = self.tract.write(tract_area_idx)
-                    .expect("Thalamus::cycle_input_generators()");
-                input_gen.write_into(layer_addr, future_write)
+                // // TODO: InputGenerator needs to store tract index.
+                // let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
+                // let future_write = self.tract.write(tract_area_idx)
+                //     .expect("Thalamus::cycle_input_generators()");
+                // input_gen.write_into(layer_addr, future_write)
             }
         }
     }

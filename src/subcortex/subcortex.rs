@@ -8,6 +8,7 @@ use subcortex::Thalamus;
 use cmn::{MapStore, CorticalDims};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
+use cortex::WorkPool;
 
 // [NOTES]:
 //
@@ -67,8 +68,8 @@ impl SubcorticalNucleusLayer {
 /// A subcortical nucleus.
 pub trait SubcorticalNucleus: 'static + Send {
     fn create_pathways(&mut self, thal: &mut Thalamus);
-    fn pre_cycle(&mut self, thal: &mut Thalamus);
-    fn post_cycle(&mut self, thal: &mut Thalamus);
+    fn pre_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool);
+    fn post_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool);
     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer>;
     fn area_name<'a>(&'a self) -> &'a str;
 }
@@ -100,15 +101,15 @@ impl Subcortex {
 
     }
 
-    pub fn pre_cycle(&mut self, thal: &mut Thalamus) {
+    pub fn pre_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) {
         for nucleus in self.nuclei.iter_mut() {
-            nucleus.pre_cycle(thal);
+            nucleus.pre_cycle(thal, work_pool);
         }
     }
 
-    pub fn post_cycle(&mut self, thal: &mut Thalamus) {
+    pub fn post_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) {
         for nucleus in self.nuclei.iter_mut() {
-            nucleus.post_cycle(thal);
+            nucleus.post_cycle(thal, work_pool);
         }
     }
 
