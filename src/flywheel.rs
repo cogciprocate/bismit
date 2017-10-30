@@ -298,7 +298,7 @@ impl Flywheel {
                 },
             }
 
-            self.output_motor_frames();
+            // self.output_motor_frames();
 
             // Process pending requests:
             self.fulfill_requests();
@@ -396,6 +396,7 @@ impl Flywheel {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn output_motor_frames(&self) {
         // for ref mot_tx in self.motor_txs.iter() {
         //     match mot_tx.try_recv() {

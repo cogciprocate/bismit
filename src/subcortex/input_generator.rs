@@ -1,18 +1,16 @@
-// use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::sync::mpsc::{self, SyncSender, /*Receiver*/};
+use std::sync::mpsc::{self, SyncSender};
 use std::collections::HashMap;
 use std::fmt::Debug;
-// use std::mem::{self, Discriminant};
 use find_folder::Search;
-use cmn::{self, CorticalDims, CmnResult, /*CmnError,*/ TractDims};
+use cmn::{self, CorticalDims, CmnResult, TractDims};
 use ocl::{FutureWriteGuard};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
-use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, TractSender, /*FutureSend*/};
+use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, TractSender};
 use cortex::WorkPool;
 
 
@@ -25,14 +23,12 @@ pub enum InputGeneratorFrame<'a> {
 
 
 /// A highway for input.
-///
 pub trait InputGeneratorTract: Debug + Send {
     fn write_into(&mut self, frame: &mut TractFrameMut, addr: LayerAddress);
     fn cycle_next(&mut self);
 }
 
 
-#[allow(unused_variables)]
 #[derive(Debug)]
 pub enum InputGeneratorEncoder {
     None,
@@ -99,23 +95,6 @@ impl InputGeneratorEncoder {
             _ => unimplemented!(),
         }
     }
-
-    // /// Returns a tract frame of an external source buffer, if available.
-    // pub fn ext_frame_mut(&mut self) -> CmnResult<InputGeneratorFrame> {
-    //     match self.encoder {
-    //         InputGeneratorEncoder::SensoryTract(ref mut es) => {
-    //             Ok(es.ext_frame_mut())
-    //         },
-    //         InputGeneratorEncoder::VectorEncoder(ref mut es) => {
-    //             Ok(es.ext_frame_mut())
-    //         },
-    //         InputGeneratorEncoder::CustomUnspecified => {
-    //             panic!("InputGenerator::write_into: Custom pathway not specified.")
-    //         },
-    //         _ => Err(CmnError::new(format!("InputGenerator::ext_frame_Mut(): No tract available for the source \
-    //             kind: {:?}.", self.encoder))),
-    //     }
-    // }
 }
 
 enum EncoderCmd {
@@ -168,7 +147,7 @@ impl InputGeneratorLayer {
 
 
 /// An input source.
-///
+//
 // [NOTE (out of date)]: To implement multiple layers from a single input source:
 // - Must pass layer count to the input 'generator' and have it accept a
 //   multi-headed mutable slice when cycled.
@@ -293,7 +272,7 @@ impl InputGenerator {
             ref is @ _ => panic!("\nInputGenerator::new(): Input type: '{:?}' not yet supported.", is),
         };
 
-        let (tx, rx) = mpsc::sync_channel(1);
+        let (tx, rx) = mpsc::sync_channel(3);
         let thread_name = format!("InputGeneratorEncoder_{}", area_schemes.name());
         let thread_handle: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let mut encoder = encoder;
@@ -328,17 +307,10 @@ impl InputGenerator {
     }
 
     /// Writes input data into a tract.
-    #[deprecated]
-    pub fn write_into(&self, addr: LayerAddress, future_write: FutureWriteGuard<Vec<u8>>) {
-        if !self.disabled {
-            let layer = &self.layers[&addr];
-            let dims = layer.sub.dims().into();
-            self.tx.send(EncoderCmd::WriteInto { addr: addr, dims, future_write }).unwrap();
-        }
-    }
-
-    /// Writes input data into a tract.
-    pub fn send_to_pathway(&self, layer: &InputGeneratorLayer) {
+    ///
+    /// Blocks when the pathway (`TractSender`) `backpressure = true`.
+    ///
+    pub fn send_to_pathway(&self, layer: &InputGeneratorLayer, _work_pool: &mut WorkPool) {
         if !self.disabled {
             let pathway = layer.pathway.as_ref().expect("no pathway set");
             let future_write = match pathway.send().wait().unwrap() {
@@ -354,7 +326,7 @@ impl InputGenerator {
         }
     }
 
-    pub fn cycle_next(&self) {
+    pub fn cycle_next(&self, _work_pool: &mut WorkPool) {
         if !self.disabled { self.tx.send(EncoderCmd::Cycle).unwrap(); }
     }
 
@@ -390,11 +362,11 @@ impl SubcorticalNucleus for InputGenerator {
         }
     }
 
-    fn pre_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {
+    fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) {
         for layer in self.layers.values() {
-            self.send_to_pathway(layer);
+            self.send_to_pathway(layer, work_pool);
         }
-        self.cycle_next()
+        self.cycle_next(work_pool)
     }
 
     fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {}
