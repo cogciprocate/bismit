@@ -242,6 +242,14 @@ impl CorticalDims {
             ((cols + pad) * self.depth as u32) as usize
         }
     }
+
+    /// Returns `true` if the the `v_size`, `u_size` and `depth` of `at_least`
+    /// are less than or equal to the dimensions of this `CorticalDims`.
+    pub fn are_at_least(&self, at_least: &CorticalDims) -> bool {
+        at_least.v_size <= self.v_size &&
+            at_least.u_size <= self.u_size &&
+            at_least.depth <= self.depth
+    }
 }
 
 impl Copy for CorticalDims {}
@@ -294,6 +302,12 @@ impl Into<SpatialDims> for CorticalDims {
 impl<'a> Into<SpatialDims> for &'a CorticalDims {
     fn into(self) -> SpatialDims {
         self.to_lens().into()
+    }
+}
+
+impl From<(u32, u32, u8)> for CorticalDims {
+    fn from(tuple: (u32, u32, u8)) -> CorticalDims {
+        CorticalDims::new(tuple.0, tuple.1, tuple.2, None)
     }
 }
 

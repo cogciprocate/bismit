@@ -178,6 +178,8 @@ impl LayerInfo {
                                 .expect(&format!("LayerInfo::new(): Invalid addr: {:?}", src_lyr_addr));;
 
                             let sub_layer_dims = sub_layer.dims().clone();
+                            assert!(sub_layer_dims.are_at_least(&CorticalDims::from((1, 1, 0))),
+                                "Subcortical dims for area '{}' are zero.", src_area_name);
 
                             (sub_layer_dims, sub_layer.axon_topology())
                         },
@@ -249,6 +251,8 @@ impl LayerInfo {
                             .expect(&format!("LayerInfo::new(): Invalid addr: {:?}", sub_lyr_addr));
 
                         let sub_layer_dims = sub_layer.dims();
+                        assert!(sub_layer_dims.are_at_least(&CorticalDims::from((1, 1, 0))),
+                            "Subcortical dims for area '{}' are zero.", area_sch_name);
 
                         irregular_layer_dims = Some(sub_layer_dims.clone());
                         sub_layer_dims.columns()
