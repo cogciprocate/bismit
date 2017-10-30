@@ -3,7 +3,7 @@ use std::thread;
 use vibi::bismit::cmn;
 use vibi::bismit::map::*;
 use vibi::bismit::ocl::{ WriteGuard};
-use vibi::bismit::{map, Cortex, CorticalAreaSettings};
+use vibi::bismit::{map, Cortex, CorticalAreaSettings, InputGenerator, Subcortex};
 use vibi::bismit::flywheel::{Command, Request, Response};
 use ::{Controls, Params};
 
@@ -19,6 +19,8 @@ const HEX_GRP_RADIUS: usize = 6;
 
 
 pub fn draw(params: &Params, controls: &Controls) {
+    debug!("EVAL HEXDRAW DRAW: 0");
+
     // Populates the thing.
     fn pop(offset: [i32; 2], val: u8, guard: &mut [u8]) {
         let dims = [ENCODE_DIM as i32, ENCODE_DIM as i32];
@@ -26,11 +28,16 @@ pub fn draw(params: &Params, controls: &Controls) {
         cmn::populate_hex_tile_grps(HEX_GRP_RADIUS, dims, start, val, guard);
     }
 
+    debug!("EVAL HEXDRAW DRAW: 1000");
+
     // Write to tract:
     debug!("Locking tract buffer...");
     let mut guard = params.tract_buffer.clone().write().wait().unwrap();
     // assert!(HEX_GRP_RADIUS % 2 == 0);
     let ofs_dist = ((HEX_GRP_RADIUS + 1) / 2) as i32;
+
+
+    debug!("EVAL HEXDRAW DRAW: 2000");
 
     // let ofs_dist = HEX_GRP_RADIUS as i32 - 1;
 
@@ -46,10 +53,14 @@ pub fn draw(params: &Params, controls: &Controls) {
 
     WriteGuard::release(guard);
 
+    debug!("EVAL HEXDRAW DRAW: 4000");
+
     // Cycle and finish queues:
     controls.cmd_tx.send(Command::Iterate(1)).unwrap();
     controls.req_tx.send(Request::FinishQueues).unwrap();
     controls.cmd_tx.send(Command::None).unwrap();
+
+    debug!("EVAL HEXDRAW DRAW: 5000");
 
     // Wait for completion.
     loop {
@@ -79,14 +90,23 @@ pub fn draw(params: &Params, controls: &Controls) {
     // // Exit:
     // controls.cmd_tx.send(Command::Exit).unwrap();
     // controls.cmd_tx.send(Command::None).unwrap();
-    // println!("Drawing complete.\n");
+    // debug!("Drawing complete.\n");
+
+    debug!("EVAL HEXDRAW DRAW: 9999");
 }
 
 
 /// Draws an arbitrary pattern as an sdr.
 pub fn eval() {
-    let cortex = Cortex::builder(define_lm_schemes(), define_a_schemes())
+    let layer_map_schemes = define_lm_schemes();
+    let area_schemes = define_a_schemes();
+
+    let dummy = InputGenerator::new(&layer_map_schemes, &area_schemes, "v0").unwrap();
+    let subcortex = Subcortex::new().nucleus(dummy);
+
+    let cortex = Cortex::builder(layer_map_schemes, area_schemes)
         .ca_settings(ca_settings())
+        .sub(subcortex)
         .build().unwrap();
 
     let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
@@ -134,25 +154,35 @@ fn define_lm_schemes() -> LayerMapSchemeList {
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
             .input_layer("aff_in", LayerTags::DEFAULT,
                 AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
-                AxonTopology::Spatial )
-            // .layer("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
-            //     CellScheme::minicolumn(SPT_LYR, "iii", 9999) )
+                AxonTopology::Spatial
+            )
+            .layer("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
+                LayerKind::Axonal(AxonTopology::Spatial)
+            )
             .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 4, 1)], 7, 600) )
-            .layer("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib(SPT_LYR, 4, 0))
+                CellScheme::spiny_stellate(&[("aff_in", 4, 1)], 7, 600)
+            )
+            .layer("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local,
+                CellScheme::inhib(SPT_LYR, 4, 0)
+            )
             .layer("iii", 1, LayerTags::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 20, 1)], 1, 6, 500) ) )
+                CellScheme::pyramidal(&[("iii", 20, 1)], 1, 6, 500)
+            )
+        )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
             .layer(EXT_LYR, 1, LayerTags::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, at0]),
-                LayerKind::Axonal(AxonTopology::Spatial)) )
+                LayerKind::Axonal(AxonTopology::Spatial)
+            )
+        )
 }
 
 
 fn define_a_schemes() -> AreaSchemeList {
     AreaSchemeList::new()
         .area(AreaScheme::new("v0", "v0_lm", ENCODE_DIM)
-            .subcortex() )
+            .subcortex())
+
         .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)
             .eff_areas(vec!["v0"]) )
 }
@@ -165,7 +195,7 @@ pub fn ca_settings() -> CorticalAreaSettings {
     settings.bypass_filters = true;
     settings.disable_pyrs = true;
     // settings.disable_ssts = true;
-    settings.disable_mcols = true;
+    // settings.disable_mcols = true;
     // settings.disable_regrowth = true;
     // settings.disable_learning = true;
 

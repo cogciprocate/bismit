@@ -172,14 +172,14 @@ impl LayerInfo {
                         &LayerMapKind::Subcortical => {
                             let subcortical_nucleus = subcortex.by_key(src_area_name)
                                 .expect(&format!("LayerInfo::new(): Invalid input source key: \
-                                    '{}'", src_area_name));
+                                    \"{}\"", src_area_name));
 
                             let sub_layer = subcortical_nucleus.layer(src_lyr_addr.clone())
                                 .expect(&format!("LayerInfo::new(): Invalid addr: {:?}", src_lyr_addr));;
 
                             let sub_layer_dims = sub_layer.dims().clone();
                             assert!(sub_layer_dims.are_at_least(&CorticalDims::from((1, 1, 0))),
-                                "Subcortical dims for area '{}' are zero.", src_area_name);
+                                "Subcortical dims for area \"{}\" are zero.", src_area_name);
 
                             (sub_layer_dims, sub_layer.axon_topology())
                         },
@@ -243,7 +243,7 @@ impl LayerInfo {
 
                         let subcortical_nucleus = subcortex.by_key(&area_sch_name)
                             .expect(&format!("LayerInfo::new(): Invalid input source key: \
-                                '{}'", area_sch.name()));
+                                \"{}\"", area_sch.name()));
 
                         let sub_lyr_addr = LayerAddress::new(area_sch.area_id(), layer_id);
 
@@ -252,7 +252,7 @@ impl LayerInfo {
 
                         let sub_layer_dims = sub_layer.dims();
                         assert!(sub_layer_dims.are_at_least(&CorticalDims::from((1, 1, 0))),
-                            "Subcortical dims for area '{}' are zero.", area_sch_name);
+                            "Subcortical dims for area \"{}\" are zero.", area_sch_name);
 
                         irregular_layer_dims = Some(sub_layer_dims.clone());
                         sub_layer_dims.columns()

@@ -59,7 +59,8 @@ pub fn spawn_threads(cortex: Cortex, pri_area_name: &'static str)
     flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
 
     // Flywheel thread:
-    let th_flywheel = thread::Builder::new().name("flywheel".to_string()).spawn(move || {
+    let th_flywheel = thread::Builder::new().name("flywheel".to_string())
+            .spawn(move || {
         flywheel.spin();
     }).expect("Error creating 'flywheel' thread");
 

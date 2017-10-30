@@ -170,9 +170,9 @@ impl Thalamus {
                 tract.add_area(LayerAddress::new(area_s.area_id(), layer.layer_id()),
                     layer_dims);
                 output_layer_count += 1;
-
             }
-            assert!(output_layer_count > 0, "Areas must have at least one output layer.");
+            assert!(output_layer_count > 0, "Thalamus::new: Area \"{}\" has no layers. \
+                Areas must have at least one output (AxonDomain::Output) layer.", area_s.name());
 
             area_maps.insert(area_s.name().to_owned(), area_map);
             assert!(area_maps[area_id].area_id() == area_id);
@@ -192,14 +192,23 @@ impl Thalamus {
         for pathway in self.pathways.values_mut().iter_mut() {
             match *pathway {
                 Pathway::Input { ref mut rx, wait_for_frame, .. } => {
-                    let future_read_guard = rx.recv(wait_for_frame)
-                        .map(|buf_opt| buf_opt.map(|buf| buf.read_u8()))
-                        .flatten()
-                        .map(|_guard_opt| ())
-                        .map_err(|err| panic!("{}", err));
+                    // let future_read_guard = rx.recv(wait_for_frame)
+                    //     .map(|buf_opt| buf_opt.map(|buf| buf.read_u8()))
+                    //     .flatten()
+                    //     .map(|_guard_opt| ())
+                    //     .map_err(|err| panic!("{}", err));
 
-                    work_pool.complete(future_read_guard)
-                        .expect("Thalamus::cycle_pathways")
+                    // work_pool.complete(future_read_guard)
+                    //     .expect("Thalamus::cycle_pathways")
+
+                    if let Some(read_buffer) = rx.recv(wait_for_frame).wait().unwrap() {
+                        let future_read_guard = read_buffer.read_u8()
+                            .map(|_read_guard| ())
+                            .map_err(|err| panic!("{}", err));
+
+                        work_pool.complete(future_read_guard)
+                            .expect("Thalamus::cycle_pathways")
+                    }
                 },
                 Pathway::Output { .. } => unimplemented!(),
             }

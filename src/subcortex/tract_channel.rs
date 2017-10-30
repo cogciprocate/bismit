@@ -16,6 +16,7 @@ use std::error::Error as StdError;
 use std::ops::{Range, Deref};
 use std::sync::Arc;
 use std::sync::atomic::{fence, AtomicUsize, Ordering};
+use std::sync::atomic::Ordering::SeqCst;
 use std::cell::UnsafeCell;
 use std::thread;
 use futures::{Async, Poll};
@@ -51,7 +52,7 @@ const NEXT_READ_GUARD_READY: usize = 0x00000001;
 /// Spins an ever increasing amount of time.
 fn _spin(spins: &mut usize) {
     if *spins < 16 {
-        for _ in 0..(2 << *spins) { fence(Ordering::SeqCst); }
+        for _ in 0..(2 << *spins) { fence(SeqCst); }
     } else {
         thread::yield_now();
     }
@@ -258,13 +259,13 @@ impl TractInner {
     }
 
     fn send(&self) -> FutureSend {
-        let cur_state = self.state.fetch_or(NEXT_READ_GUARD_READY, Ordering::SeqCst);
+        let cur_state = self.state.fetch_or(NEXT_READ_GUARD_READY, SeqCst);
         let buffer_already_ready = (cur_state & NEXT_READ_GUARD_READY) != 0;
         if buffer_already_ready {
             if self.backpressure {
                 let (tx, rx) = oneshot::channel();
                 let (wg, rg) = self.buffer.next_wr_guard_pair();
-                let old_tx = self.send_waiting.swap((tx, rg), Ordering::SeqCst);
+                let old_tx = self.send_waiting.swap((tx, rg), SeqCst);
                 assert!(old_tx.is_none());
                 FutureSend::Wait(rx, Some(wg))
             } else {
@@ -272,14 +273,14 @@ impl TractInner {
             }
         } else {
             let (wg, rg) = self.buffer.next_wr_guard_pair();
-            match self.recv_waiting.take(Ordering::SeqCst) {
+            match self.recv_waiting.take(SeqCst) {
                 Some(tx) => {
                     // println!("TractInner::send: Read guard stale. Sending new...");
                     tx.send(rg).unwrap();
                 },
                 None => {
                     // println!("TractInner::send: Read guard stale. Swapping in new.");
-                    let old_rg = self.next_read_guard.swap(rg, Ordering::SeqCst);
+                    let old_rg = self.next_read_guard.swap(rg, SeqCst);
                     assert!(old_rg.is_none());
                 },
             }
@@ -289,32 +290,38 @@ impl TractInner {
 
     // `wait_for_frame` untested.
     fn recv(&self, wait_for_frame: bool) -> FutureRecv {
-        match self.next_read_guard.take(Ordering::SeqCst) {
+        match self.next_read_guard.take(SeqCst) {
             Some(next_read_guard) => {
-                assert!(self.state.load(Ordering::SeqCst) & NEXT_READ_GUARD_READY != 0);
+                assert!(self.state.load(SeqCst) & NEXT_READ_GUARD_READY != 0);
                 // Rotate in the waiting guard if any:
-                match self.send_waiting.take(Ordering::SeqCst) {
+                match self.send_waiting.take(SeqCst) {
                     Some((tx, wrg)) => {
                         // println!("TractInner::recv: self.send_waiting => Some(tx, wrg)");
-                        self.next_read_guard.swap(wrg, Ordering::SeqCst);
+                        self.next_read_guard.swap(wrg, SeqCst);
                         tx.send(()).ok();
                     },
                     None => {
                         // println!("TractInner::recv: self.send_waiting => None");
-                        let prior_state = self.state.fetch_and(!NEXT_READ_GUARD_READY, Ordering::SeqCst);
+                        let prior_state = self.state.fetch_and(!NEXT_READ_GUARD_READY, SeqCst);
                         assert!(prior_state & NEXT_READ_GUARD_READY != 0);
                     },
                 }
                 FutureRecv::Recv(Some(next_read_guard))
             },
             None => {
-                // NOTE: self.state.load(Ordering::SeqCst) & NEXT_READ_GUARD_READY ??= 0 //
+                // NOTE: self.state.load(SeqCst) & NEXT_READ_GUARD_READY ?= 0
                 if wait_for_frame {
                     // UNTESTED:
                     // println!("TractInner::recv: Waiting for next frame.");
                     let (tx, rx) = oneshot::channel();
-                    let old_tx = self.recv_waiting.swap(tx, Ordering::SeqCst);
-                    assert!(old_tx.is_none());
+
+                    let old_tx = self.recv_waiting.swap(tx, SeqCst);
+
+                    assert!(old_tx.is_none(), "TractInner::recv: TractReceiver::recv has been \
+                        called too many times in succession. If `wait_for_frame` is `true`, the \
+                        caller MUST block its thread each call and must not send the `FutureRecv` \
+                        to an event loop to be resolved.");
+
                     FutureRecv::Wait(rx)
                 } else {
                     FutureRecv::Skip

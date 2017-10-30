@@ -600,8 +600,7 @@ pub fn eval() {
     let layer_map_schemes = define_lm_schemes();
     let area_schemes = define_a_schemes();
 
-    let input_gen = InputGenerator::new(&layer_map_schemes[&area_schemes[IN_AREA].layer_map_name()],
-        &area_schemes[IN_AREA]).unwrap();
+    let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, IN_AREA).unwrap();
     let subcortex = Subcortex::new().nucleus(input_gen);
 
     let cortex = Cortex::builder(layer_map_schemes, area_schemes)
@@ -677,19 +676,15 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 AxonTopology::Spatial
                 // AxonTopology::Horizontal
             )
-
             .layer("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
                 LayerKind::Axonal(AxonTopology::Spatial)
             )
-
             .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
             // .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::output(&[map::THAL_SP]),
                 CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
             )
-
             .layer("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib(SPT_LYR, 4, 0))
             .layer("iv_smooth", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::smooth(SPT_LYR, 4, 1))
-
             // .layer("iii", 1, LayerTags::PTAL, AxonDomain::Local,
             .layer("iii", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
                 CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
@@ -697,7 +692,6 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer("iii_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
                 CellScheme::pyr_outputter("iii", 0)
             )
-
             // .layer("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
             //     CellScheme::minicolumn(9999)
             // )
@@ -728,7 +722,7 @@ pub fn ca_settings() -> CorticalAreaSettings {
         // .bypass_filters()
         // .disable_pyrs()
         // .disable_ssts()
-        .disable_mcols()
+        // .disable_mcols()
         // .disable_regrowth()
         // .disable_learning()
         // .build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", 1))
