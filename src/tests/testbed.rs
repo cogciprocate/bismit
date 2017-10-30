@@ -132,8 +132,7 @@ pub fn fresh_cortex() -> Cortex {
     let layer_map_schemes = define_layer_map_schemes();
     let area_schemes = define_protoareas();
 
-    let input_gen = InputGenerator::new(&layer_map_schemes[&area_schemes["v0"].layer_map_name()],
-        &area_schemes["v0"]).unwrap();
+    let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, "v0").unwrap();
     let subcortex = Subcortex::new().nucleus(input_gen);
 
     Cortex::builder(layer_map_schemes, area_schemes)
@@ -223,8 +222,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
         )
     ;
 
-    let input_gen = InputGenerator::new(&layer_map_schemes[&area_schemes["dummy_area"].layer_map_name()],
-        &area_schemes["dummy_area"]).unwrap();
+    let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, "dummy_area").unwrap();
     let subcortex = Subcortex::new().nucleus(input_gen);
 
     Cortex::builder(layer_map_schemes, area_schemes)
@@ -253,8 +251,7 @@ impl TestBed {
         let layer_map_schemes = define_layer_map_schemes();
         let area_schemes = define_protoareas();
 
-        let v0 = InputGenerator::new(&layer_map_schemes[&area_schemes["v0"].layer_map_name()],
-            &area_schemes["v0"]).unwrap();
+        let v0 = InputGenerator::new(&layer_map_schemes, &area_schemes, "v0").unwrap();
         let subcortex = Subcortex::new().nucleus(v0);
 
         let ocl_context: Context = Context::builder()

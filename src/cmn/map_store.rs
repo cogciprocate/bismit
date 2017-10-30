@@ -1,5 +1,4 @@
 
-// use std::clone::Clone;
 use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::hash::{Hash, /*BuildHasherDefault*/};
@@ -9,11 +8,9 @@ use std::slice::{Iter, IterMut};
 // use twox_hash::XxHash;
 
 
-/// A store of data indexable by usize or key.
+/// A store of data indexable by `usize` or (hashable) key.
 ///
-/// Values cannot be removed.
-///
-/// This might need a better name :/
+/// Values cannot be removed, only added.
 ///
 // TODO: [impl Iterator]: https://doc.rust-lang.org/std/iter/index.html#implementing-iterator
 #[derive(Debug, Clone)]

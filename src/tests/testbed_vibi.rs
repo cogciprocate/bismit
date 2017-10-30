@@ -162,12 +162,8 @@ pub fn new_cortex() -> Cortex {
     let layer_map_schemes = define_layer_map_schemes();
     let area_schemes = define_area_schemes();
 
-    let gly_seq = InputGenerator::new(
-        &layer_map_schemes[&area_schemes["gly_seq"].layer_map_name()],
-        &area_schemes["gly_seq"]).unwrap();
-    let gly_seq_rose = InputGenerator::new(
-        &layer_map_schemes[&area_schemes["gly_seq_rose"].layer_map_name()],
-        &area_schemes["gly_seq_rose"]).unwrap();
+    let gly_seq = InputGenerator::new(&layer_map_schemes, &area_schemes, "gly_seq").unwrap();
+    let gly_seq_rose = InputGenerator::new(&layer_map_schemes, &area_schemes, "gly_seq_rose").unwrap();
     let subcortex = Subcortex::new()
         .nucleus(gly_seq)
         .nucleus(gly_seq_rose);

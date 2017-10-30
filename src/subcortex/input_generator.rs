@@ -5,8 +5,8 @@ use std::fmt::Debug;
 use find_folder::Search;
 use cmn::{self, CorticalDims, CmnResult, TractDims};
 use ocl::{FutureWriteGuard};
-use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
-    AxonDomain, AxonTags, AxonSignature};
+use map::{LayerMapSchemeList, AreaSchemeList, EncoderScheme, LayerScheme, AxonTopology,
+    LayerAddress, AxonDomain, AxonTags, AxonSignature};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
@@ -161,8 +161,11 @@ pub struct InputGenerator {
 }
 
 impl InputGenerator {
-    pub fn new(layer_map_schemes: &LayerMapScheme, area_schemes: &AreaScheme) -> CmnResult<InputGenerator> {
-        let layer_schemes: Vec<&LayerScheme> = layer_map_schemes.layers().iter().map(|pl| pl).collect();
+    pub fn new(layer_map_schemes: &LayerMapSchemeList, area_schemes: &AreaSchemeList,
+            area_name: &str) -> CmnResult<InputGenerator> {
+        let area_scheme = &area_schemes[area_name];
+        let layer_map_scheme = &layer_map_schemes[area_scheme.layer_map_name()];
+        let layer_schemes: Vec<&LayerScheme> = layer_map_scheme.layers().iter().map(|pl| pl).collect();
 
         let mut layers = HashMap::with_capacity(4);
         let mut lyr_addr_list = Vec::with_capacity(4);
@@ -171,12 +174,12 @@ impl InputGenerator {
 
         for layer_scheme in layer_schemes.into_iter() {
             let lyr_name = layer_scheme.name();
-            let lyr_addr = LayerAddress::new(area_schemes.area_id(), layer_scheme.layer_id());
+            let lyr_addr = LayerAddress::new(area_scheme.area_id(), layer_scheme.layer_id());
             let axn_topology = layer_scheme.kind().axn_topology();
             let lyr_depth = layer_scheme.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
             let dims = match axn_topology {
-                AxonTopology::Spatial => Some(area_schemes.dims().clone_with_depth(lyr_depth)),
+                AxonTopology::Spatial => Some(area_scheme.dims().clone_with_depth(lyr_depth)),
                 AxonTopology::Horizontal => None,
                 AxonTopology::None => None,
             };
@@ -184,8 +187,8 @@ impl InputGenerator {
             let lyr_axn_sig = match *layer_scheme.axn_domain() {
                 AxonDomain::Output(ref axn_sig) => axn_sig.clone(),
                 _ => return Err(format!("InputGenerator::new(): External areas \
-                    must currently be output layers. [area: '{}', layer: '{}']", area_schemes.name(),
-                    layer_map_schemes.name()).into()),
+                    must currently be output layers. [area: '{}', layer: '{}']", area_scheme.name(),
+                    layer_map_scheme.name()).into()),
             };
 
             lyr_addr_list.push(lyr_addr.clone());
@@ -203,7 +206,7 @@ impl InputGenerator {
 
         let mut disabled = false;
 
-        let encoder = match *area_schemes.get_encoder() {
+        let encoder = match *area_scheme.get_encoder() {
             EncoderScheme::IdxStreamer { ref file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
                 let mut is = IdxStreamer::new(layers[&lyr_addr_list[0]].sub.dims() .clone(),
@@ -273,7 +276,7 @@ impl InputGenerator {
         };
 
         let (tx, rx) = mpsc::sync_channel(3);
-        let thread_name = format!("InputGeneratorEncoder_{}", area_schemes.name());
+        let thread_name = format!("InputGeneratorEncoder_{}", area_scheme.name());
         let thread_handle: JoinHandle<_> = thread::Builder::new().name(thread_name).spawn(move || {
             let mut encoder = encoder;
             let rx = rx;
@@ -291,8 +294,8 @@ impl InputGenerator {
         }).unwrap();
 
         Ok(InputGenerator {
-            area_id: area_schemes.area_id(),
-            area_name: area_schemes.name().to_owned(),
+            area_id: area_scheme.area_id(),
+            area_name: area_scheme.name().to_owned(),
             layers: layers,
             _thread: Some(thread_handle),
             tx: tx,

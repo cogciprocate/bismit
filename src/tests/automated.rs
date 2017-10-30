@@ -17,8 +17,7 @@ fn cortex() {
     let layer_map_schemes = testbed::define_layer_map_schemes();
     let area_schemes = testbed::define_protoareas();
 
-    let input_gen = InputGenerator::new(&layer_map_schemes[&area_schemes["v0"].layer_map_name()],
-        &area_schemes["v0"]).unwrap();
+    let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, "v0").unwrap();
     let subcortex = Subcortex::new().nucleus(input_gen);
     let mut cortex = Cortex::builder(layer_map_schemes, area_schemes)
         .sub(subcortex)
