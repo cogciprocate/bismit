@@ -4,41 +4,65 @@ use std::thread::{self, JoinHandle};
 use time;
 use futures::{Sink, Stream, Future};
 use futures::sync::mpsc::{self, Sender};
-use tokio_core::reactor::{Core, Remote};
+use futures_cpupool::{CpuPool, Builder as CpuPoolBuilder};
+use tokio_core::reactor::{Core, Remote, Handle};
 // use cpuprofiler::PROFILER;
 use ocl::{self, Platform, Context, Device};
+use cmn::{CmnError, CmnResult, MapStore};
 use cortex::{CorticalArea, CorticalAreaSettings};
-
-use cmn::{MapStore, CmnResult};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use subcortex::{Subcortex, Thalamus};
 
 
 pub struct WorkPool {
-    work_tx: Sender<Box<Future<Item=(), Error=()> + Send>>,
-    reactor_thread: Option<JoinHandle<()>>,
+    cpu_pool: CpuPool,
+    reactor_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
+    _reactor_thread: Option<JoinHandle<()>>,
 }
 
 impl WorkPool {
     pub fn new() -> WorkPool {
-        let (tx, rx) = mpsc::channel(0);
-        // let thread_name = format!("BismitWorkPool_{}", area_name.clone());
-        let reactor_thread_name = "bismit_work_pool_reactor_core";
+        let (reactor_tx, reactor_rx) = mpsc::channel(0);
+        let reactor_thread_name = "bismit_work_pool_reactor_core".to_owned();
 
-        let core_thread: JoinHandle<_> = thread::Builder::new().name(core_thread_name).spawn(move || {
-            // let rx = rx;
+        let reactor_thread: JoinHandle<_> = thread::Builder::new()
+                .name(reactor_thread_name).spawn(move || {
             let mut core = Core::new().unwrap();
-            let work = rx.buffer_unordered(8).for_each(|_| Ok(()));
+            let work = reactor_rx.buffer_unordered(8).for_each(|_| Ok(()));
             core.run(work).unwrap();
         }).unwrap();
 
+        let cpu_pool = CpuPoolBuilder::new().name_prefix("bismit_work_pool_worker_").create();
+
         WorkPool {
-            work_tx: tx
-            reactor_thread: thread
+            cpu_pool,
+            reactor_tx: Some(reactor_tx),
+            _reactor_thread: Some(reactor_thread),
         }
+    }
+
+    pub fn complete(&mut self, future: Box<Future<Item=(), Error=()> + Send>)
+            -> CmnResult<()> {
+        let tx = self.reactor_tx.take().unwrap();
+        self.reactor_tx.get_or_insert(tx.send(future).wait()?);
+        Ok(())
+    }
+
+    pub fn submit_work(&mut self, work: Box<Future<Item=(), Error=()> + Send>)
+            -> CmnResult<()> {
+        let future = self.cpu_pool.spawn(work);
+        let tx = self.reactor_tx.take().unwrap();
+        self.reactor_tx.get_or_insert(tx.send(Box::new(future)).wait()?);
+        Ok(())
     }
 }
 
+impl Drop for WorkPool {
+    fn drop(&mut self) {
+        self.reactor_tx.take().unwrap().close().unwrap();
+        self._reactor_thread.take().unwrap().join().expect("error joining reactor thread");
+    }
+}
 
 
 // Prints the time it took to start up.
@@ -54,6 +78,7 @@ pub struct Cortex {
     areas: MapStore<&'static str, CorticalArea>,
     thal: Thalamus,
     sub: Subcortex,
+    work_pool: WorkPool,
 }
 
 impl Cortex {
@@ -102,6 +127,7 @@ impl Cortex {
             areas: areas,
             thal: thal,
             sub: sub,
+            work_pool: WorkPool::new(),
         })
     }
 
@@ -116,7 +142,7 @@ impl Cortex {
     pub fn cycle(&mut self) {
         // PROFILER.lock().unwrap().start("./bismit.profile").unwrap();
 
-        self.thal.cycle_pathways();
+        self.thal.cycle_pathways(&mut self.work_pool);
         // self.thal.cycle_input_generators();
 
         // if let Some(ref mut s) = self.sub {

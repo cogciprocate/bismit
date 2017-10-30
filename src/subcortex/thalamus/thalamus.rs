@@ -22,7 +22,7 @@ use futures::Future;
 use cmn::{self, CmnError, CmnResult, TractDims, TractFrame, TractFrameMut, CorticalDims, MapStore};
 use map::{AreaMap, LayerMapKind, LayerAddress, CommandUid, AreaSchemeList, LayerMapSchemeList};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
-use ::{InputGenerator, InputGeneratorFrame};
+use ::{InputGenerator, InputGeneratorFrame, WorkPool};
 // use tract_terminal::{SliceBufferTarget, SliceBufferSource};
 use subcortex::{self, Subcortex, TractSender, TractReceiver};
 
@@ -203,7 +203,7 @@ impl Thalamus {
         // =============================================================================*/
         // for area_scheme in area_schemes.areas().iter().filter(|area_scheme|
         //         layer_map_schemes[area_scheme.layer_map_name()].kind() == &LayerMapKind::Subcortical) {
-        //     let in_gen = try!(InputGenerator::new(area_scheme, &layer_map_schemes[area_scheme.layer_map_name()]));
+        //     let in_gen = try!(InputGenerator::new(&layer_map_schemes[area_scheme.layer_map_name()], area_scheme));
         //     let addrs = in_gen.layer_addrs();
         //     input_generators.insert(in_gen.area_name().to_owned(), (in_gen, addrs))
         //         .map(|in_gen_tup| panic!("Duplicate 'InputGenerator' keys: [\"{}\"]. \
@@ -257,17 +257,21 @@ impl Thalamus {
     }
 
     /// Cycles thalamic tract pathways.
-    pub fn cycle_pathways(&mut self) {
+    pub fn cycle_pathways(&mut self, work_pool: &mut WorkPool) {
         for pathway in self.pathways.values_mut().iter_mut() {
             match *pathway {
                 Pathway::Input { ref mut rx, wait_for_frame, .. } => {
                     // All we need to do here is block until the frame is
                     // ready before continuing on.
 
-                    rx.recv(wait_for_frame)
+                    let future_read_guard = rx.recv(wait_for_frame)
                         .map(|buf_opt| buf_opt.map(|buf| buf.read_u8()))
                         .flatten()
-                        .wait().unwrap();
+                        .map(|_guard_opt| ())
+                        .map_err(|err| panic!("{}", err));
+
+                    work_pool.complete(Box::new(future_read_guard))
+                        .expect("Thalamus::cycle_pathways")
                 },
                 Pathway::Output { .. } => unimplemented!(),
             }

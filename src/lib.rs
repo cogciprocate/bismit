@@ -10,6 +10,7 @@ extern crate find_folder;
 // extern crate twox_hash;
 extern crate rand;
 extern crate futures;
+extern crate futures_cpupool;
 extern crate tokio_core;
 // extern crate cpuprofiler;
 extern crate crossbeam;
@@ -28,13 +29,14 @@ pub mod map;
 #[cfg(test)] pub mod tests;
 
 pub use ocl::Event as OclEvent;
-pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses, /*Minicolumns,*/
-    InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer, SpinyStellateLayer, Dendrites,
-    CorticalAreaSettings, DataCellLayer, SamplerKind, SamplerBufferKind};
-pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus, SubcorticalNucleusLayer, TestScNucleus,
-    InputGenerator, InputGeneratorTract, InputGeneratorEncoder, InputGeneratorFrame, /*InputGeneratorLayer,*/
-    TractBuffer, TractSender, TractReceiver};
-// pub use self::subcortex::thalamus::{};
+pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses,
+    InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer, SpinyStellateLayer,
+    Dendrites, CorticalAreaSettings, DataCellLayer, SamplerKind, SamplerBufferKind,
+    WorkPool,};
+pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus,
+    SubcorticalNucleusLayer, TestScNucleus, InputGenerator, InputGeneratorTract,
+    InputGeneratorEncoder, InputGeneratorFrame, TractBuffer, TractSender,
+    TractReceiver};
 pub use self::flywheel::Flywheel;
 pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap};
 pub use self::cmn::{util, TractDims, TypeId, CmnError as Error, CmnResult as Result};
