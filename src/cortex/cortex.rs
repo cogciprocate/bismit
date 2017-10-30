@@ -45,7 +45,7 @@ impl Cortex {
             .devices(Device::specifier().type_flags(device_type))
             .build().expect("CorticalArea::new(): ocl_context creation error");
 
-        let sub = match sub_opt {
+        let mut sub = match sub_opt {
             Some(s) => s,
             None => Subcortex::new(),
         };
@@ -57,11 +57,15 @@ impl Cortex {
         let area_maps = thal.area_maps().to_owned();
 
         for area_map in area_maps.values().into_iter().filter(|area_map|
-                area_map.lm_kind_tmp() != &LayerMapKind::Subcortical)
-        {
+                area_map.lm_kind_tmp() != &LayerMapKind::Subcortical) {
             areas.insert(area_map.area_name(), CorticalArea::new(area_map.clone(),
                 device_idx, &ocl_context, ca_settings.clone(), &mut thal).unwrap());
             device_idx += 1;
+        }
+
+        // Wire up subcortical pathways (channels):
+        for nucleus in sub.iter_mut() {
+            nucleus.create_pathways(&mut thal);
         }
 
         print_startup_time(time_start);

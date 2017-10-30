@@ -169,7 +169,7 @@ impl ThalamicTract {
 #[derive(Debug)]
 pub enum Pathway {
     Input { tract_area_id: usize, rx: TractReceiver, wait_for_frame: bool },
-    Output { tract_area_id: usize, tx: TractSender, wait_for_frame: bool },
+    Output { tract_area_id: usize, tx: TractSender },
 }
 
 
@@ -311,20 +311,23 @@ impl Thalamus {
     // NOTE: Do not disable `RwVec` locking. A write lock must be queued each
     // cycle to prevent read locks piling up. [NOTE: 2017-Oct-14: This may
     // have been corrected by ocl patch -- Verify]
+    // #[deprecated]
     pub fn cycle_input_generators(&mut self) {
-        for &mut (ref mut src_ext_path, ref layer_addr_list) in self.input_generators.values_mut().iter_mut() {
-            if src_ext_path.is_disabled() { continue; }
-            src_ext_path.cycle_next();
+        for &mut (ref mut input_gen, ref layer_addr_list) in self.input_generators.values_mut().iter_mut() {
+            if input_gen.is_disabled() { continue; }
+            input_gen.cycle_next();
             for &layer_addr in layer_addr_list.iter() {
                 // TODO: InputGenerator needs to store tract index.
                 let tract_area_idx = self.tract.index_of(&layer_addr).unwrap();
                 let future_write = self.tract.write(tract_area_idx)
                     .expect("Thalamus::cycle_input_generators()");
-                src_ext_path.write_into(layer_addr, future_write)
+                input_gen.write_into(layer_addr, future_write)
             }
         }
     }
 
+
+    // #[deprecated]
     pub fn input_generator_idx<S: AsRef<str>>(&self, pathway_name: S) -> CmnResult<usize> {
         match self.input_generators.indices().get(pathway_name.as_ref()) {
             Some(&idx) => Ok(idx),
@@ -333,6 +336,7 @@ impl Thalamus {
         }
     }
 
+    // #[deprecated]
     pub fn input_generator(&mut self, pathway_idx: usize) -> CmnResult<&mut InputGenerator> {
         let pathway = try!(self.input_generators.by_index_mut(pathway_idx).ok_or(
             CmnError::new(format!("Thalamus::input_generator_frame(): Invalid pathway index: '{}'.",

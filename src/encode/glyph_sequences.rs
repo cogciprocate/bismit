@@ -4,7 +4,7 @@ use rand::distributions::{IndependentSample, Range};
 use rand;
 use cmn::{CorticalDims, TractFrameMut};
 use map::{self, LayerAddress, AxonTags};
-use ::{InputGeneratorTract, SubcorticalNucleusLayer};
+use subcortex::{InputGeneratorTract, InputGeneratorLayer, /*SubcorticalNucleusLayer*/};
 use encode::GlyphBuckets;
 // use map::AxonTopology;
 
@@ -67,7 +67,7 @@ impl GlyphSequences {
         AxonTags::new(&[map::EXT, map::GLY_SEQ_VAL])
     }
 
-    pub fn new(layers: &mut HashMap<LayerAddress, SubcorticalNucleusLayer>, seq_lens: (usize, usize),
+    pub fn new(layers: &mut HashMap<LayerAddress, InputGeneratorLayer>, seq_lens: (usize, usize),
                 seq_count: usize, scale: f32, hrz_dims: (u32, u32), label_file: PathBuf,
                 image_file: PathBuf) -> GlyphSequences
     {
@@ -80,7 +80,7 @@ impl GlyphSequences {
         let mut val_layer_dims: Option<CorticalDims> = None;
         let mut val_layer_addr: Option<LayerAddress> = None;
 
-        for (addr, layer) in layers.iter_mut() {
+        for layer in layers.iter_mut().map(|(_, layer)| layer) {
             // if layer.axn_kind() == AxonTopology::Spatial {
             //     assert!(tags.contains(map::FF_OUT));
             //     img_layer_dims = layer.dims().cloned();
@@ -92,13 +92,17 @@ impl GlyphSequences {
 
             if layer.axn_tags().is_superset(&GlyphSequences::img_lyr_tags()) {
                 // assert!(tags.contains(map::FF_OUT));
-                img_layer_dims = layer.dims().cloned();
-                img_layer_addr = Some(addr.clone());
+                assert!(img_layer_dims.is_none());
+                assert!(img_layer_addr.is_none());
+                img_layer_dims = Some(layer.sub().dims().clone());
+                img_layer_addr = Some(layer.sub().addr().clone());
             } else if layer.axn_tags().is_superset(&GlyphSequences::val_lyr_tags()) {
                 // assert!(tags.contains(map::NS_OUT));
+                assert!(val_layer_dims.is_none());
+                assert!(val_layer_addr.is_none());
                 val_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1, /*0,*/ None));
-                layer.set_dims(val_layer_dims.clone());
-                val_layer_addr = Some(addr.clone());
+                layer.set_dims(val_layer_dims.clone().unwrap());
+                val_layer_addr = Some(layer.sub().addr().clone());
             }
 
         }

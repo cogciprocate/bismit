@@ -5,14 +5,14 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 // use std::mem::{self, Discriminant};
 use find_folder::Search;
-use cmn::{self, /*CorticalDims,*/ CmnResult, /*CmnError,*/ TractDims};
+use cmn::{self, CorticalDims, CmnResult, /*CmnError,*/ TractDims};
 use ocl::{FutureWriteGuard};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
-    AxonDomain, /*AxonTags, AxonSignature*/};
+    AxonDomain, AxonTags, AxonSignature};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
 use cmn::TractFrameMut;
-use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer};
+use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, TractSender};
 
 
 #[derive(Debug)]
@@ -153,6 +153,49 @@ enum EncoderCmd {
 // }
 
 
+pub struct InputGeneratorLayer {
+    // axn_sig: AxonSignature,
+    // axn_topology: AxonTopology,
+    sub: SubcorticalNucleusLayer,
+    pathway: Option<TractSender>,
+}
+
+impl InputGeneratorLayer {
+    pub fn set_dims(&mut self, dims: CorticalDims) {
+        self.sub.set_dims(dims);
+    }
+
+    pub fn axn_sig(&self) -> &AxonSignature {
+        // &self.axn_sig
+        match *self.sub.axon_domain() {
+            AxonDomain::Output(ref sig) => sig,
+            _ => panic!("InputGeneratorLayer::axn_sig: Input generator layers must be \
+                AxonDomain::Output(..)."),
+        }
+    }
+
+    pub fn axn_tags(&self) -> &AxonTags {
+        &self.axn_sig().tags()
+    }
+
+    pub fn axn_topology(&self) -> AxonTopology {
+        self.sub.axon_topology().clone()
+    }
+
+    pub fn sub(&self) -> &SubcorticalNucleusLayer {
+        &self.sub
+    }
+
+    pub fn sub_mut(&mut self) -> &mut SubcorticalNucleusLayer {
+        &mut self.sub
+    }
+
+    pub fn pathway(&self) -> Option<&TractSender> {
+        self.pathway.as_ref()
+    }
+}
+
+
 
 /// An input source.
 ///
@@ -163,7 +206,8 @@ pub struct InputGenerator {
     area_id: usize,
     area_name: String,
     // encoder: InputGeneratorEncoder,
-    layers: HashMap<LayerAddress, SubcorticalNucleusLayer>,
+    layers: HashMap<LayerAddress, InputGeneratorLayer>,
+    // thalamic_pathways: Vec<>,
     tx: SyncSender<EncoderCmd>,
     _thread: Option<JoinHandle<()>>,
     // rx: Receiver<EncoderRes>,
@@ -224,8 +268,13 @@ impl InputGenerator {
             //     dims: dims,
             // });
 
-            layers.insert(lyr_addr.clone(), SubcorticalNucleusLayer::new(lyr_name,
-                lyr_addr, lyr_axn_sig, axn_topology, dims, ));
+            let layer = InputGeneratorLayer {
+                sub: SubcorticalNucleusLayer::new(lyr_name, lyr_addr, p_layer.axn_domain().clone(),
+                    axn_topology, dims.unwrap_or(CorticalDims::new(0, 0, 0, None))),
+                pathway: None,
+            };
+
+            layers.insert(lyr_addr.clone(), layer);
         }
 
         let mut disabled = false;
@@ -233,8 +282,9 @@ impl InputGenerator {
         let encoder = match *pamap.get_encoder() {
             EncoderScheme::IdxStreamer { ref file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
-                let mut is = IdxStreamer::new(layers[&lyr_addr_list[0]].dims()
-                    .expect("InputGenerator::new(): Layer dims not set properly.").clone(),
+                let mut is = IdxStreamer::new(layers[&lyr_addr_list[0]].sub.dims()
+                    // .expect("InputGenerator::new(): Layer dims not set properly.")
+                    .clone(),
                     file_name.clone(), cyc_per, scale);
 
                 if loop_frames > 0 {
@@ -255,8 +305,9 @@ impl InputGenerator {
             },
             EncoderScheme::SensoryTract => {
                 assert_eq!(layers.len(), 1);
-                let st = SensoryTract::new(layers[&lyr_addr_list[0]].dims()
-                    .expect("InputGenerator::new(): Layer dims not set properly."));
+                let st = SensoryTract::new(layers[&lyr_addr_list[0]].sub.dims()
+                    // .expect("InputGenerator::new(): Layer dims not set properly.")
+                    );
                 InputGeneratorEncoder::SensoryTract(Box::new(st))
             },
             EncoderScheme::ScalarSequence { range, incr } => {
@@ -319,10 +370,13 @@ impl InputGenerator {
             }
         }).unwrap();
 
+        // let thalamic_pathways = Vec::with_capacity(self.layers.len());
+
         Ok(InputGenerator {
             area_id: pamap.area_id(),
             area_name: pamap.name().to_owned(),
             layers: layers,
+            // thalamic_pathways,
             // encoder: encoder,
             _thread: Some(thread_handle),
             tx: tx,
@@ -345,8 +399,10 @@ impl InputGenerator {
     // pub fn write_into(&mut self, addr: &LayerAddress, mut frame: TractFrameMut, _: &mut EventList) {
     pub fn write_into(&self, addr: LayerAddress, future_write: FutureWriteGuard<Vec<u8>>) {
         if !self.disabled {
-            let dims = self.layers[&addr].dims().expect(&format!("Dimensions don't exist for \
-                external input area: \"{}\", addr: '{:?}' ", self.area_name, addr)).into();
+            let dims = self.layers[&addr].sub.dims()
+                // .expect(&format!("Dimensions don't exist for external input area: \"{}\", \
+                //     addr: '{:?}' ", self.area_name, addr))
+                    .into();
             self.tx.send(EncoderCmd::WriteInto { addr, dims, future_write }).unwrap();
         }
     }
@@ -359,16 +415,16 @@ impl InputGenerator {
         if !self.disabled { self.tx.send(EncoderCmd::SetRanges(ranges)).unwrap(); }
     }
 
-    pub fn layers_mut(&mut self) -> &mut HashMap<LayerAddress, SubcorticalNucleusLayer> {
+    pub fn layers_mut(&mut self) -> &mut HashMap<LayerAddress, InputGeneratorLayer> {
         &mut self.layers
     }
 
-    pub fn layer(&self, addr: LayerAddress) -> &SubcorticalNucleusLayer {
-        self.layers.get(&addr).expect(&format!("InputGenerator::layer(): Invalid addr: {:?}", addr))
-    }
+    // pub fn layer(&self, addr: LayerAddress) -> &SubcorticalNucleusLayer {
+    //     self.layers.get(&addr).expect(&format!("InputGenerator::layer(): Invalid addr: {:?}", addr))
+    // }
 
     pub fn layer_addrs(&self) -> Vec<LayerAddress> {
-        self.layers.iter().map(|(_, layer)| layer.addr().clone()).collect()
+        self.layers.iter().map(|(_, layer)| layer.sub.addr().clone()).collect()
     }
 
     pub fn area_id(&self) -> usize { self.area_id }
@@ -385,12 +441,24 @@ impl Drop for InputGenerator {
 }
 
 impl SubcorticalNucleus for InputGenerator {
-    fn area_name<'a>(&'a self) -> &'a str { &self.area_name }
-    fn pre_cycle(&mut self, _thal: &mut Thalamus) {}
+    fn create_pathways(&mut self, _thal: &mut Thalamus) {
+        for _layer in self.layers.values_mut() {
+
+        }
+    }
+
+    fn pre_cycle(&mut self, _thal: &mut Thalamus) {
+        self.cycle_next()
+    }
+
     fn post_cycle(&mut self, _thal: &mut Thalamus) {}
 
+
     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {
-        self.layers.get(&addr)
-            // .expect(&format!("SubcorticalInputGenerator::layer(): Invalid addr: {:?}", addr))
+        self.layers.get(&addr).map(|l| l.sub())
+    }
+
+    fn area_name<'a>(&'a self) -> &'a str {
+        &self.area_name
     }
 }

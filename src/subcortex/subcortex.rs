@@ -1,7 +1,7 @@
 
 #![allow(unused_imports)]
 
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 use std::ops::Deref;
 use std::collections::HashMap;
 use subcortex::Thalamus;
@@ -30,81 +30,60 @@ use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, 
 // It helps to function in movement by providing feedback for the outputs of the basal ganglia.
 
 
-
-/// A subcortical nucleus.
-pub trait SubcorticalNucleus: 'static + Send {
-    fn area_name<'a>(&'a self) -> &'a str;
-    fn pre_cycle(&mut self, thal: &mut Thalamus);
-    fn post_cycle(&mut self, thal: &mut Thalamus);
-    fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer>;
-}
-
-
 pub struct SubcorticalNucleusLayer {
     name: &'static str,
     addr: LayerAddress,
-    axn_sig: AxonSignature,
-    axn_topology: AxonTopology,
-    dims: Option<CorticalDims>,
+    axon_domain: AxonDomain,
+    // axon_sig: AxonSignature,
+    axon_topology: AxonTopology,
+    // dims: Option<CorticalDims>,
+    dims: CorticalDims,
 }
 
 impl SubcorticalNucleusLayer {
-    pub fn new(name: &'static str, addr: LayerAddress, axn_sig: AxonSignature,
-            axn_topology: AxonTopology, dims: Option<CorticalDims>,) -> SubcorticalNucleusLayer {
+    pub fn new(name: &'static str, addr: LayerAddress, /*axn_sig: AxonSignature,*/
+            axon_domain: AxonDomain, axon_topology: AxonTopology,
+            // dims: Option<CorticalDims>
+            dims: CorticalDims
+            )
+            -> SubcorticalNucleusLayer {
         SubcorticalNucleusLayer {
             name,
             addr,
-            axn_sig,
-            axn_topology,
+            // axn_sig,
+            axon_domain,
+            axon_topology,
             dims,
         }
     }
-    pub fn set_dims(&mut self, dims: Option<CorticalDims>) {
+
+    pub fn set_dims(&mut self, dims: CorticalDims) {
         self.dims = dims;
     }
 
     pub fn name(&self) -> &'static str { self.name }
     pub fn addr(&self) -> &LayerAddress { &self.addr }
-    pub fn axn_sig(&self) -> &AxonSignature { &self.axn_sig }
-    pub fn axn_tags(&self) -> &AxonTags { &self.axn_sig.tags() }
-    pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
-    pub fn dims(&self) -> Option<&CorticalDims> { self.dims.as_ref() }
+    // pub fn axn_sig(&self) -> &AxonSignature { &self.axn_sig }
+    // pub fn axn_tags(&self) -> &AxonTags { &self.axn_sig.tags() }
+    pub fn axon_domain(&self) -> &AxonDomain { &self.axon_domain }
+    pub fn axon_topology(&self) -> AxonTopology { self.axon_topology.clone() }
+    // pub fn dims(&self) -> Option<&CorticalDims> { self.dims.as_ref() }
+    pub fn dims(&self) -> &CorticalDims { &self.dims }
 }
 
 
 
-pub struct TestScNucleus {
-    area_name: String,
-    layers: HashMap<LayerAddress, SubcorticalNucleusLayer>,
+/// A subcortical nucleus.
+pub trait SubcorticalNucleus: 'static + Send {
+    fn create_pathways(&mut self, thal: &mut Thalamus);
+    fn pre_cycle(&mut self, thal: &mut Thalamus);
+    fn post_cycle(&mut self, thal: &mut Thalamus);
+    // fn layers<'a>(&'a self) -> Iter<'a, SubcorticalNucleusLayer>;
+    // fn layers_mut<'a>(&'a mut self) -> IterMut<'a, SubcorticalNucleusLayer>;
+    fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer>;
+    fn area_name<'a>(&'a self) -> &'a str;
 }
 
-impl TestScNucleus {
-    pub fn new<'a>(area_name: &'a str) -> TestScNucleus {
-        TestScNucleus {
-            area_name: area_name.into(),
-            layers: HashMap::new(),
-        }
-    }
-}
-
-impl SubcorticalNucleus for TestScNucleus {
-    fn area_name<'a>(&'a self) -> &'a str {
-        &self.area_name
-    }
-
-    fn pre_cycle(&mut self, _thal: &mut Thalamus) {
-        println!("Pre-cycling!");
-    }
-
-    fn post_cycle(&mut self, _thal: &mut Thalamus) {
-        println!("Post-cycling!");
-    }
-
-    fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {
-        self.layers.get(&addr)
-            // .expect(&format!("SubcorticalNucleus::layer(): Invalid addr: {:?}", addr))
-    }
-}
 
 
 
@@ -148,6 +127,10 @@ impl Subcortex {
 
     pub fn iter<'a>(&'a self) -> Iter<'a, Box<SubcorticalNucleus>> {
         self.nuclei.iter()
+    }
+
+    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, Box<SubcorticalNucleus>> {
+        self.nuclei.iter_mut()
     }
 }
 
