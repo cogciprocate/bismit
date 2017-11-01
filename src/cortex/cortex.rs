@@ -129,7 +129,7 @@ impl Cortex {
     }
 
     pub fn new(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList,
-            ca_settings: Option<CorticalAreaSettings>, mut sub: Subcortex,
+            ca_settings: Option<CorticalAreaSettings>, mut subcortex: Subcortex,
             work_pool: Option<WorkPool>) -> CmnResult<Cortex> {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
@@ -140,12 +140,12 @@ impl Cortex {
             .devices(Device::specifier().type_flags(device_type))
             .build().expect("CorticalArea::new(): ocl_context creation error");
 
-        // let mut sub = match sub_opt {
+        // let mut subcortex = match sub_opt {
         //     Some(s) => s,
         //     None => Subcortex::new(),
         // };
 
-        let mut thal = Thalamus::new(layer_map_sl, area_sl, &sub, &ocl_context).unwrap();
+        let mut thal = Thalamus::new(layer_map_sl, area_sl, &subcortex, &ocl_context).unwrap();
         let mut areas = MapStore::new();
         let mut device_idx = 1;
 
@@ -160,8 +160,9 @@ impl Cortex {
         }
 
         // Wire up subcortical pathway channels:
-        for nucleus in sub.iter_mut() {
-            nucleus.create_pathways(&mut thal);
+        for nucleus in subcortex.iter_mut() {
+            nucleus.create_pathways(&mut thal, &mut areas);
+            // sub.add_boxed_nucleus(nucleus.create_pathways(&mut thal, &mut areas));
         }
 
         print_startup_time(time_start);
@@ -169,7 +170,7 @@ impl Cortex {
         Ok(Cortex {
             areas: areas,
             thal: thal,
-            sub: sub,
+            sub: subcortex,
             work_pool: work_pool.unwrap_or(WorkPool::new()),
         })
     }

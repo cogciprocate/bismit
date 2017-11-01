@@ -433,8 +433,6 @@ impl Flywheel {
     }
 
     fn send_area_info(&self, res_tx: &Sender<Response>) {
-        println!("FLYWHEEL: Sending area info...");
-
         res_tx.send(Response::AreaInfo(Box::new(
             AreaInfo {
                 name: self.area_name.to_string(),
@@ -444,7 +442,5 @@ impl Flywheel {
                     .unwrap().axn_tract_map(),
             }
         ))).expect("Error sending area info.");
-
-        println!("FLYWHEEL: Area info sent.");
     }
 }

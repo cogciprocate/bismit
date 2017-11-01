@@ -5,10 +5,12 @@ use rand;
 use rand::distributions::{Range, IndependentSample};
 use vibi::bismit::map::*;
 use vibi::bismit::ocl::{Buffer, WriteGuard};
-use vibi::bismit::{map, Cortex, CorticalAreaSettings, /*Subcortex,*/ InputGenerator,
-    Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool};
+use vibi::bismit::{map, Cortex, CorticalAreaSettings, InputGenerator, Thalamus,
+    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool};
 use vibi::bismit::flywheel::{Command, Request, Response};
 use vibi::bismit::encode::{self};
+use vibi::bismit::cmn::MapStore;
+use vibi::bismit::CorticalArea;
 use ::{Controls, Params};
 
 
@@ -609,11 +611,99 @@ struct EvalSpatial {
 
 impl EvalSpatial {
     pub fn new<S: Into<String>>(layer_map_schemes: &LayerMapSchemeList,
-            area_schemes: &AreaSchemeList, area_name: S) -> EvalSpatial {
+            area_schemes: &AreaSchemeList, area_name: S, controls: &Controls,
+            params: Params, buffers: Buffers) -> EvalSpatial {
         let area_name = area_name.into();
         let area_scheme = &area_schemes[&area_name];
         let layer_map_scheme = &layer_map_schemes[area_scheme.layer_map_name()];
         let _layer_schemes: Vec<&LayerScheme> = layer_map_scheme.layers().iter().map(|ls| ls).collect();
+
+        const SPARSITY: usize = 48;
+        let pattern_count = 300;
+        let cell_count = (params.encode_dim * params.encode_dim) as usize;
+        let sdr_active_count = cell_count / SPARSITY;
+
+        let mut rng = rand::weak_rng();
+
+        // Produce randomized indexes:
+        let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
+                encode::gen_axn_idxs(&mut rng, sdr_active_count, cell_count)
+            }).collect();
+
+        // Create sdr from randomized indexes:
+        let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
+                let mut sdr = vec![0u8; cell_count];
+                for &axn_idx in axn_idxs.iter() {
+                    sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
+                }
+                sdr
+            }).collect();
+
+        let cell_count = (params.area_dim * params.area_dim) as usize;
+
+        // Get the flywheel moving:
+        controls.cmd_tx.send(Command::None).unwrap();
+
+        // Define the number of iters to first train then collect for each
+        // sample period. All learning and other cell parameters (activity,
+        // energy, etc.) persist between sample periods. Only collection
+        // iters are recorded and evaluated.
+        let training_collect_iters = vec![
+            // (0, 5), (0, 5), (0, 5), (0, 5),
+            // (0, 5), (0, 5), (0, 5), (0, 5),
+            // (0, 5), (0, 5), (0, 5), (0, 5),
+
+            (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
+            (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
+
+            // (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
+            // (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
+
+            (0, 100000), (0, 100000), (0, 100000), (0, 100000), (0, 100000),
+            (0, 100000), (0, 100000), (0, 100000), (0, 100000), (0, 100000),
+
+            // (40000, 10000), (80000, 10000), (80000, 10000), (80000, 10000),
+            // (80000, 10000), (80000, 10000),
+        ];
+
+        let pattern_watch_list = vec![0, 1, 2, 3, 4];
+        // let pattern_watch_list = vec![1, 7, 15];
+        let mut trials = Trials::new(pattern_watch_list);
+
+        let mut cycle_count_running_ttl = 0usize;
+
+        for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {
+            let mut activity_counts = vec![vec![0; pattern_count]; cell_count];
+
+            cycle(&controls, &params, training_iters, collect_iters, pattern_count,
+                &sdrs, &mut activity_counts, cycle_count_running_ttl);
+
+            let trial_cycle_count = training_iters + collect_iters;
+            cycle_count_running_ttl += trial_cycle_count;
+            println!("\nActivity Counts [{}] (train: {}, collect: {}, running total: {}):",
+                t, training_iters, collect_iters, cycle_count_running_ttl);
+
+            let _smoother_layers = 6;
+            let _energy_level_raw = _smoother_layers * cycle_count_running_ttl;
+            let _energy_level = if _energy_level_raw > 255 { 255 } else { _energy_level_raw as u8 };
+
+            print_activity_counts(&buffers, &activity_counts, _energy_level);
+            let cycles_per_pattern = collect_iters / pattern_count;
+            const CUTOFF_QUOTIENT: usize = 16;
+            let actv_cutoff = cycles_per_pattern / CUTOFF_QUOTIENT;
+            trials.add(&activity_counts, trial_cycle_count, Some(actv_cutoff));
+            trials.print(trials.trials.len() - 1, cycles_per_pattern, actv_cutoff);
+            println!("Prior Trial Consistencies: {:?}", trials.prior_trial_consistencies(t));
+
+        // println!("\nAll Trial Consistencies: {:?}", trials.all_past_consistencies());
+        // trials.print_all();
+
+        controls.cmd_tx.send(Command::Exit).unwrap();
+        controls.cmd_tx.send(Command::None).unwrap();
+
+        println!("\nSpatial evaluation complete.\n");
+        // controls.cmd_tx.recv().unwrap();
+    }
 
         EvalSpatial {
             area_name,
@@ -624,7 +714,8 @@ impl EvalSpatial {
 }
 
 impl SubcorticalNucleus for EvalSpatial {
-    fn create_pathways(&mut self, _thal: &mut Thalamus) {}
+    fn create_pathways(&mut self, _thal: &mut Thalamus,
+            _cortical_areas: &mut MapStore<&'static str, CorticalArea>) {}
 
     fn pre_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {}
 
@@ -647,14 +738,15 @@ pub fn eval() {
     let cortex_builder = Cortex::builder(layer_map_schemes, area_schemes)
         .ca_settings(ca_settings());
 
+    let _work_pool_remote = cortex_builder.get_work_pool_remote();
+
     let input_gen = InputGenerator::new(cortex_builder.get_layer_map_schemes(),
         cortex_builder.get_area_schemes(), IN_AREA).unwrap();
 
-    // let subcortex = Subcortex::new().nucleus(input_gen);
+    // let eval_nucl = EvalSpatial::new(cortex_builder.get_layer_map_schemes(),
+    //     cortex_builder.get_area_schemes(), IN_AREA)
 
     let cortex_builder = cortex_builder.subcortical_nucleus(input_gen);
-
-    let _work_pool_remote = cortex_builder.get_work_pool_remote();
 
     let cortex = cortex_builder.build().unwrap();
 

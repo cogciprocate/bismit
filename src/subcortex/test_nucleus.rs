@@ -7,7 +7,7 @@ use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer};
 use cmn::{MapStore, CorticalDims};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
-use ::WorkPool;
+use ::{WorkPool, CorticalArea};
 
 pub struct TestScNucleus {
     area_name: String,
@@ -24,7 +24,8 @@ impl TestScNucleus {
 }
 
 impl SubcorticalNucleus for TestScNucleus {
-    fn create_pathways(&mut self, _thal: &mut Thalamus) {
+    fn create_pathways(&mut self, _thal: &mut Thalamus,
+            _cortical_areas: &mut MapStore<&'static str, CorticalArea>) {
         unimplemented!();
     }
 

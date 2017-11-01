@@ -2,13 +2,14 @@
 #![allow(unused_imports)]
 
 use std::slice::{Iter, IterMut};
+use std::vec::IntoIter;
 use std::ops::Deref;
 use std::collections::HashMap;
 use subcortex::Thalamus;
 use cmn::{MapStore, CorticalDims};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
-use cortex::WorkPool;
+use cortex::{WorkPool, CorticalArea};
 
 // [NOTES]:
 //
@@ -73,9 +74,16 @@ impl SubcorticalNucleusLayer {
 
 /// A subcortical nucleus.
 pub trait SubcorticalNucleus: 'static + Send {
-    /// Creates thalamic pathways for communication with the cortex and other
+    /// Creates thalamic pathways for communication with the thalamus and other
     /// subcortices.
-    fn create_pathways(&mut self, thal: &mut Thalamus);
+    fn create_pathways(&mut self, thal: &mut Thalamus,
+        cortical_areas: &mut MapStore<&'static str, CorticalArea>);
+
+    // /// Creates thalamic pathways for communication with the thalamus and other
+    // /// subcortices.
+    // fn create_pathways<Sn>(s: Box<Sn>, thal: &mut Thalamus,
+    //     cortical_areas: &mut MapStore<&'static str, CorticalArea>)
+    //     -> Box<SubcorticalNucleus + Send + 'static>;
 
     /// Is called before the cortex cycles.
     ///
@@ -127,6 +135,12 @@ impl Subcortex {
 
     }
 
+    pub fn add_boxed_nucleus(&mut self, nucleus: Box<SubcorticalNucleus + 'static>) {
+        let area_name = nucleus.area_name().to_owned();
+        self.nuclei.insert(area_name, nucleus);
+
+    }
+
     /// Pre-cycles all subcortical layers (see `SubcorticalNucleusLayer::pre_cycle`).
     pub fn pre_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) {
         for nucleus in self.nuclei.iter_mut() {
@@ -147,6 +161,10 @@ impl Subcortex {
 
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, Box<SubcorticalNucleus>> {
         self.nuclei.iter_mut()
+    }
+
+    pub fn into_iter(self) -> IntoIter<Box<SubcorticalNucleus>> {
+        self.nuclei.into_iter()
     }
 }
 
