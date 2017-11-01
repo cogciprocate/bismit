@@ -31,6 +31,10 @@ use cortex::WorkPool;
 // It helps to function in movement by providing feedback for the outputs of the basal ganglia.
 
 
+/// A subcortical nucleus layer.
+///
+/// Used primarily when constructing the area/layer maps.
+///
 pub struct SubcorticalNucleusLayer {
     name: &'static str,
     addr: LayerAddress,
@@ -40,6 +44,7 @@ pub struct SubcorticalNucleusLayer {
 }
 
 impl SubcorticalNucleusLayer {
+    /// Returns a new `SubcorticalNucleusLayer`.
     pub fn new(name: &'static str, addr: LayerAddress, axon_domain: AxonDomain,
             axon_topology: AxonTopology, dims: CorticalDims)
             -> SubcorticalNucleusLayer {
@@ -52,6 +57,7 @@ impl SubcorticalNucleusLayer {
         }
     }
 
+    /// Sets the dimensions of a layer.
     pub fn set_dims(&mut self, dims: CorticalDims) {
         self.dims = dims;
     }
@@ -67,21 +73,40 @@ impl SubcorticalNucleusLayer {
 
 /// A subcortical nucleus.
 pub trait SubcorticalNucleus: 'static + Send {
+    /// Creates thalamic pathways for communication with the cortex and other
+    /// subcortices.
     fn create_pathways(&mut self, thal: &mut Thalamus);
+
+    /// Is called before the cortex cycles.
+    ///
+    /// This is where most subcortical processing should typically be
+    /// enqueued.
+    ///
+    /// This must never block the current thread. All work must be sent to the
+    /// work pool.
     fn pre_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool);
+
+    /// Is called after the cortex cycles.
+    ///
+    /// This must never block the current thread. All work must be sent to the
+    /// work pool.
     fn post_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool);
+
+    /// Returns the layer specified by `addr`.
     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer>;
+
+    /// Returns the area name.
     fn area_name<'a>(&'a self) -> &'a str;
 }
 
 
-
-
+/// A sub-cortex.
 pub struct Subcortex {
     nuclei: MapStore<String, Box<SubcorticalNucleus>>,
 }
 
 impl Subcortex {
+    /// Returns a new `Subcortex`.
     pub fn new() -> Subcortex {
         Subcortex {
             nuclei: MapStore::with_capacity(8),
@@ -90,23 +115,26 @@ impl Subcortex {
 
     pub fn nucleus<N>(mut self, nucleus: N) -> Subcortex
             where N: SubcorticalNucleus {
-        let area_name = nucleus.area_name().to_owned();
-        self.add_nucleus(area_name, nucleus);
+        // let area_name = nucleus.area_name().to_owned();
+        self.add_nucleus(nucleus);
         self
     }
 
-    pub fn add_nucleus<S, N>(&mut self, area_name: S, nucleus: N)
-            where S: Into<String>, N: SubcorticalNucleus {
-        self.nuclei.insert(area_name.into(), Box::new(nucleus));
+    pub fn add_nucleus<N>(&mut self, nucleus: N)
+            where N: SubcorticalNucleus {
+        let area_name = nucleus.area_name().to_owned();
+        self.nuclei.insert(area_name, Box::new(nucleus));
 
     }
 
+    /// Pre-cycles all subcortical layers (see `SubcorticalNucleusLayer::pre_cycle`).
     pub fn pre_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) {
         for nucleus in self.nuclei.iter_mut() {
             nucleus.pre_cycle(thal, work_pool);
         }
     }
 
+    /// Post-cycles all subcortical layers (see `SubcorticalNucleusLayer::post_cycle`).
     pub fn post_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) {
         for nucleus in self.nuclei.iter_mut() {
             nucleus.post_cycle(thal, work_pool);

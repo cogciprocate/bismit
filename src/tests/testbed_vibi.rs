@@ -8,7 +8,7 @@ use cortex::Cortex;
 use map::{self, LayerMapScheme, LayerMapSchemeList, LayerMapKind, AreaScheme,
     AreaSchemeList, CellScheme, EncoderScheme, AxonTopology, LayerKind, AxonDomain,
     AxonTag, InputTrack, LayerTags};
-use subcortex::{InputGenerator, Subcortex};
+use subcortex::{InputGenerator, /*Subcortex*/};
 use encode::GlyphSequences;
 use tests::testbed::{PRIMARY_SPATIAL_SSC_LAYER_NAME, PRIMARY_TEMPORAL_PYR_LAYER_NAME};
 
@@ -164,12 +164,13 @@ pub fn new_cortex() -> Cortex {
 
     let gly_seq = InputGenerator::new(&layer_map_schemes, &area_schemes, "gly_seq").unwrap();
     let gly_seq_rose = InputGenerator::new(&layer_map_schemes, &area_schemes, "gly_seq_rose").unwrap();
-    let subcortex = Subcortex::new()
-        .nucleus(gly_seq)
-        .nucleus(gly_seq_rose);
+    // let subcortex = Subcortex::new()
+    //     .nucleus(gly_seq)
+    //     .nucleus(gly_seq_rose);
 
     let mut cortex = Cortex::builder(layer_map_schemes, area_schemes)
-        .sub(subcortex)
+        .subcortical_nucleus(gly_seq)
+        .subcortical_nucleus(gly_seq_rose)
         .build().unwrap();
     disable_stuff(&mut cortex);
     cortex

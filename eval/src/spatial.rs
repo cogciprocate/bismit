@@ -1,10 +1,12 @@
+#![allow(dead_code)]
 
 use std::collections::{BTreeMap, HashMap};
 use rand;
 use rand::distributions::{Range, IndependentSample};
 use vibi::bismit::map::*;
 use vibi::bismit::ocl::{Buffer, WriteGuard};
-use vibi::bismit::{map, Cortex, CorticalAreaSettings, Subcortex, InputGenerator};
+use vibi::bismit::{map, Cortex, CorticalAreaSettings, /*Subcortex,*/ InputGenerator,
+    Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool};
 use vibi::bismit::flywheel::{Command, Request, Response};
 use vibi::bismit::encode::{self};
 use ::{Controls, Params};
@@ -598,17 +600,59 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
     // controls.cmd_tx.recv().unwrap();
 }
 
+
+/// A `SubcorticalNucleus`.
+struct EvalSpatial {
+    area_name: String,
+    layers: HashMap<LayerAddress, SubcorticalNucleusLayer>,
+}
+
+impl EvalSpatial {
+    pub fn new<S: Into<String>>(layer_map_schemes: &LayerMapSchemeList,
+            area_schemes: &AreaSchemeList, area_name: S) -> EvalSpatial {
+        let area_name = area_name.into();
+        let area_scheme = &area_schemes[&area_name];
+        let layer_map_scheme = &layer_map_schemes[area_scheme.layer_map_name()];
+        let _layer_schemes: Vec<&LayerScheme> = layer_map_scheme.layers().iter().map(|ls| ls).collect();
+
+        EvalSpatial {
+            area_name,
+            layers: HashMap::new(),
+
+        }
+    }
+}
+
+impl SubcorticalNucleus for EvalSpatial {
+    fn create_pathways(&mut self, _thal: &mut Thalamus) {}
+
+    fn pre_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {}
+
+    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {}
+
+    fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {
+        self.layers.get(&addr)
+    }
+
+    fn area_name<'a>(&'a self) -> &'a str {
+        &self.area_name
+    }
+}
+
+
 pub fn eval() {
     let layer_map_schemes = define_lm_schemes();
     let area_schemes = define_a_schemes();
 
-    let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, IN_AREA).unwrap();
-    let subcortex = Subcortex::new().nucleus(input_gen);
-
     let cortex_builder = Cortex::builder(layer_map_schemes, area_schemes)
-        // .work_pool_remote(&mut work_pool_remote)
-        .ca_settings(ca_settings())
-        .sub(subcortex);
+        .ca_settings(ca_settings());
+
+    let input_gen = InputGenerator::new(cortex_builder.get_layer_map_schemes(),
+        cortex_builder.get_area_schemes(), IN_AREA).unwrap();
+
+    // let subcortex = Subcortex::new().nucleus(input_gen);
+
+    let cortex_builder = cortex_builder.subcortical_nucleus(input_gen);
 
     let _work_pool_remote = cortex_builder.get_work_pool_remote();
 

@@ -2,7 +2,7 @@
 //! non-test build.
 
 use cortex::Cortex;
-use subcortex::{InputGenerator, Subcortex};
+use subcortex::{InputGenerator, /*Subcortex*/};
 use super::{hybrid, kernels, testbed, TestBed};
 
 
@@ -18,9 +18,9 @@ fn cortex() {
     let area_schemes = testbed::define_protoareas();
 
     let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, "v0").unwrap();
-    let subcortex = Subcortex::new().nucleus(input_gen);
+    // let subcortex = Subcortex::new().nucleus(input_gen);
     let mut cortex = Cortex::builder(layer_map_schemes, area_schemes)
-        .sub(subcortex)
+        .subcortical_nucleus(input_gen)
         .build().unwrap();
 
     hybrid::cycles(&mut cortex, testbed::PRIMARY_AREA_NAME);

@@ -3,7 +3,7 @@ use std::thread;
 use vibi::bismit::cmn;
 use vibi::bismit::map::*;
 use vibi::bismit::ocl::{ WriteGuard};
-use vibi::bismit::{map, Cortex, CorticalAreaSettings, InputGenerator, Subcortex};
+use vibi::bismit::{map, Cortex, CorticalAreaSettings, InputGenerator, /*Subcortex*/};
 use vibi::bismit::flywheel::{Command, Request, Response};
 use ::{Controls, Params};
 
@@ -102,11 +102,11 @@ pub fn eval() {
     let area_schemes = define_a_schemes();
 
     let dummy = InputGenerator::new(&layer_map_schemes, &area_schemes, "v0").unwrap();
-    let subcortex = Subcortex::new().nucleus(dummy);
+    // let subcortex = Subcortex::new().nucleus(dummy);
 
     let cortex = Cortex::builder(layer_map_schemes, area_schemes)
         .ca_settings(ca_settings())
-        .sub(subcortex)
+        .subcortical_nucleus(dummy)
         .build().unwrap();
 
     let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")

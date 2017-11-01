@@ -133,10 +133,10 @@ pub fn fresh_cortex() -> Cortex {
     let area_schemes = define_protoareas();
 
     let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, "v0").unwrap();
-    let subcortex = Subcortex::new().nucleus(input_gen);
+    // let subcortex = Subcortex::new().nucleus(input_gen);
 
     Cortex::builder(layer_map_schemes, area_schemes)
-        .sub(subcortex)
+        .subcortical_nucleus(input_gen)
         .build().unwrap()
 }
 
@@ -223,10 +223,10 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
     ;
 
     let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, "dummy_area").unwrap();
-    let subcortex = Subcortex::new().nucleus(input_gen);
+    // let subcortex = Subcortex::new().nucleus(input_gen);
 
     Cortex::builder(layer_map_schemes, area_schemes)
-        .sub(subcortex)
+        .subcortical_nucleus(input_gen)
         .build().unwrap()
 }
 

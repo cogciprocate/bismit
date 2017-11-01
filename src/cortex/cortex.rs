@@ -12,9 +12,11 @@ use ocl::{self, Platform, Context, Device};
 use cmn::{CmnResult, MapStore};
 use cortex::{CorticalArea, CorticalAreaSettings};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
-use subcortex::{Subcortex, Thalamus};
+use subcortex::{Subcortex, SubcorticalNucleus, Thalamus};
 
 
+// This will need to be increased as the amount of work the pool is expected
+// to do increases.
 const WORK_POOL_BUFFER_SIZE: usize = 32;
 
 
@@ -127,7 +129,7 @@ impl Cortex {
     }
 
     pub fn new(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList,
-            ca_settings: Option<CorticalAreaSettings>, sub_opt: Option<Subcortex>,
+            ca_settings: Option<CorticalAreaSettings>, mut sub: Subcortex,
             work_pool: Option<WorkPool>) -> CmnResult<Cortex> {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
@@ -138,10 +140,10 @@ impl Cortex {
             .devices(Device::specifier().type_flags(device_type))
             .build().expect("CorticalArea::new(): ocl_context creation error");
 
-        let mut sub = match sub_opt {
-            Some(s) => s,
-            None => Subcortex::new(),
-        };
+        // let mut sub = match sub_opt {
+        //     Some(s) => s,
+        //     None => Subcortex::new(),
+        // };
 
         let mut thal = Thalamus::new(layer_map_sl, area_sl, &sub, &ocl_context).unwrap();
         let mut areas = MapStore::new();
@@ -231,7 +233,7 @@ pub struct Builder {
     layer_maps: LayerMapSchemeList,
     areas: AreaSchemeList,
     ca_settings: Option<CorticalAreaSettings>,
-    sub: Option<Subcortex>,
+    subcortex: Subcortex,
     work_pool: WorkPool,
 }
 
@@ -241,9 +243,17 @@ impl Builder {
             layer_maps,
             areas,
             ca_settings: None,
-            sub: None,
+            subcortex: Subcortex::new(),
             work_pool: WorkPool::new(),
         }
+    }
+
+    pub fn get_layer_map_schemes(&self) -> &LayerMapSchemeList {
+        &self.layer_maps
+    }
+
+    pub fn get_area_schemes(&self) -> &AreaSchemeList {
+        &self.areas
     }
 
     pub fn get_work_pool_remote(&self) -> WorkPoolRemote {
@@ -255,12 +265,19 @@ impl Builder {
         self
     }
 
-    pub fn sub(mut self, sub: Subcortex) -> Builder {
-        self.sub = Some(sub);
+    // pub fn sub(mut self, sub: Subcortex) -> Builder {
+    //     self.sub = Some(sub);
+    //     self
+    // }
+
+    pub fn subcortical_nucleus<N>(mut self, nucl: N) -> Builder
+            where N: SubcorticalNucleus {
+        self.subcortex.add_nucleus(nucl);
         self
     }
 
     pub fn build(self) -> CmnResult<Cortex> {
-        Cortex::new(self.layer_maps, self.areas, self.ca_settings, self.sub, Some(self.work_pool))
+        Cortex::new(self.layer_maps, self.areas, self.ca_settings, self.subcortex,
+            Some(self.work_pool))
     }
 }

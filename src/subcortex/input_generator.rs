@@ -165,7 +165,7 @@ impl InputGenerator {
             area_name: &str) -> CmnResult<InputGenerator> {
         let area_scheme = &area_schemes[area_name];
         let layer_map_scheme = &layer_map_schemes[area_scheme.layer_map_name()];
-        let layer_schemes: Vec<&LayerScheme> = layer_map_scheme.layers().iter().map(|pl| pl).collect();
+        let layer_schemes: Vec<&LayerScheme> = layer_map_scheme.layers().iter().map(|ls| ls).collect();
 
         let mut layers = HashMap::with_capacity(4);
         let mut lyr_addr_list = Vec::with_capacity(4);
