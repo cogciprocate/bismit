@@ -13,12 +13,13 @@
 //!
 
 use std::borrow::Borrow;
-use futures::Future;
+use futures::{Future, Async};
+// use futures::future::Async;
 use cmn::{self, CmnError, CmnResult, TractDims, CorticalDims, MapStore};
 use map::{AreaMap, LayerAddress, AreaSchemeList, LayerMapSchemeList};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
 use ::{InputGenerator, WorkPool};
-use subcortex::{self, Subcortex, TractSender, TractReceiver};
+use subcortex::{self, Subcortex, TractSender, TractReceiver, /*FutureSend*/};
 
 
 /// Specifies whether or not the frame buffer for a source exists within the
@@ -188,10 +189,11 @@ impl Thalamus {
     }
 
     /// Cycles thalamic tract pathways.
-    pub fn cycle_pathways(&mut self, work_pool: &mut WorkPool) {
+    pub fn cycle_pathways(&mut self, _work_pool: &mut WorkPool) {
         for pathway in self.pathways.values_mut().iter_mut() {
             match *pathway {
                 Pathway::Input { ref mut rx, wait_for_frame, .. } => {
+                    //////// KEEPME: There may be some reason to asynchronously queue this:
                     // let future_read_guard = rx.recv(wait_for_frame)
                     //     .map(|buf_opt| buf_opt.map(|buf| buf.read_u8()))
                     //     .flatten()
@@ -200,14 +202,29 @@ impl Thalamus {
 
                     // work_pool.complete(future_read_guard)
                     //     .expect("Thalamus::cycle_pathways")
+                    //////// KEEPME
 
-                    if let Some(read_buffer) = rx.recv(wait_for_frame).wait().unwrap() {
-                        let future_read_guard = read_buffer.read_u8()
-                            .map(|_read_guard| ())
-                            .map_err(|err| panic!("{}", err));
+                    //////// KEEPME: This will send the `FutureReadGuard` to the pool.
+                    //////// We may want to just wait after all for some reason.
+                    // if let Some(read_buffer) = rx.recv(wait_for_frame).wait().unwrap() {
+                    //     let future_read_guard = read_buffer.read_u8()
+                    //         .map(|_read_guard| ())
+                    //         .map_err(|err| panic!("{}", err));
 
-                        work_pool.complete(future_read_guard)
-                            .expect("Thalamus::cycle_pathways")
+                    //     work_pool.complete(future_read_guard)
+                    //         .expect("Thalamus::cycle_pathways")
+                    // }
+                    //////// KEEPME
+
+                    match rx.recv(wait_for_frame).poll() {
+                        Ok(Async::Ready(None)) => (),
+                        Ok(Async::Ready(_)) => panic!("Thalamus::cycle_pathways: \
+                            Nothing to send. `Pathway::Input` should contain a send \
+                            only tract channel "),
+                        Ok(Async::NotReady) => panic!("Thalamus::cycle_pathways: \
+                            Cycling pathways for input pathways (`Pathway::Input`) \
+                            should never have to wait."),
+                        Err(err) => panic!("{:?}", err),
                     }
                 },
                 Pathway::Output { .. } => unimplemented!(),

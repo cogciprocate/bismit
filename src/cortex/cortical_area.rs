@@ -14,7 +14,7 @@ use cmn::{self, CmnError, CmnResult, CorticalDims};
 use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind,
     ExecutionGraph, CellClass, LayerTags, LayerAddress, CommandUid};
 use ::Thalamus;
-use cortex::{AxonSpace, /*Minicolumns,*/ InhibitoryInterneuronNetwork, PyramidalLayer,
+use cortex::{AxonSpace, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother, PyrOutputter,
     WorkPool};
 use subcortex::{self, TractBuffer, TractSender, TractReceiver};
@@ -61,27 +61,22 @@ pub enum SamplerKind {
 struct Sampler {
     kind: SamplerKind,
     src_idx_range: Range<usize>,
-    // buffer: SamplerBuffer,
     tx: TractSender,
     cmd_uid: CommandUid,
     cmd_idx: Option<usize>,
 }
 
 impl Sampler {
-    fn new(kind: SamplerKind, src_idx_range: Range<usize>, /*buffer: SamplerBuffer,*/
+    fn new(kind: SamplerKind, src_idx_range: Range<usize>,
             tx: TractSender, cmd_uid: CommandUid) -> Sampler
     {
-        Sampler { kind, src_idx_range, /*buffer,*/ tx, cmd_uid, cmd_idx: None }
+        Sampler { kind, src_idx_range, tx, cmd_uid, cmd_idx: None }
     }
 
     fn set_exe_order(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         self.cmd_idx = Some(exe_graph.order_command(self.cmd_uid)?);
         Ok(())
     }
-
-    // fn buffer_single_u8(&self) -> RwVec<u8> {
-    //     self.tx.buffer_single_u8()
-    // }
 }
 
 
@@ -1034,8 +1029,6 @@ impl Drop for CorticalArea {
 pub struct Aux {
     pub ints_0: Buffer<i32>,
     pub ints_1: Buffer<i32>,
-    // pub chars_0: Buffer<ocl::i8>,
-    // pub chars_1: Buffer<ocl::i8>,
 }
 
 impl Aux {
@@ -1057,25 +1050,8 @@ impl Aux {
         Aux {
             ints_0: ints_0,
             ints_1: ints_1,
-            // chars_0: Buffer::<ocl::i8>::new(dims, 0, ocl),
-            // chars_1: Buffer::<ocl::i8>::new(dims, 0, ocl),
         }
     }
-
-    // pub unsafe fn resize(&mut self, new_dims: &CorticalDims, ocl_queue: &Queue) {
-    //     let int_32_min = -INT_32_MIN;
-    //     self.dims = new_dims.clone();
-
-    //     self.ints_0.resize(&self.dims, ocl_queue);
-    //     // self.ints_0.cmd().fill([int_32_min]).enq().unwrap();
-    //     self.ints_0.cmd().fill(&[int_32_min], None).enq().unwrap();
-
-    //     self.ints_1.resize(&self.dims, ocl_queue);
-    //     // self.ints_1.cmd().fill([int_32_min]).enq().unwrap();
-    //     self.ints_1.cmd().fill(&[int_32_min], None).enq().unwrap();
-    //     // self.chars_0.resize(&self.dims, 0);
-    //     // self.chars_1.resize(&self.dims, 0);
-    // }
 }
 
 //////////////////////
@@ -1094,12 +1070,8 @@ pub mod tests {
         fn axn_state(&self, idx: usize) -> u8;
         fn write_to_axon(&mut self, val: u8, idx: u32);
         fn read_from_axon(&self, idx: u32) -> u8;
-        fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8
-            ) -> (i8, i8, u32, u32);
-        // fn psal(&self) -> Option<&SpinyStellateLayer>;
-        // fn psal_mut(&mut self) -> Option<&mut SpinyStellateLayer>;
-        // fn ptal(&self) -> Option<&PyramidalLayer>;
-        // fn ptal_mut(&mut self) -> Option<&mut PyramidalLayer>;
+        fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8)
+            -> (i8, i8, u32, u32);
         fn print_aux(&mut self);
         fn print_axns(&mut self);
         fn activate_axon(&mut self, idx: u32);
@@ -1152,32 +1124,6 @@ pub mod tests {
 
             panic!("SynCoords::rand_safe_src_axn_offs(): Error finding valid offset pair.");
         }
-
-        // // PIL(): Get Primary Spatial Associative Layer (immutable)
-        // fn psal(&self) -> Option<&SpinyStellateLayer> {
-        //     // Some(&self.spatial_layers[self.psal_idx])
-        //     None
-        // }
-
-        // // PIL_MUT(): Get Primary Spatial Associative Layer (mutable)
-        // fn psal_mut(&mut self) -> Option<&mut SpinyStellateLayer> {
-        //     // Some(&mut self.spatial_layers[self.psal_idx])
-        //     None
-        // }
-
-        // // PAL(): Get Primary Temporal Associative Layer (immutable)
-        // fn ptal(&self) -> Option<&PyramidalLayer> {
-        //     // Some(&self.temporal_layers[self.ptal_idx])
-        //     None
-        // }
-
-        // // PAL_MUT(): Get Primary Temporal Associative Layer (mutable)
-        // fn ptal_mut(&mut self) -> Option<&mut PyramidalLayer> {
-        //     // Some(&mut self.temporal_layers[self.ptal_idx])
-        //     None
-        // }
-
-
 
         fn print_aux(&mut self) {
             use ocl::util;

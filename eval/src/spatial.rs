@@ -18,7 +18,7 @@ static SPT_LYR: &'static str = "iv";
 const ENCODE_DIM: u32 = 48;
 const AREA_DIM: u32 = 16;
 const SEQUENTIAL_SDR: bool = true;
-// const DEBUG_SMOOTHER_OVERLAP: bool = true;
+
 
 struct Buffers {
     pub l4_spt_den_actvs: Buffer<u8>,
@@ -605,10 +605,14 @@ pub fn eval() {
     let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, IN_AREA).unwrap();
     let subcortex = Subcortex::new().nucleus(input_gen);
 
-    let cortex = Cortex::builder(layer_map_schemes, area_schemes)
+    let cortex_builder = Cortex::builder(layer_map_schemes, area_schemes)
+        // .work_pool_remote(&mut work_pool_remote)
         .ca_settings(ca_settings())
-        .sub(subcortex)
-        .build().unwrap();
+        .sub(subcortex);
+
+    let _work_pool_remote = cortex_builder.get_work_pool_remote();
+
+    let cortex = cortex_builder.build().unwrap();
 
     let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
         .layer_map().layers().by_key(EXT_LYR).expect("bad lyr").layer_addr();

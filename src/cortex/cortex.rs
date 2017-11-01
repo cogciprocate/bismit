@@ -5,11 +5,11 @@ use time;
 use futures::{Sink, Stream, Future};
 use futures::sync::mpsc::{self, Sender};
 use futures_cpupool::{CpuPool, Builder as CpuPoolBuilder};
-use tokio_core::reactor::{Core, /*Remote,*/ /*Handle*/};
+use tokio_core::reactor::Core;
 #[cfg(feature = "profile")]
 use cpuprofiler::PROFILER;
 use ocl::{self, Platform, Context, Device};
-use cmn::{/*CmnError,*/ CmnResult, MapStore};
+use cmn::{CmnResult, MapStore};
 use cortex::{CorticalArea, CorticalAreaSettings};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use subcortex::{Subcortex, Thalamus};
@@ -18,6 +18,32 @@ use subcortex::{Subcortex, Thalamus};
 const WORK_POOL_BUFFER_SIZE: usize = 32;
 
 
+/// A remote for `WorkPool` used to submit futures needing completion.
+pub struct WorkPoolRemote {
+    cpu_pool: CpuPool,
+    reactor_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
+}
+
+impl WorkPoolRemote {
+    /// Submits a future which need only be polled to completion and that
+    /// contains no intensive CPU work (including memcpy).
+    pub fn complete<F>(&mut self, future: F) -> CmnResult<()>
+            where F: Future<Item=(), Error=()> + Send + 'static {
+        let tx = self.reactor_tx.take().unwrap();
+        self.reactor_tx.get_or_insert(tx.send(Box::new(future)).wait()?);
+        Ok(())
+    }
+
+    /// Submit a future which contains non-trivial CPU work (including memcpy).
+    pub fn submit_work<F>(&mut self, work: F) -> CmnResult<()>
+            where F: Future<Item=(), Error=()> + Send + 'static {
+        let future = self.cpu_pool.spawn(work);
+        self.complete(future)
+    }
+}
+
+
+/// A pool of worker threads and a tokio reactor core used to complete futures.
 pub struct WorkPool {
     cpu_pool: CpuPool,
     reactor_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
@@ -25,6 +51,7 @@ pub struct WorkPool {
 }
 
 impl WorkPool {
+    /// Returns a new `WorkPool`.
     pub fn new() -> WorkPool {
         let (reactor_tx, reactor_rx) = mpsc::channel(0);
         let reactor_thread_name = "bismit_work_pool_reactor_core".to_owned();
@@ -45,19 +72,28 @@ impl WorkPool {
         }
     }
 
-    pub fn complete<F>(&mut self, future: F)
-            -> CmnResult<()>
+    /// Submits a future which need only be polled to completion and that
+    /// contains no intensive CPU work (including memcpy).
+    pub fn complete<F>(&mut self, future: F) -> CmnResult<()>
             where F: Future<Item=(), Error=()> + Send + 'static {
         let tx = self.reactor_tx.take().unwrap();
         self.reactor_tx.get_or_insert(tx.send(Box::new(future)).wait()?);
         Ok(())
     }
 
-    pub fn submit_work<F>(&mut self, work: F)
-            -> CmnResult<()>
+    /// Submit a future which contains non-trivial CPU work (including memcpy).
+    pub fn submit_work<F>(&mut self, work: F) -> CmnResult<()>
             where F: Future<Item=(), Error=()> + Send + 'static {
         let future = self.cpu_pool.spawn(work);
         self.complete(future)
+    }
+
+    /// Returns a remote to this `WorkPool` usable to submit work.
+    pub fn remote(&self) -> WorkPoolRemote {
+        WorkPoolRemote {
+            cpu_pool: self.cpu_pool.clone(),
+            reactor_tx: self.reactor_tx.clone(),
+        }
     }
 }
 
@@ -91,8 +127,8 @@ impl Cortex {
     }
 
     pub fn new(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList,
-            ca_settings: Option<CorticalAreaSettings>, sub_opt: Option<Subcortex>)
-            -> CmnResult<Cortex> {
+            ca_settings: Option<CorticalAreaSettings>, sub_opt: Option<Subcortex>,
+            work_pool: Option<WorkPool>) -> CmnResult<Cortex> {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
         let platform = Platform::new(ocl::core::default_platform().unwrap());
@@ -132,7 +168,7 @@ impl Cortex {
             areas: areas,
             thal: thal,
             sub: sub,
-            work_pool: WorkPool::new(),
+            work_pool: work_pool.unwrap_or(WorkPool::new()),
         })
     }
 
@@ -196,6 +232,7 @@ pub struct Builder {
     areas: AreaSchemeList,
     ca_settings: Option<CorticalAreaSettings>,
     sub: Option<Subcortex>,
+    work_pool: WorkPool,
 }
 
 impl Builder {
@@ -205,7 +242,12 @@ impl Builder {
             areas,
             ca_settings: None,
             sub: None,
+            work_pool: WorkPool::new(),
         }
+    }
+
+    pub fn get_work_pool_remote(&self) -> WorkPoolRemote {
+        self.work_pool.remote()
     }
 
     pub fn ca_settings(mut self, ca_settings: CorticalAreaSettings) -> Builder {
@@ -219,6 +261,6 @@ impl Builder {
     }
 
     pub fn build(self) -> CmnResult<Cortex> {
-        Cortex::new(self.layer_maps, self.areas, self.ca_settings, self.sub)
+        Cortex::new(self.layer_maps, self.areas, self.ca_settings, self.sub, Some(self.work_pool))
     }
 }
