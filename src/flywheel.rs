@@ -227,14 +227,14 @@ impl Flywheel {
 
     pub fn spin(&mut self) {
 
-        println!("FLYWHEEL: 0");
+        // println!("FLYWHEEL: 0");
 
         loop {
             if self.exiting { break; }
             self.intake_sensory_frames().unwrap();
             self.fulfill_requests();
 
-            println!("FLYWHEEL: 1000");
+            // println!("FLYWHEEL: 1000");
 
             match self.command_rx.recv() {
                 Ok(cmd) => match cmd {
@@ -249,7 +249,7 @@ impl Flywheel {
             }
 
 
-            println!("FLYWHEEL: 2000");
+            // println!("FLYWHEEL: 2000");
 
             self.status.cur_cycle = Wrapping(0);
             self.status.cur_start_time = Some(time::get_time());
@@ -265,7 +265,7 @@ impl Flywheel {
                 _ => (),
             }
 
-            println!("FLYWHEEL: 9000");
+            // println!("FLYWHEEL: 9000");
 
             self.status.cycling = false;
             self.status.prev_cycles += self.status.cur_cycle;

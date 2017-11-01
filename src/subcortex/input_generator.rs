@@ -314,6 +314,7 @@ impl InputGenerator {
     /// Blocks when the pathway (`TractSender`) `backpressure = true`.
     ///
     pub fn send_to_pathway(&self, layer: &InputGeneratorLayer, _work_pool: &mut WorkPool) {
+        // println!("####### InputGenerator::send_to_pathway: self.disabled: {}", self.disabled);
         if !self.disabled {
             let pathway = layer.pathway.as_ref().expect("no pathway set");
             let future_write = match pathway.send().wait().unwrap() {

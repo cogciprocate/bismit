@@ -367,36 +367,38 @@ fn cycle(controls: &Controls, params: &Params, training_iters: usize, collect_it
             Range::new(0, pattern_count).ind_sample(&mut rng)
         };
 
-        // println!(" (0.0-WriteStart...) ");
+        debug!(" (00000-WriteStart...) ");
 
-        // debug!("Locking tract buffer...");
+        debug!("Locking tract buffer...");
         let mut guard = params.tract_buffer.clone().write().wait().unwrap();
         debug_assert!(guard.len() == sdrs[pattern_idx].len());
 
-        // println!(" (1.0-WriteLocked) ");
+        debug!(" (10000-WriteLocked) ");
 
         for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
             *dst = *src;
         }
 
-        // println!(" (1.1-WriteComplete) ");
+        debug!(" (11000-WriteComplete) ");
 
         WriteGuard::release(guard);
 
         // ::std::thread::sleep(::std::time::Duration::from_millis(10));
 
-        // println!(" (1.2-WriteReleased) ");
+        debug!(" (12000-WriteReleased) ");
 
+
+        debug!(" (13000-Cycling...) ");
         // Cycle.
         controls.cmd_tx.send(Command::Iterate(1)).unwrap();
 
-        // println!(" (1.3-FinishingQueues...) ");
+        debug!(" (14000-FinishingQueues...) ");
 
         // Wait for completion.
         finish_queues(controls, (prev_elapsed_iters + i) as u64, &mut exiting);
 
         // ::std::thread::sleep(::std::time::Duration::from_millis(50));
-        // println!(" (3.0-QueuesFinished) ");
+        debug!(" (20000-QueuesFinished) ");
 
         if i >= training_iters {
             // Increment the cell activity counts.

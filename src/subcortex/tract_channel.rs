@@ -229,6 +229,28 @@ impl TractBuffer {
             },
         }
     }
+
+    fn next_write_guard(&self) -> WriteBuffer {
+        match *self {
+            TractBuffer::I8(ref tbt) => {
+                WriteBuffer::FutureWriteGuardI8(tbt.next_write_buffer().write())
+            },
+            TractBuffer::U8(ref tbt) => {
+                WriteBuffer::FutureWriteGuardU8(tbt.next_write_buffer().write())
+            },
+        }
+    }
+
+    fn next_read_guard(&self) -> ReadBuffer {
+        match *self {
+            TractBuffer::I8(ref tbt) => {
+                ReadBuffer::FutureReadGuardI8(tbt.next_read_buffer().read())
+            },
+            TractBuffer::U8(ref tbt) => {
+                ReadBuffer::FutureReadGuardU8(tbt.next_read_buffer().read())
+            },
+        }
+    }
 }
 
 
@@ -237,6 +259,8 @@ pub struct TractInner {
     buffer: TractBuffer,
     buffer_idx_range: Range<usize>,
     backpressure: bool,
+    send_only: bool,
+    recv_only: bool,
     state: AtomicUsize,
     next_read_guard: AtomicOption<ReadBuffer>,
     send_waiting: AtomicOption<(Sender<()>, ReadBuffer)>,
@@ -244,13 +268,14 @@ pub struct TractInner {
 }
 
 impl TractInner {
-    fn new(buffer: TractBuffer, buffer_idx_range: Range<usize>, backpressure: bool)
-            -> TractInner
-    {
+    fn new(buffer: TractBuffer, buffer_idx_range: Range<usize>, backpressure: bool,
+            send_only: bool, recv_only: bool,) -> TractInner {
         TractInner {
             buffer,
             buffer_idx_range,
             backpressure,
+            send_only,
+            recv_only,
             state: AtomicUsize::new(0),
             next_read_guard: AtomicOption::new(),
             send_waiting: AtomicOption::new(),
@@ -259,6 +284,13 @@ impl TractInner {
     }
 
     fn send(&self) -> FutureSend {
+        if self.send_only {
+            return FutureSend::Send(Some(self.buffer.next_write_guard()));
+        }
+        if self.recv_only {
+            return FutureSend::Skip;
+        }
+
         let cur_state = self.state.fetch_or(NEXT_READ_GUARD_READY, SeqCst);
         let buffer_already_ready = (cur_state & NEXT_READ_GUARD_READY) != 0;
         if buffer_already_ready {
@@ -290,6 +322,13 @@ impl TractInner {
 
     // `wait_for_frame` untested.
     fn recv(&self, wait_for_frame: bool) -> FutureRecv {
+        if self.send_only {
+            return FutureRecv::Skip;
+        }
+        if self.recv_only {
+            return FutureRecv::Recv(Some(self.buffer.next_read_guard()));
+        }
+
         match self.next_read_guard.take(SeqCst) {
             Some(next_read_guard) => {
                 assert!(self.state.load(SeqCst) & NEXT_READ_GUARD_READY != 0);
@@ -382,18 +421,23 @@ impl TractReceiver {
 
 
 pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Range<usize>, backpressure: bool)
-        -> (TractSender, TractReceiver)
-{
+        -> (TractSender, TractReceiver) {
     let tract_buffer = TractBuffer::I8(TractBufferTyped::Single(buffer));
-    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure));
+    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, false, false));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
 }
 
 pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
-        -> (TractSender, TractReceiver)
-{
+        -> (TractSender, TractReceiver) {
     let tract_buffer = TractBuffer::U8(TractBufferTyped::Single(buffer));
-    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure));
+    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, false, false));
+    (TractSender { inner: inner.clone() }, TractReceiver { inner })
+}
+
+pub fn tract_channel_single_u8_send_only(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
+        -> (TractSender, TractReceiver) {
+    let tract_buffer = TractBuffer::U8(TractBufferTyped::Single(buffer));
+    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, true, false));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
 }
 
@@ -402,7 +446,9 @@ pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>
 mod tests {
 
     #[test]
-    fn tract_channel() {
+    #[allow(non_snake_case)]
+
+    fn tract_channel_UNIMPLEMENTED() {
 
     }
 }
