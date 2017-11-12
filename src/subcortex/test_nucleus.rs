@@ -23,26 +23,26 @@ impl TestScNucleus {
     }
 }
 
-impl SubcorticalNucleus for TestScNucleus {
-    fn create_pathways(&mut self, _thal: &mut Thalamus,
-            _cortical_areas: &mut MapStore<&'static str, CorticalArea>) {
-        unimplemented!();
-    }
+// impl SubcorticalNucleus for TestScNucleus {
+//     fn create_pathways(&mut self, _thal: &mut Thalamus,
+//             _cortical_areas: &mut MapStore<&'static str, CorticalArea>) {
+//         unimplemented!();
+//     }
 
-    fn area_name<'a>(&'a self) -> &'a str {
-        &self.area_name
-    }
+//     fn area_name<'a>(&'a self) -> &'a str {
+//         &self.area_name
+//     }
 
-    fn pre_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {
-        println!("Pre-cycling!");
-    }
+//     fn pre_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {
+//         println!("Pre-cycling!");
+//     }
 
-    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {
-        println!("Post-cycling!");
-    }
+//     fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {
+//         println!("Post-cycling!");
+//     }
 
-    fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {
-        self.layers.get(&addr)
-            // .expect(&format!("SubcorticalNucleus::layer(): Invalid addr: {:?}", addr))
-    }
-}
+//     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {
+//         self.layers.get(&addr)
+//             // .expect(&format!("SubcorticalNucleus::layer(): Invalid addr: {:?}", addr))
+//     }
+// }

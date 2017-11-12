@@ -6,26 +6,14 @@ authors = ["Nick Sanders <github.com/c0gent>"]
 [features]
 profile = ["cpuprofiler"]
 
-# [dependencies.microcosm]
-# git = "https://github.com/cogciprocate/microcosm.git"
-
-# [dependencies.time]
-# git = "https://github.com/rust-lang/time.git"
-
-# [dependencies.bitflags]
-# git = "https://github.com/rust-lang-nursery/bitflags.git"
-
-# [dependencies.ocl]
-# path = "/home/nick/projects/ocl"
-# git = "https://github.com/cogciprocate/ocl.git"
-# features = ["kernel_debug_sleep", "kernel_debug_print"]
-# features = ["kernel_debug_print"]
+[dependencies.ocl]
+version = "*"
+path = "../ocl/ocl"
+git = "https://github.com/cogciprocate/ocl.git"
+features = ["kernel_debug_sleep", "kernel_debug_print"]
+features = ["kernel_debug_print"]
 
 [dependencies]
-# ocl = "*"
-ocl = { version = "*", path = "../ocl" }
-# ocl = { version = "*", git = "https://github.com/cogciprocate/ocl" }
-
 bitflags = "*"
 rand = "*"
 num = "*"
@@ -44,8 +32,6 @@ cpuprofiler = { version = "*", optional = true }
 
 [workspace]
 members = ["eval"]
-
-# [dev-dependencies]
 
 [replace]
 # "qutex:0.1.1" = { git = "https://github.com/cogciprocate/qutex" }

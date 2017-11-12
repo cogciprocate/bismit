@@ -20,7 +20,7 @@ use subcortex::{Subcortex, SubcorticalNucleus, Thalamus};
 const WORK_POOL_BUFFER_SIZE: usize = 32;
 
 
-/// A remote for `WorkPool` used to submit futures needing completion.
+/// A remote control for `WorkPool` used to submit futures needing completion.
 pub struct WorkPoolRemote {
     cpu_pool: CpuPool,
     reactor_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
