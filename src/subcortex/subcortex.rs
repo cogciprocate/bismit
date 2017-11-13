@@ -36,6 +36,7 @@ use cortex::{WorkPool, CorticalArea};
 ///
 /// Used primarily when constructing the area/layer maps.
 ///
+#[derive(Clone, Debug)]
 pub struct SubcorticalNucleusLayer {
     name: &'static str,
     addr: LayerAddress,
