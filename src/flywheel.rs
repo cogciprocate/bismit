@@ -288,7 +288,7 @@ impl Flywheel {
 
             self.intake_sensory_frames().unwrap();
 
-            self.cortex.cycle();
+            self.cortex.cycle().expect("error cycling cortex");
 
             // Update cycle_counts:
             self.status.cur_cycle += Wrapping(1);

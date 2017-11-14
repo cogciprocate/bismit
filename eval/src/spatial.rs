@@ -1,15 +1,17 @@
 #![allow(dead_code)]
 
 use std::collections::{BTreeMap, HashMap};
-use rand;
+use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
+use qutex::QrwLock;
+use vibi::bismit::futures::Future;
 use vibi::bismit::map::*;
 use vibi::bismit::ocl::{Buffer, WriteGuard};
 use vibi::bismit::{map, Cortex, CorticalAreaSettings, /*InputGenerator,*/ Thalamus,
-    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool};
+    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, WorkPoolRemote, TractSender};
 use vibi::bismit::flywheel::{Command, Request, Response};
 use vibi::bismit::encode::{self};
-use vibi::bismit::cmn::MapStore;
+use vibi::bismit::cmn::{MapStore, CorticalDims, CmnResult};
 use vibi::bismit::CorticalArea;
 use ::{Controls, Params};
 
@@ -98,17 +100,18 @@ impl TrialResults {
     ///
     /// Only adds those cells with activity counts above `actv_cutoff`, if
     /// specified.
-    pub fn add(&mut self, counts: &Vec<Vec<ActivityCount>>, ttl_cycle_count: usize, actv_cutoff: Option<usize>) {
+    // pub fn add(&mut self, counts: &Vec<Vec<ActivityCount>>, ttl_cycle_count: usize, actv_cutoff: Option<usize>) {
+    pub fn add(&mut self, trial_data: TrialData) {
         // let mut active_cells = ActiveCells::new();
         let mut pattern_assoc = PatternAssociations::new();
 
         for &pattern_idx in &self.pattern_watch_list {
             let mut active_cells = ActiveCells::new();
 
-            for (cell_idx, cell) in counts.iter().enumerate() {
+            for (cell_idx, cell) in trial_data.activity_counts.iter().enumerate() {
                 let cell_actv_cnt = cell[pattern_idx];
 
-                match actv_cutoff {
+                match trial_data.actv_cutoff {
                     Some(ac) => {
                         if cell_actv_cnt >= ac {
                             active_cells.insert(cell_idx, cell_actv_cnt);
@@ -122,7 +125,7 @@ impl TrialResults {
         }
 
         self.trials.push(pattern_assoc);
-        self.trial_cycle_counts.push(ttl_cycle_count);
+        self.trial_cycle_counts.push(trial_data.ttl_cycle_count.expect("TrialResult::add: Count not set."));
     }
 
     /// Calculates the normalized consistency rating for two trials.
@@ -355,69 +358,69 @@ fn finish_queues(controls: &Controls, i: u64, exiting: &mut bool) {
     }
 }
 
-fn cycle(controls: &Controls, params: &Params, training_iters: usize, collect_iters: usize,
-        pattern_count: usize, sdrs: &Vec<Vec<u8>>, activity_counts: &mut Vec<Vec<usize>>,
-        prev_elapsed_iters: usize)
-{
-    let mut rng = rand::weak_rng();
-    let mut exiting = false;
+// fn cycle(controls: &Controls, params: &Params, training_iters: usize, collect_iters: usize,
+//         pattern_count: usize, sdrs: &Vec<Vec<u8>>, activity_counts: &mut Vec<Vec<usize>>,
+//         cycle_count_running_ttl: usize)
+// {
+//     let mut rng = rand::weak_rng();
+//     let mut exiting = false;
 
-    // Main loop:
-    for i in 0..training_iters + collect_iters {
-        let pattern_idx = if SEQUENTIAL_SDR {
-            // Write a non-random SDR:
-            i % pattern_count
-        } else {
-            // Write a random SDR:
-            Range::new(0, pattern_count).ind_sample(&mut rng)
-        };
+//     // Main loop:
+//     for i in 0..training_iters + collect_iters {
+//         let pattern_idx = if SEQUENTIAL_SDR {
+//             // Write a non-random SDR:
+//             i % pattern_count
+//         } else {
+//             // Write a random SDR:
+//             Range::new(0, pattern_count).ind_sample(&mut rng)
+//         };
 
-        // debug!(" (00000-WriteStart...) ");
+//         // debug!(" (00000-WriteStart...) ");
 
-        // debug!("Locking tract buffer...");
-        let mut guard = params.tract_buffer.clone().write().wait().unwrap();
-        debug_assert!(guard.len() == sdrs[pattern_idx].len());
+//         // debug!("Locking tract buffer...");
+//         let mut guard = params.tract_buffer.clone().write().wait().unwrap();
+//         debug_assert!(guard.len() == sdrs[pattern_idx].len());
 
-        // debug!(" (10000-WriteLocked) ");
+//         // debug!(" (10000-WriteLocked) ");
 
-        for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
-            *dst = *src;
-        }
+//         for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
+//             *dst = *src;
+//         }
 
-        // debug!(" (11000-WriteComplete) ");
+//         // debug!(" (11000-WriteComplete) ");
 
-        WriteGuard::release(guard);
+//         WriteGuard::release(guard);
 
-        // ::std::thread::sleep(::std::time::Duration::from_millis(10));
+//         // ::std::thread::sleep(::std::time::Duration::from_millis(10));
 
-        // debug!(" (12000-WriteReleased) ");
+//         // debug!(" (12000-WriteReleased) ");
 
 
-        // debug!(" (13000-Cycling...) ");
-        // Cycle.
-        controls.cmd_tx.send(Command::Iterate(1)).unwrap();
+//         // debug!(" (13000-Cycling...) ");
+//         // Cycle.
+//         controls.cmd_tx.send(Command::Iterate(1)).unwrap();
 
-        // debug!(" (14000-FinishingQueues...) ");
+//         // debug!(" (14000-FinishingQueues...) ");
 
-        // Wait for completion.
-        finish_queues(controls, (prev_elapsed_iters + i) as u64, &mut exiting);
+//         // Wait for completion.
+//         finish_queues(controls, (cycle_count_running_ttl + i) as u64, &mut exiting);
 
-        // ::std::thread::sleep(::std::time::Duration::from_millis(50));
-        // debug!(" (20000-QueuesFinished) ");
+//         // ::std::thread::sleep(::std::time::Duration::from_millis(50));
+//         // debug!(" (20000-QueuesFinished) ");
 
-        if i >= training_iters {
-            // Increment the cell activity counts.
-            let l4_axns = unsafe { params.l4_axns.map().read().enq().unwrap() };
-            for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
-                counts[pattern_idx] += (axn > 0) as usize;
-            }
-        }
+//         if i >= training_iters {
+//             // Increment the cell activity counts.
+//             let l4_axns = unsafe { params.l4_axns.map().read().enq().unwrap() };
+//             for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
+//                 counts[pattern_idx] += (axn > 0) as usize;
+//             }
+//         }
 
-        if exiting { break; }
-    }
+//         if exiting { break; }
+//     }
 
-    // print!("\n");
-}
+//     // print!("\n");
+// }
 
 // Prints dendritic and cell activity ratings as well as a total activity
 // count for a selection of cells (currently every 8th).
@@ -537,7 +540,7 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
         sdr
     }).collect();
 
-    let cell_count = (params.area_dim * params.area_dim) as usize;
+    let area_cell_count = (params.area_dim * params.area_dim) as usize;
 
     // Get the flywheel moving:
     controls.cmd_tx.send(Command::None).unwrap();
@@ -568,13 +571,52 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
     // let pattern_watch_list = vec![1, 7, 15];
     let mut trials = TrialResults::new(pattern_watch_list);
 
+    let mut rng = rand::weak_rng();
+    let mut exiting = false;
     let mut cycle_count_running_ttl = 0usize;
 
     for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {
-        let mut activity_counts = vec![vec![0; pattern_count]; cell_count];
+        // let mut activity_counts = vec![vec![0; pattern_count]; area_cell_count];
+        let mut trial_data = TrialData::new(pattern_count, area_cell_count);
 
-        cycle(&controls, &params, training_iters, collect_iters, pattern_count,
-            &sdrs, &mut activity_counts, cycle_count_running_ttl);
+        // cycle(&controls, &params, training_iters, collect_iters, pattern_count,
+        //     &sdrs, &mut activity_counts, cycle_count_running_ttl);
+
+        // Main loop:
+        for i in 0..training_iters + collect_iters {
+            let pattern_idx = if SEQUENTIAL_SDR {
+                // Write a non-random SDR:
+                i % pattern_count
+            } else {
+                // Write a random SDR:
+                Range::new(0, pattern_count).ind_sample(&mut rng)
+            };
+
+            let mut guard = params.tract_buffer.clone().write().wait().unwrap();
+            debug_assert!(guard.len() == sdrs[pattern_idx].len());
+
+            for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
+                *dst = *src;
+            }
+
+            WriteGuard::release(guard);
+
+            // Cycle.
+            controls.cmd_tx.send(Command::Iterate(1)).unwrap();
+
+            // Wait for completion.
+            finish_queues(controls, (cycle_count_running_ttl + i) as u64, &mut exiting);
+
+            if i >= training_iters {
+                // Increment the cell activity counts.
+                let l4_axns = unsafe { params.l4_axns.map().read().enq().unwrap() };
+                for (counts, &axn) in trial_data.activity_counts_mut().iter_mut().zip(l4_axns.iter()) {
+                    counts[pattern_idx] += (axn > 0) as usize;
+                }
+            }
+
+            if exiting { break; }
+        }
 
         let trial_cycle_count = training_iters + collect_iters;
         cycle_count_running_ttl += trial_cycle_count;
@@ -585,11 +627,15 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
         // let _energy_level_raw = _smoother_layers * cycle_count_running_ttl;
         // let _energy_level = if _energy_level_raw > 255 { 255 } else { _energy_level_raw as u8 };
 
-        print_activity_counts(&buffers, &activity_counts);
+        print_activity_counts(&buffers, trial_data.activity_counts_mut());
         let cycles_per_pattern = collect_iters / pattern_count;
         const CUTOFF_QUOTIENT: usize = 16;
         let actv_cutoff = cycles_per_pattern / CUTOFF_QUOTIENT;
-        trials.add(&activity_counts, trial_cycle_count, Some(actv_cutoff));
+
+        trial_data.set_ttl_cycle_count(trial_cycle_count);
+        trial_data.set_actv_cutoff(actv_cutoff);
+        trials.add(trial_data);
+
         trials.print(trials.trials.len() - 1, cycles_per_pattern, actv_cutoff);
         println!("Prior Trial Consistencies: {:?}", trials.prior_trial_consistencies(t));
     }
@@ -615,7 +661,6 @@ pub enum IncrResult {
 }
 
 
-
 /// An iterator over the cycles of a currently running trial.
 #[derive(Clone, Copy, Debug)]
 pub struct CycleCounter {
@@ -638,18 +683,18 @@ impl CycleCounter {
 
     /// Returns true if the trial is currently on a training cycle.
     pub fn is_training(&self) -> bool {
-        self.train_complete < self.train_total - 1
+        (self.train_complete + 1) < self.train_total
     }
 
     /// Returns true if the trial is currently on a collecting cycle.
     pub fn is_collecting(&self) -> bool {
-        self.collect_complete < self.collect_total - 1
+        (self.collect_complete + 1) < self.collect_total
     }
 
     /// Returns true if all training and collecting cycles are complete.
     pub fn all_complete(&self) -> bool {
-        self.train_complete >= self.train_total - 1 &&
-            self.collect_complete >= self.collect_total - 1
+        (self.train_complete + 1) >= self.train_total &&
+            (self.collect_complete + 1) >= self.collect_total
     }
 
     /// Increments the currently running trial run iterator and returns `true`
@@ -682,7 +727,6 @@ impl From<(usize, usize)> for CycleCounter {
         CycleCounter::new(totals.0, totals.1)
     }
 }
-
 
 
 /// The set of all trial iterators.
@@ -721,9 +765,10 @@ impl TrialIter {
         }
     }
 
-    /// Returns a mutable reference to the next cycle counter which can be
-    /// incremented or queried.
+    /// Increment the cycle counters.
     pub fn incr(&mut self) -> IncrResult {
+        self.global_cycle_idx = self.global_cycle_idx.wrapping_add(1);
+
         match self.current_counter.incr() {
             IncrResult::CollectingComplete => {
                 self.next_scheme();
@@ -736,21 +781,89 @@ impl TrialIter {
 }
 
 
+/// The data collected from a trial.
+#[derive(Debug, Clone)]
+pub struct TrialData {
+    activity_counts: Vec<Vec<ActivityCount>>,
+    ttl_cycle_count: Option<usize>,
+    actv_cutoff: Option<usize>,
+}
+
+impl TrialData {
+    pub fn new(pattern_count: usize, cell_count: usize) -> TrialData {
+        let activity_counts = vec![vec![0; pattern_count]; cell_count];
+
+        TrialData {
+            activity_counts,
+            ttl_cycle_count: None,
+            actv_cutoff: None,
+        }
+    }
+
+    pub fn activity_counts_mut(&mut self) -> &mut Vec<Vec<ActivityCount>> {
+        &mut self.activity_counts
+    }
+
+    pub fn set_ttl_cycle_count(&mut self, ttl_cycle_count: usize) {
+        self.ttl_cycle_count = Some(ttl_cycle_count);
+    }
+
+    pub fn set_actv_cutoff(&mut self, actv_cutoff: usize) {
+        self.actv_cutoff = Some(actv_cutoff);
+    }
+}
+
+
+/// A subcortical nucleus layer with a pathway.
+#[derive(Debug)]
+pub struct Layer {
+    sub: SubcorticalNucleusLayer,
+    pathway: Option<TractSender>,
+}
+
+impl Layer {
+    pub fn set_dims(&mut self, dims: CorticalDims) {
+        self.sub.set_dims(dims);
+    }
+
+    pub fn axn_topology(&self) -> AxonTopology {
+        self.sub.axon_topology().clone()
+    }
+
+    pub fn sub(&self) -> &SubcorticalNucleusLayer {
+        &self.sub
+    }
+
+    pub fn sub_mut(&mut self) -> &mut SubcorticalNucleusLayer {
+        &mut self.sub
+    }
+
+    pub fn pathway(&self) -> Option<&TractSender> {
+        self.pathway.as_ref()
+    }
+}
+
+
 
 /// A `SubcorticalNucleus`.
-#[derive(Clone, Debug)]
 struct EvalSpatial {
     area_name: String,
-    layers: HashMap<LayerAddress, SubcorticalNucleusLayer>,
+    // layers: HashMap<LayerAddress, SubcorticalNucleusLayer>,
+    layers: HashMap<LayerAddress, Layer>,
+    pattern_count: usize,
+    input_sdrs: QrwLock<Vec<Vec<u8>>>,
     trial_iter: TrialIter,
     cycles_complete: usize,
+    current_trial_data: TrialData,
     trial_results: TrialResults,
-
+    work_pool_remote: WorkPoolRemote,
+    rng: XorShiftRng,
 }
 
 impl EvalSpatial {
     pub fn new<S: Into<String>>(layer_map_schemes: &LayerMapSchemeList,
-            area_schemes: &AreaSchemeList, area_name: S) -> EvalSpatial {
+            area_schemes: &AreaSchemeList, area_name: S, work_pool_remote: WorkPoolRemote)
+            -> EvalSpatial {
         let area_name = area_name.into();
         let area_scheme = &area_schemes[&area_name];
         let layer_map_scheme = &layer_map_schemes[area_scheme.layer_map_name()];
@@ -770,8 +883,13 @@ impl EvalSpatial {
                 AxonTopology::None => panic!("EvalSpatial::new: Invalid axon topology."),
             };
 
-            let layer = SubcorticalNucleusLayer::new(lyr_name, lyr_addr,
+            let sub_layer = SubcorticalNucleusLayer::new(lyr_name, lyr_addr,
                 layer_scheme.axn_domain().clone(), axn_topology, dims);
+
+            let layer = Layer {
+                sub: sub_layer,
+                pathway: None,
+            };
 
             layers.insert(lyr_addr.clone(), layer);
         }
@@ -789,7 +907,7 @@ impl EvalSpatial {
         }).collect();
 
         // Create sdr from randomized indexes:
-        let _sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
+        let input_sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
             let mut sdr = vec![0u8; cell_count];
             for &axn_idx in axn_idxs.iter() {
                 sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
@@ -797,31 +915,19 @@ impl EvalSpatial {
             sdr
         }).collect();
 
-        let _cell_count = (AREA_DIM * AREA_DIM) as usize;
-
+        let area_cell_count = (AREA_DIM * AREA_DIM) as usize;
 
         // Define the number of iters to first train then collect for each
         // sample period. All learning and other cell parameters (activity,
         // energy, etc.) persist between sample periods. Only collection
         // iters are recorded and evaluated.
         let trial_iter = TrialIter::new(vec![
-            // (0, 5), (0, 5), (0, 5), (0, 5),
-            // (0, 5), (0, 5), (0, 5), (0, 5),
-            // (0, 5), (0, 5), (0, 5), (0, 5),
-
-            (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
-            (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
-
-            // (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
-            // (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
-
-            (0, 100000), (0, 100000), (0, 100000), (0, 100000), (0, 100000),
-            (0, 100000), (0, 100000), (0, 100000), (0, 100000), (0, 100000),
+            // (500, 500), (500, 500), (500, 500), (500, 500), (500, 500),
+            (5000, 5000), (5000, 5000), (5000, 5000), (5000, 5000), (5000, 5000),
 
             // (40000, 10000), (80000, 10000), (80000, 10000), (80000, 10000),
             // (80000, 10000), (80000, 10000),
         ]);
-
 
         let pattern_watch_list = vec![0, 1, 2, 3, 4];
         let trial_results = TrialResults::new(pattern_watch_list);
@@ -829,27 +935,88 @@ impl EvalSpatial {
         EvalSpatial {
             area_name,
             layers,
+            pattern_count,
+            input_sdrs: QrwLock::new(input_sdrs),
             trial_iter,
             cycles_complete: 0,
+            current_trial_data: TrialData::new(pattern_count, area_cell_count),
             trial_results,
+            work_pool_remote,
+            rng,
         }
-    }
-
-    fn cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {
-
     }
 }
 
 impl SubcorticalNucleus for EvalSpatial {
-    fn create_pathways(&mut self, _thal: &mut Thalamus,
-            _cortical_areas: &mut MapStore<&'static str, CorticalArea>) {}
+    fn create_pathways(&mut self, thal: &mut Thalamus,
+            _cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
+        // struct Buffers {
+        //     pub l4_spt_den_actvs: Buffer<u8>,
+        //     pub l4_spt_cel_actvs: Buffer<u8>,
+        //     pub l4_spt_cel_enrgs: Buffer<u8>,
+        // }
 
-    fn pre_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {}
+        // pub struct Params {
+        //     pub tract_buffer: RwVec<u8>,
+        //     pub axns: Buffer<u8>,
+        //     pub l4_axns: Buffer<u8>,
+        //     ...
+        // }
 
-    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {}
+        for layer in self.layers.values_mut() {
+            let tx = thal.input_pathway(*layer.sub().addr(), true);
+            layer.pathway = Some(tx);
+        }
+
+        Ok(())
+    }
+
+    fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
+        let pattern_idx = if SEQUENTIAL_SDR {
+            // Write a non-random SDR:
+            self.trial_iter.global_cycle_idx % self.pattern_count
+        } else {
+            // Write a random SDR:
+            Range::new(0, self.pattern_count).ind_sample(&mut self.rng)
+        };
+
+        // Write sdr to pathway:
+        for layer in self.layers.values() {
+            let pathway = layer.pathway.as_ref().expect("no pathway set");
+
+            let future_sdrs = self.input_sdrs.clone().read().map_err(|err| err.into());
+
+            let future_write_guard = pathway.send()
+                .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                .flatten();
+
+            let future_write = future_write_guard
+                .join(future_sdrs)
+                .map(move |(tract_opt, sdrs)| {
+                    tract_opt.map(|mut t| t.copy_from_slice(&sdrs[pattern_idx]));
+                })
+                .map_err(|err| panic!("{:?}", err));
+
+            work_pool.submit_work(future_write)?;
+        }
+
+        match self.trial_iter.incr() {
+            IncrResult::TrainingComplete => println!("##### Training complete."),
+            IncrResult::CollectingComplete => println!("##### Collecting complete."),
+            _ir @ _ => {
+
+            },
+        }
+
+        Ok(())
+    }
+
+    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) -> CmnResult<()> {
+        Ok(())
+    }
 
     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {
-        self.layers.get(&addr)
+        self.layers.get(&addr).map(|l| l.sub())
     }
 
     fn area_name<'a>(&'a self) -> &'a str {
@@ -865,14 +1032,14 @@ pub fn eval() {
     let cortex_builder = Cortex::builder(layer_map_schemes, area_schemes)
         .ca_settings(ca_settings());
 
-    let _work_pool_remote = cortex_builder.get_work_pool_remote();
+    let work_pool_remote = cortex_builder.get_work_pool_remote();
 
     // let input_gen = InputGenerator::new(cortex_builder.get_layer_map_schemes(),
     //     cortex_builder.get_area_schemes(), IN_AREA).unwrap();
     // let cortex_builder = cortex_builder.subcortical_nucleus(input_gen);
 
     let eval_nucl = EvalSpatial::new(cortex_builder.get_layer_map_schemes(),
-        cortex_builder.get_area_schemes(), IN_AREA);
+        cortex_builder.get_area_schemes(), IN_AREA, work_pool_remote);
     let cortex_builder = cortex_builder.subcortical_nucleus(eval_nucl);
 
     let cortex = cortex_builder.build().unwrap();
@@ -913,7 +1080,7 @@ pub fn eval() {
 
     let controls = ::spawn_threads(cortex, PRI_AREA);
 
-    let params = Params {
+    let _params = Params {
         tract_buffer: in_tract_buffer,
         axns,
         l4_axns: v1_spt_lyr_buf,
@@ -922,13 +1089,21 @@ pub fn eval() {
         area_dim: AREA_DIM,
     };
 
-    let buffers = Buffers {
+    let _buffers = Buffers {
         l4_spt_den_actvs,
         l4_spt_cel_actvs,
         l4_spt_cel_enrgs,
     };
 
-    track_pattern_activity(&controls, params, buffers);
+    // Get the flywheel moving:
+    controls.cmd_tx.send(Command::None).unwrap();
+    // Sleep until vibi window opens (need a better mech. for this):
+    ::std::thread::sleep(::std::time::Duration::new(1, 0));
+
+    // track_pattern_activity(&controls, _params, _buffers);
+
+    // controls.req_tx.send(Request::FinishQueues).unwrap();
+    // controls.cmd_tx.send(Command::None).unwrap();
 
     // if let Err(e) = controls.th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
     // if let Err(e) = controls.th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }

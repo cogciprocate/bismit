@@ -21,6 +21,7 @@ const WORK_POOL_BUFFER_SIZE: usize = 32;
 
 
 /// A remote control for `WorkPool` used to submit futures needing completion.
+#[derive(Clone)]
 pub struct WorkPoolRemote {
     cpu_pool: CpuPool,
     reactor_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
@@ -140,11 +141,6 @@ impl Cortex {
             .devices(Device::specifier().type_flags(device_type))
             .build().expect("CorticalArea::new(): ocl_context creation error");
 
-        // let mut subcortex = match sub_opt {
-        //     Some(s) => s,
-        //     None => Subcortex::new(),
-        // };
-
         let mut thal = Thalamus::new(layer_map_sl, area_sl, &subcortex, &ocl_context).unwrap();
         let mut areas = MapStore::new();
         let mut device_idx = 1;
@@ -161,8 +157,7 @@ impl Cortex {
 
         // Wire up subcortical pathway channels:
         for nucleus in subcortex.iter_mut() {
-            nucleus.create_pathways(&mut thal, &mut areas);
-            // sub.add_boxed_nucleus(nucleus.create_pathways(&mut thal, &mut areas));
+            nucleus.create_pathways(&mut thal, &mut areas)?;
         }
 
         print_startup_time(time_start);
@@ -183,24 +178,26 @@ impl Cortex {
         &mut self.areas
     }
 
-    pub fn cycle(&mut self) {
+    pub fn cycle(&mut self) -> CmnResult<()> {
         #[cfg(feature = "profile")]
         PROFILER.lock().unwrap().start("./bismit.profile").unwrap();
 
         self.thal.cycle_pathways(&mut self.work_pool);
         // self.thal.cycle_input_generators();
 
-        self.sub.pre_cycle(&mut self.thal, &mut self.work_pool);
+        self.sub.pre_cycle(&mut self.thal, &mut self.work_pool)?;
 
         for area in self.areas.values_mut() {
             area.cycle(&mut self.thal, &mut self.work_pool)
                 .expect("Cortex::cycle(): Cortical area cycling error");
         }
 
-        self.sub.post_cycle(&mut self.thal, &mut self.work_pool);
+        self.sub.post_cycle(&mut self.thal, &mut self.work_pool)?;
 
         #[cfg(feature = "profile")]
         PROFILER.lock().unwrap().stop().unwrap();
+
+        Ok(())
     }
 
     pub fn thal_mut(&mut self) -> &mut Thalamus {

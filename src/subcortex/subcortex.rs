@@ -6,7 +6,7 @@ use std::vec::IntoIter;
 use std::ops::Deref;
 use std::collections::HashMap;
 use subcortex::Thalamus;
-use cmn::{MapStore, CorticalDims};
+use cmn::{MapStore, CorticalDims, CmnResult};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
 use cortex::{WorkPool, CorticalArea};
@@ -78,7 +78,7 @@ pub trait SubcorticalNucleus: 'static + Send {
     /// Creates thalamic pathways for communication with the thalamus and other
     /// subcortices.
     fn create_pathways(&mut self, thal: &mut Thalamus,
-        cortical_areas: &mut MapStore<&'static str, CorticalArea>);
+        cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()>;
 
     // /// Creates thalamic pathways for communication with the thalamus and other
     // /// subcortices.
@@ -93,13 +93,13 @@ pub trait SubcorticalNucleus: 'static + Send {
     ///
     /// This must never block the current thread. All work must be sent to the
     /// work pool.
-    fn pre_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool);
+    fn pre_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()>;
 
     /// Is called after the cortex cycles.
     ///
     /// This must never block the current thread. All work must be sent to the
     /// work pool.
-    fn post_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool);
+    fn post_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()>;
 
     /// Returns the layer specified by `addr`.
     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer>;
@@ -143,17 +143,19 @@ impl Subcortex {
     }
 
     /// Pre-cycles all subcortical layers (see `SubcorticalNucleusLayer::pre_cycle`).
-    pub fn pre_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) {
+    pub fn pre_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
         for nucleus in self.nuclei.iter_mut() {
-            nucleus.pre_cycle(thal, work_pool);
+            nucleus.pre_cycle(thal, work_pool)?;
         }
+        Ok(())
     }
 
     /// Post-cycles all subcortical layers (see `SubcorticalNucleusLayer::post_cycle`).
-    pub fn post_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) {
+    pub fn post_cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
         for nucleus in self.nuclei.iter_mut() {
-            nucleus.post_cycle(thal, work_pool);
+            nucleus.post_cycle(thal, work_pool)?;
         }
+        Ok(())
     }
 
     pub fn iter<'a>(&'a self) -> Iter<'a, Box<SubcorticalNucleus>> {

@@ -10,6 +10,7 @@ log = "*"
 env_logger = "*"
 clap = "*"
 colorify = "*"
+qutex = "*"
 
 # [replace]
 # "qutex:0.1.1" = { git = "https://github.com/cogciprocate/qutex" }

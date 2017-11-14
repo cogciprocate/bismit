@@ -360,22 +360,25 @@ impl Drop for InputGenerator {
 
 impl SubcorticalNucleus for InputGenerator {
     fn create_pathways(&mut self, thal: &mut Thalamus,
-            _cortical_areas: &mut MapStore<&'static str, CorticalArea>) {
+            _cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
         for layer in self.layers.values_mut() {
             let tx = thal.input_pathway(*layer.sub().addr(), true);
             layer.pathway = Some(tx);
         }
+        Ok(())
     }
 
-    fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) {
+    fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
         for layer in self.layers.values() {
             self.send_to_pathway(layer, work_pool);
         }
-        self.cycle_next(work_pool)
+        self.cycle_next(work_pool);
+        Ok(())
     }
 
-    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {}
-
+    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) -> CmnResult<()> {
+        Ok(())
+    }
 
     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {
         self.layers.get(&addr).map(|l| l.sub())

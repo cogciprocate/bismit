@@ -8,6 +8,7 @@ extern crate env_logger;
 extern crate clap;
 #[macro_use] extern crate log;
 #[macro_use] extern crate colorify;
+extern crate qutex;
 
 mod spatial;
 mod hexdraw;

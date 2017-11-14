@@ -9,7 +9,7 @@ extern crate time;
 extern crate find_folder;
 // extern crate twox_hash;
 extern crate rand;
-extern crate futures;
+
 extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate crossbeam;
@@ -18,6 +18,7 @@ extern crate crossbeam;
 #[macro_use] extern crate colorify;
 #[cfg(feature = "profile")]
 extern crate cpuprofiler;
+pub extern crate futures;
 pub extern crate ocl;
 
 mod cortex;
@@ -33,7 +34,7 @@ pub use ocl::Event as OclEvent;
 pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses,
     InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer, SpinyStellateLayer,
     Dendrites, CorticalAreaSettings, DataCellLayer, SamplerKind, SamplerBufferKind,
-    WorkPool,};
+    WorkPool, WorkPoolRemote};
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus,
     SubcorticalNucleusLayer, TestScNucleus, InputGenerator, InputGeneratorTract,
     InputGeneratorEncoder, InputGeneratorFrame, TractBuffer, TractSender,
