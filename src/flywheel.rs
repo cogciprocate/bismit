@@ -78,7 +78,7 @@ pub enum Request {
     CurrentIter,
     Status,
     AreaInfo,
-    Sampler { area_name: String, kind: SamplerKind, buffer_kind: SamplerBufferKind },
+    Sampler { area_name: String, kind: SamplerKind, buffer_kind: SamplerBufferKind, backpressure: bool },
     FinishQueues,
 }
 
@@ -323,9 +323,9 @@ impl Flywheel {
                 match req_rx.try_recv() {
                     Ok(r) => {
                         match r {
-                            Request::Sampler { area_name, kind, buffer_kind } => {
+                            Request::Sampler { area_name, kind, buffer_kind, backpressure } => {
                                 let tract_rx = self.cortex.areas_mut().by_key_mut(area_name.as_str()).unwrap()
-                                    .sampler(kind, buffer_kind);
+                                    .sampler(kind, buffer_kind, backpressure);
                                 res_tx.send(Response::Sampler(tract_rx)).unwrap();
                             },
                             Request::AreaInfo => {

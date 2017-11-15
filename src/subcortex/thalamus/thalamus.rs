@@ -247,9 +247,9 @@ impl Thalamus {
                 (tract area id: {}): {}", tract_area_id, err),
         };
 
-        let buffer_idx_range = 0..buffer.len();
+        // let buffer_idx_range = 0..buffer.len();
         // let (tx, rx) = subcortex::tract_channel_single_u8(buffer, buffer_idx_range, true);
-        let (tx, rx) = subcortex::tract_channel_single_u8_send_only(buffer, buffer_idx_range, true);
+        let (tx, rx) = subcortex::tract_channel_single_u8_send_only(buffer, None, true);
 
         // Send a dummy/init frame, dropping the guard immediately:
         tx.send().wait().unwrap().unwrap().write_u8().wait().unwrap();

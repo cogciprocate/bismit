@@ -44,8 +44,7 @@ pub struct Controls {
 
 
 pub fn spawn_threads(cortex: Cortex, pri_area_name: &'static str)
-        -> Controls
-{
+        -> Controls {
     let (command_tx, command_rx) = mpsc::channel();
     let (vibi_request_tx, vibi_request_rx) = mpsc::channel();
     let (vibi_response_tx, vibi_response_rx) = mpsc::channel();

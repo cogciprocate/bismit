@@ -12,7 +12,7 @@ use ocl::core::CommandQueueProperties;
 use ocl::builders::{BuildOpt, ProgramBuilder};
 use cmn::{self, CmnError, CmnResult, CorticalDims};
 use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind,
-    ExecutionGraph, CellClass, LayerTags, LayerAddress, CommandUid};
+    ExecutionGraph, CellClass, LayerTags, LayerAddress, CommandUid, CommandRelations, CorticalBuffer};
 use ::Thalamus;
 use cortex::{AxonSpace, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother, PyrOutputter,
@@ -49,10 +49,20 @@ pub enum SamplerBufferKind {
 
 #[derive(Debug, Clone)]
 pub enum SamplerKind {
-    /// Axons for a specific layer.
-    AxonLayer(Option<usize>),
-    // /// All axons.
-    // AxonSpace,
+    /// Axons for a specific layer or all layers.
+    AxonLayer(Option<LayerAddress>),
+    PyrSomaStates(LayerAddress),
+    PyrSomaEnergies(LayerAddress),
+    PyrSomaActivities(LayerAddress),
+    PyrDenStates(LayerAddress),
+    PyrDenEnergies(LayerAddress),
+    PyrDenActivities(LayerAddress),
+    SscSomaStates(LayerAddress),
+    SscSomaEnergies(LayerAddress),
+    SscSomaActivities(LayerAddress),
+    SscDenStates(LayerAddress),
+    SscDenEnergies(LayerAddress),
+    SscDenActivities(LayerAddress),
     Dummy,
 }
 
@@ -67,9 +77,9 @@ struct Sampler {
 }
 
 impl Sampler {
-    fn new(kind: SamplerKind, src_idx_range: Range<usize>,
-            tx: TractSender, cmd_uid: CommandUid) -> Sampler
-    {
+    fn new(kind: SamplerKind, src_idx_range: Option<Range<usize>>,
+            tx: TractSender, cmd_uid: CommandUid) -> Sampler {
+        let src_idx_range = src_idx_range.unwrap_or(tx.buffer_idx_range());
         Sampler { kind, src_idx_range, tx, cmd_uid, cmd_idx: None }
     }
 
@@ -169,6 +179,17 @@ impl Layers {
         self.lyrs.push(lyr);
     }
 
+    fn ssc_by_addr(&self, addr: LayerAddress) -> CmnResult<&SpinyStellateLayer> {
+        for lyr in self.lyrs.iter() {
+            if let Layer::SpinyStellateLayer(ref ssc) = *lyr {
+                if ssc.layer_addr() == addr {
+                    return Ok(ssc);
+                }
+            }
+        }
+        Err(format!("Layers::ssc_by_addr: No layer '{}' found.", addr).into())
+    }
+
     fn ssc_by_name(&self, name: &str) -> CmnResult<&SpinyStellateLayer> {
         for lyr in self.lyrs.iter() {
             if let Layer::SpinyStellateLayer(ref ssc) = *lyr {
@@ -189,6 +210,17 @@ impl Layers {
             }
         }
         Err(format!("Layers::ssc_by_name: No layer named '{}' found.", name).into())
+    }
+
+    fn pyr_by_addr(&self, addr: LayerAddress) -> CmnResult<&PyramidalLayer> {
+        for lyr in self.lyrs.iter() {
+            if let Layer::PyramidalLayer(ref ssc) = *lyr {
+                if ssc.layer_addr() == addr {
+                    return Ok(ssc);
+                }
+            }
+        }
+        Err(format!("Layers::pyr_by_addr: No layer '{}' found.", addr).into())
     }
 
     fn pyr_by_name(&self, name: &str) -> CmnResult<&PyramidalLayer> {
@@ -828,35 +860,69 @@ impl CorticalArea {
         }
     }
 
+    fn pyr_lyr<'a>(&'a self, layer_addr: LayerAddress) -> &'a PyramidalLayer {
+        self.data_layers.pyr_by_addr(layer_addr)
+            .expect(&format!("CorticalArea::pyr_lyr: Invalid layer: {}", layer_addr))
+    }
+
+    fn ssc_lyr<'a>(&'a self, layer_addr: LayerAddress) -> &'a SpinyStellateLayer {
+        self.data_layers.ssc_by_addr(layer_addr)
+            .expect(&format!("CorticalArea::ssc_lyr: Invalid layer: {}", layer_addr))
+    }
+
     /// Cycles through sampling requests
     fn cycle_samplers(&mut self, work_pool: &mut WorkPool) -> CmnResult<()> {
-        // // NOTE: Enable for testing only:
+        fn pyr_lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a PyramidalLayer {
+            data_layers.pyr_by_addr(layer_addr)
+                .expect(&format!("CorticalArea::cycle_samplers: Invalid layer: {}", layer_addr))
+        }
+
+        fn ssc_lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a SpinyStellateLayer {
+            data_layers.ssc_by_addr(layer_addr)
+                .expect(&format!("CorticalArea::cycle_samplers: Invalid layer: {}", layer_addr))
+        }
+
+        // // NOTE: Enable sleep only for testing:
         // ::std::thread::sleep(::std::time::Duration::from_millis(1000));
         for sampler in &self.samplers {
             let cmd_idx = sampler.cmd_idx.expect("sampler order not set");
 
             // Check to see if we need to send this frame. `::wait` will only
-            // block if sampler backpressure is on (and buffer is stale).
+            // block if sampler backpressure is on (and tract buffer is
+            // already fresh).
             if let Some(write_buf) = sampler.tx.send().wait()? {
+                debug_assert!(sampler.tx.buffer_idx_range().len() ==
+                    sampler.src_idx_range.len());
                 let mut new_event = Event::empty();
-                match sampler.kind {
-                    SamplerKind::AxonLayer(_) => {
-                        debug_assert!(sampler.tx.buffer_idx_range().len() ==
-                            sampler.src_idx_range.len());
-                        let future_read = self.axns.states().cmd().read(write_buf.write_u8())
-                            .offset(sampler.src_idx_range.start)
-                            .len(sampler.src_idx_range.len())
-                            .dst_offset(sampler.tx.buffer_idx_range().start)
-                            .ewait(self.exe_graph.get_req_events(cmd_idx)?)
-                            .enew(&mut new_event)
-                            .enq_async()?
-                            .map(|_guard| ())
-                            .map_err(|err| panic!("{}", err));
-
-                        work_pool.complete(future_read)?;
-                    },
+                let buf = match sampler.kind {
+                    SamplerKind::AxonLayer(_lyr_addr) => self.axns.states(),
+                    SamplerKind::PyrSomaStates(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).soma(),
+                    SamplerKind::PyrSomaEnergies(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).energies(),
+                    SamplerKind::PyrSomaActivities(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).activities(),
+                    SamplerKind::PyrDenStates(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).dens().states(),
+                    SamplerKind::PyrDenEnergies(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).dens().energies(),
+                    SamplerKind::PyrDenActivities(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).dens().activities(),
+                    SamplerKind::SscSomaStates(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).soma(),
+                    SamplerKind::SscSomaEnergies(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).energies(),
+                    SamplerKind::SscSomaActivities(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).activities(),
+                    SamplerKind::SscDenStates(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).dens().states(),
+                    SamplerKind::SscDenEnergies(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).dens().energies(),
+                    SamplerKind::SscDenActivities(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).dens().activities(),
                     _ => unimplemented!(),
-                }
+                };
+
+                let future_read = buf.cmd().read(write_buf.write_u8())
+                    .offset(sampler.src_idx_range.start)
+                    .len(sampler.src_idx_range.len())
+                    .dst_offset(sampler.tx.buffer_idx_range().start)
+                    .ewait(self.exe_graph.get_req_events(cmd_idx)?)
+                    .enew(&mut new_event)
+                    .enq_async()?
+                    .map(|_guard| ())
+                    .map_err(|err| panic!("{}", err));
+
+                work_pool.complete(future_read)?;
+
                 self.exe_graph.set_cmd_event(cmd_idx, Some(new_event))?;
             } else {
                 self.exe_graph.set_cmd_event(cmd_idx, None)?;
@@ -865,63 +931,102 @@ impl CorticalArea {
         Ok(())
     }
 
+    /// Creates a tract channel and configures execution graph appropriately.
+    fn sampler_rx_single_u8(&mut self, len: usize, cmd_srcs: Vec<CorticalBuffer>,
+            kind: SamplerKind, backpressure: bool) -> TractReceiver {
+        // Create a new tract channel:
+        let (tx, rx) = subcortex::tract_channel_single_u8(RwVec::from(vec![0u8; len]), None,
+            backpressure);
+        // Add command to graph and get uid:
+        self.exe_graph.unlock();
+        let cmd_uid = self.exe_graph.add_command(
+                CommandRelations::cortical_sample(cmd_srcs))
+            .expect("CorticalArea::sampler: Error adding exe. graph command");
+        // Create and push sampler:
+        self.samplers.push(Sampler::new(kind, None, tx, cmd_uid));
+        // Repopulate execution graph:
+        self.order().expect("CorticalArea::sampler: Error reordering");
+        rx
+    }
+
     /// Requests a cortical 'sampler' which provides external read/write
     /// access to cortical cells and axons.
-    pub fn sampler(&mut self, kind: SamplerKind, buffer_kind: SamplerBufferKind) -> TractReceiver {
+    pub fn sampler(&mut self, kind: SamplerKind, buffer_kind: SamplerBufferKind,
+            backpressure: bool) -> TractReceiver {
         use ocl::RwVec;
-        use map::{CommandRelations, CorticalBuffer};
+
+        fn slc_range(area_map: &AreaMap, layer_id: usize) -> Range<usize> {
+            area_map.layer_map().layer_info(layer_id)
+                .expect(&format!("CorticalArea::sample: Invalid layer: [id:{}]", layer_id))
+                .slc_range()
+                .expect(&format!("CorticalArea::sample: Layer [id:{}] has no slices", layer_id))
+                .clone()
+        }
+
+        fn pyr_lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a PyramidalLayer {
+            data_layers.pyr_by_addr(layer_addr)
+                .expect(&format!("CorticalArea::sample: Invalid layer: {}", layer_addr))
+        }
+
+        fn ssc_lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a SpinyStellateLayer {
+            data_layers.ssc_by_addr(layer_addr)
+                .expect(&format!("CorticalArea::sample: Invalid layer: {}", layer_addr))
+        }
+
 
         match kind {
-            SamplerKind::AxonLayer(layer_id) => {
-                let slc_range = match layer_id {
-                    Some(lyr_id) => {
-                        self.area_map.layer_map().layer_info(lyr_id)
-                            .expect(&format!("CorticalArea::sample: Invalid layer: [id:{}]", lyr_id))
-                            .slc_range()
-                            .expect(&format!("CorticalArea::sample: Layer [id:{}] has no slices", lyr_id))
-                            .clone()
-                    },
+            SamplerKind::AxonLayer(lyr_addr) => {
+                let slc_range = match lyr_addr {
+                    Some(addr) => slc_range(&self.area_map, addr.layer_id()),
                     None => 0..self.area_map.slice_map().depth() as usize,
                 };
                 let axn_range = self.area_map.slice_map().axn_range(slc_range.clone());
                 match buffer_kind {
                     SamplerBufferKind::Single => {
-                        let tract_buffer = RwVec::from(vec![0u8; axn_range.len()]);
-                        // NOTE: Enable for testing only:
-                        let enable_backpressure = false;
-                        let (tx, rx) = subcortex::tract_channel_single_u8(tract_buffer,
-                            0..axn_range.len(), enable_backpressure);
-
-                        // Determine source axon slices for execution graph:
                         let cmd_srcs = slc_range.map(|slc_id| {
                             CorticalBuffer::axon_slice(self.axns.states(), self.area_id, slc_id as u8)
                         }).collect();
-                        // Add command to graph and get uid:
-                        self.exe_graph.unlock();
-                        let cmd_uid = self.exe_graph.add_command(
-                                CommandRelations::corticothalamic_read(cmd_srcs, vec![]))
-                            .expect("CorticalArea::sampler: Error adding exe. graph command");
-                        // Create and push sampler:
-                        let sampler = Sampler::new(kind.clone(), axn_range, tx, cmd_uid);
-                        self.samplers.push(sampler);
-                        // Repopulate execution graph:
-                        self.order().expect("CorticalArea::sampler: Error reordering");
-                        rx
+                        self.sampler_rx_single_u8(axn_range.len(), cmd_srcs, kind.clone(), backpressure)
                     },
                     _ => unimplemented!(),
                 }
             },
-            SamplerKind::Dummy => {
-                let axn_range = 0..1;
-                let (_tx, rx) = match buffer_kind {
-                    SamplerBufferKind::Single => {
-                        let tract_buffer = RwVec::from(vec![0i8; axn_range.len()]);
-                        subcortex::tract_channel_single_i8(tract_buffer, 0..axn_range.len(), true)
-                    },
-                    _ => unimplemented!(),
+            SamplerKind::PyrSomaStates(_lyr_addr) => unimplemented!(),
+            SamplerKind::PyrSomaEnergies(_lyr_addr) => unimplemented!(),
+            SamplerKind::PyrSomaActivities(_lyr_addr) => unimplemented!(),
+            SamplerKind::PyrDenStates(_lyr_addr) => unimplemented!(),
+            SamplerKind::PyrDenEnergies(_lyr_addr) => unimplemented!(),
+            SamplerKind::PyrDenActivities(_lyr_addr) => unimplemented!(),
+            SamplerKind::SscSomaStates(_lyr_addr) => unimplemented!(),
+            SamplerKind::SscSomaEnergies(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = ssc_lyr(&self.data_layers, lyr_addr);
+                    (lyr.energies().len(),
+                        vec![CorticalBuffer::data_soma_lyr(lyr.energies(), lyr_addr)])
                 };
-                rx
-            }
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), backpressure)
+            },
+            SamplerKind::SscSomaActivities(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = ssc_lyr(&self.data_layers, lyr_addr);
+                    (lyr.activities().len(),
+                        vec![CorticalBuffer::data_soma_lyr(lyr.activities(), lyr_addr)])
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), backpressure)
+            },
+            SamplerKind::SscDenStates(_lyr_addr) => unimplemented!(),
+            SamplerKind::SscDenEnergies(_lyr_addr) => unimplemented!(),
+            SamplerKind::SscDenActivities(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = ssc_lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_den_tft(lyr.dens().activities(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().activities().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), backpressure)
+            },
+            _ => unimplemented!(),
         }
     }
 

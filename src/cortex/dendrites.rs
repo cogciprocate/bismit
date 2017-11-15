@@ -138,6 +138,7 @@ impl Dendrites {
                     ],
                     vec![
                         CorticalBuffer::data_den_tft(&energies, layer_addr, tft_id),
+                        CorticalBuffer::data_den_tft(&activities, layer_addr, tft_id),
                         CorticalBuffer::data_den_tft(&states_raw, layer_addr, tft_id),
                         CorticalBuffer::data_den_tft(&states, layer_addr, tft_id),
                     ]

@@ -191,6 +191,14 @@ impl<T: OclPrm> TractBufferTyped<T> {
             TractBufferTyped::Triple => unimplemented!(),
         }
     }
+
+    fn len(&self) -> usize {
+        match *self {
+            TractBufferTyped::Single(ref rwv) => rwv.len(),
+            TractBufferTyped::Double => unimplemented!(),
+            TractBufferTyped::Triple => unimplemented!(),
+        }
+    }
 }
 
 
@@ -251,6 +259,13 @@ impl TractBuffer {
             },
         }
     }
+
+    pub fn len(&self) -> usize {
+        match *self {
+            TractBuffer::I8(ref tbt) => tbt.len(),
+            TractBuffer::U8(ref tbt) => tbt.len(),
+        }
+    }
 }
 
 
@@ -268,8 +283,10 @@ pub struct TractInner {
 }
 
 impl TractInner {
-    fn new(buffer: TractBuffer, buffer_idx_range: Range<usize>, backpressure: bool,
+    fn new(buffer: TractBuffer, buffer_idx_range: Option<Range<usize>>, backpressure: bool,
             send_only: bool, recv_only: bool,) -> TractInner {
+        let buffer_idx_range = buffer_idx_range.unwrap_or(0..buffer.len());
+
         TractInner {
             buffer,
             buffer_idx_range,
@@ -420,21 +437,21 @@ impl TractReceiver {
 
 
 
-pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Range<usize>, backpressure: bool)
+pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Option<Range<usize>>, backpressure: bool)
         -> (TractSender, TractReceiver) {
     let tract_buffer = TractBuffer::I8(TractBufferTyped::Single(buffer));
     let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, false, false));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
 }
 
-pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
+pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Option<Range<usize>>, backpressure: bool)
         -> (TractSender, TractReceiver) {
     let tract_buffer = TractBuffer::U8(TractBufferTyped::Single(buffer));
     let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, false, false));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
 }
 
-pub fn tract_channel_single_u8_send_only(buffer: RwVec<u8>, buffer_idx_range: Range<usize>, backpressure: bool)
+pub fn tract_channel_single_u8_send_only(buffer: RwVec<u8>, buffer_idx_range: Option<Range<usize>>, backpressure: bool)
         -> (TractSender, TractReceiver) {
     let tract_buffer = TractBuffer::U8(TractBufferTyped::Single(buffer));
     let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, true, false));

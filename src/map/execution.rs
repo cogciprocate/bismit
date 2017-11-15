@@ -181,8 +181,7 @@ impl CorticalBuffer {
     // }
 
     pub fn axon_slice(buf: &Buffer<u8>, area_id: usize, slc_id: u8)
-            -> CorticalBuffer
-    {
+            -> CorticalBuffer {
         CorticalBuffer::AxonSlice {
             buffer_id: util::buffer_uid(buf),
             area_id: area_id,
@@ -197,8 +196,7 @@ impl CorticalBuffer {
     }
 
     pub fn data_syn_tft<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress, tuft_id: usize)
-            -> CorticalBuffer
-    {
+            -> CorticalBuffer {
         CorticalBuffer::DataCellSynapseTuft {
             buffer_id: util::buffer_uid(buf),
             layer_addr: layer_addr,
@@ -207,8 +205,7 @@ impl CorticalBuffer {
     }
 
     pub fn data_den_tft<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress, tuft_id: usize)
-            -> CorticalBuffer
-    {
+            -> CorticalBuffer {
         CorticalBuffer::DataCellDendriteTuft {
             buffer_id: util::buffer_uid(buf),
             layer_addr: layer_addr,
@@ -217,8 +214,7 @@ impl CorticalBuffer {
     }
 
     pub fn data_soma_tft<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress, tuft_id: usize)
-            -> CorticalBuffer
-    {
+            -> CorticalBuffer {
         CorticalBuffer::DataCellSomaTuft {
             buffer_id: util::buffer_uid(buf),
             layer_addr,
@@ -227,8 +223,7 @@ impl CorticalBuffer {
     }
 
     pub fn data_soma_lyr<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress)
-            -> CorticalBuffer
-    {
+            -> CorticalBuffer {
         CorticalBuffer::DataCellSomaLayer {
             buffer_id: util::buffer_uid(buf),
             layer_addr,
@@ -236,8 +231,7 @@ impl CorticalBuffer {
     }
 
     pub fn control_soma_lyr<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress)
-            -> CorticalBuffer
-    {
+            -> CorticalBuffer {
         CorticalBuffer::ControlCellSomaLayer {
             buffer_id: util::buffer_uid(buf),
             layer_addr,
@@ -289,6 +283,7 @@ pub enum CommandRelationsKind {
     CorticalKernel { name: String, sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer> },
     CorticothalamicRead { sources: Vec<CorticalBuffer>, targets: Vec<ThalamicTract> },
     ThalamocorticalWrite { sources: Vec<ThalamicTract>, targets: Vec<CorticalBuffer> },
+    CorticalSample { sources: Vec<CorticalBuffer> },
     // InputFilterWrite { sources: Vec<ThalamicTract>, target: CorticalBuffer },
     SubcorticalCopy { source: MemoryBlock, target: MemoryBlock },
     Subgraph { sources: Vec<MemoryBlock>, target: Vec<MemoryBlock> },
@@ -301,10 +296,10 @@ pub struct CommandRelations {
 }
 
 impl CommandRelations {
+    /// Returns a new command relation with `CommandRelationsKind::CorticalKernel`.
     pub fn cortical_kernel<S>(name: S, sources: Vec<CorticalBuffer>, targets: Vec<CorticalBuffer>)
             -> CommandRelations
-            where S: Into<String>
-    {
+            where S: Into<String> {
         CommandRelations {
             kind: CommandRelationsKind::CorticalKernel {
                 name: name.into(),
@@ -315,9 +310,9 @@ impl CommandRelations {
         }
     }
 
+    /// Returns a new command relation with `CommandRelationsKind::CorticothalamicRead`.
     pub fn corticothalamic_read(sources: Vec<CorticalBuffer>, targets: Vec<ThalamicTract>)
-            -> CommandRelations
-    {
+            -> CommandRelations {
         CommandRelations {
             kind: CommandRelationsKind::CorticothalamicRead {
                 sources: sources,
@@ -327,13 +322,23 @@ impl CommandRelations {
         }
     }
 
+    /// Returns a new command relation with `CommandRelationsKind::ThalamocorticalWrite`.
     pub fn thalamocortical_write(sources: Vec<ThalamicTract>, targets: Vec<CorticalBuffer>)
-            -> CommandRelations
-    {
+            -> CommandRelations {
         CommandRelations {
             kind: CommandRelationsKind::ThalamocorticalWrite {
                 sources: sources,
                 targets: targets
+            },
+            cmd_idx: None,
+        }
+    }
+
+    /// Returns a new command relation with `CommandRelationsKind::CorticalSample`.
+    pub fn cortical_sample(sources: Vec<CorticalBuffer>) -> CommandRelations {
+        CommandRelations {
+            kind: CommandRelationsKind::CorticalSample {
+                sources: sources,
             },
             cmd_idx: None,
         }
@@ -346,11 +351,12 @@ impl CommandRelations {
             },
             CommandRelationsKind::CorticothalamicRead { ref sources, .. } => {
                 sources.iter().map(|src| MemoryBlock::CorticalBuffer(src.clone())).collect()
-                // vec![MemoryBlock::CorticalBuffer(source.clone())]
             },
             CommandRelationsKind::ThalamocorticalWrite { ref sources, .. } => {
                 sources.iter().map(|src| MemoryBlock::ThalamicTract(src.clone())).collect()
-                // vec![MemoryBlock::ThalamicTract(source.clone())]
+            },
+            CommandRelationsKind::CorticalSample { ref sources } => {
+                sources.iter().map(|src| MemoryBlock::CorticalBuffer(src.clone())).collect()
             },
             // CommandRelationsKind::InputFilterWrite { ref sources, .. } => {
             //     // vec![MemoryBlock::CorticalBuffer(source.clone())]
@@ -368,12 +374,13 @@ impl CommandRelations {
             },
             CommandRelationsKind::CorticothalamicRead { ref targets, .. } => {
                 targets.iter().map(|tar| MemoryBlock::ThalamicTract(tar.clone())).collect()
-                // vec![MemoryBlock::ThalamicTract(target.clone())]
             },
             CommandRelationsKind::ThalamocorticalWrite { ref targets, .. } => {
                 targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
-                // vec![MemoryBlock::CorticalBuffer(target.clone())]
             },
+            CommandRelationsKind::CorticalSample { .. } => {
+                Vec::new()
+            }
             // CommandRelationsKind::InputFilterWrite { ref target, ..  } => {
             //     vec![MemoryBlock::CorticalBuffer(targets.clone())]
             //     // targets.iter().map(|tar| MemoryBlock::CorticalBuffer(tar.clone())).collect()
@@ -388,6 +395,7 @@ impl CommandRelations {
             CommandRelationsKind::CorticalKernel { .. } => "CorticalKernel",
             CommandRelationsKind::CorticothalamicRead { .. } => "CorticothalamicRead",
             CommandRelationsKind::ThalamocorticalWrite { .. } => "ThalamocorticalWrite",
+            CommandRelationsKind::CorticalSample { .. } => "CorticalSample",
             CommandRelationsKind::SubcorticalCopy { .. } => "SubcorticalCopy",
             CommandRelationsKind::Subgraph { .. } => "Subgraph",
         }
