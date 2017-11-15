@@ -559,7 +559,7 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
         // (0, 5), (0, 5), (0, 5), (0, 5),
         // (0, 5), (0, 5), (0, 5), (0, 5),
 
-        (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
+        (5000, 5000), (5000, 5000), (5000, 5000), (5000, 5000), (5000, 5000),
         (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000),
 
         // (0, 40000), (0, 40000), (0, 40000), (0, 40000), (0, 40000),
@@ -583,76 +583,83 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
     for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {
         // let mut activity_counts = vec![vec![0; pattern_count]; area_cell_count];
         let mut trial_data = TrialData::new(pattern_count, area_cell_count);
-        let mut activity_counts = trial_data.activity_counts().clone().write().wait().unwrap();
+        {
+            let mut activity_counts = trial_data.activity_counts().clone().write().wait().unwrap();
 
-        // cycle(&controls, &params, training_iters, collect_iters, pattern_count,
-        //     &sdrs, &mut activity_counts, cycle_count_running_ttl);
+            // cycle(&controls, &params, training_iters, collect_iters, pattern_count,
+            //     &sdrs, &mut activity_counts, cycle_count_running_ttl);
 
-        // Main loop:
-        for i in 0..training_iters + collect_iters {
-            let pattern_idx = if SEQUENTIAL_SDR {
-                // Write a non-random SDR:
-                i % pattern_count
-            } else {
-                // Write a random SDR:
-                Range::new(0, pattern_count).ind_sample(&mut rng)
-            };
+            // Main loop:
+            for i in 0..training_iters + collect_iters {
+                let pattern_idx = if SEQUENTIAL_SDR {
+                    // Write a non-random SDR:
+                    i % pattern_count
+                } else {
+                    // Write a random SDR:
+                    Range::new(0, pattern_count).ind_sample(&mut rng)
+                };
 
-            let mut guard = params.tract_buffer.clone().write().wait().unwrap();
-            debug_assert!(guard.len() == sdrs[pattern_idx].len());
+                let mut guard = params.tract_buffer.clone().write().wait().unwrap();
+                debug_assert!(guard.len() == sdrs[pattern_idx].len());
 
-            for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
-                *dst = *src;
-            }
-
-            WriteGuard::release(guard);
-
-            // Cycle.
-            controls.cmd_tx.send(Command::Iterate(1)).unwrap();
-
-            // Wait for completion.
-            finish_queues(controls, (cycle_count_running_ttl + i) as u64, &mut exiting);
-
-            if i >= training_iters {
-                // Increment the cell activity counts.
-                let l4_axns = unsafe { params.l4_axns.map().read().enq().unwrap() };
-                for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
-                    counts[pattern_idx] += (axn > 0) as usize;
+                for (src, dst) in sdrs[pattern_idx].iter().zip(guard.iter_mut()) {
+                    *dst = *src;
                 }
+
+                WriteGuard::release(guard);
+
+                // Cycle.
+                controls.cmd_tx.send(Command::Iterate(1)).unwrap();
+
+                // Wait for completion.
+                finish_queues(controls, (cycle_count_running_ttl + i) as u64, &mut exiting);
+
+                if i >= training_iters {
+                    // Increment the cell activity counts.
+                    let l4_axns = unsafe { params.l4_axns.map().read().enq().unwrap() };
+                    for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
+                        counts[pattern_idx] += (axn > 0) as usize;
+                    }
+                }
+
+                if exiting { break; }
             }
 
-            if exiting { break; }
+            println!("\nActivity Counts [{}] (train: {}, collect: {}, running total: {}):",
+                t, training_iters, collect_iters, cycle_count_running_ttl);
+
+            // let _smoother_layers = 6;
+            // let _energy_level_raw = _smoother_layers * cycle_count_running_ttl;
+            // let _energy_level = if _energy_level_raw > 255 { 255 } else { _energy_level_raw as u8 };
+
+            let mut den_activities = vec![0; buffers.l4_spt_den_actvs.len()];
+            buffers.l4_spt_den_actvs.read(&mut den_activities).enq().unwrap();
+            assert_eq!(den_activities.len(), activity_counts.len());
+
+            let mut cel_activities = vec![0; buffers.l4_spt_cel_actvs.len()];
+            buffers.l4_spt_cel_actvs.read(&mut cel_activities).enq().unwrap();
+            assert_eq!(cel_activities.len(), activity_counts.len());
+
+            let mut cel_energies = vec![0; buffers.l4_spt_cel_enrgs.len()];
+            buffers.l4_spt_cel_enrgs.read(&mut cel_energies).enq().unwrap();
+            assert_eq!(cel_energies.len(), activity_counts.len());
+
+
+            print_activity_counts(&den_activities, &cel_activities, &cel_energies,
+                activity_counts.as_slice(), /*_energy_level*/);
+
         }
 
         let trial_cycle_count = training_iters + collect_iters;
         cycle_count_running_ttl += trial_cycle_count;
-        println!("\nActivity Counts [{}] (train: {}, collect: {}, running total: {}):",
-            t, training_iters, collect_iters, cycle_count_running_ttl);
 
-        // let _smoother_layers = 6;
-        // let _energy_level_raw = _smoother_layers * cycle_count_running_ttl;
-        // let _energy_level = if _energy_level_raw > 255 { 255 } else { _energy_level_raw as u8 };
-
-        let mut den_activities = vec![0; buffers.l4_spt_den_actvs.len()];
-        buffers.l4_spt_den_actvs.read(&mut den_activities).enq().unwrap();
-        assert_eq!(den_activities.len(), activity_counts.len());
-
-        let mut cel_activities = vec![0; buffers.l4_spt_cel_actvs.len()];
-        buffers.l4_spt_cel_actvs.read(&mut cel_activities).enq().unwrap();
-        assert_eq!(cel_activities.len(), activity_counts.len());
-
-        let mut cel_energies = vec![0; buffers.l4_spt_cel_enrgs.len()];
-        buffers.l4_spt_cel_enrgs.read(&mut cel_energies).enq().unwrap();
-        assert_eq!(cel_energies.len(), activity_counts.len());
-
-        print_activity_counts(&den_activities, &cel_activities, &cel_energies,
-            activity_counts.as_slice(), /*_energy_level*/);
         let cycles_per_pattern = collect_iters / pattern_count;
         const CUTOFF_QUOTIENT: usize = 16;
         let actv_cutoff = cycles_per_pattern / CUTOFF_QUOTIENT;
 
         trial_data.set_ttl_cycle_count(trial_cycle_count);
         trial_data.set_actv_cutoff(actv_cutoff);
+
         trials.add(trial_data);
 
         trials.print(trials.trials.len() - 1, cycles_per_pattern, actv_cutoff);
@@ -1006,6 +1013,8 @@ impl EvalSpatial {
 impl SubcorticalNucleus for EvalSpatial {
     fn create_pathways(&mut self, thal: &mut Thalamus,
             cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
+        // return Ok(());
+
         // Wire up output (sdr) pathways.
         for layer in self.layers.values_mut() {
             let tx = thal.input_pathway(*layer.sub().addr(), true);
@@ -1045,13 +1054,18 @@ impl SubcorticalNucleus for EvalSpatial {
     /// *
     ///
     fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
-        let pattern_idx = if SEQUENTIAL_SDR {
+        // return Ok(());
+
+        // let pattern_idx = if SEQUENTIAL_SDR {
+        self.current_pattern_idx = if SEQUENTIAL_SDR {
             // Write a non-random SDR:
             self.trial_iter.global_cycle_idx % self.pattern_count
         } else {
             // Write a random SDR:
             Range::new(0, self.pattern_count).ind_sample(&mut self.rng)
         };
+
+        let pattern_idx = self.current_pattern_idx;
 
         // Write sdr to pathway:
         for layer in self.layers.values() {
@@ -1085,18 +1099,28 @@ impl SubcorticalNucleus for EvalSpatial {
     /// * Increments the cell activity counts
     ///
     fn post_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
+        // return Ok(());
+
         if self.trial_iter.current_counter().is_collecting() {
             let pattern_idx = self.current_pattern_idx;
 
             let future_axns = self.samplers.as_ref().unwrap().l4_axns.recv(true)
-                .wait().unwrap().unwrap().read_u8();
+                .wait()?.unwrap().read_u8();
 
             let future_activity_counts = self.current_trial_data.activity_counts().clone().write()
                 .from_err();
 
+                // let l4_axns = unsafe { params.l4_axns.map().read().enq().unwrap() };
+                // for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
+                //     counts[pattern_idx] += (axn > 0) as usize;
+                // }
+
             let future_increment = future_axns.join(future_activity_counts)
                 .map(move |(axns, mut actv_counts)| {
                     for (&axn, counts) in axns.iter().zip(actv_counts.iter_mut()) {
+                        // if axn > 0 {
+                        //     print!("{{COUNT:{}}}", counts[pattern_idx]);
+                        // }
                         counts[pattern_idx] += (axn > 0) as usize;
                     }
                 })
@@ -1111,11 +1135,11 @@ impl SubcorticalNucleus for EvalSpatial {
                     scheme_idx, train, collect, self.trial_iter.global_cycle_idx);
 
                 let future_den_activities = self.samplers.as_ref().unwrap().l4_den_actvs.recv(true)
-                    .wait().unwrap().unwrap().read_u8();
+                    .wait()?.unwrap().read_u8();
                 let future_cel_activities = self.samplers.as_ref().unwrap().l4_cel_actvs.recv(true)
-                    .wait().unwrap().unwrap().read_u8();
+                    .wait()?.unwrap().read_u8();
                 let future_cel_energies = self.samplers.as_ref().unwrap().l4_cel_enrgs.recv(true)
-                    .wait().unwrap().unwrap().read_u8();
+                    .wait()?.unwrap().read_u8();
 
                 let future_activity_counts = self.current_trial_data.activity_counts().clone().read()
                     .from_err();
@@ -1132,7 +1156,9 @@ impl SubcorticalNucleus for EvalSpatial {
                     })
                     .map_err(|err| println!("{:?}", err));
 
-                work_pool.submit_work(future_print_activity)?;
+                future_print_activity.wait()?;
+
+                // work_pool.submit_work(future_print_activity)?;
 
                 let trial_cycle_count = train + collect;
 
@@ -1146,18 +1172,19 @@ impl SubcorticalNucleus for EvalSpatial {
                     TrialData::new(self.pattern_count, self.area_cell_count));
                 self.trial_results.add(completed_trial_data);
 
-                // trials.print(trials.trials.len() - 1, cycles_per_pattern, actv_cutoff);
-                // println!("Prior Trial Consistencies: {:?}", trials.prior_trial_consistencies(t));
+                self.trial_results.print(self.trial_results.trials.len() - 1, cycles_per_pattern, actv_cutoff);
+                println!("Prior Trial Consistencies: {:?}", self.trial_results
+                    .prior_trial_consistencies(self.trial_results.trials.len() - 1));
             },
             _ir @ _ => {
                 if self.trial_iter.current_counter.is_last_cycle() {
                     // Clear all of the sampler tract buffers in prep. for final cycle.
                     let future_den_activities = self.samplers.as_ref().unwrap().l4_den_actvs.recv(true)
-                        .wait().unwrap().unwrap().read_u8();
+                        .wait()?.unwrap().read_u8();
                     let future_cel_activities = self.samplers.as_ref().unwrap().l4_cel_actvs.recv(true)
-                        .wait().unwrap().unwrap().read_u8();
+                        .wait()?.unwrap().read_u8();
                     let future_cel_energies = self.samplers.as_ref().unwrap().l4_cel_enrgs.recv(true)
-                        .wait().unwrap().unwrap().read_u8();
+                        .wait()?.unwrap().read_u8();
                     let joined = future_den_activities.join3(future_cel_activities, future_cel_energies)
                         .map(|_| ())
                         .map_err(|err| panic!("{:?}", err));
@@ -1198,6 +1225,10 @@ pub fn eval() {
 
     let cortex = cortex_builder.build().unwrap();
 
+    let controls = ::spawn_threads(cortex, PRI_AREA);
+
+    //////////////
+
     // let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
     //     .layer_map().layers().by_key(EXT_LYR).expect("bad lyr").layer_addr();
 
@@ -1228,12 +1259,6 @@ pub fn eval() {
     // let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
     // let area_map = cortex.areas().by_key(PRI_AREA).unwrap().area_map().clone();
 
-    // // TODO: DO SOMETHING WITH ME
-    // let nucl = Nucleus::new(IN_AREA, EXT_LYR, PRI_AREA, &cortex);
-    // cortex.add_subcortex(Subcortex::new().nucl(nucl));
-
-    let controls = ::spawn_threads(cortex, PRI_AREA);
-
     // let _params = Params {
     //     tract_buffer: in_tract_buffer,
     //     axns,
@@ -1259,8 +1284,8 @@ pub fn eval() {
     // controls.req_tx.send(Request::FinishQueues).unwrap();
     // controls.cmd_tx.send(Command::None).unwrap();
 
-    // if let Err(e) = controls.th_win.join() { println!("th_win.join(): Error: '{:?}'", e); }
-    // if let Err(e) = controls.th_flywheel.join() { println!("th_flywheel.join(): Error: '{:?}'", e); }
+    /////
+
     ::join_threads(controls)
 }
 
