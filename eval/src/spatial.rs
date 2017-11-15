@@ -8,11 +8,12 @@ use vibi::bismit::futures::Future;
 use vibi::bismit::map::*;
 use vibi::bismit::ocl::{Buffer, WriteGuard};
 use vibi::bismit::{map, Cortex, CorticalAreaSettings, /*InputGenerator,*/ Thalamus,
-    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, WorkPoolRemote, TractSender};
+    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, WorkPoolRemote, TractSender,
+    TractReceiver};
 use vibi::bismit::flywheel::{Command, Request, Response};
 use vibi::bismit::encode::{self};
 use vibi::bismit::cmn::{MapStore, CorticalDims, CmnResult};
-use vibi::bismit::CorticalArea;
+use vibi::bismit::{CorticalArea, SamplerKind, SamplerBufferKind};
 use ::{Controls, Params};
 
 
@@ -104,11 +105,12 @@ impl TrialResults {
     pub fn add(&mut self, trial_data: TrialData) {
         // let mut active_cells = ActiveCells::new();
         let mut pattern_assoc = PatternAssociations::new();
+        let activity_counts = trial_data.activity_counts().clone().read().wait().unwrap();
 
         for &pattern_idx in &self.pattern_watch_list {
             let mut active_cells = ActiveCells::new();
 
-            for (cell_idx, cell) in trial_data.activity_counts.iter().enumerate() {
+            for (cell_idx, cell) in activity_counts.iter().enumerate() {
                 let cell_actv_cnt = cell[pattern_idx];
 
                 match trial_data.actv_cutoff {
@@ -429,7 +431,7 @@ fn finish_queues(controls: &Controls, i: u64, exiting: &mut bool) {
 // uniformly by the smoother kernel (by using the '+1 to all' debug code
 // contained within).
 //
-fn print_activity_counts(buffers: &Buffers, activity_counts: &Vec<Vec<usize>>, /*_energy_level: u8*/) {
+fn print_activity_counts(buffers: &Buffers, activity_counts: &[Vec<usize>], /*_energy_level: u8*/) {
     let cel_count = activity_counts.len();
     let pattern_count = activity_counts[0].len();
     let mut cel_ttls = Vec::with_capacity(cel_count);
@@ -578,6 +580,7 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
     for (t, (training_iters, collect_iters)) in training_collect_iters.into_iter().enumerate() {
         // let mut activity_counts = vec![vec![0; pattern_count]; area_cell_count];
         let mut trial_data = TrialData::new(pattern_count, area_cell_count);
+        let mut activity_counts = trial_data.activity_counts().clone().write().wait().unwrap();
 
         // cycle(&controls, &params, training_iters, collect_iters, pattern_count,
         //     &sdrs, &mut activity_counts, cycle_count_running_ttl);
@@ -610,7 +613,7 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
             if i >= training_iters {
                 // Increment the cell activity counts.
                 let l4_axns = unsafe { params.l4_axns.map().read().enq().unwrap() };
-                for (counts, &axn) in trial_data.activity_counts_mut().iter_mut().zip(l4_axns.iter()) {
+                for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
                     counts[pattern_idx] += (axn > 0) as usize;
                 }
             }
@@ -627,7 +630,7 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
         // let _energy_level_raw = _smoother_layers * cycle_count_running_ttl;
         // let _energy_level = if _energy_level_raw > 255 { 255 } else { _energy_level_raw as u8 };
 
-        print_activity_counts(&buffers, trial_data.activity_counts_mut());
+        print_activity_counts(&buffers, activity_counts.as_slice());
         let cycles_per_pattern = collect_iters / pattern_count;
         const CUTOFF_QUOTIENT: usize = 16;
         let actv_cutoff = cycles_per_pattern / CUTOFF_QUOTIENT;
@@ -778,20 +781,24 @@ impl TrialIter {
             r @ _ => r,
         }
     }
+
+    pub fn current_counter(&self) -> &CycleCounter {
+        &self.current_counter
+    }
 }
 
 
 /// The data collected from a trial.
 #[derive(Debug, Clone)]
 pub struct TrialData {
-    activity_counts: Vec<Vec<ActivityCount>>,
+    activity_counts: QrwLock<Vec<Vec<ActivityCount>>>,
     ttl_cycle_count: Option<usize>,
     actv_cutoff: Option<usize>,
 }
 
 impl TrialData {
     pub fn new(pattern_count: usize, cell_count: usize) -> TrialData {
-        let activity_counts = vec![vec![0; pattern_count]; cell_count];
+        let activity_counts = QrwLock::new(vec![vec![0; pattern_count]; cell_count]);
 
         TrialData {
             activity_counts,
@@ -800,8 +807,12 @@ impl TrialData {
         }
     }
 
-    pub fn activity_counts_mut(&mut self) -> &mut Vec<Vec<ActivityCount>> {
-        &mut self.activity_counts
+    // pub fn activity_counts_mut(&mut self) -> &mut Vec<Vec<ActivityCount>> {
+    //     &mut self.activity_counts
+    // }
+
+    pub fn activity_counts(&self) -> &QrwLock<Vec<Vec<ActivityCount>>> {
+        &self.activity_counts
     }
 
     pub fn set_ttl_cycle_count(&mut self, ttl_cycle_count: usize) {
@@ -858,6 +869,8 @@ struct EvalSpatial {
     trial_results: TrialResults,
     work_pool_remote: WorkPoolRemote,
     rng: XorShiftRng,
+    l4_axns_sampler: Option<TractReceiver>,
+    current_pattern_idx: usize,
 }
 
 impl EvalSpatial {
@@ -943,13 +956,15 @@ impl EvalSpatial {
             trial_results,
             work_pool_remote,
             rng,
+            l4_axns_sampler: None,
+            current_pattern_idx: 0,
         }
     }
 }
 
 impl SubcorticalNucleus for EvalSpatial {
     fn create_pathways(&mut self, thal: &mut Thalamus,
-            _cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
+            cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
         // struct Buffers {
         //     pub l4_spt_den_actvs: Buffer<u8>,
         //     pub l4_spt_cel_actvs: Buffer<u8>,
@@ -968,6 +983,16 @@ impl SubcorticalNucleus for EvalSpatial {
             layer.pathway = Some(tx);
         }
 
+        let v1_l4_lyr_addr = *thal.area_maps().by_key(PRI_AREA).expect("bad area")
+            .layer_map().layers().by_key(SPT_LYR)
+            .expect("bad lyr").layer_addr();
+
+        let l4_axns_sampler = cortical_areas.by_key_mut(PRI_AREA).unwrap()
+            .sampler(SamplerKind::AxonLayer(Some(v1_l4_lyr_addr.layer_id())),
+                SamplerBufferKind::Single);
+
+        self.l4_axns_sampler = Some(l4_axns_sampler);
+
         Ok(())
     }
 
@@ -984,7 +1009,8 @@ impl SubcorticalNucleus for EvalSpatial {
         for layer in self.layers.values() {
             let pathway = layer.pathway.as_ref().expect("no pathway set");
 
-            let future_sdrs = self.input_sdrs.clone().read().map_err(|err| err.into());
+            // let future_sdrs = self.input_sdrs.clone().read().map_err(|err| err.into());
+            let future_sdrs = self.input_sdrs.clone().read().from_err();
 
             let future_write_guard = pathway.send()
                 .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
@@ -993,7 +1019,10 @@ impl SubcorticalNucleus for EvalSpatial {
             let future_write = future_write_guard
                 .join(future_sdrs)
                 .map(move |(tract_opt, sdrs)| {
-                    tract_opt.map(|mut t| t.copy_from_slice(&sdrs[pattern_idx]));
+                    tract_opt.map(|mut t| {
+                        debug_assert!(t.len() == sdrs[pattern_idx].len());
+                        t.copy_from_slice(&sdrs[pattern_idx]);
+                    });
                 })
                 .map_err(|err| panic!("{:?}", err));
 
@@ -1003,15 +1032,49 @@ impl SubcorticalNucleus for EvalSpatial {
         match self.trial_iter.incr() {
             IncrResult::TrainingComplete => println!("##### Training complete."),
             IncrResult::CollectingComplete => println!("##### Collecting complete."),
-            _ir @ _ => {
-
-            },
+            _ir @ _ => {},
         }
 
         Ok(())
     }
 
-    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) -> CmnResult<()> {
+    /// Blocks to wait for sampler channels.
+    fn post_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
+        if self.trial_iter.current_counter().is_collecting() {
+            // // Increment the cell activity counts.
+            // let l4_axns = unsafe { params.l4_axns.map().read().enq().unwrap() };
+            // for (counts, &axn) in trial_data.activity_counts_mut().iter_mut().zip(l4_axns.iter()) {
+            //     counts[pattern_idx] += (axn > 0) as usize;
+            // }
+
+            // // Increment the cell activity counts.
+            // if let Some(tract_buf) = self.l4_axns_sampler.as_ref().unwrap().recv(true).wait().unwrap() {
+            //     let future_axns_guard = tract_buf.read_u8();
+            // }
+
+            let pattern_idx = self.current_pattern_idx;
+
+            // Increment the cell activity counts.
+            let future_axns_guard = self.l4_axns_sampler.as_ref().unwrap().recv(true)
+                .wait().unwrap().unwrap().read_u8();
+
+            let future_activity_counts = self.current_trial_data.activity_counts().clone().write()
+                // .map_err(|err| err.into());
+                .from_err();
+
+            let future_increment = future_axns_guard.join(future_activity_counts)
+                .map(move |(axns, mut actv_counts)| {
+                    for (&axn, counts) in axns.iter().zip(actv_counts.iter_mut()) {
+                        counts[pattern_idx] += (axn > 0) as usize;
+                    }
+                })
+                .map_err(|err| panic!("{:?}", err));
+
+            work_pool.submit_work(future_increment)?;
+        }
+
+        println!("Activity Counts: {:?}", self.current_trial_data.activity_counts.clone().read().wait().unwrap());
+
         Ok(())
     }
 
