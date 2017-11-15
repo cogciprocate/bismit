@@ -829,10 +829,6 @@ impl SubcorticalNucleus for EvalSpatial {
                         .wait()?.unwrap().read_u8();
                     let future_cel_energies = self.samplers.as_ref().unwrap().l4_cel_enrgs.recv(true)
                         .wait()?.unwrap().read_u8();
-                    let joined = future_den_activities.join3(future_cel_activities, future_cel_energies)
-                        .map(|_| ())
-                        .map_err(|err| panic!("{:?}", err));
-                    work_pool.complete(joined)?;
                 }
             },
         }
