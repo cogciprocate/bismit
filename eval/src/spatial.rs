@@ -6,12 +6,11 @@ use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
 use qutex::QrwLock;
 use vibi::bismit::futures::Future;
+use vibi::bismit::{map, encode, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
+    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, WorkPoolRemote, TractReceiver, MapStore,
+    CorticalArea, SamplerKind, SamplerBufferKind};
 use vibi::bismit::map::*;
-use vibi::bismit::{map, Cortex, CorticalAreaSettings, Thalamus, SubcorticalNucleus,
-    SubcorticalNucleusLayer, WorkPool, WorkPoolRemote, TractSender, TractReceiver};
-use vibi::bismit::encode::{self};
-use vibi::bismit::cmn::{MapStore, CorticalDims, CmnResult};
-use vibi::bismit::{CorticalArea, SamplerKind, SamplerBufferKind};
+use ::{IncrResult, TrialIter, Layer};
 
 
 static PRI_AREA: &'static str = "v1";
@@ -24,14 +23,14 @@ const AREA_DIM: u32 = 16;
 const SEQUENTIAL_SDR: bool = true;
 
 
-type CellIdx = usize;
-type ActivityCount = usize;
-type ActiveCells = BTreeMap<CellIdx, ActivityCount>;
-type PatternIdx = usize;
-type PatternAssociations = BTreeMap<PatternIdx, ActiveCells>;
+pub type CellIdx = usize;
+pub type ActivityCount = usize;
+pub type ActiveCells = BTreeMap<CellIdx, ActivityCount>;
+pub type PatternIdx = usize;
+pub type PatternAssociations = BTreeMap<PatternIdx, ActiveCells>;
 
 #[derive(Clone, Debug)]
-struct TrialResults {
+pub struct TrialResults {
     trials: Vec<PatternAssociations>,
     trial_cycle_counts: Vec<usize>,
     pattern_watch_list: Vec<usize>,
@@ -78,7 +77,7 @@ impl TrialResults {
     }
 
     /// Calculates the normalized consistency rating for two trials.
-    fn trial_consistency(&self, trial_a_idx: usize, trial_b_idx: usize, ignore_inactive: bool) -> f32 {
+    pub fn trial_consistency(&self, trial_a_idx: usize, trial_b_idx: usize, ignore_inactive: bool) -> f32 {
         fn cell_consistency(actv_count_a: ActivityCount, actv_count_a_ttl: ActivityCount, actv_count_b: ActivityCount,
                 actv_count_b_ttl: ActivityCount) -> (f32, f32) {
             let actv_count_a_norm = actv_count_a as f32 / actv_count_a_ttl as f32;
@@ -263,6 +262,10 @@ impl TrialResults {
             self.print(trial_idx, cycles_per_pattern, actv_cutoff);
         }
     }
+
+    pub fn trials(&self) -> &[PatternAssociations] {
+        &self.trials
+    }
 }
 
 
@@ -274,7 +277,7 @@ impl TrialResults {
 // contained within).
 //
 // fn print_activity_counts(buffers: &Buffers, activity_counts: &[Vec<usize>], /*_energy_level: u8*/) {
-fn print_activity_counts(den_activities: &[u8], cel_activities: &[u8], cel_energies: &[u8],
+pub fn print_activity_counts(den_activities: &[u8], cel_activities: &[u8], cel_energies: &[u8],
         activity_counts: &[Vec<usize>], /*_energy_level: u8*/) {
     let cel_count = activity_counts.len();
     let pattern_count = activity_counts[0].len();
@@ -338,151 +341,6 @@ fn print_activity_counts(den_activities: &[u8], cel_activities: &[u8], cel_energ
 }
 
 
-/// A result of incrementing a `CycleCounter`.
-#[derive(Clone, Copy, Debug)]
-pub enum IncrResult {
-    Training,
-    TrainingComplete,
-    Collecting,
-    CollectingComplete,
-    TrialComplete { scheme_idx: usize, train: usize, collect: usize },
-}
-
-
-/// An iterator over the cycles of a currently running trial.
-#[derive(Clone, Copy, Debug)]
-pub struct CycleCounter {
-    train_total: usize,
-    train_complete: usize,
-    collect_total: usize,
-    collect_complete: usize,
-}
-
-impl CycleCounter {
-    /// Returns a new cycle counter.
-    pub fn new(train_total: usize, collect_total: usize) -> CycleCounter {
-        CycleCounter {
-            train_total,
-            train_complete: 0,
-            collect_total,
-            collect_complete: 0,
-        }
-    }
-
-    /// Returns true if the trial is currently on a training cycle.
-    pub fn is_training(&self) -> bool {
-        self.train_complete < self.train_total
-    }
-
-    /// Returns true if the trial is currently on a collecting cycle.
-    pub fn is_collecting(&self) -> bool {
-        self.collect_complete < self.collect_total
-    }
-
-    /// Returns true if the collect complete counter is 1 away from completion.
-    pub fn is_last_cycle(&self) -> bool {
-        self.collect_complete + 1 == self.collect_total
-    }
-
-    /// Returns true if all training and collecting cycles are complete.
-    pub fn all_complete(&self) -> bool {
-        self.train_complete >= self.train_total &&
-            self.collect_complete >= self.collect_total
-    }
-
-    /// Increments the currently running trial run iterator and returns `true`
-    /// if all trial runs have completed (both training and collecting).
-    pub fn incr(&mut self) -> IncrResult {
-        if self.is_training() {
-            self.train_complete += 1;
-            if self.is_training() {
-                IncrResult::Training
-            } else {
-                IncrResult::TrainingComplete
-            }
-        } else {
-            if self.is_collecting() {
-                self.collect_complete += 1;
-                if self.is_collecting() {
-                    IncrResult::Collecting
-                } else {
-                    IncrResult::CollectingComplete
-                }
-            } else {
-                IncrResult::CollectingComplete
-            }
-        }
-    }
-}
-
-impl From<(usize, usize)> for CycleCounter {
-    fn from(totals: (usize, usize)) -> CycleCounter {
-        CycleCounter::new(totals.0, totals.1)
-    }
-}
-
-
-/// The set of all trial iterators.
-#[derive(Clone, Debug)]
-struct TrialIter {
-    schemes: Vec<(usize, usize)>,
-    current_counter: CycleCounter,
-    current_scheme_idx: usize,
-    global_cycle_idx: usize,
-}
-
-impl TrialIter {
-    // Defines the number of cycles to first train then collect for each
-    // sample period (trial).
-    pub fn new(schemes: Vec<(usize, usize)>) -> TrialIter {
-        assert!(schemes.len() > 0, "TrialIter::new: Empty scheme list.");
-        let first_counter = schemes[0].into();
-
-        TrialIter {
-            schemes,
-            current_counter: first_counter,
-            current_scheme_idx: 0,
-            global_cycle_idx: 0,
-        }
-    }
-
-    /// Increments the current scheme index and returns true if the
-    /// incrementation resets the counter.
-    fn next_scheme(&mut self) -> bool {
-        if self.current_scheme_idx < self.schemes.len() - 1 {
-            self.current_scheme_idx += 1;
-            false
-        } else {
-            self.current_scheme_idx = 0;
-            true
-        }
-    }
-
-    /// Increment the cycle counters.
-    pub fn incr(&mut self) -> IncrResult {
-        self.global_cycle_idx = self.global_cycle_idx.wrapping_add(1);
-
-        match self.current_counter.incr() {
-            IncrResult::CollectingComplete => {
-                let completed_scheme = self.schemes[self.current_scheme_idx];
-                let completed_scheme_idx = self.current_scheme_idx;
-                self.next_scheme();
-                self.current_counter = self.schemes[self.current_scheme_idx].into();
-                IncrResult::TrialComplete {
-                    scheme_idx: completed_scheme_idx,
-                    train: completed_scheme.0,
-                    collect: completed_scheme.1
-                }
-            },
-            r @ _ => r,
-        }
-    }
-
-    pub fn current_counter(&self) -> &CycleCounter {
-        &self.current_counter
-    }
-}
-
 
 /// The data collected from a trial.
 #[derive(Debug, Clone)]
@@ -503,10 +361,6 @@ impl TrialData {
         }
     }
 
-    // pub fn activity_counts_mut(&mut self) -> &mut Vec<Vec<ActivityCount>> {
-    //     &mut self.activity_counts
-    // }
-
     pub fn activity_counts(&self) -> &QrwLock<Vec<Vec<ActivityCount>>> {
         &self.activity_counts
     }
@@ -521,35 +375,6 @@ impl TrialData {
 }
 
 
-/// A subcortical nucleus layer with a pathway.
-#[derive(Debug)]
-pub struct Layer {
-    sub: SubcorticalNucleusLayer,
-    pathway: Option<TractSender>,
-}
-
-impl Layer {
-    pub fn set_dims(&mut self, dims: CorticalDims) {
-        self.sub.set_dims(dims);
-    }
-
-    pub fn axn_topology(&self) -> AxonTopology {
-        self.sub.axon_topology().clone()
-    }
-
-    pub fn sub(&self) -> &SubcorticalNucleusLayer {
-        &self.sub
-    }
-
-    pub fn sub_mut(&mut self) -> &mut SubcorticalNucleusLayer {
-        &mut self.sub
-    }
-
-    pub fn pathway(&self) -> Option<&TractSender> {
-        self.pathway.as_ref()
-    }
-}
-
 
 struct Samplers {
     l4_axns: TractReceiver,
@@ -558,15 +383,12 @@ struct Samplers {
     l4_cel_enrgs: TractReceiver,
 }
 
-impl Samplers {
 
-}
-
-
-/// A `SubcorticalNucleus`.
+/// A `SubcorticalNucleus` which runs several evaluations of a spiny stellate
+/// cell layer and its accompanying control cells (smoother).
 struct EvalSpatial {
     area_name: String,
-    // layers: HashMap<LayerAddress, SubcorticalNucleusLayer>,
+    area_id: usize,
     layers: HashMap<LayerAddress, Layer>,
     pattern_count: usize,
     area_cell_count: usize,
@@ -574,11 +396,11 @@ struct EvalSpatial {
     trial_iter: TrialIter,
     cycles_complete: usize,
     current_trial_data: TrialData,
+    current_pattern_idx: usize,
     trial_results: TrialResults,
     work_pool_remote: WorkPoolRemote,
     rng: XorShiftRng,
     samplers: Option<Samplers>,
-    current_pattern_idx: usize,
 }
 
 impl EvalSpatial {
@@ -588,31 +410,17 @@ impl EvalSpatial {
         let area_name = area_name.into();
         let area_scheme = &area_schemes[&area_name];
         let layer_map_scheme = &layer_map_schemes[area_scheme.layer_map_name()];
-        let layer_schemes: Vec<&LayerScheme> = layer_map_scheme.layers().iter().map(|ls| ls).collect();
-
         let mut layers = HashMap::with_capacity(4);
 
-        for layer_scheme in layer_schemes.into_iter() {
-            let lyr_name = layer_scheme.name();
-            let lyr_addr = LayerAddress::new(area_scheme.area_id(), layer_scheme.layer_id());
-            let axn_topology = layer_scheme.kind().axn_topology();
-            let lyr_depth = layer_scheme.depth().expect("EvalSpatial::new: No layer depth set.");
-
-            let dims = match axn_topology {
-                AxonTopology::Spatial | AxonTopology::Horizontal =>
-                    area_scheme.dims().clone_with_depth(lyr_depth),
-                AxonTopology::None => panic!("EvalSpatial::new: Invalid axon topology."),
-            };
-
-            let sub_layer = SubcorticalNucleusLayer::new(lyr_name, lyr_addr,
-                layer_scheme.axn_domain().clone(), axn_topology, dims);
+        for layer_scheme in layer_map_scheme.layers() {
+            let sub_layer = SubcorticalNucleusLayer::from_schemes(layer_scheme, area_scheme, None);
 
             let layer = Layer {
                 sub: sub_layer,
                 pathway: None,
             };
 
-            layers.insert(lyr_addr.clone(), layer);
+            layers.insert(layer.sub().addr().clone(), layer);
         }
 
         const SPARSITY: usize = 48;
@@ -654,7 +462,8 @@ impl EvalSpatial {
         let trial_results = TrialResults::new(pattern_watch_list);
 
         EvalSpatial {
-            area_name,
+            area_name: area_name,
+            area_id: area_scheme.area_id(),
             layers,
             pattern_count,
             area_cell_count,
@@ -662,11 +471,11 @@ impl EvalSpatial {
             trial_iter,
             cycles_complete: 0,
             current_trial_data: TrialData::new(pattern_count, area_cell_count),
+            current_pattern_idx: 0,
             trial_results,
             work_pool_remote,
             rng,
             samplers: None,
-            current_pattern_idx: 0,
         }
     }
 }
@@ -823,11 +632,11 @@ impl SubcorticalNucleus for EvalSpatial {
             _ir @ _ => {
                 if self.trial_iter.current_counter.is_last_cycle() {
                     // Clear all of the sampler tract buffers in prep. for final cycle.
-                    let future_den_activities = self.samplers.as_ref().unwrap().l4_den_actvs.recv(true)
+                    let _future_den_activities = self.samplers.as_ref().unwrap().l4_den_actvs.recv(true)
                         .wait()?.unwrap().read_u8();
-                    let future_cel_activities = self.samplers.as_ref().unwrap().l4_cel_actvs.recv(true)
+                    let _future_cel_activities = self.samplers.as_ref().unwrap().l4_cel_actvs.recv(true)
                         .wait()?.unwrap().read_u8();
-                    let future_cel_energies = self.samplers.as_ref().unwrap().l4_cel_enrgs.recv(true)
+                    let _future_cel_energies = self.samplers.as_ref().unwrap().l4_cel_enrgs.recv(true)
                         .wait()?.unwrap().read_u8();
                 }
             },
@@ -842,6 +651,10 @@ impl SubcorticalNucleus for EvalSpatial {
 
     fn area_name<'a>(&'a self) -> &'a str {
         &self.area_name
+    }
+
+    fn area_id(&self) -> usize {
+        self.area_id
     }
 }
 

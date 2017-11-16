@@ -14,14 +14,15 @@ mod spatial;
 mod hexdraw;
 mod motor;
 
-use vibi::window;
-use vibi::bismit::Cortex;
-use vibi::bismit::flywheel::{Flywheel, Command, Request, Response};
-use vibi::bismit::map::AreaMap;
-use vibi::bismit::ocl::{Buffer, RwVec};
 
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
+
+use vibi::window;
+use vibi::bismit::ocl::{Buffer, RwVec};
+use vibi::bismit::{Cortex, SubcorticalNucleusLayer, TractSender, CorticalDims};
+use vibi::bismit::flywheel::{Flywheel, Command, Request, Response};
+use vibi::bismit::map::{AreaMap, AxonTopology};
 
 
 pub struct Params {
@@ -137,3 +138,181 @@ fn main() {
     // }
 }
 
+
+
+
+/// A result of incrementing a `CycleCounter`.
+#[derive(Clone, Copy, Debug)]
+pub enum IncrResult {
+    Training,
+    TrainingComplete,
+    Collecting,
+    CollectingComplete,
+    TrialComplete { scheme_idx: usize, train: usize, collect: usize },
+}
+
+
+/// An iterator over the cycles of a currently running trial.
+#[derive(Clone, Copy, Debug)]
+pub struct CycleCounter {
+    train_total: usize,
+    train_complete: usize,
+    collect_total: usize,
+    collect_complete: usize,
+}
+
+impl CycleCounter {
+    /// Returns a new cycle counter.
+    pub fn new(train_total: usize, collect_total: usize) -> CycleCounter {
+        CycleCounter {
+            train_total,
+            train_complete: 0,
+            collect_total,
+            collect_complete: 0,
+        }
+    }
+
+    /// Returns true if the trial is currently on a training cycle.
+    pub fn is_training(&self) -> bool {
+        self.train_complete < self.train_total
+    }
+
+    /// Returns true if the trial is currently on a collecting cycle.
+    pub fn is_collecting(&self) -> bool {
+        self.collect_complete < self.collect_total
+    }
+
+    /// Returns true if the collect complete counter is 1 away from completion.
+    pub fn is_last_cycle(&self) -> bool {
+        self.collect_complete + 1 == self.collect_total
+    }
+
+    /// Returns true if all training and collecting cycles are complete.
+    pub fn all_complete(&self) -> bool {
+        self.train_complete >= self.train_total &&
+            self.collect_complete >= self.collect_total
+    }
+
+    /// Increments the currently running trial run iterator and returns `true`
+    /// if all trial runs have completed (both training and collecting).
+    pub fn incr(&mut self) -> IncrResult {
+        if self.is_training() {
+            self.train_complete += 1;
+            if self.is_training() {
+                IncrResult::Training
+            } else {
+                IncrResult::TrainingComplete
+            }
+        } else {
+            if self.is_collecting() {
+                self.collect_complete += 1;
+                if self.is_collecting() {
+                    IncrResult::Collecting
+                } else {
+                    IncrResult::CollectingComplete
+                }
+            } else {
+                IncrResult::CollectingComplete
+            }
+        }
+    }
+}
+
+impl From<(usize, usize)> for CycleCounter {
+    fn from(totals: (usize, usize)) -> CycleCounter {
+        CycleCounter::new(totals.0, totals.1)
+    }
+}
+
+
+/// The set of all trial iterators.
+#[derive(Clone, Debug)]
+struct TrialIter {
+    schemes: Vec<(usize, usize)>,
+    current_counter: CycleCounter,
+    current_scheme_idx: usize,
+    global_cycle_idx: usize,
+}
+
+impl TrialIter {
+    // Defines the number of cycles to first train then collect for each
+    // sample period (trial).
+    pub fn new(schemes: Vec<(usize, usize)>) -> TrialIter {
+        assert!(schemes.len() > 0, "TrialIter::new: Empty scheme list.");
+        let first_counter = schemes[0].into();
+
+        TrialIter {
+            schemes,
+            current_counter: first_counter,
+            current_scheme_idx: 0,
+            global_cycle_idx: 0,
+        }
+    }
+
+    /// Increments the current scheme index and returns true if the
+    /// incrementation resets the counter.
+    fn next_scheme(&mut self) -> bool {
+        if self.current_scheme_idx < self.schemes.len() - 1 {
+            self.current_scheme_idx += 1;
+            false
+        } else {
+            self.current_scheme_idx = 0;
+            true
+        }
+    }
+
+    /// Increment the cycle counters.
+    pub fn incr(&mut self) -> IncrResult {
+        self.global_cycle_idx = self.global_cycle_idx.wrapping_add(1);
+
+        match self.current_counter.incr() {
+            IncrResult::CollectingComplete => {
+                let completed_scheme = self.schemes[self.current_scheme_idx];
+                let completed_scheme_idx = self.current_scheme_idx;
+                self.next_scheme();
+                self.current_counter = self.schemes[self.current_scheme_idx].into();
+                IncrResult::TrialComplete {
+                    scheme_idx: completed_scheme_idx,
+                    train: completed_scheme.0,
+                    collect: completed_scheme.1
+                }
+            },
+            r @ _ => r,
+        }
+    }
+
+    pub fn current_counter(&self) -> &CycleCounter {
+        &self.current_counter
+    }
+}
+
+
+
+/// A subcortical nucleus layer with a pathway.
+#[derive(Debug)]
+pub struct Layer {
+    sub: SubcorticalNucleusLayer,
+    pathway: Option<TractSender>,
+}
+
+impl Layer {
+    pub fn set_dims(&mut self, dims: CorticalDims) {
+        self.sub.set_dims(dims);
+    }
+
+    pub fn axn_topology(&self) -> AxonTopology {
+        self.sub.axon_topology().clone()
+    }
+
+    pub fn sub(&self) -> &SubcorticalNucleusLayer {
+        &self.sub
+    }
+
+    pub fn sub_mut(&mut self) -> &mut SubcorticalNucleusLayer {
+        &mut self.sub
+    }
+
+    pub fn pathway(&self) -> Option<&TractSender> {
+        self.pathway.as_ref()
+    }
+}

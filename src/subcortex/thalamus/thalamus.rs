@@ -14,12 +14,11 @@
 
 use std::borrow::Borrow;
 use futures::{Future, Async};
-// use futures::future::Async;
 use cmn::{self, CmnError, CmnResult, TractDims, CorticalDims, MapStore};
 use map::{AreaMap, LayerAddress, AreaSchemeList, LayerMapSchemeList};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
 use ::{InputGenerator, WorkPool};
-use subcortex::{self, Subcortex, TractSender, TractReceiver, /*FutureSend*/};
+use subcortex::{self, Subcortex, TractSender, TractReceiver};
 
 
 /// Specifies whether or not the frame buffer for a source exists within the

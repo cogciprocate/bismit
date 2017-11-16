@@ -59,6 +59,44 @@ impl SubcorticalNucleusLayer {
         }
     }
 
+    /// Creates and returns a new `SubcorticalNucleusLayer` assembled from a
+    /// layer and area scheme.
+    ///
+    /// Specifying `layer_depth` overrides the depth specified within the layer scheme.
+    ///
+    pub fn from_schemes(layer_scheme: &LayerScheme, area_scheme: &AreaScheme,
+            layer_dims: Option<CorticalDims>) -> SubcorticalNucleusLayer {
+        let area_id = area_scheme.area_id();
+        let name = layer_scheme.name();
+        let addr = LayerAddress::new(area_id, layer_scheme.layer_id());
+        let axon_domain = layer_scheme.axn_domain().clone();
+        let axon_topology = layer_scheme.kind().axn_topology();
+
+        let dims = match layer_dims {
+            Some(d) => d,
+            None => {
+                match axon_topology {
+                    AxonTopology::Spatial | AxonTopology::Horizontal => {
+                        let lyr_sch_depth = layer_scheme.depth()
+                            .expect("SubcorticalNucleusLayer::from_schemes: \
+                                no layer scheme depth set");
+                        area_scheme.dims().clone_with_depth(lyr_sch_depth)
+                    },
+                    AxonTopology::None => panic!("SubcorticalNucleusLayer::from_schemes: \
+                        Invalid axon topology ('AxonTopology::None')."),
+                }
+            }
+        };
+
+        SubcorticalNucleusLayer {
+            name,
+            addr,
+            axon_domain,
+            axon_topology,
+            dims,
+        }
+    }
+
     /// Sets the dimensions of a layer.
     pub fn set_dims(&mut self, dims: CorticalDims) {
         self.dims = dims;
@@ -106,6 +144,9 @@ pub trait SubcorticalNucleus: 'static + Send {
 
     /// Returns the area name.
     fn area_name<'a>(&'a self) -> &'a str;
+
+    /// Returns the global area id.
+    fn area_id(&self) -> usize;
 }
 
 

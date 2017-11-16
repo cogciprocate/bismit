@@ -387,4 +387,8 @@ impl SubcorticalNucleus for InputGenerator {
     fn area_name<'a>(&'a self) -> &'a str {
         &self.area_name
     }
+
+    fn area_id(&self) -> usize {
+        self.area_id
+    }
 }

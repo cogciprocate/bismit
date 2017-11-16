@@ -40,6 +40,7 @@ pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus,
     InputGeneratorEncoder, InputGeneratorFrame, TractBuffer, TractSender,
     TractReceiver};
 pub use self::flywheel::Flywheel;
-pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap};
-pub use self::cmn::{util, TractDims, TypeId, CmnError as Error, CmnResult as Result};
+pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap, AxonTopology};
+pub use self::cmn::{util, TractDims, TypeId, CmnError as Error, CmnResult as Result,
+    CorticalDims, MapStore};
 pub use self::encode::GlyphBuckets;
