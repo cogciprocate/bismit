@@ -8,7 +8,7 @@ pub struct LayerScheme {
     kind: LayerKind,
     depth: Option<u8>,
     layer_tags: LayerTags,
-    axn_domain: AxonDomain,
+    axon_domain: AxonDomain,
 }
 
 impl LayerScheme {
@@ -24,7 +24,7 @@ impl LayerScheme {
             kind: kind,
             depth: depth,
             layer_tags: layer_tags,
-            axn_domain: axn_domain.into(),
+            axon_domain: axn_domain.into(),
         }
     }
 
@@ -38,5 +38,5 @@ impl LayerScheme {
     pub fn name(&self) -> &'static str { self.name }
     pub fn kind(&self) -> &LayerKind { &self.kind }
     pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
-    pub fn axn_domain(&self) -> &AxonDomain { &self.axn_domain }
+    pub fn axon_domain(&self) -> &AxonDomain { &self.axon_domain }
 }

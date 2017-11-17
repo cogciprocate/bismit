@@ -179,15 +179,16 @@ impl InputGenerator {
             let lyr_depth = layer_scheme.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
             let dims = match axn_topology {
-                AxonTopology::Spatial => Some(area_scheme.dims().clone_with_depth(lyr_depth)),
-                AxonTopology::Horizontal => None,
-                AxonTopology::None => None,
+                AxonTopology::Spatial | AxonTopology::Horizontal =>
+                    Some(area_scheme.dims().clone_with_depth(lyr_depth)),
+                // AxonTopology::Horizontal => None,
+                AxonTopology::None => panic!("InputGenerator::new: Invalid axon topology (None)."),
             };
 
-            let lyr_axn_sig = match *layer_scheme.axn_domain() {
+            let lyr_axn_sig = match *layer_scheme.axon_domain() {
                 AxonDomain::Output(ref axn_sig) => axn_sig.clone(),
-                _ => return Err(format!("InputGenerator::new(): External areas \
-                    must currently be output layers. [area: '{}', layer: '{}']", area_scheme.name(),
+                _ => return Err(format!("InputGenerator::new(): Input generator areas \
+                    must contain only output layers. [area: '{}', layer: '{}']", area_scheme.name(),
                     layer_map_scheme.name()).into()),
             };
 
@@ -196,8 +197,8 @@ impl InputGenerator {
             lyr_axn_sigs_list.push(lyr_axn_sig.clone());
 
             let layer = InputGeneratorLayer {
-                sub: SubcorticalNucleusLayer::new(lyr_name, lyr_addr, layer_scheme.axn_domain().clone(),
-                    axn_topology, dims.unwrap_or(CorticalDims::new(0, 0, 0, None))),
+                sub: SubcorticalNucleusLayer::new(lyr_name, lyr_addr, layer_scheme.axon_domain().clone(),
+                    axn_topology, dims),
                 pathway: None,
             };
 
@@ -209,7 +210,7 @@ impl InputGenerator {
         let encoder = match *area_scheme.get_encoder() {
             EncoderScheme::IdxStreamer { ref file_name, cyc_per, scale, loop_frames } => {
                 assert_eq!(layers.len(), 1);
-                let mut is = IdxStreamer::new(layers[&lyr_addr_list[0]].sub.dims() .clone(),
+                let mut is = IdxStreamer::new(layers[&lyr_addr_list[0]].sub.dims().unwrap().clone(),
                     file_name.clone(), cyc_per, scale);
 
                 if loop_frames > 0 {
@@ -230,7 +231,7 @@ impl InputGenerator {
             },
             EncoderScheme::SensoryTract => {
                 assert_eq!(layers.len(), 1);
-                let st = SensoryTract::new(layers[&lyr_addr_list[0]].sub.dims());
+                let st = SensoryTract::new(layers[&lyr_addr_list[0]].sub.dims().unwrap());
                 InputGeneratorEncoder::SensoryTract(Box::new(st))
             },
             EncoderScheme::ScalarSequence { range, incr } => {
@@ -324,7 +325,7 @@ impl InputGenerator {
 
             self.tx.send(EncoderCmd::WriteInto {
                 addr: *layer.sub().addr(),
-                dims: layer.sub.dims().into(),
+                dims: layer.sub.dims().unwrap().into(),
                 future_write,
             }).unwrap();
         }

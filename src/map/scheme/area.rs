@@ -192,8 +192,8 @@ impl <'a>AreaSchemeList {
         self.frozen = true;
     }
 
-    pub fn get_area_by_key(&self, area_name: &'static str) -> Option<&AreaScheme> {
-        self.areas.by_key(&area_name)
+    pub fn get_area_by_key(&self, area_name: &str) -> Option<&AreaScheme> {
+        self.areas.by_key(area_name)
     }
 
     #[inline] pub fn areas(&self) -> &[AreaScheme] { &self.areas.values() }

@@ -165,61 +165,39 @@ impl LayerInfo {
                     ===============================================================================
                     =============================================================================*/
 
-                    // let (src_layer_dims, src_layer_axn_topology) = match *src_lyr_map_sch.kind() {
-                    //     // If the source layer is subcortical, we will be
-                    //     // relying on the `SubcorticalNucleusLayer` associated
-                    //     // with it to provide its dimensions.
-                    //     LayerMapKind::Subcortical => {
-                    //         let subcortical_nucleus = subcortex.by_key(src_area_name)
-                    //             .expect(&format!("LayerInfo::new(): Invalid input source key: \
-                    //                 \"{}\"", src_area_name));
+                    let (src_layer_dims, src_layer_axn_topology) = match *src_lyr_map_sch.kind() {
+                        // If the source layer is subcortical, we will be
+                        // relying on the `SubcorticalNucleusLayer` associated
+                        // with it to provide its dimensions.
+                        LayerMapKind::Subcortical => {
+                            let subcortical_nucleus = subcortex.by_key(src_area_name)
+                                .expect(&format!("LayerInfo::new(): Invalid input source key: \
+                                    \"{}\"", src_area_name));
 
-                    //         let sub_layer = subcortical_nucleus.layer(src_lyr_addr.clone())
-                    //             .expect(&format!("LayerInfo::new(): Invalid addr: {:?}", src_lyr_addr));;
+                            let sub_layer = subcortical_nucleus.layer(src_lyr_addr.clone())
+                                .expect(&format!("LayerInfo::new(): Invalid addr: {:?}", src_lyr_addr));
 
-                    //         let sub_layer_dims = sub_layer.dims()
-                    //             .expect(&format!("LayerInfo::new: No dims found for layer '{:?}'",
-                    //                 sub_layer))
-                    //             .clone();
-                    //         assert!(sub_layer_dims.are_at_least(&CorticalDims::from((1, 1, 0))),
-                    //             "Subcortical dims for area \"{}\" are zero.", src_area_name);
+                            let sub_layer_dims = sub_layer.dims().expect(&format!("LayerInfo::new: \
+                                No dims found for layer '{:?}'", sub_layer)).clone();
+                            assert!(sub_layer_dims.are_at_least(&CorticalDims::from((1, 1, 0))),
+                                "Subcortical dims for area \"{}\" are zero.", src_area_name);
 
-                    //         (sub_layer_dims, sub_layer.axon_topology())
-                    //     },
-                    //     // If the source layer is cortical, we will give the
-                    //     // layer dimensions depending on the source layer's
-                    //     // size.
-                    //     LayerMapKind::Cortical => {
-                    //         let depth = src_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
+                            (sub_layer_dims, sub_layer.axon_topology())
+                        },
+                        // If the source layer is cortical, we will give the
+                        // layer dimensions depending on the source layer's
+                        // size.
+                        LayerMapKind::Cortical => {
+                            let depth = src_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
-                    //         let src_axn_topology = match src_layer.kind() {
-                    //             &LayerKind::Axonal(ref ak) => ak.clone(),
-                    //             &LayerKind::Cellular(_) => AxonTopology::Spatial
-                    //         };
+                            let src_axn_topology = match src_layer.kind() {
+                                &LayerKind::Axonal(ref ak) => ak.clone(),
+                                &LayerKind::Cellular(_) => AxonTopology::Spatial
+                            };
 
-                    //         (src_area_sch.dims().clone_with_depth(depth), src_axn_topology)
+                            (src_area_sch.dims().clone_with_depth(depth), src_axn_topology)
 
-                    //     },
-                    // };
-
-
-                    // Ensure that no dims are set on the subcortical layer:
-                    if let LayerMapKind::Subcortical = *src_lyr_map_sch.kind() {
-                        let subcortical_nucleus = subcortex.by_key(src_area_name)
-                            .expect(&format!("LayerInfo::new: Invalid input source key: \
-                                \"{}\"", src_area_name));
-                        let sub_layer = subcortical_nucleus.layer(src_lyr_addr.clone())
-                            .expect(&format!("LayerInfo::new: Invalid addr: {:?}", src_lyr_addr));;
-                        assert!(sub_layer.dims().is_none(), "LayerInfo::new: Subcortical layer \
-                            dims for input layers must be `None`.");
-                    }
-
-                    let depth = src_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
-                    let src_layer_dims = src_area_sch.dims().clone_with_depth(depth);
-
-                    let src_layer_axn_topology = match *src_layer.kind() {
-                        LayerKind::Axonal(ref ak) => ak.clone(),
-                        LayerKind::Cellular(_) => AxonTopology::Spatial
+                        },
                     };
 
                     /*=============================================================================
@@ -255,7 +233,6 @@ impl LayerInfo {
             ===============================================================================
             =============================================================================*/
             AxonDomain::Output(/*ref axon_tags*/ _) => {
-
                 // If this is a subcortical layer we need to use the
                 // dimensions set by the `SubcorticalNucleusLayer` instead of
                 // the dimensions of the `SubcorticalNucleus` area.
@@ -273,9 +250,8 @@ impl LayerInfo {
                         let sub_layer = subcortical_nucleus.layer(sub_lyr_addr)
                             .expect(&format!("LayerInfo::new(): Invalid addr: {:?}", sub_lyr_addr));
 
-                        let sub_layer_dims = sub_layer.dims()
-                            .expect(&format!("LayerInfo::new: No dims found for layer '{:?}'",
-                                sub_layer));
+                        let sub_layer_dims = sub_layer.dims().expect(&format!("LayerInfo::new: \
+                            No dims found for layer '{:?}'", sub_layer));
                         assert!(sub_layer_dims.are_at_least(&CorticalDims::from((1, 1, 0))),
                             "Subcortical dims for area \"{}\" are zero.", area_sch_name);
 

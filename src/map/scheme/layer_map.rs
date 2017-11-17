@@ -80,7 +80,7 @@ impl LayerMapScheme {
         let mut layers: Vec<&LayerScheme> = Vec::with_capacity(16);
 
         for layer in self.layers.values().iter() {
-            match *layer.axn_domain() {
+            match *layer.axon_domain() {
                 AxonDomain::Output(ref at) => {
                     debug_assert!(at.is_output());
 

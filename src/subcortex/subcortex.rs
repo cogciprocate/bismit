@@ -42,13 +42,13 @@ pub struct SubcorticalNucleusLayer {
     addr: LayerAddress,
     axon_domain: AxonDomain,
     axon_topology: AxonTopology,
-    dims: CorticalDims,
+    dims: Option<CorticalDims>,
 }
 
 impl SubcorticalNucleusLayer {
     /// Returns a new `SubcorticalNucleusLayer`.
     pub fn new(name: &'static str, addr: LayerAddress, axon_domain: AxonDomain,
-            axon_topology: AxonTopology, dims: CorticalDims)
+            axon_topology: AxonTopology, dims: Option<CorticalDims>)
             -> SubcorticalNucleusLayer {
         SubcorticalNucleusLayer {
             name,
@@ -65,27 +65,37 @@ impl SubcorticalNucleusLayer {
     /// Specifying `layer_depth` overrides the depth specified within the layer scheme.
     ///
     pub fn from_schemes(layer_scheme: &LayerScheme, area_scheme: &AreaScheme,
-            layer_dims: Option<CorticalDims>) -> SubcorticalNucleusLayer {
+            dims: Option<CorticalDims>) -> SubcorticalNucleusLayer {
         let area_id = area_scheme.area_id();
         let name = layer_scheme.name();
         let addr = LayerAddress::new(area_id, layer_scheme.layer_id());
-        let axon_domain = layer_scheme.axn_domain().clone();
+        let axon_domain = layer_scheme.axon_domain().clone();
         let axon_topology = layer_scheme.kind().axn_topology();
 
-        let dims = match layer_dims {
-            Some(d) => d,
-            None => {
-                match axon_topology {
-                    AxonTopology::Spatial | AxonTopology::Horizontal => {
-                        let lyr_sch_depth = layer_scheme.depth()
-                            .expect("SubcorticalNucleusLayer::from_schemes: \
-                                no layer scheme depth set");
-                        area_scheme.dims().clone_with_depth(lyr_sch_depth)
+        let dims = match *layer_scheme.axon_domain() {
+            AxonDomain::Input(_) => {
+                assert!(dims.is_none(), "SubcorticalNucleusLayer::from_schemes \
+                    dimensions may not be specified for input layers (layer: {:?}, area: {:?}).",
+                    layer_scheme, area_scheme);
+                None
+            },
+            AxonDomain::Output(_) | AxonDomain::Local => {
+                match dims {
+                    Some(_) => dims,
+                    None => {
+                        match axon_topology {
+                            AxonTopology::Spatial | AxonTopology::Horizontal => {
+                                let lyr_sch_depth = layer_scheme.depth()
+                                    .expect("SubcorticalNucleusLayer::from_schemes: \
+                                        no layer scheme depth set");
+                                Some(area_scheme.dims().clone_with_depth(lyr_sch_depth))
+                            },
+                            AxonTopology::None => panic!("SubcorticalNucleusLayer::from_schemes: \
+                                Invalid axon topology ('AxonTopology::None')."),
+                        }
                     },
-                    AxonTopology::None => panic!("SubcorticalNucleusLayer::from_schemes: \
-                        Invalid axon topology ('AxonTopology::None')."),
                 }
-            }
+            },
         };
 
         SubcorticalNucleusLayer {
@@ -99,14 +109,19 @@ impl SubcorticalNucleusLayer {
 
     /// Sets the dimensions of a layer.
     pub fn set_dims(&mut self, dims: CorticalDims) {
-        self.dims = dims;
+        self.dims = if self.axon_domain.is_output() {
+            Some(dims)
+        } else {
+            panic!("SubcorticalNucleusLayer::set_dims: \
+                Dimensions may not be set for input layers.");
+        };
     }
 
     pub fn name(&self) -> &'static str { self.name }
     pub fn addr(&self) -> &LayerAddress { &self.addr }
     pub fn axon_domain(&self) -> &AxonDomain { &self.axon_domain }
     pub fn axon_topology(&self) -> AxonTopology { self.axon_topology.clone() }
-    pub fn dims(&self) -> &CorticalDims { &self.dims }
+    pub fn dims(&self) -> Option<&CorticalDims> { self.dims.as_ref() }
 }
 
 

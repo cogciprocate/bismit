@@ -123,10 +123,11 @@ impl SubcorticalNucleus for EvalMotor {
             _cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
         // Wire up output (sdr) pathways.
         for layer in self.layers.values_mut() {
-            let tx = thal.input_pathway(*layer.sub().addr(), true);
-            layer.pathway = Some(tx);
+            if layer.sub().axon_domain().is_output() {
+                let tx = thal.input_pathway(*layer.sub().addr(), true);
+                layer.pathway = Some(tx);
+            }
         }
-
         Ok(())
     }
 
@@ -148,25 +149,27 @@ impl SubcorticalNucleus for EvalMotor {
 
         // Write sdr to pathway:
         for layer in self.layers.values() {
-            let pathway = layer.pathway.as_ref().expect("no pathway set");
+            if layer.sub().axon_domain().is_output() {
+                let pathway = layer.pathway.as_ref().expect("no pathway set");
 
-            let future_sdrs = self.input_sdrs.clone().read().from_err();
+                let future_sdrs = self.input_sdrs.clone().read().from_err();
 
-            let future_write_guard = pathway.send()
-                .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
-                .flatten();
+                let future_write_guard = pathway.send()
+                    .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                    .flatten();
 
-            let future_write = future_write_guard
-                .join(future_sdrs)
-                .map(move |(tract_opt, sdrs)| {
-                    tract_opt.map(|mut t| {
-                        debug_assert!(t.len() == sdrs[pattern_idx].len());
-                        t.copy_from_slice(&sdrs[pattern_idx]);
-                    });
-                })
-                .map_err(|err| panic!("{:?}", err));
+                let future_write = future_write_guard
+                    .join(future_sdrs)
+                    .map(move |(tract_opt, sdrs)| {
+                        tract_opt.map(|mut t| {
+                            debug_assert!(t.len() == sdrs[pattern_idx].len());
+                            t.copy_from_slice(&sdrs[pattern_idx]);
+                        });
+                    })
+                    .map_err(|err| panic!("{:?}", err));
 
-            work_pool.submit_work(future_write)?;
+                work_pool.submit_work(future_write)?;
+            }
         }
 
         Ok(())
@@ -230,6 +233,7 @@ pub fn eval() {
 
 fn define_lm_schemes() -> LayerMapSchemeList {
     let at0 = AxonTag::unique();
+    let at1 = AxonTag::unique();
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
@@ -241,8 +245,8 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
                 LayerKind::Axonal(AxonTopology::Spatial)
             )
-            .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
-            // .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::output(&[map::THAL_SP]),
+            // .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
+            .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::output(&[at1]),
                 CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
             )
             .layer("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib(SPT_LYR, 4, 0))
@@ -261,7 +265,12 @@ fn define_lm_schemes() -> LayerMapSchemeList {
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
             .layer(EXT_LYR, 1, LayerTags::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, at0]),
-                LayerKind::Axonal(AxonTopology::Spatial))
+                LayerKind::Axonal(AxonTopology::Spatial)
+            )
+            .input_layer("motor_in", LayerTags::DEFAULT,
+                AxonDomain::input(&[(InputTrack::Efferent, &[at1])]),
+                AxonTopology::Spatial
+            )
         )
 }
 
