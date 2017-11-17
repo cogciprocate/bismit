@@ -7,11 +7,10 @@ use rand::distributions::{Range, IndependentSample};
 use qutex::QrwLock;
 use vibi::bismit::futures::Future;
 use vibi::bismit::{map, encode, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
-    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, /*WorkPoolRemote,*/ MapStore,
-    CorticalArea, /*SamplerKind,*/ /*SamplerBufferKind*/};
+    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, MapStore, CorticalArea};
 use vibi::bismit::map::*;
-use ::{IncrResult, TrialIter, Layer};
-use ::spatial::{/*self, Samplers,*/ TrialData, TrialResults};
+use ::{IncrResult, TrialIter, Layer, PathwayDir};
+use ::spatial::{TrialData, TrialResults};
 
 
 static PRI_AREA: &'static str = "v1";
@@ -56,7 +55,7 @@ impl EvalMotor {
 
             let layer = Layer {
                 sub: sub_layer,
-                pathway: None,
+                pathway: PathwayDir::None,
             };
 
             layers.insert(layer.sub().addr().clone(), layer);
@@ -123,9 +122,25 @@ impl SubcorticalNucleus for EvalMotor {
             _cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
         // Wire up output (sdr) pathways.
         for layer in self.layers.values_mut() {
-            if layer.sub().axon_domain().is_output() {
-                let tx = thal.input_pathway(*layer.sub().addr(), true);
-                layer.pathway = Some(tx);
+            match *layer.sub().axon_domain() {
+                AxonDomain::Output(_) => {
+                    let tx = thal.input_pathway(*layer.sub().addr(), true);
+                    layer.pathway = PathwayDir::Output { tx };
+                },
+                AxonDomain::Input(_) => {
+                    let src_lyr_addrs: Vec<_> =thal.area_maps().by_index(self.area_id).unwrap()
+                            .layer(layer.sub().addr().layer_id()).unwrap()
+                            .sources().iter().map(|src_lyr| {
+                        *src_lyr.layer_addr()
+                    }).collect();
+
+                    let rxs: Vec<_> = src_lyr_addrs.iter().map(|src_lyr_addr| {
+                        thal.output_pathway(*src_lyr_addr)
+                    }).collect();
+
+                    layer.pathway = PathwayDir::Input { src_lyr_addrs, rxs };
+                },
+                _ => (),
             }
         }
         Ok(())
@@ -150,25 +165,25 @@ impl SubcorticalNucleus for EvalMotor {
         // Write sdr to pathway:
         for layer in self.layers.values() {
             if layer.sub().axon_domain().is_output() {
-                let pathway = layer.pathway.as_ref().expect("no pathway set");
+                if let PathwayDir::Output { ref tx } = layer.pathway {
+                    let future_sdrs = self.input_sdrs.clone().read().from_err();
 
-                let future_sdrs = self.input_sdrs.clone().read().from_err();
+                    let future_write_guard = tx.send()
+                        .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                        .flatten();
 
-                let future_write_guard = pathway.send()
-                    .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
-                    .flatten();
+                    let future_write = future_write_guard
+                        .join(future_sdrs)
+                        .map(move |(tract_opt, sdrs)| {
+                            tract_opt.map(|mut t| {
+                                debug_assert!(t.len() == sdrs[pattern_idx].len());
+                                t.copy_from_slice(&sdrs[pattern_idx]);
+                            });
+                        })
+                        .map_err(|err| panic!("{:?}", err));
 
-                let future_write = future_write_guard
-                    .join(future_sdrs)
-                    .map(move |(tract_opt, sdrs)| {
-                        tract_opt.map(|mut t| {
-                            debug_assert!(t.len() == sdrs[pattern_idx].len());
-                            t.copy_from_slice(&sdrs[pattern_idx]);
-                        });
-                    })
-                    .map_err(|err| panic!("{:?}", err));
-
-                work_pool.submit_work(future_write)?;
+                    work_pool.submit_work(future_write)?;
+                }
             }
         }
 
@@ -242,22 +257,21 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 AxonTopology::Spatial
                 // AxonTopology::Horizontal
             )
-            .layer("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
-                LayerKind::Axonal(AxonTopology::Spatial)
-            )
+            // .layer("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
+            //     LayerKind::Axonal(AxonTopology::Spatial)
+            // )
             // .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
             .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::output(&[at1]),
                 CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
             )
             .layer("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib(SPT_LYR, 4, 0))
             .layer("iv_smooth", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::smooth(SPT_LYR, 4, 1))
-            // .layer("iii", 1, LayerTags::PTAL, AxonDomain::Local,
-            .layer("iii", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
-                CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
-            )
-            .layer("iii_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
-                CellScheme::pyr_outputter("iii", 0)
-            )
+            // .layer("iii", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
+            //     CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
+            // )
+            // .layer("iii_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
+            //     CellScheme::pyr_outputter("iii", 0)
+            // )
             // .layer("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
             //     CellScheme::minicolumn(9999)
             // )

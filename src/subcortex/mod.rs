@@ -14,7 +14,7 @@ pub use self::input_generator::{InputGenerator, InputGeneratorFrame,
     InputGeneratorTract, InputGeneratorEncoder, InputGeneratorLayer};
 
 pub use self::tract_channel::{tract_channel_single_u8, tract_channel_single_i8,
-    tract_channel_single_u8_send_only, TractBuffer, TractSender, TractReceiver, FutureSend,
-    FutureRecv};
+    TractBuffer, TractSender, TractReceiver, FutureSend, FutureRecv,
+    tract_channel_single_u8_send_only, tract_channel_single_u8_recv_only};
 
 pub use self::test_nucleus::TestScNucleus;

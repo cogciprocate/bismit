@@ -10,7 +10,7 @@ use vibi::bismit::{map, encode, Result as CmnResult, Cortex, CorticalAreaSetting
     SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, WorkPoolRemote, TractReceiver, MapStore,
     CorticalArea, SamplerKind, SamplerBufferKind};
 use vibi::bismit::map::*;
-use ::{IncrResult, TrialIter, Layer};
+use ::{IncrResult, TrialIter, Layer, PathwayDir};
 
 
 static PRI_AREA: &'static str = "v1";
@@ -417,7 +417,7 @@ impl EvalSpatial {
 
             let layer = Layer {
                 sub: sub_layer,
-                pathway: None,
+                pathway: PathwayDir::None,
             };
 
             layers.insert(layer.sub().addr().clone(), layer);
@@ -486,7 +486,7 @@ impl SubcorticalNucleus for EvalSpatial {
         // Wire up output (sdr) pathways.
         for layer in self.layers.values_mut() {
             let tx = thal.input_pathway(*layer.sub().addr(), true);
-            layer.pathway = Some(tx);
+            layer.pathway = PathwayDir::Output { tx };
         }
 
         let v1_l4_lyr_addr = *thal.area_maps().by_key(PRI_AREA).expect("invalid area")
@@ -534,25 +534,25 @@ impl SubcorticalNucleus for EvalSpatial {
 
         // Write sdr to pathway:
         for layer in self.layers.values() {
-            let pathway = layer.pathway.as_ref().expect("no pathway set");
+            if let PathwayDir::Output { ref tx } = layer.pathway {
+                let future_sdrs = self.input_sdrs.clone().read().from_err();
 
-            let future_sdrs = self.input_sdrs.clone().read().from_err();
+                let future_write_guard = tx.send()
+                    .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                    .flatten();
 
-            let future_write_guard = pathway.send()
-                .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
-                .flatten();
+                let future_write = future_write_guard
+                    .join(future_sdrs)
+                    .map(move |(tract_opt, sdrs)| {
+                        tract_opt.map(|mut t| {
+                            debug_assert!(t.len() == sdrs[pattern_idx].len());
+                            t.copy_from_slice(&sdrs[pattern_idx]);
+                        });
+                    })
+                    .map_err(|err| panic!("{:?}", err));
 
-            let future_write = future_write_guard
-                .join(future_sdrs)
-                .map(move |(tract_opt, sdrs)| {
-                    tract_opt.map(|mut t| {
-                        debug_assert!(t.len() == sdrs[pattern_idx].len());
-                        t.copy_from_slice(&sdrs[pattern_idx]);
-                    });
-                })
-                .map_err(|err| panic!("{:?}", err));
-
-            work_pool.submit_work(future_write)?;
+                work_pool.submit_work(future_write)?;
+            }
         }
 
         Ok(())

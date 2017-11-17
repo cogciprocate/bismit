@@ -269,13 +269,20 @@ impl TractBuffer {
 }
 
 
+#[derive(Clone, Copy, Debug)]
+enum Direction {
+    SendRecv,
+    SendOnly,
+    RecvOnly,
+}
+
+
 #[derive(Debug)]
 pub struct TractInner {
     buffer: TractBuffer,
     buffer_idx_range: Range<usize>,
     backpressure: bool,
-    send_only: bool,
-    recv_only: bool,
+    direction: Direction,
     state: AtomicUsize,
     next_read_guard: AtomicOption<ReadBuffer>,
     send_waiting: AtomicOption<(Sender<()>, ReadBuffer)>,
@@ -284,15 +291,16 @@ pub struct TractInner {
 
 impl TractInner {
     fn new(buffer: TractBuffer, buffer_idx_range: Option<Range<usize>>, backpressure: bool,
-            send_only: bool, recv_only: bool,) -> TractInner {
+            direction: Direction) -> TractInner {
         let buffer_idx_range = buffer_idx_range.unwrap_or(0..buffer.len());
 
         TractInner {
             buffer,
             buffer_idx_range,
             backpressure,
-            send_only,
-            recv_only,
+            // send_only,
+            // recv_only,
+            direction,
             state: AtomicUsize::new(0),
             next_read_guard: AtomicOption::new(),
             send_waiting: AtomicOption::new(),
@@ -301,11 +309,10 @@ impl TractInner {
     }
 
     fn send(&self) -> FutureSend {
-        if self.send_only {
-            return FutureSend::Send(Some(self.buffer.next_write_guard()));
-        }
-        if self.recv_only {
-            return FutureSend::Skip;
+        match self.direction {
+            Direction::SendOnly => return FutureSend::Send(Some(self.buffer.next_write_guard())),
+            Direction::RecvOnly => return FutureSend::Skip,
+            _ => ()
         }
 
         let cur_state = self.state.fetch_or(NEXT_READ_GUARD_READY, SeqCst);
@@ -337,13 +344,11 @@ impl TractInner {
         }
     }
 
-    // `wait_for_frame` untested.
     fn recv(&self, wait_for_frame: bool) -> FutureRecv {
-        if self.send_only {
-            return FutureRecv::Skip;
-        }
-        if self.recv_only {
-            return FutureRecv::Recv(Some(self.buffer.next_read_guard()));
+        match self.direction {
+            Direction::SendOnly => return FutureRecv::Skip,
+            Direction::RecvOnly => return FutureRecv::Recv(Some(self.buffer.next_read_guard())),
+            _ => ()
         }
 
         match self.next_read_guard.take(SeqCst) {
@@ -440,21 +445,28 @@ impl TractReceiver {
 pub fn tract_channel_single_i8(buffer: RwVec<i8>, buffer_idx_range: Option<Range<usize>>, backpressure: bool)
         -> (TractSender, TractReceiver) {
     let tract_buffer = TractBuffer::I8(TractBufferTyped::Single(buffer));
-    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, false, false));
+    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, Direction::SendRecv));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
 }
 
 pub fn tract_channel_single_u8(buffer: RwVec<u8>, buffer_idx_range: Option<Range<usize>>, backpressure: bool)
         -> (TractSender, TractReceiver) {
     let tract_buffer = TractBuffer::U8(TractBufferTyped::Single(buffer));
-    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, false, false));
+    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, Direction::SendRecv));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
 }
 
 pub fn tract_channel_single_u8_send_only(buffer: RwVec<u8>, buffer_idx_range: Option<Range<usize>>, backpressure: bool)
         -> (TractSender, TractReceiver) {
     let tract_buffer = TractBuffer::U8(TractBufferTyped::Single(buffer));
-    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, true, false));
+    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, Direction::SendOnly));
+    (TractSender { inner: inner.clone() }, TractReceiver { inner })
+}
+
+pub fn tract_channel_single_u8_recv_only(buffer: RwVec<u8>, buffer_idx_range: Option<Range<usize>>, backpressure: bool)
+        -> (TractSender, TractReceiver) {
+    let tract_buffer = TractBuffer::U8(TractBufferTyped::Single(buffer));
+    let inner = Arc::new(TractInner::new(tract_buffer, buffer_idx_range, backpressure, Direction::RecvOnly));
     (TractSender { inner: inner.clone() }, TractReceiver { inner })
 }
 

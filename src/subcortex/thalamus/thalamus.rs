@@ -154,6 +154,7 @@ impl Thalamus {
             println!("{mt}{mt}THALAMUS::NEW(): Area: \"{}\", Output layers (tracts): ",
                 area_s.name(), mt = cmn::MT);
 
+            // Output layer tracts:
             let mut output_layer_count = 0;
             for layer in area_map.layer_map().iter().filter(|li| li.axn_domain().is_output()) {
                 // If the layer is thalamic it will have an irregular size
@@ -171,8 +172,13 @@ impl Thalamus {
                     layer_dims);
                 output_layer_count += 1;
             }
-            assert!(output_layer_count > 0, "Thalamus::new: Area \"{}\" has no layers. \
+            assert!(output_layer_count > 0, "Thalamus::new: Area \"{}\" has no output layers. \
                 Areas must have at least one output (AxonDomain::Output) layer.", area_s.name());
+
+            // // Input layer tracts:
+            // for layer in area_map.layer_map().iter().filter(|li| li.axn_domain().is_input()) {
+
+            // }
 
             area_maps.insert(area_s.name().to_owned(), area_map);
             assert!(area_maps[area_id].area_id() == area_id);
@@ -189,49 +195,54 @@ impl Thalamus {
 
     /// Cycles thalamic tract pathways.
     pub fn cycle_pathways(&mut self, _work_pool: &mut WorkPool) {
+        // Cycle all input pathways first.
         for pathway in self.pathways.values_mut().iter_mut() {
-            match *pathway {
-                Pathway::Input { ref mut rx, wait_for_frame, .. } => {
-                    //////// KEEPME: There may be some reason to asynchronously queue this:
-                    // let future_read_guard = rx.recv(wait_for_frame)
-                    //     .map(|buf_opt| buf_opt.map(|buf| buf.read_u8()))
-                    //     .flatten()
-                    //     .map(|_guard_opt| ())
-                    //     .map_err(|err| panic!("{}", err));
+            if let Pathway::Input { ref mut rx, wait_for_frame, .. } = *pathway {
+                //////// KEEPME: There may be some reason to asynchronously queue this:
+                // let future_read_guard = rx.recv(wait_for_frame)
+                //     .map(|buf_opt| buf_opt.map(|buf| buf.read_u8()))
+                //     .flatten()
+                //     .map(|_guard_opt| ())
+                //     .map_err(|err| panic!("{}", err));
 
-                    // work_pool.complete(future_read_guard)
-                    //     .expect("Thalamus::cycle_pathways")
-                    //////// KEEPME
+                // work_pool.complete(future_read_guard)
+                //     .expect("Thalamus::cycle_pathways")
+                //////// KEEPME
 
-                    //////// KEEPME: This will send the `FutureReadGuard` to the pool.
-                    //////// We may want to just wait after all for some reason.
-                    // if let Some(read_buffer) = rx.recv(wait_for_frame).wait().unwrap() {
-                    //     let future_read_guard = read_buffer.read_u8()
-                    //         .map(|_read_guard| ())
-                    //         .map_err(|err| panic!("{}", err));
+                //////// KEEPME: This will send the `FutureReadGuard` to the pool.
+                //////// We may want to just wait after all for some reason.
+                // if let Some(read_buffer) = rx.recv(wait_for_frame).wait().unwrap() {
+                //     let future_read_guard = read_buffer.read_u8()
+                //         .map(|_read_guard| ())
+                //         .map_err(|err| panic!("{}", err));
 
-                    //     work_pool.complete(future_read_guard)
-                    //         .expect("Thalamus::cycle_pathways")
-                    // }
-                    //////// KEEPME
+                //     work_pool.complete(future_read_guard)
+                //         .expect("Thalamus::cycle_pathways")
+                // }
+                //////// KEEPME
 
-                    match rx.recv(wait_for_frame).poll() {
-                        Ok(Async::Ready(None)) => (),
-                        Ok(Async::Ready(_)) => panic!("Thalamus::cycle_pathways: \
-                            Nothing to send. `Pathway::Input` should contain a send \
-                            only tract channel "),
-                        Ok(Async::NotReady) => panic!("Thalamus::cycle_pathways: \
-                            Cycling pathways for input pathways (`Pathway::Input`) \
-                            should never have to wait."),
-                        Err(err) => panic!("{:?}", err),
-                    }
-                },
-                Pathway::Output { .. } => unimplemented!(),
+                match rx.recv(wait_for_frame).poll() {
+                    Ok(Async::Ready(None)) => (),
+                    Ok(Async::Ready(_)) => panic!("Thalamus::cycle_pathways: \
+                        Nothing to receive. `Pathway::Input` should contain a send \
+                        only tract channel "),
+                    Ok(Async::NotReady) => panic!("Thalamus::cycle_pathways: \
+                        Cycling pathways for input pathways (`Pathway::Input`) \
+                        should never have to wait."),
+                    Err(err) => panic!("{:?}", err),
+                }
+            }
+        }
+
+        // Then cycle output pathways.
+        for pathway in self.pathways.values_mut().iter_mut() {
+            if let Pathway::Output { ref mut tx, .. } = *pathway {
+                tx.send().wait().expect("error cycling thalamic output pathway");
             }
         }
     }
 
-    /// Creates a thalamic tract pathway.
+    /// Creates a thalamic tract input pathway.
     pub fn input_pathway(&mut self, src_lyr_addr: LayerAddress, wait_for_frame: bool)
             -> TractSender {
         let tract_area_id = self.tract.index_of(&src_lyr_addr)
@@ -246,8 +257,6 @@ impl Thalamus {
                 (tract area id: {}): {}", tract_area_id, err),
         };
 
-        // let buffer_idx_range = 0..buffer.len();
-        // let (tx, rx) = subcortex::tract_channel_single_u8(buffer, buffer_idx_range, true);
         let (tx, rx) = subcortex::tract_channel_single_u8_send_only(buffer, None, true);
 
         // Send a dummy/init frame, dropping the guard immediately:
@@ -257,6 +266,28 @@ impl Thalamus {
         self.pathways.insert(src_lyr_addr, pathway);
 
         tx
+    }
+
+    /// Creates a thalamic tract output pathway.
+    pub fn output_pathway(&mut self, src_lyr_addr: LayerAddress) -> TractReceiver {
+        let tract_area_id = self.tract.index_of(&src_lyr_addr)
+            .expect(&format!("Thalamus::output_pathway: \
+                No thalamic tract area with layer address: '{:?}'.", &src_lyr_addr));
+
+        let buffer = match self.tract.buffer(tract_area_id) {
+            Ok(&TractBuffer::RwVec(ref rw_vec)) => rw_vec.clone(),
+            Ok(tb @ _) => panic!("Thalamus::input_pathway: \
+                Unsupported tract buffer type: '{:?}'.", tb),
+            Err(err) => panic!("Thalamus::input_pathway: \
+                (tract area id: {}): {}", tract_area_id, err),
+        };
+
+        let (tx, rx) = subcortex::tract_channel_single_u8_recv_only(buffer, None, true);
+
+        let pathway = Pathway::Output { tract_area_id, tx };
+        self.pathways.insert(src_lyr_addr, pathway);
+
+        rx
     }
 
 

@@ -20,9 +20,10 @@ use std::sync::mpsc::{self, Sender, Receiver};
 
 use vibi::window;
 use vibi::bismit::ocl::{Buffer, RwVec};
-use vibi::bismit::{Cortex, SubcorticalNucleusLayer, TractSender, CorticalDims};
+use vibi::bismit::{Cortex, SubcorticalNucleusLayer, TractSender, TractReceiver,
+    CorticalDims};
 use vibi::bismit::flywheel::{Flywheel, Command, Request, Response};
-use vibi::bismit::map::{AreaMap, AxonTopology};
+use vibi::bismit::map::{AreaMap, AxonTopology, LayerAddress};
 
 
 pub struct Params {
@@ -286,13 +287,20 @@ impl TrialIter {
     }
 }
 
+#[derive(Debug)]
+pub enum PathwayDir {
+    Output { tx: TractSender },
+    Input { src_lyr_addrs: Vec<LayerAddress>, rxs: Vec<TractReceiver> },
+    None,
+}
 
 
 /// A subcortical nucleus layer with a pathway.
 #[derive(Debug)]
 pub struct Layer {
     sub: SubcorticalNucleusLayer,
-    pathway: Option<TractSender>,
+    // pathway: Option<TractSender>,
+    pathway: PathwayDir,
 }
 
 impl Layer {
@@ -312,7 +320,7 @@ impl Layer {
         &mut self.sub
     }
 
-    pub fn pathway(&self) -> Option<&TractSender> {
-        self.pathway.as_ref()
+    pub fn pathway(&self) -> &PathwayDir {
+        &self.pathway
     }
 }
