@@ -21,41 +21,41 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
     let mut layer_map_schemes: LayerMapSchemeList = LayerMapSchemeList::new();
 
     layer_map_schemes.add(LayerMapScheme::new("visual", LayerMapKind::Cortical)
-        //.layer("test_noise", 1, map::DEFAULT, LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("motor_in", 1, LayerTags::DEFAULT,
+        //.layer_old("test_noise", 1, map::DEFAULT, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer_old("motor_in", 1, LayerTags::DEFAULT,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_NSP]), ]),
             LayerKind::Axonal(AxonTopology::Horizontal))
-        //.layer("olfac", 1, LayerTags::DEFAULT, LayerKind::Axonal(Horizontal))
-        .layer("eff_in", 0, LayerTags::DEFAULT,
+        //.layer_old("olfac", 1, LayerTags::DEFAULT, LayerKind::Axonal(Horizontal))
+        .layer_old("eff_in", 0, LayerTags::DEFAULT,
             AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("aff_in", 0, LayerTags::DEFAULT,
+        .layer_old("aff_in", 0, LayerTags::DEFAULT,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
 
-        // .layer("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+        // .layer_old("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
         //         CellScheme::minicolumn("iv", "iii", 9999))
-        .layer("out", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+        .layer_old("out", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
             LayerKind::Axonal(AxonTopology::Spatial))
 
-        .layer("unused", 1, LayerTags::DEFAULT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer_old("unused", 1, LayerTags::DEFAULT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
 
-        .layer(PRIMARY_SPATIAL_SSC_LAYER_NAME, 1, LayerTags::PSAL, AxonDomain::Local,
-            CellScheme::spiny_stellate(&[("aff_in", 8, 1)], 5, 400)
+        .layer_old(PRIMARY_SPATIAL_SSC_LAYER_NAME, 1, LayerTags::PSAL, AxonDomain::Local,
+            CellScheme::ssc(&[("aff_in", 8, 1)], 5, 400)
         )
 
-        .layer("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local,
+        .layer_old("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local,
             CellScheme::inhib("iv", 4, 0)
         )
 
-        .layer(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 3, LayerTags::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 8, 1)], 2, 3, 1200)
-                    .apical(&[("iii", 3, 1)], 1, 5, 500)
+        .layer_old(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 3, LayerTags::PTAL, AxonDomain::Local,
+                CellScheme::pyr(&[("iii", 8, 1)], 2, 3, 1200)
+                    .apical(1, &[("iii", 3, 1)], 1, 5, 500)
         )
     );
 
     layer_map_schemes.add(LayerMapScheme::new("external", LayerMapKind::Subcortical)
-        .layer("ganglion", 1, LayerTags::DEFAULT,
+        .layer_old("ganglion", 1, LayerTags::DEFAULT,
             AxonDomain::output(&[map::THAL_SP]),
             LayerKind::Axonal(AxonTopology::Spatial))
     );
@@ -156,56 +156,56 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
     let mut layer_map_schemes = LayerMapSchemeList::new();
 
     layer_map_schemes.add(LayerMapScheme::new(lmap_name, LayerMapKind::Cortical)
-        .layer("extra_in", 0, LayerTags::DEFAULT,
+        .layer_old("extra_in", 0, LayerTags::DEFAULT,
             AxonDomain::input(&[(InputTrack::Other, &[map::THAL_NSP]), ]),
             LayerKind::Axonal(AxonTopology::Horizontal))
-        .layer("eff_in", 0, LayerTags::DEFAULT,
+        .layer_old("eff_in", 0, LayerTags::DEFAULT,
             AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("aff_in", 0, LayerTags::DEFAULT,
+        .layer_old("aff_in", 0, LayerTags::DEFAULT,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("out", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+        .layer_old("out", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
             LayerKind::Axonal(AxonTopology::Spatial))
-        // .layer("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+        // .layer_old("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
         //         CellScheme::minicolumn("iv", "iii", 9999))
-        .layer("test0", 1, LayerTags::DEFAULT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("test1", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("test2", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("test3", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("test4", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("test5", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
-        .layer("unused", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer_old("test0", 1, LayerTags::DEFAULT, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer_old("test1", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer_old("test2", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer_old("test3", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer_old("test4", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer_old("test5", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
+        .layer_old("unused", 1, LayerTags::UNUSED, AxonDomain::Local, LayerKind::Axonal(AxonTopology::Spatial))
 
-        // .layer("iv", 1, LayerTags::PSAL, AxonDomain::Local,
-        //     CellScheme::spiny_stellate(5, vec!["unused"], 1, 8))
-        // // .layer("iv_inhib", 0, LayerTags::DEFAULT,
+        // .layer_old("iv", 1, LayerTags::PSAL, AxonDomain::Local,
+        //     CellScheme::ssc(5, vec!["unused"], 1, 8))
+        // // .layer_old("iv_inhib", 0, LayerTags::DEFAULT,
         // //     CellScheme::inhib(4, "iv"))
-        // .layer("iii", 2, LayerTags::PTAL, AxonDomain::Local,
-        //     CellScheme::pyramidal(2, 4, vec!["unused"], 1, 8)
-        //         .apical(vec!["test1"], 12)
-        //         .apical(vec!["test2"], 11)
-        //         // .apical(vec!["test3"])
-        //         // .apical(vec!["test4"])
-        //         // .apical(vec!["test5"])
+        // .layer_old("iii", 2, LayerTags::PTAL, AxonDomain::Local,
+        //     CellScheme::pyr(2, 4, vec!["unused"], 1, 8)
+        //         .apical(1, vec!["test1"], 12)
+        //         .apical(1, vec!["test2"], 11)
+        //         // .apical(1, vec!["test3"])
+        //         // .apical(1, vec!["test4"])
+        //         // .apical(1, vec!["test5"])
         // )
 
-        .layer(PRIMARY_SPATIAL_SSC_LAYER_NAME, 1, LayerTags::PSAL, AxonDomain::Local,
-            CellScheme::spiny_stellate(&[("unused", 8, 1)], 4, 100))
+        .layer_old(PRIMARY_SPATIAL_SSC_LAYER_NAME, 1, LayerTags::PSAL, AxonDomain::Local,
+            CellScheme::ssc(&[("unused", 8, 1)], 4, 100))
 
-        .layer(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 3, LayerTags::PTAL, AxonDomain::Local,
-            CellScheme::pyramidal(&[("unused", 8, 1)], 2, 3, 100)
-                .apical(&[("test1", 7, 1)], 2, 3, 500)
-                .apical(&[("test2", 6, 1)], 2, 3, 500)
-                .apical(&[("test3", 5, 1)], 2, 3, 500)
-                .apical(&[("test4", 4, 1)], 2, 3, 500)
-                .apical(&[("test5", 3, 1)], 2, 3, 500)
+        .layer_old(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 3, LayerTags::PTAL, AxonDomain::Local,
+            CellScheme::pyr(&[("unused", 8, 1)], 2, 3, 100)
+                .apical(1, &[("test1", 7, 1)], 2, 3, 500)
+                .apical(2, &[("test2", 6, 1)], 2, 3, 500)
+                .apical(3, &[("test3", 5, 1)], 2, 3, 500)
+                .apical(4, &[("test4", 4, 1)], 2, 3, 500)
+                .apical(5, &[("test5", 3, 1)], 2, 3, 500)
         )
 
     );
 
     layer_map_schemes.add(LayerMapScheme::new("dummy_lm", LayerMapKind::Subcortical)
-        .layer("ganglion", 1, LayerTags::DEFAULT,
+        .layer_old("ganglion", 1, LayerTags::DEFAULT,
             AxonDomain::output(&[map::THAL_SP]),
             LayerKind::Axonal(AxonTopology::Spatial))
     );

@@ -18,8 +18,9 @@ pub use self::layer_map::LayerMap;
 pub use self::layer_info::{LayerInfo, SourceLayerInfo};
 pub use self::syn_src::{SynSrcSlices, SynSrcIdxCache, SynSrc, gen_syn_offs};
 pub use self::slice_tract_map::SliceTractMap;
-pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
-	LayerScheme, FilterScheme, EncoderScheme, TuftSourceLayer, TuftScheme, LayerKind};
+pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList,
+    TuftSourceLayer, TuftSourceLayerBuilder, TuftScheme, TuftSchemeBuilder, CellScheme,
+    CellSchemeBuilder, LayerScheme, LayerSchemeBuilder, FilterScheme, EncoderScheme, LayerKind};
 pub use self::layer_tags::LayerTags;
 
 /////// FIXME: IMPORT MANUALLY:

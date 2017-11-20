@@ -23,20 +23,20 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
                 AxonTopology::Spatial
             )
-            // .layer("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[LayerTags::THAL_SP]),
+            // .layer_old("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[LayerTags::THAL_SP]),
             //     CellScheme::minicolumn("iv", "iii", 9999)
             // )
-            .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
-                CellScheme::spiny_stellate(&[("aff_in", 8, 1)], 7, 400)
+            .layer_old(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
+                CellScheme::ssc(&[("aff_in", 8, 1)], 7, 400)
             )
-            .layer("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
-            .layer("iv_smooth", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 6, 1))
-            .layer("iii", 1, LayerTags::PTAL, AxonDomain::Local,
-                CellScheme::pyramidal(&[("iii", 8, 1)], 1, 2, 500)
+            .layer_old("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
+            .layer_old("iv_smooth", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 6, 1))
+            .layer_old("iii", 1, LayerTags::PTAL, AxonDomain::Local,
+                CellScheme::pyr(&[("iii", 8, 1)], 1, 2, 500)
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer(EXT_LYR, 1, LayerTags::DEFAULT,
+            .layer_old(EXT_LYR, 1, LayerTags::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, at0]),
                 LayerKind::Axonal(AxonTopology::Spatial))
         )
@@ -95,7 +95,7 @@ pub fn smoother_overlap() {
 
     for (t, iters) in training_collect_iters.into_iter().enumerate() {
         for i in 0..iters {
-            cortex.cycle();
+            cortex.cycle().unwrap();
         }
         total_cycles += iters;
 

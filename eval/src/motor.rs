@@ -258,6 +258,7 @@ pub fn eval() {
 fn define_lm_schemes() -> LayerMapSchemeList {
     let at0 = AxonTag::unique();
     let at1 = AxonTag::unique();
+    let at2 = AxonTag::unique();
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
@@ -266,30 +267,66 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 AxonTopology::Spatial
                 // AxonTopology::Horizontal
             )
-            // .layer("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
+            // .layer_old("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
             //     LayerKind::Axonal(AxonTopology::Spatial)
             // )
-            // .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
-            .layer(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::output(&[at1]),
-                CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
+            // .layer_old(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::output(&[at1]),
+            //     CellScheme::spiny_stellate(&[("aff_in", 7, 1)], 5, 000)
+            // )
+            .layer(LayerScheme::builder(SPT_LYR)
+                .depth(1)
+                .tags(LayerTags::PSAL)
+                .axon_domain(AxonDomain::output(&[at1]))
+                .cellular(CellScheme::spiny_stellate()
+                    .tft(TuftScheme::basal().proximal()
+                        .syns_per_den_l2(5)
+                        .src_lyr(TuftSourceLayer::builder("aff_in")
+                            .syn_reach(7)
+                            .prevalence(1)
+                        )
+                    )
+                )
             )
-            .layer("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib(SPT_LYR, 4, 0))
-            .layer("iv_smooth", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::smooth(SPT_LYR, 4, 1))
-            // .layer("iii", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
+            .layer_old("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib(SPT_LYR, 4, 0))
+            .layer_old("iv_smooth", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::smooth(SPT_LYR, 4, 1))
+            // .layer_old("iii", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
             //     CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
             // )
-            // .layer("iii_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
+            // .layer_old("iii_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
             //     CellScheme::pyr_outputter("iii", 0)
             // )
-            .layer("v", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
-                CellScheme::pyramidal(&[("v", 5, 1)], 1, 2, 500)
+            // .layer_old("v", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
+            //     CellScheme::pyramidal(&[("v", 5, 1)], 1, 2, 500)
+            // )
+            .layer(LayerScheme::builder("v")
+                .depth(1)
+                .tags(LayerTags::PSAL)
+                .axon_domain(AxonDomain::output(&[at2]))
+                .cellular(CellScheme::pyramidal()
+                    .tft(TuftScheme::basal().proximal()
+                        .syns_per_den_l2(0)
+                        .src_lyr(TuftSourceLayer::builder(SPT_LYR)
+                            .syn_reach(0)
+                            .prevalence(1)
+                        )
+                    )
+                    .tft(TuftScheme::basal().distal()
+                        .dens_per_tft_l2(1)
+                        .syns_per_den_l2(2)
+                        .thresh_init(500)
+                        .src_lyr(TuftSourceLayer::builder("v")
+                            .syn_reach(5)
+                            .prevalence(1)
+                        )
+                    )
+                )
             )
-            // .layer("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
+            // .layer_old("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
             //     CellScheme::minicolumn(9999)
             // )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer(EXT_LYR, 1, LayerTags::DEFAULT,
+            .layer_old(EXT_LYR, 1, LayerTags::DEFAULT,
                 AxonDomain::output(&[map::THAL_SP, at0]),
                 LayerKind::Axonal(AxonTopology::Spatial)
             )

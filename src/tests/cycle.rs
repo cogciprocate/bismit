@@ -15,6 +15,6 @@ fn cycle_a_bunch() {
 	// let tract_map = cortex.areas().by_key(&area_name).axn_tract_map();
 
 	for _ in 0..cycle_iters {
-		cortex.cycle();
+		cortex.cycle().unwrap();
 	}
 }

@@ -12,7 +12,7 @@ fn multi_layer_input() {
 	let cycle_iters = 3;
 
 	for _ in 0..cycle_iters {
-		cortex.cycle();
+		cortex.cycle().unwrap();
 
 		for area in cortex.areas().values().iter() {
 			// let slc_ranges = area.area_map().layer_map().layers_containing_tags_slc_range(map::NS_IN);

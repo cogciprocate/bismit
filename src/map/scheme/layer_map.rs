@@ -2,7 +2,8 @@
 use std::ops::{Index, IndexMut, Deref};
 // use std::hash::{Hasher};
 use cmn::MapStore;
-use map::{LayerTags, LayerMapKind, LayerScheme, AxonTopology, LayerKind, AxonDomain, AxonTags};
+use map::{LayerTags, LayerMapKind, LayerScheme, LayerSchemeBuilder, AxonTopology, LayerKind,
+    AxonDomain, AxonTags};
 
 
 
@@ -24,38 +25,59 @@ impl LayerMapScheme {
     }
 
     // <A: Into<AxonTags>>
-    pub fn input_layer<S, D>(mut self, layer_name: S, layer_tags: LayerTags,
-            axn_domain: D, axn_kind: AxonTopology) -> LayerMapScheme
+    pub fn input_layer<S, D>(self, layer_name: S, layer_tags: LayerTags,
+            axon_domain: D, axn_topo: AxonTopology) -> LayerMapScheme
             where S: Into<String>, D: Into<AxonDomain>
     {
-        self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
-            axn_domain));
-        self
+        self.layer(
+            // LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
+            //     axn_domain)
+            LayerScheme::builder(layer_name)
+                .axonal(axn_topo)
+                .tags(layer_tags)
+                .axon_domain(axon_domain)
+        )
     }
 
     // pub fn axn_layer(mut self, layer_name: S, layer_tags: LayerTags,
     //         axn_domain: AxonDomain, axn_kind: AxonTopology) -> LayerMapScheme
     // {
-    //     self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
+    //     self.add_layer(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
     //         axn_domain));
     //     self
     // }
 
-    pub fn layer<S, D>(mut self, layer_name: S, layer_depth: u8, layer_tags: LayerTags,
-            axn_domain: D, kind: LayerKind) -> LayerMapScheme
-            where S: Into<String>, D: Into<AxonDomain>
-    {
-        let validated_depth = match kind {
-            LayerKind::Cellular(ref cell_scheme) => cell_scheme.validate_depth(Some(layer_depth)),
-            LayerKind::Axonal(_) => Some(layer_depth),
-        };
-
-        self.add(LayerScheme::new(layer_name, kind, validated_depth, layer_tags, axn_domain));
+    pub fn layer(mut self, bldr: LayerSchemeBuilder) -> LayerMapScheme {
+        // let layer_id = self.layers.len();
+        self.add_layer(bldr);
         self
     }
 
-    pub fn add(&mut self, mut layer: LayerScheme) {
-        layer.set_layer_id(self.layers.len());
+    pub fn layer_old<S, D>(self, layer_name: S, layer_depth: u8, layer_tags: LayerTags,
+            axon_domain: D, kind: LayerKind) -> LayerMapScheme
+            where S: Into<String>, D: Into<AxonDomain>
+    {
+        // let validated_depth = match kind {
+        //     LayerKind::Cellular(ref cell_scheme) => cell_scheme.validate_depth(Some(layer_depth)),
+        //     LayerKind::Axonal(_) => Some(layer_depth),
+        // };
+
+        // self.add_layer(LayerScheme::new(layer_name, kind, validated_depth, layer_tags, axn_domain));
+        // self
+
+        self.layer(
+            LayerScheme::builder(layer_name)
+                .kind(kind)
+                .depth(layer_depth)
+                .tags(layer_tags)
+                .axon_domain(axon_domain)
+        )
+    }
+
+    pub fn add_layer(&mut self, layer_bldr: LayerSchemeBuilder) {
+        // layer.set_layer_id();
+        let layer_id = self.layers.len();
+        let layer = layer_bldr.build(layer_id);
         self.layers.insert(layer.name().to_owned(), layer)
             .map(|ls| panic!("LayerMapScheme::layer(): Duplicate layer names: \
                 (layer: \"{}\").", ls.name()));
@@ -66,7 +88,7 @@ impl LayerMapScheme {
         let mut layers: Vec<&LayerScheme> = Vec::with_capacity(16);
 
         for layer in self.layers.values().iter().filter(|layer|
-             layer.layer_tags().meshes(layer_tags))
+             layer.tags().meshes(layer_tags))
         {
          layers.push(&layer);
         }

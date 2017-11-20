@@ -218,10 +218,16 @@ impl Synapses {
             ===============================================================================
             =============================================================================*/
 
-            // let kern_name = "tft_cycle_syns";
-            // let kern_name = "tft_cycle_syns_vec4";
-            // let kern_name = "layer_cycle_syns_wow";
-            let kern_name = "layer_cycle_syns_wow_vec4";
+            let kern_name = if syns_per_tft_l2 >= 2 {
+                // "tft_cycle_syns"
+                // "tft_cycle_syns_vec4"
+                // "layer_cycle_syns_wow"
+                "layer_cycle_syns_wow_vec4"
+            } else {
+                // "tft_cycle_syns"
+                "layer_cycle_syns_wow"
+            };
+
             kernels.push(Box::new({
                 ocl_pq.create_kernel(kern_name)
                     .expect("Synapses::new()")

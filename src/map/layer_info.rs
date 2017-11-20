@@ -119,7 +119,7 @@ impl LayerInfo {
             -> LayerInfo {
         let layer_scheme = layer_scheme.clone();
         let name = layer_scheme.name().to_owned();
-        let layer_tags = layer_scheme.layer_tags();
+        let layer_tags = layer_scheme.tags();
         let axon_domain = layer_scheme.axon_domain().clone();
         let axn_topology = layer_scheme.axn_topology();
         let mut sources: Vec<SourceLayerInfo> = Vec::with_capacity(8);
@@ -207,7 +207,7 @@ impl LayerInfo {
                     let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth() as usize);
 
                     sources.push(SourceLayerInfo::new(src_lyr_addr, src_layer_dims.clone(),
-                        src_layer.layer_tags(), src_layer_axn_topology, sig, masq_orig_axn_tags,
+                        src_layer.tags(), src_layer_axn_topology, sig, masq_orig_axn_tags,
                         tar_slc_range.clone(), ));
 
                     if DEBUG_PRINT {
@@ -215,12 +215,12 @@ impl LayerInfo {
                             (layer: '{}'): Adding source layer: \
                             src_area_name: '{}', src_layer.tags: '{}', src_lyr_map_sch.name: '{}', \
                             src_layer.name: '{}', tar_slc_range: '{:?}', depth: '{:?}'",
-                            name, src_area_name, src_layer.layer_tags(), src_lyr_map_sch.name(),
+                            name, src_area_name, src_layer.tags(), src_lyr_map_sch.name(),
                             src_layer.name(), tar_slc_range, src_layer.depth(), mt = cmn::MT));
                     }
 
                     src_layer_debug.push(format!("{mt}{mt}{mt}{mt}<{}>: {:?}: area: [\"{}\"], tags: {}",
-                        src_layer.name(), tar_slc_range, src_area_name, src_layer.layer_tags(), mt = cmn::MT));
+                        src_layer.name(), tar_slc_range, src_area_name, src_layer.tags(), mt = cmn::MT));
 
                     next_slc_idz += src_layer_dims.depth() as usize;
                     ttl_axn_count += src_layer_dims.cells();

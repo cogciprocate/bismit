@@ -54,7 +54,10 @@ pub fn gen_syn_offs(radius: i8, scales: [u32; 2]) -> CmnResult<Vec<(i8, i8)>> {
     const RAD_MAX: i32 = cmn::SYNAPSE_REACH_MAX as i32;
     const RAD_MIN: i32 = cmn::SYNAPSE_REACH_MIN as i32;
 
-    assert!(radius > 0);
+    // assert!(radius > 0);
+
+    // Radii of 0 needs to be allowed (mainly for proximal dens/syns).
+    assert!(radius >= 0);
 
     // let dst_dims = [tract_frame.dims().v_size(), tract_frame.dims().u_size()];
     // assert!(dst_dims[0] == tract_frame.dims().v_size() && dst_dims[1] == tract_frame.dims().u_size());
