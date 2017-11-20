@@ -40,7 +40,6 @@ impl LayerMapScheme {
     //     self
     // }
 
-    // [FIXME]: TODO: Change axonal default depth to 'None' so that input source or layer map can set.
     pub fn layer<D>(mut self, layer_name: &'static str, layer_depth: u8, layer_tags: LayerTags,
             axn_domain: D, kind: LayerKind) -> LayerMapScheme
             where D: Into<AxonDomain>

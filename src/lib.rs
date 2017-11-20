@@ -34,7 +34,7 @@ pub use ocl::Event as OclEvent;
 pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses,
     InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer, SpinyStellateLayer,
     Dendrites, CorticalAreaSettings, DataCellLayer, SamplerKind, SamplerBufferKind,
-    WorkPool, WorkPoolRemote};
+    WorkPool, WorkPoolRemote, CorticalAreas};
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus,
     SubcorticalNucleusLayer, TestScNucleus, InputGenerator, InputGeneratorTract,
     InputGeneratorEncoder, InputGeneratorFrame, TractBuffer, TractSender,

@@ -15,7 +15,7 @@ mod control_cell_layer;
 mod cortical_sampler;
 mod pyr_outputter;
 
-pub use self::cortex::{Cortex, WorkPool, WorkPoolRemote};
+pub use self::cortex::{Cortex, WorkPool, WorkPoolRemote, CorticalAreas};
 pub use self::cortical_area::{CorticalArea, CorticalAreaSettings, SamplerKind, SamplerBufferKind};
 pub use self::axon_space::AxonSpace;
 pub use self::synapses::{Synapses, TuftDims};

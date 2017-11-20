@@ -3,15 +3,14 @@ use std::sync::mpsc::{self, SyncSender};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use find_folder::Search;
-use cmn::{self, CorticalDims, CmnResult, TractDims};
+use cmn::{self, CorticalDims, CmnResult, TractDims, TractFrameMut};
 use ocl::{FutureWriteGuard};
 use map::{LayerMapSchemeList, AreaSchemeList, EncoderScheme, LayerScheme, AxonTopology,
     LayerAddress, AxonDomain, AxonTags, AxonSignature};
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
-use cmn::{TractFrameMut, MapStore};
 use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, TractSender};
-use cortex::{WorkPool, CorticalArea};
+use cortex::{WorkPool, CorticalAreas};
 
 
 #[derive(Debug)]
@@ -361,7 +360,7 @@ impl Drop for InputGenerator {
 
 impl SubcorticalNucleus for InputGenerator {
     fn create_pathways(&mut self, thal: &mut Thalamus,
-            _cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
+            _cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
         for layer in self.layers.values_mut() {
             let tx = thal.input_pathway(*layer.sub().addr(), true);
             layer.pathway = Some(tx);

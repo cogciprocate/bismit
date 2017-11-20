@@ -9,7 +9,7 @@ use subcortex::Thalamus;
 use cmn::{MapStore, CorticalDims, CmnResult};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
-use cortex::{WorkPool, CorticalArea};
+use cortex::{WorkPool, CorticalArea, CorticalAreas};
 
 // [NOTES]:
 //
@@ -131,12 +131,12 @@ pub trait SubcorticalNucleus: 'static + Send {
     /// Creates thalamic pathways for communication with the thalamus and other
     /// subcortices.
     fn create_pathways(&mut self, thal: &mut Thalamus,
-        cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()>;
+        cortical_areas: &mut CorticalAreas) -> CmnResult<()>;
 
     // /// Creates thalamic pathways for communication with the thalamus and other
     // /// subcortices.
     // fn create_pathways<Sn>(s: Box<Sn>, thal: &mut Thalamus,
-    //     cortical_areas: &mut MapStore<&'static str, CorticalArea>)
+    //     cortical_areas: &mut CorticalAreas)
     //     -> Box<SubcorticalNucleus + Send + 'static>;
 
     /// Is called before the cortex cycles.

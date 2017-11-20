@@ -7,8 +7,8 @@ use rand::distributions::{Range, IndependentSample};
 use qutex::QrwLock;
 use vibi::bismit::futures::Future;
 use vibi::bismit::{map, encode, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
-    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, WorkPoolRemote, TractReceiver, MapStore,
-    CorticalArea, SamplerKind, SamplerBufferKind};
+    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, WorkPoolRemote, TractReceiver,
+    SamplerKind, SamplerBufferKind, CorticalAreas};
 use vibi::bismit::map::*;
 use ::{IncrResult, TrialIter, Layer, PathwayDir};
 
@@ -482,7 +482,7 @@ impl EvalSpatial {
 
 impl SubcorticalNucleus for EvalSpatial {
     fn create_pathways(&mut self, thal: &mut Thalamus,
-            cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
+            cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
         // Wire up output (sdr) pathways.
         for layer in self.layers.values_mut() {
             let tx = thal.input_pathway(*layer.sub().addr(), true);

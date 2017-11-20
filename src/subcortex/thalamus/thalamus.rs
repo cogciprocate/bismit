@@ -175,11 +175,6 @@ impl Thalamus {
             assert!(output_layer_count > 0, "Thalamus::new: Area \"{}\" has no output layers. \
                 Areas must have at least one output (AxonDomain::Output) layer.", area_s.name());
 
-            // // Input layer tracts:
-            // for layer in area_map.layer_map().iter().filter(|li| li.axn_domain().is_input()) {
-
-            // }
-
             area_maps.insert(area_s.name().to_owned(), area_map);
             assert!(area_maps[area_id].area_id() == area_id);
         }

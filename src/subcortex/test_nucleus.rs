@@ -25,7 +25,7 @@ impl TestScNucleus {
 
 // impl SubcorticalNucleus for TestScNucleus {
 //     fn create_pathways(&mut self, _thal: &mut Thalamus,
-//             _cortical_areas: &mut MapStore<&'static str, CorticalArea>) {
+//             _cortical_areas: &mut CorticalAreas) {
 //         unimplemented!();
 //     }
 

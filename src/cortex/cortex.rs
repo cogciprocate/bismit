@@ -20,6 +20,9 @@ use subcortex::{Subcortex, SubcorticalNucleus, Thalamus};
 const WORK_POOL_BUFFER_SIZE: usize = 32;
 
 
+pub type CorticalAreas = MapStore<&'static str, CorticalArea>;
+
+
 /// A remote control for `WorkPool` used to submit futures needing completion.
 #[derive(Clone)]
 pub struct WorkPoolRemote {
@@ -118,7 +121,7 @@ fn print_startup_time(time_start: time::Timespec) {
 
 
 pub struct Cortex {
-    areas: MapStore<&'static str, CorticalArea>,
+    areas: CorticalAreas,
     thal: Thalamus,
     sub: Subcortex,
     work_pool: WorkPool,
@@ -170,11 +173,11 @@ impl Cortex {
         })
     }
 
-    pub fn areas(&self) -> &MapStore<&'static str, CorticalArea> {
+    pub fn areas(&self) -> &CorticalAreas {
         &self.areas
     }
 
-    pub fn areas_mut(&mut self) -> &mut MapStore<&'static str, CorticalArea> {
+    pub fn areas_mut(&mut self) -> &mut CorticalAreas {
         &mut self.areas
     }
 

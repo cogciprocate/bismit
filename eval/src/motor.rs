@@ -7,9 +7,9 @@ use rand::distributions::{Range, IndependentSample};
 use qutex::QrwLock;
 use vibi::bismit::futures::Future;
 use vibi::bismit::{map, encode, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
-    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, MapStore, CorticalArea};
+    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas};
 use vibi::bismit::map::*;
-use ::{IncrResult, TrialIter, Layer, PathwayDir};
+use ::{IncrResult, TrialIter, Layer, PathwayDir, InputSource};
 use ::spatial::{TrialData, TrialResults};
 
 
@@ -119,7 +119,7 @@ impl EvalMotor {
 
 impl SubcorticalNucleus for EvalMotor {
     fn create_pathways(&mut self, thal: &mut Thalamus,
-            _cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
+            _cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
         // Wire up output (sdr) pathways.
         for layer in self.layers.values_mut() {
             match *layer.sub().axon_domain() {
@@ -128,17 +128,21 @@ impl SubcorticalNucleus for EvalMotor {
                     layer.pathway = PathwayDir::Output { tx };
                 },
                 AxonDomain::Input(_) => {
-                    let src_lyr_addrs: Vec<_> =thal.area_maps().by_index(self.area_id).unwrap()
+                    let src_lyr_infos: Vec<_> =thal.area_maps().by_index(self.area_id).unwrap()
                             .layer(layer.sub().addr().layer_id()).unwrap()
                             .sources().iter().map(|src_lyr| {
-                        *src_lyr.layer_addr()
+                        (*src_lyr.layer_addr(), src_lyr.dims().clone())
                     }).collect();
 
-                    let rxs: Vec<_> = src_lyr_addrs.iter().map(|src_lyr_addr| {
-                        thal.output_pathway(*src_lyr_addr)
+                    let srcs: Vec<_> = src_lyr_infos.into_iter().map(|(addr, dims)| {
+                        InputSource {
+                            addr,
+                            dims,
+                            rx: thal.output_pathway(addr)
+                        }
                     }).collect();
 
-                    layer.pathway = PathwayDir::Input { src_lyr_addrs, rxs };
+                    layer.pathway = PathwayDir::Input { srcs };
                 },
                 _ => (),
             }
@@ -164,26 +168,25 @@ impl SubcorticalNucleus for EvalMotor {
 
         // Write sdr to pathway:
         for layer in self.layers.values() {
-            if layer.sub().axon_domain().is_output() {
-                if let PathwayDir::Output { ref tx } = layer.pathway {
-                    let future_sdrs = self.input_sdrs.clone().read().from_err();
+            if let PathwayDir::Output { ref tx } = layer.pathway {
+                debug_assert!(layer.sub().axon_domain().is_output());
+                let future_sdrs = self.input_sdrs.clone().read().from_err();
 
-                    let future_write_guard = tx.send()
-                        .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
-                        .flatten();
+                let future_write_guard = tx.send()
+                    .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                    .flatten();
 
-                    let future_write = future_write_guard
-                        .join(future_sdrs)
-                        .map(move |(tract_opt, sdrs)| {
-                            tract_opt.map(|mut t| {
-                                debug_assert!(t.len() == sdrs[pattern_idx].len());
-                                t.copy_from_slice(&sdrs[pattern_idx]);
-                            });
-                        })
-                        .map_err(|err| panic!("{:?}", err));
+                let future_write = future_write_guard
+                    .join(future_sdrs)
+                    .map(move |(tract_opt, sdrs)| {
+                        tract_opt.map(|mut t| {
+                            debug_assert!(t.len() == sdrs[pattern_idx].len());
+                            t.copy_from_slice(&sdrs[pattern_idx]);
+                        });
+                    })
+                    .map_err(|err| panic!("{:?}", err));
 
-                    work_pool.submit_work(future_write)?;
-                }
+                work_pool.submit_work(future_write)?;
             }
         }
 
@@ -196,6 +199,12 @@ impl SubcorticalNucleus for EvalMotor {
     /// * Increments the cell activity counts
     ///
     fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) -> CmnResult<()> {
+        for layer in self.layers.values() {
+            if let PathwayDir::Input { srcs: _ } = layer.pathway {
+                debug_assert!(layer.sub().axon_domain().is_input());
+            }
+        }
+
         if self.trial_iter.current_counter().is_collecting() {
 
         }
@@ -272,6 +281,9 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             // .layer("iii_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
             //     CellScheme::pyr_outputter("iii", 0)
             // )
+            .layer("v", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
+                CellScheme::pyramidal(&[("v", 5, 1)], 1, 2, 500)
+            )
             // .layer("mcols", 1, LayerTags::DEFAULT, AxonDomain::output(&[map::THAL_SP]),
             //     CellScheme::minicolumn(9999)
             // )

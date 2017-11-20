@@ -873,7 +873,7 @@ impl EvalSpatial {
 
 impl SubcorticalNucleus for EvalSpatial {
     fn create_pathways(&mut self, thal: &mut Thalamus,
-            cortical_areas: &mut MapStore<&'static str, CorticalArea>) -> CmnResult<()> {
+            cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
         return Ok(());
 
         // Wire up output (sdr) pathways.

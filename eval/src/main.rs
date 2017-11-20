@@ -287,10 +287,19 @@ impl TrialIter {
     }
 }
 
+
+#[derive(Debug)]
+pub struct InputSource {
+    addr: LayerAddress,
+    dims: CorticalDims,
+    rx: TractReceiver,
+}
+
+
 #[derive(Debug)]
 pub enum PathwayDir {
     Output { tx: TractSender },
-    Input { src_lyr_addrs: Vec<LayerAddress>, rxs: Vec<TractReceiver> },
+    Input { srcs: Vec<InputSource> },
     None,
 }
 
@@ -299,7 +308,6 @@ pub enum PathwayDir {
 #[derive(Debug)]
 pub struct Layer {
     sub: SubcorticalNucleusLayer,
-    // pathway: Option<TractSender>,
     pathway: PathwayDir,
 }
 
