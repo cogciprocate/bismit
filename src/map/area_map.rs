@@ -76,7 +76,7 @@ impl AreaMap {
     }
 
     // NEW
-    pub fn layer_name_by_tags(&self, layer_tags: LayerTags) -> &'static str {
+    pub fn layer_name_by_tags<'s>(&'s self, layer_tags: LayerTags) -> &'s str {
         let layer_info = self.layer_map.layers_meshing_tags(layer_tags);
         assert!(layer_info.len() == 1, "AreaMap::layer_name_by_tags(): ({}) \
             tags matching: {} for area: \"{}\" found", layer_info.len(), layer_tags, self.area_name);

@@ -14,7 +14,7 @@ pub trait ControlCellLayer: 'static + Debug + Send {
     fn set_exe_order_post(&mut self, exe_graph: &mut ExecutionGraph, host_lyr_addr: LayerAddress) -> CmnResult<()>;
     fn cycle_pre(&mut self, exe_graph: &mut ExecutionGraph, host_lyr_addr: LayerAddress) -> CmnResult<()>;
     fn cycle_post(&mut self, exe_graph: &mut ExecutionGraph, host_lyr_addr: LayerAddress) -> CmnResult<()>;
-    fn layer_name(&self) -> &'static str;
+    fn layer_name<'s>(&'s self) -> &'s str;
     fn layer_addr(&self) -> LayerAddress;
     fn host_layer_addr(&self) -> LayerAddress;
 }

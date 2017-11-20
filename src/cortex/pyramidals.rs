@@ -12,7 +12,7 @@ const PRINT_DEBUG: bool = false;
 
 #[derive(Debug)]
 pub struct PyramidalLayer {
-    layer_name: &'static str,
+    layer_name: String,
     // layer_id: usize,
     layer_addr: LayerAddress,
     layer_tags: LayerTags,
@@ -48,11 +48,12 @@ pub struct PyramidalLayer {
 }
 
 impl PyramidalLayer {
-    pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
+    pub fn new<S: Into<String>>(layer_name: S, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
             area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue,
             settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<PyramidalLayer>
     {
+        let layer_name = layer_name.into();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
         // [FIXME]: Convert to layer_id:
         let axn_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
@@ -84,7 +85,7 @@ impl PyramidalLayer {
             layer_name, base_axn_slc, pyr_lyr_axn_idz, tft_count,
             states.len(), tft_best_den_ids.len(), dims, mt = cmn::MT);
 
-        let dens = Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(),
+        let dens = Dendrites::new(layer_name.clone(), layer_id, dims, cell_scheme.clone(),
             DendriteKind::Distal, /*DataCellKind::Pyramidal,*/ area_map, axons, ocl_pq,
             settings.disable_pyrs, exe_graph)?;
 
@@ -490,7 +491,7 @@ impl DataCellLayer for PyramidalLayer {
         (self.pyr_lyr_axn_idz as usize, axn_idn as usize)
     }
 
-    #[inline] fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] fn layer_name<'s>(&'s self) -> &'s str { &self.layer_name }
     #[inline] fn layer_addr(&self) -> LayerAddress{ self.layer_addr }
     #[inline] fn soma(&self) -> &Buffer<u8> { &self.states }
     #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { &mut self.states }

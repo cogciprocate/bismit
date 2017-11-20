@@ -38,7 +38,7 @@ use cortex::{WorkPool, CorticalArea, CorticalAreas};
 ///
 #[derive(Clone, Debug)]
 pub struct SubcorticalNucleusLayer {
-    name: &'static str,
+    name: String,
     addr: LayerAddress,
     axon_domain: AxonDomain,
     axon_topology: AxonTopology,
@@ -47,11 +47,11 @@ pub struct SubcorticalNucleusLayer {
 
 impl SubcorticalNucleusLayer {
     /// Returns a new `SubcorticalNucleusLayer`.
-    pub fn new(name: &'static str, addr: LayerAddress, axon_domain: AxonDomain,
+    pub fn new<S: Into<String>>(name: S, addr: LayerAddress, axon_domain: AxonDomain,
             axon_topology: AxonTopology, dims: Option<CorticalDims>)
             -> SubcorticalNucleusLayer {
         SubcorticalNucleusLayer {
-            name,
+            name: name.into(),
             addr,
             axon_domain,
             axon_topology,
@@ -67,7 +67,7 @@ impl SubcorticalNucleusLayer {
     pub fn from_schemes(layer_scheme: &LayerScheme, area_scheme: &AreaScheme,
             dims: Option<CorticalDims>) -> SubcorticalNucleusLayer {
         let area_id = area_scheme.area_id();
-        let name = layer_scheme.name();
+        let name = layer_scheme.name().to_owned();
         let addr = LayerAddress::new(area_id, layer_scheme.layer_id());
         let axon_domain = layer_scheme.axon_domain().clone();
         let axon_topology = layer_scheme.kind().axn_topology();
@@ -117,7 +117,7 @@ impl SubcorticalNucleusLayer {
         };
     }
 
-    pub fn name(&self) -> &'static str { self.name }
+    pub fn name<'s>(&'s self) -> &'s str { &self.name }
     pub fn addr(&self) -> &LayerAddress { &self.addr }
     pub fn axon_domain(&self) -> &AxonDomain { &self.axon_domain }
     pub fn axon_topology(&self) -> AxonTopology { self.axon_topology.clone() }

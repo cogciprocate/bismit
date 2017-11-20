@@ -345,8 +345,8 @@ pub struct CorticalArea {
     dims: CorticalDims,
     area_map: AreaMap,
     axns: AxonSpace,
-    ptal_name: Option<&'static str>,
-    psal_name: Option<&'static str>,
+    ptal_name: Option<String>,
+    psal_name: Option<String>,
     psal_idx: usize,
     ptal_idx: usize,
     /// Primary neuron layers.
@@ -439,9 +439,9 @@ impl CorticalArea {
             ocl_pq.device().vendor().trim(), mt = cmn::MT);
 
         let psal_name = area_map.layer_map().layers_containing_tags(LayerTags::PSAL)
-            .first().map(|lyr| lyr.name());
+            .first().map(|lyr| lyr.name().to_owned());
         let ptal_name = area_map.layer_map().layers_containing_tags(LayerTags::PTAL)
-            .first().map(|lyr| lyr.name());
+            .first().map(|lyr| lyr.name().to_owned());
 
         // Ensures if they are not set later the indexes will be invalid:
         let mut psal_idx = usize::max_value();
@@ -1098,8 +1098,8 @@ impl CorticalArea {
 
     #[inline] pub fn axns(&self) -> &AxonSpace { &self.axns }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] pub fn psal_name(&self) -> Option<&'static str> { self.psal_name }
-    #[inline] pub fn ptal_name(&self) -> Option<&'static str> { self.ptal_name }
+    #[inline] pub fn psal_name<'s>(&'s self) -> Option<&'s String> { self.psal_name.as_ref() }
+    #[inline] pub fn ptal_name<'s>(&'s self) -> Option<&'s String> { self.ptal_name.as_ref() }
     #[inline] pub fn afferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.aff_areas() }
     #[inline] pub fn efferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.eff_areas() }
     #[inline] pub fn ocl_pq(&self) -> &ProQue { &self.ocl_pq }

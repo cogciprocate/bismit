@@ -16,7 +16,7 @@ pub use self::layer_map::{LayerMapSchemeList, LayerMapScheme};
 
 pub use self::area::{AreaSchemeList, AreaScheme};
 
-pub use self::layer::{LayerScheme};
+pub use self::layer::{LayerScheme, LayerKind};
     // pub use self::layer_map::LayerKind::{Cellular, Axonal};
     // pub use self::layer_map::AxonTopology::{Spatial, Horizontal};
 

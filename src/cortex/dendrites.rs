@@ -11,7 +11,7 @@ const PRINT_DEBUG: bool = false;
 
 #[derive(Debug)]
 pub struct Dendrites {
-    layer_name: &'static str,
+    layer_name: String,
     layer_id: usize,
     dims: CorticalDims,
     kernels: Vec<Kernel>,
@@ -31,8 +31,8 @@ pub struct Dendrites {
 }
 
 impl Dendrites {
-    pub fn new(
-            layer_name: &'static str,
+    pub fn new<S: Into<String>>(
+            layer_name: S,
             layer_id: usize,
             dims: CorticalDims,
             cell_scheme: CellScheme,
@@ -44,6 +44,7 @@ impl Dendrites {
             exe_graph: &mut ExecutionGraph,
             ) -> CmnResult<Dendrites>
     {
+        let layer_name = layer_name.into();
         let tft_count = cell_scheme.tft_count();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
@@ -83,7 +84,7 @@ impl Dendrites {
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}",
             layer_name, dims, states.len(), mt = cmn::MT);
 
-        let syns = Synapses::new(layer_name, layer_id, dims, cell_scheme.clone(), den_kind,
+        let syns = Synapses::new(layer_name.clone(), layer_id, dims, cell_scheme.clone(), den_kind,
             area_map, axons, ocl_pq, bypass_exe_graph, exe_graph)?;
 
         /*=============================================================================
@@ -238,7 +239,7 @@ impl Dendrites {
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn syns(&self) -> &Synapses { &self.syns }
     #[inline] pub fn syns_mut(&mut self) -> &mut Synapses { &mut self.syns }
-    #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] pub fn layer_name<'s>(&'s self) -> &'s str { &self.layer_name }
     #[inline] pub fn count(&self) -> u32 { self.states.len() as u32 }
     #[inline] pub fn tft_count(&self) -> usize { self.kernels.len() }
     #[inline] pub fn den_idzs_by_tft(&self) -> &[u32] { self.den_idzs_by_tft.as_slice() }

@@ -119,7 +119,6 @@ impl CellScheme {
         }.validate())
     }
 
-    // SWITCH TO DISTAL
     //                                  &[name, reach, prevalance]
     pub fn spiny_stellate<'a>(prx_srcs: &[(&'a str, i8, u8)], syns_per_den_l2: u8, thresh: u32,
             ) -> LayerKind

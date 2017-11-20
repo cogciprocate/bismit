@@ -12,7 +12,7 @@ use map::{CellScheme, ExecutionGraph, LayerAddress};
 pub use self::tests::{DataCellLayerTest, CelCoords};
 
 pub trait DataCellLayer: 'static + Debug + Send {
-    fn layer_name(&self) -> &'static str;
+    fn layer_name<'s>(&'s self) -> &'s str;
     fn layer_addr(&self) -> LayerAddress;
     fn cycle(&mut self, &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>, &mut ExecutionGraph) -> CmnResult<()>;
     fn learn(&mut self, &mut ExecutionGraph) -> CmnResult <()> ;

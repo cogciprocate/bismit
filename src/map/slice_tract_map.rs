@@ -9,7 +9,7 @@ use std::fmt;
 //
 #[derive(Debug, Clone)]
 pub struct SliceTractMap {
-    tags: Vec<&'static str>,
+    tags: Vec<String>,
     v_sizes: Vec<u32>,
     u_sizes: Vec<u32>,
     idzs: Vec<u32>,
@@ -18,7 +18,7 @@ pub struct SliceTractMap {
 
 impl SliceTractMap {
     pub fn new(
-            tags: &[&'static str],
+            tags: &[String],
             v_sizes: &[u32],
             u_sizes: &[u32])
             -> SliceTractMap
@@ -90,8 +90,8 @@ impl SliceTractMap {
         axn_id_start..axn_id_end
     }
 
-    pub fn tags_reversed(&self) -> Vec<&'static str> {
-        self.tags.iter().rev().map(|&t| t).collect()
+    pub fn tags_reversed(&self) -> Vec<String> {
+        self.tags.iter().rev().map(|t| t.clone()).collect()
     }
 }
 

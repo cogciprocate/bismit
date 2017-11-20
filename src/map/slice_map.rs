@@ -9,7 +9,7 @@ const DEBUG_PRINT: bool = false;
 #[derive(Debug, Clone)]
 pub struct SliceMap {
     axn_idzs: Vec<u32>,
-    layer_names: Vec<&'static str>,
+    layer_names: Vec<String>,
     axn_topologies: Vec<AxonTopology>,
     v_sizes: Vec<u32>,
     u_sizes: Vec<u32>,
@@ -52,7 +52,7 @@ impl SliceMap {
                 axn_idzs.push(axn_idz_ttl);
                 axn_idz_ttl += slc_dims.columns();
 
-                layer_names.push(layer.name());
+                layer_names.push(layer.name().to_owned());
                 axn_topologies.push(layer.axn_topology());
                 v_sizes.push(slc_dims.v_size());
                 u_sizes.push(slc_dims.u_size());
@@ -185,8 +185,8 @@ impl SliceMap {
     }
 
     #[inline]
-    pub fn layer_name(&self, slc_id: u8) -> &'static str {
-        self.layer_names[slc_id as usize]
+    pub fn layer_name<'s>(&'s self, slc_id: u8) -> &'s str {
+        &self.layer_names[slc_id as usize]
     }
 
     #[inline]
@@ -232,7 +232,7 @@ impl SliceMap {
     #[inline] pub fn depth(&self) -> u8 { self.axn_idzs.len() as u8 }
     #[inline] pub fn axn_count(&self) -> u32 { self.physical_len }
     #[inline] pub fn axn_idzs(&self) -> &Vec<u32> { &self.axn_idzs }
-    #[inline] pub fn layer_names(&self) -> &Vec<&'static str> { &self.layer_names }
+    #[inline] pub fn layer_names(&self) -> &[String] { &self.layer_names }
     #[inline] pub fn axn_topologies(&self) -> &Vec<AxonTopology> { &self.axn_topologies }
     #[inline] pub fn v_sizes(&self) -> &Vec<u32> { &self.v_sizes }
     #[inline] pub fn u_sizes(&self) -> &Vec<u32> { &self.u_sizes }

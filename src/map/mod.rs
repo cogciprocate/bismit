@@ -19,7 +19,7 @@ pub use self::layer_info::{LayerInfo, SourceLayerInfo};
 pub use self::syn_src::{SynSrcSlices, SynSrcIdxCache, SynSrc, gen_syn_offs};
 pub use self::slice_tract_map::SliceTractMap;
 pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList, CellScheme,
-	LayerScheme, FilterScheme, EncoderScheme, TuftSourceLayer, TuftScheme};
+	LayerScheme, FilterScheme, EncoderScheme, TuftSourceLayer, TuftScheme, LayerKind};
 pub use self::layer_tags::LayerTags;
 
 /////// FIXME: IMPORT MANUALLY:
@@ -144,45 +144,6 @@ pub enum LayerMapKind {
     // Motor,
     Cortical,
     Subcortical,
-}
-
-
-// * TODO: Figure out whether or not to keep `AxonTopology` here since only
-// input layer topology matters and since cellular layers are assigned
-// `AxonTopology::Spatial`.
-//
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum LayerKind {
-    Cellular(CellScheme),
-    Axonal(AxonTopology),
-}
-
-impl LayerKind {
-    pub fn axn_topology(&self) -> AxonTopology {
-        match *self {
-            LayerKind::Axonal(ak) => ak.clone(),
-            LayerKind::Cellular(_) => AxonTopology::Spatial,
-        }
-    }
-
-    pub fn apical<'a>(mut self, src_lyrs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8,
-                syns_per_den_l2: u8, thresh_init: u32) -> LayerKind
-    {
-        match &mut self {
-            &mut LayerKind::Cellular(ref mut cs) => {
-                let src_lyrs_vec = src_lyrs.into_iter().map(|&sl| sl.into()).collect();
-
-                let tft_scheme = TuftScheme::new(DendriteClass::Apical, DendriteKind::Distal,
-                    dens_per_tft_l2, syns_per_den_l2, src_lyrs_vec, Some(thresh_init));
-
-                cs.add_tft(tft_scheme);
-            },
-
-            &mut LayerKind::Axonal(_) => panic!("::apical(): Axonal layers do not have dendrites."),
-        }
-
-        self
-    }
 }
 
 

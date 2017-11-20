@@ -97,7 +97,7 @@ fn matching_source_layers<'a>(area_sch: &'a AreaScheme, area_sch_list: &'a AreaS
 #[derive(Clone)]
 pub struct LayerInfo {
     layer_addr: LayerAddress,
-    name: &'static str,
+    name: String,
     layer_tags: LayerTags,
     axon_domain: AxonDomain,
     slc_range: Option<Range<usize>>,
@@ -118,7 +118,7 @@ impl LayerInfo {
             layer_map_sch_list: &LayerMapSchemeList, subcortex: &Subcortex, slc_total: u8)
             -> LayerInfo {
         let layer_scheme = layer_scheme.clone();
-        let name = layer_scheme.name();
+        let name = layer_scheme.name().to_owned();
         let layer_tags = layer_scheme.layer_tags();
         let axon_domain = layer_scheme.axon_domain().clone();
         let axn_topology = layer_scheme.axn_topology();
@@ -350,7 +350,7 @@ impl LayerInfo {
 
     #[inline] pub fn layer_addr(&self) -> &LayerAddress { &self.layer_addr }
     #[inline] pub fn layer_id(&self) -> usize { self.layer_addr.layer_id() }
-    #[inline] pub fn name(&self) -> &'static str { self.name }
+    #[inline] pub fn name<'s>(&'s self) -> &'s str { &self.name }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn kind(&self) -> &LayerKind { self.layer_scheme.kind() }
     #[inline] pub fn axn_domain(&self) -> &AxonDomain { self.layer_scheme.axon_domain() }

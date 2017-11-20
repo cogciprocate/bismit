@@ -8,31 +8,32 @@ use map::{LayerTags, LayerMapKind, LayerScheme, AxonTopology, LayerKind, AxonDom
 
 #[derive(Debug, Clone)]
 pub struct LayerMapScheme {
-    name: &'static str,
+    name: String,
     kind: LayerMapKind,
-    layers: MapStore<&'static str, LayerScheme>,
+    layers: MapStore<String, LayerScheme>,
 }
 
 impl LayerMapScheme {
-    pub fn new (name: &'static str, kind: LayerMapKind) -> LayerMapScheme {
+    pub fn new<S>(name: S, kind: LayerMapKind) -> LayerMapScheme
+            where S: Into<String> {
         LayerMapScheme {
-            name: name,
+            name: name.into(),
             kind: kind,
             layers: MapStore::new(),
         }
     }
 
     // <A: Into<AxonTags>>
-    pub fn input_layer<D>(mut self, layer_name: &'static str, layer_tags: LayerTags,
+    pub fn input_layer<S, D>(mut self, layer_name: S, layer_tags: LayerTags,
             axn_domain: D, axn_kind: AxonTopology) -> LayerMapScheme
-            where D: Into<AxonDomain>
+            where S: Into<String>, D: Into<AxonDomain>
     {
         self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
             axn_domain));
         self
     }
 
-    // pub fn axn_layer(mut self, layer_name: &'static str, layer_tags: LayerTags,
+    // pub fn axn_layer(mut self, layer_name: S, layer_tags: LayerTags,
     //         axn_domain: AxonDomain, axn_kind: AxonTopology) -> LayerMapScheme
     // {
     //     self.add(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
@@ -40,9 +41,9 @@ impl LayerMapScheme {
     //     self
     // }
 
-    pub fn layer<D>(mut self, layer_name: &'static str, layer_depth: u8, layer_tags: LayerTags,
+    pub fn layer<S, D>(mut self, layer_name: S, layer_depth: u8, layer_tags: LayerTags,
             axn_domain: D, kind: LayerKind) -> LayerMapScheme
-            where D: Into<AxonDomain>
+            where S: Into<String>, D: Into<AxonDomain>
     {
         let validated_depth = match kind {
             LayerKind::Cellular(ref cell_scheme) => cell_scheme.validate_depth(Some(layer_depth)),
@@ -54,11 +55,10 @@ impl LayerMapScheme {
     }
 
     pub fn add(&mut self, mut layer: LayerScheme) {
-        let layer_name = layer.name();
         layer.set_layer_id(self.layers.len());
-        self.layers.insert(layer.name(), layer)
-            .map(|_| panic!("LayerMapScheme::layer(): Duplicate layer names: \
-                (layer: \"{}\").", layer_name));
+        self.layers.insert(layer.name().to_owned(), layer)
+            .map(|ls| panic!("LayerMapScheme::layer(): Duplicate layer names: \
+                (layer: \"{}\").", ls.name()));
     }
 
     /// Returns all layers containing 'tags'.
@@ -98,8 +98,8 @@ impl LayerMapScheme {
         self.layers.values()
     }
 
-     pub fn name(&self) -> &'static str {
-        self.name
+     pub fn name<'s>(&'s self) -> &'s str {
+        &self.name
     }
 
     pub fn kind(&self) -> &LayerMapKind {

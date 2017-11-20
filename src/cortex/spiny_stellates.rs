@@ -16,7 +16,7 @@ const TUFT_COUNT: usize = 1;
 
 #[derive(Debug)]
 pub struct SpinyStellateLayer {
-    layer_name: &'static str,
+    layer_name: String,
     // layer_id: usize,
     layer_addr: LayerAddress,
     layer_tags: LayerTags,
@@ -40,10 +40,11 @@ pub struct SpinyStellateLayer {
 }
 
 impl SpinyStellateLayer {
-    pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
+    pub fn new<S: Into<String>>(layer_name: S, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
             area_map: &AreaMap, axons: &AxonSpace, ocl_pq: &ProQue,
             settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph,
     ) -> CmnResult<SpinyStellateLayer> {
+        let layer_name = layer_name.into();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
         let axn_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
         let base_axn_slc = axn_slc_ids[0];
@@ -66,7 +67,7 @@ impl SpinyStellateLayer {
             base_axn_slc, lyr_axn_idz, dims, mt = cmn::MT);
 
         // let dens_dims = dims.clone_with_ptl2(cell_scheme.dens_per_tft_l2 as i8);
-        let dens = try!(Dendrites::new(layer_name, layer_id, dims, cell_scheme.clone(),
+        let dens = try!(Dendrites::new(layer_name.clone(), layer_id, dims, cell_scheme.clone(),
             DendriteKind::Proximal, /*DataCellKind::SpinyStellate,*/ area_map, axons, ocl_pq,
             settings.disable_sscs, exe_graph));
         let _grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
@@ -276,7 +277,7 @@ impl SpinyStellateLayer {
         (self.lyr_axn_idz as usize, sscs_axn_idn as usize)
     }
 
-    #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] pub fn layer_name<'s>(&'s self) -> &'s str { &self.layer_name }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn soma(&self) -> &Buffer<u8> { self.dens.states() }
@@ -313,7 +314,7 @@ impl DataCellLayer for SpinyStellateLayer {
         self.axn_range()
     }
 
-    #[inline] fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] fn layer_name<'s>(&'s self) -> &'s str { &self.layer_name }
     #[inline] fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] fn soma(&self) -> &Buffer<u8> { self.dens.states() }
     #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { self.dens.states_mut() }

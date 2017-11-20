@@ -97,7 +97,7 @@ impl TuftDims {
 
 #[derive(Debug)]
 pub struct Synapses {
-    layer_name: &'static str,
+    layer_name: String,
     layer_id: usize,
     dims: CorticalDims,
     den_kind: DendriteKind,
@@ -130,11 +130,13 @@ pub struct Synapses {
 }
 
 impl Synapses {
-    pub fn new(layer_name: &'static str, layer_id: usize, dims: CorticalDims, cell_scheme: CellScheme,
+    pub fn new<S: Into<String>>(layer_name: S, layer_id: usize, dims: CorticalDims,
+            cell_scheme: CellScheme,
             den_kind: DendriteKind, area_map: &AreaMap, axons: &AxonSpace,
             ocl_pq: &ProQue, bypass_exe_graph: bool, exe_graph: &mut ExecutionGraph,
             ) -> CmnResult<Synapses>
     {
+        let layer_name = layer_name.into();
         let syn_src_slices = SynSrcSlices::new(layer_id, cell_scheme.tft_schemes(), area_map)?;
 
         let tft_count = cell_scheme.tft_count();

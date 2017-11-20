@@ -61,7 +61,7 @@ fn gen_grp_centers(radius: i32, dims: [i32; 2]) -> (Vec<i32>, Vec<i32>) {
 
 #[derive(Debug)]
 pub struct ActivitySmoother {
-    layer_name: &'static str,
+    layer_name: String,
     layer_addr: LayerAddress,
     host_lyr_addr: LayerAddress,
     centers_v: Buffer<i32>,
@@ -75,12 +75,13 @@ pub struct ActivitySmoother {
 }
 
 impl ActivitySmoother {
-    pub fn new<D>(layer_name: &'static str, layer_id: usize, /*dims: CorticalDims,*/ scheme: CellScheme,
+    pub fn new<S, D>(layer_name: S, layer_id: usize, /*dims: CorticalDims,*/ scheme: CellScheme,
             host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<ActivitySmoother>
-            where D: DataCellLayer
+            where S: Into<String>, D: DataCellLayer
     {
+        let layer_name = layer_name.into();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
         let group_radius = scheme.class().control_kind().field_radius() as i32;
 
@@ -160,7 +161,7 @@ impl ActivitySmoother {
         Ok(())
     }
 
-    #[inline] pub fn layer_name(&self) -> &'static str { self.layer_name }
+    #[inline] pub fn layer_name<'s>(&'s self) -> &'s str { &self.layer_name }
     #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
 
 }
@@ -182,7 +183,7 @@ impl ControlCellLayer for ActivitySmoother {
         self.cycle(exe_graph, host_lyr_addr)
     }
 
-    fn layer_name(&self) -> &'static str { self.layer_name() }
+    fn layer_name<'s>(&'s self) -> &'s str { self.layer_name() }
     fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     fn host_layer_addr(&self) -> LayerAddress { self.host_lyr_addr }
 }
