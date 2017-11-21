@@ -254,17 +254,16 @@ pub struct CellScheme {
 }
 
 impl CellScheme {
-    pub fn new(
-            cell_class: CellClass,
-            tft_schemes: Vec<TuftScheme>,
-            ) -> CellScheme
-    {
-
+    pub fn new(cell_class: CellClass, tft_schemes: Vec<TuftScheme>) -> CellScheme {
         // DO SOME CHECKS ON PARAMETERS (certain cell types must/mustn't have certain dendritic segments)
         CellScheme {
             cell_class: cell_class,
             tft_schemes: tft_schemes,
         }.validate()
+    }
+
+    pub fn builder(cell_class: CellClass) -> CellSchemeBuilder {
+        CellSchemeBuilder::new(cell_class)
     }
 
     pub fn data(kind: DataCellKind) -> CellSchemeBuilder {
@@ -277,6 +276,10 @@ impl CellScheme {
 
     pub fn spiny_stellate() -> CellSchemeBuilder {
         Self::data(DataCellKind::SpinyStellate)
+    }
+
+    pub fn control(kind: ControlCellKind, exe_order: usize) -> CellSchemeBuilder {
+        CellSchemeBuilder::new(CellClass::Control { kind, exe_order })
     }
 
     //                             &[name, reach, prevalence]

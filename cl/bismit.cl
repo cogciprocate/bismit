@@ -803,7 +803,7 @@ __kernel void den_cycle_tft(
     den_activities[den_idx] = update_activity_rating(den_activities[den_idx], den_is_active,
         rnd, rnd_seed, DENDRITE_ACTIVITY_DECAY_FACTOR);
 
-    int den_reduction = syns_per_den_l2 - 1;
+    int den_reduction = clamp(syns_per_den_l2 - 1, 0, 255);
     den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255);
     den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255);
 }
