@@ -97,6 +97,7 @@ pub struct TuftScheme {
     den_kind: DendriteKind,
     dens_per_tft_l2: u8,
     syns_per_den_l2: u8,
+    max_active_dens_l2: u8,
     src_lyrs: Vec<TuftSourceLayer>,
     thresh_init: Option<u32>,
 }
@@ -115,16 +116,18 @@ impl TuftScheme {
     }
 
     pub fn new(tft_id: usize, den_class: DendriteClass, den_kind: DendriteKind, dens_per_tft_l2: u8,
-            syns_per_den_l2: u8, src_lyrs: Vec<TuftSourceLayer>, thresh_init: Option<u32>)
+            syns_per_den_l2: u8, max_active_dens_l2: u8, src_lyrs: Vec<TuftSourceLayer>,
+            thresh_init: Option<u32>)
             -> TuftScheme {
         TuftScheme {
-            tft_id: tft_id,
-            den_class: den_class,
-            den_kind: den_kind,
-            dens_per_tft_l2: dens_per_tft_l2,
-            syns_per_den_l2: syns_per_den_l2,
-            src_lyrs: src_lyrs,
-            thresh_init: thresh_init,
+            tft_id,
+            den_class,
+            den_kind,
+            dens_per_tft_l2,
+            syns_per_den_l2,
+            max_active_dens_l2,
+            src_lyrs,
+            thresh_init,
         }
     }
 
@@ -140,6 +143,7 @@ impl TuftScheme {
     #[inline] pub fn dens_per_tft_l2(&self) -> u8 { self.dens_per_tft_l2 }
     #[inline] pub fn syns_per_den_l2(&self) -> u8 { self.syns_per_den_l2 }
     #[inline] pub fn syns_per_tft_l2(&self) -> u8 { self.dens_per_tft_l2 + self.syns_per_den_l2 }
+    #[inline] pub fn max_active_dens_l2(&self) -> u8 { self.max_active_dens_l2 }
     #[inline] pub fn src_lyrs(&self) -> &[TuftSourceLayer] { self.src_lyrs.as_slice() }
     #[inline] pub fn thresh_init(&self) -> &Option<u32> { &self.thresh_init }
 }
@@ -150,6 +154,7 @@ pub struct TuftSchemeBuilder {
     den_kind: Option<DendriteKind>,
     dens_per_tft_l2: u8,
     syns_per_den_l2: Option<u8>,
+    max_active_dens_l2: u8,
     src_lyrs: Vec<TuftSourceLayer>,
     thresh_init: Option<u32>,
 }
@@ -161,6 +166,7 @@ impl TuftSchemeBuilder {
             den_kind: None,
             dens_per_tft_l2: 0,
             syns_per_den_l2: None,
+            max_active_dens_l2: 0,
             src_lyrs: Vec::with_capacity(4),
             thresh_init: None,
         }
@@ -208,6 +214,11 @@ impl TuftSchemeBuilder {
         self
     }
 
+    pub fn max_active_dens_l2(mut self, max_active_dens_l2: u8) -> TuftSchemeBuilder {
+        self.max_active_dens_l2 = max_active_dens_l2;
+        self
+    }
+
     // pub fn src_lyr<S: Into<String>>(mut self, name: S, syn_reach: i8, prevalence: u8)
     //         -> TuftSchemeBuilder {
     //     self.src_lyrs.push(TuftSourceLayer::new(name, syn_reach, prevalence));
@@ -238,6 +249,7 @@ impl TuftSchemeBuilder {
             den_kind: self.den_kind.expect("TuftScheme::build"),
             dens_per_tft_l2: self.dens_per_tft_l2,
             syns_per_den_l2: self.syns_per_den_l2.expect("TuftScheme::build"),
+            max_active_dens_l2: self.max_active_dens_l2,
             src_lyrs: self.src_lyrs,
             thresh_init: self.thresh_init,
         }
@@ -284,11 +296,11 @@ impl CellScheme {
 
     //                             &[name, reach, prevalence]
     pub fn pyr<'a>(dst_srcs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8,
-            syns_per_den_l2: u8, thresh: u32) -> LayerKind {
+            syns_per_den_l2: u8, max_active_dens_l2: u8, thresh: u32) -> LayerKind {
         let src_lyrs_vec = dst_srcs.into_iter().map(|&sl| sl.into()).collect();
 
         let tft_scheme = TuftScheme::new(0, DendriteClass::Basal, DendriteKind::Distal,
-            dens_per_tft_l2, syns_per_den_l2, src_lyrs_vec, Some(thresh));
+            dens_per_tft_l2, syns_per_den_l2, max_active_dens_l2, src_lyrs_vec, Some(thresh));
 
         LayerKind::Cellular(CellScheme {
             cell_class: CellClass::Data(DataCellKind::Pyramidal),
@@ -302,7 +314,7 @@ impl CellScheme {
         let src_lyrs_vec = prx_srcs.into_iter().map(|&sl| sl.into()).collect();
 
         let tft_scheme = TuftScheme::new(0, DendriteClass::Basal, DendriteKind::Proximal, 0,
-            syns_per_den_l2, src_lyrs_vec, Some(thresh));
+            syns_per_den_l2, 0, src_lyrs_vec, Some(thresh));
 
         LayerKind::Cellular(CellScheme {
             cell_class: CellClass::Data(DataCellKind::SpinyStellate),

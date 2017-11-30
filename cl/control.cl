@@ -26,8 +26,8 @@
 //                - or just prefetch global cache? (comparison needed)
 //            - be vectorized
 __kernel void inhib_simple(
-            __global uchar const* const cel_states,
-            // __global uchar const* const energies,
+            __global const uchar* const cel_states,
+            // __global const uchar* const energies,
             __private uchar const cel_base_axn_slc,
             __private int const inhib_radius,
             __private int const rnd,
@@ -193,7 +193,7 @@ __kernel void inhib_simple(
 
 
 __kernel void inhib_passthrough(
-            __global uchar const* const cel_states,
+            __global const uchar* const cel_states,
             __private uchar const cel_base_axn_slc,
             __private int const rnd,
             __global uchar* const activities,
@@ -227,13 +227,13 @@ __kernel void inhib_passthrough(
 // * Increment energy of least active cell if < 255
 // * Decrement most active if > 0
 __kernel void smooth_activity(
-            __global int const* const centers_v,
-            __global int const* const centers_u,
+            __global const int* const centers_v,
+            __global const int* const centers_u,
             __private uint const v_size,
             __private uint const u_size,
             __private int const radius,
             __private uchar const src_lyr_depth,
-            __global uchar const* const cel_actvs,
+            __global const uchar* const cel_actvs,
             // __global int* const aux_ints_1,
             __global uchar* const cel_energies)
 {
@@ -299,7 +299,7 @@ __kernel void smooth_activity(
 
 
 __kernel void pyr_output(
-    __global uchar const* const cel_states,
+    __global const uchar* const cel_states,
     __private uchar const cel_base_axn_slc,
     __global uchar* const axn_states)
 {

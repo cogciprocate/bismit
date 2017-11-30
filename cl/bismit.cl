@@ -285,7 +285,7 @@ static inline int4 cel_idx_3d_unsafe_vec4(uchar4 const slc_id_lyr_uchar4, int4 c
 static inline uchar cel_state_3d_safe(uchar const slc_id_lyr,
             uint const v_size, int const v_id, char const v_ofs,
             uint const u_size, int const u_id, char const u_ofs,
-            __global uchar const* const cel_states)
+            __global const uchar* const cel_states)
 {
     int v_ofs_is_safe = coord_is_safe(v_size, v_id, v_ofs);
     int u_ofs_is_safe = coord_is_safe(u_size, u_id, u_ofs);
@@ -395,7 +395,7 @@ static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id, int4 const v_id_u
 
 // AXN_STATE_3D_SAFE():
 static inline uchar axn_state_3d_safe(uchar const slc_id, uint const v_id, char const v_ofs,
-            uint const u_id, char const u_ofs, __global uchar const* const axn_states)
+            uint const u_id, char const u_ofs, __global const uchar* const axn_states)
 {
     int idx_is_safe = 0;
     uint const axn_idx = axn_idx_3d_unsafe(slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
@@ -404,7 +404,7 @@ static inline uchar axn_state_3d_safe(uchar const slc_id, uint const v_id, char 
 
 // AXN_STATE_3D_SAFE_VEC4():
 static inline uchar4 axn_state_3d_safe_vec4(uchar4 slc_id, int4 v_id, char4 v_ofs,
-            int4 u_id, char4 u_ofs, __global uchar const* const axn_states)
+            int4 u_id, char4 u_ofs, __global const uchar* const axn_states)
 {
     int4 idx_is_safe = (int4)0;
     int4 const axn_idx = axn_idx_3d_unsafe_vec4(slc_id, v_id, v_ofs, u_id, u_ofs, &idx_is_safe);
@@ -559,7 +559,7 @@ static uchar update_activity_rating(uchar activity_rating, int is_active, int rn
 //         STDEP set when depression has already been applied (needs to be cleared by trmn)
 //         STPOT set when potentiation is due to be applied (by trmn)
 static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
-            __global uchar const* const syn_states,
+            __global const uchar* const syn_states,
             uint const syn_idz,
             uint const syns_per_den_l2,
             int const rnd,
@@ -612,7 +612,7 @@ static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
 // TODO: VECTORIZE
 //
 static inline void tft_syns_trm(
-            __global uchar const* const syn_states,
+            __global const uchar* const syn_states,
             uint const syn_idz,
             uint const syns_per_tft_l2,
             int const rnd,
@@ -663,7 +663,7 @@ static inline void tft_syns_trm(
 
 // TODO: VECTORIZE
 static inline void prx_syns__active__ltp_ltd(
-            __global uchar const* const syn_states,
+            __global const uchar* const syn_states,
             uint const syn_idz,
             uint const syns_per_den_l2,
             int const rnd,
@@ -751,12 +751,12 @@ __kernel void reference_all_the_things(__private int const for_sanitys_sake) {
 // The 'raw' tract disregards whether or not the synapse states have strengths
 // `>= 0` AND whether or not the synapse sum is greater than the threshold.
 // The 'non-raw' tract totals synapses which have non-negative strengths and
-// sum to suprathreshold totals.
+// sum to supra-threshold totals.
 //
 __kernel void den_cycle_tft(
-            __global uchar const* const syn_states,
+            __global const uchar* const syn_states,
             // TODO: Switch to `u8` (`uchar`):
-            __global char const* const syn_strengths,
+            __global const char* const syn_strengths,
             __private uint const tft_den_idz,
             __private uint const tft_syn_idz,
             __private uchar const syns_per_den_l2,
@@ -804,25 +804,23 @@ __kernel void den_cycle_tft(
 // The 'raw' tract disregards whether or not the synapse states have strengths
 // >= 0. The 'non-raw' tract is for synapses which have developed strength.
 //
-// Virtually all of this logic will need to be redesigned as specified in
-// written notes.
-//
 __kernel void tft_cycle(
-            __global uchar const* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
-            __global uchar const* const den_states,
+            __global const uchar* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
+            __global const uchar* const den_states,
             // __private uint const tfts_per_cel,
             // __private uint const tft_id,
             ////// Could be made GWO (and could be calculated from tuft_id as well):
             __private uint const lyrtft_cel_idz,
             __private uint const lyrtft_den_idz,
             __private uchar const dens_per_tft_l2,
+            __private uchar const max_active_dens_l2,
             __global uchar* const celtft_best_den_ids,
             __global uchar* const celtft_best_den_states_raw,
             __global uchar* const celtft_best_den_states,
             // __global uchar* const pyr_best_den_states,
             __global int* const aux_ints_0,
             __global int* const aux_ints_1,
-            __global uchar* const tft_states)
+            __global uchar* const celtft_states)
 {
     uint const cel_id_lyrtft = get_global_id(0);
     uint const lyrtft_cel_count = get_global_size(0);
@@ -839,6 +837,9 @@ __kernel void tft_cycle(
     // Cumulative best dendrite state (within the cell-tuft). Used for
     // pyr_state and pyr_best_den_state:
     uint best_den_state = 0;
+
+    // Total of all (active) dendrite states:
+    uint active_den_state_sum = 0;
 
     for (uint den_id_celtft = 0; den_id_celtft < (1 << dens_per_tft_l2); den_id_celtft++) {
         uint const den_idx = cel_den_idz + den_id_celtft;
@@ -863,13 +864,23 @@ __kernel void tft_cycle(
         // `den_state`. If not, will equal `best_den_state`.
         best_den_state = mad24((uint)den_state_bigger, den_state,
             mul24((uint)!den_state_bigger, best_den_state));
+
+        // Accumulate:
+        active_den_state_sum += den_state;
     }
+
+    // Scale `active_den_state_sum` based on a max of `max_active_dens_l2` within 0-255:
+    uint active_den_state_max_l2 = max_active_dens_l2 + 8;
+    int celtft_is_max_active = active_den_state_sum >= (1 << active_den_state_max_l2);
+    uchar celtft_state = mul24(celtft_is_max_active, 255) +
+        mul24(!celtft_is_max_active, active_den_state_sum >> max_active_dens_l2);
 
     uint const celtft_idx = lyrtft_cel_idz + cel_id_lyrtft;
 
     celtft_best_den_ids[celtft_idx] = best_den_id;
     celtft_best_den_states_raw[celtft_idx] = best_den_state_raw;
     celtft_best_den_states[celtft_idx] = best_den_state;
+    celtft_states[celtft_idx] = celtft_state;
 }
 
 
@@ -917,8 +928,8 @@ __kernel void ssc_cycle(
 
 // SST_LTP_SIMPLE(): Long term potentiation for Spiny Stellate Cells - Completely unoptimized
 __kernel void ssc_ltp_simple(
-        __global uchar const* const axn_states,
-        __global uchar const* const syn_states,
+        __global const uchar* const axn_states,
+        __global const uchar* const syn_states,
         __private uint const cel_axn_idz,
         //__private uint const tufts_per_cel,
         __private uchar const syns_per_tft_l2,
@@ -950,8 +961,8 @@ __kernel void ssc_ltp_simple(
 // <<<<< TODO: ADD AN ADDITIONAL DIMENSION [0] FOR SLC_ID TO SUPPORT MULTIPLE SLICE SST LAYERS >>>>>
 // <<<<< NOTE: THIS KERNEL MAY BE FLAWED WHEN USED WITH MULTIPLE TUFTS - SEE PYR_LTP >>>>>
 __kernel void ssc_ltp(
-            __global uchar const* const axn_states,
-            __global uchar const* const syn_states,
+            __global const uchar* const axn_states,
+            __global const uchar* const syn_states,
             __private uint const cel_lyr_axn_idz,
             __private uint const cels_per_grp,
             __private uchar const syns_per_tft_l2,
@@ -1002,13 +1013,13 @@ __kernel void ssc_ltp(
 // TODO: TUFTIFY
 // TODO: REMOVE BEST_DEN_IDS AND DEN_STATES AND REPLACE WITH BEST_DEN_STATES (KEEP INDEXING IN MIND)
 __kernel void mcol_activate_pyrs(
-            __global uchar const* const mcol_flag_sets, // COL
-            __global uchar const* const mcol_best_den_states,
-            // __global uchar const* const cel_tft_best_den_ids,
-            __global uchar const* const pyr_best_den_states_raw,
-            __global uchar const* const pyr_states,
-            // __global uchar const* const den_states,
-            // __global uchar const* const cel_tft_best_den_ids, // ADD ME?
+            __global const uchar* const mcol_flag_sets, // COL
+            __global const uchar* const mcol_best_den_states,
+            // __global const uchar* const cel_tft_best_den_ids,
+            __global const uchar* const pyr_best_den_states_raw,
+            __global const uchar* const pyr_states,
+            // __global const uchar* const den_states,
+            // __global const uchar* const cel_tft_best_den_ids, // ADD ME?
             __private uint const sscs_axn_idz,         // Primary spatial associative cell layer (sscs)
             __private uint const pyrs_axn_idz,          // Primary temporal associative cell layer (pyrs)
             // __private uchar const pyr_axn_slc_base,
@@ -1253,12 +1264,12 @@ __kernel void mcol_activate_pyrs(
 //
 //
 __kernel void tft_ltp(
-            __global uchar const* const axn_states,
-            __global uchar const* const cel_states,
-            __global uchar const* const tft_cel_best_den_ids,
-            __global uchar const* const tft_cel_best_den_states_raw,
-            __global uchar const* const den_states,
-            __global uchar const* const syn_states,
+            __global const uchar* const axn_states,
+            __global const uchar* const cel_states,
+            __global const uchar* const tft_cel_best_den_ids,
+            __global const uchar* const tft_cel_best_den_states_raw,
+            __global const uchar* const den_states,
+            __global const uchar* const syn_states,
 
             __private uint const tft_cel_idz, // 0th tuft-cell index
             __private uint const tft_den_idz, // 0th tuft-dendrite index
@@ -1372,8 +1383,8 @@ __kernel void tft_ltp(
 // written notes.
 //
 __kernel void pyr_tft_cycle_old(
-            __global uchar const* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
-            __global uchar const* const den_states,
+            __global const uchar* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
+            __global const uchar* const den_states,
             // __private uint const tfts_per_cel,
             // __private uint const tft_id,
             ////// Could be made GWO (and could be calculated from tuft_id as well):
@@ -1440,9 +1451,9 @@ __kernel void pyr_tft_cycle_old(
 // PYR_CYCLE(): Cycles every pyramidal cell in a layer.
 //
 __kernel void pyr_cycle(
-            __global uchar const* const celtft_best_den_ids,
-            __global uchar const* const celtft_best_den_states_raw,
-            __global uchar const* const celtft_best_den_states,
+            __global const uchar* const celtft_best_den_ids,
+            __global const uchar* const celtft_best_den_states_raw,
+            __global const uchar* const celtft_best_den_states,
             __private uint const tft_count,
             __global uchar* const pyr_best_den_states_raw,
             __global uchar* const pyr_states,
@@ -1481,9 +1492,9 @@ __kernel void pyr_cycle(
 // PYR_CYCLE(): Cycles every pyramidal cell in a layer.
 //
 __kernel void pyr_cycle_old(
-            __global uchar const* const celtft_best_den_ids,
-            __global uchar const* const celtft_best_den_states_raw,
-            __global uchar const* const celtft_best_den_states,
+            __global const uchar* const celtft_best_den_ids,
+            __global const uchar* const celtft_best_den_states_raw,
+            __global const uchar* const celtft_best_den_states,
             __private uint const tft_count,
             __global uchar* const pyr_best_den_states_raw,
             __global uchar* const pyr_states,
@@ -1523,9 +1534,9 @@ __kernel void pyr_cycle_old(
 //        - rename coming
 //
 __kernel void mcol_output(
-            __global uchar const* const pyr_best_den_states,
-            __global uchar const* const pyr_states,
-            // __global uchar const* const cel_tft_best_den_states,
+            __global const uchar* const pyr_best_den_states,
+            __global const uchar* const pyr_states,
+            // __global const uchar* const cel_tft_best_den_states,
             // __private uint const tfts_per_cel,
             __private uint const ssc_axn_idz,
             __private uchar const pyr_depth,
@@ -1614,8 +1625,8 @@ __kernel void mcol_output(
 
 // // DEN_CYCLE():
 // __kernel void den_cycle_DEPRICATE(
-//             __global uchar const* const syn_states,
-//             __global char const* const syn_strengths,
+//             __global const uchar* const syn_states,
+//             __global const char* const syn_strengths,
 //             __private uchar const syns_per_den_l2,
 //             __private uint const den_threshold,
 //             __global uchar* const den_energies,

@@ -21,14 +21,14 @@ impl LayerKind {
     }
 
     pub fn apical<'a>(mut self, tft_id: usize, src_lyrs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8,
-                syns_per_den_l2: u8, thresh_init: u32) -> LayerKind
+                syns_per_den_l2: u8, max_active_dens_l2: u8, thresh_init: u32) -> LayerKind
     {
         match &mut self {
             &mut LayerKind::Cellular(ref mut cs) => {
                 let src_lyrs_vec = src_lyrs.into_iter().map(|&sl| sl.into()).collect();
 
                 let tft_scheme = TuftScheme::new(tft_id, DendriteClass::Apical, DendriteKind::Distal,
-                    dens_per_tft_l2, syns_per_den_l2, src_lyrs_vec, Some(thresh_init));
+                    dens_per_tft_l2, syns_per_den_l2, max_active_dens_l2, src_lyrs_vec, Some(thresh_init));
 
                 cs.add_tft(tft_scheme);
             },

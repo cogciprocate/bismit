@@ -700,7 +700,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer_old("iv_smooth", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::smooth(SPT_LYR, 4, 1))
             // .layer_old("iii", 1, LayerTags::PTAL, AxonDomain::Local,
             .layer_old("iii", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
-                CellScheme::pyr(&[("iii", 5, 1)], 1, 2, 500)
+                CellScheme::pyr(&[("iii", 5, 1)], 1, 2, 0, 500)
             )
             .layer_old("iii_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
                 CellScheme::pyr_outputter("iii", 0)

@@ -1,6 +1,6 @@
 // __kernel void test_safe_dim_ofs(
-//             __global uint const* const dim_ids,
-//             __global char const* const dim_offs,
+//             __global const uint* const dim_ids,
+//             __global const char* const dim_offs,
 //             __private uint const dim_size,
 //             __global char* const safe_dim_offs)
 // {
@@ -13,9 +13,9 @@
 
 
 __kernel void test_axn_idxs_scl(
-            __global char const* const v_offs,
-            __global char const* const u_offs,
-            // __global char const* const dim_offs,
+            __global const char* const v_offs,
+            __global const char* const u_offs,
+            // __global const char* const dim_offs,
             // __private uint const dim_size,
             __global uint* const outs_n)
             // __global uint* const outs_v4)
@@ -46,7 +46,7 @@ __kernel void test_axn_idxs_scl(
 __kernel void test_axn_idxs_vec4(
             __global char4 const* const v_offs,
             __global char4 const* const u_offs,
-            // __global char const* const dim_offs,
+            // __global const char* const dim_offs,
             // __private uint const dim_size,
             // __global uint* const outs_n,
             __global uint4* const outs_v4)

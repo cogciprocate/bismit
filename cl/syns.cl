@@ -5,24 +5,24 @@ static inline uchar syn_fire(uchar const axn_state) {
 }
 
 static inline uchar4 syn_fire_vec4(uchar4 const axn_state) {
-    return (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80) 
+    return (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80)
         | (axn_state >> (uchar4)(SYNAPSE_AXON_BIAS_LOG2));
 }
 
 
 // Process synapses for a tuft assuming irregular tuft sizes.
 __kernel void tft_cycle_syns(
-                __global uchar const* const axn_states,
-                __global char const* const syn_src_col_u_offs,
-                __global char const* const syn_src_col_v_offs,
-                __global uchar const* const syn_src_slc_ids,
+                __global const uchar* const axn_states,
+                __global const char* const syn_src_col_u_offs,
+                __global const char* const syn_src_col_v_offs,
+                __global const uchar* const syn_src_slc_ids,
                 // __private uint const cel_idz_syntuft,
                 __private uint const syn_idz_tft,
                 __private uchar const syns_per_tft_l2,
                 __private uchar const layer_depth,
                 __global int* const aux_ints_0,
                 __global int* const aux_ints_1,
-                __global uchar* const syn_states) 
+                __global uchar* const syn_states)
 {
     uint const v_id = get_global_id(0);
     uint const u_id = get_global_id(1);
@@ -30,7 +30,7 @@ __kernel void tft_cycle_syns(
     uint const u_size = get_global_size(1);
 
     for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
-        // uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) 
+        // uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
         //     + cel_idz_syntuft) << syns_per_tuft_l2;
         uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
             << syns_per_tft_l2) + syn_idz_tft;
@@ -60,7 +60,7 @@ __kernel void tft_cycle_syns(
                 // if (axn_state != 0) {
                 //     aux_ints_0[syn_idx] = axn_state;
                 // }
-            
+
                 // if (v_id == 0 && u_id == 0) {
                 //     // syn_states[slc_id_lyr] = slc_id_lyr;
                 //     aux_ints_0[syn_idx] = axn_state;
@@ -70,7 +70,7 @@ __kernel void tft_cycle_syns(
                 //     // syn_states[100 + slc_id_lyr] = 100 + slc_id_lyr;
                 //     aux_ints_1[syn_idx] = axn_state;
                 // }
-            
+
                 // if (src_slc_id != 0) {
                 // // if (v_id == 5 && u_id == 5) {
                 //     int idx_is_safe = 0;
@@ -103,7 +103,7 @@ __kernel void tft_cycle_syns(
 
 // SYNS_CYCLE_SIMPLE_VEC4(): Simple synapse cycling with vectorization, layer-at-once
 __kernel void tft_cycle_syns_vec4(
-                __global uchar const* const axn_states,
+                __global const uchar* const axn_states,
                 __global char4 const* const syn_src_col_u_offs,
                 __global char4 const* const syn_src_col_v_offs,
                 __global uchar4 const* const syn_src_slc_ids,
@@ -113,7 +113,7 @@ __kernel void tft_cycle_syns_vec4(
                 __private uchar const layer_depth,
                 __global int* const aux_ints_0,
                 __global int* const aux_ints_1,
-                __global uchar4* const syn_states) 
+                __global uchar4* const syn_states)
 {
     uint const v_id = get_global_id(0);
     uint const u_id = get_global_id(1);
@@ -122,7 +122,7 @@ __kernel void tft_cycle_syns_vec4(
 
     for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
         // // DIVIDED BY 4 BECAUSE VECTORS:
-        // uint const syn4_idz = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) 
+        // uint const syn4_idz = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
         //     + cel_idz_syntuft) << (syns_per_tuft_l2 - 2));
         // DIVIDED BY 4 BECAUSE VECTORS:
         uint const syn4_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
@@ -140,9 +140,9 @@ __kernel void tft_cycle_syns_vec4(
             uchar4 const axn_state = axn_state_3d_safe_vec4(
                 src_slc_id,
                 (int4)(int)v_id,
-                v_ofs, 
-                (int4)(int)u_id, 
-                u_ofs, 
+                v_ofs,
+                (int4)(int)u_id,
+                u_ofs,
                 axn_states);
 
             syn_states[syn4_idx] = syn_fire_vec4(axn_state);
@@ -154,18 +154,18 @@ __kernel void tft_cycle_syns_vec4(
 
 //SYNS_CYCLE_WG_OPT(): Cycle synapses with workgroup optimized writes, layer optimized
 __kernel void layer_cycle_syns_wow(
-                __global uchar const* const axn_states,
-                __global char const* const syn_src_col_u_offs,
-                __global char const* const syn_src_col_v_offs,
-                __global uchar const* const syn_src_slc_ids,
+                __global const uchar* const axn_states,
+                __global const char* const syn_src_col_u_offs,
+                __global const char* const syn_src_col_v_offs,
+                __global const uchar* const syn_src_slc_ids,
                 // __private uint const cel_idz_syntuft,
                 __private uint const syn_idz_tft,
                 __private uchar const syns_per_tft_l2,
                 __private uchar const layer_depth,
                 __global int* const aux_ints_0,
                 __global int* const aux_ints_1,
-                __global uchar* const syn_states) 
-{    
+                __global uchar* const syn_states)
+{
     uint const v_size = get_global_size(0);
     uint const u_size = get_global_size(1);
 
@@ -178,7 +178,7 @@ __kernel void layer_cycle_syns_wow(
     // BASE DIM_IDs FOR CURRENT WORKGROUP
     uint const v_idz_wg = get_global_id(0) - v_id_local;
     uint const u_idz_wg = get_global_id(1) - u_id_local;
-    
+
     uint const syns_per_tft = 1 << syns_per_tft_l2;
     uint const syns_per_wg = mul24(v_work_size, u_work_size);
 
@@ -186,7 +186,7 @@ __kernel void layer_cycle_syns_wow(
     int cur_syn_ofs = mad24(v_id_local, u_work_size, u_id_local);
     int u_id_wg_crnt = 0;
     int v_id_wg_crnt = 0;
-    
+
     while (cur_syn_ofs >= syns_per_tft) {
         u_id_wg_crnt += 1;
         cur_syn_ofs -= syns_per_tft;
@@ -200,8 +200,8 @@ __kernel void layer_cycle_syns_wow(
     uint syns_per_iter = syns_per_wg;
     // PRECALCULATE THE FOLLOWING ON HOST
         uint u_per_iter = 0;
-        uint v_per_iter = 0; 
-        
+        uint v_per_iter = 0;
+
         while (syns_per_iter >= syns_per_tft) {
             u_per_iter += 1;
             syns_per_iter -= syns_per_tft;
@@ -229,9 +229,9 @@ __kernel void layer_cycle_syns_wow(
 
         // FOR EACH SLICE IN LAYER
         for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
-            // uint const syn_idx = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz_syntuft) 
+            // uint const syn_idx = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz_syntuft)
             //     << syns_per_tft_l2) + cur_syn_ofs;
-            uint const syn_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) 
+            uint const syn_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
                 << syns_per_tft_l2) + syn_idz_tft + cur_syn_ofs;
 
             char const v_ofs = syn_src_col_v_offs[syn_idx];
@@ -260,7 +260,7 @@ __kernel void layer_cycle_syns_wow(
 // SYNS_CYCLE_WG_OPT_VEC4(): Cycle synapses with workgroup optimized writes and vectorization, layer optimized
 //         See above for annotated version.
 __kernel void layer_cycle_syns_wow_vec4(
-                __global uchar const* const axn_states,
+                __global const uchar* const axn_states,
                 __global char4 const* const syn_src_col_u_offs,
                 __global char4 const* const syn_src_col_v_offs,
                 __global uchar4 const* const syn_src_slc_ids,
@@ -270,7 +270,7 @@ __kernel void layer_cycle_syns_wow_vec4(
                 __private uchar const layer_depth,
                 __global int* const aux_ints_0,
                 __global int* const aux_ints_1,
-                __global uchar4* const syn_states) 
+                __global uchar4* const syn_states)
 {
     uint const v_size = get_global_size(0);
     uint const u_size = get_global_size(1);
@@ -291,7 +291,7 @@ __kernel void layer_cycle_syns_wow_vec4(
     int cur_syn4_ofs = mad24(v_id_local, u_work_size, u_id_local);
     int u_id_wg_crnt = 0;
     int v_id_wg_crnt = 0;
-    
+
     while (cur_syn4_ofs >= syn4s_per_tft) {
         u_id_wg_crnt += 1;
         cur_syn4_ofs -= syn4s_per_tft;
@@ -306,7 +306,7 @@ __kernel void layer_cycle_syns_wow_vec4(
     uint syn4s_per_iter = syn4s_per_wg;     // PRECALCULATE -- MAKE CONST
     uint u_per_iter = 0;    // PRECALCULATE -- MAKE CONST
     uint v_per_iter = 0;     // PRECALCULATE -- MAKE CONST
-    
+
     while (syn4s_per_iter >= syn4s_per_tft) { // PRECALCULATE
         u_per_iter += 1;
         syn4s_per_iter -= syn4s_per_tft;
@@ -335,7 +335,7 @@ __kernel void layer_cycle_syns_wow_vec4(
             //     << syns_per_tft_l2) >> 2) + cur_syn4_ofs; // VEC4'D IDX
 
             // VEC4'D:
-            uint syn4_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) << 
+            uint syn4_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) <<
                 (syns_per_tft_l2 - 2)) + (syn_idz_tft >> 2) + cur_syn4_ofs;
 
 
@@ -344,11 +344,11 @@ __kernel void layer_cycle_syns_wow_vec4(
             uchar4 const src_slc_id = syn_src_slc_ids[syn4_idx];
 
             uchar4 const axn_state = axn_state_3d_safe_vec4(
-                src_slc_id, 
-                (int4)(int)v_id, 
-                v_ofs, 
-                (int4)(int)u_id, 
-                u_ofs, 
+                src_slc_id,
+                (int4)(int)v_id,
+                v_ofs,
+                (int4)(int)u_id,
+                u_ofs,
                 axn_states);
 
             syn_states[syn4_idx] = syn_fire_vec4(axn_state);

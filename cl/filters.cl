@@ -5,8 +5,8 @@
 #define INHIB_LARGE_CELL_RADIUS         5
 
 
-static inline int get_neighbors_avg(uchar const slc_id_lyr, uint const v_size, uint const v_id, 
-            uint const u_size, uint const u_id, __global uchar const* const cel_states, 
+static inline int get_neighbors_avg(uchar const slc_id_lyr, uint const v_size, uint const v_id,
+            uint const u_size, uint const u_id, __global const uchar* const cel_states,
             uint const cel_idx, int const radius)
 {
     int const radius_pos = radius; // (4:61), (7:xxx), (9:271)
@@ -25,14 +25,14 @@ static inline int get_neighbors_avg(uchar const slc_id_lyr, uint const v_size, u
             neighbors_sum += cel_state_3d_safe(slc_id_lyr, v_size, v_id, v_ofs, u_size, u_id, u_ofs, cel_states);
             neighbor_count += 1;
         }
-    }    
+    }
 
     return neighbors_sum / neighbor_count;
 }
 
 
 __kernel void retina(
-                __global uchar const* const cel_states,
+                __global const uchar* const cel_states,
                 __private uchar const cel_base_axn_slc,        // <<<<< DEPRICATE: USE A GLOBAL OFFSET
                 __global uchar* const axn_states
 ) {
@@ -66,9 +66,9 @@ __kernel void retina(
     //         neighbors_sum += cel_state_3d_safe(slc_id_lyr, v_size, v_id, v_ofs, u_size, u_id, u_ofs, cel_states);
     //         neighbor_count += 1;
     //     }
-    // }    
+    // }
 
-    // int const neighbor_avg = neighbors_sum / neighbor_count;    
+    // int const neighbor_avg = neighbors_sum / neighbor_count;
 
     int const one_of_two = cel_idx & 1;
     // int const one_of_two = (cel_idx + v_id) & 1; // UNNECESSARY OFFSET FLIP - testing purposes and what not
@@ -96,5 +96,5 @@ __kernel void retina(
         cel_state = mul24(center_state - nat, center_state > nat);
     }
 
-    axn_states[axn_idx] = cel_state;    
+    axn_states[axn_idx] = cel_state;
 }

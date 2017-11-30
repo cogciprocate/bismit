@@ -166,7 +166,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 CellScheme::inhib(SPT_LYR, 4, 0)
             )
             .layer_old("iii", 1, LayerTags::PTAL, AxonDomain::Local,
-                CellScheme::pyr(&[("iii", 20, 1)], 1, 6, 500)
+                CellScheme::pyr(&[("iii", 20, 1)], 1, 6, 0, 500)
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
