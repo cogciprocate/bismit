@@ -16,7 +16,7 @@ use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind
 use ::Thalamus;
 use cortex::{AxonSpace, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother, PyrOutputter,
-    WorkPool};
+    WorkPool, ControlCellLayers};
 use subcortex::{self, TractBuffer, TractSender, TractReceiver};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
@@ -33,7 +33,7 @@ const KERNEL_DEBUG_SYMBOLS: bool = false;
 static ROLE_ORDER: [LayerTags; 4] = [LayerTags::FOCUS, LayerTags::SPATIAL, LayerTags::TEMPORAL, LayerTags::MOTOR];
 
 
-pub type ControlCellLayers = BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>;
+// pub type ControlCellLayers = BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>;
 
 
 
@@ -352,7 +352,7 @@ pub struct CorticalArea {
     /// Primary neuron layers.
     data_layers: Layers,
     /// Interneuron layers.
-    control_layers: BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>,
+    control_layers: ControlCellLayers,
     aux: Aux,
     ocl_pq: ProQue,
     write_queue: Queue,
@@ -459,7 +459,7 @@ impl CorticalArea {
 
         // let mut mcols = None;
         let mut data_layers = Layers::new();
-        let mut control_layers: BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>> = BTreeMap::new();
+        let mut control_layers: ControlCellLayers = BTreeMap::new();
         let mut axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
             write_queue.clone(), unmap_queue.clone(), &mut exe_graph, thal)?;
 

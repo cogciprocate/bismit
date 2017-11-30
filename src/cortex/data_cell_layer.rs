@@ -1,10 +1,9 @@
 //! Data Cells (Principal Neurons)
 //!
 
-use std::collections::BTreeMap;
 use std::fmt::Debug;
 use ocl::Buffer;
-use cortex::{Dendrites, ControlCellLayer};
+use cortex::{Dendrites, ControlCellLayers};
 use cmn::{CmnResult, CorticalDims};
 use map::{CellScheme, ExecutionGraph, LayerAddress};
 
@@ -14,7 +13,7 @@ pub use self::tests::{DataCellLayerTest, CelCoords};
 pub trait DataCellLayer: 'static + Debug + Send {
     fn layer_name<'s>(&'s self) -> &'s str;
     fn layer_addr(&self) -> LayerAddress;
-    fn cycle(&mut self, &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>, &mut ExecutionGraph) -> CmnResult<()>;
+    fn cycle(&mut self, &mut ControlCellLayers, &mut ExecutionGraph) -> CmnResult<()>;
     fn learn(&mut self, &mut ExecutionGraph) -> CmnResult <()> ;
     fn regrow(&mut self);
     fn soma(&self) -> &Buffer<u8>;

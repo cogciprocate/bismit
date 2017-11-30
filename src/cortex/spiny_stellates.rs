@@ -1,13 +1,13 @@
 // #![allow(unused_imports)]
 
-use std::collections::BTreeMap;
+// use std::collections::BTreeMap;
 use rand::Rng;
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, Buffer, Event, SpatialDims};
 use map::{CellScheme, DendriteKind, ExecutionGraph, CommandRelations,
     CorticalBuffer, LayerAddress, LayerTags, CommandUid};
-use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayer};
+use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayers};
 
 
 const PRINT_DEBUG: bool = false;
@@ -172,7 +172,7 @@ impl SpinyStellateLayer {
         })
     }
 
-    pub fn set_exe_order_cycle(&mut self, control_layers: &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>,
+    pub fn set_exe_order_cycle(&mut self, control_layers: &mut ControlCellLayers,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()>
     {
         // Determine which control layers apply to this layer and add to list:
@@ -217,7 +217,7 @@ impl SpinyStellateLayer {
     }
 
     #[inline]
-    pub fn cycle(&mut self, control_layers: &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>, exe_graph: &mut ExecutionGraph)
+    pub fn cycle(&mut self, control_layers: &mut ControlCellLayers, exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling layer: '{}'...", self.layer_name); }
@@ -298,7 +298,7 @@ impl DataCellLayer for SpinyStellateLayer {
     }
 
     #[inline]
-    fn cycle(&mut self, control_layers: &mut BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>, exe_graph: &mut ExecutionGraph)
+    fn cycle(&mut self, control_layers: &mut ControlCellLayers, exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
         self.cycle(control_layers, exe_graph)

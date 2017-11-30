@@ -1,13 +1,10 @@
 //! Control Cells (Interneurons)
 
-#![allow(unused_imports)]
-
 
 use std::fmt::Debug;
-use ocl::Buffer;
-use cortex::Dendrites;
-use cmn::{CmnResult, CorticalDims};
-use map::{CellScheme, ExecutionGraph, LayerAddress};
+use std::collections::BTreeMap;
+use cmn::{CmnResult};
+use map::{ExecutionGraph, LayerAddress};
 
 pub trait ControlCellLayer: 'static + Debug + Send {
     fn set_exe_order_pre(&mut self, exe_graph: &mut ExecutionGraph, host_lyr_addr: LayerAddress) -> CmnResult<()>;
@@ -18,3 +15,5 @@ pub trait ControlCellLayer: 'static + Debug + Send {
     fn layer_addr(&self) -> LayerAddress;
     fn host_layer_addr(&self) -> LayerAddress;
 }
+
+pub type ControlCellLayers = BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>;

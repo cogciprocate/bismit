@@ -186,11 +186,11 @@ impl Dendrites {
     }
 
     pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        if PRINT_DEBUG { println!("  Dens: Cycling syns..."); }
+        if PRINT_DEBUG { println!("    Dens: Cycling syns..."); }
         self.syns.cycle(exe_graph)?;
 
         for (kern, &cmd_idx) in self.kernels.iter_mut().zip(self.exe_cmd_idxs.iter()) {
-            if PRINT_DEBUG { println!("  Dens: Cycling kern_cycle (exe_cmd_idx: [{}])...", cmd_idx); }
+            if PRINT_DEBUG { println!("    Dens: Cycling kern_cycle (exe_cmd_idx: [{}])...", cmd_idx); }
 
             kern.set_arg_scl_named("rnd", self.rng.gen::<i32>())?;
 
