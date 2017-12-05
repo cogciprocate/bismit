@@ -1,7 +1,7 @@
 use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
-use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, CommandRelations,
+use map::{AreaMap, CellScheme, ExecutionGraph, CommandRelations,
     CorticalBuffer, LayerAddress, LayerTags, CommandUid};
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayers,
     Tufts};
@@ -73,7 +73,7 @@ impl PyramidalLayer {
             states.len(), celtft_count, dims, mt = cmn::MT);
 
         let tfts = Tufts::new(layer_name.clone(), layer_addr, dims, cell_scheme.clone(),
-            DendriteKind::Distal, area_map, axons, &axn_slc_ids, pyr_lyr_axn_idz, &states,
+            area_map, axons, &axn_slc_ids, pyr_lyr_axn_idz, &states,
             &flag_sets, ocl_pq, settings.clone(), exe_graph)?;
 
 
@@ -81,17 +81,35 @@ impl PyramidalLayer {
         //=============================================================================
         //=============================================================================
 
+        // let kern_name = "pyr_cycle_old";
+        // let pyr_cycle_kernel = ocl_pq.create_kernel(kern_name)?
+        //     .gws(SpatialDims::One(cel_count))
+        //     .arg_buf(tfts.best_den_ids())
+        //     .arg_buf(tfts.best_den_states_raw())
+        //     .arg_buf(tfts.best_den_states())
+        //     .arg_scl(tft_count as u32)
+        //     .arg_buf(&best_den_states_raw)
+        //     .arg_buf(&states)
+        //     .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
+        //     .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
+        // ;
+
         let kern_name = "pyr_cycle";
         let pyr_cycle_kernel = ocl_pq.create_kernel(kern_name)?
             .gws(SpatialDims::One(cel_count))
-            .arg_buf(tfts.best_den_ids())
-            .arg_buf(tfts.best_den_states_raw())
-            .arg_buf(tfts.best_den_states())
+            // .arg_buf(tfts.best_den_ids())
+            // .arg_buf(tfts.best_den_states_raw())
+            // .arg_buf(tfts.best_den_states())
+            .arg_buf(tfts.states())
+            // .arg_scl(enabled_tft_flags)
+            // .arg_scl(bsl_prx_tft_idx)
+            // .arg_scl(bsl_dst_tft_idx)
+            // .arg_scl(apc_dst_tft_idx)
             .arg_scl(tft_count as u32)
             .arg_buf(&best_den_states_raw)
-            .arg_buf(&states)
             .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
             .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
+            .arg_buf(&states)
         ;
 
         let mut cycle_cmd_srcs: Vec<CorticalBuffer> = Vec::with_capacity(3 * tft_count);

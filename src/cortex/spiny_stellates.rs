@@ -5,7 +5,7 @@ use rand::Rng;
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, Buffer, Event, SpatialDims};
-use map::{CellScheme, DendriteKind, ExecutionGraph, CommandRelations,
+use map::{CellScheme, ExecutionGraph, CommandRelations,
     CorticalBuffer, LayerAddress, LayerTags, CommandUid};
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayers};
 
@@ -68,7 +68,7 @@ impl SpinyStellateLayer {
 
         // let dens_dims = dims.clone_with_ptl2(cell_scheme.dens_per_tft_l2 as i8);
         let dens = try!(Dendrites::new(layer_name.clone(), layer_id, dims, cell_scheme.clone(),
-            DendriteKind::Proximal, /*DataCellKind::SpinyStellate,*/ area_map, axons, ocl_pq,
+            area_map, axons, ocl_pq,
             settings.disable_sscs, exe_graph));
         let _grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
         let _cels_per_grp = dims.per_subgrp(_grp_count).expect("SpinyStellateLayer::new()");

@@ -68,7 +68,7 @@ use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use map::{AreaMap, SynSrcSlices, SynSrcIdxCache, SynSrc, LayerAddress};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
-use map::{CellScheme, DendriteKind, ExecutionGraph, CommandRelations, CorticalBuffer, CommandUid};
+use map::{CellScheme, ExecutionGraph, CommandRelations, CorticalBuffer, CommandUid};
 use cortex::AxonSpace;
 
 #[cfg(test)]
@@ -100,7 +100,6 @@ pub struct Synapses {
     layer_name: String,
     layer_id: usize,
     dims: CorticalDims,
-    den_kind: DendriteKind,
     kernels: Vec<Box<Kernel>>,
     src_idx_caches_by_tft: Vec<SynSrcIdxCache>,
     syn_src_slices: SynSrcSlices,
@@ -132,7 +131,7 @@ pub struct Synapses {
 impl Synapses {
     pub fn new<S: Into<String>>(layer_name: S, layer_id: usize, dims: CorticalDims,
             cell_scheme: CellScheme,
-            den_kind: DendriteKind, area_map: &AreaMap, axons: &AxonSpace,
+            area_map: &AreaMap, axons: &AxonSpace,
             ocl_pq: &ProQue, bypass_exe_graph: bool, exe_graph: &mut ExecutionGraph,
             ) -> CmnResult<Synapses>
     {
@@ -176,10 +175,10 @@ impl Synapses {
                 tft_dims, dims.clone()));
 
             if DEBUG_NEW {
-                println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): Tuft: kind: {:?}, len: {},\n\
+                println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): Tuft: len: {},\n\
                     {mt}{mt}{mt}{mt}{mt}dims: {:?} \n\
                     {mt}{mt}{mt}{mt}{mt}dens_per_tft_l2: {}, syns_per_den_l2: {}",
-                    den_kind, dims.to_len(), &dims, tft_scheme.dens_per_tft_l2(),
+                    dims.to_len(), &dims, tft_scheme.dens_per_tft_l2(),
                     tft_scheme.syns_per_den_l2(), mt = cmn::MT);
             }
         }
@@ -277,7 +276,6 @@ impl Synapses {
             layer_name: layer_name,
             layer_id: layer_id,
             dims: dims,
-            den_kind: den_kind,
             kernels: kernels,
             src_idx_caches_by_tft: src_idx_caches_by_tft,
             syn_src_slices: syn_src_slices,
@@ -355,7 +353,6 @@ impl Synapses {
 
     #[inline] pub fn len(&self) -> usize { self.states.len() }
     #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
-    #[inline] pub fn den_kind(&self) -> DendriteKind { self.den_kind.clone() }
     #[inline] pub fn lyr_dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn strengths(&self) -> &Buffer<i8> { &self.strengths }
@@ -416,8 +413,8 @@ impl Synapses {
     //
     fn grow(&mut self, init: bool) {
         if DEBUG_GROW && DEBUG_REGROW_DETAIL && !init {
-            println!("REGROW:{:?}: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:\
-                (SLICE)(OFFSET)(STRENGTH)]\n", self.den_kind);
+            println!("REGROW: [PRE:(SLICE)(OFFSET)(STRENGTH)=>($:UNIQUE, ^:DUPL)=>POST:\
+                (SLICE)(OFFSET)(STRENGTH)]\n");
         }
 
         // Fill our vectors with fresh data;
@@ -435,8 +432,8 @@ impl Synapses {
 
             if DEBUG_GROW && init {
                 println!("{mt}{mt}{mt}{mt}{mt}\
-                    SYNAPSES::GROW()[INIT]: '{}' ({:?}): src_slc_id_rchs: {:?}, \
-                    syns_per_layer_tft:{}, idz:{}, idn:{}", self.layer_name, self.den_kind,
+                    SYNAPSES::GROW()[INIT]: '{}': src_slc_id_rchs: {:?}, \
+                    syns_per_layer_tft:{}, idz:{}, idn:{}", self.layer_name,
                     self.syn_src_slices.src_slc_id_pools_by_tft(),
                     unsafe { *self.syn_counts_by_tft.get_unchecked(tft_id) },
                     syn_idz, syn_idn, mt = cmn::MT);

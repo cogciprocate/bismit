@@ -41,7 +41,6 @@ impl Tufts {
             layer_addr: LayerAddress,
             dims: CorticalDims,
             cell_scheme: CellScheme,
-            den_kind: DendriteKind,
             area_map: &AreaMap,
             axons: &AxonSpace,
             cel_axn_slc_ids: &[u8],
@@ -63,7 +62,7 @@ impl Tufts {
         let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([celtft_count]).fill_val(0).build()?;
 
         let dens = Dendrites::new(layer_name.clone(), layer_addr.layer_id(), dims, cell_scheme.clone(),
-            den_kind, area_map, axons, ocl_pq, settings.disable_pyrs, exe_graph)?;
+            area_map, axons, ocl_pq, settings.disable_pyrs, exe_graph)?;
 
         let mut ltp_kernels = Vec::with_capacity(tft_count);
         let mut cycle_kernels = Vec::with_capacity(tft_count);
@@ -102,6 +101,7 @@ impl Tufts {
                 .arg_scl(tft_cel_idz)
                 .arg_scl(tft_den_idz)
                 .arg_scl(dens_per_tft_l2)
+                .arg_scl(tft_scheme.max_active_dens_l2())
                 .arg_buf(&best_den_ids)
                 .arg_buf(&best_den_states_raw)
                 .arg_buf(&best_den_states)

@@ -2,7 +2,7 @@ use rand::Rng;
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Event};
 use ocl::traits::OclPrm;
 use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
-use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, CommandRelations,
+use map::{AreaMap, CellScheme, ExecutionGraph, CommandRelations,
     CorticalBuffer, LayerAddress, CommandUid};
 use cortex::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
@@ -36,7 +36,6 @@ impl Dendrites {
             layer_id: usize,
             dims: CorticalDims,
             cell_scheme: CellScheme,
-            den_kind: DendriteKind,
             area_map: &AreaMap,
             axons: &AxonSpace,
             ocl_pq: &ProQue,
@@ -84,7 +83,7 @@ impl Dendrites {
         println!("{mt}{mt}{mt}DENDRITES::NEW(): '{}': dendrites with: dims:{:?}, len:{}",
             layer_name, dims, states.len(), mt = cmn::MT);
 
-        let syns = Synapses::new(layer_name.clone(), layer_id, dims, cell_scheme.clone(), den_kind,
+        let syns = Synapses::new(layer_name.clone(), layer_id, dims, cell_scheme.clone(),
             area_map, axons, ocl_pq, bypass_exe_graph, exe_graph)?;
 
         /*=============================================================================
