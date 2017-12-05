@@ -2,19 +2,37 @@
 
 use std::fmt::{self, Formatter};
 
-// # Tags
+
+// # Misc L5 Notes:
+//
+// (From: https://academic.oup.com/cercor/article/27/12/5755/4259744)
+//
+// - L5 contains the two major subtypes of PCs: corticopontine (CPn) and
+//   commissural (COM) cells.
+//   - In addition to the pontine nuclei, CPn cells frequently innervate the
+//     ipsilateral striatum and thalamus (corticothalamic [CTh] cells), and
+//     those in lower L5 also send axons to the spinal cord (corticospinal
+//     [CSp] cells).
+//   - Some M2 COM cells innervate the ipsilateral striatum, and others also
+//     the contralateral striatum [crossed-corticostriatal (CCS) cells].
+//
 //
 // (From DOI: http://dx.doi.org/10.1016/j.neuron.2015.11.002)
 //
-// - L5CC (L5A): Tlx3-Cre PL56 (intratelencephalic)(thin tuft)(70mum^2)(RS - soma)
+// - L5CC (~L5A+L5B): Tlx3-Cre PL56 (intratelencephalic)(thin
+//   tuft)(70mum^2)(RS - soma) [(intratelencephalic cells), (commissural (COM)
+//   cells): https://academic.oup.com/cercor/article/27/12/5755/4259744]
 //   - eGFP+ Tlx3-Cre+ neurons in V1 project their axons densely and
 //     predominantly to adjacent visual cortical areas such as V2L, V2ML, and
 //     V2MM, as well as further cortical regions including other sensory
 //     cortices, frontal cortices, and the contralateral visual cortex
 //     (Figures 1A, 1B, and S1A–S1C). This suggests that Tlx3-Cre selectively
 //     labels L5 CC PNs.
+//  - Receive more (basal) proximal input from thalamus than distal.
 //
-// - L5CS (L5B): Glt25d2-Cre NF107 (pyramidal tract)(thick tuft)(124mum^2)(Intrinsicly BS - soma)
+// - L5CS (~L5B+L5A): Glt25d2-Cre NF107 (pyramidal tract)(thick
+//   tuft)(124mum^2)(Intrinsicly BS - soma) [(corticopontine (CPn) cells),
+//   (corticothalamic [CTh] cells), (corticospinal [CSp] cells)]
 //   - In contrast, eGFP+ axons from Glt25d2-Cre+ neurons in V1 do not project
 //     to other cortical areas (Figures 1A and 1B). Instead, their axons enter
 //     white matter and travel to target subcortical structures including the
@@ -29,6 +47,8 @@ use std::fmt::{self, Formatter};
 //     target profiles (Figures 1A and 1B). We conclude that although
 //     Glt25d2-Cre+ neurons are sparse, they are a representative sample of CS
 //     neurons.
+//   - Receive an even distribution of thalamic input between proximal and
+//     distal synapses.
 //
 // - L5CC-NS (NEW) (non-striatal): Efr3a-Cre NO108 (64mum^2)(RS - soma)
 //   - Notably, Efr3a-Cre+ L5 V1 neurons lack projections to known axonal

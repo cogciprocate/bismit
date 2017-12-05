@@ -290,17 +290,20 @@ pub const OPENCL_MINIMUM_WORKGROUP_SIZE: u32 = 64;
 pub const SYNAPSES_WORKGROUP_SIZE: u32 = OPENCL_PREFERRED_WORKGROUP_SIZE;
 //pub const AXONS_WORKGROUP_SIZE: u32 = OPENCL_PREFERRED_WORKGROUP_SIZE;
 
-pub const MCOL_IS_VATIC_FLAG: u8             = 0b00000001;
+pub const MCOL_IS_VATIC_FLAG: u8   = 0b00000001;
 
-pub const CEL_PREV_CONCRETE_FLAG: u8         = 0b10000000;    // 128    (0x80)
-pub const CEL_BEST_IN_COL_FLAG: u8             = 0b01000000;    // 64    (0x40)
-pub const CEL_PREV_STPOT_FLAG: u8             = 0b00100000;    // 32    (0x20)
-pub const CEL_PREV_VATIC_FLAG: u8            = 0b00010000;    // 16    (0x10)
+pub const CEL_PREV_CONCRETE_FLAG: u8   = 0b10000000;    // 128    (0x80)
+pub const CEL_BEST_IN_COL_FLAG: u8     = 0b01000000;    // 64    (0x40)
+pub const CEL_PREV_STPOT_FLAG: u8      = 0b00100000;    // 32    (0x20)
+pub const CEL_PREV_VATIC_FLAG: u8      = 0b00010000;    // 16    (0x10)
 
-pub const SYN_STDEP_FLAG: u8                = 0b00000001;
-pub const SYN_STPOT_FLAG: u8                = 0b00000010;
-pub const SYN_CONCRETE_FLAG: u8                = 0b00001000;
+pub const SYN_STDEP_FLAG: u8      = 0b00000001;
+pub const SYN_STPOT_FLAG: u8      = 0b00000010;
+pub const SYN_CONCRETE_FLAG: u8   = 0b00001000;
 
+pub const DEN_BASAL_PROXIMAL_FLAG: u8   = 0b00000001;
+pub const DEN_BASAL_DISTAL_FLAG: u8     = 0b00000010;
+pub const DEN_APICAL_DISTAL_FLAG: u8    = 0b00000100;
 
 
 
@@ -401,6 +404,9 @@ pub fn base_build_options() -> ProgramBuilder {
         .cmplr_def("SYN_STPOT_FLAG", SYN_STPOT_FLAG as i32)
         .cmplr_def("SYN_STDEP_FLAG", SYN_STDEP_FLAG as i32)
         .cmplr_def("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
+        .cmplr_def("DEN_BASAL_PROXIMAL_FLAG", DEN_BASAL_PROXIMAL_FLAG as i32)
+        .cmplr_def("DEN_BASAL_DISTAL_FLAG", DEN_BASAL_DISTAL_FLAG as i32)
+        .cmplr_def("DEN_APICAL_DISTAL_FLAG", DEN_APICAL_DISTAL_FLAG as i32)
 }
 
 

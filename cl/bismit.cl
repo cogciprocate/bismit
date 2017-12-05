@@ -872,8 +872,8 @@ __kernel void tft_cycle(
     // Scale `active_den_state_sum` based on a max of `max_active_dens_l2` within 0-255:
     uint active_den_state_max_l2 = max_active_dens_l2 + 8;
     int celtft_is_max_active = active_den_state_sum >= (1 << active_den_state_max_l2);
-    uchar celtft_state = mul24(celtft_is_max_active, 255) +
-        mul24(!celtft_is_max_active, active_den_state_sum >> max_active_dens_l2);
+    uchar celtft_state = (uchar)mul24((uint)celtft_is_max_active, (uint)255) +
+        (uchar)mul24((uint)(!celtft_is_max_active), active_den_state_sum >> max_active_dens_l2);
 
     uint const celtft_idx = lyrtft_cel_idz + cel_id_lyrtft;
 
@@ -1374,95 +1374,28 @@ __kernel void tft_ltp(
 }
 
 
-// Determine the best dendrite state for the two tracts.
-//
-// The 'raw' tract disregards whether or not the synapse states have strengths
-// >= 0. The 'non-raw' tract is for synapses which have developed strength.
-//
-// Virtually all of this logic will need to be redesigned as specified in
-// written notes.
-//
-__kernel void pyr_tft_cycle_old(
-            __global const uchar* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
-            __global const uchar* const den_states,
-            // __private uint const tfts_per_cel,
-            // __private uint const tft_id,
-            ////// Could be made GWO (and could be calculated from tuft_id as well):
-            __private uint const lyrtft_cel_idz,
-            __private uint const lyrtft_den_idz,
-            __private uchar const dens_per_tft_l2,
-            __global uchar* const celtft_best_den_ids,
-            __global uchar* const celtft_best_den_states_raw,
-            __global uchar* const celtft_best_den_states,
-            // __global uchar* const pyr_best_den_states,
-            __global int* const aux_ints_0,
-            __global int* const aux_ints_1)
-            // __global uchar* const pyr_states)
-{
-    uint const cel_id_lyrtft = get_global_id(0);
-    uint const lyrtft_cel_count = get_global_size(0);
-
-    uint const den_id_lyrtft = cel_id_lyrtft << dens_per_tft_l2;
-    uint const cel_den_idz  = lyrtft_den_idz + den_id_lyrtft;
-
-    // Cumulative best dendrite id (within the cell-tuft). Used for activation
-    // and ultimately learning:
-    uint best_den_id = 0;
-    // Cumulative best raw dendrite state (within the cell-tuft). Used for
-    // activation and ultimately learning:
-    uint best_den_state_raw = 0;
-    // Cumulative best dendrite state (within the cell-tuft). Used for
-    // pyr_state and pyr_best_den_state:
-    uint best_den_state = 0;
-
-    for (uint den_id_celtft = 0; den_id_celtft < (1 << dens_per_tft_l2); den_id_celtft++) {
-        uint const den_idx = cel_den_idz + den_id_celtft;
-
-        uint const den_state_raw = den_states_raw[den_idx];
-        uint const den_state = den_states[den_idx];
-
-        int const den_state_bigger_raw = (den_state_raw > best_den_state_raw);
-        int const den_state_bigger = (den_state > best_den_state);
-
-        // If `den_state_raw` is bigger than `best_den_state_raw`, will equal
-        // `den_id_celtft`. If not, will equal `best_den_id`.
-        best_den_id = mad24((uint)den_state_bigger_raw, den_id_celtft,
-            mul24((uint)!den_state_bigger_raw, best_den_id));
-
-        // if `den_state_raw` is bigger than `best_den_state_raw`, will equal
-        // `den_state_raw`. If not, will equal `best_den_state_raw`.
-        best_den_state_raw = mad24((uint)den_state_bigger_raw, den_state_raw,
-            mul24((uint)!den_state_bigger_raw, best_den_state_raw));
-
-        // if `den_state` is bigger than `best_den_state`, will equal
-        // `den_state`. If not, will equal `best_den_state`.
-        best_den_state = mad24((uint)den_state_bigger, den_state,
-            mul24((uint)!den_state_bigger, best_den_state));
-    }
-
-    uint const celtft_idx = lyrtft_cel_idz + cel_id_lyrtft;
-
-    celtft_best_den_ids[celtft_idx] = best_den_id;
-    celtft_best_den_states_raw[celtft_idx] = best_den_state_raw;
-    celtft_best_den_states[celtft_idx] = best_den_state;
-}
-
-
-// PYR_CYCLE(): Cycles every pyramidal cell in a layer.
+// Cycles each pyramidal cell.
 //
 __kernel void pyr_cycle(
-            __global const uchar* const celtft_best_den_ids,
+            // __global const uchar* const celtft_best_den_ids,
             __global const uchar* const celtft_best_den_states_raw,
             __global const uchar* const celtft_best_den_states,
-            __private uint const tft_count,
+            __global const uchar* const tft_states,
+            __private uchar const tft_count,
+            __private uchar const enabled_tft_flags,
+            __private uchar const bsl_prx_tft_idx,
+            __private uchar const bsl_dst_tft_idx,
+            __private uchar const apc_dst_tft_idx,
             __global uchar* const pyr_best_den_states_raw,
-            __global uchar* const pyr_states,
             __global int* const aux_ints_0,
-            __global int* const aux_ints_1)
+            __global int* const aux_ints_1,
+            __global uchar* const pyr_states)
 {
     uint const cel_idx = get_global_id(0);
     uint const cel_count = get_global_size(0);
-    // uint const celtft_idx = mul24(cel_idx, tft_count);
+
+    // Only fire if prx is > 0
+    // Prx val gets >> 2 + (val < 4)
 
     uchar pyr_best_den_state_raw = 0;
     uchar pyr_state = 0;
@@ -1474,57 +1407,8 @@ __kernel void pyr_cycle(
         uchar pyr_best_den_state = celtft_best_den_states[celtft_idx];
         pyr_best_den_state_raw = max(pyr_state, pyr_best_den_state_raw);
         pyr_state = max(pyr_state, pyr_best_den_state);
-
-        // if (cel_idx == 199) {
-        //     aux_ints_0[celtft_idx] = 199;
-        // }
-
-        // aux_ints_0[celtft_idx] = pyr_best_den_state;
-        // aux_ints_1[celtft_idx] = pyr_state;
     }
 
-    // aux_ints_1[cel_idx] = pyr_state;
-    pyr_best_den_states_raw[cel_idx] = pyr_best_den_state_raw;
-    pyr_states[cel_idx] = pyr_state;
-}
-
-
-// PYR_CYCLE(): Cycles every pyramidal cell in a layer.
-//
-__kernel void pyr_cycle_old(
-            __global const uchar* const celtft_best_den_ids,
-            __global const uchar* const celtft_best_den_states_raw,
-            __global const uchar* const celtft_best_den_states,
-            __private uint const tft_count,
-            __global uchar* const pyr_best_den_states_raw,
-            __global uchar* const pyr_states,
-            __global int* const aux_ints_0,
-            __global int* const aux_ints_1)
-{
-    uint const cel_idx = get_global_id(0);
-    uint const cel_count = get_global_size(0);
-    // uint const celtft_idx = mul24(cel_idx, tft_count);
-
-    uchar pyr_best_den_state_raw = 0;
-    uchar pyr_state = 0;
-
-    for (uint tft_id = 0; tft_id < tft_count; tft_id++) {
-        uint const celtft_idx = mad24(tft_id, cel_count, cel_idx);
-
-        uchar pyr_best_den_state_raw = celtft_best_den_states_raw[celtft_idx];
-        uchar pyr_best_den_state = celtft_best_den_states[celtft_idx];
-        pyr_best_den_state_raw = max(pyr_state, pyr_best_den_state_raw);
-        pyr_state = max(pyr_state, pyr_best_den_state);
-
-        // if (cel_idx == 199) {
-        //     aux_ints_0[celtft_idx] = 199;
-        // }
-
-        // aux_ints_0[celtft_idx] = pyr_best_den_state;
-        // aux_ints_1[celtft_idx] = pyr_state;
-    }
-
-    // aux_ints_1[cel_idx] = pyr_state;
     pyr_best_den_states_raw[cel_idx] = pyr_best_den_state_raw;
     pyr_states[cel_idx] = pyr_state;
 }
@@ -1621,6 +1505,121 @@ __kernel void mcol_output(
 ===============================================================================
 ===============================================================================
 =============================================================================*/
+
+
+// // Determine the best dendrite state for the two tracts.
+// //
+// // The 'raw' tract disregards whether or not the synapse states have strengths
+// // >= 0. The 'non-raw' tract is for synapses which have developed strength.
+// //
+// __kernel void pyr_tft_cycle_old_unused(
+//             __global const uchar* const den_states_raw, // USE THIS TO DETERMINE BEST DEN
+//             __global const uchar* const den_states,
+//             // __private uint const tfts_per_cel,
+//             // __private uint const tft_id,
+//             ////// Could be made GWO (and could be calculated from tuft_id as well):
+//             __private uint const lyrtft_cel_idz,
+//             __private uint const lyrtft_den_idz,
+//             __private uchar const dens_per_tft_l2,
+//             __global uchar* const celtft_best_den_ids,
+//             __global uchar* const celtft_best_den_states_raw,
+//             __global uchar* const celtft_best_den_states,
+//             // __global uchar* const pyr_best_den_states,
+//             __global int* const aux_ints_0,
+//             __global int* const aux_ints_1)
+//             // __global uchar* const pyr_states)
+// {
+//     uint const cel_id_lyrtft = get_global_id(0);
+//     uint const lyrtft_cel_count = get_global_size(0);
+
+//     uint const den_id_lyrtft = cel_id_lyrtft << dens_per_tft_l2;
+//     uint const cel_den_idz  = lyrtft_den_idz + den_id_lyrtft;
+
+//     // Cumulative best dendrite id (within the cell-tuft). Used for activation
+//     // and ultimately learning:
+//     uint best_den_id = 0;
+//     // Cumulative best raw dendrite state (within the cell-tuft). Used for
+//     // activation and ultimately learning:
+//     uint best_den_state_raw = 0;
+//     // Cumulative best dendrite state (within the cell-tuft). Used for
+//     // pyr_state and pyr_best_den_state:
+//     uint best_den_state = 0;
+
+//     for (uint den_id_celtft = 0; den_id_celtft < (1 << dens_per_tft_l2); den_id_celtft++) {
+//         uint const den_idx = cel_den_idz + den_id_celtft;
+
+//         uint const den_state_raw = den_states_raw[den_idx];
+//         uint const den_state = den_states[den_idx];
+
+//         int const den_state_bigger_raw = (den_state_raw > best_den_state_raw);
+//         int const den_state_bigger = (den_state > best_den_state);
+
+//         // If `den_state_raw` is bigger than `best_den_state_raw`, will equal
+//         // `den_id_celtft`. If not, will equal `best_den_id`.
+//         best_den_id = mad24((uint)den_state_bigger_raw, den_id_celtft,
+//             mul24((uint)!den_state_bigger_raw, best_den_id));
+
+//         // if `den_state_raw` is bigger than `best_den_state_raw`, will equal
+//         // `den_state_raw`. If not, will equal `best_den_state_raw`.
+//         best_den_state_raw = mad24((uint)den_state_bigger_raw, den_state_raw,
+//             mul24((uint)!den_state_bigger_raw, best_den_state_raw));
+
+//         // if `den_state` is bigger than `best_den_state`, will equal
+//         // `den_state`. If not, will equal `best_den_state`.
+//         best_den_state = mad24((uint)den_state_bigger, den_state,
+//             mul24((uint)!den_state_bigger, best_den_state));
+//     }
+
+//     uint const celtft_idx = lyrtft_cel_idz + cel_id_lyrtft;
+
+//     celtft_best_den_ids[celtft_idx] = best_den_id;
+//     celtft_best_den_states_raw[celtft_idx] = best_den_state_raw;
+//     celtft_best_den_states[celtft_idx] = best_den_state;
+// }
+
+
+
+// // PYR_CYCLE(): Cycles every pyramidal cell in a layer.
+// //
+// __kernel void pyr_cycle_old(
+//             __global const uchar* const celtft_best_den_ids,
+//             __global const uchar* const celtft_best_den_states_raw,
+//             __global const uchar* const celtft_best_den_states,
+//             __private uint const tft_count,
+//             __global uchar* const pyr_best_den_states_raw,
+//             __global uchar* const pyr_states,
+//             __global int* const aux_ints_0,
+//             __global int* const aux_ints_1)
+// {
+//     uint const cel_idx = get_global_id(0);
+//     uint const cel_count = get_global_size(0);
+//     // uint const celtft_idx = mul24(cel_idx, tft_count);
+
+//     uchar pyr_best_den_state_raw = 0;
+//     uchar pyr_state = 0;
+
+//     for (uint tft_id = 0; tft_id < tft_count; tft_id++) {
+//         uint const celtft_idx = mad24(tft_id, cel_count, cel_idx);
+
+//         uchar pyr_best_den_state_raw = celtft_best_den_states_raw[celtft_idx];
+//         uchar pyr_best_den_state = celtft_best_den_states[celtft_idx];
+//         pyr_best_den_state_raw = max(pyr_state, pyr_best_den_state_raw);
+//         pyr_state = max(pyr_state, pyr_best_den_state);
+
+//         // if (cel_idx == 199) {
+//         //     aux_ints_0[celtft_idx] = 199;
+//         // }
+
+//         // aux_ints_0[celtft_idx] = pyr_best_den_state;
+//         // aux_ints_1[celtft_idx] = pyr_state;
+//     }
+
+//     // aux_ints_1[cel_idx] = pyr_state;
+//     pyr_best_den_states_raw[cel_idx] = pyr_best_den_state_raw;
+//     pyr_states[cel_idx] = pyr_state;
+// }
+
+
 
 
 // // DEN_CYCLE():

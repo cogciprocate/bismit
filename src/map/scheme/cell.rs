@@ -138,8 +138,8 @@ impl TuftScheme {
 
     // #[inline] pub fn tft_id(&self) -> usize { self.tft_id.expect("Tuft ID not set!") }
     #[inline] pub fn tft_id(&self) -> usize { self.tft_id }
-    #[inline] pub fn den_class(&self) -> &DendriteClass { &self.den_class }
-    #[inline] pub fn den_kind(&self) -> &DendriteKind { &self.den_kind }
+    #[inline] pub fn den_class(&self) -> DendriteClass { self.den_class }
+    #[inline] pub fn den_kind(&self) -> DendriteKind { self.den_kind }
     #[inline] pub fn dens_per_tft_l2(&self) -> u8 { self.dens_per_tft_l2 }
     #[inline] pub fn syns_per_den_l2(&self) -> u8 { self.syns_per_den_l2 }
     #[inline] pub fn syns_per_tft_l2(&self) -> u8 { self.dens_per_tft_l2 + self.syns_per_den_l2 }

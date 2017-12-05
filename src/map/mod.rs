@@ -122,7 +122,7 @@ impl CellClass {
 }
 
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum DendriteKind {
     Proximal,
     Distal,
@@ -130,7 +130,7 @@ pub enum DendriteKind {
 }
 
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum DendriteClass {
     Apical,
     Basal,

@@ -1,8 +1,9 @@
-use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
+use cmn::{self, CmnResult, CorticalDims, XorShiftRng, DEN_BASAL_PROXIMAL_FLAG,
+    DEN_BASAL_DISTAL_FLAG, DEN_APICAL_DISTAL_FLAG};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
 use map::{AreaMap, CellScheme, ExecutionGraph, CommandRelations,
-    CorticalBuffer, LayerAddress, LayerTags, CommandUid};
+    CorticalBuffer, LayerAddress, LayerTags, CommandUid, DendriteClass, DendriteKind};
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayers,
     Tufts};
 
@@ -76,6 +77,49 @@ impl PyramidalLayer {
             area_map, axons, &axn_slc_ids, pyr_lyr_axn_idz, &states,
             &flag_sets, ocl_pq, settings.clone(), exe_graph)?;
 
+        let mut enabled_tft_flags = 0u8;
+        let mut enabled_tft_ttl = 0;
+        let mut bsl_prx_tft_idx = None;
+        let mut bsl_dst_tft_idx = None;
+        let mut apc_dst_tft_idx = None;
+
+        for tft_scheme in cell_scheme.tft_schemes() {
+            assert!(tft_scheme.tft_id() <= 255);
+            match tft_scheme.den_class() {
+                DendriteClass::Basal => {
+                    match tft_scheme.den_kind() {
+                        DendriteKind::Proximal => {
+                            assert!(bsl_prx_tft_idx.is_none());
+                            bsl_prx_tft_idx = Some(tft_scheme.tft_id() as u8);
+                            enabled_tft_flags &= DEN_BASAL_PROXIMAL_FLAG;
+                            enabled_tft_ttl += 1;
+                        },
+                        DendriteKind::Distal => {
+                            assert!(bsl_dst_tft_idx.is_none());
+                            bsl_dst_tft_idx = Some(tft_scheme.tft_id() as u8);
+                            enabled_tft_flags &= DEN_BASAL_DISTAL_FLAG;
+                            enabled_tft_ttl += 1;
+                        },
+                        _ => unimplemented!(),
+                    }
+                }
+                DendriteClass::Apical => {
+                    match tft_scheme.den_kind() {
+                        DendriteKind::Distal => {
+                            assert!(apc_dst_tft_idx.is_none());
+                            apc_dst_tft_idx = Some(tft_scheme.tft_id() as u8);
+                            enabled_tft_flags &= DEN_APICAL_DISTAL_FLAG;
+                            enabled_tft_ttl += 1;
+                        },
+                        _ => unimplemented!(),
+                    }
+                }
+                _ => unimplemented!(),
+            }
+        }
+
+        assert!(enabled_tft_ttl == tft_count);
+
 
         //=============================================================================
         //=============================================================================
@@ -98,14 +142,14 @@ impl PyramidalLayer {
         let pyr_cycle_kernel = ocl_pq.create_kernel(kern_name)?
             .gws(SpatialDims::One(cel_count))
             // .arg_buf(tfts.best_den_ids())
-            // .arg_buf(tfts.best_den_states_raw())
-            // .arg_buf(tfts.best_den_states())
+            .arg_buf(tfts.best_den_states_raw())
+            .arg_buf(tfts.best_den_states())
             .arg_buf(tfts.states())
-            // .arg_scl(enabled_tft_flags)
-            // .arg_scl(bsl_prx_tft_idx)
-            // .arg_scl(bsl_dst_tft_idx)
-            // .arg_scl(apc_dst_tft_idx)
-            .arg_scl(tft_count as u32)
+            .arg_scl(tft_count as u8)
+            .arg_scl(enabled_tft_flags)
+            .arg_scl(bsl_prx_tft_idx.unwrap_or(0))
+            .arg_scl(bsl_dst_tft_idx.unwrap_or(0))
+            .arg_scl(apc_dst_tft_idx.unwrap_or(0))
             .arg_buf(&best_den_states_raw)
             .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
             .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)

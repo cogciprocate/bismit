@@ -290,9 +290,9 @@ impl AreaMap {
                 let lyr_axn_len = li.ttl_axn_count();
                 let lyr_axn_range = lyr_axn_idz..(lyr_axn_idz + lyr_axn_len);
 
-                debug_assert!(self.verify_axn_range(lyr_axn_range.clone(),
-                    base_slc_id, li.depth()), "AreaMap::lyr_axn_range: \
-                    Axon index range mismatch.");
+                // debug_assert!(self.verify_axn_range(lyr_axn_range.clone(),
+                //     base_slc_id, li.depth()), "AreaMap::lyr_axn_range: \
+                //     Axon index range mismatch.");
 
                 Some(lyr_axn_range)
 
@@ -307,13 +307,13 @@ impl AreaMap {
     pub fn verify_axn_range(&self, axn_range: Range<u32>, base_slc_id: u8, depth: u8) -> bool {
         let slc_idm = base_slc_id + depth - 1;
         let slc_len = self.slice_map.slc_axn_count(slc_idm);
-        let axn_idz = self.axn_idz(slc_idm);
+        let axn_idz = self.axn_idz(base_slc_id);
         let axn_idn = axn_idz + slc_len;
         // [DEBUG]:
         // println!("\n\n# (lyr_idz, lyr_len) = ({}, {}), axn_idn = {}, \
         //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n",
         //     lyr_idz, lyr_len, axn_idn, slc_len, axn_idz, layer);
-        axn_range.start == axn_idz && axn_range.end == axn_idn
+        axn_range.start == self.axn_idz(base_slc_id) && axn_range.end == axn_idn
     }
 
     // NEW
