@@ -504,68 +504,63 @@ impl CorticalArea {
         =============================================================================*/
         // * TODO: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
+        fn insert_control_layer<D, C>(control_layers: &mut ControlCellLayers, layer_name: &str,
+                cc_lyr: C, host_lyr: &D, exe_order: usize)
+                where D: DataCellLayer, C: ControlCellLayer {
+
+            if control_layers.insert((host_lyr.layer_addr(), exe_order),
+                    Box::new(cc_lyr)).is_some() {
+                panic!("Duplicate control cell layer address / order index \
+                    found for layer: {} ({})", layer_name, exe_order);
+            }
+        }
+
         for layer in area_map.layer_map().iter() {
             if let LayerKind::Cellular(ref cell_scheme) = *layer.kind() {
                 match *cell_scheme.class() {
-                    CellClass::Control {
-                            kind: ControlCellKind::InhibitoryBasketSurround {
-                            ref host_lyr_name, field_radius: _ }, exe_order, } =>
-                    {
+                    CellClass::Control { kind: ControlCellKind::InhibitoryBasketSurround {
+                            ref host_lyr_name, field_radius: _ }, exe_order } => {
                         let host_lyr = data_layers.ssc_by_name(host_lyr_name)?;
-                        let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr_name.clone()]);
-                        let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
 
                         let cc_lyr = InhibitoryInterneuronNetwork::new(layer.name(),
-                            layer.layer_id(), cell_scheme.clone(),
-                            host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
-                            settings.clone(), &mut exe_graph)?;
+                            layer.layer_id(), cell_scheme.clone(), host_lyr, &axns, &area_map,
+                            &ocl_pq, settings.clone(), &mut exe_graph)?;
 
-                        if control_layers.insert((host_lyr.layer_addr(), exe_order),
-                                Box::new(cc_lyr)).is_some()
-                        {
-                            panic!("Duplicate control cell layer address / order index \
-                                found for layer: {} ({})", layer.name(), exe_order);
-                        };
+                        insert_control_layer(&mut control_layers, layer.name(), cc_lyr,
+                            host_lyr, exe_order);
                     },
-                    CellClass::Control {
-                            kind: ControlCellKind::ActivitySmoother {
-                            ref host_lyr_name, field_radius: _ }, exe_order, } =>
-                    {
+                    CellClass::Control { kind: ControlCellKind::ActivitySmoother {
+                            ref host_lyr_name, field_radius: _ }, exe_order } => {
                         let host_lyr = data_layers.ssc_by_name(host_lyr_name)?;
-                        let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr_name.clone()]);
-                        let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
 
-                        let cc_lyr = ActivitySmoother::new(layer.name(),
-                            layer.layer_id(), cell_scheme.clone(),
-                            host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
+                        let cc_lyr = ActivitySmoother::new(layer.name(), layer.layer_id(),
+                            cell_scheme.clone(), host_lyr, &axns, &area_map, &ocl_pq,
                             settings.clone(), &mut exe_graph)?;
 
-                        if control_layers.insert((host_lyr.layer_addr(), exe_order),
-                                Box::new(cc_lyr)).is_some()
-                        {
-                            panic!("Duplicate control cell layer address / order index \
-                                found for layer: {} ({})", layer.name(), exe_order);
-                        }
+                        insert_control_layer(&mut control_layers, layer.name(), cc_lyr,
+                            host_lyr, exe_order);
                     },
-                    CellClass::Control {
-                            kind: ControlCellKind::PyrOutputter {
-                            ref host_lyr_name }, exe_order, } =>
-                    {
+                    CellClass::Control { kind: ControlCellKind::PyrOutputter {
+                            ref host_lyr_name }, exe_order } => {
                         let host_lyr = data_layers.pyr_by_name(host_lyr_name)?;
-                        let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr_name.clone()]);
-                        let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
 
-                        let cc_lyr = PyrOutputter::new(layer.name(),
-                            layer.layer_id(), cell_scheme.clone(),
-                            host_lyr, host_lyr_base_axn_slc, &axns, &area_map, &ocl_pq,
+                        let cc_lyr = PyrOutputter::new(layer.name(), layer.layer_id(),
+                            cell_scheme.clone(), host_lyr, &axns, &area_map, &ocl_pq,
                             settings.clone(), &mut exe_graph)?;
 
-                        if control_layers.insert((host_lyr.layer_addr(), exe_order),
-                                Box::new(cc_lyr)).is_some()
-                        {
-                            panic!("Duplicate control cell layer address / order index \
-                                found for layer: {} ({})", layer.name(), exe_order);
-                        }
+                        insert_control_layer(&mut control_layers, layer.name(), cc_lyr,
+                            host_lyr, exe_order);
+                    },
+                    CellClass::Control { kind: ControlCellKind::IntraColumnInhib {
+                            ref host_lyr_name }, exe_order } => {
+                        let host_lyr = data_layers.pyr_by_name(host_lyr_name)?;
+
+                        let cc_lyr = IntraColumnInhib::new(layer.name(), layer.layer_id(),
+                            cell_scheme.clone(), host_lyr, &axns, &area_map, &ocl_pq,
+                            settings.clone(), &mut exe_graph)?;
+
+                        insert_control_layer(&mut control_layers, layer.name(), cc_lyr,
+                            host_lyr, exe_order);
                     },
                     _ => (),
                 }

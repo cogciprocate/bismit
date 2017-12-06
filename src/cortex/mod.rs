@@ -15,6 +15,7 @@ mod data_cell_layer;
 mod control_cell_layer;
 mod cortical_sampler;
 mod pyr_outputter;
+mod intra_column_inhib;
 
 pub use self::cortex::{Cortex, WorkPool, WorkPoolRemote, CorticalAreas};
 pub use self::cortical_area::{CorticalArea, CorticalAreaSettings, SamplerKind, SamplerBufferKind};
@@ -31,6 +32,7 @@ pub use self::sensory_filter::SensoryFilter;
 pub use self::data_cell_layer::DataCellLayer;
 pub use self::control_cell_layer::{ControlCellLayer, ControlCellLayers};
 pub use self::pyr_outputter::PyrOutputter;
+pub use self::intra_column_inhib::IntraColumnInhib;
 
 #[cfg(test)] pub use self::cortical_area::CorticalAreaTest;
 #[cfg(test)] pub use self::synapses::{SynCoords, SynapsesTest, syn_idx};

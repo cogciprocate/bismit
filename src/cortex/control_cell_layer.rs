@@ -3,8 +3,10 @@
 
 use std::fmt::Debug;
 use std::collections::BTreeMap;
-use cmn::{CmnResult};
-use map::{ExecutionGraph, LayerAddress};
+// use ocl::ProQue;
+use cmn::CmnResult;
+use map::{/*AreaMap,*/ LayerAddress, ExecutionGraph, /*CellScheme*/};
+// use cortex::{AxonSpace, DataCellLayer, CorticalAreaSettings};
 
 pub trait ControlCellLayer: 'static + Debug + Send {
     fn set_exe_order_pre(&mut self, exe_graph: &mut ExecutionGraph, host_lyr_addr: LayerAddress) -> CmnResult<()>;

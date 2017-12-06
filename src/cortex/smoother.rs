@@ -75,14 +75,16 @@ pub struct ActivitySmoother {
 }
 
 impl ActivitySmoother {
-    pub fn new<S, D>(layer_name: S, layer_id: usize, /*dims: CorticalDims,*/ scheme: CellScheme,
-            host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
+    pub fn new<S, D>(layer_name: S, layer_id: usize, scheme: CellScheme,
+            host_lyr: &D, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<ActivitySmoother>
             where S: Into<String>, D: DataCellLayer
     {
         let layer_name = layer_name.into();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
+        let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr.layer_name()]);
+        let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
         let group_radius = scheme.class().control_kind().field_radius() as i32;
 
         let (centers_v_vec, centers_u_vec) = gen_grp_centers(group_radius,

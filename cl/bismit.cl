@@ -1379,13 +1379,13 @@ __kernel void tft_ltp(
 __kernel void pyr_cycle(
             // __global const uchar* const celtft_best_den_ids,
             __global const uchar* const celtft_best_den_states_raw,
-            __global const uchar* const celtft_best_den_states,
+            // __global const uchar* const celtft_best_den_states,
             __global const uchar* const tft_states,
             __private uchar const tft_count,
             __private uchar const enabled_tft_flags,
-            __private uchar const bsl_prx_tft_idx,
-            __private uchar const bsl_dst_tft_idx,
-            __private uchar const apc_dst_tft_idx,
+            __private uchar const bsl_prx_tft_id,
+            __private uchar const bsl_dst_tft_id,
+            __private uchar const apc_dst_tft_id,
             __global uchar* const pyr_best_den_states_raw,
             __global int* const aux_ints_0,
             __global int* const aux_ints_1,
@@ -1394,23 +1394,45 @@ __kernel void pyr_cycle(
     uint const cel_idx = get_global_id(0);
     uint const cel_count = get_global_size(0);
 
-    // Only fire if prx is > 0
-    // Prx val gets >> 2 + (val < 4)
-
     uchar pyr_best_den_state_raw = 0;
     uchar pyr_state = 0;
 
+    // TODO: Redesign learning and remove this loop:
     for (uint tft_id = 0; tft_id < tft_count; tft_id++) {
         uint const celtft_idx = mad24(tft_id, cel_count, cel_idx);
 
         uchar pyr_best_den_state_raw = celtft_best_den_states_raw[celtft_idx];
-        uchar pyr_best_den_state = celtft_best_den_states[celtft_idx];
+        // uchar pyr_best_den_state = celtft_best_den_states[celtft_idx];
         pyr_best_den_state_raw = max(pyr_state, pyr_best_den_state_raw);
-        pyr_state = max(pyr_state, pyr_best_den_state);
+        // pyr_state = max(pyr_state, pyr_best_den_state);
     }
 
+    int bsl_prx_is_enabled = (enabled_tft_flags & DEN_BASAL_PROXIMAL_FLAG) != 0;
+    int bsl_dst_is_enabled = (enabled_tft_flags & DEN_BASAL_DISTAL_FLAG) != 0;
+    int apc_dst_is_enabled = (enabled_tft_flags & DEN_APICAL_DISTAL_FLAG) != 0;
+
+    uint bsl_prx_celtft_idx = mad24(bsl_prx_tft_id, cel_count, cel_idx);
+    uint bsl_dst_celtft_idx = mad24(bsl_dst_tft_id, cel_count, cel_idx);
+    uint apc_dst_celtft_idx = mad24(apc_dst_tft_id, cel_count, cel_idx);
+
+    uchar bsl_prx_state = mul24(bsl_prx_is_enabled, tft_states[bsl_prx_celtft_idx]);
+    uchar bsl_dst_state = mul24(bsl_dst_is_enabled, tft_states[bsl_dst_celtft_idx]);
+    uchar apc_dst_state = mul24(apc_dst_is_enabled, tft_states[apc_dst_celtft_idx]);
+
+    int cel_is_active = bsl_prx_state != 0;
+
+    // Divide by 4 but don't let small values get rounded to 0:
+    int bsl_prx_is_min = (bsl_prx_state <= 3) && cel_is_active;
+    uchar bsl_prx_contrib = (bsl_prx_state >> 2) + bsl_prx_is_min;
+
+    // Divide by 4, ignore rounding:
+    uchar bsl_dst_contrib = mul24(cel_is_active, bsl_dst_state >> 2);
+
+    // Divide by 2, ignore rounding:
+    uchar apc_dst_contrib = mul24(cel_is_active, apc_dst_state >> 1);
+
     pyr_best_den_states_raw[cel_idx] = pyr_best_den_state_raw;
-    pyr_states[cel_idx] = pyr_state;
+    pyr_states[cel_idx] = bsl_prx_contrib + bsl_dst_contrib, + apc_dst_contrib;
 }
 
 

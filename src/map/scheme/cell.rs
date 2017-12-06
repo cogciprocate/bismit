@@ -18,8 +18,8 @@ pub struct TuftSourceLayer {
 }
 
 impl TuftSourceLayer {
-    pub fn builder<S: Into<String>>(name: S) -> TuftSourceLayerBuilder {
-        TuftSourceLayerBuilder::new(name)
+    pub fn define<S: Into<String>>(name: S) -> TuftSourceLayerDefinition {
+        TuftSourceLayerDefinition::new(name)
     }
 
     pub fn new<S: Into<String>>(name: S, syn_reach: i8, prevalence: u8) -> TuftSourceLayer {
@@ -50,32 +50,32 @@ impl<'a> From<&'a (&'a str, i8, u8)> for TuftSourceLayer {
     }
 }
 
-pub struct TuftSourceLayerBuilder {
+pub struct TuftSourceLayerDefinition {
     name: String,
     syn_reach: Option<i8>,
     prevalence: Option<u8>,
 }
 
-impl TuftSourceLayerBuilder {
-    pub fn new<S: Into<String>>(name: S) -> TuftSourceLayerBuilder {
-        TuftSourceLayerBuilder {
+impl TuftSourceLayerDefinition {
+    pub fn new<S: Into<String>>(name: S) -> TuftSourceLayerDefinition {
+        TuftSourceLayerDefinition {
             name: name.into(),
             syn_reach: None,
             prevalence: None,
         }
     }
 
-    // pub fn src_lyr_name<S: Into<String>>(mut self, ) -> TuftSourceLayerBuilder {
+    // pub fn src_lyr_name<S: Into<String>>(mut self, ) -> TuftSourceLayerDefinition {
     //     self.name = Some(name.into());
     //     self
     // }
 
-    pub fn syn_reach(mut self, syn_reach: i8) -> TuftSourceLayerBuilder {
+    pub fn syn_reach(mut self, syn_reach: i8) -> TuftSourceLayerDefinition {
         self.syn_reach = Some(syn_reach);
         self
     }
 
-    pub fn prevalence(mut self, prevalence: u8) -> TuftSourceLayerBuilder {
+    pub fn prevalence(mut self, prevalence: u8) -> TuftSourceLayerDefinition {
         self.prevalence = Some(prevalence);
         self
     }
@@ -83,8 +83,8 @@ impl TuftSourceLayerBuilder {
     pub fn build(self) -> TuftSourceLayer {
         TuftSourceLayer::new(
             self.name,
-            self.syn_reach.expect("TuftSourceLayerBuilder::build"),
-            self.prevalence.expect("TuftSourceLayerBuilder::build"),
+            self.syn_reach.expect("TuftSourceLayerDefinition::build"),
+            self.prevalence.expect("TuftSourceLayerDefinition::build"),
         )
     }
 }
@@ -103,16 +103,16 @@ pub struct TuftScheme {
 }
 
 impl TuftScheme {
-    pub fn builder() -> TuftSchemeBuilder {
-        TuftSchemeBuilder::new()
+    pub fn define() -> TuftSchemeDefinition {
+        TuftSchemeDefinition::new()
     }
 
-    pub fn apical() -> TuftSchemeBuilder {
-        TuftSchemeBuilder::new().apical()
+    pub fn apical() -> TuftSchemeDefinition {
+        TuftSchemeDefinition::new().apical()
     }
 
-    pub fn basal() -> TuftSchemeBuilder {
-        TuftSchemeBuilder::new().basal()
+    pub fn basal() -> TuftSchemeDefinition {
+        TuftSchemeDefinition::new().basal()
     }
 
     pub fn new(tft_id: usize, den_class: DendriteClass, den_kind: DendriteKind, dens_per_tft_l2: u8,
@@ -149,7 +149,7 @@ impl TuftScheme {
 }
 
 
-pub struct TuftSchemeBuilder {
+pub struct TuftSchemeDefinition {
     den_class: Option<DendriteClass>,
     den_kind: Option<DendriteKind>,
     dens_per_tft_l2: u8,
@@ -159,9 +159,9 @@ pub struct TuftSchemeBuilder {
     thresh_init: Option<u32>,
 }
 
-impl TuftSchemeBuilder {
-    pub fn new() -> TuftSchemeBuilder {
-        TuftSchemeBuilder {
+impl TuftSchemeDefinition {
+    pub fn new() -> TuftSchemeDefinition {
+        TuftSchemeDefinition {
             den_class: None,
             den_kind: None,
             dens_per_tft_l2: 0,
@@ -172,72 +172,72 @@ impl TuftSchemeBuilder {
         }
     }
 
-    pub fn den_class(mut self, den_class: DendriteClass) -> TuftSchemeBuilder {
+    pub fn den_class(mut self, den_class: DendriteClass) -> TuftSchemeDefinition {
         assert!(self.den_class.is_none());
         self.den_class = Some(den_class);
         self
     }
 
-    pub fn apical(self) -> TuftSchemeBuilder {
+    pub fn apical(self) -> TuftSchemeDefinition {
         assert!(self.den_class.is_none());
         self.den_class(DendriteClass::Apical)
     }
 
-    pub fn basal(self) -> TuftSchemeBuilder {
+    pub fn basal(self) -> TuftSchemeDefinition {
         assert!(self.den_class.is_none());
         self.den_class(DendriteClass::Basal)
     }
 
-    pub fn den_kind(mut self, den_kind: DendriteKind) -> TuftSchemeBuilder {
+    pub fn den_kind(mut self, den_kind: DendriteKind) -> TuftSchemeDefinition {
         assert!(self.den_kind.is_none());
         self.den_kind = Some(den_kind);
         self
     }
 
-    pub fn proximal(self) -> TuftSchemeBuilder {
+    pub fn proximal(self) -> TuftSchemeDefinition {
         assert!(self.den_kind.is_none());
         self.den_kind(DendriteKind::Proximal)
     }
 
-    pub fn distal(self) -> TuftSchemeBuilder {
+    pub fn distal(self) -> TuftSchemeDefinition {
         assert!(self.den_kind.is_none());
         self.den_kind(DendriteKind::Distal)
     }
 
-    pub fn dens_per_tft_l2(mut self, dens_per_tft_l2: u8) -> TuftSchemeBuilder {
+    pub fn dens_per_tft_l2(mut self, dens_per_tft_l2: u8) -> TuftSchemeDefinition {
         self.dens_per_tft_l2 = dens_per_tft_l2;
         self
     }
 
-    pub fn syns_per_den_l2(mut self, syns_per_den_l2: u8) -> TuftSchemeBuilder {
+    pub fn syns_per_den_l2(mut self, syns_per_den_l2: u8) -> TuftSchemeDefinition {
         self.syns_per_den_l2 = Some(syns_per_den_l2);
         self
     }
 
-    pub fn max_active_dens_l2(mut self, max_active_dens_l2: u8) -> TuftSchemeBuilder {
+    pub fn max_active_dens_l2(mut self, max_active_dens_l2: u8) -> TuftSchemeDefinition {
         self.max_active_dens_l2 = max_active_dens_l2;
         self
     }
 
     // pub fn src_lyr<S: Into<String>>(mut self, name: S, syn_reach: i8, prevalence: u8)
-    //         -> TuftSchemeBuilder {
+    //         -> TuftSchemeDefinition {
     //     self.src_lyrs.push(TuftSourceLayer::new(name, syn_reach, prevalence));
     //     self
     // }
 
-    pub fn src_lyr(mut self, bldr: TuftSourceLayerBuilder) -> TuftSchemeBuilder {
+    pub fn src_lyr(mut self, bldr: TuftSourceLayerDefinition) -> TuftSchemeDefinition {
         self.src_lyrs.push(bldr.build());
         self
     }
 
-    pub fn src_lyrs(mut self, src_lyrs: &[(&str, i8, u8)]) -> TuftSchemeBuilder {
+    pub fn src_lyrs(mut self, src_lyrs: &[(&str, i8, u8)]) -> TuftSchemeDefinition {
         assert!(self.src_lyrs.is_empty());
         let src_lyrs = src_lyrs.into_iter().map(|tsl| tsl.into()).collect();
         self.src_lyrs = src_lyrs;
         self
     }
 
-    pub fn thresh_init(mut self, thresh_init: u32) -> TuftSchemeBuilder {
+    pub fn thresh_init(mut self, thresh_init: u32) -> TuftSchemeDefinition {
         self.thresh_init = Some(thresh_init);
         self
     }
@@ -274,24 +274,24 @@ impl CellScheme {
         }.validate()
     }
 
-    pub fn builder(cell_class: CellClass) -> CellSchemeBuilder {
-        CellSchemeBuilder::new(cell_class)
+    pub fn define(cell_class: CellClass) -> CellSchemeDefinition {
+        CellSchemeDefinition::new(cell_class)
     }
 
-    pub fn data(kind: DataCellKind) -> CellSchemeBuilder {
-        CellSchemeBuilder::new(CellClass::Data(kind))
+    pub fn data(kind: DataCellKind) -> CellSchemeDefinition {
+        CellSchemeDefinition::new(CellClass::Data(kind))
     }
 
-    pub fn pyramidal() -> CellSchemeBuilder {
+    pub fn pyramidal() -> CellSchemeDefinition {
         Self::data(DataCellKind::Pyramidal)
     }
 
-    pub fn spiny_stellate() -> CellSchemeBuilder {
+    pub fn spiny_stellate() -> CellSchemeDefinition {
         Self::data(DataCellKind::SpinyStellate)
     }
 
-    pub fn control(kind: ControlCellKind, exe_order: usize) -> CellSchemeBuilder {
-        CellSchemeBuilder::new(CellClass::Control { kind, exe_order })
+    pub fn control(kind: ControlCellKind, exe_order: usize) -> CellSchemeDefinition {
+        CellSchemeDefinition::new(CellClass::Control { kind, exe_order })
     }
 
     //                             &[name, reach, prevalence]
@@ -422,20 +422,20 @@ impl CellScheme {
 }
 
 
-pub struct CellSchemeBuilder {
+pub struct CellSchemeDefinition {
     cell_class: CellClass,
     tft_schemes: Vec<TuftScheme>,
 }
 
-impl CellSchemeBuilder {
-    pub fn new(cell_class: CellClass) -> CellSchemeBuilder {
-        CellSchemeBuilder {
+impl CellSchemeDefinition {
+    pub fn new(cell_class: CellClass) -> CellSchemeDefinition {
+        CellSchemeDefinition {
             cell_class,
             tft_schemes: Vec::with_capacity(3),
         }
     }
 
-    pub fn tft(mut self, tft: TuftSchemeBuilder) -> CellSchemeBuilder {
+    pub fn tft(mut self, tft: TuftSchemeDefinition) -> CellSchemeDefinition {
         let tft_id = self.tft_schemes.len();
         self.tft_schemes.push(tft.build(tft_id));
         self

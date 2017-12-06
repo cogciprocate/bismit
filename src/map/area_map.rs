@@ -304,6 +304,8 @@ impl AreaMap {
         }
     }
 
+    // NOTE: This is broken if depth > 1.
+    // TODO: Loop through slices and add up axons.
     pub fn verify_axn_range(&self, axn_range: Range<u32>, base_slc_id: u8, depth: u8) -> bool {
         let slc_idm = base_slc_id + depth - 1;
         let slc_len = self.slice_map.slc_axn_count(slc_idm);

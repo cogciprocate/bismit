@@ -2,7 +2,7 @@
 use std::ops::{Index, IndexMut, Deref};
 // use std::hash::{Hasher};
 use cmn::MapStore;
-use map::{LayerTags, LayerMapKind, LayerScheme, LayerSchemeBuilder, AxonTopology, LayerKind,
+use map::{LayerTags, LayerMapKind, LayerScheme, LayerSchemeDefinition, AxonTopology, LayerKind,
     AxonDomain, AxonTags};
 
 
@@ -32,7 +32,7 @@ impl LayerMapScheme {
         self.layer(
             // LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
             //     axn_domain)
-            LayerScheme::builder(layer_name)
+            LayerScheme::define(layer_name)
                 .axonal(axn_topo)
                 .tags(layer_tags)
                 .axon_domain(axon_domain)
@@ -47,7 +47,7 @@ impl LayerMapScheme {
     //     self
     // }
 
-    pub fn layer(mut self, bldr: LayerSchemeBuilder) -> LayerMapScheme {
+    pub fn layer(mut self, bldr: LayerSchemeDefinition) -> LayerMapScheme {
         // let layer_id = self.layers.len();
         self.add_layer(bldr);
         self
@@ -66,7 +66,7 @@ impl LayerMapScheme {
         // self
 
         self.layer(
-            LayerScheme::builder(layer_name)
+            LayerScheme::define(layer_name)
                 .kind(kind)
                 .depth(layer_depth)
                 .tags(layer_tags)
@@ -74,7 +74,7 @@ impl LayerMapScheme {
         )
     }
 
-    pub fn add_layer(&mut self, layer_bldr: LayerSchemeBuilder) {
+    pub fn add_layer(&mut self, layer_bldr: LayerSchemeDefinition) {
         // layer.set_layer_id();
         let layer_id = self.layers.len();
         let layer = layer_bldr.build(layer_id);

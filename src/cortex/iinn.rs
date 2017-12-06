@@ -1,39 +1,35 @@
-// use std::fmt::Debug;
 use rand::Rng;
-use cmn::{self, /*CorticalDims,*/ CmnResult};
+use cmn::{self, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, CommandRelations, CorticalBuffer, CellScheme, CommandUid};
-use ocl::{Kernel, ProQue, SpatialDims, /*Buffer,*/ Event};
+use ocl::{Kernel, ProQue, SpatialDims, Event};
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
 
-// // FIXME[DONE]: Should be set by the currently unused `field_radius` `CellScheme` param.
-// const INHIB_RADIUS: i32 = 4;
-
+/// Basket cells.
 #[derive(Debug)]
 pub struct InhibitoryInterneuronNetwork {
     layer_name: String,
-    // layer_id: usize,
     layer_addr: LayerAddress,
     host_lyr_addr: LayerAddress,
-    // dims: CorticalDims,
     kern_inhib_simple: Kernel,
     kern_inhib_passthrough: Kernel,
     exe_cmd_uid: CommandUid,
     exe_cmd_idx: usize,
-    // rng: rand::XorShiftRng,
     rng: cmn::XorShiftRng,
     settings: CorticalAreaSettings,
 }
 
 impl InhibitoryInterneuronNetwork {
     // FIXME: This function should take a 'bypass' argument instead of `::cycle`.
-    pub fn new<S, D>(layer_name: S, layer_id: usize, /*dims: CorticalDims,*/ scheme: CellScheme,
-            host_lyr: &D, host_lyr_base_axn_slc: u8, axns: &AxonSpace, area_map: &AreaMap,
+    pub fn new<S, D>(layer_name: S, layer_id: usize, scheme: CellScheme,
+            host_lyr: &D, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<InhibitoryInterneuronNetwork>
             where S: Into<String>, D: DataCellLayer
     {
         let layer_name = layer_name.into();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
+        let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr.layer_name()]);
+        let host_lyr_base_axn_slc = host_lyr_slc_ids[0];
 
         // Ensure that the host layer is constructed correctly.
         debug_assert_eq!(host_lyr.soma().len(), host_lyr.energies().len());
@@ -67,7 +63,6 @@ impl InhibitoryInterneuronNetwork {
             .arg_buf(host_lyr.activities())
             .arg_buf(axns.states());
 
-
         let exe_cmd_srcs = (0..host_lyr.tft_count())
             .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
                 host_lyr.layer_addr(), host_lyr_tft_id))
@@ -84,10 +79,8 @@ impl InhibitoryInterneuronNetwork {
 
         Ok(InhibitoryInterneuronNetwork {
             layer_name: layer_name,
-            // layer_id: layer_id,
             layer_addr: layer_addr,
             host_lyr_addr: host_lyr.layer_addr(),
-            // dims: dims,
             kern_inhib_simple: kern_inhib_simple,
             kern_inhib_passthrough: kern_inhib_passthrough,
             exe_cmd_uid,

@@ -19,8 +19,8 @@ pub use self::layer_info::{LayerInfo, SourceLayerInfo};
 pub use self::syn_src::{SynSrcSlices, SynSrcIdxCache, SynSrc, gen_syn_offs};
 pub use self::slice_tract_map::SliceTractMap;
 pub use self::scheme::{LayerMapScheme, LayerMapSchemeList, AreaScheme, AreaSchemeList,
-    TuftSourceLayer, TuftSourceLayerBuilder, TuftScheme, TuftSchemeBuilder, CellScheme,
-    CellSchemeBuilder, LayerScheme, LayerSchemeBuilder, FilterScheme, EncoderScheme, LayerKind};
+    TuftSourceLayer, TuftSourceLayerDefinition, TuftScheme, TuftSchemeDefinition, CellScheme,
+    CellSchemeDefinition, LayerScheme, LayerSchemeDefinition, FilterScheme, EncoderScheme, LayerKind};
 pub use self::layer_tags::LayerTags;
 
 /////// FIXME: IMPORT MANUALLY:
@@ -88,6 +88,7 @@ pub enum ControlCellKind {
     InhibitoryBasketSurround { host_lyr_name: String, field_radius: u8  },
     ActivitySmoother { host_lyr_name: String, field_radius: u8 },
     PyrOutputter { host_lyr_name: String },
+    IntraColumnInhib { host_lyr_name: String },
     Complex,
 }
 

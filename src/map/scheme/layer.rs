@@ -1,4 +1,4 @@
-use map::{LayerTags, AxonTopology, AxonDomain, CellScheme, CellSchemeBuilder,
+use map::{LayerTags, AxonTopology, AxonDomain, CellScheme, CellSchemeDefinition,
     TuftScheme, DendriteClass, DendriteKind};
 
 
@@ -53,8 +53,8 @@ pub struct LayerScheme {
 }
 
 impl LayerScheme {
-    pub fn builder<S: Into<String>>(name: S) -> LayerSchemeBuilder {
-        LayerSchemeBuilder::new(name)
+    pub fn define<S: Into<String>>(name: S) -> LayerSchemeDefinition {
+        LayerSchemeDefinition::new(name)
     }
 
     pub fn new<S, D>(layer_id: usize, name: S, kind: LayerKind, depth: Option<u8>, tags: LayerTags,
@@ -89,7 +89,7 @@ impl LayerScheme {
 
 
 #[derive(Clone, Debug)]
-pub struct LayerSchemeBuilder {
+pub struct LayerSchemeDefinition {
     // layer_id: Option<usize>,
     name: String,
     kind: Option<LayerKind>,
@@ -98,9 +98,9 @@ pub struct LayerSchemeBuilder {
     axon_domain: AxonDomain,
 }
 
-impl LayerSchemeBuilder {
-    pub fn new<S: Into<String>>(name: S) -> LayerSchemeBuilder {
-        LayerSchemeBuilder {
+impl LayerSchemeDefinition {
+    pub fn new<S: Into<String>>(name: S) -> LayerSchemeDefinition {
+        LayerSchemeDefinition {
             // layer_id: None,
             name: name.into(),
             kind: None,
@@ -110,35 +110,35 @@ impl LayerSchemeBuilder {
         }
     }
 
-    pub fn kind(mut self, kind: LayerKind) -> LayerSchemeBuilder {
+    pub fn kind(mut self, kind: LayerKind) -> LayerSchemeDefinition {
         assert!(self.kind.is_none());
         self.kind = Some(kind);
         self
     }
 
-    pub fn cellular(mut self, scheme: CellSchemeBuilder) -> LayerSchemeBuilder {
+    pub fn cellular(mut self, scheme: CellSchemeDefinition) -> LayerSchemeDefinition {
         assert!(self.kind.is_none());
         self.kind = Some(LayerKind::Cellular(scheme.build()));
         self
     }
 
-    pub fn axonal(mut self, topology: AxonTopology) -> LayerSchemeBuilder {
+    pub fn axonal(mut self, topology: AxonTopology) -> LayerSchemeDefinition {
         assert!(self.kind.is_none());
         self.kind = Some(LayerKind::Axonal(topology));
         self
     }
 
-    pub fn depth(mut self, depth: u8) -> LayerSchemeBuilder {
+    pub fn depth(mut self, depth: u8) -> LayerSchemeDefinition {
         self.depth = Some(depth);
         self
     }
 
-    pub fn tags(mut self, tags: LayerTags) -> LayerSchemeBuilder {
+    pub fn tags(mut self, tags: LayerTags) -> LayerSchemeDefinition {
         self.tags = tags;
         self
     }
 
-    pub fn axon_domain<Ad: Into<AxonDomain>>(mut self, axon_domain: Ad) -> LayerSchemeBuilder {
+    pub fn axon_domain<Ad: Into<AxonDomain>>(mut self, axon_domain: Ad) -> LayerSchemeDefinition {
         self.axon_domain = axon_domain.into();
         self
     }
@@ -147,7 +147,7 @@ impl LayerSchemeBuilder {
         LayerScheme {
             layer_id: layer_id,
             name: self.name,
-            kind: self.kind.expect("LayerSchemeBuilder::build"),
+            kind: self.kind.expect("LayerSchemeDefinition::build"),
             depth: self.depth,
             tags: self.tags,
             axon_domain: self.axon_domain,

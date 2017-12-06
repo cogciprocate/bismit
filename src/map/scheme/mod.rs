@@ -15,10 +15,10 @@ pub use self::layer_map::{LayerMapSchemeList, LayerMapScheme};
 
 pub use self::area::{AreaSchemeList, AreaScheme};
 
-pub use self::layer::{LayerKind, LayerScheme, LayerSchemeBuilder};
+pub use self::layer::{LayerKind, LayerScheme, LayerSchemeDefinition};
 
-pub use self::cell::{TuftSourceLayer, TuftSourceLayerBuilder, TuftScheme, TuftSchemeBuilder,
-    CellScheme, CellSchemeBuilder};
+pub use self::cell::{TuftSourceLayer, TuftSourceLayerDefinition, TuftScheme, TuftSchemeDefinition,
+    CellScheme, CellSchemeDefinition};
 
 pub use self::filter::{FilterScheme};
 
