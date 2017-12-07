@@ -26,15 +26,14 @@
 //                - or just prefetch global cache? (comparison needed)
 //            - be vectorized
 __kernel void inhib_simple(
-            __global const uchar* const cel_states,
-            // __global const uchar* const energies,
-            __private uchar const cel_base_axn_slc,
-            __private int const inhib_radius,
-            __private int const rnd,
-            __global uchar* const activities,
-            // __global int* const aux_ints_1,
-            __global uchar* const axn_states)
-{
+        __global const uchar* const cel_states,
+        // __global const uchar* const energies,
+        __private uchar const cel_base_axn_slc,
+        __private int const inhib_radius,
+        __private int const rnd,
+        __global uchar* const activities,
+        // __global int* const aux_ints_1,
+        __global uchar* const axn_states) {
     uint const slc_id_lyr = get_global_id(0);
     uint const v_id = get_global_id(1);
     uint const u_id = get_global_id(2);
@@ -193,12 +192,11 @@ __kernel void inhib_simple(
 
 
 __kernel void inhib_passthrough(
-            __global const uchar* const cel_states,
-            __private uchar const cel_base_axn_slc,
-            __private int const rnd,
-            __global uchar* const activities,
-            __global uchar* const axn_states)
-{
+        __global const uchar* const cel_states,
+        __private uchar const cel_base_axn_slc,
+        __private int const rnd,
+        __global uchar* const activities,
+        __global uchar* const axn_states) {
     uint const slc_id_lyr = get_global_id(0);
     uint const v_id = get_global_id(1);
     uint const u_id = get_global_id(2);
@@ -227,16 +225,15 @@ __kernel void inhib_passthrough(
 // * Increment energy of least active cell if < 255
 // * Decrement most active if > 0
 __kernel void smooth_activity(
-            __global const int* const centers_v,
-            __global const int* const centers_u,
-            __private uint const v_size,
-            __private uint const u_size,
-            __private int const radius,
-            __private uchar const src_lyr_depth,
-            __global const uchar* const cel_actvs,
-            // __global int* const aux_ints_1,
-            __global uchar* const cel_energies)
-{
+        __global const int* const centers_v,
+        __global const int* const centers_u,
+        __private uint const v_size,
+        __private uint const u_size,
+        __private int const radius,
+        __private uchar const src_lyr_depth,
+        __global const uchar* const cel_actvs,
+        // __global int* const aux_ints_1,
+        __global uchar* const cel_energies) {
     uint const center_idx = get_global_id(0);
     int const center_v = centers_v[center_idx];
     int const center_u = centers_u[center_idx];
@@ -299,10 +296,9 @@ __kernel void smooth_activity(
 
 
 __kernel void pyr_output(
-    __global const uchar* const cel_states,
-    __private uchar const cel_base_axn_slc,
-    __global uchar* const axn_states)
-{
+        __global const uchar* const cel_states,
+        __private uchar const cel_base_axn_slc,
+        __global uchar* const axn_states) {
     uint const slc_id_lyr = get_global_id(0);
     uint const v_id = get_global_id(1);
     uint const u_id = get_global_id(2);
@@ -315,4 +311,42 @@ __kernel void pyr_output(
         &idx_is_safe);
 
     axn_states[cel_axn_idx] = cel_states[cel_idx];
+}
+
+// Inhibits cells which are not the best in their column.
+//
+// TODO: Cache cell states
+__kernel void inhib_intra_column(
+        __global const uchar* const cel_states,
+        __private uchar const depth,
+        __private uchar const cel_base_axn_slc,
+        __global uchar* const axn_states) {
+    uint const v_id = get_global_id(0);
+    uint const u_id = get_global_id(0);
+    uint const v_size = get_global_size(0);
+    uint const u_size = get_global_size(0);
+
+    uchar best_cel_state = 0;
+
+    // Find best cell state:
+    for (uint slc_id_lyr = 0; slc_id_lyr < depth; slc_id_lyr++) {
+        uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
+        uchar cel_state = cel_states[cel_idx];
+
+        int cel_is_best = cel_state >= best_cel_state;
+        best_cel_state = mul24((uchar)cel_is_best, cel_state);
+    }
+
+    // Output cell state only if it == best, otherwise 0:
+    for (uint slc_id_lyr = 0; slc_id_lyr < depth; slc_id_lyr++) {
+        uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
+        int idx_is_safe = 0;
+        uint const cel_axn_idx = axn_idx_3d_unsafe(slc_id_lyr + cel_base_axn_slc, v_id, 0, u_id, 0,
+            &idx_is_safe);
+
+        uchar cel_state = cel_states[cel_idx];
+        int cel_is_best = cel_state >= best_cel_state;
+
+        axn_states[cel_axn_idx] = mul24((uchar)cel_is_best, cel_state);
+    }
 }

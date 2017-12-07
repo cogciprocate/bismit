@@ -63,10 +63,11 @@ impl InhibitoryInterneuronNetwork {
             .arg_buf(host_lyr.activities())
             .arg_buf(axns.states());
 
-        let exe_cmd_srcs = (0..host_lyr.tft_count())
-            .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
-                host_lyr.layer_addr(), host_lyr_tft_id))
-            .collect();
+        // let exe_cmd_srcs = (0..host_lyr.tft_count())
+        //     .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
+        //         host_lyr.layer_addr(), host_lyr_tft_id))
+        //     .collect();
+        let exe_cmd_srcs = vec![CorticalBuffer::data_soma_lyr(host_lyr.soma(), host_lyr.layer_addr())];
 
         // Set up execution command:
         let exe_cmd_tars = (host_lyr_base_axn_slc..host_lyr_base_axn_slc + host_lyr.dims().depth())

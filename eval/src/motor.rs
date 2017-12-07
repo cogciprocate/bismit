@@ -334,8 +334,17 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                     // )
                 )
             )
-            .layer_old("v_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
-                CellScheme::pyr_outputter("v", 0)
+            // .layer_old("v_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
+            //     CellScheme::pyr_outputter("v", 0)
+            // )
+            .layer(LayerScheme::define("v_inhib_col")
+                .cellular(CellScheme::control(
+                        ControlCellKind::IntraColumnInhib {
+                            host_lyr_name: "v".into(),
+                        },
+                        0
+                    )
+                )
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)

@@ -1,5 +1,5 @@
-use rand::Rng;
-use cmn::{self, CmnResult};
+// use rand::Rng;
+use cmn::{CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, CommandRelations, CorticalBuffer, CellScheme, CommandUid};
 use ocl::{Kernel, ProQue, SpatialDims, Event};
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
@@ -11,21 +11,19 @@ pub struct IntraColumnInhib {
     layer_name: String,
     layer_addr: LayerAddress,
     host_lyr_addr: LayerAddress,
-    kern_inhib_simple: Kernel,
-    // kern_inhib_passthrough: Kernel,
+    kern: Kernel,
     exe_cmd_uid: CommandUid,
     exe_cmd_idx: usize,
-    rng: cmn::XorShiftRng,
+    // rng: cmn::XorShiftRng,
     settings: CorticalAreaSettings,
 }
 
 impl IntraColumnInhib {
-    pub fn new<S, D>(layer_name: S, layer_id: usize, scheme: CellScheme,
+    pub fn new<S, D>(layer_name: S, layer_id: usize, _scheme: CellScheme,
             host_lyr: &D, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<IntraColumnInhib>
-            where S: Into<String>, D: DataCellLayer
-    {
+            where S: Into<String>, D: DataCellLayer {
         let layer_name = layer_name.into();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
         let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr.layer_name()]);
@@ -34,28 +32,19 @@ impl IntraColumnInhib {
         // Ensure that the host layer is constructed correctly.
         debug_assert_eq!(host_lyr.soma().len(), host_lyr.energies().len());
 
-        let inhib_radius = scheme.class().control_kind().field_radius() as i32;
-
         // Simple (active) kernel:
-        let kern_inhib_simple_name = "inhib_simple";
-        let kern_inhib_simple = ocl_pq.create_kernel(kern_inhib_simple_name)?
-            .gws(SpatialDims::Three(host_lyr.dims().depth() as usize, host_lyr.dims().v_size() as usize,
-                host_lyr.dims().u_size() as usize))
-            .lws(SpatialDims::Three(1, 8, 8 as usize))
+        let kern_name = "inhib_intra_column";
+        let kern = ocl_pq.create_kernel(kern_name)?
+            .gws(SpatialDims::Two(
+                host_lyr.dims().v_size() as usize,
+                host_lyr.dims().u_size() as usize,
+            ))
             .arg_buf(host_lyr.soma())
-            // .arg_buf(host_lyr.energies())
+            .arg_scl(host_lyr.dims().depth())
             .arg_scl(host_lyr_base_axn_slc)
-            .arg_scl(inhib_radius)
-            .arg_scl_named::<i32>("rnd", None)
-            .arg_buf(host_lyr.activities())
-            // .arg_buf_named("aux_ints_0", None)
-            // .arg_buf_named("aux_ints_1", None)
             .arg_buf(axns.states());
 
-        let exe_cmd_srcs = (0..host_lyr.tft_count())
-            .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
-                host_lyr.layer_addr(), host_lyr_tft_id))
-            .collect();
+        let exe_cmd_srcs = vec![CorticalBuffer::data_soma_lyr(host_lyr.soma(), host_lyr.layer_addr())];
 
         // Set up execution command:
         let exe_cmd_tars = (host_lyr_base_axn_slc..host_lyr_base_axn_slc + host_lyr.dims().depth())
@@ -63,18 +52,16 @@ impl IntraColumnInhib {
             .collect();
 
         let exe_cmd_uid = exe_graph.add_command(CommandRelations::cortical_kernel(
-             "inhib_...", exe_cmd_srcs, exe_cmd_tars))?;
-
+             kern_name, exe_cmd_srcs, exe_cmd_tars))?;
 
         Ok(IntraColumnInhib {
             layer_name: layer_name,
             layer_addr: layer_addr,
             host_lyr_addr: host_lyr.layer_addr(),
-            kern_inhib_simple: kern_inhib_simple,
-            // kern_inhib_passthrough: kern_inhib_passthrough,
+            kern: kern,
             exe_cmd_uid,
             exe_cmd_idx: 0,
-            rng: cmn::weak_rng(),
+            // rng: cmn::weak_rng(),
             settings: settings,
         })
     }
@@ -84,13 +71,12 @@ impl IntraColumnInhib {
         Ok(())
     }
 
-    // FIXME: `::new` should take the `bypass` argument instead.
     pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         let mut event = Event::empty();
 
-        self.kern_inhib_simple.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
+        // self.kern.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
         unsafe {
-            self.kern_inhib_simple.cmd()
+            self.kern.cmd()
                 .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)
                 .enew(&mut event)
                 .enq()?;

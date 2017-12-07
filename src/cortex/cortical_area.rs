@@ -16,7 +16,7 @@ use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind
 use ::Thalamus;
 use cortex::{AxonSpace, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother, PyrOutputter,
-    WorkPool, ControlCellLayers};
+    WorkPool, ControlCellLayers, IntraColumnInhib};
 use subcortex::{self, TractBuffer, TractSender, TractReceiver};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
