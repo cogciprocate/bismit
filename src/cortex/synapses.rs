@@ -156,7 +156,8 @@ impl Synapses {
         ===============================================================================
         =============================================================================*/
 
-        for tft_scheme in cell_scheme.tft_schemes() {
+        for (tft_id, tft_scheme) in cell_scheme.tft_schemes().iter().enumerate() {
+            assert!(tft_id == tft_scheme.tft_id());
             let syns_per_tft_l2 = tft_scheme.syns_per_tft_l2();
 
             let tft_syn_idz = syn_count_ttl;
@@ -171,8 +172,10 @@ impl Synapses {
 
             tft_dims_by_tft.push(tft_dims.clone());
 
+            let is_saturated = syn_src_slices.by_tft()[tft_id].is_saturated();
+
             src_idx_caches_by_tft.push(SynSrcIdxCache::new(tft_syn_idz as usize,
-                tft_dims, dims.clone()));
+                tft_dims, dims.clone(), is_saturated));
 
             if DEBUG_NEW {
                 println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): Tuft: len: {},\n\
@@ -244,8 +247,8 @@ impl Synapses {
                     .arg_buf(&states)
             }));
 
-            let mut cmd_srcs: Vec<CorticalBuffer> = syn_src_slices.src_slc_ids_by_tft(tft_id)
-                .unwrap().iter().map(|&slc_id|
+            let mut cmd_srcs: Vec<CorticalBuffer> = syn_src_slices.by_tft()[tft_id]
+                .id_pools().iter().map(|&slc_id|
                     CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
                 .collect();
 
@@ -351,21 +354,6 @@ impl Synapses {
         Ok(())
     }
 
-    #[inline] pub fn len(&self) -> usize { self.states.len() }
-    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
-    #[inline] pub fn lyr_dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
-    #[inline] pub fn strengths(&self) -> &Buffer<i8> { &self.strengths }
-    #[inline] pub fn src_slc_ids(&self) -> &Buffer<u8> { &self.src_slc_ids }
-    #[inline] pub fn src_col_v_offs(&self) -> &Buffer<i8> { &self.src_col_v_offs }
-    #[inline] pub fn src_col_u_offs(&self) -> &Buffer<i8> { &self.src_col_u_offs }
-    #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
-    #[inline] pub fn count(&self) -> u32 { self.states.len() as u32 }
-    #[inline] pub fn tft_count(&self) -> usize { self.src_idx_caches_by_tft.len() }
-    #[inline] pub fn syn_idzs_by_tft(&self) -> &[u32] { self.syn_idzs_by_tft.as_slice() }
-    #[inline] pub fn tft_dims_by_tft(&self) -> &[TuftDims] { self.tft_dims_by_tft.as_slice() }
-
-
     // [FIXME] TODO: VERIFY AXON INDEX SAFETY (notes below and in syn_src_map.rs).
     // - Will need to know u and v coords of host cell or deconstruct from syn_idx.
     fn regrow_syn(&mut self, syn_idx: usize, tft_id: usize, _: bool) {
@@ -431,10 +419,13 @@ impl Synapses {
             let syn_idn = unsafe { syn_idz + *self.syn_counts_by_tft.get_unchecked(tft_id) as usize };
 
             if DEBUG_GROW && init {
+                // NOTE: Not sure if this is what we want to see:
+                let src_slcs_by_tft: Vec<_> = self.syn_src_slices.by_tft().iter()
+                    .map(|slc| slc.id_pools()).collect();
                 println!("{mt}{mt}{mt}{mt}{mt}\
                     SYNAPSES::GROW()[INIT]: '{}': src_slc_id_rchs: {:?}, \
                     syns_per_layer_tft:{}, idz:{}, idn:{}", self.layer_name,
-                    self.syn_src_slices.src_slc_id_pools_by_tft(),
+                    src_slcs_by_tft,
                     unsafe { *self.syn_counts_by_tft.get_unchecked(tft_id) },
                     syn_idz, syn_idn, mt = cmn::MT);
             }
@@ -443,7 +434,7 @@ impl Synapses {
                 debug_assert!(syn_idx < self.vec_strengths.len());
 
                 if init || (unsafe { *self.vec_strengths
-                    .get_unchecked(syn_idx) } <= cmn::SYNAPSE_STRENGTH_FLOOR)
+                        .get_unchecked(syn_idx) } <= cmn::SYNAPSE_STRENGTH_FLOOR)
                 {
                     self.regrow_syn(syn_idx, tft_id, init);
                 }
@@ -456,6 +447,20 @@ impl Synapses {
         self.src_col_v_offs.cmd().write(&self.vec_src_col_v_offs).enq().unwrap();
         self.src_col_u_offs.cmd().write(&self.vec_src_col_u_offs).enq().unwrap();
     }
+
+    #[inline] pub fn len(&self) -> usize { self.states.len() }
+    #[inline] pub fn layer_id(&self) -> usize { self.layer_id }
+    #[inline] pub fn lyr_dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
+    #[inline] pub fn strengths(&self) -> &Buffer<i8> { &self.strengths }
+    #[inline] pub fn src_slc_ids(&self) -> &Buffer<u8> { &self.src_slc_ids }
+    #[inline] pub fn src_col_v_offs(&self) -> &Buffer<i8> { &self.src_col_v_offs }
+    #[inline] pub fn src_col_u_offs(&self) -> &Buffer<i8> { &self.src_col_u_offs }
+    #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
+    #[inline] pub fn count(&self) -> u32 { self.states.len() as u32 }
+    #[inline] pub fn tft_count(&self) -> usize { self.src_idx_caches_by_tft.len() }
+    #[inline] pub fn syn_idzs_by_tft(&self) -> &[u32] { self.syn_idzs_by_tft.as_slice() }
+    #[inline] pub fn tft_dims_by_tft(&self) -> &[TuftDims] { self.tft_dims_by_tft.as_slice() }
 }
 
 

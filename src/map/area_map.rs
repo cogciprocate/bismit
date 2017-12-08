@@ -134,6 +134,8 @@ impl AreaMap {
             }
         }
 
+        // println!("\n###### ID_RCHS: {:?}", id_rchs);
+
         id_rchs
     }
 

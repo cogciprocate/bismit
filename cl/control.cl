@@ -315,16 +315,16 @@ __kernel void pyr_output(
 
 // Inhibits cells which are not the best in their column.
 //
-// TODO: Cache cell states
+// TODO: Cache cell states.
 __kernel void inhib_intra_column(
         __global const uchar* const cel_states,
         __private uchar const depth,
         __private uchar const cel_base_axn_slc,
         __global uchar* const axn_states) {
     uint const v_id = get_global_id(0);
-    uint const u_id = get_global_id(0);
+    uint const u_id = get_global_id(1);
     uint const v_size = get_global_size(0);
-    uint const u_size = get_global_size(0);
+    uint const u_size = get_global_size(1);
 
     uchar best_cel_state = 0;
 
@@ -334,7 +334,7 @@ __kernel void inhib_intra_column(
         uchar cel_state = cel_states[cel_idx];
 
         int cel_is_best = cel_state >= best_cel_state;
-        best_cel_state = mul24((uchar)cel_is_best, cel_state);
+        best_cel_state = (uchar)mul24((uint)cel_is_best, (uint)cel_state);
     }
 
     // Output cell state only if it == best, otherwise 0:
@@ -347,6 +347,6 @@ __kernel void inhib_intra_column(
         uchar cel_state = cel_states[cel_idx];
         int cel_is_best = cel_state >= best_cel_state;
 
-        axn_states[cel_axn_idx] = mul24((uchar)cel_is_best, cel_state);
+        axn_states[cel_axn_idx] = (uchar)mul24((uint)cel_is_best, (uint)cel_state);
     }
 }
