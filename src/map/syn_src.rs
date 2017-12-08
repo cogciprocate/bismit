@@ -173,8 +173,6 @@ impl SynSrcIdxCache {
             dens.push(BTreeSet::new());
         }
 
-        //println!("##### CREATING SRCIDXCACHE WITH: dens: {}", dens.len());
-
         SynSrcIdxCache {
             tft_syn_idz,
             tft_dims,
@@ -218,20 +216,6 @@ pub enum OfsPool {
     Spatial { offs: Vec<(i8, i8)>, ofs_idx_range: RandRange<usize> },
 }
 
-// impl Hash for OfsPool {
-//     fn hash<H: Hasher>(&self, state: &mut H) {
-//         self.id.hash(state);
-//         self.phone.hash(state);
-
-//         match *self {
-//             Horizontal(v_range, u_range) => {
-//                 v_range.start.hash(state);
-//                 v_range.end.hash(state);
-//                 u_range.hash()
-//         }
-//     }
-// }
-
 
 /// Parameters describing a slice.
 ///
@@ -248,9 +232,8 @@ pub struct SynSrcSliceInfo {
 
 impl SynSrcSliceInfo {
     pub fn new(axn_kind: &AxonTopology, src_slc_dims: &SliceDims, syn_reach: i8,
-            /*syns_per_den_l2: u8,*/ tft_slc_id_pool_len: u32) -> CmnResult<SynSrcSliceInfo>
+            tft_slc_id_pool_len: u32) -> CmnResult<SynSrcSliceInfo>
     {
-        // let syns_per_den = 1 << syns_per_den_l2;
         let poss_syn_offs_val_count;
         let slc_off_pool;
 
@@ -300,15 +283,6 @@ impl SynSrcSliceInfo {
                 };
             },
         };
-
-        // // Ensure we have enough unique synapse source address values:
-        // if poss_syn_offs_val_count < syns_per_den {
-        //     panic!("The cells of this slice do not have enough possible \
-        //         synapse source offset values (possible: {}, needed: {}) to avoid \
-        //         duplicate source values due to the relative sizes of the source and \
-        //         destination slices. Decrease the number of synapses or increase synapse \
-        //         reach. [FIXME: Add layer info]", poss_syn_offs_val_count, syns_per_den);
-        // }
 
         let scaled_syn_reaches = try!(src_slc_dims.scale_offs((syn_reach, syn_reach)));
 
@@ -382,11 +356,6 @@ impl SynSrcSlice {
 /// Used to calculate a valid source axon index during synapse growth or regrowth.
 #[derive(Debug)]
 pub struct SynSrcSlices {
-    // slc_info_by_tft: Vec<BTreeMap<u8, SynSrcSliceInfo>>,
-    // src_slc_id_pools_by_tft: Vec<Vec<u8>>,
-    // src_slc_id_pool_ranges_by_tft: Vec<RandRange<usize>>,
-    // str_ranges_by_tft: Vec<RandRange<i8>>,
-
     slices_by_tft: Vec<SynSrcSlice>,
 }
 
@@ -394,20 +363,10 @@ impl SynSrcSlices {
     pub fn new(lyr_id: usize, tft_schemes: &[TuftScheme], area_map: &AreaMap)
             -> CmnResult<SynSrcSlices>
     {
-        // let mut slc_info_by_tft = Vec::with_capacity(tft_schemes.len());
-        // let mut src_slc_id_pools_by_tft = Vec::with_capacity(tft_schemes.len());
-        // let mut src_slc_id_pool_ranges_by_tft = Vec::with_capacity(tft_schemes.len());
-        // let mut str_ranges_by_tft = Vec::with_capacity(tft_schemes.len());
-
         let mut slices_by_tft = Vec::with_capacity(tft_schemes.len());
 
         for tft_scheme in tft_schemes.iter() {
             let tft_id = tft_scheme.tft_id();
-
-            // debug_assert!(tft_id == slc_info_by_tft.len() &&
-            //     tft_id == src_slc_id_pools_by_tft.len() &&
-            //     tft_id == src_slc_id_pool_ranges_by_tft.len() &&
-            //     tft_id == str_ranges_by_tft.len());
 
             debug_assert!(tft_id == slices_by_tft.len());
 
@@ -461,12 +420,6 @@ impl SynSrcSlices {
             println!("\n##### IS_SATURATED: {} (poss_syn_offs_val_count: {}, syns_per_den: {})",
                 is_saturated, poss_syn_offs_val_count, syns_per_den);
 
-            // str_ranges_by_tft.push(RandRange::new(STR_MIN, STR_MAX));
-            // src_slc_id_pool_ranges_by_tft.push(RandRange::new(0, slc_id_pool.len()));
-            // src_slc_id_pools_by_tft.push(slc_id_pool);
-
-            // slc_info_by_tft.push(info_by_slc);
-
             let id_pool_ranges = RandRange::new(0, id_pools.len());
             let str_ranges = RandRange::new(STR_MIN, STR_MAX);
 
@@ -480,11 +433,6 @@ impl SynSrcSlices {
         }
 
         Ok(SynSrcSlices {
-            // slc_info_by_tft: slc_info_by_tft,
-            // src_slc_id_pool_ranges_by_tft: src_slc_id_pool_ranges_by_tft,
-            // src_slc_id_pools_by_tft: src_slc_id_pools_by_tft,
-            // str_ranges_by_tft: str_ranges_by_tft,
-
             slices_by_tft,
         })
     }
@@ -496,25 +444,15 @@ impl SynSrcSlices {
     // figure out how to deconstruct this from the syn_idx or something.
     //
     pub fn gen_src(&self, tft_id: usize, rng: &mut XorShiftRng) -> SynSrc {
-        // debug_assert!(tft_id < self.src_slc_id_pools_by_tft.len() && tft_id < self.slc_info_by_tft.len());
-
         debug_assert!(tft_id < self.slices_by_tft.len());
 
         let src_slices = unsafe { self.slices_by_tft.get_unchecked(tft_id) };
 
-        // let &slc_id = unsafe {
-        //     let rand_slc_id_lyr = self.src_slc_id_pool_ranges_by_tft.get_unchecked(tft_id).ind_sample(rng);
-        //     self.src_slc_id_pools_by_tft.get_unchecked(tft_id).get_unchecked(rand_slc_id_lyr)
-        // };
         let &slc_id = unsafe {
             let rand_slc_id_lyr = src_slices.id_pool_ranges.ind_sample(rng);
             src_slices.id_pools.get_unchecked(rand_slc_id_lyr)
         };
 
-        // let slc_info = unsafe {
-        //     &self.slc_info_by_tft.get_unchecked(tft_id)
-        //         .get(&slc_id).expect("SynSrcSlices::gen_offs(): Internal error: invalid slc_id.")
-        // };
         let slc_info = &src_slices.info_by_slc.get(&slc_id)
             .expect("SynSrcSlices::gen_offs(): Internal error: invalid slc_id.");
 
@@ -537,8 +475,6 @@ impl SynSrcSlices {
                 let syn_str_intensity = (((syn_reaches.0 as i32 - v_ofs.abs() as i32) +
                         (syn_reaches.1 as i32 - u_ofs.abs() as i32)) >> INTENSITY_REDUCTION_L2) as i8;
 
-                // let strength = syn_str_intensity *
-                //     unsafe {self.str_ranges_by_tft.get_unchecked(tft_id).ind_sample(rng) };
                 let strength = syn_str_intensity * src_slices.str_ranges.ind_sample(rng);
 
                 SynSrc {
@@ -550,14 +486,6 @@ impl SynSrcSlices {
             },
         }
     }
-
-    // #[inline] pub fn src_slc_id_pools_by_tft(&self) -> &[Vec<u8>] {
-    //     self.src_slc_id_pools_by_tft.as_slice()
-    // }
-
-    // #[inline] pub fn src_slc_ids_by_tft(&self, tft_id: usize) -> Option<&[u8]> {
-    //     self.src_slc_id_pools_by_tft.get(tft_id).map(|ssids| ssids.as_slice())
-    // }
 
     #[inline]
     pub fn by_tft(&self) -> &[SynSrcSlice] {
