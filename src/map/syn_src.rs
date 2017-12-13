@@ -417,8 +417,8 @@ impl SynSrcSlices {
 
             let is_saturated = poss_syn_offs_val_count == syns_per_den;
 
-            println!("\n##### IS_SATURATED: {} (poss_syn_offs_val_count: {}, syns_per_den: {})",
-                is_saturated, poss_syn_offs_val_count, syns_per_den);
+            // println!("\n##### IS_SATURATED: {} (poss_syn_offs_val_count: {}, syns_per_den: {})",
+            //     is_saturated, poss_syn_offs_val_count, syns_per_den);
 
             let id_pool_ranges = RandRange::new(0, id_pools.len());
             let str_ranges = RandRange::new(STR_MIN, STR_MAX);

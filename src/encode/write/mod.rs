@@ -1,5 +1,6 @@
 mod scalar_sdr_writer;
 mod scalar_glyph_writer;
+mod vector_2d_writer;
 
 use std::cmp;
 // use std::ops::AddAssign;

@@ -261,7 +261,7 @@ pub struct CorticalAreaSettings {
     pub disable_mcols: bool,
     pub disable_regrowth: bool,
     pub disable_learning: bool,
-    pub build_options: Vec<BuildOpt>
+    pub build_options: Vec<BuildOpt>,
 }
 
 impl CorticalAreaSettings {

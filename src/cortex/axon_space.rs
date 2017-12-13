@@ -574,7 +574,7 @@ impl AxonSpace {
                                 .map_err(|err| panic!("{:?}", err));
                             //////////////
 
-                            work_pool.submit_work(future_write)?;
+                            work_pool.complete_work(future_write)?;
                             Some(ev)
                         };
                         exe_graph.set_cmd_event(cmd_idx, event)?;
@@ -615,7 +615,7 @@ impl AxonSpace {
                             .and_then(|_guard| Ok(()))
                             .map_err(|err| panic!("{:?}", err)));
 
-                        work_pool.submit_work(future_read)?;
+                        work_pool.complete_work(future_read)?;
                         Some(ev)
                     };
 

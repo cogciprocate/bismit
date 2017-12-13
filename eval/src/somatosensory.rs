@@ -367,9 +367,9 @@ fn define_a_schemes() -> AreaSchemeList {
         .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)
             .eff_areas(vec![IN_AREA])
         )
-        .area(AreaScheme::new("v2", "visual", AREA_DIM)
-            .eff_areas(vec![IN_AREA])
-        )
+        // .area(AreaScheme::new("v2", "visual", AREA_DIM)
+        //     .eff_areas(vec![IN_AREA])
+        // )
 }
 
 pub fn ca_settings() -> CorticalAreaSettings {

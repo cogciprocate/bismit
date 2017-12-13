@@ -41,7 +41,7 @@ impl WorkPoolRemote {
     }
 
     /// Submit a future which contains non-trivial CPU work (including memcpy).
-    pub fn submit_work<F>(&mut self, work: F) -> CmnResult<()>
+    pub fn complete_work<F>(&mut self, work: F) -> CmnResult<()>
             where F: Future<Item=(), Error=()> + Send + 'static {
         let future = self.cpu_pool.spawn(work);
         self.complete(future)
@@ -88,7 +88,7 @@ impl WorkPool {
     }
 
     /// Submit a future which contains non-trivial CPU work (including memcpy).
-    pub fn submit_work<F>(&mut self, work: F) -> CmnResult<()>
+    pub fn complete_work<F>(&mut self, work: F) -> CmnResult<()>
             where F: Future<Item=(), Error=()> + Send + 'static {
         let future = self.cpu_pool.spawn(work);
         self.complete(future)

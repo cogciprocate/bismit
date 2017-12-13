@@ -17,8 +17,55 @@ const ENCODE_DIM: u32 = 64;
 const AREA_DIM: u32 = 16;
 const HEX_GRP_RADIUS: usize = 6;
 
+// enum CompletionResult {
+//     None,
+//     Break,
+// }
 
-pub fn draw(params: &Params, controls: &Controls) {
+fn complete(controls: &Controls) {
+    // Cycle and finish queues:
+    controls.cmd_tx.send(Command::Iterate(1)).unwrap();
+    controls.req_tx.send(Request::FinishQueues).unwrap();
+    controls.cmd_tx.send(Command::None).unwrap();
+
+    // Wait for completion.
+    loop {
+        debug!("Attempting to receive...");
+        match controls.res_rx.recv() {
+            Ok(res) => match res {
+                Response::Status(status) => {
+                    debug!("Status: {:?}", status);
+                },
+                Response::QueuesFinished(cycle_iter) => {
+                    debug!("Queues finished (cycle: {})", cycle_iter);
+                    break;
+                },
+                Response::Exiting => {
+                    // exiting = true;
+                    break;
+                },
+                res @ _ => panic!("Unknown response received: {:?}", res),
+            },
+            Err(_) => {
+                // exiting = true;
+                break;
+            }
+        };
+    }
+}
+
+pub fn draw_coord(params: &Params, controls: &Controls) {
+    fn write(offset: [f32; 2], guard: &mut [u8]) {
+
+    }
+
+    let mut guard = params.tract_buffer.clone().write().wait().unwrap();
+    WriteGuard::release(guard);
+    complete(controls);
+}
+
+
+pub fn draw_tilegroup(params: &Params, controls: &Controls) {
     debug!("EVAL HEXDRAW DRAW: 0");
 
     // Populates the thing.
@@ -55,49 +102,14 @@ pub fn draw(params: &Params, controls: &Controls) {
 
     debug!("EVAL HEXDRAW DRAW: 4000");
 
-    // Cycle and finish queues:
-    controls.cmd_tx.send(Command::Iterate(1)).unwrap();
-    controls.req_tx.send(Request::FinishQueues).unwrap();
-    controls.cmd_tx.send(Command::None).unwrap();
-
-    debug!("EVAL HEXDRAW DRAW: 5000");
-
-    // Wait for completion.
-    loop {
-        debug!("Attempting to receive...");
-        match controls.res_rx.recv() {
-            Ok(res) => match res {
-                Response::Status(status) => {
-                    debug!("Status: {:?}", status);
-                },
-                Response::QueuesFinished(cycle_iter) => {
-                    debug!("Queues finished (cycle: {})", cycle_iter);
-                    break;
-                },
-                Response::Exiting => {
-                    // exiting = true;
-                    break;
-                },
-                res @ _ => panic!("Unknown response received: {:?}", res),
-            },
-            Err(_) => {
-                // exiting = true;
-                break;
-            }
-        };
-    }
-
-    // // Exit:
-    // controls.cmd_tx.send(Command::Exit).unwrap();
-    // controls.cmd_tx.send(Command::None).unwrap();
-    // debug!("Drawing complete.\n");
+    complete(controls);
 
     debug!("EVAL HEXDRAW DRAW: 9999");
 }
 
 
 /// Draws an arbitrary pattern as an sdr.
-pub fn eval() {
+pub fn eval(sub: Option<&str>) {
     let layer_map_schemes = define_lm_schemes();
     let area_schemes = define_a_schemes();
 
@@ -137,9 +149,18 @@ pub fn eval() {
     // Sleep until vibi window opens (need a better mech. for this):
     thread::sleep(::std::time::Duration::new(1, 0));
 
-    // Draw (only need to draw 1):
-    for _ in 0..5000 {
-        draw(&params, &controls);
+    match sub {
+        None | Some("tilegroup") => {
+            // for _ in 0..5000 {
+                draw_tilegroup(&params, &controls);
+            // }
+        }
+        Some("coord") => {
+            // for _ in 0..5000 {
+                draw(&params, &controls);
+            // }
+        }
+        s @ _ => println!("eval-motor: Unknown option specified: {:?}", s),
     }
 
     ::join_threads(controls);

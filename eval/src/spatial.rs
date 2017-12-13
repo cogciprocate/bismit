@@ -12,7 +12,6 @@ use vibi::bismit::{map, encode, Result as CmnResult, Cortex, CorticalAreaSetting
 use vibi::bismit::map::*;
 use ::{IncrResult, TrialIter, Layer, PathwayDir};
 
-
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
 static EXT_LYR: &'static str = "external_0";
@@ -22,12 +21,12 @@ const ENCODE_DIM: u32 = 48;
 const AREA_DIM: u32 = 16;
 const SEQUENTIAL_SDR: bool = true;
 
-
 pub type CellIdx = usize;
 pub type ActivityCount = usize;
 pub type ActiveCells = BTreeMap<CellIdx, ActivityCount>;
 pub type PatternIdx = usize;
 pub type PatternAssociations = BTreeMap<PatternIdx, ActiveCells>;
+
 
 #[derive(Clone, Debug)]
 pub struct TrialResults {
@@ -551,7 +550,7 @@ impl SubcorticalNucleus for EvalSpatial {
                     })
                     .map_err(|err| panic!("{:?}", err));
 
-                work_pool.submit_work(future_write)?;
+                work_pool.complete_work(future_write)?;
             }
         }
 
@@ -581,7 +580,7 @@ impl SubcorticalNucleus for EvalSpatial {
                 })
                 .map_err(|err| panic!("{:?}", err));
 
-            work_pool.submit_work(future_increment)?;
+            work_pool.complete_work(future_increment)?;
         }
 
         match self.trial_iter.incr() {

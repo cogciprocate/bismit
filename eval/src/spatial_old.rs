@@ -948,7 +948,7 @@ impl SubcorticalNucleus for EvalSpatial {
                 })
                 .map_err(|err| panic!("{:?}", err));
 
-            work_pool.submit_work(future_write)?;
+            work_pool.complete_work(future_write)?;
         }
 
         Ok(())
@@ -987,7 +987,7 @@ impl SubcorticalNucleus for EvalSpatial {
                 })
                 .map_err(|err| panic!("{:?}", err));
 
-            work_pool.submit_work(future_increment)?;
+            work_pool.complete_work(future_increment)?;
         }
 
         match self.trial_iter.incr() {
@@ -1019,7 +1019,7 @@ impl SubcorticalNucleus for EvalSpatial {
 
                 future_print_activity.wait()?;
 
-                // work_pool.submit_work(future_print_activity)?;
+                // work_pool.complete_work(future_print_activity)?;
 
                 let trial_cycle_count = train + collect;
 
