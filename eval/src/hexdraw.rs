@@ -54,17 +54,6 @@ fn complete(controls: &Controls) {
     }
 }
 
-pub fn draw_coord(params: &Params, controls: &Controls) {
-    fn write(offset: [f32; 2], guard: &mut [u8]) {
-
-    }
-
-    let mut guard = params.tract_buffer.clone().write().wait().unwrap();
-    WriteGuard::release(guard);
-    complete(controls);
-}
-
-
 pub fn draw_tilegroup(params: &Params, controls: &Controls) {
     debug!("EVAL HEXDRAW DRAW: 0");
 
@@ -105,6 +94,17 @@ pub fn draw_tilegroup(params: &Params, controls: &Controls) {
     complete(controls);
 
     debug!("EVAL HEXDRAW DRAW: 9999");
+}
+
+
+pub fn draw_coord(params: &Params, controls: &Controls) {
+    fn write(offset: [f32; 2], guard: &mut [u8]) {
+
+    }
+
+    let mut guard = params.tract_buffer.clone().write().wait().unwrap();
+    WriteGuard::release(guard);
+    complete(controls);
 }
 
 
@@ -157,7 +157,7 @@ pub fn eval(sub: Option<&str>) {
         }
         Some("coord") => {
             // for _ in 0..5000 {
-                draw(&params, &controls);
+                draw_coord(&params, &controls);
             // }
         }
         s @ _ => println!("eval-motor: Unknown option specified: {:?}", s),

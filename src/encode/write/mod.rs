@@ -13,6 +13,7 @@ use super::ScalarEncodable;
 pub use self::scalar_glyph_writer::ScalarGlyphWriter;
 pub use self::scalar_sdr_writer::{ScalarSdrWriter, gen_axn_idxs, write_rand_subset_linear,
     write_rand_subset_stochastic};
+pub use self::vector_2d_writer::Vector2dWriter;
 
 
 /// Encode a scalar as a hexagon somewhere along the border of the tract frame

@@ -1,5 +1,23 @@
+#![allow(unused_variables, dead_code)]
+
+//!
+//! x: 0˚, y: 90˚
+//! u: 330˚ (-30˚), v: 90˚, w: 210˚,
+
 use cmn::{TractFrameMut, TractDims};
 // use encode::ScalarEncodable;
+
+/// Converts (x, y) coordinates into (u, v, w).
+///
+/// x: 0˚, y: 90˚
+/// u: 330˚ (-30˚), v: 90˚, w: 210˚
+///
+fn convert(xy: [f32; 2]) -> [f32; 3] {
+    let u = (xy[0] * (3.0f32).sqrt() - xy[1]) / 2.0;
+    let v = xy[1];
+    let w = -(u + v);
+    [u, v, w]
+}
 
 #[derive(Clone, Debug)]
 pub struct Vector2dWriter {
@@ -29,40 +47,40 @@ impl Vector2dWriter {
         }
     }
 
-    // fn xform(&self, raw: T) -> f32 {
-    //     (raw.to_f32().unwrap() + self.raw_offs) * self.raw_scale
-    // }
-
+    /// Applies the preset offset and scale (default 0.0 and 1.0
+    /// respectively).
     #[inline]
     fn xform(&self, raw: f32) -> f32 {
         (raw + self.raw_offs) * self.raw_scale
     }
 
-    fn decompose(&self, a_raw: [f32; 2]) -> [f32; 6] {
-        let a = [self.xform(a_raw[0]),
-            self.xform(a_raw[1])];
+    /// Transforms (offsets & scales) then converts (x, y) coordinates into
+    /// normalized (u, v, w) and a magnitude.
+    fn decompose(&self, mut xy: [f32; 2]) -> ([f32; 3], f32) {
+        xy = [self.xform(xy[0]),
+            self.xform(xy[1])];
 
+        let mag = (xy[0].powi(2) + xy[1].powi(2)).sqrt();
+        xy = [xy[0] / mag, xy[1] / mag];
 
-
-        let
+        (convert(xy), mag)
     }
 
-    pub fn encode(&mut self, a_raw: [f32; 2], tract: &mut TractFrameMut) {
-        // let a = [self.xform(a_raw[0]),
-        //     self.xform(a_raw[1])];
+    pub fn encode(&mut self, xy_raw: [f32; 2], tract: &mut TractFrameMut) {
+        // let (uvw, mag) = self.decompose(xy_raw);
+        let xy = [self.xform(xy_raw[0]), self.xform(xy_raw[1])];
+        let uvw = convert(xy);
 
-        let a = decompose(a_raw);
+        // for scale_level_idx in 0..self.scale_level_count {
+        //     let unit = if scale_level_idx < self.scale_level_mid {
+        //         0.
+        //     } else if scale_level_idx > self.scale_level_mid {
+        //         0.
+        //     } else {
+        //         1.0f32
+        //     };
+        // }
 
-
-        for scale_level_idx in 0..self.scale_level_count {
-            let unit = if scale_level_idx < self.scale_level_mid {
-                0.
-            } else if scale_level_idx > self.scale_level_mid {
-                0.
-            } else {
-                1.0f32
-            };
-        }
 
     }
 }
