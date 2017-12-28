@@ -14,8 +14,8 @@ const RADIX: u32 = 3;
 /// x: 0˚, y: 90˚
 /// u: 330˚ (-30˚), v: 90˚, w: 210˚
 ///
-fn convert(xy: [f32; 2]) -> [f32; 3] {
-    let u = (xy[0] * (3.0f32).sqrt() - xy[1]) / 2.0;
+fn convert(xy: [f64; 2]) -> [f64; 3] {
+    let u = (xy[0] * (3.0f64).sqrt() - xy[1]) / 2.0;
     let v = xy[1];
     let w = -(u + v);
     [u, v, w]
@@ -24,9 +24,9 @@ fn convert(xy: [f32; 2]) -> [f32; 3] {
 // Returns a renderable value-compliment pair for `val`. The compliment is the
 // nearest relevant (renderable) point in a triangle grid.
 #[inline]
-fn rc_pairs(mut val: f32) -> [f32; 2] {
+fn rc_pairs(mut val: f64) -> [f64; 2] {
     // // NOTE: maybe we want noise? -- possibly remove this.
-    // debug_assert!(val >= -(RADIX as f32) && val <= RADIX as f32);
+    // debug_assert!(val >= -(RADIX as f64) && val <= RADIX as f64);
 
     // Scale and shift value such that [-1.0, 1.0] -> [0.0, 1.0].
     val = (val / 2.) + 0.5;
@@ -34,15 +34,15 @@ fn rc_pairs(mut val: f32) -> [f32; 2] {
     val = val.fract();
 
     // Add 1 to value if negative;
-    val += (val < 0.) as i32 as f32;
+    val += (val < 0.) as i32 as f64;
 
     // if val <= 0.5 {
     //     [val, val + 1.]
     // } else {
     //     [val - 1., val]
     // }
-    let lt_half = (val <= 0.5) as i32 as f32;
-    let gt_half = (val > 0.5) as i32 as f32;
+    let lt_half = (val <= 0.5) as i32 as f64;
+    let gt_half = (val > 0.5) as i32 as f64;
 
     [val - gt_half, val + lt_half]
 }
@@ -51,9 +51,9 @@ fn rc_pairs(mut val: f32) -> [f32; 2] {
 #[derive(Clone, Debug)]
 pub struct Vector2dWriter {
     tract_dims: TractDims,
-    raw_offs: f32,
-    raw_scale: f32,
-    scale_levels: Vec<f32>,
+    raw_offs: f64,
+    raw_scale: f64,
+    scale_levels: Vec<f64>,
     precision_redundancy: u32,
     render_pad: isize,
 }
@@ -71,7 +71,7 @@ impl Vector2dWriter {
         let mut scale_levels = Vec::with_capacity(scale_level_count as usize);
 
         for scale_level_idx in 0..scale_level_count {
-            let unit = (RADIX as f32).powi(scale_level_mid_idx - scale_level_idx);
+            let unit = (RADIX as f64).powi(scale_level_mid_idx - scale_level_idx);
             // println!("###### VECTOR2DWRITER: Adding scale level: {}", unit);
             scale_levels.push(unit);
         }
@@ -89,14 +89,14 @@ impl Vector2dWriter {
     /// Applies the preset offset and scale (default 0.0 and 1.0
     /// respectively).
     #[inline]
-    fn xform(&self, raw: f32) -> f32 {
+    fn xform(&self, raw: f64) -> f64 {
         (raw + self.raw_offs) * self.raw_scale
     }
 
     /// Transforms (offsets & scales) then converts (x, y) coordinates into
     /// normalized (u, v, w) and a magnitude.
     #[allow(dead_code)]
-    fn decompose(&self, mut xy: [f32; 2]) -> ([f32; 3], f32) {
+    fn decompose(&self, mut xy: [f64; 2]) -> ([f64; 3], f64) {
         xy = [self.xform(xy[0]),
             self.xform(xy[1])];
 
@@ -106,7 +106,7 @@ impl Vector2dWriter {
         (convert(xy), mag)
     }
 
-    pub fn encode(&mut self, xy_raw: [f32; 2], tract: &mut TractFrameMut) {
+    pub fn encode(&mut self, xy_raw: [f64; 2], tract: &mut TractFrameMut) {
         assert!(tract.dims() == &self.tract_dims);
         // let (uvw, mag) = self.decompose(xy_raw);
         let xy = [self.xform(xy_raw[0]), self.xform(xy_raw[1])];
@@ -148,7 +148,7 @@ impl Vector2dWriter {
 
             // println!("###### centers: {:?}", centers);
 
-            let prec = self.precision_redundancy as f32;
+            let prec = self.precision_redundancy as f64;
 
             // TODO: Refactor/clean up.
             let center_idxs = [

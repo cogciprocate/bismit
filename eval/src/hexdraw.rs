@@ -100,11 +100,7 @@ pub fn draw_tilegroup(params: &Params, controls: &Controls) {
 }
 
 
-
-
-
-
-
+/// Encodes and renders a 2d vector.
 pub fn draw_coord(params: &Params, controls: &Controls) {
     let tract_dims = TractDims::new(ENCODE_DIMS[0], ENCODE_DIMS[1], 1);
     let mut encoder = Vector2dWriter::new(tract_dims);
@@ -132,15 +128,10 @@ pub fn draw_coord(params: &Params, controls: &Controls) {
         complete(controls);
 
         // ::std::thread::sleep(::std::time::Duration::from_millis(1000));
-        x -= 0.00001;
-        // y -= 0.02;
+        x -= 0.0000001;
+        y += 100.00000;
     }
 }
-
-
-
-
-
 
 
 /// Draws an arbitrary pattern as an sdr.
