@@ -1,19 +1,42 @@
-#![allow(unused_variables, dead_code, unused_mut)]
-
+//! Renders a two dimensional vector as a SDR.
+//!
+//! Likely how spatial points/velocities are represented in vivo. Has all of
+//! the hallmarks of what we would expect to see including extreme robustness
+//! and noise tolerance with an arbitrary level of precision. The radix can be
+//! varied arbitrarily with higher radixes providing a wider scale at the cost
+//! of lower redundancy/overlap.
+//!
+//!
+//! ### Further Improvements
+//!
+//! - 3/omnidimensionality
+//! - Raw uvw input
+//!
+//!
+//! ### Conventions
 //!
 //! x: 0˚, y: 90˚
 //! u: 330˚ (-30˚), v: 90˚, w: 210˚,
+//!
+//
+// [NOTE]: `f64` is complete overkill here. `f32` would be perfectly fine.
+//
+
 
 use cmn::{TractFrameMut, TractDims};
 // use encode::ScalarEncodable;
 
+// The difference between each level of scale:
 const RADIX: u32 = 3;
+// The ratio of render line 'width' (`u_size`) to padding.
+const PADDING_QUOTIENT: isize = 128;
 
 /// Converts (x, y) coordinates into (u, v, w).
 ///
 /// x: 0˚, y: 90˚
 /// u: 330˚ (-30˚), v: 90˚, w: 210˚
 ///
+#[inline]
 fn convert(xy: [f64; 2]) -> [f64; 3] {
     let u = (xy[0] * (3.0f64).sqrt() - xy[1]) / 2.0;
     let v = xy[1];
@@ -21,40 +44,41 @@ fn convert(xy: [f64; 2]) -> [f64; 3] {
     [u, v, w]
 }
 
-// Returns a renderable value-compliment pair for `val`. The compliment is the
-// nearest relevant (renderable) point in a triangle grid.
+/// Returns a renderable value-compliment pair for `val`. The compliment is the
+/// nearest relevant (renderable) point in a triangle grid.
 #[inline]
 fn rc_pairs(mut val: f64) -> [f64; 2] {
-    // // NOTE: maybe we want noise? -- possibly remove this.
-    // debug_assert!(val >= -(RADIX as f64) && val <= RADIX as f64);
+    // Scale and shift value such that [-1.0, 1.0] -> [0.0, 1.0]:
+    // val = (val / 2.) + 0.5;
+    val = val.mul_add(2.0f64.recip(), 0.5);
 
-    // Scale and shift value such that [-1.0, 1.0] -> [0.0, 1.0].
-    val = (val / 2.) + 0.5;
-
+    // Values repeat every -/+ 1.0.
     val = val.fract();
 
-    // Add 1 to value if negative;
+    // Add 1 to value if negative:
     val += (val < 0.) as i32 as f64;
 
-    // if val <= 0.5 {
-    //     [val, val + 1.]
-    // } else {
-    //     [val - 1., val]
-    // }
+    // Create a compliment partner for rendering:
     let lt_half = (val <= 0.5) as i32 as f64;
     let gt_half = (val > 0.5) as i32 as f64;
-
     [val - gt_half, val + lt_half]
 }
 
 
+/// Renders a two dimensional vector as a SDR.
 #[derive(Clone, Debug)]
 pub struct Vector2dWriter {
     tract_dims: TractDims,
+    // Unused: [QUESTION]: Implement offs/scale setters functions or leave to
+    // caller to scale appropriately?
     raw_offs: f64,
+    // Unused:
     raw_scale: f64,
+    // Precalculated scales (-/+ powers of RADIX):
     scale_levels: Vec<f64>,
+    // Length of each render line:
     precision_redundancy: u32,
+    // Padding for drawing:
     render_pad: isize,
 }
 
@@ -64,7 +88,7 @@ impl Vector2dWriter {
         // println!("####### tract_dims: {:?}", tract_dims);
         let scale_level_count = tract_dims.v_size() as i32 / 3;
         let precision_redundancy = tract_dims.u_size();
-        let render_pad = precision_redundancy as isize / 128;
+        let render_pad = precision_redundancy as isize / PADDING_QUOTIENT;
 
         let scale_level_mid_idx = scale_level_count / 2;
 
@@ -97,8 +121,7 @@ impl Vector2dWriter {
     /// normalized (u, v, w) and a magnitude.
     #[allow(dead_code)]
     fn decompose(&self, mut xy: [f64; 2]) -> ([f64; 3], f64) {
-        xy = [self.xform(xy[0]),
-            self.xform(xy[1])];
+        xy = [self.xform(xy[0]), self.xform(xy[1])];
 
         let mag = (xy[0].powi(2) + xy[1].powi(2)).sqrt();
         xy = [xy[0] / mag, xy[1] / mag];
@@ -110,7 +133,7 @@ impl Vector2dWriter {
         assert!(tract.dims() == &self.tract_dims);
         // let (uvw, mag) = self.decompose(xy_raw);
         let xy = [self.xform(xy_raw[0]), self.xform(xy_raw[1])];
-        let mut uvw = convert(xy);
+        let uvw = convert(xy);
 
         // println!("\n########## UVW: {:?}", uvw);
 
@@ -125,19 +148,14 @@ impl Vector2dWriter {
 
         let tract_chunk_size = 3 * tract.dims().u_size() as usize;
 
-        // let render_pad = 0isize;
         let render_state = 1u8;
 
         for (scale_level, tract_chunk) in self.scale_levels.iter()
                 .zip(tract.chunks_mut(tract_chunk_size)) {
-            // debug_assert!(uvw[0].abs().max(uvw[1].abs()).max(uvw[2].abs()) < scale_level);
-
-            let dividend = scale_level;
-
             // Determine quotients:
-            let quots = [uvw[0] / dividend,
-                uvw[1] / dividend,
-                uvw[2] / dividend];
+            let quots = [uvw[0] / scale_level,
+                uvw[1] / scale_level,
+                uvw[2] / scale_level];
 
             // println!("\n## quots: {:?}", quots);
 
