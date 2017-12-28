@@ -16,8 +16,8 @@ static EXT_LYR: &'static str = "external_0";
 static SPT_LYR: &'static str = "iv";
 
 // const ENCODE_DIM: u32 = 64;
-const ENCODE_DIMS: [u32; 2] = [15, 100];
-const AREA_DIM: u32 = 16;
+const ENCODE_DIMS: [u32; 2] = [400, 400];
+const AREA_DIM: u32 = 32;
 const HEX_GRP_RADIUS: usize = 6;
 
 // enum CompletionResult {
@@ -131,8 +131,8 @@ pub fn draw_coord(params: &Params, controls: &Controls) {
         // WriteGuard::release(guard);
         complete(controls);
 
-        ::std::thread::sleep(::std::time::Duration::from_millis(20));
-        x -= 0.001;
+        // ::std::thread::sleep(::std::time::Duration::from_millis(1000));
+        x -= 0.00001;
         // y -= 0.02;
     }
 }

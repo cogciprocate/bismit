@@ -36,11 +36,15 @@ fn rc_pairs(mut val: f32) -> [f32; 2] {
     // Add 1 to value if negative;
     val += (val < 0.) as i32 as f32;
 
-    if val <= 0.5 {
-        [val, val + 1.]
-    } else {
-        [val - 1., val]
-    }
+    // if val <= 0.5 {
+    //     [val, val + 1.]
+    // } else {
+    //     [val - 1., val]
+    // }
+    let lt_half = (val <= 0.5) as i32 as f32;
+    let gt_half = (val > 0.5) as i32 as f32;
+
+    [val - gt_half, val + lt_half]
 }
 
 
@@ -49,35 +53,26 @@ pub struct Vector2dWriter {
     tract_dims: TractDims,
     raw_offs: f32,
     raw_scale: f32,
-    // dim_count: u32,
-    // scale_level_count: u32,
     scale_levels: Vec<f32>,
     precision_redundancy: u32,
-    // scale_level_mid_idx: usize,
+    render_pad: isize,
 }
 
 impl Vector2dWriter {
     pub fn new(tract_dims: TractDims) -> Vector2dWriter {
         assert!(tract_dims.v_size() as i32 >= 3, "Vector2dWriter::new: 'v' dimension too small.");
-        println!("####### tract_dims: {:?}", tract_dims);
+        // println!("####### tract_dims: {:?}", tract_dims);
         let scale_level_count = tract_dims.v_size() as i32 / 3;
         let precision_redundancy = tract_dims.u_size();
+        let render_pad = precision_redundancy as isize / 128;
 
         let scale_level_mid_idx = scale_level_count / 2;
-        // scale_level_mid_idx +=  scale_level_count - (scale_level_mid_idx * 2);
 
         let mut scale_levels = Vec::with_capacity(scale_level_count as usize);
 
         for scale_level_idx in 0..scale_level_count {
-            // let unit = if scale_level_idx < scale_level_mid_idx {
-            //     let sld = (scale_level_mid_idx - scale_level_idx) as i32;
-            //     (3.0).powi(sld)
-            // } else {
-            //     let sld = (scale_level_idx - scale_level_mid_idx) as i32;
-            //     (3.0).powi(sld).recip()
-            // };
             let unit = (RADIX as f32).powi(scale_level_mid_idx - scale_level_idx);
-            println!("###### VECTOR2DWRITER: Adding scale level: {}", unit);
+            // println!("###### VECTOR2DWRITER: Adding scale level: {}", unit);
             scale_levels.push(unit);
         }
 
@@ -85,11 +80,9 @@ impl Vector2dWriter {
             tract_dims,
             raw_offs: 0.,
             raw_scale: 1.,
-            // dim_count: 2,
-            // scale_level_count,
             scale_levels,
             precision_redundancy,
-            // scale_level_mid_idx,
+            render_pad,
         }
     }
 
@@ -121,20 +114,17 @@ impl Vector2dWriter {
 
         // println!("\n########## UVW: {:?}", uvw);
 
-        ////// BRING BACK?
-            // // NOTE: Consider removing this check and clamp the values at maximums
-            // // or make the whole thing non-linear and scale to infinity. There may
-            // // be a good reason to allow an arbitrary range of random-ish values
-            // // to represent 0/null.
-            // assert!(uvw[0].abs().max(uvw[1].abs()).max(uvw[2].abs()) <= self.scale_levels[0],
-            //     "Vector2dWriter::encode: A vector value exceeds the maximum (values: {:?}). \
-            //         Increase tract 'v' size to accommodate a larger range of values \
-            //         or scale/shift passed values to get them closer to zero. ", xy_raw);
-        ////////
+        // NOTE: Consider removing this check and clamp the values at maximums
+        // or make the whole thing non-linear and scale to infinity. There may
+        // be a good reason to allow an arbitrary range of random-ish values
+        // to represent 0/null.
+        assert!(uvw[0].abs().max(uvw[1].abs()).max(uvw[2].abs()) <= self.scale_levels[0],
+            "Vector2dWriter::encode: A vector value exceeds the maximum (values: {:?}). \
+                Increase tract 'v' size to accommodate a larger range of values \
+                or scale/shift passed values to get them closer to zero. ", xy_raw);
 
         let tract_chunk_size = 3 * tract.dims().u_size() as usize;
 
-        let render_pad = 2isize;
         // let render_pad = 0isize;
         let render_state = 1u8;
 
@@ -151,23 +141,6 @@ impl Vector2dWriter {
 
             // println!("\n## quots: {:?}", quots);
 
-            // // Determine quotient whole number component:
-            // let wholes = [quots[0].trunc(),
-            //     quots[1].trunc(),
-            //     quots[2].trunc()];
-
-            // // Determine quotient fraction component:
-            // let fracts = [quots[0] - wholes[0],
-            //     quots[1] - wholes[1],
-            //     quots[2] - wholes[2]];
-
-            // println!("#### fracts: {:?}", fracts);
-
-            // // Center point pairs to be rendered.
-            // let centers = [rc_pairs(fracts[0]),
-            //     rc_pairs(fracts[1]),
-            //     rc_pairs(fracts[2])];
-
             // Center point pairs to be rendered.
             let centers = [rc_pairs(quots[0]),
                 rc_pairs(quots[1]),
@@ -177,6 +150,7 @@ impl Vector2dWriter {
 
             let prec = self.precision_redundancy as f32;
 
+            // TODO: Refactor/clean up.
             let center_idxs = [
                 [(centers[0][0] * prec) as isize,
                     (centers[0][1] * prec) as isize],
@@ -186,13 +160,14 @@ impl Vector2dWriter {
                     (centers[2][1] * prec) as isize],
             ];
 
+            // TODO: Refactor/clean up.
             let edge_idxs = [
-                [[center_idxs[0][0] - render_pad, center_idxs[0][0] + render_pad],
-                    [center_idxs[0][1] - render_pad, center_idxs[0][1] + render_pad]],
-                [[center_idxs[1][0] - render_pad, center_idxs[1][0] + render_pad],
-                    [center_idxs[1][1] - render_pad, center_idxs[1][1] + render_pad]],
-                [[center_idxs[2][0] - render_pad, center_idxs[2][0] + render_pad],
-                    [center_idxs[2][1] - render_pad, center_idxs[2][1] + render_pad]],
+                [[center_idxs[0][0] - self.render_pad, center_idxs[0][0] + self.render_pad],
+                    [center_idxs[0][1] - self.render_pad, center_idxs[0][1] + self.render_pad]],
+                [[center_idxs[1][0] - self.render_pad, center_idxs[1][0] + self.render_pad],
+                    [center_idxs[1][1] - self.render_pad, center_idxs[1][1] + self.render_pad]],
+                [[center_idxs[2][0] - self.render_pad, center_idxs[2][0] + self.render_pad],
+                    [center_idxs[2][1] - self.render_pad, center_idxs[2][1] + self.render_pad]],
             ];
 
             // println!("######## edge_idxs: {:?}", edge_idxs);
@@ -206,14 +181,6 @@ impl Vector2dWriter {
                     *axon = (is_active as u8) * render_state;
                 }
             }
-
-            // ////// BRING BACK?
-            //     // Trim uvw (to avoid precision-noise at small scales -- maybe we
-            //     // want noise? -- possibly remove this):
-            //     uvw = [uvw[0] - (quots[0].trunc() * dividend),
-            //         uvw[1] - (quots[1].trunc() * dividend),
-            //         uvw[2] - (quots[2].trunc() * dividend)];
-            // //////
         }
     }
 }
