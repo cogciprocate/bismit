@@ -18,8 +18,8 @@ use num::{Num, NumCast};
 // use rand;
 // use rand::distributions::{Range, IndependentSample};
 use cmn::{TractFrameMut, ParaHexArray};
-pub use self::write::{ScalarGlyphWriter, ScalarSdrWriter, encode_scalar, encode_hex_mold_scaled,
-    gen_axn_idxs, write_rand_subset_linear, write_rand_subset_stochastic};
+pub use self::write::{ScalarGlyphWriter, ScalarSdrWriter, Vector2dWriter, encode_scalar,
+    encode_hex_mold_scaled, gen_axn_idxs, write_rand_subset_linear, write_rand_subset_stochastic};
 pub use self::idx_streamer::IdxStreamer;
 pub use self::idx_data::IdxData;
 pub use self::glyph_buckets::GlyphBuckets;
@@ -30,6 +30,7 @@ pub use self::reverso_scalar_sequence::ReversoScalarSequence;
 pub use self::vector_encoder::VectorEncoder;
 pub use self::hex_mold_test::HexMoldTest;
 pub use self::scalar_sdr_gradiant::ScalarSdrGradiant;
+
 
 
 const SQRT_3: f32 = 1.73205080756f32;

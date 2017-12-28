@@ -1,9 +1,11 @@
+#![allow(unused_variables, unused_mut, dead_code, unused_imports)]
 
 use std::thread;
-use vibi::bismit::cmn;
-use vibi::bismit::map::*;
 use vibi::bismit::ocl::{ WriteGuard};
+use vibi::bismit::cmn::{self, TractDims, TractFrameMut};
+use vibi::bismit::map::*;
 use vibi::bismit::{map, Cortex, CorticalAreaSettings, InputGenerator, /*Subcortex*/};
+use vibi::bismit::encode::Vector2dWriter;
 use vibi::bismit::flywheel::{Command, Request, Response};
 use ::{Controls, Params};
 
@@ -13,7 +15,8 @@ static IN_AREA: &'static str = "v0";
 static EXT_LYR: &'static str = "external_0";
 static SPT_LYR: &'static str = "iv";
 
-const ENCODE_DIM: u32 = 64;
+// const ENCODE_DIM: u32 = 64;
+const ENCODE_DIMS: [u32; 2] = [15, 100];
 const AREA_DIM: u32 = 16;
 const HEX_GRP_RADIUS: usize = 6;
 
@@ -59,7 +62,7 @@ pub fn draw_tilegroup(params: &Params, controls: &Controls) {
 
     // Populates the thing.
     fn pop(offset: [i32; 2], val: u8, guard: &mut [u8]) {
-        let dims = [ENCODE_DIM as i32, ENCODE_DIM as i32];
+        let dims = [ENCODE_DIMS[0] as i32, ENCODE_DIMS[1] as i32];
         let start = [(dims[0] / 2) + offset[0], (dims[1] / 2) + offset[1]];
         cmn::populate_hex_tile_grps(HEX_GRP_RADIUS, dims, start, val, guard);
     }
@@ -97,15 +100,47 @@ pub fn draw_tilegroup(params: &Params, controls: &Controls) {
 }
 
 
+
+
+
+
+
 pub fn draw_coord(params: &Params, controls: &Controls) {
-    fn write(offset: [f32; 2], guard: &mut [u8]) {
+    let tract_dims = TractDims::new(ENCODE_DIMS[0], ENCODE_DIMS[1], 1);
+    let mut encoder = Vector2dWriter::new(tract_dims);
 
+    let mut x = 0.0;
+    let mut y = 0.0;
+
+    loop {
+        {
+            let mut guard = params.tract_buffer.clone().write().wait().unwrap();
+            let mut tract = TractFrameMut::new(guard.as_mut_slice(), tract_dims);
+
+
+            // println!("x: {}, y: {}", x, y);
+            encoder.encode([x, y], &mut tract);
+
+            // encoder.encode([0.0, -0.999], &mut tract);
+            // encoder.encode([0.0, -1.0], &mut tract);
+            // encoder.encode([0.0, -1.999], &mut tract);
+            // encoder.encode([0.0, -2.0], &mut tract);
+            // encoder.encode([0.0, -2.999], &mut tract);
+            // encoder.encode([0.0, -3.0], &mut tract);
+        }
+        // WriteGuard::release(guard);
+        complete(controls);
+
+        ::std::thread::sleep(::std::time::Duration::from_millis(20));
+        x -= 0.001;
+        // y -= 0.02;
     }
-
-    let mut guard = params.tract_buffer.clone().write().wait().unwrap();
-    WriteGuard::release(guard);
-    complete(controls);
 }
+
+
+
+
+
 
 
 /// Draws an arbitrary pattern as an sdr.
@@ -124,14 +159,15 @@ pub fn eval(sub: Option<&str>) {
     let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
         .layer_map().layers().by_key(EXT_LYR).expect("bad lyr").layer_addr();
 
-    let v1_spt_lyr_buf = {
-        let pri_area_map = cortex.thal().area_maps().by_key(PRI_AREA).expect("bad area");
-        let v1_spt_lyr_addr = *pri_area_map.layer_map().layers().by_key(SPT_LYR)
-            .expect("bad lyr").layer_addr();
-        let v1_spt_lyr_axn_range = pri_area_map.lyr_axn_range(&v1_spt_lyr_addr, None).unwrap();
-        cortex.areas().by_key(PRI_AREA).unwrap().axns()
-            .create_sub_buffer(&v1_spt_lyr_axn_range).unwrap()
-    };
+    // let v1_spt_lyr_buf = {
+    //     let pri_area_map = cortex.thal().area_maps().by_key(PRI_AREA).expect("bad area");
+    //     let v1_spt_lyr_addr = *pri_area_map.layer_map().layers().by_key(SPT_LYR)
+    //         .expect("bad lyr").layer_addr();
+    //     let v1_spt_lyr_axn_range = pri_area_map.lyr_axn_range(&v1_spt_lyr_addr, None).unwrap();
+    //     println!("####### v1_spt_lyr_axn_range: {:?}", v1_spt_lyr_axn_range);
+    //     cortex.areas().by_key(PRI_AREA).unwrap().axns()
+    //         .create_sub_buffer(&v1_spt_lyr_axn_range).unwrap()
+    // };
 
     let in_tract_idx = cortex.thal().tract().index_of(v0_ext_lyr_addr).unwrap();
     let in_tract_buffer = cortex.thal().tract().buffer_rwvec(in_tract_idx).unwrap().clone();
@@ -141,7 +177,7 @@ pub fn eval(sub: Option<&str>) {
     let controls = ::spawn_threads(cortex, PRI_AREA);
 
     let params = Params { tract_buffer: in_tract_buffer, axns,
-        l4_axns: v1_spt_lyr_buf, area_map, encode_dim: ENCODE_DIM, area_dim: AREA_DIM };
+        /*l4_axns: v1_spt_lyr_buf,*/ area_map, encode_dim: ENCODE_DIMS, area_dim: AREA_DIM };
 
     // Get the flywheel moving:
     controls.cmd_tx.send(Command::None).unwrap();
@@ -151,14 +187,10 @@ pub fn eval(sub: Option<&str>) {
 
     match sub {
         None | Some("tilegroup") => {
-            // for _ in 0..5000 {
-                draw_tilegroup(&params, &controls);
-            // }
+            draw_tilegroup(&params, &controls);
         }
         Some("coord") => {
-            // for _ in 0..5000 {
-                draw_coord(&params, &controls);
-            // }
+            draw_coord(&params, &controls);
         }
         s @ _ => println!("eval-motor: Unknown option specified: {:?}", s),
     }
@@ -170,6 +202,7 @@ pub fn eval(sub: Option<&str>) {
 
 fn define_lm_schemes() -> LayerMapSchemeList {
     let at0 = AxonTag::unique();
+    let at1 = AxonTag::unique();
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
@@ -177,18 +210,53 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
                 AxonTopology::Spatial
             )
-            .layer_old("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
-                LayerKind::Axonal(AxonTopology::Spatial)
+            // .layer_old("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
+            //     LayerKind::Axonal(AxonTopology::Spatial)
+            // )
+            // .layer_old(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
+            //     CellScheme::ssc(&[("aff_in", 4, 1)], 7, 600)
+            // )
+            .layer(LayerScheme::define(SPT_LYR)
+                .depth(1)
+                .tags(LayerTags::PSAL)
+                .axon_domain(AxonDomain::output(&[at1]))
+                .cellular(CellScheme::spiny_stellate()
+                    .tft(TuftScheme::basal().proximal()
+                        .syns_per_den_l2(5)
+                        .src_lyr(TuftSourceLayer::define("aff_in")
+                            .syn_reach(7)
+                            .prevalence(1)
+                        )
+                    )
+                )
             )
-            .layer_old(SPT_LYR, 1, LayerTags::PSAL, AxonDomain::Local,
-                CellScheme::ssc(&[("aff_in", 4, 1)], 7, 600)
+            // .layer_old("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local,
+            //     CellScheme::inhib(SPT_LYR, 4, 0)
+            // )
+            .layer(LayerScheme::define("iv_inhib")
+                .cellular(CellScheme::control(
+                        ControlCellKind::InhibitoryBasketSurround {
+                            host_lyr_name: SPT_LYR.into(),
+                            field_radius: 4,
+                        },
+                        0
+                    )
+                )
             )
-            .layer_old("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local,
-                CellScheme::inhib(SPT_LYR, 4, 0)
+            .layer(LayerScheme::define("iv_smooth")
+                .cellular(CellScheme::control(
+                        ControlCellKind::ActivitySmoother {
+                            host_lyr_name: SPT_LYR.into(),
+                            field_radius: 4,
+                        },
+                        1
+                    )
+                )
             )
-            .layer_old("iii", 1, LayerTags::PTAL, AxonDomain::Local,
-                CellScheme::pyr(&[("iii", 20, 1)], 1, 6, 0, 500)
-            )
+            // .layer_old("iii", 1, LayerTags::PTAL, AxonDomain::Local,
+            //     CellScheme::pyr(&[("iii", 20, 1)], 1, 6, 0, 500)
+            // )
+
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
             .layer_old(EXT_LYR, 1, LayerTags::DEFAULT,
@@ -201,7 +269,9 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
 fn define_a_schemes() -> AreaSchemeList {
     AreaSchemeList::new()
-        .area(AreaScheme::new("v0", "v0_lm", ENCODE_DIM)
+        // .area(AreaScheme::new("v0", "v0_lm", ENCODE_DIM)
+        //     .subcortex())
+        .area(AreaScheme::irregular("v0", "v0_lm", ENCODE_DIMS)
             .subcortex())
 
         .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)
@@ -213,8 +283,8 @@ pub fn ca_settings() -> CorticalAreaSettings {
     let mut settings = CorticalAreaSettings::new();
 
     // settings.bypass_inhib = true;
-    settings.bypass_filters = true;
-    settings.disable_pyrs = true;
+    // settings.bypass_filters = true;
+    // settings.disable_pyrs = true;
     // settings.disable_ssts = true;
     // settings.disable_mcols = true;
     // settings.disable_regrowth = true;

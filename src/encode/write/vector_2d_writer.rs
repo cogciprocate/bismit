@@ -1,4 +1,4 @@
-#![allow(unused_variables, dead_code)]
+#![allow(unused_variables, dead_code, unused_mut)]
 
 //!
 //! x: 0˚, y: 90˚
@@ -7,7 +7,7 @@
 use cmn::{TractFrameMut, TractDims};
 // use encode::ScalarEncodable;
 
-const RADIX: i32 = 3;
+const RADIX: u32 = 3;
 
 /// Converts (x, y) coordinates into (u, v, w).
 ///
@@ -21,15 +21,26 @@ fn convert(xy: [f32; 2]) -> [f32; 3] {
     [u, v, w]
 }
 
-// // If a `val` is less than 0.5, adds 1.0.
-// #[inline]
-// fn shift_to_pos(val: f32) -> f32 {
-//     if val <= -0.5 { val + 1. } else { val }
-// }
+// Returns a renderable value-compliment pair for `val`. The compliment is the
+// nearest relevant (renderable) point in a triangle grid.
+#[inline]
+fn rc_pairs(mut val: f32) -> [f32; 2] {
+    // // NOTE: maybe we want noise? -- possibly remove this.
+    // debug_assert!(val >= -(RADIX as f32) && val <= RADIX as f32);
 
-// If `val` is negative ...
-fn np_pairs(val: f32) -> [f32; 2] {
-    if val < 0. { [val, val + 2.] } else { [val - 2., val] }
+    // Scale and shift value such that [-1.0, 1.0] -> [0.0, 1.0].
+    val = (val / 2.) + 0.5;
+
+    val = val.fract();
+
+    // Add 1 to value if negative;
+    val += (val < 0.) as i32 as f32;
+
+    if val <= 0.5 {
+        [val, val + 1.]
+    } else {
+        [val - 1., val]
+    }
 }
 
 
@@ -48,11 +59,12 @@ pub struct Vector2dWriter {
 impl Vector2dWriter {
     pub fn new(tract_dims: TractDims) -> Vector2dWriter {
         assert!(tract_dims.v_size() as i32 >= 3, "Vector2dWriter::new: 'v' dimension too small.");
+        println!("####### tract_dims: {:?}", tract_dims);
         let scale_level_count = tract_dims.v_size() as i32 / 3;
         let precision_redundancy = tract_dims.u_size();
 
-        let mut scale_level_mid_idx = scale_level_count / 2;
-        scale_level_mid_idx +=  scale_level_count - (scale_level_mid_idx * 2);
+        let scale_level_mid_idx = scale_level_count / 2;
+        // scale_level_mid_idx +=  scale_level_count - (scale_level_mid_idx * 2);
 
         let mut scale_levels = Vec::with_capacity(scale_level_count as usize);
 
@@ -107,24 +119,29 @@ impl Vector2dWriter {
         let xy = [self.xform(xy_raw[0]), self.xform(xy_raw[1])];
         let mut uvw = convert(xy);
 
-        // NOTE: Consider removing this check and clamp the values at maximums
-        // or make the whole thing non-linear and scale to infinity.
-        assert!(uvw[0].abs().max(uvw[1].abs()).max(uvw[2].abs()) <= self.scale_levels[0],
-            "Vector2dWriter::encode: A vector value exceeds the maximum (values: {:?}). \
-                Increase tract 'v' size to accommodate a larger range of values \
-                or scale/shift passed values to get them closer to zero. ", xy_raw);
+        // println!("\n########## UVW: {:?}", uvw);
+
+        ////// BRING BACK?
+            // // NOTE: Consider removing this check and clamp the values at maximums
+            // // or make the whole thing non-linear and scale to infinity. There may
+            // // be a good reason to allow an arbitrary range of random-ish values
+            // // to represent 0/null.
+            // assert!(uvw[0].abs().max(uvw[1].abs()).max(uvw[2].abs()) <= self.scale_levels[0],
+            //     "Vector2dWriter::encode: A vector value exceeds the maximum (values: {:?}). \
+            //         Increase tract 'v' size to accommodate a larger range of values \
+            //         or scale/shift passed values to get them closer to zero. ", xy_raw);
+        ////////
 
         let tract_chunk_size = 3 * tract.dims().u_size() as usize;
 
         let render_pad = 2isize;
+        // let render_pad = 0isize;
         let render_state = 1u8;
 
         for (scale_level, tract_chunk) in self.scale_levels.iter()
                 .zip(tract.chunks_mut(tract_chunk_size)) {
             // debug_assert!(uvw[0].abs().max(uvw[1].abs()).max(uvw[2].abs()) < scale_level);
 
-            // The dividend which will give us the portion of the spectrum we
-            // are interested in (1.0..-1.0):
             let dividend = scale_level;
 
             // Determine quotients:
@@ -132,35 +149,41 @@ impl Vector2dWriter {
                 uvw[1] / dividend,
                 uvw[2] / dividend];
 
-            // Determine quotient whole number component:
-            let wholes = [quots[0].trunc(),
-                quots[1].trunc(),
-                quots[2].trunc()];
+            // println!("\n## quots: {:?}", quots);
 
-            // Determine quotient fraction component:
-            let fracts = [quots[0] - wholes[0],
-                quots[1] - wholes[1],
-                quots[2] - wholes[2]];
+            // // Determine quotient whole number component:
+            // let wholes = [quots[0].trunc(),
+            //     quots[1].trunc(),
+            //     quots[2].trunc()];
 
-            // // Shift and scale values to get them within the relevant
-            // // drawing range (-0.5..1.5):
-            // let centers = [shift_to_pos(fracts[0]) * 2.,
-            //     shift_to_pos(fracts[1]) * 2.,
-            //     shift_to_pos(fracts[2]) * 2.];
+            // // Determine quotient fraction component:
+            // let fracts = [quots[0] - wholes[0],
+            //     quots[1] - wholes[1],
+            //     quots[2] - wholes[2]];
 
-            // Center point pairs to be rendered (spaced by 2.0). This means
-            // that values at/near -1.0 will be mirrored at/near 1.0; in
-            // effect wrapping the value around.
-            let centers = [np_pairs(fracts[0]),
-                np_pairs(fracts[1]),
-                np_pairs(fracts[2])];
+            // println!("#### fracts: {:?}", fracts);
+
+            // // Center point pairs to be rendered.
+            // let centers = [rc_pairs(fracts[0]),
+            //     rc_pairs(fracts[1]),
+            //     rc_pairs(fracts[2])];
+
+            // Center point pairs to be rendered.
+            let centers = [rc_pairs(quots[0]),
+                rc_pairs(quots[1]),
+                rc_pairs(quots[2])];
+
+            // println!("###### centers: {:?}", centers);
 
             let prec = self.precision_redundancy as f32;
 
             let center_idxs = [
-                [(centers[0][0] * prec) as isize, (centers[0][1] * prec) as isize],
-                [(centers[1][0] * prec) as isize, (centers[1][1] * prec) as isize],
-                [(centers[2][0] * prec) as isize, (centers[2][1] * prec) as isize],
+                [(centers[0][0] * prec) as isize,
+                    (centers[0][1] * prec) as isize],
+                [(centers[1][0] * prec) as isize,
+                    (centers[1][1] * prec) as isize],
+                [(centers[2][0] * prec) as isize,
+                    (centers[2][1] * prec) as isize],
             ];
 
             let edge_idxs = [
@@ -172,6 +195,8 @@ impl Vector2dWriter {
                     [center_idxs[2][1] - render_pad, center_idxs[2][1] + render_pad]],
             ];
 
+            // println!("######## edge_idxs: {:?}", edge_idxs);
+
             for (v_id_chunk, chunk_row) in tract_chunk.chunks_mut(self.tract_dims.u_size() as usize)
                     .enumerate() {
                 for (u_id, axon) in chunk_row.iter_mut().enumerate() {
@@ -182,10 +207,13 @@ impl Vector2dWriter {
                 }
             }
 
-            // Trim uvw (to avoid precision-noise at small scales):
-            uvw = [uvw[0] - (wholes[0] * dividend),
-                uvw[1] - (wholes[1] * dividend),
-                uvw[2] - (wholes[2] * dividend)];
+            // ////// BRING BACK?
+            //     // Trim uvw (to avoid precision-noise at small scales -- maybe we
+            //     // want noise? -- possibly remove this):
+            //     uvw = [uvw[0] - (quots[0].trunc() * dividend),
+            //         uvw[1] - (quots[1].trunc() * dividend),
+            //         uvw[2] - (quots[2].trunc() * dividend)];
+            // //////
         }
     }
 }

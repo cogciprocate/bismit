@@ -30,9 +30,9 @@ use vibi::bismit::map::{AreaMap, AxonTopology, LayerAddress};
 pub struct Params {
     pub tract_buffer: RwVec<u8>,
     pub axns: Buffer<u8>,
-    pub l4_axns: Buffer<u8>,
+    // pub l4_axns: Buffer<u8>,
     pub area_map: AreaMap,
-    pub encode_dim: u32,
+    pub encode_dim: [u32; 2],
     pub area_dim: u32,
 }
 

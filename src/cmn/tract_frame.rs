@@ -14,7 +14,7 @@ impl<'a> TractFrame<'a> {
     #[inline]
     pub fn new<D: Into<TractDims>>(frame: &'a [u8], dims: D) -> TractFrame<'a> {
         let dims = dims.into();
-        assert_eq!(dims.to_len(), frame.len());
+        assert_eq!(dims.to_len(), frame.len(), "Tract frame size mismatch.");
         TractFrame { frame: frame, dims: dims }
     }
 
@@ -51,7 +51,7 @@ impl<'a> TractFrameMut<'a> {
     #[inline]
     pub fn new<D: Into<TractDims>>(frame: &'a mut [u8], dims: D) -> TractFrameMut<'a> {
         let dims = dims.into();
-        assert_eq!(frame.len(), dims.to_len());
+        assert_eq!(frame.len(), dims.to_len(), "Tract frame size mismatch.");
         TractFrameMut { frame: frame, dims: dims }
     }
 
