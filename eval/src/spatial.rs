@@ -686,7 +686,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .input_layer("aff_in", LayerTags::DEFAULT,
                 AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
                 AxonTopology::Spatial
-                // AxonTopology::Horizontal
+                // AxonTopology::Nonspatial
             )
             .layer_old("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
                 LayerKind::Axonal(AxonTopology::Spatial)

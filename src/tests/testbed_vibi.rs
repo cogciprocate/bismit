@@ -25,13 +25,13 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
         .lmap(LayerMapScheme::new("cortical_lm", LayerMapKind::Cortical)
             .input_layer("motor_ctx", LayerTags::DEFAULT,
                 AxonDomain::input(&[(InputTrack::Afferent, GlyphSequences::val_lyr_tags())]),
-                AxonTopology::Horizontal
+                AxonTopology::Nonspatial
             )
             .input_layer("rose_ctx", LayerTags::DEFAULT,
                 AxonDomain::input(&[(InputTrack::Other,
                     &GlyphSequences::val_lyr_tags() | &AxonTag::custom(ROSE_UID).into()
                 )]),
-                AxonTopology::Horizontal
+                AxonTopology::Nonspatial
             )
             .input_layer("eff_in", LayerTags::DEFAULT,
                 AxonDomain::input(&[(InputTrack::Efferent, [map::THAL_SP])]),
@@ -70,7 +70,7 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
                 LayerKind::Axonal(AxonTopology::Spatial))
             .layer_old("horiz_ns", 1, LayerTags::DEFAULT,
                 AxonDomain::output(GlyphSequences::val_lyr_tags()),
-                LayerKind::Axonal(AxonTopology::Horizontal))
+                LayerKind::Axonal(AxonTopology::Nonspatial))
         )
         .lmap(LayerMapScheme::new("gly_seq_rose_lm", LayerMapKind::Subcortical)
             .layer_old("spatial_rose", 1, LayerTags::DEFAULT,
@@ -78,7 +78,7 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
                 LayerKind::Axonal(AxonTopology::Spatial))
             .layer_old("horiz_ns_rose", 1, LayerTags::DEFAULT,
                 AxonDomain::output(GlyphSequences::val_lyr_tags()),
-                LayerKind::Axonal(AxonTopology::Horizontal))
+                LayerKind::Axonal(AxonTopology::Nonspatial))
         )
         // .lmap(LayerMapScheme::new("o0_lm", Thalamic)
         //     .layer_old("ganglion", 1, LayerTags::NS_OUT | LayerTags::uid(OLFAC_UID), LayerKind::Axonal(Horizontal))

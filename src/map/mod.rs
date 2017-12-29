@@ -156,7 +156,7 @@ pub enum LayerMapKind {
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]
 pub enum AxonTopology {
     Spatial,
-    Horizontal,
+    Nonspatial,
     None,
 }
 

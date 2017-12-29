@@ -212,7 +212,7 @@ impl SynSrcIdxCache {
 /// Pool of potential synapse values.
 #[derive(Clone, Debug)]
 pub enum OfsPool {
-    Horizontal(RandRange<i8>, RandRange<i8>),
+    Nonspatial(RandRange<i8>, RandRange<i8>),
     Spatial { offs: Vec<(i8, i8)>, ofs_idx_range: RandRange<usize> },
 }
 
@@ -238,13 +238,13 @@ impl SynSrcSliceInfo {
         let slc_off_pool;
 
         match axn_kind {
-            &AxonTopology::Horizontal => {
+            &AxonTopology::Nonspatial => {
                 // Already checked within `SliceDims` (keep here though).
                 debug_assert!(src_slc_dims.v_size() <= cmn::MAX_HRZ_DIM_SIZE);
                 debug_assert!(src_slc_dims.u_size() <= cmn::MAX_HRZ_DIM_SIZE);
 
                 if src_slc_dims.v_size() & 0x01 != 0 || src_slc_dims.v_size() & 0x01 != 0 {
-                    return Err("Horizontal slices must have u and v sizes evenly divisible by 2.".into());
+                    return Err("Nonspatial slices must have u and v sizes evenly divisible by 2.".into());
                 }
 
                 if syn_reach != 0 {
@@ -263,7 +263,7 @@ impl SynSrcSliceInfo {
                 let v_reach = (src_slc_dims.v_size() / 2) as i8;
                 let u_reach = (src_slc_dims.u_size() / 2) as i8;
 
-                slc_off_pool = OfsPool::Horizontal(
+                slc_off_pool = OfsPool::Nonspatial(
                     RandRange::new(0 - v_reach, v_reach + 1),
                     RandRange::new(0 - u_reach, u_reach + 1),
                 );
@@ -458,7 +458,7 @@ impl SynSrcSlices {
 
 
         match slc_info.slc_off_pool {
-            OfsPool::Horizontal(ref v_rr, ref u_rr) => {
+            OfsPool::Nonspatial(ref v_rr, ref u_rr) => {
                 SynSrc {
                     slc_id: slc_id,
                     v_ofs: v_rr.ind_sample(rng),

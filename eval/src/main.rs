@@ -13,7 +13,7 @@ extern crate qutex;
 mod spatial;
 mod hexdraw;
 mod motor;
-mod somatosensory;
+mod sensory;
 
 
 use std::thread;
@@ -107,7 +107,7 @@ fn main() {
             .help("Specifies the evaluation to run")
             .required(true)
             .index(1)
-            .value_name("spatial, hexdraw, motor, somatosensory"))
+            .value_name("spatial, hexdraw, motor, sensory"))
         .arg(Arg::with_name("SUBEVALUATION")
             .help("Specifies an evaluation argument")
             .required(false)
@@ -120,7 +120,7 @@ fn main() {
         "spatial" => spatial::eval(),
         "hexdraw" => hexdraw::eval(sub),
         "motor" => motor::eval(),
-        "somatosensory" => somatosensory::eval(),
+        "sensory" => sensory::eval(),
         e @ _ => println!("Unknown evaluation specified: {}", e),
     }
 

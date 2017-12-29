@@ -16,7 +16,7 @@ static EXT_LYR: &'static str = "external_0";
 static SPT_LYR: &'static str = "iv";
 
 // const ENCODE_DIM: u32 = 64;
-const ENCODE_DIMS: [u32; 2] = [400, 400];
+const ENCODE_DIMS: [u32; 2] = [130, 400];
 const AREA_DIM: u32 = 32;
 const HEX_GRP_RADIUS: usize = 6;
 
@@ -111,25 +111,17 @@ pub fn draw_coord(params: &Params, controls: &Controls) {
     loop {
         {
             let mut guard = params.tract_buffer.clone().write().wait().unwrap();
-            let mut tract = TractFrameMut::new(guard.as_mut_slice(), tract_dims);
+            // let mut tract = TractFrameMut::new(guard.as_mut_slice(), tract_dims);
 
-
-            // println!("x: {}, y: {}", x, y);
-            encoder.encode([x, y], &mut tract);
-
-            // encoder.encode([0.0, -0.999], &mut tract);
-            // encoder.encode([0.0, -1.0], &mut tract);
-            // encoder.encode([0.0, -1.999], &mut tract);
-            // encoder.encode([0.0, -2.0], &mut tract);
-            // encoder.encode([0.0, -2.999], &mut tract);
-            // encoder.encode([0.0, -3.0], &mut tract);
+            encoder.encode([x, y], guard.as_mut_slice());
+            // WriteGuard::release(guard);
         }
-        // WriteGuard::release(guard);
+
         complete(controls);
 
         // ::std::thread::sleep(::std::time::Duration::from_millis(1000));
-        x -= 0.0000001;
-        y += 100.00000;
+        x -= 0.001;
+        y += 1000.00000;
     }
 }
 

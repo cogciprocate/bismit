@@ -178,9 +178,9 @@ impl InputGenerator {
             let lyr_depth = layer_scheme.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
             let dims = match axn_topology {
-                AxonTopology::Spatial | AxonTopology::Horizontal =>
+                AxonTopology::Spatial | AxonTopology::Nonspatial =>
                     Some(area_scheme.dims().clone_with_depth(lyr_depth)),
-                // AxonTopology::Horizontal => None,
+                // AxonTopology::Nonspatial => None,
                 AxonTopology::None => panic!("InputGenerator::new: Invalid axon topology (None)."),
             };
 

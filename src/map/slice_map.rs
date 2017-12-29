@@ -77,17 +77,17 @@ impl SliceMap {
                         // debug_assert_eq!(layer.axn_kind(), layer_source.axn_kind());
 
                         if layer.axn_topology() != layer_source.axn_topology() {
-                            // Ensure that we are going from Spatial -> Horizontal:
+                            // Ensure that we are going from Spatial -> Nonspatial:
                             if layer_source.axn_topology() == AxonTopology::Spatial &&
-                                    layer.axn_topology() == AxonTopology::Horizontal
+                                    layer.axn_topology() == AxonTopology::Nonspatial
                             {
                                 assert!(layer_source.dims().v_size() <= 254 &&
                                     layer_source.dims().u_size() <= 254,
-                                    "SliceMap::new(): Horizontal layer sources must have dimensions \
+                                    "SliceMap::new(): Nonspatial layer sources must have dimensions \
                                     less than or equal to 254v x 254u.");
                             } else {
                                 panic!("SliceMap::new(): Layers may only convert from \
-                                    Spatial -> Horizontal");
+                                    Spatial -> Nonspatial");
                             }
                         }
 

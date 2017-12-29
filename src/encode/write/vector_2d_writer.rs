@@ -19,11 +19,12 @@
 //! u: 330˚ (-30˚), v: 90˚, w: 210˚,
 //!
 //
-// [NOTE]: `f64` is complete overkill here. `f32` would be perfectly fine.
+// [NOTE]: `f64` is complete overkill. `f32` is perfectly fine.
 //
 
 
-use cmn::{TractFrameMut, TractDims};
+// use cmn::{TractFrameMut, TractDims};
+use cmn::TractDims;
 // use encode::ScalarEncodable;
 
 // The difference between each level of scale:
@@ -69,7 +70,7 @@ fn rc_pairs(mut val: f64) -> [f64; 2] {
 #[derive(Clone, Debug)]
 pub struct Vector2dWriter {
     tract_dims: TractDims,
-    // Unused: [QUESTION]: Implement offs/scale setters functions or leave to
+    // Unused: [QUESTION]: Implement offs/scale setter functions or leave to
     // caller to scale appropriately?
     raw_offs: f64,
     // Unused:
@@ -83,7 +84,8 @@ pub struct Vector2dWriter {
 }
 
 impl Vector2dWriter {
-    pub fn new(tract_dims: TractDims) -> Vector2dWriter {
+    pub fn new<Td: Into<TractDims>>(tract_dims: Td) -> Vector2dWriter {
+        let tract_dims = tract_dims.into();
         assert!(tract_dims.v_size() as i32 >= 3, "Vector2dWriter::new: 'v' dimension too small.");
         // println!("####### tract_dims: {:?}", tract_dims);
         let scale_level_count = tract_dims.v_size() as i32 / 3;
@@ -129,8 +131,8 @@ impl Vector2dWriter {
         (convert(xy), mag)
     }
 
-    pub fn encode(&mut self, xy_raw: [f64; 2], tract: &mut TractFrameMut) {
-        assert!(tract.dims() == &self.tract_dims);
+    pub fn encode(&mut self, xy_raw: [f64; 2], tract: &mut [u8]) {
+        assert!(tract.len() == self.tract_dims.to_len());
         // let (uvw, mag) = self.decompose(xy_raw);
         let xy = [self.xform(xy_raw[0]), self.xform(xy_raw[1])];
         let uvw = convert(xy);
@@ -146,7 +148,7 @@ impl Vector2dWriter {
                 Increase tract 'v' size to accommodate a larger range of values \
                 or scale/shift passed values to get them closer to zero. ", xy_raw);
 
-        let tract_chunk_size = 3 * tract.dims().u_size() as usize;
+        let tract_chunk_size = 3 * self.tract_dims.u_size() as usize;
 
         let render_state = 1u8;
 

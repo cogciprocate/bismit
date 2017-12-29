@@ -24,7 +24,7 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
         //.layer_old("test_noise", 1, map::DEFAULT, LayerKind::Axonal(AxonTopology::Spatial))
         .layer_old("motor_in", 1, LayerTags::DEFAULT,
             AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_NSP]), ]),
-            LayerKind::Axonal(AxonTopology::Horizontal))
+            LayerKind::Axonal(AxonTopology::Nonspatial))
         //.layer_old("olfac", 1, LayerTags::DEFAULT, LayerKind::Axonal(Horizontal))
         .layer_old("eff_in", 0, LayerTags::DEFAULT,
             AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP]), ]),
@@ -158,7 +158,7 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
     layer_map_schemes.add(LayerMapScheme::new(lmap_name, LayerMapKind::Cortical)
         .layer_old("extra_in", 0, LayerTags::DEFAULT,
             AxonDomain::input(&[(InputTrack::Other, &[map::THAL_NSP]), ]),
-            LayerKind::Axonal(AxonTopology::Horizontal))
+            LayerKind::Axonal(AxonTopology::Nonspatial))
         .layer_old("eff_in", 0, LayerTags::DEFAULT,
             AxonDomain::input(&[(InputTrack::Efferent, &[map::THAL_SP]), ]),
             LayerKind::Axonal(AxonTopology::Spatial))

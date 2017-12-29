@@ -799,7 +799,7 @@ impl EvalSpatial {
             let lyr_depth = layer_scheme.depth().expect("EvalSpatial::new: No layer depth set.");
 
             let dims = match axn_topology {
-                AxonTopology::Spatial | AxonTopology::Horizontal =>
+                AxonTopology::Spatial | AxonTopology::Nonspatial =>
                     area_scheme.dims().clone_with_depth(lyr_depth),
                 AxonTopology::None => panic!("EvalSpatial::new: Invalid axon topology."),
             };
@@ -1158,7 +1158,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .input_layer("aff_in", LayerTags::DEFAULT,
                 AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
                 AxonTopology::Spatial
-                // AxonTopology::Horizontal
+                // AxonTopology::Nonspatial
             )
             .layer("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
                 LayerKind::Axonal(AxonTopology::Spatial)

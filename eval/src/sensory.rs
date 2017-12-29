@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused_imports)]
 
 // use std::mem;
 use std::collections::{HashMap};
@@ -6,26 +6,33 @@ use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
 use qutex::QrwLock;
 use vibi::bismit::futures::Future;
-use vibi::bismit::{map, encode, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
+use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
     SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas};
 use vibi::bismit::map::*;
+use vibi::bismit::cmn::{TractFrameMut, TractDims};
+use vibi::bismit::encode::{self, Vector2dWriter};
 use ::{IncrResult, TrialIter, Layer, PathwayDir, InputSource};
 use ::spatial::{TrialData, TrialResults};
 
 
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
-static EXT_LYR: &'static str = "external_0";
+// static EXT_LYR: &'static str = "external_0";
 static SPT_LYR: &'static str = "iv";
 
+static EXT_LYR_0: &'static str = "external_0";
+static EXT_LYR_1: &'static str = "external_1";
+
+
 const ENCODE_DIM: u32 = 48;
+const ENCODE_DIMS: [u32; 2] = [130, 400];
 const AREA_DIM: u32 = 16;
 const SEQUENTIAL_SDR: bool = true;
 
 
 /// A `SubcorticalNucleus` which runs several evaluations of a spiny stellate
 /// cell layer and its accompanying control cells (smoother).
-struct EvalMotor {
+struct EvalSensory {
     area_name: String,
     area_id: usize,
     layers: HashMap<LayerAddress, Layer>,
@@ -38,13 +45,14 @@ struct EvalMotor {
     current_pattern_idx: usize,
     trial_results: TrialResults,
     rng: XorShiftRng,
+    encoder_2d: Vector2dWriter,
     // samplers: Option<Samplers>,
 }
 
-impl EvalMotor {
+impl EvalSensory {
     pub fn new<S: Into<String>>(layer_map_schemes: &LayerMapSchemeList,
             area_schemes: &AreaSchemeList, area_name: S)
-            -> EvalMotor {
+            -> EvalSensory {
         let area_name = area_name.into();
         let area_scheme = &area_schemes[&area_name];
         let layer_map_scheme = &layer_map_schemes[area_scheme.layer_map_name()];
@@ -99,7 +107,11 @@ impl EvalMotor {
         let pattern_watch_list = vec![0, 1, 2, 3, 4];
         let trial_results = TrialResults::new(pattern_watch_list);
 
-        EvalMotor {
+
+        let encoder_2d = Vector2dWriter::new((ENCODE_DIMS[0], ENCODE_DIMS[1], 1));
+
+
+        EvalSensory {
             area_name: area_name,
             area_id: area_scheme.area_id(),
             layers,
@@ -112,12 +124,13 @@ impl EvalMotor {
             current_pattern_idx: 0,
             trial_results,
             rng,
+            encoder_2d,
             // samplers: None,
         }
     }
 }
 
-impl SubcorticalNucleus for EvalMotor {
+impl SubcorticalNucleus for EvalSensory {
     fn create_pathways(&mut self, thal: &mut Thalamus,
             _cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
         // Wire up output (sdr) pathways.
@@ -157,10 +170,10 @@ impl SubcorticalNucleus for EvalMotor {
     ///
     fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
         self.current_pattern_idx = if SEQUENTIAL_SDR {
-            // Write a non-random SDR:
+            // Choose a non-random SDR:
             self.trial_iter.global_cycle_idx % self.pattern_count
         } else {
-            // Write a random SDR:
+            // Choose a random SDR:
             Range::new(0, self.pattern_count).ind_sample(&mut self.rng)
         };
 
@@ -241,7 +254,7 @@ pub fn eval() {
     let layer_map_schemes = define_lm_schemes();
     let area_schemes = define_a_schemes();
 
-    let eval_nucl = EvalMotor::new(&layer_map_schemes,
+    let eval_nucl = EvalSensory::new(&layer_map_schemes,
         &area_schemes, IN_AREA);
 
     let cortex_builder = Cortex::builder(layer_map_schemes, area_schemes)
@@ -256,28 +269,33 @@ pub fn eval() {
 }
 
 fn define_lm_schemes() -> LayerMapSchemeList {
-    let at0 = AxonTag::unique();
+    let at_el0 = AxonTag::unique();
+    let at_el1 = AxonTag::unique();
     let at1 = AxonTag::unique();
     let at2 = AxonTag::unique();
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
             // .input_layer("aff_in", LayerTags::DEFAULT,
-            //     AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
+            //     AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at_el0])]),
             //     AxonTopology::Spatial
             // )
-            .layer(LayerScheme::define("aff_in")
+            .layer(LayerScheme::define("aff_in_0")
                 .axonal(AxonTopology::Spatial)
-                .axon_domain(AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]))
+                .axon_domain(AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at_el0])]))
+            )
+            .layer(LayerScheme::define("aff_in_1")
+                .axonal(AxonTopology::Nonspatial)
+                .axon_domain(AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at_el1])]))
             )
             .layer(LayerScheme::define(SPT_LYR)
-                .depth(8)
+                .depth(1)
                 .tags(LayerTags::PSAL)
                 .axon_domain(AxonDomain::output(&[at1]))
                 .cellular(CellScheme::spiny_stellate()
                     .tft(TuftScheme::basal().proximal()
                         .syns_per_den_l2(5)
-                        .src_lyr(TuftSourceLayer::define("aff_in")
+                        .src_lyr(TuftSourceLayer::define("aff_in_0")
                             .syn_reach(7)
                             .prevalence(1)
                         )
@@ -311,17 +329,17 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             //     CellScheme::pyr_outputter("iii", 0)
             // )
             .layer(LayerScheme::define("v")
-                .depth(4)
+                .depth(1)
                 .tags(LayerTags::PML)
                 .axon_domain(AxonDomain::output(&[at2]))
                 .cellular(CellScheme::pyramidal()
-                    .tft(TuftScheme::basal().proximal()
-                        .syns_per_den_l2(3)
-                        .src_lyr(TuftSourceLayer::define(SPT_LYR)
-                            .syn_reach(0)
-                            .prevalence(1)
-                        )
-                    )
+                    // .tft(TuftScheme::basal().proximal()
+                    //     .syns_per_den_l2(3)
+                    //     .src_lyr(TuftSourceLayer::define(SPT_LYR)
+                    //         .syn_reach(0)
+                    //         .prevalence(1)
+                    //     )
+                    // )
                     .tft(TuftScheme::basal().distal()
                         .dens_per_tft_l2(4)
                         .syns_per_den_l2(5)
@@ -348,13 +366,19 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer_old(EXT_LYR, 1, LayerTags::DEFAULT,
-                AxonDomain::output(&[map::THAL_SP, at0]),
-                LayerKind::Axonal(AxonTopology::Spatial)
+            // .layer_old(EXT_LYR, 1, LayerTags::DEFAULT,
+            //     AxonDomain::output(&[map::THAL_SP, at_el0]),
+            //     LayerKind::Axonal(AxonTopology::Spatial)
+            // )
+            .layer(LayerScheme::define(EXT_LYR_0)
+                .depth(1)
+                .axonal(AxonTopology::Spatial)
+                .axon_domain(AxonDomain::output(&[map::THAL_SP, at_el0]))
             )
-            .input_layer("motor_in", LayerTags::DEFAULT,
-                AxonDomain::input(&[(InputTrack::Efferent, &[at1])]),
-                AxonTopology::Spatial
+            .layer(LayerScheme::define(EXT_LYR_1)
+                .depth(1)
+                .axonal(AxonTopology::Nonspatial)
+                .axon_domain(AxonDomain::output(&[map::THAL_SP, at_el1]))
             )
         )
 }

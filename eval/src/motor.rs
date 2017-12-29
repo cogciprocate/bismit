@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused_imports, unused_mut)]
 
 // use std::mem;
 use std::collections::{HashMap};
@@ -6,8 +6,10 @@ use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
 use qutex::QrwLock;
 use vibi::bismit::futures::Future;
-use vibi::bismit::{map, encode, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
+use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
     SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas};
+use vibi::bismit::cmn::{TractFrameMut, TractDims};
+use vibi::bismit::encode::{self, Vector2dWriter};
 use vibi::bismit::map::*;
 use ::{IncrResult, TrialIter, Layer, PathwayDir, InputSource};
 use ::spatial::{TrialData, TrialResults};
@@ -19,6 +21,7 @@ static EXT_LYR: &'static str = "external_0";
 static SPT_LYR: &'static str = "iv";
 
 const ENCODE_DIM: u32 = 48;
+const ENCODE_DIMS: [u32; 2] = [130, 400];
 const AREA_DIM: u32 = 16;
 const SEQUENTIAL_SDR: bool = true;
 
@@ -38,6 +41,7 @@ struct EvalMotor {
     current_pattern_idx: usize,
     trial_results: TrialResults,
     rng: XorShiftRng,
+    encoder_2d: Vector2dWriter,
     // samplers: Option<Samplers>,
 }
 
@@ -99,6 +103,14 @@ impl EvalMotor {
         let pattern_watch_list = vec![0, 1, 2, 3, 4];
         let trial_results = TrialResults::new(pattern_watch_list);
 
+
+
+        let tract_dims = TractDims::new(ENCODE_DIMS[0], ENCODE_DIMS[1], 1);
+        let encoder_2d = Vector2dWriter::new(tract_dims);
+
+
+
+
         EvalMotor {
             area_name: area_name,
             area_id: area_scheme.area_id(),
@@ -112,6 +124,7 @@ impl EvalMotor {
             current_pattern_idx: 0,
             trial_results,
             rng,
+            encoder_2d,
             // samplers: None,
         }
     }

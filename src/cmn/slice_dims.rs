@@ -56,7 +56,7 @@ impl SliceDims {
                 }
             },
 
-            AxonTopology::Horizontal => {
+            AxonTopology::Nonspatial => {
                 match src_lyr_dims_opt {
                     Some(src_area_dims) => {
                         if src_area_dims.v_size() > cmn::MAX_HRZ_DIM_SIZE ||

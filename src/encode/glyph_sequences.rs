@@ -84,7 +84,7 @@ impl GlyphSequences {
             // if layer.axn_kind() == AxonTopology::Spatial {
             //     assert!(tags.contains(map::FF_OUT));
             //     img_layer_dims = layer.dims().cloned();
-            // } else if layer.axn_kind() == AxonTopology::Horizontal {
+            // } else if layer.axn_kind() == AxonTopology::Nonspatial {
             //     assert!(tags.contains(map::NS_OUT));
             //     val_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1, /*0,*/ None));
             //     layer.set_dims(val_layer_dims.clone());
@@ -130,8 +130,8 @@ impl GlyphSequences {
             // layer_dims: [layer_dims.clone(), layer_dims.clone()],
             img_layer_dims: img_layer_dims.expect("GlyphSequences::new(): Spatial dims not set."),
             img_layer_addr: img_layer_addr.expect("GlyphSequences::new(): Spatial layer address not set."),
-            val_layer_dims: val_layer_dims.expect("GlyphSequences::new(): Horizontal dims not set."),
-            val_layer_addr: val_layer_addr.expect("GlyphSequences::new(): Horizontal layer address not set."),
+            val_layer_dims: val_layer_dims.expect("GlyphSequences::new(): Nonspatial dims not set."),
+            val_layer_addr: val_layer_addr.expect("GlyphSequences::new(): Nonspatial layer address not set."),
             cursor: SeqReader::new(sequences),
             scale: scale,
         }
