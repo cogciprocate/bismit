@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports, unused_variables)]
 
 // use std::mem;
 use std::collections::{HashMap};
@@ -17,12 +17,7 @@ use ::spatial::{TrialData, TrialResults};
 
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
-// static EXT_LYR: &'static str = "external_0";
 static SPT_LYR: &'static str = "iv";
-
-static EXT_LYR_0: &'static str = "external_0";
-static EXT_LYR_1: &'static str = "external_1";
-
 
 const ENCODE_DIM: u32 = 48;
 const ENCODE_DIMS: [u32; 2] = [130, 400];
@@ -183,26 +178,43 @@ impl SubcorticalNucleus for EvalSensory {
         for layer in self.layers.values() {
             if let PathwayDir::Output { ref tx } = layer.pathway {
                 debug_assert!(layer.sub().axon_domain().is_output());
-                let future_sdrs = self.input_sdrs.clone().read().from_err();
 
-                let future_write_guard = tx.send()
-                    .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
-                    .flatten();
+                match layer.sub().name() {
+                    "external_0" => {
+                        let future_sdrs = self.input_sdrs.clone().read().from_err();
 
-                let future_write = future_write_guard
-                    .join(future_sdrs)
-                    .map(move |(tract_opt, sdrs)| {
-                        tract_opt.map(|mut t| {
-                            debug_assert!(t.len() == sdrs[pattern_idx].len());
-                            t.copy_from_slice(&sdrs[pattern_idx]);
-                        });
-                    })
-                    .map_err(|err| panic!("{:?}", err));
+                        let future_write_guard = tx.send()
+                            .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                            .flatten();
 
-                work_pool.complete_work(future_write)?;
+                        let future_write = future_write_guard
+                            .join(future_sdrs)
+                            .map(move |(tract_opt, sdrs)| {
+                                tract_opt.map(|mut t| {
+                                    debug_assert!(t.len() == sdrs[pattern_idx].len());
+                                    t.copy_from_slice(&sdrs[pattern_idx]);
+                                });
+                            })
+                            .map_err(|err| panic!("{:?}", err));
+
+                        work_pool.complete_work(future_write)?;
+                    },
+                    "external_1" => {
+                        let mut write_guard = tx.send()
+                            .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                            .flatten()
+                            .wait()
+                            .expect("future err")
+                            .expect("write guard is None");
+
+                        self.encoder_2d.encode([0., 0.], &mut write_guard);
+
+                        // work_pool.complete_work(  )?;
+                    },
+                    _ => (),
+                }
             }
         }
-
         Ok(())
     }
 
@@ -370,12 +382,12 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             //     AxonDomain::output(&[map::THAL_SP, at_el0]),
             //     LayerKind::Axonal(AxonTopology::Spatial)
             // )
-            .layer(LayerScheme::define(EXT_LYR_0)
+            .layer(LayerScheme::define("external_0")
                 .depth(1)
                 .axonal(AxonTopology::Spatial)
                 .axon_domain(AxonDomain::output(&[map::THAL_SP, at_el0]))
             )
-            .layer(LayerScheme::define(EXT_LYR_1)
+            .layer(LayerScheme::define("external_1")
                 .depth(1)
                 .axonal(AxonTopology::Nonspatial)
                 .axon_domain(AxonDomain::output(&[map::THAL_SP, at_el1]))

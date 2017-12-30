@@ -132,7 +132,7 @@ impl Vector2dWriter {
     }
 
     pub fn encode(&mut self, xy_raw: [f64; 2], tract: &mut [u8]) {
-        assert!(tract.len() == self.tract_dims.to_len());
+        assert_eq!(tract.len(), self.tract_dims.to_len());
         // let (uvw, mag) = self.decompose(xy_raw);
         let xy = [self.xform(xy_raw[0]), self.xform(xy_raw[1])];
         let uvw = convert(xy);
