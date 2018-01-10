@@ -13,9 +13,14 @@ extern crate rand;
 extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate crossbeam;
-#[macro_use] extern crate bitflags;
-#[macro_use] extern crate enum_primitive;
-#[macro_use] extern crate colorify;
+#[macro_use]
+extern crate bitflags;
+#[macro_use]
+extern crate enum_primitive;
+#[macro_use]
+extern crate colorify;
+#[macro_use]
+extern crate failure;
 #[cfg(feature = "profile")]
 extern crate cpuprofiler;
 pub extern crate futures;

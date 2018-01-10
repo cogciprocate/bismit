@@ -378,8 +378,7 @@ impl CorticalArea {
     // by the execution graph system.
     //
     pub fn new(area_map: AreaMap, device_idx: usize, ocl_context: &Context,
-            settings: Option<CorticalAreaSettings>, thal: &mut Thalamus) -> CmnResult<CorticalArea>
-    {
+            settings: Option<CorticalAreaSettings>, thal: &mut Thalamus) -> CmnResult<CorticalArea> {
         // let emsg = "cortical_area::CorticalArea::new()";
         let area_id = area_map.area_id();
         let area_name = area_map.area_name();
@@ -388,7 +387,7 @@ impl CorticalArea {
         println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);
 
         let build_options = if KERNEL_DEBUG_SYMBOLS && cfg!(target_os = "linux") {
-            if ocl_context.platform()?.unwrap().vendor().contains("Intel") {
+            if ocl_context.platform()?.unwrap().vendor()?.contains("Intel") {
                 panic!("[cortical_area::KERNEL_DEBUG_SYMBOLS == true]: \
                     Cannot debug kernels on an Intel based driver platform (not sure why).
                     Use the AMD platform drivers with Intel devices instead.");
@@ -435,8 +434,8 @@ impl CorticalArea {
             (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, \n\
             {mt}{mt}device_idx: [{}], device.name(): {}, device.vendor(): {}",
             area_name, dims.u_size(), dims.v_size(), dims.depth(), area_map.eff_areas(),
-            area_map.aff_areas(), device_idx, ocl_pq.device().name().trim(),
-            ocl_pq.device().vendor().trim(), mt = cmn::MT);
+            area_map.aff_areas(), device_idx, ocl_pq.device().name()?.trim(),
+            ocl_pq.device().vendor()?.trim(), mt = cmn::MT);
 
         let psal_name = area_map.layer_map().layers_containing_tags(LayerTags::PSAL)
             .first().map(|lyr| lyr.name().to_owned());
@@ -1125,13 +1124,13 @@ impl Aux {
     pub fn new(len: usize, ocl_pq: &ProQue) -> Aux {
         let ints_0 = Buffer::<i32>::builder()
             .queue(ocl_pq.queue().clone())
-            .dims(len)
+            .len(len)
             .fill_val(i32::min_value())
             .build().unwrap();
 
         let ints_1 = Buffer::<i32>::builder()
             .queue(ocl_pq.queue().clone())
-            .dims(len)
+            .len(len)
             .fill_val(i32::min_value())
             .build().unwrap();
 

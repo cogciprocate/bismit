@@ -105,6 +105,12 @@ impl From<OclError> for ExecutionGraphError {
     }
 }
 
+impl From<ocl::core::Error> for ExecutionGraphError {
+    fn from(err: ocl::core::Error) -> ExecutionGraphError {
+        ExecutionGraphError::OclError(err.into())
+    }
+}
+
 impl fmt::Display for ExecutionGraphError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {

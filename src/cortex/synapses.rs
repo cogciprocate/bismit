@@ -191,12 +191,12 @@ impl Synapses {
         =============================================================================*/
 
         // let slc_pool = Buffer::with_vec(cmn::SYNAPSE_ROW_POOL_SIZE, 0, ocl_pq); // BRING THIS BACK
-        let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
-        let strengths = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
-        let src_slc_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
-        let src_col_v_offs = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
-        let src_col_u_offs = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
-        let flag_sets = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([syn_count_ttl]).fill_val(0).build()?;
+        let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
+        let strengths = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
+        let src_slc_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
+        let src_col_v_offs = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
+        let src_col_u_offs = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
+        let flag_sets = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
 
         debug_assert!(strengths.len() == src_slc_ids.len() &&
             strengths.len() == src_col_v_offs.len() &&
@@ -321,7 +321,7 @@ impl Synapses {
         // for kern in self.kernels.iter() {
         for (kern, &cmd_idx) in self.kernels.iter().zip(self.exe_cmd_idxs.iter()) {
             if PRINT_DEBUG { printlnc!(white: "    Syns: Enqueuing kernel: '{}' \
-                (exe_cmd_idx: [{}])...", kern.name(), cmd_idx); }
+                (exe_cmd_idx: [{}])...", kern.name()?, cmd_idx); }
 
             let mut event = Event::empty();
             unsafe { kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }

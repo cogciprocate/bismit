@@ -137,7 +137,7 @@ impl Vector2dWriter {
         let xy = [self.xform(xy_raw[0]), self.xform(xy_raw[1])];
         let uvw = convert(xy);
 
-        // println!("\n########## UVW: {:?}", uvw);
+        // println!("\n########## xy_raw: {:?}, uvw: {:?}", xy_raw, uvw);
 
         // NOTE: Consider removing this check and clamp the values at maximums
         // or make the whole thing non-linear and scale to infinity. There may

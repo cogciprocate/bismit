@@ -326,7 +326,7 @@ impl AxonSpace {
         let states = Buffer::<u8>::builder()
             .queue(write_queue.clone())
             .flags(MemFlags::new().read_write().alloc_host_ptr())
-            .dims(area_map.slice_map())
+            .len(area_map.slice_map())
             .fill_val(0)
             .build()?;
 
@@ -437,8 +437,7 @@ impl AxonSpace {
 
     /// Creates a sub buffer for a layer of axon space.
     pub fn create_layer_sub_buffer(&self, src_lyr_addr: LayerAddress, route: AxonDomainRoute)
-            -> CmnResult<Buffer<u8>>
-    {
+            -> CmnResult<Buffer<u8>> {
         let flags = match route {
             AxonDomainRoute::Input => Some(MemFlags::new().host_write_only()),
             AxonDomainRoute::Output => Some(MemFlags::new().host_read_only()),

@@ -39,7 +39,7 @@ impl SensoryFilter {
         let input_buffer = Buffer::<u8>::builder()
             .queue(write_queue.clone())
             .flags(flags::MEM_HOST_WRITE_ONLY | flags::MEM_READ_ONLY)
-            .dims(dims)
+            .len(dims)
             .fill_val(0)
             .build()?;
 

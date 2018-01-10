@@ -56,10 +56,10 @@ impl Tufts {
         let cel_count = dims.to_len();
         let celtft_count = cel_count * tft_count;
 
-        let best_den_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([celtft_count]).fill_val(0).build()?;
-        let best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([celtft_count]).fill_val(0).build()?;
-        let best_den_states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([celtft_count]).fill_val(0).build()?;
-        let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([celtft_count]).fill_val(0).build()?;
+        let best_den_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
+        let best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
+        let best_den_states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
+        let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
 
         let dens = Dendrites::new(layer_name.clone(), layer_addr.layer_id(), dims, cell_scheme.clone(),
             area_map, axons, ocl_pq, settings.disable_pyrs, exe_graph)?;

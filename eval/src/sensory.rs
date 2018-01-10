@@ -20,7 +20,7 @@ static IN_AREA: &'static str = "v0";
 static SPT_LYR: &'static str = "iv";
 
 const ENCODE_DIM: u32 = 48;
-const ENCODE_DIMS: [u32; 2] = [130, 400];
+const ENCODE_DIMS: (u32, u32, u8) = (30, 255, 1);
 const AREA_DIM: u32 = 16;
 const SEQUENTIAL_SDR: bool = true;
 
@@ -54,7 +54,14 @@ impl EvalSensory {
         let mut layers = HashMap::with_capacity(4);
 
         for layer_scheme in layer_map_scheme.layers() {
-            let sub_layer = SubcorticalNucleusLayer::from_schemes(layer_scheme, area_scheme, None);
+            let lyr_dims = match layer_scheme.name() {
+                "external_0" => None,
+                "external_1" => Some(ENCODE_DIMS.into()),
+                ln @ _ => panic!("EvalSensory::new: Unknown layer name: {}.", ln),
+            };
+
+            let sub_layer = SubcorticalNucleusLayer::from_schemes(layer_scheme, area_scheme,
+                lyr_dims);
 
             let layer = Layer {
                 sub: sub_layer,
@@ -103,7 +110,7 @@ impl EvalSensory {
         let trial_results = TrialResults::new(pattern_watch_list);
 
 
-        let encoder_2d = Vector2dWriter::new((ENCODE_DIMS[0], ENCODE_DIMS[1], 1));
+        let encoder_2d = Vector2dWriter::new(ENCODE_DIMS);
 
 
         EvalSensory {
@@ -207,7 +214,10 @@ impl SubcorticalNucleus for EvalSensory {
                             .expect("future err")
                             .expect("write guard is None");
 
-                        self.encoder_2d.encode([0., 0.], &mut write_guard);
+                        let x = (self.cycles_complete as f64 / 10000.).cos();
+                        let y = (self.cycles_complete as f64 / 10000.).sin();
+
+                        self.encoder_2d.encode([x, y], &mut write_guard);
 
                         // work_pool.complete_work(  )?;
                     },
@@ -215,6 +225,7 @@ impl SubcorticalNucleus for EvalSensory {
                 }
             }
         }
+        self.cycles_complete += 1;
         Ok(())
     }
 

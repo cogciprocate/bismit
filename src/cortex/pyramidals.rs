@@ -61,11 +61,11 @@ impl PyramidalLayer {
         let cel_count = dims.to_len();
         let celtft_count = cel_count * tft_count;
 
-        let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([cel_count]).fill_val(0).build()?;
-        let best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([cel_count]).fill_val(0).build()?;
-        let flag_sets = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).dims([cel_count]).fill_val(0).build()?;
-        let energies = Buffer::builder().queue(ocl_pq.queue().clone()).dims(cel_count).fill_val(0).build()?;
-        let activities = Buffer::builder().queue(ocl_pq.queue().clone()).dims(cel_count).fill_val(0).build()?;
+        let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([cel_count]).fill_val(0).build()?;
+        let best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([cel_count]).fill_val(0).build()?;
+        let flag_sets = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([cel_count]).fill_val(0).build()?;
+        let energies = Buffer::builder().queue(ocl_pq.queue().clone()).len(cel_count).fill_val(0).build()?;
+        let activities = Buffer::builder().queue(ocl_pq.queue().clone()).len(cel_count).fill_val(0).build()?;
 
         println!("{mt}{mt}PYRAMIDALS::NEW(): \
             layer: '{}', base_axn_slc: {}, pyr_lyr_axn_idz: {}, tft_count: {}, \

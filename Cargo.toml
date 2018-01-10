@@ -28,6 +28,7 @@ futures-cpupool = "*"
 tokio-core = "*"
 crossbeam = "*"
 cpuprofiler = { version = "*", optional = true }
+failure = "*"
 # log = "*"
 
 [workspace]
