@@ -32,7 +32,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer_old("iv_inhib", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::inhib("iv", 4, 0))
             .layer_old("iv_smooth", 0, LayerTags::DEFAULT, AxonDomain::Local, CellScheme::smooth("iv", 6, 1))
             .layer_old("iii", 1, LayerTags::PTAL, AxonDomain::Local,
-                CellScheme::pyr(&[("iii", 8, 1)], 1, 2, 500)
+                CellScheme::pyr(&[("iii", 8, 1)], 1, 2, 0, 500)
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)

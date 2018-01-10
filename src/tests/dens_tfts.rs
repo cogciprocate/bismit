@@ -12,7 +12,8 @@ const PRINT_DETAILS: bool = false;
 //
 // Test that input on each dendridic tuft is reaching the cell soma.
 //
-#[test]
+// [FIXME]: Disabled. Needs redesign as of tuft changes.
+// #[test]
 fn cycle_random_pyrs() {
     let mut cortex = testbed::cortex_with_lots_of_apical_tufts();
     let area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();

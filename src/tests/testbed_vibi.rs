@@ -60,7 +60,7 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
             )
 
             .layer_old(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 2, LayerTags::PTAL, AxonDomain::Local,
-                CellScheme::pyr(&[("iii", 10, 1)], 1, 3, 300)
+                CellScheme::pyr(&[("iii", 10, 1)], 1, 3, 0, 300)
                     // .apical(&[("eff_in", 12)], 1, 4, 800)
             )
         )

@@ -49,8 +49,8 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
         )
 
         .layer_old(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 3, LayerTags::PTAL, AxonDomain::Local,
-                CellScheme::pyr(&[("iii", 8, 1)], 2, 3, 1200)
-                    .apical(1, &[("iii", 3, 1)], 1, 5, 500)
+                CellScheme::pyr(&[("iii", 8, 1)], 2, 3, 0, 1200)
+                    .apical(1, &[("iii", 3, 1)], 1, 5, 0, 500)
         )
     );
 
@@ -194,12 +194,8 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
             CellScheme::ssc(&[("unused", 8, 1)], 4, 100))
 
         .layer_old(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 3, LayerTags::PTAL, AxonDomain::Local,
-            CellScheme::pyr(&[("unused", 8, 1)], 2, 3, 100)
-                .apical(1, &[("test1", 7, 1)], 2, 3, 500)
-                .apical(2, &[("test2", 6, 1)], 2, 3, 500)
-                .apical(3, &[("test3", 5, 1)], 2, 3, 500)
-                .apical(4, &[("test4", 4, 1)], 2, 3, 500)
-                .apical(5, &[("test5", 3, 1)], 2, 3, 500)
+            CellScheme::pyr(&[("unused", 8, 1)], 2, 3, 0, 100)
+                .apical(1, &[("test1", 7, 1)], 2, 3, 0, 500)
         )
 
     );

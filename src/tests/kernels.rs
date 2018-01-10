@@ -27,7 +27,7 @@ pub fn axn_idxs(testbed: &TestBed) {
     let u_offs = Buffer::builder()
         .queue(testbed.ocl_pq.queue().clone())
         .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
-        .dims(testbed.dims.clone())
+        .len(testbed.dims.clone())
         .host_data(&vec_init)
         .build().unwrap();
 
@@ -35,7 +35,7 @@ pub fn axn_idxs(testbed: &TestBed) {
     let v_offs = Buffer::builder()
         .queue(testbed.ocl_pq.queue().clone())
         .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
-        .dims(testbed.dims.clone())
+        .len(testbed.dims.clone())
         .host_data(&vec_init)
         .build().unwrap();
 
@@ -44,11 +44,11 @@ pub fn axn_idxs(testbed: &TestBed) {
 
     let outs_sc = Buffer::<u32>::builder()
         .queue(testbed.ocl_pq.queue().clone())
-        .dims(testbed.dims.clone())
+        .len(testbed.dims.clone())
         .build().unwrap();
     let outs_v4 = Buffer::<u32>::builder()
         .queue(testbed.ocl_pq.queue().clone())
-        .dims(testbed.dims.clone())
+        .len(testbed.dims.clone())
         .build().unwrap();
 
     let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl").expect("[FIXME]: HANDLE ME")

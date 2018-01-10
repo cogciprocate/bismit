@@ -418,7 +418,9 @@ impl LearningTestBed {
         // assert!(util::read_idx_direct(celtft_idx as usize, area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().tft_best_den_states_raw()) != 0);
 
         // Ensure that we have the correct best dendrite ID:
-        assert!(util::read_idx_direct(celtft_idx as usize, area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().tft_best_den_ids()) as u32 ==
+        assert!(util::read_idx_direct(celtft_idx as usize,
+            area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
+                .unwrap().tfts().best_den_ids()) as u32 ==
             self.syn_coords.den_id_celtft);
 
         // Ensure that we have a non-zero cell state:
@@ -464,7 +466,9 @@ impl LearningTestBed {
         // assert!(area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().flag_sets.read_idx_direct(self.syn_coords.cel_coords.idx() as usize)
         //     & cmn::CEL_BEST_IN_COL_FLAG == cmn::CEL_BEST_IN_COL_FLAG);
 
-        assert!(util::read_idx_direct(celtft_idx as usize, area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().tft_best_den_ids()) as u32 ==
+        assert!(util::read_idx_direct(celtft_idx as usize,
+            area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
+                .unwrap().tfts().best_den_ids()) as u32 ==
             self.syn_coords.den_id_celtft);
 
         // FLAGS: [pyr: 64], [syns: 0's], [mcol: 1];

@@ -265,6 +265,7 @@ impl PyramidalLayer {
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn best_den_states_raw(&self) -> &Buffer<u8> { &self.best_den_states_raw }
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
+    #[inline] pub fn tfts(&self) -> &Tufts { &self.tfts }
 }
 
 impl DataCellLayer for PyramidalLayer {
@@ -342,7 +343,7 @@ impl DataCellLayer for PyramidalLayer {
 #[cfg(test)]
 pub mod tests {
     use std::ops::{Range};
-    use rand::{Rng};
+    // use rand::{Rng};
     use rand::distributions::{IndependentSample};
     use ocl::util;
     use cmn::{self, XorShiftRng, Range as RandRange};
@@ -352,11 +353,13 @@ pub mod tests {
         fn cycle_solo(&self) {
             self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap();
 
-            for cycle_kern in self.tft_cycle_kernels.iter() {
-                cycle_kern.default_queue().unwrap().finish().unwrap();
-                unsafe { cycle_kern.cmd().enq().expect("PyramidalLayer::cycle_self_only: tft_cycle_kernels"); }
-                cycle_kern.default_queue().unwrap().finish().unwrap();
-            }
+            // for cycle_kern in self.tft_cycle_kernels.iter() {
+            //     cycle_kern.default_queue().unwrap().finish().unwrap();
+            //     unsafe { cycle_kern.cmd().enq().expect("PyramidalLayer::cycle_self_only: tft_cycle_kernels"); }
+            //     cycle_kern.default_queue().unwrap().finish().unwrap();
+            // }
+
+            self.tfts.cycle_solo();
 
             unsafe {
                 self.pyr_cycle_kernel.cmd().enq()
@@ -367,90 +370,21 @@ pub mod tests {
         }
 
         fn learn_solo(&mut self) {
-            for ltp_kernel in self.tft_ltp_kernels.iter_mut() {
-                ltp_kernel.default_queue().unwrap().finish().unwrap();
+            // for ltp_kernel in self.tft_ltp_kernels.iter_mut() {
+            //     ltp_kernel.default_queue().unwrap().finish().unwrap();
 
-                ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
-                    .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [0]");
+            //     ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
+            //         .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [0]");
 
-                unsafe {
-                    ltp_kernel.cmd().enq()
-                        .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [1]");
-                }
+            //     unsafe {
+            //         ltp_kernel.cmd().enq()
+            //             .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [1]");
+            //     }
 
-                ltp_kernel.default_queue().unwrap().finish().unwrap();
-            }
+            //     ltp_kernel.default_queue().unwrap().finish().unwrap();
+            // }
+            self.tfts.learn_solo();
         }
-
-        // fn print_cel(&mut self, cel_idx: usize) {
-        //     let emsg = "PyramidalLayer::print_cel()";
-
-        //     self.confab();
-
-        //     let cel_den_idz = (cel_idx << self.dens_mut().dims().per_tft_l2_left()) as usize;
-        //     let cel_syn_idz = (cel_idx << self.dens_mut().syns_mut().dims().per_tft_l2_left()) as usize;
-
-        //     let dens_per_tft = self.dens_mut().dims().per_cel() as usize;
-        //     let syns_per_tft = self.dens_mut().syns_mut().dims().per_cel() as usize;
-
-        //     let cel_den_range = cel_den_idz..(cel_den_idz + dens_per_tft);
-        //     let cel_syn_range = cel_syn_idz..(cel_syn_idz + syns_per_tft);
-
-        //     println!("Printing Pyramidal Cell:");
-        //     println!("   states[{}]: {}", cel_idx, self.states[cel_idx]);
-        //     println!("   flag_sets[{}]: {}", cel_idx, self.flag_sets[cel_idx]);
-        //     println!("   best_den_states[{}]: {}", cel_idx, self.best_den_states[cel_idx]);
-        //     println!("   tft_best_den_ids[{}]: {}", cel_idx, self.tft_best_den_ids[cel_idx]);
-        //     println!("   tft_best_den_states[{}]: {}", cel_idx, self.tft_best_den_states[cel_idx]);
-
-        //     // println!("   energies[{}]: {}", cel_idx, self.energies[cel_idx]); // <<<<< SLATED FOR REMOVAL
-
-        //     println!("");
-
-        //     println!("dens.states[{:?}]: ", cel_den_range.clone());
-        //     self.dens.states.print(1, None, Some(cel_den_range.clone()), false);
-
-        //     println!("dens.syns().states[{:?}]: ", cel_syn_range.clone());
-        //     self.dens.syns_mut().states.print(1, None, Some(cel_den_range.clone()), false);
-
-        //     println!("dens.syns().strengths[{:?}]: ", cel_syn_range.clone());
-        //     self.dens.syns_mut().strengths.print(1, None, Some(cel_den_range.clone()), false);
-
-        //     println!("dens.src_col_v_offs[{:?}]: ", cel_syn_range.clone());
-        //     self.dens.syns_mut().src_col_v_offs.print(1, None, Some(cel_den_range.clone()), false);
-
-        //     println!("dens.src_col_u_offs[{:?}]: ", cel_syn_range.clone());
-        //     self.dens.syns_mut().src_col_u_offs.print(1, None, Some(cel_den_range.clone()), false);
-        // }
-
-
-        // // PRINT_ALL(): TODO: [complete] change argument to print dens at some point
-        // fn print_range(&mut self, range: Range<usize>, print_children: bool) {
-        //     print!("pyrs.states: ");
-        //     self.states.print(1, Some((0, 255)), None, false);
-        //     print!("pyrs.flag_sets: ");
-        //     self.flag_sets.print(1, Some((0, 255)), None, false);
-        //     print!("pyrs.best_den_states: ");
-        //     self.best_den_states.print(1, Some((0, 255)), None, false);
-        //     print!("pyrs.tft_best_den_ids: ");
-        //     self.tft_best_den_ids.print(1, Some((0, 255)), None, false);
-        //     print!("pyrs.tft_best_den_states: ");
-        //     self.tft_best_den_states.print(1, Some((0, 255)), None, false);
-
-        //     // print!("pyrs.energies: ");                            // <<<<< SLATED FOR REMOVAL
-        //     // self.energies.print(1, Some((0, 255)), None, false); // <<<<< SLATED FOR REMOVAL
-
-
-        //     if print_children {
-        //         print!("dens.states: ");
-        //         // FOR EACH TUFT:
-        //             // Calculate range for tuft dens
-        //             self.dens.states.print(1, Some((1, 255)), None, false);
-        //             // Calculate range for tuft syns
-        //             self.dens.syns_mut().print_all();
-        //     }
-        // }
-
 
         /// Prints a range of pyramidal buffers.
         ///
@@ -475,17 +409,17 @@ pub mod tests {
             util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
             print!("pyramidal.tft_best_den_states_raw: ");
-            self.tft_best_den_states_raw.read(&mut vec).enq().unwrap();
+            self.tfts.best_den_states_raw().read(&mut vec).enq().unwrap();
             util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
             print!("pyramidal.tft_best_den_states: ");
-            self.tft_best_den_states.read(&mut vec).enq().unwrap();
+            self.tfts.best_den_states().read(&mut vec).enq().unwrap();
             util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
         }
 
-        fn print_all(&self, /*print_children: bool*/) {
-            self.print_range(None, /*print_children*/);
+        fn print_all(&self) {
+            self.print_range(None);
         }
 
         fn rng(&mut self) -> &mut XorShiftRng {
@@ -530,15 +464,15 @@ pub mod tests {
         fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL
             self.states.default_queue().unwrap().finish().unwrap();
             self.flag_sets.default_queue().unwrap().finish().unwrap();
-            self.tft_best_den_ids.default_queue().unwrap().finish().unwrap();
-            self.tft_best_den_states.default_queue().unwrap().finish().unwrap();
-            self.tft_best_den_states_raw.default_queue().unwrap().finish().unwrap();
+            self.tfts.best_den_ids().default_queue().unwrap().finish().unwrap();
+            self.tfts.best_den_states().default_queue().unwrap().finish().unwrap();
+            self.tfts.best_den_states_raw().default_queue().unwrap().finish().unwrap();
 
             self.states.cmd().fill(0, None).enq().unwrap();
             self.flag_sets.cmd().fill(0, None).enq().unwrap();
-            self.tft_best_den_ids.cmd().fill(0, None).enq().unwrap();
-            self.tft_best_den_states.cmd().fill(0, None).enq().unwrap();
-            self.tft_best_den_states_raw.cmd().fill(0, None).enq().unwrap();
+            self.tfts.best_den_ids().cmd().fill(0, None).enq().unwrap();
+            self.tfts.best_den_states().cmd().fill(0, None).enq().unwrap();
+            self.tfts.best_den_states_raw().cmd().fill(0, None).enq().unwrap();
             //self.best2_den_ids.cmd().fill(&[0], None).enq().unwrap();            // <<<<< SLATED FOR REMOVAL
             //self.best2_den_states.cmd().fill(&[0], None).enq().unwrap();        // <<<<< SLATED FOR REMOVAL
 
@@ -546,21 +480,12 @@ pub mod tests {
 
             self.states.default_queue().unwrap().finish().unwrap();
             self.flag_sets.default_queue().unwrap().finish().unwrap();
-            self.tft_best_den_ids.default_queue().unwrap().finish().unwrap();
-            self.tft_best_den_states.default_queue().unwrap().finish().unwrap();
-            self.tft_best_den_states_raw.default_queue().unwrap().finish().unwrap();
+            self.tfts.best_den_ids().default_queue().unwrap().finish().unwrap();
+            self.tfts.best_den_states().default_queue().unwrap().finish().unwrap();
+            self.tfts.best_den_states_raw().default_queue().unwrap().finish().unwrap();
         }
 
-        // fn confab(&mut self) {
-        //     self.states.fill_vec();
-        //     self.best_den_states.fill_vec();
-        //     self.tft_best_den_ids.fill_vec();
-        //     self.tft_best_den_states.fill_vec();
-        //     self.flag_sets.fill_vec();
-        //     // self.energies.fill_vec(); // <<<<< SLATED FOR REMOVAL
 
-        //     self.dens_mut().confab();
-        // }
     }
 }
 

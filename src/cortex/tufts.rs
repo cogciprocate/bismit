@@ -320,3 +320,40 @@ impl Tufts {
     #[inline] pub fn dens(&self) -> &Dendrites { &self.dens }
     #[inline] pub fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }
 }
+
+
+#[cfg(test)]
+pub mod tests {
+    use std::ops::{Range};
+    use rand::{Rng};
+    use rand::distributions::{IndependentSample};
+    use ocl::util;
+    use cmn::{self, XorShiftRng, Range as RandRange};
+    use cortex::{PyramidalLayer, DataCellLayer, DataCellLayerTest, CelCoords, Tufts};
+
+    impl Tufts {
+        pub fn cycle_solo(&self) {
+            for cycle_kern in self.cycle_kernels.iter() {
+                cycle_kern.default_queue().unwrap().finish().unwrap();
+                unsafe { cycle_kern.cmd().enq().expect("PyramidalLayer::cycle_self_only: tft_cycle_kernels"); }
+                cycle_kern.default_queue().unwrap().finish().unwrap();
+            }
+        }
+
+        pub fn learn_solo(&mut self) {
+            for ltp_kernel in self.ltp_kernels.iter_mut() {
+                ltp_kernel.default_queue().unwrap().finish().unwrap();
+
+                ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
+                    .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [0]");
+
+                unsafe {
+                    ltp_kernel.cmd().enq()
+                        .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [1]");
+                }
+
+                ltp_kernel.default_queue().unwrap().finish().unwrap();
+            }
+        }
+    }
+}
