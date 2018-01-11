@@ -1,20 +1,27 @@
+#![allow(dead_code)]
+
 use std::iter;
 use std::io::{self, Write};
-
 use cortex::{Cortex, Dendrites, PyramidalLayer, DendritesTest, SynapsesTest,
     DataCellLayer, DataCellLayerTest};
+use subcortex::{InputGenerator};
 use cmn;
 use tests::{util, testbed};
 
-/*    HYBRID TESTS: Tests runnable in either an interactive or automated manner
-        Useful for:
-            - designing the test itself
-            - troubleshooting test failures
-            - diagnosing tangential issues not explicitly checked for
 
-        - Additional hybrid tests in tests::learning
-*/
+#[test]
+fn cortex() {
+    let layer_map_schemes = testbed::define_layer_map_schemes();
+    let area_schemes = testbed::define_protoareas();
 
+    let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, "v0").unwrap();
+    // let subcortex = Subcortex::new().nucleus(input_gen);
+    let mut cortex = Cortex::builder(layer_map_schemes, area_schemes)
+        .subcortical_nucleus(input_gen)
+        .build().unwrap();
+
+    cycles(&mut cortex, testbed::PRIMARY_AREA_NAME);
+}
 
 
 
@@ -49,7 +56,10 @@ pub fn cycles(cortex: &mut Cortex, area_name: &str) {
     //cortex.enqueue_write(area_name, ptal_name, &vec1);
     cortex.areas_mut().by_key_mut(area_name).unwrap().pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().soma().cmd().write(&vec1).offset(0).enq().unwrap();
     syn_and_den_states(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut());
-    pyr_preds(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap());
+
+
+    /////// [FIXME]: DISABLED DUE TO TUFT REDESIGNS:
+    // pyr_preds(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap());
 }
 
 

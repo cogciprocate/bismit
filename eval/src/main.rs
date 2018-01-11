@@ -12,17 +12,19 @@ extern crate qutex;
 
 mod spatial;
 mod hexdraw;
+mod sequence;
 mod motor;
 mod sensory;
 
-
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
-
+use rand::XorShiftRng;
+use rand::distributions::{Range, IndependentSample};
+use qutex::QrwLock;
 use vibi::window;
 use vibi::bismit::ocl::{Buffer, RwVec};
-use vibi::bismit::{Cortex, SubcorticalNucleusLayer, TractSender, TractReceiver,
-    CorticalDims};
+use vibi::bismit::{encode, Cortex, SubcorticalNucleusLayer, TractSender, TractReceiver,
+    CorticalDims, TractDims};
 use vibi::bismit::flywheel::{Flywheel, Command, Request, Response};
 use vibi::bismit::map::{AreaMap, AxonTopology, LayerAddress};
 
@@ -121,6 +123,7 @@ fn main() {
         "hexdraw" => hexdraw::eval(sub),
         "motor" => motor::eval(),
         "sensory" => sensory::eval(),
+        "sequence" => sequence::eval(),
         e @ _ => println!("Unknown evaluation specified: {}", e),
     }
 
@@ -338,5 +341,48 @@ impl Layer {
 
     pub fn pathway(&self) -> &PathwayDir {
         &self.pathway
+    }
+}
+
+
+#[derive(Debug)]
+pub struct Sdrs {
+    pub pattern_count: usize,
+    pub dims: TractDims,
+    pub lock: QrwLock<Vec<Vec<u8>>>,
+    pub rng: XorShiftRng,
+}
+
+impl Sdrs {
+    pub fn new<D>(pattern_count: usize, dims: D) -> Sdrs
+            where D: Into<TractDims> {
+        let dims = dims.into();
+        const SPARSITY: usize = 48;
+        // let pattern_count = 300;
+        let cell_count = dims.to_len();
+        let sdr_active_count = cell_count / SPARSITY;
+
+        let mut rng = rand::weak_rng();
+
+        // Produce randomized indexes:
+        let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
+            encode::gen_axn_idxs(&mut rng, sdr_active_count, cell_count)
+        }).collect();
+
+        // Create sdr from randomized indexes:
+        let lock: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
+            let mut sdr = vec![0u8; cell_count];
+            for &axn_idx in axn_idxs.iter() {
+                sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
+            }
+            sdr
+        }).collect();
+
+        Sdrs {
+            pattern_count,
+            dims,
+            lock: QrwLock::new(lock),
+            rng,
+        }
     }
 }

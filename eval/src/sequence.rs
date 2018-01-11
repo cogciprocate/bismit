@@ -1,3 +1,9 @@
+//! Determine how well a layer of pyramidal cells can predict the next input
+//! in a learned sequence of inputs.
+//!
+//!
+//!
+
 #![allow(dead_code, unused_imports, unused_variables)]
 
 // use std::mem;
@@ -11,7 +17,7 @@ use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thala
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
-use ::{IncrResult, TrialIter, Layer, PathwayDir, InputSource};
+use ::{IncrResult, TrialIter, Layer, PathwayDir, InputSource, Sdrs};
 use ::spatial::{TrialData, TrialResults};
 
 
@@ -19,35 +25,28 @@ static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
 static SPT_LYR: &'static str = "iv";
 
-const ENCODE_DIM: u32 = 48;
-const ENCODE_DIMS: (u32, u32, u8) = (30, 255, 1);
+// const ENCODE_DIM: u32 = 48;
+const ENCODE_DIMS_0: (u32, u32, u8) = (48, 48, 1);
+const ENCODE_DIMS_1: (u32, u32, u8) = (30, 255, 1);
 const AREA_DIM: u32 = 16;
 const SEQUENTIAL_SDR: bool = true;
 
 
-/// A `SubcorticalNucleus` which runs several evaluations of a spiny stellate
-/// cell layer and its accompanying control cells (smoother).
-struct EvalSensory {
+/// A `SubcorticalNucleus`.
+struct EvalSequence {
     area_name: String,
     area_id: usize,
     layers: HashMap<LayerAddress, Layer>,
-    pattern_count: usize,
-    area_cell_count: usize,
-    input_sdrs: QrwLock<Vec<Vec<u8>>>,
-    trial_iter: TrialIter,
     cycles_complete: usize,
-    current_trial_data: TrialData,
-    current_pattern_idx: usize,
-    trial_results: TrialResults,
-    rng: XorShiftRng,
-    encoder_2d: Vector2dWriter,
-    // samplers: Option<Samplers>,
+    sdrs: Sdrs,
+    trial_iter: TrialIter,
+    // current_pattern_idx: usize,
 }
 
-impl EvalSensory {
+impl EvalSequence {
     pub fn new<S: Into<String>>(layer_map_schemes: &LayerMapSchemeList,
             area_schemes: &AreaSchemeList, area_name: S)
-            -> EvalSensory {
+            -> EvalSequence {
         let area_name = area_name.into();
         let area_scheme = &area_schemes[&area_name];
         let layer_map_scheme = &layer_map_schemes[area_scheme.layer_map_name()];
@@ -56,8 +55,8 @@ impl EvalSensory {
         for layer_scheme in layer_map_scheme.layers() {
             let lyr_dims = match layer_scheme.name() {
                 "external_0" => None,
-                "external_1" => Some(ENCODE_DIMS.into()),
-                ln @ _ => panic!("EvalSensory::new: Unknown layer name: {}.", ln),
+                // "external_1" => Some(ENCODE_DIMS.into()),
+                ln @ _ => panic!("EvalSequence::new: Unknown layer name: {}.", ln),
             };
 
             let sub_layer = SubcorticalNucleusLayer::from_schemes(layer_scheme, area_scheme,
@@ -71,68 +70,29 @@ impl EvalSensory {
             layers.insert(layer.sub().addr().clone(), layer);
         }
 
-        const SPARSITY: usize = 48;
-        let pattern_count = 300;
-        let cell_count = (ENCODE_DIM * ENCODE_DIM) as usize;
-        let sdr_active_count = cell_count / SPARSITY;
-
-        let mut rng = rand::weak_rng();
-
-        // Produce randomized indexes:
-        let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
-            encode::gen_axn_idxs(&mut rng, sdr_active_count, cell_count)
-        }).collect();
-
-        // Create sdr from randomized indexes:
-        let input_sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
-            let mut sdr = vec![0u8; cell_count];
-            for &axn_idx in axn_idxs.iter() {
-                sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
-            }
-            sdr
-        }).collect();
-
-        let area_cell_count = (AREA_DIM * AREA_DIM) as usize;
+        let sdrs = Sdrs::new(100, ENCODE_DIMS_0);
 
         // Define the number of iters to first train then collect for each
         // sample period. All learning and other cell parameters (activity,
         // energy, etc.) persist between sample periods. Only collection
         // iters are recorded and evaluated.
         let trial_iter = TrialIter::new(vec![
-            // (100, 100), (200, 200), (300, 300), (400, 400), (500, 500),
             (5000, 5000), (5000, 5000), (5000, 5000), (5000, 5000), (5000, 5000),
-
-            // (40000, 10000), (80000, 10000), (80000, 10000), (80000, 10000),
-            // (80000, 10000), (80000, 10000),
         ]);
 
-        let pattern_watch_list = vec![0, 1, 2, 3, 4];
-        let trial_results = TrialResults::new(pattern_watch_list);
-
-
-        let encoder_2d = Vector2dWriter::new(ENCODE_DIMS);
-
-
-        EvalSensory {
+        EvalSequence {
             area_name: area_name,
             area_id: area_scheme.area_id(),
             layers,
-            pattern_count,
-            area_cell_count,
-            input_sdrs: QrwLock::new(input_sdrs),
-            trial_iter,
             cycles_complete: 0,
-            current_trial_data: TrialData::new(pattern_count, area_cell_count),
-            current_pattern_idx: 0,
-            trial_results,
-            rng,
-            encoder_2d,
-            // samplers: None,
+            sdrs,
+            trial_iter,
+            // current_pattern_idx: 0,
         }
     }
 }
 
-impl SubcorticalNucleus for EvalSensory {
+impl SubcorticalNucleus for EvalSequence {
     fn create_pathways(&mut self, thal: &mut Thalamus,
             _cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
         // Wire up output (sdr) pathways.
@@ -171,15 +131,13 @@ impl SubcorticalNucleus for EvalSensory {
     /// *
     ///
     fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
-        self.current_pattern_idx = if SEQUENTIAL_SDR {
+        let pattern_idx = if SEQUENTIAL_SDR {
             // Choose a non-random SDR:
-            self.trial_iter.global_cycle_idx % self.pattern_count
+            self.trial_iter.global_cycle_idx % self.sdrs.pattern_count
         } else {
             // Choose a random SDR:
-            Range::new(0, self.pattern_count).ind_sample(&mut self.rng)
+            Range::new(0, self.sdrs.pattern_count).ind_sample(&mut self.sdrs.rng)
         };
-
-        let pattern_idx = self.current_pattern_idx;
 
         // Write sdr to pathway:
         for layer in self.layers.values() {
@@ -188,7 +146,7 @@ impl SubcorticalNucleus for EvalSensory {
 
                 match layer.sub().name() {
                     "external_0" => {
-                        let future_sdrs = self.input_sdrs.clone().read().from_err();
+                        let future_sdrs = self.sdrs.lock.clone().read().from_err();
 
                         let future_write_guard = tx.send()
                             .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
@@ -206,25 +164,25 @@ impl SubcorticalNucleus for EvalSensory {
 
                         work_pool.complete_work(future_write)?;
                     },
-                    "external_1" => {
-                        let mut write_guard = tx.send()
-                            .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
-                            .flatten()
-                            .wait()
-                            .expect("future err")
-                            .expect("write guard is None");
+                    // "external_1" => {
+                    //     let mut write_guard = tx.send()
+                    //         .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                    //         .flatten()
+                    //         .wait()
+                    //         .expect("future err")
+                    //         .expect("write guard is None");
 
-                        let x = (self.cycles_complete as f64 / 10000.).cos();
-                        let y = (self.cycles_complete as f64 / 10000.).sin();
+                    //     let x = (self.cycles_complete as f64 / 10000.).cos();
+                    //     let y = (self.cycles_complete as f64 / 10000.).sin();
 
-                        self.encoder_2d.encode([x, y], &mut write_guard);
-
-                        // work_pool.complete_work(  )?;
-                    },
+                    //     // self.encoder_2d.encode([x, y], &mut write_guard);
+                    //     // work_pool.complete_work(  )?;
+                    // },
                     _ => (),
                 }
             }
         }
+
         self.cycles_complete += 1;
         Ok(())
     }
@@ -242,14 +200,8 @@ impl SubcorticalNucleus for EvalSensory {
         }
 
         match self.trial_iter.incr() {
-            IncrResult::TrialComplete { scheme_idx: _, train: _, collect: _ } => {
-
-            },
-            _ir @ _ => {
-                if self.trial_iter.current_counter.is_last_cycle() {
-
-                }
-            },
+            IncrResult::TrialComplete { scheme_idx: _, train: _, collect: _ } => {},
+            _ir @ _ => {},
         }
 
         Ok(())
@@ -273,7 +225,7 @@ pub fn eval() {
     let layer_map_schemes = define_lm_schemes();
     let area_schemes = define_a_schemes();
 
-    let eval_nucl = EvalSensory::new(&layer_map_schemes,
+    let eval_nucl = EvalSequence::new(&layer_map_schemes,
         &area_schemes, IN_AREA);
 
     let cortex_builder = Cortex::builder(layer_map_schemes, area_schemes)
@@ -295,10 +247,6 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
-            // .input_layer("aff_in", LayerTags::DEFAULT,
-            //     AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at_el0])]),
-            //     AxonTopology::Spatial
-            // )
             .layer(LayerScheme::define("aff_in_0")
                 .axonal(AxonTopology::Spatial)
                 .axon_domain(AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at_el0])]))
@@ -341,12 +289,6 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                     )
                 )
             )
-            // .layer_old("iii", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
-            //     CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
-            // )
-            // .layer_old("iii_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
-            //     CellScheme::pyr_outputter("iii", 0)
-            // )
             .layer(LayerScheme::define("v")
                 .depth(1)
                 .tags(LayerTags::PML)
@@ -371,9 +313,6 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                     )
                 )
             )
-            // .layer_old("v_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
-            //     CellScheme::pyr_outputter("v", 0)
-            // )
             .layer(LayerScheme::define("v_inhib_col")
                 .cellular(CellScheme::control(
                         ControlCellKind::IntraColumnInhib {
@@ -385,34 +324,27 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            // .layer_old(EXT_LYR, 1, LayerTags::DEFAULT,
-            //     AxonDomain::output(&[map::THAL_SP, at_el0]),
-            //     LayerKind::Axonal(AxonTopology::Spatial)
-            // )
             .layer(LayerScheme::define("external_0")
                 .depth(1)
                 .axonal(AxonTopology::Spatial)
                 .axon_domain(AxonDomain::output(&[map::THAL_SP, at_el0]))
             )
-            .layer(LayerScheme::define("external_1")
-                .depth(1)
-                .axonal(AxonTopology::Nonspatial)
-                .axon_domain(AxonDomain::output(&[map::THAL_SP, at_el1]))
-            )
+            // .layer(LayerScheme::define("external_1")
+            //     .depth(1)
+            //     .axonal(AxonTopology::Nonspatial)
+            //     .axon_domain(AxonDomain::output(&[map::THAL_SP, at_el1]))
+            // )
         )
 }
 
 fn define_a_schemes() -> AreaSchemeList {
     AreaSchemeList::new()
-        .area(AreaScheme::new(IN_AREA, "v0_lm", ENCODE_DIM)
+        .area(AreaScheme::new(IN_AREA, "v0_lm", ENCODE_DIMS_0.0)
             .subcortex()
         )
         .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)
             .eff_areas(vec![IN_AREA])
         )
-        // .area(AreaScheme::new("v2", "visual", AREA_DIM)
-        //     .eff_areas(vec![IN_AREA])
-        // )
 }
 
 pub fn ca_settings() -> CorticalAreaSettings {

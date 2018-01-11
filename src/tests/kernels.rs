@@ -4,6 +4,13 @@ use ocl::{self, Buffer, SpatialDims};
 use super::{TestBed, util};
 
 
+#[test]
+fn kernels() {
+    let testbed = TestBed::new();
+    axn_idxs(&testbed);
+}
+
+
 
 // TEST THAT:
 //        - VECTORIZED AND NON-VECTORIZED INDEX RESOLUTION FUNCTIONS RETURN THE SAME RESULTS
