@@ -10,19 +10,34 @@ static inline uchar4 syn_fire_vec4(uchar4 const axn_state) {
 }
 
 
+// Update flags to indicate activity of the prior state.
+__kernel void tft_set_syn_flags(
+        __global const uchar* const states,
+        __global uchar* const flag_sets)
+{
+    uint const syn_idx = get_global_id(0);
+
+    int syn_was_active = states > 0;
+    uchar flag_sets = flag_sets[syn_idx] & ~SYN_PREV_ACTIVE_FLAG;
+    flag_sets = flag_sets | mul24(syn_was_active, SYN_PREV_ACTIVE_FLAG);
+    flag_sets[syn_idx] = flag_sets;
+
+}
+
+
 // Process synapses for a tuft assuming irregular tuft sizes.
 __kernel void tft_cycle_syns(
-                __global const uchar* const axn_states,
-                __global const char* const syn_src_col_u_offs,
-                __global const char* const syn_src_col_v_offs,
-                __global const uchar* const syn_src_slc_ids,
-                // __private uint const cel_idz_syntuft,
-                __private uint const syn_idz_tft,
-                __private uchar const syns_per_tft_l2,
-                __private uchar const layer_depth,
-                __global int* const aux_ints_0,
-                __global int* const aux_ints_1,
-                __global uchar* const syn_states)
+        __global const uchar* const axn_states,
+        __global const char* const syn_src_col_u_offs,
+        __global const char* const syn_src_col_v_offs,
+        __global const uchar* const syn_src_slc_ids,
+        // __private uint const cel_idz_syntuft,
+        __private uint const syn_idz_tft,
+        __private uchar const syns_per_tft_l2,
+        __private uchar const layer_depth,
+        __global int* const aux_ints_0,
+        __global int* const aux_ints_1,
+        __global uchar* const syn_states)
 {
     uint const v_id = get_global_id(0);
     uint const u_id = get_global_id(1);
@@ -103,17 +118,17 @@ __kernel void tft_cycle_syns(
 
 // SYNS_CYCLE_SIMPLE_VEC4(): Simple synapse cycling with vectorization, layer-at-once
 __kernel void tft_cycle_syns_vec4(
-                __global const uchar* const axn_states,
-                __global char4 const* const syn_src_col_u_offs,
-                __global char4 const* const syn_src_col_v_offs,
-                __global uchar4 const* const syn_src_slc_ids,
-                // __private uint const cel_idz_syntuft,
-                __private uint const syn_idz_tft,
-                __private uchar const syns_per_tft_l2,
-                __private uchar const layer_depth,
-                __global int* const aux_ints_0,
-                __global int* const aux_ints_1,
-                __global uchar4* const syn_states)
+        __global const uchar* const axn_states,
+        __global const char4* const syn_src_col_u_offs,
+        __global const char4* const syn_src_col_v_offs,
+        __global const uchar4* const syn_src_slc_ids,
+        // __private uint const cel_idz_syntuft,
+        __private uint const syn_idz_tft,
+        __private uchar const syns_per_tft_l2,
+        __private uchar const layer_depth,
+        __global int* const aux_ints_0,
+        __global int* const aux_ints_1,
+        __global uchar4* const syn_states)
 {
     uint const v_id = get_global_id(0);
     uint const u_id = get_global_id(1);
@@ -154,17 +169,17 @@ __kernel void tft_cycle_syns_vec4(
 
 //SYNS_CYCLE_WG_OPT(): Cycle synapses with workgroup optimized writes, layer optimized
 __kernel void layer_cycle_syns_wow(
-                __global const uchar* const axn_states,
-                __global const char* const syn_src_col_u_offs,
-                __global const char* const syn_src_col_v_offs,
-                __global const uchar* const syn_src_slc_ids,
-                // __private uint const cel_idz_syntuft,
-                __private uint const syn_idz_tft,
-                __private uchar const syns_per_tft_l2,
-                __private uchar const layer_depth,
-                __global int* const aux_ints_0,
-                __global int* const aux_ints_1,
-                __global uchar* const syn_states)
+        __global const uchar* const axn_states,
+        __global const char* const syn_src_col_u_offs,
+        __global const char* const syn_src_col_v_offs,
+        __global const uchar* const syn_src_slc_ids,
+        // __private uint const cel_idz_syntuft,
+        __private uint const syn_idz_tft,
+        __private uchar const syns_per_tft_l2,
+        __private uchar const layer_depth,
+        __global int* const aux_ints_0,
+        __global int* const aux_ints_1,
+        __global uchar* const syn_states)
 {
     uint const v_size = get_global_size(0);
     uint const u_size = get_global_size(1);
@@ -260,17 +275,17 @@ __kernel void layer_cycle_syns_wow(
 // SYNS_CYCLE_WG_OPT_VEC4(): Cycle synapses with workgroup optimized writes and vectorization, layer optimized
 //         See above for annotated version.
 __kernel void layer_cycle_syns_wow_vec4(
-                __global const uchar* const axn_states,
-                __global char4 const* const syn_src_col_u_offs,
-                __global char4 const* const syn_src_col_v_offs,
-                __global uchar4 const* const syn_src_slc_ids,
-                // __private uint const cel_idz_syntuft,
-                __private uint const syn_idz_tft,
-                __private uchar const syns_per_tft_l2,
-                __private uchar const layer_depth,
-                __global int* const aux_ints_0,
-                __global int* const aux_ints_1,
-                __global uchar4* const syn_states)
+        __global const uchar* const axn_states,
+        __global const char4* const syn_src_col_u_offs,
+        __global const char4* const syn_src_col_v_offs,
+        __global const uchar4* const syn_src_slc_ids,
+        // __private uint const cel_idz_syntuft,
+        __private uint const syn_idz_tft,
+        __private uchar const syns_per_tft_l2,
+        __private uchar const layer_depth,
+        __global int* const aux_ints_0,
+        __global int* const aux_ints_1,
+        __global uchar4* const syn_states)
 {
     uint const v_size = get_global_size(0);
     uint const u_size = get_global_size(1);
