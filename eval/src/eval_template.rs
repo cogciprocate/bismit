@@ -23,6 +23,7 @@ use ::spatial::{TrialData, TrialResults};
 
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
+static SPT_LYR: &'static str = "iv";
 
 const ENCODE_DIMS_0: (u32, u32, u8) = (48, 48, 1);
 const ENCODE_DIMS_1: (u32, u32, u8) = (30, 255, 1);
@@ -253,7 +254,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 .axonal(AxonTopology::Nonspatial)
                 .axon_domain(AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at_el1])]))
             )
-            .layer(LayerScheme::define("iv")
+            .layer(LayerScheme::define(SPT_LYR)
                 .depth(1)
                 .tags(LayerTags::PSAL)
                 .axon_domain(AxonDomain::output(&[at1]))
@@ -270,7 +271,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer(LayerScheme::define("iv_inhib")
                 .cellular(CellScheme::control(
                         ControlCellKind::InhibitoryBasketSurround {
-                            host_lyr_name: "iv".into(),
+                            host_lyr_name: SPT_LYR.into(),
                             field_radius: 4,
                         },
                         0
@@ -280,32 +281,32 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer(LayerScheme::define("iv_smooth")
                 .cellular(CellScheme::control(
                         ControlCellKind::ActivitySmoother {
-                            host_lyr_name: "iv".into(),
+                            host_lyr_name: SPT_LYR.into(),
                             field_radius: 4,
                         },
                         1
                     )
                 )
             )
-            .layer(LayerScheme::define("iii")
-                .depth(8)
-                .tags(LayerTags::PTAL)
+            .layer(LayerScheme::define("v")
+                .depth(1)
+                .tags(LayerTags::PML)
                 .axon_domain(AxonDomain::output(&[at2]))
                 .cellular(CellScheme::pyramidal()
-                    .tft(TuftScheme::basal().proximal()
-                        .syns_per_den_l2(0)
-                        .src_lyr(TuftSourceLayer::define("iv")
-                            .syn_reach(0)
-                            .prevalence(1)
-                        )
-                    )
+                    // .tft(TuftScheme::basal().proximal()
+                    //     .syns_per_den_l2(3)
+                    //     .src_lyr(TuftSourceLayer::define(SPT_LYR)
+                    //         .syn_reach(0)
+                    //         .prevalence(1)
+                    //     )
+                    // )
                     .tft(TuftScheme::basal().distal()
                         .dens_per_tft_l2(4)
                         .syns_per_den_l2(5)
-                        .max_active_dens_l2(3)
+                        .max_active_dens_l2(2)
                         .thresh_init(500)
-                        .src_lyr(TuftSourceLayer::define("iii")
-                            .syn_reach(7)
+                        .src_lyr(TuftSourceLayer::define("v")
+                            .syn_reach(5)
                             .prevalence(1)
                         )
                     )
@@ -314,7 +315,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             .layer(LayerScheme::define("v_inhib_col")
                 .cellular(CellScheme::control(
                         ControlCellKind::IntraColumnInhib {
-                            host_lyr_name: "iii".into(),
+                            host_lyr_name: "v".into(),
                         },
                         0
                     )

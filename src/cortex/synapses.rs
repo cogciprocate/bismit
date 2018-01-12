@@ -100,7 +100,8 @@ pub struct Synapses {
     layer_name: String,
     layer_id: usize,
     dims: CorticalDims,
-    kernels: Vec<Box<Kernel>>,
+    kernel_flags: Kernel,
+    kernels_cycle: Vec<Kernel>,
     src_idx_caches_by_tft: Vec<SynSrcIdxCache>,
     syn_src_slices: SynSrcSlices,
     rng: XorShiftRng,
@@ -123,8 +124,10 @@ pub struct Synapses {
     syn_counts_by_tft: Vec<u32>,
     tft_dims_by_tft: Vec<TuftDims>,
 
-    exe_cmd_uids: Vec<CommandUid>,
-    exe_cmd_idxs: Vec<usize>,
+    exe_cmd_uid_flags: Option<CommandUid>,
+    exe_cmd_idx_flags: usize,
+    exe_cmd_uids_cycle: Vec<CommandUid>,
+    exe_cmd_idxs_cycle: Vec<usize>,
     bypass_exe_graph: bool,
 }
 
@@ -132,22 +135,24 @@ impl Synapses {
     pub fn new<S: Into<String>>(layer_name: S, layer_id: usize, dims: CorticalDims,
             cell_scheme: CellScheme,
             area_map: &AreaMap, axons: &AxonSpace,
-            ocl_pq: &ProQue, bypass_exe_graph: bool, exe_graph: &mut ExecutionGraph,
-            ) -> CmnResult<Synapses>
-    {
+            ocl_pq: &ProQue, bypass_exe_graph: bool, exe_graph: &mut ExecutionGraph)
+            -> CmnResult<Synapses> {
         let layer_name = layer_name.into();
         let syn_src_slices = SynSrcSlices::new(layer_id, cell_scheme.tft_schemes(), area_map)?;
 
         let tft_count = cell_scheme.tft_count();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
 
-        let mut kernels = Vec::with_capacity(tft_count);
+        let mut kernels_cycle = Vec::with_capacity(tft_count);
         let mut src_idx_caches_by_tft = Vec::with_capacity(tft_count);
         let mut syn_idzs_by_tft = Vec::with_capacity(tft_count);
         let mut syn_counts_by_tft = Vec::with_capacity(tft_count);
         let mut tft_dims_by_tft = Vec::with_capacity(tft_count);
-        let mut exe_cmd_uids = Vec::with_capacity(tft_count);
-        let exe_cmd_idxs = Vec::with_capacity(tft_count);
+        let mut exe_cmd_uid_flags = None;
+        let exe_cmd_idx_flags = 0;
+        let mut exe_cmd_uids_cycle = Vec::with_capacity(tft_count);
+        let exe_cmd_idxs_cycle = Vec::with_capacity(tft_count);
+
         let mut syn_count_ttl = 0u32;
 
         debug_assert!(cell_scheme.tft_schemes().len() == tft_count);
@@ -206,10 +211,35 @@ impl Synapses {
         ===============================================================================
         =============================================================================*/
 
+        // Sets the `SYN_PREV_ACTIVE_FLAG` bit.
+        let kern_name_flags = "tft_set_syn_flags";
+        let kernel_flags = ocl_pq.create_kernel(kern_name_flags)?
+                .gws(syn_count_ttl)
+                .arg_buf(&states)
+                .arg_buf(&flag_sets);
+
+        if !bypass_exe_graph {
+            let cmd_srcs: Vec<CorticalBuffer> = cell_scheme.tft_schemes().iter().enumerate()
+                .map(|(tft_id, _)| {
+                    CorticalBuffer::data_syn_tft(&states, layer_addr, tft_id)
+                }).collect();
+
+            let cmd_dsts: Vec<CorticalBuffer> = cell_scheme.tft_schemes().iter().enumerate()
+                .map(|(tft_id, _)| {
+                    CorticalBuffer::data_syn_tft(&flag_sets, layer_addr, tft_id)
+                }).collect();
+
+            exe_cmd_uid_flags = Some(exe_graph.add_command(CommandRelations::cortical_kernel(
+                kern_name_flags, cmd_srcs, cmd_dsts))?)
+        };
+
+        /*=============================================================================
+        ===============================================================================
+        =============================================================================*/
+
         for (tft_id, (tft_scheme, &tft_syn_idz)) in cell_scheme.tft_schemes().iter()
                 .zip(syn_idzs_by_tft.iter())
-                .enumerate()
-        {
+                .enumerate() {
             let syns_per_tft_l2 = tft_scheme.syns_per_tft_l2();
 
             // * TODO: Use kernel to ascertain the optimal workgroup size increment.
@@ -218,7 +248,7 @@ impl Synapses {
 
             /*=============================================================================
             ===============================================================================
-            =============================================================================*/
+            ===========================================================================*/
 
             let kern_name = if syns_per_tft_l2 >= 2 {
                 // "tft_cycle_syns"
@@ -230,9 +260,8 @@ impl Synapses {
                 "layer_cycle_syns_wow"
             };
 
-            kernels.push(Box::new({
-                ocl_pq.create_kernel(kern_name)
-                    .expect("Synapses::new()")
+            kernels_cycle.push(
+                ocl_pq.create_kernel(kern_name)?
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(axons.states())
@@ -245,24 +274,22 @@ impl Synapses {
                     .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
                     .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
                     .arg_buf(&states)
-            }));
-
-            let mut cmd_srcs: Vec<CorticalBuffer> = syn_src_slices.by_tft()[tft_id]
-                .id_pools().iter().map(|&slc_id|
-                    CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
-                .collect();
-
-            cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_u_offs, layer_addr.clone(), tft_id));
-            cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_v_offs, layer_addr, tft_id));
-            cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_slc_ids, layer_addr, tft_id));
+            );
 
             if !bypass_exe_graph {
-                exe_cmd_uids.push(exe_graph.add_command(CommandRelations::cortical_kernel(
+                let mut cmd_srcs: Vec<CorticalBuffer> = syn_src_slices.by_tft()[tft_id]
+                    .id_pools().iter().map(|&slc_id|
+                        CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
+                    .collect();
+
+                cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_u_offs, layer_addr.clone(), tft_id));
+                cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_col_v_offs, layer_addr, tft_id));
+                cmd_srcs.push(CorticalBuffer::data_syn_tft(&src_slc_ids, layer_addr, tft_id));
+
+                exe_cmd_uids_cycle.push(exe_graph.add_command(CommandRelations::cortical_kernel(
                     kern_name, cmd_srcs, vec![CorticalBuffer::data_syn_tft(&states, layer_addr, tft_id)]
                 ))?);
             }
-
-            // exe_graph.register_requisite(0, 0)?;
         }
 
         /*=============================================================================
@@ -279,7 +306,8 @@ impl Synapses {
             layer_name: layer_name,
             layer_id: layer_id,
             dims: dims,
-            kernels: kernels,
+            kernel_flags,
+            kernels_cycle,
             src_idx_caches_by_tft: src_idx_caches_by_tft,
             syn_src_slices: syn_src_slices,
             rng: cmn::weak_rng(),
@@ -296,8 +324,10 @@ impl Synapses {
             syn_counts_by_tft: syn_counts_by_tft,
             syn_idzs_by_tft: syn_idzs_by_tft,
             tft_dims_by_tft: tft_dims_by_tft,
-            exe_cmd_uids,
-            exe_cmd_idxs,
+            exe_cmd_uid_flags,
+            exe_cmd_idx_flags,
+            exe_cmd_uids_cycle,
+            exe_cmd_idxs_cycle,
             bypass_exe_graph,
         };
 
@@ -308,18 +338,32 @@ impl Synapses {
 
     pub fn set_exe_order(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if !self.bypass_exe_graph {
-            self.exe_cmd_idxs.clear();
-            for &cmd_uid in self.exe_cmd_uids.iter() {
+            // Flags kernel:
+            self.exe_cmd_idx_flags = exe_graph.order_command(self.exe_cmd_uid_flags.unwrap())?;
+
+            // Cycle kernels:
+            self.exe_cmd_idxs_cycle.clear();
+            for &cmd_uid in self.exe_cmd_uids_cycle.iter() {
                 if PRINT_DEBUG { println!("##### Ordering synapse: {}", cmd_uid); }
-                self.exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
+                self.exe_cmd_idxs_cycle.push(exe_graph.order_command(cmd_uid)?);
             }
         }
         Ok(())
     }
 
     pub fn cycle(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        // for kern in self.kernels.iter() {
-        for (kern, &cmd_idx) in self.kernels.iter().zip(self.exe_cmd_idxs.iter()) {
+        // Flags kernel:
+        let mut event = Event::empty();
+        unsafe {
+            self.kernel_flags.cmd()
+                .ewait(exe_graph.get_req_events(self.exe_cmd_idx_flags)?)
+                .enew(&mut event)
+                .enq()?;
+        }
+        exe_graph.set_cmd_event(self.exe_cmd_idx_flags, Some(event))?;
+
+        // Cycle kernels:
+        for (kern, &cmd_idx) in self.kernels_cycle.iter().zip(self.exe_cmd_idxs_cycle.iter()) {
             if PRINT_DEBUG { printlnc!(white: "    Syns: Enqueuing kernel: '{}' \
                 (exe_cmd_idx: [{}])...", kern.name()?, cmd_idx); }
 
@@ -341,12 +385,11 @@ impl Synapses {
     // Debugging purposes
     // * TODO: Depricate?
     pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, buf: &Buffer<T>)
-            -> OclResult<()>
-    {
+            -> OclResult<()> {
         let using_aux = true;
 
         if using_aux {
-            for kernel in self.kernels.iter_mut() {
+            for kernel in self.kernels_cycle.iter_mut() {
                 try!(kernel.set_arg_buf_named(name, Some(buf)));
             }
         }
@@ -566,7 +609,7 @@ pub mod tests {
         }
 
         fn cycle_solo(&self) {
-            for kern in self.kernels.iter() {
+            for kern in self.kernels_cycle.iter() {
                 kern.default_queue().unwrap().finish().unwrap();
                 unsafe { kern.cmd().enq().expect("SynapsesTest::cycle_solo"); }
                 kern.default_queue().unwrap().finish().unwrap();

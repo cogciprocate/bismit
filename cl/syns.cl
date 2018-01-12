@@ -11,6 +11,9 @@ static inline uchar4 syn_fire_vec4(uchar4 const axn_state) {
 
 
 // Update flags to indicate activity of the prior state.
+//
+// NOTE: This functionality should be integrated into synapse cycle kernels at
+// some point (for performance reasons).
 __kernel void tft_set_syn_flags(
         __global const uchar* const states,
         __global uchar* const flag_sets)
@@ -18,10 +21,9 @@ __kernel void tft_set_syn_flags(
     uint const syn_idx = get_global_id(0);
 
     int syn_was_active = states > 0;
-    uchar flag_sets = flag_sets[syn_idx] & ~SYN_PREV_ACTIVE_FLAG;
-    flag_sets = flag_sets | mul24(syn_was_active, SYN_PREV_ACTIVE_FLAG);
-    flag_sets[syn_idx] = flag_sets;
-
+    uchar flag_set = flag_sets[syn_idx] & ~SYN_PREV_ACTIVE_FLAG;
+    flag_set = flag_set | mul24((uchar)syn_was_active, SYN_PREV_ACTIVE_FLAG);
+    flag_sets[syn_idx] = flag_set;
 }
 
 

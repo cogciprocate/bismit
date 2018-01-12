@@ -214,6 +214,8 @@ impl TuftSchemeDefinition {
         self
     }
 
+    /// Sets the number of active dendrites required to reach 100% activation
+    /// for this tuft (in log2).
     pub fn max_active_dens_l2(mut self, max_active_dens_l2: u8) -> TuftSchemeDefinition {
         self.max_active_dens_l2 = max_active_dens_l2;
         self

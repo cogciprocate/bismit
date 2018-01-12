@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, DenCoords, SynapsesTest,
     DataCellLayer, DataCellLayerTest};
 use map::{AreaMapTest, LayerTags};
@@ -12,7 +14,11 @@ const PRINT_DETAILS: bool = false;
 //
 // Test that input on each dendridic tuft is reaching the cell soma.
 //
-// [FIXME]: Disabled. Needs redesign as of tuft changes.
+//
+// [FIXME (2018-01-11)]: Disabled. Needs redesign as of tuft changes. Distal
+// (apical in this case) tuft activity no longer causes a pyramidal cell to
+// fire without proximal input.
+//
 // #[test]
 fn cycle_random_pyrs() {
     let mut cortex = testbed::cortex_with_lots_of_apical_tufts();

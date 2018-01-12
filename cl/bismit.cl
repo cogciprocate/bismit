@@ -1124,8 +1124,6 @@ __kernel void mcol_activate_pyrs(
 //     -
 //
 //
-//
-//
 // - TODO:
 //     - [incomplete] Vectorize (should be highly vectorizable)
 //     - reducing branching will be tough with this one
@@ -1436,9 +1434,12 @@ __kernel void pyr_cycle(
 }
 
 
+
+
 //    COL_OUTPUT()
 //        - rename coming
 //
+// [DEPRECATED]: Now subsumed by pyramidal control cells
 __kernel void mcol_output(
             __global const uchar* const pyr_best_den_states,
             __global const uchar* const pyr_states,
@@ -1512,10 +1513,6 @@ __kernel void mcol_output(
 
 
 
-
-
-
-
 /*=============================================================================
 ===============================================================================
 ===============================================================================
@@ -1527,6 +1524,9 @@ __kernel void mcol_output(
 ===============================================================================
 ===============================================================================
 =============================================================================*/
+
+
+
 
 
 // // Determine the best dendrite state for the two tracts.
@@ -1642,115 +1642,3 @@ __kernel void mcol_output(
 // }
 
 
-
-
-// // DEN_CYCLE():
-// __kernel void den_cycle_DEPRICATE(
-//             __global const uchar* const syn_states,
-//             __global const char* const syn_strengths,
-//             __private uchar const syns_per_den_l2,
-//             __private uint const den_threshold,
-//             __global uchar* const den_energies,
-//             __global uchar* const den_states_raw,
-//             //__global int* const aux_ints_1,
-//             __global uchar* const den_states)
-// {
-//     uint const den_idx = get_global_id(0);
-//     uint const syn_idz = den_idx << syns_per_den_l2;
-
-//     // uchar den_energy = den_energies[den_idx];
-
-//     int syn_sum = 0;
-//     int syn_sum_raw = 0;
-
-//     int const syn_idn = (1 << syns_per_den_l2);
-
-//     for (int syn_id = 0; syn_id < syn_idn; syn_id += 1) {
-//         char syn_strength = syn_strengths[syn_idz + syn_id];
-//         uchar syn_state = syn_states[syn_idz + syn_id];
-//         syn_sum = mad24((syn_strength >= 0), syn_state, syn_sum);
-//         syn_sum_raw += syn_state;
-//     }
-
-//     syn_sum = mul24((syn_sum > den_threshold), syn_sum);
-
-//     // if (syn_sum != 0) {
-//     //     if (den_energy >= ENERGY_LEVEL_MIN) {
-//     //         den_energy -= ENERGY_LEVEL_MIN;
-//     //     } else {
-//     //         den_energy += ENERGY_REGEN_AMOUNT;
-//     //         syn_sum = 0;
-//     //     }
-//     // } else {
-//     //     if (den_energy < ENERGY_LEVEL_MAX) {
-//     //         den_energy += ENERGY_REGEN_AMOUNT;
-//     //     }
-//     // }
-
-//     int den_reduction = syns_per_den_l2 - 1;
-
-//     den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255);
-//     den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255);
-// }
-
-
-
-// // AXN_IDX_3D_UNSAFE(): Linear index of an axon
-// //         - Using ints as intermediate variables to be consistent with vectorized version
-// //             (will only affect invalid indexes)
-// static inline uint axn_idx_3d_unsafe(uchar const slc_id, uint const v_id_unscaled,
-//             char const v_ofs, uint const u_id_unscaled, char const u_ofs, int* const idx_is_safe)
-//     {
-//     // GET THE DIM SIZES:
-//     int const v_size = get_axn_v_size(slc_id);
-//     int const u_size = get_axn_u_size(slc_id);
-
-//     //     CALCULATE SCALED INDEX:
-//     //         - Multiply by the pre-defined scale for specified slice then divide by 16.
-//     //         - A scale of 16 = 100%, 8 = 50%, 32 = 200%, etc.
-//     int const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale(slc_id)) >> 4);
-//     int const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale(slc_id)) >> 4);
-
-//     // CALCULATE HORIZONTAL INDEX:
-//     int const v_id_hrz = v_size >> 1;
-//     int const u_id_hrz = u_size >> 1;
-
-//     // DETERMINE IF THIS IS A HORIZONTAL SLICE:
-//     int const idx_is_hrz = slc_id >= HORIZONTAL_AXON_ROW_DEMARCATION;
-
-//     // IF SLICE IS HORIZONTAL ASSIGN CORRESPONDING ID AND VICE VERSA:
-//     int const v_id = mad24(idx_is_hrz, v_id_hrz, mul24(!idx_is_hrz, v_id_scaled));
-//     int const u_id = mad24(idx_is_hrz, u_id_hrz, mul24(!idx_is_hrz, u_id_scaled));
-
-//     // CHECK SAFETY:
-//     *idx_is_safe = coord_is_safe(v_size, v_id, v_ofs) & coord_is_safe(u_size, u_id, u_ofs);
-
-//     // RETURN the sum of the pre-defined axon offset for the slice and the linear offset within that slice:
-//     return get_axn_idz(slc_id) + (uint)(mad24(v_id + v_ofs, u_size, u_id + u_ofs));
-// }
-
-// // AXN_IDX_3D_UNSAFE_VEC4(): Linear index of an axon, vec4
-// static inline int4 axn_idx_3d_unsafe_vec4(uchar4 const slc_id, int4 const v_id_unscaled,
-//         char4 const v_ofs_char4, int4 const u_id_unscaled, char4 const u_ofs_char4, int4* const idx_is_safe)
-// {
-//     int4 const v_ofs = convert_int4(v_ofs_char4);
-//     int4 const u_ofs = convert_int4(u_ofs_char4);
-
-//     int4 const v_size = get_axn_v_size_vec4(slc_id);
-//     int4 const u_size = get_axn_u_size_vec4(slc_id);
-
-//     int4 const v_id_scaled = (mul24(v_id_unscaled, get_axn_v_scale_vec4(slc_id)) >> 4);
-//     int4 const u_id_scaled = (mul24(u_id_unscaled, get_axn_u_scale_vec4(slc_id)) >> 4);
-
-//     int4 const v_id_hrz = v_size >> 1;
-//     int4 const u_id_hrz = u_size >> 1;
-
-//     int4 const idx_is_hrz = convert_int4(slc_id) >= (int4)HORIZONTAL_AXON_ROW_DEMARCATION;
-
-//     int4 const v_id = (idx_is_hrz & v_id_hrz) | (~idx_is_hrz & v_id_scaled);
-//     int4 const u_id = (idx_is_hrz & u_id_hrz) | (~idx_is_hrz & u_id_scaled);
-
-//     *idx_is_safe = coord_is_safe_vec4(v_size, v_id, v_ofs) & coord_is_safe_vec4(u_size, u_id, u_ofs);
-
-//     return get_axn_idz_vec4(slc_id) + mad24(v_id + v_ofs, u_size, u_id + u_ofs);
-// }

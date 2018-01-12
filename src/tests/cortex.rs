@@ -58,7 +58,7 @@ pub fn cycles(cortex: &mut Cortex, area_name: &str) {
     syn_and_den_states(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut());
 
 
-    /////// [FIXME]: DISABLED DUE TO TUFT REDESIGNS:
+    /////// [FIXME(2018-01-11)]: DISABLED DUE TO TUFT/MCOL/LEARNING REDESIGNS:
     // pyr_preds(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap());
 }
 
