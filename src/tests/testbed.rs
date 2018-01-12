@@ -63,10 +63,10 @@ pub fn define_layer_map_schemes() -> LayerMapSchemeList {
     layer_map_schemes
 }
 
-pub fn define_protoareas() -> AreaSchemeList {
+pub fn define_area_schemes() -> AreaSchemeList {
     let area_side = 24 as u32;
 
-    let protoareas = AreaSchemeList::new()
+    let area_schemes = AreaSchemeList::new()
 
         // .area_ext("v0", "external",
         //     // area_side * 2, area_side * 2,
@@ -123,14 +123,14 @@ pub fn define_protoareas() -> AreaSchemeList {
         // .area("a1", "visual", area_side, area_side, None, None)
     ;
 
-    protoareas
+    area_schemes
 }
 
 
 // FRESH_CORTEX(): Mmmm... Yummy.
 pub fn fresh_cortex() -> Cortex {
     let layer_map_schemes = define_layer_map_schemes();
-    let area_schemes = define_protoareas();
+    let area_schemes = define_area_schemes();
 
     let input_gen = InputGenerator::new(&layer_map_schemes, &area_schemes, "v0").unwrap();
     // let subcortex = Subcortex::new().nucleus(input_gen);
@@ -245,7 +245,7 @@ pub struct TestBed {
 impl TestBed {
     pub fn new() -> TestBed {
         let layer_map_schemes = define_layer_map_schemes();
-        let area_schemes = define_protoareas();
+        let area_schemes = define_area_schemes();
 
         let v0 = InputGenerator::new(&layer_map_schemes, &area_schemes, "v0").unwrap();
         let subcortex = Subcortex::new().nucleus(v0);

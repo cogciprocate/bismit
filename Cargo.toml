@@ -31,6 +31,9 @@ cpuprofiler = { version = "*", optional = true }
 failure = "*"
 # log = "*"
 
+[dev-dependencies]
+qutex = "*"
+
 [workspace]
 members = ["eval"]
 

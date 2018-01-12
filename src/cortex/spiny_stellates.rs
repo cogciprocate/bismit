@@ -26,15 +26,15 @@ pub struct SpinyStellateLayer {
     // base_axn_slc: u8,
     lyr_axn_idz: u32,
     kern_cycle: Kernel,
-    kern_ltp: Kernel,
+    kern_mtp: Kernel,
     energies: Buffer<u8>,
     activities: Buffer<u8>,
     pub dens: Dendrites,
     rng: cmn::XorShiftRng,
     cycle_exe_cmd_uid: Option<CommandUid>,
     cycle_exe_cmd_idx: Option<usize>,
-    ltp_exe_cmd_uid: Option<CommandUid>,
-    ltp_exe_cmd_idx: Option<usize>,
+    mtp_exe_cmd_uid: Option<CommandUid>,
+    mtp_exe_cmd_idx: Option<usize>,
     settings: CorticalAreaSettings,
     control_lyr_idxs: Vec<(LayerAddress, usize)>,
 }
@@ -96,8 +96,8 @@ impl SpinyStellateLayer {
                 vec![CorticalBuffer::data_den_tft(dens.states(), layer_addr, ssc_tft_id)]) )?)
         };
 
-        let kern_name = "ssc_ltp_simple";
-        let kern_ltp = ocl_pq.create_kernel(kern_name)?
+        let kern_name = "ssc_mtp_simple";
+        let kern_mtp = ocl_pq.create_kernel(kern_name)?
             // .gws(dims)
             .gws(SpatialDims::Two(1, dims.cells() as usize))
             .arg_buf(axons.states())
@@ -112,8 +112,8 @@ impl SpinyStellateLayer {
             .arg_buf(dens.syns().strengths());
 
         ////// KEEP ME:
-            // let kern_name = "ssc_ltp";
-            // let kern_ltp = ocl_pq.create_kernel(kern_name)?
+            // let kern_name = "ssc_mtp";
+            // let kern_mtp = ocl_pq.create_kernel(kern_name)?
             //     // .expect("SpinyStellateLayer::new()")
             //     .gws(SpatialDims::Two(tft_count, grp_count as usize))
             //     .arg_buf(axons.states())
@@ -129,17 +129,17 @@ impl SpinyStellateLayer {
 
 
         // Set up execution command:
-        let mut ltp_cmd_srcs: Vec<CorticalBuffer> = axn_slc_ids.iter()
+        let mut mtp_cmd_srcs: Vec<CorticalBuffer> = axn_slc_ids.iter()
             .map(|&slc_id|
                 CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
             .collect();
 
-        ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, ssc_tft_id));
+        mtp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, ssc_tft_id));
 
-        let ltp_exe_cmd_uid = if settings.disable_sscs | settings.disable_learning {
+        let mtp_exe_cmd_uid = if settings.disable_sscs | settings.disable_learning {
             None
         } else {
-            Some(exe_graph.add_command(CommandRelations::cortical_kernel(kern_name, ltp_cmd_srcs,
+            Some(exe_graph.add_command(CommandRelations::cortical_kernel(kern_name, mtp_cmd_srcs,
                 vec![CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, ssc_tft_id)]))?)
         };
 
@@ -158,15 +158,15 @@ impl SpinyStellateLayer {
             // base_axn_slc: base_axn_slc,
             lyr_axn_idz: lyr_axn_idz,
             kern_cycle: kern_cycle,
-            kern_ltp: kern_ltp,
+            kern_mtp: kern_mtp,
             energies,
             activities,
             rng: cmn::weak_rng(),
             dens: dens,
             cycle_exe_cmd_uid,
             cycle_exe_cmd_idx: None,
-            ltp_exe_cmd_uid,
-            ltp_exe_cmd_idx: None,
+            mtp_exe_cmd_uid,
+            mtp_exe_cmd_idx: None,
             settings,
             control_lyr_idxs: Vec::with_capacity(4),
         })
@@ -209,8 +209,8 @@ impl SpinyStellateLayer {
 
     pub fn set_exe_order_learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if !self.settings.disable_sscs & !self.settings.disable_learning {
-            if let Some(cmd_uid) = self.ltp_exe_cmd_uid {
-                self.ltp_exe_cmd_idx = Some(exe_graph.order_command(cmd_uid)?);
+            if let Some(cmd_uid) = self.mtp_exe_cmd_uid {
+                self.mtp_exe_cmd_idx = Some(exe_graph.order_command(cmd_uid)?);
             }
         }
         Ok(())
@@ -254,13 +254,13 @@ impl SpinyStellateLayer {
 
     #[inline]
     pub fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        if let Some(cmd_idx) = self.ltp_exe_cmd_idx {
+        if let Some(cmd_idx) = self.mtp_exe_cmd_idx {
             if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Performing learning for layer: '{}'...", self.layer_name); }
             let rnd = self.rng.gen::<u32>();
-            self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
+            self.kern_mtp.set_arg_scl_named("rnd", rnd).unwrap();
 
             let mut event = Event::empty();
-            unsafe { self.kern_ltp.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
+            unsafe { self.kern_mtp.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
             if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Learning complete for layer: '{}'.", self.layer_name); }
         }
@@ -347,16 +347,16 @@ pub mod tests {
         }
 
         fn learn_solo(&mut self) {
-            self.kern_ltp.default_queue().unwrap().finish().unwrap();
+            self.kern_mtp.default_queue().unwrap().finish().unwrap();
             let rnd = self.rng.gen::<u32>();
-            self.kern_ltp.set_arg_scl_named("rnd", rnd).unwrap();
+            self.kern_mtp.set_arg_scl_named("rnd", rnd).unwrap();
 
             unsafe {
-            self.kern_ltp.cmd().enq()
+            self.kern_mtp.cmd().enq()
                 .expect("<SpinyStellateLayer as DataCellLayerTest>::learn_solo [1]");
             }
 
-            self.kern_ltp.default_queue().unwrap().finish().unwrap();
+            self.kern_mtp.default_queue().unwrap().finish().unwrap();
         }
 
         /// Prints a range of pyramidal buffers.

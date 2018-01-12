@@ -17,7 +17,7 @@ pub struct Tufts {
     layer_addr: LayerAddress,
     dims: CorticalDims,
     tft_count: usize,
-    ltp_kernels: Vec<Kernel>,
+    mtp_kernels: Vec<Kernel>,
     cycle_kernels: Vec<Kernel>,
 
     best_den_ids: Buffer<u8>,
@@ -27,8 +27,8 @@ pub struct Tufts {
 
     cycle_exe_cmd_uids: Vec<CommandUid>,
     cycle_exe_cmd_idxs: Vec<usize>,
-    ltp_exe_cmd_uids: Vec<CommandUid>,
-    ltp_exe_cmd_idxs: Vec<usize>,
+    mtp_exe_cmd_uids: Vec<CommandUid>,
+    mtp_exe_cmd_idxs: Vec<usize>,
 
     pub dens: Dendrites,
     settings: CorticalAreaSettings,
@@ -64,12 +64,12 @@ impl Tufts {
         let dens = Dendrites::new(layer_name.clone(), layer_addr.layer_id(), dims, cell_scheme.clone(),
             area_map, axons, ocl_pq, settings.disable_pyrs, exe_graph)?;
 
-        let mut ltp_kernels = Vec::with_capacity(tft_count);
+        let mut mtp_kernels = Vec::with_capacity(tft_count);
         let mut cycle_kernels = Vec::with_capacity(tft_count);
         let mut cycle_exe_cmd_uids = Vec::with_capacity(tft_count);
         let cycle_exe_cmd_idxs = Vec::with_capacity(tft_count);
-        let mut ltp_exe_cmd_uids = Vec::with_capacity(tft_count);
-        let ltp_exe_cmd_idxs = Vec::with_capacity(tft_count);
+        let mut mtp_exe_cmd_uids = Vec::with_capacity(tft_count);
+        let mtp_exe_cmd_idxs = Vec::with_capacity(tft_count);
         let mut den_count_ttl = 0u32;
         let mut syn_count_ttl = 0u32;
 
@@ -135,8 +135,8 @@ impl Tufts {
             let cels_per_cel_grp = dims.per_subgrp(cel_grp_count)?;
             let learning_rate_l2i = 0i32;
 
-            let kern_name = "tft_ltp";
-            ltp_kernels.push(ocl_pq.create_kernel(kern_name)?
+            let kern_name = "tft_mtp";
+            mtp_kernels.push(ocl_pq.create_kernel(kern_name)?
                 .gws(SpatialDims::One(cel_grp_count as usize))
                 .arg_buf(axons.states())
                 .arg_buf(cel_states)
@@ -162,20 +162,20 @@ impl Tufts {
                 .arg_buf(dens.syns().strengths())
             );
 
-            let mut ltp_cmd_srcs: Vec<CorticalBuffer> = cel_axn_slc_ids.iter()
+            let mut mtp_cmd_srcs: Vec<CorticalBuffer> = cel_axn_slc_ids.iter()
                 .map(|&slc_id|
                     CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
                 .collect();
 
-            ltp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&cel_states, layer_addr));
-            ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&best_den_ids, layer_addr, tft_id));
-            ltp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&best_den_states_raw, layer_addr, tft_id));
-            ltp_cmd_srcs.push(CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id));
-            ltp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, tft_id));
+            mtp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&cel_states, layer_addr));
+            mtp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&best_den_ids, layer_addr, tft_id));
+            mtp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&best_den_states_raw, layer_addr, tft_id));
+            mtp_cmd_srcs.push(CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id));
+            mtp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, tft_id));
 
             if !settings.disable_learning & !settings.disable_pyrs {
-                ltp_exe_cmd_uids.push(exe_graph.add_command(CommandRelations::cortical_kernel(
-                    kern_name, ltp_cmd_srcs,
+                mtp_exe_cmd_uids.push(exe_graph.add_command(CommandRelations::cortical_kernel(
+                    kern_name, mtp_cmd_srcs,
                     vec![
                         CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), layer_addr, tft_id),
                         CorticalBuffer::data_soma_tft(&cel_flag_sets, layer_addr, tft_id),
@@ -200,13 +200,13 @@ impl Tufts {
             best_den_states,
             states,
 
-            ltp_kernels,
+            mtp_kernels,
             cycle_kernels,
 
             cycle_exe_cmd_uids,
             cycle_exe_cmd_idxs,
-            ltp_exe_cmd_uids,
-            ltp_exe_cmd_idxs,
+            mtp_exe_cmd_uids,
+            mtp_exe_cmd_idxs,
 
             dens,
             settings,
@@ -216,12 +216,12 @@ impl Tufts {
 
     pub fn set_exe_order_learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if !self.settings.disable_pyrs && !self.settings.disable_learning {
-            // Clear old ltp cmd idxs:
-            self.ltp_exe_cmd_idxs.clear();
+            // Clear old mtp cmd idxs:
+            self.mtp_exe_cmd_idxs.clear();
 
             // Learning:
-            for &cmd_uid in self.ltp_exe_cmd_uids.iter() {
-                self.ltp_exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
+            for &cmd_uid in self.mtp_exe_cmd_uids.iter() {
+                self.mtp_exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
             }
         }
         Ok(())
@@ -248,15 +248,15 @@ impl Tufts {
     // <<<<< TODO: DEPRICATE >>>>>
     pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>,
             using_aux_cycle: bool, using_aux_learning: bool) -> OclResult<()> {
-        for (cycle_kern, ltp_kern) in self.cycle_kernels.iter_mut()
-                .zip(self.ltp_kernels.iter_mut())
+        for (cycle_kern, mtp_kern) in self.cycle_kernels.iter_mut()
+                .zip(self.mtp_kernels.iter_mut())
         {
             if using_aux_cycle {
                 try!(cycle_kern.set_arg_buf_named(name, Some(env)));
             }
 
             if using_aux_learning {
-                try!(ltp_kern.set_arg_buf_named(name, Some(env)));
+                try!(mtp_kern.set_arg_buf_named(name, Some(env)));
             }
         }
 
@@ -268,17 +268,17 @@ impl Tufts {
     pub fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult <()> {
         if PRINT_DEBUG { printlnc!(yellow: "  Tfts: Performing learning for layer: '{}'...", self.layer_name); }
 
-        for (ltp_kernel, &cmd_idx) in self.ltp_kernels.iter_mut().zip(self.ltp_exe_cmd_idxs.iter()) {
+        for (mtp_kernel, &cmd_idx) in self.mtp_kernels.iter_mut().zip(self.mtp_exe_cmd_idxs.iter()) {
             if PRINT_DEBUG { printlnc!(yellow: "  Tfts:   Setting scalar to a random value..."); }
 
-            ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>()).expect("PyramidalLayer::learn()");
+            mtp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>()).expect("PyramidalLayer::learn()");
 
-            if PRINT_DEBUG { printlnc!(yellow: "  Tfts:   Enqueuing kern_ltp..."); }
+            if PRINT_DEBUG { printlnc!(yellow: "  Tfts:   Enqueuing kern_mtp..."); }
 
             let mut event = Event::empty();
-            unsafe { ltp_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?; }
+            unsafe { mtp_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?; }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
-            if PRINT_DEBUG { ltp_kernel.default_queue().unwrap().finish().unwrap(); }
+            if PRINT_DEBUG { mtp_kernel.default_queue().unwrap().finish().unwrap(); }
             if PRINT_DEBUG { printlnc!(yellow: "  Tfts: Learning complete for layer: '{}'.", self.layer_name); }
         }
 
@@ -341,18 +341,18 @@ pub mod tests {
         }
 
         pub fn learn_solo(&mut self) {
-            for ltp_kernel in self.ltp_kernels.iter_mut() {
-                ltp_kernel.default_queue().unwrap().finish().unwrap();
+            for mtp_kernel in self.mtp_kernels.iter_mut() {
+                mtp_kernel.default_queue().unwrap().finish().unwrap();
 
-                ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
+                mtp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
                     .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [0]");
 
                 unsafe {
-                    ltp_kernel.cmd().enq()
+                    mtp_kernel.cmd().enq()
                         .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [1]");
                 }
 
-                ltp_kernel.default_queue().unwrap().finish().unwrap();
+                mtp_kernel.default_queue().unwrap().finish().unwrap();
             }
         }
     }

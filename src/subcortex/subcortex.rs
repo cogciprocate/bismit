@@ -86,8 +86,8 @@ impl SubcorticalNucleusLayer {
                         match axon_topology {
                             AxonTopology::Spatial | AxonTopology::Nonspatial => {
                                 let lyr_sch_depth = layer_scheme.depth()
-                                    .expect("SubcorticalNucleusLayer::from_schemes: \
-                                        no layer scheme depth set");
+                                    .expect(&format!("SubcorticalNucleusLayer::from_schemes: \
+                                        no layer scheme depth set for '{}'.", name));
                                 Some(area_scheme.dims().clone_with_depth(lyr_sch_depth))
                             },
                             AxonTopology::None => panic!("SubcorticalNucleusLayer::from_schemes: \

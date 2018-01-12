@@ -1,25 +1,16 @@
-//! Determine how well a layer of pyramidal cells can predict the next input
-//! in a learned sequence of inputs.
-//!
-//!
-//!
-
 #![allow(dead_code, unused_imports, unused_variables)]
 
-// use std::mem;
-use std::collections::{HashMap};
-use rand::{self, XorShiftRng};
-use rand::distributions::{Range, IndependentSample};
-use qutex::QrwLock;
-use vibi::bismit::futures::Future;
-use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
-    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas};
-use vibi::bismit::map::*;
-use vibi::bismit::cmn::{TractFrameMut, TractDims};
-use vibi::bismit::encode::{self, Vector2dWriter};
-use ::{IncrResult, TrialIter, Layer, PathwayDir, InputSource, Sdrs};
-use ::spatial::{TrialData, TrialResults};
+extern crate qutex;
 
+use std::collections::{HashMap};
+use self::qutex::QrwLock;
+use futures::Future;
+use ::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
+    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas};
+use map::*;
+use cmn::{TractFrameMut, TractDims};
+// use subcortex::{SubcorticalNucleus, SubcorticalNucleusLayer};
+use super::testbed;
 
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
@@ -31,92 +22,68 @@ const SEQUENTIAL_SDR: bool = true;
 
 
 /// A `SubcorticalNucleus`.
-struct EvalSequence {
+struct LearningTest {
     area_name: String,
     area_id: usize,
-    layers: HashMap<LayerAddress, Layer>,
+    layers: HashMap<LayerAddress, SubcorticalNucleusLayer>,
     cycles_complete: usize,
-    sdrs: Sdrs,
-    trial_iter: TrialIter,
-    // current_pattern_idx: usize,
 }
 
-impl EvalSequence {
+impl LearningTest {
     pub fn new<S: Into<String>>(layer_map_schemes: &LayerMapSchemeList,
             area_schemes: &AreaSchemeList, area_name: S)
-            -> EvalSequence {
+            -> LearningTest {
         let area_name = area_name.into();
         let area_scheme = &area_schemes[&area_name];
         let layer_map_scheme = &layer_map_schemes[area_scheme.layer_map_name()];
         let mut layers = HashMap::with_capacity(4);
 
         for layer_scheme in layer_map_scheme.layers() {
-            let lyr_dims = match layer_scheme.name() {
-                "external_0" => None,
-                // "external_1" => Some(ENCODE_DIMS.into()),
-                ln @ _ => panic!("EvalSequence::new: Unknown layer name: {}.", ln),
-            };
+            // let lyr_dims = match layer_scheme.name() {
+            //     "external_0" => None,
+            //     ln @ _ => panic!("LearningTest::new: Unknown layer name: {}.", ln),
+            // };
 
-            let sub_layer = SubcorticalNucleusLayer::from_schemes(layer_scheme, area_scheme,
-                lyr_dims);
-
-            let layer = Layer {
-                sub: sub_layer,
-                pathway: PathwayDir::None,
-            };
-
-            layers.insert(layer.sub().addr().clone(), layer);
+            let layer = SubcorticalNucleusLayer::from_schemes(layer_scheme, area_scheme, None);
+            layers.insert(layer.addr().clone(), layer);
         }
 
-        let sdrs = Sdrs::new(100, ENCODE_DIMS_0);
-
-        // Define the number of iters to first train then collect for each
-        // sample period. All learning and other cell parameters (activity,
-        // energy, etc.) persist between sample periods. Only collection
-        // iters are recorded and evaluated.
-        let trial_iter = TrialIter::new(vec![
-            (5000, 5000), (5000, 5000), (5000, 5000), (5000, 5000), (5000, 5000),
-        ]);
-
-        EvalSequence {
+        LearningTest {
             area_name: area_name,
             area_id: area_scheme.area_id(),
             layers,
             cycles_complete: 0,
-            sdrs,
-            trial_iter,
-            // current_pattern_idx: 0,
         }
     }
 }
 
-impl SubcorticalNucleus for EvalSequence {
+impl SubcorticalNucleus for LearningTest {
     fn create_pathways(&mut self, thal: &mut Thalamus,
-            _cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
+            cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
         // Wire up output (sdr) pathways.
         for layer in self.layers.values_mut() {
-            match *layer.sub().axon_domain() {
-                AxonDomain::Output(_) => {
-                    let tx = thal.input_pathway(*layer.sub().addr(), true);
-                    layer.pathway = PathwayDir::Output { tx };
-                },
-                AxonDomain::Input(_) => {
-                    let src_lyr_infos: Vec<_> =thal.area_maps().by_index(self.area_id).unwrap()
-                            .layer(layer.sub().addr().layer_id()).unwrap()
-                            .sources().iter().map(|src_lyr| {
-                        (*src_lyr.layer_addr(), src_lyr.dims().clone())
-                    }).collect();
+            match *layer.axon_domain() {
+                // AxonDomain::Output(_) => {
+                //     let tx = thal.input_pathway(*layer.sub().addr(), true);
+                //     layer.pathway = PathwayDir::Output { tx };
+                // },
+                // AxonDomain::Input(_) => {
+                //     let src_lyr_infos: Vec<_> =thal.area_maps().by_index(self.area_id).unwrap()
+                //             .layer(layer.sub().addr().layer_id()).unwrap()
+                //             .sources().iter().map(|src_lyr| {
+                //         (*src_lyr.layer_addr(), src_lyr.dims().clone())
+                //     }).collect();
 
-                    let srcs: Vec<_> = src_lyr_infos.into_iter().map(|(addr, dims)| {
-                        InputSource {
-                            addr,
-                            dims,
-                            rx: thal.output_pathway(addr)
-                        }
-                    }).collect();
+                //     let srcs: Vec<_> = src_lyr_infos.into_iter().map(|(addr, dims)| {
+                //         InputSource {
+                //             addr,
+                //             dims,
+                //             rx: thal.output_pathway(addr)
+                //         }
+                //     }).collect();
 
-                    layer.pathway = PathwayDir::Input { srcs };
-                },
+                //     layer.pathway = PathwayDir::Input { srcs };
+                // },
                 _ => (),
             }
         }
@@ -129,56 +96,56 @@ impl SubcorticalNucleus for EvalSequence {
     /// *
     ///
     fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
-        let pattern_idx = if SEQUENTIAL_SDR {
-            // Choose a non-random SDR:
-            self.trial_iter.global_cycle_idx % self.sdrs.pattern_count
-        } else {
-            // Choose a random SDR:
-            Range::new(0, self.sdrs.pattern_count).ind_sample(&mut self.sdrs.rng)
-        };
+        // let pattern_idx = if SEQUENTIAL_SDR {
+        //     // Choose a non-random SDR:
+        //     self.trial_iter.global_cycle_idx % self.sdrs.pattern_count
+        // } else {
+        //     // Choose a random SDR:
+        //     Range::new(0, self.sdrs.pattern_count).ind_sample(&mut self.sdrs.rng)
+        // };
 
         // Write sdr to pathway:
         for layer in self.layers.values() {
-            if let PathwayDir::Output { ref tx } = layer.pathway {
-                debug_assert!(layer.sub().axon_domain().is_output());
+            // if let PathwayDir::Output { ref tx } = layer.pathway {
+            //     debug_assert!(layer.axon_domain().is_output());
 
-                match layer.sub().name() {
-                    "external_0" => {
-                        let future_sdrs = self.sdrs.lock.clone().read().from_err();
+            //     match layer.sub().name() {
+            //         "external_0" => {
+            //             let future_sdrs = self.sdrs.lock.clone().read().from_err();
 
-                        let future_write_guard = tx.send()
-                            .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
-                            .flatten();
+            //             let future_write_guard = tx.send()
+            //                 .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+            //                 .flatten();
 
-                        let future_write = future_write_guard
-                            .join(future_sdrs)
-                            .map(move |(tract_opt, sdrs)| {
-                                tract_opt.map(|mut t| {
-                                    debug_assert!(t.len() == sdrs[pattern_idx].len());
-                                    t.copy_from_slice(&sdrs[pattern_idx]);
-                                });
-                            })
-                            .map_err(|err| panic!("{:?}", err));
+            //             let future_write = future_write_guard
+            //                 .join(future_sdrs)
+            //                 .map(move |(tract_opt, sdrs)| {
+            //                     tract_opt.map(|mut t| {
+            //                         debug_assert!(t.len() == sdrs[pattern_idx].len());
+            //                         t.copy_from_slice(&sdrs[pattern_idx]);
+            //                     });
+            //                 })
+            //                 .map_err(|err| panic!("{:?}", err));
 
-                        work_pool.complete_work(future_write)?;
-                    },
-                    // "external_1" => {
-                    //     let mut write_guard = tx.send()
-                    //         .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
-                    //         .flatten()
-                    //         .wait()
-                    //         .expect("future err")
-                    //         .expect("write guard is None");
+            //             work_pool.complete_work(future_write)?;
+            //         },
+            //         // "external_1" => {
+            //         //     let mut write_guard = tx.send()
+            //         //         .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+            //         //         .flatten()
+            //         //         .wait()
+            //         //         .expect("future err")
+            //         //         .expect("write guard is None");
 
-                    //     let x = (self.cycles_complete as f64 / 10000.).cos();
-                    //     let y = (self.cycles_complete as f64 / 10000.).sin();
+            //         //     let x = (self.cycles_complete as f64 / 10000.).cos();
+            //         //     let y = (self.cycles_complete as f64 / 10000.).sin();
 
-                    //     // self.encoder_2d.encode([x, y], &mut write_guard);
-                    //     // work_pool.complete_work(  )?;
-                    // },
-                    _ => (),
-                }
-            }
+            //         //     // self.encoder_2d.encode([x, y], &mut write_guard);
+            //         //     // work_pool.complete_work(  )?;
+            //         // },
+            //         _ => (),
+            //     }
+            // }
         }
 
         self.cycles_complete += 1;
@@ -192,21 +159,21 @@ impl SubcorticalNucleus for EvalSequence {
     ///
     fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) -> CmnResult<()> {
         for layer in self.layers.values() {
-            if let PathwayDir::Input { srcs: _ } = layer.pathway {
-                debug_assert!(layer.sub().axon_domain().is_input());
-            }
+            // if let PathwayDir::Input { srcs: _ } = layer.pathway {
+            //     debug_assert!(layer.sub().axon_domain().is_input());
+            // }
         }
 
-        match self.trial_iter.incr() {
-            IncrResult::TrialComplete { scheme_idx: _, train: _, collect: _ } => {},
-            _ir @ _ => {},
-        }
+        // match self.trial_iter.incr() {
+        //     IncrResult::TrialComplete { scheme_idx: _, train: _, collect: _ } => {},
+        //     _ir @ _ => {},
+        // }
 
         Ok(())
     }
 
     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer> {
-        self.layers.get(&addr).map(|l| l.sub())
+        self.layers.get(&addr)
     }
 
     fn area_name<'a>(&'a self) -> &'a str {
@@ -217,6 +184,7 @@ impl SubcorticalNucleus for EvalSequence {
         self.area_id
     }
 }
+
 
 
 fn define_lm_schemes() -> LayerMapSchemeList {
@@ -293,7 +261,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                     )
                 )
             )
-            .layer(LayerScheme::define("v_inhib_col")
+            .layer(LayerScheme::define("iii_inhib_col")
                 .cellular(CellScheme::control(
                         ControlCellKind::IntraColumnInhib {
                             host_lyr_name: "iii".into(),
@@ -327,36 +295,16 @@ fn define_a_schemes() -> AreaSchemeList {
         )
 }
 
-pub fn ca_settings() -> CorticalAreaSettings {
-    #[allow(unused_imports)]
-    use vibi::bismit::ocl::builders::BuildOpt;
 
-    CorticalAreaSettings::new()
-        // .bypass_inhib()
-        // .bypass_filters()
-        // .disable_pyrs()
-        // .disable_ssts()
-        // .disable_mcols()
-        // .disable_regrowth()
-        // .disable_learning()
-        // .build_opt(BuildOpt::cmplr_def("DEBUG_SMOOTHER_OVERLAP", 1))
-}
-
-
-pub fn eval() {
+#[test]
+fn learning_2() {
     let layer_map_schemes = define_lm_schemes();
     let area_schemes = define_a_schemes();
 
-    let eval_nucl = EvalSequence::new(&layer_map_schemes,
-        &area_schemes, IN_AREA);
+    let nucl = LearningTest::new(&layer_map_schemes, &area_schemes, IN_AREA);
 
     let cortex_builder = Cortex::builder(layer_map_schemes, area_schemes)
-        .ca_settings(ca_settings())
-        .subcortical_nucleus(eval_nucl);
+        .subcortical_nucleus(nucl);
 
     let cortex = cortex_builder.build().unwrap();
-
-    let controls = ::spawn_threads(cortex, PRI_AREA);
-
-    ::join_threads(controls)
 }

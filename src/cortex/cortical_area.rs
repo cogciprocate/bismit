@@ -719,15 +719,15 @@ impl CorticalArea {
         //     mcols.as_mut().set_exe_order_activate(&mut exe_graph)?;
         // }
 
-        // (6.) Pyramidal Layers Learn:
-        if !self.settings.disable_pyrs {
-            for &lyr_idx in self.cycle_order.iter() {
-                let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
-                if !lyr.tags().contains(LayerTags::SPATIAL) {
-                    lyr.set_exe_order_learn(&mut self.exe_graph)?;
-                }
-            }
-        }
+        // // (6.) Pyramidal Layers Learn (Now called within `::cycle`):
+        // if !self.settings.disable_pyrs {
+        //     for &lyr_idx in self.cycle_order.iter() {
+        //         let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
+        //         if !lyr.tags().contains(LayerTags::SPATIAL) {
+        //             lyr.set_exe_order_learn(&mut self.exe_graph)?;
+        //         }
+        //     }
+        // }
 
         // (7.) Pyramidal Layers Cycle:
         if !self.settings.disable_pyrs {
@@ -792,17 +792,17 @@ impl CorticalArea {
         //     self.mcols.activate(&mut self.exe_graph)?;
         // }
 
-        // (6.) Pyramidal Layers Learn:
-        if !self.settings.disable_pyrs {
-            for &lyr_idx in self.cycle_order.iter() {
-                let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
-                if !lyr.tags().contains(LayerTags::SPATIAL) {
-                    if !self.settings.disable_learning {
-                        lyr.learn(&mut self.exe_graph)?;
-                    }
-                }
-            }
-        }
+        // // (6.) Pyramidal Layers Learn (Now called within `::cycle`):
+        // if !self.settings.disable_pyrs {
+        //     for &lyr_idx in self.cycle_order.iter() {
+        //         let lyr = self.data_layers.lyrs.get_mut(lyr_idx).unwrap();
+        //         if !lyr.tags().contains(LayerTags::SPATIAL) {
+        //             if !self.settings.disable_learning {
+        //                 lyr.learn(&mut self.exe_graph)?;
+        //             }
+        //         }
+        //     }
+        // }
 
         // (6.) Pyramidal Layers Cycle:
         if !self.settings.disable_pyrs {

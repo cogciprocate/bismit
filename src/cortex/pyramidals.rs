@@ -212,8 +212,7 @@ impl PyramidalLayer {
     }
 
     pub fn set_exe_order_cycle(&mut self, control_layers: &mut ControlCellLayers,
-            exe_graph: &mut ExecutionGraph) -> CmnResult<()>
-    {
+            exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         // Determine which control layers apply to this layer and add to list:
         if self.control_lyr_idxs.is_empty() {
             for (&cl_idx, cl) in control_layers.iter() {
@@ -240,13 +239,14 @@ impl PyramidalLayer {
                 control_layers.get_mut(cl_idx).unwrap().set_exe_order_post(exe_graph, self.layer_addr)?;
             }
         }
+        // Learning:
+        self.set_exe_order_learn(exe_graph)?;
         Ok(())
     }
 
     // <<<<< TODO: DEPRICATE >>>>>
     pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
-            -> OclResult<()>
-    {
+            -> OclResult<()> {
         let using_aux_cycle = true;
         let using_aux_learning = true;
 
@@ -310,6 +310,8 @@ impl DataCellLayer for PyramidalLayer {
             if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Post-cycling control layer: [{:?}]...", lyr_idx); }
             control_layers.get_mut(lyr_idx).unwrap().cycle_post(exe_graph, self.layer_addr)?;
         }
+
+        self.learn(exe_graph)?;
 
         // [DEBUG]: TEMPORARY:
         if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }

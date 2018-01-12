@@ -662,7 +662,7 @@ static inline void tft_syns_trm(
 }
 
 // TODO: VECTORIZE
-static inline void prx_syns__active__ltp_ltd(
+static inline void prx_syns__active__mtp_ltd(
             __global const uchar* const syn_states,
             uint const syn_idz,
             uint const syns_per_den_l2,
@@ -927,7 +927,7 @@ __kernel void ssc_cycle(
 
 
 // SST_LTP_SIMPLE(): Long term potentiation for Spiny Stellate Cells - Completely unoptimized
-__kernel void ssc_ltp_simple(
+__kernel void ssc_mtp_simple(
         __global const uchar* const axn_states,
         __global const uchar* const syn_states,
         __private uint const cel_axn_idz,
@@ -952,7 +952,7 @@ __kernel void ssc_ltp_simple(
 
     if (axn_state) {
         uint const syn_idz = calc_syn_idz_OLD(tuft_id, cel_count, cel_id, syns_per_tft_l2);
-        prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tft_l2, rnd, syn_strengths);
+        prx_syns__active__mtp_ltd(syn_states, syn_idz, syns_per_tft_l2, rnd, syn_strengths);
     }
 }
 
@@ -960,7 +960,7 @@ __kernel void ssc_ltp_simple(
 // SST_LTP(): Long term potentiation for Spiny Stellate Cells
 // <<<<< TODO: ADD AN ADDITIONAL DIMENSION [0] FOR SLC_ID TO SUPPORT MULTIPLE SLICE SST LAYERS >>>>>
 // <<<<< NOTE: THIS KERNEL MAY BE FLAWED WHEN USED WITH MULTIPLE TUFTS - SEE PYR_LTP >>>>>
-__kernel void ssc_ltp(
+__kernel void ssc_mtp(
             __global const uchar* const axn_states,
             __global const uchar* const syn_states,
             __private uint const cel_lyr_axn_idz,
@@ -991,7 +991,7 @@ __kernel void ssc_ltp(
 
         if (axn_state) {
             uint const syn_idz = calc_syn_idz_OLD(tuft_id, cel_count, cel_idx, syns_per_tft_l2);
-            prx_syns__active__ltp_ltd(syn_states, syn_idz, syns_per_tft_l2, rnd, syn_strengths);
+            prx_syns__active__mtp_ltd(syn_states, syn_idz, syns_per_tft_l2, rnd, syn_strengths);
         }
     }
 }
@@ -1261,41 +1261,38 @@ __kernel void mcol_activate_pyrs(
 //        cells into each work item, all threads can keep busy.
 //
 //
-__kernel void tft_ltp(
-            __global const uchar* const axn_states,
-            __global const uchar* const cel_states,
-            __global const uchar* const tft_cel_best_den_ids,
-            __global const uchar* const tft_cel_best_den_states_raw,
-            __global const uchar* const den_states,
-            __global const uchar* const syn_states,
+__kernel void tft_mtp(
+        __global const uchar* const axn_states,
+        __global const uchar* const cel_states,
+        __global const uchar* const tft_cel_best_den_ids,
+        __global const uchar* const tft_cel_best_den_states_raw,
+        __global const uchar* const den_states,
+        __global const uchar* const syn_states,
 
-            __private uint const tft_cel_idz, // 0th tuft-cell index
-            __private uint const tft_den_idz, // 0th tuft-dendrite index
-            __private uint const tft_syn_idz, // 0th tuft-synapse index
+        __private uint const tft_cel_idz, // 0th tuft-cell index
+        __private uint const tft_den_idz, // 0th tuft-dendrite index
+        __private uint const tft_syn_idz, // 0th tuft-synapse index
 
-            // __private uint const tfts_per_cel,
-            __private uint const dens_per_tft_l2,
-            __private uint const syns_per_den_l2,
-            __private uint const syns_per_tft_l2,
+        __private uint const dens_per_tft_l2,
+        __private uint const syns_per_den_l2,
+        __private uint const syns_per_tft_l2,
 
-            __private uint const cels_per_cel_grp,
-            __private uint const axn_idz_cel_lyr,
-            __private int const learning_rate_l2i,
-            __private int const rnd,
-            __global uchar* const syn_flag_sets,
-            __global uchar* const cel_flag_sets,
-            __global int* const aux_ints_0,
-            __global int* const aux_ints_1,
-            // TODO: Switch to `u8` (`uchar`):
-            __global char* const syn_strengths)
+        __private uint const cels_per_cel_grp,
+        __private uint const axn_idz_cel_lyr,
+        __private int const learning_rate_l2i,
+        __private int const rnd,
+        __global uchar* const syn_flag_sets,
+        __global uchar* const cel_flag_sets,
+        __global int* const aux_ints_0,
+        __global int* const aux_ints_1,
+        // TODO: Switch to `u8` (`uchar`):
+        __global char* const syn_strengths)
 {
     uint const cel_grp_id = get_global_id(0);
     uint const cel_grp_count = get_global_size(0);
     uint const cel_count = mul24(cel_grp_count, cels_per_cel_grp);
     // Index of the 0th cell in the cell group:
     uint const cel_idz_cel_grp = mul24(cel_grp_id, cels_per_cel_grp);
-    // uint const syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
-    // uint const cel_idz_cel_grp = mad24(cel_grp_id, cels_per_cel_grp, tft_cel_idz);
 
     for (uint cel_id_cel_grp = 0; cel_id_cel_grp < cels_per_cel_grp; cel_id_cel_grp++) {
         // Current cell:
@@ -1307,62 +1304,38 @@ __kernel void tft_ltp(
 
         uchar cel_flag_set = cel_flag_sets[cel_idx];
 
-        int const cel_is_concrete = axn_states[cel_axn_idx] != 0;
-        int const cel_is_vatic = cel_states[cel_idx] != 0;
-        int const cel_prev_concrete = (cel_flag_set & (CEL_PREV_CONCRETE_FLAG)) == (CEL_PREV_CONCRETE_FLAG);
-        int const cel_prev_vatic = (cel_flag_set & (CEL_PREV_VATIC_FLAG)) == (CEL_PREV_VATIC_FLAG);
-        int const cel_best_in_col = (cel_flag_set & (CEL_BEST_IN_COL_FLAG)) == (CEL_BEST_IN_COL_FLAG);
-        int const tft_is_active = tft_cel_best_den_states_raw[tft_cel_idx] != 0;
+        // int const cel_is_concrete = axn_states[cel_axn_idx] != 0;
+        // int const cel_is_vatic = cel_states[cel_idx] != 0;
+        // int const cel_prev_concrete = (cel_flag_set & (CEL_PREV_CONCRETE_FLAG)) == (CEL_PREV_CONCRETE_FLAG);
+        // int const cel_prev_vatic = (cel_flag_set & (CEL_PREV_VATIC_FLAG)) == (CEL_PREV_VATIC_FLAG);
+        // int const cel_best_in_col = (cel_flag_set & (CEL_BEST_IN_COL_FLAG)) == (CEL_BEST_IN_COL_FLAG);
+        // int const tft_is_active = tft_cel_best_den_states_raw[tft_cel_idx] != 0;
 
-        // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
-        // uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
-
-        // // Index of the 0th dendrite within the current tuft-cell:
-        // uint const den_idz_tft = (cel_idx << dens_per_tft_l2) + tft_den_idz;
-
-        // Index of the 0th synapse within the current tuft-cell:
-        uint const syn_idz_tft = (cel_idx << syns_per_tft_l2) + tft_syn_idz;
+        // Index of the 0th synapse within the current cell-tuft:
+        uint const syn_idz_celtft = (cel_idx << syns_per_tft_l2) + tft_syn_idz;
 
         if (cel_is_concrete) {
             if (tft_is_active) {
-                // ID of the Best dendrite within the current tuft-cell:
+                // ID of the Best dendrite within the current cell-tuft:
                 uchar const best_den_id_celtft = tft_cel_best_den_ids[tft_cel_idx];
+                uint const syn_idz_best_den_celtft = (best_den_id_celtft << syns_per_den_l2) + syn_idz_celtft;
 
-                // uint const syn_idz_best_den_tft = (den_idz_tft + best_den_id_celtft) << syns_per_den_l2;
-                uint const syn_idz_best_den_tft = (best_den_id_celtft << syns_per_den_l2) + syn_idz_tft;
-
-                // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN
-                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-                if (cel_prev_vatic | cel_best_in_col) {
-                    // aux_ints_1[cel_tft_idx] = 10;
-                    dst_syns__active__stpot_stdep(syn_states, syn_idz_best_den_tft,
-                        syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
-
-                    // aux_ints_1[cel_tft_idx] = 11;
-                }
-
-                // } else if (cel_best_in_col) {
-                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-                // //} else {
-                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-                //     dst_syns__active__stpot_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd,
-                //         syn_flag_sets, syn_strengths);
-
-                //     // aux_ints_1[cel_tft_idx] = 12;
+                // // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN
+                // // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+                // if (cel_prev_vatic | cel_best_in_col) {
+                //     dst_syns__active__stpot_stdep(syn_states, syn_idz_best_den_celtft,
+                //         syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
                 // }
             }
 
-            // TODO: Could be moved into above if block
-            cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
+            // // TODO: Could be moved into above if block
+            // cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
         } else if (cel_prev_concrete) {
-            tft_syns_trm(syn_states, syn_idz_tft, syns_per_tft_l2, rnd,
+            tft_syns_trm(syn_states, syn_idz_celtft, syns_per_tft_l2, rnd,
                 learning_rate_l2i, syn_flag_sets, aux_ints_0, syn_strengths);
-
-            // aux_ints_1[cel_tft_idx] = 20;
 
             cel_flag_set &= ~CEL_PREV_CONCRETE_FLAG;
         }
-
 
         cel_flag_set &= ~CEL_PREV_VATIC_FLAG;
         cel_flag_set |= mul24(cel_is_vatic, CEL_PREV_VATIC_FLAG);
@@ -1524,6 +1497,118 @@ __kernel void mcol_output(
 ===============================================================================
 ===============================================================================
 =============================================================================*/
+
+
+
+__kernel void tft_mtp_OLD_2018_01_11(
+            __global const uchar* const axn_states,
+            __global const uchar* const cel_states,
+            __global const uchar* const tft_cel_best_den_ids,
+            __global const uchar* const tft_cel_best_den_states_raw,
+            __global const uchar* const den_states,
+            __global const uchar* const syn_states,
+
+            __private uint const tft_cel_idz, // 0th tuft-cell index
+            __private uint const tft_den_idz, // 0th tuft-dendrite index
+            __private uint const tft_syn_idz, // 0th tuft-synapse index
+
+            // __private uint const tfts_per_cel,
+            __private uint const dens_per_tft_l2,
+            __private uint const syns_per_den_l2,
+            __private uint const syns_per_tft_l2,
+
+            __private uint const cels_per_cel_grp,
+            __private uint const axn_idz_cel_lyr,
+            __private int const learning_rate_l2i,
+            __private int const rnd,
+            __global uchar* const syn_flag_sets,
+            __global uchar* const cel_flag_sets,
+            __global int* const aux_ints_0,
+            __global int* const aux_ints_1,
+            // TODO: Switch to `u8` (`uchar`):
+            __global char* const syn_strengths)
+{
+    uint const cel_grp_id = get_global_id(0);
+    uint const cel_grp_count = get_global_size(0);
+    uint const cel_count = mul24(cel_grp_count, cels_per_cel_grp);
+    // Index of the 0th cell in the cell group:
+    uint const cel_idz_cel_grp = mul24(cel_grp_id, cels_per_cel_grp);
+    // uint const syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
+    // uint const cel_idz_cel_grp = mad24(cel_grp_id, cels_per_cel_grp, tft_cel_idz);
+
+    for (uint cel_id_cel_grp = 0; cel_id_cel_grp < cels_per_cel_grp; cel_id_cel_grp++) {
+        // Current cell:
+        uint const cel_idx = cel_idz_cel_grp + cel_id_cel_grp;
+        // Current cell's axon:
+        uint const cel_axn_idx = axn_idz_cel_lyr + cel_idx;
+        // Current tuft-cell:
+        uint const tft_cel_idx = cel_idx + tft_cel_idz;
+
+        uchar cel_flag_set = cel_flag_sets[cel_idx];
+
+        int const cel_is_concrete = axn_states[cel_axn_idx] != 0;
+        int const cel_is_vatic = cel_states[cel_idx] != 0;
+        int const cel_prev_concrete = (cel_flag_set & (CEL_PREV_CONCRETE_FLAG)) == (CEL_PREV_CONCRETE_FLAG);
+        int const cel_prev_vatic = (cel_flag_set & (CEL_PREV_VATIC_FLAG)) == (CEL_PREV_VATIC_FLAG);
+        int const cel_best_in_col = (cel_flag_set & (CEL_BEST_IN_COL_FLAG)) == (CEL_BEST_IN_COL_FLAG);
+        int const tft_is_active = tft_cel_best_den_states_raw[tft_cel_idx] != 0;
+
+        // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
+        // uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
+
+        // // Index of the 0th dendrite within the current tuft-cell:
+        // uint const den_idz_tft = (cel_idx << dens_per_tft_l2) + tft_den_idz;
+
+        // Index of the 0th synapse within the current tuft-cell:
+        uint const syn_idz_tft = (cel_idx << syns_per_tft_l2) + tft_syn_idz;
+
+        if (cel_is_concrete) {
+            if (tft_is_active) {
+                // ID of the Best dendrite within the current tuft-cell:
+                uchar const best_den_id_celtft = tft_cel_best_den_ids[tft_cel_idx];
+
+                // uint const syn_idz_best_den_tft = (den_idz_tft + best_den_id_celtft) << syns_per_den_l2;
+                uint const syn_idz_best_den_tft = (best_den_id_celtft << syns_per_den_l2) + syn_idz_tft;
+
+                // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN
+                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+                if (cel_prev_vatic | cel_best_in_col) {
+                    // aux_ints_1[cel_tft_idx] = 10;
+                    dst_syns__active__stpot_stdep(syn_states, syn_idz_best_den_tft,
+                        syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+
+                    // aux_ints_1[cel_tft_idx] = 11;
+                }
+
+                // } else if (cel_best_in_col) {
+                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+                // //} else {
+                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+                //     dst_syns__active__stpot_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd,
+                //         syn_flag_sets, syn_strengths);
+
+                //     // aux_ints_1[cel_tft_idx] = 12;
+                // }
+            }
+
+            // TODO: Could be moved into above if block
+            cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
+        } else if (cel_prev_concrete) {
+            tft_syns_trm(syn_states, syn_idz_tft, syns_per_tft_l2, rnd,
+                learning_rate_l2i, syn_flag_sets, aux_ints_0, syn_strengths);
+
+            // aux_ints_1[cel_tft_idx] = 20;
+
+            cel_flag_set &= ~CEL_PREV_CONCRETE_FLAG;
+        }
+
+
+        cel_flag_set &= ~CEL_PREV_VATIC_FLAG;
+        cel_flag_set |= mul24(cel_is_vatic, CEL_PREV_VATIC_FLAG);
+
+        cel_flag_sets[cel_idx] = cel_flag_set;
+    }
+}
 
 
 
