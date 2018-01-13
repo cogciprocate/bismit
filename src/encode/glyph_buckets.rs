@@ -3,7 +3,7 @@ use std::path::PathBuf;
 // use find_folder::Search;
 use super::IdxData;
 
-const PRINT_DEBUG: bool = false;
+const PRNT: bool = false;
 const PRINT_EVERY: usize = 10000;
 
 #[derive(Debug)]
@@ -58,7 +58,7 @@ impl GlyphBuckets {
             // unsafe { bucket.set_len(prev_len + image_len); }
             images.read_into_vec(image_len, &mut bucket);
 
-            if PRINT_DEBUG && i % PRINT_EVERY == 0 {
+            if PRNT && i % PRINT_EVERY == 0 {
             // if i >= 10000 && i < 10010 {
                 println!("\nimage[{}]: bucket.len(): {}, bucket.capacity(): {}, label: {}",
                     i, bucket.len(), bucket.capacity(), label);
@@ -68,12 +68,12 @@ impl GlyphBuckets {
             }
         }
 
-        if PRINT_DEBUG { println!("\nLoaded {} images into buckets as follows {{capacity(len)}}: ",
+        if PRNT { println!("\nLoaded {} images into buckets as follows {{capacity(len)}}: ",
                 image_count); }
 
         for i in 0..buckets.len() {
             buckets[i].shrink_to_fit();
-            if PRINT_DEBUG { println!("bucket[{}]: {}({})",
+            if PRNT { println!("bucket[{}]: {}({})",
                 i, buckets[i].capacity(), buckets[i].len()); }
         }
 
@@ -121,7 +121,7 @@ impl GlyphBuckets {
 
         if self.cursors[bucket_id] == self.buckets[bucket_id].len() {
             self.cursors[bucket_id] = 0;
-            if PRINT_DEBUG { println!("Resetting cursor: {}", bucket_id) }
+            if PRNT { println!("Resetting cursor: {}", bucket_id) }
         } else if self.cursors[bucket_id] > self.buckets[bucket_id].len() {
             panic!("GlyphBuckets::incr_cursor(): Bucket length inconsistency while \
                 resetting cursor for bucket: {}. {{ cursor: {}, bucket length: {}, \

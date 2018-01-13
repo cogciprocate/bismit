@@ -7,7 +7,7 @@ use map::{AreaMap, CellScheme, ExecutionGraph, CommandRelations,
 use cortex::{AxonSpace, Synapses};
 #[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
-const PRINT_DEBUG: bool = false;
+const PRNT: bool = false;
 
 #[derive(Debug)]
 pub struct Dendrites {
@@ -177,7 +177,7 @@ impl Dendrites {
             self.exe_cmd_idxs.clear();
 
             for &cmd_uid in self.exe_cmd_uids.iter() {
-                if PRINT_DEBUG { println!("##### Ordering dendrite cmd_uid: {}", cmd_uid); }
+                if PRNT { println!("##### Ordering dendrite cmd_uid: {}", cmd_uid); }
                 self.exe_cmd_idxs.push(exe_graph.order_command(cmd_uid)?);
             }
         }
@@ -185,11 +185,11 @@ impl Dendrites {
     }
 
     pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        if PRINT_DEBUG { println!("    Dens: Cycling syns..."); }
+        if PRNT { println!("    Dens: Cycling syns..."); }
         self.syns.cycle(exe_graph)?;
 
         for (kern, &cmd_idx) in self.kernels.iter_mut().zip(self.exe_cmd_idxs.iter()) {
-            if PRINT_DEBUG { println!("    Dens: Cycling kern_cycle (exe_cmd_idx: [{}])...", cmd_idx); }
+            if PRNT { println!("    Dens: Cycling kern_cycle (exe_cmd_idx: [{}])...", cmd_idx); }
 
             kern.set_arg_scl_named("rnd", self.rng.gen::<i32>())?;
 
@@ -197,7 +197,7 @@ impl Dendrites {
             unsafe { kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
 
-            if PRINT_DEBUG { kern.default_queue().unwrap().finish().unwrap(); }
+            if PRNT { kern.default_queue().unwrap().finish().unwrap(); }
         }
 
         self.activity_counter += 1;

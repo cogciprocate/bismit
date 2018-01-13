@@ -10,7 +10,7 @@ use map::{CellScheme, ExecutionGraph, CommandRelations,
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayers};
 
 
-const PRINT_DEBUG: bool = false;
+const PRNT: bool = false;
 const TUFT_COUNT: usize = 1;
 
 
@@ -220,11 +220,11 @@ impl SpinyStellateLayer {
     pub fn cycle(&mut self, control_layers: &mut ControlCellLayers, exe_graph: &mut ExecutionGraph)
             -> CmnResult<()>
     {
-        if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling layer: '{}'...", self.layer_name); }
+        if PRNT { printlnc!(royal_blue: "Ssts: Cycling layer: '{}'...", self.layer_name); }
 
         // Pre cycle:
         for lyr_idx in self.control_lyr_idxs.iter() {
-            if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Pre-cycling control layer: [{:?}]...", lyr_idx); }
+            if PRNT { printlnc!(royal_blue: "    Ssts: Pre-cycling control layer: [{:?}]...", lyr_idx); }
             control_layers.get_mut(lyr_idx).unwrap().cycle_pre(exe_graph, self.layer_addr)?;
         }
 
@@ -243,11 +243,11 @@ impl SpinyStellateLayer {
 
         // Post cycle:
         for lyr_idx in self.control_lyr_idxs.iter() {
-            if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Post-cycling control layer: [{:?}]...", lyr_idx); }
+            if PRNT { printlnc!(royal_blue: "    Ssts: Post-cycling control layer: [{:?}]...", lyr_idx); }
             control_layers.get_mut(lyr_idx).unwrap().cycle_post(exe_graph, self.layer_addr)?;
         }
 
-        if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Cycling complete for layer: '{}'.", self.layer_name); }
+        if PRNT { printlnc!(royal_blue: "Ssts: Cycling complete for layer: '{}'.", self.layer_name); }
         Ok(())
     }
 
@@ -255,14 +255,14 @@ impl SpinyStellateLayer {
     #[inline]
     pub fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if let Some(cmd_idx) = self.mtp_exe_cmd_idx {
-            if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Performing learning for layer: '{}'...", self.layer_name); }
+            if PRNT { printlnc!(royal_blue: "Ssts: Performing learning for layer: '{}'...", self.layer_name); }
             let rnd = self.rng.gen::<u32>();
             self.kern_mtp.set_arg_scl_named("rnd", rnd).unwrap();
 
             let mut event = Event::empty();
             unsafe { self.kern_mtp.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
-            if PRINT_DEBUG { printlnc!(royal_blue: "Ssts: Learning complete for layer: '{}'.", self.layer_name); }
+            if PRNT { printlnc!(royal_blue: "Ssts: Learning complete for layer: '{}'.", self.layer_name); }
         }
         Ok(())
     }

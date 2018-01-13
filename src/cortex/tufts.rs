@@ -5,11 +5,11 @@ use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use std::collections::BTreeMap;
 use ocl::traits::OclPrm;
-use map::{AreaMap, CellScheme, DendriteKind, ExecutionGraph, CommandRelations,
+use map::{AreaMap, CellScheme, DendriteClass, DendriteKind, ExecutionGraph, CommandRelations,
     CorticalBuffer, LayerAddress, LayerTags, CommandUid};
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayers};
 
-const PRINT_DEBUG: bool = false;
+const PRNT: bool = false;
 
 #[derive(Debug)]
 pub struct Tufts {
@@ -17,14 +17,17 @@ pub struct Tufts {
     layer_addr: LayerAddress,
     dims: CorticalDims,
     tft_count: usize,
-    mtp_kernels: Vec<Kernel>,
-    cycle_kernels: Vec<Kernel>,
 
+    prev_best_den_ids: Buffer<u8>,
+    prev_best_den_states_raw: Buffer<u8>,
+    prev_best_den_states: Buffer<u8>,
     best_den_ids: Buffer<u8>,
     best_den_states_raw: Buffer<u8>,
     best_den_states: Buffer<u8>,
     states: Buffer<u8>,
 
+    mtp_kernels: Vec<Kernel>,
+    cycle_kernels: Vec<Kernel>,
     cycle_exe_cmd_uids: Vec<CommandUid>,
     cycle_exe_cmd_idxs: Vec<usize>,
     mtp_exe_cmd_uids: Vec<CommandUid>,
@@ -56,6 +59,9 @@ impl Tufts {
         let cel_count = dims.to_len();
         let celtft_count = cel_count * tft_count;
 
+        let prev_best_den_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
+        let prev_best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
+        let prev_best_den_states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
         let best_den_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
         let best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
         let best_den_states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
@@ -70,10 +76,13 @@ impl Tufts {
         let cycle_exe_cmd_idxs = Vec::with_capacity(tft_count);
         let mut mtp_exe_cmd_uids = Vec::with_capacity(tft_count);
         let mtp_exe_cmd_idxs = Vec::with_capacity(tft_count);
+        // let mut den_kinds = Vec::with_capacity(tft_count);
         let mut den_count_ttl = 0u32;
         let mut syn_count_ttl = 0u32;
 
         for (tft_id, tft_scheme) in cell_scheme.tft_schemes().iter().enumerate() {
+            // den_kinds.push((tft_scheme.den_class(), tft_scheme.den_kind()));
+
             let dens_per_tft_l2 = tft_scheme.dens_per_tft_l2();
             let syns_per_den_l2 = tft_scheme.syns_per_den_l2();
             let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
@@ -102,6 +111,9 @@ impl Tufts {
                 .arg_scl(tft_den_idz)
                 .arg_scl(dens_per_tft_l2)
                 .arg_scl(tft_scheme.max_active_dens_l2())
+                .arg_buf(&prev_best_den_ids)
+                .arg_buf(&prev_best_den_states_raw)
+                .arg_buf(&prev_best_den_states)
                 .arg_buf(&best_den_ids)
                 .arg_buf(&best_den_states_raw)
                 .arg_buf(&best_den_states)
@@ -129,62 +141,70 @@ impl Tufts {
             ===============================================================================
             =============================================================================*/
 
-            // let syns_per_tftsec = dens.syns().syns_per_tftsec();
-            // let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
-            let cel_grp_count = 64;
-            let cels_per_cel_grp = dims.per_subgrp(cel_grp_count)?;
-            let learning_rate_l2i = 0i32;
-
-            let kern_name = "tft_mtp";
-            mtp_kernels.push(ocl_pq.create_kernel(kern_name)?
-                .gws(SpatialDims::One(cel_grp_count as usize))
-                .arg_buf(axons.states())
-                .arg_buf(cel_states)
-                .arg_buf(&best_den_ids)
-                .arg_buf(&best_den_states_raw)
-                .arg_buf(dens.states())
-                .arg_buf(dens.syns().states())
-                // .arg_scl(tfts_per_cel as u32)
-                .arg_scl(tft_cel_idz)
-                .arg_scl(tft_den_idz)
-                .arg_scl(tft_syn_idz)
-                .arg_scl(dens_per_tft_l2 as u32)
-                .arg_scl(syns_per_den_l2 as u32)
-                .arg_scl(syns_per_tft_l2 as u32)
-                .arg_scl(cels_per_cel_grp)
-                .arg_scl(cel_lyr_axn_idz)
-                .arg_scl_named::<i32>("lr_l2i", Some(learning_rate_l2i))
-                .arg_scl_named::<i32>("rnd", None)
-                .arg_buf(dens.syns().flag_sets())
-                .arg_buf(cel_flag_sets)
-                .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
-                .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
-                .arg_buf(dens.syns().strengths())
-            );
-
-            let mut mtp_cmd_srcs: Vec<CorticalBuffer> = cel_axn_slc_ids.iter()
-                .map(|&slc_id|
-                    CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
-                .collect();
-
-            mtp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&cel_states, layer_addr));
-            mtp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&best_den_ids, layer_addr, tft_id));
-            mtp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&best_den_states_raw, layer_addr, tft_id));
-            mtp_cmd_srcs.push(CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id));
-            mtp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, tft_id));
-
             if !settings.disable_learning & !settings.disable_pyrs {
-                mtp_exe_cmd_uids.push(exe_graph.add_command(CommandRelations::cortical_kernel(
-                    kern_name, mtp_cmd_srcs,
-                    vec![
-                        CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), layer_addr, tft_id),
-                        CorticalBuffer::data_soma_tft(&cel_flag_sets, layer_addr, tft_id),
-                        CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, tft_id),
-                    ]
-                ))?);
+                match tft_scheme.den_kind() {
+                    DendriteKind::Distal => {
+                        // let syns_per_tftsec = dens.syns().syns_per_tftsec();
+                        // let cel_grp_count = cmn::OPENCL_MINIMUM_WORKGROUP_SIZE;
+                        let cel_grp_count = 64;
+                        let cels_per_cel_grp = dims.per_subgrp(cel_grp_count)?;
+                        let potentiation_rate_l2i = 0i32;
+                        let depression_rate_l2i = 2i32;
+
+                        let kern_name = "tft_dst_mtp";
+                        mtp_kernels.push(ocl_pq.create_kernel(kern_name)?
+                            .gws(SpatialDims::One(cel_grp_count as usize))
+                            .arg_buf(axons.states())
+                            .arg_buf(cel_states)
+                            .arg_buf(&prev_best_den_ids)
+                            .arg_buf(&prev_best_den_states_raw)
+                            .arg_buf(dens.states())
+                            .arg_buf(dens.syns().states())
+                            // .arg_scl(tfts_per_cel as u32)
+                            .arg_scl(tft_cel_idz)
+                            .arg_scl(tft_den_idz)
+                            .arg_scl(tft_syn_idz)
+                            .arg_scl(dens_per_tft_l2 as u32)
+                            .arg_scl(syns_per_den_l2 as u32)
+                            .arg_scl(syns_per_tft_l2 as u32)
+                            .arg_scl(cels_per_cel_grp)
+                            .arg_scl(cel_lyr_axn_idz)
+                            .arg_scl_named::<i32>("pr_l2i", Some(potentiation_rate_l2i))
+                            .arg_scl_named::<i32>("dr_l2i", Some(depression_rate_l2i))
+                            .arg_scl_named::<i32>("rnd", None)
+                            .arg_buf(dens.syns().flag_sets())
+                            .arg_buf(cel_flag_sets)
+                            .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
+                            .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
+                            .arg_buf(dens.syns().strengths())
+                        );
+
+                        let mut mtp_cmd_srcs: Vec<CorticalBuffer> = cel_axn_slc_ids.iter()
+                            .map(|&slc_id|
+                                CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
+                            .collect();
+
+                        mtp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&cel_states, layer_addr));
+                        mtp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&best_den_ids, layer_addr, tft_id));
+                        mtp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&best_den_states_raw, layer_addr, tft_id));
+                        mtp_cmd_srcs.push(CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id));
+                        mtp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, tft_id));
+
+                        mtp_exe_cmd_uids.push(exe_graph.add_command(CommandRelations::cortical_kernel(
+                            kern_name, mtp_cmd_srcs,
+                            vec![
+                                CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), layer_addr, tft_id),
+                                CorticalBuffer::data_soma_tft(&cel_flag_sets, layer_addr, tft_id),
+                                CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, tft_id),
+                            ]
+                        ))?);
+
+                        println!("\n\n###### Adding distal mtp kernel cmd_uid\n");
+                    },
+                    _ => (),
+                }
             }
         }
-
 
         assert!(den_count_ttl == dens.count());
         assert!(syn_count_ttl == dens.syns().count());
@@ -195,6 +215,9 @@ impl Tufts {
             dims,
             tft_count,
 
+            prev_best_den_ids,
+            prev_best_den_states_raw,
+            prev_best_den_states,
             best_den_ids,
             best_den_states_raw,
             best_den_states,
@@ -202,7 +225,6 @@ impl Tufts {
 
             mtp_kernels,
             cycle_kernels,
-
             cycle_exe_cmd_uids,
             cycle_exe_cmd_idxs,
             mtp_exe_cmd_uids,
@@ -214,6 +236,9 @@ impl Tufts {
         })
     }
 
+    /// Sets the execution order for learning kernels.
+    ///
+    /// Only learns for tufts containing distal dendrites.
     pub fn set_exe_order_learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if !self.settings.disable_pyrs && !self.settings.disable_learning {
             // Clear old mtp cmd idxs:
@@ -264,22 +289,35 @@ impl Tufts {
     }
 
 
-    #[inline]
+    /// Enqueues learning kernels.
+    ///
+    /// Only learns for tufts containing distal dendrites.
     pub fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult <()> {
-        if PRINT_DEBUG { printlnc!(yellow: "  Tfts: Performing learning for layer: '{}'...", self.layer_name); }
+        if PRNT { printlnc!(yellow: "  Tfts: Performing learning for layer: '{}'...",
+            self.layer_name); }
 
-        for (mtp_kernel, &cmd_idx) in self.mtp_kernels.iter_mut().zip(self.mtp_exe_cmd_idxs.iter()) {
-            if PRINT_DEBUG { printlnc!(yellow: "  Tfts:   Setting scalar to a random value..."); }
+        for (mtp_kernel, &cmd_idx) in self.mtp_kernels.iter_mut()
+                .zip(self.mtp_exe_cmd_idxs.iter()) {
+            if PRNT { printlnc!(yellow: "  Tfts: Setting scalar to a random value..."); }
 
-            mtp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>()).expect("PyramidalLayer::learn()");
+            mtp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
+                .expect("PyramidalLayer::learn()");
 
-            if PRINT_DEBUG { printlnc!(yellow: "  Tfts:   Enqueuing kern_mtp..."); }
+            if PRNT { printlnc!(yellow: "  Tfts: Enqueuing kern_mtp..."); }
 
             let mut event = Event::empty();
-            unsafe { mtp_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?; }
+            unsafe {
+                mtp_kernel.cmd()
+                    .ewait(exe_graph.get_req_events(cmd_idx).unwrap())
+                    .enew(&mut event)
+                    .enq()?;
+            }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
-            if PRINT_DEBUG { mtp_kernel.default_queue().unwrap().finish().unwrap(); }
-            if PRINT_DEBUG { printlnc!(yellow: "  Tfts: Learning complete for layer: '{}'.", self.layer_name); }
+            if PRNT {
+                mtp_kernel.default_queue().unwrap().finish().unwrap();
+                printlnc!(yellow: "  Tfts: Learning complete for layer: '{}'.",
+                    self.layer_name);
+            }
         }
 
         Ok(())
@@ -288,24 +326,24 @@ impl Tufts {
     pub fn cycle(&mut self, _control_layers: &mut ControlCellLayers,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         // Dens:
-        if PRINT_DEBUG { printlnc!(yellow: "  Tfts: Cycling dens..."); }
+        if PRNT { printlnc!(yellow: "  Tfts: Cycling dens..."); }
         self.dens.cycle(exe_graph)?;
 
         // Tufts:
         for (tft_id, (cycle_kernel, &cmd_idx)) in self.cycle_kernels.iter()
                 .zip(self.cycle_exe_cmd_idxs.iter()).enumerate()
         {
-            if PRINT_DEBUG { printlnc!(yellow: "  Tfts: Enqueuing cycle kernels for tft: {}...", tft_id); }
+            if PRNT { printlnc!(yellow: "  Tfts: Enqueuing cycle kernels for tft: {}...", tft_id); }
 
             let mut event = Event::empty();
             unsafe { cycle_kernel.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
 
             // [DEBUG]: TEMPORARY:
-            if PRINT_DEBUG { cycle_kernel.default_queue().unwrap().finish().unwrap(); }
+            if PRNT { cycle_kernel.default_queue().unwrap().finish().unwrap(); }
         }
 
-        if PRINT_DEBUG { printlnc!(yellow: "  Tfts: Cycling complete for layer: '{}'.", self.layer_name); }
+        if PRNT { printlnc!(yellow: "  Tfts: Cycling complete for layer: '{}'.", self.layer_name); }
 
         Ok(())
     }

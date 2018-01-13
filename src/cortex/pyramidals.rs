@@ -7,7 +7,7 @@ use map::{AreaMap, CellScheme, ExecutionGraph, CommandRelations,
 use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayers,
     Tufts};
 
-const PRINT_DEBUG: bool = false;
+const PRNT: bool = false;
 
 
 #[derive(Debug)]
@@ -93,14 +93,14 @@ impl PyramidalLayer {
                             bsl_prx_tft_id = Some(tft_scheme.tft_id() as u8);
                             enabled_tft_flags |= DEN_BASAL_PROXIMAL_FLAG;
                             enabled_tft_ttl += 1;
-                            println!("{mt}{mt}{mt} Basal Proximal Enabled", mt = cmn::MT);
+                            if PRNT { println!("{mt}{mt}{mt} Basal Proximal Enabled", mt = cmn::MT); }
                         },
                         DendriteKind::Distal => {
                             assert!(bsl_dst_tft_id.is_none());
                             bsl_dst_tft_id = Some(tft_scheme.tft_id() as u8);
                             enabled_tft_flags |= DEN_BASAL_DISTAL_FLAG;
                             enabled_tft_ttl += 1;
-                            println!("{mt}{mt}{mt} Basal Distal Enabled", mt = cmn::MT);
+                            if PRNT { println!("{mt}{mt}{mt} Basal Distal Enabled", mt = cmn::MT); }
                         },
                         _ => unimplemented!(),
                     }
@@ -112,7 +112,7 @@ impl PyramidalLayer {
                             apc_dst_tft_id = Some(tft_scheme.tft_id() as u8);
                             enabled_tft_flags |= DEN_APICAL_DISTAL_FLAG;
                             enabled_tft_ttl += 1;
-                            println!("{mt}{mt}{mt} Basal Apical Enabled", mt = cmn::MT);
+                            if PRNT { println!("{mt}{mt}{mt} Basal Apical Enabled", mt = cmn::MT); }
                         },
                         _ => unimplemented!(),
                     }
@@ -123,7 +123,7 @@ impl PyramidalLayer {
 
         assert!(enabled_tft_ttl == tft_count);
 
-        println!("{mt}{mt}{mt} enabled_tft_flags: {:08b} ", enabled_tft_flags, mt = cmn::MT);
+        if PRNT { println!("{mt}{mt}{mt} enabled_tft_flags: {:08b} ", enabled_tft_flags, mt = cmn::MT); }
 
 
         //=============================================================================
@@ -207,10 +207,14 @@ impl PyramidalLayer {
         })
     }
 
+    /// Sets the execution order for learning kernels.
+    ///
+    /// Currently only learns for tufts containing distal dendrites.
     pub fn set_exe_order_learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         self.tfts.set_exe_order_learn(exe_graph)
     }
 
+    /// Sets the execution order for cycle kernels.
     pub fn set_exe_order_cycle(&mut self, control_layers: &mut ControlCellLayers,
             exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         // Determine which control layers apply to this layer and add to list:
@@ -238,9 +242,10 @@ impl PyramidalLayer {
             for cl_idx in self.control_lyr_idxs.iter() {
                 control_layers.get_mut(cl_idx).unwrap().set_exe_order_post(exe_graph, self.layer_addr)?;
             }
+
+            // Learning:
+            self.set_exe_order_learn(exe_graph)?;
         }
-        // Learning:
-        self.set_exe_order_learn(exe_graph)?;
         Ok(())
     }
 
@@ -269,31 +274,36 @@ impl PyramidalLayer {
 }
 
 impl DataCellLayer for PyramidalLayer {
+    /// Enqueues learning kernels.
+    ///
+    /// Only learns for tufts containing distal dendrites.
     #[inline]
     fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult <()> {
         self.tfts.learn(exe_graph)
     }
 
+    /// Prunes and regrows synapses.
     #[inline]
     fn regrow(&mut self) {
-        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Regrowing dens..."); }
+        if PRNT { printlnc!(yellow: "Pyrs: Regrowing dens..."); }
         self.dens_mut().regrow();
     }
 
+    /// Enqueues cycle kernels.
     fn cycle(&mut self, control_layers: &mut ControlCellLayers, exe_graph: &mut ExecutionGraph)
             -> CmnResult<()> {
         // Control Pre:
         for lyr_idx in self.control_lyr_idxs.iter() {
-            if PRINT_DEBUG { printlnc!(royal_blue: "    Pyrs: Pre-cycling control layer: [{:?}]...", lyr_idx); }
+            if PRNT { printlnc!(royal_blue: "    Pyrs: Pre-cycling control layer: [{:?}]...", lyr_idx); }
             control_layers.get_mut(lyr_idx).unwrap().cycle_pre(exe_graph, self.layer_addr)?;
         }
 
         // [DEBUG]: TEMPORARY:
-        if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
+        if PRNT { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
 
         self.tfts.cycle(control_layers, exe_graph)?;
 
-        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling cell soma..."); }
+        if PRNT { printlnc!(yellow: "Pyrs: Cycling cell soma..."); }
 
         // Soma:
         if let Some(cycle_cmd_idx) = self.cycle_exe_cmd_idx {
@@ -307,15 +317,15 @@ impl DataCellLayer for PyramidalLayer {
 
         // Control Post:
         for lyr_idx in self.control_lyr_idxs.iter() {
-            if PRINT_DEBUG { printlnc!(royal_blue: "    Ssts: Post-cycling control layer: [{:?}]...", lyr_idx); }
+            if PRNT { printlnc!(royal_blue: "    Ssts: Post-cycling control layer: [{:?}]...", lyr_idx); }
             control_layers.get_mut(lyr_idx).unwrap().cycle_post(exe_graph, self.layer_addr)?;
         }
 
         self.learn(exe_graph)?;
 
         // [DEBUG]: TEMPORARY:
-        if PRINT_DEBUG { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
-        if PRINT_DEBUG { printlnc!(yellow: "Pyrs: Cycling complete for layer: '{}'.", self.layer_name); }
+        if PRNT { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
+        if PRNT { printlnc!(yellow: "Pyrs: Cycling complete for layer: '{}'.", self.layer_name); }
 
         Ok(())
     }

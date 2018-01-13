@@ -313,10 +313,11 @@ pub const SYNAPSES_WORKGROUP_SIZE: u32 = OPENCL_PREFERRED_WORKGROUP_SIZE;
 
 pub const MCOL_IS_VATIC_FLAG: u8   = 0b00000001;
 
-pub const CEL_PREV_CONCRETE_FLAG: u8   = 0b10000000;    // 128    (0x80)
+pub const CEL_PREV_CONCRETE_FLAG: u8   = 0b10000000;    // 128   (0x80)
 pub const CEL_BEST_IN_COL_FLAG: u8     = 0b01000000;    // 64    (0x40)
 pub const CEL_PREV_STPOT_FLAG: u8      = 0b00100000;    // 32    (0x20)
 pub const CEL_PREV_VATIC_FLAG: u8      = 0b00010000;    // 16    (0x10)
+pub const CEL_PREV_ACTIVE_FLAG: u8     = 0b00001000;    // 8     (0x08)
 
 pub const SYN_STDEP_FLAG: u8        = 0b00000001;
 pub const SYN_STPOT_FLAG: u8        = 0b00000010;
@@ -423,6 +424,7 @@ pub fn base_build_options() -> ProgramBuilder {
         .cmplr_def("CEL_BEST_IN_COL_FLAG", CEL_BEST_IN_COL_FLAG as i32)
         .cmplr_def("CEL_PREV_STPOT_FLAG", CEL_PREV_STPOT_FLAG as i32)
         .cmplr_def("CEL_PREV_VATIC_FLAG", CEL_PREV_VATIC_FLAG as i32)
+        .cmplr_def("CEL_PREV_ACTIVE_FLAG", CEL_PREV_ACTIVE_FLAG as i32)
         .cmplr_def("SYN_STPOT_FLAG", SYN_STPOT_FLAG as i32)
         .cmplr_def("SYN_STDEP_FLAG", SYN_STDEP_FLAG as i32)
         .cmplr_def("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)

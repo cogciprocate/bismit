@@ -77,7 +77,7 @@ pub use self::tests::{SynCoords, SynapsesTest, syn_idx};
 const DEBUG_NEW: bool = true;
 const DEBUG_GROW: bool = true;
 const DEBUG_REGROW_DETAIL: bool = false;
-const PRINT_DEBUG: bool = false;
+const PRNT: bool = false;
 
 #[derive(Clone, Debug)]
 pub struct TuftDims {
@@ -344,7 +344,7 @@ impl Synapses {
             // Cycle kernels:
             self.exe_cmd_idxs_cycle.clear();
             for &cmd_uid in self.exe_cmd_uids_cycle.iter() {
-                if PRINT_DEBUG { println!("##### Ordering synapse: {}", cmd_uid); }
+                if PRNT { println!("##### Ordering synapse: {}", cmd_uid); }
                 self.exe_cmd_idxs_cycle.push(exe_graph.order_command(cmd_uid)?);
             }
         }
@@ -364,14 +364,14 @@ impl Synapses {
 
         // Cycle kernels:
         for (kern, &cmd_idx) in self.kernels_cycle.iter().zip(self.exe_cmd_idxs_cycle.iter()) {
-            if PRINT_DEBUG { printlnc!(white: "    Syns: Enqueuing kernel: '{}' \
+            if PRNT { printlnc!(white: "    Syns: Enqueuing kernel: '{}' \
                 (exe_cmd_idx: [{}])...", kern.name()?, cmd_idx); }
 
             let mut event = Event::empty();
             unsafe { kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
             exe_graph.set_cmd_event(cmd_idx, Some(event))?;
 
-            if PRINT_DEBUG { kern.default_queue().unwrap().finish().unwrap(); }
+            if PRNT { kern.default_queue().unwrap().finish().unwrap(); }
         }
 
         Ok(())
@@ -520,7 +520,7 @@ pub mod tests {
     use cortex::{dendrites, CelCoords};
     use super::{Synapses, TuftDims};
 
-    const PRINT_DEBUG_INFO: bool = false;
+    const PRNT_INFO: bool = false;
 
     pub trait SynapsesTest {
         fn set_offs_to_zero(&mut self);

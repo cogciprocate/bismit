@@ -13,7 +13,7 @@ use super::util::{self, PtalAlco};
 // const LEARNING_ITERS_PER_CELL: usize = 2;
 const LEARNING_CONTINUATION_ITERS: usize = 3;
 
-const PRINT_DEBUG_INFO: bool = false;
+const PRNT_INFO: bool = false;
 const PRINT_FINAL_ITER_ONLY: bool = false;
 
 //=============================================================================
@@ -82,7 +82,7 @@ const PRINT_FINAL_ITER_ONLY: bool = false;
 
 ////// #[test]
 fn dst_den_learning_REIMPLEMENT_ME() {
-    // assert!(!PRINT_DEBUG_INFO, "Printing debug info (or anything else) is currently disabled.");
+    // assert!(!PRNT_INFO, "Printing debug info (or anything else) is currently disabled.");
     let mut ltb = LearningTestBed::new();
     // 180 -> +-64 (slow), +-96 (fast)
     // 360 -> +-96 (slow), +-119 (fast)
@@ -263,7 +263,7 @@ impl LearningTestBed {
                 mt = cmn::MT);
 
             // This and every other util::print_all() is very expensive:
-            if PRINT_DEBUG_INFO {
+            if PRNT_INFO {
                 util::print_all(area, "\n - Confirm Init - ");
             }
 
@@ -324,7 +324,7 @@ impl LearningTestBed {
             let final_iter = i == (on_focus_iters - 1);
 
             let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
-                && PRINT_DEBUG_INFO;
+                && PRNT_INFO;
 
             self.learning_iter(i, false, print_debug);
         }
@@ -342,7 +342,7 @@ impl LearningTestBed {
             let final_iter = i == (off_focus_iters - 1);
 
             let print_debug = ((PRINT_FINAL_ITER_ONLY && final_iter) || !PRINT_FINAL_ITER_ONLY)
-                && PRINT_DEBUG_INFO;
+                && PRNT_INFO;
 
             self.learning_iter(i, true, print_debug);
         }
@@ -728,7 +728,7 @@ impl LearningTestBed {
         //=============================================================================
         //=============================== CLEAN UP ===================================
         //=============================================================================
-        if PRINT_DEBUG_INFO { println!("\n ====================== Clean-up ====================== \n"); }
+        if PRNT_INFO { println!("\n ====================== Clean-up ====================== \n"); }
 
         let area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
@@ -764,7 +764,7 @@ impl LearningTestBed {
         // Finish queues:
         area.finish_queues();
 
-        if PRINT_DEBUG_INFO {
+        if PRNT_INFO {
             util::print_all(area, "\n - Post-clean-up - ");
             print!("\n");
             // unimplemented!();

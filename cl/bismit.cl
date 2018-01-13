@@ -544,24 +544,22 @@ static uchar update_activity_rating(uchar activity_rating, int is_active, int rn
 ================================== LEARNING ===================================
 =============================================================================*/
 
-// ISSUE: LOTS OF PROBLEMS WITH GLITCHES AND COMPILER BUGS ON THESE FUNCTIONS!
-//         UPDATE: CATALYST 15.9 SEEMS TO HAVE FIXED SEVERAL (ALL?). NOT SURE ABOUT
 
-// DST_DEN_SYNS_LEARN_INIT():
-//         - Occurs when a cell is active.
-//         - Applies to a single dendrite on that cell.
-//             - Must only be called with a syn_idz of the best (most active)
-//               dendrite on an active tuft on an active cell.
-//         - Is intended to handle both crystallization (predictions becoming
-//           or staying true) or anomalies (situations where no cell in the
-//           column had predicted the column's spatial input).
+// Distal synapse medium-term potentiation/depression.
 //
-//         STDEP set when depression has already been applied (needs to be cleared by trmn)
-//         STPOT set when potentiation is due to be applied (by trmn)
-static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
+// - Occurs when a cell first becomes active.
+// - Applies to a single dendrite on that cell's tuft (the most active).
+// -
+//
+static inline void dst_syns__active__mtpot_mtdep(
+            // Unused:
             __global const uchar* const syn_states,
             uint const syn_idz,
             uint const syns_per_den_l2,
+            // Potentiation rate inverse log2 (1/log2):
+            int const pr_l2i,
+            // Depression rate inverse log2 (1/log2):
+            int const dr_l2i,
             int const rnd,
             __global uchar* const syn_flag_sets,
             // TODO: Switch to `u8` (`uchar`):
@@ -569,97 +567,37 @@ static inline void dst_syns__active__stpot_stdep( // RENAME TO ABOVE
 {
     uint const n = syn_idz + (1 << syns_per_den_l2);
 
-    for (uint i = syn_idz; i < n; i++) {
-        // char syn_strength = syn_strengths[i];
-        uchar syn_flag_set = syn_flag_sets[i];
-        uchar const syn_state = syn_states[i];
-        // int const inc = rnd_inc(rnd, syn_idz + i, syn_strength);
-        int const syn_is_active = syn_state != 0;
-        int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == (SYN_STPOT_FLAG);
-        int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == (SYN_STDEP_FLAG);
-
-        // Synapse has either a short term potentiation or short term depression flag:
-        int const syn_has_stX_flag = (syn_has_stpot | syn_has_stdep);
-
-        // Synapse is active and does not have a short term depression or potentiation flag:
-        int const syn_needs_stpot = syn_is_active && (!syn_has_stX_flag);
-        // Synapse is inactive and does not have a short term depression or potentiation flag:
-        int const syn_needs_stdep = (!syn_is_active) && (!syn_has_stX_flag);
-
-        // If syn_needs_stdep, depress the synapse's strength by 'inc' (generally a 1 or 0) ...
-        // syn_strength -= mul24(syn_needs_stdep, inc);
-
-        // Deactivate synapse short term potentiation and depression flags regardless of their states:
-        // syn_flag_set &= ~(SYN_STPOT_FLAG | SYN_STDEP_FLAG);
-
-
-        // If syn_needs_stpot activate STPOT flag:
-        syn_flag_set = syn_flag_set | mul24(syn_needs_stpot, (SYN_STPOT_FLAG))
-            | mul24(syn_needs_stdep, (SYN_STDEP_FLAG));
-        // If syn_needs_stdep activate STDEP flag:
-        // syn_flag_set |= mul24(syn_needs_stdep, (SYN_STDEP_FLAG));
-
-        syn_flag_sets[i] = syn_flag_set;
-        // syn_flag_sets[i] = ;
-        // syn_flag_sets[i] = 2 | 1;
-
-        // syn_strengths[i] = syn_strength;
-    }
-}
-
-// DST_TFT_SYNS_LEARN_TRMN(): Learning termination for a tuft:
-//         - Occurs when a cell which had been active becomes inactive.
-// TODO: VECTORIZE
-//
-static inline void tft_syns_trm(
-            __global const uchar* const syn_states,
-            uint const syn_idz,
-            uint const syns_per_tft_l2,
-            int const rnd,
-            // LEARNING RATE INVERSE LOG BASE 2 (1/L2):
-            // TODO: Use asymmetrical potentiation/depression rates:
-            int const lr_l2i,
-            __global uchar* const syn_flag_sets,
-            __global int* const aux_ints_0,
-            // TODO: Switch to `u8` (`uchar`):
-            __global char* const syn_strengths)
-{
-    uint const n = syn_idz + (1 << syns_per_tft_l2);
-
     // TODO: Pre-calculate host side:
-    // TODO: Use asymmetrical potentiation/depression rates:
-    int lr_mask = 0x7F << lr_l2i;
-    lshft_mask(&lr_mask, lr_l2i);
+    // Potentiation rate:
+    int pr_mask = 0x7F << pr_l2i;
+    lshft_mask(&pr_mask, pr_l2i);
 
-    // aux_ints_0[syn_idz] = lr_mask;
-    // aux_ints_0[syn_idz] = rnd_mix(rnd, syn_idz) & lr_mask;
+    // Depression rate:
+    int dr_mask = 0x7F << dr_l2i;
+    lshft_mask(&dr_mask, dr_l2i);
 
     for (uint i = syn_idz; i < n; i++) {
-        uchar const syn_state = syn_states[i];
         char syn_strength = syn_strengths[i];
         uchar syn_flag_set = syn_flag_sets[i];
-        int const should_inc = rnd_inc(rnd, (syn_idz + i), syn_strength, lr_l2i, lr_mask);
-        int const should_dec = rnd_dec(rnd, (syn_idz + i), syn_strength, lr_l2i, lr_mask);
-        int const syn_is_active = syn_state != 0;
-        int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == SYN_STPOT_FLAG;
-        int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == SYN_STDEP_FLAG;
+        // uchar const syn_state = syn_states[i];
+        int const syn_prev_active = syn_flag_set & (SYN_PREV_ACTIVE_FLAG) == (SYN_PREV_ACTIVE_FLAG);
+        // int const syn_is_active = syn_state != 0;
 
-        // If synapse had STPOT flag and is now inactive (synapse correlated with cell activity):
-        syn_strength += mul24(syn_has_stpot && !syn_is_active, should_inc);
+        // TODO: De-branch
+        if (syn_prev_active) {
+            int const should_inc = rnd_inc(rnd, (syn_idz + i), syn_strength, pr_l2i, pr_mask);
+            syn_strength += should_inc;
+        } else {
+            int const should_dec = rnd_dec(rnd, (syn_idz + i), syn_strength, dr_l2i, dr_mask);
+            syn_strength -= should_dec;
+        }
 
-        // If synapse had STPOT flag and is still active (synapse did not correlate with cell activity):
-        syn_strength -= mul24(syn_has_stpot && syn_is_active, should_dec);
-
-        // If synapse had STDEP flag:
-        syn_strength -= mul24(syn_has_stdep, should_dec);
-
-        // Deactivate synapse short term potentiation and depression flags regardless of their states:
-        syn_flag_set &= ~(SYN_STPOT_FLAG | SYN_STDEP_FLAG);
-
-        syn_flag_sets[i] = syn_flag_set;
+        // syn_flag_sets[i] = syn_flag_set;
         syn_strengths[i] = syn_strength;
     }
+
 }
+
 
 // TODO: VECTORIZE
 static inline void prx_syns__active__mtp_ltd(
@@ -814,6 +752,9 @@ __kernel void tft_cycle(
             __private uint const lyrtft_den_idz,
             __private uchar const dens_per_tft_l2,
             __private uchar const max_active_dens_l2,
+            __global uchar* const celtft_prev_best_den_ids,
+            __global uchar* const celtft_prev_best_den_states_raw,
+            __global uchar* const celtft_prev_best_den_states,
             __global uchar* const celtft_best_den_ids,
             __global uchar* const celtft_best_den_states_raw,
             __global uchar* const celtft_best_den_states,
@@ -877,6 +818,10 @@ __kernel void tft_cycle(
 
     uint const celtft_idx = lyrtft_cel_idz + cel_id_lyrtft;
 
+
+    celtft_prev_best_den_ids[celtft_idx] = celtft_best_den_ids[celtft_idx];
+    celtft_prev_best_den_states_raw[celtft_idx] = celtft_best_den_states_raw[celtft_idx];
+    celtft_prev_best_den_states[celtft_idx] = celtft_best_den_states[celtft_idx];
     celtft_best_den_ids[celtft_idx] = best_den_id;
     celtft_best_den_states_raw[celtft_idx] = best_den_state_raw;
     celtft_best_den_states[celtft_idx] = best_den_state;
@@ -998,103 +943,72 @@ __kernel void ssc_mtp(
 
 
 
-// MCOL_ACTIVATE_PYRS(): Activate the axon of the pyramidal cell with the most active dendrite (on any tuft).
-//      - If every dendrite on every tuft of every pyramidal cell in the
-//        entire column is inactive (below threshold):
-//            - Activate the axon of every pyramidal cell in the column.
+// Cycles each pyramidal cell.
 //
-//        In addition (for learning purposes):
-//            - Keep track of whether or not predictions (pyramidal states)
-//              for any pyramidal cell in the column have come true
-//              (crystallized).
-//             - Determine whether or not an unpredicted (anomalous) activity
-//               has occurred.
-//
-// TODO: TUFTIFY
-// TODO: REMOVE BEST_DEN_IDS AND DEN_STATES AND REPLACE WITH BEST_DEN_STATES (KEEP INDEXING IN MIND)
-__kernel void mcol_activate_pyrs(
-            __global const uchar* const mcol_flag_sets, // COL
-            __global const uchar* const mcol_best_den_states,
-            // __global const uchar* const cel_tft_best_den_ids,
-            __global const uchar* const pyr_best_den_states_raw,
-            __global const uchar* const pyr_states,
-            // __global const uchar* const den_states,
-            // __global const uchar* const cel_tft_best_den_ids, // ADD ME?
-            __private uint const sscs_axn_idz,         // Primary spatial associative cell layer (sscs)
-            __private uint const pyrs_axn_idz,          // Primary temporal associative cell layer (pyrs)
-            // __private uchar const pyr_axn_slc_base,
-            // __private uchar const dens_per_tft_l2,
-            __global uchar* const pyr_flag_sets,
-            // __global int* const aux_ints_0,
-            __global uchar* const axn_states)
+__kernel void pyr_cycle(
+            // __global const uchar* const celtft_best_den_ids,
+            __global const uchar* const celtft_best_den_states_raw,
+            // __global const uchar* const celtft_best_den_states,
+            __global const uchar* const tft_states,
+            __private uchar const tft_count,
+            __private uchar const enabled_tft_flags,
+            __private uchar const bsl_prx_tft_id,
+            __private uchar const bsl_dst_tft_id,
+            __private uchar const apc_dst_tft_id,
+            __global uchar* const pyr_best_den_states_raw,
+            __global int* const aux_ints_0,
+            __global int* const aux_ints_1,
+            __global uchar* const pyr_states)
 {
-    uint const slc_id_lyr = get_global_id(0);
-    uint const v_id = get_global_id(1);
-    uint const u_id = get_global_id(2);
-    uint const v_size = get_global_size(1);
-    uint const u_size = get_global_size(2);
+    uint const cel_idx = get_global_id(0);
+    uint const cel_count = get_global_size(0);
 
-    // uint const cel_idx = get_global_id(0);
-    uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
-    uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
-    // int idx_is_safe = 0;
-    // uint const pyr_axn_idx = axn_idx_3d_unsafe(pyr_axn_slc_base + slc_id_lyr, v_id, 0, u_id, 0, &idx_is_safe);
-    uint const pyr_axn_idx = pyrs_axn_idz + cel_idx;
+    uchar pyr_best_den_state_raw = 0;
+    uchar pyr_state = 0;
 
-    // ******************
+    // TODO: Redesign learning and remove this loop:
+    for (uint tft_id = 0; tft_id < tft_count; tft_id++) {
+        uint const celtft_idx = mad24(tft_id, cel_count, cel_idx);
 
+        uchar pyr_best_den_state_raw = celtft_best_den_states_raw[celtft_idx];
+        // uchar pyr_best_den_state = celtft_best_den_states[celtft_idx];
+        pyr_best_den_state_raw = max(pyr_state, pyr_best_den_state_raw);
+        // pyr_state = max(pyr_state, pyr_best_den_state);
+    }
 
-    // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
-    // uint const den_ofs = cel_idx << dens_per_tft_l2;                    // OLD
-    // uint const best_den_idx = den_ofs + pyr_best_den_ids[cel_idx];     // OLD
-    uchar const best_den_state = pyr_best_den_states_raw[cel_idx];
+    int bsl_prx_is_enabled = (enabled_tft_flags & DEN_BASAL_PROXIMAL_FLAG) != 0;
+    int bsl_dst_is_enabled = (enabled_tft_flags & DEN_BASAL_DISTAL_FLAG) != 0;
+    int apc_dst_is_enabled = (enabled_tft_flags & DEN_APICAL_DISTAL_FLAG) != 0;
 
-    uchar const mcol_best_col_den_state = mcol_best_den_states[col_id];
-    uchar const psa_cel_axn_state = axn_states[sscs_axn_idz + col_id];
-    //uchar const mcol_state = mcol_states[col_id];
-    uchar const mcol_flag_set = mcol_flag_sets[col_id];
-    uchar const pyr_state = pyr_states[cel_idx];
-    uchar pyr_flag_set = pyr_flag_sets[cel_idx];
+    uint bsl_prx_celtft_idx = mad24(bsl_prx_tft_id, cel_count, cel_idx);
+    uint bsl_dst_celtft_idx = mad24(bsl_dst_tft_id, cel_count, cel_idx);
+    uint apc_dst_celtft_idx = mad24(apc_dst_tft_id, cel_count, cel_idx);
 
-    int const mcol_is_active = psa_cel_axn_state != 0;
-    //int const mcol_active = mcol_state != 0;
-    int const mcol_any_pred = (mcol_flag_set & MCOL_IS_VATIC_FLAG) == MCOL_IS_VATIC_FLAG;
-    int const pyr_is_vatic = (pyr_state != 0);
+    uchar bsl_prx_state = mul24(bsl_prx_is_enabled, tft_states[bsl_prx_celtft_idx]);
+    uchar bsl_dst_state = mul24(bsl_dst_is_enabled, tft_states[bsl_dst_celtft_idx]);
+    uchar apc_dst_state = mul24(apc_dst_is_enabled, tft_states[apc_dst_celtft_idx]);
 
-    // DEBUG
-    // if (pyr_is_vatic) {
-    //     aux_ints_0[cel_idx] = pyr_axn_idx;
-    // }
+    int cel_is_active = bsl_prx_state != 0;
 
-    int const crystalized = pyr_is_vatic && mcol_is_active;
-    int const anomalous = mcol_is_active && !mcol_any_pred;
+    // Divide by 4 but don't let small values get rounded to 0:
+    int bsl_prx_is_min = (bsl_prx_state <= 3) && cel_is_active;
+    uchar bsl_prx_contrib = (bsl_prx_state >> 2) + bsl_prx_is_min;
 
-    //int const activate_axon = crystal || anomaly;
-    //pyr_state = (crystal | anomaly) && (mcol_state);
-    //pyr_state = mul24(((crystal != 0) || (anomaly != 0)), mcol_state);
-    pyr_flag_set &= ~CEL_BEST_IN_COL_FLAG;
+    // Divide by 4, ignore rounding:
+    uchar bsl_dst_contrib = mul24(cel_is_active, bsl_dst_state >> 2);
 
-    //pyr_flag_set |= mul24(best_den_state == mcol_best_col_den_state, CEL_BEST_IN_COL_FLAG);
-    //pyr_flag_set |= mul24((mcol_best_col_den_state == best_den_state) && pyr_is_vatic,
-    //    CEL_BEST_IN_COL_FLAG);
-    pyr_flag_set |= mul24((best_den_state != 0) && (best_den_state == mcol_best_col_den_state),
-        CEL_BEST_IN_COL_FLAG);
+    // Divide by 2, ignore rounding:
+    uchar apc_dst_contrib = mul24(cel_is_active, apc_dst_state >> 1);
 
-
-    axn_states[pyr_axn_idx] = (uchar)mad24(anomalous, (int)psa_cel_axn_state, mul24(crystalized, (int)pyr_state));
-    //axn_states[axn_idx] = (uchar)mad24(anomaly, (int)mcol_state, mul24(crystal, (int)pyr_state));
-
-    pyr_flag_sets[cel_idx] = pyr_flag_set;
-
-    //pyr_states[cel_idx] = pyr_state;
-
-    //aux_ints_0[cel_idx] = 5;
-    //aux_ints_0[cel_idx] = pyr_state;
+    pyr_best_den_states_raw[cel_idx] = pyr_best_den_state_raw;
+    pyr_states[cel_idx] = bsl_prx_contrib + bsl_dst_contrib, + apc_dst_contrib;
 }
 
 
 
-// PYRS_LTP(): Pyramidal long term potentiation and depression - adjusting
+
+
+// Distal tuft medium-term potentiation and depression.
 //
 //
 // First, to clarify:
@@ -1103,10 +1017,10 @@ __kernel void mcol_activate_pyrs(
 //       few other (deprecated) terms might be thrown around due to much
 //       renaming but basically if a pyramidal soma is active, that cell is
 //       vatic.
-//     - the term 'concrete' is meant to mean that the cell has an active
-//       axon and therefore has not been inhibited by anything else (e.g. the
-//       most likely culprits, pyramidals within the same layer and column,
-//       our cells colleagues).
+//     - the term 'concrete' is meant to mean that the cell has an active axon
+//       and therefore has not been inhibited by anything else (e.g. the most
+//       likely culprits, pyramidals within the same layer and column -- our
+//       cell's colleagues).
 //
 // The learning process is as follows:
 //     - For each pyramidal cell:
@@ -1261,25 +1175,30 @@ __kernel void mcol_activate_pyrs(
 //        cells into each work item, all threads can keep busy.
 //
 //
-__kernel void tft_mtp(
+__kernel void tft_dst_mtp(
         __global const uchar* const axn_states,
         __global const uchar* const cel_states,
-        __global const uchar* const tft_cel_best_den_ids,
-        __global const uchar* const tft_cel_best_den_states_raw,
+        __global const uchar* const tft_cel_prev_best_den_ids,
+        __global const uchar* const tft_cel_prev_best_den_states_raw,
+        // UNUSED:
         __global const uchar* const den_states,
+        // UNUSED:
         __global const uchar* const syn_states,
 
         __private uint const tft_cel_idz, // 0th tuft-cell index
+        // UNUSED:
         __private uint const tft_den_idz, // 0th tuft-dendrite index
         __private uint const tft_syn_idz, // 0th tuft-synapse index
 
+        // UNUSED:
         __private uint const dens_per_tft_l2,
         __private uint const syns_per_den_l2,
         __private uint const syns_per_tft_l2,
 
         __private uint const cels_per_cel_grp,
         __private uint const axn_idz_cel_lyr,
-        __private int const learning_rate_l2i,
+        __private int const potentiation_rate_l2i,
+        __private int const depression_rate_l2i,
         __private int const rnd,
         __global uchar* const syn_flag_sets,
         __global uchar* const cel_flag_sets,
@@ -1294,6 +1213,9 @@ __kernel void tft_mtp(
     // Index of the 0th cell in the cell group:
     uint const cel_idz_cel_grp = mul24(cel_grp_id, cels_per_cel_grp);
 
+    // TODO: Add a tiny decay to all synapses on a previously active dendrite
+    // who's cell is not active (will need to store prev den state).
+
     for (uint cel_id_cel_grp = 0; cel_id_cel_grp < cels_per_cel_grp; cel_id_cel_grp++) {
         // Current cell:
         uint const cel_idx = cel_idz_cel_grp + cel_id_cel_grp;
@@ -1301,182 +1223,31 @@ __kernel void tft_mtp(
         uint const cel_axn_idx = axn_idz_cel_lyr + cel_idx;
         // Current tuft-cell:
         uint const tft_cel_idx = cel_idx + tft_cel_idz;
-
-        uchar cel_flag_set = cel_flag_sets[cel_idx];
-
-        // int const cel_is_concrete = axn_states[cel_axn_idx] != 0;
-        // int const cel_is_vatic = cel_states[cel_idx] != 0;
-        // int const cel_prev_concrete = (cel_flag_set & (CEL_PREV_CONCRETE_FLAG)) == (CEL_PREV_CONCRETE_FLAG);
-        // int const cel_prev_vatic = (cel_flag_set & (CEL_PREV_VATIC_FLAG)) == (CEL_PREV_VATIC_FLAG);
-        // int const cel_best_in_col = (cel_flag_set & (CEL_BEST_IN_COL_FLAG)) == (CEL_BEST_IN_COL_FLAG);
-        // int const tft_is_active = tft_cel_best_den_states_raw[tft_cel_idx] != 0;
-
         // Index of the 0th synapse within the current cell-tuft:
         uint const syn_idz_celtft = (cel_idx << syns_per_tft_l2) + tft_syn_idz;
 
-        if (cel_is_concrete) {
-            if (tft_is_active) {
-                // ID of the Best dendrite within the current cell-tuft:
-                uchar const best_den_id_celtft = tft_cel_best_den_ids[tft_cel_idx];
-                uint const syn_idz_best_den_celtft = (best_den_id_celtft << syns_per_den_l2) + syn_idz_celtft;
+        uchar cel_flag_set = cel_flag_sets[cel_idx];
 
-                // // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN
-                // // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-                // if (cel_prev_vatic | cel_best_in_col) {
-                //     dst_syns__active__stpot_stdep(syn_states, syn_idz_best_den_celtft,
-                //         syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
-                // }
-            }
+        int const cel_is_active = axn_states[cel_axn_idx] != 0;
+        int const cel_prev_active = (cel_flag_set & (CEL_PREV_ACTIVE_FLAG)) == (CEL_PREV_ACTIVE_FLAG);
+        int const cel_newly_active = !cel_prev_active & cel_is_active;
+        int const tft_is_active = tft_cel_prev_best_den_states_raw[tft_cel_idx] != 0;
 
-            // // TODO: Could be moved into above if block
-            // cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
-        } else if (cel_prev_concrete) {
-            tft_syns_trm(syn_states, syn_idz_celtft, syns_per_tft_l2, rnd,
-                learning_rate_l2i, syn_flag_sets, aux_ints_0, syn_strengths);
+        if (cel_newly_active & tft_is_active) {
+            // ID of the Best dendrite within the current tuft-cell:
+            uchar const prev_best_den_id_celtft = tft_cel_prev_best_den_ids[tft_cel_idx];
 
-            cel_flag_set &= ~CEL_PREV_CONCRETE_FLAG;
+            uint const syn_idz_prev_best_den_tft = (prev_best_den_id_celtft << syns_per_den_l2) + syn_idz_celtft;
+
+            dst_syns__active__mtpot_mtdep(syn_states, syn_idz_prev_best_den_tft, syns_per_den_l2,
+                potentiation_rate_l2i, depression_rate_l2i, rnd, syn_flag_sets, syn_strengths);
         }
 
-        cel_flag_set &= ~CEL_PREV_VATIC_FLAG;
-        cel_flag_set |= mul24(cel_is_vatic, CEL_PREV_VATIC_FLAG);
-
+        cel_flag_set &= ~CEL_PREV_ACTIVE_FLAG;
+        cel_flag_set |= mul24(cel_is_active, CEL_PREV_ACTIVE_FLAG);
         cel_flag_sets[cel_idx] = cel_flag_set;
     }
 }
-
-
-// Cycles each pyramidal cell.
-//
-__kernel void pyr_cycle(
-            // __global const uchar* const celtft_best_den_ids,
-            __global const uchar* const celtft_best_den_states_raw,
-            // __global const uchar* const celtft_best_den_states,
-            __global const uchar* const tft_states,
-            __private uchar const tft_count,
-            __private uchar const enabled_tft_flags,
-            __private uchar const bsl_prx_tft_id,
-            __private uchar const bsl_dst_tft_id,
-            __private uchar const apc_dst_tft_id,
-            __global uchar* const pyr_best_den_states_raw,
-            __global int* const aux_ints_0,
-            __global int* const aux_ints_1,
-            __global uchar* const pyr_states)
-{
-    uint const cel_idx = get_global_id(0);
-    uint const cel_count = get_global_size(0);
-
-    uchar pyr_best_den_state_raw = 0;
-    uchar pyr_state = 0;
-
-    // TODO: Redesign learning and remove this loop:
-    for (uint tft_id = 0; tft_id < tft_count; tft_id++) {
-        uint const celtft_idx = mad24(tft_id, cel_count, cel_idx);
-
-        uchar pyr_best_den_state_raw = celtft_best_den_states_raw[celtft_idx];
-        // uchar pyr_best_den_state = celtft_best_den_states[celtft_idx];
-        pyr_best_den_state_raw = max(pyr_state, pyr_best_den_state_raw);
-        // pyr_state = max(pyr_state, pyr_best_den_state);
-    }
-
-    int bsl_prx_is_enabled = (enabled_tft_flags & DEN_BASAL_PROXIMAL_FLAG) != 0;
-    int bsl_dst_is_enabled = (enabled_tft_flags & DEN_BASAL_DISTAL_FLAG) != 0;
-    int apc_dst_is_enabled = (enabled_tft_flags & DEN_APICAL_DISTAL_FLAG) != 0;
-
-    uint bsl_prx_celtft_idx = mad24(bsl_prx_tft_id, cel_count, cel_idx);
-    uint bsl_dst_celtft_idx = mad24(bsl_dst_tft_id, cel_count, cel_idx);
-    uint apc_dst_celtft_idx = mad24(apc_dst_tft_id, cel_count, cel_idx);
-
-    uchar bsl_prx_state = mul24(bsl_prx_is_enabled, tft_states[bsl_prx_celtft_idx]);
-    uchar bsl_dst_state = mul24(bsl_dst_is_enabled, tft_states[bsl_dst_celtft_idx]);
-    uchar apc_dst_state = mul24(apc_dst_is_enabled, tft_states[apc_dst_celtft_idx]);
-
-    int cel_is_active = bsl_prx_state != 0;
-
-    // Divide by 4 but don't let small values get rounded to 0:
-    int bsl_prx_is_min = (bsl_prx_state <= 3) && cel_is_active;
-    uchar bsl_prx_contrib = (bsl_prx_state >> 2) + bsl_prx_is_min;
-
-    // Divide by 4, ignore rounding:
-    uchar bsl_dst_contrib = mul24(cel_is_active, bsl_dst_state >> 2);
-
-    // Divide by 2, ignore rounding:
-    uchar apc_dst_contrib = mul24(cel_is_active, apc_dst_state >> 1);
-
-    pyr_best_den_states_raw[cel_idx] = pyr_best_den_state_raw;
-    pyr_states[cel_idx] = bsl_prx_contrib + bsl_dst_contrib, + apc_dst_contrib;
-}
-
-
-
-
-//    COL_OUTPUT()
-//        - rename coming
-//
-// [DEPRECATED]: Now subsumed by pyramidal control cells
-__kernel void mcol_output(
-            __global const uchar* const pyr_best_den_states,
-            __global const uchar* const pyr_states,
-            // __global const uchar* const cel_tft_best_den_states,
-            // __private uint const tfts_per_cel,
-            __private uint const ssc_axn_idz,
-            __private uchar const pyr_depth,
-            __private uchar const aff_out_axn_slc,
-            __global uchar* const mcol_flag_sets,
-            __global uchar* const mcol_best_den_states,
-            // __global int* const aux_ints_0,
-            __global uchar* const axn_states)
-{
-    // uint const slc_id_lyr = get_global_id(0); // FIXED TO JUST ONE LAYER RIGHT NOW
-    uint const v_id = get_global_id(0);
-    uint const u_id = get_global_id(1);
-    uint const v_size = get_global_size(0);
-    uint const u_size = get_global_size(1);
-
-    uint const cel_count = mul24((uint)pyr_depth, mul24(v_size, u_size));
-
-    int idx_is_safe = 0;
-    uint const aff_out_axn_idx = axn_idx_3d_unsafe(aff_out_axn_slc, v_id, 0,
-        u_id, 0, &idx_is_safe);
-    uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
-    //uint const pyr_axn_idx = axn_idx_2d( + slc_id_lyr, slc_columns, col_id, 0);
-    //uint const col_id = mad24(slc_id_lyr, slc_columns, col_id);
-
-    // Primary spatial associative cell axon index (column spatial input, i.e. layer 4 spiny stellates)
-    uint const psa_cel_axn_idx = ssc_axn_idz + col_id;
-
-    int const psa_cel_axn_state = axn_states[psa_cel_axn_idx];
-    uchar mcol_den_state_max = 0;
-    int mcol_pyr_state_max = 0;
-
-    // Amalgamate the best dendrite out of every cell and cell tuft in the column:
-    for (uint i = 0; i < pyr_depth; i++) {
-        uint const cel_idx = cel_idx_3d_unsafe(i, v_size, v_id, u_size, u_id);
-
-        uchar pyr_state = pyr_states[cel_idx];
-        uchar pyr_best_den_state = pyr_best_den_states[cel_idx];
-
-        // for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
-        //     // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
-        //     uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
-
-        //     pyr_best_den_state = max(pyr_best_den_state,
-        //         cel_tft_best_den_states[cel_tft_idx]);
-        // }
-
-        // pyr_best_den_states[cel_idx] = pyr_best_den_state;
-
-        mcol_den_state_max = max(mcol_den_state_max, pyr_best_den_state);
-        mcol_pyr_state_max = max(mcol_pyr_state_max, (int)pyr_state);
-    }
-
-    //##### NOTE: Currently overwriting all flags:
-    mcol_flag_sets[col_id] = mul24((mcol_pyr_state_max != 0), MCOL_IS_VATIC_FLAG);
-    mcol_best_den_states[col_id] = mcol_den_state_max;
-    //axn_states[aff_out_axn_idx] = mul24(idx_is_safe, clamp(mcol_pyr_state_max + psa_cel_axn_state, 0, 255)); // N1
-    axn_states[aff_out_axn_idx] = clamp(mcol_pyr_state_max + psa_cel_axn_state, 0, 255);
-    // axn_states[aff_out_axn_idx] = clamp(mcol_den_state_max, 0, 255);
-}
-
 
 
 
@@ -1500,115 +1271,414 @@ __kernel void mcol_output(
 
 
 
-__kernel void tft_mtp_OLD_2018_01_11(
-            __global const uchar* const axn_states,
-            __global const uchar* const cel_states,
-            __global const uchar* const tft_cel_best_den_ids,
-            __global const uchar* const tft_cel_best_den_states_raw,
-            __global const uchar* const den_states,
-            __global const uchar* const syn_states,
-
-            __private uint const tft_cel_idz, // 0th tuft-cell index
-            __private uint const tft_den_idz, // 0th tuft-dendrite index
-            __private uint const tft_syn_idz, // 0th tuft-synapse index
-
-            // __private uint const tfts_per_cel,
-            __private uint const dens_per_tft_l2,
-            __private uint const syns_per_den_l2,
-            __private uint const syns_per_tft_l2,
-
-            __private uint const cels_per_cel_grp,
-            __private uint const axn_idz_cel_lyr,
-            __private int const learning_rate_l2i,
-            __private int const rnd,
-            __global uchar* const syn_flag_sets,
-            __global uchar* const cel_flag_sets,
-            __global int* const aux_ints_0,
-            __global int* const aux_ints_1,
-            // TODO: Switch to `u8` (`uchar`):
-            __global char* const syn_strengths)
-{
-    uint const cel_grp_id = get_global_id(0);
-    uint const cel_grp_count = get_global_size(0);
-    uint const cel_count = mul24(cel_grp_count, cels_per_cel_grp);
-    // Index of the 0th cell in the cell group:
-    uint const cel_idz_cel_grp = mul24(cel_grp_id, cels_per_cel_grp);
-    // uint const syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
-    // uint const cel_idz_cel_grp = mad24(cel_grp_id, cels_per_cel_grp, tft_cel_idz);
-
-    for (uint cel_id_cel_grp = 0; cel_id_cel_grp < cels_per_cel_grp; cel_id_cel_grp++) {
-        // Current cell:
-        uint const cel_idx = cel_idz_cel_grp + cel_id_cel_grp;
-        // Current cell's axon:
-        uint const cel_axn_idx = axn_idz_cel_lyr + cel_idx;
-        // Current tuft-cell:
-        uint const tft_cel_idx = cel_idx + tft_cel_idz;
-
-        uchar cel_flag_set = cel_flag_sets[cel_idx];
-
-        int const cel_is_concrete = axn_states[cel_axn_idx] != 0;
-        int const cel_is_vatic = cel_states[cel_idx] != 0;
-        int const cel_prev_concrete = (cel_flag_set & (CEL_PREV_CONCRETE_FLAG)) == (CEL_PREV_CONCRETE_FLAG);
-        int const cel_prev_vatic = (cel_flag_set & (CEL_PREV_VATIC_FLAG)) == (CEL_PREV_VATIC_FLAG);
-        int const cel_best_in_col = (cel_flag_set & (CEL_BEST_IN_COL_FLAG)) == (CEL_BEST_IN_COL_FLAG);
-        int const tft_is_active = tft_cel_best_den_states_raw[tft_cel_idx] != 0;
-
-        // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
-        // uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
-
-        // // Index of the 0th dendrite within the current tuft-cell:
-        // uint const den_idz_tft = (cel_idx << dens_per_tft_l2) + tft_den_idz;
-
-        // Index of the 0th synapse within the current tuft-cell:
-        uint const syn_idz_tft = (cel_idx << syns_per_tft_l2) + tft_syn_idz;
-
-        if (cel_is_concrete) {
-            if (tft_is_active) {
-                // ID of the Best dendrite within the current tuft-cell:
-                uchar const best_den_id_celtft = tft_cel_best_den_ids[tft_cel_idx];
-
-                // uint const syn_idz_best_den_tft = (den_idz_tft + best_den_id_celtft) << syns_per_den_l2;
-                uint const syn_idz_best_den_tft = (best_den_id_celtft << syns_per_den_l2) + syn_idz_tft;
-
-                // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN
-                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-                if (cel_prev_vatic | cel_best_in_col) {
-                    // aux_ints_1[cel_tft_idx] = 10;
-                    dst_syns__active__stpot_stdep(syn_states, syn_idz_best_den_tft,
-                        syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
-
-                    // aux_ints_1[cel_tft_idx] = 11;
-                }
-
-                // } else if (cel_best_in_col) {
-                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-                // //} else {
-                // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
-                //     dst_syns__active__stpot_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd,
-                //         syn_flag_sets, syn_strengths);
-
-                //     // aux_ints_1[cel_tft_idx] = 12;
-                // }
-            }
-
-            // TODO: Could be moved into above if block
-            cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
-        } else if (cel_prev_concrete) {
-            tft_syns_trm(syn_states, syn_idz_tft, syns_per_tft_l2, rnd,
-                learning_rate_l2i, syn_flag_sets, aux_ints_0, syn_strengths);
-
-            // aux_ints_1[cel_tft_idx] = 20;
-
-            cel_flag_set &= ~CEL_PREV_CONCRETE_FLAG;
-        }
 
 
-        cel_flag_set &= ~CEL_PREV_VATIC_FLAG;
-        cel_flag_set |= mul24(cel_is_vatic, CEL_PREV_VATIC_FLAG);
+// // ISSUE: LOTS OF PROBLEMS WITH GLITCHES AND COMPILER BUGS ON THESE FUNCTIONS!
+// //         UPDATE: CATALYST 15.9 SEEMS TO HAVE FIXED SEVERAL (ALL?).
 
-        cel_flag_sets[cel_idx] = cel_flag_set;
-    }
-}
+// // DST_DEN_SYNS_LEARN_INIT():
+// //         - Occurs when a cell is active.
+// //         - Applies to a single dendrite on that cell.
+// //             - Must only be called with a syn_idz of the best (most active)
+// //               dendrite on an active tuft on an active cell.
+// //         - Is intended to handle both crystallization (predictions becoming
+// //           or staying true) or anomalies (situations where no cell in the
+// //           column had predicted the column's spatial input).
+// //
+// //         STDEP set when depression has already been applied (needs to be cleared by trmn)
+// //         STPOT set when potentiation is due to be applied (by trmn)
+// static inline void dst_syns__active__stpot_stdep_old(
+//             __global const uchar* const syn_states,
+//             uint const syn_idz,
+//             uint const syns_per_den_l2,
+//             int const rnd,
+//             __global uchar* const syn_flag_sets,
+//             // TODO: Switch to `u8` (`uchar`):
+//             __global char* const syn_strengths)
+// {
+//     uint const n = syn_idz + (1 << syns_per_den_l2);
+
+//     for (uint i = syn_idz; i < n; i++) {
+//         // char syn_strength = syn_strengths[i];
+//         uchar syn_flag_set = syn_flag_sets[i];
+//         uchar const syn_state = syn_states[i];
+//         // int const inc = rnd_inc(rnd, syn_idz + i, syn_strength);
+//         int const syn_is_active = syn_state != 0;
+//         int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == (SYN_STPOT_FLAG);
+//         int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == (SYN_STDEP_FLAG);
+
+//         // Synapse has either a short term potentiation or short term depression flag:
+//         int const syn_has_stX_flag = (syn_has_stpot | syn_has_stdep);
+
+//         // Synapse is active and does not have a short term depression or potentiation flag:
+//         int const syn_needs_stpot = syn_is_active && (!syn_has_stX_flag);
+//         // Synapse is inactive and does not have a short term depression or potentiation flag:
+//         int const syn_needs_stdep = (!syn_is_active) && (!syn_has_stX_flag);
+
+//         // If syn_needs_stdep, depress the synapse's strength by 'inc' (generally a 1 or 0) ...
+//         // syn_strength -= mul24(syn_needs_stdep, inc);
+
+//         // Deactivate synapse short term potentiation and depression flags regardless of their states:
+//         // syn_flag_set &= ~(SYN_STPOT_FLAG | SYN_STDEP_FLAG);
+
+
+//         // If syn_needs_stpot activate STPOT flag:
+//         syn_flag_set = syn_flag_set | mul24(syn_needs_stpot, (SYN_STPOT_FLAG))
+//             | mul24(syn_needs_stdep, (SYN_STDEP_FLAG));
+//         // If syn_needs_stdep activate STDEP flag:
+//         // syn_flag_set |= mul24(syn_needs_stdep, (SYN_STDEP_FLAG));
+
+//         syn_flag_sets[i] = syn_flag_set;
+//         // syn_flag_sets[i] = ;
+//         // syn_flag_sets[i] = 2 | 1;
+
+//         // syn_strengths[i] = syn_strength;
+//     }
+// }
+
+// // DST_TFT_SYNS_LEARN_TRMN(): Learning termination for a tuft:
+// //         - Occurs when a cell which had been active becomes inactive.
+// // TODO: VECTORIZE
+// //
+// static inline void tft_syns_trm_old(
+//             __global const uchar* const syn_states,
+//             uint const syn_idz,
+//             uint const syns_per_tft_l2,
+//             int const rnd,
+//             // LEARNING RATE INVERSE LOG BASE 2 (1/L2):
+//             // TODO: Use asymmetrical potentiation/depression rates:
+//             int const lr_l2i,
+//             __global uchar* const syn_flag_sets,
+//             __global int* const aux_ints_0,
+//             // TODO: Switch to `u8` (`uchar`):
+//             __global char* const syn_strengths)
+// {
+//     uint const n = syn_idz + (1 << syns_per_tft_l2);
+
+//     // TODO: Pre-calculate host side:
+//     // TODO: Use asymmetrical potentiation/depression rates:
+//     int lr_mask = 0x7F << lr_l2i;
+//     lshft_mask(&lr_mask, lr_l2i);
+
+//     // aux_ints_0[syn_idz] = lr_mask;
+//     // aux_ints_0[syn_idz] = rnd_mix(rnd, syn_idz) & lr_mask;
+
+//     for (uint i = syn_idz; i < n; i++) {
+//         uchar const syn_state = syn_states[i];
+//         char syn_strength = syn_strengths[i];
+//         uchar syn_flag_set = syn_flag_sets[i];
+//         int const should_inc = rnd_inc(rnd, (syn_idz + i), syn_strength, lr_l2i, lr_mask);
+//         int const should_dec = rnd_dec(rnd, (syn_idz + i), syn_strength, lr_l2i, lr_mask);
+//         int const syn_is_active = syn_state != 0;
+//         int const syn_has_stpot = (syn_flag_set & SYN_STPOT_FLAG) == SYN_STPOT_FLAG;
+//         int const syn_has_stdep = (syn_flag_set & SYN_STDEP_FLAG) == SYN_STDEP_FLAG;
+
+//         // If synapse had STPOT flag and is now inactive (synapse correlated with cell activity):
+//         syn_strength += mul24(syn_has_stpot && !syn_is_active, should_inc);
+
+//         // If synapse had STPOT flag and is still active (synapse did not correlate with cell activity):
+//         syn_strength -= mul24(syn_has_stpot && syn_is_active, should_dec);
+
+//         // If synapse had STDEP flag:
+//         syn_strength -= mul24(syn_has_stdep, should_dec);
+
+//         // Deactivate synapse short term potentiation and depression flags regardless of their states:
+//         syn_flag_set &= ~(SYN_STPOT_FLAG | SYN_STDEP_FLAG);
+
+//         syn_flag_sets[i] = syn_flag_set;
+//         syn_strengths[i] = syn_strength;
+//     }
+// }
+
+
+
+
+
+
+
+// // MCOL_ACTIVATE_PYRS(): Activate the axon of the pyramidal cell with the most active dendrite (on any tuft).
+// //      - If every dendrite on every tuft of every pyramidal cell in the
+// //        entire column is inactive (below threshold):
+// //            - Activate the axon of every pyramidal cell in the column.
+// //
+// //        In addition (for learning purposes):
+// //            - Keep track of whether or not predictions (pyramidal states)
+// //              for any pyramidal cell in the column have come true
+// //              (crystallized).
+// //             - Determine whether or not an unpredicted (anomalous) activity
+// //               has occurred.
+// //
+// // TODO: TUFTIFY
+// // TODO: REMOVE BEST_DEN_IDS AND DEN_STATES AND REPLACE WITH BEST_DEN_STATES (KEEP INDEXING IN MIND)
+// __kernel void mcol_activate_pyrs_OLD_2018_01_11(
+//             __global const uchar* const mcol_flag_sets, // COL
+//             __global const uchar* const mcol_best_den_states,
+//             // __global const uchar* const cel_tft_best_den_ids,
+//             __global const uchar* const pyr_best_den_states_raw,
+//             __global const uchar* const pyr_states,
+//             // __global const uchar* const den_states,
+//             // __global const uchar* const cel_tft_best_den_ids, // ADD ME?
+//             __private uint const sscs_axn_idz,         // Primary spatial associative cell layer (sscs)
+//             __private uint const pyrs_axn_idz,          // Primary temporal associative cell layer (pyrs)
+//             // __private uchar const pyr_axn_slc_base,
+//             // __private uchar const dens_per_tft_l2,
+//             __global uchar* const pyr_flag_sets,
+//             // __global int* const aux_ints_0,
+//             __global uchar* const axn_states)
+// {
+//     uint const slc_id_lyr = get_global_id(0);
+//     uint const v_id = get_global_id(1);
+//     uint const u_id = get_global_id(2);
+//     uint const v_size = get_global_size(1);
+//     uint const u_size = get_global_size(2);
+
+//     // uint const cel_idx = get_global_id(0);
+//     uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
+//     uint const cel_idx = cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id);
+//     // int idx_is_safe = 0;
+//     // uint const pyr_axn_idx = axn_idx_3d_unsafe(pyr_axn_slc_base + slc_id_lyr, v_id, 0, u_id, 0, &idx_is_safe);
+//     uint const pyr_axn_idx = pyrs_axn_idz + cel_idx;
+
+//     // ******************
+
+
+//     // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
+//     // uint const den_ofs = cel_idx << dens_per_tft_l2;                    // OLD
+//     // uint const best_den_idx = den_ofs + pyr_best_den_ids[cel_idx];     // OLD
+//     uchar const best_den_state = pyr_best_den_states_raw[cel_idx];
+
+//     uchar const mcol_best_col_den_state = mcol_best_den_states[col_id];
+//     uchar const psa_cel_axn_state = axn_states[sscs_axn_idz + col_id];
+//     //uchar const mcol_state = mcol_states[col_id];
+//     uchar const mcol_flag_set = mcol_flag_sets[col_id];
+//     uchar const pyr_state = pyr_states[cel_idx];
+//     uchar pyr_flag_set = pyr_flag_sets[cel_idx];
+
+//     int const mcol_is_active = psa_cel_axn_state != 0;
+//     //int const mcol_active = mcol_state != 0;
+//     int const mcol_any_pred = (mcol_flag_set & MCOL_IS_VATIC_FLAG) == MCOL_IS_VATIC_FLAG;
+//     int const pyr_is_vatic = (pyr_state != 0);
+
+//     // DEBUG
+//     // if (pyr_is_vatic) {
+//     //     aux_ints_0[cel_idx] = pyr_axn_idx;
+//     // }
+
+//     int const crystalized = pyr_is_vatic && mcol_is_active;
+//     int const anomalous = mcol_is_active && !mcol_any_pred;
+
+//     //int const activate_axon = crystal || anomaly;
+//     //pyr_state = (crystal | anomaly) && (mcol_state);
+//     //pyr_state = mul24(((crystal != 0) || (anomaly != 0)), mcol_state);
+//     pyr_flag_set &= ~CEL_BEST_IN_COL_FLAG;
+
+//     //pyr_flag_set |= mul24(best_den_state == mcol_best_col_den_state, CEL_BEST_IN_COL_FLAG);
+//     //pyr_flag_set |= mul24((mcol_best_col_den_state == best_den_state) && pyr_is_vatic,
+//     //    CEL_BEST_IN_COL_FLAG);
+//     pyr_flag_set |= mul24((best_den_state != 0) && (best_den_state == mcol_best_col_den_state),
+//         CEL_BEST_IN_COL_FLAG);
+
+
+//     axn_states[pyr_axn_idx] = (uchar)mad24(anomalous, (int)psa_cel_axn_state, mul24(crystalized, (int)pyr_state));
+//     //axn_states[axn_idx] = (uchar)mad24(anomaly, (int)mcol_state, mul24(crystal, (int)pyr_state));
+
+//     pyr_flag_sets[cel_idx] = pyr_flag_set;
+
+//     //pyr_states[cel_idx] = pyr_state;
+
+//     //aux_ints_0[cel_idx] = 5;
+//     //aux_ints_0[cel_idx] = pyr_state;
+// }
+
+
+
+
+
+
+
+
+
+// __kernel void tft_mtp_OLD_2018_01_11(
+//             __global const uchar* const axn_states,
+//             __global const uchar* const cel_states,
+//             __global const uchar* const tft_cel_best_den_ids,
+//             __global const uchar* const tft_cel_best_den_states_raw,
+//             __global const uchar* const den_states,
+//             __global const uchar* const syn_states,
+
+//             __private uint const tft_cel_idz, // 0th tuft-cell index
+//             __private uint const tft_den_idz, // 0th tuft-dendrite index
+//             __private uint const tft_syn_idz, // 0th tuft-synapse index
+
+//             // __private uint const tfts_per_cel,
+//             __private uint const dens_per_tft_l2,
+//             __private uint const syns_per_den_l2,
+//             __private uint const syns_per_tft_l2,
+
+//             __private uint const cels_per_cel_grp,
+//             __private uint const axn_idz_cel_lyr,
+//             __private int const learning_rate_l2i,
+//             __private int const rnd,
+//             __global uchar* const syn_flag_sets,
+//             __global uchar* const cel_flag_sets,
+//             __global int* const aux_ints_0,
+//             __global int* const aux_ints_1,
+//             // TODO: Switch to `u8` (`uchar`):
+//             __global char* const syn_strengths)
+// {
+//     uint const cel_grp_id = get_global_id(0);
+//     uint const cel_grp_count = get_global_size(0);
+//     uint const cel_count = mul24(cel_grp_count, cels_per_cel_grp);
+//     // Index of the 0th cell in the cell group:
+//     uint const cel_idz_cel_grp = mul24(cel_grp_id, cels_per_cel_grp);
+//     // uint const syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
+//     // uint const cel_idz_cel_grp = mad24(cel_grp_id, cels_per_cel_grp, tft_cel_idz);
+
+//     for (uint cel_id_cel_grp = 0; cel_id_cel_grp < cels_per_cel_grp; cel_id_cel_grp++) {
+//         // Current cell:
+//         uint const cel_idx = cel_idz_cel_grp + cel_id_cel_grp;
+//         // Current cell's axon:
+//         uint const cel_axn_idx = axn_idz_cel_lyr + cel_idx;
+//         // Current tuft-cell:
+//         uint const tft_cel_idx = cel_idx + tft_cel_idz;
+
+//         uchar cel_flag_set = cel_flag_sets[cel_idx];
+
+//         int const cel_is_concrete = axn_states[cel_axn_idx] != 0;
+//         int const cel_is_vatic = cel_states[cel_idx] != 0;
+//         int const cel_prev_concrete = (cel_flag_set & (CEL_PREV_CONCRETE_FLAG)) == (CEL_PREV_CONCRETE_FLAG);
+//         int const cel_prev_vatic = (cel_flag_set & (CEL_PREV_VATIC_FLAG)) == (CEL_PREV_VATIC_FLAG);
+//         int const cel_best_in_col = (cel_flag_set & (CEL_BEST_IN_COL_FLAG)) == (CEL_BEST_IN_COL_FLAG);
+//         int const tft_is_active = tft_cel_best_den_states_raw[tft_cel_idx] != 0;
+
+//         // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
+//         // uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
+
+//         // // Index of the 0th dendrite within the current tuft-cell:
+//         // uint const den_idz_tft = (cel_idx << dens_per_tft_l2) + tft_den_idz;
+
+//         // Index of the 0th synapse within the current tuft-cell:
+//         uint const syn_idz_tft = (cel_idx << syns_per_tft_l2) + tft_syn_idz;
+
+//         if (cel_is_concrete) {
+//             if (tft_is_active) {
+//                 // ID of the Best dendrite within the current tuft-cell:
+//                 uchar const best_den_id_celtft = tft_cel_best_den_ids[tft_cel_idx];
+
+//                 // uint const syn_idz_best_den_tft = (den_idz_tft + best_den_id_celtft) << syns_per_den_l2;
+//                 uint const syn_idz_best_den_tft = (best_den_id_celtft << syns_per_den_l2) + syn_idz_tft;
+
+//                 // PREVIOUS (CORRECT) PREDICTION (EVERY PYR IN COL): REINFORCE DEN
+//                 // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+//                 if (cel_prev_vatic | cel_best_in_col) {
+//                     // aux_ints_1[cel_tft_idx] = 10;
+//                     dst_syns__active__stpot_stdep(syn_states, syn_idz_best_den_tft,
+//                         syns_per_den_l2, rnd, syn_flag_sets, syn_strengths);
+
+//                     // aux_ints_1[cel_tft_idx] = 11;
+//                 }
+
+//                 // } else if (cel_best_in_col) {
+//                 // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+//                 // //} else {
+//                 // ANOMALY (NO PREVIOUS PREDICTION, BEST PYR IN COLUMN ONLY): TRAIN NEW DEN
+//                 //     dst_syns__active__stpot_ltd(syn_states, syn_idz_best_den_tft, syns_per_den_l2, rnd,
+//                 //         syn_flag_sets, syn_strengths);
+
+//                 //     // aux_ints_1[cel_tft_idx] = 12;
+//                 // }
+//             }
+
+//             // TODO: Could be moved into above if block
+//             cel_flag_set |= CEL_PREV_CONCRETE_FLAG;
+//         } else if (cel_prev_concrete) {
+//             tft_syns_trm(syn_states, syn_idz_tft, syns_per_tft_l2, rnd,
+//                 learning_rate_l2i, syn_flag_sets, aux_ints_0, syn_strengths);
+
+//             // aux_ints_1[cel_tft_idx] = 20;
+
+//             cel_flag_set &= ~CEL_PREV_CONCRETE_FLAG;
+//         }
+
+
+//         cel_flag_set &= ~CEL_PREV_VATIC_FLAG;
+//         cel_flag_set |= mul24(cel_is_vatic, CEL_PREV_VATIC_FLAG);
+
+//         cel_flag_sets[cel_idx] = cel_flag_set;
+//     }
+// }
+
+
+
+
+
+// //    COL_OUTPUT()
+// //        - rename coming
+// //
+// // [DEPRECATED]: Now subsumed by pyramidal control cells
+// __kernel void mcol_output_OLD_2018_01_11(
+//             __global const uchar* const pyr_best_den_states,
+//             __global const uchar* const pyr_states,
+//             // __global const uchar* const cel_tft_best_den_states,
+//             // __private uint const tfts_per_cel,
+//             __private uint const ssc_axn_idz,
+//             __private uchar const pyr_depth,
+//             __private uchar const aff_out_axn_slc,
+//             __global uchar* const mcol_flag_sets,
+//             __global uchar* const mcol_best_den_states,
+//             // __global int* const aux_ints_0,
+//             __global uchar* const axn_states)
+// {
+//     // uint const slc_id_lyr = get_global_id(0); // FIXED TO JUST ONE LAYER RIGHT NOW
+//     uint const v_id = get_global_id(0);
+//     uint const u_id = get_global_id(1);
+//     uint const v_size = get_global_size(0);
+//     uint const u_size = get_global_size(1);
+
+//     uint const cel_count = mul24((uint)pyr_depth, mul24(v_size, u_size));
+
+//     int idx_is_safe = 0;
+//     uint const aff_out_axn_idx = axn_idx_3d_unsafe(aff_out_axn_slc, v_id, 0,
+//         u_id, 0, &idx_is_safe);
+//     uint const col_id = cel_idx_3d_unsafe(0, v_size, v_id, u_size, u_id);
+//     //uint const pyr_axn_idx = axn_idx_2d( + slc_id_lyr, slc_columns, col_id, 0);
+//     //uint const col_id = mad24(slc_id_lyr, slc_columns, col_id);
+
+//     // Primary spatial associative cell axon index (column spatial input, i.e. layer 4 spiny stellates)
+//     uint const psa_cel_axn_idx = ssc_axn_idz + col_id;
+
+//     int const psa_cel_axn_state = axn_states[psa_cel_axn_idx];
+//     uchar mcol_den_state_max = 0;
+//     int mcol_pyr_state_max = 0;
+
+//     // Amalgamate the best dendrite out of every cell and cell tuft in the column:
+//     for (uint i = 0; i < pyr_depth; i++) {
+//         uint const cel_idx = cel_idx_3d_unsafe(i, v_size, v_id, u_size, u_id);
+
+//         uchar pyr_state = pyr_states[cel_idx];
+//         uchar pyr_best_den_state = pyr_best_den_states[cel_idx];
+
+//         // for (uint tft_id = 0; tft_id < tfts_per_cel; tft_id++) {
+//         //     // uint const cel_tft_idx = mad24(cel_idx, tfts_per_cel, tft_id);
+//         //     uint const cel_tft_idx = calc_cel_tft_idx(cel_count, cel_idx, tfts_per_cel, tft_id);
+
+//         //     pyr_best_den_state = max(pyr_best_den_state,
+//         //         cel_tft_best_den_states[cel_tft_idx]);
+//         // }
+
+//         // pyr_best_den_states[cel_idx] = pyr_best_den_state;
+
+//         mcol_den_state_max = max(mcol_den_state_max, pyr_best_den_state);
+//         mcol_pyr_state_max = max(mcol_pyr_state_max, (int)pyr_state);
+//     }
+
+//     //##### NOTE: Currently overwriting all flags:
+//     mcol_flag_sets[col_id] = mul24((mcol_pyr_state_max != 0), MCOL_IS_VATIC_FLAG);
+//     mcol_best_den_states[col_id] = mcol_den_state_max;
+//     //axn_states[aff_out_axn_idx] = mul24(idx_is_safe, clamp(mcol_pyr_state_max + psa_cel_axn_state, 0, 255)); // N1
+//     axn_states[aff_out_axn_idx] = clamp(mcol_pyr_state_max + psa_cel_axn_state, 0, 255);
+//     // axn_states[aff_out_axn_idx] = clamp(mcol_den_state_max, 0, 255);
+// }
 
 
 

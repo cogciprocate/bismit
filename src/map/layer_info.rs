@@ -7,7 +7,7 @@ use map::{LayerScheme, AreaScheme, AreaSchemeList, LayerMapSchemeList, LayerMapS
 use cmn::{self, CorticalDims};
 use subcortex::Subcortex;
 
-const DEBUG_PRINT: bool = false;
+const PRNT: bool = false;
 
 
 // Assembles a list of source layers for this input layer.
@@ -131,7 +131,7 @@ impl LayerInfo {
         let mut layer_debug: Vec<String> = Vec::new();
         let mut src_layer_debug: Vec<String> = Vec::new();
 
-        if DEBUG_PRINT {
+        if PRNT {
             layer_debug.push(format!("{mt}{mt}{mt}### LAYER: {:?}, next_slc_idz: {}, slc_total: {:?}",
                 layer_tags, next_slc_idz, slc_total, mt = cmn::MT));
         }
@@ -210,7 +210,7 @@ impl LayerInfo {
                         src_layer.tags(), src_layer_axn_topology, sig, masq_orig_axn_tags,
                         tar_slc_range.clone(), ));
 
-                    if DEBUG_PRINT {
+                    if PRNT {
                         layer_debug.push(format!("{mt}{mt}{mt}{mt}{mt}{mt}### SOURCE_LAYER_INFO:\
                             (layer: '{}'): Adding source layer: \
                             src_area_name: '{}', src_layer.tags: '{}', src_lyr_map_sch.name: '{}', \
@@ -288,7 +288,7 @@ impl LayerInfo {
             println!("{}", &dbg_string);
         }
 
-        if DEBUG_PRINT {
+        if PRNT {
             // Print all of the other debug strings:
             for dbg_string in layer_debug {
                 println!("{}", &dbg_string);

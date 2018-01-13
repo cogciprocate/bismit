@@ -9,9 +9,9 @@ use ocl::ffi::{cl_event, c_void};
 use map::LayerAddress;
 use cmn::{util};
 
-const PRINT_DEBUG: bool = false;
-const PRINT_EVENT_DEBUG: bool = true;
-const PRINT_DEBUG_ALL: bool = false;
+const PRNT: bool = true;
+const PRINT_EVENT_DEBUG: bool = false;
+const PRNT_ALL: bool = false;
 
 extern "C" fn __event_running(event: cl_event, _status: i32, cmd_idx: *mut c_void) {
     println!("##### [{}]   >>> Event running:    \t(event: {:?})",
@@ -24,14 +24,14 @@ extern "C" fn __event_complete(event: cl_event, _status: i32, cmd_idx: *mut c_vo
 }
 
 fn set_debug_callback_running(event: &Event, cmd_idx: usize) {
-    if PRINT_DEBUG && PRINT_EVENT_DEBUG {
+    if PRNT && PRINT_EVENT_DEBUG {
         unsafe { ocl::core::set_event_callback(event, CommandExecutionStatus::Running,
             Some(__event_running), cmd_idx as *mut c_void).unwrap(); }
     }
 }
 
 fn set_debug_callback_complete(event: &Event, cmd_idx: usize) {
-    if PRINT_DEBUG && PRINT_EVENT_DEBUG {
+    if PRNT && PRINT_EVENT_DEBUG {
         unsafe { ocl::core::set_event_callback(event, CommandExecutionStatus::Complete,
             Some(__event_complete), cmd_idx as *mut c_void).unwrap(); }
     }
@@ -137,7 +137,7 @@ impl fmt::Display for ExecutionGraphError {
             ExecutionGraphError::EventsRequestOutOfOrder(expected_order, found_order) => {
                 f.write_fmt(format_args!("ExecutionGraph::get_req_events: Events requested out \
                     of order. Expected: <{}>, found: <{}>. Events must be requested in the order \
-                    the commands were configured with `::order_next`. Ensure that each command is \
+                    the commands were configured with `::order_command`. Ensure that each command is \
                     calling `::set_cmd_event` when enqueued.", expected_order, found_order))
             }
         }
@@ -517,35 +517,35 @@ impl ExecutionGraph {
     ///
     fn readers_and_writers_by_mem_block(&self) -> MemBlockRwsMap {
         let mut mem_block_rws = HashMap::with_capacity(self.cmd_relations.len() * 16);
-        if PRINT_DEBUG { println!("\n##### Readers and Writers by Memory Block:"); }
-        if PRINT_DEBUG { println!("#####"); }
+        if PRNT { println!("\n##### Readers and Writers by Memory Block:"); }
+        if PRNT { println!("#####"); }
 
         for (cmd_idx, cmd) in self.cmds.iter().enumerate() {
             let cmd_relations = self.cmd_relations.get(&cmd.uid).unwrap();
 
-            if PRINT_DEBUG { println!("##### Command {}[idx:{}] ({}: '{}'):",
+            if PRNT { println!("##### Command {}[idx:{}] ({}: '{}'):",
                 cmd.uid, cmd_idx, cmd_relations.variant_string(), cmd_relations.kernel_name()); }
-            if PRINT_DEBUG { println!("#####     [Sources:]"); }
+            if PRNT { println!("#####     [Sources:]"); }
 
             for cmd_src_block in cmd_relations.sources().into_iter() {
                 let block_rw_cmd_idxs = mem_block_rws.entry(cmd_src_block.clone())
                     .or_insert(MemBlockRwCmdIdxs::new());
 
                 block_rw_cmd_idxs.readers.push(cmd_idx);
-                if PRINT_DEBUG { println!("#####     [{}]: {:?}", block_rw_cmd_idxs.readers.len() - 1, cmd_src_block); }
+                if PRNT { println!("#####     [{}]: {:?}", block_rw_cmd_idxs.readers.len() - 1, cmd_src_block); }
             }
 
-            if PRINT_DEBUG { println!("#####     [Targets:]"); }
+            if PRNT { println!("#####     [Targets:]"); }
 
             for cmd_tar_block in cmd_relations.targets().into_iter() {
                 let block_rw_cmd_idxs = mem_block_rws.entry(cmd_tar_block.clone())
                     .or_insert(MemBlockRwCmdIdxs::new());
                 block_rw_cmd_idxs.writers.push(cmd_idx);
 
-                if PRINT_DEBUG { println!("#####     [{}]: {:?}", block_rw_cmd_idxs.writers.len() - 1, cmd_tar_block); }
+                if PRNT { println!("#####     [{}]: {:?}", block_rw_cmd_idxs.writers.len() - 1, cmd_tar_block); }
             }
 
-            if PRINT_DEBUG { println!("#####"); }
+            if PRNT { println!("#####"); }
         }
 
         mem_block_rws
@@ -561,7 +561,7 @@ impl ExecutionGraph {
         let pre_writers = cmd_relations.sources().iter().flat_map(|cmd_src_block| {
                 mem_block_rws.get(cmd_src_block).unwrap().writers.iter().cloned()
             }).collect();
-        if PRINT_DEBUG { println!("##### {}:[{}]: Preceding Writers: {:?}",
+        if PRNT { println!("##### {}:[{}]: Preceding Writers: {:?}",
             self.cmds[cmd_idx].uid, cmd_idx, pre_writers); }
         pre_writers
     }
@@ -576,7 +576,7 @@ impl ExecutionGraph {
         let fol_readers = cmd_relations.targets().iter().flat_map(|cmd_tar_block| {
                 mem_block_rws.get(cmd_tar_block).unwrap().readers.iter().cloned()
             }).collect();
-        if PRINT_DEBUG { println!("##### {}:[{}]: Following Readers: {:?}",
+        if PRNT { println!("##### {}:[{}]: Following Readers: {:?}",
             self.cmds[cmd_idx].uid, cmd_idx, fol_readers); }
         fol_readers
     }
@@ -610,19 +610,19 @@ impl ExecutionGraph {
     /// with `::unlock`.
     pub fn lock(&mut self) {
         assert!(self.cmd_relations.len() == self.cmds.len(), "ExecutionGraph::lock \
-            Not all commands have had their order properly set ({}/{}). Call '::order_next' to \
+            Not all commands have had their order properly set ({}/{}). Call '::order_command' to \
             include commands in the execution order.", self.cmds.len(), self.cmd_relations.len());
         assert!(!self.locked, "Cannot populate this graph while locked. Use '::unlock_clear' first.");
 
         let mem_block_rws = self.readers_and_writers_by_mem_block();
 
-        if PRINT_DEBUG { println!("\n##### Preceding Writers and Following Readers (CommandUid:[idx]:)"); }
-        if PRINT_DEBUG { println!("#####"); }
+        if PRNT { println!("\n##### Preceding Writers and Following Readers (CommandUid:[idx]:)"); }
+        if PRNT { println!("#####"); }
 
         // [NOTE]: Only using `self.order` instead of `self.commands` for
         // debug printing purposes. * TODO: Switch back at some point.
         for cmd_idx in 0..self.cmds.len() {
-            if PRINT_DEBUG { println!("##### Command {}:[{}] ({}):", self.cmds[cmd_idx].uid,
+            if PRNT { println!("##### Command {}:[{}] ({}):", self.cmds[cmd_idx].uid,
                 cmd_idx, self.cmd_relations[&self.cmds[cmd_idx].uid].variant_string()); }
 
             assert!(self.cmds[cmd_idx].requisite_cmd_idxs.is_empty() &&
@@ -642,7 +642,7 @@ impl ExecutionGraph {
             debug_assert!(self.cmds[cmd_idx].requisite_cmd_idxs.len() ==
                 self.cmds[cmd_idx].requisite_cmd_precedence.len());
 
-            if PRINT_DEBUG { println!("#####"); }
+            if PRNT { println!("#####"); }
         }
 
         self.locked = true;
@@ -673,7 +673,7 @@ impl ExecutionGraph {
             }
         }
 
-        if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### [{}] Getting event list: {:?}", cmd_idx,
+        if PRNT && PRNT_ALL { println!("##### [{}] Getting event list: {:?}", cmd_idx,
             self.cmd_requisite_events.get(cmd_idx).unwrap()); }
 
         Ok(unsafe { self.cmd_requisite_events.get_unchecked_mut(cmd_idx).as_slice() })
@@ -690,8 +690,8 @@ impl ExecutionGraph {
             if self.next_cmd_idx != cmd_idx {
                 return Err(ExecutionGraphError::EventsRequestOutOfOrder(self.next_cmd_idx, cmd_idx));
             }
-            if PRINT_DEBUG && PRINT_EVENT_DEBUG {
-                if PRINT_DEBUG_ALL {println!("##### [{}] Setting command event \t (event: {:?}", cmd_idx, event); }
+            if PRNT && PRINT_EVENT_DEBUG {
+                if PRNT_ALL {println!("##### [{}] Setting command event \t (event: {:?}", cmd_idx, event); }
                 if let Some(ref ev) = event {
                     set_debug_callback_running(ev, cmd_idx);
                     set_debug_callback_complete(ev, cmd_idx);
@@ -705,7 +705,7 @@ impl ExecutionGraph {
             self.next_cmd_idx = 0;
         } else {
             self.next_cmd_idx += 1;
-            // if PRINT_DEBUG && PRINT_DEBUG_ALL { println!("##### ExecutionGraph::set_cmd_event: \
+            // if PRNT && PRNT_ALL { println!("##### ExecutionGraph::set_cmd_event: \
             //     Setting event for [cmd_idx: {}].", cmd_idx,) }
         }
         Ok(())

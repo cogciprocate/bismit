@@ -4,7 +4,7 @@ use ocl::traits::MemLen;
 use cmn::{self, CorticalDims, SliceDims};
 use map::{area_map, LayerMap, AxonTopology, SliceTractMap};
 
-const DEBUG_PRINT: bool = false;
+const PRNT: bool = false;
 
 #[derive(Debug, Clone)]
 pub struct SliceMap {
@@ -91,7 +91,7 @@ impl SliceMap {
                             }
                         }
 
-                        if DEBUG_PRINT {
+                        if PRNT {
                             println!("SLICEMAP::NEW(): Using source layer dims: {:?} \
                                 for layer: {} in area: {}", layer_source.dims(),
                                 layer.name(), layer_source.area_id());
@@ -106,7 +106,7 @@ impl SliceMap {
                 debug_assert!(slc_id == slc_id_ttl);
                 match layer.irregular_layer_dims() {
                     Some(dims) => {
-                        if DEBUG_PRINT {
+                        if PRNT {
                             println!("SLICEMAP::NEW(): Adding irregular layer dims: {:?} \
                                 for layer: {}", dims, layer.name());
                         }
@@ -115,7 +115,7 @@ impl SliceMap {
                             .expect("SliceMap::new()"))
                     },
                     None => {
-                        if DEBUG_PRINT {
+                        if PRNT {
                             println!("SLICEMAP::NEW(): Boring area layer dims: {:?} \
                                 for layer: {}", area_dims, layer.name());
                         }
@@ -156,7 +156,7 @@ impl SliceMap {
 
     pub fn print_debug(&self) {
         println!(
-            "{mt}{mt}SLICEMAP::PRINT_DEBUG(): Area slices: \
+            "{mt}{mt}SLICEMAP::PRNT(): Area slices: \
             \n{mt}{mt}{mt}layer_names:  {:?}, \
             \n{mt}{mt}{mt}axn_idzs:     [{}], \
             \n{mt}{mt}{mt}v_sizes:      [{}], \

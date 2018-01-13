@@ -8,7 +8,7 @@ use cortex::{AxonSpace, PyramidalLayer, SpinyStellateLayer, CorticalAreaSettings
 #[cfg(test)]
 pub use self::tests::{MinicolumnsTest};
 
-const PRINT_DEBUG: bool = false;
+const PRNT: bool = false;
 
 
 pub struct Minicolumns {
@@ -213,22 +213,22 @@ impl Minicolumns {
     #[inline]
     pub fn activate(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if let Some(cmd_idx) = self.activate_exe_cmd_idx {
-            if PRINT_DEBUG { printlnc!(lime: "Mcols: Activating (cmd_idx: [{}])...", cmd_idx); }
+            if PRNT { printlnc!(lime: "Mcols: Activating (cmd_idx: [{}])...", cmd_idx); }
             let mut event = Event::empty();
             self.kern_activate.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cmd_idx, Some(event)).unwrap();
-            if PRINT_DEBUG { printlnc!(lime: "Mcols: Activation complete."); }
+            if PRNT { printlnc!(lime: "Mcols: Activation complete."); }
         }
         Ok(())
     }
 
     pub fn output(&self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         if let Some(cmd_idx) = self.output_exe_cmd_idx {
-            if PRINT_DEBUG { printlnc!(lime: "Mcols: Outputting (cmd_idx: [{}])...", cmd_idx); }
+            if PRNT { printlnc!(lime: "Mcols: Outputting (cmd_idx: [{}])...", cmd_idx); }
             let mut event = Event::empty();
             self.kern_output.cmd().ewait(exe_graph.get_req_events(cmd_idx).unwrap()).enew(&mut event).enq()?;
             exe_graph.set_cmd_event(cmd_idx, Some(event)).unwrap();
-            if PRINT_DEBUG { printlnc!(lime: "Mcols: Output complete."); }
+            if PRNT { printlnc!(lime: "Mcols: Output complete."); }
         }
         Ok(())
     }

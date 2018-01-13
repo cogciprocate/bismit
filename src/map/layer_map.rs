@@ -7,7 +7,7 @@ use cmn::{self, MapStore, CmnResult};
 use map::{LayerTags, LayerInfo, SourceLayerInfo};
 use subcortex::Subcortex;
 
-const DEBUG_PRINT: bool = false;
+const PRNT: bool = false;
 
 
 /// Stores unique fingerprints for each interconnecting layer or sub-layer.
@@ -164,7 +164,7 @@ impl LayerMap {
     /// Returns a list of the (area name, layer tags) tuple necessary to
     /// access thalamic tracts.
     pub fn layers_containing_tags_src_tract_keys(&self, tags: LayerTags) -> Vec<(usize, LayerTags)> {
-        if DEBUG_PRINT {
+        if PRNT {
             print!("LAYER_SRC_AREA_NAMES_CONTAINING_TAGS: tags: ");
             for sli in self.layers_containing_tags_src_lyrs(tags).iter() {
                 print!("{}", sli.layer_tags());
