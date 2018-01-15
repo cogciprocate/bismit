@@ -9,7 +9,7 @@ use ocl::ffi::{cl_event, c_void};
 use map::LayerAddress;
 use cmn::{util};
 
-const PRNT: bool = true;
+const PRNT: bool = false;
 const PRINT_EVENT_DEBUG: bool = false;
 const PRNT_ALL: bool = false;
 

@@ -23,8 +23,8 @@ use rand::distributions::{Range, IndependentSample};
 use qutex::QrwLock;
 use vibi::window;
 use vibi::bismit::ocl::{Buffer, RwVec};
-use vibi::bismit::{encode, Cortex, SubcorticalNucleusLayer, TractSender, TractReceiver,
-    CorticalDims, TractDims};
+use vibi::bismit::{encode, Cortex, SubcorticalNucleusLayer, TractSender,
+    TractReceiver, CorticalDims, TractDims};
 use vibi::bismit::flywheel::{Flywheel, Command, Request, Response};
 use vibi::bismit::map::{AreaMap, AxonTopology, LayerAddress};
 

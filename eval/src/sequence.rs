@@ -6,7 +6,6 @@
 
 #![allow(dead_code, unused_imports, unused_variables)]
 
-// use std::mem;
 use std::collections::{HashMap};
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
@@ -24,9 +23,9 @@ use ::spatial::{TrialData, TrialResults};
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
 
-const ENCODE_DIMS_0: (u32, u32, u8) = (48, 48, 1);
-const ENCODE_DIMS_1: (u32, u32, u8) = (30, 255, 1);
-const AREA_DIM: u32 = 16;
+const ENCODE_DIMS_0: (u32, u32, u8) = (24, 24, 1);
+// const ENCODE_DIMS_1: (u32, u32, u8) = (30, 255, 1);
+const AREA_DIM: u32 = 24;
 const SEQUENTIAL_SDR: bool = true;
 
 
@@ -53,7 +52,7 @@ impl EvalSequence {
         for layer_scheme in layer_map_scheme.layers() {
             let lyr_dims = match layer_scheme.name() {
                 "external_0" => None,
-                // "external_1" => Some(ENCODE_DIMS.into()),
+                // "external_1" => Some(ENCODE_DIMS_1.into()),
                 ln @ _ => panic!("EvalSequence::new: Unknown layer name: {}.", ln),
             };
 
@@ -68,7 +67,7 @@ impl EvalSequence {
             layers.insert(layer.sub().addr().clone(), layer);
         }
 
-        let sdrs = Sdrs::new(100, ENCODE_DIMS_0);
+        let sdrs = Sdrs::new(15, ENCODE_DIMS_0);
 
         // Define the number of iters to first train then collect for each
         // sample period. All learning and other cell parameters (activity,
@@ -88,6 +87,22 @@ impl EvalSequence {
             // current_pattern_idx: 0,
         }
     }
+
+    /*
+        Plan:
+        - Load up a length 4:25 glyph sequence.
+        - 8 slices of pyrs.
+        - Cycle
+        - Check to see who's winning
+            - Print the tft and cel state/best values
+
+
+
+    */
+
+    fn init() {}
+
+
 }
 
 impl SubcorticalNucleus for EvalSequence {
@@ -235,40 +250,40 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 .axonal(AxonTopology::Nonspatial)
                 .axon_domain(AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at_el1])]))
             )
-            .layer(LayerScheme::define("iv")
-                .depth(1)
-                .tags(LayerTags::PSAL)
-                .axon_domain(AxonDomain::output(&[at1]))
-                .cellular(CellScheme::spiny_stellate()
-                    .tft(TuftScheme::basal().proximal()
-                        .syns_per_den_l2(5)
-                        .src_lyr(TuftSourceLayer::define("aff_in_0")
-                            .syn_reach(7)
-                            .prevalence(1)
-                        )
-                    )
-                )
-            )
-            .layer(LayerScheme::define("iv_inhib")
-                .cellular(CellScheme::control(
-                        ControlCellKind::InhibitoryBasketSurround {
-                            host_lyr_name: "iv".into(),
-                            field_radius: 4,
-                        },
-                        0
-                    )
-                )
-            )
-            .layer(LayerScheme::define("iv_smooth")
-                .cellular(CellScheme::control(
-                        ControlCellKind::ActivitySmoother {
-                            host_lyr_name: "iv".into(),
-                            field_radius: 4,
-                        },
-                        1
-                    )
-                )
-            )
+            // .layer(LayerScheme::define("iv")
+            //     .depth(1)
+            //     .tags(LayerTags::PSAL)
+            //     .axon_domain(AxonDomain::output(&[at1]))
+            //     .cellular(CellScheme::spiny_stellate()
+            //         .tft(TuftScheme::basal().proximal()
+            //             .syns_per_den_l2(5)
+            //             .src_lyr(TuftSourceLayer::define("aff_in_0")
+            //                 .syn_reach(7)
+            //                 .prevalence(1)
+            //             )
+            //         )
+            //     )
+            // )
+            // .layer(LayerScheme::define("iv_inhib")
+            //     .cellular(CellScheme::control(
+            //             ControlCellKind::InhibitoryBasketSurround {
+            //                 host_lyr_name: "iv".into(),
+            //                 field_radius: 4,
+            //             },
+            //             0
+            //         )
+            //     )
+            // )
+            // .layer(LayerScheme::define("iv_smooth")
+            //     .cellular(CellScheme::control(
+            //             ControlCellKind::ActivitySmoother {
+            //                 host_lyr_name: "iv".into(),
+            //                 field_radius: 4,
+            //             },
+            //             1
+            //         )
+            //     )
+            // )
             .layer(LayerScheme::define("iii")
                 .depth(8)
                 .tags(LayerTags::PTAL)
@@ -276,7 +291,8 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 .cellular(CellScheme::pyramidal()
                     .tft(TuftScheme::basal().proximal()
                         .syns_per_den_l2(0)
-                        .src_lyr(TuftSourceLayer::define("iv")
+                        // .src_lyr(TuftSourceLayer::define("iv")
+                        .src_lyr(TuftSourceLayer::define("aff_in_0")
                             .syn_reach(0)
                             .prevalence(1)
                         )
@@ -284,10 +300,10 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                     .tft(TuftScheme::basal().distal()
                         .dens_per_tft_l2(4)
                         .syns_per_den_l2(5)
-                        .max_active_dens_l2(3)
-                        .thresh_init(500)
+                        .max_active_dens_l2(0)
+                        .thresh_init(0)
                         .src_lyr(TuftSourceLayer::define("iii")
-                            .syn_reach(7)
+                            .syn_reach(16)
                             .prevalence(1)
                         )
                     )

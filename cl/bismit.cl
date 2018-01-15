@@ -755,6 +755,7 @@ __kernel void tft_cycle(
             __global uchar* const celtft_prev_best_den_ids,
             __global uchar* const celtft_prev_best_den_states_raw,
             __global uchar* const celtft_prev_best_den_states,
+            __global uchar* const celtft_prev_states,
             __global uchar* const celtft_best_den_ids,
             __global uchar* const celtft_best_den_states_raw,
             __global uchar* const celtft_best_den_states,
@@ -822,6 +823,8 @@ __kernel void tft_cycle(
     celtft_prev_best_den_ids[celtft_idx] = celtft_best_den_ids[celtft_idx];
     celtft_prev_best_den_states_raw[celtft_idx] = celtft_best_den_states_raw[celtft_idx];
     celtft_prev_best_den_states[celtft_idx] = celtft_best_den_states[celtft_idx];
+    celtft_prev_states[celtft_idx] = celtft_states[celtft_idx];
+
     celtft_best_den_ids[celtft_idx] = best_den_id;
     celtft_best_den_states_raw[celtft_idx] = best_den_state_raw;
     celtft_best_den_states[celtft_idx] = best_den_state;
@@ -947,7 +950,7 @@ __kernel void ssc_mtp(
 //
 __kernel void pyr_cycle(
             // __global const uchar* const celtft_best_den_ids,
-            __global const uchar* const celtft_best_den_states_raw,
+            __global const uchar* const tft_prev_states,
             // __global const uchar* const celtft_best_den_states,
             __global const uchar* const tft_states,
             __private uchar const tft_count,
@@ -966,15 +969,15 @@ __kernel void pyr_cycle(
     uchar pyr_best_den_state_raw = 0;
     uchar pyr_state = 0;
 
-    // TODO: Redesign learning and remove this loop:
-    for (uint tft_id = 0; tft_id < tft_count; tft_id++) {
-        uint const celtft_idx = mad24(tft_id, cel_count, cel_idx);
+    // // TODO: Remove this loop:
+    // for (uint tft_id = 0; tft_id < tft_count; tft_id++) {
+    //     uint const celtft_idx = mad24(tft_id, cel_count, cel_idx);
 
-        uchar pyr_best_den_state_raw = celtft_best_den_states_raw[celtft_idx];
-        // uchar pyr_best_den_state = celtft_best_den_states[celtft_idx];
-        pyr_best_den_state_raw = max(pyr_state, pyr_best_den_state_raw);
-        // pyr_state = max(pyr_state, pyr_best_den_state);
-    }
+    //     uchar pyr_best_den_state_raw = celtft_best_den_states_raw[celtft_idx];
+    //     // uchar pyr_best_den_state = celtft_best_den_states[celtft_idx];
+    //     pyr_best_den_state_raw = max(pyr_state, pyr_best_den_state_raw);
+    //     // pyr_state = max(pyr_state, pyr_best_den_state);
+    // }
 
     int bsl_prx_is_enabled = (enabled_tft_flags & DEN_BASAL_PROXIMAL_FLAG) != 0;
     int bsl_dst_is_enabled = (enabled_tft_flags & DEN_BASAL_DISTAL_FLAG) != 0;
@@ -984,9 +987,10 @@ __kernel void pyr_cycle(
     uint bsl_dst_celtft_idx = mad24(bsl_dst_tft_id, cel_count, cel_idx);
     uint apc_dst_celtft_idx = mad24(apc_dst_tft_id, cel_count, cel_idx);
 
+    // TODO: Use a previous state for distal dendrites:
     uchar bsl_prx_state = mul24(bsl_prx_is_enabled, tft_states[bsl_prx_celtft_idx]);
-    uchar bsl_dst_state = mul24(bsl_dst_is_enabled, tft_states[bsl_dst_celtft_idx]);
-    uchar apc_dst_state = mul24(apc_dst_is_enabled, tft_states[apc_dst_celtft_idx]);
+    uchar bsl_dst_state = mul24(bsl_dst_is_enabled, tft_prev_states[bsl_dst_celtft_idx]);
+    uchar apc_dst_state = mul24(apc_dst_is_enabled, tft_prev_states[apc_dst_celtft_idx]);
 
     int cel_is_active = bsl_prx_state != 0;
 
@@ -994,11 +998,11 @@ __kernel void pyr_cycle(
     int bsl_prx_is_min = (bsl_prx_state <= 3) && cel_is_active;
     uchar bsl_prx_contrib = (bsl_prx_state >> 2) + bsl_prx_is_min;
 
-    // Divide by 4, ignore rounding:
-    uchar bsl_dst_contrib = mul24(cel_is_active, bsl_dst_state >> 2);
-
     // Divide by 2, ignore rounding:
-    uchar apc_dst_contrib = mul24(cel_is_active, apc_dst_state >> 1);
+    uchar bsl_dst_contrib = mul24(cel_is_active, bsl_dst_state >> 1);
+
+    // Divide by 4, ignore rounding:
+    uchar apc_dst_contrib = mul24(cel_is_active, apc_dst_state >> 2);
 
     pyr_best_den_states_raw[cel_idx] = pyr_best_den_state_raw;
     pyr_states[cel_idx] = bsl_prx_contrib + bsl_dst_contrib, + apc_dst_contrib;
@@ -1214,7 +1218,7 @@ __kernel void tft_dst_mtp(
     uint const cel_idz_cel_grp = mul24(cel_grp_id, cels_per_cel_grp);
 
     // TODO: Add a tiny decay to all synapses on a previously active dendrite
-    // who's cell is not active (will need to store prev den state).
+    // whose cell is not active (will need to store prev den state).
 
     for (uint cel_id_cel_grp = 0; cel_id_cel_grp < cels_per_cel_grp; cel_id_cel_grp++) {
         // Current cell:
@@ -1231,9 +1235,9 @@ __kernel void tft_dst_mtp(
         int const cel_is_active = axn_states[cel_axn_idx] != 0;
         int const cel_prev_active = (cel_flag_set & (CEL_PREV_ACTIVE_FLAG)) == (CEL_PREV_ACTIVE_FLAG);
         int const cel_newly_active = !cel_prev_active & cel_is_active;
-        int const tft_is_active = tft_cel_prev_best_den_states_raw[tft_cel_idx] != 0;
+        int const tft_prev_active = tft_cel_prev_best_den_states_raw[tft_cel_idx] != 0;
 
-        if (cel_newly_active & tft_is_active) {
+        if (cel_newly_active & tft_prev_active) {
             // ID of the Best dendrite within the current tuft-cell:
             uchar const prev_best_den_id_celtft = tft_cel_prev_best_den_ids[tft_cel_idx];
 

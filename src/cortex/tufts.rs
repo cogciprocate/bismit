@@ -21,6 +21,7 @@ pub struct Tufts {
     prev_best_den_ids: Buffer<u8>,
     prev_best_den_states_raw: Buffer<u8>,
     prev_best_den_states: Buffer<u8>,
+    prev_states: Buffer<u8>,
     best_den_ids: Buffer<u8>,
     best_den_states_raw: Buffer<u8>,
     best_den_states: Buffer<u8>,
@@ -62,6 +63,7 @@ impl Tufts {
         let prev_best_den_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
         let prev_best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
         let prev_best_den_states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
+        let prev_states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
         let best_den_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
         let best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
         let best_den_states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([celtft_count]).fill_val(0).build()?;
@@ -114,6 +116,7 @@ impl Tufts {
                 .arg_buf(&prev_best_den_ids)
                 .arg_buf(&prev_best_den_states_raw)
                 .arg_buf(&prev_best_den_states)
+                .arg_buf(&prev_states)
                 .arg_buf(&best_den_ids)
                 .arg_buf(&best_den_states_raw)
                 .arg_buf(&best_den_states)
@@ -149,7 +152,7 @@ impl Tufts {
                         let cel_grp_count = 64;
                         let cels_per_cel_grp = dims.per_subgrp(cel_grp_count)?;
                         let potentiation_rate_l2i = 0i32;
-                        let depression_rate_l2i = 2i32;
+                        let depression_rate_l2i = 3i32;
 
                         let kern_name = "tft_dst_mtp";
                         mtp_kernels.push(ocl_pq.create_kernel(kern_name)?
@@ -218,6 +221,7 @@ impl Tufts {
             prev_best_den_ids,
             prev_best_den_states_raw,
             prev_best_den_states,
+            prev_states,
             best_den_ids,
             best_den_states_raw,
             best_den_states,

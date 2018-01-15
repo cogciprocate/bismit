@@ -24,6 +24,7 @@ pub struct PyramidalLayer {
     rng: XorShiftRng,
 
     states: Buffer<u8>,
+    // TODO: Remove:
     best_den_states_raw: Buffer<u8>,
     flag_sets: Buffer<u8>,
     energies: Buffer<u8>,
