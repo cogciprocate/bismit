@@ -4,8 +4,7 @@ use std::ops::{Range};
 
 use ocl::Buffer;
 use ocl::traits::{OclPrm, OclScl};
-use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, SynapsesTest, /*MinicolumnsTest,*/
-    DataCellLayer, DataCellLayerTest};
+use cortex::{CorticalArea, CorticalAreaTest, DendritesTest, SynapsesTest};
 use cmn;
 use tests::testbed;
 
@@ -33,8 +32,8 @@ bitflags! {
 // ACTIVATE, LEARN, CYCLE, & OUTPUT
 // pub fn al_cycle_depricate(area: &mut CorticalArea) {
 //     area.mcols().activate();
-//     area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().learn();
-//     area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().cycle(None);
+//     area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().learn();
+//     area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().cycle(None);
 //     area.mcols().output();
 // }
 
@@ -57,7 +56,7 @@ pub fn ptal_alco(_area: &mut CorticalArea, _switches: PtalAlco, print: bool) {
 
     // if switches.contains(LEARN) {
     //     if print { printlnc!(yellow: "Learning..."); }
-    //     area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().learn_solo();
+    //     area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().learn_solo();
     // }
 
     // if print { area.mcols().kern_activate().default_queue().unwrap().finish().unwrap(); }
@@ -65,9 +64,9 @@ pub fn ptal_alco(_area: &mut CorticalArea, _switches: PtalAlco, print: bool) {
     // if switches.contains(CYCLE) {
     //     if print { printlnc!(yellow: "Cycling..."); }
     //     // area.ptal_cycle();
-    //     area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().cycle_solo();
-    //     area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().cycle_solo();
-    //     area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().cycle_solo();
+    //     area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().cycle_solo();
+    //     area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().cycle_solo();
+    //     area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().cycle_solo();
     // }
 
     // if print { area.mcols().kern_activate().default_queue().unwrap().finish().unwrap(); }
@@ -91,12 +90,12 @@ pub fn ptal_alco(_area: &mut CorticalArea, _switches: PtalAlco, print: bool) {
 //         flag_set_eq: u8, strength_eq: i8)
 // {
 //     for syn_idx in syn_range.clone() {
-//         area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().states.fill_vec();
-//         area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().flag_sets.fill_vec();
-//         area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().strengths.fill_vec();
-//         assert!(area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().states[syn_idx] != state_neq);
-//         assert!(area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().flag_sets[syn_idx] == flag_set_eq);
-//         assert!(area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().strengths[syn_idx] == strength_eq);
+//         area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().states.fill_vec();
+//         area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().flag_sets.fill_vec();
+//         area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().strengths.fill_vec();
+//         assert!(area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().states[syn_idx] != state_neq);
+//         assert!(area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().flag_sets[syn_idx] == flag_set_eq);
+//         assert!(area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().strengths[syn_idx] == strength_eq);
 //     }
 // }
 
@@ -166,9 +165,9 @@ pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
     //println!("\n - Confirm 1A - Activate");
     println!("{}", desc);
     area.print_axns();
-    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().print_all();
-    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().print_all();
-    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().print_all();
+    area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().print_all();
+    area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().print_all();
+    area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().print_all();
 
     // area.mcols().print_all();
     println!("MINICOLUMNS DISABLED");
@@ -182,7 +181,7 @@ pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
 // pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
 //     println!("{}", desc);
 //     area.print_axns();
-//     area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns()
+//     area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns()
 // }
 
 
@@ -190,9 +189,9 @@ pub fn print_all(area: &mut CorticalArea, desc: &'static str) {
 pub fn print_all_syn_range(range: Range<usize>, area: &mut CorticalArea, desc: &'static str) {
     println!("{}", desc);
     area.print_axns();
-    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().print_range(Some(range));
-    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().print_all();
-    area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().print_all();
+    area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().print_range(Some(range));
+    area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().print_all();
+    area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().print_all();
 
     // area.mcols().print_all();
     println!("MINICOLUMNS DISABLED");

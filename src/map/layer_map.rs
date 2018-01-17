@@ -51,7 +51,7 @@ impl AxonDomainCache {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LayerMap {
     area_name: &'static str,
     area_id: usize,

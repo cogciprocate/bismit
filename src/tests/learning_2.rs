@@ -95,7 +95,8 @@ impl SubcorticalNucleus for LearningTest {
     /// * Writes output SDR to thalamic tract
     /// *
     ///
-    fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
+    fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
+            work_pool: &mut WorkPool) -> CmnResult<()> {
         // let pattern_idx = if SEQUENTIAL_SDR {
         //     // Choose a non-random SDR:
         //     self.trial_iter.global_cycle_idx % self.sdrs.pattern_count
@@ -157,7 +158,8 @@ impl SubcorticalNucleus for LearningTest {
     /// * Blocks to wait for sampler channels
     /// * Increments the cell activity counts
     ///
-    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) -> CmnResult<()> {
+    fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
+            _work_pool: &mut WorkPool) -> CmnResult<()> {
         for layer in self.layers.values() {
             // if let PathwayDir::Input { srcs: _ } = layer.pathway {
             //     debug_assert!(layer.sub().axon_domain().is_input());

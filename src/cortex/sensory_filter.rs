@@ -8,6 +8,7 @@ use map::{ExecutionGraph, CommandRelations, CorticalBuffer, ThalamicTract, Comma
 // use tract_terminal::{SliceBufferSource, OclBufferTarget};
 use ::WorkPool;
 
+#[derive(Debug)]
 pub struct SensoryFilter {
     filter_idx: usize,
     filter_name: String,

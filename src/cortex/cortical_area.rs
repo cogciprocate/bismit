@@ -1,23 +1,19 @@
-#![allow(dead_code, unused_mut, unused_imports)]
+// #![allow(dead_code, unused_mut, unused_imports)]
 
-use std::thread::{self, JoinHandle};
-use std::collections::{HashMap, HashSet, BTreeMap};
+use std::collections::{HashSet, BTreeMap};
 use std::ops::Range;
-use std::borrow::Borrow;
-use futures::{Sink, Stream, Future};
-use futures::sync::mpsc::{self, Sender};
-use tokio_core::reactor::{Core, Remote};
-use ocl::{async, flags, Device, ProQue, Context, Buffer, Event, Queue, OclPrm, RwVec};
+use futures::Future;
+use ocl::{flags, Device, ProQue, Context, Buffer, Event, Queue, RwVec};
 use ocl::core::CommandQueueProperties;
 use ocl::builders::{BuildOpt, ProgramBuilder};
-use cmn::{self, CmnError, CmnResult, CorticalDims};
-use map::{self, AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind,
+use cmn::{self, CmnResult, CorticalDims};
+use map::{AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind,
     ExecutionGraph, CellClass, LayerTags, LayerAddress, CommandUid, CommandRelations, CorticalBuffer};
 use ::Thalamus;
 use cortex::{AxonSpace, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother, PyrOutputter,
     WorkPool, ControlCellLayers, IntraColumnInhib};
-use subcortex::{self, TractBuffer, TractSender, TractReceiver};
+use subcortex::{self, TractSender, TractReceiver};
 
 #[cfg(test)] pub use self::tests::{CorticalAreaTest};
 
@@ -51,18 +47,12 @@ pub enum SamplerBufferKind {
 pub enum SamplerKind {
     /// Axons for a specific layer or all layers.
     AxonLayer(Option<LayerAddress>),
-    PyrSomaStates(LayerAddress),
-    PyrSomaEnergies(LayerAddress),
-    PyrSomaActivities(LayerAddress),
-    PyrDenStates(LayerAddress),
-    PyrDenEnergies(LayerAddress),
-    PyrDenActivities(LayerAddress),
-    SscSomaStates(LayerAddress),
-    SscSomaEnergies(LayerAddress),
-    SscSomaActivities(LayerAddress),
-    SscDenStates(LayerAddress),
-    SscDenEnergies(LayerAddress),
-    SscDenActivities(LayerAddress),
+    SomaStates(LayerAddress),
+    SomaEnergies(LayerAddress),
+    SomaActivities(LayerAddress),
+    DenStates(LayerAddress),
+    DenEnergies(LayerAddress),
+    DenActivities(LayerAddress),
     Dummy,
 }
 
@@ -90,6 +80,7 @@ impl Sampler {
 }
 
 
+#[derive(Debug)]
 enum Layer {
     SpinyStellateLayer(SpinyStellateLayer),
     PyramidalLayer(PyramidalLayer),
@@ -108,6 +99,20 @@ impl Layer {
         match *self {
             Layer::SpinyStellateLayer(ref lyr) => lyr.layer_tags(),
             Layer::PyramidalLayer(ref lyr) => lyr.layer_tags(),
+        }
+    }
+
+    fn layer_addr(&self) -> LayerAddress {
+        match *self {
+            Layer::SpinyStellateLayer(ref lyr) => lyr.layer_addr(),
+            Layer::PyramidalLayer(ref lyr) => lyr.layer_addr(),
+        }
+    }
+
+    fn layer_name(&self) -> &str {
+        match *self {
+            Layer::SpinyStellateLayer(ref lyr) => lyr.layer_name(),
+            Layer::PyramidalLayer(ref lyr) => lyr.layer_name(),
         }
     }
 
@@ -150,22 +155,23 @@ impl Layer {
         }
     }
 
-    fn is_pyramidal(&self) -> bool {
+    fn as_data_cell_layer(&self) -> CmnResult<&DataCellLayer> {
         match *self {
-            Layer::SpinyStellateLayer(_) => false,
-            Layer::PyramidalLayer(_) => true,
+            Layer::SpinyStellateLayer(ref lyr) => Ok(lyr),
+            Layer::PyramidalLayer(ref lyr) => Ok(lyr),
         }
     }
 
-    fn as_pyr_lyr(&self) -> CmnResult<&PyramidalLayer> {
+    fn as_data_cell_layer_mut(&mut self) -> CmnResult<&mut DataCellLayer> {
         match *self {
-            Layer::SpinyStellateLayer(_) => Err("not a pyramidal layer".into()),
-            Layer::PyramidalLayer(ref lyr) => Ok(lyr),
+            Layer::SpinyStellateLayer(ref mut lyr) => Ok(lyr),
+            Layer::PyramidalLayer(ref mut lyr) => Ok(lyr),
         }
     }
 }
 
 
+#[derive(Debug)]
 struct Layers {
     lyrs: Vec<Layer>,
 }
@@ -179,70 +185,31 @@ impl Layers {
         self.lyrs.push(lyr);
     }
 
-    fn ssc_by_addr(&self, addr: LayerAddress) -> CmnResult<&SpinyStellateLayer> {
+    fn by_name(&self, name: &str) -> CmnResult<&DataCellLayer> {
         for lyr in self.lyrs.iter() {
-            if let Layer::SpinyStellateLayer(ref ssc) = *lyr {
-                if ssc.layer_addr() == addr {
-                    return Ok(ssc);
-                }
+            if lyr.layer_name() == name {
+                return lyr.as_data_cell_layer();
             }
         }
-        Err(format!("Layers::ssc_by_addr: No layer '{}' found.", addr).into())
+        Err(format!("Layers::by_addr: No layer named '{}' found.", name).into())
     }
 
-    fn ssc_by_name(&self, name: &str) -> CmnResult<&SpinyStellateLayer> {
-        for lyr in self.lyrs.iter() {
-            if let Layer::SpinyStellateLayer(ref ssc) = *lyr {
-                if ssc.layer_name() == name {
-                    return Ok(ssc);
-                }
-            }
-        }
-        Err(format!("Layers::ssc_by_name: No layer named '{}' found.", name).into())
-    }
-
-    fn ssc_by_name_mut(&mut self, name: &str) -> CmnResult<&mut SpinyStellateLayer> {
+    fn by_name_mut(&mut self, name: &str) -> CmnResult<&mut DataCellLayer> {
         for lyr in self.lyrs.iter_mut() {
-            if let Layer::SpinyStellateLayer(ref mut ssc) = *lyr {
-                if ssc.layer_name() == name {
-                    return Ok(ssc);
-                }
+            if lyr.layer_name() == name {
+                return lyr.as_data_cell_layer_mut();
             }
         }
-        Err(format!("Layers::ssc_by_name: No layer named '{}' found.", name).into())
+        Err(format!("Layers::by_addr: No layer named '{}' found.", name).into())
     }
 
-    fn pyr_by_addr(&self, addr: LayerAddress) -> CmnResult<&PyramidalLayer> {
+    fn by_addr(&self, addr: LayerAddress) -> CmnResult<&DataCellLayer> {
         for lyr in self.lyrs.iter() {
-            if let Layer::PyramidalLayer(ref ssc) = *lyr {
-                if ssc.layer_addr() == addr {
-                    return Ok(ssc);
-                }
+            if lyr.layer_addr() == addr {
+                return lyr.as_data_cell_layer();
             }
         }
-        Err(format!("Layers::pyr_by_addr: No layer '{}' found.", addr).into())
-    }
-
-    fn pyr_by_name(&self, name: &str) -> CmnResult<&PyramidalLayer> {
-        for lyr in self.lyrs.iter() {
-            if let Layer::PyramidalLayer(ref pyr) = *lyr {
-                if pyr.layer_name() == name {
-                    return Ok(pyr);
-                }
-            }
-        }
-        Err(format!("Layers::pyr_by_name: No layer named '{}' found.", name).into())
-    }
-
-    fn pyr_by_name_mut(&mut self, name: &str) -> CmnResult<&mut PyramidalLayer> {
-        for lyr in self.lyrs.iter_mut() {
-            if let Layer::PyramidalLayer(ref mut pyr) = *lyr {
-                if pyr.layer_name() == name {
-                    return Ok(pyr);
-                }
-            }
-        }
-        Err(format!("Layers::pyr_by_name: No layer named '{}' found.", name).into())
+        Err(format!("Layers::by_addr: No layer with '{}' found.", addr).into())
     }
 
     fn len(&self) -> usize {
@@ -339,16 +306,13 @@ impl CorticalAreaSettings {
 
 
 /// An area of the cortex.
+#[derive(Debug)]
 pub struct CorticalArea {
     area_id: usize,
     name: &'static str,
     dims: CorticalDims,
     area_map: AreaMap,
     axns: AxonSpace,
-    ptal_name: Option<String>,
-    psal_name: Option<String>,
-    psal_idx: usize,
-    ptal_idx: usize,
     /// Primary neuron layers.
     data_layers: Layers,
     /// Interneuron layers.
@@ -362,7 +326,6 @@ pub struct CorticalArea {
     settings: CorticalAreaSettings,
     cycle_order: Vec<usize>,
     exe_graph: ExecutionGraph,
-
     samplers: Vec<Sampler>,
 }
 
@@ -437,15 +400,6 @@ impl CorticalArea {
             area_map.aff_areas(), device_idx, ocl_pq.device().name()?.trim(),
             ocl_pq.device().vendor()?.trim(), mt = cmn::MT);
 
-        let psal_name = area_map.layer_map().layers_containing_tags(LayerTags::PSAL)
-            .first().map(|lyr| lyr.name().to_owned());
-        let ptal_name = area_map.layer_map().layers_containing_tags(LayerTags::PTAL)
-            .first().map(|lyr| lyr.name().to_owned());
-
-        // Ensures if they are not set later the indexes will be invalid:
-        let mut psal_idx = usize::max_value();
-        let mut ptal_idx = usize::max_value();
-
         /*=============================================================================
         =============================== EXECUTION GRAPH ===============================
         =============================================================================*/
@@ -459,7 +413,7 @@ impl CorticalArea {
         // let mut mcols = None;
         let mut data_layers = Layers::new();
         let mut control_layers: ControlCellLayers = BTreeMap::new();
-        let mut axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
+        let axns = AxonSpace::new(&area_map, &ocl_pq, read_queue.clone(),
             write_queue.clone(), unmap_queue.clone(), &mut exe_graph, thal)?;
 
         /*=============================================================================
@@ -503,10 +457,9 @@ impl CorticalArea {
         =============================================================================*/
         // * TODO: BREAK OFF THIS CODE INTO NEW STRUCT DEF
 
-        fn insert_control_layer<D, C>(control_layers: &mut ControlCellLayers, layer_name: &str,
-                cc_lyr: C, host_lyr: &D, exe_order: usize)
-                where D: DataCellLayer, C: ControlCellLayer {
-
+        fn insert_control_layer<C>(control_layers: &mut ControlCellLayers, layer_name: &str,
+                cc_lyr: C, host_lyr: &DataCellLayer, exe_order: usize)
+                where C: ControlCellLayer {
             if control_layers.insert((host_lyr.layer_addr(), exe_order),
                     Box::new(cc_lyr)).is_some() {
                 panic!("Duplicate control cell layer address / order index \
@@ -519,7 +472,7 @@ impl CorticalArea {
                 match *cell_scheme.class() {
                     CellClass::Control { kind: ControlCellKind::InhibitoryBasketSurround {
                             ref host_lyr_name, field_radius: _ }, exe_order } => {
-                        let host_lyr = data_layers.ssc_by_name(host_lyr_name)?;
+                        let host_lyr = data_layers.by_name(host_lyr_name)?;
 
                         let cc_lyr = InhibitoryInterneuronNetwork::new(layer.name(),
                             layer.layer_id(), cell_scheme.clone(), host_lyr, &axns, &area_map,
@@ -530,7 +483,7 @@ impl CorticalArea {
                     },
                     CellClass::Control { kind: ControlCellKind::ActivitySmoother {
                             ref host_lyr_name, field_radius: _ }, exe_order } => {
-                        let host_lyr = data_layers.ssc_by_name(host_lyr_name)?;
+                        let host_lyr = data_layers.by_name(host_lyr_name)?;
 
                         let cc_lyr = ActivitySmoother::new(layer.name(), layer.layer_id(),
                             cell_scheme.clone(), host_lyr, &axns, &area_map, &ocl_pq,
@@ -541,7 +494,7 @@ impl CorticalArea {
                     },
                     CellClass::Control { kind: ControlCellKind::PyrOutputter {
                             ref host_lyr_name }, exe_order } => {
-                        let host_lyr = data_layers.pyr_by_name(host_lyr_name)?;
+                        let host_lyr = data_layers.by_name(host_lyr_name)?;
 
                         let cc_lyr = PyrOutputter::new(layer.name(), layer.layer_id(),
                             cell_scheme.clone(), host_lyr, &axns, &area_map, &ocl_pq,
@@ -552,7 +505,7 @@ impl CorticalArea {
                     },
                     CellClass::Control { kind: ControlCellKind::IntraColumnInhib {
                             ref host_lyr_name }, exe_order } => {
-                        let host_lyr = data_layers.pyr_by_name(host_lyr_name)?;
+                        let host_lyr = data_layers.by_name(host_lyr_name)?;
 
                         let cc_lyr = IntraColumnInhib::new(layer.name(), layer.layer_id(),
                             cell_scheme.clone(), host_lyr, &axns, &area_map, &ocl_pq,
@@ -565,42 +518,6 @@ impl CorticalArea {
                 }
             }
         }
-
-        // for layer in area_map.layer_map().iter() {
-        //     match layer.kind() {
-        //         &LayerKind::Cellular(ref cell_scheme) => {
-        //             println!("{mt}::NEW(): making a(n) {:?} layer: '{}' (depth: {})",
-        //                 cell_scheme.control_cell_kind(), layer.name(), layer.depth(), mt = cmn::MT);
-
-        //             match cell_scheme.control_cell_kind() {
-        //                 Some(&ControlCellKind::Complex) => {
-        //                     let mcols_dims = dims.clone_with_depth(1);
-
-        //                     mcols = Some(Box::new({
-        //                         let sscs = data_layers.ssc_by_name(psal_name.unwrap())?;
-        //                         // let pyrs = data_layers.pyr_by_name(ptal_name.unwrap())?;
-        //                         // let mut sscs = Vec::with_capacity(8);
-        //                         let mut temporal_pyrs: Vec<_> = data_layers.lyrs.iter()
-        //                             .filter(|lyr| lyr.tags().contains(map::TEMPORAL) && lyr.is_pyramidal())
-        //                             .map(|lyr| lyr.as_pyr_lyr().unwrap())
-        //                             .collect();
-
-        //                         let layer_id = layer.layer_id();
-        //                         debug_assert!(area_map.aff_out_slcs().len() > 0, "CorticalArea::new(): \
-        //                             No afferent output slices found for area: '{}'", area_name);
-        //                         Minicolumns::new(layer_id, mcols_dims, &area_map, &axns, sscs,
-        //                             temporal_pyrs,
-        //                             &ocl_pq, settings.clone(), &mut exe_graph)?
-        //                     }));
-        //                 },
-        //                 _ => (),
-        //             }
-        //         },
-        //         _ => (),
-        //     }
-        // }
-
-        // let mut mcols = mcols.expect("CorticalArea::new(): No Minicolumn layer found!");
 
         /*=============================================================================
         ===================================== AUX =====================================
@@ -667,10 +584,6 @@ impl CorticalArea {
             name: area_name,
             dims: dims,
             area_map: area_map,
-            ptal_name: ptal_name,
-            psal_name: psal_name,
-            ptal_idx: ptal_idx,
-            psal_idx: psal_idx,
             axns: axns,
             data_layers,
             control_layers,
@@ -856,13 +769,8 @@ impl CorticalArea {
 
     /// Cycles through sampling requests
     fn cycle_samplers(&mut self, work_pool: &mut WorkPool) -> CmnResult<()> {
-        fn pyr_lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a PyramidalLayer {
-            data_layers.pyr_by_addr(layer_addr)
-                .expect(&format!("CorticalArea::cycle_samplers: Invalid layer: {}", layer_addr))
-        }
-
-        fn ssc_lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a SpinyStellateLayer {
-            data_layers.ssc_by_addr(layer_addr)
+        fn lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a DataCellLayer {
+            data_layers.by_addr(layer_addr)
                 .expect(&format!("CorticalArea::cycle_samplers: Invalid layer: {}", layer_addr))
         }
 
@@ -880,18 +788,12 @@ impl CorticalArea {
                 let mut new_event = Event::empty();
                 let buf = match sampler.kind {
                     SamplerKind::AxonLayer(_lyr_addr) => self.axns.states(),
-                    SamplerKind::PyrSomaStates(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).soma(),
-                    SamplerKind::PyrSomaEnergies(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).energies(),
-                    SamplerKind::PyrSomaActivities(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).activities(),
-                    SamplerKind::PyrDenStates(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).dens().states(),
-                    SamplerKind::PyrDenEnergies(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).dens().energies(),
-                    SamplerKind::PyrDenActivities(lyr_addr) =>  pyr_lyr(&self.data_layers, lyr_addr).dens().activities(),
-                    SamplerKind::SscSomaStates(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).soma(),
-                    SamplerKind::SscSomaEnergies(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).energies(),
-                    SamplerKind::SscSomaActivities(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).activities(),
-                    SamplerKind::SscDenStates(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).dens().states(),
-                    SamplerKind::SscDenEnergies(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).dens().energies(),
-                    SamplerKind::SscDenActivities(lyr_addr) =>  ssc_lyr(&self.data_layers, lyr_addr).dens().activities(),
+                    SamplerKind::SomaStates(lyr_addr) =>  lyr(&self.data_layers, lyr_addr).soma(),
+                    SamplerKind::SomaEnergies(lyr_addr) =>  lyr(&self.data_layers, lyr_addr).energies(),
+                    SamplerKind::SomaActivities(lyr_addr) =>  lyr(&self.data_layers, lyr_addr).activities(),
+                    SamplerKind::DenStates(lyr_addr) =>  lyr(&self.data_layers, lyr_addr).dens().states(),
+                    SamplerKind::DenEnergies(lyr_addr) =>  lyr(&self.data_layers, lyr_addr).dens().energies(),
+                    SamplerKind::DenActivities(lyr_addr) =>  lyr(&self.data_layers, lyr_addr).dens().activities(),
                     _ => unimplemented!(),
                 };
 
@@ -937,8 +839,6 @@ impl CorticalArea {
     /// cortical cells and axons.
     pub fn sampler(&mut self, kind: SamplerKind, buffer_kind: SamplerBufferKind,
             backpressure: bool) -> TractReceiver {
-        use ocl::RwVec;
-
         fn slc_range(area_map: &AreaMap, layer_id: usize) -> Range<usize> {
             area_map.layer_map().layer_info(layer_id)
                 .expect(&format!("CorticalArea::sample: Invalid layer: [id:{}]", layer_id))
@@ -947,13 +847,8 @@ impl CorticalArea {
                 .clone()
         }
 
-        fn pyr_lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a PyramidalLayer {
-            data_layers.pyr_by_addr(layer_addr)
-                .expect(&format!("CorticalArea::sample: Invalid layer: {}", layer_addr))
-        }
-
-        fn ssc_lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a SpinyStellateLayer {
-            data_layers.ssc_by_addr(layer_addr)
+        fn lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a DataCellLayer {
+            data_layers.by_addr(layer_addr)
                 .expect(&format!("CorticalArea::sample: Invalid layer: {}", layer_addr))
         }
 
@@ -975,34 +870,28 @@ impl CorticalArea {
                     _ => unimplemented!(),
                 }
             },
-            SamplerKind::PyrSomaStates(_lyr_addr) => unimplemented!(),
-            SamplerKind::PyrSomaEnergies(_lyr_addr) => unimplemented!(),
-            SamplerKind::PyrSomaActivities(_lyr_addr) => unimplemented!(),
-            SamplerKind::PyrDenStates(_lyr_addr) => unimplemented!(),
-            SamplerKind::PyrDenEnergies(_lyr_addr) => unimplemented!(),
-            SamplerKind::PyrDenActivities(_lyr_addr) => unimplemented!(),
-            SamplerKind::SscSomaStates(_lyr_addr) => unimplemented!(),
-            SamplerKind::SscSomaEnergies(lyr_addr) => {
+            SamplerKind::SomaStates(_lyr_addr) => unimplemented!(),
+            SamplerKind::SomaEnergies(lyr_addr) => {
                 let (len, cmd_srcs) = {
-                    let lyr = ssc_lyr(&self.data_layers, lyr_addr);
+                    let lyr = lyr(&self.data_layers, lyr_addr);
                     (lyr.energies().len(),
                         vec![CorticalBuffer::data_soma_lyr(lyr.energies(), lyr_addr)])
                 };
                 self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
             },
-            SamplerKind::SscSomaActivities(lyr_addr) => {
+            SamplerKind::SomaActivities(lyr_addr) => {
                 let (len, cmd_srcs) = {
-                    let lyr = ssc_lyr(&self.data_layers, lyr_addr);
+                    let lyr = lyr(&self.data_layers, lyr_addr);
                     (lyr.activities().len(),
                         vec![CorticalBuffer::data_soma_lyr(lyr.activities(), lyr_addr)])
                 };
                 self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
             },
-            SamplerKind::SscDenStates(_lyr_addr) => unimplemented!(),
-            SamplerKind::SscDenEnergies(_lyr_addr) => unimplemented!(),
-            SamplerKind::SscDenActivities(lyr_addr) => {
+            SamplerKind::DenStates(_lyr_addr) => unimplemented!(),
+            SamplerKind::DenEnergies(_lyr_addr) => unimplemented!(),
+            SamplerKind::DenActivities(lyr_addr) => {
                 let (len, cmd_srcs) = {
-                    let lyr = ssc_lyr(&self.data_layers, lyr_addr);
+                    let lyr = lyr(&self.data_layers, lyr_addr);
                     let srcs = (0..lyr.tft_count()).map(|tft_id| {
                         CorticalBuffer::data_den_tft(lyr.dens().activities(), lyr_addr, tft_id)
                     }).collect();
@@ -1015,87 +904,33 @@ impl CorticalArea {
     }
 
     /// Blocks until all previously queued OpenCL commands in all
-    /// command-queues are issued to the associated device.
-    pub fn flush_queues(&self) {
-        self.write_queue.flush().unwrap();
-        self.ocl_pq.queue().flush().unwrap();
-        self.read_queue.flush().unwrap();
-    }
-
-    /// Blocks until all previously queued OpenCL commands in all
     /// command-queues are issued to the associated device and have completed.
     pub fn finish_queues(&self) {
         self.write_queue.finish().unwrap();
         self.ocl_pq.queue().finish().unwrap();
         self.read_queue.finish().unwrap();
+        self.unmap_queue.finish().unwrap();
         self.exe_graph.finish().unwrap();
     }
 
-    #[deprecated]
-    pub fn sample_axn_slc_range(&self, slc_range: Range<usize>, buf: &mut [u8]) -> Event {
-        assert!(slc_range.len() > 0, "CorticalArea::sample_axn_slc_range(): \
-            Invalid slice range: '{:?}'. Slice range length must be at least one.", slc_range);
-
-        let axn_range = self.area_map.slice_map().axn_range(slc_range.clone());
-
-        debug_assert!(buf.len() == axn_range.len(), "Sample buffer length ({}) not \
-            equal to slice axon length({}). axn_range: {:?}, slc_range: {:?}",
-            buf.len(), axn_range.len(), axn_range, slc_range);
-        let mut event = Event::empty();
-
-        self.finish_queues();
-
-        self.axns.states().cmd().read(buf).offset(axn_range.start).enew(&mut event).enq().unwrap();
-        event
-    }
-
-    #[deprecated]
-    pub fn sample_axn_space(&self, buf: &mut [u8]) -> Event {
-        debug_assert!(buf.len() == self.area_map.slice_map().axn_count() as usize);
-        let mut event = Event::empty();
-
-        self.finish_queues();
-
-        self.axns.states().read(buf).enew(&mut event).enq().expect("[FIXME]: HANDLE ME!");
-        event
-    }
-
-    /// Returns an immutable reference to the requested spiny stellate cell
-    /// layer.
+    /// Returns an immutable reference to the requested data cell layer.
     ///
-    /// This does a linear search through all layers.
-    pub fn ssc_layer(&self, layer_name: &'static str) -> CmnResult<&SpinyStellateLayer> {
-        self.data_layers.ssc_by_name(layer_name)
+    /// This performs a linear search through all layers.
+    pub fn layer(&self, layer_name: &'static str) -> CmnResult<&DataCellLayer> {
+        self.data_layers.by_name(layer_name)
     }
 
-    /// Returns a mutable reference to the requested spiny stellate cell
-    /// layer.
+    /// Returns a mutable reference to the requested data cell layer.
     ///
-    /// This does a linear search through all layers.
-    pub fn ssc_layer_mut(&mut self, layer_name: &'static str) -> CmnResult<&mut SpinyStellateLayer> {
-        self.data_layers.ssc_by_name_mut(layer_name)
-    }
-
-    /// Returns an immutable reference to the requested pyramidal cell layer.
-    ///
-    /// This does a linear search through all layers.
-    pub fn pyr_layer(&self, layer_name: &'static str) -> CmnResult<&PyramidalLayer> {
-        self.data_layers.pyr_by_name(layer_name)
-    }
-
-    /// Returns a mutable reference to the requested pyramidal cell layer.
-    ///
-    /// This does a linear search through all layers.
-    pub fn pyr_layer_mut(&mut self, layer_name: &'static str) -> CmnResult<&mut PyramidalLayer> {
-        self.data_layers.pyr_by_name_mut(layer_name)
+    /// This performs a linear search through all layers.
+    pub fn layer_mut(&mut self, layer_name: &'static str) -> CmnResult<&mut DataCellLayer> {
+        self.data_layers.by_name_mut(layer_name)
     }
 
     #[inline] pub fn axns(&self) -> &AxonSpace { &self.axns }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] pub fn psal_name<'s>(&'s self) -> Option<&'s String> { self.psal_name.as_ref() }
-    #[inline] pub fn ptal_name<'s>(&'s self) -> Option<&'s String> { self.ptal_name.as_ref() }
-    #[inline] pub fn afferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.aff_areas() }
-    #[inline] pub fn efferent_target_names(&self) -> &Vec<&'static str> { &self.area_map.eff_areas() }
+    #[inline] pub fn afferent_target_names(&self) -> &[&'static str] { &self.area_map.aff_areas() }
+    #[inline] pub fn efferent_target_names(&self) -> &[&'static str] { &self.area_map.eff_areas() }
     #[inline] pub fn ocl_pq(&self) -> &ProQue { &self.ocl_pq }
     #[inline] pub fn device(&self) -> Device { self.ocl_pq.queue().device() }
     #[inline] pub fn axn_tract_map(&self) -> SliceTractMap { self.area_map.slice_map().tract_map() }
@@ -1115,6 +950,7 @@ impl Drop for CorticalArea {
 }
 
 
+#[derive(Debug)]
 pub struct Aux {
     pub ints_0: Buffer<i32>,
     pub ints_1: Buffer<i32>,
@@ -1152,7 +988,7 @@ pub mod tests {
     use rand::distributions::{IndependentSample, Range as RandRange};
 
     use super::*;
-    use cortex::{AxonSpaceTest, CelCoords};
+    use cortex::{AxonSpaceTest, CelCoords, DataCellLayerTest};
     use map::{AreaMapTest};
 
     pub trait CorticalAreaTest {
@@ -1165,6 +1001,16 @@ pub mod tests {
         fn print_axns(&mut self);
         fn activate_axon(&mut self, idx: u32);
         fn deactivate_axon(&mut self, idx: u32);
+
+        /// Returns an immutable reference to the requested data cell layer.
+        ///
+        /// This performs a linear search through all layers.
+        fn layer_test(&self, layer_name: &'static str) -> CmnResult<&DataCellLayerTest>;
+
+        /// Returns a mutable reference to the requested data cell layer.
+        ///
+        /// This performs a linear search through all layers.
+        fn layer_test_mut(&mut self, layer_name: &'static str) -> CmnResult<&mut DataCellLayerTest>;
     }
 
     impl CorticalAreaTest for CorticalArea {
@@ -1253,6 +1099,38 @@ pub mod tests {
         fn deactivate_axon(&mut self, idx: u32) {
             self.finish_queues();
             self.axns.write_to_axon(0, idx);
+        }
+
+        /// Returns an immutable reference to the requested data cell layer.
+        ///
+        /// This performs a linear search through all layers.
+        fn layer_test(&self, layer_name: &'static str) -> CmnResult<&DataCellLayerTest> {
+            for lyr in self.data_layers.lyrs.iter() {
+                if lyr.layer_name() == layer_name {
+                    match *lyr {
+                        Layer::SpinyStellateLayer(ref lyr) => return Ok(lyr),
+                        Layer::PyramidalLayer(ref lyr) => return Ok(lyr),
+                    }
+                }
+            }
+            Err(format!("CorticalAreaTest::layer_test: No layer named '{}' found.",
+                layer_name).into())
+        }
+
+        /// Returns a mutable reference to the requested data cell layer.
+        ///
+        /// This performs a linear search through all layers.
+        fn layer_test_mut(&mut self, layer_name: &'static str) -> CmnResult<&mut DataCellLayerTest> {
+            for lyr in self.data_layers.lyrs.iter_mut() {
+                if lyr.layer_name() == layer_name {
+                    match *lyr {
+                        Layer::SpinyStellateLayer(ref mut lyr) => return Ok(lyr),
+                        Layer::PyramidalLayer(ref mut lyr) => return Ok(lyr),
+                    }
+                }
+            }
+            Err(format!("CorticalAreaTest::layer_test_mut: No layer named '{}' found.",
+                layer_name).into())
         }
     }
 }

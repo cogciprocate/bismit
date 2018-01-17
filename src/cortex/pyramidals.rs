@@ -30,7 +30,7 @@ pub struct PyramidalLayer {
     energies: Buffer<u8>,
     activities: Buffer<u8>,
 
-    tfts: Tufts,
+    tufts: Tufts,
 
     cycle_exe_cmd_uid: Option<CommandUid>,
     cycle_exe_cmd_idx: Option<usize>,
@@ -74,7 +74,7 @@ impl PyramidalLayer {
             layer_name, base_axn_slc, pyr_lyr_axn_idz, tft_count,
             states.len(), celtft_count, dims, mt = cmn::MT);
 
-        let tfts = Tufts::new(layer_name.clone(), layer_addr, dims, cell_scheme.clone(),
+        let tufts = Tufts::new(layer_name.clone(), layer_addr, dims, cell_scheme.clone(),
             area_map, axons, &axn_slc_ids, pyr_lyr_axn_idz, &states,
             &flag_sets, ocl_pq, settings.clone(), exe_graph)?;
 
@@ -134,9 +134,9 @@ impl PyramidalLayer {
         // let kern_name = "pyr_cycle_old";
         // let pyr_cycle_kernel = ocl_pq.create_kernel(kern_name)?
         //     .gws(SpatialDims::One(cel_count))
-        //     .arg_buf(tfts.best_den_ids())
-        //     .arg_buf(tfts.best_den_states_raw())
-        //     .arg_buf(tfts.best_den_states())
+        //     .arg_buf(tufts.best_den_ids())
+        //     .arg_buf(tufts.best_den_states_raw())
+        //     .arg_buf(tufts.best_den_states())
         //     .arg_scl(tft_count as u32)
         //     .arg_buf(&best_den_states_raw)
         //     .arg_buf(&states)
@@ -147,10 +147,10 @@ impl PyramidalLayer {
         let kern_name = "pyr_cycle";
         let pyr_cycle_kernel = ocl_pq.create_kernel(kern_name)?
             .gws(SpatialDims::One(cel_count))
-            // .arg_buf(tfts.best_den_ids())
-            .arg_buf(tfts.best_den_states_raw())
-            // .arg_buf(tfts.best_den_states())
-            .arg_buf(tfts.states())
+            // .arg_buf(tufts.best_den_ids())
+            .arg_buf(tufts.best_den_states_raw())
+            // .arg_buf(tufts.best_den_states())
+            .arg_buf(tufts.states())
             .arg_scl(tft_count as u8)
             .arg_scl(enabled_tft_flags)
             .arg_scl(bsl_prx_tft_id.unwrap_or(0))
@@ -165,9 +165,9 @@ impl PyramidalLayer {
         let mut cycle_cmd_srcs: Vec<CorticalBuffer> = Vec::with_capacity(3 * tft_count);
 
         for tft_id in 0..tft_count {
-            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(tfts.best_den_ids(), layer_addr, tft_id));
-            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(tfts.best_den_states_raw(), layer_addr, tft_id));
-            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(tfts.best_den_states(), layer_addr, tft_id));
+            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(tufts.best_den_ids(), layer_addr, tft_id));
+            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(tufts.best_den_states_raw(), layer_addr, tft_id));
+            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(tufts.best_den_states(), layer_addr, tft_id));
         }
 
         let cycle_exe_cmd_uid = if !settings.disable_pyrs {
@@ -199,7 +199,7 @@ impl PyramidalLayer {
             flag_sets: flag_sets,
             energies,
             activities,
-            tfts,
+            tufts,
 
             cycle_exe_cmd_uid,
             cycle_exe_cmd_idx: None,
@@ -212,7 +212,7 @@ impl PyramidalLayer {
     ///
     /// Currently only learns for tufts containing distal dendrites.
     pub fn set_exe_order_learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
-        self.tfts.set_exe_order_learn(exe_graph)
+        self.tufts.set_exe_order_learn(exe_graph)
     }
 
     /// Sets the execution order for cycle kernels.
@@ -232,7 +232,7 @@ impl PyramidalLayer {
                 control_layers.get_mut(cl_idx).unwrap().set_exe_order_pre(exe_graph, self.layer_addr)?;
             }
 
-            self.tfts.set_exe_order_cycle(control_layers, exe_graph)?;
+            self.tufts.set_exe_order_cycle(control_layers, exe_graph)?;
 
             // Somata:
             if let Some(cycle_cmd_uid) = self.cycle_exe_cmd_uid {
@@ -256,7 +256,7 @@ impl PyramidalLayer {
         let using_aux_cycle = true;
         let using_aux_learning = true;
 
-        self.tfts.set_arg_buf_named(name, env, using_aux_cycle, using_aux_learning)?;
+        self.tufts.set_arg_buf_named(name, env, using_aux_cycle, using_aux_learning)?;
 
         if using_aux_cycle {
             self.pyr_cycle_kernel.set_arg_buf_named(name, Some(env))?;
@@ -271,7 +271,7 @@ impl PyramidalLayer {
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn best_den_states_raw(&self) -> &Buffer<u8> { &self.best_den_states_raw }
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
-    #[inline] pub fn tfts(&self) -> &Tufts { &self.tfts }
+    #[inline] pub fn tufts(&self) -> &Tufts { &self.tufts }
 }
 
 impl DataCellLayer for PyramidalLayer {
@@ -280,7 +280,7 @@ impl DataCellLayer for PyramidalLayer {
     /// Only learns for tufts containing distal dendrites.
     #[inline]
     fn learn(&mut self, exe_graph: &mut ExecutionGraph) -> CmnResult <()> {
-        self.tfts.learn(exe_graph)
+        self.tufts.learn(exe_graph)
     }
 
     /// Prunes and regrows synapses.
@@ -302,7 +302,7 @@ impl DataCellLayer for PyramidalLayer {
         // [DEBUG]: TEMPORARY:
         if PRNT { self.pyr_cycle_kernel.default_queue().unwrap().finish().unwrap(); }
 
-        self.tfts.cycle(control_layers, exe_graph)?;
+        self.tufts.cycle(control_layers, exe_graph)?;
 
         if PRNT { printlnc!(yellow: "Pyrs: Cycling cell soma..."); }
 
@@ -348,8 +348,9 @@ impl DataCellLayer for PyramidalLayer {
     #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
     #[inline] fn tft_count(&self) -> usize { self.tft_count }
     #[inline] fn cell_scheme(&self) -> &CellScheme { &self.cell_scheme }
-    #[inline] fn dens(&self) -> &Dendrites { self.tfts.dens() }
-    #[inline] fn dens_mut(&mut self) -> &mut Dendrites { self.tfts.dens_mut() }
+    #[inline] fn tufts(&self) -> &Tufts { &self.tufts }
+    #[inline] fn dens(&self) -> &Dendrites { self.tufts.dens() }
+    #[inline] fn dens_mut(&mut self) -> &mut Dendrites { self.tufts.dens_mut() }
 }
 
 
@@ -372,7 +373,7 @@ pub mod tests {
             //     cycle_kern.default_queue().unwrap().finish().unwrap();
             // }
 
-            self.tfts.cycle_solo();
+            self.tufts.cycle_solo();
 
             unsafe {
                 self.pyr_cycle_kernel.cmd().enq()
@@ -396,7 +397,7 @@ pub mod tests {
 
             //     ltp_kernel.default_queue().unwrap().finish().unwrap();
             // }
-            self.tfts.learn_solo();
+            self.tufts.learn_solo();
         }
 
         /// Prints a range of pyramidal buffers.
@@ -422,11 +423,11 @@ pub mod tests {
             util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
             print!("pyramidal.tft_best_den_states_raw: ");
-            self.tfts.best_den_states_raw().read(&mut vec).enq().unwrap();
+            self.tufts.best_den_states_raw().read(&mut vec).enq().unwrap();
             util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
             print!("pyramidal.tft_best_den_states: ");
-            self.tfts.best_den_states().read(&mut vec).enq().unwrap();
+            self.tufts.best_den_states().read(&mut vec).enq().unwrap();
             util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
 
         }
@@ -477,15 +478,15 @@ pub mod tests {
         fn set_all_to_zero(&mut self) { // MOVE TO TEST TRAIT IMPL
             self.states.default_queue().unwrap().finish().unwrap();
             self.flag_sets.default_queue().unwrap().finish().unwrap();
-            self.tfts.best_den_ids().default_queue().unwrap().finish().unwrap();
-            self.tfts.best_den_states().default_queue().unwrap().finish().unwrap();
-            self.tfts.best_den_states_raw().default_queue().unwrap().finish().unwrap();
+            self.tufts.best_den_ids().default_queue().unwrap().finish().unwrap();
+            self.tufts.best_den_states().default_queue().unwrap().finish().unwrap();
+            self.tufts.best_den_states_raw().default_queue().unwrap().finish().unwrap();
 
             self.states.cmd().fill(0, None).enq().unwrap();
             self.flag_sets.cmd().fill(0, None).enq().unwrap();
-            self.tfts.best_den_ids().cmd().fill(0, None).enq().unwrap();
-            self.tfts.best_den_states().cmd().fill(0, None).enq().unwrap();
-            self.tfts.best_den_states_raw().cmd().fill(0, None).enq().unwrap();
+            self.tufts.best_den_ids().cmd().fill(0, None).enq().unwrap();
+            self.tufts.best_den_states().cmd().fill(0, None).enq().unwrap();
+            self.tufts.best_den_states_raw().cmd().fill(0, None).enq().unwrap();
             //self.best2_den_ids.cmd().fill(&[0], None).enq().unwrap();            // <<<<< SLATED FOR REMOVAL
             //self.best2_den_states.cmd().fill(&[0], None).enq().unwrap();        // <<<<< SLATED FOR REMOVAL
 
@@ -493,9 +494,9 @@ pub mod tests {
 
             self.states.default_queue().unwrap().finish().unwrap();
             self.flag_sets.default_queue().unwrap().finish().unwrap();
-            self.tfts.best_den_ids().default_queue().unwrap().finish().unwrap();
-            self.tfts.best_den_states().default_queue().unwrap().finish().unwrap();
-            self.tfts.best_den_states_raw().default_queue().unwrap().finish().unwrap();
+            self.tufts.best_den_ids().default_queue().unwrap().finish().unwrap();
+            self.tufts.best_den_states().default_queue().unwrap().finish().unwrap();
+            self.tufts.best_den_states_raw().default_queue().unwrap().finish().unwrap();
         }
 
 

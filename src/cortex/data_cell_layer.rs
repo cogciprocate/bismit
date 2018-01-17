@@ -3,7 +3,7 @@
 
 use std::fmt::Debug;
 use ocl::Buffer;
-use cortex::{Dendrites, ControlCellLayers};
+use cortex::{Dendrites, ControlCellLayers, Tufts};
 use cmn::{CmnResult, CorticalDims};
 use map::{CellScheme, ExecutionGraph, LayerAddress};
 
@@ -26,6 +26,7 @@ pub trait DataCellLayer: 'static + Debug + Send {
     fn base_axn_slc(&self) -> u8;
     fn tft_count(&self) -> usize;
     fn cell_scheme(&self) -> &CellScheme;
+    fn tufts(&self) -> &Tufts;
     fn dens(&self) -> &Dendrites;
     fn dens_mut(&mut self) -> &mut Dendrites;
 }
@@ -39,8 +40,9 @@ pub mod tests {
     use map::{AreaMap, AreaMapTest};
     use cmn::{self, CorticalDims, XorShiftRng};
     use std::fmt::{Display, Formatter, Result};
+    use super::DataCellLayer;
 
-    pub trait DataCellLayerTest {
+    pub trait DataCellLayerTest: DataCellLayer {
         fn cycle_solo(&self);
         fn learn_solo(&mut self);
         // fn cycle_soma_only_solo(&self);

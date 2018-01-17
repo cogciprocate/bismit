@@ -301,7 +301,7 @@ impl IoInfoCache {
 }
 
 
-
+#[derive(Debug)]
 pub struct AxonSpace {
     area_id: usize,
     area_name: &'static str,

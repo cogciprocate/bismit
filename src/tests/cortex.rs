@@ -3,7 +3,7 @@
 use std::iter;
 use std::io::{self, Write};
 use cortex::{Cortex, Dendrites, PyramidalLayer, DendritesTest, SynapsesTest,
-    DataCellLayer, DataCellLayerTest};
+    DataCellLayer, DataCellLayerTest, CorticalAreaTest};
 use subcortex::{InputGenerator};
 use cmn;
 use tests::{util, testbed};
@@ -28,17 +28,17 @@ fn cortex() {
 pub fn cycles(cortex: &mut Cortex, area_name: &str) {
     // let emsg = "\ntests::hybrid::test_cycles()";
 
-    /*cortex.areas_mut().by_key_mut(area_name).ssc_layer_mut(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
-    cortex.areas_mut().by_key_mut(area_name).pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+    /*cortex.areas_mut().by_key_mut(area_name).layer_test_mut(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
+    cortex.areas_mut().by_key_mut(area_name).layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens.syns().src_col_v_offs.cmd().fill(&[0], None).enq().unwrap();
 
-    cortex.areas_mut().by_key_mut(area_name).ssc_layer_mut(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().dens.cycle();
-    cortex.areas_mut().by_key_mut(area_name).pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens.cycle();*/
+    cortex.areas_mut().by_key_mut(area_name).layer_test_mut(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().dens.cycle();
+    cortex.areas_mut().by_key_mut(area_name).layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens.cycle();*/
 
         //#####  TRY THIS OUT SOMETIME  #####
-    //let pyrs_input_len = cortex.areas_mut().by_key_mut(area_name).pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().len();
+    //let pyrs_input_len = cortex.areas_mut().by_key_mut(area_name).layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().len();
     //let mut vec_pyrs = iter::repeat(0).take().collect();
     //input_czar::vec_band_512_fill(&mut vec_pyrs);
-    //let pyr_axn_ranges = cortex.areas_mut().by_key_mut(area_name).layer_input_ranges("iii", cortex.areas_mut().by_key_mut(area_name).pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens.syns().den_kind());
+    //let pyr_axn_ranges = cortex.areas_mut().by_key_mut(area_name).layer_input_ranges("iii", cortex.areas_mut().by_key_mut(area_name).layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens.syns().den_kind());
     //write_to_axons(axn_range, vec1);
     let vec1: Vec<u8> = iter::repeat(0).take(cortex.areas_mut().by_key_mut(area_name).unwrap().dims().columns() as usize).collect();
 
@@ -46,20 +46,20 @@ pub fn cycles(cortex: &mut Cortex, area_name: &str) {
     // input_czar::sdr_stripes((cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize * 2), true, &mut vec1);
 
     println!("Primary Spatial Associative Layer...");
-    //let psal_name = cortex.areas().by_key(area_name).ssc_layer(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().layer_name();
+    //let psal_name = cortex.areas().by_key(area_name).layer_test(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().layer_name();
     //cortex.enqueue_write(area_name, psal_name, &vec1);
-    cortex.areas_mut().by_key_mut(area_name).unwrap().ssc_layer_mut(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().soma().cmd().write(&vec1).offset(0).enq().unwrap();
-    syn_and_den_states(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().ssc_layer_mut(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().dens_mut());
+    cortex.areas_mut().by_key_mut(area_name).unwrap().layer_test_mut(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().soma().cmd().write(&vec1).offset(0).enq().unwrap();
+    syn_and_den_states(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().layer_test_mut(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().dens_mut());
 
     println!("Primary Temporal Associative Layer...");
-    //let ptal_name = cortex.areas().by_key(area_name).pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().layer_name();
+    //let ptal_name = cortex.areas().by_key(area_name).layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().layer_name();
     //cortex.enqueue_write(area_name, ptal_name, &vec1);
-    cortex.areas_mut().by_key_mut(area_name).unwrap().pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().soma().cmd().write(&vec1).offset(0).enq().unwrap();
-    syn_and_den_states(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut());
+    cortex.areas_mut().by_key_mut(area_name).unwrap().layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().soma().cmd().write(&vec1).offset(0).enq().unwrap();
+    syn_and_den_states(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut());
 
 
     /////// [FIXME(2018-01-11)]: DISABLED DUE TO TUFT/MCOL/LEARNING REDESIGNS:
-    // pyr_preds(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap());
+    // pyr_preds(&mut cortex.areas_mut().by_key_mut(area_name).unwrap().layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap());
 }
 
 

@@ -20,12 +20,11 @@ pub struct InhibitoryInterneuronNetwork {
 
 impl InhibitoryInterneuronNetwork {
     // FIXME: This function should take a 'bypass' argument instead of `::cycle`.
-    pub fn new<S, D>(layer_name: S, layer_id: usize, scheme: CellScheme,
-            host_lyr: &D, axns: &AxonSpace, area_map: &AreaMap,
+    pub fn new<S>(layer_name: S, layer_id: usize, scheme: CellScheme,
+            host_lyr: &DataCellLayer, axns: &AxonSpace, area_map: &AreaMap,
             ocl_pq: &ProQue, settings: CorticalAreaSettings, exe_graph: &mut ExecutionGraph)
             -> CmnResult<InhibitoryInterneuronNetwork>
-            where S: Into<String>, D: DataCellLayer
-    {
+            where S: Into<String> {
         let layer_name = layer_name.into();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
         let host_lyr_slc_ids = area_map.layer_slc_ids(&[host_lyr.layer_name()]);

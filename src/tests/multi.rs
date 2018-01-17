@@ -30,7 +30,9 @@ fn multi_layer_input() {
 
 			for slc_range in slc_ranges {
 				if slc_range.len() > 0 {
-					area.sample_axn_slc_range(slc_range.clone(), &mut buf[..]).wait_for().unwrap();
+					////// DEPRECATED:
+					// area.sample_axn_slc_range(slc_range.clone(), &mut buf[..]).wait_for().unwrap();
+
 					println!("TESTS::MULTI_LAYER_INPUT(): 'NS_IN' output: slice_id: {}, buf: {:?}",
 						slc_range.start as u8, buf);
 				}

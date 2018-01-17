@@ -2,8 +2,7 @@
 
 // use std::io;
 use std::ops::Range;
-use cortex::{Cortex, CorticalAreaTest, SynapsesTest, SynCoords, DendritesTest,
-    DataCellLayer, DataCellLayerTest};
+use cortex::{Cortex, CorticalAreaTest, SynapsesTest, SynCoords, DendritesTest};
 use map::LayerTags;
 use cmn;
 use super::testbed;
@@ -139,7 +138,7 @@ impl LearningTestBed {
             let area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
             // Zero all dendrite and synapse buffers:
-            area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().set_all_to_zero(true);
+            area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().set_all_to_zero(true);
 
             area.axns().states().default_queue().unwrap().finish().unwrap();
             area.axns().states().cmd().fill(0, None).enq().unwrap();
@@ -150,22 +149,22 @@ impl LearningTestBed {
             assert!(unused_slc_ranges.len() >= 3, "Make sure at least three axon layers have the UNUSED_TESTING flag.");
             let unused_slc_id = unused_slc_ranges[0].start as u8;
 
-            area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
-            area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().cmd().fill(unused_slc_id, None).enq().unwrap();
-            area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
+            area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
+            area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().cmd().fill(unused_slc_id, None).enq().unwrap();
+            area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
 
             // Finish queues:
             area.finish_queues();
 
             // Primary spatial layer slice idz (base axon slice):
-            let prx_src_slc = area.ssc_layer(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().base_axn_slc();
+            let prx_src_slc = area.layer_test(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().base_axn_slc();
 
             // Fake neighbor slice:
             let fake_neighbor_slc = unused_slc_ranges[1].start as u8;
 
             // DEBUG: Print slice map and synapse dims:
             println!("\nDEBUG INFO: \n{mt}{}, \n{mt}synapse dims: {:?}",
-                area.area_map(), area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().lyr_dims(), mt = cmn::MT);
+                area.area_map(), area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().lyr_dims(), mt = cmn::MT);
 
             // Afferent output slice id:
             // [FIXME]: ASSIGN SPECIAL TAGS TO THIS LAYER:
@@ -178,12 +177,12 @@ impl LearningTestBed {
             let aff_out_slc = aff_out_slc_ranges[0].start as u8;
 
             // Get a random cell and a random synapse on that cell:
-            let cel_coords = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().rand_cel_coords();
-            let syn_coords = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut()
+            let cel_coords = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().rand_cel_coords();
+            let syn_coords = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut()
                 .rand_syn_coords(cel_coords.clone());
 
             // Base slice for primary temporal pyramidals of our layer:
-            let ptal_axn_slc_idz = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().base_axn_slc();
+            let ptal_axn_slc_idz = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().base_axn_slc();
             // assert!(ptal_axn_slc_idz == cel_coords.slc_id_lyr, "cel_coords axon slice mismatch");
             assert_eq!(ptal_axn_slc_idz, cel_coords.axn_slc_id - cel_coords.slc_id_lyr);
 
@@ -222,23 +221,23 @@ impl LearningTestBed {
 
 
             // The synapse count for our cell's entire layer (all slices, cells, and tufts):
-            // let syn_range_all = 0..area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().states().len();
+            // let syn_range_all = 0..area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().states().len();
 
             // Set the sources for the synapses on the second half of our chosen tuft to our preselected nearby axon:
             // <<<<< [FIXME] TODO: IMPLEMENT THIS (for efficiency): >>>>>
-            //         area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range).unwrap();
+            //         area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids.set_range_to(unused_slc_id, den_syn_range).unwrap();
 
             // * TODO: Reimplement using fill:
             for syn_idx in focus_syns.clone() {
-                area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().set_src_offs(fake_v_ofs, fake_u_ofs, syn_idx as usize);
-                area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().set_src_slc(fake_neighbor_slc, syn_idx as usize);
+                area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().set_src_offs(fake_v_ofs, fake_u_ofs, syn_idx as usize);
+                area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().set_src_slc(fake_neighbor_slc, syn_idx as usize);
             }
 
             // Finish queues:
             area.finish_queues();
 
             // PRINT ALL THE THINGS!:
-            let syn_val = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().syn_state(syn_coords.idx);
+            let syn_val = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().syn_state(syn_coords.idx);
             let fake_neighbor_axn_val = area.axn_state(fake_neighbor_axn_idx as usize);
             println!("DEBUG INFO - PRINT ALL THE THINGS!: \n\
                 {mt}[prx_src]: prx_src_axn_idx (prx_src_slc: {}, col_id: {}): {} \n\
@@ -367,16 +366,16 @@ impl LearningTestBed {
     fn learning_iter(&mut self, i: usize, flipped: bool, print_debug: bool) {
         let area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
         let tft_id = self.syn_coords.tft_id;
-        let tft_den_idz = area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().den_idzs_by_tft()[tft_id];
+        let tft_den_idz = area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().den_idzs_by_tft()[tft_id];
         let den_idx = self.syn_coords.den_idx(tft_den_idz);
         let celtft_idx = self.syn_coords.pyr_celtft_idx();
-        assert!(celtft_idx == area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().celtft_idx(tft_id, &self.syn_coords.cel_coords));
+        assert!(celtft_idx == area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().celtft_idx(tft_id, &self.syn_coords.cel_coords));
         let cel_idx = self.syn_coords.cel_coords.idx();
 
         let flpd_str = if flipped { "FLP" } else { "ORG" };
 
         if print_debug {
-            area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().print_src_slc_ids(Some(self.syn_coords.syn_idx_range_den()));
+            area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().print_src_slc_ids(Some(self.syn_coords.syn_idx_range_den()));
             util::print_all(area, "\n - Pre-init - ");
             print!("\n");
         }
@@ -407,24 +406,24 @@ impl LearningTestBed {
             print!("\n");
         }
 
-        assert!(util::eval_range(self.focus_syns.clone(), &area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().states(),
+        assert!(util::eval_range(self.focus_syns.clone(), &area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().states(),
             |x| x != 0), "Synapses in range '{}..{}' are not active.",
             self.focus_syns.start, self.focus_syns.end );
 
-        assert!(util::read_idx_direct(den_idx as usize, area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().states_raw()) != 0,
+        assert!(util::read_idx_direct(den_idx as usize, area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().states_raw()) != 0,
             "Dendrite '{}' is not active. This could be because learning is disabled.", den_idx);
 
         // // Ensure that we have a non-zero raw best dendrite state for the cell-tuft:
-        // assert!(util::read_idx_direct(celtft_idx as usize, area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().tft_best_den_states_raw()) != 0);
+        // assert!(util::read_idx_direct(celtft_idx as usize, area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().tft_best_den_states_raw()) != 0);
 
         // Ensure that we have the correct best dendrite ID:
         assert!(util::read_idx_direct(celtft_idx as usize,
-            area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
-                .unwrap().tfts().best_den_ids()) as u32 ==
+            area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
+                .unwrap().tufts().best_den_ids()) as u32 ==
             self.syn_coords.den_id_celtft);
 
         // Ensure that we have a non-zero cell state:
-        assert!(util::read_idx_direct(cel_idx as usize, area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().states()) != 0);
+        assert!(util::read_idx_direct(cel_idx as usize, area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().soma()) != 0);
         // println!("Cell best dendrite state is correct.");
 
         // Evaluate minicolumn activity:
@@ -463,12 +462,12 @@ impl LearningTestBed {
 
         // Ensure our cell is flagged best in (mini) column:
         // [FIXME] TODO: REENABLE BELOW!
-        // assert!(area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().flag_sets.read_idx_direct(self.syn_coords.cel_coords.idx() as usize)
+        // assert!(area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().flag_sets.read_idx_direct(self.syn_coords.cel_coords.idx() as usize)
         //     & cmn::CEL_BEST_IN_COL_FLAG == cmn::CEL_BEST_IN_COL_FLAG);
 
         assert!(util::read_idx_direct(celtft_idx as usize,
-            area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
-                .unwrap().tfts().best_den_ids()) as u32 ==
+            area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
+                .unwrap().tufts().best_den_ids()) as u32 ==
             self.syn_coords.den_id_celtft);
 
         // FLAGS: [pyr: 64], [syns: 0's], [mcol: 1];
@@ -542,7 +541,7 @@ impl LearningTestBed {
 
         // MOVED THIS FROM 1B -- PROBABLY WAS IN WRONG SPOT
         // printlnc!(yellow: "\nConfirming flag sets...");
-        // assert!(util::assert_neq_range(&area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().flag_sets, focus_syns, 0));
+        // assert!(util::assert_neq_range(&area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().flag_sets, focus_syns, 0));
 
         // FLAGS: [pyr: 80], [syns: 0's], [mcol: 1]; (unchanged)
 
@@ -562,13 +561,13 @@ impl LearningTestBed {
 
         // Check that all synapses within the `focus_syns` range have the
         // potentiation flag (`SYN_STPOT_FLAG`):
-        assert!(util::eval_range(self.focus_syns.clone(), &area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().flag_sets(),
+        assert!(util::eval_range(self.focus_syns.clone(), &area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().flag_sets(),
             |x| x == cmn::SYN_STPOT_FLAG ), "tests::learning::learning_iter: \
             'On-focus' synapse flags are not properly set to potentiation.");
 
         // Check that all synapses within the `off_focus_syns` range have the
         // depression flag (`SYN_STDEP_FLAG`):
-        assert!(util::eval_range(self.off_focus_syns.clone(), &area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().flag_sets(),
+        assert!(util::eval_range(self.off_focus_syns.clone(), &area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().flag_sets(),
             |x| x == cmn::SYN_STDEP_FLAG ), "tests::learning::learning_iter: \
             'Off-focus' synapse flags are not properly set to depression.");
 
@@ -635,7 +634,7 @@ impl LearningTestBed {
 
         // Double-check that all synapses within the `focus_syns` range have the
         // potentiation flag (`SYN_STPOT_FLAG`):
-        assert!(util::eval_range(self.focus_syns.clone(), &area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().flag_sets(),
+        assert!(util::eval_range(self.focus_syns.clone(), &area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().flag_sets(),
             |x| x == cmn::SYN_STPOT_FLAG ), "tests::learning::learning_iter: \
             Synapse flags are not properly set to potentiation.");
 
@@ -671,9 +670,9 @@ impl LearningTestBed {
         }
 
         // [FIXME] TODO: Need a more sophisticated test that tracks the current syn strengths:
-        // assert!(util::eval_range(&area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().strengths, self.focus_syns.clone(),
+        // assert!(util::eval_range(&area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().strengths, self.focus_syns.clone(),
         //     |x| x > 0 ));
-        // assert!(util::eval_range(&area.pyr_layer(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().strengths, self.off_focus_syns.clone(),
+        // assert!(util::eval_range(&area.layer_test(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens().syns().strengths, self.off_focus_syns.clone(),
         //     |x| x < 0 ));
 
         // [FIXME] TODO: Check that synapses flags are all zero
@@ -709,13 +708,13 @@ impl LearningTestBed {
 
         // Set everything back up:
         let area = self.cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
-        // area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids()
+        // area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids()
         //    .cmd().fill(self.unused_slc_id, None).enq().unwrap();
 
         // * TODO: Reimplement using fill:
         for syn_idx in self.focus_syns.clone() {
-            area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().set_src_offs(self.fake_v_ofs, self.fake_u_ofs, syn_idx as usize);
-            area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().set_src_slc(self.fake_neighbor_slc, syn_idx as usize);
+            area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().set_src_offs(self.fake_v_ofs, self.fake_u_ofs, syn_idx as usize);
+            area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().set_src_slc(self.fake_neighbor_slc, syn_idx as usize);
         }
 
         // Finish queues:
@@ -737,26 +736,26 @@ impl LearningTestBed {
 
         printlnc!(yellow: "Cleaning up...");
 
-        area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().cmd()
+        area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().cmd()
             .fill(self.unused_slc_id, Some(self.syn_coords.syn_idx_range_celtft().len()))
             .offset(self.syn_coords.syn_idx_range_celtft().start).enq().unwrap();
 
-        area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_col_v_offs().cmd()
+        area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_col_v_offs().cmd()
             .fill(0, Some(self.syn_coords.syn_idx_range_celtft().len()))
             .offset(self.syn_coords.syn_idx_range_celtft().start).enq().unwrap();
 
-        area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_col_u_offs().cmd()
+        area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_col_u_offs().cmd()
             .fill(0, Some(self.syn_coords.syn_idx_range_celtft().len()))
             .offset(self.syn_coords.syn_idx_range_celtft().start).enq().unwrap();
 
         if zero_strengths {
-            area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().strengths().cmd()
+            area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().strengths().cmd()
             .fill(0, Some(self.syn_coords.syn_idx_range_celtft().len()))
             .offset(self.syn_coords.syn_idx_range_celtft().start).enq().unwrap();
         }
 
         if zero_flag_sets {
-            area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().flag_sets().cmd()
+            area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().flag_sets().cmd()
             .fill(0, Some(self.syn_coords.syn_idx_range_celtft().len()))
             .offset(self.syn_coords.syn_idx_range_celtft().start).enq().unwrap();
         }

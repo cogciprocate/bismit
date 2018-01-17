@@ -7,7 +7,8 @@ use map::{AreaMap};
 use ocl::{Kernel, ProQue, Buffer, Event, SpatialDims};
 use map::{CellScheme, ExecutionGraph, CommandRelations,
     CorticalBuffer, LayerAddress, LayerTags, CommandUid};
-use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayers};
+use cortex::{Dendrites, AxonSpace, CorticalAreaSettings, DataCellLayer, ControlCellLayers,
+    Tufts};
 
 
 const PRNT: bool = false;
@@ -325,6 +326,7 @@ impl DataCellLayer for SpinyStellateLayer {
     #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
     #[inline] fn tft_count(&self) -> usize { TUFT_COUNT }
     #[inline] fn cell_scheme(&self) -> &CellScheme { &self.cell_scheme }
+    #[inline] fn tufts(&self) -> &Tufts { unimplemented!(); }
     #[inline] fn dens(&self) -> &Dendrites { &self.dens }
     #[inline] fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }
 }

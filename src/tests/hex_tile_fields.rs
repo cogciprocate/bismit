@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_variables, unused_mut)]
 
 use ocl::builders::{BuildOpt};
-use ::{Cortex, CorticalAreaSettings};
+use cortex::{Cortex, CorticalAreaSettings, CorticalAreaTest};
 use map;
 use map::*;
 use tests::testbed;
@@ -86,7 +86,7 @@ pub fn smoother_overlap() {
 
     // Layer 4 spatial cell energies:
     let l4_spt_cel_enrgs = cortex.areas().by_key(PRI_AREA).unwrap()
-        .ssc_layer(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().energies().clone();
+        .layer_test(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().energies().clone();
 
     let training_collect_iters = vec![5; 12];
     let cell_count = (AREA_DIM * AREA_DIM) as usize;

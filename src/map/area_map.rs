@@ -7,7 +7,7 @@ use map::{SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapScheme
 use subcortex::Subcortex;
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AreaMap {
     area_id: usize,
     area_name: &'static str,

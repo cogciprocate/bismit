@@ -816,18 +816,18 @@ pub mod tests {
     #[test]
     fn syn_idx_range_den() {
         use tests::testbed;
-        use cortex::{DenCoords, DataCellLayer, DataCellLayerTest};
+        use cortex::{CorticalAreaTest, DenCoords};
 
         let mut cortex = testbed::fresh_cortex();
         let area = cortex.areas_mut().by_key_mut(testbed::PRIMARY_AREA_NAME).unwrap();
 
         // Choose a random synapse:
-        let cel_coords = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
+        let cel_coords = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
             .unwrap().rand_cel_coords();
-        let syn_coords = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
+        let syn_coords = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
             .unwrap().dens_mut().syns_mut().rand_syn_coords(cel_coords.clone());
 
-        let tft_den_idz = area.pyr_layer_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
+        let tft_den_idz = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME)
             .unwrap().dens().den_idzs_by_tft()[syn_coords.tft_id];
 
         let den_coords = DenCoords::new(syn_coords.cel_coords.clone(), syn_coords.tft_id,
