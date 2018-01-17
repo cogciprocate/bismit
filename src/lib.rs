@@ -13,6 +13,7 @@ extern crate rand;
 extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate crossbeam;
+extern crate ocl_extras;
 #[macro_use]
 extern crate bitflags;
 #[macro_use]

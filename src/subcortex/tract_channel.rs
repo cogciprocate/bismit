@@ -194,7 +194,7 @@ impl<T: OclPrm> TractBufferTyped<T> {
 
     fn len(&self) -> usize {
         match *self {
-            TractBufferTyped::Single(ref rwv) => rwv.len(),
+            TractBufferTyped::Single(ref rwv) => rwv.len_stale(),
             TractBufferTyped::Double => unimplemented!(),
             TractBufferTyped::Triple => unimplemented!(),
         }

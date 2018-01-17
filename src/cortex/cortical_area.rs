@@ -933,8 +933,8 @@ impl CorticalArea {
         rx
     }
 
-    /// Requests a cortical 'sampler' which provides external read/write
-    /// access to cortical cells and axons.
+    /// Requests a cortical 'sampler' which provides external read access to
+    /// cortical cells and axons.
     pub fn sampler(&mut self, kind: SamplerKind, buffer_kind: SamplerBufferKind,
             backpressure: bool) -> TractReceiver {
         use ocl::RwVec;

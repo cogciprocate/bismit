@@ -10,7 +10,7 @@ use vibi::bismit::{map, encode, Result as CmnResult, Cortex, CorticalAreaSetting
     SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, WorkPoolRemote, TractReceiver,
     SamplerKind, SamplerBufferKind, CorticalAreas};
 use vibi::bismit::map::*;
-use ::{IncrResult, TrialIter, Layer, PathwayDir};
+use ::{IncrResult, TrialIter, Layer, Pathway};
 
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
@@ -416,7 +416,7 @@ impl EvalSpatial {
 
             let layer = Layer {
                 sub: sub_layer,
-                pathway: PathwayDir::None,
+                pathway: Pathway::None,
             };
 
             layers.insert(layer.sub().addr().clone(), layer);
@@ -482,10 +482,9 @@ impl EvalSpatial {
 impl SubcorticalNucleus for EvalSpatial {
     fn create_pathways(&mut self, thal: &mut Thalamus,
             cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
-        // Wire up output (sdr) pathways.
+        // Wire up I/O pathways.
         for layer in self.layers.values_mut() {
-            let tx = thal.input_pathway(*layer.sub().addr(), true);
-            layer.pathway = PathwayDir::Output { tx };
+            layer.pathway = Pathway::new(thal, layer.sub());
         }
 
         let v1_l4_lyr_addr = *thal.area_maps().by_key(PRI_AREA).expect("invalid area")
@@ -533,7 +532,7 @@ impl SubcorticalNucleus for EvalSpatial {
 
         // Write sdr to pathway:
         for layer in self.layers.values() {
-            if let PathwayDir::Output { ref tx } = layer.pathway {
+            if let Pathway::Output { ref tx } = layer.pathway {
                 let future_sdrs = self.input_sdrs.clone().read().from_err();
 
                 let future_write_guard = tx.send()

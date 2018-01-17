@@ -1,4 +1,5 @@
 
+use ocl_extras;
 use cmn::{self};
 use ocl::{self, Buffer, SpatialDims};
 use super::{TestBed, util};
@@ -30,7 +31,7 @@ pub fn axn_idxs(testbed: &TestBed) {
     let syn_reach = cmn::SYNAPSE_REACH as i8;
     let syn_range = (0 - syn_reach, syn_reach + 1);
 
-    let vec_init = ocl::util::shuffled_vec(syn_range, testbed.dims.to_len());
+    let vec_init = ocl_extras::shuffled_vec(syn_range, testbed.dims.to_len());
     let u_offs = Buffer::builder()
         .queue(testbed.ocl_pq.queue().clone())
         .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
@@ -38,7 +39,7 @@ pub fn axn_idxs(testbed: &TestBed) {
         .host_data(&vec_init)
         .build().unwrap();
 
-    let vec_init = ocl::util::shuffled_vec(syn_range, testbed.dims.to_len());
+    let vec_init = ocl_extras::shuffled_vec(syn_range, testbed.dims.to_len());
     let v_offs = Buffer::builder()
         .queue(testbed.ocl_pq.queue().clone())
         .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)

@@ -24,9 +24,9 @@ use qutex::QrwLock;
 use vibi::window;
 use vibi::bismit::ocl::{Buffer, RwVec};
 use vibi::bismit::{encode, Cortex, SubcorticalNucleusLayer, TractSender,
-    TractReceiver, CorticalDims, TractDims};
+    TractReceiver, CorticalDims, TractDims, Thalamus};
 use vibi::bismit::flywheel::{Flywheel, Command, Request, Response};
-use vibi::bismit::map::{AreaMap, AxonTopology, LayerAddress};
+use vibi::bismit::map::{AreaMap, AxonTopology, LayerAddress, AxonDomain};
 
 
 pub struct Params {
@@ -308,10 +308,49 @@ pub struct InputSource {
 
 
 #[derive(Debug)]
-pub enum PathwayDir {
+pub enum Pathway {
     Output { tx: TractSender },
     Input { srcs: Vec<InputSource> },
     None,
+}
+
+impl Pathway {
+    pub fn output(thal: &mut Thalamus, layer: &SubcorticalNucleusLayer,
+            wait_for_frame: bool) -> Pathway {
+        let tx = thal.input_pathway(*layer.addr(), wait_for_frame);
+        Pathway::Output { tx }
+    }
+
+    pub fn input(thal: &mut Thalamus, layer: &SubcorticalNucleusLayer)
+            -> Pathway {
+        let src_lyr_infos: Vec<_> =
+            thal.area_maps().by_index(layer.addr().area_id())
+                    .unwrap()
+                    .layer(layer.addr().layer_id()).unwrap()
+                    .sources().iter().map(|src_lyr| {
+                (*src_lyr.layer_addr(), src_lyr.dims().clone())
+        }).collect();
+
+        let srcs: Vec<_> = src_lyr_infos.into_iter().map(|(addr, dims)| {
+            InputSource {
+                addr,
+                dims,
+                rx: thal.output_pathway(addr)
+            }
+        }).collect();
+
+        Pathway::Input { srcs }
+    }
+
+    /// Creates the appropriate pathway with backpressure if the layer is an
+    /// output layer.
+    pub fn new(thal: &mut Thalamus, layer: &SubcorticalNucleusLayer) -> Pathway {
+        match *layer.axon_domain() {
+            AxonDomain::Output(_) => Pathway::output(thal, layer, true),
+            AxonDomain::Input(_) => Pathway::input(thal, layer),
+            _ => Pathway::None,
+        }
+    }
 }
 
 
@@ -319,7 +358,7 @@ pub enum PathwayDir {
 #[derive(Debug)]
 pub struct Layer {
     sub: SubcorticalNucleusLayer,
-    pathway: PathwayDir,
+    pathway: Pathway,
 }
 
 impl Layer {
@@ -339,7 +378,7 @@ impl Layer {
         &mut self.sub
     }
 
-    pub fn pathway(&self) -> &PathwayDir {
+    pub fn pathway(&self) -> &Pathway {
         &self.pathway
     }
 }

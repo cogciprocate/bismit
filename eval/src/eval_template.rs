@@ -17,7 +17,7 @@ use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thala
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
-use ::{IncrResult, TrialIter, Layer, PathwayDir, InputSource, Sdrs};
+use ::{IncrResult, TrialIter, Layer, Pathway, InputSource, Sdrs};
 use ::spatial::{TrialData, TrialResults};
 
 
@@ -63,7 +63,7 @@ impl EvalSequence {
 
             let layer = Layer {
                 sub: sub_layer,
-                pathway: PathwayDir::None,
+                pathway: Pathway::None,
             };
 
             layers.insert(layer.sub().addr().clone(), layer);
@@ -94,32 +94,9 @@ impl EvalSequence {
 impl SubcorticalNucleus for EvalSequence {
     fn create_pathways(&mut self, thal: &mut Thalamus,
             _cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
-        // Wire up output (sdr) pathways.
+        // Wire up I/O pathways:
         for layer in self.layers.values_mut() {
-            match *layer.sub().axon_domain() {
-                AxonDomain::Output(_) => {
-                    let tx = thal.input_pathway(*layer.sub().addr(), true);
-                    layer.pathway = PathwayDir::Output { tx };
-                },
-                AxonDomain::Input(_) => {
-                    let src_lyr_infos: Vec<_> =thal.area_maps().by_index(self.area_id).unwrap()
-                            .layer(layer.sub().addr().layer_id()).unwrap()
-                            .sources().iter().map(|src_lyr| {
-                        (*src_lyr.layer_addr(), src_lyr.dims().clone())
-                    }).collect();
-
-                    let srcs: Vec<_> = src_lyr_infos.into_iter().map(|(addr, dims)| {
-                        InputSource {
-                            addr,
-                            dims,
-                            rx: thal.output_pathway(addr)
-                        }
-                    }).collect();
-
-                    layer.pathway = PathwayDir::Input { srcs };
-                },
-                _ => (),
-            }
+            layer.pathway = Pathway::new(thal, layer.sub());
         }
         Ok(())
     }
@@ -140,7 +117,7 @@ impl SubcorticalNucleus for EvalSequence {
 
         // Write sdr to pathway:
         for layer in self.layers.values() {
-            if let PathwayDir::Output { ref tx } = layer.pathway {
+            if let Pathway::Output { ref tx } = layer.pathway {
                 debug_assert!(layer.sub().axon_domain().is_output());
 
                 match layer.sub().name() {
@@ -193,7 +170,7 @@ impl SubcorticalNucleus for EvalSequence {
     ///
     fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) -> CmnResult<()> {
         for layer in self.layers.values() {
-            if let PathwayDir::Input { srcs: _ } = layer.pathway {
+            if let Pathway::Input { srcs: _ } = layer.pathway {
                 debug_assert!(layer.sub().axon_domain().is_input());
             }
         }

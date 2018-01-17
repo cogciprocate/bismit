@@ -11,9 +11,9 @@ version = "*"
 path = "../ocl/ocl"
 # git = "https://github.com/cogciprocate/ocl.git"
 # features = ["kernel_debug_sleep", "kernel_debug_print"]
-# features = ["kernel_debug_print"]
 
 [dependencies]
+ocl-extras = { path = "../ocl/ocl/ocl-extras" }
 bitflags = "*"
 rand = "*"
 num = "*"
@@ -29,18 +29,9 @@ tokio-core = "*"
 crossbeam = "*"
 cpuprofiler = { version = "*", optional = true }
 failure = "*"
-# log = "*"
 
 [dev-dependencies]
 qutex = "*"
 
 [workspace]
 members = ["eval"]
-
-[replace]
-# "qutex:0.1.1" = { git = "https://github.com/cogciprocate/qutex" }
-# "qutex:0.1.1" = { path = "/home/nick/src/github.com/cogciprocate/qutex" }
-# "cl-sys:0.3.0" = { git = 'https://github.com/cogciprocate/cl-sys' }
-# "ocl-core:0.5.1" = { git = "https://github.com/cogciprocate/ocl-core" }
-# "ocl-core:0.3.2" = { path = "/home/nick/src/github.com/cogciprocate/ocl-core" }
-# "ocl-core:0.3.2" = { path = "../ocl-core" }
