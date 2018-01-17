@@ -487,7 +487,7 @@ impl SubcorticalNucleus for EvalSpatial {
             layer.pathway = Pathway::new(thal, layer.sub());
         }
 
-        let v1_l4_lyr_addr = *thal.area_maps().by_key(PRI_AREA).expect("invalid area")
+        let v1_l4_lyr_addr = thal.area_maps().by_key(PRI_AREA).expect("invalid area")
             .layer_map().layers().by_key(SPT_LYR)
             .expect("bad lyr").layer_addr();
 
@@ -519,7 +519,8 @@ impl SubcorticalNucleus for EvalSpatial {
     /// * Writes output SDR to thalamic tract
     /// *
     ///
-    fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
+    fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
+            work_pool: &mut WorkPool) -> CmnResult<()> {
         self.current_pattern_idx = if SEQUENTIAL_SDR {
             // Write a non-random SDR:
             self.trial_iter.global_cycle_idx % self.pattern_count
@@ -561,7 +562,8 @@ impl SubcorticalNucleus for EvalSpatial {
     /// * Blocks to wait for sampler channels
     /// * Increments the cell activity counts
     ///
-    fn post_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
+    fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
+            work_pool: &mut WorkPool) -> CmnResult<()> {
         if self.trial_iter.current_counter().is_collecting() {
             let pattern_idx = self.current_pattern_idx;
 

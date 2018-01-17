@@ -317,7 +317,7 @@ pub enum Pathway {
 impl Pathway {
     pub fn output(thal: &mut Thalamus, layer: &SubcorticalNucleusLayer,
             wait_for_frame: bool) -> Pathway {
-        let tx = thal.input_pathway(*layer.addr(), wait_for_frame);
+        let tx = thal.input_pathway(layer.addr(), wait_for_frame);
         Pathway::Output { tx }
     }
 
@@ -328,7 +328,7 @@ impl Pathway {
                     .unwrap()
                     .layer(layer.addr().layer_id()).unwrap()
                     .sources().iter().map(|src_lyr| {
-                (*src_lyr.layer_addr(), src_lyr.dims().clone())
+                (src_lyr.layer_addr(), src_lyr.dims().clone())
         }).collect();
 
         let srcs: Vec<_> = src_lyr_infos.into_iter().map(|(addr, dims)| {

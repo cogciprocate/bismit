@@ -188,14 +188,14 @@ impl Cortex {
         self.thal.cycle_pathways(&mut self.work_pool);
         // self.thal.cycle_input_generators();
 
-        self.sub.pre_cycle(&mut self.thal, &mut self.work_pool)?;
+        self.sub.pre_cycle(&mut self.thal, &mut self.areas, &mut self.work_pool)?;
 
         for area in self.areas.values_mut() {
             area.cycle(&mut self.thal, &mut self.work_pool)
                 .expect("Cortex::cycle(): Cortical area cycling error");
         }
 
-        self.sub.post_cycle(&mut self.thal, &mut self.work_pool)?;
+        self.sub.post_cycle(&mut self.thal, &mut self.areas, &mut self.work_pool)?;
 
         #[cfg(feature = "profile")]
         PROFILER.lock().unwrap().stop().unwrap();

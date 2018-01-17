@@ -31,6 +31,7 @@ const SEQUENTIAL_SDR: bool = true;
 
 
 
+#[derive(Debug)]
 enum CellSampleIdxs {
     Single(usize),
     Range(usize, usize),
@@ -38,20 +39,56 @@ enum CellSampleIdxs {
 }
 
 
-struct CellSampler {
+#[derive(Debug)]
+struct LayerSampler {
     idxs: CellSampleIdxs,
-    sampler_kinds: Vec<SamplerKind>,
-    rxs: Vec<TractReceiver>,
+    // sampler_kinds: Vec<SamplerKind>,
+    rxs: Vec<(SamplerKind, TractReceiver)>,
 }
 
+impl LayerSampler {
+    pub fn new(area_name: &str, idxs: CellSampleIdxs, sampler_kinds: Vec<SamplerKind>,
+            thal: &mut Thalamus, cortical_areas: &mut CorticalAreas) -> LayerSampler {
+        // let lyr_addr = thal.area_maps().by_key(PRI_AREA).expect("invalid area name")
+        //     .layer_map().layers().by_key(layer_name)
+        //     .expect("invalid lyr name").layer_addr();
+
+        let area = cortical_areas.by_key_mut(area_name).unwrap();
+        let mut rxs = Vec::with_capacity(sampler_kinds.len());
+
+        // let l4_axns = pri_area.sampler(SamplerKind::AxonLayer(Some(v1_l4_lyr_addr)),
+        //         SamplerBufferKind::Single, true);
+
+        // // Layer 4 spatial dendrite activity ratings (pre-inhib):
+        // let l4_den_actvs = pri_area.sampler(SamplerKind::SscDenActivities(v1_l4_lyr_addr),
+        //         SamplerBufferKind::Single, false);
+
+        // // Layer 4 spatial cell activity ratings (axon activity, post-inhib):
+        // let l4_cel_actvs = pri_area.sampler(SamplerKind::SscSomaActivities(v1_l4_lyr_addr),
+        //         SamplerBufferKind::Single, false);
+
+        // // Layer 4 spatial cell energies (restlessness):
+        // let l4_cel_enrgs = pri_area.sampler(SamplerKind::SscSomaEnergies(v1_l4_lyr_addr),
+        //         SamplerBufferKind::Single, false);
+
+        // self.samplers = Some(LayerSampler { l4_axns, l4_den_actvs, l4_cel_actvs,
+        //     l4_cel_enrgs });
+
+        for sk in sampler_kinds.into_iter() {
+            let rx = area.sampler(sk.clone(), SamplerBufferKind::Single, true);
+            rxs.push((sk, rx))
+        }
 
 
-struct Samplers {
-    l4_axns: TractReceiver,
-    l4_den_actvs: TractReceiver,
-    l4_cel_actvs: TractReceiver,
-    l4_cel_enrgs: TractReceiver,
+
+        LayerSampler {
+            idxs,
+            // sampler_kinds,
+            rxs,
+        }
+    }
 }
+
 
 
 /// A `SubcorticalNucleus`.
@@ -63,7 +100,7 @@ struct EvalSequence {
     sdrs: Sdrs,
     trial_iter: TrialIter,
     // current_pattern_idx: usize,
-    samplers: Option<Samplers>,
+    samplers: Option<LayerSampler>,
 }
 
 impl EvalSequence {
@@ -122,9 +159,6 @@ impl EvalSequence {
         - Cycle
         - Check to see who's winning
             - Print the tft and cel state/best values
-
-
-
     */
 
     fn init() {}
@@ -140,29 +174,10 @@ impl SubcorticalNucleus for EvalSequence {
             layer.pathway = Pathway::new(thal, layer.sub());
         }
 
-        let pri_area = cortical_areas.by_key_mut(PRI_AREA).unwrap();
+        let lyr_addr = thal.area_maps().by_key(PRI_AREA).expect("invalid area name")
+            .layer_map().layers().by_key("iii")
+            .expect("invalid lyr name").layer_addr();
 
-        // let v1_l4_lyr_addr = *thal.area_maps().by_key(PRI_AREA).expect("invalid area")
-        //     .layer_map().layers().by_key(SPT_LYR)
-        //     .expect("bad lyr").layer_addr();
-
-        // let l4_axns = pri_area.sampler(SamplerKind::AxonLayer(Some(v1_l4_lyr_addr)),
-        //         SamplerBufferKind::Single, true);
-
-        // // Layer 4 spatial dendrite activity ratings (pre-inhib):
-        // let l4_den_actvs = pri_area.sampler(SamplerKind::SscDenActivities(v1_l4_lyr_addr),
-        //         SamplerBufferKind::Single, false);
-
-        // // Layer 4 spatial cell activity ratings (axon activity, post-inhib):
-        // let l4_cel_actvs = pri_area.sampler(SamplerKind::SscSomaActivities(v1_l4_lyr_addr),
-        //         SamplerBufferKind::Single, false);
-
-        // // Layer 4 spatial cell energies (restlessness):
-        // let l4_cel_enrgs = pri_area.sampler(SamplerKind::SscSomaEnergies(v1_l4_lyr_addr),
-        //         SamplerBufferKind::Single, false);
-
-        // self.samplers = Some(Samplers { l4_axns, l4_den_actvs, l4_cel_actvs,
-        //     l4_cel_enrgs });
 
         Ok(())
     }
@@ -172,7 +187,8 @@ impl SubcorticalNucleus for EvalSequence {
     /// * Writes output SDR to thalamic tract
     /// *
     ///
-    fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
+    fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
+            work_pool: &mut WorkPool) -> CmnResult<()> {
         let pattern_idx = if SEQUENTIAL_SDR {
             // Choose a non-random SDR:
             self.trial_iter.global_cycle_idx % self.sdrs.pattern_count
@@ -234,7 +250,8 @@ impl SubcorticalNucleus for EvalSequence {
     /// * Blocks to wait for sampler channels
     /// * Increments the cell activity counts
     ///
-    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) -> CmnResult<()> {
+    fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
+            _work_pool: &mut WorkPool) -> CmnResult<()> {
         for layer in self.layers.values() {
             if let Pathway::Input { srcs: _ } = layer.pathway {
                 debug_assert!(layer.sub().axon_domain().is_input());

@@ -139,7 +139,7 @@ pub fn eval(sub: Option<&str>) {
         .subcortical_nucleus(dummy)
         .build().unwrap();
 
-    let v0_ext_lyr_addr = *cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
+    let v0_ext_lyr_addr = cortex.thal().area_maps().by_key(IN_AREA).expect("bad area")
         .layer_map().layers().by_key(EXT_LYR).expect("bad lyr").layer_addr();
 
     // let v1_spt_lyr_buf = {

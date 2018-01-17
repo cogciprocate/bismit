@@ -65,7 +65,7 @@ impl IoInfo {
     }
 
     #[inline] pub fn tract_area_id(&self) -> usize { self.tract_area_id }
-    #[inline] pub fn src_lyr_addr(&self) -> &LayerAddress { &self.src_lyr_addr }
+    #[inline] pub fn src_lyr_addr(&self) -> LayerAddress { self.src_lyr_addr }
     #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
     #[inline] pub fn exe_cmd(&self) -> &IoExeCmd { &self.exe_cmd }
     #[inline] pub fn exe_cmd_mut(&mut self) -> &mut IoExeCmd { &mut self.exe_cmd }

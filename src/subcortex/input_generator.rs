@@ -323,7 +323,7 @@ impl InputGenerator {
             };
 
             self.tx.send(EncoderCmd::WriteInto {
-                addr: *layer.sub().addr(),
+                addr: layer.sub().addr(),
                 dims: layer.sub.dims().unwrap().into(),
                 future_write,
             }).unwrap();
@@ -362,13 +362,14 @@ impl SubcorticalNucleus for InputGenerator {
     fn create_pathways(&mut self, thal: &mut Thalamus,
             _cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
         for layer in self.layers.values_mut() {
-            let tx = thal.input_pathway(*layer.sub().addr(), true);
+            let tx = thal.input_pathway(layer.sub().addr(), true);
             layer.pathway = Some(tx);
         }
         Ok(())
     }
 
-    fn pre_cycle(&mut self, _thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
+    fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
+            work_pool: &mut WorkPool) -> CmnResult<()> {
         for layer in self.layers.values() {
             self.send_to_pathway(layer, work_pool);
         }
@@ -376,7 +377,8 @@ impl SubcorticalNucleus for InputGenerator {
         Ok(())
     }
 
-    fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) -> CmnResult<()> {
+    fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
+            _work_pool: &mut WorkPool) -> CmnResult<()> {
         Ok(())
     }
 

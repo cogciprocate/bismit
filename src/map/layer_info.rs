@@ -322,7 +322,7 @@ impl LayerInfo {
     }
 
     pub fn src_lyr(&self, src_layer_addr: &LayerAddress) -> Option<&SourceLayerInfo> {
-        self.sources.iter().find(|sli| sli.layer_addr() == src_layer_addr)
+        self.sources.iter().find(|sli| sli.layer_addr() == *src_layer_addr)
     }
 
     pub fn irregular_layer_dims(&self) -> Option<&CorticalDims> {
@@ -348,7 +348,7 @@ impl LayerInfo {
         }
     }
 
-    #[inline] pub fn layer_addr(&self) -> &LayerAddress { &self.layer_addr }
+    #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn layer_id(&self) -> usize { self.layer_addr.layer_id() }
     #[inline] pub fn name<'s>(&'s self) -> &'s str { &self.name }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
@@ -421,7 +421,7 @@ impl SourceLayerInfo {
     }
 
     #[inline] pub fn area_id<'a>(&'a self) -> usize { self.layer_addr.area_id() }
-    #[inline] pub fn layer_addr(&self) -> &LayerAddress { &self.layer_addr }
+    #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] pub fn axn_count(&self) -> u32 { self.dims().cells() }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
