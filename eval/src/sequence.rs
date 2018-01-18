@@ -65,7 +65,6 @@ impl LayerSampler {
 }
 
 
-
 /// A `SubcorticalNucleus`.
 struct EvalSequence {
     area_name: String,

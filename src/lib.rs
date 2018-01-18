@@ -44,7 +44,7 @@ pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses,
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus,
     SubcorticalNucleusLayer, TestScNucleus, InputGenerator, InputGeneratorTract,
     InputGeneratorEncoder, InputGeneratorFrame, TractBuffer, TractSender,
-    TractReceiver};
+    TractReceiver, WriteBuffer, ReadBuffer};
 pub use self::flywheel::Flywheel;
 pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap, AxonTopology};
 pub use self::cmn::{util, TractDims, TypeId, CmnError as Error, CmnResult as Result,
