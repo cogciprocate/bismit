@@ -848,12 +848,10 @@ impl CorticalArea {
         Ok(())
     }
 
-    /// Creates a tract channel and configures execution graph appropriately.
-    fn sampler_rx_single_u8(&mut self, len: usize, cmd_srcs: Vec<CorticalBuffer>,
-            kind: SamplerKind, src_idx_range: Option<Range<usize>>, backpressure: bool) -> TractReceiver {
-        // Create a new tract channel:
-        let (tx, rx) = subcortex::tract_channel_single_u8(RwVec::from(vec![0u8; len]), None,
-            backpressure);
+    /// Creates and adds a sampler from the provided transmitter and
+    /// configures the execution graph appropriately.
+    fn add_sampler(&mut self, cmd_srcs: Vec<CorticalBuffer>, kind: SamplerKind,
+            src_idx_range: Option<Range<usize>>, tx: TractSender) {
         // Add command to graph and get uid:
         self.exe_graph.unlock();
         let cmd_uid = self.exe_graph.add_command(
@@ -863,6 +861,27 @@ impl CorticalArea {
         self.samplers.push(Sampler::new(kind, src_idx_range, tx, cmd_uid));
         // Repopulate execution graph:
         self.order().expect("CorticalArea::sampler: Error reordering");
+    }
+
+    /// Creates a tract channel and configures execution graph appropriately.
+    fn sampler_rx_single_u8(&mut self, len: usize, cmd_srcs: Vec<CorticalBuffer>,
+            kind: SamplerKind, src_idx_range: Option<Range<usize>>, backpressure: bool) -> TractReceiver {
+        // Create a new tract channel:
+        let (tx, rx) = subcortex::tract_channel_single_u8(RwVec::from(vec![0u8; len]), None,
+            backpressure);
+        // Add sampler and config exe graph:
+        self.add_sampler(cmd_srcs, kind, src_idx_range, tx);
+        rx
+    }
+
+    /// Creates a tract channel and configures execution graph appropriately.
+    fn sampler_rx_single_i8(&mut self, len: usize, cmd_srcs: Vec<CorticalBuffer>,
+            kind: SamplerKind, src_idx_range: Option<Range<usize>>, backpressure: bool) -> TractReceiver {
+        // Create a new tract channel:
+        let (tx, rx) = subcortex::tract_channel_single_i8(RwVec::from(vec![0i8; len]), None,
+            backpressure);
+        // Add sampler and config exe graph:
+        self.add_sampler(cmd_srcs, kind, src_idx_range, tx);
         rx
     }
 
@@ -1020,9 +1039,36 @@ impl CorticalArea {
             },
 
             // Dens:
-            SamplerKind::DenStates(_lyr_addr) => unimplemented!(),
-            SamplerKind::DenStatesRaw(_lyr_addr) => unimplemented!(),
-            SamplerKind::DenEnergies(_lyr_addr) => unimplemented!(),
+            SamplerKind::DenStates(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_den_tft(lyr.dens().states(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().states().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::DenStatesRaw(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_den_tft(lyr.dens().states_raw(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().states_raw().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::DenEnergies(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_den_tft(lyr.dens().energies(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().energies().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
             SamplerKind::DenActivities(lyr_addr) => {
                 let (len, cmd_srcs) = {
                     let lyr = lyr(&self.data_layers, lyr_addr);
@@ -1033,14 +1079,68 @@ impl CorticalArea {
                 };
                 self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
             },
-            SamplerKind::DenThresholds(_lyr_addr) => unimplemented!(),
+            SamplerKind::DenThresholds(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_den_tft(lyr.dens().thresholds(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().thresholds().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
 
-
-            // SynStates(lyr_addr),
-            // SynStrengths(lyr_addr),
-            // SynSrcColVOffs(lyr_addr),
-            // SynSrcColUOffs(lyr_addr),
-            // SynFlagSets(lyr_addr),
+            // Syns:
+            SamplerKind::SynStates(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_syn_tft(lyr.dens().syns().states(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().syns().states().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::SynStrengths(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_syn_tft(lyr.dens().syns().strengths(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().syns().strengths().len(), srcs)
+                };
+                self.sampler_rx_single_i8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::SynSrcColVOffs(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_syn_tft(lyr.dens().syns().src_col_v_offs(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().syns().src_col_v_offs().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::SynSrcColUOffs(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_syn_tft(lyr.dens().syns().src_col_u_offs(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().syns().src_col_u_offs().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::SynFlagSets(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_syn_tft(lyr.dens().syns().flag_sets(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().syns().flag_sets().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
 
             _ => unimplemented!(),
         }
