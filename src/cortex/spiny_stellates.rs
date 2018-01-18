@@ -87,13 +87,13 @@ impl SpinyStellateLayer {
 
         // let mut cycle_cmd_srcs = Vec::with_capacity(2);
         // // cycle_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, ssc_tft_id));
-        // cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(&energies, layer_addr, ssc_tft_id));
+        // cycle_cmd_srcs.push(CorticalBuffer::data_tft(&energies, layer_addr, ssc_tft_id));
 
         let cycle_exe_cmd_uid = if settings.disable_sscs {
             None
         } else {
             Some(exe_graph.add_command(CommandRelations::cortical_kernel(kern_name,
-                vec![CorticalBuffer::data_soma_tft(&energies, layer_addr, ssc_tft_id)],
+                vec![CorticalBuffer::data_tft(&energies, layer_addr, ssc_tft_id)],
                 vec![CorticalBuffer::data_den_tft(dens.states(), layer_addr, ssc_tft_id)]) )?)
         };
 
@@ -321,6 +321,7 @@ impl DataCellLayer for SpinyStellateLayer {
     #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { self.dens.states_mut() }
     #[inline] fn energies(&self) -> &Buffer<u8> { &self.energies }
     #[inline] fn activities(&self) -> &Buffer<u8> { &self.activities }
+    #[inline] fn flag_sets(&self) -> &Buffer<u8> { unimplemented!() }
     #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
     #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }

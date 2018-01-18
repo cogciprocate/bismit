@@ -493,19 +493,19 @@ impl SubcorticalNucleus for EvalSpatial {
 
         let pri_area = cortical_areas.by_key_mut(PRI_AREA).unwrap();
 
-        let l4_axns = pri_area.sampler(SamplerKind::AxonLayer(Some(v1_l4_lyr_addr)),
+        let l4_axns = pri_area.sampler(SamplerKind::Axons(Some(v1_l4_lyr_addr)),
                 SamplerBufferKind::Single, true);
 
         // Layer 4 spatial dendrite activity ratings (pre-inhib):
-        let l4_den_actvs = pri_area.sampler(SamplerKind::SscDenActivities(v1_l4_lyr_addr),
+        let l4_den_actvs = pri_area.sampler(SamplerKind::DenActivities(v1_l4_lyr_addr),
                 SamplerBufferKind::Single, false);
 
         // Layer 4 spatial cell activity ratings (axon activity, post-inhib):
-        let l4_cel_actvs = pri_area.sampler(SamplerKind::SscSomaActivities(v1_l4_lyr_addr),
+        let l4_cel_actvs = pri_area.sampler(SamplerKind::SomaActivities(v1_l4_lyr_addr),
                 SamplerBufferKind::Single, false);
 
         // Layer 4 spatial cell energies (restlessness):
-        let l4_cel_enrgs = pri_area.sampler(SamplerKind::SscSomaEnergies(v1_l4_lyr_addr),
+        let l4_cel_enrgs = pri_area.sampler(SamplerKind::SomaEnergies(v1_l4_lyr_addr),
                 SamplerBufferKind::Single, false);
 
         self.samplers = Some(Samplers { l4_axns, l4_den_actvs, l4_cel_actvs,

@@ -25,7 +25,7 @@ pub struct PyramidalLayer {
 
     states: Buffer<u8>,
     // TODO: Remove:
-    best_den_states_raw: Buffer<u8>,
+    // best_den_states_raw: Buffer<u8>,
     flag_sets: Buffer<u8>,
     energies: Buffer<u8>,
     activities: Buffer<u8>,
@@ -63,7 +63,7 @@ impl PyramidalLayer {
         let celtft_count = cel_count * tft_count;
 
         let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([cel_count]).fill_val(0).build()?;
-        let best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([cel_count]).fill_val(0).build()?;
+        // let best_den_states_raw = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([cel_count]).fill_val(0).build()?;
         let flag_sets = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([cel_count]).fill_val(0).build()?;
         let energies = Buffer::builder().queue(ocl_pq.queue().clone()).len(cel_count).fill_val(0).build()?;
         let activities = Buffer::builder().queue(ocl_pq.queue().clone()).len(cel_count).fill_val(0).build()?;
@@ -156,7 +156,7 @@ impl PyramidalLayer {
             .arg_scl(bsl_prx_tft_id.unwrap_or(0))
             .arg_scl(bsl_dst_tft_id.unwrap_or(0))
             .arg_scl(apc_dst_tft_id.unwrap_or(0))
-            .arg_buf(&best_den_states_raw)
+            // .arg_buf(&best_den_states_raw)
             .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
             .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
             .arg_buf(&states)
@@ -165,16 +165,17 @@ impl PyramidalLayer {
         let mut cycle_cmd_srcs: Vec<CorticalBuffer> = Vec::with_capacity(3 * tft_count);
 
         for tft_id in 0..tft_count {
-            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(tufts.best_den_ids(), layer_addr, tft_id));
-            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(tufts.best_den_states_raw(), layer_addr, tft_id));
-            cycle_cmd_srcs.push(CorticalBuffer::data_soma_tft(tufts.best_den_states(), layer_addr, tft_id));
+            // cycle_cmd_srcs.push(CorticalBuffer::data_tft(tufts.best_den_ids(), layer_addr, tft_id));
+            cycle_cmd_srcs.push(CorticalBuffer::data_tft(tufts.best_den_states_raw(), layer_addr, tft_id));
+            // cycle_cmd_srcs.push(CorticalBuffer::data_tft(tufts.best_den_states(), layer_addr, tft_id));
         }
 
         let cycle_exe_cmd_uid = if !settings.disable_pyrs {
             Some(exe_graph.add_command(CommandRelations::cortical_kernel(
                 kern_name, cycle_cmd_srcs,
                 vec![CorticalBuffer::data_soma_lyr(&states, layer_addr),
-                    CorticalBuffer::data_soma_lyr(&best_den_states_raw, layer_addr)] ))?)
+                    // CorticalBuffer::data_soma_lyr(&best_den_states_raw, layer_addr)
+                ] ))?)
         } else {
             None
         };
@@ -195,7 +196,7 @@ impl PyramidalLayer {
             pyr_lyr_axn_idz: pyr_lyr_axn_idz,
             rng: cmn::weak_rng(),
             states: states,
-            best_den_states_raw: best_den_states_raw,
+            // best_den_states_raw: best_den_states_raw,
             flag_sets: flag_sets,
             energies,
             activities,
@@ -269,7 +270,7 @@ impl PyramidalLayer {
     #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
-    #[inline] pub fn best_den_states_raw(&self) -> &Buffer<u8> { &self.best_den_states_raw }
+    // #[inline] pub fn best_den_states_raw(&self) -> &Buffer<u8> { &self.best_den_states_raw }
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
     #[inline] pub fn tufts(&self) -> &Tufts { &self.tufts }
 }
@@ -343,6 +344,7 @@ impl DataCellLayer for PyramidalLayer {
     #[inline] fn soma_mut(&mut self) -> &mut Buffer<u8> { &mut self.states }
     #[inline] fn energies(&self) -> &Buffer<u8> { &self.energies }
     #[inline] fn activities(&self) -> &Buffer<u8> { &self.activities }
+    #[inline] fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
     #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
     #[inline] fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
     #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }

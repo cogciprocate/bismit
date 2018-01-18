@@ -150,11 +150,33 @@ impl SubcorticalNucleus for EvalSequence {
         }
 
         let lyr_addr = thal.area_maps().by_key(PRI_AREA).expect("invalid area name")
-            .layer_map().layers().by_key("iii")
-            .expect("invalid lyr name").layer_addr();
+            .layer_map().layers().by_key("iii").expect("invalid lyr name")
+            .layer_addr();
 
         let sampler_kinds = vec![
-            // SamplerKind::
+            SamplerKind::Axons(Some(lyr_addr)),
+            SamplerKind::SomaStates(lyr_addr),
+            SamplerKind::SomaEnergies(lyr_addr),
+            SamplerKind::SomaActivities(lyr_addr),
+            SamplerKind::SomaFlagSets(lyr_addr),
+            SamplerKind::TuftStates(lyr_addr),
+            SamplerKind::TuftBestDenIds(lyr_addr),
+            SamplerKind::TuftBestDenStatesRaw(lyr_addr),
+            SamplerKind::TuftBestDenStates(lyr_addr),
+            SamplerKind::TuftPrevStates(lyr_addr),
+            SamplerKind::TuftPrevBestDenIds(lyr_addr),
+            SamplerKind::TuftPrevBestDenStatesRaw(lyr_addr),
+            SamplerKind::TuftPrevBestDenStates(lyr_addr),
+            SamplerKind::DenStates(lyr_addr),
+            SamplerKind::DenStatesRaw(lyr_addr),
+            SamplerKind::DenEnergies(lyr_addr),
+            SamplerKind::DenActivities(lyr_addr),
+            SamplerKind::DenThresholds(lyr_addr),
+            SamplerKind::SynStates(lyr_addr),
+            SamplerKind::SynStrengths(lyr_addr),
+            SamplerKind::SynSrcColVOffs(lyr_addr),
+            SamplerKind::SynSrcColUOffs(lyr_addr),
+            SamplerKind::SynFlagSets(lyr_addr),
         ];
 
         self.sampler = Some(LayerSampler::new(PRI_AREA, CellSampleIdxs::All,

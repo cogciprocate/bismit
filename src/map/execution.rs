@@ -163,7 +163,7 @@ pub enum CorticalBuffer {
     AxonInputFilter { buffer_id: u64 },
     DataCellSynapseTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize, },
     DataCellDendriteTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize },
-    DataCellSomaTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize },
+    DataCellTuft { buffer_id: u64, layer_addr: LayerAddress, tuft_id: usize },
     DataCellSomaLayer { buffer_id: u64, layer_addr: LayerAddress },
     ControlCellSomaLayer { buffer_id: u64, layer_addr: LayerAddress },
 }
@@ -219,9 +219,9 @@ impl CorticalBuffer {
         }
     }
 
-    pub fn data_soma_tft<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress, tuft_id: usize)
+    pub fn data_tft<T: OclPrm>(buf: &Buffer<T>, layer_addr: LayerAddress, tuft_id: usize)
             -> CorticalBuffer {
-        CorticalBuffer::DataCellSomaTuft {
+        CorticalBuffer::DataCellTuft {
             buffer_id: util::buffer_uid(buf),
             layer_addr,
             tuft_id,

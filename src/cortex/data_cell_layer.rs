@@ -20,6 +20,7 @@ pub trait DataCellLayer: 'static + Debug + Send {
     fn soma_mut(&mut self) -> &mut Buffer<u8>;
     fn energies(&self) -> &Buffer<u8>;
     fn activities(&self) -> &Buffer<u8>;
+    fn flag_sets(&self) -> &Buffer<u8>;
     fn dims(&self) -> &CorticalDims;
     fn axn_range(&self) -> (usize, usize);
     fn axn_slc_ids(&self) -> &[u8];

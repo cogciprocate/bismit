@@ -133,9 +133,12 @@ impl Tufts {
                         CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id)
                     ],
                     vec![
-                        CorticalBuffer::data_soma_tft(&best_den_ids, layer_addr, tft_id),
-                        CorticalBuffer::data_soma_tft(&best_den_states_raw, layer_addr, tft_id),
-                        CorticalBuffer::data_soma_tft(&best_den_states, layer_addr, tft_id),
+                        CorticalBuffer::data_tft(&best_den_ids, layer_addr, tft_id),
+                        CorticalBuffer::data_tft(&best_den_states_raw, layer_addr, tft_id),
+                        CorticalBuffer::data_tft(&best_den_states, layer_addr, tft_id),
+                        CorticalBuffer::data_tft(&prev_best_den_ids, layer_addr, tft_id),
+                        CorticalBuffer::data_tft(&prev_best_den_states_raw, layer_addr, tft_id),
+                        CorticalBuffer::data_tft(&prev_best_den_states, layer_addr, tft_id),
                     ]
                 ))?);
             };
@@ -188,8 +191,8 @@ impl Tufts {
                             .collect();
 
                         mtp_cmd_srcs.push(CorticalBuffer::data_soma_lyr(&cel_states, layer_addr));
-                        mtp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&best_den_ids, layer_addr, tft_id));
-                        mtp_cmd_srcs.push(CorticalBuffer::data_soma_tft(&best_den_states_raw, layer_addr, tft_id));
+                        mtp_cmd_srcs.push(CorticalBuffer::data_tft(&prev_best_den_ids, layer_addr, tft_id));
+                        mtp_cmd_srcs.push(CorticalBuffer::data_tft(&prev_best_den_states_raw, layer_addr, tft_id));
                         mtp_cmd_srcs.push(CorticalBuffer::data_den_tft(dens.states(), layer_addr, tft_id));
                         mtp_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, tft_id));
 
@@ -197,7 +200,7 @@ impl Tufts {
                             kern_name, mtp_cmd_srcs,
                             vec![
                                 CorticalBuffer::data_syn_tft(dens.syns().flag_sets(), layer_addr, tft_id),
-                                CorticalBuffer::data_soma_tft(&cel_flag_sets, layer_addr, tft_id),
+                                CorticalBuffer::data_tft(&cel_flag_sets, layer_addr, tft_id),
                                 CorticalBuffer::data_syn_tft(dens.syns().strengths(), layer_addr, tft_id),
                             ]
                         ))?);
@@ -355,6 +358,10 @@ impl Tufts {
     #[inline] pub fn layer_name<'s>(&'s self) -> &'s str { &self.layer_name }
     #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
+    #[inline] pub fn prev_states(&self) -> &Buffer<u8> { &self.prev_states }
+    #[inline] pub fn prev_best_den_ids(&self) -> &Buffer<u8> { &self.prev_best_den_ids }
+    #[inline] pub fn prev_best_den_states_raw(&self) -> &Buffer<u8> { &self.prev_best_den_states_raw }
+    #[inline] pub fn prev_best_den_states(&self) -> &Buffer<u8> { &self.prev_best_den_states }
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn best_den_ids(&self) -> &Buffer<u8> { &self.best_den_ids }
     #[inline] pub fn best_den_states_raw(&self) -> &Buffer<u8> { &self.best_den_states_raw }

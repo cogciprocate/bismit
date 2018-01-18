@@ -958,7 +958,7 @@ __kernel void pyr_cycle(
             __private uchar const bsl_prx_tft_id,
             __private uchar const bsl_dst_tft_id,
             __private uchar const apc_dst_tft_id,
-            __global uchar* const pyr_best_den_states_raw,
+            // __global uchar* const pyr_best_den_states_raw,
             __global int* const aux_ints_0,
             __global int* const aux_ints_1,
             __global uchar* const pyr_states)
@@ -966,7 +966,7 @@ __kernel void pyr_cycle(
     uint const cel_idx = get_global_id(0);
     uint const cel_count = get_global_size(0);
 
-    uchar pyr_best_den_state_raw = 0;
+    // uchar pyr_best_den_state_raw = 0;
     uchar pyr_state = 0;
 
     // // TODO: Remove this loop:
@@ -1004,7 +1004,7 @@ __kernel void pyr_cycle(
     // Divide by 4, ignore rounding:
     uchar apc_dst_contrib = mul24(cel_is_active, apc_dst_state >> 2);
 
-    pyr_best_den_states_raw[cel_idx] = pyr_best_den_state_raw;
+    // pyr_best_den_states_raw[cel_idx] = pyr_best_den_state_raw;
     pyr_states[cel_idx] = bsl_prx_contrib + bsl_dst_contrib, + apc_dst_contrib;
 }
 

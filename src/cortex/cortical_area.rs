@@ -32,6 +32,19 @@ static ROLE_ORDER: [LayerTags; 4] = [LayerTags::FOCUS, LayerTags::SPATIAL, Layer
 // pub type ControlCellLayers = BTreeMap<(LayerAddress, usize), Box<ControlCellLayer>>;
 
 
+// macro_rules! rx {
+//     ( $buf:ident ) => {
+//         {
+//             let (len, cmd_srcs) = {
+//                 let lyr = lyr(&self.data_layers, lyr_addr);
+//                 (lyr.$buf.len(),
+//                     vec![CorticalBuffer::data_soma_lyr(lyr.$buf, lyr_addr)])
+//             };
+//             self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+//         }
+//     };
+// }
+
 
 #[derive(Debug, Clone)]
 pub enum SamplerBufferKind {
@@ -45,15 +58,32 @@ pub enum SamplerBufferKind {
 
 #[derive(Debug, Clone)]
 pub enum SamplerKind {
+    None,
     /// Axons for a specific layer or all layers.
-    AxonLayer(Option<LayerAddress>),
+    Axons(Option<LayerAddress>),
     SomaStates(LayerAddress),
     SomaEnergies(LayerAddress),
     SomaActivities(LayerAddress),
+    SomaFlagSets(LayerAddress),
+    TuftStates(LayerAddress),
+    TuftBestDenIds(LayerAddress),
+    TuftBestDenStatesRaw(LayerAddress),
+    TuftBestDenStates(LayerAddress),
+    TuftPrevStates(LayerAddress),
+    TuftPrevBestDenIds(LayerAddress),
+    TuftPrevBestDenStatesRaw(LayerAddress),
+    TuftPrevBestDenStates(LayerAddress),
     DenStates(LayerAddress),
+    DenStatesRaw(LayerAddress),
     DenEnergies(LayerAddress),
     DenActivities(LayerAddress),
-    Dummy,
+    DenThresholds(LayerAddress),
+    SynStates(LayerAddress),
+    SynStrengths(LayerAddress),
+    SynSrcColVOffs(LayerAddress),
+    SynSrcColUOffs(LayerAddress),
+    SynFlagSets(LayerAddress),
+
 }
 
 
@@ -232,6 +262,7 @@ pub struct CorticalAreaSettings {
 }
 
 impl CorticalAreaSettings {
+    /// Returns a new settings struct.
     pub fn new() -> CorticalAreaSettings {
         CorticalAreaSettings {
             bypass_inhib: false,
@@ -787,7 +818,7 @@ impl CorticalArea {
                     sampler.src_idx_range.len());
                 let mut new_event = Event::empty();
                 let buf = match sampler.kind {
-                    SamplerKind::AxonLayer(_lyr_addr) => self.axns.states(),
+                    SamplerKind::Axons(_lyr_addr) => self.axns.states(),
                     SamplerKind::SomaStates(lyr_addr) =>  lyr(&self.data_layers, lyr_addr).soma(),
                     SamplerKind::SomaEnergies(lyr_addr) =>  lyr(&self.data_layers, lyr_addr).energies(),
                     SamplerKind::SomaActivities(lyr_addr) =>  lyr(&self.data_layers, lyr_addr).activities(),
@@ -847,13 +878,14 @@ impl CorticalArea {
                 .clone()
         }
 
-        fn lyr<'a>(data_layers: &'a Layers, layer_addr: LayerAddress) -> &'a DataCellLayer {
-            data_layers.by_addr(layer_addr)
-                .expect(&format!("CorticalArea::sample: Invalid layer: {}", layer_addr))
+        fn lyr<'a>(data_layers: &'a Layers, lyr_addr: LayerAddress) -> &'a DataCellLayer {
+            data_layers.by_addr(lyr_addr)
+                .expect(&format!("CorticalArea::sample: Invalid layer: {}", lyr_addr))
         }
 
         match kind {
-            SamplerKind::AxonLayer(lyr_addr) => {
+            // Axons:
+            SamplerKind::Axons(lyr_addr) => {
                 let slc_range = match lyr_addr {
                     Some(addr) => slc_range(&self.area_map, addr.layer_id()),
                     None => 0..self.area_map.slice_map().depth() as usize,
@@ -870,7 +902,16 @@ impl CorticalArea {
                     _ => unimplemented!(),
                 }
             },
-            SamplerKind::SomaStates(_lyr_addr) => unimplemented!(),
+
+            // Soma:
+            SamplerKind::SomaStates(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    (lyr.soma().len(),
+                        vec![CorticalBuffer::data_soma_lyr(lyr.soma(), lyr_addr)])
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
             SamplerKind::SomaEnergies(lyr_addr) => {
                 let (len, cmd_srcs) = {
                     let lyr = lyr(&self.data_layers, lyr_addr);
@@ -887,7 +928,100 @@ impl CorticalArea {
                 };
                 self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
             },
+            SamplerKind::SomaFlagSets(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    (lyr.flag_sets().len(),
+                        vec![CorticalBuffer::data_soma_lyr(lyr.flag_sets(), lyr_addr,)])
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+
+            // Tufts:
+            SamplerKind::TuftStates(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_tft(lyr.tufts().states(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.tufts().states().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::TuftBestDenIds(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_tft(lyr.tufts().best_den_ids(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.tufts().best_den_ids().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::TuftBestDenStatesRaw(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_tft(lyr.tufts().best_den_states_raw(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.tufts().best_den_states_raw().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::TuftBestDenStates(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_tft(lyr.tufts().best_den_states(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.tufts().best_den_states().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::TuftPrevStates(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_tft(lyr.tufts().prev_states(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.tufts().prev_states().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::TuftPrevBestDenIds(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_tft(lyr.tufts().prev_best_den_ids(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.tufts().prev_best_den_ids().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::TuftPrevBestDenStatesRaw(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_tft(lyr.tufts().prev_best_den_states_raw(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.tufts().prev_best_den_states_raw().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+            SamplerKind::TuftPrevBestDenStates(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_tft(lyr.tufts().prev_best_den_states(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.tufts().prev_best_den_states().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
+
+            // Dens:
             SamplerKind::DenStates(_lyr_addr) => unimplemented!(),
+            SamplerKind::DenStatesRaw(_lyr_addr) => unimplemented!(),
             SamplerKind::DenEnergies(_lyr_addr) => unimplemented!(),
             SamplerKind::DenActivities(lyr_addr) => {
                 let (len, cmd_srcs) = {
@@ -899,6 +1033,15 @@ impl CorticalArea {
                 };
                 self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
             },
+            SamplerKind::DenThresholds(_lyr_addr) => unimplemented!(),
+
+
+            // SynStates(lyr_addr),
+            // SynStrengths(lyr_addr),
+            // SynSrcColVOffs(lyr_addr),
+            // SynSrcColUOffs(lyr_addr),
+            // SynFlagSets(lyr_addr),
+
             _ => unimplemented!(),
         }
     }

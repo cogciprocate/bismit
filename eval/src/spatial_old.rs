@@ -888,7 +888,7 @@ impl SubcorticalNucleus for EvalSpatial {
 
         let pri_area = cortical_areas.by_key_mut(PRI_AREA).unwrap();
 
-        let l4_axns = pri_area.sampler(SamplerKind::AxonLayer(Some(v1_l4_lyr_addr)),
+        let l4_axns = pri_area.sampler(SamplerKind::Axons(Some(v1_l4_lyr_addr)),
                 SamplerBufferKind::Single, true);
 
         // Layer 4 spatial dendrite activity ratings (pre-inhib):
