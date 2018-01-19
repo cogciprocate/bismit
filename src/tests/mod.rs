@@ -4,7 +4,7 @@ mod cycle;
 mod multi;
 mod hex_tile_fields;
 mod cortex;
-mod learning_2;
+mod async;
 pub mod testbed;
 pub mod testbed_vibi;
 pub mod util;

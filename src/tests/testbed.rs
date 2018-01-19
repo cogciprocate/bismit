@@ -194,8 +194,8 @@ pub fn cortex_with_lots_of_apical_tufts() -> Cortex {
             CellScheme::ssc(&[("unused", 8, 1)], 4, 100))
 
         .layer_old(PRIMARY_TEMPORAL_PYR_LAYER_NAME, 3, LayerTags::PTAL, AxonDomain::Local,
-            CellScheme::pyr(&[("unused", 8, 1)], 2, 3, 0, 100)
-                .apical(1, &[("test1", 7, 1)], 2, 3, 0, 500)
+            CellScheme::pyr(&[("unused", 8, 1)], 3, 4, 0, 100)
+                .apical(1, &[("test1", 7, 1)], 3, 4, 0, 500)
         )
 
     );

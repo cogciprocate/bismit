@@ -56,7 +56,7 @@ impl SpinyStellateLayer {
         assert![tft_count == TUFT_COUNT];
         let ssc_tft_id = 0;
 
-        let syns_per_tuft_l2: u8 = {
+        let syns_per_tft_l2: u8 = {
             let tft_scheme = &cell_scheme.tft_schemes()[ssc_tft_id];
             tft_scheme.syns_per_den_l2() + tft_scheme.dens_per_tft_l2()
         };
@@ -105,7 +105,7 @@ impl SpinyStellateLayer {
             .arg_buf(dens.syns().states())
             .arg_scl(lyr_axn_idz)
             // .arg_scl(cels_per_grp)
-            .arg_scl(syns_per_tuft_l2)
+            .arg_scl(syns_per_tft_l2)
             // CURRENTLY UNUSED:
             .arg_scl_named::<u32>("rnd", None)
             // .arg_buf_named("aux_ints_0", None)
@@ -121,7 +121,7 @@ impl SpinyStellateLayer {
             //     .arg_buf(dens.syns().states())
             //     .arg_scl(lyr_axn_idz)
             //     .arg_scl(_cels_per_grp)
-            //     .arg_scl(syns_per_tuft_l2)
+            //     .arg_scl(syns_per_tft_l2)
             //     .arg_scl_named::<u32>("rnd", None)
             //     // .arg_buf_named("aux_ints_0", None)
             //     // .arg_buf_named("aux_ints_1", None)

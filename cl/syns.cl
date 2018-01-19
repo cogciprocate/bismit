@@ -53,6 +53,7 @@ __kernel void tft_cycle_syns(
             << syns_per_tft_l2) + syn_idz_tft;
 
         uint const syn_idn = syn_idz + (1 << syns_per_tft_l2);
+        // uint const syn_idn = syn_idz + (1 << syns_per_tft_l2 + 1);
 
         ////// DEBUG:
             // if (v_id == 0 && u_id == 0) {
@@ -147,6 +148,7 @@ __kernel void tft_cycle_syns_vec4(
 
         // DIVIDED BY 4 BECAUSE VECTORS:
         uint const syn4_idn = syn4_idz + (1 << (syns_per_tft_l2 - 2));
+        // uint const syn4_idn = syn4_idz + (1 << (syns_per_tft_l2 - 2) + 1);
 
 
         for (uint syn4_idx = syn4_idz; syn4_idx < syn4_idn; syn4_idx++) {
@@ -246,10 +248,10 @@ __kernel void layer_cycle_syns_wow(
 
         // FOR EACH SLICE IN LAYER
         for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
-            // uint const syn_idx = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz_syntuft)
-            //     << syns_per_tft_l2) + cur_syn_ofs;
             uint const syn_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
                 << syns_per_tft_l2) + syn_idz_tft + cur_syn_ofs;
+            // uint const syn_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
+            //     << syns_per_tft_l2 + 1) + syn_idz_tft + cur_syn_ofs;
 
             char const v_ofs = syn_src_col_v_offs[syn_idx];
             char const u_ofs = syn_src_col_u_offs[syn_idx];
@@ -304,7 +306,6 @@ __kernel void layer_cycle_syns_wow_vec4(
     uint const syn4s_per_tft = (1 << (syns_per_tft_l2)) >> 2; // VEC4'D
     uint const syn4s_per_wg = mul24(v_work_size, u_work_size); // DON'T DIVIDE ME (DOING SAME SYN4S AS SYNS)
 
-
     int cur_syn4_ofs = mad24(v_id_local, u_work_size, u_id_local);
     int u_id_wg_crnt = 0;
     int v_id_wg_crnt = 0;
@@ -348,13 +349,11 @@ __kernel void layer_cycle_syns_wow_vec4(
         uint const u_id = u_idz_wg + u_id_wg_crnt;
 
         for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
-            // uint syn4_idx = (((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) + cel_idz_syntuft)
-            //     << syns_per_tft_l2) >> 2) + cur_syn4_ofs; // VEC4'D IDX
-
             // VEC4'D:
             uint syn4_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) <<
                 (syns_per_tft_l2 - 2)) + (syn_idz_tft >> 2) + cur_syn4_ofs;
-
+            // uint syn4_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) <<
+            //     (syns_per_tft_l2 - 2) + 1) + (syn_idz_tft >> 2) + cur_syn4_ofs;
 
             char4 const v_ofs = syn_src_col_v_offs[syn4_idx];
             char4 const u_ofs = syn_src_col_u_offs[syn4_idx];

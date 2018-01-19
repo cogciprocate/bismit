@@ -79,8 +79,8 @@ const PRINT_FINAL_ITER_ONLY: bool = false;
 */
 
 
-////// #[test]
-fn dst_den_learning_REIMPLEMENT_ME() {
+// #[test]
+fn dst_den_learning() {
     // assert!(!PRNT_INFO, "Printing debug info (or anything else) is currently disabled.");
     let mut ltb = LearningTestBed::new();
     // 180 -> +-64 (slow), +-96 (fast)

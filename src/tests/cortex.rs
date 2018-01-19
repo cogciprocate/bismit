@@ -142,7 +142,7 @@ fn syn_and_den_states(dens: &mut Dendrites) {
     dens.cycle_solo();
     dens.states().default_queue().unwrap().finish().unwrap();
 
-    // let syns_per_tuft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
+    // let syns_per_tft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
     // let dens_per_tft_l2: usize = dens.dims().per_tft_l2_left() as usize;
     let tft_id = 0;
     let syns_per_den_l2 = dens.syns().tft_dims_by_tft()[tft_id].syns_per_den_l2();

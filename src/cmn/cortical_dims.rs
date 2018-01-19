@@ -319,41 +319,6 @@ impl From<(u32, u32, u8)> for CorticalDims {
 // }
 
 
-// fn resolve_incr(ocl: Option<&ProQue>) -> Option<u32> {
-//     match ocl {
-//         Some(ocl) => Some(ocl.max_wg_size()),
-//         None => None,
-//     }
-// }
-// #[inline]
-// fn len_components(cells: u32, per_tft_l2: i8, tfts_per_cel: u32) -> u32 {
-//     //println!("\n\n##### TOTAL_LEN(): cells: {}, pcl2: {}", cells, per_tft_l2);
-//     let tufts = cells * tfts_per_cel;
-
-//     if per_tft_l2 >= 0 {
-//         tufts << per_tft_l2
-//     } else {
-//         tufts >> (0 - per_tft_l2)
-//     }
-// }
-
-
-    /*pub fn u_size_l2(&self) -> u8 {
-        self.u_size_l2
-    }
-
-    pub fn v_size_l2(&self) -> u8 {
-        self.v_size_l2
-    }
-
-    pub fn u_size(&self) -> u32 {
-        1 << self.u_size_l2 as u32
-    }
-
-    pub fn v_size(&self) -> u32 {
-        1 << self.v_size_l2 as u32
-    }
-    */
 
 // #[cfg(test)]
 // pub mod tests {
@@ -367,15 +332,3 @@ impl From<(u32, u32, u8)> for CorticalDims {
 //     }
 // }
 
-
-
-    // LEN(): 4D Volume - Total linear length if stretched out - measured in cell-piece-whatevers
-    /* TEMPORARY */
-    /*pub fn len(&self) -> u32 {
-        self.len()
-    }*/
-
-    /* CORTICAL_LEN(): 'VIRTUAL' CORTEX SIZE, NOT TO BE CONFUSED WITH THE PHYSICAL IN-MEMORY SIZE */
-    /*fn cortical_len(&self) -> u32 {
-        len_components(self.cells(), self.per_tuft_l2)
-    }*/

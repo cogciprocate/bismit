@@ -9,8 +9,7 @@ use ::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
     SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas};
 use map::*;
 use cmn::{TractFrameMut, TractDims};
-// use subcortex::{SubcorticalNucleus, SubcorticalNucleusLayer};
-use super::testbed;
+use tests::testbed;
 
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
@@ -22,17 +21,17 @@ const SEQUENTIAL_SDR: bool = true;
 
 
 /// A `SubcorticalNucleus`.
-struct LearningTest {
+struct SynIdxTest {
     area_name: String,
     area_id: usize,
     layers: HashMap<LayerAddress, SubcorticalNucleusLayer>,
     cycles_complete: usize,
 }
 
-impl LearningTest {
+impl SynIdxTest {
     pub fn new<S: Into<String>>(layer_map_schemes: &LayerMapSchemeList,
             area_schemes: &AreaSchemeList, area_name: S)
-            -> LearningTest {
+            -> SynIdxTest {
         let area_name = area_name.into();
         let area_scheme = &area_schemes[&area_name];
         let layer_map_scheme = &layer_map_schemes[area_scheme.layer_map_name()];
@@ -41,14 +40,14 @@ impl LearningTest {
         for layer_scheme in layer_map_scheme.layers() {
             // let lyr_dims = match layer_scheme.name() {
             //     "external_0" => None,
-            //     ln @ _ => panic!("LearningTest::new: Unknown layer name: {}.", ln),
+            //     ln @ _ => panic!("SynIdxTest::new: Unknown layer name: {}.", ln),
             // };
 
             let layer = SubcorticalNucleusLayer::from_schemes(layer_scheme, area_scheme, None);
             layers.insert(layer.addr().clone(), layer);
         }
 
-        LearningTest {
+        SynIdxTest {
             area_name: area_name,
             area_id: area_scheme.area_id(),
             layers,
@@ -57,36 +56,10 @@ impl LearningTest {
     }
 }
 
-impl SubcorticalNucleus for LearningTest {
+impl SubcorticalNucleus for SynIdxTest {
     fn create_pathways(&mut self, thal: &mut Thalamus,
             cortical_areas: &mut CorticalAreas) -> CmnResult<()> {
-        // Wire up output (sdr) pathways.
-        for layer in self.layers.values_mut() {
-            match *layer.axon_domain() {
-                // AxonDomain::Output(_) => {
-                //     let tx = thal.input_pathway(*layer.sub().addr(), true);
-                //     layer.pathway = PathwayDir::Output { tx };
-                // },
-                // AxonDomain::Input(_) => {
-                //     let src_lyr_infos: Vec<_> =thal.area_maps().by_index(self.area_id).unwrap()
-                //             .layer(layer.sub().addr().layer_id()).unwrap()
-                //             .sources().iter().map(|src_lyr| {
-                //         (*src_lyr.layer_addr(), src_lyr.dims().clone())
-                //     }).collect();
 
-                //     let srcs: Vec<_> = src_lyr_infos.into_iter().map(|(addr, dims)| {
-                //         InputSource {
-                //             addr,
-                //             dims,
-                //             rx: thal.output_pathway(addr)
-                //         }
-                //     }).collect();
-
-                //     layer.pathway = PathwayDir::Input { srcs };
-                // },
-                _ => (),
-            }
-        }
         Ok(())
     }
 
@@ -299,11 +272,11 @@ fn define_a_schemes() -> AreaSchemeList {
 
 
 #[test]
-fn learning_2() {
+fn synapse_indexing() {
     let layer_map_schemes = define_lm_schemes();
     let area_schemes = define_a_schemes();
 
-    let nucl = LearningTest::new(&layer_map_schemes, &area_schemes, IN_AREA);
+    let nucl = SynIdxTest::new(&layer_map_schemes, &area_schemes, IN_AREA);
 
     let cortex_builder = Cortex::builder(layer_map_schemes, area_schemes)
         .subcortical_nucleus(nucl);

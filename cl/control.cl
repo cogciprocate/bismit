@@ -75,7 +75,7 @@ __kernel void inhib_simple(
         for (int u_ofs = u_z; u_ofs <= u_m; u_ofs++) {
             uchar neighbor_state =
                 cel_state_3d_safe(slc_id_lyr, v_size, v_id, v_ofs, u_size, u_id, u_ofs, cel_states);
-            int distance = (abs(v_ofs) + abs(u_ofs) + abs(w_ofs(v_ofs, u_ofs)))    >> 1;
+            int distance = (abs(v_ofs) + abs(u_ofs) + abs(w_ofs(v_ofs, u_ofs))) >> 1;
 
             //     NEW ALGORITHM 16-JUL:
             //         - FOCAL CELL IS AT LEAST AS INFLUENTIAL AS NEIGHBOR AT THE FOCAL
