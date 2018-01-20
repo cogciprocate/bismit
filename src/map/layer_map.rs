@@ -81,7 +81,7 @@ impl LayerMap {
                 area_sl, layer_map_sl, subcortex, slc_total);
 
             // Check for duplicate input or output domains:
-            domain_cache.add(new_layer.axn_domain())?;
+            domain_cache.add(new_layer.axon_domain())?;
 
             slc_total += new_layer.depth();
             layers.insert(ls.name().to_owned(), new_layer);
@@ -197,7 +197,7 @@ impl LayerMap {
         let mut matching_layers = Vec::with_capacity(1);
 
         for lyr_info in self.layers.values().iter() {
-            match *lyr_info.axn_domain() {
+            match *lyr_info.axon_domain() {
                 AxonDomain::Input(ref filter_sigs) => {
                     // If `track_opt` is not defined, caller is requesting an output layer.
                     // let track = match sig.track() {

@@ -19,8 +19,8 @@ pub struct PyramidalLayer {
     tft_count: usize,
     cell_scheme: CellScheme,
     pyr_cycle_kernel: Kernel,
-    axn_slc_ids: Vec<u8>,
-    pyr_lyr_axn_idz: u32,
+    axon_slc_ids: Vec<u8>,
+    pyr_lyr_axon_idz: u32,
     rng: XorShiftRng,
 
     states: Buffer<u8>,
@@ -53,9 +53,9 @@ impl PyramidalLayer {
         let layer_name = layer_name.into();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
         // [FIXME]: Convert arg to layer_id:
-        let axn_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
-        let base_axn_slc = axn_slc_ids[0];
-        let pyr_lyr_axn_idz = area_map.axn_idz(base_axn_slc);
+        let axon_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
+        let base_axon_slc = axon_slc_ids[0];
+        let pyr_lyr_axon_idz = area_map.axon_idz(base_axon_slc);
 
         let tft_count = cell_scheme.tft_count();
 
@@ -69,13 +69,13 @@ impl PyramidalLayer {
         let activities = Buffer::builder().queue(ocl_pq.queue().clone()).len(cel_count).fill_val(0).build()?;
 
         println!("{mt}{mt}PYRAMIDALS::NEW(): \
-            layer: '{}', base_axn_slc: {}, pyr_lyr_axn_idz: {}, tft_count: {}, \
+            layer: '{}', base_axon_slc: {}, pyr_lyr_axon_idz: {}, tft_count: {}, \
             cel_count: {}, celtft_count: {}, \n{mt}{mt}{mt}dims: {:?}.",
-            layer_name, base_axn_slc, pyr_lyr_axn_idz, tft_count,
+            layer_name, base_axon_slc, pyr_lyr_axon_idz, tft_count,
             states.len(), celtft_count, dims, mt = cmn::MT);
 
         let tufts = Tufts::new(layer_name.clone(), layer_addr, dims, cell_scheme.clone(),
-            area_map, axons, &axn_slc_ids, pyr_lyr_axn_idz, &states,
+            area_map, axons, &axon_slc_ids, pyr_lyr_axon_idz, &states,
             &flag_sets, ocl_pq, settings.clone(), exe_graph)?;
 
         let mut enabled_tft_flags = 0u8;
@@ -192,8 +192,8 @@ impl PyramidalLayer {
             tft_count: tft_count,
             cell_scheme: cell_scheme,
             pyr_cycle_kernel: pyr_cycle_kernel,
-            axn_slc_ids: axn_slc_ids,
-            pyr_lyr_axn_idz: pyr_lyr_axn_idz,
+            axon_slc_ids: axon_slc_ids,
+            pyr_lyr_axon_idz: pyr_lyr_axon_idz,
             rng: cmn::weak_rng(),
             states: states,
             // best_den_states_raw: best_den_states_raw,
@@ -333,9 +333,9 @@ impl DataCellLayer for PyramidalLayer {
     }
 
     #[inline]
-    fn axn_range(&self) -> (usize, usize) {
-        let axn_idn = self.pyr_lyr_axn_idz + (self.dims.columns());
-        (self.pyr_lyr_axn_idz as usize, axn_idn as usize)
+    fn axon_range(&self) -> (usize, usize) {
+        let axon_idn = self.pyr_lyr_axon_idz + (self.dims.columns());
+        (self.pyr_lyr_axon_idz as usize, axon_idn as usize)
     }
 
     #[inline] fn layer_name<'s>(&'s self) -> &'s str { &self.layer_name }
@@ -346,8 +346,8 @@ impl DataCellLayer for PyramidalLayer {
     #[inline] fn activities(&self) -> &Buffer<u8> { &self.activities }
     #[inline] fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
     #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
-    #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
+    #[inline] fn axon_slc_ids(&self) -> &[u8] { self.axon_slc_ids.as_slice() }
+    #[inline] fn base_axon_slc(&self) -> u8 { self.axon_slc_ids[0] }
     #[inline] fn tft_count(&self) -> usize { self.tft_count }
     #[inline] fn cell_scheme(&self) -> &CellScheme { &self.cell_scheme }
     #[inline] fn tufts(&self) -> &Tufts { &self.tufts }
@@ -451,9 +451,9 @@ pub mod tests {
             let v_id = v_range.ind_sample(self.rng());
             let u_id = u_range.ind_sample(self.rng());
 
-            let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
+            let axon_slc_id = self.base_axon_slc() + slc_id_lyr;
 
-            CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
+            CelCoords::new(axon_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
                 //self.tft_count, self.dens_per_tft_l2(), self.syns_per_den_l2()
         }
 
@@ -462,9 +462,9 @@ pub mod tests {
             let v_id = self.dims().v_size() - 1;
             let u_id = self.dims().u_size() - 1;
 
-            let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
+            let axon_slc_id = self.base_axon_slc() + slc_id_lyr;
 
-            CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
+            CelCoords::new(axon_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
         }
 
 

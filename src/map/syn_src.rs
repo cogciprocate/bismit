@@ -190,21 +190,21 @@ impl SynSrcIdxCache {
         debug_assert!(den_id_tft < self.dens.len(), format!("den_id_tft: '{}' ![<] \
             self.dens.len(): '{}', (syn_id_tft: '{}')", den_id_tft, self.dens.len(), syn_id_tft));
 
-        let new_ofs_key: i32 = self.axn_ofs(new_ofs);
+        let new_ofs_key: i32 = self.axon_ofs(new_ofs);
         let is_unique: bool = unsafe { self.dens.get_unchecked_mut(den_id_tft).insert(new_ofs_key) };
 
         if is_unique {
-            let old_ofs_key: i32 = self.axn_ofs(old_ofs);
+            let old_ofs_key: i32 = self.axon_ofs(old_ofs);
             unsafe { self.dens.get_unchecked_mut(den_id_tft).remove(&old_ofs_key) };
         }
 
         is_unique || self.source_saturated
     }
 
-    fn axn_ofs(&self, axn_ofs: &SynSrc) -> i32 {
-        (axn_ofs.slc_id as i32 * self.dims.columns() as i32) +
-            (axn_ofs.v_ofs as i32 * self.dims.u_size() as i32) +
-            axn_ofs.u_ofs as i32
+    fn axon_ofs(&self, axon_ofs: &SynSrc) -> i32 {
+        (axon_ofs.slc_id as i32 * self.dims.columns() as i32) +
+            (axon_ofs.v_ofs as i32 * self.dims.u_size() as i32) +
+            axon_ofs.u_ofs as i32
     }
 }
 
@@ -231,13 +231,13 @@ pub struct SynSrcSliceInfo {
 }
 
 impl SynSrcSliceInfo {
-    pub fn new(axn_kind: &AxonTopology, src_slc_dims: &SliceDims, syn_reach: i8,
+    pub fn new(axon_kind: &AxonTopology, src_slc_dims: &SliceDims, syn_reach: i8,
             tft_slc_id_pool_len: u32) -> CmnResult<SynSrcSliceInfo>
     {
         let poss_syn_offs_val_count;
         let slc_off_pool;
 
-        match axn_kind {
+        match axon_kind {
             &AxonTopology::Nonspatial => {
                 // Already checked within `SliceDims` (keep here though).
                 debug_assert!(src_slc_dims.v_size() <= cmn::MAX_HRZ_DIM_SIZE);
@@ -387,13 +387,13 @@ impl SynSrcSlices {
             let mut poss_syn_offs_val_count = 0;
 
             for &(slc_id, syn_rch) in lyr_id_rchs.iter() {
-                let axn_kind = area_map.slice_map().axn_topologies().get(slc_id as usize)
+                let axon_kind = area_map.slice_map().axon_topologies().get(slc_id as usize)
                     .expect("SynSrcSlices::new(): {{2}}");
 
                 let src_slc_dims = area_map.slice_map().dims().get(slc_id as usize)
                     .expect("SynSrcSlices::new(): {{3}}");
 
-                let src_slc_info = SynSrcSliceInfo::new(axn_kind, src_slc_dims, syn_rch,
+                let src_slc_info = SynSrcSliceInfo::new(axon_kind, src_slc_dims, syn_rch,
                         /*tft_scheme.syns_per_den_l2(),*/ id_pools.len() as u32)
                     .map_err(|err| err.prepend(&format!("SynSrcSlices::new(): Source slice error \
                         (area: {}, slice: {}): ", area_map.area_name(), slc_id)))?;

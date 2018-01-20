@@ -81,8 +81,8 @@ fn matching_source_layers<'a>(area_sch: &'a AreaScheme, area_sch_list: &'a AreaS
             }
 
             // Add the matching source layers to our list of sources:
-            for (matching_lyr, sig, masq_orig_axn_tags) in src_layers.into_iter() {
-                matching_source_layers.push((matching_lyr, sig, masq_orig_axn_tags,
+            for (matching_lyr, sig, masq_orig_axon_tags) in src_layers.into_iter() {
+                matching_source_layers.push((matching_lyr, sig, masq_orig_axon_tags,
                     src_lyr_map_sch, src_area_sch));
             }
         }
@@ -103,9 +103,9 @@ pub struct LayerInfo {
     slc_range: Option<Range<usize>>,
     sources: Vec<SourceLayerInfo>,
     layer_map_kind: LayerMapKind,
-    axn_topology: AxonTopology,
+    axon_topology: AxonTopology,
     layer_scheme: LayerScheme,
-    ttl_axn_count: u32,
+    ttl_axon_count: u32,
     irregular_layer_dims: Option<CorticalDims>,
 }
 
@@ -121,11 +121,11 @@ impl LayerInfo {
         let name = layer_scheme.name().to_owned();
         let layer_tags = layer_scheme.tags();
         let axon_domain = layer_scheme.axon_domain().clone();
-        let axn_topology = layer_scheme.axn_topology();
+        let axon_topology = layer_scheme.axon_topology();
         let mut sources: Vec<SourceLayerInfo> = Vec::with_capacity(8);
 
         let mut next_slc_idz = slc_total as usize;
-        let mut ttl_axn_count = 0;
+        let mut ttl_axon_count = 0;
 
         let mut irregular_layer_dims: Option<CorticalDims> = None;
         let mut layer_debug: Vec<String> = Vec::new();
@@ -154,7 +154,7 @@ impl LayerInfo {
                     layer_map_sch_list, input_filters);
 
                 // Create a `SourceLayerInfo` for each matching layer:
-                for (src_layer, sig, masq_orig_axn_tags,
+                for (src_layer, sig, masq_orig_axon_tags,
                         src_lyr_map_sch, src_area_sch) in matching_source_layers.into_iter()
                 {
                     let src_area_name = src_area_sch.name();
@@ -165,7 +165,7 @@ impl LayerInfo {
                     ===============================================================================
                     =============================================================================*/
 
-                    let (src_layer_dims, src_layer_axn_topology) = match *src_lyr_map_sch.kind() {
+                    let (src_layer_dims, src_layer_axon_topology) = match *src_lyr_map_sch.kind() {
                         // If the source layer is subcortical, we will be
                         // relying on the `SubcorticalNucleusLayer` associated
                         // with it to provide its dimensions.
@@ -190,12 +190,12 @@ impl LayerInfo {
                         LayerMapKind::Cortical => {
                             let depth = src_layer.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
-                            let src_axn_topology = match src_layer.kind() {
+                            let src_axon_topology = match src_layer.kind() {
                                 &LayerKind::Axonal(ref ak) => ak.clone(),
                                 &LayerKind::Cellular(_) => AxonTopology::Spatial
                             };
 
-                            (src_area_sch.dims().clone_with_depth(depth), src_axn_topology)
+                            (src_area_sch.dims().clone_with_depth(depth), src_axon_topology)
 
                         },
                     };
@@ -207,7 +207,7 @@ impl LayerInfo {
                     let tar_slc_range = next_slc_idz..(next_slc_idz + src_layer_dims.depth() as usize);
 
                     sources.push(SourceLayerInfo::new(src_lyr_addr, src_layer_dims.clone(),
-                        src_layer.tags(), src_layer_axn_topology, sig, masq_orig_axn_tags,
+                        src_layer.tags(), src_layer_axon_topology, sig, masq_orig_axon_tags,
                         tar_slc_range.clone(), ));
 
                     if PRNT {
@@ -223,11 +223,11 @@ impl LayerInfo {
                         src_layer.name(), tar_slc_range, src_area_name, src_layer.tags(), mt = cmn::MT));
 
                     next_slc_idz += src_layer_dims.depth() as usize;
-                    ttl_axn_count += src_layer_dims.cells();
+                    ttl_axon_count += src_layer_dims.cells();
                 }
 
                 // Double check that the total source layer axon count matches up:
-                assert!(sources.iter().map(|sli| sli.dims().cells()).sum::<u32>() == ttl_axn_count);
+                assert!(sources.iter().map(|sli| sli.dims().cells()).sum::<u32>() == ttl_axon_count);
             },
             /*=============================================================================
             ===============================================================================
@@ -264,7 +264,7 @@ impl LayerInfo {
                 // If the depth is not set, default to 0;
                 let layer_depth = layer_scheme.depth().unwrap_or(0);
                 next_slc_idz += layer_depth as usize;
-                ttl_axn_count += columns * layer_depth as u32;
+                ttl_axon_count += columns * layer_depth as u32;
             },
             /*=============================================================================
             ===============================================================================
@@ -273,7 +273,7 @@ impl LayerInfo {
                 let columns = area_sch.dims().columns();
                 let layer_depth = layer_scheme.depth().unwrap_or(0);
                 next_slc_idz += layer_depth as usize;
-                ttl_axn_count += columns * layer_depth as u32;
+                ttl_axon_count += columns * layer_depth as u32;
             }
         }
 
@@ -296,7 +296,7 @@ impl LayerInfo {
         }
 
         if let Some(ref irr_dims) = irregular_layer_dims {
-            debug_assert!(irr_dims.to_len() == ttl_axn_count as usize);
+            debug_assert!(irr_dims.to_len() == ttl_axon_count as usize);
         }
 
         LayerInfo {
@@ -307,9 +307,9 @@ impl LayerInfo {
             slc_range: slc_range,
             sources: sources,
             layer_map_kind: plmap_kind,
-            axn_topology: axn_topology,
+            axon_topology: axon_topology,
             layer_scheme: layer_scheme,
-            ttl_axn_count: ttl_axn_count,
+            ttl_axon_count: ttl_axon_count,
             irregular_layer_dims: irregular_layer_dims,
         }
     }
@@ -353,12 +353,12 @@ impl LayerInfo {
     #[inline] pub fn name<'s>(&'s self) -> &'s str { &self.name }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn kind(&self) -> &LayerKind { self.layer_scheme.kind() }
-    #[inline] pub fn axn_domain(&self) -> &AxonDomain { self.layer_scheme.axon_domain() }
+    #[inline] pub fn axon_domain(&self) -> &AxonDomain { self.layer_scheme.axon_domain() }
     #[inline] pub fn is_input(&self) -> bool { self.layer_scheme.axon_domain().is_input() }
     #[inline] pub fn is_output(&self) -> bool { self.layer_scheme.axon_domain().is_output() }
     #[inline] pub fn sources(&self) -> &[SourceLayerInfo]  { &self.sources }
-    #[inline] pub fn ttl_axn_count(&self) -> u32 { self.ttl_axn_count }
-    #[inline] pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
+    #[inline] pub fn ttl_axon_count(&self) -> u32 { self.ttl_axon_count }
+    #[inline] pub fn axon_topology(&self) -> AxonTopology { self.axon_topology.clone() }
     #[inline] pub fn layer_map_kind(&self) -> LayerMapKind { self.layer_map_kind.clone() }
     #[inline] pub fn slc_range(&self) -> Option<&Range<usize>> { self.slc_range.as_ref() }
 }
@@ -377,9 +377,9 @@ impl fmt::Debug for LayerInfo {
             .field("slc_range", &self.slc_range)
             .field("sources", &self.sources)
             .field("layer_map_kind", &self.layer_map_kind)
-            .field("axn_topology", &self.axn_topology)
+            .field("axon_topology", &self.axon_topology)
             .field("layer_scheme", &self.layer_scheme)
-            .field("ttl_axn_count", &self.ttl_axn_count)
+            .field("ttl_axon_count", &self.ttl_axon_count)
             .field("irregular_layer_dims", &self.irregular_layer_dims)
             .finish()
     }
@@ -392,9 +392,9 @@ pub struct SourceLayerInfo {
     layer_addr: LayerAddress,
     dims: CorticalDims,
     layer_tags: LayerTags,
-    axn_topology: AxonTopology,
+    axon_topology: AxonTopology,
     input_sig: AxonSignature,
-    masq_orig_axn_tags: Option<AxonTags>,
+    masq_orig_axon_tags: Option<AxonTags>,
     // Absolute target slice range (not level-relative):
     tar_slc_range: Range<usize>,
 }
@@ -402,8 +402,8 @@ pub struct SourceLayerInfo {
 impl SourceLayerInfo {
     #[inline]
     pub fn new(src_lyr_addr: LayerAddress, src_layer_dims: CorticalDims, src_layer_tags: LayerTags,
-            src_axn_topology: AxonTopology, input_sig: AxonSignature,
-            masq_orig_axn_tags: Option<AxonTags>,
+            src_axon_topology: AxonTopology, input_sig: AxonSignature,
+            masq_orig_axon_tags: Option<AxonTags>,
             tar_slc_range: Range<usize>) -> SourceLayerInfo
     {
         assert!(input_sig.is_input());
@@ -413,9 +413,9 @@ impl SourceLayerInfo {
             layer_addr: src_lyr_addr,
             dims: src_layer_dims,
             layer_tags: src_layer_tags,
-            axn_topology: src_axn_topology,
+            axon_topology: src_axon_topology,
             input_sig: input_sig,
-            masq_orig_axn_tags: masq_orig_axn_tags,
+            masq_orig_axon_tags: masq_orig_axon_tags,
             tar_slc_range: tar_slc_range,
         }
     }
@@ -423,13 +423,13 @@ impl SourceLayerInfo {
     #[inline] pub fn area_id<'a>(&'a self) -> usize { self.layer_addr.area_id() }
     #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] pub fn axn_count(&self) -> u32 { self.dims().cells() }
+    #[inline] pub fn axon_count(&self) -> u32 { self.dims().cells() }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
-    #[inline] pub fn axn_topology(&self) -> AxonTopology { self.axn_topology.clone() }
+    #[inline] pub fn axon_topology(&self) -> AxonTopology { self.axon_topology.clone() }
     #[inline] pub fn input_track(&self) -> &InputTrack { &self.input_sig.track().as_ref().unwrap() }
-    #[inline] pub fn axn_tags(&self) -> &AxonTags { &self.input_sig.tags() }
+    #[inline] pub fn axon_tags(&self) -> &AxonTags { &self.input_sig.tags() }
     #[inline] pub fn input_sig(&self) -> &AxonSignature { &self.input_sig }
-    #[inline] pub fn masq_orig_axn_tags(&self) -> Option<&AxonTags> { self.masq_orig_axn_tags.as_ref() }
+    #[inline] pub fn masq_orig_axon_tags(&self) -> Option<&AxonTags> { self.masq_orig_axon_tags.as_ref() }
     #[inline] pub fn tar_slc_range(&self) -> &Range<usize> { &self.tar_slc_range }
 }
 
@@ -439,9 +439,9 @@ impl fmt::Debug for SourceLayerInfo {
             .field("layer_addr", &self.layer_addr)
             .field("dims", &self.dims)
             .field("layer_tags", &self.layer_tags.to_string())
-            .field("axn_topology", &self.axn_topology)
+            .field("axon_topology", &self.axon_topology)
             .field("input_sig", &self.input_sig)
-            .field("masq_orig_axn_tags", &self.masq_orig_axn_tags)
+            .field("masq_orig_axon_tags", &self.masq_orig_axon_tags)
             .field("tar_slc_range", &self.tar_slc_range)
             .finish()
     }

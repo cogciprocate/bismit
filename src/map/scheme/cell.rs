@@ -296,33 +296,33 @@ impl CellScheme {
         CellSchemeDefinition::new(CellClass::Control { kind, exe_order })
     }
 
-    //                             &[name, reach, prevalence]
-    pub fn pyr<'a>(dst_srcs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8,
-            syns_per_den_l2: u8, max_active_dens_l2: u8, thresh: u32) -> LayerKind {
-        let src_lyrs_vec = dst_srcs.into_iter().map(|&sl| sl.into()).collect();
+    // //                             &[name, reach, prevalence]
+    // pub fn pyr<'a>(dst_srcs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8,
+    //         syns_per_den_l2: u8, max_active_dens_l2: u8, thresh: u32) -> LayerKind {
+    //     let src_lyrs_vec = dst_srcs.into_iter().map(|&sl| sl.into()).collect();
 
-        let tft_scheme = TuftScheme::new(0, DendriteClass::Basal, DendriteKind::Distal,
-            dens_per_tft_l2, syns_per_den_l2, max_active_dens_l2, src_lyrs_vec, Some(thresh));
+    //     let tft_scheme = TuftScheme::new(0, DendriteClass::Basal, DendriteKind::Distal,
+    //         dens_per_tft_l2, syns_per_den_l2, max_active_dens_l2, src_lyrs_vec, Some(thresh));
 
-        LayerKind::Cellular(CellScheme {
-            cell_class: CellClass::Data(DataCellKind::Pyramidal),
-            tft_schemes: vec![tft_scheme]
-        }.validate())
-    }
+    //     LayerKind::Cellular(CellScheme {
+    //         cell_class: CellClass::Data(DataCellKind::Pyramidal),
+    //         tft_schemes: vec![tft_scheme]
+    //     }.validate())
+    // }
 
-    //                                  &[name, reach, prevalence]
-    pub fn ssc<'a>(prx_srcs: &[(&'a str, i8, u8)], syns_per_den_l2: u8, thresh: u32,)
-            -> LayerKind {
-        let src_lyrs_vec = prx_srcs.into_iter().map(|&sl| sl.into()).collect();
+    // //                                  &[name, reach, prevalence]
+    // pub fn ssc<'a>(prx_srcs: &[(&'a str, i8, u8)], syns_per_den_l2: u8, thresh: u32,)
+    //         -> LayerKind {
+    //     let src_lyrs_vec = prx_srcs.into_iter().map(|&sl| sl.into()).collect();
 
-        let tft_scheme = TuftScheme::new(0, DendriteClass::Basal, DendriteKind::Proximal, 0,
-            syns_per_den_l2, 0, src_lyrs_vec, Some(thresh));
+    //     let tft_scheme = TuftScheme::new(0, DendriteClass::Basal, DendriteKind::Proximal, 0,
+    //         syns_per_den_l2, 0, src_lyrs_vec, Some(thresh));
 
-        LayerKind::Cellular(CellScheme {
-            cell_class: CellClass::Data(DataCellKind::SpinyStellate),
-            tft_schemes: vec![tft_scheme],
-        }.validate())
-    }
+    //     LayerKind::Cellular(CellScheme {
+    //         cell_class: CellClass::Data(DataCellKind::SpinyStellate),
+    //         tft_schemes: vec![tft_scheme],
+    //     }.validate())
+    // }
 
     pub fn inhib(src: &str, field_radius: u8, exe_order: usize) -> LayerKind {
         LayerKind::Cellular(CellScheme {
@@ -362,16 +362,16 @@ impl CellScheme {
         }.validate())
     }
 
-    pub fn minicolumn(exe_order: usize) -> LayerKind {
-        // let tft_scheme = TuftScheme::new(DendriteClass::Basal, DendriteKind::Other, 0, 0,
-        //     vec![TuftSourceLayer::new(psal_lyr.to_owned(), 0, 1),
-        //     TuftSourceLayer::new(ptal_lyr.to_owned(), 0, 1)], None).with_tft_id(0);
+    // pub fn minicolumn(exe_order: usize) -> LayerKind {
+    //     // let tft_scheme = TuftScheme::new(DendriteClass::Basal, DendriteKind::Other, 0, 0,
+    //     //     vec![TuftSourceLayer::new(psal_lyr.to_owned(), 0, 1),
+    //     //     TuftSourceLayer::new(ptal_lyr.to_owned(), 0, 1)], None).with_tft_id(0);
 
-        LayerKind::Cellular(CellScheme {
-            cell_class: CellClass::Control { kind: ControlCellKind::Complex, exe_order, },
-            tft_schemes: Vec::new(),
-        }.validate())
-    }
+    //     LayerKind::Cellular(CellScheme {
+    //         cell_class: CellClass::Control { kind: ControlCellKind::Complex, exe_order, },
+    //         tft_schemes: Vec::new(),
+    //     }.validate())
+    // }
 
     pub fn add_tft(&mut self, tft: TuftScheme) {
         // let tft_id = self.tft_schemes.len();

@@ -23,9 +23,9 @@ pub struct SpinyStellateLayer {
     layer_tags: LayerTags,
     dims: CorticalDims,
     cell_scheme: CellScheme,
-    axn_slc_ids: Vec<u8>,
-    // base_axn_slc: u8,
-    lyr_axn_idz: u32,
+    axon_slc_ids: Vec<u8>,
+    // base_axon_slc: u8,
+    lyr_axon_idz: u32,
     kern_cycle: Kernel,
     kern_mtp: Kernel,
     energies: Buffer<u8>,
@@ -47,9 +47,9 @@ impl SpinyStellateLayer {
     ) -> CmnResult<SpinyStellateLayer> {
         let layer_name = layer_name.into();
         let layer_addr = LayerAddress::new(area_map.area_id(), layer_id);
-        let axn_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
-        let base_axn_slc = axn_slc_ids[0];
-        let lyr_axn_idz = area_map.axn_idz(base_axn_slc);
+        let axon_slc_ids = area_map.layer_slc_ids(&[layer_name.to_owned()]);
+        let base_axon_slc = axon_slc_ids[0];
+        let lyr_axon_idz = area_map.axon_idz(base_axon_slc);
 
         let tft_count = cell_scheme.tft_schemes().len();
         // Redesign kernel before changing the 1 tuft limitation:
@@ -64,8 +64,8 @@ impl SpinyStellateLayer {
         let energies = Buffer::builder().queue(ocl_pq.queue().clone()).len(dims).fill_val(0).build()?;
         let activities = Buffer::builder().queue(ocl_pq.queue().clone()).len(dims).fill_val(0).build()?;
 
-        println!("{mt}{mt}SPINYSTELLATES::NEW(): base_axn_slc: {}, lyr_axn_idz: {}, dims: {:?}",
-            base_axn_slc, lyr_axn_idz, dims, mt = cmn::MT);
+        println!("{mt}{mt}SPINYSTELLATES::NEW(): base_axon_slc: {}, lyr_axon_idz: {}, dims: {:?}",
+            base_axon_slc, lyr_axon_idz, dims, mt = cmn::MT);
 
         // let dens_dims = dims.clone_with_ptl2(cell_scheme.dens_per_tft_l2 as i8);
         let dens = try!(Dendrites::new(layer_name.clone(), layer_id, dims, cell_scheme.clone(),
@@ -103,7 +103,7 @@ impl SpinyStellateLayer {
             .gws(SpatialDims::Two(1, dims.cells() as usize))
             .arg_buf(axons.states())
             .arg_buf(dens.syns().states())
-            .arg_scl(lyr_axn_idz)
+            .arg_scl(lyr_axon_idz)
             // .arg_scl(cels_per_grp)
             .arg_scl(syns_per_tft_l2)
             // CURRENTLY UNUSED:
@@ -119,7 +119,7 @@ impl SpinyStellateLayer {
             //     .gws(SpatialDims::Two(tft_count, grp_count as usize))
             //     .arg_buf(axons.states())
             //     .arg_buf(dens.syns().states())
-            //     .arg_scl(lyr_axn_idz)
+            //     .arg_scl(lyr_axon_idz)
             //     .arg_scl(_cels_per_grp)
             //     .arg_scl(syns_per_tft_l2)
             //     .arg_scl_named::<u32>("rnd", None)
@@ -130,7 +130,7 @@ impl SpinyStellateLayer {
 
 
         // Set up execution command:
-        let mut mtp_cmd_srcs: Vec<CorticalBuffer> = axn_slc_ids.iter()
+        let mut mtp_cmd_srcs: Vec<CorticalBuffer> = axon_slc_ids.iter()
             .map(|&slc_id|
                 CorticalBuffer::axon_slice(&axons.states(), layer_addr.area_id(), slc_id))
             .collect();
@@ -155,9 +155,9 @@ impl SpinyStellateLayer {
             layer_tags: area_map.layer_map().layer_info(layer_id).unwrap().layer_tags(),
             dims: dims,
             cell_scheme: cell_scheme,
-            axn_slc_ids: axn_slc_ids,
-            // base_axn_slc: base_axn_slc,
-            lyr_axn_idz: lyr_axn_idz,
+            axon_slc_ids: axon_slc_ids,
+            // base_axon_slc: base_axon_slc,
+            lyr_axon_idz: lyr_axon_idz,
             kern_cycle: kern_cycle,
             kern_mtp: kern_mtp,
             energies,
@@ -273,9 +273,9 @@ impl SpinyStellateLayer {
     }
 
     #[inline]
-    pub fn axn_range(&self) -> (usize, usize) {
-        let sscs_axn_idn = self.lyr_axn_idz + (self.dims.cells());
-        (self.lyr_axn_idz as usize, sscs_axn_idn as usize)
+    pub fn axon_range(&self) -> (usize, usize) {
+        let sscs_axon_idn = self.lyr_axon_idz + (self.dims.cells());
+        (self.lyr_axon_idz as usize, sscs_axon_idn as usize)
     }
 
     #[inline] pub fn layer_name<'s>(&'s self) -> &'s str { &self.layer_name }
@@ -285,8 +285,8 @@ impl SpinyStellateLayer {
     #[inline] pub fn energies(&self) -> &Buffer<u8> { &self.energies }
     #[inline] pub fn activities(&self) -> &Buffer<u8> { &self.activities }
     #[inline] pub fn dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] pub fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
-    #[inline] pub fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
+    #[inline] pub fn axon_slc_ids(&self) -> &[u8] { self.axon_slc_ids.as_slice() }
+    #[inline] pub fn base_axon_slc(&self) -> u8 { self.axon_slc_ids[0] }
     #[inline] pub fn tft_count(&self) -> usize { TUFT_COUNT }
     #[inline] pub fn dens(&self) -> &Dendrites { &self.dens }
     #[inline] pub fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }
@@ -311,8 +311,8 @@ impl DataCellLayer for SpinyStellateLayer {
     }
 
     #[inline]
-    fn axn_range(&self) -> (usize, usize) {
-        self.axn_range()
+    fn axon_range(&self) -> (usize, usize) {
+        self.axon_range()
     }
 
     #[inline] fn layer_name<'s>(&'s self) -> &'s str { &self.layer_name }
@@ -323,8 +323,8 @@ impl DataCellLayer for SpinyStellateLayer {
     #[inline] fn activities(&self) -> &Buffer<u8> { &self.activities }
     #[inline] fn flag_sets(&self) -> &Buffer<u8> { unimplemented!() }
     #[inline] fn dims(&self) -> &CorticalDims { &self.dims }
-    #[inline] fn axn_slc_ids(&self) -> &[u8] { self.axn_slc_ids.as_slice() }
-    #[inline] fn base_axn_slc(&self) -> u8 { self.axn_slc_ids[0] }
+    #[inline] fn axon_slc_ids(&self) -> &[u8] { self.axon_slc_ids.as_slice() }
+    #[inline] fn base_axon_slc(&self) -> u8 { self.axon_slc_ids[0] }
     #[inline] fn tft_count(&self) -> usize { TUFT_COUNT }
     #[inline] fn cell_scheme(&self) -> &CellScheme { &self.cell_scheme }
     #[inline] fn tufts(&self) -> &Tufts { unimplemented!(); }
@@ -411,9 +411,9 @@ pub mod tests {
             let v_id = v_range.ind_sample(self.rng());
             let u_id = u_range.ind_sample(self.rng());
 
-            let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
+            let axon_slc_id = self.base_axon_slc() + slc_id_lyr;
 
-            CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
+            CelCoords::new(axon_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
                 //self.tft_count, self.dens_per_tft_l2(), self.syns_per_den_l2()
         }
 
@@ -422,9 +422,9 @@ pub mod tests {
             let v_id = self.dims().v_size() - 1;
             let u_id = self.dims().u_size() - 1;
 
-            let axn_slc_id = self.base_axn_slc() + slc_id_lyr;
+            let axon_slc_id = self.base_axon_slc() + slc_id_lyr;
 
-            CelCoords::new(axn_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
+            CelCoords::new(axon_slc_id, slc_id_lyr, v_id, u_id, self.dims().clone())
         }
 
 

@@ -439,7 +439,7 @@ impl Flywheel {
                 aff_out_slc_ids: self.cortex.areas().by_key(self.area_name.as_str())
                     .unwrap().area_map().aff_out_slc_ids(),
                 tract_map: self.cortex.areas().by_key(self.area_name.as_str())
-                    .unwrap().axn_tract_map(),
+                    .unwrap().axon_tract_map(),
             }
         ))).expect("Error sending area info.");
     }

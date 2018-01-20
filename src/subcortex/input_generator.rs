@@ -115,19 +115,19 @@ impl InputGeneratorLayer {
         self.sub.set_dims(dims);
     }
 
-    pub fn axn_sig(&self) -> &AxonSignature {
+    pub fn axon_sig(&self) -> &AxonSignature {
         match *self.sub.axon_domain() {
             AxonDomain::Output(ref sig) => sig,
-            _ => panic!("InputGeneratorLayer::axn_sig: Input generator layers must be \
+            _ => panic!("InputGeneratorLayer::axon_sig: Input generator layers must be \
                 AxonDomain::Output(..)."),
         }
     }
 
-    pub fn axn_tags(&self) -> &AxonTags {
-        &self.axn_sig().tags()
+    pub fn axon_tags(&self) -> &AxonTags {
+        &self.axon_sig().tags()
     }
 
-    pub fn axn_topology(&self) -> AxonTopology {
+    pub fn axon_topology(&self) -> AxonTopology {
         self.sub.axon_topology().clone()
     }
 
@@ -169,23 +169,23 @@ impl InputGenerator {
         let mut layers = HashMap::with_capacity(4);
         let mut lyr_addr_list = Vec::with_capacity(4);
         let mut lyr_dims_list = Vec::with_capacity(4);
-        let mut lyr_axn_sigs_list = Vec::with_capacity(4);
+        let mut lyr_axon_sigs_list = Vec::with_capacity(4);
 
         for layer_scheme in layer_schemes.into_iter() {
             let lyr_name = layer_scheme.name();
             let lyr_addr = LayerAddress::new(area_scheme.area_id(), layer_scheme.layer_id());
-            let axn_topology = layer_scheme.kind().axn_topology();
+            let axon_topology = layer_scheme.kind().axon_topology();
             let lyr_depth = layer_scheme.depth().unwrap_or(cmn::DEFAULT_OUTPUT_LAYER_DEPTH);
 
-            let dims = match axn_topology {
+            let dims = match axon_topology {
                 AxonTopology::Spatial | AxonTopology::Nonspatial =>
                     Some(area_scheme.dims().clone_with_depth(lyr_depth)),
                 // AxonTopology::Nonspatial => None,
                 AxonTopology::None => panic!("InputGenerator::new: Invalid axon topology (None)."),
             };
 
-            let lyr_axn_sig = match *layer_scheme.axon_domain() {
-                AxonDomain::Output(ref axn_sig) => axn_sig.clone(),
+            let lyr_axon_sig = match *layer_scheme.axon_domain() {
+                AxonDomain::Output(ref axon_sig) => axon_sig.clone(),
                 _ => return Err(format!("InputGenerator::new(): Input generator areas \
                     must contain only output layers. [area: '{}', layer: '{}']", area_scheme.name(),
                     layer_map_scheme.name()).into()),
@@ -193,11 +193,11 @@ impl InputGenerator {
 
             lyr_addr_list.push(lyr_addr.clone());
             lyr_dims_list.push(dims.clone());
-            lyr_axn_sigs_list.push(lyr_axn_sig.clone());
+            lyr_axon_sigs_list.push(lyr_axon_sig.clone());
 
             let layer = InputGeneratorLayer {
                 sub: SubcorticalNucleusLayer::new(lyr_name, lyr_addr, layer_scheme.axon_domain().clone(),
-                    axn_topology, dims),
+                    axon_topology, dims),
                 pathway: None,
             };
 

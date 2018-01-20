@@ -1023,14 +1023,14 @@ impl CorticalArea {
                     Some(addr) => slc_range(&self.area_map, addr.layer_id()),
                     None => 0..self.area_map.slice_map().depth() as usize,
                 };
-                let axn_range = self.area_map.slice_map().axn_range(slc_range.clone());
+                let axon_range = self.area_map.slice_map().axon_range(slc_range.clone());
                 match buffer_kind {
                     SamplerBufferKind::Single => {
                         let cmd_srcs = slc_range.map(|slc_id| {
                             CorticalBuffer::axon_slice(self.axns.states(), self.area_id, slc_id as u8)
                         }).collect();
-                        self.sampler_rx_single_u8(axn_range.len(), cmd_srcs, kind.clone(),
-                            Some(axn_range), backpressure)
+                        self.sampler_rx_single_u8(axon_range.len(), cmd_srcs, kind.clone(),
+                            Some(axon_range), backpressure)
                     },
                     _ => unimplemented!(),
                 }
@@ -1290,7 +1290,7 @@ impl CorticalArea {
     #[inline] pub fn efferent_target_names(&self) -> &[&'static str] { &self.area_map.eff_areas() }
     #[inline] pub fn ocl_pq(&self) -> &ProQue { &self.ocl_pq }
     #[inline] pub fn device(&self) -> Device { self.ocl_pq.queue().device() }
-    #[inline] pub fn axn_tract_map(&self) -> SliceTractMap { self.area_map.slice_map().tract_map() }
+    #[inline] pub fn axon_tract_map(&self) -> SliceTractMap { self.area_map.slice_map().tract_map() }
     #[inline] pub fn area_map(&self) -> &AreaMap { &self.area_map }
     #[inline] pub fn area_id(&self) -> usize { self.area_id }
     #[inline] pub fn aux(&self) -> &Aux { &self.aux }
@@ -1349,10 +1349,10 @@ pub mod tests {
     use map::{AreaMapTest};
 
     pub trait CorticalAreaTest {
-        fn axn_state(&self, idx: usize) -> u8;
+        fn axon_state(&self, idx: usize) -> u8;
         fn write_to_axon(&mut self, val: u8, idx: u32);
         fn read_from_axon(&self, idx: u32) -> u8;
-        fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8)
+        fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axon_slc: u8)
             -> (i8, i8, u32, u32);
         fn print_aux(&mut self);
         fn print_axns(&mut self);
@@ -1371,14 +1371,14 @@ pub mod tests {
     }
 
     impl CorticalAreaTest for CorticalArea {
-        fn axn_state(&self, idx: usize) -> u8 {
+        fn axon_state(&self, idx: usize) -> u8 {
             self.finish_queues();
-            self.axns.axn_state(idx)
+            self.axns.axon_state(idx)
         }
 
         fn read_from_axon(&self, idx: u32) -> u8 {
             self.finish_queues();
-            self.axns.axn_state(idx as usize)
+            self.axns.axon_state(idx as usize)
         }
 
         fn write_to_axon(&mut self, val: u8, idx: u32) {
@@ -1386,7 +1386,7 @@ pub mod tests {
             self.axns.write_to_axon(val, idx);
         }
 
-        fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axn_slc: u8) -> (i8, i8, u32, u32) {
+        fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axon_slc: u8) -> (i8, i8, u32, u32) {
             let v_ofs_range = RandRange::new(-8i8, 9);
             let u_ofs_range = RandRange::new(-8i8, 9);
 
@@ -1400,12 +1400,12 @@ pub mod tests {
                     continue;
                 }
 
-                let idx_rslt = self.area_map.axn_idx(src_axn_slc, cel_coords.v_id,
+                let idx_rslt = self.area_map.axon_idx(src_axon_slc, cel_coords.v_id,
                     v_ofs, cel_coords.u_id, u_ofs);
 
                 match idx_rslt {
                     Ok(idx) => {
-                        let col_id = self.area_map.axn_col_id(src_axn_slc, cel_coords.v_id,
+                        let col_id = self.area_map.axon_col_id(src_axon_slc, cel_coords.v_id,
                             v_ofs, cel_coords.u_id, u_ofs).unwrap();
                         return (v_ofs, u_ofs, col_id, idx)
                     },
@@ -1414,7 +1414,7 @@ pub mod tests {
                 }
             }
 
-            panic!("SynCoords::rand_safe_src_axn_offs(): Error finding valid offset pair.");
+            panic!("SynCoords::rand_safe_src_axon_offs(): Error finding valid offset pair.");
         }
 
         fn print_aux(&mut self) {

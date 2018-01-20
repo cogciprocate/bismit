@@ -51,7 +51,7 @@ impl AreaMap {
         let mut build_options = cmn::base_build_options()
             .cmplr_def("AXN_SLC_COUNT", self.slice_map.depth() as i32)
             .cmplr_def("SLC_SCL_COEFF_L2", cmn::SLC_SCL_COEFF_L2)
-            .bo(BuildOpt::include_def("AXN_SLC_IDZS", literal_list(self.slice_map.axn_idzs())))
+            .bo(BuildOpt::include_def("AXN_SLC_IDZS", literal_list(self.slice_map.axon_idzs())))
             .bo(BuildOpt::include_def("AXN_SLC_V_SIZES", literal_list(self.slice_map.v_sizes())))
             .bo(BuildOpt::include_def("AXN_SLC_U_SIZES", literal_list(self.slice_map.u_sizes())))
             .bo(BuildOpt::include_def("AXN_SLC_V_SCALES", literal_list(self.slice_map.v_scales())))
@@ -146,7 +146,7 @@ impl AreaMap {
          // Push all matching slices:
          for layer in self.layer_map.iter() {
              // if (layer.layer_tags() & map::FF_OUT) == map::FF_OUT {
-            if layer.axn_domain().is_output() {
+            if layer.axon_domain().is_output() {
                 let v = self.layer_slc_ids(&[layer.name().to_owned()]);
                 output_slcs.extend_from_slice(&v);
              }
@@ -189,7 +189,7 @@ impl AreaMap {
     ///
     /// [DEPRICATED]
     ///
-    pub fn axn_range_meshing_tags_either_way(&self, layer_tags: LayerTags,
+    pub fn axon_range_meshing_tags_either_way(&self, layer_tags: LayerTags,
                 src_lyr_sub_slcs: Option<(usize, Range<usize>)>) -> Option<Range<u32>>
     {
         let layers = self.layer_map.layers_meshing_tags_either_way(layer_tags);
@@ -204,21 +204,21 @@ impl AreaMap {
                         match layer.src_lyr_old(area_id, slc_range) {
                             Some(src_lyr) => {
                                 let src_base_slc_id = src_lyr.tar_slc_range().start as u8;
-                                let src_lyr_idz = self.axn_idz(src_base_slc_id as u8);
-                                let src_lyr_len = src_lyr.axn_count();
+                                let src_lyr_idz = self.axon_idz(src_base_slc_id as u8);
+                                let src_lyr_len = src_lyr.axon_count();
 
-                                // * TODO: ADDME: self.verify_axn_range()
+                                // * TODO: ADDME: self.verify_axon_range()
                                 debug_assert!({
                                         let slc_idm = src_base_slc_id + src_lyr.dims().depth() - 1;
-                                        let slc_len = self.slice_map.slc_axn_count(slc_idm);
-                                        let axn_idz = self.axn_idz(slc_idm);
-                                        let axn_idn = axn_idz + slc_len;
+                                        let slc_len = self.slice_map.slc_axon_count(slc_idm);
+                                        let axon_idz = self.axon_idz(slc_idm);
+                                        let axon_idn = axon_idz + slc_len;
                                         // // [DEBUG]:
-                                        // println!("\n\n# (lyr_idz, lyr_len) = ({}, {}), axn_idn = {}, \
-                                        //     slc_len = {}, axn_idz = {}, \n# layer: {:#?}\n",
-                                        //     src_lyr_idz, src_lyr_len, axn_idn, slc_len, axn_idz, layer);
-                                        (src_lyr_idz + src_lyr_len) == axn_idn
-                                    }, "AreaMap::axn_range(): Axon index mismatch.");
+                                        // println!("\n\n# (lyr_idz, lyr_len) = ({}, {}), axon_idn = {}, \
+                                        //     slc_len = {}, axon_idz = {}, \n# layer: {:#?}\n",
+                                        //     src_lyr_idz, src_lyr_len, axon_idn, slc_len, axon_idz, layer);
+                                        (src_lyr_idz + src_lyr_len) == axon_idn
+                                    }, "AreaMap::axon_range(): Axon index mismatch.");
 
                                 Some(src_lyr_idz..(src_lyr_idz + src_lyr_len))
                             },
@@ -228,22 +228,22 @@ impl AreaMap {
                     // Entire Layer:
                     None => {
                         let base_slc_id = lyr_slc_range.start as u8;
-                        let lyr_idz = self.axn_idz(base_slc_id);
+                        let lyr_idz = self.axon_idz(base_slc_id);
 
-                        let lyr_len = layer.ttl_axn_count();
+                        let lyr_len = layer.ttl_axon_count();
 
-                        // * TODO: ADDME: self.verify_axn_range()
+                        // * TODO: ADDME: self.verify_axon_range()
                         debug_assert!({
                                 let slc_idm = base_slc_id + layer.depth() - 1;
-                                let slc_len = self.slice_map.slc_axn_count(slc_idm);
-                                let axn_idz = self.axn_idz(slc_idm);
-                                let axn_idn = axn_idz + slc_len;
+                                let slc_len = self.slice_map.slc_axon_count(slc_idm);
+                                let axon_idz = self.axon_idz(slc_idm);
+                                let axon_idn = axon_idz + slc_len;
                                 // [DEBUG]:
-                                // println!("\n\n# (lyr_idz, lyr_len) = ({}, {}), axn_idn = {}, \
-                                //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n",
-                                //     lyr_idz, lyr_len, axn_idn, slc_len, axn_idz, layer);
-                                (lyr_idz + lyr_len) == axn_idn
-                            }, "AreaMap::axn_range(): Axon index mismatch.");
+                                // println!("\n\n# (lyr_idz, lyr_len) = ({}, {}), axon_idn = {}, \
+                                //     slc_len = {}, axon_idz = {}, \n# layer: {:?}\n",
+                                //     lyr_idz, lyr_len, axon_idn, slc_len, axon_idz, layer);
+                                (lyr_idz + lyr_len) == axon_idn
+                            }, "AreaMap::axon_range(): Axon index mismatch.");
 
                         Some(lyr_idz..(lyr_idz + lyr_len))
                     },
@@ -254,7 +254,7 @@ impl AreaMap {
         } else if layers.len() == 0 {
             None
         } else {
-            panic!("AreaMap::axn_range_meshing_tags(): Multiple layers matching \
+            panic!("AreaMap::axon_range_meshing_tags(): Multiple layers matching \
                 flags: '{}' for area: '{}'. \n\nLayers: \n{:#?}", layer_tags,
                 self.area_name, layers);
         }
@@ -263,10 +263,10 @@ impl AreaMap {
     /// Returns the axon index range for a layer, or optionally a subset of
     /// that range pertaining to a specific source layer, if the layer exists.
     ///
-    pub fn lyr_axn_range(&self, lyr_addr: &LayerAddress, src_lyr_addr: Option<&LayerAddress>)
+    pub fn lyr_axon_range(&self, lyr_addr: &LayerAddress, src_lyr_addr: Option<&LayerAddress>)
             -> Option<Range<u32>>
     {
-        assert!(lyr_addr.area_id() == self.area_id(), "AreaMap::lyr_axn_range: \
+        assert!(lyr_addr.area_id() == self.area_id(), "AreaMap::lyr_axon_range: \
             The layer address area id provided ({}) does not match this area's id ({}).",
             lyr_addr.area_id(), self.area_id());
 
@@ -274,29 +274,29 @@ impl AreaMap {
             if let Some(sl_addr) = src_lyr_addr {
                 if let Some(sli) = li.src_lyr(sl_addr) {
                     let src_base_slc_id = sli.tar_slc_range().start as u8;
-                    let src_lyr_axn_idz = self.axn_idz(src_base_slc_id);
-                    let src_lyr_axn_len = sli.axn_count();
-                    let src_lyr_axn_range = src_lyr_axn_idz..(src_lyr_axn_idz + src_lyr_axn_len);
+                    let src_lyr_axon_idz = self.axon_idz(src_base_slc_id);
+                    let src_lyr_axon_len = sli.axon_count();
+                    let src_lyr_axon_range = src_lyr_axon_idz..(src_lyr_axon_idz + src_lyr_axon_len);
 
-                    debug_assert!(self.verify_axn_range(src_lyr_axn_range.clone(),
-                        src_base_slc_id, li.depth()), "AreaMap::lyr_axn_range: \
+                    debug_assert!(self.verify_axon_range(src_lyr_axon_range.clone(),
+                        src_base_slc_id, li.depth()), "AreaMap::lyr_axon_range: \
                         Axon index range mismatch.");
 
-                    Some(src_lyr_axn_range)
+                    Some(src_lyr_axon_range)
                 } else {
                     None
                 }
             } else if let Some(lyr_slc_range) = li.slc_range() {
                 let base_slc_id = lyr_slc_range.start as u8;
-                let lyr_axn_idz = self.axn_idz(base_slc_id);
-                let lyr_axn_len = li.ttl_axn_count();
-                let lyr_axn_range = lyr_axn_idz..(lyr_axn_idz + lyr_axn_len);
+                let lyr_axon_idz = self.axon_idz(base_slc_id);
+                let lyr_axon_len = li.ttl_axon_count();
+                let lyr_axon_range = lyr_axon_idz..(lyr_axon_idz + lyr_axon_len);
 
-                // debug_assert!(self.verify_axn_range(lyr_axn_range.clone(),
-                //     base_slc_id, li.depth()), "AreaMap::lyr_axn_range: \
+                // debug_assert!(self.verify_axon_range(lyr_axon_range.clone(),
+                //     base_slc_id, li.depth()), "AreaMap::lyr_axon_range: \
                 //     Axon index range mismatch.");
 
-                Some(lyr_axn_range)
+                Some(lyr_axon_range)
 
             } else {
                 None
@@ -308,16 +308,16 @@ impl AreaMap {
 
     // NOTE: This is broken if depth > 1.
     // TODO: Loop through slices and add up axons.
-    pub fn verify_axn_range(&self, axn_range: Range<u32>, base_slc_id: u8, depth: u8) -> bool {
+    pub fn verify_axon_range(&self, axon_range: Range<u32>, base_slc_id: u8, depth: u8) -> bool {
         let slc_idm = base_slc_id + depth - 1;
-        let slc_len = self.slice_map.slc_axn_count(slc_idm);
-        let axn_idz = self.axn_idz(base_slc_id);
-        let axn_idn = axn_idz + slc_len;
+        let slc_len = self.slice_map.slc_axon_count(slc_idm);
+        let axon_idz = self.axon_idz(base_slc_id);
+        let axon_idn = axon_idz + slc_len;
         // [DEBUG]:
-        // println!("\n\n# (lyr_idz, lyr_len) = ({}, {}), axn_idn = {}, \
-        //     slc_len = {}, axn_idz = {}, \n# layer: {:?}\n",
-        //     lyr_idz, lyr_len, axn_idn, slc_len, axn_idz, layer);
-        axn_range.start == self.axn_idz(base_slc_id) && axn_range.end == axn_idn
+        // println!("\n\n# (lyr_idz, lyr_len) = ({}, {}), axon_idn = {}, \
+        //     slc_len = {}, axon_idz = {}, \n# layer: {:?}\n",
+        //     lyr_idz, lyr_len, axon_idn, slc_len, axon_idz, layer);
+        axon_range.start == self.axon_idz(base_slc_id) && axon_range.end == axon_idn
     }
 
     // NEW
@@ -347,7 +347,7 @@ impl AreaMap {
 
     pub fn area_id(&self) -> usize { self.area_id }
     pub fn area_name(&self) -> &'static str { self.area_name }
-    pub fn axn_idz(&self, slc_id: u8) -> u32 { self.slice_map.idz(slc_id) }
+    pub fn axon_idz(&self, slc_id: u8) -> u32 { self.slice_map.idz(slc_id) }
     pub fn slice_map(&self) -> &SliceMap { &self.slice_map }
     pub fn layer_map(&self) -> &LayerMap { &self.layer_map }
     pub fn layer(&self, layer_id: usize) -> Option<&LayerInfo> { self.layer_map.layer_info(layer_id) }
@@ -379,9 +379,9 @@ pub mod tests {
     use super::{AreaMap};
 
     pub trait AreaMapTest {
-        fn axn_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8)
+        fn axon_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8)
                 -> Result<u32, &'static str>;
-        fn axn_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
+        fn axon_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
                 -> Result<u32, &'static str>;
     }
 
@@ -399,9 +399,8 @@ pub mod tests {
          ///         is the same as the one in the kernel and gives precisely
          ///         the same results.
          ///
-        fn axn_idx(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
-                -> Result<u32, &'static str>
-        {
+        fn axon_idx(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
+                -> Result<u32, &'static str> {
             let v_scale = self.slice_map.v_scales()[slc_id as usize];
             let u_scale = self.slice_map.u_scales()[slc_id as usize];
 
@@ -414,16 +413,15 @@ pub mod tests {
 
             if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
                     u_size, u_id_scaled as u32, u_ofs) {
-                Ok(axn_idx_unsafe(self.axn_idz(slc_id), v_id_scaled as u32, v_ofs,
+                Ok(axon_idx_unsafe(self.axon_idz(slc_id), v_id_scaled as u32, v_ofs,
                     u_size, u_id_scaled as u32, u_ofs))
             } else {
                 Err("Axon coordinates invalid.")
             }
         }
 
-        fn axn_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
-                -> Result<u32, &'static str>
-        {
+        fn axon_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
+                -> Result<u32, &'static str> {
             let v_scale = self.slice_map.v_scales()[slc_id as usize];
             let u_scale = self.slice_map.u_scales()[slc_id as usize];
 
@@ -437,7 +435,7 @@ pub mod tests {
             if coords_are_safe(1, 0, v_size, v_id_scaled as u32, v_ofs,
                     u_size, u_id_scaled as u32, u_ofs) {
                 // Give a fake, zero idz (since this is a column id we're returning):
-                Ok(axn_idx_unsafe(0, v_id_scaled as u32, v_ofs,
+                Ok(axon_idx_unsafe(0, v_id_scaled as u32, v_ofs,
                     u_size, u_id_scaled as u32, u_ofs))
             } else {
                 Err("Axon coordinates invalid.")
@@ -465,7 +463,7 @@ pub mod tests {
         (coord_ttl >= 0) && (coord_ttl < dim_size as i64)
     }
 
-    pub fn axn_idx_unsafe(idz: u32, v_id: u32, v_ofs: i8, u_size: u32, u_id: u32, u_ofs: i8) -> u32 {
+    pub fn axon_idx_unsafe(idz: u32, v_id: u32, v_ofs: i8, u_size: u32, u_id: u32, u_ofs: i8) -> u32 {
         let v = v_id as i64 + v_ofs as i64;
         let u = u_id as i64 + u_ofs as i64;
         (idz as i64 + (v * u_size as i64) + u) as u32

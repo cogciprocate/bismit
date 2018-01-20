@@ -156,7 +156,7 @@ impl Thalamus {
 
             // Output layer tracts:
             let mut output_layer_count = 0;
-            for layer in area_map.layer_map().iter().filter(|li| li.axn_domain().is_output()) {
+            for layer in area_map.layer_map().iter().filter(|li| li.axon_domain().is_output()) {
                 // If the layer is thalamic it will have an irregular size
                 // which will need to be reflected on its tract size.
                 let layer_dims = match layer.irregular_layer_dims() {
@@ -165,8 +165,8 @@ impl Thalamus {
                 };
 
                 println!("{mt}{mt}{mt}'{}': tags: {}, slc_range: {:?}, map_kind: {:?}, \
-                    axn_kind: {:?}", layer.name(), layer.layer_tags(), layer.slc_range(),
-                    layer.layer_map_kind(), layer.axn_topology(), mt = cmn::MT);
+                    axon_kind: {:?}", layer.name(), layer.layer_tags(), layer.slc_range(),
+                    layer.layer_map_kind(), layer.axon_topology(), mt = cmn::MT);
 
                 tract.add_area(LayerAddress::new(area_s.area_id(), layer.layer_id()),
                     layer_dims);

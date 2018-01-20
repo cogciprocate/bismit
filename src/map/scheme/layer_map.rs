@@ -2,7 +2,7 @@
 use std::ops::{Index, IndexMut, Deref};
 // use std::hash::{Hasher};
 use cmn::MapStore;
-use map::{LayerTags, LayerMapKind, LayerScheme, LayerSchemeDefinition, AxonTopology, LayerKind,
+use map::{LayerTags, LayerMapKind, LayerScheme, LayerSchemeDefinition, AxonTopology,
     AxonDomain, AxonTags};
 
 
@@ -26,24 +26,24 @@ impl LayerMapScheme {
 
     // <A: Into<AxonTags>>
     pub fn input_layer<S, D>(self, layer_name: S, layer_tags: LayerTags,
-            axon_domain: D, axn_topo: AxonTopology) -> LayerMapScheme
+            axon_domain: D, axon_topo: AxonTopology) -> LayerMapScheme
             where S: Into<String>, D: Into<AxonDomain>
     {
         self.layer(
-            // LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
-            //     axn_domain)
+            // LayerScheme::new(layer_name, LayerKind::Axonal(axon_kind), None, layer_tags,
+            //     axon_domain)
             LayerScheme::define(layer_name)
-                .axonal(axn_topo)
+                .axonal(axon_topo)
                 .tags(layer_tags)
                 .axon_domain(axon_domain)
         )
     }
 
-    // pub fn axn_layer(mut self, layer_name: S, layer_tags: LayerTags,
-    //         axn_domain: AxonDomain, axn_kind: AxonTopology) -> LayerMapScheme
+    // pub fn axon_layer(mut self, layer_name: S, layer_tags: LayerTags,
+    //         axon_domain: AxonDomain, axon_kind: AxonTopology) -> LayerMapScheme
     // {
-    //     self.add_layer(LayerScheme::new(layer_name, LayerKind::Axonal(axn_kind), None, layer_tags,
-    //         axn_domain));
+    //     self.add_layer(LayerScheme::new(layer_name, LayerKind::Axonal(axon_kind), None, layer_tags,
+    //         axon_domain));
     //     self
     // }
 
@@ -53,26 +53,26 @@ impl LayerMapScheme {
         self
     }
 
-    pub fn layer_old<S, D>(self, layer_name: S, layer_depth: u8, layer_tags: LayerTags,
-            axon_domain: D, kind: LayerKind) -> LayerMapScheme
-            where S: Into<String>, D: Into<AxonDomain>
-    {
-        // let validated_depth = match kind {
-        //     LayerKind::Cellular(ref cell_scheme) => cell_scheme.validate_depth(Some(layer_depth)),
-        //     LayerKind::Axonal(_) => Some(layer_depth),
-        // };
+    // pub fn layer_old<S, D>(self, layer_name: S, layer_depth: u8, layer_tags: LayerTags,
+    //         axon_domain: D, kind: LayerKind) -> LayerMapScheme
+    //         where S: Into<String>, D: Into<AxonDomain>
+    // {
+    //     // let validated_depth = match kind {
+    //     //     LayerKind::Cellular(ref cell_scheme) => cell_scheme.validate_depth(Some(layer_depth)),
+    //     //     LayerKind::Axonal(_) => Some(layer_depth),
+    //     // };
 
-        // self.add_layer(LayerScheme::new(layer_name, kind, validated_depth, layer_tags, axn_domain));
-        // self
+    //     // self.add_layer(LayerScheme::new(layer_name, kind, validated_depth, layer_tags, axon_domain));
+    //     // self
 
-        self.layer(
-            LayerScheme::define(layer_name)
-                .kind(kind)
-                .depth(layer_depth)
-                .tags(layer_tags)
-                .axon_domain(axon_domain)
-        )
-    }
+    //     self.layer(
+    //         LayerScheme::define(layer_name)
+    //             .kind(kind)
+    //             .depth(layer_depth)
+    //             .tags(layer_tags)
+    //             .axon_domain(axon_domain)
+    //     )
+    // }
 
     pub fn add_layer(&mut self, layer_bldr: LayerSchemeDefinition) {
         // layer.set_layer_id();

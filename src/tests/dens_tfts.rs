@@ -46,7 +46,7 @@ fn cycle_random_pyrs() {
     // let src_slc_id = ;
 
     // Primary spatial layer slice idz (base axon slice):
-    // let prx_src_slc_id = area.layer_test(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().base_axn_slc();
+    // let prx_src_slc_id = area.layer_test(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().base_axon_slc();
 
     // DEBUG: Print slice map and synapse dims:
     println!("\nDEBUG INFO: \n{mt}{}, \n{mt}synapse dims: {:?}",
@@ -84,7 +84,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             let den_syn_range = den_coords.syn_idx_range_den(tft_id, tft_syn_idz);
 
             // Axon index corresponding to our cell and source slice:
-            let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id,
+            let src_axon_idx = area.area_map().axon_idx(src_slc_id, cel_coords.v_id,
                 0, cel_coords.u_id, 0).unwrap();
 
             //=============================================================================
@@ -103,8 +103,8 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
             area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
 
             // Write input:
-            //area.write_to_axon(128, src_axn_idx);
-            area.activate_axon(src_axn_idx);
+            //area.write_to_axon(128, src_axon_idx);
+            area.activate_axon(src_axon_idx);
 
             // Finish queues:
             area.finish_queues();
@@ -140,8 +140,8 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
                 println!("\niter: {}", iter);
                 println!("{}", cel_coords);
                 println!("{}", den_coords);
-                println!("Axon Info: zeroed_slc_id: {}, src_slc_id: {}, src_axn_idx: {}",
-                    zeroed_slc_id, src_slc_id, src_axn_idx);
+                println!("Axon Info: zeroed_slc_id: {}, src_slc_id: {}, src_axon_idx: {}",
+                    zeroed_slc_id, src_slc_id, src_axon_idx);
                 println!("dens.state[{}]: '{}'", den_idx, den_state);
                 print!("Synapse src_slc_ids: ");
                 util::print_all(area, " -- TEST_CEL_TUFTS() -- ");
@@ -174,7 +174,7 @@ fn _test_rand_cel(area: &mut CorticalArea, zeroed_slc_id: u8, src_slc_id: u8, it
                 .fill(zeroed_slc_id, Some(fill_size)).offset(den_syn_range.start).enq().unwrap();
             area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().src_slc_ids().default_queue().unwrap().finish().unwrap();
 
-            area.write_to_axon(0, src_axn_idx);
+            area.write_to_axon(0, src_axon_idx);
         }
     }
 
@@ -256,7 +256,7 @@ fn cycle_random_dens() {
 
         // [FIXME]: ASSIGN SPECIAL TAGS TO THIS LAYER:
         let src_slc_ranges = area.area_map().layer_map().iter()
-            .filter(|li| li.axn_domain().is_input() && li.slc_range().is_some())
+            .filter(|li| li.axon_domain().is_input() && li.slc_range().is_some())
             .map(|li| li.slc_range().unwrap().clone())
             .collect::<Vec<_>>();
 
@@ -264,7 +264,7 @@ fn cycle_random_dens() {
         let src_slc_id = src_slc_ranges[0].start as u8;
 
         // GET THE AXON INDEX CORRESPONDING TO OUR CELL AND SOURCE SLICE:
-        let src_axn_idx = area.area_map().axn_idx(src_slc_id, cel_coords.v_id,
+        let src_axon_idx = area.area_map().axon_idx(src_slc_id, cel_coords.v_id,
                     0, cel_coords.u_id, 0).unwrap();
 
         // PRINT SOME DEBUG INFO IN CASE OF FAILURE:
@@ -273,7 +273,7 @@ fn cycle_random_dens() {
             println!("{}", cel_coords);
             println!("{}", den_coords);
             println!("Cell Synapse Range: {:?}", cel_syn_range);
-            println!("Axon Info: src_slc_id: {}, src_axn_idx: {}", src_slc_id, src_axn_idx);
+            println!("Axon Info: src_slc_id: {}, src_axon_idx: {}", src_slc_id, src_axon_idx);
         }
 
         //=============================================================================
@@ -295,7 +295,7 @@ fn cycle_random_dens() {
         area.finish_queues();
 
         // WRITE INPUT:
-        area.activate_axon(src_axn_idx);
+        area.activate_axon(src_axon_idx);
 
         // Finish queues:
         area.finish_queues();
@@ -352,7 +352,7 @@ fn cycle_random_dens() {
             .offset(cel_syn_range.start)
             .enq().unwrap();
 
-        area.write_to_axon(0, src_axn_idx);
+        area.write_to_axon(0, src_axon_idx);
 
         // Finish queues:
         area.finish_queues();

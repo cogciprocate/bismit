@@ -90,13 +90,13 @@ impl GlyphSequences {
             //     layer.set_dims(val_layer_dims.clone());
             // }
 
-            if layer.axn_tags().is_superset(&GlyphSequences::img_lyr_tags()) {
+            if layer.axon_tags().is_superset(&GlyphSequences::img_lyr_tags()) {
                 // assert!(tags.contains(map::FF_OUT));
                 assert!(img_layer_dims.is_none());
                 assert!(img_layer_addr.is_none());
                 img_layer_dims = Some(layer.sub().dims().unwrap().clone());
                 img_layer_addr = Some(layer.sub().addr().clone());
-            } else if layer.axn_tags().is_superset(&GlyphSequences::val_lyr_tags()) {
+            } else if layer.axon_tags().is_superset(&GlyphSequences::val_lyr_tags()) {
                 // assert!(tags.contains(map::NS_OUT));
                 assert!(val_layer_dims.is_none());
                 assert!(val_layer_addr.is_none());

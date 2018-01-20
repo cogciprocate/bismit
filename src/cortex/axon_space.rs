@@ -37,21 +37,21 @@ impl IoExeCmd {
 pub struct IoInfo {
     tract_area_id: usize,
     src_lyr_addr: LayerAddress,
-    axn_range: Range<u32>,
+    axon_range: Range<u32>,
     exe_cmd: IoExeCmd,
 }
 
 impl IoInfo {
-    pub fn new(tract_area_id: usize, src_lyr_addr: LayerAddress, axn_range: Range<u32>,
+    pub fn new(tract_area_id: usize, src_lyr_addr: LayerAddress, axon_range: Range<u32>,
             exe_cmd: IoExeCmd) -> IoInfo
     {
-        println!("IoInfo::new: tract_area_id: {}, src_lyr_addr: {:?}, axn_range: {:?}, exe_cmd: {:?}.",
-            tract_area_id, src_lyr_addr, axn_range, exe_cmd);
+        println!("IoInfo::new: tract_area_id: {}, src_lyr_addr: {:?}, axon_range: {:?}, exe_cmd: {:?}.",
+            tract_area_id, src_lyr_addr, axon_range, exe_cmd);
 
         IoInfo {
             tract_area_id: tract_area_id,
             src_lyr_addr: src_lyr_addr,
-            axn_range: axn_range,
+            axon_range: axon_range,
             exe_cmd: exe_cmd,
         }
     }
@@ -66,7 +66,7 @@ impl IoInfo {
 
     #[inline] pub fn tract_area_id(&self) -> usize { self.tract_area_id }
     #[inline] pub fn src_lyr_addr(&self) -> LayerAddress { self.src_lyr_addr }
-    #[inline] pub fn axn_range(&self) -> Range<u32> { self.axn_range.clone() }
+    #[inline] pub fn axon_range(&self) -> Range<u32> { self.axon_range.clone() }
     #[inline] pub fn exe_cmd(&self) -> &IoExeCmd { &self.exe_cmd }
     #[inline] pub fn exe_cmd_mut(&mut self) -> &mut IoExeCmd { &mut self.exe_cmd }
 }
@@ -85,7 +85,7 @@ impl IoInfoGroup {
             tract_src_lyr_addrs: Vec<(LayerAddress, Option<LayerAddress>)>,
             filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>,
             exe_graph: &mut ExecutionGraph,
-            axn_states: &Buffer<u8>,
+            axon_states: &Buffer<u8>,
             thal: &Thalamus,
         ) -> IoInfoGroup
     {
@@ -110,7 +110,7 @@ impl IoInfoGroup {
                 let mut tars: Vec<ThalamicTract> = Vec::with_capacity(lyr_slc_id_range.len());
 
                 for slc_id in lyr_slc_id_range.clone() {
-                    srcs.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id as u8));
+                    srcs.push(CorticalBuffer::axon_slice(axon_states, lyr_addr.area_id(), slc_id as u8));
                     let rw_vec_id = thal.tract().buffer_rwvec(thal.tract().index_of(lyr_addr).unwrap())
                         .unwrap().id();
                     tars.push(ThalamicTract::axon_slice(rw_vec_id, lyr_addr.area_id(), slc_id as u8));
@@ -171,7 +171,7 @@ impl IoInfoGroup {
                     let mut write_cmd_tars: Vec<CorticalBuffer> = Vec::with_capacity(tar_lyr_slc_id_range.len());
 
                     for slc_id in tar_lyr_slc_id_range.start..tar_lyr_slc_id_range.end {
-                        write_cmd_tars.push(CorticalBuffer::axon_slice(axn_states, lyr_addr.area_id(), slc_id as u8))
+                        write_cmd_tars.push(CorticalBuffer::axon_slice(axon_states, lyr_addr.area_id(), slc_id as u8))
                     }
 
                     let exe_cmd = CommandRelations::thalamocortical_write(write_cmd_srcs, write_cmd_tars);
@@ -186,12 +186,12 @@ impl IoInfoGroup {
             ===============================================================================
             =============================================================================*/
 
-            let axn_range = area_map.lyr_axn_range(&lyr_addr, src_lyr_addr.as_ref()).expect(
+            let axon_range = area_map.lyr_axon_range(&lyr_addr, src_lyr_addr.as_ref()).expect(
                 &format!("IoInfoGroup::new(): Internal consistency error: \
                 lyr_addr: {:?}, src_lyr_addr: {:?}.", &lyr_addr, src_lyr_addr));
             let tract_area_id = thal.tract().index_of(&tract_src_lyr_addr)
                 .expect("IoInfoGroup::new(): Unable to determine tract area id.");
-            let io_layer = IoInfo::new(tract_area_id, tract_src_lyr_addr, axn_range, io_cmd);
+            let io_layer = IoInfo::new(tract_area_id, tract_src_lyr_addr, axon_range, io_cmd);
             layers.push(io_layer);
         }
 
@@ -215,7 +215,7 @@ pub struct IoInfoCache {
 
 impl IoInfoCache {
     pub fn new(area_map: &AreaMap, filter_chains: &Vec<(LayerAddress, Vec<SensoryFilter>)>,
-        exe_graph: &mut ExecutionGraph, axn_states: &Buffer<u8>, thal: &Thalamus) -> IoInfoCache
+        exe_graph: &mut ExecutionGraph, axon_states: &Buffer<u8>, thal: &Thalamus) -> IoInfoCache
     {
         let group_route_list = [AxonDomainRoute::Input, AxonDomainRoute::Output];
 
@@ -230,7 +230,7 @@ impl IoInfoCache {
             let tract_src_lyr_addrs: Vec<(LayerAddress, Option<LayerAddress>)> =
                 if let AxonDomainRoute::Output = *group_route {
                     area_map.layer_map().iter()
-                        .filter(|li| li.axn_domain().is_output())
+                        .filter(|li| li.axon_domain().is_output())
                         .map(|li| {
                             let lyr_addr = LayerAddress::new(area_map.area_id(), li.layer_id());
                             (lyr_addr, None)
@@ -241,7 +241,7 @@ impl IoInfoCache {
                     let mut tract_src_lyr_addrs = Vec::with_capacity(16);
 
                     for li in area_map.layer_map().iter() {
-                        if li.axn_domain().is_input() {
+                        if li.axon_domain().is_input() {
                             let lyr_addr = LayerAddress::new(area_map.area_id(), li.layer_id());
 
                             for sli in li.sources().iter() {
@@ -257,7 +257,7 @@ impl IoInfoCache {
             // continue to the next set of tags in the `group_tags_list`:
             if tract_src_lyr_addrs.len() != 0 {
                 let io_lyr_grp = IoInfoGroup::new(area_map, group_route.clone(),
-                    tract_src_lyr_addrs, filter_chains, exe_graph, axn_states, thal);
+                    tract_src_lyr_addrs, filter_chains, exe_graph, axon_states, thal);
                 groups.insert(group_route.clone(), (io_lyr_grp, EventList::new()));
             }
         }
@@ -448,8 +448,8 @@ impl AxonSpace {
                 grp.iter().find(|&info| info.src_lyr_addr == src_lyr_addr)
             ).expect("AxonSpace::create_layer_sub_buffer: Cannot find layer");
 
-        let origin = lyr_info.axn_range.start;
-        let len = lyr_info.axn_range.len();
+        let origin = lyr_info.axon_range.start;
+        let len = lyr_info.axon_range.len();
 
         self.states.create_sub_buffer(flags, origin, len).map_err(|err| CmnError::from(err))
     }
@@ -520,7 +520,7 @@ impl AxonSpace {
                         filter.cycle(exe_graph)?;
                     }
                 } else {
-                    let axn_range = io_lyr.axn_range();
+                    let axon_range = io_lyr.axon_range();
 
                     if let &IoExeCmd::Write(_, cmd_idx) = io_lyr.exe_cmd() {
                         let event = if DISABLE_IO {
@@ -532,8 +532,8 @@ impl AxonSpace {
                             // ///////////// WRITE BUFFER:
                             // let future_write = self.states.write(future_reader)
                             //     .queue(&self.write_queue)
-                            //     .offset(axn_range.start as usize)
-                            //     .len(axn_range.len())
+                            //     .offset(axon_range.start as usize)
+                            //     .len(axon_range.len())
                             //     .ewait(exe_graph.get_req_events(cmd_idx)?)
                             //     .enew(&mut ev)
                             //     .enq_async()?
@@ -547,8 +547,8 @@ impl AxonSpace {
                                 self.states.map()
                                     .queue(&self.write_queue)
                                     .write_invalidate()
-                                    .offset(axn_range.start as usize)
-                                    .len(axn_range.len())
+                                    .offset(axon_range.start as usize)
+                                    .len(axon_range.len())
                                     // NOTE: Wait for events here on the map
                                     // command rather than the unmap so that
                                     // memcpy closure (below) doesn't begin
@@ -600,14 +600,14 @@ impl AxonSpace {
                     } else {
                         let future_writer = thal.tract().write(io_lyr.tract_area_id())?;
                         let future_writer_len = unsafe { (*future_writer.as_ptr()).len() };
-                        debug_assert_eq!(io_lyr.axn_range().len(), future_writer_len);
+                        debug_assert_eq!(io_lyr.axon_range().len(), future_writer_len);
 
                         let mut ev = Event::empty();
 
                         let future_read = Box::new(self.states.read(future_writer)
                             .queue(&self.read_queue)
-                            .offset(io_lyr.axn_range().start as usize)
-                            .len(io_lyr.axn_range().len())
+                            .offset(io_lyr.axon_range().start as usize)
+                            .len(io_lyr.axon_range().len())
                             .ewait(exe_graph.get_req_events(cmd_idx)?)
                             .enew(&mut ev)
                             .enq_async()?
@@ -647,12 +647,12 @@ pub mod tests {
     use cortex::{CelCoords};
 
     pub trait AxonSpaceTest {
-        fn axn_state(&self, idx: usize) -> u8;
+        fn axon_state(&self, idx: usize) -> u8;
         fn write_to_axon(&mut self, val: u8, idx: u32);
     }
 
     impl AxonSpaceTest for AxonSpace {
-        fn axn_state(&self, idx: usize) -> u8 {
+        fn axon_state(&self, idx: usize) -> u8 {
             self.states.default_queue().unwrap().finish().unwrap();
             let mut sdr = vec![0u8];
             self.states.cmd().read(&mut sdr).offset(idx).enq().unwrap();
@@ -677,16 +677,16 @@ pub mod tests {
         pub fn new(slc_id: u8, v_id: u32, u_id: u32, area_map: &AreaMap
             ) -> Result<AxnCoords, &'static str>
         {
-            match area_map.axn_idx(slc_id, v_id, 0, u_id, 0) {
+            match area_map.axon_idx(slc_id, v_id, 0, u_id, 0) {
                 Ok(idx) => Ok(AxnCoords { idx: idx, slc_id: slc_id, v_id: v_id, u_id: u_id }),
                 Err(e) => Err(e),
             }
         }
 
-        pub fn from_cel_coords(cel_base_axn_slc: u8, cel_coords: &CelCoords, area_map: &AreaMap
+        pub fn from_cel_coords(cel_base_axon_slc: u8, cel_coords: &CelCoords, area_map: &AreaMap
             ) -> Result<AxnCoords, &'static str>
         {
-            AxnCoords::new(cel_base_axn_slc, cel_coords.v_id,
+            AxnCoords::new(cel_base_axon_slc, cel_coords.v_id,
                 cel_coords.u_id, area_map)
         }
 

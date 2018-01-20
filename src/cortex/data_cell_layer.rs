@@ -22,9 +22,9 @@ pub trait DataCellLayer: 'static + Debug + Send {
     fn activities(&self) -> &Buffer<u8>;
     fn flag_sets(&self) -> &Buffer<u8>;
     fn dims(&self) -> &CorticalDims;
-    fn axn_range(&self) -> (usize, usize);
-    fn axn_slc_ids(&self) -> &[u8];
-    fn base_axn_slc(&self) -> u8;
+    fn axon_range(&self) -> (usize, usize);
+    fn axon_slc_ids(&self) -> &[u8];
+    fn base_axon_slc(&self) -> u8;
     fn tft_count(&self) -> usize;
     fn cell_scheme(&self) -> &CellScheme;
     fn tufts(&self) -> &Tufts;
@@ -66,7 +66,7 @@ pub mod tests {
     pub struct CelCoords {
         pub idx: u32,
         pub slc_id_lyr: u8,
-        pub axn_slc_id: u8,
+        pub axon_slc_id: u8,
         pub v_id: u32,
         pub u_id: u32,
         pub lyr_dims: CorticalDims,
@@ -76,7 +76,7 @@ pub mod tests {
     }
 
     impl CelCoords {
-        pub fn new(axn_slc_id: u8, slc_id_lyr: u8, v_id: u32, u_id: u32,
+        pub fn new(axon_slc_id: u8, slc_id_lyr: u8, v_id: u32, u_id: u32,
                     lyr_dims: CorticalDims, /*tfts_per_cel: u32, dens_per_tft_l2: u8,
                     syns_per_den_l2: u8*/) -> CelCoords
         {
@@ -87,7 +87,7 @@ pub mod tests {
             CelCoords {
                 idx: idx,
                 slc_id_lyr: slc_id_lyr,
-                axn_slc_id: axn_slc_id,
+                axon_slc_id: axon_slc_id,
                 v_id: v_id,
                 u_id: u_id,
                 lyr_dims: lyr_dims,
@@ -109,15 +109,15 @@ pub mod tests {
         }
 
         #[allow(dead_code)]
-        pub fn cel_axn_idx(&self, area_map: &AreaMap) -> u32 {
-            area_map.axn_idx(self.axn_slc_id, self.v_id, 0, self.u_id, 0).unwrap()
+        pub fn cel_axon_idx(&self, area_map: &AreaMap) -> u32 {
+            area_map.axon_idx(self.axon_slc_id, self.v_id, 0, self.u_id, 0).unwrap()
         }
     }
 
     impl Display for CelCoords {
         fn fmt(&self, fmtr: &mut Formatter) -> Result {
-            write!(fmtr, "CelCoords {{ idx: {}, slc_id_lyr: {}, axn_slc_id: {}, v_id: {}, u_id: {} }}",
-                self.idx, self.slc_id_lyr, self.axn_slc_id, self.v_id, self.u_id)
+            write!(fmtr, "CelCoords {{ idx: {}, slc_id_lyr: {}, axon_slc_id: {}, v_id: {}, u_id: {} }}",
+                self.idx, self.slc_id_lyr, self.axon_slc_id, self.v_id, self.u_id)
         }
     }
 
@@ -127,7 +127,7 @@ pub mod tests {
     //     pub idx: u32,
     //     pub tft_id: usize,
     //     pub slc_id_lyr: u8,
-    //     pub axn_slc_id: u8,
+    //     pub axon_slc_id: u8,
     //     pub v_id: u32,
     //     pub u_id: u32,
     //     pub lyr_dims: CorticalDims,
@@ -137,7 +137,7 @@ pub mod tests {
     // }
 
     // impl TftCoords {
-    //     pub fn new(tft_id: usize, axn_slc_id: u8, slc_id_lyr: u8, v_id: u32, u_id: u32,
+    //     pub fn new(tft_id: usize, axon_slc_id: u8, slc_id_lyr: u8, v_id: u32, u_id: u32,
     //                 lyr_dims: CorticalDims, /*tfts_per_cel: u32, dens_per_tft_l2: u8,
     //                 syns_per_den_l2: u8*/) -> TftCoords
     //     {
@@ -150,7 +150,7 @@ pub mod tests {
     //             idx: idx,
     //             tft_id: tft_id,
     //             slc_id_lyr: slc_id_lyr,
-    //             axn_slc_id: axn_slc_id,
+    //             axon_slc_id: axon_slc_id,
     //             v_id: v_id,
     //             u_id: u_id,
     //             lyr_dims: dims,
@@ -170,15 +170,15 @@ pub mod tests {
     //             self.lyr_dims.u_size(), self.u_id)
     //     }
 
-    //     pub fn cel_axn_idx(&self, area_map: &AreaMap) -> u32 {
-    //         area_map.axn_idx(self.axn_slc_id, self.v_id, 0, self.u_id, 0).unwrap()
+    //     pub fn cel_axon_idx(&self, area_map: &AreaMap) -> u32 {
+    //         area_map.axon_idx(self.axon_slc_id, self.v_id, 0, self.u_id, 0).unwrap()
     //     }
     // }
 
     // impl Display for TftCoords {
     //     fn fmt(&self, fmtr: &mut Formatter) -> Result {
-    //         write!(fmtr, "TftCoords {{ idx: {}, slc_id_lyr: {}, axn_slc_id: {}, v_id: {}, u_id: {} }}",
-    //             self.idx, self.slc_id_lyr, self.axn_slc_id, self.v_id, self.u_id)
+    //         write!(fmtr, "TftCoords {{ idx: {}, slc_id_lyr: {}, axon_slc_id: {}, v_id: {}, u_id: {} }}",
+    //             self.idx, self.slc_id_lyr, self.axon_slc_id, self.v_id, self.u_id)
     //     }
     // }
 }

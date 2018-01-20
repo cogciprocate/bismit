@@ -70,7 +70,7 @@ impl SubcorticalNucleusLayer {
         let name = layer_scheme.name().to_owned();
         let addr = LayerAddress::new(area_id, layer_scheme.layer_id());
         let axon_domain = layer_scheme.axon_domain().clone();
-        let axon_topology = layer_scheme.kind().axn_topology();
+        let axon_topology = layer_scheme.kind().axon_topology();
 
         let dims = match *layer_scheme.axon_domain() {
             AxonDomain::Input(_) => {

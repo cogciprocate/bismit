@@ -1,5 +1,4 @@
-use map::{LayerTags, AxonTopology, AxonDomain, CellScheme, CellSchemeDefinition,
-    TuftScheme, DendriteClass, DendriteKind};
+use map::{LayerTags, AxonTopology, AxonDomain, CellScheme, CellSchemeDefinition};
 
 
 // * TODO: Figure out whether or not to keep `AxonTopology` here since only
@@ -13,31 +12,31 @@ pub enum LayerKind {
 }
 
 impl LayerKind {
-    pub fn axn_topology(&self) -> AxonTopology {
+    pub fn axon_topology(&self) -> AxonTopology {
         match *self {
             LayerKind::Axonal(ak) => ak.clone(),
             LayerKind::Cellular(_) => AxonTopology::Spatial,
         }
     }
 
-    pub fn apical<'a>(mut self, tft_id: usize, src_lyrs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8,
-                syns_per_den_l2: u8, max_active_dens_l2: u8, thresh_init: u32) -> LayerKind
-    {
-        match &mut self {
-            &mut LayerKind::Cellular(ref mut cs) => {
-                let src_lyrs_vec = src_lyrs.into_iter().map(|&sl| sl.into()).collect();
+    // pub fn apical<'a>(mut self, tft_id: usize, src_lyrs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8,
+    //             syns_per_den_l2: u8, max_active_dens_l2: u8, thresh_init: u32) -> LayerKind
+    // {
+    //     match &mut self {
+    //         &mut LayerKind::Cellular(ref mut cs) => {
+    //             let src_lyrs_vec = src_lyrs.into_iter().map(|&sl| sl.into()).collect();
 
-                let tft_scheme = TuftScheme::new(tft_id, DendriteClass::Apical, DendriteKind::Distal,
-                    dens_per_tft_l2, syns_per_den_l2, max_active_dens_l2, src_lyrs_vec, Some(thresh_init));
+    //             let tft_scheme = TuftScheme::new(tft_id, DendriteClass::Apical, DendriteKind::Distal,
+    //                 dens_per_tft_l2, syns_per_den_l2, max_active_dens_l2, src_lyrs_vec, Some(thresh_init));
 
-                cs.add_tft(tft_scheme);
-            },
+    //             cs.add_tft(tft_scheme);
+    //         },
 
-            &mut LayerKind::Axonal(_) => panic!("::apical(): Axonal layers do not have dendrites."),
-        }
+    //         &mut LayerKind::Axonal(_) => panic!("::apical(): Axonal layers do not have dendrites."),
+    //     }
 
-        self
-    }
+    //     self
+    // }
 }
 
 
@@ -58,7 +57,7 @@ impl LayerScheme {
     }
 
     pub fn new<S, D>(layer_id: usize, name: S, kind: LayerKind, depth: Option<u8>, tags: LayerTags,
-            axn_domain: D) -> LayerScheme
+            axon_domain: D) -> LayerScheme
             where S: Into<String>, D: Into<AxonDomain>
     {
         // if cfg!(debug) { tags.debug_validate(); }
@@ -69,12 +68,12 @@ impl LayerScheme {
             kind: kind,
             depth: depth,
             tags: tags,
-            axon_domain: axn_domain.into(),
+            axon_domain: axon_domain.into(),
         }
     }
 
-    pub fn axn_topology(&self) -> AxonTopology {
-        self.kind.axn_topology()
+    pub fn axon_topology(&self) -> AxonTopology {
+        self.kind.axon_topology()
     }
 
     // pub fn set_layer_id(&mut self, layer_id: usize) { self.layer_id = Some(layer_id) }

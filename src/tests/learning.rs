@@ -102,10 +102,10 @@ pub struct LearningTestBed {
     fake_neighbor_slc: u8,
     aff_out_slc: u8,
 
-    prx_src_axn_idx: u32,
-    fake_neighbor_axn_idx: u32,
-    aff_out_axn_idx: u32,
-    cel_axn_idx: u32,
+    prx_src_axon_idx: u32,
+    fake_neighbor_axon_idx: u32,
+    aff_out_axon_idx: u32,
+    cel_axon_idx: u32,
 
     fake_v_ofs: i8,
     fake_u_ofs: i8,
@@ -125,10 +125,10 @@ impl LearningTestBed {
             prx_src_slc,
             fake_neighbor_slc,
             aff_out_slc,
-            prx_src_axn_idx,
-            fake_neighbor_axn_idx,
-            aff_out_axn_idx,
-            cel_axn_idx,
+            prx_src_axon_idx,
+            fake_neighbor_axon_idx,
+            aff_out_axon_idx,
+            cel_axon_idx,
             fake_v_ofs,
             fake_u_ofs,
             syn_coords,
@@ -157,7 +157,7 @@ impl LearningTestBed {
             area.finish_queues();
 
             // Primary spatial layer slice idz (base axon slice):
-            let prx_src_slc = area.layer_test(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().base_axn_slc();
+            let prx_src_slc = area.layer_test(testbed::PRIMARY_SPATIAL_SSC_LAYER_NAME).unwrap().base_axon_slc();
 
             // Fake neighbor slice:
             let fake_neighbor_slc = unused_slc_ranges[1].start as u8;
@@ -169,7 +169,7 @@ impl LearningTestBed {
             // Afferent output slice id:
             // [FIXME]: ASSIGN SPECIAL TAGS TO THIS LAYER:
             let aff_out_slc_ranges = area.area_map().layer_map().iter()
-                .filter(|li| li.axn_domain().is_output() && li.slc_range().is_some())
+                .filter(|li| li.axon_domain().is_output() && li.slc_range().is_some())
                 .map(|li| li.slc_range().unwrap().clone())
                 .collect::<Vec<_>>();
 
@@ -182,21 +182,21 @@ impl LearningTestBed {
                 .rand_syn_coords(cel_coords.clone());
 
             // Base slice for primary temporal pyramidals of our layer:
-            let ptal_axn_slc_idz = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().base_axn_slc();
-            // assert!(ptal_axn_slc_idz == cel_coords.slc_id_lyr, "cel_coords axon slice mismatch");
-            assert_eq!(ptal_axn_slc_idz, cel_coords.axn_slc_id - cel_coords.slc_id_lyr);
+            let ptal_axon_slc_idz = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().base_axon_slc();
+            // assert!(ptal_axon_slc_idz == cel_coords.slc_id_lyr, "cel_coords axon slice mismatch");
+            assert_eq!(ptal_axon_slc_idz, cel_coords.axon_slc_id - cel_coords.slc_id_lyr);
 
             // Our cell's proximal source axon (the column spatial axon):
-            let prx_src_axn_idx = area.area_map().axn_idz(prx_src_slc) + cel_coords.col_id();
+            let prx_src_axon_idx = area.area_map().axon_idz(prx_src_slc) + cel_coords.col_id();
 
             // Our cell's axon:
-            let cel_axn_idx = cel_coords.cel_axn_idx(area.area_map());
+            let cel_axon_idx = cel_coords.cel_axon_idx(area.area_map());
 
             // Our cell's COLUMN output axon:
-            let aff_out_axn_idx = area.area_map().axn_idz(aff_out_slc) + cel_coords.col_id();
+            let aff_out_axon_idx = area.area_map().axon_idz(aff_out_slc) + cel_coords.col_id();
 
             // A random, nearby axon for our cell to use as a distal source axon:
-            let (fake_v_ofs, fake_u_ofs, fn_col_id, fake_neighbor_axn_idx) =
+            let (fake_v_ofs, fake_u_ofs, fn_col_id, fake_neighbor_axon_idx) =
                 area.rand_safe_src_axn(&cel_coords, fake_neighbor_slc);
 
             //================================ SYN RANGE ==================================
@@ -238,25 +238,25 @@ impl LearningTestBed {
 
             // PRINT ALL THE THINGS!:
             let syn_val = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut().syn_state(syn_coords.idx);
-            let fake_neighbor_axn_val = area.axn_state(fake_neighbor_axn_idx as usize);
+            let fake_neighbor_axon_val = area.axon_state(fake_neighbor_axon_idx as usize);
             println!("DEBUG INFO - PRINT ALL THE THINGS!: \n\
-                {mt}[prx_src]: prx_src_axn_idx (prx_src_slc: {}, col_id: {}): {} \n\
-                {mt}[dst_src]: fake_neighbor_axn_idx (''_slc: {}, col_id: {}): {}, \n\
-                {mt}[cel_axn]: cel_axn_idx (cel_coords.axn_slc_id: {}, col_id: {}): {} \n\
-                {mt}[col_out]: aff_out_axn_idx (aff_out_slc: {}, col_id: {}): {}, \n\n\
+                {mt}[prx_src]: prx_src_axon_idx (prx_src_slc: {}, col_id: {}): {} \n\
+                {mt}[dst_src]: fake_neighbor_axon_idx (''_slc: {}, col_id: {}): {}, \n\
+                {mt}[cel_axn]: cel_axon_idx (cel_coords.axon_slc_id: {}, col_id: {}): {} \n\
+                {mt}[col_out]: aff_out_axon_idx (aff_out_slc: {}, col_id: {}): {}, \n\n\
                 \
                 {mt}fake_v_ofs: {}, fake_u_ofs: {}, \n\
-                {mt}fake_neighbor_axn_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_celtft: {:?}, \n\
+                {mt}fake_neighbor_axon_val: {}, syn_val: {}, syn_idx_range_den: {:?}, syn_idx_range_celtft: {:?}, \n\
                 {mt}syn_active_range (2nd half): {:?}, \n\
                 {mt}syn_coords: {}",
 
-                prx_src_slc, cel_coords.col_id(), prx_src_axn_idx,
-                fake_neighbor_slc, fn_col_id, fake_neighbor_axn_idx,
-                cel_coords.axn_slc_id, cel_coords.col_id(), cel_axn_idx,
-                aff_out_slc, cel_coords.col_id(), aff_out_axn_idx,
+                prx_src_slc, cel_coords.col_id(), prx_src_axon_idx,
+                fake_neighbor_slc, fn_col_id, fake_neighbor_axon_idx,
+                cel_coords.axon_slc_id, cel_coords.col_id(), cel_axon_idx,
+                aff_out_slc, cel_coords.col_id(), aff_out_axon_idx,
 
                 fake_v_ofs, fake_u_ofs,
-                fake_neighbor_axn_val, syn_val, syn_idx_range_den, syn_idx_range_celtft,
+                fake_neighbor_axon_val, syn_val, syn_idx_range_den, syn_idx_range_celtft,
                 focus_syns,
                 syn_coords,
                 mt = cmn::MT);
@@ -270,10 +270,10 @@ impl LearningTestBed {
             prx_src_slc,
             fake_neighbor_slc,
             aff_out_slc,
-            prx_src_axn_idx,
-            fake_neighbor_axn_idx,
-            aff_out_axn_idx,
-            cel_axn_idx,
+            prx_src_axon_idx,
+            fake_neighbor_axon_idx,
+            aff_out_axon_idx,
+            cel_axon_idx,
             fake_v_ofs,
             fake_u_ofs,
             syn_coords,
@@ -287,10 +287,10 @@ impl LearningTestBed {
             fake_neighbor_slc: fake_neighbor_slc,
             aff_out_slc: aff_out_slc,
 
-            prx_src_axn_idx: prx_src_axn_idx,
-            fake_neighbor_axn_idx: fake_neighbor_axn_idx,
-            aff_out_axn_idx: aff_out_axn_idx,
-            cel_axn_idx: cel_axn_idx,
+            prx_src_axon_idx: prx_src_axon_idx,
+            fake_neighbor_axon_idx: fake_neighbor_axon_idx,
+            aff_out_axon_idx: aff_out_axon_idx,
+            cel_axon_idx: cel_axon_idx,
 
             fake_v_ofs: fake_v_ofs,
             fake_u_ofs: fake_u_ofs,
@@ -393,10 +393,10 @@ impl LearningTestBed {
 
         // Activate distal source axon:
         if print_debug { printlnc!(yellow: "Activating distal source (neighbor) axon: [{}]...",
-            self.fake_neighbor_axn_idx); }
+            self.fake_neighbor_axon_idx); }
 
         area.finish_queues();
-        area.activate_axon(self.fake_neighbor_axn_idx);
+        area.activate_axon(self.fake_neighbor_axon_idx);
         area.finish_queues();
 
         util::ptal_alco(area, PtalAlco::CYCLE | PtalAlco::OUTPUT, print_debug);
@@ -432,15 +432,15 @@ impl LearningTestBed {
         //         "Minicolumn is not vatic (predictive).");
 
         // Ensure key axons are active:
-        assert!(area.read_from_axon(self.fake_neighbor_axn_idx) > 0,
+        assert!(area.read_from_axon(self.fake_neighbor_axon_idx) > 0,
             "Pyramidal cell fake neighbor axon is not active.");
 
         // Verify that afferent output for our column is active:
         // [FIXME] TODO: SHOULD ONLY BE ACTIVE WHEN STRS >= 0:
-        // assert!(area.read_from_axon(self.aff_out_axn_idx as u32) > 0);
+        // assert!(area.read_from_axon(self.aff_out_axon_idx as u32) > 0);
 
         // CHECK CELL AXON (should be zero here and active on next step):
-        assert!(area.read_from_axon(self.cel_axn_idx as u32) == 0);
+        assert!(area.read_from_axon(self.cel_axon_idx as u32) == 0);
 
         // FLAGS: [pyr: 0], [syns: 0's], [mcol: 0];
 
@@ -519,15 +519,15 @@ impl LearningTestBed {
         }
 
         // ACTIVATE COLUMN PSAL AXON
-        if print_debug {  printlnc!(yellow: "Activating proximal source axon: [{}]...", self.prx_src_axn_idx); }
+        if print_debug {  printlnc!(yellow: "Activating proximal source axon: [{}]...", self.prx_src_axon_idx); }
         area.finish_queues();
-        area.activate_axon(self.prx_src_axn_idx);
+        area.activate_axon(self.prx_src_axon_idx);
         area.finish_queues();
 
         // // ACTIVATE PTAL SYNAPSE SOURCE AXON
         // // [NOTE 2017-Jan-01]: Unknown what this was used for or has been replaced with. Investigate.
-        // printlnc!(yellow: "Activating distal source (neighbor) axon: [{}]...", self.fake_neighbor_axn_idx);
-        // area.activate_axon(self.fake_neighbor_axn_idx);
+        // printlnc!(yellow: "Activating distal source (neighbor) axon: [{}]...", self.fake_neighbor_axon_idx);
+        // area.activate_axon(self.fake_neighbor_axon_idx);
 
         util::ptal_alco(area, PtalAlco::ACTIVATE, print_debug);
 
@@ -537,7 +537,7 @@ impl LearningTestBed {
         }
 
         // ##### ADD ME: assert!(THE PYRAMIDAL OUTPUT AXON (NOT SOMA) IS ACTIVE)
-        assert!(area.read_from_axon(self.cel_axn_idx as u32) > 0);
+        assert!(area.read_from_axon(self.cel_axon_idx as u32) > 0);
 
         // MOVED THIS FROM 1B -- PROBABLY WAS IN WRONG SPOT
         // printlnc!(yellow: "\nConfirming flag sets...");
@@ -621,7 +621,7 @@ impl LearningTestBed {
         // ZERO PTAL SYNAPSE SOURCE AXON
         if print_debug { printlnc!(yellow: "Deactivating distal source (neighbor) axon..."); }
         area.finish_queues();
-        area.deactivate_axon(self.fake_neighbor_axn_idx);
+        area.deactivate_axon(self.fake_neighbor_axon_idx);
         area.finish_queues();
 
         util::ptal_alco(area, PtalAlco::CYCLE, print_debug);
@@ -654,11 +654,11 @@ impl LearningTestBed {
         // ZERO COLUMN PSAL AXON
         if print_debug {  printlnc!(yellow: "Deactivating proximal source axon..."); }
         area.finish_queues();
-        area.deactivate_axon(self.prx_src_axn_idx);
+        area.deactivate_axon(self.prx_src_axon_idx);
         area.finish_queues();
         // ZERO PTAL SYNAPSE SOURCE AXON
         // printlnc!(yellow: "Deactivating distal source (neighbor) axon...");
-        // area.deactivate_axon(fake_neighbor_axn_idx);
+        // area.deactivate_axon(fake_neighbor_axon_idx);
 
         // util::ptal_alco(area, ALL, print_debug);
         util::ptal_alco(area, PtalAlco::ACTIVATE | PtalAlco::LEARN | PtalAlco::OUTPUT, print_debug);
