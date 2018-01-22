@@ -268,7 +268,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 .axon_domain(AxonDomain::output(&[at1]))
                 .cellular(CellScheme::spiny_stellate()
                     .tft(TuftScheme::basal().proximal()
-                        .syns_per_den_l2(5)
+                        .syns_per_den(32)
                         .src_lyr(TuftSourceLayer::define("aff_in")
                             .syn_reach(7)
                             .prevalence(1)
@@ -308,15 +308,15 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 .axon_domain(AxonDomain::output(&[at2]))
                 .cellular(CellScheme::pyramidal()
                     .tft(TuftScheme::basal().proximal()
-                        .syns_per_den_l2(3)
+                        .syns_per_den(8)
                         .src_lyr(TuftSourceLayer::define(SPT_LYR)
                             .syn_reach(0)
                             .prevalence(1)
                         )
                     )
                     .tft(TuftScheme::basal().distal()
-                        .dens_per_tft_l2(4)
-                        .syns_per_den_l2(5)
+                        .dens_per_tft(16)
+                        .syns_per_den(32)
                         .max_active_dens_l2(2)
                         .thresh_init(500)
                         .src_lyr(TuftSourceLayer::define("v")
@@ -340,13 +340,22 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             )
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer_old(EXT_LYR, 1, LayerTags::DEFAULT,
-                AxonDomain::output(&[map::THAL_SP, at0]),
-                LayerKind::Axonal(AxonTopology::Spatial)
+            // .layer_old(EXT_LYR, 1, LayerTags::DEFAULT,
+            //     AxonDomain::output(&[map::THAL_SP, at0]),
+            //     LayerKind::Axonal(AxonTopology::Spatial)
+            // )
+            .layer(LayerScheme::define(EXT_LYR)
+                .depth(1)
+                .axonal(AxonTopology::Spatial)
+                .axon_domain(AxonDomain::output(&[map::THAL_SP, at0]))
             )
-            .input_layer("motor_in", LayerTags::DEFAULT,
-                AxonDomain::input(&[(InputTrack::Efferent, &[at1])]),
-                AxonTopology::Spatial
+            // .input_layer("motor_in", LayerTags::DEFAULT,
+            //     AxonDomain::input(&[(InputTrack::Efferent, &[at1])]),
+            //     AxonTopology::Spatial
+            // )
+            .layer(LayerScheme::define("motor_in")
+                .axonal(AxonTopology::Spatial)
+                .axon_domain(AxonDomain::input(&[(InputTrack::Efferent, &[at1])]))
             )
         )
 }

@@ -38,15 +38,15 @@ pub mod map;
 
 pub use ocl::Event as OclEvent;
 pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses,
-    InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer, SpinyStellateLayer,
-    Tufts, Dendrites, CorticalAreaSettings, DataCellLayer, SamplerKind,
-    SamplerBufferKind, WorkPool, WorkPoolRemote, CorticalAreas};
+    InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer,
+    SpinyStellateLayer, Tufts, Dendrites, CorticalAreaSettings, DataCellLayer,
+    SamplerKind, SamplerBufferKind, WorkPool, WorkPoolRemote, CorticalAreas};
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus,
     SubcorticalNucleusLayer, TestScNucleus, InputGenerator, InputGeneratorTract,
     InputGeneratorEncoder, InputGeneratorFrame, TractBuffer, TractSender,
     TractReceiver, WriteBuffer, ReadBuffer};
 pub use self::flywheel::Flywheel;
 pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap, AxonTopology};
-pub use self::cmn::{util, TractDims, TypeId, CmnError as Error, CmnResult as Result,
-    CorticalDims, MapStore};
+pub use self::cmn::{util, TractDims, TypeId, CmnError as Error,
+    CmnResult as Result, CorticalDims, MapStore};
 pub use self::encode::GlyphBuckets;

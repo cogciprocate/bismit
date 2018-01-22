@@ -35,7 +35,7 @@ __kernel void tft_cycle_syns(
         __global const uchar* const syn_src_slc_ids,
         // __private uint const cel_idz_syntuft,
         __private uint const syn_idz_tft,
-        __private uchar const syns_per_tft_l2,
+        __private uint const syns_per_tft,
         __private uchar const layer_depth,
         __global int* const aux_ints_0,
         __global int* const aux_ints_1,
@@ -47,13 +47,10 @@ __kernel void tft_cycle_syns(
     uint const u_size = get_global_size(1);
 
     for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
-        // uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
-        //     + cel_idz_syntuft) << syns_per_tuft_l2;
         uint const syn_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
-            << syns_per_tft_l2) + syn_idz_tft;
+            * syns_per_tft) + syn_idz_tft;
 
-        uint const syn_idn = syn_idz + (1 << syns_per_tft_l2);
-        // uint const syn_idn = syn_idz + (1 << syns_per_tft_l2 + 1);
+        uint const syn_idn = syn_idz + syns_per_tft;
 
         ////// DEBUG:
             // if (v_id == 0 && u_id == 0) {
@@ -127,7 +124,8 @@ __kernel void tft_cycle_syns_vec4(
         __global const uchar4* const syn_src_slc_ids,
         // __private uint const cel_idz_syntuft,
         __private uint const syn_idz_tft,
-        __private uchar const syns_per_tft_l2,
+        // Must be a multiple of 4:
+        __private uint const syns_per_tft,
         __private uchar const layer_depth,
         __global int* const aux_ints_0,
         __global int* const aux_ints_1,
@@ -140,15 +138,15 @@ __kernel void tft_cycle_syns_vec4(
 
     for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
         // // DIVIDED BY 4 BECAUSE VECTORS:
-        // uint const syn4_idz = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
-        //     + cel_idz_syntuft) << (syns_per_tuft_l2 - 2));
+        // uint const syn4_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
+        //     << (syns_per_tft_l2 - 2)) + (syn_idz_tft >> 2);
         // DIVIDED BY 4 BECAUSE VECTORS:
-        uint const syn4_idz = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
-            << (syns_per_tft_l2 - 2)) + (syn_idz_tft >> 2);
+        uint const syn4_idz =
+            ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) * syns_per_tft) >> 2) +
+                (syn_idz_tft >> 2);
 
         // DIVIDED BY 4 BECAUSE VECTORS:
-        uint const syn4_idn = syn4_idz + (1 << (syns_per_tft_l2 - 2));
-        // uint const syn4_idn = syn4_idz + (1 << (syns_per_tft_l2 - 2) + 1);
+        uint const syn4_idn = syn4_idz + (syns_per_tft >> 2);
 
 
         for (uint syn4_idx = syn4_idz; syn4_idx < syn4_idn; syn4_idx++) {
@@ -179,7 +177,7 @@ __kernel void layer_cycle_syns_wow(
         __global const uchar* const syn_src_slc_ids,
         // __private uint const cel_idz_syntuft,
         __private uint const syn_idz_tft,
-        __private uchar const syns_per_tft_l2,
+        __private uint const syns_per_tft,
         __private uchar const layer_depth,
         __global int* const aux_ints_0,
         __global int* const aux_ints_1,
@@ -198,7 +196,7 @@ __kernel void layer_cycle_syns_wow(
     uint const v_idz_wg = get_global_id(0) - v_id_local;
     uint const u_idz_wg = get_global_id(1) - u_id_local;
 
-    uint const syns_per_tft = 1 << syns_per_tft_l2;
+    // uint const syns_per_tft = 1 << syns_per_tft_l2;
     uint const syns_per_wg = mul24(v_work_size, u_work_size);
 
 
@@ -248,10 +246,10 @@ __kernel void layer_cycle_syns_wow(
 
         // FOR EACH SLICE IN LAYER
         for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
-            uint const syn_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
-                << syns_per_tft_l2) + syn_idz_tft + cur_syn_ofs;
             // uint const syn_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id)
-            //     << syns_per_tft_l2 + 1) + syn_idz_tft + cur_syn_ofs;
+            //     << syns_per_tft_l2) + syn_idz_tft + cur_syn_ofs;
+            uint const syn_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) *
+                syns_per_tft) + syn_idz_tft + cur_syn_ofs;
 
             char const v_ofs = syn_src_col_v_offs[syn_idx];
             char const u_ofs = syn_src_col_u_offs[syn_idx];
@@ -285,7 +283,8 @@ __kernel void layer_cycle_syns_wow_vec4(
         __global const uchar4* const syn_src_slc_ids,
         // __private uint const cel_idz_syntuft,
         __private uint const syn_idz_tft,
-        __private uchar const syns_per_tft_l2,
+        // Must be a multiple of 4:
+        __private uint const syns_per_tft,
         __private uchar const layer_depth,
         __global int* const aux_ints_0,
         __global int* const aux_ints_1,
@@ -303,7 +302,7 @@ __kernel void layer_cycle_syns_wow_vec4(
     uint const v_idz_wg = get_global_id(0) - v_id_local;
     uint const u_idz_wg = get_global_id(1) - u_id_local;
 
-    uint const syn4s_per_tft = (1 << (syns_per_tft_l2)) >> 2; // VEC4'D
+    uint const syn4s_per_tft = syns_per_tft >> 2; // VEC4'D
     uint const syn4s_per_wg = mul24(v_work_size, u_work_size); // DON'T DIVIDE ME (DOING SAME SYN4S AS SYNS)
 
     int cur_syn4_ofs = mad24(v_id_local, u_work_size, u_id_local);
@@ -350,10 +349,10 @@ __kernel void layer_cycle_syns_wow_vec4(
 
         for (int slc_id_lyr = 0; slc_id_lyr < layer_depth; slc_id_lyr++) {
             // VEC4'D:
-            uint syn4_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) <<
-                (syns_per_tft_l2 - 2)) + (syn_idz_tft >> 2) + cur_syn4_ofs;
             // uint syn4_idx = (cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) <<
-            //     (syns_per_tft_l2 - 2) + 1) + (syn_idz_tft >> 2) + cur_syn4_ofs;
+            //     (syns_per_tft_l2 - 2)) + (syn_idz_tft >> 2) + cur_syn4_ofs;
+            uint syn4_idx = ((cel_idx_3d_unsafe(slc_id_lyr, v_size, v_id, u_size, u_id) *
+                syns_per_tft) >> 2) + (syn_idz_tft >> 2) + cur_syn4_ofs;
 
             char4 const v_ofs = syn_src_col_v_offs[syn4_idx];
             char4 const u_ofs = syn_src_col_u_offs[syn4_idx];

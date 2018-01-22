@@ -18,27 +18,7 @@ impl LayerKind {
             LayerKind::Cellular(_) => AxonTopology::Spatial,
         }
     }
-
-    // pub fn apical<'a>(mut self, tft_id: usize, src_lyrs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8,
-    //             syns_per_den_l2: u8, max_active_dens_l2: u8, thresh_init: u32) -> LayerKind
-    // {
-    //     match &mut self {
-    //         &mut LayerKind::Cellular(ref mut cs) => {
-    //             let src_lyrs_vec = src_lyrs.into_iter().map(|&sl| sl.into()).collect();
-
-    //             let tft_scheme = TuftScheme::new(tft_id, DendriteClass::Apical, DendriteKind::Distal,
-    //                 dens_per_tft_l2, syns_per_den_l2, max_active_dens_l2, src_lyrs_vec, Some(thresh_init));
-
-    //             cs.add_tft(tft_scheme);
-    //         },
-
-    //         &mut LayerKind::Axonal(_) => panic!("::apical(): Axonal layers do not have dendrites."),
-    //     }
-
-    //     self
-    // }
 }
-
 
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -58,10 +38,7 @@ impl LayerScheme {
 
     pub fn new<S, D>(layer_id: usize, name: S, kind: LayerKind, depth: Option<u8>, tags: LayerTags,
             axon_domain: D) -> LayerScheme
-            where S: Into<String>, D: Into<AxonDomain>
-    {
-        // if cfg!(debug) { tags.debug_validate(); }
-
+            where S: Into<String>, D: Into<AxonDomain> {
         LayerScheme {
             layer_id,
             name: name.into(),
@@ -76,8 +53,6 @@ impl LayerScheme {
         self.kind.axon_topology()
     }
 
-    // pub fn set_layer_id(&mut self, layer_id: usize) { self.layer_id = Some(layer_id) }
-    // pub fn layer_id(&self) -> usize { self.layer_id.expect("Layer ID not set!") }
     pub fn layer_id(&self) -> usize { self.layer_id }
     pub fn depth(&self) -> Option<u8> { self.depth }
     pub fn name<'s>(&'s self) -> &'s str { &self.name }
@@ -89,7 +64,6 @@ impl LayerScheme {
 
 #[derive(Clone, Debug)]
 pub struct LayerSchemeDefinition {
-    // layer_id: Option<usize>,
     name: String,
     kind: Option<LayerKind>,
     depth: Option<u8>,
@@ -100,7 +74,6 @@ pub struct LayerSchemeDefinition {
 impl LayerSchemeDefinition {
     pub fn new<S: Into<String>>(name: S) -> LayerSchemeDefinition {
         LayerSchemeDefinition {
-            // layer_id: None,
             name: name.into(),
             kind: None,
             depth: None,

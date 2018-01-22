@@ -58,7 +58,10 @@ impl Dendrites {
             let tft_den_idz = den_count_ttl;
             den_idzs_by_tft.push(tft_den_idz);
 
-            let tft_den_count = dims.cells() << tft_scheme.dens_per_tft_l2();
+            let tft_den_count = dims.cells() * tft_scheme.dens_per_tft();
+            assert!(tft_den_count > 0, "Dendrites::new: Tuft dendrite count may not be zero. \
+                (dims.cells(): {}, tft_scheme.dens_per_tft(): {})",
+                dims.cells(), tft_scheme.dens_per_tft());
             den_counts_by_tft.push(tft_den_count);
 
             den_count_ttl += tft_den_count;
@@ -95,7 +98,7 @@ impl Dendrites {
                 .zip(den_counts_by_tft.iter())
                 .enumerate()
         {
-            let syns_per_den_l2 = tft_scheme.syns_per_den_l2();
+            let syns_per_den = tft_scheme.syns_per_den();
             let den_threshold = tft_scheme.thresh_init().unwrap_or(cmn::DENDRITE_DEFAULT_INITIAL_THRESHOLD);
 
             assert!(tft_id == tft_scheme.tft_id());
@@ -118,7 +121,7 @@ impl Dendrites {
                 .arg_buf(syns.strengths())
                 .arg_scl(tft_den_idz)
                 .arg_scl(tft_syn_idz)
-                .arg_scl(syns_per_den_l2)
+                .arg_scl(syns_per_den)
                 .arg_scl(den_threshold)
                 .arg_scl_named::<i32>("rnd", None)
                 .arg_buf(&energies)
@@ -307,7 +310,7 @@ pub mod tests {
             let tft_dims = self.syns.tft_dims_by_tft()[tft_id].clone();
 
             // let dens_per_tft = self.den_id_range_celtft(tft_id).end;
-            let dens_per_tft = 1 << tft_dims.dens_per_tft_l2();
+            let dens_per_tft = tft_dims.dens_per_tft();
             let den_id_range_celtft = RandRange::new(0, dens_per_tft);
             let den_id_celtft = den_id_range_celtft.ind_sample(self.syns.rng());
 
@@ -334,7 +337,7 @@ pub mod tests {
         }
 
         fn den_id_range_celtft(&self, tft_id: usize) -> Range<u32> {
-            let dens_per_tft = 1 << self.syns().tft_dims_by_tft()[tft_id].dens_per_tft_l2();
+            let dens_per_tft = self.syns().tft_dims_by_tft()[tft_id].dens_per_tft();
             0..dens_per_tft
         }
 
@@ -400,7 +403,7 @@ pub mod tests {
             let den_idz_celtft = den_idx(&self.cel_coords.lyr_dims, self.cel_coords.slc_id_lyr,
                 self.cel_coords.v_id, self.cel_coords.u_id, self.tft_den_idz,
                 &self.tft_dims, 0) as usize;
-            let dens_per_celtft = 1 << (self.tft_dims.dens_per_tft_l2() as u32);
+            let dens_per_celtft = self.tft_dims.dens_per_tft() as usize;
 
             den_idz_celtft..(den_idz_celtft + dens_per_celtft)
         }
@@ -414,8 +417,7 @@ pub mod tests {
                 self.cel_coords.v_id, self.cel_coords.u_id, tft_syn_idz,
                 &self.tft_dims, 0, 0) as usize;
             // let syns_per_cel_tft = (self.layer_dims.per_tft() as usize) << syns_per_den_l2 as usize;
-            let syns_per_celtft = 1 << (self.tft_dims.dens_per_tft_l2() as u32 +
-                self.tft_dims.syns_per_den_l2() as u32);
+            let syns_per_celtft = (self.tft_dims.dens_per_tft() * self.tft_dims.syns_per_den()) as usize;
 
             syn_idz_celtft..(syn_idz_celtft + syns_per_celtft)
         }
@@ -437,7 +439,7 @@ pub mod tests {
 
             // let syns_per_celtft = 1 << (self.tft_dims.dens_per_tft_l2() as u32 +
             //     self.tft_dims.syns_per_den_l2() as u32);
-            let syns_per_den = 1 << (self.tft_dims.syns_per_den_l2() as u32);
+            let syns_per_den = self.tft_dims.syns_per_den() as usize;
 
             syn_idz_den..(syn_idz_den + syns_per_den)
         }
@@ -475,7 +477,7 @@ pub mod tests {
         ) -> u32
     {
         // Dendrites per cell-tuft:
-        let dens_per_celtft = 1 << (tft_dims.dens_per_tft_l2() as u32);
+        let dens_per_celtft = tft_dims.dens_per_tft();
         // Dendrites per tuft-slice:
         let dens_per_tftslc = lyr_dims.columns() * dens_per_celtft;
 

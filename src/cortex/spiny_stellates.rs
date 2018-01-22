@@ -56,10 +56,7 @@ impl SpinyStellateLayer {
         assert![tft_count == TUFT_COUNT];
         let ssc_tft_id = 0;
 
-        let syns_per_tft_l2: u8 = {
-            let tft_scheme = &cell_scheme.tft_schemes()[ssc_tft_id];
-            tft_scheme.syns_per_den_l2() + tft_scheme.dens_per_tft_l2()
-        };
+        let syns_per_tft = cell_scheme.tft_schemes()[ssc_tft_id].syns_per_tft();
 
         let energies = Buffer::builder().queue(ocl_pq.queue().clone()).len(dims).fill_val(0).build()?;
         let activities = Buffer::builder().queue(ocl_pq.queue().clone()).len(dims).fill_val(0).build()?;
@@ -105,7 +102,7 @@ impl SpinyStellateLayer {
             .arg_buf(dens.syns().states())
             .arg_scl(lyr_axon_idz)
             // .arg_scl(cels_per_grp)
-            .arg_scl(syns_per_tft_l2)
+            .arg_scl(syns_per_tft)
             // CURRENTLY UNUSED:
             .arg_scl_named::<u32>("rnd", None)
             // .arg_buf_named("aux_ints_0", None)

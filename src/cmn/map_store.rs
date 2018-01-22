@@ -38,7 +38,7 @@ impl<K, V> MapStore<K, V> where K: Eq + Hash + Debug {
     pub fn insert(&mut self, key: K, value: V) -> Option<&V> {
         self.values.push(value);
 
-        self.indices.insert(key, (self.values.len() - 1))
+        self.indices.insert(key, self.values.len() - 1)
             .map(move |idx| &self.values[idx])
     }
 

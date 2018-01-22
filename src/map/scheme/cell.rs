@@ -95,8 +95,8 @@ pub struct TuftScheme {
     tft_id: usize,
     den_class: DendriteClass,
     den_kind: DendriteKind,
-    dens_per_tft_l2: u8,
-    syns_per_den_l2: u8,
+    dens_per_tft: u32,
+    syns_per_den: u32,
     max_active_dens_l2: u8,
     src_lyrs: Vec<TuftSourceLayer>,
     thresh_init: Option<u32>,
@@ -115,16 +115,15 @@ impl TuftScheme {
         TuftSchemeDefinition::new().basal()
     }
 
-    pub fn new(tft_id: usize, den_class: DendriteClass, den_kind: DendriteKind, dens_per_tft_l2: u8,
-            syns_per_den_l2: u8, max_active_dens_l2: u8, src_lyrs: Vec<TuftSourceLayer>,
-            thresh_init: Option<u32>)
-            -> TuftScheme {
+    pub fn new(tft_id: usize, den_class: DendriteClass, den_kind: DendriteKind,
+            dens_per_tft: u32, syns_per_den: u32, max_active_dens_l2: u8,
+            src_lyrs: Vec<TuftSourceLayer>, thresh_init: Option<u32>) -> TuftScheme {
         TuftScheme {
             tft_id,
             den_class,
             den_kind,
-            dens_per_tft_l2,
-            syns_per_den_l2,
+            dens_per_tft,
+            syns_per_den,
             max_active_dens_l2,
             src_lyrs,
             thresh_init,
@@ -140,9 +139,9 @@ impl TuftScheme {
     #[inline] pub fn tft_id(&self) -> usize { self.tft_id }
     #[inline] pub fn den_class(&self) -> DendriteClass { self.den_class }
     #[inline] pub fn den_kind(&self) -> DendriteKind { self.den_kind }
-    #[inline] pub fn dens_per_tft_l2(&self) -> u8 { self.dens_per_tft_l2 }
-    #[inline] pub fn syns_per_den_l2(&self) -> u8 { self.syns_per_den_l2 }
-    #[inline] pub fn syns_per_tft_l2(&self) -> u8 { self.dens_per_tft_l2 + self.syns_per_den_l2 }
+    #[inline] pub fn dens_per_tft(&self) -> u32 { self.dens_per_tft }
+    #[inline] pub fn syns_per_den(&self) -> u32 { self.syns_per_den }
+    #[inline] pub fn syns_per_tft(&self) -> u32 { self.dens_per_tft * self.syns_per_den }
     #[inline] pub fn max_active_dens_l2(&self) -> u8 { self.max_active_dens_l2 }
     #[inline] pub fn src_lyrs(&self) -> &[TuftSourceLayer] { self.src_lyrs.as_slice() }
     #[inline] pub fn thresh_init(&self) -> &Option<u32> { &self.thresh_init }
@@ -152,8 +151,8 @@ impl TuftScheme {
 pub struct TuftSchemeDefinition {
     den_class: Option<DendriteClass>,
     den_kind: Option<DendriteKind>,
-    dens_per_tft_l2: u8,
-    syns_per_den_l2: Option<u8>,
+    dens_per_tft: u32,
+    syns_per_den: Option<u32>,
     max_active_dens_l2: u8,
     src_lyrs: Vec<TuftSourceLayer>,
     thresh_init: Option<u32>,
@@ -164,8 +163,8 @@ impl TuftSchemeDefinition {
         TuftSchemeDefinition {
             den_class: None,
             den_kind: None,
-            dens_per_tft_l2: 0,
-            syns_per_den_l2: None,
+            dens_per_tft: 1,
+            syns_per_den: None,
             max_active_dens_l2: 0,
             src_lyrs: Vec::with_capacity(4),
             thresh_init: None,
@@ -204,13 +203,15 @@ impl TuftSchemeDefinition {
         self.den_kind(DendriteKind::Distal)
     }
 
-    pub fn dens_per_tft_l2(mut self, dens_per_tft_l2: u8) -> TuftSchemeDefinition {
-        self.dens_per_tft_l2 = dens_per_tft_l2;
+    // If (dens_per_tft * syns_per_den) % 4 == 0, a vec4 kernel will be used.
+    pub fn dens_per_tft(mut self, dens_per_tft: u32) -> TuftSchemeDefinition {
+        self.dens_per_tft = dens_per_tft;
         self
     }
 
-    pub fn syns_per_den_l2(mut self, syns_per_den_l2: u8) -> TuftSchemeDefinition {
-        self.syns_per_den_l2 = Some(syns_per_den_l2);
+    // If (dens_per_tft * syns_per_den) % 4 == 0, a vec4 kernel will be used.
+    pub fn syns_per_den(mut self, syns_per_den: u32) -> TuftSchemeDefinition {
+        self.syns_per_den = Some(syns_per_den);
         self
     }
 
@@ -249,8 +250,8 @@ impl TuftSchemeDefinition {
             tft_id: tft_id,
             den_class: self.den_class.expect("TuftScheme::build"),
             den_kind: self.den_kind.expect("TuftScheme::build"),
-            dens_per_tft_l2: self.dens_per_tft_l2,
-            syns_per_den_l2: self.syns_per_den_l2.expect("TuftScheme::build"),
+            dens_per_tft: self.dens_per_tft,
+            syns_per_den: self.syns_per_den.expect("TuftScheme::build"),
             max_active_dens_l2: self.max_active_dens_l2,
             src_lyrs: self.src_lyrs,
             thresh_init: self.thresh_init,

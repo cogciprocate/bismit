@@ -81,17 +81,20 @@ const PRNT: bool = false;
 
 #[derive(Clone, Debug)]
 pub struct TuftDims {
-    dens_per_tft_l2: u8,
-    syns_per_den_l2: u8,
+    dens_per_tft: u32,
+    syns_per_den: u32,
 }
 
 impl TuftDims {
-    pub fn new(dens_per_tft_l2: u8, syns_per_den_l2: u8) -> TuftDims {
-        TuftDims { dens_per_tft_l2: dens_per_tft_l2, syns_per_den_l2: syns_per_den_l2 }
+    pub fn new(dens_per_tft: u32, syns_per_den: u32) -> TuftDims {
+        assert!(dens_per_tft > 0, "TuftDims::new: dens_per_tft must be > 0.");
+        assert!(syns_per_den > 0, "TuftDims::new: syns_per_den must be > 0.");
+        TuftDims { dens_per_tft, syns_per_den }
     }
 
-    #[inline] pub fn dens_per_tft_l2(&self) -> u8 { self.dens_per_tft_l2 }
-    #[inline] pub fn syns_per_den_l2(&self) -> u8 { self.syns_per_den_l2 }
+    #[inline] pub fn dens_per_tft(&self) -> u32 { self.dens_per_tft }
+    #[inline] pub fn syns_per_den(&self) -> u32 { self.syns_per_den }
+    #[inline] pub fn syns_per_tft(&self) -> u32 { self.dens_per_tft * self.syns_per_den }
 }
 
 
@@ -163,17 +166,17 @@ impl Synapses {
 
         for (tft_id, tft_scheme) in cell_scheme.tft_schemes().iter().enumerate() {
             assert!(tft_id == tft_scheme.tft_id());
-            let syns_per_tft_l2 = tft_scheme.syns_per_tft_l2();
+            let syns_per_tft = tft_scheme.syns_per_tft();
 
             let tft_syn_idz = syn_count_ttl;
-            let tft_syn_count = dims.cells() << syns_per_tft_l2;
+            let tft_syn_count = dims.cells() * syns_per_tft;
             syn_count_ttl += tft_syn_count;
 
             syn_idzs_by_tft.push(tft_syn_idz);
             syn_counts_by_tft.push(tft_syn_count);
 
-            let tft_dims = TuftDims::new(tft_scheme.dens_per_tft_l2(),
-                tft_scheme.syns_per_den_l2());
+            let tft_dims = TuftDims::new(tft_scheme.dens_per_tft(),
+                tft_scheme.syns_per_den());
 
             tft_dims_by_tft.push(tft_dims.clone());
 
@@ -185,9 +188,9 @@ impl Synapses {
             if DEBUG_NEW {
                 println!("{mt}{mt}{mt}{mt}SYNAPSES::NEW(): Tuft: len: {},\n\
                     {mt}{mt}{mt}{mt}{mt}dims: {:?} \n\
-                    {mt}{mt}{mt}{mt}{mt}dens_per_tft_l2: {}, syns_per_den_l2: {}",
-                    dims.to_len(), &dims, tft_scheme.dens_per_tft_l2(),
-                    tft_scheme.syns_per_den_l2(), mt = cmn::MT);
+                    {mt}{mt}{mt}{mt}{mt}dens_per_tft: {}, syns_per_den: {}",
+                    dims.to_len(), &dims, tft_scheme.dens_per_tft(),
+                    tft_scheme.syns_per_den(), mt = cmn::MT);
             }
         }
 
@@ -240,7 +243,7 @@ impl Synapses {
         for (tft_id, (tft_scheme, &tft_syn_idz)) in cell_scheme.tft_schemes().iter()
                 .zip(syn_idzs_by_tft.iter())
                 .enumerate() {
-            let syns_per_tft_l2 = tft_scheme.syns_per_tft_l2();
+            let syns_per_tft = tft_scheme.syns_per_tft();
 
             // * TODO: Use kernel to ascertain the optimal workgroup size increment.
             let min_wg_sqrt = 8 as usize;
@@ -250,7 +253,7 @@ impl Synapses {
             ===============================================================================
             =============================================================================*/
 
-            let kern_name = if syns_per_tft_l2 >= 2 {
+            let kern_name = if syns_per_tft % 4 == 0 {
                 // "tft_cycle_syns"
                 // "tft_cycle_syns_vec4"
                 // "layer_cycle_syns_wow"
@@ -269,7 +272,7 @@ impl Synapses {
                     .arg_buf(&src_col_v_offs)
                     .arg_buf(&src_slc_ids)
                     .arg_scl(tft_syn_idz)
-                    .arg_scl(syns_per_tft_l2)
+                    .arg_scl(syns_per_tft)
                     .arg_scl(dims.depth() as u8)
                     .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
                     .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
@@ -596,9 +599,9 @@ pub mod tests {
             let tft_syn_idz = self.syn_idzs_by_tft[tft_id];
             let tft_dims = self.tft_dims_by_tft[tft_id].clone();
 
-            let dens_per_tft = 1 << (self.tft_dims_by_tft()[tft_id].dens_per_tft_l2() as u32);
+            let dens_per_tft = self.tft_dims_by_tft()[tft_id].dens_per_tft();
             let den_id_celtft_range = RandRange::new(0, dens_per_tft);
-            let syns_per_den = 1 << (self.tft_dims_by_tft()[tft_id].syns_per_den_l2() as u32);
+            let syns_per_den = self.tft_dims_by_tft()[tft_id].syns_per_den();
             let syn_id_den_range = RandRange::new(0, syns_per_den);
 
             let den_id_celtft = den_id_celtft_range.ind_sample(&mut self.rng);
@@ -706,8 +709,8 @@ pub mod tests {
         /// Returns the synapse index range for the entire cell-tuft to which
         /// this synapse belongs.
         pub fn syn_idx_range_celtft(&self) -> Range<usize> {
-            let dens_per_celtft = 1 << (self.tft_dims.dens_per_tft_l2 as u32);
-            let syns_per_den = 1 << (self.tft_dims.syns_per_den_l2 as u32);
+            let dens_per_celtft = self.tft_dims.dens_per_tft;
+            let syns_per_den = self.tft_dims.syns_per_den;
             let syns_per_celtft = syns_per_den * dens_per_celtft;
 
             // Get the idz for the synapse on this cell-tuft with:
@@ -724,7 +727,7 @@ pub mod tests {
         /// Returns the synapse index range for the dendrite to which this
         /// synapse belongs.
         pub fn syn_idx_range_den(&self) -> Range<usize> {
-            let syns_per_den = 1 << (self.tft_dims.syns_per_den_l2 as u32);
+            let syns_per_den = self.tft_dims.syns_per_den;
 
             // Get the idz for the synapse on this dendrite with: syn_id_den = 0:
             // let syn_idz_den = syn_idx(&self.cel_coords.layer_dims, tft_count, dens_per_tft,
@@ -794,9 +797,9 @@ pub mod tests {
     {
 
         // Dendrites per cell-tuft:
-        let dens_per_celtft = 1 << (tft_dims.dens_per_tft_l2 as u32);
+        let dens_per_celtft = tft_dims.dens_per_tft;
         // Synapses per dendrite:
-        let syns_per_den = 1 << (tft_dims.syns_per_den_l2 as u32);
+        let syns_per_den = tft_dims.syns_per_den;
         // Dendrites per tuft-slice:
         let syns_per_tftslc = lyr_dims.columns() * dens_per_celtft * syns_per_den;
 

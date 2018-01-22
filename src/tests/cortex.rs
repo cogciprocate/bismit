@@ -81,7 +81,7 @@ fn pyr_preds(pyrs: &mut PyramidalLayer) {
 
     // Currently looking at the first tuft only:
     let tft_id = 0;
-    let dens_per_tuft = 1 << pyrs.dens().syns().tft_dims_by_tft()[tft_id].dens_per_tft_l2();
+    let dens_per_tuft = pyrs.dens().syns().tft_dims_by_tft()[tft_id].dens_per_tft() as usize;
 
     println!("\n##### dens_per_tuft: {}", dens_per_tuft);
     //let dens_len = pyrs.dens_mut().states.len() as usize;
@@ -145,13 +145,13 @@ fn syn_and_den_states(dens: &mut Dendrites) {
     // let syns_per_tft_l2: usize = dens.syns().dims().per_tft_l2_left() as usize;
     // let dens_per_tft_l2: usize = dens.dims().per_tft_l2_left() as usize;
     let tft_id = 0;
-    let syns_per_den_l2 = dens.syns().tft_dims_by_tft()[tft_id].syns_per_den_l2();
-    let dens_per_tft_l2 = dens.syns().tft_dims_by_tft()[tft_id].dens_per_tft_l2();
-    let syns_per_tft_l2 = syns_per_den_l2 + dens_per_tft_l2;
+    // let syns_per_den = dens.syns().tft_dims_by_tft()[tft_id].syns_per_den() as usize;
+    let dens_per_tft = dens.syns().tft_dims_by_tft()[tft_id].dens_per_tft() as usize;
+    let syns_per_tft = dens.syns().tft_dims_by_tft()[tft_id].syns_per_tft() as usize;
 
     let cels_per_group: usize = cmn::SYNAPSE_SPAN_RHOMBAL_AREA as usize;
-    let syns_per_group: usize = cels_per_group << syns_per_tft_l2;
-    let dens_per_group: usize = cels_per_group << dens_per_tft_l2;
+    let syns_per_group: usize = cels_per_group * syns_per_tft;
+    let dens_per_group: usize = cels_per_group * dens_per_tft;
     let actv_group_thresh = syns_per_group / 4;
     //let den_actv_group_thresh = dens_per_group;
 
@@ -177,12 +177,12 @@ fn syn_and_den_states(dens: &mut Dendrites) {
         syn_states_ttl = 0;
         den_states_ttl = 0;
 
-        let syn_idz = cel_idz << syns_per_tft_l2;
-        let den_idz = cel_idz << dens_per_tft_l2;
+        let syn_idz = cel_idz * syns_per_tft;
+        let den_idz = cel_idz * dens_per_tft;
 
 
         println!("\nDEBUG: syn_idz: {}, syns_per_tuft: {}, syns_per_group: {}",
-            syn_idz, 1 << syns_per_tft_l2, syns_per_group);
+            syn_idz, syns_per_tft, syns_per_group);
 
         println!("DEBUG: dens.states().len(): {}, dens.syns().states().len(): {}",
             dens.states().len(), dens.syns().states().len());

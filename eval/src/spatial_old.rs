@@ -1155,10 +1155,14 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
-            .input_layer("aff_in", LayerTags::DEFAULT,
-                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
-                AxonTopology::Spatial
-                // AxonTopology::Nonspatial
+            // .input_layer("aff_in", LayerTags::DEFAULT,
+            //     AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
+            //     AxonTopology::Spatial
+            //     // AxonTopology::Nonspatial
+            // )
+            .layer(LayerScheme::define("aff_in")
+                .axonal(AxonTopology::Spatial)
+                .axon_domain(AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]))
             )
             .layer("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
                 LayerKind::Axonal(AxonTopology::Spatial)

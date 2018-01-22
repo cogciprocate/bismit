@@ -225,10 +225,10 @@ static inline int square(int const x) {
 
 // [NOTE]: Pre-variable-tuft size (2016-Dec-31).
 static inline uint calc_syn_idz_OLD(uint const tuft_id, uint const cel_count, uint const cel_id,
-            uchar const syns_per_tft_l2)
+            uint const syns_per_tft)
 {
-    uint const syn_tuft_ofs = mul24(tuft_id, cel_count) << syns_per_tft_l2;
-    return syn_tuft_ofs + (cel_id << syns_per_tft_l2);
+    uint const syn_tuft_ofs = mul24(tuft_id, cel_count) * syns_per_tft;
+    return syn_tuft_ofs + (cel_id * syns_per_tft);
 }
 
 // static inline uint calc_cel_tft_idx(uint const cels_per_lyr, uint const cel_idx,
@@ -555,7 +555,7 @@ static inline void dst_syns__active__mtpot_mtdep(
             // Unused:
             __global const uchar* const syn_states,
             uint const syn_idz,
-            uint const syns_per_den_l2,
+            uint const syns_per_den,
             // Potentiation rate inverse log2 (1/log2):
             int const pr_l2i,
             // Depression rate inverse log2 (1/log2):
@@ -565,7 +565,7 @@ static inline void dst_syns__active__mtpot_mtdep(
             // TODO: Switch to `u8` (`uchar`):
             __global char* const syn_strengths)
 {
-    uint const n = syn_idz + (1 << syns_per_den_l2);
+    uint const n = syn_idz + syns_per_den;
 
     // TODO: Pre-calculate host side:
     // Potentiation rate:
@@ -603,12 +603,12 @@ static inline void dst_syns__active__mtpot_mtdep(
 static inline void prx_syns__active__mtp_ltd(
             __global const uchar* const syn_states,
             uint const syn_idz,
-            uint const syns_per_den_l2,
+            uint const syns_per_den,
             int const rnd,
             // TODO: Switch to `u8` (`uchar`):
             __global char* const syn_strengths)
 {
-    uint const n = syn_idz + (1 << syns_per_den_l2);
+    uint const n = syn_idz + syns_per_den;
 
     // TODO: Pre-calculate host side:
     // Potentiation rate:
@@ -697,7 +697,7 @@ __kernel void den_cycle_tft(
             __global const char* const syn_strengths,
             __private uint const tft_den_idz,
             __private uint const tft_syn_idz,
-            __private uchar const syns_per_den_l2,
+            __private uint const syns_per_den,
             __private uint const den_threshold,
             __private int const rnd,
             __global uchar* const den_energies,
@@ -708,8 +708,8 @@ __kernel void den_cycle_tft(
             __global uchar* const den_states)
 {
     uint const den_id_lyrtft = get_global_id(0);
-    uint const syn_idz_den = (den_id_lyrtft << syns_per_den_l2) + tft_syn_idz;
-    uint const syn_idn_den = syn_idz_den + (1 << syns_per_den_l2);
+    uint const syn_idz_den = (den_id_lyrtft * syns_per_den) + tft_syn_idz;
+    uint const syn_idn_den = syn_idz_den + syns_per_den;
 
     int syn_sum = 0;
     int syn_sum_raw = 0;
@@ -731,9 +731,13 @@ __kernel void den_cycle_tft(
     den_activities[den_idx] = update_activity_rating(den_activities[den_idx], den_is_active,
         rnd, rnd_seed, DENDRITE_ACTIVITY_DECAY_FACTOR);
 
-    int den_reduction = clamp(syns_per_den_l2 - 1, 0, 255);
-    den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255);
-    den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255);
+    // int den_reduction = clamp(syns_per_den_l2 - 1, 0, 255);
+    // den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255);
+    // den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255);
+    int den_state_raw = (int)((float)syn_sum_raw / (float)syns_per_den);
+    int den_state = (int)((float)syn_sum / (float)syns_per_den);
+    den_states_raw[den_idx] = clamp(den_state_raw, 0, 255);
+    den_states[den_idx] = clamp(den_state, 0, 255);
 }
 
 
@@ -750,7 +754,7 @@ __kernel void tft_cycle(
             ////// Could be made GWO (and could be calculated from tuft_id as well):
             __private uint const lyrtft_cel_idz,
             __private uint const lyrtft_den_idz,
-            __private uchar const dens_per_tft_l2,
+            __private uint const dens_per_tft,
             __private uchar const max_active_dens_l2,
             __global uchar* const celtft_prev_best_den_ids,
             __global uchar* const celtft_prev_best_den_states_raw,
@@ -767,7 +771,7 @@ __kernel void tft_cycle(
     uint const cel_id_lyrtft = get_global_id(0);
     uint const lyrtft_cel_count = get_global_size(0);
 
-    uint const den_id_lyrtft = cel_id_lyrtft << dens_per_tft_l2;
+    uint const den_id_lyrtft = cel_id_lyrtft * dens_per_tft;
     uint const cel_den_idz  = lyrtft_den_idz + den_id_lyrtft;
 
     // Cumulative best dendrite id (within the cell-tuft). Used for activation
@@ -783,7 +787,7 @@ __kernel void tft_cycle(
     // Total of all (active) dendrite states:
     uint active_den_state_sum = 0;
 
-    for (uint den_id_celtft = 0; den_id_celtft < (1 << dens_per_tft_l2); den_id_celtft++) {
+    for (uint den_id_celtft = 0; den_id_celtft < dens_per_tft; den_id_celtft++) {
         uint const den_idx = cel_den_idz + den_id_celtft;
 
         uint const den_state_raw = den_states_raw[den_idx];
@@ -880,7 +884,7 @@ __kernel void ssc_mtp_simple(
         __global const uchar* const syn_states,
         __private uint const cel_axn_idz,
         //__private uint const tufts_per_cel,
-        __private uchar const syns_per_tft_l2,
+        __private uint const syns_per_tft,
         __private uint const rnd,
         // __global int* const aux_ints_0,
         // TODO: Switch to `u8` (`uchar`):
@@ -899,8 +903,8 @@ __kernel void ssc_mtp_simple(
     // END TESTING
 
     if (axn_state) {
-        uint const syn_idz = calc_syn_idz_OLD(tuft_id, cel_count, cel_id, syns_per_tft_l2);
-        prx_syns__active__mtp_ltd(syn_states, syn_idz, syns_per_tft_l2, rnd, syn_strengths);
+        uint const syn_idz = calc_syn_idz_OLD(tuft_id, cel_count, cel_id, syns_per_tft);
+        prx_syns__active__mtp_ltd(syn_states, syn_idz, syns_per_tft, rnd, syn_strengths);
     }
 }
 
@@ -913,7 +917,7 @@ __kernel void ssc_mtp(
             __global const uchar* const syn_states,
             __private uint const cel_lyr_axn_idz,
             __private uint const cels_per_grp,
-            __private uchar const syns_per_tft_l2,
+            __private uchar const syns_per_tft,
             __private uint const rnd,
             // __global int* const aux_ints_0,
             // TODO: Switch to `u8` (`uchar`):
@@ -938,8 +942,8 @@ __kernel void ssc_mtp(
         uint const axn_state = axn_states[cel_axn_idx];
 
         if (axn_state) {
-            uint const syn_idz = calc_syn_idz_OLD(tuft_id, cel_count, cel_idx, syns_per_tft_l2);
-            prx_syns__active__mtp_ltd(syn_states, syn_idz, syns_per_tft_l2, rnd, syn_strengths);
+            uint const syn_idz = calc_syn_idz_OLD(tuft_id, cel_count, cel_idx, syns_per_tft);
+            prx_syns__active__mtp_ltd(syn_states, syn_idz, syns_per_tft, rnd, syn_strengths);
         }
     }
 }
@@ -1195,9 +1199,9 @@ __kernel void tft_dst_mtp(
         __private uint const tft_syn_idz, // 0th tuft-synapse index
 
         // UNUSED:
-        __private uint const dens_per_tft_l2,
-        __private uint const syns_per_den_l2,
-        __private uint const syns_per_tft_l2,
+        __private uint const dens_per_tft,
+        __private uint const syns_per_den,
+        __private uint const syns_per_tft,
 
         __private uint const cels_per_cel_grp,
         __private uint const axn_idz_cel_lyr,
@@ -1228,7 +1232,7 @@ __kernel void tft_dst_mtp(
         // Current tuft-cell:
         uint const tft_cel_idx = cel_idx + tft_cel_idz;
         // Index of the 0th synapse within the current cell-tuft:
-        uint const syn_idz_celtft = (cel_idx << syns_per_tft_l2) + tft_syn_idz;
+        uint const syn_idz_celtft = mad24(cel_idx, syns_per_tft, tft_syn_idz);
 
         uchar cel_flag_set = cel_flag_sets[cel_idx];
 
@@ -1241,9 +1245,10 @@ __kernel void tft_dst_mtp(
             // ID of the Best dendrite within the current tuft-cell:
             uchar const prev_best_den_id_celtft = tft_cel_prev_best_den_ids[tft_cel_idx];
 
-            uint const syn_idz_prev_best_den_tft = (prev_best_den_id_celtft << syns_per_den_l2) + syn_idz_celtft;
+            uint const syn_idz_prev_best_den_tft = (prev_best_den_id_celtft * syns_per_den) +
+                syn_idz_celtft;
 
-            dst_syns__active__mtpot_mtdep(syn_states, syn_idz_prev_best_den_tft, syns_per_den_l2,
+            dst_syns__active__mtpot_mtdep(syn_states, syn_idz_prev_best_den_tft, syns_per_den,
                 potentiation_rate_l2i, depression_rate_l2i, rnd, syn_flag_sets, syn_strengths);
         }
 

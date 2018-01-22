@@ -165,7 +165,7 @@ pub struct SynSrcIdxCache {
 impl SynSrcIdxCache {
     pub fn new(tft_syn_idz: usize, tft_dims: TuftDims, dims: CorticalDims, source_saturated: bool)
             -> SynSrcIdxCache {
-        let dens_per_tft = 1 << (tft_dims.dens_per_tft_l2() as usize);
+        let dens_per_tft = tft_dims.dens_per_tft() as usize;
         let tft_den_count = dens_per_tft * dims.cells() as usize;
         let mut dens = Vec::with_capacity(tft_den_count);
 
@@ -185,7 +185,7 @@ impl SynSrcIdxCache {
     // TODO: Consider bypassing entire function if `self.source_saturated` is true.
     pub fn insert(&mut self, syn_idx: usize, old_ofs: &SynSrc, new_ofs: &SynSrc) -> bool {
         let syn_id_tft = syn_idx - self.tft_syn_idz;
-        let den_id_tft = syn_id_tft >> self.tft_dims.syns_per_den_l2();
+        let den_id_tft = syn_id_tft / self.tft_dims.syns_per_den() as usize;
 
         debug_assert!(den_id_tft < self.dens.len(), format!("den_id_tft: '{}' ![<] \
             self.dens.len(): '{}', (syn_id_tft: '{}')", den_id_tft, self.dens.len(), syn_id_tft));
@@ -406,7 +406,7 @@ impl SynSrcSlices {
             }
 
             // Ensure we have enough unique synapse source address values:
-            let syns_per_den = 1 << tft_scheme.syns_per_den_l2();
+            let syns_per_den = tft_scheme.syns_per_den();
             if poss_syn_offs_val_count < syns_per_den {
                 panic!("The cells of this slice do not have enough possible \
                     synapse source offset values (possible: {}, needed: {}) to avoid \

@@ -85,19 +85,19 @@ impl Tufts {
         for (tft_id, tft_scheme) in cell_scheme.tft_schemes().iter().enumerate() {
             // den_kinds.push((tft_scheme.den_class(), tft_scheme.den_kind()));
 
-            let dens_per_tft_l2 = tft_scheme.dens_per_tft_l2();
-            let syns_per_den_l2 = tft_scheme.syns_per_den_l2();
-            let syns_per_tft_l2 = dens_per_tft_l2 + syns_per_den_l2;
+            let dens_per_tft = tft_scheme.dens_per_tft();
+            let syns_per_den = tft_scheme.syns_per_den();
+            let syns_per_tft = dens_per_tft * syns_per_den;
             let tft_cel_idz = tft_id as u32 * dims.cells();
 
             // Dendrites:
             let tft_den_idz = den_count_ttl;
-            let tft_den_count = dims.cells() << dens_per_tft_l2;
+            let tft_den_count = dims.cells() * dens_per_tft;
             den_count_ttl += tft_den_count;
 
             // Synapses:
             let tft_syn_idz = syn_count_ttl;
-            let tft_syn_count = dims.cells() << syns_per_tft_l2;
+            let tft_syn_count = dims.cells() * syns_per_tft;
             syn_count_ttl += tft_syn_count;
 
             /*=============================================================================
@@ -111,7 +111,7 @@ impl Tufts {
                 .arg_buf(dens.states())
                 .arg_scl(tft_cel_idz)
                 .arg_scl(tft_den_idz)
-                .arg_scl(dens_per_tft_l2)
+                .arg_scl(dens_per_tft)
                 .arg_scl(tft_scheme.max_active_dens_l2())
                 .arg_buf(&prev_best_den_ids)
                 .arg_buf(&prev_best_den_states_raw)
@@ -170,9 +170,9 @@ impl Tufts {
                             .arg_scl(tft_cel_idz)
                             .arg_scl(tft_den_idz)
                             .arg_scl(tft_syn_idz)
-                            .arg_scl(dens_per_tft_l2 as u32)
-                            .arg_scl(syns_per_den_l2 as u32)
-                            .arg_scl(syns_per_tft_l2 as u32)
+                            .arg_scl(dens_per_tft)
+                            .arg_scl(syns_per_den)
+                            .arg_scl(syns_per_tft)
                             .arg_scl(cels_per_cel_grp)
                             .arg_scl(cel_lyr_axn_idz)
                             .arg_scl_named::<i32>("pr_l2i", Some(potentiation_rate_l2i))

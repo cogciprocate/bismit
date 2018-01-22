@@ -338,7 +338,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 .axon_domain(AxonDomain::output(&[at2]))
                 .cellular(CellScheme::pyramidal()
                     .tft(TuftScheme::basal().proximal()
-                        .syns_per_den_l2(0)
+                        .syns_per_den(1)
                         // .src_lyr(TuftSourceLayer::define("iv")
                         .src_lyr(TuftSourceLayer::define("aff_in_0")
                             .syn_reach(0)
@@ -346,8 +346,8 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                         )
                     )
                     .tft(TuftScheme::basal().distal()
-                        .dens_per_tft_l2(4)
-                        .syns_per_den_l2(5)
+                        .dens_per_tft(16)
+                        .syns_per_den(32)
                         .max_active_dens_l2(0)
                         .thresh_init(0)
                         .src_lyr(TuftSourceLayer::define("iii")
@@ -357,7 +357,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                     )
                 )
             )
-            .layer(LayerScheme::define("v_inhib_col")
+            .layer(LayerScheme::define("iii_inhib_col")
                 .cellular(CellScheme::control(
                         ControlCellKind::IntraColumnInhib {
                             host_lyr_name: "iii".into(),

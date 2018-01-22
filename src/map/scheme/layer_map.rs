@@ -1,9 +1,6 @@
-// use std::collections::{HashMap};
 use std::ops::{Index, IndexMut, Deref};
-// use std::hash::{Hasher};
 use cmn::MapStore;
-use map::{LayerTags, LayerMapKind, LayerScheme, LayerSchemeDefinition, AxonTopology,
-    AxonDomain, AxonTags};
+use map::{LayerTags, LayerMapKind, LayerScheme, LayerSchemeDefinition, AxonDomain, AxonTags};
 
 
 
@@ -24,20 +21,20 @@ impl LayerMapScheme {
         }
     }
 
-    // <A: Into<AxonTags>>
-    pub fn input_layer<S, D>(self, layer_name: S, layer_tags: LayerTags,
-            axon_domain: D, axon_topo: AxonTopology) -> LayerMapScheme
-            where S: Into<String>, D: Into<AxonDomain>
-    {
-        self.layer(
-            // LayerScheme::new(layer_name, LayerKind::Axonal(axon_kind), None, layer_tags,
-            //     axon_domain)
-            LayerScheme::define(layer_name)
-                .axonal(axon_topo)
-                .tags(layer_tags)
-                .axon_domain(axon_domain)
-        )
-    }
+    // // <A: Into<AxonTags>>
+    // pub fn input_layer<S, D>(self, layer_name: S, layer_tags: LayerTags,
+    //         axon_domain: D, axon_topo: AxonTopology) -> LayerMapScheme
+    //         where S: Into<String>, D: Into<AxonDomain>
+    // {
+    //     self.layer(
+    //         // LayerScheme::new(layer_name, LayerKind::Axonal(axon_kind), None, layer_tags,
+    //         //     axon_domain)
+    //         LayerScheme::define(layer_name)
+    //             .axonal(axon_topo)
+    //             .tags(layer_tags)
+    //             .axon_domain(axon_domain)
+    //     )
+    // }
 
     // pub fn axon_layer(mut self, layer_name: S, layer_tags: LayerTags,
     //         axon_domain: AxonDomain, axon_kind: AxonTopology) -> LayerMapScheme

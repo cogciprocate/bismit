@@ -189,9 +189,13 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
-            .input_layer("aff_in", LayerTags::DEFAULT,
-                AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
-                AxonTopology::Spatial
+            // .input_layer("aff_in", LayerTags::DEFAULT,
+            //     AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]),
+            //     AxonTopology::Spatial
+            // )
+            .layer(LayerScheme::define("aff_in")
+                .axonal(AxonTopology::Spatial)
+                .axon_domain(AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at0])]))
             )
             // .layer_old("dummy_out", 1, LayerTags::DEFAULT, AxonDomain::output(&[AxonTag::unique()]),
             //     LayerKind::Axonal(AxonTopology::Spatial)
@@ -205,7 +209,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                 .axon_domain(AxonDomain::output(&[at1]))
                 .cellular(CellScheme::spiny_stellate()
                     .tft(TuftScheme::basal().proximal()
-                        .syns_per_den_l2(5)
+                        .syns_per_den(32)
                         .src_lyr(TuftSourceLayer::define("aff_in")
                             .syn_reach(7)
                             .prevalence(1)
@@ -242,9 +246,14 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
         )
         .lmap(LayerMapScheme::new("v0_lm", LayerMapKind::Subcortical)
-            .layer_old(EXT_LYR, 1, LayerTags::DEFAULT,
-                AxonDomain::output(&[map::THAL_SP, at0]),
-                LayerKind::Axonal(AxonTopology::Spatial)
+            // .layer_old(EXT_LYR, 1, LayerTags::DEFAULT,
+            //     AxonDomain::output(&[map::THAL_SP, at0]),
+            //     LayerKind::Axonal(AxonTopology::Spatial)
+            // )
+            .layer(LayerScheme::define(EXT_LYR)
+                .depth(1)
+                .axonal(AxonTopology::Spatial)
+                .axon_domain(AxonDomain::output(&[map::THAL_SP, at0]))
             )
         )
 }
