@@ -13,6 +13,7 @@ path = "../ocl/ocl"
 # features = ["kernel_debug_sleep", "kernel_debug_print"]
 
 [dependencies]
+# ocl = { version = "*", git = "https://github.com/cogciprocate/ocl" }
 ocl-extras = { path = "../ocl/ocl/ocl-extras" }
 bitflags = "*"
 rand = "*"

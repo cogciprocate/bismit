@@ -274,10 +274,6 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
     LayerMapSchemeList::new()
         .lmap(LayerMapScheme::new("visual", LayerMapKind::Cortical)
-            // .input_layer("aff_in", LayerTags::DEFAULT,
-            //     AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at_el0])]),
-            //     AxonTopology::Spatial
-            // )
             .layer(LayerScheme::define("aff_in_0")
                 .axonal(AxonTopology::Spatial)
                 .axon_domain(AxonDomain::input(&[(InputTrack::Afferent, &[map::THAL_SP, at_el0])]))
@@ -320,24 +316,18 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                     )
                 )
             )
-            // .layer_old("iii", 1, LayerTags::PTAL, AxonDomain::output(&[AxonTag::unique()]),
-            //     CellScheme::pyramidal(&[("iii", 5, 1)], 1, 2, 500)
-            // )
-            // .layer_old("iii_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
-            //     CellScheme::pyr_outputter("iii", 0)
-            // )
             .layer(LayerScheme::define("v")
                 .depth(1)
                 .tags(LayerTags::PML)
                 .axon_domain(AxonDomain::output(&[at2]))
                 .cellular(CellScheme::pyramidal()
-                    // .tft(TuftScheme::basal().proximal()
-                    //     .syns_per_den_l2(3)
-                    //     .src_lyr(TuftSourceLayer::define(SPT_LYR)
-                    //         .syn_reach(0)
-                    //         .prevalence(1)
-                    //     )
-                    // )
+                    .tft(TuftScheme::basal().proximal()
+                        .syns_per_den(3)
+                        .src_lyr(TuftSourceLayer::define(SPT_LYR)
+                            .syn_reach(0)
+                            .prevalence(1)
+                        )
+                    )
                     .tft(TuftScheme::basal().distal()
                         .dens_per_tft(16)
                         .syns_per_den(32)
@@ -350,9 +340,6 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                     )
                 )
             )
-            // .layer_old("v_output", 0, LayerTags::DEFAULT, AxonDomain::Local,
-            //     CellScheme::pyr_outputter("v", 0)
-            // )
             .layer(LayerScheme::define("v_inhib_col")
                 .cellular(CellScheme::control(
                         ControlCellKind::IntraColumnInhib {

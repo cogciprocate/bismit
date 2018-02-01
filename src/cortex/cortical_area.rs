@@ -46,7 +46,7 @@ static ROLE_ORDER: [LayerTags; 4] = [LayerTags::FOCUS, LayerTags::SPATIAL, Layer
 // }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SamplerBufferKind {
     None,
     Map,
@@ -56,7 +56,7 @@ pub enum SamplerBufferKind {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum SamplerKind {
     None,
     /// Axons for a specific layer or all layers.

@@ -6,18 +6,20 @@
 
 #![allow(dead_code, unused_imports, unused_variables)]
 
-use std::collections::{HashMap};
+use std::mem;
+use std::collections::{HashMap, BTreeMap};
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
 use qutex::QrwLock;
-use vibi::bismit::futures::Future;
-use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
-    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas, TractReceiver,
-    SamplerKind, SamplerBufferKind,};
+use vibi::bismit::futures::{future, Future, Poll, Async};
+use vibi::bismit::ocl::{FutureReadGuard, ReadGuard};
+use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, CorticalAreaSettings,
+    Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas, TractReceiver,
+    SamplerKind, SamplerBufferKind, ReadBuffer, FutureRecv};
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
-use ::{IncrResult, TrialIter, Layer, Pathway, InputSource, Sdrs};
+use ::{IncrResult, TrialIter, Layer, Pathway, InputSource, Sdrs, SeqCursor};
 use ::spatial::{TrialData, TrialResults};
 
 
@@ -28,6 +30,63 @@ const ENCODE_DIMS_0: (u32, u32, u8) = (24, 24, 1);
 // const ENCODE_DIMS_1: (u32, u32, u8) = (30, 255, 1);
 const AREA_DIM: u32 = 24;
 const SEQUENTIAL_SDR: bool = true;
+
+#[derive(Debug)]
+enum RxState {
+    Incomplete(Option<FutureRecv>),
+    Complete(Option<ReadBuffer>),
+}
+
+
+#[derive(Debug)]
+struct FutureLayerSamples(Vec<(SamplerKind, RxState)>);
+
+impl FutureLayerSamples {
+    pub fn new(rxs: &[(SamplerKind, TractReceiver)]) -> FutureLayerSamples {
+        let fls = rxs.iter().map(|&(ref sk, ref rx)| {
+            (sk.clone(), RxState::Incomplete(Some(rx.recv(true))))
+        }).collect();
+        FutureLayerSamples(fls)
+    }
+}
+
+impl Future for FutureLayerSamples {
+    type Item = HashMap<SamplerKind, ReadBuffer>;
+    type Error = CmnError;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        // Poll each rx, returning `NotReady` if any is not ready:
+        for &mut (_, ref mut state) in self.0.iter_mut() {
+            let mut new_state = None;
+            if let RxState::Incomplete(ref mut future_buf) = *state {
+                match future_buf.as_mut().unwrap().poll() {
+                    Ok(Async::Ready(buf)) => new_state = buf,
+                    Ok(Async::NotReady) => return Ok(Async::NotReady),
+                    Err(err) => return Err(err.into()),
+                }
+            }
+            // // If this rx is ready, set state to complete:
+            // if let Some(ns) = new_state {
+            //     mem::replace(state, RxState::Complete(ns));
+            // }
+
+            // Update status:
+            mem::replace(state, RxState::Complete(new_state));
+        }
+
+        // All rxs are ready/complete:
+        let mut bufs = HashMap::new();
+        for (sk, state) in self.0.drain(..) {
+            // If the rx returned a `None`, `wait_for_frame` must be `false`:
+            match state {
+                RxState::Complete(Some(buf)) => bufs.insert(sk, buf),
+                RxState::Complete(None) => panic!("'wait_for_frame' is set to 'false'."),
+                _ => unreachable!(),
+            }
+        }
+        Ok(Async::Ready(bufs))
+    }
+}
 
 
 
@@ -44,6 +103,7 @@ enum CellSampleIdxs {
 struct LayerSampler {
     idxs: CellSampleIdxs,
     rxs: Vec<(SamplerKind, TractReceiver)>,
+    // rxs: BTreeMap<SamplerKind, TractReceiver>,
 }
 
 impl LayerSampler {
@@ -51,10 +111,12 @@ impl LayerSampler {
             thal: &mut Thalamus, cortical_areas: &mut CorticalAreas) -> LayerSampler {
         let area = cortical_areas.by_key_mut(area_name).unwrap();
         let mut rxs = Vec::with_capacity(sampler_kinds.len());
+        // let mut rxs = BTreeMap::new();
 
         for sk in sampler_kinds.into_iter() {
             let rx = area.sampler(sk.clone(), SamplerBufferKind::Single, true);
             rxs.push((sk, rx))
+            // rxs.insert(sk, rx)
         }
 
         LayerSampler {
@@ -62,7 +124,35 @@ impl LayerSampler {
             rxs,
         }
     }
+    // Future<Item = , Error = CmnError>
+    // (SamplerKind, ReadBuffer)
+    // Box<future::Map<future::Flatten<FutureReadGuard<Vec<u8>>>, BTreeMap<SamplerKind, FutureReadGuard<Vec<u8>>>>>
+
+    // pub fn recv(&self) -> impl Future<Item = BTreeMap<SamplerKind, ReadGuard<Vec<u8>>>, Error = ()> {
+    // pub fn recv(&self) -> impl Future<Item = BTreeMap<SamplerKind, ReadGuard<Vec<u8>>>, Error = ()> {
+    //     future::join_all(self.rxs.iter().map(|&(ref sk, ref rx)| {
+    //             let future_read_guard = rx.recv(true)
+    //                 .map(|buf_opt| buf_opt.map(|buf| buf.read_u8()))
+    //                 .flatten();
+    //             Ok::<_, CmnError>((sk.clone(), future_read_guard))
+    //         }).collect::<Vec<_>>())
+
+    //     // joined.map(|kind_guards| {
+    //     //     let mut guards = BTreeMap::new();
+    //     //     for (kind, guard) in kind_guards {
+    //     //         guards.insert(kind, guard);
+    //     //     }
+    //     //     guards
+    //     // })
+    //     // .map_err(|err| panic!("{:?}", err))
+    // }
+
+    pub fn recv(&self) -> FutureLayerSamples {
+        FutureLayerSamples::new(&self.rxs)
+    }
 }
+
+
 
 
 /// A `SubcorticalNucleus`.
@@ -72,6 +162,7 @@ struct EvalSequence {
     layers: HashMap<LayerAddress, Layer>,
     cycles_complete: usize,
     sdrs: Sdrs,
+    sdr_cursor: SeqCursor,
     trial_iter: TrialIter,
     // current_pattern_idx: usize,
     sampler: Option<LayerSampler>,
@@ -105,6 +196,7 @@ impl EvalSequence {
         }
 
         let sdrs = Sdrs::new(15, ENCODE_DIMS_0);
+        let sdr_cursor = SeqCursor::new((4, 8), 25, sdrs.len());
 
         // Define the number of iters to first train then collect for each
         // sample period. All learning and other cell parameters (activity,
@@ -120,6 +212,7 @@ impl EvalSequence {
             layers,
             cycles_complete: 0,
             sdrs,
+            sdr_cursor,
             trial_iter,
             sampler: None,
             // current_pattern_idx: 0,
@@ -253,7 +346,7 @@ impl SubcorticalNucleus for EvalSequence {
     /// * Increments the cell activity counts
     ///
     fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            _work_pool: &mut WorkPool) -> CmnResult<()> {
+            work_pool: &mut WorkPool) -> CmnResult<()> {
         for layer in self.layers.values() {
             if let Pathway::Input { srcs: _ } = layer.pathway {
                 debug_assert!(layer.sub().axon_domain().is_input());
@@ -264,6 +357,13 @@ impl SubcorticalNucleus for EvalSequence {
             IncrResult::TrialComplete { scheme_idx: _, train: _, collect: _ } => {},
             _ir @ _ => {},
         }
+
+        // work_pool.complete_work(self.sampler.unwrap().recv()
+        //     .map(|samplers| {
+        //         println!("Sampler count: {}", samplers.len());
+        //     })
+        //     .map_err(|err| panic!("{:?}", err))
+        // );
 
         Ok(())
     }

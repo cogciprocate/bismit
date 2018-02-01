@@ -1,6 +1,8 @@
 //! Encode a sequence of scalar values and display their representation.
 
 // #![allow(unused_imports, unused_variables, dead_code)]
+#![feature(conservative_impl_trait)]
+#![feature(universal_impl_trait)]
 
 extern crate rand;
 extern crate vibi;
@@ -423,5 +425,70 @@ impl Sdrs {
             lock: QrwLock::new(sdrs),
             rng,
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.pattern_count
+    }
+}
+
+/// A cursor for iterating over sequences at random.
+///
+/// A sequence is always returned sequentially. When the end of the sequence
+/// is reached the next sequence is selected randomly.
+#[derive(Debug)]
+pub struct SeqCursor {
+    sequences: Vec<Vec<usize>>,
+    seq_idx: usize,
+    seq_item_idx: usize,
+    rng: XorShiftRng,
+}
+
+impl SeqCursor {
+    /// Returns a new `SeqCursor`.
+    ///
+    /// seq_lens: (min, max) sequence lengths.
+    /// seq_count: number of sequences to generate.
+    /// src_idx_count: Length of the source pool.
+    pub fn new(seq_lens: (usize, usize), seq_count: usize, src_idx_count: usize) -> SeqCursor {
+        assert!(seq_lens.1 >= seq_lens.0, "SeqCursor::new(): Sequence length range \
+            ('seq_lens') invalid. High end must at least be equal to low end: '{:?}'.", seq_lens);
+
+        let mut rng = rand::weak_rng();
+        let mut sequences = Vec::with_capacity(seq_count);
+
+        // Build sequences of source indexes:
+        for _ in 0..seq_count {
+            let mut seq_len = 0;
+            while seq_len == 0 {
+                seq_len = Range::new(seq_lens.0, seq_lens.1 + 1).ind_sample(&mut rng);
+            }
+            let mut seq = Vec::<usize>::with_capacity(seq_len);
+
+            for _ in 0..seq_len {
+                let src_idx = Range::new(0, src_idx_count).ind_sample(&mut rng);
+                seq.push(src_idx);
+            }
+
+            sequences.push(seq);
+        }
+
+        SeqCursor { sequences: sequences, seq_idx: 0, seq_item_idx: 0, rng }
+    }
+
+    /// Returns the next source index in the current sequence.
+    ///
+    /// If if the next source index is the final index in the sequence, a new
+    /// random sequence is selected and the first source index from that
+    /// sequence is returned.
+    pub fn next_src_idx(&mut self) -> usize {
+        self.seq_item_idx += 1;
+
+        if self.seq_item_idx >= self.sequences[self.seq_idx].len() {
+            self.seq_idx = Range::new(0, self.sequences.len()).ind_sample(&mut self.rng);
+            self.seq_item_idx = 0;
+        }
+
+        self.sequences[self.seq_idx][self.seq_item_idx]
     }
 }
