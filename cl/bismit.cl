@@ -580,7 +580,7 @@ static inline void dst_syns__active__mtpot_mtdep(
         char syn_strength = syn_strengths[i];
         uchar syn_flag_set = syn_flag_sets[i];
         // uchar const syn_state = syn_states[i];
-        int const syn_prev_active = syn_flag_set & (SYN_PREV_ACTIVE_FLAG) == (SYN_PREV_ACTIVE_FLAG);
+        int const syn_prev_active = (syn_flag_set & (SYN_PREV_ACTIVE_FLAG)) == (SYN_PREV_ACTIVE_FLAG);
         // int const syn_is_active = syn_state != 0;
 
         // TODO: De-branch
@@ -987,9 +987,9 @@ __kernel void pyr_cycle(
     int bsl_dst_is_enabled = (enabled_tft_flags & DEN_BASAL_DISTAL_FLAG) != 0;
     int apc_dst_is_enabled = (enabled_tft_flags & DEN_APICAL_DISTAL_FLAG) != 0;
 
-    uint bsl_prx_celtft_idx = mad24(bsl_prx_tft_id, cel_count, cel_idx);
-    uint bsl_dst_celtft_idx = mad24(bsl_dst_tft_id, cel_count, cel_idx);
-    uint apc_dst_celtft_idx = mad24(apc_dst_tft_id, cel_count, cel_idx);
+    uint bsl_prx_celtft_idx = mad24((uint)bsl_prx_tft_id, cel_count, cel_idx);
+    uint bsl_dst_celtft_idx = mad24((uint)bsl_dst_tft_id, cel_count, cel_idx);
+    uint apc_dst_celtft_idx = mad24((uint)apc_dst_tft_id, cel_count, cel_idx);
 
     // TODO: Use a previous state for distal dendrites:
     uchar bsl_prx_state = mul24(bsl_prx_is_enabled, tft_states[bsl_prx_celtft_idx]);

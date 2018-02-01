@@ -101,7 +101,7 @@ pub fn join_threads(controls: Controls) {
 fn main() {
     use clap::{Arg, /*ArgGroup,*/ App, /*SubCommand*/};
 
-    env_logger::init().unwrap();
+    env_logger::init();
 
     let matches = App::new("Bismit Evaluator")
         .version("0.1")
