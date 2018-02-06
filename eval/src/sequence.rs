@@ -15,12 +15,14 @@ use vibi::bismit::futures::{future, Future, Poll, Async};
 use vibi::bismit::ocl::{FutureReadGuard, ReadGuard};
 use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, CorticalAreaSettings,
     Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas, TractReceiver,
-    SamplerKind, SamplerBufferKind, ReadBuffer, FutureRecv};
+    SamplerKind, SamplerBufferKind, ReadBuffer, FutureRecv, FutureReadGuardUntyped, ReadGuardUntyped,
+    LayerSampler, FutureLayerSamples, LayerSamples, CellSampleIdxs};
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
 use ::{IncrResult, TrialIter, Layer, Pathway, InputSource, Sdrs, SeqCursor};
 use ::spatial::{TrialData, TrialResults};
+// use layer_sampler::{LayerSampler, FutureLayerSamples, LayerSamples, CellSampleIdxs};
 
 
 static PRI_AREA: &'static str = "v1";
@@ -30,128 +32,6 @@ const ENCODE_DIMS_0: (u32, u32, u8) = (24, 24, 1);
 // const ENCODE_DIMS_1: (u32, u32, u8) = (30, 255, 1);
 const AREA_DIM: u32 = 24;
 const SEQUENTIAL_SDR: bool = true;
-
-#[derive(Debug)]
-enum RxState {
-    Incomplete(Option<FutureRecv>),
-    Complete(Option<ReadBuffer>),
-}
-
-
-#[derive(Debug)]
-struct FutureLayerSamples(Vec<(SamplerKind, RxState)>);
-
-impl FutureLayerSamples {
-    pub fn new(rxs: &[(SamplerKind, TractReceiver)]) -> FutureLayerSamples {
-        let fls = rxs.iter().map(|&(ref sk, ref rx)| {
-            (sk.clone(), RxState::Incomplete(Some(rx.recv(true))))
-        }).collect();
-        FutureLayerSamples(fls)
-    }
-}
-
-impl Future for FutureLayerSamples {
-    type Item = HashMap<SamplerKind, ReadBuffer>;
-    type Error = CmnError;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        // Poll each rx, returning `NotReady` if any is not ready:
-        for &mut (_, ref mut state) in self.0.iter_mut() {
-            let mut new_state = None;
-            if let RxState::Incomplete(ref mut future_buf) = *state {
-                match future_buf.as_mut().unwrap().poll() {
-                    Ok(Async::Ready(buf)) => new_state = buf,
-                    Ok(Async::NotReady) => return Ok(Async::NotReady),
-                    Err(err) => return Err(err.into()),
-                }
-            }
-            // // If this rx is ready, set state to complete:
-            // if let Some(ns) = new_state {
-            //     mem::replace(state, RxState::Complete(ns));
-            // }
-
-            // Update status:
-            mem::replace(state, RxState::Complete(new_state));
-        }
-
-        // All rxs are ready/complete:
-        let mut bufs = HashMap::new();
-        for (sk, state) in self.0.drain(..) {
-            // If the rx returned a `None`, `wait_for_frame` must be `false`:
-            match state {
-                RxState::Complete(Some(buf)) => bufs.insert(sk, buf),
-                RxState::Complete(None) => panic!("'wait_for_frame' is set to 'false'."),
-                _ => unreachable!(),
-            }
-        }
-        Ok(Async::Ready(bufs))
-    }
-}
-
-
-
-#[derive(Debug)]
-enum CellSampleIdxs {
-    All,
-    Single(usize),
-    Range(usize, usize),
-    Modulo(usize),
-}
-
-
-#[derive(Debug)]
-struct LayerSampler {
-    idxs: CellSampleIdxs,
-    rxs: Vec<(SamplerKind, TractReceiver)>,
-    // rxs: BTreeMap<SamplerKind, TractReceiver>,
-}
-
-impl LayerSampler {
-    pub fn new(area_name: &str, idxs: CellSampleIdxs, sampler_kinds: Vec<SamplerKind>,
-            thal: &mut Thalamus, cortical_areas: &mut CorticalAreas) -> LayerSampler {
-        let area = cortical_areas.by_key_mut(area_name).unwrap();
-        let mut rxs = Vec::with_capacity(sampler_kinds.len());
-        // let mut rxs = BTreeMap::new();
-
-        for sk in sampler_kinds.into_iter() {
-            let rx = area.sampler(sk.clone(), SamplerBufferKind::Single, true);
-            rxs.push((sk, rx))
-            // rxs.insert(sk, rx)
-        }
-
-        LayerSampler {
-            idxs,
-            rxs,
-        }
-    }
-    // Future<Item = , Error = CmnError>
-    // (SamplerKind, ReadBuffer)
-    // Box<future::Map<future::Flatten<FutureReadGuard<Vec<u8>>>, BTreeMap<SamplerKind, FutureReadGuard<Vec<u8>>>>>
-
-    // pub fn recv(&self) -> impl Future<Item = BTreeMap<SamplerKind, ReadGuard<Vec<u8>>>, Error = ()> {
-    // pub fn recv(&self) -> impl Future<Item = BTreeMap<SamplerKind, ReadGuard<Vec<u8>>>, Error = ()> {
-    //     future::join_all(self.rxs.iter().map(|&(ref sk, ref rx)| {
-    //             let future_read_guard = rx.recv(true)
-    //                 .map(|buf_opt| buf_opt.map(|buf| buf.read_u8()))
-    //                 .flatten();
-    //             Ok::<_, CmnError>((sk.clone(), future_read_guard))
-    //         }).collect::<Vec<_>>())
-
-    //     // joined.map(|kind_guards| {
-    //     //     let mut guards = BTreeMap::new();
-    //     //     for (kind, guard) in kind_guards {
-    //     //         guards.insert(kind, guard);
-    //     //     }
-    //     //     guards
-    //     // })
-    //     // .map_err(|err| panic!("{:?}", err))
-    // }
-
-    pub fn recv(&self) -> FutureLayerSamples {
-        FutureLayerSamples::new(&self.rxs)
-    }
-}
-
 
 
 
@@ -166,6 +46,7 @@ struct EvalSequence {
     trial_iter: TrialIter,
     // current_pattern_idx: usize,
     sampler: Option<LayerSampler>,
+    main_layer_addr: Option<LayerAddress>,
 }
 
 impl EvalSequence {
@@ -215,6 +96,7 @@ impl EvalSequence {
             sdr_cursor,
             trial_iter,
             sampler: None,
+            main_layer_addr: None,
             // current_pattern_idx: 0,
         }
     }
@@ -245,34 +127,39 @@ impl SubcorticalNucleus for EvalSequence {
             .layer_map().layers().by_key("iii").expect("invalid lyr name")
             .layer_addr();
 
-        let sampler_kinds = vec![
-            SamplerKind::Axons(Some(lyr_addr)),
-            SamplerKind::SomaStates(lyr_addr),
-            SamplerKind::SomaEnergies(lyr_addr),
-            SamplerKind::SomaActivities(lyr_addr),
-            SamplerKind::SomaFlagSets(lyr_addr),
-            SamplerKind::TuftStates(lyr_addr),
-            SamplerKind::TuftBestDenIds(lyr_addr),
-            SamplerKind::TuftBestDenStatesRaw(lyr_addr),
-            SamplerKind::TuftBestDenStates(lyr_addr),
-            SamplerKind::TuftPrevStates(lyr_addr),
-            SamplerKind::TuftPrevBestDenIds(lyr_addr),
-            SamplerKind::TuftPrevBestDenStatesRaw(lyr_addr),
-            SamplerKind::TuftPrevBestDenStates(lyr_addr),
-            SamplerKind::DenStates(lyr_addr),
-            SamplerKind::DenStatesRaw(lyr_addr),
-            SamplerKind::DenEnergies(lyr_addr),
-            SamplerKind::DenActivities(lyr_addr),
-            SamplerKind::DenThresholds(lyr_addr),
-            SamplerKind::SynStates(lyr_addr),
-            SamplerKind::SynStrengths(lyr_addr),
-            SamplerKind::SynSrcColVOffs(lyr_addr),
-            SamplerKind::SynSrcColUOffs(lyr_addr),
-            SamplerKind::SynFlagSets(lyr_addr),
-        ];
+        // let sampler_kinds = vec![
+        //     SamplerKind::Axons(Some(lyr_addr)),
+        //     SamplerKind::SomaStates(lyr_addr),
+        //     SamplerKind::SomaEnergies(lyr_addr),
+        //     SamplerKind::SomaActivities(lyr_addr),
+        //     SamplerKind::SomaFlagSets(lyr_addr),
+        //     SamplerKind::TuftStates(lyr_addr),
+        //     SamplerKind::TuftBestDenIds(lyr_addr),
+        //     SamplerKind::TuftBestDenStatesRaw(lyr_addr),
+        //     SamplerKind::TuftBestDenStates(lyr_addr),
+        //     SamplerKind::TuftPrevStates(lyr_addr),
+        //     SamplerKind::TuftPrevBestDenIds(lyr_addr),
+        //     SamplerKind::TuftPrevBestDenStatesRaw(lyr_addr),
+        //     SamplerKind::TuftPrevBestDenStates(lyr_addr),
+        //     SamplerKind::DenStates(lyr_addr),
+        //     SamplerKind::DenStatesRaw(lyr_addr),
+        //     SamplerKind::DenEnergies(lyr_addr),
+        //     SamplerKind::DenActivities(lyr_addr),
+        //     SamplerKind::DenThresholds(lyr_addr),
+        //     SamplerKind::SynStates(lyr_addr),
+        //     SamplerKind::SynStrengths(lyr_addr),
+        //     SamplerKind::SynSrcColVOffs(lyr_addr),
+        //     SamplerKind::SynSrcColUOffs(lyr_addr),
+        //     SamplerKind::SynFlagSets(lyr_addr),
+        // ];
 
-        self.sampler = Some(LayerSampler::new(PRI_AREA, CellSampleIdxs::All,
-            sampler_kinds, thal, cortical_areas));
+        // self.sampler = Some(LayerSampler::new(PRI_AREA, sampler_kinds, CellSampleIdxs::All,
+        //     thal, cortical_areas));
+
+        self.sampler = Some(LayerSampler::everything(PRI_AREA, "iii", CellSampleIdxs::All,
+            thal, cortical_areas));
+
+        self.main_layer_addr = Some(lyr_addr);
 
         Ok(())
     }
@@ -317,20 +204,6 @@ impl SubcorticalNucleus for EvalSequence {
 
                         work_pool.complete_work(future_write)?;
                     },
-                    // "external_1" => {
-                    //     let mut write_guard = tx.send()
-                    //         .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
-                    //         .flatten()
-                    //         .wait()
-                    //         .expect("future err")
-                    //         .expect("write guard is None");
-
-                    //     let x = (self.cycles_complete as f64 / 10000.).cos();
-                    //     let y = (self.cycles_complete as f64 / 10000.).sin();
-
-                    //     // self.encoder_2d.encode([x, y], &mut write_guard);
-                    //     // work_pool.complete_work(  )?;
-                    // },
                     _ => (),
                 }
             }
@@ -358,12 +231,23 @@ impl SubcorticalNucleus for EvalSequence {
             _ir @ _ => {},
         }
 
-        // work_pool.complete_work(self.sampler.unwrap().recv()
-        //     .map(|samplers| {
-        //         println!("Sampler count: {}", samplers.len());
-        //     })
-        //     .map_err(|err| panic!("{:?}", err))
-        // );
+        let lyr_addr = self.main_layer_addr.clone().unwrap();
+
+        let future_recv = self.sampler.as_ref().unwrap().recv()
+            .map(move |samplers| {
+                // println!("Sampler count: {}", samplers.len());
+                assert!(samplers.0.len() == 23);
+
+                let den_states = samplers.0.get(&SamplerKind::DenStates(lyr_addr)).unwrap().u8();
+
+                println!("samplers.0[&SamplerKind::DenStates(lyr_addr)].len(): {}",
+                    den_states.len());
+
+                println!("&den_states[0..32]: {:?}", &den_states[0..32]);
+            })
+            .map_err(|err| panic!("{:?}", err));
+
+        work_pool.complete_work(future_recv)?;
 
         Ok(())
     }
@@ -433,7 +317,8 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             //     )
             // )
             .layer(LayerScheme::define("iii")
-                .depth(8)
+                // .depth(9)
+                .depth(5)
                 .tags(LayerTags::PTAL)
                 .axon_domain(AxonDomain::output(&[at2]))
                 .cellular(CellScheme::pyramidal()
@@ -446,8 +331,10 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                         )
                     )
                     .tft(TuftScheme::basal().distal()
-                        .dens_per_tft(16)
-                        .syns_per_den(32)
+                        // .dens_per_tft(16)
+                        // .syns_per_den(32)
+                        .dens_per_tft(10)
+                        .syns_per_den(18)
                         .max_active_dens_l2(0)
                         .thresh_init(0)
                         .src_lyr(TuftSourceLayer::define("iii")

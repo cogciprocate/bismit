@@ -4,6 +4,7 @@ mod thalamus;
 mod tract_channel;
 mod input_generator;
 mod test_nucleus;
+mod layer_sampler;
 
 pub use self::subcortex::{Subcortex, SubcorticalNucleus, SubcorticalNucleusLayer,  };
 pub use self::thalamus::{Thalamus, /*InputGeneratorTract, InputGenerator, InputGeneratorFrame,
@@ -20,3 +21,4 @@ pub use self::tract_channel::{tract_channel_single_u8, tract_channel_single_i8,
     /*WriteGuardUntyped,*/ ReadGuardUntyped};
 
 pub use self::test_nucleus::TestScNucleus;
+pub use self::layer_sampler::{LayerSampler, FutureLayerSamples, LayerSamples, CellSampleIdxs};

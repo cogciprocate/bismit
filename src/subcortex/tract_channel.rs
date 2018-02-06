@@ -66,6 +66,22 @@ pub enum ReadGuardUntyped {
     I8(ReadGuard<Vec<i8>>),
 }
 
+impl ReadGuardUntyped {
+    pub fn u8(&self) -> &ReadGuard<Vec<u8>> {
+        match *self {
+            ReadGuardUntyped::U8(ref rg) => rg,
+            _ => panic!("ReadGuardUntyped::u8: This guard is not a 'u8'."),
+        }
+    }
+
+    pub fn i8(&self) -> &ReadGuard<Vec<i8>> {
+        match *self {
+            ReadGuardUntyped::I8(ref rg) => rg,
+            _ => panic!("ReadGuardUntyped::i8: This guard is not an 'i8'."),
+        }
+    }
+}
+
 
 #[derive(Debug)]
 pub enum FutureReadGuardUntyped {

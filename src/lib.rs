@@ -46,9 +46,11 @@ pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus,
     InputGeneratorEncoder, InputGeneratorFrame, TractBuffer, TractSender,
     TractReceiver, WriteBuffer, ReadBuffer, FutureSend, FutureRecv,
     /*FutureWriteGuardUntyped,*/ FutureReadGuardUntyped,
-    /*WriteGuardUntyped,*/ ReadGuardUntyped};
+    /*WriteGuardUntyped,*/ ReadGuardUntyped,
+    LayerSampler, FutureLayerSamples, LayerSamples, CellSampleIdxs};
 pub use self::flywheel::Flywheel;
-pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap, AxonTopology};
+pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap, AxonTopology,
+    LayerAddress};
 pub use self::cmn::{util, TractDims, TypeId, CmnError as Error,
     CmnResult as Result, CorticalDims, MapStore};
 pub use self::encode::GlyphBuckets;

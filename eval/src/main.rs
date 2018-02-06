@@ -12,6 +12,7 @@ extern crate clap;
 #[macro_use] extern crate colorify;
 extern crate qutex;
 
+// mod layer_sampler;
 mod spatial;
 mod hexdraw;
 mod sequence;
