@@ -23,7 +23,7 @@ use futures::{Async, Poll};
 use futures::sync::oneshot::{self, Sender, Receiver, Canceled};
 use crossbeam::sync::AtomicOption;
 use futures::{Future};
-use ocl::{RwVec, FutureReadGuard, FutureWriteGuard, OclPrm};
+use ocl::{RwVec, FutureReadGuard, FutureWriteGuard, ReadGuard, WriteGuard, OclPrm};
 use cmn::CmnError;
 
 
@@ -58,6 +58,53 @@ fn _spin(spins: &mut usize) {
     }
     *spins += 1;
 }
+
+
+#[derive(Debug)]
+pub enum ReadGuardUntyped {
+    U8(ReadGuard<Vec<u8>>),
+    I8(ReadGuard<Vec<i8>>),
+}
+
+
+#[derive(Debug)]
+pub enum FutureReadGuardUntyped {
+    U8(FutureReadGuard<Vec<u8>>),
+    I8(FutureReadGuard<Vec<i8>>),
+}
+
+impl From<ReadBuffer> for FutureReadGuardUntyped {
+    fn from(rb: ReadBuffer) -> FutureReadGuardUntyped {
+        match rb {
+            ReadBuffer::RwVecI8(vec_i8) => FutureReadGuardUntyped::I8(vec_i8.read()),
+            ReadBuffer::RwVecU8(vec_u8) => FutureReadGuardUntyped::U8(vec_u8.read()),
+            ReadBuffer::FutureReadGuardI8(frg_i8) => FutureReadGuardUntyped::I8(frg_i8),
+            ReadBuffer::FutureReadGuardU8(frg_u8) => FutureReadGuardUntyped::U8(frg_u8),
+        }
+    }
+}
+
+impl Future for FutureReadGuardUntyped {
+    type Item = ReadGuardUntyped;
+    type Error = CmnError;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        match *self {
+            FutureReadGuardUntyped::U8(ref mut frg_u8) => {
+                frg_u8.poll()
+                    .map(|rg_poll| rg_poll.map(|rg| ReadGuardUntyped::U8(rg)))
+                    .map_err(|err| err.into())
+            }
+            FutureReadGuardUntyped::I8(ref mut frg_i8) => {
+                frg_i8.poll()
+                    .map(|rg_poll| rg_poll.map(|rg| ReadGuardUntyped::I8(rg)))
+                    .map_err(|err| err.into())
+
+            }
+        }
+    }
+}
+
 
 
 #[derive(Debug)]
