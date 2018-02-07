@@ -7,7 +7,7 @@ use cortex::{Dendrites, ControlCellLayers, Tufts};
 use cmn::{CmnResult, CorticalDims};
 use map::{CellScheme, ExecutionGraph, LayerAddress};
 
-#[cfg(test)]
+// #[cfg(test)]
 pub use self::tests::{DataCellLayerTest, CelCoords};
 
 pub trait DataCellLayer: 'static + Debug + Send {
@@ -33,7 +33,7 @@ pub trait DataCellLayer: 'static + Debug + Send {
 }
 
 
-#[cfg(test)]
+// #[cfg(test)]
 pub mod tests {
     use std::ops::{Range};
     // use rand::{XorShiftRng};
@@ -77,12 +77,9 @@ pub mod tests {
 
     impl CelCoords {
         pub fn new(axon_slc_id: u8, slc_id_lyr: u8, v_id: u32, u_id: u32,
-                    lyr_dims: CorticalDims, /*tfts_per_cel: u32, dens_per_tft_l2: u8,
-                    syns_per_den_l2: u8*/) -> CelCoords
-        {
+                lyr_dims: CorticalDims) -> CelCoords {
             let idx = cmn::cel_idx_3d(lyr_dims.depth(), slc_id_lyr, lyr_dims.v_size(),
                 v_id, lyr_dims.u_size(), u_id);
-
 
             CelCoords {
                 idx: idx,
@@ -101,14 +98,14 @@ pub mod tests {
             self.idx
         }
 
-        #[allow(dead_code)]
+        // #[allow(dead_code)]
         pub fn col_id(&self) -> u32 {
             // Fake a slice id of 0 with a slice depth of 1 and ignore our actual depth and id:
             cmn::cel_idx_3d(1, 0, self.lyr_dims.v_size(), self.v_id,
                 self.lyr_dims.u_size(), self.u_id)
         }
 
-        #[allow(dead_code)]
+        // #[allow(dead_code)]
         pub fn cel_axon_idx(&self, area_map: &AreaMap) -> u32 {
             area_map.axon_idx(self.axon_slc_id, self.v_id, 0, self.u_id, 0).unwrap()
         }

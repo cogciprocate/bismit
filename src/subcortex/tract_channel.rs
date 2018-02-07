@@ -534,13 +534,13 @@ pub fn tract_channel_single_u8_recv_only(buffer: RwVec<u8>, buffer_idx_range: Op
 }
 
 
-#[cfg(test)]
-mod tests {
+// #[cfg(test)]
+// mod tests {
 
-    #[test]
-    #[allow(non_snake_case)]
+//     #[test]
+//     #[allow(non_snake_case)]
 
-    fn tract_channel_UNIMPLEMENTED() {
+//     fn tract_channel_UNIMPLEMENTED() {
 
-    }
-}
+//     }
+// }

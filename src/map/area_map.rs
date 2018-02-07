@@ -372,7 +372,7 @@ pub fn literal_list<T: Display>(vec: &Vec<T>) -> String {
 }
 
 
-#[cfg(test)]
+// #[cfg(test)]
 pub mod tests {
     use cmn;
     use std::fmt::{Display, Formatter, Result as FmtResult};
@@ -386,19 +386,18 @@ pub mod tests {
     }
 
     impl AreaMapTest for AreaMap {
-         /// AXN_IDX(): Some documentation for this can be found in `bismit.cl`.
-         ///
-         ///         Basically all we're doing is scaling up or down the v and
-         ///         u coordinates based on a predetermined scaling factor. The
-         ///         scaling factor only applies when a foreign cortical or
-         ///         sub-cortical area is a source for the axon's slice AND is
-         ///         a different size than the local cortical area. The scale
-         ///         factor is based on the relative size of the two areas.
-         ///         Most of the time the scaling factor is 1:1 (scale factor
-         ///         of 16). The algorithm below for calculating an axon index
-         ///         is the same as the one in the kernel and gives precisely
-         ///         the same results.
-         ///
+        // AXN_IDX(): Some documentation for this can be found in `bismit.cl`.
+        //
+        // Basically all we're doing is scaling up or down the v and
+        // u coordinates based on a predetermined scaling factor. The
+        // scaling factor only applies when a foreign cortical or
+        // sub-cortical area is a source for the axon's slice AND is
+        // a different size than the local cortical area. The scale
+        // factor is based on the relative size of the two areas.
+        // Most of the time the scaling factor is 1:1 (scale factor
+        // of 16). The algorithm below for calculating an axon index
+        // is the same as the one in the kernel and gives precisely
+        // the same results.
         fn axon_idx(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
                 -> Result<u32, &'static str> {
             let v_scale = self.slice_map.v_scales()[slc_id as usize];

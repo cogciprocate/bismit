@@ -35,9 +35,14 @@ pub use self::pyr_outputter::PyrOutputter;
 pub use self::intra_column_inhib::IntraColumnInhib;
 pub use self::cortical_sampler::{CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs};
 
-#[cfg(test)] pub use self::cortical_area::CorticalAreaTest;
-#[cfg(test)] pub use self::synapses::{SynCoords, SynapsesTest, syn_idx};
-#[cfg(test)] pub use self::axon_space::{AxonSpaceTest, AxnCoords};
-#[cfg(test)] pub use self::dendrites::{DenCoords, DendritesTest, den_idx};
+// #[cfg(test)]
+pub use self::cortical_area::CorticalAreaTest;
+// #[cfg(test)]
+pub use self::synapses::{SynCoords, SynapsesTest, syn_idx};
+// #[cfg(test)]
+pub use self::axon_space::{AxonSpaceTest, AxnCoords};
+// #[cfg(test)]
+pub use self::dendrites::{DenCoords, DendritesTest, den_idx};
 // #[cfg(test)] pub use self::minicolumns::MinicolumnsTest;
-#[cfg(test)] pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
+// #[cfg(test)]
+pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};

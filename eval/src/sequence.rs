@@ -16,7 +16,8 @@ use vibi::bismit::ocl::{FutureReadGuard, ReadGuard};
 use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, CorticalAreaSettings,
     Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas, TractReceiver,
     SamplerKind, SamplerBufferKind, ReadBuffer, FutureRecv, /*FutureReadGuardVec, ReadGuardVec,*/
-    CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs};
+    CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs, CorticalAreaTest,
+    SynapsesTest, DenCoords};
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
@@ -221,7 +222,7 @@ impl SubcorticalNucleus for EvalSequence {
     /// * Blocks to wait for sampler channels
     /// * Increments the cell activity counts
     ///
-    fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
+    fn post_cycle(&mut self, _thal: &mut Thalamus, cortical_areas: &mut CorticalAreas,
             work_pool: &mut WorkPool) -> CmnResult<()> {
         for layer in self.layers.values() {
             if let Pathway::Input { srcs: _ } = layer.pathway {
@@ -233,6 +234,23 @@ impl SubcorticalNucleus for EvalSequence {
             IncrResult::TrialComplete { scheme_idx: _, train: _, collect: _ } => {},
             _ir @ _ => {},
         }
+
+
+        let area = cortical_areas.by_key_mut(PRI_AREA).unwrap();
+
+        // Choose a random synapse:
+        let cel_coords = area.layer_test_mut("iii").unwrap().rand_cel_coords();
+        let syn_coords = area.layer_test_mut("iii").unwrap().dens_mut().syns_mut()
+            .rand_syn_coords(cel_coords.clone());
+        let tft_den_idz = area.layer_test_mut("iii").unwrap().dens()
+            .den_idzs_by_tft()[syn_coords.tft_id];
+
+        let den_coords = DenCoords::new(syn_coords.cel_coords.clone(), syn_coords.tft_id,
+            tft_den_idz, syn_coords.tft_dims.clone(), syn_coords.den_id_celtft);
+
+        // Ensure the two synapse ranges match:
+        assert!(syn_coords.syn_idx_range_den() == den_coords.syn_idx_range_den(syn_coords.tft_id,
+            syn_coords.tft_syn_idz));
 
         let cycles_complete = self.cycles_complete;
         let lyr_addr = self.pri_iii_layer_addr.clone().unwrap();

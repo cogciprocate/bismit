@@ -232,7 +232,6 @@ pub fn get_src_scales(src_area_dims: &CorticalDims, tar_area_dims: &CorticalDims
 //
 // * TODO: Move me up to `cmn`.
 //
-#[inline]
 pub fn calc_scale(src_dim: u32, tar_dim: u32) -> CmnResult<u32> {
     // let scale_incr = if src_dim >= 16 { src_dim / 16 }
     //     else if src_dim > 0 { 1 }
@@ -263,10 +262,10 @@ pub fn scale(id: i32, scl: u32) -> i32 {
 }
 
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn slc_dim_scl_offs_unimplemented() {
+// #[cfg(test)]
+// mod tests {
+//     #[test]
+//     fn slc_dim_scl_offs_unimplemented() {
 
-    }
-}
+//     }
+// }

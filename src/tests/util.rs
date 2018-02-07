@@ -140,7 +140,6 @@ pub fn eval_range<T: OclPrm, F>(idx_range: Range<usize>, buf: &Buffer<T>, compar
 pub fn read_idx_direct<T: OclPrm>(idx: usize, buf: &Buffer<T>) -> T {
     let mut val: [T; 1] = [Default::default()];
     buf.cmd().read(&mut val[..]).offset(idx).enq().unwrap();
-    // buf.default_queue().unwrap().finish().unwrap();
     val[0]
 }
 
@@ -299,10 +298,10 @@ pub fn eval_others<T: OclScl>(env: &Buffer<T>, foc_idx: usize, other_val: T) {  
 }
 
 
-#[test]
-fn eval_others_UNIMPLEMENTED() {
+// #[test]
+// fn eval_others_UNIMPLEMENTED() {
 
-}
+// }
 
 
 

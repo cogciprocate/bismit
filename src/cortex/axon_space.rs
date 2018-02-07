@@ -8,7 +8,8 @@ use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute, CommandRelatio
     ThalamicTract, CommandUid};
 use ::{Thalamus, WorkPool};
 use cortex::{SensoryFilter};
-#[cfg(test)] pub use self::tests::{AxonSpaceTest, AxnCoords};
+// #[cfg(test)]
+pub use self::tests::{AxonSpaceTest, AxnCoords};
 
 
 const DISABLE_IO: bool = false;
@@ -639,7 +640,7 @@ impl AxonSpace {
 
 
 
-#[cfg(test)]
+// #[cfg(test)]
 pub mod tests {
     #![allow(dead_code)]
     use super::{AxonSpace};
@@ -674,18 +675,16 @@ pub mod tests {
     }
 
     impl AxnCoords {
-        pub fn new(slc_id: u8, v_id: u32, u_id: u32, area_map: &AreaMap
-            ) -> Result<AxnCoords, &'static str>
-        {
+        pub fn new(slc_id: u8, v_id: u32, u_id: u32, area_map: &AreaMap)
+                -> Result<AxnCoords, &'static str> {
             match area_map.axon_idx(slc_id, v_id, 0, u_id, 0) {
                 Ok(idx) => Ok(AxnCoords { idx: idx, slc_id: slc_id, v_id: v_id, u_id: u_id }),
                 Err(e) => Err(e),
             }
         }
 
-        pub fn from_cel_coords(cel_base_axon_slc: u8, cel_coords: &CelCoords, area_map: &AreaMap
-            ) -> Result<AxnCoords, &'static str>
-        {
+        pub fn from_cel_coords(cel_base_axon_slc: u8, cel_coords: &CelCoords, area_map: &AreaMap)
+                -> Result<AxnCoords, &'static str> {
             AxnCoords::new(cel_base_axon_slc, cel_coords.v_id,
                 cel_coords.u_id, area_map)
         }

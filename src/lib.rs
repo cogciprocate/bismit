@@ -34,7 +34,8 @@ pub mod encode;
 pub mod flywheel;
 pub mod map;
 #[macro_use] pub mod cmn;
-#[cfg(test)] pub mod tests;
+#[cfg(test)]
+pub mod tests;
 
 pub use ocl::Event as OclEvent;
 pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses,
@@ -42,12 +43,15 @@ pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses,
     SpinyStellateLayer, Tufts, Dendrites, CorticalAreaSettings, DataCellLayer,
     SamplerKind, SamplerBufferKind, WorkPool, WorkPoolRemote, CorticalAreas,
     CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs};
+pub use self::cortex::{CorticalAreaTest, SynCoords, SynapsesTest, syn_idx,
+    AxonSpaceTest, AxnCoords, DenCoords, DendritesTest, den_idx,
+    CelCoords, DataCellLayerTest};
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus,
     SubcorticalNucleusLayer, TestScNucleus, InputGenerator, InputGeneratorTract,
     InputGeneratorEncoder, InputGeneratorFrame, TractBuffer, TractSender,
     TractReceiver, WriteBuffer, ReadBuffer, FutureSend, FutureRecv,
-    /*FutureWriteGuardUntyped,*/ FutureReadGuardVec,
-    /*WriteGuardUntyped,*/ ReadGuardVec};
+    /*FutureWriteGuardVec,*/ FutureReadGuardVec,
+    /*WriteGuardVec,*/ ReadGuardVec};
 pub use self::flywheel::Flywheel;
 pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap, AxonTopology,
     LayerAddress};

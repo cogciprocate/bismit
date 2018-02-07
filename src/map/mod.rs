@@ -32,7 +32,8 @@ pub use self::execution::*;
 pub use self::axon_tags::*;
 ///////
 
-#[cfg(test)] pub use self::area_map::tests::{AreaMapTest};
+// #[cfg(test)]
+pub use self::area_map::tests::{AreaMapTest};
 
 
 

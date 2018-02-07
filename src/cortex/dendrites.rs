@@ -5,7 +5,8 @@ use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use map::{AreaMap, CellScheme, ExecutionGraph, CommandRelations,
     CorticalBuffer, LayerAddress, CommandUid};
 use cortex::{AxonSpace, Synapses};
-#[cfg(test)] pub use self::tests::{DenCoords, DendritesTest, den_idx};
+// #[cfg(test)]
+pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
 const PRNT: bool = false;
 
@@ -248,17 +249,23 @@ impl Dendrites {
 
 
 
-#[cfg(test)]
+// #[cfg(test)]
 pub mod tests {
-    #![allow(non_snake_case)]
+    #![allow(non_snake_case, dead_code)]
     use std::ops::{Range};
     use std::fmt::{Display, Formatter, Result};
     use rand::distributions::{IndependentSample, Range as RandRange};
-    use ocl::util;
-    use tests;
+    use ocl::{util, OclPrm, Buffer};
+    // use tests;
     use cmn::{CorticalDims};
     use cortex::{SynapsesTest, TuftDims, CelCoords, syn_idx};
     use super::{Dendrites};
+
+    pub fn read_idx_direct<T: OclPrm>(idx: usize, buf: &Buffer<T>) -> T {
+        let mut val: [T; 1] = [Default::default()];
+        buf.cmd().read(&mut val[..]).offset(idx).enq().unwrap();
+        val[0]
+    }
 
     pub trait DendritesTest {
         fn set_all_to_zero(&mut self, set_syns_zero: bool);
@@ -297,7 +304,7 @@ pub mod tests {
             // let mut sdr = vec![0u8];
             // self.states.read(idx as usize, &mut sdr[..]).unwrap();
             // sdr[0]
-            tests::util::read_idx_direct(idx as usize, &self.states)
+            read_idx_direct(idx as usize, &self.states)
         }
 
         fn rand_den_coords(&mut self, cel_coords: CelCoords) -> DenCoords {

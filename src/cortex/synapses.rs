@@ -71,7 +71,7 @@ use ocl::traits::OclPrm;
 use map::{CellScheme, ExecutionGraph, CommandRelations, CorticalBuffer, CommandUid};
 use cortex::AxonSpace;
 
-#[cfg(test)]
+// #[cfg(test)]
 pub use self::tests::{SynCoords, SynapsesTest, syn_idx};
 
 const DEBUG_NEW: bool = true;
@@ -511,7 +511,7 @@ impl Synapses {
 
 
 
-#[cfg(test)]
+// #[cfg(test)]
 pub mod tests {
     #![allow(non_snake_case, dead_code)]
     use std::ops::{Range};
@@ -767,10 +767,10 @@ pub mod tests {
         }
     }
 
-    #[test]
-    fn source_uniqueness_UNIMPLEMENTED() {
-        // UNIMPLEMENTED
-    }
+    // #[test]
+    // fn source_uniqueness_UNIMPLEMENTED() {
+    //     // UNIMPLEMENTED
+    // }
 
     /// Returns the absolute index of a synapse within a layer.
     ///
