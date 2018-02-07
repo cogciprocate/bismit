@@ -15,14 +15,14 @@ use vibi::bismit::futures::{future, Future, Poll, Async};
 use vibi::bismit::ocl::{FutureReadGuard, ReadGuard};
 use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, CorticalAreaSettings,
     Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas, TractReceiver,
-    SamplerKind, SamplerBufferKind, ReadBuffer, FutureRecv, FutureReadGuardUntyped, ReadGuardUntyped,
-    LayerSampler, FutureLayerSamples, LayerSamples, CellSampleIdxs};
+    SamplerKind, SamplerBufferKind, ReadBuffer, FutureRecv, /*FutureReadGuardVec, ReadGuardVec,*/
+    CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs};
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
 use ::{IncrResult, TrialIter, Layer, Pathway, InputSource, Sdrs, SeqCursor};
 use ::spatial::{TrialData, TrialResults};
-// use layer_sampler::{LayerSampler, FutureLayerSamples, LayerSamples, CellSampleIdxs};
+// use layer_sampler::{CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs};
 
 
 static PRI_AREA: &'static str = "v1";
@@ -45,8 +45,8 @@ struct EvalSequence {
     sdr_cursor: SeqCursor,
     trial_iter: TrialIter,
     // current_pattern_idx: usize,
-    sampler: Option<LayerSampler>,
-    main_layer_addr: Option<LayerAddress>,
+    sampler: Option<CorticalSampler>,
+    pri_iii_layer_addr: Option<LayerAddress>,
 }
 
 impl EvalSequence {
@@ -76,7 +76,7 @@ impl EvalSequence {
             layers.insert(layer.sub().addr().clone(), layer);
         }
 
-        let sdrs = Sdrs::new(15, ENCODE_DIMS_0);
+        let sdrs = Sdrs::new(16, ENCODE_DIMS_0);
         let sdr_cursor = SeqCursor::new((4, 8), 25, sdrs.len());
 
         // Define the number of iters to first train then collect for each
@@ -96,7 +96,7 @@ impl EvalSequence {
             sdr_cursor,
             trial_iter,
             sampler: None,
-            main_layer_addr: None,
+            pri_iii_layer_addr: None,
             // current_pattern_idx: 0,
         }
     }
@@ -153,13 +153,13 @@ impl SubcorticalNucleus for EvalSequence {
         //     SamplerKind::SynFlagSets(lyr_addr),
         // ];
 
-        // self.sampler = Some(LayerSampler::new(PRI_AREA, sampler_kinds, CellSampleIdxs::All,
+        // self.sampler = Some(CorticalSampler::new(PRI_AREA, sampler_kinds, CellSampleIdxs::All,
         //     thal, cortical_areas));
 
-        self.sampler = Some(LayerSampler::everything(PRI_AREA, "iii", CellSampleIdxs::All,
+        self.sampler = Some(CorticalSampler::everything(PRI_AREA, "iii", CellSampleIdxs::All,
             thal, cortical_areas));
 
-        self.main_layer_addr = Some(lyr_addr);
+        self.pri_iii_layer_addr = Some(lyr_addr);
 
         Ok(())
     }
@@ -171,13 +171,16 @@ impl SubcorticalNucleus for EvalSequence {
     ///
     fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
             work_pool: &mut WorkPool) -> CmnResult<()> {
-        let pattern_idx = if SEQUENTIAL_SDR {
-            // Choose a non-random SDR:
-            self.trial_iter.global_cycle_idx % self.sdrs.pattern_count
-        } else {
-            // Choose a random SDR:
-            Range::new(0, self.sdrs.pattern_count).ind_sample(&mut self.sdrs.rng)
-        };
+        // let pattern_idx = if SEQUENTIAL_SDR {
+        //     // Choose a non-random SDR:
+        //     self.trial_iter.global_cycle_idx % self.sdrs.pattern_count
+        // } else {
+        //     // Choose a random SDR:
+        //     Range::new(0, self.sdrs.pattern_count).ind_sample(&mut self.sdrs.rng)
+        // };
+
+        print!("[{}] ", self.cycles_complete + 1);
+        let pattern_idx = self.sdr_cursor.next_src_idx();
 
         // Write sdr to pathway:
         for layer in self.layers.values() {
@@ -200,7 +203,7 @@ impl SubcorticalNucleus for EvalSequence {
                                     t.copy_from_slice(&sdrs[pattern_idx]);
                                 });
                             })
-                            .map_err(|err| panic!("{:?}", err));
+                            .map_err(|err| panic!("{}", err));
 
                         work_pool.complete_work(future_write)?;
                     },
@@ -231,21 +234,20 @@ impl SubcorticalNucleus for EvalSequence {
             _ir @ _ => {},
         }
 
-        let lyr_addr = self.main_layer_addr.clone().unwrap();
+        let cycles_complete = self.cycles_complete;
+        let lyr_addr = self.pri_iii_layer_addr.clone().unwrap();
 
         let future_recv = self.sampler.as_ref().unwrap().recv()
-            .map(move |samplers| {
-                // println!("Sampler count: {}", samplers.len());
-                assert!(samplers.0.len() == 23);
+            .map(move |samples| {
+                // println!("Sampler count: {}", samples.len());
+                assert!(samples.count() == 23);
 
-                let den_states = samplers.0.get(&SamplerKind::DenStates(lyr_addr)).unwrap().u8();
+                let den_states = samples.sample(&SamplerKind::DenStates(lyr_addr)).unwrap().u8();
 
-                println!("samplers.0[&SamplerKind::DenStates(lyr_addr)].len(): {}",
-                    den_states.len());
-
-                println!("&den_states[0..32]: {:?}", &den_states[0..32]);
+                // println!("den_states.len(): {}", den_states.len());
+                println!("[{}] &den_states[0..32]: {:?}", cycles_complete, &den_states[0..32]);
             })
-            .map_err(|err| panic!("{:?}", err));
+            .map_err(|err| panic!("{}", err));
 
         work_pool.complete_work(future_recv)?;
 

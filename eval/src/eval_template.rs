@@ -137,7 +137,7 @@ impl SubcorticalNucleus for EvalSequence {
                                     t.copy_from_slice(&sdrs[pattern_idx]);
                                 });
                             })
-                            .map_err(|err| panic!("{:?}", err));
+                            .map_err(|err| panic!("{}", err));
 
                         work_pool.complete_work(future_write)?;
                     },

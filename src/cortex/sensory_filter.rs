@@ -142,7 +142,7 @@ impl SensoryFilter {
             .enew(&mut ev)
             .enq_async()?
             .map(|_guard| ())
-            .map_err(|err| panic!("{:?}", err));
+            .map_err(|err| panic!("{}", err));
 
         // let wtx = work_tx.take().unwrap();
         // work_tx.get_or_insert(wtx.send(Box::new(future_write)).wait()?);

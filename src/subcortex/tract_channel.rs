@@ -61,59 +61,59 @@ fn _spin(spins: &mut usize) {
 
 
 #[derive(Debug)]
-pub enum ReadGuardUntyped {
+pub enum ReadGuardVec {
     U8(ReadGuard<Vec<u8>>),
     I8(ReadGuard<Vec<i8>>),
 }
 
-impl ReadGuardUntyped {
+impl ReadGuardVec {
     pub fn u8(&self) -> &ReadGuard<Vec<u8>> {
         match *self {
-            ReadGuardUntyped::U8(ref rg) => rg,
-            _ => panic!("ReadGuardUntyped::u8: This guard is not a 'u8'."),
+            ReadGuardVec::U8(ref rg) => rg,
+            _ => panic!("ReadGuardVec::u8: This guard is not a 'u8'."),
         }
     }
 
     pub fn i8(&self) -> &ReadGuard<Vec<i8>> {
         match *self {
-            ReadGuardUntyped::I8(ref rg) => rg,
-            _ => panic!("ReadGuardUntyped::i8: This guard is not an 'i8'."),
+            ReadGuardVec::I8(ref rg) => rg,
+            _ => panic!("ReadGuardVec::i8: This guard is not an 'i8'."),
         }
     }
 }
 
 
 #[derive(Debug)]
-pub enum FutureReadGuardUntyped {
+pub enum FutureReadGuardVec {
     U8(FutureReadGuard<Vec<u8>>),
     I8(FutureReadGuard<Vec<i8>>),
 }
 
-impl From<ReadBuffer> for FutureReadGuardUntyped {
-    fn from(rb: ReadBuffer) -> FutureReadGuardUntyped {
+impl From<ReadBuffer> for FutureReadGuardVec {
+    fn from(rb: ReadBuffer) -> FutureReadGuardVec {
         match rb {
-            ReadBuffer::RwVecI8(vec_i8) => FutureReadGuardUntyped::I8(vec_i8.read()),
-            ReadBuffer::RwVecU8(vec_u8) => FutureReadGuardUntyped::U8(vec_u8.read()),
-            ReadBuffer::FutureReadGuardI8(frg_i8) => FutureReadGuardUntyped::I8(frg_i8),
-            ReadBuffer::FutureReadGuardU8(frg_u8) => FutureReadGuardUntyped::U8(frg_u8),
+            ReadBuffer::RwVecI8(vec_i8) => FutureReadGuardVec::I8(vec_i8.read()),
+            ReadBuffer::RwVecU8(vec_u8) => FutureReadGuardVec::U8(vec_u8.read()),
+            ReadBuffer::FutureReadGuardI8(frg_i8) => FutureReadGuardVec::I8(frg_i8),
+            ReadBuffer::FutureReadGuardU8(frg_u8) => FutureReadGuardVec::U8(frg_u8),
         }
     }
 }
 
-impl Future for FutureReadGuardUntyped {
-    type Item = ReadGuardUntyped;
+impl Future for FutureReadGuardVec {
+    type Item = ReadGuardVec;
     type Error = CmnError;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         match *self {
-            FutureReadGuardUntyped::U8(ref mut frg_u8) => {
+            FutureReadGuardVec::U8(ref mut frg_u8) => {
                 frg_u8.poll()
-                    .map(|rg_poll| rg_poll.map(|rg| ReadGuardUntyped::U8(rg)))
+                    .map(|rg_poll| rg_poll.map(|rg| ReadGuardVec::U8(rg)))
                     .map_err(|err| err.into())
             }
-            FutureReadGuardUntyped::I8(ref mut frg_i8) => {
+            FutureReadGuardVec::I8(ref mut frg_i8) => {
                 frg_i8.poll()
-                    .map(|rg_poll| rg_poll.map(|rg| ReadGuardUntyped::I8(rg)))
+                    .map(|rg_poll| rg_poll.map(|rg| ReadGuardVec::I8(rg)))
                     .map_err(|err| err.into())
 
             }

@@ -548,7 +548,7 @@ impl SubcorticalNucleus for EvalSpatial {
                             t.copy_from_slice(&sdrs[pattern_idx]);
                         });
                     })
-                    .map_err(|err| panic!("{:?}", err));
+                    .map_err(|err| panic!("{}", err));
 
                 work_pool.complete_work(future_write)?;
             }
@@ -579,7 +579,7 @@ impl SubcorticalNucleus for EvalSpatial {
                         counts[pattern_idx] += (axn > 0) as usize;
                     }
                 })
-                .map_err(|err| panic!("{:?}", err));
+                .map_err(|err| panic!("{}", err));
 
             work_pool.complete_work(future_increment)?;
         }

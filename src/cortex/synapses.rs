@@ -690,8 +690,7 @@ pub mod tests {
 
     impl SynCoords {
         pub fn new(cel_coords: CelCoords, tft_id: usize, tft_syn_idz: u32, tft_dims: TuftDims,
-                den_id_celtft: u32, syn_id_den: u32) -> SynCoords
-        {
+                den_id_celtft: u32, syn_id_den: u32) -> SynCoords {
             let syn_idx = syn_idx(&cel_coords.lyr_dims, cel_coords.slc_id_lyr, cel_coords.v_id,
                 cel_coords.u_id, tft_syn_idz, &tft_dims, den_id_celtft, syn_id_den);
 
@@ -773,8 +772,6 @@ pub mod tests {
         // UNIMPLEMENTED
     }
 
-
-
     /// Returns the absolute index of a synapse within a layer.
     ///
     /// * Synapse/Dendrite index space hierarchy:
@@ -792,10 +789,8 @@ pub mod tests {
             tft_syn_idz: u32,
             tft_dims: &TuftDims,
             den_id_celtft: u32,
-            syn_id_den: u32,
-        ) -> u32
-    {
-
+            syn_id_den: u32)
+            -> u32 {
         // Dendrites per cell-tuft:
         let dens_per_celtft = tft_dims.dens_per_tft;
         // Synapses per dendrite:

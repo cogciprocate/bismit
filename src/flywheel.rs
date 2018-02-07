@@ -342,7 +342,7 @@ impl Flywheel {
                                 self.cortex.finish_queues();
                                 match res_tx.send(Response::QueuesFinished(self.status.cycle_counter.0)) {
                                     Ok(_) => (),
-                                    Err(err) => if !self.exiting { panic!("{:?}", err); }
+                                    Err(err) => if !self.exiting { panic!("{}", err); }
                                 }
                             },
                         }

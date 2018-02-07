@@ -489,7 +489,9 @@ impl SeqCursor {
             self.seq_idx = Range::new(0, self.sequences.len()).ind_sample(&mut self.rng);
             self.seq_item_idx = 0;
         }
-
+        println!("(seq_idx: {}, seq_item_idx: {}) src_idx: {}",
+            self.seq_idx, self.seq_item_idx,
+            self.sequences[self.seq_idx][self.seq_item_idx]);
         self.sequences[self.seq_idx][self.seq_item_idx]
     }
 }

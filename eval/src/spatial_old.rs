@@ -946,7 +946,7 @@ impl SubcorticalNucleus for EvalSpatial {
                         t.copy_from_slice(&sdrs[pattern_idx]);
                     });
                 })
-                .map_err(|err| panic!("{:?}", err));
+                .map_err(|err| panic!("{}", err));
 
             work_pool.complete_work(future_write)?;
         }
@@ -985,7 +985,7 @@ impl SubcorticalNucleus for EvalSpatial {
                         counts[pattern_idx] += (axn > 0) as usize;
                     }
                 })
-                .map_err(|err| panic!("{:?}", err));
+                .map_err(|err| panic!("{}", err));
 
             work_pool.complete_work(future_increment)?;
         }
@@ -1048,7 +1048,7 @@ impl SubcorticalNucleus for EvalSpatial {
                         .wait()?.unwrap().read_u8();
                     let joined = future_den_activities.join3(future_cel_activities, future_cel_energies)
                         .map(|_| ())
-                        .map_err(|err| panic!("{:?}", err));
+                        .map_err(|err| panic!("{}", err));
                     work_pool.complete(joined)?;
                 }
             },

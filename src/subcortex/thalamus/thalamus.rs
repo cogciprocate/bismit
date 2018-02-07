@@ -224,7 +224,7 @@ impl Thalamus {
                     Ok(Async::NotReady) => panic!("Thalamus::cycle_pathways: \
                         Cycling pathways for input pathways (`Pathway::Input`) \
                         should never have to wait."),
-                    Err(err) => panic!("{:?}", err),
+                    Err(err) => panic!("{}", err),
                 }
             }
         }

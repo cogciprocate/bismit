@@ -539,7 +539,7 @@ impl AxonSpace {
                             //     .enq_async()?
                             //     // .and_then(|_guard| Ok(()))
                             //     .map(|_guard| ())
-                            //     .map_err(|err| panic!("{:?}", err));
+                            //     .map_err(|err| panic!("{}", err));
                             // //////////////
 
                             ////////////// MAP BUFFER:
@@ -570,7 +570,7 @@ impl AxonSpace {
                                             map.as_mut_ptr(), len);
                                     }
                                 })
-                                .map_err(|err| panic!("{:?}", err));
+                                .map_err(|err| panic!("{}", err));
                             //////////////
 
                             work_pool.complete_work(future_write)?;
@@ -612,7 +612,7 @@ impl AxonSpace {
                             .enew(&mut ev)
                             .enq_async()?
                             .and_then(|_guard| Ok(()))
-                            .map_err(|err| panic!("{:?}", err)));
+                            .map_err(|err| panic!("{}", err)));
 
                         work_pool.complete_work(future_read)?;
                         Some(ev)

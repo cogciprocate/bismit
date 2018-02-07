@@ -40,14 +40,14 @@ pub use ocl::Event as OclEvent;
 pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses,
     InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer,
     SpinyStellateLayer, Tufts, Dendrites, CorticalAreaSettings, DataCellLayer,
-    SamplerKind, SamplerBufferKind, WorkPool, WorkPoolRemote, CorticalAreas};
+    SamplerKind, SamplerBufferKind, WorkPool, WorkPoolRemote, CorticalAreas,
+    CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs};
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus,
     SubcorticalNucleusLayer, TestScNucleus, InputGenerator, InputGeneratorTract,
     InputGeneratorEncoder, InputGeneratorFrame, TractBuffer, TractSender,
     TractReceiver, WriteBuffer, ReadBuffer, FutureSend, FutureRecv,
-    /*FutureWriteGuardUntyped,*/ FutureReadGuardUntyped,
-    /*WriteGuardUntyped,*/ ReadGuardUntyped,
-    LayerSampler, FutureLayerSamples, LayerSamples, CellSampleIdxs};
+    /*FutureWriteGuardUntyped,*/ FutureReadGuardVec,
+    /*WriteGuardUntyped,*/ ReadGuardVec};
 pub use self::flywheel::Flywheel;
 pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap, AxonTopology,
     LayerAddress};
