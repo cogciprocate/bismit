@@ -1,12 +1,18 @@
-// [LINE 1428]
 
 static inline uchar syn_fire(uchar const axn_state) {
     return ((axn_state != 0) << 7) + (axn_state >> (SYNAPSE_AXON_BIAS_LOG2));
 }
 
+/////// KEEPME: Why did I create this version?:
+// static inline uchar4 syn_fire_vec4(uchar4 const axn_state) {
+//     return (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80)
+//         | (axn_state >> (uchar4)(SYNAPSE_AXON_BIAS_LOG2));
+// }
+///////
+
 static inline uchar4 syn_fire_vec4(uchar4 const axn_state) {
-    return (convert_uchar4(axn_state != (uchar)0) & (uchar4)0x80)
-        | (axn_state >> (uchar4)(SYNAPSE_AXON_BIAS_LOG2));
+    return (convert_uchar4(axn_state != (uchar)0) << (uchar4)7)
+        + (axn_state >> (uchar4)(SYNAPSE_AXON_BIAS_LOG2));
 }
 
 

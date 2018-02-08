@@ -415,8 +415,11 @@ impl Sdrs {
         let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
             let mut sdr = vec![0u8; cell_count];
             for &axn_idx in axn_idxs.iter() {
-                sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
+                sdr[axn_idx] = Range::new(0, 255).ind_sample(&mut rng);
+                // sdr[axn_idx] = 255;
             }
+            // let sdr = vec![255u8; cell_count];
+
             sdr
         }).collect();
 
@@ -489,9 +492,9 @@ impl SeqCursor {
             self.seq_idx = Range::new(0, self.sequences.len()).ind_sample(&mut self.rng);
             self.seq_item_idx = 0;
         }
-        println!("(seq_idx: {}, seq_item_idx: {}) src_idx: {}",
-            self.seq_idx, self.seq_item_idx,
-            self.sequences[self.seq_idx][self.seq_item_idx]);
+        // println!("(seq_idx: {}, seq_item_idx: {}) src_idx: {}",
+        //     self.seq_idx, self.seq_item_idx,
+        //     self.sequences[self.seq_idx][self.seq_item_idx]);
         self.sequences[self.seq_idx][self.seq_item_idx]
     }
 }

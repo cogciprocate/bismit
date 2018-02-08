@@ -154,7 +154,7 @@ impl Cortex {
         for area_map in area_maps.values().into_iter().filter(|area_map|
                 area_map.lm_kind_tmp() != &LayerMapKind::Subcortical) {
             areas.insert(area_map.area_name(), CorticalArea::new(area_map.clone(),
-                device_idx, &ocl_context, ca_settings.clone(), &mut thal).unwrap());
+                device_idx, &ocl_context, ca_settings.clone(), &mut thal)?);
             device_idx += 1;
         }
 

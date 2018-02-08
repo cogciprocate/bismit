@@ -263,6 +263,8 @@ impl Synapses {
                 "layer_cycle_syns_wow"
             };
 
+            println!("##### kern_name: {}", kern_name);
+
             kernels_cycle.push(
                 ocl_pq.create_kernel(kern_name)?
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
@@ -533,6 +535,7 @@ pub mod tests {
         fn syn_state(&self, idx: u32) -> u8;
         fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords;
         fn cycle_solo(&self);
+        fn syn_idx_range_celtft(&self, cel_coords: &CelCoords, tft_id: usize) -> Range<usize>;
         fn print_src_slc_ids(&self, idx_range: Option<Range<usize>>);
         fn print_range(&self, range: Option<Range<usize>>);
         fn print_all(&self);
@@ -617,6 +620,27 @@ pub mod tests {
                 unsafe { kern.cmd().enq().expect("SynapsesTest::cycle_solo"); }
                 kern.default_queue().unwrap().finish().unwrap();
             }
+        }
+
+        /// Returns the synapse index range for the entire cell-tuft to which
+        /// this synapse belongs.
+        fn syn_idx_range_celtft(&self, cel_coords: &CelCoords, tft_id: usize) -> Range<usize> {
+            let tft_syn_idz = self.syn_idzs_by_tft[tft_id];
+            let tft_dims = &self.tft_dims_by_tft[tft_id];
+
+            let dens_per_celtft = tft_dims.dens_per_tft;
+            let syns_per_den = tft_dims.syns_per_den;
+            let syns_per_celtft = syns_per_den * dens_per_celtft;
+
+            // Get the idz for the synapse on this cell-tuft with:
+            // den_id_celtft = 0, syn_id_den = 0:
+            // let syn_idz = self.tft_syn_idz as usize;
+            let syn_idz_celtft = syn_idx(&cel_coords.lyr_dims, cel_coords.slc_id_lyr,
+                cel_coords.v_id, cel_coords.u_id, tft_syn_idz, tft_dims,
+                0, 0) as usize;
+
+            // syn_idz_cel_tft..(syn_idz_cel_tft + syns_per_tft as usize)
+            syn_idz_celtft..(syn_idz_celtft + syns_per_celtft as usize)
         }
 
         fn print_src_slc_ids(&self, idx_range: Option<Range<usize>>) {

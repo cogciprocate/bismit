@@ -13,7 +13,7 @@
 #define ENERGY_REGEN_AMOUNT                1
 
 // SYNAPSE_AXON_BIAS_LOG2: Reduces source axon influence on synaptic dendrite
-#define SYNAPSE_AXON_BIAS_LOG2            2
+#define SYNAPSE_AXON_BIAS_LOG2            1
 
 
 #define RETNAL_THRESHOLD       48
@@ -734,8 +734,12 @@ __kernel void den_cycle_tft(
     // int den_reduction = clamp(syns_per_den_l2 - 1, 0, 255);
     // den_states_raw[den_idx] = clamp((syn_sum_raw >> den_reduction), 0, 255);
     // den_states[den_idx] = clamp((syn_sum >> den_reduction), 0, 255);
-    int den_state_raw = (int)((float)syn_sum_raw / (float)syns_per_den);
-    int den_state = (int)((float)syn_sum / (float)syns_per_den);
+    // int den_state_raw = (int)((float)syn_sum_raw / (float)syns_per_den);
+    // int den_state = (int)((float)syn_sum / (float)syns_per_den);
+    int den_state_raw = (int)(syn_sum_raw);
+    int den_state = (int)(syn_sum);
+    // int den_state_raw = (int)((float)syn_sum_raw / 128.);
+    // int den_state = (int)((float)syn_sum / 128.);
     den_states_raw[den_idx] = clamp(den_state_raw, 0, 255);
     den_states[den_idx] = clamp(den_state, 0, 255);
 }

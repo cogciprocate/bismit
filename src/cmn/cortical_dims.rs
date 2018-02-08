@@ -180,8 +180,10 @@ impl CorticalDims {
         if physical_len % subgroup_count == 0 {
             Ok(physical_len / subgroup_count)
         } else {
-            Err(format!("Invalid subgroup size: {} % {} = {}", physical_len, subgroup_count,
-                physical_len % subgroup_count).into())
+            // Err(format!("Invalid subgroup size: {} % {} = {}", physical_len, subgroup_count,
+            //     physical_len % subgroup_count).into())
+            panic!("Invalid subgroup size: {} % {} = {}", physical_len, subgroup_count,
+                physical_len % subgroup_count);
         }
     }
 

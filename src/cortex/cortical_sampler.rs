@@ -13,6 +13,7 @@ pub struct CorticalSamples {
 }
 
 impl CorticalSamples {
+    // TODO: Change return type to a result (with custom error).
     pub fn sample(&self, sk: &SamplerKind) -> Option<&ReadGuardVec> {
         self.samples.get(sk)
     }

@@ -205,7 +205,7 @@ impl Tufts {
                             ]
                         ))?);
 
-                        println!("\n\n###### Adding distal mtp kernel cmd_uid\n");
+                        // println!("\n\n###### Adding distal mtp kernel cmd_uid\n");
                     },
                     _ => (),
                 }
@@ -381,6 +381,14 @@ pub mod tests {
     use cortex::{PyramidalLayer, DataCellLayer, DataCellLayerTest, CelCoords, Tufts};
 
     impl Tufts {
+        pub fn celtft_idx(&self, cel_coords: &CelCoords, tft_id: usize) -> usize {
+            let cel_count = self.dims.to_len();
+            println!("cel_coords: {:?}, celtft_idx: {}",
+                cel_coords,
+                (cel_count * tft_id) + cel_coords.idx as usize);
+            (cel_count * tft_id) + cel_coords.idx as usize
+        }
+
         pub fn cycle_solo(&self) {
             for cycle_kern in self.cycle_kernels.iter() {
                 cycle_kern.default_queue().unwrap().finish().unwrap();

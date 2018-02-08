@@ -276,6 +276,7 @@ pub mod tests {
         fn cycle_solo(&self);
         fn tft_id_range(&self) -> Range<usize>;
         fn den_id_range_celtft(&self, tft_id: usize) -> Range<u32>;
+        fn den_idx_range_celtft(&self, cel_coords: &CelCoords, tft_id: usize) -> Range<usize>;
         fn print_range(&self, idx_range: Option<Range<usize>>);
         fn print_all(&self);
     }
@@ -343,6 +344,17 @@ pub mod tests {
         fn den_id_range_celtft(&self, tft_id: usize) -> Range<u32> {
             let dens_per_tft = self.syns().tft_dims_by_tft()[tft_id].dens_per_tft();
             0..dens_per_tft
+        }
+
+        // The dendrite index range for a single cell-tuft:
+        fn den_idx_range_celtft(&self, cel_coords: &CelCoords, tft_id: usize) -> Range<usize> {
+            let tft_den_idz = self.den_idzs_by_tft[tft_id];
+            let tft_dims = &self.syns.tft_dims_by_tft()[tft_id];
+            let den_idz_celtft = den_idx(&cel_coords.lyr_dims, cel_coords.slc_id_lyr,
+                cel_coords.v_id, cel_coords.u_id, tft_den_idz, tft_dims, 0) as usize;
+            let dens_per_celtft = tft_dims.dens_per_tft() as usize;
+
+            den_idz_celtft..(den_idz_celtft + dens_per_celtft)
         }
 
         fn print_range(&self, idx_range: Option<Range<usize>>) {
