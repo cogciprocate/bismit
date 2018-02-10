@@ -497,4 +497,8 @@ impl SeqCursor {
         //     self.sequences[self.seq_idx][self.seq_item_idx]);
         self.sequences[self.seq_idx][self.seq_item_idx]
     }
+
+    pub fn seq_idx(&self) -> usize { self.seq_idx }
+    pub fn seq_item_idx(&self) -> usize { self.seq_item_idx }
 }
+

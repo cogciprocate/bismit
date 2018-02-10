@@ -263,8 +263,6 @@ impl Synapses {
                 "layer_cycle_syns_wow"
             };
 
-            println!("##### kern_name: {}", kern_name);
-
             kernels_cycle.push(
                 ocl_pq.create_kernel(kern_name)?
                     .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
