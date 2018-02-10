@@ -415,7 +415,7 @@ impl Sdrs {
         let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
             let mut sdr = vec![0u8; cell_count];
             for &axn_idx in axn_idxs.iter() {
-                sdr[axn_idx] = Range::new(0, 255).ind_sample(&mut rng);
+                sdr[axn_idx] = Range::new(1, 256).ind_sample(&mut rng) as u8;
                 // sdr[axn_idx] = 255;
             }
             // let sdr = vec![255u8; cell_count];
@@ -431,15 +431,50 @@ impl Sdrs {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.pattern_count
+    /// Returns the (v, u) coords. of the next active cell with an index
+    /// greater than (the next cell after) `pattern_idx`.
+    pub fn a_middle_active_cell(&self, pattern_idx: usize) -> (u32, u32) {
+
+        // println!("##### pattern_idx: {}", pattern_idx);
+
+        let patterns = self.lock.clone().read().wait().unwrap();
+        let pattern = &patterns[pattern_idx];
+
+        // println!("##### pattern: {:?}", pattern);
+
+        let mut mid_active_cel_idx = None;
+        let mid_cel_idx = pattern.len() / 2;
+
+        // println!("##### mid_cel_idx..pattern.len(): {:?}",
+        //     mid_cel_idx..pattern.len());
+
+        for cel_idx in mid_cel_idx..pattern.len() {
+            let cel_state = pattern[cel_idx];
+            // println!("##### cel_state: {}", cel_state);
+
+            if cel_state > 0 {
+                mid_active_cel_idx = Some(cel_idx);
+            }
+        }
+
+        let cel_idx = mid_active_cel_idx.expect(&format!("Sdrs::middle_active_cell: \
+            No active cells in the pattern with an index greater than [{}].",
+            mid_cel_idx)) as u32;
+        let v = cel_idx / self.dims.u_size();
+        let u = cel_idx - (v * self.dims.u_size());
+        (v, u)
     }
+
+    pub fn len(&self) -> usize { self.pattern_count }
 }
 
 /// A cursor for iterating over sequences at random.
 ///
 /// A sequence is always returned sequentially. When the end of the sequence
 /// is reached the next sequence is selected randomly.
+//
+// TODO: Come up with less confusing names for struct members/methods.
+//
 #[derive(Debug)]
 pub struct SeqCursor {
     sequences: Vec<Vec<usize>>,
@@ -496,6 +531,16 @@ impl SeqCursor {
         //     self.seq_idx, self.seq_item_idx,
         //     self.sequences[self.seq_idx][self.seq_item_idx]);
         self.sequences[self.seq_idx][self.seq_item_idx]
+    }
+
+    /// Returns the 'middle' source index from the lot.
+    ///
+    /// Could be used to select an active cell from sdr lists for
+    /// testing/eval. purposes.
+    pub fn a_middle_src_idx(&self) -> usize {
+        let mid_seq_idx = self.sequences.len() / 2;
+        let mid_seq_item_idx = self.sequences[mid_seq_idx].len() / 2;
+        self.sequences[mid_seq_idx][mid_seq_item_idx]
     }
 
     pub fn seq_idx(&self) -> usize { self.seq_idx }
