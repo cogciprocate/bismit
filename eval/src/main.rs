@@ -455,6 +455,16 @@ impl Sdrs {
     pub fn len(&self) -> usize { self.pattern_count }
 }
 
+
+/// A sequence cursor position.
+#[derive(Debug)]
+pub struct SeqCursorPos {
+    seq_idx: usize,
+    seq_item_idx: usize,
+    pattern_idx: usize,
+}
+
+
 /// A cursor for iterating over sequences at random.
 ///
 /// A sequence is always returned sequentially. When the end of the sequence
@@ -473,9 +483,10 @@ pub struct SeqCursor {
 impl SeqCursor {
     /// Returns a new `SeqCursor`.
     ///
-    /// seq_lens: (min, max) sequence lengths.
-    /// seq_count: number of sequences to generate.
-    /// src_idx_count: Length of the source pool.
+    /// * seq_lens: (min, max) sequence lengths.
+    /// * seq_count: number of sequences to generate.
+    /// * src_idx_count: Length of the source pool.
+    ///
     pub fn new(seq_lens: (usize, usize), seq_count: usize, src_idx_count: usize) -> SeqCursor {
         assert!(seq_lens.1 >= seq_lens.0, "SeqCursor::new(): Sequence length range \
             ('seq_lens') invalid. High end must at least be equal to low end: '{:?}'.", seq_lens);
@@ -499,7 +510,10 @@ impl SeqCursor {
             sequences.push(seq);
         }
 
-        SeqCursor { sequences: sequences, seq_idx: 0, seq_item_idx: 0, rng }
+        // Initial sequence index (randomized for fun):
+        let seq_idx = Range::new(0, sequences.len()).ind_sample(&mut rng);
+
+        SeqCursor { sequences: sequences, seq_idx, seq_item_idx: 0, rng }
     }
 
     /// Returns the next source index in the current sequence.
@@ -511,7 +525,8 @@ impl SeqCursor {
         self.seq_item_idx += 1;
 
         if self.seq_item_idx >= self.sequences[self.seq_idx].len() {
-            self.seq_idx = Range::new(0, self.sequences.len()).ind_sample(&mut self.rng);
+            self.seq_idx = Range::new(0, self.sequences.len())
+                .ind_sample(&mut self.rng);
             self.seq_item_idx = 0;
         }
         self.sequences[self.seq_idx][self.seq_item_idx]
@@ -529,5 +544,13 @@ impl SeqCursor {
 
     pub fn seq_idx(&self) -> usize { self.seq_idx }
     pub fn seq_item_idx(&self) -> usize { self.seq_item_idx }
+
+    pub fn pos(&self) -> SeqCursorPos {
+        SeqCursorPos {
+            seq_idx: self.seq_idx,
+            seq_item_idx: self.seq_item_idx,
+            pattern_idx: self.sequences[self.seq_idx][self.seq_item_idx],
+        }
+    }
 }
 

@@ -22,7 +22,7 @@ use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, Cortical
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
-use ::{IncrResult, TrialIter, Layer, Pathway, InputSource, Sdrs, SeqCursor};
+use ::{IncrResult, TrialIter, Layer, Pathway, InputSource, Sdrs, SeqCursor, SeqCursorPos};
 use ::spatial::{TrialData, TrialResults};
 
 
@@ -40,9 +40,12 @@ const PRINT_INTERVAL_END: usize = 5;
 
 
 fn print_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
-        cycles_complete: usize, lyr_addr: LayerAddress, seq_idx: usize, seq_item_idx: usize)
+        cycles_complete: usize, lyr_addr: LayerAddress, cursor_pos: SeqCursorPos)
         -> CorticalSamples {
-    if cycles_complete % 5000 >= 5 { return samples; }
+    //////// Only print frames we are interested in:
+    // if cycles_complete % 5000 >= 5 { return samples; }
+    // if seq_idx != 0 { return samples; }
+    if cursor_pos.seq_idx != 0 { return samples; }
 
     for celtft in &focus_celtfts {
         let cel_idx = celtft.cel_coords.idx() as usize;
@@ -54,8 +57,9 @@ fn print_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
         let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().u8();
         let cel_states = samples.sample(&SamplerKind::SomaStates(lyr_addr)).unwrap().u8();
 
-        println!("(seq: {}, seq_item: {})", seq_idx, seq_item_idx);
-        println!("[{}] cel_states[{}]: {:03?}, axn_states[{}]: {:03?}", cycles_complete,
+        println!();
+        print!("[{}] (cursor_pos: {:?}) ", cycles_complete, cursor_pos);
+        println!("cel_states[{}]: <<{:03?}>>, axn_states[{}]: <<<{:03?}>>>",
             cel_idx, cel_states[cel_idx], cel_axn_idx, axn_states[cel_axn_idx]);
 
         let tft_states = samples.sample(&SamplerKind::TuftStates(lyr_addr)).unwrap().u8();
@@ -80,20 +84,25 @@ fn print_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
         println!("den_states[{:?}]: {:03?}", den_idx_range,
             &den_states[den_idx_range.clone()]);
 
+        let mut strong_syn_count = 0;
         for (syn_idx, ((&syn_state, &syn_strength), &syn_flag_set)) in syn_states[syn_idx_range.clone()].iter()
                 .zip(syn_strengths[syn_idx_range.clone()].iter())
                 .zip(syn_flag_sets[syn_idx_range.clone()].iter())
-                .filter(|&((_syn_state, &syn_strength), _syn_flag_set)| {
-                    syn_strength > 12
-                })
-                .enumerate() {
+                .enumerate()
+                .filter(|&(_, ((_e, &syn_strength), _))| {
+                    syn_strength > 21
+                }) {
             print!("{{[{}]", syn_idx);
             print!("state:{:03}, ", syn_state);
             print!("strength:{:03}, ", syn_strength);
             print!("flag_set:{:03}", syn_flag_set);
             print!("}} ");
+            strong_syn_count += 1;
         }
-
+        if strong_syn_count > 0 {
+            println!();
+            print!("  {{{{ strong_syn_count: {} }}}}", strong_syn_count);
+        }
         println!();
     }
     println!();
@@ -147,6 +156,7 @@ struct EvalSequence {
     sampler: Option<CorticalSampler>,
     pri_iii_layer_addr: Option<LayerAddress>,
     focus_celtfts: Vec<FocusCellTuft>,
+    // last_pattern: SeqCursorPos,
 }
 
 impl EvalSequence {
@@ -176,9 +186,9 @@ impl EvalSequence {
             layers.insert(layer.sub().addr().clone(), layer);
         }
 
-        let sdrs = Sdrs::new(25, ENCODE_DIMS_0);
-        // let sdr_cursor = SeqCursor::new((4, 8), 25, sdrs.len());
-        let sdr_cursor = SeqCursor::new((5, 5), 1, sdrs.len());
+        let sdrs = Sdrs::new(200, ENCODE_DIMS_0);
+        let sdr_cursor = SeqCursor::new((4, 8), 25, sdrs.len());
+        // let sdr_cursor = SeqCursor::new((5, 5), 1, sdrs.len());
 
         // Define the number of iters to first train then collect for each
         // sample period. All learning and other cell parameters (activity,
@@ -187,6 +197,8 @@ impl EvalSequence {
         let trial_iter = TrialIter::new(vec![
             (5000, 5000), (5000, 5000), (5000, 5000), (5000, 5000), (5000, 5000),
         ]);
+
+        // let last_pattern = sdr_cursor.pos();
 
         EvalSequence {
             area_name: area_name,
@@ -199,6 +211,7 @@ impl EvalSequence {
             sampler: None,
             pri_iii_layer_addr: None,
             focus_celtfts: Vec::with_capacity(16),
+            // last_pattern,
         }
     }
 
@@ -287,12 +300,13 @@ impl SubcorticalNucleus for EvalSequence {
             work_pool: &mut WorkPool) -> CmnResult<()> {
         let pattern_idx = self.sdr_cursor.next_src_idx();
 
-        if self.cycles_complete % PRINT_INTERVAL == PRINT_INTERVAL_START {
-            self.sampler.as_ref().unwrap().set_backpressure(true);
-        }
-        if self.cycles_complete % PRINT_INTERVAL == PRINT_INTERVAL_END {
-            self.sampler.as_ref().unwrap().set_backpressure(false);
-        }
+        // // Turn off backpressure for frames we are not interested in:
+        // if self.cycles_complete % PRINT_INTERVAL == PRINT_INTERVAL_START {
+        //     self.sampler.as_ref().unwrap().set_backpressure(true);
+        // }
+        // if self.cycles_complete % PRINT_INTERVAL == PRINT_INTERVAL_END {
+        //     self.sampler.as_ref().unwrap().set_backpressure(false);
+        // }
 
         // Write sdr to pathway:
         for layer in self.layers.values() {
@@ -348,22 +362,25 @@ impl SubcorticalNucleus for EvalSequence {
 
         ///////////////////////////////////////////////////////////////////////
 
-        if self.cycles_complete % PRINT_INTERVAL < PRINT_INTERVAL_END {
-            let focus_celtfts = self.focus_celtfts.clone();
-            let cycles_complete = self.cycles_complete;
-            let lyr_addr = self.pri_iii_layer_addr.clone().unwrap();
-            let seq_idx = self.sdr_cursor.seq_idx();
-            let seq_item_idx = self.sdr_cursor.seq_item_idx();
+        // // Only print frames we are interested in:
+        // if self.cycles_complete % PRINT_INTERVAL < PRINT_INTERVAL_END {
 
-            let future_recv = self.sampler.as_ref().unwrap().recv()
-                .map(move |samples| {
-                    print_stuff(samples, focus_celtfts, cycles_complete, lyr_addr,
-                        seq_idx, seq_item_idx);
-                })
-                .map_err(|err| panic!("{}", err));
+        // }
 
-            work_pool.complete_work(future_recv)?;
-        }
+
+        let focus_celtfts = self.focus_celtfts.clone();
+        let cycles_complete = self.cycles_complete;
+        let lyr_addr = self.pri_iii_layer_addr.clone().unwrap();
+        let cursor_pos = self.sdr_cursor.pos();
+
+        let future_recv = self.sampler.as_ref().unwrap().recv()
+            .map(move |samples| {
+                print_stuff(samples, focus_celtfts, cycles_complete,
+                    lyr_addr, cursor_pos);
+            })
+            .map_err(|err| panic!("{}", err));
+
+        work_pool.complete_work(future_recv)?;
 
         Ok(())
     }
@@ -433,9 +450,8 @@ fn define_lm_schemes() -> LayerMapSchemeList {
             //     )
             // )
             .layer(LayerScheme::define("iii")
-                // .depth(9)
-                // .depth(5)
-                .depth(1)
+                // .depth(1)
+                .depth(3)
                 .tags(LayerTags::PTAL)
                 .axon_domain(AxonDomain::output(&[at2]))
                 .cellular(CellScheme::pyramidal()
@@ -454,7 +470,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                         .max_active_dens_l2(0)
                         .thresh_init(0)
                         .src_lyr(TuftSourceLayer::define("iii")
-                            .syn_reach(24)
+                            .syn_reach(32)
                             .prevalence(1)
                         )
                     )
