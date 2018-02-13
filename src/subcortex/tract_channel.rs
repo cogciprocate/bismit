@@ -466,10 +466,13 @@ impl TractInner {
     /// Sets a new backpressure state and returns the prior (though
     /// possibly out-of-date) state.
     ///
-    /// It is recommended to check the prior state to ensure that it matches
-    /// up with expectations (in case another thread is also modifying it).
-    pub fn set_backpressure(&self) -> bool {
-        let prior_state = self.state.fetch_and(!BACKPRESSURE_FLAG, SeqCst);
+    /// It is may be advisable to check the prior state to ensure that it
+    /// matches up with expectations (in case another thread is also modifying
+    /// it).
+    pub fn set_backpressure(&self, bp: bool) -> bool {
+        // e.g. `if bp { BACKPRESSURE_FLAG } else { 0 }`:
+        let backpressure_flag = bp as usize * BACKPRESSURE_FLAG;
+        let prior_state = self.state.fetch_and(!backpressure_flag, SeqCst);
         (prior_state & BACKPRESSURE_FLAG) != 0
     }
 
@@ -498,6 +501,7 @@ impl TractSender {
 
     #[inline] pub fn buffer_idx_range(&self) -> Range<usize> { self.inner.buffer_idx_range() }
     #[inline] pub fn backpressure_stale(&self) -> bool { self.inner.backpressure_stale() }
+    #[inline] pub fn set_backpressure(&self, bp: bool) -> bool { self.inner.set_backpressure(bp) }
 }
 
 
@@ -515,6 +519,7 @@ impl TractReceiver {
 
     #[inline] pub fn buffer_idx_range(&self) -> Range<usize> { self.inner.buffer_idx_range() }
     #[inline] pub fn backpressure_stale(&self) -> bool { self.inner.backpressure_stale() }
+    #[inline] pub fn set_backpressure(&self, bp: bool) -> bool { self.inner.set_backpressure(bp) }
 }
 
 

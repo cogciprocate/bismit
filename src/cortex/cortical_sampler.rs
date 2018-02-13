@@ -188,7 +188,11 @@ impl CorticalSampler {
         FutureCorticalSamples::new(&self.rxs)
     }
 
-    pub fn set_backpressure(_bp: bool) {
-
+    /// Changes the backpressure setting for all contained tract receivers
+    /// (samplers).
+    pub fn set_backpressure(&self, bp: bool) {
+        for &(_, ref rx) in self.rxs.iter() {
+            rx.set_backpressure(bp);
+        }
     }
 }

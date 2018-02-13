@@ -34,6 +34,10 @@ const ENCODE_DIMS_0: (u32, u32, u8) = (48, 48, 1);
 const AREA_DIM: u32 = 48;
 const SEQUENTIAL_SDR: bool = true;
 
+const PRINT_INTERVAL: usize = 5000;
+const PRINT_INTERVAL_START: usize = 0;
+const PRINT_INTERVAL_END: usize = 5;
+
 
 fn print_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
         cycles_complete: usize, lyr_addr: LayerAddress, seq_idx: usize, seq_item_idx: usize)
@@ -286,6 +290,13 @@ impl SubcorticalNucleus for EvalSequence {
             work_pool: &mut WorkPool) -> CmnResult<()> {
         let pattern_idx = self.sdr_cursor.next_src_idx();
 
+        if self.cycles_complete % PRINT_INTERVAL == PRINT_INTERVAL_START {
+            self.sampler.as_ref().unwrap().set_backpressure(true);
+        }
+        if self.cycles_complete % PRINT_INTERVAL == PRINT_INTERVAL_END {
+            self.sampler.as_ref().unwrap().set_backpressure(false);
+        }
+
         // Write sdr to pathway:
         for layer in self.layers.values() {
             if let Pathway::Output { ref tx } = layer.pathway {
@@ -340,20 +351,22 @@ impl SubcorticalNucleus for EvalSequence {
 
         ///////////////////////////////////////////////////////////////////////
 
-        let focus_celtfts = self.focus_celtfts.clone();
-        let cycles_complete = self.cycles_complete;
-        let lyr_addr = self.pri_iii_layer_addr.clone().unwrap();
-        let seq_idx = self.sdr_cursor.seq_idx();
-        let seq_item_idx = self.sdr_cursor.seq_item_idx();
+        if self.cycles_complete % PRINT_INTERVAL < PRINT_INTERVAL_END {
+            let focus_celtfts = self.focus_celtfts.clone();
+            let cycles_complete = self.cycles_complete;
+            let lyr_addr = self.pri_iii_layer_addr.clone().unwrap();
+            let seq_idx = self.sdr_cursor.seq_idx();
+            let seq_item_idx = self.sdr_cursor.seq_item_idx();
 
-        let future_recv = self.sampler.as_ref().unwrap().recv()
-            .map(move |samples| {
-                print_stuff(samples, focus_celtfts, cycles_complete, lyr_addr,
-                    seq_idx, seq_item_idx);
-            })
-            .map_err(|err| panic!("{}", err));
+            let future_recv = self.sampler.as_ref().unwrap().recv()
+                .map(move |samples| {
+                    print_stuff(samples, focus_celtfts, cycles_complete, lyr_addr,
+                        seq_idx, seq_item_idx);
+                })
+                .map_err(|err| panic!("{}", err));
 
-        work_pool.complete_work(future_recv)?;
+            work_pool.complete_work(future_recv)?;
+        }
 
         Ok(())
     }
