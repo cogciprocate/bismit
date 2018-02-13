@@ -27,9 +27,10 @@ use ocl::{RwVec, FutureReadGuard, FutureWriteGuard, ReadGuard, WriteGuard, OclPr
 use cmn::CmnError;
 
 
-const NEXT_READ_GUARD_READY: usize = 0x00000001;
+const NEXT_READ_GUARD_READY_FLAG: usize = 0b00000001;
 // const BUFFER_1_FRESH: usize = 0x00000002;
 // const BUFFER_2_FRESH: usize = 0x00000004;
+const BACKPRESSURE_FLAG: usize = 0b00010000;
 
 
 // #[derive(Debug)]
@@ -344,7 +345,7 @@ enum Direction {
 pub struct TractInner {
     buffer: TractBuffer,
     buffer_idx_range: Range<usize>,
-    backpressure: bool,
+    // backpressure: bool,
     direction: Direction,
     state: AtomicUsize,
     next_read_guard: AtomicOption<ReadBuffer>,
@@ -356,15 +357,16 @@ impl TractInner {
     fn new(buffer: TractBuffer, buffer_idx_range: Option<Range<usize>>, backpressure: bool,
             direction: Direction) -> TractInner {
         let buffer_idx_range = buffer_idx_range.unwrap_or(0..buffer.len());
+        let backpressure_state = if backpressure { BACKPRESSURE_FLAG } else { 0 };
 
         TractInner {
             buffer,
             buffer_idx_range,
-            backpressure,
+            // backpressure,
             // send_only,
             // recv_only,
             direction,
-            state: AtomicUsize::new(0),
+            state: AtomicUsize::new(backpressure_state),
             next_read_guard: AtomicOption::new(),
             send_waiting: AtomicOption::new(),
             recv_waiting: AtomicOption::new(),
@@ -378,10 +380,12 @@ impl TractInner {
             _ => ()
         }
 
-        let cur_state = self.state.fetch_or(NEXT_READ_GUARD_READY, SeqCst);
-        let buffer_already_ready = (cur_state & NEXT_READ_GUARD_READY) != 0;
+        let cur_state = self.state.fetch_or(NEXT_READ_GUARD_READY_FLAG, SeqCst);
+        let backpressure = (cur_state & BACKPRESSURE_FLAG) != 0;
+        let buffer_already_ready = (cur_state & NEXT_READ_GUARD_READY_FLAG) != 0;
+
         if buffer_already_ready {
-            if self.backpressure {
+            if backpressure {
                 let (tx, rx) = oneshot::channel();
                 let (wg, rg) = self.buffer.next_wr_guard_pair();
                 let old_tx = self.send_waiting.swap((tx, rg), SeqCst);
@@ -416,7 +420,7 @@ impl TractInner {
 
         match self.next_read_guard.take(SeqCst) {
             Some(next_read_guard) => {
-                assert!(self.state.load(SeqCst) & NEXT_READ_GUARD_READY != 0);
+                assert!(self.state.load(SeqCst) & NEXT_READ_GUARD_READY_FLAG != 0);
                 // Rotate in the waiting guard if any:
                 match self.send_waiting.take(SeqCst) {
                     Some((tx, wrg)) => {
@@ -426,14 +430,14 @@ impl TractInner {
                     },
                     None => {
                         // println!("TractInner::recv: self.send_waiting => None");
-                        let prior_state = self.state.fetch_and(!NEXT_READ_GUARD_READY, SeqCst);
-                        assert!(prior_state & NEXT_READ_GUARD_READY != 0);
+                        let prior_state = self.state.fetch_and(!NEXT_READ_GUARD_READY_FLAG, SeqCst);
+                        assert!(prior_state & NEXT_READ_GUARD_READY_FLAG != 0);
                     },
                 }
                 FutureRecv::Recv(Some(next_read_guard))
             },
             None => {
-                // NOTE: self.state.load(SeqCst) & NEXT_READ_GUARD_READY ?= 0
+                // NOTE: self.state.load(SeqCst) & NEXT_READ_GUARD_READY_FLAG ?= 0
                 if wait_for_frame {
                     // UNTESTED:
                     // println!("TractInner::recv: Waiting for next frame.");
@@ -459,9 +463,9 @@ impl TractInner {
         self.buffer_idx_range.clone()
     }
 
-    #[inline]
-    pub fn backpressure(&self) -> bool {
-        self.backpressure
+
+    pub fn backpressure_stale(&self) -> bool {
+        (self.state.load(SeqCst) & BACKPRESSURE_FLAG) != 0
     }
 }
 
@@ -483,7 +487,7 @@ impl TractSender {
     }
 
     #[inline] pub fn buffer_idx_range(&self) -> Range<usize> { self.inner.buffer_idx_range() }
-    #[inline] pub fn backpressure(&self) -> bool { self.inner.backpressure() }
+    #[inline] pub fn backpressure_stale(&self) -> bool { self.inner.backpressure_stale() }
 }
 
 
@@ -500,7 +504,7 @@ impl TractReceiver {
     }
 
     #[inline] pub fn buffer_idx_range(&self) -> Range<usize> { self.inner.buffer_idx_range() }
-    #[inline] pub fn backpressure(&self) -> bool { self.inner.backpressure() }
+    #[inline] pub fn backpressure_stale(&self) -> bool { self.inner.backpressure_stale() }
 }
 
 

@@ -65,14 +65,6 @@ fn print_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
         // let syn_src_col_u_offs = samples.sample(&SamplerKind::SynSrcColUOffs(lyr_addr)).unwrap().i8();
         let syn_flag_sets = samples.sample(&SamplerKind::SynFlagSets(lyr_addr)).unwrap().u8();
 
-        // println!("cel_states[{:?}]: : {:03?}", 32..64, &cel_states[32..64]);
-
-        // println!("[{}] &axn_states[..]: {:03?}", cycles_complete, &axn_states[..]);
-        // return;
-
-        // if tft_states[celtft_idx] == 0 { continue; }
-
-
         println!("tft_states[{}]: {:03?}", celtft_idx,
             &tft_states[celtft_idx]);
         println!("tft_best_den_ids[{}]: {:03?}", celtft_idx,
@@ -91,7 +83,6 @@ fn print_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
                     syn_strength > 12
                 })
                 .enumerate() {
-
             print!("{{[{}]", syn_idx);
             print!("state:{:03}, ", syn_state);
             print!("strength:{:03}, ", syn_strength);
