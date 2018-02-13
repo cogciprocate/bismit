@@ -208,7 +208,7 @@ impl AreaMap {
                                 let src_lyr_len = src_lyr.axon_count();
 
                                 // * TODO: ADDME: self.verify_axon_range()
-                                debug_assert!({
+                                assert!({
                                         let slc_idm = src_base_slc_id + src_lyr.dims().depth() - 1;
                                         let slc_len = self.slice_map.slc_axon_count(slc_idm);
                                         let axon_idz = self.axon_idz(slc_idm);
@@ -233,7 +233,7 @@ impl AreaMap {
                         let lyr_len = layer.ttl_axon_count();
 
                         // * TODO: ADDME: self.verify_axon_range()
-                        debug_assert!({
+                        assert!({
                                 let slc_idm = base_slc_id + layer.depth() - 1;
                                 let slc_len = self.slice_map.slc_axon_count(slc_idm);
                                 let axon_idz = self.axon_idz(slc_idm);
@@ -278,7 +278,7 @@ impl AreaMap {
                     let src_lyr_axon_len = sli.axon_count();
                     let src_lyr_axon_range = src_lyr_axon_idz..(src_lyr_axon_idz + src_lyr_axon_len);
 
-                    debug_assert!(self.verify_axon_range(src_lyr_axon_range.clone(),
+                    assert!(self.verify_axon_range(src_lyr_axon_range.clone(),
                         src_base_slc_id, li.depth()), "AreaMap::lyr_axon_range: \
                         Axon index range mismatch.");
 
