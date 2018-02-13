@@ -155,7 +155,7 @@ impl Tufts {
                         let cel_grp_count = 64;
                         let cels_per_cel_grp = dims.per_subgrp(cel_grp_count)?;
                         let potentiation_rate_l2i = 0i32;
-                        let depression_rate_l2i = 1i32;
+                        let depression_rate_l2i = 2i32;
 
                         let kern_name = "tft_dst_mtp";
                         mtp_kernels.push(ocl_pq.create_kernel(kern_name)?

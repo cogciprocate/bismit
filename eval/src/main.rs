@@ -416,10 +416,7 @@ impl Sdrs {
             let mut sdr = vec![0u8; cell_count];
             for &axn_idx in axn_idxs.iter() {
                 sdr[axn_idx] = Range::new(1, 256).ind_sample(&mut rng) as u8;
-                // sdr[axn_idx] = 255;
             }
-            // let sdr = vec![255u8; cell_count];
-
             sdr
         }).collect();
 
@@ -432,26 +429,16 @@ impl Sdrs {
     }
 
     /// Returns the (v, u) coords. of the next active cell with an index
-    /// greater than (the next cell after) `pattern_idx`.
+    /// greater than (the next active cell after) `pattern_idx`.
     pub fn a_middle_active_cell(&self, pattern_idx: usize) -> (u32, u32) {
-
-        // println!("##### pattern_idx: {}", pattern_idx);
-
         let patterns = self.lock.clone().read().wait().unwrap();
         let pattern = &patterns[pattern_idx];
-
-        // println!("##### pattern: {:?}", pattern);
 
         let mut mid_active_cel_idx = None;
         let mid_cel_idx = pattern.len() / 2;
 
-        // println!("##### mid_cel_idx..pattern.len(): {:?}",
-        //     mid_cel_idx..pattern.len());
-
         for cel_idx in mid_cel_idx..pattern.len() {
             let cel_state = pattern[cel_idx];
-            // println!("##### cel_state: {}", cel_state);
-
             if cel_state > 0 {
                 mid_active_cel_idx = Some(cel_idx);
             }
@@ -527,9 +514,6 @@ impl SeqCursor {
             self.seq_idx = Range::new(0, self.sequences.len()).ind_sample(&mut self.rng);
             self.seq_item_idx = 0;
         }
-        // println!("(seq_idx: {}, seq_item_idx: {}) src_idx: {}",
-        //     self.seq_idx, self.seq_item_idx,
-        //     self.sequences[self.seq_idx][self.seq_item_idx]);
         self.sequences[self.seq_idx][self.seq_item_idx]
     }
 

@@ -26,7 +26,7 @@ __kernel void tft_set_syn_flags(
 {
     uint const syn_idx = get_global_id(0);
 
-    int syn_was_active = states > 0;
+    int syn_was_active = states[syn_idx] != 0;
     uchar flag_set = flag_sets[syn_idx] & ~SYN_PREV_ACTIVE_FLAG;
     flag_set = flag_set | mul24((uchar)syn_was_active, SYN_PREV_ACTIVE_FLAG);
     flag_sets[syn_idx] = flag_set;

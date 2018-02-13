@@ -579,7 +579,8 @@ static inline void dst_syns__active__mtpot_mtdep(
     for (uint i = syn_idz; i < n; i++) {
         char syn_strength = syn_strengths[i];
         uchar syn_flag_set = syn_flag_sets[i];
-        // uchar const syn_state = syn_states[i];
+        uchar const syn_state = syn_states[i];
+        int const syn_is_active = syn_state != 0;
         int const syn_prev_active = (syn_flag_set & (SYN_PREV_ACTIVE_FLAG)) == (SYN_PREV_ACTIVE_FLAG);
         // int const syn_is_active = syn_state != 0;
 

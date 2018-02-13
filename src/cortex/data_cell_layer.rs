@@ -70,9 +70,7 @@ pub mod tests {
         pub v_id: u32,
         pub u_id: u32,
         pub lyr_dims: CorticalDims,
-        // pub tfts_per_cel: u32,
-        // pub dens_per_tft_l2: u8,
-        // pub syns_per_den_l2: u8,
+        axon_idx: Option<u32>,
     }
 
     impl CelCoords {
@@ -88,14 +86,21 @@ pub mod tests {
                 v_id: v_id,
                 u_id: u_id,
                 lyr_dims: lyr_dims,
-                // tfts_per_cel: tfts_per_cel,
-                // dens_per_tft_l2: dens_per_tft_l2,
-                // syns_per_den_l2: syns_per_den_l2,
+                axon_idx: None,
             }
+        }
+
+        pub fn set_axon_idx(&mut self, area_map: &AreaMap) {
+            self.axon_idx = Some(area_map.axon_idx(self.axon_slc_id, self.v_id, 0, self.u_id, 0).unwrap())
         }
 
         pub fn idx(&self) -> u32 {
             self.idx
+        }
+
+        pub fn axon_idx(&self) -> u32 {
+            self.axon_idx.expect("CelCoords::axon_idx: Axon index not set. \
+                Use `::set_cel_axon_idx` first.")
         }
 
         // #[allow(dead_code)]
@@ -105,7 +110,8 @@ pub mod tests {
                 self.lyr_dims.u_size(), self.u_id)
         }
 
-        // #[allow(dead_code)]
+        #[deprecated]
+        // Use `::set_cel_axon_idx` and `::axon_idx` instead.
         pub fn cel_axon_idx(&self, area_map: &AreaMap) -> u32 {
             area_map.axon_idx(self.axon_slc_id, self.v_id, 0, self.u_id, 0).unwrap()
         }
