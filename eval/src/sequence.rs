@@ -256,19 +256,16 @@ impl SubcorticalNucleus for EvalSequence {
 
         self.pri_iii_layer_addr = Some(lyr_addr);
 
-        // Choose a random focus cell tuft:
         let layer_dims = cortical_areas.by_key_mut(PRI_AREA).unwrap()
             .layer_test_mut("iii").unwrap().dims().clone();
 
         let lyr_axn_slc_idz = cortical_areas.by_key_mut(PRI_AREA).unwrap()
             .layer_test_mut("iii").unwrap().base_axon_slc();
 
+        // Choose a focus cell-tuft which will be active:
         let a_valid_sdr_idx = self.sdr_cursor.a_middle_src_idx();
         let an_active_cell = self.sdrs.a_middle_active_cell(a_valid_sdr_idx);
         println!("###### an_active_cell: {:?}", an_active_cell);
-
-        // let cel_coords = cortical_areas.by_key_mut(PRI_AREA).unwrap()
-        //     .layer_test_mut("iii").unwrap().rand_cel_coords();
 
         for slc_id_lyr in 0..layer_dims.depth() {
             let mut ccs = CelCoords::new(lyr_axn_slc_idz + slc_id_lyr, slc_id_lyr,

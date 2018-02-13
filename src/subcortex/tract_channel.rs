@@ -464,19 +464,21 @@ impl TractInner {
     }
 
     /// Sets a new backpressure state and returns the prior (though
-    /// possibly out-of-date) state.
+    /// immediately out-of-date) state.
     ///
     /// It is may be advisable to check the prior state to ensure that it
-    /// matches up with expectations (in case another thread is also modifying
-    /// it).
+    /// matches up with expectations (another thread may also modifying
+    /// it -- this may or may not be desirable).
     pub fn set_backpressure(&self, bp: bool) -> bool {
-        // e.g. `if bp { BACKPRESSURE_FLAG } else { 0 }`:
-        let backpressure_flag = bp as usize * BACKPRESSURE_FLAG;
-        let prior_state = self.state.fetch_and(!backpressure_flag, SeqCst);
+        let prior_state = if bp {
+            self.state.fetch_or(BACKPRESSURE_FLAG, SeqCst)
+        } else {
+            self.state.fetch_and(!BACKPRESSURE_FLAG, SeqCst)
+        };
         (prior_state & BACKPRESSURE_FLAG) != 0
     }
 
-    /// Returns the current (possibly out-of-date) backpressure state.
+    /// Returns the current (immediately out-of-date) backpressure state.
     pub fn backpressure_stale(&self) -> bool {
         (self.state.load(SeqCst) & BACKPRESSURE_FLAG) != 0
     }
