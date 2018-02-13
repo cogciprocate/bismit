@@ -187,4 +187,8 @@ impl CorticalSampler {
     pub fn recv(&self) -> FutureCorticalSamples {
         FutureCorticalSamples::new(&self.rxs)
     }
+
+    pub fn set_backpressure(_bp: bool) {
+
+    }
 }

@@ -1,3 +1,6 @@
+//! Evaluate sensory inputs. Useless at the moment.
+
+
 #![allow(dead_code, unused_imports, unused_variables)]
 
 // use std::mem;

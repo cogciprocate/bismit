@@ -380,9 +380,9 @@ impl TractInner {
             _ => ()
         }
 
-        let cur_state = self.state.fetch_or(NEXT_READ_GUARD_READY_FLAG, SeqCst);
-        let backpressure = (cur_state & BACKPRESSURE_FLAG) != 0;
-        let buffer_already_ready = (cur_state & NEXT_READ_GUARD_READY_FLAG) != 0;
+        let prior_state = self.state.fetch_or(NEXT_READ_GUARD_READY_FLAG, SeqCst);
+        let backpressure = (prior_state & BACKPRESSURE_FLAG) != 0;
+        let buffer_already_ready = (prior_state & NEXT_READ_GUARD_READY_FLAG) != 0;
 
         if buffer_already_ready {
             if backpressure {
@@ -463,7 +463,17 @@ impl TractInner {
         self.buffer_idx_range.clone()
     }
 
+    /// Sets a new backpressure state and returns the prior (though
+    /// possibly out-of-date) state.
+    ///
+    /// It is recommended to check the prior state to ensure that it matches
+    /// up with expectations (in case another thread is also modifying it).
+    pub fn set_backpressure(&self) -> bool {
+        let prior_state = self.state.fetch_and(!BACKPRESSURE_FLAG, SeqCst);
+        (prior_state & BACKPRESSURE_FLAG) != 0
+    }
 
+    /// Returns the current (possibly out-of-date) backpressure state.
     pub fn backpressure_stale(&self) -> bool {
         (self.state.load(SeqCst) & BACKPRESSURE_FLAG) != 0
     }
