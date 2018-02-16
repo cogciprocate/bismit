@@ -45,8 +45,75 @@ fn print_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
     //////// Only print frames we are interested in:
     // if cycles_complete % 5000 >= 5 { return samples; }
     // if seq_idx != 0 { return samples; }
-    if cursor_pos.seq_idx != 0 { return samples; }
+    // if cursor_pos.seq_idx != 0 { return samples; }
 
+    for celtft in &focus_celtfts {
+        let cel_idx = celtft.cel_coords.idx() as usize;
+        let cel_axn_idx = celtft.cel_coords.axon_idx() as usize;
+        let celtft_idx = celtft.celtft_idx;
+        let den_idx_range = &celtft.den_idx_range;
+        let syn_idx_range = &celtft.syn_idx_range;
+
+        let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().u8();
+        let cel_states = samples.sample(&SamplerKind::SomaStates(lyr_addr)).unwrap().u8();
+
+        println!();
+        print!("[{}] (cursor_pos: {:?}) ", cycles_complete, cursor_pos);
+        println!("cel_states[{}]: <<{:03?}>>, axn_states[{}]: <<<{:03?}>>>",
+            cel_idx, cel_states[cel_idx], cel_axn_idx, axn_states[cel_axn_idx]);
+
+        let tft_states = samples.sample(&SamplerKind::TuftStates(lyr_addr)).unwrap().u8();
+        let tft_best_den_ids = samples.sample(&SamplerKind::TuftBestDenIds(lyr_addr)).unwrap().u8();
+        let tft_best_den_states = samples.sample(&SamplerKind::TuftBestDenStates(lyr_addr)).unwrap().u8();
+        let tft_best_den_states_raw = samples.sample(&SamplerKind::TuftBestDenStatesRaw(lyr_addr)).unwrap().u8();
+        let den_states = samples.sample(&SamplerKind::DenStates(lyr_addr)).unwrap().u8();
+        let syn_states = samples.sample(&SamplerKind::SynStates(lyr_addr)).unwrap().u8();
+        let syn_strengths = samples.sample(&SamplerKind::SynStrengths(lyr_addr)).unwrap().i8();
+        // let syn_src_col_v_offs = samples.sample(&SamplerKind::SynSrcColVOffs(lyr_addr)).unwrap().i8();
+        // let syn_src_col_u_offs = samples.sample(&SamplerKind::SynSrcColUOffs(lyr_addr)).unwrap().i8();
+        let syn_flag_sets = samples.sample(&SamplerKind::SynFlagSets(lyr_addr)).unwrap().u8();
+
+        println!("tft_states[{}]: {:03?}", celtft_idx,
+            &tft_states[celtft_idx]);
+        println!("tft_best_den_ids[{}]: {:03?}", celtft_idx,
+            &tft_best_den_ids[celtft_idx]);
+        println!("tft_best_den_states[{}]: {:03?}", celtft_idx,
+            &tft_best_den_states[celtft_idx]);
+        println!("tft_best_den_states_raw[{}]: {:03?}", celtft_idx,
+            &tft_best_den_states_raw[celtft_idx]);
+        println!("den_states[{:?}]: {:03?}", den_idx_range,
+            &den_states[den_idx_range.clone()]);
+
+        let mut strong_syn_count = 0;
+        for (syn_idx, ((&syn_state, &syn_strength), &syn_flag_set)) in syn_states[syn_idx_range.clone()].iter()
+                .zip(syn_strengths[syn_idx_range.clone()].iter())
+                .zip(syn_flag_sets[syn_idx_range.clone()].iter())
+                .enumerate()
+                .filter(|&(_, ((_e, &syn_strength), _))| {
+                    syn_strength > 21
+                }) {
+            print!("{{[{}]", syn_idx);
+            print!("state:{:03}, ", syn_state);
+            print!("strength:{:03}, ", syn_strength);
+            print!("flag_set:{:03}", syn_flag_set);
+            print!("}} ");
+            strong_syn_count += 1;
+        }
+        if strong_syn_count > 0 {
+            println!();
+            print!("  {{{{ strong_syn_count: {} }}}}", strong_syn_count);
+        }
+        println!();
+    }
+    println!();
+
+    samples
+}
+
+
+fn check_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
+        cycles_complete: usize, lyr_addr: LayerAddress, cursor_pos: SeqCursorPos)
+        -> CorticalSamples {
     for celtft in &focus_celtfts {
         let cel_idx = celtft.cel_coords.idx() as usize;
         let cel_axn_idx = celtft.cel_coords.axon_idx() as usize;
@@ -186,9 +253,13 @@ impl EvalSequence {
             layers.insert(layer.sub().addr().clone(), layer);
         }
 
+        assert!(ENCODE_DIMS_0.0 == AREA_DIM && ENCODE_DIMS_0.1 == AREA_DIM,
+            "For this evaluation, the encoding dims must equal the area dims. \
+            The encoding is representative of layer IV output.");
+
         let sdrs = Sdrs::new(200, ENCODE_DIMS_0);
-        let sdr_cursor = SeqCursor::new((4, 8), 25, sdrs.len());
-        // let sdr_cursor = SeqCursor::new((5, 5), 1, sdrs.len());
+        // let sdr_cursor = SeqCursor::new((4, 8), 25, sdrs.len());
+        let sdr_cursor = SeqCursor::new((5, 5), 1, sdrs.len());
 
         // Define the number of iters to first train then collect for each
         // sample period. All learning and other cell parameters (activity,
@@ -298,7 +369,7 @@ impl SubcorticalNucleus for EvalSequence {
     ///
     fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
             work_pool: &mut WorkPool) -> CmnResult<()> {
-        let pattern_idx = self.sdr_cursor.next_src_idx();
+        let pattern_idx = self.sdr_cursor.incr_src_idx();
 
         // // Turn off backpressure for frames we are not interested in:
         // if self.cycles_complete % PRINT_INTERVAL == PRINT_INTERVAL_START {
@@ -362,25 +433,23 @@ impl SubcorticalNucleus for EvalSequence {
 
         ///////////////////////////////////////////////////////////////////////
 
-        // // Only print frames we are interested in:
-        // if self.cycles_complete % PRINT_INTERVAL < PRINT_INTERVAL_END {
-
-        // }
-
-
         let focus_celtfts = self.focus_celtfts.clone();
         let cycles_complete = self.cycles_complete;
         let lyr_addr = self.pri_iii_layer_addr.clone().unwrap();
-        let cursor_pos = self.sdr_cursor.pos();
+        let cursor_pos = self.sdr_cursor.cur_pos();
 
-        let future_recv = self.sampler.as_ref().unwrap().recv()
-            .map(move |samples| {
-                print_stuff(samples, focus_celtfts, cycles_complete,
-                    lyr_addr, cursor_pos);
-            })
-            .map_err(|err| panic!("{}", err));
+        if cursor_pos.seq_idx == 0 {
+            let future_recv = self.sampler.as_ref().unwrap().recv()
+                .map(move |samples| {
+                    // print_stuff(samples, focus_celtfts, cycles_complete,
+                    //     lyr_addr, cursor_pos);
+                    check_stuff(samples, focus_celtfts, cycles_complete,
+                        lyr_addr, cursor_pos);
+                })
+                .map_err(|err| panic!("{}", err));
 
-        work_pool.complete_work(future_recv)?;
+            work_pool.complete_work(future_recv)?;
+        }
 
         Ok(())
     }

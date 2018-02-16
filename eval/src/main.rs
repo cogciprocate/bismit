@@ -475,8 +475,10 @@ pub struct SeqCursorPos {
 #[derive(Debug)]
 pub struct SeqCursor {
     sequences: Vec<Vec<usize>>,
-    seq_idx: usize,
-    seq_item_idx: usize,
+    cur_seq_idx: usize,
+    next_seq_idx: usize,
+    cur_seq_item_idx: usize,
+    next_seq_item_idx: usize,
     rng: XorShiftRng,
 }
 
@@ -511,28 +513,22 @@ impl SeqCursor {
         }
 
         // Initial sequence index (randomized for fun):
-        let seq_idx = Range::new(0, sequences.len()).ind_sample(&mut rng);
+        let cur_seq_idx = Range::new(0, sequences.len()).ind_sample(&mut rng);
 
-        SeqCursor { sequences: sequences, seq_idx, seq_item_idx: 0, rng }
-    }
+        // Next sequence index:
+        let next_seq_idx = Range::new(0, sequences.len()).ind_sample(&mut rng);
 
-    /// Returns the next source index in the current sequence.
-    ///
-    /// If if the next source index is the final index in the sequence, a new
-    /// random sequence is selected and the first source index from that
-    /// sequence is returned.
-    pub fn next_src_idx(&mut self) -> usize {
-        self.seq_item_idx += 1;
-
-        if self.seq_item_idx >= self.sequences[self.seq_idx].len() {
-            self.seq_idx = Range::new(0, self.sequences.len())
-                .ind_sample(&mut self.rng);
-            self.seq_item_idx = 0;
+        SeqCursor {
+            sequences: sequences,
+            cur_seq_idx,
+            next_seq_idx,
+            cur_seq_item_idx: 0,
+            next_seq_item_idx: 0,
+            rng
         }
-        self.sequences[self.seq_idx][self.seq_item_idx]
     }
 
-    /// Returns the 'middle' source index from the lot.
+    /// Returns a 'middle' source index from the lot.
     ///
     /// Could be used to select an active cell from sdr lists for
     /// testing/eval. purposes.
@@ -542,14 +538,48 @@ impl SeqCursor {
         self.sequences[mid_seq_idx][mid_seq_item_idx]
     }
 
-    pub fn seq_idx(&self) -> usize { self.seq_idx }
-    pub fn seq_item_idx(&self) -> usize { self.seq_item_idx }
+    /// Increments all indexes then returns the current source index in the
+    /// current sequence.
+    ///
+    /// If if the next source index is the final index in the sequence, a new
+    /// random sequence is selected to be next after that.
+    pub fn incr_src_idx(&mut self) -> usize {
+        self.cur_seq_idx = self.next_seq_idx;
+        self.cur_seq_item_idx = self.next_seq_item_idx;
+        self.next_seq_item_idx += 1;
 
-    pub fn pos(&self) -> SeqCursorPos {
+        if self.next_seq_item_idx >= self.sequences[self.cur_seq_idx].len() {
+            self.next_seq_idx = Range::new(0, self.sequences.len())
+                .ind_sample(&mut self.rng);
+            self.next_seq_item_idx = 0;
+        }
+        self.sequences[self.cur_seq_idx][self.cur_seq_item_idx]
+    }
+
+    // /// Returns the next source index in the current sequence without
+    // /// actually incrementing anything.
+    // pub fn preview_next_src_idx(&self) -> usize {
+    //     self.sequences[self.next_seq_idx][self.next_seq_item_idx]
+    // }
+
+    // pub fn cur_seq_idx(&self) -> usize { self.cur_seq_idx }
+    // pub fn cur_seq_item_idx(&self) -> usize { self.cur_seq_item_idx }
+
+    /// Returns the current position of the cursor.
+    pub fn cur_pos(&self) -> SeqCursorPos {
         SeqCursorPos {
-            seq_idx: self.seq_idx,
-            seq_item_idx: self.seq_item_idx,
-            pattern_idx: self.sequences[self.seq_idx][self.seq_item_idx],
+            seq_idx: self.cur_seq_idx,
+            seq_item_idx: self.cur_seq_item_idx,
+            pattern_idx: self.sequences[self.cur_seq_idx][self.cur_seq_item_idx],
+        }
+    }
+
+    /// Returns the next position of the cursor.
+    pub fn next_pos(&self) -> SeqCursorPos {
+        SeqCursorPos {
+            seq_idx: self.next_seq_idx,
+            seq_item_idx: self.next_seq_item_idx,
+            pattern_idx: self.sequences[self.next_seq_idx][self.next_seq_item_idx],
         }
     }
 }
