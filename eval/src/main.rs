@@ -5,11 +5,12 @@
 #![feature(universal_impl_trait)]
 
 extern crate rand;
-extern crate vibi;
 extern crate env_logger;
 extern crate clap;
 #[macro_use] extern crate log;
 #[macro_use] extern crate colorify;
+extern crate smallvec;
+extern crate vibi;
 extern crate qutex;
 
 // mod layer_sampler;
@@ -538,11 +539,10 @@ impl SeqCursor {
         self.sequences[mid_seq_idx][mid_seq_item_idx]
     }
 
-    /// Increments all indexes then returns the current source index in the
-    /// current sequence.
+    /// Increments all indexes then returns the resulting source index.
     ///
-    /// If if the next source index is the final index in the sequence, a new
-    /// random sequence is selected to be next after that.
+    // If if the next source index is the final index in the sequence, a new
+    // random sequence is selected.
     pub fn incr_src_idx(&mut self) -> usize {
         self.cur_seq_idx = self.next_seq_idx;
         self.cur_seq_item_idx = self.next_seq_item_idx;
@@ -555,15 +555,6 @@ impl SeqCursor {
         }
         self.sequences[self.cur_seq_idx][self.cur_seq_item_idx]
     }
-
-    // /// Returns the next source index in the current sequence without
-    // /// actually incrementing anything.
-    // pub fn preview_next_src_idx(&self) -> usize {
-    //     self.sequences[self.next_seq_idx][self.next_seq_item_idx]
-    // }
-
-    // pub fn cur_seq_idx(&self) -> usize { self.cur_seq_idx }
-    // pub fn cur_seq_item_idx(&self) -> usize { self.cur_seq_item_idx }
 
     /// Returns the current position of the cursor.
     pub fn cur_pos(&self) -> SeqCursorPos {

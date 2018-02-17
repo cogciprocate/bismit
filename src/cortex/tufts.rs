@@ -368,6 +368,7 @@ impl Tufts {
     #[inline] pub fn best_den_states(&self) -> &Buffer<u8> { &self.best_den_states }
     #[inline] pub fn dens(&self) -> &Dendrites { &self.dens }
     #[inline] pub fn dens_mut(&mut self) -> &mut Dendrites { &mut self.dens }
+    #[inline] pub fn count(&self) -> usize { self.tft_count }
 }
 
 

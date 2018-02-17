@@ -9,9 +9,10 @@
 use std::mem;
 use std::collections::{HashMap, BTreeMap};
 use std::ops::Range;
+use smallvec::SmallVec;
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range as RandRange, IndependentSample};
-use qutex::QrwLock;
+use qutex::{QrwLock, ReadGuard as QrwReadGuard};
 use vibi::bismit::futures::{future, Future, Poll, Async};
 use vibi::bismit::ocl::{FutureReadGuard, ReadGuard};
 use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, CorticalAreaSettings,
@@ -39,17 +40,91 @@ const PRINT_INTERVAL_START: usize = 0;
 const PRINT_INTERVAL_END: usize = 5;
 
 
-fn print_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
-        cycles_complete: usize, lyr_addr: LayerAddress, cursor_pos: SeqCursorPos)
-        -> CorticalSamples {
-    //////// Only print frames we are interested in:
-    // if cycles_complete % 5000 >= 5 { return samples; }
-    // if seq_idx != 0 { return samples; }
-    // if cursor_pos.seq_idx != 0 { return samples; }
+// fn print_stuff(samples: CorticalSamples, focus_cels: Vec<FocusCell>,
+//         cycles_complete: usize, lyr_addr: LayerAddress,
+//         cursor_pos: SeqCursorPos) -> CorticalSamples {
+//     //////// Only print frames we are interested in:
+//     // if cycles_complete % 5000 >= 5 { return samples; }
+//     // if seq_idx != 0 { return samples; }
+//     // if cursor_pos.seq_idx != 0 { return samples; }
 
-    for celtft in &focus_celtfts {
-        let cel_idx = celtft.cel_coords.idx() as usize;
-        let cel_axn_idx = celtft.cel_coords.axon_idx() as usize;
+//     for celtft in &focus_cels {
+//         let cel_idx = celtft.cel_coords.idx() as usize;
+//         let cel_axn_idx = celtft.cel_coords.axon_idx() as usize;
+//         let celtft_idx = celtft.celtft_idx;
+//         let den_idx_range = &celtft.den_idx_range;
+//         let syn_idx_range = &celtft.syn_idx_range;
+
+//         let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().u8();
+//         let cel_states = samples.sample(&SamplerKind::SomaStates(lyr_addr)).unwrap().u8();
+
+//         println!();
+//         print!("[{}] (cursor_pos: {:?}) ", cycles_complete, cursor_pos);
+//         println!("cel_states[{}]: <<{:03?}>>, axn_states[{}]: <<<{:03?}>>>",
+//             cel_idx, cel_states[cel_idx], cel_axn_idx, axn_states[cel_axn_idx]);
+
+//         let tft_states = samples.sample(&SamplerKind::TuftStates(lyr_addr)).unwrap().u8();
+//         let tft_best_den_ids = samples.sample(&SamplerKind::TuftBestDenIds(lyr_addr)).unwrap().u8();
+//         let tft_best_den_states = samples.sample(&SamplerKind::TuftBestDenStates(lyr_addr)).unwrap().u8();
+//         let tft_best_den_states_raw = samples.sample(&SamplerKind::TuftBestDenStatesRaw(lyr_addr)).unwrap().u8();
+//         let den_states = samples.sample(&SamplerKind::DenStates(lyr_addr)).unwrap().u8();
+//         let syn_states = samples.sample(&SamplerKind::SynStates(lyr_addr)).unwrap().u8();
+//         let syn_strengths = samples.sample(&SamplerKind::SynStrengths(lyr_addr)).unwrap().i8();
+//         // let syn_src_col_v_offs = samples.sample(&SamplerKind::SynSrcColVOffs(lyr_addr)).unwrap().i8();
+//         // let syn_src_col_u_offs = samples.sample(&SamplerKind::SynSrcColUOffs(lyr_addr)).unwrap().i8();
+//         let syn_flag_sets = samples.sample(&SamplerKind::SynFlagSets(lyr_addr)).unwrap().u8();
+
+//         println!("tft_states[{}]: {:03?}", celtft_idx,
+//             &tft_states[celtft_idx]);
+//         println!("tft_best_den_ids[{}]: {:03?}", celtft_idx,
+//             &tft_best_den_ids[celtft_idx]);
+//         println!("tft_best_den_states[{}]: {:03?}", celtft_idx,
+//             &tft_best_den_states[celtft_idx]);
+//         println!("tft_best_den_states_raw[{}]: {:03?}", celtft_idx,
+//             &tft_best_den_states_raw[celtft_idx]);
+//         println!("den_states[{:?}]: {:03?}", den_idx_range,
+//             &den_states[den_idx_range.clone()]);
+
+//         let mut strong_syn_count = 0;
+//         for (syn_idx, ((&syn_state, &syn_strength), &syn_flag_set)) in syn_states[syn_idx_range.clone()].iter()
+//                 .zip(syn_strengths[syn_idx_range.clone()].iter())
+//                 .zip(syn_flag_sets[syn_idx_range.clone()].iter())
+//                 .enumerate()
+//                 .filter(|&(_, ((_e, &syn_strength), _))| {
+//                     syn_strength > 21
+//                 }) {
+//             print!("{{[{}]", syn_idx);
+//             print!("state:{:03}, ", syn_state);
+//             print!("strength:{:03}, ", syn_strength);
+//             print!("flag_set:{:03}", syn_flag_set);
+//             print!("}} ");
+//             strong_syn_count += 1;
+//         }
+//         if strong_syn_count > 0 {
+//             println!();
+//             print!("  {{{{ strong_syn_count: {} }}}}", strong_syn_count);
+//         }
+//         println!();
+//     }
+//     println!();
+
+//     samples
+// }
+
+
+fn check_stuff(samples: CorticalSamples, focus_cels: Vec<FocusCell>,
+        cycles_complete: usize, lyr_addr: LayerAddress, sdrs: QrwReadGuard<Vec<Vec<u8>>>,
+        cursor_pos: SeqCursorPos, next_cursor_pos: SeqCursorPos) -> CorticalSamples {
+    let cur_sdr = &sdrs[cursor_pos.pattern_idx];
+    let next_sdr = &sdrs[next_cursor_pos.pattern_idx];
+
+    // TODO: Check `cur_sdr` against axons (should be exact);
+    // Check `next_sdr` against tuft states (print accuracy %);
+
+    for cel in &focus_cels {
+        let cel_idx = cel.cel_coords.idx() as usize;
+        let cel_axn_idx = cel.cel_coords.axon_idx() as usize;
+        let celtft = &cel.tufts[0];
         let celtft_idx = celtft.celtft_idx;
         let den_idx_range = &celtft.den_idx_range;
         let syn_idx_range = &celtft.syn_idx_range;
@@ -111,76 +186,47 @@ fn print_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
 }
 
 
-fn check_stuff(samples: CorticalSamples, focus_celtfts: Vec<FocusCellTuft>,
-        cycles_complete: usize, lyr_addr: LayerAddress, cursor_pos: SeqCursorPos)
-        -> CorticalSamples {
-    for celtft in &focus_celtfts {
-        let cel_idx = celtft.cel_coords.idx() as usize;
-        let cel_axn_idx = celtft.cel_coords.axon_idx() as usize;
-        let celtft_idx = celtft.celtft_idx;
-        let den_idx_range = &celtft.den_idx_range;
-        let syn_idx_range = &celtft.syn_idx_range;
 
-        let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().u8();
-        let cel_states = samples.sample(&SamplerKind::SomaStates(lyr_addr)).unwrap().u8();
+#[derive(Clone, Debug)]
+struct FocusCell {
+    cel_coords: CelCoords,
+    tufts: SmallVec<[FocusCellTuft; 8]>,
+}
 
-        println!();
-        print!("[{}] (cursor_pos: {:?}) ", cycles_complete, cursor_pos);
-        println!("cel_states[{}]: <<{:03?}>>, axn_states[{}]: <<<{:03?}>>>",
-            cel_idx, cel_states[cel_idx], cel_axn_idx, axn_states[cel_axn_idx]);
+impl FocusCell {
+    fn new(area_name: &'static str, layer_name: &'static str,
+            cel_coords: CelCoords, cortical_areas: &mut CorticalAreas)
+            -> FocusCell {
+        // let area = cortical_areas.by_key_mut(area_name).unwrap();
+        // let den_idx_range = area.layer_test_mut(layer_name).unwrap().dens()
+        //     .den_idx_range_celtft(&cel_coords, tft_id);
+        // let syn_idx_range = area.layer_test_mut(layer_name).unwrap().dens().syns()
+        //     .syn_idx_range_celtft(&cel_coords, tft_id);
+        // let celtft_idx = area.layer_test_mut(layer_name).unwrap().tufts()
+        //     .celtft_idx(&cel_coords, tft_id);
 
-        let tft_states = samples.sample(&SamplerKind::TuftStates(lyr_addr)).unwrap().u8();
-        let tft_best_den_ids = samples.sample(&SamplerKind::TuftBestDenIds(lyr_addr)).unwrap().u8();
-        let tft_best_den_states = samples.sample(&SamplerKind::TuftBestDenStates(lyr_addr)).unwrap().u8();
-        let tft_best_den_states_raw = samples.sample(&SamplerKind::TuftBestDenStatesRaw(lyr_addr)).unwrap().u8();
-        let den_states = samples.sample(&SamplerKind::DenStates(lyr_addr)).unwrap().u8();
-        let syn_states = samples.sample(&SamplerKind::SynStates(lyr_addr)).unwrap().u8();
-        let syn_strengths = samples.sample(&SamplerKind::SynStrengths(lyr_addr)).unwrap().i8();
-        // let syn_src_col_v_offs = samples.sample(&SamplerKind::SynSrcColVOffs(lyr_addr)).unwrap().i8();
-        // let syn_src_col_u_offs = samples.sample(&SamplerKind::SynSrcColUOffs(lyr_addr)).unwrap().i8();
-        let syn_flag_sets = samples.sample(&SamplerKind::SynFlagSets(lyr_addr)).unwrap().u8();
+        let tft_count = cortical_areas.by_key_mut(area_name).unwrap()
+            .layer_test_mut(layer_name).unwrap().tufts().count();
 
-        println!("tft_states[{}]: {:03?}", celtft_idx,
-            &tft_states[celtft_idx]);
-        println!("tft_best_den_ids[{}]: {:03?}", celtft_idx,
-            &tft_best_den_ids[celtft_idx]);
-        println!("tft_best_den_states[{}]: {:03?}", celtft_idx,
-            &tft_best_den_states[celtft_idx]);
-        println!("tft_best_den_states_raw[{}]: {:03?}", celtft_idx,
-            &tft_best_den_states_raw[celtft_idx]);
-        println!("den_states[{:?}]: {:03?}", den_idx_range,
-            &den_states[den_idx_range.clone()]);
+        let tufts = (0..tft_count).map(|tft_id| {
+            FocusCellTuft::new(area_name, layer_name, &cel_coords, tft_id, cortical_areas)
+        }).collect::<SmallVec<_>>();
 
-        let mut strong_syn_count = 0;
-        for (syn_idx, ((&syn_state, &syn_strength), &syn_flag_set)) in syn_states[syn_idx_range.clone()].iter()
-                .zip(syn_strengths[syn_idx_range.clone()].iter())
-                .zip(syn_flag_sets[syn_idx_range.clone()].iter())
-                .enumerate()
-                .filter(|&(_, ((_e, &syn_strength), _))| {
-                    syn_strength > 21
-                }) {
-            print!("{{[{}]", syn_idx);
-            print!("state:{:03}, ", syn_state);
-            print!("strength:{:03}, ", syn_strength);
-            print!("flag_set:{:03}", syn_flag_set);
-            print!("}} ");
-            strong_syn_count += 1;
-        }
-        if strong_syn_count > 0 {
-            println!();
-            print!("  {{{{ strong_syn_count: {} }}}}", strong_syn_count);
-        }
-        println!();
+        FocusCell { cel_coords, tufts }
     }
-    println!();
 
-    samples
+    fn random(area_name: &'static str, layer_name: &'static str, tft_id: usize,
+            cortical_areas: &mut CorticalAreas) -> FocusCell {
+        let cel_coords = cortical_areas.by_key_mut(area_name).unwrap()
+            .layer_test_mut(layer_name).unwrap().rand_cel_coords();
+        FocusCell::new(area_name, layer_name, cel_coords, cortical_areas)
+    }
 }
 
 
 #[derive(Clone, Debug)]
 struct FocusCellTuft {
-    cel_coords: CelCoords,
+    // cel_coords: CelCoords,
     tft_id: usize,
     celtft_idx: usize,
     den_idx_range: Range<usize>,
@@ -189,7 +235,7 @@ struct FocusCellTuft {
 
 impl FocusCellTuft {
     fn new(area_name: &'static str, layer_name: &'static str,
-            cel_coords: CelCoords, tft_id: usize, cortical_areas: &mut CorticalAreas)
+            cel_coords: &CelCoords, tft_id: usize, cortical_areas: &mut CorticalAreas)
             -> FocusCellTuft {
         let area = cortical_areas.by_key_mut(area_name).unwrap();
         let den_idx_range = area.layer_test_mut(layer_name).unwrap().dens()
@@ -199,14 +245,14 @@ impl FocusCellTuft {
         let celtft_idx = area.layer_test_mut(layer_name).unwrap().tufts()
             .celtft_idx(&cel_coords, tft_id);
 
-        FocusCellTuft { cel_coords, tft_id, celtft_idx, den_idx_range, syn_idx_range }
+        FocusCellTuft { /*cel_coords,*/ tft_id, celtft_idx, den_idx_range, syn_idx_range }
     }
 
     fn random(area_name: &'static str, layer_name: &'static str, tft_id: usize,
             cortical_areas: &mut CorticalAreas) -> FocusCellTuft {
         let cel_coords = cortical_areas.by_key_mut(area_name).unwrap()
             .layer_test_mut(layer_name).unwrap().rand_cel_coords();
-        FocusCellTuft::new(area_name, layer_name, cel_coords, tft_id, cortical_areas)
+        FocusCellTuft::new(area_name, layer_name, &cel_coords, tft_id, cortical_areas)
     }
 }
 
@@ -222,7 +268,7 @@ struct EvalSequence {
     trial_iter: TrialIter,
     sampler: Option<CorticalSampler>,
     pri_iii_layer_addr: Option<LayerAddress>,
-    focus_celtfts: Vec<FocusCellTuft>,
+    focus_cels: Vec<FocusCell>,
     // last_pattern: SeqCursorPos,
 }
 
@@ -281,7 +327,7 @@ impl EvalSequence {
             trial_iter,
             sampler: None,
             pri_iii_layer_addr: None,
-            focus_celtfts: Vec::with_capacity(16),
+            focus_cels: Vec::with_capacity(16),
             // last_pattern,
         }
     }
@@ -355,8 +401,7 @@ impl SubcorticalNucleus for EvalSequence {
             let mut ccs = CelCoords::new(lyr_axn_slc_idz + slc_id_lyr, slc_id_lyr,
                 an_active_cell.0, an_active_cell.1, layer_dims.clone());
             ccs.set_axon_idx(thal.area_maps().by_key(PRI_AREA).unwrap());
-            // self.focus_celtfts.push(FocusCellTuft::new(PRI_AREA, "iii", ccs.clone(), 0, cortical_areas));
-            self.focus_celtfts.push(FocusCellTuft::new(PRI_AREA, "iii", ccs, 1, cortical_areas));
+            self.focus_cels.push(FocusCell::new(PRI_AREA, "iii", ccs, cortical_areas));
         }
 
         Ok(())
@@ -433,18 +478,20 @@ impl SubcorticalNucleus for EvalSequence {
 
         ///////////////////////////////////////////////////////////////////////
 
-        let focus_celtfts = self.focus_celtfts.clone();
+        let focus_cels = self.focus_cels.clone();
         let cycles_complete = self.cycles_complete;
         let lyr_addr = self.pri_iii_layer_addr.clone().unwrap();
         let cursor_pos = self.sdr_cursor.cur_pos();
+        let next_cursor_pos = self.sdr_cursor.cur_pos();
 
         if cursor_pos.seq_idx == 0 {
             let future_recv = self.sampler.as_ref().unwrap().recv()
-                .map(move |samples| {
-                    // print_stuff(samples, focus_celtfts, cycles_complete,
+                .join(self.sdrs.lock.clone().read().from_err())
+                .map(move |(samples, sdrs)| {
+                    // print_stuff(samples, focus_cels, cycles_complete,
                     //     lyr_addr, cursor_pos);
-                    check_stuff(samples, focus_celtfts, cycles_complete,
-                        lyr_addr, cursor_pos);
+                    check_stuff(samples, focus_cels, cycles_complete,
+                        lyr_addr, sdrs, cursor_pos, next_cursor_pos);
                 })
                 .map_err(|err| panic!("{}", err));
 
