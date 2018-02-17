@@ -112,14 +112,31 @@ const PRINT_INTERVAL_END: usize = 5;
 // }
 
 
+
 fn check_stuff(samples: CorticalSamples, focus_cels: Vec<FocusCell>,
         cycles_complete: usize, lyr_addr: LayerAddress, sdrs: QrwReadGuard<Vec<Vec<u8>>>,
-        cursor_pos: SeqCursorPos, next_cursor_pos: SeqCursorPos) -> CorticalSamples {
+        cursor_pos: SeqCursorPos, next_cursor_pos: SeqCursorPos,
+        focus_layer_axon_range: (usize, usize)) -> CorticalSamples {
     let cur_sdr = &sdrs[cursor_pos.pattern_idx];
     let next_sdr = &sdrs[next_cursor_pos.pattern_idx];
 
-    // TODO: Check `cur_sdr` against axons (should be exact);
-    // Check `next_sdr` against tuft states (print accuracy %);
+    // Check `cur_sdr` against axons:
+    //
+    // TODO: Run this check (SDR-axon states) in its own function.
+    {
+        let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().u8();
+
+        // Check to make sure the SDR inputs match with the axon states:
+        for (sdr_idx, axn_idx) in (focus_layer_axon_range.0..focus_layer_axon_range.1).enumerate() {
+            println!("cur_sdr[sdr_idx]: {}, axn_states[axn_idx]: {}", cur_sdr[sdr_idx], axn_states[axn_idx]);
+            assert!(cur_sdr[sdr_idx] != 0 && axn_states[axn_idx] != 0 ||
+                cur_sdr[sdr_idx] == 0 && axn_states[axn_idx] == 0);
+        }
+    }
+
+
+    // TODO: Check `next_sdr` against tuft states (print accuracy %).
+
 
     for cel in &focus_cels {
         let cel_idx = cel.cel_coords.idx() as usize;
@@ -268,6 +285,8 @@ struct EvalSequence {
     trial_iter: TrialIter,
     sampler: Option<CorticalSampler>,
     pri_iii_layer_addr: Option<LayerAddress>,
+    focus_layer_axon_range: Option<(usize, usize)>,
+    // input_layer_axon_range: Option<(usize, usize)>,
     focus_cels: Vec<FocusCell>,
     // last_pattern: SeqCursorPos,
 }
@@ -327,6 +346,8 @@ impl EvalSequence {
             trial_iter,
             sampler: None,
             pri_iii_layer_addr: None,
+            focus_layer_axon_range: None,
+            // input_layer_axon_range: None,
             focus_cels: Vec::with_capacity(16),
             // last_pattern,
         }
@@ -403,6 +424,11 @@ impl SubcorticalNucleus for EvalSequence {
             ccs.set_axon_idx(thal.area_maps().by_key(PRI_AREA).unwrap());
             self.focus_cels.push(FocusCell::new(PRI_AREA, "iii", ccs, cortical_areas));
         }
+
+        self.focus_layer_axon_range = Some(cortical_areas.by_key_mut(PRI_AREA).unwrap()
+            .layer_test_mut("iii").unwrap().axon_range());
+        // self.input_layer_axon_range = Some(cortical_areas.by_key_mut(PRI_AREA).unwrap()
+        //     .layer_test_mut("iii").unwrap().axon_range());
 
         Ok(())
     }
@@ -483,6 +509,8 @@ impl SubcorticalNucleus for EvalSequence {
         let lyr_addr = self.pri_iii_layer_addr.clone().unwrap();
         let cursor_pos = self.sdr_cursor.cur_pos();
         let next_cursor_pos = self.sdr_cursor.cur_pos();
+        let focus_layer_axon_range = self.focus_layer_axon_range.unwrap();
+        // let input_layer_axon_range = self.input_layer_axon_range.unwrap();
 
         if cursor_pos.seq_idx == 0 {
             let future_recv = self.sampler.as_ref().unwrap().recv()
@@ -491,12 +519,14 @@ impl SubcorticalNucleus for EvalSequence {
                     // print_stuff(samples, focus_cels, cycles_complete,
                     //     lyr_addr, cursor_pos);
                     check_stuff(samples, focus_cels, cycles_complete,
-                        lyr_addr, sdrs, cursor_pos, next_cursor_pos);
+                        lyr_addr, sdrs, cursor_pos, next_cursor_pos,
+                        focus_layer_axon_range, /*input_layer_axon_range*/);
                 })
                 .map_err(|err| panic!("{}", err));
 
             work_pool.complete_work(future_recv)?;
         }
+
 
         Ok(())
     }
