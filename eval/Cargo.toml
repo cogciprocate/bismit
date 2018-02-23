@@ -4,7 +4,7 @@ version = "0.0.1"
 authors = ["Nick Sanders <cogciprocate@gmail.com>"]
 
 [dependencies]
-vibi = { path = "../../vibi" }
+vibi = { path = "../../vibi", features = ["eval"] }
 rand = "*"
 log = "*"
 env_logger = "*"

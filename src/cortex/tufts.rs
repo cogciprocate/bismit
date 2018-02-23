@@ -372,7 +372,7 @@ impl Tufts {
 }
 
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub mod tests {
     use std::ops::{Range};
     use rand::{Rng};

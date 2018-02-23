@@ -43,6 +43,7 @@ pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses,
     SpinyStellateLayer, Tufts, Dendrites, CorticalAreaSettings, DataCellLayer,
     SamplerKind, SamplerBufferKind, WorkPool, WorkPoolRemote, CorticalAreas,
     CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs};
+#[cfg(any(test, feature = "eval"))]
 pub use self::cortex::{CorticalAreaTest, SynCoords, SynapsesTest, syn_idx,
     AxonSpaceTest, AxnCoords, DenCoords, DendritesTest, den_idx,
     CelCoords, DataCellLayerTest};

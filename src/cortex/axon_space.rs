@@ -8,7 +8,7 @@ use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute, CommandRelatio
     ThalamicTract, CommandUid};
 use ::{Thalamus, WorkPool};
 use cortex::{SensoryFilter};
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub use self::tests::{AxonSpaceTest, AxnCoords};
 
 
@@ -640,7 +640,7 @@ impl AxonSpace {
 
 
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub mod tests {
     #![allow(dead_code)]
     use super::{AxonSpace};

@@ -322,7 +322,7 @@ impl From<(u32, u32, u8)> for CorticalDims {
 
 
 
-// #[cfg(test)]
+// #[cfg(any(test, feature = "eval"))]
 // pub mod tests {
 //     use super::*;
 

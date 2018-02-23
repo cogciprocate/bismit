@@ -372,7 +372,7 @@ pub fn literal_list<T: Display>(vec: &Vec<T>) -> String {
 }
 
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub mod tests {
     use cmn;
     use std::fmt::{Display, Formatter, Result as FmtResult};

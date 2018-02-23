@@ -15,7 +15,7 @@ use cortex::{AxonSpace, InhibitoryInterneuronNetwork, PyramidalLayer,
     WorkPool, ControlCellLayers, IntraColumnInhib};
 use subcortex::{self, TractSender, TractReceiver};
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub use self::tests::{CorticalAreaTest};
 
 // Create separate read and write queues in addition to the kernel queue:
@@ -1340,7 +1340,7 @@ impl Aux {
 //////////////////////
 
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub mod tests {
     use rand;
     use rand::distributions::{IndependentSample, Range as RandRange};

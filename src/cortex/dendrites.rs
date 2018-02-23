@@ -5,7 +5,7 @@ use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
 use map::{AreaMap, CellScheme, ExecutionGraph, CommandRelations,
     CorticalBuffer, LayerAddress, CommandUid};
 use cortex::{AxonSpace, Synapses};
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub use self::tests::{DenCoords, DendritesTest, den_idx};
 
 const PRNT: bool = false;
@@ -249,7 +249,7 @@ impl Dendrites {
 
 
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub mod tests {
     #![allow(non_snake_case, dead_code)]
     use std::ops::{Range};

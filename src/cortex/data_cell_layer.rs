@@ -7,7 +7,7 @@ use cortex::{Dendrites, ControlCellLayers, Tufts};
 use cmn::{CmnResult, CorticalDims};
 use map::{CellScheme, ExecutionGraph, LayerAddress};
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub use self::tests::{DataCellLayerTest, CelCoords};
 
 pub trait DataCellLayer: 'static + Debug + Send {
@@ -33,7 +33,7 @@ pub trait DataCellLayer: 'static + Debug + Send {
 }
 
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub mod tests {
     use std::ops::{Range};
     // use rand::{XorShiftRng};

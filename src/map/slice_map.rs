@@ -272,7 +272,7 @@ impl<'a> Into<SpatialDims> for &'a SliceMap {
 }
 
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub mod tests {
     use std::fmt::{Display, Formatter, Result as FmtResult};
     use super::{SliceMap};

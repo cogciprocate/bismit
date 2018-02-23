@@ -276,6 +276,14 @@ impl FocusCellTuft {
 }
 
 
+/// Tracks the activity of a set of cells over time, storing usefully relevant
+/// details about synaptic activity, etc.
+pub struct CellTracker {
+    focus_cels: Vec<FocusCell>,
+
+}
+
+
 /// A `SubcorticalNucleus`.
 struct EvalSequence {
     area_name: String,

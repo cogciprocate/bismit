@@ -5,6 +5,8 @@ authors = ["Nick Sanders <github.com/c0gent>"]
 
 [features]
 profile = ["cpuprofiler"]
+# Enables evaluation features, useful for testing and analysis.
+eval = []
 
 [dependencies.ocl]
 version = "*"

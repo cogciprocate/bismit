@@ -71,7 +71,7 @@ use ocl::traits::OclPrm;
 use map::{CellScheme, ExecutionGraph, CommandRelations, CorticalBuffer, CommandUid};
 use cortex::AxonSpace;
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub use self::tests::{SynCoords, SynapsesTest, syn_idx};
 
 const DEBUG_NEW: bool = true;
@@ -511,7 +511,7 @@ impl Synapses {
 
 
 
-// #[cfg(test)]
+#[cfg(any(test, feature = "eval"))]
 pub mod tests {
     #![allow(non_snake_case, dead_code)]
     use std::ops::{Range};

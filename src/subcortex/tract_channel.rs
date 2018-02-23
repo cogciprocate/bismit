@@ -555,7 +555,7 @@ pub fn tract_channel_single_u8_recv_only(buffer: RwVec<u8>, buffer_idx_range: Op
 }
 
 
-// #[cfg(test)]
+// #[cfg(any(test, feature = "eval"))]
 // mod tests {
 
 //     #[test]

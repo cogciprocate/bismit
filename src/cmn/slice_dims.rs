@@ -262,7 +262,7 @@ pub fn scale(id: i32, scl: u32) -> i32 {
 }
 
 
-// #[cfg(test)]
+// #[cfg(any(test, feature = "eval"))]
 // mod tests {
 //     #[test]
 //     fn slc_dim_scl_offs_unimplemented() {
