@@ -80,7 +80,7 @@ impl Minicolumns {
         let activate_kern_name = "mcol_activate_pyrs";
         let kern_activate = ocl_pq.create_kernel(activate_kern_name)
             .expect("Minicolumns::new()")
-            .gws(SpatialDims::Three(temporal_pyrs.dims().depth() as usize, dims.v_size() as usize,
+            .global_work_size(SpatialDims::Three(temporal_pyrs.dims().depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
             .arg_buf(&flag_sets)
             .arg_buf(&best_den_states)
@@ -127,7 +127,7 @@ impl Minicolumns {
         // let output_kern_name = "mcol_output";
         // let kern_output = ocl_pq.create_kernel(output_kern_name)
         //     .expect("Minicolumns::new()")
-        //     .gws(SpatialDims::Two(dims.v_size() as usize, dims.u_size() as usize))
+        //     .global_work_size(SpatialDims::Two(dims.v_size() as usize, dims.u_size() as usize))
         //     .arg_buf(pyrs.best_den_states_raw())
         //     .arg_buf(pyrs.soma())
         //     // .arg_scl(pyrs.tfts_per_cel())

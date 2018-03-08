@@ -37,30 +37,32 @@ impl InhibitoryInterneuronNetwork {
 
         // Simple (active) kernel:
         let kern_inhib_simple_name = "inhib_simple";
-        let kern_inhib_simple = ocl_pq.create_kernel(kern_inhib_simple_name)?
-            .gws(SpatialDims::Three(host_lyr.dims().depth() as usize, host_lyr.dims().v_size() as usize,
+        let kern_inhib_simple = ocl_pq.kernel_builder(kern_inhib_simple_name)
+            .global_work_size(SpatialDims::Three(host_lyr.dims().depth() as usize, host_lyr.dims().v_size() as usize,
                 host_lyr.dims().u_size() as usize))
-            .lws(SpatialDims::Three(1, 8, 8 as usize))
+            .local_work_size(SpatialDims::Three(1, 8, 8 as usize))
             .arg_buf(host_lyr.soma())
             // .arg_buf(host_lyr.energies())
-            .arg_scl(host_lyr_base_axn_slc)
-            .arg_scl(inhib_radius)
-            .arg_scl_named::<i32>("rnd", None)
+            .arg_scl(&host_lyr_base_axn_slc)
+            .arg_scl(&inhib_radius)
+            .arg_scl_named::<i32>("rnd", &0)
             .arg_buf(host_lyr.activities())
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(axns.states());
+            .arg_buf(axns.states())
+            .build()?;
 
         // Passthrough kernel:
         let kern_inhib_passthrough_name = "inhib_passthrough";
-        let kern_inhib_passthrough = ocl_pq.create_kernel(kern_inhib_passthrough_name)?
-            .gws(SpatialDims::Three(host_lyr.dims().depth() as usize, host_lyr.dims().v_size() as usize,
+        let kern_inhib_passthrough = ocl_pq.kernel_builder(kern_inhib_passthrough_name)
+            .global_work_size(SpatialDims::Three(host_lyr.dims().depth() as usize, host_lyr.dims().v_size() as usize,
                 host_lyr.dims().u_size() as usize))
             .arg_buf(host_lyr.soma())
-            .arg_scl(host_lyr_base_axn_slc)
-            .arg_scl_named::<i32>("rnd", None)
+            .arg_scl(&host_lyr_base_axn_slc)
+            .arg_scl_named::<i32>("rnd", &0)
             .arg_buf(host_lyr.activities())
-            .arg_buf(axns.states());
+            .arg_buf(axns.states())
+            .build()?;
 
         // let exe_cmd_srcs = (0..host_lyr.tft_count())
         //     .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),

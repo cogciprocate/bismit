@@ -132,8 +132,8 @@ impl PyramidalLayer {
         //=============================================================================
 
         // let kern_name = "pyr_cycle_old";
-        // let pyr_cycle_kernel = ocl_pq.create_kernel(kern_name)?
-        //     .gws(SpatialDims::One(cel_count))
+        // let pyr_cycle_kernel = ocl_pq.kernel_builder(kern_name)
+        //     .global_work_size(SpatialDims::One(cel_count))
         //     .arg_buf(tufts.best_den_ids())
         //     .arg_buf(tufts.best_den_states_raw())
         //     .arg_buf(tufts.best_den_states())
@@ -145,21 +145,22 @@ impl PyramidalLayer {
         // ;
 
         let kern_name = "pyr_cycle";
-        let pyr_cycle_kernel = ocl_pq.create_kernel(kern_name)?
-            .gws(SpatialDims::One(cel_count))
+        let pyr_cycle_kernel = ocl_pq.kernel_builder(kern_name)
+            .global_work_size(SpatialDims::One(cel_count))
             // .arg_buf(tufts.best_den_ids())
             .arg_buf(tufts.best_den_states_raw())
             // .arg_buf(tufts.best_den_states())
             .arg_buf(tufts.states())
-            .arg_scl(tft_count as u8)
-            .arg_scl(enabled_tft_flags)
-            .arg_scl(bsl_prx_tft_id.unwrap_or(0))
-            .arg_scl(bsl_dst_tft_id.unwrap_or(0))
-            .arg_scl(apc_dst_tft_id.unwrap_or(0))
+            .arg_scl(&(tft_count as u8))
+            .arg_scl(&enabled_tft_flags)
+            .arg_scl(&bsl_prx_tft_id.unwrap_or(0))
+            .arg_scl(&bsl_dst_tft_id.unwrap_or(0))
+            .arg_scl(&apc_dst_tft_id.unwrap_or(0))
             // .arg_buf(&best_den_states_raw)
-            .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
-            .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
+            .arg_buf_named("aux_ints_0", None::<&Buffer<i32>>)
+            .arg_buf_named("aux_ints_1", None::<&Buffer<i32>>)
             .arg_buf(&states)
+            .build()?
         ;
 
         let mut cycle_cmd_srcs: Vec<CorticalBuffer> = Vec::with_capacity(3 * tft_count);

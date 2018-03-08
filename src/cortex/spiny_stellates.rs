@@ -76,11 +76,12 @@ impl SpinyStellateLayer {
         =============================================================================*/
 
         let kern_name = "ssc_cycle";
-        let kern_cycle = ocl_pq.create_kernel(kern_name)?
-            // .gws(dims)
-            .gws(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
+        let kern_cycle = ocl_pq.kernel_builder(kern_name)
+            // .global_work_size(dims)
+            .global_work_size(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
             .arg_buf(&energies)
-            .arg_buf(dens.states());
+            .arg_buf(dens.states())
+            .build()?;
 
         // let mut cycle_cmd_srcs = Vec::with_capacity(2);
         // // cycle_cmd_srcs.push(CorticalBuffer::data_syn_tft(dens.syns().states(), layer_addr, ssc_tft_id));
@@ -95,25 +96,26 @@ impl SpinyStellateLayer {
         };
 
         let kern_name = "ssc_mtp_simple";
-        let kern_mtp = ocl_pq.create_kernel(kern_name)?
-            // .gws(dims)
-            .gws(SpatialDims::Two(1, dims.cells() as usize))
+        let kern_mtp = ocl_pq.kernel_builder(kern_name)
+            // .global_work_size(dims)
+            .global_work_size(SpatialDims::Two(1, dims.cells() as usize))
             .arg_buf(axons.states())
             .arg_buf(dens.syns().states())
-            .arg_scl(lyr_axon_idz)
+            .arg_scl(&lyr_axon_idz)
             // .arg_scl(cels_per_grp)
-            .arg_scl(syns_per_tft)
+            .arg_scl(&syns_per_tft)
             // CURRENTLY UNUSED:
-            .arg_scl_named::<u32>("rnd", None)
+            .arg_scl_named::<u32>("rnd", &0)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(dens.syns().strengths());
+            .arg_buf(dens.syns().strengths())
+            .build()?;
 
         ////// KEEP ME:
             // let kern_name = "ssc_mtp";
-            // let kern_mtp = ocl_pq.create_kernel(kern_name)?
+            // let kern_mtp = ocl_pq.kernel_builder(kern_name)
             //     // .expect("SpinyStellateLayer::new()")
-            //     .gws(SpatialDims::Two(tft_count, grp_count as usize))
+            //     .global_work_size(SpatialDims::Two(tft_count, grp_count as usize))
             //     .arg_buf(axons.states())
             //     .arg_buf(dens.syns().states())
             //     .arg_scl(lyr_axon_idz)

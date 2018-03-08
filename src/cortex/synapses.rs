@@ -216,10 +216,11 @@ impl Synapses {
 
         // Sets the `SYN_PREV_ACTIVE_FLAG` bit.
         let kern_name_flags = "tft_set_syn_flags";
-        let kernel_flags = ocl_pq.create_kernel(kern_name_flags)?
-                .gws(syn_count_ttl)
+        let kernel_flags = ocl_pq.kernel_builder(kern_name_flags)
+                .global_work_size(syn_count_ttl)
                 .arg_buf(&states)
-                .arg_buf(&flag_sets);
+                .arg_buf(&flag_sets)
+                .build()?;
 
         if !bypass_exe_graph {
             let cmd_srcs: Vec<CorticalBuffer> = cell_scheme.tft_schemes().iter().enumerate()
@@ -264,19 +265,20 @@ impl Synapses {
             };
 
             kernels_cycle.push(
-                ocl_pq.create_kernel(kern_name)?
-                    .gws(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
-                    .lws(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
+                ocl_pq.kernel_builder(kern_name)
+                    .global_work_size(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
+                    .local_work_size(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
                     .arg_buf(axons.states())
                     .arg_buf(&src_col_u_offs)
                     .arg_buf(&src_col_v_offs)
                     .arg_buf(&src_slc_ids)
-                    .arg_scl(tft_syn_idz)
-                    .arg_scl(syns_per_tft)
-                    .arg_scl(dims.depth() as u8)
-                    .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
-                    .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
+                    .arg_scl(&tft_syn_idz)
+                    .arg_scl(&syns_per_tft)
+                    .arg_scl(&(dims.depth() as u8))
+                    .arg_buf_named("aux_ints_0", None::<&Buffer<i32>>)
+                    .arg_buf_named("aux_ints_1", None::<&Buffer<i32>>)
                     .arg_buf(&states)
+                    .build()?
             );
 
             if !bypass_exe_graph {

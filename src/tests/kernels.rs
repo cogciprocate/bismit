@@ -32,20 +32,24 @@ pub fn axn_idxs(testbed: &TestBed) {
     let syn_range = (0 - syn_reach, syn_reach + 1);
 
     let vec_init = ocl_extras::shuffled_vec(syn_range, testbed.dims.to_len());
-    let u_offs = Buffer::builder()
-        .queue(testbed.ocl_pq.queue().clone())
-        .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
-        .len(testbed.dims.clone())
-        .host_data(&vec_init)
-        .build().unwrap();
+    let u_offs = unsafe {
+        Buffer::builder()
+            .queue(testbed.ocl_pq.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
+            .len(testbed.dims.clone())
+            .host_data(&vec_init)
+            .build().unwrap()
+    };
 
     let vec_init = ocl_extras::shuffled_vec(syn_range, testbed.dims.to_len());
-    let v_offs = Buffer::builder()
-        .queue(testbed.ocl_pq.queue().clone())
-        .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
-        .len(testbed.dims.clone())
-        .host_data(&vec_init)
-        .build().unwrap();
+    let v_offs = unsafe {
+        Buffer::builder()
+            .queue(testbed.ocl_pq.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
+            .len(testbed.dims.clone())
+            .host_data(&vec_init)
+            .build().unwrap()
+    };
 
     // let mut outs_sc = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
     // let mut outs_v4 = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
@@ -59,22 +63,24 @@ pub fn axn_idxs(testbed: &TestBed) {
         .len(testbed.dims.clone())
         .build().unwrap();
 
-    let kern_sc = testbed.ocl_pq.create_kernel("test_axn_idxs_scl").expect("[FIXME]: HANDLE ME")
-        .gws(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,
+    let kern_sc = testbed.ocl_pq.kernel_builder("test_axn_idxs_scl")
+        .global_work_size(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,
             testbed.dims.u_size() as usize))
         .arg_buf(&u_offs)
         .arg_buf(&v_offs)
         .arg_buf(&outs_sc)
+        .build().expect("[FIXME]: HANDLE ME")
         //.arg_buf(&outs_v4)
     ;
 
-    let kern_v4 = testbed.ocl_pq.create_kernel("test_axn_idxs_vec4").expect("[FIXME]: HANDLE ME")
-        .gws(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,
+    let kern_v4 = testbed.ocl_pq.kernel_builder("test_axn_idxs_vec4")
+        .global_work_size(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,
             (testbed.dims.u_size() / 4) as usize))
         .arg_buf(&u_offs)
         .arg_buf(&v_offs)
         //.arg_buf(&outs_sc)
         .arg_buf(&outs_v4)
+        .build().expect("[FIXME]: HANDLE ME")
     ;
 
     unsafe {

@@ -34,15 +34,16 @@ impl IntraColumnInhib {
 
         // Simple (active) kernel:
         let kern_name = "inhib_intra_column";
-        let kern = ocl_pq.create_kernel(kern_name)?
-            .gws(SpatialDims::Two(
+        let kern = ocl_pq.kernel_builder(kern_name)
+            .global_work_size(SpatialDims::Two(
                 host_lyr.dims().v_size() as usize,
                 host_lyr.dims().u_size() as usize,
             ))
             .arg_buf(host_lyr.soma())
-            .arg_scl(host_lyr.dims().depth())
-            .arg_scl(host_lyr_base_axn_slc)
-            .arg_buf(axns.states());
+            .arg_scl(&host_lyr.dims().depth())
+            .arg_scl(&host_lyr_base_axn_slc)
+            .arg_buf(axns.states())
+            .build()?;
 
         let exe_cmd_srcs = vec![CorticalBuffer::data_soma_lyr(host_lyr.soma(), host_lyr.layer_addr())];
 

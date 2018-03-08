@@ -105,14 +105,14 @@ impl Tufts {
             =============================================================================*/
 
             let kern_name = "tft_cycle";
-            cycle_kernels.push(ocl_pq.create_kernel(kern_name)?
-                .gws(SpatialDims::One(cel_count))
+            cycle_kernels.push(ocl_pq.kernel_builder(kern_name)
+                .global_work_size(SpatialDims::One(cel_count))
                 .arg_buf(dens.states_raw())
                 .arg_buf(dens.states())
-                .arg_scl(tft_cel_idz)
-                .arg_scl(tft_den_idz)
-                .arg_scl(dens_per_tft)
-                .arg_scl(tft_scheme.max_active_dens_l2())
+                .arg_scl(&tft_cel_idz)
+                .arg_scl(&tft_den_idz)
+                .arg_scl(&dens_per_tft)
+                .arg_scl(&tft_scheme.max_active_dens_l2())
                 .arg_buf(&prev_best_den_ids)
                 .arg_buf(&prev_best_den_states_raw)
                 .arg_buf(&prev_best_den_states)
@@ -120,9 +120,10 @@ impl Tufts {
                 .arg_buf(&best_den_ids)
                 .arg_buf(&best_den_states_raw)
                 .arg_buf(&best_den_states)
-                .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
-                .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
+                .arg_buf_named("aux_ints_0", None::<&Buffer<i32>>)
+                .arg_buf_named("aux_ints_1", None::<&Buffer<i32>>)
                 .arg_buf(&states)
+                .build()?
             );
 
             if !settings.disable_pyrs {
@@ -158,8 +159,8 @@ impl Tufts {
                         let depression_rate_l2i = 5i32;
 
                         let kern_name = "tft_dst_mtp";
-                        mtp_kernels.push(ocl_pq.create_kernel(kern_name)?
-                            .gws(SpatialDims::One(cel_grp_count as usize))
+                        mtp_kernels.push(ocl_pq.kernel_builder(kern_name)
+                            .global_work_size(SpatialDims::One(cel_grp_count as usize))
                             .arg_buf(axons.states())
                             .arg_buf(cel_states)
                             .arg_buf(&prev_best_den_ids)
@@ -167,22 +168,23 @@ impl Tufts {
                             .arg_buf(dens.states())
                             .arg_buf(dens.syns().states())
                             // .arg_scl(tfts_per_cel as u32)
-                            .arg_scl(tft_cel_idz)
-                            .arg_scl(tft_den_idz)
-                            .arg_scl(tft_syn_idz)
-                            .arg_scl(dens_per_tft)
-                            .arg_scl(syns_per_den)
-                            .arg_scl(syns_per_tft)
-                            .arg_scl(cels_per_cel_grp)
-                            .arg_scl(cel_lyr_axn_idz)
-                            .arg_scl_named::<i32>("pr_l2i", Some(potentiation_rate_l2i))
-                            .arg_scl_named::<i32>("dr_l2i", Some(depression_rate_l2i))
-                            .arg_scl_named::<i32>("rnd", None)
+                            .arg_scl(&tft_cel_idz)
+                            .arg_scl(&tft_den_idz)
+                            .arg_scl(&tft_syn_idz)
+                            .arg_scl(&dens_per_tft)
+                            .arg_scl(&syns_per_den)
+                            .arg_scl(&syns_per_tft)
+                            .arg_scl(&cels_per_cel_grp)
+                            .arg_scl(&cel_lyr_axn_idz)
+                            .arg_scl_named::<i32>("pr_l2i", &potentiation_rate_l2i)
+                            .arg_scl_named::<i32>("dr_l2i", &depression_rate_l2i)
+                            .arg_scl_named::<i32>("rnd", &0)
                             .arg_buf(dens.syns().flag_sets())
                             .arg_buf(cel_flag_sets)
-                            .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
-                            .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
+                            .arg_buf_named("aux_ints_0", None::<&Buffer<i32>>)
+                            .arg_buf_named("aux_ints_1", None::<&Buffer<i32>>)
                             .arg_buf(dens.syns().strengths())
+                            .build()?
                         );
 
                         let mut mtp_cmd_srcs: Vec<CorticalBuffer> = cel_axn_slc_ids.iter()

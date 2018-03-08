@@ -28,8 +28,8 @@ impl PyrOutputter {
 
         // Kernel:
         let kern_name = "pyr_output";
-        let kern = ocl_pq.create_kernel(kern_name)?
-            .gws(SpatialDims::Three(
+        let kern = ocl_pq.kernel_builder(kern_name)
+            .global_work_size(SpatialDims::Three(
                 host_lyr.dims().depth() as usize,
                 host_lyr.dims().v_size() as usize,
                 host_lyr.dims().u_size() as usize,
@@ -37,10 +37,11 @@ impl PyrOutputter {
             // .arg_scl(host_lyr.dims().v_size())
             // .arg_scl(host_lyr.dims().u_size())
             .arg_buf(host_lyr.soma())
-            .arg_scl(host_lyr_base_axn_slc)
+            .arg_scl(&host_lyr_base_axn_slc)
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(axns.states());
+            .arg_buf(axns.states())
+            .build()?;
 
         let exe_cmd_srcs = vec![CorticalBuffer::data_soma_lyr(host_lyr.soma(), host_lyr.layer_addr())];
 

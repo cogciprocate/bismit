@@ -115,21 +115,22 @@ impl Dendrites {
             =============================================================================*/
 
             let kern_name = "den_cycle_tft";
-            kernels.push(ocl_pq.create_kernel(kern_name)?
-                .gws(SpatialDims::One(tft_den_count as usize))
+            kernels.push(ocl_pq.kernel_builder(kern_name)
+                .global_work_size(SpatialDims::One(tft_den_count as usize))
                 .arg_buf(syns.states())
                 .arg_buf(syns.strengths())
-                .arg_scl(tft_den_idz)
-                .arg_scl(tft_syn_idz)
-                .arg_scl(syns_per_den)
-                .arg_scl(den_threshold)
-                .arg_scl_named::<i32>("rnd", None)
+                .arg_scl(&tft_den_idz)
+                .arg_scl(&tft_syn_idz)
+                .arg_scl(&syns_per_den)
+                .arg_scl(&den_threshold)
+                .arg_scl_named::<i32>("rnd", &0)
                 .arg_buf(&energies)
                 .arg_buf(&activities)
                 .arg_buf(&states_raw)
-                .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
-                .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
+                .arg_buf_named("aux_ints_0", None::<&Buffer<i32>>)
+                .arg_buf_named("aux_ints_1", None::<&Buffer<i32>>)
                 .arg_buf(&states)
+                .build()?
             );
 
             if !bypass_exe_graph {

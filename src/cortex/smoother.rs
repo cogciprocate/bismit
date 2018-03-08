@@ -91,25 +91,30 @@ impl ActivitySmoother {
         assert!(centers_v_vec.len() == centers_u_vec.len());
         let cell_count = centers_v_vec.len();
 
-        let centers_v = Buffer::builder().queue(ocl_pq.queue().clone()).len(cell_count)
-            .host_data(&centers_v_vec).flags(MemFlags::new().copy_host_ptr()).build()?;
-        let centers_u = Buffer::builder().queue(ocl_pq.queue().clone()).len(cell_count)
-            .host_data(&centers_u_vec).flags(MemFlags::new().copy_host_ptr()).build()?;
+        let centers_v = unsafe {
+            Buffer::builder().queue(ocl_pq.queue().clone()).len(cell_count)
+                .host_data(&centers_v_vec).flags(MemFlags::new().copy_host_ptr()).build()?
+        };
+        let centers_u = unsafe {
+            Buffer::builder().queue(ocl_pq.queue().clone()).len(cell_count)
+                .host_data(&centers_u_vec).flags(MemFlags::new().copy_host_ptr()).build()?
+        };
 
         // Kernel:
         let kern_name = "smooth_activity";
-        let kern = ocl_pq.create_kernel(kern_name)?
-            .gws(SpatialDims::One(cell_count))
+        let kern = ocl_pq.kernel_builder(kern_name)
+            .global_work_size(SpatialDims::One(cell_count))
             .arg_buf(&centers_v)
             .arg_buf(&centers_u)
-            .arg_scl(host_lyr.dims().v_size())
-            .arg_scl(host_lyr.dims().u_size())
-            .arg_scl(group_radius)
-            .arg_scl(host_lyr.dims().depth())
+            .arg_scl(&host_lyr.dims().v_size())
+            .arg_scl(&host_lyr.dims().u_size())
+            .arg_scl(&group_radius)
+            .arg_scl(&host_lyr.dims().depth())
             .arg_buf(host_lyr.activities())
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(host_lyr.energies());
+            .arg_buf(host_lyr.energies())
+            .build()?;
 
         let exe_cmd_srcs = (0..host_lyr.tft_count())
             .map(|host_lyr_tft_id| CorticalBuffer::data_den_tft(&host_lyr.soma(),
