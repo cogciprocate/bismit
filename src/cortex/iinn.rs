@@ -41,15 +41,16 @@ impl InhibitoryInterneuronNetwork {
             .global_work_size(SpatialDims::Three(host_lyr.dims().depth() as usize, host_lyr.dims().v_size() as usize,
                 host_lyr.dims().u_size() as usize))
             .local_work_size(SpatialDims::Three(1, 8, 8 as usize))
-            .arg_buf(host_lyr.soma())
+            .arg(host_lyr.soma())
             // .arg_buf(host_lyr.energies())
-            .arg_scl(&host_lyr_base_axn_slc)
-            .arg_scl(&inhib_radius)
-            .arg_scl_named::<i32>("rnd", &0)
-            .arg_buf(host_lyr.activities())
+            .arg(&host_lyr_base_axn_slc)
+            .arg(&inhib_radius)
+            // .arg_scl_named::<i32>("rnd", &0)
+            .arg_named("rnd", &0i32)
+            .arg(host_lyr.activities())
             // .arg_buf_named("aux_ints_0", None)
             // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(axns.states())
+            .arg(axns.states())
             .build()?;
 
         // Passthrough kernel:
@@ -57,11 +58,11 @@ impl InhibitoryInterneuronNetwork {
         let kern_inhib_passthrough = ocl_pq.kernel_builder(kern_inhib_passthrough_name)
             .global_work_size(SpatialDims::Three(host_lyr.dims().depth() as usize, host_lyr.dims().v_size() as usize,
                 host_lyr.dims().u_size() as usize))
-            .arg_buf(host_lyr.soma())
-            .arg_scl(&host_lyr_base_axn_slc)
-            .arg_scl_named::<i32>("rnd", &0)
-            .arg_buf(host_lyr.activities())
-            .arg_buf(axns.states())
+            .arg(host_lyr.soma())
+            .arg(&host_lyr_base_axn_slc)
+            .arg_named("rnd", &0i32)
+            .arg(host_lyr.activities())
+            .arg(axns.states())
             .build()?;
 
         // let exe_cmd_srcs = (0..host_lyr.tft_count())

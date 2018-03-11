@@ -354,7 +354,7 @@ static OPENCL_BUILD_SWITCHES: &'static str = "-cl-denorms-are-zero -cl-fast-rela
 
 // LOAD_BUILTIN_KERNEL_FILES(): MUST BE CALLED AFTER ANY CUSTOM KERNEL FILES ARE LOADED.
 //        -Used by AreaMap
-pub fn load_builtin_kernel_source(mut build_options: ProgramBuilder) -> ProgramBuilder {
+pub fn load_builtin_kernel_source<'b>(build_options: &mut ProgramBuilder<'b>) {
     // STATIC KERNEL SOURCE: Use normally:
     {
         pub static BUILTIN_OPENCL_PROGRAM_SOURCE: [&'static str; 5] = [
@@ -366,7 +366,7 @@ pub fn load_builtin_kernel_source(mut build_options: ProgramBuilder) -> ProgramB
         ];
 
         for i in 0..BUILTIN_OPENCL_PROGRAM_SOURCE.len() {
-            build_options = build_options.src(BUILTIN_OPENCL_PROGRAM_SOURCE[i]);
+            build_options.src(BUILTIN_OPENCL_PROGRAM_SOURCE[i]);
         }
     }
 
@@ -386,12 +386,11 @@ pub fn load_builtin_kernel_source(mut build_options: ProgramBuilder) -> ProgramB
     //     }
     // }
 
-    build_options
 }
 
 //    BASE_BUILD_OPTIONS():
 //         -Used by AreaMap.
-pub fn base_build_options() -> ProgramBuilder {
+pub fn base_build_options<'b>() -> ProgramBuilder<'b> {
 
     //assert!(SENSORY_CHORD_COLUMNS % AXON_BUFFER_SIZE == 0);
     /*assert!(SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 >= 2);
@@ -400,38 +399,39 @@ pub fn base_build_options() -> ProgramBuilder {
     assert!(DENDRITES_PER_CELL_DISTAL <= 256);
     assert!(DENDRITES_PER_CELL_PROXIMAL_LOG2 == 0);*/
 
-    ProgramBuilder::new()
-        .cmplr_opt(OPENCL_BUILD_SWITCHES)
-        // .cmplr_def("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32)
-        // .cmplr_def("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32)
-        // .cmplr_def("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32)
-        // .cmplr_def("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32)
+    let mut pb = ProgramBuilder::new();
+    pb.cmplr_opt(OPENCL_BUILD_SWITCHES);
+    // pb.cmplr_def("SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2", SYNAPSES_PER_DENDRITE_PROXIMAL_LOG2 as i32);
+    // pb.cmplr_def("DENDRITES_PER_CELL_DISTAL_LOG2", DENDRITES_PER_CELL_DISTAL_LOG2 as i32);
+    // pb.cmplr_def("DENDRITES_PER_CELL_DISTAL", DENDRITES_PER_CELL_DISTAL as i32);
+    // pb.cmplr_def("DENDRITES_PER_CELL_PROXIMAL_LOG2", DENDRITES_PER_CELL_PROXIMAL_LOG2 as i32);
 
-        // .cmplr_def("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32)
-        // .cmplr_def("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32)
-        // .cmplr_def("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32)
-        // .cmplr_def("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32)
-        // .cmplr_def("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32)
-        // .cmplr_def("AXON_MARGIN_SIZE", AXON_MARGIN_SIZE as i32)
-        // .cmplr_def("AXON_BUFFER_SIZE", AXON_BUFFER_SIZE as i32)
-        // .cmplr_def("SYNAPSE_SPAN_RHOMBAL_AREA", SYNAPSE_SPAN_RHOMBAL_AREA as i32)
-        // .cmplr_def("ASPINY_REACH", ASPINY_REACH as i32)
-        // .cmplr_def("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32)
-        // .cmplr_def("ASPINY_SPAN", ASPINY_SPAN as i32)
+    // pb.cmplr_def("COLUMN_DOMINANCE_FLOOR", COLUMN_DOMINANCE_FLOOR as i32);
+    // pb.cmplr_def("SYNAPSE_STRENGTH_FLOOR", SYNAPSE_STRENGTH_FLOOR as i32);
+    // pb.cmplr_def("DENDRITE_INITIAL_THRESHOLD_PROXIMAL", DENDRITE_INITIAL_THRESHOLD_PROXIMAL as i32);
+    // pb.cmplr_def("SYNAPSES_PER_CELL_PROXIMAL_LOG2", SYNAPSES_PER_CELL_PROXIMAL_LOG2 as i32);
+    // pb.cmplr_def("ASPINY_REACH_LOG2", ASPINY_REACH_LOG2 as i32);
+    // pb.cmplr_def("AXON_MARGIN_SIZE", AXON_MARGIN_SIZE as i32);
+    // pb.cmplr_def("AXON_BUFFER_SIZE", AXON_BUFFER_SIZE as i32);
+    // pb.cmplr_def("SYNAPSE_SPAN_RHOMBAL_AREA", SYNAPSE_SPAN_RHOMBAL_AREA as i32);
+    // pb.cmplr_def("ASPINY_REACH", ASPINY_REACH as i32);
+    // pb.cmplr_def("ASPINY_SPAN_LOG2", ASPINY_SPAN_LOG2 as i32);
+    // pb.cmplr_def("ASPINY_SPAN", ASPINY_SPAN as i32);
 
-        .cmplr_def("MCOL_IS_VATIC_FLAG", MCOL_IS_VATIC_FLAG as i32)
-        .cmplr_def("CEL_PREV_CONCRETE_FLAG", CEL_PREV_CONCRETE_FLAG as i32)
-        .cmplr_def("CEL_BEST_IN_COL_FLAG", CEL_BEST_IN_COL_FLAG as i32)
-        .cmplr_def("CEL_PREV_STPOT_FLAG", CEL_PREV_STPOT_FLAG as i32)
-        .cmplr_def("CEL_PREV_VATIC_FLAG", CEL_PREV_VATIC_FLAG as i32)
-        .cmplr_def("CEL_PREV_ACTIVE_FLAG", CEL_PREV_ACTIVE_FLAG as i32)
-        .cmplr_def("SYN_STPOT_FLAG", SYN_STPOT_FLAG as i32)
-        .cmplr_def("SYN_STDEP_FLAG", SYN_STDEP_FLAG as i32)
-        .cmplr_def("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32)
-        .cmplr_def("SYN_PREV_ACTIVE_FLAG", SYN_PREV_ACTIVE_FLAG as i32)
-        .cmplr_def("DEN_BASAL_PROXIMAL_FLAG", DEN_BASAL_PROXIMAL_FLAG as i32)
-        .cmplr_def("DEN_BASAL_DISTAL_FLAG", DEN_BASAL_DISTAL_FLAG as i32)
-        .cmplr_def("DEN_APICAL_DISTAL_FLAG", DEN_APICAL_DISTAL_FLAG as i32)
+    pb.cmplr_def("MCOL_IS_VATIC_FLAG", MCOL_IS_VATIC_FLAG as i32);
+    pb.cmplr_def("CEL_PREV_CONCRETE_FLAG", CEL_PREV_CONCRETE_FLAG as i32);
+    pb.cmplr_def("CEL_BEST_IN_COL_FLAG", CEL_BEST_IN_COL_FLAG as i32);
+    pb.cmplr_def("CEL_PREV_STPOT_FLAG", CEL_PREV_STPOT_FLAG as i32);
+    pb.cmplr_def("CEL_PREV_VATIC_FLAG", CEL_PREV_VATIC_FLAG as i32);
+    pb.cmplr_def("CEL_PREV_ACTIVE_FLAG", CEL_PREV_ACTIVE_FLAG as i32);
+    pb.cmplr_def("SYN_STPOT_FLAG", SYN_STPOT_FLAG as i32);
+    pb.cmplr_def("SYN_STDEP_FLAG", SYN_STDEP_FLAG as i32);
+    pb.cmplr_def("SYN_CONCRETE_FLAG", SYN_CONCRETE_FLAG as i32);
+    pb.cmplr_def("SYN_PREV_ACTIVE_FLAG", SYN_PREV_ACTIVE_FLAG as i32);
+    pb.cmplr_def("DEN_BASAL_PROXIMAL_FLAG", DEN_BASAL_PROXIMAL_FLAG as i32);
+    pb.cmplr_def("DEN_BASAL_DISTAL_FLAG", DEN_BASAL_DISTAL_FLAG as i32);
+    pb.cmplr_def("DEN_APICAL_DISTAL_FLAG", DEN_APICAL_DISTAL_FLAG as i32);
+    pb
 }
 
 

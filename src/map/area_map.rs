@@ -47,32 +47,32 @@ impl AreaMap {
     }
 
     // ADD OPTION FOR MORE CUSTOM KERNEL FILES OR KERNEL LINES
-    pub fn gen_build_options(&self) -> ProgramBuilder {
-        let mut build_options = cmn::base_build_options()
-            .cmplr_def("AXN_SLC_COUNT", self.slice_map.depth() as i32)
-            .cmplr_def("SLC_SCL_COEFF_L2", cmn::SLC_SCL_COEFF_L2)
-            .bo(BuildOpt::include_def("AXN_SLC_IDZS", literal_list(self.slice_map.axon_idzs())))
-            .bo(BuildOpt::include_def("AXN_SLC_V_SIZES", literal_list(self.slice_map.v_sizes())))
-            .bo(BuildOpt::include_def("AXN_SLC_U_SIZES", literal_list(self.slice_map.u_sizes())))
-            .bo(BuildOpt::include_def("AXN_SLC_V_SCALES", literal_list(self.slice_map.v_scales())))
-            .bo(BuildOpt::include_def("AXN_SLC_U_SCALES", literal_list(self.slice_map.u_scales())))
-            .bo(BuildOpt::include_def("AXN_SLC_V_MIDS", literal_list(self.slice_map.v_mids())))
-            .bo(BuildOpt::include_def("AXN_SLC_U_MIDS", literal_list(self.slice_map.u_mids())))
-        ;
+    pub fn gen_build_options<'b>(&self) -> ProgramBuilder<'b> {
+        let mut pb = cmn::base_build_options();
+        pb.cmplr_def("AXN_SLC_COUNT", self.slice_map.depth() as i32);
+        pb.cmplr_def("SLC_SCL_COEFF_L2", cmn::SLC_SCL_COEFF_L2);
+        pb.bo(BuildOpt::include_def("AXN_SLC_IDZS", literal_list(self.slice_map.axon_idzs())));
+        pb.bo(BuildOpt::include_def("AXN_SLC_V_SIZES", literal_list(self.slice_map.v_sizes())));
+        pb.bo(BuildOpt::include_def("AXN_SLC_U_SIZES", literal_list(self.slice_map.u_sizes())));
+        pb.bo(BuildOpt::include_def("AXN_SLC_V_SCALES", literal_list(self.slice_map.v_scales())));
+        pb.bo(BuildOpt::include_def("AXN_SLC_U_SCALES", literal_list(self.slice_map.u_scales())));
+        pb.bo(BuildOpt::include_def("AXN_SLC_V_MIDS", literal_list(self.slice_map.v_mids())));
+        pb.bo(BuildOpt::include_def("AXN_SLC_U_MIDS", literal_list(self.slice_map.u_mids())));
 
         // Custom filter kernels
         for &(_, _, ref filter_chain) in self.filter_chain_schemes.iter() {
             for pf in filter_chain.iter() {
                 match pf.cl_file_name() {
                     Some(ref clfn)  => {
-                        build_options = build_options.src_file(clfn.clone());
+                        pb.src_file(clfn.clone());
                     },
                     None => (),
                 }
             }
         }
 
-        cmn::load_builtin_kernel_source(build_options)
+        cmn::load_builtin_kernel_source(&mut pb);
+        pb
     }
 
     // NEW

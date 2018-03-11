@@ -328,11 +328,11 @@ impl CorticalAreaSettings {
     }
 
     /// Adds all build options to a program builder.
-    pub fn add_build_options(&self, mut pbldr: ProgramBuilder) -> ProgramBuilder {
+    pub fn add_build_options<'b>(&self, pbldr: &mut ProgramBuilder<'b>) {
         for bo in self.build_options.iter() {
-            pbldr = pbldr.bo(bo.clone())
+            // pbldr = pbldr.bo(bo.clone())
+            pbldr.bo(bo.clone());
         }
-        pbldr
     }
 }
 
@@ -381,7 +381,9 @@ impl CorticalArea {
 
         println!("\n\nCORTICALAREA::NEW(): Creating Cortical Area: \"{}\"...", area_name);
 
-        let build_options = if KERNEL_DEBUG_SYMBOLS && cfg!(target_os = "linux") {
+        let mut p_bldr = area_map.gen_build_options();
+
+        if KERNEL_DEBUG_SYMBOLS && cfg!(target_os = "linux") {
             if ocl_context.platform()?.unwrap().vendor()?.contains("Intel") {
                 panic!("[cortical_area::KERNEL_DEBUG_SYMBOLS == true]: \
                     Cannot debug kernels on an Intel based driver platform (not sure why).
@@ -390,11 +392,12 @@ impl CorticalArea {
             // * TODO: Save kernel file for debugging on Intel.
             // // Optionally pass `-g` and `-s {cl path}` flags to compiler:
             // let debug_opts = format!("-g -s \"{}\"", kernel_path);
+
             let debug_opts = "-g";
-            settings.add_build_options(area_map.gen_build_options().cmplr_opt(debug_opts))
-        } else {
-            settings.add_build_options(area_map.gen_build_options())
+            p_bldr.cmplr_opt(debug_opts);
         };
+
+        settings.add_build_options(&mut p_bldr);
 
         let mut queue_flags = if QUEUE_OUT_OF_ORDER {
             flags::QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
@@ -411,7 +414,7 @@ impl CorticalArea {
         let ocl_pq = ProQue::builder()
             .device(device_idx)
             .context(ocl_context.clone())
-            .prog_bldr(build_options)
+            .prog_bldr(p_bldr)
             .queue_properties(queue_flags)
             .build().expect("CorticalArea::new(): ocl_pq.build(): error");
 
