@@ -82,17 +82,17 @@ impl Minicolumns {
             .expect("Minicolumns::new()")
             .global_work_size(SpatialDims::Three(temporal_pyrs.dims().depth() as usize, dims.v_size() as usize,
                 dims.u_size() as usize))
-            .arg_buf(&flag_sets)
-            .arg_buf(&best_den_states)
-            .arg_buf(temporal_pyrs.best_den_states_raw())
-            .arg_buf(temporal_pyrs.states())
-            .arg_scl(ff_layer_axn_idz as u32)
-            .arg_scl(pyr_lyr_axn_idz)
-            // .arg_scl(temporal_pyrs.cell_scheme().dens_per_tft_l2)
-            .arg_buf(temporal_pyrs.flag_sets())
-            // .arg_buf_named::<i32>("aux_ints_0", None)
-            // .arg_buf_named::<i32>("aux_ints_1", None)
-            .arg_buf(axons.states());
+            .arg(&flag_sets)
+            .arg(&best_den_states)
+            .arg(temporal_pyrs.best_den_states_raw())
+            .arg(temporal_pyrs.states())
+            .arg(ff_layer_axn_idz as u32)
+            .arg(pyr_lyr_axn_idz)
+            // .arg(temporal_pyrs.cell_scheme().dens_per_tft_l2)
+            .arg(temporal_pyrs.flag_sets())
+            // .arg_named::<i32>("aux_ints_0", None)
+            // .arg_named::<i32>("aux_ints_1", None)
+            .arg(axons.states());
 
         // Activation execution command:
         let activate_cmd_srcs = vec![
@@ -128,15 +128,15 @@ impl Minicolumns {
         // let kern_output = ocl_pq.create_kernel(output_kern_name)
         //     .expect("Minicolumns::new()")
         //     .global_work_size(SpatialDims::Two(dims.v_size() as usize, dims.u_size() as usize))
-        //     .arg_buf(pyrs.best_den_states_raw())
-        //     .arg_buf(pyrs.soma())
-        //     // .arg_scl(pyrs.tfts_per_cel())
-        //     .arg_scl(ff_layer_axn_idz as u32)
-        //     .arg_scl(pyr_depth)
-        //     .arg_scl(mcol_axn_slc_id)
-        //     .arg_buf(&flag_sets)
-        //     .arg_buf(&best_den_states)
-        //     .arg_buf(axons.states());
+        //     .arg(pyrs.best_den_states_raw())
+        //     .arg(pyrs.soma())
+        //     // .arg(pyrs.tfts_per_cel())
+        //     .arg(ff_layer_axn_idz as u32)
+        //     .arg(pyr_depth)
+        //     .arg(mcol_axn_slc_id)
+        //     .arg(&flag_sets)
+        //     .arg(&best_den_states)
+        //     .arg(axons.states());
 
         // // Output execution command:
         // let output_cmd_srcs = vec![
@@ -193,18 +193,18 @@ impl Minicolumns {
     }
 
     // <<<<< TODO: DEPRICATE >>>>>
-    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
+    pub fn set_arg<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
             -> OclResult<()>
     {
         let activate_using_aux = false;
         // let output_using_aux = false;
 
         if activate_using_aux {
-            try!(self.kern_activate.set_arg_buf_named(name, Some(env)));
+            try!(self.kern_activate.set_arg(name, Some(env)));
         }
 
         // if output_using_aux {
-        //     try!(self.kern_output.set_arg_buf_named(name, Some(env)));
+        //     try!(self.kern_output.set_arg(name, Some(env)));
         // }
 
         Ok(())

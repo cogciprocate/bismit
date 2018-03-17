@@ -42,14 +42,14 @@ impl InhibitoryInterneuronNetwork {
                 host_lyr.dims().u_size() as usize))
             .local_work_size(SpatialDims::Three(1, 8, 8 as usize))
             .arg(host_lyr.soma())
-            // .arg_buf(host_lyr.energies())
+            // .arg(host_lyr.energies())
             .arg(&host_lyr_base_axn_slc)
             .arg(&inhib_radius)
-            // .arg_scl_named::<i32>("rnd", &0)
+            // .arg_named::<i32>("rnd", &0)
             .arg_named("rnd", &0i32)
             .arg(host_lyr.activities())
-            // .arg_buf_named("aux_ints_0", None)
-            // .arg_buf_named("aux_ints_1", None)
+            // .arg_named("aux_ints_0", None)
+            // .arg_named("aux_ints_1", None)
             .arg(axns.states())
             .build()?;
 
@@ -110,7 +110,7 @@ impl InhibitoryInterneuronNetwork {
                 .enq()?;
             }
         } else {
-            self.kern_inhib_simple.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
+            self.kern_inhib_simple.set_arg("rnd", self.rng.gen::<i32>()).unwrap();
             unsafe {
                 self.kern_inhib_simple.cmd()
                     .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)

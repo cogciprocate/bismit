@@ -117,19 +117,19 @@ impl Dendrites {
             let kern_name = "den_cycle_tft";
             kernels.push(ocl_pq.kernel_builder(kern_name)
                 .global_work_size(SpatialDims::One(tft_den_count as usize))
-                .arg_buf(syns.states())
-                .arg_buf(syns.strengths())
-                .arg_scl(&tft_den_idz)
-                .arg_scl(&tft_syn_idz)
-                .arg_scl(&syns_per_den)
-                .arg_scl(&den_threshold)
-                .arg_scl_named::<i32>("rnd", &0)
-                .arg_buf(&energies)
-                .arg_buf(&activities)
-                .arg_buf(&states_raw)
-                .arg_buf_named("aux_ints_0", None::<&Buffer<i32>>)
-                .arg_buf_named("aux_ints_1", None::<&Buffer<i32>>)
-                .arg_buf(&states)
+                .arg(syns.states())
+                .arg(syns.strengths())
+                .arg(&tft_den_idz)
+                .arg(&tft_syn_idz)
+                .arg(&syns_per_den)
+                .arg(&den_threshold)
+                .arg_named("rnd", &0)
+                .arg(&energies)
+                .arg(&activities)
+                .arg(&states_raw)
+                .arg_named("aux_ints_0", None::<&Buffer<i32>>)
+                .arg_named("aux_ints_1", None::<&Buffer<i32>>)
+                .arg(&states)
                 .build()?
             );
 
@@ -195,7 +195,7 @@ impl Dendrites {
         for (kern, &cmd_idx) in self.kernels.iter_mut().zip(self.exe_cmd_idxs.iter()) {
             if PRNT { println!("    Dens: Cycling kern_cycle (exe_cmd_idx: [{}])...", cmd_idx); }
 
-            kern.set_arg_scl_named("rnd", self.rng.gen::<i32>())?;
+            kern.set_arg("rnd", self.rng.gen::<i32>())?;
 
             let mut event = Event::empty();
             unsafe { kern.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
@@ -213,13 +213,13 @@ impl Dendrites {
     }
 
     // Debugging purposes
-    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, buf: &Buffer<T>)
+    pub fn set_arg<T: OclPrm>(&mut self, name: &'static str, buf: &Buffer<T>)
             -> CmnResult<()> {
         let using_aux = true;
 
         if using_aux {
             for kernel in self.kernels.iter_mut() {
-                kernel.set_arg_buf_named(name, Some(buf))?;
+                kernel.set_arg(name, Some(buf))?;
             }
         }
 

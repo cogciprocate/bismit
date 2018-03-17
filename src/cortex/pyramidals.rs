@@ -134,32 +134,32 @@ impl PyramidalLayer {
         // let kern_name = "pyr_cycle_old";
         // let pyr_cycle_kernel = ocl_pq.kernel_builder(kern_name)
         //     .global_work_size(SpatialDims::One(cel_count))
-        //     .arg_buf(tufts.best_den_ids())
-        //     .arg_buf(tufts.best_den_states_raw())
-        //     .arg_buf(tufts.best_den_states())
-        //     .arg_scl(tft_count as u32)
-        //     .arg_buf(&best_den_states_raw)
-        //     .arg_buf(&states)
-        //     .arg_buf_named("aux_ints_0", None::<Buffer<i32>>)
-        //     .arg_buf_named("aux_ints_1", None::<Buffer<i32>>)
+        //     .arg(tufts.best_den_ids())
+        //     .arg(tufts.best_den_states_raw())
+        //     .arg(tufts.best_den_states())
+        //     .arg(tft_count as u32)
+        //     .arg(&best_den_states_raw)
+        //     .arg(&states)
+        //     .arg_named("aux_ints_0", None::<Buffer<i32>>)
+        //     .arg_named("aux_ints_1", None::<Buffer<i32>>)
         // ;
 
         let kern_name = "pyr_cycle";
         let pyr_cycle_kernel = ocl_pq.kernel_builder(kern_name)
             .global_work_size(SpatialDims::One(cel_count))
-            // .arg_buf(tufts.best_den_ids())
-            .arg_buf(tufts.best_den_states_raw())
-            // .arg_buf(tufts.best_den_states())
-            .arg_buf(tufts.states())
-            .arg_scl(&(tft_count as u8))
-            .arg_scl(&enabled_tft_flags)
-            .arg_scl(&bsl_prx_tft_id.unwrap_or(0))
-            .arg_scl(&bsl_dst_tft_id.unwrap_or(0))
-            .arg_scl(&apc_dst_tft_id.unwrap_or(0))
-            // .arg_buf(&best_den_states_raw)
-            .arg_buf_named("aux_ints_0", None::<&Buffer<i32>>)
-            .arg_buf_named("aux_ints_1", None::<&Buffer<i32>>)
-            .arg_buf(&states)
+            // .arg(tufts.best_den_ids())
+            .arg(tufts.best_den_states_raw())
+            // .arg(tufts.best_den_states())
+            .arg(tufts.states())
+            .arg(&(tft_count as u8))
+            .arg(&enabled_tft_flags)
+            .arg(&bsl_prx_tft_id.unwrap_or(0))
+            .arg(&bsl_dst_tft_id.unwrap_or(0))
+            .arg(&apc_dst_tft_id.unwrap_or(0))
+            // .arg(&best_den_states_raw)
+            .arg_named("aux_ints_0", None::<&Buffer<i32>>)
+            .arg_named("aux_ints_1", None::<&Buffer<i32>>)
+            .arg(&states)
             .build()?
         ;
 
@@ -253,15 +253,15 @@ impl PyramidalLayer {
     }
 
     // <<<<< TODO: DEPRICATE >>>>>
-    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
+    pub fn set_arg<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>)
             -> OclResult<()> {
         let using_aux_cycle = true;
         let using_aux_learning = true;
 
-        self.tufts.set_arg_buf_named(name, env, using_aux_cycle, using_aux_learning)?;
+        self.tufts.set_arg(name, env, using_aux_cycle, using_aux_learning)?;
 
         if using_aux_cycle {
-            self.pyr_cycle_kernel.set_arg_buf_named(name, Some(env))?;
+            self.pyr_cycle_kernel.set_arg(name, Some(env))?;
         }
 
         Ok(())
@@ -390,7 +390,7 @@ pub mod tests {
             // for ltp_kernel in self.tft_ltp_kernels.iter_mut() {
             //     ltp_kernel.default_queue().unwrap().finish().unwrap();
 
-            //     ltp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
+            //     ltp_kernel.set_arg("rnd", self.rng.gen::<i32>())
             //         .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [0]");
 
             //     unsafe {

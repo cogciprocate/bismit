@@ -66,20 +66,20 @@ pub fn axn_idxs(testbed: &TestBed) {
     let kern_sc = testbed.ocl_pq.kernel_builder("test_axn_idxs_scl")
         .global_work_size(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,
             testbed.dims.u_size() as usize))
-        .arg_buf(&u_offs)
-        .arg_buf(&v_offs)
-        .arg_buf(&outs_sc)
+        .arg(&u_offs)
+        .arg(&v_offs)
+        .arg(&outs_sc)
         .build().expect("[FIXME]: HANDLE ME")
-        //.arg_buf(&outs_v4)
+        //.arg(&outs_v4)
     ;
 
     let kern_v4 = testbed.ocl_pq.kernel_builder("test_axn_idxs_vec4")
         .global_work_size(SpatialDims::Three(testbed.dims.depth() as usize, testbed.dims.v_size() as usize,
             (testbed.dims.u_size() / 4) as usize))
-        .arg_buf(&u_offs)
-        .arg_buf(&v_offs)
-        //.arg_buf(&outs_sc)
-        .arg_buf(&outs_v4)
+        .arg(&u_offs)
+        .arg(&v_offs)
+        //.arg(&outs_sc)
+        .arg(&outs_v4)
         .build().expect("[FIXME]: HANDLE ME")
     ;
 
@@ -114,10 +114,10 @@ pub fn hex_radial_iter(_testbed: &TestBed) {
 
 //     let kern_test_safe_dim_ofs = ocl.create_kernel_with_dims("test_safe_dim_ofs",
 //         SpatialDims::One(dims.len() as usize))
-//         .arg_buf(&dim_ids)
-//         .arg_buf(&dim_offs)
-//         .arg_scl(dims.u_size())
-//         .arg_buf(&safe_dim_offs)
+//         .arg(&dim_ids)
+//         .arg(&dim_offs)
+//         .arg(dims.u_size())
+//         .arg(&safe_dim_offs)
 //     ;
 
 //     kern_test_safe_dim_ofs.enq().expect("[FIXME]: HANDLE ME!");

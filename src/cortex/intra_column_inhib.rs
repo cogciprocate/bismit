@@ -39,10 +39,10 @@ impl IntraColumnInhib {
                 host_lyr.dims().v_size() as usize,
                 host_lyr.dims().u_size() as usize,
             ))
-            .arg_buf(host_lyr.soma())
-            .arg_scl(&host_lyr.dims().depth())
-            .arg_scl(&host_lyr_base_axn_slc)
-            .arg_buf(axns.states())
+            .arg(host_lyr.soma())
+            .arg(&host_lyr.dims().depth())
+            .arg(&host_lyr_base_axn_slc)
+            .arg(axns.states())
             .build()?;
 
         let exe_cmd_srcs = vec![CorticalBuffer::data_soma_lyr(host_lyr.soma(), host_lyr.layer_addr())];
@@ -75,7 +75,7 @@ impl IntraColumnInhib {
     pub fn cycle(&mut self, exe_graph: &mut ExecutionGraph, _host_lyr_addr: LayerAddress) -> CmnResult<()> {
         let mut event = Event::empty();
 
-        // self.kern.set_arg_scl_named("rnd", self.rng.gen::<i32>()).unwrap();
+        // self.kern.set_arg("rnd", self.rng.gen::<i32>()).unwrap();
         unsafe {
             self.kern.cmd()
                 .ewait(exe_graph.get_req_events(self.exe_cmd_idx)?)

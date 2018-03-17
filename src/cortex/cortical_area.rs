@@ -561,30 +561,30 @@ impl CorticalArea {
         let aux = Aux::new(1 << 15, &ocl_pq);
 
         // <<<<< TODO: CLEAN THIS UP >>>>>
-        // MAKE ABOVE LIKE BELOW (eliminate set_arg_buf_named() methods and just call directly on buffer)
-        // mcols.set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        // MAKE ABOVE LIKE BELOW (eliminateset_arg() methods and just call directly on buffer)
+        // mcols.set_arg("aux_ints_0", &aux.ints_0).unwrap();
 
         // temporal_layers[ptal_idx]
-        //     .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        //    set_arg("aux_ints_0", &aux.ints_0).unwrap();
         // temporal_layers[ptal_idx]
-        //     .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
+        //    set_arg("aux_ints_1", &aux.ints_1).unwrap();
 
         // temporal_layers[ptal_idx].dens_mut()
-        //     .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        //    set_arg("aux_ints_0", &aux.ints_0).unwrap();
         // temporal_layers[ptal_idx].dens_mut()
-        //     .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
+        //    set_arg("aux_ints_1", &aux.ints_1).unwrap();
 
         // temporal_layers[ptal_idx].dens_mut().syns_mut()
-        //     .set_arg_buf_named("aux_ints_0", &aux.ints_0).unwrap();
+        //    set_arg("aux_ints_0", &aux.ints_0).unwrap();
         // temporal_layers[ptal_idx].dens_mut().syns_mut()
-        //     .set_arg_buf_named("aux_ints_1", &aux.ints_1).unwrap();
+        //    set_arg("aux_ints_1", &aux.ints_1).unwrap();
 
 
-        // mcols.set_arg_buf_named("aux_ints_1", &aux.ints_0).unwrap();
+        // mcols.set_arg("aux_ints_1", &aux.ints_0).unwrap();
         // pyrs_map.get_mut(ptal_name).unwrap().kern_ltp()
-        //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
+        //    set_arg("aux_ints_1", Some(&aux.ints_1)).unwrap();
         // pyrs_map.get_mut(ptal_name).unwrap().kern_cycle()
-        //     .set_arg_buf_named("aux_ints_1", Some(&aux.ints_1)).unwrap();
+        //    set_arg("aux_ints_1", Some(&aux.ints_1)).unwrap();
 
         /*=============================================================================
         ======================= LAYER ROLE EXECUTION ORDERING =========================

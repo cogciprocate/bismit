@@ -79,8 +79,8 @@ impl SpinyStellateLayer {
         let kern_cycle = ocl_pq.kernel_builder(kern_name)
             // .global_work_size(dims)
             .global_work_size(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
-            .arg_buf(&energies)
-            .arg_buf(dens.states())
+            .arg(&energies)
+            .arg(dens.states())
             .build()?;
 
         // let mut cycle_cmd_srcs = Vec::with_capacity(2);
@@ -99,16 +99,16 @@ impl SpinyStellateLayer {
         let kern_mtp = ocl_pq.kernel_builder(kern_name)
             // .global_work_size(dims)
             .global_work_size(SpatialDims::Two(1, dims.cells() as usize))
-            .arg_buf(axons.states())
-            .arg_buf(dens.syns().states())
-            .arg_scl(&lyr_axon_idz)
-            // .arg_scl(cels_per_grp)
-            .arg_scl(&syns_per_tft)
+            .arg(axons.states())
+            .arg(dens.syns().states())
+            .arg(&lyr_axon_idz)
+            // .arg(cels_per_grp)
+            .arg(&syns_per_tft)
             // CURRENTLY UNUSED:
-            .arg_scl_named::<u32>("rnd", &0)
-            // .arg_buf_named("aux_ints_0", None)
-            // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(dens.syns().strengths())
+            .arg_named("rnd", 0u32)
+            // .arg_named("aux_ints_0", None)
+            // .arg_named("aux_ints_1", None)
+            .arg(dens.syns().strengths())
             .build()?;
 
         ////// KEEP ME:
@@ -116,15 +116,15 @@ impl SpinyStellateLayer {
             // let kern_mtp = ocl_pq.kernel_builder(kern_name)
             //     // .expect("SpinyStellateLayer::new()")
             //     .global_work_size(SpatialDims::Two(tft_count, grp_count as usize))
-            //     .arg_buf(axons.states())
-            //     .arg_buf(dens.syns().states())
-            //     .arg_scl(lyr_axon_idz)
-            //     .arg_scl(_cels_per_grp)
-            //     .arg_scl(syns_per_tft_l2)
-            //     .arg_scl_named::<u32>("rnd", None)
-            //     // .arg_buf_named("aux_ints_0", None)
-            //     // .arg_buf_named("aux_ints_1", None)
-            //     .arg_buf(dens.syns().strengths());
+            //     .arg(axons.states())
+            //     .arg(dens.syns().states())
+            //     .arg(lyr_axon_idz)
+            //     .arg(_cels_per_grp)
+            //     .arg(syns_per_tft_l2)
+            //     .arg_named::<u32>("rnd", None)
+            //     // .arg_named("aux_ints_0", None)
+            //     // .arg_named("aux_ints_1", None)
+            //     .arg(dens.syns().strengths());
         ///////
 
 
@@ -257,7 +257,7 @@ impl SpinyStellateLayer {
         if let Some(cmd_idx) = self.mtp_exe_cmd_idx {
             if PRNT { printlnc!(royal_blue: "Ssts: Performing learning for layer: '{}'...", self.layer_name); }
             let rnd = self.rng.gen::<u32>();
-            self.kern_mtp.set_arg_scl_named("rnd", rnd).unwrap();
+            self.kern_mtp.set_arg("rnd", rnd).unwrap();
 
             let mut event = Event::empty();
             unsafe { self.kern_mtp.cmd().ewait(exe_graph.get_req_events(cmd_idx)?).enew(&mut event).enq()?; }
@@ -351,7 +351,7 @@ pub mod tests {
         fn learn_solo(&mut self) {
             self.kern_mtp.default_queue().unwrap().finish().unwrap();
             let rnd = self.rng.gen::<u32>();
-            self.kern_mtp.set_arg_scl_named("rnd", rnd).unwrap();
+            self.kern_mtp.set_arg("rnd", rnd).unwrap();
 
             unsafe {
             self.kern_mtp.cmd().enq()

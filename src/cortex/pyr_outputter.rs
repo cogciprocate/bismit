@@ -34,13 +34,13 @@ impl PyrOutputter {
                 host_lyr.dims().v_size() as usize,
                 host_lyr.dims().u_size() as usize,
             ))
-            // .arg_scl(host_lyr.dims().v_size())
-            // .arg_scl(host_lyr.dims().u_size())
-            .arg_buf(host_lyr.soma())
-            .arg_scl(&host_lyr_base_axn_slc)
-            // .arg_buf_named("aux_ints_0", None)
-            // .arg_buf_named("aux_ints_1", None)
-            .arg_buf(axns.states())
+            // .arg(host_lyr.dims().v_size())
+            // .arg(host_lyr.dims().u_size())
+            .arg(host_lyr.soma())
+            .arg(&host_lyr_base_axn_slc)
+            // .arg_named("aux_ints_0", None)
+            // .arg_named("aux_ints_1", None)
+            .arg(axns.states())
             .build()?;
 
         let exe_cmd_srcs = vec![CorticalBuffer::data_soma_lyr(host_lyr.soma(), host_lyr.layer_addr())];

@@ -218,8 +218,8 @@ impl Synapses {
         let kern_name_flags = "tft_set_syn_flags";
         let kernel_flags = ocl_pq.kernel_builder(kern_name_flags)
                 .global_work_size(syn_count_ttl)
-                .arg_buf(&states)
-                .arg_buf(&flag_sets)
+                .arg(&states)
+                .arg(&flag_sets)
                 .build()?;
 
         if !bypass_exe_graph {
@@ -268,16 +268,16 @@ impl Synapses {
                 ocl_pq.kernel_builder(kern_name)
                     .global_work_size(SpatialDims::Two(dims.v_size() as usize, (dims.u_size()) as usize))
                     .local_work_size(SpatialDims::Two(min_wg_sqrt, min_wg_sqrt))
-                    .arg_buf(axons.states())
-                    .arg_buf(&src_col_u_offs)
-                    .arg_buf(&src_col_v_offs)
-                    .arg_buf(&src_slc_ids)
-                    .arg_scl(&tft_syn_idz)
-                    .arg_scl(&syns_per_tft)
-                    .arg_scl(&(dims.depth() as u8))
-                    .arg_buf_named("aux_ints_0", None::<&Buffer<i32>>)
-                    .arg_buf_named("aux_ints_1", None::<&Buffer<i32>>)
-                    .arg_buf(&states)
+                    .arg(axons.states())
+                    .arg(&src_col_u_offs)
+                    .arg(&src_col_v_offs)
+                    .arg(&src_slc_ids)
+                    .arg(&tft_syn_idz)
+                    .arg(&syns_per_tft)
+                    .arg(&(dims.depth() as u8))
+                    .arg_named("aux_ints_0", None::<&Buffer<i32>>)
+                    .arg_named("aux_ints_1", None::<&Buffer<i32>>)
+                    .arg(&states)
                     .build()?
             );
 
@@ -389,13 +389,13 @@ impl Synapses {
 
     // Debugging purposes
     // * TODO: Depricate?
-    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, buf: &Buffer<T>)
+    pub fn set_arg<T: OclPrm>(&mut self, name: &'static str, buf: &Buffer<T>)
             -> OclResult<()> {
         let using_aux = true;
 
         if using_aux {
             for kernel in self.kernels_cycle.iter_mut() {
-                try!(kernel.set_arg_buf_named(name, Some(buf)));
+                try!(kernel.set_arg(name, Some(buf)));
             }
         }
 

@@ -48,9 +48,9 @@ impl SensoryFilter {
         let cycle_kernel = ocl_pq.kernel_builder(kern_name.clone())
             .global_work_size(SpatialDims::Three(dims.depth() as usize, dims.v_size() as usize, dims.u_size() as usize))
             .local_work_size(SpatialDims::Three(1, 8, 8 as usize))
-            .arg_buf(&input_buffer)
-            .arg_scl(&(output_slc_range.start as u8))
-            .arg_buf(output_buffer)
+            .arg(&input_buffer)
+            .arg(&(output_slc_range.start as u8))
+            .arg(output_buffer)
             .build()?;
 
         let filter_is_first = filter_idx == 0;

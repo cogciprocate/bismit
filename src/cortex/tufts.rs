@@ -107,22 +107,22 @@ impl Tufts {
             let kern_name = "tft_cycle";
             cycle_kernels.push(ocl_pq.kernel_builder(kern_name)
                 .global_work_size(SpatialDims::One(cel_count))
-                .arg_buf(dens.states_raw())
-                .arg_buf(dens.states())
-                .arg_scl(&tft_cel_idz)
-                .arg_scl(&tft_den_idz)
-                .arg_scl(&dens_per_tft)
-                .arg_scl(&tft_scheme.max_active_dens_l2())
-                .arg_buf(&prev_best_den_ids)
-                .arg_buf(&prev_best_den_states_raw)
-                .arg_buf(&prev_best_den_states)
-                .arg_buf(&prev_states)
-                .arg_buf(&best_den_ids)
-                .arg_buf(&best_den_states_raw)
-                .arg_buf(&best_den_states)
-                .arg_buf_named("aux_ints_0", None::<&Buffer<i32>>)
-                .arg_buf_named("aux_ints_1", None::<&Buffer<i32>>)
-                .arg_buf(&states)
+                .arg(dens.states_raw())
+                .arg(dens.states())
+                .arg(&tft_cel_idz)
+                .arg(&tft_den_idz)
+                .arg(&dens_per_tft)
+                .arg(&tft_scheme.max_active_dens_l2())
+                .arg(&prev_best_den_ids)
+                .arg(&prev_best_den_states_raw)
+                .arg(&prev_best_den_states)
+                .arg(&prev_states)
+                .arg(&best_den_ids)
+                .arg(&best_den_states_raw)
+                .arg(&best_den_states)
+                .arg_named("aux_ints_0", None::<&Buffer<i32>>)
+                .arg_named("aux_ints_1", None::<&Buffer<i32>>)
+                .arg(&states)
                 .build()?
             );
 
@@ -161,29 +161,29 @@ impl Tufts {
                         let kern_name = "tft_dst_mtp";
                         mtp_kernels.push(ocl_pq.kernel_builder(kern_name)
                             .global_work_size(SpatialDims::One(cel_grp_count as usize))
-                            .arg_buf(axons.states())
-                            .arg_buf(cel_states)
-                            .arg_buf(&prev_best_den_ids)
-                            .arg_buf(&prev_best_den_states_raw)
-                            .arg_buf(dens.states())
-                            .arg_buf(dens.syns().states())
-                            // .arg_scl(tfts_per_cel as u32)
-                            .arg_scl(&tft_cel_idz)
-                            .arg_scl(&tft_den_idz)
-                            .arg_scl(&tft_syn_idz)
-                            .arg_scl(&dens_per_tft)
-                            .arg_scl(&syns_per_den)
-                            .arg_scl(&syns_per_tft)
-                            .arg_scl(&cels_per_cel_grp)
-                            .arg_scl(&cel_lyr_axn_idz)
-                            .arg_scl_named::<i32>("pr_l2i", &potentiation_rate_l2i)
-                            .arg_scl_named::<i32>("dr_l2i", &depression_rate_l2i)
-                            .arg_scl_named::<i32>("rnd", &0)
-                            .arg_buf(dens.syns().flag_sets())
-                            .arg_buf(cel_flag_sets)
-                            .arg_buf_named("aux_ints_0", None::<&Buffer<i32>>)
-                            .arg_buf_named("aux_ints_1", None::<&Buffer<i32>>)
-                            .arg_buf(dens.syns().strengths())
+                            .arg(axons.states())
+                            .arg(cel_states)
+                            .arg(&prev_best_den_ids)
+                            .arg(&prev_best_den_states_raw)
+                            .arg(dens.states())
+                            .arg(dens.syns().states())
+                            // .arg(tfts_per_cel as u32)
+                            .arg(&tft_cel_idz)
+                            .arg(&tft_den_idz)
+                            .arg(&tft_syn_idz)
+                            .arg(&dens_per_tft)
+                            .arg(&syns_per_den)
+                            .arg(&syns_per_tft)
+                            .arg(&cels_per_cel_grp)
+                            .arg(&cel_lyr_axn_idz)
+                            .arg_named("pr_l2i", &potentiation_rate_l2i)
+                            .arg_named("dr_l2i", &depression_rate_l2i)
+                            .arg_named("rnd", &0i32)
+                            .arg(dens.syns().flag_sets())
+                            .arg(cel_flag_sets)
+                            .arg_named("aux_ints_0", None::<&Buffer<i32>>)
+                            .arg_named("aux_ints_1", None::<&Buffer<i32>>)
+                            .arg(dens.syns().strengths())
                             .build()?
                         );
 
@@ -280,17 +280,17 @@ impl Tufts {
 
 
     // <<<<< TODO: DEPRICATE >>>>>
-    pub fn set_arg_buf_named<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>,
+    pub fn set_arg<T: OclPrm>(&mut self, name: &'static str, env: &Buffer<T>,
             using_aux_cycle: bool, using_aux_learning: bool) -> OclResult<()> {
         for (cycle_kern, mtp_kern) in self.cycle_kernels.iter_mut()
                 .zip(self.mtp_kernels.iter_mut())
         {
             if using_aux_cycle {
-                try!(cycle_kern.set_arg_buf_named(name, Some(env)));
+                try!(cycle_kern.set_arg(name, Some(env)));
             }
 
             if using_aux_learning {
-                try!(mtp_kern.set_arg_buf_named(name, Some(env)));
+                try!(mtp_kern.set_arg(name, Some(env)));
             }
         }
 
@@ -309,7 +309,7 @@ impl Tufts {
                 .zip(self.mtp_exe_cmd_idxs.iter()) {
             if PRNT { printlnc!(yellow: "  Tfts: Setting scalar to a random value..."); }
 
-            mtp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
+            mtp_kernel.set_arg("rnd", self.rng.gen::<i32>())
                 .expect("PyramidalLayer::learn()");
 
             if PRNT { printlnc!(yellow: "  Tfts: Enqueuing kern_mtp..."); }
@@ -404,7 +404,7 @@ pub mod tests {
             for mtp_kernel in self.mtp_kernels.iter_mut() {
                 mtp_kernel.default_queue().unwrap().finish().unwrap();
 
-                mtp_kernel.set_arg_scl_named("rnd", self.rng.gen::<i32>())
+                mtp_kernel.set_arg("rnd", self.rng.gen::<i32>())
                     .expect("<PyramidalLayer as DataCellLayerTest>::learn_solo [0]");
 
                 unsafe {
