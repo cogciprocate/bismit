@@ -91,14 +91,10 @@ impl ActivitySmoother {
         assert!(centers_v_vec.len() == centers_u_vec.len());
         let cell_count = centers_v_vec.len();
 
-        let centers_v = unsafe {
-            Buffer::builder().queue(ocl_pq.queue().clone()).len(cell_count)
-                .host_data(&centers_v_vec).flags(MemFlags::new().copy_host_ptr()).build()?
-        };
-        let centers_u = unsafe {
-            Buffer::builder().queue(ocl_pq.queue().clone()).len(cell_count)
-                .host_data(&centers_u_vec).flags(MemFlags::new().copy_host_ptr()).build()?
-        };
+        let centers_v = Buffer::builder().queue(ocl_pq.queue().clone()).len(cell_count)
+                .copy_host_slice(&centers_v_vec).flags(MemFlags::new().copy_host_ptr()).build()?;
+        let centers_u = Buffer::builder().queue(ocl_pq.queue().clone()).len(cell_count)
+                .copy_host_slice(&centers_u_vec).flags(MemFlags::new().copy_host_ptr()).build()?;
 
         // Kernel:
         let kern_name = "smooth_activity";
