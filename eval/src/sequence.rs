@@ -12,7 +12,7 @@ use std::ops::Range;
 use smallvec::SmallVec;
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range as RandRange, IndependentSample};
-use qutex::{QrwLock, ReadGuard as QrwReadGuard};
+use qutex::{Qutex, Guard, QrwLock, ReadGuard as QrwReadGuard};
 use vibi::bismit::futures::{future, Future, Poll, Async};
 use vibi::bismit::ocl::{FutureReadGuard, ReadGuard};
 use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, CorticalAreaSettings,
@@ -119,7 +119,7 @@ fn print_stuff(samples: CorticalSamples, focus_cels: Vec<FocusCell>,
 fn check_stuff(samples: CorticalSamples, focus_cels: Vec<FocusCell>,
         cycles_complete: usize, lyr_addr: LayerAddress, sdrs: QrwReadGuard<Vec<Vec<u8>>>,
         cursor_pos: SeqCursorPos, next_cursor_pos: SeqCursorPos,
-        focus_layer_axon_range: (usize, usize)) {
+        focus_layer_axon_range: (usize, usize), results: Guard<Results>) {
     if cursor_pos.seq_idx != 0 { return; }
 
     let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().u8();
@@ -145,6 +145,7 @@ fn check_stuff(samples: CorticalSamples, focus_cels: Vec<FocusCell>,
         assert!(cur_sdr[sdr_idx] != 0 && axn_states[axn_idx] != 0 ||
             cur_sdr[sdr_idx] == 0 && axn_states[axn_idx] == 0);
     }
+
 
 
     // TODO: Check `next_sdr` against tuft states (print accuracy %).
@@ -205,6 +206,38 @@ fn check_stuff(samples: CorticalSamples, focus_cels: Vec<FocusCell>,
 }
 
 
+#[derive(Clone, Debug)]
+struct FocusCellTuft {
+    // cel_coords: CelCoords,
+    tft_id: usize,
+    celtft_idx: usize,
+    den_idx_range: Range<usize>,
+    syn_idx_range: Range<usize>,
+}
+
+impl FocusCellTuft {
+    fn new(area_name: &'static str, layer_name: &'static str,
+            cel_coords: &CelCoords, tft_id: usize, cortical_areas: &mut CorticalAreas)
+            -> FocusCellTuft {
+        let area = cortical_areas.by_key_mut(area_name).unwrap();
+        let den_idx_range = area.layer_test_mut(layer_name).unwrap().dens()
+            .den_idx_range_celtft(&cel_coords, tft_id);
+        let syn_idx_range = area.layer_test_mut(layer_name).unwrap().dens().syns()
+            .syn_idx_range_celtft(&cel_coords, tft_id);
+        let celtft_idx = area.layer_test_mut(layer_name).unwrap().tufts()
+            .celtft_idx(&cel_coords, tft_id);
+
+        FocusCellTuft { /*cel_coords,*/ tft_id, celtft_idx, den_idx_range, syn_idx_range }
+    }
+
+    fn random(area_name: &'static str, layer_name: &'static str, tft_id: usize,
+            cortical_areas: &mut CorticalAreas) -> FocusCellTuft {
+        let cel_coords = cortical_areas.by_key_mut(area_name).unwrap()
+            .layer_test_mut(layer_name).unwrap().rand_cel_coords();
+        FocusCellTuft::new(area_name, layer_name, &cel_coords, tft_id, cortical_areas)
+    }
+}
+
 
 #[derive(Clone, Debug)]
 struct FocusCell {
@@ -243,48 +276,40 @@ impl FocusCell {
 }
 
 
-#[derive(Clone, Debug)]
-struct FocusCellTuft {
-    // cel_coords: CelCoords,
-    tft_id: usize,
-    celtft_idx: usize,
-    den_idx_range: Range<usize>,
-    syn_idx_range: Range<usize>,
-}
-
-impl FocusCellTuft {
-    fn new(area_name: &'static str, layer_name: &'static str,
-            cel_coords: &CelCoords, tft_id: usize, cortical_areas: &mut CorticalAreas)
-            -> FocusCellTuft {
-        let area = cortical_areas.by_key_mut(area_name).unwrap();
-        let den_idx_range = area.layer_test_mut(layer_name).unwrap().dens()
-            .den_idx_range_celtft(&cel_coords, tft_id);
-        let syn_idx_range = area.layer_test_mut(layer_name).unwrap().dens().syns()
-            .syn_idx_range_celtft(&cel_coords, tft_id);
-        let celtft_idx = area.layer_test_mut(layer_name).unwrap().tufts()
-            .celtft_idx(&cel_coords, tft_id);
-
-        FocusCellTuft { /*cel_coords,*/ tft_id, celtft_idx, den_idx_range, syn_idx_range }
-    }
-
-    fn random(area_name: &'static str, layer_name: &'static str, tft_id: usize,
-            cortical_areas: &mut CorticalAreas) -> FocusCellTuft {
-        let cel_coords = cortical_areas.by_key_mut(area_name).unwrap()
-            .layer_test_mut(layer_name).unwrap().rand_cel_coords();
-        FocusCellTuft::new(area_name, layer_name, &cel_coords, tft_id, cortical_areas)
-    }
-}
-
 
 /// Tracks the activity of a set of cells over time, storing usefully relevant
 /// details about synaptic activity, etc.
 pub struct CellTracker {
     focus_cels: Vec<FocusCell>,
+    // TODO: Complete me.
+}
+
+
+/// A trial result.
+#[derive(Clone, Debug)]
+struct Result {
 
 }
 
 
+/// Trial results.
+#[derive(Debug)]
+struct Results {
+    /// A list of result for each item index in an SDR sequence.
+    seq_item_results: Vec<Vec<Result>>,
+}
+
+impl Results {
+    pub fn new(max_seq_len: usize) -> Results {
+        Results {
+            seq_item_results: vec![Vec::with_capacity(10000); max_seq_len],
+        }
+    }
+}
+
+
 /// A `SubcorticalNucleus`.
+#[derive(Debug)]
 struct EvalSequence {
     area_name: String,
     area_id: usize,
@@ -299,6 +324,7 @@ struct EvalSequence {
     // input_layer_axon_range: Option<(usize, usize)>,
     focus_cels: Vec<FocusCell>,
     // last_pattern: SeqCursorPos,
+    results: Qutex<Results>,
 }
 
 impl EvalSequence {
@@ -334,7 +360,9 @@ impl EvalSequence {
 
         let sdrs = Sdrs::new(200, ENCODE_DIMS_0);
         // let sdr_cursor = SeqCursor::new((4, 8), 25, sdrs.len());
+        let max_seq_len = 5;
         let sdr_cursor = SeqCursor::new((5, 5), 1, sdrs.len());
+        let results = Qutex::new(Results::new(max_seq_len));
 
         // Define the number of iters to first train then collect for each
         // sample period. All learning and other cell parameters (activity,
@@ -360,6 +388,7 @@ impl EvalSequence {
             // input_layer_axon_range: None,
             focus_cels: Vec::with_capacity(16),
             // last_pattern,
+            results,
         }
     }
 
@@ -371,7 +400,6 @@ impl EvalSequence {
         - Check to see who's winning
             - Print the tft and cel state/best values
     */
-
 }
 
 impl SubcorticalNucleus for EvalSequence {
@@ -529,13 +557,14 @@ impl SubcorticalNucleus for EvalSequence {
         // let input_layer_axon_range = self.input_layer_axon_range.unwrap();
 
         let future_recv = self.sampler.as_ref().unwrap().recv()
-            .join(self.sdrs.lock.clone().read().from_err())
-            .map(move |(samples, sdrs)| {
+            .join3(self.sdrs.lock.clone().read().from_err(),
+                self.results.clone().lock().from_err())
+            .map(move |(samples, sdrs, results)| {
                 // print_stuff(samples, focus_cels, cycles_complete,
                 //     lyr_addr, cursor_pos);
                 check_stuff(samples, focus_cels, cycles_complete,
                     lyr_addr, sdrs, cursor_pos, next_cursor_pos,
-                    focus_layer_axon_range, /*input_layer_axon_range*/);
+                    focus_layer_axon_range, results, /*input_layer_axon_range*/);
             })
             .map_err(|err| panic!("{}", err));
 

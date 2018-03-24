@@ -41,12 +41,12 @@ pub use ocl::Event as OclEvent;
 pub use self::cortex::{Cortex, CorticalArea, AxonSpace, Synapses,
     InhibitoryInterneuronNetwork, ActivitySmoother, PyramidalLayer,
     SpinyStellateLayer, Tufts, Dendrites, CorticalAreaSettings, DataCellLayer,
-    SamplerKind, SamplerBufferKind, WorkPool, WorkPoolRemote, CorticalAreas,
-    CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs};
+    SamplerKind, SamplerBufferKind, WorkPool, WorkPoolRemote, CorticalAreas};
 #[cfg(any(test, feature = "eval"))]
 pub use self::cortex::{CorticalAreaTest, SynCoords, SynapsesTest, syn_idx,
     AxonSpaceTest, AxnCoords, DenCoords, DendritesTest, den_idx,
-    CelCoords, DataCellLayerTest};
+    CelCoords, DataCellLayerTest, CorticalSampler, FutureCorticalSamples,
+    CorticalSamples, CellSampleIdxs};
 pub use self::subcortex::{Thalamus, Subcortex, SubcorticalNucleus,
     SubcorticalNucleusLayer, TestScNucleus, InputGenerator, InputGeneratorTract,
     InputGeneratorEncoder, InputGeneratorFrame, TractBuffer, TractSender,

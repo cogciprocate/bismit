@@ -1,3 +1,4 @@
+//! Sampling for a cortex.
 
 use std::mem;
 use std::collections::HashMap;
@@ -114,7 +115,7 @@ impl Future for FutureCorticalSamples {
 }
 
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CellSampleIdxs {
     All,
     Single(usize),
@@ -126,7 +127,7 @@ pub enum CellSampleIdxs {
 #[derive(Debug)]
 pub struct CorticalSampler {
     idxs: CellSampleIdxs,
-    rxs: Vec<(SamplerKind, TractReceiver)>,
+    pub(crate) rxs: Vec<(SamplerKind, TractReceiver)>,
 }
 
 impl CorticalSampler {
@@ -184,6 +185,8 @@ impl CorticalSampler {
         CorticalSampler::new(area_name, sampler_kinds, idxs, thal, cortical_areas)
     }
 
+    /// Begins receiving for all samplers and returns a future representing
+    /// reception completion.
     pub fn recv(&self) -> FutureCorticalSamples {
         FutureCorticalSamples::new(&self.rxs)
     }

@@ -129,6 +129,7 @@ pub enum Pathway {
 // - Input/Output is from a CorticalArea's point of view
 //   - input: to layer / area
 //   - output: from layer / area
+#[derive(Debug)]
 pub struct Thalamus {
     tract: ThalamicTract,
     pathways: MapStore<LayerAddress, Pathway>,

@@ -8,6 +8,8 @@ profile = ["cpuprofiler"]
 # Enables evaluation features, useful for testing and analysis.
 eval = []
 
+default = ["eval"]
+
 [dependencies.ocl]
 version = "*"
 path = "../ocl/ocl"
