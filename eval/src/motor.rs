@@ -4,8 +4,8 @@
 use std::collections::{HashMap};
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
-use qutex::QrwLock;
-use vibi::bismit::futures::Future;
+use vibi::bismit::ocl::async::qutex::QrwLock;
+use vibi::bismit::futures::{Future, FutureExt};
 use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
     SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas};
 use vibi::bismit::cmn::{TractFrameMut, TractDims};
@@ -161,10 +161,11 @@ impl SubcorticalNucleus for EvalMotor {
         for layer in self.layers.values() {
             if let Pathway::Output { ref tx } = layer.pathway {
                 debug_assert!(layer.sub().axon_domain().is_output());
-                let future_sdrs = self.input_sdrs.clone().read().from_err();
+                let future_sdrs = self.input_sdrs.clone().read().err_into();
 
                 let future_write_guard = tx.send()
                     .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                    .err_into()
                     .flatten();
 
                 let future_write = future_write_guard

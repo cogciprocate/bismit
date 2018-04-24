@@ -12,8 +12,8 @@ use std::ops::Range;
 use smallvec::SmallVec;
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range as RandRange, IndependentSample};
-use qutex::{Qutex, Guard, QrwLock, ReadGuard as QrwReadGuard};
-use vibi::bismit::futures::{future, Future, Poll, Async};
+use vibi::bismit::ocl::async::qutex::{Qutex, Guard, QrwLock, ReadGuard as QrwReadGuard};
+use vibi::bismit::futures::{future, Future, FutureExt, Poll, Async};
 use vibi::bismit::ocl::{FutureReadGuard, ReadGuard};
 use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, CorticalAreaSettings,
     Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas, TractReceiver,
@@ -500,10 +500,11 @@ impl SubcorticalNucleus for EvalSequence {
 
                 match layer.sub().name() {
                     "external_0" => {
-                        let future_sdrs = self.sdrs.lock.clone().read().from_err();
+                        let future_sdrs = self.sdrs.lock.clone().read().err_into();
 
                         let future_write_guard = tx.send()
                             .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                            .err_into()
                             .flatten();
 
                         let future_write = future_write_guard
@@ -556,8 +557,8 @@ impl SubcorticalNucleus for EvalSequence {
         // let input_layer_axon_range = self.input_layer_axon_range.unwrap();
 
         let future_recv = self.sampler.as_ref().unwrap().recv()
-            .join3(self.sdrs.lock.clone().read().from_err(),
-                self.results.clone().lock().from_err())
+            .join3(self.sdrs.lock.clone().read().err_into(),
+                self.results.clone().lock().err_into())
             .map(move |(samples, sdrs, results)| {
                 // print_stuff(samples, focus_cels, cycles_complete,
                 //     lyr_addr, cursor_pos);

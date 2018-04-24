@@ -4,7 +4,7 @@ use std::mem;
 use std::collections::{BTreeMap, HashMap};
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
-use qutex::QrwLock;
+use vibi::bismit::ocl::async::qutex::QrwLock;
 use vibi::bismit::futures::Future;
 use vibi::bismit::map::*;
 use vibi::bismit::ocl::{Buffer, WriteGuard};
@@ -932,7 +932,7 @@ impl SubcorticalNucleus for EvalSpatial {
         for layer in self.layers.values() {
             let pathway = layer.pathway.as_ref().expect("no pathway set");
 
-            let future_sdrs = self.input_sdrs.clone().read().from_err();
+            let future_sdrs = self.input_sdrs.clone().read().err_into();
 
             let future_write_guard = pathway.send()
                 .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
@@ -969,7 +969,7 @@ impl SubcorticalNucleus for EvalSpatial {
                 .wait()?.unwrap().read_u8();
 
             let future_activity_counts = self.current_trial_data.activity_counts().clone().write()
-                .from_err();
+                .err_into();
 
                 // let l4_axns = unsafe { params.l4_axns.map().read().enq().unwrap() };
                 // for (counts, &axn) in activity_counts.iter_mut().zip(l4_axns.iter()) {
@@ -1003,7 +1003,7 @@ impl SubcorticalNucleus for EvalSpatial {
                     .wait()?.unwrap().read_u8();
 
                 let future_activity_counts = self.current_trial_data.activity_counts().clone().read()
-                    .from_err();
+                    .err_into();
 
                 // let _smoother_layers = 6;
                 // let _energy_level_raw = _smoother_layers * cycle_count_running_ttl;

@@ -7,8 +7,8 @@
 use std::collections::{HashMap};
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
-use qutex::QrwLock;
-use vibi::bismit::futures::Future;
+use vibi::bismit::ocl::async::qutex::QrwLock;
+use vibi::bismit::futures::{executor, Future, FutureExt};
 use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
     SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas};
 use vibi::bismit::map::*;
@@ -169,10 +169,11 @@ impl SubcorticalNucleus for EvalSensory {
 
                 match layer.sub().name() {
                     "external_0" => {
-                        let future_sdrs = self.input_sdrs.clone().read().from_err();
+                        let future_sdrs = self.input_sdrs.clone().read().err_into();
 
                         let future_write_guard = tx.send()
                             .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                            .err_into()
                             .flatten();
 
                         let future_write = future_write_guard
@@ -188,10 +189,10 @@ impl SubcorticalNucleus for EvalSensory {
                         work_pool.complete_work(future_write)?;
                     },
                     "external_1" => {
-                        let mut write_guard = tx.send()
-                            .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
-                            .flatten()
-                            .wait()
+                        let mut write_guard = executor::block_on(tx.send()
+                                .map(|buf_opt| buf_opt.map(|buf| buf.write_u8()))
+                                .err_into()
+                                .flatten())
                             .expect("future err")
                             .expect("write guard is None");
 

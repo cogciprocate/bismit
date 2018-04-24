@@ -1,8 +1,6 @@
 //! Encode a sequence of scalar values and display their representation.
 
 // #![allow(unused_imports, unused_variables, dead_code)]
-#![feature(conservative_impl_trait)]
-#![feature(universal_impl_trait)]
 
 extern crate rand;
 extern crate env_logger;
@@ -11,7 +9,7 @@ extern crate clap;
 #[macro_use] extern crate colorify;
 extern crate smallvec;
 extern crate vibi;
-extern crate qutex;
+// extern crate qutex;
 
 // mod layer_sampler;
 mod spatial;
@@ -24,7 +22,8 @@ use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
 use rand::XorShiftRng;
 use rand::distributions::{Range, IndependentSample};
-use qutex::QrwLock;
+use vibi::bismit::futures::executor;
+use vibi::bismit::ocl::async::qutex::QrwLock;
 use vibi::window;
 use vibi::bismit::ocl::{Buffer, RwVec};
 use vibi::bismit::{encode, Cortex, SubcorticalNucleusLayer, TractSender,
@@ -432,7 +431,7 @@ impl Sdrs {
     /// Returns the (v, u) coords. of the next active cell with an index
     /// greater than (the next active cell after) `pattern_idx`.
     pub fn a_middle_active_cell(&self, pattern_idx: usize) -> (u32, u32) {
-        let patterns = self.lock.clone().read().wait().unwrap();
+        let patterns = executor::block_on(self.lock.clone().read()).unwrap();
         let pattern = &patterns[pattern_idx];
 
         let mut mid_active_cel_idx = None;
