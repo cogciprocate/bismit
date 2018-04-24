@@ -147,7 +147,6 @@ fn check_stuff(samples: CorticalSamples, focus_cels: Vec<FocusCell>,
     }
 
 
-
     // TODO: Check `next_sdr` against tuft states (print accuracy %).
 
     // BASAL_DISTAL_TUFT_ID

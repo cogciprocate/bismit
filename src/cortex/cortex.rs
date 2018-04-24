@@ -1,16 +1,17 @@
 // #![allow(unused_imports, dead_code, unused_variables)]
 
-use std::thread::{self, JoinHandle};
+// use std::thread::{self, JoinHandle};
 use time;
-use futures::{Sink, Stream, Future};
-use futures::sync::mpsc::{self, Sender};
-use futures_cpupool::{CpuPool, Builder as CpuPoolBuilder};
-use tokio_core::reactor::Core;
+// use futures::{executor, SinkExt, StreamExt, Future};
+// use futures::StreamExt;
+// use futures::channel::mpsc::{self, Sender};
+// use futures_cpupool::{CpuPool, Builder as CpuPoolBuilder};
+// use tokio_core::reactor::Core;
 #[cfg(feature = "profile")]
 use cpuprofiler::PROFILER;
 use ocl::{self, Platform, Context, Device};
 use cmn::{CmnResult, MapStore};
-use cortex::{CorticalArea, CorticalAreaSettings};
+use cortex::{CorticalArea, CorticalAreaSettings, WorkPool, /*WorkPoolRemote*/};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use subcortex::{Subcortex, SubcorticalNucleus, Thalamus};
 
@@ -22,93 +23,6 @@ const WORK_POOL_BUFFER_SIZE: usize = 32;
 
 pub type CorticalAreas = MapStore<&'static str, CorticalArea>;
 
-
-/// A remote control for `WorkPool` used to submit futures needing completion.
-#[derive(Clone)]
-pub struct WorkPoolRemote {
-    cpu_pool: CpuPool,
-    reactor_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
-}
-
-impl WorkPoolRemote {
-    /// Submits a future which need only be polled to completion and that
-    /// contains no intensive CPU work (including memcpy).
-    pub fn complete<F>(&mut self, future: F) -> CmnResult<()>
-            where F: Future<Item=(), Error=()> + Send + 'static {
-        let tx = self.reactor_tx.take().unwrap();
-        self.reactor_tx.get_or_insert(tx.send(Box::new(future)).wait()?);
-        Ok(())
-    }
-
-    /// Submit a future which contains non-trivial CPU work (including memcpy).
-    pub fn complete_work<F>(&mut self, work: F) -> CmnResult<()>
-            where F: Future<Item=(), Error=()> + Send + 'static {
-        let future = self.cpu_pool.spawn(work);
-        self.complete(future)
-    }
-}
-
-
-/// A pool of worker threads and a tokio reactor core used to complete futures.
-pub struct WorkPool {
-    cpu_pool: CpuPool,
-    reactor_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
-    _reactor_thread: Option<JoinHandle<()>>,
-}
-
-impl WorkPool {
-    /// Returns a new `WorkPool`.
-    pub fn new() -> WorkPool {
-        let (reactor_tx, reactor_rx) = mpsc::channel(0);
-        let reactor_thread_name = "bismit_work_pool_reactor_core".to_owned();
-
-        let reactor_thread: JoinHandle<_> = thread::Builder::new()
-                .name(reactor_thread_name).spawn(move || {
-            let mut core = Core::new().unwrap();
-            let work = reactor_rx.buffer_unordered(WORK_POOL_BUFFER_SIZE).for_each(|_| Ok(()));
-            core.run(work).unwrap();
-        }).unwrap();
-
-        let cpu_pool = CpuPoolBuilder::new().name_prefix("bismit_work_pool_worker_").create();
-
-        WorkPool {
-            cpu_pool,
-            reactor_tx: Some(reactor_tx),
-            _reactor_thread: Some(reactor_thread),
-        }
-    }
-
-    /// Submits a future which need only be polled to completion and that
-    /// contains no intensive CPU work (including memcpy).
-    pub fn complete<F>(&mut self, future: F) -> CmnResult<()>
-            where F: Future<Item=(), Error=()> + Send + 'static {
-        let tx = self.reactor_tx.take().unwrap();
-        self.reactor_tx.get_or_insert(tx.send(Box::new(future)).wait()?);
-        Ok(())
-    }
-
-    /// Submit a future which contains non-trivial CPU work (including memcpy).
-    pub fn complete_work<F>(&mut self, work: F) -> CmnResult<()>
-            where F: Future<Item=(), Error=()> + Send + 'static {
-        let future = self.cpu_pool.spawn(work);
-        self.complete(future)
-    }
-
-    /// Returns a remote to this `WorkPool` usable to submit work.
-    pub fn remote(&self) -> WorkPoolRemote {
-        WorkPoolRemote {
-            cpu_pool: self.cpu_pool.clone(),
-            reactor_tx: self.reactor_tx.clone(),
-        }
-    }
-}
-
-impl Drop for WorkPool {
-    fn drop(&mut self) {
-        self.reactor_tx.take().unwrap().close().unwrap();
-        self._reactor_thread.take().unwrap().join().expect("error joining reactor thread");
-    }
-}
 
 
 // Prints the time it took to start up.
@@ -128,10 +42,12 @@ pub struct Cortex {
 }
 
 impl Cortex {
+    /// Returns a new `CortexBuilder`;
     pub fn builder(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList) -> Builder {
         Builder::new(layer_map_sl, area_sl)
     }
 
+    /// Creates and returns a new `Cortex`;
     pub fn new(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList,
             ca_settings: Option<CorticalAreaSettings>, mut subcortex: Subcortex,
             work_pool: Option<WorkPool>) -> CmnResult<Cortex> {
@@ -169,7 +85,7 @@ impl Cortex {
             areas: areas,
             thal: thal,
             sub: subcortex,
-            work_pool: work_pool.unwrap_or(WorkPool::new()),
+            work_pool: work_pool.unwrap_or(WorkPool::new(WORK_POOL_BUFFER_SIZE)?),
         })
     }
 
@@ -235,7 +151,7 @@ pub struct Builder {
     areas: AreaSchemeList,
     ca_settings: Option<CorticalAreaSettings>,
     subcortex: Subcortex,
-    work_pool: WorkPool,
+    work_pool: Option<WorkPool>,
 }
 
 impl Builder {
@@ -245,7 +161,7 @@ impl Builder {
             areas,
             ca_settings: None,
             subcortex: Subcortex::new(),
-            work_pool: WorkPool::new(),
+            work_pool: None,
         }
     }
 
@@ -257,9 +173,9 @@ impl Builder {
         &self.areas
     }
 
-    pub fn get_work_pool_remote(&self) -> WorkPoolRemote {
-        self.work_pool.remote()
-    }
+    // pub fn get_work_pool_remote(&self) -> WorkPoolRemote {
+    //     self.work_pool.remote()
+    // }
 
     pub fn ca_settings(mut self, ca_settings: CorticalAreaSettings) -> Builder {
         self.ca_settings = Some(ca_settings);
@@ -278,7 +194,8 @@ impl Builder {
     }
 
     pub fn build(self) -> CmnResult<Cortex> {
+        let work_pool = self.work_pool.unwrap_or(WorkPool::new(WORK_POOL_BUFFER_SIZE)?);
         Cortex::new(self.layer_maps, self.areas, self.ca_settings, self.subcortex,
-            Some(self.work_pool))
+            Some(work_pool))
     }
 }

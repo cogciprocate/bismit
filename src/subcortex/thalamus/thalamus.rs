@@ -13,7 +13,7 @@
 //!
 
 use std::borrow::Borrow;
-use futures::{Future, Async};
+// use futures::{Future, Async, task::Context as TaskContext};
 use cmn::{self, CmnError, CmnResult, TractDims, CorticalDims, MapStore};
 use map::{AreaMap, LayerAddress, AreaSchemeList, LayerMapSchemeList};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
@@ -217,14 +217,12 @@ impl Thalamus {
                 // }
                 //////// KEEPME
 
-                match rx.recv(wait_for_frame).poll() {
-                    Ok(Async::Ready(None)) => (),
-                    Ok(Async::Ready(_)) => panic!("Thalamus::cycle_pathways: \
+                match rx.recv(wait_for_frame).try_recv() {
+                    Ok(Some(None)) => (),
+                    Ok(Some(_)) => panic!("Thalamus::cycle_pathways: \
                         Nothing to receive. `Pathway::Input` should contain a send \
                         only tract channel "),
-                    Ok(Async::NotReady) => panic!("Thalamus::cycle_pathways: \
-                        Cycling pathways for input pathways (`Pathway::Input`) \
-                        should never have to wait."),
+                    Ok(None) => unreachable!(),
                     Err(err) => panic!("{}", err),
                 }
             }

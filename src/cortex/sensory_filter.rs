@@ -1,5 +1,5 @@
 use std::ops::Range;
-use futures::{Future, /*Sink*/};
+use futures::{FutureExt, /*Sink*/};
 // use futures::sync::mpsc::Sender;
 use ocl::{flags, Kernel, ProQue, SpatialDims, Buffer, Event, Queue, FutureReadGuard};
 use cmn::{CmnError, CmnResult, CorticalDims};

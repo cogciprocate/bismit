@@ -19,8 +19,11 @@ mod intra_column_inhib;
 mod sampler;
 #[cfg(any(test, feature = "eval"))]
 mod layer_sampler;
+// mod work_pool;
 
-pub use self::cortex::{Cortex, WorkPool, WorkPoolRemote, CorticalAreas};
+pub use ocl_extras::work_pool::{self, WorkPool, /*WorkPoolRemote*/};
+
+pub use self::cortex::{Cortex, /*WorkPool,*/ /*WorkPoolRemote,*/ CorticalAreas};
 pub use self::cortical_area::{CorticalArea, CorticalAreaSettings, SamplerKind, SamplerBufferKind};
 pub use self::axon_space::AxonSpace;
 pub use self::synapses::{Synapses, TuftDims};

@@ -45,7 +45,9 @@ pub enum InputGeneratorEncoder {
 impl InputGeneratorEncoder {
     /// Writes input data into a tract.
     pub fn write_into(&mut self, addr: LayerAddress, dims: TractDims, future_write: FutureWriteGuard<Vec<u8>>) {
+        // println!("About to wait...");
         let mut buffer = future_write.wait().expect("InputGeneratorEncoder::write_into");
+        // println!("Wait complete...");
         let mut frame = TractFrameMut::new(buffer.as_mut_slice(), dims);
 
         match *self {
@@ -317,10 +319,12 @@ impl InputGenerator {
         // println!("####### InputGenerator::send_to_pathway: self.disabled: {}", self.disabled);
         if !self.disabled {
             let pathway = layer.pathway.as_ref().expect("no pathway set");
+            // println!("About to wait...");
             let future_write = match pathway.send().wait().unwrap() {
                 Some(fw) => fw.write_u8(),
                 None => panic!("tract wants to skip frame"),
             };
+            // println!("Wait complete...");
 
             self.tx.send(EncoderCmd::WriteInto {
                 addr: layer.sub().addr(),

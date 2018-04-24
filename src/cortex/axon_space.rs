@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Range;
-use futures::future::{Future};
+use futures::future::{FutureExt};
 use ocl::{ProQue, Buffer, Event, EventList, Queue, MemFlags};
 use ocl::traits::MemLen;
 use cmn::{self, CmnError, CmnResult};

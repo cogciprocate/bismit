@@ -19,8 +19,8 @@ use std::sync::atomic::{fence, AtomicUsize, Ordering};
 use std::sync::atomic::Ordering::SeqCst;
 use std::cell::UnsafeCell;
 use std::thread;
-use futures::{Async, Poll};
-use futures::sync::oneshot::{self, Sender, Receiver, Canceled};
+use futures::{executor, Async, Poll, task::Context};
+use futures::channel::oneshot::{self, Sender, Receiver, Canceled};
 use crossbeam::sync::AtomicOption;
 use futures::{Future};
 use ocl::{RwVec, FutureReadGuard, FutureWriteGuard, ReadGuard, WriteGuard, OclPrm};
@@ -105,15 +105,15 @@ impl Future for FutureReadGuardVec {
     type Item = ReadGuardVec;
     type Error = CmnError;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self, cx: &mut Context) -> Poll<Self::Item, Self::Error> {
         match *self {
             FutureReadGuardVec::U8(ref mut frg_u8) => {
-                frg_u8.poll()
+                frg_u8.poll(cx)
                     .map(|rg_poll| rg_poll.map(|rg| ReadGuardVec::U8(rg)))
                     .map_err(|err| err.into())
             }
             FutureReadGuardVec::I8(ref mut frg_i8) => {
-                frg_i8.poll()
+                frg_i8.poll(cx)
                     .map(|rg_poll| rg_poll.map(|rg| ReadGuardVec::I8(rg)))
                     .map_err(|err| err.into())
 
@@ -187,7 +187,8 @@ pub enum FutureSend {
 
 impl FutureSend {
     pub fn wait(self) -> Result<Option<WriteBuffer>, Canceled> {
-        <Self as Future>::wait(self)
+        // <Self as Future>::wait(self)
+        executor::block_on(self)
     }
 }
 
@@ -195,11 +196,11 @@ impl Future for FutureSend {
     type Item = Option<WriteBuffer>;
     type Error = Canceled;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self, cx: &mut Context) -> Poll<Self::Item, Self::Error> {
         match *self {
             FutureSend::Send(ref mut b) => Ok(Async::Ready(b.take())),
             FutureSend::Skip => Ok(Async::Ready(None)),
-            FutureSend::Wait(ref mut rx, ref mut b) => rx.poll().map(|status| status.map(|_| b.take())),
+            FutureSend::Wait(ref mut rx, ref mut b) => rx.poll(cx).map(|status| status.map(|_| b.take())),
         }
     }
 }
@@ -214,7 +215,16 @@ pub enum FutureRecv {
 
 impl FutureRecv {
     pub fn wait(&mut self) -> Result<Option<ReadBuffer>, Canceled> {
-        Future::wait(self)
+        // Future::wait(self)
+        executor::block_on(self)
+    }
+
+    pub fn try_recv(&mut self) -> Result<Option<Option<ReadBuffer>>, Canceled> {
+        match *self {
+            FutureRecv::Recv(ref mut b) => Ok(Some(b.take())),
+            FutureRecv::Skip => Ok(Some(None)),
+            FutureRecv::Wait(ref mut rx) => rx.try_recv().map(|status| status.map(|b| Some(b))),
+        }
     }
 }
 
@@ -222,11 +232,11 @@ impl Future for FutureRecv {
     type Item = Option<ReadBuffer>;
     type Error = Canceled;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self, cx: &mut Context) -> Poll<Self::Item, Self::Error> {
         match *self {
             FutureRecv::Recv(ref mut b) => Ok(Async::Ready(b.take())),
             FutureRecv::Skip => Ok(Async::Ready(None)),
-            FutureRecv::Wait(ref mut rx) => rx.poll().map(|status| status.map(|b| Some(b))),
+            FutureRecv::Wait(ref mut rx) => rx.poll(cx).map(|status| status.map(|b| Some(b))),
         }
     }
 }

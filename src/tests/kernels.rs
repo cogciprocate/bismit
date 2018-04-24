@@ -37,7 +37,7 @@ pub fn axn_idxs(testbed: &TestBed) {
             .queue(testbed.ocl_pq.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
             .len(testbed.dims.clone())
-            .host_data(&vec_init)
+            .copy_host_slice(&vec_init)
             .build().unwrap()
     };
 
@@ -47,7 +47,7 @@ pub fn axn_idxs(testbed: &TestBed) {
             .queue(testbed.ocl_pq.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
             .len(testbed.dims.clone())
-            .host_data(&vec_init)
+            .copy_host_slice(&vec_init)
             .build().unwrap()
     };
 

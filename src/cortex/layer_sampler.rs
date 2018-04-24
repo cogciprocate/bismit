@@ -2,7 +2,7 @@
 
 use std::mem;
 use std::collections::HashMap;
-use futures::{Future, Poll, Async};
+use futures::{Future, Poll, Async, task::Context};
 use ::{Error as CmnError, Thalamus, CorticalAreas, TractReceiver, SamplerKind,
     SamplerBufferKind, FutureRecv, FutureReadGuardVec, ReadGuardVec, CellSampleIdxs,
     FutureCorticalSamples, CorticalSampler, CorticalSamples};
@@ -25,8 +25,8 @@ impl Future for FutureCorticalLayerSamples {
     type Item = CorticalLayerSamples;
     type Error = CmnError;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        self.samples.poll().map(|a| a.map(|s| CorticalLayerSamples { samples: s }))
+    fn poll(&mut self, cx: &mut Context) -> Poll<Self::Item, Self::Error> {
+        self.samples.poll(cx).map(|a| a.map(|s| CorticalLayerSamples { samples: s }))
     }
 }
 

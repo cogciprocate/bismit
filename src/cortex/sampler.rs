@@ -2,7 +2,7 @@
 
 use std::mem;
 use std::collections::HashMap;
-use futures::{Future, Poll, Async};
+use futures::{Future, Poll, Async, task::Context};
 use ::{Error as CmnError, Thalamus, CorticalAreas, TractReceiver, SamplerKind,
     SamplerBufferKind, FutureRecv, FutureReadGuardVec, ReadGuardVec};
 
@@ -51,7 +51,7 @@ impl Future for FutureCorticalSamples {
     type Item = CorticalSamples;
     type Error = CmnError;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self, cx: &mut Context) -> Poll<Self::Item, Self::Error> {
         // Poll each rx, returning `NotReady` if any is not ready:
         for &mut (_, ref mut state) in self.0.iter_mut() {
             if let RxState::Complete(_) = *state { continue; }
@@ -60,7 +60,7 @@ impl Future for FutureCorticalSamples {
 
             // Progress samplers in the `Rx` state:
             if let RxState::Rx(ref mut future_recv) = *state {
-                match future_recv.poll() {
+                match future_recv.poll(cx) {
                     Ok(Async::Ready(buf)) => {
                         let future_read_guard = match buf {
                             Some(b) => FutureReadGuardVec::from(b),
@@ -75,7 +75,7 @@ impl Future for FutureCorticalSamples {
                         };
                         new_state = Some(RxState::Lock(future_read_guard));
                     },
-                    Ok(Async::NotReady) => return Ok(Async::NotReady),
+                    Ok(Async::Pending) => return Ok(Async::Pending),
                     Err(err) => return Err(err.into()),
                 }
             }
@@ -87,11 +87,11 @@ impl Future for FutureCorticalSamples {
 
             // Progress samplers in the `Lock` state:
             if let RxState::Lock(ref mut future_guard) = *state {
-                match future_guard.poll() {
+                match future_guard.poll(cx) {
                     Ok(Async::Ready(guard)) => {
                         new_state = Some(RxState::Complete(guard));
                     }
-                    Ok(Async::NotReady) => return Ok(Async::NotReady),
+                    Ok(Async::Pending) => return Ok(Async::Pending),
                     Err(err) => return Err(err.into()),
                 }
             }
@@ -150,6 +150,7 @@ impl CorticalSampler {
     }
 
     /// Returns a new layer sampler which samples everything within a layer.
+    #[deprecated(note = "This method is liable to become out of date.")]
     pub fn everything(area_name: &str, layer_name: &str, idxs: CellSampleIdxs,
             thal: &mut Thalamus, cortical_areas: &mut CorticalAreas) -> CorticalSampler {
         let layer_addr = thal.area_maps().by_key(area_name).expect("invalid area name")

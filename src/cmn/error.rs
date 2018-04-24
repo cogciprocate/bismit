@@ -2,11 +2,12 @@ use std::io;
 // use std::error::{Error};
 use std::fmt;
 // use std::ops::Deref;
-use futures::sync::mpsc::SendError;
-use futures::sync::oneshot::Canceled;
+use futures::channel::mpsc::SendError;
+use futures::channel::oneshot::Canceled;
 use ocl;
 // use cmn::CmnResult;
 use map::ExecutionGraphError;
+use ocl_extras::work_pool::WorkPoolError;
 
 
 pub type CmnResult<T> = Result<T, CmnError>;
@@ -44,6 +45,8 @@ pub enum CmnError {
     OclError(ocl::Error),
     #[fail(display = "{}", _0)]
     ExecutionGraphError(ExecutionGraphError),
+    #[fail(display = "{}", _0)]
+    WorkPool(#[cause] WorkPoolError),
 }
 
 impl CmnError {
@@ -131,8 +134,8 @@ impl From<ocl::core::Error> for CmnError {
     }
 }
 
-impl<T> From<SendError<T>> for CmnError {
-    fn from(e: SendError<T>) -> CmnError {
+impl From<SendError> for CmnError {
+    fn from(e: SendError) -> CmnError {
         CmnError::OclError(ocl::Error::from(e))
     }
 }
@@ -146,6 +149,13 @@ impl From<Canceled> for CmnError {
 impl From<ExecutionGraphError> for CmnError {
     fn from(e: ExecutionGraphError) -> CmnError {
         CmnError::ExecutionGraphError(e)
+    }
+}
+
+impl From<WorkPoolError> for CmnError {
+    fn from(err: WorkPoolError) -> CmnError {
+        // Error { inner: Context::new(ErrorKind::WorkPool(err)) }
+        CmnError::WorkPool(err)
     }
 }
 

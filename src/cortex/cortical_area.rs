@@ -2,7 +2,7 @@
 
 use std::collections::{HashSet, BTreeMap};
 use std::ops::Range;
-use futures::Future;
+use futures::FutureExt;
 use ocl::{flags, Device, ProQue, Context, Buffer, Event, Queue, RwVec};
 use ocl::core::CommandQueueProperties;
 use ocl::builders::{BuildOpt, ProgramBuilder};
