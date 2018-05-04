@@ -44,5 +44,9 @@ git = "https://github.com/rust-lang-nursery/futures-rs"
 # [dev-dependencies]
 # qutex = "*"
 
+[dev-dependencies.qutex]
+version = "*"
+path = "../qutex"
+
 [workspace]
 members = ["eval"]
