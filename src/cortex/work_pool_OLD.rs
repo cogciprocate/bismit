@@ -10,15 +10,15 @@ use cmn::{CmnResult};
 
 
 /// A pool of worker threads and a tokio reactor core used to complete futures.
-pub struct WorkPoolOld {
+pub struct WorkPool {
     cpu_pool: CpuPool,
     reactor_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
     _reactor_thread: Option<JoinHandle<()>>,
 }
 
-impl WorkPoolOld {
-    /// Returns a new `WorkPoolOld`.
-    pub fn new(buffer_size: usize) -> WorkPoolOld {
+impl WorkPool {
+    /// Returns a new `WorkPool`.
+    pub fn new(buffer_size: usize) -> WorkPool {
         let (reactor_tx, reactor_rx) = mpsc::channel(0);
         let reactor_thread_name = "bismit_work_pool_reactor_core".to_owned();
 
@@ -31,7 +31,7 @@ impl WorkPoolOld {
 
         let cpu_pool = CpuPoolBuilder::new().name_prefix("bismit_work_pool_worker_").create();
 
-        WorkPoolOld {
+        WorkPool {
             cpu_pool,
             reactor_tx: Some(reactor_tx),
             _reactor_thread: Some(reactor_thread),
@@ -54,16 +54,16 @@ impl WorkPoolOld {
         self.complete(future)
     }
 
-    // /// Returns a remote to this `WorkPoolOld` usable to submit work.
-    // pub fn remote(&self) -> WorkPoolOldRemote {
-    //     WorkPoolOldRemote {
+    // /// Returns a remote to this `WorkPool` usable to submit work.
+    // pub fn remote(&self) -> WorkPoolRemote {
+    //     WorkPoolRemote {
     //         cpu_pool: self.cpu_pool.clone(),
     //         reactor_tx: self.reactor_tx.clone(),
     //     }
     // }
 }
 
-impl Drop for WorkPoolOld {
+impl Drop for WorkPool {
     fn drop(&mut self) {
         self.reactor_tx.take().unwrap().close().unwrap();
         self._reactor_thread.take().unwrap().join().expect("error joining reactor thread");
@@ -71,14 +71,14 @@ impl Drop for WorkPoolOld {
 }
 
 
-/// A remote control for `WorkPoolOld` used to submit futures needing completion.
+/// A remote control for `WorkPool` used to submit futures needing completion.
 #[derive(Clone)]
-pub struct WorkPoolOldRemote {
+pub struct WorkPoolRemote {
     cpu_pool: CpuPool,
     reactor_tx: Option<Sender<Box<Future<Item=(), Error=()> + Send>>>,
 }
 
-impl WorkPoolOldRemote {
+impl WorkPoolRemote {
     /// Submits a future which need only be polled to completion and that
     /// contains no intensive CPU work (including memcpy).
     pub fn complete<F>(&mut self, future: F) -> CmnResult<()>

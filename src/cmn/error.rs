@@ -7,7 +7,8 @@ use futures::channel::oneshot::Canceled;
 use ocl;
 // use cmn::CmnResult;
 use map::ExecutionGraphError;
-use ocl_extras::work_pool::WorkPoolError;
+// use ocl_extras::work_pool::WorkPoolError;
+use cortex::WorkPoolError;
 
 
 pub type CmnResult<T> = Result<T, CmnError>;
