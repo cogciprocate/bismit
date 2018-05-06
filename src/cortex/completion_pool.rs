@@ -11,24 +11,24 @@ use futures::executor::{enter, Executor, SpawnError, ThreadPool};
 use futures::channel::mpsc::{self, Sender};
 
 
-/// An error associated with `WorkPool`.
+/// An error associated with `CompletionPool`.
 #[derive(Debug, Fail)]
-pub enum WorkPoolError {
+pub enum CompletionPoolError {
     #[fail(display = "{}", _0)]
     StdIo(#[cause] ::std::io::Error),
     #[fail(display = "{}", _0)]
     FuturesMpscSend(#[cause] ::futures::channel::mpsc::SendError),
 }
 
-impl From<::std::io::Error> for WorkPoolError {
-    fn from(err: ::std::io::Error) -> WorkPoolError {
-        WorkPoolError::StdIo(err)
+impl From<::std::io::Error> for CompletionPoolError {
+    fn from(err: ::std::io::Error) -> CompletionPoolError {
+        CompletionPoolError::StdIo(err)
     }
 }
 
-impl From<::futures::channel::mpsc::SendError> for WorkPoolError {
-    fn from(err: ::futures::channel::mpsc::SendError) -> WorkPoolError {
-        WorkPoolError::FuturesMpscSend(err)
+impl From<::futures::channel::mpsc::SendError> for CompletionPoolError {
+    fn from(err: ::futures::channel::mpsc::SendError) -> CompletionPoolError {
+        CompletionPoolError::FuturesMpscSend(err)
     }
 }
 
@@ -77,21 +77,21 @@ impl Future for Task {
 }
 
 
-/// The event loop components of a `WorkPool`.
-struct WorkPoolCore {
+/// The event loop components of a `CompletionPool`.
+struct CompletionPoolCore {
     pool: FuturesUnordered<Task>,
     incoming: Rc<RefCell<Vec<Task>>>,
     thread_pool: ThreadPool,
 }
 
-impl WorkPoolCore {
+impl CompletionPoolCore {
     /// Create a new, empty work pool.
-    pub fn new() -> Result<WorkPoolCore, WorkPoolError> {
-        Ok(WorkPoolCore {
+    pub fn new() -> Result<CompletionPoolCore, CompletionPoolError> {
+        Ok(CompletionPoolCore {
             pool: FuturesUnordered::new(),
             incoming: Default::default(),
             thread_pool: ThreadPool::builder()
-                .name_prefix("work_pool_thread-")
+                .name_prefix("completion_pool_thread-")
                 .create()?,
         })
     }
@@ -129,7 +129,7 @@ impl WorkPoolCore {
     }
 
     pub fn run(&mut self) {
-        let _enter = enter().expect("cannot execute `WorkPool` \
+        let _enter = enter().expect("cannot execute `CompletionPool` \
             executor from within another executor");
 
         ThreadNotify::with_current(|thread| {
@@ -159,31 +159,33 @@ impl WorkPoolCore {
 ///
 /// Contains elements of a single-threaded event loop and a thread pool.
 ///
-/// Runs in and manages its own threads. Dropping the `WorkPool` will block
+/// Runs in and manages its own threads. Dropping the `CompletionPool` will block
 /// the dropping thread until all submitted and spawned work is complete.
-pub struct WorkPool {
+pub struct CompletionPool {
     core_tx: Option<Sender<Box<Future<Item = (), Error = Never> + Send>>>,
     core_thread: Option<JoinHandle<()>>,
 }
 
-impl WorkPool {
+impl CompletionPool {
     /// Create a new, empty work pool.
-    pub fn new(buffer_size: usize) -> Result<WorkPool, WorkPoolError> {
+    pub fn new(buffer_size: usize) -> Result<CompletionPool, CompletionPoolError> {
         // Allowing the channel size to take the place of buffer causes
-        // deadlocks.
+        // deadlocks:
         let (core_tx, core_rx) = mpsc::channel(0);
         // let (core_tx, core_rx) = mpsc::channel(buffer_size);
-        let core_thread_pre = "work_pool_core-".to_owned();
+        let core_thread_pre = "completion_pool_core-".to_owned();
 
         let core_thread: JoinHandle<_> = thread::Builder::new()
                 .name(core_thread_pre).spawn(move || {
-            let mut core = WorkPoolCore::new().unwrap();
+            let mut core = CompletionPoolCore::new().unwrap();
+            // Allowing the channel size to take the place of buffer causes
+            // deadlocks:
             let work = Box::new(core_rx.buffer_unordered(buffer_size).for_each(|_| Ok(())).map(|_| ()));
             core.spawn(work).unwrap();
             core.run();
         }).unwrap();
 
-        Ok(WorkPool {
+        Ok(CompletionPool {
             core_tx: Some(core_tx),
             core_thread: Some(core_thread),
         })
@@ -191,7 +193,7 @@ impl WorkPool {
 
     /// Submits a future which need only be polled to completion and that
     /// contains no intensive CPU work (including memcpy).
-    pub fn complete<F>(&mut self, future: F) -> Result<(), WorkPoolError>
+    pub fn complete<F>(&mut self, future: F) -> Result<(), CompletionPoolError>
             where F: Future<Item = (), Error = Never> + Send + 'static {
         let tx = self.core_tx.take().unwrap();
         self.core_tx.get_or_insert(executor::block_on(tx.send(Box::new(future)))?);
@@ -199,7 +201,7 @@ impl WorkPool {
     }
 
     /// Polls a future which may contain non-trivial CPU work to completion.
-    pub fn complete_work<F>(&mut self, work: F) -> Result<(), WorkPoolError>
+    pub fn complete_work<F>(&mut self, work: F) -> Result<(), CompletionPoolError>
             where F: Future<Item = (), Error = Never> + Send + 'static {
         // let future = self.cpu_pool.spawn(work);
         // self.complete(future)
@@ -207,13 +209,13 @@ impl WorkPool {
     }
 }
 
-impl Drop for WorkPool {
+impl Drop for CompletionPool {
     /// Blocks the dropping thread until all submitted *and* all spawned work
     /// is complete.
     //
     // TODO: Guarantee above.
     fn drop(&mut self) {
         self.core_tx.take().unwrap().close_channel();
-        self.core_thread.take().unwrap().join().expect("Error joining `WorkPool` thread");
+        self.core_thread.take().unwrap().join().expect("Error joining `CompletionPool` thread");
     }
 }

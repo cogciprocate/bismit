@@ -6,7 +6,7 @@ use ocl::traits::MemLen;
 use cmn::{self, CmnError, CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, AxonDomainRoute, CommandRelations, CorticalBuffer,
     ThalamicTract, CommandUid};
-use ::{Thalamus, WorkPool};
+use ::{Thalamus, CompletionPool};
 use cortex::{SensoryFilter};
 #[cfg(any(test, feature = "eval"))]
 pub use self::tests::{AxonSpaceTest, AxnCoords};
@@ -507,7 +507,7 @@ impl AxonSpace {
     // dropping which requires exclusive access).
     //
     pub fn intake(&mut self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph,
-            bypass_filters: bool, work_pool: &mut WorkPool) -> CmnResult<()>
+            bypass_filters: bool, completion_pool: &mut CompletionPool) -> CmnResult<()>
     {
         if let Some((io_lyrs, mut _new_events)) = self.io_info.group_mut(AxonDomainRoute::Input) {
             for io_lyr in io_lyrs.iter_mut() {
@@ -516,7 +516,7 @@ impl AxonSpace {
                 if !DISABLE_IO && !bypass_filters && io_lyr.exe_cmd().is_filtered_write() {
                     let filter_chain_idx = io_lyr.filter_chain_idx().unwrap();
                     let filter_chain = &mut self.filter_chains[filter_chain_idx].1;
-                    filter_chain[0].write(future_reader, exe_graph, work_pool)?;
+                    filter_chain[0].write(future_reader, exe_graph, completion_pool)?;
                     for filter in filter_chain.iter() {
                         filter.cycle(exe_graph)?;
                     }
@@ -574,7 +574,7 @@ impl AxonSpace {
                                 .map_err(|err| panic!("{}", err));
                             //////////////
 
-                            work_pool.complete_work(future_write)?;
+                            completion_pool.complete_work(future_write)?;
                             Some(ev)
                         };
                         exe_graph.set_cmd_event(cmd_idx, event)?;
@@ -592,7 +592,7 @@ impl AxonSpace {
     // * TODO: Store thal tract index instead of using (LayerAddress) key.
     //
     pub fn output(&self, thal: &mut Thalamus, exe_graph: &mut ExecutionGraph,
-            work_pool: &mut WorkPool) -> CmnResult<()> {
+            completion_pool: &mut CompletionPool) -> CmnResult<()> {
         if let Some((io_lyrs, _wait_events)) = self.io_info.group(AxonDomainRoute::Output) {
             for io_lyr in io_lyrs.iter() {
                 if let &IoExeCmd::Read(_, cmd_idx) = io_lyr.exe_cmd() {
@@ -615,7 +615,7 @@ impl AxonSpace {
                             .and_then(|_guard| Ok(()))
                             .map_err(|err| panic!("{}", err)));
 
-                        work_pool.complete_work(future_read)?;
+                        completion_pool.complete_work(future_read)?;
                         Some(ev)
                     };
 

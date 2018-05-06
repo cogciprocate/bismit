@@ -11,7 +11,7 @@ use time;
 use cpuprofiler::PROFILER;
 use ocl::{self, Platform, Context, Device};
 use cmn::{CmnResult, MapStore};
-use cortex::{CorticalArea, CorticalAreaSettings, WorkPool, /*WorkPoolRemote*/};
+use cortex::{CorticalArea, CorticalAreaSettings, CompletionPool, /*CompletionPoolRemote*/};
 use map::{LayerMapSchemeList, LayerMapKind, AreaSchemeList};
 use subcortex::{Subcortex, SubcorticalNucleus, Thalamus};
 
@@ -38,7 +38,7 @@ pub struct Cortex {
     areas: CorticalAreas,
     thal: Thalamus,
     sub: Subcortex,
-    work_pool: WorkPool,
+    completion_pool: CompletionPool,
 }
 
 impl Cortex {
@@ -50,7 +50,7 @@ impl Cortex {
     /// Creates and returns a new `Cortex`;
     pub fn new(layer_map_sl: LayerMapSchemeList, area_sl: AreaSchemeList,
             ca_settings: Option<CorticalAreaSettings>, mut subcortex: Subcortex,
-            work_pool: Option<WorkPool>) -> CmnResult<Cortex> {
+            completion_pool: Option<CompletionPool>) -> CmnResult<Cortex> {
         println!("\nInitializing Cortex... ");
         let time_start = time::get_time();
         let platform = Platform::new(ocl::core::default_platform().unwrap());
@@ -85,7 +85,7 @@ impl Cortex {
             areas: areas,
             thal: thal,
             sub: subcortex,
-            work_pool: work_pool.unwrap_or(WorkPool::new(WORK_POOL_BUFFER_SIZE)?),
+            completion_pool: completion_pool.unwrap_or(CompletionPool::new(WORK_POOL_BUFFER_SIZE)?),
         })
     }
 
@@ -101,17 +101,17 @@ impl Cortex {
         #[cfg(feature = "profile")]
         PROFILER.lock().unwrap().start("./bismit.profile").unwrap();
 
-        self.thal.cycle_pathways(&mut self.work_pool);
+        self.thal.cycle_pathways(&mut self.completion_pool);
         // self.thal.cycle_input_generators();
 
-        self.sub.pre_cycle(&mut self.thal, &mut self.areas, &mut self.work_pool)?;
+        self.sub.pre_cycle(&mut self.thal, &mut self.areas, &mut self.completion_pool)?;
 
         for area in self.areas.values_mut() {
-            area.cycle(&mut self.thal, &mut self.work_pool)
+            area.cycle(&mut self.thal, &mut self.completion_pool)
                 .expect("Cortex::cycle(): Cortical area cycling error");
         }
 
-        self.sub.post_cycle(&mut self.thal, &mut self.areas, &mut self.work_pool)?;
+        self.sub.post_cycle(&mut self.thal, &mut self.areas, &mut self.completion_pool)?;
 
         #[cfg(feature = "profile")]
         PROFILER.lock().unwrap().stop().unwrap();
@@ -151,7 +151,7 @@ pub struct Builder {
     areas: AreaSchemeList,
     ca_settings: Option<CorticalAreaSettings>,
     subcortex: Subcortex,
-    work_pool: Option<WorkPool>,
+    completion_pool: Option<CompletionPool>,
 }
 
 impl Builder {
@@ -161,7 +161,7 @@ impl Builder {
             areas,
             ca_settings: None,
             subcortex: Subcortex::new(),
-            work_pool: None,
+            completion_pool: None,
         }
     }
 
@@ -173,8 +173,8 @@ impl Builder {
         &self.areas
     }
 
-    // pub fn get_work_pool_remote(&self) -> WorkPoolRemote {
-    //     self.work_pool.remote()
+    // pub fn get_completion_pool_remote(&self) -> CompletionPoolRemote {
+    //     self.completion_pool.remote()
     // }
 
     pub fn ca_settings(mut self, ca_settings: CorticalAreaSettings) -> Builder {
@@ -194,8 +194,8 @@ impl Builder {
     }
 
     pub fn build(self) -> CmnResult<Cortex> {
-        let work_pool = self.work_pool.unwrap_or(WorkPool::new(WORK_POOL_BUFFER_SIZE)?);
+        let completion_pool = self.completion_pool.unwrap_or(CompletionPool::new(WORK_POOL_BUFFER_SIZE)?);
         Cortex::new(self.layer_maps, self.areas, self.ca_settings, self.subcortex,
-            Some(work_pool))
+            Some(completion_pool))
     }
 }

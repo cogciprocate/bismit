@@ -9,7 +9,7 @@ use subcortex::Thalamus;
 use cmn::{MapStore, CorticalDims, CmnResult};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
-use cortex::{WorkPool, CorticalArea, CorticalAreas};
+use cortex::{CompletionPool, CorticalArea, CorticalAreas};
 
 // [NOTES]:
 //
@@ -147,14 +147,14 @@ pub trait SubcorticalNucleus: 'static + Send {
     /// This must never block the current thread. All work must be sent to the
     /// work pool.
     fn pre_cycle(&mut self, thal: &mut Thalamus, cortical_areas: &mut CorticalAreas,
-        work_pool: &mut WorkPool) -> CmnResult<()>;
+        completion_pool: &mut CompletionPool) -> CmnResult<()>;
 
     /// Is called after the cortex cycles.
     ///
     /// This must never block the current thread. All work must be sent to the
     /// work pool.
     fn post_cycle(&mut self, thal: &mut Thalamus, cortical_areas: &mut CorticalAreas,
-        work_pool: &mut WorkPool) -> CmnResult<()>;
+        completion_pool: &mut CompletionPool) -> CmnResult<()>;
 
     /// Returns the layer specified by `addr`.
     fn layer(&self, addr: LayerAddress) -> Option<&SubcorticalNucleusLayer>;
@@ -202,18 +202,18 @@ impl Subcortex {
 
     /// Pre-cycles all subcortical layers (see `SubcorticalNucleusLayer::pre_cycle`).
     pub fn pre_cycle(&mut self, thal: &mut Thalamus, cortical_areas: &mut CorticalAreas,
-            work_pool: &mut WorkPool) -> CmnResult<()> {
+            completion_pool: &mut CompletionPool) -> CmnResult<()> {
         for nucleus in self.nuclei.iter_mut() {
-            nucleus.pre_cycle(thal, cortical_areas, work_pool)?;
+            nucleus.pre_cycle(thal, cortical_areas, completion_pool)?;
         }
         Ok(())
     }
 
     /// Post-cycles all subcortical layers (see `SubcorticalNucleusLayer::post_cycle`).
     pub fn post_cycle(&mut self, thal: &mut Thalamus, cortical_areas: &mut CorticalAreas,
-            work_pool: &mut WorkPool) -> CmnResult<()> {
+            completion_pool: &mut CompletionPool) -> CmnResult<()> {
         for nucleus in self.nuclei.iter_mut() {
-            nucleus.post_cycle(thal, cortical_areas, work_pool)?;
+            nucleus.post_cycle(thal, cortical_areas, completion_pool)?;
         }
         Ok(())
     }

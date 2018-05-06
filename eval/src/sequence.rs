@@ -12,11 +12,11 @@ use std::ops::Range;
 use smallvec::SmallVec;
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range as RandRange, IndependentSample};
-use vibi::bismit::ocl::async::qutex::{Qutex, Guard, QrwLock, ReadGuard as QrwReadGuard};
+use qutex::{Qutex, Guard, QrwLock, ReadGuard as QrwReadGuard};
 use vibi::bismit::futures::{future, Future, FutureExt, Poll, Async};
 use vibi::bismit::ocl::{FutureReadGuard, ReadGuard};
 use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, CorticalAreaSettings,
-    Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas, TractReceiver,
+    Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, CompletionPool, CorticalAreas, TractReceiver,
     SamplerKind, SamplerBufferKind, ReadBuffer, FutureRecv, /*FutureReadGuardVec, ReadGuardVec,*/
     CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs, CorticalAreaTest,
     DendritesTest, SynapsesTest, CelCoords, DenCoords, SynCoords};
@@ -482,7 +482,7 @@ impl SubcorticalNucleus for EvalSequence {
     /// *
     ///
     fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            work_pool: &mut WorkPool) -> CmnResult<()> {
+            completion_pool: &mut CompletionPool) -> CmnResult<()> {
         let pattern_idx = self.sdr_cursor.incr_src_idx();
 
         // // Turn off backpressure for frames we are not interested in:
@@ -517,7 +517,7 @@ impl SubcorticalNucleus for EvalSequence {
                             })
                             .map_err(|err| panic!("{}", err));
 
-                        work_pool.complete_work(future_write)?;
+                        completion_pool.complete_work(future_write)?;
                     },
                     _ => (),
                 }
@@ -534,7 +534,7 @@ impl SubcorticalNucleus for EvalSequence {
     /// * Increments the cell activity counts
     ///
     fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            work_pool: &mut WorkPool) -> CmnResult<()> {
+            completion_pool: &mut CompletionPool) -> CmnResult<()> {
         for layer in self.layers.values() {
             if let Pathway::Input { srcs: _ } = layer.pathway {
                 debug_assert!(layer.sub().axon_domain().is_input());
@@ -568,7 +568,7 @@ impl SubcorticalNucleus for EvalSequence {
             })
             .map_err(|err| panic!("{}", err));
 
-        work_pool.complete_work(future_recv)?;
+        completion_pool.complete_work(future_recv)?;
 
 
         Ok(())

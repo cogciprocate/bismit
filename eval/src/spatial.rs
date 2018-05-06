@@ -4,10 +4,10 @@ use std::mem;
 use std::collections::{BTreeMap, HashMap};
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
-use vibi::bismit::ocl::async::qutex::QrwLock;
+use qutex::QrwLock;
 use vibi::bismit::futures::{executor, FutureExt};
 use vibi::bismit::{map, encode, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
-    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, /*WorkPoolRemote,*/ TractReceiver,
+    SubcorticalNucleus, SubcorticalNucleusLayer, CompletionPool, /*CompletionPoolRemote,*/ TractReceiver,
     SamplerKind, SamplerBufferKind, CorticalAreas};
 use vibi::bismit::map::*;
 use ::{IncrResult, TrialIter, Layer, Pathway};
@@ -397,14 +397,14 @@ struct EvalSpatial {
     current_trial_data: TrialData,
     current_pattern_idx: usize,
     trial_results: TrialResults,
-    // work_pool_remote: WorkPoolRemote,
+    // completion_pool_remote: CompletionPoolRemote,
     rng: XorShiftRng,
     samplers: Option<Samplers>,
 }
 
 impl EvalSpatial {
     pub fn new<S: Into<String>>(layer_map_schemes: &LayerMapSchemeList,
-            area_schemes: &AreaSchemeList, area_name: S, /*work_pool_remote: WorkPoolRemote*/)
+            area_schemes: &AreaSchemeList, area_name: S, /*completion_pool_remote: CompletionPoolRemote*/)
             -> EvalSpatial {
         let area_name = area_name.into();
         let area_scheme = &area_schemes[&area_name];
@@ -472,7 +472,7 @@ impl EvalSpatial {
             current_trial_data: TrialData::new(pattern_count, area_cell_count),
             current_pattern_idx: 0,
             trial_results,
-            // work_pool_remote,
+            // completion_pool_remote,
             rng,
             samplers: None,
         }
@@ -520,7 +520,7 @@ impl SubcorticalNucleus for EvalSpatial {
     /// *
     ///
     fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            work_pool: &mut WorkPool) -> CmnResult<()> {
+            completion_pool: &mut CompletionPool) -> CmnResult<()> {
         self.current_pattern_idx = if SEQUENTIAL_SDR {
             // Write a non-random SDR:
             self.trial_iter.global_cycle_idx % self.pattern_count
@@ -552,7 +552,7 @@ impl SubcorticalNucleus for EvalSpatial {
                     })
                     .map_err(|err| panic!("{}", err));
 
-                work_pool.complete_work(future_write)?;
+                completion_pool.complete_work(future_write)?;
             }
         }
 
@@ -565,7 +565,7 @@ impl SubcorticalNucleus for EvalSpatial {
     /// * Increments the cell activity counts
     ///
     fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            work_pool: &mut WorkPool) -> CmnResult<()> {
+            completion_pool: &mut CompletionPool) -> CmnResult<()> {
         if self.trial_iter.current_counter().is_collecting() {
             let pattern_idx = self.current_pattern_idx;
 
@@ -583,7 +583,7 @@ impl SubcorticalNucleus for EvalSpatial {
                 })
                 .map_err(|err| panic!("{}", err));
 
-            work_pool.complete_work(future_increment)?;
+            completion_pool.complete_work(future_increment)?;
         }
 
         match self.trial_iter.incr() {
@@ -668,10 +668,10 @@ pub fn eval() {
     let cortex_builder = Cortex::builder(layer_map_schemes, area_schemes)
         .ca_settings(ca_settings());
 
-    // let work_pool_remote = cortex_builder.get_work_pool_remote();
+    // let completion_pool_remote = cortex_builder.get_completion_pool_remote();
 
     let eval_nucl = EvalSpatial::new(cortex_builder.get_layer_map_schemes(),
-        cortex_builder.get_area_schemes(), IN_AREA, /*work_pool_remote*/);
+        cortex_builder.get_area_schemes(), IN_AREA, /*completion_pool_remote*/);
     let cortex_builder = cortex_builder.subcortical_nucleus(eval_nucl);
 
     let cortex = cortex_builder.build().unwrap();

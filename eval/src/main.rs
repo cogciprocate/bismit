@@ -9,7 +9,7 @@ extern crate clap;
 #[macro_use] extern crate colorify;
 extern crate smallvec;
 extern crate vibi;
-// extern crate qutex;
+extern crate qutex;
 
 // mod layer_sampler;
 mod spatial;
@@ -23,7 +23,7 @@ use std::sync::mpsc::{self, Sender, Receiver};
 use rand::XorShiftRng;
 use rand::distributions::{Range, IndependentSample};
 use vibi::bismit::futures::executor;
-use vibi::bismit::ocl::async::qutex::QrwLock;
+use qutex::QrwLock;
 use vibi::window;
 use vibi::bismit::ocl::{Buffer, RwVec};
 use vibi::bismit::{encode, Cortex, SubcorticalNucleusLayer, TractSender,

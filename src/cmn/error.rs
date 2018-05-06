@@ -7,8 +7,8 @@ use futures::channel::oneshot::Canceled;
 use ocl;
 // use cmn::CmnResult;
 use map::ExecutionGraphError;
-// use ocl_extras::work_pool::WorkPoolError;
-use cortex::WorkPoolError;
+// use ocl_extras::completion_pool::CompletionPoolError;
+use cortex::CompletionPoolError;
 
 
 pub type CmnResult<T> = Result<T, CmnError>;
@@ -47,7 +47,7 @@ pub enum CmnError {
     #[fail(display = "{}", _0)]
     ExecutionGraphError(ExecutionGraphError),
     #[fail(display = "{}", _0)]
-    WorkPool(#[cause] WorkPoolError),
+    CompletionPool(#[cause] CompletionPoolError),
 }
 
 impl CmnError {
@@ -153,10 +153,10 @@ impl From<ExecutionGraphError> for CmnError {
     }
 }
 
-impl From<WorkPoolError> for CmnError {
-    fn from(err: WorkPoolError) -> CmnError {
-        // Error { inner: Context::new(ErrorKind::WorkPool(err)) }
-        CmnError::WorkPool(err)
+impl From<CompletionPoolError> for CmnError {
+    fn from(err: CompletionPoolError) -> CmnError {
+        // Error { inner: Context::new(ErrorKind::CompletionPool(err)) }
+        CmnError::CompletionPool(err)
     }
 }
 

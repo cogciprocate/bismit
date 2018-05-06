@@ -10,7 +10,7 @@ use map::{LayerMapSchemeList, AreaSchemeList, EncoderScheme, LayerScheme, AxonTo
 use encode::{IdxStreamer, GlyphSequences, SensoryTract, ScalarSequence, ReversoScalarSequence,
     VectorEncoder, ScalarSdrGradiant};
 use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, TractSender};
-use cortex::{WorkPool, CorticalAreas};
+use cortex::{CompletionPool, CorticalAreas};
 
 
 #[derive(Debug)]
@@ -315,7 +315,7 @@ impl InputGenerator {
     ///
     /// Blocks when the pathway (`TractSender`) `backpressure = true`.
     ///
-    pub fn send_to_pathway(&self, layer: &InputGeneratorLayer, _work_pool: &mut WorkPool) {
+    pub fn send_to_pathway(&self, layer: &InputGeneratorLayer, _completion_pool: &mut CompletionPool) {
         // println!("####### InputGenerator::send_to_pathway: self.disabled: {}", self.disabled);
         if !self.disabled {
             let pathway = layer.pathway.as_ref().expect("no pathway set");
@@ -334,7 +334,7 @@ impl InputGenerator {
         }
     }
 
-    pub fn cycle_next(&self, _work_pool: &mut WorkPool) {
+    pub fn cycle_next(&self, _completion_pool: &mut CompletionPool) {
         if !self.disabled { self.tx.send(EncoderCmd::Cycle).unwrap(); }
     }
 
@@ -373,16 +373,16 @@ impl SubcorticalNucleus for InputGenerator {
     }
 
     fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            work_pool: &mut WorkPool) -> CmnResult<()> {
+            completion_pool: &mut CompletionPool) -> CmnResult<()> {
         for layer in self.layers.values() {
-            self.send_to_pathway(layer, work_pool);
+            self.send_to_pathway(layer, completion_pool);
         }
-        self.cycle_next(work_pool);
+        self.cycle_next(completion_pool);
         Ok(())
     }
 
     fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            _work_pool: &mut WorkPool) -> CmnResult<()> {
+            _completion_pool: &mut CompletionPool) -> CmnResult<()> {
         Ok(())
     }
 

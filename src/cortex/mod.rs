@@ -19,10 +19,10 @@ mod intra_column_inhib;
 mod sampler;
 #[cfg(any(test, feature = "eval"))]
 mod layer_sampler;
-mod work_pool;
+mod completion_pool;
 
-// pub use ocl_extras::work_pool::{self, WorkPool, /*WorkPoolRemote,*/ WorkPoolError};
-pub use self::work_pool::{WorkPool, /*WorkPoolRemote,*/ WorkPoolError};
+// pub use ocl_extras::completion_pool::{self, CompletionPool, /*CompletionPoolRemote,*/ CompletionPoolError};
+pub use self::completion_pool::{CompletionPool, /*CompletionPoolRemote,*/ CompletionPoolError};
 
 pub use self::cortex::{Cortex, CorticalAreas};
 pub use self::cortical_area::{CorticalArea, CorticalAreaSettings, SamplerKind, SamplerBufferKind};

@@ -6,7 +6,7 @@ use std::collections::{HashMap};
 use self::qutex::QrwLock;
 use futures::Future;
 use ::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
-    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas};
+    SubcorticalNucleus, SubcorticalNucleusLayer, CompletionPool, CorticalAreas};
 use map::*;
 use cmn::{TractFrameMut, TractDims};
 use tests::testbed;
@@ -69,7 +69,7 @@ impl SubcorticalNucleus for SynIdxTest {
     /// *
     ///
     fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            work_pool: &mut WorkPool) -> CmnResult<()> {
+            completion_pool: &mut CompletionPool) -> CmnResult<()> {
         // let pattern_idx = if SEQUENTIAL_SDR {
         //     // Choose a non-random SDR:
         //     self.trial_iter.global_cycle_idx % self.sdrs.pattern_count
@@ -101,7 +101,7 @@ impl SubcorticalNucleus for SynIdxTest {
             //                 })
             //                 .map_err(|err| panic!("{}", err));
 
-            //             work_pool.complete_work(future_write)?;
+            //             completion_pool.complete_work(future_write)?;
             //         },
             //         // "external_1" => {
             //         //     let mut write_guard = tx.send()
@@ -115,7 +115,7 @@ impl SubcorticalNucleus for SynIdxTest {
             //         //     let y = (self.cycles_complete as f64 / 10000.).sin();
 
             //         //     // self.encoder_2d.encode([x, y], &mut write_guard);
-            //         //     // work_pool.complete_work(  )?;
+            //         //     // completion_pool.complete_work(  )?;
             //         // },
             //         _ => (),
             //     }
@@ -132,7 +132,7 @@ impl SubcorticalNucleus for SynIdxTest {
     /// * Increments the cell activity counts
     ///
     fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            _work_pool: &mut WorkPool) -> CmnResult<()> {
+            _completion_pool: &mut CompletionPool) -> CmnResult<()> {
         for layer in self.layers.values() {
             // if let PathwayDir::Input { srcs: _ } = layer.pathway {
             //     debug_assert!(layer.sub().axon_domain().is_input());

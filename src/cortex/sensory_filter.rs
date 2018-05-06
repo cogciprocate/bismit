@@ -6,7 +6,7 @@ use cmn::{CmnError, CmnResult, CorticalDims};
 use map::{ExecutionGraph, CommandRelations, CorticalBuffer, ThalamicTract, CommandUid,
     LayerAddress};
 // use tract_terminal::{SliceBufferSource, OclBufferTarget};
-use ::WorkPool;
+use ::CompletionPool;
 
 #[derive(Debug)]
 pub struct SensoryFilter {
@@ -120,7 +120,7 @@ impl SensoryFilter {
 
     // pub fn write(&self, source: SliceBufferSource, exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
     pub fn write(&self, source: FutureReadGuard<Vec<u8>>, exe_graph: &mut ExecutionGraph,
-            work_pool: &mut WorkPool) -> CmnResult<()>
+            completion_pool: &mut CompletionPool) -> CmnResult<()>
     {
         let cmd_idx = self.exe_cmd_idx_write.ok_or(CmnError::new(
             "SensoryFilter::write: Write command not created for this filter."))?;
@@ -148,8 +148,8 @@ impl SensoryFilter {
         // let wtx = work_tx.take().unwrap();
         // work_tx.get_or_insert(wtx.send(Box::new(future_write)).wait()?);
 
-        // work_pool.complete_work(Box::new(future_write))?;
-        work_pool.complete(future_write)?;
+        // completion_pool.complete_work(Box::new(future_write))?;
+        completion_pool.complete(future_write)?;
 
         exe_graph.set_cmd_event(cmd_idx, Some(ev))?;
         Ok(())

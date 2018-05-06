@@ -12,7 +12,7 @@ use map::{AreaMap, SliceTractMap, LayerKind, DataCellKind, ControlCellKind,
 use ::Thalamus;
 use cortex::{AxonSpace, InhibitoryInterneuronNetwork, PyramidalLayer,
     SpinyStellateLayer, DataCellLayer, ControlCellLayer, ActivitySmoother, PyrOutputter,
-    WorkPool, ControlCellLayers, IntraColumnInhib};
+    CompletionPool, ControlCellLayers, IntraColumnInhib};
 use subcortex::{self, TractSender, TractReceiver};
 
 #[cfg(any(test, feature = "eval"))]
@@ -710,10 +710,10 @@ impl CorticalArea {
     ///
     //
     // * TODO: ISOLATE LEARNING INTO SEPARATE THREAD
-    pub fn cycle(&mut self, thal: &mut Thalamus, work_pool: &mut WorkPool) -> CmnResult<()> {
+    pub fn cycle(&mut self, thal: &mut Thalamus, completion_pool: &mut CompletionPool) -> CmnResult<()> {
         // (1.) Axon Intake:
         self.axns.intake(thal, &mut self.exe_graph, self.settings.bypass_filters,
-            work_pool)?;
+            completion_pool)?;
 
         // (2.) SSTs Cycle:
         if !self.settings.disable_sscs {
@@ -775,10 +775,10 @@ impl CorticalArea {
         // self.flush_queues();
 
         // (9.) Axon Output:
-        self.axns.output(thal, &mut self.exe_graph, work_pool)?;
+        self.axns.output(thal, &mut self.exe_graph, completion_pool)?;
 
         // (10.) Samplers:
-        self.cycle_samplers(work_pool)?;
+        self.cycle_samplers(completion_pool)?;
 
         // println!("######### Cycle complete.");
 
@@ -803,7 +803,7 @@ impl CorticalArea {
     }
 
     /// Cycles through sampling requests.
-    fn cycle_samplers(&mut self, work_pool: &mut WorkPool) -> CmnResult<()> {
+    fn cycle_samplers(&mut self, completion_pool: &mut CompletionPool) -> CmnResult<()> {
         use ocl::OclPrm;
         use ocl::async::FutureWriteGuard;
 
@@ -814,7 +814,7 @@ impl CorticalArea {
 
         fn cycle<T: OclPrm>(buf: &Buffer<T>, fwg: FutureWriteGuard<Vec<T>>,
                 sampler: &Sampler, cmd_idx: usize, exe_graph: &mut ExecutionGraph,
-                new_event: &mut Event, work_pool: &mut WorkPool) -> CmnResult<()> {
+                new_event: &mut Event, completion_pool: &mut CompletionPool) -> CmnResult<()> {
             let future_read = buf.cmd().read(fwg)
                 .offset(sampler.src_idx_range.start)
                 .len(sampler.src_idx_range.len())
@@ -824,7 +824,7 @@ impl CorticalArea {
                 .enq_async()?
                 .map(|_guard| ())
                 .map_err(|err| panic!("{}", err));
-            work_pool.complete(future_read)?;
+            completion_pool.complete(future_read)?;
             Ok(())
         }
 
@@ -845,117 +845,117 @@ impl CorticalArea {
                     SamplerKind::Axons(_lyr_addr) =>  {
                         let buf = self.axns.states();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::SomaStates(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).soma();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::SomaEnergies(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).energies();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::SomaActivities(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).activities();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::SomaFlagSets(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).flag_sets();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::TuftStates(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).tufts().states();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::TuftBestDenIds(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).tufts().best_den_ids();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::TuftBestDenStatesRaw(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).tufts().best_den_states_raw();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::TuftBestDenStates(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).tufts().best_den_states();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::TuftPrevStates(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).tufts().prev_states();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::TuftPrevBestDenIds(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).tufts().prev_best_den_ids();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::TuftPrevBestDenStatesRaw(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).tufts().prev_best_den_states_raw();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::TuftPrevBestDenStates(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).tufts().prev_best_den_states();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::DenStates(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().states();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::DenStatesRaw(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().states_raw();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::DenEnergies(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().energies();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::DenActivities(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().activities();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::DenThresholds(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().thresholds();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::SynStates(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().syns().states();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::SynStrengths(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().syns().strengths();
                         cycle(buf, write_buf.write_i8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::SynSrcColVOffs(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().syns().src_col_v_offs();
                         cycle(buf, write_buf.write_i8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::SynSrcColUOffs(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().syns().src_col_u_offs();
                         cycle(buf, write_buf.write_i8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     SamplerKind::SynFlagSets(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().syns().flag_sets();
                         cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
-                            &mut new_event, work_pool)?;
+                            &mut new_event, completion_pool)?;
                     },
                     _ => unimplemented!(),
                 }

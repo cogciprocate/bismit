@@ -7,10 +7,10 @@
 use std::collections::{HashMap};
 use rand::{self, XorShiftRng};
 use rand::distributions::{Range, IndependentSample};
-use vibi::bismit::ocl::async::qutex::QrwLock;
+use qutex::QrwLock;
 use vibi::bismit::futures::{executor, Future, FutureExt};
 use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
-    SubcorticalNucleus, SubcorticalNucleusLayer, WorkPool, CorticalAreas};
+    SubcorticalNucleus, SubcorticalNucleusLayer, CompletionPool, CorticalAreas};
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
@@ -151,7 +151,7 @@ impl SubcorticalNucleus for EvalSensory {
     /// *
     ///
     fn pre_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            work_pool: &mut WorkPool) -> CmnResult<()> {
+            completion_pool: &mut CompletionPool) -> CmnResult<()> {
         self.current_pattern_idx = if SEQUENTIAL_SDR {
             // Choose a non-random SDR:
             self.trial_iter.global_cycle_idx % self.pattern_count
@@ -186,7 +186,7 @@ impl SubcorticalNucleus for EvalSensory {
                             })
                             .map_err(|err| panic!("{}", err));
 
-                        work_pool.complete_work(future_write)?;
+                        completion_pool.complete_work(future_write)?;
                     },
                     "external_1" => {
                         let mut write_guard = executor::block_on(tx.send()
@@ -201,7 +201,7 @@ impl SubcorticalNucleus for EvalSensory {
 
                         self.encoder_2d.encode([x, y], &mut write_guard);
 
-                        // work_pool.complete_work(  )?;
+                        // completion_pool.complete_work(  )?;
                     },
                     _ => (),
                 }
@@ -217,7 +217,7 @@ impl SubcorticalNucleus for EvalSensory {
     /// * Increments the cell activity counts
     ///
     fn post_cycle(&mut self, _thal: &mut Thalamus, _cortical_areas: &mut CorticalAreas,
-            _work_pool: &mut WorkPool) -> CmnResult<()> {
+            _completion_pool: &mut CompletionPool) -> CmnResult<()> {
         for layer in self.layers.values() {
             if let Pathway::Input { srcs: _ } = layer.pathway {
                 debug_assert!(layer.sub().axon_domain().is_input());

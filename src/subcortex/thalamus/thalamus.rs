@@ -17,7 +17,7 @@ use std::borrow::Borrow;
 use cmn::{self, CmnError, CmnResult, TractDims, CorticalDims, MapStore};
 use map::{AreaMap, LayerAddress, AreaSchemeList, LayerMapSchemeList};
 use ocl::{Context, EventList, Buffer, RwVec, FutureReadGuard, FutureWriteGuard};
-use ::{InputGenerator, WorkPool};
+use ::{InputGenerator, CompletionPool};
 use subcortex::{self, Subcortex, TractSender, TractReceiver};
 
 
@@ -190,7 +190,7 @@ impl Thalamus {
     }
 
     /// Cycles thalamic tract pathways.
-    pub fn cycle_pathways(&mut self, _work_pool: &mut WorkPool) {
+    pub fn cycle_pathways(&mut self, _completion_pool: &mut CompletionPool) {
         // Cycle all input pathways first.
         for pathway in self.pathways.values_mut().iter_mut() {
             if let Pathway::Input { ref mut rx, wait_for_frame, .. } = *pathway {
@@ -201,7 +201,7 @@ impl Thalamus {
                 //     .map(|_guard_opt| ())
                 //     .map_err(|err| panic!("{}", err));
 
-                // work_pool.complete(future_read_guard)
+                // completion_pool.complete(future_read_guard)
                 //     .expect("Thalamus::cycle_pathways")
                 //////// KEEPME
 
@@ -212,7 +212,7 @@ impl Thalamus {
                 //         .map(|_read_guard| ())
                 //         .map_err(|err| panic!("{}", err));
 
-                //     work_pool.complete(future_read_guard)
+                //     completion_pool.complete(future_read_guard)
                 //         .expect("Thalamus::cycle_pathways")
                 // }
                 //////// KEEPME

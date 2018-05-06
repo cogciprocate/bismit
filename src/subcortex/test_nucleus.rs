@@ -7,7 +7,7 @@ use subcortex::{Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer};
 use cmn::{MapStore, CorticalDims};
 use map::{AreaScheme, EncoderScheme, LayerMapScheme, LayerScheme, AxonTopology, LayerAddress,
     AxonDomain, AxonTags, AxonSignature};
-use ::{WorkPool, CorticalArea};
+use ::{CompletionPool, CorticalArea};
 
 pub struct TestScNucleus {
     area_name: String,
@@ -33,11 +33,11 @@ impl TestScNucleus {
 //         &self.area_name
 //     }
 
-//     fn pre_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {
+//     fn pre_cycle(&mut self, _thal: &mut Thalamus, _completion_pool: &mut CompletionPool) {
 //         println!("Pre-cycling!");
 //     }
 
-//     fn post_cycle(&mut self, _thal: &mut Thalamus, _work_pool: &mut WorkPool) {
+//     fn post_cycle(&mut self, _thal: &mut Thalamus, _completion_pool: &mut CompletionPool) {
 //         println!("Post-cycling!");
 //     }
 
