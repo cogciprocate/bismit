@@ -2,21 +2,20 @@
 //
 // Some of this is blatantly plagiarized from `futures-rs`.
 
-#![allow(unused_imports, unused_variables, dead_code)]
+// #![allow(unused_imports, unused_variables, dead_code)]
 
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{Sender as StdSender, Receiver as StdReceiver, SyncSender};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::rc::{Rc, Weak};
+use std::sync::mpsc::{Sender as StdSender, Receiver as StdReceiver};
+use std::rc::Rc;
 use std::cell::RefCell;
 use std::thread::{self, JoinHandle, Thread};
 use futures::{executor, SinkExt, StreamExt, Future, Never, Poll, Async, Stream, FutureExt};
 use futures::stream::FuturesUnordered;
 use futures::task::{self, Context, Waker, LocalMap, Wake};
-use futures::executor::{enter, Executor, SpawnError, ThreadPool};
-use futures::channel::mpsc::{self, Sender};
+use futures::executor::{enter, Executor, SpawnError};
+use futures::channel::mpsc::{Sender as FuturesSender};
 
-use cmn::{CmnResult, UnparkMutex};
+use cmn::completion_pool::unpark_mutex::UnparkMutex;
 
 /// An error associated with `CompletionPool`.
 #[derive(Debug, Fail)]
@@ -120,9 +119,6 @@ impl WorkerTask {
                 };
                 match res {
                     Ok(Async::Pending) => {}
-                    // Ok(Async::Pending) => {
-                    //     println!("Async::Pending");
-                    // },
                     Ok(Async::Ready(())) => return wake_handle.mutex.complete(),
                     Err(never) => match never {},
                 }
@@ -156,10 +152,8 @@ enum Command {
 #[derive(Debug)]
 struct WorkerPoolInner {
     tx: Mutex<StdSender<Command>>,
-    // tx: Mutex<SyncSender<Command>>,
     rx: Mutex<StdReceiver<Command>>,
     size: usize,
-    // cnt: AtomicUsize,
     threads: Mutex<Vec<JoinHandle<()>>>,
 }
 
@@ -167,13 +161,11 @@ impl WorkerPoolInner {
     fn new(size: usize) -> WorkerPoolInner {
         assert!(size > 0);
         let (tx, rx) = ::std::sync::mpsc::channel();
-        // let (tx, rx) = ::std::sync::mpsc::sync_channel(0);
 
         WorkerPoolInner {
             tx: Mutex::new(tx),
             rx: Mutex::new(rx),
             size,
-            // cnt: AtomicUsize::new(1),
             threads: Mutex::new(Vec::with_capacity(size)),
         }
     }
@@ -182,7 +174,7 @@ impl WorkerPoolInner {
         self.tx.lock().unwrap().send(cmd).unwrap();
     }
 
-    fn work(&self, idx: usize) {
+    fn work(&self, _idx: usize) {
         let _scope = enter().unwrap();
         loop {
             let msg = self.rx.lock().unwrap().recv().unwrap();
@@ -206,17 +198,6 @@ impl WorkerPoolInner {
         }
     }
 }
-
-// impl Drop for WorkerPoolInner {
-//     /// Blocks the dropping thread until all worker threads have completed
-//     /// their work.
-//     fn drop(&mut self) {
-//         println!("Dropping WorkerPoolInner...");
-
-
-//         println!("WorkerPoolInner dropped.");
-//     }
-// }
 
 
 /// A bunch of threads that do stuff.
@@ -261,36 +242,6 @@ impl Executor for WorkerPool {
     }
 }
 
-// impl Clone for WorkerPool {
-//     fn clone(&self) -> WorkerPool {
-//         self.inner.cnt.fetch_add(1, Ordering::Relaxed);
-//         WorkerPool { inner: self.inner.clone() }
-//     }
-// }
-
-// impl Drop for WorkerPool {
-//     /// Blocks the dropping thread until all worker threads have completed
-//     /// their work.
-//     fn drop(&mut self) {
-//         // if self.inner.cnt.fetch_sub(1, Ordering::Relaxed) == 1 {
-//         //     for _ in 0..self.inner.size {
-//         //         self.inner.send(Command::Stop);
-//         //     }
-//         // }
-//         // println!("Dropping WorkerPool...");
-//         // for _ in 0..self.inner.size {
-//         //     self.inner.send(Command::Stop);
-//         // }
-//         // let mut threads = self.inner.threads.lock().unwrap();
-//         // for thread in threads.drain(..) {
-//         //     thread.join().unwrap()
-//         // }
-//         // println!("WorkerPool dropped.");
-
-//         println!("Dropping WorkerPool...");
-//     }
-// }
-
 
 /// A work pool task.
 struct CompletionTask {
@@ -312,7 +263,6 @@ impl Future for CompletionTask {
 struct CompletionPoolCore {
     pool: FuturesUnordered<CompletionTask>,
     incoming: Rc<RefCell<Vec<CompletionTask>>>,
-    // thread_pool: ThreadPool,
     worker_pool: WorkerPool,
 }
 
@@ -322,9 +272,6 @@ impl CompletionPoolCore {
         Ok(CompletionPoolCore {
             pool: FuturesUnordered::new(),
             incoming: Default::default(),
-            // thread_pool: ThreadPool::builder()
-            //     .name_prefix("completion_pool_thread-")
-            //     .create()?,
             // FIXME: Use `num_cpus`.
             worker_pool,
         })
@@ -399,7 +346,7 @@ impl CompletionPoolCore {
 // TODO: Add a note comparing this to the tokio threadpool (lack of work
 // stealing, performance, etc.).
 pub struct CompletionPool {
-    core_tx: Option<Sender<Box<Future<Item = (), Error = Never> + Send>>>,
+    core_tx: Option<FuturesSender<Box<Future<Item = (), Error = Never> + Send>>>,
     core_thread: Option<JoinHandle<()>>,
     worker_pool: WorkerPool,
 }
@@ -407,8 +354,9 @@ pub struct CompletionPool {
 impl CompletionPool {
     /// Create a new, empty work pool.
     pub fn new(buffer_size: usize) -> Result<CompletionPool, CompletionPoolError> {
-        // Allowing the channel to be the buffer causes deadlocks, presumably
-        // because the tasks are polled in order:
+        // Allowing the channel to be the 'buffer' can cause deadlocks because
+        // the tasks are polled one at a time, in order. Being out of order is
+        // crucial:
         let (core_tx, core_rx) = ::futures::channel::mpsc::channel(0);
         let core_thread_pre = "completion_pool_thread-core".to_owned();
         let worker_pool = WorkerPool::new(4)?;
@@ -450,10 +398,6 @@ impl CompletionPool {
     // of interactions with the completion queue.
     pub fn complete_work(&mut self, work: Box<Future<Item = (), Error = Never> + Send>)
             -> Result<(), CompletionPoolError> {
-            // where F: Future<Item = (), Error = Never> + Send + 'static {
-        // let future = self.cpu_pool.spawn(work);
-        // self.complete(future)
-        // self.complete(work)
         self.worker_pool.spawn(work).map_err(|err| err.into())
     }
 }
