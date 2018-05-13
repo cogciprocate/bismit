@@ -574,7 +574,7 @@ impl AxonSpace {
                                 .map_err(|err| panic!("{}", err));
                             //////////////
 
-                            completion_pool.complete_work(future_write)?;
+                            completion_pool.complete_work(Box::new(future_write))?;
                             Some(ev)
                         };
                         exe_graph.set_cmd_event(cmd_idx, event)?;

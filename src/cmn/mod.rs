@@ -15,6 +15,7 @@ mod tract_frame;
 mod map_store;
 mod double_buffer_mutex;
 mod xorshiftrng;
+mod completion_pool;
 pub mod util;
 
 use std;
@@ -49,6 +50,8 @@ pub use self::double_buffer_mutex::DoubleBufferMutex;
 // A clone of the counterpart types in the `rand` crate. Duplicated due to
 // some sort of bug with deriving `Debug`.
 pub use self::xorshiftrng::{weak_rng, XorShiftRng, Range, SampleRange};
+
+pub(crate) use self::completion_pool::UnparkMutex;
 
 
 // pub trait ParaHexArray {
