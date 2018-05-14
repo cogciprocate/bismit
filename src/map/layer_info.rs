@@ -348,14 +348,27 @@ impl LayerInfo {
         }
     }
 
+    pub fn is_input(&self) -> bool {
+        self.layer_scheme.axon_domain().is_input()
+    }
+
+    pub fn is_output(&self) -> bool {
+        debug_assert!(self.sources.is_empty());
+        self.layer_scheme.axon_domain().is_output()
+    }
+
+    pub fn is_local(&self) -> bool {
+        debug_assert!(self.sources.is_empty());
+        self.layer_scheme.axon_domain().is_local()
+    }
+
+
     #[inline] pub fn layer_addr(&self) -> LayerAddress { self.layer_addr }
     #[inline] pub fn layer_id(&self) -> usize { self.layer_addr.layer_id() }
     #[inline] pub fn name<'s>(&'s self) -> &'s str { &self.name }
     #[inline] pub fn layer_tags(&self) -> LayerTags { self.layer_tags }
     #[inline] pub fn kind(&self) -> &LayerKind { self.layer_scheme.kind() }
     #[inline] pub fn axon_domain(&self) -> &AxonDomain { self.layer_scheme.axon_domain() }
-    #[inline] pub fn is_input(&self) -> bool { self.layer_scheme.axon_domain().is_input() }
-    #[inline] pub fn is_output(&self) -> bool { self.layer_scheme.axon_domain().is_output() }
     #[inline] pub fn sources(&self) -> &[SourceLayerInfo]  { &self.sources }
     #[inline] pub fn ttl_axon_count(&self) -> u32 { self.ttl_axon_count }
     #[inline] pub fn axon_topology(&self) -> AxonTopology { self.axon_topology.clone() }

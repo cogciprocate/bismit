@@ -45,6 +45,7 @@ pub mod tests {
     use cmn::{self, CorticalDims, XorShiftRng};
     use std::fmt::{Display, Formatter, Result};
     use super::DataCellLayer;
+    use ::Thalamus;
 
     pub trait DataCellLayerTest: DataCellLayer {
         fn cycle_solo(&self);
@@ -137,19 +138,37 @@ pub mod tests {
         u_id: u32,
     }
 
+    impl<'l> Cell<'l> {
+        pub fn axon_idx(&self) -> u32 {
+            1000
+        }
+    }
+
 
 
     /// A stand-alone map able to resolve the index of any cell component
     /// within a data cell layer (tufts, dendrites, synapses, etc.).
     #[derive(Clone, Debug)]
     pub struct DataCellLayerMap {
-        lyr_dims: CorticalDims,
+        layer_dims: CorticalDims,
     }
 
     impl DataCellLayerMap {
-        pub fn new(lyr_dims: CorticalDims) -> DataCellLayerMap {
+        pub fn from_names(area_name: &str, layer_name: &str, thal: &mut Thalamus) -> DataCellLayerMap {
+            // let layer_addr = thal.area_maps().by_key(area_name).expect("invalid area name")
+            //     .layer_map().layers().by_key(self.layer_name).expect("invalid layer name")
+            //     .layer_addr();
+
+            let layer_addr = thal.layer_addr(area_name, layer_name);
+            let layer_dims = thal.area_maps()[layer_addr.area_id()].layer_dims(layer_addr.layer_id())
+                .expect("DataCellLayerMap::from_names: Invalid layer name. Layer name must be \
+                    valid for the area and have an output or local axon domain (a non-input layer).");
+            // let area_dims = .dims().clone();
+            // let layer_depth =
+            // let layer_dims = CorticalDims::new(0, 0, 0);
+
             DataCellLayerMap {
-                lyr_dims,
+                layer_dims,
             }
         }
 

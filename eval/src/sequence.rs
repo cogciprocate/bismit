@@ -413,35 +413,45 @@ impl SubcorticalNucleus for EvalSequence {
             layer.pathway = Pathway::new(thal, layer.sub());
         }
 
-        let lyr_addr = thal.area_maps().by_key(PRI_AREA).expect("invalid area name")
-            .layer_map().layers().by_key("iii").expect("invalid lyr name")
-            .layer_addr();
+        // let lyr_addr = thal.area_maps().by_key(PRI_AREA).expect("invalid area name")
+        //     .layer_map().layers().by_key("iii").expect("invalid lyr name")
+        //     .layer_addr();
+        let lyr_addr = thal.layer_addr(PRI_AREA, "iii");
 
-        let sampler_kinds = vec![
-            SamplerKind::Axons(None),
-            SamplerKind::SomaStates(lyr_addr),
-            // SamplerKind::SomaEnergies(lyr_addr),
-            // SamplerKind::SomaActivities(lyr_addr),
-            // SamplerKind::SomaFlagSets(lyr_addr),
-            SamplerKind::TuftStates(lyr_addr),
-            SamplerKind::TuftBestDenIds(lyr_addr),
-            SamplerKind::TuftBestDenStatesRaw(lyr_addr),
-            SamplerKind::TuftBestDenStates(lyr_addr),
-            // SamplerKind::TuftPrevStates(lyr_addr),
-            // SamplerKind::TuftPrevBestDenIds(lyr_addr),
-            // SamplerKind::TuftPrevBestDenStatesRaw(lyr_addr),
-            // SamplerKind::TuftPrevBestDenStates(lyr_addr),
-            SamplerKind::DenStates(lyr_addr),
-            // SamplerKind::DenStatesRaw(lyr_addr),
-            // SamplerKind::DenEnergies(lyr_addr),
-            // SamplerKind::DenActivities(lyr_addr),
-            // SamplerKind::DenThresholds(lyr_addr),
-            SamplerKind::SynStates(lyr_addr),
-            SamplerKind::SynStrengths(lyr_addr),
-            // SamplerKind::SynSrcColVOffs(lyr_addr),
-            // SamplerKind::SynSrcColUOffs(lyr_addr),
-            SamplerKind::SynFlagSets(lyr_addr),
-        ];
+        // Ensure that layer dimensions are set properly simply for debug purposes:
+        assert!({
+            let layer_dims_0 = cortical_areas.by_key_mut(PRI_AREA).unwrap()
+                .layer_test_mut("iii").unwrap().dims().clone();
+            let layer_dims_1 = thal.area_maps()[lyr_addr.area_id()]
+                .layer_dims(lyr_addr.layer_id()).unwrap();
+            layer_dims_0 == layer_dims_1
+        });
+
+        // let sampler_kinds = vec![
+        //     SamplerKind::Axons(None),
+        //     SamplerKind::SomaStates(lyr_addr),
+        //     // SamplerKind::SomaEnergies(lyr_addr),
+        //     // SamplerKind::SomaActivities(lyr_addr),
+        //     // SamplerKind::SomaFlagSets(lyr_addr),
+        //     SamplerKind::TuftStates(lyr_addr),
+        //     SamplerKind::TuftBestDenIds(lyr_addr),
+        //     SamplerKind::TuftBestDenStatesRaw(lyr_addr),
+        //     SamplerKind::TuftBestDenStates(lyr_addr),
+        //     // SamplerKind::TuftPrevStates(lyr_addr),
+        //     // SamplerKind::TuftPrevBestDenIds(lyr_addr),
+        //     // SamplerKind::TuftPrevBestDenStatesRaw(lyr_addr),
+        //     // SamplerKind::TuftPrevBestDenStates(lyr_addr),
+        //     SamplerKind::DenStates(lyr_addr),
+        //     // SamplerKind::DenStatesRaw(lyr_addr),
+        //     // SamplerKind::DenEnergies(lyr_addr),
+        //     // SamplerKind::DenActivities(lyr_addr),
+        //     // SamplerKind::DenThresholds(lyr_addr),
+        //     SamplerKind::SynStates(lyr_addr),
+        //     SamplerKind::SynStrengths(lyr_addr),
+        //     // SamplerKind::SynSrcColVOffs(lyr_addr),
+        //     // SamplerKind::SynSrcColUOffs(lyr_addr),
+        //     SamplerKind::SynFlagSets(lyr_addr),
+        // ];
 
         // TODO: Determine the tuft id of the basal distal tuft instead:
         assert!(cortical_areas.by_key_mut(PRI_AREA).unwrap().layer_test_mut("iii").unwrap()

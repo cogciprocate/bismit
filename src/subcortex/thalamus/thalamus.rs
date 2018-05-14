@@ -284,6 +284,13 @@ impl Thalamus {
         rx
     }
 
+    /// Returns the layer address for the specified layer.
+    pub fn layer_addr(&self, area_name: &str, layer_name: &str) -> LayerAddress {
+        self.area_maps.by_key(area_name).expect("Thalamus::layer_addr: invalid area name")
+            .layer_map().layers().by_key(layer_name).expect("Thalamus::layer_addr: invalid layer name")
+            .layer_addr()
+    }
+
 
     // [REMOVE ME]
     //

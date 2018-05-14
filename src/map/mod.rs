@@ -263,6 +263,13 @@ impl AxonDomain {
         }
     }
 
+    pub fn is_local(&self) -> bool {
+        match *self {
+            AxonDomain::Local => true,
+            _ => false,
+        }
+    }
+
     pub fn route(&self) -> AxonDomainRoute {
         match *self {
             AxonDomain::Input(_) => AxonDomainRoute::Input,

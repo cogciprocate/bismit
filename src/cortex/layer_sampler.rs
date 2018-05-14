@@ -362,9 +362,11 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
 
     /// Build and return a new `CorticalLayerSampler`.
     pub fn build(&mut self) -> CorticalLayerSampler {
-        let layer_addr = self.thal.area_maps().by_key(self.area_name).expect("invalid area name")
-            .layer_map().layers().by_key(self.layer_name).expect("invalid layer name")
-            .layer_addr();
+        // let layer_addr = self.thal.area_maps().by_key(self.area_name).expect("invalid area name")
+        //     .layer_map().layers().by_key(self.layer_name).expect("invalid layer name")
+        //     .layer_addr();
+
+        let layer_addr = self.thal.layer_addr(self.area_name, self.layer_name);
 
         let mut sampler_kinds = Vec::with_capacity(32);
 

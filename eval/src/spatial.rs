@@ -487,9 +487,10 @@ impl SubcorticalNucleus for EvalSpatial {
             layer.pathway = Pathway::new(thal, layer.sub());
         }
 
-        let v1_l4_lyr_addr = thal.area_maps().by_key(PRI_AREA).expect("invalid area")
-            .layer_map().layers().by_key(SPT_LYR)
-            .expect("bad lyr").layer_addr();
+        // let v1_l4_lyr_addr = thal.area_maps().by_key(PRI_AREA).expect("invalid area")
+        //     .layer_map().layers().by_key(SPT_LYR)
+        //     .expect("bad lyr").layer_addr();
+        let v1_l4_lyr_addr = thal.layer_addr(PRI_AREA, SPT_LYR);
 
         let pri_area = cortical_areas.by_key_mut(PRI_AREA).unwrap();
 

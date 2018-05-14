@@ -107,6 +107,25 @@ impl AreaMap {
         slc_ids
     }
 
+    /// Returns the dimensions of a given output or local layer.
+    ///
+    /// Input layers may have complex dimensions. Passing an invalid
+    /// `layer_id` or a `layer_id` corresponding to an input layer will return
+    /// `None`.
+    pub fn layer_dims(&self, layer_id: usize) -> Option<CorticalDims> {
+        self.layer_map.layer_info(layer_id).and_then(|lyr| {
+            if lyr.is_input() {
+                None
+            } else {
+                debug_assert!(lyr.is_local() || lyr.is_output());
+                match lyr.irregular_layer_dims() {
+                    Some(dims) => Some(dims.clone()),
+                    None => Some(self.dims.clone_with_depth(lyr.depth())),
+                }
+            }
+        })
+    }
+
     /// Returns a list of tuples of (source slice id, synapse reach) for a
     /// tuft of a cellular layer.
     ///
