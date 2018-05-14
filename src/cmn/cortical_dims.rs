@@ -41,7 +41,7 @@ pub struct CorticalDims {
 }
 
 impl CorticalDims {
-    pub fn new(v_size: u32, u_size: u32, depth: u8, /*per_tft_l2: i8,*/ incr: Option<u32>) -> CorticalDims {
+    pub fn new(v_size: u32, u_size: u32, depth: u8, /*per_tft_l2: i8,*/ /*incr: Option<u32>*/) -> CorticalDims {
         //assert!(super::OPENCL_PREFERRED_VECTOR_MULTIPLE == 4);
         //println!("\n\n##### v_size: {}, u_size: {}", v_size, u_size);
         //let incr = resolve_incr(ocl);
@@ -56,7 +56,7 @@ impl CorticalDims {
             depth: depth,
             // tfts_per_cel: 1,
             // per_tft_l2: per_tft_l2,
-            incr: incr, // <<<<< PENDING RENAME
+            incr: None, // <<<<< PENDING RENAME
         }
     }
 
@@ -73,7 +73,7 @@ impl CorticalDims {
 
     // PHYSICAL_INCREMENT():
     //         TODO: improve this description
-    #[inline]
+    #[deprecated]
     pub fn incr(&self) -> CmnResult<u32> {
         match self.incr {
             Some(pi) => Ok(pi),
@@ -198,17 +198,21 @@ impl CorticalDims {
     }
 
     #[inline]
+    #[deprecated]
     pub fn clone_with_incr(&self, incr: usize) -> CorticalDims {
         CorticalDims { incr: Some(incr as u32), .. *self }
     }
 
     #[inline]
+    #[deprecated]
     pub fn set_incr(&mut self, incr: usize) {
         self.incr = Some(incr as u32);
     }
 
     #[inline]
+    #[deprecated]
     pub fn with_incr(mut self, incr: usize) -> CorticalDims {
+        #[allow(deprecated)]
         self.set_incr(incr);
         self
     }
@@ -309,7 +313,7 @@ impl<'a> Into<SpatialDims> for &'a CorticalDims {
 
 impl From<(u32, u32, u8)> for CorticalDims {
     fn from(tuple: (u32, u32, u8)) -> CorticalDims {
-        CorticalDims::new(tuple.0, tuple.1, tuple.2, None)
+        CorticalDims::new(tuple.0, tuple.1, tuple.2)
     }
 }
 
