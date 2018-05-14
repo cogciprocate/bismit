@@ -378,11 +378,30 @@ pub mod tests {
     use std::fmt::{Display, Formatter, Result as FmtResult};
     use super::{AreaMap};
 
+
+    pub fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: i8,
+            u_size: u32, u_id: u32, u_ofs: i8) -> bool {
+        (slc_id < slc_count) && coord_is_safe(v_size, v_id, v_ofs)
+            && coord_is_safe(u_size, u_id, u_ofs)
+    }
+
+    pub fn coord_is_safe(dim_size: u32, coord_id: u32, coord_ofs: i8) -> bool {
+        let coord_ttl = coord_id as i64 + coord_ofs as i64;
+        (coord_ttl >= 0) && (coord_ttl < dim_size as i64)
+    }
+
+    pub fn axon_idx_unsafe(idz: u32, v_id: u32, v_ofs: i8, u_size: u32, u_id: u32, u_ofs: i8) -> u32 {
+        let v = v_id as i64 + v_ofs as i64;
+        let u = u_id as i64 + u_ofs as i64;
+        (idz as i64 + (v * u_size as i64) + u) as u32
+    }
+
+
     pub trait AreaMapTest {
         fn axon_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8)
-                -> Result<u32, &'static str>;
+            -> Result<u32, &'static str>;
         fn axon_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
-                -> Result<u32, &'static str>;
+            -> Result<u32, &'static str>;
     }
 
     impl AreaMapTest for AreaMap {
@@ -447,24 +466,5 @@ pub mod tests {
         fn fmt(&self, fmtr: &mut Formatter) -> FmtResult {
             write!(fmtr, "slice_map: {}", self.slice_map)
         }
-    }
-
-    pub fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: i8,
-            u_size: u32, u_id: u32, u_ofs: i8
-        ) -> bool
-    {
-        (slc_id < slc_count) && coord_is_safe(v_size, v_id, v_ofs)
-            && coord_is_safe(u_size, u_id, u_ofs)
-    }
-
-    pub fn coord_is_safe(dim_size: u32, coord_id: u32, coord_ofs: i8) -> bool {
-        let coord_ttl = coord_id as i64 + coord_ofs as i64;
-        (coord_ttl >= 0) && (coord_ttl < dim_size as i64)
-    }
-
-    pub fn axon_idx_unsafe(idz: u32, v_id: u32, v_ofs: i8, u_size: u32, u_id: u32, u_ofs: i8) -> u32 {
-        let v = v_id as i64 + v_ofs as i64;
-        let u = u_id as i64 + u_ofs as i64;
-        (idz as i64 + (v * u_size as i64) + u) as u32
     }
 }

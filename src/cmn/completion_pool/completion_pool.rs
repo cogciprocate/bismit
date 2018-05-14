@@ -1,6 +1,8 @@
 //! A work completion pool.
 //
 // Some of this is blatantly plagiarized from `futures-rs`.
+//
+// TODO: Add num_cpus
 
 // #![allow(unused_imports, unused_variables, dead_code)]
 

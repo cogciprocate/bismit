@@ -8,7 +8,7 @@ use cmn::{CmnResult, CorticalDims};
 use map::{CellScheme, ExecutionGraph, LayerAddress};
 
 #[cfg(any(test, feature = "eval"))]
-pub use self::tests::{DataCellLayerTest, CelCoords};
+pub use self::tests::{DataCellLayerTest, CelCoords, DataCellLayerMap};
 
 pub trait DataCellLayer: 'static + Debug + Send {
     fn layer_name<'s>(&'s self) -> &'s str;
@@ -33,8 +33,11 @@ pub trait DataCellLayer: 'static + Debug + Send {
 }
 
 
+
 #[cfg(any(test, feature = "eval"))]
 pub mod tests {
+    #![allow(dead_code)]
+
     use std::ops::{Range};
     // use rand::{XorShiftRng};
 
@@ -110,8 +113,7 @@ pub mod tests {
                 self.lyr_dims.u_size(), self.u_id)
         }
 
-        #[deprecated]
-        // Use `::set_cel_axon_idx` and `::axon_idx` instead.
+        #[deprecated(note = "Use `::set_cel_axon_idx` and `::axon_idx` instead.")]
         pub fn cel_axon_idx(&self, area_map: &AreaMap) -> u32 {
             area_map.axon_idx(self.axon_slc_id, self.v_id, 0, self.u_id, 0).unwrap()
         }
@@ -121,6 +123,43 @@ pub mod tests {
         fn fmt(&self, fmtr: &mut Formatter) -> Result {
             write!(fmtr, "CelCoords {{ idx: {}, slc_id_lyr: {}, axon_slc_id: {}, v_id: {}, u_id: {} }}",
                 self.idx, self.slc_id_lyr, self.axon_slc_id, self.v_id, self.u_id)
+        }
+    }
+
+
+
+
+
+    pub struct Cell<'l> {
+        layer: &'l DataCellLayerMap,
+        slc_id_lyr: u8,
+        v_id: u32,
+        u_id: u32,
+    }
+
+
+
+    /// A stand-alone map able to resolve the index of any cell component
+    /// within a data cell layer (tufts, dendrites, synapses, etc.).
+    #[derive(Clone, Debug)]
+    pub struct DataCellLayerMap {
+        lyr_dims: CorticalDims,
+    }
+
+    impl DataCellLayerMap {
+        pub fn new(lyr_dims: CorticalDims) -> DataCellLayerMap {
+            DataCellLayerMap {
+                lyr_dims,
+            }
+        }
+
+        pub fn cell<'l>(&'l self, coords: (u8, u32, u32)) -> Cell<'l> {
+            Cell {
+                layer: self,
+                slc_id_lyr: coords.0,
+                v_id: coords.1,
+                u_id: coords.2,
+            }
         }
     }
 

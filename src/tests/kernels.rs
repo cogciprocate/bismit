@@ -32,24 +32,20 @@ pub fn axn_idxs(testbed: &TestBed) {
     let syn_range = (0 - syn_reach, syn_reach + 1);
 
     let vec_init = ocl_extras::shuffled_vec(syn_range, testbed.dims.to_len());
-    let u_offs = unsafe {
-        Buffer::builder()
+    let u_offs = Buffer::builder()
             .queue(testbed.ocl_pq.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
             .len(testbed.dims.clone())
             .copy_host_slice(&vec_init)
-            .build().unwrap()
-    };
+            .build().unwrap();
 
     let vec_init = ocl_extras::shuffled_vec(syn_range, testbed.dims.to_len());
-    let v_offs = unsafe {
-        Buffer::builder()
+    let v_offs = Buffer::builder()
             .queue(testbed.ocl_pq.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE | ocl::flags::MEM_COPY_HOST_PTR)
             .len(testbed.dims.clone())
             .copy_host_slice(&vec_init)
-            .build().unwrap()
-    };
+            .build().unwrap();
 
     // let mut outs_sc = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());
     // let mut outs_v4 = Buffer::<u32>::with_vec(&testbed.dims, testbed.ocl_pq.queue());

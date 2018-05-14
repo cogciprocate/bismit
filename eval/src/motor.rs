@@ -1,3 +1,5 @@
+//! Experiment with motor output. Does nothing useful atm.
+
 #![allow(dead_code, unused_imports, unused_mut)]
 
 // use std::mem;

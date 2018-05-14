@@ -24,13 +24,12 @@ impl AreaScheme {
     }
 
     pub fn irregular(name: &'static str, layer_map_name: &'static str, dims: [u32; 2])
-            -> AreaScheme
-    {
+            -> AreaScheme {
         AreaScheme {
             area_id: None,
             name: name,
             layer_map_name: layer_map_name,
-            dims: CorticalDims::new(dims[0], dims[1], 0, None),
+            dims: CorticalDims::new(dims[0], dims[1], 0),
             encoder: EncoderScheme::None,
             filter_chains: Vec::with_capacity(4),
             aff_areas: Vec::with_capacity(4),

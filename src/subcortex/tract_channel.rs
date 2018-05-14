@@ -68,17 +68,31 @@ pub enum ReadGuardVec {
 }
 
 impl ReadGuardVec {
-    pub fn u8(&self) -> &ReadGuard<Vec<u8>> {
+    pub fn as_u8(&self) -> &ReadGuard<Vec<u8>> {
         match *self {
             ReadGuardVec::U8(ref rg) => rg,
-            _ => panic!("ReadGuardVec::u8: This guard is not a 'u8'."),
+            _ => panic!("ReadGuardVec::as_u8: This guard is not a 'u8'."),
         }
     }
 
-    pub fn i8(&self) -> &ReadGuard<Vec<i8>> {
+    pub fn into_u8(self) -> ReadGuard<Vec<u8>> {
+        match self {
+            ReadGuardVec::U8(rg) => rg,
+            _ => panic!("ReadGuardVec::into_u8: This guard is not a 'u8'."),
+        }
+    }
+
+    pub fn as_i8(&self) -> &ReadGuard<Vec<i8>> {
         match *self {
             ReadGuardVec::I8(ref rg) => rg,
-            _ => panic!("ReadGuardVec::i8: This guard is not an 'i8'."),
+            _ => panic!("ReadGuardVec::as_i8: This guard is not an 'i8'."),
+        }
+    }
+
+    pub fn into_i8(self) -> ReadGuard<Vec<i8>> {
+        match self {
+            ReadGuardVec::I8(rg) => rg,
+            _ => panic!("ReadGuardVec::into_i8: This guard is not an 'i8'."),
         }
     }
 }

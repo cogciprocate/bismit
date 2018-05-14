@@ -177,7 +177,8 @@ impl LearningTestBed {
             let aff_out_slc = aff_out_slc_ranges[0].start as u8;
 
             // Get a random cell and a random synapse on that cell:
-            let cel_coords = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().rand_cel_coords();
+            let mut cel_coords = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().rand_cel_coords();
+            cel_coords.set_axon_idx(area.area_map());
             let syn_coords = area.layer_test_mut(testbed::PRIMARY_TEMPORAL_PYR_LAYER_NAME).unwrap().dens_mut().syns_mut()
                 .rand_syn_coords(cel_coords.clone());
 
@@ -190,7 +191,10 @@ impl LearningTestBed {
             let prx_src_axon_idx = area.area_map().axon_idz(prx_src_slc) + cel_coords.col_id();
 
             // Our cell's axon:
-            let cel_axon_idx = cel_coords.cel_axon_idx(area.area_map());
+            // let cel_axon_idx = cel_coords.cel_axon_idx(area.area_map());
+
+            // Our cell's axon:
+            let cel_axon_idx = cel_coords.axon_idx();
 
             // Our cell's COLUMN output axon:
             let aff_out_axon_idx = area.area_map().axon_idz(aff_out_slc) + cel_coords.col_id();

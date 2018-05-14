@@ -42,7 +42,7 @@ pub use self::intra_column_inhib::IntraColumnInhib;
 #[cfg(any(test, feature = "eval"))]
 pub use self::sampler::{CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs};
 #[cfg(any(test, feature = "eval"))]
-pub use self::layer_sampler::{CorticalLayerSampler};
+pub use self::layer_sampler::{CorticalLayerSampler, FutureCorticalLayerSamples, CorticalLayerSamples};
 
 #[cfg(any(test, feature = "eval"))]
 pub use self::cortical_area::CorticalAreaTest;
@@ -53,4 +53,4 @@ pub use self::axon_space::{AxonSpaceTest, AxnCoords};
 #[cfg(any(test, feature = "eval"))]
 pub use self::dendrites::{DenCoords, DendritesTest, den_idx};
 #[cfg(any(test, feature = "eval"))]
-pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest};
+pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest, DataCellLayerMap};

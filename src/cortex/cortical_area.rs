@@ -426,7 +426,9 @@ impl CorticalArea {
             (ocl_pq.queue().clone(), ocl_pq.queue().clone(), ocl_pq.queue().clone())
         };
 
-        let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size().unwrap());
+        ///// TODO: Revisit this... is increment useful anymore?
+        // let dims = area_map.dims().clone_with_incr(ocl_pq.max_wg_size().unwrap());
+        let dims = area_map.dims().clone();
 
         println!("{mt}CORTICALAREA::NEW(): Area \"{}\" details: \
             (u_size: {}, v_size: {}, depth: {}), eff_areas: {:?}, aff_areas: {:?}, \n\

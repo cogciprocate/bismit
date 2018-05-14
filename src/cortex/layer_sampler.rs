@@ -1,17 +1,75 @@
 #![allow(unused_imports, dead_code)]
 
 use std::mem;
+use std::ops::Deref;
 use std::collections::HashMap;
 use futures::{Future, Poll, Async, task::Context};
+use ocl::ReadGuard;
 use ::{Error as CmnError, Thalamus, CorticalAreas, TractReceiver, SamplerKind,
     SamplerBufferKind, FutureRecv, FutureReadGuardVec, ReadGuardVec, CellSampleIdxs,
-    FutureCorticalSamples, CorticalSampler, CorticalSamples};
+    FutureCorticalSamples, CorticalSampler, CorticalSamples, LayerAddress};
 
 
 /// Cortical layer samples.
 #[derive(Debug)]
 pub struct CorticalLayerSamples {
     samples: CorticalSamples,
+    layer_addr: LayerAddress,
+    // axons: Option<ReadGuard<Vec<u8>>>,
+}
+
+impl CorticalLayerSamples {
+    fn new(samples: CorticalSamples, layer_addr: LayerAddress) -> CorticalLayerSamples {
+        CorticalLayerSamples {
+            // axons: None,
+            samples,
+            layer_addr,
+        }
+    }
+
+    pub fn axons(&self) -> Option<&ReadGuard<Vec<u8>>> {
+        self.samples.sample(&SamplerKind::Axons(None)).map(|s| s.as_u8())
+    }
+
+    pub fn soma_states(&self) -> Option<&ReadGuard<Vec<u8>>> {
+        self.samples.sample(&SamplerKind::SomaStates(self.layer_addr)).map(|s| s.as_u8())
+    }
+
+    pub fn tuft_states(&self) -> Option<&ReadGuard<Vec<u8>>> {
+        self.samples.sample(&SamplerKind::TuftStates(self.layer_addr)).map(|s| s.as_u8())
+    }
+
+    // axons: bool,
+    // soma_states: bool,
+    // soma_energies: bool,
+    // soma_activities: bool,
+    // soma_flag_sets: bool,
+    // tuft_states: bool,
+    // tuft_best_den_ids: bool,
+    // tuft_best_den_states_raw: bool,
+    // tuft_best_den_states: bool,
+    // tuft_prev_states: bool,
+    // tuft_prev_best_den_ids: bool,
+    // tuft_prev_best_den_states_raw: bool,
+    // tuft_prev_best_den_states: bool,
+    // den_states: bool,
+    // den_states_raw: bool,
+    // den_energies: bool,
+    // den_activities: bool,
+    // den_thresholds: bool,
+    // syn_states: bool,
+    // syn_strengths: bool,
+    // syn_src_col_v_offs: bool,
+    // syn_src_col_u_offs: bool,
+    // syn_flag_sets: bool,
+}
+
+impl Deref for CorticalLayerSamples {
+    type Target = CorticalSamples;
+
+    fn deref(&self) -> &Self::Target {
+        &self.samples
+    }
 }
 
 
@@ -19,6 +77,7 @@ pub struct CorticalLayerSamples {
 #[derive(Debug)]
 pub struct FutureCorticalLayerSamples {
     samples: FutureCorticalSamples,
+    layer_addr: LayerAddress,
 }
 
 impl Future for FutureCorticalLayerSamples {
@@ -26,7 +85,7 @@ impl Future for FutureCorticalLayerSamples {
     type Error = CmnError;
 
     fn poll(&mut self, cx: &mut Context) -> Poll<Self::Item, Self::Error> {
-        self.samples.poll(cx).map(|a| a.map(|s| CorticalLayerSamples { samples: s }))
+        self.samples.poll(cx).map(|a| a.map(|s| CorticalLayerSamples::new(s, self.layer_addr)))
     }
 }
 
@@ -35,6 +94,7 @@ impl Future for FutureCorticalLayerSamples {
 #[derive(Debug)]
 pub struct CorticalLayerSampler {
     sampler: CorticalSampler,
+    layer_addr: LayerAddress,
 }
 
 impl CorticalLayerSampler {
@@ -45,11 +105,11 @@ impl CorticalLayerSampler {
         CorticalLayerSamplerBuilder::new(area_name, layer_name, thal, cortical_areas)
     }
 
-    /// Begins receiving for all samplers and returns a future representing
-    /// reception completion.
+    /// Returns a future representing reception completion.
     pub fn recv(&self) -> FutureCorticalLayerSamples {
         FutureCorticalLayerSamples {
             samples: FutureCorticalSamples::new(&self.sampler.rxs),
+            layer_addr: self.layer_addr,
         }
     }
 
@@ -71,6 +131,7 @@ pub struct CorticalLayerSamplerBuilder<'b> {
     idxs: CellSampleIdxs,
     thal: &'b mut Thalamus,
     cortical_areas: &'b mut CorticalAreas,
+    axons: bool,
     soma_states: bool,
     soma_energies: bool,
     soma_activities: bool,
@@ -104,6 +165,7 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
             area_name, layer_name,
             idxs: CellSampleIdxs::All,
             thal, cortical_areas,
+            axons: false,
             soma_states: false,
             soma_energies: false,
             soma_activities: false,
@@ -130,12 +192,19 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
     }
 
     // This isn't currently hooked up:
-    pub fn idxs<'a>(&'a mut self, idxs: CellSampleIdxs) -> &'a mut CorticalLayerSamplerBuilder<'b> {
-        self.idxs = idxs;
+    pub fn idxs<'a>(&'a mut self, _idxs: CellSampleIdxs) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        unimplemented!();
+        // self.idxs = idxs;
+        // self
+    }
+
+    /// Includes all axon layers.
+    pub fn axons<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.axons = true;
         self
     }
 
-    /// Use all soma fields.
+    /// Includes all soma fields.
     pub fn soma<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
         self.soma_states = true;
         self.soma_energies = true;
@@ -144,7 +213,29 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
         self
     }
 
-    /// Use all tuft fields.
+    pub fn soma_states<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.soma_states = true;
+        self
+    }
+
+    pub fn soma_energies<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.soma_energies = true;
+        self
+    }
+
+    pub fn soma_activites<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.soma_activities = true;
+        self
+    }
+
+    pub fn soma_flag_sets<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.soma_flag_sets = true;
+        self
+
+    }
+
+
+    /// Includes all tuft fields.
     pub fn tuft<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
         self.tuft_states = true;
         self.tuft_best_den_ids = true;
@@ -157,7 +248,47 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
         self
     }
 
-    /// Use all den fields.
+    pub fn tuft_states<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.tuft_states = true;
+        self
+    }
+
+    pub fn tuft_best_den_ids<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.tuft_best_den_ids = true;
+        self
+    }
+
+    pub fn tuft_best_den_states_raw<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.tuft_best_den_states_raw = true;
+        self
+    }
+
+    pub fn tuft_best_den_states<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.tuft_best_den_states = true;
+        self
+    }
+
+    pub fn tuft_prev_states<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.tuft_prev_states = true;
+        self
+    }
+
+    pub fn tuft_prev_best_den_ids<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.tuft_prev_best_den_ids = true;
+        self
+    }
+
+    pub fn tuft_prev_best_den_states_raw<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.tuft_prev_best_den_states_raw = true;
+        self
+    }
+
+    pub fn tuft_prev_best_den_states<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.tuft_prev_best_den_states = true;
+        self
+    }
+
+    /// Includes all den fields.
     pub fn den<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
         self.den_states = true;
         self.den_states_raw = true;
@@ -167,7 +298,33 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
         self
     }
 
-    /// Use all syn fields.
+    pub fn den_states<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.den_states = true;
+        self
+    }
+
+    pub fn den_states_raw<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.den_states_raw = true;
+        self
+    }
+
+    pub fn den_energies<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.den_energies = true;
+        self
+    }
+
+    pub fn den_activites<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.den_activities = true;
+        self
+    }
+
+    pub fn den_thresholds<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.den_thresholds = true;
+        self
+    }
+
+
+    /// Includes all syn fields.
     pub fn syn<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
         self.syn_states = true;
         self.syn_strengths = true;
@@ -177,6 +334,32 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
         self
     }
 
+    pub fn syn_states<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.syn_states = true;
+        self
+    }
+
+    pub fn syn_strengths<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.syn_strengths = true;
+        self
+    }
+
+    pub fn syn_src_col_v_offs<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.syn_src_col_v_offs = true;
+        self
+    }
+
+    pub fn syn_src_col_u_offs<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.syn_src_col_u_offs = true;
+        self
+    }
+
+    pub fn syn_flag_sets<'a>(&'a mut self) -> &'a mut CorticalLayerSamplerBuilder<'b> {
+        self.syn_flag_sets = true;
+        self
+    }
+
+
     /// Build and return a new `CorticalLayerSampler`.
     pub fn build(&mut self) -> CorticalLayerSampler {
         let layer_addr = self.thal.area_maps().by_key(self.area_name).expect("invalid area name")
@@ -184,6 +367,8 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
             .layer_addr();
 
         let mut sampler_kinds = Vec::with_capacity(32);
+
+        if self.axons { sampler_kinds.push(SamplerKind::Axons(None)) }
 
         if self.soma_states { sampler_kinds.push(SamplerKind::SomaStates(layer_addr)) }
         if self.soma_energies { sampler_kinds.push(SamplerKind::SomaEnergies(layer_addr),) }
@@ -214,6 +399,7 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
         CorticalLayerSampler {
             sampler: CorticalSampler::new(self.area_name, sampler_kinds,
                 self.idxs.clone(), self.thal, self.cortical_areas),
+            layer_addr,
         }
     }
 }
