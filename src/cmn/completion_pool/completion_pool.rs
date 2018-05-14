@@ -381,8 +381,10 @@ impl CompletionPool {
     /// Submits a future which need only be polled to completion and that
     /// contains only trivial CPU work. Futures containing intensive work
     /// should be completed using `::complete_work` instead.
-    pub fn complete<F>(&mut self, future: F) -> Result<(), CompletionPoolError>
-            where F: Future<Item = (), Error = Never> + Send + 'static {
+    // pub fn complete<F>(&mut self, future: F) -> Result<(), CompletionPoolError>
+    //         where F: Future<Item = (), Error = Never> + Send + 'static {
+    pub fn complete(&mut self, future: Box<Future<Item = (), Error = Never> + Send>)
+            -> Result<(), CompletionPoolError> {
         let tx = self.core_tx.take().unwrap();
         // FIXME: Sending work should be done using `::try_send` and a loop
         // instead. (Loop while checking
@@ -393,9 +395,6 @@ impl CompletionPool {
     }
 
     /// Polls a future which may contain non-trivial CPU work to completion.
-    //
-    // NOTE: Using the worker pool as-is causes deadlocks presumably because
-    // of interactions with the completion queue.
     pub fn complete_work(&mut self, work: Box<Future<Item = (), Error = Never> + Send>)
             -> Result<(), CompletionPoolError> {
         self.worker_pool.spawn(work).map_err(|err| err.into())

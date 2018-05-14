@@ -552,7 +552,7 @@ impl SubcorticalNucleus for EvalSpatial {
                     })
                     .map_err(|err| panic!("{}", err));
 
-                completion_pool.complete_work(future_write)?;
+                completion_pool.complete_work(Box::new(future_write))?;
             }
         }
 
@@ -583,7 +583,7 @@ impl SubcorticalNucleus for EvalSpatial {
                 })
                 .map_err(|err| panic!("{}", err));
 
-            completion_pool.complete_work(future_increment)?;
+            completion_pool.complete_work(Box::new(future_increment))?;
         }
 
         match self.trial_iter.incr() {

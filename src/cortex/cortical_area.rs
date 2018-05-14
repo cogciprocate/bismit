@@ -824,7 +824,7 @@ impl CorticalArea {
                 .enq_async()?
                 .map(|_guard| ())
                 .map_err(|err| panic!("{}", err));
-            completion_pool.complete(future_read)?;
+            completion_pool.complete(Box::new(future_read))?;
             Ok(())
         }
 

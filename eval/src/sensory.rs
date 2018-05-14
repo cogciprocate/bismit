@@ -186,7 +186,7 @@ impl SubcorticalNucleus for EvalSensory {
                             })
                             .map_err(|err| panic!("{}", err));
 
-                        completion_pool.complete_work(future_write)?;
+                        completion_pool.complete_work(Box::new(future_write))?;
                     },
                     "external_1" => {
                         let mut write_guard = executor::block_on(tx.send()

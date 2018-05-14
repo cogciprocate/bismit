@@ -517,7 +517,7 @@ impl SubcorticalNucleus for EvalSequence {
                             })
                             .map_err(|err| panic!("{}", err));
 
-                        completion_pool.complete_work(future_write)?;
+                        completion_pool.complete_work(Box::new(future_write))?;
                     },
                     _ => (),
                 }
@@ -568,7 +568,7 @@ impl SubcorticalNucleus for EvalSequence {
             })
             .map_err(|err| panic!("{}", err));
 
-        completion_pool.complete_work(future_recv)?;
+        completion_pool.complete_work(Box::new(future_recv))?;
 
 
         Ok(())

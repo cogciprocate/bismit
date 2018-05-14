@@ -178,7 +178,7 @@ impl SubcorticalNucleus for EvalMotor {
                     })
                     .map_err(|err| panic!("{}", err));
 
-                completion_pool.complete_work(future_write)?;
+                completion_pool.complete_work(Box::new(future_write))?;
             }
         }
 

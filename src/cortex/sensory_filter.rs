@@ -149,7 +149,7 @@ impl SensoryFilter {
         // work_tx.get_or_insert(wtx.send(Box::new(future_write)).wait()?);
 
         // completion_pool.complete_work(Box::new(future_write))?;
-        completion_pool.complete(future_write)?;
+        completion_pool.complete(Box::new(future_write))?;
 
         exe_graph.set_cmd_event(cmd_idx, Some(ev))?;
         Ok(())
