@@ -3,6 +3,7 @@ use ocl_extras;
 use cmn::{self};
 use ocl::{self, Buffer, SpatialDims};
 use super::{TestBed, util};
+use SrcOfs;
 
 
 #[test]

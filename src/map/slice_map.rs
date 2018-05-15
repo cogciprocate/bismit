@@ -3,6 +3,7 @@ use ocl::{self, SpatialDims};
 use ocl::traits::MemLen;
 use cmn::{self, CorticalDims, SliceDims};
 use map::{area_map, LayerMap, AxonTopology, SliceTractMap};
+use SlcId;
 
 const PRNT: bool = false;
 
@@ -41,7 +42,7 @@ impl SliceMap {
 
         let mut axon_idz_ttl = 0u32;
         // For checking purposes:
-        let mut slc_id_ttl = 0u8;
+        let mut slc_id_ttl = 0 as SlcId;
 
         for (&slc_id, &layer) in slc_map.iter() {
             let mut add_slice = |slc_dims: SliceDims| {
@@ -180,17 +181,17 @@ impl SliceMap {
     }
 
     #[inline]
-    pub fn idz(&self, slc_id: u8) -> u32 {
+    pub fn idz(&self, slc_id: SlcId) -> u32 {
         self.axon_idzs[slc_id as usize]
     }
 
     #[inline]
-    pub fn layer_name<'s>(&'s self, slc_id: u8) -> &'s str {
+    pub fn layer_name<'s>(&'s self, slc_id: SlcId) -> &'s str {
         &self.layer_names[slc_id as usize]
     }
 
     #[inline]
-    pub fn slc_axon_count(&self, slc_id: u8) -> u32 {
+    pub fn slc_axon_count(&self, slc_id: SlcId) -> u32 {
         self.v_sizes[slc_id as usize] * self.u_sizes[slc_id as usize]
     }
 
@@ -198,7 +199,7 @@ impl SliceMap {
     // /// starting with `slc_id_first` and ending with and including
     // /// `slc_id_last`.
     // #[inline]
-    // pub fn axon_range(&self, slc_id_first: u8, slc_id_last: u8) -> Range<usize> {
+    // pub fn axon_range(&self, slc_id_first: SlcId, slc_id_last: SlcId) -> Range<usize> {
     //     let idz_first = self.idz(slc_id_first) as usize;
     //     let idz_last = self.idz(slc_id_last) as usize;
     //     idz_first..(idz_last + self.slc_axon_count(slc_id_last) as usize)
@@ -209,8 +210,8 @@ impl SliceMap {
     #[inline]
     pub fn axon_range(&self, slc_id_range: Range<usize>) -> Range<usize> {
         assert!(slc_id_range.end <= 255);
-        let slc_id_first = slc_id_range.start as u8;
-        let slc_id_last = (slc_id_range.end - 1) as u8;
+        let slc_id_first = slc_id_range.start as SlcId;
+        let slc_id_last = (slc_id_range.end - 1) as SlcId;
         let idz_first = self.idz(slc_id_first) as usize;
         let idz_last = self.idz(slc_id_last) as usize;
         idz_first..(idz_last + self.slc_axon_count(slc_id_last) as usize)
@@ -229,7 +230,7 @@ impl SliceMap {
     }
 
     #[inline] pub fn slc_count(&self) -> usize { self.axon_idzs.len() }
-    #[inline] pub fn depth(&self) -> u8 { self.axon_idzs.len() as u8 }
+    #[inline] pub fn depth(&self) -> SlcId { self.axon_idzs.len() as SlcId }
     #[inline] pub fn axon_count(&self) -> u32 { self.physical_len }
     #[inline] pub fn axon_idzs(&self) -> &Vec<u32> { &self.axon_idzs }
     #[inline] pub fn layer_names(&self) -> &[String] { &self.layer_names }

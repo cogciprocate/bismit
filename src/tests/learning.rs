@@ -7,6 +7,7 @@ use map::LayerTags;
 use cmn;
 use super::testbed;
 use super::util::{self, PtalAlco};
+use SrcOfs;
 
 // const LEARNING_TEST_ITERATIONS: usize = 5; //50;
 // const LEARNING_ITERS_PER_CELL: usize = 2;

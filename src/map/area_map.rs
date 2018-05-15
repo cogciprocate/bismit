@@ -5,7 +5,7 @@ use cmn::{self, CorticalDims, CmnResult};
 use map::{SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapSchemeList,
     AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme, AxonTags, InputTrack};
 use subcortex::Subcortex;
-use SrcOfs;
+use {SrcOfs, SlcId};
 
 
 #[derive(Clone, Debug)]
@@ -88,7 +88,7 @@ impl AreaMap {
     /// Returns a merged list of slice ids for all source layers.
     //
     // [FIXME]: CONVERT TO layer_id.
-    pub fn layer_slc_ids<S: Deref<Target=str> + Display>(&self, layer_names: &[S]) -> Vec<u8> {
+    pub fn layer_slc_ids<S: Deref<Target=str> + Display>(&self, layer_names: &[S]) -> Vec<SlcId> {
         let mut slc_ids = Vec::with_capacity(32);
 
         for layer_name in layer_names.iter() {
@@ -100,7 +100,7 @@ impl AreaMap {
 
             if let Some(slc_range) = li.slc_range() {
                 for i in slc_range.clone() {
-                    slc_ids.push(i as u8);
+                    slc_ids.push(i as SlcId);
                 }
             }
         }
@@ -113,6 +113,9 @@ impl AreaMap {
     /// Input layers may have complex dimensions. Passing an invalid
     /// `layer_id` or a `layer_id` corresponding to an input layer will return
     /// `None`.
+    //
+    // TODO: Add error type representing the two possible error states,
+    // invalid layer id or input layer.
     pub fn layer_dims(&self, layer_id: usize) -> Option<CorticalDims> {
         self.layer_map.layer_info(layer_id).and_then(|lyr| {
             if lyr.is_input() {
@@ -134,8 +137,7 @@ impl AreaMap {
     /// specified by the `TuftSourceLayer` prevalance parameter.
     ///
     pub fn cel_src_slc_id_rchs(&self, lyr_id: usize, tft_id: usize, use_prevalance: bool)
-            -> Vec<(u8, SrcOfs)>
-    {
+            -> Vec<(SlcId, SrcOfs)> {
         let li = self.layer_map.layer_info(lyr_id)
             .expect(&format!("AreaMap::layer_src_slc_ids(): No layer with id: '{}' found.",
                 lyr_id));
@@ -160,8 +162,8 @@ impl AreaMap {
     }
 
     // NEW - UPDATE / RENAME
-    pub fn aff_out_slc_ids(&self) -> Vec<u8> {
-        let mut output_slcs: Vec<u8> = Vec::with_capacity(8);
+    pub fn aff_out_slc_ids(&self) -> Vec<SlcId> {
+        let mut output_slcs: Vec<SlcId> = Vec::with_capacity(8);
 
          // Push all matching slices:
          for layer in self.layer_map.iter() {
@@ -210,8 +212,7 @@ impl AreaMap {
     /// [DEPRICATED]
     ///
     pub fn axon_range_meshing_tags_either_way(&self, layer_tags: LayerTags,
-                src_lyr_sub_slcs: Option<(usize, Range<usize>)>) -> Option<Range<u32>>
-    {
+            src_lyr_sub_slcs: Option<(usize, Range<usize>)>) -> Option<Range<u32>> {
         let layers = self.layer_map.layers_meshing_tags_either_way(layer_tags);
 
         if layers.len() == 1 {
@@ -223,8 +224,8 @@ impl AreaMap {
                     Some((area_id, slc_range)) => {
                         match layer.src_lyr_old(area_id, slc_range) {
                             Some(src_lyr) => {
-                                let src_base_slc_id = src_lyr.tar_slc_range().start as u8;
-                                let src_lyr_idz = self.axon_idz(src_base_slc_id as u8);
+                                let src_base_slc_id = src_lyr.tar_slc_range().start as SlcId;
+                                let src_lyr_idz = self.axon_idz(src_base_slc_id as SlcId);
                                 let src_lyr_len = src_lyr.axon_count();
 
                                 // * TODO: ADDME: self.verify_axon_range()
@@ -247,7 +248,7 @@ impl AreaMap {
                     },
                     // Entire Layer:
                     None => {
-                        let base_slc_id = lyr_slc_range.start as u8;
+                        let base_slc_id = lyr_slc_range.start as SlcId;
                         let lyr_idz = self.axon_idz(base_slc_id);
 
                         let lyr_len = layer.ttl_axon_count();
@@ -284,8 +285,7 @@ impl AreaMap {
     /// that range pertaining to a specific source layer, if the layer exists.
     ///
     pub fn lyr_axon_range(&self, lyr_addr: &LayerAddress, src_lyr_addr: Option<&LayerAddress>)
-            -> Option<Range<u32>>
-    {
+            -> Option<Range<u32>> {
         assert!(lyr_addr.area_id() == self.area_id(), "AreaMap::lyr_axon_range: \
             The layer address area id provided ({}) does not match this area's id ({}).",
             lyr_addr.area_id(), self.area_id());
@@ -293,7 +293,7 @@ impl AreaMap {
         if let Some(ref li) = self.layer_map.layer_info(lyr_addr.layer_id()) {
             if let Some(sl_addr) = src_lyr_addr {
                 if let Some(sli) = li.src_lyr(sl_addr) {
-                    let src_base_slc_id = sli.tar_slc_range().start as u8;
+                    let src_base_slc_id = sli.tar_slc_range().start as SlcId;
                     let src_lyr_axon_idz = self.axon_idz(src_base_slc_id);
                     let src_lyr_axon_len = sli.axon_count();
                     let src_lyr_axon_range = src_lyr_axon_idz..(src_lyr_axon_idz + src_lyr_axon_len);
@@ -307,7 +307,7 @@ impl AreaMap {
                     None
                 }
             } else if let Some(lyr_slc_range) = li.slc_range() {
-                let base_slc_id = lyr_slc_range.start as u8;
+                let base_slc_id = lyr_slc_range.start as SlcId;
                 let lyr_axon_idz = self.axon_idz(base_slc_id);
                 let lyr_axon_len = li.ttl_axon_count();
                 let lyr_axon_range = lyr_axon_idz..(lyr_axon_idz + lyr_axon_len);
@@ -328,7 +328,7 @@ impl AreaMap {
 
     // NOTE: This is broken if depth > 1.
     // TODO: Loop through slices and add up axons.
-    pub fn verify_axon_range(&self, axon_range: Range<u32>, base_slc_id: u8, depth: u8) -> bool {
+    pub fn verify_axon_range(&self, axon_range: Range<u32>, base_slc_id: SlcId, depth: SlcId) -> bool {
         let slc_idm = base_slc_id + depth - 1;
         let slc_len = self.slice_map.slc_axon_count(slc_idm);
         let axon_idz = self.axon_idz(base_slc_id);
@@ -341,16 +341,16 @@ impl AreaMap {
     }
 
     // NEW
-    pub fn slc_src_layer_dims(&self, slc_id: u8, layer_tags: LayerTags) -> Option<&CorticalDims> {
+    pub fn slc_src_layer_dims(&self, slc_id: SlcId, layer_tags: LayerTags) -> Option<&CorticalDims> {
         self.layer_map.slc_src_layer_info(slc_id, layer_tags).map(|sli| sli.dims())
     }
 
-    // DEPRICATE
+    // DEPRICATE?
     pub fn aff_areas(&self) -> &Vec<&'static str> {
         &self.aff_areas
     }
 
-    // DEPRICATE
+    // DEPRICATE?
     pub fn eff_areas(&self) -> &Vec<&'static str> {
         &self.eff_areas
     }
@@ -361,13 +361,14 @@ impl AreaMap {
     }
 
     // UPDATE / DEPRICATE
+    #[deprecated]
     pub fn lm_kind_tmp(&self) -> &LayerMapKind {
-        &self.layer_map.region_kind()
+        &self.layer_map.layer_map_kind()
     }
 
     pub fn area_id(&self) -> usize { self.area_id }
     pub fn area_name(&self) -> &'static str { self.area_name }
-    pub fn axon_idz(&self, slc_id: u8) -> u32 { self.slice_map.idz(slc_id) }
+    pub fn axon_idz(&self, slc_id: SlcId) -> u32 { self.slice_map.idz(slc_id) }
     pub fn slice_map(&self) -> &SliceMap { &self.slice_map }
     pub fn layer_map(&self) -> &LayerMap { &self.layer_map }
     pub fn layer(&self, layer_id: usize) -> Option<&LayerInfo> { self.layer_map.layer_info(layer_id) }
@@ -397,10 +398,10 @@ pub mod tests {
     use cmn;
     use std::fmt::{Display, Formatter, Result as FmtResult};
     use super::{AreaMap};
-    use SrcOfs;
+    use {SrcOfs, SlcId};
 
 
-    pub fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: SrcOfs,
+    pub fn coords_are_safe(slc_count: SlcId, slc_id: SlcId, v_size: u32, v_id: u32, v_ofs: SrcOfs,
             u_size: u32, u_id: u32, u_ofs: SrcOfs) -> bool {
         (slc_id < slc_count) && coord_is_safe(v_size, v_id, v_ofs)
             && coord_is_safe(u_size, u_id, u_ofs)
@@ -430,7 +431,7 @@ pub mod tests {
     /// two areas. Most of the time the scaling factor is 1:1 (scale factor of
     /// 16). The algorithm below for calculating an axon index is the same as
     /// the one in the kernel and gives precisely the same results.
-    pub fn axon_idx(axon_idz_slc: u32, slc_count: u8, slc_id: u8,
+    pub fn axon_idx(axon_idz_slc: u32, slc_count: SlcId, slc_id: SlcId,
             v_size: u32, v_scale: u32, v_id_unscaled: u32, v_ofs: SrcOfs,
             u_size: u32, u_scale: u32, u_id_unscaled: u32, u_ofs: SrcOfs)
             -> Result<u32, &'static str> {
@@ -448,15 +449,15 @@ pub mod tests {
 
 
     pub trait AreaMapTest {
-        fn axon_idx(&self, slc_id: u8, v_id: u32, v_ofs: SrcOfs, u_id: u32, u_ofs: SrcOfs)
+        fn axon_idx(&self, slc_id: SlcId, v_id: u32, v_ofs: SrcOfs, u_id: u32, u_ofs: SrcOfs)
             -> Result<u32, &'static str>;
-        fn axon_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
+        fn axon_col_id(&self, slc_id: SlcId, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
             -> Result<u32, &'static str>;
     }
 
     impl AreaMapTest for AreaMap {
         /// Calculates an axon index.
-        fn axon_idx(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
+        fn axon_idx(&self, slc_id: SlcId, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
                 -> Result<u32, &'static str> {
             let v_scale = self.slice_map.v_scales()[slc_id as usize];
             let u_scale = self.slice_map.u_scales()[slc_id as usize];
@@ -481,7 +482,7 @@ pub mod tests {
                 u_size, u_scale, u_id_unscaled, u_ofs)
         }
 
-        fn axon_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
+        fn axon_col_id(&self, slc_id: SlcId, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
                 -> Result<u32, &'static str> {
             let v_scale = self.slice_map.v_scales()[slc_id as usize];
             let u_scale = self.slice_map.u_scales()[slc_id as usize];

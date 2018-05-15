@@ -36,7 +36,7 @@ pub trait DataCellLayer: 'static + Debug + Send {
 
 #[cfg(any(test, feature = "eval"))]
 pub mod tests {
-    #![allow(dead_code)]
+    #![allow(dead_code, unused_imports)]
 
     use std::ops::{Range};
     // use rand::{XorShiftRng};
@@ -45,7 +45,7 @@ pub mod tests {
     use cmn::{self, CorticalDims, XorShiftRng};
     use std::fmt::{Display, Formatter, Result};
     use super::DataCellLayer;
-    use ::Thalamus;
+    use Thalamus;
 
     pub trait DataCellLayerTest: DataCellLayer {
         fn cycle_solo(&self);
