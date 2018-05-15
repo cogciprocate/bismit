@@ -7,7 +7,8 @@ use futures::{Future, Poll, Async, task::Context};
 use ocl::ReadGuard;
 use ::{Error as CmnError, Thalamus, CorticalAreas, TractReceiver, SamplerKind,
     SamplerBufferKind, FutureRecv, FutureReadGuardVec, ReadGuardVec, CellSampleIdxs,
-    FutureCorticalSamples, CorticalSampler, CorticalSamples, LayerAddress};
+    FutureCorticalSamples, CorticalSampler, CorticalSamples, LayerAddress,
+    DataCellLayerMap};
 
 
 /// Cortical layer samples.
@@ -95,6 +96,7 @@ impl Future for FutureCorticalLayerSamples {
 pub struct CorticalLayerSampler {
     sampler: CorticalSampler,
     layer_addr: LayerAddress,
+    map: DataCellLayerMap,
 }
 
 impl CorticalLayerSampler {
@@ -398,10 +400,19 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
         if self.syn_src_col_u_offs { sampler_kinds.push(SamplerKind::SynSrcColUOffs(layer_addr),) }
         if self.syn_flag_sets { sampler_kinds.push(SamplerKind::SynFlagSets(layer_addr),) }
 
+
+        let map = DataCellLayerMap::from_names(self.area_name, self.layer_name, self.thal);
+
+        {
+            let cell = map.cell(2, 16, 16);
+            println!("######## CELL AXON IDX: {}", cell.axon_idx());
+        }
+
         CorticalLayerSampler {
             sampler: CorticalSampler::new(self.area_name, sampler_kinds,
                 self.idxs.clone(), self.thal, self.cortical_areas),
             layer_addr,
+            map,
         }
     }
 }

@@ -376,7 +376,7 @@ impl AreaMap {
 }
 
 
-pub fn literal_list<T: Display>(vec: &Vec<T>) -> String {
+pub fn literal_list<T: Display>(vec: &[T]) -> String {
     let mut literal = String::with_capacity((vec.len() * 5) + 20);
 
     let mut i = 0u32;
@@ -403,12 +403,21 @@ pub mod tests {
 
     pub fn coords_are_safe(slc_count: SlcId, slc_id: SlcId, v_size: u32, v_id: u32, v_ofs: SrcOfs,
             u_size: u32, u_id: u32, u_ofs: SrcOfs) -> bool {
+        // ////// DEBUG:
+        // debug_assert!(slc_id < slc_count, "area_map::tests::coords_are_safe: \
+        //     Slice id ('{}') must be less than slice count ('{}').", slc_id, slc_count);
         (slc_id < slc_count) && coord_is_safe(v_size, v_id, v_ofs)
             && coord_is_safe(u_size, u_id, u_ofs)
     }
 
     pub fn coord_is_safe(dim_size: u32, coord_id: u32, coord_ofs: SrcOfs) -> bool {
         let coord_ttl = coord_id as i64 + coord_ofs as i64;
+        // ////// DEBUG:
+        // debug_assert!(coord_ttl >= 0, "area_map::tests::coord_is_safe: \
+        //     Coordinate value ('{}') must be greater than or equal to zero.", coord_ttl);
+        // debug_assert!(coord_ttl >= 0, "area_map::tests::coord_is_safe: \
+        //     Coordinate total (id + ofs, '{}') must be less than dimension size ('{}'). \
+        //     (coord_id: {}, coord_ofs: {})", coord_ttl, dim_size, coord_id, coord_ofs);
         (coord_ttl >= 0) && (coord_ttl < dim_size as i64)
     }
 
@@ -431,7 +440,7 @@ pub mod tests {
     /// two areas. Most of the time the scaling factor is 1:1 (scale factor of
     /// 16). The algorithm below for calculating an axon index is the same as
     /// the one in the kernel and gives precisely the same results.
-    pub fn axon_idx(axon_idz_slc: u32, slc_count: SlcId, slc_id: SlcId,
+    pub fn axon_idx(slc_axon_idz: u32, slc_count: SlcId, slc_id: SlcId,
             v_size: u32, v_scale: u32, v_id_unscaled: u32, v_ofs: SrcOfs,
             u_size: u32, u_scale: u32, u_id_unscaled: u32, u_ofs: SrcOfs)
             -> Result<u32, &'static str> {
@@ -440,7 +449,7 @@ pub mod tests {
 
         if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
                 u_size, u_id_scaled as u32, u_ofs) {
-            Ok(axon_idx_unsafe(axon_idz_slc, v_id_scaled as u32, v_ofs,
+            Ok(axon_idx_unsafe(slc_axon_idz, v_id_scaled as u32, v_ofs,
                 u_size, u_id_scaled as u32, u_ofs))
         } else {
             Err("Axon coordinates invalid.")
@@ -469,7 +478,7 @@ pub mod tests {
             let v_size = self.slice_map.v_sizes()[slc_id as usize];
             let u_size = self.slice_map.u_sizes()[slc_id as usize];
 
-            let axon_idz_slc = self.axon_idz(slc_id);
+            let slc_axon_idz = self.axon_idz(slc_id);
 
             // if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
             //         u_size, u_id_scaled as u32, u_ofs) {
@@ -478,7 +487,7 @@ pub mod tests {
             // } else {
             //     Err("Axon coordinates invalid.")
             // }
-            axon_idx(axon_idz_slc, slc_count, slc_id, v_size, v_scale, v_id_unscaled, v_ofs,
+            axon_idx(slc_axon_idz, slc_count, slc_id, v_size, v_scale, v_id_unscaled, v_ofs,
                 u_size, u_scale, u_id_unscaled, u_ofs)
         }
 

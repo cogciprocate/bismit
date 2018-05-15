@@ -3,10 +3,10 @@ use ocl;
 use ocl::traits::MemLen;
 use cmn::{self, ParaHexArray, CorticalDims, CmnResult, CmnError};
 use map::{AxonTopology};
-use SrcOfs;
+use {SrcOfs, SlcId};
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SliceDims {
     v_size: u32,
     u_size: u32,
@@ -18,8 +18,7 @@ pub struct SliceDims {
 
 impl SliceDims {
     pub fn new(area_dims: &CorticalDims, src_lyr_dims_opt: Option<&CorticalDims>,
-                axn_kind: AxonTopology) -> CmnResult<SliceDims>
-    {
+            axn_kind: AxonTopology) -> CmnResult<SliceDims> {
         match axn_kind {
             AxonTopology::Spatial | AxonTopology::None => {
                 match src_lyr_dims_opt {
@@ -39,11 +38,9 @@ impl SliceDims {
                                     u_mid: 0,
                                 })
                             },
-
                             Err(err) => Err(err),
                         }
                     },
-
                     None => {
                         Ok(SliceDims {
                             v_size: area_dims.v_size(),
@@ -78,7 +75,6 @@ impl SliceDims {
                             u_mid: src_area_dims.u_size() / 2,
                         })
                     },
-
                     None => {
                         // let side = cmn::DEFAULT_HORIZONTAL_SLICE_SIDE;
                         // assert!(side <= 255);
@@ -157,10 +153,6 @@ impl SliceDims {
     pub fn columns(&self) -> u32 {
         self.v_size * self.u_size
     }
-
-    // pub fn depth(&self) -> u8 {
-    //     1u8
-    // }
 }
 
 impl ParaHexArray for SliceDims {
@@ -175,8 +167,8 @@ impl ParaHexArray for SliceDims {
     }
 
     #[inline]
-    fn depth(&self) -> u8 {
-        1u8
+    fn depth(&self) -> SlcId {
+        1 as SlcId
     }
 }
 
@@ -196,37 +188,10 @@ impl MemLen for SliceDims {
     }
 }
 
-#[inline]
-pub fn get_src_scales(src_area_dims: &CorticalDims, tar_area_dims: &CorticalDims,
-        ) -> CmnResult<(u32, u32)>
-{
-    // let v_res = calc_scale(src_area_dims.v_size(), tar_area_dims.v_size());
-    // let u_res = calc_scale(src_area_dims.u_size(), tar_area_dims.u_size());
 
-    // if v_res.is_err() || u_res.is_err() {
-    //     let mut err_str = String::new();
-
-    //     match &v_res {
-    //         &Err(e) => err_str.push_str(&format!("v_size: {}. ", e)),
-    //         _ => (),
-    //     }
-
-    //     match &u_res {
-    //         &Err(e) => err_str.push_str(&format!("u_size: {}. ", e)),
-    //         _ => (),
-    //     }
-
-    //     Err(err_str)
-    // } else {
-    //     Ok((v_res.unwrap(), u_res.unwrap()))
-    // }
-
-    let v_res = try!(calc_scale(src_area_dims.v_size(), tar_area_dims.v_size()));
-    let u_res = try!(calc_scale(src_area_dims.u_size(), tar_area_dims.u_size()));
-
-    Ok((v_res, u_res))
+pub fn scale(id: i32, scl: u32) -> i32 {
+    (id * scl as i32) >> cmn::SLC_SCL_COEFF_L2
 }
-
 
 // * TODO: Create extra version of `::calc_scale` which accepts an additional
 // precision (log2) parameter and returns it's scale adjusted accordingly.
@@ -258,9 +223,36 @@ pub fn calc_scale(src_dim: u32, tar_dim: u32) -> CmnResult<u32> {
     }
 }
 
-pub fn scale(id: i32, scl: u32) -> i32 {
-    (id * scl as i32) >> cmn::SLC_SCL_COEFF_L2
+pub fn get_src_scales(src_area_dims: &CorticalDims, tar_area_dims: &CorticalDims)
+        -> CmnResult<(u32, u32)> {
+    // let v_res = calc_scale(src_area_dims.v_size(), tar_area_dims.v_size());
+    // let u_res = calc_scale(src_area_dims.u_size(), tar_area_dims.u_size());
+
+    // if v_res.is_err() || u_res.is_err() {
+    //     let mut err_str = String::new();
+
+    //     match &v_res {
+    //         &Err(e) => err_str.push_str(&format!("v_size: {}. ", e)),
+    //         _ => (),
+    //     }
+
+    //     match &u_res {
+    //         &Err(e) => err_str.push_str(&format!("u_size: {}. ", e)),
+    //         _ => (),
+    //     }
+
+    //     Err(err_str)
+    // } else {
+    //     Ok((v_res.unwrap(), u_res.unwrap()))
+    // }
+
+    let v_res = try!(calc_scale(src_area_dims.v_size(), tar_area_dims.v_size()));
+    let u_res = try!(calc_scale(src_area_dims.u_size(), tar_area_dims.u_size()));
+
+    Ok((v_res, u_res))
 }
+
+
 
 
 // #[cfg(any(test, feature = "eval"))]

@@ -36,16 +36,16 @@ pub trait DataCellLayer: 'static + Debug + Send {
 
 #[cfg(any(test, feature = "eval"))]
 pub mod tests {
-    #![allow(dead_code, unused_imports)]
+    #![allow(dead_code, unused_imports, unused_variables)]
 
     use std::ops::{Range};
     // use rand::{XorShiftRng};
 
     use map::{AreaMap, AreaMapTest, axon_idx};
-    use cmn::{self, CorticalDims, XorShiftRng};
+    use cmn::{self, CorticalDims, XorShiftRng, SliceDims};
     use std::fmt::{Display, Formatter, Result};
     use super::DataCellLayer;
-    use Thalamus;
+    use {Thalamus, SlcId};
 
     pub trait DataCellLayerTest: DataCellLayer {
         fn cycle_solo(&self);
@@ -137,8 +137,14 @@ pub mod tests {
     }
 
     impl<'l> Cell<'l> {
+            // slc_axon_idz: u32, slc_count: SlcId, slc_id: SlcId,
+            // v_size: u32, v_scale: u32, v_id_unscaled: u32, v_ofs: SrcOfs,
+            // u_size: u32, u_scale: u32, u_id_unscaled: u32, u_ofs: SrcOfs
         pub fn axon_idx(&self) -> u32 {
-            1000
+            let slc_axon_idz = (self.slc_id_lyr as u32 * self.layer.dims.columns()) + self.layer.axon_idz;
+            axon_idx(slc_axon_idz, self.layer.dims.depth(), self.layer.slc_idz,
+                self.layer.slice_dims.v_size(), self.layer.slice_dims.v_scale(), self.v_id, 0,
+                self.layer.slice_dims.u_size(), self.layer.slice_dims.u_scale(), self.u_id, 0).unwrap()
         }
     }
 
@@ -147,29 +153,62 @@ pub mod tests {
     /// within a data cell layer (tufts, dendrites, synapses, etc.).
     #[derive(Clone, Debug)]
     pub struct DataCellLayerMap {
-        layer_dims: CorticalDims,
+        dims: CorticalDims,
+        slice_dims: SliceDims,
+        axon_idz: u32,
+        slc_idz: SlcId,
     }
 
     impl DataCellLayerMap {
         pub fn from_names(area_name: &str, layer_name: &str, thal: &mut Thalamus) -> DataCellLayerMap {
             let layer_addr = thal.layer_addr(area_name, layer_name);
-            let layer_dims = thal.area_maps()[layer_addr.area_id()].layer_dims(layer_addr.layer_id())
-                .expect("DataCellLayerMap::from_names: Invalid layer name. Layer name must be \
-                    valid for the area and have an output or local axon domain (non-input).");
+            let area_map = &thal.area_maps()[layer_addr.area_id()];
+            let dims = area_map.layer_dims(layer_addr.layer_id())
+                .expect(&format!("DataCellLayerMap::from_names: Invalid layer name ('{}'). \
+                    Layer name must be valid for the area and have an output or local axon \
+                    domain (non-input).", layer_name));
 
+            let layer_info = area_map.layer_map().layer_info(layer_addr.layer_id()).unwrap();
+            let layer_slc_range = layer_info.slc_range().cloned()
+                .expect(&format!("DataCellLayerMap::from_names: The specified layer ('{}') \
+                    has no slices.", layer_name));
 
+            assert!(layer_slc_range.start <= SlcId::max_value() as usize);
+            let slc_idz = layer_slc_range.start as SlcId;
+            let axon_idz = area_map.slice_map().axon_idzs()[slc_idz as usize];
+            let mut slice_dims = None;
+
+            for (i, slc_id) in layer_slc_range.clone().enumerate() {
+                let sd_i = &area_map.slice_map().dims()[slc_id as usize];
+
+                match slice_dims {
+                    // Ensure each slice in the layer is equal:
+                    Some(ref sd_0) => assert!(sd_0 == sd_i),
+                    None => slice_dims = Some(sd_i.clone()),
+                }
+
+                // Ensure axon idz calculations for each slice are correct:
+                assert!(area_map.slice_map().axon_idzs()[slc_id] ==
+                    (dims.columns() * i as u32) + axon_idz);
+            }
+
+            let slice_dims = slice_dims.unwrap();
+            assert!(slice_dims.v_size() * slice_dims.u_size() == dims.columns());
 
             DataCellLayerMap {
-                layer_dims,
+                dims,
+                slice_dims,
+                axon_idz,
+                slc_idz,
             }
         }
 
-        pub fn cell<'l>(&'l self, coords: (u8, u32, u32)) -> Cell<'l> {
+        pub fn cell<'l>(&'l self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'l> {
             Cell {
                 layer: self,
-                slc_id_lyr: coords.0,
-                v_id: coords.1,
-                u_id: coords.2,
+                slc_id_lyr,
+                v_id,
+                u_id,
             }
         }
     }

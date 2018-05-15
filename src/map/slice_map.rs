@@ -232,16 +232,16 @@ impl SliceMap {
     #[inline] pub fn slc_count(&self) -> usize { self.axon_idzs.len() }
     #[inline] pub fn depth(&self) -> SlcId { self.axon_idzs.len() as SlcId }
     #[inline] pub fn axon_count(&self) -> u32 { self.physical_len }
-    #[inline] pub fn axon_idzs(&self) -> &Vec<u32> { &self.axon_idzs }
+    #[inline] pub fn axon_idzs(&self) -> &[u32] { &self.axon_idzs }
     #[inline] pub fn layer_names(&self) -> &[String] { &self.layer_names }
-    #[inline] pub fn axon_topologies(&self) -> &Vec<AxonTopology> { &self.axon_topologies }
-    #[inline] pub fn v_sizes(&self) -> &Vec<u32> { &self.v_sizes }
-    #[inline] pub fn u_sizes(&self) -> &Vec<u32> { &self.u_sizes }
-    #[inline] pub fn v_scales(&self) -> &Vec<u32> { &self.v_scales }
-    #[inline] pub fn u_scales(&self) -> &Vec<u32> { &self.u_scales }
-    #[inline] pub fn v_mids(&self) -> &Vec<u32> { &self.v_mids }
-    #[inline] pub fn u_mids(&self) -> &Vec<u32> { &self.u_mids }
-    #[inline] pub fn dims(&self) -> &Vec<SliceDims> { &self.dims }
+    #[inline] pub fn axon_topologies(&self) -> &[AxonTopology] { &self.axon_topologies }
+    #[inline] pub fn v_sizes(&self) -> &[u32] { &self.v_sizes }
+    #[inline] pub fn u_sizes(&self) -> &[u32] { &self.u_sizes }
+    #[inline] pub fn v_scales(&self) -> &[u32] { &self.v_scales }
+    #[inline] pub fn u_scales(&self) -> &[u32] { &self.u_scales }
+    #[inline] pub fn v_mids(&self) -> &[u32] { &self.v_mids }
+    #[inline] pub fn u_mids(&self) -> &[u32] { &self.u_mids }
+    #[inline] pub fn dims(&self) -> &[SliceDims] { &self.dims }
 }
 
 impl MemLen for SliceMap {
