@@ -122,6 +122,10 @@ pub trait ParaHexArray {
 
 pub type Sdr = [u8];
 
+pub type AxnState = u8;
+pub type SrcOfs = i8;
+pub type SlcId = u8;
+
 
 
 /*=============================================================================
@@ -462,13 +466,13 @@ pub fn cel_idx_3d(depth: u8, slc_id: u8, v_size: u32, v_id: u32, u_size: u32, u_
 
 
 // List of offsets to form a hexagon-shaped pattern of tiles.
-pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
+pub fn hex_tile_offs(radius: SrcOfs) -> Vec<(SrcOfs, SrcOfs)> {
     assert!(radius >= 0);
 
     let tile_count = (3 * radius as usize) * (radius as usize + 1) + 1;
     let mut mold = Vec::with_capacity(tile_count);
 
-    let radius: i8 = radius as i8;
+    let radius: SrcOfs = radius as SrcOfs;
 
     let v_ofs_z = 0 - radius;
     let v_ofs_n = radius + 1;
@@ -488,13 +492,13 @@ pub fn hex_tile_offs(radius: i8) -> Vec<(i8, i8)> {
 }
 
 // List of offsets to form a hexagon-shaped pattern of tiles.
-pub fn hex_tile_offs_scaled(radius: i8) -> Vec<(i8, i8)> {
+pub fn hex_tile_offs_scaled(radius: SrcOfs) -> Vec<(SrcOfs, SrcOfs)> {
     assert!(radius >= 0);
 
     let tile_count = (3 * radius as usize) * (radius as usize + 1) + 1;
     let mut mold = Vec::with_capacity(tile_count);
 
-    let radius: i8 = radius as i8;
+    let radius: SrcOfs = radius as SrcOfs;
 
     let v_ofs_z = 0 - radius;
     let v_ofs_n = radius + 1;

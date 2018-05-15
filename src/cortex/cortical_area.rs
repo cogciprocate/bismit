@@ -1354,13 +1354,14 @@ pub mod tests {
     use super::*;
     use cortex::{AxonSpaceTest, CelCoords, DataCellLayerTest};
     use map::{AreaMapTest};
+    use SrcOfs;
 
     pub trait CorticalAreaTest {
         fn axon_state(&self, idx: usize) -> u8;
         fn write_to_axon(&mut self, val: u8, idx: u32);
         fn read_from_axon(&self, idx: u32) -> u8;
         fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axon_slc: u8)
-            -> (i8, i8, u32, u32);
+            -> (SrcOfs, SrcOfs, u32, u32);
         fn print_aux(&mut self);
         fn print_axns(&mut self);
         fn activate_axon(&mut self, idx: u32);
@@ -1393,9 +1394,9 @@ pub mod tests {
             self.axns.write_to_axon(val, idx);
         }
 
-        fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axon_slc: u8) -> (i8, i8, u32, u32) {
-            let v_ofs_range = RandRange::new(-8i8, 9);
-            let u_ofs_range = RandRange::new(-8i8, 9);
+        fn rand_safe_src_axn(&mut self, cel_coords: &CelCoords, src_axon_slc: u8) -> (SrcOfs, SrcOfs, u32, u32) {
+            let v_ofs_range = RandRange::new(-8 as SrcOfs, 9);
+            let u_ofs_range = RandRange::new(-8 as SrcOfs, 9);
 
             let mut rng = rand::weak_rng();
 

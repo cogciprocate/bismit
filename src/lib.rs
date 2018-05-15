@@ -58,5 +58,5 @@ pub use self::flywheel::Flywheel;
 pub use self::map::{LayerMapSchemeList, AreaSchemeList, AreaMap, AxonTopology,
     LayerAddress};
 pub use self::cmn::{util, TractDims, TypeId, CmnError as Error,
-    CmnResult as Result, CorticalDims, MapStore};
+    CmnResult as Result, CorticalDims, MapStore, SrcOfs, SlcId};
 pub use self::encode::GlyphBuckets;

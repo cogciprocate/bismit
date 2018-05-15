@@ -3,6 +3,7 @@ use ocl;
 use ocl::traits::MemLen;
 use cmn::{self, ParaHexArray, CorticalDims, CmnResult, CmnError};
 use map::{AxonTopology};
+use SrcOfs;
 
 
 #[derive(Clone, Debug)]
@@ -105,7 +106,7 @@ impl SliceDims {
     /// * clamp to min/max (-128, 127)
     /// * sparsify synapse source addresses (put gaps but maintain relative reach)
     ///
-    pub fn scale_offs(&self, offs: (i8, i8)) -> CmnResult<(i8, i8)> {
+    pub fn scale_offs(&self, offs: (SrcOfs, SrcOfs)) -> CmnResult<(SrcOfs, SrcOfs)> {
         let sc_l2 = cmn::SLC_SCL_COEFF_L2;
         let v_off = (offs.0 as i32 * self.v_scale as i32) >> sc_l2;
         let u_off = (offs.1 as i32 * self.u_scale as i32) >> sc_l2;
@@ -118,7 +119,7 @@ impl SliceDims {
                 IF IT CLAMPS TO MAX. See 'SliceDims::scale_offs' doc for more.",
                 offs.0, offs.1, self.v_scale, self.u_scale, v_off, u_off))
         } else {
-            Ok((v_off as i8, u_off as i8))
+            Ok((v_off as SrcOfs, u_off as SrcOfs))
         }
     }
 

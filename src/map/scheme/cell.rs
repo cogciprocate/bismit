@@ -1,4 +1,5 @@
 use map::{CellClass, LayerKind, DendriteClass, DendriteKind, DataCellKind, ControlCellKind};
+use SrcOfs;
 // use cmn;
 
 
@@ -13,7 +14,7 @@ use map::{CellClass, LayerKind, DendriteClass, DendriteKind, DataCellKind, Contr
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct TuftSourceLayer {
     name: String,
-    syn_reach: i8,
+    syn_reach: SrcOfs,
     prevalence: u8,
 }
 
@@ -22,7 +23,7 @@ impl TuftSourceLayer {
         TuftSourceLayerDefinition::new(name)
     }
 
-    pub fn new<S: Into<String>>(name: S, syn_reach: i8, prevalence: u8) -> TuftSourceLayer {
+    pub fn new<S: Into<String>>(name: S, syn_reach: SrcOfs, prevalence: u8) -> TuftSourceLayer {
         assert!(prevalence > 0, "Tuft source layer definitions must have a prevalence \
             of at least one. {{ Layer: name: {}, reach: {} }}", name.into(), syn_reach);
 
@@ -34,25 +35,25 @@ impl TuftSourceLayer {
     }
 
     #[inline] pub fn name(&self) -> &str { self.name.as_str() }
-    #[inline] pub fn syn_reach(&self) -> i8 { self.syn_reach }
+    #[inline] pub fn syn_reach(&self) -> SrcOfs { self.syn_reach }
     #[inline] pub fn prevalence(&self) -> u8 { self.prevalence }
 }
 
-impl<'a> From<(&'a str, i8, u8)> for TuftSourceLayer {
-    fn from(tup: (&'a str, i8, u8)) -> TuftSourceLayer {
+impl<'a> From<(&'a str, SrcOfs, u8)> for TuftSourceLayer {
+    fn from(tup: (&'a str, SrcOfs, u8)) -> TuftSourceLayer {
         TuftSourceLayer::new(tup.0.to_owned(), tup.1, tup.2)
     }
 }
 
-impl<'a> From<&'a (&'a str, i8, u8)> for TuftSourceLayer {
-    fn from(tup: &'a (&'a str, i8, u8)) -> TuftSourceLayer {
+impl<'a> From<&'a (&'a str, SrcOfs, u8)> for TuftSourceLayer {
+    fn from(tup: &'a (&'a str, SrcOfs, u8)) -> TuftSourceLayer {
         TuftSourceLayer::new(tup.0.to_owned(), tup.1, tup.2)
     }
 }
 
 pub struct TuftSourceLayerDefinition {
     name: String,
-    syn_reach: Option<i8>,
+    syn_reach: Option<SrcOfs>,
     prevalence: Option<u8>,
 }
 
@@ -70,7 +71,7 @@ impl TuftSourceLayerDefinition {
     //     self
     // }
 
-    pub fn syn_reach(mut self, syn_reach: i8) -> TuftSourceLayerDefinition {
+    pub fn syn_reach(mut self, syn_reach: SrcOfs) -> TuftSourceLayerDefinition {
         self.syn_reach = Some(syn_reach);
         self
     }
@@ -222,7 +223,7 @@ impl TuftSchemeDefinition {
         self
     }
 
-    // pub fn src_lyr<S: Into<String>>(mut self, name: S, syn_reach: i8, prevalence: u8)
+    // pub fn src_lyr<S: Into<String>>(mut self, name: S, syn_reach: SrcOfs, prevalence: u8)
     //         -> TuftSchemeDefinition {
     //     self.src_lyrs.push(TuftSourceLayer::new(name, syn_reach, prevalence));
     //     self
@@ -233,7 +234,7 @@ impl TuftSchemeDefinition {
         self
     }
 
-    pub fn src_lyrs(mut self, src_lyrs: &[(&str, i8, u8)]) -> TuftSchemeDefinition {
+    pub fn src_lyrs(mut self, src_lyrs: &[(&str, SrcOfs, u8)]) -> TuftSchemeDefinition {
         assert!(self.src_lyrs.is_empty());
         let src_lyrs = src_lyrs.into_iter().map(|tsl| tsl.into()).collect();
         self.src_lyrs = src_lyrs;
@@ -298,7 +299,7 @@ impl CellScheme {
     }
 
     // //                             &[name, reach, prevalence]
-    // pub fn pyr<'a>(dst_srcs: &[(&'a str, i8, u8)], dens_per_tft_l2: u8,
+    // pub fn pyr<'a>(dst_srcs: &[(&'a str, SrcOfs, u8)], dens_per_tft_l2: u8,
     //         syns_per_den_l2: u8, max_active_dens_l2: u8, thresh: u32) -> LayerKind {
     //     let src_lyrs_vec = dst_srcs.into_iter().map(|&sl| sl.into()).collect();
 
@@ -312,7 +313,7 @@ impl CellScheme {
     // }
 
     // //                                  &[name, reach, prevalence]
-    // pub fn ssc<'a>(prx_srcs: &[(&'a str, i8, u8)], syns_per_den_l2: u8, thresh: u32,)
+    // pub fn ssc<'a>(prx_srcs: &[(&'a str, SrcOfs, u8)], syns_per_den_l2: u8, thresh: u32,)
     //         -> LayerKind {
     //     let src_lyrs_vec = prx_srcs.into_iter().map(|&sl| sl.into()).collect();
 

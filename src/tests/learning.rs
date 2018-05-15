@@ -107,8 +107,8 @@ pub struct LearningTestBed {
     aff_out_axon_idx: u32,
     cel_axon_idx: u32,
 
-    fake_v_ofs: i8,
-    fake_u_ofs: i8,
+    fake_v_ofs: SrcOfs,
+    fake_u_ofs: SrcOfs,
 
     syn_coords: SynCoords,
     focus_syns: Range<usize>,

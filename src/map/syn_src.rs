@@ -5,6 +5,7 @@ use rand::distributions::{IndependentSample};
 use cortex::TuftDims;
 use cmn::{self, CmnError, CmnResult, CorticalDims, SliceDims, XorShiftRng, Range as RandRange};
 use map::{AreaMap, AxonTopology, TuftScheme};
+use SrcOfs;
 
 const INTENSITY_REDUCTION_L2: i8 = 3;
 const STR_MIN: i8 = -3;
@@ -14,7 +15,7 @@ const STR_MAX: i8 = 4;
 /// Tests to ensure a list of synapse source offsets has a balanced set.
 ///
 /// Currently being called by `::gen_syn_offs` in debug builds.
-pub fn offs_list_is_balanced(syn_offs: &Vec<(i8, i8)>) -> CmnResult<()> {
+pub fn offs_list_is_balanced(syn_offs: &Vec<(SrcOfs, SrcOfs)>) -> CmnResult<()> {
     let mut ttls = (0usize, 0usize);
 
     for off in syn_offs {
@@ -42,7 +43,7 @@ pub fn offs_list_is_balanced(syn_offs: &Vec<(i8, i8)>) -> CmnResult<()> {
 ///
 // #[warn(dead_code, unused_variables, unused_mut)]
 // pub fn encode_hex_mold_scaled(radius: i8, scales: [u32; 2], center: [u32; 2], tract: &mut TractFrameMut) {
-pub fn gen_syn_offs(radius: i8, scales: [u32; 2]) -> CmnResult<Vec<(i8, i8)>> {
+pub fn gen_syn_offs(radius: SrcOfs, scales: [u32; 2]) -> CmnResult<Vec<(SrcOfs, SrcOfs)>> {
     // // TEMPORARY (* TODO: Investigate):
     // for val in tract_frame.iter() {
     //     debug_assert!(*val == 0);
@@ -137,7 +138,7 @@ pub fn gen_syn_offs(radius: i8, scales: [u32; 2]) -> CmnResult<Vec<(i8, i8)>> {
                 return CmnError::err("cmn::hex_tile_offs_skewed: Calculated \
                     offsets are outside valid radius range: (v_ofs: {}, u_ofs: {}).");
             }
-            offs_list.push((v_ofs as i8, u_ofs as i8));
+            offs_list.push((v_ofs as SrcOfs, u_ofs as SrcOfs));
         }
     }
 
@@ -212,8 +213,8 @@ impl SynSrcIdxCache {
 /// Pool of potential synapse values.
 #[derive(Clone, Debug)]
 pub enum OfsPool {
-    Nonspatial(RandRange<i8>, RandRange<i8>),
-    Spatial { offs: Vec<(i8, i8)>, ofs_idx_range: RandRange<usize> },
+    Nonspatial(RandRange<SrcOfs>, RandRange<SrcOfs>),
+    Spatial { offs: Vec<(SrcOfs, SrcOfs)>, ofs_idx_range: RandRange<usize> },
 }
 
 
@@ -225,13 +226,13 @@ pub struct SynSrcSliceInfo {
     slc_off_pool: OfsPool,
     v_size: u32,
     u_size: u32,
-    syn_reach: i8,
-    scaled_syn_reaches: (i8, i8),
+    syn_reach: SrcOfs,
+    scaled_syn_reaches: (SrcOfs, SrcOfs),
     poss_syn_offs_val_count: u32,
 }
 
 impl SynSrcSliceInfo {
-    pub fn new(axon_kind: &AxonTopology, src_slc_dims: &SliceDims, syn_reach: i8,
+    pub fn new(axon_kind: &AxonTopology, src_slc_dims: &SliceDims, syn_reach: SrcOfs,
             tft_slc_id_pool_len: u32) -> CmnResult<SynSrcSliceInfo>
     {
         let poss_syn_offs_val_count;
@@ -260,8 +261,8 @@ impl SynSrcSliceInfo {
                 poss_syn_offs_val_count = src_slc_dims.v_size() * src_slc_dims.u_size() *
                     tft_slc_id_pool_len;
 
-                let v_reach = (src_slc_dims.v_size() / 2) as i8;
-                let u_reach = (src_slc_dims.u_size() / 2) as i8;
+                let v_reach = (src_slc_dims.v_size() / 2) as SrcOfs;
+                let u_reach = (src_slc_dims.u_size() / 2) as SrcOfs;
 
                 slc_off_pool = OfsPool::Nonspatial(
                     RandRange::new(0 - v_reach, v_reach + 1),
@@ -301,7 +302,7 @@ impl SynSrcSliceInfo {
         &self.slc_off_pool
     }
 
-    pub fn scaled_syn_reaches(&self) -> (i8, i8) {
+    pub fn scaled_syn_reaches(&self) -> (SrcOfs, SrcOfs) {
         self.scaled_syn_reaches
     }
 
@@ -325,8 +326,8 @@ impl SynSrcSliceInfo {
 /// Source location and strength for a synapse.
 pub struct SynSrc {
     pub slc_id: u8,
-    pub v_ofs: i8,
-    pub u_ofs: i8,
+    pub v_ofs: SrcOfs,
+    pub u_ofs: SrcOfs,
     pub strength: i8,
 }
 

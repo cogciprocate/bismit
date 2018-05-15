@@ -33,7 +33,7 @@ pub use self::axon_tags::*;
 ///////
 
 #[cfg(any(test, feature = "eval"))]
-pub use self::area_map::tests::{AreaMapTest};
+pub use self::area_map::tests::{AreaMapTest, axon_idx};
 
 
 

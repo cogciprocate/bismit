@@ -5,6 +5,7 @@ use cmn::{self, CorticalDims, CmnResult};
 use map::{SliceMap, LayerTags, LayerMap, LayerInfo, LayerAddress, LayerMapSchemeList,
     AreaSchemeList, AreaScheme, LayerMapKind, FilterScheme, AxonTags, InputTrack};
 use subcortex::Subcortex;
+use SrcOfs;
 
 
 #[derive(Clone, Debug)]
@@ -133,7 +134,7 @@ impl AreaMap {
     /// specified by the `TuftSourceLayer` prevalance parameter.
     ///
     pub fn cel_src_slc_id_rchs(&self, lyr_id: usize, tft_id: usize, use_prevalance: bool)
-            -> Vec<(u8, i8)>
+            -> Vec<(u8, SrcOfs)>
     {
         let li = self.layer_map.layer_info(lyr_id)
             .expect(&format!("AreaMap::layer_src_slc_ids(): No layer with id: '{}' found.",
@@ -396,87 +397,116 @@ pub mod tests {
     use cmn;
     use std::fmt::{Display, Formatter, Result as FmtResult};
     use super::{AreaMap};
+    use SrcOfs;
 
 
-    pub fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: i8,
-            u_size: u32, u_id: u32, u_ofs: i8) -> bool {
+    pub fn coords_are_safe(slc_count: u8, slc_id: u8, v_size: u32, v_id: u32, v_ofs: SrcOfs,
+            u_size: u32, u_id: u32, u_ofs: SrcOfs) -> bool {
         (slc_id < slc_count) && coord_is_safe(v_size, v_id, v_ofs)
             && coord_is_safe(u_size, u_id, u_ofs)
     }
 
-    pub fn coord_is_safe(dim_size: u32, coord_id: u32, coord_ofs: i8) -> bool {
+    pub fn coord_is_safe(dim_size: u32, coord_id: u32, coord_ofs: SrcOfs) -> bool {
         let coord_ttl = coord_id as i64 + coord_ofs as i64;
         (coord_ttl >= 0) && (coord_ttl < dim_size as i64)
     }
 
-    pub fn axon_idx_unsafe(idz: u32, v_id: u32, v_ofs: i8, u_size: u32, u_id: u32, u_ofs: i8) -> u32 {
+    pub fn axon_idx_unsafe(idz: u32, v_id: u32, v_ofs: SrcOfs, u_size: u32, u_id: u32, u_ofs: SrcOfs) -> u32 {
         let v = v_id as i64 + v_ofs as i64;
         let u = u_id as i64 + u_ofs as i64;
         (idz as i64 + (v * u_size as i64) + u) as u32
     }
 
 
+    /// Calculates an axon index.
+    ///
+    /// Some documentation for this can be found in `bismit.cl`.
+    ///
+    /// Basically all we're doing is scaling up or down the v and u
+    /// coordinates based on a predetermined scaling factor. The scaling
+    /// factor only applies when a foreign cortical or sub-cortical area is a
+    /// source for the axon's slice AND is a different size than the local
+    /// cortical area. The scale factor is based on the relative size of the
+    /// two areas. Most of the time the scaling factor is 1:1 (scale factor of
+    /// 16). The algorithm below for calculating an axon index is the same as
+    /// the one in the kernel and gives precisely the same results.
+    pub fn axon_idx(axon_idz_slc: u32, slc_count: u8, slc_id: u8,
+            v_size: u32, v_scale: u32, v_id_unscaled: u32, v_ofs: SrcOfs,
+            u_size: u32, u_scale: u32, u_id_unscaled: u32, u_ofs: SrcOfs)
+            -> Result<u32, &'static str> {
+        let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
+        let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
+
+        if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
+                u_size, u_id_scaled as u32, u_ofs) {
+            Ok(axon_idx_unsafe(axon_idz_slc, v_id_scaled as u32, v_ofs,
+                u_size, u_id_scaled as u32, u_ofs))
+        } else {
+            Err("Axon coordinates invalid.")
+        }
+    }
+
+
     pub trait AreaMapTest {
-        fn axon_idx(&self, slc_id: u8, v_id: u32, v_ofs: i8, u_id: u32, u_ofs: i8)
+        fn axon_idx(&self, slc_id: u8, v_id: u32, v_ofs: SrcOfs, u_id: u32, u_ofs: SrcOfs)
             -> Result<u32, &'static str>;
-        fn axon_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
+        fn axon_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
             -> Result<u32, &'static str>;
     }
 
     impl AreaMapTest for AreaMap {
-        // AXN_IDX(): Some documentation for this can be found in `bismit.cl`.
-        //
-        // Basically all we're doing is scaling up or down the v and
-        // u coordinates based on a predetermined scaling factor. The
-        // scaling factor only applies when a foreign cortical or
-        // sub-cortical area is a source for the axon's slice AND is
-        // a different size than the local cortical area. The scale
-        // factor is based on the relative size of the two areas.
-        // Most of the time the scaling factor is 1:1 (scale factor
-        // of 16). The algorithm below for calculating an axon index
-        // is the same as the one in the kernel and gives precisely
-        // the same results.
-        fn axon_idx(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
+        /// Calculates an axon index.
+        fn axon_idx(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
                 -> Result<u32, &'static str> {
             let v_scale = self.slice_map.v_scales()[slc_id as usize];
             let u_scale = self.slice_map.u_scales()[slc_id as usize];
 
-            let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
-            let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
+            // let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
+            // let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
 
             let slc_count = self.slice_map().depth();
             let v_size = self.slice_map.v_sizes()[slc_id as usize];
             let u_size = self.slice_map.u_sizes()[slc_id as usize];
 
-            if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
-                    u_size, u_id_scaled as u32, u_ofs) {
-                Ok(axon_idx_unsafe(self.axon_idz(slc_id), v_id_scaled as u32, v_ofs,
-                    u_size, u_id_scaled as u32, u_ofs))
-            } else {
-                Err("Axon coordinates invalid.")
-            }
+            let axon_idz_slc = self.axon_idz(slc_id);
+
+            // if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
+            //         u_size, u_id_scaled as u32, u_ofs) {
+            //     Ok(axon_idx_unsafe(self.axon_idz(slc_id), v_id_scaled as u32, v_ofs,
+            //         u_size, u_id_scaled as u32, u_ofs))
+            // } else {
+            //     Err("Axon coordinates invalid.")
+            // }
+            axon_idx(axon_idz_slc, slc_count, slc_id, v_size, v_scale, v_id_unscaled, v_ofs,
+                u_size, u_scale, u_id_unscaled, u_ofs)
         }
 
-        fn axon_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: i8, u_id_unscaled: u32, u_ofs: i8)
+        fn axon_col_id(&self, slc_id: u8, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
                 -> Result<u32, &'static str> {
             let v_scale = self.slice_map.v_scales()[slc_id as usize];
             let u_scale = self.slice_map.u_scales()[slc_id as usize];
 
-            let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
-            let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
+            // let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
+            // let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
 
             let v_size = self.slice_map.v_sizes()[slc_id as usize];
             let u_size = self.slice_map.u_sizes()[slc_id as usize];
 
-            // Make sure v and u are safe (give fake slice info to coords_are_safe()):
-            if coords_are_safe(1, 0, v_size, v_id_scaled as u32, v_ofs,
-                    u_size, u_id_scaled as u32, u_ofs) {
-                // Give a fake, zero idz (since this is a column id we're returning):
-                Ok(axon_idx_unsafe(0, v_id_scaled as u32, v_ofs,
-                    u_size, u_id_scaled as u32, u_ofs))
-            } else {
-                Err("Axon coordinates invalid.")
-            }
+            // // Make sure v and u are safe (give fake slice info to coords_are_safe()):
+            // if coords_are_safe(1, 0, v_size, v_id_scaled as u32, v_ofs,
+            //         u_size, u_id_scaled as u32, u_ofs) {
+
+            //     Ok(axon_idx_unsafe(0, v_id_scaled as u32, v_ofs,
+            //         u_size, u_id_scaled as u32, u_ofs))
+            // } else {
+            //     Err("Axon coordinates invalid.")
+            // }
+
+            // Make sure v and u are safe (give fake slice info to
+            // coords_are_safe()). Also give a fake, zero idz (since this is a
+            // column id we're returning):
+            axon_idx(0, 1, 0, v_size, v_scale, v_id_unscaled, v_ofs,
+                u_size, u_scale, u_id_unscaled, u_ofs)
         }
 
     }

@@ -18,9 +18,9 @@ fn kernels() {
 //         - KERNEL CALCULATED AXON INDEXES FALL WITHIN THE CORRECT RANGE (ON THE APPROPRIATE SLICE)
 //         -
 pub fn axn_idxs(testbed: &TestBed) {
-    // let u_offs = Buffer::<i8>::with_vec_shuffled((0 - syn_reach, syn_reach + 1),
+    // let u_offs = Buffer::<SrcOfs>::with_vec_shuffled((0 - syn_reach, syn_reach + 1),
     //     &testbed.dims, &testbed.ocl_pq.queue());
-    // let v_offs = Buffer::<i8>::with_vec_shuffled((0 - syn_reach, syn_reach + 1),
+    // let v_offs = Buffer::<SrcOfs>::with_vec_shuffled((0 - syn_reach, syn_reach + 1),
     //     &testbed.dims, &testbed.ocl_pq.queue());
 
 
@@ -28,7 +28,7 @@ pub fn axn_idxs(testbed: &TestBed) {
     // let buffer_init = Buffer::new(ocl_pq.queue().clone(), Some(core::MEM_READ_WRITE |
     //     core::MEM_COPY_HOST_PTR), ocl_pq.dims().clone(), Some(&vec_init)).unwrap();
 
-    let syn_reach = cmn::SYNAPSE_REACH as i8;
+    let syn_reach = cmn::SYNAPSE_REACH as SrcOfs;
     let syn_range = (0 - syn_reach, syn_reach + 1);
 
     let vec_init = ocl_extras::shuffled_vec(syn_range, testbed.dims.to_len());

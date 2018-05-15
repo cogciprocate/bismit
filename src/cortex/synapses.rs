@@ -70,6 +70,7 @@ use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
 use map::{CellScheme, ExecutionGraph, CommandRelations, CorticalBuffer, CommandUid};
 use cortex::AxonSpace;
+use SrcOfs;
 
 #[cfg(any(test, feature = "eval"))]
 pub use self::tests::{SynCoords, SynapsesTest, syn_idx};
@@ -113,15 +114,15 @@ pub struct Synapses {
     // TODO: Switch to `u8` (`uchar`):
     strengths: Buffer<i8>,
     src_slc_ids: Buffer<u8>,
-    src_col_v_offs: Buffer<i8>,
-    src_col_u_offs: Buffer<i8>,
+    src_col_v_offs: Buffer<SrcOfs>,
+    src_col_u_offs: Buffer<SrcOfs>,
     flag_sets: Buffer<u8>,
 
     // TODO: Switch to `u8` (`uchar`):
     vec_strengths: Vec<i8>,
     vec_src_slc_ids: Vec<u8>,
-    vec_src_col_u_offs: Vec<i8>,
-    vec_src_col_v_offs: Vec<i8>,
+    vec_src_col_u_offs: Vec<SrcOfs>,
+    vec_src_col_v_offs: Vec<SrcOfs>,
 
     syn_idzs_by_tft: Vec<u32>,
     syn_counts_by_tft: Vec<u32>,
@@ -202,8 +203,8 @@ impl Synapses {
         let states = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
         let strengths = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
         let src_slc_ids = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
-        let src_col_v_offs = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
-        let src_col_u_offs = Buffer::<i8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
+        let src_col_v_offs = Buffer::<SrcOfs>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
+        let src_col_u_offs = Buffer::<SrcOfs>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
         let flag_sets = Buffer::<u8>::builder().queue(ocl_pq.queue().clone()).len([syn_count_ttl]).fill_val(0).build()?;
 
         debug_assert!(strengths.len() == src_slc_ids.len() &&
@@ -502,8 +503,8 @@ impl Synapses {
     #[inline] pub fn states(&self) -> &Buffer<u8> { &self.states }
     #[inline] pub fn strengths(&self) -> &Buffer<i8> { &self.strengths }
     #[inline] pub fn src_slc_ids(&self) -> &Buffer<u8> { &self.src_slc_ids }
-    #[inline] pub fn src_col_v_offs(&self) -> &Buffer<i8> { &self.src_col_v_offs }
-    #[inline] pub fn src_col_u_offs(&self) -> &Buffer<i8> { &self.src_col_u_offs }
+    #[inline] pub fn src_col_v_offs(&self) -> &Buffer<SrcOfs> { &self.src_col_v_offs }
+    #[inline] pub fn src_col_u_offs(&self) -> &Buffer<SrcOfs> { &self.src_col_u_offs }
     #[inline] pub fn flag_sets(&self) -> &Buffer<u8> { &self.flag_sets }
     #[inline] pub fn count(&self) -> u32 { self.states.len() as u32 }
     #[inline] pub fn tft_count(&self) -> usize { self.src_idx_caches_by_tft.len() }
@@ -524,13 +525,14 @@ pub mod tests {
     // use super::super::dendrites::{self};
     use cortex::{dendrites, CelCoords};
     use super::{Synapses, TuftDims};
+    use SrcOfs;
 
     const PRNT_INFO: bool = false;
 
     pub trait SynapsesTest {
         fn set_offs_to_zero(&mut self);
         fn set_all_to_zero(&mut self);
-        fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize);
+        fn set_src_offs(&mut self, v_ofs: SrcOfs, u_ofs: SrcOfs, idx: usize);
         fn set_src_slc(&mut self, src_slc_id: u8, idx: usize);
         fn syn_state(&self, idx: u32) -> u8;
         fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords;
@@ -577,7 +579,7 @@ pub mod tests {
             self.flag_sets.default_queue().unwrap().finish().unwrap();
         }
 
-        fn set_src_offs(&mut self, v_ofs: i8, u_ofs: i8, idx: usize) {
+        fn set_src_offs(&mut self, v_ofs: SrcOfs, u_ofs: SrcOfs, idx: usize) {
             let sdr_v = vec![v_ofs];
             let sdr_u = vec![u_ofs];
             self.src_col_v_offs.cmd().write(&sdr_v[..]).offset(idx as usize).enq().unwrap();
@@ -681,6 +683,8 @@ pub mod tests {
             print!("syns.strengths: ");
             self.strengths.read(&mut vec).enq().unwrap();
             util::print_slice(&vec, 1 << 0, None, idx_range.clone(), false);
+
+            let mut vec = vec![0 as SrcOfs; self.states.len()];
 
             print!("syns.src_col_v_offs: ");
             self.src_col_v_offs.read(&mut vec).enq().unwrap();
