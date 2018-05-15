@@ -1,7 +1,16 @@
 [package]
 name = "bismit"
 version = "0.0.1"
-authors = ["Nick Sanders <github.com/c0gent>"]
+authors = ["Nick Sanders <cogciprocate@gmail.com>"]
+description = "Biologically Inspired Sensory Motor Inference Toolkit"
+documentation = "https://docs.rs/bismit"
+homepage = "https://github.com/cogciprocate/bismit"
+repository = "https://github.com/cogciprocate/bismit"
+readme = "README.md"
+# keywords = []
+license = "GPL-2.0-only"
+exclude = ["target/*", "*.png", "bak/*"]
+# categories = []
 
 [features]
 profile = ["cpuprofiler"]

@@ -27,16 +27,7 @@ To create:
 Bismit simulates the interactions of the following hierarchical structures of
 the neocortex:
 
-- Cortex
-   - Region
-      - Area
-         - Layer
-            - Slice
-               - Cell
-                  - Tuft
-                     - Dendrite
-                        - Synapse
-
+##### Cortex - Region - Area - Layer - Slice - Cell - Tuft - Dendrite - Synapse
 
 Bismit is written in Rust and OpenCL C and is in an unstable pre-alpha stage.
 Full basic sensory functionality is complete. Motor control and use case
