@@ -40,8 +40,7 @@ pub mod tests {
 
     use std::ops::{Range};
     // use rand::{XorShiftRng};
-
-    use map::{AreaMap, AreaMapTest, axon_idx};
+    use map::{AreaMap, AreaMapTest, LayerAddress, axon_idx};
     use cmn::{self, CorticalDims, XorShiftRng, SliceDims};
     use std::fmt::{Display, Formatter, Result};
     use super::DataCellLayer;
@@ -128,7 +127,8 @@ pub mod tests {
     }
 
 
-
+    /// A cell.
+    #[derive(Debug)]
     pub struct Cell<'l> {
         layer: &'l DataCellLayerMap,
         slc_id_lyr: u8,
@@ -137,12 +137,16 @@ pub mod tests {
     }
 
     impl<'l> Cell<'l> {
-            // slc_axon_idz: u32, slc_count: SlcId, slc_id: SlcId,
-            // v_size: u32, v_scale: u32, v_id_unscaled: u32, v_ofs: SrcOfs,
-            // u_size: u32, u_scale: u32, u_id_unscaled: u32, u_ofs: SrcOfs
+        /// Returns the index of the cell within its layer.
+        pub fn idx(&self) -> u32 {
+            cmn::cel_idx_3d(self.layer.depth, self.slc_id_lyr, self.layer.slice_dims.v_size(),
+                self.v_id, self.layer.slice_dims.u_size(), self.u_id)
+        }
+
+        /// Returns the index of the cell's axon within axon space.
         pub fn axon_idx(&self) -> u32 {
-            let slc_axon_idz = (self.slc_id_lyr as u32 * self.layer.dims.columns()) + self.layer.axon_idz;
-            axon_idx(slc_axon_idz, self.layer.dims.depth(), self.layer.slc_idz,
+            let slc_axon_idz = (self.slc_id_lyr as u32 * self.layer.slice_dims.columns()) + self.layer.axon_idz;
+            axon_idx(slc_axon_idz, self.layer.depth, self.layer.slc_idz,
                 self.layer.slice_dims.v_size(), self.layer.slice_dims.v_scale(), self.v_id, 0,
                 self.layer.slice_dims.u_size(), self.layer.slice_dims.u_scale(), self.u_id, 0).unwrap()
         }
@@ -153,8 +157,9 @@ pub mod tests {
     /// within a data cell layer (tufts, dendrites, synapses, etc.).
     #[derive(Clone, Debug)]
     pub struct DataCellLayerMap {
-        dims: CorticalDims,
+        layer_addr: LayerAddress,
         slice_dims: SliceDims,
+        depth: SlcId,
         axon_idz: u32,
         slc_idz: SlcId,
     }
@@ -173,7 +178,7 @@ pub mod tests {
                 .expect(&format!("DataCellLayerMap::from_names: The specified layer ('{}') \
                     has no slices.", layer_name));
 
-            assert!(layer_slc_range.start <= SlcId::max_value() as usize);
+            debug_assert!(layer_slc_range.start <= SlcId::max_value() as usize);
             let slc_idz = layer_slc_range.start as SlcId;
             let axon_idz = area_map.slice_map().axon_idzs()[slc_idz as usize];
             let mut slice_dims = None;
@@ -183,21 +188,23 @@ pub mod tests {
 
                 match slice_dims {
                     // Ensure each slice in the layer is equal:
-                    Some(ref sd_0) => assert!(sd_0 == sd_i),
+                    Some(ref sd_0) => debug_assert!(sd_0 == sd_i),
                     None => slice_dims = Some(sd_i.clone()),
                 }
 
                 // Ensure axon idz calculations for each slice are correct:
-                assert!(area_map.slice_map().axon_idzs()[slc_id] ==
+                debug_assert!(area_map.slice_map().axon_idzs()[slc_id] ==
                     (dims.columns() * i as u32) + axon_idz);
             }
 
             let slice_dims = slice_dims.unwrap();
-            assert!(slice_dims.v_size() * slice_dims.u_size() == dims.columns());
+            debug_assert!(slice_dims.v_size() == dims.v_size() &&
+                slice_dims.u_size() == dims.u_size());
 
             DataCellLayerMap {
-                dims,
+                layer_addr,
                 slice_dims,
+                depth: dims.depth(),
                 axon_idz,
                 slc_idz,
             }
@@ -210,6 +217,10 @@ pub mod tests {
                 v_id,
                 u_id,
             }
+        }
+
+        pub fn layer_addr(&self) -> LayerAddress {
+            self.layer_addr
         }
     }
 

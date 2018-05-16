@@ -8,36 +8,61 @@ use ocl::ReadGuard;
 use ::{Error as CmnError, Thalamus, CorticalAreas, TractReceiver, SamplerKind,
     SamplerBufferKind, FutureRecv, FutureReadGuardVec, ReadGuardVec, CellSampleIdxs,
     FutureCorticalSamples, CorticalSampler, CorticalSamples, LayerAddress,
-    DataCellLayerMap};
+    DataCellLayerMap, SlcId};
+use cortex::Cell as CellMap;
+
+
+#[derive(Debug)]
+pub struct Cell<'s> {
+    samples: &'s CorticalLayerSamples,
+    map: CellMap<'s>,
+}
+
+impl<'l> Cell<'l> {
+    pub fn axon_state(&self) -> Option<u8> {
+        self.samples.axon_states().map(|states| states[self.map.axon_idx() as usize])
+    }
+
+    pub fn map(&self) -> &CellMap<'l> {
+        &self.map
+    }
+}
 
 
 /// Cortical layer samples.
 #[derive(Debug)]
 pub struct CorticalLayerSamples {
     samples: CorticalSamples,
-    layer_addr: LayerAddress,
-    // axons: Option<ReadGuard<Vec<u8>>>,
+    map: DataCellLayerMap,
 }
 
 impl CorticalLayerSamples {
-    fn new(samples: CorticalSamples, layer_addr: LayerAddress) -> CorticalLayerSamples {
+    fn new(samples: CorticalSamples, map: DataCellLayerMap) -> CorticalLayerSamples {
         CorticalLayerSamples {
-            // axons: None,
             samples,
-            layer_addr,
+            map,
         }
     }
 
-    pub fn axons(&self) -> Option<&ReadGuard<Vec<u8>>> {
+    pub fn axon_states(&self) -> Option<&ReadGuard<Vec<u8>>> {
         self.samples.sample(&SamplerKind::Axons(None)).map(|s| s.as_u8())
     }
 
     pub fn soma_states(&self) -> Option<&ReadGuard<Vec<u8>>> {
-        self.samples.sample(&SamplerKind::SomaStates(self.layer_addr)).map(|s| s.as_u8())
+        self.samples.sample(&SamplerKind::SomaStates(self.map.layer_addr())).map(|s| s.as_u8())
     }
 
     pub fn tuft_states(&self) -> Option<&ReadGuard<Vec<u8>>> {
-        self.samples.sample(&SamplerKind::TuftStates(self.layer_addr)).map(|s| s.as_u8())
+        self.samples.sample(&SamplerKind::TuftStates(self.map.layer_addr())).map(|s| s.as_u8())
+    }
+
+    pub fn cell<'l>(&'l self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'l> {
+        Cell { samples: self, map: self.map.cell(slc_id_lyr, v_id, u_id) }
+    }
+
+    /// Returns a reference to the layer map.
+    pub fn map(&self) -> &DataCellLayerMap {
+        &self.map
     }
 
     // axons: bool,
@@ -78,7 +103,7 @@ impl Deref for CorticalLayerSamples {
 #[derive(Debug)]
 pub struct FutureCorticalLayerSamples {
     samples: FutureCorticalSamples,
-    layer_addr: LayerAddress,
+    map: Option<DataCellLayerMap>,
 }
 
 impl Future for FutureCorticalLayerSamples {
@@ -86,7 +111,9 @@ impl Future for FutureCorticalLayerSamples {
     type Error = CmnError;
 
     fn poll(&mut self, cx: &mut Context) -> Poll<Self::Item, Self::Error> {
-        self.samples.poll(cx).map(|a| a.map(|s| CorticalLayerSamples::new(s, self.layer_addr)))
+        self.samples.poll(cx).map(|a| a.map(|s|
+            CorticalLayerSamples::new(s, self.map.take().unwrap())
+        ))
     }
 }
 
@@ -111,7 +138,7 @@ impl CorticalLayerSampler {
     pub fn recv(&self) -> FutureCorticalLayerSamples {
         FutureCorticalLayerSamples {
             samples: FutureCorticalSamples::new(&self.sampler.rxs),
-            layer_addr: self.layer_addr,
+            map: Some(self.map.clone()),
         }
     }
 
@@ -364,10 +391,6 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
 
     /// Build and return a new `CorticalLayerSampler`.
     pub fn build(&mut self) -> CorticalLayerSampler {
-        // let layer_addr = self.thal.area_maps().by_key(self.area_name).expect("invalid area name")
-        //     .layer_map().layers().by_key(self.layer_name).expect("invalid layer name")
-        //     .layer_addr();
-
         let layer_addr = self.thal.layer_addr(self.area_name, self.layer_name);
 
         let mut sampler_kinds = Vec::with_capacity(32);
@@ -400,13 +423,7 @@ impl<'b> CorticalLayerSamplerBuilder<'b> {
         if self.syn_src_col_u_offs { sampler_kinds.push(SamplerKind::SynSrcColUOffs(layer_addr),) }
         if self.syn_flag_sets { sampler_kinds.push(SamplerKind::SynFlagSets(layer_addr),) }
 
-
         let map = DataCellLayerMap::from_names(self.area_name, self.layer_name, self.thal);
-
-        {
-            let cell = map.cell(2, 16, 16);
-            println!("######## CELL AXON IDX: {}", cell.axon_idx());
-        }
 
         CorticalLayerSampler {
             sampler: CorticalSampler::new(self.area_name, sampler_kinds,

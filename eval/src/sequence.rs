@@ -118,14 +118,16 @@ const BASAL_DISTAL_TUFT_ID: usize = 1;
 
 
 /// Checks stuff.
+#[allow(unreachable_code)]
 fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
         cycles_complete: usize, lyr_addr: LayerAddress, sdrs: QrwReadGuard<Vec<Vec<u8>>>,
         cursor_pos: SeqCursorPos, next_cursor_pos: SeqCursorPos,
         focus_layer_axon_range: (usize, usize), results: Guard<Results>) {
-    if cursor_pos.seq_idx != 0 { return; }
+    // if cycles_complete % 1000 >= 3 { return; }
+    // if cursor_pos.seq_idx != 0 { return; }
 
     // let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().as_u8();
-    let axn_states = samples.axons().unwrap();
+    let axn_states = samples.axon_states().unwrap();
     // let tft_states = samples.sample(&SamplerKind::TuftStates(lyr_addr)).unwrap().as_u8();
     let tft_states = samples.tuft_states().unwrap();
     let tft_best_den_ids = samples.sample(&SamplerKind::TuftBestDenIds(lyr_addr)).unwrap().as_u8();
@@ -146,8 +148,8 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
     // TODO: Run this check (SDR-axon states) in its own function.
     for (sdr_idx, axn_idx) in (focus_layer_axon_range.0..focus_layer_axon_range.1).enumerate() {
         // println!("cur_sdr[sdr_idx]: {}, axn_states[axn_idx]: {}", cur_sdr[sdr_idx], axn_states[axn_idx]);
-        assert!(cur_sdr[sdr_idx] != 0 && axn_states[axn_idx] != 0 ||
-            cur_sdr[sdr_idx] == 0 && axn_states[axn_idx] == 0);
+        // assert!(cur_sdr[sdr_idx] != 0 && axn_states[axn_idx] != 0 ||
+        //     cur_sdr[sdr_idx] == 0 && axn_states[axn_idx] == 0);
     }
 
 
@@ -166,6 +168,16 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
 
         let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().as_u8();
         let cel_states = samples.sample(&SamplerKind::SomaStates(lyr_addr)).unwrap().as_u8();
+
+        {
+            let cell = samples.cell(cel.cel_coords.slc_id_lyr, cel.cel_coords.v_id, cel.cel_coords.u_id);
+            assert!(cel_idx == cell.map().idx() as usize);
+            assert!(cel_axn_idx == cell.map().axon_idx() as usize);
+            assert!(axn_states[cel_axn_idx] == cell.axon_state().unwrap());
+        }
+
+        if cycles_complete % 1000 >= 3 { continue; }
+        // if axn_states[cel_axn_idx] == 0 { continue; }
 
         println!();
         print!("[{}] (cursor_pos: {:?}) ", cycles_complete, cursor_pos);
@@ -204,7 +216,7 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
         }
         println!();
     }
-    println!();
+    // println!();
 
 }
 
