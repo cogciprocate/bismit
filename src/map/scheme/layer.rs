@@ -18,6 +18,13 @@ impl LayerKind {
             LayerKind::Cellular(_) => AxonTopology::Spatial,
         }
     }
+
+    pub fn cell_scheme(&self) -> Option<&CellScheme> {
+        match *self {
+            LayerKind::Cellular(ref cs) => Some(cs),
+            LayerKind::Axonal(_) => None,
+        }
+    }
 }
 
 

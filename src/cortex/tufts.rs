@@ -34,7 +34,7 @@ pub struct Tufts {
     mtp_exe_cmd_uids: Vec<CommandUid>,
     mtp_exe_cmd_idxs: Vec<usize>,
 
-    pub dens: Dendrites,
+    dens: Dendrites,
     settings: CorticalAreaSettings,
     rng: XorShiftRng,
 }

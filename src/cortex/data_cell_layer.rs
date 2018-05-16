@@ -38,11 +38,13 @@ pub trait DataCellLayer: 'static + Debug + Send {
 pub mod tests {
     #![allow(dead_code, unused_imports, unused_variables)]
 
-    use std::ops::{Range};
+    use std::sync::Arc;
+    use std::ops::{Range, Deref};
+    use std::fmt::{Display, Formatter, Result};
     // use rand::{XorShiftRng};
     use map::{AreaMap, AreaMapTest, LayerAddress, axon_idx};
     use cmn::{self, CorticalDims, XorShiftRng, SliceDims};
-    use std::fmt::{Display, Formatter, Result};
+    use cortex::TuftDims;
     use super::DataCellLayer;
     use {Thalamus, SlcId};
 
@@ -127,16 +129,52 @@ pub mod tests {
     }
 
 
-    /// A cell.
+    /// A dendrite map.
     #[derive(Debug)]
-    pub struct Cell<'l> {
-        layer: &'l DataCellLayerMap,
+    pub struct Dendrite<'t> {
+        tuft: &'t Tuft<'t>,
+        den_id: u32,
+    }
+
+    impl<'t> Dendrite<'t> {
+        pub fn idx(&self) -> u32 {
+            99999999
+        }
+    }
+
+
+    /// A tuft map.
+    #[derive(Debug)]
+    pub struct Tuft<'c> {
+        cell: &'c Cell<'c>,
+        tuft_id: usize,
+    }
+
+    impl<'c> Tuft<'c> {
+        /// Returns the index of this cell-tuft within its layer.
+        pub fn idx(&self) -> u32 {
+            (self.tuft_id as u32 * self.cell.layer.cell_count()) + self.cell.idx()
+        }
+
+        /// Returns a dendrite map corresponding to the dendrite within the
+        /// cell-tuft specified by `den_id`.
+        pub fn dendrite<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
+            assert!(den_id < self.cell.layer.tuft_dims[self.tuft_id].dens_per_tft());
+            Dendrite { tuft: self, den_id }
+        }
+    }
+
+
+    /// A cell map.
+    #[derive(Debug)]
+    pub struct Cell<'m> {
+        layer: &'m DataCellLayerMap,
         slc_id_lyr: u8,
         v_id: u32,
         u_id: u32,
     }
 
-    impl<'l> Cell<'l> {
+    impl<'m> Cell<'m> {
         /// Returns the index of the cell within its layer.
         pub fn idx(&self) -> u32 {
             cmn::cel_idx_3d(self.layer.depth, self.slc_id_lyr, self.layer.slice_dims.v_size(),
@@ -146,10 +184,36 @@ pub mod tests {
         /// Returns the index of the cell's axon within axon space.
         pub fn axon_idx(&self) -> u32 {
             let slc_axon_idz = (self.slc_id_lyr as u32 * self.layer.slice_dims.columns()) + self.layer.axon_idz;
-            axon_idx(slc_axon_idz, self.layer.depth, self.layer.slc_idz,
+            axon_idx(slc_axon_idz, self.layer.depth, self.layer.slice_idz,
                 self.layer.slice_dims.v_size(), self.layer.slice_dims.v_scale(), self.v_id, 0,
                 self.layer.slice_dims.u_size(), self.layer.slice_dims.u_scale(), self.u_id, 0).unwrap()
         }
+
+        /// Returns a tuft map.
+        pub fn tuft<'c>(&'c self, tuft_id: usize) -> Tuft<'c> {
+            assert!(tuft_id < self.layer.tuft_count());
+            Tuft { cell: self, tuft_id, }
+        }
+    }
+
+
+    // /// Information pertaining to indexing within a tuft.
+    // #[derive(Clone, Debug)]
+    // struct TuftInfo {
+    //     dens_per_tft: u32,
+    //     syns_per_den: u32,
+    // }
+
+
+    /// The guts of a `DataCellLayerMap`.
+    #[derive(Debug)]
+    pub struct Inner {
+        layer_addr: LayerAddress,
+        slice_dims: SliceDims,
+        depth: SlcId,
+        axon_idz: u32,
+        slice_idz: SlcId,
+        tuft_dims: Vec<TuftDims>,
     }
 
 
@@ -157,14 +221,11 @@ pub mod tests {
     /// within a data cell layer (tufts, dendrites, synapses, etc.).
     #[derive(Clone, Debug)]
     pub struct DataCellLayerMap {
-        layer_addr: LayerAddress,
-        slice_dims: SliceDims,
-        depth: SlcId,
-        axon_idz: u32,
-        slc_idz: SlcId,
+        inner: Arc<Inner>,
     }
 
     impl DataCellLayerMap {
+        /// Creates and returns a new `DataCellLayerMap`.
         pub fn from_names(area_name: &str, layer_name: &str, thal: &mut Thalamus) -> DataCellLayerMap {
             let layer_addr = thal.layer_addr(area_name, layer_name);
             let area_map = &thal.area_maps()[layer_addr.area_id()];
@@ -179,8 +240,8 @@ pub mod tests {
                     has no slices.", layer_name));
 
             debug_assert!(layer_slc_range.start <= SlcId::max_value() as usize);
-            let slc_idz = layer_slc_range.start as SlcId;
-            let axon_idz = area_map.slice_map().axon_idzs()[slc_idz as usize];
+            let slice_idz = layer_slc_range.start as SlcId;
+            let axon_idz = area_map.slice_map().axon_idzs()[slice_idz as usize];
             let mut slice_dims = None;
 
             for (i, slc_id) in layer_slc_range.clone().enumerate() {
@@ -201,16 +262,27 @@ pub mod tests {
             debug_assert!(slice_dims.v_size() == dims.v_size() &&
                 slice_dims.u_size() == dims.u_size());
 
+            let cell_scheme = layer_info.kind().cell_scheme().unwrap();
+            let tuft_count = cell_scheme.tft_count();
+
+            let tuft_dims = cell_scheme.tft_schemes().iter().map(|ts| {
+                TuftDims::new(ts.dens_per_tft(), ts.syns_per_den())
+            }).collect::<Vec<_>>();
+
             DataCellLayerMap {
-                layer_addr,
-                slice_dims,
-                depth: dims.depth(),
-                axon_idz,
-                slc_idz,
+                inner: Arc::new(Inner {
+                    layer_addr,
+                    slice_dims,
+                    depth: dims.depth(),
+                    axon_idz,
+                    slice_idz,
+                    tuft_dims,
+                })
             }
         }
 
-        pub fn cell<'l>(&'l self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'l> {
+        /// Returns a cell map.
+        pub fn cell<'m>(&'m self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
             Cell {
                 layer: self,
                 slc_id_lyr,
@@ -219,8 +291,28 @@ pub mod tests {
             }
         }
 
+        /// Returns the address of this layer.
         pub fn layer_addr(&self) -> LayerAddress {
             self.layer_addr
+        }
+
+        /// Returns the total number of cells in the layer.
+        pub fn cell_count(&self) -> u32 {
+            self.depth as u32 * self.slice_dims.columns()
+        }
+
+        pub fn tuft_count(&self) -> usize {
+            self.tuft_dims.len()
+        }
+    }
+
+    impl Deref for DataCellLayerMap {
+        type Target = Arc<Inner>;
+
+        /// Implemented for convenience (to avoid having to `.inner`
+        /// everywhere).
+        fn deref(&self) -> &Arc<Inner> {
+            &(*self).inner
         }
     }
 

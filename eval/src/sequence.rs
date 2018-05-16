@@ -26,7 +26,7 @@ use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
 use ::{IncrResult, TrialIter, Layer, Pathway, InputSource, Sdrs, SeqCursor, SeqCursorPos};
-use ::spatial::{TrialData, TrialResults};
+use ::spatial::{TrialData, /*TrialResults*/};
 
 
 static PRI_AREA: &'static str = "v1";
@@ -122,7 +122,7 @@ const BASAL_DISTAL_TUFT_ID: usize = 1;
 fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
         cycles_complete: usize, lyr_addr: LayerAddress, sdrs: QrwReadGuard<Vec<Vec<u8>>>,
         cursor_pos: SeqCursorPos, next_cursor_pos: SeqCursorPos,
-        focus_layer_axon_range: (usize, usize), results: Guard<Results>) {
+        focus_layer_axon_range: (usize, usize), results: Guard<TrialResults>) {
     // if cycles_complete % 1000 >= 3 { return; }
     // if cursor_pos.seq_idx != 0 { return; }
 
@@ -161,7 +161,8 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
     for cel in &focus_cels {
         let cel_idx = cel.cel_coords.idx() as usize;
         let cel_axn_idx = cel.cel_coords.axon_idx() as usize;
-        let celtft = &cel.tufts[0];
+        let tuft_id = 0;
+        let celtft = &cel.tufts[tuft_id];
         let celtft_idx = celtft.celtft_idx;
         let den_idx_range = &celtft.den_idx_range;
         let syn_idx_range = &celtft.syn_idx_range;
@@ -169,12 +170,16 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
         let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().as_u8();
         let cel_states = samples.sample(&SamplerKind::SomaStates(lyr_addr)).unwrap().as_u8();
 
-        {
-            let cell = samples.cell(cel.cel_coords.slc_id_lyr, cel.cel_coords.v_id, cel.cel_coords.u_id);
-            assert!(cel_idx == cell.map().idx() as usize);
-            assert!(cel_axn_idx == cell.map().axon_idx() as usize);
-            assert!(axn_states[cel_axn_idx] == cell.axon_state().unwrap());
-        }
+
+        let cell = samples.cell(cel.cel_coords.slc_id_lyr, cel.cel_coords.v_id, cel.cel_coords.u_id);
+        assert!(cel_idx == cell.map().idx() as usize);
+        assert!(cel_axn_idx == cell.map().axon_idx() as usize);
+        assert!(axn_states[cel_axn_idx] == cell.axon_state().unwrap());
+
+        let tuft = cell.tuft(tuft_id);
+        assert!(celtft_idx == tuft.map().idx() as usize);
+        assert!(tft_best_den_states_raw[celtft_idx] == tuft.best_den_state_raw().unwrap());
+
 
         if cycles_complete % 1000 >= 3 { continue; }
         // if axn_states[cel_axn_idx] == 0 { continue; }
@@ -302,21 +307,21 @@ pub struct CellTracker {
 
 /// A trial result.
 #[derive(Clone, Debug)]
-struct Result {
+struct TrialResult {
 
 }
 
 
 /// Trial results.
 #[derive(Debug)]
-struct Results {
+struct TrialResults {
     /// A list of result for each item index in an SDR sequence.
-    seq_item_results: Vec<Vec<Result>>,
+    seq_item_results: Vec<Vec<TrialResult>>,
 }
 
-impl Results {
-    pub fn new(max_seq_len: usize) -> Results {
-        Results {
+impl TrialResults {
+    pub fn new(max_seq_len: usize) -> TrialResults {
+        TrialResults {
             seq_item_results: vec![Vec::with_capacity(10000); max_seq_len],
         }
     }
@@ -339,7 +344,7 @@ struct EvalSequence {
     // input_layer_axon_range: Option<(usize, usize)>,
     focus_cels: Vec<FocusCell>,
     // last_pattern: SeqCursorPos,
-    results: Qutex<Results>,
+    results: Qutex<TrialResults>,
 }
 
 impl EvalSequence {
@@ -377,7 +382,7 @@ impl EvalSequence {
         // let sdr_cursor = SeqCursor::new((4, 8), 25, sdrs.len());
         let max_seq_len = 5;
         let sdr_cursor = SeqCursor::new((5, 5), 1, sdrs.len());
-        let results = Qutex::new(Results::new(max_seq_len));
+        let results = Qutex::new(TrialResults::new(max_seq_len));
 
         // Define the number of iters to first train then collect for each
         // sample period. All learning and other cell parameters (activity,
