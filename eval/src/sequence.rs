@@ -181,6 +181,14 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
         assert!(celtft_idx == tuft.map().idx() as usize);
         assert!(tft_best_den_states_raw[celtft_idx] == tuft.best_den_state_raw().unwrap());
 
+        for (i, den_idx) in den_idx_range.clone().enumerate() {
+            let den = tuft.dendrite(i as u32);
+            assert!(den_idx == den.map().idx() as usize);
+            assert!(den_states[den_idx as usize] == den.state().unwrap());
+            if den.state().unwrap() > 0 { print!("{{{}}}", den.state().unwrap()); }
+        }
+
+
 
         if cycles_complete % 1000 >= 3 { continue; }
         // if axn_states[cel_axn_idx] == 0 { continue; }

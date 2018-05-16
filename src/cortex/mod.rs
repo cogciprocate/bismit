@@ -53,4 +53,4 @@ pub use self::axon_space::{AxonSpaceTest, AxnCoords};
 #[cfg(any(test, feature = "eval"))]
 pub use self::dendrites::{DenCoords, DendritesTest, den_idx};
 #[cfg(any(test, feature = "eval"))]
-pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest, DataCellLayerMap, Cell, Tuft};
+pub use self::data_cell_layer::tests::{CelCoords, DataCellLayerTest, DataCellLayerMap, Cell, Tuft, Dendrite};

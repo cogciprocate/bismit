@@ -9,8 +9,29 @@ use ::{Error as CmnError, Thalamus, CorticalAreas, TractReceiver, SamplerKind,
     SamplerBufferKind, FutureRecv, FutureReadGuardVec, ReadGuardVec, CellSampleIdxs,
     FutureCorticalSamples, CorticalSampler, CorticalSamples, LayerAddress,
     DataCellLayerMap, SlcId};
-use cortex::{Cell as CellMap, Tuft as TuftMap};
+use cortex::{Cell as CellMap, Tuft as TuftMap, Dendrite as DendriteMap};
 
+
+
+
+/// A tuft sample.
+#[derive(Debug)]
+pub struct Dendrite<'t> {
+    tuft: &'t Tuft<'t>,
+    map: DendriteMap<'t>,
+}
+
+impl<'t> Dendrite<'t> {
+    /// Returns the dendrite state.
+    pub fn state(&self) -> Option<u8> {
+        self.tuft.cell.samples.den_states().map(|states| states[self.map.idx() as usize])
+    }
+
+    /// Returns the tuft map.
+    pub fn map(&self) -> &DendriteMap<'t> {
+        &self.map
+    }
+}
 
 
 
@@ -21,7 +42,7 @@ pub struct Tuft<'c> {
     map: TuftMap<'c>
 }
 
-impl <'c> Tuft<'c> {
+impl<'c> Tuft<'c> {
     /// Returns the tufts best dendrite state (raw).
     pub fn best_den_state_raw(&self) -> Option<u8> {
         self.cell.samples.tuft_best_den_states_raw().map(|states| states[self.map.idx() as usize])
@@ -30,6 +51,11 @@ impl <'c> Tuft<'c> {
     /// Returns the tuft map.
     pub fn map(&self) -> &TuftMap<'c> {
         &self.map
+    }
+
+    /// Returns a dendrite sample.
+    pub fn dendrite<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
+        Dendrite { tuft: self, map: self.map.dendrite(den_id) }
     }
 }
 
@@ -88,6 +114,10 @@ impl CorticalLayerSamples {
 
     pub fn tuft_best_den_states_raw(&self) -> Option<&ReadGuard<Vec<u8>>> {
         self.samples.sample(&SamplerKind::TuftBestDenStatesRaw(self.map.layer_addr())).map(|s| s.as_u8())
+    }
+
+    pub fn den_states(&self) -> Option<&ReadGuard<Vec<u8>>> {
+        self.samples.sample(&SamplerKind::DenStates(self.map.layer_addr())).map(|s| s.as_u8())
     }
 
     /// Returns a cell sample.

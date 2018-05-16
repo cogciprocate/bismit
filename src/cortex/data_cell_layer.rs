@@ -137,9 +137,22 @@ pub mod tests {
         // tft_den_idz: u32,
     }
 
+    // pub fn den_idx(
+    //         lyr_dims: &CorticalDims,
+    //         slc_id_lyr: u8,
+    //         v_id: u32,
+    //         u_id: u32,
+    //         tft_den_idz: u32,
+    //         tft_dims: &TuftDims,
+    //         den_id_celtft: u32)
+    //         -> u32 {
     impl<'t> Dendrite<'t> {
+        /// Returns the index of this dendrite within its layer.
         pub fn idx(&self) -> u32 {
-            99999999
+            let cell = &self.tuft.cell;
+            let tuft_info = &cell.layer.tuft_info[self.tuft.tuft_id];
+            den_idx(&cell.layer.dims(), cell.slc_id_lyr, cell.v_id,
+                cell.u_id, tuft_info.tft_den_idz, &tuft_info.dims, self.den_id)
         }
     }
 
