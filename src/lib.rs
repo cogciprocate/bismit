@@ -2,6 +2,7 @@
 
 // #![feature(discriminant_value)]
 // #![feature(conservative_impl_trait)]
+#![feature(const_fn)]
 
 extern crate num;
 extern crate libc;

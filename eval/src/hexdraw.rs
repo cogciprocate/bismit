@@ -102,7 +102,7 @@ pub fn draw_tilegroup(params: &Params, controls: &Controls) {
 
 /// Encodes and renders a 2d vector.
 pub fn draw_coord(params: &Params, controls: &Controls) {
-    let tract_dims = TractDims::new(ENCODE_DIMS[0], ENCODE_DIMS[1], 1);
+    let tract_dims = TractDims::new(1, ENCODE_DIMS[0], ENCODE_DIMS[1]);
     let mut encoder = Vector2dWriter::new(tract_dims);
 
     let mut x = 0.0;

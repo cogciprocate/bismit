@@ -44,7 +44,7 @@ pub mod tests {
     // use rand::{XorShiftRng};
     use map::{AreaMap, AreaMapTest, LayerAddress, axon_idx};
     use cmn::{self, CorticalDims, XorShiftRng, SliceDims};
-    use cortex::TuftDims;
+    use cortex::{den_idx, syn_idx, TuftDims};
     use super::DataCellLayer;
     use {Thalamus, SlcId};
 
@@ -134,6 +134,7 @@ pub mod tests {
     pub struct Dendrite<'t> {
         tuft: &'t Tuft<'t>,
         den_id: u32,
+        // tft_den_idz: u32,
     }
 
     impl<'t> Dendrite<'t> {
@@ -159,7 +160,7 @@ pub mod tests {
         /// Returns a dendrite map corresponding to the dendrite within the
         /// cell-tuft specified by `den_id`.
         pub fn dendrite<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
-            assert!(den_id < self.cell.layer.tuft_dims[self.tuft_id].dens_per_tft());
+            assert!(den_id < self.cell.layer.tuft_info[self.tuft_id].dims.dens_per_tft());
             Dendrite { tuft: self, den_id }
         }
     }
@@ -197,12 +198,13 @@ pub mod tests {
     }
 
 
-    // /// Information pertaining to indexing within a tuft.
-    // #[derive(Clone, Debug)]
-    // struct TuftInfo {
-    //     dens_per_tft: u32,
-    //     syns_per_den: u32,
-    // }
+    /// Information pertaining to indexing within a tuft.
+    #[derive(Clone, Debug)]
+    struct TuftInfo {
+        dims: TuftDims,
+        tft_den_idz: u32,
+        tft_syn_idz: u32,
+    }
 
 
     /// The guts of a `DataCellLayerMap`.
@@ -213,7 +215,7 @@ pub mod tests {
         depth: SlcId,
         axon_idz: u32,
         slice_idz: SlcId,
-        tuft_dims: Vec<TuftDims>,
+        tuft_info: Vec<TuftInfo>,
     }
 
 
@@ -230,14 +232,13 @@ pub mod tests {
             let layer_addr = thal.layer_addr(area_name, layer_name);
             let area_map = &thal.area_maps()[layer_addr.area_id()];
             let dims = area_map.layer_dims(layer_addr.layer_id())
-                .expect(&format!("DataCellLayerMap::from_names: Invalid layer name ('{}'). \
-                    Layer name must be valid for the area and have an output or local axon \
-                    domain (non-input).", layer_name));
+                .expect(&format!("DataCellLayerMap::from_names: Invalid data cell layer ('{}'). \
+                    Layer must have an output or local axon domain (non-input).", layer_addr));
 
             let layer_info = area_map.layer_map().layer_info(layer_addr.layer_id()).unwrap();
             let layer_slc_range = layer_info.slc_range().cloned()
                 .expect(&format!("DataCellLayerMap::from_names: The specified layer ('{}') \
-                    has no slices.", layer_name));
+                    has no slices.", layer_addr));
 
             debug_assert!(layer_slc_range.start <= SlcId::max_value() as usize);
             let slice_idz = layer_slc_range.start as SlcId;
@@ -264,9 +265,26 @@ pub mod tests {
 
             let cell_scheme = layer_info.kind().cell_scheme().unwrap();
             let tuft_count = cell_scheme.tft_count();
+            let mut den_count_ttl = 0u32;
+            let mut syn_count_ttl = 0u32;
 
-            let tuft_dims = cell_scheme.tft_schemes().iter().map(|ts| {
-                TuftDims::new(ts.dens_per_tft(), ts.syns_per_den())
+            // Determine tuft dims and den/syn idzs:
+            let tuft_info = cell_scheme.tft_schemes().iter().map(|ts| {
+                let tft_den_idz = den_count_ttl;
+                let tft_den_count = dims.cells() * ts.dens_per_tft();
+                debug_assert!(tft_den_count > 0);
+                den_count_ttl += tft_den_count;
+
+                let tft_syn_idz = syn_count_ttl;
+                let tft_syn_count = dims.cells() * ts.syns_per_tft();
+                debug_assert!(tft_syn_count > 0);
+                syn_count_ttl += tft_syn_count;
+
+                TuftInfo {
+                    dims: TuftDims::new(ts.dens_per_tft(), ts.syns_per_den()),
+                    tft_den_idz,
+                    tft_syn_idz,
+                }
             }).collect::<Vec<_>>();
 
             DataCellLayerMap {
@@ -276,7 +294,7 @@ pub mod tests {
                     depth: dims.depth(),
                     axon_idz,
                     slice_idz,
-                    tuft_dims,
+                    tuft_info,
                 })
             }
         }
@@ -301,8 +319,14 @@ pub mod tests {
             self.depth as u32 * self.slice_dims.columns()
         }
 
+        /// Returns the number of tufts for cells in this layer.
         pub fn tuft_count(&self) -> usize {
-            self.tuft_dims.len()
+            self.tuft_info.len()
+        }
+
+        /// Returns the layer dimensions.
+        pub fn dims(&self) -> CorticalDims {
+            CorticalDims::new(self.depth, self.slice_dims.v_size(), self.slice_dims.u_size())
         }
     }
 

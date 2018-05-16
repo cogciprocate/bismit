@@ -179,7 +179,7 @@ impl LayerInfo {
 
                             let sub_layer_dims = sub_layer.dims().expect(&format!("LayerInfo::new: \
                                 No dims found for layer '{:?}'", sub_layer)).clone();
-                            assert!(sub_layer_dims.are_at_least(&CorticalDims::from((1, 1, 0))),
+                            assert!(sub_layer_dims.are_at_least(&CorticalDims::new(0, 1, 1)),
                                 "Subcortical dims for area \"{}\" are zero.", src_area_name);
 
                             (sub_layer_dims, sub_layer.axon_topology())
@@ -252,7 +252,7 @@ impl LayerInfo {
 
                         let sub_layer_dims = sub_layer.dims().expect(&format!("LayerInfo::new: \
                             No dims found for layer '{:?}'", sub_layer));
-                        assert!(sub_layer_dims.are_at_least(&CorticalDims::from((1, 1, 0))),
+                        assert!(sub_layer_dims.are_at_least(&CorticalDims::new(0, 1, 1)),
                             "Subcortical dims for area \"{}\" are zero.", area_sch_name);
 
                         irregular_layer_dims = Some(sub_layer_dims.clone());

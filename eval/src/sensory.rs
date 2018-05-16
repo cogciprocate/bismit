@@ -12,7 +12,7 @@ use vibi::bismit::futures::{executor, Future, FutureExt};
 use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
     SubcorticalNucleus, SubcorticalNucleusLayer, CompletionPool, CorticalAreas};
 use vibi::bismit::map::*;
-use vibi::bismit::cmn::{TractFrameMut, TractDims};
+use vibi::bismit::cmn::{TractFrameMut, TractDims, CorticalDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
 use ::{IncrResult, TrialIter, Layer, Pathway, InputSource};
 use ::spatial::{TrialData, TrialResults};
@@ -23,7 +23,8 @@ static IN_AREA: &'static str = "v0";
 static SPT_LYR: &'static str = "iv";
 
 const ENCODE_DIM: u32 = 48;
-const ENCODE_DIMS: (u32, u32, u8) = (30, 255, 1);
+// const ENCODE_DIMS: (u8, u32, u32) = (1, 30, 255);
+const ENCODE_DIMS: CorticalDims = CorticalDims::new(1, 30, 255);
 const AREA_DIM: u32 = 16;
 const SEQUENTIAL_SDR: bool = true;
 

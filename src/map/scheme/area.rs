@@ -29,7 +29,7 @@ impl AreaScheme {
             area_id: None,
             name: name,
             layer_map_name: layer_map_name,
-            dims: CorticalDims::new(dims[0], dims[1], 0),
+            dims: CorticalDims::new(0, dims[0], dims[1]),
             encoder: EncoderScheme::None,
             filter_chains: Vec::with_capacity(4),
             aff_areas: Vec::with_capacity(4),

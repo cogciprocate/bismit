@@ -100,7 +100,7 @@ impl GlyphSequences {
                 // assert!(tags.contains(map::NS_OUT));
                 assert!(val_layer_dims.is_none());
                 assert!(val_layer_addr.is_none());
-                val_layer_dims = Some(CorticalDims::new(hrz_dims.0, hrz_dims.1, 1));
+                val_layer_dims = Some(CorticalDims::new(1, hrz_dims.0, hrz_dims.1));
                 layer.set_dims(val_layer_dims.clone().unwrap());
                 val_layer_addr = Some(layer.sub().addr().clone());
             }

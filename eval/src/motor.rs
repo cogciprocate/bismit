@@ -107,7 +107,7 @@ impl EvalMotor {
 
 
 
-        let tract_dims = TractDims::new(ENCODE_DIMS[0], ENCODE_DIMS[1], 1);
+        let tract_dims = TractDims::new(1, ENCODE_DIMS[0], ENCODE_DIMS[1]);
         let encoder_2d = Vector2dWriter::new(tract_dims);
 
 

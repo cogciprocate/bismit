@@ -1,6 +1,7 @@
 use ocl::SpatialDims;
 use ocl::traits::MemLen;
 use cmn::{ParaHexArray, TractDims, CmnResult};
+use SlcId;
 
 // # CorticalDims: Dimensions of a cortical area in units of cells
 // - Used to define both the volume and granularity of a cortical area.
@@ -32,31 +33,17 @@ use cmn::{ParaHexArray, TractDims, CmnResult};
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Dimensions for a cortical, area, layer, slice, or other subdivison thereof.
 pub struct CorticalDims {
+    depth: SlcId, // in cell-edges (NxMx1)
     v_size: u32, // in cell-edges (log2) (HxWxD: 1x1xN)
     u_size: u32, // in cell-edges (log2) (HxWxD: 1x1xN)
-    depth: u8, // in cell-edges (NxMx1)
-    // tfts_per_cel: u32, // dendritic tufts per cell
-    // per_tft_l2: i8, // divisions per cell-tuft (log2)
-    incr: Option<u32>,
 }
 
 impl CorticalDims {
-    pub fn new(v_size: u32, u_size: u32, depth: u8, /*per_tft_l2: i8,*/ /*incr: Option<u32>*/) -> CorticalDims {
-        //assert!(super::OPENCL_PREFERRED_VECTOR_MULTIPLE == 4);
-        //println!("\n\n##### v_size: {}, u_size: {}", v_size, u_size);
-        //let incr = resolve_incr(ocl);
-        //assert!(v_size % 4 == 0, "CorticalDims::new(): Size of dimension 'v' must be a multiple of 4.");
-        //assert!(u_size % 4 == 0, "CorticalDims::new(): Size of dimension 'u' must be a multiple of 4.");
-
+    pub const fn new(depth: SlcId, v_size: u32, u_size: u32, /*per_tft_l2: i8,*/ /*incr: Option<u32>*/) -> CorticalDims {
         CorticalDims {
+            depth: depth,
             v_size: v_size,
             u_size: u_size,
-            /*u_size_l2: u_size_l2,
-            v_size_l2: v_size_l2,*/
-            depth: depth,
-            // tfts_per_cel: 1,
-            // per_tft_l2: per_tft_l2,
-            incr: None, // <<<<< PENDING RENAME
         }
     }
 
@@ -71,15 +58,15 @@ impl CorticalDims {
     //     self.per_tft_l2
     // }
 
-    // PHYSICAL_INCREMENT():
-    //         TODO: improve this description
-    #[deprecated]
-    pub fn incr(&self) -> CmnResult<u32> {
-        match self.incr {
-            Some(pi) => Ok(pi),
-            None => Err("CorticalDims::incr: Physical increment not set.".into()),
-        }
-    }
+    // // PHYSICAL_INCREMENT():
+    // //         TODO: improve this description
+    // #[deprecated]
+    // pub fn incr(&self) -> CmnResult<u32> {
+    //     match self.incr {
+    //         Some(pi) => Ok(pi),
+    //         None => Err("CorticalDims::incr: Physical increment not set.".into()),
+    //     }
+    // }
 
     // SCALED_PHYSICAL_INCREMENT(): Represents the increment of the columns, not simply the dens/syns/whatever
     //         i.e. if cel_phys_incr == 256, syns must have an phys_incr of cel_phys_incr * syns_per_cel
@@ -97,6 +84,11 @@ impl CorticalDims {
     // }
 
     #[inline]
+    pub fn depth(&self) -> SlcId {
+        self.depth
+    }
+
+    #[inline]
     pub fn v_size(&self) -> u32 {
         self.v_size
     }
@@ -104,11 +96,6 @@ impl CorticalDims {
     #[inline]
     pub fn u_size(&self) -> u32 {
         self.u_size
-    }
-
-    #[inline]
-    pub fn depth(&self) -> u8 {
-        self.depth
     }
 
     // COLUMNS(): 2D Area of a slc measured in cell sides
@@ -193,29 +180,29 @@ impl CorticalDims {
     // }
 
     #[inline]
-    pub fn clone_with_depth(&self, depth: u8) -> CorticalDims {
+    pub fn clone_with_depth(&self, depth: SlcId) -> CorticalDims {
         CorticalDims { depth: depth, .. *self }
     }
 
-    #[inline]
-    #[deprecated]
-    pub fn clone_with_incr(&self, incr: usize) -> CorticalDims {
-        CorticalDims { incr: Some(incr as u32), .. *self }
-    }
+    // #[inline]
+    // #[deprecated]
+    // pub fn clone_with_incr(&self, incr: usize) -> CorticalDims {
+    //     CorticalDims { incr: Some(incr as u32), .. *self }
+    // }
 
-    #[inline]
-    #[deprecated]
-    pub fn set_incr(&mut self, incr: usize) {
-        self.incr = Some(incr as u32);
-    }
+    // #[inline]
+    // #[deprecated]
+    // pub fn set_incr(&mut self, incr: usize) {
+    //     self.incr = Some(incr as u32);
+    // }
 
-    #[inline]
-    #[deprecated]
-    pub fn with_incr(mut self, incr: usize) -> CorticalDims {
-        #[allow(deprecated)]
-        self.set_incr(incr);
-        self
-    }
+    // #[inline]
+    // #[deprecated]
+    // pub fn with_incr(mut self, incr: usize) -> CorticalDims {
+    //     #[allow(deprecated)]
+    //     self.set_incr(incr);
+    //     self
+    // }
 
     // #[inline]
     // pub fn with_tfts(mut self, tfts_per_cel: u32) -> CorticalDims {
@@ -272,7 +259,7 @@ impl ParaHexArray for CorticalDims {
     }
 
     #[inline]
-    fn depth(&self) -> u8 {
+    fn depth(&self) -> SlcId {
         self.depth
     }
 }
@@ -311,11 +298,11 @@ impl<'a> Into<SpatialDims> for &'a CorticalDims {
     }
 }
 
-impl From<(u32, u32, u8)> for CorticalDims {
-    fn from(tuple: (u32, u32, u8)) -> CorticalDims {
-        CorticalDims::new(tuple.0, tuple.1, tuple.2)
-    }
-}
+// impl From<(u32, u32, SlcId)> for CorticalDims {
+//     fn from(tuple: (u32, u32, SlcId)) -> CorticalDims {
+//         CorticalDims::new(tuple.0, tuple.1, tuple.2)
+//     }
+// }
 
 // [KEEPME]: DO NOT IMPLEMENT THIS:
 // impl Into<SpatialDims> for CorticalDims {

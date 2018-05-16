@@ -23,7 +23,7 @@ use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, Cortical
     CorticalAreaTest,
     DendritesTest, SynapsesTest, CelCoords, DenCoords, SynCoords};
 use vibi::bismit::map::*;
-use vibi::bismit::cmn::{TractFrameMut, TractDims};
+use vibi::bismit::cmn::{TractFrameMut, TractDims, CorticalDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
 use ::{IncrResult, TrialIter, Layer, Pathway, InputSource, Sdrs, SeqCursor, SeqCursorPos};
 use ::spatial::{TrialData, /*TrialResults*/};
@@ -32,7 +32,8 @@ use ::spatial::{TrialData, /*TrialResults*/};
 static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
 
-const ENCODE_DIMS_0: (u32, u32, u8) = (48, 48, 1);
+// const ENCODE_DIMS_0: (u32, u32, u8) = (48, 48, 1);
+const ENCODE_DIMS_0: CorticalDims = CorticalDims::new(1, 48, 48);
 // const ENCODE_DIMS_1: (u32, u32, u8) = (30, 255, 1);
 const AREA_DIM: u32 = 48;
 const SEQUENTIAL_SDR: bool = true;
@@ -374,7 +375,7 @@ impl EvalSequence {
             layers.insert(layer.sub().addr().clone(), layer);
         }
 
-        assert!(ENCODE_DIMS_0.0 == AREA_DIM && ENCODE_DIMS_0.1 == AREA_DIM,
+        assert!(ENCODE_DIMS_0.v_size() == AREA_DIM && ENCODE_DIMS_0.u_size() == AREA_DIM,
             "For this evaluation, the encoding dims must equal the area dims. \
             The encoding is representative of layer IV output.");
 
@@ -736,7 +737,7 @@ fn define_lm_schemes() -> LayerMapSchemeList {
 
 fn define_a_schemes() -> AreaSchemeList {
     AreaSchemeList::new()
-        .area(AreaScheme::new(IN_AREA, "v0_lm", ENCODE_DIMS_0.0)
+        .area(AreaScheme::new(IN_AREA, "v0_lm", ENCODE_DIMS_0.v_size())
             .subcortex()
         )
         .area(AreaScheme::new(PRI_AREA, "visual", AREA_DIM)

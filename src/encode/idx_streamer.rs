@@ -1,6 +1,6 @@
 // use std::path::PathBuf;
 use find_folder::Search;
-use cmn::{CorticalDims, Sdr, TractFrameMut};
+use cmn::{CorticalDims, Sdr, TractFrameMut, TractDims};
 use map::LayerAddress;
 use ::InputGeneratorTract;
 use super::IdxData;
@@ -118,10 +118,10 @@ impl IdxStreamer {
     #[inline]
     #[allow(unused_variables)]
     pub fn encode_scalar(&self, source: &Sdr, target: &mut Sdr) {
-        let v_size = self.layer_dims.v_size() as usize;
-        let u_size = self.layer_dims.u_size() as usize;
+        let v_size = self.layer_dims.v_size();
+        let u_size = self.layer_dims.u_size();
         // [FIXME]: NOT HOOKED UP
-        let mut tf = TractFrameMut::new(target, (v_size, u_size, 1));
+        let mut tf = TractFrameMut::new(target, TractDims::new(1, v_size, u_size));
         super::encode_scalar(0, (0, 0), &mut tf);
         unimplemented!();
     }

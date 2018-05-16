@@ -75,13 +75,13 @@ enum_from_primitive! {
 /// Types which can be represented as one or several stacked two-dimensional
 /// parallelogram-shaped array containing hexagon-shaped elements.
 pub trait ParaHexArray {
+    fn depth(&self) -> u8;
     fn v_size(&self) -> u32;
     fn u_size(&self) -> u32;
-    fn depth(&self) -> u8;
 
     #[inline]
     fn len(&self) -> u32 {
-        self.v_size() * self.u_size() * self.depth() as u32
+        self.depth() as u32 * self.v_size() * self.u_size()
     }
 }
 
