@@ -62,6 +62,7 @@ impl TuftSourceLayerDefinition {
         TuftSourceLayerDefinition {
             name: name.into(),
             syn_reach: None,
+            // Make this default to something instead?:
             prevalence: None,
         }
     }
@@ -76,6 +77,7 @@ impl TuftSourceLayerDefinition {
         self
     }
 
+    // Make this optional? (see above)
     pub fn prevalence(mut self, prevalence: u8) -> TuftSourceLayerDefinition {
         self.prevalence = Some(prevalence);
         self

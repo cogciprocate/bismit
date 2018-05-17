@@ -129,30 +129,56 @@ pub mod tests {
     }
 
 
+
+    /// A synapse map.
+    #[derive(Debug)]
+    pub struct Synapse<'d> {
+        den: &'d Dendrite<'d>,
+        syn_id_den: u32,
+    }
+
+    // pub fn syn_idx(
+    //         lyr_dims: &CorticalDims,
+    //         slc_id_lyr: SlcId,
+    //         v_id: u32,
+    //         u_id: u32,
+    //         tft_syn_idz: u32,
+    //         tft_dims: &TuftDims,
+    //         den_id_celtft: u32,
+    //         syn_id_den: u32)
+    //         -> u32 {
+    impl<'d> Synapse<'d> {
+        /// Returns the index of this synapse within its layer.
+        pub fn idx(&self) -> u32 {
+            let cell = &self.den.tuft.cell;
+            let tuft_info = &cell.layer.tuft_info[self.den.tuft.tuft_id];
+            syn_idx(&cell.layer.dims(), cell.slc_id_lyr, cell.v_id, cell.u_id,
+                tuft_info.tft_syn_idz, &tuft_info.dims, self.den.den_id, self.syn_id_den)
+        }
+    }
+
+
     /// A dendrite map.
     #[derive(Debug)]
     pub struct Dendrite<'t> {
         tuft: &'t Tuft<'t>,
         den_id: u32,
-        // tft_den_idz: u32,
     }
 
-    // pub fn den_idx(
-    //         lyr_dims: &CorticalDims,
-    //         slc_id_lyr: u8,
-    //         v_id: u32,
-    //         u_id: u32,
-    //         tft_den_idz: u32,
-    //         tft_dims: &TuftDims,
-    //         den_id_celtft: u32)
-    //         -> u32 {
     impl<'t> Dendrite<'t> {
         /// Returns the index of this dendrite within its layer.
         pub fn idx(&self) -> u32 {
             let cell = &self.tuft.cell;
             let tuft_info = &cell.layer.tuft_info[self.tuft.tuft_id];
-            den_idx(&cell.layer.dims(), cell.slc_id_lyr, cell.v_id,
-                cell.u_id, tuft_info.tft_den_idz, &tuft_info.dims, self.den_id)
+            den_idx(&cell.layer.dims(), cell.slc_id_lyr, cell.v_id, cell.u_id,
+                tuft_info.tft_den_idz, &tuft_info.dims, self.den_id)
+        }
+
+        /// Returns a synapse map corresponding to the synapse within the
+        /// cell-tuft specified by `syn_id`.
+        pub fn synapse<'d>(&'d self, syn_id_den: u32) -> Synapse<'d> {
+            assert!(syn_id_den < self.tuft.cell.layer.tuft_info[self.tuft.tuft_id].dims.syns_per_den());
+            Synapse { den: self, syn_id_den }
         }
     }
 
@@ -175,6 +201,13 @@ pub mod tests {
         pub fn dendrite<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
             assert!(den_id < self.cell.layer.tuft_info[self.tuft_id].dims.dens_per_tft());
             Dendrite { tuft: self, den_id }
+        }
+
+        // /// Iterate through all synapses (with custom iterator).
+        // pub fn synapses()
+
+        pub fn dims(&self) -> &TuftDims {
+            &self.cell.layer.tuft_info[self.tuft_id].dims
         }
     }
 

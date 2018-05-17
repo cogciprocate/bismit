@@ -997,12 +997,15 @@ __kernel void pyr_cycle(
     uint bsl_dst_celtft_idx = mad24((uint)bsl_dst_tft_id, cel_count, cel_idx);
     uint apc_dst_celtft_idx = mad24((uint)apc_dst_tft_id, cel_count, cel_idx);
 
-    // TODO: Use a previous state for distal dendrites:
     uchar bsl_prx_state = mul24(bsl_prx_is_enabled, tft_states[bsl_prx_celtft_idx]);
     uchar bsl_dst_state = mul24(bsl_dst_is_enabled, tft_prev_states[bsl_dst_celtft_idx]);
     uchar apc_dst_state = mul24(apc_dst_is_enabled, tft_prev_states[apc_dst_celtft_idx]);
 
     int cel_is_active = bsl_prx_state != 0;
+
+    //
+    // TODO: Fix below to transmit bursting on the 7th bit.
+    //
 
     // Divide by 4 but don't let small values get rounded to 0:
     int bsl_prx_is_min = (bsl_prx_state <= 3) && cel_is_active;

@@ -9,12 +9,31 @@ use ::{Error as CmnError, Thalamus, CorticalAreas, TractReceiver, SamplerKind,
     SamplerBufferKind, FutureRecv, FutureReadGuardVec, ReadGuardVec, CellSampleIdxs,
     FutureCorticalSamples, CorticalSampler, CorticalSamples, LayerAddress,
     DataCellLayerMap, SlcId};
-use cortex::{Cell as CellMap, Tuft as TuftMap, Dendrite as DendriteMap};
+use cortex::{Cell as CellMap, Tuft as TuftMap, Dendrite as DendriteMap, Synapse as SynapseMap};
 
 
 
+/// A synapse sample.
+#[derive(Debug)]
+pub struct Synapse<'d> {
+    den: &'d Dendrite<'d>,
+    map: SynapseMap<'d>,
+}
 
-/// A tuft sample.
+impl<'d> Synapse<'d> {
+    /// Returns the synapse state.
+    pub fn state(&self) -> Option<u8> {
+        self.den.tuft.cell.samples.syn_states().map(|vec| vec[self.map.idx() as usize])
+    }
+
+    /// Returns the synapse map.
+    pub fn map(&self) -> &SynapseMap<'d> {
+        &self.map
+    }
+}
+
+
+/// A dendrite sample.
 #[derive(Debug)]
 pub struct Dendrite<'t> {
     tuft: &'t Tuft<'t>,
@@ -24,15 +43,19 @@ pub struct Dendrite<'t> {
 impl<'t> Dendrite<'t> {
     /// Returns the dendrite state.
     pub fn state(&self) -> Option<u8> {
-        self.tuft.cell.samples.den_states().map(|states| states[self.map.idx() as usize])
+        self.tuft.cell.samples.den_states().map(|vec| vec[self.map.idx() as usize])
     }
 
-    /// Returns the tuft map.
+    /// Returns the dendrite map.
     pub fn map(&self) -> &DendriteMap<'t> {
         &self.map
     }
-}
 
+    /// Returns a synapse sample.
+    pub fn synapse<'d>(&'d self, den_id: u32) -> Synapse<'d> {
+        Synapse { den: self, map: self.map.synapse(den_id) }
+    }
+}
 
 
 /// A tuft sample.
@@ -45,7 +68,7 @@ pub struct Tuft<'c> {
 impl<'c> Tuft<'c> {
     /// Returns the tufts best dendrite state (raw).
     pub fn best_den_state_raw(&self) -> Option<u8> {
-        self.cell.samples.tuft_best_den_states_raw().map(|states| states[self.map.idx() as usize])
+        self.cell.samples.tuft_best_den_states_raw().map(|vec| vec[self.map.idx() as usize])
     }
 
     /// Returns the tuft map.
@@ -70,7 +93,7 @@ pub struct Cell<'s> {
 impl<'s> Cell<'s> {
     /// Returns the cell's axon state.
     pub fn axon_state(&self) -> Option<u8> {
-        self.samples.axon_states().map(|states| states[self.map.axon_idx() as usize])
+        self.samples.axon_states().map(|vec| vec[self.map.axon_idx() as usize])
     }
 
     /// Returns the cell map.
@@ -108,6 +131,11 @@ impl CorticalLayerSamples {
         self.samples.sample(&SamplerKind::SomaStates(self.map.layer_addr())).map(|s| s.as_u8())
     }
 
+    // soma_states: bool,
+    // soma_energies: bool,
+    // soma_activities: bool,
+    // soma_flag_sets: bool,
+
     pub fn tuft_states(&self) -> Option<&ReadGuard<Vec<u8>>> {
         self.samples.sample(&SamplerKind::TuftStates(self.map.layer_addr())).map(|s| s.as_u8())
     }
@@ -116,9 +144,34 @@ impl CorticalLayerSamples {
         self.samples.sample(&SamplerKind::TuftBestDenStatesRaw(self.map.layer_addr())).map(|s| s.as_u8())
     }
 
+    // tuft_states: bool,
+    // tuft_best_den_ids: bool,
+    // tuft_best_den_states_raw: bool,
+    // tuft_best_den_states: bool,
+    // tuft_prev_states: bool,
+    // tuft_prev_best_den_ids: bool,
+    // tuft_prev_best_den_states_raw: bool,
+    // tuft_prev_best_den_states: bool,
+
     pub fn den_states(&self) -> Option<&ReadGuard<Vec<u8>>> {
         self.samples.sample(&SamplerKind::DenStates(self.map.layer_addr())).map(|s| s.as_u8())
     }
+
+    // den_states: bool,
+    // den_states_raw: bool,
+    // den_energies: bool,
+    // den_activities: bool,
+    // den_thresholds: bool,
+
+    pub fn syn_states(&self) -> Option<&ReadGuard<Vec<u8>>> {
+        self.samples.sample(&SamplerKind::SynStates(self.map.layer_addr())).map(|s| s.as_u8())
+    }
+
+    // syn_states: bool,
+    // syn_strengths: bool,
+    // syn_src_col_v_offs: bool,
+    // syn_src_col_u_offs: bool,
+    // syn_flag_sets: bool,
 
     /// Returns a cell sample.
     pub fn cell<'l>(&'l self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'l> {
@@ -129,30 +182,6 @@ impl CorticalLayerSamples {
     pub fn map(&self) -> &DataCellLayerMap {
         &self.map
     }
-
-    // axons: bool,
-    // soma_states: bool,
-    // soma_energies: bool,
-    // soma_activities: bool,
-    // soma_flag_sets: bool,
-    // tuft_states: bool,
-    // tuft_best_den_ids: bool,
-    // tuft_best_den_states_raw: bool,
-    // tuft_best_den_states: bool,
-    // tuft_prev_states: bool,
-    // tuft_prev_best_den_ids: bool,
-    // tuft_prev_best_den_states_raw: bool,
-    // tuft_prev_best_den_states: bool,
-    // den_states: bool,
-    // den_states_raw: bool,
-    // den_energies: bool,
-    // den_activities: bool,
-    // den_thresholds: bool,
-    // syn_states: bool,
-    // syn_strengths: bool,
-    // syn_src_col_v_offs: bool,
-    // syn_src_col_u_offs: bool,
-    // syn_flag_sets: bool,
 }
 
 impl Deref for CorticalLayerSamples {

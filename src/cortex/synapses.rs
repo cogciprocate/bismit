@@ -80,6 +80,8 @@ const DEBUG_GROW: bool = true;
 const DEBUG_REGROW_DETAIL: bool = false;
 const PRNT: bool = false;
 
+
+// TODO: Move me up to `mod.rs`.
 #[derive(Clone, Debug)]
 pub struct TuftDims {
     dens_per_tft: u32,
@@ -823,7 +825,7 @@ pub mod tests {
         let dens_per_celtft = tft_dims.dens_per_tft;
         // Synapses per dendrite:
         let syns_per_den = tft_dims.syns_per_den;
-        // Dendrites per tuft-slice:
+        // Synapses per tuft-slice:
         let syns_per_tftslc = lyr_dims.columns() * dens_per_celtft * syns_per_den;
 
         // 0th synapse in this tuft-slice:

@@ -162,7 +162,7 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
     for cel in &focus_cels {
         let cel_idx = cel.cel_coords.idx() as usize;
         let cel_axn_idx = cel.cel_coords.axon_idx() as usize;
-        let tuft_id = 0;
+        let tuft_id = 1;
         let celtft = &cel.tufts[tuft_id];
         let celtft_idx = celtft.celtft_idx;
         let den_idx_range = &celtft.den_idx_range;
@@ -170,6 +170,7 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
 
         let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().as_u8();
         let cel_states = samples.sample(&SamplerKind::SomaStates(lyr_addr)).unwrap().as_u8();
+
 
 
         let cell = samples.cell(cel.cel_coords.slc_id_lyr, cel.cel_coords.v_id, cel.cel_coords.u_id);
@@ -181,11 +182,20 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
         assert!(celtft_idx == tuft.map().idx() as usize);
         assert!(tft_best_den_states_raw[celtft_idx] == tuft.best_den_state_raw().unwrap());
 
-        for (i, den_idx) in den_idx_range.clone().enumerate() {
-            let den = tuft.dendrite(i as u32);
+        for (di, den_idx) in den_idx_range.clone().enumerate() {
+            let den = tuft.dendrite(di as u32);
             assert!(den_idx == den.map().idx() as usize);
             assert!(den_states[den_idx as usize] == den.state().unwrap());
-            if den.state().unwrap() > 0 { print!("{{{}}}", den.state().unwrap()); }
+            if den.state().unwrap() > 0 { print!("{{D{}}}", den.state().unwrap()); }
+
+            let syns_per_den = tuft.map().dims().syns_per_den() as usize;
+            for si in 0..syns_per_den {
+                let syn_idx = syn_idx_range.start + (di * syns_per_den) + si;
+                let syn = den.synapse(si as u32);
+                assert!(syn_idx == syn.map().idx() as usize);
+                assert!(syn_states[syn_idx as usize] == syn.state().unwrap());
+                if syn.state().unwrap() > 0 { print!("{{S{}}}", syn.state().unwrap()); }
+            }
         }
 
 
