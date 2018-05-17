@@ -129,17 +129,18 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
 
     // let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().as_u8();
     let axn_states = samples.axon_states().unwrap();
+    let cel_states = samples.soma_states().unwrap();
     // let tft_states = samples.sample(&SamplerKind::TuftStates(lyr_addr)).unwrap().as_u8();
     let tft_states = samples.tuft_states().unwrap();
-    let tft_best_den_ids = samples.sample(&SamplerKind::TuftBestDenIds(lyr_addr)).unwrap().as_u8();
-    let tft_best_den_states = samples.sample(&SamplerKind::TuftBestDenStates(lyr_addr)).unwrap().as_u8();
-    let tft_best_den_states_raw = samples.sample(&SamplerKind::TuftBestDenStatesRaw(lyr_addr)).unwrap().as_u8();
-    let den_states = samples.sample(&SamplerKind::DenStates(lyr_addr)).unwrap().as_u8();
-    let syn_states = samples.sample(&SamplerKind::SynStates(lyr_addr)).unwrap().as_u8();
-    let syn_strengths = samples.sample(&SamplerKind::SynStrengths(lyr_addr)).unwrap().as_i8();
+    let tft_best_den_ids = samples.tuft_best_den_ids().unwrap();
+    let tft_best_den_states = samples.tuft_best_den_states().unwrap();
+    let tft_best_den_states_raw = samples.tuft_best_den_states_raw().unwrap();
+    let den_states = samples.den_states().unwrap();
+    let syn_states = samples.syn_states().unwrap();
+    let syn_strengths = samples.syn_strengths().unwrap();
     // let syn_src_col_v_offs = samples.sample(&SamplerKind::SynSrcColVOffs(lyr_addr)).unwrap().i8();
     // let syn_src_col_u_offs = samples.sample(&SamplerKind::SynSrcColUOffs(lyr_addr)).unwrap().i8();
-    let syn_flag_sets = samples.sample(&SamplerKind::SynFlagSets(lyr_addr)).unwrap().as_u8();
+    let syn_flag_sets = samples.syn_flag_sets().unwrap();
 
     let cur_sdr = &sdrs[cursor_pos.pattern_idx];
     let next_sdr = &sdrs[next_cursor_pos.pattern_idx];
@@ -167,9 +168,6 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
         let celtft_idx = celtft.celtft_idx;
         let den_idx_range = &celtft.den_idx_range;
         let syn_idx_range = &celtft.syn_idx_range;
-
-        let axn_states = samples.sample(&SamplerKind::Axons(None)).unwrap().as_u8();
-        let cel_states = samples.sample(&SamplerKind::SomaStates(lyr_addr)).unwrap().as_u8();
 
 
 

@@ -48,6 +48,7 @@ pub mod tests {
     use super::DataCellLayer;
     use {Thalamus, SlcId};
 
+
     pub trait DataCellLayerTest: DataCellLayer {
         fn cycle_solo(&self);
         fn learn_solo(&mut self);
@@ -129,6 +130,16 @@ pub mod tests {
     }
 
 
+    /// A data cell layer map error.
+    #[derive(Debug, Fail)]
+    pub enum DataCellLayerMapError {
+        // #[fail(display = "{}", _0)]
+        // OclCore(OclCoreError),
+        #[fail(display = "Multiple matching tufts found.")]
+        MultipleMatchingTufts,
+    }
+
+
 
     /// A synapse map.
     #[derive(Debug)]
@@ -196,8 +207,14 @@ pub mod tests {
         // /// Iterate through all synapses (with custom iterator).
         // pub fn synapses()
 
+        /// Returns the dimensions of this tuft.
         pub fn dims(&self) -> &TuftDims {
             &self.cell.layer.tuft_info[self.tuft_id].dims
+        }
+
+        /// Returns the tuft id.
+        pub fn tuft_id(&self) -> usize {
+            self.tuft_id
         }
     }
 
@@ -206,7 +223,7 @@ pub mod tests {
     #[derive(Debug)]
     pub struct Cell<'m> {
         layer: &'m DataCellLayerMap,
-        slc_id_lyr: u8,
+        slc_id_lyr: SlcId,
         v_id: u32,
         u_id: u32,
     }
@@ -232,35 +249,51 @@ pub mod tests {
             Tuft { cell: self, tuft_id, }
         }
 
+        /// Returns the tuft info for this cellular layer.
         pub fn tuft_info(&self) -> &[TuftInfo] {
             self.layer.tuft_info()
         }
 
-        /// Returns the first tuft that matches the specified parameters.
-        fn matching_tuft<'c>(&'c self, class: DendriteClass, kind: DendriteKind) -> Option<Tuft<'c>> {
-            let mut tuft = None;
-            for (tuft_id, tuft_info) in self.tuft_info().iter().enumerate() {
-                if tuft_info.den_class() == class && tuft_info.den_kind() == kind {
-                    tuft = Some(self.tuft(tuft_id));
-                    break;
-                }
-            }
-            tuft
-        }
-
-        /// Returns the first proximal (basal) tuft.
+        /// Returns a proximal (basal) tuft.
+        ///
+        /// If multiple proximal (basal) tufts are defined, the tuft returned
+        /// could be any one of them.
         pub fn tuft_proximal<'c>(&'c self) -> Option<Tuft<'c>> {
-            self.matching_tuft(DendriteClass::Basal, DendriteKind::Proximal)
+            // self.matching_tuft(DendriteClass::Basal, DendriteKind::Proximal)
+            self.layer.tuft_ids.proximal.map(|tuft_id| self.tuft(tuft_id))
         }
 
-        /// Returns the first distal (basal) tuft found.
+        /// Returns a distal (basal) tuft.
+        ///
+        /// If multiple distal (basal) tufts are defined, the tuft returned
+        /// could be any one of them.
         pub fn tuft_distal<'c>(&'c self) -> Option<Tuft<'c>> {
-            self.matching_tuft(DendriteClass::Basal, DendriteKind::Distal)
+            // self.matching_tuft(DendriteClass::Basal, DendriteKind::Distal)
+            self.layer.tuft_ids.distal.map(|tuft_id| self.tuft(tuft_id))
         }
 
-        /// Returns the first apical (distal) tuft found.
+        /// Returns an apical (distal) tuft.
+        ///
+        /// If multiple apical (distal) tufts are defined, the tuft returned
+        /// could be any one of them.
         pub fn tuft_apical<'c>(&'c self) -> Option<Tuft<'c>> {
-            self.matching_tuft(DendriteClass::Apical, DendriteKind::Distal)
+            // self.matching_tuft(DendriteClass::Apical, DendriteKind::Distal)
+            self.layer.tuft_ids.apical.map(|tuft_id| self.tuft(tuft_id))
+        }
+
+        /// Returns this cell's slice id *within* its layer.
+        pub fn slc_id_lyr(&self) -> SlcId {
+            self.slc_id_lyr
+        }
+
+        /// Returns this cell's 'v' coordinate.
+        pub fn v_id(&self) -> u32 {
+            self.v_id
+        }
+
+        /// Returns this cell's 'u' coordinate.
+        pub fn u_id(&self) -> u32 {
+            self.u_id
         }
     }
 
@@ -286,6 +319,14 @@ pub mod tests {
     }
 
 
+    #[derive(Debug)]
+    struct TuftIds {
+        proximal: Option<usize>,
+        distal: Option<usize>,
+        apical: Option<usize>,
+    }
+
+
     /// The guts of a `DataCellLayerMap`.
     #[derive(Debug)]
     pub struct Inner {
@@ -295,6 +336,9 @@ pub mod tests {
         axon_idz: u32,
         slice_idz: SlcId,
         tuft_info: Vec<TuftInfo>,
+        tuft_ids: TuftIds,
+        den_count: u32,
+        syn_count: u32,
     }
 
 
@@ -347,8 +391,14 @@ pub mod tests {
             let mut den_count_ttl = 0u32;
             let mut syn_count_ttl = 0u32;
 
+            let mut tuft_id_proximal = None;
+            let mut tuft_id_distal = None;
+            let mut tuft_id_apical = None;
+
             // Determine tuft dims and den/syn idzs:
-            let tuft_info = cell_scheme.tft_schemes().iter().map(|ts| {
+            let tuft_info = cell_scheme.tft_schemes().iter().enumerate().map(|(t_id, ts)| {
+                debug_assert!(t_id == ts.tft_id());
+
                 let tft_den_idz = den_count_ttl;
                 let tft_den_count = dims.cells() * ts.dens_per_tft();
                 debug_assert!(tft_den_count > 0);
@@ -361,6 +411,20 @@ pub mod tests {
 
                 let den_class = ts.den_class();
                 let den_kind = ts.den_kind();
+
+                match den_class {
+                    DendriteClass::Basal => match den_kind {
+                        DendriteKind::Proximal => tuft_id_proximal = Some(ts.tft_id()),
+                        DendriteKind::Distal => tuft_id_distal = Some(ts.tft_id()),
+                        _ => unimplemented!(),
+                    },
+                    DendriteClass::Apical => match den_kind {
+                        DendriteKind::Proximal => panic!("Unable to handle proximal apical tufts."),
+                        DendriteKind::Distal => tuft_id_apical = Some(ts.tft_id()),
+                        _ => unimplemented!(),
+                    },
+                    _ => unimplemented!(),
+                }
 
                 TuftInfo {
                     dims: TuftDims::new(ts.dens_per_tft(), ts.syns_per_den()),
@@ -379,18 +443,31 @@ pub mod tests {
                     axon_idz,
                     slice_idz,
                     tuft_info,
+                    tuft_ids: TuftIds {
+                        proximal: tuft_id_proximal,
+                        distal: tuft_id_distal,
+                        apical: tuft_id_apical,
+                    },
+                    den_count: den_count_ttl,
+                    syn_count: syn_count_ttl,
                 })
             }
         }
 
+        // /// Returns the first tuft that matches the specified parameters.
+        // fn matching_tuft<'c>(&'c self, class: DendriteClass, kind: DendriteKind) -> Option<Tuft<'c>> {
+        //     self.tuft_info().iter().enumerate().find(|(tuft_id, tuft_info)| {
+        //         tuft_info.den_class() == class && tuft_info.den_kind() == kind
+        //     }).map(|(tuft_id, _)| self.tuft(tuft_id))
+        // }
+
         /// Returns a cell map.
         pub fn cell<'m>(&'m self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
-            Cell {
-                layer: self,
-                slc_id_lyr,
-                v_id,
-                u_id,
-            }
+            assert!(slc_id_lyr < self.depth && v_id < self.slice_dims.v_size() &&
+                u_id < self.slice_dims.u_size(), "Cell coordinates out of range: \
+                slc_id_lyr: {} ({}), v_id: {} ({}), u_id: {} ({})", slc_id_lyr, self.depth,
+                v_id, self.slice_dims.v_size(), u_id, self.slice_dims.u_size());
+            Cell { layer: self, slc_id_lyr, v_id, u_id, }
         }
 
         /// Returns the address of this layer.
@@ -398,14 +475,13 @@ pub mod tests {
             self.layer_addr
         }
 
-        /// Returns the total number of cells in the layer.
-        pub fn cell_count(&self) -> u32 {
-            self.depth as u32 * self.slice_dims.columns()
-        }
-
         /// Returns the tuft info for cells in this layer.
         pub fn tuft_info(&self) -> &[TuftInfo] {
             &self.tuft_info
+        }
+
+        pub fn cell_count(&self) -> u32 {
+            self.depth as u32 * self.slice_dims.v_size() * self.slice_dims.u_size()
         }
 
         /// Returns the number of tufts for cells in this layer.
@@ -416,6 +492,21 @@ pub mod tests {
         /// Returns the layer dimensions.
         pub fn dims(&self) -> CorticalDims {
             CorticalDims::new(self.depth, self.slice_dims.v_size(), self.slice_dims.u_size())
+        }
+
+        /// Returns the index of the 0th cell's axon within axon space.
+        pub fn axon_idz(&self) -> u32 {
+            self.axon_idz
+        }
+
+        /// Returns the total number of dendrites in every slice, cell, and tuft.
+        pub fn den_count(&self) -> u32 {
+            self.den_count
+        }
+
+        /// Returns the total number of synapses in every slice, cell, and tuft.
+        pub fn syn_count(&self) -> u32 {
+            self.syn_count
         }
     }
 

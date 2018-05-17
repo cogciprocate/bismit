@@ -19,6 +19,11 @@ impl CorticalSamples {
         self.samples.get(sk)
     }
 
+    // TODO: Change return type to a result (with custom error).
+    pub fn take(&mut self, sk: &SamplerKind) -> Option<ReadGuardVec> {
+        self.samples.remove(sk)
+    }
+
     pub fn count(&self) -> usize {
         self.samples.len()
     }
@@ -103,7 +108,7 @@ impl Future for FutureCorticalSamples {
         }
 
         // All rxs are ready/complete:
-        let mut bufs = HashMap::new();
+        let mut bufs = HashMap::with_capacity(self.0.len());
         for (sk, state) in self.0.drain(..) {
             match state {
                 RxState::Complete(buf) => { bufs.insert(sk, buf); },
@@ -149,42 +154,42 @@ impl CorticalSampler {
         }
     }
 
-    /// Returns a new layer sampler which samples everything within a layer.
-    #[deprecated(note = "This method is liable to become out of date.")]
-    pub fn everything(area_name: &str, layer_name: &str, idxs: CellSampleIdxs,
-            thal: &mut Thalamus, cortical_areas: &mut CorticalAreas) -> CorticalSampler {
-        let layer_addr = thal.area_maps().by_key(area_name).expect("invalid area name")
-            .layer_map().layers().by_key(layer_name).expect("invalid layer name")
-            .layer_addr();
+    // /// Returns a new layer sampler which samples everything within a layer.
+    // #[deprecated(note = "This method is liable to become out of date.")]
+    // pub fn everything(area_name: &str, layer_name: &str, idxs: CellSampleIdxs,
+    //         thal: &mut Thalamus, cortical_areas: &mut CorticalAreas) -> CorticalSampler {
+    //     let layer_addr = thal.area_maps().by_key(area_name).expect("invalid area name")
+    //         .layer_map().layers().by_key(layer_name).expect("invalid layer name")
+    //         .layer_addr();
 
-        let sampler_kinds = vec![
-            SamplerKind::Axons(Some(layer_addr)),
-            SamplerKind::SomaStates(layer_addr),
-            SamplerKind::SomaEnergies(layer_addr),
-            SamplerKind::SomaActivities(layer_addr),
-            SamplerKind::SomaFlagSets(layer_addr),
-            SamplerKind::TuftStates(layer_addr),
-            SamplerKind::TuftBestDenIds(layer_addr),
-            SamplerKind::TuftBestDenStatesRaw(layer_addr),
-            SamplerKind::TuftBestDenStates(layer_addr),
-            SamplerKind::TuftPrevStates(layer_addr),
-            SamplerKind::TuftPrevBestDenIds(layer_addr),
-            SamplerKind::TuftPrevBestDenStatesRaw(layer_addr),
-            SamplerKind::TuftPrevBestDenStates(layer_addr),
-            SamplerKind::DenStates(layer_addr),
-            SamplerKind::DenStatesRaw(layer_addr),
-            SamplerKind::DenEnergies(layer_addr),
-            SamplerKind::DenActivities(layer_addr),
-            SamplerKind::DenThresholds(layer_addr),
-            SamplerKind::SynStates(layer_addr),
-            SamplerKind::SynStrengths(layer_addr),
-            SamplerKind::SynSrcColVOffs(layer_addr),
-            SamplerKind::SynSrcColUOffs(layer_addr),
-            SamplerKind::SynFlagSets(layer_addr),
-        ];
+    //     let sampler_kinds = vec![
+    //         SamplerKind::Axons(Some(layer_addr)),
+    //         SamplerKind::SomaStates(layer_addr),
+    //         SamplerKind::SomaEnergies(layer_addr),
+    //         SamplerKind::SomaActivities(layer_addr),
+    //         SamplerKind::SomaFlagSets(layer_addr),
+    //         SamplerKind::TuftStates(layer_addr),
+    //         SamplerKind::TuftBestDenIds(layer_addr),
+    //         SamplerKind::TuftBestDenStatesRaw(layer_addr),
+    //         SamplerKind::TuftBestDenStates(layer_addr),
+    //         SamplerKind::TuftPrevStates(layer_addr),
+    //         SamplerKind::TuftPrevBestDenIds(layer_addr),
+    //         SamplerKind::TuftPrevBestDenStatesRaw(layer_addr),
+    //         SamplerKind::TuftPrevBestDenStates(layer_addr),
+    //         SamplerKind::DenStates(layer_addr),
+    //         SamplerKind::DenStatesRaw(layer_addr),
+    //         SamplerKind::DenEnergies(layer_addr),
+    //         SamplerKind::DenActivities(layer_addr),
+    //         SamplerKind::DenThresholds(layer_addr),
+    //         SamplerKind::SynStates(layer_addr),
+    //         SamplerKind::SynStrengths(layer_addr),
+    //         SamplerKind::SynSrcColVOffs(layer_addr),
+    //         SamplerKind::SynSrcColUOffs(layer_addr),
+    //         SamplerKind::SynFlagSets(layer_addr),
+    //     ];
 
-        CorticalSampler::new(area_name, sampler_kinds, idxs, thal, cortical_areas)
-    }
+    //     CorticalSampler::new(area_name, sampler_kinds, idxs, thal, cortical_areas)
+    // }
 
     /// Begins receiving for all samplers and returns a future representing
     /// reception completion.

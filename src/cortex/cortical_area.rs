@@ -81,6 +81,7 @@ pub enum SamplerKind {
     DenThresholds(LayerAddress),
     SynStates(LayerAddress),
     SynStrengths(LayerAddress),
+    SynSrcSlcIds(LayerAddress),
     SynSrcColVOffs(LayerAddress),
     SynSrcColUOffs(LayerAddress),
     SynFlagSets(LayerAddress),
@@ -942,6 +943,11 @@ impl CorticalArea {
                     SamplerKind::SynStrengths(lyr_addr) => {
                         let buf = lyr(&self.data_layers, lyr_addr).dens().syns().strengths();
                         cycle(buf, write_buf.write_i8(), sampler, cmd_idx, &mut self.exe_graph,
+                            &mut new_event, completion_pool)?;
+                    },
+                    SamplerKind::SynSrcSlcIds(lyr_addr) => {
+                        let buf = lyr(&self.data_layers, lyr_addr).dens().syns().src_slc_ids();
+                        cycle(buf, write_buf.write_u8(), sampler, cmd_idx, &mut self.exe_graph,
                             &mut new_event, completion_pool)?;
                     },
                     SamplerKind::SynSrcColVOffs(lyr_addr) => {
