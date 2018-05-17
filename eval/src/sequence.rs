@@ -178,7 +178,8 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
         assert!(cel_axn_idx == cell.map().axon_idx() as usize);
         assert!(axn_states[cel_axn_idx] == cell.axon_state().unwrap());
 
-        let tuft = cell.tuft(tuft_id);
+        // let tuft = cell.tuft(tuft_id);
+        let tuft = cell.tuft_distal().unwrap();
         assert!(celtft_idx == tuft.map().idx() as usize);
         assert!(tft_best_den_states_raw[celtft_idx] == tuft.best_den_state_raw().unwrap());
 
@@ -200,7 +201,7 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
 
 
 
-        if cycles_complete % 1000 >= 3 { continue; }
+        if cycles_complete % 1000 > 0 { continue; }
         // if axn_states[cel_axn_idx] == 0 { continue; }
 
         println!();

@@ -5,11 +5,12 @@ use std::ops::Deref;
 use std::collections::HashMap;
 use futures::{Future, Poll, Async, task::Context};
 use ocl::ReadGuard;
+use map::{DendriteKind, DendriteClass};
+use cortex::{Cell as CellMap, Tuft as TuftMap, Dendrite as DendriteMap, Synapse as SynapseMap};
 use ::{Error as CmnError, Thalamus, CorticalAreas, TractReceiver, SamplerKind,
     SamplerBufferKind, FutureRecv, FutureReadGuardVec, ReadGuardVec, CellSampleIdxs,
     FutureCorticalSamples, CorticalSampler, CorticalSamples, LayerAddress,
     DataCellLayerMap, SlcId};
-use cortex::{Cell as CellMap, Tuft as TuftMap, Dendrite as DendriteMap, Synapse as SynapseMap};
 
 
 
@@ -104,6 +105,21 @@ impl<'s> Cell<'s> {
     /// Returns a tuft sample.
     pub fn tuft<'c>(&'c self, tuft_id: usize) -> Tuft<'c> {
         Tuft { cell: self, map: self.map.tuft(tuft_id) }
+    }
+
+    /// Returns the first proximal (basal) tuft.
+    pub fn tuft_proximal<'c>(&'c self) -> Option<Tuft<'c>> {
+        self.map.tuft_proximal().map(|tm| Tuft { cell: self, map: tm })
+    }
+
+    /// Returns the first distal (basal) tuft found.
+    pub fn tuft_distal<'c>(&'c self) -> Option<Tuft<'c>> {
+        self.map.tuft_distal().map(|tm| Tuft { cell: self, map: tm })
+    }
+
+    /// Returns the first apical (distal) tuft found.
+    pub fn tuft_apical<'c>(&'c self) -> Option<Tuft<'c>> {
+        self.map.tuft_apical().map(|tm| Tuft { cell: self, map: tm })
     }
 }
 

@@ -42,7 +42,7 @@ pub mod tests {
     use std::ops::{Range, Deref};
     use std::fmt::{Display, Formatter, Result};
     // use rand::{XorShiftRng};
-    use map::{AreaMap, AreaMapTest, LayerAddress, axon_idx};
+    use map::{AreaMap, AreaMapTest, LayerAddress, axon_idx, DendriteClass, DendriteKind};
     use cmn::{self, CorticalDims, XorShiftRng, SliceDims};
     use cortex::{den_idx, syn_idx, TuftDims};
     use super::DataCellLayer;
@@ -137,16 +137,6 @@ pub mod tests {
         syn_id_den: u32,
     }
 
-    // pub fn syn_idx(
-    //         lyr_dims: &CorticalDims,
-    //         slc_id_lyr: SlcId,
-    //         v_id: u32,
-    //         u_id: u32,
-    //         tft_syn_idz: u32,
-    //         tft_dims: &TuftDims,
-    //         den_id_celtft: u32,
-    //         syn_id_den: u32)
-    //         -> u32 {
     impl<'d> Synapse<'d> {
         /// Returns the index of this synapse within its layer.
         pub fn idx(&self) -> u32 {
@@ -241,15 +231,58 @@ pub mod tests {
             assert!(tuft_id < self.layer.tuft_count());
             Tuft { cell: self, tuft_id, }
         }
+
+        pub fn tuft_info(&self) -> &[TuftInfo] {
+            self.layer.tuft_info()
+        }
+
+        /// Returns the first tuft that matches the specified parameters.
+        fn matching_tuft<'c>(&'c self, class: DendriteClass, kind: DendriteKind) -> Option<Tuft<'c>> {
+            let mut tuft = None;
+            for (tuft_id, tuft_info) in self.tuft_info().iter().enumerate() {
+                if tuft_info.den_class() == class && tuft_info.den_kind() == kind {
+                    tuft = Some(self.tuft(tuft_id));
+                    break;
+                }
+            }
+            tuft
+        }
+
+        /// Returns the first proximal (basal) tuft.
+        pub fn tuft_proximal<'c>(&'c self) -> Option<Tuft<'c>> {
+            self.matching_tuft(DendriteClass::Basal, DendriteKind::Proximal)
+        }
+
+        /// Returns the first distal (basal) tuft found.
+        pub fn tuft_distal<'c>(&'c self) -> Option<Tuft<'c>> {
+            self.matching_tuft(DendriteClass::Basal, DendriteKind::Distal)
+        }
+
+        /// Returns the first apical (distal) tuft found.
+        pub fn tuft_apical<'c>(&'c self) -> Option<Tuft<'c>> {
+            self.matching_tuft(DendriteClass::Apical, DendriteKind::Distal)
+        }
     }
 
 
     /// Information pertaining to indexing within a tuft.
     #[derive(Clone, Debug)]
-    struct TuftInfo {
+    pub struct TuftInfo {
         dims: TuftDims,
         tft_den_idz: u32,
         tft_syn_idz: u32,
+        den_class: DendriteClass,
+        den_kind: DendriteKind,
+    }
+
+    impl TuftInfo {
+        pub fn den_class(&self) -> DendriteClass {
+            self.den_class
+        }
+
+        pub fn den_kind(&self) -> DendriteKind {
+            self.den_kind
+        }
     }
 
 
@@ -326,10 +359,15 @@ pub mod tests {
                 debug_assert!(tft_syn_count > 0);
                 syn_count_ttl += tft_syn_count;
 
+                let den_class = ts.den_class();
+                let den_kind = ts.den_kind();
+
                 TuftInfo {
                     dims: TuftDims::new(ts.dens_per_tft(), ts.syns_per_den()),
                     tft_den_idz,
                     tft_syn_idz,
+                    den_class,
+                    den_kind,
                 }
             }).collect::<Vec<_>>();
 
@@ -363,6 +401,11 @@ pub mod tests {
         /// Returns the total number of cells in the layer.
         pub fn cell_count(&self) -> u32 {
             self.depth as u32 * self.slice_dims.columns()
+        }
+
+        /// Returns the tuft info for cells in this layer.
+        pub fn tuft_info(&self) -> &[TuftInfo] {
+            &self.tuft_info
         }
 
         /// Returns the number of tufts for cells in this layer.
