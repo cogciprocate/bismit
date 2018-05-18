@@ -130,6 +130,8 @@ pub mod tests {
     }
 
 
+
+
     /// A data cell layer map error.
     #[derive(Debug, Fail)]
     pub enum DataCellLayerMapError {
@@ -141,20 +143,34 @@ pub mod tests {
 
 
 
+
     /// A synapse map.
     #[derive(Debug)]
     pub struct Synapse<'d> {
         den: &'d Dendrite<'d>,
         syn_id_den: u32,
+        idx: u32,
     }
 
     impl<'d> Synapse<'d> {
+        fn new(den: &'d Dendrite<'d>, syn_id_den: u32) -> Synapse {
+            let tuft_info = unsafe { den.tuft.cell.layer.tuft_info.get_unchecked(den.tuft.tuft_id) };
+            assert!(syn_id_den < tuft_info.dims.syns_per_den());
+            unsafe { Synapse::new_unchecked(den, syn_id_den) }
+        }
+
+        #[inline]
+        unsafe fn new_unchecked(den: &'d Dendrite<'d>, syn_id_den: u32) -> Synapse<'d> {
+            let cell = &den.tuft.cell;
+            let tuft_info = &cell.layer.tuft_info[den.tuft.tuft_id];
+            let idx = syn_idx(&cell.layer.dims(), cell.slc_id_lyr, cell.v_id, cell.u_id,
+                tuft_info.tft_syn_idz, &tuft_info.dims, den.den_id, syn_id_den);
+            Synapse { den, syn_id_den, idx }
+        }
+
         /// Returns the index of this synapse within its layer.
         pub fn idx(&self) -> u32 {
-            let cell = &self.den.tuft.cell;
-            let tuft_info = &cell.layer.tuft_info[self.den.tuft.tuft_id];
-            syn_idx(&cell.layer.dims(), cell.slc_id_lyr, cell.v_id, cell.u_id,
-                tuft_info.tft_syn_idz, &tuft_info.dims, self.den.den_id, self.syn_id_den)
+            self.idx
         }
     }
 
@@ -164,29 +180,45 @@ pub mod tests {
     pub struct Dendrite<'t> {
         tuft: &'t Tuft<'t>,
         den_id: u32,
+        idx: u32,
     }
 
     impl<'t> Dendrite<'t> {
+        /// Returns a new dendrite map corresponding to the dendrite within
+        /// the cell-tuft specified by `den_id`.
+        fn new(tuft: &'t Tuft<'t>, den_id: u32) -> Dendrite<'t> {
+            let tuft_info = unsafe { tuft.cell.layer.tuft_info.get_unchecked(tuft.tuft_id) };
+            assert!(den_id < tuft_info.dims.dens_per_tft());
+            unsafe { Dendrite::new_unchecked(tuft, den_id) }
+        }
+
+        /// Returns a new dendrite map corresponding to the dendrite within
+        /// the cell-tuft without checking whether or not `den_id` is valid.
+        #[inline]
+        unsafe fn new_unchecked(tuft: &'t Tuft<'t>, den_id: u32) -> Dendrite<'t> {
+            let cell = &tuft.cell;
+            let tuft_info = &cell.layer.tuft_info[tuft.tuft_id];
+            let idx = den_idx(&cell.layer.dims(), cell.slc_id_lyr, cell.v_id, cell.u_id,
+                tuft_info.tft_den_idz, &tuft_info.dims, den_id);
+            Dendrite { tuft, den_id, idx }
+        }
+
         /// Returns the index of this dendrite within its layer.
         pub fn idx(&self) -> u32 {
-            let cell = &self.tuft.cell;
-            let tuft_info = &cell.layer.tuft_info[self.tuft.tuft_id];
-            den_idx(&cell.layer.dims(), cell.slc_id_lyr, cell.v_id, cell.u_id,
-                tuft_info.tft_den_idz, &tuft_info.dims, self.den_id)
+            self.idx
         }
 
-        /// Returns a synapse map corresponding to the synapse within the
+        /// Returns a new synapse map corresponding to the synapse within the
         /// dendrite specified by `syn_id`.
         pub fn synapse<'d>(&'d self, syn_id_den: u32) -> Synapse<'d> {
-            assert!(syn_id_den < self.tuft.cell.layer.tuft_info[self.tuft.tuft_id].dims.syns_per_den());
-            Synapse { den: self, syn_id_den }
+            Synapse::new(self, syn_id_den)
         }
 
-        /// Returns a synapse map corresponding to the synapse within the
+        /// Returns a new synapse map corresponding to the synapse within the
         /// dendrite without checking whether or not `syn_id_den` is valid.
         #[inline]
         pub unsafe fn synapse_unchecked<'d>(&'d self, syn_id_den: u32) -> Synapse<'d> {
-            Synapse { den: self, syn_id_den }
+            Synapse::new_unchecked(self, syn_id_den)
         }
     }
 
@@ -196,26 +228,27 @@ pub mod tests {
     pub struct Tuft<'c> {
         cell: &'c Cell<'c>,
         tuft_id: usize,
+        idx: u32,
     }
 
     impl<'c> Tuft<'c> {
+        /// Returns a new tuft map.
+        fn new(cell: &'c Cell<'c>, tuft_id: usize) -> Tuft<'c> {
+            assert!(tuft_id < cell.layer.tuft_count());
+            unsafe { Tuft::new_unchecked(cell, tuft_id) }
+        }
+
+        /// Returns a new tuft map without checking whether or not `tuft_id`
+        /// is valid.
+        #[inline]
+        unsafe fn new_unchecked(cell: &'c Cell<'c>, tuft_id: usize) -> Tuft<'c> {
+            let idx = (tuft_id as u32 * cell.layer.cell_count()) + cell.idx();
+            Tuft { cell, tuft_id, idx }
+        }
+
         /// Returns the index of this cell-tuft within its layer.
         pub fn idx(&self) -> u32 {
-            (self.tuft_id as u32 * self.cell.layer.cell_count()) + self.cell.idx()
-        }
-
-        /// Returns a dendrite map corresponding to the dendrite within the
-        /// cell-tuft specified by `den_id`.
-        pub fn dendrite<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
-            assert!(den_id < self.cell.layer.tuft_info[self.tuft_id].dims.dens_per_tft());
-            Dendrite { tuft: self, den_id }
-        }
-
-        /// Returns a dendrite map corresponding to the dendrite within the
-        /// cell-tuft without checking whether or not `den_id` is valid.
-        #[inline]
-        pub unsafe fn dendrite_unchecked<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
-            Dendrite { tuft: self, den_id }
+            self.idx
         }
 
         // /// Iterate through all synapses (with custom iterator).
@@ -230,6 +263,19 @@ pub mod tests {
         pub fn tuft_id(&self) -> usize {
             self.tuft_id
         }
+
+        /// Returns a new dendrite map corresponding to the dendrite within
+        /// the cell-tuft specified by `den_id`.
+        pub fn dendrite<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
+            Dendrite::new(self, den_id)
+        }
+
+        /// Returns a new dendrite map corresponding to the dendrite within
+        /// the cell-tuft without checking whether or not `den_id` is valid.
+        #[inline]
+        pub unsafe fn dendrite_unchecked<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
+            Dendrite::new_unchecked(self, den_id)
+        }
     }
 
 
@@ -240,13 +286,31 @@ pub mod tests {
         slc_id_lyr: SlcId,
         v_id: u32,
         u_id: u32,
+        idx: u32,
     }
 
     impl<'m> Cell<'m> {
+        /// Returns a new cell map.
+        fn new(layer: &'m DataCellLayerMap, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
+            assert!(slc_id_lyr < layer.depth && v_id < layer.slice_dims.v_size() &&
+                u_id < layer.slice_dims.u_size(), "Cell coordinates out of range: \
+                slc_id_lyr: {} ({}), v_id: {} ({}), u_id: {} ({})", slc_id_lyr, layer.depth,
+                v_id, layer.slice_dims.v_size(), u_id, layer.slice_dims.u_size());
+            unsafe { Cell::new_unchecked(layer, slc_id_lyr, v_id, u_id) }
+        }
+
+        /// Returns a new cell map without checking whether or not the
+        /// coordinates given are valid.
+        #[inline]
+        unsafe fn new_unchecked(layer: &'m DataCellLayerMap, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
+            let idx = cmn::cel_idx_3d(layer.depth, slc_id_lyr, layer.slice_dims.v_size(),
+                v_id, layer.slice_dims.u_size(), u_id);
+            Cell { layer: layer, slc_id_lyr, v_id, u_id, idx }
+        }
+
         /// Returns the index of the cell within its layer.
         pub fn idx(&self) -> u32 {
-            cmn::cel_idx_3d(self.layer.depth, self.slc_id_lyr, self.layer.slice_dims.v_size(),
-                self.v_id, self.layer.slice_dims.u_size(), self.u_id)
+            self.idx
         }
 
         /// Returns the index of the cell's axon within axon space.
@@ -257,32 +321,32 @@ pub mod tests {
                 self.layer.slice_dims.u_size(), self.layer.slice_dims.u_scale(), self.u_id, 0).unwrap()
         }
 
-        /// Returns a tuft map.
+        /// Returns a new tuft map.
         pub fn tuft<'c>(&'c self, tuft_id: usize) -> Tuft<'c> {
-            assert!(tuft_id < self.layer.tuft_count());
-            Tuft { cell: self, tuft_id, }
+            Tuft::new(self, tuft_id)
         }
 
-        /// Returns a tuft map without checking whether or not `tuft_id` is valid.
+        /// Returns a new tuft map without checking whether or not `tuft_id`
+        /// is valid.
         #[inline]
         pub unsafe fn tuft_unchecked<'c>(&'c self, tuft_id: usize) -> Tuft<'c> {
-            Tuft { cell: self, tuft_id, }
+            Tuft::new_unchecked(self, tuft_id)
         }
 
-        /// Returns a proximal (basal) tuft.
+        /// Returns a new proximal (basal) tuft.
         ///
         /// If multiple proximal (basal) tufts are defined, the tuft returned
         /// could be any one of them.
         pub fn tuft_proximal<'c>(&'c self) -> Option<Tuft<'c>> {
-            self.layer.tuft_ids.proximal.map(|tuft_id| self.tuft(tuft_id))
+            self.layer.tuft_ids.proximal.map(|tuft_id| unsafe { self.tuft_unchecked(tuft_id) })
         }
 
-        /// Returns a distal (basal) tuft.
+        /// Returns a new distal (basal) tuft.
         ///
         /// If multiple distal (basal) tufts are defined, the tuft returned
         /// could be any one of them.
         pub fn tuft_distal<'c>(&'c self) -> Option<Tuft<'c>> {
-            self.layer.tuft_ids.distal.map(|tuft_id| self.tuft(tuft_id))
+            self.layer.tuft_ids.distal.map(|tuft_id| unsafe { self.tuft_unchecked(tuft_id) })
         }
 
         /// Returns an apical (distal) tuft.
@@ -290,7 +354,7 @@ pub mod tests {
         /// If multiple apical (distal) tufts are defined, the tuft returned
         /// could be any one of them.
         pub fn tuft_apical<'c>(&'c self) -> Option<Tuft<'c>> {
-            self.layer.tuft_ids.apical.map(|tuft_id| self.tuft(tuft_id))
+            self.layer.tuft_ids.apical.map(|tuft_id| unsafe { self.tuft_unchecked(tuft_id) })
         }
 
         /// Returns the tuft info for this cellular layer.
@@ -482,20 +546,16 @@ pub mod tests {
         //     }).map(|(tuft_id, _)| self.tuft(tuft_id))
         // }
 
-        /// Returns a cell map.
+        /// Returns a new cell map.
         pub fn cell<'m>(&'m self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
-            assert!(slc_id_lyr < self.depth && v_id < self.slice_dims.v_size() &&
-                u_id < self.slice_dims.u_size(), "Cell coordinates out of range: \
-                slc_id_lyr: {} ({}), v_id: {} ({}), u_id: {} ({})", slc_id_lyr, self.depth,
-                v_id, self.slice_dims.v_size(), u_id, self.slice_dims.u_size());
-            Cell { layer: self, slc_id_lyr, v_id, u_id, }
+            Cell::new(self, slc_id_lyr, v_id, u_id)
         }
 
-        /// Returns a cell map without checking whether or not the coordinates
-        /// given are valid.
+        /// Returns a new cell map without checking whether or not the
+        /// coordinates given are valid.
         #[inline]
         pub unsafe fn cell_unchecked<'m>(&'m self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
-            Cell { layer: self, slc_id_lyr, v_id, u_id, }
+            Cell::new_unchecked(self, slc_id_lyr, v_id, u_id)
         }
 
         /// Returns the address of this layer.
