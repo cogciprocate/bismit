@@ -217,6 +217,29 @@ impl<'t> Dendrite<'t> {
 }
 
 
+/// An iterator over dendrites of a tuft.
+#[derive(Debug)]
+pub struct Dendrites<'t> {
+    tuft: &'t Tuft<'t>,
+    next_id: u32,
+    end_id: u32,
+}
+
+impl<'t> Iterator for Dendrites<'t> {
+    type Item = Dendrite<'t>;
+
+    fn next(&mut self) -> Option<Dendrite<'t>> {
+        let den_id = self.next_id;
+        self.next_id += 1;
+        if den_id < self.end_id {
+            unsafe { Some(Dendrite { tuft: self.tuft, map: self.tuft.map.dendrite_unchecked(den_id) }) }
+        } else {
+            None
+        }
+    }
+}
+
+
 /// A tuft sample.
 #[derive(Debug)]
 pub struct Tuft<'c> {
@@ -321,6 +344,34 @@ impl<'c> Tuft<'c> {
     /// Returns a dendrite sample.
     pub fn dendrite<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
         Dendrite { tuft: self, map: self.map.dendrite(den_id) }
+    }
+
+    /// Returns an iterator over the specified range of dendrites.
+    pub fn dendrites<'d, R>(&'d self, range: R) -> Dendrites<'d>
+            where R: RangeBounds<u32> {
+        let dens_per_tft = unsafe {
+            self.cell.map.tuft_info().get_unchecked(self.map.tuft_id())
+                .dims().dens_per_tft()
+        };
+
+        let start = match range.start() {
+            Included(&n) => n,
+            Excluded(&n) => n + 1,
+            Unbounded    => 0,
+        };
+        let end = match range.end() {
+            Included(&n) => n + 1,
+            Excluded(&n) => n,
+            Unbounded    => dens_per_tft,
+        };
+        assert!(start <= end);
+        assert!(end <= dens_per_tft);
+
+        Dendrites {
+            tuft: self,
+            next_id: start,
+            end_id: end,
+        }
     }
 }
 

@@ -181,20 +181,15 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
         assert!(celtft_idx == tuft.map().idx() as usize);
         assert!(tft_best_den_states_raw[celtft_idx] == tuft.best_den_state_raw());
 
-        for (di, den_idx) in den_idx_range.clone().enumerate() {
+        let mut den_total = 0u32;
+        let mut syn_total = 0u32;
+
+        for ((di, den_idx), den_0) in den_idx_range.clone().enumerate().zip(tuft.dendrites(..)) {
             let den = tuft.dendrite(di as u32);
+            assert!(den.map().idx() == den_0.map().idx());
             assert!(den_idx == den.map().idx() as usize);
             assert!(den_states[den_idx as usize] == den.state());
             if den.state() > 0 { print!("{{D{}}}", den.state()); }
-
-            // let syns_per_den = tuft.map().dims().syns_per_den() as usize;
-            // for si in 0..syns_per_den {
-            //     let syn_idx = syn_idx_range.start + (di * syns_per_den) + si;
-            //     let syn = den.synapse(si as u32);
-            //     assert!(syn_idx == syn.map().idx() as usize);
-            //     assert!(syn_states[syn_idx as usize] == syn.state());
-            //     if syn.state() > 0 { print!("{{S{}}}", syn.state()); }
-            // }
 
             let syns_per_den = tuft.map().dims().syns_per_den() as usize;
             for (si, syn_0) in (0..syns_per_den).zip(den.synapses(..)) {
@@ -204,8 +199,13 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
                 assert!(syn_idx == syn.map().idx() as usize);
                 assert!(syn_states[syn_idx as usize] == syn.state());
                 if syn.state() > 0 { print!("{{S{}}}", syn.state()); }
+                syn_total += 1;
             }
+            den_total += 1;
         }
+
+        assert_eq!(den_total, cell.map().tuft_info()[tuft.map().tuft_id()].dims().dens_per_tft());
+        assert_eq!(syn_total, cell.map().tuft_info()[tuft.map().tuft_id()].dims().syns_per_tft());
 
 
 
