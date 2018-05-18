@@ -176,9 +176,16 @@ pub mod tests {
         }
 
         /// Returns a synapse map corresponding to the synapse within the
-        /// cell-tuft specified by `syn_id`.
+        /// dendrite specified by `syn_id`.
         pub fn synapse<'d>(&'d self, syn_id_den: u32) -> Synapse<'d> {
             assert!(syn_id_den < self.tuft.cell.layer.tuft_info[self.tuft.tuft_id].dims.syns_per_den());
+            Synapse { den: self, syn_id_den }
+        }
+
+        /// Returns a synapse map corresponding to the synapse within the
+        /// dendrite without checking whether or not `syn_id_den` is valid.
+        #[inline]
+        pub unsafe fn synapse_unchecked<'d>(&'d self, syn_id_den: u32) -> Synapse<'d> {
             Synapse { den: self, syn_id_den }
         }
     }
@@ -201,6 +208,13 @@ pub mod tests {
         /// cell-tuft specified by `den_id`.
         pub fn dendrite<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
             assert!(den_id < self.cell.layer.tuft_info[self.tuft_id].dims.dens_per_tft());
+            Dendrite { tuft: self, den_id }
+        }
+
+        /// Returns a dendrite map corresponding to the dendrite within the
+        /// cell-tuft without checking whether or not `den_id` is valid.
+        #[inline]
+        pub unsafe fn dendrite_unchecked<'t>(&'t self, den_id: u32) -> Dendrite<'t> {
             Dendrite { tuft: self, den_id }
         }
 
@@ -249,9 +263,10 @@ pub mod tests {
             Tuft { cell: self, tuft_id, }
         }
 
-        /// Returns the tuft info for this cellular layer.
-        pub fn tuft_info(&self) -> &[TuftInfo] {
-            self.layer.tuft_info()
+        /// Returns a tuft map without checking whether or not `tuft_id` is valid.
+        #[inline]
+        pub unsafe fn tuft_unchecked<'c>(&'c self, tuft_id: usize) -> Tuft<'c> {
+            Tuft { cell: self, tuft_id, }
         }
 
         /// Returns a proximal (basal) tuft.
@@ -259,7 +274,6 @@ pub mod tests {
         /// If multiple proximal (basal) tufts are defined, the tuft returned
         /// could be any one of them.
         pub fn tuft_proximal<'c>(&'c self) -> Option<Tuft<'c>> {
-            // self.matching_tuft(DendriteClass::Basal, DendriteKind::Proximal)
             self.layer.tuft_ids.proximal.map(|tuft_id| self.tuft(tuft_id))
         }
 
@@ -268,7 +282,6 @@ pub mod tests {
         /// If multiple distal (basal) tufts are defined, the tuft returned
         /// could be any one of them.
         pub fn tuft_distal<'c>(&'c self) -> Option<Tuft<'c>> {
-            // self.matching_tuft(DendriteClass::Basal, DendriteKind::Distal)
             self.layer.tuft_ids.distal.map(|tuft_id| self.tuft(tuft_id))
         }
 
@@ -277,8 +290,12 @@ pub mod tests {
         /// If multiple apical (distal) tufts are defined, the tuft returned
         /// could be any one of them.
         pub fn tuft_apical<'c>(&'c self) -> Option<Tuft<'c>> {
-            // self.matching_tuft(DendriteClass::Apical, DendriteKind::Distal)
             self.layer.tuft_ids.apical.map(|tuft_id| self.tuft(tuft_id))
+        }
+
+        /// Returns the tuft info for this cellular layer.
+        pub fn tuft_info(&self) -> &[TuftInfo] {
+            self.layer.tuft_info()
         }
 
         /// Returns this cell's slice id *within* its layer.
@@ -315,6 +332,10 @@ pub mod tests {
 
         pub fn den_kind(&self) -> DendriteKind {
             self.den_kind
+        }
+
+        pub fn dims(&self) -> &TuftDims {
+            &self.dims
         }
     }
 
@@ -467,6 +488,13 @@ pub mod tests {
                 u_id < self.slice_dims.u_size(), "Cell coordinates out of range: \
                 slc_id_lyr: {} ({}), v_id: {} ({}), u_id: {} ({})", slc_id_lyr, self.depth,
                 v_id, self.slice_dims.v_size(), u_id, self.slice_dims.u_size());
+            Cell { layer: self, slc_id_lyr, v_id, u_id, }
+        }
+
+        /// Returns a cell map without checking whether or not the coordinates
+        /// given are valid.
+        #[inline]
+        pub unsafe fn cell_unchecked<'m>(&'m self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
             Cell { layer: self, slc_id_lyr, v_id, u_id, }
         }
 

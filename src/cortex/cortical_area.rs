@@ -165,8 +165,7 @@ impl Layer {
     }
 
     fn cycle(&mut self, control_layers: &mut ControlCellLayers,
-        exe_graph: &mut ExecutionGraph) -> CmnResult<()>
-    {
+        exe_graph: &mut ExecutionGraph) -> CmnResult<()> {
         match *self {
             Layer::SpinyStellateLayer(ref mut lyr) => lyr.cycle(control_layers, exe_graph),
             Layer::PyramidalLayer(ref mut lyr) => lyr.cycle(control_layers, exe_graph),

@@ -20,7 +20,7 @@ impl CorticalSamples {
     }
 
     // TODO: Change return type to a result (with custom error).
-    pub fn take(&mut self, sk: &SamplerKind) -> Option<ReadGuardVec> {
+    pub fn take_sample(&mut self, sk: &SamplerKind) -> Option<ReadGuardVec> {
         self.samples.remove(sk)
     }
 
@@ -139,6 +139,11 @@ impl CorticalSampler {
     /// Returns a new layer sampler.
     pub fn new(area_name: &str, sampler_kinds: Vec<SamplerKind>, idxs: CellSampleIdxs,
             _thal: &mut Thalamus, cortical_areas: &mut CorticalAreas) -> CorticalSampler {
+        // NOTE: Implementing sample index ranges will require some pretty
+        // serious redesigning. Indexing a specific range/group of cells means
+        // that there will need to be separate groups of buffers for each
+        // tuft. There will also be further complexities involved if
+        // rectangular/cubic sections are desired.
         assert!(idxs == CellSampleIdxs::All, "Only `CellSampleIdxs::All` is currently implemented.");
         let area = cortical_areas.by_key_mut(area_name).unwrap();
         let mut rxs = Vec::with_capacity(sampler_kinds.len());
