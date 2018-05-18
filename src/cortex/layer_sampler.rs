@@ -1,13 +1,32 @@
 //! A cortical layer sampler.
 
 use std::ops::{RangeBounds, Bound::{Excluded, Included, Unbounded}};
-// use std::ops::Bound::{Excluded, Included, Unbounded};
+use num::Integer;
 use futures::{Future, Poll, task::Context};
 use ocl::ReadGuard;
 use cortex::{Cell as CellMap, Tuft as TuftMap, Dendrite as DendriteMap, Synapse as SynapseMap};
 use ::{Error as CmnError, Thalamus, CorticalAreas,  SamplerKind, CellSampleIdxs,
     FutureCorticalSamples, CorticalSampler, CorticalSamples, LayerAddress,
     DataCellLayerMap, SlcId};
+
+
+/// Determines start and end indexes for a range and length.
+fn bounds_start_end<R, T>(range: R, len: T) -> (T, T)
+        where T: Integer + Copy, R: RangeBounds<T> {
+    let start = match range.start() {
+        Included(&n) => n,
+        Excluded(&n) => n + T::one(),
+        Unbounded    => T::zero(),
+    };
+    let end = match range.end() {
+        Included(&n) => n + T::one(),
+        Excluded(&n) => n,
+        Unbounded    => len,
+    };
+    assert!(start <= end);
+    assert!(end <= len);
+    (start, end)
+}
 
 
 /// A synapse sample.
@@ -20,68 +39,68 @@ pub struct Synapse<'d> {
 impl<'d> Synapse<'d> {
     /// Returns the synapse state.
     pub fn state(&self) -> u8 {
-        let vec = self.den.tuft.cell.samples.syn_states().expect("Synapse state sample unavailable.");
+        let vec = self.den.tuft.cell.layer.syn_states().expect("Synapse state sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the synapse strength.
     pub fn strength(&self) -> i8 {
-        let vec = self.den.tuft.cell.samples.syn_strengths().expect("Synapse strength sample unavailable.");
+        let vec = self.den.tuft.cell.layer.syn_strengths().expect("Synapse strength sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the synapse source slice id.
     pub fn src_slc_id(&self) -> SlcId {
-        let vec = self.den.tuft.cell.samples.syn_src_slc_ids().expect("Synapse src_slc_id sample unavailable.");
+        let vec = self.den.tuft.cell.layer.syn_src_slc_ids().expect("Synapse src_slc_id sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the synapse source column `v` offset.
     pub fn src_col_v_ofs(&self) -> i8 {
-        let vec = self.den.tuft.cell.samples.syn_src_col_v_offs().expect("Synapse src_col_v_ofs sample unavailable.");
+        let vec = self.den.tuft.cell.layer.syn_src_col_v_offs().expect("Synapse src_col_v_ofs sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the synapse source column `u` offset.
     pub fn src_col_u_ofs(&self) -> i8 {
-        let vec = self.den.tuft.cell.samples.syn_src_col_v_offs().expect("Synapse src_col_v_ofs sample unavailable.");
+        let vec = self.den.tuft.cell.layer.syn_src_col_v_offs().expect("Synapse src_col_v_ofs sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the synapse flag set.
     pub fn flag_set(&self) -> u8 {
-        let vec = self.den.tuft.cell.samples.syn_flag_sets().expect("Synapse flag_set sample unavailable.");
+        let vec = self.den.tuft.cell.layer.syn_flag_sets().expect("Synapse flag_set sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the synapse state.
     pub fn try_state(&self) -> Option<u8> {
-        self.den.tuft.cell.samples.syn_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.den.tuft.cell.layer.syn_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the synapse strength.
     pub fn try_strength(&self) -> Option<i8> {
-        self.den.tuft.cell.samples.syn_strengths().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.den.tuft.cell.layer.syn_strengths().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the synapse source slice id.
     pub fn try_src_slc_id(&self) -> Option<SlcId> {
-        self.den.tuft.cell.samples.syn_src_slc_ids().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.den.tuft.cell.layer.syn_src_slc_ids().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the synapse source column `v` offset.
     pub fn try_src_col_v_ofs(&self) -> Option<i8> {
-        self.den.tuft.cell.samples.syn_src_col_v_offs().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.den.tuft.cell.layer.syn_src_col_v_offs().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the synapse source column `u` offset.
     pub fn try_src_col_u_ofs(&self) -> Option<i8> {
-        self.den.tuft.cell.samples.syn_src_col_u_offs().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.den.tuft.cell.layer.syn_src_col_u_offs().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the synapse flag set.
     pub fn try_flag_set(&self) -> Option<u8> {
-        self.den.tuft.cell.samples.syn_flag_sets().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.den.tuft.cell.layer.syn_flag_sets().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the synapse map.
@@ -91,7 +110,7 @@ impl<'d> Synapse<'d> {
 }
 
 
-/// An iterator over synapses of a dendrite.
+/// An iterator over the synapses of a dendrite.
 #[derive(Debug)]
 pub struct Synapses<'d> {
     den: &'d Dendrite<'d>,
@@ -124,57 +143,57 @@ pub struct Dendrite<'t> {
 impl<'t> Dendrite<'t> {
     /// Returns the dendrite state.
     pub fn state(&self) -> u8 {
-        let vec = self.tuft.cell.samples.den_states().expect("Dendrite state sample unavailable.");
+        let vec = self.tuft.cell.layer.den_states().expect("Dendrite state sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the raw dendrite state.
     pub fn state_raw(&self) -> u8 {
-        let vec = self.tuft.cell.samples.den_states_raw().expect("Dendrite state_raw sample unavailable.");
+        let vec = self.tuft.cell.layer.den_states_raw().expect("Dendrite state_raw sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the dendrite energy.
     pub fn energy(&self) -> u8 {
-        let vec = self.tuft.cell.samples.den_energies().expect("Dendrite energy sample unavailable.");
+        let vec = self.tuft.cell.layer.den_energies().expect("Dendrite energy sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the dendrite activity rating.
     pub fn activity(&self) -> u8 {
-        let vec = self.tuft.cell.samples.den_activities().expect("Dendrite activity sample unavailable.");
+        let vec = self.tuft.cell.layer.den_activities().expect("Dendrite activity sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the dendrite threshold.
     pub fn threshold(&self) -> u8 {
-        let vec = self.tuft.cell.samples.den_thresholds().expect("Dendrite threshold sample unavailable.");
+        let vec = self.tuft.cell.layer.den_thresholds().expect("Dendrite threshold sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the dendrite state.
     pub fn try_state(&self) -> Option<u8> {
-        self.tuft.cell.samples.den_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.tuft.cell.layer.den_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the raw dendrite state.
     pub fn try_state_raw(&self) -> Option<u8> {
-        self.tuft.cell.samples.den_states_raw().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.tuft.cell.layer.den_states_raw().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the dendrite energy.
     pub fn try_energy(&self) -> Option<u8> {
-        self.tuft.cell.samples.den_energies().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.tuft.cell.layer.den_energies().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the dendrite activity rating.
     pub fn try_activity(&self) -> Option<u8> {
-        self.tuft.cell.samples.den_activities().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.tuft.cell.layer.den_activities().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the dendrite threshold.
     pub fn try_threshold(&self) -> Option<u8> {
-        self.tuft.cell.samples.den_thresholds().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.tuft.cell.layer.den_thresholds().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the dendrite map.
@@ -195,18 +214,7 @@ impl<'t> Dendrite<'t> {
                 .dims().syns_per_den()
         };
 
-        let start = match range.start() {
-            Included(&n) => n,
-            Excluded(&n) => n + 1,
-            Unbounded    => 0,
-        };
-        let end = match range.end() {
-            Included(&n) => n + 1,
-            Excluded(&n) => n,
-            Unbounded    => syns_per_den,
-        };
-        assert!(start <= end);
-        assert!(end <= syns_per_den);
+        let (start, end) = bounds_start_end(range, syns_per_den);
 
         Synapses {
             den: self,
@@ -217,7 +225,7 @@ impl<'t> Dendrite<'t> {
 }
 
 
-/// An iterator over dendrites of a tuft.
+/// An iterator over the dendrites of a tuft.
 #[derive(Debug)]
 pub struct Dendrites<'t> {
     tuft: &'t Tuft<'t>,
@@ -250,90 +258,90 @@ pub struct Tuft<'c> {
 impl<'c> Tuft<'c> {
     /// Returns the tuft's state.
     pub fn state(&self) -> u8 {
-        let vec = self.cell.samples.tuft_states().expect("Tuft state sample unavailable.");
+        let vec = self.cell.layer.tuft_states().expect("Tuft state sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the tuft's best dendrite id.
     pub fn best_den_id(&self) -> u8 {
-        let vec = self.cell.samples.tuft_best_den_ids().expect("Tuft best_den_id sample unavailable.");
+        let vec = self.cell.layer.tuft_best_den_ids().expect("Tuft best_den_id sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the tuft's best dendrite state (raw).
     pub fn best_den_state_raw(&self) -> u8 {
-        let vec = self.cell.samples.tuft_best_den_states_raw().expect("Tuft best_den_state_raw sample unavailable.");
+        let vec = self.cell.layer.tuft_best_den_states_raw().expect("Tuft best_den_state_raw sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the tuft's best dendrite state.
     pub fn best_den_state(&self) -> u8 {
-        let vec = self.cell.samples.tuft_best_den_states().expect("Tuft best_den_state sample unavailable.");
+        let vec = self.cell.layer.tuft_best_den_states().expect("Tuft best_den_state sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the tuft's previous state.
     pub fn prev_state(&self) -> u8 {
-        let vec = self.cell.samples.tuft_prev_states().expect("Tuft prev_state sample unavailable.");
+        let vec = self.cell.layer.tuft_prev_states().expect("Tuft prev_state sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the tuft's previous best dendrite id.
     pub fn prev_best_den_id(&self) -> u8 {
-        let vec = self.cell.samples.tuft_prev_best_den_ids().expect("Tuft prev_best_den_id sample unavailable.");
+        let vec = self.cell.layer.tuft_prev_best_den_ids().expect("Tuft prev_best_den_id sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the tuft's previous best dendrite state (raw).
     pub fn prev_best_den_state_raw(&self) -> u8 {
-        let vec = self.cell.samples.tuft_prev_best_den_states_raw().expect("Tuft prev_best_den_state_raw sample unavailable.");
+        let vec = self.cell.layer.tuft_prev_best_den_states_raw().expect("Tuft prev_best_den_state_raw sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the tuft's previous best dendrite state.
     pub fn prev_best_den_state(&self) -> u8 {
-        let vec = self.cell.samples.tuft_prev_best_den_states().expect("Tuft prev_best_den_state sample unavailable.");
+        let vec = self.cell.layer.tuft_prev_best_den_states().expect("Tuft prev_best_den_state sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the tuft's state.
     pub fn try_state(&self) -> Option<u8> {
-        self.cell.samples.tuft_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.cell.layer.tuft_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the tuft's best dendrite id.
     pub fn try_best_den_id(&self) -> Option<u8> {
-        self.cell.samples.tuft_best_den_ids().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.cell.layer.tuft_best_den_ids().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the tuft's best dendrite state (raw).
     pub fn try_best_den_state_raw(&self) -> Option<u8> {
-        self.cell.samples.tuft_best_den_states_raw().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.cell.layer.tuft_best_den_states_raw().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the tuft's best dendrite state.
     pub fn try_best_den_state(&self) -> Option<u8> {
-        self.cell.samples.tuft_best_den_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.cell.layer.tuft_best_den_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the tuft's previous state.
     pub fn try_prev_state(&self) -> Option<u8> {
-        self.cell.samples.tuft_prev_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.cell.layer.tuft_prev_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the tuft's previous best dendrite id.
     pub fn try_prev_best_den_id(&self) -> Option<u8> {
-        self.cell.samples.tuft_prev_best_den_ids().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.cell.layer.tuft_prev_best_den_ids().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the tuft's previous best dendrite state (raw).
     pub fn try_prev_best_den_state_raw(&self) -> Option<u8> {
-        self.cell.samples.tuft_prev_best_den_states_raw().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.cell.layer.tuft_prev_best_den_states_raw().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the tuft's previous best dendrite state.
     pub fn try_prev_best_den_state(&self) -> Option<u8> {
-        self.cell.samples.tuft_prev_best_den_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.cell.layer.tuft_prev_best_den_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the tuft map.
@@ -354,18 +362,7 @@ impl<'c> Tuft<'c> {
                 .dims().dens_per_tft()
         };
 
-        let start = match range.start() {
-            Included(&n) => n,
-            Excluded(&n) => n + 1,
-            Unbounded    => 0,
-        };
-        let end = match range.end() {
-            Included(&n) => n + 1,
-            Excluded(&n) => n,
-            Unbounded    => dens_per_tft,
-        };
-        assert!(start <= end);
-        assert!(end <= dens_per_tft);
+        let (start, end) = bounds_start_end(range, dens_per_tft);
 
         Dendrites {
             tuft: self,
@@ -376,71 +373,94 @@ impl<'c> Tuft<'c> {
 }
 
 
+/// An iterator over the tufts of a cell.
 #[derive(Debug)]
-/// A cell sample.
-pub struct Cell<'s> {
-    samples: &'s CorticalLayerSamples,
-    map: CellMap<'s>,
+pub struct Tufts<'c> {
+    cell: &'c Cell<'c>,
+    next_id: usize,
+    end_id: usize,
 }
 
-impl<'s> Cell<'s> {
+impl<'c> Iterator for Tufts<'c> {
+    type Item = Tuft<'c>;
+
+    fn next(&mut self) -> Option<Tuft<'c>> {
+        let tft_id = self.next_id;
+        self.next_id += 1;
+        if tft_id < self.end_id {
+            unsafe { Some(Tuft { cell: self.cell, map: self.cell.map.tuft_unchecked(tft_id) }) }
+        } else {
+            None
+        }
+    }
+}
+
+
+#[derive(Debug)]
+/// A cell sample.
+pub struct Cell<'l> {
+    layer: &'l CorticalLayerSamples,
+    map: CellMap<'l>,
+}
+
+impl<'l> Cell<'l> {
     /// Returns the cell's axon state.
     pub fn axon_state(&self) -> u8 {
-        let vec = self.samples.axon_states().expect("Cell axon state sample unavailable.");
+        let vec = self.layer.axon_states().expect("Cell axon state sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.axon_idx() as usize) }
     }
 
     /// Returns the cell's soma state.
     pub fn state(&self) -> u8 {
-        let vec = self.samples.soma_states().expect("Cell soma state sample unavailable.");
+        let vec = self.layer.soma_states().expect("Cell soma state sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the cell's energy.
     pub fn energy(&self) -> u8 {
-        let vec = self.samples.soma_energies().expect("Cell soma energy sample unavailable.");
+        let vec = self.layer.soma_energies().expect("Cell soma energy sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the cell's activity rating.
     pub fn activity(&self) -> u8 {
-        let vec = self.samples.soma_activities().expect("Cell soma activity sample unavailable.");
+        let vec = self.layer.soma_activities().expect("Cell soma activity sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the cell's flag set.
     pub fn flag_set(&self) -> u8 {
-        let vec = self.samples.soma_flag_sets().expect("Cell soma flag_set sample unavailable.");
+        let vec = self.layer.soma_flag_sets().expect("Cell soma flag_set sample unavailable.");
         unsafe { *vec.get_unchecked(self.map.idx() as usize) }
     }
 
     /// Returns the cell's axon state.
     pub fn try_axon_state(&self) -> Option<u8> {
-        self.samples.axon_states().map(|vec| unsafe { *vec.get_unchecked(self.map.axon_idx() as usize) })
+        self.layer.axon_states().map(|vec| unsafe { *vec.get_unchecked(self.map.axon_idx() as usize) })
     }
 
     /// Returns the cell's soma state.
     pub fn try_state(&self) -> Option<u8> {
-        self.samples.soma_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.layer.soma_states().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the cell's energy.
     pub fn try_energy(&self) -> Option<u8> {
-        self.samples.soma_energies().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.layer.soma_energies().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the cell's activity rating.
     pub fn try_activity(&self) -> Option<u8> {
-        self.samples.soma_activities().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.layer.soma_activities().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the cell's flag set.
     pub fn try_flag_set(&self) -> Option<u8> {
-        self.samples.soma_flag_sets().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
+        self.layer.soma_flag_sets().map(|vec| unsafe { *vec.get_unchecked(self.map.idx() as usize) })
     }
 
     /// Returns the cell map.
-    pub fn map(&self) -> &CellMap<'s> {
+    pub fn map(&self) -> &CellMap<'l> {
         &self.map
     }
 
@@ -463,10 +483,66 @@ impl<'s> Cell<'s> {
     pub fn tuft_apical<'c>(&'c self) -> Option<Tuft<'c>> {
         self.map.tuft_apical().map(|tm| Tuft { cell: self, map: tm })
     }
+
+    /// Returns an iterator over the specified range of tufts.
+    pub fn tufts<'d, R>(&'d self, range: R) -> Tufts<'d>
+            where R: RangeBounds<usize> {
+        let tfts_per_cel = self.map.tuft_info().len();
+        let (start, end) = bounds_start_end(range, tfts_per_cel);
+
+        Tufts {
+            cell: self,
+            next_id: start,
+            end_id: end,
+        }
+    }
 }
 
 
-/// Cortical layer samples.
+/// An iterator over the cells of a layer.
+#[derive(Debug)]
+pub struct Cells<'l> {
+    layer: &'l CorticalLayerSamples,
+    next_slc_id: SlcId,
+    end_slc_id: SlcId,
+    next_v_id: u32,
+    start_v_id: u32,
+    end_v_id: u32,
+    next_u_id: u32,
+    start_u_id: u32,
+    end_u_id: u32,
+}
+
+impl<'l> Iterator for Cells<'l> {
+    type Item = Cell<'l>;
+
+    fn next(&mut self) -> Option<Cell<'l>> {
+        if self.next_slc_id == self.end_slc_id {
+            return None;
+        }
+
+        let slc_id = self.next_slc_id;
+        let v_id = self.next_v_id;
+        let u_id = self.next_u_id;
+
+        // Increment:
+        self.next_u_id += 1;
+        if self.next_u_id == self.end_u_id {
+            self.next_u_id = self.start_u_id;
+            self.next_v_id += 1;
+            if self.next_v_id == self.end_v_id {
+                self.next_v_id = self.start_v_id;
+                self.next_slc_id += 1;
+            }
+        }
+
+        unsafe { Some(Cell { layer: self.layer,
+            map: self.layer.map.cell_unchecked(slc_id, v_id, u_id) }) }
+    }
+}
+
+
+/// Cortical layer layer.
 #[derive(Debug)]
 pub struct CorticalLayerSamples {
     // samples: CorticalSamples,
@@ -678,7 +754,28 @@ impl CorticalLayerSamples {
 
     /// Returns a cell sample.
     pub fn cell<'l>(&'l self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'l> {
-        Cell { samples: self, map: self.map.cell(slc_id_lyr, v_id, u_id) }
+        Cell { layer: self, map: self.map.cell(slc_id_lyr, v_id, u_id) }
+    }
+
+    /// Returns an iterator over the specified range of cells.
+    pub fn cells<'d, Rs, R>(&'d self, slc_range: Rs, v_range: R, u_range: R) -> Cells<'d>
+            where Rs: RangeBounds<SlcId>, R: RangeBounds<u32> {
+        let dims = self.map.dims();
+        let (slc_start, slc_end) = bounds_start_end(slc_range, dims.depth());
+        let (v_start, v_end) = bounds_start_end(v_range, dims.v_size());
+        let (u_start, u_end) = bounds_start_end(u_range, dims.u_size());
+
+        Cells {
+            layer: self,
+            next_slc_id: slc_start,
+            end_slc_id: slc_end,
+            next_v_id: v_start,
+            start_v_id: v_start,
+            end_v_id: v_end,
+            next_u_id: u_start,
+            start_u_id: u_start,
+            end_u_id: u_end,
+        }
     }
 
     /// Returns a reference to the layer map.

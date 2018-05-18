@@ -33,9 +33,11 @@ static PRI_AREA: &'static str = "v1";
 static IN_AREA: &'static str = "v0";
 
 // const ENCODE_DIMS_0: (u32, u32, u8) = (48, 48, 1);
-const ENCODE_DIMS_0: CorticalDims = CorticalDims::new(1, 48, 48);
+// const ENCODE_DIMS_0: CorticalDims = CorticalDims::new(1, 48, 48);
+const ENCODE_DIMS_0: CorticalDims = CorticalDims::new(1, 24, 24);
 // const ENCODE_DIMS_1: (u32, u32, u8) = (30, 255, 1);
-const AREA_DIM: u32 = 48;
+// const AREA_DIM: u32 = 48;
+const AREA_DIM: u32 = 24;
 const SEQUENTIAL_SDR: bool = true;
 
 const PRINT_INTERVAL: usize = 5000;
@@ -206,6 +208,20 @@ fn check_stuff(samples: CorticalLayerSamples, focus_cels: Vec<FocusCell>,
 
         assert_eq!(den_total, cell.map().tuft_info()[tuft.map().tuft_id()].dims().dens_per_tft());
         assert_eq!(syn_total, cell.map().tuft_info()[tuft.map().tuft_id()].dims().syns_per_tft());
+
+
+
+        let mut cell_counter = 0u32;
+        for cell in samples.cells(.., .., ..) {
+            cell_counter += 1;
+        }
+        assert_eq!(cell_counter, samples.map().cell_count());
+
+        // let mut cell_counter = 0u32;
+        // for cell in samples.cells(.., .., ..) {
+        //     cell_counter += 1;
+        // }
+        // assert_eq!(cell_counter, samples.map().cell_count());
 
 
 

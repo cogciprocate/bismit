@@ -303,6 +303,10 @@ pub mod tests {
         /// coordinates given are valid.
         #[inline]
         unsafe fn new_unchecked(layer: &'m DataCellLayerMap, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
+            // assert!(slc_id_lyr < layer.depth && v_id < layer.slice_dims.v_size() &&
+            //     u_id < layer.slice_dims.u_size(), "Cell coordinates out of range: \
+            //     slc_id_lyr: {} ({}), v_id: {} ({}), u_id: {} ({})", slc_id_lyr, layer.depth,
+            //     v_id, layer.slice_dims.v_size(), u_id, layer.slice_dims.u_size());
             let idx = cmn::cel_idx_3d(layer.depth, slc_id_lyr, layer.slice_dims.v_size(),
                 v_id, layer.slice_dims.u_size(), u_id);
             Cell { layer: layer, slc_id_lyr, v_id, u_id, idx }
@@ -360,6 +364,11 @@ pub mod tests {
         /// Returns the tuft info for this cellular layer.
         pub fn tuft_info(&self) -> &[TuftInfo] {
             self.layer.tuft_info()
+        }
+
+        /// Returns the number of tufts for cells in this layer.
+        pub fn tuft_count(&self) -> usize {
+            self.layer.tuft_count()
         }
 
         /// Returns this cell's slice id *within* its layer.

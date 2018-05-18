@@ -458,9 +458,9 @@ pub fn base_build_options<'b>() -> ProgramBuilder<'b> {
 
 // CEL_IDX_3D(): Simple index resolution for a cell within a particular layer
 pub fn cel_idx_3d(depth: u8, slc_id: u8, v_size: u32, v_id: u32, u_size: u32, u_id: u32) -> u32 {
-    assert!(slc_id < depth);
-    assert!(v_id < v_size);
-    assert!(u_id < u_size);
+    debug_assert!(slc_id < depth);
+    debug_assert!(v_id < v_size);
+    debug_assert!(u_id < u_size);
     (slc_id as u32 * v_size * u_size) + (v_id * u_size) + u_id
 }
 
