@@ -130,17 +130,17 @@ pub mod tests {
     }
 
 
+    //#########################################################################
+    //#########################################################################
+    //#########################################################################
 
 
     /// A data cell layer map error.
     #[derive(Debug, Fail)]
     pub enum DataCellLayerMapError {
-        // #[fail(display = "{}", _0)]
-        // OclCore(OclCoreError),
         #[fail(display = "Multiple matching tufts found.")]
         MultipleMatchingTufts,
     }
-
 
 
 
@@ -292,10 +292,10 @@ pub mod tests {
     impl<'m> Cell<'m> {
         /// Returns a new cell map.
         fn new(layer: &'m DataCellLayerMap, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
-            assert!(slc_id_lyr < layer.depth && v_id < layer.slice_dims.v_size() &&
-                u_id < layer.slice_dims.u_size(), "Cell coordinates out of range: \
+            assert!(slc_id_lyr < layer.depth && v_id < layer.slice_dims().v_size() &&
+                u_id < layer.slice_dims().u_size(), "Cell coordinates out of range: \
                 slc_id_lyr: {} ({}), v_id: {} ({}), u_id: {} ({})", slc_id_lyr, layer.depth,
-                v_id, layer.slice_dims.v_size(), u_id, layer.slice_dims.u_size());
+                v_id, layer.slice_dims().v_size(), u_id, layer.slice_dims().u_size());
             unsafe { Cell::new_unchecked(layer, slc_id_lyr, v_id, u_id) }
         }
 
@@ -303,12 +303,12 @@ pub mod tests {
         /// coordinates given are valid.
         #[inline]
         unsafe fn new_unchecked(layer: &'m DataCellLayerMap, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
-            // assert!(slc_id_lyr < layer.depth && v_id < layer.slice_dims.v_size() &&
-            //     u_id < layer.slice_dims.u_size(), "Cell coordinates out of range: \
+            // assert!(slc_id_lyr < layer.depth && v_id < layer.slice_dims().v_size() &&
+            //     u_id < layer.slice_dims().u_size(), "Cell coordinates out of range: \
             //     slc_id_lyr: {} ({}), v_id: {} ({}), u_id: {} ({})", slc_id_lyr, layer.depth,
-            //     v_id, layer.slice_dims.v_size(), u_id, layer.slice_dims.u_size());
-            let idx = cmn::cel_idx_3d(layer.depth, slc_id_lyr, layer.slice_dims.v_size(),
-                v_id, layer.slice_dims.u_size(), u_id);
+            //     v_id, layer.slice_dims().v_size(), u_id, layer.slice_dims().u_size());
+            let idx = cmn::cel_idx_3d(layer.depth, slc_id_lyr, layer.slice_dims().v_size(),
+                v_id, layer.slice_dims().u_size(), u_id);
             Cell { layer: layer, slc_id_lyr, v_id, u_id, idx }
         }
 
@@ -319,10 +319,13 @@ pub mod tests {
 
         /// Returns the index of the cell's axon within axon space.
         pub fn axon_idx(&self) -> u32 {
-            let slc_axon_idz = (self.slc_id_lyr as u32 * self.layer.slice_dims.columns()) + self.layer.axon_idz;
+            // Just look this up instead now:
+            let slc_axon_idz = (self.slc_id_lyr as u32 * self.layer.slice_dims().columns()) + self.layer.axon_idz();
+            debug_assert!(slc_axon_idz ==
+                self.layer.slice_map.axon_idzs[(self.layer.slice_idz + self.slc_id_lyr) as usize]);
             axon_idx(slc_axon_idz, self.layer.depth, self.layer.slice_idz,
-                self.layer.slice_dims.v_size(), self.layer.slice_dims.v_scale(), self.v_id, 0,
-                self.layer.slice_dims.u_size(), self.layer.slice_dims.u_scale(), self.u_id, 0).unwrap()
+                self.layer.slice_dims().v_size(), self.layer.slice_dims().v_scale(), self.v_id, 0,
+                self.layer.slice_dims().u_size(), self.layer.slice_dims().u_scale(), self.u_id, 0).unwrap()
         }
 
         /// Returns a new tuft map.
@@ -388,6 +391,24 @@ pub mod tests {
     }
 
 
+    /// Slice information used for indexing.
+    #[derive(Clone, Debug)]
+    pub struct SliceMap {
+        dims: Vec<SliceDims>,
+        axon_idzs: Vec<u32>,
+    }
+
+    impl SliceMap {
+        pub fn dims(&self) -> &[SliceDims] {
+            &self.dims
+        }
+
+        pub fn axon_idzs(&self) -> &[u32] {
+            &self.axon_idzs
+        }
+    }
+
+
     /// Information pertaining to indexing within a tuft.
     #[derive(Clone, Debug)]
     pub struct TuftInfo {
@@ -425,14 +446,13 @@ pub mod tests {
     #[derive(Debug)]
     pub struct Inner {
         layer_addr: LayerAddress,
-        slice_dims: SliceDims,
         depth: SlcId,
-        axon_idz: u32,
         slice_idz: SlcId,
         tuft_info: Vec<TuftInfo>,
         tuft_ids: TuftIds,
         den_count: u32,
         syn_count: u32,
+        slice_map: SliceMap,
     }
 
 
@@ -457,13 +477,16 @@ pub mod tests {
                 .expect(&format!("DataCellLayerMap::from_names: The specified layer ('{}') \
                     has no slices.", layer_addr));
 
+            let axon_idzs = area_map.slice_map().axon_idzs().to_owned();
+            let slice_map_dims = area_map.slice_map().dims().to_owned();
+
             debug_assert!(layer_slc_range.start <= SlcId::max_value() as usize);
             let slice_idz = layer_slc_range.start as SlcId;
-            let axon_idz = area_map.slice_map().axon_idzs()[slice_idz as usize];
+            let axon_idz = axon_idzs[slice_idz as usize];
             let mut slice_dims = None;
 
             for (i, slc_id) in layer_slc_range.clone().enumerate() {
-                let sd_i = &area_map.slice_map().dims()[slc_id as usize];
+                let sd_i = &slice_map_dims[slc_id as usize];
 
                 match slice_dims {
                     // Ensure each slice in the layer is equal:
@@ -532,9 +555,7 @@ pub mod tests {
             DataCellLayerMap {
                 inner: Arc::new(Inner {
                     layer_addr,
-                    slice_dims,
                     depth: dims.depth(),
-                    axon_idz,
                     slice_idz,
                     tuft_info,
                     tuft_ids: TuftIds {
@@ -544,16 +565,13 @@ pub mod tests {
                     },
                     den_count: den_count_ttl,
                     syn_count: syn_count_ttl,
+                    slice_map: SliceMap {
+                        axon_idzs,
+                        dims: slice_map_dims,
+                    }
                 })
             }
         }
-
-        // /// Returns the first tuft that matches the specified parameters.
-        // fn matching_tuft<'c>(&'c self, class: DendriteClass, kind: DendriteKind) -> Option<Tuft<'c>> {
-        //     self.tuft_info().iter().enumerate().find(|(tuft_id, tuft_info)| {
-        //         tuft_info.den_class() == class && tuft_info.den_kind() == kind
-        //     }).map(|(tuft_id, _)| self.tuft(tuft_id))
-        // }
 
         /// Returns a new cell map.
         pub fn cell<'m>(&'m self, slc_id_lyr: SlcId, v_id: u32, u_id: u32) -> Cell<'m> {
@@ -578,7 +596,7 @@ pub mod tests {
         }
 
         pub fn cell_count(&self) -> u32 {
-            self.depth as u32 * self.slice_dims.v_size() * self.slice_dims.u_size()
+            self.depth as u32 * self.slice_dims().v_size() * self.slice_dims().u_size()
         }
 
         /// Returns the number of tufts for cells in this layer.
@@ -586,14 +604,24 @@ pub mod tests {
             self.tuft_info.len()
         }
 
+        /// Returns a map containing per-slice info for all slices.
+        pub fn slice_map(&self) -> &SliceMap {
+            &self.slice_map
+        }
+
+        /// Returns the dimensions for the slices in this layer.
+        pub fn slice_dims(&self) -> &SliceDims {
+            unsafe { self.slice_map.dims.get_unchecked(self.slice_idz as usize) }
+        }
+
         /// Returns the layer dimensions.
         pub fn dims(&self) -> CorticalDims {
-            CorticalDims::new(self.depth, self.slice_dims.v_size(), self.slice_dims.u_size())
+            CorticalDims::new(self.depth, self.slice_dims().v_size(), self.slice_dims().u_size())
         }
 
         /// Returns the index of the 0th cell's axon within axon space.
         pub fn axon_idz(&self) -> u32 {
-            self.axon_idz
+            unsafe { *self.slice_map.axon_idzs.get_unchecked(self.slice_idz as usize) }
         }
 
         /// Returns the total number of dendrites in every slice, cell, and tuft.
@@ -616,65 +644,4 @@ pub mod tests {
             &(*self).inner
         }
     }
-
-
-    // #[derive(Debug, Clone)]
-    // pub struct TftCoords {
-    //     pub idx: u32,
-    //     pub tft_id: usize,
-    //     pub slc_id_lyr: u8,
-    //     pub axon_slc_id: u8,
-    //     pub v_id: u32,
-    //     pub u_id: u32,
-    //     pub lyr_dims: CorticalDims,
-    //     // pub tfts_per_cel: u32,
-    //     // pub dens_per_tft_l2: u8,
-    //     // pub syns_per_den_l2: u8,
-    // }
-
-    // impl TftCoords {
-    //     pub fn new(tft_id: usize, axon_slc_id: u8, slc_id_lyr: u8, v_id: u32, u_id: u32,
-    //                 lyr_dims: CorticalDims, /*tfts_per_cel: u32, dens_per_tft_l2: u8,
-    //                 syns_per_den_l2: u8*/) -> TftCoords
-    //     {
-    //         let idx_tft = cmn::cel_idx_3d(dims.depth(), slc_id_lyr, dims.v_size(),
-    //             v_id, dims.u_size(), u_id);
-
-    //         let idx = ((tft_id as u32) * dims.cells()) + idx_tft;
-
-    //         TftCoords {
-    //             idx: idx,
-    //             tft_id: tft_id,
-    //             slc_id_lyr: slc_id_lyr,
-    //             axon_slc_id: axon_slc_id,
-    //             v_id: v_id,
-    //             u_id: u_id,
-    //             lyr_dims: dims,
-    //             // tfts_per_cel: tfts_per_cel,
-    //             // dens_per_tft_l2: dens_per_tft_l2,
-    //             // syns_per_den_l2: syns_per_den_l2,
-    //         }
-    //     }
-
-    //     pub fn idx(&self) -> u32 {
-    //         self.idx
-    //     }
-
-    //     pub fn col_id(&self) -> u32 {
-    //         // Fake a slice id of 0 with a slice depth of 1 and ignore our actual depth and id:
-    //         cmn::cel_idx_3d(1, 0, self.lyr_dims.v_size(), self.v_id,
-    //             self.lyr_dims.u_size(), self.u_id)
-    //     }
-
-    //     pub fn cel_axon_idx(&self, area_map: &AreaMap) -> u32 {
-    //         area_map.axon_idx(self.axon_slc_id, self.v_id, 0, self.u_id, 0).unwrap()
-    //     }
-    // }
-
-    // impl Display for TftCoords {
-    //     fn fmt(&self, fmtr: &mut Formatter) -> Result {
-    //         write!(fmtr, "TftCoords {{ idx: {}, slc_id_lyr: {}, axon_slc_id: {}, v_id: {}, u_id: {} }}",
-    //             self.idx, self.slc_id_lyr, self.axon_slc_id, self.v_id, self.u_id)
-    //     }
-    // }
 }

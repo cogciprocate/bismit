@@ -644,7 +644,7 @@ impl AxonSpace {
 pub mod tests {
     #![allow(dead_code)]
     use super::{AxonSpace};
-    use map::{AreaMap, AreaMapTest};
+    use map::{AreaMap, AreaMapTest, AxonBoundError};
     use cortex::{CelCoords};
 
     pub trait AxonSpaceTest {
@@ -676,7 +676,7 @@ pub mod tests {
 
     impl AxnCoords {
         pub fn new(slc_id: u8, v_id: u32, u_id: u32, area_map: &AreaMap)
-                -> Result<AxnCoords, &'static str> {
+                -> Result<AxnCoords, AxonBoundError> {
             match area_map.axon_idx(slc_id, v_id, 0, u_id, 0) {
                 Ok(idx) => Ok(AxnCoords { idx: idx, slc_id: slc_id, v_id: v_id, u_id: u_id }),
                 Err(e) => Err(e),
@@ -684,7 +684,7 @@ pub mod tests {
         }
 
         pub fn from_cel_coords(cel_base_axon_slc: u8, cel_coords: &CelCoords, area_map: &AreaMap)
-                -> Result<AxnCoords, &'static str> {
+                -> Result<AxnCoords, AxonBoundError> {
             AxnCoords::new(cel_base_axon_slc, cel_coords.v_id,
                 cel_coords.u_id, area_map)
         }

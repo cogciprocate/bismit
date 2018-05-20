@@ -240,7 +240,7 @@ impl SynSrcSliceInfo {
 
         match axon_kind {
             &AxonTopology::Nonspatial => {
-                // Already checked within `SliceDims` (keep here though).
+                // Already checked within `SliceDims` (keep here anyway):
                 debug_assert!(src_slc_dims.v_size() <= cmn::MAX_HRZ_DIM_SIZE);
                 debug_assert!(src_slc_dims.u_size() <= cmn::MAX_HRZ_DIM_SIZE);
 

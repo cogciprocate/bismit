@@ -17,13 +17,14 @@ mod hexdraw;
 mod sequence;
 mod motor;
 mod sensory;
+mod old_cel_coords_test;
 
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
 use rand::XorShiftRng;
 use rand::distributions::{Range, IndependentSample};
-use vibi::bismit::futures::executor;
-use qutex::QrwLock;
+// use vibi::bismit::futures::executor;
+// use qutex::QrwLock;
 use vibi::window;
 use vibi::bismit::ocl::{Buffer, RwVec};
 use vibi::bismit::{encode, Cortex, SubcorticalNucleusLayer, TractSender,
@@ -127,6 +128,7 @@ fn main() {
         "motor" => motor::eval(),
         "sensory" => sensory::eval(),
         "sequence" => sequence::eval(),
+        "old_cel_coords_test" => old_cel_coords_test::eval(),
         e @ _ => println!("Unknown evaluation specified: {}", e),
     }
 
@@ -391,7 +393,8 @@ impl Layer {
 pub struct Sdrs {
     pub pattern_count: usize,
     pub dims: TractDims,
-    pub lock: QrwLock<Vec<Vec<u8>>>,
+    pub indices: Vec<Vec<usize>>,
+    pub sdrs: Vec<Vec<u8>>,
     pub rng: XorShiftRng,
 }
 
@@ -423,7 +426,8 @@ impl Sdrs {
         Sdrs {
             pattern_count,
             dims,
-            lock: QrwLock::new(sdrs),
+            indices: pattern_indices,
+            sdrs,
             rng,
         }
     }
@@ -431,8 +435,8 @@ impl Sdrs {
     /// Returns the (v, u) coords. of the next active cell with an index
     /// greater than (the next active cell after) `pattern_idx`.
     pub fn a_middle_active_cell(&self, pattern_idx: usize) -> (u32, u32) {
-        let patterns = executor::block_on(self.lock.clone().read()).unwrap();
-        let pattern = &patterns[pattern_idx];
+        // let patterns = executor::block_on(self.sdrs.clone().read()).unwrap();
+        let pattern = &self.sdrs[pattern_idx];
 
         let mut mid_active_cel_idx = None;
         let mid_cel_idx = pattern.len() / 2;
@@ -489,9 +493,11 @@ impl SeqCursor {
     /// * seq_count: number of sequences to generate.
     /// * src_idx_count: Length of the source pool.
     ///
-    pub fn new(seq_lens: (usize, usize), seq_count: usize, src_idx_count: usize) -> SeqCursor {
+    pub fn new(seq_lens: (usize, usize), seq_count: usize, src_idx_count: usize)
+            -> SeqCursor {
         assert!(seq_lens.1 >= seq_lens.0, "SeqCursor::new(): Sequence length range \
-            ('seq_lens') invalid. High end must at least be equal to low end: '{:?}'.", seq_lens);
+            ('seq_lens') invalid. High end must at least be equal to low end: '{:?}'.",
+                seq_lens);
 
         let mut rng = rand::weak_rng();
         let mut sequences = Vec::with_capacity(seq_count);
@@ -556,7 +562,7 @@ impl SeqCursor {
     }
 
     /// Returns the current position of the cursor.
-    pub fn cur_pos(&self) -> SeqCursorPos {
+    pub fn curr_pos(&self) -> SeqCursorPos {
         SeqCursorPos {
             seq_idx: self.cur_seq_idx,
             seq_item_idx: self.cur_seq_item_idx,

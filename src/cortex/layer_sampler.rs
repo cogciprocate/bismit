@@ -4,6 +4,7 @@ use std::ops::{RangeBounds, Bound::{Excluded, Included, Unbounded}};
 use num::Integer;
 use futures::{Future, Poll, task::Context};
 use ocl::ReadGuard;
+use map::{axon_idx, AxonBoundError};
 use cortex::{Cell as CellMap, Tuft as TuftMap, Dendrite as DendriteMap, Synapse as SynapseMap};
 use ::{Error as CmnError, Thalamus, CorticalAreas,  SamplerKind, CellSampleIdxs,
     FutureCorticalSamples, CorticalSampler, CorticalSamples, LayerAddress,
@@ -37,6 +38,32 @@ pub struct Synapse<'d> {
 }
 
 impl<'d> Synapse<'d> {
+    /// Returns the index of this synapse's source axon.
+    pub fn src_axon_idx(&self) -> Result<u32, AxonBoundError> {
+        let layer = self.den.tuft.cell.layer.map();
+        let slc_count = layer.slice_map().axon_idzs().len() as SlcId;
+        let src_slc_id = self.src_slc_id();
+        debug_assert!(src_slc_id < slc_count);
+
+        let (src_slc_axon_idz, src_slc_dims) = unsafe {
+            (*layer.slice_map().axon_idzs().get_unchecked(src_slc_id as usize),
+                &*layer.slice_map().dims().get_unchecked(src_slc_id as usize))
+        };
+
+        axon_idx(src_slc_axon_idz, slc_count, src_slc_id,
+            src_slc_dims.v_size(), src_slc_dims.v_scale(),
+            self.den.tuft.cell.map.v_id(), self.src_col_v_ofs(),
+            src_slc_dims.u_size(), src_slc_dims.u_scale(),
+            self.den.tuft.cell.map.u_id(), self.src_col_u_ofs())
+    }
+
+    /// Returns the source axon state.
+    pub fn src_axon_state(&self) -> Result<u8, AxonBoundError> {
+        let vec = self.den.tuft.cell.layer.axon_states().expect("Axon state sample unavailable.");
+        // Index safely for this one just in case:
+        self.src_axon_idx().map(|idx| vec[idx as usize])
+    }
+
     /// Returns the synapse state.
     pub fn state(&self) -> u8 {
         let vec = self.den.tuft.cell.layer.syn_states().expect("Synapse state sample unavailable.");
@@ -503,6 +530,8 @@ impl<'l> Cell<'l> {
 #[derive(Debug)]
 pub struct Cells<'l> {
     layer: &'l CorticalLayerSamples,
+    // NOTE: consider using something bigger for `slc_id` since it can easily
+    // hit max:
     next_slc_id: SlcId,
     end_slc_id: SlcId,
     next_v_id: u32,
@@ -532,6 +561,9 @@ impl<'l> Iterator for Cells<'l> {
             self.next_v_id += 1;
             if self.next_v_id == self.end_v_id {
                 self.next_v_id = self.start_v_id;
+                // NOTE: consider using something bigger for `slc_id` since it
+                // can easily hit max:
+                assert!(self.next_slc_id < SlcId::max_value());
                 self.next_slc_id += 1;
             }
         }
@@ -545,7 +577,6 @@ impl<'l> Iterator for Cells<'l> {
 /// Cortical layer layer.
 #[derive(Debug)]
 pub struct CorticalLayerSamples {
-    // samples: CorticalSamples,
     map: DataCellLayerMap,
     axon_states: Option<ReadGuard<Vec<u8>>>,
     soma_states: Option<ReadGuard<Vec<u8>>>,
@@ -783,7 +814,6 @@ impl CorticalLayerSamples {
         &self.map
     }
 }
-
 
 
 /// Future samples.

@@ -401,13 +401,36 @@ pub mod tests {
     use {SrcOfs, SlcId};
 
 
+    /// An axon space boundary error.
+    #[derive(Debug, Fail)]
+    pub enum AxonBoundError {
+        #[fail(display = "Slice id out of bounds.")]
+        SlcId,
+        #[fail(display = "'v' coordinate out of bounds.")]
+        VId,
+        #[fail(display = "'u' coordinate out of bounds.")]
+        UId,
+    }
+
+
     pub fn coords_are_safe(slc_count: SlcId, slc_id: SlcId, v_size: u32, v_id: u32, v_ofs: SrcOfs,
-            u_size: u32, u_id: u32, u_ofs: SrcOfs) -> bool {
+            u_size: u32, u_id: u32, u_ofs: SrcOfs) -> Result<(), AxonBoundError> {
         // ////// DEBUG:
         // debug_assert!(slc_id < slc_count, "area_map::tests::coords_are_safe: \
         //     Slice id ('{}') must be less than slice count ('{}').", slc_id, slc_count);
-        (slc_id < slc_count) && coord_is_safe(v_size, v_id, v_ofs)
-            && coord_is_safe(u_size, u_id, u_ofs)
+
+        // (slc_id < slc_count) && coord_is_safe(v_size, v_id, v_ofs)
+        //     && coord_is_safe(u_size, u_id, u_ofs)
+
+        if slc_id >= slc_count {
+            return Err(AxonBoundError::SlcId);
+        } else if !coord_is_safe(v_size, v_id, v_ofs) {
+            return Err(AxonBoundError::VId);
+        } else if !coord_is_safe(u_size, u_id, u_ofs) {
+            return Err(AxonBoundError::UId);
+        } else {
+            Ok(())
+        }
     }
 
     pub fn coord_is_safe(dim_size: u32, coord_id: u32, coord_ofs: SrcOfs) -> bool {
@@ -443,31 +466,36 @@ pub mod tests {
     pub fn axon_idx(slc_axon_idz: u32, slc_count: SlcId, slc_id: SlcId,
             v_size: u32, v_scale: u32, v_id_unscaled: u32, v_ofs: SrcOfs,
             u_size: u32, u_scale: u32, u_id_unscaled: u32, u_ofs: SrcOfs)
-            -> Result<u32, &'static str> {
+            -> Result<u32, AxonBoundError> {
         let v_id_scaled = cmn::scale(v_id_unscaled as i32, v_scale);
         let u_id_scaled = cmn::scale(u_id_unscaled as i32, u_scale);
 
-        if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
-                u_size, u_id_scaled as u32, u_ofs) {
-            Ok(axon_idx_unsafe(slc_axon_idz, v_id_scaled as u32, v_ofs,
+        // if coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
+        //         u_size, u_id_scaled as u32, u_ofs) {
+        //     Ok(axon_idx_unsafe(slc_axon_idz, v_id_scaled as u32, v_ofs,
+        //         u_size, u_id_scaled as u32, u_ofs))
+        // } else {
+        //     Err("Axon coordinates invalid.")
+        // }
+
+        coords_are_safe(slc_count, slc_id, v_size, v_id_scaled as u32, v_ofs,
+                u_size, u_id_scaled as u32, u_ofs)
+            .map(|_| axon_idx_unsafe(slc_axon_idz, v_id_scaled as u32, v_ofs,
                 u_size, u_id_scaled as u32, u_ofs))
-        } else {
-            Err("Axon coordinates invalid.")
-        }
     }
 
 
     pub trait AreaMapTest {
         fn axon_idx(&self, slc_id: SlcId, v_id: u32, v_ofs: SrcOfs, u_id: u32, u_ofs: SrcOfs)
-            -> Result<u32, &'static str>;
+            -> Result<u32, AxonBoundError>;
         fn axon_col_id(&self, slc_id: SlcId, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
-            -> Result<u32, &'static str>;
+            -> Result<u32, AxonBoundError>;
     }
 
     impl AreaMapTest for AreaMap {
         /// Calculates an axon index.
         fn axon_idx(&self, slc_id: SlcId, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
-                -> Result<u32, &'static str> {
+                -> Result<u32, AxonBoundError> {
             let v_scale = self.slice_map.v_scales()[slc_id as usize];
             let u_scale = self.slice_map.u_scales()[slc_id as usize];
 
@@ -492,7 +520,7 @@ pub mod tests {
         }
 
         fn axon_col_id(&self, slc_id: SlcId, v_id_unscaled: u32, v_ofs: SrcOfs, u_id_unscaled: u32, u_ofs: SrcOfs)
-                -> Result<u32, &'static str> {
+                -> Result<u32, AxonBoundError> {
             let v_scale = self.slice_map.v_scales()[slc_id as usize];
             let u_scale = self.slice_map.u_scales()[slc_id as usize];
 
